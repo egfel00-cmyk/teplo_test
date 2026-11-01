@@ -17,18 +17,43 @@
     try { var s = window.localStorage.getItem(KEY); if (s) return Object.assign(defaults(), JSON.parse(s)); } catch (e) { /* нет хранилища */ }
     return memory || defaults();
   }
+  // ---- квартиры: у каждой свой адрес, счётчик, последние принятые и история. S.meter/S.baseline — данные активной квартиры.
+  function places() { return (S.places || []).filter(function (p) { return p && !p.deleted; }); }
+  function place(id) { var k = id || S.placeId; return places().filter(function (p) { return p.id === k; })[0] || null; }
+  function ensurePlaces() {
+    if (!Array.isArray(S.places)) S.places = [];
+    if (!places().length) S.places.push({ id: S.places.length ? 'p' + Date.now().toString(36) : 'main', name: '', meter: S.meter || null, baseline: S.baseline || null, updatedAt: 0 });
+    if (!S.placeId || !place(S.placeId)) { var f = places()[0]; S.placeId = f.id; S.meter = f.meter || S.meter || null; S.baseline = f.baseline || S.baseline || null; }
+  }
+  /** Перенести текущие S.meter/S.baseline в запись активной квартиры (перед сохранением). */
+  function syncPlace() {
+    ensurePlaces(); var p = place();
+    if (JSON.stringify(p.meter || null) !== JSON.stringify(S.meter || null) || JSON.stringify(p.baseline || null) !== JSON.stringify(S.baseline || null)) { p.meter = S.meter || null; p.baseline = S.baseline || null; p.updatedAt = Date.now(); }
+  }
+  function placeLabel(p) { return (p && p.name) || t('pl_unnamed', { n: places().indexOf(p) + 1 }); }
+  /** Переключатель квартир (если их больше одной). */
+  function placeSwitch() {
+    var ps = places(); if (ps.length < 2) return '';
+    return '<div class="place-sw" data-key="place-switch">' + ico('home', 18) + '<select id="place-sel" aria-label="' + esc(t('pl_switch')) + '">' + ps.map(function (p) { return '<option value="' + esc(p.id) + '"' + (p.id === S.placeId ? ' selected' : '') + '>' + esc(placeLabel(p)) + '</option>'; }).join('') + '</select></div>';
+  }
+  function switchPlace(id) {
+    syncPlace(); var p = place(id); if (!p || id === S.placeId) return;
+    S.placeId = id; S.meter = p.meter || null; S.baseline = p.baseline || null; S.draft = null; S.focusId = null; save();
+  }
   function persist() { memory = S; try { window.localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) { /* только память */ } }
   var lastSig = '', pendingRender = false;
   /** Сохранить: локально всегда; если изменились синхронизируемые данные — отметить время и отправить на другие устройства. */
   function save() {
+    syncPlace();
     var Y = window.TeploSync;
     if (Y) { var sg = Y.sig(Y.payload(S)); if (sg !== lastSig) { lastSig = sg; S.updatedAt = Date.now(); persist(); Y.push(); return; } }
     persist();
   }
   /** Пришли данные с другого устройства (уже слитые с локальными). */
   function applyRemote(m) {
-    var keep = { lang: S.lang, demoToday: S.demoToday, focusId: S.focusId, _pickModel: S._pickModel, syncPromptDismissed: S.syncPromptDismissed };
+    var keep = { lang: S.lang, demoToday: S.demoToday, focusId: S.focusId, _pickModel: S._pickModel, syncPromptDismissed: S.syncPromptDismissed, placeId: S.placeId };
     S = Object.assign(defaults(), m, keep);
+    ensurePlaces(); var ap = place(); if (ap && (ap.meter || ap.baseline || S.places.length > 1)) { S.meter = ap.meter || null; S.baseline = ap.baseline || null; }
     lastSig = window.TeploSync.sig(window.TeploSync.payload(S)); persist();
     safeRender();
   }
@@ -43,7 +68,7 @@
     var l = (tu && tu.language_code) || (navigator.languages && navigator.languages[0]) || navigator.language || '';
     return /^ru\b/i.test(l) ? 'ru' : 'uk';
   }
-  var S = load();
+  var S = load(); ensurePlaces();
   var ADMIN = null, LINKWAIT = false;
   // вернулся из бота после привязки — обновить аккаунт, чтобы сразу было видно «Telegram: @…»
   document.addEventListener('visibilitychange', function () {
@@ -108,6 +133,7 @@
     alert: '<path d="M12 4l9 16H3z"/><path d="M12 10v4"/><circle cx="12" cy="17" r=".6" fill="currentColor"/>',
     info: '<circle cx="12" cy="12" r="9"/><path d="M12 11v6"/><circle cx="12" cy="7.8" r=".6" fill="currentColor"/>',
     clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+    plus: '<path d="M12 5v14M5 12h14"/>',
     thermo: '<path d="M10 14.5V5a2 2 0 1 1 4 0v9.5a4 4 0 1 1-4 0z"/><path d="M12 10v6"/>',
     chart: '<path d="M4 20V4M4 20h16"/><path d="M8 16v-5M12 16V8M16 16v-3"/>',
     leaf: '<path d="M5 19c0-8 5-13 14-14 0 9-5 14-13 14"/><path d="M5 19l7-7"/>',
@@ -219,7 +245,7 @@
       : '';
     return '<div class="app' + (bare ? ' bare-app' : '') + '">' +
       '<header class="top"><a class="brand" href="#home" data-key="brand">' + logo() + '<span>' + esc(t('brand')) + '</span></a>' + (window.TEPLO_API ? '<span class="beta" title="' + esc(t('beta_sub')) + '">' + esc(t('beta')) + '</span>' : '') + '<span class="spacer"></span>' + right + '</header>' +
-      nav + '<main class="main' + (bare ? ' bare' : '') + '" id="main" data-screen="' + view.screen + '" tabindex="-1">' + view.html + '</main></div>' +
+      nav + '<main class="main' + (bare ? ' bare' : '') + '" id="main" data-screen="' + view.screen + '" tabindex="-1">' + (['home', 'history', 'stats', 'save'].indexOf(route) >= 0 ? placeSwitch() : '') + view.html + '</main></div>' +
       (window.TEPLO_API ? '<button class="fab' + (bare ? ' fab-bare' : '') + '" data-act="fb-open" data-key="feedback" aria-haspopup="dialog">' + ico('chat', 20) + '<span>' + esc(t('fb_btn')) + '</span></button>' + fbDialog() : '') +
       '<div id="toast-host" aria-live="polite"></div>';
   }
@@ -324,7 +350,7 @@
   };
 
   /** Показания без удалённых (удалённые остаются «надгробием» с deleted, чтобы удаление синхронизировалось). */
-  function RD() { return (S.readings || []).filter(function (r) { return r && !r.deleted; }); }
+  function RD() { var first = S.places && S.places[0] ? S.places[0].id : 'main'; return (S.readings || []).filter(function (r) { return r && !r.deleted && (r.place || first) === S.placeId; }); }
   function tariff() { var n = R.num(S.tariff); return n && n > 0 ? n : R.C.TARIFF; }
   /** Сколько тепла набежало с прошлых показаний (по дате снятия) или с последних принятых ХТМ, и сколько это стоит. */
   function interval(r) {
@@ -396,6 +422,7 @@
     var note = pm && pm.id !== 'other' ? '<p class="small muted">' + esc(L(pm.note)) + '</p>' : '';
     return { screen: 'S02', route: 'meter', bare: !S.onboarded, closeTo: S.onboarded ? 'home' : 'welcome', html:
       '<h1>' + esc(t('m_title')) + '</h1><p class="muted">' + esc(t('m_lead')) + '</p>' +
+      '<div class="field" style="max-width:520px"><label for="pl-name">' + esc(t('pl_addr')) + ' <span class="muted small">(' + esc(t('b_opt')) + ')</span></label><div class="ctl"><input id="pl-name" autocomplete="street-address" placeholder="' + esc(t('pl_addr_ph')) + '" value="' + esc((place() || {}).name || '') + '"></div></div>' +
       '<details class="where" data-key="meter-where"><summary>' + esc(t('m_where')) + '</summary><p>' + esc(t('m_where_text')) + '</p></details>' +
       (VIS().available ? '<p><button class="btn sec" data-act="photo" data-mode="model" data-key="meter-photo">' + ico('camera', 20) + '<span>' + esc(t('ph_model_entry')) + '</span></button></p>' : '') +
       '<ul class="list models" data-key="meter-list">' + list + '</ul>' + (pm ? '<div style="margin-top:16px">' + note + unitBlock + '</div>' : '') +
@@ -808,9 +835,52 @@
 
   V.help = function () { return { screen: 'S10', route: 'help', html: helpHtml() }; };
 
+  // ---- поверка и документы счётчика (документы — только вошедшим: хранятся на сервере)
+  var DOCS = { list: null, loading: false, busy: '' };
+  function loadDocs(force) {
+    if (!window.TEPLO_API || !Y().account || DOCS.loading || (DOCS.list && !force)) return;
+    DOCS.loading = true;
+    fetch(window.TEPLO_API + '/docs', { credentials: 'same-origin', headers: { Accept: 'application/json' } }).then(function (r) { return r.json(); })
+      .then(function (j) { DOCS.loading = false; DOCS.list = (j && j.docs) || []; if (routeName() === 'prefs') safeRender(); }, function () { DOCS.loading = false; });
+  }
+  function meterPanel() {
+    if (!S.meter) return '';
+    var v = S.meter.verifiedUntil || '', days = v ? R.daysBetween(today(), v) : null;
+    var st = v ? (days < 0 ? '<span class="pill bad">' + esc(t('mv_expired')) + '</span>' : days <= 60 ? '<span class="pill warn">' + esc(t('mv_soon', { n: days })) + '</span>' : '<span class="pill ok">' + esc(t('mv_ok')) + '</span>') : '';
+    var h = '<div class="panel" data-key="prefs-meter-ver"><h2>' + esc(t('mv_title')) + '</h2><p class="small muted">' + esc(modelName(model())) + (place() && place().name ? ' · ' + esc(place().name) : '') + '</p>' +
+      '<div class="field" style="max-width:280px"><label for="p-ver">' + esc(t('mv_date')) + '</label><div class="ctl"><input id="p-ver" type="date" value="' + esc(v) + '"></div><div class="help">' + st + ' ' + esc(t('mv_date_sub')) + '</div></div>';
+    if (!window.TEPLO_API) return h + '</div>';
+    if (!Y().account) return h + '<p class="small muted">' + esc(t('mv_docs_login')) + '</p></div>';
+    loadDocs();
+    var mine = (DOCS.list || []).filter(function (d) { return d.place === S.placeId || (!place(d.place) && S.placeId === (places()[0] || {}).id); });
+    h += '<h3>' + esc(t('mv_docs')) + ' <span class="muted small">(' + esc(t('b_opt')) + ')</span></h3><p class="small muted">' + esc(t('mv_docs_sub')) + '</p>';
+    h += mine.length ? '<ul class="docs">' + mine.map(function (d) {
+      var url = window.TEPLO_API + '/docs/file?id=' + d.id, img = d.mime !== 'application/pdf';
+      return '<li><a href="' + esc(url) + '" target="_blank" rel="noopener" class="doc-th">' + (img ? '<img src="' + esc(url) + '" alt="" loading="lazy">' : '<span class="pdf">PDF</span>') + '</a>' +
+        '<div class="grow"><b>' + esc(t('mv_kind_' + d.kind)) + '</b><div class="small muted">' + esc(R.toHtmDate(String(d.createdAt).slice(0, 10))) + ' · ' + Math.max(1, Math.round(d.bytes / 1024)) + ' КБ</div></div>' +
+        '<button class="linkbtn" data-act="doc-del" data-id="' + esc(d.id) + '">' + esc(t('rec_del')) + '</button></li>';
+    }).join('') + '</ul>' : (DOCS.list ? '<p class="small muted">' + esc(t('mv_docs_none')) + '</p>' : '');
+    h += '<input type="file" id="doc-input" class="sr" accept="image/jpeg,image/png,image/webp,application/pdf">' +
+      '<div class="row-actions" style="margin-top:8px"><button class="btn sec" data-act="doc-add" data-kind="passport"' + (DOCS.busy ? ' disabled' : '') + '>' + ico('camera', 18) + '<span>' + esc(t('mv_add_passport')) + '</span></button>' +
+      '<button class="btn sec" data-act="doc-add" data-kind="verification"' + (DOCS.busy ? ' disabled' : '') + '>' + ico('camera', 18) + '<span>' + esc(t('mv_add_ver')) + '</span></button></div>' +
+      (DOCS.busy ? '<p class="small muted">' + esc(t('mv_uploading')) + '</p>' : '');
+    return h + '</div>';
+  }
+  function placesPanel() {
+    var ps = places(), first = S.places[0] && S.places[0].id;
+    return '<div class="panel" data-key="prefs-places"><h2>' + esc(t('pl_title')) + '</h2><p class="small muted">' + esc(t('pl_sub')) + '</p><ul class="list" style="background:var(--c-housing)">' +
+      ps.map(function (p) {
+        var n = (S.readings || []).filter(function (r) { return r && !r.deleted && (r.place || first) === p.id; }).length, m = p.meter ? M.byId(p.meter.modelId) : null;
+        return '<li><div class="grow"><input class="pl-in" data-plname="' + esc(p.id) + '" value="' + esc(p.name || '') + '" placeholder="' + esc(placeLabel(p)) + '" aria-label="' + esc(t('pl_addr')) + '">' +
+          '<div class="small muted">' + esc((m ? modelName(m) : t('pl_no_meter')) + ' · ' + t('pl_n', { n: n })) + (p.meter && p.meter.verifiedUntil ? ' · ' + esc(t('pl_ver', { d: R.toHtmDate(p.meter.verifiedUntil) })) : '') + '</div></div>' +
+          (p.id === S.placeId ? '<span class="pill ok">' + esc(t('pl_active')) + '</span>' : '<button class="btn sec" data-act="pl-use" data-id="' + esc(p.id) + '">' + esc(t('pl_use')) + '</button>') +
+          (ps.length > 1 && !n ? '<button class="linkbtn" data-act="pl-del" data-id="' + esc(p.id) + '" style="margin-left:8px">' + esc(t('rec_del')) + '</button>' : '') + '</li>';
+      }).join('') + '</ul><p><button class="btn sec" data-act="pl-add" data-key="prefs-place-add">' + ico('plus', 18) + '<span>' + esc(t('pl_add')) + '</span></button></p></div>';
+  }
   V.prefs = function () {
     var m = model(), c = S.contacts || {};
     return { screen: 'S11', route: 'prefs', html: '<h1>' + esc(t('p_title')) + '</h1>' + syncPanel() +
+      placesPanel() + meterPanel() +
       '<ul class="list" style="margin-bottom:16px"><li><div class="grow"><div class="small muted">' + esc(t('p_meter')) + '</div><b>' + esc(modelName(m)) + '</b></div><a href="#meter">' + esc(t('change')) + '</a></li>' +
       '<li><div class="grow"><div class="small muted">' + esc(t('p_base')) + '</div><b>' + (S.baseline ? esc(fmtDate(S.baseline.date, true)) + ', <span class="num">' + esc(R.formatForHtm('energy', S.baseline.energy)) + '</span> Гкал' : '—') + '</b></div><a href="#baseline">' + esc(t('change')) + '</a></li></ul>' +
       '<div class="panel"><h2>' + esc(t('p_contacts')) + '</h2><p class="small muted">' + esc(t('p_contacts_sub')) + '</p><div class="grid2">' +
@@ -1131,7 +1201,7 @@
 
   function saveReading(status) {
     var res = S._lastCheck || runCheck(S.draft), htm = draftReadingGcal(S.draft);
-    var rd = { id: uid(), htm: htm, raw: Object.assign({}, S.draft.values), unit: energyUnit(), status: status, createdAt: new Date().toISOString(), updatedAt: Date.now(), source: S.draft.source || 'manual',
+    var rd = { id: uid(), place: S.placeId, htm: htm, raw: Object.assign({}, S.draft.values), unit: energyUnit(), status: status, createdAt: new Date().toISOString(), updatedAt: Date.now(), source: S.draft.source || 'manual',
       verdict: res.verdict, codes: res.items.map(function (x) { return x.code; }),
       derived: Object.assign({}, res.derived, S.baseline ? { days: R.daysBetween(S.baseline.date, htm.date) } : {}) };
     S.readings.push(rd); S.draft = null; S.focusId = rd.id; save();
@@ -1151,7 +1221,7 @@
         var u = document.querySelector('input[name="unit"]:checked');
         S.meter = Object.assign({}, S.meter || {}, { modelId: id, unit: u ? u.value : pm.unit });
         delete S._pickModel; save();
-        go(S.onboarded ? 'home' : 'baseline'); break;
+        go(S.onboarded && S.baseline ? 'home' : 'baseline'); break;
       }
       case 'skip-base': S.onboarded = true; delete S._baseFill; save(); go('home'); break;
       case 'sample': {
@@ -1180,6 +1250,15 @@
           }, function () { if (w0) w0.close(); toast(t('err_network')); });
         break;
       }
+      case 'doc-add': { var fi = document.getElementById('doc-input'); if (fi) { fi.setAttribute('data-kind', el.getAttribute('data-kind')); fi.value = ''; fi.click(); } break; }
+      case 'doc-del': {
+        if (!confirm(t('mv_del_q'))) break;
+        fetch(window.TEPLO_API + '/docs/delete', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json', 'X-CSRF': (document.cookie.match(/(?:^|; )ts_csrf=([^;]*)/) || [])[1] || '' }, body: JSON.stringify({ id: el.getAttribute('data-id') }) })
+          .then(function () { loadDocs(true); }); break;
+      }
+      case 'pl-use': switchPlace(el.getAttribute('data-id')); WX.key = ''; toast(t('pl_switched', { p: placeLabel(place()) })); go('home'); break;
+      case 'pl-add': { syncPlace(); var np = { id: 'p' + Date.now().toString(36), name: '', meter: null, baseline: null, updatedAt: Date.now() }; S.places.push(np); switchPlace(np.id); go('meter'); break; }
+      case 'pl-del': { var dp = place(el.getAttribute('data-id')); if (dp && places().length > 1) { dp.deleted = true; dp.updatedAt = Date.now(); if (dp.id === S.placeId) { S.placeId = null; ensurePlaces(); } save(); render(true); } break; }
       case 'focus': S.focusId = el.getAttribute('data-id'); save(); break;
       case 'rec-del-ask': { var bx = document.getElementById('rec-del-confirm'); if (bx) bx.innerHTML = '<div class="banner warn" style="margin-top:16px">' + ico('alert', 22) + '<div><p>' + esc(t('rec_del_q')) + '</p><div class="row-actions" style="margin-top:8px"><button class="btn danger" data-act="rec-del-yes">' + esc(t('rec_del')) + '</button></div></div></div>'; break; }
       case 'rec-del-yes': { var m2 = routeName().match(/^rec-([\w-]+)$/), rx = m2 && RD().filter(function (x) { return x.id === m2[1]; })[0];
@@ -1215,17 +1294,33 @@
       case 'ph-apply': phApply(); break;
       case 'ph-use-model': { var um = M.byId(el.getAttribute('data-id')); S.meter = Object.assign({}, S.meter || {}, { modelId: um.id, unit: el.getAttribute('data-unit') || um.unit }); save(); toast(t('b_saved')); PH.picked = VIS().pick(PH.result, M.TO_GCAL, energyUnit()); render(true); break; }
       case 'auth-mode': authMode = authMode === 'login' ? 'register' : 'login'; render(true); break;
-      case 'logout': ADMIN = null; Y().logout().then(function () { S = defaults(); S.lang = browserLang(); lastSig = window.TeploSync.sig(window.TeploSync.payload(S)); persist(); toast(t('logged_out')); go('welcome'); }); break;
+      case 'logout': ADMIN = null; Y().logout().then(function () { S = defaults(); S.lang = browserLang(); ensurePlaces(); lastSig = window.TeploSync.sig(window.TeploSync.payload(S)); persist(); toast(t('logged_out')); go('welcome'); }); break;
       case 'dismiss-sync': S.syncPromptDismissed = true; persist(); render(true); break;
       case 'wipe-no': document.getElementById('wipe-confirm').innerHTML = ''; break;
-      case 'wipe-yes': { var now = Date.now(); S = defaults(); S.lang = browserLang(); S.wipedAt = now; phReset(); FB.open = false; save(); toast(t('p_wiped')); go('welcome'); break; }
+      case 'wipe-yes': { var now = Date.now(); S = defaults(); S.lang = browserLang(); S.wipedAt = now; ensurePlaces(); phReset(); FB.open = false; save(); toast(t('p_wiped')); go('welcome'); break; }
     }
   });
 
+  document.addEventListener('change', function (e) {
+    if (e.target && e.target.id === 'p-ver' && S.meter) { S.meter = Object.assign({}, S.meter, { verifiedUntil: e.target.value || '' }); save(); render(true); return; }
+    if (e.target && e.target.id === 'doc-input' && e.target.files && e.target.files[0]) {
+      var f = e.target.files[0], kind = e.target.getAttribute('data-kind') || 'other';
+      var prep = /^image\//.test(f.type) && window.TeploVision ? window.TeploVision.prepare(f) : Promise.resolve(f);
+      DOCS.busy = kind; render(true);
+      prep.then(function (b) {
+        return fetch(window.TEPLO_API + '/docs/upload?place=' + encodeURIComponent(S.placeId) + '&kind=' + kind, { method: 'POST', credentials: 'same-origin', body: b,
+          headers: { 'Content-Type': b.type || f.type || 'application/octet-stream', 'X-CSRF': (document.cookie.match(/(?:^|; )ts_csrf=([^;]*)/) || [])[1] || '', Accept: 'application/json' } });
+      }).then(function (r) { DOCS.busy = ''; if (!r.ok) toast(r.status === 415 ? t('mv_bad_file') : r.status === 413 ? t('mv_too_big') : t('err_network')); else toast(t('mv_saved')); loadDocs(true); render(true); },
+        function () { DOCS.busy = ''; toast(t('err_network')); render(true); });
+      return;
+    }
+  });
+  document.addEventListener('change', function (e) { if (e.target && e.target.id === 'place-sel') { switchPlace(e.target.value); WX.key = ''; render(); } });
   document.addEventListener('input', function (e) {
     var el = e.target;
     if (el.matches('[data-field]') && S.draft) liveCheck(el);
     if (el.matches('[data-contact]')) { S.contacts = S.contacts || {}; S.contacts[el.getAttribute('data-contact')] = el.value.trim(); save(); }
+    if (el.id === 'pl-name' || el.getAttribute && el.getAttribute('data-plname')) { var pp = place(el.getAttribute('data-plname') || S.placeId); if (pp) { pp.name = el.value.trim().slice(0, 120); pp.updatedAt = Date.now(); save(); } }
     if (el.id === 'p-tariff') { var tn = R.num(el.value.replace(',', '.')); if (tn && tn > 0 && tn < 100000) { S.tariff = tn; save(); } }
   });
   document.addEventListener('change', function (e) {

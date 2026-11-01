@@ -15,6 +15,7 @@
 //  POST /api/bot/webhook            (заголовок X-Telegram-Bot-Api-Secret-Token)
 //  POST /api/bot/setup              (заголовок X-Setup-Secret = webhook_secret) — вебхук, кнопка меню, /start
 //  POST /api/recognize/upload       фото СЫРЫМ телом (Content-Type: image/*) → {id}
+//  POST /api/docs/upload?place&kind  документ к счётчику (фото/PDF сырым телом) · GET /api/docs · GET /api/docs/file?id · POST /api/docs/delete
 //  GET  /api/weather?from&to       средняя за сутки в Харькове (Open-Meteo, кэш) — для истории
 //  POST /api/recognize/local        {ids, results} — итог распознавания в браузере (свой движок, без нейросети) → в аналитику
 //  POST /api/recognize/run          {ids[≤3], offset, ctx} → распознанное (vision-API, ключ в config.php)
@@ -44,7 +45,7 @@ final class Api {
     $res = new Res();
     try {
       $ip = Http::ip($r->server);
-      $isUpload = $r->path === '/api/recognize/upload';
+      $isUpload = $r->path === '/api/recognize/upload' || $r->path === '/api/docs/upload';
       if (strlen($r->body) > (int)Cfg::get($isUpload ? 'max_photo_bytes' : 'max_body_bytes')) throw new HttpError(413, 'too_large');
       $isHook = $r->path === '/api/bot/webhook' || $r->path === '/api/bot/setup';
       if (!$isHook) RateLimit::hit('ip_all', $ip);
@@ -182,6 +183,14 @@ final class Api {
         return Recognize::report((int)$user['id'], $in);
       }
       case 'GET /api/weather': return Weather::range((string)($r->query()['from'] ?? ''), (string)($r->query()['to'] ?? ''));   // погода к истории — всем, кэш
+      case 'POST /api/docs/upload': {   // документ к счётчику сырым телом: ?place=&kind=passport|verification|other&name=
+        if (!$user) throw new HttpError(401, 'unauthorized');
+        RateLimit::hit('recog_upload', (string)$user['id']);
+        return Docs::upload((int)$user['id'], $r->body, $r->header('Content-Type'), $r->query());
+      }
+      case 'GET /api/docs': if (!$user) throw new HttpError(401, 'unauthorized'); return Docs::list((int)$user['id']);
+      case 'GET /api/docs/file': if (!$user) throw new HttpError(401, 'unauthorized'); $res->file = Docs::file((int)$user['id'], (string)($r->query()['id'] ?? '')); return [];
+      case 'POST /api/docs/delete': if (!$user) throw new HttpError(401, 'unauthorized'); return Docs::delete((int)$user['id'], (string)($in['id'] ?? ''));
       case 'POST /api/feedback': return Feedback::create($user, $in, $r, $ip);
       case 'GET /api/admin/me': if (!$user) throw new HttpError(401, 'unauthorized'); return ['admin' => Admin::is($user)];
       case 'POST /api/bot/setup': {

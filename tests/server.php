@@ -6,6 +6,7 @@ require __DIR__ . '/../app/core.php';
 require __DIR__ . '/../app/telegram.php';
 require __DIR__ . '/../app/recognize.php';
 require __DIR__ . '/../app/admin.php';
+require __DIR__ . '/../app/docs.php';
 require __DIR__ . '/../app/api.php';
 $TMP = sys_get_temp_dir() . '/teplo_test_' . getmypid(); putenv('SITE_DATA=' . $TMP);
 
@@ -223,6 +224,18 @@ ok('«Старт» в боте → Telegram привязан к этому ак�
 $hook('/start link_' . $mm[1]);
 ok('повторно та же ссылка не работает', str_contains(end($sent)[1]['text'], 'застаріло'));
 Telegram::$send = null;
+
+echo "\nДокументы к счётчику:\n";
+$du = fn(Browser $b, string $body, string $type, string $q) => $b->req('POST', '/api/docs/upload', null, ['HTTP_CONTENT_TYPE' => $type, 'QUERY_STRING' => $q], true, $body);
+ok('без входа документ не принимается', $du(new Browser('10.0.9.9'), $png, 'image/png', 'kind=passport')->status === 401);
+$d1 = $du($lb, $png, 'image/png', 'place=p1&kind=passport'); $d2 = $du($lb, "%PDF-1.4\n%fake", 'application/pdf', 'place=p1&kind=verification');
+ok('фото паспорта и PDF поверки сохраняются', $d1->status === 200 && $d2->status === 200 && $d1->body['doc']['kind'] === 'passport' && $d2->body['doc']['mime'] === 'application/pdf');
+ok('не PDF под видом PDF → 415', $du($lb, '<?php 1;', 'application/pdf', 'kind=other')->status === 415);
+$dl = $lb->req('GET', '/api/docs');
+ok('список своих документов', count($dl->body['docs']) === 2 && $dl->body['docs'][0]['place'] === 'p1');
+ok('чужой не видит и не скачивает', count($rb->req('GET', '/api/docs')->body['docs']) === 0 && $rb->req('GET', '/api/docs/file', null, ['QUERY_STRING' => 'id=' . $d1->body['doc']['id']])->status === 404);
+ok('свой файл отдаётся через PHP', $lb->req('GET', '/api/docs/file', null, ['QUERY_STRING' => 'id=' . $d1->body['doc']['id']])->file['mime'] === 'image/png');
+ok('удаление', $lb->req('POST', '/api/docs/delete', ['id' => $d2->body['doc']['id']])->status === 200 && count($lb->req('GET', '/api/docs')->body['docs']) === 1);
 
 echo "\nПогода для статистики (только владельцу):\n";
 $urls = []; Weather::$fetch = function ($u) use (&$urls) { $urls[] = $u; return ['daily' => ['time' => ['2025-01-01', '2025-01-02'], 'temperature_2m_mean' => [-3.24, null]]]; };

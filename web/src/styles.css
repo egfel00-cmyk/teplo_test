@@ -295,3 +295,13 @@ label.btn { cursor: pointer; }
 .wx-t-cold { color: #24508A; } .wx-t-warm { color: #7A4A00; }
 .spark { width: 100%; height: 56px; display: block; margin-top: 12px; }
 .ctip[hidden] { display: none; } .wx:focus-visible { outline: 2px solid #17211E; outline-offset: 2px; }
+
+/* квартиры */
+.place-sw { display: inline-flex; align-items: center; gap: 8px; background: var(--c-surface); border: 1px solid var(--c-line); border-radius: 999px; padding: 4px 6px 4px 12px; margin-bottom: 16px; }
+.place-sw select { border: 0; background: transparent; font: inherit; font-weight: 600; padding: 6px 4px; max-width: 70vw; }
+.pl-in { width: 100%; border: 0; border-bottom: 1px dashed var(--c-line); background: transparent; font: inherit; font-weight: 600; padding: 4px 0; }
+.pl-in:focus { outline: none; border-bottom-color: var(--c-ink, #17211E); }
+.docs { list-style: none; padding: 0; margin: 8px 0; display: grid; gap: 8px; }
+.docs li { display: flex; align-items: center; gap: 12px; background: var(--c-housing); border-radius: 12px; padding: 8px; }
+.doc-th { width: 56px; height: 56px; border-radius: 8px; overflow: hidden; background: #fff; display: grid; place-items: center; flex: none; }
+.doc-th img { width: 100%; height: 100%; object-fit: cover; } .doc-th .pdf { font: 700 13px var(--mono); color: #A3142E; }

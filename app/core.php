@@ -126,6 +126,8 @@ final class Db {
       // фото на распознавание (файлы — SITE_DATA/uploads/photos/<user>/), результат и проблема человеческим языком
       "CREATE TABLE IF NOT EXISTS photos (id CHAR(24) PRIMARY KEY, user_id INT NOT NULL, file VARCHAR(80) NOT NULL, mime VARCHAR(20) NOT NULL, bytes INT NOT NULL, w INT NULL, h INT NULL, status VARCHAR(12) NOT NULL DEFAULT 'uploaded', result TEXT NULL, problem TEXT NULL, created_at VARCHAR(25) NOT NULL)$tail",
       // журнал распознавания: ошибки запросов и итог (что не нашлось, что человек исправил)
+      // документы к счётчику (паспорт, поверка) — файлы в SITE_DATA/uploads/docs/<user>/
+      "CREATE TABLE IF NOT EXISTS docs (id CHAR(24) PRIMARY KEY, user_id INT NOT NULL, place VARCHAR(40) NOT NULL, kind VARCHAR(16) NOT NULL, file VARCHAR(80) NOT NULL, mime VARCHAR(40) NOT NULL, bytes INT NOT NULL, name VARCHAR(120) NULL, created_at VARCHAR(25) NOT NULL)$tail",
       // одноразовые ссылки «привязать Telegram через бота» (t.me/<бот>?start=link_<token>)
       "CREATE TABLE IF NOT EXISTS link_tokens (token CHAR(32) PRIMARY KEY, user_id INT NOT NULL, expires_at INT NOT NULL)$tail",
       "CREATE TABLE IF NOT EXISTS recog_reports (id $ai, user_id INT NOT NULL, photo_ids TEXT NULL, kind VARCHAR(16) NOT NULL, ok TINYINT NOT NULL DEFAULT 0, text TEXT NOT NULL, data TEXT NULL, created_at VARCHAR(25) NOT NULL)$tail",

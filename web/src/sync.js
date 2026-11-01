@@ -10,7 +10,7 @@
  */
 (function (root) {
   'use strict';
-  var SYNC_KEYS = ['v', 'onboarded', 'meter', 'baseline', 'contacts', 'readings', 'draft', 'updatedAt', 'wipedAt', 'tariff'];
+  var SYNC_KEYS = ['v', 'onboarded', 'meter', 'baseline', 'contacts', 'readings', 'draft', 'updatedAt', 'wipedAt', 'tariff', 'places'];
 
   function payload(S) { var o = {}; SYNC_KEYS.forEach(function (k) { if (S[k] !== undefined) o[k] = S[k]; }); return o; }
   function sig(p) { var c = Object.assign({}, p); delete c.updatedAt; return JSON.stringify(c); }
@@ -38,6 +38,13 @@
     else if (ba && bb) out.baseline = String(ba.date) === String(bb.date) ? newer.baseline : (String(ba.date) > String(bb.date) ? ba : bb);
     else out.baseline = ba || bb || null;
     out.meter = wipeWins ? (newer.meter || null) : (newer.meter || older.meter || null);
+    // квартиры: по id, у каждой своя метка времени; удалённая квартира (deleted) тоже «надгробие»
+    if (wipeWins) out.places = newer.places || [];
+    else {
+      var pm = {}, order = [];
+      (older.places || []).concat(newer.places || []).forEach(function (p) { if (!p || !p.id) return; if (!pm[p.id]) order.push(p.id); if (!pm[p.id] || (p.updatedAt || 0) >= (pm[p.id].updatedAt || 0)) pm[p.id] = p; });
+      if (order.length) out.places = order.map(function (k) { return pm[k]; });
+    }
     if (wipeWins) { out.draft = newer.draft || null; out.contacts = newer.contacts || { phone: '', email: '' }; }
     out.updatedAt = Math.max(aT, bT); out.wipedAt = wiped || undefined;
     return out;
