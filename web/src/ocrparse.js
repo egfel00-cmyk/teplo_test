@@ -130,7 +130,8 @@
       if (mE) { out.readings.push({ field: 'errCode', value: 'E' + mE[1], unit: '', label: 'E', confidence: +(0.7 * l.score).toFixed(2) }); return; }
       var bv = bestValue(l); if (!bv || !bv.digits) return;
       // подпись рядом: специфичные (HT/CT/ON/EH) важнее общих (°C, h)
-      var near = tags.filter(function (t) { return t.line === l || dist(l, t.line) < 6; })
+      // подпись «90°C» с самим числом (паспортные данные на корпусе) относится только к своей строке
+      var near = tags.filter(function (t) { return t.line === l || (!t.same && dist(l, t.line) < 6); })
         .sort(function (a, b) { return b.tag.w - a.tag.w || dist(l, a.line) - dist(l, b.line); });
       var field = null, unit = '', label = '', how = 'tag', conf = l.score * (0.75 + 0.25 * bv.agree);
       if (near.length) {
@@ -148,6 +149,15 @@
           var guess = val || inferDot(bv.digits, cand[c], ctx).v, x = parseFloat(guess), pv = parseFloat(p[cand[c]]);
           if (x >= pv * 0.999 && x <= pv * 1.6 + 50) { field = cand[c]; val = guess; how = 'prev'; }
         }
+        // модель известна (с наклейки или выбрана человеком): главное число без подписи — обычно экран по умолчанию, т. е. энергия
+        var mid = (meter && meter.modelId) || ctx.modelId, mdl = mid && ctx.models ? ctx.models.filter(function (m0) { return m0.id === mid; })[0] : null;
+        if (!field && mdl && mains.length === 1 && bv.digits.length >= 4) {
+          field = 'energy'; how = 'model'; label = '';
+          unit = val === null && mdl.units.indexOf('kWh') >= 0 ? 'kWh' : mdl.unit;   // целое без точки — киловатт-часы (T230/T330 так показывают)
+          if (unit === 'kWh' && val === null) val = bv.digits;
+          meter = meter || { modelId: mid, modelText: null, serial: null, apartment: null, energyUnit: null, confidence: 0.4 }; meter.energyUnit = unit;
+          out.note = out.note || 'unit_guess';
+        }
         if (!field) {
           if (val === null && bv.digits.length >= 4) { field = 'hours'; how = 'guess'; }
           else if (val && (val.split('.')[1] || '').length === 3) { field = 'energy'; how = 'guess'; }
@@ -157,7 +167,7 @@
       }
       if (DEC[field] === 0) val = bv.digits;   // часы — целые: «точка» на них — это тень сегмента
       if (val === null) { var inf = inferDot(bv.digits, field, ctx); val = inf.v; if (inf.how === 'none' && DEC[field]) { conf *= 0.6; out.note = out.note || 'no_dot'; } else if (inf.how !== 'int') conf *= 0.9; }
-      if (how === 'prev') conf *= 0.8; if (how === 'guess') conf *= 0.5;
+      if (how === 'prev') conf *= 0.8; if (how === 'guess') conf *= 0.5; if (how === 'model') conf *= 0.7;
       if (field === 'energy' && unit) { meter = meter || { modelId: null, modelText: null, serial: null, apartment: null, energyUnit: null, confidence: 0.3 }; meter.energyUnit = unit; }
       out.readings.push({ field: field, value: stripZeros(val), unit: unit, label: label, confidence: +Math.min(0.97, conf).toFixed(2) });
     });

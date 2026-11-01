@@ -19,6 +19,16 @@ x = read('nounit_energy', Object.assign({ prev: { energy: '15.482', volume: '272
 ok('без подписи — по прошлым принятым это энергия, уверенность снижена', x.v.energy === '16.120' && x.r.photo.readings[0].confidence < 0.75, x.r.photo.readings);
 x = read('nounit_energy', {}); ok('без подписи и без прошлых — не выдумывать с высокой уверенностью', !x.r.photo.readings.length || x.r.photo.readings[0].confidence < 0.6, x.r.photo.readings);
 
+console.log('\nСерый ЖК без подсветки (как Landis+Gyr T230), единица не прочиталась:');
+const T230 = { w: 1512, h: 2016, lines: [{ text: 'T230', score: 0.99, x: 860, y: 582, w: 160, h: 59 }, { text: 'ULTRAHEAT', score: 0.98, x: 863, y: 638, w: 150, h: 34 },
+  { text: '90°C', alts: ['90°C', '90°C'], score: 0.86, x: 564, y: 947, w: 80, h: 29 }, { text: 'LL-IL', score: 0.62, x: 829, y: 1010, w: 45, h: 25 },
+  { text: '0046077', alts: ['*0046077', '0046077'], score: 0.98, x: 553, y: 992, w: 269, h: 99 }, { text: '68841529', alts: ['68 841 529', '68 841 529'], score: 0.99, x: 769, y: 1121, w: 207, h: 36 }] };
+x = P.photo(T230, { models: M.MODELS }, 0);
+ok('модель T230, главное число — энергия 46077 kWh, «90°C» с корпуса не прилипает', x.meter.modelId === 't230' && x.photo.readings.length === 1 && x.photo.readings[0].field === 'energy' && x.photo.readings[0].value === '46077' && x.photo.readings[0].unit === 'kWh', x.photo.readings);
+ok('единица взята по модели — уверенность снижена, человек проверит', x.photo.readings[0].confidence < 0.75 && x.photo.note === 'unit_guess');
+const V = require('../web/src/recognize.js');
+ok('для «Останні прийняті» пересчёт в Гкал: 46077 kWh ≈ 39,6191', V.pick({ photos: [x.photo] }, M.TO_GCAL, 'Gcal').energy.value === '39.6191');
+
 console.log('\nНе теплосчётчик:');
 for (const [k, t] of [['syn_water', 'water'], ['syn_electric', 'electric'], ['syn_gas', 'gas']]) {
   x = read(k, {}); ok(k + ' → ' + t + ', показания не берём', x.r.photo.meterType === t && !x.r.photo.readings.length, x.r.photo);

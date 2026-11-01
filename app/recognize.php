@@ -132,6 +132,7 @@ final class Recognize {
         $note = (string)($ph['note'] ?? '');
         if ($note === 'unlabeled') $problems[] = 'есть число без подписи (Gcal, m³, °C) — непонятно, какое это поле';
         elseif ($note === 'no_dot') $problems[] = 'не видно десятичной точки';
+        elseif ($note === 'unit_guess') $problems[] = 'единица на экране не прочиталась — взята типичная для модели';
       }
       $json = json_encode(['photo' => $ph, 'meter' => $r['meter'] ?? null, 'ms' => (int)($r['ms'] ?? 0), 'engine' => 'local', 'ocr' => array_slice((array)($r['ocr'] ?? []), 0, 80)], JSON_UNESCAPED_UNICODE);
       if (strlen((string)$json) > 60000) $json = json_encode(['photo' => $ph, 'meter' => $r['meter'] ?? null, 'engine' => 'local'], JSON_UNESCAPED_UNICODE);
