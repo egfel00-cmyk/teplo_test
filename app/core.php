@@ -16,7 +16,7 @@ final class Cfg {
       'anthropic_api_key' => '', 'anthropic_model' => 'claude-sonnet-5-5',
       'cookie_secure' => true, 'session_days' => 30,
       // кто видит аналитику (/admin): email аккаунта или Telegram id
-      'admins' => ['emails' => [], 'telegram' => []],
+      'admins' => ['emails' => ['admin@teplo.test'], 'telegram' => []],   // тестовый период: учётка владельца уже создана на бою; заменить в config.php
       'photo_keep_days' => 90,    // фото на распознавание хранятся столько дней (cron.php чистит)
       // кому верить в заголовке CF-Connecting-IP: Cloudflare + локальные адреса (Caddy на том же сервере)
       'trusted_proxies' => array_merge(['127.0.0.1/32', '::1/128'], self::cloudflare()),
