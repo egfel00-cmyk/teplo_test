@@ -1083,6 +1083,7 @@ label.btn { cursor: pointer; }
       ph_not_heat_short_water: "це лічильник води, не тепла — пропущено",
       ph_not_heat_short_electric: "це лічильник світла, не тепла — пропущено",
       ph_not_heat_short_gas: "це газовий лічильник, не тепла — пропущено",
+      ph_new: 'Почати заново',
       ph_zoom_hint: 'Натисніть фото, щоб збільшити й звірити (щипок або подвійне натискання — зум).', ph_view: 'Перегляд фото', ph_prev: 'Попереднє фото', ph_next: 'Наступне фото',
       pn_unlabeled: "не видно підпису (Gcal, m³, °C…), тому не зрозуміло, що це за число — зніміть екран повністю",
       pn_test_screen: 'це тест екрана (горять усі сегменти) — натисніть кнопку ще раз і зніміть наступний екран', pn_dt_screen: 'це екран різниці температур (dt) — у форму ХТМ не потрібен', pn_by_order: 'підпису не видно — поле визначено за порядком екранів лічильника, звірте з фото',
@@ -1407,6 +1408,7 @@ label.btn { cursor: pointer; }
       ph_not_heat_short_water: "это счётчик воды, не тепла — пропущено",
       ph_not_heat_short_electric: "это счётчик света, не тепла — пропущено",
       ph_not_heat_short_gas: "это газовый счётчик, не тепла — пропущено",
+      ph_new: 'Начать заново',
       ph_zoom_hint: 'Нажмите на фото, чтобы увеличить и сверить (щипок или двойное нажатие — зум).', ph_view: 'Просмотр фото', ph_prev: 'Предыдущее фото', ph_next: 'Следующее фото',
       pn_unlabeled: "не видно подписи (Gcal, m³, °C…), поэтому непонятно, что это за число — снимите экран целиком",
       pn_test_screen: 'это тест экрана (горят все сегменты) — нажмите кнопку ещё раз и снимите следующий экран', pn_dt_screen: 'это экран разницы температур (dt) — в форму ХТМ не нужен', pn_by_order: 'подписи не видно — поле определено по порядку экранов счётчика, сверьте с фото',
@@ -3135,7 +3137,51 @@ label.btn { cursor: pointer; }
 
   // ---------------- распознавание по фото ----------------
   var PH = { mode: 'reading', files: [], urls: [], status: 'idle', result: null, picked: null, error: '', ctl: null, progress: '' };
-  function phReset(mode) { PH.urls.forEach(function (u) { try { URL.revokeObjectURL(u); } catch (e) { /* нет */ } }); PH = { mode: mode || 'reading', files: [], urls: [], status: 'idle', result: null, picked: null, error: '', ctl: null, progress: '', date: mode === 'baseline' ? ((S._baseFill && S._baseFill.date) || (S.baseline && S.baseline.date) || today()) : (S.draft && S.draft.date || today()) }; }
+  function phReset(mode, keep) { if (!keep) PHS.clear(); PH.urls.forEach(function (u) { try { URL.revokeObjectURL(u); } catch (e) { /* нет */ } }); PH = { mode: mode || 'reading', files: [], urls: [], status: 'idle', result: null, picked: null, error: '', ctl: null, progress: '', date: mode === 'baseline' ? ((S._baseFill && S._baseFill.date) || (S.baseline && S.baseline.date) || today()) : (S.draft && S.draft.date || today()) }; }
+  /* Распознанное с фото переживает обновление страницы: состояние — в localStorage, сами фото — в IndexedDB.
+     Стирается, только когда человек сам решил: «Внести в поля», начал заново или удалил фото. */
+  var PHS = {
+    key: 'teplo.ph',
+    db: function () {
+      return new Promise(function (ok, bad) {
+        if (!window.indexedDB) return bad(new Error('no_idb'));
+        var rq = indexedDB.open('teplo-ph', 1);
+        rq.onupgradeneeded = function () { rq.result.createObjectStore('files'); };
+        rq.onsuccess = function () { ok(rq.result); }; rq.onerror = function () { bad(rq.error); };
+      });
+    },
+    putFiles: function (files) {
+      return PHS.db().then(function (db) { return new Promise(function (ok) {
+        var tx = db.transaction('files', 'readwrite'), st = tx.objectStore('files'); st.clear();
+        files.forEach(function (f, i) { st.put({ blob: f, name: f.name || ('photo' + i + '.jpg'), type: f.type, lastModified: f.lastModified || 0 }, i); });
+        tx.oncomplete = tx.onerror = tx.onabort = function () { db.close(); ok(); };
+      }); }).catch(function () {});
+    },
+    getFiles: function () {
+      return PHS.db().then(function (db) { return new Promise(function (ok) {
+        var out = [], rq = db.transaction('files').objectStore('files').openCursor();
+        rq.onsuccess = function () { var c = rq.result; if (c) { var v = c.value; try { out[c.key] = new File([v.blob], v.name, { type: v.type, lastModified: v.lastModified }); } catch (e) { out[c.key] = v.blob; } c.continue(); } else { db.close(); ok(out.filter(Boolean)); } };
+        rq.onerror = function () { db.close(); ok([]); };
+      }); }).catch(function () { return []; });
+    },
+    save: function (withFiles) {
+      if (PH.mode === 'model' || !PH.files.length) return;
+      var st = { mode: PH.mode, date: PH.date, status: PH.status === 'done' ? 'done' : 'idle', result: PH.status === 'done' ? PH.result : null, picked: PH.status === 'done' ? PH.picked : null, vals: PH.vals || null, n: PH.files.length, at: Date.now() };
+      try { localStorage.setItem(PHS.key, JSON.stringify(st)); } catch (e) { /* переполнено — без сохранения */ }
+      if (withFiles) PHS.putFiles(PH.files);
+    },
+    clear: function () { try { localStorage.removeItem(PHS.key); } catch (e) { /* нет */ } PHS.db().then(function (db) { var tx = db.transaction('files', 'readwrite'); tx.objectStore('files').clear(); tx.oncomplete = function () { db.close(); }; }).catch(function () {}); },
+    restore: function () {
+      var st; try { st = JSON.parse(localStorage.getItem(PHS.key) || 'null'); } catch (e) { st = null; }
+      if (!st || Date.now() - (st.at || 0) > 7 * 864e5) return Promise.resolve(false);
+      return PHS.getFiles().then(function (files) {
+        if (!files.length) return false;
+        PH.mode = st.mode || 'reading'; PH.date = st.date || PH.date; PH.files = files; PH.urls = files.map(function (f) { return URL.createObjectURL(f); });
+        PH.result = st.result; PH.picked = st.picked; PH.vals = st.vals || null; PH.status = st.status === 'done' && st.picked ? 'done' : 'idle';
+        return true;
+      });
+    }
+  };
   function phErr(code) { return ({ not_signed_in: t('ph_err_login'), recognition_off: window.TEPLO_API ? t('ph_err_off') : t('ph_unavail'), timeout: t('ph_err_timeout'), not_granted: t('ph_err_not_granted'), sampling_disabled: t('ph_err_not_granted'), images_unavailable: t('ph_unavail'), rate_limited: t('ph_err_rate'), engine_failed: t('ph_err_engine'), image_rejected: t('ph_err_image'), nothing: t('ph_err_nothing') })[code] || t('ph_err_generic'); }
   function thumbs(withRemove) {
     return '<ul class="thumbs" data-key="photo-thumbs">' + PH.urls.map(function (u, i) {
@@ -3170,13 +3216,13 @@ label.btn { cursor: pointer; }
     h += '<p class="small muted" style="margin:0 0 6px">' + esc(t('ph_zoom_hint')) + '</p>' + thumbs(false);
     h += '<p class="muted">' + esc(t('ph_result_sub')) + '</p><div class="field" style="max-width:280px"><label for="ph-date">' + esc(t('ph_date')) + '</label><div class="ctl"><input id="ph-date" type="date" value="' + esc(PH.date || today()) + '" max="' + today() + '"></div></div>';
     h += '<ul class="list ph-fields" data-key="photo-fields">' + R.FIELDS.filter(function (f) { return f.key !== 'date'; }).map(function (f) {
-      var r = p[f.key], v = r ? r.value : '', conf = r ? r.confidence : 0;
+      var r = p[f.key], v = PH.vals && PH.vals[f.key] !== undefined ? PH.vals[f.key] : r ? r.value : '', conf = r ? r.confidence : 0;
       var tag = !r ? '<span class="pill bad">' + esc(t('ph_missing')) + '</span>' : r.conflict ? '<span class="pill warn">' + esc(t('ph_conflict')) + '</span>' : conf < 0.75 ? '<span class="pill warn">' + esc(t('ph_low')) + '</span>' : '<span class="pill ok">' + ico('check', 14) + '</span>';
       var th = r && PH.urls[r.photo] ? '<img class="src" data-pv="' + r.photo + '" src="' + PH.urls[r.photo] + '" alt="' + esc(t('ph_from', { n: r.photo + 1 })) + '" title="' + esc(t('ph_from', { n: r.photo + 1 })) + '">' : '<span class="src none"></span>';
       return '<li>' + th + '<div class="grow"><label for="phv-' + f.key + '" class="small muted">' + esc(fieldLabel(f.key)) + (f.key === 'energy' ? ', ' + esc(unitLbl(PH.mode === 'baseline' ? 'Gcal' : energyUnit())) : f.unit ? ', ' + esc(fieldUnit(f.key)) : '') + '</label>' +
         '<input id="phv-' + f.key + '" class="num ph-in" data-ph="' + f.key + '" inputmode="' + (f.key === 'errCode' ? 'text' : 'decimal') + '" value="' + esc(v) + '"' + (f.key === 'errCode' ? ' placeholder="E---"' : '') + '>' + (r && r.converted ? '<div class="small muted">' + esc(r.converted) + '</div>' : '') + '</div>' + tag + '</li>';
     }).join('') + '</ul>';
-    return h + '<div class="row-actions"><button class="btn sec" data-act="ph-again">' + esc(t('ph_add')) + '</button><button class="btn" data-act="ph-apply" data-to="check" data-key="photo-check">' + esc(PH.mode === 'baseline' ? t('ph_to_base') : t('ph_to_check')) + '</button></div>';
+    return h + '<div class="row-actions"><button class="btn ghost" data-act="ph-new">' + esc(t('ph_new')) + '</button><button class="btn sec" data-act="ph-again">' + esc(t('ph_add')) + '</button><button class="btn" data-act="ph-apply" data-to="check" data-key="photo-check">' + esc(PH.mode === 'baseline' ? t('ph_to_base') : t('ph_to_check')) + '</button></div>';
   }
   /** Просмотр фото на весь экран: щипок / колесо / двойное касание — увеличить, тянуть — двигать, стрелки — соседние фото. */
   function photoViewer(start) {
@@ -3243,13 +3289,14 @@ label.btn { cursor: pointer; }
       var unit = PH.mode === 'baseline' ? 'Gcal' : (res.meter && res.meter.energyUnit && !S.meter) ? res.meter.energyUnit : energyUnit();
       PH.picked = y.pick(res, M.TO_GCAL, unit);
       if (!Object.keys(PH.picked).length) { PH.status = 'idle'; PH.error = phErr('nothing'); render(true); return; }
-      PH.status = 'done'; render(true);
+      PH.status = 'done'; PH.vals = null; PHS.save(false); render(true);
     }, function (e) {
       PH.status = 'idle'; if (e && e.code === 'cancelled') { render(true); return; }
       PH.error = phErr(e && e.code); render(true);
     });
   }
   function phApply() {
+    setTimeout(function () { PHS.clear(); }, 0);
     var vals = {}; Array.prototype.forEach.call(document.querySelectorAll('[data-ph]'), function (el) { vals[el.getAttribute('data-ph')] = el.value.trim(); });
     var di = document.getElementById('ph-date'); var date = (di && di.value) || PH.date || today();
     if (PH.mode === 'baseline') {   // последние принятые ХТМ — в поля экрана «Останні прийняті»; сохраняет человек сам
@@ -3505,15 +3552,18 @@ label.btn { cursor: pointer; }
           var typed = {}; Array.prototype.forEach.call(document.querySelectorAll('[data-b]'), function (x) { if (x.value.trim()) typed[x.getAttribute('data-b')] = x.value.trim(); });
           if (Object.keys(typed).length) { S._baseFill = Object.assign({}, S._baseFill || {}, typed); persist(); }
         }
-        phReset(el.getAttribute('data-mode')); go('photo'); break;
+        var wantMode = el.getAttribute('data-mode') || 'reading';
+        if (!(PH.mode === wantMode && PH.files.length)) phReset(wantMode);   // незавершённое распознавание того же вида — продолжаем, не теряя фото
+        go('photo'); break;
       }
-      case 'ph-remove': { var ix = +el.getAttribute('data-i'); try { URL.revokeObjectURL(PH.urls[ix]); } catch (e2) { /* нет */ } PH.files.splice(ix, 1); PH.urls.splice(ix, 1); render(true); break; }
+      case 'ph-remove': { var ix = +el.getAttribute('data-i'); try { URL.revokeObjectURL(PH.urls[ix]); } catch (e2) { /* нет */ } PH.files.splice(ix, 1); PH.urls.splice(ix, 1); if (PH.files.length) PHS.save(true); else PHS.clear(); render(true); break; }
       case 'ph-run': phRun(); break;
       case 'fb-open': FB.open = true; FB.err = ''; render(true); setTimeout(function () { var x = document.getElementById('fb-text'); if (x) x.focus(); }, 0); break;
       case 'fb-close': { var tx = document.getElementById('fb-text'); if (tx) FB.text = tx.value; FB.open = false; render(true); break; }
       case 'fb-send': fbSend(); break;
       case 'ph-stop': if (PH.ctl) PH.ctl.abort(); break;
-      case 'ph-again': PH.status = 'idle'; render(true); break;
+      case 'ph-again': PH.status = 'idle'; PHS.save(false); render(true); break;
+      case 'ph-new': phReset(PH.mode); render(true); break;
       case 'ph-apply': phApply(); break;
       case 'ph-use-model': { var um = M.byId(el.getAttribute('data-id')); S.meter = Object.assign({}, S.meter || {}, { modelId: um.id, unit: el.getAttribute('data-unit') || um.unit }); save(); toast(t('b_saved')); PH.picked = VIS().pick(PH.result, M.TO_GCAL, energyUnit()); render(true); break; }
       case 'auth-mode': authMode = authMode === 'login' ? 'register' : 'login'; render(true); break;
@@ -3550,9 +3600,15 @@ label.btn { cursor: pointer; }
     if (e.target.id === 'ph-input') {
       var max = 20, add = Array.prototype.slice.call(e.target.files || []).slice(0, Math.max(0, max - PH.files.length));
       add.forEach(function (f) { PH.files.push(f); PH.urls.push(URL.createObjectURL(f)); });
+      if (PH.status !== 'done') PH.status = 'idle'; PHS.save(true);
       var di = document.getElementById('ph-date'); if (di) PH.date = di.value;
       PH.error = ''; render(true);
     }
+  });
+  document.addEventListener('input', function (e) {
+    var k = e.target && e.target.getAttribute && e.target.getAttribute('data-ph');
+    if (k && PH.status === 'done') { PH.vals = PH.vals || {}; PH.vals[k] = e.target.value; PHS.save(false); }
+    else if (e.target && e.target.id === 'ph-date' && PH.files.length) { PH.date = e.target.value; PHS.save(false); }
   });
   document.addEventListener('keydown', function (e) {
     if (e.key === 'Escape' && FB.open) { var tx = document.getElementById('fb-text'); if (tx) FB.text = tx.value; FB.open = false; render(true); return; }
@@ -3613,6 +3669,7 @@ label.btn { cursor: pointer; }
   if (tw && tw.initData) { try { tw.ready(); tw.expand(); applyTheme(); if (tw.onEvent) tw.onEvent('themeChanged', function () { applyTheme(); safeRender(); }); } catch (e) { /* старый клиент */ } }
   if (window.TEPLO_API && window.TeploVision) window.TeploVision.initServer({}, false);
   render();
+  PHS.restore().then(function (ok) { if (ok && routeName() === 'photo') safeRender(); });
   if (window.TeploSync) {
     var onSync = function () {
       var el = document.getElementById('sync-status'); if (el) el.textContent = syncStatusText();
