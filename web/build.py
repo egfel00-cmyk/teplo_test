@@ -10,7 +10,7 @@ import pathlib, re
 ROOT = pathlib.Path(__file__).resolve().parent
 SRC = ROOT / "src"
 SERVER_HEAD = ('<script src="https://telegram.org/js/telegram-web-app.js"></script>\n'
-               "<script>window.TEPLO_API = '__TEPLO_API__';</script>")
+               "<script>window.TEPLO_API = '__TEPLO_API__'; window.TEPLO_BUILD = '__TEPLO_BUILD__';</script>")
 
 
 def build(server: bool) -> str:

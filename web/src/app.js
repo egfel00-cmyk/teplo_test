@@ -84,6 +84,20 @@
   applyTheme();
   if (window.matchMedia) { var mq = window.matchMedia('(prefers-color-scheme: dark)'); var onMq = function () { if ((S.theme || 'auto') === 'auto') { applyTheme(); if (typeof render === 'function') safeRender(); } }; if (mq.addEventListener) mq.addEventListener('change', onMq); else if (mq.addListener) mq.addListener(onMq); }
   var ADMIN = null, LINKWAIT = false;
+  // Вкладка открыта давно (на телефоне вкладки живут днями) — после обновления сайта в ней старый код.
+  // При возврате на вкладку и при запуске сверяем версию сборки и тихо перезагружаемся, если ничего не делается.
+  function checkBuild() {
+    if (!window.TEPLO_API || !window.TEPLO_BUILD || /^__/.test(window.TEPLO_BUILD)) return;
+    fetch(window.TEPLO_API + '/config', { credentials: 'same-origin', cache: 'no-store', headers: { Accept: 'application/json' } }).then(function (r) { return r.json(); }).then(function (j) {
+      if (!j || !j.build || j.build === window.TEPLO_BUILD) return;
+      if (typeof PH !== 'undefined' && PH.status === 'working') return;
+      var k = 'teplo.reload.' + j.build; try { if (sessionStorage.getItem(k)) return; sessionStorage.setItem(k, '1'); } catch (e) { /* без хранилища */ }
+      location.reload();
+    }, function () {});
+  }
+  document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'visible') checkBuild(); });
+  window.addEventListener('pageshow', function (e) { if (e.persisted) checkBuild(); });
+  setTimeout(checkBuild, 1500);
   // вернулся из бота после привязки — обновить аккаунт, чтобы сразу было видно «Telegram: @…»
   document.addEventListener('visibilitychange', function () {
     if (!LINKWAIT || document.visibilityState !== 'visible' || !window.TEPLO_API) return;
@@ -1419,6 +1433,7 @@
   window.addEventListener('hashchange', function () { render(); });
   var tw = window.Telegram && window.Telegram.WebApp;
   if (tw && tw.initData) { try { tw.ready(); tw.expand(); applyTheme(); if (tw.onEvent) tw.onEvent('themeChanged', function () { applyTheme(); safeRender(); }); } catch (e) { /* старый клиент */ } }
+  if (window.TEPLO_API && window.TeploVision) window.TeploVision.initServer({}, false);
   render();
   if (window.TeploSync) {
     var onSync = function () {

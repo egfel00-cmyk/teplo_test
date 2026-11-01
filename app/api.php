@@ -68,7 +68,8 @@ final class Api {
   private static function route(Req $r, Res $res, ?array $user, string $ip): array {
     $m = $r->method; $p = $r->path; $in = $r->json();
     switch ("$m $p") {
-      case 'GET /api/config': return ['botUsername' => Cfg::get('bot_username') ?: null, 'telegramLogin' => (bool)Cfg::get('bot_token'), 'recognition' => (bool)Cfg::get('anthropic_api_key')];
+      case 'GET /api/config': return ['botUsername' => Cfg::get('bot_username') ?: null, 'telegramLogin' => (bool)Cfg::get('bot_token'), 'recognition' => (bool)Cfg::get('anthropic_api_key'),
+        'build' => substr((string)@md5_file(dirname(__DIR__) . '/web/dist/site.html'), 0, 12)];
       case 'GET /api/me': if (!$user) throw new HttpError(401, 'unauthorized'); return ['user' => self::publicUser($user)];
 
       case 'POST /api/auth/register': {

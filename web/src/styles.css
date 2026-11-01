@@ -286,6 +286,9 @@ label.btn { cursor: pointer; }
 .dmy-cal { flex: none; display: grid; place-items: center; width: 44px; height: 44px; margin-left: 4px; border: 0; background: transparent; color: inherit; cursor: pointer; border-radius: 10px; }
 .dmy-cal:hover { background: var(--c-ghost-hover); }
 .dmy-native { position: absolute; right: 0; bottom: 0; width: 44px; height: 44px; opacity: 0; pointer-events: none; border: 0; padding: 0; }
+/* телефоны: календарь открывается только прямым нажатием на сам input[type=date] (iOS не умеет showPicker/focus) —
+   кладём невидимое родное поле поверх кнопки-календаря */
+@media (pointer: coarse) { .dmy-native { pointer-events: auto; z-index: 1; top: 50%; bottom: auto; transform: translateY(-50%); font-size: 16px; -webkit-appearance: none; appearance: none; min-width: 0; color: transparent; background: transparent; } }
 
 /* экономия тепла */
 .tips { padding-left: 22px; } .tips li { margin-bottom: 14px; } .tips h3 { margin: 0 0 4px; font-size: 17px; } .tips p { margin: 0; }

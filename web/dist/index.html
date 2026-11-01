@@ -299,6 +299,9 @@ label.btn { cursor: pointer; }
 .dmy-cal { flex: none; display: grid; place-items: center; width: 44px; height: 44px; margin-left: 4px; border: 0; background: transparent; color: inherit; cursor: pointer; border-radius: 10px; }
 .dmy-cal:hover { background: var(--c-ghost-hover); }
 .dmy-native { position: absolute; right: 0; bottom: 0; width: 44px; height: 44px; opacity: 0; pointer-events: none; border: 0; padding: 0; }
+/* телефоны: календарь открывается только прямым нажатием на сам input[type=date] (iOS не умеет showPicker/focus) —
+   кладём невидимое родное поле поверх кнопки-календаря */
+@media (pointer: coarse) { .dmy-native { pointer-events: auto; z-index: 1; top: 50%; bottom: auto; transform: translateY(-50%); font-size: 16px; -webkit-appearance: none; appearance: none; min-width: 0; color: transparent; background: transparent; } }
 
 /* экономия тепла */
 .tips { padding-left: 22px; } .tips li { margin-bottom: 14px; } .tips h3 { margin: 0 0 4px; font-size: 17px; } .tips p { margin: 0; }
@@ -1932,7 +1935,7 @@ label.btn { cursor: pointer; }
     _engine: function (onPct) {
       var base = String(root.TEPLO_API).replace(/\/api\/?$/, '') + '/web/ocr/';
       var script = root.TeploOCR ? Promise.resolve() : (this._script = this._script || new Promise(function (ok, bad) {
-        var s = document.createElement('script'); s.src = base + 'engine.js?v=3'; s.onload = ok; s.onerror = function () { bad(fail('engine_failed')); }; document.head.appendChild(s);
+        var s = document.createElement('script'); s.src = base + 'engine.js?v=4'; s.onload = ok; s.onerror = function () { bad(fail('engine_failed')); }; document.head.appendChild(s);
       }));
       return script.then(function () { return root.TeploOCR.load(base, onPct); }).catch(function (e) { if (e && e.code) throw e; throw fail('engine_failed'); });
     },
@@ -2157,6 +2160,20 @@ label.btn { cursor: pointer; }
   applyTheme();
   if (window.matchMedia) { var mq = window.matchMedia('(prefers-color-scheme: dark)'); var onMq = function () { if ((S.theme || 'auto') === 'auto') { applyTheme(); if (typeof render === 'function') safeRender(); } }; if (mq.addEventListener) mq.addEventListener('change', onMq); else if (mq.addListener) mq.addListener(onMq); }
   var ADMIN = null, LINKWAIT = false;
+  // Вкладка открыта давно (на телефоне вкладки живут днями) — после обновления сайта в ней старый код.
+  // При возврате на вкладку и при запуске сверяем версию сборки и тихо перезагружаемся, если ничего не делается.
+  function checkBuild() {
+    if (!window.TEPLO_API || !window.TEPLO_BUILD || /^__/.test(window.TEPLO_BUILD)) return;
+    fetch(window.TEPLO_API + '/config', { credentials: 'same-origin', cache: 'no-store', headers: { Accept: 'application/json' } }).then(function (r) { return r.json(); }).then(function (j) {
+      if (!j || !j.build || j.build === window.TEPLO_BUILD) return;
+      if (typeof PH !== 'undefined' && PH.status === 'working') return;
+      var k = 'teplo.reload.' + j.build; try { if (sessionStorage.getItem(k)) return; sessionStorage.setItem(k, '1'); } catch (e) { /* без хранилища */ }
+      location.reload();
+    }, function () {});
+  }
+  document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'visible') checkBuild(); });
+  window.addEventListener('pageshow', function (e) { if (e.persisted) checkBuild(); });
+  setTimeout(checkBuild, 1500);
   // вернулся из бота после привязки — обновить аккаунт, чтобы сразу было видно «Telegram: @…»
   document.addEventListener('visibilitychange', function () {
     if (!LINKWAIT || document.visibilityState !== 'visible' || !window.TEPLO_API) return;
@@ -3492,6 +3509,7 @@ label.btn { cursor: pointer; }
   window.addEventListener('hashchange', function () { render(); });
   var tw = window.Telegram && window.Telegram.WebApp;
   if (tw && tw.initData) { try { tw.ready(); tw.expand(); applyTheme(); if (tw.onEvent) tw.onEvent('themeChanged', function () { applyTheme(); safeRender(); }); } catch (e) { /* старый клиент */ } }
+  if (window.TEPLO_API && window.TeploVision) window.TeploVision.initServer({}, false);
   render();
   if (window.TeploSync) {
     var onSync = function () {

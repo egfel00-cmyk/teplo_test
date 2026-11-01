@@ -9,7 +9,8 @@
   'use strict';
   var ORT = null, DET = null, REC = null, KEYS = null, loading = null;
   var DET_MAX = 1280;           // длинная сторона для поиска текста: мелкие подписи «Gcal», «m³» на экране остаются видны
-  var ZOOM_PX = 2600; var DET_THRESH = 0.3, BOX_THRESH = 0.55, UNCLIP = 1.6, REC_H = 48;
+  // второй проход: не больше ~2,6 Мп — iPhone (Safari/Chrome) иначе упирается в память холстов и WASM и перезагружает вкладку
+  var ZOOM_AREA = 2.6e6; var DET_THRESH = 0.3, BOX_THRESH = 0.55, UNCLIP = 1.6, REC_H = 48;
 
   function fetchBuf(url, onBytes) {
     return fetch(url).then(function (r) {
@@ -46,6 +47,9 @@
     return loading;
   }
 
+  /** Отдать память холста сразу (iOS считает общий лимит памяти холстов и не ждёт сборщика мусора). */
+  function free(c) { if (c) { c.width = 0; c.height = 0; } }
+
   function toCanvas(file) {
     var p = typeof createImageBitmap === 'function'
       ? createImageBitmap(file, { imageOrientation: 'from-image' }).catch(function () { return createImageBitmap(file); })
@@ -53,7 +57,7 @@
     return p.then(function (img) {
       var k = Math.min(1, 2400 / Math.max(img.width, img.height));
       var c = document.createElement('canvas'); c.width = Math.round(img.width * k); c.height = Math.round(img.height * k);
-      c.getContext('2d').drawImage(img, 0, 0, c.width, c.height); return c;
+      c.getContext('2d').drawImage(img, 0, 0, c.width, c.height); if (img.close) img.close(); else if (img.src) URL.revokeObjectURL(img.src); return c;
     });
   }
 
@@ -64,7 +68,7 @@
     var W = Math.max(32, Math.round(src.width * k / 32) * 32), H = Math.max(32, Math.round(src.height * k / 32) * 32);
     var c = document.createElement('canvas'); c.width = W; c.height = H;
     var g = c.getContext('2d'); g.drawImage(src, 0, 0, W, H);
-    var px = g.getImageData(0, 0, W, H).data, N = W * H, t = new Float32Array(3 * N);
+    var px = g.getImageData(0, 0, W, H).data, N = W * H, t = new Float32Array(3 * N); free(c);
     var mean = [0.485, 0.456, 0.406], std = [0.229, 0.224, 0.225];
     if (o.stretch) {   // растянуть контраст (серый ЖК без подсветки): 2-й и 98-й перцентиль яркости → 0…255
       var hist = new Uint32Array(256); for (var q0 = 0; q0 < N; q0++) hist[(px[q0 * 4] * 0.299 + px[q0 * 4 + 1] * 0.587 + px[q0 * 4 + 2] * 0.114) | 0]++;
@@ -129,7 +133,7 @@
     g.fillStyle = '#808080'; g.fillRect(0, 0, w, REC_H);
     g.translate(w / 2, REC_H / 2); g.scale(w / b.w, REC_H / b.h); g.rotate(-b.angle); g.translate(-b.cx, -b.cy);
     g.drawImage(src, 0, 0);
-    var px = g.getImageData(0, 0, w, REC_H).data, N = w * REC_H, t = new Float32Array(3 * N);
+    var px = g.getImageData(0, 0, w, REC_H).data, N = w * REC_H, t = new Float32Array(3 * N); free(c);
     if (enhance) {
       // ЖК-экран: «тени» непогашенных сегментов чуть темнее фона — уводим их в белый, оставляя только настоящие цифры
       var L = new Float32Array(N), hist = new Uint32Array(256);
@@ -182,20 +186,20 @@
         var y0 = Math.min.apply(null, good.map(function (b) { return b.cy - b.h / 2; })), y1 = Math.max.apply(null, good.map(function (b) { return b.cy + b.h / 2; }));
         var pw = (x1 - x0) * 0.15 + 20, ph = (y1 - y0) * 0.15 + 20;
         x0 = Math.max(0, x0 - pw); y0 = Math.max(0, y0 - ph); x1 = Math.min(src.width, x1 + pw); y1 = Math.min(src.height, y1 + ph);
-        var cw = x1 - x0, chh = y1 - y0, sc = Math.min(3, ZOOM_PX / Math.max(cw, chh));
+        var cw = x1 - x0, chh = y1 - y0, sc = Math.min(3, Math.sqrt(ZOOM_AREA / (cw * chh)));
         if (sc < 1.25) return null;   // приближать некуда — текст уже на весь кадр
         var cv = document.createElement('canvas'); cv.width = Math.round(cw * sc); cv.height = Math.round(chh * sc);
         var g2 = cv.getContext('2d'); g2.imageSmoothingQuality = 'high'; g2.drawImage(src, x0, y0, cw, chh, 0, 0, cv.width, cv.height);
-        return detect(cv, { max: ZOOM_PX }).then(function (b2) {
+        return detect(cv, { max: Math.max(cv.width, cv.height) }).then(function (b2) {
           var seenBox = lines.map(function (l) { return { x: l.x, y: l.y, w: l.w, h: l.h }; });
           var fresh = b2.filter(function (b) {   // только то, чего не было в первом проходе
             var bx = x0 + (b.cx - b.w / 2) / sc, by = y0 + (b.cy - b.h / 2) / sc, bw = b.w / sc, bh = b.h / sc;
             return !seenBox.some(function (o) { var ix = Math.max(0, Math.min(o.x + o.w, bx + bw) - Math.max(o.x, bx)), iy = Math.max(0, Math.min(o.y + o.h, by + bh) - Math.max(o.y, by)); return ix * iy > 0.5 * Math.min(o.w * o.h, bw * bh); });
           });
-          return readBoxes(cv, fresh, x0, y0, sc, lines);
+          return readBoxes(cv, fresh, x0, y0, sc, lines).then(function () { free(cv); });
         });
       });
-    }).then(function () { return { lines: lines, w: src.width, h: src.height, ms: Date.now() - t0 }; });
+    }).then(function () { var w = src.width, h = src.height; free(src); return { lines: lines, w: w, h: h, ms: Date.now() - t0 }; });
   }
 
   function _det(file, o) { var src; return toCanvas(file).then(function (c) { src = c; return detect(c, o); }).then(function (b) {

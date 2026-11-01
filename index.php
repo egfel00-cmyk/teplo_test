@@ -62,6 +62,8 @@ if ($path === '/admin' || $path === '/admin/') {   // аналитика вла�
 if ($path === '/' || $path === '/index.php') {
   $html = (string)file_get_contents(__DIR__ . '/web/dist/site.html');
   $html = str_replace("'__TEPLO_API__'", json_encode($base . '/api'), $html);
+  // версия сборки: открытая давно вкладка сверяет её с /api/config и перезагружается на свежую
+  $html = str_replace("'__TEPLO_BUILD__'", json_encode(substr((string)md5_file(__DIR__ . '/web/dist/site.html'), 0, 12)), $html);
   // превью ссылки в мессенджерах: абсолютные адреса строим из запроса (домен не зашиваем)
   $host = preg_replace('/[^A-Za-z0-9.:-]/', '', (string)($_SERVER['HTTP_HOST'] ?? 'localhost'));
   $scheme = preg_match('/^(localhost|127\.0\.0\.1)(:\d+)?$/', $host) ? 'http' : 'https';
