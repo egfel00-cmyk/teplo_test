@@ -6,6 +6,10 @@ if (!defined('TEPLO')) { http_response_code(404); exit; }
 
 final class Cfg {
   private static ?array $c = null;
+  private static ?array $o = null;
+  /** Ключи, которые владелец может задать из /admin → «Настройки» (лежат в SITE_DATA/uploads/settings/settings.json, не в git).
+   *  Непустое значение оттуда главнее config.php — чтобы включать/менять без доступа к серверу. */
+  const RUNTIME = ['anthropic_api_key', 'anthropic_model', 'bot_token', 'bot_username', 'webhook_secret'];
 
   /** Значения по умолчанию; секреты и база — только из SITE_DATA/config.php (не из git). */
   private static function defaults(): array {
@@ -37,8 +41,35 @@ final class Cfg {
       '188.114.96.0/20', '197.234.240.0/22', '198.41.128.0/17', '162.158.0.0/15', '104.16.0.0/13', '104.24.0.0/14', '172.64.0.0/13', '131.0.72.0/22',
       '2400:cb00::/32', '2606:4700::/32', '2803:f800::/32', '2405:b500::/32', '2405:8100::/32', '2a06:98c0::/29', '2c0f:f248::/32'];
   }
-  public static function set(array $c): void { self::$c = array_replace(self::defaults(), $c); }
+  public static function set(array $c): void { self::$c = array_replace(self::defaults(), $c); self::$o = null; }
+  public static function settingsFile(): string { return self::data() . '/uploads/settings/settings.json'; }
+  /** Значения, сохранённые из /admin. */
+  public static function runtime(): array {
+    if (self::$o === null) {
+      $f = self::settingsFile();
+      $j = is_file($f) ? json_decode((string)file_get_contents($f), true) : null;
+      self::$o = is_array($j) ? array_filter(array_intersect_key($j, array_flip(self::RUNTIME)), fn($v) => is_string($v) && $v !== '') : [];
+    }
+    return self::$o;
+  }
+  /** Сохранить настройки из /admin: пустая строка или null — удалить ключ (вернётся значение из config.php). */
+  public static function saveRuntime(array $patch): void {
+    $o = self::runtime();
+    foreach (array_intersect_key($patch, array_flip(self::RUNTIME)) as $k => $v) { if ($v === null || $v === '') unset($o[$k]); else $o[$k] = (string)$v; }
+    $f = self::settingsFile(); $dir = dirname($f);
+    if (!is_dir($dir) && !@mkdir($dir, 0700, true)) throw new HttpError(500, 'settings_write', ['human' => 'Не удалось создать папку настроек в SITE_DATA/uploads.']);
+    $tmp = $f . '.tmp' . bin2hex(random_bytes(3));
+    if (@file_put_contents($tmp, json_encode($o, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT)) === false || !@rename($tmp, $f)) { @unlink($tmp); throw new HttpError(500, 'settings_write', ['human' => 'Не удалось записать файл настроек.']); }
+    @chmod($f, 0600);
+    self::$o = $o;
+  }
+  /** Откуда взято значение: 'admin' (из /admin), 'config' (config.php) или null (не задано). */
+  public static function source(string $k): ?string {
+    if (isset(self::runtime()[$k])) return 'admin';
+    self::get('db'); return !empty(self::$c[$k]) && self::$c[$k] !== (self::defaults()[$k] ?? null) ? 'config' : null;
+  }
   public static function get(string $k, $default = null) {
+    if (in_array($k, self::RUNTIME, true) && isset(self::runtime()[$k])) return self::runtime()[$k];
     if (self::$c === null) {
       $f = rtrim((string)getenv('SITE_DATA'), '/') . '/config.php';
       $cfg = is_file($f) ? require $f : [];

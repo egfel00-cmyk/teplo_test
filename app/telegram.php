@@ -39,12 +39,22 @@ final class Telegram {
 
   /** Вызов Bot API. В тестах подменяется. */
   public static $send = null;
-  public static function call(string $method, array $params): array {
-    if (self::$send) return (self::$send)($method, $params);
-    $ch = curl_init('https://api.telegram.org/bot' . Cfg::get('bot_token') . '/' . $method);
+  public static function call(string $method, array $params, ?string $token = null): array {
+    if (self::$send) return (self::$send)($method, $params, $token);
+    $ch = curl_init('https://api.telegram.org/bot' . ($token ?? Cfg::get('bot_token')) . '/' . $method);
     curl_setopt_array($ch, [CURLOPT_POST => true, CURLOPT_POSTFIELDS => json_encode($params), CURLOPT_HTTPHEADER => ['Content-Type: application/json'], CURLOPT_RETURNTRANSFER => true, CURLOPT_TIMEOUT => 10]);
     $r = curl_exec($ch); curl_close($ch);
     return json_decode((string)$r, true) ?: [];
+  }
+
+  /** Подключить бота к сайту: вебхук, кнопка меню (открывает Mini App), команда /start. */
+  public static function setup(): array {
+    $url = Cfg::appUrl(); $out = [];
+    $out['setWebhook'] = self::call('setWebhook', ['url' => $url . 'api/bot/webhook', 'secret_token' => (string)Cfg::get('webhook_secret'), 'allowed_updates' => ['message'], 'drop_pending_updates' => true]);
+    $out['setChatMenuButton'] = self::call('setChatMenuButton', ['menu_button' => ['type' => 'web_app', 'text' => 'Теплосервіс', 'web_app' => ['url' => $url]]]);
+    $out['setMyCommands'] = self::call('setMyCommands', ['commands' => [['command' => 'start', 'description' => 'Відкрити Теплосервіс']]]);
+    $errs = []; foreach ($out as $k => $x) if (empty($x['ok'])) $errs[] = $k . ': ' . ($x['description'] ?? 'нет ответа');
+    return ['ok' => !$errs, 'appUrl' => $url, 'telegram' => array_map(fn($x) => !empty($x['ok']), $out), 'errors' => $errs];
   }
 
   /** Вебхук: /start (и любое сообщение) → кнопка, открывающая сайт как Mini App. */

@@ -76,7 +76,7 @@ pre.state { font: 12px/1.4 var(--mono); background: #F4F7F5; padding: 10px; bord
 
   function shell(body) {
     var o = DATA.overview || {};
-    var tabs = [['overview', 'Сводка'], ['users', 'Пользователи', 0], ['feedback', 'Сообщения', o.feedbackNew], ['photos', 'Фото', 0], ['reports', 'Ошибки распознавания', o.reportsBad]];
+    var tabs = [['overview', 'Сводка'], ['users', 'Пользователи', 0], ['feedback', 'Сообщения', o.feedbackNew], ['photos', 'Фото', 0], ['reports', 'Ошибки распознавания', o.reportsBad], ['settings', 'Настройки', (!o.recognition || !o.telegram) ? '!' : 0]];
     app.innerHTML = '<header><b>Теплосервис · аналитика</b><span class="muted small">' + esc(o.me || '') + '</span><span style="flex:1"></span><a class="btn" href="' + esc(SITE) + '">На сайт</a></header>' +
       '<nav>' + tabs.map(function (t) { return '<button data-tab="' + t[0] + '"' + (TAB === t[0] ? ' aria-current="true"' : '') + '>' + t[1] + (t[2] ? '<span class="n">' + t[2] + '</span>' : '') + '</button>'; }).join('') + '</nav><main>' + body + '</main>';
   }
@@ -86,8 +86,8 @@ pre.state { font: 12px/1.4 var(--mono); background: #F4F7F5; padding: 10px; bord
     var o = DATA.overview;
     var c = function (v, k) { return '<div class="card"><div class="v">' + esc(v) + '</div><div class="k">' + k + '</div></div>'; };
     var warn = [];
-    if (!o.recognition) warn.push('Распознавание фото <b>выключено</b>: в config.php нет <code>anthropic_api_key</code>. Фото всё равно сохраняются — их видно во вкладке «Фото».');
-    if (!o.telegram) warn.push('Вход через Telegram <b>выключен</b>: в config.php нет <code>bot_token</code> и <code>bot_username</code>.');
+    if (!o.recognition) warn.push('Распознавание фото <b>выключено</b> — вставьте ключ API во вкладке <a href="#settings">«Настройки»</a>. Фото всё равно сохраняются — их видно во вкладке «Фото».');
+    if (!o.telegram) warn.push('Вход через Telegram <b>выключен</b> — подключите бота во вкладке <a href="#settings">«Настройки»</a>.');
     return (warn.length ? '<div class="panel" style="background:var(--warns)">' + warn.map(function (w) { return '<p style="margin:4px 0">' + w + '</p>'; }).join('') + '</div>' : '') +
       '<div class="cards">' + c(o.users, 'пользователей всего') + c(o.usersWeek, 'новых за 7 дней') + c(o.activeWeek, 'входили за 7 дней') + c(o.withTelegram, 'с Telegram') + c(o.withData, 'сохранили данные') +
       c(o.feedback, 'сообщений (новых: ' + o.feedbackNew + ')') + c(o.photos, 'фото загружено') + c(o.photosFailed, 'фото с проблемами') + c(o.reportsBad + ' / ' + o.reports, 'распознаваний с замечаниями') + '</div>' +
@@ -166,15 +166,59 @@ pre.state { font: 12px/1.4 var(--mono); background: #F4F7F5; padding: 10px; bord
       '<details class="panel"><summary>Все данные пользователя (как хранятся)</summary><pre class="state">' + esc(JSON.stringify(st, null, 2)) + '</pre></details>';
   };
 
+  var SRC = { admin: 'задан здесь', config: 'из config.php на сервере', 'default': 'по умолчанию' };
+  var INP = 'style="width:100%;font:inherit;padding:10px;border:1.5px solid var(--line);border-radius:10px"';
+  VIEW.settings = function () {
+    var d = DATA.settings || {}, a = d.anthropic || {}, t = d.telegram || {}, w = t.webhook, msg = DATA.settingsMsg || {};
+    var note = function (k) { var m = msg[k]; return m ? '<p class="' + (m.ok ? '' : 'problem') + '" style="' + (m.ok ? 'color:var(--ok)' : '') + '">' + esc(m.text) + '</p>' : ''; };
+    var hookOk = w && w.ok && w.url === t.webhookExpected;
+    return '<div class="panel"><h2>Распознавание фото (Claude API)</h2>' +
+      '<p>' + (a.key ? pill('ok', 'включено') + ' ключ <span class="mono">' + esc(a.key) + '</span> <span class="muted small">(' + esc(SRC[a.source] || '') + ')</span>' : pill('bad', 'выключено')) + '</p>' +
+      '<p class="muted small">Ключ берётся на <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener">console.anthropic.com → API Keys</a> (нужен пополненный баланс). Перед сохранением сервер делает пробный запрос — неверный ключ не сохранится. Ключ хранится только на сервере, сюда он больше не показывается.</p>' +
+      '<form id="fa"><p><label>Ключ API<br><input id="ak" type="password" autocomplete="off" placeholder="' + (a.key ? 'оставьте пустым, чтобы не менять' : 'sk-ant-…') + '" ' + INP + '></label></p>' +
+      '<p><label>Модель<br><input id="am" class="mono" value="' + esc(a.model || '') + '" ' + INP + '></label><span class="muted small">' + esc(SRC[a.modelSource] || '') + '</span></p>' +
+      note('a') + '<p><button class="btn" type="submit">Проверить и сохранить</button>' + (a.source === 'admin' ? ' <button class="btn" type="button" id="ac">Удалить ключ</button>' : '') + '</p></form></div>' +
+
+      '<div class="panel"><h2>Telegram-бот (вход и Mini App)</h2>' +
+      '<p>' + (t.token ? pill(hookOk ? 'ok' : 'warn', hookOk ? 'подключён' : 'токен есть, вебхук не настроен') + ' <a href="https://t.me/' + esc(t.username) + '" target="_blank" rel="noopener">@' + esc(t.username) + '</a> <span class="muted small">(' + esc(SRC[t.source] || '') + ')</span>' : pill('bad', 'не подключён')) + '</p>' +
+      (w && w.lastError ? '<p class="problem small">Последняя ошибка доставки от Telegram (' + when(w.lastErrorAt) + '): ' + esc(w.lastError) + '</p>' : '') +
+      '<ol class="small" style="padding-left:20px;line-height:1.6">' +
+      '<li>В Telegram откройте <a href="https://t.me/BotFather" target="_blank" rel="noopener">@BotFather</a> → <code>/newbot</code> → имя (например «Теплосервіс») → username, оканчивающийся на <code>bot</code>.</li>' +
+      '<li>BotFather пришлёт токен вида <code>1234567890:AA…</code> — вставьте его ниже и нажмите «Подключить». Сервер сам узнает имя бота, придумает секрет вебхука, поставит вебхук, кнопку меню и команду /start.</li>' +
+      '<li>Для входа через Telegram на обычном сайте: в @BotFather <code>/setdomain</code> → выберите бота → отправьте <code>' + esc(d.host || '') + '</code>.</li>' +
+      '<li>Проверка: откройте бота, нажмите «Старт» — придёт кнопка «Відкрити Теплосервіс», сервис откроется уже с входом.</li></ol>' +
+      '<form id="ft"><p><label>Токен бота<br><input id="tk" type="password" autocomplete="off" placeholder="' + (t.token ? 'оставьте пустым, чтобы переподключить текущего' : '1234567890:AA…') + '" ' + INP + '></label></p>' +
+      note('t') + '<p><button class="btn" type="submit">' + (t.token ? 'Сохранить и переподключить' : 'Подключить') + '</button>' + (t.source === 'admin' ? ' <button class="btn" type="button" id="tc">Отключить бота</button>' : '') + '</p></form></div>' +
+      '<p class="muted small">Значения, заданные здесь, главнее config.php. Адрес сайта для бота: <span class="mono">' + esc(d.appUrl || '') + '</span></p>';
+  };
+  function saveSettings(path, body, k, okText) {
+    var btns = document.querySelectorAll('#fa button, #ft button'); btns.forEach(function (b) { b.disabled = true; });
+    return post(path, body).then(function (r) {
+      DATA.settingsMsg = DATA.settingsMsg || {};
+      if (r && r.settings) DATA.settings = r.settings;
+      DATA.settingsMsg[k] = r && r.ok ? { ok: true, text: okText(r) } : { ok: false, text: (r && (r.human || (r.setup && r.setup.errors && r.setup.errors.join('; ')) || r.error)) || 'Ошибка' };
+      return show('settings', null, true);
+    }, function () { DATA.settingsMsg = {}; DATA.settingsMsg[k] = { ok: false, text: 'Сервер недоступен.' }; show('settings', null, true); });
+  }
+  document.addEventListener('submit', function (e) {
+    if (e.target.id === 'fa') { e.preventDefault(); saveSettings('/admin/settings/anthropic', { key: document.getElementById('ak').value.trim(), model: document.getElementById('am').value.trim() }, 'a', function (r) { return 'Ключ работает (модель ' + ((r.checked && r.checked.model) || '') + '), распознавание включено. Можно пробовать «з фото» на сайте.'; }); }
+    if (e.target.id === 'ft') { e.preventDefault(); saveSettings('/admin/settings/telegram', { token: document.getElementById('tk').value.trim() }, 't', function (r) { return 'Бот @' + r.bot + ' подключён: вебхук, кнопка меню и /start настроены. Не забудьте /setdomain в @BotFather.'; }); }
+  });
+  document.addEventListener('click', function (e) {
+    if (e.target.id === 'ac' && confirm('Удалить ключ API? Распознавание выключится.')) saveSettings('/admin/settings/anthropic', { clear: 1 }, 'a', function () { return 'Ключ удалён.'; });
+    if (e.target.id === 'tc' && confirm('Отключить бота от сайта?')) saveSettings('/admin/settings/telegram', { clear: 1 }, 't', function () { return 'Бот отключён.'; });
+  });
+
   var LOAD = {
+    settings: function () { return get('/admin/settings').then(function (j) { DATA.settings = j; }); },
     overview: function () { return Promise.resolve(); },
     users: function () { return get('/admin/users?q=' + encodeURIComponent(Q)).then(function (j) { DATA.users = j.users; }); },
     feedback: function () { return get('/admin/feedback').then(function (j) { DATA.feedback = j.feedback; }); },
     photos: function () { return get('/admin/photos' + (PF === 'problems' ? '?filter=problems' : '')).then(function (j) { DATA.photos = j.photos; }); },
     reports: function () { return get('/admin/reports').then(function (j) { DATA.reports = j.reports; }); }
   };
-  function show(tab, uid) {
-    TAB = tab;
+  function show(tab, uid, keepMsg) {
+    TAB = tab; if (!keepMsg) DATA.settingsMsg = {};
     var p = get('/admin/overview').then(function (j) { DATA.overview = j; });
     p = p.then(uid ? function () { return get('/admin/user?id=' + uid).then(function (j) { DATA.user = j; }); } : (LOAD[tab] || LOAD.overview));
     return p.then(function () { shell((VIEW[tab] || VIEW.overview)()); if (tab === 'users') { var q = document.getElementById('q'); if (q && Q) { q.focus(); q.setSelectionRange(Q.length, Q.length); } } },

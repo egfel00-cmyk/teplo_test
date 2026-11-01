@@ -18,8 +18,9 @@
 - База: $cfg = require getenv('SITE_DATA') . '/config.php'; → $cfg['db'] (host, name, user, pass). PDO MySQL, utf8mb4.
   Схему создавать кодом: CREATE TABLE IF NOT EXISTS / ALTER … ADD COLUMN IF NOT EXISTS при первом обращении — руками в
   базу никто не зайдёт.
-- Секреты (ключи API и т.п.) — только в config.php на сервере, НЕ в git. Нужен новый секрет — сказать владельцу, что
-  дописать в /srv/sites/teplo_test_data/config.php.
+- Секреты (ключи API и т.п.) — только на сервере, НЕ в git. Ключ Claude API и токен бота владелец вставляет сам в
+  /admin → «Настройки» (файл SITE_DATA/uploads/settings/settings.json, 0600, главнее config.php; список — Cfg::RUNTIME).
+  Остальное — сказать владельцу, что дописать в /srv/sites/teplo_test_data/config.php.
 - cron.php в корне (если есть) запускается раз в минуту от пользователя сайта (SITE_DATA доступна).
 - Снаружи закрыто (404): всё с точкой (.git, .env, .claude), *.md, *.sql, *.sh, *.log, *.ini, копии (*.bak, ~), tests/,
   cases/, vendor/, node_modules/, tools_*, cron.php. Тесты и инструменты класть туда — их не видно.

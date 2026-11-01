@@ -170,11 +170,7 @@ final class Api {
       case 'POST /api/bot/setup': {
         $secret = (string)Cfg::get('webhook_secret');
         if ($secret === '' || !Cfg::get('bot_token') || !hash_equals($secret, $r->header('X-Setup-Secret'))) throw new HttpError(403, 'forbidden');
-        $url = Cfg::appUrl(); $out = [];
-        $out['setWebhook'] = Telegram::call('setWebhook', ['url' => $url . 'api/bot/webhook', 'secret_token' => $secret, 'allowed_updates' => ['message'], 'drop_pending_updates' => true]);
-        $out['setChatMenuButton'] = Telegram::call('setChatMenuButton', ['menu_button' => ['type' => 'web_app', 'text' => 'Теплосервіс', 'web_app' => ['url' => $url]]]);
-        $out['setMyCommands'] = Telegram::call('setMyCommands', ['commands' => [['command' => 'start', 'description' => 'Відкрити Теплосервіс']]]);
-        return ['ok' => true, 'appUrl' => $url, 'telegram' => array_map(fn($x) => !empty($x['ok']), $out)];
+        $res0 = Telegram::setup(); unset($res0['errors']); return $res0;
       }
       case 'POST /api/bot/webhook': {
         $secret = (string)Cfg::get('webhook_secret');

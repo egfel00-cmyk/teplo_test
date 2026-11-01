@@ -105,11 +105,53 @@ final class Admin {
         $f = (string)($q['filter'] ?? '');
         return ['photos' => $f === 'problems' ? self::photos("WHERE ph.status = 'failed' OR ph.problem IS NOT NULL") : self::photos()];
       }
+      case 'GET /api/admin/settings': return self::settings();
+      case 'POST /api/admin/settings/anthropic': {
+        if (!empty($in['clear'])) { Cfg::saveRuntime(['anthropic_api_key' => null]); return ['ok' => true, 'settings' => self::settings()]; }
+        $key = trim((string)($in['key'] ?? '')); $model = trim((string)($in['model'] ?? ''));
+        if ($model !== '' && !preg_match('/^[a-z0-9][a-z0-9.\-]{2,80}$/', $model)) throw new HttpError(422, 'bad_model', ['human' => 'Имя модели — латиница, цифры, точки и дефисы, например claude-sonnet-5-5.']);
+        if ($key === '' && !Cfg::get('anthropic_api_key')) throw new HttpError(422, 'no_key', ['human' => 'Вставьте ключ API (начинается с sk-ant-).']);
+        if ($key !== '' && !preg_match('/^sk-ant-[A-Za-z0-9_\-]{20,250}$/', $key)) throw new HttpError(422, 'bad_key', ['human' => 'Это не похоже на ключ Anthropic: он начинается с sk-ant- и без пробелов.']);
+        $useKey = $key !== '' ? $key : (string)Cfg::get('anthropic_api_key'); $useModel = $model !== '' ? $model : (string)Cfg::get('anthropic_model');
+        try { $chk = Recognize::checkKey($useKey, $useModel); }
+        catch (HttpError $e) { throw new HttpError(422, 'key_check_failed', ['human' => 'Проверка не прошла, ничего не сохранено. ' . ($e->extra['human'] ?? $e->err)]); }
+        Cfg::saveRuntime(['anthropic_api_key' => $key !== '' ? $key : (Cfg::runtime()['anthropic_api_key'] ?? null), 'anthropic_model' => $model !== '' ? $model : (Cfg::runtime()['anthropic_model'] ?? null)]);
+        return ['ok' => true, 'checked' => $chk, 'settings' => self::settings()];
+      }
+      case 'POST /api/admin/settings/telegram': {
+        if (!empty($in['clear'])) {
+          if (Cfg::get('bot_token')) try { Telegram::call('deleteWebhook', []); } catch (Throwable $e) {}
+          Cfg::saveRuntime(['bot_token' => null, 'bot_username' => null, 'webhook_secret' => null]); return ['ok' => true, 'settings' => self::settings()];
+        }
+        $token = trim((string)($in['token'] ?? ''));
+        if ($token === '') { $token = (string)Cfg::get('bot_token'); if ($token === '') throw new HttpError(422, 'no_token', ['human' => 'Вставьте токен бота от @BotFather.']); }
+        if (!preg_match('/^\d{5,15}:[A-Za-z0-9_\-]{30,60}$/', $token)) throw new HttpError(422, 'bad_token', ['human' => 'Токен выглядит как 1234567890:AA… — скопируйте его из сообщения @BotFather целиком.']);
+        $me = Telegram::call('getMe', [], $token);
+        if (empty($me['ok']) || empty($me['result']['username'])) throw new HttpError(422, 'token_rejected', ['human' => 'Telegram не принял токен: ' . ($me['description'] ?? 'нет ответа') . '. Ничего не сохранено.']);
+        Cfg::saveRuntime(['bot_token' => $token, 'bot_username' => (string)$me['result']['username'],
+          'webhook_secret' => Cfg::runtime()['webhook_secret'] ?? (Cfg::get('webhook_secret') ?: bin2hex(random_bytes(24)))]);
+        $setup = Telegram::setup();
+        return ['ok' => $setup['ok'], 'bot' => $me['result']['username'], 'setup' => $setup, 'settings' => self::settings()];
+      }
       case 'GET /api/admin/reports':
         return ['reports' => Db::q("SELECT r.*, u.email, i.username AS tg_username FROM recog_reports r LEFT JOIN users u ON u.id = r.user_id
           LEFT JOIN user_identities i ON i.user_id = r.user_id AND i.type = 'telegram' ORDER BY r.id DESC LIMIT 500")->fetchAll()];
     }
     throw new HttpError(404, 'not_found');
+  }
+
+  private static function mask(string $v): string { return $v === '' ? '' : (strlen($v) > 14 ? substr($v, 0, 7) . '…' . substr($v, -4) : '••••'); }
+  /** Что сейчас включено — без раскрытия секретов. */
+  private static function settings(): array {
+    $tg = null;
+    if (Cfg::get('bot_token')) { $w = Telegram::call('getWebhookInfo', []); $r = $w['result'] ?? [];
+      $tg = ['ok' => !empty($w['ok']), 'url' => $r['url'] ?? null, 'pending' => $r['pending_update_count'] ?? null, 'lastError' => $r['last_error_message'] ?? null, 'lastErrorAt' => isset($r['last_error_date']) ? gmdate('c', (int)$r['last_error_date']) : null]; }
+    return [
+      'anthropic' => ['key' => self::mask((string)Cfg::get('anthropic_api_key')), 'source' => Cfg::source('anthropic_api_key'), 'model' => (string)Cfg::get('anthropic_model'), 'modelSource' => Cfg::source('anthropic_model') ?? 'default'],
+      'telegram' => ['token' => self::mask((string)Cfg::get('bot_token')), 'source' => Cfg::source('bot_token'), 'username' => (string)Cfg::get('bot_username'), 'webhook' => $tg,
+        'webhookExpected' => Cfg::appUrl() . 'api/bot/webhook'],
+      'appUrl' => Cfg::appUrl(), 'host' => parse_url(Cfg::appUrl(), PHP_URL_HOST),
+    ];
   }
 
   /** Байты фото для админки (папка данных наружу не отдаётся). */

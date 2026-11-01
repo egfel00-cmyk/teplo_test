@@ -83,7 +83,7 @@ final class Recognize {
       $rows[] = $p;
     }
     if (!Cfg::get('anthropic_api_key') && !self::$call)
-      throw self::failRun($uid, $ids, new HttpError(503, 'recognition_off'), 'Распознавание выключено: на сервере не задан ключ anthropic_api_key (config.php). Фото сохранены.');
+      throw self::failRun($uid, $ids, new HttpError(503, 'recognition_off'), 'Распознавание выключено: на сервере не задан ключ API (/admin → «Настройки»). Фото сохранены.');
     $content[] = ['type' => 'text', 'text' => self::prompt((array)($in['ctx'] ?? []), $offset, count($ids))];
     $payload = ['model' => (string)Cfg::get('anthropic_model'), 'max_tokens' => 2000, 'messages' => [['role' => 'user', 'content' => $content]]];
     $t0 = microtime(true);
@@ -141,18 +141,27 @@ final class Recognize {
     return null;
   }
 
-  private static function callApi(array $payload): array {
+  /** Проверка ключа и модели одним крошечным запросом (из /admin → «Настройки»). В тестах подменяется. */
+  public static $check = null;
+  public static function checkKey(string $key, string $model): array {
+    $payload = ['model' => $model, 'max_tokens' => 1, 'messages' => [['role' => 'user', 'content' => 'ping']]];
+    if (self::$check) return (self::$check)($key, $payload);
+    $r = self::callApi($payload, $key);
+    return ['ok' => true, 'model' => $r['model'] ?? $model];
+  }
+
+  private static function callApi(array $payload, ?string $key = null): array {
     $ch = curl_init('https://api.anthropic.com/v1/messages');
     curl_setopt_array($ch, [CURLOPT_POST => true, CURLOPT_POSTFIELDS => json_encode($payload), CURLOPT_RETURNTRANSFER => true,
       CURLOPT_TIMEOUT => 26, CURLOPT_CONNECTTIMEOUT => 5,  // сервер даёт 30 с на запрос — поэтому пачки по 3 фото
-      CURLOPT_HTTPHEADER => ['content-type: application/json', 'anthropic-version: 2023-06-01', 'x-api-key: ' . Cfg::get('anthropic_api_key')]]);
+      CURLOPT_HTTPHEADER => ['content-type: application/json', 'anthropic-version: 2023-06-01', 'x-api-key: ' . ($key ?? Cfg::get('anthropic_api_key'))]]);
     $r = curl_exec($ch); $code = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE); $err = curl_errno($ch); $errs = curl_error($ch); curl_close($ch);
     $msg = mb_substr((string)(json_decode((string)$r, true)['error']['message'] ?? ''), 0, 200);
     if ($err === CURLE_OPERATION_TIMEDOUT) throw new HttpError(504, 'timeout', ['human' => 'Нейросеть не ответила за 26 с (сервер ограничивает запрос 30 с). Попробовать меньше фото за раз.']);
     if ($err) throw new HttpError(502, 'network', ['human' => 'Сервер не смог связаться с API нейросети: ' . $errs]);
-    if ($code === 401 || $code === 403) throw new HttpError(503, 'recognition_off', ['human' => "Ключ API отклонён (HTTP $code) — проверить anthropic_api_key в config.php. $msg"]);
+    if ($code === 401 || $code === 403) throw new HttpError(503, 'recognition_off', ['human' => "Ключ API отклонён (HTTP $code) — проверить ключ в /admin → «Настройки». $msg"]);
     if ($code === 429 || $code === 529) throw new HttpError(429, 'rate_limited', ['retryAfter' => 60, 'human' => "Нейросеть перегружена или исчерпан лимит API (HTTP $code). $msg"]);
-    if ($code === 400 || $code === 404) throw new HttpError(502, 'recognition_failed', ['human' => "API отклонил запрос (HTTP $code) — возможно, неверное имя модели anthropic_model. $msg"]);
+    if ($code === 400 || $code === 404) throw new HttpError(502, 'recognition_failed', ['human' => "API отклонил запрос (HTTP $code) — возможно, неверное имя модели (/admin → «Настройки»). $msg"]);
     if ($code !== 200) throw new HttpError(502, 'recognition_failed', ['human' => "Ошибка API нейросети (HTTP $code). $msg"]);
     return json_decode((string)$r, true) ?: [];
   }
