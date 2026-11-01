@@ -9,7 +9,7 @@
   'use strict';
   var ORT = null, DET = null, REC = null, KEYS = null, loading = null;
   var DET_MAX = 1280;           // длинная сторона для поиска текста: мелкие подписи «Gcal», «m³» на экране остаются видны
-  var DET_THRESH = 0.3, BOX_THRESH = 0.55, UNCLIP = 1.6, REC_H = 48;
+  var ZOOM_PX = 2600; var DET_THRESH = 0.3, BOX_THRESH = 0.55, UNCLIP = 1.6, REC_H = 48;
 
   function fetchBuf(url, onBytes) {
     return fetch(url).then(function (r) {
@@ -182,11 +182,11 @@
         var y0 = Math.min.apply(null, good.map(function (b) { return b.cy - b.h / 2; })), y1 = Math.max.apply(null, good.map(function (b) { return b.cy + b.h / 2; }));
         var pw = (x1 - x0) * 0.15 + 20, ph = (y1 - y0) * 0.15 + 20;
         x0 = Math.max(0, x0 - pw); y0 = Math.max(0, y0 - ph); x1 = Math.min(src.width, x1 + pw); y1 = Math.min(src.height, y1 + ph);
-        var cw = x1 - x0, chh = y1 - y0, sc = Math.min(3, 1800 / Math.max(cw, chh));
+        var cw = x1 - x0, chh = y1 - y0, sc = Math.min(3, ZOOM_PX / Math.max(cw, chh));
         if (sc < 1.25) return null;   // приближать некуда — текст уже на весь кадр
         var cv = document.createElement('canvas'); cv.width = Math.round(cw * sc); cv.height = Math.round(chh * sc);
         var g2 = cv.getContext('2d'); g2.imageSmoothingQuality = 'high'; g2.drawImage(src, x0, y0, cw, chh, 0, 0, cv.width, cv.height);
-        return detect(cv, { max: 1800 }).then(function (b2) {
+        return detect(cv, { max: ZOOM_PX }).then(function (b2) {
           var seenBox = lines.map(function (l) { return { x: l.x, y: l.y, w: l.w, h: l.h }; });
           var fresh = b2.filter(function (b) {   // только то, чего не было в первом проходе
             var bx = x0 + (b.cx - b.w / 2) / sc, by = y0 + (b.cy - b.h / 2) / sc, bw = b.w / sc, bh = b.h / sc;

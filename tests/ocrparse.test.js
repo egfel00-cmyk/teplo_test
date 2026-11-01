@@ -29,6 +29,18 @@ ok('единица взята по модели — уверенность сн�
 const V = require('../web/src/recognize.js');
 ok('для «Останні прийняті» пересчёт в Гкал: 46077 kWh ≈ 39,6191', V.pick({ photos: [x.photo] }, M.TO_GCAL, 'Gcal').energy.value === '39.6191');
 
+console.log('\nЭкраны Sharky 774 с фото (подписи семисегментным шрифтом):');
+const L = (text, alts, x, y, w, h, score) => ({ text, alts, score: score || 0.95, x, y, w, h });
+const sh = (lines) => P.photo({ w: 1512, h: 2016, lines: [L('IARKY', null, 560, 560, 260, 55), L('CE', null, 900, 560, 80, 67), L('M23', null, 1020, 560, 100, 53)].concat(lines) }, Object.assign({ models: M.MODELS, modelId: 'sharky774' }, sharky), 0);
+const one = (r) => r.photo.readings.map(x => x.field + '=' + x.value).join(',');
+ok('«0n 41704» → часы 41704', one(sh([L('06 41704', ['0n 4 1704', '0n 4 1704'], 392, 792, 329, 82)])) === 'hours=41704');
+ok('«be» + «13:50» → подача 13.50', one(sh([L('be', null, 365, 795, 95, 75), L('13:50', ['1350', '1350'], 549, 788, 147, 82), L('c', null, 645, 886, 21, 24)])) === 'tSupply=13.50');
+ok('«0000» + «kw» → мощность 0.000', one(sh([L('0000', ['0000', '0000'], 544, 739, 180, 92), L('kw', null, 730, 793, 50, 34)])) === 'power=0.000');
+ok('«0000» + «m» → расход 0.000 (короткое число)', one(sh([L('0000', ['0000', '0000'], 635, 749, 180, 88), L('m', null, 868, 754, 33, 40)])) === 'flow=0.000');
+ok('«de» + «002» — экран перепада, в форму не идёт', sh([L('de', null, 419, 779, 72, 83), L('002', ['002', '002'], 613, 772, 138, 85)]).photo.readings.length === 0);
+ok('тест экрана «88888888» — пропущен', sh([L('88888888', ['88888888', '88888888'], 470, 760, 320, 80)]).photo.note === 'test_screen');
+ok('знак «CE» на корпусе не становится обраткой', !/tReturn/.test(one(sh([L('0000', ['0000', '0000'], 544, 739, 180, 92), L('kw', null, 730, 793, 50, 34)]))));
+
 console.log('\nНе теплосчётчик:');
 for (const [k, t] of [['syn_water', 'water'], ['syn_electric', 'electric'], ['syn_gas', 'gas']]) {
   x = read(k, {}); ok(k + ' → ' + t + ', показания не берём', x.r.photo.meterType === t && !x.r.photo.readings.length, x.r.photo);

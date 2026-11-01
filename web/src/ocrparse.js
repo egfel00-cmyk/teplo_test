@@ -29,16 +29,22 @@
     { re: /^GJ$/i, field: 'energy', unit: 'GJ', w: 3 }, { re: /^kW\s?h$/i, field: 'energy', unit: 'kWh', w: 3 },
     { re: /^m\s?[3³]\s?\/\s?h$/i, field: 'flow', unit: 'm³/h', w: 3 }, { re: /^k\s?W$/i, field: 'power', unit: 'kW', w: 3 },
     { re: /^m\s?[3³]$/i, field: 'volume', unit: 'm³', w: 3 },
-    { re: /^(HT|T1|T\s?1)$/i, field: 'tSupply', unit: '°C', w: 4 }, { re: /^(CT|T2|T\s?2)$/i, field: 'tReturn', unit: '°C', w: 4 },
-    { re: /^(ON|0N|On\s?h)$/i, field: 'hours', unit: 'h', w: 4 }, { re: /^(EH|E\s?h|Err\s?h|ERR\s?H)$/i, field: 'errHours', unit: 'h', w: 4 },
+    // подписи семисегментным шрифтом распознаются «похоже»: ht → be/bt/nt, ct → ce/cE, On → 0n/Dn, dt → de/BE (перепад — в форму не идёт)
+    { re: /^(HT|T1|T\s?1|[hbn][tE]|b[e])$/, field: 'tSupply', unit: '°C', w: 4 }, { re: /^(HT|T1)$/i, field: 'tSupply', unit: '°C', w: 4 },
+    { re: /^(CT|T2|T\s?2|c[tE]|C[t])$/, field: 'tReturn', unit: '°C', w: 4 }, { re: /^(CT|T2)$/i, field: 'tReturn', unit: '°C', w: 4 },
+    { re: /^(dt|dE|de|BE|dT|d七)$/, field: 'dT', unit: '°C', w: 5 },
+    { re: /^(ON|0N|On\s?h|0n|Dn|On)$/i, field: 'hours', unit: 'h', w: 4 }, { re: /^(EH|E\s?h|Err\s?h|ERR\s?H)$/i, field: 'errHours', unit: 'h', w: 4 },
+    { re: /^m$/, field: 'm', unit: 'm³', w: 2 },
     { re: /^(°\s?C|℃|C|°)$/i, field: 'temp', unit: '°C', w: 1 }, { re: /^h$/i, field: 'hours', unit: 'h', w: 1 }
   ];
   var DEC = { energy: 3, volume: 3, flow: 3, power: 3, tSupply: 2, tReturn: 2, hours: 0, errHours: 0 };
 
   function digitsOf(s) { return String(s || '').replace(/[^0-9]/g, ''); }
   /** «00015 482» → «00015.482» по позиции точки; «0O1S.4B2» → цифры (похожие буквы — в цифры, только внутри числа) */
+  // подпись в начале строки числа: «0n 41704», «ht 13.50» (семисегментные буквы)
+  var LEAD = /^\s*([0ODo][nN]|[hbn][tE]|be|c[tE]|Ct|d[teE]|BE|E\s?h|HT|CT)\s+(?=[0-9OoIl])/;
   function cleanNum(s) {
-    s = String(s || '').replace(/,/g, '.').replace(/[Oo]/g, '0').replace(/[Il|]/g, '1').replace(/S/g, '5').replace(/B/g, '8').replace(/Z/g, '2');
+    s = String(s || '').replace(LEAD, '').replace(/(\d)\s*:\s*(\d)/g, '$1.$2').replace(/,/g, '.').replace(/[Oo]/g, '0').replace(/[Il|]/g, '1').replace(/S/g, '5').replace(/B/g, '8').replace(/Z/g, '2');
     var m = s.match(/[0-9][0-9 .]*[0-9]|[0-9]/); if (!m) return null;
     var t = m[0].replace(/\s+/g, '').replace(/\.{2,}/g, '.');
     if ((t.match(/\./g) || []).length > 1) t = t.replace(/\.(?=.*\.)/g, '');
@@ -49,14 +55,16 @@
 
   /** Цифры — большинством среди вариантов (обычный и «без теней»); точка — где её увидел хоть один вариант с тем же числом цифр. */
   function bestValue(line) {
-    var vars = [line.text].concat(line.alts || []).map(cleanNum).filter(Boolean);
+    var raw = [line.text].concat(line.alts || []), lead = null;
+    raw.forEach(function (v) { var m = String(v || '').match(LEAD); if (m && !lead) lead = m[1].replace(/\s/g, ''); });
+    var vars = raw.map(cleanNum).filter(Boolean);
     if (!vars.length) return null;
     var enh = (line.alts || []).map(cleanNum).filter(Boolean), pool = enh.length ? enh : vars, cnt = {};
     pool.forEach(function (v) { var d = digitsOf(v); cnt[d] = (cnt[d] || 0) + 1; });
     var digits = Object.keys(cnt).sort(function (a, b) { return cnt[b] - cnt[a] || b.length - a.length; })[0];
     var dot = null;
     vars.forEach(function (v) { if (dot === null && v.indexOf('.') > 0 && digitsOf(v).length === digits.length) dot = v.length - v.indexOf('.') - 1; });
-    return { digits: digits, dot: dot, agree: cnt[digits] / pool.length };
+    return { digits: digits, dot: dot, agree: cnt[digits] / pool.length, lead: lead };
   }
 
   function placeDot(digits, n) { if (!n || n >= digits.length) return digits; return digits.slice(0, digits.length - n) + '.' + digits.slice(digits.length - n); }
@@ -72,6 +80,7 @@
       if (best) return { v: placeDot(digits, best.k), how: 'prev' };
     }
     if (DEC[field] === 0) return { v: digits, how: 'int' };
+    if (DEC[field] && digits.length > DEC[field]) return { v: placeDot(digits, DEC[field]), how: 'dec' };   // типичное число знаков для поля
     return { v: digits, how: 'none' };
   }
 
@@ -106,6 +115,8 @@
     if (out.meterType && out.meterType !== 'heat') { out.kind = 'other'; return { photo: out, meter: null }; }
 
     // главное число экрана — самая высокая строка из цифр (код ошибки «E- - -» — тоже)
+    // знаки поверки на корпусе («M23», «M 17») — не показания
+    lines = lines.filter(function (l) { return !/^M\s?\d{2}$/.test(String(l.text).trim()); });
     var nums = lines.filter(function (l) { return isNumLine(l.text) || (l.alts || []).some(isNumLine) || /^E[\s\-–—_0-9]*$/i.test(l.text); });
     var maxH = Math.max.apply(null, nums.map(function (l) { return l.h; }).concat([0]));
     var mains = nums.filter(function (l) { return l.h >= maxH * 0.75 && l.h >= res.h * 0.012; });
@@ -129,13 +140,20 @@
       var mE = txt.match(/^E[\-–—_]?(\d{1,4})$/i);
       if (mE) { out.readings.push({ field: 'errCode', value: 'E' + mE[1], unit: '', label: 'E', confidence: +(0.7 * l.score).toFixed(2) }); return; }
       var bv = bestValue(l); if (!bv || !bv.digits) return;
+      if (/^8{6,}$/.test(bv.digits)) { out.note = out.note || 'test_screen'; return; }   // тест экрана: горят все сегменты
+      if (bv.lead) for (var tl = 0; tl < TAGS.length; tl++) if (TAGS[tl].re.test(bv.lead)) { tags.push({ line: l, tag: TAGS[tl], lead: true }); break; }
       // подпись рядом: специфичные (HT/CT/ON/EH) важнее общих (°C, h)
       // подпись «90°C» с самим числом (паспортные данные на корпусе) относится только к своей строке
       var near = tags.filter(function (t) { return t.line === l || (!t.same && dist(l, t.line) < 6); })
         .sort(function (a, b) { return b.tag.w - a.tag.w || dist(l, a.line) - dist(l, b.line); });
       var field = null, unit = '', label = '', how = 'tag', conf = l.score * (0.75 + 0.25 * bv.agree);
       if (near.length) {
-        field = near[0].tag.field; unit = near[0].tag.unit; label = near[0].line.text;
+        field = near[0].tag.field; unit = near[0].tag.unit; label = near[0].lead ? bv.lead : near[0].line.text;
+        if (field === 'dT') { out.kind = 'screen'; out.note = out.note || 'dt_screen'; return; }   // перепад температур — в форму ХТМ не идёт
+        if (field === 'm') {   // «m³» отдельно от «/h»: короткое число — расход, длинное накопленное — объём
+          var hTag = tags.some(function (t) { return /^h$/i.test(String(t.line.text).trim()) && dist(l, t.line) < 6; });
+          if (hTag || bv.digits.length <= 5) { field = 'flow'; unit = 'm³/h'; } else { field = 'volume'; unit = 'm³'; }
+        }
         if (field === 'temp') {
           var spec = near.filter(function (t) { return t.tag.field === 'tSupply' || t.tag.field === 'tReturn'; })[0];
           field = spec ? spec.tag.field : null;
@@ -166,7 +184,7 @@
         if (!field) { out.note = out.note || 'unlabeled'; return; }
       }
       if (DEC[field] === 0) val = bv.digits;   // часы — целые: «точка» на них — это тень сегмента
-      if (val === null) { var inf = inferDot(bv.digits, field, ctx); val = inf.v; if (inf.how === 'none' && DEC[field]) { conf *= 0.6; out.note = out.note || 'no_dot'; } else if (inf.how !== 'int') conf *= 0.9; }
+      if (val === null) { var inf = inferDot(bv.digits, field, ctx); val = inf.v; if ((inf.how === 'none' || inf.how === 'dec') && DEC[field]) { conf *= inf.how === 'dec' ? 0.75 : 0.6; out.note = out.note || 'no_dot'; } else if (inf.how !== 'int') conf *= 0.9; }
       if (how === 'prev') conf *= 0.8; if (how === 'guess') conf *= 0.5; if (how === 'model') conf *= 0.7;
       if (field === 'energy' && unit) { meter = meter || { modelId: null, modelText: null, serial: null, apartment: null, energyUnit: null, confidence: 0.3 }; meter.energyUnit = unit; }
       out.readings.push({ field: field, value: stripZeros(val), unit: unit, label: label, confidence: +Math.min(0.97, conf).toFixed(2) });
