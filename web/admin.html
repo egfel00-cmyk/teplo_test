@@ -196,12 +196,28 @@ pre.state { font: 12px/1.4 var(--mono); background: #F4F7F5; padding: 10px; bord
   window.addEventListener('hashchange', route);
   function route() { var h = (location.hash || '#overview').slice(1), m = h.match(/^user-(\d+)$/); if (m) show('user', +m[1]); else show(h); }
 
+  function loginForm(err) {
+    app.innerHTML = '<form class="center" id="lf"><h2>Вход в аналитику</h2>' +
+      '<p><label>E-mail<br><input id="le" type="email" autocomplete="username" required style="width:100%;font:inherit;padding:10px;border:1.5px solid var(--line);border-radius:10px"></label></p>' +
+      '<p><label>Пароль<br><input id="lp" type="password" autocomplete="current-password" required style="width:100%;font:inherit;padding:10px;border:1.5px solid var(--line);border-radius:10px"></label></p>' +
+      (err ? '<p class="problem">' + esc(err) + '</p>' : '') + '<p><button class="btn" type="submit">Войти</button></p></form>';
+    document.getElementById('lf').addEventListener('submit', function (e) {
+      e.preventDefault();
+      var go = function () { return post('/auth/login', { email: document.getElementById('le').value, password: document.getElementById('lp').value }); };
+      (cookie('ts_csrf') ? go() : get('/config').then(go)).then(function (r) {
+        if (r && r.user) location.reload();
+        else loginForm(r && r.error === 'locked' ? 'Слишком много попыток — подождите 15 минут.' : r && r.error === 'rate_limited' ? 'Слишком много попыток — подождите.' : 'Неверный e-mail или пароль.');
+      }, function () { loginForm('Сервер недоступен.'); });
+    });
+  }
+
   get('/admin/me').then(function (j) {
-    if (j._status === 401 || j.error === 'unauthorized') { app.innerHTML = '<div class="center"><h2>Нужен вход</h2><p>Войдите на сайте под своим аккаунтом, затем вернитесь сюда.</p><p><a class="btn" href="' + esc(SITE) + '#login">Войти</a></p></div>'; return; }
+    if (j._status === 401 || j.error === 'unauthorized') { loginForm(''); return; }
     if (!j.admin) {
       return get('/me').then(function (me) {
         var u = me.user || {};
-        app.innerHTML = '<div class="center"><h2>Нет доступа</h2><p>Аналитика открыта только владельцу. Чтобы открыть её этому аккаунту, допишите в <code>/srv/sites/teplo_test_data/config.php</code>:</p><pre class="state">\'admins\' => [\'emails\' => [' + (u.email ? "'" + esc(u.email) + "'" : '') + '], \'telegram\' => [' + (u.telegram ? "'" + esc(u.telegram.id) + "'" : '') + ']],</pre><p><a class="btn" href="' + esc(SITE) + '">На сайт</a></p></div>';
+        app.innerHTML = '<div class="center"><h2>Нет доступа</h2><p>Аналитика открыта только владельцу. Чтобы открыть её этому аккаунту, допишите в <code>/srv/sites/teplo_test_data/config.php</code>:</p><pre class="state">\'admins\' => [\'emails\' => [' + (u.email ? "'" + esc(u.email) + "'" : '') + '], \'telegram\' => [' + (u.telegram ? "'" + esc(u.telegram.id) + "'" : '') + ']],</pre><p><a class="btn" href="' + esc(SITE) + '">На сайт</a> <button class="btn" id="lo">Войти другим аккаунтом</button></p></div>';
+        document.getElementById('lo').onclick = function () { post('/auth/logout', {}).then(function () { location.reload(); }); };
       });
     }
     route();

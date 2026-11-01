@@ -166,7 +166,7 @@ final class Api {
         return Recognize::report((int)$user['id'], $in);
       }
       case 'POST /api/feedback': return Feedback::create($user, $in, $r, $ip);
-      case 'GET /api/admin/me': return ['admin' => Admin::is($user)];
+      case 'GET /api/admin/me': if (!$user) throw new HttpError(401, 'unauthorized'); return ['admin' => Admin::is($user)];
       case 'POST /api/bot/setup': {
         $secret = (string)Cfg::get('webhook_secret');
         if ($secret === '' || !Cfg::get('bot_token') || !hash_equals($secret, $r->header('X-Setup-Secret'))) throw new HttpError(403, 'forbidden');
