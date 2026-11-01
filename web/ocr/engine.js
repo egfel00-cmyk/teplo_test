@@ -9,8 +9,9 @@
   'use strict';
   var ORT = null, DET = null, REC = null, KEYS = null, loading = null;
   var DET_MAX = 1280;           // длинная сторона для поиска текста: мелкие подписи «Gcal», «m³» на экране остаются видны
-  // второй проход: не больше ~2,6 Мп — iPhone (Safari/Chrome) иначе упирается в память холстов и WASM и перезагружает вкладку
-  var ZOOM_AREA = 2.6e6; var DET_THRESH = 0.3, BOX_THRESH = 0.55, UNCLIP = 1.6, REC_H = 48;
+  // второй проход: приближаем до ~2600 px, но ищем текст кусками ≤1408 px — иначе iPhone упирается в память WASM
+  // и перезагружает вкладку (одна сетка 2600×2600 съедала ~1 ГБ)
+  var ZOOM_PX = 2600, TILE = 1408; var DET_THRESH = 0.3, BOX_THRESH = 0.55, UNCLIP = 1.6, REC_H = 48;
 
   function fetchBuf(url, onBytes) {
     return fetch(url).then(function (r) {
@@ -171,6 +172,37 @@
     });
     return chain;
   }
+  /** Поиск текста по кускам с перекрытием: память — как у одного куска, детали — как у всего большого холста. */
+  function detectTiled(cv) {
+    var W = cv.width, H = cv.height;
+    // куски равномерно, перекрытие ≥ четверти куска
+    var at = function (L) { if (L <= TILE) return [0]; var n = Math.ceil((L - TILE) / (TILE * 0.75)) + 1, r = []; for (var i = 0; i < n; i++) r.push(Math.round(i * (L - TILE) / (n - 1))); return r; };
+    var xs = at(W), ys = at(H);
+    var all = [], chain = Promise.resolve();
+    ys.forEach(function (ty) { xs.forEach(function (tx) {
+      chain = chain.then(function () {
+        var tw = Math.min(TILE, W - tx), th = Math.min(TILE, H - ty), t = document.createElement('canvas'); t.width = tw; t.height = th;
+        t.getContext('2d').drawImage(cv, tx, ty, tw, th, 0, 0, tw, th);
+        return detect(t, { max: TILE }).then(function (bs) {
+          free(t);
+          bs.forEach(function (b) {
+            // рамка у края куска (кроме края холста) — обрезана; её целиком найдёт соседний кусок
+            var l = b.cx - b.w / 2, r = b.cx + b.w / 2, u = b.cy - b.h / 2, d = b.cy + b.h / 2, m = 6;
+            if ((l < m && tx > 0) || (r > tw - m && tx + tw < W) || (u < m && ty > 0) || (d > th - m && ty + th < H)) return;
+            b.cx += tx; b.cy += ty; all.push(b);
+          });
+        });
+      });
+    }); });
+    return chain.then(function () {
+      var out = [];
+      all.sort(function (a, b) { return b.w * b.h - a.w * a.h; }).forEach(function (b) {
+        var dup = out.some(function (o) { var ix = Math.max(0, Math.min(o.cx + o.w / 2, b.cx + b.w / 2) - Math.max(o.cx - o.w / 2, b.cx - b.w / 2)), iy = Math.max(0, Math.min(o.cy + o.h / 2, b.cy + b.h / 2) - Math.max(o.cy - o.h / 2, b.cy - b.h / 2)); return ix * iy > 0.5 * b.w * b.h; });
+        if (!dup) out.push(b);
+      });
+      return out;
+    });
+  }
   function digits(t) { return String(t || '').replace(/[^0-9]/g, '').length; }
 
   function read(file) {
@@ -186,11 +218,11 @@
         var y0 = Math.min.apply(null, good.map(function (b) { return b.cy - b.h / 2; })), y1 = Math.max.apply(null, good.map(function (b) { return b.cy + b.h / 2; }));
         var pw = (x1 - x0) * 0.15 + 20, ph = (y1 - y0) * 0.15 + 20;
         x0 = Math.max(0, x0 - pw); y0 = Math.max(0, y0 - ph); x1 = Math.min(src.width, x1 + pw); y1 = Math.min(src.height, y1 + ph);
-        var cw = x1 - x0, chh = y1 - y0, sc = Math.min(3, Math.sqrt(ZOOM_AREA / (cw * chh)));
+        var cw = x1 - x0, chh = y1 - y0, sc = Math.min(3, ZOOM_PX / Math.max(cw, chh));
         if (sc < 1.25) return null;   // приближать некуда — текст уже на весь кадр
         var cv = document.createElement('canvas'); cv.width = Math.round(cw * sc); cv.height = Math.round(chh * sc);
         var g2 = cv.getContext('2d'); g2.imageSmoothingQuality = 'high'; g2.drawImage(src, x0, y0, cw, chh, 0, 0, cv.width, cv.height);
-        return detect(cv, { max: Math.max(cv.width, cv.height) }).then(function (b2) {
+        return detectTiled(cv).then(function (b2) {
           var seenBox = lines.map(function (l) { return { x: l.x, y: l.y, w: l.w, h: l.h }; });
           var fresh = b2.filter(function (b) {   // только то, чего не было в первом проходе
             var bx = x0 + (b.cx - b.w / 2) / sc, by = y0 + (b.cy - b.h / 2) / sc, bw = b.w / sc, bh = b.h / sc;
