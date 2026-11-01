@@ -356,3 +356,18 @@ label.btn { cursor: pointer; }
 .thumbs img[data-pv], .ph-fields img[data-pv] { cursor: zoom-in; }
 /* узкий телефон (≤ 420 px): «Закрити» — только крестиком, иначе шапка шире экрана и страница уменьшается */
 @media (max-width: 420px) { .cl-txt { display: none; } .pv-bar { box-sizing: border-box; } }
+
+/* загрузка: значок-кольцо, кнопка «в работе», полоса хода */
+@keyframes spin { to { transform: rotate(360deg); } }
+.spin { display: inline-block; flex: none; width: 20px; height: 20px; border: 2.5px solid currentColor; border-right-color: transparent; border-radius: 50%; animation: spin .8s linear infinite; vertical-align: -4px; }
+.banner > .spin { width: 22px; height: 22px; margin-top: 2px; }
+.btn[aria-busy="true"] { pointer-events: none; opacity: .85; }
+.btn[aria-busy="true"]::before { content: ''; flex: none; width: 18px; height: 18px; border: 2.5px solid currentColor; border-right-color: transparent; border-radius: 50%; animation: spin .8s linear infinite; }
+.pbar { height: 6px; border-radius: 3px; background: var(--c-line); overflow: hidden; margin-top: 10px; }
+.pbar i { display: block; height: 100%; background: var(--c-accent, var(--c-ink)); border-radius: 3px; transition: width .4s ease; }
+@media (prefers-reduced-motion: reduce) { .spin, .btn[aria-busy="true"]::before { animation-duration: 2.4s; } .pbar i { transition: none; } }
+/* советы, как фотографировать */
+.tips-box { margin: 0 0 var(--sp-4); border: 1px solid var(--c-line); border-radius: 12px; background: var(--c-surface); padding: 10px 14px; }
+.tips-box summary { cursor: pointer; font-weight: 600; display: flex; align-items: center; gap: 8px; min-height: 32px; }
+.tips-box ul { margin: 8px 0 4px; padding-left: 20px; }
+.tips-box li { margin: 4px 0; line-height: 1.4; }

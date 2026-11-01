@@ -370,6 +370,21 @@ label.btn { cursor: pointer; }
 /* узкий телефон (≤ 420 px): «Закрити» — только крестиком, иначе шапка шире экрана и страница уменьшается */
 @media (max-width: 420px) { .cl-txt { display: none; } .pv-bar { box-sizing: border-box; } }
 
+/* загрузка: значок-кольцо, кнопка «в работе», полоса хода */
+@keyframes spin { to { transform: rotate(360deg); } }
+.spin { display: inline-block; flex: none; width: 20px; height: 20px; border: 2.5px solid currentColor; border-right-color: transparent; border-radius: 50%; animation: spin .8s linear infinite; vertical-align: -4px; }
+.banner > .spin { width: 22px; height: 22px; margin-top: 2px; }
+.btn[aria-busy="true"] { pointer-events: none; opacity: .85; }
+.btn[aria-busy="true"]::before { content: ''; flex: none; width: 18px; height: 18px; border: 2.5px solid currentColor; border-right-color: transparent; border-radius: 50%; animation: spin .8s linear infinite; }
+.pbar { height: 6px; border-radius: 3px; background: var(--c-line); overflow: hidden; margin-top: 10px; }
+.pbar i { display: block; height: 100%; background: var(--c-accent, var(--c-ink)); border-radius: 3px; transition: width .4s ease; }
+@media (prefers-reduced-motion: reduce) { .spin, .btn[aria-busy="true"]::before { animation-duration: 2.4s; } .pbar i { transition: none; } }
+/* советы, как фотографировать */
+.tips-box { margin: 0 0 var(--sp-4); border: 1px solid var(--c-line); border-radius: 12px; background: var(--c-surface); padding: 10px 14px; }
+.tips-box summary { cursor: pointer; font-weight: 600; display: flex; align-items: center; gap: 8px; min-height: 32px; }
+.tips-box ul { margin: 8px 0 4px; padding-left: 20px; }
+.tips-box li { margin: 4px 0; line-height: 1.4; }
+
 </style>
 <style>.top { padding-top: max(12px, env(safe-area-inset-top)); }</style>
 </head>
@@ -1035,6 +1050,8 @@ label.btn { cursor: pointer; }
       save_prompt_later: "Пізніше",
       ph_entry: "Розпізнати з фото",
       ph_title: "Розпізнати з фото",
+      ph_tips_t: 'Як фотографувати, щоб розпізналося',
+      ph_tips: 'Зблизька: екран лічильника — на третину кадру або більше, цифри різкі (торкніться екрана телефона для фокусу)|Без відблисків: спалах вимкніть, трохи нахиліть телефон; ліхтарик — збоку, не в лоб|Одне фото — один екран: натиснули кнопку лічильника — сфотографували, по порядку|У кадрі весь екран з підписами (Gcal, m³, °C) — за ними видно, що за число|Тест «88888888» і екран dt знімати не обов’язково',
       ph_lead: "Сфотографуйте екран лічильника після кожного натискання кнопки — зблизька, без відблисків. Можна одразу додати фото наклейки з моделлю.",
       ph_pick: "Обрати фото",
       ph_add: "Додати ще фото",
@@ -1361,6 +1378,8 @@ label.btn { cursor: pointer; }
       save_prompt_later: "Позже",
       ph_entry: "Распознать по фото",
       ph_title: "Распознать по фото",
+      ph_tips_t: 'Как фотографировать, чтобы распозналось',
+      ph_tips: 'Вблизи: экран счётчика — на треть кадра или больше, цифры резкие (коснитесь экрана телефона для фокуса)|Без бликов: вспышку выключите, слегка наклоните телефон; фонарик — сбоку, не в лоб|Одно фото — один экран: нажали кнопку счётчика — сфотографировали, по порядку|В кадре весь экран с подписями (Gcal, m³, °C) — по ним видно, что за число|Тест «88888888» и экран dt снимать не обязательно',
       ph_lead: "Сфотографируйте экран счётчика после каждого нажатия кнопки — вблизи, без бликов. Можно сразу добавить фото наклейки с моделью.",
       ph_pick: "Выбрать фото",
       ph_add: "Добавить ещё фото",
@@ -2439,7 +2458,7 @@ label.btn { cursor: pointer; }
       '<label class="lbl" for="fb-text">' + esc(t('fb_text')) + '</label><textarea id="fb-text" rows="5" maxlength="4000">' + esc(FB.text) + '</textarea>' +
       (acc ? '' : '<label class="lbl" for="fb-contact">' + esc(t('fb_contact')) + '</label><input id="fb-contact" type="text" maxlength="190" autocomplete="email" value="' + esc(FB.contact) + '">') +
       (FB.err ? '<p class="help bad" role="alert">' + esc(FB.err) + '</p>' : '') +
-      '<div class="row-actions"><button class="btn sec" data-act="fb-close">' + esc(t('cancel')) + '</button><button class="btn" data-act="fb-send" data-key="feedback-send"' + (FB.sending ? ' disabled' : '') + '>' + esc(t('fb_send')) + '</button></div></div>';
+      '<div class="row-actions"><button class="btn sec" data-act="fb-close">' + esc(t('cancel')) + '</button><button class="btn" data-act="fb-send" data-key="feedback-send"' + (FB.sending ? ' disabled aria-busy="true"' : '') + '>' + esc(t('fb_send')) + '</button></div></div>';
   }
   function fbSend() {
     var te = document.getElementById('fb-text'), ce = document.getElementById('fb-contact');
@@ -2922,7 +2941,7 @@ label.btn { cursor: pointer; }
     var summer = function (it) { return it.days > 100; };
     var lbl = function (it) { return shortDate(it.to); };
     var period = function (it) { return t('stt_period', { a: R.toHtmDate(it.from), b: R.toHtmDate(it.to), d: it.days }); };
-    var wxNote = WX.loading ? '<p class="small muted">' + esc(t('stt_wx_loading')) + '</p>' : WX.err ? '<p class="small muted">' + esc(t('stt_wx_err')) + '</p>' : '';
+    var wxNote = WX.loading ? '<p class="small muted" role="status">' + SPIN + ' ' + esc(t('stt_wx_loading')) + '</p>' : WX.err ? '<p class="small muted">' + esc(t('stt_wx_err')) + '</p>' : '';
     // сводка: последний отопительный сезон (с 1 октября)
     var last = ivs[ivs.length - 1], sy = +last.to.slice(0, 4) - (last.to.slice(5, 7) < '10' ? 1 : 0), sFrom = sy + '-10-01';
     var season = ivs.filter(function (it) { return it.to > sFrom; }), sE = season.reduce(function (a, it) { return a + Math.max(0, it.dE); }, 0);
@@ -3046,7 +3065,7 @@ label.btn { cursor: pointer; }
     h += '<input type="file" id="doc-input" class="sr" aria-label="' + esc(t('mv_docs')) + '" tabindex="-1" accept="image/jpeg,image/png,image/webp,application/pdf">' +
       '<div class="row-actions" style="margin-top:8px"><button class="btn sec" data-act="doc-add" data-kind="passport"' + (DOCS.busy ? ' disabled' : '') + '>' + ico('camera', 18) + '<span>' + esc(t('mv_add_passport')) + '</span></button>' +
       '<button class="btn sec" data-act="doc-add" data-kind="verification"' + (DOCS.busy ? ' disabled' : '') + '>' + ico('camera', 18) + '<span>' + esc(t('mv_add_ver')) + '</span></button></div>' +
-      (DOCS.busy ? '<p class="small muted">' + esc(t('mv_uploading')) + '</p>' : '');
+      (DOCS.busy ? '<p class="small muted" role="status">' + SPIN + ' ' + esc(t('mv_uploading')) + '</p>' : DOCS.loading && !DOCS.list ? '<p class="small muted" role="status">' + SPIN + '</p>' : '');
     return h + '</div>';
   }
   function placesPanel() {
@@ -3140,6 +3159,9 @@ label.btn { cursor: pointer; }
   window.TeploTgLink = function (user) { Y().linkTelegram(user).then(function (j) { if (j._status === 200) { toast(t('login_ok')); render(true); } else toast(authError(j)); }); };
 
   // ---------------- распознавание по фото ----------------
+  /** Кнопка «в работе»: крутится значок, повторно не нажать; возвращает «готово». */
+  function busy(btn) { if (!btn) return function () {}; btn.setAttribute('aria-busy', 'true'); btn.disabled = true; return function () { btn.removeAttribute('aria-busy'); btn.disabled = false; }; }
+  var SPIN = '<span class="spin" aria-hidden="true"></span>';
   var PH = { mode: 'reading', files: [], urls: [], status: 'idle', result: null, picked: null, error: '', ctl: null, progress: '' };
   function phReset(mode, keep) { if (!keep) PHS.clear(); PH.urls.forEach(function (u) { try { URL.revokeObjectURL(u); } catch (e) { /* нет */ } }); PH = { mode: mode || 'reading', files: [], urls: [], status: 'idle', result: null, picked: null, error: '', ctl: null, progress: '', date: mode === 'baseline' ? ((S._baseFill && S._baseFill.date) || (S.baseline && S.baseline.date) || today()) : (S.draft && S.draft.date || today()) }; }
   /* Распознанное с фото переживает обновление страницы: состояние — в localStorage, сами фото — в IndexedDB.
@@ -3198,9 +3220,10 @@ label.btn { cursor: pointer; }
     var shell_ = function (html) { return { screen: 'S12', route: 'photo', bare: true, closeTo: back, html: head + html }; };
     if (!VIS().available) return shell_('<div class="banner warn">' + ico('info', 22) + '<div><p>' + esc(t('ph_unavail')) + '</p></div></div><a class="btn" href="#' + back + '">' + esc(t('back')) + '</a>');
     var input = '<input type="file" id="ph-input" accept="' + esc(((VIS().limits && VIS().limits.images && VIS().limits.images.mediaTypes) || ['image/jpeg', 'image/png', 'image/webp']).join(',')) + '" multiple class="sr" data-key="photo-input">';
-    if (PH.status === 'working') return shell_('<div class="banner" role="status">' + ico('clock', 22) + '<div><p><b>' + esc(t('ph_working', { n: PH.files.length })) + '</b></p>' + '<p id="ph-progress">' + esc(PH.progress || '') + '</p>' + '</div></div>' + thumbs(false) + '<div class="row-actions"><button class="btn sec" data-act="ph-stop">' + esc(t('ph_stop')) + '</button></div>');
+    if (PH.status === 'working') return shell_('<div class="banner" role="status">' + SPIN + '<div class="grow"><p><b>' + esc(t('ph_working', { n: PH.files.length })) + '</b></p>' + '<p id="ph-progress">' + esc(PH.progress || '') + '</p><div class="pbar" aria-hidden="true"><i id="ph-pbar" style="width:' + (PH.pct || 2) + '%"></i></div>' + '</div></div>' + thumbs(false) + '<div class="row-actions"><button class="btn sec" data-act="ph-stop">' + esc(t('ph_stop')) + '</button></div>');
     if (PH.status === 'done' && !model_) return shell_(photoResult());
     var lead = '<p>' + esc(model_ ? t('ph_model_lead') : base_ ? t('ph_base_lead') : t('ph_lead')) + '</p>';
+    if (!model_) lead += '<details class="tips-box"' + (PH.files.length ? '' : ' open') + '><summary>' + ico('camera', 18) + ' ' + esc(t('ph_tips_t')) + '</summary><ul>' + t('ph_tips').split('|').map(function (x) { return '<li>' + esc(x) + '</li>'; }).join('') + '</ul></details>';
     var err = PH.error ? '<div class="banner bad" role="alert">' + ico('alert', 22) + '<div><p>' + esc(PH.error) + '</p></div></div>' : '';
     var date = model_ ? '' : '<div class="field" style="max-width:280px"><label for="ph-date">' + esc(t('ph_date')) + '</label><div class="ctl"><input id="ph-date" type="date" value="' + esc(PH.date || today()) + '" max="' + today() + '"></div></div>';
     var pick = '<label for="ph-input" class="btn ' + (PH.files.length ? 'sec' : 'big') + '" tabindex="0" data-key="photo-pick">' + ico('camera', 22) + '<span>' + esc(PH.files.length ? t('ph_add') : t('ph_pick')) + '</span></label>';
@@ -3276,10 +3299,13 @@ label.btn { cursor: pointer; }
   function phRun() {
     var y = VIS(); if (!y.available || !PH.files.length) return;
     var di = document.getElementById('ph-date'); if (di) PH.date = di.value || today();
-    PH.status = 'working'; PH.error = ''; PH.progress = ''; PH.ctl = new AbortController(); render(true);
+    PH.status = 'working'; PH.error = ''; PH.progress = ''; PH.pct = 2; PH.ctl = new AbortController(); render(true);
     var m = model(), ctx = { modelId: m ? m.id : '', models: M.MODELS, steps: m && m.status === 'verified' ? m.steps : null, expectedModel: m && m.id !== 'other' ? modelName(m) : '', prev: S.baseline ? { energy: S.baseline.energy, volume: S.baseline.volume, hours: S.baseline.hours } : null, lang: S.lang };
     y.recognize(PH.files, ctx, PH.ctl.signal, function (i, n, kind) {
       var msg = kind === 'load' ? t('ph_loading', { p: i }) : kind === 'photo' ? (n > 1 ? t('ph_reading', { i: i, n: n }) : '') : (n > 1 ? t('ph_batch', { i: i, n: n }) : '');
+      // общий ход: загрузка движка — первые 15 %, дальше фото по очереди
+      PH.pct = Math.max(PH.pct || 2, Math.round(kind === 'load' ? i * 0.15 : 15 + 85 * (i - 0.5) / Math.max(1, n)));
+      var pb = document.getElementById('ph-pbar'); if (pb) pb.style.width = PH.pct + '%';
       if (msg === PH.progress) return; PH.progress = msg;
       var el = document.getElementById('ph-progress'); if (el) el.textContent = msg; else if (routeName() === 'photo') render(true);
     }).then(function (res) {
@@ -3518,18 +3544,20 @@ label.btn { cursor: pointer; }
         go('status'); break;
       }
       case 'link-bot': {   // привязать Telegram через бота: одноразовая ссылка t.me/<бот>?start=link_…
-        var w0 = window.open('about:blank', '_blank');
+        var w0 = window.open('about:blank', '_blank'), doneL = busy(el);
         fetch(window.TEPLO_API + '/auth/link-bot', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json', 'X-CSRF': (document.cookie.match(/(?:^|; )ts_csrf=([^;]*)/) || [])[1] || '', Accept: 'application/json' }, body: '{}' })
           .then(function (r) { return r.json(); }).then(function (j) {
+            doneL();
             if (!j || !j.url) { if (w0) w0.close(); toast(t('err_network')); return; }
             if (w0) w0.location.href = j.url; else location.href = j.url;
             toast(t('acct_link_bot_wait')); LINKWAIT = true;
-          }, function () { if (w0) w0.close(); toast(t('err_network')); });
+          }, function () { doneL(); if (w0) w0.close(); toast(t('err_network')); });
         break;
       }
       case 'doc-add': { var fi = document.getElementById('doc-input'); if (fi) { fi.setAttribute('data-kind', el.getAttribute('data-kind')); fi.value = ''; fi.click(); } break; }
       case 'doc-del': {
         if (!confirm(t('mv_del_q'))) break;
+        busy(el);
         fetch(window.TEPLO_API + '/docs/delete', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json', 'X-CSRF': (document.cookie.match(/(?:^|; )ts_csrf=([^;]*)/) || [])[1] || '' }, body: JSON.stringify({ id: el.getAttribute('data-id') }) })
           .then(function () { loadDocs(true); }); break;
       }
@@ -3576,7 +3604,7 @@ label.btn { cursor: pointer; }
       case 'ph-apply': phApply(); break;
       case 'ph-use-model': { var um = M.byId(el.getAttribute('data-id')); S.meter = Object.assign({}, S.meter || {}, { modelId: um.id, unit: el.getAttribute('data-unit') || um.unit }); save(); toast(t('b_saved')); PH.picked = VIS().pick(PH.result, M.TO_GCAL, energyUnit()); render(true); break; }
       case 'auth-mode': authMode = authMode === 'login' ? 'register' : 'login'; render(true); break;
-      case 'logout': ADMIN = null; Y().logout().then(function () { S = defaults(); S.lang = browserLang(); ensurePlaces(); lastSig = window.TeploSync.sig(window.TeploSync.payload(S)); persist(); toast(t('logged_out')); go('welcome'); }); break;
+      case 'logout': ADMIN = null; busy(el); Y().logout().then(function () { S = defaults(); S.lang = browserLang(); ensurePlaces(); lastSig = window.TeploSync.sig(window.TeploSync.payload(S)); persist(); toast(t('logged_out')); go('welcome'); }); break;
       case 'dismiss-sync': S.syncPromptDismissed = true; persist(); render(true); break;
       case 'wipe-no': document.getElementById('wipe-confirm').innerHTML = ''; break;
       case 'wipe-yes': { var now = Date.now(); S = defaults(); S.lang = browserLang(); S.wipedAt = now; ensurePlaces(); phReset(); FB.open = false; save(); toast(t('p_wiped')); go('welcome'); break; }
@@ -3663,11 +3691,12 @@ label.btn { cursor: pointer; }
     } else if (f.id === 'login-form') {
       var em = document.getElementById('a-email').value.trim(), pw = document.getElementById('a-pass').value, er = document.getElementById('login-err');
       er.textContent = '';
-      var btn = f.querySelector('[type=submit]'); btn.disabled = true;
-      (f.getAttribute('data-mode') === 'register' ? Y().register(em, pw) : Y().login(em, pw)).then(function (j) { btn.disabled = false; afterLogin(j, er); }, function () { btn.disabled = false; er.textContent = t('err_network'); });
+      var done = busy(f.querySelector('[type=submit]'));
+      (f.getAttribute('data-mode') === 'register' ? Y().register(em, pw) : Y().login(em, pw)).then(function (j) { done(); afterLogin(j, er); }, function () { done(); er.textContent = t('err_network'); });
     } else if (f.id === 'setpass-form') {
       var em2 = document.getElementById('a-email').value.trim(), pw2 = document.getElementById('a-pass').value, er2 = document.getElementById('setpass-err');
-      Y().setPassword(em2, pw2).then(function (j) { if (j._status === 200) { toast(t('b_saved')); render(true); } else er2.textContent = authError(j); });
+      var done2 = busy(f.querySelector('[type=submit]'));
+      Y().setPassword(em2, pw2).then(function (j) { done2(); if (j._status === 200) { toast(t('b_saved')); render(true); } else er2.textContent = authError(j); });
     } else if (f.id === 'import-form') {
       try { var data = JSON.parse(document.getElementById('p-import').value); if (!data || typeof data !== 'object' || !Array.isArray(data.readings)) throw new Error('bad'); S = Object.assign(defaults(), data); S.lang = browserLang(); save(); toast(t('p_import_ok')); render(); }
       catch (err) { toast(t('p_import_bad')); }
