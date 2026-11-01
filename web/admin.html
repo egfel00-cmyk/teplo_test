@@ -167,6 +167,7 @@ pre.state { font: 12px/1.4 var(--mono); background: #F4F7F5; padding: 10px; bord
       '<details class="panel"><summary>Все данные пользователя (как хранятся)</summary><pre class="state">' + esc(JSON.stringify(st, null, 2)) + '</pre></details>';
   };
 
+  function wasmOk() { try { return !!new WebAssembly.Module(new Uint8Array([0, 97, 115, 109, 1, 0, 0, 0])); } catch (e) { return false; } }
   var SRC = { admin: 'задан здесь', config: 'из config.php на сервере', 'default': 'по умолчанию' };
   var INP = 'style="width:100%;font:inherit;padding:10px;border:1.5px solid var(--line);border-radius:10px"';
   VIEW.settings = function () {
@@ -174,6 +175,8 @@ pre.state { font: 12px/1.4 var(--mono); background: #F4F7F5; padding: 10px; bord
     var note = function (k) { var m = msg[k]; return m ? '<p class="' + (m.ok ? '' : 'problem') + '" style="' + (m.ok ? 'color:var(--ok)' : '') + '">' + esc(m.text) + '</p>' : ''; };
     var hookOk = w && w.ok && w.url === t.webhookExpected;
     return '<div class="panel"><h2>Распознавание фото</h2>' +
+      (wasmOk() ? '' : '<div class="panel" style="background:var(--bads)"><p><b>Распознавание в браузере сейчас заблокировано сервером.</b> Общий заголовок Content-Security-Policy, который Caddy ставит всем сайтам на этом домене, запрещает WebAssembly. Пока так — фото только сохраняются, цифры люди вводят вручную.</p>' +
+        '<p>Исправить (на сервере, один раз): в конфиге Caddy в строке <code>script-src</code> после <code>\'unsafe-inline\'</code> дописать <code>\'wasm-unsafe-eval\'</code> и перезагрузить Caddy. Найти строку: <code>sudo grep -rn "script-src" /etc/caddy /srv/app</code>, потом <code>sudo systemctl reload caddy</code>.</p></div>') +
       '<p>' + (a.key ? pill('info', 'нейросеть Claude') + ' ключ <span class="mono">' + esc(a.key) + '</span> <span class="muted small">(' + esc(SRC[a.source] || '') + ')</span>' : pill('ok', 'бесплатно, в браузере')) + '</p>' +
       '<p class="small">По умолчанию фото распознаются <b>прямо в браузере человека</b> (PaddleOCR) — бесплатно, без ключа и без входа. ' +
       'Ключ Claude API ниже <b>не обязателен</b>: если его вставить, вошедшие пользователи будут распознаваться нейросетью на сервере (точнее на плохих фото, но платно — за каждое фото). Удалите ключ — снова бесплатно.</p>' +

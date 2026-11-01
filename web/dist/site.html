@@ -1537,6 +1537,10 @@ label.btn { cursor: pointer; }
   'use strict';
   var FIELDS = ['energy', 'volume', 'flow', 'power', 'tSupply', 'tReturn', 'hours', 'errHours', 'errCode'];
 
+  /** WebAssembly разрешён? (браузер умеет и политика безопасности страницы — CSP — не запрещает). */
+  function canWasm() {
+    try { return typeof WebAssembly === 'object' && !!new WebAssembly.Module(new Uint8Array([0, 97, 115, 109, 1, 0, 0, 0])); } catch (e) { return false; }
+  }
   function cookie(name) { var m = document.cookie.match(new RegExp('(?:^|; )' + name + '=([^;]*)')); return m ? decodeURIComponent(m[1]) : ''; }
   function fail(code) { var e = new Error(code); e.code = code; return e; }
   function httpCode(st) { return st === 401 ? 'not_signed_in' : st === 429 ? 'rate_limited' : st === 415 ? 'image_rejected' : st === 413 ? 'image_rejected' : st === 503 ? 'recognition_off' : st === 504 ? 'timeout' : 'upstream_error'; }
@@ -1551,7 +1555,7 @@ label.btn { cursor: pointer; }
     initServer: function (cfg, loggedIn) {
       this.server = !!root.TEPLO_API; this.loggedIn = !!loggedIn; this.engine = !!(cfg && cfg.recognition);
       // свой распознаватель в браузере (бесплатно, без ключа и без входа); нейросеть на сервере — только если владелец вставил ключ
-      this.local = this.server && typeof WebAssembly === 'object' && typeof Promise === 'function';
+      this.local = this.server && canWasm();
       this.available = this.server;
       if (this.server) this.limits = { images: { maxCount: 3, mediaTypes: ['image/jpeg', 'image/png', 'image/webp'] } };
     },
