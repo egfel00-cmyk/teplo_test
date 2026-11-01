@@ -804,6 +804,9 @@ label.btn { cursor: pointer; }
       p_wipe_confirm: 'Видалити лічильник, базу й історію з цього браузера? Скасувати не можна.',
       p_wipe_yes: 'Так, видалити',
       p_wiped: 'Дані видалено',
+      ph_base_entry: 'Розпізнати з фото екрана лічильника', ph_base_title: 'Останні прийняті — з фото',
+      ph_base_lead: 'Сфотографуйте екрани лічильника (можна кілька фото: енергія, обсяг, температури, години) або скриншот із кабінету ХТМ. Ми знайдемо цифри й внесемо їх у поля — ви перевірите й збережете.',
+      ph_to_base: 'Внести в поля', ph_base_filled: 'Цифри з фото внесено в поля. Перевірте їх і натисніть «Зберегти».',
       tr_title: 'Тестовий режим: почати спочатку', tr_sub: 'Зітре лічильник, базові й усі показання — на цьому пристрої й в акаунті. Вхід залишиться, сайт відкриється як уперше.',
       tr_btn: 'Стерти все й почати спочатку', tr_confirm: 'Стерти лічильник, базові показання та всю історію — тут і в акаунті? Скасувати не можна.',
 
@@ -1046,6 +1049,9 @@ label.btn { cursor: pointer; }
       p_wipe_confirm: 'Удалить счётчик, базу и историю из этого браузера? Отменить нельзя.',
       p_wipe_yes: 'Да, удалить',
       p_wiped: 'Данные удалены',
+      ph_base_entry: 'Распознать с фото экрана счётчика', ph_base_title: 'Последние принятые — с фото',
+      ph_base_lead: 'Сфотографируйте экраны счётчика (можно несколько фото: энергия, объём, температуры, часы) или скриншот из кабинета ХТМ. Мы найдём цифры и внесём их в поля — вы проверите и сохраните.',
+      ph_to_base: 'Внести в поля', ph_base_filled: 'Цифры с фото внесены в поля. Проверьте их и нажмите «Сохранить».',
       tr_title: 'Тестовый режим: начать сначала', tr_sub: 'Сотрёт счётчик, базовые и все показания — на этом устройстве и в аккаунте. Вход останется, сайт откроется как впервые.',
       tr_btn: 'Стереть всё и начать сначала', tr_confirm: 'Стереть счётчик, базовые показания и всю историю — здесь и в аккаунте? Отменить нельзя.',
 
@@ -1808,7 +1814,7 @@ label.btn { cursor: pointer; }
   }
 
   V.baseline = function () {
-    var b = S.baseline || {}, mt = S.meter || {};
+    var b = Object.assign({}, S.baseline || {}, S._baseFill || {}), mt = S.meter || {};
     var keys = ['energy', 'volume', 'flow', 'power', 'tSupply', 'tReturn', 'hours', 'errHours'];
     var fields = '<div class="field"><label for="b-date">' + esc(fieldLabel('date')) + '</label><div class="ctl"><input id="b-date" type="date" data-b="date" value="' + esc(b.date || '') + '"></div></div>' +
       '<div class="grid2">' + keys.map(function (k) {
@@ -1822,6 +1828,8 @@ label.btn { cursor: pointer; }
     return { screen: 'S03', route: 'baseline', bare: !S.onboarded, closeTo: 'home', html:
       '<h1>' + esc(t('b_title')) + '</h1><p>' + esc(t('b_lead')) + '</p>' +
       '<div class="banner">' + ico('info', 22) + '<div><p>' + esc(t('b_where')) + '</p></div></div>' +
+      (VIS().available ? '<p><button type="button" class="btn sec" data-act="photo" data-mode="baseline" data-key="baseline-photo">' + ico('camera', 20) + '<span>' + esc(t('ph_base_entry')) + '</span></button></p>' : '') +
+      (S._baseFill ? '<div class="banner" data-key="baseline-filled">' + ico('check', 22) + '<div><p>' + esc(t('ph_base_filled')) + '</p></div></div>' : '') +
       '<form id="baseline-form" data-key="baseline-form" novalidate><div class="panel">' + fields + '</div>' + meterData +
       '<p><button type="button" class="linkbtn" data-act="sample" data-key="baseline-sample">' + esc(t('b_sample')) + '</button></p>' +
       '<div class="row-actions"><button type="button" class="btn sec" data-act="skip-base" data-key="baseline-skip">' + esc(t('skip')) + '</button>' +
@@ -2058,7 +2066,7 @@ label.btn { cursor: pointer; }
 
   // ---------------- распознавание по фото ----------------
   var PH = { mode: 'reading', files: [], urls: [], status: 'idle', result: null, picked: null, error: '', ctl: null, progress: '' };
-  function phReset(mode) { PH.urls.forEach(function (u) { try { URL.revokeObjectURL(u); } catch (e) { /* нет */ } }); PH = { mode: mode || 'reading', files: [], urls: [], status: 'idle', result: null, picked: null, error: '', ctl: null, progress: '', date: S.draft && S.draft.date || today() }; }
+  function phReset(mode) { PH.urls.forEach(function (u) { try { URL.revokeObjectURL(u); } catch (e) { /* нет */ } }); PH = { mode: mode || 'reading', files: [], urls: [], status: 'idle', result: null, picked: null, error: '', ctl: null, progress: '', date: mode === 'baseline' ? ((S._baseFill && S._baseFill.date) || (S.baseline && S.baseline.date) || today()) : (S.draft && S.draft.date || today()) }; }
   function phErr(code) { return ({ not_signed_in: t('ph_err_login'), recognition_off: window.TEPLO_API ? t('ph_err_off') : t('ph_unavail'), timeout: t('ph_err_timeout'), not_granted: t('ph_err_not_granted'), sampling_disabled: t('ph_err_not_granted'), images_unavailable: t('ph_unavail'), rate_limited: t('ph_err_rate'), image_rejected: t('ph_err_image'), nothing: t('ph_err_nothing') })[code] || t('ph_err_generic'); }
   function thumbs(withRemove) {
     return '<ul class="thumbs" data-key="photo-thumbs">' + PH.urls.map(function (u, i) {
@@ -2066,14 +2074,14 @@ label.btn { cursor: pointer; }
     }).join('') + '</ul>';
   }
   V.photo = function () {
-    var model_ = PH.mode === 'model', back = model_ ? 'meter' : (S.onboarded ? 'home' : 'welcome');
-    var head = '<h1>' + esc(model_ ? t('ph_model_title') : t('ph_title')) + '</h1>';
+    var model_ = PH.mode === 'model', base_ = PH.mode === 'baseline', back = model_ ? 'meter' : base_ ? 'baseline' : (S.onboarded ? 'home' : 'welcome');
+    var head = '<h1>' + esc(model_ ? t('ph_model_title') : base_ ? t('ph_base_title') : t('ph_title')) + '</h1>';
     var shell_ = function (html) { return { screen: 'S12', route: 'photo', bare: true, closeTo: back, html: head + html }; };
     if (!VIS().available) return shell_('<div class="banner warn">' + ico('info', 22) + '<div><p>' + esc(t('ph_unavail')) + '</p></div></div><a class="btn" href="#' + back + '">' + esc(t('back')) + '</a>');
     var input = '<input type="file" id="ph-input" accept="' + esc(((VIS().limits && VIS().limits.images && VIS().limits.images.mediaTypes) || ['image/jpeg', 'image/png', 'image/webp']).join(',')) + '" multiple class="sr" data-key="photo-input">';
     if (PH.status === 'working') return shell_('<div class="banner" role="status">' + ico('clock', 22) + '<div><p><b>' + esc(t('ph_working', { n: PH.files.length })) + '</b></p>' + (PH.progress ? '<p>' + esc(PH.progress) + '</p>' : '') + '</div></div>' + thumbs(false) + '<div class="row-actions"><button class="btn sec" data-act="ph-stop">' + esc(t('ph_stop')) + '</button></div>');
     if (PH.status === 'done' && !model_) return shell_(photoResult());
-    var lead = '<p>' + esc(model_ ? t('ph_model_lead') : t('ph_lead')) + '</p>';
+    var lead = '<p>' + esc(model_ ? t('ph_model_lead') : base_ ? t('ph_base_lead') : t('ph_lead')) + '</p>';
     var err = PH.error ? '<div class="banner bad" role="alert">' + ico('alert', 22) + '<div><p>' + esc(PH.error) + '</p></div></div>' : '';
     var date = model_ ? '' : '<div class="field" style="max-width:280px"><label for="ph-date">' + esc(t('ph_date')) + '</label><div class="ctl"><input id="ph-date" type="date" value="' + esc(PH.date || today()) + '" max="' + today() + '"></div></div>';
     var pick = '<label for="ph-input" class="btn ' + (PH.files.length ? 'sec' : 'big') + '" role="button" tabindex="0" data-key="photo-pick">' + ico('camera', 22) + '<span>' + esc(PH.files.length ? t('ph_add') : t('ph_pick')) + '</span></label>';
@@ -2091,10 +2099,10 @@ label.btn { cursor: pointer; }
       var r = p[f.key], v = r ? r.value : '', conf = r ? r.confidence : 0;
       var tag = !r ? '<span class="pill bad">' + esc(t('ph_missing')) + '</span>' : r.conflict ? '<span class="pill warn">' + esc(t('ph_conflict')) + '</span>' : conf < 0.75 ? '<span class="pill warn">' + esc(t('ph_low')) + '</span>' : '<span class="pill ok">' + ico('check', 14) + '</span>';
       var th = r && PH.urls[r.photo] ? '<img class="src" src="' + PH.urls[r.photo] + '" alt="' + esc(t('ph_from', { n: r.photo + 1 })) + '" title="' + esc(t('ph_from', { n: r.photo + 1 })) + '">' : '<span class="src none"></span>';
-      return '<li>' + th + '<div class="grow"><label for="phv-' + f.key + '" class="small muted">' + esc(fieldLabel(f.key)) + (f.key === 'energy' ? ', ' + esc(unitLbl(energyUnit())) : f.unit ? ', ' + esc(fieldUnit(f.key)) : '') + '</label>' +
+      return '<li>' + th + '<div class="grow"><label for="phv-' + f.key + '" class="small muted">' + esc(fieldLabel(f.key)) + (f.key === 'energy' ? ', ' + esc(unitLbl(PH.mode === 'baseline' ? 'Gcal' : energyUnit())) : f.unit ? ', ' + esc(fieldUnit(f.key)) : '') + '</label>' +
         '<input id="phv-' + f.key + '" class="num ph-in" data-ph="' + f.key + '" inputmode="' + (f.key === 'errCode' ? 'text' : 'decimal') + '" value="' + esc(v) + '"' + (f.key === 'errCode' ? ' placeholder="E---"' : '') + '>' + (r && r.converted ? '<div class="small muted">' + esc(r.converted) + '</div>' : '') + '</div>' + tag + '</li>';
     }).join('') + '</ul>';
-    return h + '<div class="row-actions"><button class="btn sec" data-act="ph-again">' + esc(t('ph_add')) + '</button><button class="btn" data-act="ph-apply" data-to="check" data-key="photo-check">' + esc(t('ph_to_check')) + '</button></div>';
+    return h + '<div class="row-actions"><button class="btn sec" data-act="ph-again">' + esc(t('ph_add')) + '</button><button class="btn" data-act="ph-apply" data-to="check" data-key="photo-check">' + esc(PH.mode === 'baseline' ? t('ph_to_base') : t('ph_to_check')) + '</button></div>';
   }
   function phRun() {
     var y = VIS(); if (!y.available || !PH.files.length) return;
@@ -2110,7 +2118,7 @@ label.btn { cursor: pointer; }
         S._pickModel = id; if (res.meter.energyUnit) S._pickUnit = res.meter.energyUnit;
         toast(t('ph_meter_found', { m: modelName(M.byId(id)) })); go('meter'); return;
       }
-      var unit = (res.meter && res.meter.energyUnit && !S.meter) ? res.meter.energyUnit : energyUnit();
+      var unit = PH.mode === 'baseline' ? 'Gcal' : (res.meter && res.meter.energyUnit && !S.meter) ? res.meter.energyUnit : energyUnit();
       PH.picked = y.pick(res, M.TO_GCAL, unit);
       if (!Object.keys(PH.picked).length) { PH.status = 'idle'; PH.error = phErr('nothing'); render(true); return; }
       PH.status = 'done'; render(true);
@@ -2122,9 +2130,17 @@ label.btn { cursor: pointer; }
   function phApply() {
     var vals = {}; Array.prototype.forEach.call(document.querySelectorAll('[data-ph]'), function (el) { vals[el.getAttribute('data-ph')] = el.value.trim(); });
     var di = document.getElementById('ph-date'); var date = (di && di.value) || PH.date || today();
+    if (PH.mode === 'baseline') {   // последние принятые ХТМ — в поля экрана «Останні прийняті»; сохраняет человек сам
+      var fill = Object.assign({}, S._baseFill || {}); Object.keys(vals).forEach(function (k) { if (vals[k] !== '') fill[k] = vals[k]; }); fill.date = date;
+      S._baseFill = fill; phReport(vals); persist(); go('baseline'); return;
+    }
     if (!S.meter) { var mt = PH.result && PH.result.meter, id = mt && mt.modelId && M.byId(mt.modelId) ? mt.modelId : 'other'; S.meter = { modelId: id, unit: (mt && mt.energyUnit) || M.byId(id).unit }; }
     var conf = {}; Object.keys(PH.picked || {}).forEach(function (k) { var r = PH.picked[k]; if (String(vals[k]) === String(r.value)) conf[k] = r.conflict ? 0.5 : r.confidence; });
     S.draft = { date: date, values: vals, step: steps().length - 1, source: 'photo', photoConf: conf, startedAt: new Date().toISOString() };
+    phReport(vals);
+    save(); go('check');
+  }
+  function phReport(vals) {
     if (VIS().report) {   // в аналитику: чего не нашлось на фото, где расхождения, что человек поправил руками
       var picked = PH.picked || {}, all = ['energy', 'volume', 'flow', 'power', 'tSupply', 'tReturn', 'hours', 'errHours', 'errCode'];
       VIS().report({ ids: (PH.result && PH.result.ids) || [], model: S.meter && S.meter.modelId,
@@ -2132,7 +2148,6 @@ label.btn { cursor: pointer; }
         conflicts: Object.keys(picked).filter(function (k) { return picked[k].conflict; }),
         corrections: Object.keys(picked).filter(function (k) { return String(vals[k]) !== String(picked[k].value); }).map(function (k) { return { field: k, recognized: String(picked[k].value), final: String(vals[k] || '') }; }) });
     }
-    save(); go('check');
   }
 
   // ---------------- справка ----------------
@@ -2275,7 +2290,7 @@ label.btn { cursor: pointer; }
         delete S._pickModel; save();
         go(S.onboarded ? 'home' : 'baseline'); break;
       }
-      case 'skip-base': S.onboarded = true; save(); go('home'); break;
+      case 'skip-base': S.onboarded = true; delete S._baseFill; save(); go('home'); break;
       case 'sample': {
         var d = addDays(today(), -25), smp = { date: d, energy: '13.245', volume: '2292.676', flow: '0.063', power: '1.685', tSupply: '50.76', tReturn: '27.71', hours: '34598', errHours: '153', errCode: 'E---' };
         Object.keys(smp).forEach(function (k) { var f = document.querySelector('[data-b="' + k + '"]'); if (f) f.value = smp[k]; });
@@ -2307,7 +2322,13 @@ label.btn { cursor: pointer; }
       case 'scroll': { var tg = document.getElementById(el.getAttribute('data-target')); if (tg) tg.scrollIntoView({ behavior: 'smooth', block: 'start' }); break; }
       case 'export': copyText(JSON.stringify(S), el); break;
       case 'wipe-ask': document.getElementById('wipe-confirm').innerHTML = '<div class="confirm"><p>' + esc(t(el.getAttribute('data-test') || (Y().mode === 'server' && Y().account) ? 'tr_confirm' : 'p_wipe_confirm')) + '</p><div class="row-actions" style="margin-top:8px"><button class="btn sec" data-act="wipe-no">' + esc(t('cancel')) + '</button><button class="btn danger" data-act="wipe-yes" data-key="prefs-wipe-yes">' + esc(t('p_wipe_yes')) + '</button></div></div>'; break;
-      case 'photo': phReset(el.getAttribute('data-mode')); go('photo'); break;
+      case 'photo': {
+        if (el.getAttribute('data-mode') === 'baseline') {   // не потерять уже введённое руками
+          var typed = {}; Array.prototype.forEach.call(document.querySelectorAll('[data-b]'), function (x) { if (x.value.trim()) typed[x.getAttribute('data-b')] = x.value.trim(); });
+          if (Object.keys(typed).length) { S._baseFill = Object.assign({}, S._baseFill || {}, typed); persist(); }
+        }
+        phReset(el.getAttribute('data-mode')); go('photo'); break;
+      }
       case 'ph-remove': { var ix = +el.getAttribute('data-i'); try { URL.revokeObjectURL(PH.urls[ix]); } catch (e2) { /* нет */ } PH.files.splice(ix, 1); PH.urls.splice(ix, 1); render(true); break; }
       case 'ph-run': phRun(); break;
       case 'fb-open': FB.open = true; FB.err = ''; render(true); setTimeout(function () { var x = document.getElementById('fb-text'); if (x) x.focus(); }, 0); break;
@@ -2358,7 +2379,7 @@ label.btn { cursor: pointer; }
       if (hasAny) { b.errCode = R.normCode(b.errCode); ['energy', 'volume', 'flow', 'power', 'tSupply', 'tReturn', 'hours', 'errHours'].forEach(function (k) { var n = R.num(b[k]); b[k] = n === null ? '' : n; }); S.baseline = b; }
       S.meter = S.meter || {};
       Array.prototype.forEach.call(f.querySelectorAll('[data-m]'), function (el) { S.meter[el.getAttribute('data-m')] = el.value.trim(); });
-      S.onboarded = true; save(); toast(t('b_saved')); go('home');
+      S.onboarded = true; delete S._baseFill; save(); toast(t('b_saved')); go('home');
     } else if (f.id === 'step-form') {
       var nb = document.querySelector('[data-act="step-next"]'); if (nb) nb.click();
     } else if (f.id === 'reject-form') {

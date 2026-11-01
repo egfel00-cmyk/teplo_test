@@ -49,7 +49,7 @@ final class Recognize {
     return implode("\n", array_filter([
       'You read photos of an apartment heat meter in Kharkiv, Ukraine, to fill a form for the city heating company. Accuracy matters more than completeness.',
       "There are $count photo(s), in the order given; report \"index\" counting from $offset.",
-      'A photo may be: a close-up of the LCD screen (usually ONE value per photo, the person pressed the button between photos), the nameplate/label, or a wide shot of the meter (possibly with several meters).',
+      'A photo may be: a close-up of the LCD screen (usually ONE value per photo, the person pressed the button between photos), the nameplate/label, or a wide shot of the meter (possibly with several meters). It may also be a screenshot of the heating company web cabinet showing previously accepted values in a table — read those values the same way (kind "other").',
       "Known models (id — name): $cat. Use \"other\" if it is a heat meter not in the list, null if you cannot tell.",
       $exp ? 'The person says their meter is: ' . self::MODELS[$exp] . '. If a photo shows several meters, read the one matching this model' . ($apt ? " (or the apartment sticker $apt)" : '') . ' and say so in "note".' : 'The model is not known yet — identify it from the nameplate or the look of the meter.',
       $exp && isset(self::ORDER[$exp]) ? 'For this model the screens usually come in this order: ' . self::ORDER[$exp] . '. Use it only to tell unlabeled screens apart.' : '',
