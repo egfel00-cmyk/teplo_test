@@ -42,6 +42,26 @@ ok('тест экрана «88888888» — пропущен', sh([L('88888888', 
 ok('тест экрана, прочитанный кусками «881» + «88», и «ct» под экраном — пропущен', (r => r.photo.note === 'test_screen' && !r.photo.readings.length)(sh([L('881', ['881', ''], 466, 771, 88, 64), L('88', ['86', '86'], 696, 774, 81, 60), L('ct', null, 538, 1021, 234, 112)])));
 ok('знак «CE» на корпусе не становится обраткой', !/tReturn/.test(one(sh([L('0000', ['0000', '0000'], 544, 739, 180, 92), L('kw', null, 730, 793, 50, 34)]))));
 
+console.log('\nПачка фото по порядку экранов (подписи не прочитались):');
+{
+  const ph = (i, t, readings, extra) => Object.assign({ index: i, time: t, readings: readings || [] }, extra || {});
+  const c = { models: M.MODELS, modelId: 'sharky774', steps: sharky.steps };
+  const b = P.batch([
+    ph(0, 100, [], { note: 'test_screen', anchor: -1 }),
+    ph(1, 200, [{ field: 'energy', value: '17.913', how: 'tag' }]),
+    ph(2, 300, [{ field: 'energy', value: '3217.437', how: 'model' }], { cand: { digits: '3217437', dot: 3, score: 0.9 } }),
+    ph(3, 400, [], { cand: { digits: '0000', dot: null, score: 0.9 } }),
+    ph(4, 500, [{ field: 'power', value: '0.000', how: 'tag' }]),
+    ph(5, 600, [{ field: 'tSupply', value: '13.50', how: 'tag' }]),
+    ph(6, 700, [], { cand: { digits: '002', dot: null, score: 0.9 } }),
+    ph(7, 800, [{ field: 'hours', value: '41704', how: 'tag' }])
+  ], c);
+  const got = b.map(p => p.readings.map(r => r.field + '=' + r.value).join(',')).join(' | ');
+  ok('объём и расход — по месту между энергией и мощностью; «0.02» не стал обраткой', got === ' | energy=17.913 | volume=3217.437 | flow=0.000 | power=0.000 | tSupply=13.50 |  | hours=41704', got);
+  const b2 = P.batch([ph(0, 900, [], { cand: { digits: '0000', dot: null, score: 0.9 } }), ph(1, 100, [{ field: 'flow', value: '1.2', how: 'tag' }])], c);
+  ok('порядок — по времени съёмки, а не по порядку выбора файлов', b2[0].readings[0] && b2[0].readings[0].field === 'power');
+}
+
 console.log('\nНе теплосчётчик:');
 for (const [k, t] of [['syn_water', 'water'], ['syn_electric', 'electric'], ['syn_gas', 'gas']]) {
   x = read(k, {}); ok(k + ' → ' + t + ', показания не берём', x.r.photo.meterType === t && !x.r.photo.readings.length, x.r.photo);

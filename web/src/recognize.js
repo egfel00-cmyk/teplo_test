@@ -63,7 +63,7 @@
     _engine: function (onPct) {
       var base = String(root.TEPLO_API).replace(/\/api\/?$/, '') + '/web/ocr/';
       var script = root.TeploOCR ? Promise.resolve() : (this._script = this._script || new Promise(function (ok, bad) {
-        var s = document.createElement('script'); s.src = base + 'engine.js?v=5'; s.onload = ok; s.onerror = function () { bad(fail('engine_failed')); }; document.head.appendChild(s);
+        var s = document.createElement('script'); s.src = base + 'engine.js?v=6'; s.onload = ok; s.onerror = function () { bad(fail('engine_failed')); }; document.head.appendChild(s);
       }));
       return script.then(function () { return root.TeploOCR.load(base, onPct); }).catch(function (e) { if (e && e.code) throw e; throw fail('engine_failed'); });
     },
@@ -84,6 +84,7 @@
         files.forEach(function (f, i) {
           chain = chain.then(function () { cancelled(); if (onProgress) onProgress(i + 1, files.length, 'photo'); return root.TeploOCR.read(f); }).then(function (res) {
             var r = P.photo(res, ctx, i);
+            r.photo.time = f.lastModified || 0;   // время съёмки — порядок экранов для разбора пачки
             out.photos.push(r.photo); results.push({ photo: r.photo, meter: r.meter, ms: res.ms, ocr: res.lines.slice(0, 80).map(function (l) { return { t: l.text.slice(0, 80), a: l.alts ? l.alts.map(function (x) { return x.slice(0, 40); }) : undefined, s: l.score, h: l.h }; }) });
             if (r.meter && (!out.meter || (r.meter.confidence || 0) > (out.meter.confidence || 0) || (!out.meter.energyUnit && r.meter.energyUnit))) out.meter = Object.assign({}, out.meter || {}, r.meter, { energyUnit: r.meter.energyUnit || (out.meter && out.meter.energyUnit) || null });
           });
@@ -91,6 +92,7 @@
         return chain;
       }).then(function () {
         cancelled();
+        if (P.batch) P.batch(out.photos, ctx);
         if (self.isIn()) uploads.then(function () { if (ids.length) post('/recognize/local', JSON.stringify({ ids: ids, results: results }), 'application/json').catch(function () {}); });
         return out;
       }, function (e) { if (signal && signal.aborted) throw fail('cancelled'); throw e; });

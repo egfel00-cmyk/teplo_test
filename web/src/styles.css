@@ -345,3 +345,14 @@ label.btn { cursor: pointer; }
 .theme-btn { display: grid; place-items: center; width: var(--tap); height: var(--tap); border: 1.5px solid var(--c-line); border-radius: 50%; background: var(--c-surface); color: var(--c-ink); cursor: pointer; flex: none; }
 .theme-btn:hover { border-color: var(--c-ink-2); }
 .top .theme-btn + .btn { margin-left: var(--sp-2); }
+
+/* просмотр фото на весь экран */
+.pv { position: fixed; inset: 0; z-index: 1000; background: rgba(0, 0, 0, .94); touch-action: none; overflow: hidden; overscroll-behavior: contain; }
+.pv img { position: absolute; left: 0; top: 0; transform-origin: 0 0; max-width: none; max-height: none; user-select: none; -webkit-user-drag: none; }
+.pv-bar { position: absolute; left: 0; right: 0; top: 0; display: flex; gap: 8px; align-items: center; justify-content: flex-end; padding: calc(env(safe-area-inset-top) + 10px) 12px 10px; background: linear-gradient(rgba(0,0,0,.6), transparent); color: #fff; }
+.pv-n { margin-right: auto; font-weight: 600; font-variant-numeric: tabular-nums; }
+.pv-b { width: 48px; height: 48px; border-radius: 50%; border: 0; background: rgba(255, 255, 255, .16); color: #fff; font-size: 28px; line-height: 1; display: grid; place-items: center; cursor: pointer; }
+.pv-b:focus-visible { outline: 3px solid #fff; outline-offset: 2px; }
+.thumbs img[data-pv], .ph-fields img[data-pv] { cursor: zoom-in; }
+/* узкий телефон (≤ 420 px): «Закрити» — только крестиком, иначе шапка шире экрана и страница уменьшается */
+@media (max-width: 420px) { .cl-txt { display: none; } .pv-bar { box-sizing: border-box; } }

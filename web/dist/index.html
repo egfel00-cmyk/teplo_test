@@ -359,6 +359,17 @@ label.btn { cursor: pointer; }
 .theme-btn:hover { border-color: var(--c-ink-2); }
 .top .theme-btn + .btn { margin-left: var(--sp-2); }
 
+/* просмотр фото на весь экран */
+.pv { position: fixed; inset: 0; z-index: 1000; background: rgba(0, 0, 0, .94); touch-action: none; overflow: hidden; overscroll-behavior: contain; }
+.pv img { position: absolute; left: 0; top: 0; transform-origin: 0 0; max-width: none; max-height: none; user-select: none; -webkit-user-drag: none; }
+.pv-bar { position: absolute; left: 0; right: 0; top: 0; display: flex; gap: 8px; align-items: center; justify-content: flex-end; padding: calc(env(safe-area-inset-top) + 10px) 12px 10px; background: linear-gradient(rgba(0,0,0,.6), transparent); color: #fff; }
+.pv-n { margin-right: auto; font-weight: 600; font-variant-numeric: tabular-nums; }
+.pv-b { width: 48px; height: 48px; border-radius: 50%; border: 0; background: rgba(255, 255, 255, .16); color: #fff; font-size: 28px; line-height: 1; display: grid; place-items: center; cursor: pointer; }
+.pv-b:focus-visible { outline: 3px solid #fff; outline-offset: 2px; }
+.thumbs img[data-pv], .ph-fields img[data-pv] { cursor: zoom-in; }
+/* узкий телефон (≤ 420 px): «Закрити» — только крестиком, иначе шапка шире экрана и страница уменьшается */
+@media (max-width: 420px) { .cl-txt { display: none; } .pv-bar { box-sizing: border-box; } }
+
 </style>
 <style>.top { padding-top: max(12px, env(safe-area-inset-top)); }</style>
 </head>
@@ -1072,8 +1083,9 @@ label.btn { cursor: pointer; }
       ph_not_heat_short_water: "це лічильник води, не тепла — пропущено",
       ph_not_heat_short_electric: "це лічильник світла, не тепла — пропущено",
       ph_not_heat_short_gas: "це газовий лічильник, не тепла — пропущено",
+      ph_zoom_hint: 'Натисніть фото, щоб збільшити й звірити (щипок або подвійне натискання — зум).', ph_view: 'Перегляд фото', ph_prev: 'Попереднє фото', ph_next: 'Наступне фото',
       pn_unlabeled: "не видно підпису (Gcal, m³, °C…), тому не зрозуміло, що це за число — зніміть екран повністю",
-      pn_test_screen: 'це тест екрана (горять усі сегменти) — натисніть кнопку ще раз і зніміть наступний екран', pn_dt_screen: 'це екран різниці температур (dt) — у форму ХТМ не потрібен',
+      pn_test_screen: 'це тест екрана (горять усі сегменти) — натисніть кнопку ще раз і зніміть наступний екран', pn_dt_screen: 'це екран різниці температур (dt) — у форму ХТМ не потрібен', pn_by_order: 'підпису не видно — поле визначено за порядком екранів лічильника, звірте з фото',
       pn_unit_guess: 'підпису одиниці на екрані не видно — взяли типову для цієї моделі, перевірте (kWh, MWh чи Гкал)',
       pn_no_dot: "не видно десяткової коми — перевірте, де вона",
       ph_err_off: "Розпізнавання ще вмикаємо (тестовий режим): фото збережене, команда його побачить. Поки що введіть цифри вручну.",
@@ -1395,8 +1407,9 @@ label.btn { cursor: pointer; }
       ph_not_heat_short_water: "это счётчик воды, не тепла — пропущено",
       ph_not_heat_short_electric: "это счётчик света, не тепла — пропущено",
       ph_not_heat_short_gas: "это газовый счётчик, не тепла — пропущено",
+      ph_zoom_hint: 'Нажмите на фото, чтобы увеличить и сверить (щипок или двойное нажатие — зум).', ph_view: 'Просмотр фото', ph_prev: 'Предыдущее фото', ph_next: 'Следующее фото',
       pn_unlabeled: "не видно подписи (Gcal, m³, °C…), поэтому непонятно, что это за число — снимите экран целиком",
-      pn_test_screen: 'это тест экрана (горят все сегменты) — нажмите кнопку ещё раз и снимите следующий экран', pn_dt_screen: 'это экран разницы температур (dt) — в форму ХТМ не нужен',
+      pn_test_screen: 'это тест экрана (горят все сегменты) — нажмите кнопку ещё раз и снимите следующий экран', pn_dt_screen: 'это экран разницы температур (dt) — в форму ХТМ не нужен', pn_by_order: 'подписи не видно — поле определено по порядку экранов счётчика, сверьте с фото',
       pn_unit_guess: 'подписи единицы на экране не видно — взяли типичную для этой модели, проверьте (kWh, MWh или Гкал)',
       pn_no_dot: "не видно десятичной запятой — проверьте, где она",
       ph_err_off: "Распознавание ещё включаем (тестовый режим): фото сохранено, команда его увидит. Пока введите цифры вручную.",
@@ -1699,7 +1712,7 @@ label.btn { cursor: pointer; }
     { re: /^m\s?[3³]\s?\/\s?h$/i, field: 'flow', unit: 'm³/h', w: 3 }, { re: /^k\s?W$/i, field: 'power', unit: 'kW', w: 3 },
     { re: /^m\s?[3³]$/i, field: 'volume', unit: 'm³', w: 3 },
     // подписи семисегментным шрифтом распознаются «похоже»: ht → be/bt/nt, ct → ce/cE, On → 0n/Dn, dt → de/BE (перепад — в форму не идёт)
-    { re: /^(HT|T1|T\s?1|[hbn][tE]|b[e])$/, field: 'tSupply', unit: '°C', w: 4 }, { re: /^(HT|T1)$/i, field: 'tSupply', unit: '°C', w: 4 },
+    { re: /^(HT|T1|T\s?1|[hbn][tEe]|6e|b[e])$/, field: 'tSupply', unit: '°C', w: 4 }, { re: /^(HT|T1)$/i, field: 'tSupply', unit: '°C', w: 4 },
     { re: /^(CT|T2|T\s?2|c[tE]|C[t])$/, field: 'tReturn', unit: '°C', w: 4 }, { re: /^(CT|T2)$/i, field: 'tReturn', unit: '°C', w: 4 },
     { re: /^(dt|dE|de|BE|dT|d七)$/, field: 'dT', unit: '°C', w: 5 },
     { re: /^(ON|0N|On\s?h|0n|Dn|On)$/i, field: 'hours', unit: 'h', w: 4 }, { re: /^(EH|E\s?h|Err\s?h|ERR\s?H)$/i, field: 'errHours', unit: 'h', w: 4 },
@@ -1711,7 +1724,7 @@ label.btn { cursor: pointer; }
   function digitsOf(s) { return String(s || '').replace(/[^0-9]/g, ''); }
   /** «00015 482» → «00015.482» по позиции точки; «0O1S.4B2» → цифры (похожие буквы — в цифры, только внутри числа) */
   // подпись в начале строки числа: «0n 41704», «ht 13.50» (семисегментные буквы)
-  var LEAD = /^\s*([0ODo][nN]|[hbn][tE]|be|c[tE]|Ct|d[teE]|BE|E\s?h|HT|CT)\s+(?=[0-9OoIl])/;
+  var LEAD = /^\s*([0ODo][nN]|[hbn][tEe]|6e|be|c[tE]|Ct|d[teE]|BE|E\s?h|HT|CT)\s+(?=[0-9OoIl])/;
   function cleanNum(s) {
     s = String(s || '').replace(LEAD, '').replace(/(\d)\s*:\s*(\d)/g, '$1.$2').replace(/,/g, '.').replace(/[Oo]/g, '0').replace(/[Il|]/g, '1').replace(/S/g, '5').replace(/B/g, '8').replace(/Z/g, '2');
     var m = s.match(/[0-9][0-9 .]*[0-9]|[0-9]/); if (!m) return null;
@@ -1802,12 +1815,13 @@ label.btn { cursor: pointer; }
     });
 
     // тест экрана (горят все сегменты): строка «88888888» часто читается кусками «881», «88» — если все крупные числа из одних восьмёрок
+    var all8 = mains.map(function (l) { return digitsOf(l.text); }).join(''), n8 = (all8.match(/8/g) || []).length;
     var e8 = mains.map(function (l) { return [l.text].concat(l.alts || []).map(function (x) { return digitsOf(x); }).filter(function (d) { return /^8{2,}1?$/.test(d); })[0] || ''; }).filter(Boolean);
-    if (e8.length >= 2 && e8.join('').length >= 5) { out.note = 'test_screen'; mains = []; }
+    if ((e8.length >= 2 && e8.join('').length >= 5) || (mains.length >= 2 && n8 >= 5 && n8 >= all8.length * 0.6)) { out.note = 'test_screen'; mains = []; out.anchor = -1; }
     mains.forEach(function (l) {
       var txt = (l.alts && l.alts.length ? l.alts[0] : l.text).replace(/\s/g, '');
       if (/^E[\-–—_]*$/i.test(txt) || /^E[\-–—_]+$/i.test(l.text.replace(/\s/g, ''))) {
-        out.readings.push({ field: 'errCode', value: 'E---', unit: '', label: 'E-', confidence: +(0.85 * l.score).toFixed(2) }); return;
+        out.readings.push({ field: 'errCode', value: 'E---', unit: '', label: 'E-', confidence: +(0.85 * l.score).toFixed(2), how: 'tag' }); return;
       }
       var mE = txt.match(/^E[\-–—_]?(\d{1,4})$/i);
       if (mE) { out.readings.push({ field: 'errCode', value: 'E' + mE[1], unit: '', label: 'E', confidence: +(0.7 * l.score).toFixed(2) }); return; }
@@ -1821,7 +1835,7 @@ label.btn { cursor: pointer; }
       var field = null, unit = '', label = '', how = 'tag', conf = l.score * (0.75 + 0.25 * bv.agree);
       if (near.length) {
         field = near[0].tag.field; unit = near[0].tag.unit; label = near[0].lead ? bv.lead : near[0].line.text;
-        if (field === 'dT') { out.kind = 'screen'; out.note = out.note || 'dt_screen'; return; }   // перепад температур — в форму ХТМ не идёт
+        if (field === 'dT') { out.kind = 'screen'; out.note = out.note || 'dt_screen'; out.anchor = 4.5; return; }   // перепад температур — в форму ХТМ не идёт
         if (field === 'm') {   // «m³» отдельно от «/h»: короткое число — расход, длинное накопленное — объём
           var hTag = tags.some(function (t) { return /^h$/i.test(String(t.line.text).trim()) && dist(l, t.line) < 6; });
           if (hTag || bv.digits.length <= 5) { field = 'flow'; unit = 'm³/h'; } else { field = 'volume'; unit = 'm³'; }
@@ -1848,8 +1862,9 @@ label.btn { cursor: pointer; }
           meter = meter || { modelId: mid, modelText: null, serial: null, apartment: null, energyUnit: null, confidence: 0.4 }; meter.energyUnit = unit;
           out.note = out.note || 'unit_guess';
         }
+        out.cand = out.cand || { digits: bv.digits, dot: bv.dot, score: l.score };   // для разбора всей пачки по порядку экранов
         if (!field) {
-          if (val === null && bv.digits.length >= 4) { field = 'hours'; how = 'guess'; }
+          if (val === null && bv.digits.length >= 4 && /[1-9]/.test(bv.digits)) { field = 'hours'; how = 'guess'; }
           else if (val && (val.split('.')[1] || '').length === 3) { field = 'energy'; how = 'guess'; }
           else if (val && (val.split('.')[1] || '').length === 2 && parseFloat(val) < 150) { field = null; }
         }
@@ -1859,7 +1874,7 @@ label.btn { cursor: pointer; }
       if (val === null) { var inf = inferDot(bv.digits, field, ctx); val = inf.v; if ((inf.how === 'none' || inf.how === 'dec') && DEC[field]) { conf *= inf.how === 'dec' ? 0.75 : 0.6; out.note = out.note || 'no_dot'; } else if (inf.how !== 'int') conf *= 0.9; }
       if (how === 'prev') conf *= 0.8; if (how === 'guess') conf *= 0.5; if (how === 'model') conf *= 0.7;
       if (field === 'energy' && unit) { meter = meter || { modelId: null, modelText: null, serial: null, apartment: null, energyUnit: null, confidence: 0.3 }; meter.energyUnit = unit; }
-      out.readings.push({ field: field, value: stripZeros(val), unit: unit, label: label, confidence: +Math.min(0.97, conf).toFixed(2) });
+      out.readings.push({ field: field, value: stripZeros(val), unit: unit, label: label, confidence: +Math.min(0.97, conf).toFixed(2), how: how });
     });
     if (out.readings.length) out.kind = 'screen';
     else if (meter && meter.modelId) out.kind = 'nameplate';
@@ -1867,7 +1882,48 @@ label.btn { cursor: pointer; }
     return { photo: out, meter: meter };
   }
 
-  var api = { photo: photo, meterType: meterType, cleanNum: cleanNum, inferDot: inferDot };
+  /**
+   * Пачка фото одного счётчика, снятых по порядку нажатий кнопки: число без подписи (мелкие значки «m³», «m³/h», «Gcal»
+   * на ЖК часто не читаются) получает поле по месту фото между уверенно распознанными экранами и по формату числа.
+   * Такие значения помечаются how:'order' — человек сверяет их с фото.
+   */
+  var STEP = { energy: 0, volume: 1, flow: 2, power: 3, tSupply: 4, tReturn: 4.1, hours: 5, errHours: 5.1, errCode: 6 };
+  function fits(field, d, dot) {
+    var n = d.length, v;
+    if (field === 'energy' || field === 'volume') return n >= 4 && (dot === null || dot === 3);
+    if (field === 'flow' || field === 'power') return n >= 4 && n <= 5 && (dot === null || dot === 3);
+    if (field === 'tSupply' || field === 'tReturn') { v = parseFloat(placeDot(d, 2)); return n >= 3 && n <= 4 && (dot === null || dot === 2) && v >= 5 && v < 150; }
+    if (field === 'hours' || field === 'errHours') return dot === null && /[1-9]/.test(d);
+    return false;
+  }
+  function batch(photos, ctx) {
+    var order = ['energy', 'volume', 'flow', 'power', 'tSupply', 'tReturn', 'hours', 'errHours'];
+    if (ctx && ctx.steps) { order = []; ctx.steps.forEach(function (st) { st.fields.forEach(function (f) { if (f !== 'errCode') order.push(f); }); }); }
+    var mdl = ctx && ctx.models ? ctx.models.filter(function (m) { return m.id === ctx.modelId; })[0] : null, unitE = (mdl && mdl.unit) || 'Gcal';
+    var sure = function (r) { return r.how !== 'guess' && r.how !== 'model'; };
+    var anchorOf = function (p) { var a = typeof p.anchor === 'number' ? p.anchor : null; (p.readings || []).forEach(function (r) { if (sure(r) && STEP[r.field] !== undefined) a = a === null ? STEP[r.field] : Math.max(a, STEP[r.field]); }); return a; };
+    var have = {}; photos.forEach(function (p) { (p.readings || []).forEach(function (r) { if (sure(r)) have[r.field] = 1; }); });
+    var list = photos.map(function (p, i) { return { p: p, i: typeof p.index === 'number' ? p.index : i, t: p.time || 0, a: anchorOf(p) }; }).sort(function (x, y) { return (x.t && y.t && x.t !== y.t) ? x.t - y.t : x.i - y.i; });
+    list.forEach(function (it, k) {
+      var p = it.p; if (!p.cand || it.a !== null) return;
+      var lo = -Infinity, hi = Infinity, j;
+      for (j = k - 1; j >= 0; j--) if (list[j].a !== null) { lo = list[j].a; break; }
+      for (j = k + 1; j < list.length; j++) if (list[j].a !== null) { hi = list[j].a; break; }
+      var d = p.cand.digits, dot = p.cand.dot;
+      var f = order.filter(function (x) { return !have[x] && STEP[x] > lo && STEP[x] < hi && fits(x, d, dot); })[0];
+      if (!f) {   // «0.02» между температурами и часами — экран разницы температур (подпись «dt» не прочиталась)
+        if (lo >= 4 && lo < 5 && /^0/.test(d) && d.length <= 4) { p.note = 'dt_screen'; p.kind = 'screen'; it.a = 4.5; }
+        return;
+      }
+      var val = DEC[f] ? placeDot(d, dot !== null ? dot : DEC[f]) : d;
+      p.readings = (p.readings || []).filter(sure);
+      p.readings.push({ field: f, value: stripZeros(val), unit: { energy: unitE, volume: 'm³', flow: 'm³/h', power: 'kW', tSupply: '°C', tReturn: '°C', hours: 'h', errHours: 'h' }[f], label: '', confidence: +(0.55 * (p.cand.score || 1)).toFixed(2), how: 'order' });
+      p.kind = 'screen'; p.note = 'by_order'; have[f] = 1; it.a = STEP[f];
+    });
+    return photos;
+  }
+
+  var api = { batch: batch, photo: photo, meterType: meterType, cleanNum: cleanNum, inferDot: inferDot };
   if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.TeploOCRParse = api;
 })(typeof window !== 'undefined' ? window : this);
 
@@ -1938,7 +1994,7 @@ label.btn { cursor: pointer; }
     _engine: function (onPct) {
       var base = String(root.TEPLO_API).replace(/\/api\/?$/, '') + '/web/ocr/';
       var script = root.TeploOCR ? Promise.resolve() : (this._script = this._script || new Promise(function (ok, bad) {
-        var s = document.createElement('script'); s.src = base + 'engine.js?v=5'; s.onload = ok; s.onerror = function () { bad(fail('engine_failed')); }; document.head.appendChild(s);
+        var s = document.createElement('script'); s.src = base + 'engine.js?v=6'; s.onload = ok; s.onerror = function () { bad(fail('engine_failed')); }; document.head.appendChild(s);
       }));
       return script.then(function () { return root.TeploOCR.load(base, onPct); }).catch(function (e) { if (e && e.code) throw e; throw fail('engine_failed'); });
     },
@@ -1959,6 +2015,7 @@ label.btn { cursor: pointer; }
         files.forEach(function (f, i) {
           chain = chain.then(function () { cancelled(); if (onProgress) onProgress(i + 1, files.length, 'photo'); return root.TeploOCR.read(f); }).then(function (res) {
             var r = P.photo(res, ctx, i);
+            r.photo.time = f.lastModified || 0;   // время съёмки — порядок экранов для разбора пачки
             out.photos.push(r.photo); results.push({ photo: r.photo, meter: r.meter, ms: res.ms, ocr: res.lines.slice(0, 80).map(function (l) { return { t: l.text.slice(0, 80), a: l.alts ? l.alts.map(function (x) { return x.slice(0, 40); }) : undefined, s: l.score, h: l.h }; }) });
             if (r.meter && (!out.meter || (r.meter.confidence || 0) > (out.meter.confidence || 0) || (!out.meter.energyUnit && r.meter.energyUnit))) out.meter = Object.assign({}, out.meter || {}, r.meter, { energyUnit: r.meter.energyUnit || (out.meter && out.meter.energyUnit) || null });
           });
@@ -1966,6 +2023,7 @@ label.btn { cursor: pointer; }
         return chain;
       }).then(function () {
         cancelled();
+        if (P.batch) P.batch(out.photos, ctx);
         if (self.isIn()) uploads.then(function () { if (ids.length) post('/recognize/local', JSON.stringify({ ids: ids, results: results }), 'application/json').catch(function () {}); });
         return out;
       }, function (e) { if (signal && signal.aborted) throw fail('cancelled'); throw e; });
@@ -2355,7 +2413,7 @@ label.btn { cursor: pointer; }
       return '<a href="#' + n[0] + '"' + (route === n[0] ? ' aria-current="page"' : '') + ' data-key="nav-' + n[0] + '">' + ico(n[1], 22) + '<span>' + esc(t(n[2])) + '</span></a>';
     }).join('') + '</nav>';
     var right = bare && view.closeTo
-      ? '<a class="btn ghost" href="#' + view.closeTo + '" data-key="wiz-close">' + ico('close', 22) + '<span>' + esc(t('close')) + '</span></a>'
+      ? '<a class="btn ghost" href="#' + view.closeTo + '" data-key="wiz-close" aria-label="' + esc(t('close')) + '">' + ico('close', 22) + '<span class="cl-txt">' + esc(t('close')) + '</span></a>'
       : '';
     return '<div class="app' + (bare ? ' bare-app' : '') + '">' +
       '<header class="top"><a class="brand" href="#home" data-key="brand">' + logo() + '<span>' + esc(t('brand')) + '</span></a>' + (window.TEPLO_API ? '<span class="beta" title="' + esc(t('beta_sub')) + '">' + esc(t('beta')) + '</span>' : '') + '<span class="spacer"></span>' + themeBtn() + right + '</header>' +
@@ -3081,7 +3139,7 @@ label.btn { cursor: pointer; }
   function phErr(code) { return ({ not_signed_in: t('ph_err_login'), recognition_off: window.TEPLO_API ? t('ph_err_off') : t('ph_unavail'), timeout: t('ph_err_timeout'), not_granted: t('ph_err_not_granted'), sampling_disabled: t('ph_err_not_granted'), images_unavailable: t('ph_unavail'), rate_limited: t('ph_err_rate'), engine_failed: t('ph_err_engine'), image_rejected: t('ph_err_image'), nothing: t('ph_err_nothing') })[code] || t('ph_err_generic'); }
   function thumbs(withRemove) {
     return '<ul class="thumbs" data-key="photo-thumbs">' + PH.urls.map(function (u, i) {
-      return '<li><img src="' + u + '" alt="' + esc(t('ph_from', { n: i + 1 })) + '"><span class="n">' + (i + 1) + '</span>' + (withRemove ? '<button class="rm" data-act="ph-remove" data-i="' + i + '" aria-label="' + esc(t('ph_remove')) + '">' + ico('close', 16) + '</button>' : '') + '</li>';
+      return '<li><img data-pv="' + i + '" src="' + u + '" alt="' + esc(t('ph_from', { n: i + 1 })) + '"><span class="n">' + (i + 1) + '</span>' + (withRemove ? '<button class="rm" data-act="ph-remove" data-i="' + i + '" aria-label="' + esc(t('ph_remove')) + '">' + ico('close', 16) + '</button>' : '') + '</li>';
     }).join('') + '</ul>';
   }
   V.photo = function () {
@@ -3109,16 +3167,57 @@ label.btn { cursor: pointer; }
       if (x.meterType && x.meterType !== 'heat') return '<p>' + esc(t('ph_from', { n: x.index + 1 })) + ': ' + esc(t('ph_not_heat_short_' + x.meterType)) + '</p>';
       var q = x.quality && x.quality !== 'ok' ? t('ph_quality', { n: x.index + 1, q: t('q_' + x.quality) || x.quality }) : t('ph_from', { n: x.index + 1 });
       return '<p>' + esc(q) + (x.note ? ' — ' + esc(noteTxt(x)) : '') + '</p>'; }).join('') + '</div></div>';
+    h += '<p class="small muted" style="margin:0 0 6px">' + esc(t('ph_zoom_hint')) + '</p>' + thumbs(false);
     h += '<p class="muted">' + esc(t('ph_result_sub')) + '</p><div class="field" style="max-width:280px"><label for="ph-date">' + esc(t('ph_date')) + '</label><div class="ctl"><input id="ph-date" type="date" value="' + esc(PH.date || today()) + '" max="' + today() + '"></div></div>';
     h += '<ul class="list ph-fields" data-key="photo-fields">' + R.FIELDS.filter(function (f) { return f.key !== 'date'; }).map(function (f) {
       var r = p[f.key], v = r ? r.value : '', conf = r ? r.confidence : 0;
       var tag = !r ? '<span class="pill bad">' + esc(t('ph_missing')) + '</span>' : r.conflict ? '<span class="pill warn">' + esc(t('ph_conflict')) + '</span>' : conf < 0.75 ? '<span class="pill warn">' + esc(t('ph_low')) + '</span>' : '<span class="pill ok">' + ico('check', 14) + '</span>';
-      var th = r && PH.urls[r.photo] ? '<img class="src" src="' + PH.urls[r.photo] + '" alt="' + esc(t('ph_from', { n: r.photo + 1 })) + '" title="' + esc(t('ph_from', { n: r.photo + 1 })) + '">' : '<span class="src none"></span>';
+      var th = r && PH.urls[r.photo] ? '<img class="src" data-pv="' + r.photo + '" src="' + PH.urls[r.photo] + '" alt="' + esc(t('ph_from', { n: r.photo + 1 })) + '" title="' + esc(t('ph_from', { n: r.photo + 1 })) + '">' : '<span class="src none"></span>';
       return '<li>' + th + '<div class="grow"><label for="phv-' + f.key + '" class="small muted">' + esc(fieldLabel(f.key)) + (f.key === 'energy' ? ', ' + esc(unitLbl(PH.mode === 'baseline' ? 'Gcal' : energyUnit())) : f.unit ? ', ' + esc(fieldUnit(f.key)) : '') + '</label>' +
         '<input id="phv-' + f.key + '" class="num ph-in" data-ph="' + f.key + '" inputmode="' + (f.key === 'errCode' ? 'text' : 'decimal') + '" value="' + esc(v) + '"' + (f.key === 'errCode' ? ' placeholder="E---"' : '') + '>' + (r && r.converted ? '<div class="small muted">' + esc(r.converted) + '</div>' : '') + '</div>' + tag + '</li>';
     }).join('') + '</ul>';
     return h + '<div class="row-actions"><button class="btn sec" data-act="ph-again">' + esc(t('ph_add')) + '</button><button class="btn" data-act="ph-apply" data-to="check" data-key="photo-check">' + esc(PH.mode === 'baseline' ? t('ph_to_base') : t('ph_to_check')) + '</button></div>';
   }
+  /** Просмотр фото на весь экран: щипок / колесо / двойное касание — увеличить, тянуть — двигать, стрелки — соседние фото. */
+  function photoViewer(start) {
+    var urls = PH.urls.slice(); if (!urls.length) return;
+    var i = Math.max(0, Math.min(urls.length - 1, start | 0)), prevFocus = document.activeElement;
+    var ov = document.createElement('div'); ov.className = 'pv'; ov.setAttribute('role', 'dialog'); ov.setAttribute('aria-modal', 'true'); ov.setAttribute('aria-label', t('ph_view'));
+    ov.innerHTML = '<img alt=""><div class="pv-bar"><span class="pv-n"></span><button class="pv-b" data-pv-act="prev" aria-label="' + esc(t('ph_prev')) + '">‹</button><button class="pv-b" data-pv-act="next" aria-label="' + esc(t('ph_next')) + '">›</button><button class="pv-b" data-pv-act="close" aria-label="' + esc(t('close')) + '">' + ico('close', 22) + '</button></div>';
+    document.body.appendChild(ov);
+    var img = ov.querySelector('img'), n = ov.querySelector('.pv-n'), sc = 1, fit = 1, tx = 0, ty = 0, pts = {}, last = null, tapAt = 0;
+    var apply = function () { img.style.transform = 'translate(' + tx + 'px,' + ty + 'px) scale(' + sc + ')'; };
+    var clamp = function () {
+      var vw = ov.clientWidth, vh = ov.clientHeight, w = img.naturalWidth * sc, h = img.naturalHeight * sc;
+      tx = w <= vw ? (vw - w) / 2 : Math.min(0, Math.max(vw - w, tx)); ty = h <= vh ? (vh - h) / 2 : Math.min(0, Math.max(vh - h, ty));
+    };
+    var zoomAt = function (ns, cx, cy) { ns = Math.max(fit, Math.min(fit * 10, ns)); tx = cx - (cx - tx) * ns / sc; ty = cy - (cy - ty) * ns / sc; sc = ns; clamp(); apply(); };
+    var show = function (k) { i = (k + urls.length) % urls.length; n.textContent = (i + 1) + ' / ' + urls.length; img.onload = function () { fit = Math.min(ov.clientWidth / img.naturalWidth, ov.clientHeight / img.naturalHeight); sc = fit; clamp(); apply(); }; img.src = urls[i]; };
+    var key = function (e) { if (e.key === 'Escape') close(); else if (e.key === 'ArrowRight') show(i + 1); else if (e.key === 'ArrowLeft') show(i - 1); else if (e.key === '+' || e.key === '=') zoomAt(sc * 1.5, ov.clientWidth / 2, ov.clientHeight / 2); else if (e.key === '-') zoomAt(sc / 1.5, ov.clientWidth / 2, ov.clientHeight / 2); };
+    var close = function () { document.removeEventListener('keydown', key); ov.remove(); if (prevFocus && prevFocus.focus) prevFocus.focus(); };
+    document.addEventListener('keydown', key);
+    ov.addEventListener('click', function (e) { var b = e.target.closest('[data-pv-act]'); if (!b) return; var a = b.getAttribute('data-pv-act'); if (a === 'close') close(); else show(i + (a === 'next' ? 1 : -1)); });
+    ov.addEventListener('wheel', function (e) { e.preventDefault(); zoomAt(sc * (e.deltaY < 0 ? 1.2 : 1 / 1.2), e.clientX, e.clientY); }, { passive: false });
+    ov.addEventListener('pointerdown', function (e) {
+      if (e.target.closest('.pv-bar')) return;
+      pts[e.pointerId] = { x: e.clientX, y: e.clientY }; try { ov.setPointerCapture(e.pointerId); } catch (x) { /* нет */ }
+      if (Object.keys(pts).length === 1) { var now = Date.now(); if (now - tapAt < 320) { zoomAt(sc > fit * 1.1 ? fit : fit * 3, e.clientX, e.clientY); tapAt = 0; } else tapAt = now; }
+      last = null;
+    });
+    ov.addEventListener('pointermove', function (e) {
+      var p0 = pts[e.pointerId]; if (!p0) return; var ids = Object.keys(pts);
+      if (ids.length === 1) { tx += e.clientX - p0.x; ty += e.clientY - p0.y; p0.x = e.clientX; p0.y = e.clientY; clamp(); apply(); return; }
+      p0.x = e.clientX; p0.y = e.clientY;
+      var a = pts[ids[0]], b = pts[ids[1]], d = Math.hypot(a.x - b.x, a.y - b.y), mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2;
+      if (last && last.d > 0) { tx += mx - last.mx; ty += my - last.my; zoomAt(sc * d / last.d, mx, my); }
+      last = { d: d, mx: mx, my: my };
+    });
+    var up = function (e) { delete pts[e.pointerId]; last = null; };
+    ov.addEventListener('pointerup', up); ov.addEventListener('pointercancel', up);
+    show(i); ov.querySelector('[data-pv-act="close"]').focus();
+  }
+  document.addEventListener('click', function (e) { var im = e.target.closest && e.target.closest('img[data-pv]'); if (im && routeName() === 'photo') { e.preventDefault(); photoViewer(+im.getAttribute('data-pv')); } });
+
   function phRun() {
     var y = VIS(); if (!y.available || !PH.files.length) return;
     var di = document.getElementById('ph-date'); if (di) PH.date = di.value || today();
