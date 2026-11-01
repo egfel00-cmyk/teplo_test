@@ -305,6 +305,7 @@ label.btn { cursor: pointer; }
 .num.mid { font-size: 20px; line-height: 1.3; }
 .wx-t-cold { color: #24508A; } .wx-t-warm { color: #7A4A00; }
 .spark { width: 100%; height: 56px; display: block; margin-top: 12px; }
+.ctip[hidden] { display: none; } .wx:focus-visible { outline: 2px solid #17211E; outline-offset: 2px; }
 
 </style>
 <style>.top { padding-top: max(12px, env(safe-area-inset-top)); }</style>
@@ -830,6 +831,7 @@ label.btn { cursor: pointer; }
 
       nav_stats: 'Статистика',
       wx_tip_avg: 'Надворі за проміжок: у середньому {t}, від {min} до {max}', wx_tip_day: 'у день зняття {t}',
+      wx_tip_h_avg: 'Надворі в середньому {t}', wx_tip_h_day: 'Надворі {t} у день зняття', wx_tip_range: 'за проміжок від {min} до {max}', wx_tip_frost: 'днів з морозом: {n} з {d}', wx_tip_src: 'Середня за добу в Харкові (Open-Meteo)',
       wx_title: 'Погода за проміжок', wx_t_avg: 'середня надворі', wx_t_range: 'найхолодніше … найтепліше', wx_t_frost: 'днів з морозом', wx_t_day: 'у день зняття',
       stx_title: 'Подача і погода', stx_sub: 'Кожна точка — заміри: по горизонталі температура надворі в той день, по вертикалі — подача. Чим холодніше, тим гарячішою має бути подача — пунктир показує норму за графіком.',
       stx_axis: 'температура надворі (середня за добу)', stx_l_sup: 'подача за графіком', stx_l_ret: 'обратка за графіком', stx_l_pts: '● ваші заміри (колір — стан)',
@@ -1136,6 +1138,7 @@ label.btn { cursor: pointer; }
 
       nav_stats: 'Статистика',
       wx_tip_avg: 'На улице за промежуток: в среднем {t}, от {min} до {max}', wx_tip_day: 'в день снятия {t}',
+      wx_tip_h_avg: 'На улице в среднем {t}', wx_tip_h_day: 'На улице {t} в день снятия', wx_tip_range: 'за промежуток от {min} до {max}', wx_tip_frost: 'дней с морозом: {n} из {d}', wx_tip_src: 'Средняя за сутки в Харькове (Open-Meteo)',
       wx_title: 'Погода за промежуток', wx_t_avg: 'средняя на улице', wx_t_range: 'самое холодное … самое тёплое', wx_t_frost: 'дней с морозом', wx_t_day: 'в день снятия',
       stx_title: 'Подача и погода', stx_sub: 'Каждая точка — замер: по горизонтали температура на улице в тот день, по вертикали — подача. Чем холоднее, тем горячее должна быть подача — пунктир показывает норму по графику.',
       stx_axis: 'температура на улице (средняя за сутки)', stx_l_sup: 'подача по графику', stx_l_ret: 'обратка по графику', stx_l_pts: '● ваши замеры (цвет — состояние)',
@@ -2299,7 +2302,8 @@ label.btn { cursor: pointer; }
   function wxChip(w) {
     if (!w) return '';
     var v = w.avg !== null ? w.avg : w.day, tip = w.avg !== null ? t('wx_tip_avg', { t: degTxt(w.avg), min: degTxt(w.min), max: degTxt(w.max) }) + (w.day !== null ? ' · ' + t('wx_tip_day', { t: degTxt(w.day) }) : '') : t('wx_tip_day', { t: degTxt(w.day) });
-    return '<span class="wx wx-' + wxTone(v) + '" title="' + esc(tip) + '" aria-label="' + esc(tip) + '">' + ico('thermo', 15) + '<span class="num">' + esc(degTxt(v)) + '</span></span>';
+    var head = w.avg !== null ? t('wx_tip_h_avg', { t: degTxt(w.avg) }) : t('wx_tip_h_day', { t: degTxt(w.day) });
+    return '<span class="wx wx-' + wxTone(v) + '" tabindex="0" role="note" aria-label="' + esc(tip) + '" data-tip="' + esc([head].concat(w.avg !== null ? [t('wx_tip_range', { min: degTxt(w.min), max: degTxt(w.max) }), t('wx_tip_frost', { n: w.frost, d: w.ser.length })] : []).concat(w.day !== null && w.avg !== null ? [t('wx_tip_day', { t: degTxt(w.day) })] : []).concat([t('wx_tip_src')]).join('\n')) + '">' + ico('thermo', 15) + '<span class="num">' + esc(degTxt(v)) + '</span></span>';
   }
   /** Мини-график температур по дням промежутка: столбики вверх/вниз от нуля. */
   function wxSpark(ser) {
@@ -2688,16 +2692,19 @@ label.btn { cursor: pointer; }
       panel(t('stc_title'), t('stc_sub'), cl.length ? coolantChart(cl) : '', legend) +
       panel(t('stx_title'), t('stx_sub'), corrChart(cl)) +
       panel(t('st1_title'), t('st1_sub'), c1) + panel(t('st3_title'), t('st3_sub'), c3) + panel(t('st2_title'), t('st2_sub'), c2) + panel(t('st4_title'), t('st4_sub'), c4) + table +
-      '<p class="small muted">' + esc(t('stt_method')) + '</p><div id="ctip" class="ctip" role="tooltip" hidden></div>' };
+      '<p class="small muted">' + esc(t('stt_method')) + '</p>' };
   };
   (function () {   // подсказки графиков: наведение и фокус; текст — через textContent
-    var show = function (el, x, y) { var tp = document.getElementById('ctip'); if (!tp) return; tp.innerHTML = '';
+    var show = function (el, x, y) { var tp = document.getElementById('ctip');
+      if (!tp) { tp = document.createElement('div'); tp.id = 'ctip'; tp.className = 'ctip'; tp.setAttribute('role', 'tooltip'); document.body.appendChild(tp); }
+      tp.innerHTML = '';
       el.getAttribute('data-tip').split('\n').forEach(function (ln, i) { var d = document.createElement('div'); d.textContent = ln; if (i === 0) d.className = 'ctip-v'; tp.appendChild(d); });
       tp.hidden = false; var w = tp.offsetWidth, hh = tp.offsetHeight; tp.style.left = Math.max(8, Math.min(window.innerWidth - w - 8, x - w / 2)) + 'px'; tp.style.top = Math.max(8, y - hh - 14) + 'px'; };
     var hide = function () { var tp = document.getElementById('ctip'); if (tp) tp.hidden = true; };
     document.addEventListener('pointermove', function (e) { var el = e.target.closest && e.target.closest('[data-tip]'); if (el) show(el, e.clientX, e.clientY); else hide(); });
     document.addEventListener('focusin', function (e) { var el = e.target.closest && e.target.closest('[data-tip]'); if (el) { var b = el.getBoundingClientRect(); show(el, b.left + b.width / 2, b.top); } });
     document.addEventListener('focusout', hide);
+    window.addEventListener('hashchange', hide); window.addEventListener('scroll', hide, { passive: true });
   })();
 
   // ---------------- як заощадити тепло ----------------

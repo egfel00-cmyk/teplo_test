@@ -344,7 +344,8 @@
   function wxChip(w) {
     if (!w) return '';
     var v = w.avg !== null ? w.avg : w.day, tip = w.avg !== null ? t('wx_tip_avg', { t: degTxt(w.avg), min: degTxt(w.min), max: degTxt(w.max) }) + (w.day !== null ? ' · ' + t('wx_tip_day', { t: degTxt(w.day) }) : '') : t('wx_tip_day', { t: degTxt(w.day) });
-    return '<span class="wx wx-' + wxTone(v) + '" title="' + esc(tip) + '" aria-label="' + esc(tip) + '">' + ico('thermo', 15) + '<span class="num">' + esc(degTxt(v)) + '</span></span>';
+    var head = w.avg !== null ? t('wx_tip_h_avg', { t: degTxt(w.avg) }) : t('wx_tip_h_day', { t: degTxt(w.day) });
+    return '<span class="wx wx-' + wxTone(v) + '" tabindex="0" role="note" aria-label="' + esc(tip) + '" data-tip="' + esc([head].concat(w.avg !== null ? [t('wx_tip_range', { min: degTxt(w.min), max: degTxt(w.max) }), t('wx_tip_frost', { n: w.frost, d: w.ser.length })] : []).concat(w.day !== null && w.avg !== null ? [t('wx_tip_day', { t: degTxt(w.day) })] : []).concat([t('wx_tip_src')]).join('\n')) + '">' + ico('thermo', 15) + '<span class="num">' + esc(degTxt(v)) + '</span></span>';
   }
   /** Мини-график температур по дням промежутка: столбики вверх/вниз от нуля. */
   function wxSpark(ser) {
@@ -733,16 +734,19 @@
       panel(t('stc_title'), t('stc_sub'), cl.length ? coolantChart(cl) : '', legend) +
       panel(t('stx_title'), t('stx_sub'), corrChart(cl)) +
       panel(t('st1_title'), t('st1_sub'), c1) + panel(t('st3_title'), t('st3_sub'), c3) + panel(t('st2_title'), t('st2_sub'), c2) + panel(t('st4_title'), t('st4_sub'), c4) + table +
-      '<p class="small muted">' + esc(t('stt_method')) + '</p><div id="ctip" class="ctip" role="tooltip" hidden></div>' };
+      '<p class="small muted">' + esc(t('stt_method')) + '</p>' };
   };
   (function () {   // подсказки графиков: наведение и фокус; текст — через textContent
-    var show = function (el, x, y) { var tp = document.getElementById('ctip'); if (!tp) return; tp.innerHTML = '';
+    var show = function (el, x, y) { var tp = document.getElementById('ctip');
+      if (!tp) { tp = document.createElement('div'); tp.id = 'ctip'; tp.className = 'ctip'; tp.setAttribute('role', 'tooltip'); document.body.appendChild(tp); }
+      tp.innerHTML = '';
       el.getAttribute('data-tip').split('\n').forEach(function (ln, i) { var d = document.createElement('div'); d.textContent = ln; if (i === 0) d.className = 'ctip-v'; tp.appendChild(d); });
       tp.hidden = false; var w = tp.offsetWidth, hh = tp.offsetHeight; tp.style.left = Math.max(8, Math.min(window.innerWidth - w - 8, x - w / 2)) + 'px'; tp.style.top = Math.max(8, y - hh - 14) + 'px'; };
     var hide = function () { var tp = document.getElementById('ctip'); if (tp) tp.hidden = true; };
     document.addEventListener('pointermove', function (e) { var el = e.target.closest && e.target.closest('[data-tip]'); if (el) show(el, e.clientX, e.clientY); else hide(); });
     document.addEventListener('focusin', function (e) { var el = e.target.closest && e.target.closest('[data-tip]'); if (el) { var b = el.getBoundingClientRect(); show(el, b.left + b.width / 2, b.top); } });
     document.addEventListener('focusout', hide);
+    window.addEventListener('hashchange', hide); window.addEventListener('scroll', hide, { passive: true });
   })();
 
   // ---------------- як заощадити тепло ----------------
