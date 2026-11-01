@@ -133,6 +133,7 @@ final class Admin {
         $setup = Telegram::setup();
         return ['ok' => $setup['ok'], 'bot' => $me['result']['username'], 'setup' => $setup, 'settings' => self::settings()];
       }
+      case 'GET /api/admin/weather': return Weather::range((string)($q['from'] ?? ''), (string)($q['to'] ?? ''));
       case 'GET /api/admin/reports':
         return ['reports' => Db::q("SELECT r.*, u.email, i.username AS tg_username FROM recog_reports r LEFT JOIN users u ON u.id = r.user_id
           LEFT JOIN user_identities i ON i.user_id = r.user_id AND i.type = 'telegram' ORDER BY r.id DESC LIMIT 500")->fetchAll()];
@@ -170,5 +171,41 @@ final class Admin {
     Db::q('DELETE FROM rate_limits WHERE window_start < ?', [time() - 86400 * 2]);
     Db::q('DELETE FROM sessions WHERE expires_at < ?', [time()]);
     return $n;
+  }
+}
+
+/** Средняя суточная температура в Харькове (Open-Meteo: архив + последние дни из прогноза), кэш в SITE_DATA/cache. */
+final class Weather {
+  const LAT = 49.99, LON = 36.23;
+  public static $fetch = null;   // в тестах подменяется: fn(string $url): ?array
+  private static function get(string $url): ?array {
+    if (self::$fetch) return (self::$fetch)($url);
+    $ch = curl_init($url);
+    curl_setopt_array($ch, [CURLOPT_RETURNTRANSFER => true, CURLOPT_TIMEOUT => 12, CURLOPT_CONNECTTIMEOUT => 5, CURLOPT_USERAGENT => 'teplo_test']);
+    $r = curl_exec($ch); $code = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE); curl_close($ch);
+    if ($code !== 200) return null;
+    $j = json_decode((string)$r, true); return is_array($j) ? $j : null;
+  }
+  private static function merge(?array $j, array &$out): void {
+    $d = $j['daily'] ?? null; if (!$d) return;
+    foreach ((array)($d['time'] ?? []) as $i => $day) { $t = $d['temperature_2m_mean'][$i] ?? null; if (is_numeric($t) && !isset($out[$day])) $out[$day] = round((float)$t, 1); }
+  }
+  public static function range(string $from, string $to): array {
+    $re = '/^\d{4}-\d{2}-\d{2}$/';
+    if (!preg_match($re, $from) || !preg_match($re, $to) || $from > $to) throw new HttpError(422, 'bad_range');
+    $today = gmdate('Y-m-d'); if ($to > $today) $to = $today;
+    if ($from < '2015-01-01') $from = '2015-01-01';
+    $dir = Cfg::data() . '/cache'; @mkdir($dir, 0700, true);
+    $f = $dir . '/weather_' . $from . '_' . $to . '.json';
+    // старые периоды не меняются — кэш навсегда; если захватывает последние 10 дней — на 6 часов
+    $fresh = $to < gmdate('Y-m-d', time() - 10 * 86400) ? PHP_INT_MAX : 6 * 3600;
+    if (is_file($f) && time() - filemtime($f) < $fresh) { $c = json_decode((string)file_get_contents($f), true); if (is_array($c)) return ['days' => $c, 'cached' => true]; }
+    $out = []; $q = '&daily=temperature_2m_mean&timezone=Europe%2FKyiv';
+    self::merge(self::get('https://archive-api.open-meteo.com/v1/archive?latitude=' . self::LAT . '&longitude=' . self::LON . '&start_date=' . $from . '&end_date=' . $to . $q), $out);
+    if ($to >= gmdate('Y-m-d', time() - 92 * 86400)) self::merge(self::get('https://api.open-meteo.com/v1/forecast?latitude=' . self::LAT . '&longitude=' . self::LON . '&past_days=92&forecast_days=1' . $q), $out);
+    $out = array_filter($out, fn($k) => $k >= $from && $k <= $to, ARRAY_FILTER_USE_KEY); ksort($out);
+    if (!$out) throw new HttpError(502, 'weather_unavailable', ['human' => 'Сервис погоды не ответил.']);
+    @file_put_contents($f, json_encode($out));
+    return ['days' => $out, 'cached' => false];
   }
 }

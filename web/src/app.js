@@ -44,6 +44,12 @@
     return /^ru\b/i.test(l) ? 'ru' : 'uk';
   }
   var S = load();
+  var ADMIN = null;   // владелец сервиса (по /api/admin/me) — видит «Статистику» (пока только ему)
+  function checkAdmin() {
+    if (ADMIN !== null || !window.TEPLO_API || !Y().account) return; ADMIN = false;
+    fetch(window.TEPLO_API + '/admin/me', { credentials: 'same-origin', headers: { Accept: 'application/json' } }).then(function (r) { return r.json(); })
+      .then(function (j) { ADMIN = !!(j && j.admin); if (ADMIN) safeRender(); }, function () { ADMIN = null; });
+  }
   S.lang = browserLang();
   if (window.TeploSync) lastSig = window.TeploSync.sig(window.TeploSync.payload(S));
   var Y = function () { return window.TeploSync || { mode: 'local', account: null, status: 'idle' }; };
@@ -95,6 +101,7 @@
     alert: '<path d="M12 4l9 16H3z"/><path d="M12 10v4"/><circle cx="12" cy="17" r=".6" fill="currentColor"/>',
     info: '<circle cx="12" cy="12" r="9"/><path d="M12 11v6"/><circle cx="12" cy="7.8" r=".6" fill="currentColor"/>',
     clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+    chart: '<path d="M4 20V4M4 20h16"/><path d="M8 16v-5M12 16V8M16 16v-3"/>',
     leaf: '<path d="M5 19c0-8 5-13 14-14 0 9-5 14-13 14"/><path d="M5 19l7-7"/>',
     calendar: '<rect x="3.5" y="5" width="17" height="15" rx="2"/><path d="M3.5 10h17M8 3v4M16 3v4"/>',
     copy: '<rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3"/>',
@@ -195,8 +202,8 @@
   // ---------------- оболочка ----------------
   function shell(view) {
     var route = view.route, bare = view.bare;
-    var navItems = [['home', 'home', 'nav_home'], ['history', 'history', 'nav_history'], ['save', 'leaf', 'nav_save'], ['help', 'help', 'nav_help'], ['prefs', 'prefs', 'nav_prefs']];
-    var nav = bare ? '' : '<nav class="nav" aria-label="' + esc(t('brand')) + '">' + navItems.map(function (n) {
+    var navItems = [['home', 'home', 'nav_home'], ['history', 'history', 'nav_history']].concat(ADMIN ? [['stats', 'chart', 'nav_stats']] : []).concat([['save', 'leaf', 'nav_save'], ['help', 'help', 'nav_help'], ['prefs', 'prefs', 'nav_prefs']]);
+    var nav = bare ? '' : '<nav class="nav" style="--nav-n:' + navItems.length + '" aria-label="' + esc(t('brand')) + '">' + navItems.map(function (n) {
       return '<a href="#' + n[0] + '"' + (route === n[0] ? ' aria-current="page"' : '') + ' data-key="nav-' + n[0] + '">' + ico(n[1], 22) + '<span>' + esc(t(n[2])) + '</span></a>';
     }).join('') + '</nav>';
     var right = bare && view.closeTo
@@ -321,6 +328,14 @@
     var dE = e - R.num(from.energy), days = R.daysBetween(from.date, d);
     return { dE: dE, days: days, cost: dE > 0 ? dE * tariff() : 0, from: from.date, fromBase: !prev };
   }
+  /** Погода к показаниям (пока владельцу): средняя на улице за промежуток и в день снятия. */
+  function wxFor(r) {
+    if (!ADMIN || !WX.days || !r.htm || !r.htm.date) return '';
+    var iv = interval(r), d = WX.days, day = typeof d[r.htm.date] === 'number' ? d[r.htm.date] : null, sum = 0, n = 0;
+    if (iv && iv.days > 0 && iv.days <= 120) for (var k = 1; k <= iv.days; k++) { var dd = new Date(Date.parse(iv.from + 'T00:00:00Z') + k * 86400000).toISOString().slice(0, 10); if (typeof d[dd] === 'number') { sum += d[dd]; n++; } }
+    var f = function (v) { return (v > 0 ? '+' : '') + v.toFixed(1).replace('.', ',') + ' °C'; };
+    return n ? t('wx_avg', { t: f(sum / n) }) + (day !== null ? ', ' + t('wx_day', { t: f(day) }) : '') : day !== null ? t('wx_day', { t: f(day) }) : '';
+  }
   function intervalText(iv) {
     if (!iv) return '';
     if (iv.dE < 0) return t('hi_less', { de: Math.abs(iv.dE).toFixed(3) });
@@ -330,7 +345,8 @@
   function readingList(arr) {
     return '<ul class="list" data-key="reading-list">' + arr.map(function (r) {
       var cls = { accepted: 'ok', rejected: 'bad', handed: 'info', checked: 'neutral', intermediate: 'neutral' }[r.status] || 'neutral';
-      var sub = intervalText(interval(r));
+      var sub = intervalText(interval(r)), wx = wxFor(r);
+      if (wx) sub = (sub ? sub + ' · ' : '') + wx;
       var link = true;   // вся строка — в карточку показаний (там же правка, удаление, статус)
       var inner = '<div class="grow"><div><b>' + esc(fmtDate(r.htm.date, true)) + '</b> <span class="num">' + esc(R.formatForHtm('energy', r.htm.energy)) + '</span> <span class="small muted">Гкал</span></div>' +
         (sub ? '<div class="small muted">' + esc(sub) + '</div>' : '') + '</div><span class="pill ' + cls + '">' + esc(t('status_' + r.status)) + '</span>';
@@ -540,6 +556,7 @@
   };
 
   V.history = function () {
+    if (ADMIN && window.TeploStats) loadWeather();
     var arr = RD().slice().sort(function (a, b) { var x = (b.htm && b.htm.date) || '', y = (a.htm && a.htm.date) || ''; return x < y ? -1 : x > y ? 1 : 0; });
     return { screen: 'S09', route: 'history', html: '<h1>' + esc(t('hi_title')) + '</h1>' +
       (arr.length ? readingList(arr) : '<div class="panel"><p class="muted">' + esc(t('hi_empty')) + '</p><button class="btn" data-act="read">' + esc(t('hi_empty_cta')) + '</button></div>') };
@@ -565,7 +582,9 @@
       var v = f.key === 'errCode' ? (h.errCode || '—') : (R.num(h[f.key]) === null ? '—' : R.formatForHtm(f.key, h[f.key]));
       return '<li><div class="grow small muted">' + esc(fieldLabel(f.key)) + '</div><b class="num">' + esc(v) + '</b>' + (f.unit && v !== '—' ? ' <span class="small muted">' + esc(f.key === 'energy' ? 'Гкал' : fieldUnit(f.key)) + '</span>' : '') + '</li>';
     }).join('');
-    var used = iv ? '<div class="panel" data-key="rec-used"><h2>' + esc(t('rec_used_title')) + '</h2>' + (iv.dE < 0 ? '<p class="small">' + esc(intervalText(iv)) + '</p>' :
+    if (ADMIN && window.TeploStats) loadWeather();
+    var wxl = wxFor(r);
+    var used = iv ? '<div class="panel" data-key="rec-used"><h2>' + esc(t('rec_used_title')) + '</h2>' + (wxl ? '<p class="small muted">' + esc(wxl) + '</p>' : '') + (iv.dE < 0 ? '<p class="small">' + esc(intervalText(iv)) + '</p>' :
       '<div class="cards2"><div><div class="num big">' + esc(iv.dE.toFixed(3)) + '</div><div class="small muted">' + esc(t('rec_gcal_for', { days: iv.days, from: fmtDate(iv.from, true) })) + '</div></div>' +
       '<div><div class="num big">≈ ' + esc(money(iv.cost)) + '</div><div class="small muted">' + esc(t('rec_uah', { tariff: money(tariff()) })) + '</div></div></div>' +
       (iv.days > 0 ? '<p class="small muted">' + esc(t('rec_per_month', { de: (iv.dE / iv.days * 30).toFixed(3), cost: money(iv.dE / iv.days * 30 * tariff()) })) + '</p>' : '')) + '</div>' : '';
@@ -574,6 +593,135 @@
       '<div class="row-actions">' + st + '<a class="btn sec" href="#rec-' + r.id + '-edit" data-key="rec-edit">' + esc(t('rec_edit')) + '</a>' +
       '<button class="btn danger" data-act="rec-del-ask" data-key="rec-del">' + esc(t('rec_del')) + '</button></div><div id="rec-del-confirm"></div>' };
   }
+
+  // ---------------- статистика (пока только владельцу) ----------------
+  var WX = { key: '', days: null, loading: false, err: '' };   // погода Харькова по дням для диапазона истории
+  function loadWeather() {
+    var rg = window.TeploStats && TeploStats.range(RD(), S.baseline); if (!rg) return;
+    var key = rg.from + '_' + rg.to; if (WX.key === key && (WX.days || WX.loading)) return;
+    WX = { key: key, days: null, loading: true, err: '' };
+    fetch(window.TEPLO_API + '/admin/weather?from=' + rg.from + '&to=' + rg.to, { credentials: 'same-origin', headers: { Accept: 'application/json' } })
+      .then(function (r) { return r.json(); }).then(function (j) { WX.loading = false; if (j && j.days) WX.days = j.days; else WX.err = (j && (j.human || j.error)) || 'error'; if (/^(stats|history|rec-)/.test(routeName())) safeRender(); },
+        function () { WX.loading = false; WX.err = 'network'; if (routeName() === 'stats') safeRender(); });
+  }
+  function shortDate(d) { var p = dateParts(d); return ('0' + p.d).slice(-2) + '.' + ('0' + p.m).slice(-2) + '.' + String(p.y).slice(2); }
+  var CH = { ink: '#17211E', ink2: '#4A5652', grid: '#E3E8E5', bar: '#2F68B0', barSoft: '#9DB5D6', ok: '#1E7B4C', low: '#B7791F', bad: '#A3142E', none: '#4A5652', off: '#8E9A94' };
+  function tipAttr(lines) { return ' tabindex="0" data-tip="' + esc(lines.filter(Boolean).join('\n')) + '"'; }
+  function nTicks(max) { var n = max / Math.pow(10, Math.floor(Math.log10(max))); return (n === 2 || n === 1) ? 4 : 5; }
+  function niceMax(v) { if (!(v > 0)) return 1; var p = Math.pow(10, Math.floor(Math.log10(v))), n = v / p; return (n <= 1 ? 1 : n <= 2 ? 2 : n <= 2.5 ? 2.5 : n <= 5 ? 5 : 10) * p; }
+  function fmtN(v, d) { return (d === 0 ? String(Math.round(v)) : v.toFixed(d)).replace('.', ','); }
+  /** Столбики. items: [{x, v, tip[], soft, color, top}] */
+  function barChart(items, o) {
+    var W = 640, H = 236, L = 46, R = 10, T = 16, B = items.some(function (x) { return x.x2; }) ? 40 : 30, iw = W - L - R, ih = H - T - B;
+    var max = o.max || niceMax(Math.max.apply(null, items.map(function (x) { return x.v || 0; }).concat([o.ref ? o.ref.v : 0])) * 1.08);
+    var y = function (v) { return T + ih - Math.max(0, v) / max * ih; }, slot = iw / Math.max(1, items.length), bw = Math.min(46, slot * 0.62);
+    var g = '';
+    var nt = nTicks(max), dec = o.dec !== undefined ? (max / nt < 1 ? (max / nt < 0.1 ? 2 : 1) : 0) : 1;
+    for (var k = 0; k <= nt; k++) { var tv = max * k / nt, yy = y(tv); g += '<line x1="' + L + '" x2="' + (W - R) + '" y1="' + yy + '" y2="' + yy + '" stroke="' + CH.grid + '"/><text x="' + (L - 6) + '" y="' + (yy + 4) + '" text-anchor="end" class="ax">' + esc(fmtN(tv, dec)) + '</text>'; }
+    var bars = items.map(function (it, i) {
+      var cx = L + slot * (i + 0.5), x0 = cx - bw / 2, yt = y(it.v || 0), yb = T + ih, h = Math.max(0, yb - yt), r = Math.min(4, h);
+      var path = h > 0 ? 'M' + x0 + ',' + yb + 'V' + (yt + r) + 'Q' + x0 + ',' + yt + ' ' + (x0 + r) + ',' + yt + 'H' + (x0 + bw - r) + 'Q' + (x0 + bw) + ',' + yt + ' ' + (x0 + bw) + ',' + (yt + r) + 'V' + yb + 'Z' : '';
+      return '<g class="mk"' + tipAttr(it.tip) + '><rect x="' + (cx - slot / 2) + '" y="' + T + '" width="' + slot + '" height="' + (ih + B) + '" fill="transparent"/>' +
+        (path ? '<path d="' + path + '" fill="' + (it.color || (it.soft ? CH.barSoft : CH.bar)) + '"/>' : '') +
+        (it.top ? '<text x="' + cx + '" y="' + (yt - 5) + '" text-anchor="middle" class="vl">' + esc(it.top) + '</text>' : '') +
+        '<text x="' + cx + '" y="' + (T + ih + 17) + '" text-anchor="middle" class="ax">' + esc(it.x) + '</text>' +
+        (it.x2 ? '<text x="' + cx + '" y="' + (T + ih + 31) + '" text-anchor="middle" class="ax x2">' + esc(it.x2) + '</text>' : '') + '</g>';
+    }).join('');
+    var ref = o.ref ? '<line x1="' + L + '" x2="' + (W - R) + '" y1="' + y(o.ref.v) + '" y2="' + y(o.ref.v) + '" stroke="' + CH.ink2 + '" stroke-dasharray="4 4"/><text x="' + (W - R) + '" y="' + (y(o.ref.v) - 5) + '" text-anchor="end" class="ax">' + esc(o.ref.label) + '</text>' : '';
+    return '<svg class="chart" viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="' + esc(o.title) + '">' + g + '<line x1="' + L + '" x2="' + (W - R) + '" y1="' + (T + ih) + '" y2="' + (T + ih) + '" stroke="' + CH.ink2 + '"/>' + bars + ref + '</svg>';
+  }
+  var ST_ICO = { ok: '✓', low: '↓', bad: '⚠', none: '✕', off: '–' };
+  /** Подача: факт (точка цвета состояния) против нормы графика (кольцо), соединены линией. */
+  function coolantChart(pts) {
+    var W = 640, H = 250, L = 46, R = 10, T = 16, B = 34, iw = W - L - R, ih = H - T - B;
+    var max = niceMax(Math.max.apply(null, pts.map(function (p) { return Math.max(p.tSupply, p.norm || 0); })) * 1.05), y = function (v) { return T + ih - v / max * ih; }, slot = iw / Math.max(1, pts.length);
+    var g = '';
+    var nt = nTicks(max);
+    for (var k = 0; k <= nt; k++) { var tv = max * k / nt, yy = y(tv); g += '<line x1="' + L + '" x2="' + (W - R) + '" y1="' + yy + '" y2="' + yy + '" stroke="' + CH.grid + '"/><text x="' + (L - 6) + '" y="' + (yy + 4) + '" text-anchor="end" class="ax">' + Math.round(tv) + '°</text>'; }
+    var marks = pts.map(function (p, i) {
+      var cx = L + slot * (i + 0.5), ya = y(p.tSupply), yn = p.norm ? y(p.norm) : null;
+      return '<g class="mk"' + tipAttr([p.status !== 'off' ? ST_ICO[p.status] + ' ' + t('stt_' + p.status) : t('stt_off'), shortDate(p.date) + (p.tOut !== null ? ' · ' + t('stt_out', { t: fmtN(p.tOut, 1) }) : ''),
+          t('stt_sup', { v: fmtN(p.tSupply, 1) }) + (p.norm ? ' · ' + t('stt_norm', { v: fmtN(p.norm, 1) }) + ' (' + (p.diff >= 0 ? '+' : '') + fmtN(p.diff, 1) + ')' : ''),
+          p.tReturn !== null ? t('stt_ret', { v: fmtN(p.tReturn, 1), d: fmtN(p.dT, 1) }) : '', p.flow !== null ? t('stt_flow', { v: fmtN(p.flow, 3) }) : '']) + '>' +
+        '<rect x="' + (cx - slot / 2) + '" y="' + T + '" width="' + slot + '" height="' + (ih + B) + '" fill="transparent"/>' +
+        (yn !== null ? '<line x1="' + cx + '" x2="' + cx + '" y1="' + yn + '" y2="' + ya + '" stroke="' + CH.grid + '" stroke-width="3"/><circle cx="' + cx + '" cy="' + yn + '" r="6" fill="#fff" stroke="' + CH.ink2 + '" stroke-width="2"/>' : '') +
+        '<circle cx="' + cx + '" cy="' + ya + '" r="7" fill="' + CH[p.status] + '" stroke="#fff" stroke-width="2"/>' +
+        '<text x="' + cx + '" y="' + (Math.min(ya, yn === null ? ya : yn) - 11) + '" text-anchor="middle" class="vl">' + ST_ICO[p.status] + '</text>' +
+        '<text x="' + cx + '" y="' + (H - 12) + '" text-anchor="middle" class="ax">' + esc(shortDate(p.date)) + '</text></g>';
+    }).join('');
+    return '<svg class="chart" viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="' + esc(t('stc_title')) + '">' + g + '<line x1="' + L + '" x2="' + (W - R) + '" y1="' + (T + ih) + '" y2="' + (T + ih) + '" stroke="' + CH.ink2 + '"/>' + marks + '</svg>';
+  }
+  /** Связь с погодой: x — на улице, y — подача; линия — график 95/70; точки — замеры (цвет — состояние). */
+  function corrChart(pts) {
+    var P = pts.filter(function (p) { return p.tOut !== null; }); if (P.length < 2) return '';
+    var W = 640, H = 260, L = 46, R = 12, T = 14, B = 40, iw = W - L - R, ih = H - T - B;
+    var xs = P.map(function (p) { return p.tOut; }), x0 = Math.min(-15, Math.floor(Math.min.apply(null, xs) / 5) * 5), x1 = Math.max(10, Math.ceil(Math.max.apply(null, xs) / 5) * 5);
+    var ymax = 100, x = function (v) { return L + (v - x0) / (x1 - x0) * iw; }, y = function (v) { return T + ih - v / ymax * ih; };
+    var g = '';
+    for (var k = 0; k <= 4; k++) { var tv = ymax * k / 4; g += '<line x1="' + L + '" x2="' + (W - R) + '" y1="' + y(tv) + '" y2="' + y(tv) + '" stroke="' + CH.grid + '"/><text x="' + (L - 6) + '" y="' + (y(tv) + 4) + '" text-anchor="end" class="ax">' + tv + '°</text>'; }
+    for (var xv = x0; xv <= x1; xv += 5) g += '<text x="' + x(xv) + '" y="' + (T + ih + 16) + '" text-anchor="middle" class="ax">' + (xv > 0 ? '+' : '') + xv + '°</text>';
+    g += '<text x="' + (L + iw / 2) + '" y="' + (H - 4) + '" text-anchor="middle" class="ax">' + esc(t('stx_axis')) + '</text>';
+    var curve = [], curveR = [];
+    for (var tv2 = x0; tv2 <= Math.min(x1, 17); tv2 += 0.5) { var gg = TeploStats.graph(tv2); if (gg) { curve.push(x(tv2).toFixed(1) + ',' + y(gg.supply).toFixed(1)); curveR.push(x(tv2).toFixed(1) + ',' + y(gg.ret).toFixed(1)); } }
+    var lines = '<polyline points="' + curve.join(' ') + '" fill="none" stroke="' + CH.ink2 + '" stroke-width="2" stroke-dasharray="6 4"/>' +
+      '<polyline points="' + curveR.join(' ') + '" fill="none" stroke="' + CH.off + '" stroke-width="1.5" stroke-dasharray="2 4"/>';
+    var dots = P.map(function (p) {
+      return '<g class="mk"' + tipAttr([ST_ICO[p.status] + ' ' + t('stt_' + p.status), shortDate(p.date) + ' · ' + t('stt_out', { t: fmtN(p.tOut, 1) }),
+        t('stt_sup', { v: fmtN(p.tSupply, 1) }) + (p.norm ? ' · ' + t('stt_norm', { v: fmtN(p.norm, 1) }) : ''), p.tReturn !== null ? t('stt_ret', { v: fmtN(p.tReturn, 1), d: fmtN(p.dT, 1) }) : '']) + '>' +
+        '<circle cx="' + x(p.tOut) + '" cy="' + y(p.tSupply) + '" r="14" fill="transparent"/><circle cx="' + x(p.tOut) + '" cy="' + y(p.tSupply) + '" r="7" fill="' + CH[p.status] + '" stroke="#fff" stroke-width="2"/>' +
+        '</g>';
+    }).join('');
+    return '<svg class="chart" viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="' + esc(t('stx_title')) + '">' + g + lines + dots + '</svg>' +
+      '<div class="legend small"><span><i class="dash"></i>' + esc(t('stx_l_sup')) + '</span><span><i class="dash dot2"></i>' + esc(t('stx_l_ret')) + '</span><span>' + esc(t('stx_l_pts')) + '</span></div>';
+  }
+  V.stats = function () {
+    if (!ADMIN) return V.home();
+    var St = window.TeploStats; loadWeather();
+    var w = WX.days, ivs = St.intervals(RD(), S.baseline, w, tariff()), cl = St.coolant(RD(), S.baseline, w);
+    if (!ivs.length) return { screen: 'S15', route: 'stats', html: '<h1>' + esc(t('stt_title')) + '</h1><div class="panel"><p class="muted">' + esc(t('stt_empty')) + '</p></div>' };
+    var summer = function (it) { return it.days > 100; };
+    var lbl = function (it) { return shortDate(it.to); };
+    var period = function (it) { return t('stt_period', { a: R.toHtmDate(it.from), b: R.toHtmDate(it.to), d: it.days }); };
+    var wxNote = WX.loading ? '<p class="small muted">' + esc(t('stt_wx_loading')) + '</p>' : WX.err ? '<p class="small muted">' + esc(t('stt_wx_err')) + '</p>' : '';
+    // сводка: последний отопительный сезон (с 1 октября)
+    var last = ivs[ivs.length - 1], sy = +last.to.slice(0, 4) - (last.to.slice(5, 7) < '10' ? 1 : 0), sFrom = sy + '-10-01';
+    var season = ivs.filter(function (it) { return it.to > sFrom; }), sE = season.reduce(function (a, it) { return a + Math.max(0, it.dE); }, 0);
+    var okN = cl.filter(function (p) { return p.status === 'ok'; }).length, judged = cl.filter(function (p) { return p.status !== 'off'; }).length;
+    var tiles = '<div class="cards2 stat-tiles"><div><div class="num big">' + esc(fmtN(sE, 3)) + '</div><div class="small muted">' + esc(t('stt_season_g', { s: sy + '/' + String(sy + 1).slice(2) })) + '</div></div>' +
+      '<div><div class="num big">≈ ' + esc(money(sE * tariff())) + '</div><div class="small muted">' + esc(t('stt_season_uah')) + '</div></div>' +
+      (judged ? '<div><div class="num big">' + okN + ' / ' + judged + '</div><div class="small muted">' + esc(t('stt_ok_share')) + '</div></div>' : '') + '</div>';
+    var c1 = barChart(ivs.map(function (it) { return { x: lbl(it), x2: it.tOut !== undefined ? (it.tOut > 0 ? '+' : '') + Math.round(it.tOut) + ' °C' : '', v: Math.max(0, it.month), soft: summer(it), top: fmtN(it.month, 2),
+      tip: [fmtN(it.month, 3) + ' ' + t('stt_g30'), period(it), '+' + fmtN(it.dE, 3) + ' Гкал ≈ ' + money(it.cost) + ' грн', it.tOut !== undefined ? t('stt_tout', { t: fmtN(it.tOut, 1) }) : '', summer(it) ? t('stt_summer') : ''] }; }), { title: t('st1_title'), dec: 1 });
+    var withW = ivs.filter(function (it) { return it.perHdd != null && !summer(it); });
+    var c2 = withW.length ? barChart(withW.map(function (it) { return { x: lbl(it), v: it.perHdd, top: fmtN(it.perHdd, 2),
+      tip: [fmtN(it.perHdd, 2) + ' ' + t('stt_mcal'), period(it), t('stt_tout', { t: fmtN(it.tOut, 1) }) + ' · ' + t('stt_hdd', { v: it.hdd })] }; }), { title: t('st2_title'), dec: 1 }) : '';
+    var withS = ivs.filter(function (it) { return it.share != null && !summer(it); });
+    var c3 = withS.length ? barChart(withS.map(function (it) { var pc = Math.round(it.share * 100); return { x: lbl(it), v: pc, top: pc + '%', color: pc >= 95 ? CH.bar : pc >= 80 ? CH.low : CH.bad,
+      tip: [pc + '% ' + t('stt_share_tip'), period(it), t('stt_off_h', { h: Math.max(0, Math.round(it.days * 24 - it.dH)) })] }; }), { title: t('st3_title'), max: 100, dec: 0, ref: { v: 100, label: '100%' } }) : '';
+    var withT = ivs.filter(function (it) { return it.dT != null && !summer(it); });
+    var c4 = withT.length ? barChart(withT.map(function (it) { return { x: lbl(it), v: it.dT, top: fmtN(it.dT, 1) + '°', color: it.dT >= 3 ? CH.bar : CH.low,
+      tip: [fmtN(it.dT, 1) + ' °C ' + t('stt_dt_tip'), period(it), it.flow != null ? t('stt_avgflow', { v: fmtN(it.flow, 3) }) : ''] }; }), { title: t('st4_title'), dec: 0, ref: { v: 3, label: t('stt_dt_ref') } }) : '';
+    var legend = '<div class="legend small"><span><i class="dot" style="background:' + CH.ink + '"></i>' + esc(t('stl_fact')) + '</span><span><i class="ring"></i>' + esc(t('stl_norm')) + '</span>' +
+      ['ok', 'low', 'bad', 'none'].map(function (k) { return '<span><i class="dot" style="background:' + CH[k] + '"></i>' + ST_ICO[k] + ' ' + esc(t('stt_' + k)) + '</span>'; }).join('') + '</div>';
+    var panel = function (title, sub, chart, extra) { return chart ? '<section class="panel chart-panel"><h2>' + esc(title) + '</h2><p class="small muted">' + esc(sub) + '</p>' + chart + (extra || '') + '</section>' : ''; };
+    var table = '<details class="panel"><summary>' + esc(t('stt_table')) + '</summary><div class="tbl-wrap"><table class="tbl"><thead><tr><th>' + esc(t('stt_th_period')) + '</th><th>Гкал</th><th>' + esc(t('stt_g30')) + '</th><th>грн</th><th>°C ' + esc(t('stt_th_out')) + '</th><th>' + esc(t('stt_th_hdd')) + '</th><th>ΔT</th><th>м³/год</th><th>' + esc(t('stt_th_share')) + '</th></tr></thead><tbody>' +
+      ivs.map(function (it) { return '<tr><td>' + esc(R.toHtmDate(it.from) + ' – ' + R.toHtmDate(it.to)) + '</td><td class="num">' + fmtN(it.dE, 3) + '</td><td class="num">' + fmtN(it.month, 3) + '</td><td class="num">' + money(it.cost) + '</td><td class="num">' + (it.tOut !== undefined ? fmtN(it.tOut, 1) : '—') + '</td><td class="num">' + (it.perHdd != null ? fmtN(it.perHdd, 2) : '—') + '</td><td class="num">' + (it.dT != null ? fmtN(it.dT, 1) : '—') + '</td><td class="num">' + (it.flow != null ? fmtN(it.flow, 3) : '—') + '</td><td class="num">' + (it.share != null ? Math.round(it.share * 100) + '%' : '—') + '</td></tr>'; }).join('') +
+      '</tbody></table></div></details>';
+    return { screen: 'S15', route: 'stats', html: '<h1>' + esc(t('stt_title')) + '</h1><p class="muted">' + esc(t('stt_lead')) + '</p>' + wxNote + tiles +
+      panel(t('stc_title'), t('stc_sub'), cl.length ? coolantChart(cl) : '', legend) +
+      panel(t('stx_title'), t('stx_sub'), corrChart(cl)) +
+      panel(t('st1_title'), t('st1_sub'), c1) + panel(t('st3_title'), t('st3_sub'), c3) + panel(t('st2_title'), t('st2_sub'), c2) + panel(t('st4_title'), t('st4_sub'), c4) + table +
+      '<p class="small muted">' + esc(t('stt_method')) + '</p><div id="ctip" class="ctip" role="tooltip" hidden></div>' };
+  };
+  (function () {   // подсказки графиков: наведение и фокус; текст — через textContent
+    var show = function (el, x, y) { var tp = document.getElementById('ctip'); if (!tp) return; tp.innerHTML = '';
+      el.getAttribute('data-tip').split('\n').forEach(function (ln, i) { var d = document.createElement('div'); d.textContent = ln; if (i === 0) d.className = 'ctip-v'; tp.appendChild(d); });
+      tp.hidden = false; var w = tp.offsetWidth, hh = tp.offsetHeight; tp.style.left = Math.max(8, Math.min(window.innerWidth - w - 8, x - w / 2)) + 'px'; tp.style.top = Math.max(8, y - hh - 14) + 'px'; };
+    var hide = function () { var tp = document.getElementById('ctip'); if (tp) tp.hidden = true; };
+    document.addEventListener('pointermove', function (e) { var el = e.target.closest && e.target.closest('[data-tip]'); if (el) show(el, e.clientX, e.clientY); else hide(); });
+    document.addEventListener('focusin', function (e) { var el = e.target.closest && e.target.closest('[data-tip]'); if (el) { var b = el.getBoundingClientRect(); show(el, b.left + b.width / 2, b.top); } });
+    document.addEventListener('focusout', hide);
+  })();
 
   // ---------------- як заощадити тепло ----------------
   /** Поради з урахуванням реалій ХТМ: квартирний лічильник, робот ХТМ (мін. витрата), норми ДБН. Джерела — у кінці сторінки. */
@@ -1022,7 +1170,7 @@
       case 'ph-apply': phApply(); break;
       case 'ph-use-model': { var um = M.byId(el.getAttribute('data-id')); S.meter = Object.assign({}, S.meter || {}, { modelId: um.id, unit: el.getAttribute('data-unit') || um.unit }); save(); toast(t('b_saved')); PH.picked = VIS().pick(PH.result, M.TO_GCAL, energyUnit()); render(true); break; }
       case 'auth-mode': authMode = authMode === 'login' ? 'register' : 'login'; render(true); break;
-      case 'logout': Y().logout().then(function () { S = defaults(); S.lang = browserLang(); lastSig = window.TeploSync.sig(window.TeploSync.payload(S)); persist(); toast(t('logged_out')); go('welcome'); }); break;
+      case 'logout': ADMIN = null; Y().logout().then(function () { S = defaults(); S.lang = browserLang(); lastSig = window.TeploSync.sig(window.TeploSync.payload(S)); persist(); toast(t('logged_out')); go('welcome'); }); break;
       case 'dismiss-sync': S.syncPromptDismissed = true; persist(); render(true); break;
       case 'wipe-no': document.getElementById('wipe-confirm').innerHTML = ''; break;
       case 'wipe-yes': { var now = Date.now(); S = defaults(); S.lang = browserLang(); S.wipedAt = now; phReset(); FB.open = false; save(); toast(t('p_wiped')); go('welcome'); break; }
@@ -1105,6 +1253,7 @@
     var onSync = function () {
       var el = document.getElementById('sync-status'); if (el) el.textContent = syncStatusText();
       if (window.TEPLO_API && window.TeploVision && window.TeploSync._cfg) window.TeploVision.initServer(window.TeploSync._cfg, !!window.TeploSync.account);
+      if (!window.TeploSync.account) ADMIN = null; else checkAdmin();
       if (['prefs', 'login', 'welcome', 'home', 'meter', 'baseline'].indexOf(routeName() || 'welcome') >= 0 || /^step-/.test(routeName())) safeRender();
     };
     window.TeploSync.init(function () { return S; }, applyRemote, onSync);

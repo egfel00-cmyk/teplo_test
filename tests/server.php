@@ -208,6 +208,16 @@ ok('отключить бота и удалить ключ', $boss->req('POST', 
   && $boss->req('POST', '/api/admin/settings/anthropic', ['clear' => 1])->status === 200 && !Cfg::get('anthropic_api_key'));
 Recognize::$check = null; Telegram::$send = null;
 
+echo "\nПогода для статистики (только владельцу):\n";
+$urls = []; Weather::$fetch = function ($u) use (&$urls) { $urls[] = $u; return ['daily' => ['time' => ['2025-01-01', '2025-01-02'], 'temperature_2m_mean' => [-3.24, null]]]; };
+ok('погода: обычному пользователю — нет', $rb->req('GET', '/api/admin/weather', null, ['QUERY_STRING' => 'from=2025-01-01&to=2025-01-02'])->status === 403);
+$wr = $boss->req('GET', '/api/admin/weather', null, ['QUERY_STRING' => 'from=2025-01-01&to=2025-01-02']);
+ok('погода: средняя за сутки, пропуски не выдумываем', $wr->status === 200 && $wr->body['days'] === ['2025-01-01' => -3.2] && str_contains($urls[0], 'archive-api.open-meteo.com'));
+$n = count($urls); $boss->req('GET', '/api/admin/weather', null, ['QUERY_STRING' => 'from=2025-01-01&to=2025-01-02']);
+ok('погода: старый период — из кэша, без запроса', count($urls) === $n);
+ok('погода: мусор в датах → 422', $boss->req('GET', '/api/admin/weather', null, ['QUERY_STRING' => 'from=x&to=y'])->status === 422);
+Weather::$fetch = null;
+
 echo "\nВыход:\n";
 $phone->req('POST', '/api/auth/logout');
 ok('после выхода /api/me → 401', $phone->req('GET', '/api/me')->status === 401);

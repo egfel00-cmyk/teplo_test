@@ -43,7 +43,7 @@ a { color: var(--c-return); text-underline-offset: 3px; }
 .top .spacer { flex: 1; }
 .main { flex: 1; width: 100%; max-width: 720px; margin: 0 auto; padding: var(--sp-2) var(--sp-4) calc(var(--tap) + 48px); }
 .main.bare { padding-bottom: var(--sp-7); }
-.nav { position: fixed; left: 0; right: 0; bottom: 0; display: grid; grid-template-columns: repeat(5, 1fr); background: var(--c-surface);
+.nav { position: fixed; left: 0; right: 0; bottom: 0; display: grid; grid-template-columns: repeat(var(--nav-n, 5), 1fr); background: var(--c-surface);
   border-top: 1px solid var(--c-line); box-shadow: 0 -6px 18px rgba(23, 33, 30, .06); padding-bottom: env(safe-area-inset-bottom); z-index: 5; }
 .nav a { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; min-height: 58px; font-size: 13px; color: var(--c-ink-2); text-decoration: none; }
 .nav a[aria-current="page"] { color: var(--c-ink); font-weight: 600; }
@@ -275,6 +275,26 @@ label.btn { cursor: pointer; }
 .tip h3 { margin: 4px 0; font-size: 16px; } .tip { margin-top: 16px; }
 .date-chip { display: inline-flex; align-items: center; gap: 6px; font-size: 14px; padding: 4px 10px; border-radius: 999px; background: var(--c-surface); color: inherit; text-decoration: none; border: 1px solid var(--c-line); margin-left: 8px; white-space: nowrap; }
 @media (max-width: 420px) { .nav a span { font-size: 11px; letter-spacing: -0.1px; } .wiz-top .progress { min-width: 40px; } }
+
+/* статистика */
+.chart { width: 100%; height: auto; display: block; margin-top: 8px; overflow: visible; }
+.chart .ax { font: 11px var(--font, sans-serif); fill: #4A5652; }
+.chart .vl { font: 600 11px var(--font, sans-serif); fill: #17211E; }
+.chart .mk { cursor: default; outline: none; }
+.chart .mk:hover path, .chart .mk:focus path, .chart .mk:hover circle, .chart .mk:focus circle { filter: brightness(1.12); }
+.chart .mk:focus-visible rect { stroke: #17211E; stroke-dasharray: 3 3; }
+.chart-panel h2 { margin-bottom: 4px; }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 14px; margin-top: 8px; color: #4A5652; }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.legend .dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+.legend .ring { width: 10px; height: 10px; border-radius: 50%; display: inline-block; border: 2px solid #4A5652; box-sizing: border-box; }
+.stat-tiles { grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); margin: 12px 0 16px; }
+.ctip { position: fixed; z-index: 50; background: #17211E; color: #fff; padding: 8px 10px; border-radius: 8px; font-size: 13px; line-height: 1.4; pointer-events: none; max-width: 300px; box-shadow: 0 4px 16px rgba(0,0,0,.2); }
+.ctip .ctip-v { font-weight: 600; font-size: 14px; }
+.tbl-wrap { overflow-x: auto; } .tbl { border-collapse: collapse; width: 100%; font-size: 13px; } .tbl th, .tbl td { padding: 6px 8px; border-bottom: 1px solid var(--c-line); text-align: left; white-space: nowrap; } .tbl td.num { text-align: right; }
+.legend .dash { width: 18px; height: 0; border-top: 2px dashed #4A5652; display: inline-block; } .legend .dash.dot2 { border-top: 2px dotted #8E9A94; }
+.chart .ax.ref { font-weight: 600; }
+.chart .ax.x2 { fill: #2F68B0; font-weight: 600; }
 
 </style>
 <style>.top { padding-top: max(12px, env(safe-area-inset-top)); }</style>
@@ -797,6 +817,27 @@ label.btn { cursor: pointer; }
       st_refix_sub: 'Останній запис у кабінеті ХТМ можна відредагувати — значок у клітинці з датою.',
       st_none: 'Немає показань на перевірці.',
 
+      nav_stats: 'Статистика',
+      wx_avg: 'надворі в середньому {t}', wx_day: 'у день зняття {t}',
+      stx_title: 'Подача і погода', stx_sub: 'Кожна точка — заміри: по горизонталі температура надворі в той день, по вертикалі — подача. Чим холодніше, тим гарячішою має бути подача — пунктир показує норму за графіком.',
+      stx_axis: 'температура надворі (середня за добу)', stx_l_sup: 'подача за графіком', stx_l_ret: 'обратка за графіком', stx_l_pts: '● ваші заміри (колір — стан)',
+      stt_title: 'Статистика', stt_lead: 'За вашою історією показань. Погода — середня за добу в Харкові (Open-Meteo).',
+      stt_empty: 'Потрібно хоча б двоє показань з різними датами.',
+      stt_wx_loading: 'Завантажую погоду за період…', stt_wx_err: 'Погоду завантажити не вдалося — графіки без порівняння з нормою.',
+      stt_season_g: 'Гкал за сезон {s}', stt_season_uah: 'грн за сезон за тарифом', stt_ok_share: 'замірів подачі в нормі',
+      stt_period: '{a} – {b}, {d} дн.', stt_g30: 'Гкал за 30 днів', stt_tout: 'на вулиці в середньому {t} °C', stt_summer: 'здебільшого міжсезоння',
+      stt_mcal: 'Мкал на градусо-добу', stt_hdd: '{v} градусо-діб', stt_share_tip: 'часу лічильник рахував тепло', stt_off_h: 'без теплоносія ≈ {h} год',
+      stt_dt_tip: 'середній перепад подача − обратка', stt_avgflow: 'середня витрата {v} м³/год', stt_dt_ref: 'ХТМ: > 3 °C',
+      stt_ok: 'у нормі', stt_low: 'нижче графіка', stt_bad: 'значно нижче', stt_none: 'теплоносія немає', stt_off: 'без норми (тепло на вулиці або немає погоди)',
+      stt_out: 'на вулиці {t} °C', stt_sup: 'подача {v} °C', stt_norm: 'за графіком {v}', stt_ret: 'обратка {v} °C, перепад {d}', stt_flow: 'витрата {v} м³/год',
+      stl_fact: 'подача за лічильником', stl_norm: 'норма за графіком',
+      stc_title: 'Чи давало місто нормальний теплоносій', stc_sub: 'Температура подачі в момент зняття показань проти температурного графіка за тієї вуличної температури. Наведіть на точку — деталі.',
+      st1_title: 'Скільки тепла за місяць', st1_sub: 'Гкал у перерахунку на 30 днів для кожного проміжку між показаннями. Бліді — проміжки через літо.',
+      st2_title: 'Тепло з поправкою на погоду', st2_sub: 'Скільки тепла на один градусо-добу морозу. Порівнює теплі й холодні місяці: менше — ощадливіше або менше дали тепла.',
+      st3_title: 'Скільки часу був теплоносій', st3_sub: 'Частка годин, коли лічильник рахував, від усіх годин проміжку. Менше 100% — перерви в подачі (аварії, відключення).',
+      st4_title: 'Середній перепад температур', st4_sub: 'Скільки градусів квартира забирала з теплоносія в середньому за проміжок (з енергії й обсягу). ХТМ радить більше 3 °C.',
+      stt_table: 'Таблиця всіх проміжків', stt_th_period: 'Проміжок', stt_th_out: 'надворі', stt_th_hdd: 'Мкал/°С·доба', stt_th_share: 'час з теплом',
+      stt_method: 'Як рахуємо: норма — графік 95/70 для внутрішньобудинкової системи (розрахункові −22 °C надворі, +18 °C у квартирі), ±3 °C — у нормі; ХТМ свій графік не публікує, тому це орієнтир. Подача — миттєва, у момент зняття; погода — середня за добу. Перепад за проміжок = енергія / обсяг (1 м³ на 1 °C ≈ 0,001 Гкал).',
       nav_save: 'Економія',
       s_for_date: 'Показання за {d}', s_date_change: 'Змінити дату',
       sv_title: 'Як заощадити тепло', sv_lead: 'Поради для квартири з власним теплолічильником у Харкові — з урахуванням вимог робота ХТМ.',
@@ -1080,6 +1121,27 @@ label.btn { cursor: pointer; }
       st_refix_sub: 'Последнюю запись в кабинете ХТМ можно отредактировать — значок в ячейке с датой.',
       st_none: 'Нет показаний на проверке.',
 
+      nav_stats: 'Статистика',
+      wx_avg: 'на улице в среднем {t}', wx_day: 'в день снятия {t}',
+      stx_title: 'Подача и погода', stx_sub: 'Каждая точка — замер: по горизонтали температура на улице в тот день, по вертикали — подача. Чем холоднее, тем горячее должна быть подача — пунктир показывает норму по графику.',
+      stx_axis: 'температура на улице (средняя за сутки)', stx_l_sup: 'подача по графику', stx_l_ret: 'обратка по графику', stx_l_pts: '● ваши замеры (цвет — состояние)',
+      stt_title: 'Статистика', stt_lead: 'По вашей истории показаний. Погода — средняя за сутки в Харькове (Open-Meteo).',
+      stt_empty: 'Нужно хотя бы двое показаний с разными датами.',
+      stt_wx_loading: 'Загружаю погоду за период…', stt_wx_err: 'Погоду загрузить не удалось — графики без сравнения с нормой.',
+      stt_season_g: 'Гкал за сезон {s}', stt_season_uah: 'грн за сезон по тарифу', stt_ok_share: 'замеров подачи в норме',
+      stt_period: '{a} – {b}, {d} дн.', stt_g30: 'Гкал за 30 дней', stt_tout: 'на улице в среднем {t} °C', stt_summer: 'в основном межсезонье',
+      stt_mcal: 'Мкал на градусо-сутки', stt_hdd: '{v} градусо-суток', stt_share_tip: 'времени счётчик считал тепло', stt_off_h: 'без теплоносителя ≈ {h} ч',
+      stt_dt_tip: 'средний перепад подача − обратка', stt_avgflow: 'средний расход {v} м³/ч', stt_dt_ref: 'ХТМ: > 3 °C',
+      stt_ok: 'в норме', stt_low: 'ниже графика', stt_bad: 'сильно ниже', stt_none: 'теплоносителя нет', stt_off: 'без нормы (тепло на улице или нет погоды)',
+      stt_out: 'на улице {t} °C', stt_sup: 'подача {v} °C', stt_norm: 'по графику {v}', stt_ret: 'обратка {v} °C, перепад {d}', stt_flow: 'расход {v} м³/ч',
+      stl_fact: 'подача по счётчику', stl_norm: 'норма по графику',
+      stc_title: 'Давал ли город нормальный теплоноситель', stc_sub: 'Температура подачи в момент снятия показаний против температурного графика при той уличной температуре. Наведите на точку — детали.',
+      st1_title: 'Сколько тепла за месяц', st1_sub: 'Гкал в пересчёте на 30 дней для каждого промежутка между показаниями. Бледные — промежутки через лето.',
+      st2_title: 'Тепло с поправкой на погоду', st2_sub: 'Сколько тепла на один градусо-сутки мороза. Сравнивает тёплые и холодные месяцы: меньше — экономнее или меньше дали тепла.',
+      st3_title: 'Сколько времени был теплоноситель', st3_sub: 'Доля часов, когда счётчик считал, от всех часов промежутка. Меньше 100% — перерывы в подаче (аварии, отключения).',
+      st4_title: 'Средний перепад температур', st4_sub: 'Сколько градусов квартира забирала у теплоносителя в среднем за промежуток (из энергии и объёма). ХТМ советует больше 3 °C.',
+      stt_table: 'Таблица всех промежутков', stt_th_period: 'Промежуток', stt_th_out: 'на улице', stt_th_hdd: 'Мкал/°С·сут', stt_th_share: 'время с теплом',
+      stt_method: 'Как считаем: норма — график 95/70 для внутридомовой системы (расчётные −22 °C снаружи, +18 °C в квартире), ±3 °C — в норме; ХТМ свой график не публикует, поэтому это ориентир. Подача — мгновенная, в момент снятия; погода — средняя за сутки. Перепад за промежуток = энергия / объём (1 м³ на 1 °C ≈ 0,001 Гкал).',
       nav_save: 'Экономия',
       s_for_date: 'Показания за {d}', s_date_change: 'Изменить дату',
       sv_title: 'Как сэкономить тепло', sv_lead: 'Советы для квартиры со своим теплосчётчиком в Харькове — с учётом требований робота ХТМ.',
@@ -1408,6 +1470,91 @@ label.btn { cursor: pointer; }
 
   Sync.merge = merge; Sync.payload = payload; Sync.sig = sig;
   if (typeof module !== 'undefined' && module.exports) module.exports = Sync; else root.TeploSync = Sync;
+})(typeof window !== 'undefined' ? window : this);
+
+</script>
+<script>
+/*
+ * Теплосервис — статистика по истории показаний (без DOM, проверяется в node).
+ * intervals(): между соседними показаниями (по дате снятия) — сколько тепла, средний перепад, расход, доля часов с теплом.
+ * coolant(): температура подачи в момент снятия против температурного графика при той уличной температуре.
+ * Погода — карта {'YYYY-MM-DD': средняя за сутки °C} (Open-Meteo через /api/weather).
+ */
+(function (root) {
+  'use strict';
+  var T_IN = 18, T_DESIGN = -22;          // расчётные: внутри +18 °C, снаружи −22 °C (Харьков, ДСТУ-Н Б В.1.1-27)
+  var SUP = 95, RET = 70;                 // внутридомовой график 95/70 (элеваторные узлы; ХТМ свой график не публикует)
+  var HDD_BASE = 18;                      // градусо-сутки: сумма (18 − средняя за сутки), если на улице холоднее
+  var OK_TOL = 3, LOW_TOL = 8;            // подача ниже графика: до 3 °C — норма, до 8 °C — ниже, больше — сильно ниже
+
+  function num(v) { if (v === null || v === undefined || v === '') return null; var n = parseFloat(String(v).replace(',', '.')); return isFinite(n) ? n : null; }
+  function days(a, b) { return Math.round((Date.parse(b + 'T00:00:00Z') - Date.parse(a + 'T00:00:00Z')) / 86400000); }
+  function addDay(d, k) { return new Date(Date.parse(d + 'T00:00:00Z') + k * 86400000).toISOString().slice(0, 10); }
+
+  /** Норма по графику при уличной температуре t (качественное регулирование, показатель радиаторов 0.25). */
+  function graph(t) {
+    if (t === null || t === undefined) return null;
+    var q = (T_IN - t) / (T_IN - T_DESIGN); if (q <= 0) return null; if (q > 1) q = 1;
+    var mid = (SUP + RET) / 2 - T_IN, half = (SUP - RET) / 2;
+    return { supply: +(T_IN + mid * Math.pow(q, 0.8) + half * q).toFixed(1), ret: +(T_IN + mid * Math.pow(q, 0.8) - half * q).toFixed(1) };
+  }
+
+  /** Точки истории: показания + последние принятые (если их даты нет среди показаний), по дате. */
+  function points(readings, baseline) {
+    var pts = (readings || []).filter(function (r) { return r && !r.deleted && r.htm && r.htm.date && num(r.htm.energy) !== null; })
+      .map(function (r) { return { date: r.htm.date, h: r.htm, id: r.id }; });
+    if (baseline && baseline.date && num(baseline.energy) !== null && !pts.some(function (p) { return p.date === baseline.date; })) pts.push({ date: baseline.date, h: baseline, id: 'baseline' });
+    pts.sort(function (a, b) { return a.date < b.date ? -1 : a.date > b.date ? 1 : 0; });
+    return pts;
+  }
+
+  function weatherStats(w, from, to) {
+    if (!w) return null;
+    var n = days(from, to), sum = 0, hdd = 0, have = 0;
+    for (var k = 1; k <= n; k++) { var t = w[addDay(from, k)]; if (typeof t === 'number') { sum += t; have++; hdd += Math.max(0, HDD_BASE - t); } }
+    if (!have || have < n * 0.8) return null;
+    return { tOut: +(sum / have).toFixed(1), hdd: +(hdd * n / have).toFixed(0) };
+  }
+
+  /** Промежутки между соседними показаниями. */
+  function intervals(readings, baseline, weather, tariff) {
+    var pts = points(readings, baseline), out = [];
+    for (var i = 1; i < pts.length; i++) {
+      var a = pts[i - 1], b = pts[i], d = days(a.date, b.date); if (d <= 0) continue;
+      var dE = num(b.h.energy) - num(a.h.energy), dV = (num(b.h.volume) !== null && num(a.h.volume) !== null) ? num(b.h.volume) - num(a.h.volume) : null;
+      var dH = (num(b.h.hours) !== null && num(a.h.hours) !== null) ? num(b.h.hours) - num(a.h.hours) : null;
+      var it = { from: a.date, to: b.date, id: b.id, days: d, dE: +dE.toFixed(3), month: +(dE / d * 30).toFixed(3), cost: dE > 0 && tariff ? +(dE * tariff).toFixed(2) : 0,
+        dV: dV === null ? null : +dV.toFixed(3), dH: dH,
+        share: dH === null ? null : Math.max(0, Math.min(1, dH / (d * 24))),               // доля времени, когда счётчик считал (шёл теплоноситель)
+        dT: dV > 0 && dE >= 0 ? +(dE / dV * 1000).toFixed(1) : null,                        // средний перепад: 1 м³ воды на 1 °C ≈ 0,001 Гкал
+        flow: dV !== null && dH > 0 ? +(dV / dH).toFixed(3) : null };
+      var ws = weatherStats(weather, a.date, b.date);
+      if (ws) { it.tOut = ws.tOut; it.hdd = ws.hdd; it.perHdd = ws.hdd > 0 && dE > 0 ? +(dE / ws.hdd * 1000).toFixed(2) : null; }   // кГкал (Мкал) на градусо-сутки
+      out.push(it);
+    }
+    return out;
+  }
+
+  /** Теплоноситель в момент снятия против графика. status: ok | low | bad | none (теплоносителя нет) | off (не отопительная погода / нет погоды). */
+  function coolant(readings, baseline, weather) {
+    return points(readings, baseline).filter(function (p) { return num(p.h.tSupply) !== null; }).map(function (p) {
+      var ts = num(p.h.tSupply), tr = num(p.h.tReturn), fl = num(p.h.flow), tOut = weather && typeof weather[p.date] === 'number' ? weather[p.date] : null;
+      var g = graph(tOut), st;
+      if ((fl !== null && fl <= 0.001) || ts < 30) st = 'none';
+      else if (!g) st = 'off';
+      else if (ts >= g.supply - OK_TOL) st = 'ok';
+      else if (ts >= g.supply - LOW_TOL) st = 'low';
+      else st = 'bad';
+      return { date: p.date, id: p.id, tSupply: ts, tReturn: tr, dT: tr !== null ? +(ts - tr).toFixed(2) : null, flow: fl, tOut: tOut,
+        norm: g ? g.supply : null, normRet: g ? g.ret : null, diff: g ? +(ts - g.supply).toFixed(1) : null, status: st };
+    });
+  }
+
+  /** Диапазон дат, для которого нужна погода. */
+  function range(readings, baseline) { var p = points(readings, baseline); return p.length ? { from: p[0].date, to: p[p.length - 1].date } : null; }
+
+  var api = { graph: graph, points: points, intervals: intervals, coolant: coolant, range: range, OK_TOL: OK_TOL, LOW_TOL: LOW_TOL };
+  if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.TeploStats = api;
 })(typeof window !== 'undefined' ? window : this);
 
 </script>
@@ -1837,6 +1984,12 @@ label.btn { cursor: pointer; }
     return /^ru\b/i.test(l) ? 'ru' : 'uk';
   }
   var S = load();
+  var ADMIN = null;   // владелец сервиса (по /api/admin/me) — видит «Статистику» (пока только ему)
+  function checkAdmin() {
+    if (ADMIN !== null || !window.TEPLO_API || !Y().account) return; ADMIN = false;
+    fetch(window.TEPLO_API + '/admin/me', { credentials: 'same-origin', headers: { Accept: 'application/json' } }).then(function (r) { return r.json(); })
+      .then(function (j) { ADMIN = !!(j && j.admin); if (ADMIN) safeRender(); }, function () { ADMIN = null; });
+  }
   S.lang = browserLang();
   if (window.TeploSync) lastSig = window.TeploSync.sig(window.TeploSync.payload(S));
   var Y = function () { return window.TeploSync || { mode: 'local', account: null, status: 'idle' }; };
@@ -1888,6 +2041,7 @@ label.btn { cursor: pointer; }
     alert: '<path d="M12 4l9 16H3z"/><path d="M12 10v4"/><circle cx="12" cy="17" r=".6" fill="currentColor"/>',
     info: '<circle cx="12" cy="12" r="9"/><path d="M12 11v6"/><circle cx="12" cy="7.8" r=".6" fill="currentColor"/>',
     clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+    chart: '<path d="M4 20V4M4 20h16"/><path d="M8 16v-5M12 16V8M16 16v-3"/>',
     leaf: '<path d="M5 19c0-8 5-13 14-14 0 9-5 14-13 14"/><path d="M5 19l7-7"/>',
     calendar: '<rect x="3.5" y="5" width="17" height="15" rx="2"/><path d="M3.5 10h17M8 3v4M16 3v4"/>',
     copy: '<rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3"/>',
@@ -1988,8 +2142,8 @@ label.btn { cursor: pointer; }
   // ---------------- оболочка ----------------
   function shell(view) {
     var route = view.route, bare = view.bare;
-    var navItems = [['home', 'home', 'nav_home'], ['history', 'history', 'nav_history'], ['save', 'leaf', 'nav_save'], ['help', 'help', 'nav_help'], ['prefs', 'prefs', 'nav_prefs']];
-    var nav = bare ? '' : '<nav class="nav" aria-label="' + esc(t('brand')) + '">' + navItems.map(function (n) {
+    var navItems = [['home', 'home', 'nav_home'], ['history', 'history', 'nav_history']].concat(ADMIN ? [['stats', 'chart', 'nav_stats']] : []).concat([['save', 'leaf', 'nav_save'], ['help', 'help', 'nav_help'], ['prefs', 'prefs', 'nav_prefs']]);
+    var nav = bare ? '' : '<nav class="nav" style="--nav-n:' + navItems.length + '" aria-label="' + esc(t('brand')) + '">' + navItems.map(function (n) {
       return '<a href="#' + n[0] + '"' + (route === n[0] ? ' aria-current="page"' : '') + ' data-key="nav-' + n[0] + '">' + ico(n[1], 22) + '<span>' + esc(t(n[2])) + '</span></a>';
     }).join('') + '</nav>';
     var right = bare && view.closeTo
@@ -2114,6 +2268,14 @@ label.btn { cursor: pointer; }
     var dE = e - R.num(from.energy), days = R.daysBetween(from.date, d);
     return { dE: dE, days: days, cost: dE > 0 ? dE * tariff() : 0, from: from.date, fromBase: !prev };
   }
+  /** Погода к показаниям (пока владельцу): средняя на улице за промежуток и в день снятия. */
+  function wxFor(r) {
+    if (!ADMIN || !WX.days || !r.htm || !r.htm.date) return '';
+    var iv = interval(r), d = WX.days, day = typeof d[r.htm.date] === 'number' ? d[r.htm.date] : null, sum = 0, n = 0;
+    if (iv && iv.days > 0 && iv.days <= 120) for (var k = 1; k <= iv.days; k++) { var dd = new Date(Date.parse(iv.from + 'T00:00:00Z') + k * 86400000).toISOString().slice(0, 10); if (typeof d[dd] === 'number') { sum += d[dd]; n++; } }
+    var f = function (v) { return (v > 0 ? '+' : '') + v.toFixed(1).replace('.', ',') + ' °C'; };
+    return n ? t('wx_avg', { t: f(sum / n) }) + (day !== null ? ', ' + t('wx_day', { t: f(day) }) : '') : day !== null ? t('wx_day', { t: f(day) }) : '';
+  }
   function intervalText(iv) {
     if (!iv) return '';
     if (iv.dE < 0) return t('hi_less', { de: Math.abs(iv.dE).toFixed(3) });
@@ -2123,7 +2285,8 @@ label.btn { cursor: pointer; }
   function readingList(arr) {
     return '<ul class="list" data-key="reading-list">' + arr.map(function (r) {
       var cls = { accepted: 'ok', rejected: 'bad', handed: 'info', checked: 'neutral', intermediate: 'neutral' }[r.status] || 'neutral';
-      var sub = intervalText(interval(r));
+      var sub = intervalText(interval(r)), wx = wxFor(r);
+      if (wx) sub = (sub ? sub + ' · ' : '') + wx;
       var link = true;   // вся строка — в карточку показаний (там же правка, удаление, статус)
       var inner = '<div class="grow"><div><b>' + esc(fmtDate(r.htm.date, true)) + '</b> <span class="num">' + esc(R.formatForHtm('energy', r.htm.energy)) + '</span> <span class="small muted">Гкал</span></div>' +
         (sub ? '<div class="small muted">' + esc(sub) + '</div>' : '') + '</div><span class="pill ' + cls + '">' + esc(t('status_' + r.status)) + '</span>';
@@ -2333,6 +2496,7 @@ label.btn { cursor: pointer; }
   };
 
   V.history = function () {
+    if (ADMIN && window.TeploStats) loadWeather();
     var arr = RD().slice().sort(function (a, b) { var x = (b.htm && b.htm.date) || '', y = (a.htm && a.htm.date) || ''; return x < y ? -1 : x > y ? 1 : 0; });
     return { screen: 'S09', route: 'history', html: '<h1>' + esc(t('hi_title')) + '</h1>' +
       (arr.length ? readingList(arr) : '<div class="panel"><p class="muted">' + esc(t('hi_empty')) + '</p><button class="btn" data-act="read">' + esc(t('hi_empty_cta')) + '</button></div>') };
@@ -2358,7 +2522,9 @@ label.btn { cursor: pointer; }
       var v = f.key === 'errCode' ? (h.errCode || '—') : (R.num(h[f.key]) === null ? '—' : R.formatForHtm(f.key, h[f.key]));
       return '<li><div class="grow small muted">' + esc(fieldLabel(f.key)) + '</div><b class="num">' + esc(v) + '</b>' + (f.unit && v !== '—' ? ' <span class="small muted">' + esc(f.key === 'energy' ? 'Гкал' : fieldUnit(f.key)) + '</span>' : '') + '</li>';
     }).join('');
-    var used = iv ? '<div class="panel" data-key="rec-used"><h2>' + esc(t('rec_used_title')) + '</h2>' + (iv.dE < 0 ? '<p class="small">' + esc(intervalText(iv)) + '</p>' :
+    if (ADMIN && window.TeploStats) loadWeather();
+    var wxl = wxFor(r);
+    var used = iv ? '<div class="panel" data-key="rec-used"><h2>' + esc(t('rec_used_title')) + '</h2>' + (wxl ? '<p class="small muted">' + esc(wxl) + '</p>' : '') + (iv.dE < 0 ? '<p class="small">' + esc(intervalText(iv)) + '</p>' :
       '<div class="cards2"><div><div class="num big">' + esc(iv.dE.toFixed(3)) + '</div><div class="small muted">' + esc(t('rec_gcal_for', { days: iv.days, from: fmtDate(iv.from, true) })) + '</div></div>' +
       '<div><div class="num big">≈ ' + esc(money(iv.cost)) + '</div><div class="small muted">' + esc(t('rec_uah', { tariff: money(tariff()) })) + '</div></div></div>' +
       (iv.days > 0 ? '<p class="small muted">' + esc(t('rec_per_month', { de: (iv.dE / iv.days * 30).toFixed(3), cost: money(iv.dE / iv.days * 30 * tariff()) })) + '</p>' : '')) + '</div>' : '';
@@ -2367,6 +2533,135 @@ label.btn { cursor: pointer; }
       '<div class="row-actions">' + st + '<a class="btn sec" href="#rec-' + r.id + '-edit" data-key="rec-edit">' + esc(t('rec_edit')) + '</a>' +
       '<button class="btn danger" data-act="rec-del-ask" data-key="rec-del">' + esc(t('rec_del')) + '</button></div><div id="rec-del-confirm"></div>' };
   }
+
+  // ---------------- статистика (пока только владельцу) ----------------
+  var WX = { key: '', days: null, loading: false, err: '' };   // погода Харькова по дням для диапазона истории
+  function loadWeather() {
+    var rg = window.TeploStats && TeploStats.range(RD(), S.baseline); if (!rg) return;
+    var key = rg.from + '_' + rg.to; if (WX.key === key && (WX.days || WX.loading)) return;
+    WX = { key: key, days: null, loading: true, err: '' };
+    fetch(window.TEPLO_API + '/admin/weather?from=' + rg.from + '&to=' + rg.to, { credentials: 'same-origin', headers: { Accept: 'application/json' } })
+      .then(function (r) { return r.json(); }).then(function (j) { WX.loading = false; if (j && j.days) WX.days = j.days; else WX.err = (j && (j.human || j.error)) || 'error'; if (/^(stats|history|rec-)/.test(routeName())) safeRender(); },
+        function () { WX.loading = false; WX.err = 'network'; if (routeName() === 'stats') safeRender(); });
+  }
+  function shortDate(d) { var p = dateParts(d); return ('0' + p.d).slice(-2) + '.' + ('0' + p.m).slice(-2) + '.' + String(p.y).slice(2); }
+  var CH = { ink: '#17211E', ink2: '#4A5652', grid: '#E3E8E5', bar: '#2F68B0', barSoft: '#9DB5D6', ok: '#1E7B4C', low: '#B7791F', bad: '#A3142E', none: '#4A5652', off: '#8E9A94' };
+  function tipAttr(lines) { return ' tabindex="0" data-tip="' + esc(lines.filter(Boolean).join('\n')) + '"'; }
+  function nTicks(max) { var n = max / Math.pow(10, Math.floor(Math.log10(max))); return (n === 2 || n === 1) ? 4 : 5; }
+  function niceMax(v) { if (!(v > 0)) return 1; var p = Math.pow(10, Math.floor(Math.log10(v))), n = v / p; return (n <= 1 ? 1 : n <= 2 ? 2 : n <= 2.5 ? 2.5 : n <= 5 ? 5 : 10) * p; }
+  function fmtN(v, d) { return (d === 0 ? String(Math.round(v)) : v.toFixed(d)).replace('.', ','); }
+  /** Столбики. items: [{x, v, tip[], soft, color, top}] */
+  function barChart(items, o) {
+    var W = 640, H = 236, L = 46, R = 10, T = 16, B = items.some(function (x) { return x.x2; }) ? 40 : 30, iw = W - L - R, ih = H - T - B;
+    var max = o.max || niceMax(Math.max.apply(null, items.map(function (x) { return x.v || 0; }).concat([o.ref ? o.ref.v : 0])) * 1.08);
+    var y = function (v) { return T + ih - Math.max(0, v) / max * ih; }, slot = iw / Math.max(1, items.length), bw = Math.min(46, slot * 0.62);
+    var g = '';
+    var nt = nTicks(max), dec = o.dec !== undefined ? (max / nt < 1 ? (max / nt < 0.1 ? 2 : 1) : 0) : 1;
+    for (var k = 0; k <= nt; k++) { var tv = max * k / nt, yy = y(tv); g += '<line x1="' + L + '" x2="' + (W - R) + '" y1="' + yy + '" y2="' + yy + '" stroke="' + CH.grid + '"/><text x="' + (L - 6) + '" y="' + (yy + 4) + '" text-anchor="end" class="ax">' + esc(fmtN(tv, dec)) + '</text>'; }
+    var bars = items.map(function (it, i) {
+      var cx = L + slot * (i + 0.5), x0 = cx - bw / 2, yt = y(it.v || 0), yb = T + ih, h = Math.max(0, yb - yt), r = Math.min(4, h);
+      var path = h > 0 ? 'M' + x0 + ',' + yb + 'V' + (yt + r) + 'Q' + x0 + ',' + yt + ' ' + (x0 + r) + ',' + yt + 'H' + (x0 + bw - r) + 'Q' + (x0 + bw) + ',' + yt + ' ' + (x0 + bw) + ',' + (yt + r) + 'V' + yb + 'Z' : '';
+      return '<g class="mk"' + tipAttr(it.tip) + '><rect x="' + (cx - slot / 2) + '" y="' + T + '" width="' + slot + '" height="' + (ih + B) + '" fill="transparent"/>' +
+        (path ? '<path d="' + path + '" fill="' + (it.color || (it.soft ? CH.barSoft : CH.bar)) + '"/>' : '') +
+        (it.top ? '<text x="' + cx + '" y="' + (yt - 5) + '" text-anchor="middle" class="vl">' + esc(it.top) + '</text>' : '') +
+        '<text x="' + cx + '" y="' + (T + ih + 17) + '" text-anchor="middle" class="ax">' + esc(it.x) + '</text>' +
+        (it.x2 ? '<text x="' + cx + '" y="' + (T + ih + 31) + '" text-anchor="middle" class="ax x2">' + esc(it.x2) + '</text>' : '') + '</g>';
+    }).join('');
+    var ref = o.ref ? '<line x1="' + L + '" x2="' + (W - R) + '" y1="' + y(o.ref.v) + '" y2="' + y(o.ref.v) + '" stroke="' + CH.ink2 + '" stroke-dasharray="4 4"/><text x="' + (W - R) + '" y="' + (y(o.ref.v) - 5) + '" text-anchor="end" class="ax">' + esc(o.ref.label) + '</text>' : '';
+    return '<svg class="chart" viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="' + esc(o.title) + '">' + g + '<line x1="' + L + '" x2="' + (W - R) + '" y1="' + (T + ih) + '" y2="' + (T + ih) + '" stroke="' + CH.ink2 + '"/>' + bars + ref + '</svg>';
+  }
+  var ST_ICO = { ok: '✓', low: '↓', bad: '⚠', none: '✕', off: '–' };
+  /** Подача: факт (точка цвета состояния) против нормы графика (кольцо), соединены линией. */
+  function coolantChart(pts) {
+    var W = 640, H = 250, L = 46, R = 10, T = 16, B = 34, iw = W - L - R, ih = H - T - B;
+    var max = niceMax(Math.max.apply(null, pts.map(function (p) { return Math.max(p.tSupply, p.norm || 0); })) * 1.05), y = function (v) { return T + ih - v / max * ih; }, slot = iw / Math.max(1, pts.length);
+    var g = '';
+    var nt = nTicks(max);
+    for (var k = 0; k <= nt; k++) { var tv = max * k / nt, yy = y(tv); g += '<line x1="' + L + '" x2="' + (W - R) + '" y1="' + yy + '" y2="' + yy + '" stroke="' + CH.grid + '"/><text x="' + (L - 6) + '" y="' + (yy + 4) + '" text-anchor="end" class="ax">' + Math.round(tv) + '°</text>'; }
+    var marks = pts.map(function (p, i) {
+      var cx = L + slot * (i + 0.5), ya = y(p.tSupply), yn = p.norm ? y(p.norm) : null;
+      return '<g class="mk"' + tipAttr([p.status !== 'off' ? ST_ICO[p.status] + ' ' + t('stt_' + p.status) : t('stt_off'), shortDate(p.date) + (p.tOut !== null ? ' · ' + t('stt_out', { t: fmtN(p.tOut, 1) }) : ''),
+          t('stt_sup', { v: fmtN(p.tSupply, 1) }) + (p.norm ? ' · ' + t('stt_norm', { v: fmtN(p.norm, 1) }) + ' (' + (p.diff >= 0 ? '+' : '') + fmtN(p.diff, 1) + ')' : ''),
+          p.tReturn !== null ? t('stt_ret', { v: fmtN(p.tReturn, 1), d: fmtN(p.dT, 1) }) : '', p.flow !== null ? t('stt_flow', { v: fmtN(p.flow, 3) }) : '']) + '>' +
+        '<rect x="' + (cx - slot / 2) + '" y="' + T + '" width="' + slot + '" height="' + (ih + B) + '" fill="transparent"/>' +
+        (yn !== null ? '<line x1="' + cx + '" x2="' + cx + '" y1="' + yn + '" y2="' + ya + '" stroke="' + CH.grid + '" stroke-width="3"/><circle cx="' + cx + '" cy="' + yn + '" r="6" fill="#fff" stroke="' + CH.ink2 + '" stroke-width="2"/>' : '') +
+        '<circle cx="' + cx + '" cy="' + ya + '" r="7" fill="' + CH[p.status] + '" stroke="#fff" stroke-width="2"/>' +
+        '<text x="' + cx + '" y="' + (Math.min(ya, yn === null ? ya : yn) - 11) + '" text-anchor="middle" class="vl">' + ST_ICO[p.status] + '</text>' +
+        '<text x="' + cx + '" y="' + (H - 12) + '" text-anchor="middle" class="ax">' + esc(shortDate(p.date)) + '</text></g>';
+    }).join('');
+    return '<svg class="chart" viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="' + esc(t('stc_title')) + '">' + g + '<line x1="' + L + '" x2="' + (W - R) + '" y1="' + (T + ih) + '" y2="' + (T + ih) + '" stroke="' + CH.ink2 + '"/>' + marks + '</svg>';
+  }
+  /** Связь с погодой: x — на улице, y — подача; линия — график 95/70; точки — замеры (цвет — состояние). */
+  function corrChart(pts) {
+    var P = pts.filter(function (p) { return p.tOut !== null; }); if (P.length < 2) return '';
+    var W = 640, H = 260, L = 46, R = 12, T = 14, B = 40, iw = W - L - R, ih = H - T - B;
+    var xs = P.map(function (p) { return p.tOut; }), x0 = Math.min(-15, Math.floor(Math.min.apply(null, xs) / 5) * 5), x1 = Math.max(10, Math.ceil(Math.max.apply(null, xs) / 5) * 5);
+    var ymax = 100, x = function (v) { return L + (v - x0) / (x1 - x0) * iw; }, y = function (v) { return T + ih - v / ymax * ih; };
+    var g = '';
+    for (var k = 0; k <= 4; k++) { var tv = ymax * k / 4; g += '<line x1="' + L + '" x2="' + (W - R) + '" y1="' + y(tv) + '" y2="' + y(tv) + '" stroke="' + CH.grid + '"/><text x="' + (L - 6) + '" y="' + (y(tv) + 4) + '" text-anchor="end" class="ax">' + tv + '°</text>'; }
+    for (var xv = x0; xv <= x1; xv += 5) g += '<text x="' + x(xv) + '" y="' + (T + ih + 16) + '" text-anchor="middle" class="ax">' + (xv > 0 ? '+' : '') + xv + '°</text>';
+    g += '<text x="' + (L + iw / 2) + '" y="' + (H - 4) + '" text-anchor="middle" class="ax">' + esc(t('stx_axis')) + '</text>';
+    var curve = [], curveR = [];
+    for (var tv2 = x0; tv2 <= Math.min(x1, 17); tv2 += 0.5) { var gg = TeploStats.graph(tv2); if (gg) { curve.push(x(tv2).toFixed(1) + ',' + y(gg.supply).toFixed(1)); curveR.push(x(tv2).toFixed(1) + ',' + y(gg.ret).toFixed(1)); } }
+    var lines = '<polyline points="' + curve.join(' ') + '" fill="none" stroke="' + CH.ink2 + '" stroke-width="2" stroke-dasharray="6 4"/>' +
+      '<polyline points="' + curveR.join(' ') + '" fill="none" stroke="' + CH.off + '" stroke-width="1.5" stroke-dasharray="2 4"/>';
+    var dots = P.map(function (p) {
+      return '<g class="mk"' + tipAttr([ST_ICO[p.status] + ' ' + t('stt_' + p.status), shortDate(p.date) + ' · ' + t('stt_out', { t: fmtN(p.tOut, 1) }),
+        t('stt_sup', { v: fmtN(p.tSupply, 1) }) + (p.norm ? ' · ' + t('stt_norm', { v: fmtN(p.norm, 1) }) : ''), p.tReturn !== null ? t('stt_ret', { v: fmtN(p.tReturn, 1), d: fmtN(p.dT, 1) }) : '']) + '>' +
+        '<circle cx="' + x(p.tOut) + '" cy="' + y(p.tSupply) + '" r="14" fill="transparent"/><circle cx="' + x(p.tOut) + '" cy="' + y(p.tSupply) + '" r="7" fill="' + CH[p.status] + '" stroke="#fff" stroke-width="2"/>' +
+        '</g>';
+    }).join('');
+    return '<svg class="chart" viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="' + esc(t('stx_title')) + '">' + g + lines + dots + '</svg>' +
+      '<div class="legend small"><span><i class="dash"></i>' + esc(t('stx_l_sup')) + '</span><span><i class="dash dot2"></i>' + esc(t('stx_l_ret')) + '</span><span>' + esc(t('stx_l_pts')) + '</span></div>';
+  }
+  V.stats = function () {
+    if (!ADMIN) return V.home();
+    var St = window.TeploStats; loadWeather();
+    var w = WX.days, ivs = St.intervals(RD(), S.baseline, w, tariff()), cl = St.coolant(RD(), S.baseline, w);
+    if (!ivs.length) return { screen: 'S15', route: 'stats', html: '<h1>' + esc(t('stt_title')) + '</h1><div class="panel"><p class="muted">' + esc(t('stt_empty')) + '</p></div>' };
+    var summer = function (it) { return it.days > 100; };
+    var lbl = function (it) { return shortDate(it.to); };
+    var period = function (it) { return t('stt_period', { a: R.toHtmDate(it.from), b: R.toHtmDate(it.to), d: it.days }); };
+    var wxNote = WX.loading ? '<p class="small muted">' + esc(t('stt_wx_loading')) + '</p>' : WX.err ? '<p class="small muted">' + esc(t('stt_wx_err')) + '</p>' : '';
+    // сводка: последний отопительный сезон (с 1 октября)
+    var last = ivs[ivs.length - 1], sy = +last.to.slice(0, 4) - (last.to.slice(5, 7) < '10' ? 1 : 0), sFrom = sy + '-10-01';
+    var season = ivs.filter(function (it) { return it.to > sFrom; }), sE = season.reduce(function (a, it) { return a + Math.max(0, it.dE); }, 0);
+    var okN = cl.filter(function (p) { return p.status === 'ok'; }).length, judged = cl.filter(function (p) { return p.status !== 'off'; }).length;
+    var tiles = '<div class="cards2 stat-tiles"><div><div class="num big">' + esc(fmtN(sE, 3)) + '</div><div class="small muted">' + esc(t('stt_season_g', { s: sy + '/' + String(sy + 1).slice(2) })) + '</div></div>' +
+      '<div><div class="num big">≈ ' + esc(money(sE * tariff())) + '</div><div class="small muted">' + esc(t('stt_season_uah')) + '</div></div>' +
+      (judged ? '<div><div class="num big">' + okN + ' / ' + judged + '</div><div class="small muted">' + esc(t('stt_ok_share')) + '</div></div>' : '') + '</div>';
+    var c1 = barChart(ivs.map(function (it) { return { x: lbl(it), x2: it.tOut !== undefined ? (it.tOut > 0 ? '+' : '') + Math.round(it.tOut) + ' °C' : '', v: Math.max(0, it.month), soft: summer(it), top: fmtN(it.month, 2),
+      tip: [fmtN(it.month, 3) + ' ' + t('stt_g30'), period(it), '+' + fmtN(it.dE, 3) + ' Гкал ≈ ' + money(it.cost) + ' грн', it.tOut !== undefined ? t('stt_tout', { t: fmtN(it.tOut, 1) }) : '', summer(it) ? t('stt_summer') : ''] }; }), { title: t('st1_title'), dec: 1 });
+    var withW = ivs.filter(function (it) { return it.perHdd != null && !summer(it); });
+    var c2 = withW.length ? barChart(withW.map(function (it) { return { x: lbl(it), v: it.perHdd, top: fmtN(it.perHdd, 2),
+      tip: [fmtN(it.perHdd, 2) + ' ' + t('stt_mcal'), period(it), t('stt_tout', { t: fmtN(it.tOut, 1) }) + ' · ' + t('stt_hdd', { v: it.hdd })] }; }), { title: t('st2_title'), dec: 1 }) : '';
+    var withS = ivs.filter(function (it) { return it.share != null && !summer(it); });
+    var c3 = withS.length ? barChart(withS.map(function (it) { var pc = Math.round(it.share * 100); return { x: lbl(it), v: pc, top: pc + '%', color: pc >= 95 ? CH.bar : pc >= 80 ? CH.low : CH.bad,
+      tip: [pc + '% ' + t('stt_share_tip'), period(it), t('stt_off_h', { h: Math.max(0, Math.round(it.days * 24 - it.dH)) })] }; }), { title: t('st3_title'), max: 100, dec: 0, ref: { v: 100, label: '100%' } }) : '';
+    var withT = ivs.filter(function (it) { return it.dT != null && !summer(it); });
+    var c4 = withT.length ? barChart(withT.map(function (it) { return { x: lbl(it), v: it.dT, top: fmtN(it.dT, 1) + '°', color: it.dT >= 3 ? CH.bar : CH.low,
+      tip: [fmtN(it.dT, 1) + ' °C ' + t('stt_dt_tip'), period(it), it.flow != null ? t('stt_avgflow', { v: fmtN(it.flow, 3) }) : ''] }; }), { title: t('st4_title'), dec: 0, ref: { v: 3, label: t('stt_dt_ref') } }) : '';
+    var legend = '<div class="legend small"><span><i class="dot" style="background:' + CH.ink + '"></i>' + esc(t('stl_fact')) + '</span><span><i class="ring"></i>' + esc(t('stl_norm')) + '</span>' +
+      ['ok', 'low', 'bad', 'none'].map(function (k) { return '<span><i class="dot" style="background:' + CH[k] + '"></i>' + ST_ICO[k] + ' ' + esc(t('stt_' + k)) + '</span>'; }).join('') + '</div>';
+    var panel = function (title, sub, chart, extra) { return chart ? '<section class="panel chart-panel"><h2>' + esc(title) + '</h2><p class="small muted">' + esc(sub) + '</p>' + chart + (extra || '') + '</section>' : ''; };
+    var table = '<details class="panel"><summary>' + esc(t('stt_table')) + '</summary><div class="tbl-wrap"><table class="tbl"><thead><tr><th>' + esc(t('stt_th_period')) + '</th><th>Гкал</th><th>' + esc(t('stt_g30')) + '</th><th>грн</th><th>°C ' + esc(t('stt_th_out')) + '</th><th>' + esc(t('stt_th_hdd')) + '</th><th>ΔT</th><th>м³/год</th><th>' + esc(t('stt_th_share')) + '</th></tr></thead><tbody>' +
+      ivs.map(function (it) { return '<tr><td>' + esc(R.toHtmDate(it.from) + ' – ' + R.toHtmDate(it.to)) + '</td><td class="num">' + fmtN(it.dE, 3) + '</td><td class="num">' + fmtN(it.month, 3) + '</td><td class="num">' + money(it.cost) + '</td><td class="num">' + (it.tOut !== undefined ? fmtN(it.tOut, 1) : '—') + '</td><td class="num">' + (it.perHdd != null ? fmtN(it.perHdd, 2) : '—') + '</td><td class="num">' + (it.dT != null ? fmtN(it.dT, 1) : '—') + '</td><td class="num">' + (it.flow != null ? fmtN(it.flow, 3) : '—') + '</td><td class="num">' + (it.share != null ? Math.round(it.share * 100) + '%' : '—') + '</td></tr>'; }).join('') +
+      '</tbody></table></div></details>';
+    return { screen: 'S15', route: 'stats', html: '<h1>' + esc(t('stt_title')) + '</h1><p class="muted">' + esc(t('stt_lead')) + '</p>' + wxNote + tiles +
+      panel(t('stc_title'), t('stc_sub'), cl.length ? coolantChart(cl) : '', legend) +
+      panel(t('stx_title'), t('stx_sub'), corrChart(cl)) +
+      panel(t('st1_title'), t('st1_sub'), c1) + panel(t('st3_title'), t('st3_sub'), c3) + panel(t('st2_title'), t('st2_sub'), c2) + panel(t('st4_title'), t('st4_sub'), c4) + table +
+      '<p class="small muted">' + esc(t('stt_method')) + '</p><div id="ctip" class="ctip" role="tooltip" hidden></div>' };
+  };
+  (function () {   // подсказки графиков: наведение и фокус; текст — через textContent
+    var show = function (el, x, y) { var tp = document.getElementById('ctip'); if (!tp) return; tp.innerHTML = '';
+      el.getAttribute('data-tip').split('\n').forEach(function (ln, i) { var d = document.createElement('div'); d.textContent = ln; if (i === 0) d.className = 'ctip-v'; tp.appendChild(d); });
+      tp.hidden = false; var w = tp.offsetWidth, hh = tp.offsetHeight; tp.style.left = Math.max(8, Math.min(window.innerWidth - w - 8, x - w / 2)) + 'px'; tp.style.top = Math.max(8, y - hh - 14) + 'px'; };
+    var hide = function () { var tp = document.getElementById('ctip'); if (tp) tp.hidden = true; };
+    document.addEventListener('pointermove', function (e) { var el = e.target.closest && e.target.closest('[data-tip]'); if (el) show(el, e.clientX, e.clientY); else hide(); });
+    document.addEventListener('focusin', function (e) { var el = e.target.closest && e.target.closest('[data-tip]'); if (el) { var b = el.getBoundingClientRect(); show(el, b.left + b.width / 2, b.top); } });
+    document.addEventListener('focusout', hide);
+  })();
 
   // ---------------- як заощадити тепло ----------------
   /** Поради з урахуванням реалій ХТМ: квартирний лічильник, робот ХТМ (мін. витрата), норми ДБН. Джерела — у кінці сторінки. */
@@ -2815,7 +3110,7 @@ label.btn { cursor: pointer; }
       case 'ph-apply': phApply(); break;
       case 'ph-use-model': { var um = M.byId(el.getAttribute('data-id')); S.meter = Object.assign({}, S.meter || {}, { modelId: um.id, unit: el.getAttribute('data-unit') || um.unit }); save(); toast(t('b_saved')); PH.picked = VIS().pick(PH.result, M.TO_GCAL, energyUnit()); render(true); break; }
       case 'auth-mode': authMode = authMode === 'login' ? 'register' : 'login'; render(true); break;
-      case 'logout': Y().logout().then(function () { S = defaults(); S.lang = browserLang(); lastSig = window.TeploSync.sig(window.TeploSync.payload(S)); persist(); toast(t('logged_out')); go('welcome'); }); break;
+      case 'logout': ADMIN = null; Y().logout().then(function () { S = defaults(); S.lang = browserLang(); lastSig = window.TeploSync.sig(window.TeploSync.payload(S)); persist(); toast(t('logged_out')); go('welcome'); }); break;
       case 'dismiss-sync': S.syncPromptDismissed = true; persist(); render(true); break;
       case 'wipe-no': document.getElementById('wipe-confirm').innerHTML = ''; break;
       case 'wipe-yes': { var now = Date.now(); S = defaults(); S.lang = browserLang(); S.wipedAt = now; phReset(); FB.open = false; save(); toast(t('p_wiped')); go('welcome'); break; }
@@ -2898,6 +3193,7 @@ label.btn { cursor: pointer; }
     var onSync = function () {
       var el = document.getElementById('sync-status'); if (el) el.textContent = syncStatusText();
       if (window.TEPLO_API && window.TeploVision && window.TeploSync._cfg) window.TeploVision.initServer(window.TeploSync._cfg, !!window.TeploSync.account);
+      if (!window.TeploSync.account) ADMIN = null; else checkAdmin();
       if (['prefs', 'login', 'welcome', 'home', 'meter', 'baseline'].indexOf(routeName() || 'welcome') >= 0 || /^step-/.test(routeName())) safeRender();
     };
     window.TeploSync.init(function () { return S; }, applyRemote, onSync);
