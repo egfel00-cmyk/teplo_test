@@ -195,6 +195,7 @@ final class Weather {
     if (!preg_match($re, $from) || !preg_match($re, $to) || $from > $to) throw new HttpError(422, 'bad_range');
     $today = gmdate('Y-m-d'); if ($to > $today) $to = $today;
     if ($from < '2015-01-01') $from = '2015-01-01';
+    if ($from < gmdate('Y-m-d', strtotime($to . ' -6 years'))) $from = gmdate('Y-m-d', strtotime($to . ' -6 years'));
     $dir = Cfg::data() . '/cache'; @mkdir($dir, 0700, true);
     $f = $dir . '/weather_' . $from . '_' . $to . '.json';
     // старые периоды не меняются — кэш навсегда; если захватывает последние 10 дней — на 6 часов

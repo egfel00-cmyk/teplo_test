@@ -101,6 +101,7 @@
     alert: '<path d="M12 4l9 16H3z"/><path d="M12 10v4"/><circle cx="12" cy="17" r=".6" fill="currentColor"/>',
     info: '<circle cx="12" cy="12" r="9"/><path d="M12 11v6"/><circle cx="12" cy="7.8" r=".6" fill="currentColor"/>',
     clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+    thermo: '<path d="M10 14.5V5a2 2 0 1 1 4 0v9.5a4 4 0 1 1-4 0z"/><path d="M12 10v6"/>',
     chart: '<path d="M4 20V4M4 20h16"/><path d="M8 16v-5M12 16V8M16 16v-3"/>',
     leaf: '<path d="M5 19c0-8 5-13 14-14 0 9-5 14-13 14"/><path d="M5 19l7-7"/>',
     calendar: '<rect x="3.5" y="5" width="17" height="15" rx="2"/><path d="M3.5 10h17M8 3v4M16 3v4"/>',
@@ -328,13 +329,29 @@
     var dE = e - R.num(from.energy), days = R.daysBetween(from.date, d);
     return { dE: dE, days: days, cost: dE > 0 ? dE * tariff() : 0, from: from.date, fromBase: !prev };
   }
-  /** Погода к показаниям (пока владельцу): средняя на улице за промежуток и в день снятия. */
+  /** Погода к показаниям: средняя/мин/макс на улице за промежуток (до 4 мес.) и в день снятия; ряд по дням — для мини-графика. */
   function wxFor(r) {
-    if (!ADMIN || !WX.days || !r.htm || !r.htm.date) return '';
-    var iv = interval(r), d = WX.days, day = typeof d[r.htm.date] === 'number' ? d[r.htm.date] : null, sum = 0, n = 0;
-    if (iv && iv.days > 0 && iv.days <= 120) for (var k = 1; k <= iv.days; k++) { var dd = new Date(Date.parse(iv.from + 'T00:00:00Z') + k * 86400000).toISOString().slice(0, 10); if (typeof d[dd] === 'number') { sum += d[dd]; n++; } }
-    var f = function (v) { return (v > 0 ? '+' : '') + v.toFixed(1).replace('.', ',') + ' °C'; };
-    return n ? t('wx_avg', { t: f(sum / n) }) + (day !== null ? ', ' + t('wx_day', { t: f(day) }) : '') : day !== null ? t('wx_day', { t: f(day) }) : '';
+    if (!WX.days || !r.htm || !r.htm.date) return null;
+    var iv = interval(r), d = WX.days, day = typeof d[r.htm.date] === 'number' ? d[r.htm.date] : null, ser = [];
+    if (iv && iv.days > 0 && iv.days <= 120) for (var k = 1; k <= iv.days; k++) { var dd = new Date(Date.parse(iv.from + 'T00:00:00Z') + k * 86400000).toISOString().slice(0, 10); if (typeof d[dd] === 'number') ser.push(d[dd]); }
+    if (!ser.length && day === null) return null;
+    var avg = ser.length ? ser.reduce(function (a, b) { return a + b; }, 0) / ser.length : null;
+    return { avg: avg, day: day, min: ser.length ? Math.min.apply(null, ser) : null, max: ser.length ? Math.max.apply(null, ser) : null, ser: ser, frost: ser.filter(function (v) { return v < 0; }).length };
+  }
+  function degTxt(v) { return (v > 0.05 ? '+' : v < -0.05 ? '−' : '') + Math.abs(v).toFixed(1).replace('.', ',') + '°'; }
+  function wxTone(v) { return v <= -2 ? 'cold' : v >= 2 ? 'warm' : 'zero'; }
+  /** Компактная плашка погоды в строке истории: термометр + средняя за промежуток (или в день снятия). */
+  function wxChip(w) {
+    if (!w) return '';
+    var v = w.avg !== null ? w.avg : w.day, tip = w.avg !== null ? t('wx_tip_avg', { t: degTxt(w.avg), min: degTxt(w.min), max: degTxt(w.max) }) + (w.day !== null ? ' · ' + t('wx_tip_day', { t: degTxt(w.day) }) : '') : t('wx_tip_day', { t: degTxt(w.day) });
+    return '<span class="wx wx-' + wxTone(v) + '" title="' + esc(tip) + '" aria-label="' + esc(tip) + '">' + ico('thermo', 15) + '<span class="num">' + esc(degTxt(v)) + '</span></span>';
+  }
+  /** Мини-график температур по дням промежутка: столбики вверх/вниз от нуля. */
+  function wxSpark(ser) {
+    if (!ser || ser.length < 3) return '';
+    var W = 600, H = 70, mx = Math.max(5, Math.max.apply(null, ser.map(Math.abs))), z = H / 2, bw = W / ser.length;
+    return '<svg class="spark" viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="none" aria-hidden="true"><line x1="0" x2="' + W + '" y1="' + z + '" y2="' + z + '" stroke="#CFD7D3"/>' +
+      ser.map(function (v, i) { var h = Math.abs(v) / mx * (z - 2); return '<rect x="' + (i * bw + bw * 0.15).toFixed(1) + '" y="' + (v >= 0 ? z - h : z).toFixed(1) + '" width="' + (bw * 0.7).toFixed(1) + '" height="' + Math.max(1, h).toFixed(1) + '" rx="1.5" fill="' + (v < 0 ? '#2F68B0' : '#C98A1E') + '"/>'; }).join('') + '</svg>';
   }
   function intervalText(iv) {
     if (!iv) return '';
@@ -345,11 +362,10 @@
   function readingList(arr) {
     return '<ul class="list" data-key="reading-list">' + arr.map(function (r) {
       var cls = { accepted: 'ok', rejected: 'bad', handed: 'info', checked: 'neutral', intermediate: 'neutral' }[r.status] || 'neutral';
-      var sub = intervalText(interval(r)), wx = wxFor(r);
-      if (wx) sub = (sub ? sub + ' · ' : '') + wx;
+      var sub = intervalText(interval(r)), chip = wxChip(wxFor(r));
       var link = true;   // вся строка — в карточку показаний (там же правка, удаление, статус)
       var inner = '<div class="grow"><div><b>' + esc(fmtDate(r.htm.date, true)) + '</b> <span class="num">' + esc(R.formatForHtm('energy', r.htm.energy)) + '</span> <span class="small muted">Гкал</span></div>' +
-        (sub ? '<div class="small muted">' + esc(sub) + '</div>' : '') + '</div><span class="pill ' + cls + '">' + esc(t('status_' + r.status)) + '</span>';
+        (sub ? '<div class="small muted">' + esc(sub) + '</div>' : '') + '</div>' + chip + '<span class="pill ' + cls + '">' + esc(t('status_' + r.status)) + '</span>';
       return '<li data-key="reading-' + r.id + '">' + (link ? '<a class="rowlink" href="#rec-' + r.id + '">' + inner + '</a>' : inner) + '</li>';
     }).join('') + '</ul>';
   }
@@ -556,7 +572,7 @@
   };
 
   V.history = function () {
-    if (ADMIN && window.TeploStats) loadWeather();
+    if (window.TeploStats) loadWeather();
     var arr = RD().slice().sort(function (a, b) { var x = (b.htm && b.htm.date) || '', y = (a.htm && a.htm.date) || ''; return x < y ? -1 : x > y ? 1 : 0; });
     return { screen: 'S09', route: 'history', html: '<h1>' + esc(t('hi_title')) + '</h1>' +
       (arr.length ? readingList(arr) : '<div class="panel"><p class="muted">' + esc(t('hi_empty')) + '</p><button class="btn" data-act="read">' + esc(t('hi_empty_cta')) + '</button></div>') };
@@ -582,14 +598,19 @@
       var v = f.key === 'errCode' ? (h.errCode || '—') : (R.num(h[f.key]) === null ? '—' : R.formatForHtm(f.key, h[f.key]));
       return '<li><div class="grow small muted">' + esc(fieldLabel(f.key)) + '</div><b class="num">' + esc(v) + '</b>' + (f.unit && v !== '—' ? ' <span class="small muted">' + esc(f.key === 'energy' ? 'Гкал' : fieldUnit(f.key)) + '</span>' : '') + '</li>';
     }).join('');
-    if (ADMIN && window.TeploStats) loadWeather();
-    var wxl = wxFor(r);
-    var used = iv ? '<div class="panel" data-key="rec-used"><h2>' + esc(t('rec_used_title')) + '</h2>' + (wxl ? '<p class="small muted">' + esc(wxl) + '</p>' : '') + (iv.dE < 0 ? '<p class="small">' + esc(intervalText(iv)) + '</p>' :
+    if (window.TeploStats) loadWeather();
+    var wx = wxFor(r);
+    var used = iv ? '<div class="panel" data-key="rec-used"><h2>' + esc(t('rec_used_title')) + '</h2>' + (iv.dE < 0 ? '<p class="small">' + esc(intervalText(iv)) + '</p>' :
       '<div class="cards2"><div><div class="num big">' + esc(iv.dE.toFixed(3)) + '</div><div class="small muted">' + esc(t('rec_gcal_for', { days: iv.days, from: fmtDate(iv.from, true) })) + '</div></div>' +
       '<div><div class="num big">≈ ' + esc(money(iv.cost)) + '</div><div class="small muted">' + esc(t('rec_uah', { tariff: money(tariff()) })) + '</div></div></div>' +
       (iv.days > 0 ? '<p class="small muted">' + esc(t('rec_per_month', { de: (iv.dE / iv.days * 30).toFixed(3), cost: money(iv.dE / iv.days * 30 * tariff()) })) + '</p>' : '')) + '</div>' : '';
     var st = (r.status === 'handed' || r.status === 'rejected' || r.status === 'accepted') ? '<a class="btn sec" href="#status" data-act="focus" data-id="' + r.id + '">' + esc(t('rec_status')) + '</a>' : '';
-    return { screen: 'S09', route: 'history', html: head + used + '<ul class="list" data-key="rec-values">' + rows + '</ul>' +
+    var wxp = wx ? '<div class="panel wx-panel" data-key="rec-weather"><h2>' + ico('thermo', 20) + ' ' + esc(t('wx_title')) + '</h2><div class="wx-tiles">' +
+      (wx.avg !== null ? '<div><div class="num big wx-t-' + wxTone(wx.avg) + '">' + esc(degTxt(wx.avg)) + '</div><div class="small muted">' + esc(t('wx_t_avg')) + '</div></div>' +
+        '<div><div class="num mid">' + esc(degTxt(wx.min)) + ' … ' + esc(degTxt(wx.max)) + '</div><div class="small muted">' + esc(t('wx_t_range')) + '</div></div>' +
+        '<div><div class="num mid">' + wx.frost + ' / ' + wx.ser.length + '</div><div class="small muted">' + esc(t('wx_t_frost')) + '</div></div>' : '') +
+      (wx.day !== null ? '<div><div class="num mid">' + esc(degTxt(wx.day)) + '</div><div class="small muted">' + esc(t('wx_t_day')) + '</div></div>' : '') + '</div>' + wxSpark(wx.ser) + '</div>' : '';
+    return { screen: 'S09', route: 'history', html: head + used + wxp + '<ul class="list" data-key="rec-values">' + rows + '</ul>' +
       '<div class="row-actions">' + st + '<a class="btn sec" href="#rec-' + r.id + '-edit" data-key="rec-edit">' + esc(t('rec_edit')) + '</a>' +
       '<button class="btn danger" data-act="rec-del-ask" data-key="rec-del">' + esc(t('rec_del')) + '</button></div><div id="rec-del-confirm"></div>' };
   }
@@ -597,10 +618,11 @@
   // ---------------- статистика (пока только владельцу) ----------------
   var WX = { key: '', days: null, loading: false, err: '' };   // погода Харькова по дням для диапазона истории
   function loadWeather() {
+    if (!window.TEPLO_API) return;
     var rg = window.TeploStats && TeploStats.range(RD(), S.baseline); if (!rg) return;
     var key = rg.from + '_' + rg.to; if (WX.key === key && (WX.days || WX.loading)) return;
     WX = { key: key, days: null, loading: true, err: '' };
-    fetch(window.TEPLO_API + '/admin/weather?from=' + rg.from + '&to=' + rg.to, { credentials: 'same-origin', headers: { Accept: 'application/json' } })
+    fetch(window.TEPLO_API + '/weather?from=' + rg.from + '&to=' + rg.to, { credentials: 'same-origin', headers: { Accept: 'application/json' } })
       .then(function (r) { return r.json(); }).then(function (j) { WX.loading = false; if (j && j.days) WX.days = j.days; else WX.err = (j && (j.human || j.error)) || 'error'; if (/^(stats|history|rec-)/.test(routeName())) safeRender(); },
         function () { WX.loading = false; WX.err = 'network'; if (routeName() === 'stats') safeRender(); });
   }
@@ -821,7 +843,8 @@
     return { screen: 'S13', route: 'login', bare: !S.onboarded, closeTo: S.onboarded ? 'home' : 'welcome', html:
       '<h1>' + esc(t('login_title')) + '</h1><p>' + esc(t('login_lead')) + '</p>' +
       '<div class="cols"><div>' +
-      (y._cfg && y._cfg.botUsername ? '<div class="panel" data-key="login-telegram"><h2>' + esc(t('login_tg')) + '</h2><p class="small muted">' + esc(t('login_tg_sub')) + '</p><div id="tg-widget" data-onauth="TeploTgAuth"></div></div>' : '') +
+      (y._cfg && y._cfg.botUsername ? '<div class="panel" data-key="login-telegram"><h2>' + esc(t('login_tg')) + '</h2><p class="small muted">' + esc(t('login_tg_sub')) + '</p><div id="tg-widget" data-onauth="TeploTgAuth"></div>' +
+        '<p style="margin-top:12px"><a class="btn sec" href="https://t.me/' + esc(y._cfg.botUsername) + '" target="_blank" rel="noopener">' + esc(t('login_tg_open', { bot: y._cfg.botUsername })) + '</a></p><p class="small muted">' + esc(t('login_tg_open_sub')) + '</p></div>' : '') +
       '</div><div><form id="login-form" class="panel" data-mode="' + authMode + '" novalidate data-key="login-form"><h2>' + esc(reg ? t('register_btn') : t('login_email_title')) + '</h2>' + authFields(reg ? 'new-password' : 'current-password') +
       '<div class="help block" id="login-err" role="alert"></div><button class="btn block" type="submit" data-key="login-submit">' + esc(reg ? t('register_btn') : t('login_btn')) + '</button>' +
       '<p style="margin-top:12px"><button type="button" class="linkbtn" data-act="auth-mode" data-key="login-toggle">' + esc(reg ? t('login_have') : t('login_need')) + '</button></p></form></div></div>' +

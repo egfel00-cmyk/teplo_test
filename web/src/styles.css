@@ -284,3 +284,13 @@ label.btn { cursor: pointer; }
 .legend .dash { width: 18px; height: 0; border-top: 2px dashed #4A5652; display: inline-block; } .legend .dash.dot2 { border-top: 2px dotted #8E9A94; }
 .chart .ax.ref { font-weight: 600; }
 .chart .ax.x2 { fill: #2F68B0; font-weight: 600; }
+
+/* погода в истории */
+.wx { display: inline-flex; align-items: center; gap: 3px; padding: 3px 8px 3px 5px; border-radius: 999px; font-size: 13px; margin-right: 8px; white-space: nowrap; flex: none; }
+.wx .num { font-weight: 600; }
+.wx-cold { background: #E2ECF8; color: #24508A; } .wx-zero { background: #EEF1EF; color: #4A5652; } .wx-warm { background: #FBEFD5; color: #7A4A00; }
+.wx-panel h2 { display: flex; align-items: center; gap: 6px; }
+.wx-tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 12px; }
+.num.mid { font-size: 20px; line-height: 1.3; }
+.wx-t-cold { color: #24508A; } .wx-t-warm { color: #7A4A00; }
+.spark { width: 100%; height: 56px; display: block; margin-top: 12px; }
