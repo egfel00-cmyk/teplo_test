@@ -1802,6 +1802,9 @@ label.btn { cursor: pointer; }
       });
     });
 
+    // тест экрана (горят все сегменты): строка «88888888» часто читается кусками «881», «88» — если все крупные числа из одних восьмёрок
+    var e8 = mains.map(function (l) { return [l.text].concat(l.alts || []).map(function (x) { return digitsOf(x); }).filter(function (d) { return /^8{2,}1?$/.test(d); })[0] || ''; }).filter(Boolean);
+    if (e8.length >= 2 && e8.join('').length >= 5) { out.note = 'test_screen'; mains = []; }
     mains.forEach(function (l) {
       var txt = (l.alts && l.alts.length ? l.alts[0] : l.text).replace(/\s/g, '');
       if (/^E[\-–—_]*$/i.test(txt) || /^E[\-–—_]+$/i.test(l.text.replace(/\s/g, ''))) {
