@@ -76,6 +76,12 @@ if ($path === '/' || $path === '/index.php') {
     '<meta property="og:title" content="' . $e($og[0]) . '"><meta property="og:description" content="' . $e($og[1]) . '"><meta property="og:locale" content="' . $og[3] . '">' .
     '<meta property="og:image" content="' . $e($site . 'web/og-' . $og[2] . '-2.jpg') . '"><meta property="og:image:secure_url" content="' . $e($site . 'web/og-' . $og[2] . '-2.jpg') . '"><meta property="og:image:type" content="image/jpeg"><meta property="og:image:width" content="1200"><meta property="og:image:height" content="630"><meta property="og:image:alt" content="' . $e($og[0]) . '">' .
     '<meta name="twitter:card" content="summary_large_image"><meta name="twitter:image" content="' . $e($site . 'web/og-' . $og[2] . '-2.jpg') . '">';
+  // роботы превью (Telegram, Facebook, WhatsApp, Viber, Slack…) получают крошечную страницу только с превью — быстро и наверняка
+  if (preg_match('~TelegramBot|facebookexternalhit|Facebot|Twitterbot|WhatsApp|Viber|Slackbot|Discordbot|LinkedInBot|SkypeUriPreview~i', (string)($_SERVER['HTTP_USER_AGENT'] ?? ''))) {
+    header('Content-Type: text/html; charset=utf-8'); header('Cache-Control: public, max-age=600');
+    echo '<!DOCTYPE html><html lang="' . ($ru ? 'ru' : 'uk') . '"><head><meta charset="utf-8"><title>' . $e($og[0]) . '</title>' . $meta . '</head><body><h1>' . $e($og[0]) . '</h1><p>' . $e($og[1]) . '</p><p><img src="' . $e($site . 'web/og-' . $og[2] . '-2.jpg') . '" width="1200" height="630" alt=""></p></body></html>';
+    exit;
+  }
   $html = preg_replace('~</title>~', '</title>' . $meta, $html, 1);
   header('Content-Type: text/html; charset=utf-8');
   header('Cache-Control: no-cache');
