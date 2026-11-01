@@ -229,3 +229,20 @@ details.where p { margin-top: var(--sp-2); }
 .ph-in { width: 100%; min-height: 44px; border: 1.5px solid var(--c-line); border-radius: var(--r-field); padding: 0 var(--sp-3); font: 500 var(--fs-l) var(--mono); background: var(--c-surface); margin-top: 4px; }
 .ph-in:focus { outline: none; border-color: var(--c-ink); box-shadow: 0 0 0 3px rgba(47, 104, 176, .25); }
 label.btn { cursor: pointer; }
+
+/* ---------- тестовая версия, отзыв ---------- */
+.beta { font: 600 12px/1 var(--font); letter-spacing: .04em; text-transform: uppercase; color: var(--c-warn); background: var(--c-warn-soft); border-radius: var(--r-pill); padding: 5px 9px; }
+.fab { position: fixed; right: var(--sp-4); bottom: calc(58px + env(safe-area-inset-bottom) + var(--sp-3)); z-index: 6; display: inline-flex; align-items: center; gap: 6px;
+  min-height: 44px; padding: 0 16px 0 12px; border-radius: var(--r-pill); border: 1.5px solid var(--c-line); background: var(--c-surface); color: var(--c-ink);
+  font: 600 var(--fs-s)/1 var(--font); box-shadow: 0 6px 18px rgba(23, 33, 30, .14); cursor: pointer; }
+.fab:hover { border-color: var(--c-ink); }
+.fab.fab-bare { bottom: calc(env(safe-area-inset-bottom) + var(--sp-4)); }
+@media (max-width: 420px) { .fab span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); } .fab { padding: 0; width: 48px; justify-content: center; } }
+@media (min-width: 960px) { .fab { bottom: var(--sp-5); right: var(--sp-5); } }
+.fb-back { position: fixed; inset: 0; background: rgba(23, 33, 30, .35); z-index: 20; }
+.fb { position: fixed; z-index: 21; left: 50%; top: 50%; transform: translate(-50%, -50%); width: min(520px, calc(100vw - 24px)); max-height: calc(100vh - 24px); overflow: auto;
+  background: var(--c-surface); border-radius: 16px; padding: var(--sp-5); box-shadow: 0 20px 50px rgba(23, 33, 30, .25); }
+.fb textarea, .fb input { width: 100%; box-sizing: border-box; font: 400 var(--fs-m)/1.4 var(--font); padding: 10px 12px; border: 1.5px solid var(--c-line); border-radius: var(--r-field); margin-bottom: var(--sp-3); background: #fff; color: var(--c-ink); }
+.fb .lbl { display: block; font-weight: 600; margin: var(--sp-2) 0 6px; }
+@media (max-width: 600px) { .fb { top: auto; bottom: 0; transform: translateX(-50%); border-radius: 16px 16px 0 0; width: 100vw; padding-bottom: calc(var(--sp-5) + env(safe-area-inset-bottom)); } }
+.test-reset { margin-top: var(--sp-6); border: 1.5px dashed var(--c-line); background: transparent; }

@@ -28,7 +28,8 @@ docs/ design/ prompts/ skills/   документы проекта, UX, пром
 'bot_token'         => '123456:ABC…',        // @BotFather → /newbot
 'bot_username'      => 'TeploServiceBot',     // имя бота без @
 'webhook_secret'    => '…длинная случайная строка…',
-'anthropic_api_key' => 'sk-ant-…',            // распознавание фото (console.anthropic.com); без ключа кнопка фото скрыта
+'anthropic_api_key' => 'sk-ant-…',            // распознавание фото (console.anthropic.com); без ключа фото сохраняются, но не распознаются
+'admins' => ['emails' => ['you@mail'], 'telegram' => ['123456789']], // кому открыта аналитика /admin
 // 'anthropic_model' => 'claude-sonnet-5-5',  // по желанию
 ```
 После этого:
@@ -50,3 +51,8 @@ php tests/server.php && node tests/rules.test.js && node tests/sync.test.js
 - CSRF; cookie `HttpOnly`/`Secure`/`SameSite`, путь = адрес сайта;
 - проверка подписей Telegram;
 - фото проверяются по содержимому, не больше 3 в один запрос к нейросети, лимит в сутки на пользователя.
+
+## Аналитика `/admin`
+Сводка, все пользователи (поиск по e-mail, @telegram, квартире, телефону), сообщения с кнопки «Відгук» (со страницей),
+галерея загруженных фото с результатом и причиной ошибки по-русски, журнал распознавания. Фото — в SITE_DATA/uploads/photos,
+хранятся `photo_keep_days` (90) дней, чистит cron.php. Превью ссылки: web/og-uk.png / og-ru.png (пересобрать: node tools_og.cjs <адрес>).

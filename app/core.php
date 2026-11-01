@@ -15,6 +15,9 @@ final class Cfg {
       'bot_token' => '', 'bot_username' => '', 'webhook_secret' => '',
       'anthropic_api_key' => '', 'anthropic_model' => 'claude-sonnet-5-5',
       'cookie_secure' => true, 'session_days' => 30,
+      // кто видит аналитику (/admin): email аккаунта или Telegram id
+      'admins' => ['emails' => [], 'telegram' => []],
+      'photo_keep_days' => 90,    // фото на распознавание хранятся столько дней (cron.php чистит)
       // кому верить в заголовке CF-Connecting-IP: Cloudflare + локальные адреса (Caddy на том же сервере)
       'trusted_proxies' => array_merge(['127.0.0.1/32', '::1/128'], self::cloudflare()),
       'limits' => [
@@ -22,6 +25,7 @@ final class Cfg {
         'telegram_ip' => [30, 300], 'state_user' => [60, 60],
         'recog_upload' => [120, 3600],   // фото на распознавание: в час на пользователя
         'recog_run' => [40, 86400],      // запросов к нейросети: в сутки на пользователя (пачки по 3 фото)
+        'feedback_ip' => [10, 3600],     // отзывов с одного IP в час
       ],
       'max_body_bytes' => 300 * 1024,
       'max_photo_bytes' => 12 * 1024 * 1024,
@@ -86,6 +90,12 @@ final class Db {
       "CREATE TABLE IF NOT EXISTS rate_limits (k VARCHAR(190) NOT NULL, window_start INT NOT NULL, cnt INT NOT NULL, PRIMARY KEY (k, window_start))$tail",
       "CREATE TABLE IF NOT EXISTS user_state (user_id INT PRIMARY KEY, data $txt NOT NULL, version INT NOT NULL, updated_at VARCHAR(25) NOT NULL)$tail",
       "CREATE TABLE IF NOT EXISTS audit_log (id $ai, user_id INT NULL, action VARCHAR(60) NOT NULL, ip VARCHAR(45) NULL, created_at VARCHAR(25) NOT NULL)$tail",
+      // отзывы с плавающей кнопки
+      "CREATE TABLE IF NOT EXISTS feedback (id $ai, user_id INT NULL, text TEXT NOT NULL, contact VARCHAR(190) NULL, page VARCHAR(120) NULL, screen VARCHAR(16) NULL, lang VARCHAR(5) NULL, ua VARCHAR(200) NULL, ip VARCHAR(45) NULL, status VARCHAR(12) NOT NULL DEFAULT 'new', created_at VARCHAR(25) NOT NULL)$tail",
+      // фото на распознавание (файлы — SITE_DATA/uploads/photos/<user>/), результат и проблема человеческим языком
+      "CREATE TABLE IF NOT EXISTS photos (id CHAR(24) PRIMARY KEY, user_id INT NOT NULL, file VARCHAR(80) NOT NULL, mime VARCHAR(20) NOT NULL, bytes INT NOT NULL, w INT NULL, h INT NULL, status VARCHAR(12) NOT NULL DEFAULT 'uploaded', result TEXT NULL, problem TEXT NULL, created_at VARCHAR(25) NOT NULL)$tail",
+      // журнал распознавания: ошибки запросов и итог (что не нашлось, что человек исправил)
+      "CREATE TABLE IF NOT EXISTS recog_reports (id $ai, user_id INT NOT NULL, photo_ids TEXT NULL, kind VARCHAR(16) NOT NULL, ok TINYINT NOT NULL DEFAULT 0, text TEXT NOT NULL, data TEXT NULL, created_at VARCHAR(25) NOT NULL)$tail",
     ];
     foreach ($sql as $s) self::$pdo->exec($s);
   }

@@ -241,6 +241,23 @@ details.where p { margin-top: var(--sp-2); }
 .ph-in:focus { outline: none; border-color: var(--c-ink); box-shadow: 0 0 0 3px rgba(47, 104, 176, .25); }
 label.btn { cursor: pointer; }
 
+/* ---------- тестовая версия, отзыв ---------- */
+.beta { font: 600 12px/1 var(--font); letter-spacing: .04em; text-transform: uppercase; color: var(--c-warn); background: var(--c-warn-soft); border-radius: var(--r-pill); padding: 5px 9px; }
+.fab { position: fixed; right: var(--sp-4); bottom: calc(58px + env(safe-area-inset-bottom) + var(--sp-3)); z-index: 6; display: inline-flex; align-items: center; gap: 6px;
+  min-height: 44px; padding: 0 16px 0 12px; border-radius: var(--r-pill); border: 1.5px solid var(--c-line); background: var(--c-surface); color: var(--c-ink);
+  font: 600 var(--fs-s)/1 var(--font); box-shadow: 0 6px 18px rgba(23, 33, 30, .14); cursor: pointer; }
+.fab:hover { border-color: var(--c-ink); }
+.fab.fab-bare { bottom: calc(env(safe-area-inset-bottom) + var(--sp-4)); }
+@media (max-width: 420px) { .fab span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); } .fab { padding: 0; width: 48px; justify-content: center; } }
+@media (min-width: 960px) { .fab { bottom: var(--sp-5); right: var(--sp-5); } }
+.fb-back { position: fixed; inset: 0; background: rgba(23, 33, 30, .35); z-index: 20; }
+.fb { position: fixed; z-index: 21; left: 50%; top: 50%; transform: translate(-50%, -50%); width: min(520px, calc(100vw - 24px)); max-height: calc(100vh - 24px); overflow: auto;
+  background: var(--c-surface); border-radius: 16px; padding: var(--sp-5); box-shadow: 0 20px 50px rgba(23, 33, 30, .25); }
+.fb textarea, .fb input { width: 100%; box-sizing: border-box; font: 400 var(--fs-m)/1.4 var(--font); padding: 10px 12px; border: 1.5px solid var(--c-line); border-radius: var(--r-field); margin-bottom: var(--sp-3); background: #fff; color: var(--c-ink); }
+.fb .lbl { display: block; font-weight: 600; margin: var(--sp-2) 0 6px; }
+@media (max-width: 600px) { .fb { top: auto; bottom: 0; transform: translateX(-50%); border-radius: 16px 16px 0 0; width: 100vw; padding-bottom: calc(var(--sp-5) + env(safe-area-inset-bottom)); } }
+.test-reset { margin-top: var(--sp-6); border: 1.5px dashed var(--c-line); background: transparent; }
+
 </style>
 <style>.top { padding-top: max(12px, env(safe-area-inset-top)); }</style>
 </head>
@@ -786,6 +803,8 @@ label.btn { cursor: pointer; }
       p_wipe_confirm: 'Видалити лічильник, базу й історію з цього браузера? Скасувати не можна.',
       p_wipe_yes: 'Так, видалити',
       p_wiped: 'Дані видалено',
+      tr_title: 'Тестовий режим: почати спочатку', tr_sub: 'Зітре лічильник, базові й усі показання — на цьому пристрої й в акаунті. Вхід залишиться, сайт відкриється як уперше.',
+      tr_btn: 'Стерти все й почати спочатку', tr_confirm: 'Стерти лічильник, базові показання та всю історію — тут і в акаунті? Скасувати не можна.',
 
       lvl_ok: 'Прийме', lvl_warn: 'Перевірте', lvl_block: 'Не прийме', lvl_info: 'Довідка',
 
@@ -870,7 +889,12 @@ label.btn { cursor: pointer; }
       ph_model_lead: "Сфотографуйте лічильник цілком або наклейку з назвою.",
       ph_model_entry: "Визначити модель за фото",
       ph_step_hint: "Або завантажте фото екранів — розпізнаємо самі",
-      ph_privacy: "Фото потрібні лише для розпізнавання і не зберігаються в сервісі — зберігаються тільки цифри.",
+      ph_privacy: "Тестова версія: фото зберігаються до 90 днів, їх бачить лише команда сервісу, щоб покращувати розпізнавання. Далі — тільки цифри.",
+      beta: "Тест", beta_sub: "Тестова версія — передавайте показання в ХТМ самі, ми лише допомагаємо підготувати цифри.",
+      fb_btn: "Відгук", fb_title: "Напишіть нам", fb_sub: "Що незрозуміло, що зламалося, чого бракує — читаємо все. Сторінку, з якої ви пишете, ми побачимо самі.",
+      fb_text: "Повідомлення", fb_contact: "Як з вами зв'язатися (необов'язково): e-mail, телефон або @telegram", fb_send: "Надіслати",
+      fb_ok: "Дякуємо! Повідомлення отримали.", fb_empty: "Напишіть хоч кілька слів.", fb_rate: "Забагато повідомлень — спробуйте пізніше.", fb_fail: "Не вдалося надіслати — перевірте інтернет і спробуйте ще раз.",
+      ph_err_off: "Розпізнавання ще вмикаємо (тестовий режим): фото збережене, команда його побачить. Поки що введіть цифри вручну.",
       v_low_conf: "Розпізнано з фото невпевнено.",
       v_low_conf_fix: "Звірте з екраном лічильника.",
       ph_err_login: "Увійдіть, щоб розпізнавати фото.",
@@ -1021,6 +1045,8 @@ label.btn { cursor: pointer; }
       p_wipe_confirm: 'Удалить счётчик, базу и историю из этого браузера? Отменить нельзя.',
       p_wipe_yes: 'Да, удалить',
       p_wiped: 'Данные удалены',
+      tr_title: 'Тестовый режим: начать сначала', tr_sub: 'Сотрёт счётчик, базовые и все показания — на этом устройстве и в аккаунте. Вход останется, сайт откроется как впервые.',
+      tr_btn: 'Стереть всё и начать сначала', tr_confirm: 'Стереть счётчик, базовые показания и всю историю — здесь и в аккаунте? Отменить нельзя.',
 
       lvl_ok: 'Примет', lvl_warn: 'Проверьте', lvl_block: 'Не примет', lvl_info: 'Справка',
 
@@ -1105,7 +1131,12 @@ label.btn { cursor: pointer; }
       ph_model_lead: "Сфотографируйте счётчик целиком или наклейку с названием.",
       ph_model_entry: "Определить модель по фото",
       ph_step_hint: "Или загрузите фото экранов — распознаем сами",
-      ph_privacy: "Фото нужны только для распознавания и не хранятся в сервисе — сохраняются только цифры.",
+      ph_privacy: "Тестовая версия: фото хранятся до 90 дней, их видит только команда сервиса, чтобы улучшать распознавание. Дальше — только цифры.",
+      beta: "Тест", beta_sub: "Тестовая версия — передавайте показания в ХТМ сами, мы только помогаем подготовить цифры.",
+      fb_btn: "Отзыв", fb_title: "Напишите нам", fb_sub: "Что непонятно, что сломалось, чего не хватает — читаем всё. Страницу, с которой вы пишете, мы увидим сами.",
+      fb_text: "Сообщение", fb_contact: "Как с вами связаться (необязательно): e-mail, телефон или @telegram", fb_send: "Отправить",
+      fb_ok: "Спасибо! Сообщение получили.", fb_empty: "Напишите хоть пару слов.", fb_rate: "Слишком много сообщений — попробуйте позже.", fb_fail: "Не удалось отправить — проверьте интернет и попробуйте ещё раз.",
+      ph_err_off: "Распознавание ещё включаем (тестовый режим): фото сохранено, команда его увидит. Пока введите цифры вручную.",
       v_low_conf: "Распознано по фото неуверенно.",
       v_low_conf_fix: "Сверьте с экраном счётчика.",
       ph_err_login: "Войдите, чтобы распознавать фото.",
@@ -1162,7 +1193,8 @@ label.btn { cursor: pointer; }
     if (wipeWins) out.baseline = newer.baseline || null;
     else if (ba && bb) out.baseline = String(ba.date) === String(bb.date) ? newer.baseline : (String(ba.date) > String(bb.date) ? ba : bb);
     else out.baseline = ba || bb || null;
-    out.meter = newer.meter || older.meter || null;
+    out.meter = wipeWins ? (newer.meter || null) : (newer.meter || older.meter || null);
+    if (wipeWins) { out.draft = newer.draft || null; out.contacts = newer.contacts || { phone: '', email: '' }; }
     out.updatedAt = Math.max(aT, bT); out.wipedAt = wiped || undefined;
     return out;
   }
@@ -1179,6 +1211,7 @@ label.btn { cursor: pointer; }
   }
 
   var Sync = {
+    api: api,
     mode: 'local',          // local | claude | server
     account: null,          // server: {id, email, telegram:{id, username, name}}
     serverReachable: false,
@@ -1295,15 +1328,17 @@ label.btn { cursor: pointer; }
   var V = {
     available: false, limits: null, _sample: null, server: false,
 
-    /** Свой сервер: распознаёт, если в config.php есть ключ (cfg.recognition) и человек вошёл. */
+    /** Свой сервер: кнопка «з фото» есть всегда (тестовый режим — фото сохраняются, даже если ключа ещё нет);
+     *  распознаёт, если в config.php есть ключ (cfg.recognition); загрузка — только после входа. */
     initServer: function (cfg, loggedIn) {
-      this.server = !!(root.TEPLO_API && cfg && cfg.recognition);
-      this.available = this.server && !!loggedIn;
+      this.server = !!root.TEPLO_API; this.loggedIn = !!loggedIn; this.engine = !!(cfg && cfg.recognition);
+      this.available = this.server;
       if (this.server) this.limits = { images: { maxCount: 3, mediaTypes: ['image/jpeg', 'image/png', 'image/webp'] } };
     },
     /** Фото — сырым телом (multipart на сервере запрещён), потом пачки по 3 (лимит сервера — 30 с на запрос). */
     _serverRecognize: function (files, ctx, signal, onProgress) {
-      var self = this, api = root.TEPLO_API, ids = [];
+      var self = this, api = root.TEPLO_API, ids = []; self.lastIds = ids;
+      if (!self.loggedIn) return Promise.reject(fail('not_signed_in'));
       var post = function (path, body, type) {
         if (!cookie('ts_csrf')) return fetch(api + '/config', { credentials: 'same-origin' }).then(function () { return post(path, body, type); });
         return fetch(api + path, { method: 'POST', body: body, signal: signal, credentials: 'same-origin', headers: { 'Content-Type': type, 'X-CSRF': cookie('ts_csrf'), 'Accept': 'application/json' } })
@@ -1315,6 +1350,7 @@ label.btn { cursor: pointer; }
       });
       var n = Math.ceil(files.length / 3);
       return chain.then(function () {
+        out.ids = ids.slice();
         var c2 = Promise.resolve();
         for (var i = 0; i < ids.length; i += 3) (function (i) {
           c2 = c2.then(function () {
@@ -1327,6 +1363,15 @@ label.btn { cursor: pointer; }
         })(i);
         return c2;
       }).then(function () { return out; }, function (e) { if (signal && signal.aborted) throw fail('cancelled'); throw e; });
+    },
+
+    /** Итог для аналитики: что не нашлось, где разные цифры, что человек исправил. Ошибки молча игнорируем. */
+    report: function (data) {
+      if (!this.server || !this.loggedIn || !root.TEPLO_API) return;
+      try {
+        fetch(root.TEPLO_API + '/recognize/report', { method: 'POST', credentials: 'same-origin', body: JSON.stringify(data),
+          headers: { 'Content-Type': 'application/json', 'X-CSRF': cookie('ts_csrf'), 'Accept': 'application/json' } }).catch(function () {});
+      } catch (e) { /* нет */ }
     },
 
     init: function (onChange) {
@@ -1525,6 +1570,7 @@ label.btn { cursor: pointer; }
     ext: '<path d="M14 4h6v6M20 4l-9 9"/><path d="M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/>',
     press: '<circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3.5" fill="currentColor" stroke="none"/>',
     moon: '<path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/>',
+    chat: '<path d="M4 5h16v11H9l-5 4z"/><path d="M8 9h8M8 12h5"/>',
     camera: '<path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/>'
   };
   function ico(name, size, cls) {
@@ -1626,11 +1672,45 @@ label.btn { cursor: pointer; }
       ? '<a class="btn ghost" href="#' + view.closeTo + '" data-key="wiz-close">' + ico('close', 22) + '<span>' + esc(t('close')) + '</span></a>'
       : '';
     return '<div class="app' + (bare ? ' bare-app' : '') + '">' +
-      '<header class="top"><a class="brand" href="#home" data-key="brand">' + logo() + '<span>' + esc(t('brand')) + '</span></a><span class="spacer"></span>' + right + '</header>' +
+      '<header class="top"><a class="brand" href="#home" data-key="brand">' + logo() + '<span>' + esc(t('brand')) + '</span></a>' + (window.TEPLO_API ? '<span class="beta" title="' + esc(t('beta_sub')) + '">' + esc(t('beta')) + '</span>' : '') + '<span class="spacer"></span>' + right + '</header>' +
       nav + '<main class="main' + (bare ? ' bare' : '') + '" id="main" data-screen="' + view.screen + '" tabindex="-1">' + view.html + '</main></div>' +
+      (window.TEPLO_API ? '<button class="fab' + (bare ? ' fab-bare' : '') + '" data-act="fb-open" data-key="feedback" aria-haspopup="dialog">' + ico('chat', 20) + '<span>' + esc(t('fb_btn')) + '</span></button>' + fbDialog() : '') +
       '<div id="toast-host" aria-live="polite"></div>';
   }
 
+
+  // ---------------- отзыв (плавающая кнопка) ----------------
+  var FB = { open: false, sending: false, text: '', contact: '', err: '' };
+  function fbDialog() {
+    if (!FB.open) return '';
+    var acc = Y().account;
+    return '<div class="fb-back" data-act="fb-close"></div><div class="fb" role="dialog" aria-modal="true" aria-labelledby="fb-h" data-key="feedback-dialog">' +
+      '<h2 id="fb-h">' + esc(t('fb_title')) + '</h2><p class="small muted">' + esc(t('fb_sub')) + '</p>' +
+      '<label class="lbl" for="fb-text">' + esc(t('fb_text')) + '</label><textarea id="fb-text" rows="5" maxlength="4000">' + esc(FB.text) + '</textarea>' +
+      (acc ? '' : '<label class="lbl" for="fb-contact">' + esc(t('fb_contact')) + '</label><input id="fb-contact" type="text" maxlength="190" autocomplete="email" value="' + esc(FB.contact) + '">') +
+      (FB.err ? '<p class="help bad" role="alert">' + esc(FB.err) + '</p>' : '') +
+      '<div class="row-actions"><button class="btn sec" data-act="fb-close">' + esc(t('cancel')) + '</button><button class="btn" data-act="fb-send" data-key="feedback-send"' + (FB.sending ? ' disabled' : '') + '>' + esc(t('fb_send')) + '</button></div></div>';
+  }
+  function fbSend() {
+    var te = document.getElementById('fb-text'), ce = document.getElementById('fb-contact');
+    FB.text = te ? te.value : FB.text; FB.contact = ce ? ce.value : '';
+    if (FB.text.trim().length < 2) { FB.err = t('fb_empty'); render(true); return; }
+    var main = document.getElementById('main');
+    var body = { text: FB.text, contact: FB.contact, page: '#' + (routeName() || 'home'), screen: main ? main.getAttribute('data-screen') : '', lang: S.lang };
+    var api = window.TeploSync && window.TeploSync.api;
+    FB.sending = true; FB.err = ''; render(true);
+    (api ? api('POST', '/feedback', body) : Promise.reject()).then(function (j) {
+      FB.sending = false;
+      if (j && j._status === 200) { FB.open = false; FB.text = ''; FB.contact = ''; render(true); toast(t('fb_ok')); return; }
+      FB.err = j && j._status === 429 ? t('fb_rate') : t('fb_fail'); render(true);
+    }, function () { FB.sending = false; FB.err = t('fb_fail'); render(true); });
+  }
+
+  /** Только на тестовый период: обнулиться и пройти всё как при первом открытии (стирает и на сервере, вход остаётся). */
+  function testReset() {
+    return '<div class="panel test-reset" data-key="test-reset"><h2>' + esc(t('tr_title')) + '</h2><p class="small muted">' + esc(t('tr_sub')) + '</p>' +
+      '<button class="btn danger" data-act="wipe-ask" data-test="1" data-key="test-reset-btn">' + esc(t('tr_btn')) + '</button><div id="wipe-confirm"></div></div>';
+  }
 
   // ---------------- экраны ----------------
   var V = {};
@@ -1682,6 +1762,7 @@ label.btn { cursor: pointer; }
       html = '<div class="banner" data-key="home-save-prompt">' + ico('info', 22) + '<div><p><b>' + esc(t('save_prompt')) + '</b></p><p><a href="#login">' + esc(t('login')) + '</a> &nbsp; <button class="linkbtn" data-act="dismiss-sync">' + esc(t('save_prompt_later')) + '</button></p></div></div>' + html;
     }
     html += '<div class="hero-grid"><div>' + left + '</div><div>' + right + '</div></div>';
+    if (window.TEPLO_API) html += testReset();
     return { screen: 'S01', route: 'home', html: html };
   };
 
@@ -1977,7 +2058,7 @@ label.btn { cursor: pointer; }
   // ---------------- распознавание по фото ----------------
   var PH = { mode: 'reading', files: [], urls: [], status: 'idle', result: null, picked: null, error: '', ctl: null, progress: '' };
   function phReset(mode) { PH.urls.forEach(function (u) { try { URL.revokeObjectURL(u); } catch (e) { /* нет */ } }); PH = { mode: mode || 'reading', files: [], urls: [], status: 'idle', result: null, picked: null, error: '', ctl: null, progress: '', date: S.draft && S.draft.date || today() }; }
-  function phErr(code) { return ({ not_signed_in: t('ph_err_login'), recognition_off: t('ph_unavail'), timeout: t('ph_err_timeout'), not_granted: t('ph_err_not_granted'), sampling_disabled: t('ph_err_not_granted'), images_unavailable: t('ph_unavail'), rate_limited: t('ph_err_rate'), image_rejected: t('ph_err_image'), nothing: t('ph_err_nothing') })[code] || t('ph_err_generic'); }
+  function phErr(code) { return ({ not_signed_in: t('ph_err_login'), recognition_off: window.TEPLO_API ? t('ph_err_off') : t('ph_unavail'), timeout: t('ph_err_timeout'), not_granted: t('ph_err_not_granted'), sampling_disabled: t('ph_err_not_granted'), images_unavailable: t('ph_unavail'), rate_limited: t('ph_err_rate'), image_rejected: t('ph_err_image'), nothing: t('ph_err_nothing') })[code] || t('ph_err_generic'); }
   function thumbs(withRemove) {
     return '<ul class="thumbs" data-key="photo-thumbs">' + PH.urls.map(function (u, i) {
       return '<li><img src="' + u + '" alt="' + esc(t('ph_from', { n: i + 1 })) + '"><span class="n">' + (i + 1) + '</span>' + (withRemove ? '<button class="rm" data-act="ph-remove" data-i="' + i + '" aria-label="' + esc(t('ph_remove')) + '">' + ico('close', 16) + '</button>' : '') + '</li>';
@@ -2043,6 +2124,13 @@ label.btn { cursor: pointer; }
     if (!S.meter) { var mt = PH.result && PH.result.meter, id = mt && mt.modelId && M.byId(mt.modelId) ? mt.modelId : 'other'; S.meter = { modelId: id, unit: (mt && mt.energyUnit) || M.byId(id).unit }; }
     var conf = {}; Object.keys(PH.picked || {}).forEach(function (k) { var r = PH.picked[k]; if (String(vals[k]) === String(r.value)) conf[k] = r.conflict ? 0.5 : r.confidence; });
     S.draft = { date: date, values: vals, step: steps().length - 1, source: 'photo', photoConf: conf, startedAt: new Date().toISOString() };
+    if (VIS().report) {   // в аналитику: чего не нашлось на фото, где расхождения, что человек поправил руками
+      var picked = PH.picked || {}, all = ['energy', 'volume', 'flow', 'power', 'tSupply', 'tReturn', 'hours', 'errHours', 'errCode'];
+      VIS().report({ ids: (PH.result && PH.result.ids) || [], model: S.meter && S.meter.modelId,
+        missing: all.filter(function (k) { return !picked[k]; }),
+        conflicts: Object.keys(picked).filter(function (k) { return picked[k].conflict; }),
+        corrections: Object.keys(picked).filter(function (k) { return String(vals[k]) !== String(picked[k].value); }).map(function (k) { return { field: k, recognized: String(picked[k].value), final: String(vals[k] || '') }; }) });
+    }
     save(); go('check');
   }
 
@@ -2093,6 +2181,7 @@ label.btn { cursor: pointer; }
     if (/^step-\d+$/.test(r)) view = (S.meter ? V.step(+r.split('-')[1]) : V.meter());
     else view = (V[r] || V.home)();
     if (!view.route) view.route = r;
+    if (FB.open) { var ft = document.getElementById('fb-text'), fc = document.getElementById('fb-contact'); if (ft) FB.text = ft.value; if (fc) FB.contact = fc.value; }
     document.getElementById('root').innerHTML = shell(view);
     document.documentElement.lang = S.lang;
     document.title = t('brand');
@@ -2216,10 +2305,13 @@ label.btn { cursor: pointer; }
       }
       case 'scroll': { var tg = document.getElementById(el.getAttribute('data-target')); if (tg) tg.scrollIntoView({ behavior: 'smooth', block: 'start' }); break; }
       case 'export': copyText(JSON.stringify(S), el); break;
-      case 'wipe-ask': document.getElementById('wipe-confirm').innerHTML = '<div class="confirm"><p>' + esc(t('p_wipe_confirm')) + '</p><div class="row-actions" style="margin-top:8px"><button class="btn sec" data-act="wipe-no">' + esc(t('cancel')) + '</button><button class="btn danger" data-act="wipe-yes" data-key="prefs-wipe-yes">' + esc(t('p_wipe_yes')) + '</button></div></div>'; break;
+      case 'wipe-ask': document.getElementById('wipe-confirm').innerHTML = '<div class="confirm"><p>' + esc(t(el.getAttribute('data-test') || (Y().mode === 'server' && Y().account) ? 'tr_confirm' : 'p_wipe_confirm')) + '</p><div class="row-actions" style="margin-top:8px"><button class="btn sec" data-act="wipe-no">' + esc(t('cancel')) + '</button><button class="btn danger" data-act="wipe-yes" data-key="prefs-wipe-yes">' + esc(t('p_wipe_yes')) + '</button></div></div>'; break;
       case 'photo': phReset(el.getAttribute('data-mode')); go('photo'); break;
       case 'ph-remove': { var ix = +el.getAttribute('data-i'); try { URL.revokeObjectURL(PH.urls[ix]); } catch (e2) { /* нет */ } PH.files.splice(ix, 1); PH.urls.splice(ix, 1); render(true); break; }
       case 'ph-run': phRun(); break;
+      case 'fb-open': FB.open = true; FB.err = ''; render(true); setTimeout(function () { var x = document.getElementById('fb-text'); if (x) x.focus(); }, 0); break;
+      case 'fb-close': { var tx = document.getElementById('fb-text'); if (tx) FB.text = tx.value; FB.open = false; render(true); break; }
+      case 'fb-send': fbSend(); break;
       case 'ph-stop': if (PH.ctl) PH.ctl.abort(); break;
       case 'ph-again': PH.status = 'idle'; render(true); break;
       case 'ph-apply': phApply(); break;
@@ -2228,7 +2320,7 @@ label.btn { cursor: pointer; }
       case 'logout': Y().logout().then(function () { S = defaults(); S.lang = browserLang(); lastSig = window.TeploSync.sig(window.TeploSync.payload(S)); persist(); toast(t('logged_out')); go('welcome'); }); break;
       case 'dismiss-sync': S.syncPromptDismissed = true; persist(); render(true); break;
       case 'wipe-no': document.getElementById('wipe-confirm').innerHTML = ''; break;
-      case 'wipe-yes': { var now = Date.now(); S = defaults(); S.lang = browserLang(); S.wipedAt = now; save(); toast(t('p_wiped')); go('welcome'); break; }
+      case 'wipe-yes': { var now = Date.now(); S = defaults(); S.lang = browserLang(); S.wipedAt = now; phReset(); FB.open = false; save(); toast(t('p_wiped')); go('welcome'); break; }
     }
   });
 
@@ -2246,6 +2338,7 @@ label.btn { cursor: pointer; }
     }
   });
   document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape' && FB.open) { var tx = document.getElementById('fb-text'); if (tx) FB.text = tx.value; FB.open = false; render(true); return; }
     if (e.key === 'Enter' && e.target.matches('label[for="ph-input"]')) { e.preventDefault(); document.getElementById('ph-input').click(); return; }
     if (e.key === 'Enter' && e.target.matches('#step-form input[data-field]')) {
       e.preventDefault();

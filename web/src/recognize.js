@@ -14,15 +14,17 @@
   var V = {
     available: false, limits: null, _sample: null, server: false,
 
-    /** Свой сервер: распознаёт, если в config.php есть ключ (cfg.recognition) и человек вошёл. */
+    /** Свой сервер: кнопка «з фото» есть всегда (тестовый режим — фото сохраняются, даже если ключа ещё нет);
+     *  распознаёт, если в config.php есть ключ (cfg.recognition); загрузка — только после входа. */
     initServer: function (cfg, loggedIn) {
-      this.server = !!(root.TEPLO_API && cfg && cfg.recognition);
-      this.available = this.server && !!loggedIn;
+      this.server = !!root.TEPLO_API; this.loggedIn = !!loggedIn; this.engine = !!(cfg && cfg.recognition);
+      this.available = this.server;
       if (this.server) this.limits = { images: { maxCount: 3, mediaTypes: ['image/jpeg', 'image/png', 'image/webp'] } };
     },
     /** Фото — сырым телом (multipart на сервере запрещён), потом пачки по 3 (лимит сервера — 30 с на запрос). */
     _serverRecognize: function (files, ctx, signal, onProgress) {
-      var self = this, api = root.TEPLO_API, ids = [];
+      var self = this, api = root.TEPLO_API, ids = []; self.lastIds = ids;
+      if (!self.loggedIn) return Promise.reject(fail('not_signed_in'));
       var post = function (path, body, type) {
         if (!cookie('ts_csrf')) return fetch(api + '/config', { credentials: 'same-origin' }).then(function () { return post(path, body, type); });
         return fetch(api + path, { method: 'POST', body: body, signal: signal, credentials: 'same-origin', headers: { 'Content-Type': type, 'X-CSRF': cookie('ts_csrf'), 'Accept': 'application/json' } })
@@ -34,6 +36,7 @@
       });
       var n = Math.ceil(files.length / 3);
       return chain.then(function () {
+        out.ids = ids.slice();
         var c2 = Promise.resolve();
         for (var i = 0; i < ids.length; i += 3) (function (i) {
           c2 = c2.then(function () {
@@ -46,6 +49,15 @@
         })(i);
         return c2;
       }).then(function () { return out; }, function (e) { if (signal && signal.aborted) throw fail('cancelled'); throw e; });
+    },
+
+    /** Итог для аналитики: что не нашлось, где разные цифры, что человек исправил. Ошибки молча игнорируем. */
+    report: function (data) {
+      if (!this.server || !this.loggedIn || !root.TEPLO_API) return;
+      try {
+        fetch(root.TEPLO_API + '/recognize/report', { method: 'POST', credentials: 'same-origin', body: JSON.stringify(data),
+          headers: { 'Content-Type': 'application/json', 'X-CSRF': cookie('ts_csrf'), 'Accept': 'application/json' } }).catch(function () {});
+      } catch (e) { /* нет */ }
     },
 
     init: function (onChange) {

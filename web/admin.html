@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Теплосервис — аналитика</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500&family=IBM+Plex+Sans:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root { --housing:#E9EEEB; --surface:#fff; --ink:#17211E; --ink2:#4A5652; --line:#CFD7D3; --lcd:#BCC8A2; --ok:#1E7B4C; --oks:#DFF1E7; --warn:#8F5600; --warns:#FBEFD5; --bad:#A3142E; --bads:#F9E1E5; --info:#2F68B0; --infos:#E2ECF8;
+  --font:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; --mono:"IBM Plex Mono",ui-monospace,monospace; }
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--housing); color: var(--ink); font: 400 15px/1.45 var(--font); }
+header { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; padding: 14px 20px; }
+header b { font-size: 17px; }
+nav { display: flex; gap: 4px; flex-wrap: wrap; padding: 0 16px 10px; position: sticky; top: 0; background: var(--housing); z-index: 2; }
+nav button { font: 600 14px/1 var(--font); border: 1.5px solid transparent; background: transparent; color: var(--ink2); padding: 10px 14px; border-radius: 999px; cursor: pointer; }
+nav button[aria-current="true"] { background: var(--surface); color: var(--ink); border-color: var(--line); }
+nav .n { display: inline-block; min-width: 18px; padding: 2px 6px; margin-left: 6px; border-radius: 999px; background: var(--bads); color: var(--bad); font-size: 12px; }
+main { padding: 0 20px 48px; max-width: 1280px; }
+.cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 12px; margin-bottom: 20px; }
+.card { background: var(--surface); border-radius: 12px; padding: 14px 16px; }
+.card .v { font: 500 30px/1.1 var(--mono); }
+.card .k { color: var(--ink2); font-size: 13px; }
+.panel { background: var(--surface); border-radius: 12px; padding: 16px; margin-bottom: 16px; overflow-x: auto; }
+h2 { font-size: 18px; margin: 0 0 12px; }
+table { border-collapse: collapse; width: 100%; font-size: 14px; }
+th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { font-weight: 600; color: var(--ink2); font-size: 13px; white-space: nowrap; }
+tr.click { cursor: pointer; } tr.click:hover td { background: #F4F7F5; }
+.mono { font-family: var(--mono); }
+.muted { color: var(--ink2); } .small { font-size: 13px; }
+.pill { display: inline-block; padding: 3px 8px; border-radius: 999px; font-size: 12px; font-weight: 600; white-space: nowrap; }
+.p-ok { background: var(--oks); color: var(--ok); } .p-warn { background: var(--warns); color: var(--warn); } .p-bad { background: var(--bads); color: var(--bad); } .p-info { background: var(--infos); color: var(--info); }
+.btn { font: 600 14px/1 var(--font); border: 1.5px solid var(--line); background: var(--surface); color: var(--ink); padding: 8px 12px; border-radius: 10px; cursor: pointer; }
+.btn:hover { border-color: var(--ink); }
+input[type=search] { font: 400 15px var(--font); padding: 9px 12px; border: 1.5px solid var(--line); border-radius: 10px; width: min(420px, 100%); }
+.gallery { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 12px; }
+.ph { background: var(--surface); border-radius: 12px; overflow: hidden; display: flex; flex-direction: column; }
+.ph img { width: 100%; height: 200px; object-fit: cover; background: #222; cursor: zoom-in; display: block; }
+.ph .noimg { height: 200px; display: grid; place-items: center; background: var(--line); color: var(--ink2); }
+.ph .b { padding: 10px 12px; font-size: 13px; display: grid; gap: 6px; }
+.problem { color: var(--bad); }
+.reads { font-family: var(--mono); font-size: 12px; background: var(--lcd); border-radius: 6px; padding: 6px 8px; white-space: pre-wrap; }
+.msg { white-space: pre-wrap; max-width: 60ch; }
+.filters { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-bottom: 12px; }
+.center { max-width: 520px; margin: 12vh auto; background: var(--surface); padding: 24px; border-radius: 16px; }
+.zoom { position: fixed; inset: 0; background: rgba(0,0,0,.85); display: grid; place-items: center; z-index: 9; cursor: zoom-out; }
+.zoom img { max-width: 96vw; max-height: 96vh; }
+pre.state { font: 12px/1.4 var(--mono); background: #F4F7F5; padding: 10px; border-radius: 8px; max-height: 360px; overflow: auto; }
+@media (max-width: 640px) { main { padding: 0 10px 40px; } th, td { padding: 6px; } }
+</style>
+</head>
+<body>
+<div id="app"><div class="center">Загрузка…</div></div>
+<script>
+(function () {
+  'use strict';
+  var API = '__TEPLO_API__';
+  var SITE = API.replace(/\/api$/, '') + '/';
+  var app = document.getElementById('app');
+  var TAB = (location.hash || '#overview').slice(1), DATA = {}, Q = '', PF = 'all';
+  var FIELD = { energy: 'Энергия', volume: 'Объём', flow: 'Расход', power: 'Мощность', tSupply: 'Подача', tReturn: 'Обратка', hours: 'Часы', errHours: 'Часы ошибки', errCode: 'Код ошибки' };
+  var MODEL = { sharky774: 'SHARKY 774', sharky775: 'SHARKY 775', t330: 'ULTRAHEAT T330', t230: 'ULTRAHEAT T230', multical302: 'MULTICAL 302', elf: 'ELF', sensostar: 'SensoStar', nik7071: 'НІК 7071', trust: 'TRUST', other: 'другая' };
+  var STATUS = { checked: 'проверено', handed: 'передано в ХТМ', accepted: 'принято ХТМ', rejected: 'отклонено ХТМ', intermediate: 'промежуточное' };
+
+  function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+  function cookie(n) { var m = document.cookie.match(new RegExp('(?:^|; )' + n + '=([^;]*)')); return m ? decodeURIComponent(m[1]) : ''; }
+  function get(path) { return fetch(API + path, { credentials: 'same-origin', headers: { Accept: 'application/json' } }).then(function (r) { return r.json().catch(function () { return {}; }).then(function (j) { j._status = r.status; return j; }); }); }
+  function post(path, body) { return fetch(API + path, { method: 'POST', credentials: 'same-origin', body: JSON.stringify(body), headers: { 'Content-Type': 'application/json', 'X-CSRF': cookie('ts_csrf'), Accept: 'application/json' } }).then(function (r) { return r.json(); }); }
+  function when(iso) { if (!iso) return '—'; var d = new Date(iso); if (isNaN(d)) return esc(iso); return d.toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' }); }
+  function who(x) { var a = []; if (x.email) a.push(esc(x.email)); if (x.tg_username) a.push('@' + esc(x.tg_username)); else if (x.tg_id) a.push('tg ' + esc(x.tg_id)); return a.join('<br>') || ('#' + esc(x.user_id || x.id)); }
+  function ua(s) { s = s || ''; return /iPhone|iPad/.test(s) ? 'iPhone/iPad' : /Android/.test(s) ? 'Android' : /Telegram/.test(s) ? 'Telegram' : /Mac/.test(s) ? 'Mac' : /Windows/.test(s) ? 'Windows' : s ? 'другое' : '—'; }
+  function pill(cls, t) { return '<span class="pill p-' + cls + '">' + esc(t) + '</span>'; }
+
+  function shell(body) {
+    var o = DATA.overview || {};
+    var tabs = [['overview', 'Сводка'], ['users', 'Пользователи', 0], ['feedback', 'Сообщения', o.feedbackNew], ['photos', 'Фото', 0], ['reports', 'Ошибки распознавания', o.reportsBad]];
+    app.innerHTML = '<header><b>Теплосервис · аналитика</b><span class="muted small">' + esc(o.me || '') + '</span><span style="flex:1"></span><a class="btn" href="' + esc(SITE) + '">На сайт</a></header>' +
+      '<nav>' + tabs.map(function (t) { return '<button data-tab="' + t[0] + '"' + (TAB === t[0] ? ' aria-current="true"' : '') + '>' + t[1] + (t[2] ? '<span class="n">' + t[2] + '</span>' : '') + '</button>'; }).join('') + '</nav><main>' + body + '</main>';
+  }
+
+  var VIEW = {};
+  VIEW.overview = function () {
+    var o = DATA.overview;
+    var c = function (v, k) { return '<div class="card"><div class="v">' + esc(v) + '</div><div class="k">' + k + '</div></div>'; };
+    var warn = [];
+    if (!o.recognition) warn.push('Распознавание фото <b>выключено</b>: в config.php нет <code>anthropic_api_key</code>. Фото всё равно сохраняются — их видно во вкладке «Фото».');
+    if (!o.telegram) warn.push('Вход через Telegram <b>выключен</b>: в config.php нет <code>bot_token</code> и <code>bot_username</code>.');
+    return (warn.length ? '<div class="panel" style="background:var(--warns)">' + warn.map(function (w) { return '<p style="margin:4px 0">' + w + '</p>'; }).join('') + '</div>' : '') +
+      '<div class="cards">' + c(o.users, 'пользователей всего') + c(o.usersWeek, 'новых за 7 дней') + c(o.activeWeek, 'входили за 7 дней') + c(o.withTelegram, 'с Telegram') + c(o.withData, 'сохранили данные') +
+      c(o.feedback, 'сообщений (новых: ' + o.feedbackNew + ')') + c(o.photos, 'фото загружено') + c(o.photosFailed, 'фото с проблемами') + c(o.reportsBad + ' / ' + o.reports, 'распознаваний с замечаниями') + '</div>' +
+      '<p class="muted small">Фото хранятся ' + o.photoKeepDays + ' дней, потом удаляются автоматически.</p>';
+  };
+
+  VIEW.users = function () {
+    var us = DATA.users || [];
+    return '<div class="filters"><input type="search" id="q" placeholder="Поиск: e-mail, @telegram, id, номер квартиры, телефон" value="' + esc(Q) + '"><span class="muted small">' + us.length + ' чел.</span></div>' +
+      '<div class="panel"><table><thead><tr><th>#</th><th>Кто</th><th>Регистрация</th><th>Последний вход</th><th>Счётчик</th><th>Показаний</th><th>Последнее</th><th>Фото</th><th>Сообщ.</th></tr></thead><tbody>' +
+      us.map(function (u) {
+        var s = u.state || {};
+        return '<tr class="click" data-user="' + u.id + '"><td class="mono">' + u.id + '</td><td>' + who(u) + (s.phone ? '<div class="muted small">' + esc(s.phone) + '</div>' : '') + '</td><td>' + when(u.created_at) + '</td><td>' + when(u.last_login_at) + '</td>' +
+          '<td>' + esc(MODEL[s.meter] || s.meter || '—') + (s.apartment ? '<div class="muted small">кв. ' + esc(s.apartment) + '</div>' : '') + '</td><td class="mono">' + (s.readings || 0) + (s.handed ? ' <span class="muted">(' + s.handed + ' перед.)</span>' : '') + '</td>' +
+          '<td>' + (s.last ? esc(s.last.date || '') + '<div class="muted small">' + esc(STATUS[s.last.status] || s.last.status || '') + (s.last.source === 'photo' ? ' · с фото' : '') + '</div>' : '—') + '</td><td class="mono">' + (+u.photos || '') + '</td><td class="mono">' + (+u.feedback || '') + '</td></tr>';
+      }).join('') + '</tbody></table>' + (us.length ? '' : '<p class="muted">Никого не найдено.</p>') + '</div>';
+  };
+
+  function photoCard(p) {
+    var r = p.result && p.result.photo, m = p.result && p.result.meter;
+    var reads = r && r.readings && r.readings.length ? r.readings.map(function (x) { return (FIELD[x.field] || x.field) + ': ' + x.value + (x.unit ? ' ' + x.unit : '') + (x.confidence != null ? '  ' + Math.round(x.confidence * 100) + '%' : ''); }).join('\n') : '';
+    var st = p.status === 'recognized' ? (p.problem ? pill('warn', 'распознано с замечаниями') : pill('ok', 'распознано')) : p.status === 'failed' ? pill('bad', 'ошибка') : pill('info', 'загружено, не распознавалось');
+    return '<div class="ph">' + (p.exists ? '<img loading="lazy" src="' + esc(API + '/admin/photo?id=' + p.id) + '" alt="фото ' + esc(p.id) + '" data-zoom>' : '<div class="noimg">файл удалён</div>') +
+      '<div class="b"><div>' + st + '</div><div class="muted">' + when(p.created_at) + ' · ' + who(p).replace('<br>', ' ') + '</div>' +
+      (m && (m.modelId || m.modelText) ? '<div>Счётчик: <b>' + esc(MODEL[m.modelId] || m.modelText || m.modelId) + '</b>' + (m.serial ? ' · № ' + esc(m.serial) : '') + '</div>' : '') +
+      (r && r.kind ? '<div class="muted">тип снимка: ' + esc({ screen: 'экран', nameplate: 'шильдик', overview: 'общий план', other: 'другое' }[r.kind] || r.kind) + '</div>' : '') +
+      (reads ? '<div class="reads">' + esc(reads) + '</div>' : '') + (p.problem ? '<div class="problem">' + esc(p.problem) + '</div>' : '') +
+      '<div class="muted small mono">' + p.w + '×' + p.h + ' · ' + Math.round(p.bytes / 1024) + ' КБ</div></div></div>';
+  }
+  VIEW.photos = function () {
+    var ps = DATA.photos || [];
+    return '<div class="filters"><button class="btn" data-pf="all"' + (PF === 'all' ? ' style="border-color:var(--ink)"' : '') + '>Все</button><button class="btn" data-pf="problems"' + (PF === 'problems' ? ' style="border-color:var(--ink)"' : '') + '>Только с проблемами</button><span class="muted small">' + ps.length + ' шт.</span></div>' +
+      (ps.length ? '<div class="gallery">' + ps.map(photoCard).join('') + '</div>' : '<div class="panel muted">Фото пока нет.</div>');
+  };
+
+  VIEW.feedback = function () {
+    var fs = DATA.feedback || [];
+    return '<div class="panel"><table><thead><tr><th>Когда</th><th>Кто</th><th>Сообщение</th><th>Страница</th><th>Устройство</th><th></th></tr></thead><tbody>' +
+      fs.map(function (f) {
+        return '<tr' + (f.status === 'new' ? ' style="background:#FFFBEF"' : '') + '><td>' + when(f.created_at) + '</td><td>' + (f.user_id ? '<a href="#" data-user="' + f.user_id + '">' + who(f) + '</a>' : '<span class="muted">без входа</span>') + (f.contact ? '<div class="small">' + esc(f.contact) + '</div>' : '') + '</td>' +
+          '<td class="msg">' + esc(f.text) + '</td><td class="mono small">' + esc(f.page || '') + (f.screen ? '<div class="muted">' + esc(f.screen) + '</div>' : '') + '</td><td class="small">' + esc(ua(f.ua)) + ' · ' + esc(f.lang || '') + '</td>' +
+          '<td>' + (f.status === 'new' ? '<button class="btn" data-fb="' + f.id + '" data-st="done">Обработано</button>' : pill(f.status === 'spam' ? 'bad' : 'ok', f.status === 'spam' ? 'спам' : 'обработано') + ' <button class="btn" data-fb="' + f.id + '" data-st="new">↺</button>') + (f.status === 'new' ? ' <button class="btn" data-fb="' + f.id + '" data-st="spam">Спам</button>' : '') + '</td></tr>';
+      }).join('') + '</tbody></table>' + (fs.length ? '' : '<p class="muted">Сообщений пока нет.</p>') + '</div>';
+  };
+
+  VIEW.reports = function () {
+    var rs = DATA.reports || [];
+    return '<p class="muted small">Здесь каждая попытка распознавания: ошибки запроса к нейросети и итог после экрана «С фото» — какие поля не нашлись, где на разных фото разные цифры, что человек исправил руками.</p>' +
+      '<div class="panel"><table><thead><tr><th>Когда</th><th>Кто</th><th>Что</th><th>Описание</th><th>Фото</th></tr></thead><tbody>' +
+      rs.map(function (r) {
+        var ids = (r.photo_ids || '').split(',').filter(Boolean);
+        return '<tr><td>' + when(r.created_at) + '</td><td><a href="#" data-user="' + r.user_id + '">' + who(r) + '</a></td><td>' + (r.kind === 'run_error' ? pill('bad', 'ошибка') : +r.ok ? pill('ok', 'без замечаний') : pill('warn', 'замечания')) + '</td>' +
+          '<td class="msg">' + esc(r.text) + '</td><td>' + ids.map(function (id) { return '<img src="' + esc(API + '/admin/photo?id=' + id) + '" alt="" data-zoom style="width:44px;height:44px;object-fit:cover;border-radius:6px;margin:2px;cursor:zoom-in" onerror="this.remove()">'; }).join('') + '</td></tr>';
+      }).join('') + '</tbody></table>' + (rs.length ? '' : '<p class="muted">Пока пусто.</p>') + '</div>';
+  };
+
+  VIEW.user = function () {
+    var d = DATA.user, u = d.user, s = u.state || {};
+    var st = d.state || {};
+    var rd = (st.readings || []).slice().reverse();
+    return '<p><button class="btn" data-tab="users">← Все пользователи</button></p>' +
+      '<div class="panel"><h2>Пользователь #' + u.id + '</h2><table><tbody>' +
+      '<tr><th>E-mail</th><td>' + esc(u.email || '—') + '</td></tr><tr><th>Telegram</th><td>' + (u.tg_username ? '<a href="https://t.me/' + esc(u.tg_username) + '" target="_blank" rel="noopener">@' + esc(u.tg_username) + '</a>' : '') + (u.tg_id ? ' <span class="muted mono">' + esc(u.tg_id) + '</span>' : '—') + '</td></tr>' +
+      '<tr><th>Телефон / e-mail в профиле</th><td>' + esc([s.phone, s.contactEmail].filter(Boolean).join(' · ') || '—') + '</td></tr>' +
+      '<tr><th>Регистрация</th><td>' + when(u.created_at) + '</td></tr><tr><th>Последний вход</th><td>' + when(u.last_login_at) + '</td></tr><tr><th>Данные обновлены</th><td>' + when(u.state_at) + '</td></tr>' +
+      '<tr><th>Счётчик</th><td>' + esc(MODEL[s.meter] || s.meter || '—') + (s.unit ? ' · ' + esc(s.unit) : '') + (st.meter && st.meter.serial ? ' · № ' + esc(st.meter.serial) : '') + '</td></tr>' +
+      '<tr><th>Базовые показания</th><td class="mono small">' + (st.baseline ? esc(JSON.stringify(st.baseline)) : '—') + '</td></tr></tbody></table></div>' +
+      '<div class="panel"><h2>Показания (' + rd.length + ')</h2>' + (rd.length ? '<table><thead><tr><th>Дата</th><th>Статус</th><th>Проверка</th><th>Источник</th><th>Энергия</th><th>Объём</th><th>Часы</th><th>Коды</th></tr></thead><tbody>' + rd.map(function (r) {
+        var h = r.htm || {};
+        return '<tr><td>' + esc(h.date || '') + '</td><td>' + esc(STATUS[r.status] || r.status || '') + '</td><td>' + (r.verdict === 'ok' ? pill('ok', 'ок') : r.verdict === 'warn' ? pill('warn', 'предупр.') : r.verdict === 'block' ? pill('bad', 'не примут') : esc(r.verdict || '')) + '</td><td>' + (r.source === 'photo' ? 'фото' : 'вручную') + '</td><td class="mono">' + esc(h.energy || '') + '</td><td class="mono">' + esc(h.volume || '') + '</td><td class="mono">' + esc(h.hours || '') + '</td><td class="mono small">' + esc((r.codes || []).join(' ')) + '</td></tr>';
+      }).join('') + '</tbody></table>' : '<p class="muted">Нет.</p>') + '</div>' +
+      '<div class="panel"><h2>Сообщения (' + d.feedback.length + ')</h2>' + (d.feedback.length ? d.feedback.map(function (f) { return '<p><span class="muted small">' + when(f.created_at) + ' · ' + esc(f.page || '') + '</span><br><span class="msg">' + esc(f.text) + '</span></p>'; }).join('') : '<p class="muted">Нет.</p>') + '</div>' +
+      '<div class="panel"><h2>Распознавание</h2>' + (d.reports.length ? d.reports.map(function (r) { return '<p><span class="muted small">' + when(r.created_at) + '</span> ' + (r.kind === 'run_error' ? pill('bad', 'ошибка') : +r.ok ? pill('ok', 'ок') : pill('warn', 'замечания')) + ' ' + esc(r.text) + '</p>'; }).join('') : '<p class="muted">Нет.</p>') + '</div>' +
+      (d.photos.length ? '<h2>Фото (' + d.photos.length + ')</h2><div class="gallery" style="margin-bottom:16px">' + d.photos.map(photoCard).join('') + '</div>' : '') +
+      '<div class="panel"><h2>Входы и действия</h2>' + (d.audit.length ? '<table><tbody>' + d.audit.map(function (a) { return '<tr><td>' + when(a.created_at) + '</td><td>' + esc(a.action) + '</td><td class="mono small muted">' + esc(a.ip || '') + '</td></tr>'; }).join('') + '</tbody></table>' : '<p class="muted">Нет.</p>') + '</div>' +
+      '<details class="panel"><summary>Все данные пользователя (как хранятся)</summary><pre class="state">' + esc(JSON.stringify(st, null, 2)) + '</pre></details>';
+  };
+
+  var LOAD = {
+    overview: function () { return Promise.resolve(); },
+    users: function () { return get('/admin/users?q=' + encodeURIComponent(Q)).then(function (j) { DATA.users = j.users; }); },
+    feedback: function () { return get('/admin/feedback').then(function (j) { DATA.feedback = j.feedback; }); },
+    photos: function () { return get('/admin/photos' + (PF === 'problems' ? '?filter=problems' : '')).then(function (j) { DATA.photos = j.photos; }); },
+    reports: function () { return get('/admin/reports').then(function (j) { DATA.reports = j.reports; }); }
+  };
+  function show(tab, uid) {
+    TAB = tab;
+    var p = get('/admin/overview').then(function (j) { DATA.overview = j; });
+    p = p.then(uid ? function () { return get('/admin/user?id=' + uid).then(function (j) { DATA.user = j; }); } : (LOAD[tab] || LOAD.overview));
+    return p.then(function () { shell((VIEW[tab] || VIEW.overview)()); if (tab === 'users') { var q = document.getElementById('q'); if (q && Q) { q.focus(); q.setSelectionRange(Q.length, Q.length); } } },
+      function () { shell('<div class="panel problem">Не удалось загрузить. Обновите страницу.</div>'); });
+  }
+
+  document.addEventListener('click', function (e) {
+    var el = e.target.closest('[data-tab],[data-user],[data-pf],[data-fb],[data-zoom],.zoom'); if (!el) return;
+    if (el.classList.contains('zoom')) { el.remove(); return; }
+    if (el.hasAttribute('data-zoom')) { var z = document.createElement('div'); z.className = 'zoom'; z.innerHTML = '<img src="' + esc(el.src) + '" alt="">'; document.body.appendChild(z); return; }
+    e.preventDefault();
+    if (el.hasAttribute('data-tab')) { location.hash = el.getAttribute('data-tab'); return; }
+    if (el.hasAttribute('data-user')) { location.hash = 'user-' + el.getAttribute('data-user'); return; }
+    if (el.hasAttribute('data-pf')) { PF = el.getAttribute('data-pf'); show('photos'); return; }
+    if (el.hasAttribute('data-fb')) { post('/admin/feedback', { id: +el.getAttribute('data-fb'), status: el.getAttribute('data-st') }).then(function () { show('feedback'); }); }
+  });
+  var qt;
+  document.addEventListener('input', function (e) { if (e.target.id === 'q') { Q = e.target.value; clearTimeout(qt); qt = setTimeout(function () { show('users'); }, 300); } });
+  window.addEventListener('hashchange', route);
+  function route() { var h = (location.hash || '#overview').slice(1), m = h.match(/^user-(\d+)$/); if (m) show('user', +m[1]); else show(h); }
+
+  get('/admin/me').then(function (j) {
+    if (j._status === 401 || j.error === 'unauthorized') { app.innerHTML = '<div class="center"><h2>Нужен вход</h2><p>Войдите на сайте под своим аккаунтом, затем вернитесь сюда.</p><p><a class="btn" href="' + esc(SITE) + '#login">Войти</a></p></div>'; return; }
+    if (!j.admin) {
+      return get('/me').then(function (me) {
+        var u = me.user || {};
+        app.innerHTML = '<div class="center"><h2>Нет доступа</h2><p>Аналитика открыта только владельцу. Чтобы открыть её этому аккаунту, допишите в <code>/srv/sites/teplo_test_data/config.php</code>:</p><pre class="state">\'admins\' => [\'emails\' => [' + (u.email ? "'" + esc(u.email) + "'" : '') + '], \'telegram\' => [' + (u.telegram ? "'" + esc(u.telegram.id) + "'" : '') + ']],</pre><p><a class="btn" href="' + esc(SITE) + '">На сайт</a></p></div>';
+      });
+    }
+    route();
+  }, function () { app.innerHTML = '<div class="center">Сервер недоступен.</div>'; });
+})();
+</script>
+</body>
+</html>

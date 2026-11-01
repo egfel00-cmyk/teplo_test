@@ -15,6 +15,10 @@
 //  POST /api/bot/setup              (заголовок X-Setup-Secret = webhook_secret) — вебхук, кнопка меню, /start
 //  POST /api/recognize/upload       фото СЫРЫМ телом (Content-Type: image/*) → {id}
 //  POST /api/recognize/run          {ids[≤3], offset, ctx} → распознанное (vision-API, ключ в config.php)
+//  POST /api/recognize/report       {ids, missing, conflicts, corrections} — итог для аналитики
+//  POST /api/feedback               {text, contact?, page, screen, lang} — плавающая кнопка «Відгук», вход не нужен
+//  GET  /api/admin/*                аналитика владельца (только admins из config.php), см. app/admin.php
+//  GET  /api/admin/photo?id=…       байты фото (не JSON)
 //  Пути здесь — без SITE_BASE: index.php отрезает его.
 declare(strict_types=1);
 if (!defined('TEPLO')) { http_response_code(404); exit; }
@@ -22,10 +26,13 @@ if (!defined('TEPLO')) { http_response_code(404); exit; }
 final class Req {
   public function __construct(public string $method, public string $path, public array $server = [], public array $cookies = [], public string $body = '') {}
   public function json(): array { $j = json_decode($this->body, true); return is_array($j) ? $j : []; }
+  public function query(): array { parse_str((string)($this->server['QUERY_STRING'] ?? ''), $q); return $q; }
   public function header(string $name): string { return (string)($this->server['HTTP_' . strtoupper(str_replace('-', '_', $name))] ?? ''); }
 }
 final class Res {
   public array $cookies = [];
+  /** Если задан — index.php отдаёт файл ['path','mime'] вместо JSON. */
+  public ?array $file = null;
   public function __construct(public int $status = 200, public array $body = []) {}
 }
 
@@ -150,10 +157,16 @@ final class Api {
       }
       case 'POST /api/recognize/run': {
         if (!$user) throw new HttpError(401, 'unauthorized');
-        if (!Cfg::get('anthropic_api_key')) throw new HttpError(503, 'recognition_off');
         RateLimit::hit('recog_run', (string)$user['id']);
-        return Recognize::run((int)$user['id'], $in);
+        return Recognize::run((int)$user['id'], $in);   // без ключа — 503 recognition_off, но фото и причина остаются в аналитике
       }
+      case 'POST /api/recognize/report': {
+        if (!$user) throw new HttpError(401, 'unauthorized');
+        RateLimit::hit('recog_upload', (string)$user['id']);
+        return Recognize::report((int)$user['id'], $in);
+      }
+      case 'POST /api/feedback': return Feedback::create($user, $in, $r, $ip);
+      case 'GET /api/admin/me': return ['admin' => Admin::is($user)];
       case 'POST /api/bot/setup': {
         $secret = (string)Cfg::get('webhook_secret');
         if ($secret === '' || !Cfg::get('bot_token') || !hash_equals($secret, $r->header('X-Setup-Secret'))) throw new HttpError(403, 'forbidden');
@@ -169,6 +182,12 @@ final class Api {
         Telegram::handleUpdate($r->json());
         return ['ok' => true];
       }
+    }
+    if (str_starts_with($p, '/api/admin/')) {
+      if (!$user) throw new HttpError(401, 'unauthorized');
+      if (!Admin::is($user)) throw new HttpError(403, 'not_admin');
+      if ("$m $p" === 'GET /api/admin/photo') { $res->file = Admin::photoFile((string)($r->query()['id'] ?? '')); return []; }
+      return Admin::route("$m $p", $r->query(), $in, $user);
     }
     throw new HttpError(404, 'not_found');
   }

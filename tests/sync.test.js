@@ -14,7 +14,7 @@ t('изменённое показание (принято) побеждает �
 m = S.merge({ baseline: { date: '2026-11-10', energy: 14.1 }, updatedAt: 1 }, { baseline: { date: '2026-10-20', energy: 13.2 }, updatedAt: 9 });
 t('база — с более поздней датой, даже если состояние старее', m.baseline.date === '2026-11-10');
 m = S.merge({ onboarded: true, meter: { modelId: 'x' }, baseline: { date: '2026-10-20' }, readings: [r('a', 1000)], updatedAt: 1000 }, { onboarded: false, meter: null, baseline: null, readings: [], wipedAt: 4000, updatedAt: 4000 });
-t('«удалить всё» на другом устройстве побеждает', m.readings.length === 0 && !m.baseline && !m.onboarded);
+t('«удалить всё» на другом устройстве побеждает', m.readings.length === 0 && !m.baseline && !m.onboarded && !m.meter);
 m = S.merge({ readings: [r('n', 6000)], updatedAt: 6000, onboarded: true, meter: { modelId: 'x' } }, { readings: [], wipedAt: 4000, updatedAt: 4000 });
 t('записи, созданные после удаления, сохраняются', m.readings.length === 1);
 t('payload не тащит локальные поля', !('demoToday' in S.payload({ demoToday: 'x', lang: 'ru', readings: [] })) && !('lang' in S.payload({ lang: 'ru' })));

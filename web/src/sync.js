@@ -37,7 +37,8 @@
     if (wipeWins) out.baseline = newer.baseline || null;
     else if (ba && bb) out.baseline = String(ba.date) === String(bb.date) ? newer.baseline : (String(ba.date) > String(bb.date) ? ba : bb);
     else out.baseline = ba || bb || null;
-    out.meter = newer.meter || older.meter || null;
+    out.meter = wipeWins ? (newer.meter || null) : (newer.meter || older.meter || null);
+    if (wipeWins) { out.draft = newer.draft || null; out.contacts = newer.contacts || { phone: '', email: '' }; }
     out.updatedAt = Math.max(aT, bT); out.wipedAt = wiped || undefined;
     return out;
   }
@@ -54,6 +55,7 @@
   }
 
   var Sync = {
+    api: api,
     mode: 'local',          // local | claude | server
     account: null,          // server: {id, email, telegram:{id, username, name}}
     serverReachable: false,
