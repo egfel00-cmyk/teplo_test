@@ -135,7 +135,7 @@
     // тест экрана (горят все сегменты): строка «88888888» часто читается кусками «881», «88» — если все крупные числа из одних восьмёрок
     var all8 = mains.map(function (l) { return digitsOf(l.text); }).join(''), n8 = (all8.match(/8/g) || []).length;
     var e8 = mains.map(function (l) { return [l.text].concat(l.alts || []).map(function (x) { return digitsOf(x); }).filter(function (d) { return /^8{2,}1?$/.test(d); })[0] || ''; }).filter(Boolean);
-    if ((e8.length >= 2 && e8.join('').length >= 5) || (mains.length >= 2 && n8 >= 5 && n8 >= all8.length * 0.6)) { out.note = 'test_screen'; mains = []; out.anchor = -1; }
+    if ((e8.length >= 2 && e8.join('').length >= 5) || (mains.length >= 2 && n8 >= 3 && all8.length >= 4 && n8 >= all8.length * 0.6)) { out.note = 'test_screen'; mains = []; out.anchor = -1; }
     mains.forEach(function (l) {
       var txt = (l.alts && l.alts.length ? l.alts[0] : l.text).replace(/\s/g, '');
       if (/^E[\-–—_]*$/i.test(txt) || /^E[\-–—_]+$/i.test(l.text.replace(/\s/g, ''))) {
@@ -186,6 +186,8 @@
           else if (val && (val.split('.')[1] || '').length === 3) { field = 'energy'; how = 'guess'; }
           else if (val && (val.split('.')[1] || '').length === 2 && parseFloat(val) < 150) { field = null; }
         }
+        // «0.02» без подписи (3 цифры с ведущим нулём) — экран разницы температур dt: ни одно поле формы так не выглядит
+        if (!field && /^0\d{2}$/.test(bv.digits)) { out.kind = 'screen'; out.note = 'dt_screen'; out.anchor = 4.5; delete out.cand; return; }
         if (!field) { out.note = out.note || 'unlabeled'; return; }
       }
       if (DEC[field] === 0) val = bv.digits;   // часы — целые: «точка» на них — это тень сегмента

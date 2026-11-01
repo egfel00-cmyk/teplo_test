@@ -1069,7 +1069,12 @@
     var mm = mt.modelId ? M.byId(mt.modelId) : null;
     if (mm && (!S.meter || S.meter.modelId !== mm.id)) h += '<div class="banner" data-key="photo-meter">' + ico('info', 22) + '<div><p><b>' + esc(t('ph_meter_found', { m: modelName(mm) })) + '</b></p><p><button class="linkbtn" data-act="ph-use-model" data-id="' + mm.id + '" data-unit="' + esc(mt.energyUnit || '') + '">' + esc(t('ph_meter_use')) + '</button></p></div></div>';
     var noteTxt = function (x) { return x.note ? (t('pn_' + x.note) !== 'pn_' + x.note && t('pn_' + x.note) ? t('pn_' + x.note) : x.note) : ''; };
-    var bad = (res.photos || []).filter(function (x) { return (x.quality && x.quality !== 'ok') || (x.meterType && x.meterType !== 'heat') || (res.engine === 'local' && x.note); });
+    var INFO = { test_screen: 1, dt_screen: 1 };   // служебные экраны — не ошибка, просто пояснение
+    var info = (res.photos || []).filter(function (x) { return INFO[x.note] && !(x.readings || []).length; });
+    var bad = (res.photos || []).filter(function (x) { return !INFO[x.note] && ((x.quality && x.quality !== 'ok') || (x.meterType && x.meterType !== 'heat') || (res.engine === 'local' && x.note)); });
+    var miss = R.FIELDS.filter(function (f) { return f.key !== 'date' && f.key !== 'errHours' && f.key !== 'tReturn' && !p[f.key]; }).map(function (f) { return fieldLabel(f.key).toLowerCase(); });
+    if (miss.length) h += '<div class="banner">' + ico('info', 22) + '<div><p>' + esc(t('ph_missing_screens', { list: miss.join(', ') })) + '</p></div></div>';
+    if (info.length) h += '<p class="small muted">' + info.map(function (x) { return esc(t('ph_from', { n: x.index + 1 })) + ' — ' + esc(noteTxt(x)); }).join('<br>') + '</p>';
     if (bad.length) h += '<div class="banner warn">' + ico('alert', 22) + '<div>' + bad.map(function (x) {
       if (x.meterType && x.meterType !== 'heat') return '<p>' + esc(t('ph_from', { n: x.index + 1 })) + ': ' + esc(t('ph_not_heat_short_' + x.meterType)) + '</p>';
       var q = x.quality && x.quality !== 'ok' ? t('ph_quality', { n: x.index + 1, q: t('q_' + x.quality) || x.quality }) : t('ph_from', { n: x.index + 1 });
