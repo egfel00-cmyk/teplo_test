@@ -13,7 +13,7 @@ $path = ($base !== '' && str_starts_with($uri, $base . '/')) ? substr($uri, strl
 
 // локальный php -S: настоящие файлы (картинки) отдаёт сам; на бою их отдаёт Caddy
 if (PHP_SAPI === 'cli-server' && $path !== '/' && preg_match('~^/web/[\w.-]+\.(png|jpg|svg)$~', $path) && is_file(__DIR__ . $path)) {
-  header('Content-Type: ' . (str_ends_with($path, '.svg') ? 'image/svg+xml' : 'image/' . (str_ends_with($path, '.png') ? 'png' : 'jpeg'))); readfile(__DIR__ . $path); exit;
+  header('Content-Type: ' . (str_ends_with($path, '.svg') ? 'image/svg+xml' : 'image/' . (str_ends_with($path, '-2.jpg') ? 'png' : 'jpeg'))); readfile(__DIR__ . $path); exit;
 }
 header('X-Content-Type-Options: nosniff');
 header('Referrer-Policy: same-origin');
@@ -69,8 +69,8 @@ if ($path === '/' || $path === '/index.php') {
   $meta = '<meta name="description" content="' . $e($og[1]) . '">' .
     '<meta property="og:type" content="website"><meta property="og:site_name" content="Теплосервіс"><meta property="og:url" content="' . $e($site) . '">' .
     '<meta property="og:title" content="' . $e($og[0]) . '"><meta property="og:description" content="' . $e($og[1]) . '"><meta property="og:locale" content="' . $og[3] . '">' .
-    '<meta property="og:image" content="' . $e($site . 'web/og-' . $og[2] . '.png') . '"><meta property="og:image:secure_url" content="' . $e($site . 'web/og-' . $og[2] . '.png') . '"><meta property="og:image:type" content="image/png"><meta property="og:image:width" content="1200"><meta property="og:image:height" content="630"><meta property="og:image:alt" content="' . $e($og[0]) . '">' .
-    '<meta name="twitter:card" content="summary_large_image"><meta name="twitter:image" content="' . $e($site . 'web/og-' . $og[2] . '.png') . '">';
+    '<meta property="og:image" content="' . $e($site . 'web/og-' . $og[2] . '-2.jpg') . '"><meta property="og:image:secure_url" content="' . $e($site . 'web/og-' . $og[2] . '-2.jpg') . '"><meta property="og:image:type" content="image/jpeg"><meta property="og:image:width" content="1200"><meta property="og:image:height" content="630"><meta property="og:image:alt" content="' . $e($og[0]) . '">' .
+    '<meta name="twitter:card" content="summary_large_image"><meta name="twitter:image" content="' . $e($site . 'web/og-' . $og[2] . '-2.jpg') . '">';
   $html = preg_replace('~</title>~', '</title>' . $meta, $html, 1);
   header('Content-Type: text/html; charset=utf-8');
   header('Cache-Control: no-cache');

@@ -34,8 +34,8 @@ const TXT = {
       <h1>${x.t}</h1><p>${x.s}</p><div class="chips">${x.f.map(c => `<span>${c}</span>`).join('')}</div></div>
       <div class="dev">${lcd}<div class="btns"><i></i><i></i></div></div><div class="stripe"></div></div></body></html>`);
     await p.waitForTimeout(300);
-    await p.screenshot({ path: path.join(__dirname, `web/og-${lang}.png`) });
-    console.log('web/og-' + lang + '.png');
+    await p.screenshot({ path: path.join(__dirname, `web/og-${lang}-2.jpg`), type: 'jpeg', quality: 85 });
+    console.log('web/og-' + lang + '-2.jpg');
   }
   await br.close();
 })();

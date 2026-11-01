@@ -55,4 +55,4 @@ php tests/server.php && node tests/rules.test.js && node tests/sync.test.js
 ## Аналитика `/admin`
 Сводка, все пользователи (поиск по e-mail, @telegram, квартире, телефону), сообщения с кнопки «Відгук» (со страницей),
 галерея загруженных фото с результатом и причиной ошибки по-русски, журнал распознавания. Фото — в SITE_DATA/uploads/photos,
-хранятся `photo_keep_days` (90) дней, чистит cron.php. Превью ссылки: web/og-uk.png / og-ru.png (пересобрать: node tools_og.cjs <адрес>).
+хранятся `photo_keep_days` (90) дней, чистит cron.php. Превью ссылки: web/og-uk-2.jpg / og-ru-2.jpg (новое имя файла при каждой перерисовке — Telegram кэширует картинку) (пересобрать: node tools_og.cjs <адрес>).
