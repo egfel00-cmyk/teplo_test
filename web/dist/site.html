@@ -262,6 +262,14 @@ label.btn { cursor: pointer; }
 .cards2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; margin-bottom: 8px; }
 .num.big { font-size: 28px; line-height: 1.2; }
 
+/* дата «дд.мм.рррр»: своё текстовое поле + кнопка-календарь; настоящее type=date — невидимое, под кнопкой */
+.has-dmy { position: relative; display: flex; align-items: center; }
+.has-dmy .dmy { flex: 1; min-width: 0; }
+.has-dmy .dmy.bad { color: var(--c-bad, #A3142E); }
+.dmy-cal { flex: none; display: grid; place-items: center; width: 44px; height: 44px; margin-left: 4px; border: 0; background: transparent; color: inherit; cursor: pointer; border-radius: 10px; }
+.dmy-cal:hover { background: rgba(0,0,0,.05); }
+.dmy-native { position: absolute; right: 0; bottom: 0; width: 44px; height: 44px; opacity: 0; pointer-events: none; border: 0; padding: 0; }
+
 </style>
 <style>.top { padding-top: max(12px, env(safe-area-inset-top)); }</style>
 </head>
@@ -1859,6 +1867,7 @@ label.btn { cursor: pointer; }
     alert: '<path d="M12 4l9 16H3z"/><path d="M12 10v4"/><circle cx="12" cy="17" r=".6" fill="currentColor"/>',
     info: '<circle cx="12" cy="12" r="9"/><path d="M12 11v6"/><circle cx="12" cy="7.8" r=".6" fill="currentColor"/>',
     clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+    calendar: '<rect x="3.5" y="5" width="17" height="15" rx="2"/><path d="M3.5 10h17M8 3v4M16 3v4"/>',
     copy: '<rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3"/>',
     ext: '<path d="M14 4h6v6M20 4l-9 9"/><path d="M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/>',
     press: '<circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3.5" fill="currentColor" stroke="none"/>',
@@ -2566,7 +2575,37 @@ label.btn { cursor: pointer; }
   }
   function go(r) { if (routeName() === r) render(); else location.hash = r; }
 
+  /** Даты — всегда «дд.мм.рррр», как в ХТМ, независимо от языка браузера. Настоящее поле type=date остаётся
+   *  (скрытым) и хранит ISO-значение — весь остальной код читает его как раньше; кнопка-календарь открывает его выбор. */
+  function enhanceDates(root) {
+    Array.prototype.forEach.call((root || document).querySelectorAll('input[type=date]:not([data-dmy])'), function (nat) {
+      nat.setAttribute('data-dmy', '1');
+      var txt = document.createElement('input'); txt.type = 'text'; txt.className = 'num dmy'; txt.inputMode = 'numeric'; txt.autocomplete = 'off';
+      txt.placeholder = S.lang === 'ru' ? 'дд.мм.гггг' : 'дд.мм.рррр'; txt.maxLength = 10;
+      if (nat.id) { txt.id = nat.id + '-dmy'; var lb = document.querySelector('label[for="' + nat.id + '"]'); if (lb) lb.setAttribute('for', txt.id); }
+      var toDmy = function (iso) { var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso || ''); return m ? m[3] + '.' + m[2] + '.' + m[1] : ''; };
+      txt.value = toDmy(nat.value);
+      var btn = document.createElement('button'); btn.type = 'button'; btn.className = 'dmy-cal'; btn.setAttribute('aria-label', S.lang === 'ru' ? 'Календарь' : 'Календар'); btn.innerHTML = ico('calendar', 20);
+      nat.classList.add('dmy-native'); nat.tabIndex = -1; nat.setAttribute('aria-hidden', 'true');
+      nat.parentNode.insertBefore(txt, nat); nat.parentNode.insertBefore(btn, nat.nextSibling); nat.parentNode.classList.add('has-dmy');
+      var push = function (iso) { if (nat.value === iso) return; nat.value = iso; nat.dispatchEvent(new Event('input', { bubbles: true })); nat.dispatchEvent(new Event('change', { bubbles: true })); };
+      txt.addEventListener('input', function () {
+        var d = txt.value.replace(/\D/g, '').slice(0, 8), out = d.slice(0, 2);
+        if (d.length > 2) out += '.' + d.slice(2, 4); if (d.length > 4) out += '.' + d.slice(4);
+        if (out !== txt.value) txt.value = out;
+        if (!d) { push(''); return; }
+        if (d.length === 8) {
+          var iso = d.slice(4) + '-' + d.slice(2, 4) + '-' + d.slice(0, 2), ok = !isNaN(Date.parse(iso + 'T00:00:00Z')) && new Date(iso + 'T00:00:00Z').toISOString().slice(0, 10) === iso;
+          txt.classList.toggle('bad', !ok); if (ok) push(iso);
+        } else txt.classList.remove('bad');
+      });
+      nat.addEventListener('change', function () { var v = toDmy(nat.value); if (v !== txt.value && document.activeElement !== txt) txt.value = v; });
+      btn.addEventListener('click', function () { try { if (nat.showPicker) { nat.showPicker(); return; } } catch (e) { /* старый браузер */ } nat.focus(); nat.click(); });
+    });
+  }
+
   function afterRender(r) {
+    enhanceDates();
     if (Y().mode === 'server') mountTelegramWidget();
     var first = document.querySelector('[data-field]:not([type=radio])');
     if (first && /^step-/.test(r) && window.matchMedia('(min-width: 600px)').matches) first.focus({ preventScroll: true });

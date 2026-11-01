@@ -250,3 +250,11 @@ label.btn { cursor: pointer; }
 /* карточка показаний в истории */
 .cards2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; margin-bottom: 8px; }
 .num.big { font-size: 28px; line-height: 1.2; }
+
+/* дата «дд.мм.рррр»: своё текстовое поле + кнопка-календарь; настоящее type=date — невидимое, под кнопкой */
+.has-dmy { position: relative; display: flex; align-items: center; }
+.has-dmy .dmy { flex: 1; min-width: 0; }
+.has-dmy .dmy.bad { color: var(--c-bad, #A3142E); }
+.dmy-cal { flex: none; display: grid; place-items: center; width: 44px; height: 44px; margin-left: 4px; border: 0; background: transparent; color: inherit; cursor: pointer; border-radius: 10px; }
+.dmy-cal:hover { background: rgba(0,0,0,.05); }
+.dmy-native { position: absolute; right: 0; bottom: 0; width: 44px; height: 44px; opacity: 0; pointer-events: none; border: 0; padding: 0; }
