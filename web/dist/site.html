@@ -43,7 +43,7 @@ a { color: var(--c-return); text-underline-offset: 3px; }
 .top .spacer { flex: 1; }
 .main { flex: 1; width: 100%; max-width: 720px; margin: 0 auto; padding: var(--sp-2) var(--sp-4) calc(var(--tap) + 48px); }
 .main.bare { padding-bottom: var(--sp-7); }
-.nav { position: fixed; left: 0; right: 0; bottom: 0; display: grid; grid-template-columns: repeat(4, 1fr); background: var(--c-surface);
+.nav { position: fixed; left: 0; right: 0; bottom: 0; display: grid; grid-template-columns: repeat(5, 1fr); background: var(--c-surface);
   border-top: 1px solid var(--c-line); box-shadow: 0 -6px 18px rgba(23, 33, 30, .06); padding-bottom: env(safe-area-inset-bottom); z-index: 5; }
 .nav a { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; min-height: 58px; font-size: 13px; color: var(--c-ink-2); text-decoration: none; }
 .nav a[aria-current="page"] { color: var(--c-ink); font-weight: 600; }
@@ -269,6 +269,12 @@ label.btn { cursor: pointer; }
 .dmy-cal { flex: none; display: grid; place-items: center; width: 44px; height: 44px; margin-left: 4px; border: 0; background: transparent; color: inherit; cursor: pointer; border-radius: 10px; }
 .dmy-cal:hover { background: rgba(0,0,0,.05); }
 .dmy-native { position: absolute; right: 0; bottom: 0; width: 44px; height: 44px; opacity: 0; pointer-events: none; border: 0; padding: 0; }
+
+/* экономия тепла */
+.tips { padding-left: 22px; } .tips li { margin-bottom: 14px; } .tips h3 { margin: 0 0 4px; font-size: 17px; } .tips p { margin: 0; }
+.tip h3 { margin: 4px 0; font-size: 16px; } .tip { margin-top: 16px; }
+.date-chip { display: inline-flex; align-items: center; gap: 6px; font-size: 14px; padding: 4px 10px; border-radius: 999px; background: var(--c-surface); color: inherit; text-decoration: none; border: 1px solid var(--c-line); margin-left: 8px; white-space: nowrap; }
+@media (max-width: 420px) { .nav a span { font-size: 11px; letter-spacing: -0.1px; } .wiz-top .progress { min-width: 40px; } }
 
 </style>
 <style>.top { padding-top: max(12px, env(safe-area-inset-top)); }</style>
@@ -792,6 +798,14 @@ label.btn { cursor: pointer; }
       st_refix_sub: 'Останній запис у кабінеті ХТМ можна відредагувати — значок у клітинці з датою.',
       st_none: 'Немає показань на перевірці.',
 
+      nav_save: 'Економія',
+      s_for_date: 'Показання за {d}', s_date_change: 'Змінити дату',
+      sv_title: 'Як заощадити тепло', sv_lead: 'Поради для квартири з власним теплолічильником у Харкові — з урахуванням вимог робота ХТМ.',
+      sv_mine: 'Ваше споживання', sv_month_g: 'Гкал у середньому за 30 днів', sv_month_uah: 'грн за 30 днів за вашим тарифом',
+      sv_one_deg: 'Якщо тримати в квартирі на 1 °C менше, це приблизно −{g} Гкал ≈ {uah} грн за 30 днів.',
+      sv_mine_from: 'За показаннями з {a} по {b}.', sv_no_data: 'Коли в Історії будуть показання з різницею хоча б тиждень, тут з’являться ваші цифри: скільки тепла за місяць і скільки дасть мінус градус.',
+      sv_tip: 'Порада', sv_all: 'Усі поради з економії →',
+      sv_src: 'Джерела: ДБН (мін. 18 °C, у кутових 20 °C), Правила постачання теплової енергії (постанова КМУ № 830), пам’ятка ХТМ щодо квартирних лічильників, рекомендації Danfoss та енергоагенцій. Відсотки — орієнтовні.',
       hi_used: '+{de} Гкал за {days} дн. ≈ {cost} грн',
       hi_less: 'Енергія менша за попередні на {de} Гкал — перевірте дату або цифри',
       rec_gone: 'Цих показань уже немає (видалені).',
@@ -1067,6 +1081,14 @@ label.btn { cursor: pointer; }
       st_refix_sub: 'Последнюю запись в кабинете ХТМ можно отредактировать — значок в ячейке с датой.',
       st_none: 'Нет показаний на проверке.',
 
+      nav_save: 'Экономия',
+      s_for_date: 'Показания за {d}', s_date_change: 'Изменить дату',
+      sv_title: 'Как сэкономить тепло', sv_lead: 'Советы для квартиры со своим теплосчётчиком в Харькове — с учётом требований робота ХТМ.',
+      sv_mine: 'Ваше потребление', sv_month_g: 'Гкал в среднем за 30 дней', sv_month_uah: 'грн за 30 дней по вашему тарифу',
+      sv_one_deg: 'Если держать в квартире на 1 °C меньше, это примерно −{g} Гкал ≈ {uah} грн за 30 дней.',
+      sv_mine_from: 'По показаниям с {a} по {b}.', sv_no_data: 'Когда в Истории будут показания с разницей хотя бы неделю, здесь появятся ваши цифры: сколько тепла за месяц и сколько даст минус градус.',
+      sv_tip: 'Совет', sv_all: 'Все советы по экономии →',
+      sv_src: 'Источники: ДБН (мин. 18 °C, в угловых 20 °C), Правила поставки тепловой энергии (постановление КМУ № 830), памятка ХТМ по квартирным счётчикам, рекомендации Danfoss и энергоагентств. Проценты — ориентировочные.',
       hi_used: '+{de} Гкал за {days} дн. ≈ {cost} грн',
       hi_less: 'Энергия меньше предыдущей на {de} Гкал — проверьте дату или цифры',
       rec_gone: 'Этих показаний уже нет (удалены).',
@@ -1867,6 +1889,7 @@ label.btn { cursor: pointer; }
     alert: '<path d="M12 4l9 16H3z"/><path d="M12 10v4"/><circle cx="12" cy="17" r=".6" fill="currentColor"/>',
     info: '<circle cx="12" cy="12" r="9"/><path d="M12 11v6"/><circle cx="12" cy="7.8" r=".6" fill="currentColor"/>',
     clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+    leaf: '<path d="M5 19c0-8 5-13 14-14 0 9-5 14-13 14"/><path d="M5 19l7-7"/>',
     calendar: '<rect x="3.5" y="5" width="17" height="15" rx="2"/><path d="M3.5 10h17M8 3v4M16 3v4"/>',
     copy: '<rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3"/>',
     ext: '<path d="M14 4h6v6M20 4l-9 9"/><path d="M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/>',
@@ -1966,7 +1989,7 @@ label.btn { cursor: pointer; }
   // ---------------- оболочка ----------------
   function shell(view) {
     var route = view.route, bare = view.bare;
-    var navItems = [['home', 'home', 'nav_home'], ['history', 'history', 'nav_history'], ['help', 'help', 'nav_help'], ['prefs', 'prefs', 'nav_prefs']];
+    var navItems = [['home', 'home', 'nav_home'], ['history', 'history', 'nav_history'], ['save', 'leaf', 'nav_save'], ['help', 'help', 'nav_help'], ['prefs', 'prefs', 'nav_prefs']];
     var nav = bare ? '' : '<nav class="nav" aria-label="' + esc(t('brand')) + '">' + navItems.map(function (n) {
       return '<a href="#' + n[0] + '"' + (route === n[0] ? ' aria-current="page"' : '') + ' data-key="nav-' + n[0] + '">' + ico(n[1], 22) + '<span>' + esc(t(n[2])) + '</span></a>';
     }).join('') + '</nav>';
@@ -2069,6 +2092,7 @@ label.btn { cursor: pointer; }
       '<a href="#meter" data-key="home-change-meter">' + esc(t('change')) + '</a></li></ul>';
     var recent = RD().slice(-3).reverse();
     if (recent.length) right += '<h2 class="section-title">' + esc(t('h_recent')) + '</h2>' + readingList(recent);
+    right += tipOfDay();
     right += '<p class="small muted" style="margin-top:16px">' + esc(t('h_hw')) + ': <a href="' + BOT_URL + '" target="_blank" rel="noopener">@KPHTM_Bot</a></p>';
     if (Y().mode === 'server' && !Y().account && RD().length && !S.syncPromptDismissed) {
       html = '<div class="banner" data-key="home-save-prompt">' + ico('info', 22) + '<div><p><b>' + esc(t('save_prompt')) + '</b></p><p><a href="#login">' + esc(t('login')) + '</a> &nbsp; <button class="linkbtn" data-act="dismiss-sync">' + esc(t('save_prompt_later')) + '</button></p></div></div>' + html;
@@ -2164,7 +2188,8 @@ label.btn { cursor: pointer; }
     var st = steps(), n = st.length; if (!S.draft) newDraft();
     i = Math.max(0, Math.min(n - 1, i)); S.draft.step = i; save();
     var s = st[i], m = model(), prev = prevForEntry();
-    var head = '<div class="wiz-top" data-key="step-head"><span class="count">' + esc(t('s_step', { i: i + 1, n: n })) + '</span><span class="progress" aria-hidden="true"><i style="width:' + Math.round((i + 1) / n * 100) + '%"></i></span></div>';
+    var head = '<div class="wiz-top" data-key="step-head"><span class="count">' + esc(t('s_step', { i: i + 1, n: n })) + '</span>' +
+      (i > 0 && S.draft.date ? '<a class="date-chip" href="#step-0" data-key="step-date" title="' + esc(t('s_date_change')) + '">' + ico('calendar', 16) + '<span>' + esc(t('s_for_date', { d: R.toHtmDate(S.draft.date) })) + '</span></a>' : '') + '<span class="progress" aria-hidden="true"><i style="width:' + Math.round((i + 1) / n * 100) + '%"></i></span></div>';
     var left = '', right = '';
     if (s.kind === 'date') {
       left = '<h1>' + esc(t('s_date_title')) + '</h1><p>' + esc(t('s_date_lead')) + '</p>' + (windowClosed() ? windowBanner() : '') +
@@ -2342,6 +2367,56 @@ label.btn { cursor: pointer; }
     return { screen: 'S09', route: 'history', html: head + used + '<ul class="list" data-key="rec-values">' + rows + '</ul>' +
       '<div class="row-actions">' + st + '<a class="btn sec" href="#rec-' + r.id + '-edit" data-key="rec-edit">' + esc(t('rec_edit')) + '</a>' +
       '<button class="btn danger" data-act="rec-del-ask" data-key="rec-del">' + esc(t('rec_del')) + '</button></div><div id="rec-del-confirm"></div>' };
+  }
+
+  // ---------------- як заощадити тепло ----------------
+  /** Поради з урахуванням реалій ХТМ: квартирний лічильник, робот ХТМ (мін. витрата), норми ДБН. Джерела — у кінці сторінки. */
+  function tips() {
+    var ru = S.lang === 'ru';
+    return ru ? [
+      ['Какую температуру ставить', 'Жилые комнаты — 20–21 °C, спальня — 18–19 °C, ночью и когда никого нет — на 2–3 °C ниже. Ниже 18 °C (в угловых комнатах 20 °C) — это уже меньше нормы ДБН. Каждый градус ниже — примерно 5–6 % тепла.'],
+      ['Термоголовки на батареи', 'Автоматический терморегулятор сам держит заданную температуру и учитывает «бесплатное» тепло — солнце, плиту, людей. Производители оценивают экономию примерно в 20 % по сравнению с ручными кранами. Обычно отметка «3» ≈ 20 °C — точнее в паспорте головки.'],
+      ['Не перекрывайте батареи полностью', 'Наша реалия: робот ХТМ не принимает показания, если средний расход меньше 0,3 × переходного, а ELF и TRUST считают часы только при расходе. Поэтому вместо «закрыть всё» — термоголовки на 16–18 °C, хотя бы одна батарея открыта. ХТМ советует держать разницу подачи и обратки больше 3 °C.'],
+      ['Не прячьте батареи', 'Длинные шторы, мебель, декоративные экраны и бельё на радиаторе забирают до 20 % тепла — оно остаётся под подоконником. Термоголовке нужен свободный воздух, иначе она «думает», что уже тепло.'],
+      ['Проветривайте коротко и настежь', '5–10 минут с широко открытым окном несколько раз в день, на это время прикрутите термоголовку. Окно на микропроветривании весь день остужает стены и съедает тепло.'],
+      ['Ночью — убавить, а не выключить', 'Полностью выключать на ночь невыгодно: стены и пол остывают, утром на прогрев уходит больше. Достаточно −2–3 °C.'],
+      ['Шторы и окна', 'На ночь закрывайте плотные шторы, днём на солнечной стороне — открывайте. Уплотнители, «зимний» режим фурнитуры, герметик на щелях; на внешней стене — фольгированный экран за батареей (утеплённые ниши — до 4 %).'],
+      ['Воздух в батарее', 'Если верх батареи холодный, а низ горячий — спустите воздух краном Маевского. Батарея прогреется целиком, и комфорт будет при меньшей настройке.'],
+      ['Сравнивайте месяцы в Истории', 'Смотрите «в среднем за 30 дней». Резкий рост при похожей погоде — ищите причину: открытое окно, сломанная термоголовка, разбалансировка стояка (вопрос к ОСББ/ЖЭК).'],
+      ['Холодно — перерасчёта не будет', 'С квартирным счётчиком вы платите за фактически полученное тепло, перерасчёт «за холод» делают только без счётчиков. Если холодно при открытых батареях — это вопрос к ОСББ/ХТМ (балансировка, давление), а не к счёту.']
+    ] : [
+      ['Яку температуру ставити', 'Житлові кімнати — 20–21 °C, спальня — 18–19 °C, вночі й коли нікого немає — на 2–3 °C нижче. Нижче 18 °C (у кутових кімнатах 20 °C) — це вже менше за норму ДБН. Кожен градус нижче — приблизно 5–6 % тепла.'],
+      ['Термоголовки на батареї', 'Автоматичний терморегулятор сам тримає задану температуру й враховує «безкоштовне» тепло — сонце, плиту, людей. Виробники оцінюють економію приблизно у 20 % порівняно з ручними кранами. Зазвичай позначка «3» ≈ 20 °C — точніше в паспорті головки.'],
+      ['Не перекривайте батареї повністю', 'Наша реалія: робот ХТМ не приймає показання, якщо середня витрата менша за 0,3 × перехідної, а ELF і TRUST рахують години лише при витраті. Тож замість «закрити все» — термоголовки на 16–18 °C, хоча б одна батарея відкрита. ХТМ радить тримати різницю подачі й обратки більше 3 °C.'],
+      ['Не ховайте батареї', 'Довгі штори, меблі, декоративні екрани й білизна на радіаторі забирають до 20 % тепла — воно лишається під підвіконням. Термоголовці потрібне вільне повітря, інакше вона «думає», що вже тепло.'],
+      ['Провітрюйте коротко й навстіж', '5–10 хвилин із широко відчиненим вікном кілька разів на день, на цей час прикрутіть термоголовку. Вікно на мікропровітрюванні цілий день остуджує стіни й з’їдає тепло.'],
+      ['Вночі — прикрутити, а не вимкнути', 'Повністю вимикати на ніч невигідно: стіни й підлога вистигають, уранці на прогрів іде більше. Досить −2–3 °C.'],
+      ['Штори й вікна', 'На ніч закривайте щільні штори, вдень на сонячному боці — відчиняйте. Ущільнювачі, «зимовий» режим фурнітури, герметик на щілинах; на зовнішній стіні — фольгований екран за батареєю (утеплені ніші — до 4 %).'],
+      ['Повітря в батареї', 'Якщо верх батареї холодний, а низ гарячий — спустіть повітря краном Маєвського. Батарея прогріється цілком, і комфорт буде при меншому налаштуванні.'],
+      ['Порівнюйте місяці в Історії', 'Дивіться «у середньому за 30 днів». Різке зростання за схожої погоди — шукайте причину: відчинене вікно, зламана термоголовка, розбалансування стояка (питання до ОСББ/ЖЕК).'],
+      ['Холодно — перерахунку не буде', 'З квартирним лічильником ви платите за фактично отримане тепло, перерахунок «за холод» роблять лише без лічильників. Якщо холодно при відкритих батареях — це питання до ОСББ/ХТМ (балансування, тиск), а не до рахунку.']
+    ];
+  }
+  /** Ваші цифри: середнє за 30 днів з останнього проміжку і скільки дасть −1 °C (≈5 %). */
+  function myMonth() {
+    var last = RD().slice().sort(function (a, b) { return a.htm.date < b.htm.date ? -1 : 1; }).reverse();
+    for (var i = 0; i < last.length; i++) { var iv = interval(last[i]); if (iv && iv.dE > 0 && iv.days >= 7) return { g: iv.dE / iv.days * 30, from: iv.from, to: last[i].htm.date }; }
+    return null;
+  }
+  V.save = function () {
+    var mm = myMonth(), list = tips();
+    var mine = mm ? '<div class="panel" data-key="save-mine"><h2>' + esc(t('sv_mine')) + '</h2><div class="cards2"><div><div class="num big">' + esc(mm.g.toFixed(3)) + '</div><div class="small muted">' + esc(t('sv_month_g')) + '</div></div>' +
+      '<div><div class="num big">≈ ' + esc(money(mm.g * tariff())) + '</div><div class="small muted">' + esc(t('sv_month_uah')) + '</div></div></div>' +
+      '<p>' + esc(t('sv_one_deg', { g: (mm.g * 0.05).toFixed(3), uah: money(mm.g * 0.05 * tariff()) })) + '</p><p class="small muted">' + esc(t('sv_mine_from', { a: R.toHtmDate(mm.from), b: R.toHtmDate(mm.to) })) + '</p></div>'
+      : '<div class="panel"><p class="muted">' + esc(t('sv_no_data')) + '</p></div>';
+    return { screen: 'S14', route: 'save', html: '<h1>' + esc(t('sv_title')) + '</h1><p class="muted">' + esc(t('sv_lead')) + '</p>' + mine +
+      '<ol class="tips" data-key="save-tips">' + list.map(function (x) { return '<li><h3>' + esc(x[0]) + '</h3><p>' + esc(x[1]) + '</p></li>'; }).join('') + '</ol>' +
+      '<p class="small muted">' + esc(t('sv_src')) + '</p>' };
+  };
+  /** Порада дня — на головній. */
+  function tipOfDay() {
+    var list = tips(), d = new Date(today() + 'T12:00:00Z'), k = Math.floor(d.getTime() / 86400000) % list.length, x = list[k];
+    return '<div class="panel tip" data-key="home-tip"><p class="small muted">' + ico('leaf', 16) + ' ' + esc(t('sv_tip')) + '</p><h3>' + esc(x[0]) + '</h3><p class="small">' + esc(x[1]) + '</p><a href="#save">' + esc(t('sv_all')) + '</a></div>';
   }
 
   V.help = function () { return { screen: 'S10', route: 'help', html: helpHtml() }; };
