@@ -6,6 +6,7 @@
 //  POST /api/auth/login             {email, password}
 //  POST /api/auth/telegram/webapp   {initData}           — вход внутри бота (Mini App)
 //  POST /api/auth/telegram/widget   {id, ..., hash}      — кнопка «Увійти через Telegram» на сайте
+//  POST /api/auth/link-bot          → {url} t.me/<бот>?start=link_<token> — привязать Telegram через бота (15 мин)
 //  POST /api/auth/link-telegram     {widget data}        — привязать Telegram к аккаунту с паролем
 //  POST /api/auth/password          {email, password}    — задать email+пароль аккаунту из Telegram
 //  POST /api/auth/logout
@@ -103,6 +104,14 @@ final class Api {
         }
         self::startSession($res, $u, $r, $ip); self::audit($u['id'], 'login_telegram', $ip);
         return ['user' => self::publicUser($u)];
+      }
+      case 'POST /api/auth/link-bot': {   // ссылка на бота для привязки Telegram без виджета (работает при любом CSP)
+        if (!$user) throw new HttpError(401, 'unauthorized');
+        RateLimit::hit('telegram_ip', $ip);
+        $bot = (string)Cfg::get('bot_username'); if ($bot === '') throw new HttpError(503, 'no_bot');
+        $tok = bin2hex(random_bytes(16));
+        Db::q('INSERT INTO link_tokens (token, user_id, expires_at) VALUES (?, ?, ?)', [$tok, $user['id'], time() + 900]);
+        return ['url' => 'https://t.me/' . rawurlencode($bot) . '?start=link_' . $tok, 'expiresIn' => 900];
       }
       case 'POST /api/auth/link-telegram': {
         if (!$user) throw new HttpError(401, 'unauthorized');

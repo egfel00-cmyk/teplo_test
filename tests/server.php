@@ -208,6 +208,22 @@ ok('отключить бота и удалить ключ', $boss->req('POST', 
   && $boss->req('POST', '/api/admin/settings/anthropic', ['clear' => 1])->status === 200 && !Cfg::get('anthropic_api_key'));
 Recognize::$check = null; Telegram::$send = null;
 
+echo "\nПривязка Telegram через бота:\n";
+Cfg::set(['admins' => ['emails' => ['boss@example.ua']], 'app_url' => 'https://teplo.example/', 'bot_token' => $TOKEN, 'bot_username' => 'TeploTestBot', 'webhook_secret' => 'hook-secret',
+  'limits' => ['ip_all' => [1000, 60], 'login_ip' => [10, 300], 'login_fail_acc' => [5, 900], 'register_ip' => [50, 3600], 'telegram_ip' => [30, 300], 'state_user' => [60, 60], 'recog_upload' => [120, 3600], 'recog_run' => [40, 86400], 'feedback_ip' => [3, 3600]]]);
+$sent = []; Telegram::$send = function ($m, $p, $tok = null) use (&$sent) { $sent[] = [$m, $p]; return ['ok' => true]; };
+$lb = new Browser('10.0.9.1'); $lb->req('POST', '/api/auth/register', ['email' => 'link@example.ua', 'password' => 'link pass 123']);
+$lk = $lb->req('POST', '/api/auth/link-bot');
+ok('ссылка на бота с одноразовым токеном', $lk->status === 200 && preg_match('~^https://t\.me/[^?]+\?start=link_([a-f0-9]{32})$~', $lk->body['url'], $mm));
+$from = ['id' => 555777, 'username' => 'linker', 'language_code' => 'uk'];
+$hook = fn($text) => $anon->req('POST', '/api/bot/webhook', ['message' => ['chat' => ['id' => 555777], 'from' => $from, 'text' => $text]], ['HTTP_X_TELEGRAM_BOT_API_SECRET_TOKEN' => (string)Cfg::get('webhook_secret')]);
+$hook('/start link_' . $mm[1]);
+$linkedTo = Db::one("SELECT user_id FROM user_identities WHERE type = 'telegram' AND external_id = '555777'");
+ok('«Старт» в боте → Telegram привязан к этому аккаунту, бот ответил', $linkedTo && (int)$linkedTo['user_id'] === (int)$lb->req('GET', '/api/me')->body['user']['id'] && str_contains(end($sent)[1]['text'], 'прив’язано'));
+$hook('/start link_' . $mm[1]);
+ok('повторно та же ссылка не работает', str_contains(end($sent)[1]['text'], 'застаріло'));
+Telegram::$send = null;
+
 echo "\nПогода для статистики (только владельцу):\n";
 $urls = []; Weather::$fetch = function ($u) use (&$urls) { $urls[] = $u; return ['daily' => ['time' => ['2025-01-01', '2025-01-02'], 'temperature_2m_mean' => [-3.24, null]]]; };
 ok('погода: обычному пользователю — нет', $rb->req('GET', '/api/admin/weather', null, ['QUERY_STRING' => 'from=2025-01-01&to=2025-01-02'])->status === 403);
