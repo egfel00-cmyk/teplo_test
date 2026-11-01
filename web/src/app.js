@@ -387,6 +387,15 @@
   /** Показания без удалённых (удалённые остаются «надгробием» с deleted, чтобы удаление синхронизировалось). */
   function RD() { var first = S.places && S.places[0] ? S.places[0].id : 'main'; return (S.readings || []).filter(function (r) { return r && !r.deleted && (r.place || first) === S.placeId; }); }
   function tariff() { var n = R.num(S.tariff); return n && n > 0 ? n : R.C.TARIFF; }
+  /* Платіжка ХТМ: до сплати = (ваше тепло за лічильником + ваша частка ЗБП) × тариф + абонплата.
+     ЗБП — загальнобудинкові потреби (сходи, підвал): частка пропорційна площі, у платіжці — стовпець «на ЗБП» у рядку вашого вузла. */
+  function bill() { var b = S.bill || {}, ab = R.num(b.abon), mz = R.num(b.mzk); return { abon: ab !== null && ab >= 0 ? ab : R.C.ABON, mzk: mz !== null && mz >= 0 ? mz : 0 }; }
+  var MONTH_DAYS = 365.25 / 12;
+  function costOf(dE, days) {
+    // ХТМ рахує ЗБП і абонплату помісячно: проміжок ~місяць — рівно один місяць
+    var b = bill(), m = days >= 20 ? Math.max(1, Math.round(days / MONTH_DAYS)) : days > 0 ? days / MONTH_DAYS : 0, mz = b.mzk * m, heat = Math.max(0, dE) * tariff();
+    return { heat: heat, mzk: mz * tariff(), abon: b.abon * m, total: heat + mz * tariff() + b.abon * m, gcal: Math.max(0, dE) + mz };
+  }
   /** Сколько тепла набежало с прошлых показаний (по дате снятия) или с последних принятых ХТМ, и сколько это стоит. */
   function interval(r) {
     var d = r.htm && r.htm.date, e = R.num(r.htm && r.htm.energy); if (!d || e === null) return null;
@@ -395,7 +404,8 @@
     var from = prev ? prev.htm : (S.baseline && S.baseline.date && S.baseline.date < d && R.num(S.baseline.energy) !== null ? S.baseline : null);
     if (!from) return null;
     var dE = e - R.num(from.energy), days = R.daysBetween(from.date, d);
-    return { dE: dE, days: days, cost: dE > 0 ? dE * tariff() : 0, from: from.date, fromBase: !prev };
+    var c = costOf(dE, days);
+    return { dE: dE, days: days, cost: c.total, parts: c, from: from.date, fromBase: !prev };
   }
   /** Погода к показаниям: средняя/мин/макс на улице за промежуток (до 4 мес.) и в день снятия; ряд по дням — для мини-графика. */
   function wxFor(r) {
@@ -673,7 +683,8 @@
     var used = iv ? '<div class="panel" data-key="rec-used"><h2>' + esc(t('rec_used_title')) + '</h2>' + (iv.dE < 0 ? '<p class="small">' + esc(intervalText(iv)) + '</p>' :
       '<div class="cards2"><div><div class="num big">' + esc(iv.dE.toFixed(3)) + '</div><div class="small muted">' + esc(t('rec_gcal_for', { days: iv.days, from: fmtDate(iv.from, true) })) + '</div></div>' +
       '<div><div class="num big">≈ ' + esc(money(iv.cost)) + '</div><div class="small muted">' + esc(t('rec_uah', { tariff: money(tariff()) })) + '</div></div></div>' +
-      (iv.days > 0 ? '<p class="small muted">' + esc(t('rec_per_month', { de: (iv.dE / iv.days * 30).toFixed(3), cost: money(iv.dE / iv.days * 30 * tariff()) })) + '</p>' : '')) + '</div>' : '';
+      '<p class="small muted">' + esc(t('rec_parts', { heat: money(iv.parts.heat), mzk: money(iv.parts.mzk), abon: money(iv.parts.abon) })) + '</p>' +
+      (iv.days > 0 ? '<p class="small muted">' + esc(t('rec_per_month', { de: (iv.dE / iv.days * MONTH_DAYS).toFixed(3), cost: money(costOf(iv.dE / iv.days * MONTH_DAYS, MONTH_DAYS).total) })) + '</p>' : '')) + '</div>' : '';
     var st = (r.status === 'handed' || r.status === 'rejected' || r.status === 'accepted') ? '<a class="btn sec" href="#status" data-act="focus" data-id="' + r.id + '">' + esc(t('rec_status')) + '</a>' : '';
     var wxp = wx ? '<div class="panel wx-panel" data-key="rec-weather"><h2>' + ico('thermo', 20) + ' ' + esc(t('wx_title')) + '</h2><div class="wx-tiles">' +
       (wx.avg !== null ? '<div><div class="num big wx-t-' + wxTone(wx.avg) + '">' + esc(degTxt(wx.avg)) + '</div><div class="small muted">' + esc(t('wx_t_avg')) + '</div></div>' +
@@ -775,6 +786,7 @@
     chColors();   // тестовый период: статистика открыта всем
     var St = window.TeploStats; loadWeather();
     var w = WX.days, ivs = St.intervals(RD(), S.baseline, w, tariff()), cl = St.coolant(RD(), S.baseline, w);
+    ivs.forEach(function (it) { it.cost = +costOf(it.dE, it.days).total.toFixed(2); });
     if (!ivs.length) return { screen: 'S15', route: 'stats', html: '<h1>' + esc(t('stt_title')) + '</h1><div class="panel"><p class="muted">' + esc(t('stt_empty')) + '</p></div>' };
     var summer = function (it) { return it.days > 100; };
     var lbl = function (it) { return shortDate(it.to); };
@@ -785,7 +797,7 @@
     var season = ivs.filter(function (it) { return it.to > sFrom; }), sE = season.reduce(function (a, it) { return a + Math.max(0, it.dE); }, 0);
     var okN = cl.filter(function (p) { return p.status === 'ok'; }).length, judged = cl.filter(function (p) { return p.status !== 'off'; }).length;
     var tiles = '<div class="cards2 stat-tiles"><div><div class="num big">' + esc(fmtN(sE, 3)) + '</div><div class="small muted">' + esc(t('stt_season_g', { s: sy + '/' + String(sy + 1).slice(2) })) + '</div></div>' +
-      '<div><div class="num big">≈ ' + esc(money(sE * tariff())) + '</div><div class="small muted">' + esc(t('stt_season_uah')) + '</div></div>' +
+      '<div><div class="num big">≈ ' + esc(money(season.reduce(function (a, it) { return a + it.cost; }, 0))) + '</div><div class="small muted">' + esc(t('stt_season_uah')) + '</div></div>' +
       (judged ? '<div><div class="num big">' + okN + ' / ' + judged + '</div><div class="small muted">' + esc(t('stt_ok_share')) + '</div></div>' : '') + '</div>';
     var c1 = barChart(ivs.map(function (it) { return { x: lbl(it), x2: it.tOut !== undefined ? (it.tOut > 0 ? '+' : '') + Math.round(it.tOut) + ' °C' : '', v: Math.max(0, it.month), soft: summer(it), top: fmtN(it.month, 2),
       tip: [fmtN(it.month, 3) + ' ' + t('stt_g30'), period(it), '+' + fmtN(it.dE, 3) + ' Гкал ≈ ' + money(it.cost) + ' грн', it.tOut !== undefined ? t('stt_tout', { t: fmtN(it.tOut, 1) }) : '', summer(it) ? t('stt_summer') : ''] }; }), { title: t('st1_title'), dec: 1 });
@@ -860,7 +872,7 @@
   V.save = function () {
     var mm = myMonth(), list = tips();
     var mine = mm ? '<div class="panel" data-key="save-mine"><h2>' + esc(t('sv_mine')) + '</h2><div class="cards2"><div><div class="num big">' + esc(mm.g.toFixed(3)) + '</div><div class="small muted">' + esc(t('sv_month_g')) + '</div></div>' +
-      '<div><div class="num big">≈ ' + esc(money(mm.g * tariff())) + '</div><div class="small muted">' + esc(t('sv_month_uah')) + '</div></div></div>' +
+      '<div><div class="num big">≈ ' + esc(money(costOf(mm.g, MONTH_DAYS).total)) + '</div><div class="small muted">' + esc(t('sv_month_uah')) + '</div></div></div>' +
       '<p>' + esc(t('sv_one_deg', { g: (mm.g * 0.05).toFixed(3), uah: money(mm.g * 0.05 * tariff()) })) + '</p><p class="small muted">' + esc(t('sv_mine_from', { a: R.toHtmDate(mm.from), b: R.toHtmDate(mm.to) })) + '</p></div>'
       : '<div class="panel"><p class="muted">' + esc(t('sv_no_data')) + '</p></div>';
     return { screen: 'S14', route: 'save', html: '<h1>' + esc(t('sv_title')) + '</h1><p class="muted">' + esc(t('sv_lead')) + '</p>' + mine +
@@ -929,7 +941,11 @@
       '<div class="panel" data-key="prefs-theme"><h2>' + esc(t('th_title')) + '</h2><div class="seg-ctl" role="group" aria-label="' + esc(t('th_title')) + '">' +
         ['auto', 'light', 'dark'].map(function (k) { return '<button type="button" data-act="theme" data-v="' + k + '" aria-pressed="' + ((S.theme || 'auto') === k) + '">' + esc(t('th_' + k)) + '</button>'; }).join('') + '</div>' +
         '<p class="small muted" style="margin-top:8px">' + esc(t('th_sub')) + '</p></div>' +
-      '<div class="panel"><h2>' + esc(t('p_tariff')) + '</h2><p class="small muted">' + esc(t('p_tariff_sub')) + '</p><div class="field" style="max-width:220px"><label for="p-tariff">грн/Гкал</label><div class="ctl"><input id="p-tariff" class="num" inputmode="decimal" data-key="prefs-tariff" value="' + esc(String(tariff()).replace('.', S.lang === 'ru' ? ',' : ',')) + '"></div></div></div>' +
+      '<div class="panel" data-key="prefs-bill"><h2>' + esc(t('p_tariff')) + '</h2><p class="small muted">' + esc(t('p_tariff_sub')) + '</p>' +
+        '<div class="grid2"><div class="field"><label for="p-tariff">' + esc(t('p_tariff_l')) + '</label><div class="ctl"><input id="p-tariff" class="num" inputmode="decimal" data-key="prefs-tariff" value="' + esc(tariff().toFixed(2).replace('.', ',')) + '"></div></div>' +
+        '<div class="field"><label for="p-abon">' + esc(t('p_abon_l')) + '</label><div class="ctl"><input id="p-abon" class="num" inputmode="decimal" value="' + esc(bill().abon.toFixed(2).replace('.', ',')) + '"></div></div>' +
+        '<div class="field"><label for="p-mzk">' + esc(t('p_mzk_l')) + '</label><div class="ctl"><input id="p-mzk" class="num" inputmode="decimal" placeholder="0,01262" value="' + esc(bill().mzk ? String(bill().mzk).replace('.', ',') : '') + '"></div><div class="small muted">' + esc(t('p_mzk_h')) + '</div></div></div>' +
+        '<details class="tips-box" style="margin-top:12px"><summary>' + esc(t('p_bill_how_t')) + '</summary><p class="small">' + esc(t('p_bill_how')) + '</p></details></div>' +
       '<div class="panel"><h2>' + esc(t('p_demo')) + '</h2><p class="small muted">' + esc(t('p_demo_sub')) + '</p><div class="field" style="max-width:260px"><div class="ctl"><input type="date" id="p-demo" data-key="prefs-demo" value="' + esc(S.demoToday || '') + '"></div></div></div>' +
       '<div class="panel"><h2>' + esc(t('p_data')) + '</h2><div class="row-actions" style="margin-top:0"><button class="btn sec" data-act="export" data-key="prefs-export">' + ico('copy', 20) + '<span>' + esc(t('p_export')) + '</span></button></div>' +
       '<form id="import-form" novalidate style="margin-top:16px"><div class="field"><label for="p-import">' + esc(t('p_import')) + '</label><div class="ctl"><textarea id="p-import" placeholder="' + esc(t('p_import_ph')) + '"></textarea></div></div><button class="btn sec" type="submit">' + esc(t('p_import')) + '</button></form>' +
@@ -1470,6 +1486,10 @@
     if (el.matches('[data-contact]')) { S.contacts = S.contacts || {}; S.contacts[el.getAttribute('data-contact')] = el.value.trim(); save(); }
     if (el.id === 'pl-name' || el.getAttribute && el.getAttribute('data-plname')) { var pp = place(el.getAttribute('data-plname') || S.placeId); if (pp) { pp.name = el.value.trim().slice(0, 120); pp.updatedAt = Date.now(); save(); } }
     if (el.id === 'p-tariff') { var tn = R.num(el.value.replace(',', '.')); if (tn && tn > 0 && tn < 100000) { S.tariff = tn; save(); } }
+    if (el.id === 'p-abon' || el.id === 'p-mzk') {
+      var bv = el.value.trim() === '' ? (el.id === 'p-mzk' ? 0 : R.C.ABON) : R.num(el.value.replace(',', '.'));
+      if (bv !== null && bv >= 0 && bv < 10000) { S.bill = Object.assign({}, S.bill || {}); S.bill[el.id === 'p-abon' ? 'abon' : 'mzk'] = bv; save(); }
+    }
   });
   document.addEventListener('change', function (e) {
     if (e.target.id === 'ph-input') {
