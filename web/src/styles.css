@@ -339,3 +339,6 @@ label.btn { cursor: pointer; }
   [data-key="reading-list"] .rowlink > .grow { flex: 1 1 100%; }
   [data-key="reading-list"] .rowlink > .wx { margin-left: 0; }
 }
+.theme-btn { display: grid; place-items: center; width: var(--tap); height: var(--tap); border: 1.5px solid var(--c-line); border-radius: 50%; background: var(--c-surface); color: var(--c-ink); cursor: pointer; flex: none; }
+.theme-btn:hover { border-color: var(--c-ink-2); }
+.top .theme-btn + .btn { margin-left: var(--sp-2); }
