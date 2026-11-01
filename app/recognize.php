@@ -111,6 +111,36 @@ final class Recognize {
     return ['meter' => $json['meter'] ?? null, 'photos' => $photos];
   }
 
+  const OTHER_RU = ['water' => 'воды', 'electric' => 'электроэнергии', 'gas' => 'газа'];
+  /** Результат распознавания в браузере (свой движок PaddleOCR, без нейросети): записать в фото для аналитики. */
+  public static function local(int $uid, array $in): array {
+    $res = array_values(array_filter((array)($in['results'] ?? []), 'is_array'));
+    $ids = array_values(array_filter((array)($in['ids'] ?? []), fn($x) => is_string($x) && preg_match('/^[a-f0-9]{24}$/', $x)));
+    if (!$ids || count($ids) > 20) throw new HttpError(422, 'bad_ids');
+    $n = 0;
+    foreach ($ids as $k => $id) {
+      $p = Db::one('SELECT id FROM photos WHERE id = ? AND user_id = ?', [$id, $uid]); if (!$p) continue;
+      $r = $res[$k] ?? null; $ph = is_array($r['photo'] ?? null) ? $r['photo'] : null; $problems = [];
+      if (!$ph) $problems[] = 'распознаватель ничего не вернул по этому фото';
+      else {
+        $mt = (string)($ph['meterType'] ?? '');
+        if (isset(self::OTHER_RU[$mt])) $problems[] = 'на фото счётчик ' . self::OTHER_RU[$mt] . ', а не тепла';
+        $readings = array_filter((array)($ph['readings'] ?? []), 'is_array');
+        if (!$readings && !isset(self::OTHER_RU[$mt]) && ($ph['kind'] ?? '') !== 'nameplate') $problems[] = 'показаний не найдено';
+        if (($ph['quality'] ?? 'ok') !== 'ok') $problems[] = 'качество: ' . (self::QUALITY_RU[$ph['quality']] ?? $ph['quality']);
+        foreach ($readings as $x) if (isset($x['confidence']) && $x['confidence'] < 0.75) $problems[] = (self::FIELD_RU[$x['field'] ?? ''] ?? '?') . ' прочитано неуверенно (' . round($x['confidence'] * 100) . '%)';
+        $note = (string)($ph['note'] ?? '');
+        if ($note === 'unlabeled') $problems[] = 'есть число без подписи (Gcal, m³, °C) — непонятно, какое это поле';
+        elseif ($note === 'no_dot') $problems[] = 'не видно десятичной точки';
+      }
+      $json = json_encode(['photo' => $ph, 'meter' => $r['meter'] ?? null, 'ms' => (int)($r['ms'] ?? 0), 'engine' => 'local', 'ocr' => array_slice((array)($r['ocr'] ?? []), 0, 80)], JSON_UNESCAPED_UNICODE);
+      if (strlen((string)$json) > 60000) $json = json_encode(['photo' => $ph, 'meter' => $r['meter'] ?? null, 'engine' => 'local'], JSON_UNESCAPED_UNICODE);
+      Db::q('UPDATE photos SET status = ?, result = ?, problem = ? WHERE id = ?', [$ph ? 'recognized' : 'failed', $json, $problems ? implode('; ', $problems) : null, $id]);
+      $n++;
+    }
+    return ['ok' => true, 'saved' => $n];
+  }
+
   /** Итог распознавания с экрана «Розпізнати з фото»: что не нашлось, что неуверенно, что человек исправил. */
   public static function report(int $uid, array $in): array {
     $ids = array_values(array_filter((array)($in['ids'] ?? []), fn($x) => is_string($x) && preg_match('/^[a-f0-9]{24}$/', $x)));

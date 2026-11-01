@@ -76,7 +76,7 @@ pre.state { font: 12px/1.4 var(--mono); background: #F4F7F5; padding: 10px; bord
 
   function shell(body) {
     var o = DATA.overview || {};
-    var tabs = [['overview', 'Сводка'], ['users', 'Пользователи', 0], ['feedback', 'Сообщения', o.feedbackNew], ['photos', 'Фото', 0], ['reports', 'Ошибки распознавания', o.reportsBad], ['settings', 'Настройки', (!o.recognition || !o.telegram) ? '!' : 0]];
+    var tabs = [['overview', 'Сводка'], ['users', 'Пользователи', 0], ['feedback', 'Сообщения', o.feedbackNew], ['photos', 'Фото', 0], ['reports', 'Ошибки распознавания', o.reportsBad], ['settings', 'Настройки', !o.telegram ? '!' : 0]];
     app.innerHTML = '<header><b>Теплосервис · аналитика</b><span class="muted small">' + esc(o.me || '') + '</span><span style="flex:1"></span><a class="btn" href="' + esc(SITE) + '">На сайт</a></header>' +
       '<nav>' + tabs.map(function (t) { return '<button data-tab="' + t[0] + '"' + (TAB === t[0] ? ' aria-current="true"' : '') + '>' + t[1] + (t[2] ? '<span class="n">' + t[2] + '</span>' : '') + '</button>'; }).join('') + '</nav><main>' + body + '</main>';
   }
@@ -86,7 +86,7 @@ pre.state { font: 12px/1.4 var(--mono); background: #F4F7F5; padding: 10px; bord
     var o = DATA.overview;
     var c = function (v, k) { return '<div class="card"><div class="v">' + esc(v) + '</div><div class="k">' + k + '</div></div>'; };
     var warn = [];
-    if (!o.recognition) warn.push('Распознавание фото <b>выключено</b> — вставьте ключ API во вкладке <a href="#settings">«Настройки»</a>. Фото всё равно сохраняются — их видно во вкладке «Фото».');
+
     if (!o.telegram) warn.push('Вход через Telegram <b>выключен</b> — подключите бота во вкладке <a href="#settings">«Настройки»</a>.');
     return (warn.length ? '<div class="panel" style="background:var(--warns)">' + warn.map(function (w) { return '<p style="margin:4px 0">' + w + '</p>'; }).join('') + '</div>' : '') +
       '<div class="cards">' + c(o.users, 'пользователей всего') + c(o.usersWeek, 'новых за 7 дней') + c(o.activeWeek, 'входили за 7 дней') + c(o.withTelegram, 'с Telegram') + c(o.withData, 'сохранили данные') +
@@ -115,7 +115,8 @@ pre.state { font: 12px/1.4 var(--mono); background: #F4F7F5; padding: 10px; bord
       (m && (m.modelId || m.modelText) ? '<div>Счётчик: <b>' + esc(MODEL[m.modelId] || m.modelText || m.modelId) + '</b>' + (m.serial ? ' · № ' + esc(m.serial) : '') + '</div>' : '') +
       (r && r.kind ? '<div class="muted">тип снимка: ' + esc({ screen: 'экран', nameplate: 'шильдик', overview: 'общий план', other: 'другое' }[r.kind] || r.kind) + '</div>' : '') +
       (reads ? '<div class="reads">' + esc(reads) + '</div>' : '') + (p.problem ? '<div class="problem">' + esc(p.problem) + '</div>' : '') +
-      '<div class="muted small mono">' + p.w + '×' + p.h + ' · ' + Math.round(p.bytes / 1024) + ' КБ</div></div></div>';
+      '<div class="muted small mono">' + p.w + '×' + p.h + ' · ' + Math.round(p.bytes / 1024) + ' КБ' + (p.result ? ' · ' + (p.result.engine === 'local' ? 'в браузере' : 'Claude') + (p.result.ms ? ', ' + (p.result.ms / 1000).toFixed(1) + ' с' : '') : '') + '</div>' +
+      (p.result && p.result.ocr && p.result.ocr.length ? '<details><summary class="small">Что прочитал распознаватель</summary><div class="reads">' + esc(p.result.ocr.map(function (l) { return l.t + (l.a && l.a.length ? '  [' + l.a.join(' | ') + ']' : '') + '  ' + Math.round((l.s || 0) * 100) + '%'; }).join('\n')) + '</div></details>' : '') + '</div></div>';
   }
   VIEW.photos = function () {
     var ps = DATA.photos || [];
@@ -172,8 +173,10 @@ pre.state { font: 12px/1.4 var(--mono); background: #F4F7F5; padding: 10px; bord
     var d = DATA.settings || {}, a = d.anthropic || {}, t = d.telegram || {}, w = t.webhook, msg = DATA.settingsMsg || {};
     var note = function (k) { var m = msg[k]; return m ? '<p class="' + (m.ok ? '' : 'problem') + '" style="' + (m.ok ? 'color:var(--ok)' : '') + '">' + esc(m.text) + '</p>' : ''; };
     var hookOk = w && w.ok && w.url === t.webhookExpected;
-    return '<div class="panel"><h2>Распознавание фото (Claude API)</h2>' +
-      '<p>' + (a.key ? pill('ok', 'включено') + ' ключ <span class="mono">' + esc(a.key) + '</span> <span class="muted small">(' + esc(SRC[a.source] || '') + ')</span>' : pill('bad', 'выключено')) + '</p>' +
+    return '<div class="panel"><h2>Распознавание фото</h2>' +
+      '<p>' + (a.key ? pill('info', 'нейросеть Claude') + ' ключ <span class="mono">' + esc(a.key) + '</span> <span class="muted small">(' + esc(SRC[a.source] || '') + ')</span>' : pill('ok', 'бесплатно, в браузере')) + '</p>' +
+      '<p class="small">По умолчанию фото распознаются <b>прямо в браузере человека</b> (PaddleOCR) — бесплатно, без ключа и без входа. ' +
+      'Ключ Claude API ниже <b>не обязателен</b>: если его вставить, вошедшие пользователи будут распознаваться нейросетью на сервере (точнее на плохих фото, но платно — за каждое фото). Удалите ключ — снова бесплатно.</p>' +
       '<p class="muted small">Ключ берётся на <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener">console.anthropic.com → API Keys</a> (нужен пополненный баланс). Перед сохранением сервер делает пробный запрос — неверный ключ не сохранится. Ключ хранится только на сервере, сюда он больше не показывается.</p>' +
       '<form id="fa"><p><label>Ключ API<br><input id="ak" type="password" autocomplete="off" placeholder="' + (a.key ? 'оставьте пустым, чтобы не менять' : 'sk-ant-…') + '" ' + INP + '></label></p>' +
       '<p><label>Модель<br><input id="am" class="mono" value="' + esc(a.model || '') + '" ' + INP + '></label><span class="muted small">' + esc(SRC[a.modelSource] || '') + '</span></p>' +

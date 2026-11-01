@@ -14,6 +14,7 @@
 //  POST /api/bot/webhook            (заголовок X-Telegram-Bot-Api-Secret-Token)
 //  POST /api/bot/setup              (заголовок X-Setup-Secret = webhook_secret) — вебхук, кнопка меню, /start
 //  POST /api/recognize/upload       фото СЫРЫМ телом (Content-Type: image/*) → {id}
+//  POST /api/recognize/local        {ids, results} — итог распознавания в браузере (свой движок, без нейросети) → в аналитику
 //  POST /api/recognize/run          {ids[≤3], offset, ctx} → распознанное (vision-API, ключ в config.php)
 //  POST /api/recognize/report       {ids, missing, conflicts, corrections} — итог для аналитики
 //  POST /api/feedback               {text, contact?, page, screen, lang} — плавающая кнопка «Відгук», вход не нужен
@@ -159,6 +160,11 @@ final class Api {
         if (!$user) throw new HttpError(401, 'unauthorized');
         RateLimit::hit('recog_run', (string)$user['id']);
         return Recognize::run((int)$user['id'], $in);   // без ключа — 503 recognition_off, но фото и причина остаются в аналитике
+      }
+      case 'POST /api/recognize/local': {
+        if (!$user) throw new HttpError(401, 'unauthorized');
+        RateLimit::hit('recog_upload', (string)$user['id']);
+        return Recognize::local((int)$user['id'], $in);
       }
       case 'POST /api/recognize/report': {
         if (!$user) throw new HttpError(401, 'unauthorized');

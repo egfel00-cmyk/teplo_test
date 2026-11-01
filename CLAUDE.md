@@ -28,6 +28,13 @@
   сырым телом: fetch(url, {method:'POST', body: file, headers:{'Content-Type': file.type}}) и php://input; до 24 МБ.
 - Запрещены exec/system/shell_exec/proc_open/popen; open_basedir — только папки сайта; 30 с и 128 МБ на запрос.
 
+## Распознавание фото
+- По умолчанию — в браузере человека, бесплатно: web/ocr/engine.js (PaddleOCR PP-OCRv4 + onnxruntime-web WASM, ~30 МБ, грузится
+  при первом «з фото»), разбор текста в поля — web/src/ocrparse.js (подписи Gcal/m³/HT/CT/ON/EH, «тени» сегментов,
+  десятичная точка по формату модели и прошлым показаниям, счётчики воды/света/газа отсеиваются). CSP страницы — с 'wasm-unsafe-eval'.
+- Вошёл — копия фото и итог (POST /api/recognize/local) идут в /admin. Ключ Claude в «Настройках» необязателен: если задан,
+  вошедших распознаёт нейросеть на сервере (платно).
+
 ## Как работать
 - Перед пушем: php -l на изменённые .php; страницы — открыть локально:
   SITE_BASE= SITE_DATA=/tmp/teplo_data php -S 127.0.0.1:8000 index.php (и посмотреть в браузере/скриншотом).

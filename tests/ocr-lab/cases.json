@@ -1,0 +1,15 @@
+[
+ {"id":"s774_energy","brand":"SHARKY 774","v":"00015.482","u":"Gcal","truth":{"energy":"15.482"}},
+ {"id":"s774_volume","brand":"SHARKY 774","v":"02724.494","u":"m3","corner":true,"truth":{"volume":"2724.494"},"rz":4},
+ {"id":"s774_flow","brand":"SHARKY 774","v":"1.067","u":"m3/h","truth":{"flow":"1.067"},"ry":15},
+ {"id":"s774_power","brand":"SHARKY 774","v":"6.790","u":"kW","truth":{"power":"6.790"},"blur":1.2},
+ {"id":"s774_ht","brand":"SHARKY 774","v":"56.57","tag":"HT","u":"°C","truth":{"tSupply":"56.57"},"rx":12},
+ {"id":"s774_ct","brand":"SHARKY 774","v":"51.11","tag":"CT","u":"°C","truth":{"tReturn":"51.11"},"glare":70},
+ {"id":"s774_on","brand":"SHARKY 774","v":"35611","tag":"ON","u":"h","truth":{"hours":"35611"},"rz":-6},
+ {"id":"s774_eh","brand":"SHARKY 774","v":"153","tag":"EH","u":"h","truth":{"errHours":"153"}},
+ {"id":"s774_err","brand":"SHARKY 774","v":"E- - -","truth":{"errCode":"E---"}},
+ {"id":"t330_mwh","brand":"ULTRAHEAT T330","v":"0012.345","u":"MWh","truth":{"energy":"12.345"},"ry":-18,"s":0.8},
+ {"id":"mc_gj","brand":"MULTICAL 302","v":"64.582","u":"GJ","truth":{"energy":"64.582"},"blur":2,"br":0.7},
+ {"id":"nounit_energy","brand":"","v":"00016.120","truth":{"energy":"16.120"},"note":"no unit, prev energy 15.482"},
+ {"id":"plate","brand":"SHARKY 774","v":"00015.482","u":"Gcal","plate":"Diehl Metering  SHARKY 774<br>S/N 64123987  DN15 qp 1.5 m3/h<br>Kharkiv kv. 61","truth":{"energy":"15.482","serial":"64123987","model":"sharky774"}}
+]

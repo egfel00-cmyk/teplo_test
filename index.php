@@ -12,6 +12,10 @@ if ($base !== '' && $uri === $base) { header('Location: ' . $base . '/' . (isset
 $path = ($base !== '' && str_starts_with($uri, $base . '/')) ? substr($uri, strlen($base)) : $uri;
 
 // локальный php -S: настоящие файлы (картинки) отдаёт сам; на бою их отдаёт Caddy
+if (PHP_SAPI === 'cli-server' && preg_match('~^/web/ocr/[\w.-]+\.(js|mjs|wasm|onnx|txt)$~', $path) && is_file(__DIR__ . $path)) {   // распознаватель в браузере
+  $ext = pathinfo($path, PATHINFO_EXTENSION);
+  header('Content-Type: ' . (['js' => 'text/javascript', 'mjs' => 'text/javascript', 'wasm' => 'application/wasm', 'txt' => 'text/plain; charset=utf-8'][$ext] ?? 'application/octet-stream')); readfile(__DIR__ . $path); exit;
+}
 if (PHP_SAPI === 'cli-server' && $path !== '/' && preg_match('~^/web/[\w.-]+\.(png|jpg|svg)$~', $path) && is_file(__DIR__ . $path)) {
   header('Content-Type: ' . (str_ends_with($path, '.svg') ? 'image/svg+xml' : 'image/' . (str_ends_with($path, '-2.jpg') ? 'png' : 'jpeg'))); readfile(__DIR__ . $path); exit;
 }
@@ -74,7 +78,7 @@ if ($path === '/' || $path === '/index.php') {
   $html = preg_replace('~</title>~', '</title>' . $meta, $html, 1);
   header('Content-Type: text/html; charset=utf-8');
   header('Cache-Control: no-cache');
-  header("Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' https://telegram.org; frame-src https://oauth.telegram.org; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob: https://t.me https://telegram.org; connect-src 'self'; base-uri 'none'; form-action 'self'");
+  header("Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' https://telegram.org; frame-src https://oauth.telegram.org; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob: https://t.me https://telegram.org; connect-src 'self'; base-uri 'none'; form-action 'self'");
   echo $html;
   exit;
 }

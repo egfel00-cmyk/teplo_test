@@ -131,6 +131,15 @@ ok('в нейросеть ушли 2 фото и промпт сервера', c
 $p1 = Db::one('SELECT * FROM photos WHERE id = ?', [$r1->body['id']]); $p2 = Db::one('SELECT * FROM photos WHERE id = ?', [$r2->body['id']]);
 ok('фото сохранено на диске и в базе, результат записан', is_file(Recognize::path($p1)) && $p1['status'] === 'recognized' && str_contains($p1['result'], '14.100'));
 ok('фото, о котором нейросеть промолчала, — проблема по-русски', $p2['status'] === 'failed' && str_contains((string)$p2['problem'], 'ничего не сказала'));
+$r3l = $up($rb, $png, 'image/png'); $r4l = $up($rb, $png, 'image/png');
+$rl = $rb->req('POST', '/api/recognize/local', ['ids' => [$r3l->body['id'], $r4l->body['id']], 'results' => [
+  ['photo' => ['index' => 0, 'kind' => 'screen', 'readings' => [['field' => 'energy', 'value' => '15.482', 'unit' => 'Gcal', 'confidence' => 0.9]], 'quality' => 'ok', 'meterType' => 'heat'], 'ms' => 1200, 'ocr' => [['t' => '00015.482', 's' => 0.93, 'h' => 66]]],
+  ['photo' => ['index' => 1, 'kind' => 'other', 'readings' => [], 'quality' => 'ok', 'meterType' => 'water'], 'ms' => 900]]]);
+$pl3 = Db::one('SELECT * FROM photos WHERE id = ?', [$r3l->body['id']]); $pl4 = Db::one('SELECT * FROM photos WHERE id = ?', [$r4l->body['id']]);
+ok('распознано в браузере → результат и текст распознавателя в аналитике', $rl->status === 200 && $rl->body['saved'] === 2 && $pl3['status'] === 'recognized' && $pl3['problem'] === null
+  && json_decode($pl3['result'], true)['engine'] === 'local' && json_decode($pl3['result'], true)['ocr'][0]['t'] === '00015.482');
+ok('…фото водомера — причина «счётчик воды, а не тепла»', str_contains((string)$pl4['problem'], 'воды, а не тепла'));
+ok('чужие фото так не перезаписать', (new Browser('10.0.4.9'))->req('POST', '/api/recognize/local', ['ids' => [$r3l->body['id']], 'results' => []])->status === 401);
 Recognize::$call = function () { throw new HttpError(504, 'timeout', ['human' => 'Нейросеть не ответила за 26 с']); };
 ok('таймаут нейросети → 504 клиенту', $rb->req('POST', '/api/recognize/run', ['ids' => [$r1->body['id']]])->status === 504);
 ok('…и причина в журнале человеческим языком', str_contains(Db::one("SELECT text FROM recog_reports WHERE kind = 'run_error' ORDER BY id DESC")['text'], 'не ответила'));
@@ -156,9 +165,9 @@ $boss = new Browser('10.0.5.2'); $boss->req('POST', '/api/auth/register', ['emai
 $ov = $boss->req('GET', '/api/admin/overview');
 ok('админ: сводка', $ov->status === 200 && $ov->body['feedback'] === 3 && $ov->body['photos'] >= 3 && $ov->body['photosFailed'] >= 2);
 $us = $boss->req('GET', '/api/admin/users', null, ['QUERY_STRING' => 'q=photo@']);
-ok('админ: поиск пользователя по email', $us->status === 200 && count($us->body['users']) === 1 && (int)$us->body['users'][0]['photos'] === 3);
+ok('админ: поиск пользователя по email', $us->status === 200 && count($us->body['users']) === 1 && (int)$us->body['users'][0]['photos'] === 5);
 $ud = $boss->req('GET', '/api/admin/user', null, ['QUERY_STRING' => 'id=' . $us->body['users'][0]['id']]);
-ok('админ: карточка пользователя с фото и журналом', $ud->status === 200 && count($ud->body['photos']) === 3 && count($ud->body['reports']) >= 2);
+ok('админ: карточка пользователя с фото и журналом', $ud->status === 200 && count($ud->body['photos']) === 5 && count($ud->body['reports']) >= 2);
 $ph = $boss->req('GET', '/api/admin/photos', null, ['QUERY_STRING' => 'filter=problems']);
 ok('админ: фото с проблемами', $ph->status === 200 && count($ph->body['photos']) >= 2);
 $pf = $boss->req('GET', '/api/admin/photo', null, ['QUERY_STRING' => 'id=' . $r1->body['id']]);

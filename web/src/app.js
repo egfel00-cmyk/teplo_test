@@ -245,13 +245,23 @@
   var V = {};
 
   V.welcome = function () {
+    var acc = Y().mode === 'server' && Y().account;
+    if (acc) {   // уже вошёл, но лічильник ещё не выбран (новый аккаунт или стёрли данные) — без рекламного экрана, сразу к делу
+      var who = acc.email || (acc.telegram && (acc.telegram.username ? '@' + acc.telegram.username : acc.telegram.name)) || '';
+      return { screen: 'S00', bare: true, html:
+        '<div class="welcome"><div class="welcome-grid"><div class="welcome-lcd" aria-hidden="true">' + lcd([{ text: '13.245', tag: 'Gcal' }], 'hero') + '</div><div>' +
+        '<h1>' + esc(t('wa_title')) + '</h1><p class="lead">' + esc(t('wa_lead')) + '</p>' +
+        '<a class="btn big" href="#meter" data-key="welcome-start" data-act="start">' + esc(t('wa_cta')) + '</a>' +
+        '<p class="small muted" style="margin-top:16px">' + esc(t('wa_fine', { who: who })) + ' <button class="linkbtn" data-act="logout">' + esc(t('wa_other')) + '</button></p></div>' +
+        '</div></div>' };
+    }
     return { screen: 'S00', bare: true, html:
       '<div class="welcome"><div class="welcome-grid"><div class="welcome-lcd" aria-hidden="true">' + lcd([{ text: '13.245', tag: 'Gcal' }], 'hero boot') + '</div><div>' +
       '<h1>' + esc(t('w_title')) + '</h1><p class="lead">' + esc(t('w_lead')) + '</p>' +
       '<ul>' + ['w_b1', 'w_b2', 'w_b3'].map(function (k) { return '<li>' + ico('check', 22, 'c-ok') + '<span>' + esc(t(k)) + '</span></li>'; }).join('') + '</ul>' +
       '<a class="btn big" href="#meter" data-key="welcome-start" data-act="start">' + esc(t('w_cta')) + '</a>' +
       (Y().mode === 'server' && !Y().account ? '<p style="margin-top:16px"><a href="#login" data-key="welcome-login">' + esc(t('w_login')) + '</a></p>' : '') +
-      '<p class="small muted" style="margin-top:16px">' + esc(Y().mode === 'claude' ? t('sync_claude') : t('w_fine')) + '</p></div>' +
+      '<p class="small muted" style="margin-top:16px">' + esc(Y().mode === 'claude' ? t('sync_claude') : Y().mode === 'server' ? t('w_fine_site') : t('w_fine')) + '</p></div>' +
       '</div></div>' };
   };
 
@@ -589,7 +599,7 @@
   // ---------------- распознавание по фото ----------------
   var PH = { mode: 'reading', files: [], urls: [], status: 'idle', result: null, picked: null, error: '', ctl: null, progress: '' };
   function phReset(mode) { PH.urls.forEach(function (u) { try { URL.revokeObjectURL(u); } catch (e) { /* нет */ } }); PH = { mode: mode || 'reading', files: [], urls: [], status: 'idle', result: null, picked: null, error: '', ctl: null, progress: '', date: mode === 'baseline' ? ((S._baseFill && S._baseFill.date) || (S.baseline && S.baseline.date) || today()) : (S.draft && S.draft.date || today()) }; }
-  function phErr(code) { return ({ not_signed_in: t('ph_err_login'), recognition_off: window.TEPLO_API ? t('ph_err_off') : t('ph_unavail'), timeout: t('ph_err_timeout'), not_granted: t('ph_err_not_granted'), sampling_disabled: t('ph_err_not_granted'), images_unavailable: t('ph_unavail'), rate_limited: t('ph_err_rate'), image_rejected: t('ph_err_image'), nothing: t('ph_err_nothing') })[code] || t('ph_err_generic'); }
+  function phErr(code) { return ({ not_signed_in: t('ph_err_login'), recognition_off: window.TEPLO_API ? t('ph_err_off') : t('ph_unavail'), timeout: t('ph_err_timeout'), not_granted: t('ph_err_not_granted'), sampling_disabled: t('ph_err_not_granted'), images_unavailable: t('ph_unavail'), rate_limited: t('ph_err_rate'), engine_failed: t('ph_err_engine'), image_rejected: t('ph_err_image'), nothing: t('ph_err_nothing') })[code] || t('ph_err_generic'); }
   function thumbs(withRemove) {
     return '<ul class="thumbs" data-key="photo-thumbs">' + PH.urls.map(function (u, i) {
       return '<li><img src="' + u + '" alt="' + esc(t('ph_from', { n: i + 1 })) + '"><span class="n">' + (i + 1) + '</span>' + (withRemove ? '<button class="rm" data-act="ph-remove" data-i="' + i + '" aria-label="' + esc(t('ph_remove')) + '">' + ico('close', 16) + '</button>' : '') + '</li>';
@@ -601,7 +611,7 @@
     var shell_ = function (html) { return { screen: 'S12', route: 'photo', bare: true, closeTo: back, html: head + html }; };
     if (!VIS().available) return shell_('<div class="banner warn">' + ico('info', 22) + '<div><p>' + esc(t('ph_unavail')) + '</p></div></div><a class="btn" href="#' + back + '">' + esc(t('back')) + '</a>');
     var input = '<input type="file" id="ph-input" accept="' + esc(((VIS().limits && VIS().limits.images && VIS().limits.images.mediaTypes) || ['image/jpeg', 'image/png', 'image/webp']).join(',')) + '" multiple class="sr" data-key="photo-input">';
-    if (PH.status === 'working') return shell_('<div class="banner" role="status">' + ico('clock', 22) + '<div><p><b>' + esc(t('ph_working', { n: PH.files.length })) + '</b></p>' + (PH.progress ? '<p>' + esc(PH.progress) + '</p>' : '') + '</div></div>' + thumbs(false) + '<div class="row-actions"><button class="btn sec" data-act="ph-stop">' + esc(t('ph_stop')) + '</button></div>');
+    if (PH.status === 'working') return shell_('<div class="banner" role="status">' + ico('clock', 22) + '<div><p><b>' + esc(t('ph_working', { n: PH.files.length })) + '</b></p>' + '<p id="ph-progress">' + esc(PH.progress || '') + '</p>' + '</div></div>' + thumbs(false) + '<div class="row-actions"><button class="btn sec" data-act="ph-stop">' + esc(t('ph_stop')) + '</button></div>');
     if (PH.status === 'done' && !model_) return shell_(photoResult());
     var lead = '<p>' + esc(model_ ? t('ph_model_lead') : base_ ? t('ph_base_lead') : t('ph_lead')) + '</p>';
     var err = PH.error ? '<div class="banner bad" role="alert">' + ico('alert', 22) + '<div><p>' + esc(PH.error) + '</p></div></div>' : '';
@@ -614,8 +624,12 @@
     var p = PH.picked || {}, res = PH.result || {}, mt = res.meter || {}, h = '';
     var mm = mt.modelId ? M.byId(mt.modelId) : null;
     if (mm && (!S.meter || S.meter.modelId !== mm.id)) h += '<div class="banner" data-key="photo-meter">' + ico('info', 22) + '<div><p><b>' + esc(t('ph_meter_found', { m: modelName(mm) })) + '</b></p><p><button class="linkbtn" data-act="ph-use-model" data-id="' + mm.id + '" data-unit="' + esc(mt.energyUnit || '') + '">' + esc(t('ph_meter_use')) + '</button></p></div></div>';
-    var bad = (res.photos || []).filter(function (x) { return x.quality && x.quality !== 'ok'; });
-    if (bad.length) h += '<div class="banner warn">' + ico('alert', 22) + '<div>' + bad.map(function (x) { return '<p>' + esc(t('ph_quality', { n: x.index + 1, q: t('q_' + x.quality) || x.quality })) + (x.note ? ' — ' + esc(x.note) : '') + '</p>'; }).join('') + '</div></div>';
+    var noteTxt = function (x) { return x.note ? (t('pn_' + x.note) !== 'pn_' + x.note && t('pn_' + x.note) ? t('pn_' + x.note) : x.note) : ''; };
+    var bad = (res.photos || []).filter(function (x) { return (x.quality && x.quality !== 'ok') || (x.meterType && x.meterType !== 'heat') || (res.engine === 'local' && x.note); });
+    if (bad.length) h += '<div class="banner warn">' + ico('alert', 22) + '<div>' + bad.map(function (x) {
+      if (x.meterType && x.meterType !== 'heat') return '<p>' + esc(t('ph_from', { n: x.index + 1 })) + ': ' + esc(t('ph_not_heat_short_' + x.meterType)) + '</p>';
+      var q = x.quality && x.quality !== 'ok' ? t('ph_quality', { n: x.index + 1, q: t('q_' + x.quality) || x.quality }) : t('ph_from', { n: x.index + 1 });
+      return '<p>' + esc(q) + (x.note ? ' — ' + esc(noteTxt(x)) : '') + '</p>'; }).join('') + '</div></div>';
     h += '<p class="muted">' + esc(t('ph_result_sub')) + '</p><div class="field" style="max-width:280px"><label for="ph-date">' + esc(t('ph_date')) + '</label><div class="ctl"><input id="ph-date" type="date" value="' + esc(PH.date || today()) + '" max="' + today() + '"></div></div>';
     h += '<ul class="list ph-fields" data-key="photo-fields">' + R.FIELDS.filter(function (f) { return f.key !== 'date'; }).map(function (f) {
       var r = p[f.key], v = r ? r.value : '', conf = r ? r.confidence : 0;
@@ -631,8 +645,16 @@
     var di = document.getElementById('ph-date'); if (di) PH.date = di.value || today();
     PH.status = 'working'; PH.error = ''; PH.progress = ''; PH.ctl = new AbortController(); render(true);
     var m = model(), ctx = { modelId: m ? m.id : '', models: M.MODELS, steps: m && m.status === 'verified' ? m.steps : null, expectedModel: m && m.id !== 'other' ? modelName(m) : '', prev: S.baseline ? { energy: S.baseline.energy, volume: S.baseline.volume, hours: S.baseline.hours } : null, lang: S.lang };
-    y.recognize(PH.files, ctx, PH.ctl.signal, function (i, n) { if (n > 1) { PH.progress = t('ph_batch', { i: i, n: n }); if (routeName() === 'photo') render(true); } }).then(function (res) {
+    y.recognize(PH.files, ctx, PH.ctl.signal, function (i, n, kind) {
+      var msg = kind === 'load' ? t('ph_loading', { p: i }) : kind === 'photo' ? (n > 1 ? t('ph_reading', { i: i, n: n }) : '') : (n > 1 ? t('ph_batch', { i: i, n: n }) : '');
+      if (msg === PH.progress) return; PH.progress = msg;
+      var el = document.getElementById('ph-progress'); if (el) el.textContent = msg; else if (routeName() === 'photo') render(true);
+    }).then(function (res) {
       PH.result = res;
+      // счётчик воды / света / газа вместо тепла — сказать прямо, а не «не удалось распознать»
+      var others = (res.photos || []).filter(function (x) { return x.meterType && x.meterType !== 'heat'; });
+      var anyRead = (res.photos || []).some(function (x) { return x.readings && x.readings.length; });
+      if (others.length && !anyRead && !(res.meter && res.meter.modelId)) { PH.status = 'idle'; PH.error = t('ph_not_heat_' + others[0].meterType); render(true); return; }
       if (PH.mode === 'model') {
         var id = res.meter && res.meter.modelId && M.byId(res.meter.modelId) ? res.meter.modelId : null;
         PH.status = 'idle';

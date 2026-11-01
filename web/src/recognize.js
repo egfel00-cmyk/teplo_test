@@ -16,15 +16,19 @@
 
     /** Свой сервер: кнопка «з фото» есть всегда (тестовый режим — фото сохраняются, даже если ключа ещё нет);
      *  распознаёт, если в config.php есть ключ (cfg.recognition); загрузка — только после входа. */
+    /** Вошёл ли человек — спрашиваем синхронизацию каждый раз (флаг из initServer мог устареть: /me отвечает позже /config). */
+    isIn: function () { return !!(this.loggedIn || (root.TeploSync && root.TeploSync.account)); },
     initServer: function (cfg, loggedIn) {
       this.server = !!root.TEPLO_API; this.loggedIn = !!loggedIn; this.engine = !!(cfg && cfg.recognition);
+      // свой распознаватель в браузере (бесплатно, без ключа и без входа); нейросеть на сервере — только если владелец вставил ключ
+      this.local = this.server && typeof WebAssembly === 'object' && typeof Promise === 'function';
       this.available = this.server;
       if (this.server) this.limits = { images: { maxCount: 3, mediaTypes: ['image/jpeg', 'image/png', 'image/webp'] } };
     },
     /** Фото — сырым телом (multipart на сервере запрещён), потом пачки по 3 (лимит сервера — 30 с на запрос). */
     _serverRecognize: function (files, ctx, signal, onProgress) {
       var self = this, api = root.TEPLO_API, ids = []; self.lastIds = ids;
-      if (!self.loggedIn) return Promise.reject(fail('not_signed_in'));
+      if (!self.isIn()) return Promise.reject(fail('not_signed_in'));
       var post = function (path, body, type) {
         if (!cookie('ts_csrf')) return fetch(api + '/config', { credentials: 'same-origin' }).then(function () { return post(path, body, type); });
         return fetch(api + path, { method: 'POST', body: body, signal: signal, credentials: 'same-origin', headers: { 'Content-Type': type, 'X-CSRF': cookie('ts_csrf'), 'Accept': 'application/json' } })
@@ -51,9 +55,46 @@
       }).then(function () { return out; }, function (e) { if (signal && signal.aborted) throw fail('cancelled'); throw e; });
     },
 
+    /** Подгрузить движок (web/ocr/engine.js + модели ~30 МБ, один раз — дальше из кэша браузера). */
+    _engine: function (onPct) {
+      var base = String(root.TEPLO_API).replace(/\/api\/?$/, '') + '/web/ocr/';
+      var script = root.TeploOCR ? Promise.resolve() : (this._script = this._script || new Promise(function (ok, bad) {
+        var s = document.createElement('script'); s.src = base + 'engine.js?v=1'; s.onload = ok; s.onerror = function () { bad(fail('engine_failed')); }; document.head.appendChild(s);
+      }));
+      return script.then(function () { return root.TeploOCR.load(base, onPct); }).catch(function (e) { if (e && e.code) throw e; throw fail('engine_failed'); });
+    },
+    /** Распознать в браузере: фото никуда не отправляются ради распознавания (на сервер — только копия для аналитики, если вошли). */
+    _localRecognize: function (files, ctx, signal, onProgress) {
+      var self = this, api = root.TEPLO_API, P = root.TeploOCRParse, ids = [], results = [];
+      var out = { meter: null, photos: [], ids: ids, engine: 'local' };
+      var post = function (path, body, type) {
+        var go = function () { return fetch(api + path, { method: 'POST', body: body, credentials: 'same-origin', headers: { 'Content-Type': type, 'X-CSRF': cookie('ts_csrf'), 'Accept': 'application/json' } }).then(function (r) { return r.json().catch(function () { return {}; }).then(function (j) { if (!r.ok) throw fail(httpCode(r.status)); return j; }); }); };
+        return cookie('ts_csrf') ? go() : fetch(api + '/config', { credentials: 'same-origin' }).then(go);
+      };
+      // копия фото — в аналитику (параллельно с загрузкой движка); ошибки загрузки не мешают распознаванию
+      var uploads = Promise.resolve();
+      if (self.isIn()) files.forEach(function (f) { uploads = uploads.then(function () { return self.prepare(f); }).then(function (b) { return post('/recognize/upload', b, b.type || 'image/jpeg'); }).then(function (j) { ids.push(j.id); }, function () { /* без копии */ }); });
+      var cancelled = function () { if (signal && signal.aborted) throw fail('cancelled'); };
+      return this._engine(function (p) { if (onProgress) onProgress(Math.round(p * 100), 100, 'load'); }).then(function () {
+        var chain = Promise.resolve();
+        files.forEach(function (f, i) {
+          chain = chain.then(function () { cancelled(); if (onProgress) onProgress(i + 1, files.length, 'photo'); return root.TeploOCR.read(f); }).then(function (res) {
+            var r = P.photo(res, ctx, i);
+            out.photos.push(r.photo); results.push({ photo: r.photo, meter: r.meter, ms: res.ms, ocr: res.lines.slice(0, 80).map(function (l) { return { t: l.text.slice(0, 80), a: l.alts ? l.alts.map(function (x) { return x.slice(0, 40); }) : undefined, s: l.score, h: l.h }; }) });
+            if (r.meter && (!out.meter || (r.meter.confidence || 0) > (out.meter.confidence || 0) || (!out.meter.energyUnit && r.meter.energyUnit))) out.meter = Object.assign({}, out.meter || {}, r.meter, { energyUnit: r.meter.energyUnit || (out.meter && out.meter.energyUnit) || null });
+          });
+        });
+        return chain;
+      }).then(function () {
+        cancelled();
+        if (self.isIn()) uploads.then(function () { if (ids.length) post('/recognize/local', JSON.stringify({ ids: ids, results: results }), 'application/json').catch(function () {}); });
+        return out;
+      }, function (e) { if (signal && signal.aborted) throw fail('cancelled'); throw e; });
+    },
+
     /** Итог для аналитики: что не нашлось, где разные цифры, что человек исправил. Ошибки молча игнорируем. */
     report: function (data) {
-      if (!this.server || !this.loggedIn || !root.TEPLO_API) return;
+      if (!this.server || !this.isIn() || !root.TEPLO_API) return;
       try {
         fetch(root.TEPLO_API + '/recognize/report', { method: 'POST', credentials: 'same-origin', body: JSON.stringify(data),
           headers: { 'Content-Type': 'application/json', 'X-CSRF': cookie('ts_csrf'), 'Accept': 'application/json' } }).catch(function () {});
@@ -106,6 +147,8 @@
 
     /** files: File[]; ctx: {models, steps, expectedModel, apartment, prev, lang}; signal: AbortSignal */
     recognize: function (files, ctx, signal, onProgress) {
+      if (this.server && this.engine && this.isIn()) return this._serverRecognize(files, ctx, signal, onProgress);
+      if (this.local) return this._localRecognize(files, ctx, signal, onProgress);
       if (this.server) return this._serverRecognize(files, ctx, signal, onProgress);
       var self = this, max = (this.limits && this.limits.images && this.limits.images.maxCount) || 10;
       var batches = []; for (var i = 0; i < files.length; i += max) batches.push(files.slice(i, i + max));
