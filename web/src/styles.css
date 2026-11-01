@@ -246,3 +246,7 @@ label.btn { cursor: pointer; }
 .fb .lbl { display: block; font-weight: 600; margin: var(--sp-2) 0 6px; }
 @media (max-width: 600px) { .fb { top: auto; bottom: 0; transform: translateX(-50%); border-radius: 16px 16px 0 0; width: 100vw; padding-bottom: calc(var(--sp-5) + env(safe-area-inset-bottom)); } }
 .test-reset { margin-top: var(--sp-6); border: 1.5px dashed var(--c-line); background: transparent; }
+
+/* карточка показаний в истории */
+.cards2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; margin-bottom: 8px; }
+.num.big { font-size: 28px; line-height: 1.2; }

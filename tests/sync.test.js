@@ -17,6 +17,12 @@ m = S.merge({ onboarded: true, meter: { modelId: 'x' }, baseline: { date: '2026-
 t('«удалить всё» на другом устройстве побеждает', m.readings.length === 0 && !m.baseline && !m.onboarded && !m.meter);
 m = S.merge({ readings: [r('n', 6000)], updatedAt: 6000, onboarded: true, meter: { modelId: 'x' } }, { readings: [], wipedAt: 4000, updatedAt: 4000 });
 t('записи, созданные после удаления, сохраняются', m.readings.length === 1);
+const del = Object.assign({}, r('b', 2000), { deleted: true, updatedAt: 7000 }), fixed = Object.assign({}, r('b', 2000), { htm: { date: '2026-11-03' }, updatedAt: 6000 });
+m = S.merge({ readings: [fixed], updatedAt: 6000 }, { readings: [del], updatedAt: 7000 });
+t('удаление показаний из истории доходит до другого устройства', m.readings.length === 1 && m.readings[0].deleted === true);
+m = S.merge({ readings: [del], updatedAt: 7000 }, { readings: [Object.assign({}, fixed, { updatedAt: 8000 })], updatedAt: 8000 });
+t('исправленная позже запись побеждает старую версию', m.readings[0].htm.date === '2026-11-03' && !m.readings[0].deleted);
+t('тариф синхронизируется', S.payload({ tariff: 1600, readings: [] }).tariff === 1600);
 t('payload не тащит локальные поля', !('demoToday' in S.payload({ demoToday: 'x', lang: 'ru', readings: [] })) && !('lang' in S.payload({ lang: 'ru' })));
 t('подпись не зависит от updatedAt', S.sig({ a: 1, updatedAt: 1 }) === S.sig({ a: 1, updatedAt: 2 }));
 console.log('\nИтог: ' + pass + ' OK, ' + fail + ' FAIL'); process.exit(fail ? 1 : 0);

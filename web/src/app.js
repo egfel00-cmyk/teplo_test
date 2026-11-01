@@ -267,7 +267,7 @@
 
   V.home = function () {
     var m = model(), html = windowBanner();
-    var handed = S.readings.filter(function (r) { return r.status === 'handed'; }).slice(-1)[0];
+    var handed = RD().filter(function (r) { return r.status === 'handed'; }).slice(-1)[0];
     if (handed) {
       html += '<div class="banner" data-key="home-waiting">' + ico('clock', 22) + '<div><p><b>' + esc(t('h_waiting')) + '</b></p><p>' + esc(t('h_waiting_sub', { ago: ago(handed.handedAt) })) + '</p>' +
         '<p><a href="#status" data-act="focus" data-id="' + handed.id + '">' + esc(t('h_check_result')) + '</a></p></div></div>';
@@ -294,10 +294,10 @@
     right += '<h2 class="section-title">' + esc(t('h_meter')) + '</h2><ul class="list"><li><div class="grow"><div><b>' + esc(modelName(m)) + '</b></div>' +
       '<div class="small muted">' + esc(m.status === 'verified' ? t('m_verified') : m.status === 'draft' ? t('m_draft') : L(m.note)) + (energyUnit() !== 'Gcal' ? ', ' + esc(unitLbl(energyUnit())) : '') + '</div></div>' +
       '<a href="#meter" data-key="home-change-meter">' + esc(t('change')) + '</a></li></ul>';
-    var recent = S.readings.slice(-3).reverse();
+    var recent = RD().slice(-3).reverse();
     if (recent.length) right += '<h2 class="section-title">' + esc(t('h_recent')) + '</h2>' + readingList(recent);
     right += '<p class="small muted" style="margin-top:16px">' + esc(t('h_hw')) + ': <a href="' + BOT_URL + '" target="_blank" rel="noopener">@KPHTM_Bot</a></p>';
-    if (Y().mode === 'server' && !Y().account && S.readings.length && !S.syncPromptDismissed) {
+    if (Y().mode === 'server' && !Y().account && RD().length && !S.syncPromptDismissed) {
       html = '<div class="banner" data-key="home-save-prompt">' + ico('info', 22) + '<div><p><b>' + esc(t('save_prompt')) + '</b></p><p><a href="#login">' + esc(t('login')) + '</a> &nbsp; <button class="linkbtn" data-act="dismiss-sync">' + esc(t('save_prompt_later')) + '</button></p></div></div>' + html;
     }
     html += '<div class="hero-grid"><div>' + left + '</div><div>' + right + '</div></div>';
@@ -305,14 +305,33 @@
     return { screen: 'S01', route: 'home', html: html };
   };
 
+  /** Показания без удалённых (удалённые остаются «надгробием» с deleted, чтобы удаление синхронизировалось). */
+  function RD() { return (S.readings || []).filter(function (r) { return r && !r.deleted; }); }
+  function tariff() { var n = R.num(S.tariff); return n && n > 0 ? n : R.C.TARIFF; }
+  /** Сколько тепла набежало с прошлых показаний (по дате снятия) или с последних принятых ХТМ, и сколько это стоит. */
+  function interval(r) {
+    var d = r.htm && r.htm.date, e = R.num(r.htm && r.htm.energy); if (!d || e === null) return null;
+    var prev = RD().filter(function (x) { return x !== r && x.htm && x.htm.date && x.htm.date < d && R.num(x.htm.energy) !== null; })
+      .sort(function (a, b) { return a.htm.date < b.htm.date ? -1 : 1; }).slice(-1)[0];
+    var from = prev ? prev.htm : (S.baseline && S.baseline.date && S.baseline.date < d && R.num(S.baseline.energy) !== null ? S.baseline : null);
+    if (!from) return null;
+    var dE = e - R.num(from.energy), days = R.daysBetween(from.date, d);
+    return { dE: dE, days: days, cost: dE > 0 ? dE * tariff() : 0, from: from.date, fromBase: !prev };
+  }
+  function intervalText(iv) {
+    if (!iv) return '';
+    if (iv.dE < 0) return t('hi_less', { de: Math.abs(iv.dE).toFixed(3) });
+    return t('hi_used', { de: iv.dE.toFixed(3), days: iv.days, cost: money(iv.cost) });
+  }
+
   function readingList(arr) {
     return '<ul class="list" data-key="reading-list">' + arr.map(function (r) {
       var cls = { accepted: 'ok', rejected: 'bad', handed: 'info', checked: 'neutral', intermediate: 'neutral' }[r.status] || 'neutral';
-      var sub = r.derived && r.derived.dE != null && r.derived.dE >= 0 ? '+' + r.derived.dE.toFixed(3) + ' Гкал' + (r.derived.cost ? ' ≈ ' + money(r.derived.cost) + ' грн' : '') : '';
-      var link = (r.status === 'handed' || r.status === 'rejected' || r.status === 'accepted');
+      var sub = intervalText(interval(r));
+      var link = true;   // вся строка — в карточку показаний (там же правка, удаление, статус)
       var inner = '<div class="grow"><div><b>' + esc(fmtDate(r.htm.date, true)) + '</b> <span class="num">' + esc(R.formatForHtm('energy', r.htm.energy)) + '</span> <span class="small muted">Гкал</span></div>' +
         (sub ? '<div class="small muted">' + esc(sub) + '</div>' : '') + '</div><span class="pill ' + cls + '">' + esc(t('status_' + r.status)) + '</span>';
-      return '<li data-key="reading-' + r.id + '">' + (link ? '<a class="rowlink" href="#status" data-act="focus" data-id="' + r.id + '">' + inner + '</a>' : inner) + '</li>';
+      return '<li data-key="reading-' + r.id + '">' + (link ? '<a class="rowlink" href="#rec-' + r.id + '">' + inner + '</a>' : inner) + '</li>';
     }).join('') + '</ul>';
   }
 
@@ -460,7 +479,7 @@
   };
 
   V.handover = function () {
-    var r = S.readings.filter(function (x) { return x.id === S.focusId; })[0] || S.readings.filter(function (x) { return x.status === 'checked'; }).slice(-1)[0];
+    var r = RD().filter(function (x) { return x.id === S.focusId; })[0] || RD().filter(function (x) { return x.status === 'checked'; }).slice(-1)[0];
     if (!r) return V.home();
     var h = r.htm;
     var rows = R.FIELDS.map(function (f) {
@@ -485,13 +504,13 @@
   };
 
   V.status = function () {
-    var r = S.readings.filter(function (x) { return x.id === S.focusId; })[0] || S.readings.filter(function (x) { return x.status === 'handed'; }).slice(-1)[0];
+    var r = RD().filter(function (x) { return x.id === S.focusId; })[0] || RD().filter(function (x) { return x.status === 'handed'; }).slice(-1)[0];
     if (!r) return { screen: 'S08', route: 'status', html: '<h1>' + esc(t('st_title')) + '</h1><p class="muted">' + esc(t('st_none')) + '</p><a class="btn" href="#home">' + esc(t('nav_home')) + '</a>' };
     var head = '<h1>' + esc(t('st_title')) + '</h1><p class="muted">' + esc(fmtDate(r.htm.date, true)) + ', <span class="num">' + esc(R.formatForHtm('energy', r.htm.energy)) + '</span> Гкал</p>';
     var body = '';
     if (r.status === 'accepted') {
       body = '<div class="verdict ok" data-key="status-accepted">' + levelIco('ok', 28) + '<span>' + esc(t('st_accepted')) + '</span></div><p>' + esc(t('st_accepted_sub')) + '</p>' +
-        (r.derived && r.derived.cost ? '<p class="muted">' + esc(t('c_period', { de: r.derived.dE.toFixed(3), days: r.derived.days || '—', cost: money(r.derived.cost) })) + '</p>' : '') +
+        (interval(r) ? '<p class="muted">' + esc(intervalText(interval(r))) + '</p>' : '') +
         '<a class="btn" href="#home">' + esc(t('done')) + '</a>';
     } else if (r.status === 'rejected') {
       var dec = r.robot || {};
@@ -517,10 +536,40 @@
   };
 
   V.history = function () {
-    var arr = S.readings.slice().reverse();
+    var arr = RD().slice().sort(function (a, b) { var x = (b.htm && b.htm.date) || '', y = (a.htm && a.htm.date) || ''; return x < y ? -1 : x > y ? 1 : 0; });
     return { screen: 'S09', route: 'history', html: '<h1>' + esc(t('hi_title')) + '</h1>' +
       (arr.length ? readingList(arr) : '<div class="panel"><p class="muted">' + esc(t('hi_empty')) + '</p><button class="btn" data-act="read">' + esc(t('hi_empty_cta')) + '</button></div>') };
   };
+
+  /** Карточка показаний из истории: все 10 значений, сколько набежало и почём; правка и удаление. */
+  function recView(id, edit) {
+    var r = RD().filter(function (x) { return x.id === id; })[0];
+    if (!r) return { screen: 'S09', route: 'history', html: '<h1>' + esc(t('hi_title')) + '</h1><p class="muted">' + esc(t('rec_gone')) + '</p><a class="btn" href="#history">' + esc(t('back')) + '</a>' };
+    var h = r.htm || {}, iv = interval(r), cls = { accepted: 'ok', rejected: 'bad', handed: 'info' }[r.status] || 'neutral';
+    var head = '<p><a href="#history">← ' + esc(t('hi_title')) + '</a></p><h1>' + esc(fmtDate(h.date, true)) + '</h1>' +
+      '<p><span class="pill ' + cls + '">' + esc(t('status_' + r.status)) + '</span> <span class="small muted">' + esc(r.source === 'photo' ? t('rec_src_photo') : t('rec_src_manual')) + (r.editedAt ? ' · ' + t('rec_edited') : '') + '</span></p>';
+    if (edit) {
+      return { screen: 'S09', route: 'history', html: head + '<form id="rec-form" data-id="' + r.id + '" novalidate><div class="panel">' +
+        '<div class="field" style="max-width:280px"><label for="re-date">' + esc(fieldLabel('date')) + '</label><div class="ctl"><input id="re-date" type="date" value="' + esc(h.date || '') + '" max="' + today() + '" required></div></div>' +
+        R.FIELDS.filter(function (f) { return f.key !== 'date'; }).map(function (f) {
+          var v = f.key === 'errCode' ? (h.errCode || '') : (R.num(h[f.key]) === null ? '' : R.formatForHtm(f.key, h[f.key]));
+          return '<div class="field"><label for="re-' + f.key + '">' + esc(fieldLabel(f.key)) + (f.unit ? ', ' + esc(f.key === 'energy' ? 'Гкал' : fieldUnit(f.key)) : '') + '</label><div class="ctl"><input id="re-' + f.key + '" class="num" data-re="' + f.key + '" inputmode="' + (f.key === 'errCode' ? 'text' : 'decimal') + '" value="' + esc(v) + '"></div></div>';
+        }).join('') + '<div class="help block" id="re-err"></div></div>' +
+        '<div class="row-actions"><a class="btn sec" href="#rec-' + r.id + '">' + esc(t('cancel')) + '</a><button class="btn" type="submit" data-key="rec-save">' + esc(t('save')) + '</button></div></form>' };
+    }
+    var rows = R.FIELDS.filter(function (f) { return f.key !== 'date'; }).map(function (f) {
+      var v = f.key === 'errCode' ? (h.errCode || '—') : (R.num(h[f.key]) === null ? '—' : R.formatForHtm(f.key, h[f.key]));
+      return '<li><div class="grow small muted">' + esc(fieldLabel(f.key)) + '</div><b class="num">' + esc(v) + '</b>' + (f.unit && v !== '—' ? ' <span class="small muted">' + esc(f.key === 'energy' ? 'Гкал' : fieldUnit(f.key)) + '</span>' : '') + '</li>';
+    }).join('');
+    var used = iv ? '<div class="panel" data-key="rec-used"><h2>' + esc(t('rec_used_title')) + '</h2>' + (iv.dE < 0 ? '<p class="small">' + esc(intervalText(iv)) + '</p>' :
+      '<div class="cards2"><div><div class="num big">' + esc(iv.dE.toFixed(3)) + '</div><div class="small muted">' + esc(t('rec_gcal_for', { days: iv.days, from: fmtDate(iv.from, true) })) + '</div></div>' +
+      '<div><div class="num big">≈ ' + esc(money(iv.cost)) + '</div><div class="small muted">' + esc(t('rec_uah', { tariff: money(tariff()) })) + '</div></div></div>' +
+      (iv.days > 0 ? '<p class="small muted">' + esc(t('rec_per_month', { de: (iv.dE / iv.days * 30).toFixed(3), cost: money(iv.dE / iv.days * 30 * tariff()) })) + '</p>' : '')) + '</div>' : '';
+    var st = (r.status === 'handed' || r.status === 'rejected' || r.status === 'accepted') ? '<a class="btn sec" href="#status" data-act="focus" data-id="' + r.id + '">' + esc(t('rec_status')) + '</a>' : '';
+    return { screen: 'S09', route: 'history', html: head + used + '<ul class="list" data-key="rec-values">' + rows + '</ul>' +
+      '<div class="row-actions">' + st + '<a class="btn sec" href="#rec-' + r.id + '-edit" data-key="rec-edit">' + esc(t('rec_edit')) + '</a>' +
+      '<button class="btn danger" data-act="rec-del-ask" data-key="rec-del">' + esc(t('rec_del')) + '</button></div><div id="rec-del-confirm"></div>' };
+  }
 
   V.help = function () { return { screen: 'S10', route: 'help', html: helpHtml() }; };
 
@@ -532,6 +581,7 @@
       '<div class="panel"><h2>' + esc(t('p_contacts')) + '</h2><p class="small muted">' + esc(t('p_contacts_sub')) + '</p><div class="grid2">' +
       '<div class="field"><label for="p-phone">' + esc(t('ho_phone')) + '</label><div class="ctl"><input id="p-phone" type="tel" autocomplete="tel" data-contact="phone" value="' + esc(c.phone || '') + '"></div></div>' +
       '<div class="field"><label for="p-email">' + esc(t('ho_email')) + '</label><div class="ctl"><input id="p-email" type="email" autocomplete="email" data-contact="email" value="' + esc(c.email || '') + '"></div></div></div></div>' +
+      '<div class="panel"><h2>' + esc(t('p_tariff')) + '</h2><p class="small muted">' + esc(t('p_tariff_sub')) + '</p><div class="field" style="max-width:220px"><label for="p-tariff">грн/Гкал</label><div class="ctl"><input id="p-tariff" class="num" inputmode="decimal" data-key="prefs-tariff" value="' + esc(String(tariff()).replace('.', S.lang === 'ru' ? ',' : ',')) + '"></div></div></div>' +
       '<div class="panel"><h2>' + esc(t('p_demo')) + '</h2><p class="small muted">' + esc(t('p_demo_sub')) + '</p><div class="field" style="max-width:260px"><div class="ctl"><input type="date" id="p-demo" data-key="prefs-demo" value="' + esc(S.demoToday || '') + '"></div></div></div>' +
       '<div class="panel"><h2>' + esc(t('p_data')) + '</h2><div class="row-actions" style="margin-top:0"><button class="btn sec" data-act="export" data-key="prefs-export">' + ico('copy', 20) + '<span>' + esc(t('p_export')) + '</span></button></div>' +
       '<form id="import-form" novalidate style="margin-top:16px"><div class="field"><label for="p-import">' + esc(t('p_import')) + '</label><div class="ctl"><textarea id="p-import" placeholder="' + esc(t('p_import_ph')) + '"></textarea></div></div><button class="btn sec" type="submit">' + esc(t('p_import')) + '</button></form>' +
@@ -738,7 +788,9 @@
     if (!S.onboarded && ['welcome', 'meter', 'baseline', 'help', 'login', 'photo'].indexOf(r) < 0) r = S.meter ? 'baseline' : 'welcome';
     if (S.onboarded && (!r || r === 'welcome')) r = 'home';
     var view;
-    if (/^step-\d+$/.test(r)) view = (S.meter ? V.step(+r.split('-')[1]) : V.meter());
+    var rm = r.match(/^rec-([\w-]+?)(-edit)?$/);
+    if (rm) view = recView(rm[1], !!rm[2]);
+    else if (/^step-\d+$/.test(r)) view = (S.meter ? V.step(+r.split('-')[1]) : V.meter());
     else view = (V[r] || V.home)();
     if (!view.route) view.route = r;
     if (FB.open) { var ft = document.getElementById('fb-text'), fc = document.getElementById('fb-contact'); if (ft) FB.text = ft.value; if (fc) FB.contact = fc.value; }
@@ -847,19 +899,22 @@
       case 'to-handover': if (el.disabled) return; saveReading('checked'); go('handover'); break;
       case 'copy': copyText(el.getAttribute('data-text'), el); break;
       case 'handed': {
-        var r = S.readings.filter(function (x) { return x.id === el.getAttribute('data-id'); })[0];
+        var r = RD().filter(function (x) { return x.id === el.getAttribute('data-id'); })[0];
         if (r) { r.status = 'handed'; r.handedAt = new Date().toISOString(); r.updatedAt = Date.now(); S.focusId = r.id; save(); }
         go('status'); break;
       }
       case 'focus': S.focusId = el.getAttribute('data-id'); save(); break;
+      case 'rec-del-ask': { var bx = document.getElementById('rec-del-confirm'); if (bx) bx.innerHTML = '<div class="banner warn" style="margin-top:16px">' + ico('alert', 22) + '<div><p>' + esc(t('rec_del_q')) + '</p><div class="row-actions" style="margin-top:8px"><button class="btn danger" data-act="rec-del-yes">' + esc(t('rec_del')) + '</button></div></div></div>'; break; }
+      case 'rec-del-yes': { var m2 = routeName().match(/^rec-([\w-]+)$/), rx = m2 && RD().filter(function (x) { return x.id === m2[1]; })[0];
+        if (rx) { rx.deleted = true; rx.updatedAt = Date.now(); if (S.focusId === rx.id) S.focusId = null; save(); toast(t('rec_deleted')); } go('history'); break; }
       case 'accepted': {
-        var ra = S.readings.filter(function (x) { return x.id === el.getAttribute('data-id'); })[0];
+        var ra = RD().filter(function (x) { return x.id === el.getAttribute('data-id'); })[0];
         if (ra) { ra.status = 'accepted'; ra.updatedAt = Date.now(); ra.result = { at: new Date().toISOString() }; S.baseline = Object.assign({}, ra.htm); save(); }
         render(); break;
       }
       case 'show-reject': { var f = document.getElementById('reject-form'); if (f) { f.style.display = ''; document.getElementById('rej-text').focus(); } break; }
       case 'refix': {
-        var rr = S.readings.filter(function (x) { return x.id === el.getAttribute('data-id'); })[0];
+        var rr = RD().filter(function (x) { return x.id === el.getAttribute('data-id'); })[0];
         if (rr) { S.draft = { date: rr.htm.date, values: Object.assign({}, rr.raw), step: steps().length - 1, fixOf: rr.id }; save(); go('check'); }
         break;
       }
@@ -894,6 +949,7 @@
     var el = e.target;
     if (el.matches('[data-field]') && S.draft) liveCheck(el);
     if (el.matches('[data-contact]')) { S.contacts = S.contacts || {}; S.contacts[el.getAttribute('data-contact')] = el.value.trim(); save(); }
+    if (el.id === 'p-tariff') { var tn = R.num(el.value.replace(',', '.')); if (tn && tn > 0 && tn < 100000) { S.tariff = tn; save(); } }
   });
   document.addEventListener('change', function (e) {
     if (e.target.id === 'ph-input') {
@@ -915,6 +971,19 @@
     }
   });
   document.addEventListener('submit', function (e) {
+    if (e.target.id === 'rec-form') {   // правка показаний из истории
+      e.preventDefault();
+      var rf = RD().filter(function (x) { return x.id === e.target.getAttribute('data-id'); })[0]; if (!rf) return;
+      var dt = document.getElementById('re-date').value, er = document.getElementById('re-err'), vals = {};
+      Array.prototype.forEach.call(document.querySelectorAll('[data-re]'), function (el) { vals[el.getAttribute('data-re')] = el.value.trim().replace(',', '.'); });
+      var badNums = Object.keys(vals).filter(function (k) { return k !== 'errCode' && vals[k] !== '' && R.num(vals[k]) === null; }).map(fieldLabel).join(', ');
+      var bad = !/^\d{4}-\d{2}-\d{2}$/.test(dt) ? t('rec_bad_date') : dt > today() ? t('rec_future') : R.num(vals.energy) === null ? t('rec_need_energy') : badNums ? t('rec_bad_num', { f: badNums }) : '';
+      if (bad) { er.textContent = bad; return; }
+      var nh = Object.assign({}, rf.htm, { date: dt });
+      Object.keys(vals).forEach(function (k) { nh[k] = k === 'errCode' ? R.normCode(vals[k]) : (vals[k] === '' ? null : R.num(vals[k])); });
+      rf.htm = nh; rf.editedAt = new Date().toISOString(); rf.updatedAt = Date.now(); delete rf.derived;
+      save(); toast(t('b_saved')); go('rec-' + rf.id); return;
+    }
     e.preventDefault();
     var f = e.target;
     if (f.id === 'baseline-form') {
@@ -927,7 +996,7 @@
     } else if (f.id === 'step-form') {
       var nb = document.querySelector('[data-act="step-next"]'); if (nb) nb.click();
     } else if (f.id === 'reject-form') {
-      var r = S.readings.filter(function (x) { return x.id === f.getAttribute('data-id'); })[0];
+      var r = RD().filter(function (x) { return x.id === f.getAttribute('data-id'); })[0];
       var text = document.getElementById('rej-text').value.trim();
       if (r) { var dec = R.decodeRobot(text); r.status = 'rejected'; r.updatedAt = Date.now(); r.robot = { text: text, code: dec.code, fix: dec.fix || null }; save(); }
       render();
