@@ -1,0 +1,22 @@
+// Тесты слияния состояний между устройствами. Запуск: node web/tests/sync.test.js
+'use strict';
+const S = require('../web/src/sync.js');
+let pass = 0, fail = 0; const t = (n, c) => { c ? pass++ : fail++; console.log((c ? '  OK  ' : ' FAIL ') + n); };
+const r = (id, at, extra) => Object.assign({ id, createdAt: new Date(at).toISOString(), htm: { date: '2026-11-10' }, status: 'checked' }, extra || {});
+const phone = { onboarded: true, meter: { modelId: 'sharky774' }, baseline: { date: '2026-10-20', energy: 13.245 }, readings: [r('a', 1000), r('b', 2000)], updatedAt: 2000 };
+const laptop = { onboarded: true, meter: { modelId: 'sharky774' }, baseline: { date: '2026-10-20', energy: 13.245 }, readings: [r('a', 1000), r('c', 3000)], updatedAt: 3000 };
+let m = S.merge(phone, laptop);
+t('показания с двух устройств объединяются (a, b, c)', m.readings.map(x => x.id).join() === 'a,b,c');
+t('updatedAt — максимум', m.updatedAt === 3000);
+const accepted = Object.assign({}, r('b', 2000), { status: 'accepted', updatedAt: 5000 });
+m = S.merge({ readings: [r('b', 2000)], updatedAt: 2000 }, { readings: [accepted], updatedAt: 5000 });
+t('изменённое показание (принято) побеждает старое', m.readings[0].status === 'accepted');
+m = S.merge({ baseline: { date: '2026-11-10', energy: 14.1 }, updatedAt: 1 }, { baseline: { date: '2026-10-20', energy: 13.2 }, updatedAt: 9 });
+t('база — с более поздней датой, даже если состояние старее', m.baseline.date === '2026-11-10');
+m = S.merge({ onboarded: true, meter: { modelId: 'x' }, baseline: { date: '2026-10-20' }, readings: [r('a', 1000)], updatedAt: 1000 }, { onboarded: false, meter: null, baseline: null, readings: [], wipedAt: 4000, updatedAt: 4000 });
+t('«удалить всё» на другом устройстве побеждает', m.readings.length === 0 && !m.baseline && !m.onboarded);
+m = S.merge({ readings: [r('n', 6000)], updatedAt: 6000, onboarded: true, meter: { modelId: 'x' } }, { readings: [], wipedAt: 4000, updatedAt: 4000 });
+t('записи, созданные после удаления, сохраняются', m.readings.length === 1);
+t('payload не тащит локальные поля', !('demoToday' in S.payload({ demoToday: 'x', lang: 'ru', readings: [] })) && !('lang' in S.payload({ lang: 'ru' })));
+t('подпись не зависит от updatedAt', S.sig({ a: 1, updatedAt: 1 }) === S.sig({ a: 1, updatedAt: 2 }));
+console.log('\nИтог: ' + pass + ' OK, ' + fail + ' FAIL'); process.exit(fail ? 1 : 0);

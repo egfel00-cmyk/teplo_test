@@ -1,0 +1,2307 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#E9EEEB">
+<title>Теплосервіс</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+/* Теплосервис — стили. Токены: design/02-brandbook.md, компоненты: design/03-design-system.md */
+:root {
+  --c-housing: #E9EEEB; --c-surface: #FFFFFF; --c-ink: #17211E; --c-ink-2: #4A5652; --c-line: #CFD7D3;
+  --c-lcd: #BCC8A2; --c-lcd-ink: #1C2618; --c-lcd-off: #AAB78E; --c-bezel: #8E9A94;
+  --c-supply: #D04A1D; --c-return: #2F68B0;
+  --c-ok: #1E7B4C; --c-ok-soft: #DFF1E7; --c-warn: #8F5600; --c-warn-soft: #FBEFD5;
+  --c-bad: #A3142E; --c-bad-soft: #F9E1E5; --c-info: #2F68B0; --c-info-soft: #E2ECF8;
+  --sp-1: 4px; --sp-2: 8px; --sp-3: 12px; --sp-4: 16px; --sp-5: 24px; --sp-6: 32px; --sp-7: 48px;
+  --r-lcd: 10px; --r-field: 10px; --r-btn: 12px; --r-pill: 999px;
+  --fs-s: 15px; --fs-m: 17px; --fs-l: 20px; --fs-xl: 26px; --fs-xxl: 34px;
+  --tap: 48px;
+  --font: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans", sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, "SF Mono", "Cascadia Mono", "Roboto Mono", monospace;
+}
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body { margin: 0; background: var(--c-housing); color: var(--c-ink); font: 400 var(--fs-m)/1.5 var(--font); }
+h1, h2, h3 { line-height: 1.2; margin: 0 0 var(--sp-3); font-weight: 600; letter-spacing: -0.01em; }
+h1 { font-size: var(--fs-xl); } h2 { font-size: var(--fs-l); } h3 { font-size: var(--fs-m); }
+p { margin: 0 0 var(--sp-3); max-width: 68ch; }
+a { color: var(--c-return); text-underline-offset: 3px; }
+:focus-visible { outline: 3px solid var(--c-return); outline-offset: 2px; border-radius: 6px; }
+.muted { color: var(--c-ink-2); }
+.small { font-size: var(--fs-s); }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+/* ---------- оболочка ---------- */
+.app { min-height: 100vh; display: flex; flex-direction: column; }
+.top { display: flex; align-items: center; gap: var(--sp-3); padding: var(--sp-3) var(--sp-4); }
+.brand { display: flex; align-items: center; gap: 10px; font-weight: 600; font-size: var(--fs-m); color: var(--c-ink); text-decoration: none; }
+.brand svg { flex: none; }
+.top .spacer { flex: 1; }
+.main { flex: 1; width: 100%; max-width: 720px; margin: 0 auto; padding: var(--sp-2) var(--sp-4) calc(var(--tap) + 48px); }
+.main.bare { padding-bottom: var(--sp-7); }
+.nav { position: fixed; left: 0; right: 0; bottom: 0; display: grid; grid-template-columns: repeat(4, 1fr); background: var(--c-surface);
+  border-top: 1px solid var(--c-line); box-shadow: 0 -6px 18px rgba(23, 33, 30, .06); padding-bottom: env(safe-area-inset-bottom); z-index: 5; }
+.nav a { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; min-height: 58px; font-size: 13px; color: var(--c-ink-2); text-decoration: none; }
+.nav a[aria-current="page"] { color: var(--c-ink); font-weight: 600; }
+.nav a[aria-current="page"] svg { stroke: var(--c-ink); }
+@media (min-width: 960px) {
+  .app { display: grid; grid-template-columns: 232px 1fr; grid-template-rows: auto 1fr; }
+  .top { grid-column: 1 / -1; padding: var(--sp-4) var(--sp-5); }
+  .nav { position: sticky; top: 0; align-self: start; grid-template-columns: 1fr; box-shadow: none; border: 0; background: transparent; padding: var(--sp-2) var(--sp-3); gap: 2px; }
+  .nav a { flex-direction: row; justify-content: flex-start; gap: var(--sp-3); padding: 0 var(--sp-4); min-height: 48px; font-size: var(--fs-m); border-radius: var(--r-btn); }
+  .nav a[aria-current="page"] { background: var(--c-surface); }
+  .main { max-width: 1040px; margin: 0; padding: var(--sp-2) var(--sp-6) var(--sp-7); }
+  .app.bare-app { grid-template-columns: 1fr; }
+}
+
+/* ---------- кнопки ---------- */
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: var(--sp-2); min-height: var(--tap); padding: 0 var(--sp-5);
+  border-radius: var(--r-btn); border: 1.5px solid var(--c-ink); background: var(--c-ink); color: #fff; font: 600 var(--fs-m)/1 var(--font);
+  cursor: pointer; text-decoration: none; transition: background .15s, transform .05s; }
+.btn:hover { background: #2A3733; }
+.btn:active { transform: translateY(1px); }
+.btn[disabled] { background: var(--c-line); border-color: var(--c-line); color: var(--c-ink-2); cursor: not-allowed; }
+.btn.sec { background: var(--c-surface); color: var(--c-ink); border-color: var(--c-line); }
+.btn.sec:hover { border-color: var(--c-ink-2); }
+.btn.ghost { background: transparent; border-color: transparent; color: var(--c-ink); padding: 0 var(--sp-3); }
+.btn.ghost:hover { background: rgba(23, 33, 30, .06); }
+.btn.danger { background: var(--c-bad); border-color: var(--c-bad); }
+.btn.block { width: 100%; }
+.btn.big { min-height: 56px; font-size: var(--fs-l); }
+.row-actions { display: flex; flex-wrap: wrap; gap: var(--sp-3); margin-top: var(--sp-5); }
+.row-actions .btn { flex: 1 1 auto; }
+.linkbtn { background: none; border: 0; padding: 0; color: var(--c-return); font: inherit; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; min-height: 32px; }
+
+/* ---------- экран счётчика (подпись — главная вещь) ---------- */
+.lcd { background: var(--c-lcd); border: 6px solid #DCE2DE; outline: 1.5px solid var(--c-bezel); border-radius: var(--r-lcd);
+  padding: 14px 16px 12px; position: relative; color: var(--c-lcd-ink); box-shadow: inset 0 2px 6px rgba(28, 38, 24, .25); }
+.lcd svg.seg { display: block; height: 52px; width: auto; max-width: 100%; }
+.lcd .tag { font: 600 15px/1 var(--font); letter-spacing: .02em; }
+.lcd .tag.corner { position: absolute; top: 10px; right: 14px; }
+.lcd .line { display: flex; align-items: flex-end; gap: 12px; }
+.lcd .line + .line { margin-top: 10px; padding-top: 10px; border-top: 1px dashed rgba(28, 38, 24, .25); }
+.lcd .line .tag { padding-bottom: 6px; }
+.lcd.hero svg.seg { height: 64px; }
+.lcd.small svg.seg { height: 30px; }
+.lcd.small { padding: 8px 10px; border-width: 4px; }
+.lcd-cap { font-size: var(--fs-s); color: var(--c-ink-2); margin-top: var(--sp-2); }
+@media (prefers-reduced-motion: no-preference) {
+  .lcd.boot .on { animation: segon .5s ease-out both; }
+  @keyframes segon { from { fill: var(--c-lcd-off); } to { fill: var(--c-lcd-ink); } }
+}
+
+/* ---------- метки и баннеры ---------- */
+.pill { display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border-radius: var(--r-pill); font-size: 14px; font-weight: 500; background: var(--c-line); color: var(--c-ink); white-space: nowrap; }
+.pill.ok { background: var(--c-ok-soft); color: var(--c-ok); } .pill.warn { background: var(--c-warn-soft); color: var(--c-warn); }
+.pill.bad { background: var(--c-bad-soft); color: var(--c-bad); } .pill.info { background: var(--c-info-soft); color: var(--c-info); }
+.banner { display: flex; gap: var(--sp-3); align-items: flex-start; padding: var(--sp-3) var(--sp-4); border-radius: var(--r-btn); background: var(--c-info-soft); color: #173A61; margin: 0 0 var(--sp-4); }
+.banner.warn { background: var(--c-warn-soft); color: #5C3700; } .banner.bad { background: var(--c-bad-soft); color: #6E0D1F; } .banner.ok { background: var(--c-ok-soft); color: #134D30; }
+.banner svg { flex: none; margin-top: 2px; }
+.banner p { margin: 0; } .banner p + p { margin-top: 4px; font-size: var(--fs-s); }
+
+/* ---------- блоки ---------- */
+.panel { background: var(--c-surface); border-radius: 14px; padding: var(--sp-4); margin: 0 0 var(--sp-4); }
+.panel > h2:first-child, .panel > h3:first-child { margin-top: 0; }
+.section-title { font-size: var(--fs-m); font-weight: 600; margin: var(--sp-5) 0 var(--sp-2); }
+.list { list-style: none; margin: 0; padding: 0; background: var(--c-surface); border-radius: 14px; }
+.list > li { display: flex; align-items: center; gap: var(--sp-3); padding: var(--sp-3) var(--sp-4); border-bottom: 1px solid var(--c-housing); min-height: 56px; }
+.list > li:last-child { border-bottom: 0; }
+.list .grow { flex: 1; min-width: 0; }
+.list a.rowlink { display: flex; align-items: center; gap: var(--sp-3); color: inherit; text-decoration: none; width: 100%; }
+.num { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+
+/* ---------- главная ---------- */
+.hero-grid { display: grid; gap: var(--sp-4); }
+@media (min-width: 960px) { .hero-grid { grid-template-columns: 1.2fr 1fr; align-items: start; } }
+.meter-row { display: flex; align-items: center; gap: var(--sp-3); }
+
+/* ---------- приветствие ---------- */
+.welcome { max-width: 860px; margin: 0 auto; }
+.welcome h1 { font-size: var(--fs-xxl); max-width: 16ch; margin-bottom: var(--sp-3); }
+.welcome .lead { font-size: var(--fs-l); color: var(--c-ink-2); max-width: 40ch; }
+.welcome ul { padding: 0; list-style: none; margin: var(--sp-5) 0; display: grid; gap: var(--sp-3); }
+.welcome li { display: flex; gap: var(--sp-3); align-items: flex-start; max-width: 52ch; }
+.welcome li svg { flex: none; margin-top: 3px; }
+@media (min-width: 960px) { .welcome-grid { display: grid; grid-template-columns: 1fr 360px; gap: var(--sp-7); align-items: center; } }
+
+/* ---------- поля ---------- */
+.field { margin: 0 0 var(--sp-4); }
+.field label, .field .lbl { display: block; font-weight: 500; margin-bottom: 6px; }
+.field .ctl { display: flex; align-items: stretch; background: var(--c-surface); border: 1.5px solid var(--c-line); border-radius: var(--r-field); overflow: hidden; }
+.field .ctl:focus-within { border-color: var(--c-ink); box-shadow: 0 0 0 3px rgba(47, 104, 176, .25); }
+.field input, .field select, .field textarea { flex: 1; min-width: 0; min-height: 52px; border: 0; padding: 0 var(--sp-4); font: 500 var(--fs-l) var(--font); color: var(--c-ink); background: transparent; }
+.field textarea { min-height: 96px; padding: var(--sp-3) var(--sp-4); font-size: var(--fs-m); font-weight: 400; }
+.field input.num { font-family: var(--mono); letter-spacing: .02em; }
+.field input:focus, .field select:focus, .field textarea:focus { outline: none; }
+.field .unit { display: flex; align-items: center; padding: 0 var(--sp-4); color: var(--c-ink-2); background: #F3F6F4; border-left: 1px solid var(--c-line); font-size: var(--fs-s); white-space: nowrap; }
+.field .help { font-size: var(--fs-s); color: var(--c-ink-2); margin-top: 6px; min-height: 1.5em; }
+.field .help.ok { color: var(--c-ok); } .field .help.warn { color: var(--c-warn); } .field .help.block { color: var(--c-bad); font-weight: 500; }
+.field.is-block .ctl { border-color: var(--c-bad); } .field.is-warn .ctl { border-color: #C98A1E; }
+.field .ctl.supply { border-left: 5px solid var(--c-supply); } .field .ctl.return { border-left: 5px solid var(--c-return); }
+.grid2 { display: grid; gap: 0 var(--sp-4); }
+@media (min-width: 600px) { .grid2 { grid-template-columns: 1fr 1fr; } }
+.choice { display: flex; gap: var(--sp-2); flex-wrap: wrap; }
+.choice label { display: inline-flex; align-items: center; gap: 8px; min-height: var(--tap); padding: 0 var(--sp-4); border: 1.5px solid var(--c-line); border-radius: var(--r-btn); background: var(--c-surface); cursor: pointer; font-weight: 500; }
+.choice input { accent-color: var(--c-ink); width: 18px; height: 18px; }
+.choice label:has(input:checked) { border-color: var(--c-ink); box-shadow: inset 0 0 0 1px var(--c-ink); }
+
+/* ---------- мастер ---------- */
+.wiz-top { display: flex; align-items: center; gap: var(--sp-3); margin-bottom: var(--sp-4); }
+.wiz-top .count { font-weight: 600; }
+.progress { height: 6px; background: var(--c-line); border-radius: 3px; overflow: hidden; flex: 1; }
+.progress i { display: block; height: 100%; background: var(--c-ink); border-radius: 3px; transition: width .25s; }
+.wiz { display: grid; gap: var(--sp-5); }
+@media (min-width: 960px) { .wiz { grid-template-columns: minmax(320px, 440px) 1fr; align-items: start; } }
+.press { display: flex; align-items: center; gap: var(--sp-3); margin: 0 0 var(--sp-3); font-size: var(--fs-l); font-weight: 600; }
+.press .times { font-family: var(--mono); background: var(--c-ink); color: #fff; border-radius: 8px; padding: 2px 10px; font-size: var(--fs-l); }
+.hint { color: var(--c-ink-2); margin-top: var(--sp-3); }
+.sleep { display: flex; gap: var(--sp-2); align-items: flex-start; font-size: var(--fs-s); color: var(--c-ink-2); margin-top: var(--sp-3); }
+.wiz-actions { display: flex; gap: var(--sp-3); margin-top: var(--sp-5); }
+.wiz-actions .btn:last-child { flex: 1; }
+
+/* ---------- проверка ---------- */
+.verdict { display: flex; gap: var(--sp-3); align-items: center; padding: var(--sp-4); border-radius: 14px; margin: 0 0 var(--sp-4); font-size: var(--fs-l); font-weight: 600; }
+.verdict.ok { background: var(--c-ok-soft); color: #134D30; } .verdict.warn { background: var(--c-warn-soft); color: #5C3700; } .verdict.block { background: var(--c-bad-soft); color: #6E0D1F; }
+.issues { list-style: none; margin: 0 0 var(--sp-4); padding: 0; background: var(--c-surface); border-radius: 14px; }
+.issues li { display: grid; grid-template-columns: auto 1fr; gap: 4px var(--sp-3); padding: var(--sp-3) var(--sp-4); border-bottom: 1px solid var(--c-housing); }
+.issues li:last-child { border-bottom: 0; }
+.issues .ic { grid-row: span 3; margin-top: 2px; }
+.issues .msg { font-weight: 500; } .issues .fix { color: var(--c-ink-2); font-size: var(--fs-s); }
+.vals { width: 100%; border-collapse: collapse; background: var(--c-surface); border-radius: 14px; overflow: hidden; }
+.vals th, .vals td { text-align: left; padding: 10px var(--sp-4); border-bottom: 1px solid var(--c-housing); font-size: var(--fs-s); vertical-align: middle; }
+.vals th { font-weight: 400; color: var(--c-ink-2); }
+.vals td { font-family: var(--mono); font-size: var(--fs-m); text-align: right; white-space: nowrap; }
+.vals tr.is-block td { color: var(--c-bad); font-weight: 600; } .vals tr.is-warn td { color: var(--c-warn); font-weight: 600; }
+.vals tr:last-child th, .vals tr:last-child td { border-bottom: 0; }
+.cols { display: grid; gap: var(--sp-4); }
+@media (min-width: 960px) { .cols { grid-template-columns: 1fr 1fr; align-items: start; } }
+
+/* ---------- передача ---------- */
+.copy-list { list-style: none; margin: 0; padding: 0; background: var(--c-surface); border-radius: 14px; }
+.copy-list li { display: grid; grid-template-columns: 1fr auto auto; gap: var(--sp-3); align-items: center; padding: 8px var(--sp-2) 8px var(--sp-4); border-bottom: 1px solid var(--c-housing); }
+.copy-list li:last-child { border-bottom: 0; }
+.copy-list .k { font-size: var(--fs-s); color: var(--c-ink-2); }
+.copy-list .v { font-family: var(--mono); font-size: var(--fs-l); font-weight: 500; font-variant-numeric: tabular-nums; }
+.copy-list .btn { min-height: 44px; padding: 0 var(--sp-3); font-size: var(--fs-s); }
+.copy-list .btn.done { background: var(--c-ok); border-color: var(--c-ok); color: #fff; }
+.steps { margin: 0; padding-left: 1.4em; } .steps li { margin: 0 0 var(--sp-2); padding-left: 4px; }
+.soon { border: 1.5px dashed var(--c-line); background: transparent; }
+
+/* ---------- модели ---------- */
+.models > li { cursor: pointer; }
+.models > li:hover { background: #F6F8F7; }
+.models label { display: flex; align-items: center; gap: var(--sp-3); width: 100%; cursor: pointer; }
+.models input { width: 20px; height: 20px; accent-color: var(--c-ink); flex: none; }
+.models .name { font-weight: 600; } .models .vendor { color: var(--c-ink-2); font-size: var(--fs-s); }
+details.where { margin: var(--sp-3) 0 var(--sp-4); }
+details.where summary { cursor: pointer; color: var(--c-return); text-decoration: underline; text-underline-offset: 3px; min-height: 32px; }
+details.where p { margin-top: var(--sp-2); }
+
+/* ---------- справка ---------- */
+.help-doc h2 { margin-top: var(--sp-6); }
+.help-doc h2:first-of-type { margin-top: var(--sp-3); }
+.help-doc ul, .help-doc ol { padding-left: 1.3em; max-width: 68ch; } .help-doc li { margin-bottom: 6px; }
+.toc { display: flex; flex-wrap: wrap; gap: var(--sp-2); margin: 0 0 var(--sp-4); }
+.toc a, .toc .tocb { border: 0; cursor: pointer; font-family: var(--font); display: inline-flex; align-items: center; min-height: 40px; padding: 0 var(--sp-3); background: var(--c-surface); border-radius: var(--r-pill); text-decoration: none; color: var(--c-ink); font-size: var(--fs-s); }
+
+/* ---------- тост и сегмент ---------- */
+.toast { position: fixed; left: 50%; bottom: calc(76px + env(safe-area-inset-bottom)); transform: translateX(-50%); background: var(--c-ink); color: #fff; padding: 12px 18px; border-radius: var(--r-btn); font-weight: 500; z-index: 10; max-width: calc(100% - 32px); }
+@media (min-width: 960px) { .toast { bottom: 32px; } }
+.seg-ctl { display: inline-flex; background: var(--c-surface); border: 1.5px solid var(--c-line); border-radius: var(--r-pill); padding: 2px; }
+.seg-ctl button { border: 0; background: transparent; min-height: 36px; min-width: 44px; padding: 0 12px; border-radius: var(--r-pill); font: 600 14px var(--font); color: var(--c-ink-2); cursor: pointer; }
+.seg-ctl button[aria-pressed="true"] { background: var(--c-ink); color: #fff; }
+.confirm { background: var(--c-bad-soft); border-radius: var(--r-btn); padding: var(--sp-4); margin-top: var(--sp-3); }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+
+/* сегменты и иконки уровней */
+.seg .on { fill: var(--c-lcd-ink); } .seg .off { fill: var(--c-lcd-off); opacity: .55; }
+.lcd .line.sample .seg .on { fill: #66745A; }
+.c-ok { color: var(--c-ok); } .c-warn { color: var(--c-warn); } .c-bad { color: var(--c-bad); } .c-info { color: var(--c-info); }
+
+.linkbtn { text-align: left; }
+.meta-row { display: flex; gap: var(--sp-4); align-items: baseline; }
+.welcome-lcd { margin: 0 0 var(--sp-5); max-width: 360px; }
+@media (min-width: 960px) { .welcome-lcd { order: 2; margin: 0; } }
+@media (max-width: 959px) { .ho-steps { order: -1; } }
+
+/* ---------- фото ---------- */
+.thumbs { list-style: none; margin: 0 0 var(--sp-4); padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: var(--sp-2); }
+.thumbs li { position: relative; aspect-ratio: 1; border-radius: 10px; overflow: hidden; background: var(--c-surface); border: 1px solid var(--c-line); }
+.thumbs img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.thumbs .n { position: absolute; left: 6px; top: 6px; background: var(--c-ink); color: #fff; font-size: 13px; font-weight: 600; border-radius: 6px; padding: 0 6px; }
+.thumbs .rm { position: absolute; right: 4px; top: 4px; width: 32px; height: 32px; border-radius: 50%; border: 0; background: rgba(23, 33, 30, .75); color: #fff; display: flex; align-items: center; justify-content: center; cursor: pointer; }
+.ph-fields li { gap: var(--sp-3); }
+.ph-fields .src { width: 52px; height: 52px; border-radius: 8px; object-fit: cover; flex: none; border: 1px solid var(--c-line); }
+.ph-fields .src.none { background: repeating-linear-gradient(45deg, var(--c-housing), var(--c-housing) 6px, #fff 6px, #fff 12px); }
+.ph-in { width: 100%; min-height: 44px; border: 1.5px solid var(--c-line); border-radius: var(--r-field); padding: 0 var(--sp-3); font: 500 var(--fs-l) var(--mono); background: var(--c-surface); margin-top: 4px; }
+.ph-in:focus { outline: none; border-color: var(--c-ink); box-shadow: 0 0 0 3px rgba(47, 104, 176, .25); }
+label.btn { cursor: pointer; }
+
+</style>
+<style>.top { padding-top: max(12px, env(safe-area-inset-top)); }</style>
+</head>
+<body>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<script>window.TEPLO_API = '__TEPLO_API__';</script>
+<div id="root"></div>
+<noscript>Для роботи сервісу потрібен JavaScript.</noscript>
+<script>
+/*
+ * Теплосервис — движок проверок показаний «как робот ХТМ».
+ * Один файл для браузера (window.TeploRules) и Node (module.exports).
+ * Коды R_* совпадают с документом «кабинет ХТМ (снятие 01.11.2026)», §7.
+ * Уровни: ok · info · warn (похоже на ошибку, можно подтвердить) · block (робот ХТМ отклонит).
+ */
+(function (root) {
+  'use strict';
+
+  var C = {
+    GCAL_KW_FACTOR: 1.163,     // кВт = 1.163 · м³/ч · ΔT
+    DT_MIN: 2.5, DT_MAX: 50,   // средняя ΔT за период (робот ХТМ)
+    DT_WARN: 3.0,              // близко к порогу
+    TEMP_MIN: 5, TEMP_MAX: 95,
+    HOURS_TOL: 24,             // |Δчасов − календарь| ≤ 24
+    ENERGY_JUMP: 15,           // Гкал за период
+    FLOW_K: 0.3,               // средний расход ≥ 0.3 × переходного
+    POWER_TOL: 0.10, POWER_ABS: 0.3,
+    DT_NO_FLOW: 15,
+    TARIFF: 1748.47,           // грн/Гкал с НДС (ХТМ, население)
+    WINDOW_FROM: 5, WINDOW_RECOMMENDED: 23, WINDOW_TO: 25
+  };
+
+  // Поля журнала ХТМ в порядке формы. decimals — как требует форма (разделитель — точка).
+  var FIELDS = [
+    { key: 'date',     htm: 'LastDtPok',    uk: 'Дата зняття',                 ru: 'Дата снятия',                 unit: '',     dec: null },
+    { key: 'energy',   htm: 'LastValuePok', uk: 'Накопичена енергія',          ru: 'Накопленная энергия',         unit: 'Гкал', dec: 3 },
+    { key: 'volume',   htm: 'LastRashPok',  uk: 'Обсяг теплоносія',            ru: 'Объём теплоносителя',         unit: 'м³',   dec: 3 },
+    { key: 'flow',     htm: 'HeatRash',     uk: 'Миттєва витрата',             ru: 'Мгновенный расход',           unit: 'м³/год', dec: 3 },
+    { key: 'power',    htm: 'HeatPower',    uk: 'Миттєва потужність',          ru: 'Мгновенная мощность',         unit: 'кВт',  dec: 3 },
+    { key: 'tSupply',  htm: 'TempPod',      uk: 'Температура подачі',          ru: 'Температура подачи',          unit: '°C',   dec: 2 },
+    { key: 'tReturn',  htm: 'TempO',        uk: 'Температура повернення',      ru: 'Температура обратки',         unit: '°C',   dec: 2 },
+    { key: 'hours',    htm: 'LastTimePok',  uk: 'Час роботи',                  ru: 'Время работы',                unit: 'год',  dec: 0 },
+    { key: 'errHours', htm: 'ErrorTime',    uk: 'Час роботи з помилкою',       ru: 'Время работы с ошибкой',      unit: 'год',  dec: 0 },
+    { key: 'errCode',  htm: 'ErrorKod',     uk: 'Код помилки',                 ru: 'Код ошибки',                  unit: '',     dec: null }
+  ];
+
+  function num(v) {
+    if (v === null || v === undefined) return null;
+    if (typeof v === 'number') return isFinite(v) ? v : null;
+    var s = String(v).replace(/[\s ]/g, '').replace(',', '.');
+    if (s === '' || !/^-?\d*\.?\d+$/.test(s)) return null;
+    return parseFloat(s);
+  }
+
+  function parseDate(s) {
+    if (!s) return null;
+    var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s) || null;
+    if (m) return Date.UTC(+m[1], +m[2] - 1, +m[3]);
+    m = /^(\d{2})\.(\d{2})\.(\d{4})$/.exec(s);
+    if (m) return Date.UTC(+m[3], +m[2] - 1, +m[1]);
+    return null;
+  }
+  function daysBetween(a, b) { return Math.round((parseDate(b) - parseDate(a)) / 86400000); }
+  function ymd(d) { return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2); }
+  function toHtmDate(s) { var t = parseDate(s); if (t === null) return ''; var d = new Date(t); return ('0' + d.getUTCDate()).slice(-2) + '.' + ('0' + (d.getUTCMonth() + 1)).slice(-2) + '.' + d.getUTCFullYear(); }
+
+  /** Формат «как в форме ХТМ»: точка, фиксированное число знаков. */
+  function formatForHtm(key, v) {
+    var f = FIELDS.filter(function (x) { return x.key === key; })[0];
+    if (!f) return String(v == null ? '' : v);
+    if (key === 'date') return toHtmDate(v);
+    if (key === 'errCode') return normCode(v);
+    var n = num(v); if (n === null) return '';
+    return f.dec === 0 ? String(Math.round(n)) : n.toFixed(f.dec);
+  }
+  function normCode(v) {
+    var s = String(v == null ? '' : v).trim();
+    if (s === '' || /^E[-–—]*$/i.test(s) || s === '0') return 'E---';
+    return s.toUpperCase();
+  }
+  function noError(code) { return normCode(code) === 'E---'; }
+
+  /** Состояние окна приёма на дату (локальная дата). */
+  function windowState(today) {
+    var d = today ? new Date(parseDate(today)) : new Date();
+    var day = today ? d.getUTCDate() : d.getDate();
+    if (day < C.WINDOW_FROM) return { state: 'closed_before', day: day, opensOn: C.WINDOW_FROM };
+    if (day <= C.WINDOW_RECOMMENDED - 2) return { state: 'open', day: day, daysLeft: C.WINDOW_RECOMMENDED - day };
+    if (day < C.WINDOW_RECOMMENDED) return { state: 'soon_recommended', day: day, daysLeft: C.WINDOW_RECOMMENDED - day };
+    if (day < C.WINDOW_TO) return { state: 'late', day: day, daysLeft: C.WINDOW_TO - day };
+    if (day === C.WINDOW_TO) return { state: 'last_day', day: day };
+    return { state: 'closed_after', day: day, opensOn: C.WINDOW_FROM };
+  }
+
+  function item(code, level, field, uk, ru, fixUk, fixRu, extra) {
+    var o = { code: code, level: level, field: field, msg: { uk: uk, ru: ru } };
+    if (fixUk) o.fix = { uk: fixUk, ru: fixRu || fixUk };
+    if (extra) for (var k in extra) o[k] = extra[k];
+    return o;
+  }
+  function f3(n) { return (Math.round(n * 1000) / 1000).toString(); }
+  function f1(n) { return (Math.round(n * 10) / 10).toString(); }
+
+  /**
+   * Проверка одного показания.
+   * @param {object} p  { reading, prev, meter, today }
+   *   reading/prev: { date:'YYYY-MM-DD', energy, volume, flow, power, tSupply, tReturn, hours, errHours, errCode }
+   *   prev — последнее ПРИНЯТОЕ ХТМ показание (строка журнала), может быть null.
+   *   meter: { hoursOnlyWithFlow:bool, transitionalFlow:number|null, verifiedUntil:'YYYY-MM-DD'|null }
+   *   today: 'YYYY-MM-DD' (по умолчанию — сегодня)
+   * @returns {{verdict:string, items:Array, derived:object}}
+   */
+  function validate(p) {
+    var r = p.reading || {}, prev = p.prev || null, meter = p.meter || {};
+    var today = p.today || ymd(new Date());
+    var items = [], d = {};
+    var v = {}; FIELDS.forEach(function (f) { if (f.key !== 'date' && f.key !== 'errCode') v[f.key] = num(r[f.key]); });
+    var pv = {}; if (prev) FIELDS.forEach(function (f) { if (f.key !== 'date' && f.key !== 'errCode') pv[f.key] = num(prev[f.key]); });
+
+    // --- A. Заполнено ли всё (форма ХТМ требует все 10 значений)
+    var missing = FIELDS.filter(function (f) {
+      if (f.key === 'date') return !parseDate(r.date);
+      if (f.key === 'errCode') return false; // пусто = E--- (нет ошибки)
+      return v[f.key] === null;
+    });
+    missing.forEach(function (f) {
+      items.push(item('F_MISSING', 'block', f.key,
+        'Не заповнено: ' + f.uk + '.', 'Не заполнено: ' + f.ru + '.',
+        'Кабінет ХТМ приймає лише всі 10 значень.', 'Кабинет ХТМ принимает только все 10 значений.'));
+    });
+
+    // --- Дата
+    if (parseDate(r.date)) {
+      var dToday = daysBetween(r.date, today);
+      if (dToday < 0) items.push(item('F_DATE_FUTURE', 'block', 'date', 'Дата в майбутньому.', 'Дата в будущем.', 'Вкажіть день, коли знімали показання.', 'Укажите день, когда снимали показания.'));
+      else if (r.date.slice(0, 7) !== today.slice(0, 7)) items.push(item('R_CURRENT_MONTH', 'block', 'date',
+        'ХТМ приймає показання лише поточного місяця.', 'ХТМ принимает показания только текущего месяца.',
+        'Зніміть нові показання цього місяця.', 'Снимите новые показания в этом месяце.'));
+      else if (dToday > 2) items.push(item('F_DATE_OLD', 'warn', 'date',
+        'Показання зняті ' + dToday + ' дн. тому.', 'Показания сняты ' + dToday + ' дн. назад.',
+        'Це нормально, якщо дата справжня: робот рахує години саме від дати зняття.', 'Это нормально, если дата настоящая: робот считает часы именно от даты снятия.'));
+      if (prev && parseDate(prev.date)) {
+        var dd = daysBetween(prev.date, r.date);
+        if (dd < 0) items.push(item('F_DATE_BEFORE_PREV', 'block', 'date', 'Дата раніше за попередні прийняті показання.', 'Дата раньше предыдущих принятых показаний.', 'Перевірте дату.', 'Проверьте дату.'));
+        else if (dd === 0) items.push(item('R_ONE_PER_DATE', 'warn', 'date', 'На цю дату вже є запис — ХТМ дозволяє один запис на дату.', 'На эту дату уже есть запись — ХТМ разрешает одну запись на дату.', 'Нове значення замінить попереднє (редагування останнього запису).', 'Новое значение заменит прежнее (редактирование последней записи).'));
+      }
+    }
+
+    // --- Температуры
+    ['tSupply', 'tReturn'].forEach(function (k) {
+      var t = v[k]; if (t === null) return;
+      if (t === 0 || t < C.TEMP_MIN || t > C.TEMP_MAX) items.push(item('R_TEMP_RANGE', 'block', k,
+        'Температура ' + f1(t) + ' °C — робот приймає від 5 до 95 і не 0.', 'Температура ' + f1(t) + ' °C — робот принимает от 5 до 95 и не 0.',
+        'Навіть при вимкненому опаленні температура не 0. Якщо лічильник показує 0 або нічого — він несправний.',
+        'Даже при выключенном отоплении температура не 0. Если счётчик показывает 0 или ничего — он неисправен.'));
+    });
+
+    // --- C. Физика текущих мгновенных значений (наша проверка)
+    if (v.flow !== null && v.tSupply !== null && v.tReturn !== null) {
+      var dtNow = v.tSupply - v.tReturn; d.dtNow = dtNow;
+      if (v.flow > 0 && dtNow < 0) items.push(item('P_SUPPLY_LT_RETURN', 'warn', 'tReturn',
+        'Обратка гарячіша за подачу — схоже, температури переплутані.', 'Обратка горячее подачи — похоже, температуры перепутаны.',
+        'Подача (ht) — перша з двох, що чергуються.', 'Подача (ht) — первая из двух чередующихся.'));
+      if (v.power !== null && dtNow >= 0) {
+        var expected = C.GCAL_KW_FACTOR * v.flow * dtNow; d.powerExpected = expected;
+        if (v.flow === 0 && v.power > C.POWER_ABS) items.push(item('P_POWER_NO_FLOW', 'warn', 'power', 'Витрата 0, а потужність ' + f3(v.power) + ' кВт.', 'Расход 0, а мощность ' + f3(v.power) + ' кВт.', 'Перевірте потужність і витрату.', 'Проверьте мощность и расход.'));
+        else if (v.flow > 0 && Math.abs(v.power - expected) > Math.max(C.POWER_ABS, Math.abs(expected) * C.POWER_TOL)) items.push(item('P_POWER', 'warn', 'power',
+          'Потужність не сходиться: має бути ≈ ' + f3(expected) + ' кВт (1,163 × витрата × різниця температур).', 'Мощность не сходится: должно быть ≈ ' + f3(expected) + ' кВт (1,163 × расход × разница температур).',
+          'Перевірте потужність, витрату і обидві температури — одна з цифр, ймовірно, переписана з помилкою.', 'Проверьте мощность, расход и обе температуры — одна из цифр, вероятно, переписана с ошибкой.', { expected: expected }));
+      }
+    }
+    if (!noError(r.errCode)) items.push(item('M_ERROR_CODE', 'warn', 'errCode',
+      'Лічильник показує код помилки ' + normCode(r.errCode) + '.', 'Счётчик показывает код ошибки ' + normCode(r.errCode) + '.',
+      'Поки є помилка, енергія може не рахуватися. Подивіться розшифровку коду.', 'Пока есть ошибка, энергия может не считаться. Посмотрите расшифровку кода.'));
+
+    // --- B. Сравнение с прошлым принятым (правила робота)
+    if (!prev) {
+      items.push(item('I_NO_PREV', 'info', null,
+        'Немає попередніх прийнятих показань — перевіримо лише формат і фізику.', 'Нет предыдущих принятых показаний — проверим только формат и физику.',
+        'Внесіть «останні прийняті» з кабінету ХТМ, щоб перевіряти як робот.', 'Внесите «последние принятые» из кабинета ХТМ, чтобы проверять как робот.'));
+    } else {
+      var mono = [['energy', 'R_MONO_ENERGY'], ['volume', 'R_MONO_VOLUME'], ['hours', 'R_MONO_HOURS'], ['errHours', 'R_MONO_ERRHOURS']];
+      mono.forEach(function (m) {
+        var k = m[0], a = v[k], b = pv[k]; if (a === null || b === null) return;
+        var bad = k === 'errHours' ? a < b : a < b;
+        if (bad) {
+          var f = FIELDS.filter(function (x) { return x.key === k; })[0];
+          items.push(item(m[1], 'block', k,
+            f.uk + ' ' + a + ' менше за попередні ' + b + '.', f.ru + ' ' + a + ' меньше предыдущих ' + b + '.',
+            'Зніміть показання ще раз — накопичувальні значення не зменшуються. Часто це пропущена цифра або крапка.',
+            'Снимите показания ещё раз — накопительные значения не уменьшаются. Часто это пропущенная цифра или точка.', { expected: { min: b } }));
+        }
+      });
+      var dE = (v.energy !== null && pv.energy !== null) ? v.energy - pv.energy : null;
+      var dV = (v.volume !== null && pv.volume !== null) ? v.volume - pv.volume : null;
+      var dH = (v.hours !== null && pv.hours !== null) ? v.hours - pv.hours : null;
+      d.dE = dE; d.dV = dV; d.dH = dH;
+
+      if (dE !== null && dE >= C.ENERGY_JUMP) items.push(item('R_ENERGY_JUMP', 'block', 'energy',
+        'Приріст ' + f3(dE) + ' Гкал — робот приймає менше 15 Гкал за період.', 'Прирост ' + f3(dE) + ' Гкал — робот принимает меньше 15 Гкал за период.',
+        'Схоже, пропущена крапка: на екрані, ймовірно, ' + f3(v.energy / 10) + ' або ' + f3(v.energy / 1000) + '.', 'Похоже, пропущена точка: на экране, вероятно, ' + f3(v.energy / 10) + ' или ' + f3(v.energy / 1000) + '.'));
+
+      if (dE !== null && dV !== null && dE > 0 && dV === 0) items.push(item('R_ENERGY_WITHOUT_VOLUME', 'block', 'volume',
+        'Енергія зросла, а обсяг теплоносія не змінився.', 'Энергия выросла, а объём теплоносителя не изменился.',
+        'Перевірте обсяг (м³) — він має рости разом з енергією.', 'Проверьте объём (м³) — он должен расти вместе с энергией.'));
+
+      if (dE !== null && dV !== null && dV > 0 && dE > 0) {
+        var dtAvg = dE * 1000 / dV; d.dtAvg = dtAvg;
+        if (dtAvg < C.DT_MIN) items.push(item('R_DT_MIN', 'block', 'energy',
+          'Середня різниця температур за період ' + f1(dtAvg) + ' °C — робот вимагає не менше 2,5.', 'Средняя разница температур за период ' + f1(dtAvg) + ' °C — робот требует не меньше 2,5.',
+          'Якщо цифри вірні — теплоносій біжить занадто швидко: зменшіть витрату (1–1,5 л на м²) і передайте нові показання наступного місяця.',
+          'Если цифры верны — теплоноситель бежит слишком быстро: уменьшите расход (1–1,5 л на м²) и передайте новые показания в следующем месяце.'));
+        else if (dtAvg > C.DT_MAX) items.push(item('R_DT_MAX', 'block', 'energy',
+          'Середня різниця температур за період ' + f1(dtAvg) + ' °C — робот приймає не більше 50.', 'Средняя разница температур за период ' + f1(dtAvg) + ' °C — робот принимает не больше 50.',
+          'Найчастіше — помилка в енергії або обсязі. Перевірте обидва.', 'Чаще всего — ошибка в энергии или объёме. Проверьте оба.'));
+        else if (dtAvg < C.DT_WARN) items.push(item('W_DT_LOW', 'warn', 'energy',
+          'Середня різниця температур ' + f1(dtAvg) + ' °C — близько до межі робота (2,5).', 'Средняя разница температур ' + f1(dtAvg) + ' °C — близко к границе робота (2,5).',
+          'Показання, ймовірно, приймуть, але варто зменшити витрату.', 'Показания, вероятно, примут, но стоит уменьшить расход.'));
+      }
+
+      if (v.tSupply !== null && v.tReturn !== null && dV === 0 && (v.tSupply - v.tReturn) > C.DT_NO_FLOW) items.push(item('R_DT_NO_FLOW', 'block', 'volume',
+        'Різниця температур більше 15 °C, а обсяг не змінився.', 'Разница температур больше 15 °C, а объём не изменился.',
+        'Якщо опалення працює — лічильник, ймовірно, несправний. Якщо вимкнене — зніміть показання ще раз.', 'Если отопление работает — счётчик, вероятно, неисправен. Если выключено — снимите показания ещё раз.'));
+
+      if (dH !== null && parseDate(prev.date) && parseDate(r.date)) {
+        var days = daysBetween(prev.date, r.date), cal = days * 24; d.calHours = cal;
+        var diff = dH - cal;
+        if (meter.hoursOnlyWithFlow) {
+          if (diff > C.HOURS_TOL) items.push(item('R_HOURS_CALENDAR', 'block', 'hours',
+            'Годин роботи додалося ' + dH + ', а між датами лише ' + cal + '.', 'Часов работы прибавилось ' + dH + ', а между датами только ' + cal + '.',
+            'Перевірте дату зняття і години.', 'Проверьте дату снятия и часы.'));
+        } else if (Math.abs(diff) > C.HOURS_TOL) {
+          items.push(item('R_HOURS_CALENDAR', 'block', 'hours',
+            'Між датами ' + cal + ' год, а лічильник додав ' + dH + ' год. Різниця ' + Math.abs(diff) + ' — робот допускає 24.',
+            'Между датами ' + cal + ' ч, а счётчик прибавил ' + dH + ' ч. Разница ' + Math.abs(diff) + ' — робот допускает 24.',
+            'Найчастіше показання зняли в один день, а дату вказали іншу. Вкажіть справжню дату зняття або зніміть ще раз сьогодні.',
+            'Чаще всего показания сняли в один день, а дату указали другую. Укажите настоящую дату снятия или снимите ещё раз сегодня.', { expected: { min: cal - C.HOURS_TOL, max: cal + C.HOURS_TOL } }));
+        }
+        if (dV !== null && dH > 0) {
+          var avgFlow = dV / dH; d.avgFlow = avgFlow;
+          var qt = num(meter.transitionalFlow);
+          if (qt && avgFlow < C.FLOW_K * qt) items.push(item('R_FLOW_MIN', 'block', 'volume',
+            'Середня витрата ' + f3(avgFlow) + ' м³/год менша за 0,3 × перехідної (' + f3(C.FLOW_K * qt) + ').', 'Средний расход ' + f3(avgFlow) + ' м³/ч меньше 0,3 × переходного (' + f3(C.FLOW_K * qt) + ').',
+            'Налаштуйте систему так, щоб витрата була більшою за перехідну. Перехідна витрата — у кабінеті ХТМ, паспорті чи акті.',
+            'Настройте систему так, чтобы расход был больше переходного. Переходный расход — в кабинете ХТМ, паспорте или акте.'));
+        }
+      }
+      if (v.errHours !== null && pv.errHours !== null && v.errHours > pv.errHours) items.push(item('M_ERRHOURS_GREW', 'warn', 'errHours',
+        'Години з помилкою зросли на ' + (v.errHours - pv.errHours) + ' — стільки часу лічильник не рахував тепло.', 'Часы с ошибкой выросли на ' + (v.errHours - pv.errHours) + ' — столько времени счётчик не считал тепло.',
+        'Їх треба передати як є. Якщо ростуть далі — зверніться до сервісу лічильника.', 'Их нужно передать как есть. Если растут дальше — обратитесь в сервис счётчика.'));
+      if (dE !== null && dE >= 0) { d.cost = dE * C.TARIFF; if (d.dH > 0) d.perDay = dE / (d.dH / 24); }
+    }
+
+    // --- Повирка
+    if (meter.verifiedUntil && parseDate(meter.verifiedUntil) && daysBetween(meter.verifiedUntil, today) > 0) items.push(item('R_VERIFICATION', 'block', null,
+      'Термін повірки минув ' + toHtmDate(meter.verifiedUntil) + ' — робот не приймає показання неповіреного лічильника.', 'Срок поверки истёк ' + toHtmDate(meter.verifiedUntil) + ' — робот не принимает показания неповеренного счётчика.',
+      'Потрібна повірка (ХТМ: 050-670-13-45).', 'Нужна поверка (ХТМ: 050-670-13-45).'));
+
+    var verdict = items.some(function (i) { return i.level === 'block'; }) ? 'block'
+      : items.some(function (i) { return i.level === 'warn'; }) ? 'warn' : 'ok';
+    return { verdict: verdict, items: items, derived: d };
+  }
+
+  /** Быстрая проверка одного поля на лету (для подсказки под полем). */
+  function checkField(key, value, prev) {
+    var n = num(value);
+    if (key !== 'errCode' && key !== 'date' && String(value || '').trim() !== '' && n === null) return { level: 'warn', msg: { uk: 'Лише цифри та крапка.', ru: 'Только цифры и точка.' } };
+    if (n === null || !prev) return null;
+    var b = num(prev[key]);
+    if (['energy', 'volume', 'hours', 'errHours'].indexOf(key) >= 0 && b !== null && n < b) return { level: 'block', msg: { uk: 'Менше за попередні (' + b + ').', ru: 'Меньше предыдущих (' + b + ').' } };
+    if (key === 'energy' && b !== null && n - b >= C.ENERGY_JUMP) return { level: 'block', msg: { uk: 'Завеликий приріст — перевірте крапку.', ru: 'Слишком большой прирост — проверьте точку.' } };
+    if ((key === 'tSupply' || key === 'tReturn') && (n === 0 || n < C.TEMP_MIN || n > C.TEMP_MAX)) return { level: 'block', msg: { uk: 'Від 5 до 95 °C.', ru: 'От 5 до 95 °C.' } };
+    var cum = ['energy', 'volume', 'hours', 'errHours'].indexOf(key) >= 0 && b !== null && n >= b;
+    return { level: 'ok', delta: cum ? n - b : null, msg: { uk: cum ? '+' + f3(n - b) : '', ru: cum ? '+' + f3(n - b) : '' } };
+  }
+
+  /** Расшифровка ответа робота ХТМ (строка «Статус: …» журнала) → код + совет. */
+  function decodeRobot(text) {
+    var s = String(text || '');
+    if (/успішно\s+додані/i.test(s)) return { code: 'ACCEPTED' };
+    var map = [
+      [/відсутній в базі/i, 'R_NOT_IN_DB', 'Прилад не внесено в базу ХТМ або вузол не прийнято на облік. Уточніть: 067-370-87-75.', 'Прибор не внесён в базу ХТМ или узел не принят на учёт. Уточните: 067-370-87-75.'],
+      [/демонтован|демонтирован/i, 'R_DISMOUNTED', 'Прилад розпломбований (знятий з обліку). Уточніть: 050-670-13-45.', 'Прибор распломбирован (снят с учёта). Уточните: 050-670-13-45.'],
+      [/повірку/i, 'R_VERIFICATION', 'Минув строк повірки — потрібна повірка.', 'Истёк срок поверки — нужна поверка.'],
+      [/пропущені останні показання/i, 'R_SEASON_GAP', 'Не вистачає показань кінця минулого сезону — їх подають письмово в абонвідділ.', 'Не хватает показаний конца прошлого сезона — их подают письменно в абонотдел.'],
+      [/Різниця складає .*має бути не більше 24/i, 'R_HOURS_CALENDAR', 'Години роботи не збігаються з календарем: перевірте дату зняття.', 'Часы работы не совпадают с календарём: проверьте дату снятия.'],
+      [/меньше 15 ГКал|менше 15 ГКал/i, 'R_ENERGY_JUMP', 'Завеликий приріст енергії — ймовірно, пропущена крапка.', 'Слишком большой прирост энергии — вероятно, пропущена точка.'],
+      [/не меньшою 2\.5|не меншою 2\.5/i, 'R_DT_MIN', 'Теплоносій біжить занадто швидко (ΔT < 2,5). Зменшіть витрату.', 'Теплоноситель бежит слишком быстро (ΔT < 2,5). Уменьшите расход.'],
+      [/не більше 50/i, 'R_DT_MAX', 'Помилка в енергії або обсязі (ΔT > 50).', 'Ошибка в энергии или объёме (ΔT > 50).'],
+      [/Переходної витрати/i, 'R_FLOW_MIN', 'Витрата менша за перехідну — налаштуйте систему.', 'Расход меньше переходного — настройте систему.'],
+      [/від 5 до 95/i, 'R_TEMP_RANGE', 'Температура 0 або поза 5–95 °C.', 'Температура 0 или вне 5–95 °C.'],
+      [/більше 15 градусів/i, 'R_DT_NO_FLOW', 'ΔT > 15 °C без руху теплоносія — можлива несправність.', 'ΔT > 15 °C без движения теплоносителя — возможна неисправность.'],
+      [/витрати теплоносія.*не змінились/i, 'R_ENERGY_WITHOUT_VOLUME', 'Енергія росла, а обсяг ні — перевірте обсяг.', 'Энергия росла, а объём нет — проверьте объём.'],
+      [/теплоенергії.*мають бути більше/i, 'R_MONO_ENERGY', 'Енергія менша за попередню.', 'Энергия меньше предыдущей.'],
+      [/об'єму.*мають бути більше|об’єму.*мають бути більше/i, 'R_MONO_VOLUME', 'Обсяг менший за попередній.', 'Объём меньше предыдущего.'],
+      [/часу.*ма[єю]ть? бути більше/i, 'R_MONO_HOURS', 'Години менші за попередні.', 'Часы меньше предыдущих.']
+    ];
+    for (var i = 0; i < map.length; i++) if (map[i][0].test(s)) return { code: map[i][1], fix: { uk: map[i][2], ru: map[i][3] } };
+    if (/не\s+при[йн]{1,2}яті/i.test(s)) return { code: 'REJECTED_OTHER', fix: { uk: 'Причину вказано в журналі ХТМ.', ru: 'Причина указана в журнале ХТМ.' } };
+    return { code: 'UNKNOWN' };
+  }
+
+  var api = { C: C, FIELDS: FIELDS, num: num, validate: validate, checkField: checkField, decodeRobot: decodeRobot,
+    windowState: windowState, formatForHtm: formatForHtm, toHtmDate: toHtmDate, daysBetween: daysBetween, normCode: normCode, ymd: ymd };
+  if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.TeploRules = api;
+})(typeof window !== 'undefined' ? window : this);
+
+</script>
+<script>
+/*
+ * Теплосервис — каталог моделей и шаги снятия (read_steps).
+ * Шаг: { press:'short'|'long'|null, count, fields:[ключи], lcd:{digits, tag, alt}, hint:{uk,ru} }
+ * status: 'verified' — шаги подтверждены инструкцией; 'draft' — известна часть, остальное «шукайте».
+ * hoursOnlyWithFlow — прибор считает часы только при расходе (памятка ХТМ): правило часов смягчается.
+ */
+(function (root) {
+  'use strict';
+  var L = function (uk, ru) { return { uk: uk, ru: ru }; };
+
+  var SHARKY_774 = [
+    { press: 'short', count: 1, fields: ['energy'], lcd: { digits: '00015.482', tag: 'Gcal' },
+      hint: L('Перший екран після натискання — накопичена енергія.', 'Первый экран после нажатия — накопленная энергия.') },
+    { press: 'short', count: 1, fields: ['volume'], lcd: { digits: '02724.494', tag: 'm³', corner: true },
+      hint: L('«m³» у правому верхньому куті — це обсяг теплоносія.', '«m³» в правом верхнем углу — это объём теплоносителя.') },
+    { press: 'short', count: 1, fields: ['flow'], lcd: { digits: '1.067', tag: 'm³/h' },
+      hint: L('Миттєва витрата, м³/год.', 'Мгновенный расход, м³/ч.') },
+    { press: 'short', count: 1, fields: ['power'], lcd: { digits: '6.790', tag: 'kW' },
+      hint: L('Миттєва потужність, кВт.', 'Мгновенная мощность, кВт.') },
+    { press: 'short', count: 1, fields: ['tSupply', 'tReturn'], lcd: { digits: '56.57', tag: 'ht', alt: { digits: '51.11', tag: 'ct' } },
+      hint: L('Екран сам чергує «ht» (подача) і «ct» (обратка) — дочекайтеся обох.', 'Экран сам чередует «ht» (подача) и «ct» (обратка) — дождитесь обоих.') },
+    { press: 'short', count: 2, fields: ['hours', 'errHours'], lcd: { digits: '35611', tag: 'On', alt: { digits: '153', tag: 'Eh' } },
+      hint: L('Ще 2 натискання. Чергуються «On» (години роботи) і «Eh» (години з помилкою).', 'Ещё 2 нажатия. Чередуются «On» (часы работы) и «Eh» (часы с ошибкой).') },
+    { press: 'short', count: 1, fields: ['errCode'], lcd: { digits: 'E- - -', tag: '' },
+      hint: L('«E-» без цифр — помилок немає. «Err» біля значень — є помилка.', '«E-» без цифр — ошибок нет. «Err» рядом со значениями — есть ошибка.') }
+  ];
+
+  /** Шаги для моделей без проверенной инструкции: что искать, без точного числа нажатий. */
+  function genericSteps(intro) {
+    return [
+      { press: null, count: 0, fields: ['energy'], lcd: { digits: '00000.000', tag: 'Gcal' },
+        hint: intro || L('Енергія зазвичай на екрані за замовчуванням (або після першого натискання).', 'Энергия обычно на экране по умолчанию (или после первого нажатия).') },
+      { press: 'short', count: null, fields: ['volume'], lcd: { digits: '0000.000', tag: 'm³' },
+        hint: L('Короткими натисканнями шукайте екран з «m³».', 'Короткими нажатиями ищите экран с «m³».') },
+      { press: 'short', count: null, fields: ['flow'], lcd: { digits: '0.000', tag: 'm³/h' },
+        hint: L('Шукайте «m³/h» — миттєва витрата. Буває в іншій «петлі» (довге натискання).', 'Ищите «m³/h» — мгновенный расход. Бывает в другой «петле» (длинное нажатие).') },
+      { press: 'short', count: null, fields: ['power'], lcd: { digits: '0.000', tag: 'kW' },
+        hint: L('Шукайте «kW» — потужність.', 'Ищите «kW» — мощность.') },
+      { press: 'short', count: null, fields: ['tSupply', 'tReturn'], lcd: { digits: '00.00', tag: '°C' },
+        hint: L('Дві температури: подача (вища) і обратка (нижча). Підписи бувають T1/T2, ht/ct, ↑/↓.', 'Две температуры: подача (выше) и обратка (ниже). Подписи бывают T1/T2, ht/ct, ↑/↓.') },
+      { press: 'short', count: null, fields: ['hours', 'errHours'], lcd: { digits: '00000', tag: 'h' },
+        hint: L('Години роботи і години з помилкою (часто «h», «On», «Eh», «Err h»). Немає годин з помилкою — впишіть 0.', 'Часы работы и часы с ошибкой (часто «h», «On», «Eh», «Err h»). Нет часов с ошибкой — впишите 0.') },
+      { press: 'short', count: null, fields: ['errCode'], lcd: { digits: '- - - -', tag: '' },
+        hint: L('Код помилки або інформаційний екран. Немає помилки — залиште порожнім.', 'Код ошибки или информационный экран. Нет ошибки — оставьте пустым.') }
+    ];
+  }
+
+  var MODELS = [
+    { id: 'sharky774', vendor: 'Diehl', name: 'SHARKY 774', status: 'verified', unit: 'Gcal', units: ['Gcal'], sleepMin: 4, buttons: 1,
+      where: L('Наклейка на корпусі; у кабінеті ХТМ — «ПУ Sharky 774».', 'Наклейка на корпусе; в кабинете ХТМ — «ПУ Sharky 774».'),
+      note: L('Інструкція OTOS. Засинає через 4 хв — натисніть кнопку знову й долистайте.', 'Инструкция OTOS. Засыпает через 4 мин — нажмите кнопку снова и долистайте.'),
+      steps: SHARKY_774 },
+    { id: 'sharky775', vendor: 'Diehl', name: 'SHARKY 775 / SONOMETER 1100', status: 'draft', unit: 'Gcal', units: ['Gcal', 'MWh', 'GJ', 'kWh'], sleepMin: 4,
+      where: L('Наклейка на корпусі.', 'Наклейка на корпусе.'),
+      note: L('Порядок: енергія → обсяг → витрата → потужність → температури → дні → код.', 'Порядок: энергия → объём → расход → мощность → температуры → дни → код.'),
+      steps: genericSteps() },
+    { id: 't330', vendor: 'Landis+Gyr', name: 'ULTRAHEAT T330', status: 'draft', unit: 'MWh', units: ['MWh', 'kWh', 'GJ', 'Gcal'], sleepMin: 0.5,
+      where: L('Наклейка «ULTRAHEAT», «T330», «UH30».', 'Наклейка «ULTRAHEAT», «T330», «UH30».'),
+      note: L('Коротке натискання (< 2 с) — наступний рядок, довге (> 3 с) — наступна «петля». Поточні значення — у петлі 1.', 'Короткое нажатие (< 2 с) — следующая строка, длинное (> 3 с) — следующая «петля». Текущие значения — в петле 1.'),
+      steps: genericSteps(L('Петля 0: тест екрана → енергія. Одиниця — та, що на екрані (часто MWh).', 'Петля 0: тест экрана → энергия. Единица — та, что на экране (часто MWh).')) },
+    { id: 't230', vendor: 'Landis+Gyr', name: 'ULTRAHEAT T230', status: 'draft', unit: 'MWh', units: ['MWh', 'kWh', 'GJ'], sleepMin: 0.5,
+      where: L('Наклейка «ULTRAHEAT T230».', 'Наклейка «ULTRAHEAT T230».'), note: L('Як T330.', 'Как T330.'), steps: genericSteps() },
+    { id: 'multical302', vendor: 'Kamstrup', name: 'MULTICAL 302', status: 'draft', unit: 'GJ', units: ['GJ', 'MWh', 'kWh'], sleepMin: 4,
+      where: L('Напис «MULTICAL» на кришці.', 'Надпись «MULTICAL» на крышке.'),
+      note: L('Порядок: енергія → обсяг → години → T1 → T2 → ΔT → витрата → потужність. Гкал немає — перерахуємо.', 'Порядок: энергия → объём → часы → T1 → T2 → ΔT → расход → мощность. Гкал нет — пересчитаем.'),
+      steps: genericSteps() },
+    { id: 'elf', vendor: 'Apator', name: 'ELF / LQM-III ELF', status: 'draft', unit: 'Gcal', units: ['Gcal', 'GJ', 'kWh'], sleepMin: 3, hoursOnlyWithFlow: true,
+      where: L('Напис «ELF» або «LQM-III».', 'Надпись «ELF» или «LQM-III».'),
+      note: L('Символ одиниці на екрані не показується — оберіть одиницю з паспорта. Години рахує лише при витраті.', 'Символ единицы на экране не показывается — выберите единицу из паспорта. Часы считает только при расходе.'),
+      steps: genericSteps() },
+    { id: 'sensostar', vendor: 'Engelmann', name: 'SensoStar', status: 'draft', unit: 'MWh', units: ['MWh', 'kWh', 'GJ', 'Gcal'], sleepMin: 2,
+      where: L('Напис «SensoStar».', 'Надпись «SensoStar».'), note: L('Довге натискання (> 4 с) — наступний рівень меню.', 'Длинное нажатие (> 4 с) — следующий уровень меню.'), steps: genericSteps() },
+    { id: 'nik7071', vendor: 'НІК', name: 'НІК 7071', status: 'draft', unit: 'Gcal', units: ['Gcal', 'kWh'], sleepMin: 5,
+      where: L('Напис «НІК».', 'Надпись «НІК».'), note: L('Порядок: ENER → POW → VOL → FLOW → T → dT → Stat.', 'Порядок: ENER → POW → VOL → FLOW → T → dT → Stat.'), steps: genericSteps() },
+    { id: 'trust', vendor: '—', name: 'TRUST', status: 'draft', unit: 'Gcal', units: ['Gcal', 'GJ', 'kWh', 'MWh'], sleepMin: 0, hoursOnlyWithFlow: true,
+      where: L('Наклейка «Теплолічильник TRUST».', 'Наклейка «Теплолічильник TRUST».'),
+      note: L('Інструкції ще немає. Години рахує лише при витраті (памятка ХТМ).', 'Инструкции ещё нет. Часы считает только при расходе (памятка ХТМ).'), steps: genericSteps() },
+    { id: 'other', vendor: '', name: '', status: 'universal', unit: 'Gcal', units: ['Gcal', 'MWh', 'GJ', 'kWh'], sleepMin: 0,
+      where: L('', ''), note: L('Універсальний режим: 10 полів у порядку журналу ХТМ.', 'Универсальный режим: 10 полей в порядке журнала ХТМ.'), steps: genericSteps() }
+  ];
+
+  // Пересчёт энергии в Гкал (форма ХТМ — в Гкал)
+  var TO_GCAL = { Gcal: 1, MWh: 0.859845, kWh: 0.000859845, GJ: 0.238846 };
+
+  var api = { MODELS: MODELS, TO_GCAL: TO_GCAL, byId: function (id) { return MODELS.filter(function (m) { return m.id === id; })[0] || null; } };
+  if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.TeploModels = api;
+})(typeof window !== 'undefined' ? window : this);
+
+</script>
+<script>
+/* Теплосервис — тексты интерфейса: uk (по умолчанию) и ru. Ключи плоские; {name} — подстановка. */
+(function (root) {
+  'use strict';
+  var T = {
+    uk: {
+      brand: 'Теплосервіс',
+      nav_home: 'Головна', nav_history: 'Історія', nav_help: 'Довідка', nav_prefs: 'Налаштування',
+      close: 'Закрити', back: 'Назад', next: 'Далі', save: 'Зберегти', skip: 'Пропустити', change: 'Змінити', copy: 'Копіювати', copied: 'Скопійовано', done: 'Готово', cancel: 'Скасувати',
+
+      w_title: 'Показання тепла без відмов робота ХТМ',
+      w_lead: 'Підкажемо, що натискати на лічильнику, перевіримо цифри так само, як робот ХТМ, і підготуємо все для кабінету.',
+      w_b1: 'Крок за кроком біля лічильника: яку кнопку натиснути і що переписати.',
+      w_b2: 'Перевірка до передачі за правилами робота ХТМ — з поясненням, що виправити.',
+      w_b3: 'Усі 10 значень у порядку форми ХТМ, і нагадування перевірити, чи прийняли.',
+      w_cta: 'Почати',
+      w_fine: 'Без реєстрації. Дані зберігаються лише в цьому браузері.',
+
+      win_closed_before: 'Приймання показань відкриється {date}.',
+      win_closed_before_sub: 'Показання, зняті зараз, ХТМ не прийме — зніміть їх з 5 по 23 число.',
+      win_open: 'Приймання відкрите до {last}. Рекомендуємо передати до {rec}.',
+      win_open_sub: 'Знімайте й передавайте в один день.',
+      win_soon: 'До рекомендованого строку {days} дн. — передайте до {rec}.',
+      win_late: 'Рекомендований строк минув, але приймання відкрите до {last}.',
+      win_last: 'Сьогодні останній день приймання.',
+      win_closed_after: 'Приймання закрите на нарахування. Відкриється {date}.',
+      win_closed_after_sub: 'Пропущений місяць нарахують за будинковим лічильником; після наступних показань буде перерахунок.',
+
+      h_last: 'Останні прийняті ХТМ',
+      h_last_none: 'Ще немає прийнятих показань',
+      h_last_none_sub: 'Внесіть останні прийняті з кабінету ХТМ — тоді перевірка буде точною.',
+      h_add_base: 'Внести з кабінету',
+      h_read: 'Зняти показання',
+      h_continue: 'Продовжити зняття — крок {i} з {n}',
+      h_waiting: 'Показання на перевірці у робота ХТМ',
+      h_waiting_sub: 'Передано {ago}. Робот перевіряє 15–30 хвилин.',
+      h_check_result: 'Перевірити результат',
+      h_meter: 'Мій лічильник',
+      h_recent: 'Останні записи',
+      h_hw: 'Гарячу воду ХТМ приймає лише через Telegram-бот',
+
+      m_title: 'Ваш лічильник',
+      m_lead: 'Від моделі залежить, скільки разів натискати кнопку і що буде на екрані.',
+      m_where: 'Де подивитися модель',
+      m_where_text: 'На наклейці на корпусі лічильника. У кабінеті ХТМ — на сторінці показань тепла, у заголовку: «ПУ Sharky 774, №…».',
+      m_verified: 'Інструкція перевірена',
+      m_draft: 'Інструкція уточнюється',
+      m_other: 'Моєї моделі немає',
+      m_other_sub: '10 полів у порядку журналу ХТМ, без підказок по кнопках.',
+      m_unit: 'В яких одиницях лічильник показує енергію?',
+      m_unit_sub: 'Подивіться на екран енергії або в паспорт. Для ХТМ перерахуємо в Гкал.',
+
+      b_title: 'Останні прийняті показання',
+      b_lead: 'Робот ХТМ порівнює нові показання з попередніми. Внесіть їх — і ми перевіримо так само.',
+      b_where: 'У кабінеті ХТМ відкрийте «Приймання показань по теплу»: потрібний рядок угорі — «Показання, що пройшли раніше за розрахунком», або останній зелений рядок журналу.',
+      b_meter: 'Дані лічильника з тієї ж сторінки',
+      b_qt: 'Величина перехідної витрати, м³/год',
+      b_verified: 'Повірений до',
+      b_opt: 'необов’язково',
+      b_sample: 'Заповнити прикладом',
+      b_saved: 'Збережено',
+
+      s_step: 'Крок {i} з {n}',
+      s_date_title: 'Коли знімаєте показання?',
+      s_date_lead: 'Знімайте й передавайте в один день: робот ХТМ звіряє години роботи лічильника з датою.',
+      s_date: 'Дата зняття',
+      s_press: 'Натисніть кнопку',
+      s_press_n: '×{n}',
+      s_press_find: 'Шукайте екран',
+      s_first: 'Екран за замовчуванням',
+      s_prev: 'Минулого разу {v}',
+      s_need: 'Заповніть поле, щоб перейти далі.',
+      s_sleep: 'Лічильник засинає через ~{m} хв. Згас — натисніть кнопку й долистайте до цього екрана.',
+      s_err_none: 'Помилок немає (E-)',
+      s_err_code: 'Інший код',
+      s_on_screen: 'Як на екрані',
+      s_to_check: 'Перевірити',
+
+      c_title: 'Перевірка',
+      c_ok: 'Робот ХТМ, найімовірніше, прийме',
+      c_warn: 'Перевірте позначене — схоже на помилку',
+      c_block: 'Робот ХТМ не прийме',
+      c_fix: 'Виправити',
+      c_values: 'Значення у порядку форми ХТМ',
+      c_period: 'За період: +{de} Гкал за {days} дн. ≈ {cost} грн (лише ваша частина за лічильником)',
+      c_send: 'Передати в ХТМ',
+      c_send_anyway: 'Передати попри попередження',
+      c_save_inter: 'Зберегти як проміжні',
+      c_window_block: 'Зараз приймання закрите — ці показання ХТМ не прийме.',
+      c_window_fix: 'Збережіть їх як проміжні для статистики, а для ХТМ зніміть нові з 5 по 23 число.',
+      c_saved_inter: 'Збережено як проміжні',
+
+      ho_title: 'Передача в кабінет ХТМ',
+      ho_lead: 'Скопіюйте значення у форму ХТМ у цьому ж порядку. Роздільник — крапка, як вимагає ХТМ.',
+      ho_open: 'Відкрити кабінет ХТМ',
+      ho_steps_title: 'Як передати',
+      ho_s1: 'Увійдіть у кабінет ХТМ і відкрийте «Приймання показань по теплу».',
+      ho_s2: 'Перенесіть значення — кожне кнопкою «Копіювати» або все разом.',
+      ho_s3: 'Вкажіть телефон і email, натисніть «Зберегти показання».',
+      ho_s4: 'Поверніться сюди й натисніть «Я зберіг у кабінеті».',
+      ho_copy_all: 'Скопіювати все',
+      ho_contacts_none: 'Форма ХТМ вимагає телефон і email. Збережіть їх у налаштуваннях — і копіюйте звідси.',
+      ho_phone: 'Телефон', ho_email: 'Email',
+      ho_saved: 'Я зберіг у кабінеті',
+      ho_auto: 'Автоматична передача',
+      ho_auto_sub: 'У розробці: сервіс сам увійде в кабінет, збереже показання й перевірить журнал. Поки що — вручну.',
+
+      st_title: 'Результат перевірки роботом',
+      st_wait: 'Робот ХТМ перевіряє показання 15–30 хвилин.',
+      st_wait_ago: 'Передано {ago}.',
+      st_how: 'Відкрийте сторінку показань у кабінеті ХТМ: у журналі під вашим записом з’явиться рядок «Статус». Лист теж прийде на пошту.',
+      st_early: 'Ще рано — статусу, найімовірніше, немає. Загляньте о {at}.',
+      st_ok_btn: 'Прийнято — рядок зелений',
+      st_bad_btn: 'Не прийнято — рядок червоний',
+      st_accepted: 'Прийнято ХТМ',
+      st_accepted_sub: 'Ці показання тепер — база для наступного місяця.',
+      st_rejected: 'Не прийнято ХТМ',
+      st_paste: 'Вставте текст рядка «Статус» з журналу',
+      st_decode: 'Пояснити',
+      st_unknown: 'Не впізнали причину. Перевірте всі значення ще раз або зателефонуйте в ХТМ: 050-670-13-45.',
+      st_refix: 'Виправити й подати ще раз',
+      st_refix_sub: 'Останній запис у кабінеті ХТМ можна відредагувати — значок у клітинці з датою.',
+      st_none: 'Немає показань на перевірці.',
+
+      hi_title: 'Історія',
+      hi_empty: 'Тут з’являться ваші показання.',
+      hi_empty_cta: 'Зняти перші показання',
+
+      status_checked: 'Підготовлено', status_intermediate: 'Проміжні', status_handed: 'На перевірці', status_accepted: 'Прийнято', status_rejected: 'Не прийнято',
+
+      p_title: 'Налаштування',
+      p_lang: 'Мова',
+      p_meter: 'Лічильник',
+      p_base: 'Останні прийняті та дані лічильника',
+      p_contacts: 'Контакти для форми ХТМ',
+      p_contacts_sub: 'Зберігаються лише в цьому браузері.',
+      p_demo: 'Дата для перевірки (тест)',
+      p_demo_sub: 'Щоб спробувати весь шлях, коли приймання закрите. Залиште порожнім — буде сьогоднішня дата.',
+      p_data: 'Дані',
+      p_export: 'Скопіювати всі дані',
+      p_import: 'Відновити з тексту',
+      p_import_ph: 'Вставте скопійовані раніше дані',
+      p_import_ok: 'Дані відновлено',
+      p_import_bad: 'Не вдалося прочитати дані',
+      p_wipe: 'Видалити всі дані',
+      p_wipe_confirm: 'Видалити лічильник, базу й історію з цього браузера? Скасувати не можна.',
+      p_wipe_yes: 'Так, видалити',
+      p_wiped: 'Дані видалено',
+
+      lvl_ok: 'Прийме', lvl_warn: 'Перевірте', lvl_block: 'Не прийме', lvl_info: 'Довідка',
+
+      w_login: "Вже користуєтесь сервісом? Увійти",
+      sync_title: "Ваші дані на всіх пристроях",
+      sync_local: "Дані зберігаються лише в цьому браузері.",
+      sync_local_sub_site: "Увійдіть через Telegram або email — і бачитимете ті самі показання на телефоні й комп'ютері.",
+      sync_local_sub_noserver: "Синхронізація працює на сайті сервісу та в Telegram-боті.",
+      sync_claude: "Синхронізується через ваш акаунт Claude: ті самі дані на кожному пристрої, де ви відкриваєте цю сторінку.",
+      sync_server: "Ви увійшли — показання й історія однакові на всіх ваших пристроях.",
+      sync_ok: "Синхронізовано",
+      sync_syncing: "Синхронізую…",
+      sync_error: "Не вдалося синхронізувати — спробуємо ще раз",
+      sync_offline: "Немає зв'язку — усе збережено в цьому браузері",
+      login: "Увійти",
+      login_title: "Вхід",
+      login_lead: "Увійдіть, щоб бачити свої показання на всіх пристроях. Без входу дані лишаються в цьому браузері.",
+      login_tg: "Через Telegram",
+      login_tg_sub: "Один дотик, без пароля. У Telegram-боті вхід відбувається сам.",
+      login_email_title: "Email і пароль",
+      login_email: "Email",
+      login_pass: "Пароль",
+      login_pass_hint: "Щонайменше 8 символів.",
+      login_btn: "Увійти",
+      register_btn: "Створити акаунт",
+      login_need: "Немає акаунта? Створити",
+      login_have: "Вже є акаунт? Увійти",
+      login_skip: "Продовжити без входу",
+      login_ok: "Ви увійшли",
+      logout: "Вийти",
+      logout_sub: "Показання лишаться в акаунті, а з цього браузера їх буде прибрано.",
+      logged_out: "Ви вийшли",
+      err_bad_credentials: "Невірний email або пароль.",
+      err_rate_limited: "Забагато спроб. Спробуйте через {m} хв.",
+      err_email_taken: "Цей email уже зареєстровано — увійдіть.",
+      err_weak_password: "Пароль — щонайменше 8 символів.",
+      err_bad_email: "Перевірте email.",
+      err_network: "Немає зв'язку з сервером.",
+      err_telegram_bad_signature: "Не вдалося увійти через Telegram. Спробуйте ще раз.",
+      err_telegram_expired: "Вхід через Telegram застарів. Спробуйте ще раз.",
+      err_telegram_linked_elsewhere: "Цей Telegram уже прив'язаний до іншого акаунта.",
+      err_csrf: "Оновіть сторінку і спробуйте ще раз.",
+      acct_link_tg: "Прив'язати Telegram",
+      acct_set_pass: "Додати вхід за email і паролем",
+      acct_set_pass_btn: "Зберегти email і пароль",
+      acct_tg_linked_noname: "підключено",
+      save_prompt: "Збережіть показання в акаунті, щоб бачити їх на телефоні й комп'ютері.",
+      save_prompt_later: "Пізніше",
+      ph_entry: "Розпізнати з фото",
+      ph_title: "Розпізнати з фото",
+      ph_lead: "Сфотографуйте екран лічильника після кожного натискання кнопки — зблизька, без відблисків. Можна одразу додати фото наклейки з моделлю.",
+      ph_pick: "Обрати фото",
+      ph_add: "Додати ще фото",
+      ph_go: "Розпізнати ({n} фото)",
+      ph_working: "Розпізнаю {n} фото… Зазвичай це до хвилини.",
+      ph_stop: "Зупинити",
+      ph_batch: "Частина {i} з {n}",
+      ph_date: "Коли фотографували",
+      ph_remove: "Прибрати фото",
+      ph_from: "фото {n}",
+      ph_result_sub: "Звірте з фото й виправте, якщо треба. Далі — звична перевірка, як у робота ХТМ.",
+      ph_missing: "не знайдено",
+      ph_low: "перевірте",
+      ph_conflict: "різні цифри на фото",
+      ph_meter_found: "На фото лічильник {m}",
+      ph_meter_use: "Використати цю модель",
+      ph_model_none: "Модель на фото не вдалося визначити. Сфотографуйте наклейку з назвою ближче.",
+      ph_to_check: "Перевірити",
+      ph_quality: "Фото {n}: {q}",
+      q_blurry: "розмите",
+      q_glare: "відблиск на екрані",
+      q_too_far: "знято здалеку",
+      q_cut_off: "екран обрізано",
+      q_dark: "затемно",
+      ph_unavail: "Розпізнавання працює в опублікованій версії сервісу: фото надсилаються Claude, і спершу він попросить вашого дозволу. Тут показання можна ввести вручну.",
+      ph_err_not_granted: "Розпізнавання вимкнене: дозволу використовувати Claude не надано.",
+      ph_err_rate: "Забагато запитів — спробуйте трохи пізніше.",
+      ph_err_image: "Це фото не вдалося прочитати — оберіть інше (JPEG, PNG, WebP).",
+      ph_err_generic: "Не вдалося розпізнати. Спробуйте ще раз або введіть вручну.",
+      ph_err_nothing: "На фото не знайдено показань. Сфотографуйте екран ближче.",
+      ph_model_title: "Визначити модель за фото",
+      ph_model_lead: "Сфотографуйте лічильник цілком або наклейку з назвою.",
+      ph_model_entry: "Визначити модель за фото",
+      ph_step_hint: "Або завантажте фото екранів — розпізнаємо самі",
+      ph_privacy: "Фото потрібні лише для розпізнавання і не зберігаються в сервісі — зберігаються тільки цифри.",
+      v_low_conf: "Розпізнано з фото невпевнено.",
+      v_low_conf_fix: "Звірте з екраном лічильника.",
+      ph_err_login: "Увійдіть, щоб розпізнавати фото.",
+      ph_err_timeout: "Сервер не встиг розпізнати — спробуйте менше фото за раз.",
+      help_title: 'Довідка',
+      ago_min: '{n} хв тому', ago_h: '{n} год тому', ago_d: '{n} дн. тому', ago_now: 'щойно'
+    },
+    ru: {
+      brand: 'Теплосервис',
+      nav_home: 'Главная', nav_history: 'История', nav_help: 'Справка', nav_prefs: 'Настройки',
+      close: 'Закрыть', back: 'Назад', next: 'Далее', save: 'Сохранить', skip: 'Пропустить', change: 'Изменить', copy: 'Копировать', copied: 'Скопировано', done: 'Готово', cancel: 'Отмена',
+
+      w_title: 'Показания тепла без отказов робота ХТМ',
+      w_lead: 'Подскажем, что нажимать на счётчике, проверим цифры так же, как робот ХТМ, и подготовим всё для кабинета.',
+      w_b1: 'Шаг за шагом у счётчика: какую кнопку нажать и что переписать.',
+      w_b2: 'Проверка до передачи по правилам робота ХТМ — с объяснением, что исправить.',
+      w_b3: 'Все 10 значений в порядке формы ХТМ и напоминание проверить, приняли ли.',
+      w_cta: 'Начать',
+      w_fine: 'Без регистрации. Данные хранятся только в этом браузере.',
+
+      win_closed_before: 'Приём показаний откроется {date}.',
+      win_closed_before_sub: 'Показания, снятые сейчас, ХТМ не примет — снимите их с 5 по 23 число.',
+      win_open: 'Приём открыт до {last}. Рекомендуем передать до {rec}.',
+      win_open_sub: 'Снимайте и передавайте в один день.',
+      win_soon: 'До рекомендованного срока {days} дн. — передайте до {rec}.',
+      win_late: 'Рекомендованный срок прошёл, но приём открыт до {last}.',
+      win_last: 'Сегодня последний день приёма.',
+      win_closed_after: 'Приём закрыт на начисления. Откроется {date}.',
+      win_closed_after_sub: 'Пропущенный месяц начислят по домовому счётчику; после следующих показаний будет перерасчёт.',
+
+      h_last: 'Последние принятые ХТМ',
+      h_last_none: 'Ещё нет принятых показаний',
+      h_last_none_sub: 'Внесите последние принятые из кабинета ХТМ — тогда проверка будет точной.',
+      h_add_base: 'Внести из кабинета',
+      h_read: 'Снять показания',
+      h_continue: 'Продолжить снятие — шаг {i} из {n}',
+      h_waiting: 'Показания на проверке у робота ХТМ',
+      h_waiting_sub: 'Передано {ago}. Робот проверяет 15–30 минут.',
+      h_check_result: 'Проверить результат',
+      h_meter: 'Мой счётчик',
+      h_recent: 'Последние записи',
+      h_hw: 'Горячую воду ХТМ принимает только через Telegram-бот',
+
+      m_title: 'Ваш счётчик',
+      m_lead: 'От модели зависит, сколько раз нажимать кнопку и что будет на экране.',
+      m_where: 'Где посмотреть модель',
+      m_where_text: 'На наклейке на корпусе счётчика. В кабинете ХТМ — на странице показаний тепла, в заголовке: «ПУ Sharky 774, №…».',
+      m_verified: 'Инструкция проверена',
+      m_draft: 'Инструкция уточняется',
+      m_other: 'Моей модели нет',
+      m_other_sub: '10 полей в порядке журнала ХТМ, без подсказок по кнопкам.',
+      m_unit: 'В каких единицах счётчик показывает энергию?',
+      m_unit_sub: 'Посмотрите на экран энергии или в паспорт. Для ХТМ пересчитаем в Гкал.',
+
+      b_title: 'Последние принятые показания',
+      b_lead: 'Робот ХТМ сравнивает новые показания с предыдущими. Внесите их — и мы проверим так же.',
+      b_where: 'В кабинете ХТМ откройте «Приймання показань по теплу»: нужная строка вверху — «Показання, що пройшли раніше за розрахунком», или последняя зелёная строка журнала.',
+      b_meter: 'Данные счётчика с той же страницы',
+      b_qt: 'Величина переходного расхода, м³/ч',
+      b_verified: 'Поверен до',
+      b_opt: 'необязательно',
+      b_sample: 'Заполнить примером',
+      b_saved: 'Сохранено',
+
+      s_step: 'Шаг {i} из {n}',
+      s_date_title: 'Когда снимаете показания?',
+      s_date_lead: 'Снимайте и передавайте в один день: робот ХТМ сверяет часы работы счётчика с датой.',
+      s_date: 'Дата снятия',
+      s_press: 'Нажмите кнопку',
+      s_press_n: '×{n}',
+      s_press_find: 'Ищите экран',
+      s_first: 'Экран по умолчанию',
+      s_prev: 'В прошлый раз {v}',
+      s_need: 'Заполните поле, чтобы перейти дальше.',
+      s_sleep: 'Счётчик засыпает через ~{m} мин. Погас — нажмите кнопку и долистайте до этого экрана.',
+      s_err_none: 'Ошибок нет (E-)',
+      s_err_code: 'Другой код',
+      s_on_screen: 'Как на экране',
+      s_to_check: 'Проверить',
+
+      c_title: 'Проверка',
+      c_ok: 'Робот ХТМ, скорее всего, примет',
+      c_warn: 'Проверьте отмеченное — похоже на ошибку',
+      c_block: 'Робот ХТМ не примет',
+      c_fix: 'Исправить',
+      c_values: 'Значения в порядке формы ХТМ',
+      c_period: 'За период: +{de} Гкал за {days} дн. ≈ {cost} грн (только ваша часть по счётчику)',
+      c_send: 'Передать в ХТМ',
+      c_send_anyway: 'Передать несмотря на предупреждения',
+      c_save_inter: 'Сохранить как промежуточные',
+      c_window_block: 'Сейчас приём закрыт — эти показания ХТМ не примет.',
+      c_window_fix: 'Сохраните их как промежуточные для статистики, а для ХТМ снимите новые с 5 по 23 число.',
+      c_saved_inter: 'Сохранено как промежуточные',
+
+      ho_title: 'Передача в кабинет ХТМ',
+      ho_lead: 'Скопируйте значения в форму ХТМ в этом же порядке. Разделитель — точка, как требует ХТМ.',
+      ho_open: 'Открыть кабинет ХТМ',
+      ho_steps_title: 'Как передать',
+      ho_s1: 'Войдите в кабинет ХТМ и откройте «Приймання показань по теплу».',
+      ho_s2: 'Перенесите значения — каждое кнопкой «Копировать» или все сразу.',
+      ho_s3: 'Укажите телефон и email, нажмите «Зберегти показання».',
+      ho_s4: 'Вернитесь сюда и нажмите «Я сохранил в кабинете».',
+      ho_copy_all: 'Скопировать всё',
+      ho_contacts_none: 'Форма ХТМ требует телефон и email. Сохраните их в настройках — и копируйте отсюда.',
+      ho_phone: 'Телефон', ho_email: 'Email',
+      ho_saved: 'Я сохранил в кабинете',
+      ho_auto: 'Автоматическая передача',
+      ho_auto_sub: 'В разработке: сервис сам войдёт в кабинет, сохранит показания и проверит журнал. Пока — вручную.',
+
+      st_title: 'Результат проверки роботом',
+      st_wait: 'Робот ХТМ проверяет показания 15–30 минут.',
+      st_wait_ago: 'Передано {ago}.',
+      st_how: 'Откройте страницу показаний в кабинете ХТМ: в журнале под вашей записью появится строка «Статус». Письмо тоже придёт на почту.',
+      st_early: 'Ещё рано — статуса, скорее всего, нет. Загляните в {at}.',
+      st_ok_btn: 'Принято — строка зелёная',
+      st_bad_btn: 'Не принято — строка красная',
+      st_accepted: 'Принято ХТМ',
+      st_accepted_sub: 'Эти показания теперь — база для следующего месяца.',
+      st_rejected: 'Не принято ХТМ',
+      st_paste: 'Вставьте текст строки «Статус» из журнала',
+      st_decode: 'Объяснить',
+      st_unknown: 'Не узнали причину. Проверьте все значения ещё раз или позвоните в ХТМ: 050-670-13-45.',
+      st_refix: 'Исправить и подать ещё раз',
+      st_refix_sub: 'Последнюю запись в кабинете ХТМ можно отредактировать — значок в ячейке с датой.',
+      st_none: 'Нет показаний на проверке.',
+
+      hi_title: 'История',
+      hi_empty: 'Здесь появятся ваши показания.',
+      hi_empty_cta: 'Снять первые показания',
+
+      status_checked: 'Подготовлено', status_intermediate: 'Промежуточные', status_handed: 'На проверке', status_accepted: 'Принято', status_rejected: 'Не принято',
+
+      p_title: 'Настройки',
+      p_lang: 'Язык',
+      p_meter: 'Счётчик',
+      p_base: 'Последние принятые и данные счётчика',
+      p_contacts: 'Контакты для формы ХТМ',
+      p_contacts_sub: 'Хранятся только в этом браузере.',
+      p_demo: 'Дата для проверки (тест)',
+      p_demo_sub: 'Чтобы попробовать весь путь, когда приём закрыт. Оставьте пустым — будет сегодняшняя дата.',
+      p_data: 'Данные',
+      p_export: 'Скопировать все данные',
+      p_import: 'Восстановить из текста',
+      p_import_ph: 'Вставьте скопированные ранее данные',
+      p_import_ok: 'Данные восстановлены',
+      p_import_bad: 'Не удалось прочитать данные',
+      p_wipe: 'Удалить все данные',
+      p_wipe_confirm: 'Удалить счётчик, базу и историю из этого браузера? Отменить нельзя.',
+      p_wipe_yes: 'Да, удалить',
+      p_wiped: 'Данные удалены',
+
+      lvl_ok: 'Примет', lvl_warn: 'Проверьте', lvl_block: 'Не примет', lvl_info: 'Справка',
+
+      w_login: "Уже пользуетесь сервисом? Войти",
+      sync_title: "Ваши данные на всех устройствах",
+      sync_local: "Данные хранятся только в этом браузере.",
+      sync_local_sub_site: "Войдите через Telegram или email — и будете видеть те же показания на телефоне и компьютере.",
+      sync_local_sub_noserver: "Синхронизация работает на сайте сервиса и в Telegram-боте.",
+      sync_claude: "Синхронизируется через ваш аккаунт Claude: те же данные на каждом устройстве, где вы открываете эту страницу.",
+      sync_server: "Вы вошли — показания и история одинаковы на всех ваших устройствах.",
+      sync_ok: "Синхронизировано",
+      sync_syncing: "Синхронизирую…",
+      sync_error: "Не удалось синхронизировать — попробуем ещё раз",
+      sync_offline: "Нет связи — всё сохранено в этом браузере",
+      login: "Войти",
+      login_title: "Вход",
+      login_lead: "Войдите, чтобы видеть свои показания на всех устройствах. Без входа данные остаются в этом браузере.",
+      login_tg: "Через Telegram",
+      login_tg_sub: "Одно касание, без пароля. В Telegram-боте вход происходит сам.",
+      login_email_title: "Email и пароль",
+      login_email: "Email",
+      login_pass: "Пароль",
+      login_pass_hint: "Не меньше 8 символов.",
+      login_btn: "Войти",
+      register_btn: "Создать аккаунт",
+      login_need: "Нет аккаунта? Создать",
+      login_have: "Уже есть аккаунт? Войти",
+      login_skip: "Продолжить без входа",
+      login_ok: "Вы вошли",
+      logout: "Выйти",
+      logout_sub: "Показания останутся в аккаунте, а из этого браузера будут убраны.",
+      logged_out: "Вы вышли",
+      err_bad_credentials: "Неверный email или пароль.",
+      err_rate_limited: "Слишком много попыток. Попробуйте через {m} мин.",
+      err_email_taken: "Этот email уже зарегистрирован — войдите.",
+      err_weak_password: "Пароль — не меньше 8 символов.",
+      err_bad_email: "Проверьте email.",
+      err_network: "Нет связи с сервером.",
+      err_telegram_bad_signature: "Не удалось войти через Telegram. Попробуйте ещё раз.",
+      err_telegram_expired: "Вход через Telegram устарел. Попробуйте ещё раз.",
+      err_telegram_linked_elsewhere: "Этот Telegram уже привязан к другому аккаунту.",
+      err_csrf: "Обновите страницу и попробуйте ещё раз.",
+      acct_link_tg: "Привязать Telegram",
+      acct_set_pass: "Добавить вход по email и паролю",
+      acct_set_pass_btn: "Сохранить email и пароль",
+      acct_tg_linked_noname: "подключён",
+      save_prompt: "Сохраните показания в аккаунте, чтобы видеть их на телефоне и компьютере.",
+      save_prompt_later: "Позже",
+      ph_entry: "Распознать по фото",
+      ph_title: "Распознать по фото",
+      ph_lead: "Сфотографируйте экран счётчика после каждого нажатия кнопки — вблизи, без бликов. Можно сразу добавить фото наклейки с моделью.",
+      ph_pick: "Выбрать фото",
+      ph_add: "Добавить ещё фото",
+      ph_go: "Распознать ({n} фото)",
+      ph_working: "Распознаю {n} фото… Обычно это до минуты.",
+      ph_stop: "Остановить",
+      ph_batch: "Часть {i} из {n}",
+      ph_date: "Когда фотографировали",
+      ph_remove: "Убрать фото",
+      ph_from: "фото {n}",
+      ph_result_sub: "Сверьте с фото и исправьте, если нужно. Дальше — обычная проверка, как у робота ХТМ.",
+      ph_missing: "не найдено",
+      ph_low: "проверьте",
+      ph_conflict: "разные цифры на фото",
+      ph_meter_found: "На фото счётчик {m}",
+      ph_meter_use: "Использовать эту модель",
+      ph_model_none: "Модель на фото определить не удалось. Сфотографируйте наклейку с названием ближе.",
+      ph_to_check: "Проверить",
+      ph_quality: "Фото {n}: {q}",
+      q_blurry: "размыто",
+      q_glare: "блик на экране",
+      q_too_far: "снято издалека",
+      q_cut_off: "экран обрезан",
+      q_dark: "темно",
+      ph_unavail: "Распознавание работает в опубликованной версии сервиса: фото отправляются Claude, и сначала он попросит вашего разрешения. Здесь показания можно ввести вручную.",
+      ph_err_not_granted: "Распознавание выключено: разрешение использовать Claude не дано.",
+      ph_err_rate: "Слишком много запросов — попробуйте чуть позже.",
+      ph_err_image: "Это фото не удалось прочитать — выберите другое (JPEG, PNG, WebP).",
+      ph_err_generic: "Не удалось распознать. Попробуйте ещё раз или введите вручную.",
+      ph_err_nothing: "На фото не найдено показаний. Сфотографируйте экран ближе.",
+      ph_model_title: "Определить модель по фото",
+      ph_model_lead: "Сфотографируйте счётчик целиком или наклейку с названием.",
+      ph_model_entry: "Определить модель по фото",
+      ph_step_hint: "Или загрузите фото экранов — распознаем сами",
+      ph_privacy: "Фото нужны только для распознавания и не хранятся в сервисе — сохраняются только цифры.",
+      v_low_conf: "Распознано по фото неуверенно.",
+      v_low_conf_fix: "Сверьте с экраном счётчика.",
+      ph_err_login: "Войдите, чтобы распознавать фото.",
+      ph_err_timeout: "Сервер не успел распознать — попробуйте меньше фото за раз.",
+      help_title: 'Справка',
+      ago_min: '{n} мин назад', ago_h: '{n} ч назад', ago_d: '{n} дн. назад', ago_now: 'только что'
+    }
+  };
+  var MONTHS = {
+    uk: ['січня', 'лютого', 'березня', 'квітня', 'травня', 'червня', 'липня', 'серпня', 'вересня', 'жовтня', 'листопада', 'грудня'],
+    ru: ['января', 'февраля', 'марта', 'апреля', 'мая', 'июня', 'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря']
+  };
+  root.TeploI18n = { T: T, MONTHS: MONTHS };
+})(window);
+
+</script>
+<script>
+/*
+ * Теплосервис — синхронизация данных между устройствами.
+ * Локальная копия (localStorage) есть всегда: сайт работает и без сети/входа.
+ * Бэкенды, по порядку:
+ *   server — свой сервер (window.TEPLO_API, напр. '/api'): аккаунт через Telegram или email+пароль;
+ *   claude — опубликованный прототип на claude.ai: личный документ data/users/<id>/teplo (возможности db + user);
+ *   local  — только этот браузер.
+ * Слияние: показания — объединение по id (новее по updatedAt), остальное — из более свежего состояния;
+ * wipedAt — «удалить всё» побеждает старые записи.
+ */
+(function (root) {
+  'use strict';
+  var SYNC_KEYS = ['v', 'onboarded', 'meter', 'baseline', 'contacts', 'readings', 'draft', 'updatedAt', 'wipedAt'];
+
+  function payload(S) { var o = {}; SYNC_KEYS.forEach(function (k) { if (S[k] !== undefined) o[k] = S[k]; }); return o; }
+  function sig(p) { var c = Object.assign({}, p); delete c.updatedAt; return JSON.stringify(c); }
+  function ts(x) { var n = typeof x === 'number' ? x : Date.parse(x || 0); return isFinite(n) ? n : 0; }
+
+  /** Слить два состояния (локальное a и удалённое b). Возвращает новое. */
+  function merge(a, b) {
+    a = a || {}; b = b || {};
+    var aT = a.updatedAt || 0, bT = b.updatedAt || 0, newer = bT > aT ? b : a, older = newer === a ? b : a;
+    var out = Object.assign({}, older, newer);
+    var wiped = Math.max(a.wipedAt || 0, b.wipedAt || 0);
+    var map = {};
+    (older.readings || []).concat(newer.readings || []).forEach(function (r) {
+      if (!r || !r.id) return;
+      if (wiped && ts(r.createdAt) <= wiped) return;
+      var o = map[r.id];
+      if (!o || (r.updatedAt || ts(r.createdAt)) >= (o.updatedAt || ts(o.createdAt))) map[r.id] = r;
+    });
+    out.readings = Object.keys(map).map(function (k) { return map[k]; }).sort(function (x, y) { return ts(x.createdAt) - ts(y.createdAt); });
+    var wipeWins = wiped && newer.wipedAt === wiped;
+    out.onboarded = wipeWins ? !!newer.onboarded : !!(a.onboarded || b.onboarded);
+    // база (последние принятые ХТМ) — с более поздней датой; при равенстве — из более свежего состояния
+    var ba = a.baseline, bb = b.baseline;
+    if (wipeWins) out.baseline = newer.baseline || null;
+    else if (ba && bb) out.baseline = String(ba.date) === String(bb.date) ? newer.baseline : (String(ba.date) > String(bb.date) ? ba : bb);
+    else out.baseline = ba || bb || null;
+    out.meter = newer.meter || older.meter || null;
+    out.updatedAt = Math.max(aT, bT); out.wipedAt = wiped || undefined;
+    return out;
+  }
+
+  // ---------------- бэкенд: свой сервер ----------------
+  function cookie(name) { var m = document.cookie.match(new RegExp('(?:^|; )' + name + '=([^;]*)')); return m ? decodeURIComponent(m[1]) : ''; }
+  function api(method, path, body) {
+    // CSRF: перед первым изменяющим запросом получить cookie ts_csrf (сервер выдаёт её на любой GET)
+    if (method !== 'GET' && !cookie('ts_csrf')) return api('GET', '/config').then(function () { return api(method, path, body); });
+    var h = { 'Accept': 'application/json' };
+    if (method !== 'GET') { h['Content-Type'] = 'application/json'; h['X-CSRF'] = cookie('ts_csrf'); }
+    return fetch(root.TEPLO_API + path, { method: method, headers: h, credentials: 'same-origin', body: body ? JSON.stringify(body) : undefined })
+      .then(function (res) { return res.json().catch(function () { return {}; }).then(function (j) { j._status = res.status; return j; }); });
+  }
+
+  var Sync = {
+    mode: 'local',          // local | claude | server
+    account: null,          // server: {id, email, telegram:{id, username, name}}
+    serverReachable: false,
+    status: 'idle',         // idle | syncing | ok | error | offline
+    _get: null, _apply: null, _onChange: null, _lastSig: '', _writing: false, _again: false, _version: 0, _ref: null,
+
+    /** getState() → текущее состояние; applyRemote(merged) — применить; onChange() — перерисовать статус. */
+    init: function (getState, applyRemote, onChange) {
+      this._get = getState; this._apply = applyRemote; this._onChange = onChange || function () {};
+      var self = this;
+      if (root.TEPLO_API) return this._initServer();
+      if (root.claude && typeof root.claude.use === 'function') return this._initClaude().catch(function () { self._set('local', 'idle'); });
+      return Promise.resolve();
+    },
+    _set: function (mode, status) { this.mode = mode; this.status = status; this._onChange(); },
+
+    /** Сохранить изменения (вызывается после каждого save()). Пишем не чаще раза в 1,2 с и только при изменении. */
+    push: function () {
+      if (this.mode === 'local' || (this.mode === 'server' && !this.account)) return;
+      var self = this; clearTimeout(this._t); this._t = setTimeout(function () { self._flush(); }, 1200);
+    },
+    _flush: function () {
+      var p = payload(this._get()), s = sig(p);
+      if (s === this._lastSig) return;
+      if (this._writing) { this._again = true; return; }
+      this._writing = true; this.status = 'syncing'; this._onChange();
+      var self = this, done = function (ok) { self._writing = false; if (ok) self._lastSig = s; self.status = ok ? 'ok' : 'error'; self._onChange(); if (self._again) { self._again = false; self._flush(); } };
+      if (this.mode === 'claude') this._ref.set({ state: p, updatedAt: p.updatedAt || Date.now() }).then(function () { done(true); }, function () { done(false); });
+      else if (this.mode === 'server') api('PUT', '/state', { state: p, baseVersion: this._version }).then(function (j) {
+        if (j._status === 200) { self._version = j.version; done(true); }
+        else if (j._status === 409 && j.state) { self._version = j.version; self._apply(merge(self._get(), j.state)); self._writing = false; self._flush(); }
+        else if (j._status === 401) { self.account = null; done(false); }
+        else done(false);
+      }, function () { self.status = 'offline'; self._writing = false; self._onChange(); });
+    },
+
+    // ---- claude.ai (прототип) ----
+    _initClaude: function () {
+      var self = this;
+      return Promise.all([root.claude.use('db'), root.claude.use('user')]).then(function (r) {
+        var db = r[0], user = r[1];
+        if (!db || !user || typeof user.id !== 'function') return;
+        return user.id().then(function (id) {
+          if (!id) return;
+          self._ref = db.doc('data/users/' + id + '/teplo');
+          self._set('claude', 'syncing');
+          var first = true, timer = setTimeout(function () { if (first) { self.status = 'offline'; self._onChange(); } }, 10000);
+          self._ref.onSnapshot(function (snap) {
+            if (snap.metadata && snap.metadata.hasPendingWrites) return;
+            if (first) { first = false; clearTimeout(timer); }
+            var d = snap.exists ? snap.data() : null;
+            if (d && d.state) { var m = merge(self._get(), d.state); self._lastSig = sig(payload(d.state)); self._apply(m); }
+            self.status = 'ok'; self._onChange(); self._flush();
+          }, function () { clearTimeout(timer); self._set('local', 'error'); });
+        });
+      });
+    },
+
+    // ---- свой сервер ----
+    _initServer: function () {
+      var self = this;
+      var tg = root.Telegram && root.Telegram.WebApp;
+      var start = tg && tg.initData ? this.loginTelegramWebApp(tg.initData) : this.refreshMe();
+      return start.then(function () { self._startPolling(); }, function () { self._set('local', 'offline'); });
+    },
+    refreshMe: function () {
+      var self = this;
+      return api('GET', '/me').then(function (j) { self.serverReachable = true; self.account = j._status === 200 ? j.user : null; return self.account ? self.pull() : self._set('server', 'idle'); });
+    },
+    pull: function () {
+      var self = this; this._set('server', 'syncing');
+      return api('GET', '/state').then(function (j) {
+        if (j._status !== 200) { if (j._status === 401) self.account = null; self._set('server', 'error'); return; }
+        self._version = j.version || 0;
+        if (j.state) { self._lastSig = sig(j.state); self._apply(merge(self._get(), j.state)); }
+        self._set('server', 'ok'); self._flush();
+      });
+    },
+    _startPolling: function () {
+      var self = this;
+      var tick = function () { if (self.mode === 'server' && self.account && document.visibilityState === 'visible' && !self._writing) api('GET', '/state?since=' + self._version).then(function (j) { if (j._status === 200 && j.version !== self._version && j.state) { self._version = j.version; self._lastSig = sig(j.state); self._apply(merge(self._get(), j.state)); } }); };
+      document.addEventListener('visibilitychange', tick); setInterval(tick, 60000);
+    },
+    _after: function (j) { if (j._status === 200 && j.user) { this.account = j.user; return this.pull().then(function () { return j; }); } return Promise.resolve(j); },
+    login: function (email, password) { var self = this; return api('POST', '/auth/login', { email: email, password: password }).then(function (j) { return self._after(j); }); },
+    register: function (email, password) { var self = this; return api('POST', '/auth/register', { email: email, password: password }).then(function (j) { return self._after(j); }); },
+    loginTelegramWebApp: function (initData) { var self = this; return api('POST', '/auth/telegram/webapp', { initData: initData }).then(function (j) { self.serverReachable = true; return self._after(j); }); },
+    loginTelegramWidget: function (data) { var self = this; return api('POST', '/auth/telegram/widget', data).then(function (j) { return self._after(j); }); },
+    linkTelegram: function (data) { var self = this; return api('POST', '/auth/link-telegram', data).then(function (j) { if (j._status === 200) self.account = j.user; self._onChange(); return j; }); },
+    setPassword: function (email, password) { var self = this; return api('POST', '/auth/password', { email: email, password: password }).then(function (j) { if (j._status === 200) self.account = j.user; self._onChange(); return j; }); },
+    logout: function () { var self = this; return api('POST', '/auth/logout').then(function () { self.account = null; self._lastSig = ''; self._set('server', 'idle'); }); },
+    config: function () { return api('GET', '/config'); }
+  };
+
+  Sync.merge = merge; Sync.payload = payload; Sync.sig = sig;
+  if (typeof module !== 'undefined' && module.exports) module.exports = Sync; else root.TeploSync = Sync;
+})(typeof window !== 'undefined' ? window : this);
+
+</script>
+<script>
+/*
+ * Теплосервис — распознавание счётчика и показаний по пачке фото.
+ * Прототип на claude.ai: возможность страницы `sample` с картинками (фото уходят Claude только по согласию человека).
+ * На своём сервере — тот же промпт через серверный vision-API (см. design/07). Без распознавания всё работает вручную.
+ */
+(function (root) {
+  'use strict';
+  var FIELDS = ['energy', 'volume', 'flow', 'power', 'tSupply', 'tReturn', 'hours', 'errHours', 'errCode'];
+
+  function cookie(name) { var m = document.cookie.match(new RegExp('(?:^|; )' + name + '=([^;]*)')); return m ? decodeURIComponent(m[1]) : ''; }
+  function fail(code) { var e = new Error(code); e.code = code; return e; }
+  function httpCode(st) { return st === 401 ? 'not_signed_in' : st === 429 ? 'rate_limited' : st === 415 ? 'image_rejected' : st === 413 ? 'image_rejected' : st === 503 ? 'recognition_off' : st === 504 ? 'timeout' : 'upstream_error'; }
+
+  var V = {
+    available: false, limits: null, _sample: null, server: false,
+
+    /** Свой сервер: распознаёт, если в config.php есть ключ (cfg.recognition) и человек вошёл. */
+    initServer: function (cfg, loggedIn) {
+      this.server = !!(root.TEPLO_API && cfg && cfg.recognition);
+      this.available = this.server && !!loggedIn;
+      if (this.server) this.limits = { images: { maxCount: 3, mediaTypes: ['image/jpeg', 'image/png', 'image/webp'] } };
+    },
+    /** Фото — сырым телом (multipart на сервере запрещён), потом пачки по 3 (лимит сервера — 30 с на запрос). */
+    _serverRecognize: function (files, ctx, signal, onProgress) {
+      var self = this, api = root.TEPLO_API, ids = [];
+      var post = function (path, body, type) {
+        if (!cookie('ts_csrf')) return fetch(api + '/config', { credentials: 'same-origin' }).then(function () { return post(path, body, type); });
+        return fetch(api + path, { method: 'POST', body: body, signal: signal, credentials: 'same-origin', headers: { 'Content-Type': type, 'X-CSRF': cookie('ts_csrf'), 'Accept': 'application/json' } })
+          .then(function (r) { return r.json().catch(function () { return {}; }).then(function (j) { if (!r.ok) throw fail(httpCode(r.status)); return j; }); });
+      };
+      var chain = Promise.resolve(), out = { meter: null, photos: [] };
+      files.forEach(function (f) {
+        chain = chain.then(function () { return self.prepare(f); }).then(function (b) { return post('/recognize/upload', b, b.type || 'image/jpeg'); }).then(function (j) { ids.push(j.id); });
+      });
+      var n = Math.ceil(files.length / 3);
+      return chain.then(function () {
+        var c2 = Promise.resolve();
+        for (var i = 0; i < ids.length; i += 3) (function (i) {
+          c2 = c2.then(function () {
+            if (onProgress) onProgress(i / 3 + 1, n);
+            return post('/recognize/run', JSON.stringify({ ids: ids.slice(i, i + 3), offset: i, ctx: { expectedModel: ctx.modelId || '', apartment: ctx.apartment || '', prev: ctx.prev || null, lang: ctx.lang } }), 'application/json');
+          }).then(function (j) {
+            if (j.meter && (!out.meter || (j.meter.confidence || 0) > (out.meter.confidence || 0))) out.meter = j.meter;
+            (j.photos || []).forEach(function (p, k) { if (p) { if (typeof p.index !== 'number') p.index = i + k; out.photos.push(p); } });
+          });
+        })(i);
+        return c2;
+      }).then(function () { return out; }, function (e) { if (signal && signal.aborted) throw fail('cancelled'); throw e; });
+    },
+
+    init: function (onChange) {
+      var self = this;
+      if (!(root.claude && typeof root.claude.use === 'function')) return Promise.resolve(false);
+      return root.claude.use('sample').then(function (s) {
+        if (!s || typeof s.limits !== 'function') return false;
+        self._sample = s;
+        return s.limits().then(function (l) { self.limits = l; self.available = !!(l && l.images); if (onChange) onChange(); return self.available; });
+      }).catch(function () { return false; });
+    },
+
+    /** Уменьшить фото до ~2000 px по длинной стороне (цифры экрана остаются читаемыми), JPEG. */
+    prepare: function (file) {
+      var max = 2000;
+      var load = typeof createImageBitmap === 'function'
+        ? createImageBitmap(file, { imageOrientation: 'from-image' }).catch(function () { return createImageBitmap(file); })
+        : new Promise(function (ok, bad) { var i = new Image(); i.onload = function () { ok(i); }; i.onerror = bad; i.src = URL.createObjectURL(file); });
+      return load.then(function (img) {
+        var w = img.width, h = img.height, k = Math.min(1, max / Math.max(w, h));
+        var c = document.createElement('canvas'); c.width = Math.round(w * k); c.height = Math.round(h * k);
+        c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+        return new Promise(function (ok) { c.toBlob(function (b) { ok(b || file); }, 'image/jpeg', 0.9); });
+      }).catch(function () { return file; });
+    },
+
+    prompt: function (ctx, offset, count) {
+      var catalog = ctx.models.map(function (m) { return m.id + ' — ' + (m.vendor && m.vendor !== '—' ? m.vendor + ' ' : '') + m.name; }).join('; ');
+      var order = (ctx.steps || []).map(function (s, i) { return (i + 1) + ') ' + s.fields.join(' + ') + (s.lcd && s.lcd.tag ? ' [label ' + s.lcd.tag + (s.lcd.alt ? '/' + s.lcd.alt.tag : '') + ']' : ''); }).join('; ');
+      return [
+        'You read photos of an apartment heat meter in Kharkiv, Ukraine, to fill a form for the city heating company. Accuracy matters more than completeness.',
+        'There are ' + count + ' photo(s), in the order given; report "index" counting from ' + offset + '.',
+        'A photo may be: a close-up of the LCD screen (usually ONE value per photo, the person pressed the button between photos), the nameplate/label, or a wide shot of the meter (possibly with several meters).',
+        'Known models (id — name): ' + catalog + '. Use "other" if it is a heat meter not in the list, null if you cannot tell.',
+        ctx.expectedModel ? 'The person says their meter is: ' + ctx.expectedModel + '. If a photo shows several meters, read the one matching this model (or the apartment sticker ' + (ctx.apartment || '?') + ') and say so in "note".' : 'The model is not known yet — identify it from the nameplate or the look of the meter.',
+        order ? 'For this model the screens usually come in this order: ' + order + '. Use it only to tell unlabeled screens apart.' : '',
+        'Fields: energy = accumulated heat energy (unit Gcal / MWh / GJ / kWh as shown; Sharky shows "Gcal"); volume = accumulated water volume, m³ (Sharky: "m³" in the top right corner); flow = instantaneous flow, m³/h; power = instantaneous power, kW; tSupply = supply temperature °C (labels "ht", "T1", arrow up — the hotter one); tReturn = return temperature °C ("ct", "T2", arrow down); hours = operating hours ("On", "h"); errHours = hours with error ("Eh", "Err h"); errCode = error code ("E-" or "E---" with no digits means no error → "E---").',
+        'Rules: copy the digits EXACTLY as displayed, with "." as the decimal separator and leading zeros removed ("00015.482" → "15.482"). Never invent, estimate or calculate a value, never copy it from anywhere but the photo. If a digit is unclear, give your best reading with confidence below 0.6 and explain in "note". Report every field you can see on each photo (a screen may show two values at once).',
+        ctx.prev ? 'For sanity only (do NOT copy): the previous accepted values were ' + JSON.stringify(ctx.prev) + ' — accumulated values should be equal or higher.' : '',
+        'Write "note" in ' + (ctx.lang === 'ru' ? 'Russian' : 'Ukrainian') + ', at most one short sentence, only when there is a problem.',
+        'Reply with only JSON of this shape:',
+        '{"meter":{"modelId":"sharky774"|null,"modelText":"as printed"|null,"serial":"…"|null,"apartment":"61"|null,"energyUnit":"Gcal"|"MWh"|"GJ"|"kWh"|null,"confidence":0.0},',
+        ' "photos":[{"index":' + offset + ',"kind":"screen"|"nameplate"|"overview"|"other","readings":[{"field":"energy","value":"15.482","unit":"Gcal","label":"Gcal","confidence":0.95}],"quality":"ok"|"blurry"|"glare"|"too_far"|"cut_off"|"dark","note":""}]}'
+      ].filter(Boolean).join('\n');
+    },
+
+    /** files: File[]; ctx: {models, steps, expectedModel, apartment, prev, lang}; signal: AbortSignal */
+    recognize: function (files, ctx, signal, onProgress) {
+      if (this.server) return this._serverRecognize(files, ctx, signal, onProgress);
+      var self = this, max = (this.limits && this.limits.images && this.limits.images.maxCount) || 10;
+      var batches = []; for (var i = 0; i < files.length; i += max) batches.push(files.slice(i, i + max));
+      var out = { meter: null, photos: [] }, offset = 0;
+      var chain = Promise.resolve();
+      batches.forEach(function (batch, bi) {
+        var off = offset; offset += batch.length;
+        chain = chain.then(function () {
+          if (onProgress) onProgress(bi + 1, batches.length);
+          return Promise.all(batch.map(function (f) { return self.prepare(f); }));
+        }).then(function (blobs) {
+          return self._sample.json(self.prompt(ctx, off, blobs.length), { images: blobs, modelTier: 'default', signal: signal });
+        }).then(function (j) {
+          if (!j || typeof j !== 'object') return;
+          if (j.meter && (!out.meter || (j.meter.confidence || 0) > (out.meter.confidence || 0))) out.meter = j.meter;
+          (j.photos || []).forEach(function (p, k) { if (p) { if (typeof p.index !== 'number') p.index = off + k; out.photos.push(p); } });
+        });
+      });
+      return chain.then(function () { return out; });
+    },
+
+    /** Свести распознанное в поля: лучшее по уверенности, расхождения — флаг conflict. */
+    pick: function (res, toGcal, meterUnit) {
+      var best = {};
+      (res.photos || []).forEach(function (p) {
+        (p.readings || []).forEach(function (r) {
+          if (!r || FIELDS.indexOf(r.field) < 0 || r.value == null || r.value === '') return;
+          var v = String(r.value).trim().replace(',', '.');
+          if (r.field === 'energy' && r.unit && meterUnit && toGcal[r.unit] && toGcal[meterUnit] && r.unit !== meterUnit) {
+            var n = parseFloat(v); if (isFinite(n)) { v = String(+(n * toGcal[r.unit] / toGcal[meterUnit]).toFixed(4)); r.converted = r.unit + '→' + meterUnit; }
+          }
+          var c = typeof r.confidence === 'number' ? r.confidence : 0.5, cur = best[r.field];
+          if (!cur) best[r.field] = { value: v, confidence: c, photo: p.index, unit: r.unit || '', converted: r.converted || '' };
+          else {
+            if (cur.value !== v) cur.conflict = true;
+            if (c > cur.confidence) { var keep = cur.conflict; best[r.field] = { value: v, confidence: c, photo: p.index, unit: r.unit || '', converted: r.converted || '', conflict: keep }; }
+          }
+        });
+      });
+      if (best.errCode && /^E[-–—\s]*$/i.test(best.errCode.value)) best.errCode.value = 'E---';
+      return best;
+    }
+  };
+  V.FIELDS = FIELDS;
+  if (typeof module !== 'undefined' && module.exports) module.exports = V; else root.TeploVision = V;
+})(typeof window !== 'undefined' ? window : this);
+
+</script>
+<script>
+/*
+ * Теплосервис — веб-приложение (бесплатная часть). Vanilla JS, без сборки и зависимостей.
+ * Данные — в localStorage этого браузера (с запасным хранением в памяти).
+ * Маршруты — #имя (welcome, home, meter, baseline, step-N, check, handover, status, history, help, prefs).
+ * Экраны помечены data-screen (S00…S11 из design/04-NAV-MAP.md), элементы — data-key.
+ */
+(function () {
+  'use strict';
+  var R = window.TeploRules, M = window.TeploModels, I = window.TeploI18n;
+  var HTM_URL = 'https://www.hts.kharkov.ua/cabinet/login';
+  var BOT_URL = 'https://t.me/KPHTM_Bot';
+
+  // ---------------- хранение ----------------
+  var KEY = 'teplo.v1', memory = null;
+  function defaults() { return { v: 1, lang: 'uk', onboarded: false, meter: null, baseline: null, contacts: { phone: '', email: '' }, readings: [], draft: null, demoToday: '', focusId: null }; }
+  function load() {
+    try { var s = window.localStorage.getItem(KEY); if (s) return Object.assign(defaults(), JSON.parse(s)); } catch (e) { /* нет хранилища */ }
+    return memory || defaults();
+  }
+  function persist() { memory = S; try { window.localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) { /* только память */ } }
+  var lastSig = '', pendingRender = false;
+  /** Сохранить: локально всегда; если изменились синхронизируемые данные — отметить время и отправить на другие устройства. */
+  function save() {
+    var Y = window.TeploSync;
+    if (Y) { var sg = Y.sig(Y.payload(S)); if (sg !== lastSig) { lastSig = sg; S.updatedAt = Date.now(); persist(); Y.push(); return; } }
+    persist();
+  }
+  /** Пришли данные с другого устройства (уже слитые с локальными). */
+  function applyRemote(m) {
+    var keep = { lang: S.lang, demoToday: S.demoToday, focusId: S.focusId, _pickModel: S._pickModel, syncPromptDismissed: S.syncPromptDismissed };
+    S = Object.assign(defaults(), m, keep);
+    lastSig = window.TeploSync.sig(window.TeploSync.payload(S)); persist();
+    safeRender();
+  }
+  function safeRender() {
+    var a = document.activeElement;
+    if (a && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName)) { pendingRender = true; return; }
+    render(true);
+  }
+  /** Язык интерфейса — по основному языку браузера: русский → ru, любой другой → uk. Переключателя нет. */
+  function browserLang() {
+    var tw = window.Telegram && window.Telegram.WebApp, tu = tw && tw.initDataUnsafe && tw.initDataUnsafe.user;
+    var l = (tu && tu.language_code) || (navigator.languages && navigator.languages[0]) || navigator.language || '';
+    return /^ru\b/i.test(l) ? 'ru' : 'uk';
+  }
+  var S = load();
+  S.lang = browserLang();
+  if (window.TeploSync) lastSig = window.TeploSync.sig(window.TeploSync.payload(S));
+  var Y = function () { return window.TeploSync || { mode: 'local', account: null, status: 'idle' }; };
+  var VIS = function () { return window.TeploVision || { available: false }; };
+
+  // ---------------- утилиты ----------------
+  function t(key, vars) {
+    var s = (I.T[S.lang] && I.T[S.lang][key]) || I.T.uk[key] || key;
+    if (vars) for (var k in vars) s = s.split('{' + k + '}').join(vars[k]);
+    return s;
+  }
+  function L(o) { return o ? (o[S.lang] || o.uk || '') : ''; }
+  function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+  function today() { return S.demoToday || R.ymd(new Date()); }
+  function dateParts(ymd) { var p = ymd.split('-'); return { y: +p[0], m: +p[1], d: +p[2] }; }
+  function fmtDate(ymd, withYear) { if (!ymd) return ''; var p = dateParts(ymd); return p.d + ' ' + I.MONTHS[S.lang][p.m - 1] + (withYear ? ' ' + p.y : ''); }
+  function addDays(ymd, n) { var p = dateParts(ymd); var d = new Date(Date.UTC(p.y, p.m - 1, p.d + n)); return d.getUTCFullYear() + '-' + ('0' + (d.getUTCMonth() + 1)).slice(-2) + '-' + ('0' + d.getUTCDate()).slice(-2); }
+  function dayOfMonth(ymd, day) { var p = dateParts(ymd); return p.y + '-' + ('0' + p.m).slice(-2) + '-' + ('0' + day).slice(-2); }
+  function nextMonthDay(ymd, day) { var p = dateParts(ymd); var d = new Date(Date.UTC(p.y, p.m, day)); return d.getUTCFullYear() + '-' + ('0' + (d.getUTCMonth() + 1)).slice(-2) + '-' + ('0' + d.getUTCDate()).slice(-2); }
+  function ago(iso) {
+    var m = Math.max(0, Math.round((Date.now() - Date.parse(iso)) / 60000));
+    if (m < 1) return t('ago_now'); if (m < 60) return t('ago_min', { n: m });
+    var h = Math.round(m / 60); if (h < 48) return t('ago_h', { n: h }); return t('ago_d', { n: Math.round(h / 24) });
+  }
+  function money(n) { return (Math.round(n * 100) / 100).toLocaleString(S.lang === 'ru' ? 'ru-RU' : 'uk-UA', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+  function uid() { return 'r' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }
+  function model() { return S.meter ? M.byId(S.meter.modelId) : null; }
+  function modelName(m) { return m ? (m.id === 'other' ? (S.lang === 'ru' ? 'Другая модель' : 'Інша модель') : (m.vendor && m.vendor !== '—' ? m.vendor + ' ' : '') + m.name) : ''; }
+  var UNIT_LBL = { Gcal: { uk: 'Гкал', ru: 'Гкал' }, MWh: { uk: 'МВт·год', ru: 'МВт·ч' }, kWh: { uk: 'кВт·год', ru: 'кВт·ч' }, GJ: { uk: 'ГДж', ru: 'ГДж' } };
+  function unitLbl(u) { return L(UNIT_LBL[u] || UNIT_LBL.Gcal); }
+  function energyUnit() { return (S.meter && S.meter.unit) || 'Gcal'; }
+  function field(key) { return R.FIELDS.filter(function (f) { return f.key === key; })[0]; }
+  function fieldLabel(key) { var f = field(key); return f ? (S.lang === 'ru' ? f.ru : f.uk) : key; }
+  function fieldUnit(key) {
+    if (key === 'energy') return unitLbl(energyUnit());
+    var u = (field(key) || {}).unit || '';
+    if (S.lang === 'ru') u = u.replace('год', 'ч').replace('м³/год', 'м³/ч');
+    return u;
+  }
+
+  // ---------------- иконки ----------------
+  var ICONS = {
+    home: '<path d="M4 11l8-7 8 7"/><path d="M6 10v10h12V10"/>',
+    history: '<path d="M4 6h16M4 12h16M4 18h10"/>',
+    help: '<circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .9-1 1.6V14"/><circle cx="12" cy="17.2" r=".6" fill="currentColor"/>',
+    prefs: '<path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/>',
+    back: '<path d="M15 5l-7 7 7 7"/>', close: '<path d="M6 6l12 12M18 6L6 18"/>',
+    check: '<path d="M5 12.5l4.5 4.5L19 7.5"/>', cross: '<path d="M7 7l10 10M17 7L7 17"/>',
+    alert: '<path d="M12 4l9 16H3z"/><path d="M12 10v4"/><circle cx="12" cy="17" r=".6" fill="currentColor"/>',
+    info: '<circle cx="12" cy="12" r="9"/><path d="M12 11v6"/><circle cx="12" cy="7.8" r=".6" fill="currentColor"/>',
+    clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+    copy: '<rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3"/>',
+    ext: '<path d="M14 4h6v6M20 4l-9 9"/><path d="M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/>',
+    press: '<circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3.5" fill="currentColor" stroke="none"/>',
+    moon: '<path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/>',
+    camera: '<path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/>'
+  };
+  function ico(name, size, cls) {
+    return '<svg class="ico ' + (cls || '') + '" width="' + (size || 24) + '" height="' + (size || 24) + '" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + ICONS[name] + '</svg>';
+  }
+  function logo() {
+    return '<svg width="28" height="28" viewBox="0 0 28 28" aria-hidden="true" fill="none" stroke-width="3.2" stroke-linecap="round">' +
+      '<path d="M5 7h12a5 5 0 0 1 5 5" stroke="#D04A1D"/><path d="M22 16a5 5 0 0 1-5 5H5" stroke="#2F68B0"/><path d="M22 12v4" stroke="#17211E" stroke-width="2"/></svg>';
+  }
+  function levelIco(level, size) {
+    return level === 'ok' ? ico('check', size, 'c-ok') : level === 'warn' ? ico('alert', size, 'c-warn') : level === 'block' ? ico('cross', size, 'c-bad') : ico('info', size, 'c-info');
+  }
+
+  // ---------------- семисегментный экран (подпись дизайна) ----------------
+  var SEG = { '0': 'abcdef', '1': 'bc', '2': 'abdeg', '3': 'abcdg', '4': 'bcfg', '5': 'acdfg', '6': 'acdefg', '7': 'abc', '8': 'abcdefg', '9': 'abcdfg',
+    '-': 'g', 'E': 'adefg', 'r': 'eg', 'h': 'cefg', 'o': 'cdeg', 'n': 'ceg', 'C': 'adef', 't': 'defg', 'H': 'bcefg', 'L': 'def', 'P': 'abefg', 'A': 'abcefg', 'U': 'bcdef', 'F': 'aefg', 'b': 'cdefg', 'd': 'bcdeg', ' ': '' };
+  var POLY = { a: '4,2 6,0 16,0 18,2 16,4 6,4', g: '4,19 6,17 16,17 18,19 16,21 6,21', d: '4,36 6,34 16,34 18,36 16,38 6,38',
+    f: '2,4 4,6 4,16 2,18 0,16 0,6', b: '20,4 22,6 22,16 20,18 18,16 18,6', e: '2,21 4,23 4,33 2,35 0,33 0,23', c: '20,21 22,23 22,33 20,35 18,33 18,23' };
+  function segSvg(text, label) {
+    var s = String(text == null ? '' : text).replace(',', '.');
+    var x = 6, parts = [];
+    for (var i = 0; i < s.length; i++) {
+      var ch = s[i];
+      if (ch === '.') { parts.push('<circle class="on" cx="' + (x - 3) + '" cy="36.5" r="2.4"/>'); x += 4; continue; }
+      var map = SEG.hasOwnProperty(ch) ? SEG[ch] : (SEG.hasOwnProperty(ch.toUpperCase()) ? SEG[ch.toUpperCase()] : '');
+      var g = '<g transform="translate(' + x + ',0)">';
+      'abcdefg'.split('').forEach(function (k) { g += '<polygon class="' + (map.indexOf(k) >= 0 ? 'on' : 'off') + '" points="' + POLY[k] + '"/>'; });
+      parts.push(g + '</g>'); x += 28;
+    }
+    var w = Math.max(x, 30);
+    return '<svg class="seg" viewBox="0 -1 ' + w + ' 40" role="img" aria-label="' + esc(label || s) + '"><g transform="skewX(-6)">' + parts.join('') + '</g></svg>';
+  }
+  /** lines: [{id, text, tag, corner, sample}] */
+  function lcd(lines, cls) {
+    return '<div class="lcd ' + (cls || '') + '">' + lines.map(function (ln) {
+      var tag = ln.tag ? '<span class="tag' + (ln.corner ? ' corner' : '') + '">' + esc(ln.tag) + '</span>' : '';
+      return '<div class="line' + (ln.sample ? ' sample' : '') + '"' + (ln.id ? ' id="' + ln.id + '"' : '') + '>' + segSvg(ln.text, ln.label) + (ln.corner ? '' : tag) + '</div>' + (ln.corner ? tag : '');
+    }).join('') + '</div>';
+  }
+
+  // ---------------- окно приёма ----------------
+  function windowBanner() {
+    var w = R.windowState(today()), td = today();
+    var opens = w.state === 'closed_before' ? dayOfMonth(td, 5) : nextMonthDay(td, 5);
+    var last = fmtDate(dayOfMonth(td, 25)), rec = fmtDate(dayOfMonth(td, 23));
+    var map = {
+      closed_before: ['warn', 'clock', t('win_closed_before', { date: fmtDate(opens) }), t('win_closed_before_sub')],
+      open: ['info', 'info', t('win_open', { last: last, rec: rec }), t('win_open_sub')],
+      soon_recommended: ['info', 'info', t('win_soon', { days: w.daysLeft, rec: rec }), t('win_open_sub')],
+      late: ['warn', 'alert', t('win_late', { last: last }), t('win_open_sub')],
+      last_day: ['warn', 'alert', t('win_last'), t('win_open_sub')],
+      closed_after: ['warn', 'clock', t('win_closed_after', { date: fmtDate(opens) }), t('win_closed_after_sub')]
+    }[w.state];
+    return '<div class="banner ' + map[0] + '" data-key="window-banner" data-state="' + w.state + '" role="status">' + ico(map[1], 22) + '<div><p><b>' + esc(map[2]) + '</b></p><p>' + esc(map[3]) + '</p></div></div>';
+  }
+  function windowClosed() { var s = R.windowState(today()).state; return s === 'closed_before' || s === 'closed_after'; }
+
+  // ---------------- мастер: шаги ----------------
+  function steps() { var m = model(); return [{ kind: 'date' }].concat(m ? m.steps : []); }
+  function prevForEntry() {
+    if (!S.baseline) return null;
+    var p = Object.assign({}, S.baseline), k = M.TO_GCAL[energyUnit()] || 1, e = R.num(p.energy);
+    if (e !== null) p.energy = +(e / k).toFixed(6);
+    return p;
+  }
+  function draftReadingGcal(d) {
+    var v = Object.assign({ date: d.date }, d.values), k = M.TO_GCAL[energyUnit()] || 1, e = R.num(v.energy);
+    if (e !== null) v.energy = +(e * k).toFixed(6);
+    v.errCode = R.normCode(v.errCode);
+    return v;
+  }
+  function meterInfo() {
+    var m = model() || {};
+    return { hoursOnlyWithFlow: !!m.hoursOnlyWithFlow, transitionalFlow: S.meter && R.num(S.meter.transitionalFlow), verifiedUntil: S.meter && S.meter.verifiedUntil || null };
+  }
+  function runCheck(d) {
+    var res = R.validate({ reading: draftReadingGcal(d), prev: S.baseline, meter: meterInfo(), today: today() });
+    if (windowClosed()) {
+      res.items.unshift({ code: 'W_WINDOW', level: 'block', field: null, msg: { uk: I.T.uk.c_window_block, ru: I.T.ru.c_window_block }, fix: { uk: I.T.uk.c_window_fix, ru: I.T.ru.c_window_fix } });
+      res.verdict = 'block';
+    }
+    var pc = d.photoConf || {};
+    Object.keys(pc).forEach(function (k) {
+      if (pc[k] < 0.75) { res.items.push({ code: 'V_LOW_CONF', level: 'warn', field: k, msg: { uk: I.T.uk.v_low_conf, ru: I.T.ru.v_low_conf }, fix: { uk: I.T.uk.v_low_conf_fix, ru: I.T.ru.v_low_conf_fix } }); if (res.verdict === 'ok') res.verdict = 'warn'; }
+    });
+    return res;
+  }
+  function stepOfField(key) { var st = steps(); for (var i = 0; i < st.length; i++) { if (st[i].kind === 'date' && key === 'date') return i; if (st[i].fields && st[i].fields.indexOf(key) >= 0) return i; } return 1; }
+  function newDraft() { S.draft = { date: today(), values: {}, step: 0, startedAt: new Date().toISOString() }; save(); }
+
+  // ---------------- оболочка ----------------
+  function shell(view) {
+    var route = view.route, bare = view.bare;
+    var navItems = [['home', 'home', 'nav_home'], ['history', 'history', 'nav_history'], ['help', 'help', 'nav_help'], ['prefs', 'prefs', 'nav_prefs']];
+    var nav = bare ? '' : '<nav class="nav" aria-label="' + esc(t('brand')) + '">' + navItems.map(function (n) {
+      return '<a href="#' + n[0] + '"' + (route === n[0] ? ' aria-current="page"' : '') + ' data-key="nav-' + n[0] + '">' + ico(n[1], 22) + '<span>' + esc(t(n[2])) + '</span></a>';
+    }).join('') + '</nav>';
+    var right = bare && view.closeTo
+      ? '<a class="btn ghost" href="#' + view.closeTo + '" data-key="wiz-close">' + ico('close', 22) + '<span>' + esc(t('close')) + '</span></a>'
+      : '';
+    return '<div class="app' + (bare ? ' bare-app' : '') + '">' +
+      '<header class="top"><a class="brand" href="#home" data-key="brand">' + logo() + '<span>' + esc(t('brand')) + '</span></a><span class="spacer"></span>' + right + '</header>' +
+      nav + '<main class="main' + (bare ? ' bare' : '') + '" id="main" data-screen="' + view.screen + '" tabindex="-1">' + view.html + '</main></div>' +
+      '<div id="toast-host" aria-live="polite"></div>';
+  }
+
+
+  // ---------------- экраны ----------------
+  var V = {};
+
+  V.welcome = function () {
+    return { screen: 'S00', bare: true, html:
+      '<div class="welcome"><div class="welcome-grid"><div class="welcome-lcd" aria-hidden="true">' + lcd([{ text: '13.245', tag: 'Gcal' }], 'hero boot') + '</div><div>' +
+      '<h1>' + esc(t('w_title')) + '</h1><p class="lead">' + esc(t('w_lead')) + '</p>' +
+      '<ul>' + ['w_b1', 'w_b2', 'w_b3'].map(function (k) { return '<li>' + ico('check', 22, 'c-ok') + '<span>' + esc(t(k)) + '</span></li>'; }).join('') + '</ul>' +
+      '<a class="btn big" href="#meter" data-key="welcome-start" data-act="start">' + esc(t('w_cta')) + '</a>' +
+      (Y().mode === 'server' && !Y().account ? '<p style="margin-top:16px"><a href="#login" data-key="welcome-login">' + esc(t('w_login')) + '</a></p>' : '') +
+      '<p class="small muted" style="margin-top:16px">' + esc(Y().mode === 'claude' ? t('sync_claude') : t('w_fine')) + '</p></div>' +
+      '</div></div>' };
+  };
+
+  V.home = function () {
+    var m = model(), html = windowBanner();
+    var handed = S.readings.filter(function (r) { return r.status === 'handed'; }).slice(-1)[0];
+    if (handed) {
+      html += '<div class="banner" data-key="home-waiting">' + ico('clock', 22) + '<div><p><b>' + esc(t('h_waiting')) + '</b></p><p>' + esc(t('h_waiting_sub', { ago: ago(handed.handedAt) })) + '</p>' +
+        '<p><a href="#status" data-act="focus" data-id="' + handed.id + '">' + esc(t('h_check_result')) + '</a></p></div></div>';
+    }
+    // экран с последними принятыми — главный визуальный якорь
+    var left = '';
+    if (S.baseline) {
+      left += '<div class="panel" data-key="home-last"><h2>' + esc(t('h_last')) + '</h2>' +
+        lcd([{ text: R.formatForHtm('energy', S.baseline.energy), tag: 'Gcal' }], 'hero') +
+        '<p class="lcd-cap meta-row"><span>' + esc(fmtDate(S.baseline.date, true)) + '</span><a href="#baseline">' + esc(t('change')) + '</a></p></div>';
+    } else {
+      left += '<div class="panel" data-key="home-last-none"><h2>' + esc(t('h_last_none')) + '</h2><p class="muted">' + esc(t('h_last_none_sub')) + '</p>' +
+        '<a class="btn sec" href="#baseline" data-key="home-add-base">' + esc(t('h_add_base')) + '</a></div>';
+    }
+    var right = '';
+    var n = steps().length;
+    if (S.draft && (Object.keys(S.draft.values || {}).length || S.draft.step > 0)) {
+      right += '<a class="btn big block" href="#step-' + (S.draft.step || 0) + '" data-key="home-continue">' + esc(t('h_continue', { i: (S.draft.step || 0) + 1, n: n })) + '</a>' +
+        '<button class="linkbtn" style="margin-top:8px" data-act="restart" data-key="home-restart">' + esc(t('h_read')) + ' — ' + (S.lang === 'ru' ? 'заново' : 'спочатку') + '</button>';
+    } else {
+      right += '<button class="btn big block" data-act="read" data-key="home-read">' + esc(t('h_read')) + '</button>';
+      if (VIS().available) right += '<button class="btn sec block" style="margin-top:12px" data-act="photo" data-mode="reading" data-key="home-photo">' + ico('camera', 22) + '<span>' + esc(t('ph_entry')) + '</span></button>';
+    }
+    right += '<h2 class="section-title">' + esc(t('h_meter')) + '</h2><ul class="list"><li><div class="grow"><div><b>' + esc(modelName(m)) + '</b></div>' +
+      '<div class="small muted">' + esc(m.status === 'verified' ? t('m_verified') : m.status === 'draft' ? t('m_draft') : L(m.note)) + (energyUnit() !== 'Gcal' ? ', ' + esc(unitLbl(energyUnit())) : '') + '</div></div>' +
+      '<a href="#meter" data-key="home-change-meter">' + esc(t('change')) + '</a></li></ul>';
+    var recent = S.readings.slice(-3).reverse();
+    if (recent.length) right += '<h2 class="section-title">' + esc(t('h_recent')) + '</h2>' + readingList(recent);
+    right += '<p class="small muted" style="margin-top:16px">' + esc(t('h_hw')) + ': <a href="' + BOT_URL + '" target="_blank" rel="noopener">@KPHTM_Bot</a></p>';
+    if (Y().mode === 'server' && !Y().account && S.readings.length && !S.syncPromptDismissed) {
+      html = '<div class="banner" data-key="home-save-prompt">' + ico('info', 22) + '<div><p><b>' + esc(t('save_prompt')) + '</b></p><p><a href="#login">' + esc(t('login')) + '</a> &nbsp; <button class="linkbtn" data-act="dismiss-sync">' + esc(t('save_prompt_later')) + '</button></p></div></div>' + html;
+    }
+    html += '<div class="hero-grid"><div>' + left + '</div><div>' + right + '</div></div>';
+    return { screen: 'S01', route: 'home', html: html };
+  };
+
+  function readingList(arr) {
+    return '<ul class="list" data-key="reading-list">' + arr.map(function (r) {
+      var cls = { accepted: 'ok', rejected: 'bad', handed: 'info', checked: 'neutral', intermediate: 'neutral' }[r.status] || 'neutral';
+      var sub = r.derived && r.derived.dE != null && r.derived.dE >= 0 ? '+' + r.derived.dE.toFixed(3) + ' Гкал' + (r.derived.cost ? ' ≈ ' + money(r.derived.cost) + ' грн' : '') : '';
+      var link = (r.status === 'handed' || r.status === 'rejected' || r.status === 'accepted');
+      var inner = '<div class="grow"><div><b>' + esc(fmtDate(r.htm.date, true)) + '</b> <span class="num">' + esc(R.formatForHtm('energy', r.htm.energy)) + '</span> <span class="small muted">Гкал</span></div>' +
+        (sub ? '<div class="small muted">' + esc(sub) + '</div>' : '') + '</div><span class="pill ' + cls + '">' + esc(t('status_' + r.status)) + '</span>';
+      return '<li data-key="reading-' + r.id + '">' + (link ? '<a class="rowlink" href="#status" data-act="focus" data-id="' + r.id + '">' + inner + '</a>' : inner) + '</li>';
+    }).join('') + '</ul>';
+  }
+
+  V.meter = function () {
+    var cur = S.meter ? S.meter.modelId : '', sel = S._pickModel || cur;
+    var list = M.MODELS.map(function (m) {
+      var tag = m.status === 'verified' ? '<span class="pill ok">' + esc(t('m_verified')) + '</span>' : m.status === 'draft' ? '<span class="pill">' + esc(t('m_draft')) + '</span>' : '';
+      var name = m.id === 'other' ? esc(t('m_other')) : esc(m.name);
+      var sub = m.id === 'other' ? esc(t('m_other_sub')) : esc(m.vendor !== '—' ? m.vendor : '');
+      return '<li><label><input type="radio" name="model" value="' + m.id + '"' + (sel === m.id ? ' checked' : '') + ' data-act="pick-model">' +
+        meterGlyph() + '<span class="grow"><span class="name">' + name + '</span><br><span class="vendor">' + sub + '</span></span>' + tag + '</label></li>';
+    }).join('');
+    var pm = M.byId(sel), unitBlock = '';
+    if (pm && pm.units.length > 1) {
+      var u = (S._pickUnit && pm.units.indexOf(S._pickUnit) >= 0 && S._pickModel === sel ? S._pickUnit : null) || (S.meter && S.meter.modelId === sel && S.meter.unit) || pm.unit;
+      unitBlock = '<div class="panel" data-key="meter-unit"><h3>' + esc(t('m_unit')) + '</h3><p class="small muted">' + esc(t('m_unit_sub')) + '</p><div class="choice">' +
+        pm.units.map(function (x) { return '<label><input type="radio" name="unit" value="' + x + '"' + (u === x ? ' checked' : '') + '>' + esc(unitLbl(x)) + '</label>'; }).join('') + '</div></div>';
+    }
+    var note = pm && pm.id !== 'other' ? '<p class="small muted">' + esc(L(pm.note)) + '</p>' : '';
+    return { screen: 'S02', route: 'meter', bare: !S.onboarded, closeTo: S.onboarded ? 'home' : 'welcome', html:
+      '<h1>' + esc(t('m_title')) + '</h1><p class="muted">' + esc(t('m_lead')) + '</p>' +
+      '<details class="where" data-key="meter-where"><summary>' + esc(t('m_where')) + '</summary><p>' + esc(t('m_where_text')) + '</p></details>' +
+      (VIS().available ? '<p><button class="btn sec" data-act="photo" data-mode="model" data-key="meter-photo">' + ico('camera', 20) + '<span>' + esc(t('ph_model_entry')) + '</span></button></p>' : '') +
+      '<ul class="list models" data-key="meter-list">' + list + '</ul>' + (pm ? '<div style="margin-top:16px">' + note + unitBlock + '</div>' : '') +
+      '<div class="row-actions">' + (S.onboarded ? '<a class="btn sec" href="#home">' + esc(t('back')) + '</a>' : '') +
+      '<button class="btn" data-act="save-meter" data-key="meter-save"' + (pm ? '' : ' disabled') + '>' + esc(S.onboarded ? t('save') : t('next')) + '</button></div>' };
+  };
+  function meterGlyph() {
+    return '<svg width="40" height="40" viewBox="0 0 40 40" aria-hidden="true"><rect x="4" y="4" width="32" height="32" rx="6" fill="#DCE2DE" stroke="#8E9A94"/>' +
+      '<rect x="9" y="10" width="22" height="10" rx="2" fill="#BCC8A2"/><circle cx="20" cy="28" r="4" fill="#17211E"/></svg>';
+  }
+
+  V.baseline = function () {
+    var b = S.baseline || {}, mt = S.meter || {};
+    var keys = ['energy', 'volume', 'flow', 'power', 'tSupply', 'tReturn', 'hours', 'errHours'];
+    var fields = '<div class="field"><label for="b-date">' + esc(fieldLabel('date')) + '</label><div class="ctl"><input id="b-date" type="date" data-b="date" value="' + esc(b.date || '') + '"></div></div>' +
+      '<div class="grid2">' + keys.map(function (k) {
+        var cls = k === 'tSupply' ? ' supply' : k === 'tReturn' ? ' return' : '';
+        return '<div class="field"><label for="b-' + k + '">' + esc(fieldLabel(k)) + '</label><div class="ctl' + cls + '"><input id="b-' + k + '" class="num" inputmode="decimal" autocomplete="off" data-b="' + k + '" value="' + esc(b[k] == null ? '' : b[k]) + '"><span class="unit">' + esc(k === 'energy' ? 'Гкал' : fieldUnit(k)) + '</span></div></div>';
+      }).join('') +
+      '<div class="field"><label for="b-errCode">' + esc(fieldLabel('errCode')) + '</label><div class="ctl"><input id="b-errCode" class="num" autocomplete="off" data-b="errCode" value="' + esc(b.errCode || '') + '" placeholder="E---"></div></div></div>';
+    var meterData = '<h2 class="section-title">' + esc(t('b_meter')) + '</h2><div class="grid2">' +
+      '<div class="field"><label for="b-qt">' + esc(t('b_qt')) + ' <span class="muted small">(' + esc(t('b_opt')) + ')</span></label><div class="ctl"><input id="b-qt" class="num" inputmode="decimal" data-m="transitionalFlow" value="' + esc(mt.transitionalFlow || '') + '"></div></div>' +
+      '<div class="field"><label for="b-ver">' + esc(t('b_verified')) + ' <span class="muted small">(' + esc(t('b_opt')) + ')</span></label><div class="ctl"><input id="b-ver" type="date" data-m="verifiedUntil" value="' + esc(mt.verifiedUntil || '') + '"></div></div></div>';
+    return { screen: 'S03', route: 'baseline', bare: !S.onboarded, closeTo: 'home', html:
+      '<h1>' + esc(t('b_title')) + '</h1><p>' + esc(t('b_lead')) + '</p>' +
+      '<div class="banner">' + ico('info', 22) + '<div><p>' + esc(t('b_where')) + '</p></div></div>' +
+      '<form id="baseline-form" data-key="baseline-form" novalidate><div class="panel">' + fields + '</div>' + meterData +
+      '<p><button type="button" class="linkbtn" data-act="sample" data-key="baseline-sample">' + esc(t('b_sample')) + '</button></p>' +
+      '<div class="row-actions"><button type="button" class="btn sec" data-act="skip-base" data-key="baseline-skip">' + esc(t('skip')) + '</button>' +
+      '<button type="submit" class="btn" data-key="baseline-save">' + esc(t('save')) + '</button></div></form>' };
+  };
+
+  V.step = function (i) {
+    var st = steps(), n = st.length; if (!S.draft) newDraft();
+    i = Math.max(0, Math.min(n - 1, i)); S.draft.step = i; save();
+    var s = st[i], m = model(), prev = prevForEntry();
+    var head = '<div class="wiz-top" data-key="step-head"><span class="count">' + esc(t('s_step', { i: i + 1, n: n })) + '</span><span class="progress" aria-hidden="true"><i style="width:' + Math.round((i + 1) / n * 100) + '%"></i></span></div>';
+    var left = '', right = '';
+    if (s.kind === 'date') {
+      left = '<h1>' + esc(t('s_date_title')) + '</h1><p>' + esc(t('s_date_lead')) + '</p>' + (windowClosed() ? windowBanner() : '') +
+        (VIS().available ? '<p><button class="linkbtn" data-act="photo" data-mode="reading" data-key="step-photo">' + esc(t('ph_step_hint')) + '</button></p>' : '');
+      right = '<div class="field"><label for="f-date">' + esc(t('s_date')) + '</label><div class="ctl"><input id="f-date" type="date" data-field="date" value="' + esc(S.draft.date || today()) + '" max="' + today() + '"></div><div class="help" id="h-date"></div></div>';
+    } else {
+      var press = s.press === null ? '<p class="press">' + ico('press', 26) + esc(t('s_first')) + '</p>'
+        : s.count ? '<p class="press">' + ico('press', 26) + esc(t('s_press')) + ' <span class="times">' + esc(t('s_press_n', { n: s.count })) + '</span></p>'
+        : '<p class="press">' + ico('press', 26) + esc(t('s_press_find')) + '</p>';
+      var title = s.fields.length === 1 ? fieldLabel(s.fields[0]) : s.fields.indexOf('tSupply') >= 0 ? (S.lang === 'ru' ? 'Температуры подачи и обратки' : 'Температури подачі й обратки') : s.fields.indexOf('hours') >= 0 ? (S.lang === 'ru' ? 'Часы работы' : 'Години роботи') : s.fields.map(fieldLabel).join(', ');
+      S._single = s.fields.length === 1;
+      var lines = s.fields.map(function (k, idx) {
+        var typed = S.draft.values[k];
+        var sampleText = idx === 0 ? s.lcd.digits : (s.lcd.alt ? s.lcd.alt.digits : s.lcd.digits);
+        var tag = idx === 0 ? s.lcd.tag : (s.lcd.alt ? s.lcd.alt.tag : s.lcd.tag);
+        if (k === 'energy' && energyUnit() !== 'Gcal') tag = energyUnit();
+        return { id: 'lcd-' + k, text: typed ? lcdText(k, typed) : sampleText, tag: tag, corner: !!s.lcd.corner, sample: !typed };
+      });
+      left = press + lcd(lines, 'step-lcd') + '<p class="lcd-cap" id="lcd-cap">' + esc(Object.keys(S.draft.values).some(function (k) { return s.fields.indexOf(k) >= 0 && S.draft.values[k]; }) ? t('s_on_screen') : (S.lang === 'ru' ? 'Пример — так выглядит экран' : 'Приклад — так виглядає екран')) + '</p>' +
+        '<p class="hint">' + esc(L(s.hint)) + '</p>' +
+        (m && m.sleepMin ? '<p class="sleep">' + ico('moon', 18) + '<span>' + esc(t('s_sleep', { m: m.sleepMin })) + '</span></p>' : '');
+      right = '<h1>' + esc(title) + '</h1>' + s.fields.map(function (k) { return k === 'errCode' ? errCodeField() : numField(k, prev); }).join('');
+    }
+    var isLast = i === n - 1;
+    var actions = '<div class="wiz-actions">' + (i > 0 ? '<a class="btn sec" href="#step-' + (i - 1) + '" data-key="step-back">' + ico('back', 20) + '<span>' + esc(t('back')) + '</span></a>' : '') +
+      '<button class="btn" data-act="step-next" data-i="' + i + '" data-key="step-next">' + esc(isLast ? t('s_to_check') : t('next')) + '</button></div>';
+    return { screen: 'S05', route: 'step', bare: true, closeTo: 'home', html: head + '<div class="wiz"><div>' + left + '</div><div><form id="step-form" novalidate>' + right + actions + '</form></div></div>' };
+  };
+  function lcdText(k, v) { if (k === 'errCode') return R.normCode(v).replace(/-/g, '-'); var x = String(v).replace(',', '.'); return x; }
+  function numField(k, prev) {
+    var v = S.draft.values[k] == null ? '' : S.draft.values[k];
+    var cls = k === 'tSupply' ? ' supply' : k === 'tReturn' ? ' return' : '';
+    var help = '';
+    if (prev && prev[k] != null && prev[k] !== '') {
+      help = t('s_prev', { v: (k === 'energy' ? String(prev[k]) : prev[k]) + ' ' + fieldUnit(k) });
+      var plain = help;
+      if (k === 'hours' && !(model() || {}).hoursOnlyWithFlow && S.draft.date && prev.date) {
+        var exp = R.num(prev.hours) + R.daysBetween(prev.date, S.draft.date) * 24;
+        help += S.lang === 'ru' ? '. Ожидаем около ' + exp + ' (±24)' : '. Очікуємо близько ' + exp + ' (±24)';
+      } else if (['energy', 'volume', 'errHours'].indexOf(k) >= 0) help += S.lang === 'ru' ? ', должно быть не меньше' : ', має бути не менше';
+    }
+    if (typeof plain === 'undefined') var plain = help;
+    if (k === 'errHours' && !help) help = S.lang === 'ru' ? 'Нет часов с ошибкой — впишите 0.' : 'Немає годин з помилкою — впишіть 0.';
+    return '<div class="field" id="fw-' + k + '"><label for="f-' + k + '"' + (S._single ? ' class="sr"' : '') + '>' + esc(fieldLabel(k)) + '</label><div class="ctl' + cls + '"><input id="f-' + k + '" class="num" inputmode="decimal" autocomplete="off" enterkeyhint="next" data-field="' + k + '" value="' + esc(v) + '" aria-describedby="h-' + k + '"><span class="unit">' + esc(fieldUnit(k)) + '</span></div>' +
+      '<div class="help" id="h-' + k + '" data-base="' + esc(help) + '" data-plain="' + esc(plain) + '">' + esc(help) + '</div></div>';
+  }
+  function errCodeField() {
+    var v = S.draft.values.errCode || '', none = !v || R.normCode(v) === 'E---';
+    return '<div class="field" id="fw-errCode"><span class="lbl sr">' + esc(fieldLabel('errCode')) + '</span><div class="choice">' +
+      '<label><input type="radio" name="ec" value="none" data-act="ec"' + (none ? ' checked' : '') + '>' + esc(t('s_err_none')) + '</label>' +
+      '<label><input type="radio" name="ec" value="code" data-act="ec"' + (none ? '' : ' checked') + '>' + esc(t('s_err_code')) + '</label></div>' +
+      '<div class="ctl" style="margin-top:12px' + (none ? ';display:none' : '') + '" id="ec-ctl"><input id="f-errCode" class="num" autocomplete="off" data-field="errCode" value="' + esc(none ? '' : v) + '" placeholder="E-3"></div><div class="help" id="h-errCode"></div></div>';
+  }
+
+  V.check = function () {
+    if (!S.draft) return V.home();
+    var res = runCheck(S.draft), r = draftReadingGcal(S.draft);
+    S._lastCheck = res;
+    var vText = { ok: t('c_ok'), warn: t('c_warn'), block: t('c_block') }[res.verdict];
+    var order = { block: 0, warn: 1, info: 2, ok: 3 };
+    var items = res.items.slice().sort(function (a, b) { return order[a.level] - order[b.level]; });
+    var byField = {}; items.forEach(function (it) { if (it.field && (!byField[it.field] || order[it.level] < order[byField[it.field]])) byField[it.field] = it.level; });
+    var issues = items.length ? '<ul class="issues" data-key="check-issues">' + items.map(function (it) {
+      var fixLink = it.field && it.code !== 'W_WINDOW' ? '<div><button class="linkbtn" data-act="fix" data-field="' + it.field + '" data-key="fix-' + it.code + '">' + esc(t('c_fix')) + ': ' + esc(fieldLabel(it.field).toLowerCase()) + '</button></div>' : '';
+      return '<li data-code="' + it.code + '" data-level="' + it.level + '"><span class="ic">' + levelIco(it.level, 22) + '</span><div class="msg">' + esc(L(it.msg)) + '</div>' +
+        (it.fix ? '<div class="fix">' + esc(L(it.fix)) + '</div>' : '') + fixLink + '</li>';
+    }).join('') + '</ul>' : '';
+    var rows = R.FIELDS.map(function (f) {
+      var lvl = byField[f.key]; var val = R.formatForHtm(f.key, r[f.key]);
+      return '<tr class="' + (lvl === 'block' ? 'is-block' : lvl === 'warn' ? 'is-warn' : '') + '"><th scope="row">' + esc(fieldLabel(f.key)) + (f.key === 'energy' ? ', Гкал' : '') + '</th><td>' + esc(val || '—') + '</td></tr>';
+    }).join('');
+    var d = res.derived, period = '';
+    if (res.verdict !== 'block' && d && d.dE != null && d.dE >= 0 && S.baseline && R.daysBetween(S.baseline.date, r.date) > 0) {
+      period = '<p class="small muted" data-key="check-period">' + esc(t('c_period', { de: d.dE.toFixed(3), days: R.daysBetween(S.baseline.date, r.date), cost: money(d.cost || 0) })) + '</p>';
+    }
+    var canSend = res.verdict !== 'block';
+    var actions = '<div class="row-actions">' +
+      '<button class="btn sec" data-act="save-inter" data-key="check-save-inter">' + esc(t('c_save_inter')) + '</button>' +
+      '<button class="btn" data-act="to-handover" data-key="check-send"' + (canSend ? '' : ' disabled') + '>' + esc(res.verdict === 'warn' ? t('c_send_anyway') : t('c_send')) + '</button></div>';
+    return { screen: 'S06', route: 'check', bare: true, closeTo: 'home', html:
+      '<div class="wiz-top"><a class="btn ghost" href="#step-' + (steps().length - 1) + '">' + ico('back', 20) + '<span>' + esc(t('back')) + '</span></a></div>' +
+      '<h1>' + esc(t('c_title')) + '</h1>' +
+      '<div class="verdict ' + res.verdict + '" data-key="check-verdict" data-verdict="' + res.verdict + '" role="status">' + levelIco(res.verdict, 28) + '<span>' + esc(vText) + '</span></div>' +
+      '<div class="cols"><div>' + issues + period + '</div><div><h2 class="section-title" style="margin-top:0">' + esc(t('c_values')) + '</h2><table class="vals" data-key="check-values">' + rows + '</table></div></div>' + actions };
+  };
+
+  V.handover = function () {
+    var r = S.readings.filter(function (x) { return x.id === S.focusId; })[0] || S.readings.filter(function (x) { return x.status === 'checked'; }).slice(-1)[0];
+    if (!r) return V.home();
+    var h = r.htm;
+    var rows = R.FIELDS.map(function (f) {
+      var val = R.formatForHtm(f.key, h[f.key]);
+      return '<li><div><div class="k">' + esc(fieldLabel(f.key)) + (f.key === 'energy' ? ', Гкал' : '') + '</div><div class="v">' + esc(val) + '</div></div><span></span>' +
+        '<button class="btn sec" data-act="copy" data-text="' + esc(val) + '" data-key="copy-' + f.key + '">' + ico('copy', 18) + '<span>' + esc(t('copy')) + '</span></button></li>';
+    });
+    var c = S.contacts || {};
+    if (c.phone) rows.push('<li><div><div class="k">' + esc(t('ho_phone')) + '</div><div class="v">' + esc(c.phone) + '</div></div><span></span><button class="btn sec" data-act="copy" data-text="' + esc(c.phone) + '">' + ico('copy', 18) + '<span>' + esc(t('copy')) + '</span></button></li>');
+    if (c.email) rows.push('<li><div><div class="k">' + esc(t('ho_email')) + '</div><div class="v" style="font-size:16px">' + esc(c.email) + '</div></div><span></span><button class="btn sec" data-act="copy" data-text="' + esc(c.email) + '">' + ico('copy', 18) + '<span>' + esc(t('copy')) + '</span></button></li>');
+    var all = R.FIELDS.map(function (f) { return fieldLabel(f.key) + ': ' + R.formatForHtm(f.key, h[f.key]); }).join('\n') + (c.phone ? '\n' + t('ho_phone') + ': ' + c.phone : '') + (c.email ? '\n' + t('ho_email') + ': ' + c.email : '');
+    return { screen: 'S07', route: 'handover', bare: true, closeTo: 'home', html:
+      '<div class="wiz-top"><a class="btn ghost" href="#check">' + ico('back', 20) + '<span>' + esc(t('back')) + '</span></a></div>' +
+      '<h1>' + esc(t('ho_title')) + '</h1><p>' + esc(t('ho_lead')) + '</p>' +
+      '<div class="cols"><div class="ho-values"><ul class="copy-list" data-key="handover-values">' + rows.join('') + '</ul>' +
+      '<div class="row-actions"><button class="btn sec" data-act="copy" data-text="' + esc(all) + '" data-key="copy-all">' + ico('copy', 20) + '<span>' + esc(t('ho_copy_all')) + '</span></button></div>' +
+      (c.phone && c.email ? '' : '<div class="banner warn" style="margin-top:16px">' + ico('alert', 22) + '<div><p>' + esc(t('ho_contacts_none')) + ' <a href="#prefs">' + esc(t('nav_prefs')) + '</a></p></div></div>') + '</div>' +
+      '<div class="ho-steps"><div class="panel"><h2>' + esc(t('ho_steps_title')) + '</h2><ol class="steps"><li>' + esc(t('ho_s1')) + '</li><li>' + esc(t('ho_s2')) + '</li><li>' + esc(t('ho_s3')) + '</li><li>' + esc(t('ho_s4')) + '</li></ol>' +
+      '<a class="btn sec block" href="' + HTM_URL + '" target="_blank" rel="noopener" data-key="handover-open">' + ico('ext', 20) + '<span>' + esc(t('ho_open')) + '</span></a></div>' +
+      '<div class="panel soon" data-key="handover-auto"><h3>' + esc(t('ho_auto')) + ' <span class="pill">' + (S.lang === 'ru' ? 'скоро' : 'незабаром') + '</span></h3><p class="small muted" style="margin:0">' + esc(t('ho_auto_sub')) + '</p></div></div></div>' +
+      '<div class="row-actions"><button class="btn big" data-act="handed" data-id="' + r.id + '" data-key="handover-done">' + ico('check', 22) + '<span>' + esc(t('ho_saved')) + '</span></button></div>' };
+  };
+
+  V.status = function () {
+    var r = S.readings.filter(function (x) { return x.id === S.focusId; })[0] || S.readings.filter(function (x) { return x.status === 'handed'; }).slice(-1)[0];
+    if (!r) return { screen: 'S08', route: 'status', html: '<h1>' + esc(t('st_title')) + '</h1><p class="muted">' + esc(t('st_none')) + '</p><a class="btn" href="#home">' + esc(t('nav_home')) + '</a>' };
+    var head = '<h1>' + esc(t('st_title')) + '</h1><p class="muted">' + esc(fmtDate(r.htm.date, true)) + ', <span class="num">' + esc(R.formatForHtm('energy', r.htm.energy)) + '</span> Гкал</p>';
+    var body = '';
+    if (r.status === 'accepted') {
+      body = '<div class="verdict ok" data-key="status-accepted">' + levelIco('ok', 28) + '<span>' + esc(t('st_accepted')) + '</span></div><p>' + esc(t('st_accepted_sub')) + '</p>' +
+        (r.derived && r.derived.cost ? '<p class="muted">' + esc(t('c_period', { de: r.derived.dE.toFixed(3), days: r.derived.days || '—', cost: money(r.derived.cost) })) + '</p>' : '') +
+        '<a class="btn" href="#home">' + esc(t('done')) + '</a>';
+    } else if (r.status === 'rejected') {
+      var dec = r.robot || {};
+      body = '<div class="verdict block" data-key="status-rejected">' + levelIco('block', 28) + '<span>' + esc(t('st_rejected')) + '</span></div>' +
+        (r.robot && r.robot.text ? '<p class="small muted">«' + esc(r.robot.text) + '»</p>' : '') +
+        '<div class="banner ' + (dec.fix ? 'warn' : 'bad') + '">' + ico('info', 22) + '<div><p>' + esc(dec.fix ? L(dec.fix) : t('st_unknown')) + '</p></div></div>' +
+        '<p class="small muted">' + esc(t('st_refix_sub')) + '</p>' +
+        '<div class="row-actions"><button class="btn" data-act="refix" data-id="' + r.id + '" data-key="status-refix">' + esc(t('st_refix')) + '</button></div>';
+    } else if (r.status === 'handed') {
+      var mins = Math.round((Date.now() - Date.parse(r.handedAt)) / 60000);
+      var at = new Date(Date.parse(r.handedAt) + 30 * 60000);
+      body = '<div class="banner" data-key="status-waiting">' + ico('clock', 22) + '<div><p><b>' + esc(t('st_wait')) + '</b></p><p>' + esc(t('st_wait_ago', { ago: ago(r.handedAt) })) + '</p></div></div>' +
+        '<p>' + esc(t('st_how')) + '</p>' + (mins < 15 ? '<p class="small muted">' + esc(t('st_early', { at: ('0' + at.getHours()).slice(-2) + ':' + ('0' + at.getMinutes()).slice(-2) })) + '</p>' : '') +
+        '<div class="row-actions"><button class="btn" data-act="accepted" data-id="' + r.id + '" data-key="status-ok">' + ico('check', 22) + '<span>' + esc(t('st_ok_btn')) + '</span></button>' +
+        '<button class="btn sec" data-act="show-reject" data-key="status-bad">' + ico('cross', 22) + '<span>' + esc(t('st_bad_btn')) + '</span></button></div>' +
+        '<form id="reject-form" data-id="' + r.id + '" style="display:none;margin-top:24px" novalidate><div class="field"><label for="rej-text">' + esc(t('st_paste')) + '</label><div class="ctl"><textarea id="rej-text" placeholder="Статус: Показання не прийняті з причини: …"></textarea></div></div>' +
+        '<button type="submit" class="btn" data-key="status-decode">' + esc(t('st_decode')) + '</button></form>' +
+        '<p style="margin-top:24px"><a href="' + HTM_URL + '" target="_blank" rel="noopener">' + esc(t('ho_open')) + '</a></p>';
+    } else {
+      body = '<p><span class="pill">' + esc(t('status_' + r.status)) + '</span></p><a class="btn" href="#home">' + esc(t('nav_home')) + '</a>';
+    }
+    return { screen: 'S08', route: 'status', html: head + body };
+  };
+
+  V.history = function () {
+    var arr = S.readings.slice().reverse();
+    return { screen: 'S09', route: 'history', html: '<h1>' + esc(t('hi_title')) + '</h1>' +
+      (arr.length ? readingList(arr) : '<div class="panel"><p class="muted">' + esc(t('hi_empty')) + '</p><button class="btn" data-act="read">' + esc(t('hi_empty_cta')) + '</button></div>') };
+  };
+
+  V.help = function () { return { screen: 'S10', route: 'help', html: helpHtml() }; };
+
+  V.prefs = function () {
+    var m = model(), c = S.contacts || {};
+    return { screen: 'S11', route: 'prefs', html: '<h1>' + esc(t('p_title')) + '</h1>' + syncPanel() +
+      '<ul class="list" style="margin-bottom:16px"><li><div class="grow"><div class="small muted">' + esc(t('p_meter')) + '</div><b>' + esc(modelName(m)) + '</b></div><a href="#meter">' + esc(t('change')) + '</a></li>' +
+      '<li><div class="grow"><div class="small muted">' + esc(t('p_base')) + '</div><b>' + (S.baseline ? esc(fmtDate(S.baseline.date, true)) + ', <span class="num">' + esc(R.formatForHtm('energy', S.baseline.energy)) + '</span> Гкал' : '—') + '</b></div><a href="#baseline">' + esc(t('change')) + '</a></li></ul>' +
+      '<div class="panel"><h2>' + esc(t('p_contacts')) + '</h2><p class="small muted">' + esc(t('p_contacts_sub')) + '</p><div class="grid2">' +
+      '<div class="field"><label for="p-phone">' + esc(t('ho_phone')) + '</label><div class="ctl"><input id="p-phone" type="tel" autocomplete="tel" data-contact="phone" value="' + esc(c.phone || '') + '"></div></div>' +
+      '<div class="field"><label for="p-email">' + esc(t('ho_email')) + '</label><div class="ctl"><input id="p-email" type="email" autocomplete="email" data-contact="email" value="' + esc(c.email || '') + '"></div></div></div></div>' +
+      '<div class="panel"><h2>' + esc(t('p_demo')) + '</h2><p class="small muted">' + esc(t('p_demo_sub')) + '</p><div class="field" style="max-width:260px"><div class="ctl"><input type="date" id="p-demo" data-key="prefs-demo" value="' + esc(S.demoToday || '') + '"></div></div></div>' +
+      '<div class="panel"><h2>' + esc(t('p_data')) + '</h2><div class="row-actions" style="margin-top:0"><button class="btn sec" data-act="export" data-key="prefs-export">' + ico('copy', 20) + '<span>' + esc(t('p_export')) + '</span></button></div>' +
+      '<form id="import-form" novalidate style="margin-top:16px"><div class="field"><label for="p-import">' + esc(t('p_import')) + '</label><div class="ctl"><textarea id="p-import" placeholder="' + esc(t('p_import_ph')) + '"></textarea></div></div><button class="btn sec" type="submit">' + esc(t('p_import')) + '</button></form>' +
+      '<div style="margin-top:24px"><button class="btn danger" data-act="wipe-ask" data-key="prefs-wipe">' + esc(t('p_wipe')) + '</button><div id="wipe-confirm"></div></div></div>' };
+  };
+
+
+  // ---------------- синхронизация и вход ----------------
+  function syncStatusText() { var y = Y(); return y.status === 'syncing' ? t('sync_syncing') : y.status === 'error' ? t('sync_error') : y.status === 'offline' ? t('sync_offline') : t('sync_ok'); }
+  function syncPanel() {
+    var y = Y(), a = y.account, h = '<div class="panel" data-key="prefs-sync"><h2>' + esc(t('sync_title')) + '</h2>';
+    if (y.mode === 'claude') h += '<p>' + esc(t('sync_claude')) + '</p><p class="small muted" id="sync-status">' + esc(syncStatusText()) + '</p>';
+    else if (y.mode === 'server' && a) {
+      h += '<p>' + esc(t('sync_server')) + '</p><ul class="list" style="margin:0 0 12px;background:var(--c-housing)">' +
+        (a.email ? '<li><div class="grow"><div class="small muted">Email</div><b>' + esc(a.email) + '</b></div></li>' : '') +
+        (a.telegram ? '<li><div class="grow"><div class="small muted">Telegram</div><b>' + esc(a.telegram.username ? '@' + a.telegram.username : t('acct_tg_linked_noname')) + '</b></div></li>' : '') + '</ul>' +
+        '<p class="small muted" id="sync-status">' + esc(syncStatusText()) + '</p>';
+      if (!a.telegram && Y()._cfg && Y()._cfg.botUsername) h += '<h3>' + esc(t('acct_link_tg')) + '</h3><div id="tg-widget" data-onauth="TeploTgLink"></div>';
+      if (!a.hasPassword) h += '<h3 style="margin-top:16px">' + esc(t('acct_set_pass')) + '</h3><form id="setpass-form" novalidate>' + authFields('new-password') + '<div class="help block" id="setpass-err"></div><button class="btn sec" type="submit">' + esc(t('acct_set_pass_btn')) + '</button></form>';
+      h += '<div class="row-actions"><button class="btn sec" data-act="logout" data-key="prefs-logout">' + esc(t('logout')) + '</button></div><p class="small muted">' + esc(t('logout_sub')) + '</p>';
+    } else if (y.mode === 'server') h += '<p>' + esc(t('sync_local')) + '</p><p>' + esc(t('sync_local_sub_site')) + '</p><a class="btn" href="#login" data-key="prefs-login">' + esc(t('login')) + '</a>';
+    else h += '<p>' + esc(t('sync_local')) + '</p><p class="small muted">' + esc(t('sync_local_sub_noserver')) + '</p>';
+    return h + '</div>';
+  }
+  function authFields(passAuto) {
+    return '<div class="field"><label for="a-email">' + esc(t('login_email')) + '</label><div class="ctl"><input id="a-email" type="email" autocomplete="email" required></div></div>' +
+      '<div class="field"><label for="a-pass">' + esc(t('login_pass')) + '</label><div class="ctl"><input id="a-pass" type="password" autocomplete="' + passAuto + '" minlength="8" required></div><div class="help">' + esc(t('login_pass_hint')) + '</div></div>';
+  }
+  var authMode = 'login';
+  V.login = function () {
+    var y = Y();
+    if (y.account) return { screen: 'S13', route: 'login', bare: !S.onboarded, closeTo: S.onboarded ? 'home' : 'welcome', html: '<h1>' + esc(t('login_title')) + '</h1><p>' + esc(t('sync_server')) + '</p><a class="btn" href="#' + (S.meter ? 'home' : 'meter') + '">' + esc(t('next')) + '</a>' };
+    if (y.mode !== 'server') return { screen: 'S13', route: 'login', bare: !S.onboarded, closeTo: S.onboarded ? 'home' : 'welcome', html: '<h1>' + esc(t('login_title')) + '</h1>' + syncPanel() };
+    var reg = authMode === 'register';
+    return { screen: 'S13', route: 'login', bare: !S.onboarded, closeTo: S.onboarded ? 'home' : 'welcome', html:
+      '<h1>' + esc(t('login_title')) + '</h1><p>' + esc(t('login_lead')) + '</p>' +
+      '<div class="cols"><div>' +
+      (y._cfg && y._cfg.botUsername ? '<div class="panel" data-key="login-telegram"><h2>' + esc(t('login_tg')) + '</h2><p class="small muted">' + esc(t('login_tg_sub')) + '</p><div id="tg-widget" data-onauth="TeploTgAuth"></div></div>' : '') +
+      '</div><div><form id="login-form" class="panel" data-mode="' + authMode + '" novalidate data-key="login-form"><h2>' + esc(reg ? t('register_btn') : t('login_email_title')) + '</h2>' + authFields(reg ? 'new-password' : 'current-password') +
+      '<div class="help block" id="login-err" role="alert"></div><button class="btn block" type="submit" data-key="login-submit">' + esc(reg ? t('register_btn') : t('login_btn')) + '</button>' +
+      '<p style="margin-top:12px"><button type="button" class="linkbtn" data-act="auth-mode" data-key="login-toggle">' + esc(reg ? t('login_have') : t('login_need')) + '</button></p></form></div></div>' +
+      '<p><a href="#' + (S.onboarded ? 'home' : 'welcome') + '" data-key="login-skip">' + esc(t('login_skip')) + '</a></p>' };
+  };
+  function authError(j) {
+    if (!j || !j._status) return t('err_network');
+    var k = 'err_' + (j.error || ''); var txt = I.T[S.lang][k] || I.T.uk[k];
+    if (j.error === 'rate_limited') return t('err_rate_limited', { m: Math.max(1, Math.ceil((j.retryAfter || 60) / 60)) });
+    return txt || t('err_network');
+  }
+  function afterLogin(j, errEl) {
+    if (j && j._status === 200) { toast(t('login_ok')); S.onboarded = S.onboarded || !!S.meter; save(); go(S.meter ? 'home' : 'meter'); return; }
+    if (errEl) errEl.textContent = authError(j); else toast(authError(j));
+  }
+  function mountTelegramWidget() {
+    var box = document.getElementById('tg-widget'), cfg = Y()._cfg;
+    if (!box || !cfg || !cfg.botUsername || box.childNodes.length) return;
+    var sc = document.createElement('script'); sc.async = true; sc.src = 'https://telegram.org/js/telegram-widget.js?22';
+    sc.setAttribute('data-telegram-login', cfg.botUsername); sc.setAttribute('data-size', 'large'); sc.setAttribute('data-radius', '12');
+    sc.setAttribute('data-onauth', box.getAttribute('data-onauth') + '(user)'); sc.setAttribute('data-request-access', 'write');
+    box.appendChild(sc);
+  }
+  window.TeploTgAuth = function (user) { Y().loginTelegramWidget(user).then(function (j) { afterLogin(j); }, function () { toast(t('err_network')); }); };
+  window.TeploTgLink = function (user) { Y().linkTelegram(user).then(function (j) { if (j._status === 200) { toast(t('login_ok')); render(true); } else toast(authError(j)); }); };
+
+  // ---------------- распознавание по фото ----------------
+  var PH = { mode: 'reading', files: [], urls: [], status: 'idle', result: null, picked: null, error: '', ctl: null, progress: '' };
+  function phReset(mode) { PH.urls.forEach(function (u) { try { URL.revokeObjectURL(u); } catch (e) { /* нет */ } }); PH = { mode: mode || 'reading', files: [], urls: [], status: 'idle', result: null, picked: null, error: '', ctl: null, progress: '', date: S.draft && S.draft.date || today() }; }
+  function phErr(code) { return ({ not_signed_in: t('ph_err_login'), recognition_off: t('ph_unavail'), timeout: t('ph_err_timeout'), not_granted: t('ph_err_not_granted'), sampling_disabled: t('ph_err_not_granted'), images_unavailable: t('ph_unavail'), rate_limited: t('ph_err_rate'), image_rejected: t('ph_err_image'), nothing: t('ph_err_nothing') })[code] || t('ph_err_generic'); }
+  function thumbs(withRemove) {
+    return '<ul class="thumbs" data-key="photo-thumbs">' + PH.urls.map(function (u, i) {
+      return '<li><img src="' + u + '" alt="' + esc(t('ph_from', { n: i + 1 })) + '"><span class="n">' + (i + 1) + '</span>' + (withRemove ? '<button class="rm" data-act="ph-remove" data-i="' + i + '" aria-label="' + esc(t('ph_remove')) + '">' + ico('close', 16) + '</button>' : '') + '</li>';
+    }).join('') + '</ul>';
+  }
+  V.photo = function () {
+    var model_ = PH.mode === 'model', back = model_ ? 'meter' : (S.onboarded ? 'home' : 'welcome');
+    var head = '<h1>' + esc(model_ ? t('ph_model_title') : t('ph_title')) + '</h1>';
+    var shell_ = function (html) { return { screen: 'S12', route: 'photo', bare: true, closeTo: back, html: head + html }; };
+    if (!VIS().available) return shell_('<div class="banner warn">' + ico('info', 22) + '<div><p>' + esc(t('ph_unavail')) + '</p></div></div><a class="btn" href="#' + back + '">' + esc(t('back')) + '</a>');
+    var input = '<input type="file" id="ph-input" accept="' + esc(((VIS().limits && VIS().limits.images && VIS().limits.images.mediaTypes) || ['image/jpeg', 'image/png', 'image/webp']).join(',')) + '" multiple class="sr" data-key="photo-input">';
+    if (PH.status === 'working') return shell_('<div class="banner" role="status">' + ico('clock', 22) + '<div><p><b>' + esc(t('ph_working', { n: PH.files.length })) + '</b></p>' + (PH.progress ? '<p>' + esc(PH.progress) + '</p>' : '') + '</div></div>' + thumbs(false) + '<div class="row-actions"><button class="btn sec" data-act="ph-stop">' + esc(t('ph_stop')) + '</button></div>');
+    if (PH.status === 'done' && !model_) return shell_(photoResult());
+    var lead = '<p>' + esc(model_ ? t('ph_model_lead') : t('ph_lead')) + '</p>';
+    var err = PH.error ? '<div class="banner bad" role="alert">' + ico('alert', 22) + '<div><p>' + esc(PH.error) + '</p></div></div>' : '';
+    var date = model_ ? '' : '<div class="field" style="max-width:280px"><label for="ph-date">' + esc(t('ph_date')) + '</label><div class="ctl"><input id="ph-date" type="date" value="' + esc(PH.date || today()) + '" max="' + today() + '"></div></div>';
+    var pick = '<label for="ph-input" class="btn ' + (PH.files.length ? 'sec' : 'big') + '" role="button" tabindex="0" data-key="photo-pick">' + ico('camera', 22) + '<span>' + esc(PH.files.length ? t('ph_add') : t('ph_pick')) + '</span></label>';
+    var go_ = PH.files.length ? '<button class="btn big" data-act="ph-run" data-key="photo-run">' + esc(t('ph_go', { n: PH.files.length })) + '</button>' : '';
+    return shell_(lead + err + input + (PH.files.length ? thumbs(true) : '') + date + '<div class="row-actions">' + pick + go_ + '</div>' + '<p class="small muted" style="margin-top:16px">' + esc(t('ph_privacy')) + '</p>');
+  }
+  function photoResult() {
+    var p = PH.picked || {}, res = PH.result || {}, mt = res.meter || {}, h = '';
+    var mm = mt.modelId ? M.byId(mt.modelId) : null;
+    if (mm && (!S.meter || S.meter.modelId !== mm.id)) h += '<div class="banner" data-key="photo-meter">' + ico('info', 22) + '<div><p><b>' + esc(t('ph_meter_found', { m: modelName(mm) })) + '</b></p><p><button class="linkbtn" data-act="ph-use-model" data-id="' + mm.id + '" data-unit="' + esc(mt.energyUnit || '') + '">' + esc(t('ph_meter_use')) + '</button></p></div></div>';
+    var bad = (res.photos || []).filter(function (x) { return x.quality && x.quality !== 'ok'; });
+    if (bad.length) h += '<div class="banner warn">' + ico('alert', 22) + '<div>' + bad.map(function (x) { return '<p>' + esc(t('ph_quality', { n: x.index + 1, q: t('q_' + x.quality) || x.quality })) + (x.note ? ' — ' + esc(x.note) : '') + '</p>'; }).join('') + '</div></div>';
+    h += '<p class="muted">' + esc(t('ph_result_sub')) + '</p><div class="field" style="max-width:280px"><label for="ph-date">' + esc(t('ph_date')) + '</label><div class="ctl"><input id="ph-date" type="date" value="' + esc(PH.date || today()) + '" max="' + today() + '"></div></div>';
+    h += '<ul class="list ph-fields" data-key="photo-fields">' + R.FIELDS.filter(function (f) { return f.key !== 'date'; }).map(function (f) {
+      var r = p[f.key], v = r ? r.value : '', conf = r ? r.confidence : 0;
+      var tag = !r ? '<span class="pill bad">' + esc(t('ph_missing')) + '</span>' : r.conflict ? '<span class="pill warn">' + esc(t('ph_conflict')) + '</span>' : conf < 0.75 ? '<span class="pill warn">' + esc(t('ph_low')) + '</span>' : '<span class="pill ok">' + ico('check', 14) + '</span>';
+      var th = r && PH.urls[r.photo] ? '<img class="src" src="' + PH.urls[r.photo] + '" alt="' + esc(t('ph_from', { n: r.photo + 1 })) + '" title="' + esc(t('ph_from', { n: r.photo + 1 })) + '">' : '<span class="src none"></span>';
+      return '<li>' + th + '<div class="grow"><label for="phv-' + f.key + '" class="small muted">' + esc(fieldLabel(f.key)) + (f.key === 'energy' ? ', ' + esc(unitLbl(energyUnit())) : f.unit ? ', ' + esc(fieldUnit(f.key)) : '') + '</label>' +
+        '<input id="phv-' + f.key + '" class="num ph-in" data-ph="' + f.key + '" inputmode="' + (f.key === 'errCode' ? 'text' : 'decimal') + '" value="' + esc(v) + '"' + (f.key === 'errCode' ? ' placeholder="E---"' : '') + '>' + (r && r.converted ? '<div class="small muted">' + esc(r.converted) + '</div>' : '') + '</div>' + tag + '</li>';
+    }).join('') + '</ul>';
+    return h + '<div class="row-actions"><button class="btn sec" data-act="ph-again">' + esc(t('ph_add')) + '</button><button class="btn" data-act="ph-apply" data-to="check" data-key="photo-check">' + esc(t('ph_to_check')) + '</button></div>';
+  }
+  function phRun() {
+    var y = VIS(); if (!y.available || !PH.files.length) return;
+    var di = document.getElementById('ph-date'); if (di) PH.date = di.value || today();
+    PH.status = 'working'; PH.error = ''; PH.progress = ''; PH.ctl = new AbortController(); render(true);
+    var m = model(), ctx = { modelId: m ? m.id : '', models: M.MODELS, steps: m && m.status === 'verified' ? m.steps : null, expectedModel: m && m.id !== 'other' ? modelName(m) : '', prev: S.baseline ? { energy: S.baseline.energy, volume: S.baseline.volume, hours: S.baseline.hours } : null, lang: S.lang };
+    y.recognize(PH.files, ctx, PH.ctl.signal, function (i, n) { if (n > 1) { PH.progress = t('ph_batch', { i: i, n: n }); if (routeName() === 'photo') render(true); } }).then(function (res) {
+      PH.result = res;
+      if (PH.mode === 'model') {
+        var id = res.meter && res.meter.modelId && M.byId(res.meter.modelId) ? res.meter.modelId : null;
+        PH.status = 'idle';
+        if (!id) { PH.error = t('ph_model_none'); render(true); return; }
+        S._pickModel = id; if (res.meter.energyUnit) S._pickUnit = res.meter.energyUnit;
+        toast(t('ph_meter_found', { m: modelName(M.byId(id)) })); go('meter'); return;
+      }
+      var unit = (res.meter && res.meter.energyUnit && !S.meter) ? res.meter.energyUnit : energyUnit();
+      PH.picked = y.pick(res, M.TO_GCAL, unit);
+      if (!Object.keys(PH.picked).length) { PH.status = 'idle'; PH.error = phErr('nothing'); render(true); return; }
+      PH.status = 'done'; render(true);
+    }, function (e) {
+      PH.status = 'idle'; if (e && e.code === 'cancelled') { render(true); return; }
+      PH.error = phErr(e && e.code); render(true);
+    });
+  }
+  function phApply() {
+    var vals = {}; Array.prototype.forEach.call(document.querySelectorAll('[data-ph]'), function (el) { vals[el.getAttribute('data-ph')] = el.value.trim(); });
+    var di = document.getElementById('ph-date'); var date = (di && di.value) || PH.date || today();
+    if (!S.meter) { var mt = PH.result && PH.result.meter, id = mt && mt.modelId && M.byId(mt.modelId) ? mt.modelId : 'other'; S.meter = { modelId: id, unit: (mt && mt.energyUnit) || M.byId(id).unit }; }
+    var conf = {}; Object.keys(PH.picked || {}).forEach(function (k) { var r = PH.picked[k]; if (String(vals[k]) === String(r.value)) conf[k] = r.conflict ? 0.5 : r.confidence; });
+    S.draft = { date: date, values: vals, step: steps().length - 1, source: 'photo', photoConf: conf, startedAt: new Date().toISOString() };
+    save(); go('check');
+  }
+
+  // ---------------- справка ----------------
+  function helpHtml() {
+    var ru = S.lang === 'ru', m = model();
+    var how = m && m.steps ? '<ol>' + m.steps.map(function (s) {
+      var press = s.press === null ? (ru ? 'Экран по умолчанию' : 'Екран за замовчуванням') : s.count ? (ru ? 'Нажмите ×' : 'Натисніть ×') + s.count : (ru ? 'Ищите экран' : 'Шукайте екран');
+      return '<li><b>' + esc(press) + '</b> — ' + esc(s.fields.map(fieldLabel).join(', ')) + '. ' + esc(L(s.hint)) + '</li>';
+    }).join('') + '</ol>' : '';
+    var secs = [
+      ['h-window', ru ? 'Когда передавать' : 'Коли передавати', ru
+        ? '<p>На сайте ХТМ показания тепла принимают <b>с 5 по 25 число</b>, рекомендуют — <b>до 23-го</b>. С 26-го до 5-го форма закрыта на начисления.</p><p>Не успели — снимите <b>новые</b> показания в следующем месяце: ХТМ принимает показания только текущего месяца. Пропущенный месяц начислят по домовому счётчику, после следующих принятых показаний будет перерасчёт.</p>'
+        : '<p>На сайті ХТМ показання тепла приймають <b>з 5 по 25 число</b>, рекомендують — <b>до 23-го</b>. З 26-го до 5-го форма закрита на нарахування.</p><p>Не встигли — зніміть <b>нові</b> показання наступного місяця: ХТМ приймає показання лише поточного місяця. Пропущений місяць нарахують за будинковим лічильником, після наступних прийнятих показань буде перерахунок.</p>'],
+      ['h-sameday', ru ? 'Снимайте и передавайте в один день' : 'Знімайте й передавайте в один день', ru
+        ? '<p>Робот ХТМ сравнивает, сколько часов насчитал счётчик, с числом часов между датами записей. Разница больше 24 часов — отказ. Поэтому дата — это день, когда вы смотрели на экран, а не день передачи.</p>'
+        : '<p>Робот ХТМ порівнює, скільки годин налічив лічильник, з кількістю годин між датами записів. Різниця понад 24 години — відмова. Тому дата — це день, коли ви дивилися на екран, а не день передачі.</p>'],
+      ['h-how', (ru ? 'Как снимать: ' : 'Як знімати: ') + esc(modelName(m) || ''), (m && m.status !== 'verified' ? '<p class="muted">' + esc(t('m_draft')) + '. ' + esc(L(m.note)) + '</p>' : '') + how],
+      ['h-robot', ru ? 'Почему робот ХТМ не принимает' : 'Чому робот ХТМ не приймає', ru
+        ? '<ul><li>Энергия, объём, часы работы или часы с ошибкой <b>меньше прошлых</b> — накопительные значения не уменьшаются.</li><li>Энергия выросла, а <b>объём не изменился</b>.</li><li>Средняя разница температур за период <b>меньше 2,5 °C</b> (теплоноситель бежит слишком быстро) или <b>больше 50</b> (ошибка в цифрах).</li><li>Средний расход меньше 0,3 × переходного расхода прибора.</li><li>Температура <b>0</b> или вне 5–95 °C.</li><li>Часы работы не сходятся с календарём больше чем на 24 часа.</li><li>Прирост энергии <b>15 Гкал и больше</b> — обычно пропущена точка.</li><li>Истёк срок поверки; прибор не внесён в базу или снят с учёта.</li></ul><p>Всё, кроме последнего пункта, мы проверяем до передачи.</p>'
+        : '<ul><li>Енергія, обсяг, години роботи чи години з помилкою <b>менші за попередні</b> — накопичувальні значення не зменшуються.</li><li>Енергія зросла, а <b>обсяг не змінився</b>.</li><li>Середня різниця температур за період <b>менша за 2,5 °C</b> (теплоносій біжить занадто швидко) або <b>більша за 50</b> (помилка в цифрах).</li><li>Середня витрата менша за 0,3 × перехідної витрати приладу.</li><li>Температура <b>0</b> або поза 5–95 °C.</li><li>Години роботи не збігаються з календарем більше ніж на 24 години.</li><li>Приріст енергії <b>15 Гкал і більше</b> — зазвичай пропущена крапка.</li><li>Минув строк повірки; прилад не внесено в базу або знято з обліку.</li></ul><p>Усе, крім останнього пункту, ми перевіряємо до передачі.</p>'],
+      ['h-off', ru ? 'Если отопление отключают' : 'Якщо опалення відключають', ru
+        ? '<p>Перед отключением снимите и передайте показания. Перед включением — снова снимите и передайте, потом включайте.</p>'
+        : '<p>Перед відключенням зніміть і передайте показання. Перед увімкненням — знову зніміть і передайте, потім вмикайте.</p>'],
+      ['h-hw', ru ? 'Горячая вода' : 'Гаряча вода', ru
+        ? '<p>В кабинете ХТМ формы для горячей воды нет — её показания принимает Telegram-бот <a href="' + BOT_URL + '" target="_blank" rel="noopener">@KPHTM_Bot</a> и телефон (057) 341-41-40.</p>'
+        : '<p>У кабінеті ХТМ форми для гарячої води немає — її показання приймає Telegram-бот <a href="' + BOT_URL + '" target="_blank" rel="noopener">@KPHTM_Bot</a> і телефон (057) 341-41-40.</p>'],
+      ['h-special', ru ? 'Счётчики ELF, TRUST, ЛТЭ, Ultrameter' : 'Лічильники ELF, TRUST, ЛТЕ, Ultrameter', ru
+        ? '<p>Эти приборы считают часы работы только когда идёт теплоноситель. ХТМ советует держать расход выше переходного весь отопительный период и разницу температур больше 3 °C — иначе показания могут не принять, и тогда их подают на бумаге в районный филиал.</p>'
+        : '<p>Ці прилади рахують години роботи лише коли йде теплоносій. ХТМ радить тримати витрату вищою за перехідну весь опалювальний період і різницю температур більше 3 °C — інакше показання можуть не прийняти, і тоді їх подають паперово в районну філію.</p>'],
+      ['h-phones', ru ? 'Телефоны ХТМ' : 'Телефони ХТМ', ru
+        ? '<ul><li>Колл-центр: (057) 341-41-40</li><li>Поверка, распломбирование, осмотр узла учёта: 050-670-13-45</li><li>Прибор отсутствует в базе: 067-370-87-75</li></ul>'
+        : '<ul><li>Кол-центр: (057) 341-41-40</li><li>Повірка, розпломбування, огляд вузла обліку: 050-670-13-45</li><li>Прилад відсутній у базі: 067-370-87-75</li></ul>']
+    ];
+    return '<div class="help-doc"><h1>' + esc(t('help_title')) + '</h1><div class="toc">' + secs.map(function (s) { return '<button type="button" class="tocb" data-act="scroll" data-target="' + s[0] + '">' + esc(s[1].replace(/:.*/, '')) + '</button>'; }).join('') + '</div>' +
+      secs.map(function (s) { return '<section id="' + s[0] + '"><h2>' + s[1] + '</h2>' + s[2] + '</section>'; }).join('') + '</div>';
+  }
+
+  // ---------------- маршрутизация ----------------
+  function routeName() { return (location.hash || '').replace(/^#/, ''); }
+  function render(keepScroll) {
+    var r = routeName();
+    if (S.onboarded && !S.meter && ['meter', 'help', 'prefs', 'login', 'photo'].indexOf(r) < 0) r = 'meter';
+    pendingRender = false;
+    if (!S.onboarded && ['welcome', 'meter', 'baseline', 'help', 'login', 'photo'].indexOf(r) < 0) r = S.meter ? 'baseline' : 'welcome';
+    if (S.onboarded && (!r || r === 'welcome')) r = 'home';
+    var view;
+    if (/^step-\d+$/.test(r)) view = (S.meter ? V.step(+r.split('-')[1]) : V.meter());
+    else view = (V[r] || V.home)();
+    if (!view.route) view.route = r;
+    document.getElementById('root').innerHTML = shell(view);
+    document.documentElement.lang = S.lang;
+    document.title = t('brand');
+    if (keepScroll !== true) window.scrollTo(0, 0);
+    afterRender(r);
+  }
+  function go(r) { if (routeName() === r) render(); else location.hash = r; }
+
+  function afterRender(r) {
+    if (Y().mode === 'server') mountTelegramWidget();
+    var first = document.querySelector('[data-field]:not([type=radio])');
+    if (first && /^step-/.test(r) && window.matchMedia('(min-width: 600px)').matches) first.focus({ preventScroll: true });
+    var demo = document.getElementById('p-demo');
+    if (demo) demo.addEventListener('change', function () { S.demoToday = demo.value; save(); toast(t('b_saved')); });
+  }
+
+  // ---------------- действия ----------------
+  function toast(msg) {
+    var host = document.getElementById('toast-host'); if (!host) return;
+    host.innerHTML = '<div class="toast">' + esc(msg) + '</div>';
+    clearTimeout(toast._t); toast._t = setTimeout(function () { host.innerHTML = ''; }, 2400);
+  }
+  function copyText(text, btn) {
+    function ok() { if (btn) { btn.classList.add('done'); var sp = btn.querySelector('span'); if (sp) sp.textContent = t('copied'); } toast(t('copied')); }
+    function fallback() {
+      var ta = document.createElement('textarea'); ta.value = text; ta.setAttribute('readonly', ''); ta.style.position = 'fixed'; ta.style.opacity = '0';
+      document.body.appendChild(ta); ta.select(); var done = false; try { done = document.execCommand('copy'); } catch (e) { /* нет */ }
+      document.body.removeChild(ta); if (done) ok(); else toast(text);
+    }
+    try { if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(ok, fallback); else fallback(); } catch (e) { fallback(); }
+  }
+
+  function readStepInputs() {
+    var inputs = document.querySelectorAll('#step-form [data-field]');
+    Array.prototype.forEach.call(inputs, function (el) { S.draft.values[el.getAttribute('data-field')] = el.value.trim(); if (el.getAttribute('data-field') === 'date') { S.draft.date = el.value; delete S.draft.values.date; } });
+    var ecNone = document.querySelector('input[name="ec"][value="none"]');
+    if (ecNone && ecNone.checked) S.draft.values.errCode = '';
+    save();
+  }
+  function stepNext(i) {
+    readStepInputs();
+    var st = steps()[i], missing = [];
+    if (st.kind === 'date') { if (!S.draft.date) missing.push('date'); }
+    else st.fields.forEach(function (k) { if (k !== 'errCode' && (S.draft.values[k] == null || S.draft.values[k] === '')) missing.push(k); });
+    if (missing.length) {
+      missing.forEach(function (k) { var h = document.getElementById('h-' + k); var w = document.getElementById('fw-' + k); if (h) { h.textContent = t('s_need'); h.className = 'help block'; } if (w) w.className = 'field is-block'; });
+      var el = document.querySelector('[data-field="' + missing[0] + '"]'); if (el) el.focus();
+      return;
+    }
+    if (i >= steps().length - 1) go('check'); else go('step-' + (i + 1));
+  }
+  function liveCheck(el) {
+    var k = el.getAttribute('data-field'), v = el.value;
+    if (k === 'date') { S.draft.date = v; save(); return; }
+    S.draft.values[k] = v.trim(); save();
+    var line = document.getElementById('lcd-' + k);
+    if (line) { line.classList.toggle('sample', !v); var svg = line.querySelector('svg'); var tmp = document.createElement('div'); var st = steps()[S.draft.step] || {}; tmp.innerHTML = segSvg(v ? lcdText(k, v) : (st.lcd ? (st.fields[0] === k ? st.lcd.digits : (st.lcd.alt || st.lcd).digits) : '')); svg.parentNode.replaceChild(tmp.firstChild, svg); }
+    var cap = document.getElementById('lcd-cap'); if (cap && v) cap.textContent = t('s_on_screen');
+    var h = document.getElementById('h-' + k), w = document.getElementById('fw-' + k); if (!h) return;
+    var res = R.checkField(k, v, prevForEntry());
+    if (!res || !v) { h.textContent = h.getAttribute('data-base') || ''; h.className = 'help'; if (w) w.className = 'field'; return; }
+    var msg = L(res.msg);
+    var plainTxt = (h.getAttribute('data-plain') || '');
+    h.textContent = res.level === 'ok' ? (msg ? msg + ' ' + fieldUnit(k) + (plainTxt ? (S.lang === 'ru' ? ' — в прошлый раз ' : ' — минулого разу ') + plainTxt.replace(/^[^0-9]+/, '') : '') : (h.getAttribute('data-base') || '')) : msg;
+    h.className = 'help ' + (res.level === 'ok' ? (msg ? 'ok' : '') : res.level);
+    if (w) w.className = 'field' + (res.level === 'block' ? ' is-block' : res.level === 'warn' ? ' is-warn' : '');
+  }
+
+  function saveReading(status) {
+    var res = S._lastCheck || runCheck(S.draft), htm = draftReadingGcal(S.draft);
+    var rd = { id: uid(), htm: htm, raw: Object.assign({}, S.draft.values), unit: energyUnit(), status: status, createdAt: new Date().toISOString(), updatedAt: Date.now(), source: S.draft.source || 'manual',
+      verdict: res.verdict, codes: res.items.map(function (x) { return x.code; }),
+      derived: Object.assign({}, res.derived, S.baseline ? { days: R.daysBetween(S.baseline.date, htm.date) } : {}) };
+    S.readings.push(rd); S.draft = null; S.focusId = rd.id; save();
+    return rd;
+  }
+
+  document.addEventListener('click', function (e) {
+    var el = e.target.closest('[data-act]'); if (!el) return;
+    var act = el.getAttribute('data-act');
+    switch (act) {
+      case 'start': break;
+      case 'read': newDraft(); go('step-0'); break;
+      case 'restart': newDraft(); go('step-0'); break;
+      case 'pick-model': S._pickModel = el.value; render(true); break;
+      case 'save-meter': {
+        var id = S._pickModel || (S.meter && S.meter.modelId); var pm = M.byId(id); if (!pm) return;
+        var u = document.querySelector('input[name="unit"]:checked');
+        S.meter = Object.assign({}, S.meter || {}, { modelId: id, unit: u ? u.value : pm.unit });
+        delete S._pickModel; save();
+        go(S.onboarded ? 'home' : 'baseline'); break;
+      }
+      case 'skip-base': S.onboarded = true; save(); go('home'); break;
+      case 'sample': {
+        var d = addDays(today(), -25), smp = { date: d, energy: '13.245', volume: '2292.676', flow: '0.063', power: '1.685', tSupply: '50.76', tReturn: '27.71', hours: '34598', errHours: '153', errCode: 'E---' };
+        Object.keys(smp).forEach(function (k) { var f = document.querySelector('[data-b="' + k + '"]'); if (f) f.value = smp[k]; });
+        break;
+      }
+      case 'step-next': e.preventDefault(); stepNext(+el.getAttribute('data-i')); break;
+      case 'ec': { var ctl = document.getElementById('ec-ctl'); if (ctl) ctl.style.display = el.value === 'code' ? '' : 'none'; if (el.value === 'code') { var f2 = document.getElementById('f-errCode'); if (f2) f2.focus(); } break; }
+      case 'fix': go('step-' + stepOfField(el.getAttribute('data-field'))); break;
+      case 'save-inter': saveReading('intermediate'); toast(t('c_saved_inter')); go('home'); break;
+      case 'to-handover': if (el.disabled) return; saveReading('checked'); go('handover'); break;
+      case 'copy': copyText(el.getAttribute('data-text'), el); break;
+      case 'handed': {
+        var r = S.readings.filter(function (x) { return x.id === el.getAttribute('data-id'); })[0];
+        if (r) { r.status = 'handed'; r.handedAt = new Date().toISOString(); r.updatedAt = Date.now(); S.focusId = r.id; save(); }
+        go('status'); break;
+      }
+      case 'focus': S.focusId = el.getAttribute('data-id'); save(); break;
+      case 'accepted': {
+        var ra = S.readings.filter(function (x) { return x.id === el.getAttribute('data-id'); })[0];
+        if (ra) { ra.status = 'accepted'; ra.updatedAt = Date.now(); ra.result = { at: new Date().toISOString() }; S.baseline = Object.assign({}, ra.htm); save(); }
+        render(); break;
+      }
+      case 'show-reject': { var f = document.getElementById('reject-form'); if (f) { f.style.display = ''; document.getElementById('rej-text').focus(); } break; }
+      case 'refix': {
+        var rr = S.readings.filter(function (x) { return x.id === el.getAttribute('data-id'); })[0];
+        if (rr) { S.draft = { date: rr.htm.date, values: Object.assign({}, rr.raw), step: steps().length - 1, fixOf: rr.id }; save(); go('check'); }
+        break;
+      }
+      case 'scroll': { var tg = document.getElementById(el.getAttribute('data-target')); if (tg) tg.scrollIntoView({ behavior: 'smooth', block: 'start' }); break; }
+      case 'export': copyText(JSON.stringify(S), el); break;
+      case 'wipe-ask': document.getElementById('wipe-confirm').innerHTML = '<div class="confirm"><p>' + esc(t('p_wipe_confirm')) + '</p><div class="row-actions" style="margin-top:8px"><button class="btn sec" data-act="wipe-no">' + esc(t('cancel')) + '</button><button class="btn danger" data-act="wipe-yes" data-key="prefs-wipe-yes">' + esc(t('p_wipe_yes')) + '</button></div></div>'; break;
+      case 'photo': phReset(el.getAttribute('data-mode')); go('photo'); break;
+      case 'ph-remove': { var ix = +el.getAttribute('data-i'); try { URL.revokeObjectURL(PH.urls[ix]); } catch (e2) { /* нет */ } PH.files.splice(ix, 1); PH.urls.splice(ix, 1); render(true); break; }
+      case 'ph-run': phRun(); break;
+      case 'ph-stop': if (PH.ctl) PH.ctl.abort(); break;
+      case 'ph-again': PH.status = 'idle'; render(true); break;
+      case 'ph-apply': phApply(); break;
+      case 'ph-use-model': { var um = M.byId(el.getAttribute('data-id')); S.meter = Object.assign({}, S.meter || {}, { modelId: um.id, unit: el.getAttribute('data-unit') || um.unit }); save(); toast(t('b_saved')); PH.picked = VIS().pick(PH.result, M.TO_GCAL, energyUnit()); render(true); break; }
+      case 'auth-mode': authMode = authMode === 'login' ? 'register' : 'login'; render(true); break;
+      case 'logout': Y().logout().then(function () { S = defaults(); S.lang = browserLang(); lastSig = window.TeploSync.sig(window.TeploSync.payload(S)); persist(); toast(t('logged_out')); go('welcome'); }); break;
+      case 'dismiss-sync': S.syncPromptDismissed = true; persist(); render(true); break;
+      case 'wipe-no': document.getElementById('wipe-confirm').innerHTML = ''; break;
+      case 'wipe-yes': { var now = Date.now(); S = defaults(); S.lang = browserLang(); S.wipedAt = now; save(); toast(t('p_wiped')); go('welcome'); break; }
+    }
+  });
+
+  document.addEventListener('input', function (e) {
+    var el = e.target;
+    if (el.matches('[data-field]') && S.draft) liveCheck(el);
+    if (el.matches('[data-contact]')) { S.contacts = S.contacts || {}; S.contacts[el.getAttribute('data-contact')] = el.value.trim(); save(); }
+  });
+  document.addEventListener('change', function (e) {
+    if (e.target.id === 'ph-input') {
+      var max = 20, add = Array.prototype.slice.call(e.target.files || []).slice(0, Math.max(0, max - PH.files.length));
+      add.forEach(function (f) { PH.files.push(f); PH.urls.push(URL.createObjectURL(f)); });
+      var di = document.getElementById('ph-date'); if (di) PH.date = di.value;
+      PH.error = ''; render(true);
+    }
+  });
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Enter' && e.target.matches('label[for="ph-input"]')) { e.preventDefault(); document.getElementById('ph-input').click(); return; }
+    if (e.key === 'Enter' && e.target.matches('#step-form input[data-field]')) {
+      e.preventDefault();
+      var inputs = Array.prototype.slice.call(document.querySelectorAll('#step-form input[data-field]:not([type=radio])')).filter(function (x) { return x.offsetParent !== null; });
+      var idx = inputs.indexOf(e.target);
+      if (idx >= 0 && idx < inputs.length - 1) inputs[idx + 1].focus();
+      else { var b = document.querySelector('[data-act="step-next"]'); if (b) b.click(); }
+    }
+  });
+  document.addEventListener('submit', function (e) {
+    e.preventDefault();
+    var f = e.target;
+    if (f.id === 'baseline-form') {
+      var b = {}; Array.prototype.forEach.call(f.querySelectorAll('[data-b]'), function (el) { b[el.getAttribute('data-b')] = el.value.trim(); });
+      var hasAny = Object.keys(b).some(function (k) { return k !== 'errCode' && b[k]; });
+      if (hasAny) { b.errCode = R.normCode(b.errCode); ['energy', 'volume', 'flow', 'power', 'tSupply', 'tReturn', 'hours', 'errHours'].forEach(function (k) { var n = R.num(b[k]); b[k] = n === null ? '' : n; }); S.baseline = b; }
+      S.meter = S.meter || {};
+      Array.prototype.forEach.call(f.querySelectorAll('[data-m]'), function (el) { S.meter[el.getAttribute('data-m')] = el.value.trim(); });
+      S.onboarded = true; save(); toast(t('b_saved')); go('home');
+    } else if (f.id === 'step-form') {
+      var nb = document.querySelector('[data-act="step-next"]'); if (nb) nb.click();
+    } else if (f.id === 'reject-form') {
+      var r = S.readings.filter(function (x) { return x.id === f.getAttribute('data-id'); })[0];
+      var text = document.getElementById('rej-text').value.trim();
+      if (r) { var dec = R.decodeRobot(text); r.status = 'rejected'; r.updatedAt = Date.now(); r.robot = { text: text, code: dec.code, fix: dec.fix || null }; save(); }
+      render();
+    } else if (f.id === 'login-form') {
+      var em = document.getElementById('a-email').value.trim(), pw = document.getElementById('a-pass').value, er = document.getElementById('login-err');
+      er.textContent = '';
+      var btn = f.querySelector('[type=submit]'); btn.disabled = true;
+      (f.getAttribute('data-mode') === 'register' ? Y().register(em, pw) : Y().login(em, pw)).then(function (j) { btn.disabled = false; afterLogin(j, er); }, function () { btn.disabled = false; er.textContent = t('err_network'); });
+    } else if (f.id === 'setpass-form') {
+      var em2 = document.getElementById('a-email').value.trim(), pw2 = document.getElementById('a-pass').value, er2 = document.getElementById('setpass-err');
+      Y().setPassword(em2, pw2).then(function (j) { if (j._status === 200) { toast(t('b_saved')); render(true); } else er2.textContent = authError(j); });
+    } else if (f.id === 'import-form') {
+      try { var data = JSON.parse(document.getElementById('p-import').value); if (!data || typeof data !== 'object' || !Array.isArray(data.readings)) throw new Error('bad'); S = Object.assign(defaults(), data); S.lang = browserLang(); save(); toast(t('p_import_ok')); render(); }
+      catch (err) { toast(t('p_import_bad')); }
+    }
+  });
+  window.addEventListener('hashchange', function () { render(); });
+  var tw = window.Telegram && window.Telegram.WebApp;
+  if (tw && tw.initData) { try { tw.ready(); tw.expand(); tw.setHeaderColor && tw.setHeaderColor('#E9EEEB'); tw.setBackgroundColor && tw.setBackgroundColor('#E9EEEB'); } catch (e) { /* старый клиент */ } }
+  render();
+  if (window.TeploSync) {
+    var onSync = function () {
+      var el = document.getElementById('sync-status'); if (el) el.textContent = syncStatusText();
+      if (window.TEPLO_API && window.TeploVision && window.TeploSync._cfg) window.TeploVision.initServer(window.TeploSync._cfg, !!window.TeploSync.account);
+      if (['prefs', 'login', 'welcome', 'home'].indexOf(routeName() || 'welcome') >= 0) safeRender();
+    };
+    window.TeploSync.init(function () { return S; }, applyRemote, onSync);
+    if (window.TEPLO_API) window.TeploSync.config().then(function (c) { window.TeploSync._cfg = c; onSync(); }, function () { /* сервер недоступен */ });
+  }
+  if (window.TeploVision) window.TeploVision.init(function () { if (['home', 'meter', 'photo', 'step-0', ''].indexOf(routeName()) >= 0) safeRender(); });
+})();
+
+</script>
+</body>
+</html>

@@ -1,0 +1,208 @@
+<?php
+// Теплосервис — JSON API. Чистая функция Api::handle(запрос) → ответ (тестируется без веб-сервера).
+//  GET  /api/config                 → {botUsername, telegramLogin}
+//  GET  /api/me                     → {user} | 401
+//  POST /api/auth/register          {email, password}
+//  POST /api/auth/login             {email, password}
+//  POST /api/auth/telegram/webapp   {initData}           — вход внутри бота (Mini App)
+//  POST /api/auth/telegram/widget   {id, ..., hash}      — кнопка «Увійти через Telegram» на сайте
+//  POST /api/auth/link-telegram     {widget data}        — привязать Telegram к аккаунту с паролем
+//  POST /api/auth/password          {email, password}    — задать email+пароль аккаунту из Telegram
+//  POST /api/auth/logout
+//  GET  /api/state                  → {state, version}
+//  PUT  /api/state                  {state, baseVersion} → {version} | 409 {state, version}
+//  POST /api/bot/webhook            (заголовок X-Telegram-Bot-Api-Secret-Token)
+//  POST /api/bot/setup              (заголовок X-Setup-Secret = webhook_secret) — вебхук, кнопка меню, /start
+//  POST /api/recognize/upload       фото СЫРЫМ телом (Content-Type: image/*) → {id}
+//  POST /api/recognize/run          {ids[≤3], offset, ctx} → распознанное (vision-API, ключ в config.php)
+//  Пути здесь — без SITE_BASE: index.php отрезает его.
+declare(strict_types=1);
+if (!defined('TEPLO')) { http_response_code(404); exit; }
+
+final class Req {
+  public function __construct(public string $method, public string $path, public array $server = [], public array $cookies = [], public string $body = '') {}
+  public function json(): array { $j = json_decode($this->body, true); return is_array($j) ? $j : []; }
+  public function header(string $name): string { return (string)($this->server['HTTP_' . strtoupper(str_replace('-', '_', $name))] ?? ''); }
+}
+final class Res {
+  public array $cookies = [];
+  public function __construct(public int $status = 200, public array $body = []) {}
+}
+
+final class Api {
+  public static function handle(Req $r): Res {
+    $res = new Res();
+    try {
+      $ip = Http::ip($r->server);
+      $isUpload = $r->path === '/api/recognize/upload';
+      if (strlen($r->body) > (int)Cfg::get($isUpload ? 'max_photo_bytes' : 'max_body_bytes')) throw new HttpError(413, 'too_large');
+      $isHook = $r->path === '/api/bot/webhook' || $r->path === '/api/bot/setup';
+      if (!$isHook) RateLimit::hit('ip_all', $ip);
+      // CSRF: для изменяющих запросов заголовок X-CSRF должен совпасть с cookie ts_csrf (double submit) + SameSite=Lax
+      if (!$isHook && $r->method !== 'GET') {
+        $c = (string)($r->cookies['ts_csrf'] ?? ''); $h = $r->header('X-CSRF');
+        if ($c === '' || !hash_equals($c, $h)) throw new HttpError(403, 'csrf');
+      }
+      $user = self::sessionUser($r);
+      $out = self::route($r, $res, $user, $ip);
+      $res->body = $out;
+    } catch (HttpError $e) {
+      $res->status = $e->status; $res->body = ['error' => $e->err] + $e->extra;
+    }
+    // CSRF-cookie выдаём всегда, если её нет (её читает JS и кладёт в заголовок)
+    if (empty($r->cookies['ts_csrf'])) self::cookie($res, 'ts_csrf', bin2hex(random_bytes(16)), Http::now() + 86400 * 365, false);
+    return $res;
+  }
+
+  private static function route(Req $r, Res $res, ?array $user, string $ip): array {
+    $m = $r->method; $p = $r->path; $in = $r->json();
+    switch ("$m $p") {
+      case 'GET /api/config': return ['botUsername' => Cfg::get('bot_username') ?: null, 'telegramLogin' => (bool)Cfg::get('bot_token'), 'recognition' => (bool)Cfg::get('anthropic_api_key')];
+      case 'GET /api/me': if (!$user) throw new HttpError(401, 'unauthorized'); return ['user' => self::publicUser($user)];
+
+      case 'POST /api/auth/register': {
+        RateLimit::hit('register_ip', $ip);
+        [$email, $pass] = self::creds($in);
+        if (Db::one('SELECT id FROM users WHERE email = ?', [$email])) throw new HttpError(409, 'email_taken');
+        Db::q('INSERT INTO users (email, password_hash, created_at) VALUES (?, ?, ?)', [$email, password_hash($pass, PASSWORD_DEFAULT), Http::iso()]);
+        $u = self::userById(Db::id()); self::startSession($res, $u, $r, $ip); self::audit($u['id'], 'register', $ip);
+        return ['user' => self::publicUser($u)];
+      }
+      case 'POST /api/auth/login': {
+        RateLimit::hit('login_ip', $ip);
+        $email = mb_strtolower(trim((string)($in['email'] ?? ''))); $pass = (string)($in['password'] ?? '');
+        RateLimit::check('login_fail_acc', $email);               // аккаунт заблокирован после N неудач
+        $u = $email !== '' ? Db::one('SELECT * FROM users WHERE email = ?', [$email]) : null;
+        // одинаковое время ответа: проверяем хэш и для несуществующего email
+        $ok = password_verify($pass, ($u['password_hash'] ?? null) ?: self::dummyHash());
+        if (!$u || !$u['password_hash'] || !$ok) { RateLimit::hit('login_fail_acc', $email); self::audit($u['id'] ?? null, 'login_fail', $ip); throw new HttpError(401, 'bad_credentials'); }
+        if (password_needs_rehash($u['password_hash'], PASSWORD_DEFAULT)) Db::q('UPDATE users SET password_hash = ? WHERE id = ?', [password_hash($pass, PASSWORD_DEFAULT), $u['id']]);
+        self::startSession($res, $u, $r, $ip); self::audit($u['id'], 'login', $ip);
+        return ['user' => self::publicUser($u)];
+      }
+      case 'POST /api/auth/telegram/webapp':
+      case 'POST /api/auth/telegram/widget': {
+        RateLimit::hit('telegram_ip', $ip);
+        $tg = $p === '/api/auth/telegram/webapp' ? Telegram::verifyWebApp((string)($in['initData'] ?? ''), (string)Cfg::get('bot_token')) : Telegram::verifyWidget($in, (string)Cfg::get('bot_token'));
+        $idn = Db::one("SELECT * FROM user_identities WHERE type = 'telegram' AND external_id = ?", [$tg['id']]);
+        if ($idn) { $u = self::userById((int)$idn['user_id']); Db::q("UPDATE user_identities SET username = ? WHERE id = ?", [$tg['username'], $idn['id']]); }
+        else {
+          Db::q('INSERT INTO users (name, created_at) VALUES (?, ?)', [$tg['name'] ?: null, Http::iso()]);
+          $uid = Db::id();
+          Db::q("INSERT INTO user_identities (user_id, type, external_id, username, linked_at) VALUES (?, 'telegram', ?, ?, ?)", [$uid, $tg['id'], $tg['username'], Http::iso()]);
+          $u = self::userById($uid);
+        }
+        self::startSession($res, $u, $r, $ip); self::audit($u['id'], 'login_telegram', $ip);
+        return ['user' => self::publicUser($u)];
+      }
+      case 'POST /api/auth/link-telegram': {
+        if (!$user) throw new HttpError(401, 'unauthorized');
+        RateLimit::hit('telegram_ip', $ip);
+        $tg = Telegram::verifyWidget($in, (string)Cfg::get('bot_token'));
+        $idn = Db::one("SELECT * FROM user_identities WHERE type = 'telegram' AND external_id = ?", [$tg['id']]);
+        if ($idn && (int)$idn['user_id'] !== (int)$user['id']) throw new HttpError(409, 'telegram_linked_elsewhere');
+        if (!$idn) Db::q("INSERT INTO user_identities (user_id, type, external_id, username, linked_at) VALUES (?, 'telegram', ?, ?, ?)", [$user['id'], $tg['id'], $tg['username'], Http::iso()]);
+        self::audit($user['id'], 'link_telegram', $ip);
+        return ['user' => self::publicUser(self::userById((int)$user['id']))];
+      }
+      case 'POST /api/auth/password': {
+        if (!$user) throw new HttpError(401, 'unauthorized');
+        RateLimit::hit('register_ip', $ip);
+        [$email, $pass] = self::creds($in);
+        $other = Db::one('SELECT id FROM users WHERE email = ? AND id <> ?', [$email, $user['id']]);
+        if ($other) throw new HttpError(409, 'email_taken');
+        Db::q('UPDATE users SET email = ?, password_hash = ? WHERE id = ?', [$email, password_hash($pass, PASSWORD_DEFAULT), $user['id']]);
+        // смена пароля завершает все остальные сессии
+        Db::q('DELETE FROM sessions WHERE user_id = ? AND token_hash <> ?', [$user['id'], hash('sha256', (string)($r->cookies['ts_sid'] ?? ''))]);
+        self::audit($user['id'], 'set_password', $ip);
+        return ['user' => self::publicUser(self::userById((int)$user['id']))];
+      }
+      case 'POST /api/auth/logout': {
+        if (!empty($r->cookies['ts_sid'])) Db::q('DELETE FROM sessions WHERE token_hash = ?', [hash('sha256', (string)$r->cookies['ts_sid'])]);
+        self::cookie($res, 'ts_sid', '', 1, true);
+        return ['ok' => true];
+      }
+
+      case 'GET /api/state': {
+        if (!$user) throw new HttpError(401, 'unauthorized');
+        RateLimit::hit('state_user', (string)$user['id']);
+        $row = Db::one('SELECT data, version FROM user_state WHERE user_id = ?', [$user['id']]);
+        return ['state' => $row ? json_decode($row['data'], true) : null, 'version' => $row ? (int)$row['version'] : 0];
+      }
+      case 'PUT /api/state': {
+        if (!$user) throw new HttpError(401, 'unauthorized');
+        RateLimit::hit('state_user', (string)$user['id']);
+        $state = $in['state'] ?? null; $base = (int)($in['baseVersion'] ?? 0);
+        if (!is_array($state) || !isset($state['readings']) || !is_array($state['readings'])) throw new HttpError(422, 'bad_state');
+        $row = Db::one('SELECT data, version FROM user_state WHERE user_id = ?', [$user['id']]);
+        $cur = $row ? (int)$row['version'] : 0;
+        if ($cur !== $base) throw new HttpError(409, 'conflict', ['state' => json_decode($row['data'], true), 'version' => $cur]);
+        $json = json_encode($state, JSON_UNESCAPED_UNICODE);
+        if ($row) Db::q('UPDATE user_state SET data = ?, version = version + 1, updated_at = ? WHERE user_id = ? AND version = ?', [$json, Http::iso(), $user['id'], $cur]);
+        else Db::q('INSERT INTO user_state (user_id, data, version, updated_at) VALUES (?, ?, 1, ?)', [$user['id'], $json, Http::iso()]);
+        return ['version' => $cur + 1];
+      }
+
+      case 'POST /api/recognize/upload': {
+        if (!$user) throw new HttpError(401, 'unauthorized');
+        RateLimit::hit('recog_upload', (string)$user['id']);
+        return Recognize::upload((int)$user['id'], $r->body, $r->header('Content-Type') ?: (string)($r->server['CONTENT_TYPE'] ?? ''));
+      }
+      case 'POST /api/recognize/run': {
+        if (!$user) throw new HttpError(401, 'unauthorized');
+        if (!Cfg::get('anthropic_api_key')) throw new HttpError(503, 'recognition_off');
+        RateLimit::hit('recog_run', (string)$user['id']);
+        return Recognize::run((int)$user['id'], $in);
+      }
+      case 'POST /api/bot/setup': {
+        $secret = (string)Cfg::get('webhook_secret');
+        if ($secret === '' || !Cfg::get('bot_token') || !hash_equals($secret, $r->header('X-Setup-Secret'))) throw new HttpError(403, 'forbidden');
+        $url = Cfg::appUrl(); $out = [];
+        $out['setWebhook'] = Telegram::call('setWebhook', ['url' => $url . 'api/bot/webhook', 'secret_token' => $secret, 'allowed_updates' => ['message'], 'drop_pending_updates' => true]);
+        $out['setChatMenuButton'] = Telegram::call('setChatMenuButton', ['menu_button' => ['type' => 'web_app', 'text' => 'Теплосервіс', 'web_app' => ['url' => $url]]]);
+        $out['setMyCommands'] = Telegram::call('setMyCommands', ['commands' => [['command' => 'start', 'description' => 'Відкрити Теплосервіс']]]);
+        return ['ok' => true, 'appUrl' => $url, 'telegram' => array_map(fn($x) => !empty($x['ok']), $out)];
+      }
+      case 'POST /api/bot/webhook': {
+        $secret = (string)Cfg::get('webhook_secret');
+        if ($secret === '' || !hash_equals($secret, $r->header('X-Telegram-Bot-Api-Secret-Token'))) throw new HttpError(403, 'forbidden');
+        Telegram::handleUpdate($r->json());
+        return ['ok' => true];
+      }
+    }
+    throw new HttpError(404, 'not_found');
+  }
+
+  private static function dummyHash(): string { static $h = null; return $h ??= password_hash(bin2hex(random_bytes(8)), PASSWORD_DEFAULT); }
+  private static function creds(array $in): array {
+    $email = mb_strtolower(trim((string)($in['email'] ?? ''))); $pass = (string)($in['password'] ?? '');
+    if (!filter_var($email, FILTER_VALIDATE_EMAIL) || strlen($email) > 190) throw new HttpError(422, 'bad_email');
+    if (mb_strlen($pass) < 8 || strlen($pass) > 200) throw new HttpError(422, 'weak_password');
+    return [$email, $pass];
+  }
+  private static function userById(int $id): array { $u = Db::one('SELECT * FROM users WHERE id = ?', [$id]); if (!$u) throw new HttpError(401, 'unauthorized'); return $u; }
+  private static function publicUser(array $u): array {
+    $tg = Db::one("SELECT external_id, username FROM user_identities WHERE user_id = ? AND type = 'telegram'", [$u['id']]);
+    return ['id' => (int)$u['id'], 'email' => $u['email'], 'name' => $u['name'], 'hasPassword' => !empty($u['password_hash']),
+      'telegram' => $tg ? ['id' => $tg['external_id'], 'username' => $tg['username']] : null];
+  }
+  private static function sessionUser(Req $r): ?array {
+    $t = (string)($r->cookies['ts_sid'] ?? ''); if ($t === '') return null;
+    $s = Db::one('SELECT * FROM sessions WHERE token_hash = ?', [hash('sha256', $t)]);
+    if (!$s || (int)$s['expires_at'] < Http::now()) return null;
+    return Db::one('SELECT * FROM users WHERE id = ?', [$s['user_id']]);
+  }
+  private static function startSession(Res $res, array $u, Req $r, string $ip): void {
+    $t = bin2hex(random_bytes(32)); $exp = Http::now() + 86400 * (int)Cfg::get('session_days', 30);
+    Db::q('INSERT INTO sessions (token_hash, user_id, created_at, expires_at, ip, ua) VALUES (?, ?, ?, ?, ?, ?)', [hash('sha256', $t), $u['id'], Http::now(), $exp, $ip, substr($r->header('User-Agent'), 0, 200)]);
+    Db::q('UPDATE users SET last_login_at = ? WHERE id = ?', [Http::iso(), $u['id']]);
+    // старая сессия этого браузера больше не нужна
+    if (!empty($r->cookies['ts_sid'])) Db::q('DELETE FROM sessions WHERE token_hash = ?', [hash('sha256', (string)$r->cookies['ts_sid'])]);
+    self::cookie($res, 'ts_sid', $t, $exp, true);
+  }
+  private static function cookie(Res $res, string $name, string $val, int $exp, bool $httpOnly): void {
+    // путь cookie = адрес сайта: на общем домене pokabot.xyz не пересекаемся с другими сайтами
+    $res->cookies[] = [$name, $val, ['expires' => $exp, 'path' => (Cfg::base() ?: '') . '/', 'secure' => (bool)Cfg::get('cookie_secure', true), 'httponly' => $httpOnly, 'samesite' => 'Lax']];
+  }
+  private static function audit(?int $uid, string $action, string $ip): void { Db::q('INSERT INTO audit_log (user_id, action, ip, created_at) VALUES (?, ?, ?, ?)', [$uid, $action, $ip, Http::iso()]); }
+}

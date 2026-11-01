@@ -1,0 +1,5 @@
+tests/htm-mock/storage/*.json
+tests/htm-mock/storage/*.jsonl
+tests/htm-mock/storage/*.txt
+*.sqlite
+*.sqlite-*

@@ -1,0 +1,27 @@
+/* Стенд ХТМ v2 — нейтральный утилитарный стиль. Намеренно НЕ похож на боевой сайт. */
+:root { --wire:#c9ccd3; --ink:#1c1f26; --mut:#5b6472; --accent:#2b5bd7; --warn:#b23; }
+* { box-sizing: border-box; }
+body { margin:0; font:15px/1.45 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; color:var(--ink); background:#f4f5f7; }
+.stand-banner { background:repeating-linear-gradient(45deg,#ffd43b,#ffd43b 14px,#f2c200 14px,#f2c200 28px); color:#111; font-weight:700; text-align:center; padding:8px 12px; }
+.stand-topbar { display:flex; gap:14px; align-items:center; padding:8px 16px; background:#1c1f26; color:#dfe3ea; font-size:13px; flex-wrap:wrap; }
+.stand-topbar a { color:#9ec1ff; }
+.stand-badge { background:var(--warn); color:#fff; padding:1px 7px; border-radius:3px; font-weight:700; }
+.stand-scn { margin-left:auto; color:#ffd43b; }
+.stand-main { max-width:1100px; margin:20px auto; padding:0 16px; }
+.stand-menu { display:flex; gap:16px; flex-wrap:wrap; margin-bottom:16px; }
+h1 { font-size:19px; } h2 { font-size:15px; } h3, h4 { font-size:15px; }
+.stand-two { display:grid; gap:16px; } @media (min-width: 800px) { .stand-two { grid-template-columns:1fr 1fr; } }
+.stand-card { background:#fff; border:1px solid var(--wire); border-radius:8px; padding:16px; margin:0 0 16px; }
+label { display:block; margin:0 0 10px; color:var(--mut); }
+input, select { display:block; width:100%; margin-top:3px; padding:8px; border:1px solid var(--wire); border-radius:6px; font:inherit; }
+.has-error input { border-color:var(--warn); background:#fdecec; }
+button { padding:9px 16px; border:0; border-radius:6px; background:var(--accent); color:#fff; font:inherit; cursor:pointer; }
+.alert { padding:10px 12px; border-radius:6px; margin:12px 0; border:1px solid; }
+.alert-danger { background:#fdecec; border-color:#e5a3a3; } .alert-success { background:#e7f6ec; border-color:#93cfa6; } .alert-warning { background:#fff6db; border-color:#e4c46a; }
+.stand-tbl { width:100%; border-collapse:collapse; background:#fff; margin:0 0 16px; }
+.stand-tbl th, .stand-tbl td { border:1px solid var(--wire); padding:6px 8px; text-align:left; font-size:13px; }
+.bg-success { background:#e2f4e8; } .bg-danger { background:#fbe2e2; } .bg-info-gray { background:#e9edf2; }
+.stand-creds, .stand-note { font-size:13px; color:var(--mut); }
+.stand-journal { background:#111; color:#b7f5c1; padding:12px; border-radius:6px; overflow:auto; font-size:12px; max-height:320px; }
+.stand-foot { text-align:center; color:var(--mut); font-size:12px; padding:18px; }
+.g-recaptcha { border:2px dashed var(--warn); padding:12px; margin:0 0 10px; }

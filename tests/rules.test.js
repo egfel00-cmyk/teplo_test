@@ -1,0 +1,71 @@
+// Тесты движка проверок на журнале кв. 61 (Sharky 774) и типичных опечатках.
+// Запуск: node web/tests/rules.test.js
+'use strict';
+const R = require('../web/src/rules.js');
+let pass = 0, fail = 0;
+function t(name, cond, info) { if (cond) { pass++; console.log('  OK  ' + name); } else { fail++; console.log(' FAIL ' + name + (info ? '  → ' + info : '')); } }
+const codes = res => res.items.map(i => i.code);
+const blocks = res => res.items.filter(i => i.level === 'block').map(i => i.code);
+
+// Эталон: журнал OTOS кв. 61 (документ «счётчики и расчёт», §5)
+const J = [
+  { date: '2024-02-14', energy: 4.516,  volume: 566.054,  flow: 0.212, power: 2.617, tSupply: 50.47, tReturn: 39.58, hours: 19121, errHours: 0,   errCode: 'E---' },
+  { date: '2024-11-20', energy: 6.661,  volume: 834.406,  flow: 0.774, power: 3.059, tSupply: 47.00, tReturn: 43.58, hours: 25852, errHours: 0,   errCode: 'E---' },
+  { date: '2024-12-20', energy: 7.948,  volume: 1197.470, flow: 0.874, power: 4.052, tSupply: 47.33, tReturn: 43.33, hours: 26568, errHours: 0,   errCode: 'E---' },
+  { date: '2025-01-20', energy: 9.003,  volume: 1542.859, flow: 0.000, power: 0.000, tSupply: 17.85, tReturn: 16.58, hours: 27314, errHours: 0,   errCode: 'E---' },
+  { date: '2025-02-20', energy: 11.448, volume: 1972.145, flow: 0.553, power: 2.244, tSupply: 62.16, tReturn: 58.50, hours: 28056, errHours: 0,   errCode: 'E---' },
+  { date: '2025-11-03', energy: 12.437, volume: 2228.875, flow: 0.617, power: 3.526, tSupply: 48.62, tReturn: 43.56, hours: 34183, errHours: 0,   errCode: 'E---' },
+  { date: '2025-11-20', energy: 13.245, volume: 2292.676, flow: 0.063, power: 1.685, tSupply: 50.76, tReturn: 27.71, hours: 34598, errHours: 153, errCode: 'E---' },
+  { date: '2026-02-20', energy: 15.482, volume: 2724.494, flow: 1.067, power: 6.790, tSupply: 56.57, tReturn: 51.11, hours: 35611, errHours: 153, errCode: 'E---' }
+];
+const meter = { hoursOnlyWithFlow: false, transitionalFlow: 0.015 };
+
+console.log('Журнал кв. 61 — пары подряд:');
+for (let i = 1; i < J.length; i++) {
+  const res = R.validate({ reading: J[i], prev: J[i - 1], meter, today: J[i].date });
+  const b = blocks(res);
+  if (i === J.length - 1) {
+    t(J[i].date + ': робот отклонит по часам (1013 ч за 92 дня — известная проблема журнала)', b.length === 1 && b[0] === 'R_HOURS_CALENDAR', b.join(','));
+  } else {
+    t(J[i].date + ': робот примет (нет ⛔)', b.length === 0, b.join(',') + ' dt=' + (res.derived.dtAvg || 0).toFixed(2));
+  }
+}
+const r6 = R.validate({ reading: J[6], prev: J[5], meter, today: J[6].date });
+t('20.11.25: предупреждение «часы с ошибкой выросли на 153»', codes(r6).includes('M_ERRHOURS_GREW'));
+t('20.11.25: мощность сходится с формулой', !codes(r6).includes('P_POWER'));
+
+console.log('\nОпечатки:');
+const prev = J[6], base = Object.assign({}, J[6], { date: '2025-11-23', hours: 34598 + 72, energy: 13.40, volume: 2310.1 });
+const ok = R.validate({ reading: base, prev, meter, today: '2025-11-23' });
+t('база для опечаток проходит', ok.verdict !== 'block', blocks(ok).join(','));
+t('пропущена точка 134.0 → R_ENERGY_JUMP', blocks(R.validate({ reading: Object.assign({}, base, { energy: 134.0 }), prev, meter, today: '2025-11-23' })).includes('R_ENERGY_JUMP'));
+t('энергия меньше прошлой → R_MONO_ENERGY', blocks(R.validate({ reading: Object.assign({}, base, { energy: 13.1 }), prev, meter, today: '2025-11-23' })).includes('R_MONO_ENERGY'));
+t('объём не изменился → R_ENERGY_WITHOUT_VOLUME', blocks(R.validate({ reading: Object.assign({}, base, { volume: prev.volume }), prev, meter, today: '2025-11-23' })).includes('R_ENERGY_WITHOUT_VOLUME'));
+t('подача/обратка перепутаны → P_SUPPLY_LT_RETURN', codes(R.validate({ reading: Object.assign({}, base, { tSupply: 27.71, tReturn: 50.76 }), prev, meter, today: '2025-11-23' })).includes('P_SUPPLY_LT_RETURN'));
+t('расход ×10 → мощность не сходится', codes(R.validate({ reading: Object.assign({}, base, { flow: 0.63 }), prev, meter, today: '2025-11-23' })).includes('P_POWER'));
+t('температура 0 → R_TEMP_RANGE', blocks(R.validate({ reading: Object.assign({}, base, { tReturn: 0 }), prev, meter, today: '2025-11-23' })).includes('R_TEMP_RANGE'));
+t('дата раньше прошлой → F_DATE_BEFORE_PREV', blocks(R.validate({ reading: Object.assign({}, base, { date: '2025-11-19' }), prev, meter, today: '2025-11-23' })).includes('F_DATE_BEFORE_PREV'));
+t('чужой месяц → R_CURRENT_MONTH', blocks(R.validate({ reading: Object.assign({}, base, { date: '2025-10-30' }), prev: J[5], meter, today: '2025-11-02' })).includes('R_CURRENT_MONTH'));
+t('пустое поле → F_MISSING', blocks(R.validate({ reading: Object.assign({}, base, { power: '' }), prev, meter, today: '2025-11-23' })).includes('F_MISSING'));
+t('ΔT < 2.5 → R_DT_MIN', blocks(R.validate({ reading: Object.assign({}, base, { energy: 13.27, volume: 2312.6 }), prev, meter, today: '2025-11-23' })).includes('R_DT_MIN'));
+t('ELF-подобный: часов меньше календаря — не ошибка', !blocks(R.validate({ reading: Object.assign({}, base, { hours: 34598 + 10 }), prev, meter: { hoursOnlyWithFlow: true }, today: '2025-11-23' })).includes('R_HOURS_CALENDAR'));
+t('повирка просрочена → R_VERIFICATION', blocks(R.validate({ reading: base, prev, meter: { verifiedUntil: '2025-08-30' }, today: '2025-11-23' })).includes('R_VERIFICATION'));
+t('запятая принимается как точка', R.num('13,245') === 13.245);
+t('формат для ХТМ: точка и 3 знака', R.formatForHtm('energy', '13,2') === '13.200' && R.formatForHtm('date', '2025-11-23') === '23.11.2025' && R.formatForHtm('errCode', '') === 'E---');
+
+console.log('\nОкно приёма:');
+t('1-е → закрыто до 5-го', R.windowState('2026-11-01').state === 'closed_before');
+t('10-е → открыто', R.windowState('2026-11-10').state === 'open');
+t('24-е → поздно, но можно', R.windowState('2026-11-24').state === 'late');
+t('25-е → последний день', R.windowState('2026-11-25').state === 'last_day');
+t('26-е → закрыто на начисления', R.windowState('2026-11-26').state === 'closed_after');
+
+console.log('\nОтвет робота:');
+t('принято', R.decodeRobot('Статус: Показання успішно додані в базу даних.').code === 'ACCEPTED');
+t('опечатка «принйяті» + демонтирован', R.decodeRobot('Статус: Показання не принйяті з причини: Прибор обліку 1 на 01.01.2026 є демонтованим').code === 'R_DISMOUNTED');
+t('часы по календарю', R.decodeRobot('Показання не прийняті з причини: Період часу ... Різниця складає 72, а має бути не більше 24').code === 'R_HOURS_CALENDAR');
+
+t('часы меньше («маєть бути більше»)', R.decodeRobot('Показання не принйяті з причини: Показання часу по приладу обліку 1 на 21.10.2020 23:00 = 635 але маєть бути більше 636.36').code === 'R_MONO_HOURS');
+
+console.log('\nИтог: ' + pass + ' OK, ' + fail + ' FAIL');
+process.exit(fail ? 1 : 0);

@@ -1,0 +1,27 @@
+{
+  "_comment": "Контракт стенда = htm-adapter-spec.json из снятия 01.11.2026 (папка «cluade chrome out»). Подтверждено: вход, навигация, head_*-ids, журнал. Гипотеза до 5–25.11: имена полей формы, phone/email/note, тексты flash и строки «ожидает проверки». После этапа D поправить здесь — стенд и адаптер читают одни имена.",
+  "encoding": "Windows-1251",
+  "login": {
+    "account": "rash", "surname": "lastn", "account_submit": "acc-signin",
+    "email": "email", "password": "passw", "email_submit": "email-signin"
+  },
+  "form": {
+    "date": "LastDtPok", "energy": "LastValuePok", "volume": "LastRashPok", "flow": "HeatRash", "power": "HeatPower",
+    "tSupply": "TempPod", "tReturn": "TempO", "hours": "LastTimePok", "errHours": "ErrorTime", "errCode": "ErrorKod",
+    "phone": "Phone", "email": "Email", "note": "Note", "submit": "save-pok",
+    "_hypothesis": ["energy..errCode без префикса head_", "phone", "email", "note", "submit"]
+  },
+  "window": { "from": 5, "recommended": 23, "to": 25 },
+  "robot_delay_sec_default": 1200,
+  "texts": {
+    "title_prefix": "[ТЕСТОВИЙ СТЕНД] ",
+    "closed": "Прийом показань квартирних приладів обліку по опаленню тимчасово зупинений для проведення нарахувань за {month}. Прийом показань буде доступний після 5-го {next}.",
+    "window_rule": "Показання своїх приладів обліку тепла слід залишати на сайті з 5 до 25 числа. Рекомендуємо подавати показання до 23 числа.",
+    "status_ok": "Статус: Показання успішно додані в базу даних.",
+    "status_bad_prefix": "Статус: Показання не принйяті з причини: ",
+    "status_pending": "Статус: Показання очікують перевірки.",
+    "_status_pending_hypothesis": true,
+    "flash_saved": "Показання збережено. Протягом 15-30 хвилин вони будуть перевірені, статус з'явиться в журналі.",
+    "_flash_hypothesis": true
+  }
+}

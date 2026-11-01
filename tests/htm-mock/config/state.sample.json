@@ -1,0 +1,8 @@
+{
+  "_comment": "Тестовые данные стенда. Дата базы выставляется при сбросе (20-е прошлого месяца). Значения — из журнала кв. 61 (20.11.25), номер счётчика вымышленный.",
+  "credentials": { "account": "1000000061", "surname": "Тестовий", "email": "test@stand.local", "password": "stand-pass-123" },
+  "registered": true,
+  "meter": { "sn": "70000061", "model": "Sharky 774", "qt": 0.015, "verified_until": "2027-12-09", "first_accept": "2021-12-09" },
+  "baseline": { "date": "", "energy": 13.245, "volume": 2292.676, "flow": 0.063, "power": 1.685, "tSupply": 50.76, "tReturn": 27.71, "hours": 34598, "errHours": 153, "errCode": "E---" },
+  "journal": []
+}
