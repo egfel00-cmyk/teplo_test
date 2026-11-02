@@ -131,6 +131,29 @@
       basis: basis, season: basis === 'prev' ? ps : null, open: !g.to || g.to > o.today, end: end, rows: rows };
   }
 
-  var api = { graph: graph, points: points, intervals: intervals, coolant: coolant, range: range, gapHeat: gapHeat, OK_TOL: OK_TOL, LOW_TOL: LOW_TOL };
+  /*
+   * Отопительные сезоны из истории — система складывает их сама: промежуток между показаниями идёт в тот сезон, на который
+   * приходится его середина (июль–декабрь — сезон этого года, январь–июнь — прошлого: майские показания закрывают зиму,
+   * сентябрь—октябрь открывают новую). Внутри сезона — сколько тепла и денег, где тепло реально шло (≥ HEAT_DAY Гкал/сутки).
+   * ivs — intervals(…); costFn(iv) — деньги за промежуток (с абонплатой и ЗБП, как в платіжці); today — «поточний сезон».
+   * → [{season: 2025, label: '2025/26', gcal, cost, heatDays, from, to (промежутки с теплом), n, ids, perMonth, current}] — новые сверху.
+   */
+  function seasonKey(from, to) { return seasonOf(from && to > from ? addDay(from, Math.floor(days(from, to) / 2)) : to); }
+  function seasons(ivs, costFn, today) {
+    var by = {};
+    (ivs || []).forEach(function (iv) {
+      var k = seasonKey(iv.from, iv.to), s = by[k] || (by[k] = { season: k, gcal: 0, cost: 0, heatDays: 0, from: null, to: null, n: 0, ids: [] });
+      s.n++; s.ids.push(iv.id); s.cost += costFn ? costFn(iv) : (iv.cost || 0);
+      if (iv.dE > 0) s.gcal += iv.dE;
+      if (iv.dE / iv.days >= HEAT_DAY) { s.heatDays += iv.days; if (!s.from || iv.from < s.from) s.from = iv.from; if (!s.to || iv.to > s.to) s.to = iv.to; }
+    });
+    var cur = today ? seasonOf(today) : null;
+    return Object.keys(by).map(Number).sort(function (a, b) { return b - a; }).map(function (k) {
+      var s = by[k]; s.gcal = +s.gcal.toFixed(3); s.cost = +s.cost.toFixed(2); s.label = k + '/' + String(k + 1).slice(2);
+      s.perMonth = s.heatDays ? +(s.gcal / s.heatDays * 30.44).toFixed(3) : null; s.current = k === cur; return s;
+    });
+  }
+
+  var api = { graph: graph, points: points, intervals: intervals, coolant: coolant, range: range, gapHeat: gapHeat, seasons: seasons, seasonKey: seasonKey, seasonOf: seasonOf, OK_TOL: OK_TOL, LOW_TOL: LOW_TOL };
   if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.TeploStats = api;
 })(typeof window !== 'undefined' ? window : this);

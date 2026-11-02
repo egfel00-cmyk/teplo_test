@@ -2452,7 +2452,30 @@
     if (window.TeploStats) loadWeather();
     var arr = heatMixed();
     return { screen: 'S09', route: 'history', html: '<h1>' + esc(t('hi_title')) + '</h1>' + kindSwitch() +
-      (arr.length ? readingList(arr) : '<div class="panel"><p class="muted">' + esc(t('hi_empty')) + '</p><button class="btn" data-act="read">' + esc(t('hi_empty_cta')) + '</button></div>') + gapAddLink('heat') };
+      (arr.length ? seasonList(arr) : '<div class="panel"><p class="muted">' + esc(t('hi_empty')) + '</p><button class="btn" data-act="read">' + esc(t('hi_empty_cta')) + '</button></div>') + gapAddLink('heat') };
+  }
+  /** История тепла по отопительным сезонам — система складывает их сама (TeploStats.seasons): вся цепочка показаний (и «для себе»),
+   *  промежуток — в сезон, на который приходится его середина. У сезона — Гкал и гривны (с абонплатой и ЗБП, как в платіжці),
+   *  где шло тепло, в среднем за месяц опалення. Новый сезон (и текущий) раскрыт, старые — свёрнуты, итог видно и так. */
+  function seasonList(arr) {
+    if (!window.TeploStats) return readingList(arr);
+    var TS = TeploStats, ss = TS.seasons(TS.intervals(RD(), S.baseline, null, tariff(), gaps('heat')), function (iv) { return costOf(iv.dE, iv.days).total; }, today());
+    var of = {}, info = {}; ss.forEach(function (s) { info[s.season] = s; s.ids.forEach(function (id) { of[id] = s.season; }); });
+    var groups = {};
+    arr.forEach(function (x) {
+      var k = x.g ? TS.seasonOf(x.g.from) : of[x.r.id] !== undefined ? of[x.r.id] : TS.seasonOf(x.r.htm.date);
+      (groups[k] = groups[k] || []).push(x);
+    });
+    var keys = Object.keys(groups).map(Number).sort(function (a, b) { return b - a; }), td = today(), run = +td.slice(5, 7) >= 10 || +td.slice(5, 7) <= 4;
+    return keys.map(function (k, i) {
+      var s = info[k], lbl = k + '/' + String(k + 1).slice(2), cur = k === TS.seasonOf(td);
+      var q = s && s.gcal > 0 ? '<span class="ss-q"><b class="num">' + esc(fmtN(s.gcal, 3)) + '</b> <small>Гкал</small></span><span class="ss-m">≈ <b class="num">' + esc(money0(s.cost)) + '</b> <small>грн</small></span>'
+        : '<span class="ss-none">' + esc(t(s ? 'hs_noheat' : 'hs_none')) + '</span>';
+      var sub = s && s.from ? [t('hs_period', { a: fmtDate(s.from, true), b: fmtDate(s.to, true) }), s.perMonth ? t('hs_month', { q: fmtN(s.perMonth, 2), m: money0(costOf(s.perMonth, 30).total) }) : ''].filter(Boolean).join(' · ') : '';
+      return '<details class="season" data-key="season-' + k + '"' + (i === 0 || cur ? ' open' : '') + '><summary class="ss-head">' +
+        '<span class="ss-top"><b class="ss-t">' + esc(t('hs_title', { s: lbl })) + '</b>' + (cur ? '<span class="pill ' + (run ? 'info' : 'neutral') + '">' + esc(t(run ? 'hs_run' : 'hs_cur')) + '</span>' : '') + ico('chev', 18, 'ss-dd') + '</span>' +
+        '<span class="ss-sum">' + q + '</span>' + (sub ? '<span class="ss-sub">' + esc(sub) + '</span>' : '') + '</summary>' + readingList(groups[k]) + '</details>';
+    }).join('') + '<p class="small muted" data-key="hs-hint">' + esc(t('hs_hint')) + '</p>';
   }
 
   /** Карточка показаний из истории: все 10 значений, сколько набежало и почём; правка и удаление. */

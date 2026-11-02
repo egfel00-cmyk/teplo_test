@@ -8,6 +8,10 @@ module.exports = function demo(opts) {
   const readings = [['2026-01-12', '10.112'], ['2026-02-11', '11.402'], ['2026-03-12', '12.380'], ['2026-04-10', '12.910']].map(([d, e], i) => ({
     id: 'r' + i, place: 'main', htm: { date: d, energy: e, volume: String(2200 + i * 30), flow: '0.06', power: '1.6', tSupply: '50', tReturn: '30', hours: String(34000 + i * 700), errHours: '153', errCode: 'E---' },
     status: 'accepted', createdAt: d + 'T10:00:00Z', updatedAt: 1, source: 'manual' }));
+  // два отопительных сезона: 2024/25 целиком (октябрь–май, лето) и начало 2025/26 до текущих (seasons: true)
+  if (opts.seasons) [['2024-10-10', '2.000'], ['2024-11-12', '2.700'], ['2024-12-11', '3.900'], ['2025-01-13', '5.100'], ['2025-02-12', '6.200'], ['2025-03-12', '7.100'],
+    ['2025-04-14', '7.700'], ['2025-05-12', '7.760'], ['2025-09-15', '7.760'], ['2025-10-14', '7.900'], ['2025-11-12', '8.400']].forEach(([d, e], i) => readings.unshift({ id: 's' + i, place: 'main',
+    htm: { date: d, energy: e, volume: String(1500 + i * 30), hours: String(30000 + i * 700) }, status: 'accepted', createdAt: d + 'T10:00:00Z', updatedAt: 1, source: 'manual' }));
   const meter = opts.noHeat ? null : { modelId: 'sharky774', unit: 'Gcal' };
   const baseline = opts.noHeat ? null : { date: '2025-12-10', energy: '9.001', volume: '2150', hours: '33300' };
   const out = { v: 1, lang: opts.lang || 'uk', onboarded: true, meter, baseline, contacts: { phone: '', email: '' }, readings: opts.noHeat ? [] : readings, draft: null,

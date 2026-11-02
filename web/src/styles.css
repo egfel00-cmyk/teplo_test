@@ -914,3 +914,19 @@ fieldset.field { border: 0; padding: 0; min-width: 0; }
 .st-opt.on { background: var(--c-ok-soft); } .st-opt.on b { color: var(--c-ok-ink, var(--c-ink)); }
 .st-mark { flex: none; width: 20px; display: grid; place-items: center; color: var(--c-ok); }
 @media (prefers-reduced-motion: reduce) { .st-chip .st-dd { transition: none; } }
+/* ---- история тепла по отопительным сезонам ---- */
+.season { margin: 0 0 var(--sp-4); }
+.season > .list { border-top-left-radius: 0; border-top-right-radius: 0; }
+.ss-head { list-style: none; cursor: pointer; display: grid; gap: 4px; padding: 14px 16px; background: var(--c-surface); border-radius: 14px; border-left: 6px solid var(--c-supply); }
+.season[open] > .ss-head { border-bottom-left-radius: 0; border-bottom-right-radius: 0; border-bottom: 1px solid var(--c-housing); }
+.ss-head::-webkit-details-marker { display: none; }
+.ss-head:focus-visible { outline: 3px solid var(--c-info); outline-offset: 2px; }
+.ss-top { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.ss-t { font-size: var(--fs-l); }
+.ss-dd { margin-left: auto; transform: rotate(90deg); transition: transform .15s; color: var(--c-ink-2); flex: none; }
+.season[open] .ss-dd { transform: rotate(-90deg); }
+.ss-sum { display: flex; flex-wrap: wrap; gap: 2px 16px; align-items: baseline; }
+.ss-q b, .ss-m b { font-size: 22px; font-weight: 700; } .ss-q small, .ss-m small { font-size: 13px; font-weight: 600; color: var(--c-ink-2); }
+.ss-none { font-size: 15px; font-weight: 600; color: var(--c-ink-2); }
+.ss-sub { font-size: 13px; color: var(--c-ink-2); }
+@media (prefers-reduced-motion: reduce) { .ss-dd { transition: none; } }

@@ -927,6 +927,22 @@ fieldset.field { border: 0; padding: 0; min-width: 0; }
 .st-opt.on { background: var(--c-ok-soft); } .st-opt.on b { color: var(--c-ok-ink, var(--c-ink)); }
 .st-mark { flex: none; width: 20px; display: grid; place-items: center; color: var(--c-ok); }
 @media (prefers-reduced-motion: reduce) { .st-chip .st-dd { transition: none; } }
+/* ---- история тепла по отопительным сезонам ---- */
+.season { margin: 0 0 var(--sp-4); }
+.season > .list { border-top-left-radius: 0; border-top-right-radius: 0; }
+.ss-head { list-style: none; cursor: pointer; display: grid; gap: 4px; padding: 14px 16px; background: var(--c-surface); border-radius: 14px; border-left: 6px solid var(--c-supply); }
+.season[open] > .ss-head { border-bottom-left-radius: 0; border-bottom-right-radius: 0; border-bottom: 1px solid var(--c-housing); }
+.ss-head::-webkit-details-marker { display: none; }
+.ss-head:focus-visible { outline: 3px solid var(--c-info); outline-offset: 2px; }
+.ss-top { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.ss-t { font-size: var(--fs-l); }
+.ss-dd { margin-left: auto; transform: rotate(90deg); transition: transform .15s; color: var(--c-ink-2); flex: none; }
+.season[open] .ss-dd { transform: rotate(-90deg); }
+.ss-sum { display: flex; flex-wrap: wrap; gap: 2px 16px; align-items: baseline; }
+.ss-q b, .ss-m b { font-size: 22px; font-weight: 700; } .ss-q small, .ss-m small { font-size: 13px; font-weight: 600; color: var(--c-ink-2); }
+.ss-none { font-size: 15px; font-weight: 600; color: var(--c-ink-2); }
+.ss-sub { font-size: 13px; color: var(--c-ink-2); }
+@media (prefers-reduced-motion: reduce) { .ss-dd { transition: none; } }
 
 </style>
 <style>.top { padding-top: max(12px, env(safe-area-inset-top)); }</style>
@@ -1629,6 +1645,9 @@ fieldset.field { border: 0; padding: 0; min-width: 0; }
       st_aria: "Статус: {s}. Змінити", st_sent: "Передано", st_sent_hot: "у Водоканал і ХТМ", st_sent_cold: "у Водоканал", st_sent_elec: "у Харківобленерго",
       st_sent_gas: "Нафтогаз / Газмережі", st_sent_heat: "у ХТМ (кабінет)", st_not: "Не передано", st_own: "Лише для себе", st_own_s: "для статистики — нікуди не передається",
       st_base_not: "Не передавали", bs_lead_s: "стартові зазвичай уже передані", st_done: "Позначено: {s}",
+      hs_title: "Сезон {s}", hs_cur: "поточний", hs_run: "триває", hs_period: "тепло за показаннями {a} – {b}", hs_month: "≈ {q} Гкал · ≈ {m} грн на місяць опалення",
+      hs_none: "ще немає двох показань — нема з чого рахувати", hs_noheat: "тепла не було",
+      hs_hint: "Сезони система складає сама з ваших показань: проміжок — у сезон, на який припадає його середина (травневі показання закривають зиму, вересневі — відкривають нову). Гривні — з абонплатою й часткою ЗБП, як у платіжці.",
       sync_title: "Ваші дані на всіх пристроях",
       sync_local: "Дані зберігаються лише в цьому браузері.",
       sync_local_sub_site: "Увійдіть через Telegram або email — і бачитимете ті самі показання на телефоні й комп'ютері.",
@@ -2440,6 +2459,9 @@ fieldset.field { border: 0; padding: 0; min-width: 0; }
       st_aria: "Статус: {s}. Изменить", st_sent: "Передано", st_sent_hot: "в Водоканал и ХТМ", st_sent_cold: "в Водоканал", st_sent_elec: "в Харьковоблэнерго",
       st_sent_gas: "Нафтогаз / Газсети", st_sent_heat: "в ХТМ (кабинет)", st_not: "Не передано", st_own: "Только для себя", st_own_s: "для статистики — никуда не передаётся",
       st_base_not: "Не передавали", bs_lead_s: "стартовые обычно уже переданы", st_done: "Отмечено: {s}",
+      hs_title: "Сезон {s}", hs_cur: "текущий", hs_run: "идёт", hs_period: "тепло по показаниям {a} – {b}", hs_month: "≈ {q} Гкал · ≈ {m} грн в месяц отопления",
+      hs_none: "ещё нет двух показаний — не из чего считать", hs_noheat: "тепла не было",
+      hs_hint: "Сезоны система составляет сама из ваших показаний: промежуток — в сезон, на который приходится его середина (майские показания закрывают зиму, сентябрьские — открывают новую). Гривны — с абонплатой и долей ЗБП, как в платёжке.",
       sync_title: "Ваши данные на всех устройствах",
       sync_local: "Данные хранятся только в этом браузере.",
       sync_local_sub_site: "Войдите через Telegram или email — и будете видеть те же показания на телефоне и компьютере.",
@@ -3323,7 +3345,30 @@ fieldset.field { border: 0; padding: 0; min-width: 0; }
       basis: basis, season: basis === 'prev' ? ps : null, open: !g.to || g.to > o.today, end: end, rows: rows };
   }
 
-  var api = { graph: graph, points: points, intervals: intervals, coolant: coolant, range: range, gapHeat: gapHeat, OK_TOL: OK_TOL, LOW_TOL: LOW_TOL };
+  /*
+   * Отопительные сезоны из истории — система складывает их сама: промежуток между показаниями идёт в тот сезон, на который
+   * приходится его середина (июль–декабрь — сезон этого года, январь–июнь — прошлого: майские показания закрывают зиму,
+   * сентябрь—октябрь открывают новую). Внутри сезона — сколько тепла и денег, где тепло реально шло (≥ HEAT_DAY Гкал/сутки).
+   * ivs — intervals(…); costFn(iv) — деньги за промежуток (с абонплатой и ЗБП, как в платіжці); today — «поточний сезон».
+   * → [{season: 2025, label: '2025/26', gcal, cost, heatDays, from, to (промежутки с теплом), n, ids, perMonth, current}] — новые сверху.
+   */
+  function seasonKey(from, to) { return seasonOf(from && to > from ? addDay(from, Math.floor(days(from, to) / 2)) : to); }
+  function seasons(ivs, costFn, today) {
+    var by = {};
+    (ivs || []).forEach(function (iv) {
+      var k = seasonKey(iv.from, iv.to), s = by[k] || (by[k] = { season: k, gcal: 0, cost: 0, heatDays: 0, from: null, to: null, n: 0, ids: [] });
+      s.n++; s.ids.push(iv.id); s.cost += costFn ? costFn(iv) : (iv.cost || 0);
+      if (iv.dE > 0) s.gcal += iv.dE;
+      if (iv.dE / iv.days >= HEAT_DAY) { s.heatDays += iv.days; if (!s.from || iv.from < s.from) s.from = iv.from; if (!s.to || iv.to > s.to) s.to = iv.to; }
+    });
+    var cur = today ? seasonOf(today) : null;
+    return Object.keys(by).map(Number).sort(function (a, b) { return b - a; }).map(function (k) {
+      var s = by[k]; s.gcal = +s.gcal.toFixed(3); s.cost = +s.cost.toFixed(2); s.label = k + '/' + String(k + 1).slice(2);
+      s.perMonth = s.heatDays ? +(s.gcal / s.heatDays * 30.44).toFixed(3) : null; s.current = k === cur; return s;
+    });
+  }
+
+  var api = { graph: graph, points: points, intervals: intervals, coolant: coolant, range: range, gapHeat: gapHeat, seasons: seasons, seasonKey: seasonKey, seasonOf: seasonOf, OK_TOL: OK_TOL, LOW_TOL: LOW_TOL };
   if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.TeploStats = api;
 })(typeof window !== 'undefined' ? window : this);
 
@@ -6952,7 +6997,30 @@ fieldset.field { border: 0; padding: 0; min-width: 0; }
     if (window.TeploStats) loadWeather();
     var arr = heatMixed();
     return { screen: 'S09', route: 'history', html: '<h1>' + esc(t('hi_title')) + '</h1>' + kindSwitch() +
-      (arr.length ? readingList(arr) : '<div class="panel"><p class="muted">' + esc(t('hi_empty')) + '</p><button class="btn" data-act="read">' + esc(t('hi_empty_cta')) + '</button></div>') + gapAddLink('heat') };
+      (arr.length ? seasonList(arr) : '<div class="panel"><p class="muted">' + esc(t('hi_empty')) + '</p><button class="btn" data-act="read">' + esc(t('hi_empty_cta')) + '</button></div>') + gapAddLink('heat') };
+  }
+  /** История тепла по отопительным сезонам — система складывает их сама (TeploStats.seasons): вся цепочка показаний (и «для себе»),
+   *  промежуток — в сезон, на который приходится его середина. У сезона — Гкал и гривны (с абонплатой и ЗБП, как в платіжці),
+   *  где шло тепло, в среднем за месяц опалення. Новый сезон (и текущий) раскрыт, старые — свёрнуты, итог видно и так. */
+  function seasonList(arr) {
+    if (!window.TeploStats) return readingList(arr);
+    var TS = TeploStats, ss = TS.seasons(TS.intervals(RD(), S.baseline, null, tariff(), gaps('heat')), function (iv) { return costOf(iv.dE, iv.days).total; }, today());
+    var of = {}, info = {}; ss.forEach(function (s) { info[s.season] = s; s.ids.forEach(function (id) { of[id] = s.season; }); });
+    var groups = {};
+    arr.forEach(function (x) {
+      var k = x.g ? TS.seasonOf(x.g.from) : of[x.r.id] !== undefined ? of[x.r.id] : TS.seasonOf(x.r.htm.date);
+      (groups[k] = groups[k] || []).push(x);
+    });
+    var keys = Object.keys(groups).map(Number).sort(function (a, b) { return b - a; }), td = today(), run = +td.slice(5, 7) >= 10 || +td.slice(5, 7) <= 4;
+    return keys.map(function (k, i) {
+      var s = info[k], lbl = k + '/' + String(k + 1).slice(2), cur = k === TS.seasonOf(td);
+      var q = s && s.gcal > 0 ? '<span class="ss-q"><b class="num">' + esc(fmtN(s.gcal, 3)) + '</b> <small>Гкал</small></span><span class="ss-m">≈ <b class="num">' + esc(money0(s.cost)) + '</b> <small>грн</small></span>'
+        : '<span class="ss-none">' + esc(t(s ? 'hs_noheat' : 'hs_none')) + '</span>';
+      var sub = s && s.from ? [t('hs_period', { a: fmtDate(s.from, true), b: fmtDate(s.to, true) }), s.perMonth ? t('hs_month', { q: fmtN(s.perMonth, 2), m: money0(costOf(s.perMonth, 30).total) }) : ''].filter(Boolean).join(' · ') : '';
+      return '<details class="season" data-key="season-' + k + '"' + (i === 0 || cur ? ' open' : '') + '><summary class="ss-head">' +
+        '<span class="ss-top"><b class="ss-t">' + esc(t('hs_title', { s: lbl })) + '</b>' + (cur ? '<span class="pill ' + (run ? 'info' : 'neutral') + '">' + esc(t(run ? 'hs_run' : 'hs_cur')) + '</span>' : '') + ico('chev', 18, 'ss-dd') + '</span>' +
+        '<span class="ss-sum">' + q + '</span>' + (sub ? '<span class="ss-sub">' + esc(sub) + '</span>' : '') + '</summary>' + readingList(groups[k]) + '</details>';
+    }).join('') + '<p class="small muted" data-key="hs-hint">' + esc(t('hs_hint')) + '</p>';
   }
 
   /** Карточка показаний из истории: все 10 значений, сколько набежало и почём; правка и удаление. */
