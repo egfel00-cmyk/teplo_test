@@ -17,7 +17,7 @@ body{margin:0;background:#3a3631;width:1000px;height:1300px;overflow:hidden;disp
 <div class="btn"></div><div class="plate" id="plate"></div></div>
 <script>
 window.setCase = (c) => {
-  brand.textContent = c.brand || ''; val.textContent = c.v; ghost.textContent = c.v.replace(/[0-9]/g,'8').replace(/-/g,'8');
+  brand.textContent = c.brand || ''; val.textContent = c.v; ghost.textContent = c.v.replace(/[0-9A-Za-z-]/g,'8');   // непогашенные сегменты под цифрами, буквами (E, C) и прочерками
   unit.textContent = c.u || ''; tag.textContent = c.tag || ''; plate.innerHTML = c.plate || '';
   unit.style.cssText = c.corner ? 'right:14px;top:6px;font-size:24px' : 'right:14px;bottom:10px';
   m.style.transform = `perspective(1200px) rotateX(${c.rx||0}deg) rotateY(${c.ry||0}deg) rotate(${c.rz||0}deg) scale(${c.s||1})`;

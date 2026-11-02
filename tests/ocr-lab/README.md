@@ -5,6 +5,13 @@
 - Прогнать движок `web/ocr/engine.js` в Chromium (Playwright, файлы подменять через `page.route`, без локального сервера),
   сохранить строки → `tests/fixtures/ocr_synth.json` → `node tests/ocrparse.test.js`.
 - Реальные фото людей в репозиторий не класть.
+- `node tests/ocr-lab/heat.cjs [heat_err.json|cases.json] [фильтр]` — всё сразу: рисует экраны в `out/`, гонит движок и разбор
+  `ocrparse.js` (модель по умолчанию sharky774, `"model": null` — без модели), итог «N/M», строки → /tmp/ocr_heat.json
+  (из них — фикстуры). `NOMAKE=1` — не перерисовывать. Шрифты: `npm i dseg` → `DSEG7Classic-Bold.woff2`,
+  `DSEG14Classic-Bold.woff2` рядом с gen.html (в git не идут).
+- `heat_err.json` — экран кода ошибки: «E-------» (Sharky: E и 7 прочерков = ошибок нет) с бликом, наклоном, размытием,
+  издалека, без модели; коды E-3, E-9, C-1, E-7. На 02.11.2026 — 16/16, основной `cases.json` — 13/13.
+  Как движок пишет «E-------»: «ERR» / «E--», «88888888» / «Ｅ-—————-», «8888» / «E---», кусками «ER» + «一1».
 
 ## Водомеры (барабан)
 - `water.html` + `water_cases.json` + `water.cjs` — рисуют водомеры в стиле Novator/КСМ: чёрные ролики с белыми цифрами,

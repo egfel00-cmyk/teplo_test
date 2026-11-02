@@ -13,3 +13,5 @@
   колонку `.cols`), шаги ввода (`.wiz`, строка «Крок · дата · прогресс»).
 - `node e2e_two_devices.cjs ../ocr-lab/out/p_two_far.jpg` — два телефона одним аккаунтом: A вносит воду по фото
   (фото уходит на сервер, id в записи — серверный), B входит и видит это фото в карточке записи и в лайтбоксе.
+- `WANT='{"energy":"15.482","errCode":"E---"}' node e2e_heat_photo.cjs ../ocr-lab/out/s774_energy.jpg ../ocr-lab/out/e8_rx.jpg` —
+  тепло по фото без входа: #photo → «Розпізнати» → поля результата (`#phv-…`), скриншот /tmp/shot_heat_photo.png.

@@ -145,7 +145,7 @@
         'Known models (id — name): ' + catalog + '. Use "other" if it is a heat meter not in the list, null if you cannot tell.',
         ctx.expectedModel ? 'The person says their meter is: ' + ctx.expectedModel + '. If a photo shows several meters, read the one matching this model (or the apartment sticker ' + (ctx.apartment || '?') + ') and say so in "note".' : 'The model is not known yet — identify it from the nameplate or the look of the meter.',
         order ? 'For this model the screens usually come in this order: ' + order + '. Use it only to tell unlabeled screens apart.' : '',
-        'Fields: energy = accumulated heat energy (unit Gcal / MWh / GJ / kWh as shown; Sharky shows "Gcal"); volume = accumulated water volume, m³ (Sharky: "m³" in the top right corner); flow = instantaneous flow, m³/h; power = instantaneous power, kW; tSupply = supply temperature °C (labels "ht", "T1", arrow up — the hotter one); tReturn = return temperature °C ("ct", "T2", arrow down); hours = operating hours ("On", "h"); errHours = hours with error ("Eh", "Err h"); errCode = error code ("E-" or "E---" with no digits means no error → "E---").',
+        'Fields: energy = accumulated heat energy (unit Gcal / MWh / GJ / kWh as shown; Sharky shows "Gcal"); volume = accumulated water volume, m³ (Sharky: "m³" in the top right corner); flow = instantaneous flow, m³/h; power = instantaneous power, kW; tSupply = supply temperature °C (labels "ht", "T1", arrow up — the hotter one); tReturn = return temperature °C ("ct", "T2", arrow down); hours = operating hours ("On", "h"); errHours = hours with error ("Eh", "Err h"); errCode = error code: "E" followed only by dashes ("E-", "E---", "E-------" on Sharky) means no error → "E---"; a code is written as on the screen with a dash, e.g. "E-3", "C-1", "F0".',
         'Rules: copy the digits EXACTLY as displayed, with "." as the decimal separator and leading zeros removed ("00015.482" → "15.482"). Never invent, estimate or calculate a value, never copy it from anywhere but the photo. If a digit is unclear, give your best reading with confidence below 0.6 and explain in "note". Report every field you can see on each photo (a screen may show two values at once).',
         ctx.prev ? 'For sanity only (do NOT copy): the previous accepted values were ' + JSON.stringify(ctx.prev) + ' — accumulated values should be equal or higher.' : '',
         'Write "note" in ' + (ctx.lang === 'ru' ? 'Russian' : 'Ukrainian') + ', at most one short sentence, only when there is a problem.',
@@ -198,7 +198,7 @@
           }
         });
       });
-      if (best.errCode && /^E[-–—\s]*$/i.test(best.errCode.value)) best.errCode.value = 'E---';
+      if (best.errCode) best.errCode.value = root.TeploRules ? root.TeploRules.normCode(best.errCode.value) : (/^E[-–—_\s]*$/i.test(best.errCode.value) ? 'E---' : best.errCode.value);   // «E-------», «Е-3» → «E---», «E-3»
       return best;
     }
   };

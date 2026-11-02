@@ -40,6 +40,32 @@
   var DEC = { energy: 3, volume: 3, flow: 3, power: 3, tSupply: 2, tReturn: 2, hours: 0, errHours: 0 };
 
   function digitsOf(s) { return String(s || '').replace(/[^0-9]/g, ''); }
+
+  /**
+   * Экран кода ошибки. Sharky: «E-------» (E и прочерки во всю строку) — ошибок нет; «E-3», «E - 9», «C-1» — код.
+   * Движок (китайско-английская модель) пишет прочерки чем попало: «—», «－», «一», «_»; «E» — полноширинной «Ｅ»,
+   * а без подавления «теней» сегментов прочерки становятся восьмёрками («E8888888», «883») — поэтому смотрим все варианты.
+   * → { code: 'E---' | 'E-3' | 'C-1', sure } или null.
+   */
+  var DASH = /[\-‐‑‒–—―−─━一ー－﹣_~]/g;
+  function errOf(tx) {
+    var s = String(tx || ''); if (s.normalize) s = s.normalize('NFKC');
+    s = s.replace(/\s+/g, '').replace(DASH, '-');
+    var m;
+    if (/^E-+$/i.test(s)) return { code: 'E---', sure: true };
+    if (s === 'E') return { code: 'E---', sure: false };   // прочерки не прочитались
+    if (/^[8B]?-{4,}$/.test(s)) return { code: 'E---', sure: false };   // «E» не прочиталась или стала восьмёркой
+    if ((m = s.match(/^([EC])-*([0-9A-F])$/i)) && (s.indexOf('-') > 0 || /^E/i.test(s))) return { code: m[1].toUpperCase() + '-' + m[2].toUpperCase(), sure: s.indexOf('-') > 0 };
+    if ((m = s.match(/^([EC])(-+[0-9A-F]-*|-*[0-9A-F]-+)$/i)) && s.length >= 5) return { code: m[1].toUpperCase() + '-' + m[2].replace(/-/g, '').toUpperCase(), sure: false };   // «E----3--»
+    return null;
+  }
+  /** Код ошибки строки: сначала варианты без «теней» (alts), потом как есть; большинство среди вариантов. */
+  function errLine(l) {
+    var vars = (l.alts || []).concat([l.text]), got = vars.map(errOf), cnt = {}, best = null;
+    got.forEach(function (e, i) { if (!e) return; var k = e.code; cnt[k] = (cnt[k] || 0) + (i < vars.length - 1 ? 2 : 1) + (e.sure ? 1 : 0); if (!best || cnt[k] > cnt[best.code]) best = e; });
+    if (!best) return null;
+    return { code: best.code, sure: got.some(function (e) { return e && e.code === best.code && e.sure; }) };
+  }
   /** «00015 482» → «00015.482» по позиции точки; «0O1S.4B2» → цифры (похожие буквы — в цифры, только внутри числа) */
   // подпись в начале строки числа: «0n 41704», «ht 13.50» (семисегментные буквы)
   var LEAD = /^\s*([0ODo][nN]|[hbn][tEe]|6e|be|c[tE]|Ct|d[teE]|BE|E\s?h|HT|CT)\s+(?=[0-9OoIl])/;
@@ -117,9 +143,14 @@
     // главное число экрана — самая высокая строка из цифр (код ошибки «E- - -» — тоже)
     // знаки поверки на корпусе («M23», «M 17») — не показания
     lines = lines.filter(function (l) { return !/^M\s?\d{2}$/.test(String(l.text).trim()); });
-    var nums = lines.filter(function (l) { return isNumLine(l.text) || (l.alts || []).some(isNumLine) || /^E[\s\-–—_0-9]*$/i.test(l.text); });
+    var errs = lines.map(errLine), errAt = function (l) { var i = lines.indexOf(l); return i < 0 ? null : errs[i]; };   // строки не трогаем — они уходят в /admin
+    var nums = lines.filter(function (l) { return isNumLine(l.text) || (l.alts || []).some(isNumLine) || errAt(l); });
     var maxH = Math.max.apply(null, nums.map(function (l) { return l.h; }).concat([0]));
     var mains = nums.filter(function (l) { return l.h >= maxH * 0.75 && l.h >= res.h * 0.012; });
+    // экран кода ошибки: прочерки и «E» бывают разными строками, а осколки прочерков читаются цифрами («一1» → «11») —
+    // если среди крупных строк есть уверенный код ошибки, остальные крупные строки — не показания
+    var errMain = mains.filter(function (l) { return errAt(l) && errAt(l).sure; })[0];
+    if (errMain) mains = mains.filter(function (l) { return errAt(l) || !(digitsOf(l.text).length <= 3 && Math.abs(l.y + l.h / 2 - errMain.y - errMain.h / 2) < errMain.h); });
     var tags = [];
     lines.forEach(function (l) {
       [l.text].concat(l.alts || []).some(function (tx) {
@@ -133,16 +164,20 @@
     });
 
     // тест экрана (горят все сегменты): строка «88888888» часто читается кусками «881», «88» — если все крупные числа из одних восьмёрок
-    var all8 = mains.map(function (l) { return digitsOf(l.text); }).join(''), n8 = (all8.match(/8/g) || []).length;
-    var e8 = mains.map(function (l) { return [l.text].concat(l.alts || []).map(function (x) { return digitsOf(x); }).filter(function (d) { return /^8{2,}1?$/.test(d); })[0] || ''; }).filter(Boolean);
-    if ((e8.length >= 2 && e8.join('').length >= 5) || (mains.length >= 2 && n8 >= 3 && all8.length >= 4 && n8 >= all8.length * 0.6)) { out.note = 'test_screen'; mains = []; out.anchor = -1; }
+    // («E-------» без подавления теней — тоже «88888888», но варианты видят прочерки: это не тест)
+    var noErr = mains.filter(function (l) { return !errAt(l); });
+    var all8 = noErr.map(function (l) { return digitsOf(l.text); }).join(''), n8 = (all8.match(/8/g) || []).length;
+    var e8 = noErr.map(function (l) { return [l.text].concat(l.alts || []).map(function (x) { return digitsOf(x); }).filter(function (d) { return /^8{2,}1?$/.test(d); })[0] || ''; }).filter(Boolean);
+    if ((e8.length >= 2 && e8.join('').length >= 5) || (noErr.length >= 2 && n8 >= 3 && all8.length >= 4 && n8 >= all8.length * 0.6)) { out.note = 'test_screen'; mains = []; out.anchor = -1; }
+    var errDone = false;
     mains.forEach(function (l) {
-      var txt = (l.alts && l.alts.length ? l.alts[0] : l.text).replace(/\s/g, '');
-      if (/^E[\-–—_]*$/i.test(txt) || /^E[\-–—_]+$/i.test(l.text.replace(/\s/g, ''))) {
-        out.readings.push({ field: 'errCode', value: 'E---', unit: '', label: 'E-', confidence: +(0.85 * l.score).toFixed(2), how: 'tag' }); return;
+      var er = errAt(l);
+      if (er) {
+        if (errDone) return; errDone = true;
+        var none = er.code === 'E---';
+        out.readings.push({ field: 'errCode', value: er.code, unit: '', label: none ? 'E-' : 'E', confidence: +((er.sure ? (none ? 0.85 : 0.75) : 0.55) * l.score).toFixed(2), how: er.sure ? 'tag' : 'guess' });
+        return;
       }
-      var mE = txt.match(/^E[\-–—_]?(\d{1,4})$/i);
-      if (mE) { out.readings.push({ field: 'errCode', value: 'E' + mE[1], unit: '', label: 'E', confidence: +(0.7 * l.score).toFixed(2) }); return; }
       var bv = bestValue(l); if (!bv || !bv.digits) return;
       if (/^8{6,}$/.test(bv.digits)) { out.note = out.note || 'test_screen'; return; }   // тест экрана: горят все сегменты
       if (bv.lead) for (var tl = 0; tl < TAGS.length; tl++) if (TAGS[tl].re.test(bv.lead)) { tags.push({ line: l, tag: TAGS[tl], lead: true }); break; }

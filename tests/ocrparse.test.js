@@ -44,6 +44,18 @@ ok('«002» без подписи — экран dt, не «непонятное
 ok('тест экрана «881» + «86» (как читает iPhone) — пропущен', sh([L('881', ['881', '35'], 462, 765, 87, 82), L('86', ['186', '186'], 696, 774, 81, 64)]).photo.note === 'test_screen');
 ok('знак «CE» на корпусе не становится обраткой', !/tReturn/.test(one(sh([L('0000', ['0000', '0000'], 544, 739, 180, 92), L('kw', null, 730, 793, 50, 34)]))));
 
+console.log('\nЭкран кода ошибки «E-------» (Sharky: E и 7 прочерков — ошибок нет) и коды «E-3», «C-1»:');
+const errWant = { err_e8_plain: 'E---', err_e8_rx: 'E---', err_e8_glare_e: 'E---', err_e8_far: 'E---', err_e8_hard: 'E---', err_e3_short: 'E-3', err_e9_blur: 'E-9', err_c1: 'C-1' };
+const errName = { err_e8_plain: 'движок прочитал «ERR», варианты «E--»', err_e8_rx: '«88888888» и «Ｅ-—————-» — не тест экрана', err_e8_glare_e: 'блик: «ER» и осколок «一1» отдельно — «11» не показание',
+  err_e8_far: 'издалека «8888» / «E---»', err_e8_hard: 'блик, размытие, наклон', err_e3_short: '«883» / «E-3» → E-3 (не «E3»)', err_e9_blur: 'E-9 — батарея', err_c1: '«c-1» → C-1' };
+for (const k in errWant) { const { r, v } = read(k); ok(errName[k] + ' → ' + errWant[k], JSON.stringify(v) === JSON.stringify({ errCode: errWant[k] }) && r.photo.note !== 'test_screen', r.photo); }
+x = P.photo(F.err_e8_nomodel, {}, 0); ok('без модели и без наклейки — тоже «нет ошибки»', x.photo.readings.length === 1 && x.photo.readings[0].value === 'E---', x.photo.readings);
+ok('«E» отдельно, прочерки отдельно (кусками)', one(sh([L('E', ['E', 'E'], 400, 770, 40, 80), L('-------', null, 460, 790, 330, 40)])) === 'errCode=E---');
+ok('прочерки без «E» («8» на месте E) — нет ошибки, но неуверенно', (r => r.photo.readings[0].value === 'E---' && r.photo.readings[0].confidence < 0.6)(sh([L('88888888', ['8-------', '-------'], 470, 760, 320, 80)])));
+ok('тест экрана (все варианты — восьмёрки) по-прежнему тест', sh([L('88888888', ['88888888', '8888888'], 470, 760, 320, 80)]).photo.note === 'test_screen');
+ok('«EH» + «153» — часы с ошибкой, а не код', one(sh([L('153', ['153', '153'], 600, 770, 150, 80), L('EH', ['EH', 'EH'], 400, 870, 60, 30)])) === 'errHours=153');
+ok('«E 153» — не код ошибки', !/errCode/.test(one(sh([L('E 153', ['E 153', 'E 153'], 470, 760, 300, 80)]))));
+
 console.log('\nПачка фото по порядку экранов (подписи не прочитались):');
 {
   const ph = (i, t, readings, extra) => Object.assign({ index: i, time: t, readings: readings || [] }, extra || {});

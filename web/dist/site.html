@@ -644,12 +644,45 @@ input[type=text]:not(.dmy-native):not(.pl-in), input[type=email], input[type=pas
     var n = num(v); if (n === null) return '';
     return f.dec === 0 ? String(Math.round(n)) : n.toFixed(f.dec);
   }
+  /**
+   * Код ошибки как его ждёт ХТМ. Нет ошибки — «E---» (что бы ни было на экране: «E-------» у Sharky, «E- - -», пусто, «0»,
+   * «немає»). Код — «E-3», «C-1», «F0». С клавиатуры приходит кириллица («Е-3»), пробелы и длинные тире — приводим.
+   */
+  var CYR = { 'Е': 'E', 'е': 'E', 'С': 'C', 'с': 'C', 'А': 'A', 'а': 'A', 'В': 'B', 'в': 'B', 'О': '0', 'о': '0', 'Н': 'H', 'н': 'H', 'Р': 'P', 'р': 'P', 'Т': 'T', 'т': 'T', 'Х': 'X', 'х': 'X', 'К': 'K', 'к': 'K', 'М': 'M', 'м': 'M' };
   function normCode(v) {
-    var s = String(v == null ? '' : v).trim();
-    if (s === '' || /^E[-–—]*$/i.test(s) || s === '0') return 'E---';
-    return s.toUpperCase();
+    var raw = String(v == null ? '' : v).trim(); if (raw.normalize) raw = raw.normalize('NFKC');
+    if (/^(нет|немає|нема|ні|no|none|ok|ок|-)$/i.test(raw)) return 'E---';
+    var s = raw.replace(/\s+/g, '').replace(/[‐‑‒–—―−─━一ー﹣_~]/g, '-').replace(/[ЕеСсАаВвОоНнРрТтХхКкМм]/g, function (c) { return CYR[c]; }).toUpperCase();
+    if (s === '' || s === '0' || /^E?-*$/.test(s)) return 'E---';
+    var m = s.match(/^([EC])-*([0-9A-F])$/);   // «E3», «E - 3», «е-3» → «E-3»
+    if (m) return m[1] + '-' + m[2];
+    return s;
   }
   function noError(code) { return normCode(code) === 'E---'; }
+
+  /** Расшифровка кодов (инструкции Diehl SHARKY 774/775 и Landis+Gyr ULTRAHEAT T230/T330; коды семейств не пересекаются). */
+  var INST = ['Викличте установника (OTOS чи інший, хто ставив лічильник).', 'Вызовите установщика (OTOS или другой, кто ставил счётчик).'];
+  var ERR_CODES = {
+    'C-1': ['збій пам’яті лічильника, його треба замінити', 'сбой памяти счётчика, его нужно заменить'].concat(INST),
+    'E-1': ['помилка датчика температури: обрив, замикання або температура поза межами', 'ошибка датчика температуры: обрыв, замыкание или температура вне пределов'].concat(INST),
+    'E-3': ['датчики подачі й обратки переплутані місцями', 'датчики подачи и обратки перепутаны местами', 'Буває й без помилки монтажу, коли опалення стоїть. Не зникає — викличте установника.', 'Бывает и без ошибки монтажа, когда отопление стоит. Не уходит — вызовите установщика.'],
+    'E-4': ['апаратна помилка ультразвукового вимірювання', 'аппаратная ошибка ультразвукового измерения'].concat(INST),
+    'E-5': ['лічильник надто часто опитують по M-Bus', 'счётчик слишком часто опрашивают по M-Bus', 'Минає сама за кілька хвилин.', 'Проходит сама через несколько минут.'],
+    'E-6': ['неправильний напрямок потоку', 'неправильное направление потока', 'Буває й без помилки монтажу, коли опалення стоїть. Не зникає — викличте установника.', 'Бывает и без ошибки монтажа, когда отопление стоит. Не уходит — вызовите установщика.'],
+    'E-7': ['немає ультразвукового сигналу — повітря в трубі', 'нет ультразвукового сигнала — воздух в трубе', 'Стравіть повітря з системи (ОСББ, сантехнік); не допомогло — установник.', 'Стравите воздух из системы (ОСББ, сантехник); не помогло — установщик.'],
+    'E-8': ['немає основного живлення, працює від резервної батареї', 'нет основного питания, работает от резервной батареи'].concat(INST),
+    'E-9': ['сідає батарея', 'садится батарея', 'Потрібна заміна батареї — часто разом із повіркою.', 'Нужна замена батареи — часто вместе с поверкой.'],
+    'E-A': ['виявлено пробій труби', 'обнаружен прорыв трубы'].concat(INST), 'E-B': ['виявлено витік', 'обнаружена утечка'].concat(INST),
+    'E-C': ['витік на імпульсному вході 1', 'утечка на импульсном входе 1'].concat(INST), 'E-D': ['витік на імпульсному вході 2', 'утечка на импульсном входе 2'].concat(INST),
+    F0: ['немає витрати — найчастіше повітря в трубі', 'нет расхода — чаще всего воздух в трубе', 'Стравіть повітря з системи (ОСББ, сантехнік); не допомогло — установник.', 'Стравите воздух из системы (ОСББ, сантехник); не помогло — установщик.'],
+    F1: ['обрив датчика подачі', 'обрыв датчика подачи'].concat(INST), F2: ['обрив датчика обратки', 'обрыв датчика обратки'].concat(INST),
+    F3: ['помилка електроніки вимірювання температур', 'ошибка электроники измерения температур'].concat(INST),
+    F4: ['батарея розряджена', 'батарея разряжена', 'Потрібна заміна батареї.', 'Нужна замена батареи.'],
+    F5: ['замикання датчика подачі', 'замыкание датчика подачи'].concat(INST), F6: ['замикання датчика обратки', 'замыкание датчика обратки'].concat(INST),
+    F7: ['помилка внутрішньої пам’яті', 'ошибка внутренней памяти'].concat(INST),
+    F8: ['помилка F1–F6 триває понад 8 годин або було втручання', 'ошибка F1–F6 длится больше 8 часов или было вмешательство', 'Скинути може лише сервіс.', 'Сбросить может только сервис.'],
+    F9: ['помилка електроніки', 'ошибка электроники'].concat(INST)
+  };
 
   /** Состояние окна приёма на дату (локальная дата). */
   function windowState(today) {
@@ -740,9 +773,13 @@ input[type=text]:not(.dmy-native):not(.pl-in), input[type=email], input[type=pas
           'Перевірте потужність, витрату і обидві температури — одна з цифр, ймовірно, переписана з помилкою.', 'Проверьте мощность, расход и обе температуры — одна из цифр, вероятно, переписана с ошибкой.', { expected: expected }));
       }
     }
-    if (!noError(r.errCode)) items.push(item('M_ERROR_CODE', 'warn', 'errCode',
-      'Лічильник показує код помилки ' + normCode(r.errCode) + '.', 'Счётчик показывает код ошибки ' + normCode(r.errCode) + '.',
-      'Поки є помилка, енергія може не рахуватися. Подивіться розшифровку коду.', 'Пока есть ошибка, энергия может не считаться. Посмотрите расшифровку кода.'));
+    if (!noError(r.errCode)) {
+      var ec = normCode(r.errCode), ex = ERR_CODES[ec];
+      items.push(item('M_ERROR_CODE', 'warn', 'errCode',
+        'Лічильник показує код помилки ' + ec + (ex ? ' — ' + ex[0] : '') + '.', 'Счётчик показывает код ошибки ' + ec + (ex ? ' — ' + ex[1] : '') + '.',
+        (ex ? ex[2] + ' ' : '') + 'Поки є помилка, енергія може не рахуватися. Якщо на екрані «E» і лише прочерки — помилки немає, виберіть «Помилок немає».',
+        (ex ? ex[3] + ' ' : '') + 'Пока есть ошибка, энергия может не считаться. Если на экране «E» и только прочерки — ошибки нет, выберите «Ошибок нет».'));
+    }
 
     // --- B. Сравнение с прошлым принятым (правила робота)
     if (!prev) {
@@ -834,6 +871,12 @@ input[type=text]:not(.dmy-native):not(.pl-in), input[type=email], input[type=pas
 
   /** Быстрая проверка одного поля на лету (для подсказки под полем). */
   function checkField(key, value, prev) {
+    if (key === 'errCode') {   // подсказка прямо под полем кода: нет ошибки / что значит код
+      if (String(value || '').trim() === '') return null;
+      var ec = normCode(value), ex = ERR_CODES[ec];
+      if (ec === 'E---') return { level: 'ok', msg: { uk: '«E» і прочерки — помилок немає (у ХТМ піде E---).', ru: '«E» и прочерки — ошибок нет (в ХТМ уйдёт E---).' } };
+      return { level: 'warn', msg: ex ? { uk: ec + ' — ' + ex[0] + '. ' + ex[2], ru: ec + ' — ' + ex[1] + '. ' + ex[3] } : { uk: 'У ХТМ піде код ' + ec + '.', ru: 'В ХТМ уйдёт код ' + ec + '.' } };
+    }
     var n = num(value);
     if (key !== 'errCode' && key !== 'date' && String(value || '').trim() !== '' && n === null) return { level: 'warn', msg: { uk: 'Лише цифри та крапка.', ru: 'Только цифры и точка.' } };
     if (n === null || !prev) return null;
@@ -872,7 +915,7 @@ input[type=text]:not(.dmy-native):not(.pl-in), input[type=email], input[type=pas
   }
 
   var api = { C: C, FIELDS: FIELDS, num: num, validate: validate, checkField: checkField, decodeRobot: decodeRobot,
-    windowState: windowState, formatForHtm: formatForHtm, toHtmDate: toHtmDate, daysBetween: daysBetween, normCode: normCode, ymd: ymd };
+    windowState: windowState, formatForHtm: formatForHtm, toHtmDate: toHtmDate, daysBetween: daysBetween, normCode: normCode, ERR_CODES: ERR_CODES, ymd: ymd };
   if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.TeploRules = api;
 })(typeof window !== 'undefined' ? window : this);
 
@@ -901,8 +944,8 @@ input[type=text]:not(.dmy-native):not(.pl-in), input[type=email], input[type=pas
       hint: L('Екран сам чергує «ht» (подача) і «ct» (обратка) — дочекайтеся обох.', 'Экран сам чередует «ht» (подача) и «ct» (обратка) — дождитесь обоих.') },
     { press: 'short', count: 2, fields: ['hours', 'errHours'], lcd: { digits: '35611', tag: 'On', alt: { digits: '153', tag: 'Eh' } },
       hint: L('Ще 2 натискання. Чергуються «On» (години роботи) і «Eh» (години з помилкою).', 'Ещё 2 нажатия. Чередуются «On» (часы работы) и «Eh» (часы с ошибкой).') },
-    { press: 'short', count: 1, fields: ['errCode'], lcd: { digits: 'E- - -', tag: '' },
-      hint: L('«E-» без цифр — помилок немає. «Err» біля значень — є помилка.', '«E-» без цифр — ошибок нет. «Err» рядом со значениями — есть ошибка.') }
+    { press: 'short', count: 1, fields: ['errCode'], lcd: { digits: 'E-------', tag: '' },
+      hint: L('«E» і лише прочерки («E-------») — помилок немає. Цифра чи буква після «E-» («E-9», «C-1») — код помилки; «Err» біля значень — теж є помилка.', '«E» и только прочерки («E-------») — ошибок нет. Цифра или буква после «E-» («E-9», «C-1») — код ошибки; «Err» рядом со значениями — тоже есть ошибка.') }
   ];
 
   /** Шаги для моделей без проверенной инструкции: что искать, без точного числа нажатий. */
@@ -921,7 +964,7 @@ input[type=text]:not(.dmy-native):not(.pl-in), input[type=email], input[type=pas
       { press: 'short', count: null, fields: ['hours', 'errHours'], lcd: { digits: '00000', tag: 'h' },
         hint: L('Години роботи і години з помилкою (часто «h», «On», «Eh», «Err h»). Немає годин з помилкою — впишіть 0.', 'Часы работы и часы с ошибкой (часто «h», «On», «Eh», «Err h»). Нет часов с ошибкой — впишите 0.') },
       { press: 'short', count: null, fields: ['errCode'], lcd: { digits: '- - - -', tag: '' },
-        hint: L('Код помилки або інформаційний екран. Немає помилки — залиште порожнім.', 'Код ошибки или информационный экран. Нет ошибки — оставьте пустым.') }
+        hint: L('Код помилки або інформаційний екран. «E» і лише прочерки або коду немає — помилок немає.', 'Код ошибки или информационный экран. «E» и только прочерки или кода нет — ошибок нет.') }
     ];
   }
 
@@ -1040,7 +1083,7 @@ input[type=text]:not(.dmy-native):not(.pl-in), input[type=email], input[type=pas
       s_prev: 'Минулого разу {v}',
       s_need: 'Заповніть поле, щоб перейти далі.',
       s_sleep: 'Лічильник засинає через ~{m} хв. Згас — натисніть кнопку й долистайте до цього екрана.',
-      s_err_none: 'Помилок немає (E-)',
+      s_err_none: 'Помилок немає (E-------)',
       s_err_code: 'Інший код',
       s_on_screen: 'Як на екрані',
       s_to_check: 'Перевірити',
@@ -1534,7 +1577,7 @@ input[type=text]:not(.dmy-native):not(.pl-in), input[type=email], input[type=pas
       s_prev: 'В прошлый раз {v}',
       s_need: 'Заполните поле, чтобы перейти дальше.',
       s_sleep: 'Счётчик засыпает через ~{m} мин. Погас — нажмите кнопку и долистайте до этого экрана.',
-      s_err_none: 'Ошибок нет (E-)',
+      s_err_none: 'Ошибок нет (E-------)',
       s_err_code: 'Другой код',
       s_on_screen: 'Как на экране',
       s_to_check: 'Проверить',
@@ -2271,6 +2314,32 @@ input[type=text]:not(.dmy-native):not(.pl-in), input[type=email], input[type=pas
   var DEC = { energy: 3, volume: 3, flow: 3, power: 3, tSupply: 2, tReturn: 2, hours: 0, errHours: 0 };
 
   function digitsOf(s) { return String(s || '').replace(/[^0-9]/g, ''); }
+
+  /**
+   * Экран кода ошибки. Sharky: «E-------» (E и прочерки во всю строку) — ошибок нет; «E-3», «E - 9», «C-1» — код.
+   * Движок (китайско-английская модель) пишет прочерки чем попало: «—», «－», «一», «_»; «E» — полноширинной «Ｅ»,
+   * а без подавления «теней» сегментов прочерки становятся восьмёрками («E8888888», «883») — поэтому смотрим все варианты.
+   * → { code: 'E---' | 'E-3' | 'C-1', sure } или null.
+   */
+  var DASH = /[\-‐‑‒–—―−─━一ー－﹣_~]/g;
+  function errOf(tx) {
+    var s = String(tx || ''); if (s.normalize) s = s.normalize('NFKC');
+    s = s.replace(/\s+/g, '').replace(DASH, '-');
+    var m;
+    if (/^E-+$/i.test(s)) return { code: 'E---', sure: true };
+    if (s === 'E') return { code: 'E---', sure: false };   // прочерки не прочитались
+    if (/^[8B]?-{4,}$/.test(s)) return { code: 'E---', sure: false };   // «E» не прочиталась или стала восьмёркой
+    if ((m = s.match(/^([EC])-*([0-9A-F])$/i)) && (s.indexOf('-') > 0 || /^E/i.test(s))) return { code: m[1].toUpperCase() + '-' + m[2].toUpperCase(), sure: s.indexOf('-') > 0 };
+    if ((m = s.match(/^([EC])(-+[0-9A-F]-*|-*[0-9A-F]-+)$/i)) && s.length >= 5) return { code: m[1].toUpperCase() + '-' + m[2].replace(/-/g, '').toUpperCase(), sure: false };   // «E----3--»
+    return null;
+  }
+  /** Код ошибки строки: сначала варианты без «теней» (alts), потом как есть; большинство среди вариантов. */
+  function errLine(l) {
+    var vars = (l.alts || []).concat([l.text]), got = vars.map(errOf), cnt = {}, best = null;
+    got.forEach(function (e, i) { if (!e) return; var k = e.code; cnt[k] = (cnt[k] || 0) + (i < vars.length - 1 ? 2 : 1) + (e.sure ? 1 : 0); if (!best || cnt[k] > cnt[best.code]) best = e; });
+    if (!best) return null;
+    return { code: best.code, sure: got.some(function (e) { return e && e.code === best.code && e.sure; }) };
+  }
   /** «00015 482» → «00015.482» по позиции точки; «0O1S.4B2» → цифры (похожие буквы — в цифры, только внутри числа) */
   // подпись в начале строки числа: «0n 41704», «ht 13.50» (семисегментные буквы)
   var LEAD = /^\s*([0ODo][nN]|[hbn][tEe]|6e|be|c[tE]|Ct|d[teE]|BE|E\s?h|HT|CT)\s+(?=[0-9OoIl])/;
@@ -2348,9 +2417,14 @@ input[type=text]:not(.dmy-native):not(.pl-in), input[type=email], input[type=pas
     // главное число экрана — самая высокая строка из цифр (код ошибки «E- - -» — тоже)
     // знаки поверки на корпусе («M23», «M 17») — не показания
     lines = lines.filter(function (l) { return !/^M\s?\d{2}$/.test(String(l.text).trim()); });
-    var nums = lines.filter(function (l) { return isNumLine(l.text) || (l.alts || []).some(isNumLine) || /^E[\s\-–—_0-9]*$/i.test(l.text); });
+    var errs = lines.map(errLine), errAt = function (l) { var i = lines.indexOf(l); return i < 0 ? null : errs[i]; };   // строки не трогаем — они уходят в /admin
+    var nums = lines.filter(function (l) { return isNumLine(l.text) || (l.alts || []).some(isNumLine) || errAt(l); });
     var maxH = Math.max.apply(null, nums.map(function (l) { return l.h; }).concat([0]));
     var mains = nums.filter(function (l) { return l.h >= maxH * 0.75 && l.h >= res.h * 0.012; });
+    // экран кода ошибки: прочерки и «E» бывают разными строками, а осколки прочерков читаются цифрами («一1» → «11») —
+    // если среди крупных строк есть уверенный код ошибки, остальные крупные строки — не показания
+    var errMain = mains.filter(function (l) { return errAt(l) && errAt(l).sure; })[0];
+    if (errMain) mains = mains.filter(function (l) { return errAt(l) || !(digitsOf(l.text).length <= 3 && Math.abs(l.y + l.h / 2 - errMain.y - errMain.h / 2) < errMain.h); });
     var tags = [];
     lines.forEach(function (l) {
       [l.text].concat(l.alts || []).some(function (tx) {
@@ -2364,16 +2438,20 @@ input[type=text]:not(.dmy-native):not(.pl-in), input[type=email], input[type=pas
     });
 
     // тест экрана (горят все сегменты): строка «88888888» часто читается кусками «881», «88» — если все крупные числа из одних восьмёрок
-    var all8 = mains.map(function (l) { return digitsOf(l.text); }).join(''), n8 = (all8.match(/8/g) || []).length;
-    var e8 = mains.map(function (l) { return [l.text].concat(l.alts || []).map(function (x) { return digitsOf(x); }).filter(function (d) { return /^8{2,}1?$/.test(d); })[0] || ''; }).filter(Boolean);
-    if ((e8.length >= 2 && e8.join('').length >= 5) || (mains.length >= 2 && n8 >= 3 && all8.length >= 4 && n8 >= all8.length * 0.6)) { out.note = 'test_screen'; mains = []; out.anchor = -1; }
+    // («E-------» без подавления теней — тоже «88888888», но варианты видят прочерки: это не тест)
+    var noErr = mains.filter(function (l) { return !errAt(l); });
+    var all8 = noErr.map(function (l) { return digitsOf(l.text); }).join(''), n8 = (all8.match(/8/g) || []).length;
+    var e8 = noErr.map(function (l) { return [l.text].concat(l.alts || []).map(function (x) { return digitsOf(x); }).filter(function (d) { return /^8{2,}1?$/.test(d); })[0] || ''; }).filter(Boolean);
+    if ((e8.length >= 2 && e8.join('').length >= 5) || (noErr.length >= 2 && n8 >= 3 && all8.length >= 4 && n8 >= all8.length * 0.6)) { out.note = 'test_screen'; mains = []; out.anchor = -1; }
+    var errDone = false;
     mains.forEach(function (l) {
-      var txt = (l.alts && l.alts.length ? l.alts[0] : l.text).replace(/\s/g, '');
-      if (/^E[\-–—_]*$/i.test(txt) || /^E[\-–—_]+$/i.test(l.text.replace(/\s/g, ''))) {
-        out.readings.push({ field: 'errCode', value: 'E---', unit: '', label: 'E-', confidence: +(0.85 * l.score).toFixed(2), how: 'tag' }); return;
+      var er = errAt(l);
+      if (er) {
+        if (errDone) return; errDone = true;
+        var none = er.code === 'E---';
+        out.readings.push({ field: 'errCode', value: er.code, unit: '', label: none ? 'E-' : 'E', confidence: +((er.sure ? (none ? 0.85 : 0.75) : 0.55) * l.score).toFixed(2), how: er.sure ? 'tag' : 'guess' });
+        return;
       }
-      var mE = txt.match(/^E[\-–—_]?(\d{1,4})$/i);
-      if (mE) { out.readings.push({ field: 'errCode', value: 'E' + mE[1], unit: '', label: 'E', confidence: +(0.7 * l.score).toFixed(2) }); return; }
       var bv = bestValue(l); if (!bv || !bv.digits) return;
       if (/^8{6,}$/.test(bv.digits)) { out.note = out.note || 'test_screen'; return; }   // тест экрана: горят все сегменты
       if (bv.lead) for (var tl = 0; tl < TAGS.length; tl++) if (TAGS[tl].re.test(bv.lead)) { tags.push({ line: l, tag: TAGS[tl], lead: true }); break; }
@@ -2627,7 +2705,7 @@ input[type=text]:not(.dmy-native):not(.pl-in), input[type=email], input[type=pas
         'Known models (id — name): ' + catalog + '. Use "other" if it is a heat meter not in the list, null if you cannot tell.',
         ctx.expectedModel ? 'The person says their meter is: ' + ctx.expectedModel + '. If a photo shows several meters, read the one matching this model (or the apartment sticker ' + (ctx.apartment || '?') + ') and say so in "note".' : 'The model is not known yet — identify it from the nameplate or the look of the meter.',
         order ? 'For this model the screens usually come in this order: ' + order + '. Use it only to tell unlabeled screens apart.' : '',
-        'Fields: energy = accumulated heat energy (unit Gcal / MWh / GJ / kWh as shown; Sharky shows "Gcal"); volume = accumulated water volume, m³ (Sharky: "m³" in the top right corner); flow = instantaneous flow, m³/h; power = instantaneous power, kW; tSupply = supply temperature °C (labels "ht", "T1", arrow up — the hotter one); tReturn = return temperature °C ("ct", "T2", arrow down); hours = operating hours ("On", "h"); errHours = hours with error ("Eh", "Err h"); errCode = error code ("E-" or "E---" with no digits means no error → "E---").',
+        'Fields: energy = accumulated heat energy (unit Gcal / MWh / GJ / kWh as shown; Sharky shows "Gcal"); volume = accumulated water volume, m³ (Sharky: "m³" in the top right corner); flow = instantaneous flow, m³/h; power = instantaneous power, kW; tSupply = supply temperature °C (labels "ht", "T1", arrow up — the hotter one); tReturn = return temperature °C ("ct", "T2", arrow down); hours = operating hours ("On", "h"); errHours = hours with error ("Eh", "Err h"); errCode = error code: "E" followed only by dashes ("E-", "E---", "E-------" on Sharky) means no error → "E---"; a code is written as on the screen with a dash, e.g. "E-3", "C-1", "F0".',
         'Rules: copy the digits EXACTLY as displayed, with "." as the decimal separator and leading zeros removed ("00015.482" → "15.482"). Never invent, estimate or calculate a value, never copy it from anywhere but the photo. If a digit is unclear, give your best reading with confidence below 0.6 and explain in "note". Report every field you can see on each photo (a screen may show two values at once).',
         ctx.prev ? 'For sanity only (do NOT copy): the previous accepted values were ' + JSON.stringify(ctx.prev) + ' — accumulated values should be equal or higher.' : '',
         'Write "note" in ' + (ctx.lang === 'ru' ? 'Russian' : 'Ukrainian') + ', at most one short sentence, only when there is a problem.',
@@ -2680,7 +2758,7 @@ input[type=text]:not(.dmy-native):not(.pl-in), input[type=email], input[type=pas
           }
         });
       });
-      if (best.errCode && /^E[-–—\s]*$/i.test(best.errCode.value)) best.errCode.value = 'E---';
+      if (best.errCode) best.errCode.value = root.TeploRules ? root.TeploRules.normCode(best.errCode.value) : (/^E[-–—_\s]*$/i.test(best.errCode.value) ? 'E---' : best.errCode.value);   // «E-------», «Е-3» → «E---», «E-3»
       return best;
     }
   };

@@ -1,0 +1,18 @@
+[
+ {"id": "e8_plain", "brand": "SHARKY 774", "v": "E-------", "truth": {"errCode": "E---"}},
+ {"id": "e8_blur", "brand": "SHARKY 774", "v": "E-------", "blur": 1.6, "truth": {"errCode": "E---"}},
+ {"id": "e8_glare", "brand": "SHARKY 774", "v": "E-------", "glare": 55, "truth": {"errCode": "E---"}},
+ {"id": "e8_glare_e", "brand": "SHARKY 774", "v": "E-------", "glare": 12, "truth": {"errCode": "E---"}, "note": "блик на «E»"},
+ {"id": "e8_tilt", "brand": "SHARKY 774", "v": "E-------", "ry": 20, "rz": 6, "truth": {"errCode": "E---"}},
+ {"id": "e8_rx", "brand": "SHARKY 774", "v": "E-------", "rx": 16, "rz": -4, "truth": {"errCode": "E---"}},
+ {"id": "e8_far", "brand": "SHARKY 774", "v": "E-------", "s": 0.5, "truth": {"errCode": "E---"}},
+ {"id": "e8_dark", "brand": "SHARKY 774", "v": "E-------", "br": 0.55, "blur": 1, "truth": {"errCode": "E---"}},
+ {"id": "e8_nomodel", "brand": "", "v": "E-------", "model": null, "truth": {"errCode": "E---"}},
+ {"id": "e8_hard", "brand": "SHARKY 774", "v": "E-------", "glare": 75, "blur": 1.3, "ry": -14, "rz": 3, "truth": {"errCode": "E---"}},
+ {"id": "e3_short", "brand": "SHARKY 774", "v": "E-3", "truth": {"errCode": "E-3"}},
+ {"id": "e9_spaced", "brand": "SHARKY 774", "v": "E - 9", "truth": {"errCode": "E-9"}},
+ {"id": "e9_blur", "brand": "SHARKY 774", "v": "E-9", "blur": 1.4, "rz": 5, "truth": {"errCode": "E-9"}},
+ {"id": "c1", "brand": "SHARKY 774", "v": "C-1", "truth": {"errCode": "C-1"}},
+ {"id": "e775_7", "brand": "SHARKY 775", "v": "E-7", "model": "sharky775", "truth": {"errCode": "E-7"}},
+ {"id": "e_old", "brand": "SHARKY 774", "v": "E- - -", "truth": {"errCode": "E---"}}
+]

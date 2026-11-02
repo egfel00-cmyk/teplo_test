@@ -67,5 +67,16 @@ t('часы по календарю', R.decodeRobot('Показання не п�
 
 t('часы меньше («маєть бути більше»)', R.decodeRobot('Показання не принйяті з причини: Показання часу по приладу обліку 1 на 21.10.2020 23:00 = 635 але маєть бути більше 636.36').code === 'R_MONO_HOURS');
 
+console.log('\nКод ошибки (экран «E-------», ввод с кириллической клавиатуры):');
+const nc = [['E-------', 'E---'], ['E- - - - - - -', 'E---'], ['Е-------', 'E---'], ['е---', 'E---'], ['', 'E---'], ['0', 'E---'], ['немає', 'E---'], ['E—————', 'E---'], ['-------', 'E---'],
+  ['E-3', 'E-3'], ['E 3', 'E-3'], ['е-9', 'E-9'], ['Е - 7', 'E-7'], ['С-1', 'C-1'], ['f4', 'F4'], ['E-b', 'E-B']];
+const ncBad = nc.filter(([i, o]) => R.normCode(i) !== o);
+t('нет ошибки → E---, код → «E-3» (кириллица, пробелы, тире)', !ncBad.length, ncBad.map(([i]) => i + '→' + R.normCode(i)));
+t('«Е-------» кириллицей — не ошибка', !codes(R.validate({ reading: Object.assign({}, base, { errCode: 'Е-------' }), prev, meter, today: '2025-11-23' })).includes('M_ERROR_CODE'));
+const e7 = R.validate({ reading: Object.assign({}, base, { errCode: 'е-7' }), prev, meter, today: '2025-11-23' }).items.filter(i => i.code === 'M_ERROR_CODE')[0];
+t('E-7 — предупреждение с расшифровкой (повітря)', e7 && /E-7 — немає ультразвукового сигналу/.test(e7.msg.uk) && /Стравіть повітря/.test(e7.fix.uk), e7);
+t('подсказка под полем: «E-------» — помилок немає, «E-9» — батарея', R.checkField('errCode', 'E-------').level === 'ok' && /батарея/.test(R.checkField('errCode', 'Е-9').msg.uk));
+t('в форму ХТМ: «Е - 3» → E-3', R.formatForHtm('errCode', 'Е - 3') === 'E-3');
+
 console.log('\nИтог: ' + pass + ' OK, ' + fail + ' FAIL');
 process.exit(fail ? 1 : 0);
