@@ -153,6 +153,9 @@
   // ---------------- иконки ----------------
   var ICONS = {
     home: '<path d="M4 11l8-7 8 7"/><path d="M6 10v10h12V10"/>',
+    chev: '<path d="M9 6l6 6-6 6"/>',
+    flame: '<path d="M12 3c1 3 5 5 5 10a5 5 0 0 1-10 0c0-2.5 1.5-4 2.5-5 .3 1.6 1.2 2.6 2.5 3 0-3-.7-5.5 0-8z"/>',
+    shield: '<path d="M12 3l7 3v5c0 4.5-3 8-7 10-4-2-7-5.5-7-10V6z"/>',
     history: '<path d="M4 6h16M4 12h16M4 18h10"/>',
     help: '<circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .9-1 1.6V14"/><circle cx="12" cy="17.2" r=".6" fill="currentColor"/>',
     prefs: '<path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/>',
@@ -369,12 +372,11 @@
       right += '<button class="btn big block" data-act="read" data-key="home-read">' + esc(t('h_read')) + '</button>';
       if (VIS().available) right += '<button class="btn sec block" style="margin-top:12px" data-act="photo" data-mode="reading" data-key="home-photo">' + ico('camera', 22) + '<span>' + esc(t('ph_entry')) + '</span></button>';
     }
-    right += '<h2 class="section-title">' + esc(t('h_meter')) + '</h2><ul class="list"><li><div class="grow"><div><b>' + esc(modelName(m)) + '</b></div>' +
-      '<div class="small muted">' + esc(m.status === 'verified' ? t('m_verified') : m.status === 'draft' ? t('m_draft') : L(m.note)) + (energyUnit() !== 'Gcal' ? ', ' + esc(unitLbl(energyUnit())) : '') + '</div></div>' +
-      '<a href="#meter" data-key="home-change-meter">' + esc(t('change')) + '</a></li></ul>';
+    right += '<h2 class="section-title">' + esc(t('h_meter')) + '</h2><ul class="list"><li class="tap-row"><a class="row-link" href="#prefs" data-act="to-meter" data-key="home-meter"><div class="grow"><div><b>' + esc(modelName(m)) + '</b></div>' +
+      '<div class="small muted">' + esc(m.status === 'verified' ? t('m_verified') : m.status === 'draft' ? t('m_draft') : L(m.note)) + (energyUnit() !== 'Gcal' ? ', ' + esc(unitLbl(energyUnit())) : '') + (S.meter && S.meter.verifiedUntil ? ' · ' + esc(t('pl_ver', { d: R.toHtmDate(S.meter.verifiedUntil) })) : '') + '</div></div>' +
+      ico('chev', 20) + '</a></li></ul>';
     var recent = RD().slice(-3).reverse();
     if (recent.length) right += '<h2 class="section-title">' + esc(t('h_recent')) + '</h2>' + readingList(recent);
-    right += tipOfDay();
     right += '<p class="small muted" style="margin-top:16px">' + esc(t('h_hw')) + ': <a href="' + BOT_URL + '" target="_blank" rel="noopener">@KPHTM_Bot</a></p>';
     if (Y().mode === 'server' && !Y().account && RD().length && !S.syncPromptDismissed) {
       html = '<div class="banner" data-key="home-save-prompt">' + ico('info', 22) + '<div><p><b>' + esc(t('save_prompt')) + '</b></p><p><a href="#login">' + esc(t('login')) + '</a> &nbsp; <button class="linkbtn" data-act="dismiss-sync">' + esc(t('save_prompt_later')) + '</button></p></div></div>' + html;
@@ -869,6 +871,13 @@
     for (var i = 0; i < last.length; i++) { var iv = interval(last[i]); if (iv && iv.dE > 0 && iv.days >= 7) return { g: iv.dE / iv.days * 30, from: iv.from, to: last[i].htm.date }; }
     return null;
   }
+  /** Справка/советы: группы-плашки с аккордеоном внутри (родной <details> — работает без скриптов и с экранными чтецами). */
+  function accGroups(groups, key) {
+    return '<div class="acc-groups" data-key="' + key + '">' + groups.map(function (g, gi) {
+      return '<section class="acc-group"' + (g.id ? ' id="' + g.id + '"' : '') + '><h2>' + (g.icon ? ico(g.icon, 20) + ' ' : '') + esc(g.title) + '</h2>' +
+        g.items.map(function (it, ii) { return '<details class="acc"' + (it.open ? ' open' : '') + '><summary><span>' + esc(it.title) + '</span>' + ico('chev', 18) + '</summary><div class="acc-body">' + it.html + '</div></details>'; }).join('') + '</section>';
+    }).join('') + '</div>';
+  }
   V.save = function () {
     var mm = myMonth(), list = tips();
     var mine = mm ? '<div class="panel" data-key="save-mine"><h2>' + esc(t('sv_mine')) + '</h2><div class="cards2"><div><div class="num big">' + esc(mm.g.toFixed(3)) + '</div><div class="small muted">' + esc(t('sv_month_g')) + '</div></div>' +
@@ -876,15 +885,49 @@
       '<p>' + esc(t('sv_one_deg', { g: (mm.g * 0.05).toFixed(3), uah: money(mm.g * 0.05 * tariff()) })) + '</p><p class="small muted">' + esc(t('sv_mine_from', { a: R.toHtmDate(mm.from), b: R.toHtmDate(mm.to) })) + '</p></div>'
       : '<div class="panel"><p class="muted">' + esc(t('sv_no_data')) + '</p></div>';
     return { screen: 'S14', route: 'save', html: '<h1>' + esc(t('sv_title')) + '</h1><p class="muted">' + esc(t('sv_lead')) + '</p>' + mine +
-      '<ol class="tips" data-key="save-tips">' + list.map(function (x) { return '<li><h3>' + esc(x[0]) + '</h3><p>' + esc(x[1]) + '</p></li>'; }).join('') + '</ol>' +
+      accGroups([[t('sv_g1'), 'thermo', [0, 5, 4]], [t('sv_g2'), 'flame', [1, 2, 3, 7]], [t('sv_g3'), 'home', [6]], [t('sv_g4'), 'chart', [8, 9]]].map(function (g) {
+        return { title: g[0], icon: g[1], items: g[2].map(function (k) { return { title: list[k][0], html: '<p>' + esc(list[k][1]) + '</p>' }; }) };
+      }), 'save-tips') +
       '<p class="small muted">' + esc(t('sv_src')) + '</p>' };
   };
-  /** Порада дня — на головній. */
-  function tipOfDay() {
-    var list = tips(), d = new Date(today() + 'T12:00:00Z'), k = Math.floor(d.getTime() / 86400000) % list.length, x = list[k];
-    return '<div class="panel tip" data-key="home-tip"><p class="small muted">' + ico('leaf', 16) + ' ' + esc(t('sv_tip')) + '</p><h3>' + esc(x[0]) + '</h3><p class="small">' + esc(x[1]) + '</p><a href="#save">' + esc(t('sv_all')) + '</a></div>';
-  }
 
+  /** Политика конфиденциальности и условия использования — с каждого языка, разделы-плашки. */
+  function legalPage(kind) {
+    var ru = S.lang === 'ru', sec = function (h, body) { return '<section class="panel legal"><h2>' + esc(h) + '</h2>' + body + '</section>'; };
+    var P = function (x) { return '<p>' + x + '</p>'; }, UL = function (a) { return '<ul>' + a.map(function (x) { return '<li>' + x + '</li>'; }).join('') + '</ul>'; };
+    var upd = '<p class="small muted">' + esc(ru ? 'Редакция от 02.11.2026 · тестовая версия сервиса' : 'Редакція від 02.11.2026 · тестова версія сервісу') + '</p>';
+    var fb = '<button class="linkbtn" data-act="fb-open">' + esc(ru ? '«Отзыв»' : '«Відгук»') + '</button>';
+    if (kind === 'privacy') return '<h1>' + esc(t('lg_privacy')) + '</h1>' + upd + (ru ? [
+      sec('Кратко', P('«Теплосервис» помогает снять показания квартирного теплосчётчика и подготовить их для КП «Харьковские тепловые сети» (ХТМ). Мы собираем минимум данных, не продаём их и не передаём для рекламы. Сервис не связан с ХТМ и не передаёт им ничего сам — показания вносите вы.')),
+      sec('Какие данные', UL(['Без входа — показания, счётчик, адреса квартир и настройки хранятся только в вашем браузере.', 'После входа — e-mail (пароль хранится только в виде хеша) или ваш Telegram ID и имя, а также те же данные для синхронизации между устройствами.', 'Фото счётчика при распознавании: распознаются прямо в браузере; вошедшим копия фото и результат хранятся на сервере до 90 дней, чтобы улучшать распознавание (тестовая версия).', 'Документы счётчика (паспорт, поверка), если вы их загрузили, — до удаления вами.', 'Отзывы и контакт, который вы указали в отзыве.', 'Технические журналы сервера (IP-адрес, время запроса) — для безопасности, недолго.'])),
+      sec('Зачем', UL(['чтобы сервис работал: проверка показаний, история, синхронизация, вход;', 'чтобы улучшать распознавание фото и исправлять ошибки;', 'чтобы ответить на ваш отзыв.'])),
+      sec('Кто ещё получает данные', UL(['Хостинг: сервер Hetzner (Германия, ЕС) за Cloudflare (защита и доставка).', 'Telegram — если вы входите через Telegram.', 'Open-Meteo — получает только координаты Харькова для погоды, без ваших данных.', 'Anthropic (Claude) — только если владелец включит серверное распознавание: тогда фото вошедших отправляются на распознавание.'])),
+      sec('Файлы cookie', P('Только необходимые: cookie сессии входа и защитный cookie от подделки запросов. Без рекламных и аналитических трекеров.')),
+      sec('Ваши права', P('По Закону Украины «О защите персональных данных» вы можете узнать, какие данные о вас хранятся, исправить или удалить их. «Настройки» → «Удалить все данные» стирает данные с устройства и из аккаунта; фото и документы удаляются вместе с аккаунтом. Вопросы — через кнопку ' + fb + '.'))
+    ] : [
+      sec('Коротко', P('«Теплосервіс» допомагає зняти показання квартирного теплолічильника й підготувати їх для КП «Харківські теплові мережі» (ХТМ). Ми збираємо мінімум даних, не продаємо їх і не передаємо для реклами. Сервіс не пов’язаний з ХТМ і нічого їм сам не передає — показання вносите ви.')),
+      sec('Які дані', UL(['Без входу — показання, лічильник, адреси квартир і налаштування зберігаються лише у вашому браузері.', 'Після входу — e-mail (пароль зберігається лише як геш) або ваш Telegram ID та ім’я, а також ті самі дані для синхронізації між пристроями.', 'Фото лічильника під час розпізнавання: розпізнаються просто в браузері; тим, хто увійшов, копія фото й результат зберігаються на сервері до 90 днів, щоб покращувати розпізнавання (тестова версія).', 'Документи лічильника (паспорт, повірка), якщо ви їх завантажили, — доки ви їх не видалите.', 'Відгуки й контакт, який ви вказали у відгуку.', 'Технічні журнали сервера (IP-адреса, час запиту) — для безпеки, недовго.'])),
+      sec('Навіщо', UL(['щоб сервіс працював: перевірка показань, історія, синхронізація, вхід;', 'щоб покращувати розпізнавання фото й виправляти помилки;', 'щоб відповісти на ваш відгук.'])),
+      sec('Хто ще отримує дані', UL(['Хостинг: сервер Hetzner (Німеччина, ЄС) за Cloudflare (захист і доставка).', 'Telegram — якщо ви входите через Telegram.', 'Open-Meteo — отримує лише координати Харкова для погоди, без ваших даних.', 'Anthropic (Claude) — лише якщо власник увімкне серверне розпізнавання: тоді фото тих, хто увійшов, надсилаються на розпізнавання.'])),
+      sec('Файли cookie', P('Лише необхідні: cookie сесії входу й захисний cookie від підробки запитів. Без рекламних і аналітичних трекерів.')),
+      sec('Ваші права', P('За Законом України «Про захист персональних даних» ви можете дізнатися, які дані про вас зберігаються, виправити чи видалити їх. «Налаштування» → «Видалити всі дані» стирає дані з пристрою та з акаунта; фото й документи видаляються разом з акаунтом. Питання — через кнопку ' + fb + '.'))
+    ]).join('');
+    return '<h1>' + esc(t('lg_terms')) + '</h1>' + upd + (ru ? [
+      sec('Что это', P('«Теплосервис» — бесплатный помощник для жителей Харькова: подсказывает, что нажимать на счётчике, проверяет цифры по тем же правилам, что и ХТМ, и готовит их к вставке в кабинет ХТМ. Сейчас это тестовая версия.')),
+      sec('Не официальный сервис ХТМ', P('Сервис не принадлежит КП «Харьковские тепловые сети» и не действует от их имени. Передаёте показания вы сами — в кабинете ХТМ, их боте или по телефону. Решение о приёме показаний и начислениях принимает только ХТМ.')),
+      sec('Ваша ответственность', UL(['Сверяйте числа со счётчиком перед отправкой — распознавание фото и подсказки могут ошибаться.', 'Передавайте показания в сроки ХТМ (с 5 по 25 число).', 'Не загружайте чужие документы и фото, на которые у вас нет прав.'])),
+      sec('Без гарантий', P('Сервис предоставляется «как есть». Расчёт стоимости — ориентировочный, итог — в платёжке ХТМ. Мы не отвечаем за отказ ХТМ в приёме показаний, перерасчёты и последствия ошибок ввода, но стараемся быстро исправлять найденные проблемы.')),
+      sec('Изменения и связь', P('Условия и сервис могут меняться — актуальная редакция всегда здесь. Пользуясь сервисом, вы соглашаетесь с этими условиями и ' + '<a href="#privacy">' + esc(t('lg_privacy').toLowerCase()) + '</a>. Связь — кнопка ' + fb + '.'))
+    ] : [
+      sec('Що це', P('«Теплосервіс» — безкоштовний помічник для мешканців Харкова: підказує, що натискати на лічильнику, перевіряє цифри за тими самими правилами, що й ХТМ, і готує їх для вставлення в кабінет ХТМ. Зараз це тестова версія.')),
+      sec('Не офіційний сервіс ХТМ', P('Сервіс не належить КП «Харківські теплові мережі» й не діє від їхнього імені. Передаєте показання ви самі — у кабінеті ХТМ, їхньому боті чи телефоном. Рішення про прийняття показань і нарахування ухвалює лише ХТМ.')),
+      sec('Ваша відповідальність', UL(['Звіряйте числа з лічильником перед відправленням — розпізнавання фото й підказки можуть помилятися.', 'Передавайте показання в строки ХТМ (з 5 по 25 число).', 'Не завантажуйте чужі документи й фото, на які не маєте прав.'])),
+      sec('Без гарантій', P('Сервіс надається «як є». Розрахунок вартості — орієнтовний, підсумок — у платіжці ХТМ. Ми не відповідаємо за відмову ХТМ у прийнятті показань, перерахунки й наслідки помилок введення, але намагаємося швидко виправляти знайдені проблеми.')),
+      sec('Зміни й зв’язок', P('Умови й сервіс можуть змінюватися — чинна редакція завжди тут. Користуючись сервісом, ви погоджуєтеся з цими умовами та ' + '<a href="#privacy">' + esc(t('lg_privacy').toLowerCase()) + '</a>. Зв’язок — кнопка ' + fb + '.'))
+    ]).join('');
+  }
+  V.privacy = function () { return { screen: 'S20', route: 'privacy', closeTo: 'prefs', html: legalPage('privacy') }; };
+  V.terms = function () { return { screen: 'S21', route: 'terms', closeTo: 'prefs', html: legalPage('terms') }; };
   V.help = function () { return { screen: 'S10', route: 'help', html: helpHtml() }; };
 
   // ---- поверка и документы счётчика (документы — только вошедшим: хранятся на сервере)
@@ -899,7 +942,9 @@
     if (!S.meter) return '';
     var v = S.meter.verifiedUntil || '', days = v ? R.daysBetween(today(), v) : null;
     var st = v ? (days < 0 ? '<span class="pill bad">' + esc(t('mv_expired')) + '</span>' : days <= 60 ? '<span class="pill warn">' + esc(t('mv_soon', { n: days })) + '</span>' : '<span class="pill ok">' + esc(t('mv_ok')) + '</span>') : '';
-    var h = '<div class="panel" data-key="prefs-meter-ver"><h2>' + esc(t('mv_title')) + '</h2><p class="small muted">' + esc(modelName(model())) + (place() && place().name ? ' · ' + esc(place().name) : '') + '</p>' +
+    var h = '<div class="panel" id="meter-block" tabindex="-1" data-key="prefs-meter-ver"><h2>' + esc(t('mv_block')) + (place() && place().name ? ' <span class="muted small">· ' + esc(place().name) + '</span>' : '') + '</h2>' +
+      '<ul class="list" style="background:var(--c-housing);margin-bottom:16px"><li><div class="grow"><div class="small muted">' + esc(t('p_meter')) + '</div><b>' + esc(modelName(model())) + '</b></div><a href="#meter">' + esc(t('change')) + '</a></li>' +
+      '<li><div class="grow"><div class="small muted">' + esc(t('p_base')) + '</div><b>' + (S.baseline ? esc(fmtDate(S.baseline.date, true)) + ', <span class="num">' + esc(R.formatForHtm('energy', S.baseline.energy)) + '</span> Гкал' : '—') + '</b></div><a href="#baseline">' + esc(t('change')) + '</a></li></ul>' +
       '<div class="field" style="max-width:280px"><label for="p-ver">' + esc(t('mv_date')) + '</label><div class="ctl"><input id="p-ver" type="date" value="' + esc(v) + '"></div><div class="help">' + st + ' ' + esc(t('mv_date_sub')) + '</div></div>';
     if (!window.TEPLO_API) return h + '</div>';
     if (!Y().account) return h + '<p class="small muted">' + esc(t('mv_docs_login')) + '</p></div>';
@@ -933,8 +978,6 @@
     var m = model(), c = S.contacts || {};
     return { screen: 'S11', route: 'prefs', html: '<h1>' + esc(t('p_title')) + '</h1>' + syncPanel() +
       placesPanel() + meterPanel() +
-      '<ul class="list" style="margin-bottom:16px"><li><div class="grow"><div class="small muted">' + esc(t('p_meter')) + '</div><b>' + esc(modelName(m)) + '</b></div><a href="#meter">' + esc(t('change')) + '</a></li>' +
-      '<li><div class="grow"><div class="small muted">' + esc(t('p_base')) + '</div><b>' + (S.baseline ? esc(fmtDate(S.baseline.date, true)) + ', <span class="num">' + esc(R.formatForHtm('energy', S.baseline.energy)) + '</span> Гкал' : '—') + '</b></div><a href="#baseline">' + esc(t('change')) + '</a></li></ul>' +
       '<div class="panel"><h2>' + esc(t('p_contacts')) + '</h2><p class="small muted">' + esc(t('p_contacts_sub')) + '</p><div class="grid2">' +
       '<div class="field"><label for="p-phone">' + esc(t('ho_phone')) + '</label><div class="ctl"><input id="p-phone" type="tel" autocomplete="tel" data-contact="phone" value="' + esc(c.phone || '') + '"></div></div>' +
       '<div class="field"><label for="p-email">' + esc(t('ho_email')) + '</label><div class="ctl"><input id="p-email" type="email" autocomplete="email" data-contact="email" value="' + esc(c.email || '') + '"></div></div></div></div>' +
@@ -946,10 +989,13 @@
         '<div class="field"><label for="p-abon">' + esc(t('p_abon_l')) + '</label><div class="ctl"><input id="p-abon" class="num" inputmode="decimal" value="' + esc(bill().abon.toFixed(2).replace('.', ',')) + '"></div></div>' +
         '<div class="field"><label for="p-mzk">' + esc(t('p_mzk_l')) + '</label><div class="ctl"><input id="p-mzk" class="num" inputmode="decimal" placeholder="0,01262" value="' + esc(bill().mzk ? String(bill().mzk).replace('.', ',') : '') + '"></div><div class="small muted">' + esc(t('p_mzk_h')) + '</div></div></div>' +
         '<details class="tips-box" style="margin-top:12px"><summary>' + esc(t('p_bill_how_t')) + '</summary><p class="small">' + esc(t('p_bill_how')) + '</p></details></div>' +
-      '<div class="panel"><h2>' + esc(t('p_demo')) + '</h2><p class="small muted">' + esc(t('p_demo_sub')) + '</p><div class="field" style="max-width:260px"><div class="ctl"><input type="date" id="p-demo" data-key="prefs-demo" value="' + esc(S.demoToday || '') + '"></div></div></div>' +
-      '<div class="panel"><h2>' + esc(t('p_data')) + '</h2><div class="row-actions" style="margin-top:0"><button class="btn sec" data-act="export" data-key="prefs-export">' + ico('copy', 20) + '<span>' + esc(t('p_export')) + '</span></button></div>' +
-      '<form id="import-form" novalidate style="margin-top:16px"><div class="field"><label for="p-import">' + esc(t('p_import')) + '</label><div class="ctl"><textarea id="p-import" placeholder="' + esc(t('p_import_ph')) + '"></textarea></div></div><button class="btn sec" type="submit">' + esc(t('p_import')) + '</button></form>' +
-      '<div style="margin-top:24px"><button class="btn danger" data-act="wipe-ask" data-key="prefs-wipe">' + esc(t('p_wipe')) + '</button><div id="wipe-confirm"></div></div></div>' };
+      '<div class="panel" data-key="prefs-data"><h2>' + esc(t('p_data')) + '</h2>' +
+        (Y().account ? '<p class="small muted">' + esc(t('p_data_synced')) + '</p>' :
+          '<p class="small muted">' + esc(t('p_data_sub')) + '</p><div class="row-actions" style="margin-top:0"><button class="btn sec" data-act="export" data-key="prefs-export">' + ico('copy', 20) + '<span>' + esc(t('p_export')) + '</span></button></div>' +
+          '<details class="tips-box" style="margin-top:12px"><summary>' + esc(t('p_import')) + '</summary><form id="import-form" novalidate style="margin-top:8px"><div class="field"><label for="p-import">' + esc(t('p_import_l')) + '</label><div class="ctl"><textarea id="p-import" placeholder="' + esc(t('p_import_ph')) + '"></textarea></div></div><button class="btn sec" type="submit">' + esc(t('p_import_go')) + '</button></form></details>') +
+        '<div style="margin-top:20px"><button class="btn danger" data-act="wipe-ask" data-key="prefs-wipe">' + esc(t('p_wipe')) + '</button><div id="wipe-confirm"></div></div></div>' +
+      '<details class="tips-box" data-key="prefs-demo-box"' + (S.demoToday ? ' open' : '') + '><summary>' + esc(t('p_demo')) + '</summary><p class="small muted">' + esc(t('p_demo_sub')) + '</p><div class="field" style="max-width:260px"><label for="p-demo">' + esc(t('p_demo_l')) + '</label><div class="ctl"><input type="date" id="p-demo" data-key="prefs-demo" value="' + esc(S.demoToday || '') + '"></div></div></details>' +
+      '<footer class="legal-foot" data-key="prefs-legal"><a href="#privacy">' + esc(t('lg_privacy')) + '</a><a href="#terms">' + esc(t('lg_terms')) + '</a></footer>' };
   };
 
 
@@ -1240,17 +1286,25 @@
         ? '<ul><li>Колл-центр: (057) 341-41-40</li><li>Поверка, распломбирование, осмотр узла учёта: 050-670-13-45</li><li>Прибор отсутствует в базе: 067-370-87-75</li></ul>'
         : '<ul><li>Кол-центр: (057) 341-41-40</li><li>Повірка, розпломбування, огляд вузла обліку: 050-670-13-45</li><li>Прилад відсутній у базі: 067-370-87-75</li></ul>']
     ];
-    return '<div class="help-doc"><h1>' + esc(t('help_title')) + '</h1><div class="toc">' + secs.map(function (s) { return '<button type="button" class="tocb" data-act="scroll" data-target="' + s[0] + '">' + esc(s[1].replace(/:.*/, '')) + '</button>'; }).join('') + '</div>' +
-      secs.map(function (s) { return '<section id="' + s[0] + '"><h2>' + s[1] + '</h2>' + s[2] + '</section>'; }).join('') + '</div>';
+    var byId = {}; secs.forEach(function (x) { byId[x[0]] = { title: x[1], html: x[2] }; });
+    var photoTips = '<ul>' + t('ph_tips').split('|').map(function (x) { return '<li>' + esc(x) + '</li>'; }).join('') + '</ul>';
+    var groups = [
+      { id: 'hg-send', title: t('hg_send'), icon: 'calendar', items: [byId['h-window'], byId['h-sameday'], byId['h-how'], { title: t('ph_tips_t'), html: photoTips }] },
+      { id: 'hg-reject', title: t('hg_reject'), icon: 'alert', items: [byId['h-robot'], byId['h-special'], byId['h-off']] },
+      { id: 'hg-other', title: t('hg_other'), icon: 'info', items: [byId['h-hw'], byId['h-phones']] }
+    ];
+    groups[0].items[0].open = true;
+    return '<div class="help-doc"><h1>' + esc(t('help_title')) + '</h1><nav class="toc" aria-label="' + esc(t('help_title')) + '">' + groups.map(function (g) { return '<button type="button" class="tocb" data-act="scroll" data-target="' + g.id + '">' + esc(g.title) + '</button>'; }).join('') + '</nav>' +
+      accGroups(groups, 'help-groups') + '</div>';
   }
 
   // ---------------- маршрутизация ----------------
   function routeName() { return (location.hash || '').replace(/^#/, ''); }
   function render(keepScroll) {
     var r = routeName();
-    if (S.onboarded && !S.meter && ['meter', 'help', 'prefs', 'login', 'photo'].indexOf(r) < 0) r = 'meter';
+    if (S.onboarded && !S.meter && ['meter', 'help', 'prefs', 'login', 'photo', 'privacy', 'terms'].indexOf(r) < 0) r = 'meter';
     pendingRender = false;
-    if (!S.onboarded && ['welcome', 'meter', 'baseline', 'help', 'login', 'photo'].indexOf(r) < 0) r = S.meter ? 'baseline' : 'welcome';
+    if (!S.onboarded && ['welcome', 'meter', 'baseline', 'help', 'login', 'photo', 'privacy', 'terms'].indexOf(r) < 0) r = S.meter ? 'baseline' : 'welcome';
     if (S.onboarded && (!r || r === 'welcome')) r = 'home';
     var view;
     var rm = r.match(/^rec-([\w-]+?)(-edit)?$/);
@@ -1296,8 +1350,10 @@
     });
   }
 
+  var SCROLL_TO = null;
   function afterRender(r) {
     enhanceDates();
+    if (SCROLL_TO) { var st0 = document.getElementById(SCROLL_TO); SCROLL_TO = null; if (st0) { st0.scrollIntoView({ block: 'start' }); try { st0.focus({ preventScroll: true }); } catch (e0) { /* старый браузер */ } st0.classList.add('flash'); setTimeout(function () { st0.classList.remove('flash'); }, 1600); } }
     if (Y().mode === 'server') mountTelegramWidget();
     var first = document.querySelector('[data-field]:not([type=radio])');
     if (first && /^step-/.test(r) && window.matchMedia('(min-width: 600px)').matches) first.focus({ preventScroll: true });
@@ -1436,6 +1492,7 @@
         if (rr) { S.draft = { date: rr.htm.date, values: Object.assign({}, rr.raw), step: steps().length - 1, fixOf: rr.id }; save(); go('check'); }
         break;
       }
+      case 'to-meter': { e.preventDefault(); SCROLL_TO = 'meter-block'; go('prefs'); break; }
       case 'scroll': { var tg = document.getElementById(el.getAttribute('data-target')); if (tg) tg.scrollIntoView({ behavior: 'smooth', block: 'start' }); break; }
       case 'export': copyText(JSON.stringify(S), el); break;
       case 'wipe-ask': document.getElementById('wipe-confirm').innerHTML = '<div class="confirm"><p>' + esc(t(el.getAttribute('data-test') || (Y().mode === 'server' && Y().account) ? 'tr_confirm' : 'p_wipe_confirm')) + '</p><div class="row-actions" style="margin-top:8px"><button class="btn sec" data-act="wipe-no">' + esc(t('cancel')) + '</button><button class="btn danger" data-act="wipe-yes" data-key="prefs-wipe-yes">' + esc(t('p_wipe_yes')) + '</button></div></div>'; break;
