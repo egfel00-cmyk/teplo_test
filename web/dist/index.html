@@ -3407,7 +3407,7 @@ input[type=text]:not(.dmy-native):not(.pl-in), input[type=email], input[type=pas
   // ================= фото к записям истории (тепло и вода) =================
   // rec.photos = [{id, meter?}]: id — фото на сервере (вошли: хранится, пока есть запись) или 'l:…' — только в этом браузере
   // (IndexedDB «teplo-hist»), пока человек не вошёл; после входа такие догружаются на сервер и id меняется.
-  var HP = { urls: {}, flushing: false, missing: {} };
+  var HP = { urls: {}, flushing: false, missing: {}, failed: {} };
   var HIST = {
     db: function () {
       return new Promise(function (ok, bad) {
@@ -3458,7 +3458,8 @@ input[type=text]:not(.dmy-native):not(.pl-in), input[type=email], input[type=pas
   function histFlush() {
     if (HP.flushing || !window.TEPLO_API || !Y().account) return;
     var pend = {}; allRecs().concat(S.draft ? [S.draft] : []).forEach(function (r) { (r.photos || []).forEach(function (p) { if (p && /^l:/.test(p.id)) pend[p.id] = 1; }); });
-    var ids = Object.keys(pend); if (!ids.length) return;
+    // не получилось загрузить — повторим не раньше чем через 10 минут (не долбить сервер на каждой перерисовке)
+    var ids = Object.keys(pend).filter(function (id) { return !(HP.failed[id] > Date.now() - 600000); }); if (!ids.length) return;
     HP.flushing = true;
     var chain = Promise.resolve();
     ids.forEach(function (lidv) {
@@ -3466,8 +3467,8 @@ input[type=text]:not(.dmy-native):not(.pl-in), input[type=email], input[type=pas
         if (!b) return null;
         var c = (document.cookie.match(/(?:^|; )ts_csrf=([^;]*)/) || [])[1] || '';
         return fetch(window.TEPLO_API + '/recognize/upload', { method: 'POST', body: b, credentials: 'same-origin', headers: { 'Content-Type': b.type || 'image/jpeg', 'X-CSRF': c, Accept: 'application/json' } })
-          .then(function (r) { return r.ok ? r.json() : null; }).then(function (j) {
-            if (!j || !j.id) return;
+          .then(function (r) { return r.ok ? r.json() : null; }, function () { return null; }).then(function (j) {
+            if (!j || !j.id) { HP.failed[lidv] = Date.now(); return; }
             var sid = j.id;
             allRecs().concat(S.draft ? [S.draft] : []).forEach(function (r) { (r.photos || []).forEach(function (p) { if (p.id === lidv) { p.id = sid; if (r.updatedAt) r.updatedAt = Date.now(); } }); });
             if (HP.urls[lidv]) HP.urls[sid] = HP.urls[lidv];
