@@ -549,6 +549,10 @@ input[type=text]:not(.dmy-native):not(.pl-in), input[type=email], input[type=pas
 .wsrc { flex: none; display: grid; place-items: center; width: 48px; border-left: 1.5px solid var(--c-field-line); }
 .wsrc img { width: 38px; height: 38px; object-fit: cover; border-radius: 6px; cursor: zoom-in; display: block; }
 
+/* настройки: флажок строкой */
+.check-row { display: flex; align-items: center; gap: 10px; min-height: var(--tap); cursor: pointer; font-weight: 600; }
+.check-row input { width: 22px; height: 22px; accent-color: var(--c-ink); flex: none; }
+
 </style>
 <style>.top { padding-top: max(12px, env(safe-area-inset-top)); }</style>
 </head>
@@ -1437,6 +1441,10 @@ input[type=text]:not(.dmy-native):not(.pl-in), input[type=email], input[type=pas
       wnp_check: 'Перевірте, чи це той лічильник.', wnp_half: 'Останній барабан між цифрами — перевірте.',
       wnp_none: 'цифр барабана не знайшли', wnp_guess: 'Не впевнені, де який лічильник — звірте з фото (натисніть, щоб збільшити).',
       wnp_swap: 'Поміняти гарячу й холодну',
+      rm_title: 'Нагадування в Telegram', rm_on: 'Нагадувати про строки',
+      rm_sub: 'Вода — 15-го й 19-го, якщо цього місяця ще не вносили (Водоканал приймає до 20-го). Тепло — 5-го й 22-го, якщо немає показань у вікні ХТМ (5–25). Пише бот сервісу; якщо не приходять — відкрийте бота й натисніть «Старт».',
+      rm_need_tg: 'Нагадування приходять у Telegram — прив’яжіть його вище, у блоці входу.', rm_need_login: 'Нагадування приходять у Telegram — увійдіть через Telegram (вище).',
+      rm_saved_on: 'Нагадування ввімкнено', rm_saved_off: 'Нагадування вимкнено',
       wnp_mixed: 'Фото {list} — водоміри.', wnp_mixed_go: 'Внести воду з цих фото', wnp_setup_first: 'Щоб вносити воду з фото, спершу додайте водоміри: Головна → «Гаряча» чи «Холодна» → «+».',
       help_title: 'Довідка',
       ago_min: '{n} хв тому', ago_h: '{n} год тому', ago_d: '{n} дн. тому', ago_now: 'щойно'
@@ -1925,6 +1933,10 @@ input[type=text]:not(.dmy-native):not(.pl-in), input[type=email], input[type=pas
       wnp_check: 'Проверьте, тот ли это счётчик.', wnp_half: 'Последний барабан между цифрами — проверьте.',
       wnp_none: 'цифр барабана не нашли', wnp_guess: 'Не уверены, где какой счётчик — сверьте с фото (нажмите, чтобы увеличить).',
       wnp_swap: 'Поменять горячую и холодную',
+      rm_title: 'Напоминания в Telegram', rm_on: 'Напоминать о сроках',
+      rm_sub: 'Вода — 15-го и 19-го, если в этом месяце ещё не вносили (Водоканал принимает до 20-го). Тепло — 5-го и 22-го, если нет показаний в окне ХТМ (5–25). Пишет бот сервиса; если не приходят — откройте бота и нажмите «Старт».',
+      rm_need_tg: 'Напоминания приходят в Telegram — привяжите его выше, в блоке входа.', rm_need_login: 'Напоминания приходят в Telegram — войдите через Telegram (выше).',
+      rm_saved_on: 'Напоминания включены', rm_saved_off: 'Напоминания выключены',
       wnp_mixed: 'Фото {list} — водомеры.', wnp_mixed_go: 'Внести воду с этих фото', wnp_setup_first: 'Чтобы вносить воду с фото, сначала добавьте водомеры: Главная → «Горячая» или «Холодная» → «+».',
       help_title: 'Справка',
       ago_min: '{n} мин назад', ago_h: '{n} ч назад', ago_d: '{n} дн. назад', ago_now: 'только что'
@@ -1951,7 +1963,7 @@ input[type=text]:not(.dmy-native):not(.pl-in), input[type=email], input[type=pas
  */
 (function (root) {
   'use strict';
-  var SYNC_KEYS = ['v', 'onboarded', 'meter', 'baseline', 'contacts', 'readings', 'draft', 'updatedAt', 'wipedAt', 'tariff', 'bill', 'places', 'water'];
+  var SYNC_KEYS = ['v', 'onboarded', 'meter', 'baseline', 'contacts', 'readings', 'draft', 'updatedAt', 'wipedAt', 'tariff', 'bill', 'places', 'water', 'remind'];
 
   function payload(S) { var o = {}; SYNC_KEYS.forEach(function (k) { if (S[k] !== undefined) o[k] = S[k]; }); return o; }
   function sig(p) { var c = Object.assign({}, p); delete c.updatedAt; return JSON.stringify(c); }
@@ -2975,6 +2987,8 @@ input[type=text]:not(.dmy-native):not(.pl-in), input[type=email], input[type=pas
   /** Сохранить: локально всегда; если изменились синхронизируемые данные — отметить время и отправить на другие устройства. */
   function save() {
     syncPlace();
+    // язык напоминаний бота — как в интерфейсе (сервер шлёт на нём)
+    if (!S.remind || S.remind.lang !== S.lang) S.remind = Object.assign({}, S.remind || {}, { lang: S.lang });
     var Y = window.TeploSync;
     if (Y) { var sg = Y.sig(Y.payload(S)); if (sg !== lastSig) { lastSig = sg; S.updatedAt = Date.now(); persist(); Y.push(); return; } }
     persist();
@@ -4549,10 +4563,23 @@ input[type=text]:not(.dmy-native):not(.pl-in), input[type=email], input[type=pas
           (ps.length > 1 && !n ? '<button class="linkbtn" data-act="pl-del" data-id="' + esc(p.id) + '" style="margin-left:8px">' + esc(t('rec_del')) + '</button>' : '') + '</li>';
       }).join('') + '</ul><p style="margin:16px 0 0"><button class="btn sec" data-act="pl-add" data-key="prefs-place-add">' + ico('plus', 18) + '<span>' + esc(t('pl_add')) + '</span></button></p></div>';
   }
+  /** Напоминания ботом: вода 15/19, тепло 5/22 (если ещё не внесли); приходят в Telegram. */
+  function remindPanel() {
+    if (!window.TEPLO_API) return '';
+    var on = !(S.remind && S.remind.off), acc = Y().account, tg = acc && acc.telegram;
+    return '<div class="panel" data-key="prefs-remind"><h2>' + esc(t('rm_title')) + '</h2>' +
+      '<label class="check-row"><input type="checkbox" id="p-remind" data-key="prefs-remind-on"' + (on ? ' checked' : '') + '><span>' + esc(t('rm_on')) + '</span></label>' +
+      '<p class="small muted" style="margin-top:8px">' + esc(t('rm_sub')) + '</p>' +
+      (tg ? '' : '<p class="small">' + ico('info', 16) + ' ' + esc(t(acc ? 'rm_need_tg' : 'rm_need_login')) + '</p>') + '</div>';
+  }
+  document.addEventListener('change', function (e) {
+    var el = e.target; if (!el || el.id !== 'p-remind') return;
+    S.remind = Object.assign({}, S.remind || {}, { off: !el.checked, lang: S.lang }); save(); toast(t(el.checked ? 'rm_saved_on' : 'rm_saved_off'));
+  });
   V.prefs = function () {
     var m = model(), c = S.contacts || {};
     return { screen: 'S11', route: 'prefs', html: '<h1>' + esc(t('p_title')) + '</h1>' + syncPanel() +
-      placesPanel() + meterPanel() + waterPanel() +
+      placesPanel() + meterPanel() + waterPanel() + remindPanel() +
       '<div class="panel"><h2>' + esc(t('p_contacts')) + '</h2><p class="small muted">' + esc(t('p_contacts_sub')) + '</p><div class="grid2">' +
       '<div class="field"><label for="p-phone">' + esc(t('ho_phone')) + '</label><div class="ctl"><input id="p-phone" type="tel" autocomplete="tel" data-contact="phone" value="' + esc(c.phone || '') + '"></div></div>' +
       '<div class="field"><label for="p-email">' + esc(t('ho_email')) + '</label><div class="ctl"><input id="p-email" type="email" autocomplete="email" data-contact="email" value="' + esc(c.email || '') + '"></div></div></div></div>' +
@@ -5317,13 +5344,20 @@ input[type=text]:not(.dmy-native):not(.pl-in), input[type=email], input[type=pas
   var tw = window.Telegram && window.Telegram.WebApp;
   if (tw && tw.initData) { try { tw.ready(); tw.expand(); applyTheme(); if (tw.onEvent) tw.onEvent('themeChanged', function () { applyTheme(); safeRender(); }); } catch (e) { /* старый клиент */ } }
   if (window.TEPLO_API && window.TeploVision) window.TeploVision.initServer({}, false);
+  // кнопка из напоминания бота: ?go=wnew — ввод воды, ?go=heat — тепло
+  (function () {
+    var g = (location.search.match(/[?&]go=(wnew|heat)(?=&|$)/) || [])[1]; if (!g) return;
+    var q = location.search.replace(/([?&])go=[\w-]+(&|$)/, '$1').replace(/[?&]$/, '');
+    try { history.replaceState(null, '', location.pathname + q + '#' + g); } catch (e) { location.hash = g; }
+    if (g === 'wnew') WN = wnFresh('hot');
+  })();
   render();
   PHS.restore().then(function (ok) { if (ok && routeName() === 'photo') safeRender(); });
   if (window.TeploSync) {
     var onSync = function () {
       var el = document.getElementById('sync-status'); if (el) el.textContent = syncStatusText();
       if (window.TEPLO_API && window.TeploVision && window.TeploSync._cfg) window.TeploVision.initServer(window.TeploSync._cfg, !!window.TeploSync.account);
-      if (!window.TeploSync.account) ADMIN = null; else { checkAdmin(); if (INBOX.items === null || INBOX.auto) loadInbox(); }
+      if (!window.TeploSync.account) ADMIN = null; else { checkAdmin(); if (INBOX.items === null || INBOX.auto) loadInbox(); histFlush(); }
       if (['prefs', 'login', 'welcome', 'home', 'meter', 'baseline'].indexOf(routeName() || 'welcome') >= 0 || /^step-/.test(routeName())) safeRender();
     };
     window.TeploSync.init(function () { return S; }, applyRemote, onSync);

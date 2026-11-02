@@ -45,6 +45,8 @@
   /** Сохранить: локально всегда; если изменились синхронизируемые данные — отметить время и отправить на другие устройства. */
   function save() {
     syncPlace();
+    // язык напоминаний бота — как в интерфейсе (сервер шлёт на нём)
+    if (!S.remind || S.remind.lang !== S.lang) S.remind = Object.assign({}, S.remind || {}, { lang: S.lang });
     var Y = window.TeploSync;
     if (Y) { var sg = Y.sig(Y.payload(S)); if (sg !== lastSig) { lastSig = sg; S.updatedAt = Date.now(); persist(); Y.push(); return; } }
     persist();
@@ -1619,10 +1621,23 @@
           (ps.length > 1 && !n ? '<button class="linkbtn" data-act="pl-del" data-id="' + esc(p.id) + '" style="margin-left:8px">' + esc(t('rec_del')) + '</button>' : '') + '</li>';
       }).join('') + '</ul><p style="margin:16px 0 0"><button class="btn sec" data-act="pl-add" data-key="prefs-place-add">' + ico('plus', 18) + '<span>' + esc(t('pl_add')) + '</span></button></p></div>';
   }
+  /** Напоминания ботом: вода 15/19, тепло 5/22 (если ещё не внесли); приходят в Telegram. */
+  function remindPanel() {
+    if (!window.TEPLO_API) return '';
+    var on = !(S.remind && S.remind.off), acc = Y().account, tg = acc && acc.telegram;
+    return '<div class="panel" data-key="prefs-remind"><h2>' + esc(t('rm_title')) + '</h2>' +
+      '<label class="check-row"><input type="checkbox" id="p-remind" data-key="prefs-remind-on"' + (on ? ' checked' : '') + '><span>' + esc(t('rm_on')) + '</span></label>' +
+      '<p class="small muted" style="margin-top:8px">' + esc(t('rm_sub')) + '</p>' +
+      (tg ? '' : '<p class="small">' + ico('info', 16) + ' ' + esc(t(acc ? 'rm_need_tg' : 'rm_need_login')) + '</p>') + '</div>';
+  }
+  document.addEventListener('change', function (e) {
+    var el = e.target; if (!el || el.id !== 'p-remind') return;
+    S.remind = Object.assign({}, S.remind || {}, { off: !el.checked, lang: S.lang }); save(); toast(t(el.checked ? 'rm_saved_on' : 'rm_saved_off'));
+  });
   V.prefs = function () {
     var m = model(), c = S.contacts || {};
     return { screen: 'S11', route: 'prefs', html: '<h1>' + esc(t('p_title')) + '</h1>' + syncPanel() +
-      placesPanel() + meterPanel() + waterPanel() +
+      placesPanel() + meterPanel() + waterPanel() + remindPanel() +
       '<div class="panel"><h2>' + esc(t('p_contacts')) + '</h2><p class="small muted">' + esc(t('p_contacts_sub')) + '</p><div class="grid2">' +
       '<div class="field"><label for="p-phone">' + esc(t('ho_phone')) + '</label><div class="ctl"><input id="p-phone" type="tel" autocomplete="tel" data-contact="phone" value="' + esc(c.phone || '') + '"></div></div>' +
       '<div class="field"><label for="p-email">' + esc(t('ho_email')) + '</label><div class="ctl"><input id="p-email" type="email" autocomplete="email" data-contact="email" value="' + esc(c.email || '') + '"></div></div></div></div>' +
@@ -2387,13 +2402,20 @@
   var tw = window.Telegram && window.Telegram.WebApp;
   if (tw && tw.initData) { try { tw.ready(); tw.expand(); applyTheme(); if (tw.onEvent) tw.onEvent('themeChanged', function () { applyTheme(); safeRender(); }); } catch (e) { /* старый клиент */ } }
   if (window.TEPLO_API && window.TeploVision) window.TeploVision.initServer({}, false);
+  // кнопка из напоминания бота: ?go=wnew — ввод воды, ?go=heat — тепло
+  (function () {
+    var g = (location.search.match(/[?&]go=(wnew|heat)(?=&|$)/) || [])[1]; if (!g) return;
+    var q = location.search.replace(/([?&])go=[\w-]+(&|$)/, '$1').replace(/[?&]$/, '');
+    try { history.replaceState(null, '', location.pathname + q + '#' + g); } catch (e) { location.hash = g; }
+    if (g === 'wnew') WN = wnFresh('hot');
+  })();
   render();
   PHS.restore().then(function (ok) { if (ok && routeName() === 'photo') safeRender(); });
   if (window.TeploSync) {
     var onSync = function () {
       var el = document.getElementById('sync-status'); if (el) el.textContent = syncStatusText();
       if (window.TEPLO_API && window.TeploVision && window.TeploSync._cfg) window.TeploVision.initServer(window.TeploSync._cfg, !!window.TeploSync.account);
-      if (!window.TeploSync.account) ADMIN = null; else { checkAdmin(); if (INBOX.items === null || INBOX.auto) loadInbox(); }
+      if (!window.TeploSync.account) ADMIN = null; else { checkAdmin(); if (INBOX.items === null || INBOX.auto) loadInbox(); histFlush(); }
       if (['prefs', 'login', 'welcome', 'home', 'meter', 'baseline'].indexOf(routeName() || 'welcome') >= 0 || /^step-/.test(routeName())) safeRender();
     };
     window.TeploSync.init(function () { return S; }, applyRemote, onSync);

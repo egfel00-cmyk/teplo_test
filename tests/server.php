@@ -4,6 +4,7 @@ declare(strict_types=1);
 define('TEPLO', 1);
 require __DIR__ . '/../app/core.php';
 require __DIR__ . '/../app/telegram.php';
+require __DIR__ . '/../app/reminders.php';
 require __DIR__ . '/../app/recognize.php';
 require __DIR__ . '/../app/admin.php';
 require __DIR__ . '/../app/docs.php';
@@ -285,6 +286,29 @@ ok('чужому — нет', $rb->req('GET', '/api/inbox/file', null, ['QUERY_S
 $tgb->req('POST', '/api/inbox/done', ['ids' => array_column($in->body['items'], 'id')]);
 ok('после «разобрано» входящие пусты', count($tgb->req('GET', '/api/inbox')->body['items']) === 0);
 Telegram::$send = null; Telegram::$fetch = null;
+
+echo "\nНапоминания ботом:\n";
+$kyiv = fn(string $local) => (new DateTimeImmutable($local, new DateTimeZone('Europe/Kyiv')))->getTimestamp();
+ok('15-го в 10:17 по Киеву — вода', (Reminders::due($kyiv('2026-11-15 10:17'))['kind'] ?? '') === 'water15');
+ok('рано утром и в другие дни — ничего', Reminders::due($kyiv('2026-11-15 08:17')) === null && Reminders::due($kyiv('2026-11-16 12:17')) === null);
+ok('5-го — тепло, 22-го — тепло, 19-го — вода', Reminders::due($kyiv('2026-11-05 11:17'))['kind'] === 'heat5' && Reminders::due($kyiv('2026-11-22 19:17'))['kind'] === 'heat22' && Reminders::due($kyiv('2026-11-19 10:17'))['kind'] === 'water19');
+$wst = ['places' => [['id' => 'main', 'meter' => ['modelId' => 'sharky774'], 'water' => ['meters' => [['id' => 'h1', 'kind' => 'hot']]]]],
+  'readings' => [['id' => 'r1', 'htm' => ['date' => '2026-11-06', 'energy' => '10']]], 'water' => [['id' => 'b', 'place' => 'main', 'date' => '2026-11-01', 'base' => true, 'vals' => ['h1' => '5']]]];
+ok('вода: в этом месяце только стартовые — напоминаем', Reminders::needs($wst, 'water15', '2026-11'));
+$w2 = $wst; $w2['water'][] = ['id' => 'w', 'place' => 'main', 'date' => '2026-11-10', 'vals' => ['h1' => '7']];
+ok('вода: запись этого месяца есть — молчим', !Reminders::needs($w2, 'water15', '2026-11'));
+ok('тепло: показания в окне 5–25 есть — молчим; в прошлом месяце — напоминаем', !Reminders::needs($wst, 'heat22', '2026-11') && Reminders::needs($wst, 'heat22', '2026-12'));
+ok('без водомеров про воду не пишем; выключено в настройках — не пишем', !Reminders::needs(['places' => [['id' => 'main']]], 'water15', '2026-11') && !Reminders::needs($wst + ['remind' => ['off' => true]], 'water15', '2026-11'));
+$rm = new Browser('10.0.13.1'); $rm->req('POST', '/api/auth/telegram/webapp', ['initData' => initData($TOKEN, ['id' => 7777, 'first_name' => 'Нагадай'])]);
+$put = $rm->req('PUT', '/api/state', ['state' => $wst + ['remind' => ['lang' => 'ru']], 'baseVersion' => 0]);
+$sent = []; Telegram::$send = function ($m, $p, $tok = null) use (&$sent) { $sent[] = [$m, $p]; return ['ok' => true]; };
+$res = Reminders::run($kyiv('2026-11-15 10:17'));
+$mine = array_values(array_filter($sent, fn($x) => (string)$x[1]['chat_id'] === '7777'));
+ok('рассылка: человеку с водомерами — по-русски, кнопка открывает ввод воды', $put->status === 200 && count($mine) === 1 && str_contains($mine[0][1]['text'], 'Водоканал') && str_contains($mine[0][1]['text'], 'Настройках')
+  && ($mine[0][1]['reply_markup']['inline_keyboard'][0][0]['web_app']['url'] ?? '') === 'https://teplo.example/?go=wnew', $mine);
+$n1 = count($sent); Reminders::run($kyiv('2026-11-15 11:17'));
+ok('через час — повторно не шлём', count($sent) === $n1);
+Telegram::$send = null;
 
 echo "\nВыход:\n";
 $phone->req('POST', '/api/auth/logout');

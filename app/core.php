@@ -133,6 +133,8 @@ final class Db {
       "CREATE TABLE IF NOT EXISTS link_tokens (token CHAR(32) PRIMARY KEY, user_id INT NOT NULL, expires_at INT NOT NULL)$tail",
       // фото, присланные боту в Telegram: ждут, пока человек откроет сервис — там их распознаёт браузер (бесплатно)
       "CREATE TABLE IF NOT EXISTS bot_inbox (photo_id CHAR(24) PRIMARY KEY, user_id INT NOT NULL, taken_at INT NOT NULL, done TINYINT NOT NULL DEFAULT 0, created_at VARCHAR(25) NOT NULL)$tail",
+      // напоминания ботом: какое уже отправлено в этом месяце (не чаще раза)
+      "CREATE TABLE IF NOT EXISTS reminders_sent (user_id INT NOT NULL, kind VARCHAR(16) NOT NULL, ym CHAR(7) NOT NULL, sent_at VARCHAR(25) NOT NULL, PRIMARY KEY (user_id, kind, ym))$tail",
       "CREATE TABLE IF NOT EXISTS recog_reports (id $ai, user_id INT NOT NULL, photo_ids TEXT NULL, kind VARCHAR(16) NOT NULL, ok TINYINT NOT NULL DEFAULT 0, text TEXT NOT NULL, data TEXT NULL, created_at VARCHAR(25) NOT NULL)$tail",
     ];
     foreach ($sql as $s) self::$pdo->exec($s);
