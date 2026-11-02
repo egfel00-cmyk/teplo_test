@@ -43,7 +43,8 @@ final class Cfg {
       '188.114.96.0/20', '197.234.240.0/22', '198.41.128.0/17', '162.158.0.0/15', '104.16.0.0/13', '104.24.0.0/14', '172.64.0.0/13', '131.0.72.0/22',
       '2400:cb00::/32', '2606:4700::/32', '2803:f800::/32', '2405:b500::/32', '2405:8100::/32', '2a06:98c0::/29', '2c0f:f248::/32'];
   }
-  public static function set(array $c): void { self::$c = array_replace(self::defaults(), $c); self::$o = null; }
+  private static ?string $hook = null;   // адрес сайта из вебхука бота (cron)
+  public static function set(array $c): void { self::$c = array_replace(self::defaults(), $c); self::$o = null; self::$hook = null; }
   public static function settingsFile(): string { return self::data() . '/uploads/settings/settings.json'; }
   /** Секрет сервера для подписанных ссылок (создаётся сам при первом обращении, лежит рядом с настройками, 0600, не в git). */
   public static function secret(): string {
@@ -96,9 +97,21 @@ final class Cfg {
   public static function appUrl(): string {
     $u = (string)self::get('app_url', '');
     if ($u !== '') return rtrim($u, '/') . '/';
-    $host = preg_replace('/[^a-z0-9.:-]/i', '', (string)($_SERVER['HTTP_HOST'] ?? 'localhost'));
-    return 'https://' . $host . self::base() . '/';
+    $host = preg_replace('/[^a-z0-9.:-]/i', '', (string)($_SERVER['HTTP_HOST'] ?? ''));
+    if ($host !== '') return 'https://' . $host . self::base() . '/';
+    // cron (CLI): запроса нет — HTTP_HOST пуст. Адрес берём из вебхука бота (его ставит /admin с настоящим адресом), иначе
+    // кнопки напоминаний вели на https://localhost/… и Telegram отвечал ошибкой (02.11.2026: elec2 → error)
+    if (self::$hook === null) {
+      self::$hook = '';
+      if (class_exists('Telegram', false) && self::get('bot_token')) {
+        $r = Telegram::call('getWebhookInfo', []);
+        if (preg_match('~^(https://[^/?#\s]+/(?:[^?#\s]*/)?)api/bot/webhook~', (string)($r['result']['url'] ?? ''), $m)) self::$hook = $m[1];
+      }
+    }
+    return self::$hook !== '' ? self::$hook : 'https://localhost' . self::base() . '/';
   }
+  /** Адрес сайта известен (не заглушка localhost) — можно давать ссылки наружу (кнопки в Telegram). */
+  public static function appUrlKnown(): bool { return !preg_match('~^https://localhost[:/]~', self::appUrl()); }
 }
 
 final class Db {

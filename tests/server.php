@@ -381,6 +381,22 @@ $kb = $two[0][1]['reply_markup']['inline_keyboard'] ?? [];
 ok('рассылка двум квартирам: одно сообщение, две кнопки — по одной на квартиру', count($two) === 1 && count($kb) === 2 && str_ends_with($kb[1][0]['web_app']['url'], '&place=p2') && str_contains($two[0][1]['text'], 'Мамина'), $two);
 $row = Db::one("SELECT status FROM reminders_sent WHERE user_id = (SELECT user_id FROM user_identities WHERE external_id = '7777') AND kind = 'water15'");
 ok('итог доставки записан: ok', ($row['status'] ?? '') === 'ok', $row);
+// cron (CLI) без app_url: HTTP_HOST нет — адрес из вебхука бота, а не https://localhost (02.11.2026 elec2 → error)
+$cfgKeep = ['app_url' => 'https://teplo.example/', 'bot_token' => $TOKEN, 'webhook_secret' => 'hook-secret'];
+$hostKeep = $_SERVER['HTTP_HOST'] ?? null; unset($_SERVER['HTTP_HOST']);
+Cfg::set(['app_url' => '', 'bot_token' => $TOKEN, 'webhook_secret' => 'hook-secret']);
+$hookCalls = 0; Telegram::$send = function ($m, $p, $tok = null) use (&$sent, &$hookCalls) { if ($m === 'getWebhookInfo') { $hookCalls++; return ['ok' => true, 'result' => ['url' => 'https://pokabot.xyz/teplo_test/api/bot/webhook']]; } $sent[] = [$m, $p]; return ['ok' => true]; };
+ok('cron без app_url: адрес сайта — из вебхука бота (один запрос)', Cfg::appUrl() === 'https://pokabot.xyz/teplo_test/' && Cfg::appUrl() === 'https://pokabot.xyz/teplo_test/' && $hookCalls === 1 && Cfg::appUrlKnown(), Cfg::appUrl());
+$tx2 = Reminders::text('heat5', 'uk');
+ok('кнопка напоминания — на настоящий адрес, не localhost', $tx2['url'] === 'https://pokabot.xyz/teplo_test/?go=heat', $tx2['url']);
+Cfg::set(['app_url' => '', 'bot_token' => $TOKEN, 'webhook_secret' => 'hook-secret']);
+Telegram::$send = function ($m, $p, $tok = null) use (&$sent) { if ($m === 'getWebhookInfo') return ['ok' => true, 'result' => ['url' => '']]; $sent[] = [$m, $p]; return ['ok' => true]; };
+ok('вебхука нет — адрес неизвестен (кнопок не будет, текст дойдёт)', !Cfg::appUrlKnown());
+Db::q("DELETE FROM reminders_sent WHERE kind = 'water15'"); $sent = []; Reminders::run($kyiv('2026-11-15 12:17'));
+$nb = array_values(array_filter($sent, fn($x) => (string)$x[1]['chat_id'] === '7777'));
+ok('…и напоминание уходит без кнопки, а не с ошибкой', count($nb) === 1 && !isset($nb[0][1]['reply_markup']), $nb);
+if ($hostKeep !== null) $_SERVER['HTTP_HOST'] = $hostKeep;
+Cfg::set($cfgKeep); Telegram::$send = function ($m, $p, $tok = null) use (&$sent) { $sent[] = [$m, $p]; return ['ok' => true]; };
 ok('ближайшее после 4 ноября — 5-е, тепло; 3-го — 4-е, газ за октябрь; 5-го в 21:00 — уже 15-е', Reminders::next($kyiv('2026-11-04 20:54')) === ['date' => '2026-11-05', 'kind' => 'heat5', 'ym' => '2026-11'] && Reminders::next($kyiv('2026-11-03 10:54')) === ['date' => '2026-11-04', 'kind' => 'gas4', 'ym' => '2026-10'] && Reminders::next($kyiv('2026-11-05 21:00'))['date'] === '2026-11-15');
 // світло: передостанній день місяця (вікно відкрилось) і 2-ге (завтра останній), ym — місяць, за який показання
 ok('свет: 29.11 — elec1 за ноябрь, 2.12 — elec2 за ноябрь, 27.02.2027 — elec1; 2.11 после 20:00 → следующее 5-е', (Reminders::due($kyiv('2026-11-29 10:17')) ?? []) === ['ym' => '2026-11', 'kind' => 'elec1']

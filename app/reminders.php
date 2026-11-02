@@ -196,8 +196,10 @@ final class Reminders {
       // сначала отметка (второй запуск cron не пошлёт дубль), потом отправка и её итог
       Db::q('INSERT INTO reminders_sent (user_id, kind, ym, sent_at) VALUES (?, ?, ?, ?)', [$uid, $due['kind'], $due['ym'], Http::iso()]);
       try {
-        $r = Telegram::call('sendMessage', ['chat_id' => $row['external_id'], 'text' => $m['text'],
-          'reply_markup' => ['inline_keyboard' => array_map(fn($b) => [['text' => $b[0], 'web_app' => ['url' => $b[1]]]], $m['buttons'])]]);
+        // адреса сайта не узнали (нет app_url и вебхука) — шлём без кнопки: текст дойдёт, а кнопка на localhost Telegram отвергает
+        $msg = ['chat_id' => $row['external_id'], 'text' => $m['text']];
+        if (Cfg::appUrlKnown()) $msg['reply_markup'] = ['inline_keyboard' => array_map(fn($b) => [['text' => $b[0], 'web_app' => ['url' => $b[1]]]], $m['buttons'])];
+        $r = Telegram::call('sendMessage', $msg);
       } catch (Throwable $e) { error_log('teplo remind: ' . $e->getMessage()); $r = []; }
       $s = self::status($r);
       if ($s === null) Db::q('DELETE FROM reminders_sent WHERE user_id = ? AND kind = ? AND ym = ?', [$uid, $due['kind'], $due['ym']]);   // сбой связи — через час ещё раз
