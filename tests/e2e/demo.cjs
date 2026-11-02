@@ -12,6 +12,9 @@ module.exports = function demo(opts) {
   const baseline = opts.noHeat ? null : { date: '2025-12-10', energy: '9.001', volume: '2150', hours: '33300' };
   return { v: 1, lang: opts.lang || 'uk', onboarded: true, meter, baseline, contacts: { phone: '', email: '' }, readings: opts.noHeat ? [] : readings, draft: null,
     demoToday: opts.today || '2026-11-02', placeId: 'main', view: opts.view,
-    places: [{ id: 'main', name: '', meter, baseline, updatedAt: 1, water: { account: '123456', surname: 'Шевченко', meters: [{ id: 'h1', kind: 'hot', name: '', serial: '20123456', vkId: '555', verifiedUntil: '2029-01-01' }, { id: 'c1', kind: 'cold', name: '', serial: '3204434', vkId: '777', verifiedUntil: '2029-01-01' }] } }],
+    places: [{ id: 'main', name: '', meter, baseline, updatedAt: 1, gaps: (opts.gaps ? [
+      { id: 'g1', what: 'heat', from: '2026-02-20', to: '2026-03-05', reason: 'repair', vFrom: '11.650', vTo: '11.650', fresh: false, pay: 'area', amount: '1250', updatedAt: 1 },
+      { id: 'g2', what: 'c1', from: '2026-07-20', to: '2026-07-28', reason: 'verify', vFrom: '424', vTo: '424', fresh: false, pay: 'norm', updatedAt: 1 }] : [])
+      .concat(opts.openGap ? [{ id: 'g3', what: 'h1', from: '2026-10-25', to: '', reason: 'replace', vFrom: '176', fresh: true, pay: 'norm', updatedAt: 1 }] : []), water: { account: '123456', surname: 'Шевченко', meters: [{ id: 'h1', kind: 'hot', name: '', serial: '20123456', vkId: '555', verifiedUntil: '2029-01-01' }, { id: 'c1', kind: 'cold', name: '', serial: '3204434', vkId: '777', verifiedUntil: '2029-01-01' }] } }],
     water };
 };

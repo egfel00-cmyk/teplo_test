@@ -24,11 +24,19 @@
   }
 
   /** Точки истории: показания + последние принятые (если их даты нет среди показаний), по дате. */
-  function points(readings, baseline) {
+  /** gaps — периоды без лічильника [{from, to, vFrom, vTo}]: точки «зняли» (stop) и «поставили» (start); через них розхід не рахується. */
+  function points(readings, baseline, gaps) {
     var pts = (readings || []).filter(function (r) { return r && !r.deleted && r.htm && r.htm.date && num(r.htm.energy) !== null; })
       .map(function (r) { return { date: r.htm.date, h: r.htm, id: r.id }; });
     if (baseline && baseline.date && num(baseline.energy) !== null && !pts.some(function (p) { return p.date === baseline.date; })) pts.push({ date: baseline.date, h: baseline, id: 'baseline' });
-    pts.sort(function (a, b) { return a.date < b.date ? -1 : a.date > b.date ? 1 : 0; });
+    (gaps || []).forEach(function (g) {
+      if (!g || g.deleted || !g.from) return;
+      pts.push({ date: g.from, h: num(g.vFrom) !== null ? { energy: g.vFrom } : null, id: 'gap:' + g.id, stop: true });
+      if (g.to) pts.push({ date: g.to, h: num(g.vTo) !== null ? { energy: g.vTo } : null, id: 'gap:' + g.id, start: true });
+    });
+    // в один день: «поставили» — раньше показаний, «зняли» — позже
+    var ord = function (p) { return p.start ? 0 : p.stop ? 2 : 1; };
+    pts.sort(function (a, b) { return a.date < b.date ? -1 : a.date > b.date ? 1 : ord(a) - ord(b); });
     return pts;
   }
 
@@ -41,10 +49,11 @@
   }
 
   /** Промежутки между соседними показаниями. */
-  function intervals(readings, baseline, weather, tariff) {
-    var pts = points(readings, baseline), out = [];
+  function intervals(readings, baseline, weather, tariff, gaps) {
+    var pts = points(readings, baseline, gaps), out = [];
     for (var i = 1; i < pts.length; i++) {
       var a = pts[i - 1], b = pts[i], d = days(a.date, b.date); if (d <= 0) continue;
+      if (a.stop || b.start || !a.h || !b.h) continue;   // период без лічильника или показания неизвестны
       var dE = num(b.h.energy) - num(a.h.energy), dV = (num(b.h.volume) !== null && num(a.h.volume) !== null) ? num(b.h.volume) - num(a.h.volume) : null;
       var dH = (num(b.h.hours) !== null && num(a.h.hours) !== null) ? num(b.h.hours) - num(a.h.hours) : null;
       var it = { from: a.date, to: b.date, id: b.id, days: d, dE: +dE.toFixed(3), month: +(dE / d * 30).toFixed(3), cost: dE > 0 && tariff ? +(dE * tariff).toFixed(2) : 0,
@@ -61,7 +70,7 @@
 
   /** Теплоноситель в момент снятия против графика. status: ok | low | bad | none (теплоносителя нет) | off (не отопительная погода / нет погоды). */
   function coolant(readings, baseline, weather) {
-    return points(readings, baseline).filter(function (p) { return num(p.h.tSupply) !== null; }).map(function (p) {
+    return points(readings, baseline).filter(function (p) { return p.h && num(p.h.tSupply) !== null; }).map(function (p) {
       var ts = num(p.h.tSupply), tr = num(p.h.tReturn), fl = num(p.h.flow), tOut = weather && typeof weather[p.date] === 'number' ? weather[p.date] : null;
       var g = graph(tOut), st;
       if ((fl !== null && fl <= 0.001) || ts < 30) st = 'none';

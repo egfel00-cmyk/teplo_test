@@ -19,4 +19,13 @@ ok('погода: 0 °C → 18 градусо-суток в день', iv[0].tOu
 const cl = S.coolant(R, null, w), st = Object.fromEntries(cl.map(p => [p.id, p.status]));
 ok('58 °C при 0 °C — норма; 45 — сильно ниже; расход 0 — теплоносителя нет', st.a === 'ok' && st.b === 'bad' && st.c === 'none', st);
 ok('без погоды — без нормы', S.coolant(R, null, null).every(p => p.status === 'off' || p.status === 'none'));
+// лічильник знімали з 05.01 по 20.01 (новий, з 0.5): до зняття — свій промежуток, через період — не рахуємо, після — від 0.5
+{
+  const RG = [{ id: 'a', htm: { date: '2025-01-01', energy: 10 } }, { id: 'b', htm: { date: '2025-01-31', energy: 1.5 } }];
+  const iv2 = S.intervals(RG, null, null, 0, [{ id: 'g', from: '2025-01-05', to: '2025-01-20', vFrom: 10.4, vTo: 0.5 }]);
+  ok('период без лічильника: 01.01→05.01 +0.4, 20.01→31.01 +1.0, через период — ничего', iv2.length === 2 && iv2[0].dE === 0.4 && iv2[0].to === '2025-01-05' && iv2[1].dE === 1 && iv2[1].from === '2025-01-20', iv2);
+  const iv3 = S.intervals(RG, null, null, 0, [{ id: 'g', from: '2025-01-05', to: '' }]);
+  ok('ещё без лічильника — ни одного промежутка через него', iv3.length === 0, iv3);
+  ok('coolant не падает на точках периода', S.coolant(RG, null, null).length === 0);
+}
 console.log(`\nИтог: ${pass} OK, ${fail} FAIL`); process.exit(fail ? 1 : 0);

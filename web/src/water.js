@@ -79,15 +79,21 @@
    * Записи квартиры по дате; потребление по каждому счётчику — от его прошлого показания (запись может быть только
    * по горячей или только по холодной), вместе по видам. hot/cold = null, если по этому виду сравнить не с чем.
    * days — от прошлой записи; daysHot/daysCold и fromHot/fromCold — от прошлых показаний этого вида.
+   * gaps — периоды без лічильника [{what: id водоміра, from, to, vTo}]: розхід через них не рахується.
    */
-  function series(records, meters) {
+  function series(records, meters, gaps) {
     var rs = records.filter(function (r) { return r && !r.deleted; }).sort(function (a, b) { return a.date < b.date ? -1 : a.date > b.date ? 1 : (a.base ? -1 : b.base ? 1 : (a.createdAt || '') < (b.createdAt || '') ? -1 : 1); });
-    var last = {};
+    var last = {}, gs = (gaps || []).filter(function (g) { return g && !g.deleted && g.from; });
     return rs.map(function (r, i) {
       var p = i ? rs[i - 1] : null, by = {}, sum = { hot: 0, cold: 0 }, any = { hot: false, cold: false }, from = { hot: '', cold: '' };
       meters.forEach(function (m) {
         var v = whole(r.vals && r.vals[m.id]), k = m.kind === 'hot' ? 'hot' : 'cold', l = last[m.id];
         if (v === null) return;
+        // водомір знімали після прошлого показання: рахуємо від показань після встановлення, невідомі — проміжок пропускаємо
+        if (l) {
+          var g = gs.filter(function (x) { return x.what === m.id && x.from >= l.date && x.from < r.date; }).sort(function (a, b) { return a.from < b.from ? -1 : 1; }).slice(-1)[0];
+          if (g) l = g.to && g.to <= r.date && whole(g.vTo) !== null ? { v: whole(g.vTo), date: g.to } : null;
+        }
         if (l && v >= l.v) { by[m.id] = v - l.v; sum[k] += v - l.v; any[k] = true; if (l.date > from[k]) from[k] = l.date; }
         last[m.id] = { v: v, date: r.date };
       });

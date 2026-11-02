@@ -460,22 +460,26 @@ input[type=text]:not(.dmy-native):not(.pl-in), input[type=email], input[type=pas
 .ucards { display: grid; gap: 12px; grid-template-columns: minmax(0, 1fr); margin-bottom: 8px; }
 @media (min-width: 720px) { .ucards { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
 .ucard { position: relative; background: var(--c-surface); border: 1px solid var(--c-line); border-radius: 16px; }
-.ucard-main { display: flex; flex-direction: column; gap: 4px; padding: 16px 80px 16px 18px; min-height: 124px; color: inherit; text-decoration: none; border-radius: 16px; }
+.ucard-main { display: flex; flex-direction: column; gap: 4px; padding: 16px 18px; min-height: 124px; color: inherit; text-decoration: none; border-radius: 16px; }
 .ucard-main:hover { background: var(--c-ghost-hover); }
 .ucard-main:focus-visible { outline: 3px solid var(--c-info); outline-offset: 2px; }
-.ucard-top { display: flex; align-items: center; gap: 8px; font-weight: 600; font-size: 16px; }
+.ucard-top { display: flex; align-items: center; gap: 8px; font-weight: 600; font-size: 16px; min-height: 48px; padding-right: 60px; }
 .ucard-heat .ucard-top .ico, .ucard-hot .ucard-top .ico, .c-hot { color: var(--c-supply); }
 .ucard-cold .ucard-top .ico, .c-cold { color: var(--c-return); }
 .ucard-val { font: 600 28px/1.15 var(--mono); margin-top: 6px; overflow-wrap: anywhere; }
 .ucard-val small { font: 500 14px var(--font); color: var(--c-ink-2); }
-.ucard-multi { display: inline-block; margin-right: 12px; font: 500 15px var(--font); color: var(--c-ink-2); }
-.ucard-multi b { font: 600 22px var(--mono); color: var(--c-ink); }
+.ucard-disp { margin: 4px 0 6px; display: grid; gap: 8px; }
 .ucard-sub { font-size: 14px; color: var(--c-ink-2); }
 .ucard-status { font-size: 14px; font-weight: 600; margin-top: 4px; color: var(--c-ink-2); }
 .ucard-status.ok { color: var(--c-ok); } .ucard-status.due { color: var(--c-info); } .ucard-status.warn { color: var(--c-warn); }
-.ucard-add { position: absolute; right: 14px; top: 50%; transform: translateY(-50%); width: 56px; height: 56px; border-radius: 50%; border: 0; background: var(--c-ink); color: var(--c-on-ink); display: grid; place-items: center; cursor: pointer; box-shadow: 0 4px 12px var(--c-shadow); }
+.ucard-add { position: absolute; right: 12px; top: 12px; width: 52px; height: 52px; border-radius: 50%; border: 0; background: var(--c-ink); color: var(--c-on-ink); display: grid; place-items: center; cursor: pointer; box-shadow: 0 4px 12px var(--c-shadow); }
 .ucard-add:hover { background: var(--c-ink-hover); }
 .ucard-add:focus-visible { outline: 3px solid var(--c-info); outline-offset: 3px; }
+/* ЖК на карточке тепла: во всю ширину, цифры не выше 44 px */
+.lcd.card { padding: 10px 12px 8px; border-width: 4px; }
+.lcd.card .line { justify-content: space-between; }
+.lcd.card svg.seg { height: 44px; flex: 0 1 auto; min-width: 0; }
+.lcd.card .tag { flex: none; }
 .ucards-hint { margin: 4px 2px 16px; }
 
 /* ===== Вода: экран вида, ввод, передача ===== */
@@ -513,6 +517,25 @@ input[type=text]:not(.dmy-native):not(.pl-in), input[type=email], input[type=pas
   background: linear-gradient(#08090a, #2a2c2e 50%, #08090a); }
 .drum span.r { background: linear-gradient(#6e0d12, #c8151d 50%, #6e0d12); }
 .drum small { margin-left: 6px; color: #e8e8e8; font-size: 14px; }
+
+/* табло водоміра: циферблат з кільцем кольору виду, вікно з роликами (чорні — м³, червоні — літри), відблиск скла */
+.wdrum { --ring: var(--c-return); --plate: radial-gradient(130% 160% at 25% 0%, #FFFFFF, #E4E9EC 72%); --plate-ink: #24323A;
+  display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 14px; background: var(--plate);
+  border: 3px solid var(--ring); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .9), inset 0 -3px 8px rgba(0, 0, 0, .08), 0 1px 3px var(--c-shadow); container-type: inline-size; }
+.wdrum.hot { --ring: var(--c-supply); }
+:root[data-theme="dark"] .wdrum { --plate: radial-gradient(130% 160% at 25% 0%, #DDE3E6, #B9C2C7 75%); }
+.wd-win { position: relative; flex: 1 1 auto; min-width: 0; max-width: 360px; display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); gap: 2px;
+  padding: 4px; border-radius: 6px; background: #0A0B0C; box-shadow: inset 0 2px 5px #000, 0 0 0 1px rgba(0, 0, 0, .35); }
+.wd-win::after { content: ''; position: absolute; inset: 0; border-radius: 6px; pointer-events: none; background: linear-gradient(180deg, rgba(255, 255, 255, .2), rgba(255, 255, 255, 0) 45%); }
+.wd-c { aspect-ratio: .66; display: grid; place-items: center; border-radius: 2px; color: #F4F5F6; font: 600 clamp(14px, 7.2cqw, 34px)/1 var(--mono);
+  background: linear-gradient(180deg, #000 0%, #2A2D30 18%, #3D4145 50%, #2A2D30 82%, #000 100%); text-shadow: 0 1px 0 #000; }
+.wd-c.r { color: #FFF1F1; background: linear-gradient(180deg, #43050A 0%, #9E121A 20%, #CE1D27 50%, #9E121A 80%, #43050A 100%); }
+.wd-u { flex: none; font: 600 15px/1 var(--font); color: var(--plate-ink); }
+.wdrum.hero { padding: 14px 16px; border-width: 4px; max-width: 470px; }
+.wdrum.hero .wd-win { gap: 3px; padding: 5px; max-width: none; }
+.wdrum.sm { padding: 6px 10px; border-width: 2px; }
+.wd-multi { display: grid; gap: 4px; }
+.wd-name { font-size: 13px; font-weight: 600; color: var(--c-ink-2); }
 
 /* общие вкладки: переключатель «Опалення · Гаряча · Холодна» */
 .kind-sw { display: flex; gap: 4px; background: var(--c-field-bg); border: 1.5px solid var(--c-field-line); border-radius: var(--r-pill); padding: 3px; margin: 0 0 var(--sp-4); max-width: 520px; }
@@ -554,3 +577,37 @@ input[type=text]:not(.dmy-native):not(.pl-in), input[type=email], input[type=pas
 .home-draft { margin-bottom: 16px; display: grid; gap: 6px; justify-items: center; }
 .home-draft .btn { width: 100%; }
 .home-draft .linkbtn { color: var(--c-ink-2); }
+
+/* «Куди передати»: адресати по черзі — хто, за що, строк, готові цифри, кнопки-переходи */
+.where { margin-top: var(--sp-4); }
+.where > h2 { display: flex; align-items: center; gap: 8px; }
+.where > h2 .ico { flex: none; }
+.dest { padding: 14px 0 4px; }
+.dest + .dest { border-top: 1px solid var(--c-line); margin-top: 10px; }
+.dest:focus { outline: none; }
+.dest-h { display: flex; align-items: flex-start; gap: 10px; flex-wrap: wrap; }
+.dest-h .grow { flex: 1 1 200px; min-width: 0; }
+.dest-h b { font-size: var(--fs-m); }
+.dest-h .pill { flex: none; margin-top: 2px; }
+.dest-ch { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.dest-ch .btn { flex: 1 1 200px; justify-content: center; }
+.dest-more { margin: 10px 0 0; }
+.dest-more a, .where a[href^="tel:"] { white-space: nowrap; }
+.dest .cmd { margin-top: 6px; }
+.dest .tips-box { margin-top: 12px; }
+.dest-mark { margin: 12px 0 0; }
+.gap-add { margin: 12px 0 0; }
+.gap-add a { display: inline-flex; align-items: center; gap: 8px; }
+.gap-add a .ico { flex: none; }
+.gap-row .rowlink { gap: 12px; }
+.gap-row .rowlink > .ico { flex: none; }
+.wm-col { display: grid; gap: var(--sp-4); align-content: start; }
+.wm-col .panel { margin: 0; }
+.wmeter h2 { margin-bottom: 12px; }
+#gap-form .choice { margin-top: 4px; }
+#gap-form .check-row { margin: 12px 0 4px; align-items: flex-start; font-weight: 400; }
+#gap-form .check-row input { margin-top: 2px; }
+#gap-form fieldset { border: 0; padding: 0; margin: 0 0 var(--sp-3); min-width: 0; }
+.gap-row .grow .ico { vertical-align: -3px; }
+.banner ul.plain { list-style: none; padding: 0; margin: 4px 0 0; display: grid; gap: 2px; }
+.ucard .empty { opacity: .5; filter: saturate(.4); }

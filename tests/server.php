@@ -309,6 +309,9 @@ $w2 = $wst; $w2['water'][] = ['id' => 'w', 'place' => 'main', 'date' => '2026-11
 ok('вода: запись этого месяца есть — молчим', !Reminders::needs($w2, 'water15', '2026-11'));
 ok('тепло: показания в окне 5–25 есть — молчим; в прошлом месяце — напоминаем', !Reminders::needs($wst, 'heat22', '2026-11') && Reminders::needs($wst, 'heat22', '2026-12'));
 ok('без водомеров про воду не пишем; выключено в настройках — не пишем', !Reminders::needs(['places' => [['id' => 'main']]], 'water15', '2026-11') && !Reminders::needs($wst + ['remind' => ['off' => true]], 'water15', '2026-11'));
+$wg = $wst; $wg['places'][0]['gaps'] = [['id' => 'g1', 'what' => 'h1', 'from' => '2026-11-03', 'to' => ''], ['id' => 'g2', 'what' => 'heat', 'from' => '2026-12-01', 'to' => '2026-12-10']];
+ok('лічильник знято (ремонт/повірка): водомір — не нагадуємо; тепло — лише поки знято', !Reminders::needs($wg, 'water15', '2026-11', '2026-11-15')
+  && !Reminders::needs($wg, 'heat5', '2026-12', '2026-12-05') && Reminders::needs($wg, 'heat22', '2026-12', '2026-12-22'));
 $rm = new Browser('10.0.13.1'); $rm->req('POST', '/api/auth/telegram/webapp', ['initData' => initData($TOKEN, ['id' => 7777, 'first_name' => 'Нагадай'])]);
 $put = $rm->req('PUT', '/api/state', ['state' => $wst + ['remind' => ['lang' => 'ru']], 'baseVersion' => 0]);
 $sent = []; Telegram::$send = function ($m, $p, $tok = null) use (&$sent) { $sent[] = [$m, $p]; return ['ok' => true]; };

@@ -21,14 +21,21 @@ final class Reminders {
   }
 
   /** Нужно ли это напоминание человеку с таким состоянием (данные — как их хранит сайт: places, water, readings). */
-  public static function needs(array $st, string $kind, string $ym): bool {
+  public static function needs(array $st, string $kind, string $ym, ?string $today = null): bool {
     if (!empty($st['remind']['off'])) return false;
+    $today = $today ?? date('Y-m-d');
+    // лічильник знято (ремонт, повірка, заміна) і ще не поставили — про нього не нагадуємо
+    $off = function (array $p, string $what) use ($today): bool {
+      foreach ((array)($p['gaps'] ?? []) as $g)
+        if (is_array($g) && empty($g['deleted']) && ($g['what'] ?? '') === $what && (string)($g['from'] ?? '9') <= $today && (($g['to'] ?? '') === '' || (string)$g['to'] > $today)) return true;
+      return false;
+    };
     $places = array_values(array_filter((array)($st['places'] ?? []), fn($p) => is_array($p) && empty($p['deleted'])));
     if (!$places && !empty($st['meter'])) $places = [['id' => 'main', 'meter' => $st['meter']]];
     $first = $places[0]['id'] ?? 'main';
     if (str_starts_with($kind, 'water')) {
       foreach ($places as $p) {
-        $ms = array_filter((array)($p['water']['meters'] ?? []), fn($m) => is_array($m) && empty($m['deleted']));
+        $ms = array_filter((array)($p['water']['meters'] ?? []), fn($m) => is_array($m) && empty($m['deleted']) && !$off($p, (string)($m['id'] ?? '')));
         if (!$ms) continue;
         $has = false;
         foreach ((array)($st['water'] ?? []) as $r)
@@ -38,7 +45,7 @@ final class Reminders {
       return false;
     }
     foreach ($places as $p) {
-      if (empty($p['meter'])) continue;
+      if (empty($p['meter']) || $off($p, 'heat')) continue;
       $has = false;
       foreach ((array)($st['readings'] ?? []) as $r) {
         $d = (string)($r['htm']['date'] ?? '');
