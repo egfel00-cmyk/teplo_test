@@ -141,6 +141,16 @@ $pl3 = Db::one('SELECT * FROM photos WHERE id = ?', [$r3l->body['id']]); $pl4 = 
 ok('распознано в браузере → результат и текст распознавателя в аналитике', $rl->status === 200 && $rl->body['saved'] === 2 && $pl3['status'] === 'recognized' && $pl3['problem'] === null
   && json_decode($pl3['result'], true)['engine'] === 'local' && json_decode($pl3['result'], true)['ocr'][0]['t'] === '00015.482');
 ok('…фото водомера — причина «счётчик воды, а не тепла»', str_contains((string)$pl4['problem'], 'воды, а не тепла'));
+// вода «з фото»: итог по водомерам и окна барабанов — тоже в аналитику, с причинами по-русски
+$r5l = $up($rb, $png, 'image/png'); $r6l = $up($rb, $png, 'image/png');
+$rw = $rb->req('POST', '/api/recognize/local', ['ids' => [$r5l->body['id'], $r6l->body['id']], 'results' => [
+  ['photo' => ['index' => 0, 'kind' => 'water', 'meterType' => 'water', 'readings' => [['field' => 'water_hot', 'meter' => 'h1', 'value' => 502, 'partial' => null, 'half' => false, 'guess' => true, 'lead' => false]]], 'ms' => 6800,
+    'drums' => [['text' => '00502', 'red' => '310', 'score' => 0.6, 'votes' => 1, 'tint' => 'red', 'shifted' => [['i' => 2, 'd' => 5]]]]],
+  ['photo' => ['index' => 1, 'kind' => 'water', 'meterType' => 'water', 'readings' => [['field' => 'water_cold', 'meter' => 'c1', 'value' => null, 'partial' => '0023?', 'half' => true]]], 'ms' => 5000]]]);
+$pl5 = Db::one('SELECT * FROM photos WHERE id = ?', [$r5l->body['id']]); $pl6 = Db::one('SELECT * FROM photos WHERE id = ?', [$r6l->body['id']]);
+ok('вода з фото → в аналитике: водомер, окно барабана; «наугад» — замечание, не «счётчик воды, а не тепла»', $rw->status === 200 && $pl5['status'] === 'recognized'
+  && json_decode($pl5['result'], true)['drums'][0]['text'] === '00502' && str_contains((string)$pl5['problem'], 'наугад') && !str_contains((string)$pl5['problem'], 'не тепла'));
+ok('…ролик между цифрами не узнан — «0023?», человек допишет', str_contains((string)$pl6['problem'], 'холодная вода: ролик между цифрами не узнан («0023?»)'));
 ok('чужие фото так не перезаписать', (new Browser('10.0.4.9'))->req('POST', '/api/recognize/local', ['ids' => [$r3l->body['id']], 'results' => []])->status === 401);
 Recognize::$call = function () { throw new HttpError(504, 'timeout', ['human' => 'Нейросеть не ответила за 26 с']); };
 ok('таймаут нейросети → 504 клиенту', $rb->req('POST', '/api/recognize/run', ['ids' => [$r1->body['id']]])->status === 504);
@@ -167,9 +177,9 @@ $boss = new Browser('10.0.5.2'); $boss->req('POST', '/api/auth/register', ['emai
 $ov = $boss->req('GET', '/api/admin/overview');
 ok('админ: сводка', $ov->status === 200 && $ov->body['feedback'] === 3 && $ov->body['photos'] >= 3 && $ov->body['photosFailed'] >= 2);
 $us = $boss->req('GET', '/api/admin/users', null, ['QUERY_STRING' => 'q=photo@']);
-ok('админ: поиск пользователя по email', $us->status === 200 && count($us->body['users']) === 1 && (int)$us->body['users'][0]['photos'] === 5);
+ok('админ: поиск пользователя по email', $us->status === 200 && count($us->body['users']) === 1 && (int)$us->body['users'][0]['photos'] === 7);
 $ud = $boss->req('GET', '/api/admin/user', null, ['QUERY_STRING' => 'id=' . $us->body['users'][0]['id']]);
-ok('админ: карточка пользователя с фото и журналом', $ud->status === 200 && count($ud->body['photos']) === 5 && count($ud->body['reports']) >= 2);
+ok('админ: карточка пользователя с фото и журналом', $ud->status === 200 && count($ud->body['photos']) === 7 && count($ud->body['reports']) >= 2);
 $ph = $boss->req('GET', '/api/admin/photos', null, ['QUERY_STRING' => 'filter=problems']);
 ok('админ: фото с проблемами', $ph->status === 200 && count($ph->body['photos']) >= 2);
 $pf = $boss->req('GET', '/api/admin/photo', null, ['QUERY_STRING' => 'id=' . $r1->body['id']]);

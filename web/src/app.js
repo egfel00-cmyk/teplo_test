@@ -873,14 +873,14 @@
       wnRead();
       var p = wprevFor(mid, WN.date || today()), r = Wt.fromOcr(res, p ? p.vals[mid] : null);
       WN.photos.forEach(function (x) { x.meters = (x.meters || []).filter(function (k) { return k !== mid; }); });
-      WN.photos.push({ file: file, url: URL.createObjectURL(file), res: { lines: res.lines, drums: res.drums }, meters: [mid], fixed: mid });
+      WN.photos.push({ file: file, url: URL.createObjectURL(file), res: { lines: res.lines, drums: res.drums }, ms: res.ms, meters: [mid], fixed: mid });
       var pi = WN.photos.length - 1;
       if (!r) WN.src[mid] = { photo: pi, value: null, none: true };
       else {
         WN.src[mid] = { photo: pi, value: r.value, partial: r.partial || null, half: !!r.half, pair: r.pair || null, lead: !!r.lead && !r.sure, why: 'field' };
         if (r.value !== null) { WN.vals[mid] = String(r.value); WN.auto[mid] = true; }
       }
-      render(true); wnCheck(true);
+      render(true); wnCheck(true); wnReport();
       var inp = document.getElementById('wn-' + mid); if (inp && (!r || r.value === null)) inp.focus();
     }, function () { if (lab) lab.removeAttribute('aria-busy'); if (help) { help.textContent = t('ph_err_engine'); help.className = 'help warn'; } });
   }
@@ -951,11 +951,24 @@
       var chain = Promise.resolve();
       todo.forEach(function (p, i) {
         chain = chain.then(function () { if (!live()) return null; wnProg(15 + 85 * (i + 0.3) / n, n > 1 ? t('ph_reading', { i: i + 1, n: n }) : t('wn_reading')); return limit(window.TeploOCR.read(p.file, { all: true })); })
-          .then(function (res) { if (res) p.res = { lines: res.lines, drums: res.drums }; }, function () { p.res = { lines: [], drums: [] }; });
+          .then(function (res) { if (res) { p.res = { lines: res.lines, drums: res.drums }; p.ms = res.ms; } }, function () { p.res = { lines: [], drums: [] }; });
       });
       return chain;
-    }).then(function () { if (!live()) return; WN.busy = false; wnAssign(); render(true); wnCheck(true); },
+    }).then(function () { if (!live()) return; WN.busy = false; wnAssign(); render(true); wnCheck(true); wnReport(); },
       function () { if (!live()) return; WN.busy = false; WN.err = t('ph_err_engine'); render(true); });
+  }
+  /** Аналитика (/admin): копии фото воды и что по ним разложилось — у вошедших, как у тепла. */
+  function wnReport() {
+    if (!VIS().waterReport) return;
+    var ms = wmeters();
+    VIS().waterReport(WN.photos.filter(function (p) { return p.res && p.file; }).map(function (p) {
+      var i = WN.photos.indexOf(p);
+      var rd = ms.filter(function (m) { return (p.meters || []).indexOf(m.id) >= 0; }).map(function (m) {
+        var x = WN.src[m.id] || {};
+        return { field: 'water_' + m.kind, meter: m.id, unit: 'м³', value: x.value === undefined ? null : x.value, partial: x.partial || null, half: !!x.half, guess: !!x.guess, lead: !!x.lead, why: x.why || '' };
+      });
+      return { file: p.file, ms: p.ms || 0, res: p.res, photo: { index: i, kind: 'water', meterType: 'water', readings: rd, quality: 'ok', note: rd.length ? '' : 'no_drum' } };
+    }));
   }
   /** Раскладка: фото с камеры у поля — за своим водомером; остальные — Wt.assign (№, цвет кольца, близость к прошлым). */
   function wnAssign() {

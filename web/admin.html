@@ -61,7 +61,7 @@ pre.state { font: 12px/1.4 var(--mono); background: #F4F7F5; padding: 10px; bord
   var SITE = API.replace(/\/api$/, '') + '/';
   var app = document.getElementById('app');
   var TAB = (location.hash || '#overview').slice(1), DATA = {}, Q = '', PF = 'all';
-  var FIELD = { energy: 'Энергия', volume: 'Объём', flow: 'Расход', power: 'Мощность', tSupply: 'Подача', tReturn: 'Обратка', hours: 'Часы', errHours: 'Часы ошибки', errCode: 'Код ошибки' };
+  var FIELD = { energy: 'Энергия', volume: 'Объём', flow: 'Расход', power: 'Мощность', tSupply: 'Подача', tReturn: 'Обратка', hours: 'Часы', errHours: 'Часы ошибки', errCode: 'Код ошибки', water_hot: 'Горячая вода', water_cold: 'Холодная вода' };
   var MODEL = { sharky774: 'SHARKY 774', sharky775: 'SHARKY 775', t330: 'ULTRAHEAT T330', t230: 'ULTRAHEAT T230', multical302: 'MULTICAL 302', elf: 'ELF', sensostar: 'SensoStar', nik7071: 'НІК 7071', trust: 'TRUST', other: 'другая' };
   var STATUS = { checked: 'проверено', handed: 'передано в ХТМ', accepted: 'принято ХТМ', rejected: 'отклонено ХТМ', intermediate: 'промежуточное' };
 
@@ -109,14 +109,16 @@ pre.state { font: 12px/1.4 var(--mono); background: #F4F7F5; padding: 10px; bord
 
   function photoCard(p) {
     var r = p.result && p.result.photo, m = p.result && p.result.meter;
-    var reads = r && r.readings && r.readings.length ? r.readings.map(function (x) { return (FIELD[x.field] || x.field) + ': ' + x.value + (x.unit ? ' ' + x.unit : '') + (x.confidence != null ? '  ' + Math.round(x.confidence * 100) + '%' : ''); }).join('\n') : '';
+    var reads = r && r.readings && r.readings.length ? r.readings.map(function (x) { return (FIELD[x.field] || x.field) + ': ' + (x.value != null ? x.value : (x.partial || '?')) + (x.unit ? ' ' + x.unit : '') + (x.confidence != null ? '  ' + Math.round(x.confidence * 100) + '%' : '') + (x.half ? '  (ролик между цифрами)' : '') + (x.guess ? '  (наугад)' : ''); }).join('\n') : '';
+    var drums = p.result && p.result.drums && p.result.drums.length ? p.result.drums.map(function (d) { return d.text + (d.red ? ',' + d.red : '') + (d.tint ? ' ' + d.tint : '') + '  ' + Math.round((d.score || 0) * 100) + '% · голосов ' + (d.votes || 0) + (d.half ? ' · переход: ' + d.half.map(function (h) { return h.d == null ? '?' : h.d + '|' + ((h.d + 1) % 10); }).join(',') : '') + (d.shifted ? ' · сдвинут: ' + d.shifted.map(function (h) { return h.d; }).join(',') : ''); }).join('\n') : '';
     var st = p.status === 'recognized' ? (p.problem ? pill('warn', 'распознано с замечаниями') : pill('ok', 'распознано')) : p.status === 'failed' ? pill('bad', 'ошибка') : pill('info', 'загружено, не распознавалось');
     return '<div class="ph">' + (p.exists ? '<img loading="lazy" src="' + esc(API + '/admin/photo?id=' + p.id) + '" alt="фото ' + esc(p.id) + '" data-zoom>' : '<div class="noimg">файл удалён</div>') +
       '<div class="b"><div>' + st + '</div><div class="muted">' + when(p.created_at) + ' · ' + who(p).replace('<br>', ' ') + '</div>' +
       (m && (m.modelId || m.modelText) ? '<div>Счётчик: <b>' + esc(MODEL[m.modelId] || m.modelText || m.modelId) + '</b>' + (m.serial ? ' · № ' + esc(m.serial) : '') + '</div>' : '') +
-      (r && r.kind ? '<div class="muted">тип снимка: ' + esc({ screen: 'экран', nameplate: 'шильдик', overview: 'общий план', other: 'другое' }[r.kind] || r.kind) + '</div>' : '') +
+      (r && r.kind ? '<div class="muted">тип снимка: ' + esc({ screen: 'экран', nameplate: 'шильдик', overview: 'общий план', other: 'другое', water: 'водомер' }[r.kind] || r.kind) + '</div>' : '') +
       (reads ? '<div class="reads">' + esc(reads) + '</div>' : '') + (p.problem ? '<div class="problem">' + esc(p.problem) + '</div>' : '') +
       '<div class="muted small mono">' + p.w + '×' + p.h + ' · ' + Math.round(p.bytes / 1024) + ' КБ' + (p.result ? ' · ' + (p.result.engine === 'local' ? 'в браузере' : 'Claude') + (p.result.ms ? ', ' + (p.result.ms / 1000).toFixed(1) + ' с' : '') : '') + '</div>' +
+      (drums ? '<details><summary class="small">Окна барабанов</summary><div class="reads">' + esc(drums) + '</div></details>' : '') +
       (p.result && p.result.ocr && p.result.ocr.length ? '<details><summary class="small">Что прочитал распознаватель</summary><div class="reads">' + esc(p.result.ocr.map(function (l) { return l.t + (l.a && l.a.length ? '  [' + l.a.join(' | ') + ']' : '') + '  ' + Math.round((l.s || 0) * 100) + '%'; }).join('\n')) + '</div></details>' : '') + '</div></div>';
   }
   VIEW.photos = function () {

@@ -4,12 +4,15 @@
  * Файлы лежат рядом (web/ocr/), грузятся один раз (~30 МБ, потом из кэша браузера).
  * API: TeploOCR.load(base, onProgress(0..1)) → Promise; TeploOCR.read(fileOrBlob, {all}) → Promise<{lines, drums, w, h, ms}>
  *   all: true — читать все найденные окна барабанов (на фото может быть несколько водомеров), иначе — до первого уверенного.
- *   lines: [{ text, score, x, y, w, h, angle }] — координаты в пикселях исходного фото (после поворота по EXIF).
+ *   lines: [{ text, score, x, y, w, h, angle, lcd? }] — координаты в пикселях исходного фото (после поворота по EXIF);
+ *          lcd: 1 — найдено проходом по ЖК (приближение экрана: прочерки «E-------», значки «m³», «m³/h», «kW»).
  *   drums: [{ text, red, score, votes, alts, x, y, w, h, angle, flipped, tint }] — окно барабана водомера, найденное по цвету:
  *          text — цифры чёрных роликов (м³), red — красных (дроби), tint — цвет кольца ('red' горячая / 'blue' холодная),
  *          lead — сколько ведущих роликов не видно (блик стекла; text без них — обычно это нули),
  *          half — ролики между двумя цифрами (полуповорот): [{ i, d, sc, margin, rank }] — i — место в text, d — меньшая цифра
- *          пары (d, d+1) или null (не узнали — тогда этой цифры нет в text), rank — цифры по убыванию сходства.
+ *          пары (d, d+1) или null (не узнали — тогда этой цифры нет в text), rank — цифры по убыванию сходства;
+ *          shifted — ролики, чуть сдвинутые с места (цифра видна ≥ 75 %, сверху/снизу хвост соседней): [{ i, d }] — d прочитана
+ *          отдельно и стоит в text как обычная цифра.
  */
 (function (root) {
   'use strict';
@@ -163,7 +166,7 @@
   }
 
   /** Прочитать рамки на холсте; координаты пересчитать в исходное фото (map: x → ox + x / sc). */
-  function readBoxes(cv, boxes, ox, oy, sc, lines) {
+  function readBoxes(cv, boxes, ox, oy, sc, lines, allAlts) {
     boxes.sort(function (a, b) { return a.cy - b.cy || a.cx - b.cx; });
     var chain = Promise.resolve();
     boxes.forEach(function (b) {
@@ -172,7 +175,7 @@
       chain = chain.then(function () { return recognize(cv, b, 0); }).then(function (r) {
         line = { text: r.text, score: +r.score.toFixed(3), x: Math.round(ox + (b.cx - b.w / 2) / sc), y: Math.round(oy + (b.cy - b.h / 2) / sc), w: Math.round(b.w / sc), h: Math.round(b.h / sc), angle: +b.angle.toFixed(3) };
         // строки с цифрами (ЖК-экран) — ещё дважды с подавлением «теней» непогашенных сегментов: 1 не превращается в 8
-        if (!/[0-9]|^E/.test(r.text)) return null;
+        if (!allAlts && !/[0-9]|^E/.test(r.text)) return null;   // allAlts — мелкие подписи ЖК («m³» → «ni», «m)»): все варианты
         return recognize(cv, b, 0.3).then(function (r1) { return recognize(cv, b, 0.55).then(function (r2) { line.alts = [r1.text, r2.text]; }); });
       }).then(function () { if (line.text || (line.alts && line.alts[0])) lines.push(line); });
     });
@@ -210,6 +213,66 @@
     });
   }
   function digits(t) { return String(t || '').replace(/[^0-9]/g, '').length; }
+
+  // подписи у числа на ЖК: единицы (m³ читается «m)», «mi»; m³/h стоят столбиком «m» над «h») и метки экранов (ht, ct, On, dt, EH)
+  var UNIT_RE = /^(m\s?[3³)'’iIl|]?(\s?\/\s?h)?|[hn]|k\s?W(\s?h)?|G\s?[ck]a[l1]|MW\s?h|GJ|°\s?C|℃|HT|CT|T\s?[12]|[hbn][tEe]|6e|c[tE]|d[tTeE]|BE|[0OD][nN]|E\s?h)$/i;
+  var IN_LINE = /^\s*[A-Za-z]{1,3}\s+[0-9]|[0-9][\s.]*(m|k\s?W|G\s?[ck]a|MW|GJ|°|℃)/;   // «0n 41704», «ht 13.50», «1.067 m3/h»
+  /**
+   * Проход по ЖК-экрану. Главное число экрана (или «E» экрана кода ошибки) нашлось, а подписи рядом нет: прочерки «E-------»,
+   * значки «m³», «m³/h» в полном кадре мельче, чем видит детектор. Приближаем сам экран (цифра ≈ 130 px) и ищем текст ещё
+   * раз — как есть и с локальным контрастом. Новое — добавляем; рамку, что шире строки «E» в 1,5 раза и больше, — вместо неё.
+   */
+  function lcdPass(src, lines) {
+    var H = src.height, W = src.width, isE = function (t) { return /^[EeЕеＥ][^0-9A-Za-zА-Яа-я]{0,2}$/.test(t); };
+    var cand = lines.filter(function (l) {
+      var t = String(l.text).trim(), d = digits(t);
+      return l.h >= H * 0.012 && Math.abs(l.angle) < 0.2 && (isE(t) || (d >= 3 && d >= t.replace(/\s/g, '').length * 0.6));
+    });
+    if (!cand.length) return Promise.resolve();
+    var main = cand.sort(function (a, b) { return b.h - a.h; })[0], t = String(main.text).trim(), e = isE(t), h = main.h;
+    if (!e) {
+      if (IN_LINE.test(t) || /^8{6,}$/.test(t.replace(/[^0-9]/g, ''))) return Promise.resolve();   // подпись в строке; тест экрана
+      var labeled = lines.some(function (l) {
+        return l !== main && UNIT_RE.test(String(l.text).trim()) && l.x + l.w > main.x - 2 * h && l.x < main.x + main.w + 3 * h && l.y + l.h > main.y - h && l.y < main.y + 2 * h;
+      });
+      if (labeled) return Promise.resolve();
+    }
+    var x0 = Math.max(0, main.x - 0.6 * h), x1 = Math.min(W, main.x + main.w + (e ? 7 : 2.2) * h), y0 = Math.max(0, main.y - 0.9 * h), y1 = Math.min(H, main.y + 1.9 * h);
+    var cw = x1 - x0, chh = y1 - y0, sc = Math.min(4, Math.max(1.5, 200 / h), 1700 / Math.max(cw, chh));
+    var cv = document.createElement('canvas'); cv.width = Math.round(cw * sc); cv.height = Math.round(chh * sc);
+    var g = cv.getContext('2d'); g.imageSmoothingQuality = 'high'; g.drawImage(src, x0, y0, cw, chh, 0, 0, cv.width, cv.height);
+    var mx = Math.max(cv.width, cv.height), boxes = [];
+    var area = function (b) { return { x: x0 + (b.cx - b.w / 2) / sc, y: y0 + (b.cy - b.h / 2) / sc, w: b.w / sc, h: b.h / sc }; };
+    var over = function (o, b) { var ix = Math.max(0, Math.min(o.x + o.w, b.x + b.w) - Math.max(o.x, b.x)), iy = Math.max(0, Math.min(o.y + o.h, b.y + b.h) - Math.max(o.y, b.y)); return ix * iy > 0.5 * Math.min(o.w * o.h, b.w * b.h); };
+    var add = function (bs) { bs.forEach(function (b) { var a = area(b); if (!boxes.some(function (o) { return over(area(o), a); })) boxes.push(b); }); };
+    var LOG = root.TEPLO_LCD_LOG;
+    return detect(cv, { max: mx }).then(add).then(function () { return detect(cv, { max: mx, local: Math.max(6, Math.round(0.09 * h * sc)) }); }).then(add).then(function () {
+      var fresh = [], replace = null;
+      if (e) {   // экран кода: «E» и прочерки детектор режет на куски — склеиваем ряд в одну рамку и читаем целиком
+        var m0 = { x: (main.x - x0) * sc, y: (main.y - y0) * sc, w: main.w * sc, h: main.h * sc }, cy0 = m0.y + m0.h / 2;
+        var row = boxes.filter(function (b) { return Math.abs(b.cy - cy0) < m0.h * 0.6 && b.cx + b.w / 2 > m0.x - m0.h && b.h < m0.h * 1.6; });
+        if (row.length) {
+          var l0 = Math.min(m0.x, Math.min.apply(null, row.map(function (b) { return b.cx - b.w / 2; }))), r0 = Math.max(m0.x + m0.w, Math.max.apply(null, row.map(function (b) { return b.cx + b.w / 2; })));
+          var hh = Math.max(m0.h, Math.max.apply(null, row.map(function (b) { return b.h; })));
+          boxes = boxes.filter(function (b) { return row.indexOf(b) < 0; });
+          boxes.push({ cx: (l0 + r0) / 2 + hh * 0.1, cy: cy0, w: r0 - l0 + hh * 0.2, h: hh, angle: 0, score: 1 });
+        }
+      }
+      if (LOG) console.log('LCD main=' + t + ' e=' + e + ' sc=' + sc.toFixed(2) + ' cv=' + cv.width + 'x' + cv.height + ' boxes=' + JSON.stringify(boxes.map(function (b) { var a = area(b); return [Math.round(a.x), Math.round(a.y), Math.round(a.w), Math.round(a.h)]; })));
+      boxes.forEach(function (b) {
+        var a = area(b), hit = lines.filter(function (l) { return over(l, a); });
+        if (!hit.length) fresh.push(b);
+        else if (e && hit.length === 1 && hit[0] === main && a.w >= main.w * 1.5) { fresh.push(b); replace = b; }
+      });
+      if (!fresh.length) return null;
+      var got = [];
+      return readBoxes(cv, fresh, x0, y0, sc, got, true).then(function () {
+        got.forEach(function (l) { l.lcd = 1; });
+        if (replace && got.some(function (l) { return l.w >= main.w * 1.5 && /^[EeЕеＥ]/.test(l.text); })) lines.splice(lines.indexOf(main), 1);
+        Array.prototype.push.apply(lines, got);
+      });
+    }).then(function () { free(cv); }, function (er) { free(cv); throw er; });
+  }
   /** Окно прочитано уверенно: 4+ цифр, совпали в двух обработках, ведущий ноль или высокая уверенность;
    *  или 3 цифры, а ведущие ролики закрыл блик (lead). */
   function goodDrum(x) { return x.votes >= 2 && (x.text.length >= 4 ? (/^0/.test(x.text) || x.score > 0.92) : !!x.lead && x.score > 0.9); }
@@ -648,11 +711,21 @@
     else return null;
     var known = { get: function (o) { var i = cells.indexOf(o); return pos[i] >= 0 && !o.half && !o.part ? +t.charAt(pos[i]) : undefined; } };
     var out = '', hv = [];
+    // полоса → фото: середина и размер куска ролика в координатах исходного снимка
+    var toSrc = function (x0, x1, y0, y1) {
+      var ux = Math.cos(bx.angle), uy = Math.sin(bx.angle), kx = bx.w / cl.w, ky = bx.h / cl.h;
+      var u = ((x0 + x1 + 1) / 2 - cl.w / 2) * kx, v = ((y0 + y1 + 1) / 2 - cl.h / 2) * ky;
+      return { cx: bx.cx + u * ux - v * uy, cy: bx.cy + u * uy + v * ux, w: (x1 - x0 + 1) * kx, h: (y1 - y0 + 1) * ky, angle: bx.angle };
+    };
     cells.forEach(function (c, i) {
       if (!use(c)) { out += t.charAt(pos[i]); return; }
       var r = halfPair(cl, c, known), ok = r.sc >= 0.5 && r.margin >= 0.03;
-      hv.push({ i: out.length, d: ok ? r.d : null, sc: r.sc, margin: r.margin, rank: r.rank, part: c.part ? (c.A ? 'low' : 'high') : undefined });
-      if (ok) out += r.d;
+      // один кусок почти в рост цифры (≥ 75 %) — ролик не на переходе, а чуть сдвинут (люфт: «5» опущена, сверху хвост «4»);
+      // такую цифру видно — её прочитает распознаватель (readDrum), шаблонная пара тут только запасная
+      var P = c.half ? ((c.B.y1 - c.B.y0) >= (c.A.y1 - c.A.y0) ? c.B : c.A) : null, sh = null;
+      if (P && P.y1 - P.y0 + 1 >= 0.75 * Hg) { var pw = 0.3 * Hg, ph = 0.2 * Hg; sh = { big: P === c.B ? 'low' : 'high', tplD: ok ? r.d : null, box: toSrc(c.x0 - pw, c.x1 + pw, P.y0 - ph, P.y1 + ph) }; }
+      hv.push({ i: out.length, d: ok && !sh ? r.d : null, sc: r.sc, margin: r.margin, rank: r.rank, part: c.part ? (c.A ? 'low' : 'high') : undefined, shift: sh || undefined });
+      if (ok && !sh) out += r.d;
     });
     // голоса заново: обработка согласна, если совпала на всех роликах, кроме переходных (там у каждой своё или пусто)
     var hp = {}; hv.forEach(function (x) { hp[x.i] = 1; });
@@ -665,6 +738,17 @@
     return { text: out, half: hv, votes: votes };
   }
 
+  /** Одна цифра ролика (вырезанный кусок): три обработки, нужна одна и та же цифра в двух. → цифра | null */
+  function readCell(src, b) {
+    var got = {};
+    return ['inv', 'bin', 'plain'].reduce(function (ch, m) { return ch.then(function () { return recTensor(drumTensor(src, b, m)); }).then(function (r) {
+      var dg = r.text.replace(/[Oo]/g, '0').replace(/[^0-9]/g, ''); if (dg.length !== 1) return;
+      var g = got[dg] = got[dg] || { n: 0, s: 0 }; g.n++; g.s = Math.max(g.s, r.score);
+    }); }, Promise.resolve()).then(function () {
+      var k = Object.keys(got).sort(function (a, b) { return got[b].n - got[a].n || got[b].s - got[a].s; })[0];
+      return k !== undefined && got[k].n >= 2 && got[k].s >= 0.6 ? +k : null;
+    });
+  }
   /** Прочитать найденное окно: чёрные ролики (три обработки, голосование) и красные. Ориентация не ясна — читаем в обе стороны. */
   function readDrum(src, d) {
     var tries = [d.angle, d.angle + Math.PI], res = [];   // и в обратную сторону: красная рамка или текст у края путают ориентацию
@@ -706,10 +790,26 @@
       });
     });
     // ролик между цифрами: текст его пропускает или читает чужой цифрой — разбираем окно на ролики и узнаём пару
-    var half = null;
+    var half = null, shifted = [];
     chain = chain.then(function () {
       var win = res[0]; if (!win.best || win.ext || lead) return;
       try { half = halfFix(src, d, win); } catch (e) { half = null; }
+    });
+    // сдвинутый ролик: читаем его отдельно; цифра есть — это обычный ролик, нет — пара по шаблонам или «?»
+    chain = chain.then(function () {
+      var sh = half ? half.half.filter(function (x) { return x.shift; }) : [];
+      if (!sh.length) return null;
+      return sh.reduce(function (ch, x) { return ch.then(function () { return readCell(src, x.shift.box); }).then(function (D) { x.shift.rec = D; }); }, Promise.resolve()).then(function () {
+        var tx = half.text, off = 0, keep = [];
+        half.half.forEach(function (x) {
+          x.i += off;
+          if (x.shift && x.shift.rec !== null) { tx = tx.slice(0, x.i) + x.shift.rec + tx.slice(x.i); off++; shifted.push({ i: x.i, d: x.shift.rec, big: x.shift.big }); return; }
+          if (x.shift && x.shift.tplD !== null) { tx = tx.slice(0, x.i) + x.shift.tplD + tx.slice(x.i); off++; x.d = x.shift.tplD; }
+          delete x.shift; keep.push(x);
+        });
+        half.text = tx; half.half = keep;
+        if (root.TEPLO_DRUM_LOG) console.log('DBG shift', tx, JSON.stringify(shifted));
+      });
     });
     chain = chain.then(function () {
       var win = res[0]; if (!win.best) return null;
@@ -721,7 +821,7 @@
     return chain.then(function () {
       var win = res[0], b0 = win.best;
       var rd = reds.map(function (r) { return { d: r.text.replace(/[Oo]/g, '0').replace(/[^0-9]/g, ''), s: r.score }; }).filter(function (r) { return r.d.length >= 1 && r.d.length <= 4; }).sort(function (p, q) { return q.s - p.s; })[0];
-      return { text: half ? half.text : b0 ? b0.d : '', red: rd ? rd.d : '', half: half ? half.half : undefined, score: b0 ? +b0.s.toFixed(3) : 0, votes: b0 ? Math.max(b0.n, half ? half.votes : 0) : 0, alts: win.alts,
+      return { text: half ? half.text : b0 ? b0.d : '', red: rd ? rd.d : '', half: half && half.half.length ? half.half : undefined, shifted: shifted.length ? shifted : undefined, score: b0 ? +b0.s.toFixed(3) : 0, votes: b0 ? Math.max(b0.n, half ? half.votes : 0) : 0, alts: win.alts,
         x: Math.round(d.cx - d.w / 2), y: Math.round(d.cy - d.h / 2), w: Math.round(d.w), h: Math.round(d.h), angle: +win.ang.toFixed(3),
         flipped: Math.cos(win.ang) < -0.5, sure: d.sure, tint: d.tint, find: d.score, cells: Math.max(3, Math.round((d.w + (win.ext || 0)) / d.h / 0.68)), lead: lead || undefined, _res: root.TEPLO_DRUM_LOG ? res : undefined };
     });
@@ -760,6 +860,9 @@
           });
           return readBoxes(cv, fresh, x0, y0, sc, lines).then(function () { free(cv); });
         });
+      }).then(function () {
+        if (drums.some(goodDrum)) return null;
+        return lcdPass(src, lines).catch(function () { return null; });   // не вышло — остаётся первый проход
       });
     }).then(function () { var w = src.width, h = src.height; free(src); return { lines: lines, drums: drums, w: w, h: h, ms: Date.now() - t0 }; });
   }

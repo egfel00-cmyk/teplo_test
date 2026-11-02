@@ -2302,13 +2302,14 @@ input[type=text]:not(.dmy-native):not(.pl-in), input[type=email], input[type=pas
     { re: /^(G\s?cal|G\s?kal|Gca1|Гкал)$/i, field: 'energy', unit: 'Gcal', w: 3 }, { re: /^MW\s?h$/i, field: 'energy', unit: 'MWh', w: 3 },
     { re: /^GJ$/i, field: 'energy', unit: 'GJ', w: 3 }, { re: /^kW\s?h$/i, field: 'energy', unit: 'kWh', w: 3 },
     { re: /^m\s?[3³]\s?\/\s?h$/i, field: 'flow', unit: 'm³/h', w: 3 }, { re: /^k\s?W$/i, field: 'power', unit: 'kW', w: 3 },
-    { re: /^m\s?[3³]$/i, field: 'volume', unit: 'm³', w: 3 },
+    // «m³» отдельно: объём, но у Sharky расход — «m³» столбиком над «h» (решается ниже по «h» рядом); «m)», «mi» — тот же значок
+    { re: /^m\s?[3³]$/i, field: 'm', unit: 'm³', w: 3, cube: true },
     // подписи семисегментным шрифтом распознаются «похоже»: ht → be/bt/nt, ct → ce/cE, On → 0n/Dn, dt → de/BE (перепад — в форму не идёт)
     { re: /^(HT|T1|T\s?1|[hbn][tEe]|6e|b[e])$/, field: 'tSupply', unit: '°C', w: 4 }, { re: /^(HT|T1)$/i, field: 'tSupply', unit: '°C', w: 4 },
     { re: /^(CT|T2|T\s?2|c[tE]|C[t])$/, field: 'tReturn', unit: '°C', w: 4 }, { re: /^(CT|T2)$/i, field: 'tReturn', unit: '°C', w: 4 },
     { re: /^(dt|dE|de|BE|dT|d七)$/, field: 'dT', unit: '°C', w: 5 },
     { re: /^(ON|0N|On\s?h|0n|Dn|On)$/i, field: 'hours', unit: 'h', w: 4 }, { re: /^(EH|E\s?h|Err\s?h|ERR\s?H)$/i, field: 'errHours', unit: 'h', w: 4 },
-    { re: /^m$/, field: 'm', unit: 'm³', w: 2 },
+    { re: /^(m\s?[)'’iIl|]?|n[iIl)'’])$/, field: 'm', unit: 'm³', w: 2 },
     { re: /^(°\s?C|℃|C|°)$/i, field: 'temp', unit: '°C', w: 1 }, { re: /^h$/i, field: 'hours', unit: 'h', w: 1 }
   ];
   var DEC = { energy: 3, volume: 3, flow: 3, power: 3, tSupply: 2, tReturn: 2, hours: 0, errHours: 0 };
@@ -2443,6 +2444,8 @@ input[type=text]:not(.dmy-native):not(.pl-in), input[type=email], input[type=pas
     var all8 = noErr.map(function (l) { return digitsOf(l.text); }).join(''), n8 = (all8.match(/8/g) || []).length;
     var e8 = noErr.map(function (l) { return [l.text].concat(l.alts || []).map(function (x) { return digitsOf(x); }).filter(function (d) { return /^8{2,}1?$/.test(d); })[0] || ''; }).filter(Boolean);
     if ((e8.length >= 2 && e8.join('').length >= 5) || (noErr.length >= 2 && n8 >= 3 && all8.length >= 4 && n8 >= all8.length * 0.6)) { out.note = 'test_screen'; mains = []; out.anchor = -1; }
+    // осколок с кнопки или рамки («7» под наклоном) рядом с настоящим числом экрана — не показание (тест экрана уже разобран)
+    if (mains.some(function (l) { return digitsOf(l.text).length >= 3; })) mains = mains.filter(function (l) { return errAt(l) || digitsOf(l.text).length >= 3 || (l.alts || []).some(function (a) { return digitsOf(a).length >= 3; }); });
     var errDone = false;
     mains.forEach(function (l) {
       var er = errAt(l);
@@ -2463,9 +2466,9 @@ input[type=text]:not(.dmy-native):not(.pl-in), input[type=email], input[type=pas
       if (near.length) {
         field = near[0].tag.field; unit = near[0].tag.unit; label = near[0].lead ? bv.lead : near[0].line.text;
         if (field === 'dT') { out.kind = 'screen'; out.note = out.note || 'dt_screen'; out.anchor = 4.5; return; }   // перепад температур — в форму ХТМ не идёт
-        if (field === 'm') {   // «m³» отдельно от «/h»: короткое число — расход, длинное накопленное — объём
-          var hTag = tags.some(function (t) { return /^h$/i.test(String(t.line.text).trim()) && dist(l, t.line) < 6; });
-          if (hTag || bv.digits.length <= 5) { field = 'flow'; unit = 'm³/h'; } else { field = 'volume'; unit = 'm³'; }
+        if (field === 'm') {   // «m³» отдельно от «/h»: «h» рядом — расход; иначе «m³» — объём, неясное «m» — по длине числа
+          var hTag = lines.some(function (t) { return /^[hn]$/.test(String(t.text).trim()) && dist(l, t) < 6; });
+          if (hTag || (!near[0].tag.cube && bv.digits.length <= 5)) { field = 'flow'; unit = 'm³/h'; } else { field = 'volume'; unit = 'm³'; }
         }
         if (field === 'temp') {
           var spec = near.filter(function (t) { return t.tag.field === 'tSupply' || t.tag.field === 'tReturn'; })[0];
@@ -2623,7 +2626,7 @@ input[type=text]:not(.dmy-native):not(.pl-in), input[type=email], input[type=pas
     _engine: function (onPct) {
       var base = String(root.TEPLO_API).replace(/\/api\/?$/, '') + '/web/ocr/';
       var script = root.TeploOCR ? Promise.resolve() : (this._script = this._script || new Promise(function (ok, bad) {
-        var s = document.createElement('script'); s.src = base + 'engine.js?v=11'; s.onload = ok; s.onerror = function () { bad(fail('engine_failed')); }; document.head.appendChild(s);
+        var s = document.createElement('script'); s.src = base + 'engine.js?v=12'; s.onload = ok; s.onerror = function () { bad(fail('engine_failed')); }; document.head.appendChild(s);
       }));
       return script.then(function () { return root.TeploOCR.load(base, onPct); }).catch(function (e) { if (e && e.code) throw e; throw fail('engine_failed'); });
     },
@@ -2660,6 +2663,37 @@ input[type=text]:not(.dmy-native):not(.pl-in), input[type=email], input[type=pas
         if (self.isIn()) uploads.then(function () { if (ids.length) post('/recognize/local', JSON.stringify({ ids: ids, results: results }), 'application/json').catch(function () {}); });
         return out;
       }, function (e) { if (signal && signal.aborted) throw fail('cancelled'); throw e; });
+    },
+
+    /**
+     * Вода «з фото»: копия фото и итог по водомерам — в /admin, как у тепла (только вошедшим; ошибки молча).
+     * items: [{ file, photo: {index, kind:'water', meterType:'water', readings:[{field, meter, value, partial, half, guess, lead, why}]}, ms, res }].
+     * Копия загружается один раз (file._srv) — потом её же берёт запись истории; итог можно слать повторно (перезапишется).
+     */
+    waterReport: function (items) {
+      var self = this, api = root.TEPLO_API;
+      if (!this.local || !api || !this.isIn() || !items || !items.length) return Promise.resolve();
+      var post = function (path, body, type) {
+        var go = function () { return fetch(api + path, { method: 'POST', body: body, credentials: 'same-origin', headers: { 'Content-Type': type, 'X-CSRF': cookie('ts_csrf'), 'Accept': 'application/json' } }).then(function (r) { return r.json().catch(function () { return {}; }).then(function (j) { if (!r.ok) throw fail(httpCode(r.status)); return j; }); }); };
+        return cookie('ts_csrf') ? go() : fetch(api + '/config', { credentials: 'same-origin' }).then(go);
+      };
+      var ids = [], results = [], chain = Promise.resolve();
+      items.slice(0, 20).forEach(function (it) {
+        chain = chain.then(function () {
+          if (it.file._srv) return it.file._srv;
+          // загрузка уже идёт (второй отчёт подряд) — ждём её, а не грузим то же фото ещё раз
+          if (!it.file._up) it.file._up = self.prepare(it.file).then(function (b) { return post('/recognize/upload', b, b.type || 'image/jpeg'); })
+            .then(function (j) { it.file._srv = j.id; return j.id; }, function (e) { it.file._up = null; throw e; });
+          return it.file._up;
+        }).then(function (id) {
+          var res = it.res || {};
+          ids.push(id);
+          results.push({ photo: it.photo, ms: it.ms || 0,
+            ocr: (res.lines || []).slice(0, 80).map(function (l) { return { t: String(l.text).slice(0, 80), a: l.alts ? l.alts.map(function (x) { return String(x).slice(0, 40); }) : undefined, s: l.score, h: l.h }; }),
+            drums: (res.drums || []).slice(0, 6).map(function (d) { return { text: d.text, red: d.red, score: d.score, votes: d.votes, tint: d.tint, lead: d.lead, half: d.half, shifted: d.shifted, cells: d.cells }; }) });
+        }, function () { /* без копии — без итога */ });
+      });
+      return chain.then(function () { if (ids.length) return post('/recognize/local', JSON.stringify({ ids: ids, results: results }), 'application/json'); }).catch(function () {});
     },
 
     /** Итог для аналитики: что не нашлось, где разные цифры, что человек исправил. Ошибки молча игнорируем. */
@@ -3972,14 +4006,14 @@ input[type=text]:not(.dmy-native):not(.pl-in), input[type=email], input[type=pas
       wnRead();
       var p = wprevFor(mid, WN.date || today()), r = Wt.fromOcr(res, p ? p.vals[mid] : null);
       WN.photos.forEach(function (x) { x.meters = (x.meters || []).filter(function (k) { return k !== mid; }); });
-      WN.photos.push({ file: file, url: URL.createObjectURL(file), res: { lines: res.lines, drums: res.drums }, meters: [mid], fixed: mid });
+      WN.photos.push({ file: file, url: URL.createObjectURL(file), res: { lines: res.lines, drums: res.drums }, ms: res.ms, meters: [mid], fixed: mid });
       var pi = WN.photos.length - 1;
       if (!r) WN.src[mid] = { photo: pi, value: null, none: true };
       else {
         WN.src[mid] = { photo: pi, value: r.value, partial: r.partial || null, half: !!r.half, pair: r.pair || null, lead: !!r.lead && !r.sure, why: 'field' };
         if (r.value !== null) { WN.vals[mid] = String(r.value); WN.auto[mid] = true; }
       }
-      render(true); wnCheck(true);
+      render(true); wnCheck(true); wnReport();
       var inp = document.getElementById('wn-' + mid); if (inp && (!r || r.value === null)) inp.focus();
     }, function () { if (lab) lab.removeAttribute('aria-busy'); if (help) { help.textContent = t('ph_err_engine'); help.className = 'help warn'; } });
   }
@@ -4050,11 +4084,24 @@ input[type=text]:not(.dmy-native):not(.pl-in), input[type=email], input[type=pas
       var chain = Promise.resolve();
       todo.forEach(function (p, i) {
         chain = chain.then(function () { if (!live()) return null; wnProg(15 + 85 * (i + 0.3) / n, n > 1 ? t('ph_reading', { i: i + 1, n: n }) : t('wn_reading')); return limit(window.TeploOCR.read(p.file, { all: true })); })
-          .then(function (res) { if (res) p.res = { lines: res.lines, drums: res.drums }; }, function () { p.res = { lines: [], drums: [] }; });
+          .then(function (res) { if (res) { p.res = { lines: res.lines, drums: res.drums }; p.ms = res.ms; } }, function () { p.res = { lines: [], drums: [] }; });
       });
       return chain;
-    }).then(function () { if (!live()) return; WN.busy = false; wnAssign(); render(true); wnCheck(true); },
+    }).then(function () { if (!live()) return; WN.busy = false; wnAssign(); render(true); wnCheck(true); wnReport(); },
       function () { if (!live()) return; WN.busy = false; WN.err = t('ph_err_engine'); render(true); });
+  }
+  /** Аналитика (/admin): копии фото воды и что по ним разложилось — у вошедших, как у тепла. */
+  function wnReport() {
+    if (!VIS().waterReport) return;
+    var ms = wmeters();
+    VIS().waterReport(WN.photos.filter(function (p) { return p.res && p.file; }).map(function (p) {
+      var i = WN.photos.indexOf(p);
+      var rd = ms.filter(function (m) { return (p.meters || []).indexOf(m.id) >= 0; }).map(function (m) {
+        var x = WN.src[m.id] || {};
+        return { field: 'water_' + m.kind, meter: m.id, unit: 'м³', value: x.value === undefined ? null : x.value, partial: x.partial || null, half: !!x.half, guess: !!x.guess, lead: !!x.lead, why: x.why || '' };
+      });
+      return { file: p.file, ms: p.ms || 0, res: p.res, photo: { index: i, kind: 'water', meterType: 'water', readings: rd, quality: 'ok', note: rd.length ? '' : 'no_drum' } };
+    }));
   }
   /** Раскладка: фото с камеры у поля — за своим водомером; остальные — Wt.assign (№, цвет кольца, близость к прошлым). */
   function wnAssign() {

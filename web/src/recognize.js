@@ -63,7 +63,7 @@
     _engine: function (onPct) {
       var base = String(root.TEPLO_API).replace(/\/api\/?$/, '') + '/web/ocr/';
       var script = root.TeploOCR ? Promise.resolve() : (this._script = this._script || new Promise(function (ok, bad) {
-        var s = document.createElement('script'); s.src = base + 'engine.js?v=11'; s.onload = ok; s.onerror = function () { bad(fail('engine_failed')); }; document.head.appendChild(s);
+        var s = document.createElement('script'); s.src = base + 'engine.js?v=12'; s.onload = ok; s.onerror = function () { bad(fail('engine_failed')); }; document.head.appendChild(s);
       }));
       return script.then(function () { return root.TeploOCR.load(base, onPct); }).catch(function (e) { if (e && e.code) throw e; throw fail('engine_failed'); });
     },
@@ -100,6 +100,37 @@
         if (self.isIn()) uploads.then(function () { if (ids.length) post('/recognize/local', JSON.stringify({ ids: ids, results: results }), 'application/json').catch(function () {}); });
         return out;
       }, function (e) { if (signal && signal.aborted) throw fail('cancelled'); throw e; });
+    },
+
+    /**
+     * Вода «з фото»: копия фото и итог по водомерам — в /admin, как у тепла (только вошедшим; ошибки молча).
+     * items: [{ file, photo: {index, kind:'water', meterType:'water', readings:[{field, meter, value, partial, half, guess, lead, why}]}, ms, res }].
+     * Копия загружается один раз (file._srv) — потом её же берёт запись истории; итог можно слать повторно (перезапишется).
+     */
+    waterReport: function (items) {
+      var self = this, api = root.TEPLO_API;
+      if (!this.local || !api || !this.isIn() || !items || !items.length) return Promise.resolve();
+      var post = function (path, body, type) {
+        var go = function () { return fetch(api + path, { method: 'POST', body: body, credentials: 'same-origin', headers: { 'Content-Type': type, 'X-CSRF': cookie('ts_csrf'), 'Accept': 'application/json' } }).then(function (r) { return r.json().catch(function () { return {}; }).then(function (j) { if (!r.ok) throw fail(httpCode(r.status)); return j; }); }); };
+        return cookie('ts_csrf') ? go() : fetch(api + '/config', { credentials: 'same-origin' }).then(go);
+      };
+      var ids = [], results = [], chain = Promise.resolve();
+      items.slice(0, 20).forEach(function (it) {
+        chain = chain.then(function () {
+          if (it.file._srv) return it.file._srv;
+          // загрузка уже идёт (второй отчёт подряд) — ждём её, а не грузим то же фото ещё раз
+          if (!it.file._up) it.file._up = self.prepare(it.file).then(function (b) { return post('/recognize/upload', b, b.type || 'image/jpeg'); })
+            .then(function (j) { it.file._srv = j.id; return j.id; }, function (e) { it.file._up = null; throw e; });
+          return it.file._up;
+        }).then(function (id) {
+          var res = it.res || {};
+          ids.push(id);
+          results.push({ photo: it.photo, ms: it.ms || 0,
+            ocr: (res.lines || []).slice(0, 80).map(function (l) { return { t: String(l.text).slice(0, 80), a: l.alts ? l.alts.map(function (x) { return String(x).slice(0, 40); }) : undefined, s: l.score, h: l.h }; }),
+            drums: (res.drums || []).slice(0, 6).map(function (d) { return { text: d.text, red: d.red, score: d.score, votes: d.votes, tint: d.tint, lead: d.lead, half: d.half, shifted: d.shifted, cells: d.cells }; }) });
+        }, function () { /* без копии — без итога */ });
+      });
+      return chain.then(function () { if (ids.length) return post('/recognize/local', JSON.stringify({ ids: ids, results: results }), 'application/json'); }).catch(function () {});
     },
 
     /** Итог для аналитики: что не нашлось, где разные цифры, что человек исправил. Ошибки молча игнорируем. */

@@ -28,13 +28,14 @@
     { re: /^(G\s?cal|G\s?kal|Gca1|Гкал)$/i, field: 'energy', unit: 'Gcal', w: 3 }, { re: /^MW\s?h$/i, field: 'energy', unit: 'MWh', w: 3 },
     { re: /^GJ$/i, field: 'energy', unit: 'GJ', w: 3 }, { re: /^kW\s?h$/i, field: 'energy', unit: 'kWh', w: 3 },
     { re: /^m\s?[3³]\s?\/\s?h$/i, field: 'flow', unit: 'm³/h', w: 3 }, { re: /^k\s?W$/i, field: 'power', unit: 'kW', w: 3 },
-    { re: /^m\s?[3³]$/i, field: 'volume', unit: 'm³', w: 3 },
+    // «m³» отдельно: объём, но у Sharky расход — «m³» столбиком над «h» (решается ниже по «h» рядом); «m)», «mi» — тот же значок
+    { re: /^m\s?[3³]$/i, field: 'm', unit: 'm³', w: 3, cube: true },
     // подписи семисегментным шрифтом распознаются «похоже»: ht → be/bt/nt, ct → ce/cE, On → 0n/Dn, dt → de/BE (перепад — в форму не идёт)
     { re: /^(HT|T1|T\s?1|[hbn][tEe]|6e|b[e])$/, field: 'tSupply', unit: '°C', w: 4 }, { re: /^(HT|T1)$/i, field: 'tSupply', unit: '°C', w: 4 },
     { re: /^(CT|T2|T\s?2|c[tE]|C[t])$/, field: 'tReturn', unit: '°C', w: 4 }, { re: /^(CT|T2)$/i, field: 'tReturn', unit: '°C', w: 4 },
     { re: /^(dt|dE|de|BE|dT|d七)$/, field: 'dT', unit: '°C', w: 5 },
     { re: /^(ON|0N|On\s?h|0n|Dn|On)$/i, field: 'hours', unit: 'h', w: 4 }, { re: /^(EH|E\s?h|Err\s?h|ERR\s?H)$/i, field: 'errHours', unit: 'h', w: 4 },
-    { re: /^m$/, field: 'm', unit: 'm³', w: 2 },
+    { re: /^(m\s?[)'’iIl|]?|n[iIl)'’])$/, field: 'm', unit: 'm³', w: 2 },
     { re: /^(°\s?C|℃|C|°)$/i, field: 'temp', unit: '°C', w: 1 }, { re: /^h$/i, field: 'hours', unit: 'h', w: 1 }
   ];
   var DEC = { energy: 3, volume: 3, flow: 3, power: 3, tSupply: 2, tReturn: 2, hours: 0, errHours: 0 };
@@ -169,6 +170,8 @@
     var all8 = noErr.map(function (l) { return digitsOf(l.text); }).join(''), n8 = (all8.match(/8/g) || []).length;
     var e8 = noErr.map(function (l) { return [l.text].concat(l.alts || []).map(function (x) { return digitsOf(x); }).filter(function (d) { return /^8{2,}1?$/.test(d); })[0] || ''; }).filter(Boolean);
     if ((e8.length >= 2 && e8.join('').length >= 5) || (noErr.length >= 2 && n8 >= 3 && all8.length >= 4 && n8 >= all8.length * 0.6)) { out.note = 'test_screen'; mains = []; out.anchor = -1; }
+    // осколок с кнопки или рамки («7» под наклоном) рядом с настоящим числом экрана — не показание (тест экрана уже разобран)
+    if (mains.some(function (l) { return digitsOf(l.text).length >= 3; })) mains = mains.filter(function (l) { return errAt(l) || digitsOf(l.text).length >= 3 || (l.alts || []).some(function (a) { return digitsOf(a).length >= 3; }); });
     var errDone = false;
     mains.forEach(function (l) {
       var er = errAt(l);
@@ -189,9 +192,9 @@
       if (near.length) {
         field = near[0].tag.field; unit = near[0].tag.unit; label = near[0].lead ? bv.lead : near[0].line.text;
         if (field === 'dT') { out.kind = 'screen'; out.note = out.note || 'dt_screen'; out.anchor = 4.5; return; }   // перепад температур — в форму ХТМ не идёт
-        if (field === 'm') {   // «m³» отдельно от «/h»: короткое число — расход, длинное накопленное — объём
-          var hTag = tags.some(function (t) { return /^h$/i.test(String(t.line.text).trim()) && dist(l, t.line) < 6; });
-          if (hTag || bv.digits.length <= 5) { field = 'flow'; unit = 'm³/h'; } else { field = 'volume'; unit = 'm³'; }
+        if (field === 'm') {   // «m³» отдельно от «/h»: «h» рядом — расход; иначе «m³» — объём, неясное «m» — по длине числа
+          var hTag = lines.some(function (t) { return /^[hn]$/.test(String(t.text).trim()) && dist(l, t) < 6; });
+          if (hTag || (!near[0].tag.cube && bv.digits.length <= 5)) { field = 'flow'; unit = 'm³/h'; } else { field = 'volume'; unit = 'm³'; }
         }
         if (field === 'temp') {
           var spec = near.filter(function (t) { return t.tag.field === 'tSupply' || t.tag.field === 'tReturn'; })[0];

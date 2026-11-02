@@ -14,7 +14,7 @@ final class Recognize {
     'nik7071' => 'НІК 7071', 'trust' => 'TRUST', 'other' => 'other heat meter'];
   const ORDER = ['sharky774' => '1) energy [Gcal] 2) volume [m³ in the top right corner] 3) flow [m³/h] 4) power [kW] 5) tSupply + tReturn [alternating ht/ct] 6) hours + errHours [alternating On/Eh] 7) errCode'];
   const FIELD_RU = ['energy' => 'энергия', 'volume' => 'объём', 'flow' => 'расход', 'power' => 'мощность', 'tSupply' => 'подача', 'tReturn' => 'обратка',
-    'hours' => 'часы работы', 'errHours' => 'часы с ошибкой', 'errCode' => 'код ошибки'];
+    'hours' => 'часы работы', 'errHours' => 'часы с ошибкой', 'errCode' => 'код ошибки', 'water_hot' => 'горячая вода', 'water_cold' => 'холодная вода'];
   const QUALITY_RU = ['blurry' => 'размыто', 'glare' => 'блик на экране', 'too_far' => 'снято издалека', 'cut_off' => 'экран обрезан', 'dark' => 'темно'];
   /** Вызов API; в тестах подменяется. fn(array $payload): array */
   public static $call = null;
@@ -122,6 +122,17 @@ final class Recognize {
       $p = Db::one('SELECT id FROM photos WHERE id = ? AND user_id = ?', [$id, $uid]); if (!$p) continue;
       $r = $res[$k] ?? null; $ph = is_array($r['photo'] ?? null) ? $r['photo'] : null; $problems = [];
       if (!$ph) $problems[] = 'распознаватель ничего не вернул по этому фото';
+      elseif (($ph['kind'] ?? '') === 'water') {   // водомеры («Вода з фото»): итог по каждому водомеру на снимке
+        $readings = array_filter((array)($ph['readings'] ?? []), 'is_array');
+        if (!$readings) $problems[] = 'водомер на фото не найден (окно барабана не прочиталось или не подошло ни к одному водомеру)';
+        foreach ($readings as $x) {
+          $nm = self::FIELD_RU[$x['field'] ?? ''] ?? 'вода';
+          if (($x['value'] ?? null) === null) $problems[] = $nm . ': ролик между цифрами не узнан («' . mb_substr((string)($x['partial'] ?? '?'), 0, 12) . '») — человек допишет';
+          elseif (!empty($x['half'])) $problems[] = $nm . ': ролик между цифрами — взята меньшая цифра';
+          if (!empty($x['guess'])) $problems[] = $nm . ': не ясно, горячая или холодная — разложено наугад';
+          if (!empty($x['lead'])) $problems[] = $nm . ': первые цифры под бликом';
+        }
+      }
       else {
         $mt = (string)($ph['meterType'] ?? '');
         if (isset(self::OTHER_RU[$mt])) $problems[] = 'на фото счётчик ' . self::OTHER_RU[$mt] . ', а не тепла';
@@ -134,7 +145,7 @@ final class Recognize {
         elseif ($note === 'no_dot') $problems[] = 'не видно десятичной точки';
         elseif ($note === 'unit_guess') $problems[] = 'единица на экране не прочиталась — взята типичная для модели';
       }
-      $json = json_encode(['photo' => $ph, 'meter' => $r['meter'] ?? null, 'ms' => (int)($r['ms'] ?? 0), 'engine' => 'local', 'ocr' => array_slice((array)($r['ocr'] ?? []), 0, 80)], JSON_UNESCAPED_UNICODE);
+      $json = json_encode(['photo' => $ph, 'meter' => $r['meter'] ?? null, 'ms' => (int)($r['ms'] ?? 0), 'engine' => 'local', 'ocr' => array_slice((array)($r['ocr'] ?? []), 0, 80), 'drums' => array_slice((array)($r['drums'] ?? []), 0, 6)], JSON_UNESCAPED_UNICODE);
       if (strlen((string)$json) > 60000) $json = json_encode(['photo' => $ph, 'meter' => $r['meter'] ?? null, 'engine' => 'local'], JSON_UNESCAPED_UNICODE);
       Db::q('UPDATE photos SET status = ?, result = ?, problem = ? WHERE id = ?', [$ph ? 'recognized' : 'failed', $json, $problems ? implode('; ', $problems) : null, $id]);
       $n++;
