@@ -539,3 +539,10 @@ input[type=text]:not(.dmy-native):not(.pl-in), input[type=email], input[type=pas
 /* настройки: флажок строкой */
 .check-row { display: flex; align-items: center; gap: 10px; min-height: var(--tap); cursor: pointer; font-weight: 600; }
 .check-row input { width: 22px; height: 22px; accent-color: var(--c-ink); flex: none; }
+
+/* «Скасувати й вийти» внизу ввода; черновик на главной */
+.wiz-cancel { margin: var(--sp-5) 0 0; text-align: center; }
+.wiz-cancel .linkbtn { color: var(--c-bad); }
+.home-draft { margin-bottom: 16px; display: grid; gap: 6px; justify-items: center; }
+.home-draft .btn { width: 100%; }
+.home-draft .linkbtn { color: var(--c-ink-2); }

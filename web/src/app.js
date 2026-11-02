@@ -391,7 +391,8 @@
     loadInbox();
     if (INBOX.items && INBOX.items.length) html += '<div class="banner" data-key="home-inbox">' + ico('camera', 22) + '<div><p><b>' + esc(t('ib_title', { n: INBOX.items.length })) + '</b></p><p>' + esc(t('ib_sub')) + '</p><p><button class="btn" data-act="inbox-run" data-key="home-inbox-run">' + esc(t('ib_run')) + '</button></p></div></div>';
     var draft = S.draft && (Object.keys(S.draft.values || {}).length || S.draft.step > 0);
-    if (draft && S.meter) html += '<a class="btn big block" style="margin-bottom:16px" href="#step-' + (S.draft.step || 0) + '" data-key="home-continue">' + esc(t('h_continue', { i: (S.draft.step || 0) + 1, n: steps().length })) + '</a>';
+    if (draft && S.meter) html += '<div class="home-draft"><a class="btn big block" href="#step-' + (S.draft.step || 0) + '" data-key="home-continue">' + esc(t('h_continue', { i: (S.draft.step || 0) + 1, n: steps().length })) + '</a>' +
+      '<button type="button" class="linkbtn" data-act="wiz-cancel" data-what="heat" data-key="home-draft-cancel">' + esc(t('wz_cancel_draft')) + '</button></div>';
     html += '<div class="ucards">' + heatCard() + waterCard('hot') + waterCard('cold') + '</div>';
     html += '<p class="small muted ucards-hint">' + esc(t('uc_hint')) + '</p>';
     if (window.TEPLO_API) html += testReset();
@@ -685,6 +686,8 @@
   }
 
   // ---------- ввод показаний воды ----------
+  /** Кнопка «Скасувати» внизу ввода: бросить всё введённое этим разом и выйти. */
+  function cancelLink(what) { return '<p class="wiz-cancel"><button type="button" class="linkbtn" data-act="wiz-cancel" data-what="' + what + '" data-key="wiz-cancel">' + esc(t('wz_cancel')) + '</button></p>'; }
   function wnFresh(kind) { return { kind: kind || 'hot', date: '', vals: {}, photos: [], src: {}, auto: {}, unused: [], busy: false }; }
   var WN = wnFresh('hot');
   V.wnew = function () {
@@ -702,7 +705,7 @@
           '<div class="help" id="wh-' + m.id + '">' + esc(wnSrcText(m.id)) + (p ? esc(t('wn_prev', { v: Wt.whole(p.vals[m.id]), d: fmtDate(p.date) })) : esc(t('wn_first'))) + '</div></div>';
       }).join('') +
       '<p class="small muted">' + esc(t('wn_digits')) + '</p>' +
-      '<div class="wiz-actions"><button class="btn" type="submit" data-key="wn-save">' + esc(t('wn_save')) + '</button></div></form>';
+      '<div class="wiz-actions"><button class="btn" type="submit" data-key="wn-save">' + esc(t('wn_save')) + '</button></div></form>' + cancelLink('water');
     return { screen: 'S31', route: 'wnew', bare: true, closeTo: back, html: h };
   };
   function wnRead() { Array.prototype.forEach.call(document.querySelectorAll('[data-wn]'), function (el) { WN.vals[el.getAttribute('data-wn')] = el.value.trim(); }); var d = document.getElementById('wn-date'); if (d && d.value) WN.date = d.value; }
@@ -827,6 +830,7 @@
         Object.keys(r3.vals || {}).forEach(function (k) { v3[k] = String(r3.vals[k]); });
         WN = Object.assign(wnFresh(k3), { date: r3.date, vals: v3, back: 'wrec-' + r3.id }); go('wnew'); return true; }
       case 'view': S.view = el.getAttribute('data-v'); persist(); render(true); return true;
+      case 'wn-stop': { wnRead(); WN.gen = -1; WN.busy = false; WN.photos = WN.photos.filter(function (p) { return p.res; }); if (WN.photos.some(function (p) { return !p.fixed; })) wnAssign(); render(true); wnCheck(true); return true; }
       case 'wn-swap': { wnRead(); var a = el.getAttribute('data-a'), b = el.getAttribute('data-b'), va = WN.vals[a], sa = WN.src[a];
         WN.vals[a] = WN.vals[b]; WN.vals[b] = va; WN.src[a] = WN.src[b]; WN.src[b] = sa;
         [a, b].forEach(function (k) { if (WN.src[k]) WN.src[k] = Object.assign({}, WN.src[k], { guess: false, why: 'swap' }); });
@@ -896,7 +900,8 @@
   function wnPhotoBox() {
     if (!VIS().local) return '';
     var ph = WN.photos || [], ms = wmeters(), h = '<div class="panel wn-photo" data-key="wn-photo"><input type="file" id="wn-files" accept="image/*" multiple class="sr" data-key="wn-files">';
-    if (WN.busy) h += '<div class="banner" role="status" style="margin:0">' + SPIN + '<div class="grow"><p id="wn-prog">' + esc(WN.prog || t('wn_reading')) + '</p><div class="pbar" aria-hidden="true"><i id="wn-pbar" style="width:' + (WN.pct || 2) + '%"></i></div></div></div>';
+    if (WN.busy) h += '<div class="banner" role="status" style="margin:0">' + SPIN + '<div class="grow"><p id="wn-prog">' + esc(WN.prog || t('wn_reading')) + '</p><div class="pbar" aria-hidden="true"><i id="wn-pbar" style="width:' + (WN.pct || 2) + '%"></i></div>' +
+      '<p style="margin:10px 0 0"><button class="btn sec" data-act="wn-stop" data-key="wn-stop">' + ico('close', 18) + '<span>' + esc(t('ph_stop')) + '</span></button></p></div></div>';
     else h += '<label for="wn-files" class="btn ' + (ph.length ? 'sec' : 'big block') + '" tabindex="0" data-key="wn-photo-pick">' + ico('camera', 22) + '<span>' + esc(ph.length ? t('wnp_more') : t('wnp_pick')) + '</span></label>' +
       (ph.length ? '' : '<p class="small muted" style="margin:8px 0 0">' + esc(t('wnp_hint')) + '</p>');
     if (WN.err) h += '<p class="help warn">' + esc(WN.err) + '</p>';
@@ -933,16 +938,19 @@
     wnRead(); WN.err = '';
     files.forEach(function (f) { WN.photos.push({ file: f, url: URL.createObjectURL(f), res: null, meters: [] }); });
     var todo = WN.photos.filter(function (p) { return !p.res; }), n = todo.length; if (!n) return;
+    var gen = WN.gen = (WN.gen > 0 ? WN.gen : 0) + 1, w = WN, live = function () { return WN === w && WN.gen === gen; };
     WN.busy = true; WN.pct = 2; WN.prog = t('wn_reading'); render(true);
-    VIS()._engine(function (p) { wnProg(p * 15, t('ph_loading', { p: Math.round(p * 100) })); }).then(function () {
+    // фото не дольше 90 с: зависло — считаем «не прочитано» и идём дальше (кнопка «Зупинити» — сразу)
+    var limit = function (pr) { return Promise.race([pr, new Promise(function (ok, bad) { setTimeout(function () { bad(new Error('timeout')); }, 90000); })]); };
+    VIS()._engine(function (p) { if (live()) wnProg(p * 15, t('ph_loading', { p: Math.round(p * 100) })); }).then(function () {
       var chain = Promise.resolve();
       todo.forEach(function (p, i) {
-        chain = chain.then(function () { wnProg(15 + 85 * (i + 0.3) / n, n > 1 ? t('ph_reading', { i: i + 1, n: n }) : t('wn_reading')); return window.TeploOCR.read(p.file, { all: true }); })
-          .then(function (res) { p.res = { lines: res.lines, drums: res.drums }; }, function () { p.res = { lines: [], drums: [] }; });
+        chain = chain.then(function () { if (!live()) return null; wnProg(15 + 85 * (i + 0.3) / n, n > 1 ? t('ph_reading', { i: i + 1, n: n }) : t('wn_reading')); return limit(window.TeploOCR.read(p.file, { all: true })); })
+          .then(function (res) { if (res) p.res = { lines: res.lines, drums: res.drums }; }, function () { p.res = { lines: [], drums: [] }; });
       });
       return chain;
-    }).then(function () { WN.busy = false; wnAssign(); render(true); wnCheck(true); },
-      function () { WN.busy = false; WN.err = t('ph_err_engine'); render(true); });
+    }).then(function () { if (!live()) return; WN.busy = false; wnAssign(); render(true); wnCheck(true); },
+      function () { if (!live()) return; WN.busy = false; WN.err = t('ph_err_engine'); render(true); });
   }
   /** Раскладка: фото с камеры у поля — за своим водомером; остальные — Wt.assign (№, цвет кольца, близость к прошлым). */
   function wnAssign() {
@@ -1179,7 +1187,7 @@
     }
     var isLast = i === n - 1;
     var actions = '<div class="wiz-actions">' + (i > 0 ? '<a class="btn sec" href="#step-' + (i - 1) + '" data-act="step-back" data-i="' + (i - 1) + '" data-key="step-back">' + ico('back', 20) + '<span>' + esc(t('back')) + '</span></a>' : '') +
-      '<button class="btn" data-act="step-next" data-i="' + i + '" data-key="step-next">' + esc(isLast ? t('s_to_check') : t('next')) + '</button></div>';
+      '<button class="btn" data-act="step-next" data-i="' + i + '" data-key="step-next">' + esc(isLast ? t('s_to_check') : t('next')) + '</button></div>' + cancelLink('heat');
     return { screen: 'S05', route: 'step', bare: true, closeTo: 'home', html: head + '<div class="wiz"><div>' + left + '</div><div><form id="step-form" novalidate>' + right + actions + '</form></div></div>' };
   };
   function lcdText(k, v) { if (k === 'errCode') return R.normCode(v).replace(/-/g, '-'); var x = String(v).replace(',', '.'); return x; }
@@ -1237,7 +1245,7 @@
       '<div class="wiz-top"><a class="btn ghost" href="#step-' + (steps().length - 1) + '">' + ico('back', 20) + '<span>' + esc(t('back')) + '</span></a></div>' +
       '<h1>' + esc(t('c_title')) + '</h1>' +
       '<div class="verdict ' + res.verdict + '" data-key="check-verdict" data-verdict="' + res.verdict + '" role="status">' + levelIco(res.verdict, 28) + '<span>' + esc(vText) + '</span></div>' +
-      '<div class="cols"><div>' + issues + period + '</div><div><h2 class="section-title" style="margin-top:0">' + esc(t('c_values')) + '</h2><table class="vals" data-key="check-values">' + rows + '</table></div></div>' + actions };
+      '<div class="cols"><div>' + issues + period + '</div><div><h2 class="section-title" style="margin-top:0">' + esc(t('c_values')) + '</h2><table class="vals" data-key="check-values">' + rows + '</table></div></div>' + actions + cancelLink('heat') };
   };
 
   V.handover = function () {
@@ -1350,8 +1358,9 @@
   function loadWeather() {
     if (!window.TEPLO_API) return;
     var rg = window.TeploStats && TeploStats.range(RD(), S.baseline); if (!rg) return;
-    var key = rg.from + '_' + rg.to; if (WX.key === key && (WX.days || WX.loading)) return;
-    WX = { key: key, days: null, loading: true, err: '' };
+    // ошибка — не повторять на каждой перерисовке (иначе ответ → перерисовка → запрос… по кругу); снова — через 5 минут
+    var key = rg.from + '_' + rg.to; if (WX.key === key && (WX.days || WX.loading || (WX.err && Date.now() - WX.at < 300000))) return;
+    WX = { key: key, days: null, loading: true, err: '', at: Date.now() };
     fetch(window.TEPLO_API + '/weather?from=' + rg.from + '&to=' + rg.to, { credentials: 'same-origin', headers: { Accept: 'application/json' } })
       .then(function (r) { return r.json(); }).then(function (j) { WX.loading = false; if (j && j.days) WX.days = j.days; else WX.err = (j && (j.human || j.error)) || 'error'; if (/^(stats|history|rec-)/.test(routeName())) safeRender(); },
         function () { WX.loading = false; WX.err = 'network'; if (routeName() === 'stats') safeRender(); });
@@ -1726,20 +1735,26 @@
     opts = opts || {}; var c = (document.cookie.match(/(?:^|; )ts_csrf=([^;]*)/) || [])[1] || '';
     return fetch(window.TEPLO_API + path, Object.assign({ credentials: 'same-origin', headers: { 'Content-Type': 'application/json', 'X-CSRF': c, Accept: 'application/json' } }, opts));
   }
-  function loadInbox() {
+  /** Фото из бота. Главная зовёт это на каждой отрисовке — спрашиваем сервер не чаще раза в минуту и перерисовываем,
+   *  только если список изменился (иначе ответ → перерисовка → запрос… и главная «мигает», нажатия теряются). */
+  function loadInbox(force) {
     if (!window.TEPLO_API || !Y().account || INBOX.loading) return;
-    INBOX.loading = true;
+    if (!force && !INBOX.auto && INBOX.items !== null && Date.now() - (INBOX.at || 0) < 60000) return;
+    INBOX.loading = true; INBOX.at = Date.now();
+    var before = JSON.stringify((INBOX.items || []).map(function (x) { return x.id; }));
     api0('/inbox').then(function (r) { return r.json(); }).then(function (j) {
       INBOX.loading = false; INBOX.items = (j && j.items) || [];
+      var changed = before !== JSON.stringify(INBOX.items.map(function (x) { return x.id; }));
       if (INBOX.auto) { try { history.replaceState(null, '', location.pathname + location.hash); } catch (e) { /* нет */ } }
       if (INBOX.auto && INBOX.items.length && PH.status !== 'working') { INBOX.auto = false; inboxRun(); return; }
       INBOX.auto = false;
-      if (['home', ''].indexOf(routeName()) >= 0) safeRender();
+      if (changed && ['home', ''].indexOf(routeName()) >= 0) safeRender();
     }, function () { INBOX.loading = false; });
   }
   function inboxRun() {
     var items = (INBOX.items || []).slice(); if (!items.length) return;
     phReset('reading'); PH.inbox = items.map(function (x) { return x.id; }); PH.status = 'working'; PH.progress = t('ib_loading'); PH.pct = 2;
+    var gen = ++PH_GEN; PH.gen = gen;
     go('photo');
     Promise.all(items.map(function (x) {
       return fetch(window.TEPLO_API + '/inbox/file?id=' + encodeURIComponent(x.id), { credentials: 'same-origin' }).then(function (r) { if (!r.ok) throw new Error('file'); return r.blob(); }).then(function (b) {
@@ -1747,8 +1762,9 @@
         f._srv = x.id; return f;
       });
     })).then(function (files) {
+      if (PH.gen !== gen) return;
       PH.files = files; PH.urls = files.map(function (f) { return URL.createObjectURL(f); }); PH.status = 'idle'; PHS.save(true); phRun();
-    }, function () { PH.status = 'idle'; PH.error = t('err_network'); render(true); });
+    }, function () { if (PH.gen !== gen) return; PH.status = 'idle'; PH.error = t('err_network'); render(true); });
   }
   function inboxDone() {
     var ids = PH.inbox; if (!ids || !ids.length || !window.TEPLO_API) return;
@@ -1758,7 +1774,7 @@
   /** Кнопка «в работе»: крутится значок, повторно не нажать; возвращает «готово». */
   function busy(btn) { if (!btn) return function () {}; btn.setAttribute('aria-busy', 'true'); btn.disabled = true; return function () { btn.removeAttribute('aria-busy'); btn.disabled = false; }; }
   var SPIN = '<span class="spin" aria-hidden="true"></span>';
-  var PH = { mode: 'reading', files: [], urls: [], status: 'idle', result: null, picked: null, error: '', ctl: null, progress: '' };
+  var PH = { mode: 'reading', files: [], urls: [], status: 'idle', result: null, picked: null, error: '', ctl: null, progress: '' }, PH_GEN = 0;
   function phReset(mode, keep) { if (!keep) PHS.clear(); PH.urls.forEach(function (u) { try { URL.revokeObjectURL(u); } catch (e) { /* нет */ } }); PH = { mode: mode || 'reading', files: [], urls: [], status: 'idle', result: null, picked: null, error: '', ctl: null, progress: '', date: mode === 'baseline' ? ((S._baseFill && S._baseFill.date) || (S.baseline && S.baseline.date) || today()) : (S.draft && S.draft.date || today()) }; }
   /* Распознанное с фото переживает обновление страницы: состояние — в localStorage, сами фото — в IndexedDB.
      Стирается, только когда человек сам решил: «Внести в поля», начал заново или удалил фото. */
@@ -1813,10 +1829,10 @@
   V.photo = function () {
     var model_ = PH.mode === 'model', base_ = PH.mode === 'baseline', back = model_ ? 'meter' : base_ ? 'baseline' : (S.onboarded ? 'home' : 'welcome');
     var head = '<h1>' + esc(model_ ? t('ph_model_title') : base_ ? t('ph_base_title') : t('ph_title')) + '</h1>';
-    var shell_ = function (html) { return { screen: 'S12', route: 'photo', bare: true, closeTo: back, html: head + html }; };
+    var shell_ = function (html) { return { screen: 'S12', route: 'photo', bare: true, closeTo: back, html: head + html + (PH.mode === 'reading' ? cancelLink('heat') : '') }; };
     if (!VIS().available) return shell_('<div class="banner warn">' + ico('info', 22) + '<div><p>' + esc(t('ph_unavail')) + '</p></div></div><a class="btn" href="#' + back + '">' + esc(t('back')) + '</a>');
     var input = '<input type="file" id="ph-input" accept="' + esc(((VIS().limits && VIS().limits.images && VIS().limits.images.mediaTypes) || ['image/jpeg', 'image/png', 'image/webp']).join(',')) + '" multiple class="sr" data-key="photo-input">';
-    if (PH.status === 'working') return shell_('<div class="banner" role="status">' + SPIN + '<div class="grow"><p><b>' + esc(t('ph_working', { n: PH.files.length })) + '</b></p>' + '<p id="ph-progress">' + esc(PH.progress || '') + '</p><div class="pbar" aria-hidden="true"><i id="ph-pbar" style="width:' + (PH.pct || 2) + '%"></i></div>' + '</div></div>' + thumbs(false) + '<div class="row-actions"><button class="btn sec" data-act="ph-stop">' + esc(t('ph_stop')) + '</button></div>');
+    if (PH.status === 'working') return shell_('<div class="banner" role="status">' + SPIN + '<div class="grow"><p><b>' + esc(t('ph_working', { n: PH.files.length })) + '</b></p>' + '<p id="ph-progress">' + esc(PH.progress || '') + '</p><div class="pbar" aria-hidden="true"><i id="ph-pbar" style="width:' + (PH.pct || 2) + '%"></i></div>' + '</div></div>' + thumbs(false) + '<div class="row-actions"><button class="btn sec" data-act="ph-stop" data-key="photo-stop">' + ico('close', 18) + '<span>' + esc(t('ph_stop')) + '</span></button></div>');
     if (PH.status === 'done' && !model_) return shell_(photoResult());
     var lead = '<p>' + esc(model_ ? t('ph_model_lead') : base_ ? t('ph_base_lead') : t('ph_lead')) + '</p>';
     if (!model_) lead += '<details class="tips-box"' + (PH.files.length ? '' : ' open') + '><summary>' + ico('camera', 18) + ' ' + esc(t('ph_tips_t')) + '</summary><ul>' + t('ph_tips').split('|').map(function (x) { return '<li>' + esc(x) + '</li>'; }).join('') + '</ul></details>';
@@ -1894,8 +1910,10 @@
   }
   // нижние вкладки: переход сами, не полагаясь на смену адреса браузером (в некоторых встроенных браузерах, напр. Telegram на iPhone,
   // после pushState/replaceState нажатие на ссылку с «#…» не всегда вызывает hashchange — вкладки «не нажимаются»)
-  document.addEventListener('click', function (e) {
-    var a = e.target.closest && e.target.closest('.nav a[href^="#"]'); if (!a || e.defaultPrevented || e.metaKey || e.ctrlKey) return;
+  // все ссылки «#…» внутри сервиса (вкладки, карточки, «назад»): слушаем на window — после обработчиков data-act;
+  // если они сами не перешли (preventDefault), переходим сами
+  window.addEventListener('click', function (e) {
+    var a = e.target.closest && e.target.closest('a[href^="#"]'); if (!a || e.defaultPrevented || e.metaKey || e.ctrlKey || a.getAttribute('href').length < 2) return;
     e.preventDefault(); var r = a.getAttribute('href').slice(1);
     if (routeName() === r) { render(); return; }
     try { history.pushState(null, '', '#' + r); } catch (x) { location.hash = r; return; }
@@ -1906,16 +1924,21 @@
   function phRun() {
     var y = VIS(); if (!y.available || !PH.files.length) return;
     var di = document.getElementById('ph-date'); if (di) PH.date = di.value || today();
+    var gen = ++PH_GEN; PH.gen = gen;
     PH.status = 'working'; PH.error = ''; PH.progress = ''; PH.pct = 2; PH.ctl = new AbortController(); render(true);
     var m = model(), ctx = { modelId: m ? m.id : '', models: M.MODELS, steps: m && m.status === 'verified' ? m.steps : null, expectedModel: m && m.id !== 'other' ? modelName(m) : '', prev: S.baseline ? { energy: S.baseline.energy, volume: S.baseline.volume, hours: S.baseline.hours } : null, lang: S.lang };
-    y.recognize(PH.files, ctx, PH.ctl.signal, function (i, n, kind) {
+    // не дольше ~минуты на фото (+ загрузка движка): иначе честно «не вышло», а не вечное «распознаю…»
+    var budget = new Promise(function (ok, bad) { setTimeout(function () { var e = new Error('timeout'); e.code = 'timeout'; bad(e); }, 60000 + 60000 * PH.files.length); });
+    Promise.race([y.recognize(PH.files, ctx, PH.ctl.signal, function (i, n, kind) {
+      if (PH.gen !== gen) return;
       var msg = kind === 'load' ? t('ph_loading', { p: i }) : kind === 'photo' ? (n > 1 ? t('ph_reading', { i: i, n: n }) : '') : (n > 1 ? t('ph_batch', { i: i, n: n }) : '');
       // общий ход: загрузка движка — первые 15 %, дальше фото по очереди
       PH.pct = Math.max(PH.pct || 2, Math.round(kind === 'load' ? i * 0.15 : 15 + 85 * (i - 0.5) / Math.max(1, n)));
       var pb = document.getElementById('ph-pbar'); if (pb) pb.style.width = PH.pct + '%';
       if (msg === PH.progress) return; PH.progress = msg;
       var el = document.getElementById('ph-progress'); if (el) el.textContent = msg; else if (routeName() === 'photo') render(true);
-    }).then(function (res) {
+    }), budget]).then(function (res) {
+      if (PH.gen !== gen) return;   // отменили или начали заново — этот результат уже не нужен
       PH.result = res;
       // счётчик воды / света / газа вместо тепла — сказать прямо, а не «не удалось распознать»
       // водомеры (в т. ч. присланные боту) — в ввод воды, с уже прочитанными окнами барабанов
@@ -1939,9 +1962,18 @@
       if (!Object.keys(PH.picked).length) { PH.status = 'idle'; PH.error = phErr('nothing'); render(true); return; }
       PH.status = 'done'; PH.vals = null; PHS.save(false); render(true);
     }, function (e) {
+      if (PH.gen !== gen) return;
+      if (PH.ctl) try { PH.ctl.abort(); } catch (x) { /* нет */ }
       PH.status = 'idle'; if (e && e.code === 'cancelled') { render(true); return; }
       PH.error = phErr(e && e.code); render(true);
     });
+  }
+  /** «Скасувати»: бросить ввод целиком — черновик тепла, фото на распознавании, ввод воды — и выйти на главную. */
+  function wizCancel(what) {
+    if (!confirm(t(what === 'water' ? 'wz_cancel_q_w' : 'wz_cancel_q'))) return;
+    if (what === 'water') { WN.gen = -1; WN = wnFresh(WN.kind); go('home'); return; }
+    PH.gen = -1; if (PH.ctl) try { PH.ctl.abort(); } catch (e) { /* нет */ }
+    phReset('reading'); S.draft = null; delete S._lastCheck; save(); toast(t('wz_cancelled')); go('home');
   }
   /** Фото водомера: распознаватель узнал водомер по надписям или нашёл уверенное окно барабана без экранов тепла. */
   function phIsWater(x) {
@@ -2041,6 +2073,7 @@
   // ---------------- маршрутизация ----------------
   function routeName() { return (location.hash || '').replace(/^#/, ''); }
   function render(keepScroll) {
+    lastHash = location.hash;
     var r = routeName();
     // без теплосчётчика, но с водомерами — вкладки истории/статистики/экономии показывают воду
     if (S.onboarded && !S.meter && ['home', '', 'meter', 'help', 'prefs', 'login', 'photo', 'privacy', 'terms', 'start', 'wsetup', 'wnew', 'water-hot', 'water-cold'].indexOf(r) < 0 && !(wmeters().length && /^(history|stats|save|wrec-.+)$/.test(r))) r = 'meter';
@@ -2289,7 +2322,8 @@
       case 'fb-open': FB.open = true; FB.err = ''; render(true); setTimeout(function () { var x = document.getElementById('fb-text'); if (x) x.focus(); }, 0); break;
       case 'fb-close': { var tx = document.getElementById('fb-text'); if (tx) FB.text = tx.value; FB.open = false; render(true); break; }
       case 'fb-send': fbSend(); break;
-      case 'ph-stop': if (PH.ctl) PH.ctl.abort(); break;
+      case 'ph-stop': PH.gen = -1; if (PH.ctl) PH.ctl.abort(); PH.status = 'idle'; PH.progress = ''; PH.error = ''; render(true); break;
+      case 'wiz-cancel': wizCancel(el.getAttribute('data-what') || 'heat'); break;
       case 'ph-water': phToWater(false); break;
       case 'ph-again': PH.status = 'idle'; PHS.save(false); render(true); break;
       case 'ph-new': inboxDone(); phReset(PH.mode); render(true); break;
@@ -2399,7 +2433,10 @@
       catch (err) { toast(t('p_import_bad')); }
     }
   });
-  window.addEventListener('hashchange', function () { render(); });
+  // назад/вперёд: после pushState браузер шлёт popstate, а hashchange — не всегда; рисуем один раз на каждый адрес
+  var lastHash = null;
+  var onNav = function () { if (location.hash === lastHash) return; render(); };
+  window.addEventListener('hashchange', onNav); window.addEventListener('popstate', onNav);
   var tw = window.Telegram && window.Telegram.WebApp;
   if (tw && tw.initData) { try { tw.ready(); tw.expand(); applyTheme(); if (tw.onEvent) tw.onEvent('themeChanged', function () { applyTheme(); safeRender(); }); } catch (e) { /* старый клиент */ } }
   if (window.TEPLO_API && window.TeploVision) window.TeploVision.initServer({}, false);

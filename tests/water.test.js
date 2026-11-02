@@ -85,5 +85,9 @@ ok('подсказок нет — обе раскладки «наугад», п
 A = W.assign([{ drums: [DR('00175', { tint: 'red' })], lines: [] }, { drums: [DR('00175', { tint: 'red' })], lines: [] }, { drums: [], lines: [{ text: 'Heat' }] }], M, {});
 ok('второе фото того же водомера и фото без барабана — не использованы', A.by.h1.value === 175 && !A.by.c1 && A.unused.join() === '1,2', A);
 
+A = W.assign([{ drums: [D('00175', { votes: 1, score: 0.81, tint: 'red' })], lines: [{ text: 'No79699', alts: ['079699'], h: 30, score: 0.9 }] }, { drums: [D('00458', { votes: 1, score: 0.99, tint: 'blue' })], lines: [] }], M, { h1: '55885', c1: '55555' });
+ok('прошлые введены с ошибкой (больше) — прочитанное всё равно в поля, по цвету', A.by.h1 && A.by.h1.value === 175 && A.by.h1.less && A.by.c1 && A.by.c1.value === 458 && !A.unused.length, A);
+ok('строка «No79699» (заводской №) и её варианты — не показание', W.fromOcr({ drums: [D('00175', { votes: 1, score: 0.81 })], lines: [{ text: 'No79699', alts: ['079699', '79699'], h: 40, score: 0.9 }] }).value === 175);
+
 console.log(`\nИтог: ${pass} OK, ${fail} FAIL`);
 process.exit(fail ? 1 : 0);

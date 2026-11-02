@@ -334,7 +334,7 @@
       var dirA = redSide > 0 ? a : redSide < 0 ? a + Math.PI : (Math.cos(a) < 0 ? a + Math.PI : a);
       var rf = redSide ? 1 : Math.max(e1.red, e2.red);
       var score = (0.5 + (redSide ? 0.6 : 0)) * Math.min(1, U / V / 4) * Math.min(1, V / 12) * (st.bright > 0.08 && st.bright < 0.45 ? 1 : 0.6);
-      var o9 = { cx: bcx / k, cy: bcy / k, w: bU / k, h: V / k, angle: dirA, sure: !!redSide, red: +rf.toFixed(3), bright: +st.bright.toFixed(3), cells: sd.n, score: +score.toFixed(3), tint: tint(cx, cy, U), rad: rad, U: U, cxa: cx, cya: cy };
+      var o9 = { cx: bcx / k, cy: bcy / k, w: bU / k, h: V / k, angle: dirA, sure: !!redSide, red: +rf.toFixed(3), bright: +st.bright.toFixed(3), cells: sd.n, score: +score.toFixed(3), tint: tint(cx, cy, U) || faceTint(cx, cy, ux, uy, U, V), rad: rad, U: U, cxa: cx, cya: cy };
       if (rt0 !== null) { var rcx = sd.cx + ux * (rt0 + rt1) / 2, rcy = sd.cy + uy * (rt0 + rt1) / 2; o9.redBox = { cx: rcx / k, cy: rcy / k, w: (rt1 - rt0) / k, h: V / k, angle: dirA }; }
       out.push(o9);
     });
@@ -364,6 +364,18 @@
       return { red: nr / nt, bright: nb / nt };
     }
     /** Цвет кольца вокруг окна: красное — горячая, синее — холодная. */
+    /** Цвет печати на циферблате над и под окном (КСМ — красная, MASTER — синяя): кольца у многих водомеров нет.
+     *  Само окно (там красные дробные ролики) не смотрим. */
+    function faceTint(fcx, fcy, fux, fuy, U, V) {
+      var nr3 = 0, nb3 = 0, fvx = -fuy, fvy = fux, st3 = Math.max(1, V / 8);
+      for (var fu = -U / 2; fu <= U / 2; fu += st3) for (var sg = -1; sg <= 1; sg += 2) for (var fv = 0.8 * V; fv <= 3.2 * V; fv += st3) {
+        var X3 = Math.round(fcx + fux * fu + fvx * fv * sg), Y3 = Math.round(fcy + fuy * fu + fvy * fv * sg); if (X3 < 0 || Y3 < 0 || X3 >= W || Y3 >= H) continue;
+        var q8 = (Y3 * W + X3) * 4, r3 = px[q8], g3 = px[q8 + 1], b3 = px[q8 + 2], m3 = Math.max(r3, g3, b3), n4 = Math.min(r3, g3, b3);
+        if (m3 - n4 < 0.3 * m3 || m3 < 60) continue;
+        if (r3 === m3 && r3 - g3 > 45 && r3 - b3 > 35) nr3++; else if (b3 === m3 && b3 - r3 > 40) nb3++;
+      }
+      return nr3 > 2.5 * nb3 && nr3 >= 12 ? 'red' : nb3 > 2.5 * nr3 && nb3 >= 12 ? 'blue' : null;
+    }
     function tint(tcx, tcy, U) {
       var nr2 = 0, nbl = 0, R1 = U * 0.9, R2 = U * 1.25;
       for (var t = 0; t < 360; t += 3) for (var rr = R1; rr <= R2; rr += Math.max(1, (R2 - R1) / 6)) {
