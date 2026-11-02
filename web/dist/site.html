@@ -890,8 +890,8 @@ input[type=text]:not(.dmy-native):not(.pl-in), input[type=email], input[type=pas
 
       h_last: 'Останні прийняті ХТМ',
       h_last_none: 'Ще немає прийнятих показань',
-      h_last_none_sub: 'Внесіть останні прийняті з кабінету ХТМ — тоді перевірка буде точною.',
-      h_add_base: 'Внести з кабінету',
+      h_last_none_sub: 'Відкрийте особистий кабінет на сайті ХТМ → «Приймання показань по теплу» й перепишіть звідти останні прийняті показання — тоді перевірка нових буде точною.', h_cab_link: 'Кабінет ХТМ (hts.kharkov.ua)',
+      h_add_base: 'Внести останні прийняті',
       h_read: 'Зняти показання',
       h_continue: 'Продовжити зняття — крок {i} з {n}',
       h_waiting: 'Показання на перевірці у робота ХТМ',
@@ -1229,8 +1229,8 @@ input[type=text]:not(.dmy-native):not(.pl-in), input[type=email], input[type=pas
 
       h_last: 'Последние принятые ХТМ',
       h_last_none: 'Ещё нет принятых показаний',
-      h_last_none_sub: 'Внесите последние принятые из кабинета ХТМ — тогда проверка будет точной.',
-      h_add_base: 'Внести из кабинета',
+      h_last_none_sub: 'Откройте личный кабинет на сайте ХТМ → «Приймання показань по теплу» и перепишите оттуда последние принятые показания — тогда проверка новых будет точной.', h_cab_link: 'Кабинет ХТМ (hts.kharkov.ua)',
+      h_add_base: 'Внести последние принятые',
       h_read: 'Снять показания',
       h_continue: 'Продолжить снятие — шаг {i} из {n}',
       h_waiting: 'Показания на проверке у робота ХТМ',
@@ -2622,7 +2622,7 @@ input[type=text]:not(.dmy-native):not(.pl-in), input[type=email], input[type=pas
         lcd([{ text: R.formatForHtm('energy', S.baseline.energy), tag: 'Gcal' }], 'hero') +
         '<p class="lcd-cap meta-row"><span>' + esc(fmtDate(S.baseline.date, true)) + '</span><a href="#baseline">' + esc(t('change')) + '</a></p></div>';
     } else {
-      left += '<div class="panel" data-key="home-last-none"><h2>' + esc(t('h_last_none')) + '</h2><p class="muted">' + esc(t('h_last_none_sub')) + '</p>' +
+      left += '<div class="panel" data-key="home-last-none"><h2>' + esc(t('h_last_none')) + '</h2><p class="muted">' + esc(t('h_last_none_sub')) + '</p><p><a href="' + HTM_URL + '" target="_blank" rel="noopener">' + esc(t('h_cab_link')) + ' ' + ico('ext', 14) + '</a></p>' +
         '<a class="btn sec" href="#baseline" data-key="home-add-base">' + esc(t('h_add_base')) + '</a></div>';
     }
     var right = '';
