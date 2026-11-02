@@ -8,7 +8,8 @@ let pass = 0, fail = 0; const ok = (n, c, i) => { console.log((c ? '  OK  ' : ' 
   p.on('pageerror', e => errs.push(e.message)); p.on('dialog', d => d.accept());
   const st = () => p.evaluate(() => JSON.parse(localStorage.getItem('teplo.v1')));
   const hash = () => p.evaluate(() => location.hash);
-  const go = async (r) => { await p.goto('http://127.0.0.1:8013/#' + r); await p.waitForTimeout(350); };
+  // настройки счётчика на его странице свёрнуты в блоке «прибора» — в тестах раскрываем
+  const go = async (r) => { await p.goto('http://127.0.0.1:8013/#' + r); await p.waitForTimeout(350); await p.evaluate(() => document.querySelectorAll('details.mbox-set').forEach(d => { d.open = true; })); };
   const click = async (sel, w) => { await p.click(sel); await p.waitForTimeout(w || 300); };
   await p.goto('http://127.0.0.1:8013/'); await p.evaluate(s => localStorage.setItem('teplo.v1', JSON.stringify(s)), demo({}));
   await p.reload(); await p.waitForTimeout(400);
@@ -80,7 +81,7 @@ let pass = 0, fail = 0; const ok = (n, c, i) => { console.log((c ? '  OK  ' : ' 
   ok('повернули', !s.places[0].meters[0].removed);
 
   // ---- мастер нової квартири: світло в черзі після води
-  await go('places'); await click('[data-key=places-add]'); await p.fill('#aw-name', 'Дача'); await click('[data-key=aw-next]');
+  await go('add-place'); await p.fill('#aw-name', 'Дача'); await click('[data-key=aw-next]');
   ok('мастер: «Світло» активне', !(await p.$('[data-key=aw-elec].am-soon')) && !!(await p.$('[data-key=aw-elec-inc]')));
   await click('[data-key=aw-cold-inc]', 200); await click('[data-key=aw-elec-inc]', 200); await click('[data-key=aw-next]'); await click('[data-key=aw-create]', 400);
   ok('черга: холодна 1 з 2 → …', (await hash()) === '#wadd' && /1 з 2/.test(await p.textContent('[data-key=aw-queue]')));
@@ -88,17 +89,17 @@ let pass = 0, fail = 0; const ok = (n, c, i) => { console.log((c ? '  OK  ' : ' 
   ok('… → світло 2 з 2 (вибір зон)', (await hash()) === '#eadd' && /2 з 2/.test(await p.textContent('[data-key=aw-queue]')));
   await click('[data-key=ea-save]', 400); s = await st(); const dacha = s.places.find(x => x.name === 'Дача');
   ok('у «Дачі» холодна і світло, головна квартири — дві карточки', dacha.meters.length === 1 && dacha.water.meters.length === 1 && (await hash()) === '#home' && !!(await p.$('[data-key=card-elec]')));
-  await go('places');
-  ok('список квартир: рядок «Світло» зі статусом', /Світло/.test(await p.textContent('[data-key=ov-' + dacha.id + ']')) && !!(await p.$('[data-key=ov-' + dacha.id + '-elec]')));
+  await go('home');
+  ok('головна-акордеон: у «Дачі» картка «Світло»', /Світло/.test(await p.textContent('[data-key=home-pl-' + dacha.id + ']')) && !!(await p.$('[data-key=home-pl-' + dacha.id + '] [data-key=card-elec]')));
   // «не та квартира»: у «Дачі» двозонний зі стартовими 100/50; вписали «день» 10150 — це схоже на першу квартиру (там 10140)
-  await click('[data-key=pl-go-' + dacha.id + ']', 300);
+  await go('place-' + dacha.id);
   await p.evaluate((pid) => { const s = JSON.parse(localStorage.getItem('teplo.v1')); const q = s.places.find(x => x.id === pid), mid = q.meters[0].id; q.meters[0].zones = 2;
     s.mrecs.push({ id: 'zz', place: pid, meter: mid, kind: 'elec', date: '2026-10-31', z: { day: '100', night: '50' }, base: true, sent: {}, createdAt: '2026-10-31T10:00:00Z', updatedAt: 1 }); localStorage.setItem('teplo.v1', JSON.stringify(s)); }, dacha.id);
   await p.reload(); await p.waitForTimeout(300); await go('enew');
   const dm = (await st()).places.find(x => x.id === dacha.id).meters[0].id;
   await p.fill('#en-' + dm + '-day', '10150'); await p.waitForTimeout(250);
   const oh = await p.textContent('#eh-' + dm + '-day');
-  ok('«не та квартира»: «день» 10150 у «Дачі» (там 100) → «схоже на показання квартири «Квартира 1»»', /Схоже на показання квартири «Квартира 1»/.test(oh) && /Дача/.test(oh), oh);
+  ok('«не та квартира»: «день» 10150 у «Дачі» (там 100) → «схоже на показання квартири «Моя квартира»»', /Схоже на показання квартири «Моя квартира»/.test(oh) && /Дача/.test(oh), oh);
   await p.fill('#en-' + dm + '-day', '160'); await p.waitForTimeout(250);
   ok('160 (звичайний розхід) — без попереджень', !/Схоже/.test(await p.textContent('#eh-' + dm + '-day')));
   ok('без ошибок JS', errs.length === 0, errs);

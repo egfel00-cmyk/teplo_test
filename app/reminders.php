@@ -72,7 +72,7 @@ final class Reminders {
           if (!is_array($m) || ($m['kind'] ?? '') !== $mk || !empty($m['deleted']) || !empty($m['removed'])) continue;
           $has = false;
           foreach ((array)($st['mrecs'] ?? []) as $r)
-            if (is_array($r) && empty($r['deleted']) && empty($r['base']) && ($r['meter'] ?? '') === ($m['id'] ?? '') && ($r['place'] ?? '') === $p['id'] && (string)($r['date'] ?? '') >= $wf && (string)($r['date'] ?? '') <= $wt) { $has = true; break; }
+            if (is_array($r) && empty($r['deleted']) && empty($r['base']) && empty($r['own']) && ($r['meter'] ?? '') === ($m['id'] ?? '') && ($r['place'] ?? '') === $p['id'] && (string)($r['date'] ?? '') >= $wf && (string)($r['date'] ?? '') <= $wt) { $has = true; break; }
           if (!$has) { $need = true; break; }
         }
       } elseif (str_starts_with($kind, 'water')) {
@@ -81,13 +81,13 @@ final class Reminders {
         if ($ms) {
           $need = true;
           foreach ((array)($st['water'] ?? []) as $r)
-            if (is_array($r) && empty($r['deleted']) && empty($r['base']) && ($r['place'] ?? '') === $p['id'] && str_starts_with((string)($r['date'] ?? ''), $ym)) { $need = false; break; }
+            if (is_array($r) && empty($r['deleted']) && empty($r['base']) && empty($r['own']) && ($r['place'] ?? '') === $p['id'] && str_starts_with((string)($r['date'] ?? ''), $ym)) { $need = false; break; }
         }
       } elseif (!empty($p['meter']) && empty($p['meter']['removed']) && !$off($p, 'heat')) {
         $need = true;
         foreach ((array)($st['readings'] ?? []) as $r) {
           $d = (string)($r['htm']['date'] ?? '');
-          if (is_array($r) && empty($r['deleted']) && ($r['place'] ?? $first) === $p['id'] && $d >= "$ym-05" && $d <= "$ym-25") { $need = false; break; }
+          if (is_array($r) && empty($r['deleted']) && empty($r['own']) && ($r['place'] ?? $first) === $p['id'] && $d >= "$ym-05" && $d <= "$ym-25") { $need = false; break; }
         }
       }
       if ($need) $out[] = ['id' => (string)$p['id'], 'label' => mb_substr($label, 0, 40), 'all' => $all];

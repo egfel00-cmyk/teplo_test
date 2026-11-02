@@ -8,7 +8,8 @@ let pass = 0, fail = 0; const ok = (n, c, i) => { console.log((c ? '  OK  ' : ' 
   p.on('pageerror', e => errs.push(e.message)); p.on('dialog', d => d.accept());
   const st = () => p.evaluate(() => JSON.parse(localStorage.getItem('teplo.v1')));
   const hash = () => p.evaluate(() => location.hash);
-  const go = async (r) => { await p.goto('http://127.0.0.1:8013/#' + r); await p.waitForTimeout(350); };
+  // настройки счётчика на его странице свёрнуты в блоке «прибора» — в тестах раскрываем
+  const go = async (r) => { await p.goto('http://127.0.0.1:8013/#' + r); await p.waitForTimeout(350); await p.evaluate(() => document.querySelectorAll('details.mbox-set').forEach(d => { d.open = true; })); };
   const click = async (sel, w) => { await p.click(sel); await p.waitForTimeout(w || 300); };
   await p.goto('http://127.0.0.1:8013/'); await p.evaluate(s => localStorage.setItem('teplo.v1', JSON.stringify(s)), demo({}));
   await p.reload(); await p.waitForTimeout(400);
@@ -18,7 +19,7 @@ let pass = 0, fail = 0; const ok = (n, c, i) => { console.log((c ? '  OK  ' : ' 
   await p.fill('#ea-v-all', '1180,5'); await p.fill('#ea-acc', '123456789'); await click('[data-key=ea-save]', 400);
   s = await st(); const m = s.places[0].meters.find(x => x.kind === 'gas');
   ok('лічильник газу + стартові 1180.5', m && m.account === '123456789' && s.mrecs.some(r => r.base && r.meter === m.id && r.z.all === '1180.5'), { m, r: s.mrecs });
-  ok('сторінка газу з барабаном', (await hash()) === '#gas' && !!(await p.$('[data-key=emeter-' + m.id + '] .wdrum')));
+  ok('сторінка газу з барабаном', (await hash()) === '#gas' && !!(await p.$('[data-key=emeter-' + m.id + '] .gdrum')));
   await go('home'); ok('головна: карточка «Газ»', !!(await p.$('[data-key=card-gas]')));
   await click('[data-key=card-gas-add]', 400);
   ok('введення: «Зараз приймають: 1 листопада–5 листопада»', (await hash()) === '#gnew' && /1 листопада.*5 листопада/.test(await p.textContent('#main')));
@@ -47,7 +48,7 @@ let pass = 0, fail = 0; const ok = (n, c, i) => { console.log((c ? '  OK  ' : ' 
   await go('gas'); await p.fill('#ema-' + m.id, ''); await p.press('#ema-' + m.id, 'Tab'); await p.waitForTimeout(300); await p.reload(); await p.waitForTimeout(400);
   ok('без рахунку — «впишіть особовий рахунок», без кнопки SMS', /Впишіть особовий рахунок/.test(await p.textContent('[data-key=where-gas]')) && !(await p.$('[data-key=dest-grm-sms]')));
   // мастер: газ у черзі останнім з «простих», перед теплом
-  await go('places'); await click('[data-key=places-add]'); await click('[data-key=aw-next]');
+  await go('add-place'); await click('[data-key=aw-next]');
   await click('[data-key=aw-gas-inc]', 200); await click('[data-key=aw-heat-inc]', 200); await click('[data-key=aw-create]', 400);
   ok('мастер: газ 1 з 2 → …', (await hash()) === '#gadd' && /1 з 2/.test(await p.textContent('[data-key=aw-queue]')));
   await click('[data-key=ea-save]', 400);

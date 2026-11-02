@@ -53,20 +53,24 @@ let pass = 0, fail = 0; const ok = (n, c, i) => { console.log((c ? '  OK  ' : ' 
   s = await st(); let q = s.places.find(x => x.id === np.id);
   ok('водоміри: гаряча (12 на старті), 2 холодних', q.water.meters.length === 3 && q.water.meters.filter(m => m.kind === 'cold').length === 2 && s.water.some(r => r.place === np.id && r.base && Object.values(r.vals).includes('12')), q.water.meters);
   await go('home');
-  ok('пішли з налаштування — черга скинута, головна квартири без тепла', !(await p.$('[data-key=card-heat]')) && !!(await p.$('[data-key=card-cold]')) && !!(await p.$('[data-key=card-hot]')));
+  ok('пішли з налаштування — черга скинута, головна квартири без тепла', !(await p.$('[data-key=home-pl-' + np.id + '] [data-key=card-heat]')) && !!(await p.$('[data-key=home-pl-' + np.id + '] [data-key=card-cold]')) && !!(await p.$('[data-key=home-pl-' + np.id + '] [data-key=card-hot]')));
 
-  // ---- главная-список
-  ok('дві квартири: «Головна» → список', (await p.getAttribute('[data-key=nav-home]', 'href')) === '#places' && (await p.getAttribute('[data-key=brand]', 'href')) === '#places');
-  ok('шапка квартири: «Усі квартири» → #places', (await p.getAttribute('[data-key=place-bar-all]', 'href')) === '#places' && /Усі квартири/.test(await p.textContent('[data-key=place-bar-all]')));
+  // ---- главная: аккордеон квартир (≥ 2)
+  ok('дві квартири: «Головна» і логотип → #home', (await p.getAttribute('[data-key=nav-home]', 'href')) === '#home' && (await p.getAttribute('[data-key=brand]', 'href')) === '#home');
+  await go('water-cold');
+  ok('шапка квартири: «Усі квартири» → #home', (await p.getAttribute('[data-key=place-bar-all]', 'href')) === '#home' && /Усі квартири/.test(await p.textContent('[data-key=place-bar-all]')));
   await p.goto('http://127.0.0.1:8013/'); await p.waitForTimeout(500);
-  ok('відкрили застосунок без адреси — список квартир', (await p.$$('.ov-card')).length === 2 && !!(await p.$('[data-screen=S41]')));
-  const c1 = await p.textContent('[data-key=ov-' + s.places[0].id + ']'), c2 = await p.textContent('[data-key=ov-' + np.id + ']');
-  ok('картка першої: опалення, гаряча, холодна зі статусами', /Опалення/.test(c1) && /Гаряча вода/.test(c1) && /Холодна вода/.test(c1) && /Передати до|Приймання/.test(c1), c1);
-  ok('картка «Батьків»: адреса, «відкрита», холодна ×2, найближчий термін', /Пушкінська/.test(c2) && /відкрита/.test(c2) && /Холодна вода ×2/.test(c2) && /Найближчий термін|Сьогодні/.test(c2), c2);
-  ok('nav «Головна» підсвічена', (await p.getAttribute('[data-key=nav-home]', 'aria-current')) === 'page');
-  await click('[data-key=pl-go-' + s.places[0].id + ']', 400);
+  ok('відкрили застосунок без адреси — головна з двома квартирами', (await p.$$('details.pacc')).length === 2 && !!(await p.$('[data-screen=S01]')));
+  const c1 = await p.textContent('[data-key=home-pl-' + s.places[0].id + '] summary'), c2 = await p.textContent('[data-key=home-pl-' + np.id + '] summary');
+  ok('секція першої: «Моя квартира», опалення, гаряча, холодна', /Моя квартира/.test(c1) && /Опалення/.test(c1) && /Гаряча/.test(c1) && /Холодна/.test(c1), c1);
+  ok('секція «Батьків»: адреса, холодна ×2, найближчий термін', /Пушкінська/.test(c2) && /Холодна ×2/.test(c2) && /Найближчий термін|Сьогодні/.test(c2), c2);
+  ok('відкрита секція поточної квартири, у ній її картки', await p.$eval('[data-key=home-pl-' + np.id + ']', e => e.open) && !!(await p.$('[data-key=home-pl-' + np.id + '] [data-key=card-cold]')));
+  await p.click('[data-key=home-pl-sum-' + s.places[0].id + ']'); await p.waitForTimeout(200);
+  ok('розгорнули першу — там тепло; стан запам’ятовано', !!(await p.$('[data-key=home-pl-' + s.places[0].id + '] [data-key=card-heat]')) && (await st()).homeOpen[s.places[0].id] === true);
+  await click('[data-key=home-pl-' + s.places[0].id + '] [data-key=card-heat-add]', 400);
   s = await st();
-  ok('натиснув першу → вона відкрита, її головна (тепло є)', s.placeId === s.places[0].id && (await hash()) === '#home' && !!(await p.$('[data-key=card-heat]')));
+  ok('«+» у секції першої → її квартира, введення тепла', s.placeId === s.places[0].id && /#step-0/.test(await hash()));
+  ok('nav «Головна» підсвічена на головній', await (async () => { await go('home'); return (await p.getAttribute('[data-key=nav-home]', 'aria-current')) === 'page'; })());
 
   // ---- напоминания: выключатель у квартиры
   await go('place-' + np.id);
@@ -77,7 +81,7 @@ let pass = 0, fail = 0; const ok = (n, c, i) => { console.log((c ? '  OK  ' : ' 
   ok('увімкнули — remindOff прибрано', !s.places.find(x => x.id === np.id).remindOff);
 
   // ---- кнопка из бота: ?go=wnew&place=<id>
-  await go('places'); await click('[data-key=pl-go-' + s.places[0].id + ']', 300);
+  await go('place-' + s.places[0].id);
   await p.goto('http://127.0.0.1:8013/?go=wnew&place=' + np.id); await p.waitForTimeout(600); s = await st();
   ok('?go=wnew&place=… → відкрита та квартира і введення води', s.placeId === np.id && (await hash()) === '#wnew' && /Батьків/.test(await p.textContent('[data-key=place-bar]')));
   ok('параметри прибрано з адреси', !/go=|place=/.test(await p.evaluate(() => location.search)));
@@ -86,7 +90,7 @@ let pass = 0, fail = 0; const ok = (n, c, i) => { console.log((c ? '  OK  ' : ' 
   const hotId = s.places.find(x => x.id === np.id).water.meters.find(m => m.kind === 'hot').id;
   await p.fill('#wn-' + hotId, '176'); await p.press('#wn-' + hotId, 'Tab'); await p.waitForTimeout(250);
   const wh = await p.textContent('#wh-' + hotId);
-  ok('гаряча 176 у «Батьків» (там 12) → «схоже на квартиру «Квартира 1»»', /Схоже на показання квартири/.test(wh) && /Квартира 1/.test(wh), wh);
+  ok('гаряча 176 у «Батьків» (там 12) → «схоже на квартиру «Моя квартира»»', /Схоже на показання квартири/.test(wh) && /Моя квартира/.test(wh), wh);
   await p.fill('#wn-' + hotId, '13'); await p.press('#wn-' + hotId, 'Tab'); await p.waitForTimeout(250);
   ok('13 (звичайний розхід) — без попередження', !/Схоже на показання/.test(await p.textContent('#wh-' + hotId)));
 
@@ -96,7 +100,7 @@ let pass = 0, fail = 0; const ok = (n, c, i) => { console.log((c ? '  OK  ' : ' 
     s.draft = { date: s.demoToday || new Date().toISOString().slice(0, 10), values: { energy: '13.2' }, step: 3 }; localStorage.setItem('teplo.v1', JSON.stringify(s)); }, np.id);
   await p.reload(); await p.waitForTimeout(300); await go('check');
   const ck = await p.textContent('#main');
-  ok('тепло 13,2 у «Батьків» (там 20) → перевірка: «схоже на теплолічильник квартири «Квартира 1»»', /Схоже на показання теплолічильника квартири «Квартира 1»/.test(ck) && /Батьків/.test(ck), ck.slice(0, 400));
+  ok('тепло 13,2 у «Батьків» (там 20) → перевірка: «схоже на теплолічильник квартири «Моя квартира»»', /Схоже на показання теплолічильника квартири «Моя квартира»/.test(ck) && /Батьків/.test(ck), ck.slice(0, 400));
 
   ok('без ошибок JS', errs.length === 0, errs);
   console.log('\nИтог: ' + pass + ' OK, ' + fail + ' FAIL'); await b.close(); process.exit(fail ? 1 : 0);

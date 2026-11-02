@@ -386,6 +386,10 @@ ok('свет: 29.11 — elec1 за ноябрь, 2.12 — elec2 за ноябр�
 $es = ['places' => [['id' => 'main', 'meters' => [['id' => 'e1', 'kind' => 'elec', 'zones' => 2]]], ['id' => 'p2', 'name' => 'Мамина', 'meters' => [['id' => 'e2', 'kind' => 'elec', 'removed' => '2026-10-01']]]],
   'mrecs' => [['id' => 'b', 'place' => 'main', 'meter' => 'e1', 'date' => '2026-11-29', 'base' => true, 'z' => ['day' => '1', 'night' => '1']]]];
 ok('свет: только стартовые в окне — напоминаем; прибранный счётчик — нет', array_column(Reminders::placesDue($es, 'elec1', '2026-11'), 'id') === ['main']);
+$es['mrecs'][] = ['id' => 'o', 'place' => 'main', 'meter' => 'e1', 'date' => '2026-11-30', 'own' => true, 'z' => ['day' => '3', 'night' => '1']];
+ok('свет: показания «лише для себе» в окне — всё равно напоминаем', Reminders::needs($es, 'elec1', '2026-11'));
+$ws = ['places' => [['id' => 'main', 'water' => ['meters' => [['id' => 'c1', 'kind' => 'cold']]]]], 'water' => [['id' => 'w', 'place' => 'main', 'date' => '2026-11-10', 'own' => true, 'vals' => ['c1' => '5']]]];
+ok('вода: только «лише для себе» в месяце — напоминаем', Reminders::needs($ws, 'water15', '2026-11'));
 $es['mrecs'][] = ['id' => 'r', 'place' => 'main', 'meter' => 'e1', 'date' => '2026-12-01', 'z' => ['day' => '5', 'night' => '2']];
 ok('свет: показания 1.12 (в окне за ноябрь) — молчим; за декабрь — напоминаем', !Reminders::needs($es, 'elec2', '2026-11') && Reminders::needs($es, 'elec1', '2026-12'));
 // газ: 1-го і 4-го за попередній місяць; вікно — з 28-го по 5-те
