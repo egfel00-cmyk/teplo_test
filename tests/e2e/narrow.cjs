@@ -6,7 +6,7 @@ const { chromium } = require('playwright'); const demo = require('./demo.cjs');
   for (const [w, h] of [[320, 568], [360, 640], [390, 844]]) for (const lang of ['uk', 'ru']) {
     const ctx = await b.newContext({ viewport: { width: w, height: h }, hasTouch: true, isMobile: true, deviceScaleFactor: 2 }); const p = await ctx.newPage(); const errs = [];
     p.on('pageerror', e => errs.push(e.message));
-    await p.goto('http://127.0.0.1:8013/'); await p.evaluate(s => localStorage.setItem('teplo.v1', JSON.stringify(s)), demo({ lang, photos: [] }));
+    await p.goto('http://127.0.0.1:8013/'); await p.evaluate(s => localStorage.setItem('teplo.v1', JSON.stringify(s)), demo(Object.assign({ lang, photos: [] }, JSON.parse(process.env.DEMO || '{}'))));
     for (const r of (process.env.ROUTES || 'home,history,stats,save,water-hot,water-cold,wnew,wrec-w20261015,prefs,heat').split(',')) {
       await p.goto('http://127.0.0.1:8013/#' + r); await p.reload(); await p.waitForTimeout(500);
       const o = await p.evaluate((W) => { const de = document.documentElement, bad = [];

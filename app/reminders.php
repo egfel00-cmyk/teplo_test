@@ -35,7 +35,8 @@ final class Reminders {
     $first = $places[0]['id'] ?? 'main';
     if (str_starts_with($kind, 'water')) {
       foreach ($places as $p) {
-        $ms = array_filter((array)($p['water']['meters'] ?? []), fn($m) => is_array($m) && empty($m['deleted']) && !$off($p, (string)($m['id'] ?? '')));
+        // прибранный из квартиры водомер (removed — дата) не напоминает
+        $ms = array_filter((array)($p['water']['meters'] ?? []), fn($m) => is_array($m) && empty($m['deleted']) && empty($m['removed']) && !$off($p, (string)($m['id'] ?? '')));
         if (!$ms) continue;
         $has = false;
         foreach ((array)($st['water'] ?? []) as $r)
@@ -45,7 +46,7 @@ final class Reminders {
       return false;
     }
     foreach ($places as $p) {
-      if (empty($p['meter']) || $off($p, 'heat')) continue;
+      if (empty($p['meter']) || !empty($p['meter']['removed']) || $off($p, 'heat')) continue;
       $has = false;
       foreach ((array)($st['readings'] ?? []) as $r) {
         $d = (string)($r['htm']['date'] ?? '');
