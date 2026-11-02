@@ -72,7 +72,7 @@ final class Admin {
           'feedback' => $c('SELECT COUNT(*) n FROM feedback'), 'feedbackNew' => $c("SELECT COUNT(*) n FROM feedback WHERE status = 'new'"),
           'photos' => $c('SELECT COUNT(*) n FROM photos'), 'photosFailed' => $c("SELECT COUNT(*) n FROM photos WHERE status = 'failed' OR problem IS NOT NULL"),
           'reports' => $c('SELECT COUNT(*) n FROM recog_reports'), 'reportsBad' => $c('SELECT COUNT(*) n FROM recog_reports WHERE ok = 0'),
-          'recognition' => (bool)Cfg::get('anthropic_api_key'), 'telegram' => (bool)Cfg::get('bot_token'), 'photoKeepDays' => (int)Cfg::get('photo_keep_days', 90),
+          'recognition' => (bool)Cfg::get('anthropic_api_key'), 'telegram' => (bool)Cfg::get('bot_token'), 'photoKeepDays' => (int)Cfg::get('photo_keep_days', 90), 'cronAgo' => Cron::age(),
           'me' => $me['email'] ?: ('tg:' . $me['id']),
         ];
       }
@@ -132,6 +132,11 @@ final class Admin {
           'webhook_secret' => Cfg::runtime()['webhook_secret'] ?? (Cfg::get('webhook_secret') ?: bin2hex(random_bytes(24)))]);
         $setup = Telegram::setup();
         return ['ok' => $setup['ok'], 'bot' => $me['result']['username'], 'setup' => $setup, 'settings' => self::settings()];
+      }
+      case 'GET /api/admin/reminders': {
+        $next = Reminders::next(time());
+        return ['next' => $next, 'preview' => $next ? Reminders::preview($next['kind'], $next['ym']) : [], 'log' => Reminders::log(), 'cron' => Cron::read() + ['ago' => Cron::age()],
+          'telegram' => (bool)Cfg::get('bot_token')];
       }
       case 'GET /api/admin/weather': return Weather::range((string)($q['from'] ?? ''), (string)($q['to'] ?? ''));
       case 'GET /api/admin/reports':

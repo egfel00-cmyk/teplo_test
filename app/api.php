@@ -73,6 +73,7 @@ final class Api {
     switch ("$m $p") {
       case 'GET /api/config': return ['botUsername' => Cfg::get('bot_username') ?: null, 'telegramLogin' => (bool)Cfg::get('bot_token'), 'recognition' => (bool)Cfg::get('anthropic_api_key'),
         'build' => substr((string)@md5_file(dirname(__DIR__) . '/web/dist/site.html'), 0, 12)];
+      case 'GET /api/health': return ['ok' => true, 'cronAgo' => Cron::age()];   // жив ли cron (напоминания, чистка) — без подробностей
       case 'GET /api/me': if (!$user) throw new HttpError(401, 'unauthorized'); return ['user' => self::publicUser($user)];
 
       case 'POST /api/auth/register': {

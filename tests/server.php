@@ -308,7 +308,29 @@ ok('рассылка: человеку с водомерами — по-русс
   && ($mine[0][1]['reply_markup']['inline_keyboard'][0][0]['web_app']['url'] ?? '') === 'https://teplo.example/?go=wnew', $mine);
 $n1 = count($sent); Reminders::run($kyiv('2026-11-15 11:17'));
 ok('через час — повторно не шлём', count($sent) === $n1);
+$row = Db::one("SELECT status FROM reminders_sent WHERE user_id = (SELECT user_id FROM user_identities WHERE external_id = '7777') AND kind = 'water15'");
+ok('итог доставки записан: ok', ($row['status'] ?? '') === 'ok', $row);
+ok('ближайшее после 2 ноября — 5-е, тепло; 5-го в 21:00 — уже 15-е', Reminders::next($kyiv('2026-11-02 10:54')) === ['date' => '2026-11-05', 'kind' => 'heat5', 'ym' => '2026-11'] && Reminders::next($kyiv('2026-11-05 21:00'))['date'] === '2026-11-15');
+ok('ответы Telegram: 403 → blocked, нет чата → no_chat, сбой связи/429 → повторить', Reminders::status(['ok' => false, 'error_code' => 403, 'description' => 'Forbidden: bot was blocked by the user']) === 'blocked'
+  && Reminders::status(['ok' => false, 'error_code' => 400, 'description' => 'Bad Request: chat not found']) === 'no_chat' && Reminders::status([]) === null && Reminders::status(['ok' => false, 'error_code' => 429]) === null);
+$pv = Reminders::preview('heat5', '2026-12'); $me7 = array_values(array_filter($pv, fn($x) => $x['lang'] === 'ru'));
+ok('предпросмотр на 5 декабря: человек в списке, ещё не отправлено', count($me7) === 1 && $me7[0]['sent'] === null, $pv);
+$tries = 0; Telegram::$send = function () use (&$tries) { $tries++; return []; };
+Reminders::run($kyiv('2026-12-05 10:17'));
+$cnt = fn() => (int)(Db::one("SELECT COUNT(*) n FROM reminders_sent WHERE kind = 'heat5' AND ym = '2026-12'")['n'] ?? 0);
+ok('сбой связи — отметки нет, через час повтор', $tries >= 1 && $cnt() === 0);
+Telegram::$send = fn() => ['ok' => false, 'error_code' => 403, 'description' => 'Forbidden: bot can\'t initiate conversation with a user'];
+Reminders::run($kyiv('2026-12-05 11:17'));
+$bl = Db::q("SELECT status FROM reminders_sent WHERE kind = 'heat5' AND ym = '2026-12'")->fetchAll(PDO::FETCH_COLUMN);
+ok('не нажимал «Старт» — blocked, больше не пробуем', $bl && !array_diff($bl, ['blocked']), $bl);
 Telegram::$send = null;
+Cfg::set(['app_url' => 'https://teplo.example/', 'bot_token' => $TOKEN, 'webhook_secret' => 'hook-secret', 'admins' => ['emails' => ['boss@example.ua']]]);
+$boss = new Browser('10.0.13.9'); $boss->req('POST', '/api/auth/login', ['email' => 'boss@example.ua', 'password' => 'boss pass 123']);
+$ar = $boss->req('GET', '/api/admin/reminders');
+ok('/admin: вкладка напоминаний — ближайшее, журнал с итогами', $ar->status === 200 && !empty($ar->body['next']['date']) && count(array_filter($ar->body['log'], fn($x) => $x['status'] === 'blocked')) >= 1, $ar->body['next'] ?? $ar->status);
+@unlink(Cron::file()); $h0 = (new Browser('10.0.13.8'))->req('GET', '/api/health');
+Cron::write(['last' => gmdate('c', time() - 120)]); $h1 = (new Browser('10.0.13.7'))->req('GET', '/api/health');
+ok('/api/health: cron ни разу → null, был 2 мин назад → ~120 с', $h0->body['cronAgo'] === null && abs(($h1->body['cronAgo'] ?? 0) - 120) <= 2, [$h0->body, $h1->body]);
 
 echo "\nВыход:\n";
 $phone->req('POST', '/api/auth/logout');

@@ -140,6 +140,8 @@ final class Db {
     foreach ($sql as $s) self::$pdo->exec($s);
     // фото, приложенные к записи истории (тепло/вода), не удаляются по сроку хранения, пока запись есть
     self::addColumn('photos', 'kept', 'TINYINT NOT NULL DEFAULT 0');
+    // итог отправки напоминания: ok / blocked / no_chat / error: …
+    self::addColumn('reminders_sent', 'status', 'VARCHAR(80) NULL');
   }
   /** ALTER … ADD COLUMN IF NOT EXISTS (в SQLite такого нет — смотрим список колонок). */
   private static function addColumn(string $t, string $c, string $def): void {
@@ -200,4 +202,13 @@ final class RateLimit {
     if (random_int(1, 200) === 1) Db::q('DELETE FROM rate_limits WHERE window_start < ?', [Http::now() - 86400 * 2]);
   }
   public static function check(string $name, string $key): void { self::hit($name, $key, false); }
+}
+
+/** Отметки cron.php (SITE_DATA/cache/cron.json): last — последний запуск (раз в минуту), hourly — итог часовых дел. */
+final class Cron {
+  public static function file(): string { return Cfg::data() . '/cache/cron.json'; }
+  public static function read(): array { $j = json_decode((string)@file_get_contents(self::file()), true); return is_array($j) ? $j : []; }
+  public static function write(array $j): void { @mkdir(dirname(self::file()), 0700, true); @file_put_contents(self::file(), json_encode($j, JSON_UNESCAPED_UNICODE), LOCK_EX); }
+  /** Сколько секунд назад запускался cron (null — ни разу). */
+  public static function age(): ?int { $t = strtotime((string)(self::read()['last'] ?? '')); return $t ? max(0, time() - $t) : null; }
 }

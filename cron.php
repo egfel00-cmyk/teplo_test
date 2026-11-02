@@ -1,6 +1,7 @@
 <?php
 // Запускается сервером раз в минуту (снаружи закрыт). Раз в час: удалить фото старше photo_keep_days,
 // старые лимиты и истёкшие сессии; напоминания ботом (вода 15/19, тепло 5/22 — см. app/reminders.php).
+// Каждый запуск отмечается в SITE_DATA/cache/cron.json — по нему /api/health и /admin видят, что cron жив.
 declare(strict_types=1);
 if (PHP_SAPI !== 'cli') { http_response_code(404); exit; }
 define('TEPLO', 1);
@@ -10,8 +11,13 @@ require __DIR__ . '/app/reminders.php';
 require __DIR__ . '/app/recognize.php';
 require __DIR__ . '/app/api.php';
 require __DIR__ . '/app/admin.php';
-if ((int)gmdate('i') !== 17) exit;
-try { $n = Admin::cleanup(); if ($n) echo gmdate('c') . " удалено старых фото: $n\n"; }
-catch (Throwable $e) { error_log('teplo cron: ' . $e->getMessage()); }
-try { $s = Reminders::run(time()); if ($s) echo gmdate('c') . ' напоминаний: ' . count($s) . "\n"; }
-catch (Throwable $e) { error_log('teplo remind: ' . $e->getMessage()); }
+$beat = Cron::read(); $beat['last'] = gmdate('c');
+if ((int)gmdate('i') !== 17) { Cron::write($beat); exit; }
+$h = ['at' => gmdate('c')];
+try { $n = Admin::cleanup(); $h['photos'] = $n; if ($n) echo gmdate('c') . " удалено старых фото: $n\n"; }
+catch (Throwable $e) { $h['error'] = mb_substr($e->getMessage(), 0, 200); error_log('teplo cron: ' . $e->getMessage()); }
+try {
+  $s = Reminders::run(time());
+  if ($s) { $h['reminders'] = array_count_values(array_map(fn($x) => $x[1] . ' ' . (str_starts_with($x[2], 'error') ? 'error' : $x[2]), $s)); echo gmdate('c') . ' напоминаний: ' . count($s) . "\n"; }
+} catch (Throwable $e) { $h['remindError'] = mb_substr($e->getMessage(), 0, 200); error_log('teplo remind: ' . $e->getMessage()); }
+$beat['hourly'] = $h; Cron::write($beat);
