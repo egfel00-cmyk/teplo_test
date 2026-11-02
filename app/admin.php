@@ -74,13 +74,14 @@ final class Admin {
   }
   /** Что ведут все вместе: сколько людей с каждым видом счётчика, показаний по видам, с 2+ квартирами, «для себя». */
   private static function tracking(): array {
-    $t = ['users' => self::KINDS, 'recs' => ['heat' => 0, 'water' => 0, 'elec' => 0, 'gas' => 0], 'multi' => 0, 'own' => 0, 'onboarded' => 0, 'withMeters' => 0];
+    $t = ['users' => self::KINDS, 'recs' => ['heat' => 0, 'water' => 0, 'elec' => 0, 'gas' => 0], 'multi' => 0, 'own' => 0, 'onboarded' => 0, 'withMeters' => 0, 'withData' => 0];
     foreach (Db::q('SELECT data FROM user_state')->fetchAll() as $row) {
       $sm = self::stateSummary($row['data']);
       foreach ($sm['kinds'] as $k => $n) if ($n > 0) $t['users'][$k]++;
       foreach ($sm['recs'] as $k => $n) $t['recs'][$k] += $n;
       if ($sm['places'] >= 2) $t['multi']++;
       if (array_sum($sm['kinds']) > 0) $t['withMeters']++;
+      if (array_sum($sm['kinds']) > 0 || array_sum($sm['recs']) > 0) $t['withData']++;   // пустое состояние (только язык) — не «сохранил данные»
       if ($sm['onboarded']) $t['onboarded']++;
       $t['own'] += $sm['own'];
     }
@@ -108,18 +109,18 @@ final class Admin {
     switch ($key) {
       case 'GET /api/admin/overview': {
         $c = fn($sql, $p = []) => (int)(Db::one($sql, $p)['n'] ?? 0);
-        $week = gmdate('c', time() - 7 * 86400);
+        $week = gmdate('c', time() - 7 * 86400); $tr = self::tracking();
         return [
           'users' => $c('SELECT COUNT(*) n FROM users'), 'usersWeek' => $c('SELECT COUNT(*) n FROM users WHERE created_at >= ?', [$week]),
           // «входили за 7 дней»: вход (новая сессия) или открывали сайт уже вошедшими (visits) — сессия живёт долго, last_login_at редко меняется
           'activeWeek' => $c('SELECT COUNT(*) n FROM users u WHERE u.last_login_at >= ? OR EXISTS (SELECT 1 FROM visits v WHERE v.user_id = u.id AND v.day >= ?)', [$week, Visits::day(time() - 6 * 86400)]),
           'withTelegram' => $c("SELECT COUNT(DISTINCT user_id) n FROM user_identities WHERE type = 'telegram'"),
-          'withData' => $c('SELECT COUNT(*) n FROM user_state'),
+          'withData' => $tr['withData'],
           'feedback' => $c('SELECT COUNT(*) n FROM feedback'), 'feedbackNew' => $c("SELECT COUNT(*) n FROM feedback WHERE status = 'new'"),
           'photos' => $c('SELECT COUNT(*) n FROM photos'), 'photosFailed' => $c("SELECT COUNT(*) n FROM photos WHERE status = 'failed' OR problem IS NOT NULL"),
           'reports' => $c('SELECT COUNT(*) n FROM recog_reports'), 'reportsBad' => $c('SELECT COUNT(*) n FROM recog_reports WHERE ok = 0'),
           'recognition' => (bool)Cfg::get('anthropic_api_key'), 'telegram' => (bool)Cfg::get('bot_token'), 'photoKeepDays' => (int)Cfg::get('photo_keep_days', 90), 'cronAgo' => Cron::age(),
-          'me' => $me['email'] ?: ('tg:' . $me['id']), 'tracking' => self::tracking(),
+          'me' => $me['email'] ?: ('tg:' . $me['id']), 'tracking' => $tr,
         ];
       }
       case 'GET /api/admin/users': {

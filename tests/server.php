@@ -472,6 +472,8 @@ ok('старые данные без квартир: тепло и показа�
   && Admin::stateSummary(null)['places'] === 0);
 $ovm = $boss->req('GET', '/api/admin/overview')->body;
 ok('сводка /admin: «что ведут» — с 2+ квартирами, люди по видам, показания по видам', ($ovm['tracking']['multi'] ?? 0) >= 1 && $ovm['tracking']['users']['gas'] >= 1 && $ovm['tracking']['recs']['elec'] >= 1, $ovm['tracking'] ?? null);
+$states = Db::q('SELECT data FROM user_state')->fetchAll(); $nonEmpty = count(array_filter($states, function ($r) { $m = Admin::stateSummary($r['data']); return array_sum($m['kinds']) + array_sum($m['recs']) > 0; }));
+ok('«сохранили данные» — только с счётчиками или показаниями (пустое состояние — не данные)', $ovm['withData'] === $nonEmpty && $ovm['withData'] === $ovm['tracking']['withData'] && array_sum(Admin::stateSummary('{"v":1,"lang":"uk","places":[]}')['recs']) === 0, [$ovm['withData'], $nonEmpty, count($states)]);
 // «входили за 7 дней»: вход давно, но открывал сайт вошедшим (visits) — активен
 Db::q("UPDATE users SET last_login_at = ? WHERE email = 'many@example.ua'", [gmdate('c', time() - 30 * 86400)]);
 $a0 = $boss->req('GET', '/api/admin/overview')->body['activeWeek'];

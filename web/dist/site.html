@@ -8737,6 +8737,7 @@ fieldset.field { border: 0; padding: 0; min-width: 0; }
   // аналитика: с чего открыли (телефон / планшет / компьютер, система, Telegram, «Домой») — раз на загрузку; id браузера случайный
   (function visit() {
     var ap = window.TeploSync && window.TeploSync.api; if (!ap || !window.TEPLO_API) return;
+    if (navigator.webdriver) return;   // проверки сессий (Playwright, «Linux 1440 px») — не люди, в «С чего работают» не считаем
     try {
       var vid = localStorage.getItem('teplo.vid'); if (!vid) { vid = (Date.now().toString(36) + Math.random().toString(36).slice(2, 12)).replace(/[^a-z0-9]/g, ''); localStorage.setItem('teplo.vid', vid); }
       var ua = navigator.userAgent || '', ipad = /iPad/.test(ua) || (/Macintosh/.test(ua) && (navigator.maxTouchPoints || 0) > 1);
