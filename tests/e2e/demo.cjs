@@ -28,5 +28,11 @@ module.exports = function demo(opts) {
     out.mrecs = [['2026-07-31', 10000, 5000, true], ['2026-08-31', 10150, 5080], ['2026-10-01', 10290, 5150], ['2026-10-31', 10420, 5225]].map(([d, a, b, base], i) =>
       ({ id: 'm' + d.replace(/-/g, ''), place: 'main', meter: 'e1', kind: 'elec', date: d, z: z(a, b), base: !!base, sent: base || i === 3 ? {} : { obl: d }, createdAt: d + 'T10:00:00Z', updatedAt: 1 }));
   }
+  // газ: лічильник у першій квартирі, жовтень — 30 м³; 1.11 внесено, ще не передано (вікно 1–5.11 відкрите)
+  if (opts.gas) {
+    out.places[0].meters = (out.places[0].meters || []).concat([{ id: 'g1', kind: 'gas', name: '', serial: '777', account: opts.gasAcc === false ? '' : '123456789' }]);
+    out.mrecs = (out.mrecs || []).concat([['2026-09-01', '1180.5', true], ['2026-10-01', '1195.25'], ['2026-11-01', '1225.4']].map(([d, v, base], i) =>
+      ({ id: 'n' + d.replace(/-/g, ''), place: 'main', meter: 'g1', kind: 'gas', date: d, z: { all: v }, base: !!base, sent: base || i === 2 ? {} : { grm: d }, createdAt: d + 'T10:00:00Z', updatedAt: 1 })));
+  }
   return out;
 };

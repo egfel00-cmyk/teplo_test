@@ -19,7 +19,7 @@ let pass = 0, fail = 0; const ok = (n, c, i) => { console.log((c ? '  OK  ' : ' 
 
   // ---- додати: «Додати лічильник» → Світло → форма
   await click('[data-key=card-add-meter]'); 
-  ok('у виборі «Світло» активне (не «скоро»), газ — скоро', !!(await p.$('[data-key=am-elec][data-act=am-pick]')) && !!(await p.$('[data-key=am-gas].am-soon')));
+  ok('у виборі «Світло» і «Газ» активні (не «скоро»)', !!(await p.$('[data-key=am-elec][data-act=am-pick]')) && !!(await p.$('[data-key=am-gas][data-act=am-pick]')) && !(await p.$('.am-soon')));
   await click('[data-key=am-elec]');
   ok('форма: 3 варіанти зон, однозонний — одне поле', (await hash()) === '#eadd' && (await p.$$('input[name=ea-z]')).length === 3 && (await p.$$('[data-ea]')).length === 1);
   await p.fill('#ea-v-all', '777'); await click('[data-key=ea-z2]');

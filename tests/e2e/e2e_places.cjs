@@ -28,7 +28,7 @@ let pass = 0, fail = 0; const ok = (n, c, i) => { console.log((c ? '  OK  ' : ' 
   ok('шапка квартиры не на экране квартиры, h1 = название', (await p.textContent('h1')).includes('Батьків'));
   // «Додати лічильник» → холодна → форма нового водомера
   await p.click('[data-key=pv-add-meter]'); await p.waitForTimeout(300);
-  ok('выбор: газ — «скоро», не нажимается; світло — можно (этап 3)', (await p.$$('.am-soon')).length === 1 && !(await p.$('.am-soon[data-act]')) && !!(await p.$('[data-key=am-elec][data-act=am-pick]')));
+  ok('выбор: світло и газ — можно (этап 3), «скоро» больше нет', (await p.$$('.am-soon')).length === 0 && !!(await p.$('[data-key=am-elec][data-act=am-pick]')) && !!(await p.$('[data-key=am-gas][data-act=am-pick]')));
   ok('на выборе — компактная шапка «Квартира: Батьків»', (await p.textContent('[data-key=place-bar]')).includes('Батьків'));
   await p.click('[data-key=am-cold]'); await p.waitForTimeout(300);
   ok('форма водомера: рахунку ще немає — поля рахунку', !!(await p.$('#wa-form #w-acc')));

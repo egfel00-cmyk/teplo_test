@@ -7,37 +7,43 @@
  * Ціна (постанова КМУ № 483, дод. 3; продовжено до 30.04.2027): 4,32 грн/кВт·год з ПДВ;
  *   2 зони: ніч (23–07) ×0,5; 3 зони: пік (08–11, 20–22) ×1,5, напівпік ×1, ніч (23–07) ×0,4;
  *   електроопалення (якщо оформлено): 1.10–30.04 — 2,64 грн за перші 2000 кВт·год на місяць, далі 4,32.
+ * Газ (той же фабрикою make): ГК «Нафтогаз України», тариф «Фіксований» 7,96 грн/м³ з ПДВ (1.05.2026–30.04.2027; інші
+ *   постачальники 7,96–9,99 — своя ціна в квартири); доставка (розподіл) — окрема фіксована плата, від показань не залежить.
+ *   Показання — з 1 по 5 число (станом на 1-ше; SMS 4647 приймає з 28-го): особистий кабінет Газмереж my.grmu.com.ua,
+ *   застосунок Нафтогазу «Куб», SMS 4647 «9 цифр рахунку пробіл 5 цифр показань», кол-центр 066/098/093-300-28-88.
  * Без DOM: работает в браузере и в node (тесты).
  */
 (function (root) {
   'use strict';
-  var PRICE = [{ from: '2000-01-01', p: 4.32 }];
-  var HEAT = { p: 2.64, limit: 2000 };
-  // ключи зон по числу зон: 1 — одно число; 2 — день/ніч; 3 — пік/напівпік/ніч
-  var ZONES = { 1: ['all'], 2: ['day', 'night'], 3: ['peak', 'half', 'night'] };
-  var COEF = { 1: { all: 1 }, 2: { day: 1, night: 0.5 }, 3: { peak: 1.5, half: 1, night: 0.4 } };
-  var JUMP = 1500, JUMP_HEAT = 4000;   // кВт·год на місяць на всі зони — багато для квартири (з електроопаленням — більше)
   var OBL_APP_IOS = 'https://apps.apple.com/ua/app/id1592629551';
   var OBL_APP_ANDROID = 'https://play.google.com/store/search?q=%D0%A5%D0%B0%D1%80%D0%B5%D0%BD%D0%B5%D1%80%D0%B3%D0%BE&c=apps';
   var ZBUT_SITE = 'https://zbutenergo.kharkov.ua';
   // кол-центр Харківобленерго — номер за оператором зв'язку
   var PHONES = [['+380573424413', '(057) 342-44-13', 'Укртелеком'], ['+380672340413', '(067) 234-04-13', 'Київстар'], ['+380500540413', '(050) 054-04-13', 'Vodafone'], ['+380630540413', '(063) 054-04-13', 'lifecell']];
+  function make(C) {
+  var PRICE = C.price;
+  var HEAT = C.heat || null;
+  // ключи зон по числу зон: 1 — одно число; 2 — день/ніч; 3 — пік/напівпік/ніч
+  var ZONES = { 1: ['all'], 2: ['day', 'night'], 3: ['peak', 'half', 'night'] };
+  var COEF = { 1: { all: 1 }, 2: { day: 1, night: 0.5 }, 3: { peak: 1.5, half: 1, night: 0.4 } };
+  var JUMP = C.jump, JUMP_HEAT = C.jumpHeat;   // на місяць на всі зони — багато для квартири (з опаленням — більше)
 
   function num(v) { if (v === null || v === undefined || v === '') return null; var n = Number(String(v).replace(',', '.').replace(/\s/g, '')); return isFinite(n) ? n : null; }
   /** Ціле число кВт·год: «12345,6» → 12345 (цифри після коми не передають). */
   function whole(v) { var n = num(v); return n === null ? null : Math.floor(n + 1e-9); }
-  /** Як зберігати: «12 345,6» → «12345.6»; не число / мінус / > 1 знака після коми → null. */
+  /** Як зберігати: «12 345,6» → «12345.6»; не число / мінус / забагато знаків після коми → null. */
+  var DEC = new RegExp('^\\d+(\\.\\d{0,' + (C.decimals || 2) + '})?$');
   function norm(v) {
     if (v === null || v === undefined) return null;
-    var s = String(v).trim().replace(/\s/g, '').replace(',', '.'); if (!/^\d+(\.\d{0,2})?$/.test(s)) return null;
+    var s = String(v).trim().replace(/\s/g, '').replace(',', '.'); if (!DEC.test(s)) return null;
     return s.replace(/\.$/, '').replace(/^0+(?=\d)/, '');
   }
-  function zones(m) { var z = Number(m && m.zones); return z === 2 || z === 3 ? z : 1; }
+  function zones(m) { if (C.oneZone) return 1; var z = Number(m && m.zones); return z === 2 || z === 3 ? z : 1; }
   function keys(m) { return ZONES[zones(m)]; }
   function coef(m, k) { return COEF[zones(m)][k] || 1; }
   function priceAt(date) { var p = PRICE[0].p; PRICE.forEach(function (x) { if (String(date || '') >= x.from) p = x.p; }); return p; }
   /** Пільгова ціна електроопалення діє 1 жовтня — 30 квітня. */
-  function heatSeason(date) { var m = Number(String(date || '').slice(5, 7)); return m >= 10 || m <= 4; }
+  function heatSeason(date) { if (!HEAT) return false; var m = Number(String(date || '').slice(5, 7)); return m >= 10 || m <= 4; }
   function lastDay(ym) { var y = +ym.slice(0, 4), m = +ym.slice(5, 7); return new Date(Date.UTC(y, m, 0)).getUTCDate(); }
   function addMonth(ym, n) { var y = +ym.slice(0, 4), m = +ym.slice(5, 7) - 1 + n; y += Math.floor(m / 12); m = ((m % 12) + 12) % 12; return y + '-' + String(m + 1).padStart(2, '0'); }
   function pad(n) { return String(n).padStart(2, '0'); }
@@ -47,6 +53,7 @@
    * → {open, ym (за який місяць), from, to (останній день), daysLeft, next (коли відкриється, якщо закрито)}
    */
   function win(today) {
+    if (C.win) return C.win(today, { lastDay: lastDay, addMonth: addMonth, pad: pad });
     var ym = String(today).slice(0, 7), d = +String(today).slice(8, 10), L = lastDay(ym);
     if (d <= 3) { var pm = addMonth(ym, -1); return { open: true, ym: pm, from: pm + '-' + pad(lastDay(pm) - 1), to: ym + '-03', daysLeft: 3 - d }; }
     var nm = addMonth(ym, 1), from = ym + '-' + pad(L - 1);
@@ -54,7 +61,7 @@
     return { open: false, ym: ym, from: from, to: nm + '-03', next: from, daysLeft: null };
   }
   /** За який місяць зараховується показання, зняте в дату d (1–3 число — за попередній). */
-  function forMonth(d) { var ym = String(d).slice(0, 7); return +String(d).slice(8, 10) <= 3 ? addMonth(ym, -1) : ym; }
+  function forMonth(d) { var ym = String(d).slice(0, 7); return +String(d).slice(8, 10) <= (C.lateDays || 3) ? addMonth(ym, -1) : ym; }
 
   function daysBetween(a, b) { return Math.round((Date.parse(b) - Date.parse(a)) / 864e5); }
   /**
@@ -90,11 +97,11 @@
 
   /** Скільки коштує розхід dz ({day: 120, night: 80}) за лічильником m на дату date. opts.heating — оформлене електроопалення. */
   function cost(m, dz, date, opts) {
-    var base = priceAt(date), total = 0, kwh = 0, parts = {};
+    var base = opts && opts.price > 0 ? opts.price : priceAt(date), total = 0, kwh = 0, parts = {};
     keys(m).forEach(function (k) { kwh += Math.max(0, dz[k] || 0); });
     // електроопалення в сезон: 2,64 за перші 2000 кВт·год, далі 4,32 — усереднена ціна на весь розхід місяця
     var p = base;
-    if (opts && opts.heating && heatSeason(date) && kwh > 0) p = (Math.min(kwh, HEAT.limit) * HEAT.p + Math.max(0, kwh - HEAT.limit) * base) / kwh;
+    if (HEAT && opts && opts.heating && heatSeason(date) && kwh > 0) p = (Math.min(kwh, HEAT.limit) * HEAT.p + Math.max(0, kwh - HEAT.limit) * base) / kwh;
     keys(m).forEach(function (k) { var c = Math.max(0, dz[k] || 0) * p * coef(m, k); parts[k] = c; total += c; });
     return { total: total, kwh: kwh, price: p, parts: parts };
   }
@@ -137,9 +144,26 @@
   /** Скільки дала б ніч: частка нічного розходу і економія проти однозонного (для двозонних). */
   function nightShare(mo) { var n = 0, all = 0; mo.forEach(function (b) { n += b.dz.night || 0; all += b.kwh; }); return all ? n / all : null; }
 
-  var api = { PRICE: PRICE, HEAT: HEAT, ZONES: ZONES, COEF: COEF, JUMP: JUMP, JUMP_HEAT: JUMP_HEAT, PHONES: PHONES, OBL_APP_IOS: OBL_APP_IOS, OBL_APP_ANDROID: OBL_APP_ANDROID, ZBUT_SITE: ZBUT_SITE,
+  return { PRICE: PRICE, HEAT: HEAT, ZONES: ZONES, COEF: COEF, JUMP: JUMP, JUMP_HEAT: JUMP_HEAT, PHONES: C.phones || [], LINKS: C.links || {},
     num: num, whole: whole, norm: norm, zones: zones, keys: keys, coef: coef, priceAt: priceAt, heatSeason: heatSeason, win: win, forMonth: forMonth, lastDay: lastDay, addMonth: addMonth,
     check: check, blocked: blocked, cost: cost, series: series, monthly: monthly, summary: summary, nightShare: nightShare,
-    uid: function () { return 'e' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7); } };
-  if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.TeploElec = api;
+    uid: function () { return (C.idp || 'e') + Date.now().toString(36) + Math.random().toString(36).slice(2, 7); } };
+  }
+  // світло — Харківобленерго / Харківенергозбут
+  var elec = make({ price: [{ from: '2000-01-01', p: 4.32 }], heat: { p: 2.64, limit: 2000 }, jump: 1500, jumpHeat: 4000, decimals: 2, idp: 'e',
+    phones: PHONES, links: { ios: OBL_APP_IOS, android: OBL_APP_ANDROID, zbut: ZBUT_SITE } });
+  elec.OBL_APP_IOS = OBL_APP_IOS; elec.OBL_APP_ANDROID = OBL_APP_ANDROID; elec.ZBUT_SITE = ZBUT_SITE;
+  // газ — показання 1–5 числа (станом на 1-ше; SMS 4647 — з 28-го); 1–5 число — за попередній місяць
+  var gas = make({ price: [{ from: '2000-01-01', p: 7.96 }], jump: 150, jumpHeat: 800, decimals: 3, oneZone: true, lateDays: 5, idp: 'g',
+    phones: [['+380663002888', '(066) 300-28-88', 'Vodafone'], ['+380983002888', '(098) 300-28-88', 'Київстар'], ['+380933002888', '(093) 300-28-88', 'lifecell']],
+    links: { cabinet: 'https://my.grmu.com.ua/', sms: '4647' },
+    win: function (today, h) {
+      var ym = String(today).slice(0, 7), d = +String(today).slice(8, 10), pm = h.addMonth(ym, -1), nm = h.addMonth(ym, 1);
+      if (d <= 5) return { open: true, ym: pm, from: ym + '-01', to: ym + '-05', daysLeft: 5 - d };
+      return { open: false, ym: ym, from: nm + '-01', to: nm + '-05', next: nm + '-01', daysLeft: null };
+    } });
+  /** SMS для Нафтогазу: «123456789 01234» — 9 цифр рахунку, пробіл, 5 цифр показань (нулі попереду). */
+  gas.smsText = function (acc, v) { var a = String(acc || '').replace(/\D/g, ''), n = gas.whole(v); if (a.length !== 9 || n === null || n > 99999) return null; return a + ' ' + String(n).padStart(5, '0'); };
+  elec.make = make; elec.gas = gas;
+  if (typeof module !== 'undefined' && module.exports) module.exports = elec; else { root.TeploElec = elec; root.TeploGas = gas; }
 })(typeof window !== 'undefined' ? window : this);

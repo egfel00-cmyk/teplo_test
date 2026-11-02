@@ -7,7 +7,7 @@
 (function () {
   'use strict';
   var R = window.TeploRules, M = window.TeploModels, I = window.TeploI18n;
-  var APP_VER = '0.8';   // версия в шапке (тестовый период): «ТЕСТ beta 0.8»
+  var APP_VER = '0.9';   // версия в шапке (тестовый период): «ТЕСТ beta 0.9»
   var HTM_URL = 'https://www.hts.kharkov.ua/cabinet/login';
   var BOT_URL = 'https://t.me/KPHTM_Bot';
 
@@ -73,9 +73,9 @@
           var lr = RD().filter(function (r) { return r.htm && R.num(r.htm.energy) !== null; }).slice(-1)[0], bs = S.baseline;
           var src = lr && (!bs || lr.htm.date >= bs.date) ? { q: R.num(lr.htm.energy), d: lr.htm.date } : bs && R.num(bs.energy) !== null ? { q: R.num(bs.energy), d: bs.date } : null;
           if (src) cand.push({ q: src.q, days: Math.max(1, R.daysBetween(src.d, date)), max: 15, txt: R.formatForHtm('energy', src.q) });
-        } else if (kind === 'elec') emeters().forEach(function (m) {
+        } else if (SK[kind]) smeters(kind).forEach(function (m) {
           var r = mrecs(m.id).filter(function (x) { return x.date <= date; }).slice(-1)[0], q = r ? El.whole(r.z && r.z[zone]) : null; if (q === null) return;
-          cand.push({ q: q, days: Math.max(1, R.daysBetween(r.date, date)), perMonth: El.JUMP, txt: String(q) });
+          cand.push({ q: q, days: Math.max(1, R.daysBetween(r.date, date)), perMonth: SK[kind].mod.JUMP, txt: String(q) });
         });
         else wmeters(kind).forEach(function (m) {
           var r = wprevFor(m.id, date), q = r ? Number(Wt.norm(r.vals[m.id])) : NaN; if (!r || isNaN(q)) return;
@@ -287,7 +287,7 @@
     var ip = m ? m[1].replace(/^0+(?=\d)/, '') : '', fp = m ? (m[2] || '').slice(0, 3) : '';
     var black = ip ? (ip.length < 5 ? '00000'.slice(ip.length) + ip : ip).split('') : '-----'.split('');
     var aria = ip ? (+ip) + (fp && +fp ? ',' + fp : '') + ' м³' : '—';
-    return '<div class="wdrum ' + (kind === 'hot' ? 'hot' : 'cold') + (cls ? ' ' + cls : '') + '" role="img" aria-label="' + esc(aria) + '"><span class="wd-win">' +
+    return '<div class="wdrum ' + (kind === 'hot' ? 'hot' : kind === 'gas' ? 'cold gas' : 'cold') + (cls ? ' ' + cls : '') + '" role="img" aria-label="' + esc(aria) + '"><span class="wd-win">' +
       black.map(function (d) { return '<span class="wd-c">' + d + '</span>'; }).join('') +
       [0, 1, 2].map(function (i) { return '<span class="wd-c r">' + (fp[i] || '') + '</span>'; }).join('') + '</span><span class="wd-u">м³</span></div>';
   }
@@ -360,14 +360,14 @@
     var route = view.route, bare = view.bare;
     var navItems = [[homeRoute(), 'home', 'nav_home'], ['history', 'history', 'nav_history'], ['stats', 'chart', 'nav_stats']].concat([['save', 'leaf', 'nav_save'], ['help', 'help', 'nav_help'], ['prefs', 'prefs', 'nav_prefs']]);
     var nav = bare ? '' : '<nav class="nav" style="--nav-n:' + navItems.length + '" aria-label="' + esc(t('brand')) + '">' + navItems.map(function (n) {
-      return '<a href="#' + n[0] + '"' + (route === n[0] || (n[2] === 'nav_home' && /^(home|heat|water-|elec$|places|place$)/.test(route)) ? ' aria-current="page"' : '') + ' data-key="nav-' + (n[2] === 'nav_home' ? 'home' : n[0]) + '">' + ico(n[1], 22) + '<span>' + esc(t(n[2])) + '</span></a>';
+      return '<a href="#' + n[0] + '"' + (route === n[0] || (n[2] === 'nav_home' && /^(home|heat|water-|elec$|gas$|places|place$)/.test(route)) ? ' aria-current="page"' : '') + ' data-key="nav-' + (n[2] === 'nav_home' ? 'home' : n[0]) + '">' + ico(n[1], 22) + '<span>' + esc(t(n[2])) + '</span></a>';
     }).join('') + '</nav>';
     var right = bare && view.closeTo
       ? '<a class="btn ghost" href="#' + view.closeTo + '" data-key="wiz-close" aria-label="' + esc(t('close')) + '">' + ico('close', 22) + '<span class="cl-txt">' + esc(t('close')) + '</span></a>'
       : '';
     return '<div class="app' + (bare ? ' bare-app' : '') + '">' +
       '<header class="top"><a class="brand" href="#' + homeRoute() + '" data-key="brand">' + logo() + '<span>' + esc(t('brand')) + '</span></a>' + (window.TEPLO_API ? '<span class="beta" title="' + esc(t('beta_sub')) + '" data-key="beta">' + esc(t('beta')) + ' <span class="ver">beta ' + APP_VER + '</span></span>' : '') + '<span class="spacer"></span>' + themeBtn() + right + '</header>' +
-      nav + '<main class="main' + (bare ? ' bare' : '') + '" id="main" data-screen="' + view.screen + '" tabindex="-1">' + (/^(home|heat|water-hot|water-cold|elec|history|stats|save)$/.test(route) ? placeBar() : /^(wnew|wadd|enew|eadd|add-meter|step|step-\d+|check|handover|baseline|meter|photo)$/.test(route) ? placeBar(true) : '') + view.html + '</main></div>' +
+      nav + '<main class="main' + (bare ? ' bare' : '') + '" id="main" data-screen="' + view.screen + '" tabindex="-1">' + (/^(home|heat|water-hot|water-cold|elec|gas|history|stats|save)$/.test(route) ? placeBar() : /^(wnew|wadd|enew|eadd|gnew|gadd|add-meter|step|step-\d+|check|handover|baseline|meter|photo)$/.test(route) ? placeBar(true) : '') + view.html + '</main></div>' +
       (window.TEPLO_API ? '<button class="fab' + (bare ? ' fab-bare' : '') + '" data-act="fb-open" data-key="feedback" aria-haspopup="dialog">' + ico('chat', 20) + '<span>' + esc(t('fb_btn')) + '</span></button>' + fbDialog() : '') +
       '<div id="toast-host" aria-live="polite"></div>';
   }
@@ -444,12 +444,12 @@
     heat: { icon: 'thermo', cls: 'c-heat', t: 'kd_heat', s: 'kd_heat_s', max: 1 },
     hot: { icon: 'drop', cls: 'c-hot', t: 'kd_hot', s: 'kd_hot_s', max: 4 },
     cold: { icon: 'drop', cls: 'c-cold', t: 'kd_cold', s: 'kd_cold_s', max: 4 },
-    gas: { icon: 'flame', cls: 'c-gas', t: 'kd_gas', s: 'kd_gas_s', soon: true },
+    gas: { icon: 'flame', cls: 'c-gas', t: 'kd_gas', s: 'kd_gas_s', max: 2 },
     elec: { icon: 'bolt', cls: 'c-elec', t: 'kd_elec', s: 'kd_elec_s', max: 2 }
   };
   var KIND_ORDER = ['heat', 'hot', 'cold', 'gas', 'elec'];
   function hasHeat() { return !!(S.meter && !S.meter.removed); }
-  function kindCount(k) { return k === 'heat' ? (hasHeat() ? 1 : 0) : KINDS[k].soon ? 0 : k === 'elec' ? pmeters('elec').length : wmeters(k).length; }
+  function kindCount(k) { return k === 'heat' ? (hasHeat() ? 1 : 0) : KINDS[k].soon ? 0 : k === 'elec' || k === 'gas' ? pmeters(k).length : wmeters(k).length; }
   function meterTitle(what) { if (what === 'heat') return t('kd_heat'); var pm = pmeters(null, true).filter(function (x) { return x.id === what; })[0]; if (pm) return ename(pm); var m = wmeters(null, true).filter(function (x) { return x.id === what; })[0]; return m ? wname(m) : ''; }
   /** Есть ли у счётчика записи (тогда «прибрати» — в архив, иначе — удалить совсем). */
   function meterHasData(what) {
@@ -627,7 +627,7 @@
     if (draft && hasHeat()) html += '<div class="home-draft"><a class="btn big block" href="#step-' + (S.draft.step || 0) + '" data-key="home-continue">' + esc(t('h_continue', { i: (S.draft.step || 0) + 1, n: steps().length })) + '</a>' +
       '<button type="button" class="linkbtn" data-act="wiz-cancel" data-what="heat" data-key="home-draft-cancel">' + esc(t('wz_cancel_draft')) + '</button></div>';
     // только те счётчики, что есть в квартире, и «Додати лічильник»
-    var cards = (hasHeat() ? [heatCard()] : []).concat(['hot', 'cold'].filter(function (k) { return wmeters(k).length; }).map(waterCard)).concat(emeters().length ? [elecCard()] : []);
+    var cards = (hasHeat() ? [heatCard()] : []).concat(['hot', 'cold'].filter(function (k) { return wmeters(k).length; }).map(waterCard)).concat(emeters().length ? [elecCard()] : []).concat(smeters('gas').length ? [sCard('gas')] : []);
     html += '<div class="ucards">' + cards.join('') + addTile(!cards.length) + '</div>';
     if (cards.length) html += '<p class="small muted ucards-hint">' + esc(t('uc_hint')) + '</p>';
     if (window.TEPLO_API) html += testReset();
@@ -825,7 +825,7 @@
   function kinds() {
     var k = []; if (hasHeat() || (S.meter && RD().length)) k.push('heat');
     ['hot', 'cold'].forEach(function (x) { if (wmeters(x).length || wmeters(x, true).some(function (m) { return meterHasData(m.id); })) k.push(x); });
-    if (emeters().length || emeters(true).some(function (m) { return meterHasData(m.id); })) k.push('elec');
+    ['elec', 'gas'].forEach(function (x) { if (smeters(x).length || smeters(x, true).some(function (m) { return meterHasData(m.id); })) k.push(x); });
     return k;
   }
   /** Что смотрим во вкладках (S.view); выбранного вида нет — первый, что есть. */
@@ -965,273 +965,320 @@
       accGroups(groups.map(function (g) { return { title: g[0], icon: g[1], items: g[2].map(function (k) { return { title: list[k][0], html: '<p>' + esc(list[k][1]) + '</p>' }; }) }; }), 'wsave-tips') };
   }
 
-  // ================= світло: електролічильники квартири (place.meters, kind 'elec'), показання — S.mrecs =================
-  // Запис: {id, place, meter, kind: 'elec', date, z: {all} | {day, night} | {peak, half, night}, base, sent: {obl: дата}, createdAt, updatedAt, deleted}.
-  // Передають у Харківобленерго (застосунок «Харенерго», Viber-бот, кол-центр) в останні 2 дні місяця і 1–3 число; рахунок — Харківенергозбут.
-  var El = window.TeploElec;
+  // ================= світло й газ: «прості» лічильники квартири (place.meters, kind 'elec' | 'gas'), показання — S.mrecs =================
+  // Запис: {id, place, meter, kind, date, z: {all} | {day, night} | {peak, half, night}, base, sent: {obl | grm: дата}, createdAt, updatedAt, deleted}.
+  // Світло — Харківобленерго (останні 2 дні місяця і 1–3 число); газ — Нафтогаз / Газмережі (1–5 число). Спільні екрани з параметром k.
+  var El = window.TeploElec, Gs = window.TeploGas;
   function KWH() { return S.lang === 'ru' ? 'кВт·ч' : 'кВт·год'; }
+  var SK = {
+    elec: { mod: El, icon: 'bolt', cls: 'c-elec', page: 'elec', nw: 'enew', add: 'eadd', heat: 'elecHeat', sk: 'obl', unit: KWH, tag: 'kWh', dec: 0 },
+    gas: { mod: Gs, icon: 'flame', cls: 'c-gas', page: 'gas', nw: 'gnew', add: 'gadd', heat: 'gasHeat', sk: 'grm', unit: function () { return 'м³'; }, tag: 'm³', dec: 0 }
+  };
+  function skOf(m) { return SK[(m && m.kind) === 'gas' ? 'gas' : 'elec']; }
+  /** Текст для виду: у газу свої ключі (ed_ → gd_, ue_ → ug_, kpi_e_ → kpi_g_), немає — спільний. */
+  function tk(k, key, v) {
+    if (k === 'gas') { var g = key.replace(/^(ue_|kpi_e_|e)/, function (x) { return x === 'ue_' ? 'ug_' : x === 'kpi_e_' ? 'kpi_g_' : 'g'; }); if (I.T.uk[g] !== undefined) return t(g, v); }
+    return t(key, v);
+  }
   function pmeters(kind, all) { var p = place(); return ((p && p.meters) || []).filter(function (m) { return m && !m.deleted && (all || !m.removed) && (!kind || m.kind === kind); }); }
   function setPMeters(fn) { ensurePlaces(); var p = place(); p.meters = JSON.parse(JSON.stringify(p.meters || [])); fn(p.meters); p.updatedAt = Date.now(); save(); }
+  function smeters(k, all) { return pmeters(k, all); }
   function emeters(all) { return pmeters('elec', all); }
   function mrecs(mid) { return (S.mrecs || []).filter(function (r) { return r && !r.deleted && r.place === S.placeId && (!mid || r.meter === mid); }).sort(function (a, b) { return a.date < b.date ? -1 : a.date > b.date ? 1 : a.base ? -1 : b.base ? 1 : 0; }); }
   /** Останнє показання лічильника до дати (не включно; стартове того ж дня — так). */
   function eprev(mid, date, skipId) { var a = mrecs(mid).filter(function (r) { return r.id !== skipId && (!date || r.date < date || (r.base && r.date === date)); }); return a.length ? a[a.length - 1] : null; }
   function elastOf(mid) { var a = mrecs(mid); return a.length ? a[a.length - 1] : null; }
-  function eopts() { return { heating: !!(place() && place().elecHeat) }; }
-  function ename(m) { return t('kd_elec') + (m.name ? ' · ' + m.name : ''); }
-  /** Назва зони: «День», «Ніч», «Пік», «Напівпік»; однозонний — «Показання». */
-  function ezl(m, k) { var z = El.zones(m); return t(z === 1 ? 'ez_all' : 'ez_' + k + (z === 3 && k === 'night' ? '3' : '')); }
-  function etag(m, k) { var z = El.zones(m); return z === 1 ? 'kWh' : t('ezt_' + k); }
-  function ezonesTxt(m) { return t('ez_n' + El.zones(m)); }
+  function sopts(k) { var p = place() || {}; return { heating: !!p[SK[k].heat], price: k === 'gas' ? R.num(p.gasPrice) : null }; }
+  function eopts() { return sopts('elec'); }
+  function ename(m) { return t((m && m.kind) === 'gas' ? 'kd_gas' : 'kd_elec') + (m && m.name ? ' · ' + m.name : ''); }
+  /** Назва зони: «День», «Ніч», «Пік», «Напівпік»; одна зона — «Показання». */
+  function ezl(m, k) { var z = skOf(m).mod.zones(m); return t(z === 1 ? 'ez_all' : 'ez_' + k + (z === 3 && k === 'night' ? '3' : '')); }
+  function etag(m, k) { var z = skOf(m).mod.zones(m); return z === 1 ? skOf(m).tag : t('ezt_' + k); }
+  function ezonesTxt(m) { return (m && m.kind) === 'gas' ? '' : t('ez_n' + El.zones(m)); }
   /** Значення запису по зонах одним рядком: «день 10250 · ніч 5130». */
-  function evals(m, r) { return El.keys(m).map(function (k) { var v = El.whole(r && r.z && r.z[k]); return (El.zones(m) > 1 ? ezl(m, k).toLowerCase() + ' ' : '') + (v === null ? '—' : v); }).join(' · '); }
-  function edisplay(m, r, cls) { return lcd(El.keys(m).map(function (k) { var v = El.whole(r && r.z && r.z[k]); return { text: v === null ? '------' : String(v), tag: etag(m, k), label: (El.zones(m) > 1 ? ezl(m, k) + ' ' : '') + (v === null ? '—' : v + ' ' + KWH()) }; }), cls); }
+  function evals(m, r) { var md = skOf(m).mod; return md.keys(m).map(function (k) { var v = md.whole(r && r.z && r.z[k]); return (md.zones(m) > 1 ? ezl(m, k).toLowerCase() + ' ' : '') + (v === null ? '—' : v); }).join(' · '); }
+  function edisplay(m, r, cls) {
+    var md = skOf(m).mod, u = skOf(m).unit();
+    // газ — барабан як у водоміра (чорні м³ + червоні літри), світло — ЖК по зонах
+    if (m.kind === 'gas') return wdrum(r && r.z ? r.z.all : null, 'gas', cls);
+    return lcd(md.keys(m).map(function (k) { var v = md.whole(r && r.z && r.z[k]); return { text: v === null ? '------' : String(v), tag: etag(m, k), label: (md.zones(m) > 1 ? ezl(m, k) + ' ' : '') + (v === null ? '—' : v + ' ' + u) }; }), cls);
+  }
   /** У вікні приймання є показання цього лічильника (не стартові)? → запис. */
   function einWin(mid, w) { return mrecs(mid).filter(function (r) { return !r.base && r.date >= w.from && r.date <= w.to; }).slice(-1)[0] || null; }
-  /** Статус світла квартири для картки й списку квартир (як heatStatus/waterStatus). */
-  function elecStatus() {
-    var ms = emeters(), w = El.win(today()), recs = ms.map(function (m) { return einWin(m.id, w); });
+  function ssent(k, r) { return !!(r && r.sent && r.sent[SK[k].sk]); }
+  /** Статус світла/газу квартири для картки й списку квартир (як heatStatus/waterStatus). */
+  function sStatus(k) {
+    var ms = smeters(k), w = SK[k].mod.win(today()), recs = ms.map(function (m) { return einWin(m.id, w); });
     if (!w.open) return { st: t('ue_next', { a: fmtDate(w.next), b: fmtDate(w.to) }), tone: '' };
-    if (recs.every(function (r) { return r && r.sent && r.sent.obl; })) return { st: t('uc_w_sent'), tone: 'ok' };
+    if (recs.every(function (r) { return ssent(k, r); })) return { st: t('uc_w_sent'), tone: 'ok' };
     if (recs.every(Boolean)) return { st: t('uc_w_ready'), tone: 'due', due: w.to };
     return { st: t('ue_due', { a: fmtDate(w.from), b: fmtDate(w.to) }), tone: w.daysLeft <= 1 ? 'warn' : 'due', due: w.to };
   }
-  function elecCard() {
-    var ms = emeters(), es = elecStatus();
-    var display = ms.length === 1 ? edisplay(ms[0], elastOf(ms[0].id), 'card') : ms.map(function (m) { return '<div class="wd-multi"><span class="wd-name">' + esc(m.name || ename(m)) + '</span>' + edisplay(m, elastOf(m.id), 'card') + '</div>'; }).join('');
+  function elecStatus() { return sStatus('elec'); }
+  function sCard(k) {
+    var ms = smeters(k), es = sStatus(k);
+    var display = ms.length === 1 ? edisplay(ms[0], elastOf(ms[0].id), 'card') : ms.map(function (m) { return '<div class="wd-multi"><span class="wd-name">' + esc(m.name || ename(m)) + '</span>' + edisplay(m, elastOf(m.id), 'card' + (k === 'gas' ? ' sm' : '')) + '</div>'; }).join('');
     var last = ms.map(function (m) { return elastOf(m.id); }).filter(Boolean).sort(function (a, b) { return a.date < b.date ? 1 : -1; })[0];
-    return ucard({ kind: 'elec', href: 'elec', icon: 'bolt', title: t('kd_elec'), display: display, sub: last ? (last.base ? t('uc_w_start', { d: fmtDate(last.date) }) : t('uc_w_last', { d: fmtDate(last.date) })) : t('uc_w_nolast'),
-      status: es.st, tone: es.tone, addAct: 'enew', addLabel: t('ue_add') });
+    return ucard({ kind: k, href: SK[k].page, icon: SK[k].icon, title: t(KINDS[k].t), display: display, sub: last ? (last.base ? t('uc_w_start', { d: fmtDate(last.date) }) : t('uc_w_last', { d: fmtDate(last.date) })) : t('uc_w_nolast'),
+      status: es.st, tone: es.tone, addAct: SK[k].nw, addLabel: tk(k, 'ue_add') });
   }
+  function elecCard() { return sCard('elec'); }
 
-  /** «Куди передати» світло: Харківобленерго — застосунок, Viber-бот, кол-центр; готові цифри, якщо є показання у вікні. */
-  function esendPanel(recs) {
-    var w = El.win(today()), ms = emeters(), have = recs && recs.filter(Boolean).length ? recs : null;
+  /** «Куди передати»: світло — Харківобленерго (застосунок, Viber-бот, кол-центр); газ — кабінет Газмереж, SMS 4647, «Куб», кол-центр. */
+  function ssendPanel(k, recs) {
+    var md = SK[k].mod, w = md.win(today()), ms = smeters(k), have = recs && recs.filter(Boolean).length ? recs : null;
     var due = w.open ? t('ed_due', { d: fmtDate(w.to) }) : t('ed_due_next', { a: fmtDate(w.next), b: fmtDate(w.to) });
-    var allSent = have && ms.every(function (m) { var r = have.filter(function (x) { return x && x.meter === m.id; })[0]; return r && r.sent && r.sent.obl; });
-    var body = '';
+    var allSent = have && ms.every(function (m) { return ssent(k, have.filter(function (x) { return x && x.meter === m.id; })[0]); });
+    var body = '', chans, ids = have ? have.filter(Boolean).map(function (r) { return r.id; }).join(',') : '';
     if (have) body = '<ul class="wvals" data-key="esend-vals">' + ms.map(function (m) {
       var r = have.filter(function (x) { return x && x.meter === m.id; })[0]; if (!r) return '';
-      return El.keys(m).map(function (k) { var v = El.whole(r.z[k]); return '<li><span>' + esc((ms.length > 1 ? (m.name || ename(m)) + ' · ' : '') + ezl(m, k)) + '</span><b class="num">' + v + '</b><button class="linkbtn" data-act="copy" data-text="' + v + '">' + esc(t('copy')) + '</button></li>'; }).join('');
-    }).join('') + '</ul>' + (El.zones(ms[0] || {}) > 1 ? '<p class="small muted">' + esc(t('ed_nosum')) + '</p>' : '');
-    var acc = ms.filter(function (m) { return m.account; }).map(function (m) { return '<p class="small">' + esc(t('ed_acc', { a: m.account })) + (ms.length > 1 ? ' · ' + esc(m.name || '') : '') + ' <button class="linkbtn" data-act="copy" data-text="' + esc(m.account) + '">' + esc(t('copy')) + '</button></p>'; }).join('');
-    var mark = have ? '<p class="dest-mark">' + (allSent ? '<button class="linkbtn" data-act="esent" data-v="0" data-ids="' + have.filter(Boolean).map(function (r) { return r.id; }).join(',') + '">' + esc(t('ws_unmark')) + '</button>'
-      : '<button class="btn sec" data-act="esent" data-v="1" data-ids="' + have.filter(Boolean).map(function (r) { return r.id; }).join(',') + '" data-key="esend-done">' + ico('check', 18) + '<span>' + esc(t('ws_mark')) + '</span></button>') + '</p>' : '';
-    var phones = El.PHONES.map(function (p) { return telLink(p[0], p[1]) + ' <span class="muted">(' + esc(p[2]) + ')</span>'; }).join(', ');
-    return '<section class="panel where" data-key="where-elec"><h2>' + ico('send', 20) + '<span>' + esc(t('wd_title')) + '</span></h2>' +
+      return md.keys(m).map(function (z) { var v = md.whole(r.z[z]); return '<li><span>' + esc((ms.length > 1 ? (m.name || ename(m)) + ' · ' : '') + ezl(m, z)) + '</span><b class="num">' + v + '</b><button class="linkbtn" data-act="copy" data-text="' + v + '">' + esc(t('copy')) + '</button></li>'; }).join('');
+    }).join('') + '</ul>' + (k === 'elec' && El.zones(ms[0] || {}) > 1 ? '<p class="small muted">' + esc(t('ed_nosum')) + '</p>' : '');
+    var acc = ms.filter(function (m) { return m.account; }).map(function (m) { return '<p class="small">' + esc(tk(k, 'ed_acc', { a: m.account })) + (ms.length > 1 ? ' · ' + esc(m.name || '') : '') + ' <button class="linkbtn" data-act="copy" data-text="' + esc(m.account) + '">' + esc(t('copy')) + '</button></p>'; }).join('');
+    var phones = md.PHONES.map(function (p) { return telLink(p[0], p[1]) + ' <span class="muted">(' + esc(p[2]) + ')</span>'; }).join(', ');
+    var more;
+    if (k === 'gas') {
+      // SMS 4647: «9 цифр рахунку пробіл 5 цифр показань» — готовий текст, якщо є рахунок і показання
+      var sms = have && ms.length === 1 ? Gs.smsText(ms[0].account, (have.filter(Boolean)[0].z || {}).all) : null;
+      if (have && ms.length === 1 && !sms) body += '<p class="small muted">' + esc(t('gd_noacc')) + '</p>';
+      if (sms) body += '<p class="small">' + esc(t('gd_sms_how', { s: sms })) + '</p>';
+      chans = (sms ? [['sms:' + Gs.LINKS.sms + '?&body=' + encodeURIComponent(sms), t('gd_sms'), 'send', 'sms']] : []).concat([[Gs.LINKS.cabinet, t('gd_cab'), 'ext', 'cab']]);
+      more = esc(t('gd_more')) + ' ' + phones + '.';
+    } else {
+      chans = [[El.OBL_APP_IOS, t('ed_app_ios'), 'ext', 'ios'], [El.OBL_APP_ANDROID, t('ed_app_android'), 'ext', 'android']];
+      more = esc(t('ed_more')) + ' ' + phones + '. ' + esc(t('ed_zbut')) + ' <a href="' + El.ZBUT_SITE + '" target="_blank" rel="noopener">zbutenergo.kharkov.ua</a>.';
+    }
+    var mark = have ? '<p class="dest-mark">' + (allSent ? '<button class="linkbtn" data-act="esent" data-k="' + k + '" data-v="0" data-ids="' + ids + '">' + esc(t('ws_unmark')) + '</button>'
+      : '<button class="btn sec" data-act="esent" data-k="' + k + '" data-v="1" data-ids="' + ids + '" data-key="esend-done">' + ico('check', 18) + '<span>' + esc(t('ws_mark')) + '</span></button>') + '</p>' : '';
+    return '<section class="panel where" data-key="where-' + k + '"><h2>' + ico('send', 20) + '<span>' + esc(t('wd_title')) + '</span></h2>' +
       (places().length > 1 ? '<p class="dest-place" style="--pc:var(--pc-' + placeColor(place()) + ')" data-key="where-place"><b>' + esc(t('wd_for', { p: placeLabel(place()) })) + '</b>' + (placeSub(place()) ? '<span class="small muted"> · ' + esc(placeSub(place())) + '</span>' : '') + '</p>' : '') +
-      (have ? '' : '<p class="small muted">' + esc(t('ed_lead')) + '</p>') +
-      destBox({ key: 'obl', id: 'esend', org: t('ed_org'), what: t('ed_what'), due: due, dueTone: w.open && w.daysLeft <= 1 ? 'warn' : 'neutral', sent: allSent, body: body + acc,
-        chans: [[El.OBL_APP_IOS, t('ed_app_ios'), 'ext', 'ios'], [El.OBL_APP_ANDROID, t('ed_app_android'), 'ext', 'android']],
-        more: esc(t('ed_more')) + ' ' + phones + '. ' + esc(t('ed_zbut')) + ' <a href="' + El.ZBUT_SITE + '" target="_blank" rel="noopener">zbutenergo.kharkov.ua</a>.', mark: mark }) + '</section>';
+      (have ? '' : '<p class="small muted">' + esc(tk(k, 'ed_lead')) + '</p>') +
+      destBox({ key: k === 'gas' ? 'grm' : 'obl', id: 'esend', org: tk(k, 'ed_org'), what: tk(k, 'ed_what'), due: due, dueTone: w.open && w.daysLeft <= 1 ? 'warn' : 'neutral', sent: allSent, body: body + acc, chans: chans, more: more, mark: mark }) + '</section>';
   }
-  /** Рядки історії світла (нові зверху): скільки кВт·год і почім, на лічильнику, передано. */
-  function erows(limit) {
-    var ms = emeters(true), rows = [];
-    ms.forEach(function (m) { El.series(mrecs(m.id), m).forEach(function (x) { rows.push({ m: m, x: x }); }); });
-    rows.sort(function (a, b) { return a.x.rec.date < b.x.rec.date ? 1 : a.x.rec.date > b.x.rec.date ? -1 : 0; });
+  /** Рядки історії (нові зверху): скільки набігло і почім, на лічильнику, передано. */
+  function srows(k, limit) {
+    var ms = smeters(k, true), md = SK[k].mod, u = SK[k].unit(), rows = [];
+    ms.forEach(function (m) { md.series(mrecs(m.id), m).forEach(function (x) { rows.push({ m: m, x: x }); }); });
+    rows.sort(function (a, b) { return a.x.rec.date < b.x.rec.date ? 1 : a.x.rec.date > b.x.rec.date ? -1 : a.x.rec.base ? 1 : b.x.rec.base ? -1 : 0; });
     var total = rows.length; if (limit) rows = rows.slice(0, limit);
     if (!rows.length) return { total: 0, html: '' };
-    return { total: total, html: '<ul class="list wh" data-key="elec-history">' + rows.map(function (y) {
-      var x = y.x, r = x.rec, has = !r.base && x.kwh !== null, c = has ? El.cost(y.m, x.dz, r.date, eopts()).total : null;
-      return histRow({ key: 'erec-' + r.id, href: '#erec-' + r.id, q: has ? '+' + x.kwh : null, unit: KWH(), money: c, none: r.base ? t('eh_base') : t('hr_first'), date: fmtDate(r.date, true),
-        sub: [t('hr_on_meter', { v: (ms.length > 1 ? (y.m.name || '') + ' ' : '') + evals(y.m, r), u: KWH() }), has && x.days ? x.days + ' ' + t('days_short') : ''],
-        right: r.base ? '' : r.sent && r.sent.obl ? '<span class="pill ok">' + esc(t('wh_sent')) + '</span>' : '<span class="pill neutral">' + esc(t('wh_notsent')) + '</span>' });
+    return { total: total, html: '<ul class="list wh" data-key="' + k + '-history">' + rows.map(function (y) {
+      var x = y.x, r = x.rec, has = !r.base && x.kwh !== null, c = has ? md.cost(y.m, x.dz, r.date, sopts(k)).total : null;
+      return histRow({ key: 'erec-' + r.id, href: '#erec-' + r.id, q: has ? '+' + x.kwh : null, unit: u, money: c, none: r.base ? t('eh_base') : t('hr_first'), date: fmtDate(r.date, true),
+        sub: [t('hr_on_meter', { v: (ms.length > 1 ? (y.m.name || '') + ' ' : '') + evals(y.m, r), u: u }), has && x.days ? x.days + ' ' + t('days_short') : ''],
+        right: r.base ? '' : ssent(k, r) ? '<span class="pill ok">' + esc(t('wh_sent')) + '</span>' : '<span class="pill neutral">' + esc(t('wh_notsent')) + '</span>' });
     }).join('') + '</ul>' };
   }
-  /** Сторінка світла: табло кожного лічильника, «Внести», «Куди передати», історія, налаштування лічильника. */
-  V.elec = function () {
-    var ms = emeters(), p = place() || {}, h = '<h1>' + esc(t('kd_elec')) + (p.name ? ' — ' + esc(p.name) : '') + '</h1>';
+  /** Галочка «опалення» (світло: пільгова ціна 2,64; газ: котел — великий розхід взимку — норма) і ціна газу — у квартири. */
+  function sheatRow(k) {
+    var p = place() || {};
+    return '<label class="check-row" style="margin-top:12px"><input type="checkbox" id="' + (k === 'gas' ? 'g' : 'e') + '-heat" data-heat="' + SK[k].heat + '"' + (p[SK[k].heat] ? ' checked' : '') + ' data-key="' + k + '-heat"><span>' + esc(tk(k, 'eh_on')) + '</span></label><p class="small muted" style="margin:4px 0 0">' + esc(tk(k, 'eh_sub')) + '</p>' +
+      (k === 'gas' ? '<div class="field" style="max-width:260px;margin-top:12px"><label for="g-price">' + esc(t('gh_price')) + '</label><div class="ctl"><input id="g-price" class="num" inputmode="decimal" autocomplete="off" placeholder="' + esc(money(Gs.priceAt(today()))) + '" value="' + esc(p.gasPrice ? String(p.gasPrice).replace('.', ',') : '') + '"><span class="unit">грн</span></div><div class="help">' + esc(t('gh_price_h')) + '</div></div>' : '');
+  }
+  function eheatRow() { return sheatRow('elec'); }
+  /** Сторінка виду: табло кожного лічильника, «Внести», «Куди передати», історія, налаштування лічильника. */
+  function sPage(k) {
+    var ms = smeters(k), p = place() || {}, h = '<h1>' + esc(t(KINDS[k].t)) + (p.name ? ' — ' + esc(p.name) : '') + '</h1>';
     var left = ms.map(function (m) {
       var r = elastOf(m.id), cap = r ? (r.base ? t('wm_cap_base', { d: fmtDate(r.date, true) }) : fmtDate(r.date, true)) : t('uc_w_nolast');
       var fix = r && !r.base ? '<button class="linkbtn" data-act="eedit" data-id="' + r.id + '">' + esc(t('change')) + '</button>' : '';
       return '<div class="panel wmeter" data-key="emeter-' + m.id + '"><h2>' + esc(ms.length > 1 ? ename(m) : t('wm_last')) + (m.serial ? ' <span class="small muted">№ ' + esc(m.serial) + '</span>' : '') + '</h2>' +
-        edisplay(m, r, 'hero') + '<p class="lcd-cap meta-row"><span>' + esc(cap) + '</span>' + fix + '</p><p class="small muted" style="margin:6px 0 0">' + esc(ezonesTxt(m)) + '</p></div>';
+        edisplay(m, r, 'hero') + '<p class="lcd-cap meta-row"><span>' + esc(cap) + '</span>' + fix + '</p>' + (ezonesTxt(m) ? '<p class="small muted" style="margin:6px 0 0">' + esc(ezonesTxt(m)) + '</p>' : '') + '</div>';
     }).join('');
-    var w = El.win(today()), cur = w.open ? ms.map(function (m) { return einWin(m.id, w); }) : null;
-    var right = '<button class="btn big block" data-act="enew" data-key="elec-add">' + ico('plus', 22) + '<span>' + esc(t('en_title')) + '</span></button>' + esendPanel(cur);
-    var er = erows(3);
-    if (er.total) right += '<h2 class="section-title">' + esc(t('wh_title')) + '</h2>' + er.html + (er.total > 3 ? '<p><button class="btn sec" data-act="view-go" data-v="elec" data-to="history" data-key="elec-all">' + esc(t('wh_all', { n: er.total })) + '</button></p>' : '');
-    // налаштування лічильника: назва, №, особовий рахунок; електроопалення — у квартири
-    right += '<h2 class="section-title">' + esc(t('em_title')) + '</h2>' + ms.map(function (m) {
-      return '<fieldset class="wm-row" data-key="em-' + m.id + '"><legend>' + ico('bolt', 16, 'c-elec') + ' ' + esc(ename(m)) + ' <span class="small muted">· ' + esc(ezonesTxt(m)) + '</span></legend><div class="grid2">' +
-        '<div class="field"><label for="emn-' + m.id + '">' + esc(t('em_name')) + '</label><div class="ctl"><input id="emn-' + m.id + '" maxlength="40" data-em="' + m.id + '" data-ef="name" value="' + esc(m.name || '') + '" placeholder="' + esc(t('em_name_ph')) + '"></div></div>' +
-        '<div class="field"><label for="ema-' + m.id + '">' + esc(t('em_acc')) + '</label><div class="ctl"><input id="ema-' + m.id + '" class="num" inputmode="numeric" autocomplete="off" data-em="' + m.id + '" data-ef="account" value="' + esc(m.account || '') + '"></div><div class="help">' + esc(t('em_acc_h')) + '</div></div>' +
+    var w = SK[k].mod.win(today()), cur = w.open ? ms.map(function (m) { return einWin(m.id, w); }) : null;
+    var right = '<button class="btn big block" data-act="' + SK[k].nw + '" data-key="' + k + '-add">' + ico('plus', 22) + '<span>' + esc(tk(k, 'en_title')) + '</span></button>' + ssendPanel(k, cur);
+    var er = srows(k, 3);
+    if (er.total) right += '<h2 class="section-title">' + esc(t('wh_title')) + '</h2>' + er.html + (er.total > 3 ? '<p><button class="btn sec" data-act="view-go" data-v="' + k + '" data-to="history" data-key="' + k + '-all">' + esc(t('wh_all', { n: er.total })) + '</button></p>' : '');
+    // налаштування лічильника: назва, №, особовий рахунок; опалення й ціна — у квартири
+    right += '<h2 class="section-title">' + esc(tk(k, 'em_title')) + '</h2>' + ms.map(function (m) {
+      return '<fieldset class="wm-row" data-key="em-' + m.id + '"><legend>' + ico(SK[k].icon, 16, SK[k].cls) + ' ' + esc(ename(m)) + (ezonesTxt(m) ? ' <span class="small muted">· ' + esc(ezonesTxt(m)) + '</span>' : '') + '</legend><div class="grid2">' +
+        '<div class="field"><label for="emn-' + m.id + '">' + esc(t('em_name')) + '</label><div class="ctl"><input id="emn-' + m.id + '" maxlength="40" data-em="' + m.id + '" data-ef="name" value="' + esc(m.name || '') + '" placeholder="' + esc(tk(k, 'em_name_ph')) + '"></div></div>' +
+        '<div class="field"><label for="ema-' + m.id + '">' + esc(t('em_acc')) + '</label><div class="ctl"><input id="ema-' + m.id + '" class="num" inputmode="numeric" autocomplete="off" data-em="' + m.id + '" data-ef="account" value="' + esc(m.account || '') + '"></div><div class="help">' + esc(tk(k, 'em_acc_h')) + '</div></div>' +
         '<div class="field"><label for="ems-' + m.id + '">' + esc(t('wm_serial')) + '</label><div class="ctl"><input id="ems-' + m.id + '" class="num" autocomplete="off" data-em="' + m.id + '" data-ef="serial" value="' + esc(m.serial || '') + '"></div></div></div>' +
-        '<p class="small muted">' + esc(t('em_zones_fix')) + '</p></fieldset>';
-    }).join('') + eheatRow() + '<p><a href="#place-' + esc(p.id || '') + '" data-key="elec-place">' + esc(t('em_manage')) + '</a></p>';
-    right += '<details class="tips-box" style="margin-top:16px" data-key="elec-how"><summary>' + esc(t('ehow_t')) + '</summary><ul>' + t('ehow').split('|').map(function (x) { return '<li>' + esc(x) + '</li>'; }).join('') + '</ul></details>';
+        (k === 'elec' ? '<p class="small muted">' + esc(t('em_zones_fix')) + '</p>' : '') + '</fieldset>';
+    }).join('') + sheatRow(k) + '<p><a href="#place-' + esc(p.id || '') + '" data-key="' + k + '-place">' + esc(t('em_manage')) + '</a></p>';
+    right += '<details class="tips-box" style="margin-top:16px" data-key="' + k + '-how"><summary>' + esc(tk(k, 'ehow_t')) + '</summary><ul>' + tk(k, 'ehow').split('|').map(function (x) { return '<li>' + esc(x) + '</li>'; }).join('') + '</ul></details>';
     h += '<div class="hero-grid"><div class="wm-col">' + left + '</div><div>' + right + '</div></div>';
-    return { screen: 'S50', route: 'elec', html: h };
-  };
-  /** Галочка «електроопалення» (пільгова ціна 2,64 у жовтні–квітні) — у квартири. */
-  function eheatRow() {
-    return '<label class="check-row" style="margin-top:12px"><input type="checkbox" id="e-heat"' + (place() && place().elecHeat ? ' checked' : '') + ' data-key="elec-heat"><span>' + esc(t('eh_on')) + '</span></label><p class="small muted" style="margin:4px 0 0">' + esc(t('eh_sub')) + '</p>';
+    return { screen: k === 'gas' ? 'S55' : 'S50', route: k, html: h };
   }
+  V.elec = function () { return sPage('elec'); };
+  V.gas = function () { return sPage('gas'); };
 
-  // ---------- ввод показань світла ----------
-  function enFresh() { return { date: '', vals: {}, back: '', skip: '' }; }
+  // ---------- ввод показань світла / газу ----------
+  function enFresh(k) { return { k: k || 'elec', date: '', vals: {}, back: '', skip: '' }; }
   var EN = enFresh();
-  V.enew = function () {
-    var ms = emeters(); if (!ms.length) { AM_BACK = 'home'; return V['add-meter'](); }
-    var date = EN.date || today(), back = EN.back || 'elec', w = El.win(date);
-    var h = '<h1>' + esc(t('en_title')) + '</h1><p class="small muted">' + esc(t(w.open ? 'en_lead_open' : 'en_lead_closed', { a: fmtDate(w.open ? w.from : w.next), b: fmtDate(w.to) })) + '</p>' +
+  function sNew(k) {
+    var ms = smeters(k), md = SK[k].mod, u = SK[k].unit(); if (!ms.length) { AM_BACK = 'home'; return V['add-meter'](); }
+    if (EN.k !== k) EN = enFresh(k);
+    var date = EN.date || today(), back = EN.back || SK[k].page, w = md.win(date);
+    var h = '<h1>' + esc(tk(k, 'en_title')) + '</h1><p class="small muted">' + esc(tk(k, w.open ? 'en_lead_open' : 'en_lead_closed', { a: fmtDate(w.open ? w.from : w.next), b: fmtDate(w.to) })) + '</p>' +
       '<div class="field" style="max-width:280px"><label for="en-date">' + esc(t('wn_date')) + '</label><div class="ctl"><input id="en-date" type="date" value="' + esc(date) + '" max="' + today() + '"></div></div><form id="en-form" novalidate>';
     ms.forEach(function (m) {
       var p = eprev(m.id, date, EN.skip), vs = EN.vals[m.id] || {};
-      h += '<fieldset class="efield" data-key="en-' + m.id + '"><legend>' + ico('bolt', 18, 'c-elec') + ' ' + esc(ename(m)) + (m.serial ? ' <span class="small muted">№ ' + esc(m.serial) + '</span>' : '') + '</legend>' +
-        (El.zones(m) > 1 ? '<p class="small muted">' + esc(t('en_zones_' + El.zones(m))) + '</p>' : '') +
-        El.keys(m).map(function (k) {
-          var id = m.id + '-' + k, pv = p ? El.whole(p.z && p.z[k]) : null;
-          return '<div class="field wfield" id="ef-' + id + '"><label for="en-' + id + '">' + esc(ezl(m, k)) + '</label><div class="ctl"><input id="en-' + id + '" class="num" inputmode="decimal" autocomplete="off" data-en="' + m.id + '|' + k + '" value="' + esc(vs[k] || '') + '" placeholder="' + (pv !== null ? pv : '') + '" aria-describedby="eh-' + id + '"><span class="unit">' + KWH() + '</span></div>' +
-            '<div class="help" id="eh-' + id + '">' + esc(pv !== null ? t('en_prev', { v: pv, d: fmtDate(p.date) }) : t('wn_first')) + '</div></div>';
+      h += '<fieldset class="efield" data-key="en-' + m.id + '"><legend>' + ico(SK[k].icon, 18, SK[k].cls) + ' ' + esc(ename(m)) + (m.serial ? ' <span class="small muted">№ ' + esc(m.serial) + '</span>' : '') + '</legend>' +
+        (md.zones(m) > 1 ? '<p class="small muted">' + esc(t('en_zones_' + md.zones(m))) + '</p>' : '') +
+        md.keys(m).map(function (z) {
+          var id = m.id + '-' + z, pv = p ? md.whole(p.z && p.z[z]) : null;
+          return '<div class="field wfield" id="ef-' + id + '"><label for="en-' + id + '">' + esc(ezl(m, z)) + '</label><div class="ctl"><input id="en-' + id + '" class="num" inputmode="decimal" autocomplete="off" data-en="' + m.id + '|' + z + '" value="' + esc(vs[z] || '') + '" placeholder="' + (pv !== null ? pv : '') + '" aria-describedby="eh-' + id + '"><span class="unit">' + u + '</span></div>' +
+            '<div class="help" id="eh-' + id + '">' + esc(pv !== null ? tk(k, 'en_prev', { v: pv, d: fmtDate(p.date) }) : t('wn_first')) + '</div></div>';
         }).join('') + '</fieldset>';
     });
-    h += '<p class="small muted">' + esc(t('en_digits')) + '</p><div class="wiz-actions"><button class="btn" type="submit" data-key="en-save">' + esc(t('wn_save')) + '</button></div></form>' + cancelLink('elec');
-    return { screen: 'S51', route: 'enew', bare: true, closeTo: back, html: h };
-  };
+    h += '<p class="small muted">' + esc(tk(k, 'en_digits')) + '</p><div class="wiz-actions"><button class="btn" type="submit" data-key="en-save">' + esc(t('wn_save')) + '</button></div></form>' + cancelLink(k);
+    return { screen: k === 'gas' ? 'S56' : 'S51', route: SK[k].nw, bare: true, closeTo: back, html: h };
+  }
+  V.enew = function () { return sNew('elec'); };
+  V.gnew = function () { return sNew('gas'); };
   function enRead() { Array.prototype.forEach.call(document.querySelectorAll('[data-en]'), function (el) { var a = el.getAttribute('data-en').split('|'); EN.vals[a[0]] = EN.vals[a[0]] || {}; EN.vals[a[0]][a[1]] = el.value.trim(); }); var d = document.getElementById('en-date'); if (d && d.value) EN.date = d.value; }
   function enCheck(show) {
-    var date = EN.date || today(), all = {};
-    emeters().forEach(function (m) {
-      var p = eprev(m.id, date, EN.skip), list = El.check(m, EN.vals[m.id] || {}, p ? { date: p.date, z: p.z } : null, date, eopts());
-      // меньше прошлого / слишком много — а у світла іншої квартири якраз підходить
-      if (list.some(function (x) { return x.code === 'less' || x.code === 'jump'; })) El.keys(m).forEach(function (k) {
-        var o = otherPlaceLike('elec', El.num((EN.vals[m.id] || {})[k]), date, k);
-        if (o) list.push({ code: 'other', level: 'warn', zone: k, args: { p: o.p, v: o.v, c: placeLabel(place()) } });
+    var k = EN.k, md = SK[k].mod, date = EN.date || today(), all = {};
+    smeters(k).forEach(function (m) {
+      var p = eprev(m.id, date, EN.skip), list = md.check(m, EN.vals[m.id] || {}, p ? { date: p.date, z: p.z } : null, date, sopts(k));
+      // меньше прошлого / слишком много — а у такого ж лічильника іншої квартири якраз підходить
+      if (list.some(function (x) { return x.code === 'less' || x.code === 'jump'; })) md.keys(m).forEach(function (z) {
+        var o = otherPlaceLike(k, md.num((EN.vals[m.id] || {})[z]), date, z);
+        if (o) list.push({ code: 'other', level: 'warn', zone: z, args: { p: o.p, v: o.v, c: placeLabel(place()) } });
       });
       all[m.id] = list;
       if (!show) return;
-      El.keys(m).forEach(function (k) {
-        var id = m.id + '-' + k, el = document.getElementById('eh-' + id), fw = document.getElementById('ef-' + id); if (!el) return;
-        var mine = list.filter(function (x) { return (x.zone === k || (!x.zone && k === El.keys(m).slice(-1)[0])) && (x.code !== 'empty' || show === 'submit'); }), pv = p ? El.whole(p.z && p.z[k]) : null;
-        var txt = mine.map(function (x) { return t('ei_' + x.code, Object.assign({ prev: x.prev !== undefined ? x.prev : pv, n: x.perMonth || '', w: x.whole }, x.args || {})); }).join(' ');
+      md.keys(m).forEach(function (z) {
+        var id = m.id + '-' + z, el = document.getElementById('eh-' + id), fw = document.getElementById('ef-' + id); if (!el) return;
+        var mine = list.filter(function (x) { return (x.zone === z || (!x.zone && z === md.keys(m).slice(-1)[0])) && (x.code !== 'empty' || show === 'submit'); }), pv = p ? md.whole(p.z && p.z[z]) : null;
+        var txt = mine.map(function (x) { return tk(k, 'ei_' + x.code, Object.assign({ prev: x.prev !== undefined ? x.prev : pv, n: x.perMonth || '', w: x.whole }, x.args || {})); }).join(' ');
         var lvl = mine.some(function (x) { return x.level === 'block'; }) ? 'block' : mine.some(function (x) { return x.level === 'warn'; }) ? 'warn' : mine.length ? 'ok' : '';
-        el.textContent = txt || (pv !== null ? t('en_prev', { v: pv, d: fmtDate(p.date) }) : t('wn_first'));
+        el.textContent = txt || (pv !== null ? tk(k, 'en_prev', { v: pv, d: fmtDate(p.date) }) : t('wn_first'));
         el.className = 'help' + (lvl ? ' ' + lvl : ''); if (fw) fw.className = 'field wfield' + (lvl === 'block' ? ' is-block' : lvl === 'warn' ? ' is-warn' : '');
       });
     });
     return all;
   }
   function enSave() {
-    enRead(); var iss = enCheck('submit');
-    if (Object.keys(iss).some(function (k) { return El.blocked(iss[k]); })) { var f = document.querySelector('.wfield.is-block input'); if (f) f.focus(); return; }
+    enRead(); var iss = enCheck('submit'), k = EN.k, md = SK[k].mod;
+    if (Object.keys(iss).some(function (x) { return md.blocked(iss[x]); })) { var f = document.querySelector('.wfield.is-block input'); if (f) f.focus(); return; }
     var date = EN.date || today(), now = new Date().toISOString(); S.mrecs = S.mrecs || [];
-    emeters().forEach(function (m) {
-      var z = {}; El.keys(m).forEach(function (k) { z[k] = El.norm((EN.vals[m.id] || {})[k]); });
+    smeters(k).forEach(function (m) {
+      var z = {}; md.keys(m).forEach(function (q) { z[q] = md.norm((EN.vals[m.id] || {})[q]); });
       // один запис на лічильник і дату: повторне введення того ж дня — правка
       var same = S.mrecs.filter(function (r) { return r && !r.deleted && !r.base && r.place === S.placeId && r.meter === m.id && (r.id === EN.skip || r.date === date); })[0];
       if (same) { same.z = z; same.date = date; same.updatedAt = Date.now(); }
-      else S.mrecs.push({ id: El.uid(), place: S.placeId, meter: m.id, kind: 'elec', date: date, z: z, sent: {}, createdAt: now, updatedAt: Date.now() });
+      else S.mrecs.push({ id: md.uid(), place: S.placeId, meter: m.id, kind: k, date: date, z: z, sent: {}, createdAt: now, updatedAt: Date.now() });
     });
     if (!S.onboarded) S.onboarded = true;
-    var back = EN.back; EN = enFresh(); save(); toast(t('wn_saved') + inPlace());
-    if (back) go(back); else { SCROLL_TO = 'esend'; go('elec'); }
+    var back = EN.back; EN = enFresh(k); save(); toast(t('wn_saved') + inPlace());
+    if (back) go(back); else { SCROLL_TO = 'esend'; go(SK[k].page); }
   }
 
-  // ---------- новий електролічильник ----------
-  var EA = { back: '', zones: 1, vals: {} };
-  V.eadd = function () {
-    var same = emeters(), z = EA.zones || 1, back = EA.back || 'home', opt = ' <span class="muted small">(' + esc(t('b_opt')) + ')</span>', inQ = !!(PQ && PQ.place === S.placeId);
+  // ---------- новий лічильник світла / газу ----------
+  var EA = { kind: 'elec', back: '', zones: 1, vals: {} };
+  function sAdd(k) {
+    if (EA.kind !== k) EA = { kind: k, back: EA.back, zones: 1, vals: {} };
+    var same = smeters(k), z = k === 'gas' ? 1 : EA.zones || 1, back = EA.back || 'home', opt = ' <span class="muted small">(' + esc(t('b_opt')) + ')</span>', u = SK[k].unit();
     var fld = function (id, lbl, attrs, unit, help, optional) { return '<div class="field"><label for="' + id + '">' + esc(lbl) + (optional ? opt : '') + '</label><div class="ctl"><input id="' + id + '" ' + attrs + '>' + (unit ? '<span class="unit">' + unit + '</span>' : '') + '</div>' + (help ? '<div class="help">' + esc(help) + '</div>' : '') + '</div>'; };
-    var mz = { zones: z };
-    var h = pqBanner() + '<h1>' + ico('bolt', 26, 'c-elec') + ' ' + esc(t('ea_title')) + '</h1><p class="muted">' + esc(t('ea_lead')) + '</p><form id="ea-form" novalidate><div class="panel">' +
-      '<fieldset class="field"><legend class="lbl">' + esc(t('ea_zones')) + '</legend><div class="wz-opts" role="radiogroup">' + [1, 2, 3].map(function (n) {
+    var mz = { kind: k, zones: z }, md = SK[k].mod;
+    var h = pqBanner() + '<h1>' + ico(SK[k].icon, 26, SK[k].cls) + ' ' + esc(tk(k, 'ea_title')) + '</h1><p class="muted">' + esc(tk(k, 'ea_lead')) + '</p><form id="ea-form" novalidate><div class="panel">' +
+      (k === 'elec' ? '<fieldset class="field"><legend class="lbl">' + esc(t('ea_zones')) + '</legend><div class="wz-opts" role="radiogroup">' + [1, 2, 3].map(function (n) {
         return '<label class="wz-opt"><input type="radio" name="ea-z" value="' + n + '"' + (z === n ? ' checked' : '') + ' data-act="ea-zones" data-key="ea-z' + n + '"><span><b>' + esc(t('ez_n' + n)) + '</b><span class="small muted">' + esc(t('ea_z' + n + '_s')) + '</span></span></label>';
-      }).join('') + '</div></fieldset>' +
-      El.keys(mz).map(function (k) { return fld('ea-v-' + k, t('ea_val') + (z > 1 ? ': ' + ezl(mz, k).toLowerCase() : ''), 'class="num" inputmode="decimal" autocomplete="off" data-ea="' + k + '" value="' + esc(EA.vals[k] || '') + '"', KWH(), k === El.keys(mz).slice(-1)[0] ? t('ea_val_h') : '', true); }).join('') +
-      (same.length ? fld('ea-name', t('em_name'), 'maxlength="40" autocomplete="off" placeholder="' + esc(t('em_name_ph')) + '"', '', t('ea_name_need', { n: same.length }), false) : '') +
-      fld('ea-acc', t('em_acc'), 'class="num" inputmode="numeric" autocomplete="off"', '', t('em_acc_h'), true) +
+      }).join('') + '</div></fieldset>' : '') +
+      md.keys(mz).map(function (q) { return fld('ea-v-' + q, t('ea_val') + (z > 1 ? ': ' + ezl(mz, q).toLowerCase() : ''), 'class="num" inputmode="decimal" autocomplete="off" data-ea="' + q + '" value="' + esc(EA.vals[q] || '') + '"', u, q === md.keys(mz).slice(-1)[0] ? t('ea_val_h') : '', true); }).join('') +
+      (same.length ? fld('ea-name', t('em_name'), 'maxlength="40" autocomplete="off" placeholder="' + esc(tk(k, 'em_name_ph')) + '"', '', t('ea_name_need', { n: same.length }), false) : '') +
+      fld('ea-acc', t('em_acc'), 'class="num" inputmode="numeric" autocomplete="off"', '', tk(k, 'em_acc_h'), true) +
       fld('ea-serial', t('wm_serial'), 'class="num" autocomplete="off"', '', '', true) +
-      (same.length ? '' : eheatRow()) +
+      (same.length ? '' : sheatRow(k)) +
       '<div class="help block" id="ea-err" role="alert"></div></div>' +
       '<div class="wiz-actions"><a class="btn sec" href="#' + esc(back) + '">' + esc(t('cancel')) + '</a><button type="submit" class="btn" data-key="ea-save">' + esc(t('ea_add')) + '</button></div></form>';
-    return { screen: 'S52', route: 'eadd', bare: true, closeTo: back, html: h + (inQ ? '' : '') };
-  };
+    return { screen: k === 'gas' ? 'S57' : 'S52', route: SK[k].add, bare: true, closeTo: back, html: h };
+  }
+  V.eadd = function () { return sAdd('elec'); };
+  V.gadd = function () { return sAdd('gas'); };
   function eaRead() { Array.prototype.forEach.call(document.querySelectorAll('[data-ea]'), function (el) { EA.vals[el.getAttribute('data-ea')] = el.value.trim(); }); }
   function eaSave() {
     eaRead();
     var v = function (id) { var el = document.getElementById(id); return el ? String(el.value || '').trim() : ''; };
-    var mz = { zones: EA.zones || 1 }, same = emeters(), name = v('ea-name').slice(0, 40), err = '', bad = '', z = {}, filled = 0;
-    El.keys(mz).forEach(function (k) { var raw = EA.vals[k] || ''; if (raw === '') return; filled++; var n = El.norm(raw); if (n === null && !err) { err = t('ea_e_val'); bad = 'ea-v-' + k; } z[k] = n; });
-    if (!err && filled && filled < El.keys(mz).length) { err = t('ea_e_all'); bad = 'ea-v-' + El.keys(mz).filter(function (k) { return !EA.vals[k]; })[0]; }
+    var k = EA.kind === 'gas' ? 'gas' : 'elec', md = SK[k].mod, mz = { kind: k, zones: k === 'gas' ? 1 : EA.zones || 1 }, same = smeters(k), name = v('ea-name').slice(0, 40), err = '', bad = '', z = {}, filled = 0;
+    md.keys(mz).forEach(function (q) { var raw = EA.vals[q] || ''; if (raw === '') return; filled++; var n = md.norm(raw); if (n === null && !err) { err = tk(k, 'ea_e_val'); bad = 'ea-v-' + q; } z[q] = n; });
+    if (!err && filled && filled < md.keys(mz).length) { err = t('ea_e_all'); bad = 'ea-v-' + md.keys(mz).filter(function (q) { return !EA.vals[q]; })[0]; }
     if (!err && same.length && !name) { err = t('wa_e_name'); bad = 'ea-name'; }
     var box = document.getElementById('ea-err');
     if (err) { if (box) box.textContent = err; var bi = document.getElementById(bad); if (bi) bi.focus(); return; }
-    var id = El.uid();
-    setPMeters(function (list) { list.push({ id: id, kind: 'elec', name: name, zones: mz.zones, serial: v('ea-serial'), account: v('ea-acc'), createdAt: today() }); });
-    if (filled) { S.mrecs = S.mrecs || []; S.mrecs.push({ id: El.uid(), place: S.placeId, meter: id, kind: 'elec', date: today(), z: z, base: true, sent: {}, createdAt: new Date().toISOString(), updatedAt: Date.now() }); }
-    S.onboarded = true; S.view = 'elec'; save(); toast(t('ea_added') + inPlace());
-    var back = EA.back; EA = { back: '', zones: 1, vals: {} };
+    var id = md.uid();
+    setPMeters(function (list) { list.push(Object.assign({ id: id, kind: k, name: name, serial: v('ea-serial'), account: v('ea-acc'), createdAt: today() }, k === 'elec' ? { zones: mz.zones } : {})); });
+    if (filled) { S.mrecs = S.mrecs || []; S.mrecs.push({ id: md.uid(), place: S.placeId, meter: id, kind: k, date: today(), z: z, base: true, sent: {}, createdAt: new Date().toISOString(), updatedAt: Date.now() }); }
+    S.onboarded = true; S.view = k; save(); toast(tk(k, 'ea_added') + inPlace());
+    var back = EA.back; EA = { kind: k, back: '', zones: 1, vals: {} };
     if (PQ && PQ.place === S.placeId && PQ.i < PQ.list.length) { PQ.i++; pqNext(); return; }
-    go(back && /^place-/.test(back) ? back : 'elec');
+    go(back && /^place-/.test(back) ? back : SK[k].page);
   }
 
-  // ---------- картка запису світла, історія, статистика, економія ----------
+  // ---------- картка запису, історія, статистика, економія ----------
   function erecView(id) {
     var r = mrecs().filter(function (x) { return x.id === id; })[0], back = '<p><a href="#history">← ' + esc(t('hi_title')) + '</a></p>';
-    var m = r && emeters(true).filter(function (x) { return x.id === r.meter; })[0];
+    var m = r && pmeters(null, true).filter(function (x) { return x.id === r.meter; })[0];
     if (!r || !m) return { screen: 'S09', route: 'history', html: back + '<p class="muted">' + esc(t('rec_gone')) + '</p>' };
-    var x = El.series(mrecs(m.id), m).filter(function (s0) { return s0.rec.id === id; })[0] || {};
-    var h = back + '<h1>' + esc(fmtDate(r.date, true)) + '</h1>' + (r.base ? '<p class="small muted">' + esc(t('eh_base')) + '</p>' : '<p class="small muted">' + esc(t('er_for', { m: monthLabel(El.forMonth(r.date)) })) + '</p>');
-    h += '<ul class="list" data-key="erec-values">' + El.keys(m).map(function (k) {
-      return '<li><div class="grow">' + ico('bolt', 16, 'c-elec') + ' ' + esc(ename(m) + (El.zones(m) > 1 ? ' · ' + ezl(m, k) : '')) + (x.dz ? '<div class="small muted">+' + x.dz[k] + ' ' + KWH() + '</div>' : '') + '</div><b class="num">' + El.whole(r.z[k]) + '</b> <span class="small muted">' + KWH() + '</span></li>';
+    var k = m.kind === 'gas' ? 'gas' : 'elec', md = SK[k].mod, u = SK[k].unit();
+    var x = md.series(mrecs(m.id), m).filter(function (s0) { return s0.rec.id === id; })[0] || {};
+    var h = back + '<h1>' + esc(fmtDate(r.date, true)) + '</h1>' + (r.base ? '<p class="small muted">' + esc(t('eh_base')) + '</p>' : '<p class="small muted">' + esc(t('er_for', { m: monthLabel(md.forMonth(r.date)) })) + '</p>');
+    h += '<ul class="list" data-key="erec-values">' + md.keys(m).map(function (q) {
+      return '<li><div class="grow">' + ico(SK[k].icon, 16, SK[k].cls) + ' ' + esc(ename(m) + (md.zones(m) > 1 ? ' · ' + ezl(m, q) : '')) + (x.dz ? '<div class="small muted">+' + x.dz[q] + ' ' + u + '</div>' : '') + '</div><b class="num">' + md.whole(r.z[q]) + '</b> <span class="small muted">' + u + '</span></li>';
     }).join('') + '</ul>';
     if (x.dz) {
-      var c = El.cost(m, x.dz, r.date, eopts());
-      h += '<div class="panel" style="margin-top:16px" data-key="erec-used"><h2>' + esc(t('rec_used_title')) + '</h2><div class="cards2"><div><div class="num big c-elec">' + x.kwh + ' <small>' + KWH() + '</small></div><div class="small muted">' + esc(t('er_for_days', { d: x.days })) + '</div></div>' +
-        '<div><div class="num big">≈ ' + esc(money(c.total)) + '</div><div class="small muted">' + esc(t('er_price', { p: money(c.price) })) + '</div></div></div>' +
-        (El.zones(m) > 1 ? '<p class="small muted">' + esc(El.keys(m).map(function (k) { return ezl(m, k) + ': ' + x.dz[k] + ' × ' + money(c.price * El.coef(m, k)) + ' = ' + money(c.parts[k]) + ' грн'; }).join(' · ')) + '</p>' : '') + '</div>';
+      var c = md.cost(m, x.dz, r.date, sopts(k));
+      h += '<div class="panel" style="margin-top:16px" data-key="erec-used"><h2>' + esc(t('rec_used_title')) + '</h2><div class="cards2"><div><div class="num big ' + SK[k].cls + '">' + x.kwh + ' <small>' + u + '</small></div><div class="small muted">' + esc(t('er_for_days', { d: x.days })) + '</div></div>' +
+        '<div><div class="num big">≈ ' + esc(money(c.total)) + '</div><div class="small muted">' + esc(tk(k, 'er_price', { p: money(c.price) })) + '</div></div></div>' +
+        (md.zones(m) > 1 ? '<p class="small muted">' + esc(md.keys(m).map(function (q) { return ezl(m, q) + ': ' + x.dz[q] + ' × ' + money(c.price * md.coef(m, q)) + ' = ' + money(c.parts[q]) + ' грн'; }).join(' · ')) + '</p>' : '') +
+        (k === 'gas' ? '<p class="small muted">' + esc(t('gst_tariff', { p: money(c.price) })) + '</p>' : '') + '</div>';
     }
     if (!r.base) {
-      var w = El.win(today());
-      if (w.open && r.date >= w.from && r.date <= w.to) h += esendPanel(emeters().map(function (mm) { return mm.id === m.id ? r : einWin(mm.id, w); }));
-      else h += '<p>' + (r.sent && r.sent.obl ? '<span class="pill ok">' + ico('check', 14) + ' ' + esc(t('ed_org')) + '</span>' : '<span class="pill neutral">' + esc(t('ed_org')) + ': ' + esc(t('wh_notsent')) + '</span>') + '</p>';
+      var w = md.win(today());
+      if (w.open && r.date >= w.from && r.date <= w.to) h += ssendPanel(k, smeters(k).map(function (mm) { return mm.id === m.id ? r : einWin(mm.id, w); }));
+      else h += '<p>' + (ssent(k, r) ? '<span class="pill ok">' + ico('check', 14) + ' ' + esc(tk(k, 'ed_org')) + '</span>' : '<span class="pill neutral">' + esc(tk(k, 'ed_org')) + ': ' + esc(t('wh_notsent')) + '</span>') + '</p>';
     }
     h += '<div class="row-actions">' + (r.base ? '' : '<button class="btn sec" data-act="eedit" data-id="' + r.id + '" data-key="erec-edit">' + esc(t('rec_edit')) + '</button>') + '<button class="btn danger" data-act="edel" data-id="' + r.id + '" data-key="erec-del">' + esc(t('rec_del')) + '</button></div>';
     return { screen: 'S09', route: 'history', html: h };
   }
-  function ehistory() {
-    var er = erows(), head = '<h1>' + esc(t('hi_title')) + '</h1>' + kindSwitch();
-    if (!er.total) return { screen: 'S09', route: 'history', html: head + '<div class="panel"><p class="muted">' + esc(t('wh_empty')) + '</p><button class="btn" data-act="enew">' + esc(t('en_title')) + '</button></div>' };
-    return { screen: 'S09', route: 'history', html: head + er.html + '<p class="small muted">' + esc(t('eh_hint')) + '</p>' };
+  function shistory(k) {
+    var er = srows(k), head = '<h1>' + esc(t('hi_title')) + '</h1>' + kindSwitch();
+    if (!er.total) return { screen: 'S09', route: 'history', html: head + '<div class="panel"><p class="muted">' + esc(t('wh_empty')) + '</p><button class="btn" data-act="' + SK[k].nw + '">' + esc(tk(k, 'en_title')) + '</button></div>' };
+    return { screen: 'S09', route: 'history', html: head + er.html + '<p class="small muted">' + esc(tk(k, 'eh_hint')) + '</p>' };
   }
-  function emonthly() {
+  function smonthly(k) {
     // кілька лічильників — складаємо по місяцях
-    var by = {};
-    emeters(true).forEach(function (m) { El.monthly(El.series(mrecs(m.id), m), m, eopts()).forEach(function (b) {
+    var by = {}, md = SK[k].mod;
+    smeters(k, true).forEach(function (m) { md.monthly(md.series(mrecs(m.id), m), m, sopts(k)).forEach(function (b) {
       var o = by[b.ym] || (by[b.ym] = { ym: b.ym, kwh: 0, cost: 0, days: 0, night: 0, from: b.from, to: b.to });
       o.kwh += b.kwh; o.cost += b.cost; o.days = Math.max(o.days, b.days); o.night += b.dz.night || 0; if (b.from < o.from) o.from = b.from; if (b.to > o.to) o.to = b.to;
     }); });
-    return Object.keys(by).sort().map(function (k) { var b = by[k]; b.perMonth = b.days ? b.kwh / b.days * 30 : b.kwh; return b; });
+    return Object.keys(by).sort().map(function (q) { var b = by[q]; b.perMonth = b.days ? b.kwh / b.days * 30 : b.kwh; return b; });
   }
-  function estats() {
+  function sstats(k) {
     chColors();
-    var mo = emonthly(), sm = El.summary(mo), head = '<h1>' + esc(t('stt_title')) + '</h1>' + kindSwitch();
+    var md = SK[k].mod, u = SK[k].unit(), mo = smonthly(k), sm = md.summary(mo), head = '<h1>' + esc(t('stt_title')) + '</h1>' + kindSwitch();
     if (!mo.length) return { screen: 'S15', route: 'stats', html: head + '<div class="panel"><p class="muted">' + esc(t('est_empty')) + '</p></div>' };
     var per = function (b) { return t('stt_period', { a: R.toHtmDate(b.from), b: R.toHtmDate(b.to), d: b.days }); };
-    var two = emeters(true).some(function (m) { return El.zones(m) > 1; }), nightKwh = mo.reduce(function (s, b) { return s + b.night; }, 0), allKwh = mo.reduce(function (s, b) { return s + b.kwh; }, 0);
-    var tiles = kpi({ key: 'estats-kpi', tone: 'elec', q: fmtN(sm.perMonth, 0), unit: KWH(), money: sm.uahMonth, cap: t('kpi_w_avg', { n: sm.months }),
-      chips: [chip(t('kpi_e_last', { m: monthLabel(sm.last.ym), v: sm.last.kwh, uah: money0(sm.last.cost) }), 'clock')].concat(two && allKwh ? [chip(t('kpi_e_night', { p: Math.round(nightKwh / allKwh * 100) }), 'moon')] : []) });
-    var c1 = barChart(mo.map(function (b) { return { x: ymLabel(b.ym), v: b.kwh, top: String(b.kwh), color: CH.elec, tip: [b.kwh + ' ' + KWH(), per(b), '≈ ' + money(b.cost) + ' грн'] }; }), { title: t('est_kwh'), dec: 0 });
-    var c2 = barChart(mo.map(function (b) { return { x: ymLabel(b.ym), v: Math.round(b.cost), top: String(Math.round(b.cost)), color: CH.barSoft, tip: ['≈ ' + money(b.cost) + ' грн', per(b), b.kwh + ' ' + KWH()] }; }), { title: t('wst_uah'), dec: 0 });
-    var table = '<details class="panel"><summary>' + esc(t('stt_table')) + '</summary><div class="tbl-wrap"><table class="tbl"><thead><tr><th>' + esc(t('wst_th_month')) + '</th><th>' + esc(t('stt_th_period')) + '</th><th>' + KWH() + '</th><th>грн</th></tr></thead><tbody>' +
+    var two = k === 'elec' && emeters(true).some(function (m) { return El.zones(m) > 1; }), nightKwh = mo.reduce(function (s0, b) { return s0 + b.night; }, 0), allKwh = mo.reduce(function (s0, b) { return s0 + b.kwh; }, 0);
+    var tiles = kpi({ key: 'estats-kpi', tone: k, q: fmtN(sm.perMonth, 0), unit: u, money: sm.uahMonth, cap: t('kpi_w_avg', { n: sm.months }),
+      chips: [chip(tk(k, 'kpi_e_last', { m: monthLabel(sm.last.ym), v: sm.last.kwh, uah: money0(sm.last.cost) }), 'clock')].concat(two && allKwh ? [chip(t('kpi_e_night', { p: Math.round(nightKwh / allKwh * 100) }), 'moon')] : []) });
+    var c1 = barChart(mo.map(function (b) { return { x: ymLabel(b.ym), v: b.kwh, top: String(b.kwh), color: k === 'gas' ? CH.gas : CH.elec, tip: [b.kwh + ' ' + u, per(b), '≈ ' + money(b.cost) + ' грн'] }; }), { title: tk(k, 'est_kwh'), dec: 0 });
+    var c2 = barChart(mo.map(function (b) { return { x: ymLabel(b.ym), v: Math.round(b.cost), top: String(Math.round(b.cost)), color: CH.barSoft, tip: ['≈ ' + money(b.cost) + ' грн', per(b), b.kwh + ' ' + u] }; }), { title: t('wst_uah'), dec: 0 });
+    var table = '<details class="panel"><summary>' + esc(t('stt_table')) + '</summary><div class="tbl-wrap"><table class="tbl"><thead><tr><th>' + esc(t('wst_th_month')) + '</th><th>' + esc(t('stt_th_period')) + '</th><th>' + u + '</th><th>грн</th></tr></thead><tbody>' +
       mo.slice().reverse().map(function (b) { return '<tr><td>' + esc(ymLabel(b.ym)) + '</td><td>' + esc(R.toHtmDate(b.from) + ' – ' + R.toHtmDate(b.to)) + '</td><td class="num">' + b.kwh + '</td><td class="num">' + money(b.cost) + '</td></tr>'; }).join('') + '</tbody></table></div></details>';
     var panel = function (title, sub, chart) { return '<section class="panel chart-panel"><h2>' + esc(title) + '</h2><p class="small muted">' + esc(sub) + '</p>' + chart + '</section>'; };
-    return { screen: 'S15', route: 'stats', html: head + '<p class="muted">' + esc(t('est_lead')) + '</p>' + tiles + panel(t('est_kwh'), t('est_kwh_sub'), c1) + panel(t('wst_uah'), t('est_tariff', { p: money(El.priceAt(today())) }), c2) + table + '<p class="small muted">' + esc(t('est_method')) + '</p>' };
+    var price = k === 'gas' ? (sopts('gas').price || Gs.priceAt(today())) : El.priceAt(today());
+    return { screen: 'S15', route: 'stats', html: head + '<p class="muted">' + esc(tk(k, 'est_lead')) + '</p>' + tiles + panel(tk(k, 'est_kwh'), t('est_kwh_sub'), c1) + panel(t('wst_uah'), tk(k, 'est_tariff', { p: money(price) }), c2) + table + '<p class="small muted">' + esc(tk(k, 'est_method')) + '</p>' };
   }
-  function esave() {
-    var mo = emonthly(), sm = El.summary(mo), list = t('esv_tips').split('||').map(function (x) { var a = x.split('|'); return [a[0], a[1]]; });
-    var one = emeters().length && emeters().every(function (m) { return El.zones(m) === 1; }), p = El.priceAt(today());
+  function ssave(k) {
+    var md = SK[k].mod, u = SK[k].unit(), mo = smonthly(k), sm = md.summary(mo), list = tk(k, 'esv_tips').split('||').map(function (x) { var a = x.split('|'); return [a[0], a[1]]; });
+    var one = k === 'elec' && emeters().length && emeters().every(function (m) { return El.zones(m) === 1; }), p = El.priceAt(today());
     var mine = sm ? '<div class="panel" data-key="esave-mine"><h2>' + esc(t('sv_mine')) + '</h2>' +
-      kpi({ key: 'esave-kpi', tone: 'elec', q: fmtN(sm.perMonth, 0), unit: KWH(), money: sm.uahMonth, cap: t('kpi_w_avg', { n: sm.months }) }) +
-      tipLine('bolt', t('kpi_e_ten', { k: fmtN(sm.perMonth * 0.1, 0), uah: '<b>' + esc(money0(sm.uahMonth * 0.1)) + ' грн</b>', y: esc(money0(sm.uahMonth * 1.2)) })) +
+      kpi({ key: 'esave-kpi', tone: k, q: fmtN(sm.perMonth, 0), unit: u, money: sm.uahMonth, cap: t('kpi_w_avg', { n: sm.months }) }) +
+      tipLine(SK[k].icon, tk(k, 'kpi_e_ten', { k: fmtN(sm.perMonth * 0.1, 0), uah: '<b>' + esc(money0(sm.uahMonth * 0.1)) + ' грн</b>', y: esc(money0(sm.uahMonth * 1.2)) })) +
       (one ? tipLine('moon', t('kpi_e_two', { uah: '<b>' + esc(money0(sm.perMonth * 0.3 * p * 0.5)) + ' грн</b>' })) : '') + '</div>'
-      : '<div class="panel"><p class="muted">' + esc(t('esv_no_data')) + '</p></div>';
-    var groups = [[t('esv_g1'), 'moon', [0, 1, 2]], [t('esv_g2'), 'home', [3, 4, 5]], [t('esv_g3'), 'bolt', [6, 7]]];
-    return { screen: 'S14', route: 'save', html: '<h1>' + esc(t('esv_title')) + '</h1>' + kindSwitch() + '<p class="muted">' + esc(t('esv_lead')) + '</p>' + mine +
-      accGroups(groups.map(function (g) { return { title: g[0], icon: g[1], items: g[2].map(function (k) { return { title: list[k][0], html: '<p>' + esc(list[k][1]) + '</p>' }; }) }; }), 'esave-tips') };
+      : '<div class="panel"><p class="muted">' + esc(tk(k, 'esv_no_data')) + '</p></div>';
+    var groups = k === 'gas' ? [[t('gsv_g1'), 'flame', [0, 1, 2]], [t('gsv_g2'), 'drop', [3, 4]], [t('gsv_g3'), 'thermo', [5, 6, 7]]] : [[t('esv_g1'), 'moon', [0, 1, 2]], [t('esv_g2'), 'home', [3, 4, 5]], [t('esv_g3'), 'bolt', [6, 7]]];
+    return { screen: 'S14', route: 'save', html: '<h1>' + esc(tk(k, 'esv_title')) + '</h1>' + kindSwitch() + '<p class="muted">' + esc(tk(k, 'esv_lead')) + '</p>' + mine +
+      accGroups(groups.map(function (g) { return { title: g[0], icon: g[1], items: g[2].map(function (q) { return { title: list[q][0], html: '<p>' + esc(list[q][1]) + '</p>' }; }) }; }), k === 'gas' ? 'gsave-tips' : 'esave-tips') };
   }
+  function ehistory() { return shistory('elec'); }
+  function estats() { return sstats('elec'); }
+  function esave() { return ssave('elec'); }
 
   // ---------- ввод показаний воды ----------
   /** Кнопка «Скасувати» внизу ввода: бросить всё введённое этим разом и выйти. */
@@ -1370,14 +1417,16 @@
   // действия воды
   function waterAct(act, el, e) {
     switch (act) {
-      case 'enew': EN = enFresh(); go('enew'); return true;
+      case 'enew': EN = enFresh('elec'); go('enew'); return true;
+      case 'gnew': EN = enFresh('gas'); go('gnew'); return true;
       case 'esent': { var eids = (el.getAttribute('data-ids') || '').split(','), ev = el.getAttribute('data-v') === '1';
-        (S.mrecs || []).forEach(function (x) { if (eids.indexOf(x.id) >= 0) { x.sent = Object.assign({}, x.sent || {}, { obl: ev ? today() : '' }); x.updatedAt = Date.now(); } }); save(); render(true); return true; }
+        var esk = SK[el.getAttribute('data-k')] ? SK[el.getAttribute('data-k')].sk : 'obl';
+        (S.mrecs || []).forEach(function (x) { if (eids.indexOf(x.id) >= 0) { x.sent = Object.assign({}, x.sent || {}); x.sent[esk] = ev ? today() : ''; x.updatedAt = Date.now(); } }); save(); render(true); return true; }
       case 'edel': { if (!confirm(t('wh_del_q'))) return true; var ed = (S.mrecs || []).filter(function (x) { return x.id === el.getAttribute('data-id'); })[0]; if (ed) { ed.deleted = true; ed.updatedAt = Date.now(); save(); if (/^erec-/.test(routeName())) go('history'); else render(true); } return true; }
       case 'eedit': { var ee = mrecs().filter(function (x) { return x.id === el.getAttribute('data-id'); })[0]; if (!ee) return true;
-        EN = enFresh(); EN.date = ee.date; EN.skip = ee.id; EN.vals[ee.meter] = {}; Object.keys(ee.z || {}).forEach(function (k) { EN.vals[ee.meter][k] = String(ee.z[k] || '').replace('.', ','); });
-        mrecs().forEach(function (x) { if (x.date === ee.date && !x.base && x.meter !== ee.meter) { EN.vals[x.meter] = {}; Object.keys(x.z || {}).forEach(function (k) { EN.vals[x.meter][k] = String(x.z[k] || '').replace('.', ','); }); } });
-        EN.back = routeName(); go('enew'); return true; }
+        EN = enFresh(ee.kind === 'gas' ? 'gas' : 'elec'); EN.date = ee.date; EN.skip = ee.id; EN.vals[ee.meter] = {}; Object.keys(ee.z || {}).forEach(function (k) { EN.vals[ee.meter][k] = String(ee.z[k] || '').replace('.', ','); });
+        mrecs().forEach(function (x) { if (x.date === ee.date && !x.base && x.meter !== ee.meter && x.kind === ee.kind) { EN.vals[x.meter] = {}; Object.keys(x.z || {}).forEach(function (k) { EN.vals[x.meter][k] = String(x.z[k] || '').replace('.', ','); }); } });
+        EN.back = routeName(); go(SK[EN.k].nw); return true; }
       case 'ea-zones': eaRead(); EA.zones = Number(el.value) || 1; render(true); var ez = document.querySelector('[data-key=ea-z' + EA.zones + ']'); if (ez) ez.focus(); return true;
       case 'wnew': WN = wnFresh(el.getAttribute('data-kind') || 'hot'); go(wmeters().length ? 'wnew' : 'wsetup'); return true;
       case 'wsetup': WS = { step: 0, preset: (el.getAttribute('data-kind') === 'cold' ? 'hc' : 'hc'), vals: {}, kind: el.getAttribute('data-kind') || 'hot' }; go('wsetup'); return true;
@@ -1414,7 +1463,7 @@
       case 'add-meter': e.preventDefault(); AM_BACK = el.getAttribute('data-back') || (/^(place-.+|water-hot|water-cold|heat)$/.test(routeName()) ? routeName() : 'home'); go('add-meter'); return true;
       case 'am-pick': { var ak = el.getAttribute('data-kind');
         if (ak === 'heat') { delete S._pickModel; go('meter'); return true; }
-        if (ak === 'elec') { EA = { kind: 'elec', back: AM_BACK, zones: 1, vals: {} }; go('eadd'); return true; }
+        if (SK[ak]) { EA = { kind: ak, back: AM_BACK, zones: 1, vals: {} }; go(SK[ak].add); return true; }
         WA = { kind: ak, back: AM_BACK }; go('wadd'); return true; }
       case 'm-remove': { var mw = el.getAttribute('data-what'), mn = meterTitle(mw), mh = meterHasData(mw);
         if (!confirm(t(mh ? 'mr_q' : 'mr_q_empty', { m: mn, p: placeLabel(place()) }))) return true;
@@ -2041,9 +2090,9 @@
   function noMeters(route, title) {
     return { screen: 'S09', route: route, html: '<h1>' + esc(t(title)) + '</h1><div class="panel" data-key="no-meters"><p class="muted">' + esc(t('hi_nometers')) + '</p><button class="btn" data-act="add-meter" data-key="no-meters-add">' + ico('plus', 20) + '<span>' + esc(t('am_tile')) + '</span></button></div>' };
   }
-  V.history = function () { if (!kinds().length) return noMeters('history', 'hi_title'); var k = curView(); return k === 'heat' ? heatHistory() : k === 'elec' ? ehistory() : whistory(k); };
-  V.stats = function () { if (!kinds().length) return noMeters('stats', 'stt_title'); var k = curView(); return k === 'heat' ? heatStats() : k === 'elec' ? estats() : wstats(k); };
-  V.save = function () { if (!kinds().length) return noMeters('save', 'wsv_title'); var k = curView(); return k === 'heat' ? heatSave() : k === 'elec' ? esave() : wsave(k); };
+  V.history = function () { if (!kinds().length) return noMeters('history', 'hi_title'); var k = curView(); return k === 'heat' ? heatHistory() : SK[k] ? shistory(k) : whistory(k); };
+  V.stats = function () { if (!kinds().length) return noMeters('stats', 'stt_title'); var k = curView(); return k === 'heat' ? heatStats() : SK[k] ? sstats(k) : wstats(k); };
+  V.save = function () { if (!kinds().length) return noMeters('save', 'wsv_title'); var k = curView(); return k === 'heat' ? heatSave() : SK[k] ? ssave(k) : wsave(k); };
   function heatHistory() {
     if (window.TeploStats) loadWeather();
     var arr = heatMixed();
@@ -2105,7 +2154,7 @@
   // цвета графиков — из CSS-токенов (светлая/тёмная тема); обновляются при каждой отрисовке
   var CH = {};
   function chColors() { var cs = getComputedStyle(document.documentElement), g = function (k) { return cs.getPropertyValue(k).trim(); };
-    CH = { ink: g('--c-ink'), ink2: g('--c-ink-2'), grid: g('--ch-grid'), bar: g('--ch-bar'), barSoft: g('--ch-bar-soft'), ok: g('--ch-ok'), low: g('--ch-low'), bad: g('--ch-bad'), none: g('--ch-none'), off: g('--ch-off'), ring: g('--ch-dot-ring'), surface: g('--c-surface'), hot: g('--c-supply'), cold: g('--c-return'), elec: g('--c-elec') }; }
+    CH = { ink: g('--c-ink'), ink2: g('--c-ink-2'), grid: g('--ch-grid'), bar: g('--ch-bar'), barSoft: g('--ch-bar-soft'), ok: g('--ch-ok'), low: g('--ch-low'), bad: g('--ch-bad'), none: g('--ch-none'), off: g('--ch-off'), ring: g('--ch-dot-ring'), surface: g('--c-surface'), hot: g('--c-supply'), cold: g('--c-return'), elec: g('--c-elec'), gas: g('--c-gas') }; }
   /** Ширина рисунка = реальной ширине на экране (на телефоне подписи не мельчают). */
   function chartW() { var w = Math.min(window.innerWidth || 640, 760) - 64; return Math.max(320, Math.min(640, w)); }
   function tipAttr(lines) { return ' tabindex="0" data-tip="' + esc(lines.filter(Boolean).join('\n')) + '"'; }
@@ -2455,10 +2504,11 @@
   // ================= квартиры: список, экран квартиры, «додати лічильник», новый водомер =================
   /** Счётчики квартиры одной строкой: «Опалення · Гаряча · Холодна ×2» (без переключения квартиры). */
   function placeKinds(p) {
-    var ks = [], wm = ((p.water && p.water.meters) || []).filter(function (m) { return m && !m.deleted && !m.removed; }), em = (p.meters || []).filter(function (m) { return m && !m.deleted && !m.removed && m.kind === 'elec'; });
+    var ks = [], wm = ((p.water && p.water.meters) || []).filter(function (m) { return m && !m.deleted && !m.removed; }), em = (p.meters || []).filter(function (m) { return m && !m.deleted && !m.removed && m.kind === 'elec'; }), gm = (p.meters || []).filter(function (m) { return m && !m.deleted && !m.removed && m.kind === 'gas'; });
     if (p.meter && !p.meter.removed) ks.push(t('kv_heat'));
     ['hot', 'cold'].forEach(function (k) { var n = wm.filter(function (m) { return m.kind === k; }).length; if (n) ks.push(t('kv_' + k) + (n > 1 ? ' ×' + n : '')); });
     if (em.length) ks.push(t('kv_elec') + (em.length > 1 ? ' ×' + em.length : ''));
+    if (gm.length) ks.push(t('kv_gas') + (gm.length > 1 ? ' ×' + gm.length : ''));
     return ks.length ? ks.join(' · ') : t('pv_none_short');
   }
   /** Список квартир. mode 'go' — нажал → эта квартира и главная (плюс «Налаштувати»); 'prefs' — нажал → экран квартиры. */
@@ -2482,7 +2532,7 @@
       var rows = [];
       if (hasHeat()) { var hs = heatStatus(); rows.push(Object.assign({ kind: 'heat', title: t('kd_heat') }, hs)); }
       ['hot', 'cold'].forEach(function (k) { var n = wmeters(k).length; if (n) rows.push(Object.assign({ kind: k, title: t(KINDS[k].t) + (n > 1 ? ' ×' + n : '') }, waterStatus(k))); });
-      var ne = emeters().length; if (ne) rows.push(Object.assign({ kind: 'elec', title: t('kd_elec') + (ne > 1 ? ' ×' + ne : '') }, elecStatus()));
+      ['elec', 'gas'].forEach(function (k) { var n = smeters(k).length; if (n) rows.push(Object.assign({ kind: k, title: t(KINDS[k].t) + (n > 1 ? ' ×' + n : '') }, sStatus(k))); });
       var due = rows.filter(function (r) { return r.due && (r.tone === 'due' || r.tone === 'warn'); }).map(function (r) { return r.due; }).sort()[0] || null;
       return { rows: rows, due: due, allOk: rows.length > 0 && rows.every(function (r) { return r.tone === 'ok' || r.off; }) };
     }) || { rows: [], due: null, allOk: false };
@@ -2522,7 +2572,7 @@
     var p = place(id);
     if (!p) return { screen: 'S42', route: 'places', html: '<h1>' + esc(t('pl_title')) + '</h1><p class="muted">' + esc(t('rec_gone')) + '</p><a class="btn" href="#places">' + esc(t('back')) + '</a>' };
     if (id !== S.placeId) { switchPlace(id); WX.key = ''; p = place(); }
-    var many = places().length > 1, ms = wmeters(), sub = placeSub(p), fresh = !p.name && !p.address && !hasHeat() && !ms.length && !emeters().length;
+    var many = places().length > 1, ms = wmeters(), sub = placeSub(p), fresh = !p.name && !p.address && !hasHeat() && !ms.length && !pmeters().length;
     var h = '<p><a href="#' + (many ? 'places' : 'prefs') + '" data-key="pv-back">← ' + esc(t(many ? 'pv_back_all' : 'nav_prefs')) + '</a></p>' +
       '<h1 class="pv-h" style="--pc:var(--pc-' + placeColor(p) + ')"><span class="pv-dot" aria-hidden="true"></span><span>' + esc(placeLabel(p)) + (sub ? '<span class="small muted pv-sub">' + esc(sub) + '</span>' : '') + '</span></h1>';
     if (fresh) h += '<div class="banner" data-key="pv-new">' + ico('info', 22) + '<div><p><b>' + esc(t('pv_new_t')) + '</b></p><p>' + esc(t('pv_new')) + '</p></div></div>';
@@ -2530,7 +2580,7 @@
     var rows = [];
     if (hasHeat()) rows.push(mrow({ what: 'heat', kind: 'heat', title: t('kd_heat'), href: 'heat', sub: [modelName(model()), verTxt(S.meter.verifiedUntil)].filter(Boolean).join(' · ') }));
     ms.forEach(function (m) { rows.push(mrow({ what: m.id, kind: m.kind, title: wkindTitle(m.kind) + (m.name ? ' · ' + m.name : ''), href: 'water-' + m.kind, sub: [m.serial ? '№ ' + m.serial : '', verTxt(m.verifiedUntil)].filter(Boolean).join(' · ') })); });
-    emeters().forEach(function (m) { rows.push(mrow({ what: m.id, kind: 'elec', title: ename(m), href: 'elec', noReplace: true, sub: [ezonesTxt(m), m.serial ? '№ ' + m.serial : '', m.account ? t('ed_acc', { a: m.account }) : ''].filter(Boolean).join(' · ') })); });
+    ['elec', 'gas'].forEach(function (k) { smeters(k).forEach(function (m) { rows.push(mrow({ what: m.id, kind: k, title: ename(m), href: SK[k].page, noReplace: true, sub: [ezonesTxt(m), m.serial ? '№ ' + m.serial : '', m.account ? tk(k, 'ed_acc', { a: m.account }) : ''].filter(Boolean).join(' · ') })); }); });
     h += '<section class="panel" data-key="pv-meters"><h2>' + esc(t('pv_meters')) + '</h2>' + (rows.length ? '<ul class="mlist">' + rows.join('') + '</ul>' : '<p class="muted">' + esc(t('pv_none')) + '</p>') +
       '<p style="margin:12px 0 0"><button class="btn' + (rows.length ? ' sec' : '') + '" data-act="add-meter" data-back="place-' + esc(p.id) + '" data-key="pv-add-meter">' + ico('plus', 20) + '<span>' + esc(t('am_tile')) + '</span></button></p>';
     var rm = removedMeters();
@@ -2555,6 +2605,7 @@
     if (ms.length) money += '<h3>' + esc(t('pv_m_water')) + '</h3>' + waccForm() +
       '<div class="field" style="max-width:260px"><label for="p-persons">' + esc(t('nm_persons')) + ' <span class="muted small">(' + esc(t('b_opt')) + ')</span></label><div class="ctl"><input id="p-persons" class="num" inputmode="numeric" autocomplete="off" data-nm="persons" value="' + esc(wcfg().persons || '') + '"></div><div class="small muted">' + esc(t('pv_persons_h')) + '</div></div>';
     if (emeters().length) money += '<h3>' + esc(t('pv_m_elec')) + '</h3>' + eheatRow();
+    if (smeters('gas').length) money += '<h3>' + esc(t('pv_m_gas')) + '</h3>' + sheatRow('gas');
     h += '<section class="panel" data-key="pv-money"><h2>' + esc(t('pv_money')) + '</h2><p class="small muted">' + esc(t('pv_money_s')) + '</p>' + (money || '<p class="muted">' + esc(t('pv_money_none')) + '</p>') + '</section>';
     if (many && window.TEPLO_API) h += '<section class="panel" data-key="pv-remind"><h2>' + esc(t('pv_remind')) + '</h2>' +
       '<label class="check-row"><input type="checkbox" id="pv-remind"' + (p.remindOff ? '' : ' checked') + (S.remind && S.remind.off ? ' disabled' : '') + '><span>' + esc(t('pv_remind_l')) + '</span></label>' +
@@ -2566,7 +2617,7 @@
   // ================= мастер «Додати квартиру»: 1) назва й адреса 2) які лічильники є 3) рахунок Водоканалу =================
   // Пенсионерам: шаги пронумерованы, крупные +/−, на последнем шаге — «Перевірте» с повтором сути. Потом — настройка каждого
   // счётчика по очереди (PQ): водомеры по одному (#wadd), теплосчётчик — последним (#meter, дальше обычный путь).
-  function pwFresh(back) { return { step: 0, name: '', address: '', n: { heat: 0, hot: 0, cold: 0, elec: 0 }, account: '', surname: '', back: back || 'places' }; }
+  function pwFresh(back) { return { step: 0, name: '', address: '', n: { heat: 0, hot: 0, cold: 0, elec: 0, gas: 0 }, account: '', surname: '', back: back || 'places' }; }
   var PW = pwFresh(), PQ = null;
   function pwSteps() { return PW.n.hot + PW.n.cold > 0 ? 3 : 2; }
   function pwRead() {
@@ -2624,7 +2675,7 @@
     var np = { id: 'p' + Date.now().toString(36), name: PW.name.trim(), address: PW.address.trim(), v: 2, color: nextColor(), meter: null, baseline: null,
       water: { account: water && !skipAcc ? PW.account : '', surname: water && !skipAcc ? PW.surname : '', meters: [] }, updatedAt: Date.now() };
     S.places.push(np); switchPlace(np.id); WX.key = ''; save();
-    var list = []; ['hot', 'cold', 'elec'].forEach(function (k) { for (var j = 0; j < (PW.n[k] || 0); j++) list.push(k); });
+    var list = []; ['hot', 'cold', 'elec', 'gas'].forEach(function (k) { for (var j = 0; j < (PW.n[k] || 0); j++) list.push(k); });
     PQ = list.length || PW.n.heat ? { place: np.id, list: list, i: 0, heat: !!PW.n.heat, total: list.length + (PW.n.heat ? 1 : 0) } : null;
     PW = pwFresh(); toast(t('aw_created', { p: placeLabel(place()) }));
     pqNext();
@@ -2632,7 +2683,7 @@
   /** Следующий счётчик новой квартиры: водомер (#wadd) → … → теплосчётчик (#meter) → главная квартиры. */
   function pqNext() {
     if (!PQ || PQ.place !== S.placeId) { PQ = null; go('home'); return; }
-    if (PQ.i < PQ.list.length && PQ.list[PQ.i] === 'elec') { EA = { kind: 'elec', back: 'home', zones: 1, vals: {} }; go('eadd'); return; }
+    if (PQ.i < PQ.list.length && SK[PQ.list[PQ.i]]) { var qk = PQ.list[PQ.i]; EA = { kind: qk, back: 'home', zones: 1, vals: {} }; go(SK[qk].add); return; }
     if (PQ.i < PQ.list.length) { WA = { kind: PQ.list[PQ.i], back: 'home' }; go('wadd'); return; }
     if (PQ.heat) { PQ.i = PQ.list.length; delete S._pickModel; go('meter'); return; }
     PQ = null; go('home');
@@ -2642,7 +2693,7 @@
     if (!PQ || PQ.place !== S.placeId) return '';
     var i = heat ? PQ.total : PQ.i + 1;
     return '<div class="banner aw-q" data-key="aw-queue">' + ico('home', 22) + '<div><p><b>' + esc(t('aw_q', { p: placeLabel(place()), i: i, n: PQ.total })) + '</b></p>' +
-      (heat ? '<p>' + esc(t('aw_q_heat')) + '</p>' : PQ.list[PQ.i] === 'elec' ? '<p>' + esc(t('aw_q_elec')) + '</p>' : '<p><button type="button" class="linkbtn" data-act="pq-later" data-key="aw-q-later">' + esc(t('aw_q_later')) + '</button></p>') + '</div></div>';
+      (heat ? '<p>' + esc(t('aw_q_heat')) + '</p>' : SK[PQ.list[PQ.i]] ? '<p>' + esc(t(PQ.list[PQ.i] === 'gas' ? 'aw_q_gas' : 'aw_q_elec')) + '</p>' : '<p><button type="button" class="linkbtn" data-act="pq-later" data-key="aw-q-later">' + esc(t('aw_q_later')) + '</button></p>') + '</div></div>';
   }
 
   /** Какой счётчик добавить: опалення · гаряча · холодна · газ (скоро) · електрика (скоро); прибранные — «Повернути». */
@@ -2651,7 +2702,7 @@
     var rows = KIND_ORDER.map(function (k) {
       var K = KINDS[k], n = kindCount(k), icon = ico(K.icon, 26, K.cls);
       if (K.soon) return '<div class="wz-opt am-opt am-soon" aria-disabled="true" data-key="am-' + k + '">' + icon + '<span><b>' + esc(t(K.t)) + '</b><span class="small muted">' + esc(t(K.s)) + '</span></span><span class="pill">' + esc(t('kd_soon')) + '</span></div>';
-      if (n >= K.max) return '<a class="wz-opt am-opt am-have" href="#' + (k === 'heat' ? 'heat' : k === 'elec' ? 'elec' : 'water-' + k) + '" data-key="am-' + k + '">' + icon + '<span><b>' + esc(t(K.t)) + '</b><span class="small muted">' + esc(t('kd_have_all')) + '</span></span><span class="pill ok">' + esc(t('kd_have')) + '</span></a>';
+      if (n >= K.max) return '<a class="wz-opt am-opt am-have" href="#' + (k === 'heat' ? 'heat' : SK[k] ? SK[k].page : 'water-' + k) + '" data-key="am-' + k + '">' + icon + '<span><b>' + esc(t(K.t)) + '</b><span class="small muted">' + esc(t('kd_have_all')) + '</span></span><span class="pill ok">' + esc(t('kd_have')) + '</span></a>';
       return '<button type="button" class="wz-opt am-opt" data-act="am-pick" data-kind="' + k + '" data-key="am-' + k + '">' + icon + '<span><b>' + esc(t(K.t)) + '</b><span class="small muted">' + esc(n ? t('kd_have_n', { n: n }) : t(K.s)) + '</span></span>' + ico('chev', 20) + '</button>';
     }).join('');
     var rm = removedMeters(), back = AM_BACK || 'home';
@@ -2719,7 +2770,10 @@
     var el = e.target; if (!el || !el.getAttribute) return;
     var mid = el.getAttribute('data-em');
     if (mid) { var f = el.getAttribute('data-ef'), v = el.value.trim().slice(0, 40); setPMeters(function (list) { list.forEach(function (m) { if (m.id === mid) m[f] = v; }); }); toast(t('b_saved')); return; }
-    if (el.id === 'e-heat') { ensurePlaces(); var pp = place(); if (el.checked) pp.elecHeat = true; else delete pp.elecHeat; pp.updatedAt = Date.now(); save(); toast(t('b_saved')); return; }
+    var hk = el.getAttribute('data-heat');
+    // ціна й пільга змінюють вартість у історії — перемалювати сторінку
+    if (hk === 'elecHeat' || hk === 'gasHeat') { ensurePlaces(); var pp = place(); if (el.checked) pp[hk] = true; else delete pp[hk]; pp.updatedAt = Date.now(); save(); toast(t('b_saved')); render(true); return; }
+    if (el.id === 'g-price') { ensurePlaces(); var pg = place(), gv = R.num(el.value); if (gv && gv > 0 && gv < 100) pg.gasPrice = gv; else delete pg.gasPrice; pg.updatedAt = Date.now(); save(); toast(t('b_saved')); render(true); return; }
     if (el.id === 'en-date') { enRead(); enCheck(true); }
   });
   // підказки під полями світла — одразу під час набору (як у води): після виходу з поля кнопка не «з'їжджає»
@@ -3106,9 +3160,9 @@
   }
   /** «Скасувати»: бросить ввод целиком — черновик тепла, фото на распознавании, ввод воды — и выйти на главную. */
   function wizCancel(what) {
-    if (!confirm(t(what === 'water' || what === 'elec' ? 'wz_cancel_q_w' : 'wz_cancel_q'))) return;
+    if (!confirm(t(what === 'water' || what === 'elec' || what === 'gas' ? 'wz_cancel_q_w' : 'wz_cancel_q'))) return;
     if (what === 'water') { WN.gen = -1; WN = wnFresh(WN.kind); go('home'); return; }
-    if (what === 'elec') { EN = enFresh(); go('home'); return; }
+    if (what === 'elec' || what === 'gas') { EN = enFresh(what); go('home'); return; }
     PH.gen = -1; if (PH.ctl) try { PH.ctl.abort(); } catch (e) { /* нет */ }
     phReset('reading'); S.draft = null; delete S._lastCheck; save(); toast(t('wz_cancelled')); go('home');
   }
@@ -3194,6 +3248,9 @@
       ['h-elec', ru ? 'Свет: когда и куда передавать' : 'Світло: коли й куди передавати', ru
         ? '<p>Показания света принимает <b>Харьковоблэнерго</b> в <b>последние 2 дня месяца и 1–3 числа</b> следующего (поданные 1–3 числа засчитываются на 1-е). Не передали — счёт посчитают «по среднему», потом пересчитают по факту.</p><p>Как: приложение «Харэнерго» (iPhone и Android), Viber-бот Харьковоблэнерго или колл-центр — (057) 342-44-13, (067) 234-04-13, (050) 054-04-13, (063) 054-04-13. Нужен лицевой счёт из платёжки Харьковэнергосбыта — впишите его у счётчика, и сервис подставит его для копирования.</p><p>Только цифры до запятой. У двухзонного счётчика табло само переключается: день — T1 (1.8.1), ночь — T2 (1.8.2); каждую зону — отдельно, не складывая. Общий показатель (1.8.0) не нужен.</p><p>Цена для населения — 4,32 грн за кВт·ч (продлено до 30.04.2027). Ночью (23:00–07:00) по двухзонному — ×0,5; трёхзонный: пик ×1,5, полупик ×1, ночь ×0,4. Дом с электроотоплением и оформленной льготой: 1 октября — 30 апреля 2,64 грн за первые 2000 кВт·ч в месяц — отметьте это у счётчика.</p>'
         : '<p>Показання світла приймає <b>Харківобленерго</b> в <b>останні 2 дні місяця і 1–3 числа</b> наступного (подані 1–3 числа зараховуються на 1-ше). Не передали — рахунок порахують «за середнім», потім перерахують за фактом.</p><p>Як: застосунок «Харенерго» (iPhone і Android), Viber-бот Харківобленерго або кол-центр — (057) 342-44-13, (067) 234-04-13, (050) 054-04-13, (063) 054-04-13. Потрібен особовий рахунок із платіжки Харківенергозбуту — впишіть його в лічильника, і сервіс підставить його для копіювання.</p><p>Лише цифри до коми. У двозонного лічильника табло саме перемикається: день — T1 (1.8.1), ніч — T2 (1.8.2); кожну зону — окремо, не додаючи. Загальний показник (1.8.0) не потрібен.</p><p>Ціна для населення — 4,32 грн за кВт·год (продовжено до 30.04.2027). Вночі (23:00–07:00) за двозонним — ×0,5; тризонний: пік ×1,5, напівпік ×1, ніч ×0,4. Будинок з електроопаленням і оформленою пільгою: 1 жовтня — 30 квітня 2,64 грн за перші 2000 кВт·год на місяць — позначте це в лічильника.</p>'],
+      ['h-gas', ru ? 'Газ: когда и куда передавать' : 'Газ: коли й куди передавати', ru
+        ? '<p>Показания газа передают <b>с 1 по 5 число</b> — на 1-е (SMS принимают уже с 28-го). Не передали — начислят по среднему.</p><p>Самое простое — <b>SMS на 4647</b>: 9 цифр лицевого счёта (из платёжки Нафтогаза), пробел, 5 цифр показаний. Впишите счёт у счётчика — сервис соберёт SMS сам, останется нажать «Отправить». Ещё: кабинет Газсетей my.grmu.com.ua, приложение Нафтогаза «Куб», колл-центр (066) 300-28-88, (098) 300-28-88, (093) 300-28-88.</p><p>Записывайте чёрные цифры — целые кубометры; красные (литры) не передают. Цена — Нафтогаз «Фиксированный» 7,96 грн/м³ до 30.04.2027; другой поставщик — впишите свою цену у счётчика. Доставка (распределение) — отдельная плата Газсетям, от показаний не зависит.</p>'
+        : '<p>Показання газу передають <b>з 1 по 5 число</b> — станом на 1-ше (SMS приймають уже з 28-го). Не передали — нарахують за середнім.</p><p>Найпростіше — <b>SMS на 4647</b>: 9 цифр особового рахунку (з платіжки Нафтогазу), пробіл, 5 цифр показань. Впишіть рахунок у лічильника — сервіс складе SMS сам, залишиться натиснути «Надіслати». Ще: кабінет Газмереж my.grmu.com.ua, застосунок Нафтогазу «Куб», кол-центр (066) 300-28-88, (098) 300-28-88, (093) 300-28-88.</p><p>Записуйте чорні цифри — цілі кубометри; червоні (літри) не передають. Ціна — Нафтогаз «Фіксований» 7,96 грн/м³ до 30.04.2027; інший постачальник — впишіть свою ціну в лічильника. Доставка (розподіл) — окрема плата Газмережам, від показань не залежить.</p>'],
       ['h-places', ru ? 'Несколько квартир и свой набор счётчиков' : 'Кілька квартир і свій набір лічильників', ru
         ? '<p>Своя квартира, родителей, сдаёте — у каждой свои счётчики, показания, история и счета. Добавить: <b>Настройки → Квартиры → Добавить квартиру</b> или кнопка под списком квартир — три шага: название и адрес, какие счётчики есть (кнопки «+» и «−»), лицевой счёт Водоканала. Потом сервис по очереди предложит настроить каждый счётчик.</p><p>Когда квартир две и больше, <b>главная — список квартир</b>: у каждой видно, что с каждым счётчиком («Передать до 20.11», «Передано») и ближайший срок. Нажмите на квартиру — откроются её счётчики.</p><p>В квартире — только те счётчики, что в ней есть: <b>«Добавить счётчик»</b> (отопление, горячая или холодная вода; газ и свет — скоро). Счётчик можно <b>заменить</b> (новый после поверки или поломки — расход дальше считается от его показаний) или <b>убрать</b> — история останется, вернуть можно на странице квартиры.</p><p>Где вы сейчас — видно сверху: полоса цвета квартиры и её название; вернуться к списку — <b>«Все квартиры»</b>. Если введённое число похоже на показания счётчика другой квартиры, сервис предупредит.</p><p>Напоминания в Telegram приходят одним сообщением на все квартиры, с кнопкой в каждую. Про отдельную квартиру их можно выключить на её странице.</p>'
         : '<p>Своя квартира, батьків, здаєте — у кожної свої лічильники, показання, історія й рахунки. Додати: <b>Налаштування → Квартири → Додати квартиру</b> або кнопка під списком квартир — три кроки: назва й адреса, які лічильники є (кнопки «+» і «−»), особовий рахунок Водоканалу. Потім сервіс по черзі запропонує налаштувати кожен лічильник.</p><p>Коли квартир дві й більше, <b>головна — список квартир</b>: у кожної видно, що з кожним лічильником («Передати до 20.11», «Передано») і найближчий термін. Натисніть на квартиру — відкриються її лічильники.</p><p>У квартирі — лише ті лічильники, що в ній є: <b>«Додати лічильник»</b> (опалення, гаряча чи холодна вода; газ і світло — скоро). Лічильник можна <b>замінити</b> (новий після повірки чи поломки — розхід далі рахується від його показань) або <b>прибрати</b> — історія залишиться, повернути можна на сторінці квартири.</p><p>Де ви зараз — видно вгорі: смужка кольору квартири та її назва; повернутися до списку — <b>«Усі квартири»</b>. Якщо введене число схоже на показання лічильника іншої квартири, сервіс попередить.</p><p>Нагадування в Telegram приходять одним повідомленням на всі квартири, з кнопкою в кожну. Про окрему квартиру їх можна вимкнути на її сторінці.</p>'],
@@ -3209,7 +3266,7 @@
     var groups = [
       { id: 'hg-send', title: t('hg_send'), icon: 'calendar', items: [byId['h-window'], byId['h-sameday'], byId['h-how'], { title: t('ph_tips_t'), html: photoTips }] },
       { id: 'hg-reject', title: t('hg_reject'), icon: 'alert', items: [byId['h-robot'], byId['h-special'], byId['h-off']] },
-      { id: 'hg-other', title: t('hg_other'), icon: 'info', items: [byId['h-places'], byId['h-elec'], byId['h-hw'], byId['h-gap'], byId['h-phones']] }
+      { id: 'hg-other', title: t('hg_other'), icon: 'info', items: [byId['h-places'], byId['h-elec'], byId['h-gas'], byId['h-hw'], byId['h-gap'], byId['h-phones']] }
     ];
     groups[0].items[0].open = true;
     return '<div class="help-doc"><h1>' + esc(t('help_title')) + '</h1><nav class="toc" aria-label="' + esc(t('help_title')) + '">' + groups.map(function (g) { return '<button type="button" class="tocb" data-act="scroll" data-target="' + g.id + '">' + esc(g.title) + '</button>'; }).join('') + '</nav>' +
@@ -3225,14 +3282,14 @@
     if (S.onboarded && !hasHeat() && /^(heat|step-\d+|check|handover|status)$/.test(r)) { r = 'home'; try { history.replaceState(null, '', '#home'); } catch (e0) { /* старый браузер */ } }
     if (S.onboarded && !S.meter && r === 'baseline') r = 'meter';
     // світла в квартирі немає (або прибрали) — сторінка світла веде на головну
-    if (S.onboarded && !emeters().length && r === 'elec') { r = 'home'; try { history.replaceState(null, '', '#home'); } catch (e1) { /* старий браузер */ } }
+    if (S.onboarded && SK[r] && !smeters(r).length) { r = 'home'; try { history.replaceState(null, '', '#home'); } catch (e1) { /* старий браузер */ } }
     pendingRender = false;
     if (!S.onboarded && ['welcome', 'start', 'wsetup', 'meter', 'baseline', 'help', 'login', 'photo', 'privacy', 'terms'].indexOf(r) < 0) r = S.meter ? 'baseline' : 'welcome';
     if (S.onboarded && (!r || r === 'welcome')) r = homeRoute();
     var view;
     var rm = r.match(/^rec-([\w-]+?)(-edit)?$/), wm = r.match(/^wrec-([\w-]+)$/), gn = r.match(/^gap-new-([\w-]+)$/), gm = !gn && r.match(/^gap-([\w-]+)$/), pm = r.match(/^place-([\w-]+)$/), em = r.match(/^erec-([\w-]+)$/);
     if (!gn) GAP_PRESET = null;
-    if (PQ && !/^(wadd|eadd|meter|add-place)$/.test(r)) PQ = null;
+    if (PQ && !/^(wadd|eadd|gadd|meter|add-place)$/.test(r)) PQ = null;
     if (pm) view = placeView(pm[1]);
     else if (em) view = erecView(em[1]);
     else if (gn) view = gapView(null, gn[1]);
@@ -3660,13 +3717,14 @@
   if (window.TEPLO_API && window.TeploVision) window.TeploVision.initServer({}, false);
   // кнопка из напоминания бота: ?go=wnew — ввод воды, ?go=heat — тепло
   (function () {
-    var g = (location.search.match(/[?&]go=(wnew|heat|enew|elec|home|places)(?=&|$)/) || [])[1]; if (!g) return;
+    var g = (location.search.match(/[?&]go=(wnew|heat|enew|elec|gnew|gas|home|places)(?=&|$)/) || [])[1]; if (!g) return;
     var pid = (location.search.match(/[?&]place=([\w-]+)(?=&|$)/) || [])[1];
     var q = location.search.replace(/([?&])(go|place)=[\w-]+(?=&|$)/g, '$1').replace(/&{2,}/g, '&').replace(/\?&/, '?').replace(/[?&]$/, '');
     // напоминание про конкретную квартиру — сразу в неё
     if (pid && place(pid)) { switchPlace(pid); WX.key = ''; }
     try { history.replaceState(null, '', location.pathname + q + '#' + g); } catch (e) { location.hash = g; }
     if (g === 'wnew') WN = wnFresh(wmeters('hot').length ? 'hot' : 'cold');
+    if (g === 'enew' || g === 'gnew') EN = enFresh(g === 'gnew' ? 'gas' : 'elec');
   })();
   render();
   PHS.restore().then(function (ok) { if (ok && routeName() === 'photo') safeRender(); });

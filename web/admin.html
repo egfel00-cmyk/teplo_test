@@ -170,7 +170,7 @@ pre.state { font: 12px/1.4 var(--mono); background: #F4F7F5; padding: 10px; bord
       }).join('') + '</tbody></table>' + (rs.length ? '' : '<p class="muted">Пока пусто.</p>') + '</div>';
   };
 
-  var KIND = { heat5: 'тепло, 5-го', heat22: 'тепло, 22-го', water15: 'вода, 15-го', water19: 'вода, 19-го', elec1: 'свет, окно открылось', elec2: 'свет, 2-го (завтра последний)' };
+  var KIND = { heat5: 'тепло, 5-го', heat22: 'тепло, 22-го', water15: 'вода, 15-го', water19: 'вода, 19-го', elec1: 'свет, окно открылось', elec2: 'свет, 2-го (завтра последний)', gas1: 'газ, 1-го', gas4: 'газ, 4-го (завтра последний)' };
   var RST = { ok: ['ok', 'доставлено'], blocked: ['warn', 'не доставлено: не нажимал «Старт» у бота или остановил его'], no_chat: ['warn', 'не доставлено: нет чата с ботом'] };
   function rstatus(s) { if (!s) return pill('warn', 'нет итога'); var x = RST[s]; return x ? pill(x[0], x[1]) : pill('bad', s); }
   VIEW.reminders = function () {

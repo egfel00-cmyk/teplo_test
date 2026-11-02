@@ -378,16 +378,21 @@ $kb = $two[0][1]['reply_markup']['inline_keyboard'] ?? [];
 ok('рассылка двум квартирам: одно сообщение, две кнопки — по одной на квартиру', count($two) === 1 && count($kb) === 2 && str_ends_with($kb[1][0]['web_app']['url'], '&place=p2') && str_contains($two[0][1]['text'], 'Мамина'), $two);
 $row = Db::one("SELECT status FROM reminders_sent WHERE user_id = (SELECT user_id FROM user_identities WHERE external_id = '7777') AND kind = 'water15'");
 ok('итог доставки записан: ok', ($row['status'] ?? '') === 'ok', $row);
-ok('ближайшее после 3 ноября — 5-е, тепло; 5-го в 21:00 — уже 15-е', Reminders::next($kyiv('2026-11-03 10:54')) === ['date' => '2026-11-05', 'kind' => 'heat5', 'ym' => '2026-11'] && Reminders::next($kyiv('2026-11-05 21:00'))['date'] === '2026-11-15');
+ok('ближайшее после 4 ноября — 5-е, тепло; 3-го — 4-е, газ за октябрь; 5-го в 21:00 — уже 15-е', Reminders::next($kyiv('2026-11-04 20:54')) === ['date' => '2026-11-05', 'kind' => 'heat5', 'ym' => '2026-11'] && Reminders::next($kyiv('2026-11-03 10:54')) === ['date' => '2026-11-04', 'kind' => 'gas4', 'ym' => '2026-10'] && Reminders::next($kyiv('2026-11-05 21:00'))['date'] === '2026-11-15');
 // світло: передостанній день місяця (вікно відкрилось) і 2-ге (завтра останній), ym — місяць, за який показання
 ok('свет: 29.11 — elec1 за ноябрь, 2.12 — elec2 за ноябрь, 27.02.2027 — elec1; 2.11 после 20:00 → следующее 5-е', (Reminders::due($kyiv('2026-11-29 10:17')) ?? []) === ['ym' => '2026-11', 'kind' => 'elec1']
   && (Reminders::due($kyiv('2026-12-02 12:17')) ?? []) === ['ym' => '2026-11', 'kind' => 'elec2'] && (Reminders::due($kyiv('2027-02-27 10:17'))['kind'] ?? '') === 'elec1'
-  && Reminders::next($kyiv('2026-11-02 20:30'))['date'] === '2026-11-05' && Reminders::elecWindow('2026-11') === ['2026-11-29', '2026-12-03']);
+  && Reminders::next($kyiv('2026-11-02 20:30'))['date'] === '2026-11-04' && Reminders::elecWindow('2026-11') === ['2026-11-29', '2026-12-03']);
 $es = ['places' => [['id' => 'main', 'meters' => [['id' => 'e1', 'kind' => 'elec', 'zones' => 2]]], ['id' => 'p2', 'name' => 'Мамина', 'meters' => [['id' => 'e2', 'kind' => 'elec', 'removed' => '2026-10-01']]]],
   'mrecs' => [['id' => 'b', 'place' => 'main', 'meter' => 'e1', 'date' => '2026-11-29', 'base' => true, 'z' => ['day' => '1', 'night' => '1']]]];
 ok('свет: только стартовые в окне — напоминаем; прибранный счётчик — нет', array_column(Reminders::placesDue($es, 'elec1', '2026-11'), 'id') === ['main']);
 $es['mrecs'][] = ['id' => 'r', 'place' => 'main', 'meter' => 'e1', 'date' => '2026-12-01', 'z' => ['day' => '5', 'night' => '2']];
 ok('свет: показания 1.12 (в окне за ноябрь) — молчим; за декабрь — напоминаем', !Reminders::needs($es, 'elec2', '2026-11') && Reminders::needs($es, 'elec1', '2026-12'));
+// газ: 1-го і 4-го за попередній місяць; вікно — з 28-го по 5-те
+$gs = ['places' => [['id' => 'main', 'meters' => [['id' => 'g1', 'kind' => 'gas']]]], 'mrecs' => []];
+ok('газ: 1.12 — gas1 за ноябрь, 4.12 — gas4; окно 28.11–5.12', (Reminders::due($kyiv('2026-12-01 10:17')) ?? []) === ['ym' => '2026-11', 'kind' => 'gas1'] && (Reminders::due($kyiv('2026-12-04 15:17'))['kind'] ?? '') === 'gas4' && Reminders::gasWindow('2026-11') === ['2026-11-28', '2026-12-05']);
+ok('газ: без показаний — напоминаем; показания 30.11 (SMS с 28-го) — молчим', Reminders::needs($gs, 'gas1', '2026-11') && !Reminders::needs(array_merge($gs, ['mrecs' => [['id' => 'x', 'place' => 'main', 'meter' => 'g1', 'date' => '2026-11-30', 'z' => ['all' => '5']]]]), 'gas4', '2026-11'));
+ok('газ: кнопка ?go=gnew, про SMS 4647', str_ends_with(Reminders::text('gas1', 'uk', Reminders::placesDue($gs, 'gas1', '2026-11'))['url'], '?go=gnew') && str_contains(Reminders::text('gas1', 'ru')['text'], '4647'));
 $te = Reminders::text('elec1', 'uk', Reminders::placesDue($es, 'elec1', '2026-12'));
 ok('свет: текст про Харківобленерго, кнопка ?go=enew', str_contains($te['text'], 'Харківобленерго') && str_contains($te['url'], '?go=enew&place=main') && str_contains($te['button'], 'світло'), $te);
 ok('ответы Telegram: 403 → blocked, нет чата → no_chat, сбой связи/429 → повторить', Reminders::status(['ok' => false, 'error_code' => 403, 'description' => 'Forbidden: bot was blocked by the user']) === 'blocked'

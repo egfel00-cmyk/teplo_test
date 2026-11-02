@@ -783,3 +783,8 @@ fieldset.field { border: 0; padding: 0; min-width: 0; }
 .kind-sw .c-elec { color: var(--c-elec); }
 /* четыре вида (тепло, гаряча, холодна, світло) — на телефоне в две строки по два */
 @media (max-width: 560px) { .kind-sw.many { display: grid; grid-template-columns: 1fr 1fr; border-radius: 16px; } .kind-sw.many button { border-radius: 12px; } }
+/* ---- газ ---- */
+.ucard-gas .ucard-top .ico { color: var(--c-gas); }
+.kpi.gas { border-left-color: var(--c-gas); }
+.kind-sw .c-gas { color: var(--c-gas); }
+.wdrum.gas { border-color: var(--c-gas); }
