@@ -171,7 +171,7 @@ a { color: var(--c-return); text-underline-offset: 3px; }
 
 /* ---------- мастер ---------- */
 .wiz-top { display: flex; align-items: center; gap: var(--sp-3); margin-bottom: var(--sp-4); }
-.wiz-top .count { font-weight: 600; }
+.wiz-top .count { font-weight: 600; white-space: nowrap; }
 .progress { height: 6px; background: var(--c-line); border-radius: 3px; overflow: hidden; flex: 1; }
 .progress i { display: block; height: 100%; background: var(--c-ink); border-radius: 3px; transition: width .25s; }
 .wiz { display: grid; gap: var(--sp-5); }
@@ -424,3 +424,26 @@ input[type=text]:not(.dmy-native):not(.pl-in), input[type=email], input[type=pas
    чтобы кнопки можно было поставить прямо над клавиатурой (а сверху остались подсказка и пример экрана) */
 @media (max-width: 959px) { .wiz .field { margin-bottom: 4px; } .wiz .field .help { margin-top: 4px; } .wiz-actions { margin-top: 10px; } }
 .kb-open .wiz { padding-bottom: 70vh; }
+
+/* Шаги ввода на телефоне — компактно, чтобы на одном экране были: что нажать, пример экрана, поле и «Далі» */
+@media (max-width: 959px) {
+  .wiz { gap: var(--sp-3); }
+  .wiz-top { margin-bottom: var(--sp-3); }
+  .wiz .press { margin-bottom: var(--sp-2); font-size: 18px; }
+  .wiz .press .times { font-size: 18px; }
+  .step-lcd { padding-top: 10px; padding-bottom: 10px; }
+  .step-lcd svg.seg { height: 40px; }
+  .wiz .lcd-cap { margin-top: 4px; }
+  .wiz .hint { margin: 6px 0 0; font-size: var(--fs-s); line-height: 1.4; }
+  .wiz .sleep { margin-top: 6px; font-size: 13px; }
+  .wiz h1 { font-size: 22px; margin: 0 0 8px; }
+}
+/* открыта клавиатура: убрать всё второстепенное — остаются шаг, что нажать, пример экрана, поле и кнопки */
+.kb-open .top, .kb-open .date-chip, .kb-open .wiz .lcd-cap, .kb-open .wiz .sleep, .kb-open .fab { display: none !important; }
+.kb-open .wiz-top { margin-bottom: 6px; }
+.kb-open .step-lcd svg.seg { height: 30px; }
+.kb-open .step-lcd { padding-top: 6px; padding-bottom: 6px; }
+.kb-open .wiz .hint { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; margin-top: 4px; }
+.kb-open .wiz { gap: 8px; }
+.kb-open .wiz h1 { font-size: 19px; margin-bottom: 6px; }
+.kb-open .wiz .field .help:empty { min-height: 0; margin: 0; }

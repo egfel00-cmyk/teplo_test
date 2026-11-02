@@ -832,7 +832,8 @@
       tp.hidden = false; var w = tp.offsetWidth, hh = tp.offsetHeight; tp.style.left = Math.max(8, Math.min(window.innerWidth - w - 8, x - w / 2)) + 'px'; tp.style.top = Math.max(8, y - hh - 14) + 'px'; };
     var hide = function () { var tp = document.getElementById('ctip'); if (tp) tp.hidden = true; };
     document.addEventListener('pointermove', function (e) { var el = e.target.closest && e.target.closest('[data-tip]'); if (el) show(el, e.clientX, e.clientY); else hide(); });
-    document.addEventListener('focusin', function (e) { var el = e.target.closest && e.target.closest('[data-tip]'); if (el) { var b = el.getBoundingClientRect(); show(el, b.left + b.width / 2, b.top); } });
+    document.addEventListener('focusout', function () { setTimeout(function () { var f = document.activeElement; if (!(f && f.matches && f.matches('[data-field]'))) document.documentElement.classList.remove('kb-open'); }, 60); });
+  document.addEventListener('focusin', function (e) { var el = e.target.closest && e.target.closest('[data-tip]'); if (el) { var b = el.getBoundingClientRect(); show(el, b.left + b.width / 2, b.top); } });
     document.addEventListener('focusout', hide);
     window.addEventListener('hashchange', hide); window.addEventListener('scroll', hide, { passive: true });
   })();
@@ -1408,15 +1409,19 @@
   function fitStep() {
     var vv = window.visualViewport; if (!vv || !/^step-/.test(routeName())) return;
     var run = function () {
-      var kb = vv.height < window.innerHeight * 0.8; document.documentElement.classList.toggle('kb-open', kb);
+      // iOS: при клавиатуре innerHeight тоже уменьшается — сравниваем с высотой макета (она не меняется)
+      var full = document.documentElement.clientHeight || window.screen.height;
+      var f = document.activeElement, typing = f && f.matches && f.matches('[data-field]') && f.type !== 'date';
+      var kb = typing && vv.height < full * 0.8; document.documentElement.classList.toggle('kb-open', kb);
       if (!kb) return;
-      var a = document.querySelector('.wiz-actions'), f = document.activeElement; if (!a || !f || !f.matches || !f.matches('[data-field]')) return;
-      var d = a.getBoundingClientRect().bottom + 10 - (vv.offsetTop + vv.height);
-      var topRoom = f.getBoundingClientRect().top - vv.offsetTop - 8;   // поле ввода не должно уйти вверх за край
-      if (d > topRoom) d = topRoom;
+      var top = document.querySelector('.wiz-top'), a = document.querySelector('.wiz-actions'); if (!top || !a) return;
+      var visTop = vv.offsetTop, visBot = vv.offsetTop + vv.height;
+      // сначала — шаг и «что нажать» у верхнего края; если кнопки не влезли — подвинуть так, чтобы влезли (поле при этом остаётся видно)
+      var d = top.getBoundingClientRect().top - visTop - 4, over = a.getBoundingClientRect().bottom - d + 8 - visBot;
+      if (over > 0) d += Math.min(over, f.getBoundingClientRect().top - d - visTop - 8);
       if (Math.abs(d) > 3) window.scrollBy(0, d);
     };
-    requestAnimationFrame(run); setTimeout(run, 120); setTimeout(run, 400);
+    requestAnimationFrame(run); setTimeout(run, 150); setTimeout(run, 450); setTimeout(run, 800);
   }
   if (window.visualViewport) window.visualViewport.addEventListener('resize', function () { fitStep(); });
   document.addEventListener('focusin', function (e) { if (e.target && e.target.matches && e.target.matches('[data-field]') && /^step-/.test(routeName())) fitStep(); });
