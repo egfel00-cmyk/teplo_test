@@ -18,6 +18,14 @@ try { $n = Admin::cleanup(); $h['photos'] = $n; if ($n) echo gmdate('c') . " у�
 catch (Throwable $e) { $h['error'] = mb_substr($e->getMessage(), 0, 200); error_log('teplo cron: ' . $e->getMessage()); }
 try {
   $s = Reminders::run(time());
-  if ($s) { $h['reminders'] = array_count_values(array_map(fn($x) => $x[1] . ' ' . (str_starts_with($x[2], 'error') ? 'error' : $x[2]), $s)); echo gmdate('c') . ' напоминаний: ' . count($s) . "\n"; }
+  if ($s) {
+    $h['reminders'] = array_count_values(array_map(fn($x) => $x[1] . ' ' . (str_starts_with($x[2], 'error') ? 'error' : $x[2]), $s));
+    // итог рассылки за месяц по видам (только числа) — виден в /api/health без входа
+    $due = Reminders::due(time()); $key = $due['kind'] . ' ' . $due['ym'];
+    $r = (array)($beat['remind'] ?? []); $c = (array)($r[$key]['n'] ?? []);
+    foreach ($s as $x) { $st = str_starts_with($x[2], 'error') ? 'error' : $x[2]; $c[$st] = ($c[$st] ?? 0) + 1; }
+    $r[$key] = ['at' => gmdate('c'), 'n' => $c]; $beat['remind'] = array_slice($r, -4, null, true);
+    echo gmdate('c') . ' напоминаний: ' . count($s) . "\n";
+  }
 } catch (Throwable $e) { $h['remindError'] = mb_substr($e->getMessage(), 0, 200); error_log('teplo remind: ' . $e->getMessage()); }
 $beat['hourly'] = $h; Cron::write($beat);
