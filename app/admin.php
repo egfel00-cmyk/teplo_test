@@ -30,16 +30,61 @@ final class Admin {
     return $tg && (in_array((string)$tg['external_id'], $tgList, true) || ($tg['username'] && in_array(mb_strtolower($tg['username']), $tgList, true)));
   }
 
-  /** Сводка по сохранённому состоянию пользователя (то, что он видит у себя). */
-  private static function stateSummary(?string $json): array {
+  const KINDS = ['heat' => 0, 'hot' => 0, 'cold' => 0, 'elec' => 0, 'gas' => 0];
+  /** Сводка по сохранённому состоянию пользователя (то, что он видит у себя): квартиры, счётчики по видам (без прибранных),
+   *  показания по видам (без удалённых и стартовых), «для себя», самое позднее показание среди всех видов. */
+  public static function stateSummary(?string $json): array {
     $s = $json ? json_decode($json, true) : null;
-    if (!is_array($s)) return ['meter' => null, 'readings' => 0, 'handed' => 0, 'last' => null, 'phone' => null];
-    $rd = array_values(array_filter((array)($s['readings'] ?? []), 'is_array'));
-    $last = $rd ? end($rd) : null;
-    return ['meter' => $s['meter']['modelId'] ?? null, 'unit' => $s['meter']['unit'] ?? null, 'readings' => count($rd),
-      'handed' => count(array_filter($rd, fn($x) => in_array($x['status'] ?? '', ['handed', 'accepted'], true))),
-      'last' => $last ? ['date' => $last['htm']['date'] ?? substr((string)($last['createdAt'] ?? ''), 0, 10), 'status' => $last['status'] ?? null, 'verdict' => $last['verdict'] ?? null, 'source' => $last['source'] ?? null] : null,
-      'phone' => ($s['contacts']['phone'] ?? '') ?: null, 'contactEmail' => ($s['contacts']['email'] ?? '') ?: null, 'apartment' => $s['meter']['apartment'] ?? null];
+    $out = ['meter' => null, 'unit' => null, 'readings' => 0, 'handed' => 0, 'last' => null, 'phone' => null, 'contactEmail' => null, 'apartment' => null,
+      'places' => 0, 'kinds' => self::KINDS, 'recs' => ['heat' => 0, 'water' => 0, 'elec' => 0, 'gas' => 0], 'own' => 0, 'photos' => 0, 'onboarded' => false];
+    if (!is_array($s)) return $out;
+    $live = fn($x) => is_array($x) && empty($x['deleted']);
+    $alive = fn($m) => is_array($m) && empty($m['deleted']) && empty($m['removed']);
+    $places = array_values(array_filter((array)($s['places'] ?? []), $live));
+    if (!$places && !empty($s['meter'])) $places = [['meter' => $s['meter']]];   // старые данные — без квартир
+    $meter = null;
+    foreach ($places as $p) {
+      if ($alive($p['meter'] ?? null)) { $out['kinds']['heat']++; $meter = $meter ?? $p['meter']; }
+      foreach (array_merge((array)($p['water']['meters'] ?? []), (array)($p['meters'] ?? [])) as $m)
+        if ($alive($m) && isset($out['kinds'][$m['kind'] ?? ''])) $out['kinds'][$m['kind']]++;
+    }
+    $rd = array_values(array_filter((array)($s['readings'] ?? []), $live));
+    $wr = array_values(array_filter((array)($s['water'] ?? []), fn($x) => $live($x) && empty($x['base'])));
+    $mr = array_values(array_filter((array)($s['mrecs'] ?? []), fn($x) => $live($x) && empty($x['base'])));
+    $all = array_merge($rd, $wr, $mr);
+    // последнее — самое позднее по дате показаний (после синхронизации порядок в массиве любой)
+    $cand = [];
+    foreach ($rd as $x) $cand[] = ['date' => (string)($x['htm']['date'] ?? substr((string)($x['createdAt'] ?? ''), 0, 10)), 'kind' => 'heat', 'status' => $x['status'] ?? null,
+      'verdict' => $x['verdict'] ?? null, 'source' => $x['source'] ?? null, 'own' => !empty($x['own'])];
+    foreach ($wr as $x) $cand[] = ['date' => (string)($x['date'] ?? ''), 'kind' => 'water', 'sent' => !empty($x['sent']['vk']), 'own' => !empty($x['own']), 'source' => !empty($x['photos']) ? 'photo' : null];
+    foreach ($mr as $x) { $g = ($x['kind'] ?? '') === 'gas';
+      $cand[] = ['date' => (string)($x['date'] ?? ''), 'kind' => $g ? 'gas' : 'elec', 'sent' => !empty($x['sent'][$g ? 'grm' : 'obl']), 'own' => !empty($x['own']), 'source' => !empty($x['photos']) ? 'photo' : null]; }
+    usort($cand, fn($a, $b) => strcmp($b['date'], $a['date']));
+    $first = $places[0] ?? [];
+    return ['meter' => $meter['modelId'] ?? null, 'unit' => $meter['unit'] ?? null, 'readings' => count($rd),
+      'handed' => count(array_filter($rd, fn($x) => empty($x['own']) && in_array($x['status'] ?? '', ['handed', 'accepted'], true))),
+      'last' => $cand[0] ?? null,
+      'phone' => ($s['contacts']['phone'] ?? '') ?: null, 'contactEmail' => ($s['contacts']['email'] ?? '') ?: null,
+      'apartment' => ($first['address'] ?? '') ?: ($s['meter']['apartment'] ?? null),
+      'places' => count($places), 'kinds' => $out['kinds'],
+      'recs' => ['heat' => count($rd), 'water' => count($wr), 'elec' => count(array_filter($mr, fn($x) => ($x['kind'] ?? '') !== 'gas')), 'gas' => count(array_filter($mr, fn($x) => ($x['kind'] ?? '') === 'gas'))],
+      'own' => count(array_filter($all, fn($x) => !empty($x['own']))),
+      'photos' => array_sum(array_map(fn($x) => count((array)($x['photos'] ?? [])), $all)),
+      'onboarded' => !empty($s['onboarded'])];
+  }
+  /** Что ведут все вместе: сколько людей с каждым видом счётчика, показаний по видам, с 2+ квартирами, «для себя». */
+  private static function tracking(): array {
+    $t = ['users' => self::KINDS, 'recs' => ['heat' => 0, 'water' => 0, 'elec' => 0, 'gas' => 0], 'multi' => 0, 'own' => 0, 'onboarded' => 0, 'withMeters' => 0];
+    foreach (Db::q('SELECT data FROM user_state')->fetchAll() as $row) {
+      $sm = self::stateSummary($row['data']);
+      foreach ($sm['kinds'] as $k => $n) if ($n > 0) $t['users'][$k]++;
+      foreach ($sm['recs'] as $k => $n) $t['recs'][$k] += $n;
+      if ($sm['places'] >= 2) $t['multi']++;
+      if (array_sum($sm['kinds']) > 0) $t['withMeters']++;
+      if ($sm['onboarded']) $t['onboarded']++;
+      $t['own'] += $sm['own'];
+    }
+    return $t;
   }
 
   private static function users(string $where = '', array $p = []): array {
@@ -66,14 +111,15 @@ final class Admin {
         $week = gmdate('c', time() - 7 * 86400);
         return [
           'users' => $c('SELECT COUNT(*) n FROM users'), 'usersWeek' => $c('SELECT COUNT(*) n FROM users WHERE created_at >= ?', [$week]),
-          'activeWeek' => $c('SELECT COUNT(*) n FROM users WHERE last_login_at >= ?', [$week]),
+          // «входили за 7 дней»: вход (новая сессия) или открывали сайт уже вошедшими (visits) — сессия живёт долго, last_login_at редко меняется
+          'activeWeek' => $c('SELECT COUNT(*) n FROM users u WHERE u.last_login_at >= ? OR EXISTS (SELECT 1 FROM visits v WHERE v.user_id = u.id AND v.day >= ?)', [$week, Visits::day(time() - 6 * 86400)]),
           'withTelegram' => $c("SELECT COUNT(DISTINCT user_id) n FROM user_identities WHERE type = 'telegram'"),
           'withData' => $c('SELECT COUNT(*) n FROM user_state'),
           'feedback' => $c('SELECT COUNT(*) n FROM feedback'), 'feedbackNew' => $c("SELECT COUNT(*) n FROM feedback WHERE status = 'new'"),
           'photos' => $c('SELECT COUNT(*) n FROM photos'), 'photosFailed' => $c("SELECT COUNT(*) n FROM photos WHERE status = 'failed' OR problem IS NOT NULL"),
           'reports' => $c('SELECT COUNT(*) n FROM recog_reports'), 'reportsBad' => $c('SELECT COUNT(*) n FROM recog_reports WHERE ok = 0'),
           'recognition' => (bool)Cfg::get('anthropic_api_key'), 'telegram' => (bool)Cfg::get('bot_token'), 'photoKeepDays' => (int)Cfg::get('photo_keep_days', 90), 'cronAgo' => Cron::age(),
-          'me' => $me['email'] ?: ('tg:' . $me['id']),
+          'me' => $me['email'] ?: ('tg:' . $me['id']), 'tracking' => self::tracking(),
         ];
       }
       case 'GET /api/admin/users': {

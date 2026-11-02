@@ -336,6 +336,9 @@ $wst = ['places' => [['id' => 'main', 'meter' => ['modelId' => 'sharky774'], 'wa
 ok('вода: в этом месяце только стартовые — напоминаем', Reminders::needs($wst, 'water15', '2026-11'));
 $w2 = $wst; $w2['water'][] = ['id' => 'w', 'place' => 'main', 'date' => '2026-11-10', 'vals' => ['h1' => '7']];
 ok('вода: запись этого месяца есть — молчим', !Reminders::needs($w2, 'water15', '2026-11'));
+$w3 = $wst; $w3['water'][] = ['id' => 'wo', 'place' => 'main', 'date' => '2026-11-10', 'vals' => ['h1' => '7'], 'own' => true];
+$w3['readings'] = [['id' => 'r9', 'htm' => ['date' => '2026-11-06', 'energy' => '10'], 'own' => true]];
+ok('«лише для себе» — не передача: вода и тепло этого месяца «для себя» — всё равно напоминаем', Reminders::needs($w3, 'water15', '2026-11') && Reminders::needs($w3, 'heat22', '2026-11'));
 ok('тепло: показания в окне 5–25 есть — молчим; в прошлом месяце — напоминаем', !Reminders::needs($wst, 'heat22', '2026-11') && Reminders::needs($wst, 'heat22', '2026-12'));
 ok('без водомеров про воду не пишем; выключено в настройках — не пишем', !Reminders::needs(['places' => [['id' => 'main']]], 'water15', '2026-11') && !Reminders::needs($wst + ['remind' => ['off' => true]], 'water15', '2026-11'));
 $wg = $wst; $wg['places'][0]['gaps'] = [['id' => 'g1', 'what' => 'h1', 'from' => '2026-11-03', 'to' => ''], ['id' => 'g2', 'what' => 'heat', 'from' => '2026-12-01', 'to' => '2026-12-10']];
@@ -419,6 +422,57 @@ ok('/admin: вкладка напоминаний — ближайшее, жур
 @unlink(Cron::file()); $h0 = (new Browser('10.0.13.8'))->req('GET', '/api/health');
 Cron::write(['last' => gmdate('c', time() - 120)]); $h1 = (new Browser('10.0.13.7'))->req('GET', '/api/health');
 ok('/api/health: cron ни разу → null, был 2 мин назад → ~120 с', $h0->body['cronAgo'] === null && abs(($h1->body['cronAgo'] ?? 0) - 120) <= 2, [$h0->body, $h1->body]);
+
+echo "\nАналитика: квартиры и все виды счётчиков:\n";
+$mv = new Browser('10.0.14.1'); $mv->req('POST', '/api/auth/register', ['email' => 'many@example.ua', 'password' => 'many pass 123']);
+$mst = ['v' => 1, 'onboarded' => true, 'meter' => ['modelId' => 'sharky774', 'unit' => 'Gcal'], 'contacts' => ['phone' => '', 'email' => ''],
+  'places' => [
+    ['id' => 'main', 'name' => '', 'address' => 'вул. Сумська, 10', 'meter' => ['modelId' => 'sharky774', 'unit' => 'Gcal'],
+      'water' => ['account' => '123', 'meters' => [['id' => 'h1', 'kind' => 'hot', 'removed' => '2026-10-01'], ['id' => 'c1', 'kind' => 'cold']]],
+      'meters' => [['id' => 'e1', 'kind' => 'elec', 'zones' => 2], ['id' => 'g1', 'kind' => 'gas', 'deleted' => true]]],
+    ['id' => 'p2', 'name' => 'Мамина', 'meters' => [['id' => 'g2', 'kind' => 'gas']], 'water' => ['meters' => [['id' => 'c9', 'kind' => 'cold']]]],
+    ['id' => 'p3', 'deleted' => true, 'meters' => [['id' => 'e9', 'kind' => 'elec']]]],
+  'readings' => [
+    ['id' => 'r1', 'place' => 'main', 'htm' => ['date' => '2026-10-10', 'energy' => '1.000'], 'status' => 'accepted'],
+    ['id' => 'r2', 'place' => 'main', 'htm' => ['date' => '2026-09-10', 'energy' => '0.500'], 'status' => 'handed', 'own' => true],
+    ['id' => 'r3', 'place' => 'main', 'htm' => ['date' => '2026-11-01', 'energy' => '1.200'], 'status' => 'handed', 'deleted' => true]],
+  'water' => [
+    ['id' => 'w0', 'place' => 'main', 'date' => '2026-08-01', 'vals' => ['c1' => '100'], 'base' => true],
+    ['id' => 'w1', 'place' => 'main', 'date' => '2026-10-15', 'vals' => ['c1' => '105'], 'sent' => ['vk' => '2026-10-15']],
+    ['id' => 'w2', 'place' => 'p2', 'date' => '2026-10-20', 'vals' => ['c9' => '7'], 'own' => true, 'photos' => [['id' => 'x1']]],
+    ['id' => 'w3', 'place' => 'main', 'date' => '2026-11-02', 'vals' => ['c1' => '108'], 'deleted' => true]],
+  'mrecs' => [
+    ['id' => 'm1', 'place' => 'main', 'meter' => 'e1', 'kind' => 'elec', 'date' => '2026-10-31', 'z' => ['day' => '100', 'night' => '50'], 'sent' => ['obl' => '2026-10-31']],
+    ['id' => 'm2', 'place' => 'p2', 'meter' => 'g2', 'kind' => 'gas', 'date' => '2026-11-01', 'z' => ['all' => '12.5'], 'sent' => []],
+    ['id' => 'm3', 'place' => 'p2', 'meter' => 'g2', 'kind' => 'gas', 'date' => '2026-10-01', 'z' => ['all' => '10'], 'base' => true]]];
+ok('состояние с квартирами сохранено', $mv->req('PUT', '/api/state', ['state' => $mst, 'baseVersion' => 0])->status === 200);
+$mu = $boss->req('GET', '/api/admin/users', null, ['QUERY_STRING' => 'q=many@'])->body['users'][0]['state'] ?? [];
+ok('сводка: 2 квартиры (удалённая не в счёт), виды без прибранных и удалённых', ($mu['places'] ?? 0) === 2 && $mu['kinds'] === ['heat' => 1, 'hot' => 0, 'cold' => 2, 'elec' => 1, 'gas' => 1], $mu);
+ok('сводка: показаний без удалённых и стартовых — тепло 2, вода 2, свет 1, газ 1; «для себя» 2; передано тепла 1 (не «для себя»)',
+  $mu['recs'] === ['heat' => 2, 'water' => 2, 'elec' => 1, 'gas' => 1] && $mu['own'] === 2 && $mu['handed'] === 1 && $mu['readings'] === 2, $mu);
+ok('сводка: последнее — самое позднее по дате среди всех видов (газ 1.11, не удалённое тепло 1.11)', ($mu['last']['date'] ?? '') === '2026-11-01' && $mu['last']['kind'] === 'gas' && $mu['last']['sent'] === false, $mu['last'] ?? null);
+ok('сводка: адрес первой квартиры, модель, фото в записях', $mu['apartment'] === 'вул. Сумська, 10' && $mu['meter'] === 'sharky774' && $mu['photos'] === 1 && $mu['onboarded'] === true);
+ok('старые данные без квартир: тепло и показания считаются', Admin::stateSummary(json_encode(['meter' => ['modelId' => 't330'], 'readings' => [['htm' => ['date' => '2026-01-01'], 'status' => 'checked']]]))['kinds']['heat'] === 1
+  && Admin::stateSummary(null)['places'] === 0);
+$ovm = $boss->req('GET', '/api/admin/overview')->body;
+ok('сводка /admin: «что ведут» — с 2+ квартирами, люди по видам, показания по видам', ($ovm['tracking']['multi'] ?? 0) >= 1 && $ovm['tracking']['users']['gas'] >= 1 && $ovm['tracking']['recs']['elec'] >= 1, $ovm['tracking'] ?? null);
+// «входили за 7 дней»: вход давно, но открывал сайт вошедшим (visits) — активен
+Db::q("UPDATE users SET last_login_at = ? WHERE email = 'many@example.ua'", [gmdate('c', time() - 30 * 86400)]);
+$a0 = $boss->req('GET', '/api/admin/overview')->body['activeWeek'];
+Db::q("UPDATE users SET last_login_at = ? WHERE email = 'many@example.ua'", [gmdate('c', time() - 30 * 86400)]); Db::q("DELETE FROM visits WHERE user_id = (SELECT id FROM users WHERE email = 'many@example.ua')");
+$a1 = $boss->req('GET', '/api/admin/overview')->body['activeWeek'];
+$mv->req('POST', '/api/visit', ['vid' => 'many1234phone', 'device' => 'mobile', 'os' => 'Android']);
+$a2 = $boss->req('GET', '/api/admin/overview')->body['activeWeek'];
+ok('«входили за 7 дней» считает и открывавших сайт уже вошедшими', $a2 === $a1 + 1, [$a0, $a1, $a2]);
+// світло/газ «з фото» — в аналитику с причинами по-русски
+$r7l = $up($mv, $png, 'image/png'); $r8l = $up($mv, $png, 'image/png');
+$re = $mv->req('POST', '/api/recognize/local', ['ids' => [$r7l->body['id'], $r8l->body['id']], 'results' => [
+  ['photo' => ['index' => 0, 'kind' => 'elec', 'meterType' => 'electric', 'readings' => [['field' => 'elec_day', 'meter' => 'e1', 'value' => 10530, 'guess' => true]]], 'ms' => 3000, 'ocr' => [['t' => '010530.5', 's' => 1]]],
+  ['photo' => ['index' => 1, 'kind' => 'gas', 'meterType' => 'gas', 'where' => 'setup', 'readings' => []], 'ms' => 2000]]]);
+$pl7 = Db::one('SELECT * FROM photos WHERE id = ?', [$r7l->body['id']]); $pl8 = Db::one('SELECT * FROM photos WHERE id = ?', [$r8l->body['id']]);
+ok('світло з фото → в аналитике: зона не подписана — «взяли по порядку», не «счётчик электроэнергии, а не тепла»', $re->status === 200 && $pl7['status'] === 'recognized'
+  && str_contains((string)$pl7['problem'], 'свет, день: зона не подписана') && !str_contains((string)$pl7['problem'], 'не тепла'), $pl7['problem']);
+ok('газ при настройке без цифр → «показаний газового счётчика не найдено (настройка нового счётчика)»', str_contains((string)$pl8['problem'], 'газового счётчика на фото не найдено (настройка нового счётчика)'), $pl8['problem']);
 
 echo "\nВыход:\n";
 $phone->req('POST', '/api/auth/logout');

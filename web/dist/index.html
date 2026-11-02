@@ -5794,8 +5794,18 @@ fieldset.field { border: 0; padding: 0; min-width: 0; }
           .then(function (res) { if (res) p.res = { lines: res.lines || [], drums: res.drums || [] }; }, function () { p.res = { lines: [], drums: [] }; });
       });
       return chain;
-    }).then(function () { if (!live()) return; EN.busy = false; enAssign(); render(true); enCheck(true); },
+    }).then(function () { if (!live()) return; EN.busy = false; enAssign(); render(true); enCheck(true); enReport(); },
       function () { if (!live()) return; EN.busy = false; EN.err = t('ph_err_engine'); render(true); });
+  }
+  /** Аналитика (/admin): копии фото світла/газу и что по ним разложилось по зонам — у вошедших, как у воды и тепла. */
+  function enReport() {
+    if (!VIS().waterReport) return;
+    var k = EN.k, ms = smeters(k);
+    VIS().waterReport(EN.photos.filter(function (p) { return p.res && p.file; }).map(function (p) {
+      var i = EN.photos.indexOf(p), rd = [];
+      ms.forEach(function (m) { SK[k].mod.keys(m).forEach(function (z) { var x = EN.src[m.id + '|' + z]; if (x && x.photo === i) rd.push({ field: k + '_' + z, meter: m.id, value: x.v, frac: x.frac || '', guess: !!x.guess, why: x.why || '' }); }); });
+      return { file: p.file, ms: p.ms || 0, res: p.res, photo: { index: i, kind: k, meterType: k === 'gas' ? 'gas' : 'electric', readings: rd, quality: 'ok' } };
+    }));
   }
   /** Розкласти прочитане з усіх фото по лічильниках і зонах; поле, яке людина вже заповнила сама, не чіпаємо. */
   function enAssign() {
@@ -5921,7 +5931,8 @@ fieldset.field { border: 0; padding: 0; min-width: 0; }
       }
       if (!got.length) { say(t('sp_none'), true); if (inp) inp.focus(); return; }
       say(t('sp_got', { v: got.join(', ') }), true);
-      if (window.TeploRecog && window.TeploRecog.meterReport) window.TeploRecog.meterReport(file, { kind: k, res: res, got: got, where: 'setup' });
+      if (VIS().waterReport) VIS().waterReport([{ file: file, ms: res.ms || 0, res: res, photo: { index: 0, kind: water ? 'water' : k, meterType: water ? 'water' : k === 'gas' ? 'gas' : 'electric', where: 'setup', quality: 'ok',
+        readings: water ? [{ field: 'water_' + k, unit: 'м³', value: inp ? Wt.norm(inp.value) : null }] : Object.keys(EA.vals).filter(function (q) { return EA.vals[q]; }).map(function (q) { return { field: k + '_' + q, value: EA.vals[q] }; }) } }]);
     }, function () { if (lab) lab.removeAttribute('aria-busy'); say(t('ph_err_engine'), true); });
   }
   document.addEventListener('change', function (e) {

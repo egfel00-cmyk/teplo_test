@@ -14,7 +14,8 @@ final class Recognize {
     'nik7071' => 'НІК 7071', 'trust' => 'TRUST', 'other' => 'other heat meter'];
   const ORDER = ['sharky774' => '1) energy [Gcal] 2) volume [m³ in the top right corner] 3) flow [m³/h] 4) power [kW] 5) tSupply + tReturn [alternating ht/ct] 6) hours + errHours [alternating On/Eh] 7) errCode'];
   const FIELD_RU = ['energy' => 'энергия', 'volume' => 'объём', 'flow' => 'расход', 'power' => 'мощность', 'tSupply' => 'подача', 'tReturn' => 'обратка',
-    'hours' => 'часы работы', 'errHours' => 'часы с ошибкой', 'errCode' => 'код ошибки', 'water_hot' => 'горячая вода', 'water_cold' => 'холодная вода'];
+    'hours' => 'часы работы', 'errHours' => 'часы с ошибкой', 'errCode' => 'код ошибки', 'water_hot' => 'горячая вода', 'water_cold' => 'холодная вода',
+    'elec_all' => 'свет', 'elec_day' => 'свет, день', 'elec_night' => 'свет, ночь', 'elec_peak' => 'свет, пик', 'elec_half' => 'свет, полупик', 'gas_all' => 'газ'];
   const QUALITY_RU = ['blurry' => 'размыто', 'glare' => 'блик на экране', 'too_far' => 'снято издалека', 'cut_off' => 'экран обрезан', 'dark' => 'темно'];
   /** Вызов API; в тестах подменяется. fn(array $payload): array */
   public static $call = null;
@@ -132,6 +133,17 @@ final class Recognize {
           if (!empty($x['guess'])) $problems[] = $nm . ': не ясно, горячая или холодная — разложено наугад';
           if (!empty($x['lead'])) $problems[] = $nm . ': первые цифры под бликом';
         }
+      }
+      elseif (in_array($ph['kind'] ?? '', ['elec', 'gas'], true)) {   // світло / газ «з фото»: что разложилось по зонам
+        $readings = array_filter((array)($ph['readings'] ?? []), 'is_array');
+        $what = ($ph['kind'] ?? '') === 'gas' ? 'газового счётчика' : 'электросчётчика';
+        if (!$readings) $problems[] = 'показаний ' . $what . ' на фото не найдено';
+        foreach ($readings as $x) {
+          $nm = self::FIELD_RU[$x['field'] ?? ''] ?? '?';
+          if (!empty($x['guess'])) $problems[] = $nm . ': ' . (($ph['kind'] ?? '') === 'gas' ? 'прочитано неуверенно' : 'зона не подписана на табло — взяли по порядку') . ', человек проверит';
+          if (!empty($x['fixed'])) $problems[] = $nm . ': человек исправил на «' . mb_substr((string)$x['fixed'], 0, 20) . '»';
+        }
+        if (($ph['where'] ?? '') === 'setup') $problems = array_map(fn($t) => $t . ' (настройка нового счётчика)', $problems);
       }
       else {
         $mt = (string)($ph['meterType'] ?? '');

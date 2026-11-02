@@ -64,7 +64,17 @@ pre.state { font: 12px/1.4 var(--mono); background: #F4F7F5; padding: 10px; bord
   var SITE = API.replace(/\/api$/, '') + '/';
   var app = document.getElementById('app');
   var TAB = (location.hash || '#overview').slice(1), DATA = {}, Q = '', PF = 'all', DDAYS = 30;
-  var FIELD = { energy: 'Энергия', volume: 'Объём', flow: 'Расход', power: 'Мощность', tSupply: 'Подача', tReturn: 'Обратка', hours: 'Часы', errHours: 'Часы ошибки', errCode: 'Код ошибки', water_hot: 'Горячая вода', water_cold: 'Холодная вода' };
+  var FIELD = { energy: 'Энергия', volume: 'Объём', flow: 'Расход', power: 'Мощность', tSupply: 'Подача', tReturn: 'Обратка', hours: 'Часы', errHours: 'Часы ошибки', errCode: 'Код ошибки', water_hot: 'Горячая вода', water_cold: 'Холодная вода',
+    elec_all: 'Свет', elec_day: 'Свет, день', elec_night: 'Свет, ночь', elec_peak: 'Свет, пик', elec_half: 'Свет, полупик', gas_all: 'Газ' };
+  // виды счётчиков: короткие подписи для таблиц
+  var KN = { heat: 'тепло', hot: 'гор. вода', cold: 'хол. вода', elec: 'свет', gas: 'газ', water: 'вода' };
+  var ZN = { all: '', day: 'день', night: 'ночь', peak: 'пик', half: 'полупик' };
+  function kindsLine(k) { k = k || {}; var a = ['heat', 'hot', 'cold', 'elec', 'gas'].filter(function (x) { return k[x] > 0; }).map(function (x) { return KN[x] + (k[x] > 1 ? ' ×' + k[x] : ''); }); return a.length ? esc(a.join(' · ')) : '<span class="muted">—</span>'; }
+  function lastLine(l) {
+    if (!l) return '—';
+    var st = l.own ? 'для себя' : l.kind === 'heat' ? (STATUS[l.status] || l.status || '') : l.sent ? 'передано' : 'не передано';
+    return esc(l.date || '') + '<div class="muted small">' + esc(KN[l.kind] || l.kind) + ' · ' + esc(st) + (l.source === 'photo' ? ' · с фото' : '') + '</div>';
+  }
   var MODEL = { sharky774: 'SHARKY 774', sharky775: 'SHARKY 775', t330: 'ULTRAHEAT T330', t230: 'ULTRAHEAT T230', multical302: 'MULTICAL 302', elf: 'ELF', sensostar: 'SensoStar', nik7071: 'НІК 7071', trust: 'TRUST', other: 'другая' };
   var STATUS = { checked: 'проверено', handed: 'передано в ХТМ', accepted: 'принято ХТМ', rejected: 'отклонено ХТМ', intermediate: 'промежуточное' };
 
@@ -95,8 +105,18 @@ pre.state { font: 12px/1.4 var(--mono); background: #F4F7F5; padding: 10px; bord
     return (warn.length ? '<div class="panel" style="background:var(--warns)">' + warn.map(function (w) { return '<p style="margin:4px 0">' + w + '</p>'; }).join('') + '</div>' : '') +
       '<div class="cards">' + c(o.users, 'пользователей всего') + c(o.usersWeek, 'новых за 7 дней') + c(o.activeWeek, 'входили за 7 дней') + c(o.withTelegram, 'с Telegram') + c(o.withData, 'сохранили данные') +
       c(o.feedback, 'сообщений (новых: ' + o.feedbackNew + ')') + c(o.photos, 'фото загружено') + c(o.photosFailed, 'фото с проблемами') + c(o.reportsBad + ' / ' + o.reports, 'распознаваний с замечаниями') + '</div>' +
-      '<p class="muted small">Фото хранятся ' + o.photoKeepDays + ' дней, потом удаляются автоматически.</p>' + devicesBlock();
+      '<p class="muted small">Фото хранятся ' + o.photoKeepDays + ' дней, потом удаляются автоматически.</p>' + trackBlock(o.tracking) + devicesBlock();
   };
+  /** Что ведут: у скольких людей есть каждый вид счётчика и сколько по нему показаний (без удалённых и стартовых). */
+  function trackBlock(t) {
+    if (!t) return '';
+    return '<div class="panel"><h2>Что ведут</h2><p class="muted small">Из тех, кто сохранил данные: прошли первую настройку — ' + t.onboarded + ', есть хоть один счётчик — ' + t.withMeters +
+      ', с двумя и больше квартирами — ' + t.multi + ', показаний «для себя» — ' + t.own + '.</p><table><thead><tr><th>Вид</th><th>Людей со счётчиком</th><th>Показаний</th></tr></thead><tbody>' +
+      // вода — одна запись на дату с горячей и холодной вместе, поэтому показания воды — одной строкой
+      [['тепло', t.users.heat, t.recs.heat], ['вода', 'горячая ' + (t.users.hot || 0) + ' · холодная ' + (t.users.cold || 0), t.recs.water], ['свет', t.users.elec, t.recs.elec], ['газ', t.users.gas, t.recs.gas]].map(function (r) {
+        return '<tr><td>' + esc(r[0]) + '</td><td class="mono">' + esc(r[1] || 0) + '</td><td class="mono">' + (r[2] || 0) + '</td></tr>'; }).join('') +
+      '</tbody></table></div>';
+  }
   /** С чего работают: телефон / планшет / компьютер, система, Telegram, «на экране Домой», ширина экрана, по дням. */
   var DEV = { mobile: 'Телефон', tablet: 'Планшет', desktop: 'Компьютер' };
   function devicesBlock() {
@@ -117,15 +137,24 @@ pre.state { font: 12px/1.4 var(--mono); background: #F4F7F5; padding: 10px; bord
       '<p class="muted small">Считаем браузеры (случайный id в браузере, без IP и личных данных); один человек с телефона и компьютера — два браузера. «Вошедших» — сколько из них с входом в аккаунт. Собираем с ' + esc((d.since || '').split('-').reverse().join('.') || 'сегодня') + '.</p></div>';
   }
 
+  /** Показаний по видам: «тепло 4 (3 перед.) · вода 7 · свет 3 · газ 2 · для себя 1». */
+  function recsLine(s) {
+    var r = s.recs || { heat: s.readings || 0 }, a = [];
+    if (r.heat) a.push('тепло ' + r.heat + (s.handed ? ' <span class="muted">(' + s.handed + ' перед.)</span>' : ''));
+    ['water', 'elec', 'gas'].forEach(function (k) { if (r[k]) a.push(KN[k] + ' ' + r[k]); });
+    if (s.own) a.push('<span class="muted">для себя ' + s.own + '</span>');
+    return a.length ? a.join('<br>') : '0';
+  }
   VIEW.users = function () {
     var us = DATA.users || [];
     return '<div class="filters"><input type="search" id="q" placeholder="Поиск: e-mail, @telegram, id, номер квартиры, телефон" value="' + esc(Q) + '"><span class="muted small">' + us.length + ' чел.</span></div>' +
-      '<div class="panel"><table><thead><tr><th>#</th><th>Кто</th><th>Регистрация</th><th>Последний вход</th><th>Счётчик</th><th>Показаний</th><th>Последнее</th><th>Фото</th><th>Сообщ.</th></tr></thead><tbody>' +
+      '<div class="panel"><table><thead><tr><th>#</th><th>Кто</th><th>Регистрация</th><th>Последний вход</th><th>Квартиры и счётчики</th><th>Показаний</th><th>Последнее</th><th>Фото</th><th>Сообщ.</th></tr></thead><tbody>' +
       us.map(function (u) {
         var s = u.state || {};
         return '<tr class="click" data-user="' + u.id + '"><td class="mono">' + u.id + '</td><td>' + who(u) + (s.phone ? '<div class="muted small">' + esc(s.phone) + '</div>' : '') + '</td><td>' + when(u.created_at) + '</td><td>' + when(u.last_login_at) + '</td>' +
-          '<td>' + esc(MODEL[s.meter] || s.meter || '—') + (s.apartment ? '<div class="muted small">кв. ' + esc(s.apartment) + '</div>' : '') + '</td><td class="mono">' + (s.readings || 0) + (s.handed ? ' <span class="muted">(' + s.handed + ' перед.)</span>' : '') + '</td>' +
-          '<td>' + (s.last ? esc(s.last.date || '') + '<div class="muted small">' + esc(STATUS[s.last.status] || s.last.status || '') + (s.last.source === 'photo' ? ' · с фото' : '') + '</div>' : '—') + '</td><td class="mono">' + (+u.photos || '') + '</td><td class="mono">' + (+u.feedback || '') + '</td></tr>';
+          '<td>' + (s.places > 1 ? '<b>' + s.places + ' кв.</b> · ' : '') + kindsLine(s.kinds) + (s.meter ? '<div class="muted small">' + esc(MODEL[s.meter] || s.meter) + '</div>' : '') + (s.apartment ? '<div class="muted small">' + esc(s.apartment) + '</div>' : '') + '</td>' +
+          '<td class="mono">' + recsLine(s) + '</td>' +
+          '<td>' + lastLine(s.last) + '</td><td class="mono">' + (+u.photos || '') + '</td><td class="mono">' + (+u.feedback || '') + '</td></tr>';
       }).join('') + '</tbody></table>' + (us.length ? '' : '<p class="muted">Никого не найдено.</p>') + '</div>';
   };
 
@@ -137,7 +166,7 @@ pre.state { font: 12px/1.4 var(--mono); background: #F4F7F5; padding: 10px; bord
     return '<div class="ph">' + (p.exists ? '<img loading="lazy" src="' + esc(API + '/admin/photo?id=' + p.id) + '" alt="фото ' + esc(p.id) + '" data-zoom>' : '<div class="noimg">файл удалён</div>') +
       '<div class="b"><div>' + st + '</div><div class="muted">' + when(p.created_at) + ' · ' + who(p).replace('<br>', ' ') + '</div>' +
       (m && (m.modelId || m.modelText) ? '<div>Счётчик: <b>' + esc(MODEL[m.modelId] || m.modelText || m.modelId) + '</b>' + (m.serial ? ' · № ' + esc(m.serial) : '') + '</div>' : '') +
-      (r && r.kind ? '<div class="muted">тип снимка: ' + esc({ screen: 'экран', nameplate: 'шильдик', overview: 'общий план', other: 'другое', water: 'водомер' }[r.kind] || r.kind) + '</div>' : '') +
+      (r && r.kind ? '<div class="muted">тип снимка: ' + esc({ screen: 'экран', nameplate: 'шильдик', overview: 'общий план', other: 'другое', water: 'водомер', elec: 'электросчётчик', gas: 'газовый счётчик' }[r.kind] || r.kind) + (r.where === 'setup' ? ' · при настройке нового счётчика' : '') + '</div>' : '') +
       (reads ? '<div class="reads">' + esc(reads) + '</div>' : '') + (p.problem ? '<div class="problem">' + esc(p.problem) + '</div>' : '') +
       '<div class="muted small mono">' + p.w + '×' + p.h + ' · ' + Math.round(p.bytes / 1024) + ' КБ' + (p.result ? ' · ' + (p.result.engine === 'local' ? 'в браузере' : 'Claude') + (p.result.ms ? ', ' + (p.result.ms / 1000).toFixed(1) + ' с' : '') : '') + '</div>' +
       (drums ? '<details><summary class="small">Окна барабанов</summary><div class="reads">' + esc(drums) + '</div></details>' : '') +
@@ -191,21 +220,55 @@ pre.state { font: 12px/1.4 var(--mono); background: #F4F7F5; padding: 10px; bord
       }).join('') + '</tbody></table>' : '<p class="muted">Пока ничего не отправлялось.</p>') + '</div>';
   };
 
+  /** Квартиры человека: название, адрес, счётчики (модель/№/зоны, прибранные), рахунки. */
+  function placesBlock(ps, st) {
+    if (!ps.length && st.meter) ps = [{ id: 'main', meter: st.meter }];
+    if (!ps.length) return '<p class="muted">Нет — первую настройку не прошёл.</p>';
+    var on = function (m) { return m && !m.deleted; }, rm = function (m) { return m.removed ? ' <span class="muted">(прибран ' + esc(m.removed) + ')</span>' : ''; };
+    return '<table><thead><tr><th>Квартира</th><th>Счётчики</th><th>Рахунки</th></tr></thead><tbody>' + ps.map(function (p, i) {
+      var ms = [], w = p.water || {};
+      if (on(p.meter)) ms.push('тепло: ' + esc(MODEL[p.meter.modelId] || p.meter.modelId || '?') + (p.meter.unit ? ', ' + esc(p.meter.unit) : '') + (p.meter.serial ? ', № ' + esc(p.meter.serial) : '') + rm(p.meter));
+      (w.meters || []).filter(on).forEach(function (m) { ms.push(esc(KN[m.kind] + (m.name ? ' «' + m.name + '»' : '') + (m.serial ? ', № ' + m.serial : '') + (m.verifiedUntil ? ', повірка до ' + m.verifiedUntil : '')) + rm(m)); });
+      (p.meters || []).filter(on).forEach(function (m) { ms.push(esc(KN[m.kind] + (m.name ? ' «' + m.name + '»' : '') + (m.kind === 'elec' && m.zones > 1 ? ', зон: ' + m.zones : '') + (m.serial ? ', № ' + m.serial : '')) + rm(m)); });
+      var acc = [w.account ? 'Водоканал ' + w.account + (w.surname ? ' (' + w.surname + ')' : '') : ''].concat((p.meters || []).filter(function (m) { return on(m) && m.account; }).map(function (m) { return KN[m.kind] + ' ' + m.account; })).filter(Boolean);
+      return '<tr><td><b>' + esc(p.name || (i ? 'Квартира ' + (i + 1) : 'Моя квартира')) + '</b>' + (p.address ? '<div class="muted small">' + esc(p.address) + '</div>' : '') + (p.remindOff ? '<div class="muted small">напоминания выключены</div>' : '') + '</td>' +
+        '<td>' + (ms.length ? ms.join('<br>') : '<span class="muted">нет</span>') + '</td><td class="small">' + (acc.length ? esc(acc.join(' · ')) : '<span class="muted">—</span>') + '</td></tr>';
+    }).join('') + '</tbody></table>';
+  }
   VIEW.user = function () {
     var d = DATA.user, u = d.user, s = u.state || {};
     var st = d.state || {};
-    var rd = (st.readings || []).slice().reverse();
+    var live = function (x) { return x && !x.deleted; };
+    var rd = (st.readings || []).filter(live).sort(function (a, b) { return ((b.htm || {}).date || '') < ((a.htm || {}).date || '') ? -1 : 1; });
+    var ps = (st.places || []).filter(live), many = ps.length > 1, pn = {}, mn = {};
+    ps.forEach(function (p, i) { pn[p.id] = p.name || (i ? 'Квартира ' + (i + 1) : 'Моя квартира');
+      ((p.water || {}).meters || []).concat(p.meters || []).forEach(function (m) { if (m) mn[m.id] = KN[m.kind] + (m.name ? ' «' + m.name + '»' : ''); }); });
+    var plc = function (r) { return many ? '<td>' + esc(pn[r.place] || r.place || '') + '</td>' : ''; }, plh = many ? '<th>Квартира</th>' : '';
+    var typ = function (r) { return r.base ? pill('info', 'стартовые') : r.own ? pill('warn', 'для себя') : ''; };
+    var wr = (st.water || []).filter(live).sort(function (a, b) { return (b.date || '') < (a.date || '') ? -1 : 1; });
+    var mr = (st.mrecs || []).filter(live).sort(function (a, b) { return (b.date || '') < (a.date || '') ? -1 : 1; });
     return '<p><button class="btn" data-tab="users">← Все пользователи</button></p>' +
       '<div class="panel"><h2>Пользователь #' + u.id + '</h2><table><tbody>' +
       '<tr><th>E-mail</th><td>' + esc(u.email || '—') + '</td></tr><tr><th>Telegram</th><td>' + (u.tg_username ? '<a href="https://t.me/' + esc(u.tg_username) + '" target="_blank" rel="noopener">@' + esc(u.tg_username) + '</a>' : '') + (u.tg_id ? ' <span class="muted mono">' + esc(u.tg_id) + '</span>' : '—') + '</td></tr>' +
       '<tr><th>Телефон / e-mail в профиле</th><td>' + esc([s.phone, s.contactEmail].filter(Boolean).join(' · ') || '—') + '</td></tr>' +
       '<tr><th>Устройства</th><td>' + ((d.devices || []).length ? d.devices.map(function (x) { return esc((DEV[x.device] || x.device) + ', ' + x.os + (+x.tg ? ', Telegram' : ', браузер') + (+x.pwa ? ', как приложение' : '') + (x.sw ? ', ' + x.sw + ' px' : '')) + ' <span class="muted small">' + x.hits + ' откр., последний раз ' + when(x.last_at) + '</span>'; }).join('<br>') : '<span class="muted">нет данных (собираем с 02.11.2026)</span>') + '</td></tr>' +
       '<tr><th>Регистрация</th><td>' + when(u.created_at) + '</td></tr><tr><th>Последний вход</th><td>' + when(u.last_login_at) + '</td></tr><tr><th>Данные обновлены</th><td>' + when(u.state_at) + '</td></tr>' +
-      '<tr><th>Счётчик</th><td>' + esc(MODEL[s.meter] || s.meter || '—') + (s.unit ? ' · ' + esc(s.unit) : '') + (st.meter && st.meter.serial ? ' · № ' + esc(st.meter.serial) : '') + '</td></tr>' +
-      '<tr><th>Базовые показания</th><td class="mono small">' + (st.baseline ? esc(JSON.stringify(st.baseline)) : '—') + '</td></tr></tbody></table></div>' +
-      '<div class="panel"><h2>Показания (' + rd.length + ')</h2>' + (rd.length ? '<table><thead><tr><th>Дата</th><th>Статус</th><th>Проверка</th><th>Источник</th><th>Энергия</th><th>Объём</th><th>Часы</th><th>Коды</th></tr></thead><tbody>' + rd.map(function (r) {
+      '<tr><th>Первая настройка</th><td>' + (st.onboarded ? 'пройдена' : '<span class="problem">не пройдена</span>') + '</td></tr></tbody></table></div>' +
+      '<div class="panel"><h2>Квартиры и счётчики (' + ps.length + ')</h2>' + placesBlock(ps, st) + '</div>' +
+      '<div class="panel"><h2>Тепло — показания (' + rd.length + ')</h2>' + (st.baseline ? '<p class="muted small mono">Последние принятые (текущая квартира): ' + esc(JSON.stringify(st.baseline)) + '</p>' : '') +
+        (rd.length ? '<table><thead><tr><th>Дата</th>' + plh + '<th>Статус</th><th>Проверка</th><th>Источник</th><th>Энергия</th><th>Объём</th><th>Часы</th><th>Коды</th></tr></thead><tbody>' + rd.map(function (r) {
         var h = r.htm || {};
-        return '<tr><td>' + esc(h.date || '') + '</td><td>' + esc(STATUS[r.status] || r.status || '') + '</td><td>' + (r.verdict === 'ok' ? pill('ok', 'ок') : r.verdict === 'warn' ? pill('warn', 'предупр.') : r.verdict === 'block' ? pill('bad', 'не примут') : esc(r.verdict || '')) + '</td><td>' + (r.source === 'photo' ? 'фото' : 'вручную') + '</td><td class="mono">' + esc(h.energy || '') + '</td><td class="mono">' + esc(h.volume || '') + '</td><td class="mono">' + esc(h.hours || '') + '</td><td class="mono small">' + esc((r.codes || []).join(' ')) + '</td></tr>';
+        return '<tr><td>' + esc(h.date || '') + '</td>' + plc(r) + '<td>' + (r.own ? pill('warn', 'для себя') : esc(STATUS[r.status] || r.status || '')) + '</td><td>' + (r.verdict === 'ok' ? pill('ok', 'ок') : r.verdict === 'warn' ? pill('warn', 'предупр.') : r.verdict === 'block' ? pill('bad', 'не примут') : esc(r.verdict || '')) + '</td><td>' + (r.source === 'photo' ? 'фото' : 'вручную') + ((r.photos || []).length ? ' · ' + r.photos.length + ' фото' : '') + '</td><td class="mono">' + esc(h.energy || '') + '</td><td class="mono">' + esc(h.volume || '') + '</td><td class="mono">' + esc(h.hours || '') + '</td><td class="mono small">' + esc((r.codes || []).join(' ')) + '</td></tr>';
+      }).join('') + '</tbody></table>' : '<p class="muted">Нет.</p>') + '</div>' +
+      '<div class="panel"><h2>Вода — показания (' + wr.length + ')</h2>' + (wr.length ? '<table><thead><tr><th>Дата</th>' + plh + '<th>Показания, м³</th><th></th><th>Передано</th><th>Фото</th></tr></thead><tbody>' + wr.map(function (r) {
+        var vs = Object.keys(r.vals || {}).map(function (id) { return (mn[id] || id) + ': ' + r.vals[id]; }).join('\n'), sn = r.sent || {};
+        return '<tr><td>' + esc(r.date || '') + '</td>' + plc(r) + '<td class="mono small" style="white-space:pre-line">' + esc(vs) + '</td><td>' + typ(r) + '</td><td class="small">' +
+          (r.base ? (sn.no ? 'нет' : 'да (по умолчанию)') : r.own ? '—' : [sn.vk ? 'Водоканал ' + sn.vk : '', sn.htm ? 'ХТМ ' + sn.htm : ''].filter(Boolean).join('<br>') || '<span class="muted">нет</span>') + '</td><td class="mono">' + ((r.photos || []).length || '') + '</td></tr>';
+      }).join('') + '</tbody></table>' : '<p class="muted">Нет.</p>') + '</div>' +
+      '<div class="panel"><h2>Свет и газ — показания (' + mr.length + ')</h2>' + (mr.length ? '<table><thead><tr><th>Дата</th>' + plh + '<th>Счётчик</th><th>Показания</th><th></th><th>Передано</th><th>Фото</th></tr></thead><tbody>' + mr.map(function (r) {
+        var z = r.z || {}, vs = Object.keys(z).map(function (q) { return (ZN[q] ? ZN[q] + ' ' : '') + z[q]; }).join(' · '), sn = r.sent || {}, sk = r.kind === 'gas' ? 'grm' : 'obl';
+        return '<tr><td>' + esc(r.date || '') + '</td>' + plc(r) + '<td>' + esc(mn[r.meter] || KN[r.kind] || r.kind) + '</td><td class="mono small">' + esc(vs) + (r.kind === 'gas' ? ' м³' : ' кВт·ч') + '</td><td>' + typ(r) + '</td><td class="small">' +
+          (r.base ? (sn.no ? 'нет' : 'да (по умолчанию)') : r.own ? '—' : sn[sk] ? esc(sn[sk]) : '<span class="muted">нет</span>') + '</td><td class="mono">' + ((r.photos || []).length || '') + '</td></tr>';
       }).join('') + '</tbody></table>' : '<p class="muted">Нет.</p>') + '</div>' +
       '<div class="panel"><h2>Сообщения (' + d.feedback.length + ')</h2>' + (d.feedback.length ? d.feedback.map(function (f) { return '<p><span class="muted small">' + when(f.created_at) + ' · ' + esc(f.page || '') + '</span><br><span class="msg">' + esc(f.text) + '</span></p>'; }).join('') : '<p class="muted">Нет.</p>') + '</div>' +
       '<div class="panel"><h2>Распознавание</h2>' + (d.reports.length ? d.reports.map(function (r) { return '<p><span class="muted small">' + when(r.created_at) + '</span> ' + (r.kind === 'run_error' ? pill('bad', 'ошибка') : +r.ok ? pill('ok', 'ок') : pill('warn', 'замечания')) + ' ' + esc(r.text) + '</p>'; }).join('') : '<p class="muted">Нет.</p>') + '</div>' +
