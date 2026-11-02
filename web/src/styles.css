@@ -611,3 +611,25 @@ input[type=text]:not(.dmy-native):not(.pl-in), input[type=email], input[type=pas
 .gap-row .grow .ico { vertical-align: -3px; }
 .banner ul.plain { list-style: none; padding: 0; margin: 4px 0 0; display: grid; gap: 2px; }
 .ucard .empty { opacity: .5; filter: saturate(.4); }
+
+.beta .ver { text-transform: none; letter-spacing: 0; font-weight: 500; opacity: .85; white-space: nowrap; }
+.beta { white-space: nowrap; }
+/* кнопка «Уся історія (N)» и ссылки под списком — не прилипают к нему */
+.list + p, .list + .gap-add { margin-top: var(--sp-3); }
+.wq-photo { margin-top: var(--sp-3); }
+
+/* настройки: группы-аккордеоны */
+.pgroups { display: grid; gap: 10px; margin-bottom: var(--sp-5); }
+.pgroup { background: var(--c-surface); border: 1px solid var(--c-line); border-radius: 14px; }
+.pgroup > summary { list-style: none; display: flex; align-items: center; gap: 12px; padding: 14px 16px; min-height: 64px; cursor: pointer; border-radius: 14px; }
+.pgroup > summary::-webkit-details-marker { display: none; }
+.pgroup > summary:hover { background: var(--c-ghost-hover); }
+.pgroup > summary:focus-visible { outline: 3px solid var(--c-info); outline-offset: 2px; }
+.pgroup > summary > .ico:first-child { flex: none; color: var(--c-ink-2); }
+.pgroup > summary > .ico:last-child { flex: none; margin-left: auto; transition: transform .15s; color: var(--c-ink-2); }
+.pgroup[open] > summary > .ico:last-child { transform: rotate(90deg); }
+.pg-t { display: grid; gap: 2px; min-width: 0; }
+.pg-t b { font-size: var(--fs-m); }
+.pg-body { padding: 0 16px 8px; }
+.pg-body > .panel, .pg-body > details.tips-box { background: transparent; padding: 0; margin: 0 0 var(--sp-4); border-radius: 0; }
+.pg-body > .panel + .panel { border-top: 1px solid var(--c-line); padding-top: var(--sp-4); }

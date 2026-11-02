@@ -40,8 +40,10 @@ const types = { js: 'text/javascript', mjs: 'text/javascript', wasm: 'applicatio
     }, [img, c.prev ?? null]);
     all[c.id] = res.r;
     const truth = [].concat(c.truth), got = res.w && res.w.value, okk = truth.includes(got);
+    // литры: что ушло бы в поле (frac) — должно быть началом настоящих красных (c.red), иначе ошибка
+    if (res.w && res.w.frac) { const fr = String(c.red || ''); all['_frac_' + c.id] = res.w.frac; if (fr.indexOf(res.w.frac) !== 0 && !c.halfs && !(c.half)) console.log('  ЛИТРЫ мимо: ' + c.id + ' frac=' + res.w.frac + ' red=' + fr); }
     if (okk) good++;
-    const dr = (res.r.drums || []).map(d => d.text + (d.red ? ',' + d.red : '') + '(' + (d.score || 0).toFixed(2) + ')').join(' ');
+    const dr = (res.r.drums || []).map(d => d.text + (d.red ? ',' + d.red : '') + (d.redSure ? '/' + d.redSure : '') + '(' + (d.score || 0).toFixed(2) + ')').join(' ');
     console.log((okk ? ' OK ' : 'FAIL') + ' ' + c.id.padEnd(14) + ' truth=' + truth.join('/') + ' got=' + got + '  ' + res.r.ms + 'ms  drums: ' + dr + '  lines: ' + res.r.lines.map(l => l.text).join(' | ').slice(0, 140));
   }
   fs.writeFileSync('/tmp/ocr_water.json', JSON.stringify(all));

@@ -41,7 +41,8 @@
     var out = {}, days = prev && prev.date && date ? Math.max(1, Math.round((Date.parse(date) - Date.parse(prev.date)) / 864e5)) : null;
     var d = {};
     meters.forEach(function (m) {
-      var list = [], v = num(vals[m.id]), p = prev && prev.vals ? num(prev.vals[m.id]) : null;
+      var list = [], raw = vals[m.id], v = num(raw), p = prev && prev.vals ? num(prev.vals[m.id]) : null;
+      if (raw !== null && raw !== undefined && String(raw).trim() !== '' && norm(raw) === null) { out[m.id] = [{ code: 'bad', level: 'block' }]; return; }
       if (v === null) { out[m.id] = [{ code: 'empty', level: 'block' }]; return; }
       if (v < 0) list.push({ code: 'neg', level: 'block' });
       if (v !== Math.floor(v)) list.push({ code: 'fraction', level: 'info', whole: Math.floor(v) });
@@ -151,7 +152,7 @@
       }
       return dr;
     }
-    if (ln && dr && dr.value === ln.value) { ln.sure = true; ln.drum = true; ln.red = dr.red; ln.tint = dr.tint; ln.lead = dr.lead && !dr.sure; return ln; }
+    if (ln && dr && dr.value === ln.value) { ln.sure = true; ln.drum = true; ln.red = dr.red; ln.frac = dr.frac; ln.tint = dr.tint; ln.lead = dr.lead && !dr.sure; return ln; }
     // начало окна под бликом: строка текста («175432») видит то же, что окно, — окну и верим (оно отделило м³ от дробей)
     if (dr && dr.lead && dr.value !== null) return dr;
     // строка «0137052» начинается с цифр окна «00137» — окно отделило м³ от дробей, ему и верим
@@ -205,11 +206,13 @@
     ds.sort(function (a, b) { return q(b) - q(a); });
     var d = ds[0], dg = String(d.text).replace(/\D/g, ''), p = num(prevVal), red = String(d.red || '').replace(/\D/g, '');
     if (dg.length >= 7) { red = red || dg.slice(dg.length - 3); dg = dg.slice(0, dg.length - 3); }   // захватили и красные
+    // литры: красные цифры, совпавшие в двух обработках из трёх (redSure) — до 3 штук, подряд с начала
+    var frac = String(d.redSure || '').replace(/\D/g, '').slice(0, 3);
     // меньше цифр, чем роликов, и начало окна видно (ведущий ноль) — последний ролик между цифрами
     // ведущие ролики закрыл блик: 3 цифры без нуля впереди, окно найдено уверенно — это хвост числа, впереди обычно нули;
     // с прошлым показанием — тысячи берём из него (1168 и «175» → 1175), без прошлого — нули, но «перевірте»
     if (dg.length === 3 && !/^0/.test(dg) && (d.lead || d.sure) && (d.votes || 0) >= 2) {
-      var tail = Number(dg), lo = { value: tail, digits: dg, red: red, sure: false, strong: false, half: false, lead: true, tint: d.tint || null, drum: true };
+      var tail = Number(dg), lo = { value: tail, digits: dg, red: red, frac: frac, sure: false, strong: false, half: false, lead: true, tint: d.tint || null, drum: true };
       if (p !== null) {
         var pf0 = Math.floor(p + 1e-9), th = Math.floor(pf0 / 1000) * 1000, c3 = [th + tail, th + 1000 + tail].filter(function (v) { return v >= pf0 && v - pf0 < 500; });
         if (c3.length) { lo.value = c3[0]; lo.sure = true; } else lo.less = tail < pf0;
@@ -221,13 +224,13 @@
     var hv = (d.half || []).filter(function (x) { return x && x.i >= 0 && x.i <= dg.length; });
     if (hv.length) {
       var miss = hv.filter(function (x) { return x.d === null || x.d === undefined; });
-      var o2 = { value: Number(dg), digits: dg, red: red, sure: false, strong: strong, half: true, tint: d.tint || null, drum: true, pair: hv.map(function (x) { return x.d === null || x.d === undefined ? null : [x.d, (x.d + 1) % 10]; }) };
+      var o2 = { value: Number(dg), digits: dg, red: red, frac: frac, sure: false, strong: strong, half: true, tint: d.tint || null, drum: true, pair: hv.map(function (x) { return x.d === null || x.d === undefined ? null : [x.d, (x.d + 1) % 10]; }) };
       if (!miss.length) {
         if (p !== null) {
           // с прошлым: меньшая цифра пары, а если она меньше прошлого — большая (прошлый раз взяли её)
           var pf1 = Math.floor(p + 1e-9), up = Number(dg) + 1;
           if (o2.value >= pf1 && o2.value - pf1 < 100) o2.sure = true;
-          else if (up >= pf1 && up - pf1 < 100 && hv.length === 1 && hv[0].i === dg.length - 1) { o2.value = up; o2.sure = true; }
+          else if (up >= pf1 && up - pf1 < 100 && hv.length === 1 && hv[0].i === dg.length - 1) { o2.value = up; o2.sure = true; o2.frac = ''; }   // взяли большую — литры «9xx» уже не её
           else if (o2.value < pf1) o2.less = true;
         }
         return o2;
@@ -237,18 +240,18 @@
         if (p !== null) {
           // с прошлым: цифры по сходству с роликом — первая, при которой не меньше прошлого и недалеко от него
           var pf2 = Math.floor(p + 1e-9), rk = (miss[0].rank || []).concat([0, 1, 2, 3, 4, 5, 6, 7, 8, 9]);
-          for (var r2 = 0; r2 < rk.length; r2++) { var v2 = mk(rk[r2]); if (v2 >= pf2 && v2 - pf2 < 100) { o2.value = v2; o2.digits = dg.slice(0, at) + rk[r2] + dg.slice(at); return o2; } }
+          for (var r2 = 0; r2 < rk.length; r2++) { var v2 = mk(rk[r2]); if (v2 >= pf2 && v2 - pf2 < 100) { o2.value = v2; o2.digits = dg.slice(0, at) + rk[r2] + dg.slice(at); o2.frac = ''; return o2; } }
         }
         return { value: null, partial: dg.slice(0, at) + '?' + dg.slice(at), digits: dg, red: red, half: true, rolls: true, tint: o2.tint, drum: true, strong: strong };
       }
     }
     var exp = d.cells || 5, half = /^0/.test(dg) && dg.length < Math.min(exp, 5);
-    var out = { value: Number(dg), digits: dg, red: red, sure: strong && !half, strong: strong, half: half, tint: d.tint || null, drum: true };
+    var out = { value: Number(dg), digits: dg, red: red, frac: half ? '' : frac, sure: strong && !half, strong: strong, half: half, tint: d.tint || null, drum: true };
     if (p !== null) {
       var pf = Math.floor(p + 1e-9);
       if (half || out.value < pf) {
         // недочитанный последний ролик: дописываем цифру — наименьшее значение не меньше прошлого
-        for (var k = 0; k <= 9; k++) { var v = Number(dg + k); if (v >= pf && v - pf < 100) { out.value = v; out.half = true; out.sure = false; return out; } }
+        for (var k = 0; k <= 9; k++) { var v = Number(dg + k); if (v >= pf && v - pf < 100) { out.value = v; out.half = true; out.sure = false; out.frac = ''; return out; } }
         if (out.value < pf) { out.sure = false; out.less = true; }
       } else if (out.value - pf > 500) out.sure = false;
       else if ((d.votes || 0) >= 2) out.sure = true;
@@ -313,7 +316,7 @@
     var by = {}, usedC = {}, usedP = {};
     var take = function (x) {
       var guess = pairs.some(function (y) { return y.c === x.c && y.m !== x.m && y.sc > x.sc - 5; });
-      by[x.m.id] = { value: x.r.value, partial: x.r.partial || null, photo: cands[x.c].photo, sure: !!x.r.sure && !guess, half: !!x.r.half, pair: x.r.pair || null, why: x.why, guess: guess, less: !!x.r.less, lead: !!x.r.lead && !x.r.sure };
+      by[x.m.id] = { value: x.r.value, frac: x.r.value !== null ? (x.r.frac || '') : '', partial: x.r.partial || null, photo: cands[x.c].photo, sure: !!x.r.sure && !guess, half: !!x.r.half, pair: x.r.pair || null, why: x.why, guess: guess, less: !!x.r.less, lead: !!x.r.lead && !x.r.sure };
       usedC[x.c] = true; usedP[cands[x.c].photo] = true;
     };
     pairs.forEach(function (x) { if (!by[x.m.id] && !usedC[x.c] && x.sc >= -5) take(x); });
@@ -324,9 +327,16 @@
     return { by: by, unused: unused };
   }
 
+  /** Показание для поля ввода: целые м³ и литры через запятую («458,87»); литров нет — только целые. */
+  function withFrac(value, frac) { if (value === null || value === undefined) return ''; var f = String(frac || '').replace(/\D/g, '').slice(0, 3); return String(value) + (f ? ',' + f : ''); }
+  /** Введённое человеком → хранимое: «458,870» → «458.870», «458» → «458»; не число (или больше 3 знаков после запятой) — null. */
+  function norm(v) {
+    var s = String(v === null || v === undefined ? '' : v).replace(/\s/g, '').replace(',', '.').replace(/\.$/, '');
+    return /^\d+(\.\d{1,3})?$/.test(s) ? s.replace(/^0+(?=\d)/, '') : null;
+  }
   function uid() { return 'w' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }
 
   var api = { VK_BOT: VK_BOT, VK_CABINET: VK_CABINET, VK_DEADLINE: VK_DEADLINE, TARIFFS: TARIFFS, HOT: HOT,
-    num: num, whole: whole, tariffAt: tariffAt, cost: cost, check: check, blocked: blocked, vkCommand: vkCommand, vkWindow: vkWindow, series: series, monthly: monthly, summary: summary, fromOcr: fromOcr, assign: assign, goodDrum: goodDrum, fromDrum: fromDrum, uid: uid };
+    num: num, whole: whole, withFrac: withFrac, norm: norm, tariffAt: tariffAt, cost: cost, check: check, blocked: blocked, vkCommand: vkCommand, vkWindow: vkWindow, series: series, monthly: monthly, summary: summary, fromOcr: fromOcr, assign: assign, goodDrum: goodDrum, fromDrum: fromDrum, uid: uid };
   if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.TeploWater = api;
 })(typeof window !== 'undefined' ? window : this);

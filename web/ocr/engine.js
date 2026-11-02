@@ -7,7 +7,8 @@
  *   lines: [{ text, score, x, y, w, h, angle, lcd? }] — координаты в пикселях исходного фото (после поворота по EXIF);
  *          lcd: 1 — найдено проходом по ЖК (приближение экрана: прочерки «E-------», значки «m³», «m³/h», «kW»).
  *   drums: [{ text, red, score, votes, alts, x, y, w, h, angle, flipped, tint }] — окно барабана водомера, найденное по цвету:
- *          text — цифры чёрных роликов (м³), red — красных (дроби), tint — цвет кольца ('red' горячая / 'blue' холодная),
+ *          text — цифры чёрных роликов (м³), red — красных (дроби), redSure — красные, совпавшие в 2 из 3 обработок (литры
+ *          в показание), tint — цвет кольца ('red' горячая / 'blue' холодная),
  *          lead — сколько ведущих роликов не видно (блик стекла; text без них — обычно это нули),
  *          half — ролики между двумя цифрами (полуповорот): [{ i, d, sc, margin, rank }] — i — место в text, d — меньшая цифра
  *          пары (d, d+1) или null (не узнали — тогда этой цифры нет в text), rank — цифры по убыванию сходства;
@@ -816,12 +817,23 @@
       var rb = d.redBox;
       if (!rb) { var ux = Math.cos(win.ang), uy = Math.sin(win.ang), rl = d.w * 0.6; rb = { cx: d.cx + ux * (d.w / 2 + rl / 2 + d.h * 0.04), cy: d.cy + uy * (d.w / 2 + rl / 2 + d.h * 0.04), w: rl, h: d.h }; }
       rb = { cx: rb.cx, cy: rb.cy, w: rb.w, h: rb.h * 1.05, angle: win.ang };
-      return ['red', 'plain'].reduce(function (ch2, m) { return ch2.then(function () { return recTensor(drumTensor(src, rb, m)); }).then(function (r) { reds.push(r); }); }, Promise.resolve());
+      return ['red', 'bin', 'plain'].reduce(function (ch2, m) { return ch2.then(function () { return recTensor(drumTensor(src, rb, m)); }).then(function (r) { reds.push(r); }); }, Promise.resolve());
     });
     return chain.then(function () {
       var win = res[0], b0 = win.best;
-      var rd = reds.map(function (r) { return { d: r.text.replace(/[Oo]/g, '0').replace(/[^0-9]/g, ''), s: r.score }; }).filter(function (r) { return r.d.length >= 1 && r.d.length <= 4; }).sort(function (p, q) { return q.s - p.s; })[0];
-      return { text: half ? half.text : b0 ? b0.d : '', red: rd ? rd.d : '', half: half && half.half.length ? half.half : undefined, shifted: shifted.length ? shifted : undefined, score: b0 ? +b0.s.toFixed(3) : 0, votes: b0 ? Math.max(b0.n, half ? half.votes : 0) : 0, alts: win.alts,
+      var rds = reds.map(function (r) { return { d: r.text.replace(/[Oo]/g, '0').replace(/[^0-9]/g, ''), s: r.score }; }).filter(function (r) { return r.d.length >= 1 && r.d.length <= 4; });
+      var rd = rds.slice().sort(function (p, q) { return q.s - p.s; })[0];
+      // красные (литры) — в показание идут только цифры, совпавшие в двух обработках из трёх, подряд с начала (последний ролик
+      // часто на переходе — его отбрасываем, а не угадываем)
+      var redSure = '';
+      for (var ri = 0; ri < 3; ri++) {
+        var cnt = {}; rds.forEach(function (r) { var ch = r.d.charAt(ri); if (ch && r.d.slice(0, ri) === redSure) cnt[ch] = (cnt[ch] || 0) + 1; });
+        var top = Object.keys(cnt).sort(function (a, b) { return cnt[b] - cnt[a]; })[0];
+        if (!top || cnt[top] < 2) break; redSure += top;
+      }
+      // и совпадает с лучшим чтением (иначе два коротких осколка «0» перевесили бы настоящее «404»)
+      var bestR = rd ? rd.d : ''; while (redSure && bestR.indexOf(redSure) !== 0) redSure = redSure.slice(0, -1);
+      return { text: half ? half.text : b0 ? b0.d : '', red: rd ? rd.d : '', redSure: redSure || undefined, half: half && half.half.length ? half.half : undefined, shifted: shifted.length ? shifted : undefined, score: b0 ? +b0.s.toFixed(3) : 0, votes: b0 ? Math.max(b0.n, half ? half.votes : 0) : 0, alts: win.alts,
         x: Math.round(d.cx - d.w / 2), y: Math.round(d.cy - d.h / 2), w: Math.round(d.w), h: Math.round(d.h), angle: +win.ang.toFixed(3),
         flipped: Math.cos(win.ang) < -0.5, sure: d.sure, tint: d.tint, find: d.score, cells: Math.max(3, Math.round((d.w + (win.ext || 0)) / d.h / 0.68)), lead: lead || undefined, _res: root.TEPLO_DRUM_LOG ? res : undefined };
     });
