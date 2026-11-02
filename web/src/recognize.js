@@ -63,7 +63,7 @@
     _engine: function (onPct) {
       var base = String(root.TEPLO_API).replace(/\/api\/?$/, '') + '/web/ocr/';
       var script = root.TeploOCR ? Promise.resolve() : (this._script = this._script || new Promise(function (ok, bad) {
-        var s = document.createElement('script'); s.src = base + 'engine.js?v=7'; s.onload = ok; s.onerror = function () { bad(fail('engine_failed')); }; document.head.appendChild(s);
+        var s = document.createElement('script'); s.src = base + 'engine.js?v=8'; s.onload = ok; s.onerror = function () { bad(fail('engine_failed')); }; document.head.appendChild(s);
       }));
       return script.then(function () { return root.TeploOCR.load(base, onPct); }).catch(function (e) { if (e && e.code) throw e; throw fail('engine_failed'); });
     },
@@ -84,10 +84,12 @@
       return this._engine(function (p) { if (onProgress) onProgress(Math.round(p * 100), 100, 'load'); }).then(function () {
         var chain = Promise.resolve();
         files.forEach(function (f, i) {
-          chain = chain.then(function () { cancelled(); if (onProgress) onProgress(i + 1, files.length, 'photo'); return root.TeploOCR.read(f); }).then(function (res) {
+          chain = chain.then(function () { cancelled(); if (onProgress) onProgress(i + 1, files.length, 'photo'); return root.TeploOCR.read(f, { all: true }); }).then(function (res) {
             var r = P.photo(res, ctx, i);
             r.photo.time = f.lastModified || 0;   // время съёмки — порядок экранов для разбора пачки
-            out.photos.push(r.photo); results.push({ photo: r.photo, meter: r.meter, ms: res.ms, ocr: res.lines.slice(0, 80).map(function (l) { return { t: l.text.slice(0, 80), a: l.alts ? l.alts.map(function (x) { return x.slice(0, 40); }) : undefined, s: l.score, h: l.h }; }) });
+            out.photos.push(r.photo); results.push({ photo: Object.assign({}, r.photo), meter: r.meter, ms: res.ms, ocr: res.lines.slice(0, 80).map(function (l) { return { t: l.text.slice(0, 80), a: l.alts ? l.alts.map(function (x) { return x.slice(0, 40); }) : undefined, s: l.score, h: l.h }; }) });
+            // строки и окна барабанов — если это водомеры, разложим их по водомерам без второго прохода
+            r.photo.ocr = { drums: res.drums || [], lines: res.lines.slice(0, 60).map(function (l) { return { text: l.text, alts: l.alts, x: l.x, y: l.y, w: l.w, h: l.h, score: l.score }; }) };
             if (r.meter && (!out.meter || (r.meter.confidence || 0) > (out.meter.confidence || 0) || (!out.meter.energyUnit && r.meter.energyUnit))) out.meter = Object.assign({}, out.meter || {}, r.meter, { energyUnit: r.meter.energyUnit || (out.meter && out.meter.energyUnit) || null });
           });
         });

@@ -2,7 +2,8 @@
  * Теплосервис — распознавание текста на фото прямо в браузере, без сервера и без платных API.
  * Модели PaddleOCR PP-OCRv4 (Apache-2.0): det — где на фото текст, rec — что написано; движок onnxruntime-web (MIT, WASM).
  * Файлы лежат рядом (web/ocr/), грузятся один раз (~30 МБ, потом из кэша браузера).
- * API: TeploOCR.load(base, onProgress(0..1)) → Promise; TeploOCR.read(fileOrBlob) → Promise<{lines, w, h, ms}>
+ * API: TeploOCR.load(base, onProgress(0..1)) → Promise; TeploOCR.read(fileOrBlob, {all}) → Promise<{lines, drums, w, h, ms}>
+ *   all: true — читать все найденные окна барабанов (на фото может быть несколько водомеров), иначе — до первого уверенного.
  *   lines: [{ text, score, x, y, w, h, angle }] — координаты в пикселях исходного фото (после поворота по EXIF).
  *   drums: [{ text, red, score, votes, alts, x, y, w, h, angle, flipped, tint }] — окно барабана водомера, найденное по цвету:
  *          text — цифры чёрных роликов (м³), red — красных (дроби), tint — цвет кольца ('red' горячая / 'blue' холодная).
@@ -444,15 +445,15 @@
     });
   }
 
-  function read(file) {
-    var t0 = Date.now(), src, lines = [];
+  function read(file, opts) {
+    var t0 = Date.now(), src, lines = [], all = !!(opts && opts.all);
     var drums = [];
     return toCanvas(file).then(function (c) { src = c; return detect(c); }).then(function (boxes) {
       return readBoxes(src, boxes, 0, 0, 1, lines).then(function () {
         // окно барабана водомера (по цвету) — до пяти кандидатов, пока не прочитаем 4+ цифры
         var cands = []; try { cands = findDrums(src); } catch (e) { cands = []; }
         var ch = Promise.resolve();
-        cands.forEach(function (d) { ch = ch.then(function () { if (drums.some(goodDrum)) return null; return readDrum(src, d).then(function (r) { if (r.text) drums.push(r); }); }); });
+        cands.forEach(function (d) { ch = ch.then(function () { if (all ? drums.filter(goodDrum).length >= 4 : drums.some(goodDrum)) return null; return readDrum(src, d).then(function (r) { if (r.text) drums.push(r); }); }); });
         return ch;
       }).then(function () {
         if (drums.some(goodDrum)) return null;   // водомер прочитан — приближать нечего

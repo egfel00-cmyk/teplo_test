@@ -59,5 +59,31 @@ h = W.fromOcr({ drums: [D('0023')] }, 237);
 ok('полуповорот с прошлым — наименьшее не меньше прошлого, «проверьте»', h.value === 237 && h.half && !h.sure);
 ok('полноширинные цифры из распознавателя', W.fromOcr({ lines: [L('０0502347', 80)] }).value === 502);
 
+console.log('\nИстория по видам и месяцы:');
+const S2 = W.series([
+  { id: 'a', date: '2026-09-15', vals: { h1: '100', c1: '250' } },
+  { id: 'b', date: '2026-10-01', vals: { c1: '254' } },                 // только холодная
+  { id: 'c', date: '2026-10-15', vals: { h1: '103', c1: '256' } }], M);
+ok('запись только по холодной — горячая считается от своего прошлого', S2[1].hot === null && S2[1].cold === 4 && S2[2].hot === 3 && S2[2].daysHot === 30 && S2[2].cold === 2 && S2[2].daysCold === 14, S2.map(x => [x.hot, x.cold, x.daysHot, x.daysCold]));
+const MO = W.monthly(S2, 'cold');
+ok('холодная по месяцам: две записи октября складываются', MO.length === 1 && MO[0].ym === '2026-10' && MO[0].m3 === 6 && MO[0].days === 30 && MO[0].cost > 0, MO);
+ok('сводка: среднее м³ в месяц', Math.abs(W.summary(MO).perMonth - 6 * 30.44 / 30) < 0.01);
+
+console.log('\nРаскладка фото по водомерам:');
+const DR = (text, o) => Object.assign({ text, votes: 3, score: 0.95, cells: 5, x: 0, y: 0, w: 300, h: 60 }, o || {});
+let A = W.assign([{ drums: [DR('00437', { tint: 'blue' })], lines: [] }, { drums: [DR('00175', { tint: 'red' })], lines: [] }], M, {});
+ok('два фото: по цвету кольца — красное к горячей, синее к холодной', A.by.h1.value === 175 && A.by.c1.value === 437 && A.by.h1.photo === 1 && A.by.h1.why === 'tint' && !A.unused.length, A);
+A = W.assign([{ drums: [DR('00175', { tint: 'red', x: 0 }), DR('00437', { tint: 'blue', x: 900 })], lines: [] }], M, {});
+ok('одно фото с двумя водомерами — оба окна', A.by.h1.value === 175 && A.by.c1.value === 437 && A.by.c1.photo === 0, A);
+const MS = [{ id: 'h1', kind: 'hot', serial: '20123456' }, { id: 'c1', kind: 'cold', serial: '3204434' }];
+A = W.assign([{ drums: [DR('00437')], lines: [{ text: '3204434', x: 0, y: 100, w: 200, h: 30 }] }], MS, {});
+ok('заводской № на фото главнее всего', A.by.c1 && A.by.c1.value === 437 && A.by.c1.why === 'serial' && !A.by.h1, A);
+A = W.assign([{ drums: [DR('00172')], lines: [] }, { drums: [DR('00433')], lines: [] }], M, { h1: '170', c1: '430' });
+ok('без цвета и номера — по близости к прошлым показаниям', A.by.h1.value === 172 && A.by.c1.value === 433 && A.by.h1.why === 'prev', A);
+A = W.assign([{ drums: [DR('00175')], lines: [] }, { drums: [DR('00437')], lines: [] }], M, {});
+ok('подсказок нет — обе раскладки «наугад», просим проверить', A.by.h1.guess && A.by.c1.guess && A.by.h1.why === '', A);
+A = W.assign([{ drums: [DR('00175', { tint: 'red' })], lines: [] }, { drums: [DR('00175', { tint: 'red' })], lines: [] }, { drums: [], lines: [{ text: 'Heat' }] }], M, {});
+ok('второе фото того же водомера и фото без барабана — не использованы', A.by.h1.value === 175 && !A.by.c1 && A.unused.join() === '1,2', A);
+
 console.log(`\nИтог: ${pass} OK, ${fail} FAIL`);
 process.exit(fail ? 1 : 0);

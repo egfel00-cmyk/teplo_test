@@ -539,6 +539,16 @@ input[type=text]:not(.dmy-native):not(.pl-in), input[type=email], input[type=pas
 .thumbs li.gone .gone-t { display: grid; place-items: center; height: 100%; padding: 6px; text-align: center; font-size: 12px; color: var(--c-ink-2); }
 .thumbs .n.n-hot { background: var(--c-supply); } .thumbs .n.n-cold { background: var(--c-return); }
 
+/* вода по фото */
+.wn-photo { margin-bottom: var(--sp-4); }
+.wn-photo .thumbs { margin: var(--sp-3) 0 var(--sp-2); grid-template-columns: repeat(auto-fill, minmax(88px, 1fr)); }
+.wn-photo .thumbs img { cursor: zoom-in; }
+.wn-tags { position: absolute; left: 4px; right: 4px; bottom: 4px; display: flex; flex-wrap: wrap; gap: 3px; }
+.wn-tags i { font-style: normal; font-size: 12px; font-weight: 600; color: #fff; border-radius: 6px; padding: 0 6px; }
+.wn-tags i.n-hot, .thumbs .n-hot { background: var(--c-supply); } .wn-tags i.n-cold, .thumbs .n-cold { background: var(--c-return); }
+.wsrc { flex: none; display: grid; place-items: center; width: 48px; border-left: 1.5px solid var(--c-field-line); }
+.wsrc img { width: 38px; height: 38px; object-fit: cover; border-radius: 6px; cursor: zoom-in; display: block; }
+
 </style>
 <style>.top { padding-top: max(12px, env(safe-area-inset-top)); }</style>
 </head>
@@ -1418,6 +1428,15 @@ input[type=text]:not(.dmy-native):not(.pl-in), input[type=email], input[type=pas
       wsv_ten: 'Мінус 10 % — це ≈ {m3} м³ і ≈ {uah} грн щомісяця, ≈ {year} грн за рік.',
       wsv_no_data: 'Коли в Історії будуть хоча б двоє показань цього водоміра, тут з’являться ваші цифри.',
       wsv_g1: 'Витоки', wsv_g2: 'Кран і душ', wsv_g3: 'Техніка', wsv_g4: 'Контроль витрат',
+      wnp_lead: 'Сфотографуйте водоміри — цифри впишуться самі, перевірте й збережіть. Або впишіть чорні цифри барабана вручну.',
+      wnp_pick: 'З фото', wnp_more: 'Додати фото',
+      wnp_hint: 'Один кадр з обома водомірами або по кадру на кожен. Барабан — прямо й близько, без відблиску спалаху.',
+      wnp_src: 'З фото {n}: {v}', wnp_src_half: 'З фото {n}: {p} — останній барабан між цифрами, допишіть меншу.', wnp_src_none: 'Фото {n}: цифр барабана не видно — впишіть вручну.',
+      wnp_why_serial: '(за заводським №)', wnp_why_tint: '(за кольором кільця)', wnp_why_prev: '(за минулими показаннями)', wnp_why_swap: '(поміняли місцями)',
+      wnp_check: 'Перевірте, чи це той лічильник.', wnp_half: 'Останній барабан між цифрами — перевірте.',
+      wnp_none: 'цифр барабана не знайшли', wnp_guess: 'Не впевнені, де який лічильник — звірте з фото (натисніть, щоб збільшити).',
+      wnp_swap: 'Поміняти гарячу й холодну',
+      wnp_mixed: 'Фото {list} — водоміри.', wnp_mixed_go: 'Внести воду з цих фото', wnp_setup_first: 'Щоб вносити воду з фото, спершу додайте водоміри: Головна → «Гаряча» чи «Холодна» → «+».',
       help_title: 'Довідка',
       ago_min: '{n} хв тому', ago_h: '{n} год тому', ago_d: '{n} дн. тому', ago_now: 'щойно'
     },
@@ -1897,6 +1916,15 @@ input[type=text]:not(.dmy-native):not(.pl-in), input[type=email], input[type=pas
       wsv_ten: 'Минус 10 % — это ≈ {m3} м³ и ≈ {uah} грн ежемесячно, ≈ {year} грн за год.',
       wsv_no_data: 'Когда в Истории будут хотя бы двое показаний этого водомера, здесь появятся ваши цифры.',
       wsv_g1: 'Утечки', wsv_g2: 'Кран и душ', wsv_g3: 'Техника', wsv_g4: 'Контроль расходов',
+      wnp_lead: 'Сфотографируйте водомеры — цифры впишутся сами, проверьте и сохраните. Или впишите чёрные цифры барабана вручную.',
+      wnp_pick: 'С фото', wnp_more: 'Добавить фото',
+      wnp_hint: 'Один кадр с обоими водомерами или по кадру на каждый. Барабан — прямо и близко, без блика вспышки.',
+      wnp_src: 'С фото {n}: {v}', wnp_src_half: 'С фото {n}: {p} — последний барабан между цифрами, допишите меньшую.', wnp_src_none: 'Фото {n}: цифр барабана не видно — впишите вручную.',
+      wnp_why_serial: '(по заводскому №)', wnp_why_tint: '(по цвету кольца)', wnp_why_prev: '(по прошлым показаниям)', wnp_why_swap: '(поменяли местами)',
+      wnp_check: 'Проверьте, тот ли это счётчик.', wnp_half: 'Последний барабан между цифрами — проверьте.',
+      wnp_none: 'цифр барабана не нашли', wnp_guess: 'Не уверены, где какой счётчик — сверьте с фото (нажмите, чтобы увеличить).',
+      wnp_swap: 'Поменять горячую и холодную',
+      wnp_mixed: 'Фото {list} — водомеры.', wnp_mixed_go: 'Внести воду с этих фото', wnp_setup_first: 'Чтобы вносить воду с фото, сначала добавьте водомеры: Главная → «Горячая» или «Холодная» → «+».',
       help_title: 'Справка',
       ago_min: '{n} мин назад', ago_h: '{n} ч назад', ago_d: '{n} дн. назад', ago_now: 'только что'
     }
@@ -2485,7 +2513,7 @@ input[type=text]:not(.dmy-native):not(.pl-in), input[type=email], input[type=pas
     _engine: function (onPct) {
       var base = String(root.TEPLO_API).replace(/\/api\/?$/, '') + '/web/ocr/';
       var script = root.TeploOCR ? Promise.resolve() : (this._script = this._script || new Promise(function (ok, bad) {
-        var s = document.createElement('script'); s.src = base + 'engine.js?v=7'; s.onload = ok; s.onerror = function () { bad(fail('engine_failed')); }; document.head.appendChild(s);
+        var s = document.createElement('script'); s.src = base + 'engine.js?v=8'; s.onload = ok; s.onerror = function () { bad(fail('engine_failed')); }; document.head.appendChild(s);
       }));
       return script.then(function () { return root.TeploOCR.load(base, onPct); }).catch(function (e) { if (e && e.code) throw e; throw fail('engine_failed'); });
     },
@@ -2506,10 +2534,12 @@ input[type=text]:not(.dmy-native):not(.pl-in), input[type=email], input[type=pas
       return this._engine(function (p) { if (onProgress) onProgress(Math.round(p * 100), 100, 'load'); }).then(function () {
         var chain = Promise.resolve();
         files.forEach(function (f, i) {
-          chain = chain.then(function () { cancelled(); if (onProgress) onProgress(i + 1, files.length, 'photo'); return root.TeploOCR.read(f); }).then(function (res) {
+          chain = chain.then(function () { cancelled(); if (onProgress) onProgress(i + 1, files.length, 'photo'); return root.TeploOCR.read(f, { all: true }); }).then(function (res) {
             var r = P.photo(res, ctx, i);
             r.photo.time = f.lastModified || 0;   // время съёмки — порядок экранов для разбора пачки
-            out.photos.push(r.photo); results.push({ photo: r.photo, meter: r.meter, ms: res.ms, ocr: res.lines.slice(0, 80).map(function (l) { return { t: l.text.slice(0, 80), a: l.alts ? l.alts.map(function (x) { return x.slice(0, 40); }) : undefined, s: l.score, h: l.h }; }) });
+            out.photos.push(r.photo); results.push({ photo: Object.assign({}, r.photo), meter: r.meter, ms: res.ms, ocr: res.lines.slice(0, 80).map(function (l) { return { t: l.text.slice(0, 80), a: l.alts ? l.alts.map(function (x) { return x.slice(0, 40); }) : undefined, s: l.score, h: l.h }; }) });
+            // строки и окна барабанов — если это водомеры, разложим их по водомерам без второго прохода
+            r.photo.ocr = { drums: res.drums || [], lines: res.lines.slice(0, 60).map(function (l) { return { text: l.text, alts: l.alts, x: l.x, y: l.y, w: l.w, h: l.h, score: l.score }; }) };
             if (r.meter && (!out.meter || (r.meter.confidence || 0) > (out.meter.confidence || 0) || (!out.meter.energyUnit && r.meter.energyUnit))) out.meter = Object.assign({}, out.meter || {}, r.meter, { energyUnit: r.meter.energyUnit || (out.meter && out.meter.energyUnit) || null });
           });
         });
@@ -2829,10 +2859,69 @@ input[type=text]:not(.dmy-native):not(.pl-in), input[type=email], input[type=pas
     return out;
   }
 
+  /** Окну барабана можно верить при раскладке (а не случайному тёмному пятну). */
+  function goodDrum(d) { var t = String((d && d.text) || '').replace(/\D/g, ''); return t.length >= 4 && ((d.votes || 0) >= 2 || (d.score || 0) >= 0.9); }
+  function center(o) { return { x: (o.x || 0) + (o.w || 0) / 2, y: (o.y || 0) + (o.h || 0) / 2 }; }
+  /**
+   * Пачка фото → показания по водомерам. photos: [{lines, drums}] (TeploOCR.read с {all:true}); meters: [{id, kind, serial}];
+   * prev: {meterId: прошлое показание}. На одном фото может быть несколько водомеров (каждое уверенное окно — отдельно).
+   * Чьё окно: заводской № на фото (на фото с несколькими окнами — ближайшему окну) → цвет кольца (красное — горячая,
+   * синее — холодная) → близость к прошлому (не меньше и ненамного больше).
+   * → { by: {meterId: {value, partial, photo, sure, half, why: 'serial'|'tint'|'prev'|'', guess}}, unused: [индексы фото] }
+   *   guess — другой водомер подходил так же хорошо (могли перепутать), why '' — подсказок не было вовсе.
+   */
+  function assign(photos, meters, prev) {
+    prev = prev || {};
+    var serials = meters.map(function (m) { return { m: m, s: String(m.serial || '').replace(/\D/g, '') }; }).filter(function (x) { return x.s.length >= 5; });
+    var cands = [];
+    (photos || []).forEach(function (ph, i) {
+      if (!ph) return;
+      var ds = (ph.drums || []).filter(function (d) { return String(d.text || '').replace(/\D/g, '').length >= 3; }), good = ds.filter(goodDrum), seen = [];
+      (ph.lines || []).forEach(function (l) {
+        var dg = [l.text].concat(l.alts || []).join(' ').replace(/[OoОо]/g, '0').replace(/\D/g, '');
+        serials.forEach(function (x) { if (dg.indexOf(x.s) >= 0) seen.push({ m: x.m, at: center(l) }); });
+      });
+      if (good.length >= 2) good.forEach(function (d) { cands.push({ photo: i, res: { drums: [d], lines: [] }, drum: d, seen: seen, multi: good }); });
+      else cands.push({ photo: i, res: ph, drum: good[0] || ds[0] || null, seen: seen, multi: null });
+    });
+    var pairs = [];
+    cands.forEach(function (c, ci) {
+      meters.forEach(function (m) {
+        var p = prev[m.id] !== undefined && prev[m.id] !== '' ? prev[m.id] : null, r = fromOcr(c.res, p);
+        if (!r) return;
+        var sc = r.value !== null ? 10 : 3, why = '';
+        c.seen.forEach(function (x) {
+          // на фото с несколькими окнами номер относится к ближайшему окну
+          var mine = !c.multi || c.multi.every(function (o) { if (o === c.drum) return true; var a = center(c.drum), b = center(o); return Math.hypot(a.x - x.at.x, a.y - x.at.y) <= Math.hypot(b.x - x.at.x, b.y - x.at.y); });
+          if (!mine) return;
+          if (x.m.id === m.id) { sc += 100; why = 'serial'; } else sc -= 100;
+        });
+        var tint = (c.drum && c.drum.tint) || r.tint;
+        if (tint === 'red' || tint === 'blue') { if ((tint === 'red') === (m.kind === 'hot')) { sc += 20; why = why || 'tint'; } else sc -= 20; }
+        if (p !== null && r.value !== null) {
+          var dv = r.value - Math.floor(num(p) + 1e-9);
+          if (dv < 0) sc -= 40; else if (dv <= 60) { sc += 15 - Math.min(10, dv / 4); why = why || 'prev'; } else if (dv > 300) sc -= 30;
+        }
+        if (r.sure) sc += 3;
+        pairs.push({ c: ci, m: m, r: r, sc: sc, why: why });
+      });
+    });
+    pairs.sort(function (a, b) { return b.sc - a.sc || a.c - b.c; });
+    var by = {}, usedC = {}, usedP = {};
+    pairs.forEach(function (x) {
+      if (by[x.m.id] || usedC[x.c] || x.sc < -5) return;
+      var guess = pairs.some(function (y) { return y.c === x.c && y.m !== x.m && y.sc > x.sc - 5; });
+      by[x.m.id] = { value: x.r.value, partial: x.r.partial || null, photo: cands[x.c].photo, sure: !!x.r.sure && !guess, half: !!x.r.half, why: x.why, guess: guess };
+      usedC[x.c] = true; usedP[cands[x.c].photo] = true;
+    });
+    var unused = []; (photos || []).forEach(function (ph, i) { if (!usedP[i]) unused.push(i); });
+    return { by: by, unused: unused };
+  }
+
   function uid() { return 'w' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }
 
   var api = { VK_BOT: VK_BOT, VK_CABINET: VK_CABINET, VK_DEADLINE: VK_DEADLINE, TARIFFS: TARIFFS, HOT: HOT,
-    num: num, whole: whole, tariffAt: tariffAt, cost: cost, check: check, blocked: blocked, vkCommand: vkCommand, vkWindow: vkWindow, series: series, monthly: monthly, summary: summary, fromOcr: fromOcr, fromDrum: fromDrum, uid: uid };
+    num: num, whole: whole, tariffAt: tariffAt, cost: cost, check: check, blocked: blocked, vkCommand: vkCommand, vkWindow: vkWindow, series: series, monthly: monthly, summary: summary, fromOcr: fromOcr, assign: assign, goodDrum: goodDrum, fromDrum: fromDrum, uid: uid };
   if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.TeploWater = api;
 })(typeof window !== 'undefined' ? window : this);
 
@@ -3446,7 +3535,7 @@ input[type=text]:not(.dmy-native):not(.pl-in), input[type=email], input[type=pas
     h += '<ul class="list" data-key="wrec-values">' + ms.map(function (m) {
       var d = x.by[m.id];
       return '<li><div class="grow">' + ico('drop', 16, m.kind === 'hot' ? 'c-hot' : 'c-cold') + ' ' + esc(wname(m)) + (m.serial ? ' <span class="small muted">№ ' + esc(m.serial) + '</span>' : '') + (d !== undefined ? '<div class="small muted">+' + d + ' м³</div>' : '') + '</div><b class="num">' + Wt.whole(r.vals[m.id]) + '</b> <span class="small muted">м³</span></li>';
-    }).join('') + '</ul>';
+    }).join('') + '</ul>' + photoStrip(r.photos, 'w' + r.id);
     if (x.hot !== null || x.cold !== null) {
       var c = Wt.cost(x.cold || 0, x.hot || 0, r.date, S.wtariff);
       h += '<div class="panel" style="margin-top:16px" data-key="wrec-used"><h2>' + esc(t('rec_used_title')) + '</h2><div class="cards2">' +
@@ -3460,7 +3549,6 @@ input[type=text]:not(.dmy-native):not(.pl-in), input[type=email], input[type=pas
       else h += '<p>' + (wsentVk(r) ? '<span class="pill ok">' + ico('check', 14) + ' ' + esc(t('wr_vk')) + '</span> ' : '<span class="pill neutral">' + esc(t('wr_vk')) + ': ' + esc(t('wh_notsent')) + '</span> ') +
         (wmeters('hot').length ? (wsentHtm(r) ? '<span class="pill ok">' + ico('check', 14) + ' ' + esc(t('wr_htm')) + '</span>' : '<span class="pill neutral">' + esc(t('wr_htm')) + ': ' + esc(t('wh_notsent')) + '</span>') : '') + '</p>';
     }
-    h += photoStrip(r.photos, 'w' + r.id);
     h += '<div class="row-actions">' + (r.base ? '' : '<button class="btn sec" data-act="wedit" data-id="' + r.id + '" data-key="wrec-edit">' + esc(t('rec_edit')) + '</button>') + '<button class="btn danger" data-act="wdel" data-id="' + r.id + '" data-key="wrec-del">' + esc(t('rec_del')) + '</button></div>';
     return { screen: 'S09', route: 'history', html: h };
   }
@@ -3523,20 +3611,21 @@ input[type=text]:not(.dmy-native):not(.pl-in), input[type=email], input[type=pas
   }
 
   // ---------- ввод показаний воды ----------
-  var WN = { kind: 'hot', date: '', vals: {} };
+  function wnFresh(kind) { return { kind: kind || 'hot', date: '', vals: {}, photos: [], src: {}, auto: {}, unused: [], busy: false }; }
+  var WN = wnFresh('hot');
   V.wnew = function () {
     var ms = wmeters(); if (!ms.length) return V.wsetup();
     var order = ms.slice().sort(function (a, b) { return (a.kind === WN.kind ? 0 : 1) - (b.kind === WN.kind ? 0 : 1); });
     var date = WN.date || today(), back = WN.back || 'water-' + WN.kind;
     var prev = {}; ms.forEach(function (m) { var r = wprevFor(m.id, date); if (r) prev[m.id] = r; });
-    var h = '<h1>' + esc(t('wn_title')) + '</h1><p class="small muted">' + esc(t('wn_lead')) + '</p>' +
+    var h = '<h1>' + esc(t('wn_title')) + '</h1><p class="small muted">' + esc(t(VIS().local ? 'wnp_lead' : 'wn_lead')) + '</p>' + wnPhotoBox() +
       '<div class="field" style="max-width:280px"><label for="wn-date">' + esc(t('wn_date')) + '</label><div class="ctl"><input id="wn-date" type="date" value="' + esc(date) + '" max="' + today() + '"></div></div>' +
       '<form id="wn-form" novalidate>' + order.map(function (m) {
         var p = prev[m.id];
         return '<div class="field wfield" id="wf-' + m.id + '"><label for="wn-' + m.id + '">' + ico('drop', 16, m.kind === 'hot' ? 'c-hot' : 'c-cold') + ' ' + esc(wname(m)) + '</label>' +
           '<div class="ctl"><input id="wn-' + m.id + '" class="num" inputmode="numeric" autocomplete="off" data-wn="' + m.id + '" value="' + esc(WN.vals[m.id] || '') + '" placeholder="' + (p ? esc(String(Wt.whole(p.vals[m.id]))) : '') + '" aria-describedby="wh-' + m.id + '"><span class="unit">м³</span>' +
-          '<label class="wcam" title="' + esc(t('wn_photo')) + '"><input type="file" accept="image/*" capture="environment" class="sr" data-wphoto="' + m.id + '" aria-label="' + esc(t('wn_photo') + ': ' + wname(m)) + '">' + ico('camera', 20) + '</label></div>' +
-          '<div class="help" id="wh-' + m.id + '">' + (p ? esc(t('wn_prev', { v: Wt.whole(p.vals[m.id]), d: fmtDate(p.date) })) : esc(t('wn_first'))) + '</div></div>';
+          wnSrcThumb(m.id) + '<label class="wcam" title="' + esc(t('wn_photo')) + '"><input type="file" accept="image/*" capture="environment" class="sr" data-wphoto="' + m.id + '" aria-label="' + esc(t('wn_photo') + ': ' + wname(m)) + '">' + ico('camera', 20) + '</label></div>' +
+          '<div class="help" id="wh-' + m.id + '">' + esc(wnSrcText(m.id)) + (p ? esc(t('wn_prev', { v: Wt.whole(p.vals[m.id]), d: fmtDate(p.date) })) : esc(t('wn_first'))) + '</div></div>';
       }).join('') +
       '<p class="small muted">' + esc(t('wn_digits')) + '</p>' +
       '<div class="wiz-actions"><button class="btn" type="submit" data-key="wn-save">' + esc(t('wn_save')) + '</button></div></form>';
@@ -3556,7 +3645,7 @@ input[type=text]:not(.dmy-native):not(.pl-in), input[type=email], input[type=pas
       var list = issues[m.id].filter(function (x) { return x.code !== 'empty' || show === 'submit'; }), p = prev[m.id];
       var txt = list.map(function (x) { return t('wi_' + x.code, { prev: p ? Wt.whole(p.vals[m.id]) : '', n: x.perMonth || '', w: x.whole }); }).join(' ');
       var lvl = list.some(function (x) { return x.level === 'block'; }) ? 'block' : list.some(function (x) { return x.level === 'warn'; }) ? 'warn' : list.length ? 'ok' : '';
-      el.textContent = txt || (p ? t('wn_prev', { v: Wt.whole(p.vals[m.id]), d: fmtDate(p.date) }) : t('wn_first'));
+      el.textContent = wnSrcText(m.id) + (txt || (p ? t('wn_prev', { v: Wt.whole(p.vals[m.id]), d: fmtDate(p.date) }) : t('wn_first')));
       el.className = 'help' + (lvl ? ' ' + lvl : ''); if (fw) fw.className = 'field wfield' + (lvl === 'block' ? ' is-block' : lvl === 'warn' ? ' is-warn' : '');
     });
     return issues;
@@ -3569,10 +3658,13 @@ input[type=text]:not(.dmy-native):not(.pl-in), input[type=email], input[type=pas
     S.water = S.water || [];
     // одна запись на квартиру и дату: повторный ввод в тот же день — правка
     var same = (S.water || []).filter(function (r) { return r && !r.deleted && !r.base && r.place === S.placeId && r.date === date; })[0];
-    if (same) { same.vals = Object.assign({}, same.vals, vals); same.updatedAt = Date.now(); }
-    else S.water.push({ id: Wt.uid(), place: S.placeId, date: date, vals: vals, createdAt: now, updatedAt: Date.now(), sent: {} });
+    // фото, с которых сняли, — к записи (видны в истории)
+    var refs = photoRefs((WN.photos || []).map(function (p) { return { file: p.file, meter: p.meters && p.meters.length === 1 ? p.meters[0] : undefined }; }));
+    if (same) { same.vals = Object.assign({}, same.vals, vals); if (refs.length) same.photos = (same.photos || []).concat(refs); same.updatedAt = Date.now(); }
+    else S.water.push(Object.assign({ id: Wt.uid(), place: S.placeId, date: date, vals: vals, createdAt: now, updatedAt: Date.now(), sent: {} }, refs.length ? { photos: refs } : {}));
     if (!S.onboarded) S.onboarded = true;
-    var k = WN.kind, back = WN.back; WN = { kind: k, date: '', vals: {} };
+    if (WN.inbox && WN.inbox.length && window.TEPLO_API) { var ib = WN.inbox; INBOX.items = (INBOX.items || []).filter(function (x) { return ib.indexOf(x.id) < 0; }); api0('/inbox/done', { method: 'POST', body: JSON.stringify({ ids: ib }) }).catch(function () {}); }
+    var k = WN.kind, back = WN.back; WN = wnFresh(k);
     save(); toast(t('wn_saved'));
     if (back) go(back); else { SCROLL_TO = 'wsend-vk'; go('water-' + k); }
   }
@@ -3647,7 +3739,7 @@ input[type=text]:not(.dmy-native):not(.pl-in), input[type=email], input[type=pas
   // действия воды
   function waterAct(act, el, e) {
     switch (act) {
-      case 'wnew': WN = { kind: el.getAttribute('data-kind') || 'hot', date: '', vals: {} }; go(wmeters().length ? 'wnew' : 'wsetup'); return true;
+      case 'wnew': WN = wnFresh(el.getAttribute('data-kind') || 'hot'); go(wmeters().length ? 'wnew' : 'wsetup'); return true;
       case 'wsetup': WS = { step: 0, preset: (el.getAttribute('data-kind') === 'cold' ? 'hc' : 'hc'), vals: {}, kind: el.getAttribute('data-kind') || 'hot' }; go('wsetup'); return true;
       case 'setup-heat': go('meter'); return true;
       case 'wz-preset': WS.preset = el.value; return true;
@@ -3659,8 +3751,18 @@ input[type=text]:not(.dmy-native):not(.pl-in), input[type=email], input[type=pas
       case 'wedit': { var r3 = wrecs().filter(function (x) { return x.id === el.getAttribute('data-id'); })[0]; if (!r3) return true;
         var k3 = wmeters('hot').some(function (m) { return hasVal(r3, m.id); }) ? 'hot' : 'cold', v3 = {};
         Object.keys(r3.vals || {}).forEach(function (k) { v3[k] = String(r3.vals[k]); });
-        WN = { kind: k3, date: r3.date, vals: v3, photos: [], back: 'wrec-' + r3.id }; go('wnew'); return true; }
+        WN = Object.assign(wnFresh(k3), { date: r3.date, vals: v3, back: 'wrec-' + r3.id }); go('wnew'); return true; }
       case 'view': S.view = el.getAttribute('data-v'); persist(); render(true); return true;
+      case 'wn-swap': { wnRead(); var a = el.getAttribute('data-a'), b = el.getAttribute('data-b'), va = WN.vals[a], sa = WN.src[a];
+        WN.vals[a] = WN.vals[b]; WN.vals[b] = va; WN.src[a] = WN.src[b]; WN.src[b] = sa;
+        [a, b].forEach(function (k) { if (WN.src[k]) WN.src[k] = Object.assign({}, WN.src[k], { guess: false, why: 'swap' }); });
+        WN.photos.forEach(function (p) { p.meters = (p.meters || []).map(function (k) { return k === a ? b : k === b ? a : k; }); });
+        render(true); wnCheck(true); return true; }
+      case 'wn-ph-rm': { wnRead(); var i = +el.getAttribute('data-i'), gone = WN.photos[i]; if (!gone) return true;
+        WN.photos.splice(i, 1);
+        Object.keys(WN.src).forEach(function (k) { var x = WN.src[k]; if (x.photo === i) { if (WN.auto[k]) delete WN.vals[k]; delete WN.src[k]; } else if (x.photo > i) x.photo--; });
+        if (WN.photos.some(function (p) { return !p.fixed; })) wnAssign();
+        render(true); wnCheck(true); return true; }
       case 'view-go': S.view = el.getAttribute('data-v'); persist(); go(el.getAttribute('data-to')); return true;
       case 'wm-add': wsetCfg(function (c) { c.meters = c.meters || []; c.meters.push({ id: Wt.uid(), kind: el.getAttribute('data-kind'), name: '', serial: '', vkId: '', verifiedUntil: '' }); }); render(true); return true;
       case 'wm-del': if (!confirm(t('wm_del_q'))) return true; wsetCfg(function (c) { (c.meters || []).forEach(function (m) { if (m.id === el.getAttribute('data-id')) m.deleted = true; }); }); render(true); return true;
@@ -3683,21 +3785,112 @@ input[type=text]:not(.dmy-native):not(.pl-in), input[type=email], input[type=pas
   });
   document.addEventListener('input', function (e) { var el = e.target; if (el && el.getAttribute && el.getAttribute('data-wn')) { WN.vals[el.getAttribute('data-wn')] = el.value.trim(); wnCheck(true); } });
   document.addEventListener('submit', function (e) { if (e.target && e.target.id === 'wn-form') { e.preventDefault(); wnSave(); } }, true);
-  /** Фото одного водомера → цифры барабана (тот же бесплатный движок в браузере). */
+  /** Фото одного водомера (камера у поля) → цифры барабана; фото остаётся к записи. */
   function wnPhoto(mid, file, el) {
-    var help = document.getElementById('wh-' + mid), inp = document.getElementById('wn-' + mid), lab = el.closest && el.closest('.wcam');
+    var help = document.getElementById('wh-' + mid), lab = el.closest && el.closest('.wcam');
     if (!VIS().local) { toast(t('ph_unavail')); return; }
     if (help) { help.innerHTML = SPIN + ' ' + esc(t('wn_reading')); help.className = 'help'; }
     if (lab) lab.setAttribute('aria-busy', 'true');
     VIS()._engine(function () {}).then(function () { return window.TeploOCR.read(file); }).then(function (res) {
-      if (lab) lab.removeAttribute('aria-busy');
+      wnRead();
       var p = wprevFor(mid, WN.date || today()), r = Wt.fromOcr(res, p ? p.vals[mid] : null);
-      if (!r) { if (help) { help.textContent = t('wn_photo_none'); help.className = 'help warn'; } return; }
-      if (r.value === null) { if (help) { help.textContent = t('wn_photo_half', { p: r.partial }); help.className = 'help warn'; } if (inp) inp.focus(); return; }
-      if (inp) { inp.value = String(r.value); WN.vals[mid] = String(r.value); }
-      wnCheck(true); if (help && help.className.indexOf('block') < 0) { help.textContent = t(r.half ? 'wn_photo_check' : 'wn_photo_ok', { v: r.value }) + ' ' + help.textContent; }
+      WN.photos.forEach(function (x) { x.meters = (x.meters || []).filter(function (k) { return k !== mid; }); });
+      WN.photos.push({ file: file, url: URL.createObjectURL(file), res: { lines: res.lines, drums: res.drums }, meters: [mid], fixed: mid });
+      var pi = WN.photos.length - 1;
+      if (!r) WN.src[mid] = { photo: pi, value: null, none: true };
+      else {
+        WN.src[mid] = { photo: pi, value: r.value, partial: r.partial || null, half: !!r.half, why: 'field' };
+        if (r.value !== null) { WN.vals[mid] = String(r.value); WN.auto[mid] = true; }
+      }
+      render(true); wnCheck(true);
+      var inp = document.getElementById('wn-' + mid); if (inp && (!r || r.value === null)) inp.focus();
     }, function () { if (lab) lab.removeAttribute('aria-busy'); if (help) { help.textContent = t('ph_err_engine'); help.className = 'help warn'; } });
   }
+  // ---------- вода «по фото, как отопление»: пачка фото → раскладка по водомерам ----------
+  /** Подпись «откуда цифры» в подсказке поля. */
+  function wnSrcText(mid) {
+    var x = WN.src && WN.src[mid]; if (!x) return '';
+    var n = x.photo + 1;
+    if (x.none) return t('wnp_src_none', { n: n }) + ' ';
+    if (x.value === null) return t('wnp_src_half', { n: n, p: x.partial || '' }) + ' ';
+    return t('wnp_src', { n: n, v: x.value }) + (x.why && x.why !== 'field' ? ' ' + t('wnp_why_' + x.why) : '') + '. ' + (x.guess || !x.why ? t('wnp_check') + ' ' : x.half ? t('wnp_half') + ' ' : '');
+  }
+  function wnSrcThumb(mid) {
+    var x = WN.src && WN.src[mid], p = x && WN.photos[x.photo]; if (!p) return '';
+    return '<span class="wsrc"><img data-gal="wnf-' + esc(mid) + '" src="' + p.url + '" alt="' + esc(t('ph_from', { n: x.photo + 1 })) + '"></span>';
+  }
+  function wnPhotoBox() {
+    if (!VIS().local) return '';
+    var ph = WN.photos || [], ms = wmeters(), h = '<div class="panel wn-photo" data-key="wn-photo"><input type="file" id="wn-files" accept="image/*" multiple class="sr" data-key="wn-files">';
+    if (WN.busy) h += '<div class="banner" role="status" style="margin:0">' + SPIN + '<div class="grow"><p id="wn-prog">' + esc(WN.prog || t('wn_reading')) + '</p><div class="pbar" aria-hidden="true"><i id="wn-pbar" style="width:' + (WN.pct || 2) + '%"></i></div></div></div>';
+    else h += '<label for="wn-files" class="btn ' + (ph.length ? 'sec' : 'big block') + '" tabindex="0" data-key="wn-photo-pick">' + ico('camera', 22) + '<span>' + esc(ph.length ? t('wnp_more') : t('wnp_pick')) + '</span></label>' +
+      (ph.length ? '' : '<p class="small muted" style="margin:8px 0 0">' + esc(t('wnp_hint')) + '</p>');
+    if (WN.err) h += '<p class="help warn">' + esc(WN.err) + '</p>';
+    if (ph.length) {
+      h += '<ul class="thumbs wn-thumbs">' + ph.map(function (p, i) {
+        var mine = ms.filter(function (m) { return (p.meters || []).indexOf(m.id) >= 0; });
+        return '<li><img data-gal="wn" data-i="' + i + '" src="' + p.url + '" alt="' + esc(t('ph_from', { n: i + 1 })) + '"><span class="n">' + (i + 1) + '</span>' +
+          (WN.busy ? '' : '<button class="rm" data-act="wn-ph-rm" data-i="' + i + '" aria-label="' + esc(t('ph_remove')) + '">' + ico('close', 16) + '</button>') +
+          (mine.length ? '<span class="wn-tags">' + mine.map(function (m) { return '<i class="' + (m.kind === 'hot' ? 'n-hot' : 'n-cold') + '">' + esc(m.name || t('kv_' + m.kind)) + '</i>'; }).join('') + '</span>' : '') + '</li>';
+      }).join('') + '</ul>';
+      if (!WN.busy) {
+        var lines = ph.map(function (p, i) {
+          var mine = ms.filter(function (m) { return (p.meters || []).indexOf(m.id) >= 0; });
+          if (!p.res) return '';
+          var nm = t('ph_from', { n: i + 1 }); nm = nm.charAt(0).toUpperCase() + nm.slice(1);
+          return esc(nm) + ' — ' + (mine.length ? mine.map(function (m) { var x = WN.src[m.id] || {}; return esc(wname(m).toLowerCase()) + ' <b class="num">' + (x.value !== null && x.value !== undefined ? x.value : esc(x.partial || '?')) + '</b>'; }).join(', ') : esc(t('wnp_none')));
+        }).filter(Boolean);
+        if (lines.length) h += '<p class="small" data-key="wn-photo-sum">' + lines.join('<br>') + '</p>';
+        var gs = ms.filter(function (m) { var x = WN.src[m.id]; return x && x.why !== 'field' && (x.guess || !x.why); });
+        var hotG = gs.filter(function (m) { return m.kind === 'hot'; }), coldG = gs.filter(function (m) { return m.kind === 'cold'; });
+        if (gs.length) h += '<div class="banner warn" style="margin:8px 0 0" data-key="wn-guess">' + ico('alert', 22) + '<div><p>' + esc(t('wnp_guess')) + '</p>' +
+          (hotG.length === 1 && coldG.length === 1 ? '<p><button class="btn sec" data-act="wn-swap" data-a="' + hotG[0].id + '" data-b="' + coldG[0].id + '" data-key="wn-swap">' + esc(t('wnp_swap')) + '</button></p>' : '') + '</div></div>';
+      }
+    }
+    return h + '</div>';
+  }
+  function wnProg(pct, msg) {
+    WN.pct = Math.max(WN.pct || 2, Math.round(pct)); WN.prog = msg;
+    var pb = document.getElementById('wn-pbar'), el = document.getElementById('wn-prog');
+    if (pb) pb.style.width = WN.pct + '%'; if (el) el.textContent = msg;
+  }
+  /** Распознать новые фото пачки (движок в браузере) и разложить всё по водомерам. */
+  function wnRun(files) {
+    wnRead(); WN.err = '';
+    files.forEach(function (f) { WN.photos.push({ file: f, url: URL.createObjectURL(f), res: null, meters: [] }); });
+    var todo = WN.photos.filter(function (p) { return !p.res; }), n = todo.length; if (!n) return;
+    WN.busy = true; WN.pct = 2; WN.prog = t('wn_reading'); render(true);
+    VIS()._engine(function (p) { wnProg(p * 15, t('ph_loading', { p: Math.round(p * 100) })); }).then(function () {
+      var chain = Promise.resolve();
+      todo.forEach(function (p, i) {
+        chain = chain.then(function () { wnProg(15 + 85 * (i + 0.3) / n, n > 1 ? t('ph_reading', { i: i + 1, n: n }) : t('wn_reading')); return window.TeploOCR.read(p.file, { all: true }); })
+          .then(function (res) { p.res = { lines: res.lines, drums: res.drums }; }, function () { p.res = { lines: [], drums: [] }; });
+      });
+      return chain;
+    }).then(function () { WN.busy = false; wnAssign(); render(true); wnCheck(true); },
+      function () { WN.busy = false; WN.err = t('ph_err_engine'); render(true); });
+  }
+  /** Раскладка: фото с камеры у поля — за своим водомером; остальные — Wt.assign (№, цвет кольца, близость к прошлым). */
+  function wnAssign() {
+    var ms = wmeters(), date = WN.date || today(), prev = {}, fixed = {};
+    WN.photos.forEach(function (p) { if (p.fixed) fixed[p.fixed] = true; });
+    var free = ms.filter(function (m) { return !fixed[m.id]; });
+    free.forEach(function (m) { var r = wprevFor(m.id, date); if (r) prev[m.id] = r.vals[m.id]; if (WN.src[m.id] && WN.auto[m.id]) { delete WN.vals[m.id]; } delete WN.src[m.id]; });
+    WN.photos.forEach(function (p) { p.meters = p.fixed ? [p.fixed] : []; });
+    var A = Wt.assign(WN.photos.map(function (p) { return p.fixed ? null : p.res; }), free, prev);
+    Object.keys(A.by).forEach(function (mid) {
+      var x = A.by[mid];
+      WN.src[mid] = { photo: x.photo, value: x.value, partial: x.partial, half: x.half, why: x.why, guess: x.guess };
+      WN.photos[x.photo].meters.push(mid);
+      if (x.value !== null && (!WN.vals[mid] || WN.auto[mid])) { WN.vals[mid] = String(x.value); WN.auto[mid] = true; }
+    });
+    WN.unused = A.unused;
+  }
+  document.addEventListener('change', function (e) {
+    var el = e.target; if (!el || el.id !== 'wn-files' || !el.files) return;
+    var fs = Array.prototype.slice.call(el.files, 0, 8); el.value = ''; wnRun(fs);
+  });
+  document.addEventListener('input', function (e) { var el = e.target; if (el && el.getAttribute && el.getAttribute('data-wn')) WN.auto[el.getAttribute('data-wn')] = false; }, true);
 
   /** Барабан водоміра для привітання: тепло (екран) і вода (барабан) — видно, що лічильників кілька. */
   function drumHero() { return '<div class="drum" aria-hidden="true">' + '00175'.split('').map(function (d) { return '<span>' + d + '</span>'; }).join('') + '921'.split('').map(function (d) { return '<span class="r">' + d + '</span>'; }).join('') + '<small>м³</small></div>'; }
@@ -4553,7 +4746,8 @@ input[type=text]:not(.dmy-native):not(.pl-in), input[type=email], input[type=pas
     var noteTxt = function (x) { return x.note ? (t('pn_' + x.note) !== 'pn_' + x.note && t('pn_' + x.note) ? t('pn_' + x.note) : x.note) : ''; };
     var INFO = { test_screen: 1, dt_screen: 1 };   // служебные экраны — не ошибка, просто пояснение
     var info = (res.photos || []).filter(function (x) { return INFO[x.note] && !(x.readings || []).length; });
-    var bad = (res.photos || []).filter(function (x) { return !INFO[x.note] && ((x.quality && x.quality !== 'ok') || (x.meterType && x.meterType !== 'heat') || (res.engine === 'local' && x.note)); });
+    var bad = (res.photos || []).filter(function (x) { return !(PH.waterIdx && PH.waterIdx.indexOf(x.index) >= 0 && wmeters().length) && !INFO[x.note] && ((x.quality && x.quality !== 'ok') || (x.meterType && x.meterType !== 'heat') || (res.engine === 'local' && x.note)); });
+    if (PH.waterIdx && PH.waterIdx.length && wmeters().length) h += '<div class="banner" data-key="photo-water">' + ico('drop', 22, 'c-cold') + '<div><p><b>' + esc(t('wnp_mixed', { list: PH.waterIdx.map(function (i) { return i + 1; }).join(', ') })) + '</b></p><p><button class="btn sec" data-act="ph-water" data-key="photo-water-go">' + esc(t('wnp_mixed_go')) + '</button></p></div></div>';
     var miss = R.FIELDS.filter(function (f) { return f.key !== 'date' && f.key !== 'errHours' && f.key !== 'tReturn' && !p[f.key]; }).map(function (f) { return fieldLabel(f.key).toLowerCase(); });
     if (miss.length) h += '<div class="banner">' + ico('info', 22) + '<div><p>' + esc(t('ph_missing_screens', { list: miss.join(', ') })) + '</p></div></div>';
     if (info.length) h += '<p class="small muted">' + info.map(function (x) { return esc(t('ph_from', { n: x.index + 1 })) + ' — ' + esc(noteTxt(x)); }).join('<br>') + '</p>';
@@ -4637,9 +4831,15 @@ input[type=text]:not(.dmy-native):not(.pl-in), input[type=email], input[type=pas
     }).then(function (res) {
       PH.result = res;
       // счётчик воды / света / газа вместо тепла — сказать прямо, а не «не удалось распознать»
+      // водомеры (в т. ч. присланные боту) — в ввод воды, с уже прочитанными окнами барабанов
+      PH.waterIdx = (res.photos || []).filter(phIsWater).map(function (x) { return x.index; });
+      if (PH.waterIdx.length && PH.mode === 'reading' && wmeters().length) {
+        var heatRead = (res.photos || []).some(function (x) { return PH.waterIdx.indexOf(x.index) < 0 && x.readings && x.readings.length; });
+        if (!heatRead) { PH.status = 'idle'; phToWater(true); return; }
+      }
       var others = (res.photos || []).filter(function (x) { return x.meterType && x.meterType !== 'heat'; });
       var anyRead = (res.photos || []).some(function (x) { return x.readings && x.readings.length; });
-      if (others.length && !anyRead && !(res.meter && res.meter.modelId)) { PH.status = 'idle'; PH.error = t('ph_not_heat_' + others[0].meterType); render(true); return; }
+      if (others.length && !anyRead && !(res.meter && res.meter.modelId)) { PH.status = 'idle'; PH.error = t('ph_not_heat_' + others[0].meterType) + (others[0].meterType === 'water' && !wmeters().length ? ' ' + t('wnp_setup_first') : ''); render(true); return; }
       if (PH.mode === 'model') {
         var id = res.meter && res.meter.modelId && M.byId(res.meter.modelId) ? res.meter.modelId : null;
         PH.status = 'idle';
@@ -4655,6 +4855,24 @@ input[type=text]:not(.dmy-native):not(.pl-in), input[type=email], input[type=pas
       PH.status = 'idle'; if (e && e.code === 'cancelled') { render(true); return; }
       PH.error = phErr(e && e.code); render(true);
     });
+  }
+  /** Фото водомера: распознаватель узнал водомер по надписям или нашёл уверенное окно барабана без экранов тепла. */
+  function phIsWater(x) {
+    if (!x) return false;
+    var drum = x.ocr && (x.ocr.drums || []).some(Wt.goodDrum);
+    return x.meterType === 'water' || (drum && !(x.readings && x.readings.length) && x.meterType !== 'heat');
+  }
+  /** Фото водомеров из пачки (или из бота) → ввод воды: окна барабанов уже прочитаны — раскладываем по водомерам. */
+  function phToWater(all) {
+    var idx = PH.waterIdx || [], byIdx = {};
+    (PH.result && PH.result.photos || []).forEach(function (x) { byIdx[x.index] = x; });
+    WN = wnFresh('hot'); WN.date = PH.date && PH.date !== today() ? PH.date : '';
+    idx.forEach(function (i) { var f = PH.files[i]; if (!f) return; var o = byIdx[i] && byIdx[i].ocr; WN.photos.push({ file: f, url: URL.createObjectURL(f), res: o ? { lines: o.lines || [], drums: o.drums || [] } : null, meters: [] }); });
+    WN.inbox = idx.map(function (i) { return PH.files[i] && PH.files[i]._srv; }).filter(function (id) { return id && PH.inbox && PH.inbox.indexOf(id) >= 0; });
+    if (all) phReset('reading'); else WN.back = 'photo';
+    var need = WN.photos.some(function (p) { return !p.res; });
+    go('wnew');
+    if (need) wnRun([]); else { wnAssign(); render(true); wnCheck(true); }
   }
   function phApply() {
     inboxDone();
@@ -4985,6 +5203,7 @@ input[type=text]:not(.dmy-native):not(.pl-in), input[type=email], input[type=pas
       case 'fb-close': { var tx = document.getElementById('fb-text'); if (tx) FB.text = tx.value; FB.open = false; render(true); break; }
       case 'fb-send': fbSend(); break;
       case 'ph-stop': if (PH.ctl) PH.ctl.abort(); break;
+      case 'ph-water': phToWater(false); break;
       case 'ph-again': PH.status = 'idle'; PHS.save(false); render(true); break;
       case 'ph-new': inboxDone(); phReset(PH.mode); render(true); break;
       case 'inbox-run': inboxRun(); break;

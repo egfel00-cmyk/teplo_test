@@ -199,9 +199,68 @@
     return out;
   }
 
+  /** Окну барабана можно верить при раскладке (а не случайному тёмному пятну). */
+  function goodDrum(d) { var t = String((d && d.text) || '').replace(/\D/g, ''); return t.length >= 4 && ((d.votes || 0) >= 2 || (d.score || 0) >= 0.9); }
+  function center(o) { return { x: (o.x || 0) + (o.w || 0) / 2, y: (o.y || 0) + (o.h || 0) / 2 }; }
+  /**
+   * Пачка фото → показания по водомерам. photos: [{lines, drums}] (TeploOCR.read с {all:true}); meters: [{id, kind, serial}];
+   * prev: {meterId: прошлое показание}. На одном фото может быть несколько водомеров (каждое уверенное окно — отдельно).
+   * Чьё окно: заводской № на фото (на фото с несколькими окнами — ближайшему окну) → цвет кольца (красное — горячая,
+   * синее — холодная) → близость к прошлому (не меньше и ненамного больше).
+   * → { by: {meterId: {value, partial, photo, sure, half, why: 'serial'|'tint'|'prev'|'', guess}}, unused: [индексы фото] }
+   *   guess — другой водомер подходил так же хорошо (могли перепутать), why '' — подсказок не было вовсе.
+   */
+  function assign(photos, meters, prev) {
+    prev = prev || {};
+    var serials = meters.map(function (m) { return { m: m, s: String(m.serial || '').replace(/\D/g, '') }; }).filter(function (x) { return x.s.length >= 5; });
+    var cands = [];
+    (photos || []).forEach(function (ph, i) {
+      if (!ph) return;
+      var ds = (ph.drums || []).filter(function (d) { return String(d.text || '').replace(/\D/g, '').length >= 3; }), good = ds.filter(goodDrum), seen = [];
+      (ph.lines || []).forEach(function (l) {
+        var dg = [l.text].concat(l.alts || []).join(' ').replace(/[OoОо]/g, '0').replace(/\D/g, '');
+        serials.forEach(function (x) { if (dg.indexOf(x.s) >= 0) seen.push({ m: x.m, at: center(l) }); });
+      });
+      if (good.length >= 2) good.forEach(function (d) { cands.push({ photo: i, res: { drums: [d], lines: [] }, drum: d, seen: seen, multi: good }); });
+      else cands.push({ photo: i, res: ph, drum: good[0] || ds[0] || null, seen: seen, multi: null });
+    });
+    var pairs = [];
+    cands.forEach(function (c, ci) {
+      meters.forEach(function (m) {
+        var p = prev[m.id] !== undefined && prev[m.id] !== '' ? prev[m.id] : null, r = fromOcr(c.res, p);
+        if (!r) return;
+        var sc = r.value !== null ? 10 : 3, why = '';
+        c.seen.forEach(function (x) {
+          // на фото с несколькими окнами номер относится к ближайшему окну
+          var mine = !c.multi || c.multi.every(function (o) { if (o === c.drum) return true; var a = center(c.drum), b = center(o); return Math.hypot(a.x - x.at.x, a.y - x.at.y) <= Math.hypot(b.x - x.at.x, b.y - x.at.y); });
+          if (!mine) return;
+          if (x.m.id === m.id) { sc += 100; why = 'serial'; } else sc -= 100;
+        });
+        var tint = (c.drum && c.drum.tint) || r.tint;
+        if (tint === 'red' || tint === 'blue') { if ((tint === 'red') === (m.kind === 'hot')) { sc += 20; why = why || 'tint'; } else sc -= 20; }
+        if (p !== null && r.value !== null) {
+          var dv = r.value - Math.floor(num(p) + 1e-9);
+          if (dv < 0) sc -= 40; else if (dv <= 60) { sc += 15 - Math.min(10, dv / 4); why = why || 'prev'; } else if (dv > 300) sc -= 30;
+        }
+        if (r.sure) sc += 3;
+        pairs.push({ c: ci, m: m, r: r, sc: sc, why: why });
+      });
+    });
+    pairs.sort(function (a, b) { return b.sc - a.sc || a.c - b.c; });
+    var by = {}, usedC = {}, usedP = {};
+    pairs.forEach(function (x) {
+      if (by[x.m.id] || usedC[x.c] || x.sc < -5) return;
+      var guess = pairs.some(function (y) { return y.c === x.c && y.m !== x.m && y.sc > x.sc - 5; });
+      by[x.m.id] = { value: x.r.value, partial: x.r.partial || null, photo: cands[x.c].photo, sure: !!x.r.sure && !guess, half: !!x.r.half, why: x.why, guess: guess };
+      usedC[x.c] = true; usedP[cands[x.c].photo] = true;
+    });
+    var unused = []; (photos || []).forEach(function (ph, i) { if (!usedP[i]) unused.push(i); });
+    return { by: by, unused: unused };
+  }
+
   function uid() { return 'w' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }
 
   var api = { VK_BOT: VK_BOT, VK_CABINET: VK_CABINET, VK_DEADLINE: VK_DEADLINE, TARIFFS: TARIFFS, HOT: HOT,
-    num: num, whole: whole, tariffAt: tariffAt, cost: cost, check: check, blocked: blocked, vkCommand: vkCommand, vkWindow: vkWindow, series: series, monthly: monthly, summary: summary, fromOcr: fromOcr, fromDrum: fromDrum, uid: uid };
+    num: num, whole: whole, tariffAt: tariffAt, cost: cost, check: check, blocked: blocked, vkCommand: vkCommand, vkWindow: vkWindow, series: series, monthly: monthly, summary: summary, fromOcr: fromOcr, assign: assign, goodDrum: goodDrum, fromDrum: fromDrum, uid: uid };
   if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.TeploWater = api;
 })(typeof window !== 'undefined' ? window : this);

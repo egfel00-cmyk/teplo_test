@@ -179,6 +179,21 @@ ok('админ: отметить отзыв обработанным', $boss->re
 Db::q('UPDATE photos SET created_at = ? WHERE id = ?', [gmdate('c', time() - 100 * 86400), $r1->body['id']]);
 ok('очистка: фото старше 90 дней удаляются', Admin::cleanup() === 1 && !is_file(Recognize::path($p1)));
 
+echo "\nФото в записях истории:\n";
+$id2 = $r2->body['id'];
+$g = $rb->req('GET', '/api/photo', null, ['QUERY_STRING' => 'id=' . $id2]);
+ok('хозяину фото записи отдаётся байтами', $g->status === 200 && $g->file['mime'] === 'image/png' && is_file($g->file['path']));
+ok('чужому — 404 (не 403: не выдаём, что фото есть)', $boss->req('GET', '/api/photo', null, ['QUERY_STRING' => 'id=' . $id2])->status === 404);
+ok('без входа — 401', (new Browser('10.0.4.9'))->req('GET', '/api/photo', null, ['QUERY_STRING' => 'id=' . $id2])->status === 401);
+$k = $rb->req('POST', '/api/photo/keep', ['ids' => [$id2, 'zz', str_repeat('a', 24)], 'keep' => true]);
+ok('keep: хранить фото записи (чужие/кривые id пропускаются)', $k->status === 200 && $k->body['n'] === 1 && (int)Db::one('SELECT kept FROM photos WHERE id = ?', [$id2])['kept'] === 1);
+ok('keep: чужое фото пометить нельзя', $boss->req('POST', '/api/photo/keep', ['ids' => [$id2], 'keep' => false])->body['n'] === 0);
+Db::q('UPDATE photos SET created_at = ? WHERE id = ?', [gmdate('c', time() - 100 * 86400), $id2]);
+ok('очистка не трогает фото записей истории', Admin::cleanup() === 0 && is_file(Recognize::path(Db::one('SELECT * FROM photos WHERE id = ?', [$id2]))));
+$rb->req('POST', '/api/photo/keep', ['ids' => [$id2], 'keep' => false]);
+$p2 = Db::one('SELECT * FROM photos WHERE id = ?', [$id2]);
+ok('запись удалили (keep=false) — фото снова уходит по сроку', Admin::cleanup() === 1 && !is_file(Recognize::path($p2)));
+
 echo "\nНастройки из /admin (ключ API, бот):\n";
 $calls = []; $goodKey = 'sk-ant-api03-' . str_repeat('x', 40);
 Recognize::$check = function ($key, $payload) use ($goodKey) { if ($key !== $goodKey) throw new HttpError(503, 'recognition_off', ['human' => 'Ключ API отклонён (HTTP 401)']); return ['ok' => true, 'model' => $payload['model']]; };
