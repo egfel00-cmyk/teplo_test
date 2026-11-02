@@ -998,8 +998,8 @@
       return histRow({ key: 'wrec-' + x.rec.id, href: '#wrec-' + x.rec.id, q: has ? '+' + d : null, unit: 'м³', money: has ? wcostOf(kind, d, x.rec.date) : null,
         none: x.rec.base ? t('wh_base') : t('hr_first'),
         date: fmtDate(x.rec.date, true), sub: [t('hr_on_meter', { v: vs.replace(/<[^>]+>/g, ''), u: 'м³' }), has && days ? days + '\u00a0' + t('days_short') : '', pf ? t('own_paid', { d: fmtDate(pf.date) }) + ' · ' + t('own_between', { n: pf.n }) : ''],
-        right: (np ? '<span class="ph-n" title="' + esc(t('hp_n', { n: np })) + '">' + ico('camera', 16) + '<span class="num">' + np + '</span></span>' : '') + billMark(x.rec.bills) +
-          (x.rec.base ? basePill(x.rec) : own ? ownPill() : sent ? '<span class="pill ok">' + esc(t('wh_sent')) + '</span>' : '<span class="pill neutral">' + esc(t('wh_notsent')) + '</span>') });
+        right: (np ? '<span class="ph-n" title="' + esc(t('hp_n', { n: np })) + '">' + ico('camera', 16) + '<span class="num">' + np + '</span></span>' : '') + billMark(x.rec.bills),
+        st: stChip('w', x.rec, kind, x.rec.base ? (baseSent(x.rec) ? 'sent' : 'not') : own ? 'own' : sent ? 'sent' : 'not') });
     }).join('') + '</ul>' };
   }
   function whistory(kind) {
@@ -1209,8 +1209,8 @@
       var x = y.x, r = x.rec, has = !r.base && x.kwh !== null, c = has ? md.cost(y.m, x.dz, r.date, sopts(k)).total : null;
       return histRow({ key: 'erec-' + r.id, href: '#erec-' + r.id, q: has ? '+' + x.kwh : null, unit: u, money: c, none: r.base ? t('eh_base') : t('hr_first'), date: fmtDate(r.date, true),
         sub: [t('hr_on_meter', { v: (ms.length > 1 ? (y.m.name || '') + ' ' : '') + evals(y.m, r), u: u }), has && x.days ? x.days + ' ' + t('days_short') : '', y.pf ? t('own_paid', { d: fmtDate(y.pf.date) }) + ' · ' + t('own_between', { n: y.pf.n }) : ''],
-        right: ((r.photos || []).length ? '<span class="ph-n">' + ico('camera', 16) + '<span class="num">' + r.photos.length + '</span></span>' : '') + billMark(r.bills) +
-          (r.base ? basePill(r) : r.own ? ownPill() : ssent(k, r) ? '<span class="pill ok">' + esc(t('wh_sent')) + '</span>' : '<span class="pill neutral">' + esc(t('wh_notsent')) + '</span>') });
+        right: ((r.photos || []).length ? '<span class="ph-n">' + ico('camera', 16) + '<span class="num">' + r.photos.length + '</span></span>' : '') + billMark(r.bills),
+        st: stChip('m', r, k, r.base ? (baseSent(r) ? 'sent' : 'not') : r.own ? 'own' : ssent(k, r) ? 'sent' : 'not') });
     }).join('') + '</ul>' };
   }
   /** Галочка «опалення» (світло: пільгова ціна 2,64; газ: котел — великий розхід взимку — норма) і ціна газу — у квартири. */
@@ -1680,6 +1680,8 @@
   // действия воды
   function waterAct(act, el, e) {
     switch (act) {
+      case 'st-open': stOpen(el); return true;
+      case 'st-set': stApply(el.getAttribute('data-src'), el.getAttribute('data-id'), el.getAttribute('data-k'), el.getAttribute('data-v')); return true;
       case 'own': case 'base-sent': {
         var osrc = el.getAttribute('data-src'), oid = el.getAttribute('data-id'), on = el.getAttribute('data-v') === '1';
         var orec = ((osrc === 'w' ? S.water : osrc === 'm' ? S.mrecs : S.readings) || []).filter(function (x) { return x && x.id === oid; })[0]; if (!orec) return true;
@@ -1913,8 +1915,8 @@
   /** Привітання: 4 табло — тепло (зелений ЖК), вода (циферблат), світло (темний екран), газ (жовта панель) — видно, що
    *  лічильники всі, і кожен впізнається на вигляд. Декор: aria-hidden, підписи — для зрячих. */
   function welcomeHero() {
-    var cell = function (k, html, cap) { return '<figure class="wh-c wh-' + k + '">' + html + '<figcaption>' + ico(KINDS[k].icon, 16, KINDS[k].cls) + '<span>' + esc(cap) + '</span></figcaption></figure>'; };
-    return '<div class="welcome-lcd wh" aria-hidden="true" data-key="welcome-hero">' + cell('heat', lcd([{ text: '13.245', tag: 'Gcal' }], 'boot'), t('kd_heat')) + cell('hot', wdrum('175.921', 'hot'), t('st_water')) +
+    var cell = function (k, html, cap) { return '<figure class="whero-c whero-' + k + '">' + html + '<figcaption>' + ico(KINDS[k].icon, 16, KINDS[k].cls) + '<span>' + esc(cap) + '</span></figcaption></figure>'; };
+    return '<div class="welcome-lcd whero" aria-hidden="true" data-key="welcome-hero">' + cell('heat', lcd([{ text: '13.245', tag: 'Gcal' }], 'boot'), t('kd_heat')) + cell('hot', wdrum('175.921', 'hot'), t('st_water')) +
       cell('elec', elcd([{ text: '10420' }]), t('kd_elec')) + cell('gas', wdrum('1225.4', 'gas'), t('kd_gas')) + '</div>';
   }
   V.welcome = function () {
@@ -2138,11 +2140,72 @@
     var main = '<div class="hr-main">' + (o.lead || '') + (hasQ || hasM
       ? (hasQ ? '<span class="hr-q">' + esc(o.q) + ' <small>' + esc(o.unit) + '</small></span>' : '') + (hasM ? '<span class="hr-m">≈ ' + esc(money0(o.money)) + ' <small>грн</small></span>' : '')
       : '<span class="hr-none">' + esc(o.none || '') + '</span>') + '</div>';
-    // дата — сверху, отдельной строкой с отступом (тем же мелким шрифтом), ниже — сколько и почём
-    return '<li' + (o.cls ? ' class="' + o.cls + '"' : '') + ' data-key="' + esc(o.key) + '"><a class="rowlink hrow" href="' + esc(o.href) + '"><div class="grow">' +
+    // дата — сверху, отдельной строкой с отступом (тем же мелким шрифтом), ниже — сколько и почём.
+    // Есть статус (o.st) — чипс рядом со ссылкой (на телефоне — строкой ниже): своя кнопка, выбор «передано / не передано / для себе»
+    return '<li class="' + (o.st ? 'hli' : '') + (o.cls ? ' ' + o.cls : '') + '" data-key="' + esc(o.key) + '"><a class="rowlink hrow" href="' + esc(o.href) + '"><div class="grow">' +
       (o.date ? '<div class="hr-date">' + esc(o.date) + '</div>' : '') + main +
-      '<div class="hr-sub">' + o.sub.filter(Boolean).map(esc).join(' · ') + '</div></div>' + (o.right || '') + '</a></li>';
+      '<div class="hr-sub">' + o.sub.filter(Boolean).map(esc).join(' · ') + '</div></div>' + (o.right || '') + '</a>' + (o.st || '') + '</li>';
   }
+  /** Чипс статуса в истории — кнопка: нажал — меню «Передано · Не передано · Лише для себе» прямо под ним.
+   *  src: w (вода) | m (світло, газ) | h (тепло); k — вид (hot/cold/elec/gas/heat); cur: sent | not | own; label — своя надпись
+   *  (у тепла — «Прийнято», «На перевірці»…). Стартовые — только «передано / не передавали». */
+  function stChip(src, r, k, cur, label) {
+    var cls = cur === 'own' ? 'own' : cur === 'sent' ? 'ok' : 'neutral';
+    var txt = label || '<span class="pill ' + cls + '">' + esc(cur === 'own' ? t('own_pill') : cur === 'sent' ? t('wh_sent') : r.base ? t('bs_unsent') : t('wh_notsent')) + '</span>';
+    return '<button type="button" class="st-chip" data-act="st-open" data-src="' + src + '" data-id="' + esc(r.id) + '" data-k="' + k + '" data-cur="' + cur + '"' + (r.base ? ' data-base="1"' : '') +
+      ' aria-haspopup="true" aria-expanded="false" aria-label="' + esc(t('st_aria', { s: String(txt).replace(/<[^>]+>/g, '') })) + '" data-key="st-' + esc(r.id) + '">' + txt + ico('chev', 14, 'st-dd') + '</button>';
+  }
+  function stClose() { Array.prototype.forEach.call(document.querySelectorAll('.st-menu'), function (m) { m.remove(); }); Array.prototype.forEach.call(document.querySelectorAll('.st-chip[aria-expanded="true"]'), function (b) { b.setAttribute('aria-expanded', 'false'); }); }
+  function stOpen(el) {
+    var was = el.getAttribute('aria-expanded') === 'true'; stClose(); if (was) return;
+    var src = el.getAttribute('data-src'), k = el.getAttribute('data-k'), cur = el.getAttribute('data-cur'), base = el.getAttribute('data-base') === '1';
+    var opts = base ? [['sent', 'st_sent', 'bs_lead_s'], ['not', 'st_base_not', '']] : [['sent', 'st_sent', 'st_sent_' + (k === 'hot' ? 'hot' : k)], ['not', 'st_not', ''], ['own', 'st_own', 'st_own_s']];
+    var m = document.createElement('div'); m.className = 'st-menu'; m.setAttribute('role', 'menu'); m.setAttribute('data-key', 'st-menu');
+    m.innerHTML = opts.map(function (o) {
+      var on = o[0] === cur, sub = o[2] ? t(o[2]) : '';
+      return '<button type="button" role="menuitemradio" aria-checked="' + on + '" class="st-opt' + (on ? ' on' : '') + '" data-act="st-set" data-v="' + o[0] + '" data-src="' + src + '" data-id="' + esc(el.getAttribute('data-id')) + '" data-k="' + k + '" data-key="st-set-' + o[0] + '">' +
+        '<span class="st-mark">' + (on ? ico('check', 18) : '') + '</span><span><b>' + esc(t(o[1])) + '</b>' + (sub ? '<span class="small muted">' + esc(sub) + '</span>' : '') + '</span></button>';
+    }).join('');
+    var li = el.closest('li'); if (li) li.appendChild(m); else el.parentNode.insertBefore(m, el.nextSibling);
+    el.setAttribute('aria-expanded', 'true');
+    // под чипсом, но не за краем экрана
+    if (li) { var lr = li.getBoundingClientRect(), cr = el.getBoundingClientRect(), vw = document.documentElement.clientWidth, mw = m.offsetWidth;
+      var x = Math.min(Math.max(8, cr.right - mw), vw - 8 - mw); m.style.left = Math.round(x - lr.left) + 'px'; m.style.top = Math.round(cr.bottom - lr.top + 6) + 'px'; m.style.right = 'auto'; }
+    var f = m.querySelector('.st-opt.on') || m.querySelector('.st-opt'); if (f) f.focus();
+  }
+  /** Применить статус из меню: вода — sent.vk (+ sent.htm у горячей), світло/газ — sent[obl|grm], тепло — status handed ↔ checked;
+   *  «для себе» — r.own; стартовые — sent.no. Одна запись воды — общая для горячей и холодной: «не передано» у горячей снимает
+   *  только ХТМ, у холодной — Водоканал. */
+  function stApply(src, id, k, v) {
+    var list = src === 'w' ? S.water : src === 'm' ? S.mrecs : S.readings, r = (list || []).filter(function (x) { return x && x.id === id; })[0];
+    if (!r) return;
+    var d = today();
+    r.sent = Object.assign({}, r.sent || {});
+    if (r.base) { if (v === 'sent') delete r.sent.no; else r.sent.no = true; }
+    else if (v === 'own') r.own = true;
+    else {
+      delete r.own;
+      if (src === 'w') {
+        if (v === 'sent') { if (!r.sent.vk) r.sent.vk = d; if (k === 'hot' && !r.sent.htm) r.sent.htm = d; }
+        else if (k === 'hot') r.sent.htm = ''; else r.sent.vk = '';
+      } else if (src === 'm') { var sk = SK[k] ? SK[k].sk : 'obl'; r.sent[sk] = v === 'sent' ? (r.sent[sk] || d) : ''; }
+      else {
+        if (v === 'sent' && !/^(handed|accepted|rejected)$/.test(r.status)) { r.status = 'handed'; r.handedAt = new Date().toISOString(); }
+        if (v === 'not' && /^(handed|accepted|rejected)$/.test(r.status)) { r.status = 'checked'; delete r.handedAt; }
+      }
+    }
+    if (src === 'h' && !Object.keys(r.sent).length) delete r.sent;
+    r.updatedAt = Date.now(); save();
+    toast(t('st_done', { s: t(r.base ? (v === 'sent' ? 'st_sent' : 'st_base_not') : v === 'own' ? 'st_own' : v === 'sent' ? 'st_sent' : 'st_not').toLowerCase() }));
+    render(true);
+    var b = document.querySelector('[data-key="st-' + id + '"]'); if (b) try { b.focus({ preventScroll: true }); } catch (e0) { b.focus(); }
+  }
+  document.addEventListener('click', function (e) { if (!document.querySelector('.st-menu')) return; var x = e.target; if (x && x.closest && (x.closest('.st-menu') || x.closest('.st-chip'))) return; stClose(); }, true);
+  document.addEventListener('keydown', function (e) {
+    var m = document.querySelector('.st-menu'); if (!m) return;
+    if (e.key === 'Escape') { var li = m.closest('li'), b = li && li.querySelector('.st-chip'); stClose(); if (b) b.focus(); e.preventDefault(); return; }
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { var os = Array.prototype.slice.call(m.querySelectorAll('.st-opt')), i = os.indexOf(document.activeElement); i = (i + (e.key === 'ArrowDown' ? 1 : -1) + os.length) % os.length; os[i].focus(); e.preventDefault(); }
+  });
   function heatMixed(limit) {
     var arr = RD().map(function (r) { return { d: (r.htm && r.htm.date) || '', r: r }; }).concat(gaps('heat').map(function (g) { return { d: g.from, g: g }; }));
     arr.sort(function (a, b) { return a.d < b.d ? 1 : a.d > b.d ? -1 : a.g ? -1 : 1; });
@@ -2159,7 +2222,8 @@
       return histRow({ key: 'reading-' + r.id, href: '#rec-' + r.id, q: ok ? '+' + fmtN(iv.dE, 3) : null, unit: 'Гкал', money: ok ? iv.cost : null,
         none: iv ? t('hi_less', { de: Math.abs(iv.dE).toFixed(3) }) : t(gaps('heat').some(function (g) { return g.from < r.htm.date; }) ? 'hr_nogap' : 'hr_first'),
         date: fmtDate(r.htm.date, true), sub: [t('hr_on_meter', { v: R.formatForHtm('energy', r.htm.energy), u: 'Гкал' }), iv ? iv.days + '\u00a0' + t('days_short') + (iv.overGap ? ' ' + t('hr_over_gap') : '') : ''],
-        right: wxChip(wxFor(r)) + billMark(r.bills) + (r.own ? ownPill() : '<span class="pill ' + cls + '">' + esc(t('status_' + r.status)) + '</span>') });
+        right: wxChip(wxFor(r)) + billMark(r.bills),
+        st: stChip('h', r, 'heat', r.own ? 'own' : /^(handed|accepted|rejected)$/.test(r.status) ? 'sent' : 'not', r.own ? '' : '<span class="pill ' + cls + '">' + esc(t('status_' + r.status)) + '</span>') });
     })[0];
   }
 

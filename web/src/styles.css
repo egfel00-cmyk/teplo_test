@@ -866,17 +866,17 @@ fieldset.field { border: 0; padding: 0; min-width: 0; }
 .own-box p { margin: 4px 0; }
 .own-chk { margin: 12px 0 4px; }
 /* ---- первый вход: 4 табло на привітанні, образцы табло в выборе счётчиков ---- */
-.wh { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 10px; max-width: 440px; }
-.wh-c { margin: 0; display: grid; gap: 6px; align-content: start; min-width: 0; }
-.wh-c figcaption { display: flex; align-items: center; gap: 6px; font-size: 14px; font-weight: 600; color: var(--c-ink-2); }
-.wh-c figcaption .ico { flex: none; }
-.wh .lcd { padding: 8px 10px 6px; border-width: 4px; border-radius: 10px; }
-.wh .lcd svg.seg { height: 30px; }
-.wh .lcd .tag { font-size: 12px; } .wh .lcd .line { gap: 6px; justify-content: space-between; } .wh .lcd .line .tag { padding-bottom: 3px; }
-.wh .elcd .el-hd { font-size: 10px; margin-bottom: 2px; } .wh .el-led { width: 7px; height: 7px; } .wh .el-u { font-size: 11px; }
-.wh .wdrum, .wh .gdrum { padding: 7px 8px; gap: 6px; border-width: 3px; }
-.wh .wd-win { gap: 1px; padding: 3px; } .wh .wd-c { font-size: clamp(10px, 6.4cqw, 20px); } .wh .wd-u { font-size: 12px; }
-.wh .gd-side .ico { width: 14px; height: 14px; } .wh .gd-g { font-size: 9px; padding: 1px 2px; }
+.whero { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 10px; max-width: 440px; }
+.whero-c { margin: 0; display: grid; gap: 6px; align-content: start; min-width: 0; }
+.whero-c figcaption { display: flex; align-items: center; gap: 6px; font-size: 14px; font-weight: 600; color: var(--c-ink-2); }
+.whero-c figcaption .ico { flex: none; }
+.whero .lcd { padding: 8px 10px 6px; border-width: 4px; border-radius: 10px; }
+.whero .lcd svg.seg { height: 30px; }
+.whero .lcd .tag { font-size: 12px; } .whero .lcd .line { gap: 6px; justify-content: space-between; } .whero .lcd .line .tag { padding-bottom: 3px; }
+.whero .elcd .el-hd { font-size: 10px; margin-bottom: 2px; } .whero .el-led { width: 7px; height: 7px; } .whero .el-u { font-size: 11px; }
+.whero .wdrum, .whero .gdrum { padding: 7px 8px; gap: 6px; border-width: 3px; }
+.whero .wd-win { gap: 1px; padding: 3px; } .whero .wd-c { font-size: clamp(10px, 6.4cqw, 20px); } .whero .wd-u { font-size: 12px; }
+.whero .gd-side .ico { width: 14px; height: 14px; } .whero .gd-g { font-size: 9px; padding: 1px 2px; }
 /* строка вида со образцом табло: на телефоне — образец слева, справа название и под ним +/−; шире — в одну строку */
 .aw-kind.kp { grid-template-columns: 108px minmax(0, 1fr); grid-template-areas: "p t" "p s"; gap: 8px 12px; padding: 12px; }
 .aw-kind.kp .kprev { grid-area: p; align-self: center; } .aw-kind.kp .aw-kt { grid-area: t; } .aw-kind.kp .stepper, .aw-kind.kp > .pill { grid-area: s; justify-self: start; }
@@ -896,3 +896,21 @@ fieldset.field { border: 0; padding: 0; min-width: 0; }
 @media (max-width: 420px) { .top.has-close .brand span { display: none; } }
 .fs-after { margin-top: 14px; }
 .field .sp-help:empty { display: none; }
+/* ---- история: дата и чипс статуса строкой над записью; чипс — кнопка, под ним меню «передано / не передано / для себе» ---- */
+.list > li.hli { position: relative; flex-wrap: wrap; column-gap: 8px; row-gap: 2px; }
+.hli > a.rowlink { flex: 1 1 0; min-width: 0; width: auto; }
+@media (max-width: 520px) { .hli > a.rowlink { flex-basis: 100%; } .hli > .st-chip { margin: -2px 0 -4px; } }
+.st-chip { position: relative; display: inline-flex; align-items: center; gap: 2px; flex: none; min-height: 36px; padding: 0 2px 0 0; border: 0; background: none; cursor: pointer; font: inherit; color: var(--c-ink-2); border-radius: var(--r-pill); }
+.st-chip::before { content: ''; position: absolute; inset: -6px -8px; }
+.st-chip .pill { pointer-events: none; }
+.st-chip .st-dd { transform: rotate(90deg); transition: transform .15s; flex: none; }
+.st-chip[aria-expanded="true"] .st-dd { transform: rotate(-90deg); }
+.st-chip:hover .pill { filter: brightness(.96); } .st-chip:focus-visible { outline: 3px solid var(--c-info); outline-offset: 2px; }
+.st-chip .pill.neutral { background: var(--c-surface-2); color: var(--c-ink-2); border: 1px solid var(--c-field-line); }
+.st-menu { position: absolute; right: 12px; top: 44px; z-index: 30; width: max-content; min-width: 230px; max-width: min(320px, calc(100vw - 16px)); display: grid; gap: 2px; padding: 6px; background: var(--c-surface); border: 1.5px solid var(--c-field-line); border-radius: 14px; box-shadow: 0 8px 24px var(--c-shadow), 0 1px 3px var(--c-shadow); }
+.st-opt { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 48px; padding: 8px 12px 8px 8px; border: 0; border-radius: 10px; background: none; color: var(--c-ink); font: inherit; text-align: left; cursor: pointer; }
+.st-opt > span:last-child { display: flex; flex-direction: column; gap: 1px; }
+.st-opt:hover, .st-opt:focus-visible { background: var(--c-ghost-hover); outline: none; } .st-opt:focus-visible { box-shadow: 0 0 0 3px var(--c-focus-ring) inset; }
+.st-opt.on { background: var(--c-ok-soft); } .st-opt.on b { color: var(--c-ok-ink, var(--c-ink)); }
+.st-mark { flex: none; width: 20px; display: grid; place-items: center; color: var(--c-ok); }
+@media (prefers-reduced-motion: reduce) { .st-chip .st-dd { transition: none; } }
