@@ -431,7 +431,7 @@
   /** Рядок історії: період без лічильника. */
   function gapItem(g, withName) {
     var e = gapEst(g), heat = g.what === 'heat', amt = R.num(g.amount), mo = gapMonths(g), qv = e ? (heat ? e.gcal : e.m3) : 0;
-    var bits = [t('gp_row') + (withName ? ' · ' + gapMeterName(g) : ''), gapPeriod(g)];
+    var bits = [t('gp_row') + (withName ? ' · ' + gapMeterName(g) : '')];
     if (R.num(g.vFrom) !== null) bits.push(t('gp_at_off', { v: gapFmt(g, g.vFrom), u: gapUnit(g) }));
     if (g.to && R.num(g.vTo) !== null) bits.push(t(g.fresh ? 'gp_at_new' : 'gp_at_on', { v: gapFmt(g, g.vTo), u: gapUnit(g) }));
     else if (g.fresh) bits.push(t('gp_new'));
@@ -439,7 +439,7 @@
     bits.push(amt !== null ? t('gp_amount_sum', { a: money(amt), n: fmtN(mo, 1), s: money(amt * mo) }) : qv > 0 ? t('hr_est') : '');
     // крупно — сколько тепла/воды (оценка) и сколько денег: по платёжке, если записано, иначе оценка
     return histRow({ cls: 'gap-row', key: 'gap-' + g.id, href: '#gap-' + g.id, lead: '<span class="hr-ico">' + ico('wrench', 18, 'c-warn') + '</span>',
-      q: qv > 0 ? '≈ ' + fmtN(qv, heat ? 3 : 1) : null, unit: gapUnit(g), money: amt !== null ? amt * mo : e && e.cost > 0 ? e.cost : null, none: t('gp_row'), sub: bits,
+      q: qv > 0 ? '≈ ' + fmtN(qv, heat ? 3 : 1) : null, unit: gapUnit(g), money: amt !== null ? amt * mo : e && e.cost > 0 ? e.cost : null, none: t('gp_row'), date: gapPeriod(g), sub: bits,
       right: '<span class="pill ' + (g.to && g.to <= today() ? 'neutral' : 'warn') + '">' + esc(t('gp_r_' + (g.reason || 'other'))) + '</span>' });
   }
 
@@ -727,7 +727,7 @@
       var has = !x.rec.base && d !== null;
       return histRow({ key: 'wrec-' + x.rec.id, href: '#wrec-' + x.rec.id, q: has ? '+' + d : null, unit: 'м³', money: has ? wcostOf(kind, d, x.rec.date) : null,
         none: x.rec.base ? t('wh_base') : t('hr_first'),
-        sub: [fmtDate(x.rec.date, true), t('hr_on_meter', { v: vs.replace(/<[^>]+>/g, ''), u: 'м³' }), has && days ? days + '\u00a0' + t('days_short') : ''],
+        date: fmtDate(x.rec.date, true), sub: [t('hr_on_meter', { v: vs.replace(/<[^>]+>/g, ''), u: 'м³' }), has && days ? days + '\u00a0' + t('days_short') : ''],
         right: (np ? '<span class="ph-n" title="' + esc(t('hp_n', { n: np })) + '">' + ico('camera', 16) + '<span class="num">' + np + '</span></span>' : '') +
           (x.rec.base ? '' : sent ? '<span class="pill ok">' + esc(t('wh_sent')) + '</span>' : '<span class="pill neutral">' + esc(t('wh_notsent')) + '</span>') });
     }).join('') + '</ul>' };
@@ -1368,7 +1368,9 @@
     var main = '<div class="hr-main">' + (o.lead || '') + (hasQ || hasM
       ? (hasQ ? '<span class="hr-q">' + esc(o.q) + ' <small>' + esc(o.unit) + '</small></span>' : '') + (hasM ? '<span class="hr-m">≈ ' + esc(money0(o.money)) + ' <small>грн</small></span>' : '')
       : '<span class="hr-none">' + esc(o.none || '') + '</span>') + '</div>';
-    return '<li' + (o.cls ? ' class="' + o.cls + '"' : '') + ' data-key="' + esc(o.key) + '"><a class="rowlink hrow" href="' + esc(o.href) + '"><div class="grow">' + main +
+    // дата — сверху, отдельной строкой с отступом (тем же мелким шрифтом), ниже — сколько и почём
+    return '<li' + (o.cls ? ' class="' + o.cls + '"' : '') + ' data-key="' + esc(o.key) + '"><a class="rowlink hrow" href="' + esc(o.href) + '"><div class="grow">' +
+      (o.date ? '<div class="hr-date">' + esc(o.date) + '</div>' : '') + main +
       '<div class="hr-sub">' + o.sub.filter(Boolean).map(esc).join(' · ') + '</div></div>' + (o.right || '') + '</a></li>';
   }
   function heatMixed(limit) {
@@ -1386,7 +1388,7 @@
       // вся строка — в карточку показаний (там же правка, удаление, статус); главное — расход и деньги
       return histRow({ key: 'reading-' + r.id, href: '#rec-' + r.id, q: ok ? '+' + fmtN(iv.dE, 3) : null, unit: 'Гкал', money: ok ? iv.cost : null,
         none: iv ? t('hi_less', { de: Math.abs(iv.dE).toFixed(3) }) : t(gaps('heat').some(function (g) { return g.from < r.htm.date; }) ? 'hr_nogap' : 'hr_first'),
-        sub: [fmtDate(r.htm.date, true), t('hr_on_meter', { v: R.formatForHtm('energy', r.htm.energy), u: 'Гкал' }), iv ? iv.days + '\u00a0' + t('days_short') + (iv.overGap ? ' ' + t('hr_over_gap') : '') : ''],
+        date: fmtDate(r.htm.date, true), sub: [t('hr_on_meter', { v: R.formatForHtm('energy', r.htm.energy), u: 'Гкал' }), iv ? iv.days + '\u00a0' + t('days_short') + (iv.overGap ? ' ' + t('hr_over_gap') : '') : ''],
         right: wxChip(wxFor(r)) + '<span class="pill ' + cls + '">' + esc(t('status_' + r.status)) + '</span>' });
     })[0];
   }

@@ -660,6 +660,7 @@ input[type=text]:not(.dmy-native):not(.pl-in), input[type=email], input[type=pas
 .hrow .hr-q small, .hrow .hr-m small { font-size: 13px; font-weight: 600; color: var(--c-ink-2); }
 .hrow .hr-none { font-size: 15px; font-weight: 600; color: var(--c-ink-2); }
 .hrow .hr-sub { margin-top: 2px; font-size: 13px; color: var(--c-ink-2); }
+.hrow .hr-date { margin-bottom: 6px; font-size: 13px; color: var(--c-ink-2); }
 .hrow .hr-ico { align-self: center; display: inline-flex; margin-right: -8px; }
 /* узкий экран: строка истории (тепло и вода) — главное на всю ширину, значки (погода, статус) компактно строкой ниже */
 @media (max-width: 520px) {
