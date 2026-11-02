@@ -878,6 +878,37 @@ fieldset.field { border: 0; padding: 0; min-width: 0; }
 .own-box.on { border-color: var(--c-field-line); background: var(--c-surface-2); }
 .own-box p { margin: 4px 0; }
 .own-chk { margin: 12px 0 4px; }
+/* ---- первый вход: 4 табло на привітанні, образцы табло в выборе счётчиков ---- */
+.wh { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 10px; max-width: 440px; }
+.wh-c { margin: 0; display: grid; gap: 6px; align-content: start; min-width: 0; }
+.wh-c figcaption { display: flex; align-items: center; gap: 6px; font-size: 14px; font-weight: 600; color: var(--c-ink-2); }
+.wh-c figcaption .ico { flex: none; }
+.wh .lcd { padding: 8px 10px 6px; border-width: 4px; border-radius: 10px; }
+.wh .lcd svg.seg { height: 30px; }
+.wh .lcd .tag { font-size: 12px; } .wh .lcd .line { gap: 6px; justify-content: space-between; } .wh .lcd .line .tag { padding-bottom: 3px; }
+.wh .elcd .el-hd { font-size: 10px; margin-bottom: 2px; } .wh .el-led { width: 7px; height: 7px; } .wh .el-u { font-size: 11px; }
+.wh .wdrum, .wh .gdrum { padding: 7px 8px; gap: 6px; border-width: 3px; }
+.wh .wd-win { gap: 1px; padding: 3px; } .wh .wd-c { font-size: clamp(10px, 6.4cqw, 20px); } .wh .wd-u { font-size: 12px; }
+.wh .gd-side .ico { width: 14px; height: 14px; } .wh .gd-g { font-size: 9px; padding: 1px 2px; }
+/* строка вида со образцом табло: на телефоне — образец слева, справа название и под ним +/−; шире — в одну строку */
+.aw-kind.kp { grid-template-columns: 108px minmax(0, 1fr); grid-template-areas: "p t" "p s"; gap: 8px 12px; padding: 12px; }
+.aw-kind.kp .kprev { grid-area: p; align-self: center; } .aw-kind.kp .aw-kt { grid-area: t; } .aw-kind.kp .stepper, .aw-kind.kp > .pill { grid-area: s; justify-self: start; }
+.aw-kt b { display: flex; align-items: center; gap: 6px; } .aw-kt b .ico { flex: none; }
+@media (min-width: 600px) { .aw-kind.kp { grid-template-columns: 124px minmax(0, 1fr) auto; grid-template-areas: "p t s"; } .aw-kind.kp .stepper { justify-self: end; } }
+@media (max-width: 359px) { .aw-kind.kp { grid-template-columns: 92px minmax(0, 1fr); gap: 8px 10px; padding: 10px; } .aw-kind.kp .step-b { min-width: 44px; min-height: 44px; } .aw-kind.kp .step-n { min-width: 34px; } }
+.kprev { display: block; pointer-events: none; min-width: 0; }
+.kprev .lcd { padding: 5px 7px 4px; border-width: 3px; border-radius: 7px; outline-width: 1px; }
+.kprev .lcd svg.seg { height: 22px; } .kprev .lcd .tag { font-size: 10px; padding-bottom: 2px; } .kprev .lcd .line { gap: 4px; justify-content: space-between; }
+.kprev .elcd { padding-top: 4px; } .kprev .elcd .el-hd { font-size: 8px; margin-bottom: 1px; gap: 3px; } .kprev .el-led { width: 5px; height: 5px; } .kprev .el-u { font-size: 9px; }
+.kprev .wdrum, .kprev .gdrum { padding: 4px 5px; gap: 3px; border-width: 2px; border-radius: 8px; } .kprev .gdrum { border-radius: 4px; }
+.kprev .wd-win { gap: 1px; padding: 2px; border-radius: 3px; } .kprev .wd-c { font-size: clamp(8px, 8cqw, 12px); border-radius: 1px; } .kprev .wd-u { font-size: 9px; }
+.kprev .gd-side { display: none; }
+.fs-more { display: flex; gap: 8px; align-items: flex-start; margin: 4px 0 12px; } .fs-more .ico { flex: none; margin-top: 1px; }
+.aw-kind .step-b.btn:not(.sec) { color: var(--c-on-ink); }
+/* шапка экрана с «✕» на телефоне: «Лічильники» не влезал рядом с «Test beta…» и обрезался в «Лі…» — оставляем логотип */
+@media (max-width: 420px) { .top.has-close .brand span { display: none; } }
+.fs-after { margin-top: 14px; }
+.field .sp-help:empty { display: none; }
 
 </style>
 <style>.top { padding-top: max(12px, env(safe-area-inset-top)); }</style>
@@ -1330,11 +1361,12 @@ fieldset.field { border: 0; padding: 0; min-width: 0; }
       nav_home: 'Головна', nav_history: 'Історія', nav_help: 'Довідка', nav_prefs: 'Налаштування',
       close: 'Закрити', back: 'Назад', next: 'Далі', save: 'Зберегти', skip: 'Пропустити', change: 'Змінити', copy: 'Копіювати', copied: 'Скопійовано', done: 'Готово', cancel: 'Скасувати',
 
-      w_title: 'Показання лічильників — тепло й вода в одному місці',
-      w_lead: 'Теплолічильник, гаряча й холодна вода: сфотографуйте лічильники — цифри розпізнаються, перевіряться й будуть готові до передачі в ХТМ і Водоканал.',
-      w_b1: 'Опалення — крок за кроком біля теплолічильника або з фото екранів, перевірка як у робота ХТМ.',
-      w_b2: 'Вода — фото водомірів: чорні цифри барабана в м³, готова команда для бота Водоканалу до 20 числа.',
-      w_b3: 'Історія, витрати й вартість — окремо за кожним лічильником.',
+      w_title: 'Усі лічильники квартири — в одному місці',
+      w_lead: 'Опалення, гаряча й холодна вода, світло й газ. Сфотографуйте лічильник — цифри розпізнаються й перевіряться, а сервіс підкаже, куди й до якого числа їх передати.',
+      w_b1: 'З фото — розпізнавання прямо в телефоні, безкоштовно. Можна й вручну.',
+      w_b2: 'Куди передати: ХТМ, Водоканал, Харківобленерго, Нафтогаз — з готовим текстом, строками й нагадуванням у Telegram.',
+      w_b3: 'Кілька квартир — своя, батьків, та, що здаєте: у кожної свої лічильники.',
+      w_b4: 'Історія, витрати й вартість за кожним лічильником. Показання можна вносити й «лише для себе» — без передачі.',
       w_cta: 'Почати',
       w_fine: 'Без реєстрації. Дані зберігаються лише в цьому браузері.',
 
@@ -1556,11 +1588,25 @@ fieldset.field { border: 0; padding: 0; min-width: 0; }
 
       w_login: "Вже користуєтесь сервісом? Увійти",
       w_fine_site: "Можна без реєстрації — дані збережуться в цьому браузері. Увійдіть, щоб бачити їх і на інших пристроях.",
-      wa_title: "Ви увійшли — оберіть, що рахуємо",
-      wa_lead: "Опалення, гаряча й холодна вода — кожен лічильник окремо. Налаштуйте один раз (модель теплолічильника визначимо з фото), далі — одразу до показань.",
-      wa_cta: "Обрати лічильник",
-      wa_fine: "Ви увійшли як {who}. Дані зберігаються в акаунті й однакові на всіх пристроях.",
-      wa_other: "Інший акаунт",
+      wl_title: "Ви увійшли — налаштуймо ваші лічильники",
+      wl_lead: "Опалення, вода, світло й газ: позначте один раз, які лічильники є у квартирі, — далі одразу до показань, з фото або вручну.",
+      wl_cta: "Обрати лічильники",
+      wl_fine: "Ви увійшли як {who}. Дані зберігаються в акаунті й однакові на всіх пристроях.",
+      wl_other: "Інший акаунт",
+      fs_title: "Початок роботи",
+      fs_t1: "Які лічильники є у вашій квартирі?",
+      fs_l1: "Натисніть «+» біля тих, що стоять у квартирі, — табло підкаже, який який. Два водоміри гарячої (кухня й ванна) — «+» двічі.",
+      fs_more: "Квартир кілька — своя, батьків, та, що здаєте? Почніть з однієї — інші додасте кнопкою «+ Квартира» на головній.",
+      fs_err_none: "Позначте хоча б один лічильник — натисніть «+» біля нього.",
+      fs_go: "Почати налаштування",
+      fs_after: "Далі — коротко про кожен лічильник: показання зараз можна сфотографувати або внести пізніше.",
+      fs_sum: "Перевірте, перш ніж почати",
+      fs_sum_hint: "назву й адресу можна змінити на головній",
+      fs_q: "Налаштування: лічильник {i} з {n}",
+      fs_done: "Готово! Лічильники налаштовано — можна вносити показання.",
+      sp_none: "На фото цифр не знайшли — впишіть вручну.",
+      sp_got: "З фото: {v} — звірте з лічильником.",
+      sp_half: "Останній барабан між цифрами ({p}) — впишіть меншу цифру вручну.",
       sync_title: "Ваші дані на всіх пристроях",
       sync_local: "Дані зберігаються лише в цьому браузері.",
       sync_local_sub_site: "Увійдіть через Telegram або email — і бачитимете ті самі показання на телефоні й комп'ютері.",
@@ -2123,11 +2169,12 @@ fieldset.field { border: 0; padding: 0; min-width: 0; }
       nav_home: 'Главная', nav_history: 'История', nav_help: 'Справка', nav_prefs: 'Настройки',
       close: 'Закрыть', back: 'Назад', next: 'Далее', save: 'Сохранить', skip: 'Пропустить', change: 'Изменить', copy: 'Копировать', copied: 'Скопировано', done: 'Готово', cancel: 'Отмена',
 
-      w_title: 'Показания счётчиков — тепло и вода в одном месте',
-      w_lead: 'Теплосчётчик, горячая и холодная вода: сфотографируйте счётчики — цифры распознаются, проверятся и будут готовы к передаче в ХТМ и Водоканал.',
-      w_b1: 'Отопление — шаг за шагом у теплосчётчика или по фото экранов, проверка как у робота ХТМ.',
-      w_b2: 'Вода — фото водомеров: чёрные цифры барабана в м³, готовая команда для бота Водоканала до 20 числа.',
-      w_b3: 'История, расход и стоимость — отдельно по каждому счётчику.',
+      w_title: 'Все счётчики квартиры — в одном месте',
+      w_lead: 'Отопление, горячая и холодная вода, свет и газ. Сфотографируйте счётчик — цифры распознаются и проверятся, а сервис подскажет, куда и до какого числа их передать.',
+      w_b1: 'По фото — распознавание прямо в телефоне, бесплатно. Можно и вручную.',
+      w_b2: 'Куда передать: ХТМ, Водоканал, Харьковоблэнерго, Нафтогаз — с готовым текстом, сроками и напоминанием в Telegram.',
+      w_b3: 'Несколько квартир — своя, родителей, сдаваемая: у каждой свои счётчики.',
+      w_b4: 'История, расход и стоимость по каждому счётчику. Показания можно вносить и «только для себя» — без передачи.',
       w_cta: 'Начать',
       w_fine: 'Без регистрации. Данные хранятся только в этом браузере.',
 
@@ -2349,11 +2396,25 @@ fieldset.field { border: 0; padding: 0; min-width: 0; }
 
       w_login: "Уже пользуетесь сервисом? Войти",
       w_fine_site: "Можно без регистрации — данные сохранятся в этом браузере. Войдите, чтобы видеть их и на других устройствах.",
-      wa_title: "Вы вошли — выберите, что считаем",
-      wa_lead: "Отопление, горячая и холодная вода — каждый счётчик отдельно. Настройте один раз (модель теплосчётчика определим по фото), дальше — сразу к показаниям.",
-      wa_cta: "Выбрать счётчик",
-      wa_fine: "Вы вошли как {who}. Данные хранятся в аккаунте и одинаковы на всех устройствах.",
-      wa_other: "Другой аккаунт",
+      wl_title: "Вы вошли — настроим ваши счётчики",
+      wl_lead: "Отопление, вода, свет и газ: отметьте один раз, какие счётчики есть в квартире, — дальше сразу к показаниям, по фото или вручную.",
+      wl_cta: "Выбрать счётчики",
+      wl_fine: "Вы вошли как {who}. Данные хранятся в аккаунте и одинаковы на всех устройствах.",
+      wl_other: "Другой аккаунт",
+      fs_title: "Начало работы",
+      fs_t1: "Какие счётчики есть в вашей квартире?",
+      fs_l1: "Нажмите «+» возле тех, что стоят в квартире, — табло подскажет, какой какой. Два водомера горячей (кухня и ванная) — «+» дважды.",
+      fs_more: "Квартир несколько — своя, родителей, сдаваемая? Начните с одной — другие добавите кнопкой «+ Квартира» на главной.",
+      fs_err_none: "Отметьте хотя бы один счётчик — нажмите «+» возле него.",
+      fs_go: "Начать настройку",
+      fs_after: "Дальше — коротко о каждом счётчике: показания сейчас можно сфотографировать или внести позже.",
+      fs_sum: "Проверьте, прежде чем начать",
+      fs_sum_hint: "название и адрес можно изменить на главной",
+      fs_q: "Настройка: счётчик {i} из {n}",
+      fs_done: "Готово! Счётчики настроены — можно вносить показания.",
+      sp_none: "На фото цифр не нашли — впишите вручную.",
+      sp_got: "По фото: {v} — сверьте со счётчиком.",
+      sp_half: "Последний барабан между цифрами ({p}) — впишите меньшую цифру вручную.",
       sync_title: "Ваши данные на всех устройствах",
       sync_local: "Данные хранятся только в этом браузере.",
       sync_local_sub_site: "Войдите через Telegram или email — и будете видеть те же показания на телефоне и компьютере.",
@@ -4790,7 +4851,7 @@ fieldset.field { border: 0; padding: 0; min-width: 0; }
       ? '<a class="btn ghost" href="#' + view.closeTo + '" data-key="wiz-close" aria-label="' + esc(t('close')) + '">' + ico('close', 22) + '<span class="cl-txt">' + esc(t('close')) + '</span></a>'
       : '';
     return '<div class="app' + (bare ? ' bare-app' : '') + '">' +
-      '<header class="top"><a class="brand" href="#' + homeRoute() + '" data-key="brand">' + logo() + '<span>' + esc(t('brand')) + '</span></a>' + (window.TEPLO_API ? '<span class="beta" title="' + esc(t('beta_sub')) + '" data-key="beta">' + 'Test <span class="ver">beta 0,5 литра</span></span>' : '') + '<span class="spacer"></span>' + themeBtn() + right + '</header>' +
+      '<header class="top' + (right ? ' has-close' : '') + '"><a class="brand" href="#' + homeRoute() + '" data-key="brand">' + logo() + '<span>' + esc(t('brand')) + '</span></a>' + (window.TEPLO_API ? '<span class="beta" title="' + esc(t('beta_sub')) + '" data-key="beta">' + 'Test <span class="ver">beta 0,5 литра</span></span>' : '') + '<span class="spacer"></span>' + themeBtn() + right + '</header>' +
       nav + '<main class="main' + (bare ? ' bare' : '') + '" id="main" data-screen="' + view.screen + '" tabindex="-1">' + (/^(heat|water-hot|water-cold|elec|gas|history|stats|save)$/.test(route) ? placeBar() : /^(wnew|wadd|enew|eadd|gnew|gadd|add-meter|step|step-\d+|check|handover|baseline|meter|photo)$/.test(route) ? placeBar(true) : '') + view.html + '</main></div>' +
       (window.TEPLO_API ? '<button class="fab' + (bare ? ' fab-bare' : '') + '" data-act="fb-open" data-key="feedback" aria-haspopup="dialog">' + ico('chat', 20) + '<span>' + esc(t('fb_btn')) + '</span></button>' + fbDialog() : '') +
       '<div id="toast-host" aria-live="polite"></div>';
@@ -4895,6 +4956,11 @@ fieldset.field { border: 0; padding: 0; min-width: 0; }
   };
   var KIND_ORDER = ['heat', 'hot', 'cold', 'gas', 'elec'];
   function hasHeat() { return !!(S.meter && !S.meter.removed); }
+  /** Есть ли хоть один счётчик в любой квартире (вход на новом устройстве: уже настроен — сразу на главную). */
+  function anyMeters() {
+    var live = function (m) { return m && !m.deleted && !m.removed; };
+    return hasHeat() || places().some(function (p) { return live(p.meter) || ((p.water || {}).meters || []).some(live) || (p.meters || []).some(live); });
+  }
   function kindCount(k) { return k === 'heat' ? (hasHeat() ? 1 : 0) : KINDS[k].soon ? 0 : k === 'elec' || k === 'gas' ? pmeters(k).length : wmeters(k).length; }
   function meterTitle(what) { if (what === 'heat') return t('kd_heat'); var pm = pmeters(null, true).filter(function (x) { return x.id === what; })[0]; if (pm) return ename(pm); var m = wmeters(null, true).filter(function (x) { return x.id === what; })[0]; return m ? wname(m) : ''; }
   /** Есть ли у счётчика записи (тогда «прибрати» — в архив, иначе — удалить совсем). */
@@ -5792,16 +5858,62 @@ fieldset.field { border: 0; padding: 0; min-width: 0; }
 
   // ---------- новий лічильник світла / газу ----------
   var EA = { kind: 'elec', back: '', zones: 1, vals: {} };
+  /** Камера у поля «Показання зараз» при настройке нового счётчика (первый вход, новая квартира): фото → цифры в поле. */
+  function startCam(target, label) {
+    if (!VIS().local) return '';
+    return '<label class="wcam" title="' + esc(t('wn_photo')) + '" data-key="cam-' + target + '"><input type="file" accept="image/*" capture="environment" class="sr" data-sphoto="' + target + '" aria-label="' + esc(t('wn_photo') + (label ? ': ' + label : '')) + '">' + ico('camera', 20) + '</label>';
+  }
+  /** Строка «что прочитали с фото» внутри поля (под подсказкой). */
+  function phHelp(field, id) { return VIS().local ? field.replace(/<\/div>$/, '<div class="help sp-help" id="' + id + '-ph" aria-live="polite"></div></div>') : field; }
+  /** Распознать «показання зараз» с фото: вода — барабан (м³ и литры), газ — барабан, світло — числа по зонам (T1/T2…).
+   *  Поля не перерисовываем (форма #wadd не хранит введённое) — пишем прямо в input; человек проверяет. */
+  function startPhoto(tg, file, el) {
+    var water = tg === 'wa-val', k = water ? (WA.kind === 'hot' ? 'hot' : 'cold') : (EA.kind === 'gas' ? 'gas' : 'elec');
+    var inp = document.getElementById(tg), help = document.getElementById(tg + '-ph'), lab = el.closest && el.closest('.wcam');
+    var say = function (txt, warn) { if (help) { help.textContent = txt; help.className = 'help' + (warn ? ' warn' : ''); } };
+    if (help) { help.innerHTML = SPIN + ' ' + esc(t('wn_reading')); help.className = 'help'; }
+    if (lab) lab.setAttribute('aria-busy', 'true');
+    VIS()._engine(function () {}).then(function () { return window.TeploOCR.read(file, { all: true }); }).then(function (res) {
+      if (lab) lab.removeAttribute('aria-busy'); res = res || {};
+      var got = [];
+      if (water) {
+        var r = Wt.fromOcr(res, null);
+        if (r && r.value !== null && r.value !== undefined) { var wv = Wt.withFrac(r.value, r.frac); if (inp) inp.value = wv; got.push(wfmt(wv)); }
+        else if (r && r.partial) { say(t('sp_half', { p: r.partial }), true); if (inp) inp.focus(); return; }
+      } else {
+        // газ — ролики (окно барабана), світло — электронное табло: барабан ему не нужен (ложные «ролики» перебивают число)
+        var md = SK[k].mod, pm = { id: 'new', kind: k, zones: k === 'gas' ? 1 : EA.zones || 1 }, ks = md.keys(pm), q0 = tg.replace(/^ea-v-/, '');
+        var dr = k === 'gas' && (res.drums || []).length ? Wt.fromOcr({ lines: [], drums: res.drums }, null) : null;
+        var shots = [{ lines: res.lines || [], drum: dr && dr.value !== null && dr.value !== undefined ? { value: dr.value, frac: dr.frac || '', sure: !!dr.sure } : null }];
+        var by = md.fromPhotos(shots, [pm], { new: {} }).new || {}, put = {};
+        // зона по метке на табло (T1/T2/1.8.1…); без метки — в то поле, у которого нажали камеру
+        ks.forEach(function (q) { if (by[q] && (ks.length === 1 || by[q].why === 'tag')) put[q] = by[q]; });
+        if (!Object.keys(put).length) { var one = (md.fromPhotos(shots, [{ id: 'new', kind: k, zones: 1 }], { new: {} }).new || {}).all; if (one) put[ks.indexOf(q0) >= 0 ? q0 : ks[0]] = one; }
+        ks.forEach(function (q) {
+          var x = put[q]; if (!x) return;
+          var v = k === 'gas' ? Wt.withFrac(x.v, x.frac) : String(x.v), fi = document.getElementById('ea-v-' + q);
+          EA.vals[q] = v; if (fi) fi.value = v; got.push((ks.length > 1 ? ezl(pm, q).toLowerCase() + ' ' : '') + (k === 'gas' ? wfmt(v) : v));
+        });
+      }
+      if (!got.length) { say(t('sp_none'), true); if (inp) inp.focus(); return; }
+      say(t('sp_got', { v: got.join(', ') }), true);
+      if (window.TeploRecog && window.TeploRecog.meterReport) window.TeploRecog.meterReport(file, { kind: k, res: res, got: got, where: 'setup' });
+    }, function () { if (lab) lab.removeAttribute('aria-busy'); say(t('ph_err_engine'), true); });
+  }
+  document.addEventListener('change', function (e) {
+    var el = e.target, tg = el && el.getAttribute && el.getAttribute('data-sphoto');
+    if (!tg || !el.files || !el.files[0]) return; var f = el.files[0]; el.value = ''; startPhoto(tg, f, el);
+  });
   function sAdd(k) {
     if (EA.kind !== k) EA = { kind: k, back: EA.back, zones: 1, vals: {} };
     var same = smeters(k), z = k === 'gas' ? 1 : EA.zones || 1, back = EA.back || 'home', opt = ' <span class="muted small">(' + esc(t('b_opt')) + ')</span>', u = SK[k].unit();
-    var fld = function (id, lbl, attrs, unit, help, optional) { return '<div class="field"><label for="' + id + '">' + esc(lbl) + (optional ? opt : '') + '</label><div class="ctl"><input id="' + id + '" ' + attrs + '>' + (unit ? '<span class="unit">' + unit + '</span>' : '') + '</div>' + (help ? '<div class="help">' + esc(help) + '</div>' : '') + '</div>'; };
+    var fld = function (id, lbl, attrs, unit, help, optional, after) { return '<div class="field"><label for="' + id + '">' + esc(lbl) + (optional ? opt : '') + '</label><div class="ctl"><input id="' + id + '" ' + attrs + '>' + (unit ? '<span class="unit">' + unit + '</span>' : '') + (after || '') + '</div>' + (help ? '<div class="help">' + esc(help) + '</div>' : '') + '</div>'; };
     var mz = { kind: k, zones: z }, md = SK[k].mod;
     var h = pqBanner() + '<h1>' + ico(SK[k].icon, 26, SK[k].cls) + ' ' + esc(tk(k, 'ea_title')) + '</h1><p class="muted">' + esc(tk(k, 'ea_lead')) + '</p><form id="ea-form" novalidate><div class="panel">' +
       (k === 'elec' ? '<fieldset class="field"><legend class="lbl">' + esc(t('ea_zones')) + '</legend><div class="wz-opts" role="radiogroup">' + [1, 2, 3].map(function (n) {
         return '<label class="wz-opt"><input type="radio" name="ea-z" value="' + n + '"' + (z === n ? ' checked' : '') + ' data-act="ea-zones" data-key="ea-z' + n + '"><span><b>' + esc(t('ez_n' + n)) + '</b><span class="small muted">' + esc(t('ea_z' + n + '_s')) + '</span></span></label>';
       }).join('') + '</div></fieldset>' : '') +
-      md.keys(mz).map(function (q) { return fld('ea-v-' + q, t('ea_val') + (z > 1 ? ': ' + ezl(mz, q).toLowerCase() : ''), 'class="num" inputmode="decimal" autocomplete="off" data-ea="' + q + '" value="' + esc(EA.vals[q] || '') + '"', u, q === md.keys(mz).slice(-1)[0] ? t('ea_val_h') : '', true); }).join('') +
+      md.keys(mz).map(function (q) { return phHelp(fld('ea-v-' + q, t('ea_val') + (z > 1 ? ': ' + ezl(mz, q).toLowerCase() : ''), 'class="num" inputmode="decimal" autocomplete="off" data-ea="' + q + '" value="' + esc(EA.vals[q] || '') + '"', u, q === md.keys(mz).slice(-1)[0] ? t('ea_val_h') : '', true, startCam('ea-v-' + q, tk(k, 'ea_title'))), 'ea-v-' + q); }).join('') +
       (same.length ? fld('ea-name', t('em_name'), 'maxlength="40" autocomplete="off" placeholder="' + esc(tk(k, 'em_name_ph')) + '"', '', t('ea_name_need', { n: same.length }), false) : '') +
       fld('ea-acc', t('em_acc'), 'class="num" inputmode="numeric" autocomplete="off"', '', tk(k, 'em_acc_h'), true) +
       fld('ea-serial', t('wm_serial'), 'class="num" autocomplete="off"', '', '', true) +
@@ -6273,23 +6385,29 @@ fieldset.field { border: 0; padding: 0; min-width: 0; }
   });
   document.addEventListener('input', function (e) { var el = e.target; if (el && el.getAttribute && el.getAttribute('data-wn')) WN.auto[el.getAttribute('data-wn')] = false; }, true);
 
-  /** Барабан водоміра для привітання: тепло (екран) і вода (барабан) — видно, що лічильників кілька. */
-  function drumHero() { return '<div class="drum" aria-hidden="true">' + '00175'.split('').map(function (d) { return '<span>' + d + '</span>'; }).join('') + '921'.split('').map(function (d) { return '<span class="r">' + d + '</span>'; }).join('') + '<small>м³</small></div>'; }
+  /** Привітання: 4 табло — тепло (зелений ЖК), вода (циферблат), світло (темний екран), газ (жовта панель) — видно, що
+   *  лічильники всі, і кожен впізнається на вигляд. Декор: aria-hidden, підписи — для зрячих. */
+  function welcomeHero() {
+    var cell = function (k, html, cap) { return '<figure class="wh-c wh-' + k + '">' + html + '<figcaption>' + ico(KINDS[k].icon, 16, KINDS[k].cls) + '<span>' + esc(cap) + '</span></figcaption></figure>'; };
+    return '<div class="welcome-lcd wh" aria-hidden="true" data-key="welcome-hero">' + cell('heat', lcd([{ text: '13.245', tag: 'Gcal' }], 'boot'), t('kd_heat')) + cell('hot', wdrum('175.921', 'hot'), t('st_water')) +
+      cell('elec', elcd([{ text: '10420' }]), t('kd_elec')) + cell('gas', wdrum('1225.4', 'gas'), t('kd_gas')) + '</div>';
+  }
   V.welcome = function () {
     var acc = Y().mode === 'server' && Y().account;
     if (acc) {   // уже вошёл, но лічильник ещё не выбран (новый аккаунт или стёрли данные) — без рекламного экрана, сразу к делу
       var who = acc.email || (acc.telegram && (acc.telegram.username ? '@' + acc.telegram.username : acc.telegram.name)) || '';
       return { screen: 'S00', bare: true, html:
-        '<div class="welcome"><div class="welcome-grid"><div class="welcome-lcd" aria-hidden="true">' + lcd([{ text: '13.245', tag: 'Gcal' }], 'hero') + drumHero() + '</div><div>' +
-        '<h1>' + esc(t('wa_title')) + '</h1><p class="lead">' + esc(t('wa_lead')) + '</p>' +
-        '<a class="btn big" href="#start" data-key="welcome-start">' + esc(t('wa_cta')) + '</a>' +
-        '<p class="small muted" style="margin-top:16px">' + esc(t('wa_fine', { who: who })) + ' <button class="linkbtn" data-act="logout">' + esc(t('wa_other')) + '</button></p></div>' +
+        '<div class="welcome"><div class="welcome-grid">' + welcomeHero() + '<div>' +
+        '<h1>' + esc(t('wl_title')) + '</h1><p class="lead">' + esc(t('wl_lead')) + '</p>' +
+        '<a class="btn big" href="#start" data-key="welcome-start">' + esc(t('wl_cta')) + '</a>' +
+        '<p class="small muted" style="margin-top:16px">' + esc(t('wl_fine', { who: who })) + ' <button class="linkbtn" data-act="logout">' + esc(t('wl_other')) + '</button></p></div>' +
         '</div></div>' };
     }
+    var bul = [['camera', 'w_b1'], ['send', 'w_b2'], ['home', 'w_b3'], ['chart', 'w_b4']];
     return { screen: 'S00', bare: true, html:
-      '<div class="welcome"><div class="welcome-grid"><div class="welcome-lcd" aria-hidden="true">' + lcd([{ text: '13.245', tag: 'Gcal' }], 'hero boot') + drumHero() + '</div><div>' +
+      '<div class="welcome"><div class="welcome-grid">' + welcomeHero() + '<div>' +
       '<h1>' + esc(t('w_title')) + '</h1><p class="lead">' + esc(t('w_lead')) + '</p>' +
-      '<ul>' + ['w_b1', 'w_b2', 'w_b3'].map(function (k) { return '<li>' + ico('check', 22, 'c-ok') + '<span>' + esc(t(k)) + '</span></li>'; }).join('') + '</ul>' +
+      '<ul>' + bul.map(function (b) { return '<li data-key="welcome-' + b[1] + '">' + ico(b[0], 22, 'c-ok') + '<span>' + esc(t(b[1])) + '</span></li>'; }).join('') + '</ul>' +
       '<a class="btn big" href="#start" data-key="welcome-start">' + esc(t('w_cta')) + '</a>' +
       (Y().mode === 'server' && !Y().account ? '<p style="margin-top:16px"><a href="#login" data-key="welcome-login">' + esc(t('w_login')) + '</a></p>' : '') +
       '<p class="small muted" style="margin-top:16px">' + esc(Y().mode === 'claude' ? t('sync_claude') : Y().mode === 'server' ? t('w_fine_site') : t('w_fine')) + '</p></div>' +
@@ -6536,7 +6654,7 @@ fieldset.field { border: 0; padding: 0; min-width: 0; }
         pm.units.map(function (x) { return '<label><input type="radio" name="unit" value="' + x + '"' + (u === x ? ' checked' : '') + '>' + esc(unitLbl(x)) + '</label>'; }).join('') + '</div></div>';
     }
     var note = pm && pm.id !== 'other' ? '<p class="small muted">' + esc(L(pm.note)) + '</p>' : '';
-    return { screen: 'S02', route: 'meter', bare: !S.onboarded, closeTo: S.onboarded ? 'home' : 'welcome', html: pqBanner(true) +
+    return { screen: 'S02', route: 'meter', bare: !S.onboarded, closeTo: S.onboarded ? 'home' : 'start', html: pqBanner(true) +
       '<h1>' + esc(t('m_title')) + '</h1><p class="muted">' + esc(t('m_lead')) + '</p>' +
       (!(place() || {}).name ? '<div class="field" style="max-width:520px"><label for="pl-addr">' + esc(t('pl_addr')) + ' <span class="muted small">(' + esc(t('b_opt')) + ')</span></label><div class="ctl"><input id="pl-addr" data-plf="address" autocomplete="street-address" placeholder="' + esc(t('pl_addr_ph')) + '" value="' + esc((place() || {}).address || '') + '"></div></div>' : '') +
       '<details class="where" data-key="meter-where"><summary>' + esc(t('m_where')) + '</summary><p>' + esc(t('m_where_text')) + '</p></details>' +
@@ -7250,9 +7368,13 @@ fieldset.field { border: 0; padding: 0; min-width: 0; }
   // ================= мастер «Додати квартиру»: 1) назва й адреса 2) які лічильники є 3) рахунок Водоканалу =================
   // Пенсионерам: шаги пронумерованы, крупные +/−, на последнем шаге — «Перевірте» с повтором сути. Потом — настройка каждого
   // счётчика по очереди (PQ): водомеры по одному (#wadd), теплосчётчик — последним (#meter, дальше обычный путь).
-  function pwFresh(back) { return { step: 0, name: '', address: '', n: { heat: 0, hot: 0, cold: 0, elec: 0, gas: 0 }, account: '', surname: '', back: back || 'places' }; }
+  // Первый вход (#start, PW.first) — тот же мастер для первой квартиры «Моя квартира», без шага названия:
+  // 1) які лічильники є (табло-образцы, +/−) 2) рахунок Водоканалу — только если есть водомеры; назва й адреса — потом на главной.
+  function pwFresh(back, first) { return { step: 0, first: !!first, name: '', address: '', n: { heat: 0, hot: 0, cold: 0, elec: 0, gas: 0 }, account: '', surname: '', back: back || 'places', err: '' }; }
   var PW = pwFresh(), PQ = null;
-  function pwSteps() { return PW.n.hot + PW.n.cold > 0 ? 3 : 2; }
+  function pwSteps() { var w = PW.n.hot + PW.n.cold > 0; return PW.first ? (w ? 2 : 1) : (w ? 3 : 2); }
+  function pwKind(i) { return (PW.first ? ['kinds', 'acc'] : ['name', 'kinds', 'acc'])[i]; }
+  function pwAny() { return KIND_ORDER.some(function (k) { return PW.n[k] > 0; }); }
   function pwRead() {
     var v = function (id) { var el = document.getElementById(id); return el ? String(el.value || '') : null; };
     var a = v('aw-name'), b = v('aw-addr'), c = v('aw-acc'), d = v('aw-sn');
@@ -7264,68 +7386,95 @@ fieldset.field { border: 0; padding: 0; min-width: 0; }
   }
   /** «Перевірте» — повтор сути перед созданием. */
   function pwSummary() {
-    var nm = PW.name.trim() || t('pl_unnamed', { n: places().length + 1 }), water = PW.n.hot + PW.n.cold > 0;
-    return '<section class="panel aw-sum" style="--pc:var(--pc-' + nextColor() + ')" data-key="aw-sum"><h2>' + esc(t('aw_sum')) + '</h2><dl>' +
-      '<dt>' + esc(t('aw_sum_name')) + '</dt><dd><b>' + esc(nm) + '</b>' + (PW.address.trim() ? '<span class="small muted"> · ' + esc(PW.address.trim()) + '</span>' : '') + '</dd>' +
+    var nm = PW.first ? placeLabel(place()) : PW.name.trim() || t('pl_unnamed', { n: places().length + 1 }), water = PW.n.hot + PW.n.cold > 0;
+    var sub = PW.first ? t('fs_sum_hint') : PW.address.trim();
+    return '<section class="panel aw-sum" style="--pc:var(--pc-' + (PW.first ? placeColor(place()) : nextColor()) + ')" data-key="aw-sum"><h2>' + esc(t(PW.first ? 'fs_sum' : 'aw_sum')) + '</h2><dl>' +
+      '<dt>' + esc(t('aw_sum_name')) + '</dt><dd><b>' + esc(nm) + '</b>' + (sub ? '<span class="small muted"> · ' + esc(sub) + '</span>' : '') + '</dd>' +
       '<dt>' + esc(t('aw_sum_meters')) + '</dt><dd>' + esc(pwMetersText()) + '</dd>' +
       (water ? '<dt>' + esc(t('aw_sum_acc')) + '</dt><dd id="aw-sum-acc">' + esc(PW.account || t('aw_sum_noacc')) + '</dd>' : '') + '</dl></section>';
   }
+  /** Табло-образец вида (узнать свой счётчик по виду): тепло — зелёный ЖК, вода — циферблат, світло — тёмный экран, газ — жёлтая панель. */
+  function kindPreview(k) {
+    if (k === 'heat') return lcd([{ text: '12.910', tag: 'Gcal' }]);
+    if (k === 'elec') return elcd([{ text: '10420' }]);
+    return wdrum(k === 'gas' ? '1225.4' : k === 'hot' ? '175' : '437', k);
+  }
+  /** Строки «какие счётчики есть»: образец табло, название, кому передавать, +/−. «+» тёмный, пока счётчика нет. */
+  function awKinds() {
+    return '<div class="aw-kinds" data-key="aw-kinds">' + KIND_ORDER.map(function (k) {
+      var K = KINDS[k], c = PW.n[k] || 0, title = t(K.t), prev = '<span class="kprev" aria-hidden="true">' + kindPreview(k) + '</span>';
+      if (K.soon) return '<div class="aw-kind kp am-soon" aria-disabled="true" data-key="aw-' + k + '">' + prev + '<span class="aw-kt"><b>' + ico(K.icon, 18, K.cls) + '<span>' + esc(title) + '</span></b><span class="small muted">' + esc(t(K.s)) + '</span></span><span class="pill">' + esc(t('kd_soon')) + '</span></div>';
+      var max = k === 'heat' ? 1 : K.max;
+      return '<div class="aw-kind kp' + (c ? ' on' : '') + '" data-key="aw-' + k + '">' + prev + '<span class="aw-kt"><b>' + ico(K.icon, 18, K.cls) + '<span>' + esc(title) + '</span></b><span class="small muted">' + esc(t(K.s)) + '</span></span>' +
+        '<span class="stepper" role="group" aria-label="' + esc(title) + '"><button type="button" class="btn sec step-b" data-act="aw-n" data-kind="' + k + '" data-d="-1" data-key="aw-' + k + '-dec" aria-label="' + esc(t('aw_dec', { k: title })) + '"' + (c ? '' : ' disabled') + '>−</button>' +
+        '<output class="step-n num" aria-live="polite" data-key="aw-' + k + '-n">' + (c ? c : '<span class="small muted">' + esc(t('aw_n0')) + '</span>') + '</output>' +
+        '<button type="button" class="btn ' + (c ? 'sec ' : '') + 'step-b" data-act="aw-n" data-kind="' + k + '" data-d="1" data-key="aw-' + k + '-inc" aria-label="' + esc(t('aw_inc', { k: title })) + '"' + (c >= max ? ' disabled title="' + esc(t('aw_max')) + '"' : '') + '>+</button></span></div>';
+    }).join('') + '</div>';
+  }
   V['add-place'] = function () {
     var n = pwSteps(); if (PW.step > n - 1) PW.step = n - 1;
-    var i = PW.step, last = i === n - 1, back = PW.back || 'places', h = '';
-    var head = '<div class="wiz-top"><span class="count">' + esc(t('aw_step', { i: i + 1, n: n })) + '</span><span class="progress" aria-hidden="true"><i style="width:' + Math.round((i + 1) / n * 100) + '%"></i></span></div>';
-    var prevBtn = i > 0 ? '<button type="button" class="btn sec" data-act="aw-back" data-key="aw-back">' + ico('back', 20) + '<span>' + esc(t('back')) + '</span></button>' : '<a class="btn sec" href="#' + esc(back) + '">' + esc(t('cancel')) + '</a>';
-    var nextBtn = last ? '<button type="button" class="btn" data-act="aw-create" data-key="aw-create">' + ico('check', 20) + '<span>' + esc(t('aw_create')) + '</span></button>' : '<button type="button" class="btn" data-act="aw-next" data-key="aw-next">' + esc(t('next')) + '</button>';
-    if (i === 0) {
+    var i = PW.step, last = i === n - 1, back = PW.back || 'places', h = '', kind = pwKind(i), first = PW.first;
+    var head = n > 1 ? '<div class="wiz-top"><span class="count">' + esc(t('aw_step', { i: i + 1, n: n })) + '</span><span class="progress" aria-hidden="true"><i style="width:' + Math.round((i + 1) / n * 100) + '%"></i></span></div>' : '';
+    var prevBtn = i > 0 ? '<button type="button" class="btn sec" data-act="aw-back" data-key="aw-back">' + ico('back', 20) + '<span>' + esc(t('back')) + '</span></button>' : '<a class="btn sec" href="#' + esc(back) + '" data-key="aw-cancel">' + esc(t(first ? 'back' : 'cancel')) + '</a>';
+    var nextBtn = last ? '<button type="button" class="btn" data-act="aw-create" data-key="aw-create">' + (first ? '' : ico('check', 20)) + '<span>' + esc(t(first ? 'fs_go' : 'aw_create')) + '</span></button>' : '<button type="button" class="btn" data-act="aw-next" data-key="aw-next">' + esc(t('next')) + '</button>';
+    if (kind === 'name') {
       var chips = t('pv_chips').split('|').map(function (c) { return '<button type="button" class="chip" data-act="aw-chip" data-v="' + esc(c) + '" aria-pressed="' + (PW.name === c) + '">' + esc(c) + '</button>'; }).join('');
       h = '<h1>' + esc(t('aw_t1')) + '</h1><p class="muted">' + esc(t('aw_l1')) + '</p><div class="panel">' +
         '<div class="field"><label for="aw-name">' + esc(t('pv_name')) + '</label><div class="ctl"><input id="aw-name" maxlength="40" autocomplete="off" value="' + esc(PW.name) + '" placeholder="' + esc(t('pv_name_ph')) + '"></div><div class="chips" role="group" aria-label="' + esc(t('pv_name')) + '">' + chips + '</div></div>' +
         '<div class="field"><label for="aw-addr">' + esc(t('pl_addr')) + ' <span class="muted small">(' + esc(t('b_opt')) + ')</span></label><div class="ctl"><input id="aw-addr" maxlength="120" autocomplete="street-address" value="' + esc(PW.address) + '" placeholder="' + esc(t('pl_addr_ph')) + '"></div></div></div>';
-    } else if (i === 1) {
-      h = '<h1>' + esc(t('aw_t2')) + '</h1><p class="muted">' + esc(t('aw_l2')) + '</p><div class="aw-kinds" data-key="aw-kinds">' + KIND_ORDER.map(function (k) {
-        var K = KINDS[k], c = PW.n[k] || 0, title = t(K.t);
-        if (K.soon) return '<div class="aw-kind am-soon" aria-disabled="true" data-key="aw-' + k + '">' + ico(K.icon, 26, K.cls) + '<span class="aw-kt"><b>' + esc(title) + '</b><span class="small muted">' + esc(t(K.s)) + '</span></span><span class="pill">' + esc(t('kd_soon')) + '</span></div>';
-        var max = k === 'heat' ? 1 : K.max;
-        return '<div class="aw-kind' + (c ? ' on' : '') + '" data-key="aw-' + k + '">' + ico(K.icon, 26, K.cls) + '<span class="aw-kt"><b>' + esc(title) + '</b><span class="small muted">' + esc(t(K.s)) + '</span></span>' +
-          '<span class="stepper" role="group" aria-label="' + esc(title) + '"><button type="button" class="btn sec step-b" data-act="aw-n" data-kind="' + k + '" data-d="-1" data-key="aw-' + k + '-dec" aria-label="' + esc(t('aw_dec', { k: title })) + '"' + (c ? '' : ' disabled') + '>−</button>' +
-          '<output class="step-n num" aria-live="polite" data-key="aw-' + k + '-n">' + (c ? c : '<span class="small muted">' + esc(t('aw_n0')) + '</span>') + '</output>' +
-          '<button type="button" class="btn sec step-b" data-act="aw-n" data-kind="' + k + '" data-d="1" data-key="aw-' + k + '-inc" aria-label="' + esc(t('aw_inc', { k: title })) + '"' + (c >= max ? ' disabled title="' + esc(t('aw_max')) + '"' : '') + '>+</button></span></div>';
-      }).join('') + '</div>';
+    } else if (kind === 'kinds') {
+      h = '<h1>' + esc(t(first ? 'fs_t1' : 'aw_t2')) + '</h1><p class="muted">' + esc(t(first ? 'fs_l1' : 'aw_l2')) + '</p>' + awKinds() +
+        (PW.err ? '<div class="banner warn" role="alert" data-key="aw-err">' + ico('alert', 22) + '<div><p><b>' + esc(PW.err) + '</b></p></div></div>' : '') +
+        (first ? '<p class="small muted fs-more" data-key="fs-more">' + ico('home', 18) + '<span>' + esc(t('fs_more')) + '</span></p>' : '');
     } else {
       h = '<h1>' + esc(t('aw_t3')) + '</h1><p class="muted">' + esc(t('aw_l3')) + '</p><div class="panel"><div class="grid2">' +
         '<div class="field"><label for="aw-acc">' + esc(t('wa_acc')) + '</label><div class="ctl"><input id="aw-acc" class="num" inputmode="numeric" autocomplete="off" value="' + esc(PW.account) + '"></div><div class="help">' + esc(t('wa_acc_h')) + '</div></div>' +
         '<div class="field"><label for="aw-sn">' + esc(t('wa_sn')) + '</label><div class="ctl"><input id="aw-sn" autocomplete="family-name" value="' + esc(PW.surname) + '"></div><div class="help">' + esc(t('wa_sn_h')) + '</div></div></div></div>';
     }
-    if (last) h += pwSummary();
+    if (last && (!first || kind === 'acc')) h += pwSummary();
     h += '<div class="wiz-actions">' + prevBtn + nextBtn + '</div>';
-    if (last && i === 2) h += '<p><button type="button" class="linkbtn" data-act="aw-create" data-skip="1" data-key="aw-skip">' + esc(t('aw_skip_acc')) + '</button></p>';
-    return { screen: 'S44', route: 'add-place', bare: true, closeTo: back, html: '<p class="small muted aw-title">' + esc(t('aw_title')) + '</p>' + head + h };
+    if (last && kind === 'acc') h += '<p><button type="button" class="linkbtn" data-act="aw-create" data-skip="1" data-key="aw-skip">' + esc(t('aw_skip_acc')) + '</button></p>';
+    if (last && first) h += '<p class="small muted fs-after" data-key="fs-after">' + esc(t('fs_after')) + '</p>';
+    return { screen: first ? 'S02' : 'S44', route: first ? 'start' : 'add-place', bare: true, closeTo: back, html: '<p class="small muted aw-title">' + esc(t(first ? 'fs_title' : 'aw_title')) + '</p>' + head + h };
   };
-  /** Создать квартиру из мастера и пойти настраивать её счётчики по очереди. */
+  /** Первый вход: какие счётчики есть в квартире. Уже настроен — сюда не ведём (render отправит на главную). */
+  V.start = function () {
+    if (!PW.first) PW = pwFresh('welcome', true);
+    return V['add-place']();
+  };
+  function pwGo() { go(PW.first ? 'start' : 'add-place'); }
+  /** Создать квартиру из мастера (или, при первом входе, заполнить первую) и пойти настраивать её счётчики по очереди. */
   function pwCreate(skipAcc) {
     pwRead(); syncPlace();
-    var water = PW.n.hot + PW.n.cold > 0;
-    var np = { id: 'p' + Date.now().toString(36), name: PW.name.trim(), address: PW.address.trim(), v: 2, color: nextColor(), meter: null, baseline: null,
-      water: { account: water && !skipAcc ? PW.account : '', surname: water && !skipAcc ? PW.surname : '', meters: [] }, updatedAt: Date.now() };
-    S.places.push(np); switchPlace(np.id); WX.key = ''; save();
+    var water = PW.n.hot + PW.n.cold > 0, first = PW.first;
+    if (first && !pwAny()) { PW.step = 0; PW.err = t('fs_err_none'); pwGo(); return; }
     var list = []; ['hot', 'cold', 'elec', 'gas'].forEach(function (k) { for (var j = 0; j < (PW.n[k] || 0); j++) list.push(k); });
-    PQ = list.length || PW.n.heat ? { place: np.id, list: list, i: 0, heat: !!PW.n.heat, total: list.length + (PW.n.heat ? 1 : 0) } : null;
-    PW = pwFresh(); toast(t('aw_created', { p: placeLabel(place()) }));
+    if (first) {   // первая квартира уже есть («Моя квартира») — пишем в неё только рахунок Водоканалу
+      if (water && !skipAcc && (PW.account || PW.surname)) wsetCfg(function (c) { c.account = PW.account; c.surname = PW.surname; });
+    } else {
+      var np = { id: 'p' + Date.now().toString(36), name: PW.name.trim(), address: PW.address.trim(), v: 2, color: nextColor(), meter: null, baseline: null,
+        water: { account: water && !skipAcc ? PW.account : '', surname: water && !skipAcc ? PW.surname : '', meters: [] }, updatedAt: Date.now() };
+      S.places.push(np); switchPlace(np.id); WX.key = ''; save();
+    }
+    PQ = list.length || PW.n.heat ? { place: S.placeId, list: list, i: 0, heat: !!PW.n.heat, total: list.length + (PW.n.heat ? 1 : 0), first: first } : null;
+    if (!first) { toast(t('aw_created', { p: placeLabel(place()) })); PW = pwFresh(); }   // первый вход: выбор держим — «Скасувати» вернёт к нему
     pqNext();
   }
-  /** Следующий счётчик новой квартиры: водомер (#wadd) → … → теплосчётчик (#meter) → главная квартиры. */
+  /** Следующий счётчик новой квартиры: водомер (#wadd) → … → теплосчётчик (#meter) → главная квартиры.
+   *  «Скасувати» на первом входе, пока ничего не сохранено, — назад к выбору (#start), иначе — на главную. */
   function pqNext() {
     if (!PQ || PQ.place !== S.placeId) { PQ = null; go('home'); return; }
-    if (PQ.i < PQ.list.length && SK[PQ.list[PQ.i]]) { var qk = PQ.list[PQ.i]; EA = { kind: qk, back: 'home', zones: 1, vals: {} }; go(SK[qk].add); return; }
-    if (PQ.i < PQ.list.length) { WA = { kind: PQ.list[PQ.i], back: 'home' }; go('wadd'); return; }
+    var back = S.onboarded ? 'home' : 'start';
+    if (PQ.i < PQ.list.length && SK[PQ.list[PQ.i]]) { var qk = PQ.list[PQ.i]; EA = { kind: qk, back: back, zones: 1, vals: {} }; go(SK[qk].add); return; }
+    if (PQ.i < PQ.list.length) { WA = { kind: PQ.list[PQ.i], back: back }; go('wadd'); return; }
     if (PQ.heat) { PQ.i = PQ.list.length; delete S._pickModel; go('meter'); return; }
-    PQ = null; go('home');
+    var fst = PQ.first; PQ = null; if (fst) toast(t('fs_done')); go('home');
   }
   /** Плашка «Нова квартира «Мамина»: лічильник 2 з 3» на экранах настройки счётчика из очереди. */
   function pqBanner(heat) {
     if (!PQ || PQ.place !== S.placeId) return '';
     var i = heat ? PQ.total : PQ.i + 1;
-    return '<div class="banner aw-q" data-key="aw-queue">' + ico('home', 22) + '<div><p><b>' + esc(t('aw_q', { p: placeLabel(place()), i: i, n: PQ.total })) + '</b></p>' +
+    return '<div class="banner aw-q" data-key="aw-queue">' + ico('home', 22) + '<div><p><b>' + esc(PQ.first ? t('fs_q', { i: i, n: PQ.total }) : t('aw_q', { p: placeLabel(place()), i: i, n: PQ.total })) + '</b></p>' +
       (heat ? '<p>' + esc(t('aw_q_heat')) + '</p>' : SK[PQ.list[PQ.i]] ? '<p>' + esc(t(PQ.list[PQ.i] === 'gas' ? 'aw_q_gas' : 'aw_q_elec')) + '</p>' : '<p><button type="button" class="linkbtn" data-act="pq-later" data-key="aw-q-later">' + esc(t('aw_q_later')) + '</button></p>') + '</div></div>';
   }
 
@@ -7350,12 +7499,12 @@ fieldset.field { border: 0; padding: 0; min-width: 0; }
   var WA = { kind: 'cold', back: '' };
   V.wadd = function () {
     var k = WA.kind, same = wmeters(k), c = wcfg(), back = WA.back || 'home', opt = ' <span class="muted small">(' + esc(t('b_opt')) + ')</span>';
-    var fld = function (id, lbl, attrs, unit, help, optional) { return '<div class="field"><label for="' + id + '">' + esc(lbl) + (optional ? opt : '') + '</label><div class="ctl"><input id="' + id + '" ' + attrs + '>' + (unit ? '<span class="unit">' + unit + '</span>' : '') + '</div>' + (help ? '<div class="help">' + esc(help) + '</div>' : '') + '</div>'; };
+    var fld = function (id, lbl, attrs, unit, help, optional, after) { return '<div class="field"><label for="' + id + '">' + esc(lbl) + (optional ? opt : '') + '</label><div class="ctl"><input id="' + id + '" ' + attrs + '>' + (unit ? '<span class="unit">' + unit + '</span>' : '') + (after || '') + '</div>' + (help ? '<div class="help">' + esc(help) + '</div>' : '') + '</div>'; };
     var inQ = !!(PQ && PQ.place === S.placeId);
     var h = pqBanner() + '<h1>' + ico('drop', 26, KINDS[k].cls) + ' ' + esc(t('wa_title', { k: wkindTitle(k).toLowerCase() })) + '</h1><p class="muted">' + esc(t('wa_lead')) + '</p><form id="wa-form" novalidate><div class="panel">' +
       fld('wa-name', t('wa_name'), 'maxlength="40" autocomplete="off" placeholder="' + esc(t('wa_name_ph')) + '"', '', same.length ? t('wa_name_need', { n: same.length }) : t('wa_name_h'), !same.length) +
       (same.length === 1 && !same[0].name ? fld('wa-name0', t('wa_name0'), 'maxlength="40" autocomplete="off" placeholder="' + esc(t('wa_name0_ph')) + '"', '', '', true) : '') +
-      fld('wa-val', t('wa_val'), 'class="num" inputmode="decimal" autocomplete="off"', 'м³', t('wa_val_h'), true) +
+      phHelp(fld('wa-val', t('wa_val'), 'class="num" inputmode="decimal" autocomplete="off"', 'м³', t('wa_val_h'), true, startCam('wa-val', wkindTitle(k))), 'wa-val') +
       '<div class="grid2">' + fld('wa-serial', t('wm_serial'), 'class="num" autocomplete="off"', '', '', true) + fld('wa-ver', t('mv_date'), 'type="date"', '', '', true) + '</div>' +
       '<div class="help block" id="wa-err" role="alert"></div></div>' +
       (c.account || inQ ? '' : '<div class="panel"><h2>' + esc(t('wm_acc_t')) + opt + '</h2><p class="small muted">' + esc(t('wa_acc_s')) + '</p>' + waccForm() + '</div>') +
@@ -7538,7 +7687,7 @@ fieldset.field { border: 0; padding: 0; min-width: 0; }
     return txt || t('err_network');
   }
   function afterLogin(j, errEl) {
-    if (j && j._status === 200) { toast(t('login_ok')); S.onboarded = S.onboarded || !!S.meter; save(); go(S.meter ? 'home' : 'meter'); return; }
+    if (j && j._status === 200) { toast(t('login_ok')); S.onboarded = S.onboarded || anyMeters(); save(); go(S.onboarded ? 'home' : 'start'); return; }
     if (errEl) errEl.textContent = authError(j); else toast(authError(j));
   }
   function mountTelegramWidget() {
@@ -7918,8 +8067,8 @@ fieldset.field { border: 0; padding: 0; min-width: 0; }
     // світла в квартирі немає (або прибрали) — сторінка світла веде на головну
     if (S.onboarded && SK[r] && !smeters(r).length) { r = 'home'; try { history.replaceState(null, '', '#home'); } catch (e1) { /* старий браузер */ } }
     pendingRender = false;
-    if (!S.onboarded && ['welcome', 'start', 'wsetup', 'meter', 'baseline', 'help', 'login', 'photo', 'privacy', 'terms'].indexOf(r) < 0) r = S.meter ? 'baseline' : 'welcome';
-    if (S.onboarded && (!r || r === 'welcome')) r = homeRoute();
+    if (!S.onboarded && ['welcome', 'start', 'wsetup', 'wadd', 'eadd', 'gadd', 'meter', 'baseline', 'help', 'login', 'photo', 'privacy', 'terms'].indexOf(r) < 0) r = S.meter ? 'baseline' : 'welcome';
+    if (S.onboarded && (!r || r === 'welcome' || r === 'start')) r = homeRoute();
     var view;
     var rm = r.match(/^rec-([\w-]+?)(-edit)?$/), wm = r.match(/^wrec-([\w-]+)$/), gn = r.match(/^gap-new-([\w-]+)$/), gm = !gn && r.match(/^gap-([\w-]+)$/), pm = r.match(/^place-([\w-]+)$/), em = r.match(/^erec-([\w-]+)$/);
     if (!gn) GAP_PRESET = null;
@@ -8143,14 +8292,16 @@ fieldset.field { border: 0; padding: 0; min-width: 0; }
       case 'hp-cancel': HP_EDIT = ''; render(true); break;
       case 'hp-chip': { var hn = document.getElementById('hpn-' + el.getAttribute('data-id')); if (hn) { hn.value = el.getAttribute('data-v'); hn.focus(); } break; }
       case 'pl-add': PW = pwFresh(routeName() || homeRoute()); go('add-place'); break;
-      case 'aw-next': pwRead(); PW.step++; go('add-place'); break;
-      case 'aw-back': pwRead(); PW.step = Math.max(0, PW.step - 1); go('add-place'); break;
+      case 'aw-next': pwRead();
+        if (PW.first && pwKind(PW.step) === 'kinds' && !pwAny()) { PW.err = t('fs_err_none'); render(true); var awi = document.querySelector('[data-key=aw-' + KIND_ORDER[0] + '-inc]'); if (awi) awi.focus(); break; }
+        PW.err = ''; PW.step++; pwGo(); break;
+      case 'aw-back': pwRead(); PW.step = Math.max(0, PW.step - 1); pwGo(); break;
       case 'aw-chip': pwRead(); PW.name = el.getAttribute('data-v'); render(true); break;
-      case 'aw-n': { var awk = el.getAttribute('data-kind'), awm = awk === 'heat' ? 1 : KINDS[awk].max; PW.n[awk] = Math.max(0, Math.min(awm, (PW.n[awk] || 0) + Number(el.getAttribute('data-d')))); render(true);
+      case 'aw-n': { var awk = el.getAttribute('data-kind'), awm = awk === 'heat' ? 1 : KINDS[awk].max; PW.n[awk] = Math.max(0, Math.min(awm, (PW.n[awk] || 0) + Number(el.getAttribute('data-d')))); if (pwAny()) PW.err = ''; render(true);
         var awf = document.querySelector('[data-key=aw-' + awk + '-' + (el.getAttribute('data-d') === '1' ? 'inc' : 'dec') + ']'); if (awf && !awf.disabled) awf.focus(); break; }
       case 'aw-create': pwCreate(el.getAttribute('data-skip') === '1'); break;
       case 'pq-later': {   // водомір є, а № і цифри — пізніше: додаємо без деталей
-        if (PQ && PQ.place === S.placeId && PQ.i < PQ.list.length) { var qk = PQ.list[PQ.i], qsame = wmeters(qk); wsetCfg(function (c) { c.meters = c.meters || []; c.meters.push({ id: Wt.uid(), kind: qk, name: qsame.length ? String(qsame.length + 1) : '', serial: '', vkId: '', verifiedUntil: '' }); }); PQ.i++; }
+        if (PQ && PQ.place === S.placeId && PQ.i < PQ.list.length) { var qk = PQ.list[PQ.i], qsame = wmeters(qk); wsetCfg(function (c) { c.meters = c.meters || []; c.meters.push({ id: Wt.uid(), kind: qk, name: qsame.length ? String(qsame.length + 1) : '', serial: '', vkId: '', verifiedUntil: '' }); }); PQ.i++; S.onboarded = true; save(); }
         pqNext(); break; }
       case 'pl-del': { var dp = place(el.getAttribute('data-id')); if (dp && places().length > 1) { var dl = placeLabel(dp); dp.deleted = true; dp.updatedAt = Date.now(); if (dp.id === S.placeId) { S.placeId = null; S.meter = null; S.baseline = null; S.draft = null; ensurePlaces(); } save(); toast(t('pv_deleted', { p: dl })); go(places().length > 1 ? 'places' : 'home'); } break; }
       case 'focus': S.focusId = el.getAttribute('data-id'); save(); break;

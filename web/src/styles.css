@@ -865,3 +865,34 @@ fieldset.field { border: 0; padding: 0; min-width: 0; }
 .own-box.on { border-color: var(--c-field-line); background: var(--c-surface-2); }
 .own-box p { margin: 4px 0; }
 .own-chk { margin: 12px 0 4px; }
+/* ---- первый вход: 4 табло на привітанні, образцы табло в выборе счётчиков ---- */
+.wh { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 10px; max-width: 440px; }
+.wh-c { margin: 0; display: grid; gap: 6px; align-content: start; min-width: 0; }
+.wh-c figcaption { display: flex; align-items: center; gap: 6px; font-size: 14px; font-weight: 600; color: var(--c-ink-2); }
+.wh-c figcaption .ico { flex: none; }
+.wh .lcd { padding: 8px 10px 6px; border-width: 4px; border-radius: 10px; }
+.wh .lcd svg.seg { height: 30px; }
+.wh .lcd .tag { font-size: 12px; } .wh .lcd .line { gap: 6px; justify-content: space-between; } .wh .lcd .line .tag { padding-bottom: 3px; }
+.wh .elcd .el-hd { font-size: 10px; margin-bottom: 2px; } .wh .el-led { width: 7px; height: 7px; } .wh .el-u { font-size: 11px; }
+.wh .wdrum, .wh .gdrum { padding: 7px 8px; gap: 6px; border-width: 3px; }
+.wh .wd-win { gap: 1px; padding: 3px; } .wh .wd-c { font-size: clamp(10px, 6.4cqw, 20px); } .wh .wd-u { font-size: 12px; }
+.wh .gd-side .ico { width: 14px; height: 14px; } .wh .gd-g { font-size: 9px; padding: 1px 2px; }
+/* строка вида со образцом табло: на телефоне — образец слева, справа название и под ним +/−; шире — в одну строку */
+.aw-kind.kp { grid-template-columns: 108px minmax(0, 1fr); grid-template-areas: "p t" "p s"; gap: 8px 12px; padding: 12px; }
+.aw-kind.kp .kprev { grid-area: p; align-self: center; } .aw-kind.kp .aw-kt { grid-area: t; } .aw-kind.kp .stepper, .aw-kind.kp > .pill { grid-area: s; justify-self: start; }
+.aw-kt b { display: flex; align-items: center; gap: 6px; } .aw-kt b .ico { flex: none; }
+@media (min-width: 600px) { .aw-kind.kp { grid-template-columns: 124px minmax(0, 1fr) auto; grid-template-areas: "p t s"; } .aw-kind.kp .stepper { justify-self: end; } }
+@media (max-width: 359px) { .aw-kind.kp { grid-template-columns: 92px minmax(0, 1fr); gap: 8px 10px; padding: 10px; } .aw-kind.kp .step-b { min-width: 44px; min-height: 44px; } .aw-kind.kp .step-n { min-width: 34px; } }
+.kprev { display: block; pointer-events: none; min-width: 0; }
+.kprev .lcd { padding: 5px 7px 4px; border-width: 3px; border-radius: 7px; outline-width: 1px; }
+.kprev .lcd svg.seg { height: 22px; } .kprev .lcd .tag { font-size: 10px; padding-bottom: 2px; } .kprev .lcd .line { gap: 4px; justify-content: space-between; }
+.kprev .elcd { padding-top: 4px; } .kprev .elcd .el-hd { font-size: 8px; margin-bottom: 1px; gap: 3px; } .kprev .el-led { width: 5px; height: 5px; } .kprev .el-u { font-size: 9px; }
+.kprev .wdrum, .kprev .gdrum { padding: 4px 5px; gap: 3px; border-width: 2px; border-radius: 8px; } .kprev .gdrum { border-radius: 4px; }
+.kprev .wd-win { gap: 1px; padding: 2px; border-radius: 3px; } .kprev .wd-c { font-size: clamp(8px, 8cqw, 12px); border-radius: 1px; } .kprev .wd-u { font-size: 9px; }
+.kprev .gd-side { display: none; }
+.fs-more { display: flex; gap: 8px; align-items: flex-start; margin: 4px 0 12px; } .fs-more .ico { flex: none; margin-top: 1px; }
+.aw-kind .step-b.btn:not(.sec) { color: var(--c-on-ink); }
+/* шапка экрана с «✕» на телефоне: «Лічильники» не влезал рядом с «Test beta…» и обрезался в «Лі…» — оставляем логотип */
+@media (max-width: 420px) { .top.has-close .brand span { display: none; } }
+.fs-after { margin-top: 14px; }
+.field .sp-help:empty { display: none; }
