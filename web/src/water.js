@@ -132,7 +132,9 @@
     // окно барабана (по цвету) главнее строк текста, только если прочитано уверенно; иначе — сверяем со строкой цифр
     var dr = fromDrum(res, prevVal), ln = fromLines(res, prevVal);
     if (dr && dr.value !== null && dr.strong) return dr;
-    if (ln && dr && dr.value === ln.value) { ln.sure = true; ln.drum = true; ln.red = dr.red; ln.tint = dr.tint; return ln; }
+    if (ln && dr && dr.value === ln.value) { ln.sure = true; ln.drum = true; ln.red = dr.red; ln.tint = dr.tint; ln.lead = dr.lead && !dr.sure; return ln; }
+    // начало окна под бликом: строка текста («175432») видит то же, что окно, — окну и верим (оно отделило м³ от дробей)
+    if (dr && dr.lead && dr.value !== null) return dr;
     // строка «0137052» начинается с цифр окна «00137» — окно отделило м³ от дробей, ему и верим
     if (ln && dr && dr.value !== null && dr.digits.length >= 4 && ln.digits.replace(/^0+/, '').indexOf(String(dr.value)) === 0) { dr.sure = !dr.half; return dr; }
     if (ln) return ln;
@@ -174,7 +176,8 @@
    * Окно барабана, найденное движком по цвету (res.drums): text — цифры чёрных роликов, red — красных.
    * Число роликов оцениваем по пропорциям окна (cells): прочитано меньше — один ролик между цифрами (полуповорот);
    * тогда по правилу берём меньшую цифру, а с прошлым показанием — наименьшее значение не меньше прошлого.
-   * → {value, digits, red, sure, half, tint, partial} | null (окна нет — разбираем строки текста как раньше)
+   * → {value, digits, red, sure, half, tint, partial, lead} | null (окна нет — разбираем строки текста как раньше)
+   *   lead — начало окна под бликом: value собрано из 3 видимых цифр (+ тысячи из прошлого показания)
    */
   function fromDrum(res, prevVal) {
     var ds = ((res && res.drums) || []).filter(function (d) { return d && String(d.text || '').length >= 3; });
@@ -184,6 +187,16 @@
     var d = ds[0], dg = String(d.text).replace(/\D/g, ''), p = num(prevVal), red = String(d.red || '').replace(/\D/g, '');
     if (dg.length >= 7) { red = red || dg.slice(dg.length - 3); dg = dg.slice(0, dg.length - 3); }   // захватили и красные
     // меньше цифр, чем роликов, и начало окна видно (ведущий ноль) — последний ролик между цифрами
+    // ведущие ролики закрыл блик: 3 цифры без нуля впереди, окно найдено уверенно — это хвост числа, впереди обычно нули;
+    // с прошлым показанием — тысячи берём из него (1168 и «175» → 1175), без прошлого — нули, но «перевірте»
+    if (dg.length === 3 && !/^0/.test(dg) && (d.lead || d.sure) && (d.votes || 0) >= 2) {
+      var tail = Number(dg), lo = { value: tail, digits: dg, red: red, sure: false, strong: false, half: false, lead: true, tint: d.tint || null, drum: true };
+      if (p !== null) {
+        var pf0 = Math.floor(p + 1e-9), th = Math.floor(pf0 / 1000) * 1000, c3 = [th + tail, th + 1000 + tail].filter(function (v) { return v >= pf0 && v - pf0 < 500; });
+        if (c3.length) { lo.value = c3[0]; lo.sure = true; } else lo.less = tail < pf0;
+      }
+      return lo;
+    }
     var exp = d.cells || 5, half = /^0/.test(dg) && dg.length < Math.min(exp, 5);
     var strong = dg.length >= 4 && (d.votes || 0) >= 2 && (d.score || 0) >= 0.9 && /^0/.test(dg);
     var out = { value: Number(dg), digits: dg, red: red, sure: strong && !half, strong: strong, half: half, tint: d.tint || null, drum: true };
@@ -202,7 +215,11 @@
   }
 
   /** Окну барабана можно верить при раскладке (а не случайному тёмному пятну). */
-  function goodDrum(d) { var t = String((d && d.text) || '').replace(/\D/g, ''); return t.length >= 4 && ((d.votes || 0) >= 2 || (d.score || 0) >= 0.9); }
+  function goodDrum(d) {
+    var t = String((d && d.text) || '').replace(/\D/g, '');
+    if (t.length === 3 && !/^0/.test(t)) return !!(d.lead || d.sure) && (d.votes || 0) >= 2 && (d.score || 0) >= 0.9;   // начало под бликом
+    return t.length >= 4 && ((d.votes || 0) >= 2 || (d.score || 0) >= 0.9);
+  }
   function center(o) { return { x: (o.x || 0) + (o.w || 0) / 2, y: (o.y || 0) + (o.h || 0) / 2 }; }
   /**
    * Пачка фото → показания по водомерам. photos: [{lines, drums}] (TeploOCR.read с {all:true}); meters: [{id, kind, serial}];
@@ -252,7 +269,7 @@
     var by = {}, usedC = {}, usedP = {};
     var take = function (x) {
       var guess = pairs.some(function (y) { return y.c === x.c && y.m !== x.m && y.sc > x.sc - 5; });
-      by[x.m.id] = { value: x.r.value, partial: x.r.partial || null, photo: cands[x.c].photo, sure: !!x.r.sure && !guess, half: !!x.r.half, why: x.why, guess: guess, less: !!x.r.less };
+      by[x.m.id] = { value: x.r.value, partial: x.r.partial || null, photo: cands[x.c].photo, sure: !!x.r.sure && !guess, half: !!x.r.half, why: x.why, guess: guess, less: !!x.r.less, lead: !!x.r.lead && !x.r.sure };
       usedC[x.c] = true; usedP[cands[x.c].photo] = true;
     };
     pairs.forEach(function (x) { if (!by[x.m.id] && !usedC[x.c] && x.sc >= -5) take(x); });

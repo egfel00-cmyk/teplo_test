@@ -877,7 +877,7 @@
       var pi = WN.photos.length - 1;
       if (!r) WN.src[mid] = { photo: pi, value: null, none: true };
       else {
-        WN.src[mid] = { photo: pi, value: r.value, partial: r.partial || null, half: !!r.half, why: 'field' };
+        WN.src[mid] = { photo: pi, value: r.value, partial: r.partial || null, half: !!r.half, lead: !!r.lead && !r.sure, why: 'field' };
         if (r.value !== null) { WN.vals[mid] = String(r.value); WN.auto[mid] = true; }
       }
       render(true); wnCheck(true);
@@ -891,7 +891,7 @@
     var n = x.photo + 1;
     if (x.none) return t('wnp_src_none', { n: n }) + ' ';
     if (x.value === null) return t('wnp_src_half', { n: n, p: x.partial || '' }) + ' ';
-    return t('wnp_src', { n: n, v: x.value }) + (x.why && x.why !== 'field' ? ' ' + t('wnp_why_' + x.why) : '') + '. ' + (x.guess || !x.why ? t('wnp_check') + ' ' : x.half ? t('wnp_half') + ' ' : '');
+    return t('wnp_src', { n: n, v: x.value }) + (x.why && x.why !== 'field' ? ' ' + t('wnp_why_' + x.why) : '') + '. ' + (x.guess || !x.why ? t('wnp_check') + ' ' : x.half ? t('wnp_half') + ' ' : '') + (x.lead ? t('wnp_glare') + ' ' : '');
   }
   function wnSrcThumb(mid) {
     var x = WN.src && WN.src[mid], p = x && WN.photos[x.photo]; if (!p) return '';
@@ -962,7 +962,7 @@
     var A = Wt.assign(WN.photos.map(function (p) { return p.fixed ? null : p.res; }), free, prev);
     Object.keys(A.by).forEach(function (mid) {
       var x = A.by[mid];
-      WN.src[mid] = { photo: x.photo, value: x.value, partial: x.partial, half: x.half, why: x.why, guess: x.guess };
+      WN.src[mid] = { photo: x.photo, value: x.value, partial: x.partial, half: x.half, lead: x.lead, why: x.why, guess: x.guess };
       WN.photos[x.photo].meters.push(mid);
       if (x.value !== null && (!WN.vals[mid] || WN.auto[mid])) { WN.vals[mid] = String(x.value); WN.auto[mid] = true; }
     });

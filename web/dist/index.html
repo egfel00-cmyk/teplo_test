@@ -1444,7 +1444,7 @@ input[type=text]:not(.dmy-native):not(.pl-in), input[type=email], input[type=pas
       wnp_hint: 'Один кадр з обома водомірами або по кадру на кожен. Барабан — прямо й близько, без відблиску спалаху.',
       wnp_src: 'З фото {n}: {v}', wnp_src_half: 'З фото {n}: {p} — останній барабан між цифрами, допишіть меншу.', wnp_src_none: 'Фото {n}: цифр барабана не видно — впишіть вручну.',
       wnp_why_serial: '(за заводським №)', wnp_why_tint: '(за кольором кільця)', wnp_why_prev: '(за минулими показаннями)', wnp_why_swap: '(поміняли місцями)',
-      wnp_check: 'Перевірте, чи це той лічильник.', wnp_half: 'Останній барабан між цифрами — перевірте.',
+      wnp_check: 'Перевірте, чи це той лічильник.', wnp_half: 'Останній барабан між цифрами — перевірте.', wnp_glare: 'Перші цифри закрив відблиск — ми вважали їх нулями, перевірте.',
       wnp_none: 'цифр барабана не знайшли', wnp_guess: 'Не впевнені, де який лічильник — звірте з фото (натисніть, щоб збільшити).',
       wnp_swap: 'Поміняти гарячу й холодну',
       wz_cancel: 'Скасувати й вийти', wz_cancel_draft: 'Скасувати введення', wz_cancelled: 'Скасовано — нічого не збережено',
@@ -1938,7 +1938,7 @@ input[type=text]:not(.dmy-native):not(.pl-in), input[type=email], input[type=pas
       wnp_hint: 'Один кадр с обоими водомерами или по кадру на каждый. Барабан — прямо и близко, без блика вспышки.',
       wnp_src: 'С фото {n}: {v}', wnp_src_half: 'С фото {n}: {p} — последний барабан между цифрами, допишите меньшую.', wnp_src_none: 'Фото {n}: цифр барабана не видно — впишите вручную.',
       wnp_why_serial: '(по заводскому №)', wnp_why_tint: '(по цвету кольца)', wnp_why_prev: '(по прошлым показаниям)', wnp_why_swap: '(поменяли местами)',
-      wnp_check: 'Проверьте, тот ли это счётчик.', wnp_half: 'Последний барабан между цифрами — проверьте.',
+      wnp_check: 'Проверьте, тот ли это счётчик.', wnp_half: 'Последний барабан между цифрами — проверьте.', wnp_glare: 'Первые цифры закрыл блик — мы приняли их за нули, проверьте.',
       wnp_none: 'цифр барабана не нашли', wnp_guess: 'Не уверены, где какой счётчик — сверьте с фото (нажмите, чтобы увеличить).',
       wnp_swap: 'Поменять горячую и холодную',
       wz_cancel: 'Отменить и выйти', wz_cancel_draft: 'Отменить ввод', wz_cancelled: 'Отменено — ничего не сохранено',
@@ -2536,7 +2536,7 @@ input[type=text]:not(.dmy-native):not(.pl-in), input[type=email], input[type=pas
     _engine: function (onPct) {
       var base = String(root.TEPLO_API).replace(/\/api\/?$/, '') + '/web/ocr/';
       var script = root.TeploOCR ? Promise.resolve() : (this._script = this._script || new Promise(function (ok, bad) {
-        var s = document.createElement('script'); s.src = base + 'engine.js?v=9'; s.onload = ok; s.onerror = function () { bad(fail('engine_failed')); }; document.head.appendChild(s);
+        var s = document.createElement('script'); s.src = base + 'engine.js?v=10'; s.onload = ok; s.onerror = function () { bad(fail('engine_failed')); }; document.head.appendChild(s);
       }));
       return script.then(function () { return root.TeploOCR.load(base, onPct); }).catch(function (e) { if (e && e.code) throw e; throw fail('engine_failed'); });
     },
@@ -2815,7 +2815,9 @@ input[type=text]:not(.dmy-native):not(.pl-in), input[type=email], input[type=pas
     // окно барабана (по цвету) главнее строк текста, только если прочитано уверенно; иначе — сверяем со строкой цифр
     var dr = fromDrum(res, prevVal), ln = fromLines(res, prevVal);
     if (dr && dr.value !== null && dr.strong) return dr;
-    if (ln && dr && dr.value === ln.value) { ln.sure = true; ln.drum = true; ln.red = dr.red; ln.tint = dr.tint; return ln; }
+    if (ln && dr && dr.value === ln.value) { ln.sure = true; ln.drum = true; ln.red = dr.red; ln.tint = dr.tint; ln.lead = dr.lead && !dr.sure; return ln; }
+    // начало окна под бликом: строка текста («175432») видит то же, что окно, — окну и верим (оно отделило м³ от дробей)
+    if (dr && dr.lead && dr.value !== null) return dr;
     // строка «0137052» начинается с цифр окна «00137» — окно отделило м³ от дробей, ему и верим
     if (ln && dr && dr.value !== null && dr.digits.length >= 4 && ln.digits.replace(/^0+/, '').indexOf(String(dr.value)) === 0) { dr.sure = !dr.half; return dr; }
     if (ln) return ln;
@@ -2857,7 +2859,8 @@ input[type=text]:not(.dmy-native):not(.pl-in), input[type=email], input[type=pas
    * Окно барабана, найденное движком по цвету (res.drums): text — цифры чёрных роликов, red — красных.
    * Число роликов оцениваем по пропорциям окна (cells): прочитано меньше — один ролик между цифрами (полуповорот);
    * тогда по правилу берём меньшую цифру, а с прошлым показанием — наименьшее значение не меньше прошлого.
-   * → {value, digits, red, sure, half, tint, partial} | null (окна нет — разбираем строки текста как раньше)
+   * → {value, digits, red, sure, half, tint, partial, lead} | null (окна нет — разбираем строки текста как раньше)
+   *   lead — начало окна под бликом: value собрано из 3 видимых цифр (+ тысячи из прошлого показания)
    */
   function fromDrum(res, prevVal) {
     var ds = ((res && res.drums) || []).filter(function (d) { return d && String(d.text || '').length >= 3; });
@@ -2867,6 +2870,16 @@ input[type=text]:not(.dmy-native):not(.pl-in), input[type=email], input[type=pas
     var d = ds[0], dg = String(d.text).replace(/\D/g, ''), p = num(prevVal), red = String(d.red || '').replace(/\D/g, '');
     if (dg.length >= 7) { red = red || dg.slice(dg.length - 3); dg = dg.slice(0, dg.length - 3); }   // захватили и красные
     // меньше цифр, чем роликов, и начало окна видно (ведущий ноль) — последний ролик между цифрами
+    // ведущие ролики закрыл блик: 3 цифры без нуля впереди, окно найдено уверенно — это хвост числа, впереди обычно нули;
+    // с прошлым показанием — тысячи берём из него (1168 и «175» → 1175), без прошлого — нули, но «перевірте»
+    if (dg.length === 3 && !/^0/.test(dg) && (d.lead || d.sure) && (d.votes || 0) >= 2) {
+      var tail = Number(dg), lo = { value: tail, digits: dg, red: red, sure: false, strong: false, half: false, lead: true, tint: d.tint || null, drum: true };
+      if (p !== null) {
+        var pf0 = Math.floor(p + 1e-9), th = Math.floor(pf0 / 1000) * 1000, c3 = [th + tail, th + 1000 + tail].filter(function (v) { return v >= pf0 && v - pf0 < 500; });
+        if (c3.length) { lo.value = c3[0]; lo.sure = true; } else lo.less = tail < pf0;
+      }
+      return lo;
+    }
     var exp = d.cells || 5, half = /^0/.test(dg) && dg.length < Math.min(exp, 5);
     var strong = dg.length >= 4 && (d.votes || 0) >= 2 && (d.score || 0) >= 0.9 && /^0/.test(dg);
     var out = { value: Number(dg), digits: dg, red: red, sure: strong && !half, strong: strong, half: half, tint: d.tint || null, drum: true };
@@ -2885,7 +2898,11 @@ input[type=text]:not(.dmy-native):not(.pl-in), input[type=email], input[type=pas
   }
 
   /** Окну барабана можно верить при раскладке (а не случайному тёмному пятну). */
-  function goodDrum(d) { var t = String((d && d.text) || '').replace(/\D/g, ''); return t.length >= 4 && ((d.votes || 0) >= 2 || (d.score || 0) >= 0.9); }
+  function goodDrum(d) {
+    var t = String((d && d.text) || '').replace(/\D/g, '');
+    if (t.length === 3 && !/^0/.test(t)) return !!(d.lead || d.sure) && (d.votes || 0) >= 2 && (d.score || 0) >= 0.9;   // начало под бликом
+    return t.length >= 4 && ((d.votes || 0) >= 2 || (d.score || 0) >= 0.9);
+  }
   function center(o) { return { x: (o.x || 0) + (o.w || 0) / 2, y: (o.y || 0) + (o.h || 0) / 2 }; }
   /**
    * Пачка фото → показания по водомерам. photos: [{lines, drums}] (TeploOCR.read с {all:true}); meters: [{id, kind, serial}];
@@ -2935,7 +2952,7 @@ input[type=text]:not(.dmy-native):not(.pl-in), input[type=email], input[type=pas
     var by = {}, usedC = {}, usedP = {};
     var take = function (x) {
       var guess = pairs.some(function (y) { return y.c === x.c && y.m !== x.m && y.sc > x.sc - 5; });
-      by[x.m.id] = { value: x.r.value, partial: x.r.partial || null, photo: cands[x.c].photo, sure: !!x.r.sure && !guess, half: !!x.r.half, why: x.why, guess: guess, less: !!x.r.less };
+      by[x.m.id] = { value: x.r.value, partial: x.r.partial || null, photo: cands[x.c].photo, sure: !!x.r.sure && !guess, half: !!x.r.half, why: x.why, guess: guess, less: !!x.r.less, lead: !!x.r.lead && !x.r.sure };
       usedC[x.c] = true; usedP[cands[x.c].photo] = true;
     };
     pairs.forEach(function (x) { if (!by[x.m.id] && !usedC[x.c] && x.sc >= -5) take(x); });
@@ -3834,7 +3851,7 @@ input[type=text]:not(.dmy-native):not(.pl-in), input[type=email], input[type=pas
       var pi = WN.photos.length - 1;
       if (!r) WN.src[mid] = { photo: pi, value: null, none: true };
       else {
-        WN.src[mid] = { photo: pi, value: r.value, partial: r.partial || null, half: !!r.half, why: 'field' };
+        WN.src[mid] = { photo: pi, value: r.value, partial: r.partial || null, half: !!r.half, lead: !!r.lead && !r.sure, why: 'field' };
         if (r.value !== null) { WN.vals[mid] = String(r.value); WN.auto[mid] = true; }
       }
       render(true); wnCheck(true);
@@ -3848,7 +3865,7 @@ input[type=text]:not(.dmy-native):not(.pl-in), input[type=email], input[type=pas
     var n = x.photo + 1;
     if (x.none) return t('wnp_src_none', { n: n }) + ' ';
     if (x.value === null) return t('wnp_src_half', { n: n, p: x.partial || '' }) + ' ';
-    return t('wnp_src', { n: n, v: x.value }) + (x.why && x.why !== 'field' ? ' ' + t('wnp_why_' + x.why) : '') + '. ' + (x.guess || !x.why ? t('wnp_check') + ' ' : x.half ? t('wnp_half') + ' ' : '');
+    return t('wnp_src', { n: n, v: x.value }) + (x.why && x.why !== 'field' ? ' ' + t('wnp_why_' + x.why) : '') + '. ' + (x.guess || !x.why ? t('wnp_check') + ' ' : x.half ? t('wnp_half') + ' ' : '') + (x.lead ? t('wnp_glare') + ' ' : '');
   }
   function wnSrcThumb(mid) {
     var x = WN.src && WN.src[mid], p = x && WN.photos[x.photo]; if (!p) return '';
@@ -3919,7 +3936,7 @@ input[type=text]:not(.dmy-native):not(.pl-in), input[type=email], input[type=pas
     var A = Wt.assign(WN.photos.map(function (p) { return p.fixed ? null : p.res; }), free, prev);
     Object.keys(A.by).forEach(function (mid) {
       var x = A.by[mid];
-      WN.src[mid] = { photo: x.photo, value: x.value, partial: x.partial, half: x.half, why: x.why, guess: x.guess };
+      WN.src[mid] = { photo: x.photo, value: x.value, partial: x.partial, half: x.half, lead: x.lead, why: x.why, guess: x.guess };
       WN.photos[x.photo].meters.push(mid);
       if (x.value !== null && (!WN.vals[mid] || WN.auto[mid])) { WN.vals[mid] = String(x.value); WN.auto[mid] = true; }
     });

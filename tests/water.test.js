@@ -89,5 +89,14 @@ A = W.assign([{ drums: [D('00175', { votes: 1, score: 0.81, tint: 'red' })], lin
 ok('прошлые введены с ошибкой (больше) — прочитанное всё равно в поля, по цвету', A.by.h1 && A.by.h1.value === 175 && A.by.h1.less && A.by.c1 && A.by.c1.value === 458 && !A.unused.length, A);
 ok('строка «No79699» (заводской №) и её варианты — не показание', W.fromOcr({ drums: [D('00175', { votes: 1, score: 0.81 })], lines: [{ text: 'No79699', alts: ['079699', '79699'], h: 40, score: 0.9 }] }).value === 175);
 
+console.log('\nНачало окна под бликом (два счётчика издалека):');
+A = W.assign([{ drums: [DR('00458', { tint: 'blue', x: 900 }), DR('175', { tint: 'red', lead: 2, cells: 3, red: '432' })], lines: [] }], M, {});
+ok('КСМ «175» (нули под бликом) и MASTER на одном кадре — оба в поля, горячая с «перевірте»', A.by.h1 && A.by.h1.value === 175 && A.by.h1.lead && !A.by.h1.sure && A.by.c1.value === 458, A);
+A = W.assign([{ drums: [DR('00458', { tint: 'blue', x: 900 }), DR('175', { tint: 'red', lead: 2, cells: 3 })], lines: [] }], M, { h1: '1168', c1: '450' });
+ok('с прошлым 1168 — тысячи из прошлого: 1175, уверенно', A.by.h1.value === 1175 && A.by.h1.sure && !A.by.h1.lead, A);
+const fl = W.fromOcr({ drums: [DR('319', { sure: true, red: '226', cells: 3 })], lines: [{ text: '319226', h: 40, score: 0.95 }] });
+ok('одно окно «319» и строка «319226» — 319, а не 31922', fl.value === 319 && fl.lead && !fl.sure, fl);
+ok('случайное тёмное пятно «151» без красных и одного голоса — не окно', !W.goodDrum(DR('151', { votes: 1, score: 0.88 })) && !W.goodDrum(DR('151', { score: 0.95 })));
+
 console.log(`\nИтог: ${pass} OK, ${fail} FAIL`);
 process.exit(fail ? 1 : 0);

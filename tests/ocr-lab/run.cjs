@@ -20,6 +20,18 @@ const types = { js: 'text/javascript', mjs: 'text/javascript', wasm: 'applicatio
   const all = {}; let good = 0;
   for (const c of cases) {
     const img = c.file || (c.id + '.jpg');
+    if (c.meters) {   // несколько водомеров в кадре: читаем все окна и раскладываем, как экран «З фото»
+      const res = await p.evaluate(async ([img, meters, prevs]) => {
+        const blob = await (await fetch('/img/' + img)).blob(); const r = await TeploOCR.read(blob, { all: true });
+        return { r, a: TeploWater.assign([r], meters, prevs || {}) };
+      }, [img, c.meters, c.prevs || null]);
+      all[c.id] = res.r;
+      const got = {}; Object.keys(c.truth).forEach(k => { const x = res.a.by[k]; got[k] = x ? (x.value ?? x.partial) : null; });
+      const okk = Object.keys(c.truth).every(k => got[k] === c.truth[k]); if (okk) good++;
+      const dr = (res.r.drums || []).map(d => d.text + (d.red ? ',' + d.red : '') + (d.hidden ? '+' + d.hidden + 'скрыто' : '') + '(' + (d.score || 0).toFixed(2) + (d.tint ? ' ' + d.tint : '') + ')').join(' ');
+      console.log((okk ? ' OK ' : 'FAIL') + ' ' + c.id.padEnd(14) + ' truth=' + JSON.stringify(c.truth) + ' got=' + JSON.stringify(got) + '  ' + res.r.ms + 'ms  drums: ' + dr);
+      continue;
+    }
     const res = await p.evaluate(async ([img, prev]) => {
       const blob = await (await fetch('/img/' + img)).blob(); const r = await TeploOCR.read(blob);
       return { r, w: TeploWater.fromOcr(r, prev) };

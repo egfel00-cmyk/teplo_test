@@ -6,7 +6,8 @@
  *   all: true — читать все найденные окна барабанов (на фото может быть несколько водомеров), иначе — до первого уверенного.
  *   lines: [{ text, score, x, y, w, h, angle }] — координаты в пикселях исходного фото (после поворота по EXIF).
  *   drums: [{ text, red, score, votes, alts, x, y, w, h, angle, flipped, tint }] — окно барабана водомера, найденное по цвету:
- *          text — цифры чёрных роликов (м³), red — красных (дроби), tint — цвет кольца ('red' горячая / 'blue' холодная).
+ *          text — цифры чёрных роликов (м³), red — красных (дроби), tint — цвет кольца ('red' горячая / 'blue' холодная),
+ *          lead — сколько ведущих роликов не видно (блик стекла; text без них — обычно это нули).
  */
 (function (root) {
   'use strict';
@@ -207,8 +208,9 @@
     });
   }
   function digits(t) { return String(t || '').replace(/[^0-9]/g, '').length; }
-  /** Окно прочитано уверенно: 4+ цифр, совпали в двух обработках, ведущий ноль или высокая уверенность. */
-  function goodDrum(x) { return x.text.length >= 4 && x.votes >= 2 && (/^0/.test(x.text) || x.score > 0.92); }
+  /** Окно прочитано уверенно: 4+ цифр, совпали в двух обработках, ведущий ноль или высокая уверенность;
+   *  или 3 цифры, а ведущие ролики закрыл блик (lead). */
+  function goodDrum(x) { return x.votes >= 2 && (x.text.length >= 4 ? (/^0/.test(x.text) || x.score > 0.92) : !!x.lead && x.score > 0.9); }
 
   /* ───── Барабан водомера ─────
    * Окно счётного механизма: тёмные ролики с белыми цифрами (м³) и рядом красные (дроби — литры).
@@ -439,9 +441,23 @@
         res.push({ ang: ang, best: bestK, alts: outs.map(function (r) { return r.text; }) });
       });
     });
-    var reds = [];
+    var reds = [], lead = 0;
+    // Блик стекла на ведущих роликах («00» не видно): прочитали 3 цифры без ведущего нуля — окно короче настоящего.
+    // Дотягиваем его к началу на 2 ролика и читаем ещё раз: нули проступили — берём, нет — отмечаем lead (начала не видно).
     chain = chain.then(function () {
       res.sort(function (p, q) { return (q.best ? q.best.sc : -1) - (p.best ? p.best.sc : -1); });
+      var win = res[0]; if (!win.best || win.best.d.length !== 3 || /^0/.test(win.best.d) || win.best.n < 2) return null;
+      var ext = d.w / 3 * 2, ux = Math.cos(win.ang), uy = Math.sin(win.ang), eb = { cx: d.cx - ux * ext / 2, cy: d.cy - uy * ext / 2, w: d.w + ext + d.h * 0.1, h: d.h * 1.1, angle: win.ang }, got = {};
+      return ['inv', 'bin', 'plain'].reduce(function (ch3, m) { return ch3.then(function () { return recTensor(drumTensor(src, eb, m)); }).then(function (r) {
+        var dg = r.text.replace(/[Oo]/g, '0').replace(/[^0-9]/g, '');
+        if (dg.length === 5 && /^0/.test(dg) && dg.slice(2) === win.best.d) { (got[dg] = got[dg] || { n: 0, s: 0 }).n++; got[dg].s = Math.max(got[dg].s, r.score); }
+      }); }, Promise.resolve()).then(function () {
+        var k5 = Object.keys(got).sort(function (a, b) { return got[b].n - got[a].n; })[0];
+        if (k5) { win.best = { d: k5, sc: win.best.sc, n: Math.max(win.best.n, got[k5].n), s: Math.min(win.best.s, got[k5].s) }; win.ext = ext; }
+        else lead = 2;
+      });
+    });
+    chain = chain.then(function () {
       var win = res[0]; if (!win.best) return null;
       var rb = d.redBox;
       if (!rb) { var ux = Math.cos(win.ang), uy = Math.sin(win.ang), rl = d.w * 0.6; rb = { cx: d.cx + ux * (d.w / 2 + rl / 2 + d.h * 0.04), cy: d.cy + uy * (d.w / 2 + rl / 2 + d.h * 0.04), w: rl, h: d.h }; }
@@ -453,7 +469,7 @@
       var rd = reds.map(function (r) { return { d: r.text.replace(/[Oo]/g, '0').replace(/[^0-9]/g, ''), s: r.score }; }).filter(function (r) { return r.d.length >= 1 && r.d.length <= 4; }).sort(function (p, q) { return q.s - p.s; })[0];
       return { text: b0 ? b0.d : '', red: rd ? rd.d : '', score: b0 ? +b0.s.toFixed(3) : 0, votes: b0 ? b0.n : 0, alts: win.alts,
         x: Math.round(d.cx - d.w / 2), y: Math.round(d.cy - d.h / 2), w: Math.round(d.w), h: Math.round(d.h), angle: +win.ang.toFixed(3),
-        flipped: Math.cos(win.ang) < -0.5, sure: d.sure, tint: d.tint, find: d.score, cells: Math.max(3, Math.round(d.w / d.h / 0.68)) };
+        flipped: Math.cos(win.ang) < -0.5, sure: d.sure, tint: d.tint, find: d.score, cells: Math.max(3, Math.round((d.w + (win.ext || 0)) / d.h / 0.68)), lead: lead || undefined };
     });
   }
 

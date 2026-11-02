@@ -4,12 +4,13 @@ body{width:1200px;height:1600px;overflow:hidden;position:relative;background:#55
 #bg{position:absolute;inset:0}
 #m{position:absolute;left:0;top:0;transform-origin:50% 50%}
 #fx{position:absolute;inset:0;pointer-events:none}
-</style></head><body><canvas id="bg" width="1200" height="1600"></canvas><canvas id="m" width="900" height="900"></canvas><div id="fx"></div>
+</style></head><body><canvas id="bg" width="1200" height="1600"></canvas><canvas id="m" width="900" height="900"></canvas><canvas id="m2" width="900" height="900" style="position:absolute;left:0;top:0;transform-origin:50% 50%"></canvas><div id="fx"></div>
 <script>
 /*
  * Синтетический водомер (стиль Novator ЛК-15 и похожих): белый циферблат, кольцо (синее — холодная, красное — горячая),
  * окно барабана: N чёрных ячеек с белыми цифрами (м³) + красные (дробные), стрелочный круг «x0,0001», заводской №, год.
- * setCase(c): c = {v:'00502', red:'347', style:'red'|'redtxt', ring:'blue'|'red', rot, rx, ry, s, x, y, blur, br, glare, half, bg, warm}
+ * setCase(c): c = {v:'00502', red:'347', style:'red'|'redtxt', ring:'blue'|'red'|'none', rot, rx, ry, s, x, y, blur, br, glare, half, bg, warm,
+ *   lead: N — блик стекла на N ведущих чёрных роликах (их не видно), brandc — цвет печати, pair: {…второй водомер в кадре}}
  */
 function rnd(seed) { let s = seed >>> 0; return () => { s = (s * 1664525 + 1013904223) >>> 0; return s / 4294967296; }; }
 function drawBg(c) {
@@ -34,16 +35,16 @@ function digitCell(g, x, y, w, h, ch, next, frac, bgc, fg, font) {
   g.restore();
 }
 function shade(hex, k) { const n = parseInt(hex.slice(1), 16), r = n >> 16, gg = (n >> 8) & 255, b = n & 255, f = v => Math.max(0, Math.min(255, Math.round(v + (k < 0 ? v * k : (255 - v) * k)))); return 'rgb(' + f(r) + ',' + f(gg) + ',' + f(b) + ')'; }
-function drawMeter(c) {
-  const g = m.getContext('2d'), S = 900, cx = 450, cy = 450, R = 420; g.clearRect(0, 0, S, S);
+function drawMeter(c, cv) {
+  const g = (cv || m).getContext('2d'), S = 900, cx = 450, cy = 450, R = 420; g.clearRect(0, 0, S, S);
   // корпус (латунь) и кольцо
   let gr = g.createRadialGradient(cx - 120, cy - 120, 50, cx, cy, R); gr.addColorStop(0, '#e9d48a'); gr.addColorStop(0.7, '#b8973e'); gr.addColorStop(1, '#6e5a22');
   g.fillStyle = gr; g.beginPath(); g.arc(cx, cy, R, 0, 7); g.fill();
-  g.fillStyle = c.ring === 'red' ? '#c4202a' : '#1d5fb0'; g.beginPath(); g.arc(cx, cy, R * 0.9, 0, 7); g.fill();
+  g.fillStyle = c.ring === 'red' ? '#c4202a' : c.ring === 'none' ? '#c9ccd0' : '#1d5fb0'; g.beginPath(); g.arc(cx, cy, R * 0.9, 0, 7); g.fill();
   gr = g.createRadialGradient(cx, cy - 60, 40, cx, cy, R * 0.8); gr.addColorStop(0, '#ffffff'); gr.addColorStop(1, '#dfe3e6');
   g.fillStyle = gr; g.beginPath(); g.arc(cx, cy, R * 0.8, 0, 7); g.fill();
   // надписи
-  g.fillStyle = '#123f8a'; g.textAlign = 'center'; g.textBaseline = 'alphabetic';
+  g.fillStyle = c.brandc || '#123f8a'; g.textAlign = 'center'; g.textBaseline = 'alphabetic';
   g.font = 'bold 54px "DejaVu Sans"'; g.fillText(c.brand || 'NOVATOR', cx, 205);
   g.fillStyle = '#222'; g.font = 'bold 34px "DejaVu Sans"'; g.fillText(c.model || 'ЛК-15Г', cx, 252);
   g.font = '26px "DejaVu Sans"'; g.fillText('Qn 1,5 m³/h   R80-H', cx, 292);
@@ -66,6 +67,10 @@ function drawMeter(c) {
   if (c.shadow) { const sg = g.createLinearGradient(0, wy - 4, 0, wy + ch * 0.6); sg.addColorStop(0, 'rgba(0,0,0,' + c.shadow + ')'); sg.addColorStop(1, 'rgba(0,0,0,0)'); g.fillStyle = sg; g.fillRect(wx - 4, wy - 4, tw + 8, ch * 0.6); }
   if (c.fog) { g.save(); g.filter = 'blur(6px)'; const r2 = rnd(c.seed + 7); for (let k = 0; k < 60; k++) { g.fillStyle = 'rgba(235,240,242,' + (c.fog * (0.4 + r2() * 0.6)) + ')'; g.beginPath(); g.arc(wx - 30 + r2() * (tw + 60), wy - 20 + r2() * (ch + 40), 8 + r2() * 26, 0, 7); g.fill(); } g.restore(); }
   if (c.flash) { const fg2 = g.createRadialGradient(wx + tw * c.flash, wy + ch * 0.5, 2, wx + tw * c.flash, wy + ch * 0.5, ch * 0.9); fg2.addColorStop(0, 'rgba(255,255,255,1)'); fg2.addColorStop(0.35, 'rgba(255,255,255,0.8)'); fg2.addColorStop(1, 'rgba(255,255,255,0)'); g.fillStyle = fg2; g.fillRect(wx - 40, wy - 40, tw + 80, ch + 80); }
+  // блик стекла на ведущих роликах: белое пятно вытянуто вдоль окна, цифр под ним не видно
+  if (c.lead) { const lw = c.lead * (cw + gap), gx = wx + lw / 2 - gap; g.save(); g.translate(gx, wy + ch / 2); g.scale(1, ch / lw * 0.9);
+    const lg = g.createRadialGradient(0, 0, 2, 0, 0, lw * 0.85); lg.addColorStop(0, 'rgba(255,255,255,1)'); lg.addColorStop(0.6, 'rgba(250,250,250,0.97)'); lg.addColorStop(1, 'rgba(255,255,255,0)');
+    g.fillStyle = lg; g.beginPath(); g.arc(0, 0, lw * 0.85, 0, 7); g.fill(); g.restore(); }
   g.fillStyle = '#222'; g.font = 'bold 34px "DejaVu Sans"'; g.textAlign = 'right'; g.fillText('m³', wx - 22, wy + ch * 0.68);
   // стрелочный круг
   const px = cx + 120, py = 600, pr = 58; g.strokeStyle = '#333'; g.lineWidth = 2; g.beginPath(); g.arc(px, py, pr, 0, 7); g.stroke();
@@ -80,9 +85,10 @@ function drawMeter(c) {
   // блик
   if (c.glare) { gr = g.createRadialGradient(cx + c.glare, wy + ch / 2, 10, cx + c.glare, wy + ch / 2, 160); gr.addColorStop(0, 'rgba(255,255,255,0.85)'); gr.addColorStop(1, 'rgba(255,255,255,0)'); g.fillStyle = gr; g.beginPath(); g.arc(cx, cy, R * 0.8, 0, 7); g.fill(); }
 }
+const place = (cv, c) => { const s = c.s || 1; cv.style.transform = `translate(${150 + (c.x || 0)}px, ${350 + (c.y || 0)}px) perspective(1400px) rotateX(${c.rx || 0}deg) rotateY(${c.ry || 0}deg) rotate(${c.rot || 0}deg) scale(${s})`; };
 window.setCase = (c) => {
-  drawBg(c); drawMeter(c);
-  const s = c.s || 1; m.style.transform = `translate(${150 + (c.x || 0)}px, ${350 + (c.y || 0)}px) perspective(1400px) rotateX(${c.rx || 0}deg) rotateY(${c.ry || 0}deg) rotate(${c.rot || 0}deg) scale(${s})`;
+  drawBg(c); drawMeter(c, m); place(m, c);
+  m2.style.display = c.pair ? '' : 'none'; if (c.pair) { drawMeter(Object.assign({ seed: c.seed + 50 }, c.pair), m2); place(m2, c.pair); }
   document.body.style.filter = `blur(${c.blur || 0}px) brightness(${c.br || 1})` + (c.warm ? ` sepia(${c.warm})` : '');
 };
 </script></body></html>

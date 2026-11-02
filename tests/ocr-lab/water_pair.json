@@ -1,0 +1,17 @@
+[
+{ "id": "p_two_far_lead", "meters": [{"id": "h1", "kind": "hot"}, {"id": "c1", "kind": "cold"}], "truth": {"h1": 175, "c1": 458},
+  "v": "00175", "red": "432", "ring": "none", "brand": "KSM", "brandc": "#c4202a", "lead": 2, "s": 0.42, "x": -270, "y": -60, "rot": -4, "seed": 31,
+  "gapc": "#0d0e0f", "frame": "#2b2d30", "gap": 3, "cw": 38, "shadow": 0.6, "ink": "#cfd2d4",
+  "pair": { "v": "00458", "red": "061", "ring": "none", "brand": "MASTER", "brandc": "#1d5fb0", "s": 0.42, "x": 280, "y": 40, "rot": 6, "gapc": "#0d0e0f", "frame": "#2b2d30", "gap": 3, "cw": 38, "ink": "#cfd2d4" } },
+{ "id": "p_two_far", "meters": [{"id": "h1", "kind": "hot"}, {"id": "c1", "kind": "cold"}], "truth": {"h1": 175, "c1": 458},
+  "v": "00175", "red": "432", "ring": "none", "brand": "KSM", "brandc": "#c4202a", "s": 0.42, "x": -270, "y": -60, "rot": -4, "seed": 32,
+  "gapc": "#0d0e0f", "frame": "#2b2d30", "gap": 3, "cw": 38, "shadow": 0.6, "ink": "#cfd2d4",
+  "pair": { "v": "00458", "red": "061", "ring": "none", "brand": "MASTER", "brandc": "#1d5fb0", "s": 0.42, "x": 280, "y": 40, "rot": 6, "gapc": "#0d0e0f", "frame": "#2b2d30", "gap": 3, "cw": 38, "ink": "#cfd2d4" } },
+{ "id": "p_two_far_lead_prev", "meters": [{"id": "h1", "kind": "hot"}, {"id": "c1", "kind": "cold"}], "truth": {"h1": 1175, "c1": 458}, "prevs": {"h1": 1168, "c1": 450},
+  "v": "01175", "red": "432", "ring": "none", "brand": "KSM", "brandc": "#c4202a", "lead": 2, "s": 0.42, "x": -270, "y": -60, "rot": -4, "seed": 33,
+  "gapc": "#0d0e0f", "frame": "#2b2d30", "gap": 3, "cw": 38, "shadow": 0.6, "ink": "#cfd2d4",
+  "pair": { "v": "00458", "red": "061", "ring": "none", "brand": "MASTER", "brandc": "#1d5fb0", "s": 0.42, "x": 280, "y": 40, "rot": 6, "gapc": "#0d0e0f", "frame": "#2b2d30", "gap": 3, "cw": 38, "ink": "#cfd2d4" } },
+{ "id": "p_one_lead", "truth": 319, "v": "00319", "red": "226", "lead": 2, "seed": 34, "ring": "red" },
+{ "id": "p_one_lead_far", "truth": 642, "v": "00642", "red": "118", "lead": 2, "s": 0.5, "x": 100, "y": -150, "seed": 35, "ring": "none", "brandc": "#c4202a",
+  "gapc": "#0d0e0f", "frame": "#2b2d30", "gap": 3, "cw": 38, "shadow": 0.6, "ink": "#cfd2d4" }
+]

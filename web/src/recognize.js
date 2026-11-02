@@ -63,7 +63,7 @@
     _engine: function (onPct) {
       var base = String(root.TEPLO_API).replace(/\/api\/?$/, '') + '/web/ocr/';
       var script = root.TeploOCR ? Promise.resolve() : (this._script = this._script || new Promise(function (ok, bad) {
-        var s = document.createElement('script'); s.src = base + 'engine.js?v=9'; s.onload = ok; s.onerror = function () { bad(fail('engine_failed')); }; document.head.appendChild(s);
+        var s = document.createElement('script'); s.src = base + 'engine.js?v=10'; s.onload = ok; s.onerror = function () { bad(fail('engine_failed')); }; document.head.appendChild(s);
       }));
       return script.then(function () { return root.TeploOCR.load(base, onPct); }).catch(function (e) { if (e && e.code) throw e; throw fail('engine_failed'); });
     },
