@@ -1158,7 +1158,7 @@
 
   V.step = function (i) {
     var st = steps(), n = st.length; if (!S.draft) newDraft();
-    i = Math.max(0, Math.min(n - 1, i)); S.draft.step = i; save();
+    i = Math.max(0, Math.min(n - 1, +i || 0)); S.draft.step = i; save();
     var s = st[i], m = model(), prev = prevForEntry();
     var head = '<div class="wiz-top" data-key="step-head"><span class="count">' + esc(t('s_step', { i: i + 1, n: n })) + '</span>' +
       (i > 0 && S.draft.date ? '<a class="date-chip" href="#step-0" data-key="step-date" title="' + esc(t('s_date_change')) + '">' + ico('calendar', 16) + '<span>' + esc(t('s_for_date', { d: R.toHtmDate(S.draft.date) })) + '</span></a>' : '') + '<span class="progress" aria-hidden="true"><i style="width:' + Math.round((i + 1) / n * 100) + '%"></i></span></div>';

@@ -183,11 +183,11 @@ a { color: var(--c-return); text-underline-offset: 3px; }
 .choice label:has(input:checked) { border-color: var(--c-ink); box-shadow: inset 0 0 0 1px var(--c-ink); }
 
 /* ---------- мастер ---------- */
-.wiz-top { display: flex; align-items: center; gap: var(--sp-3); margin-bottom: var(--sp-4); }
+.wiz-top { display: flex; flex-wrap: wrap; align-items: center; gap: 8px var(--sp-3); margin-bottom: var(--sp-4); }   /* узкий экран: полоска прогресса уходит строкой ниже */
 .wiz-top .count { font-weight: 600; white-space: nowrap; }
-.progress { height: 6px; background: var(--c-line); border-radius: 3px; overflow: hidden; flex: 1; }
+.progress { height: 6px; background: var(--c-line); border-radius: 3px; overflow: hidden; flex: 1 1 64px; min-width: 64px; }
 .progress i { display: block; height: 100%; background: var(--c-ink); border-radius: 3px; transition: width .25s; }
-.wiz { display: grid; gap: var(--sp-5); }
+.wiz { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--sp-5); }
 @media (min-width: 960px) { .wiz { grid-template-columns: minmax(320px, 440px) 1fr; align-items: start; } }
 .press { display: flex; align-items: center; gap: var(--sp-3); margin: 0 0 var(--sp-3); font-size: var(--fs-l); font-weight: 600; }
 .press .times { font-family: var(--mono); background: var(--c-ink); color: var(--c-on-ink); border-radius: 8px; padding: 2px 10px; font-size: var(--fs-l); }
@@ -210,8 +210,8 @@ a { color: var(--c-return); text-underline-offset: 3px; }
 .vals td { font-family: var(--mono); font-size: var(--fs-m); text-align: right; white-space: nowrap; }
 .vals tr.is-block td { color: var(--c-bad); font-weight: 600; } .vals tr.is-warn td { color: var(--c-warn); font-weight: 600; }
 .vals tr:last-child th, .vals tr:last-child td { border-bottom: 0; }
-.cols { display: grid; gap: var(--sp-4); }
-@media (min-width: 960px) { .cols { grid-template-columns: 1fr 1fr; align-items: start; } }
+.cols { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--sp-4); }   /* minmax(0,…): поле ввода не распирает колонку шире экрана (вход на телефоне ездил вбок) */
+@media (min-width: 960px) { .cols { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: start; } }
 
 /* ---------- передача ---------- */
 .copy-list { list-style: none; margin: 0; padding: 0; background: var(--c-surface); border-radius: 14px; }
@@ -309,8 +309,9 @@ label.btn { cursor: pointer; }
 /* экономия тепла */
 .tips { padding-left: 22px; } .tips li { margin-bottom: 14px; } .tips h3 { margin: 0 0 4px; font-size: 17px; } .tips p { margin: 0; }
 .tip h3 { margin: 4px 0; font-size: 16px; } .tip { margin-top: 16px; }
-.date-chip { display: inline-flex; align-items: center; gap: 6px; font-size: 14px; padding: 4px 10px; border-radius: 999px; background: var(--c-surface); color: inherit; text-decoration: none; border: 1px solid var(--c-line); margin-left: 8px; white-space: nowrap; }
-@media (max-width: 420px) { .nav a span { font-size: 11px; letter-spacing: -0.1px; } .wiz-top .progress { min-width: 40px; } }
+.date-chip { display: inline-flex; align-items: center; gap: 6px; font-size: 14px; padding: 4px 10px; border-radius: 999px; background: var(--c-surface); color: inherit; text-decoration: none; border: 1px solid var(--c-line); white-space: nowrap; }
+@media (max-width: 420px) { .nav a span { font-size: 11px; letter-spacing: -0.1px; } }
+@media (max-width: 359px) { .nav a span { font-size: 10px; letter-spacing: -0.2px; } }
 
 /* статистика */
 .chart { width: 100%; height: auto; display: block; margin-top: 8px; overflow: visible; }
@@ -361,6 +362,13 @@ label.btn { cursor: pointer; }
 .theme-btn { display: grid; place-items: center; width: var(--tap); height: var(--tap); border: 1.5px solid var(--c-field-line); border-radius: 50%; background: var(--c-surface); color: var(--c-ink); cursor: pointer; flex: none; }
 .theme-btn:hover { border-color: var(--c-ink-2); }
 .top .theme-btn + .btn { margin-left: var(--sp-2); }
+/* узкие телефоны (320–359 px): шапка «логотип · ТЕСТ · тема · ✕» не влезала — страница ездила вбок */
+.brand { min-width: 0; } .brand span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+@media (max-width: 359px) {
+  .top { gap: 4px; padding: var(--sp-3); } .brand { gap: 8px; }
+  .beta { font-size: 10px; padding: 4px 6px; }
+  .top .theme-btn { width: 44px; height: 44px; } .top .btn { min-height: 44px; padding: 0 10px; } .top .theme-btn + .btn { margin-left: 0; }
+}
 
 /* просмотр фото на весь экран */
 .pv { position: fixed; inset: 0; z-index: 1000; background: rgba(0, 0, 0, .94); touch-action: none; overflow: hidden; overscroll-behavior: contain; }
@@ -4132,7 +4140,7 @@ input[type=text]:not(.dmy-native):not(.pl-in), input[type=email], input[type=pas
 
   V.step = function (i) {
     var st = steps(), n = st.length; if (!S.draft) newDraft();
-    i = Math.max(0, Math.min(n - 1, i)); S.draft.step = i; save();
+    i = Math.max(0, Math.min(n - 1, +i || 0)); S.draft.step = i; save();
     var s = st[i], m = model(), prev = prevForEntry();
     var head = '<div class="wiz-top" data-key="step-head"><span class="count">' + esc(t('s_step', { i: i + 1, n: n })) + '</span>' +
       (i > 0 && S.draft.date ? '<a class="date-chip" href="#step-0" data-key="step-date" title="' + esc(t('s_date_change')) + '">' + ico('calendar', 16) + '<span>' + esc(t('s_for_date', { d: R.toHtmDate(S.draft.date) })) + '</span></a>' : '') + '<span class="progress" aria-hidden="true"><i style="width:' + Math.round((i + 1) / n * 100) + '%"></i></span></div>';
