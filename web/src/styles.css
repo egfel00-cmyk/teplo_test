@@ -340,6 +340,12 @@ label.btn { cursor: pointer; }
 .docs li { display: flex; align-items: center; gap: 12px; background: var(--c-housing); border-radius: 12px; padding: 8px; }
 .doc-th { width: 56px; height: 56px; border-radius: 8px; overflow: hidden; background: var(--c-surface); display: grid; place-items: center; flex: none; }
 .doc-th img { width: 100%; height: 100%; object-fit: cover; } .doc-th .pdf { font: 700 13px var(--mono); color: var(--c-bad); }
+/* платёжки к записям истории */
+.panel.bills { margin-top: var(--sp-4); }
+.panel.bills h2 { display: flex; align-items: center; gap: 8px; }
+.bills .docs .grow { min-width: 0; }
+.bills .bill-name { display: block; overflow-wrap: anywhere; }
+.bills .doc-th img { cursor: zoom-in; }
 /* узкий экран: в строке истории — текст на всю ширину, погода и статус строкой ниже */
 @media (max-width: 480px) {
   [data-key="reading-list"] .rowlink { flex-wrap: wrap; row-gap: 6px; }

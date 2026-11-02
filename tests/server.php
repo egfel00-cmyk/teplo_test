@@ -281,6 +281,17 @@ ok('чужой не видит и не скачивает', count($rb->req('GET'
 ok('свой файл отдаётся через PHP', $lb->req('GET', '/api/docs/file', null, ['QUERY_STRING' => 'id=' . $d1->body['doc']['id']])->file['mime'] === 'image/png');
 ok('удаление', $lb->req('POST', '/api/docs/delete', ['id' => $d2->body['doc']['id']])->status === 200 && count($lb->req('GET', '/api/docs')->body['docs']) === 1);
 
+echo "\nПлатёжки к записям истории:\n";
+$b1 = $du($lb, "%PDF-1.4\n%bill", 'application/pdf', 'place=p1&kind=bill&name=' . rawurlencode('Платіжка жовтень.pdf'));
+ok('платёжка PDF сохраняется (kind=bill) с именем файла', $b1->status === 200 && $b1->body['doc']['kind'] === 'bill' && $b1->body['doc']['name'] === 'Платіжка жовтень.pdf');
+$lk = $lb->req('GET', '/api/docs/link', null, ['QUERY_STRING' => 'id=' . $b1->body['doc']['id']]);
+ok('подписанная ссылка — только хозяину', $lk->status === 200 && str_starts_with($lk->body['url'], 'docs/open?id=') && $rb->req('GET', '/api/docs/link', null, ['QUERY_STRING' => 'id=' . $b1->body['doc']['id']])->status === 404);
+parse_str(parse_url($lk->body['url'], PHP_URL_QUERY), $lq);
+ok('по ссылке файл открывается без входа', (new Browser('10.0.9.8'))->req('GET', '/api/docs/open', null, ['QUERY_STRING' => http_build_query($lq)])->file['mime'] === 'application/pdf');
+$bad = $lq; $bad['e'] = (string)((int)$lq['e'] + 60);
+$old = $lq; $old['e'] = (string)(time() - 5);
+ok('подделка срока или просроченная — 404', (new Browser('10.0.9.8'))->req('GET', '/api/docs/open', null, ['QUERY_STRING' => http_build_query($bad)])->status === 404 && (new Browser('10.0.9.8'))->req('GET', '/api/docs/open', null, ['QUERY_STRING' => http_build_query($old)])->status === 404);
+
 echo "\nПогода для статистики (только владельцу):\n";
 $urls = []; Weather::$fetch = function ($u) use (&$urls) { $urls[] = $u; return ['daily' => ['time' => ['2025-01-01', '2025-01-02'], 'temperature_2m_mean' => [-3.24, null]]]; };
 ok('погода: обычному пользователю — нет', $rb->req('GET', '/api/admin/weather', null, ['QUERY_STRING' => 'from=2025-01-01&to=2025-01-02'])->status === 403);

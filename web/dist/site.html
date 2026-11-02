@@ -353,6 +353,12 @@ label.btn { cursor: pointer; }
 .docs li { display: flex; align-items: center; gap: 12px; background: var(--c-housing); border-radius: 12px; padding: 8px; }
 .doc-th { width: 56px; height: 56px; border-radius: 8px; overflow: hidden; background: var(--c-surface); display: grid; place-items: center; flex: none; }
 .doc-th img { width: 100%; height: 100%; object-fit: cover; } .doc-th .pdf { font: 700 13px var(--mono); color: var(--c-bad); }
+/* платёжки к записям истории */
+.panel.bills { margin-top: var(--sp-4); }
+.panel.bills h2 { display: flex; align-items: center; gap: 8px; }
+.bills .docs .grow { min-width: 0; }
+.bills .bill-name { display: block; overflow-wrap: anywhere; }
+.bills .doc-th img { cursor: zoom-in; }
 /* узкий экран: в строке истории — текст на всю ширину, погода и статус строкой ниже */
 @media (max-width: 480px) {
   [data-key="reading-list"] .rowlink { flex-wrap: wrap; row-gap: 6px; }
@@ -1256,6 +1262,22 @@ input[type=text]:not(.dmy-native):not(.pl-in), input[type=email], input[type=pas
       mv_docs_none: 'Ще немає документів.', mv_docs_login: 'Увійдіть, щоб зберігати фото паспорта й документів повірки.',
       mv_kind_passport: 'Паспорт лічильника', mv_kind_verification: 'Повірка', mv_kind_other: 'Документ',
       mv_add_passport: 'Фото паспорта', mv_add_ver: 'Документ повірки', mv_uploading: 'Завантажую…', mv_saved: 'Документ збережено',
+      bl_title: "Платіжка за {m}",
+      bl_title_gap: "Платіжки за ці місяці",
+      bl_sub: "Фото чи PDF платіжки — щоб звіряти нараховане з показаннями. Можна кілька файлів: обидві сторінки, тепло й вода окремо.",
+      bl_add: "Додати платіжку (фото чи PDF)",
+      bl_add_more: "Додати ще файл",
+      bl_photo: "Фото платіжки",
+      bl_img: "Платіжка, фото {n}",
+      bl_login: "Платіжки зберігаються на сервері й видні з будь-якого пристрою — для цього потрібно увійти.",
+      bl_login_a: "Увійти",
+      bl_saved: "Платіжку збережено",
+      bl_saved_n: "Збережено файлів: {n}",
+      bl_del_q: "Видалити цю платіжку?",
+      bl_deleted: "Платіжку видалено",
+      bl_many: "Забагато файлів — видаліть старі платіжки чи документи.",
+      bl_n: "Платіжок: {n}",
+      bl_open_err: "Не вдалося відкрити файл — спробуйте ще раз.",
       mv_bad_file: 'Потрібне фото (JPEG, PNG, WebP) або PDF.', mv_too_big: 'Файл завеликий (до 12 МБ).', mv_del_q: 'Видалити документ?',
       pl_title: 'Мої квартири', pl_sub: 'У кожної квартири свій лічильник, свої останні прийняті показання й своя історія.', pl_unnamed: 'Квартира {n}',
       pl_addr: 'Адреса квартири', pl_addr_ph: 'вул. Сумська, 10, кв. 61', pl_no_meter: 'лічильник не обрано', pl_n: 'показань: {n}', pl_ver: 'повірка до {d}',
@@ -1929,6 +1951,22 @@ input[type=text]:not(.dmy-native):not(.pl-in), input[type=email], input[type=pas
       mv_docs_none: 'Пока нет документов.', mv_docs_login: 'Войдите, чтобы хранить фото паспорта и документов поверки.',
       mv_kind_passport: 'Паспорт счётчика', mv_kind_verification: 'Поверка', mv_kind_other: 'Документ',
       mv_add_passport: 'Фото паспорта', mv_add_ver: 'Документ поверки', mv_uploading: 'Загружаю…', mv_saved: 'Документ сохранён',
+      bl_title: "Платёжка за {m}",
+      bl_title_gap: "Платёжки за эти месяцы",
+      bl_sub: "Фото или PDF платёжки — чтобы сверять начисленное с показаниями. Можно несколько файлов: обе страницы, тепло и вода отдельно.",
+      bl_add: "Добавить платёжку (фото или PDF)",
+      bl_add_more: "Добавить ещё файл",
+      bl_photo: "Фото платёжки",
+      bl_img: "Платёжка, фото {n}",
+      bl_login: "Платёжки хранятся на сервере и видны с любого устройства — для этого нужно войти.",
+      bl_login_a: "Войти",
+      bl_saved: "Платёжка сохранена",
+      bl_saved_n: "Сохранено файлов: {n}",
+      bl_del_q: "Удалить эту платёжку?",
+      bl_deleted: "Платёжка удалена",
+      bl_many: "Слишком много файлов — удалите старые платёжки или документы.",
+      bl_n: "Платёжек: {n}",
+      bl_open_err: "Не удалось открыть файл — попробуйте ещё раз.",
       mv_bad_file: 'Нужно фото (JPEG, PNG, WebP) или PDF.', mv_too_big: 'Файл слишком большой (до 12 МБ).', mv_del_q: 'Удалить документ?',
       pl_title: 'Мои квартиры', pl_sub: 'У каждой квартиры свой счётчик, свои последние принятые показания и своя история.', pl_unnamed: 'Квартира {n}',
       pl_addr: 'Адрес квартиры', pl_addr_ph: 'ул. Сумская, 10, кв. 61', pl_no_meter: 'счётчик не выбран', pl_n: 'показаний: {n}', pl_ver: 'поверка до {d}',
@@ -3911,6 +3949,7 @@ input[type=text]:not(.dmy-native):not(.pl-in), input[type=email], input[type=pas
     moon: '<path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/>',
     chat: '<path d="M4 5h16v11H9l-5 4z"/><path d="M8 9h8M8 12h5"/>',
     camera: '<path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/>',
+    bill: '<path d="M6 3h12v18l-2.5-1.6L13 21l-2-1.6L9 21l-3-1.8z"/><path d="M9 8h6M9 11.5h6M9 15h3.5"/>',
     wrench: '<path d="M14.5 5.5a4 4 0 0 0 4.9 4.9l-8.9 8.9a2 2 0 0 1-2.8-2.8l8.9-8.9a4 4 0 0 0-2.1-2.1z"/><path d="M14.5 5.5L17 3l2.5 2.5"/>',
     phone: '<path d="M5 4h4l1.5 4.5-2.5 1.5a11 11 0 0 0 6 6l1.5-2.5L20 15v4a1 1 0 0 1-1 1A16 16 0 0 1 4 5a1 1 0 0 1 1-1z"/>',
     send: '<path d="M21 3L3 10.5l7 2.5 2.5 7z"/><path d="M10 13l11-10"/>'
@@ -4170,7 +4209,7 @@ input[type=text]:not(.dmy-native):not(.pl-in), input[type=email], input[type=pas
     // крупно — сколько тепла/воды (оценка) и сколько денег: по платёжке, если записано, иначе оценка
     return histRow({ cls: 'gap-row', key: 'gap-' + g.id, href: '#gap-' + g.id, lead: '<span class="hr-ico">' + ico('wrench', 18, 'c-warn') + '</span>',
       q: qv > 0 ? '≈ ' + fmtN(qv, heat ? 3 : 1) : null, unit: gapUnit(g), money: amt !== null ? amt * mo : e && e.cost > 0 ? e.cost : null, none: t('gp_row'), date: gapPeriod(g), sub: bits,
-      right: '<span class="pill ' + (g.to && g.to <= today() ? 'neutral' : 'warn') + '">' + esc(t('gp_r_' + (g.reason || 'other'))) + '</span>' });
+      right: billMark(g.bills) + '<span class="pill ' + (g.to && g.to <= today() ? 'neutral' : 'warn') + '">' + esc(t('gp_r_' + (g.reason || 'other'))) + '</span>' });
   }
 
   /** Банер на сторінці лічильника: зараз без лічильника → «поставили назад». */
@@ -4458,7 +4497,7 @@ input[type=text]:not(.dmy-native):not(.pl-in), input[type=email], input[type=pas
       return histRow({ key: 'wrec-' + x.rec.id, href: '#wrec-' + x.rec.id, q: has ? '+' + d : null, unit: 'м³', money: has ? wcostOf(kind, d, x.rec.date) : null,
         none: x.rec.base ? t('wh_base') : t('hr_first'),
         date: fmtDate(x.rec.date, true), sub: [t('hr_on_meter', { v: vs.replace(/<[^>]+>/g, ''), u: 'м³' }), has && days ? days + '\u00a0' + t('days_short') : ''],
-        right: (np ? '<span class="ph-n" title="' + esc(t('hp_n', { n: np })) + '">' + ico('camera', 16) + '<span class="num">' + np + '</span></span>' : '') +
+        right: (np ? '<span class="ph-n" title="' + esc(t('hp_n', { n: np })) + '">' + ico('camera', 16) + '<span class="num">' + np + '</span></span>' : '') + billMark(x.rec.bills) +
           (x.rec.base ? '' : sent ? '<span class="pill ok">' + esc(t('wh_sent')) + '</span>' : '<span class="pill neutral">' + esc(t('wh_notsent')) + '</span>') });
     }).join('') + '</ul>' };
   }
@@ -4490,7 +4529,7 @@ input[type=text]:not(.dmy-native):not(.pl-in), input[type=email], input[type=pas
     h += '<ul class="list" data-key="wrec-values">' + ms.map(function (m) {
       var d = x.by[m.id];
       return '<li><div class="grow">' + ico('drop', 16, m.kind === 'hot' ? 'c-hot' : 'c-cold') + ' ' + esc(wname(m)) + (m.serial ? ' <span class="small muted">№ ' + esc(m.serial) + '</span>' : '') + (d !== undefined ? '<div class="small muted">+' + d + ' м³</div>' : '') + '</div><b class="num">' + esc(wfmt(r.vals[m.id])) + '</b> <span class="small muted">м³</span></li>';
-    }).join('') + '</ul>' + photoStrip(r.photos, 'w' + r.id);
+    }).join('') + '</ul>' + photoStrip(r.photos, 'w' + r.id) + (r.base ? '' : billsBox('w:' + r.id, r.bills, t('bl_title', { m: monthLabel(String(r.date).slice(0, 7)) })));
     if (x.hot !== null || x.cold !== null) {
       var c = Wt.cost(x.cold || 0, x.hot || 0, r.date, S.wtariff);
       h += '<div class="panel" style="margin-top:16px" data-key="wrec-used"><h2>' + esc(t('rec_used_title')) + '</h2><div class="cards2">' +
@@ -4703,7 +4742,7 @@ input[type=text]:not(.dmy-native):not(.pl-in), input[type=email], input[type=pas
       case 'wz-back': e.preventDefault(); wzRead(); WS.step = Math.max(0, WS.step - 1); render(); return true;
       case 'wz-done': e.preventDefault(); wzDone(); return true;
       case 'wsent': { var r = (S.water || []).filter(function (x) { return x.id === el.getAttribute('data-id'); })[0]; if (!r) return true; r.sent = Object.assign({}, r.sent || {}); r.sent[el.getAttribute('data-to')] = el.getAttribute('data-v') === '1' ? today() : ''; r.updatedAt = Date.now(); save(); render(true); return true; }
-      case 'wdel': { if (!confirm(t('wh_del_q'))) return true; var r2 = (S.water || []).filter(function (x) { return x.id === el.getAttribute('data-id'); })[0]; if (r2) { r2.deleted = true; r2.updatedAt = Date.now(); photoKeep(r2.photos, false); save(); if (/^wrec-/.test(routeName())) go('history'); else render(true); } return true; }
+      case 'wdel': { if (!confirm(t('wh_del_q'))) return true; var r2 = (S.water || []).filter(function (x) { return x.id === el.getAttribute('data-id'); })[0]; if (r2) { r2.deleted = true; r2.updatedAt = Date.now(); photoKeep(r2.photos, false); billsDrop(r2.bills); save(); if (/^wrec-/.test(routeName())) go('history'); else render(true); } return true; }
       case 'wedit': { var r3 = wrecs().filter(function (x) { return x.id === el.getAttribute('data-id'); })[0]; if (!r3) return true;
         var k3 = wmeters('hot').some(function (m) { return hasVal(r3, m.id); }) ? 'hot' : 'cold', v3 = {};
         Object.keys(r3.vals || {}).forEach(function (k) { v3[k] = wfmt(r3.vals[k]); });
@@ -4721,7 +4760,7 @@ input[type=text]:not(.dmy-native):not(.pl-in), input[type=email], input[type=pas
         if (WN.photos.some(function (p) { return !p.fixed; })) wnAssign();
         render(true); wnCheck(true); return true; }
       case 'view-go': S.view = el.getAttribute('data-v'); persist(); go(el.getAttribute('data-to')); return true;
-      case 'gap-del': { var gd = gapById(el.getAttribute('data-id')); if (!gd || !confirm(t('gp_del_q'))) return true; var gk = gapKind(gd);
+      case 'gap-del': { var gd = gapById(el.getAttribute('data-id')); if (!gd || !confirm(t('gp_del_q'))) return true; var gk = gapKind(gd); billsDrop(gd.bills);
         setGaps(function (list) { list.forEach(function (x) { if (x && x.id === gd.id) { x.deleted = true; x.updatedAt = Date.now(); } }); }); toast(t('gp_deleted')); go(gk === 'heat' ? 'heat' : 'water-' + (gk || 'hot')); return true; }
       case 'wm-add': wsetCfg(function (c) { c.meters = c.meters || []; c.meters.push({ id: Wt.uid(), kind: el.getAttribute('data-kind'), name: '', serial: '', vkId: '', verifiedUntil: '' }); }); render(true); return true;
       case 'wm-del': if (!confirm(t('wm_del_q'))) return true; wsetCfg(function (c) { (c.meters || []).forEach(function (m) { if (m.id === el.getAttribute('data-id')) m.deleted = true; }); }); render(true); return true;
@@ -4981,7 +5020,7 @@ input[type=text]:not(.dmy-native):not(.pl-in), input[type=email], input[type=pas
         '<div class="field"><label for="gp-amount">' + esc(t('gp_amount')) + ' <span class="muted small">(' + esc(t('b_opt')) + ')</span></label><div class="ctl"><input id="gp-amount" class="num" inputmode="decimal" autocomplete="off" data-gp="amount" value="' + esc(g.amount == null ? '' : String(g.amount)) + '"><span class="unit">грн</span></div></div></div>' +
       '<div class="field"><label for="gp-note">' + esc(t('gp_note')) + ' <span class="muted small">(' + esc(t('b_opt')) + ')</span></label><div class="ctl"><input id="gp-note" maxlength="300" data-gp="note" value="' + esc(g.note || '') + '" placeholder="' + esc(t('gp_note_ph')) + '"></div></div>' +
       '<div class="help block" id="gp-err" role="alert"></div></div>' + gapEstBox(g) +
-      '<div class="row-actions"><a class="btn sec" href="#' + back + '">' + esc(t('cancel')) + '</a>' + (id ? '<button type="button" class="btn danger" data-act="gap-del" data-id="' + esc(id) + '" data-key="gap-del">' + esc(t('rec_del')) + '</button>' : '') + '<button type="submit" class="btn" data-key="gap-save">' + esc(t('save')) + '</button></div></form>';
+      '<div class="row-actions"><a class="btn sec" href="#' + back + '">' + esc(t('cancel')) + '</a>' + (id ? '<button type="button" class="btn danger" data-act="gap-del" data-id="' + esc(id) + '" data-key="gap-del">' + esc(t('rec_del')) + '</button>' : '') + '<button type="submit" class="btn" data-key="gap-save">' + esc(t('save')) + '</button></div></form>' + (id ? billsBox('g:' + id, g.bills, t('bl_title_gap')) : '');
     return { screen: 'S31', route: back, html: html };
   }
   /** Сохранить форму периода без лічильника. */
@@ -5093,6 +5132,11 @@ input[type=text]:not(.dmy-native):not(.pl-in), input[type=email], input[type=pas
   function tipLine(icon, html) { return '<div class="kpi-tip">' + ico(icon, 20) + '<p>' + html + '</p></div>'; }
   /** Строка истории одним шаблоном: крупно «+2,127 Гкал · ≈ 3 304 грн», ниже мелко дата · показання · дні; справа — значки.
    *  o: {key, href, q, unit, money, none, sub: [..], right} */
+  /** Значок «есть платёжка» в строке истории. */
+  function billMark(list) {
+    var n = (list || []).filter(function (b) { return b && b.id; }).length; if (!n) return '';
+    return '<span class="ph-n" title="' + esc(t('bl_n', { n: n })) + '">' + ico('bill', 16) + '<span class="num">' + n + '</span></span>';
+  }
   function histRow(o) {
     var hasQ = o.q !== null && o.q !== undefined, hasM = o.money !== null && o.money !== undefined;
     var main = '<div class="hr-main">' + (o.lead || '') + (hasQ || hasM
@@ -5119,7 +5163,7 @@ input[type=text]:not(.dmy-native):not(.pl-in), input[type=email], input[type=pas
       return histRow({ key: 'reading-' + r.id, href: '#rec-' + r.id, q: ok ? '+' + fmtN(iv.dE, 3) : null, unit: 'Гкал', money: ok ? iv.cost : null,
         none: iv ? t('hi_less', { de: Math.abs(iv.dE).toFixed(3) }) : t(gaps('heat').some(function (g) { return g.from < r.htm.date; }) ? 'hr_nogap' : 'hr_first'),
         date: fmtDate(r.htm.date, true), sub: [t('hr_on_meter', { v: R.formatForHtm('energy', r.htm.energy), u: 'Гкал' }), iv ? iv.days + '\u00a0' + t('days_short') + (iv.overGap ? ' ' + t('hr_over_gap') : '') : ''],
-        right: wxChip(wxFor(r)) + '<span class="pill ' + cls + '">' + esc(t('status_' + r.status)) + '</span>' });
+        right: wxChip(wxFor(r)) + billMark(r.bills) + '<span class="pill ' + cls + '">' + esc(t('status_' + r.status)) + '</span>' });
     })[0];
   }
 
@@ -5369,7 +5413,7 @@ input[type=text]:not(.dmy-native):not(.pl-in), input[type=email], input[type=pas
         '<div><div class="num mid">' + esc(degTxt(wx.min)) + ' … ' + esc(degTxt(wx.max)) + '</div><div class="small muted">' + esc(t('wx_t_range')) + '</div></div>' +
         '<div><div class="num mid">' + wx.frost + ' / ' + wx.ser.length + '</div><div class="small muted">' + esc(t('wx_t_frost')) + '</div></div>' : '') +
       (wx.day !== null ? '<div><div class="num mid">' + esc(degTxt(wx.day)) + '</div><div class="small muted">' + esc(t('wx_t_day')) + '</div></div>' : '') + '</div>' + wxSpark(wx.ser) + '</div>' : '';
-    return { screen: 'S09', route: 'history', html: head + used + wxp + '<ul class="list" data-key="rec-values">' + rows + '</ul>' + photoStrip(r.photos, 'h' + r.id) +
+    return { screen: 'S09', route: 'history', html: head + used + wxp + '<ul class="list" data-key="rec-values">' + rows + '</ul>' + photoStrip(r.photos, 'h' + r.id) + billsBox('h:' + r.id, r.bills, t('bl_title', { m: monthLabel(String(h.date || '').slice(0, 7)) })) +
       '<div class="row-actions">' + st + '<a class="btn sec" href="#rec-' + r.id + '-edit" data-key="rec-edit">' + esc(t('rec_edit')) + '</a>' +
       '<button class="btn danger" data-act="rec-del-ask" data-key="rec-del">' + esc(t('rec_del')) + '</button></div><div id="rec-del-confirm"></div>' };
   }
@@ -5609,6 +5653,101 @@ input[type=text]:not(.dmy-native):not(.pl-in), input[type=email], input[type=pas
   V.terms = function () { return { screen: 'S21', route: 'terms', closeTo: 'prefs', html: legalPage('terms') }; };
   V.help = function () { return { screen: 'S10', route: 'help', html: helpHtml() }; };
 
+  // ---- платёжки к записям истории (тепло h:, вода w:, период без лічильника g:) — фото или PDF, на сервере (Docs, kind=bill)
+  var BILLS = { busy: '' };
+  function billOwner(ref) {
+    var k = ref.slice(0, 1), id = ref.slice(2), one = function (arr) { return (arr || []).filter(function (x) { return x && !x.deleted && x.id === id; })[0]; };
+    var rec = k === 'h' ? one(S.readings) : k === 'w' ? one(S.water) : null;
+    if (rec) return { list: function () { return (rec.bills || []).slice(); }, set: function (l) { rec.bills = l; rec.updatedAt = Date.now(); save(); } };
+    if (k === 'g' && gapById(id)) return { list: function () { return ((gapById(id) || {}).bills || []).slice(); },
+      set: function (l) { setGaps(function (gl) { gl.forEach(function (x) { if (x && x.id === id) { x.bills = l; x.updatedAt = Date.now(); } }); }); } };
+    return null;
+  }
+  function billsBox(ref, list, title) {
+    if (!window.TEPLO_API) return '';
+    var key = 'bills-' + ref.replace(':', '-'), h = '<section class="panel bills" id="' + key + '" data-key="' + key + '" data-ref="' + esc(ref) + '" data-acc="' + (Y().account ? 1 : 0) + '" data-title="' + esc(title) + '"><h2>' + ico('bill', 20) + ' ' + esc(title) + '</h2>';
+    if (!Y().account) return h + '<p class="small muted">' + esc(t('bl_login')) + ' <a href="#login">' + esc(t('bl_login_a')) + '</a></p></section>';
+    list = (list || []).filter(function (b) { return b && b.id; });
+    var busy = BILLS.busy === ref;
+    h += '<p class="small muted">' + esc(t('bl_sub')) + '</p>';
+    if (list.length) h += '<ul class="docs">' + list.map(function (b, i) {
+      var url = window.TEPLO_API + '/docs/file?id=' + b.id, img = b.mime !== 'application/pdf';
+      var th = img ? '<span class="doc-th"><img src="' + esc(url) + '" data-gal="b' + esc(ref) + '" alt="' + esc(t('bl_img', { n: i + 1 })) + '" loading="lazy"></span>'
+        : '<a class="doc-th" href="' + esc(url) + '" target="_blank" rel="noopener" data-act="bill-open" data-id="' + esc(b.id) + '" aria-label="' + esc(t('mv_open') + ': ' + (b.name || 'PDF')) + '"><span class="pdf">PDF</span></a>';
+      return '<li>' + th + '<div class="grow"><b class="bill-name">' + esc(b.name || (img ? t('bl_photo') : 'PDF')) + '</b><div class="small muted">' + esc(b.at ? fmtDate(String(b.at).slice(0, 10), true) + ' · ' : '') + Math.max(1, Math.round((b.bytes || 0) / 1024)) + ' КБ</div></div>' +
+        '<button type="button" class="linkbtn" data-act="bill-del" data-ref="' + esc(ref) + '" data-id="' + esc(b.id) + '"' + (busy ? ' disabled' : '') + '>' + esc(t('rec_del')) + '</button></li>';
+    }).join('') + '</ul>';
+    return h + '<input type="file" id="bill-input" class="sr" tabindex="-1" multiple aria-label="' + esc(t('bl_add')) + '" accept="image/jpeg,image/png,image/webp,image/heic,application/pdf">' +
+      '<button type="button" class="btn sec" data-act="bill-add" data-ref="' + esc(ref) + '" data-key="bill-add"' + (busy ? ' disabled' : '') + '>' + ico('plus', 18) + '<span>' + esc(t(list.length ? 'bl_add_more' : 'bl_add')) + '</span></button>' +
+      (busy ? '<p class="small muted" role="status">' + SPIN + ' ' + esc(t('mv_uploading')) + '</p>' : '') + '</section>';
+  }
+  /** Перерисовать только блок платёжек (в форме периода — чтобы не терять несохранённые поля). */
+  function billsRefresh(ref) {
+    var box = document.getElementById('bills-' + ref.replace(':', '-')), o = billOwner(ref); if (!box || !o) { render(true); return; }
+    var tmp = document.createElement('div'); tmp.innerHTML = billsBox(ref, o.list(), box.getAttribute('data-title') || '');
+    if (tmp.firstChild) box.parentNode.replaceChild(tmp.firstChild, box);
+  }
+  /** Запись удалили — её платёжки на сервере больше не нужны. */
+  function billsDrop(list) {
+    if (!window.TEPLO_API || !Y().account) return;
+    (list || []).forEach(function (b) { if (b && b.id) api0('/docs/delete', { method: 'POST', body: JSON.stringify({ id: b.id }) }).catch(function () {}); });
+  }
+  function billUpload(ref, files) {
+    var o = billOwner(ref); if (!o || !files.length) return;
+    BILLS.busy = ref; billsRefresh(ref);
+    var c = (document.cookie.match(/(?:^|; )ts_csrf=([^;]*)/) || [])[1] || '', done = 0, err = '', chain = Promise.resolve();
+    files.slice(0, 8).forEach(function (f) {
+      chain = chain.then(function () {
+        if (err === 'many') return;
+        var isPdf = f.type === 'application/pdf' || /\.pdf$/i.test(f.name || '');
+        var prep = !isPdf && window.TeploVision ? window.TeploVision.prepare(f) : Promise.resolve(f);
+        return prep.then(function (b) {
+          var place0 = (Y().account && S.placeId) || 'main', name = String(f.name || '').slice(0, 120);
+          return fetch(window.TEPLO_API + '/docs/upload?place=' + encodeURIComponent(place0) + '&kind=bill&name=' + encodeURIComponent(name), { method: 'POST', credentials: 'same-origin', body: b,
+            headers: { 'Content-Type': isPdf ? 'application/pdf' : (b.type || f.type || 'application/octet-stream'), 'X-CSRF': c, Accept: 'application/json' } });
+        }).then(function (r) {
+          if (!r.ok) { err = r.status === 415 ? 'mv_bad_file' : r.status === 413 ? 'mv_too_big' : r.status === 429 ? 'many' : 'err_network'; return; }
+          return r.json().then(function (j) {
+            var d = j && j.doc, ow = billOwner(ref); if (!d || !ow) return;
+            ow.set(ow.list().concat([{ id: d.id, mime: d.mime, name: d.name || '', bytes: d.bytes, at: d.createdAt }])); done++;
+          });
+        }, function () { err = 'err_network'; });
+      });
+    });
+    chain.then(function () {
+      BILLS.busy = ''; billsRefresh(ref);
+      if (err) toast(t(err === 'many' ? 'bl_many' : err)); else toast(done > 1 ? t('bl_saved_n', { n: done }) : t('bl_saved'));
+    });
+  }
+  function billAct(act, el, e) {
+    var ref = el.getAttribute('data-ref');
+    switch (act) {
+      case 'bill-add': { var fi = document.getElementById('bill-input'); if (fi) { fi.setAttribute('data-ref', ref); fi.value = ''; fi.click(); } return true; }
+      case 'bill-del': {
+        if (!confirm(t('bl_del_q'))) return true;
+        var o = billOwner(ref), id = el.getAttribute('data-id'); if (!o) return true;
+        busy(el);
+        api0('/docs/delete', { method: 'POST', body: JSON.stringify({ id: id }) }).then(function (r) {
+          if (!r.ok && r.status !== 404) { toast(t('err_network')); billsRefresh(ref); return; }
+          o.set(o.list().filter(function (b) { return b && b.id !== id; })); billsRefresh(ref); toast(t('bl_deleted'));
+        }, function () { toast(t('err_network')); billsRefresh(ref); });
+        return true;
+      }
+      case 'bill-open': {   // PDF: в Telegram — подписанная ссылка во внешний браузер (там нет нашей cookie); в браузере — как обычная ссылка
+        var tw = window.Telegram && window.Telegram.WebApp; if (!tw || !tw.initData || !tw.openLink) return true;
+        e.preventDefault();
+        fetch(window.TEPLO_API + '/docs/link?id=' + encodeURIComponent(el.getAttribute('data-id')), { credentials: 'same-origin', headers: { Accept: 'application/json' } })
+          .then(function (r) { return r.json(); }).then(function (j) { if (j && j.url) tw.openLink(new URL(window.TEPLO_API + '/' + j.url, location.href).href); else toast(t('bl_open_err')); }, function () { toast(t('bl_open_err')); });
+        return true;
+      }
+    }
+    return false;
+  }
+  document.addEventListener('change', function (e) {
+    var fi = e.target; if (!fi || fi.id !== 'bill-input' || !fi.files || !fi.files.length) return;
+    billUpload(fi.getAttribute('data-ref') || '', Array.prototype.slice.call(fi.files));
+  });
+
   // ---- поверка и документы счётчика (документы — только вошедшим: хранятся на сервере)
   var DOCS = { list: null, loading: false, busy: '' };
   function loadDocs(force) {
@@ -5628,7 +5767,7 @@ input[type=text]:not(.dmy-native):not(.pl-in), input[type=email], input[type=pas
     if (!window.TEPLO_API) return h + '</div>';
     if (!Y().account) return h + '<p class="small muted">' + esc(t('mv_docs_login')) + '</p></div>';
     loadDocs();
-    var mine = (DOCS.list || []).filter(function (d) { return d.place === S.placeId || (!place(d.place) && S.placeId === (places()[0] || {}).id); });
+    var mine = (DOCS.list || []).filter(function (d) { return d.kind !== 'bill'; }).filter(function (d) { return d.place === S.placeId || (!place(d.place) && S.placeId === (places()[0] || {}).id); });
     h += '<h3>' + esc(t('mv_docs')) + ' <span class="muted small">(' + esc(t('b_opt')) + ')</span></h3><p class="small muted">' + esc(t('mv_docs_sub')) + '</p>';
     h += mine.length ? '<ul class="docs">' + mine.map(function (d) {
       var url = window.TEPLO_API + '/docs/file?id=' + d.id, img = d.mime !== 'application/pdf';
@@ -6304,6 +6443,7 @@ input[type=text]:not(.dmy-native):not(.pl-in), input[type=email], input[type=pas
     var el = e.target.closest('[data-act]'); if (!el) return;
     var act = el.getAttribute('data-act');
     if (waterAct(act, el, e)) return;
+    if (billAct(act, el, e)) return;
     switch (act) {
       case 'start': break;
       case 'read': newDraft(); go('step-0'); break;
@@ -6360,7 +6500,7 @@ input[type=text]:not(.dmy-native):not(.pl-in), input[type=email], input[type=pas
       case 'focus': S.focusId = el.getAttribute('data-id'); save(); break;
       case 'rec-del-ask': { var bx = document.getElementById('rec-del-confirm'); if (bx) bx.innerHTML = '<div class="banner warn" style="margin-top:16px">' + ico('alert', 22) + '<div><p>' + esc(t('rec_del_q')) + '</p><div class="row-actions" style="margin-top:8px"><button class="btn danger" data-act="rec-del-yes">' + esc(t('rec_del')) + '</button></div></div></div>'; break; }
       case 'rec-del-yes': { var m2 = routeName().match(/^rec-([\w-]+)$/), rx = m2 && RD().filter(function (x) { return x.id === m2[1]; })[0];
-        if (rx) { rx.deleted = true; rx.updatedAt = Date.now(); photoKeep(rx.photos, false); if (S.focusId === rx.id) S.focusId = null; save(); toast(t('rec_deleted')); } go('history'); break; }
+        if (rx) { rx.deleted = true; rx.updatedAt = Date.now(); photoKeep(rx.photos, false); billsDrop(rx.bills); if (S.focusId === rx.id) S.focusId = null; save(); toast(t('rec_deleted')); } go('history'); break; }
       case 'accepted': {
         var ra = RD().filter(function (x) { return x.id === el.getAttribute('data-id'); })[0];
         if (ra) { ra.status = 'accepted'; ra.updatedAt = Date.now(); ra.result = { at: new Date().toISOString() }; S.baseline = Object.assign({}, ra.htm); save(); }
@@ -6571,6 +6711,8 @@ input[type=text]:not(.dmy-native):not(.pl-in), input[type=email], input[type=pas
       if (window.TEPLO_API && window.TeploVision && window.TeploSync._cfg) window.TeploVision.initServer(window.TeploSync._cfg, !!window.TeploSync.account);
       if (!window.TeploSync.account) ADMIN = null; else { checkAdmin(); if (INBOX.items === null || INBOX.auto) loadInbox(); histFlush(); }
       if (['prefs', 'login', 'welcome', 'home', 'meter', 'baseline'].indexOf(routeName() || 'welcome') >= 0 || /^step-/.test(routeName())) safeRender();
+      // карточка записи: вход/выход меняет блок платёжек — перерисовать только его (и только при смене входа: иначе открытый выбор файла потеряется)
+      var bx = document.querySelector('section.bills[data-ref]'); if (bx && (bx.getAttribute('data-acc') === '1') !== !!window.TeploSync.account) billsRefresh(bx.getAttribute('data-ref'));
     };
     window.TeploSync.init(function () { return S; }, applyRemote, onSync);
     if (window.TEPLO_API) window.TeploSync.config().then(function (c) { window.TeploSync._cfg = c; onSync(); }, function () { /* сервер недоступен */ });

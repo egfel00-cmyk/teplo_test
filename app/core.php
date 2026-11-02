@@ -45,6 +45,18 @@ final class Cfg {
   }
   public static function set(array $c): void { self::$c = array_replace(self::defaults(), $c); self::$o = null; }
   public static function settingsFile(): string { return self::data() . '/uploads/settings/settings.json'; }
+  /** Секрет сервера для подписанных ссылок (создаётся сам при первом обращении, лежит рядом с настройками, 0600, не в git). */
+  public static function secret(): string {
+    static $k = null; if ($k !== null) return $k;
+    $f = dirname(self::settingsFile()) . '/link.key';
+    $v = is_file($f) ? trim((string)file_get_contents($f)) : '';
+    if (!preg_match('/^[a-f0-9]{64}$/', $v)) {
+      $v = bin2hex(random_bytes(32)); $d = dirname($f);
+      if (!is_dir($d)) @mkdir($d, 0700, true);
+      if (@file_put_contents($f, $v, LOCK_EX) !== false) @chmod($f, 0600);
+    }
+    return $k = $v;
+  }
   /** Значения, сохранённые из /admin. */
   public static function runtime(): array {
     if (self::$o === null) {

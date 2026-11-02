@@ -1,13 +1,14 @@
 <?php
-// Документы к счётчику (паспорт, свидетельство о поверке): фото или PDF, только своему аккаунту.
+// Документы к счётчику (паспорт, свидетельство о поверке) и платёжки к записям истории: фото или PDF, только своему аккаунту.
 // Файлы — SITE_DATA/uploads/docs/<user>/, наружу не отдаются; отдаём через PHP только владельцу.
 declare(strict_types=1);
 if (!defined('TEPLO')) { http_response_code(404); exit; }
 
 final class Docs {
-  const KINDS = ['passport', 'verification', 'other'];
+  const KINDS = ['passport', 'verification', 'other', 'bill'];
   const IMG = ['image/jpeg' => 'jpg', 'image/png' => 'png', 'image/webp' => 'webp'];
-  const MAX_PER_USER = 60;
+  const MAX_PER_USER = 500;    // платёжки — по файлу-двум на каждое снятие показаний, за годы
+  const LINK_TTL = 900;        // подписанная ссылка на файл (Telegram открывает PDF во внешнем браузере — без cookie)
 
   public static function root(): string { return (Cfg::data() ?: sys_get_temp_dir() . '/teplo_data') . '/uploads/docs'; }
   private static function path(array $d): string { return self::root() . '/' . (int)$d['user_id'] . '/' . basename((string)$d['file']); }
@@ -33,6 +34,19 @@ final class Docs {
     if (!preg_match('/^[a-f0-9]{24}$/', $id)) throw new HttpError(404, 'not_found');
     $d = Db::one('SELECT * FROM docs WHERE id = ? AND user_id = ?', [$id, $uid]);
     if (!$d || !is_file(self::path($d))) throw new HttpError(404, 'not_found');
+    return ['path' => self::path($d), 'mime' => $d['mime']];
+  }
+  /** Ссылка на файл без входа, на LINK_TTL секунд: ?id=&e=&s= (HMAC от id, владельца и срока). */
+  public static function link(int $uid, string $id): array {
+    self::file($uid, $id);
+    $e = time() + self::LINK_TTL;
+    return ['url' => 'docs/open?id=' . $id . '&e=' . $e . '&s=' . self::sig($id, $uid, $e)];
+  }
+  private static function sig(string $id, int $uid, int $e): string { return substr(hash_hmac('sha256', $id . '|' . $uid . '|' . $e, Cfg::secret()), 0, 32); }
+  public static function open(array $q): array {
+    $id = (string)($q['id'] ?? ''); $e = (int)($q['e'] ?? 0); $s = (string)($q['s'] ?? '');
+    $d = preg_match('/^[a-f0-9]{24}$/', $id) && $e >= time() ? Db::one('SELECT * FROM docs WHERE id = ?', [$id]) : null;
+    if (!$d || !hash_equals(self::sig($id, (int)$d['user_id'], $e), $s) || !is_file(self::path($d))) throw new HttpError(404, 'not_found');
     return ['path' => self::path($d), 'mime' => $d['mime']];
   }
   public static function delete(int $uid, string $id): array {

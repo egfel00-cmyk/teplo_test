@@ -16,7 +16,8 @@
 //  GET  /api/inbox, GET /api/inbox/file?id=…, POST /api/inbox/done {ids} — фото из бота на распознавание в браузере
 //  POST /api/bot/setup              (заголовок X-Setup-Secret = webhook_secret) — вебхук, кнопка меню, /start
 //  POST /api/recognize/upload       фото СЫРЫМ телом (Content-Type: image/*) → {id}
-//  POST /api/docs/upload?place&kind  документ к счётчику (фото/PDF сырым телом) · GET /api/docs · GET /api/docs/file?id · POST /api/docs/delete
+//  POST /api/docs/upload?place&kind  документ к счётчику или платёжка (kind=bill; фото/PDF сырым телом) · GET /api/docs · GET /api/docs/file?id · POST /api/docs/delete
+//  GET /api/docs/link?id → {url: 'docs/open?id&e&s'} — подписанная ссылка на 15 мин (открыть PDF во внешнем браузере из Telegram)
 //  GET  /api/photo?id=…             фото к записи истории — байты, только хозяину
 //  POST /api/photo/keep             {ids, keep} — фото записи хранить, пока есть запись (keep=false — снова по сроку photo_keep_days)
 //  GET  /api/weather?from&to       средняя за сутки в Харькове (Open-Meteo, кэш) — для истории
@@ -227,6 +228,8 @@ final class Api {
       }
       case 'GET /api/docs': if (!$user) throw new HttpError(401, 'unauthorized'); return Docs::list((int)$user['id']);
       case 'GET /api/docs/file': if (!$user) throw new HttpError(401, 'unauthorized'); $res->file = Docs::file((int)$user['id'], (string)($r->query()['id'] ?? '')); return [];
+      case 'GET /api/docs/link': if (!$user) throw new HttpError(401, 'unauthorized'); return Docs::link((int)$user['id'], (string)($r->query()['id'] ?? ''));
+      case 'GET /api/docs/open': $res->file = Docs::open($r->query()); return [];   // по подписанной ссылке, без входа (PDF платёжки из Telegram)
       case 'POST /api/docs/delete': if (!$user) throw new HttpError(401, 'unauthorized'); return Docs::delete((int)$user['id'], (string)($in['id'] ?? ''));
       case 'POST /api/feedback': return Feedback::create($user, $in, $r, $ip);
       case 'POST /api/visit': return Visits::hit($user, $in, $r, $ip);
