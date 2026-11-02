@@ -17,6 +17,8 @@ const types = { js: 'text/javascript', mjs: 'text/javascript', wasm: 'applicatio
   });
   await p.goto('http://lab.test/');
   await p.evaluate(() => TeploOCR.load('/web/ocr/'));
+  // шаблоны цифр для ролика между цифрами — как на телефоне, где нет шрифта лаборатории: TPL_FONTS='["Arial, sans-serif"]'
+  if (process.env.TPL_FONTS) await p.evaluate(f => { window.TEPLO_TPL_FONTS = JSON.parse(f); }, process.env.TPL_FONTS);
   const all = {}; let good = 0;
   for (const c of cases) {
     const img = c.file || (c.id + '.jpg');

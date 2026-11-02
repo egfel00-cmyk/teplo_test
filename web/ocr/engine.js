@@ -7,7 +7,9 @@
  *   lines: [{ text, score, x, y, w, h, angle }] — координаты в пикселях исходного фото (после поворота по EXIF).
  *   drums: [{ text, red, score, votes, alts, x, y, w, h, angle, flipped, tint }] — окно барабана водомера, найденное по цвету:
  *          text — цифры чёрных роликов (м³), red — красных (дроби), tint — цвет кольца ('red' горячая / 'blue' холодная),
- *          lead — сколько ведущих роликов не видно (блик стекла; text без них — обычно это нули).
+ *          lead — сколько ведущих роликов не видно (блик стекла; text без них — обычно это нули),
+ *          half — ролики между двумя цифрами (полуповорот): [{ i, d, sc, margin, rank }] — i — место в text, d — меньшая цифра
+ *          пары (d, d+1) или null (не узнали — тогда этой цифры нет в text), rank — цифры по убыванию сходства.
  */
 (function (root) {
   'use strict';
@@ -423,6 +425,246 @@
       return { text: text.trim(), score: ps.length ? ps.reduce(function (a, b) { return a + b; }, 0) / ps.length : 0 };
     });
   }
+  /* ───── Ролик между цифрами (полуповорот) ─────
+   * Последний чёрный ролик часто застаёт фото на переходе: сверху низ цифры d, снизу верх d+1, посередине пустая полоса
+   * (у настоящего счётчика так стоит ролик, пока красные идут от 9 к 0). Текст такой ролик пропускает («0023») или читает
+   * чужой цифрой (низ «2» + верх «3» → «7»). Разбираем окно на ролики по светлому (цифрам): у ролика на переходе светлое —
+   * два куска с пустой полосой между ними. Пару (d, d+1) узнаём по шаблонам: цифры соседних роликов того же окна
+   * (их значение известно из текста — тот же шрифт) и цифры шрифта браузера. Низ куска сверху совпадает с низом цифры d,
+   * верх куска снизу — с верхом d+1; у краёв окна цифры сжаты (ролик — цилиндр), поэтому пробуем и сжатие по высоте.
+   * По правилам снятия показаний берём меньшую цифру d. */
+  function drumGray(src, b, SH) {
+    var w = Math.max(16, Math.round(SH * b.w / b.h)); if (w > 1600) w = 1600;
+    var c = document.createElement('canvas'); c.width = w; c.height = SH;
+    var g = c.getContext('2d'); g.fillStyle = '#000'; g.fillRect(0, 0, w, SH);
+    g.translate(w / 2, SH / 2); g.scale(w / b.w, SH / b.h); g.rotate(-b.angle); g.translate(-b.cx, -b.cy); g.drawImage(src, 0, 0);
+    var px = g.getImageData(0, 0, w, SH).data, L = new Float32Array(w * SH); free(c);
+    for (var i = 0; i < w * SH; i++) L[i] = 0.299 * px[i * 4] + 0.587 * px[i * 4 + 1] + 0.114 * px[i * 4 + 2];
+    return { L: L, w: w, h: SH };
+  }
+  function otsu(L) {
+    var hist = new Float64Array(256), n = L.length, i, sum = 0, wB = 0, sB = 0, best = -1, thr = 128;
+    for (i = 0; i < n; i++) hist[L[i] | 0]++;
+    for (i = 0; i < 256; i++) sum += i * hist[i];
+    for (i = 0; i < 256; i++) { wB += hist[i]; if (!wB) continue; var wF = n - wB; if (!wF) break; sB += i * hist[i]; var mB = sB / wB, mF = (sum - sB) / wF, v = wB * wF * (mB - mF) * (mB - mF); if (v > best) { best = v; thr = i; } }
+    return thr;
+  }
+  /** Ролики окна слева направо: { x0, x1, y0, y1, ids, runs: [{y0, y1}], half } — светлое (цифры) по связным кускам. */
+  function drumCells(g) {
+    var w = g.w, h = g.h, L = g.L, thr = otsu(L), N = w * h, ink = new Uint8Array(N), x, y, i;
+    // полоса окна по высоте: строки, где много тёмного (фон роликов); светлая рамка и промежутки выше/ниже — не окно
+    var fd = [], y0w = 0, y1w = h - 1, bestLen = 0, st = -1;
+    for (y = 0; y < h; y++) { var nd = 0; for (x = 0; x < w; x++) if (L[y * w + x] < thr) nd++; fd.push(nd / w); }
+    for (y = 0; y <= h; y++) { var on = y < h && fd[y] >= 0.3; if (on && st < 0) st = y; if (!on && st >= 0) { if (y - st > bestLen) { bestLen = y - st; y0w = st; y1w = y - 1; } st = -1; } }
+    if (bestLen < h * 0.35) { y0w = 0; y1w = h - 1; }
+    // светлое = ярче окрестности (тень сверху окна, блик сбоку — порог свой в каждом месте) и заметно ярче фона
+    var vals = []; for (y = y0w; y <= y1w; y += 2) for (x = 0; x < w; x += 2) vals.push(L[y * w + x]); vals.sort(function (p, q) { return p - q; });
+    var p10 = vals[Math.floor(vals.length * 0.1)] || 0, p97 = vals[Math.floor(vals.length * 0.97)] || 255, rg = Math.max(30, p97 - p10);
+    var I = new Float64Array((w + 1) * (h + 1)), R = Math.max(4, Math.round(h * 0.2));
+    for (y = 0; y < h; y++) { var row = 0; for (x = 0; x < w; x++) { row += L[y * w + x]; I[(y + 1) * (w + 1) + x + 1] = I[y * (w + 1) + x + 1] + row; } }
+    for (y = y0w; y <= y1w; y++) for (x = 0; x < w; x++) {
+      var ya = Math.max(0, y - R), yb = Math.min(h, y + R + 1), xa = Math.max(0, x - R), xb = Math.min(w, x + R + 1);
+      var mean = (I[yb * (w + 1) + xb] - I[ya * (w + 1) + xb] - I[yb * (w + 1) + xa] + I[ya * (w + 1) + xa]) / ((yb - ya) * (xb - xa)), l = L[y * w + x];
+      if (l > mean + Math.max(10, 0.12 * rg) && l > p10 + 0.15 * rg) ink[y * w + x] = 1;
+    }
+    // столбцы почти без тёмного — промежуток между роликами или блик; строки светлые во всю ширину — кромка рамки
+    for (x = 0; x < w; x++) { var nk = 0; for (y = y0w; y <= y1w; y++) if (L[y * w + x] < thr) nk++; if (nk < (y1w - y0w + 1) * 0.15) for (y = 0; y < h; y++) ink[y * w + x] = 0; }
+    for (y = 0; y < h; y++) { var nr = 0; for (x = 0; x < w; x++) nr += ink[y * w + x]; if (nr > w * 0.6) for (x = 0; x < w; x++) ink[y * w + x] = 0; }
+    // тонкие линии (кромки промежутков между роликами при наклоне, 1–2 px) — прочь: размыкание 3×3; штрихи цифр толще
+    var er = new Uint8Array(N);
+    for (y = 1; y < h - 1; y++) for (x = 1; x < w - 1; x++) { i = y * w + x; er[i] = ink[i] & ink[i - 1] & ink[i + 1] & ink[i - w] & ink[i + w] & ink[i - w - 1] & ink[i - w + 1] & ink[i + w - 1] & ink[i + w + 1]; }
+    for (y = 0; y < h; y++) for (x = 0; x < w; x++) { i = y * w + x; var on2 = 0; for (var ey = Math.max(0, y - 1); ey <= Math.min(h - 1, y + 1) && !on2; ey++) for (var ex = Math.max(0, x - 1); ex <= Math.min(w - 1, x + 1); ex++) if (er[ey * w + ex]) { on2 = 1; break; } ink[i] = on2; }
+    var lab = new Int32Array(N), comps = [null], stack = new Int32Array(N);
+    for (i = 0; i < N; i++) {
+      if (!ink[i] || lab[i]) continue;
+      var id = comps.length, top = 0, c = { id: id, x0: w, x1: -1, y0: h, y1: -1, n: 0 }; stack[top++] = i; lab[i] = id;
+      while (top) {
+        var q = stack[--top], qx = q % w, qy = (q - qx) / w; c.n++;
+        if (qx < c.x0) c.x0 = qx; if (qx > c.x1) c.x1 = qx; if (qy < c.y0) c.y0 = qy; if (qy > c.y1) c.y1 = qy;
+        for (var dy = -1; dy <= 1; dy++) for (var dx = -1; dx <= 1; dx++) { var xx = qx + dx, yy = qy + dy; if (xx < 0 || yy < 0 || xx >= w || yy >= h) continue; var qq = yy * w + xx; if (ink[qq] && !lab[qq]) { lab[qq] = id; stack[top++] = qq; } }
+      }
+      comps.push(c);
+    }
+    // мелочь (шум, кромки рамки) и куски у боковых краёв полосы (соседний красный ролик, подпись «м³») — не цифры
+    // и полоски у верхнего/нижнего края окна — кромка рамки, когда окно в полосе чуть наклонено
+    var tw0 = comps.slice(1).filter(function (c) { return c.y1 - c.y0 + 1 >= h * 0.3; }).map(function (c) { return c.x1 - c.x0 + 1; }).sort(function (a, b) { return a - b; });
+    var Wc = tw0.length ? tw0[Math.floor(tw0.length / 2)] : h;
+    var cs = comps.slice(1).filter(function (c) { var ch = c.y1 - c.y0 + 1, cw2 = c.x1 - c.x0 + 1;
+      if (ch <= h * 0.15 && cw2 >= 2.5 * ch && cw2 >= 1.1 * Wc && (c.y0 <= y0w + 2 || c.y1 >= y1w - 2)) return false;
+      return c.n >= h * h * 0.002 && c.y1 - c.y0 >= 2 && c.x1 - c.x0 >= 2 && c.x0 > 0 && c.x1 < w - 1; }).sort(function (a, b) { return a.x0 - b.x0; });
+    var cells = [];
+    cs.forEach(function (c) {
+      var last = cells[cells.length - 1];
+      if (last && Math.min(last.x1, c.x1) - Math.max(last.x0, c.x0) >= 0.3 * Math.min(last.x1 - last.x0 + 1, c.x1 - c.x0 + 1)) {
+        last.ids[c.id] = 1; last.x0 = Math.min(last.x0, c.x0); last.x1 = Math.max(last.x1, c.x1); last.y0 = Math.min(last.y0, c.y0); last.y1 = Math.max(last.y1, c.y1); last.n += c.n;
+      } else { var o = { x0: c.x0, x1: c.x1, y0: c.y0, y1: c.y1, n: c.n, ids: {} }; o.ids[c.id] = 1; cells.push(o); }
+    });
+    // ячейки-соринки (меньше трети средней по площади) — не ролики
+    var nmed = cells.map(function (c) { return c.n; }).sort(function (a, b) { return a - b; })[Math.floor(cells.length / 2)] || 0;
+    cells = cells.filter(function (c) { return c.n >= nmed * 0.25; });
+    var mg = Math.max(1, Math.round(h * 0.02));
+    cells.forEach(function (c) {
+      var runs = [], cur = null;
+      for (y = 0; y < h; y++) {
+        var on = false; for (x = c.x0; x <= c.x1 && !on; x++) if (c.ids[lab[y * w + x]]) on = true;
+        if (on) { if (cur && y - cur.y1 - 1 <= mg) cur.y1 = y; else { cur = { y0: y, y1: y }; runs.push(cur); } }
+      }
+      c.runs = runs;
+    });
+    // рост цифры — медиана самого высокого куска ролика; середина — по целым цифрам
+    var rh = function (r) { return r.y1 - r.y0 + 1; }, tall = function (c) { return c.runs.reduce(function (a, r) { return rh(r) > rh(a) ? r : a; }, c.runs[0]); };
+    var hs = cells.filter(function (c) { return c.runs.length; }).map(function (c) { return rh(tall(c)); }).sort(function (a, b) { return a - b; });
+    var Hg = hs.length ? hs[Math.floor(hs.length / 2)] : 0;
+    var mid = cells.filter(function (c) { return c.runs.length && rh(tall(c)) >= 0.85 * Hg; }).map(function (c) { var r = tall(c); return (r.y0 + r.y1) / 2; }).sort(function (a, b) { return a - b; });
+    var Cg = mid.length ? mid[Math.floor(mid.length / 2)] : h / 2;
+    // в ролике есть целая цифра на своём месте — остальное в нём (кромка рамки, соринки) не считаем
+    if (Hg) cells.forEach(function (c) {
+      if (c.runs.length < 2) return;
+      var r = tall(c); if (Math.abs(rh(r) - Hg) <= 0.15 * Hg && Math.abs((r.y0 + r.y1) / 2 - Cg) <= 0.15 * Hg) { c.runs = [r]; c.y0 = r.y0; c.y1 = r.y1; }
+    });
+    if (Hg) cells.forEach(function (c) {
+      if (c.runs.length === 1) {
+        // один кусок, заметно ниже цифры и сдвинут к краю окна: видна только часть цифры на переходе (вторую закрыла тень
+        // или она уже ушла за край). Снизу — верх входящей цифры, сверху — низ уходящей. Узнаём, но только если текст
+        // этот ролик пропустил (иначе верим тексту).
+        var r0 = c.runs[0], hr = r0.y1 - r0.y0 + 1, off = (r0.y0 + r0.y1) / 2 - Cg;
+        if (hr >= 0.3 * Hg && hr <= 0.8 * Hg && Math.abs(off) >= 0.25 * Hg) { c.part = true; c.A = off < 0 ? r0 : null; c.B = off > 0 ? r0 : null; }
+        return;
+      }
+      if (c.runs.length < 2) return;
+      var A = c.runs[0], B = c.runs[c.runs.length - 1], hA = A.y1 - A.y0 + 1, hB = B.y1 - B.y0 + 1, gap = B.y0 - A.y1 - 1;
+      // два куска с пустой полосой (промежуток между цифрами на ролике), оба заметные, вместе выше одной цифры —
+      // не цифра, рассыпавшаяся на куски (у той промежуток мал и всё вместе — в рост цифры)
+      if (gap >= Math.max(2, 0.12 * Hg) && hA >= 0.08 * Hg && hB >= 0.08 * Hg && hA + hB >= 0.3 * Hg && Math.max(hA, hB) <= 1.05 * Hg && B.y1 - A.y0 + 1 >= 1.1 * Hg) { c.half = true; c.A = A; c.B = B; }
+    });
+    if (root.TEPLO_DRUM_LOG) (root.TEPLO_HALF_IMG = root.TEPLO_HALF_IMG || []).push({ w: w, h: h, L: Array.from(L), ink: Array.from(ink), lab: Array.from(lab) });
+    return { cells: cells, lab: lab, w: w, h: h, Hg: Hg, Cg: Cg, win: [y0w, y1w] };
+  }
+  var TPL = null;
+  /** Цифры шрифтов браузера (жирные без засечек: узкий, обычный, «табличный») — маски по рамке цифры; [цифра] → [шаблоны]. */
+  var TPL_FONTS = ['"DejaVu Sans Condensed", "Roboto Condensed", sans-serif-condensed, "Arial Narrow", "Helvetica Neue", sans-serif', 'Arial, Helvetica, "Liberation Sans", Roboto, sans-serif', '"DIN Alternate", Bahnschrift, "Roboto Mono", "Liberation Mono", monospace'];
+  function fontTpl() {
+    var fonts = root.TEPLO_TPL_FONTS || TPL_FONTS, key = fonts.join('|');
+    if (TPL && TPL.key === key) return TPL.out;
+    var S = 96, cw = Math.round(S * 1.2), chh = Math.round(S * 1.5), c = document.createElement('canvas'); c.width = cw; c.height = chh; var g = c.getContext('2d'), out = [];
+    for (var k = 0; k < 10; k++) out.push([]);
+    fonts.forEach(function (fam) {
+      for (var k = 0; k < 10; k++) {
+        g.fillStyle = '#000'; g.fillRect(0, 0, cw, chh); g.fillStyle = '#fff'; g.font = 'bold ' + S + 'px ' + fam;
+        g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(String(k), cw / 2, chh / 2);
+        var px = g.getImageData(0, 0, cw, chh).data, x0 = cw, x1 = -1, y0 = chh, y1 = -1, x, y;
+        for (y = 0; y < chh; y++) for (x = 0; x < cw; x++) if (px[(y * cw + x) * 4] > 127) { if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; }
+        if (x1 < 0) continue;
+        var tw = x1 - x0 + 1, th = y1 - y0 + 1, m = new Uint8Array(tw * th), sig = '';
+        for (y = 0; y < th; y++) for (x = 0; x < tw; x++) m[y * tw + x] = px[((y + y0) * cw + x + x0) * 4] > 127 ? 1 : 0;
+        for (y = 0; y < th; y += 7) for (x = 0; x < tw; x += 7) sig += m[y * tw + x];
+        // тот же шрифт под другим именем (подставился запасной) — второй раз не берём
+        if (!out[k].some(function (o) { return o.w === tw && o.h === th && o.sig === sig; })) out[k].push({ w: tw, h: th, m: m, sig: sig });
+      }
+    });
+    free(c); TPL = { key: key, out: out }; return out;
+  }
+  /** Шаблон в размер цифры окна: маска Ht×Wt. */
+  function sizeTpl(T, Ht, Wt) {
+    var m = new Uint8Array(Ht * Wt);
+    for (var y = 0; y < Ht; y++) for (var x = 0; x < Wt; x++) m[y * Wt + x] = T.m[Math.floor(y * T.h / Ht) * T.w + Math.floor(x * T.w / Wt)];
+    return { m: m, Ht: Ht, Wt: Wt };
+  }
+  /** Маска ролика окна как шаблон (его цифра известна из текста). */
+  function cellTpl(cl, c) {
+    var tw = c.x1 - c.x0 + 1, th = c.y1 - c.y0 + 1, m = new Uint8Array(tw * th);
+    for (var y = 0; y < th; y++) for (var x = 0; x < tw; x++) m[y * tw + x] = c.ids[cl.lab[(y + c.y0) * cl.w + x + c.x0]] ? 1 : 0;
+    return { m: m, Ht: th, Wt: tw };
+  }
+  /** Сходство куска ролика R с шаблоном T (Ht×Wt на полосе), центр по x — cx; низ куска = низ цифры (bottom) или верх
+   *  куска = верх цифры; s — сжатие по высоте у края окна. Dice по светлому в полосе куска (строгое сравнение надёжнее
+   *  «с допуском»: на чужом шрифте реже уверенно ошибается). */
+  function fragScore(cl, F, R, T, cx, bottom, s, X0, X1) {
+    var inter = 0, nf = 0, nt = 0, w = cl.w, Ht = T.Ht, Wt = T.Wt, ox = Math.round(cx - Wt / 2);
+    for (var y = R.y0; y <= R.y1; y++) {
+      var ty = Math.floor(bottom ? Ht - 1 - (R.y1 - y) / s : (y - R.y0) / s), row = ty >= 0 && ty < Ht ? ty * Wt : -1;
+      for (var x = X0; x <= X1; x++) {
+        var f = F[y * w + x], tx = x - ox, t = row >= 0 && tx >= 0 && tx < Wt ? T.m[row + tx] : 0;
+        nf += f; nt += t; if (f && t) inter++;
+      }
+    }
+    return nf + nt ? 2 * inter / (nf + nt) : 0;
+  }
+  /** Какая пара (d, d+1) на ролике c: { d, sc, margin, rank }. */
+  function halfPair(cl, c, known) {
+    var Hg = cl.Hg, full = cl.cells.filter(function (o) { return !o.half && !o.part && o.runs.length === 1; });
+    var ws = full.filter(function (o) { return known.get(o) !== 1; }).map(function (o) { return o.x1 - o.x0 + 1; }).sort(function (a, b) { return a - b; });
+    var Wg = ws.length ? ws[Math.floor(ws.length / 2)] : Hg * 0.6;
+    // шаблоны шрифтов — в рост цифр окна, по ширине — как «0» шрифта к средней ширине цифр окна (узкий/широкий шрифт)
+    var Fn = fontTpl(), tpl = [], k;
+    for (k = 0; k < 10; k++) tpl[k] = [];
+    Fn[0].forEach(function (f0, fi) {
+      var sc = Hg / f0.h, fx = Wg / (f0.w * sc);
+      for (var k2 = 0; k2 < 10; k2++) { var T = Fn[k2][Math.min(fi, Fn[k2].length - 1)]; if (T) tpl[k2].push(sizeTpl(T, Math.max(2, Math.round(T.h * sc)), Math.max(2, Math.round(T.w * sc * fx)))); }
+    });
+    var nb = 0;
+    full.forEach(function (o) { var dk = known.get(o); if (dk !== undefined && nb < 6 && !tpl[dk].own) { tpl[dk].push(cellTpl(cl, o)); tpl[dk].own = true; nb++; } });
+    // светлое этого ролика на всей полосе
+    var N = cl.w * cl.h, F = new Uint8Array(N); for (var q = 0; q < N; q++) F[q] = c.ids[cl.lab[q]] ? 1 : 0;
+    var cx0 = (c.x0 + c.x1) / 2, X0 = Math.max(0, Math.round(cx0 - Wg)), X1 = Math.min(cl.w - 1, Math.round(cx0 + Wg));
+    var hA = c.A ? c.A.y1 - c.A.y0 + 1 : 0, hB = c.B ? c.B.y1 - c.B.y0 + 1 : 0, wA = hA / (hA + hB), step = Math.max(1, Wg / 16), S = [];
+    var best = function (R, k3, cx, bottom) { var m = 0; tpl[k3].forEach(function (T) { [1, 0.85, 0.7].forEach(function (s2) { var v = fragScore(cl, F, R, T, cx, bottom, s2, X0, X1); if (v > m) m = v; }); }); return m; };
+    for (k = 0; k < 10; k++) {
+      var top = 0;
+      for (var cx = cx0 - Wg * 0.3; cx <= cx0 + Wg * 0.3; cx += step) { var v = (c.A ? wA * best(c.A, k, cx, true) : 0) + (c.B ? (1 - wA) * best(c.B, (k + 1) % 10, cx, false) : 0); if (v > top) top = v; }
+      S.push({ k: k, v: top });
+    }
+    S.sort(function (a, b) { return b.v - a.v; });
+    return { d: S[0].k, sc: +S[0].v.toFixed(3), margin: +(S[0].v - S[1].v).toFixed(3), rank: S.map(function (x) { return x.k; }) };
+  }
+  /** Наклон ряда цифр в полосе (окно найдено с ошибкой в угол): середины целых цифр по x → наклон прямой. */
+  function cellSkew(cl) {
+    var pts = cl.cells.filter(function (c) { return c.runs.length === 1 && Math.abs(c.y1 - c.y0 + 1 - cl.Hg) <= 0.15 * cl.Hg; }).map(function (c) { return [(c.x0 + c.x1) / 2, (c.y0 + c.y1) / 2]; });
+    if (pts.length < 2 || pts[pts.length - 1][0] - pts[0][0] < 1.2 * cl.Hg) return 0;
+    var mx = 0, my = 0; pts.forEach(function (p) { mx += p[0]; my += p[1]; }); mx /= pts.length; my /= pts.length;
+    var sxy = 0, sxx = 0; pts.forEach(function (p) { sxy += (p[0] - mx) * (p[1] - my); sxx += (p[0] - mx) * (p[0] - mx); });
+    return sxx ? sxy / sxx : 0;
+  }
+  function halfFix(src, d, win) {
+    var bx = { cx: d.cx, cy: d.cy, w: d.w + d.h * 0.1, h: d.h * 1.1, angle: win.ang }, cl = drumCells(drumGray(src, bx, 96));
+    // ряд цифр в полосе наклонён (перспектива, окно нашлось чуть криво) — поворачиваем полосу и разбираем заново
+    var sk = cellSkew(cl);
+    if (Math.abs(sk) > 0.02 && Math.abs(sk) < 0.2) { bx.angle += Math.atan(sk); cl = drumCells(drumGray(src, bx, 96)); }
+    var cells = cl.cells, t = win.best.d, Hg = cl.Hg, Cg = cl.Cg;
+    // по краям окна бывает не цифра (подпись «м³», кусок рамки, соседний красный ролик) — такие ролики по краям отбрасываем
+    var junk = function (c) { if (c.half || c.part) return false; return c.runs.length !== 1 || Math.abs(c.y1 - c.y0 + 1 - Hg) > 0.2 * Hg || Math.abs((c.y0 + c.y1) / 2 - Cg) > 0.2 * Hg; };
+    while (cells.length && junk(cells[0])) cells = cells.slice(1);
+    while (cells.length && junk(cells[cells.length - 1])) cells = cells.slice(0, -1);
+    cl.cells = cells; var n = cells.length;
+    var nh = cells.filter(function (c) { return c.half; }).length, np = cells.filter(function (c) { return c.part; }).length;
+    if (root.TEPLO_DRUM_LOG) console.log('DBG cells', t, 'skew', sk.toFixed(3), 'Hg', cl.Hg, 'win', cl.win, JSON.stringify(cells.map(function (c) { return [c.x0, c.x1, c.runs.map(function (r) { return r.y0 + '-' + r.y1; }).join(','), c.half ? 'H' : c.part ? 'P' : '']; })));
+    if (!cl.Hg || !(nh + np) || nh + np > 2) return null;
+    // место каждого ролика в тексте: текст видит все ролики (переход прочитан чужой цифрой — меняем на узнанную пару)
+    // или пропустил ролики на переходе
+    var pos = [], j = 0, use;
+    if (t.length === n) { cells.forEach(function (c, i) { pos.push(i); }); use = function (c) { return c.half || c.part; }; }
+    else if (t.length === n - nh - np) { cells.forEach(function (c) { pos.push(c.half || c.part ? -1 : j++); }); use = function (c) { return c.half || c.part; }; }
+    else if (t.length === n - nh && np) { cells.forEach(function (c) { pos.push(c.half ? -1 : j++); }); use = function (c) { return c.half; }; }
+    else return null;
+    var known = { get: function (o) { var i = cells.indexOf(o); return pos[i] >= 0 && !o.half && !o.part ? +t.charAt(pos[i]) : undefined; } };
+    var out = '', hv = [];
+    cells.forEach(function (c, i) {
+      if (!use(c)) { out += t.charAt(pos[i]); return; }
+      var r = halfPair(cl, c, known), ok = r.sc >= 0.5 && r.margin >= 0.03;
+      hv.push({ i: out.length, d: ok ? r.d : null, sc: r.sc, margin: r.margin, rank: r.rank, part: c.part ? (c.A ? 'low' : 'high') : undefined });
+      if (ok) out += r.d;
+    });
+    // голоса заново: обработка согласна, если совпала на всех роликах, кроме переходных (там у каждой своё или пусто)
+    var hp = {}; hv.forEach(function (x) { hp[x.i] = 1; });
+    var core = out.split('').filter(function (ch, i) { return !hp[i]; }).join(''), votes = 0;
+    (win.alts || []).forEach(function (a) {
+      var dg = String(a).replace(/[Oo]/g, '0').replace(/[^0-9]/g, '');
+      if (dg.length === out.length ? dg.split('').filter(function (ch, i) { return !hp[i]; }).join('') === core : dg === core) votes++;
+    });
+    if (root.TEPLO_DRUM_LOG) console.log('DBG half', t, '→', out, 'votes', votes, JSON.stringify(hv));
+    return { text: out, half: hv, votes: votes };
+  }
+
   /** Прочитать найденное окно: чёрные ролики (три обработки, голосование) и красные. Ориентация не ясна — читаем в обе стороны. */
   function readDrum(src, d) {
     var tries = [d.angle, d.angle + Math.PI], res = [];   // и в обратную сторону: красная рамка или текст у края путают ориентацию
@@ -432,10 +674,16 @@
       ['inv', 'bin', 'plain'].forEach(function (m) { chain = chain.then(function () { return recTensor(drumTensor(src, blk, m)); }).then(function (r) { r.mode = m; outs.push(r); }); });
       chain = chain.then(function () {
         var tally = {};
-        outs.forEach(function (r) { var dg = r.text.replace(/[Oo]/g, '0').replace(/[^0-9]/g, ''); if (dg.length < 3) return; (tally[dg] = tally[dg] || { n: 0, s: 0 }).n++; tally[dg].s = Math.max(tally[dg].s, r.score); });
-        var bestK = null;
+        // буквы в прочитанном («L0SOO») — цифры вверх ногами: «5» → «S», «9» → «6»; такое чтение весит меньше
+        outs.forEach(function (r) { var dg = r.text.replace(/[Oo]/g, '0').replace(/[^0-9]/g, ''); if (dg.length < 3) return; var t2 = tally[dg] = tally[dg] || { n: 0, s: 0, j: 0 }; t2.n++; t2.s = Math.max(t2.s, r.score); if (/[^0-9Oo\s.,:;'"`·\-]/.test(r.text)) t2.j++; });
+        var bestK = null, dgs = outs.map(function (r) { return r.text.replace(/[Oo]/g, '0').replace(/[^0-9]/g, ''); });
+        // ролик между цифрами: в этой стороне его видно в начале ряда — так не бывает (переход идёт с младшего ролика),
+        // значит, читаем вверх ногами; в конце ряда — как и должно быть
+        var hc = 0; try { var cl0 = drumCells(drumGray(src, blk, 96)), cc = cl0.cells.filter(function (c) { return c.runs.length; }); if (cc.length >= 3) { if (cc[0].half || cc[0].part) hc = -0.6; else if (cc[cc.length - 1].half || cc[cc.length - 1].part) hc = 0.4; } } catch (e) { hc = 0; }
         Object.keys(tally).forEach(function (kk) {
-          var v = tally[kk], sc = v.n + v.s + (kk.length >= 4 && kk.length <= 8 ? 0.5 : 0) + (/^0/.test(kk) ? 0.6 : 0) + (/^00/.test(kk) ? 0.3 : 0) + (ang === d.angle && d.sure ? 0.3 : 0);
+          // обработки, согласные во всём, кроме последней цифры (на переходе у каждой своя), — полголоса
+          var head = kk.slice(0, -1), np = kk.length >= 4 ? dgs.filter(function (x) { return x.length >= head.length && x.length <= kk.length + 1 && x.slice(0, head.length) === head; }).length : 0;
+          var v = tally[kk], ne = v.n + 0.5 * Math.max(0, np - v.n), sc = ne + v.s + (kk.length >= 4 && kk.length <= 8 ? 0.5 : 0) + (/^0/.test(kk) ? 0.6 : 0) + (/^00/.test(kk) ? 0.3 : 0) + (ang === d.angle && d.sure ? 0.3 : 0) - 0.7 * v.j / v.n + hc;
           if (!bestK || sc > bestK.sc) bestK = { d: kk, sc: sc, n: v.n, s: v.s };
         });
         res.push({ ang: ang, best: bestK, alts: outs.map(function (r) { return r.text; }) });
@@ -457,6 +705,12 @@
         else lead = 2;
       });
     });
+    // ролик между цифрами: текст его пропускает или читает чужой цифрой — разбираем окно на ролики и узнаём пару
+    var half = null;
+    chain = chain.then(function () {
+      var win = res[0]; if (!win.best || win.ext || lead) return;
+      try { half = halfFix(src, d, win); } catch (e) { half = null; }
+    });
     chain = chain.then(function () {
       var win = res[0]; if (!win.best) return null;
       var rb = d.redBox;
@@ -467,9 +721,9 @@
     return chain.then(function () {
       var win = res[0], b0 = win.best;
       var rd = reds.map(function (r) { return { d: r.text.replace(/[Oo]/g, '0').replace(/[^0-9]/g, ''), s: r.score }; }).filter(function (r) { return r.d.length >= 1 && r.d.length <= 4; }).sort(function (p, q) { return q.s - p.s; })[0];
-      return { text: b0 ? b0.d : '', red: rd ? rd.d : '', score: b0 ? +b0.s.toFixed(3) : 0, votes: b0 ? b0.n : 0, alts: win.alts,
+      return { text: half ? half.text : b0 ? b0.d : '', red: rd ? rd.d : '', half: half ? half.half : undefined, score: b0 ? +b0.s.toFixed(3) : 0, votes: b0 ? Math.max(b0.n, half ? half.votes : 0) : 0, alts: win.alts,
         x: Math.round(d.cx - d.w / 2), y: Math.round(d.cy - d.h / 2), w: Math.round(d.w), h: Math.round(d.h), angle: +win.ang.toFixed(3),
-        flipped: Math.cos(win.ang) < -0.5, sure: d.sure, tint: d.tint, find: d.score, cells: Math.max(3, Math.round((d.w + (win.ext || 0)) / d.h / 0.68)), lead: lead || undefined };
+        flipped: Math.cos(win.ang) < -0.5, sure: d.sure, tint: d.tint, find: d.score, cells: Math.max(3, Math.round((d.w + (win.ext || 0)) / d.h / 0.68)), lead: lead || undefined, _res: root.TEPLO_DRUM_LOG ? res : undefined };
     });
   }
 
@@ -514,5 +768,6 @@
     var ch = Promise.resolve(), out = []; b.forEach(function (x) { if (x.h > x.w * 1.5) return; ch = ch.then(function () { return recognize(src, x, 0.3); }).then(function (r) { out.push(r.text + '@' + Math.round(x.cy) + ':' + x.score.toFixed(2)); }); });
     return ch.then(function () { return out.join(' | '); }); }); }
   function _rec(file, b) { return toCanvas(file).then(function (c) { return Promise.all([recognize(c, b, 0), recognize(c, b, 0.3), recognize(c, b, 0.55)]); }).then(function (r) { return r.map(function (x) { return x.text + '(' + x.score.toFixed(2) + ')'; }).join(' | '); }); }
-  root.TeploOCR = { _det: _det, _rec: _rec, _drums: function (file) { return toCanvas(file).then(function (c) { var r = findDrums(c); free(c); return r; }); }, load: load, read: read, ready: function () { return !!REC; } };
+  function _readDrums(file) { var src, out = []; return toCanvas(file).then(function (c) { src = c; var ch = Promise.resolve(); findDrums(c).slice(0, 2).forEach(function (d) { ch = ch.then(function () { return readDrum(src, d); }).then(function (r) { out.push(r); }); }); return ch; }).then(function () { free(src); return out; }); }
+  root.TeploOCR = { _det: _det, _rec: _rec, _readDrums: _readDrums, _drums: function (file) { return toCanvas(file).then(function (c) { var r = findDrums(c); free(c); return r; }); }, load: load, read: read, ready: function () { return !!REC; } };
 })(typeof window !== 'undefined' ? window : this);

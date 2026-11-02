@@ -10,7 +10,8 @@ body{width:1200px;height:1600px;overflow:hidden;position:relative;background:#55
  * Синтетический водомер (стиль Novator ЛК-15 и похожих): белый циферблат, кольцо (синее — холодная, красное — горячая),
  * окно барабана: N чёрных ячеек с белыми цифрами (м³) + красные (дробные), стрелочный круг «x0,0001», заводской №, год.
  * setCase(c): c = {v:'00502', red:'347', style:'red'|'redtxt', ring:'blue'|'red'|'none', rot, rx, ry, s, x, y, blur, br, glare, half, bg, warm,
- *   lead: N — блик стекла на N ведущих чёрных роликах (их не видно), brandc — цвет печати, pair: {…второй водомер в кадре}}
+ *   half — последний чёрный ролик между цифрами (доля поворота), halfs: [..] — доля для каждого ролика (перенос 239→240),
+ *   curve — ролик-цилиндр (0…1: видимая дуга ±curve·90°), lead: N — блик стекла на N ведущих чёрных роликах (их не видно), brandc — цвет печати, pair: {…второй водомер в кадре}}
  */
 function rnd(seed) { let s = seed >>> 0; return () => { s = (s * 1664525 + 1013904223) >>> 0; return s / 4294967296; }; }
 function drawBg(c) {
@@ -24,7 +25,8 @@ function drawBg(c) {
   // шум
   const id = g.getImageData(0, 0, 1200, 1600), d = id.data; for (let i = 0; i < d.length; i += 4) { const n = (r() - 0.5) * 18; d[i] += n; d[i + 1] += n; d[i + 2] += n; } g.putImageData(id, 0, 0);
 }
-function digitCell(g, x, y, w, h, ch, next, frac, bgc, fg, font) {
+function digitCell(g, x, y, w, h, ch, next, frac, bgc, fg, font, curve) {
+  if (curve) return digitCellCurved(g, x, y, w, h, ch, next, frac, bgc, fg, font, curve);
   g.save(); g.beginPath(); g.rect(x, y, w, h); g.clip();
   const gr = g.createLinearGradient(0, y, 0, y + h); gr.addColorStop(0, shade(bgc, -0.35)); gr.addColorStop(0.5, bgc); gr.addColorStop(1, shade(bgc, -0.35));
   g.fillStyle = gr; g.fillRect(x, y, w, h);
@@ -33,6 +35,15 @@ function digitCell(g, x, y, w, h, ch, next, frac, bgc, fg, font) {
   g.fillText(ch, x + w / 2, y + h / 2 + dy + h * 0.04);
   if (frac) g.fillText(next, x + w / 2, y + h / 2 + dy + h * 1.15 + h * 0.04);
   g.restore();
+}
+// Ролик — цилиндр: в окне видна дуга ±curve·90°, цифры у краёв окна сжаты по высоте (как на настоящем счётчике).
+// Рисуем развёртку (дуга = высота) и переносим строки: экранная y = R·sin(s/R).
+function digitCellCurved(g, x, y, w, h, ch, next, frac, bgc, fg, font, curve) {
+  const tm = curve * Math.PI / 2, R = h / 2 / Math.sin(tm), Hf = Math.ceil(2 * R * tm), o = document.createElement('canvas'); o.width = w; o.height = Hf;
+  const q = o.getContext('2d'), gr = q.createLinearGradient(0, 0, 0, Hf); gr.addColorStop(0, shade(bgc, -0.45)); gr.addColorStop(0.5, bgc); gr.addColorStop(1, shade(bgc, -0.45));
+  q.fillStyle = gr; q.fillRect(0, 0, w, Hf); q.fillStyle = fg; q.font = font; q.textAlign = 'center'; q.textBaseline = 'middle';
+  const dy = -frac * h * 1.15; q.fillText(ch, w / 2, Hf / 2 + dy + h * 0.04); if (frac) q.fillText(next, w / 2, Hf / 2 + dy + h * 1.15 + h * 0.04);
+  for (let yy = 0; yy < h; yy++) { const yc = yy + 0.5 - h / 2, sv = R * Math.asin(Math.max(-1, Math.min(1, yc / R))); g.drawImage(o, 0, sv + Hf / 2 - 0.5, w, 1, x, y + yy, w, 1); }
 }
 function shade(hex, k) { const n = parseInt(hex.slice(1), 16), r = n >> 16, gg = (n >> 8) & 255, b = n & 255, f = v => Math.max(0, Math.min(255, Math.round(v + (k < 0 ? v * k : (255 - v) * k)))); return 'rgb(' + f(r) + ',' + f(gg) + ',' + f(b) + ')'; }
 function drawMeter(c, cv) {
@@ -55,13 +66,13 @@ function drawMeter(c, cv) {
   g.fillStyle = c.gapc || '#d7dadd'; g.fillRect(wx - 4, wy - 4, tw + 8, ch + 8);
   const font = 'bold ' + Math.round(ch * 0.78) + 'px ' + (c.font || '"DejaVu Sans Condensed", "DejaVu Sans"');
   for (let i = 0; i < nb; i++) {
-    const last = i === nb - 1, d = +c.v[i], frac = last && c.half ? c.half : 0;
-    digitCell(g, wx + i * (cw + gap), wy, cw, ch, c.v[i], String((d + 1) % 10), frac, c.black || '#16181a', c.ink || '#f4f4f4', font);
+    const last = i === nb - 1, d = +c.v[i], frac = last && c.half ? c.half : c.halfs ? c.halfs[i] || 0 : 0;
+    digitCell(g, wx + i * (cw + gap), wy, cw, ch, c.v[i], String((d + 1) % 10), frac, c.black || '#16181a', c.ink || '#f4f4f4', font, c.curve);
   }
   for (let j = 0; j < nr; j++) {
     const x = wx + (nb + j) * (cw + gap) + (c.sep || 0);
-    if (c.style === 'redtxt') digitCell(g, x, wy, cw, ch, c.red[j], '0', 0, '#f2f2f2', '#d0161e', font);
-    else digitCell(g, x, wy, cw, ch, c.red[j], '0', 0, c.redbg || '#c8151d', '#fbeaea', font);
+    if (c.style === 'redtxt') digitCell(g, x, wy, cw, ch, c.red[j], '0', 0, '#f2f2f2', '#d0161e', font, c.curve);
+    else digitCell(g, x, wy, cw, ch, c.red[j], '0', 0, c.redbg || '#c8151d', '#fbeaea', font, c.curve);
   }
   // окно утоплено: тень сверху; стекло запотело; вспышка
   if (c.shadow) { const sg = g.createLinearGradient(0, wy - 4, 0, wy + ch * 0.6); sg.addColorStop(0, 'rgba(0,0,0,' + c.shadow + ')'); sg.addColorStop(1, 'rgba(0,0,0,0)'); g.fillStyle = sg; g.fillRect(wx - 4, wy - 4, tw + 8, ch * 0.6); }

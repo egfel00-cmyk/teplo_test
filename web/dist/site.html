@@ -1496,7 +1496,7 @@ input[type=text]:not(.dmy-native):not(.pl-in), input[type=email], input[type=pas
       wnp_hint: 'Один кадр з обома водомірами або по кадру на кожен. Барабан — прямо й близько, без відблиску спалаху.',
       wnp_src: 'З фото {n}: {v}', wnp_src_half: 'З фото {n}: {p} — останній барабан між цифрами, допишіть меншу.', wnp_src_none: 'Фото {n}: цифр барабана не видно — впишіть вручну.',
       wnp_why_serial: '(за заводським №)', wnp_why_tint: '(за кольором кільця)', wnp_why_prev: '(за минулими показаннями)', wnp_why_swap: '(поміняли місцями)',
-      wnp_check: 'Перевірте, чи це той лічильник.', wnp_half: 'Останній барабан між цифрами — перевірте.', wnp_glare: 'Перші цифри закрив відблиск — ми вважали їх нулями, перевірте.',
+      wnp_check: 'Перевірте, чи це той лічильник.', wnp_half: 'Останній барабан між цифрами — перевірте.', wnp_half_pair: 'Останній барабан між {a} і {b} — взяли меншу, перевірте.', wnp_glare: 'Перші цифри закрив відблиск — ми вважали їх нулями, перевірте.',
       wnp_none: 'цифр барабана не знайшли', wnp_guess: 'Не впевнені, де який лічильник — звірте з фото (натисніть, щоб збільшити).',
       wnp_swap: 'Поміняти гарячу й холодну',
       wz_cancel: 'Скасувати й вийти', wz_cancel_draft: 'Скасувати введення', wz_cancelled: 'Скасовано — нічого не збережено',
@@ -1990,7 +1990,7 @@ input[type=text]:not(.dmy-native):not(.pl-in), input[type=email], input[type=pas
       wnp_hint: 'Один кадр с обоими водомерами или по кадру на каждый. Барабан — прямо и близко, без блика вспышки.',
       wnp_src: 'С фото {n}: {v}', wnp_src_half: 'С фото {n}: {p} — последний барабан между цифрами, допишите меньшую.', wnp_src_none: 'Фото {n}: цифр барабана не видно — впишите вручную.',
       wnp_why_serial: '(по заводскому №)', wnp_why_tint: '(по цвету кольца)', wnp_why_prev: '(по прошлым показаниям)', wnp_why_swap: '(поменяли местами)',
-      wnp_check: 'Проверьте, тот ли это счётчик.', wnp_half: 'Последний барабан между цифрами — проверьте.', wnp_glare: 'Первые цифры закрыл блик — мы приняли их за нули, проверьте.',
+      wnp_check: 'Проверьте, тот ли это счётчик.', wnp_half: 'Последний барабан между цифрами — проверьте.', wnp_half_pair: 'Последний барабан между {a} и {b} — взяли меньшую, проверьте.', wnp_glare: 'Первые цифры закрыл блик — мы приняли их за нули, проверьте.',
       wnp_none: 'цифр барабана не нашли', wnp_guess: 'Не уверены, где какой счётчик — сверьте с фото (нажмите, чтобы увеличить).',
       wnp_swap: 'Поменять горячую и холодную',
       wz_cancel: 'Отменить и выйти', wz_cancel_draft: 'Отменить ввод', wz_cancelled: 'Отменено — ничего не сохранено',
@@ -2623,7 +2623,7 @@ input[type=text]:not(.dmy-native):not(.pl-in), input[type=email], input[type=pas
     _engine: function (onPct) {
       var base = String(root.TEPLO_API).replace(/\/api\/?$/, '') + '/web/ocr/';
       var script = root.TeploOCR ? Promise.resolve() : (this._script = this._script || new Promise(function (ok, bad) {
-        var s = document.createElement('script'); s.src = base + 'engine.js?v=10'; s.onload = ok; s.onerror = function () { bad(fail('engine_failed')); }; document.head.appendChild(s);
+        var s = document.createElement('script'); s.src = base + 'engine.js?v=11'; s.onload = ok; s.onerror = function () { bad(fail('engine_failed')); }; document.head.appendChild(s);
       }));
       return script.then(function () { return root.TeploOCR.load(base, onPct); }).catch(function (e) { if (e && e.code) throw e; throw fail('engine_failed'); });
     },
@@ -2902,6 +2902,19 @@ input[type=text]:not(.dmy-native):not(.pl-in), input[type=email], input[type=pas
     // окно барабана (по цвету) главнее строк текста, только если прочитано уверенно; иначе — сверяем со строкой цифр
     var dr = fromDrum(res, prevVal), ln = fromLines(res, prevVal);
     if (dr && dr.value !== null && dr.strong) return dr;
+    // ролик между цифрами разобран по окну: строка текста его не видит («0050~980», «0050980» — уже с красными) — верим окну;
+    // не узнали цифру — строка годится, только если совпала со всеми видимыми цифрами окна
+    if (dr && dr.pair && dr.value !== null && /^0/.test(dr.digits)) return dr;
+    if (dr && dr.rolls && dr.partial && /^0/.test(dr.digits) && (dr.strong || dr.digits.length >= 4)) {
+      // строка годится, только если в ней на один чёрный ролик больше, чем в окне, а хвост — те же красные: «0050980» —
+      // это 4 чёрных + красные (первая красная на переходе всегда 9), а не «00509»
+      var pat = new RegExp('^' + dr.partial.replace('?', '\\d')), red0 = String(dr.red || ''), lnd = ln ? ln.digits : '';
+      if (ln && red0 && lnd.length === dr.partial.length + red0.length && lnd.slice(-red0.length) === red0 && pat.test(lnd)) {
+        var o3 = { value: Number(lnd.slice(0, dr.partial.length)), digits: lnd.slice(0, dr.partial.length), red: red0, sure: false, half: true, drum: true, tint: dr.tint };
+        if (prevVal === null || prevVal === undefined || prevVal === '' || o3.value >= Math.floor(num(prevVal))) return o3;
+      }
+      return dr;
+    }
     if (ln && dr && dr.value === ln.value) { ln.sure = true; ln.drum = true; ln.red = dr.red; ln.tint = dr.tint; ln.lead = dr.lead && !dr.sure; return ln; }
     // начало окна под бликом: строка текста («175432») видит то же, что окно, — окну и верим (оно отделило м³ от дробей)
     if (dr && dr.lead && dr.value !== null) return dr;
@@ -2967,8 +2980,33 @@ input[type=text]:not(.dmy-native):not(.pl-in), input[type=email], input[type=pas
       }
       return lo;
     }
-    var exp = d.cells || 5, half = /^0/.test(dg) && dg.length < Math.min(exp, 5);
     var strong = dg.length >= 4 && (d.votes || 0) >= 2 && (d.score || 0) >= 0.9 && /^0/.test(dg);
+    // ролик между цифрами разобран движком (d.half): узнанная пара — в тексте меньшая цифра; не узнали — на её месте «?»
+    var hv = (d.half || []).filter(function (x) { return x && x.i >= 0 && x.i <= dg.length; });
+    if (hv.length) {
+      var miss = hv.filter(function (x) { return x.d === null || x.d === undefined; });
+      var o2 = { value: Number(dg), digits: dg, red: red, sure: false, strong: strong, half: true, tint: d.tint || null, drum: true, pair: hv.map(function (x) { return x.d === null || x.d === undefined ? null : [x.d, (x.d + 1) % 10]; }) };
+      if (!miss.length) {
+        if (p !== null) {
+          // с прошлым: меньшая цифра пары, а если она меньше прошлого — большая (прошлый раз взяли её)
+          var pf1 = Math.floor(p + 1e-9), up = Number(dg) + 1;
+          if (o2.value >= pf1 && o2.value - pf1 < 100) o2.sure = true;
+          else if (up >= pf1 && up - pf1 < 100 && hv.length === 1 && hv[0].i === dg.length - 1) { o2.value = up; o2.sure = true; }
+          else if (o2.value < pf1) o2.less = true;
+        }
+        return o2;
+      }
+      if (miss.length === 1) {
+        var at = miss[0].i, mk = function (k) { return Number(dg.slice(0, at) + k + dg.slice(at)); };
+        if (p !== null) {
+          // с прошлым: цифры по сходству с роликом — первая, при которой не меньше прошлого и недалеко от него
+          var pf2 = Math.floor(p + 1e-9), rk = (miss[0].rank || []).concat([0, 1, 2, 3, 4, 5, 6, 7, 8, 9]);
+          for (var r2 = 0; r2 < rk.length; r2++) { var v2 = mk(rk[r2]); if (v2 >= pf2 && v2 - pf2 < 100) { o2.value = v2; o2.digits = dg.slice(0, at) + rk[r2] + dg.slice(at); return o2; } }
+        }
+        return { value: null, partial: dg.slice(0, at) + '?' + dg.slice(at), digits: dg, red: red, half: true, rolls: true, tint: o2.tint, drum: true, strong: strong };
+      }
+    }
+    var exp = d.cells || 5, half = /^0/.test(dg) && dg.length < Math.min(exp, 5);
     var out = { value: Number(dg), digits: dg, red: red, sure: strong && !half, strong: strong, half: half, tint: d.tint || null, drum: true };
     if (p !== null) {
       var pf = Math.floor(p + 1e-9);
@@ -3039,7 +3077,7 @@ input[type=text]:not(.dmy-native):not(.pl-in), input[type=email], input[type=pas
     var by = {}, usedC = {}, usedP = {};
     var take = function (x) {
       var guess = pairs.some(function (y) { return y.c === x.c && y.m !== x.m && y.sc > x.sc - 5; });
-      by[x.m.id] = { value: x.r.value, partial: x.r.partial || null, photo: cands[x.c].photo, sure: !!x.r.sure && !guess, half: !!x.r.half, why: x.why, guess: guess, less: !!x.r.less, lead: !!x.r.lead && !x.r.sure };
+      by[x.m.id] = { value: x.r.value, partial: x.r.partial || null, photo: cands[x.c].photo, sure: !!x.r.sure && !guess, half: !!x.r.half, pair: x.r.pair || null, why: x.why, guess: guess, less: !!x.r.less, lead: !!x.r.lead && !x.r.sure };
       usedC[x.c] = true; usedP[cands[x.c].photo] = true;
     };
     pairs.forEach(function (x) { if (!by[x.m.id] && !usedC[x.c] && x.sc >= -5) take(x); });
@@ -3938,7 +3976,7 @@ input[type=text]:not(.dmy-native):not(.pl-in), input[type=email], input[type=pas
       var pi = WN.photos.length - 1;
       if (!r) WN.src[mid] = { photo: pi, value: null, none: true };
       else {
-        WN.src[mid] = { photo: pi, value: r.value, partial: r.partial || null, half: !!r.half, lead: !!r.lead && !r.sure, why: 'field' };
+        WN.src[mid] = { photo: pi, value: r.value, partial: r.partial || null, half: !!r.half, pair: r.pair || null, lead: !!r.lead && !r.sure, why: 'field' };
         if (r.value !== null) { WN.vals[mid] = String(r.value); WN.auto[mid] = true; }
       }
       render(true); wnCheck(true);
@@ -3952,7 +3990,12 @@ input[type=text]:not(.dmy-native):not(.pl-in), input[type=email], input[type=pas
     var n = x.photo + 1;
     if (x.none) return t('wnp_src_none', { n: n }) + ' ';
     if (x.value === null) return t('wnp_src_half', { n: n, p: x.partial || '' }) + ' ';
-    return t('wnp_src', { n: n, v: x.value }) + (x.why && x.why !== 'field' ? ' ' + t('wnp_why_' + x.why) : '') + '. ' + (x.guess || !x.why ? t('wnp_check') + ' ' : x.half ? t('wnp_half') + ' ' : '') + (x.lead ? t('wnp_glare') + ' ' : '');
+    return t('wnp_src', { n: n, v: x.value }) + (x.why && x.why !== 'field' ? ' ' + t('wnp_why_' + x.why) : '') + '. ' + (x.guess || !x.why ? t('wnp_check') + ' ' : x.half ? halfHint(x.pair) + ' ' : '') + (x.lead ? t('wnp_glare') + ' ' : '');
+  }
+  /** Ролик между цифрами: «між 2 і 3 — взяли меншу» (пару узнал движок) или просто «між цифрами». */
+  function halfHint(pair) {
+    var pr = (pair || []).filter(Boolean), last = pr[pr.length - 1];
+    return last ? t('wnp_half_pair', { a: last[0], b: last[1] }) : t('wnp_half');
   }
   function wnSrcThumb(mid) {
     var x = WN.src && WN.src[mid], p = x && WN.photos[x.photo]; if (!p) return '';
@@ -4023,7 +4066,7 @@ input[type=text]:not(.dmy-native):not(.pl-in), input[type=email], input[type=pas
     var A = Wt.assign(WN.photos.map(function (p) { return p.fixed ? null : p.res; }), free, prev);
     Object.keys(A.by).forEach(function (mid) {
       var x = A.by[mid];
-      WN.src[mid] = { photo: x.photo, value: x.value, partial: x.partial, half: x.half, lead: x.lead, why: x.why, guess: x.guess };
+      WN.src[mid] = { photo: x.photo, value: x.value, partial: x.partial, half: x.half, pair: x.pair, lead: x.lead, why: x.why, guess: x.guess };
       WN.photos[x.photo].meters.push(mid);
       if (x.value !== null && (!WN.vals[mid] || WN.auto[mid])) { WN.vals[mid] = String(x.value); WN.auto[mid] = true; }
     });

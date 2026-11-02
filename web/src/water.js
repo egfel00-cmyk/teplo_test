@@ -132,6 +132,19 @@
     // окно барабана (по цвету) главнее строк текста, только если прочитано уверенно; иначе — сверяем со строкой цифр
     var dr = fromDrum(res, prevVal), ln = fromLines(res, prevVal);
     if (dr && dr.value !== null && dr.strong) return dr;
+    // ролик между цифрами разобран по окну: строка текста его не видит («0050~980», «0050980» — уже с красными) — верим окну;
+    // не узнали цифру — строка годится, только если совпала со всеми видимыми цифрами окна
+    if (dr && dr.pair && dr.value !== null && /^0/.test(dr.digits)) return dr;
+    if (dr && dr.rolls && dr.partial && /^0/.test(dr.digits) && (dr.strong || dr.digits.length >= 4)) {
+      // строка годится, только если в ней на один чёрный ролик больше, чем в окне, а хвост — те же красные: «0050980» —
+      // это 4 чёрных + красные (первая красная на переходе всегда 9), а не «00509»
+      var pat = new RegExp('^' + dr.partial.replace('?', '\\d')), red0 = String(dr.red || ''), lnd = ln ? ln.digits : '';
+      if (ln && red0 && lnd.length === dr.partial.length + red0.length && lnd.slice(-red0.length) === red0 && pat.test(lnd)) {
+        var o3 = { value: Number(lnd.slice(0, dr.partial.length)), digits: lnd.slice(0, dr.partial.length), red: red0, sure: false, half: true, drum: true, tint: dr.tint };
+        if (prevVal === null || prevVal === undefined || prevVal === '' || o3.value >= Math.floor(num(prevVal))) return o3;
+      }
+      return dr;
+    }
     if (ln && dr && dr.value === ln.value) { ln.sure = true; ln.drum = true; ln.red = dr.red; ln.tint = dr.tint; ln.lead = dr.lead && !dr.sure; return ln; }
     // начало окна под бликом: строка текста («175432») видит то же, что окно, — окну и верим (оно отделило м³ от дробей)
     if (dr && dr.lead && dr.value !== null) return dr;
@@ -197,8 +210,33 @@
       }
       return lo;
     }
-    var exp = d.cells || 5, half = /^0/.test(dg) && dg.length < Math.min(exp, 5);
     var strong = dg.length >= 4 && (d.votes || 0) >= 2 && (d.score || 0) >= 0.9 && /^0/.test(dg);
+    // ролик между цифрами разобран движком (d.half): узнанная пара — в тексте меньшая цифра; не узнали — на её месте «?»
+    var hv = (d.half || []).filter(function (x) { return x && x.i >= 0 && x.i <= dg.length; });
+    if (hv.length) {
+      var miss = hv.filter(function (x) { return x.d === null || x.d === undefined; });
+      var o2 = { value: Number(dg), digits: dg, red: red, sure: false, strong: strong, half: true, tint: d.tint || null, drum: true, pair: hv.map(function (x) { return x.d === null || x.d === undefined ? null : [x.d, (x.d + 1) % 10]; }) };
+      if (!miss.length) {
+        if (p !== null) {
+          // с прошлым: меньшая цифра пары, а если она меньше прошлого — большая (прошлый раз взяли её)
+          var pf1 = Math.floor(p + 1e-9), up = Number(dg) + 1;
+          if (o2.value >= pf1 && o2.value - pf1 < 100) o2.sure = true;
+          else if (up >= pf1 && up - pf1 < 100 && hv.length === 1 && hv[0].i === dg.length - 1) { o2.value = up; o2.sure = true; }
+          else if (o2.value < pf1) o2.less = true;
+        }
+        return o2;
+      }
+      if (miss.length === 1) {
+        var at = miss[0].i, mk = function (k) { return Number(dg.slice(0, at) + k + dg.slice(at)); };
+        if (p !== null) {
+          // с прошлым: цифры по сходству с роликом — первая, при которой не меньше прошлого и недалеко от него
+          var pf2 = Math.floor(p + 1e-9), rk = (miss[0].rank || []).concat([0, 1, 2, 3, 4, 5, 6, 7, 8, 9]);
+          for (var r2 = 0; r2 < rk.length; r2++) { var v2 = mk(rk[r2]); if (v2 >= pf2 && v2 - pf2 < 100) { o2.value = v2; o2.digits = dg.slice(0, at) + rk[r2] + dg.slice(at); return o2; } }
+        }
+        return { value: null, partial: dg.slice(0, at) + '?' + dg.slice(at), digits: dg, red: red, half: true, rolls: true, tint: o2.tint, drum: true, strong: strong };
+      }
+    }
+    var exp = d.cells || 5, half = /^0/.test(dg) && dg.length < Math.min(exp, 5);
     var out = { value: Number(dg), digits: dg, red: red, sure: strong && !half, strong: strong, half: half, tint: d.tint || null, drum: true };
     if (p !== null) {
       var pf = Math.floor(p + 1e-9);
@@ -269,7 +307,7 @@
     var by = {}, usedC = {}, usedP = {};
     var take = function (x) {
       var guess = pairs.some(function (y) { return y.c === x.c && y.m !== x.m && y.sc > x.sc - 5; });
-      by[x.m.id] = { value: x.r.value, partial: x.r.partial || null, photo: cands[x.c].photo, sure: !!x.r.sure && !guess, half: !!x.r.half, why: x.why, guess: guess, less: !!x.r.less, lead: !!x.r.lead && !x.r.sure };
+      by[x.m.id] = { value: x.r.value, partial: x.r.partial || null, photo: cands[x.c].photo, sure: !!x.r.sure && !guess, half: !!x.r.half, pair: x.r.pair || null, why: x.why, guess: guess, less: !!x.r.less, lead: !!x.r.lead && !x.r.sure };
       usedC[x.c] = true; usedP[cands[x.c].photo] = true;
     };
     pairs.forEach(function (x) { if (!by[x.m.id] && !usedC[x.c] && x.sc >= -5) take(x); });
