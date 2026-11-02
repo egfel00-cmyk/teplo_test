@@ -371,3 +371,12 @@ label.btn { cursor: pointer; }
 .tips-box summary { cursor: pointer; font-weight: 600; display: flex; align-items: center; gap: 8px; min-height: 32px; }
 .tips-box ul { margin: 8px 0 4px; padding-left: 20px; }
 .tips-box li { margin: 4px 0; line-height: 1.4; }
+
+/* фото ещё грузится / декодируется — под ним крутится кольцо (картинка непрозрачная и закроет его, когда появится) */
+.pv-spin { position: absolute; left: 50%; top: 50%; width: 44px; height: 44px; margin: -22px 0 0 -22px; color: #fff; border-width: 3.5px; }
+.pv-spin[hidden] { display: none; }
+.thumbs li::before, .src-w::before { content: ''; position: absolute; left: 50%; top: 50%; width: 22px; height: 22px; margin: -11px 0 0 -11px; border: 2.5px solid var(--c-ink-2); border-right-color: transparent; border-radius: 50%; animation: spin .8s linear infinite; }
+.thumbs img { position: relative; }
+.src-w { position: relative; flex: none; display: block; width: 52px; height: 52px; }
+.src-w .src { position: relative; display: block; }
+@media (prefers-reduced-motion: reduce) { .thumbs li::before, .src-w::before { animation-duration: 2.4s; } }
