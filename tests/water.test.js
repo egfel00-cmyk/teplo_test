@@ -150,5 +150,23 @@ ok('не узнали, но есть прошлое 237 — цифра по сх
   ok('удалённый период не мешает (5 < 437 — как раньше, без расхода)', sr[2].cold === null && sr[1].cold === 7, sr);
 }
 
+console.log('\nВодомір знімали — оценка:');
+{
+  const recs = [['2025-11-15', 100], ['2026-02-15', 109], ['2026-05-15', 118]].map(([d, v]) => ({ id: d, date: d, vals: { c1: String(v), h1: String(v / 2) } }));
+  const g = { from: '2026-05-15', to: '2026-06-14', reason: 'verify', what: 'c1' };
+  const e = W.gapWater(g, recs, { id: 'c1', kind: 'cold' }, { today: '2026-11-02' });
+  ok('повірка → среднесуточное за 12 мес до снятия: 18 м³ / 181 сут', e.method === 'avg' && Math.abs(e.perDay - 18 / 181) < 1e-6 && e.base.from === '2025-11-15', e);
+  ok('30 суток ≈ 2,98 м³, холодная по тарифу 16,032+8,484', e.days === 30 && Math.abs(e.m3 - 2.98) < 0.02 && Math.abs(e.cost - e.m3 * (16.032 + 8.484)) < 0.05, e);
+  const n = W.gapWater(Object.assign({}, g, { reason: 'repair' }), recs, { id: 'h1', kind: 'hot' }, { today: '2026-11-02', persons: 2 });
+  ok('поломка → норма Харьковводоканала: горячая 3 м³ × 2 особи', n.method === 'norm' && n.norm.hot === 3 && Math.abs(n.perMonth - 6 * 12 / 365.25 * 30.44) < 0.01, n);
+  ok('горячая: ХТМ 86,32 + отведение', Math.abs(n.htm - n.m3 * 86.32) < 0.05 && Math.abs(n.vk - n.m3 * 8.484) < 0.05, n);
+  ok('без числа прописанных — need persons', W.gapWater(Object.assign({}, g, { reason: 'repair' }), recs, { id: 'c1', kind: 'cold' }, { today: '2026-11-02' }).need === 'persons');
+  ok('явный способ «за середнім» главнее причины', W.gapWater(Object.assign({}, g, { reason: 'repair', pay: 'avg' }), recs, { id: 'c1', kind: 'cold' }, { today: '2026-11-02' }).method === 'avg');
+  ok('без истории за год — need history', W.gapWater(g, [], { id: 'c1', kind: 'cold' }, { today: '2026-11-02' }).need === 'history');
+  const cs = W.gapWater({ from: '2026-09-20', to: '2026-10-10', reason: 'repair' }, recs, { id: 'c1', kind: 'cold' }, { today: '2026-11-02', persons: 1, cfg: { normRow: 'gas_bath' } });
+  ok('тариф меняется с 1.10: сентябрь по старому, октябрь по новому; норма «колонка» 9,92', cs.norm.cold === 9.92 && cs.rows.length === 2 && Math.abs(cs.rows[1].cost - cs.rows[1].m3 * (49.446 + 20.82)) < 0.02 && Math.abs(cs.rows[0].cost - cs.rows[0].m3 * (16.032 + 8.484)) < 0.02, cs.rows);
+  ok('своя норма из настроек главнее таблицы', W.normOf({ normRow: 'chw_bath', normCold: '5,5' }).cold === 5.5);
+}
+
 console.log(`\nИтог: ${pass} OK, ${fail} FAIL`);
 process.exit(fail ? 1 : 0);

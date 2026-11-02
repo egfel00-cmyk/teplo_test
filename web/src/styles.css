@@ -609,6 +609,12 @@ input[type=text]:not(.dmy-native):not(.pl-in), input[type=email], input[type=pas
 #gap-form .check-row input { margin-top: 2px; }
 #gap-form fieldset { border: 0; padding: 0; margin: 0 0 var(--sp-3); min-width: 0; }
 .gap-row .grow .ico { vertical-align: -3px; }
+.nm-rules { list-style: disc; padding-left: 20px; margin: 4px 0 14px; display: grid; gap: 6px; }
+#gp-est .tbl td .muted { font-weight: 400; }
+#gp-est .stat-tiles { grid-template-columns: repeat(auto-fit, minmax(128px, 1fr)); gap: 10px 14px; }
+#gp-est .num.big { font-size: 22px; line-height: 1.2; } #gp-est .num.big .small { white-space: nowrap; }
+#gp-est .tbl th, #gp-est .tbl td { padding: 6px 4px; }
+#gp-est .tbl { font-size: 13px; }
 .banner ul.plain { list-style: none; padding: 0; margin: 4px 0 0; display: grid; gap: 2px; }
 .ucard .empty { opacity: .5; filter: saturate(.4); }
 

@@ -336,7 +336,60 @@
   }
   function uid() { return 'w' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }
 
-  var api = { VK_BOT: VK_BOT, VK_CABINET: VK_CABINET, VK_DEADLINE: VK_DEADLINE, TARIFFS: TARIFFS, HOT: HOT,
+  /*
+   * Норми водоспоживання на 1 особу в місяць, м³, коли засобів обліку немає — житловий фонд Харкова (КП «Харківводоканал»,
+   * vodokanal.kharkov.ua/content/normy, 28.12.2016). Водовідведення = холодна + гаряча. Рядки — для квартир у багатоповерхівках.
+   */
+  var NORMS = [
+    { id: 'chw_bath', cold: 6.88, hot: 3.00 },    // з централізованою гарячою, ванни 1500–1700 мм і душ, до 9 поверхів
+    { id: 'chw_bath10', cold: 6.93, hot: 3.00 },  // те саме, понад 9 поверхів
+    { id: 'chw_shower', cold: 6.29, hot: 3.00 },  // з централізованою гарячою, умивальники, мийки й душ (без ванни)
+    { id: 'gas_bath', cold: 9.92, hot: 0 },       // ванни з газовими водонагрівачами (колонка), без гарячої з мережі
+    { id: 'gas_multi', cold: 9.85, hot: 0 },      // ванни зі швидкодіючими газовими нагрівачами, багатоточковий розбір
+    { id: 'nobath', cold: 5.56, hot: 0 }          // без ванн, з газопостачанням
+  ];
+  function normOf(cfg) {
+    var c = cfg || {}, row = NORMS.filter(function (x) { return x.id === c.normRow; })[0] || NORMS[0];
+    return { id: row.id, cold: num(c.normCold) !== null ? num(c.normCold) : row.cold, hot: num(c.normHot) !== null ? num(c.normHot) : row.hot };
+  }
+  function dayAdd(d, k) { return new Date(Date.parse(d + 'T00:00:00Z') + k * 864e5).toISOString().slice(0, 10); }
+  /**
+   * Водомір знімали — скільки води й грошей (оцінка за правилами).
+   * Повірка з демонтажем (Методика розподілу №315, розд. I п. 5) — середньодобове споживання цього водоміра за 12 місяців до зняття
+   * × доби; поломка / заміна — як без обліку: норма Харківводоканалу × зареєстровані особи. pay: avg|norm|unknown (тоді — за
+   * причиною). recs — записи води, meter {id, kind}; o: {today, custom (свої тарифи), persons, cfg (normRow/normCold/normHot)}.
+   * → {method: avg|norm, need: history|persons|null, perDay, perMonth, m3, cost, vk, htm, days, rows: [{ym, days, m3, cost}]}
+   */
+  function gapWater(g, recs, meter, o) {
+    o = o || {}; if (!g || !g.from || !meter || !o.today) return null;
+    var end = g.to && g.to < o.today ? g.to : o.today, n = Math.max(0, daysBetween(g.from, end)), hot = meter.kind === 'hot';
+    var method = g.pay === 'avg' || g.pay === 'norm' ? g.pay : (g.reason === 'verify' ? 'avg' : 'norm'), perDay = null, need = null, base = null, nr = null;
+    if (method === 'avg') {
+      // показання цього водоміра за рік до зняття (+ показання при знятті)
+      var pts = (recs || []).filter(function (r) { return r && !r.deleted && r.date <= g.from && r.date >= dayAdd(g.from, -365) && whole(r.vals && r.vals[meter.id]) !== null; })
+        .map(function (r) { return { d: r.date, v: whole(r.vals[meter.id]) }; });
+      if (whole(g.vFrom) !== null) pts.push({ d: g.from, v: whole(g.vFrom) });
+      pts.sort(function (a, b) { return a.d < b.d ? -1 : a.d > b.d ? 1 : a.v - b.v; });
+      var a = pts[0], b = pts[pts.length - 1], span = a && b ? daysBetween(a.d, b.d) : 0;
+      if (span >= 20 && b.v >= a.v) { perDay = (b.v - a.v) / span; base = { from: a.d, to: b.d, days: span }; } else need = 'history';
+    } else {
+      nr = normOf(o.cfg); var per = num(o.persons);
+      if (per === null || per <= 0) need = 'persons';
+      else perDay = (hot ? nr.hot : nr.cold) * per * 12 / 365.25;
+    }
+    var rows = [], by = {};
+    for (var k = 1; k <= n; k++) { var ym = dayAdd(g.from, k).slice(0, 7); if (!by[ym]) { by[ym] = { ym: ym, days: 0, m3: 0, cost: 0 }; rows.push(by[ym]); } by[ym].days++; }
+    var sum = { m3: 0, cost: 0, vk: 0, htm: 0 };
+    rows.forEach(function (r) {
+      r.m3 = perDay === null ? 0 : +(perDay * r.days).toFixed(2);
+      var c = hot ? cost(0, r.m3, r.ym + '-01', o.custom) : cost(r.m3, 0, r.ym + '-01', o.custom);
+      r.cost = +c.total.toFixed(2); sum.m3 += r.m3; sum.cost += c.total; sum.vk += c.vk; sum.htm += c.htm;
+    });
+    return { method: method, need: need, perDay: perDay, perMonth: perDay === null ? null : +(perDay * 30.44).toFixed(2), base: base, norm: nr, persons: num(o.persons),
+      m3: +sum.m3.toFixed(2), cost: +sum.cost.toFixed(2), vk: +sum.vk.toFixed(2), htm: +sum.htm.toFixed(2), days: n, open: !g.to || g.to > o.today, rows: rows };
+  }
+
+  var api = { NORMS: NORMS, normOf: normOf, gapWater: gapWater, VK_BOT: VK_BOT, VK_CABINET: VK_CABINET, VK_DEADLINE: VK_DEADLINE, TARIFFS: TARIFFS, HOT: HOT,
     num: num, whole: whole, withFrac: withFrac, norm: norm, tariffAt: tariffAt, cost: cost, check: check, blocked: blocked, vkCommand: vkCommand, vkWindow: vkWindow, series: series, monthly: monthly, summary: summary, fromOcr: fromOcr, assign: assign, goodDrum: goodDrum, fromDrum: fromDrum, uid: uid };
   if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.TeploWater = api;
 })(typeof window !== 'undefined' ? window : this);

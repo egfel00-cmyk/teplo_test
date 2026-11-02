@@ -86,6 +86,51 @@
   /** Диапазон дат, для которого нужна погода. */
   function range(readings, baseline) { var p = points(readings, baseline); return p.length ? { from: p[0].date, to: p[p.length - 1].date } : null; }
 
-  var api = { graph: graph, points: points, intervals: intervals, coolant: coolant, range: range, OK_TOL: OK_TOL, LOW_TOL: LOW_TOL };
+  /*
+   * Період без лічильника — скільки тепла й грошей (оцінка за правилами, а не за платіжкою).
+   * Методика розподілу №315 (наказ Мінрегіону від 22.11.2018, ред. наказу №358 від 28.12.2021), розд. I п. 5: лічильник на повірці
+   * з демонтажем — приміщення НЕ вважається без обліку, обсяг = середньодобове споживання за попередній опалювальний період ×
+   * кількість діб. Вихід з ладу / заміна (п. 4 пп. 3) — показання не приймаються, рахують як приміщенню без обліку (частка
+   * будинкового за площею, ks = 1); точна сума — лише в платіжці, тут — скільки вийшло б за звичним споживанням квартири.
+   * Тариф той самий (грн/Гкал), змінюється лише спосіб визначити обсяг.
+   * g: {from, to}; ivs — intervals(…, gaps); o: {today, tariff}. → {days, heatDays, avg (Гкал/добу опалення), perMonth, gcal, cost,
+   *   basis: prev|recent|none, season: 2024 (= 2024/25), rows: [{ym, days, heatDays, gcal, cost}]} або null.
+   */
+  var HEAT_DAY = 0.003;   // Гкал на добу: менше — опалення не було (поза сезоном, вимкнені батареї)
+  function perDayAt(ivs, d) { for (var i = 0; i < ivs.length; i++) { var it = ivs[i]; if (it.from < d && d <= it.to) return Math.max(0, it.dE) / it.days; } return null; }
+  function seasonOf(d) { var y = +d.slice(0, 4), m = +d.slice(5, 7); return m >= 7 ? y : y - 1; }   // жовтень 2025 … квітень 2026 → 2025
+  function seasonAvg(ivs, from, to) {   // Гкал і опалювальні доби на [from, to] з промежутків, де тепло йшло
+    var e = 0, hd = 0;
+    ivs.forEach(function (it) {
+      var a = it.from > from ? it.from : from, b = it.to < to ? it.to : to, n = days(a, b), pd = Math.max(0, it.dE) / it.days;
+      if (n > 0 && pd > HEAT_DAY) { e += pd * n; hd += n; }
+    });
+    return hd >= 14 ? { e: e, hd: hd, avg: e / hd } : null;
+  }
+  function gapHeat(g, ivs, o) {
+    o = o || {}; if (!g || !g.from || !o.today) return null;
+    var end = g.to && g.to < o.today ? g.to : o.today, n = Math.max(0, days(g.from, end)), tariff = o.tariff || 0;
+    ivs = (ivs || []).filter(function (it) { return it.days > 0; });
+    // попередній опалювальний період: знімали влітку — сезон, що щойно скінчився; у сезоні — минулорічний
+    var m0 = +g.from.slice(5, 7), ps = m0 >= 5 && m0 <= 9 ? seasonOf(g.from) : seasonOf(g.from) - 1;
+    var ref = seasonAvg(ivs, ps + '-09-30', (ps + 1) + '-04-30'), basis = 'prev';
+    if (!ref) { ref = seasonAvg(ivs, addDay(g.from, -365), g.from); basis = 'recent'; }   // за рік до зняття
+    if (!ref) { ref = seasonAvg(ivs, '2000-01-01', '2999-12-31'); basis = 'recent'; }   // хоч якісь показання з опаленням
+    if (!ref) basis = 'none';
+    var avg = ref ? ref.avg : 0, rows = [], byYm = {}, hdTot = 0;
+    for (var k = 1; k <= n; k++) {
+      var d = addDay(g.from, k), ym = d.slice(0, 7), ly = perDayAt(ivs, addDay(d, -365)), md = d.slice(5);
+      // опалювальна доба: торік цього дня тепло йшло; немає даних — типовий сезон Харкова (з середини жовтня до середини квітня)
+      var heat = ly !== null ? ly > HEAT_DAY : (md >= '10-15' || md <= '04-15');
+      if (!byYm[ym]) { byYm[ym] = { ym: ym, days: 0, heatDays: 0, gcal: 0, cost: 0 }; rows.push(byYm[ym]); }
+      byYm[ym].days++; if (heat) { byYm[ym].heatDays++; hdTot++; }
+    }
+    rows.forEach(function (r) { r.gcal = +(avg * r.heatDays).toFixed(3); r.cost = +(r.gcal * tariff).toFixed(2); });
+    var gcal = +(avg * hdTot).toFixed(3);
+    return { days: n, heatDays: hdTot, avg: +avg.toFixed(4), perMonth: +(avg * 30.44).toFixed(3), gcal: gcal, cost: +(gcal * tariff).toFixed(2), tariff: tariff,
+      basis: basis, season: basis === 'prev' ? ps : null, open: !g.to || g.to > o.today, end: end, rows: rows };
+  }
+
+  var api = { graph: graph, points: points, intervals: intervals, coolant: coolant, range: range, gapHeat: gapHeat, OK_TOL: OK_TOL, LOW_TOL: LOW_TOL };
   if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.TeploStats = api;
 })(typeof window !== 'undefined' ? window : this);

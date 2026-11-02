@@ -28,4 +28,25 @@ ok('без погоды — без нормы', S.coolant(R, null, null).every(p
   ok('ещё без лічильника — ни одного промежутка через него', iv3.length === 0, iv3);
   ok('coolant не падает на точках периода', S.coolant(RG, null, null).length === 0);
 }
+// период без лічильника: оценка по правилам (Методика №315: повірка — среднесуточное прошлого отопительного периода × сутки)
+{
+  const RS = [{ id: 'a', htm: { date: '2024-10-15', energy: 0 } }, { id: 'b', htm: { date: '2025-04-15', energy: 6 } },
+    { id: 'c', htm: { date: '2025-10-15', energy: 6 } }, { id: 'd', htm: { date: '2025-11-10', energy: 6.8 } }];
+  const gp = { id: 'g', from: '2025-11-10', to: '2025-12-10', reason: 'verify' };
+  const ivs = S.intervals(RS, null, null, 1539.5, [gp]);
+  const e = S.gapHeat(gp, ivs, { today: '2026-01-20', tariff: 1539.5 });
+  ok('среднее — за сезон 2024/25: 6 Гкал / 182 опалювальні доби', e.basis === 'prev' && e.season === 2024 && Math.abs(e.avg - 6 / 182) < 1e-4, e);
+  ok('30 суток без лічильника, все опалювальні (торік тепло йшло)', e.days === 30 && e.heatDays === 30, e);
+  ok('≈ 0,989 Гкал × 1539,50 ≈ 1522 грн', Math.abs(e.gcal - 0.989) < 0.002 && Math.abs(e.cost - e.gcal * 1539.5) < 0.01, e);
+  ok('по месяцам: листопад 20 діб, грудень 10', e.rows.length === 2 && e.rows[0].ym === '2025-11' && e.rows[0].days === 20 && e.rows[1].days === 10, e.rows);
+  ok('в среднем на месяц опалення ≈ 1 Гкал', Math.abs(e.perMonth - 6 / 182 * 30.44) < 0.002, e.perMonth);
+  const su = S.gapHeat({ from: '2025-06-01', to: '2025-07-01' }, ivs, { today: '2026-01-20', tariff: 1539.5 });
+  ok('літом опалення немає — 0 Гкал, 0 грн', su.heatDays === 0 && su.gcal === 0 && su.cost === 0, su);
+  const op = S.gapHeat({ from: '2026-01-10', to: '' }, ivs, { today: '2026-01-20', tariff: 1539.5 });
+  ok('ще без лічильника — до сьогодні (10 діб), середнє минулого сезону', op.open && op.days === 10 && op.basis === 'prev' && op.heatDays === 10, op);
+  const no = S.gapHeat(gp, [], { today: '2026-01-20', tariff: 1539.5 });
+  ok('немає показань з опаленням — basis none, 0 Гкал', no.basis === 'none' && no.gcal === 0, no);
+  const rc = S.gapHeat({ from: '2025-11-20', to: '2025-12-01' }, S.intervals([{ id: 'x', htm: { date: '2025-10-20', energy: 1 } }, { id: 'y', htm: { date: '2025-11-20', energy: 2 } }], null, null, 0, []), { today: '2026-01-20', tariff: 1000 });
+  ok('минулого сезону немає — середнє з показань за рік до зняття', rc.basis === 'recent' && Math.abs(rc.avg - 1 / 31) < 1e-4, rc);
+}
 console.log(`\nИтог: ${pass} OK, ${fail} FAIL`); process.exit(fail ? 1 : 0);
