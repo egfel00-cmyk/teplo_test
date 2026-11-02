@@ -31,14 +31,14 @@ const U = 'http://127.0.0.1:8013/';
   // 2. вибір: тепло, гаряча ×1, холодна ×1, світло
   for (const k of ['heat', 'hot', 'cold', 'elec']) { await p.click('[data-key=aw-' + k + '-inc]'); await p.waitForTimeout(120); }
   ok('попередження зникло, тепла більше 1 не буває', !(await p.$('[data-key=aw-err]')) && await p.$eval('[data-key=aw-heat-inc]', e => e.disabled));
-  ok('з водою — «Крок 1 з 2» і «Далі»', /Крок 1 з 2/.test(await p.textContent('.wiz-top')) && !!(await p.$('[data-key=aw-next]')));
+  ok('з водою — «Крок 1 з 2» і «Далі»', /Крок 1\sз\s2/.test(await p.textContent('.wiz-top')) && !!(await p.$('[data-key=aw-next]')));
   await p.click('[data-key=aw-next]'); await p.waitForTimeout(300);
   ok('крок 2: рахунок Водоканалу і «Перевірте» з «Моя квартира» та лічильниками', !!(await p.$('#aw-acc')) && /Моя квартира/.test(await p.textContent('[data-key=aw-sum]')) && /Опалення · Гаряча вода · Холодна вода · Світло/.test(await p.textContent('[data-key=aw-sum]')));
   await p.fill('#aw-acc', '1234567'); await p.fill('#aw-sn', 'Іваненко');
   await p.click('[data-key=aw-create]'); await p.waitForTimeout(400);
   let s = await st();
   ok('рахунок — у першій квартирі, нової квартири не з’явилось', s.places.length === 1 && s.places[0].water.account === '1234567' && s.places[0].water.surname === 'Іваненко', s.places);
-  ok('черга: #wadd гарячої, «Налаштування: лічильник 1 з 4», камера у «Показання зараз»', (await hash()) === '#wadd' && /лічильник 1 з 4/.test(await p.textContent('[data-key=aw-queue]')) && !!(await p.$('[data-key=cam-wa-val]')));
+  ok('черга: #wadd гарячої, «Налаштування: лічильник 1 з 4», камера у «Показання зараз»', (await hash()) === '#wadd' && /лічильник 1\sз\s4/.test(await p.textContent('[data-key=aw-queue]')) && !!(await p.$('[data-key=cam-wa-val]')));
   // «Скасувати», поки нічого не збережено, — назад до вибору, вибір цілий
   await p.click('#wa-form a.btn.sec'); await p.waitForTimeout(300);
   ok('«Скасувати» → назад до «Перевірте», вибір і рахунок цілі', (await hash()) === '#start' && /Опалення · Гаряча вода · Холодна вода · Світло/.test(await p.textContent('[data-key=aw-sum]')) && (await p.inputValue('#aw-acc')) === '1234567');
@@ -52,16 +52,16 @@ const U = 'http://127.0.0.1:8013/';
   ok('з фото: у «Показання зараз» 175 і «звірте з лічильником»', /^175/.test(wv) && /звірте/.test(await p.textContent('#wa-val-ph')), { wv, help: await p.textContent('#wa-val-ph') });
   await p.click('[data-key=wa-save]'); await p.waitForTimeout(400); s = await st();
   ok('гарячу додано зі стартовими 175, onboarded', s.onboarded === true && s.places[0].water.meters.filter(m => m.kind === 'hot').length === 1 && (s.water || []).some(r => r.base && Object.values(r.vals).some(v => /^175/.test(v))));
-  ok('далі холодна: «2 з 4», «Скасувати» тепер на головну', (await hash()) === '#wadd' && /2 з 4/.test(await p.textContent('[data-key=aw-queue]')) && (await p.getAttribute('#wa-form a.btn.sec', 'href')) === '#home');
+  ok('далі холодна: «2 з 4», «Скасувати» тепер на головну', (await hash()) === '#wadd' && /2\sз\s4/.test(await p.textContent('[data-key=aw-queue]')) && (await p.getAttribute('#wa-form a.btn.sec', 'href')) === '#home');
   await p.click('[data-key=aw-q-later]'); await p.waitForTimeout(400); s = await st();
-  ok('«Налаштую пізніше» → холодна без деталей, далі світло «3 з 4» з камерою', s.places[0].water.meters.filter(m => m.kind === 'cold').length === 1 && (await hash()) === '#eadd' && /3 з 4/.test(await p.textContent('[data-key=aw-queue]')) && !!(await p.$('[data-key=cam-ea-v-all]')));
+  ok('«Налаштую пізніше» → холодна без деталей, далі світло «3 з 4» з камерою', s.places[0].water.meters.filter(m => m.kind === 'cold').length === 1 && (await hash()) === '#eadd' && /3\sз\s4/.test(await p.textContent('[data-key=aw-queue]')) && !!(await p.$('[data-key=cam-ea-v-all]')));
   await p.click('[data-key=ea-z2]'); await p.waitForTimeout(300);
   await p.setInputFiles('[data-sphoto=ea-v-day]', '/tmp/fsph/t1.png');
   await p.waitForFunction(() => { const h = document.getElementById('ea-v-day-ph'); return h && !h.querySelector('.spin') && h.textContent.trim(); }, null, { timeout: 180000 });
   ok('світло з фото: T1 → день 10530', (await p.inputValue('#ea-v-day')) === '10530', { day: await p.inputValue('#ea-v-day'), help: await p.textContent('#ea-v-day-ph') });
   await p.fill('#ea-v-night', '5290'); await p.click('[data-key=ea-save]'); await p.waitForTimeout(400); s = await st();
   ok('світло двозонне зі стартовими день/ніч', (s.places[0].meters || []).some(m => m.kind === 'elec' && m.zones === 2) && (s.mrecs || []).some(r => r.base && r.z.day === '10530' && r.z.night === '5290'));
-  ok('останній — теплолічильник: #meter, «4 з 4»', (await hash()) === '#meter' && /4 з 4/.test(await p.textContent('[data-key=aw-queue]')));
+  ok('останній — теплолічильник: #meter, «4 з 4»', (await hash()) === '#meter' && /4\sз\s4/.test(await p.textContent('[data-key=aw-queue]')));
   await p.click('input[name=model] >> nth=0'); await p.waitForTimeout(300);
   await p.click('[data-key=meter-save]'); await p.waitForTimeout(400);
   ok('модель обрано → «Останні прийняті» (#baseline)', (await hash()) === '#baseline', await hash());
@@ -75,7 +75,7 @@ const U = 'http://127.0.0.1:8013/';
   // 3. лише газ: один екран, після нього — головна і «Готово!»
   await fresh(); await p.goto(U + '#start'); await p.waitForTimeout(300);
   await p.click('[data-key=aw-gas-inc]'); await p.click('[data-key=aw-create]'); await p.waitForTimeout(400);
-  ok('лише газ → #gadd «1 з 1»', (await hash()) === '#gadd' && /1 з 1/.test(await p.textContent('[data-key=aw-queue]')));
+  ok('лише газ → #gadd «1 з 1»', (await hash()) === '#gadd' && /1\sз\s1/.test(await p.textContent('[data-key=aw-queue]')));
   await p.fill('#ea-v-all', '1225,4'); await p.click('[data-key=ea-save]'); await p.waitForTimeout(500); s = await st();
   ok('газ додано → головна з карткою газу, тост «Готово!»', (await hash()) === '#home' && !!(await p.$('[data-key=card-gas]')) && /Готово/.test(await p.textContent('#toast-host')), await p.textContent('#toast-host'));
 

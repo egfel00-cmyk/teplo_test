@@ -94,4 +94,8 @@ ok('точка по формату экрана модели', P.inferDot('00015
 ok('точка по прошлым принятым', P.inferDot('16120', 'energy', { prev: { energy: '15.482' } }).v === '16.120');
 ok('пустое фото → «знято здалеку/розмите», без показаний', P.photo({ lines: [], w: 100, h: 100 }, {}, 0).photo.readings.length === 0);
 
+// НІК 2102-02.М2 з барабаном (рядки рушія з фото власника 02.11.2026): світло, а не вода — інакше потрапляло у «Вода з фото»
+{ const all = ['20', 'UA.TR', 'HIK2102-02.M2', '003474', 'kW.h', '220V 5(60)A 50Hz', 'PeBepc', '6400 imp/kW·h', 'No9350182 2020p.', 'NOTy EN 62053-21', '61'].join('\n');
+  const sc = P.meterScores(all); ok('НІК 2102 з барабаном → electric, води й газу 0', P.meterType(all) === 'electric' && sc.electric >= 5 && !sc.water && !sc.gas && !sc.heat, sc); }
+
 console.log(`\nИтог: ${pass} OK, ${fail} FAIL`); process.exit(fail ? 1 : 0);

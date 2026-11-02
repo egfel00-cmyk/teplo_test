@@ -84,9 +84,9 @@ let pass = 0, fail = 0; const ok = (n, c, i) => { console.log((c ? '  OK  ' : ' 
   await go('add-place'); await p.fill('#aw-name', 'Дача'); await click('[data-key=aw-next]');
   ok('мастер: «Світло» активне', !(await p.$('[data-key=aw-elec].am-soon')) && !!(await p.$('[data-key=aw-elec-inc]')));
   await click('[data-key=aw-cold-inc]', 200); await click('[data-key=aw-elec-inc]', 200); await click('[data-key=aw-next]'); await click('[data-key=aw-create]', 400);
-  ok('черга: холодна 1 з 2 → …', (await hash()) === '#wadd' && /1 з 2/.test(await p.textContent('[data-key=aw-queue]')));
+  ok('черга: холодна 1 з 2 → …', (await hash()) === '#wadd' && /1\sз\s2/.test(await p.textContent('[data-key=aw-queue]')));
   await click('[data-key=wa-save]', 400);
-  ok('… → світло 2 з 2 (вибір зон)', (await hash()) === '#eadd' && /2 з 2/.test(await p.textContent('[data-key=aw-queue]')));
+  ok('… → світло 2 з 2 (вибір зон)', (await hash()) === '#eadd' && /2\sз\s2/.test(await p.textContent('[data-key=aw-queue]')));
   await click('[data-key=ea-save]', 400); s = await st(); const dacha = s.places.find(x => x.name === 'Дача');
   ok('у «Дачі» холодна і світло, головна квартири — дві карточки', dacha.meters.length === 1 && dacha.water.meters.length === 1 && (await hash()) === '#home' && !!(await p.$('[data-key=card-elec]')));
   await go('home');

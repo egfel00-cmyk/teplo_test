@@ -63,7 +63,7 @@ a { color: var(--c-return); text-underline-offset: 3px; }
 .top .spacer { flex: 1; }
 .main { flex: 1; width: 100%; max-width: 720px; margin: 0 auto; padding: var(--sp-2) var(--sp-4) calc(var(--tap) + 48px); }
 .main.bare { padding-bottom: var(--sp-7); }
-.nav { position: fixed; left: 0; right: 0; bottom: 0; display: grid; grid-template-columns: repeat(var(--nav-n, 5), 1fr); background: var(--c-surface);
+.nav { position: fixed; left: 0; right: 0; bottom: 0; display: grid; grid-template-columns: repeat(var(--nav-n, 5), auto); padding-left: 4px; padding-right: 4px; background: var(--c-surface);
   border-top: 1px solid var(--c-line); box-shadow: 0 -6px 18px var(--c-ghost-hover); padding-bottom: env(safe-area-inset-bottom); z-index: 5; }
 .nav a { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; min-height: 58px; font-size: 13px; color: var(--c-ink-2); text-decoration: none; }
 .nav a[aria-current="page"] { color: var(--c-ink); font-weight: 600; }
@@ -180,8 +180,11 @@ a { color: var(--c-return); text-underline-offset: 3px; }
 .press .times { font-family: var(--mono); background: var(--c-ink); color: var(--c-on-ink); border-radius: 8px; padding: 2px 10px; font-size: var(--fs-l); }
 .hint { color: var(--c-ink-2); margin-top: var(--sp-3); }
 .sleep { display: flex; gap: var(--sp-2); align-items: flex-start; font-size: var(--fs-s); color: var(--c-ink-2); margin-top: var(--sp-3); }
-.wiz-actions { display: flex; gap: var(--sp-3); margin-top: var(--sp-5); }
-.wiz-actions .btn:last-child { flex: 1; }
+.wiz-actions { display: flex; flex-wrap: wrap-reverse; gap: var(--sp-3); margin-top: var(--sp-5); }
+.wiz-actions .btn { flex: 1 1 auto; white-space: nowrap; }
+.wiz-actions .btn:only-child { white-space: normal; text-wrap: balance; }   /* одна кнопка на всю ширину — длинной подписи можно в 2 строки (320 px) */
+.wiz-actions .btn:last-child { flex: 3 1 auto; }
+.wiz-actions + p { margin-top: var(--sp-3); }
 
 /* ---------- проверка ---------- */
 .verdict { display: flex; gap: var(--sp-3); align-items: center; padding: var(--sp-4); border-radius: 14px; margin: 0 0 var(--sp-4); font-size: var(--fs-l); font-weight: 600; }
@@ -358,7 +361,7 @@ label.btn { cursor: pointer; }
 /* узкие телефоны (320–359 px): шапка «логотип · ТЕСТ · тема · ✕» не влезала — страница ездила вбок */
 .brand { min-width: 0; } .brand span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 @media (max-width: 359px) {
-  .top { gap: 4px; padding: var(--sp-3); } .brand { gap: 8px; }
+  .top { gap: 4px; padding: var(--sp-3); } .brand { gap: 6px; }
   .beta { font-size: 10px; padding: 4px 6px; }
   .top .theme-btn { width: 44px; height: 44px; } .top .btn { min-height: 44px; padding: 0 10px; } .top .theme-btn + .btn { margin-left: 0; }
 }
@@ -509,6 +512,7 @@ input[type=text]:not(.dmy-native):not(.pl-in), input[type=email], input[type=pas
 .wz-opt > span { flex: 1; display: flex; flex-direction: column; gap: 2px; }
 .wz-opt:has(input:checked) { border-color: var(--c-ink); box-shadow: 0 0 0 2px var(--c-ink) inset; }
 .wz-opt input { width: 20px; height: 20px; accent-color: var(--c-ink); flex: none; }
+.field label.wz-opt { display: flex; margin-bottom: 0; font-weight: inherit; }
 .wz-opt:hover { background: var(--c-ghost-hover); }
 .wz-link .ico:first-child { color: var(--c-info); }
 .wm-row { border: 1px solid var(--c-line); border-radius: 12px; padding: 8px 14px 12px; margin: 0 0 12px; }
@@ -930,3 +934,16 @@ fieldset.field { border: 0; padding: 0; min-width: 0; }
 .ss-none { font-size: 15px; font-weight: 600; color: var(--c-ink-2); }
 .ss-sub { font-size: 13px; color: var(--c-ink-2); }
 @media (prefers-reduced-motion: reduce) { .ss-dd { transition: none; } }
+
+/* 14-я сессия: свой проход по телефону 360 px */
+/* шапка 360–389 px: «Лічильники» обрезалось до «Лічиль…» из-за плашки Test beta */
+@media (max-width: 389px) { .beta { font-size: 10px; padding: 4px 6px; } }
+@media (min-width: 360px) and (max-width: 389px) { .top { gap: 6px; } }
+/* модели теплосчётчика: плашка «Інструкція перевірена» сжимала название до «SHARKY 77» и наезжала на него — теперь строкой ниже */
+.models .grow .pill { margin-top: 4px; }
+/* очередь настройки: «лічильник 1 з 5» + полоска прогресса */
+.aw-q .progress { display: block; margin: 8px 0 2px; max-width: 220px; }
+/* шапка сезона: моноширинный шрифт растягивал пробел тысяч («8  252») — как в итогах, обычный шрифт с табличными цифрами */
+.ss-q b, .ss-m b { font-variant-numeric: tabular-nums; letter-spacing: -.01em; }
+/* чипс статуса: стрелка внутри плашки — видно, что нажимается */
+.st-chip .pill { gap: 2px; padding-right: 6px; }

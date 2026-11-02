@@ -209,6 +209,14 @@
       });
       opts.sort(function (a, b) { return a.cost - b.cost; });
       opts.forEach(function (o) { if (res[o.z] || used[o.ci]) return; res[o.z] = { v: o.v, frac: String(o.frac || '').slice(0, 3), photo: o.photo, why: o.why, guess: !!o.guess }; used[o.ci] = true; });
+      // однозонний: на фото число менше прошлого (помилка в минулому записі чи інший лічильник) — не ховаємо «цифр не знайшли»,
+      // а ставимо найкраще прочитане (від 5 цифр, як на барабані/табло, і саме менше — не «склеєне» з десятими) з позначкою:
+      // перевірка скаже «менше, ніж минулого разу»
+      if (ks.length === 1 && !res[ks[0]] && num(prev[ks[0]]) !== null) {
+        var best = null;
+        pool.forEach(function (c, ci) { if (used[ci] || c.digits.length < 5 || Number(c.digits) >= num(prev[ks[0]]) || (c.zone !== null && c.zone !== 0 && c.zone !== ks[0])) return; var cost = -c.score + c.photo * 1e-3; if (!best || cost < best.cost) best = { ci: ci, c: c, cost: cost }; });
+        if (best) { res[ks[0]] = { v: Number(best.c.digits), frac: String(best.c.frac || '').slice(0, 3), photo: best.c.photo, why: 'less', guess: true }; used[best.ci] = true; }
+      }
     });
     return by;
   }

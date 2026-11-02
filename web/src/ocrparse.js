@@ -17,7 +17,8 @@
   ];
   // не тепло: сильные признаки других счётчиков
   var OTHER = {
-    electric: [/imp\s*\/?\s*\(?\s*k\s*W/i, /6205[23]/, /\b2[23]0\s*V\b/i, /\b50\s*Hz\b/i, /\d\(\d{2,3}\)\s*A/i, /ЕНЕРГО|ENERGOMERA|EHEPr|NIK\s*22|НІК\s*22|ГАММА|GAMA\s*100/i, /k\s*var/i],
+    electric: [/imp\s*\/?\s*\(?\s*k\s*W/i, /6205[23]/, /\b2[23]0\s*V\b/i, /\b50\s*Hz\b/i, /\d\(\d{2,3}\)\s*A/i, /ЕНЕРГО|ENERGOMERA|EHEPr|NIK\s*22|НІК\s*22|ГАММА|GAMA\s*100/i, /k\s*var/i,
+      /\b[NHН][IІ1][KК]\s*-?\s*2[0-9]{3}/i],   // НІК 2102-02.М2 (движок читает «HIK2102»)
     water: [/[xх×]\s*0[.,]0{2,3}1/i, /\bMPa\b|МПа/i, /NOVATOR|НОВАТОР|ЛК-?\s?1|LK-?\s?1|SENSUS|ZENNER|APATOR\s*JS|POWOGAZ/i, /\bQ\s*[n3]\b|Q[n,]\s*\d/i, /\bR\s?(80|100|160)\b/],
     gas: [/\bG\s?(1[.,]6|2[.,]5|4|6|10)\b/, /Q\s*max|Q\s*min|P\s*max/i, /\bkPa\b|кПа/i, /BK-?\s?G|METRIX|ELSTER|GALLUS|САМГАЗ|SAMGAZ|ОКТАВА|OKTAVA|\bGAS\b|ГАЗ/i]
   };
@@ -116,6 +117,12 @@
     return Math.hypot((ax - bx) / Math.max(a.w, 1), (ay - by) / Math.max(a.h, 1));
   }
 
+  /** Сколько примет каждого вида на фото: {heat: bool, electric: n, water: n, gas: n}. */
+  function meterScores(all) {
+    var o = { heat: HEAT.test(all) };
+    Object.keys(OTHER).forEach(function (k) { o[k] = OTHER[k].filter(function (re) { return re.test(all); }).length; });
+    return o;
+  }
   function meterType(all) {
     if (HEAT.test(all)) return 'heat';
     var best = null, bestN = 0;
@@ -281,6 +288,6 @@
     return photos;
   }
 
-  var api = { batch: batch, photo: photo, meterType: meterType, cleanNum: cleanNum, inferDot: inferDot };
+  var api = { batch: batch, photo: photo, meterType: meterType, meterScores: meterScores, cleanNum: cleanNum, inferDot: inferDot };
   if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.TeploOCRParse = api;
 })(typeof window !== 'undefined' ? window : this);

@@ -50,9 +50,9 @@ let pass = 0, fail = 0; const ok = (n, c, i) => { console.log((c ? '  OK  ' : ' 
   // мастер: газ у черзі останнім з «простих», перед теплом
   await go('add-place'); await click('[data-key=aw-next]');
   await click('[data-key=aw-gas-inc]', 200); await click('[data-key=aw-heat-inc]', 200); await click('[data-key=aw-create]', 400);
-  ok('мастер: газ 1 з 2 → …', (await hash()) === '#gadd' && /1 з 2/.test(await p.textContent('[data-key=aw-queue]')));
+  ok('мастер: газ 1 з 2 → …', (await hash()) === '#gadd' && /1\sз\s2/.test(await p.textContent('[data-key=aw-queue]')));
   await click('[data-key=ea-save]', 400);
-  ok('… → теплолічильник 2 з 2', (await hash()) === '#meter' && /2 з 2/.test(await p.textContent('[data-key=aw-queue]')));
+  ok('… → теплолічильник 2 з 2', (await hash()) === '#meter' && /2\sз\s2/.test(await p.textContent('[data-key=aw-queue]')));
   ok('без ошибок JS', errs.length === 0, errs);
   console.log('\nИтог: ' + pass + ' OK, ' + fail + ' FAIL'); await b.close(); process.exit(fail ? 1 : 0);
 })();

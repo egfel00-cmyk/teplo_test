@@ -479,7 +479,7 @@
     gas: { icon: 'flame', cls: 'c-gas', t: 'kd_gas', s: 'kd_gas_s', max: 2 },
     elec: { icon: 'bolt', cls: 'c-elec', t: 'kd_elec', s: 'kd_elec_s', max: 2 }
   };
-  var KIND_ORDER = ['heat', 'hot', 'cold', 'gas', 'elec'];
+  var KIND_ORDER = ['heat', 'hot', 'cold', 'elec', 'gas'];   // как на привітанні и в очереди настройки: світло, потом газ
   function hasHeat() { return !!(S.meter && !S.meter.removed); }
   /** Есть ли хоть один счётчик в любой квартире (вход на новом устройстве: уже настроен — сразу на главную). */
   function anyMeters() {
@@ -1793,7 +1793,9 @@
       WN.photos.forEach(function (x) { x.meters = (x.meters || []).filter(function (k) { return k !== mid; }); });
       WN.photos.push({ file: file, url: URL.createObjectURL(file), res: { lines: res.lines, drums: res.drums }, ms: res.ms, meters: [mid], fixed: mid });
       var pi = WN.photos.length - 1;
-      if (!r) WN.src[mid] = { photo: pi, value: null, none: true };
+      var ok = photoKind(res);
+      if (ok) WN.src[mid] = { photo: pi, value: null, none: true, other: ok };
+      else if (!r) WN.src[mid] = { photo: pi, value: null, none: true };
       else {
         WN.src[mid] = { photo: pi, value: r.value, frac: r.value !== null ? (r.frac || '') : '', partial: r.partial || null, half: !!r.half, pair: r.pair || null, lead: !!r.lead && !r.sure, why: 'field' };
         if (r.value !== null) { WN.vals[mid] = Wt.withFrac(r.value, r.frac); WN.auto[mid] = true; }
@@ -1807,6 +1809,7 @@
   function wnSrcText(mid) {
     var x = WN.src && WN.src[mid]; if (!x) return '';
     var n = x.photo + 1;
+    if (x.other) return t('wnp_src_other_' + x.other, { n: n }) + ' ';
     if (x.none) return t('wnp_src_none', { n: n }) + ' ';
     if (x.value === null) return t('wnp_src_half', { n: n, p: x.partial || '' }) + ' ';
     return t('wnp_src', { n: n, v: Wt.withFrac(x.value, x.frac) }) + (x.why && x.why !== 'field' ? ' ' + t('wnp_why_' + x.why) : '') + '. ' + (x.guess || !x.why ? t('wnp_check') + ' ' : x.half ? halfHint(x.pair) + ' ' : '') + (x.lead ? t('wnp_glare') + ' ' : '');
@@ -1840,6 +1843,7 @@
           var mine = ms.filter(function (m) { return (p.meters || []).indexOf(m.id) >= 0; });
           if (!p.res) return '';
           var nm = t('ph_from', { n: i + 1 }); nm = nm.charAt(0).toUpperCase() + nm.slice(1);
+          if (p.other && !mine.length) return esc(nm) + ' — ' + esc(t('wnp_other_' + p.other)) + ' <a href="#' + (smeters(p.other).length ? SK[p.other].nw : SK[p.other].add) + '" data-key="wn-other-' + i + '">' + esc(t(smeters(p.other).length ? 'wnp_other_go_' + p.other : 'wnp_other_add_' + p.other)) + '</a>';
           return esc(nm) + ' — ' + (mine.length ? mine.map(function (m) { var x = WN.src[m.id] || {}; return esc(wname(m).toLowerCase()) + ' <b class="num">' + (x.value !== null && x.value !== undefined ? x.value : esc(x.partial || '?')) + '</b>'; }).join(', ') : esc(t('wnp_none')));
         }).filter(Boolean);
         if (lines.length) h += '<p class="small" data-key="wn-photo-sum">' + lines.join('<br>') + '</p>';
@@ -1895,7 +1899,8 @@
     var free = ms.filter(function (m) { return !fixed[m.id]; });
     free.forEach(function (m) { var r = wprevFor(m.id, date); if (r) prev[m.id] = r.vals[m.id]; if (WN.src[m.id] && WN.auto[m.id]) { delete WN.vals[m.id]; } delete WN.src[m.id]; });
     WN.photos.forEach(function (p) { p.meters = p.fixed ? [p.fixed] : []; });
-    var A = Wt.assign(WN.photos.map(function (p) { return p.fixed ? null : p.res; }), free, prev);
+    WN.photos.forEach(function (p) { p.other = p.res ? photoKind(p.res) : null; });
+    var A = Wt.assign(WN.photos.map(function (p) { return p.fixed || p.other ? null : p.res; }), free, prev);
     Object.keys(A.by).forEach(function (mid) {
       var x = A.by[mid];
       WN.src[mid] = { photo: x.photo, value: x.value, frac: x.frac || '', partial: x.partial, half: x.half, pair: x.pair, lead: x.lead, why: x.why, guess: x.guess };
@@ -2164,7 +2169,7 @@
     var cls = cur === 'own' ? 'own' : cur === 'sent' ? 'ok' : 'neutral';
     var txt = label || '<span class="pill ' + cls + '">' + esc(cur === 'own' ? t('own_pill') : cur === 'sent' ? t('wh_sent') : r.base ? t('bs_unsent') : t('wh_notsent')) + '</span>';
     return '<button type="button" class="st-chip" data-act="st-open" data-src="' + src + '" data-id="' + esc(r.id) + '" data-k="' + k + '" data-cur="' + cur + '"' + (r.base ? ' data-base="1"' : '') +
-      ' aria-haspopup="true" aria-expanded="false" aria-label="' + esc(t('st_aria', { s: String(txt).replace(/<[^>]+>/g, '') })) + '" data-key="st-' + esc(r.id) + '">' + txt + ico('chev', 14, 'st-dd') + '</button>';
+      ' aria-haspopup="true" aria-expanded="false" aria-label="' + esc(t('st_aria', { s: String(txt).replace(/<[^>]+>/g, '') })) + '" data-key="st-' + esc(r.id) + '">' + String(txt).replace(/<\/span>$/, ico('chev', 14, 'st-dd') + '</span>') + '</button>';
   }
   function stClose() { Array.prototype.forEach.call(document.querySelectorAll('.st-menu'), function (m) { m.remove(); }); Array.prototype.forEach.call(document.querySelectorAll('.st-chip[aria-expanded="true"]'), function (b) { b.setAttribute('aria-expanded', 'false'); }); }
   function stOpen(el) {
@@ -2245,7 +2250,7 @@
       var name = m.id === 'other' ? esc(t('m_other')) : esc(m.name);
       var sub = m.id === 'other' ? esc(t('m_other_sub')) : esc(m.vendor !== '—' ? m.vendor : '');
       return '<li><label><input type="radio" name="model" value="' + m.id + '"' + (sel === m.id ? ' checked' : '') + ' data-act="pick-model">' +
-        meterGlyph() + '<span class="grow"><span class="name">' + name + '</span><br><span class="vendor">' + sub + '</span></span>' + tag + '</label></li>';
+        meterGlyph() + '<span class="grow"><span class="name">' + name + '</span>' + (sub ? '<br><span class="vendor">' + sub + '</span>' : '') + (tag ? '<br>' + tag : '') + '</span></label></li>';
     }).join('');
     var pm = M.byId(sel), unitBlock = '';
     if (pm && pm.units.length > 1) {
@@ -2469,7 +2474,7 @@
     var keys = Object.keys(groups).map(Number).sort(function (a, b) { return b - a; }), td = today(), run = +td.slice(5, 7) >= 10 || +td.slice(5, 7) <= 4;
     return keys.map(function (k, i) {
       var s = info[k], lbl = k + '/' + String(k + 1).slice(2), cur = k === TS.seasonOf(td);
-      var q = s && s.gcal > 0 ? '<span class="ss-q"><b class="num">' + esc(fmtN(s.gcal, 3)) + '</b> <small>Гкал</small></span><span class="ss-m">≈ <b class="num">' + esc(money0(s.cost)) + '</b> <small>грн</small></span>'
+      var q = s && s.gcal > 0 ? '<span class="ss-q"><b>' + esc(fmtN(s.gcal, 3)) + '</b> <small>Гкал</small></span><span class="ss-m">≈ <b>' + esc(money0(s.cost)) + '</b> <small>грн</small></span>'
         : '<span class="ss-none">' + esc(t(s ? 'hs_noheat' : 'hs_none')) + '</span>';
       var sub = s && s.from ? [t('hs_period', { a: fmtDate(s.from, true), b: fmtDate(s.to, true) }), s.perMonth ? t('hs_month', { q: fmtN(s.perMonth, 2), m: money0(costOf(s.perMonth, 30).total) }) : ''].filter(Boolean).join(' · ') : '';
       return '<details class="season" data-key="season-' + k + '"' + (i === 0 || cur ? ' open' : '') + '><summary class="ss-head">' +
@@ -3098,6 +3103,7 @@
     if (!PQ || PQ.place !== S.placeId) return '';
     var i = heat ? PQ.total : PQ.i + 1;
     return '<div class="banner aw-q" data-key="aw-queue">' + ico('home', 22) + '<div><p><b>' + esc(PQ.first ? t('fs_q', { i: i, n: PQ.total }) : t('aw_q', { p: placeLabel(place()), i: i, n: PQ.total })) + '</b></p>' +
+      '<span class="progress" aria-hidden="true"><i style="width:' + Math.round(i / PQ.total * 100) + '%"></i></span>' +
       (heat ? '<p>' + esc(t('aw_q_heat')) + '</p>' : SK[PQ.list[PQ.i]] ? '<p>' + esc(t(PQ.list[PQ.i] === 'gas' ? 'aw_q_gas' : 'aw_q_elec')) + '</p>' : '<p><button type="button" class="linkbtn" data-act="pq-later" data-key="aw-q-later">' + esc(t('aw_q_later')) + '</button></p>') + '</div></div>';
   }
 
@@ -3543,8 +3549,14 @@
         var heatRead = (res.photos || []).some(function (x) { return PH.waterIdx.indexOf(x.index) < 0 && x.readings && x.readings.length; });
         if (!heatRead) { PH.status = 'idle'; phToWater(true); return; }
       }
-      var others = (res.photos || []).filter(function (x) { return x.meterType && x.meterType !== 'heat'; });
       var anyRead = (res.photos || []).some(function (x) { return x.readings && x.readings.length; });
+      // світло/газ (в т. ч. присланные боту) — в их ввод; счётчика такого вида нет — сказать, как добавить
+      var simple = ['elec', 'gas'].map(function (k) { return { k: k, idx: (res.photos || []).filter(function (x) { return phSimpleKind(x) === k; }).map(function (x) { return x.index; }) }; }).filter(function (s) { return s.idx.length; })[0];
+      if (simple && PH.mode === 'reading' && !anyRead) {
+        if (smeters(simple.k).length) { PH.status = 'idle'; phToSimple(simple.k, simple.idx); return; }
+        PH.status = 'idle'; PH.error = t('ph_add_' + simple.k); render(true); return;
+      }
+      var others = (res.photos || []).filter(function (x) { return x.meterType && x.meterType !== 'heat'; });
       if (others.length && !anyRead && !(res.meter && res.meter.modelId)) { PH.status = 'idle'; PH.error = t('ph_not_heat_' + others[0].meterType) + (others[0].meterType === 'water' && !wmeters().length ? ' ' + t('wnp_setup_first') : ''); render(true); return; }
       if (PH.mode === 'model') {
         var id = res.meter && res.meter.modelId && M.byId(res.meter.modelId) ? res.meter.modelId : null;
@@ -3572,11 +3584,33 @@
     PH.gen = -1; if (PH.ctl) try { PH.ctl.abort(); } catch (e) { /* нет */ }
     phReset('reading'); S.draft = null; delete S._lastCheck; save(); toast(t('wz_cancelled')); go('home');
   }
-  /** Фото водомера: распознаватель узнал водомер по надписям или нашёл уверенное окно барабана без экранов тепла. */
+  /** Фото водомера: распознаватель узнал водомер по надписям или нашёл уверенное окно барабана без экранов тепла.
+   *  Электросчётчик с барабаном (НІК 2102) и газовый — не водомер: у них свой ввод. */
   function phIsWater(x) {
-    if (!x) return false;
+    if (!x || phSimpleKind(x)) return false;
     var drum = x.ocr && (x.ocr.drums || []).some(Wt.goodDrum);
     return x.meterType === 'water' || (drum && !(x.readings && x.readings.length) && x.meterType !== 'heat');
+  }
+  /** Світло чи газ на фото (за написами: кВт·год, imp/kWh, 220 V, 50 Hz, НІК…; газ — G4, Qmax, kPa, марка). Газ — лише за
+   *  двома прикметами: Qmax/Qmin бувають і на водомірах. */
+  function photoKind(res) {
+    if (!res || !window.TeploOCRParse || !TeploOCRParse.meterScores) return null;
+    var all = (res.lines || []).map(function (l) { return [l.text].concat(l.alts || []).join(' '); }).join('\n'), s = TeploOCRParse.meterScores(all);
+    if (s.heat) return null;
+    if (s.electric && s.electric >= s.water && s.electric >= s.gas) return 'elec';
+    if (s.gas >= 2 && s.gas > s.water) return 'gas';
+    return null;
+  }
+  function phSimpleKind(x) { return x && x.ocr ? photoKind(x.ocr) : x && x.meterType === 'electric' ? 'elec' : null; }
+  /** Фото світла/газу з пачки (або з бота) → введення світла/газу: прочитане розкладаємо по зонах, як «Розпізнати з фото». */
+  function phToSimple(k, idx) {
+    var byIdx = {}; (PH.result && PH.result.photos || []).forEach(function (x) { byIdx[x.index] = x; });
+    EN = enFresh(k); EN.date = PH.date && PH.date !== today() ? PH.date : '';
+    idx.forEach(function (i) { var f = PH.files[i]; if (!f) return; var o = byIdx[i] && byIdx[i].ocr; EN.photos.push({ file: f, url: URL.createObjectURL(f), res: o ? { lines: o.lines || [], drums: o.drums || [] } : null }); });
+    inboxDone(); phReset('reading');
+    var need = EN.photos.some(function (p) { return !p.res; });
+    go(SK[k].nw);
+    if (need) enRun([]); else { enAssign(); render(true); enCheck(true); enReport(); }
   }
   /** Фото водомеров из пачки (или из бота) → ввод воды: окна барабанов уже прочитаны — раскладываем по водомерам. */
   function phToWater(all) {
