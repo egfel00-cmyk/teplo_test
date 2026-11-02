@@ -631,8 +631,9 @@
       if (lab) lab.removeAttribute('aria-busy');
       var p = wprevFor(mid, WN.date || today()), r = Wt.fromOcr(res, p ? p.vals[mid] : null);
       if (!r) { if (help) { help.textContent = t('wn_photo_none'); help.className = 'help warn'; } return; }
+      if (r.value === null) { if (help) { help.textContent = t('wn_photo_half', { p: r.partial }); help.className = 'help warn'; } if (inp) inp.focus(); return; }
       if (inp) { inp.value = String(r.value); WN.vals[mid] = String(r.value); }
-      wnCheck(true); if (help && help.className.indexOf('block') < 0) { help.textContent = t('wn_photo_ok', { v: r.value }) + ' ' + help.textContent; }
+      wnCheck(true); if (help && help.className.indexOf('block') < 0) { help.textContent = t(r.half ? 'wn_photo_check' : 'wn_photo_ok', { v: r.value }) + ' ' + help.textContent; }
     }, function () { if (lab) lab.removeAttribute('aria-busy'); if (help) { help.textContent = t('ph_err_engine'); help.className = 'help warn'; } });
   }
 

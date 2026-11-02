@@ -95,19 +95,30 @@
   // Барабан водоміра: 5 чорних цифр (м³) + червоні (дроби). Заводський № (поруч «№»/«No»), рік випуску й цифри
   // на циферблаті — не показання. Не впевнені — повертаємо null: краще попросити ввести, ніж підставити чуже число.
   function fromOcr(res, prevVal) {
+    // окно барабана (по цвету) главнее строк текста, только если прочитано уверенно; иначе — сверяем со строкой цифр
+    var dr = fromDrum(res, prevVal), ln = fromLines(res, prevVal);
+    if (dr && dr.value !== null && dr.strong) return dr;
+    if (ln && dr && dr.value === ln.value) { ln.sure = true; ln.drum = true; ln.red = dr.red; ln.tint = dr.tint; return ln; }
+    // строка «0137052» начинается с цифр окна «00137» — окно отделило м³ от дробей, ему и верим
+    if (ln && dr && dr.value !== null && dr.digits.length >= 4 && ln.digits.replace(/^0+/, '').indexOf(String(dr.value)) === 0) { dr.sure = !dr.half; return dr; }
+    if (ln) return ln;
+    if (dr) { dr.sure = false; return dr; }
+    return null;
+  }
+  function fromLines(res, prevVal) {
     var lines = (res && res.lines) || [], best = null, p = num(prevVal);
     var serialY = lines.filter(function (l) { return /^(N[oо0º]|№)\.?$/i.test(String(l.text || '').trim()); }).map(function (l) { return l.y != null ? l.y : (l.box ? l.box[1] : null); });
     lines.forEach(function (l) {
       var ly = l.y != null ? l.y : (l.box ? l.box[1] : null);
       var nearSerial = ly != null && serialY.some(function (y) { return y != null && Math.abs(y - ly) < (l.h || 40) * 1.5; });
       [l.text].concat(l.alts || []).forEach(function (tx) {
-        var s = String(tx || '').replace(/[Oo]/g, '0').replace(/[Il|]/g, '1');
+        var s = String(tx || '').replace(/[０-９]/g, function (c) { return String.fromCharCode(c.charCodeAt(0) - 0xFEE0); }).replace(/[Oo]/g, '0').replace(/[Il|]/g, '1');
         if (/[A-Za-zА-Яа-яІіЇїЄє]{2}/.test(s) || /[,.]\d{3,}/.test(s)) return;   // подписи, «x 0,0001»
         var dg = s.replace(/\D/g, '');
         if (dg.length < 4 || dg.length > 9) return;
         if (/^(19|20)\d\d$/.test(dg)) return;                       // рік випуску
         var lead0 = dg.charAt(0) === '0';
-        if (nearSerial || (dg.length === 7 && !lead0) || (dg.length >= 8 && !/^00/.test(dg))) return;   // заводський №
+        if (nearSerial || (dg.length === 7 && !lead0) || (dg.length >= 8 && !lead0)) return;   // заводський №
         var score = (l.h || 1) * (l.score || 1) * (lead0 ? 1.5 : 1) * (dg.length >= 5 ? 1.2 : 1);
         if (!best || score > best.score) best = { digits: dg, score: score };
       });
@@ -123,9 +134,40 @@
     return { value: value, digits: d, sure: p !== null };
   }
 
+  /**
+   * Окно барабана, найденное движком по цвету (res.drums): text — цифры чёрных роликов, red — красных.
+   * Число роликов оцениваем по пропорциям окна (cells): прочитано меньше — один ролик между цифрами (полуповорот);
+   * тогда по правилу берём меньшую цифру, а с прошлым показанием — наименьшее значение не меньше прошлого.
+   * → {value, digits, red, sure, half, tint, partial} | null (окна нет — разбираем строки текста как раньше)
+   */
+  function fromDrum(res, prevVal) {
+    var ds = ((res && res.drums) || []).filter(function (d) { return d && String(d.text || '').length >= 3; });
+    if (!ds.length) return null;
+    var q = function (d) { var t = String(d.text); return (d.votes || 0) + (d.score || 0) + (/^0/.test(t) ? 1 : 0) + (t.length >= 4 && t.length <= 6 ? 0.5 : 0); };
+    ds.sort(function (a, b) { return q(b) - q(a); });
+    var d = ds[0], dg = String(d.text).replace(/\D/g, ''), p = num(prevVal), red = String(d.red || '').replace(/\D/g, '');
+    if (dg.length >= 7) { red = red || dg.slice(dg.length - 3); dg = dg.slice(0, dg.length - 3); }   // захватили и красные
+    // меньше цифр, чем роликов, и начало окна видно (ведущий ноль) — последний ролик между цифрами
+    var exp = d.cells || 5, half = /^0/.test(dg) && dg.length < Math.min(exp, 5);
+    var strong = dg.length >= 4 && (d.votes || 0) >= 2 && (d.score || 0) >= 0.9 && /^0/.test(dg);
+    var out = { value: Number(dg), digits: dg, red: red, sure: strong && !half, strong: strong, half: half, tint: d.tint || null, drum: true };
+    if (p !== null) {
+      var pf = Math.floor(p + 1e-9);
+      if (half || out.value < pf) {
+        // недочитанный последний ролик: дописываем цифру — наименьшее значение не меньше прошлого
+        for (var k = 0; k <= 9; k++) { var v = Number(dg + k); if (v >= pf && v - pf < 100) { out.value = v; out.half = true; out.sure = false; return out; } }
+        if (out.value < pf) { out.sure = false; out.less = true; }
+      } else if (out.value - pf > 500) out.sure = false;
+      else if ((d.votes || 0) >= 2) out.sure = true;
+      return out;
+    }
+    if (half) return { value: null, partial: dg + '?', digits: dg, red: red, half: true, tint: out.tint, drum: true, strong: strong };
+    return out;
+  }
+
   function uid() { return 'w' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }
 
   var api = { VK_BOT: VK_BOT, VK_CABINET: VK_CABINET, VK_DEADLINE: VK_DEADLINE, TARIFFS: TARIFFS, HOT: HOT,
-    num: num, whole: whole, tariffAt: tariffAt, cost: cost, check: check, blocked: blocked, vkCommand: vkCommand, vkWindow: vkWindow, series: series, fromOcr: fromOcr, uid: uid };
+    num: num, whole: whole, tariffAt: tariffAt, cost: cost, check: check, blocked: blocked, vkCommand: vkCommand, vkWindow: vkWindow, series: series, fromOcr: fromOcr, fromDrum: fromDrum, uid: uid };
   if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.TeploWater = api;
 })(typeof window !== 'undefined' ? window : this);

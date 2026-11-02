@@ -3,3 +3,5 @@ tests/htm-mock/storage/*.jsonl
 tests/htm-mock/storage/*.txt
 *.sqlite
 *.sqlite-*
+tests/ocr-lab/out/
+tests/ocr-lab/*.local.json
