@@ -639,3 +639,33 @@ input[type=text]:not(.dmy-native):not(.pl-in), input[type=email], input[type=pas
 .pg-body { padding: 0 16px 8px; }
 .pg-body > .panel, .pg-body > details.tips-box { background: transparent; padding: 0; margin: 0 0 var(--sp-4); border-radius: 0; }
 .pg-body > .panel + .panel { border-top: 1px solid var(--c-line); padding-top: var(--sp-4); }
+
+/* Итог «сколько и почём» — один шаблон для тепла и воды (статистика, економія) */
+.kpi { margin: 12px 0 16px; padding: 16px 18px; border-radius: 16px; background: var(--c-surface-2, var(--c-surface)); border: 1px solid var(--c-line); border-left: 4px solid var(--c-supply); }
+.kpi.hot { border-left-color: var(--c-return); } .kpi.cold { border-left-color: var(--c-info); }
+.kpi-row { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 28px; }
+.kpi-q b, .kpi-m b { font-size: 34px; line-height: 1.1; font-weight: 700; font-variant-numeric: tabular-nums; letter-spacing: -.01em; }
+.kpi-q span, .kpi-m span { margin-left: 6px; font-size: 17px; font-weight: 600; color: var(--c-ink-2); }
+.kpi-m b { color: var(--c-ink); }
+.kpi-cap { margin-top: 6px; font-size: 14px; color: var(--c-ink-2); }
+.kpi-chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.kchip { display: inline-flex; align-items: center; gap: 6px; padding: 5px 10px; border-radius: 999px; font-size: 13px; background: var(--c-housing); color: var(--c-ink); }
+.kchip svg { flex: none; opacity: .75; }
+.kpi-tip { display: flex; gap: 10px; align-items: flex-start; margin: 4px 0 10px; padding: 12px 14px; border-radius: 12px; background: var(--c-info-soft); color: var(--c-ink); }
+.kpi-tip svg { flex: none; margin-top: 2px; color: var(--c-info); } .kpi-tip p { margin: 0; }
+@media (max-width: 420px) { .kpi { padding: 14px; } .kpi-q b, .kpi-m b { font-size: 28px; } .kpi-row { gap: 4px 18px; } }
+/* Строка истории: главное — расход и деньги */
+.hrow .hr-main { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 16px; }
+.hrow .hr-q, .hrow .hr-m { font-size: 19px; font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.hrow .hr-q small, .hrow .hr-m small { font-size: 13px; font-weight: 600; color: var(--c-ink-2); }
+.hrow .hr-none { font-size: 15px; font-weight: 600; color: var(--c-ink-2); }
+.hrow .hr-sub { margin-top: 2px; font-size: 13px; color: var(--c-ink-2); }
+.hrow .hr-ico { align-self: center; display: inline-flex; margin-right: -8px; }
+/* узкий экран: строка истории (тепло и вода) — главное на всю ширину, значки (погода, статус) компактно строкой ниже */
+@media (max-width: 520px) {
+  .list a.hrow { flex-wrap: wrap; row-gap: 6px; column-gap: 8px; }
+  .list a.hrow > .grow { flex: 1 1 100%; }
+  .list a.hrow > .wx { margin-left: 0; }
+  .list a.hrow > .pill, .list a.hrow > .wx, .list a.hrow > .ph-n { font-size: 12px; padding: 2px 9px; min-height: 0; }
+  .hrow .hr-q, .hrow .hr-m { font-size: 18px; }
+}

@@ -430,16 +430,19 @@
   function gapPeriod(g) { return fmtDate(g.from, true) + ' — ' + (g.to ? fmtDate(g.to, true) : t('gp_now')); }
   /** Рядок історії: період без лічильника. */
   function gapItem(g, withName) {
-    var bits = [];
+    var e = gapEst(g), heat = g.what === 'heat', amt = R.num(g.amount), mo = gapMonths(g), qv = e ? (heat ? e.gcal : e.m3) : 0;
+    var bits = [t('gp_row') + (withName ? ' · ' + gapMeterName(g) : ''), gapPeriod(g)];
     if (R.num(g.vFrom) !== null) bits.push(t('gp_at_off', { v: gapFmt(g, g.vFrom), u: gapUnit(g) }));
     if (g.to && R.num(g.vTo) !== null) bits.push(t(g.fresh ? 'gp_at_new' : 'gp_at_on', { v: gapFmt(g, g.vTo), u: gapUnit(g) }));
     else if (g.fresh) bits.push(t('gp_new'));
-    var pt = t('gp_pay_' + (g.pay || 'unknown') + (g.what === 'heat' ? '_h' : '_w')); bits.push(pt.charAt(0).toLowerCase() + pt.slice(1));
-    if (R.num(g.amount) !== null) bits.push(t('gp_amount_sum', { a: money(R.num(g.amount)), n: fmtN(gapMonths(g), 1), s: money(R.num(g.amount) * gapMonths(g)) }));
-    else { var ge = gapEst(g); if (ge && ge.cost > 0) bits.push(t('ge_row', { s: money(ge.cost), q: g.what === 'heat' ? fmtN(ge.gcal, 3) + ' Гкал' : fmtN(ge.m3, 1) + ' м³' })); }
-    return '<li class="gap-row" data-key="gap-' + g.id + '"><a class="rowlink" href="#gap-' + g.id + '"><div class="grow"><div>' + ico('wrench', 18, 'c-warn') + ' <b>' + esc(t('gp_row')) + '</b>' + (withName ? ' <span class="small muted">' + esc(gapMeterName(g)) + '</span>' : '') + ' <span class="small">' + esc(gapPeriod(g)) + '</span></div>' +
-      '<div class="small muted">' + esc(bits.join(' · ')) + '</div></div><span class="pill ' + (g.to && g.to <= today() ? 'neutral' : 'warn') + '">' + esc(t('gp_r_' + (g.reason || 'other'))) + '</span></a></li>';
+    var pt = t('gp_pay_' + (g.pay || 'unknown') + (heat ? '_h' : '_w')); bits.push(pt.charAt(0).toLowerCase() + pt.slice(1));
+    bits.push(amt !== null ? t('gp_amount_sum', { a: money(amt), n: fmtN(mo, 1), s: money(amt * mo) }) : qv > 0 ? t('hr_est') : '');
+    // крупно — сколько тепла/воды (оценка) и сколько денег: по платёжке, если записано, иначе оценка
+    return histRow({ cls: 'gap-row', key: 'gap-' + g.id, href: '#gap-' + g.id, lead: '<span class="hr-ico">' + ico('wrench', 18, 'c-warn') + '</span>',
+      q: qv > 0 ? '≈ ' + fmtN(qv, heat ? 3 : 1) : null, unit: gapUnit(g), money: amt !== null ? amt * mo : e && e.cost > 0 ? e.cost : null, none: t('gp_row'), sub: bits,
+      right: '<span class="pill ' + (g.to && g.to <= today() ? 'neutral' : 'warn') + '">' + esc(t('gp_r_' + (g.reason || 'other'))) + '</span>' });
   }
+
   /** Банер на сторінці лічильника: зараз без лічильника → «поставили назад». */
   function gapBanner(what) {
     var g = openGap(what); if (!g) return '';
@@ -719,12 +722,14 @@
       if (y.g) return gapItem(y.g, ms.length > 1);
       var x = y.x;
       var d = kind === 'hot' ? x.hot : x.cold, days = kind === 'hot' ? x.daysHot : x.daysCold;
-      var vs = ms.map(function (m) { var v = Wt.whole(x.rec.vals && x.rec.vals[m.id]); return v === null ? '' : (ms.length > 1 ? esc(m.name || '') + ' ' : '') + v; }).filter(Boolean).join(' · ');
+      var vs = ms.map(function (m) { var v = Wt.whole(x.rec.vals && x.rec.vals[m.id]); return v === null ? '' : (ms.length > 1 ? (m.name || '') + ' ' : '') + v; }).filter(Boolean).join(', ');
       var sent = wsentVk(x.rec) && (kind === 'cold' || wsentHtm(x.rec)), np = (x.rec.photos || []).length;
-      var sub = x.rec.base ? t('wh_base') : d === null ? t('wh_first') : '+' + d + ' м³ · ≈ ' + money(wcostOf(kind, d, x.rec.date)) + ' грн · ' + days + ' ' + t('days_short');
-      return '<li data-key="wrec-' + x.rec.id + '"><a class="rowlink" href="#wrec-' + x.rec.id + '"><div class="grow"><div><b>' + esc(fmtDate(x.rec.date, true)) + '</b> <span class="num">' + vs + '</span> <span class="small muted">м³</span></div>' +
-        '<div class="small muted">' + esc(sub) + '</div></div>' + (np ? '<span class="ph-n" title="' + esc(t('hp_n', { n: np })) + '">' + ico('camera', 16) + '<span class="num">' + np + '</span></span>' : '') +
-        (x.rec.base ? '' : sent ? '<span class="pill ok">' + esc(t('wh_sent')) + '</span>' : '<span class="pill neutral">' + esc(t('wh_notsent')) + '</span>') + '</a></li>';
+      var has = !x.rec.base && d !== null;
+      return histRow({ key: 'wrec-' + x.rec.id, href: '#wrec-' + x.rec.id, q: has ? '+' + d : null, unit: 'м³', money: has ? wcostOf(kind, d, x.rec.date) : null,
+        none: x.rec.base ? t('wh_base') : t('hr_first'),
+        sub: [fmtDate(x.rec.date, true), t('hr_on_meter', { v: vs.replace(/<[^>]+>/g, ''), u: 'м³' }), has && days ? days + '\u00a0' + t('days_short') : ''],
+        right: (np ? '<span class="ph-n" title="' + esc(t('hp_n', { n: np })) + '">' + ico('camera', 16) + '<span class="num">' + np + '</span></span>' : '') +
+          (x.rec.base ? '' : sent ? '<span class="pill ok">' + esc(t('wh_sent')) + '</span>' : '<span class="pill neutral">' + esc(t('wh_notsent')) + '</span>') });
     }).join('') + '</ul>' };
   }
   function whistory(kind) {
@@ -779,9 +784,8 @@
     var mo = Wt.monthly(Wt.series(wrecs(), wmeters(), gaps()), kind, S.wtariff), sm = Wt.summary(mo), head = '<h1>' + esc(t('stt_title')) + '</h1>' + kindSwitch();
     if (!mo.length) return { screen: 'S15', route: 'stats', html: head + '<div class="panel"><p class="muted">' + esc(t('wst_empty')) + '</p></div>' };
     var per = function (b) { return t('stt_period', { a: R.toHtmDate(b.from), b: R.toHtmDate(b.to), d: b.days }); };
-    var tiles = '<div class="cards2 stat-tiles"><div><div class="num big">' + esc(fmtN(sm.perMonth, 1)) + ' <small>м³</small></div><div class="small muted">' + esc(t('wst_avg', { n: sm.months })) + '</div></div>' +
-      '<div><div class="num big">≈ ' + esc(money(sm.uahMonth)) + '</div><div class="small muted">' + esc(t('wst_avg_uah')) + '</div></div>' +
-      '<div><div class="num big">' + sm.last.m3 + ' <small>м³</small></div><div class="small muted">' + esc(t('wst_last', { m: ymLabel(sm.last.ym), uah: money(sm.last.cost) })) + '</div></div></div>';
+    var tiles = kpi({ key: 'wstats-kpi', tone: kind, q: fmtN(sm.perMonth, 1), unit: 'м³', money: sm.uahMonth, cap: t('kpi_w_avg', { n: sm.months }),
+      chips: [chip(t('kpi_w_last', { m: monthLabel(sm.last.ym), v: sm.last.m3, uah: money0(sm.last.cost) }), 'clock')] });
     var color = kind === 'hot' ? CH.hot : CH.cold;
     var c1 = barChart(mo.map(function (b) { return { x: ymLabel(b.ym), v: b.m3, top: String(b.m3), color: color,
       tip: [b.m3 + ' м³', per(b), '≈ ' + money(b.cost) + ' грн', b.days < 25 || b.days > 37 ? t('wst_per30', { v: fmtN(b.perMonth, 1) }) : ''] }; }), { title: t('wst_m3'), dec: 0 });
@@ -821,9 +825,9 @@
   }
   function wsave(kind) {
     var sm = Wt.summary(Wt.monthly(Wt.series(wrecs(), wmeters(), gaps()), kind, S.wtariff)), list = wtips();
-    var mine = sm ? '<div class="panel" data-key="wsave-mine"><h2>' + esc(t('sv_mine')) + '</h2><div class="cards2"><div><div class="num big">' + esc(fmtN(sm.perMonth, 1)) + ' <small>м³</small></div><div class="small muted">' + esc(t('wsv_month')) + '</div></div>' +
-      '<div><div class="num big">≈ ' + esc(money(sm.uahMonth)) + '</div><div class="small muted">' + esc(t('wsv_month_uah')) + '</div></div></div>' +
-      '<p>' + esc(t('wsv_ten', { m3: fmtN(sm.perMonth * 0.1, 1), uah: money(sm.uahMonth * 0.1), year: money(sm.uahMonth * 1.2) })) + '</p></div>'
+    var mine = sm ? '<div class="panel" data-key="wsave-mine"><h2>' + esc(t('sv_mine')) + '</h2>' +
+      kpi({ key: 'wsave-kpi', tone: kind, q: fmtN(sm.perMonth, 1), unit: 'м³', money: sm.uahMonth, cap: t('kpi_w_avg', { n: sm.months }) }) +
+      tipLine('drop', t('kpi_w_ten', { m3: fmtN(sm.perMonth * 0.1, 1), uah: '<b>' + esc(money0(sm.uahMonth * 0.1)) + ' грн</b>', y: esc(money0(sm.uahMonth * 1.2)) })) + '</div>'
       : '<div class="panel"><p class="muted">' + esc(t('wsv_no_data')) + '</p></div>';
     var groups = [[t('wsv_g1'), 'alert', [0, 1, 2]], [t('wsv_g2'), 'drop', [3, 4, 5]], [t('wsv_g3'), 'home', [6]], [t('wsv_g4'), 'chart', kind === 'hot' ? [7, 8] : [8, 7]]];
     return { screen: 'S14', route: 'save', html: '<h1>' + esc(t('wsv_title')) + '</h1>' + kindSwitch() + '<p class="muted">' + esc(t('wsv_lead')) + '</p>' + mine +
@@ -1301,10 +1305,16 @@
     if (!from) return null;
     // лічильник знімали між ними: від показань після встановлення; невідомі — не рахуємо
     var g = gaps('heat').filter(function (x) { return x.from >= from.date && x.from < d; }).slice(-1)[0];
-    if (g) { if (!g.to || g.to > d || R.num(g.vTo) === null) return null; from = { date: g.to, energy: g.vTo }; }
-    var dE = e - R.num(from.energy), days = R.daysBetween(from.date, d);
+    var off = 0;
+    if (g) {
+      if (!g.to || g.to > d) return null;
+      if (R.num(g.vTo) !== null) from = { date: g.to, energy: g.vTo };
+      else if (g.fresh) return null;
+      else off = R.daysBetween(g.from, g.to);   // той самий лічильник не рахував, поки його не було
+    }
+    var dE = e - R.num(from.energy), days = Math.max(1, R.daysBetween(from.date, d) - off);
     var c = costOf(dE, days);
-    return { dE: dE, days: days, cost: c.total, parts: c, from: from.date, fromBase: !prev && !g, fromGap: !!g };
+    return { dE: dE, days: days, cost: c.total, parts: c, from: from.date, fromBase: !prev && !g, fromGap: !!g, overGap: off > 0 };
   }
   /** Погода к показаниям: средняя/мин/макс на улице за промежуток (до 4 мес.) и в день снятия; ряд по дням — для мини-графика. */
   function wxFor(r) {
@@ -1338,6 +1348,29 @@
   }
 
   /** Показания тепла и периоды без лічильника вперемешку, новые сверху (у периода дата — когда сняли). */
+  /** Деньги крупно — целыми гривнями (это и так оценка «≈»). */
+  function money0(n) { return Math.round(n).toLocaleString(S.lang === 'ru' ? 'ru-RU' : 'uk-UA'); }
+  /** Итог одним шаблоном (тепло и вода; статистика, економія): главное — сколько (Гкал/м³) и сколько стоит; подпись и детали — мелко.
+   *  o: {key, q, unit, money, cap, chips: [html], tone: 'heat'|'hot'|'cold'} */
+  function kpi(o) {
+    return '<div class="kpi ' + (o.tone || 'heat') + '" data-key="' + esc(o.key || 'kpi') + '"><div class="kpi-row">' +
+      (o.q !== null && o.q !== undefined ? '<div class="kpi-q"><b>' + esc(o.q) + '</b><span>' + esc(o.unit) + '</span></div>' : '') +
+      (o.money !== null && o.money !== undefined ? '<div class="kpi-m"><b>≈ ' + esc(money0(o.money)) + '</b><span>грн</span></div>' : '') + '</div>' +
+      (o.cap ? '<div class="kpi-cap">' + esc(o.cap) + '</div>' : '') + (o.chips && o.chips.length ? '<div class="kpi-chips">' + o.chips.join('') + '</div>' : '') + '</div>';
+  }
+  function chip(txt, icon) { return '<span class="kchip">' + (icon ? ico(icon, 16) : '') + '<span>' + esc(txt) + '</span></span>'; }
+  /** Совет с цифрой («−1 °C → −0,1 Гкал ≈ 158 грн») — отдельной плашкой. */
+  function tipLine(icon, html) { return '<div class="kpi-tip">' + ico(icon, 20) + '<p>' + html + '</p></div>'; }
+  /** Строка истории одним шаблоном: крупно «+2,127 Гкал · ≈ 3 304 грн», ниже мелко дата · показання · дні; справа — значки.
+   *  o: {key, href, q, unit, money, none, sub: [..], right} */
+  function histRow(o) {
+    var hasQ = o.q !== null && o.q !== undefined, hasM = o.money !== null && o.money !== undefined;
+    var main = '<div class="hr-main">' + (o.lead || '') + (hasQ || hasM
+      ? (hasQ ? '<span class="hr-q">' + esc(o.q) + ' <small>' + esc(o.unit) + '</small></span>' : '') + (hasM ? '<span class="hr-m">≈ ' + esc(money0(o.money)) + ' <small>грн</small></span>' : '')
+      : '<span class="hr-none">' + esc(o.none || '') + '</span>') + '</div>';
+    return '<li' + (o.cls ? ' class="' + o.cls + '"' : '') + ' data-key="' + esc(o.key) + '"><a class="rowlink hrow" href="' + esc(o.href) + '"><div class="grow">' + main +
+      '<div class="hr-sub">' + o.sub.filter(Boolean).map(esc).join(' · ') + '</div></div>' + (o.right || '') + '</a></li>';
+  }
   function heatMixed(limit) {
     var arr = RD().map(function (r) { return { d: (r.htm && r.htm.date) || '', r: r }; }).concat(gaps('heat').map(function (g) { return { d: g.from, g: g }; }));
     arr.sort(function (a, b) { return a.d < b.d ? 1 : a.d > b.d ? -1 : a.g ? -1 : 1; });
@@ -1349,11 +1382,12 @@
   function readingItem(r) {
     return [r].map(function (r) {
       var cls = { accepted: 'ok', rejected: 'bad', handed: 'info', checked: 'neutral', intermediate: 'neutral' }[r.status] || 'neutral';
-      var sub = intervalText(interval(r)), chip = wxChip(wxFor(r));
-      var link = true;   // вся строка — в карточку показаний (там же правка, удаление, статус)
-      var inner = '<div class="grow"><div><b>' + esc(fmtDate(r.htm.date, true)) + '</b> <span class="num">' + esc(R.formatForHtm('energy', r.htm.energy)) + '</span> <span class="small muted">Гкал</span></div>' +
-        (sub ? '<div class="small muted">' + esc(sub) + '</div>' : '') + '</div>' + chip + '<span class="pill ' + cls + '">' + esc(t('status_' + r.status)) + '</span>';
-      return '<li data-key="reading-' + r.id + '">' + (link ? '<a class="rowlink" href="#rec-' + r.id + '">' + inner + '</a>' : inner) + '</li>';
+      var iv = interval(r), ok = iv && iv.dE >= 0;
+      // вся строка — в карточку показаний (там же правка, удаление, статус); главное — расход и деньги
+      return histRow({ key: 'reading-' + r.id, href: '#rec-' + r.id, q: ok ? '+' + fmtN(iv.dE, 3) : null, unit: 'Гкал', money: ok ? iv.cost : null,
+        none: iv ? t('hi_less', { de: Math.abs(iv.dE).toFixed(3) }) : t(gaps('heat').some(function (g) { return g.from < r.htm.date; }) ? 'hr_nogap' : 'hr_first'),
+        sub: [fmtDate(r.htm.date, true), t('hr_on_meter', { v: R.formatForHtm('energy', r.htm.energy), u: 'Гкал' }), iv ? iv.days + '\u00a0' + t('days_short') + (iv.overGap ? ' ' + t('hr_over_gap') : '') : ''],
+        right: wxChip(wxFor(r)) + '<span class="pill ' + cls + '">' + esc(t('status_' + r.status)) + '</span>' });
     })[0];
   }
 
@@ -1709,9 +1743,9 @@
     var last = ivs[ivs.length - 1], sy = +last.to.slice(0, 4) - (last.to.slice(5, 7) < '10' ? 1 : 0), sFrom = sy + '-10-01';
     var season = ivs.filter(function (it) { return it.to > sFrom; }), sE = season.reduce(function (a, it) { return a + Math.max(0, it.dE); }, 0);
     var okN = cl.filter(function (p) { return p.status === 'ok'; }).length, judged = cl.filter(function (p) { return p.status !== 'off'; }).length;
-    var tiles = '<div class="cards2 stat-tiles"><div><div class="num big">' + esc(fmtN(sE, 3)) + '</div><div class="small muted">' + esc(t('stt_season_g', { s: sy + '/' + String(sy + 1).slice(2) })) + '</div></div>' +
-      '<div><div class="num big">≈ ' + esc(money(season.reduce(function (a, it) { return a + it.cost; }, 0))) + '</div><div class="small muted">' + esc(t('stt_season_uah')) + '</div></div>' +
-      (judged ? '<div><div class="num big">' + okN + ' / ' + judged + '</div><div class="small muted">' + esc(t('stt_ok_share')) + '</div></div>' : '') + '</div>';
+    var sUah = season.reduce(function (a, it) { return a + it.cost; }, 0), sDays = season.reduce(function (a, it) { return a + (summer(it) ? 0 : it.days); }, 0);
+    var tiles = kpi({ key: 'stats-kpi', q: fmtN(sE, 3), unit: 'Гкал', money: sUah, cap: t('kpi_season', { s: sy + '/' + String(sy + 1).slice(2) }),
+      chips: [sDays >= 20 ? chip(t('kpi_per_month', { g: fmtN(sE / sDays * 30.44, 3), u: 'Гкал', m: money0(sUah / sDays * 30.44) }), 'chart') : '', judged ? chip(t('kpi_ok_share', { a: okN, b: judged }), okN === judged ? 'check' : 'thermo') : ''].filter(Boolean) });
     var c1 = barChart(ivs.map(function (it) { return { x: lbl(it), x2: it.tOut !== undefined ? (it.tOut > 0 ? '+' : '') + Math.round(it.tOut) + ' °C' : '', v: Math.max(0, it.month), soft: summer(it), top: fmtN(it.month, 2),
       tip: [fmtN(it.month, 3) + ' ' + t('stt_g30'), period(it), '+' + fmtN(it.dE, 3) + ' Гкал ≈ ' + money(it.cost) + ' грн', it.tOut !== undefined ? t('stt_tout', { t: fmtN(it.tOut, 1) }) : '', summer(it) ? t('stt_summer') : ''] }; }), { title: t('st1_title'), dec: 1 });
     var withW = ivs.filter(function (it) { return it.perHdd != null && !summer(it); });
@@ -1792,9 +1826,10 @@
   }
   function heatSave() {
     var mm = myMonth(), list = tips();
-    var mine = mm ? '<div class="panel" data-key="save-mine"><h2>' + esc(t('sv_mine')) + '</h2><div class="cards2"><div><div class="num big">' + esc(mm.g.toFixed(3)) + '</div><div class="small muted">' + esc(t('sv_month_g')) + '</div></div>' +
-      '<div><div class="num big">≈ ' + esc(money(costOf(mm.g, MONTH_DAYS).total)) + '</div><div class="small muted">' + esc(t('sv_month_uah')) + '</div></div></div>' +
-      '<p>' + esc(t('sv_one_deg', { g: (mm.g * 0.05).toFixed(3), uah: money(mm.g * 0.05 * tariff()) })) + '</p><p class="small muted">' + esc(t('sv_mine_from', { a: R.toHtmDate(mm.from), b: R.toHtmDate(mm.to) })) + '</p></div>'
+    var mine = mm ? '<div class="panel" data-key="save-mine"><h2>' + esc(t('sv_mine')) + '</h2>' +
+      kpi({ key: 'save-kpi', q: fmtN(mm.g, 3), unit: 'Гкал', money: costOf(mm.g, MONTH_DAYS).total, cap: t('kpi_month_bill') }) +
+      tipLine('thermo', t('kpi_one_deg', { g: fmtN(mm.g * 0.05, 3), uah: '<b>' + esc(money0(mm.g * 0.05 * tariff())) + ' грн</b>', y: esc(money0(mm.g * 0.05 * tariff() * 6)) })) +
+      '<p class="small muted">' + esc(t('sv_mine_from', { a: R.toHtmDate(mm.from), b: R.toHtmDate(mm.to) })) + '</p></div>'
       : '<div class="panel"><p class="muted">' + esc(t('sv_no_data')) + '</p></div>';
     return { screen: 'S14', route: 'save', html: '<h1>' + esc(t('sv_title')) + '</h1>' + kindSwitch() + '<p class="muted">' + esc(t('sv_lead')) + '</p>' + mine +
       accGroups([[t('sv_g1'), 'thermo', [0, 5, 4]], [t('sv_g2'), 'flame', [1, 2, 3, 7]], [t('sv_g3'), 'home', [6]], [t('sv_g4'), 'chart', [8, 9]]].map(function (g) {
@@ -2775,6 +2810,18 @@
   var onNav = function () { if (location.hash === lastHash) return; render(); };
   window.addEventListener('hashchange', onNav); window.addEventListener('popstate', onNav);
   var tw = window.Telegram && window.Telegram.WebApp;
+  // аналитика: с чего открыли (телефон / планшет / компьютер, система, Telegram, «Домой») — раз на загрузку; id браузера случайный
+  (function visit() {
+    var ap = window.TeploSync && window.TeploSync.api; if (!ap || !window.TEPLO_API) return;
+    try {
+      var vid = localStorage.getItem('teplo.vid'); if (!vid) { vid = (Date.now().toString(36) + Math.random().toString(36).slice(2, 12)).replace(/[^a-z0-9]/g, ''); localStorage.setItem('teplo.vid', vid); }
+      var ua = navigator.userAgent || '', ipad = /iPad/.test(ua) || (/Macintosh/.test(ua) && (navigator.maxTouchPoints || 0) > 1);
+      var tablet = ipad || (/Android/.test(ua) && !/Mobile/.test(ua)) || /Tablet|PlayBook|Silk|Kindle/.test(ua), mobile = !tablet && /Mobi|iPhone|iPod|Android|Windows Phone/.test(ua);
+      var os = /iPhone|iPod/.test(ua) || ipad ? 'iOS' : /Android/.test(ua) ? 'Android' : /Windows/.test(ua) ? 'Windows' : /Mac OS X|Macintosh/.test(ua) ? 'macOS' : /Linux|CrOS/.test(ua) ? 'Linux' : 'other';
+      var tg0 = window.Telegram && window.Telegram.WebApp, pwa = !!(window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) || navigator.standalone === true;
+      setTimeout(function () { ap('POST', '/visit', { vid: vid, device: tablet ? 'tablet' : mobile ? 'mobile' : 'desktop', os: os, tg: !!(tg0 && tg0.initData), pwa: pwa, sw: Math.round(screen.width || 0) }).catch(function () {}); }, 1500);
+    } catch (e) { /* без localStorage — не считаем */ }
+  })();
   if (tw && tw.initData) { try { tw.ready(); tw.expand(); applyTheme(); if (tw.onEvent) tw.onEvent('themeChanged', function () { applyTheme(); safeRender(); }); } catch (e) { /* старый клиент */ } }
   if (window.TEPLO_API && window.TeploVision) window.TeploVision.initServer({}, false);
   // кнопка из напоминания бота: ?go=wnew — ввод воды, ?go=heat — тепло

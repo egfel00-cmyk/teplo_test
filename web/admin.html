@@ -19,6 +19,9 @@ nav button { font: 600 14px/1 var(--font); border: 1.5px solid transparent; back
 nav button[aria-current="true"] { background: var(--surface); color: var(--ink); border-color: var(--line); }
 nav .n { display: inline-block; min-width: 18px; padding: 2px 6px; margin-left: 6px; border-radius: 999px; background: var(--bads); color: var(--bad); font-size: 12px; }
 main { padding: 0 20px 48px; max-width: 1280px; }
+.dbar { display: grid; grid-template-columns: minmax(110px, 200px) 1fr minmax(150px, auto); gap: 10px; align-items: center; margin: 6px 0; font-size: 14px; }
+.dbar .dt { height: 10px; background: var(--housing); border-radius: 6px; overflow: hidden; } .dbar .dt i { display: block; height: 100%; background: var(--info); border-radius: 6px; }
+#devices h3 { font-size: 15px; margin: 16px 0 4px; } .btn.on { outline: 2px solid var(--info); }
 .cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 12px; margin-bottom: 20px; }
 .card { background: var(--surface); border-radius: 12px; padding: 14px 16px; }
 .card .v { font: 500 30px/1.1 var(--mono); }
@@ -60,7 +63,7 @@ pre.state { font: 12px/1.4 var(--mono); background: #F4F7F5; padding: 10px; bord
   var API = '__TEPLO_API__';
   var SITE = API.replace(/\/api$/, '') + '/';
   var app = document.getElementById('app');
-  var TAB = (location.hash || '#overview').slice(1), DATA = {}, Q = '', PF = 'all';
+  var TAB = (location.hash || '#overview').slice(1), DATA = {}, Q = '', PF = 'all', DDAYS = 30;
   var FIELD = { energy: 'Энергия', volume: 'Объём', flow: 'Расход', power: 'Мощность', tSupply: 'Подача', tReturn: 'Обратка', hours: 'Часы', errHours: 'Часы ошибки', errCode: 'Код ошибки', water_hot: 'Горячая вода', water_cold: 'Холодная вода' };
   var MODEL = { sharky774: 'SHARKY 774', sharky775: 'SHARKY 775', t330: 'ULTRAHEAT T330', t230: 'ULTRAHEAT T230', multical302: 'MULTICAL 302', elf: 'ELF', sensostar: 'SensoStar', nik7071: 'НІК 7071', trust: 'TRUST', other: 'другая' };
   var STATUS = { checked: 'проверено', handed: 'передано в ХТМ', accepted: 'принято ХТМ', rejected: 'отклонено ХТМ', intermediate: 'промежуточное' };
@@ -92,8 +95,27 @@ pre.state { font: 12px/1.4 var(--mono); background: #F4F7F5; padding: 10px; bord
     return (warn.length ? '<div class="panel" style="background:var(--warns)">' + warn.map(function (w) { return '<p style="margin:4px 0">' + w + '</p>'; }).join('') + '</div>' : '') +
       '<div class="cards">' + c(o.users, 'пользователей всего') + c(o.usersWeek, 'новых за 7 дней') + c(o.activeWeek, 'входили за 7 дней') + c(o.withTelegram, 'с Telegram') + c(o.withData, 'сохранили данные') +
       c(o.feedback, 'сообщений (новых: ' + o.feedbackNew + ')') + c(o.photos, 'фото загружено') + c(o.photosFailed, 'фото с проблемами') + c(o.reportsBad + ' / ' + o.reports, 'распознаваний с замечаниями') + '</div>' +
-      '<p class="muted small">Фото хранятся ' + o.photoKeepDays + ' дней, потом удаляются автоматически.</p>';
+      '<p class="muted small">Фото хранятся ' + o.photoKeepDays + ' дней, потом удаляются автоматически.</p>' + devicesBlock();
   };
+  /** С чего работают: телефон / планшет / компьютер, система, Telegram, «на экране Домой», ширина экрана, по дням. */
+  var DEV = { mobile: 'Телефон', tablet: 'Планшет', desktop: 'Компьютер' };
+  function devicesBlock() {
+    var d = DATA.devices; if (!d || !d.total) return '';
+    var all = d.total.v || 0, pc = function (v) { return all ? Math.round(v * 100 / all) : 0; };
+    var bar = function (label, x) { x = x || { v: 0, u: 0, h: 0 }; return '<div class="dbar"><span class="dl">' + esc(label) + '</span><span class="dt"><i style="width:' + pc(x.v) + '%"></i></span><span class="dv"><b>' + pc(x.v) + '%</b> <span class="muted small">' + x.v + ' браузер.' + (x.u ? ' · ' + x.u + ' вошедш.' : '') + ' · ' + x.h + ' откр.</span></span></div>'; };
+    var sel = [7, 30, 90].map(function (n) { return '<button class="btn' + (DDAYS === n ? ' on' : '') + '" data-ddays="' + n + '">' + n + ' дн.</button>'; }).join(' ');
+    var os = Object.keys(d.os || {}).sort(function (a, b) { return d.os[b].v - d.os[a].v; });
+    var days = Object.keys(d.daily || {}).slice(0, 14);
+    var wmax = Math.max.apply(null, Object.keys(d.width).map(function (k) { return d.width[k]; }).concat([1]));
+    return '<div class="panel" id="devices"><h2>С чего работают <span class="muted small">за ' + d.days + ' дн. · ' + all + ' браузеров, ' + d.total.u + ' вошедших, ' + d.total.h + ' открытий</span></h2>' +
+      '<p>' + sel + '</p>' + (all ? '' : '<p class="muted">Пока никто не открывал сайт с этого обновления.</p>') +
+      ['mobile', 'tablet', 'desktop'].map(function (k) { return bar(DEV[k], d.device[k]); }).join('') +
+      '<h3>Система</h3>' + os.map(function (k) { return bar(k === 'other' ? 'другая' : k, d.os[k]); }).join('') +
+      '<h3>Где открывают</h3>' + bar('Telegram (мини-приложение)', d.tg.tg) + bar('Браузер', d.tg.web) + (d.pwa.pwa ? bar('Как приложение (экран «Домой»)', d.pwa.pwa) : '') +
+      '<h3>Ширина экрана, px</h3>' + Object.keys(d.width).map(function (k) { var n = d.width[k]; return '<div class="dbar"><span class="dl">' + esc(k) + '</span><span class="dt"><i style="width:' + Math.round(n * 100 / wmax) + '%"></i></span><span class="dv">' + n + '</span></div>'; }).join('') +
+      (days.length ? '<h3>По дням (браузеров)</h3><table><thead><tr><th>День</th><th>Телефон</th><th>Планшет</th><th>Компьютер</th></tr></thead><tbody>' + days.map(function (k) { var x = d.daily[k]; return '<tr><td>' + esc(k.split('-').reverse().join('.')) + '</td><td>' + (x.mobile || 0) + '</td><td>' + (x.tablet || 0) + '</td><td>' + (x.desktop || 0) + '</td></tr>'; }).join('') + '</tbody></table>' : '') +
+      '<p class="muted small">Считаем браузеры (случайный id в браузере, без IP и личных данных); один человек с телефона и компьютера — два браузера. «Вошедших» — сколько из них с входом в аккаунт. Собираем с ' + esc((d.since || '').split('-').reverse().join('.') || 'сегодня') + '.</p></div>';
+  }
 
   VIEW.users = function () {
     var us = DATA.users || [];
@@ -177,6 +199,7 @@ pre.state { font: 12px/1.4 var(--mono); background: #F4F7F5; padding: 10px; bord
       '<div class="panel"><h2>Пользователь #' + u.id + '</h2><table><tbody>' +
       '<tr><th>E-mail</th><td>' + esc(u.email || '—') + '</td></tr><tr><th>Telegram</th><td>' + (u.tg_username ? '<a href="https://t.me/' + esc(u.tg_username) + '" target="_blank" rel="noopener">@' + esc(u.tg_username) + '</a>' : '') + (u.tg_id ? ' <span class="muted mono">' + esc(u.tg_id) + '</span>' : '—') + '</td></tr>' +
       '<tr><th>Телефон / e-mail в профиле</th><td>' + esc([s.phone, s.contactEmail].filter(Boolean).join(' · ') || '—') + '</td></tr>' +
+      '<tr><th>Устройства</th><td>' + ((d.devices || []).length ? d.devices.map(function (x) { return esc((DEV[x.device] || x.device) + ', ' + x.os + (+x.tg ? ', Telegram' : ', браузер') + (+x.pwa ? ', как приложение' : '') + (x.sw ? ', ' + x.sw + ' px' : '')) + ' <span class="muted small">' + x.hits + ' откр., последний раз ' + when(x.last_at) + '</span>'; }).join('<br>') : '<span class="muted">нет данных (собираем с 02.11.2026)</span>') + '</td></tr>' +
       '<tr><th>Регистрация</th><td>' + when(u.created_at) + '</td></tr><tr><th>Последний вход</th><td>' + when(u.last_login_at) + '</td></tr><tr><th>Данные обновлены</th><td>' + when(u.state_at) + '</td></tr>' +
       '<tr><th>Счётчик</th><td>' + esc(MODEL[s.meter] || s.meter || '—') + (s.unit ? ' · ' + esc(s.unit) : '') + (st.meter && st.meter.serial ? ' · № ' + esc(st.meter.serial) : '') + '</td></tr>' +
       '<tr><th>Базовые показания</th><td class="mono small">' + (st.baseline ? esc(JSON.stringify(st.baseline)) : '—') + '</td></tr></tbody></table></div>' +
@@ -241,7 +264,7 @@ pre.state { font: 12px/1.4 var(--mono); background: #F4F7F5; padding: 10px; bord
 
   var LOAD = {
     settings: function () { return get('/admin/settings').then(function (j) { DATA.settings = j; }); },
-    overview: function () { return Promise.resolve(); },
+    overview: function () { return get('/admin/devices?days=' + DDAYS).then(function (j) { DATA.devices = j; }); },
     users: function () { return get('/admin/users?q=' + encodeURIComponent(Q)).then(function (j) { DATA.users = j.users; }); },
     feedback: function () { return get('/admin/feedback').then(function (j) { DATA.feedback = j.feedback; }); },
     photos: function () { return get('/admin/photos' + (PF === 'problems' ? '?filter=problems' : '')).then(function (j) { DATA.photos = j.photos; }); },
@@ -257,7 +280,8 @@ pre.state { font: 12px/1.4 var(--mono); background: #F4F7F5; padding: 10px; bord
   }
 
   document.addEventListener('click', function (e) {
-    var el = e.target.closest('[data-tab],[data-user],[data-pf],[data-fb],[data-zoom],.zoom'); if (!el) return;
+    var el = e.target.closest('[data-tab],[data-user],[data-pf],[data-fb],[data-zoom],[data-ddays],.zoom'); if (!el) return;
+    if (el.hasAttribute('data-ddays')) { e.preventDefault(); DDAYS = +el.getAttribute('data-ddays'); show('overview'); return; }
     if (el.classList.contains('zoom')) { el.remove(); return; }
     if (el.hasAttribute('data-zoom')) { var z = document.createElement('div'); z.className = 'zoom'; z.innerHTML = '<img src="' + esc(el.src) + '" alt="">'; document.body.appendChild(z); return; }
     e.preventDefault();

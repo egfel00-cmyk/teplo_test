@@ -23,6 +23,7 @@
 //  POST /api/recognize/local        {ids, results} — итог распознавания в браузере (свой движок, без нейросети) → в аналитику
 //  POST /api/recognize/run          {ids[≤3], offset, ctx} → распознанное (vision-API, ключ в config.php)
 //  POST /api/recognize/report       {ids, missing, conflicts, corrections} — итог для аналитики
+//  POST /api/visit                  {vid, device, os, tg, pwa, sw} — с чего открыли сайт (аналитика устройств), вход не нужен
 //  POST /api/feedback               {text, contact?, page, screen, lang} — плавающая кнопка «Відгук», вход не нужен
 //  GET  /api/admin/*                аналитика владельца (только admins из config.php), см. app/admin.php
 //  GET  /api/admin/photo?id=…       байты фото (не JSON)
@@ -228,6 +229,7 @@ final class Api {
       case 'GET /api/docs/file': if (!$user) throw new HttpError(401, 'unauthorized'); $res->file = Docs::file((int)$user['id'], (string)($r->query()['id'] ?? '')); return [];
       case 'POST /api/docs/delete': if (!$user) throw new HttpError(401, 'unauthorized'); return Docs::delete((int)$user['id'], (string)($in['id'] ?? ''));
       case 'POST /api/feedback': return Feedback::create($user, $in, $r, $ip);
+      case 'POST /api/visit': return Visits::hit($user, $in, $r, $ip);
       case 'GET /api/admin/me': if (!$user) throw new HttpError(401, 'unauthorized'); return ['admin' => Admin::is($user)];
       case 'POST /api/bot/setup': {
         $secret = (string)Cfg::get('webhook_secret');

@@ -90,7 +90,8 @@ final class Admin {
           'feedback' => Db::q('SELECT * FROM feedback WHERE user_id = ? ORDER BY id DESC LIMIT 100', [$id])->fetchAll(),
           'photos' => self::photos('WHERE ph.user_id = ?', [$id], 100),
           'reports' => Db::q('SELECT * FROM recog_reports WHERE user_id = ? ORDER BY id DESC LIMIT 100', [$id])->fetchAll(),
-          'audit' => Db::q('SELECT action, ip, created_at FROM audit_log WHERE user_id = ? ORDER BY id DESC LIMIT 50', [$id])->fetchAll()];
+          'audit' => Db::q('SELECT action, ip, created_at FROM audit_log WHERE user_id = ? ORDER BY id DESC LIMIT 50', [$id])->fetchAll(),
+          'devices' => Visits::ofUser($id)];
       }
       case 'GET /api/admin/feedback':
         return ['feedback' => Db::q("SELECT f.*, u.email, i.username AS tg_username FROM feedback f LEFT JOIN users u ON u.id = f.user_id
@@ -133,6 +134,7 @@ final class Admin {
         $setup = Telegram::setup();
         return ['ok' => $setup['ok'], 'bot' => $me['result']['username'], 'setup' => $setup, 'settings' => self::settings()];
       }
+      case 'GET /api/admin/devices': return Visits::summary((int)($q['days'] ?? 30));
       case 'GET /api/admin/reminders': {
         $next = Reminders::next(time());
         return ['next' => $next, 'preview' => $next ? Reminders::preview($next['kind'], $next['ym']) : [], 'log' => Reminders::log(), 'cron' => Cron::read() + ['ago' => Cron::age()],

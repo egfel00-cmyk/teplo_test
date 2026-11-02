@@ -30,6 +30,7 @@ final class Cfg {
         'recog_upload' => [120, 3600],   // фото на распознавание: в час на пользователя
         'recog_run' => [40, 86400],      // запросов к нейросети: в сутки на пользователя (пачки по 3 фото)
         'feedback_ip' => [10, 3600],     // отзывов с одного IP в час
+        'visit_ip' => [120, 3600],       // отметок «открыли сайт» с одного IP в час (устройства в аналитике)
         'bot_photo' => [60, 3600],       // фото боту в Telegram: в час на пользователя
       ],
       'max_body_bytes' => 300 * 1024,
@@ -135,6 +136,8 @@ final class Db {
       "CREATE TABLE IF NOT EXISTS bot_inbox (photo_id CHAR(24) PRIMARY KEY, user_id INT NOT NULL, taken_at INT NOT NULL, done TINYINT NOT NULL DEFAULT 0, created_at VARCHAR(25) NOT NULL)$tail",
       // напоминания ботом: какое уже отправлено в этом месяце (не чаще раза)
       "CREATE TABLE IF NOT EXISTS reminders_sent (user_id INT NOT NULL, kind VARCHAR(16) NOT NULL, ym CHAR(7) NOT NULL, sent_at VARCHAR(25) NOT NULL, PRIMARY KEY (user_id, kind, ym))$tail",
+      // с чего работают: телефон / планшет / компьютер (одна строка на браузер в сутки, app/visits.php)
+      "CREATE TABLE IF NOT EXISTS visits (day CHAR(10) NOT NULL, vid VARCHAR(24) NOT NULL, user_id INT NULL, device VARCHAR(8) NOT NULL, os VARCHAR(10) NOT NULL, tg TINYINT NOT NULL DEFAULT 0, pwa TINYINT NOT NULL DEFAULT 0, sw SMALLINT NULL, hits INT NOT NULL DEFAULT 1, first_at VARCHAR(25) NOT NULL, last_at VARCHAR(25) NOT NULL, PRIMARY KEY (day, vid))$tail",
       "CREATE TABLE IF NOT EXISTS recog_reports (id $ai, user_id INT NOT NULL, photo_ids TEXT NULL, kind VARCHAR(16) NOT NULL, ok TINYINT NOT NULL DEFAULT 0, text TEXT NOT NULL, data TEXT NULL, created_at VARCHAR(25) NOT NULL)$tail",
     ];
     foreach ($sql as $s) self::$pdo->exec($s);

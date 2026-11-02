@@ -7,6 +7,7 @@ require __DIR__ . '/../app/telegram.php';
 require __DIR__ . '/../app/reminders.php';
 require __DIR__ . '/../app/recognize.php';
 require __DIR__ . '/../app/admin.php';
+require __DIR__ . '/../app/visits.php';
 require __DIR__ . '/../app/docs.php';
 require __DIR__ . '/../app/api.php';
 $TMP = sys_get_temp_dir() . '/teplo_test_' . getmypid(); putenv('SITE_DATA=' . $TMP);
@@ -180,6 +181,23 @@ $us = $boss->req('GET', '/api/admin/users', null, ['QUERY_STRING' => 'q=photo@']
 ok('админ: поиск пользователя по email', $us->status === 200 && count($us->body['users']) === 1 && (int)$us->body['users'][0]['photos'] === 7);
 $ud = $boss->req('GET', '/api/admin/user', null, ['QUERY_STRING' => 'id=' . $us->body['users'][0]['id']]);
 ok('админ: карточка пользователя с фото и журналом', $ud->status === 200 && count($ud->body['photos']) === 7 && count($ud->body['reports']) >= 2);
+// с чего работают: отметки браузеров → сводка в /admin
+$anon->req('POST', '/api/visit', ['vid' => 'abc12345phone', 'device' => 'mobile', 'os' => 'iOS', 'tg' => true, 'sw' => 390]);
+$anon->req('POST', '/api/visit', ['vid' => 'abc12345phone', 'device' => 'mobile', 'os' => 'iOS', 'tg' => true, 'sw' => 390]);
+$boss->req('POST', '/api/visit', ['vid' => 'boss1234desk', 'device' => 'desktop', 'os' => 'macOS', 'sw' => 1512]);
+$pad = new Browser('10.0.5.9'); $pad->req('POST', '/api/visit', ['vid' => 'pad12345', 'device' => 'tablet', 'os' => 'Android', 'sw' => 800]);
+$anon->req('POST', '/api/visit', ['vid' => 'junk12345', 'device' => 'фигня', 'os' => 'x']);   // чужие значения → по User-Agent ('test' → компьютер, other)
+ok('разбор User-Agent: Android без Mobile — планшет, Android Mobile — телефон, iPhone — телефон iOS', Visits::guess('Mozilla/5.0 (Linux; Android 13; SM-X200) Safari/537.36') === ['device' => 'tablet', 'os' => 'Android']
+  && Visits::guess('Mozilla/5.0 (Linux; Android 14; Pixel 8) Mobile Safari/537.36')['device'] === 'mobile' && Visits::guess('Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X)') === ['device' => 'mobile', 'os' => 'iOS']);
+ok('отметка без vid → 400', $anon->req('POST', '/api/visit', ['vid' => '1'])->status === 400);
+$dv = $boss->req('GET', '/api/admin/devices', null, ['QUERY_STRING' => 'days=30']);
+ok('устройства: телефон 1 браузер / 2 открытия, компьютер вошедший, неизвестное → по UA (Android без Mobile = планшет)', $dv->status === 200
+  && $dv->body['device']['mobile']['v'] === 1 && $dv->body['device']['mobile']['h'] === 2 && $dv->body['device']['desktop']['u'] === 1
+  && $dv->body['device']['tablet']['v'] === 1 && $dv->body['device']['desktop']['v'] === 2 && isset($dv->body['os']['other']) && $dv->body['tg']['tg']['v'] === 1 && $dv->body['tg']['web']['v'] === 3 && $dv->body['width']['360–430'] === 1, $dv->body);
+ok('устройства — только админу', $anon->req('GET', '/api/admin/devices')->status === 401);
+$bid = Db::one("SELECT id FROM users WHERE email = 'boss@example.ua'")['id'];
+$bu = $boss->req('GET', '/api/admin/user', null, ['QUERY_STRING' => 'id=' . $bid]);
+ok('карточка человека: его устройства', $bu->status === 200 && count($bu->body['devices']) === 1 && $bu->body['devices'][0]['device'] === 'desktop', $bu->body['devices'] ?? null);
 $ph = $boss->req('GET', '/api/admin/photos', null, ['QUERY_STRING' => 'filter=problems']);
 ok('админ: фото с проблемами', $ph->status === 200 && count($ph->body['photos']) >= 2);
 $pf = $boss->req('GET', '/api/admin/photo', null, ['QUERY_STRING' => 'id=' . $r1->body['id']]);
