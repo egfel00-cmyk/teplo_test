@@ -433,6 +433,11 @@ input[type=text]:not(.dmy-native):not(.pl-in), input[type=email], input[type=pas
 .legal-foot { display: flex; flex-wrap: wrap; gap: 8px 20px; justify-content: center; margin: 28px 0 8px; padding-top: 16px; border-top: 1px solid var(--c-line); font-size: 14px; }
 .legal-foot a { color: var(--c-ink-2); min-height: 44px; display: inline-flex; align-items: center; }
 
+/* ввод показаний на телефоне: меньше пустоты между полем и кнопками; с открытой клавиатурой — запас снизу,
+   чтобы кнопки можно было поставить прямо над клавиатурой (а сверху остались подсказка и пример экрана) */
+@media (max-width: 959px) { .wiz .field { margin-bottom: 4px; } .wiz .field .help { margin-top: 4px; } .wiz-actions { margin-top: 10px; } }
+.kb-open .wiz { padding-bottom: 70vh; }
+
 </style>
 <style>.top { padding-top: max(12px, env(safe-area-inset-top)); }</style>
 </head>
@@ -2767,7 +2772,7 @@ input[type=text]:not(.dmy-native):not(.pl-in), input[type=email], input[type=pas
       right = '<h1>' + esc(title) + '</h1>' + s.fields.map(function (k) { return k === 'errCode' ? errCodeField() : numField(k, prev); }).join('');
     }
     var isLast = i === n - 1;
-    var actions = '<div class="wiz-actions">' + (i > 0 ? '<a class="btn sec" href="#step-' + (i - 1) + '" data-key="step-back">' + ico('back', 20) + '<span>' + esc(t('back')) + '</span></a>' : '') +
+    var actions = '<div class="wiz-actions">' + (i > 0 ? '<a class="btn sec" href="#step-' + (i - 1) + '" data-act="step-back" data-i="' + (i - 1) + '" data-key="step-back">' + ico('back', 20) + '<span>' + esc(t('back')) + '</span></a>' : '') +
       '<button class="btn" data-act="step-next" data-i="' + i + '" data-key="step-next">' + esc(isLast ? t('s_to_check') : t('next')) + '</button></div>';
     return { screen: 'S05', route: 'step', bare: true, closeTo: 'home', html: head + '<div class="wiz"><div>' + left + '</div><div><form id="step-form" novalidate>' + right + actions + '</form></div></div>' };
   };
@@ -3627,8 +3632,34 @@ input[type=text]:not(.dmy-native):not(.pl-in), input[type=email], input[type=pas
       var el = document.querySelector('[data-field="' + missing[0] + '"]'); if (el) el.focus();
       return;
     }
-    if (i >= steps().length - 1) go('check'); else go('step-' + (i + 1));
+    if (i >= steps().length - 1) go('check'); else goStep(i + 1);
   }
+  /** Переход между шагами прямо в обработчике нажатия: так телефон разрешает сразу поставить курсор в новое поле —
+   *  клавиатура не закрывается и не открывается заново, экран не прыгает (через смену адреса фокус был бы уже «не от пользователя»). */
+  function goStep(n) {
+    try { history.pushState(null, '', '#step-' + n); } catch (e) { location.hash = 'step-' + n; return; }
+    render(document.documentElement.classList.contains('kb-open'));   // клавиатура открыта — не дёргать прокрутку в начало
+    var f = document.querySelector('[data-field]:not([type=radio])');
+    if (f && f.type !== 'date') { f.focus({ preventScroll: true }); fitStep(); }
+  }
+  /** Клавиатура открыта: прокрутить так, чтобы кнопки «Назад/Далі» стояли прямо над ней — сверху остаётся видна подсказка и пример экрана. */
+  function fitStep() {
+    var vv = window.visualViewport; if (!vv || !/^step-/.test(routeName())) return;
+    var run = function () {
+      var kb = vv.height < window.innerHeight * 0.8; document.documentElement.classList.toggle('kb-open', kb);
+      if (!kb) return;
+      var a = document.querySelector('.wiz-actions'), f = document.activeElement; if (!a || !f || !f.matches || !f.matches('[data-field]')) return;
+      var d = a.getBoundingClientRect().bottom + 10 - (vv.offsetTop + vv.height);
+      var topRoom = f.getBoundingClientRect().top - vv.offsetTop - 8;   // поле ввода не должно уйти вверх за край
+      if (d > topRoom) d = topRoom;
+      if (Math.abs(d) > 3) window.scrollBy(0, d);
+    };
+    requestAnimationFrame(run); setTimeout(run, 120); setTimeout(run, 400);
+  }
+  if (window.visualViewport) window.visualViewport.addEventListener('resize', function () { fitStep(); });
+  document.addEventListener('focusin', function (e) { if (e.target && e.target.matches && e.target.matches('[data-field]') && /^step-/.test(routeName())) fitStep(); });
+  // на компьютере: нажатие «Далі» не уводит фокус из поля (на телефоне фокус ставит goStep)
+  document.addEventListener('mousedown', function (e) { if (e.target.closest && e.target.closest('[data-act="step-next"],[data-act="step-back"]') && document.activeElement && document.activeElement.matches && document.activeElement.matches('[data-field]')) e.preventDefault(); });
   function liveCheck(el) {
     var k = el.getAttribute('data-field'), v = el.value;
     if (k === 'date') { S.draft.date = v; save(); return; }
@@ -3677,6 +3708,7 @@ input[type=text]:not(.dmy-native):not(.pl-in), input[type=email], input[type=pas
         break;
       }
       case 'step-next': e.preventDefault(); stepNext(+el.getAttribute('data-i')); break;
+      case 'step-back': e.preventDefault(); readStepInputs(); goStep(+el.getAttribute('data-i')); break;
       case 'ec': { var ctl = document.getElementById('ec-ctl'); if (ctl) ctl.style.display = el.value === 'code' ? '' : 'none'; if (el.value === 'code') { var f2 = document.getElementById('f-errCode'); if (f2) f2.focus(); } break; }
       case 'fix': go('step-' + stepOfField(el.getAttribute('data-field'))); break;
       case 'save-inter': saveReading('intermediate'); toast(t('c_saved_inter')); go('home'); break;

@@ -419,3 +419,8 @@ input[type=text]:not(.dmy-native):not(.pl-in), input[type=email], input[type=pas
 .legal h2 { font-size: 18px; margin: 0 0 8px; } .legal p, .legal ul { margin: 0 0 6px; line-height: 1.55; max-width: 70ch; } .legal ul { padding-left: 1.3em; } .legal li { margin-bottom: 4px; }
 .legal-foot { display: flex; flex-wrap: wrap; gap: 8px 20px; justify-content: center; margin: 28px 0 8px; padding-top: 16px; border-top: 1px solid var(--c-line); font-size: 14px; }
 .legal-foot a { color: var(--c-ink-2); min-height: 44px; display: inline-flex; align-items: center; }
+
+/* ввод показаний на телефоне: меньше пустоты между полем и кнопками; с открытой клавиатурой — запас снизу,
+   чтобы кнопки можно было поставить прямо над клавиатурой (а сверху остались подсказка и пример экрана) */
+@media (max-width: 959px) { .wiz .field { margin-bottom: 4px; } .wiz .field .help { margin-top: 4px; } .wiz-actions { margin-top: 10px; } }
+.kb-open .wiz { padding-bottom: 70vh; }
