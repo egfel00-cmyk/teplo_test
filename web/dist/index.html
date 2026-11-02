@@ -788,6 +788,15 @@ fieldset.field { border: 0; padding: 0; min-width: 0; }
 .aw-q { margin-bottom: var(--sp-4); }
 .dest-place { margin: 0 0 12px; padding: 4px 0 4px 12px; border-left: 6px solid var(--pc); }
 
+/* ---- світло (этап 3) ---- */
+.ucard-elec .ucard-top .ico { color: var(--c-elec); }
+.kpi.elec { border-left-color: var(--c-elec); }
+.efield { border: 1.5px solid var(--c-line); border-radius: 14px; padding: 12px 16px 4px; margin: 0 0 16px; background: var(--c-surface); min-width: 0; }
+.efield legend { font-weight: 600; padding: 0 6px; }
+.kind-sw .c-elec { color: var(--c-elec); }
+/* четыре вида (тепло, гаряча, холодна, світло) — на телефоне в две строки по два */
+@media (max-width: 560px) { .kind-sw.many { display: grid; grid-template-columns: 1fr 1fr; border-radius: 16px; } .kind-sw.many button { border-radius: 12px; } }
+
 </style>
 <style>.top { padding-top: max(12px, env(safe-area-inset-top)); }</style>
 </head>
@@ -1925,10 +1934,10 @@ fieldset.field { border: 0; padding: 0; min-width: 0; }
       kd_heat: 'Опалення', kd_heat_s: 'Теплолічильник у квартирі — показання в ХТМ',
       kd_hot: 'Гаряча вода', kd_hot_s: 'Водомір гарячої — показання у Водоканал і ХТМ',
       kd_cold: 'Холодна вода', kd_cold_s: 'Водомір холодної — показання у Водоканал',
-      kd_gas: 'Газ', kd_gas_s: 'Газовий лічильник', kd_elec: 'Електрика', kd_elec_s: 'Електролічильник, зони день/ніч',
+      kd_gas: 'Газ', kd_gas_s: 'Газовий лічильник', kd_elec: 'Світло', kd_elec_s: 'Електролічильник — показання в Харківобленерго',
       kd_soon: 'Скоро', kd_have: 'Вже є', kd_have_all: 'Вже додано', kd_have_n: 'Вже є: {n}. Додати ще один',
-      am_tile: 'Додати лічильник', am_tile_s: 'Опалення, гаряча чи холодна вода',
-      am_empty_t: 'У цій квартирі ще немає лічильників', am_empty_s: 'Додайте ті, що є: опалення, гарячу чи холодну воду. Газ і світло — скоро.',
+      am_tile: 'Додати лічильник', am_tile_s: 'Опалення, вода, світло',
+      am_empty_t: 'У цій квартирі ще немає лічильників', am_empty_s: 'Додайте ті, що є: опалення, гарячу чи холодну воду, світло. Газ — скоро.',
       am_title: 'Який лічильник додати?', am_lead: 'Додайте лише ті, що є в цій квартирі. Прибрати чи замінити можна будь-коли — історія залишиться.',
       am_restore_t: 'Прибрані раніше', am_restore: 'Повернути', am_removed_on: 'прибрано {d}, історія збережена',
       hi_nometers: 'У цій квартирі ще немає лічильників. Додайте — і тут з’явиться історія.',
@@ -1962,6 +1971,40 @@ fieldset.field { border: 0; padding: 0; min-width: 0; }
       wi_other: 'Схоже на показання квартири «{p}» (там останні {v}). Зараз відкрита «{c}» — перевірте, куди вносите.',
       c_other_place: 'Схоже на показання теплолічильника квартири «{p}» (там {v} Гкал). Зараз відкрита «{c}».', c_other_place_fix: 'Якщо це інша квартира — скасуйте введення й відкрийте її через «Усі квартири».',
       wd_for: 'Квартира: {p}',
+      // ---- світло (этап 3): Харківобленерго, вікно — останні 2 дні місяця і 1–3 число, зони, ціна 4,32
+      en_prev: 'Минулого разу {v} кВт·год ({d})', eh_base: 'стартові — з налаштування лічильника', esv_title: 'Як заощадити на світлі', kv_elec: 'Світло', ue_add: 'Внести показання світла', ue_next: 'Наступне — {a}–{b}', ue_due: 'Передати {a}–{b}', aw_q_elec: 'Оберіть, скільки зон на лічильнику, — решту можна пропустити.', pv_m_elec: 'Світло (Харківенергозбут)',
+      ed_org: 'Харківобленерго', ed_what: 'Показання світла · рахунок виставляє Харківенергозбут', ed_due: 'до {d}', ed_due_next: '{a}–{b}',
+      ed_lead: 'Показання світла приймають в останні 2 дні місяця і 1–3 числа наступного. Подані 1–3 числа зараховуються на 1-ше.',
+      ed_nosum: 'Кожну зону — окремо, не додавайте їх. Загальний показник (сума зон) не передають.', ed_acc: 'Особовий рахунок {a}',
+      ed_app_ios: 'Харенерго — iPhone', ed_app_android: 'Харенерго — Android', ed_more: 'Ще — Viber-бот Харківобленерго і кол-центр:', ed_zbut: 'Особовий рахунок — у платіжці Харківенергозбуту,',
+      em_title: 'Мій електролічильник', em_name: 'Де стоїть / як назвати', em_name_ph: 'квартира, бойлер', em_acc: 'Особовий рахунок', em_acc_h: 'З платіжки Харківенергозбуту — щоб скопіювати при передачі.',
+      em_zones_fix: 'Кількість зон змінилась (поставили новий лічильник)? Приберіть цей і додайте новий — історія залишиться.', em_manage: 'Прибрати чи додати лічильник — на сторінці квартири',
+      ehow_t: 'Як зняти показання світла',
+      ehow: 'Записуйте лише цифри до коми — десяті (часто інший колір чи після коми) не передають.|Двозонний лічильник сам перемикає табло: день — T1 (або 1.8.1, 15.8.1, Т11), ніч — T2 (1.8.2, 15.8.2, Т12). Зачекайте 10–15 секунд, поки з’явиться потрібна зона.|Загальний показник (Т1 з сумою, 1.8.0) передавати не треба — лише зони окремо.|Передавайте в останні 2 дні місяця або 1–3 числа: тоді рахунок буде за фактом, а не «за середнім».',
+      eh_on: 'Електроопалення (пільгова ціна оформлена)', eh_sub: 'З 1 жовтня по 30 квітня — 2,64 грн за перші 2000 кВт·год на місяць, далі 4,32. Лише якщо будинок з електроопаленням і пільгу оформлено.',
+      eh_hint: 'Натисніть рядок — показання, скільки набігло і почім, передача. Місяць — той, за який зараховано: показання 1–3 числа — за попередній.',
+      ez_all: 'Показання', ez_day: 'День', ez_night: 'Ніч', ez_peak: 'Пік', ez_half: 'Напівпік', ez_night3: 'Ніч',
+      ezt_day: 'день', ezt_night: 'ніч', ezt_peak: 'пік', ezt_half: 'н/пік',
+      ez_n1: 'Однозонний', ez_n2: 'Двозонний: день і ніч', ez_n3: 'Тризонний: пік, напівпік, ніч',
+      en_title: 'Внести показання світла', en_lead_open: 'Зараз приймають: {a}–{b}. Лише цифри до коми.', en_lead_closed: 'Наступне приймання — {a}–{b}. Внести можна й зараз — передасте у вікно.',
+      en_zones_2: 'Табло перемикається саме: день — T1 (1.8.1), ніч — T2 (1.8.2). Загальний (1.8.0) не потрібен.', en_zones_3: 'Табло перемикається саме: пік, напівпік, ніч — кожну зону окремо.',
+      en_digits: 'Лише цифри до коми: 12345,6 → 12345.',
+      ei_empty: 'Впишіть показання.', ei_bad: 'Лише цифри, наприклад 12345.', ei_fraction: 'Передається без десятих: {w}.', ei_less: 'Менше, ніж минулого разу ({prev}) — перевірте цифри й зону.',
+      ei_sum: 'Схоже на загальний показник (суму зон). Потрібні цифри саме цієї зони — дочекайтеся її на табло.', ei_jump: '≈{n} кВт·год на місяць — багато для квартири. Перевірте цифри.',
+      ei_same: 'Не змінилось — так буває, якщо ніхто не жив.', ei_other: 'Схоже на показання квартири «{p}» (там останні {v}). Зараз відкрита «{c}» — перевірте, куди вносите.',
+      ea_title: 'Новий електролічильник', ea_lead: 'Головне — скільки зон. Решту можна вписати пізніше.', ea_zones: 'Скільки зон на лічильнику',
+      ea_z1_s: 'Одне число на табло — звичайний лічильник', ea_z2_s: 'Табло показує по черзі T1 і T2 (день і ніч), ніч — удвічі дешевше', ea_z3_s: 'Пік, напівпік і ніч — рідко в квартирах',
+      ea_val: 'Показання зараз', ea_val_h: 'Від них рахуватиметься розхід. Можна не вписувати.', ea_name_need: 'Такий лічильник уже є ({n}) — назвіть цей, щоб не плутати.',
+      ea_add: 'Додати лічильник', ea_e_val: 'Лише цифри, наприклад 12345.', ea_e_all: 'Впишіть усі зони або жодної.', ea_added: 'Електролічильник додано',
+      er_for: 'Зараховується за {m}', er_for_days: 'за {d} дн.', er_price: 'ціна {p} грн за кВт·год',
+      est_lead: 'Скільки світла за місяць і скільки це коштує. Місяць — той, за який зараховано показання.', est_empty: 'Ще немає двох показань — після наступного тут з’являться місяці.',
+      est_kwh: 'кВт·год за місяць', est_kwh_sub: 'Від показань до показань, по місяцях.', est_tariff: 'За ціною {p} грн/кВт·год (ніч — дешевше за двозонним).',
+      est_method: 'Вартість — за фіксованою ціною для населення (постанова КМУ № 483), без пільг і субсидій. Остаточна сума — у платіжці Харківенергозбуту.',
+      kpi_e_last: '{m}: {v} кВт·год ≈ {uah} грн', kpi_e_night: 'вночі — {p} %', kpi_e_ten: 'Мінус 10 % — це ≈ {k} кВт·год і {uah} на місяць, {y} грн за рік.',
+      kpi_e_two: 'Двозонний лічильник: якби 30 % світла йшло вночі (бойлер, прання, посудомийка), ви б платили на ≈ {uah} менше щомісяця.',
+      esv_lead: 'Як платити менше за світло — по-простому.', esv_no_data: 'Внесіть показання двічі — тут з’явиться, скільки ви витрачаєте і що можна заощадити.',
+      esv_g1: 'Нічний тариф', esv_g2: 'Вдома', esv_g3: 'Великі споживачі',
+      esv_tips: 'Двозонний лічильник|Вночі (23:00–07:00) світло вдвічі дешевше. Лічильник ставить Харківобленерго за заявою; окупається, якщо вночі йде хоча б третина.||Бойлер — уночі|Нагрів води — один з найбільших споживачів. Таймер на бойлер на 23:00–07:00 з двозонним лічильником зменшує цю частину рахунку вдвічі.||Прання й посудомийка — з відкладеним стартом|Більшість машин уміють стартувати пізніше: увімкніть на ніч.||Лампи — світлодіодні|Світлодіодна лампа витрачає у 5–8 разів менше, ніж звичайна, і служить роками.||Режим очікування|Телевізор, приставка, зарядки в розетці цілодобово — це 5–10 % рахунку. Подовжувач з вимикачем вирішує.||Холодильник|Не ставте біля плити чи батареї, не тримайте дверцята відчиненими, розморожуйте вчасно — шар льоду збільшує витрату.||Чайник і плита|Кип’ятіть стільки води, скільки треба. Кришка на каструлі — швидше й дешевше.||Обігрівачі|Масляний обігрівач на всю ніч — сотні кВт·год за місяць. Утеплення вікон і термостат дають більше, ніж здається.',
       wa_title: 'Новий водомір — {k}', wa_lead: 'Цифри можна не вводити зараз — внесете пізніше, зокрема з фото.',
       wa_name: 'Де стоїть', wa_name_ph: 'кухня, ванна', wa_name_h: 'Якщо водомірів цього виду кілька — щоб не плутати.',
       wa_name_need: 'Такий водомір уже є ({n}) — назвіть цей, щоб не плутати: кухня, ванна…',
@@ -2664,10 +2707,10 @@ fieldset.field { border: 0; padding: 0; min-width: 0; }
       kd_heat: 'Отопление', kd_heat_s: 'Теплосчётчик в квартире — показания в ХТМ',
       kd_hot: 'Горячая вода', kd_hot_s: 'Водомер горячей — показания в Водоканал и ХТМ',
       kd_cold: 'Холодная вода', kd_cold_s: 'Водомер холодной — показания в Водоканал',
-      kd_gas: 'Газ', kd_gas_s: 'Газовый счётчик', kd_elec: 'Электричество', kd_elec_s: 'Электросчётчик, зоны день/ночь',
+      kd_gas: 'Газ', kd_gas_s: 'Газовый счётчик', kd_elec: 'Свет', kd_elec_s: 'Электросчётчик — показания в Харьковоблэнерго',
       kd_soon: 'Скоро', kd_have: 'Уже есть', kd_have_all: 'Уже добавлен', kd_have_n: 'Уже есть: {n}. Добавить ещё один',
-      am_tile: 'Добавить счётчик', am_tile_s: 'Отопление, горячая или холодная вода',
-      am_empty_t: 'В этой квартире ещё нет счётчиков', am_empty_s: 'Добавьте те, что есть: отопление, горячую или холодную воду. Газ и свет — скоро.',
+      am_tile: 'Добавить счётчик', am_tile_s: 'Отопление, вода, свет',
+      am_empty_t: 'В этой квартире ещё нет счётчиков', am_empty_s: 'Добавьте те, что есть: отопление, горячую или холодную воду, свет. Газ — скоро.',
       am_title: 'Какой счётчик добавить?', am_lead: 'Добавьте только те, что есть в этой квартире. Убрать или заменить можно в любой момент — история останется.',
       am_restore_t: 'Убранные раньше', am_restore: 'Вернуть', am_removed_on: 'убран {d}, история сохранена',
       hi_nometers: 'В этой квартире ещё нет счётчиков. Добавьте — и здесь появится история.',
@@ -2701,6 +2744,40 @@ fieldset.field { border: 0; padding: 0; min-width: 0; }
       wi_other: 'Похоже на показания квартиры «{p}» (там последние {v}). Сейчас открыта «{c}» — проверьте, куда вносите.',
       c_other_place: 'Похоже на показания теплосчётчика квартиры «{p}» (там {v} Гкал). Сейчас открыта «{c}».', c_other_place_fix: 'Если это другая квартира — отмените ввод и откройте её через «Все квартиры».',
       wd_for: 'Квартира: {p}',
+      // ---- свет (этап 3): Харьковоблэнерго, окно — последние 2 дня месяца и 1–3 число, зоны, цена 4,32
+      en_prev: 'В прошлый раз {v} кВт·ч ({d})', eh_base: 'стартовые — с настройки счётчика', esv_title: 'Как сэкономить на свете', kv_elec: 'Свет', ue_add: 'Внести показания света', ue_next: 'Следующее — {a}–{b}', ue_due: 'Передать {a}–{b}', aw_q_elec: 'Выберите, сколько зон на счётчике, — остальное можно пропустить.', pv_m_elec: 'Свет (Харьковэнергосбыт)',
+      ed_org: 'Харьковоблэнерго', ed_what: 'Показания света · счёт выставляет Харьковэнергосбыт', ed_due: 'до {d}', ed_due_next: '{a}–{b}',
+      ed_lead: 'Показания света принимают в последние 2 дня месяца и 1–3 числа следующего. Поданные 1–3 числа засчитываются на 1-е.',
+      ed_nosum: 'Каждую зону — отдельно, не складывайте их. Общий показатель (сумму зон) не передают.', ed_acc: 'Лицевой счёт {a}',
+      ed_app_ios: 'Харэнерго — iPhone', ed_app_android: 'Харэнерго — Android', ed_more: 'Ещё — Viber-бот Харьковоблэнерго и колл-центр:', ed_zbut: 'Лицевой счёт — в платёжке Харьковэнергосбыта,',
+      em_title: 'Мой электросчётчик', em_name: 'Где стоит / как назвать', em_name_ph: 'квартира, бойлер', em_acc: 'Лицевой счёт', em_acc_h: 'Из платёжки Харьковэнергосбыта — чтобы скопировать при передаче.',
+      em_zones_fix: 'Число зон изменилось (поставили новый счётчик)? Уберите этот и добавьте новый — история останется.', em_manage: 'Убрать или добавить счётчик — на странице квартиры',
+      ehow_t: 'Как снять показания света',
+      ehow: 'Записывайте только цифры до запятой — десятые (часто другого цвета или после запятой) не передают.|Двухзонный счётчик сам переключает табло: день — T1 (или 1.8.1, 15.8.1, Т11), ночь — T2 (1.8.2, 15.8.2, Т12). Подождите 10–15 секунд, пока появится нужная зона.|Общий показатель (Т1 с суммой, 1.8.0) передавать не нужно — только зоны отдельно.|Передавайте в последние 2 дня месяца или 1–3 числа: тогда счёт будет по факту, а не «по среднему».',
+      eh_on: 'Электроотопление (льготная цена оформлена)', eh_sub: 'С 1 октября по 30 апреля — 2,64 грн за первые 2000 кВт·ч в месяц, дальше 4,32. Только если дом с электроотоплением и льгота оформлена.',
+      eh_hint: 'Нажмите строку — показания, сколько набежало и почём, передача. Месяц — тот, за который засчитано: показания 1–3 числа — за предыдущий.',
+      ez_all: 'Показания', ez_day: 'День', ez_night: 'Ночь', ez_peak: 'Пик', ez_half: 'Полупик', ez_night3: 'Ночь',
+      ezt_day: 'день', ezt_night: 'ночь', ezt_peak: 'пик', ezt_half: 'п/пик',
+      ez_n1: 'Однозонный', ez_n2: 'Двухзонный: день и ночь', ez_n3: 'Трёхзонный: пик, полупик, ночь',
+      en_title: 'Внести показания света', en_lead_open: 'Сейчас принимают: {a}–{b}. Только цифры до запятой.', en_lead_closed: 'Следующий приём — {a}–{b}. Внести можно и сейчас — передадите в окно.',
+      en_zones_2: 'Табло переключается само: день — T1 (1.8.1), ночь — T2 (1.8.2). Общий (1.8.0) не нужен.', en_zones_3: 'Табло переключается само: пик, полупик, ночь — каждую зону отдельно.',
+      en_digits: 'Только цифры до запятой: 12345,6 → 12345.',
+      ei_empty: 'Впишите показания.', ei_bad: 'Только цифры, например 12345.', ei_fraction: 'Передаётся без десятых: {w}.', ei_less: 'Меньше, чем в прошлый раз ({prev}) — проверьте цифры и зону.',
+      ei_sum: 'Похоже на общий показатель (сумму зон). Нужны цифры именно этой зоны — дождитесь её на табло.', ei_jump: '≈{n} кВт·ч в месяц — много для квартиры. Проверьте цифры.',
+      ei_same: 'Не изменилось — так бывает, если никто не жил.', ei_other: 'Похоже на показания квартиры «{p}» (там последние {v}). Сейчас открыта «{c}» — проверьте, куда вносите.',
+      ea_title: 'Новый электросчётчик', ea_lead: 'Главное — сколько зон. Остальное можно вписать позже.', ea_zones: 'Сколько зон на счётчике',
+      ea_z1_s: 'Одно число на табло — обычный счётчик', ea_z2_s: 'Табло показывает по очереди T1 и T2 (день и ночь), ночь — вдвое дешевле', ea_z3_s: 'Пик, полупик и ночь — редко в квартирах',
+      ea_val: 'Показания сейчас', ea_val_h: 'От них будет считаться расход. Можно не вписывать.', ea_name_need: 'Такой счётчик уже есть ({n}) — назовите этот, чтобы не путать.',
+      ea_add: 'Добавить счётчик', ea_e_val: 'Только цифры, например 12345.', ea_e_all: 'Впишите все зоны или ни одной.', ea_added: 'Электросчётчик добавлен',
+      er_for: 'Засчитывается за {m}', er_for_days: 'за {d} дн.', er_price: 'цена {p} грн за кВт·ч',
+      est_lead: 'Сколько света за месяц и сколько это стоит. Месяц — тот, за который засчитаны показания.', est_empty: 'Ещё нет двух показаний — после следующего здесь появятся месяцы.',
+      est_kwh: 'кВт·ч за месяц', est_kwh_sub: 'От показаний до показаний, по месяцам.', est_tariff: 'По цене {p} грн/кВт·ч (ночь — дешевле по двухзонному).',
+      est_method: 'Стоимость — по фиксированной цене для населения (постановление КМУ № 483), без льгот и субсидий. Окончательная сумма — в платёжке Харьковэнергосбыта.',
+      kpi_e_last: '{m}: {v} кВт·ч ≈ {uah} грн', kpi_e_night: 'ночью — {p} %', kpi_e_ten: 'Минус 10 % — это ≈ {k} кВт·ч и {uah} в месяц, {y} грн в год.',
+      kpi_e_two: 'Двухзонный счётчик: если бы 30 % света шло ночью (бойлер, стирка, посудомойка), вы бы платили на ≈ {uah} меньше каждый месяц.',
+      esv_lead: 'Как платить меньше за свет — по-простому.', esv_no_data: 'Внесите показания дважды — здесь появится, сколько вы тратите и что можно сэкономить.',
+      esv_g1: 'Ночной тариф', esv_g2: 'Дома', esv_g3: 'Крупные потребители',
+      esv_tips: 'Двухзонный счётчик|Ночью (23:00–07:00) свет вдвое дешевле. Счётчик ставит Харьковоблэнерго по заявлению; окупается, если ночью идёт хотя бы треть.||Бойлер — ночью|Нагрев воды — один из самых крупных потребителей. Таймер на бойлер на 23:00–07:00 с двухзонным счётчиком уменьшает эту часть счёта вдвое.||Стирка и посудомойка — с отложенным стартом|Большинство машин умеют стартовать позже: включайте на ночь.||Лампы — светодиодные|Светодиодная лампа тратит в 5–8 раз меньше обычной и служит годами.||Режим ожидания|Телевизор, приставка, зарядки в розетке круглосуточно — это 5–10 % счёта. Удлинитель с выключателем решает.||Холодильник|Не ставьте у плиты или батареи, не держите дверцу открытой, размораживайте вовремя — слой льда увеличивает расход.||Чайник и плита|Кипятите столько воды, сколько нужно. Крышка на кастрюле — быстрее и дешевле.||Обогреватели|Масляный обогреватель на всю ночь — сотни кВт·ч в месяц. Утепление окон и термостат дают больше, чем кажется.',
       wa_title: 'Новый водомер — {k}', wa_lead: 'Цифры можно не вводить сейчас — внесёте позже, в том числе с фото.',
       wa_name: 'Где стоит', wa_name_ph: 'кухня, ванная', wa_name_h: 'Если водомеров этого вида несколько — чтобы не путать.',
       wa_name_need: 'Такой водомер уже есть ({n}) — назовите этот, чтобы не путать: кухня, ванная…',
@@ -2734,7 +2811,7 @@ fieldset.field { border: 0; padding: 0; min-width: 0; }
  */
 (function (root) {
   'use strict';
-  var SYNC_KEYS = ['v', 'onboarded', 'meter', 'baseline', 'contacts', 'readings', 'draft', 'updatedAt', 'wipedAt', 'tariff', 'bill', 'places', 'water', 'remind', 'wtariff'];
+  var SYNC_KEYS = ['v', 'onboarded', 'meter', 'baseline', 'contacts', 'readings', 'draft', 'updatedAt', 'wipedAt', 'tariff', 'bill', 'places', 'water', 'remind', 'wtariff', 'mrecs'];
 
   function payload(S) { var o = {}; SYNC_KEYS.forEach(function (k) { if (S[k] !== undefined) o[k] = S[k]; }); return o; }
   function sig(p) { var c = Object.assign({}, p); delete c.updatedAt; return JSON.stringify(c); }
@@ -2763,6 +2840,15 @@ fieldset.field { border: 0; padding: 0; min-width: 0; }
       if (!o || (r.updatedAt || ts(r.createdAt)) >= (o.updatedAt || ts(o.createdAt))) wm[r.id] = r;
     });
     out.water = Object.keys(wm).map(function (k) { return wm[k]; }).sort(function (x, y) { return ts(x.createdAt) - ts(y.createdAt); });
+    // показания света (и дальше газа) — так же
+    var mm = {};
+    (older.mrecs || []).concat(newer.mrecs || []).forEach(function (r) {
+      if (!r || !r.id) return;
+      if (wiped && ts(r.createdAt) <= wiped) return;
+      var o = mm[r.id];
+      if (!o || (r.updatedAt || ts(r.createdAt)) >= (o.updatedAt || ts(o.createdAt))) mm[r.id] = r;
+    });
+    out.mrecs = Object.keys(mm).map(function (k) { return mm[k]; }).sort(function (x, y) { return ts(x.createdAt) - ts(y.createdAt); });
     var wipeWins = wiped && newer.wipedAt === wiped;
     out.onboarded = wipeWins ? !!newer.onboarded : !!(a.onboarded || b.onboarded);
     // база (последние принятые ХТМ) — с более поздней датой; при равенстве — из более свежего состояния
@@ -3964,6 +4050,154 @@ fieldset.field { border: 0; padding: 0; min-width: 0; }
 </script>
 <script>
 /*
+ * «Лічильники» — учёт электроэнергии (Харьков): зоны, проверка показаний, окно приёма, расход и стоимость.
+ * Куда: АТ «Харківобленерго» (оператор системи розподілу) — застосунок «Харенерго», Viber-бот, кол-центр;
+ *       рахунок виставляє ПрАТ «Харківенергозбут» (постачальник універсальних послуг), особовий рахунок — з його платіжки.
+ * Коли: останні 2 дні місяця і перші 3 дні наступного (подані 1–3 числа зараховуються на 1-ше).
+ * Що: лише цифри до коми; у дво- і тризонних — кожну зону окремо (не сумувати), загальний показник не передають.
+ * Ціна (постанова КМУ № 483, дод. 3; продовжено до 30.04.2027): 4,32 грн/кВт·год з ПДВ;
+ *   2 зони: ніч (23–07) ×0,5; 3 зони: пік (08–11, 20–22) ×1,5, напівпік ×1, ніч (23–07) ×0,4;
+ *   електроопалення (якщо оформлено): 1.10–30.04 — 2,64 грн за перші 2000 кВт·год на місяць, далі 4,32.
+ * Без DOM: работает в браузере и в node (тесты).
+ */
+(function (root) {
+  'use strict';
+  var PRICE = [{ from: '2000-01-01', p: 4.32 }];
+  var HEAT = { p: 2.64, limit: 2000 };
+  // ключи зон по числу зон: 1 — одно число; 2 — день/ніч; 3 — пік/напівпік/ніч
+  var ZONES = { 1: ['all'], 2: ['day', 'night'], 3: ['peak', 'half', 'night'] };
+  var COEF = { 1: { all: 1 }, 2: { day: 1, night: 0.5 }, 3: { peak: 1.5, half: 1, night: 0.4 } };
+  var JUMP = 1500, JUMP_HEAT = 4000;   // кВт·год на місяць на всі зони — багато для квартири (з електроопаленням — більше)
+  var OBL_APP_IOS = 'https://apps.apple.com/ua/app/id1592629551';
+  var OBL_APP_ANDROID = 'https://play.google.com/store/search?q=%D0%A5%D0%B0%D1%80%D0%B5%D0%BD%D0%B5%D1%80%D0%B3%D0%BE&c=apps';
+  var ZBUT_SITE = 'https://zbutenergo.kharkov.ua';
+  // кол-центр Харківобленерго — номер за оператором зв'язку
+  var PHONES = [['+380573424413', '(057) 342-44-13', 'Укртелеком'], ['+380672340413', '(067) 234-04-13', 'Київстар'], ['+380500540413', '(050) 054-04-13', 'Vodafone'], ['+380630540413', '(063) 054-04-13', 'lifecell']];
+
+  function num(v) { if (v === null || v === undefined || v === '') return null; var n = Number(String(v).replace(',', '.').replace(/\s/g, '')); return isFinite(n) ? n : null; }
+  /** Ціле число кВт·год: «12345,6» → 12345 (цифри після коми не передають). */
+  function whole(v) { var n = num(v); return n === null ? null : Math.floor(n + 1e-9); }
+  /** Як зберігати: «12 345,6» → «12345.6»; не число / мінус / > 1 знака після коми → null. */
+  function norm(v) {
+    if (v === null || v === undefined) return null;
+    var s = String(v).trim().replace(/\s/g, '').replace(',', '.'); if (!/^\d+(\.\d{0,2})?$/.test(s)) return null;
+    return s.replace(/\.$/, '').replace(/^0+(?=\d)/, '');
+  }
+  function zones(m) { var z = Number(m && m.zones); return z === 2 || z === 3 ? z : 1; }
+  function keys(m) { return ZONES[zones(m)]; }
+  function coef(m, k) { return COEF[zones(m)][k] || 1; }
+  function priceAt(date) { var p = PRICE[0].p; PRICE.forEach(function (x) { if (String(date || '') >= x.from) p = x.p; }); return p; }
+  /** Пільгова ціна електроопалення діє 1 жовтня — 30 квітня. */
+  function heatSeason(date) { var m = Number(String(date || '').slice(5, 7)); return m >= 10 || m <= 4; }
+  function lastDay(ym) { var y = +ym.slice(0, 4), m = +ym.slice(5, 7); return new Date(Date.UTC(y, m, 0)).getUTCDate(); }
+  function addMonth(ym, n) { var y = +ym.slice(0, 4), m = +ym.slice(5, 7) - 1 + n; y += Math.floor(m / 12); m = ((m % 12) + 12) % 12; return y + '-' + String(m + 1).padStart(2, '0'); }
+  function pad(n) { return String(n).padStart(2, '0'); }
+
+  /**
+   * Вікно приймання на дату: показання за місяць ym — з (останній−1) числа ym по 3-тє число наступного.
+   * → {open, ym (за який місяць), from, to (останній день), daysLeft, next (коли відкриється, якщо закрито)}
+   */
+  function win(today) {
+    var ym = String(today).slice(0, 7), d = +String(today).slice(8, 10), L = lastDay(ym);
+    if (d <= 3) { var pm = addMonth(ym, -1); return { open: true, ym: pm, from: pm + '-' + pad(lastDay(pm) - 1), to: ym + '-03', daysLeft: 3 - d }; }
+    var nm = addMonth(ym, 1), from = ym + '-' + pad(L - 1);
+    if (d >= L - 1) return { open: true, ym: ym, from: from, to: nm + '-03', daysLeft: L - d + 3 };
+    return { open: false, ym: ym, from: from, to: nm + '-03', next: from, daysLeft: null };
+  }
+  /** За який місяць зараховується показання, зняте в дату d (1–3 число — за попередній). */
+  function forMonth(d) { var ym = String(d).slice(0, 7); return +String(d).slice(8, 10) <= 3 ? addMonth(ym, -1) : ym; }
+
+  function daysBetween(a, b) { return Math.round((Date.parse(b) - Date.parse(a)) / 864e5); }
+  /**
+   * Перевірка нових показань лічильника m проти попередніх prev ({date, z}).
+   * vals: {day: '1234', night: '567'} → [{code, level: block|warn|info, zone?, ...}]
+   */
+  function check(m, vals, prev, date, opts) {
+    var out = [], ks = keys(m), pz = prev && prev.z || {}, days = prev ? Math.max(1, daysBetween(prev.date, date)) : null, sum = 0, any = false;
+    ks.forEach(function (k) {
+      var raw = vals[k];
+      if (raw === null || raw === undefined || String(raw).trim() === '') { out.push({ code: 'empty', level: 'block', zone: k }); return; }
+      if (norm(raw) === null) { out.push({ code: 'bad', level: 'block', zone: k }); return; }
+      var v = num(raw), p = num(pz[k]);
+      if (v !== Math.floor(v)) out.push({ code: 'fraction', level: 'info', zone: k, whole: Math.floor(v) });
+      if (p === null) return;
+      var dv = Math.floor(v) - Math.floor(p); any = true;
+      if (dv < 0) out.push({ code: 'less', level: 'block', zone: k, prev: Math.floor(p) });
+      else sum += dv;
+      // у зону вписали загальний показник (суму зон): приріст неймовірний, а число — не менше суми зон минулого разу
+      if (ks.length > 1 && dv > 0 && dv / (days || 1) * 30 > JUMP) {
+        var tot = ks.reduce(function (s, x) { var q = num(pz[x]); return s + (q === null ? 0 : Math.floor(q)); }, 0);
+        if (Math.floor(v) >= tot && tot > Math.floor(p)) out.push({ code: 'sum', level: 'warn', zone: k });
+      }
+    });
+    if (any && days) {
+      var per = sum / days * 30, lim = opts && opts.heating ? JUMP_HEAT : JUMP;
+      if (per > lim) out.push({ code: 'jump', level: 'warn', perMonth: Math.round(per) });
+      else if (sum === 0 && !out.some(function (x) { return x.level === 'block'; })) out.push({ code: 'same', level: 'info' });
+    }
+    return out;
+  }
+  function blocked(list) { return (list || []).some(function (x) { return x.level === 'block'; }); }
+
+  /** Скільки коштує розхід dz ({day: 120, night: 80}) за лічильником m на дату date. opts.heating — оформлене електроопалення. */
+  function cost(m, dz, date, opts) {
+    var base = priceAt(date), total = 0, kwh = 0, parts = {};
+    keys(m).forEach(function (k) { kwh += Math.max(0, dz[k] || 0); });
+    // електроопалення в сезон: 2,64 за перші 2000 кВт·год, далі 4,32 — усереднена ціна на весь розхід місяця
+    var p = base;
+    if (opts && opts.heating && heatSeason(date) && kwh > 0) p = (Math.min(kwh, HEAT.limit) * HEAT.p + Math.max(0, kwh - HEAT.limit) * base) / kwh;
+    keys(m).forEach(function (k) { var c = Math.max(0, dz[k] || 0) * p * coef(m, k); parts[k] = c; total += c; });
+    return { total: total, kwh: kwh, price: p, parts: parts };
+  }
+
+  /**
+   * Ряд по лічильнику: записи (за датою) з розходом від попередньої. recs: [{id, meter, date, z, base}].
+   * → [{rec, dz: {k: n} | null, kwh, days}]
+   */
+  function series(recs, m) {
+    var list = (recs || []).filter(function (r) { return r && !r.deleted && r.meter === m.id; }).sort(function (a, b) { return a.date < b.date ? -1 : a.date > b.date ? 1 : a.base ? -1 : 1; });
+    var out = [], prev = null;
+    list.forEach(function (r) {
+      var row = { rec: r, dz: null, kwh: null, days: null };
+      if (prev) {
+        var dz = {}, ok = true, sum = 0;
+        keys(m).forEach(function (k) { var a = whole(prev.z && prev.z[k]), b = whole(r.z && r.z[k]); if (a === null || b === null || b < a) ok = false; else { dz[k] = b - a; sum += b - a; } });
+        if (ok) { row.dz = dz; row.kwh = sum; row.days = Math.max(1, daysBetween(prev.date, r.date)); }
+      }
+      out.push(row); prev = r;
+    });
+    return out;
+  }
+  /** По місяцях (місяць — за який зараховується показання: 1–3 число — попередній). → [{ym, kwh, dz, cost, days, from, to}] */
+  function monthly(ser, m, opts) {
+    var by = {};
+    ser.forEach(function (x) {
+      if (!x.dz) return; var ym = forMonth(x.rec.date), b = by[ym];
+      if (!b) b = by[ym] = { ym: ym, kwh: 0, dz: {}, cost: 0, days: 0, from: null, to: x.rec.date };
+      b.kwh += x.kwh; b.days += x.days; b.to = x.rec.date;
+      var from = new Date(Date.parse(x.rec.date) - x.days * 864e5).toISOString().slice(0, 10); if (!b.from || from < b.from) b.from = from;
+      keys(m).forEach(function (k) { b.dz[k] = (b.dz[k] || 0) + x.dz[k]; });
+    });
+    return Object.keys(by).sort().map(function (k) { var b = by[k]; b.cost = cost(m, b.dz, b.to, opts).total; b.perMonth = b.days ? b.kwh / b.days * 30 : b.kwh; return b; });
+  }
+  function summary(mo) {
+    if (!mo.length) return null;
+    var kwh = 0, uah = 0, days = 0; mo.forEach(function (b) { kwh += b.kwh; uah += b.cost; days += b.days; });
+    return { months: mo.length, perMonth: days ? kwh / days * 30 : kwh, uahMonth: days ? uah / days * 30 : uah, last: mo[mo.length - 1] };
+  }
+  /** Скільки дала б ніч: частка нічного розходу і економія проти однозонного (для двозонних). */
+  function nightShare(mo) { var n = 0, all = 0; mo.forEach(function (b) { n += b.dz.night || 0; all += b.kwh; }); return all ? n / all : null; }
+
+  var api = { PRICE: PRICE, HEAT: HEAT, ZONES: ZONES, COEF: COEF, JUMP: JUMP, JUMP_HEAT: JUMP_HEAT, PHONES: PHONES, OBL_APP_IOS: OBL_APP_IOS, OBL_APP_ANDROID: OBL_APP_ANDROID, ZBUT_SITE: ZBUT_SITE,
+    num: num, whole: whole, norm: norm, zones: zones, keys: keys, coef: coef, priceAt: priceAt, heatSeason: heatSeason, win: win, forMonth: forMonth, lastDay: lastDay, addMonth: addMonth,
+    check: check, blocked: blocked, cost: cost, series: series, monthly: monthly, summary: summary, nightShare: nightShare,
+    uid: function () { return 'e' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7); } };
+  if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.TeploElec = api;
+})(typeof window !== 'undefined' ? window : this);
+
+</script>
+<script>
+/*
  * Теплосервис — веб-приложение (бесплатная часть). Vanilla JS, без сборки и зависимостей.
  * Данные — в localStorage этого браузера (с запасным хранением в памяти).
  * Маршруты — #имя (welcome, home, meter, baseline, step-N, check, handover, status, history, help, prefs).
@@ -3972,7 +4206,7 @@ fieldset.field { border: 0; padding: 0; min-width: 0; }
 (function () {
   'use strict';
   var R = window.TeploRules, M = window.TeploModels, I = window.TeploI18n;
-  var APP_VER = '0.7';   // версия в шапке (тестовый период): «ТЕСТ beta 0.7»
+  var APP_VER = '0.8';   // версия в шапке (тестовый период): «ТЕСТ beta 0.8»
   var HTM_URL = 'https://www.hts.kharkov.ua/cabinet/login';
   var BOT_URL = 'https://t.me/KPHTM_Bot';
 
@@ -4026,7 +4260,7 @@ fieldset.field { border: 0; padding: 0; min-width: 0; }
   }
   /** «Не та квартира»: число v странное для своего счётчика вида kind ('heat' | 'hot' | 'cold'), но похоже на показания
    *  такого же счётчика другой квартиры (чуть больше её последних). → {p: название, v: её последние} или null. */
-  function otherPlaceLike(kind, v, date) {
+  function otherPlaceLike(kind, v, date, zone) {
     if (v === null || v === undefined || isNaN(v) || places().length < 2) return null;
     var best = null;
     places().forEach(function (p) {
@@ -4038,7 +4272,11 @@ fieldset.field { border: 0; padding: 0; min-width: 0; }
           var lr = RD().filter(function (r) { return r.htm && R.num(r.htm.energy) !== null; }).slice(-1)[0], bs = S.baseline;
           var src = lr && (!bs || lr.htm.date >= bs.date) ? { q: R.num(lr.htm.energy), d: lr.htm.date } : bs && R.num(bs.energy) !== null ? { q: R.num(bs.energy), d: bs.date } : null;
           if (src) cand.push({ q: src.q, days: Math.max(1, R.daysBetween(src.d, date)), max: 15, txt: R.formatForHtm('energy', src.q) });
-        } else wmeters(kind).forEach(function (m) {
+        } else if (kind === 'elec') emeters().forEach(function (m) {
+          var r = mrecs(m.id).filter(function (x) { return x.date <= date; }).slice(-1)[0], q = r ? El.whole(r.z && r.z[zone]) : null; if (q === null) return;
+          cand.push({ q: q, days: Math.max(1, R.daysBetween(r.date, date)), perMonth: El.JUMP, txt: String(q) });
+        });
+        else wmeters(kind).forEach(function (m) {
           var r = wprevFor(m.id, date), q = r ? Number(Wt.norm(r.vals[m.id])) : NaN; if (!r || isNaN(q)) return;
           cand.push({ q: q, days: Math.max(1, R.daysBetween(r.date, date)), perMonth: 25, txt: String(Wt.whole(r.vals[m.id])) });
         });
@@ -4321,14 +4559,14 @@ fieldset.field { border: 0; padding: 0; min-width: 0; }
     var route = view.route, bare = view.bare;
     var navItems = [[homeRoute(), 'home', 'nav_home'], ['history', 'history', 'nav_history'], ['stats', 'chart', 'nav_stats']].concat([['save', 'leaf', 'nav_save'], ['help', 'help', 'nav_help'], ['prefs', 'prefs', 'nav_prefs']]);
     var nav = bare ? '' : '<nav class="nav" style="--nav-n:' + navItems.length + '" aria-label="' + esc(t('brand')) + '">' + navItems.map(function (n) {
-      return '<a href="#' + n[0] + '"' + (route === n[0] || (n[2] === 'nav_home' && /^(home|heat|water-|places|place$)/.test(route)) ? ' aria-current="page"' : '') + ' data-key="nav-' + (n[2] === 'nav_home' ? 'home' : n[0]) + '">' + ico(n[1], 22) + '<span>' + esc(t(n[2])) + '</span></a>';
+      return '<a href="#' + n[0] + '"' + (route === n[0] || (n[2] === 'nav_home' && /^(home|heat|water-|elec$|places|place$)/.test(route)) ? ' aria-current="page"' : '') + ' data-key="nav-' + (n[2] === 'nav_home' ? 'home' : n[0]) + '">' + ico(n[1], 22) + '<span>' + esc(t(n[2])) + '</span></a>';
     }).join('') + '</nav>';
     var right = bare && view.closeTo
       ? '<a class="btn ghost" href="#' + view.closeTo + '" data-key="wiz-close" aria-label="' + esc(t('close')) + '">' + ico('close', 22) + '<span class="cl-txt">' + esc(t('close')) + '</span></a>'
       : '';
     return '<div class="app' + (bare ? ' bare-app' : '') + '">' +
       '<header class="top"><a class="brand" href="#' + homeRoute() + '" data-key="brand">' + logo() + '<span>' + esc(t('brand')) + '</span></a>' + (window.TEPLO_API ? '<span class="beta" title="' + esc(t('beta_sub')) + '" data-key="beta">' + esc(t('beta')) + ' <span class="ver">beta ' + APP_VER + '</span></span>' : '') + '<span class="spacer"></span>' + themeBtn() + right + '</header>' +
-      nav + '<main class="main' + (bare ? ' bare' : '') + '" id="main" data-screen="' + view.screen + '" tabindex="-1">' + (/^(home|heat|water-hot|water-cold|history|stats|save)$/.test(route) ? placeBar() : /^(wnew|wadd|add-meter|step|step-\d+|check|handover|baseline|meter|photo)$/.test(route) ? placeBar(true) : '') + view.html + '</main></div>' +
+      nav + '<main class="main' + (bare ? ' bare' : '') + '" id="main" data-screen="' + view.screen + '" tabindex="-1">' + (/^(home|heat|water-hot|water-cold|elec|history|stats|save)$/.test(route) ? placeBar() : /^(wnew|wadd|enew|eadd|add-meter|step|step-\d+|check|handover|baseline|meter|photo)$/.test(route) ? placeBar(true) : '') + view.html + '</main></div>' +
       (window.TEPLO_API ? '<button class="fab' + (bare ? ' fab-bare' : '') + '" data-act="fb-open" data-key="feedback" aria-haspopup="dialog">' + ico('chat', 20) + '<span>' + esc(t('fb_btn')) + '</span></button>' + fbDialog() : '') +
       '<div id="toast-host" aria-live="polite"></div>';
   }
@@ -4406,15 +4644,16 @@ fieldset.field { border: 0; padding: 0; min-width: 0; }
     hot: { icon: 'drop', cls: 'c-hot', t: 'kd_hot', s: 'kd_hot_s', max: 4 },
     cold: { icon: 'drop', cls: 'c-cold', t: 'kd_cold', s: 'kd_cold_s', max: 4 },
     gas: { icon: 'flame', cls: 'c-gas', t: 'kd_gas', s: 'kd_gas_s', soon: true },
-    elec: { icon: 'bolt', cls: 'c-elec', t: 'kd_elec', s: 'kd_elec_s', soon: true }
+    elec: { icon: 'bolt', cls: 'c-elec', t: 'kd_elec', s: 'kd_elec_s', max: 2 }
   };
   var KIND_ORDER = ['heat', 'hot', 'cold', 'gas', 'elec'];
   function hasHeat() { return !!(S.meter && !S.meter.removed); }
-  function kindCount(k) { return k === 'heat' ? (hasHeat() ? 1 : 0) : KINDS[k].soon ? 0 : wmeters(k).length; }
-  function meterTitle(what) { if (what === 'heat') return t('kd_heat'); var m = wmeters(null, true).filter(function (x) { return x.id === what; })[0]; return m ? wname(m) : ''; }
+  function kindCount(k) { return k === 'heat' ? (hasHeat() ? 1 : 0) : KINDS[k].soon ? 0 : k === 'elec' ? pmeters('elec').length : wmeters(k).length; }
+  function meterTitle(what) { if (what === 'heat') return t('kd_heat'); var pm = pmeters(null, true).filter(function (x) { return x.id === what; })[0]; if (pm) return ename(pm); var m = wmeters(null, true).filter(function (x) { return x.id === what; })[0]; return m ? wname(m) : ''; }
   /** Есть ли у счётчика записи (тогда «прибрати» — в архив, иначе — удалить совсем). */
   function meterHasData(what) {
     if (what === 'heat') return RD().length > 0 || gaps('heat').length > 0;
+    if (pmeters(null, true).some(function (x) { return x.id === what; })) return mrecs(what).length > 0;
     return wrecs().some(function (r) { return hasVal(r, what); }) || gaps(what).length > 0;
   }
   /** Прибрать счётчик из квартиры (what — 'heat' или id водомера). */
@@ -4424,16 +4663,19 @@ fieldset.field { border: 0; padding: 0; min-width: 0; }
       if (keep) S.meter = Object.assign({}, S.meter, { removed: d }); else S.meter = null;
       S.draft = null; save(); return;
     }
+    if (pmeters(null, true).some(function (x) { return x.id === what; })) { setPMeters(function (list) { list.forEach(function (m) { if (m.id === what) { if (keep) m.removed = d; else m.deleted = true; } }); }); return; }
     wsetCfg(function (c) { (c.meters || []).forEach(function (m) { if (m.id === what) { if (keep) m.removed = d; else m.deleted = true; } }); });
   }
   function meterRestore(what) {
     if (what === 'heat') { if (S.meter) { S.meter = Object.assign({}, S.meter); delete S.meter.removed; save(); } return; }
+    if (pmeters(null, true).some(function (x) { return x.id === what; })) { setPMeters(function (list) { list.forEach(function (m) { if (m.id === what) delete m.removed; }); }); return; }
     wsetCfg(function (c) { (c.meters || []).forEach(function (m) { if (m.id === what) delete m.removed; }); });
   }
   /** Прибранные счётчики квартиры (для «Повернути»). */
   function removedMeters() {
     var a = []; if (S.meter && S.meter.removed) a.push({ what: 'heat', kind: 'heat', title: t('kd_heat'), at: S.meter.removed });
     wmeters(null, true).filter(function (m) { return m.removed; }).forEach(function (m) { a.push({ what: m.id, kind: m.kind, title: wname(m), at: m.removed }); });
+    pmeters(null, true).filter(function (m) { return m.removed; }).forEach(function (m) { a.push({ what: m.id, kind: m.kind, title: ename(m), at: m.removed }); });
     return a;
   }
 
@@ -4584,7 +4826,7 @@ fieldset.field { border: 0; padding: 0; min-width: 0; }
     if (draft && hasHeat()) html += '<div class="home-draft"><a class="btn big block" href="#step-' + (S.draft.step || 0) + '" data-key="home-continue">' + esc(t('h_continue', { i: (S.draft.step || 0) + 1, n: steps().length })) + '</a>' +
       '<button type="button" class="linkbtn" data-act="wiz-cancel" data-what="heat" data-key="home-draft-cancel">' + esc(t('wz_cancel_draft')) + '</button></div>';
     // только те счётчики, что есть в квартире, и «Додати лічильник»
-    var cards = (hasHeat() ? [heatCard()] : []).concat(['hot', 'cold'].filter(function (k) { return wmeters(k).length; }).map(waterCard));
+    var cards = (hasHeat() ? [heatCard()] : []).concat(['hot', 'cold'].filter(function (k) { return wmeters(k).length; }).map(waterCard)).concat(emeters().length ? [elecCard()] : []);
     html += '<div class="ucards">' + cards.join('') + addTile(!cards.length) + '</div>';
     if (cards.length) html += '<p class="small muted ucards-hint">' + esc(t('uc_hint')) + '</p>';
     if (window.TEPLO_API) html += testReset();
@@ -4782,14 +5024,15 @@ fieldset.field { border: 0; padding: 0; min-width: 0; }
   function kinds() {
     var k = []; if (hasHeat() || (S.meter && RD().length)) k.push('heat');
     ['hot', 'cold'].forEach(function (x) { if (wmeters(x).length || wmeters(x, true).some(function (m) { return meterHasData(m.id); })) k.push(x); });
+    if (emeters().length || emeters(true).some(function (m) { return meterHasData(m.id); })) k.push('elec');
     return k;
   }
   /** Что смотрим во вкладках (S.view); выбранного вида нет — первый, что есть. */
   function curView() { var ks = kinds(); return ks.indexOf(S.view) >= 0 ? S.view : (ks[0] || 'heat'); }
   function kindSwitch() {
     var ks = kinds(), cv = curView(); if (ks.length < 2) return '';
-    return '<div class="kind-sw" role="group" aria-label="' + esc(t('kv_label')) + '" data-key="kind-switch">' + ks.map(function (k) {
-      return '<button type="button" data-act="view" data-v="' + k + '" aria-pressed="' + (k === cv) + '" data-key="kind-' + k + '">' + ico(k === 'heat' ? 'thermo' : 'drop', 18, k === 'hot' ? 'c-hot' : k === 'cold' ? 'c-cold' : 'c-heat') + '<span>' + esc(t('kv_' + k)) + '</span></button>';
+    return '<div class="kind-sw' + (ks.length > 3 ? ' many' : '') + '" role="group" aria-label="' + esc(t('kv_label')) + '" data-key="kind-switch">' + ks.map(function (k) {
+      return '<button type="button" data-act="view" data-v="' + k + '" aria-pressed="' + (k === cv) + '" data-key="kind-' + k + '">' + ico(KINDS[k].icon, 18, KINDS[k].cls) + '<span>' + esc(t('kv_' + k)) + '</span></button>';
     }).join('') + '</div>';
   }
   function hasVal(r, mid) { return !!(r && r.vals && r.vals[mid] !== undefined && r.vals[mid] !== '' && r.vals[mid] !== null); }
@@ -4919,6 +5162,274 @@ fieldset.field { border: 0; padding: 0; min-width: 0; }
     var groups = [[t('wsv_g1'), 'alert', [0, 1, 2]], [t('wsv_g2'), 'drop', [3, 4, 5]], [t('wsv_g3'), 'home', [6]], [t('wsv_g4'), 'chart', kind === 'hot' ? [7, 8] : [8, 7]]];
     return { screen: 'S14', route: 'save', html: '<h1>' + esc(t('wsv_title')) + '</h1>' + kindSwitch() + '<p class="muted">' + esc(t('wsv_lead')) + '</p>' + mine +
       accGroups(groups.map(function (g) { return { title: g[0], icon: g[1], items: g[2].map(function (k) { return { title: list[k][0], html: '<p>' + esc(list[k][1]) + '</p>' }; }) }; }), 'wsave-tips') };
+  }
+
+  // ================= світло: електролічильники квартири (place.meters, kind 'elec'), показання — S.mrecs =================
+  // Запис: {id, place, meter, kind: 'elec', date, z: {all} | {day, night} | {peak, half, night}, base, sent: {obl: дата}, createdAt, updatedAt, deleted}.
+  // Передають у Харківобленерго (застосунок «Харенерго», Viber-бот, кол-центр) в останні 2 дні місяця і 1–3 число; рахунок — Харківенергозбут.
+  var El = window.TeploElec;
+  function KWH() { return S.lang === 'ru' ? 'кВт·ч' : 'кВт·год'; }
+  function pmeters(kind, all) { var p = place(); return ((p && p.meters) || []).filter(function (m) { return m && !m.deleted && (all || !m.removed) && (!kind || m.kind === kind); }); }
+  function setPMeters(fn) { ensurePlaces(); var p = place(); p.meters = JSON.parse(JSON.stringify(p.meters || [])); fn(p.meters); p.updatedAt = Date.now(); save(); }
+  function emeters(all) { return pmeters('elec', all); }
+  function mrecs(mid) { return (S.mrecs || []).filter(function (r) { return r && !r.deleted && r.place === S.placeId && (!mid || r.meter === mid); }).sort(function (a, b) { return a.date < b.date ? -1 : a.date > b.date ? 1 : a.base ? -1 : b.base ? 1 : 0; }); }
+  /** Останнє показання лічильника до дати (не включно; стартове того ж дня — так). */
+  function eprev(mid, date, skipId) { var a = mrecs(mid).filter(function (r) { return r.id !== skipId && (!date || r.date < date || (r.base && r.date === date)); }); return a.length ? a[a.length - 1] : null; }
+  function elastOf(mid) { var a = mrecs(mid); return a.length ? a[a.length - 1] : null; }
+  function eopts() { return { heating: !!(place() && place().elecHeat) }; }
+  function ename(m) { return t('kd_elec') + (m.name ? ' · ' + m.name : ''); }
+  /** Назва зони: «День», «Ніч», «Пік», «Напівпік»; однозонний — «Показання». */
+  function ezl(m, k) { var z = El.zones(m); return t(z === 1 ? 'ez_all' : 'ez_' + k + (z === 3 && k === 'night' ? '3' : '')); }
+  function etag(m, k) { var z = El.zones(m); return z === 1 ? 'kWh' : t('ezt_' + k); }
+  function ezonesTxt(m) { return t('ez_n' + El.zones(m)); }
+  /** Значення запису по зонах одним рядком: «день 10250 · ніч 5130». */
+  function evals(m, r) { return El.keys(m).map(function (k) { var v = El.whole(r && r.z && r.z[k]); return (El.zones(m) > 1 ? ezl(m, k).toLowerCase() + ' ' : '') + (v === null ? '—' : v); }).join(' · '); }
+  function edisplay(m, r, cls) { return lcd(El.keys(m).map(function (k) { var v = El.whole(r && r.z && r.z[k]); return { text: v === null ? '------' : String(v), tag: etag(m, k), label: (El.zones(m) > 1 ? ezl(m, k) + ' ' : '') + (v === null ? '—' : v + ' ' + KWH()) }; }), cls); }
+  /** У вікні приймання є показання цього лічильника (не стартові)? → запис. */
+  function einWin(mid, w) { return mrecs(mid).filter(function (r) { return !r.base && r.date >= w.from && r.date <= w.to; }).slice(-1)[0] || null; }
+  /** Статус світла квартири для картки й списку квартир (як heatStatus/waterStatus). */
+  function elecStatus() {
+    var ms = emeters(), w = El.win(today()), recs = ms.map(function (m) { return einWin(m.id, w); });
+    if (!w.open) return { st: t('ue_next', { a: fmtDate(w.next), b: fmtDate(w.to) }), tone: '' };
+    if (recs.every(function (r) { return r && r.sent && r.sent.obl; })) return { st: t('uc_w_sent'), tone: 'ok' };
+    if (recs.every(Boolean)) return { st: t('uc_w_ready'), tone: 'due', due: w.to };
+    return { st: t('ue_due', { a: fmtDate(w.from), b: fmtDate(w.to) }), tone: w.daysLeft <= 1 ? 'warn' : 'due', due: w.to };
+  }
+  function elecCard() {
+    var ms = emeters(), es = elecStatus();
+    var display = ms.length === 1 ? edisplay(ms[0], elastOf(ms[0].id), 'card') : ms.map(function (m) { return '<div class="wd-multi"><span class="wd-name">' + esc(m.name || ename(m)) + '</span>' + edisplay(m, elastOf(m.id), 'card') + '</div>'; }).join('');
+    var last = ms.map(function (m) { return elastOf(m.id); }).filter(Boolean).sort(function (a, b) { return a.date < b.date ? 1 : -1; })[0];
+    return ucard({ kind: 'elec', href: 'elec', icon: 'bolt', title: t('kd_elec'), display: display, sub: last ? (last.base ? t('uc_w_start', { d: fmtDate(last.date) }) : t('uc_w_last', { d: fmtDate(last.date) })) : t('uc_w_nolast'),
+      status: es.st, tone: es.tone, addAct: 'enew', addLabel: t('ue_add') });
+  }
+
+  /** «Куди передати» світло: Харківобленерго — застосунок, Viber-бот, кол-центр; готові цифри, якщо є показання у вікні. */
+  function esendPanel(recs) {
+    var w = El.win(today()), ms = emeters(), have = recs && recs.filter(Boolean).length ? recs : null;
+    var due = w.open ? t('ed_due', { d: fmtDate(w.to) }) : t('ed_due_next', { a: fmtDate(w.next), b: fmtDate(w.to) });
+    var allSent = have && ms.every(function (m) { var r = have.filter(function (x) { return x && x.meter === m.id; })[0]; return r && r.sent && r.sent.obl; });
+    var body = '';
+    if (have) body = '<ul class="wvals" data-key="esend-vals">' + ms.map(function (m) {
+      var r = have.filter(function (x) { return x && x.meter === m.id; })[0]; if (!r) return '';
+      return El.keys(m).map(function (k) { var v = El.whole(r.z[k]); return '<li><span>' + esc((ms.length > 1 ? (m.name || ename(m)) + ' · ' : '') + ezl(m, k)) + '</span><b class="num">' + v + '</b><button class="linkbtn" data-act="copy" data-text="' + v + '">' + esc(t('copy')) + '</button></li>'; }).join('');
+    }).join('') + '</ul>' + (El.zones(ms[0] || {}) > 1 ? '<p class="small muted">' + esc(t('ed_nosum')) + '</p>' : '');
+    var acc = ms.filter(function (m) { return m.account; }).map(function (m) { return '<p class="small">' + esc(t('ed_acc', { a: m.account })) + (ms.length > 1 ? ' · ' + esc(m.name || '') : '') + ' <button class="linkbtn" data-act="copy" data-text="' + esc(m.account) + '">' + esc(t('copy')) + '</button></p>'; }).join('');
+    var mark = have ? '<p class="dest-mark">' + (allSent ? '<button class="linkbtn" data-act="esent" data-v="0" data-ids="' + have.filter(Boolean).map(function (r) { return r.id; }).join(',') + '">' + esc(t('ws_unmark')) + '</button>'
+      : '<button class="btn sec" data-act="esent" data-v="1" data-ids="' + have.filter(Boolean).map(function (r) { return r.id; }).join(',') + '" data-key="esend-done">' + ico('check', 18) + '<span>' + esc(t('ws_mark')) + '</span></button>') + '</p>' : '';
+    var phones = El.PHONES.map(function (p) { return telLink(p[0], p[1]) + ' <span class="muted">(' + esc(p[2]) + ')</span>'; }).join(', ');
+    return '<section class="panel where" data-key="where-elec"><h2>' + ico('send', 20) + '<span>' + esc(t('wd_title')) + '</span></h2>' +
+      (places().length > 1 ? '<p class="dest-place" style="--pc:var(--pc-' + placeColor(place()) + ')" data-key="where-place"><b>' + esc(t('wd_for', { p: placeLabel(place()) })) + '</b>' + (placeSub(place()) ? '<span class="small muted"> · ' + esc(placeSub(place())) + '</span>' : '') + '</p>' : '') +
+      (have ? '' : '<p class="small muted">' + esc(t('ed_lead')) + '</p>') +
+      destBox({ key: 'obl', id: 'esend', org: t('ed_org'), what: t('ed_what'), due: due, dueTone: w.open && w.daysLeft <= 1 ? 'warn' : 'neutral', sent: allSent, body: body + acc,
+        chans: [[El.OBL_APP_IOS, t('ed_app_ios'), 'ext', 'ios'], [El.OBL_APP_ANDROID, t('ed_app_android'), 'ext', 'android']],
+        more: esc(t('ed_more')) + ' ' + phones + '. ' + esc(t('ed_zbut')) + ' <a href="' + El.ZBUT_SITE + '" target="_blank" rel="noopener">zbutenergo.kharkov.ua</a>.', mark: mark }) + '</section>';
+  }
+  /** Рядки історії світла (нові зверху): скільки кВт·год і почім, на лічильнику, передано. */
+  function erows(limit) {
+    var ms = emeters(true), rows = [];
+    ms.forEach(function (m) { El.series(mrecs(m.id), m).forEach(function (x) { rows.push({ m: m, x: x }); }); });
+    rows.sort(function (a, b) { return a.x.rec.date < b.x.rec.date ? 1 : a.x.rec.date > b.x.rec.date ? -1 : 0; });
+    var total = rows.length; if (limit) rows = rows.slice(0, limit);
+    if (!rows.length) return { total: 0, html: '' };
+    return { total: total, html: '<ul class="list wh" data-key="elec-history">' + rows.map(function (y) {
+      var x = y.x, r = x.rec, has = !r.base && x.kwh !== null, c = has ? El.cost(y.m, x.dz, r.date, eopts()).total : null;
+      return histRow({ key: 'erec-' + r.id, href: '#erec-' + r.id, q: has ? '+' + x.kwh : null, unit: KWH(), money: c, none: r.base ? t('eh_base') : t('hr_first'), date: fmtDate(r.date, true),
+        sub: [t('hr_on_meter', { v: (ms.length > 1 ? (y.m.name || '') + ' ' : '') + evals(y.m, r), u: KWH() }), has && x.days ? x.days + ' ' + t('days_short') : ''],
+        right: r.base ? '' : r.sent && r.sent.obl ? '<span class="pill ok">' + esc(t('wh_sent')) + '</span>' : '<span class="pill neutral">' + esc(t('wh_notsent')) + '</span>' });
+    }).join('') + '</ul>' };
+  }
+  /** Сторінка світла: табло кожного лічильника, «Внести», «Куди передати», історія, налаштування лічильника. */
+  V.elec = function () {
+    var ms = emeters(), p = place() || {}, h = '<h1>' + esc(t('kd_elec')) + (p.name ? ' — ' + esc(p.name) : '') + '</h1>';
+    var left = ms.map(function (m) {
+      var r = elastOf(m.id), cap = r ? (r.base ? t('wm_cap_base', { d: fmtDate(r.date, true) }) : fmtDate(r.date, true)) : t('uc_w_nolast');
+      var fix = r && !r.base ? '<button class="linkbtn" data-act="eedit" data-id="' + r.id + '">' + esc(t('change')) + '</button>' : '';
+      return '<div class="panel wmeter" data-key="emeter-' + m.id + '"><h2>' + esc(ms.length > 1 ? ename(m) : t('wm_last')) + (m.serial ? ' <span class="small muted">№ ' + esc(m.serial) + '</span>' : '') + '</h2>' +
+        edisplay(m, r, 'hero') + '<p class="lcd-cap meta-row"><span>' + esc(cap) + '</span>' + fix + '</p><p class="small muted" style="margin:6px 0 0">' + esc(ezonesTxt(m)) + '</p></div>';
+    }).join('');
+    var w = El.win(today()), cur = w.open ? ms.map(function (m) { return einWin(m.id, w); }) : null;
+    var right = '<button class="btn big block" data-act="enew" data-key="elec-add">' + ico('plus', 22) + '<span>' + esc(t('en_title')) + '</span></button>' + esendPanel(cur);
+    var er = erows(3);
+    if (er.total) right += '<h2 class="section-title">' + esc(t('wh_title')) + '</h2>' + er.html + (er.total > 3 ? '<p><button class="btn sec" data-act="view-go" data-v="elec" data-to="history" data-key="elec-all">' + esc(t('wh_all', { n: er.total })) + '</button></p>' : '');
+    // налаштування лічильника: назва, №, особовий рахунок; електроопалення — у квартири
+    right += '<h2 class="section-title">' + esc(t('em_title')) + '</h2>' + ms.map(function (m) {
+      return '<fieldset class="wm-row" data-key="em-' + m.id + '"><legend>' + ico('bolt', 16, 'c-elec') + ' ' + esc(ename(m)) + ' <span class="small muted">· ' + esc(ezonesTxt(m)) + '</span></legend><div class="grid2">' +
+        '<div class="field"><label for="emn-' + m.id + '">' + esc(t('em_name')) + '</label><div class="ctl"><input id="emn-' + m.id + '" maxlength="40" data-em="' + m.id + '" data-ef="name" value="' + esc(m.name || '') + '" placeholder="' + esc(t('em_name_ph')) + '"></div></div>' +
+        '<div class="field"><label for="ema-' + m.id + '">' + esc(t('em_acc')) + '</label><div class="ctl"><input id="ema-' + m.id + '" class="num" inputmode="numeric" autocomplete="off" data-em="' + m.id + '" data-ef="account" value="' + esc(m.account || '') + '"></div><div class="help">' + esc(t('em_acc_h')) + '</div></div>' +
+        '<div class="field"><label for="ems-' + m.id + '">' + esc(t('wm_serial')) + '</label><div class="ctl"><input id="ems-' + m.id + '" class="num" autocomplete="off" data-em="' + m.id + '" data-ef="serial" value="' + esc(m.serial || '') + '"></div></div></div>' +
+        '<p class="small muted">' + esc(t('em_zones_fix')) + '</p></fieldset>';
+    }).join('') + eheatRow() + '<p><a href="#place-' + esc(p.id || '') + '" data-key="elec-place">' + esc(t('em_manage')) + '</a></p>';
+    right += '<details class="tips-box" style="margin-top:16px" data-key="elec-how"><summary>' + esc(t('ehow_t')) + '</summary><ul>' + t('ehow').split('|').map(function (x) { return '<li>' + esc(x) + '</li>'; }).join('') + '</ul></details>';
+    h += '<div class="hero-grid"><div class="wm-col">' + left + '</div><div>' + right + '</div></div>';
+    return { screen: 'S50', route: 'elec', html: h };
+  };
+  /** Галочка «електроопалення» (пільгова ціна 2,64 у жовтні–квітні) — у квартири. */
+  function eheatRow() {
+    return '<label class="check-row" style="margin-top:12px"><input type="checkbox" id="e-heat"' + (place() && place().elecHeat ? ' checked' : '') + ' data-key="elec-heat"><span>' + esc(t('eh_on')) + '</span></label><p class="small muted" style="margin:4px 0 0">' + esc(t('eh_sub')) + '</p>';
+  }
+
+  // ---------- ввод показань світла ----------
+  function enFresh() { return { date: '', vals: {}, back: '', skip: '' }; }
+  var EN = enFresh();
+  V.enew = function () {
+    var ms = emeters(); if (!ms.length) { AM_BACK = 'home'; return V['add-meter'](); }
+    var date = EN.date || today(), back = EN.back || 'elec', w = El.win(date);
+    var h = '<h1>' + esc(t('en_title')) + '</h1><p class="small muted">' + esc(t(w.open ? 'en_lead_open' : 'en_lead_closed', { a: fmtDate(w.open ? w.from : w.next), b: fmtDate(w.to) })) + '</p>' +
+      '<div class="field" style="max-width:280px"><label for="en-date">' + esc(t('wn_date')) + '</label><div class="ctl"><input id="en-date" type="date" value="' + esc(date) + '" max="' + today() + '"></div></div><form id="en-form" novalidate>';
+    ms.forEach(function (m) {
+      var p = eprev(m.id, date, EN.skip), vs = EN.vals[m.id] || {};
+      h += '<fieldset class="efield" data-key="en-' + m.id + '"><legend>' + ico('bolt', 18, 'c-elec') + ' ' + esc(ename(m)) + (m.serial ? ' <span class="small muted">№ ' + esc(m.serial) + '</span>' : '') + '</legend>' +
+        (El.zones(m) > 1 ? '<p class="small muted">' + esc(t('en_zones_' + El.zones(m))) + '</p>' : '') +
+        El.keys(m).map(function (k) {
+          var id = m.id + '-' + k, pv = p ? El.whole(p.z && p.z[k]) : null;
+          return '<div class="field wfield" id="ef-' + id + '"><label for="en-' + id + '">' + esc(ezl(m, k)) + '</label><div class="ctl"><input id="en-' + id + '" class="num" inputmode="decimal" autocomplete="off" data-en="' + m.id + '|' + k + '" value="' + esc(vs[k] || '') + '" placeholder="' + (pv !== null ? pv : '') + '" aria-describedby="eh-' + id + '"><span class="unit">' + KWH() + '</span></div>' +
+            '<div class="help" id="eh-' + id + '">' + esc(pv !== null ? t('en_prev', { v: pv, d: fmtDate(p.date) }) : t('wn_first')) + '</div></div>';
+        }).join('') + '</fieldset>';
+    });
+    h += '<p class="small muted">' + esc(t('en_digits')) + '</p><div class="wiz-actions"><button class="btn" type="submit" data-key="en-save">' + esc(t('wn_save')) + '</button></div></form>' + cancelLink('elec');
+    return { screen: 'S51', route: 'enew', bare: true, closeTo: back, html: h };
+  };
+  function enRead() { Array.prototype.forEach.call(document.querySelectorAll('[data-en]'), function (el) { var a = el.getAttribute('data-en').split('|'); EN.vals[a[0]] = EN.vals[a[0]] || {}; EN.vals[a[0]][a[1]] = el.value.trim(); }); var d = document.getElementById('en-date'); if (d && d.value) EN.date = d.value; }
+  function enCheck(show) {
+    var date = EN.date || today(), all = {};
+    emeters().forEach(function (m) {
+      var p = eprev(m.id, date, EN.skip), list = El.check(m, EN.vals[m.id] || {}, p ? { date: p.date, z: p.z } : null, date, eopts());
+      // меньше прошлого / слишком много — а у світла іншої квартири якраз підходить
+      if (list.some(function (x) { return x.code === 'less' || x.code === 'jump'; })) El.keys(m).forEach(function (k) {
+        var o = otherPlaceLike('elec', El.num((EN.vals[m.id] || {})[k]), date, k);
+        if (o) list.push({ code: 'other', level: 'warn', zone: k, args: { p: o.p, v: o.v, c: placeLabel(place()) } });
+      });
+      all[m.id] = list;
+      if (!show) return;
+      El.keys(m).forEach(function (k) {
+        var id = m.id + '-' + k, el = document.getElementById('eh-' + id), fw = document.getElementById('ef-' + id); if (!el) return;
+        var mine = list.filter(function (x) { return (x.zone === k || (!x.zone && k === El.keys(m).slice(-1)[0])) && (x.code !== 'empty' || show === 'submit'); }), pv = p ? El.whole(p.z && p.z[k]) : null;
+        var txt = mine.map(function (x) { return t('ei_' + x.code, Object.assign({ prev: x.prev !== undefined ? x.prev : pv, n: x.perMonth || '', w: x.whole }, x.args || {})); }).join(' ');
+        var lvl = mine.some(function (x) { return x.level === 'block'; }) ? 'block' : mine.some(function (x) { return x.level === 'warn'; }) ? 'warn' : mine.length ? 'ok' : '';
+        el.textContent = txt || (pv !== null ? t('en_prev', { v: pv, d: fmtDate(p.date) }) : t('wn_first'));
+        el.className = 'help' + (lvl ? ' ' + lvl : ''); if (fw) fw.className = 'field wfield' + (lvl === 'block' ? ' is-block' : lvl === 'warn' ? ' is-warn' : '');
+      });
+    });
+    return all;
+  }
+  function enSave() {
+    enRead(); var iss = enCheck('submit');
+    if (Object.keys(iss).some(function (k) { return El.blocked(iss[k]); })) { var f = document.querySelector('.wfield.is-block input'); if (f) f.focus(); return; }
+    var date = EN.date || today(), now = new Date().toISOString(); S.mrecs = S.mrecs || [];
+    emeters().forEach(function (m) {
+      var z = {}; El.keys(m).forEach(function (k) { z[k] = El.norm((EN.vals[m.id] || {})[k]); });
+      // один запис на лічильник і дату: повторне введення того ж дня — правка
+      var same = S.mrecs.filter(function (r) { return r && !r.deleted && !r.base && r.place === S.placeId && r.meter === m.id && (r.id === EN.skip || r.date === date); })[0];
+      if (same) { same.z = z; same.date = date; same.updatedAt = Date.now(); }
+      else S.mrecs.push({ id: El.uid(), place: S.placeId, meter: m.id, kind: 'elec', date: date, z: z, sent: {}, createdAt: now, updatedAt: Date.now() });
+    });
+    if (!S.onboarded) S.onboarded = true;
+    var back = EN.back; EN = enFresh(); save(); toast(t('wn_saved') + inPlace());
+    if (back) go(back); else { SCROLL_TO = 'esend'; go('elec'); }
+  }
+
+  // ---------- новий електролічильник ----------
+  var EA = { back: '', zones: 1, vals: {} };
+  V.eadd = function () {
+    var same = emeters(), z = EA.zones || 1, back = EA.back || 'home', opt = ' <span class="muted small">(' + esc(t('b_opt')) + ')</span>', inQ = !!(PQ && PQ.place === S.placeId);
+    var fld = function (id, lbl, attrs, unit, help, optional) { return '<div class="field"><label for="' + id + '">' + esc(lbl) + (optional ? opt : '') + '</label><div class="ctl"><input id="' + id + '" ' + attrs + '>' + (unit ? '<span class="unit">' + unit + '</span>' : '') + '</div>' + (help ? '<div class="help">' + esc(help) + '</div>' : '') + '</div>'; };
+    var mz = { zones: z };
+    var h = pqBanner() + '<h1>' + ico('bolt', 26, 'c-elec') + ' ' + esc(t('ea_title')) + '</h1><p class="muted">' + esc(t('ea_lead')) + '</p><form id="ea-form" novalidate><div class="panel">' +
+      '<fieldset class="field"><legend class="lbl">' + esc(t('ea_zones')) + '</legend><div class="wz-opts" role="radiogroup">' + [1, 2, 3].map(function (n) {
+        return '<label class="wz-opt"><input type="radio" name="ea-z" value="' + n + '"' + (z === n ? ' checked' : '') + ' data-act="ea-zones" data-key="ea-z' + n + '"><span><b>' + esc(t('ez_n' + n)) + '</b><span class="small muted">' + esc(t('ea_z' + n + '_s')) + '</span></span></label>';
+      }).join('') + '</div></fieldset>' +
+      El.keys(mz).map(function (k) { return fld('ea-v-' + k, t('ea_val') + (z > 1 ? ': ' + ezl(mz, k).toLowerCase() : ''), 'class="num" inputmode="decimal" autocomplete="off" data-ea="' + k + '" value="' + esc(EA.vals[k] || '') + '"', KWH(), k === El.keys(mz).slice(-1)[0] ? t('ea_val_h') : '', true); }).join('') +
+      (same.length ? fld('ea-name', t('em_name'), 'maxlength="40" autocomplete="off" placeholder="' + esc(t('em_name_ph')) + '"', '', t('ea_name_need', { n: same.length }), false) : '') +
+      fld('ea-acc', t('em_acc'), 'class="num" inputmode="numeric" autocomplete="off"', '', t('em_acc_h'), true) +
+      fld('ea-serial', t('wm_serial'), 'class="num" autocomplete="off"', '', '', true) +
+      (same.length ? '' : eheatRow()) +
+      '<div class="help block" id="ea-err" role="alert"></div></div>' +
+      '<div class="wiz-actions"><a class="btn sec" href="#' + esc(back) + '">' + esc(t('cancel')) + '</a><button type="submit" class="btn" data-key="ea-save">' + esc(t('ea_add')) + '</button></div></form>';
+    return { screen: 'S52', route: 'eadd', bare: true, closeTo: back, html: h + (inQ ? '' : '') };
+  };
+  function eaRead() { Array.prototype.forEach.call(document.querySelectorAll('[data-ea]'), function (el) { EA.vals[el.getAttribute('data-ea')] = el.value.trim(); }); }
+  function eaSave() {
+    eaRead();
+    var v = function (id) { var el = document.getElementById(id); return el ? String(el.value || '').trim() : ''; };
+    var mz = { zones: EA.zones || 1 }, same = emeters(), name = v('ea-name').slice(0, 40), err = '', bad = '', z = {}, filled = 0;
+    El.keys(mz).forEach(function (k) { var raw = EA.vals[k] || ''; if (raw === '') return; filled++; var n = El.norm(raw); if (n === null && !err) { err = t('ea_e_val'); bad = 'ea-v-' + k; } z[k] = n; });
+    if (!err && filled && filled < El.keys(mz).length) { err = t('ea_e_all'); bad = 'ea-v-' + El.keys(mz).filter(function (k) { return !EA.vals[k]; })[0]; }
+    if (!err && same.length && !name) { err = t('wa_e_name'); bad = 'ea-name'; }
+    var box = document.getElementById('ea-err');
+    if (err) { if (box) box.textContent = err; var bi = document.getElementById(bad); if (bi) bi.focus(); return; }
+    var id = El.uid();
+    setPMeters(function (list) { list.push({ id: id, kind: 'elec', name: name, zones: mz.zones, serial: v('ea-serial'), account: v('ea-acc'), createdAt: today() }); });
+    if (filled) { S.mrecs = S.mrecs || []; S.mrecs.push({ id: El.uid(), place: S.placeId, meter: id, kind: 'elec', date: today(), z: z, base: true, sent: {}, createdAt: new Date().toISOString(), updatedAt: Date.now() }); }
+    S.onboarded = true; S.view = 'elec'; save(); toast(t('ea_added') + inPlace());
+    var back = EA.back; EA = { back: '', zones: 1, vals: {} };
+    if (PQ && PQ.place === S.placeId && PQ.i < PQ.list.length) { PQ.i++; pqNext(); return; }
+    go(back && /^place-/.test(back) ? back : 'elec');
+  }
+
+  // ---------- картка запису світла, історія, статистика, економія ----------
+  function erecView(id) {
+    var r = mrecs().filter(function (x) { return x.id === id; })[0], back = '<p><a href="#history">← ' + esc(t('hi_title')) + '</a></p>';
+    var m = r && emeters(true).filter(function (x) { return x.id === r.meter; })[0];
+    if (!r || !m) return { screen: 'S09', route: 'history', html: back + '<p class="muted">' + esc(t('rec_gone')) + '</p>' };
+    var x = El.series(mrecs(m.id), m).filter(function (s0) { return s0.rec.id === id; })[0] || {};
+    var h = back + '<h1>' + esc(fmtDate(r.date, true)) + '</h1>' + (r.base ? '<p class="small muted">' + esc(t('eh_base')) + '</p>' : '<p class="small muted">' + esc(t('er_for', { m: monthLabel(El.forMonth(r.date)) })) + '</p>');
+    h += '<ul class="list" data-key="erec-values">' + El.keys(m).map(function (k) {
+      return '<li><div class="grow">' + ico('bolt', 16, 'c-elec') + ' ' + esc(ename(m) + (El.zones(m) > 1 ? ' · ' + ezl(m, k) : '')) + (x.dz ? '<div class="small muted">+' + x.dz[k] + ' ' + KWH() + '</div>' : '') + '</div><b class="num">' + El.whole(r.z[k]) + '</b> <span class="small muted">' + KWH() + '</span></li>';
+    }).join('') + '</ul>';
+    if (x.dz) {
+      var c = El.cost(m, x.dz, r.date, eopts());
+      h += '<div class="panel" style="margin-top:16px" data-key="erec-used"><h2>' + esc(t('rec_used_title')) + '</h2><div class="cards2"><div><div class="num big c-elec">' + x.kwh + ' <small>' + KWH() + '</small></div><div class="small muted">' + esc(t('er_for_days', { d: x.days })) + '</div></div>' +
+        '<div><div class="num big">≈ ' + esc(money(c.total)) + '</div><div class="small muted">' + esc(t('er_price', { p: money(c.price) })) + '</div></div></div>' +
+        (El.zones(m) > 1 ? '<p class="small muted">' + esc(El.keys(m).map(function (k) { return ezl(m, k) + ': ' + x.dz[k] + ' × ' + money(c.price * El.coef(m, k)) + ' = ' + money(c.parts[k]) + ' грн'; }).join(' · ')) + '</p>' : '') + '</div>';
+    }
+    if (!r.base) {
+      var w = El.win(today());
+      if (w.open && r.date >= w.from && r.date <= w.to) h += esendPanel(emeters().map(function (mm) { return mm.id === m.id ? r : einWin(mm.id, w); }));
+      else h += '<p>' + (r.sent && r.sent.obl ? '<span class="pill ok">' + ico('check', 14) + ' ' + esc(t('ed_org')) + '</span>' : '<span class="pill neutral">' + esc(t('ed_org')) + ': ' + esc(t('wh_notsent')) + '</span>') + '</p>';
+    }
+    h += '<div class="row-actions">' + (r.base ? '' : '<button class="btn sec" data-act="eedit" data-id="' + r.id + '" data-key="erec-edit">' + esc(t('rec_edit')) + '</button>') + '<button class="btn danger" data-act="edel" data-id="' + r.id + '" data-key="erec-del">' + esc(t('rec_del')) + '</button></div>';
+    return { screen: 'S09', route: 'history', html: h };
+  }
+  function ehistory() {
+    var er = erows(), head = '<h1>' + esc(t('hi_title')) + '</h1>' + kindSwitch();
+    if (!er.total) return { screen: 'S09', route: 'history', html: head + '<div class="panel"><p class="muted">' + esc(t('wh_empty')) + '</p><button class="btn" data-act="enew">' + esc(t('en_title')) + '</button></div>' };
+    return { screen: 'S09', route: 'history', html: head + er.html + '<p class="small muted">' + esc(t('eh_hint')) + '</p>' };
+  }
+  function emonthly() {
+    // кілька лічильників — складаємо по місяцях
+    var by = {};
+    emeters(true).forEach(function (m) { El.monthly(El.series(mrecs(m.id), m), m, eopts()).forEach(function (b) {
+      var o = by[b.ym] || (by[b.ym] = { ym: b.ym, kwh: 0, cost: 0, days: 0, night: 0, from: b.from, to: b.to });
+      o.kwh += b.kwh; o.cost += b.cost; o.days = Math.max(o.days, b.days); o.night += b.dz.night || 0; if (b.from < o.from) o.from = b.from; if (b.to > o.to) o.to = b.to;
+    }); });
+    return Object.keys(by).sort().map(function (k) { var b = by[k]; b.perMonth = b.days ? b.kwh / b.days * 30 : b.kwh; return b; });
+  }
+  function estats() {
+    chColors();
+    var mo = emonthly(), sm = El.summary(mo), head = '<h1>' + esc(t('stt_title')) + '</h1>' + kindSwitch();
+    if (!mo.length) return { screen: 'S15', route: 'stats', html: head + '<div class="panel"><p class="muted">' + esc(t('est_empty')) + '</p></div>' };
+    var per = function (b) { return t('stt_period', { a: R.toHtmDate(b.from), b: R.toHtmDate(b.to), d: b.days }); };
+    var two = emeters(true).some(function (m) { return El.zones(m) > 1; }), nightKwh = mo.reduce(function (s, b) { return s + b.night; }, 0), allKwh = mo.reduce(function (s, b) { return s + b.kwh; }, 0);
+    var tiles = kpi({ key: 'estats-kpi', tone: 'elec', q: fmtN(sm.perMonth, 0), unit: KWH(), money: sm.uahMonth, cap: t('kpi_w_avg', { n: sm.months }),
+      chips: [chip(t('kpi_e_last', { m: monthLabel(sm.last.ym), v: sm.last.kwh, uah: money0(sm.last.cost) }), 'clock')].concat(two && allKwh ? [chip(t('kpi_e_night', { p: Math.round(nightKwh / allKwh * 100) }), 'moon')] : []) });
+    var c1 = barChart(mo.map(function (b) { return { x: ymLabel(b.ym), v: b.kwh, top: String(b.kwh), color: CH.elec, tip: [b.kwh + ' ' + KWH(), per(b), '≈ ' + money(b.cost) + ' грн'] }; }), { title: t('est_kwh'), dec: 0 });
+    var c2 = barChart(mo.map(function (b) { return { x: ymLabel(b.ym), v: Math.round(b.cost), top: String(Math.round(b.cost)), color: CH.barSoft, tip: ['≈ ' + money(b.cost) + ' грн', per(b), b.kwh + ' ' + KWH()] }; }), { title: t('wst_uah'), dec: 0 });
+    var table = '<details class="panel"><summary>' + esc(t('stt_table')) + '</summary><div class="tbl-wrap"><table class="tbl"><thead><tr><th>' + esc(t('wst_th_month')) + '</th><th>' + esc(t('stt_th_period')) + '</th><th>' + KWH() + '</th><th>грн</th></tr></thead><tbody>' +
+      mo.slice().reverse().map(function (b) { return '<tr><td>' + esc(ymLabel(b.ym)) + '</td><td>' + esc(R.toHtmDate(b.from) + ' – ' + R.toHtmDate(b.to)) + '</td><td class="num">' + b.kwh + '</td><td class="num">' + money(b.cost) + '</td></tr>'; }).join('') + '</tbody></table></div></details>';
+    var panel = function (title, sub, chart) { return '<section class="panel chart-panel"><h2>' + esc(title) + '</h2><p class="small muted">' + esc(sub) + '</p>' + chart + '</section>'; };
+    return { screen: 'S15', route: 'stats', html: head + '<p class="muted">' + esc(t('est_lead')) + '</p>' + tiles + panel(t('est_kwh'), t('est_kwh_sub'), c1) + panel(t('wst_uah'), t('est_tariff', { p: money(El.priceAt(today())) }), c2) + table + '<p class="small muted">' + esc(t('est_method')) + '</p>' };
+  }
+  function esave() {
+    var mo = emonthly(), sm = El.summary(mo), list = t('esv_tips').split('||').map(function (x) { var a = x.split('|'); return [a[0], a[1]]; });
+    var one = emeters().length && emeters().every(function (m) { return El.zones(m) === 1; }), p = El.priceAt(today());
+    var mine = sm ? '<div class="panel" data-key="esave-mine"><h2>' + esc(t('sv_mine')) + '</h2>' +
+      kpi({ key: 'esave-kpi', tone: 'elec', q: fmtN(sm.perMonth, 0), unit: KWH(), money: sm.uahMonth, cap: t('kpi_w_avg', { n: sm.months }) }) +
+      tipLine('bolt', t('kpi_e_ten', { k: fmtN(sm.perMonth * 0.1, 0), uah: '<b>' + esc(money0(sm.uahMonth * 0.1)) + ' грн</b>', y: esc(money0(sm.uahMonth * 1.2)) })) +
+      (one ? tipLine('moon', t('kpi_e_two', { uah: '<b>' + esc(money0(sm.perMonth * 0.3 * p * 0.5)) + ' грн</b>' })) : '') + '</div>'
+      : '<div class="panel"><p class="muted">' + esc(t('esv_no_data')) + '</p></div>';
+    var groups = [[t('esv_g1'), 'moon', [0, 1, 2]], [t('esv_g2'), 'home', [3, 4, 5]], [t('esv_g3'), 'bolt', [6, 7]]];
+    return { screen: 'S14', route: 'save', html: '<h1>' + esc(t('esv_title')) + '</h1>' + kindSwitch() + '<p class="muted">' + esc(t('esv_lead')) + '</p>' + mine +
+      accGroups(groups.map(function (g) { return { title: g[0], icon: g[1], items: g[2].map(function (k) { return { title: list[k][0], html: '<p>' + esc(list[k][1]) + '</p>' }; }) }; }), 'esave-tips') };
   }
 
   // ---------- ввод показаний воды ----------
@@ -5058,6 +5569,15 @@ fieldset.field { border: 0; padding: 0; min-width: 0; }
   // действия воды
   function waterAct(act, el, e) {
     switch (act) {
+      case 'enew': EN = enFresh(); go('enew'); return true;
+      case 'esent': { var eids = (el.getAttribute('data-ids') || '').split(','), ev = el.getAttribute('data-v') === '1';
+        (S.mrecs || []).forEach(function (x) { if (eids.indexOf(x.id) >= 0) { x.sent = Object.assign({}, x.sent || {}, { obl: ev ? today() : '' }); x.updatedAt = Date.now(); } }); save(); render(true); return true; }
+      case 'edel': { if (!confirm(t('wh_del_q'))) return true; var ed = (S.mrecs || []).filter(function (x) { return x.id === el.getAttribute('data-id'); })[0]; if (ed) { ed.deleted = true; ed.updatedAt = Date.now(); save(); if (/^erec-/.test(routeName())) go('history'); else render(true); } return true; }
+      case 'eedit': { var ee = mrecs().filter(function (x) { return x.id === el.getAttribute('data-id'); })[0]; if (!ee) return true;
+        EN = enFresh(); EN.date = ee.date; EN.skip = ee.id; EN.vals[ee.meter] = {}; Object.keys(ee.z || {}).forEach(function (k) { EN.vals[ee.meter][k] = String(ee.z[k] || '').replace('.', ','); });
+        mrecs().forEach(function (x) { if (x.date === ee.date && !x.base && x.meter !== ee.meter) { EN.vals[x.meter] = {}; Object.keys(x.z || {}).forEach(function (k) { EN.vals[x.meter][k] = String(x.z[k] || '').replace('.', ','); }); } });
+        EN.back = routeName(); go('enew'); return true; }
+      case 'ea-zones': eaRead(); EA.zones = Number(el.value) || 1; render(true); var ez = document.querySelector('[data-key=ea-z' + EA.zones + ']'); if (ez) ez.focus(); return true;
       case 'wnew': WN = wnFresh(el.getAttribute('data-kind') || 'hot'); go(wmeters().length ? 'wnew' : 'wsetup'); return true;
       case 'wsetup': WS = { step: 0, preset: (el.getAttribute('data-kind') === 'cold' ? 'hc' : 'hc'), vals: {}, kind: el.getAttribute('data-kind') || 'hot' }; go('wsetup'); return true;
       case 'setup-heat': go('meter'); return true;
@@ -5093,6 +5613,7 @@ fieldset.field { border: 0; padding: 0; min-width: 0; }
       case 'add-meter': e.preventDefault(); AM_BACK = el.getAttribute('data-back') || (/^(place-.+|water-hot|water-cold|heat)$/.test(routeName()) ? routeName() : 'home'); go('add-meter'); return true;
       case 'am-pick': { var ak = el.getAttribute('data-kind');
         if (ak === 'heat') { delete S._pickModel; go('meter'); return true; }
+        if (ak === 'elec') { EA = { kind: 'elec', back: AM_BACK, zones: 1, vals: {} }; go('eadd'); return true; }
         WA = { kind: ak, back: AM_BACK }; go('wadd'); return true; }
       case 'm-remove': { var mw = el.getAttribute('data-what'), mn = meterTitle(mw), mh = meterHasData(mw);
         if (!confirm(t(mh ? 'mr_q' : 'mr_q_empty', { m: mn, p: placeLabel(place()) }))) return true;
@@ -5124,7 +5645,7 @@ fieldset.field { border: 0; padding: 0; min-width: 0; }
     if (ph && el.files && el.files[0]) wnPhoto(ph, el.files[0], el);
   });
   document.addEventListener('input', function (e) { var el = e.target; if (el && el.getAttribute && el.getAttribute('data-wn')) { WN.vals[el.getAttribute('data-wn')] = el.value.trim(); wnCheck(true); } });
-  document.addEventListener('submit', function (e) { if (e.target && e.target.id === 'wn-form') { e.preventDefault(); wnSave(); } if (e.target && e.target.id === 'wa-form') { e.preventDefault(); waSave(); } }, true);
+  document.addEventListener('submit', function (e) { if (e.target && e.target.id === 'wn-form') { e.preventDefault(); wnSave(); } if (e.target && e.target.id === 'wa-form') { e.preventDefault(); waSave(); } if (e.target && e.target.id === 'en-form') { e.preventDefault(); enSave(); } if (e.target && e.target.id === 'ea-form') { e.preventDefault(); eaSave(); } }, true);
   /** Фото одного водомера (камера у поля) → цифры барабана; фото остаётся к записи. */
   function wnPhoto(mid, file, el) {
     var help = document.getElementById('wh-' + mid), lab = el.closest && el.closest('.wcam');
@@ -5719,9 +6240,9 @@ fieldset.field { border: 0; padding: 0; min-width: 0; }
   function noMeters(route, title) {
     return { screen: 'S09', route: route, html: '<h1>' + esc(t(title)) + '</h1><div class="panel" data-key="no-meters"><p class="muted">' + esc(t('hi_nometers')) + '</p><button class="btn" data-act="add-meter" data-key="no-meters-add">' + ico('plus', 20) + '<span>' + esc(t('am_tile')) + '</span></button></div>' };
   }
-  V.history = function () { if (!kinds().length) return noMeters('history', 'hi_title'); var k = curView(); return k === 'heat' ? heatHistory() : whistory(k); };
-  V.stats = function () { if (!kinds().length) return noMeters('stats', 'stt_title'); var k = curView(); return k === 'heat' ? heatStats() : wstats(k); };
-  V.save = function () { if (!kinds().length) return noMeters('save', 'wsv_title'); var k = curView(); return k === 'heat' ? heatSave() : wsave(k); };
+  V.history = function () { if (!kinds().length) return noMeters('history', 'hi_title'); var k = curView(); return k === 'heat' ? heatHistory() : k === 'elec' ? ehistory() : whistory(k); };
+  V.stats = function () { if (!kinds().length) return noMeters('stats', 'stt_title'); var k = curView(); return k === 'heat' ? heatStats() : k === 'elec' ? estats() : wstats(k); };
+  V.save = function () { if (!kinds().length) return noMeters('save', 'wsv_title'); var k = curView(); return k === 'heat' ? heatSave() : k === 'elec' ? esave() : wsave(k); };
   function heatHistory() {
     if (window.TeploStats) loadWeather();
     var arr = heatMixed();
@@ -5783,7 +6304,7 @@ fieldset.field { border: 0; padding: 0; min-width: 0; }
   // цвета графиков — из CSS-токенов (светлая/тёмная тема); обновляются при каждой отрисовке
   var CH = {};
   function chColors() { var cs = getComputedStyle(document.documentElement), g = function (k) { return cs.getPropertyValue(k).trim(); };
-    CH = { ink: g('--c-ink'), ink2: g('--c-ink-2'), grid: g('--ch-grid'), bar: g('--ch-bar'), barSoft: g('--ch-bar-soft'), ok: g('--ch-ok'), low: g('--ch-low'), bad: g('--ch-bad'), none: g('--ch-none'), off: g('--ch-off'), ring: g('--ch-dot-ring'), surface: g('--c-surface'), hot: g('--c-supply'), cold: g('--c-return') }; }
+    CH = { ink: g('--c-ink'), ink2: g('--c-ink-2'), grid: g('--ch-grid'), bar: g('--ch-bar'), barSoft: g('--ch-bar-soft'), ok: g('--ch-ok'), low: g('--ch-low'), bad: g('--ch-bad'), none: g('--ch-none'), off: g('--ch-off'), ring: g('--ch-dot-ring'), surface: g('--c-surface'), hot: g('--c-supply'), cold: g('--c-return'), elec: g('--c-elec') }; }
   /** Ширина рисунка = реальной ширине на экране (на телефоне подписи не мельчают). */
   function chartW() { var w = Math.min(window.innerWidth || 640, 760) - 64; return Math.max(320, Math.min(640, w)); }
   function tipAttr(lines) { return ' tabindex="0" data-tip="' + esc(lines.filter(Boolean).join('\n')) + '"'; }
@@ -6133,9 +6654,10 @@ fieldset.field { border: 0; padding: 0; min-width: 0; }
   // ================= квартиры: список, экран квартиры, «додати лічильник», новый водомер =================
   /** Счётчики квартиры одной строкой: «Опалення · Гаряча · Холодна ×2» (без переключения квартиры). */
   function placeKinds(p) {
-    var ks = [], wm = ((p.water && p.water.meters) || []).filter(function (m) { return m && !m.deleted && !m.removed; });
+    var ks = [], wm = ((p.water && p.water.meters) || []).filter(function (m) { return m && !m.deleted && !m.removed; }), em = (p.meters || []).filter(function (m) { return m && !m.deleted && !m.removed && m.kind === 'elec'; });
     if (p.meter && !p.meter.removed) ks.push(t('kv_heat'));
     ['hot', 'cold'].forEach(function (k) { var n = wm.filter(function (m) { return m.kind === k; }).length; if (n) ks.push(t('kv_' + k) + (n > 1 ? ' ×' + n : '')); });
+    if (em.length) ks.push(t('kv_elec') + (em.length > 1 ? ' ×' + em.length : ''));
     return ks.length ? ks.join(' · ') : t('pv_none_short');
   }
   /** Список квартир. mode 'go' — нажал → эта квартира и главная (плюс «Налаштувати»); 'prefs' — нажал → экран квартиры. */
@@ -6159,6 +6681,7 @@ fieldset.field { border: 0; padding: 0; min-width: 0; }
       var rows = [];
       if (hasHeat()) { var hs = heatStatus(); rows.push(Object.assign({ kind: 'heat', title: t('kd_heat') }, hs)); }
       ['hot', 'cold'].forEach(function (k) { var n = wmeters(k).length; if (n) rows.push(Object.assign({ kind: k, title: t(KINDS[k].t) + (n > 1 ? ' ×' + n : '') }, waterStatus(k))); });
+      var ne = emeters().length; if (ne) rows.push(Object.assign({ kind: 'elec', title: t('kd_elec') + (ne > 1 ? ' ×' + ne : '') }, elecStatus()));
       var due = rows.filter(function (r) { return r.due && (r.tone === 'due' || r.tone === 'warn'); }).map(function (r) { return r.due; }).sort()[0] || null;
       return { rows: rows, due: due, allOk: rows.length > 0 && rows.every(function (r) { return r.tone === 'ok' || r.off; }) };
     }) || { rows: [], due: null, allOk: false };
@@ -6189,7 +6712,7 @@ fieldset.field { border: 0; padding: 0; min-width: 0; }
   /** Строка счётчика на экране квартиры: открыть · замінити · прибрати. */
   function mrow(o) {
     return '<li class="mrow" data-key="pv-m-' + esc(o.what) + '"><a class="mrow-main" href="#' + o.href + '">' + ico(KINDS[o.kind].icon, 22, KINDS[o.kind].cls) + '<span class="grow"><b>' + esc(o.title) + '</b>' + (o.sub ? '<span class="small muted">' + esc(o.sub) + '</span>' : '') + '</span>' + ico('chev', 20) + '</a>' +
-      '<div class="mrow-act"><button type="button" class="btn sec" data-act="m-replace" data-what="' + esc(o.what) + '" data-key="pv-replace-' + esc(o.what) + '">' + ico('wrench', 18) + '<span>' + esc(t('mr_replace')) + '</span></button>' +
+      '<div class="mrow-act">' + (o.noReplace ? '' : '<button type="button" class="btn sec" data-act="m-replace" data-what="' + esc(o.what) + '" data-key="pv-replace-' + esc(o.what) + '">' + ico('wrench', 18) + '<span>' + esc(t('mr_replace')) + '</span></button>') +
       '<button type="button" class="btn sec" data-act="m-remove" data-what="' + esc(o.what) + '" data-key="pv-remove-' + esc(o.what) + '">' + ico('close', 18) + '<span>' + esc(t('mr_remove')) + '</span></button></div></li>';
   }
   function verTxt(v) { return v ? t('pl_ver', { d: R.toHtmDate(v) }) : ''; }
@@ -6198,7 +6721,7 @@ fieldset.field { border: 0; padding: 0; min-width: 0; }
     var p = place(id);
     if (!p) return { screen: 'S42', route: 'places', html: '<h1>' + esc(t('pl_title')) + '</h1><p class="muted">' + esc(t('rec_gone')) + '</p><a class="btn" href="#places">' + esc(t('back')) + '</a>' };
     if (id !== S.placeId) { switchPlace(id); WX.key = ''; p = place(); }
-    var many = places().length > 1, ms = wmeters(), sub = placeSub(p), fresh = !p.name && !p.address && !hasHeat() && !ms.length;
+    var many = places().length > 1, ms = wmeters(), sub = placeSub(p), fresh = !p.name && !p.address && !hasHeat() && !ms.length && !emeters().length;
     var h = '<p><a href="#' + (many ? 'places' : 'prefs') + '" data-key="pv-back">← ' + esc(t(many ? 'pv_back_all' : 'nav_prefs')) + '</a></p>' +
       '<h1 class="pv-h" style="--pc:var(--pc-' + placeColor(p) + ')"><span class="pv-dot" aria-hidden="true"></span><span>' + esc(placeLabel(p)) + (sub ? '<span class="small muted pv-sub">' + esc(sub) + '</span>' : '') + '</span></h1>';
     if (fresh) h += '<div class="banner" data-key="pv-new">' + ico('info', 22) + '<div><p><b>' + esc(t('pv_new_t')) + '</b></p><p>' + esc(t('pv_new')) + '</p></div></div>';
@@ -6206,6 +6729,7 @@ fieldset.field { border: 0; padding: 0; min-width: 0; }
     var rows = [];
     if (hasHeat()) rows.push(mrow({ what: 'heat', kind: 'heat', title: t('kd_heat'), href: 'heat', sub: [modelName(model()), verTxt(S.meter.verifiedUntil)].filter(Boolean).join(' · ') }));
     ms.forEach(function (m) { rows.push(mrow({ what: m.id, kind: m.kind, title: wkindTitle(m.kind) + (m.name ? ' · ' + m.name : ''), href: 'water-' + m.kind, sub: [m.serial ? '№ ' + m.serial : '', verTxt(m.verifiedUntil)].filter(Boolean).join(' · ') })); });
+    emeters().forEach(function (m) { rows.push(mrow({ what: m.id, kind: 'elec', title: ename(m), href: 'elec', noReplace: true, sub: [ezonesTxt(m), m.serial ? '№ ' + m.serial : '', m.account ? t('ed_acc', { a: m.account }) : ''].filter(Boolean).join(' · ') })); });
     h += '<section class="panel" data-key="pv-meters"><h2>' + esc(t('pv_meters')) + '</h2>' + (rows.length ? '<ul class="mlist">' + rows.join('') + '</ul>' : '<p class="muted">' + esc(t('pv_none')) + '</p>') +
       '<p style="margin:12px 0 0"><button class="btn' + (rows.length ? ' sec' : '') + '" data-act="add-meter" data-back="place-' + esc(p.id) + '" data-key="pv-add-meter">' + ico('plus', 20) + '<span>' + esc(t('am_tile')) + '</span></button></p>';
     var rm = removedMeters();
@@ -6229,6 +6753,7 @@ fieldset.field { border: 0; padding: 0; min-width: 0; }
       '<div class="field"><label for="p-mzk">' + esc(t('p_mzk_l')) + '</label><div class="ctl"><input id="p-mzk" class="num" inputmode="decimal" placeholder="0,01262" value="' + esc(bill().mzk ? String(bill().mzk).replace('.', ',') : '') + '"></div><div class="small muted">' + esc(t('p_mzk_h')) + '</div></div></div>';
     if (ms.length) money += '<h3>' + esc(t('pv_m_water')) + '</h3>' + waccForm() +
       '<div class="field" style="max-width:260px"><label for="p-persons">' + esc(t('nm_persons')) + ' <span class="muted small">(' + esc(t('b_opt')) + ')</span></label><div class="ctl"><input id="p-persons" class="num" inputmode="numeric" autocomplete="off" data-nm="persons" value="' + esc(wcfg().persons || '') + '"></div><div class="small muted">' + esc(t('pv_persons_h')) + '</div></div>';
+    if (emeters().length) money += '<h3>' + esc(t('pv_m_elec')) + '</h3>' + eheatRow();
     h += '<section class="panel" data-key="pv-money"><h2>' + esc(t('pv_money')) + '</h2><p class="small muted">' + esc(t('pv_money_s')) + '</p>' + (money || '<p class="muted">' + esc(t('pv_money_none')) + '</p>') + '</section>';
     if (many && window.TEPLO_API) h += '<section class="panel" data-key="pv-remind"><h2>' + esc(t('pv_remind')) + '</h2>' +
       '<label class="check-row"><input type="checkbox" id="pv-remind"' + (p.remindOff ? '' : ' checked') + (S.remind && S.remind.off ? ' disabled' : '') + '><span>' + esc(t('pv_remind_l')) + '</span></label>' +
@@ -6240,7 +6765,7 @@ fieldset.field { border: 0; padding: 0; min-width: 0; }
   // ================= мастер «Додати квартиру»: 1) назва й адреса 2) які лічильники є 3) рахунок Водоканалу =================
   // Пенсионерам: шаги пронумерованы, крупные +/−, на последнем шаге — «Перевірте» с повтором сути. Потом — настройка каждого
   // счётчика по очереди (PQ): водомеры по одному (#wadd), теплосчётчик — последним (#meter, дальше обычный путь).
-  function pwFresh(back) { return { step: 0, name: '', address: '', n: { heat: 0, hot: 0, cold: 0 }, account: '', surname: '', back: back || 'places' }; }
+  function pwFresh(back) { return { step: 0, name: '', address: '', n: { heat: 0, hot: 0, cold: 0, elec: 0 }, account: '', surname: '', back: back || 'places' }; }
   var PW = pwFresh(), PQ = null;
   function pwSteps() { return PW.n.hot + PW.n.cold > 0 ? 3 : 2; }
   function pwRead() {
@@ -6298,7 +6823,7 @@ fieldset.field { border: 0; padding: 0; min-width: 0; }
     var np = { id: 'p' + Date.now().toString(36), name: PW.name.trim(), address: PW.address.trim(), v: 2, color: nextColor(), meter: null, baseline: null,
       water: { account: water && !skipAcc ? PW.account : '', surname: water && !skipAcc ? PW.surname : '', meters: [] }, updatedAt: Date.now() };
     S.places.push(np); switchPlace(np.id); WX.key = ''; save();
-    var list = []; ['hot', 'cold'].forEach(function (k) { for (var j = 0; j < (PW.n[k] || 0); j++) list.push(k); });
+    var list = []; ['hot', 'cold', 'elec'].forEach(function (k) { for (var j = 0; j < (PW.n[k] || 0); j++) list.push(k); });
     PQ = list.length || PW.n.heat ? { place: np.id, list: list, i: 0, heat: !!PW.n.heat, total: list.length + (PW.n.heat ? 1 : 0) } : null;
     PW = pwFresh(); toast(t('aw_created', { p: placeLabel(place()) }));
     pqNext();
@@ -6306,6 +6831,7 @@ fieldset.field { border: 0; padding: 0; min-width: 0; }
   /** Следующий счётчик новой квартиры: водомер (#wadd) → … → теплосчётчик (#meter) → главная квартиры. */
   function pqNext() {
     if (!PQ || PQ.place !== S.placeId) { PQ = null; go('home'); return; }
+    if (PQ.i < PQ.list.length && PQ.list[PQ.i] === 'elec') { EA = { kind: 'elec', back: 'home', zones: 1, vals: {} }; go('eadd'); return; }
     if (PQ.i < PQ.list.length) { WA = { kind: PQ.list[PQ.i], back: 'home' }; go('wadd'); return; }
     if (PQ.heat) { PQ.i = PQ.list.length; delete S._pickModel; go('meter'); return; }
     PQ = null; go('home');
@@ -6315,7 +6841,7 @@ fieldset.field { border: 0; padding: 0; min-width: 0; }
     if (!PQ || PQ.place !== S.placeId) return '';
     var i = heat ? PQ.total : PQ.i + 1;
     return '<div class="banner aw-q" data-key="aw-queue">' + ico('home', 22) + '<div><p><b>' + esc(t('aw_q', { p: placeLabel(place()), i: i, n: PQ.total })) + '</b></p>' +
-      (heat ? '<p>' + esc(t('aw_q_heat')) + '</p>' : '<p><button type="button" class="linkbtn" data-act="pq-later" data-key="aw-q-later">' + esc(t('aw_q_later')) + '</button></p>') + '</div></div>';
+      (heat ? '<p>' + esc(t('aw_q_heat')) + '</p>' : PQ.list[PQ.i] === 'elec' ? '<p>' + esc(t('aw_q_elec')) + '</p>' : '<p><button type="button" class="linkbtn" data-act="pq-later" data-key="aw-q-later">' + esc(t('aw_q_later')) + '</button></p>') + '</div></div>';
   }
 
   /** Какой счётчик добавить: опалення · гаряча · холодна · газ (скоро) · електрика (скоро); прибранные — «Повернути». */
@@ -6324,7 +6850,7 @@ fieldset.field { border: 0; padding: 0; min-width: 0; }
     var rows = KIND_ORDER.map(function (k) {
       var K = KINDS[k], n = kindCount(k), icon = ico(K.icon, 26, K.cls);
       if (K.soon) return '<div class="wz-opt am-opt am-soon" aria-disabled="true" data-key="am-' + k + '">' + icon + '<span><b>' + esc(t(K.t)) + '</b><span class="small muted">' + esc(t(K.s)) + '</span></span><span class="pill">' + esc(t('kd_soon')) + '</span></div>';
-      if (n >= K.max) return '<a class="wz-opt am-opt am-have" href="#' + (k === 'heat' ? 'heat' : 'water-' + k) + '" data-key="am-' + k + '">' + icon + '<span><b>' + esc(t(K.t)) + '</b><span class="small muted">' + esc(t('kd_have_all')) + '</span></span><span class="pill ok">' + esc(t('kd_have')) + '</span></a>';
+      if (n >= K.max) return '<a class="wz-opt am-opt am-have" href="#' + (k === 'heat' ? 'heat' : k === 'elec' ? 'elec' : 'water-' + k) + '" data-key="am-' + k + '">' + icon + '<span><b>' + esc(t(K.t)) + '</b><span class="small muted">' + esc(t('kd_have_all')) + '</span></span><span class="pill ok">' + esc(t('kd_have')) + '</span></a>';
       return '<button type="button" class="wz-opt am-opt" data-act="am-pick" data-kind="' + k + '" data-key="am-' + k + '">' + icon + '<span><b>' + esc(t(K.t)) + '</b><span class="small muted">' + esc(n ? t('kd_have_n', { n: n }) : t(K.s)) + '</span></span>' + ico('chev', 20) + '</button>';
     }).join('');
     var rm = removedMeters(), back = AM_BACK || 'home';
@@ -6387,6 +6913,16 @@ fieldset.field { border: 0; padding: 0; min-width: 0; }
       '<p class="small muted" style="margin-top:8px">' + esc(t('rm_sub')) + '</p>' +
       (tg ? '' : '<p class="small">' + ico('info', 16) + ' ' + esc(t(acc ? 'rm_need_tg' : 'rm_need_login')) + '</p>') + '</div>';
   }
+  // світло: поля лічильника (назва, рахунок, №), електроопалення квартири; підказки під полями вводу
+  document.addEventListener('change', function (e) {
+    var el = e.target; if (!el || !el.getAttribute) return;
+    var mid = el.getAttribute('data-em');
+    if (mid) { var f = el.getAttribute('data-ef'), v = el.value.trim().slice(0, 40); setPMeters(function (list) { list.forEach(function (m) { if (m.id === mid) m[f] = v; }); }); toast(t('b_saved')); return; }
+    if (el.id === 'e-heat') { ensurePlaces(); var pp = place(); if (el.checked) pp.elecHeat = true; else delete pp.elecHeat; pp.updatedAt = Date.now(); save(); toast(t('b_saved')); return; }
+    if (el.id === 'en-date') { enRead(); enCheck(true); }
+  });
+  // підказки під полями світла — одразу під час набору (як у води): після виходу з поля кнопка не «з'їжджає»
+  document.addEventListener('input', function (e) { var el = e.target; if (el && el.getAttribute && el.getAttribute('data-en')) { enRead(); enCheck(true); } });
   // мастер квартиры: «Перевірте» сразу показывает введённый рахунок
   document.addEventListener('input', function (e) {
     var el = e.target; if (!el || el.id !== 'aw-acc') return; PW.account = el.value.trim();
@@ -6769,8 +7305,9 @@ fieldset.field { border: 0; padding: 0; min-width: 0; }
   }
   /** «Скасувати»: бросить ввод целиком — черновик тепла, фото на распознавании, ввод воды — и выйти на главную. */
   function wizCancel(what) {
-    if (!confirm(t(what === 'water' ? 'wz_cancel_q_w' : 'wz_cancel_q'))) return;
+    if (!confirm(t(what === 'water' || what === 'elec' ? 'wz_cancel_q_w' : 'wz_cancel_q'))) return;
     if (what === 'water') { WN.gen = -1; WN = wnFresh(WN.kind); go('home'); return; }
+    if (what === 'elec') { EN = enFresh(); go('home'); return; }
     PH.gen = -1; if (PH.ctl) try { PH.ctl.abort(); } catch (e) { /* нет */ }
     phReset('reading'); S.draft = null; delete S._lastCheck; save(); toast(t('wz_cancelled')); go('home');
   }
@@ -6853,6 +7390,9 @@ fieldset.field { border: 0; padding: 0; min-width: 0; }
       ['h-special', ru ? 'Счётчики ELF, TRUST, ЛТЭ, Ultrameter' : 'Лічильники ELF, TRUST, ЛТЕ, Ultrameter', ru
         ? '<p>Эти приборы считают часы работы только когда идёт теплоноситель. ХТМ советует держать расход выше переходного весь отопительный период и разницу температур больше 3 °C — иначе показания могут не принять, и тогда их подают на бумаге в районный филиал.</p>'
         : '<p>Ці прилади рахують години роботи лише коли йде теплоносій. ХТМ радить тримати витрату вищою за перехідну весь опалювальний період і різницю температур більше 3 °C — інакше показання можуть не прийняти, і тоді їх подають паперово в районну філію.</p>'],
+      ['h-elec', ru ? 'Свет: когда и куда передавать' : 'Світло: коли й куди передавати', ru
+        ? '<p>Показания света принимает <b>Харьковоблэнерго</b> в <b>последние 2 дня месяца и 1–3 числа</b> следующего (поданные 1–3 числа засчитываются на 1-е). Не передали — счёт посчитают «по среднему», потом пересчитают по факту.</p><p>Как: приложение «Харэнерго» (iPhone и Android), Viber-бот Харьковоблэнерго или колл-центр — (057) 342-44-13, (067) 234-04-13, (050) 054-04-13, (063) 054-04-13. Нужен лицевой счёт из платёжки Харьковэнергосбыта — впишите его у счётчика, и сервис подставит его для копирования.</p><p>Только цифры до запятой. У двухзонного счётчика табло само переключается: день — T1 (1.8.1), ночь — T2 (1.8.2); каждую зону — отдельно, не складывая. Общий показатель (1.8.0) не нужен.</p><p>Цена для населения — 4,32 грн за кВт·ч (продлено до 30.04.2027). Ночью (23:00–07:00) по двухзонному — ×0,5; трёхзонный: пик ×1,5, полупик ×1, ночь ×0,4. Дом с электроотоплением и оформленной льготой: 1 октября — 30 апреля 2,64 грн за первые 2000 кВт·ч в месяц — отметьте это у счётчика.</p>'
+        : '<p>Показання світла приймає <b>Харківобленерго</b> в <b>останні 2 дні місяця і 1–3 числа</b> наступного (подані 1–3 числа зараховуються на 1-ше). Не передали — рахунок порахують «за середнім», потім перерахують за фактом.</p><p>Як: застосунок «Харенерго» (iPhone і Android), Viber-бот Харківобленерго або кол-центр — (057) 342-44-13, (067) 234-04-13, (050) 054-04-13, (063) 054-04-13. Потрібен особовий рахунок із платіжки Харківенергозбуту — впишіть його в лічильника, і сервіс підставить його для копіювання.</p><p>Лише цифри до коми. У двозонного лічильника табло саме перемикається: день — T1 (1.8.1), ніч — T2 (1.8.2); кожну зону — окремо, не додаючи. Загальний показник (1.8.0) не потрібен.</p><p>Ціна для населення — 4,32 грн за кВт·год (продовжено до 30.04.2027). Вночі (23:00–07:00) за двозонним — ×0,5; тризонний: пік ×1,5, напівпік ×1, ніч ×0,4. Будинок з електроопаленням і оформленою пільгою: 1 жовтня — 30 квітня 2,64 грн за перші 2000 кВт·год на місяць — позначте це в лічильника.</p>'],
       ['h-places', ru ? 'Несколько квартир и свой набор счётчиков' : 'Кілька квартир і свій набір лічильників', ru
         ? '<p>Своя квартира, родителей, сдаёте — у каждой свои счётчики, показания, история и счета. Добавить: <b>Настройки → Квартиры → Добавить квартиру</b> или кнопка под списком квартир — три шага: название и адрес, какие счётчики есть (кнопки «+» и «−»), лицевой счёт Водоканала. Потом сервис по очереди предложит настроить каждый счётчик.</p><p>Когда квартир две и больше, <b>главная — список квартир</b>: у каждой видно, что с каждым счётчиком («Передать до 20.11», «Передано») и ближайший срок. Нажмите на квартиру — откроются её счётчики.</p><p>В квартире — только те счётчики, что в ней есть: <b>«Добавить счётчик»</b> (отопление, горячая или холодная вода; газ и свет — скоро). Счётчик можно <b>заменить</b> (новый после поверки или поломки — расход дальше считается от его показаний) или <b>убрать</b> — история останется, вернуть можно на странице квартиры.</p><p>Где вы сейчас — видно сверху: полоса цвета квартиры и её название; вернуться к списку — <b>«Все квартиры»</b>. Если введённое число похоже на показания счётчика другой квартиры, сервис предупредит.</p><p>Напоминания в Telegram приходят одним сообщением на все квартиры, с кнопкой в каждую. Про отдельную квартиру их можно выключить на её странице.</p>'
         : '<p>Своя квартира, батьків, здаєте — у кожної свої лічильники, показання, історія й рахунки. Додати: <b>Налаштування → Квартири → Додати квартиру</b> або кнопка під списком квартир — три кроки: назва й адреса, які лічильники є (кнопки «+» і «−»), особовий рахунок Водоканалу. Потім сервіс по черзі запропонує налаштувати кожен лічильник.</p><p>Коли квартир дві й більше, <b>головна — список квартир</b>: у кожної видно, що з кожним лічильником («Передати до 20.11», «Передано») і найближчий термін. Натисніть на квартиру — відкриються її лічильники.</p><p>У квартирі — лише ті лічильники, що в ній є: <b>«Додати лічильник»</b> (опалення, гаряча чи холодна вода; газ і світло — скоро). Лічильник можна <b>замінити</b> (новий після повірки чи поломки — розхід далі рахується від його показань) або <b>прибрати</b> — історія залишиться, повернути можна на сторінці квартири.</p><p>Де ви зараз — видно вгорі: смужка кольору квартири та її назва; повернутися до списку — <b>«Усі квартири»</b>. Якщо введене число схоже на показання лічильника іншої квартири, сервіс попередить.</p><p>Нагадування в Telegram приходять одним повідомленням на всі квартири, з кнопкою в кожну. Про окрему квартиру їх можна вимкнути на її сторінці.</p>'],
@@ -6868,7 +7408,7 @@ fieldset.field { border: 0; padding: 0; min-width: 0; }
     var groups = [
       { id: 'hg-send', title: t('hg_send'), icon: 'calendar', items: [byId['h-window'], byId['h-sameday'], byId['h-how'], { title: t('ph_tips_t'), html: photoTips }] },
       { id: 'hg-reject', title: t('hg_reject'), icon: 'alert', items: [byId['h-robot'], byId['h-special'], byId['h-off']] },
-      { id: 'hg-other', title: t('hg_other'), icon: 'info', items: [byId['h-places'], byId['h-hw'], byId['h-gap'], byId['h-phones']] }
+      { id: 'hg-other', title: t('hg_other'), icon: 'info', items: [byId['h-places'], byId['h-elec'], byId['h-hw'], byId['h-gap'], byId['h-phones']] }
     ];
     groups[0].items[0].open = true;
     return '<div class="help-doc"><h1>' + esc(t('help_title')) + '</h1><nav class="toc" aria-label="' + esc(t('help_title')) + '">' + groups.map(function (g) { return '<button type="button" class="tocb" data-act="scroll" data-target="' + g.id + '">' + esc(g.title) + '</button>'; }).join('') + '</nav>' +
@@ -6883,14 +7423,17 @@ fieldset.field { border: 0; padding: 0; min-width: 0; }
     // в квартире нет теплосчётчика (или его прибрали) — экраны ввода тепла ведут на главную; вкладки показывают то, что есть
     if (S.onboarded && !hasHeat() && /^(heat|step-\d+|check|handover|status)$/.test(r)) { r = 'home'; try { history.replaceState(null, '', '#home'); } catch (e0) { /* старый браузер */ } }
     if (S.onboarded && !S.meter && r === 'baseline') r = 'meter';
+    // світла в квартирі немає (або прибрали) — сторінка світла веде на головну
+    if (S.onboarded && !emeters().length && r === 'elec') { r = 'home'; try { history.replaceState(null, '', '#home'); } catch (e1) { /* старий браузер */ } }
     pendingRender = false;
     if (!S.onboarded && ['welcome', 'start', 'wsetup', 'meter', 'baseline', 'help', 'login', 'photo', 'privacy', 'terms'].indexOf(r) < 0) r = S.meter ? 'baseline' : 'welcome';
     if (S.onboarded && (!r || r === 'welcome')) r = homeRoute();
     var view;
-    var rm = r.match(/^rec-([\w-]+?)(-edit)?$/), wm = r.match(/^wrec-([\w-]+)$/), gn = r.match(/^gap-new-([\w-]+)$/), gm = !gn && r.match(/^gap-([\w-]+)$/), pm = r.match(/^place-([\w-]+)$/);
+    var rm = r.match(/^rec-([\w-]+?)(-edit)?$/), wm = r.match(/^wrec-([\w-]+)$/), gn = r.match(/^gap-new-([\w-]+)$/), gm = !gn && r.match(/^gap-([\w-]+)$/), pm = r.match(/^place-([\w-]+)$/), em = r.match(/^erec-([\w-]+)$/);
     if (!gn) GAP_PRESET = null;
-    if (PQ && !/^(wadd|meter|add-place)$/.test(r)) PQ = null;
+    if (PQ && !/^(wadd|eadd|meter|add-place)$/.test(r)) PQ = null;
     if (pm) view = placeView(pm[1]);
+    else if (em) view = erecView(em[1]);
     else if (gn) view = gapView(null, gn[1]);
     else if (gm) view = gapView(gm[1]);
     else if (rm) view = recView(rm[1], !!rm[2]);
@@ -7316,7 +7859,7 @@ fieldset.field { border: 0; padding: 0; min-width: 0; }
   if (window.TEPLO_API && window.TeploVision) window.TeploVision.initServer({}, false);
   // кнопка из напоминания бота: ?go=wnew — ввод воды, ?go=heat — тепло
   (function () {
-    var g = (location.search.match(/[?&]go=(wnew|heat|home|places)(?=&|$)/) || [])[1]; if (!g) return;
+    var g = (location.search.match(/[?&]go=(wnew|heat|enew|elec|home|places)(?=&|$)/) || [])[1]; if (!g) return;
     var pid = (location.search.match(/[?&]place=([\w-]+)(?=&|$)/) || [])[1];
     var q = location.search.replace(/([?&])(go|place)=[\w-]+(?=&|$)/g, '$1').replace(/&{2,}/g, '&').replace(/\?&/, '?').replace(/[?&]$/, '');
     // напоминание про конкретную квартиру — сразу в неё

@@ -1,7 +1,8 @@
 <?php
 // Напоминания через Telegram-бота (зовёт cron.php раз в час, шлёт с 10 до 20 по Киеву):
 //  вода — 15-го и 19-го, если в этом месяце ещё нет записи воды (Водоканал принимает до 20-го);
-//  тепло — 5-го (открылось окно ХТМ) и 22-го, если нет показаний, снятых в окне 5–25.
+//  тепло — 5-го (открылось окно ХТМ) и 22-го, если нет показаний, снятых в окне 5–25;
+//  свет — в предпоследний день месяца (окно Харківобленерго открылось) и 2-го (завтра последний день), если нет показаний в окне.
 // Кому: аккаунты с Telegram и состоянием на сервере; выключатель — state.remind.off (Настройки, все квартиры) и place.remindOff
 // (страница квартиры), язык — state.remind.lang. Несколько квартир — одно сообщение со списком и кнопкой в каждую (?go=…&place=id).
 // Каждое напоминание — не больше раза за месяц (reminders_sent, с итогом Telegram в status — видно в /admin → «Нагадування»);
@@ -13,12 +14,27 @@ final class Reminders {
   const TZ = 'Europe/Kyiv';
   const DAYS = [5 => 'heat5', 15 => 'water15', 19 => 'water19', 22 => 'heat22'];
 
+  /** Какое напоминание в этот день: [kind, ym] или null. Свет: предпоследний день месяца (окно открылось) и 2-е (завтра — последний). */
+  public static function kindOn(DateTimeImmutable $d): ?array {
+    $j = (int)$d->format('j'); $L = (int)$d->format('t');
+    if ($j === $L - 1) return ['elec1', $d->format('Y-m')];
+    if ($j === 2) return ['elec2', $d->modify('first day of previous month')->format('Y-m')];
+    $k = self::DAYS[$j] ?? null;
+    return $k ? [$k, $d->format('Y-m')] : null;
+  }
+
   /** Что напоминать в этот момент: ['ym' => '2026-11', 'kind' => 'water15'] или null (не тот день или не то время). */
   public static function due(int $now): ?array {
     $d = (new DateTimeImmutable('@' . $now))->setTimezone(new DateTimeZone(self::TZ));
-    $h = (int)$d->format('G'); $kind = self::DAYS[(int)$d->format('j')] ?? null;
-    if (!$kind || $h < 10 || $h >= 20) return null;
-    return ['ym' => $d->format('Y-m'), 'kind' => $kind];
+    $h = (int)$d->format('G'); $k = self::kindOn($d);
+    if (!$k || $h < 10 || $h >= 20) return null;
+    return ['ym' => $k[1], 'kind' => $k[0]];
+  }
+
+  /** Окно приёма показаний света за месяц ym: с предпоследнего дня ym по 3-е число следующего. → [from, to] */
+  public static function elecWindow(string $ym): array {
+    $d = new DateTimeImmutable($ym . '-01'); $L = (int)$d->format('t');
+    return [$ym . '-' . sprintf('%02d', $L - 1), $d->modify('first day of next month')->format('Y-m') . '-03'];
   }
 
   /** Какие квартиры ждут это напоминание: [['id' => 'p2', 'label' => 'Мамина', 'all' => 2], …] (all — сколько квартир всего).
@@ -39,7 +55,17 @@ final class Reminders {
       if (!empty($p['remindOff'])) continue;
       $label = trim((string)($p['name'] ?? '')) ?: (trim((string)($p['address'] ?? '')) ?: ('Квартира ' . ($i + 1)));
       $need = false;
-      if (str_starts_with($kind, 'water')) {
+      if (str_starts_with($kind, 'elec')) {
+        // світло: у кожного діючого електролічильника є показання (не стартові) у вікні приймання
+        [$wf, $wt] = self::elecWindow($ym);
+        foreach ((array)($p['meters'] ?? []) as $m) {
+          if (!is_array($m) || ($m['kind'] ?? '') !== 'elec' || !empty($m['deleted']) || !empty($m['removed'])) continue;
+          $has = false;
+          foreach ((array)($st['mrecs'] ?? []) as $r)
+            if (is_array($r) && empty($r['deleted']) && empty($r['base']) && ($r['meter'] ?? '') === ($m['id'] ?? '') && ($r['place'] ?? '') === $p['id'] && (string)($r['date'] ?? '') >= $wf && (string)($r['date'] ?? '') <= $wt) { $has = true; break; }
+          if (!$has) { $need = true; break; }
+        }
+      } elseif (str_starts_with($kind, 'water')) {
         // прибранный из квартиры водомер (removed — дата) не напоминает
         $ms = array_filter((array)($p['water']['meters'] ?? []), fn($m) => is_array($m) && empty($m['deleted']) && empty($m['removed']) && !$off($p, (string)($m['id'] ?? '')));
         if ($ms) {
@@ -76,11 +102,15 @@ final class Reminders {
                      : "🔥 Відкрилося вікно ХТМ: показання тепла приймають з 5 по 25 число. Зніміть показання теплолічильника — сервіс перевірить їх, як робот ХТМ.",
       'heat22' => $ru ? "🔥 До 25-го — последние дни передачи показаний тепла в ХТМ. В этом месяце показаний ещё нет."
                       : "🔥 До 25-го — останні дні передачі показань тепла в ХТМ. Цього місяця показань ще немає.",
+      'elec1' => $ru ? "⚡ Пора передать показания света: последние 2 дня месяца и 1–3 число — в Харьковоблэнерго.\n\nВнесите цифры — сервис проверит их и подскажет, куда передать (приложение «Харэнерго», Viber-бот, колл-центр)."
+                     : "⚡ Час передати показання світла: останні 2 дні місяця і 1–3 число — у Харківобленерго.\n\nВнесіть цифри — сервіс перевірить їх і підкаже, куди передати (застосунок «Харенерго», Viber-бот, кол-центр).",
+      'elec2' => $ru ? "⚡ Завтра, 3-го, — последний день передачи показаний света. Иначе посчитают «по среднему»."
+                     : "⚡ Завтра, 3-го, — останній день передачі показань світла. Інакше нарахують «за середнім».",
     ][$kind] ?? '';
     $off = $ru ? 'Выключить напоминания — в «Настройках» сервиса.' : 'Вимкнути нагадування — у «Налаштуваннях» сервісу.';
-    $water = str_starts_with($kind, 'water');
-    $btn = $water ? ($ru ? 'Внести воду' : 'Внести воду') : ($ru ? 'Снять показания тепла' : 'Зняти показання тепла');
-    $go = Cfg::appUrl() . '?go=' . ($water ? 'wnew' : 'heat');
+    $water = str_starts_with($kind, 'water'); $elec = str_starts_with($kind, 'elec');
+    $btn = $elec ? ($ru ? 'Внести свет' : 'Внести світло') : ($water ? ($ru ? 'Внести воду' : 'Внести воду') : ($ru ? 'Снять показания тепла' : 'Зняти показання тепла'));
+    $go = Cfg::appUrl() . '?go=' . ($elec ? 'enew' : ($water ? 'wnew' : 'heat'));
     $many = $places && ($places[0]['all'] ?? 1) > 1;
     if (!$many) return ['text' => $t . "\n\n" . $off, 'button' => $btn, 'url' => $go, 'buttons' => [[$btn, $go]]];
     // несколько квартир: одно сообщение — в каких квартирах ещё не внесли, кнопка в каждую (не больше 6)
@@ -95,8 +125,8 @@ final class Reminders {
   public static function next(int $now): array {
     $d = (new DateTimeImmutable('@' . $now))->setTimezone(new DateTimeZone(self::TZ));
     for ($i = 0; $i < 40; $i++) {
-      $x = $d->modify("+$i day"); $k = self::DAYS[(int)$x->format('j')] ?? null;
-      if ($k && ($i > 0 || (int)$d->format('G') < 20)) return ['date' => $x->format('Y-m-d'), 'kind' => $k, 'ym' => $x->format('Y-m')];
+      $x = $d->modify("+$i day"); $k = self::kindOn($x);
+      if ($k && ($i > 0 || (int)$d->format('G') < 20)) return ['date' => $x->format('Y-m-d'), 'kind' => $k[0], 'ym' => $k[1]];
     }
     return [];
   }

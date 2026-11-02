@@ -21,7 +21,7 @@ let pass = 0, fail = 0; const ok = (n, c, i) => { console.log((c ? '  OK  ' : ' 
   await click('[data-act=aw-chip][data-v="Батьків"]', 200);
   ok('кнопка назви вписує назву', (await p.inputValue('#aw-name')) === 'Батьків');
   await p.fill('#aw-addr', 'Пушкінська 5, кв. 2'); await click('[data-key=aw-next]');
-  ok('крок 2: газ і світло — «скоро», без кнопок', (await p.$$('.aw-kind.am-soon')).length === 2 && !(await p.$('.aw-kind.am-soon button')));
+  ok('крок 2: газ — «скоро», без кнопок; світло — з кнопками', (await p.$$('.aw-kind.am-soon')).length === 1 && !(await p.$('.aw-kind.am-soon button')) && !!(await p.$('[data-key=aw-elec-inc]')));
   ok('крок 2 (без води) — останній: «Перевірте» і «Створити»', !!(await p.$('[data-key=aw-sum]')) && !!(await p.$('[data-key=aw-create]')));
   ok('«−» вимкнено на нулі', await p.$eval('[data-key=aw-hot-dec]', e => e.disabled));
   await click('[data-key=aw-cold-inc]', 200); await click('[data-key=aw-cold-inc]', 200); await click('[data-key=aw-hot-inc]', 200);

@@ -774,3 +774,12 @@ fieldset.field { border: 0; padding: 0; min-width: 0; }
 @media (max-width: 400px) { .aw-sum dl { grid-template-columns: minmax(0, 1fr); gap: 2px; } .aw-sum dd { margin-bottom: 8px; } }
 .aw-q { margin-bottom: var(--sp-4); }
 .dest-place { margin: 0 0 12px; padding: 4px 0 4px 12px; border-left: 6px solid var(--pc); }
+
+/* ---- світло (этап 3) ---- */
+.ucard-elec .ucard-top .ico { color: var(--c-elec); }
+.kpi.elec { border-left-color: var(--c-elec); }
+.efield { border: 1.5px solid var(--c-line); border-radius: 14px; padding: 12px 16px 4px; margin: 0 0 16px; background: var(--c-surface); min-width: 0; }
+.efield legend { font-weight: 600; padding: 0 6px; }
+.kind-sw .c-elec { color: var(--c-elec); }
+/* четыре вида (тепло, гаряча, холодна, світло) — на телефоне в две строки по два */
+@media (max-width: 560px) { .kind-sw.many { display: grid; grid-template-columns: 1fr 1fr; border-radius: 16px; } .kind-sw.many button { border-radius: 12px; } }

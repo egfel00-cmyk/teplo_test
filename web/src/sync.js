@@ -10,7 +10,7 @@
  */
 (function (root) {
   'use strict';
-  var SYNC_KEYS = ['v', 'onboarded', 'meter', 'baseline', 'contacts', 'readings', 'draft', 'updatedAt', 'wipedAt', 'tariff', 'bill', 'places', 'water', 'remind', 'wtariff'];
+  var SYNC_KEYS = ['v', 'onboarded', 'meter', 'baseline', 'contacts', 'readings', 'draft', 'updatedAt', 'wipedAt', 'tariff', 'bill', 'places', 'water', 'remind', 'wtariff', 'mrecs'];
 
   function payload(S) { var o = {}; SYNC_KEYS.forEach(function (k) { if (S[k] !== undefined) o[k] = S[k]; }); return o; }
   function sig(p) { var c = Object.assign({}, p); delete c.updatedAt; return JSON.stringify(c); }
@@ -39,6 +39,15 @@
       if (!o || (r.updatedAt || ts(r.createdAt)) >= (o.updatedAt || ts(o.createdAt))) wm[r.id] = r;
     });
     out.water = Object.keys(wm).map(function (k) { return wm[k]; }).sort(function (x, y) { return ts(x.createdAt) - ts(y.createdAt); });
+    // показания света (и дальше газа) — так же
+    var mm = {};
+    (older.mrecs || []).concat(newer.mrecs || []).forEach(function (r) {
+      if (!r || !r.id) return;
+      if (wiped && ts(r.createdAt) <= wiped) return;
+      var o = mm[r.id];
+      if (!o || (r.updatedAt || ts(r.createdAt)) >= (o.updatedAt || ts(o.createdAt))) mm[r.id] = r;
+    });
+    out.mrecs = Object.keys(mm).map(function (k) { return mm[k]; }).sort(function (x, y) { return ts(x.createdAt) - ts(y.createdAt); });
     var wipeWins = wiped && newer.wipedAt === wiped;
     out.onboarded = wipeWins ? !!newer.onboarded : !!(a.onboarded || b.onboarded);
     // база (последние принятые ХТМ) — с более поздней датой; при равенстве — из более свежего состояния

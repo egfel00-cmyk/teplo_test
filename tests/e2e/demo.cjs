@@ -21,5 +21,12 @@ module.exports = function demo(opts) {
         water: { account: '654321', surname: 'Шевченко', meters: [{ id: 'c9', kind: 'cold', name: '', serial: '1100220', vkId: '', verifiedUntil: '2030-05-01' }] } }] : []),
     water: water.concat(opts.second ? [['2026-09-14', 210, true], ['2026-10-14', 214], ['2026-11-01', 215]].map(([d, c, base]) => Object.assign({ id: 'q' + d.replace(/-/g, ''), place: 'p2', date: d, vals: { c9: String(c) }, createdAt: d + 'T10:00:00Z', updatedAt: 1, sent: base ? {} : { vk: d } }, base ? { base: true } : {})) : []) };
   if (opts.second && opts.at2) out.placeId = 'p2';
+  // світло: двозонний (elec: 1 — однозонний) у першій квартирі; 31.10 внесено, ще не передано (вікно 30.10–3.11 відкрите)
+  if (opts.elec) {
+    out.places[0].meters = [{ id: 'e1', kind: 'elec', name: '', zones: opts.elec === 1 ? 1 : 2, serial: '0123456', account: '9876543' }];
+    const z = (a, b) => opts.elec === 1 ? { all: String(a + b) } : { day: String(a), night: String(b) };
+    out.mrecs = [['2026-07-31', 10000, 5000, true], ['2026-08-31', 10150, 5080], ['2026-10-01', 10290, 5150], ['2026-10-31', 10420, 5225]].map(([d, a, b, base], i) =>
+      ({ id: 'm' + d.replace(/-/g, ''), place: 'main', meter: 'e1', kind: 'elec', date: d, z: z(a, b), base: !!base, sent: base || i === 3 ? {} : { obl: d }, createdAt: d + 'T10:00:00Z', updatedAt: 1 }));
+  }
   return out;
 };
