@@ -40,7 +40,7 @@
       };
       var chain = Promise.resolve(), out = { meter: null, photos: [] };
       files.forEach(function (f) {
-        chain = chain.then(function () { return self.prepare(f); }).then(function (b) { return post('/recognize/upload', b, b.type || 'image/jpeg'); }).then(function (j) { ids.push(j.id); });
+        chain = chain.then(function () { return self.prepare(f); }).then(function (b) { return post('/recognize/upload', b, b.type || 'image/jpeg'); }).then(function (j) { ids.push(j.id); f._srv = j.id; });
       });
       var n = Math.ceil(files.length / 3);
       return chain.then(function () {
@@ -78,7 +78,8 @@
       // копия фото — в аналитику (параллельно с загрузкой движка); ошибки загрузки не мешают распознаванию
       var uploads = Promise.resolve();
       // фото из бота уже лежат на сервере (f._srv) — второй раз не загружаем
-      if (self.isIn()) files.forEach(function (f) { uploads = uploads.then(function () { if (f._srv) { ids.push(f._srv); return; } return self.prepare(f).then(function (b) { return post('/recognize/upload', b, b.type || 'image/jpeg'); }).then(function (j) { ids.push(j.id); }, function () { /* без копии */ }); }); });
+      if (self.isIn()) files.forEach(function (f) { uploads = uploads.then(function () { if (f._srv) { ids.push(f._srv); return; } return self.prepare(f).then(function (b) { return post('/recognize/upload', b, b.type || 'image/jpeg'); }).then(function (j) { ids.push(j.id); f._srv = j.id; }, function () { /* без копии */ }); }); });
+      self.pendingUploads = uploads;   // фото к записи истории берут эти же копии (не грузить второй раз)
       var cancelled = function () { if (signal && signal.aborted) throw fail('cancelled'); };
       return this._engine(function (p) { if (onProgress) onProgress(Math.round(p * 100), 100, 'load'); }).then(function () {
         var chain = Promise.resolve();

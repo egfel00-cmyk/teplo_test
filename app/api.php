@@ -17,6 +17,8 @@
 //  POST /api/bot/setup              (заголовок X-Setup-Secret = webhook_secret) — вебхук, кнопка меню, /start
 //  POST /api/recognize/upload       фото СЫРЫМ телом (Content-Type: image/*) → {id}
 //  POST /api/docs/upload?place&kind  документ к счётчику (фото/PDF сырым телом) · GET /api/docs · GET /api/docs/file?id · POST /api/docs/delete
+//  GET  /api/photo?id=…             фото к записи истории — байты, только хозяину
+//  POST /api/photo/keep             {ids, keep} — фото записи хранить, пока есть запись (keep=false — снова по сроку photo_keep_days)
 //  GET  /api/weather?from&to       средняя за сутки в Харькове (Open-Meteo, кэш) — для истории
 //  POST /api/recognize/local        {ids, results} — итог распознавания в браузере (свой движок, без нейросети) → в аналитику
 //  POST /api/recognize/run          {ids[≤3], offset, ctx} → распознанное (vision-API, ключ в config.php)
@@ -183,6 +185,20 @@ final class Api {
         if (!$user) throw new HttpError(401, 'unauthorized');
         RateLimit::hit('recog_upload', (string)$user['id']);
         return Recognize::report((int)$user['id'], $in);
+      }
+      case 'GET /api/photo': {   // фото к записи истории (тепло/вода) — только хозяину
+        if (!$user) throw new HttpError(401, 'unauthorized');
+        $id = (string)($r->query()['id'] ?? '');
+        $ph = preg_match('/^[a-f0-9]{24}$/', $id) ? Db::one('SELECT * FROM photos WHERE id = ? AND user_id = ?', [$id, (int)$user['id']]) : null;
+        if (!$ph || !is_file(Recognize::path($ph))) throw new HttpError(404, 'not_found');
+        $res->file = ['path' => Recognize::path($ph), 'mime' => $ph['mime']]; return [];
+      }
+      case 'POST /api/photo/keep': {
+        if (!$user) throw new HttpError(401, 'unauthorized');
+        $on = ($in['keep'] ?? true) ? 1 : 0; $n = 0;
+        foreach (array_slice((array)($in['ids'] ?? []), 0, 100) as $id)
+          if (is_string($id) && preg_match('/^[a-f0-9]{24}$/', $id)) $n += Db::q('UPDATE photos SET kept = ? WHERE id = ? AND user_id = ?', [$on, $id, (int)$user['id']])->rowCount();
+        return ['ok' => true, 'n' => $n];
       }
       case 'GET /api/weather': return Weather::range((string)($r->query()['from'] ?? ''), (string)($r->query()['to'] ?? ''));   // погода к истории — всем, кэш
       case 'POST /api/docs/upload': {   // документ к счётчику сырым телом: ?place=&kind=passport|verification|other&name=

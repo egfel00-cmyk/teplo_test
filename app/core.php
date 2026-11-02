@@ -136,6 +136,15 @@ final class Db {
       "CREATE TABLE IF NOT EXISTS recog_reports (id $ai, user_id INT NOT NULL, photo_ids TEXT NULL, kind VARCHAR(16) NOT NULL, ok TINYINT NOT NULL DEFAULT 0, text TEXT NOT NULL, data TEXT NULL, created_at VARCHAR(25) NOT NULL)$tail",
     ];
     foreach ($sql as $s) self::$pdo->exec($s);
+    // фото, приложенные к записи истории (тепло/вода), не удаляются по сроку хранения, пока запись есть
+    self::addColumn('photos', 'kept', 'TINYINT NOT NULL DEFAULT 0');
+  }
+  /** ALTER … ADD COLUMN IF NOT EXISTS (в SQLite такого нет — смотрим список колонок). */
+  private static function addColumn(string $t, string $c, string $def): void {
+    if (self::driver() === 'sqlite') {
+      foreach (self::$pdo->query("PRAGMA table_info($t)")->fetchAll() as $col) if (($col['name'] ?? '') === $c) return;
+      self::$pdo->exec("ALTER TABLE $t ADD COLUMN $c $def");
+    } elseif (!self::$pdo->query("SHOW COLUMNS FROM $t LIKE '$c'")->fetch()) self::$pdo->exec("ALTER TABLE $t ADD COLUMN IF NOT EXISTS $c $def");   // без DDL на каждом запросе
   }
 }
 

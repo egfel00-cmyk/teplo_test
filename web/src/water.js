@@ -74,17 +74,51 @@
     return { open: day <= VK_DEADLINE, daysLeft: left, deadline: String(today).slice(0, 8) + VK_DEADLINE };
   }
 
-  /** Записи квартиры по дате; потребление между соседними записями по каждому счётчику и вместе по видам. */
+  function daysBetween(a, b) { return Math.max(1, Math.round((Date.parse(b) - Date.parse(a)) / 864e5)); }
+  /**
+   * Записи квартиры по дате; потребление по каждому счётчику — от его прошлого показания (запись может быть только
+   * по горячей или только по холодной), вместе по видам. hot/cold = null, если по этому виду сравнить не с чем.
+   * days — от прошлой записи; daysHot/daysCold и fromHot/fromCold — от прошлых показаний этого вида.
+   */
   function series(records, meters) {
     var rs = records.filter(function (r) { return r && !r.deleted; }).sort(function (a, b) { return a.date < b.date ? -1 : a.date > b.date ? 1 : (a.base ? -1 : b.base ? 1 : (a.createdAt || '') < (b.createdAt || '') ? -1 : 1); });
+    var last = {};
     return rs.map(function (r, i) {
-      var p = i ? rs[i - 1] : null, by = {}, hot = 0, cold = 0, any = false;
+      var p = i ? rs[i - 1] : null, by = {}, sum = { hot: 0, cold: 0 }, any = { hot: false, cold: false }, from = { hot: '', cold: '' };
       meters.forEach(function (m) {
-        var v = whole(r.vals && r.vals[m.id]), pv = p ? whole(p.vals && p.vals[m.id]) : null;
-        if (v !== null && pv !== null && v >= pv) { by[m.id] = v - pv; any = true; if (m.kind === 'hot') hot += v - pv; else cold += v - pv; }
+        var v = whole(r.vals && r.vals[m.id]), k = m.kind === 'hot' ? 'hot' : 'cold', l = last[m.id];
+        if (v === null) return;
+        if (l && v >= l.v) { by[m.id] = v - l.v; sum[k] += v - l.v; any[k] = true; if (l.date > from[k]) from[k] = l.date; }
+        last[m.id] = { v: v, date: r.date };
       });
-      return { rec: r, prev: p, by: by, hot: any ? hot : null, cold: any ? cold : null, days: p ? Math.max(1, Math.round((Date.parse(r.date) - Date.parse(p.date)) / 864e5)) : null };
+      return { rec: r, prev: p, by: by, hot: any.hot ? sum.hot : null, cold: any.cold ? sum.cold : null,
+        days: p ? daysBetween(p.date, r.date) : null,
+        fromHot: from.hot || null, fromCold: from.cold || null,
+        daysHot: from.hot ? daysBetween(from.hot, r.date) : null, daysCold: from.cold ? daysBetween(from.cold, r.date) : null };
     });
+  }
+
+  /**
+   * Потребление по месяцам для статистики: месяц — по дате снятия (так считают и Водоканал, и квитанция),
+   * несколько записей за месяц складываются. kind: 'hot'|'cold'. → [{ym, m3, days, cost, perMonth, from, to}]
+   */
+  function monthly(ser, kind, custom) {
+    var by = {}, hot = kind === 'hot';
+    ser.forEach(function (x) {
+      var d = hot ? x.hot : x.cold, days = hot ? x.daysHot : x.daysCold, from = hot ? x.fromHot : x.fromCold;
+      if (d === null || d === undefined || !days) return;
+      var ym = String(x.rec.date).slice(0, 7), b = by[ym] || (by[ym] = { ym: ym, m3: 0, days: 0, cost: 0, from: from, to: x.rec.date });
+      b.m3 += d; b.days += days; if (from < b.from) b.from = from; if (x.rec.date > b.to) b.to = x.rec.date;
+      b.cost += (hot ? cost(0, d, x.rec.date, custom) : cost(d, 0, x.rec.date, custom)).total;
+    });
+    return Object.keys(by).sort().map(function (k) { var b = by[k]; b.perMonth = b.days ? b.m3 / b.days * 30.44 : null; return b; });
+  }
+  /** Сводка для статистики и советов: среднее м³ и грн в месяц за последние до 12 месяцев с данными. */
+  function summary(months) {
+    var ms = months.slice(-12), m3 = 0, days = 0, uah = 0;
+    ms.forEach(function (b) { m3 += b.m3; days += b.days; uah += b.cost; });
+    if (!days) return null;
+    return { months: ms.length, m3: m3, uah: uah, perMonth: m3 / days * 30.44, uahMonth: uah / days * 30.44, last: ms[ms.length - 1] };
   }
 
   /**
@@ -168,6 +202,6 @@
   function uid() { return 'w' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }
 
   var api = { VK_BOT: VK_BOT, VK_CABINET: VK_CABINET, VK_DEADLINE: VK_DEADLINE, TARIFFS: TARIFFS, HOT: HOT,
-    num: num, whole: whole, tariffAt: tariffAt, cost: cost, check: check, blocked: blocked, vkCommand: vkCommand, vkWindow: vkWindow, series: series, fromOcr: fromOcr, fromDrum: fromDrum, uid: uid };
+    num: num, whole: whole, tariffAt: tariffAt, cost: cost, check: check, blocked: blocked, vkCommand: vkCommand, vkWindow: vkWindow, series: series, monthly: monthly, summary: summary, fromOcr: fromOcr, fromDrum: fromDrum, uid: uid };
   if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.TeploWater = api;
 })(typeof window !== 'undefined' ? window : this);

@@ -166,8 +166,9 @@ final class Admin {
   /** Удалить фото старше photo_keep_days (зовёт cron.php). */
   public static function cleanup(): int {
     $before = gmdate('c', time() - 86400 * max(1, (int)Cfg::get('photo_keep_days', 90))); $n = 0;
-    foreach (Db::q('SELECT * FROM photos WHERE created_at < ?', [$before])->fetchAll() as $p) { @unlink(Recognize::path($p)); $n++; }
-    Db::q('DELETE FROM photos WHERE created_at < ?', [$before]);
+    // фото записей истории (kept = 1) живут, пока человек не удалил запись
+    foreach (Db::q('SELECT * FROM photos WHERE created_at < ? AND kept = 0', [$before])->fetchAll() as $p) { @unlink(Recognize::path($p)); $n++; }
+    Db::q('DELETE FROM photos WHERE created_at < ? AND kept = 0', [$before]);
     Db::q('DELETE FROM rate_limits WHERE window_start < ?', [time() - 86400 * 2]);
     Db::q('DELETE FROM sessions WHERE expires_at < ?', [time()]);
     return $n;

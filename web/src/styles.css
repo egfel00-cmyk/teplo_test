@@ -505,3 +505,23 @@ input[type=text]:not(.dmy-native):not(.pl-in), input[type=email], input[type=pas
   background: linear-gradient(#08090a, #2a2c2e 50%, #08090a); }
 .drum span.r { background: linear-gradient(#6e0d12, #c8151d 50%, #6e0d12); }
 .drum small { margin-left: 6px; color: #e8e8e8; font-size: 14px; }
+
+/* общие вкладки: переключатель «Опалення · Гаряча · Холодна» */
+.kind-sw { display: flex; gap: 4px; background: var(--c-field-bg); border: 1.5px solid var(--c-field-line); border-radius: var(--r-pill); padding: 3px; margin: 0 0 var(--sp-4); max-width: 520px; }
+.kind-sw button { flex: 1 1 0; display: inline-flex; align-items: center; justify-content: center; gap: 6px; border: 0; background: transparent; min-height: 40px; padding: 0 10px; border-radius: var(--r-pill); font: 600 15px var(--font); color: var(--c-ink-2); cursor: pointer; white-space: nowrap; }
+.kind-sw button:hover { color: var(--c-ink); }
+.kind-sw button[aria-pressed="true"] { background: var(--c-surface); color: var(--c-ink); box-shadow: 0 1px 3px rgba(0,0,0,.18), inset 0 0 0 1.5px var(--c-ink); }
+.kind-sw .c-heat { color: var(--c-supply); }
+@media (max-width: 380px) { .kind-sw button { font-size: 14px; padding: 0 6px; gap: 4px; } }
+.list.wh .rowlink .pill { flex: none; }
+.ph-n { display: inline-flex; align-items: center; gap: 3px; color: var(--c-ink-2); font-size: 14px; flex: none; }
+/* фото в записи истории */
+.hphotos { margin: var(--sp-4) 0; }
+.hphotos .section-title { display: flex; align-items: center; gap: 6px; }
+.hphotos .thumbs { grid-template-columns: repeat(auto-fill, minmax(88px, 1fr)); }
+.hphotos img { cursor: zoom-in; }
+.thumbs .gone-t { display: none; }
+.thumbs li.gone::before { display: none; }
+.thumbs li.gone img { display: none; }
+.thumbs li.gone .gone-t { display: grid; place-items: center; height: 100%; padding: 6px; text-align: center; font-size: 12px; color: var(--c-ink-2); }
+.thumbs .n.n-hot { background: var(--c-supply); } .thumbs .n.n-cold { background: var(--c-return); }
