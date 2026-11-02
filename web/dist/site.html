@@ -3498,6 +3498,15 @@ input[type=text]:not(.dmy-native):not(.pl-in), input[type=email], input[type=pas
     ov.addEventListener('pointerup', up); ov.addEventListener('pointercancel', up);
     show(i); ov.querySelector('[data-pv-act="close"]').focus();
   }
+  // нижние вкладки: переход сами, не полагаясь на смену адреса браузером (в некоторых встроенных браузерах, напр. Telegram на iPhone,
+  // после pushState/replaceState нажатие на ссылку с «#…» не всегда вызывает hashchange — вкладки «не нажимаются»)
+  document.addEventListener('click', function (e) {
+    var a = e.target.closest && e.target.closest('.nav a[href^="#"]'); if (!a || e.defaultPrevented || e.metaKey || e.ctrlKey) return;
+    e.preventDefault(); var r = a.getAttribute('href').slice(1);
+    if (routeName() === r) { render(); return; }
+    try { history.pushState(null, '', '#' + r); } catch (x) { location.hash = r; return; }
+    render();
+  });
   document.addEventListener('click', function (e) { var im = e.target.closest && e.target.closest('img[data-pv]'); if (im && routeName() === 'photo') { e.preventDefault(); photoViewer(+im.getAttribute('data-pv')); } });
 
   function phRun() {
@@ -3726,7 +3735,11 @@ input[type=text]:not(.dmy-native):not(.pl-in), input[type=email], input[type=pas
     };
     requestAnimationFrame(run); setTimeout(run, 150); setTimeout(run, 450); setTimeout(run, 800);
   }
-  if (window.visualViewport) window.visualViewport.addEventListener('resize', function () { fitStep(); });
+  if (window.visualViewport) window.visualViewport.addEventListener('resize', function () {
+    var vv = window.visualViewport, full = document.documentElement.clientHeight || window.screen.height;
+    if (vv.height >= full * 0.9 && document.documentElement.classList.contains('kb-open')) { document.documentElement.classList.remove('kb-open'); window.scrollTo(window.scrollX, window.scrollY); }
+    fitStep();
+  });
   document.addEventListener('focusin', function (e) { if (e.target && e.target.matches && e.target.matches('[data-field]') && /^step-/.test(routeName())) fitStep(); });
   // на компьютере: нажатие «Далі» не уводит фокус из поля (на телефоне фокус ставит goStep)
   document.addEventListener('mousedown', function (e) { if (e.target.closest && e.target.closest('[data-act="step-next"],[data-act="step-back"]') && document.activeElement && document.activeElement.matches && document.activeElement.matches('[data-field]')) e.preventDefault(); });
