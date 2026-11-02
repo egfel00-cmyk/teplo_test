@@ -29,6 +29,14 @@ const U = 'http://127.0.0.1:8013/';
   // рус.
   p = await page({ seasons: true }, 'ru-RU');
   ok('ru: «тепло по показаниям», «в месяц отопления»', /тепло по показаниям/.test(await p.textContent('[data-key=season-2024] summary')) && /в месяц отопления/.test(await p.textContent('[data-key=season-2024] summary')));
+  // итог сезона = сумма его строк, в т. ч. период без лічильника (≈) — раньше ремонт выпадал из суммы (скрин владельца 02.11)
+  p = await page({ seasons: true, gaps: true }, 'uk-UA');
+  const sm = await p.evaluate(() => { const d = document.querySelector('[data-key=season-2025]'), n = s => parseFloat(String(s).replace(/[^0-9,.-]/g, '').replace(',', '.')) || 0;
+    const rows = [...d.querySelectorAll('.list > li .hr-q')].map(e => n(e.textContent)); return { head: n(d.querySelector('.ss-q b').textContent), sum: rows.reduce((a, b) => a + b, 0), est: /≈/.test(d.querySelector('.ss-q').textContent), n: rows.length }; });
+  ok('итог сезона 2025/26 = сумма строк (с ремонтом, «≈»)', Math.abs(sm.head - sm.sum) < 0.002 && sm.est && sm.n >= 5, sm);
+  const pos = await p.evaluate(() => { const li = document.querySelector('[data-key=season-2025] li.hli-heat'), c = li.querySelector('.st-chip').getBoundingClientRect(), d = li.querySelector('.hr-date').getBoundingClientRect(), r = li.getBoundingClientRect();
+    return { top: Math.abs(c.top - d.top) < 14, right: r.right - c.right < 20 }; });
+  ok('телефон: статус тепла — в правом верхнем углу карточки, на строке даты', pos.top && pos.right, pos);
   ok('без ошибок JS', !errs.length, errs);
   console.log('\nИтог: ' + pass + ' OK, ' + fail + ' FAIL'); await b.close(); process.exit(fail ? 1 : 0);
 })();

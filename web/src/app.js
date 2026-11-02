@@ -2235,7 +2235,7 @@
       var cls = { accepted: 'ok', rejected: 'bad', handed: 'info', checked: 'neutral', intermediate: 'neutral' }[r.status] || 'neutral';
       var iv = interval(r), ok = iv && iv.dE >= 0;
       // вся строка — в карточку показаний (там же правка, удаление, статус); главное — расход и деньги
-      return histRow({ key: 'reading-' + r.id, href: '#rec-' + r.id, q: ok ? '+' + fmtN(iv.dE, 3) : null, unit: 'Гкал', money: ok ? iv.cost : null,
+      return histRow({ cls: 'hli-heat', key: 'reading-' + r.id, href: '#rec-' + r.id, q: ok ? '+' + fmtN(iv.dE, 3) : null, unit: 'Гкал', money: ok ? iv.cost : null,
         none: iv ? t('hi_less', { de: Math.abs(iv.dE).toFixed(3) }) : t(gaps('heat').some(function (g) { return g.from < r.htm.date; }) ? 'hr_nogap' : 'hr_first'),
         date: fmtDate(r.htm.date, true), sub: [t('hr_on_meter', { v: R.formatForHtm('energy', r.htm.energy), u: 'Гкал' }), iv ? iv.days + '\u00a0' + t('days_short') + (iv.overGap ? ' ' + t('hr_over_gap') : '') : ''],
         right: wxChip(wxFor(r)) + billMark(r.bills),
@@ -2472,14 +2472,31 @@
       (groups[k] = groups[k] || []).push(x);
     });
     var keys = Object.keys(groups).map(Number).sort(function (a, b) { return b - a; }), td = today(), run = +td.slice(5, 7) >= 10 || +td.slice(5, 7) <= 4;
+    // итог сезона — сумма тех же строк, что в нём видны: показания (и через ремонт — «без періоду ремонту») и період без лічильника
+    // (оцінка або сума з платіжки). Раньше брали интервалы графика, где ремонт пропускается, — сумма не сходилась со строками.
+    var sumOf = function (list) {
+      var o = { gcal: 0, cost: 0, heatDays: 0, from: null, to: null, est: false, n: 0 };
+      list.forEach(function (x) {
+        if (x.g) {
+          var e = gapEst(x.g), amt = R.num(x.g.amount), q = e && x.g.what === 'heat' ? e.gcal || 0 : 0, m = amt !== null ? amt * gapMonths(x.g) : e && e.cost > 0 ? e.cost : 0;
+          if (q > 0 || m > 0) { o.gcal += q; o.cost += m; o.est = o.est || q > 0; o.n++; }
+          if (e && e.heatDays) { o.heatDays += e.heatDays; if (!o.from || x.g.from < o.from) o.from = x.g.from; if (x.g.to && (!o.to || x.g.to > o.to)) o.to = x.g.to; }
+          return;
+        }
+        var r = x.r || x, iv = interval(r); if (!iv || iv.dE < 0) return;
+        o.gcal += iv.dE; o.cost += iv.cost; o.n++;
+        if (iv.dE / iv.days >= 0.003) { o.heatDays += iv.days; if (!o.from || iv.from < o.from) o.from = iv.from; if (!o.to || r.htm.date > o.to) o.to = r.htm.date; }
+      });
+      o.perMonth = o.heatDays ? o.gcal / o.heatDays * 30.44 : null; return o;
+    };
     return keys.map(function (k, i) {
-      var s = info[k], lbl = k + '/' + String(k + 1).slice(2), cur = k === TS.seasonOf(td);
-      var q = s && s.gcal > 0 ? '<span class="ss-q"><b>' + esc(fmtN(s.gcal, 3)) + '</b> <small>Гкал</small></span><span class="ss-m">≈ <b>' + esc(money0(s.cost)) + '</b> <small>грн</small></span>'
-        : '<span class="ss-none">' + esc(t(s ? 'hs_noheat' : 'hs_none')) + '</span>';
-      var sub = s && s.from ? [t('hs_period', { a: fmtDate(s.from, true), b: fmtDate(s.to, true) }), s.perMonth ? t('hs_month', { q: fmtN(s.perMonth, 2), m: money0(costOf(s.perMonth, 30).total) }) : ''].filter(Boolean).join(' · ') : '';
+      var s = sumOf(groups[k]), lbl = k + '/' + String(k + 1).slice(2), cur = k === TS.seasonOf(td);
+      var q = s.gcal > 0 ? '<span class="ss-q">' + (s.est ? '≈ ' : '') + '<b>' + esc(fmtN(s.gcal, 3)) + '</b> Гкал</span><span class="ss-dot" aria-hidden="true">·</span><span class="ss-m">≈ <b>' + esc(money0(s.cost)) + '</b> грн</span>'
+        : '<span class="ss-none">' + esc(t(s.n ? 'hs_noheat' : 'hs_none')) + '</span>';
+      var sub = s.from ? [t('hs_period', { a: fmtDate(s.from, true), b: fmtDate(s.to, true) }), s.perMonth ? t('hs_month', { q: fmtN(s.perMonth, 2), m: money0(costOf(s.perMonth, 30).total) }) : ''].filter(Boolean).join(' · ') : '';
       return '<details class="season" data-key="season-' + k + '"' + (i === 0 || cur ? ' open' : '') + '><summary class="ss-head">' +
-        '<span class="ss-top"><b class="ss-t">' + esc(t('hs_title', { s: lbl })) + '</b>' + (cur ? '<span class="pill ' + (run ? 'info' : 'neutral') + '">' + esc(t(run ? 'hs_run' : 'hs_cur')) + '</span>' : '') + ico('chev', 18, 'ss-dd') + '</span>' +
-        '<span class="ss-sum">' + q + '</span>' + (sub ? '<span class="ss-sub">' + esc(sub) + '</span>' : '') + '</summary>' + readingList(groups[k]) + '</details>';
+        '<span class="ss-top"><span class="ss-t">' + esc(t('hs_title', { s: lbl })) + '</span>' + (cur ? '<span class="ss-tag' + (run ? ' on' : '') + '">' + esc(t(run ? 'hs_run' : 'hs_cur')) + '</span>' : '') + '</span>' +
+        '<span class="ss-sum">' + q + '</span>' + (sub ? '<span class="ss-sub">' + esc(sub) + '</span>' : '') + ico('chev', 18, 'ss-dd') + '</summary>' + readingList(groups[k]) + '</details>';
     }).join('') + '<p class="small muted" data-key="hs-hint">' + esc(t('hs_hint')) + '</p>';
   }
 

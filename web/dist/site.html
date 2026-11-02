@@ -916,7 +916,10 @@ fieldset.field { border: 0; padding: 0; min-width: 0; }
 /* ---- история: дата и чипс статуса строкой над записью; чипс — кнопка, под ним меню «передано / не передано / для себе» ---- */
 .list > li.hli { position: relative; flex-wrap: wrap; column-gap: 8px; row-gap: 2px; }
 .hli > a.rowlink { flex: 1 1 0; min-width: 0; width: auto; }
-@media (max-width: 520px) { .hli > a.rowlink { flex-basis: 100%; } .hli > .st-chip { margin: -2px 0 -4px; } }
+@media (max-width: 520px) { .hli > a.rowlink { flex-basis: 100%; } .hli > .st-chip { margin: -2px 0 -4px; }
+  /* тепло на телефоне: статус — в правом верхнем углу карточки, на строке даты */
+  .hli.hli-heat > .st-chip { position: absolute; top: 6px; right: 12px; margin: 0; }
+  .hli.hli-heat .hr-date { padding-right: 132px; min-height: 26px; display: flex; align-items: center; } }
 .st-chip { position: relative; display: inline-flex; align-items: center; gap: 2px; flex: none; min-height: 36px; padding: 0 2px 0 0; border: 0; background: none; cursor: pointer; font: inherit; color: var(--c-ink-2); border-radius: var(--r-pill); }
 .st-chip::before { content: ''; position: absolute; inset: -6px -8px; }
 .st-chip .pill { pointer-events: none; }
@@ -932,20 +935,25 @@ fieldset.field { border: 0; padding: 0; min-width: 0; }
 .st-mark { flex: none; width: 20px; display: grid; place-items: center; color: var(--c-ok); }
 @media (prefers-reduced-motion: reduce) { .st-chip .st-dd { transition: none; } }
 /* ---- история тепла по отопительным сезонам ---- */
-.season { margin: 0 0 var(--sp-4); }
-.season > .list { border-top-left-radius: 0; border-top-right-radius: 0; }
-.ss-head { list-style: none; cursor: pointer; display: grid; gap: 4px; padding: 14px 16px; background: var(--c-surface); border-radius: 14px; border-left: 6px solid var(--c-supply); }
-.season[open] > .ss-head { border-bottom-left-radius: 0; border-bottom-right-radius: 0; border-bottom: 1px solid var(--c-housing); }
+/* сезон — спокойный раздел: одна тонкая рамка, заголовок текстом, итог строкой, без цветной полосы и крупных цифр */
+.season { margin: 0 0 var(--sp-3); background: var(--c-surface); border: 1px solid var(--c-line); border-radius: 12px; overflow: hidden; }
+.season > .list { border-radius: 0; background: transparent; }
+.ss-head { list-style: none; cursor: pointer; display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: 12px; row-gap: 3px; padding: 14px 16px; }
+.season[open] > .ss-head { border-bottom: 1px solid var(--c-line); }
 .ss-head::-webkit-details-marker { display: none; }
-.ss-head:focus-visible { outline: 3px solid var(--c-info); outline-offset: 2px; }
-.ss-top { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-.ss-t { font-size: var(--fs-l); }
-.ss-dd { margin-left: auto; transform: rotate(90deg); transition: transform .15s; color: var(--c-ink-2); flex: none; }
+.ss-head:hover { background: var(--c-ghost-hover); }
+.ss-head:focus-visible { outline: 2px solid var(--c-info); outline-offset: -2px; }
+.ss-top, .ss-sum, .ss-sub { grid-column: 1; }
+.ss-top { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.ss-t { font-size: 17px; font-weight: 600; letter-spacing: -.005em; }
+.ss-tag { font-size: 13px; color: var(--c-ink-2); } .ss-tag.on { color: var(--c-info); }
+.ss-dd { grid-column: 2; grid-row: 1 / span 3; align-self: center; transform: rotate(90deg); transition: transform .15s; color: var(--c-ink-2); }
 .season[open] .ss-dd { transform: rotate(-90deg); }
-.ss-sum { display: flex; flex-wrap: wrap; gap: 2px 16px; align-items: baseline; }
-.ss-q b, .ss-m b { font-size: 22px; font-weight: 700; } .ss-q small, .ss-m small { font-size: 13px; font-weight: 600; color: var(--c-ink-2); }
-.ss-none { font-size: 15px; font-weight: 600; color: var(--c-ink-2); }
-.ss-sub { font-size: 13px; color: var(--c-ink-2); }
+.ss-sum { display: flex; flex-wrap: wrap; gap: 0 8px; align-items: baseline; font-size: 15px; color: var(--c-ink-2); font-variant-numeric: tabular-nums; }
+.ss-sum b { font-weight: 600; color: var(--c-ink); } .ss-dot { color: var(--c-line); }
+.ss-none { font-size: 15px; color: var(--c-ink-2); }
+.ss-sub { font-size: 13px; color: var(--c-ink-2); line-height: 1.4; }
+@media (prefers-reduced-motion: reduce) { .ss-dd { transition: none; } }
 @media (prefers-reduced-motion: reduce) { .ss-dd { transition: none; } }
 
 /* 14-я сессия: свой проход по телефону 360 px */
@@ -957,7 +965,6 @@ fieldset.field { border: 0; padding: 0; min-width: 0; }
 /* очередь настройки: «лічильник 1 з 5» + полоска прогресса */
 .aw-q .progress { display: block; margin: 8px 0 2px; max-width: 220px; }
 /* шапка сезона: моноширинный шрифт растягивал пробел тысяч («8  252») — как в итогах, обычный шрифт с табличными цифрами */
-.ss-q b, .ss-m b { font-variant-numeric: tabular-nums; letter-spacing: -.01em; }
 /* чипс статуса: стрелка внутри плашки — видно, что нажимается */
 .st-chip .pill { gap: 2px; padding-right: 6px; }
 
@@ -6822,7 +6829,7 @@ fieldset.field { border: 0; padding: 0; min-width: 0; }
       var cls = { accepted: 'ok', rejected: 'bad', handed: 'info', checked: 'neutral', intermediate: 'neutral' }[r.status] || 'neutral';
       var iv = interval(r), ok = iv && iv.dE >= 0;
       // вся строка — в карточку показаний (там же правка, удаление, статус); главное — расход и деньги
-      return histRow({ key: 'reading-' + r.id, href: '#rec-' + r.id, q: ok ? '+' + fmtN(iv.dE, 3) : null, unit: 'Гкал', money: ok ? iv.cost : null,
+      return histRow({ cls: 'hli-heat', key: 'reading-' + r.id, href: '#rec-' + r.id, q: ok ? '+' + fmtN(iv.dE, 3) : null, unit: 'Гкал', money: ok ? iv.cost : null,
         none: iv ? t('hi_less', { de: Math.abs(iv.dE).toFixed(3) }) : t(gaps('heat').some(function (g) { return g.from < r.htm.date; }) ? 'hr_nogap' : 'hr_first'),
         date: fmtDate(r.htm.date, true), sub: [t('hr_on_meter', { v: R.formatForHtm('energy', r.htm.energy), u: 'Гкал' }), iv ? iv.days + '\u00a0' + t('days_short') + (iv.overGap ? ' ' + t('hr_over_gap') : '') : ''],
         right: wxChip(wxFor(r)) + billMark(r.bills),
@@ -7059,14 +7066,31 @@ fieldset.field { border: 0; padding: 0; min-width: 0; }
       (groups[k] = groups[k] || []).push(x);
     });
     var keys = Object.keys(groups).map(Number).sort(function (a, b) { return b - a; }), td = today(), run = +td.slice(5, 7) >= 10 || +td.slice(5, 7) <= 4;
+    // итог сезона — сумма тех же строк, что в нём видны: показания (и через ремонт — «без періоду ремонту») и період без лічильника
+    // (оцінка або сума з платіжки). Раньше брали интервалы графика, где ремонт пропускается, — сумма не сходилась со строками.
+    var sumOf = function (list) {
+      var o = { gcal: 0, cost: 0, heatDays: 0, from: null, to: null, est: false, n: 0 };
+      list.forEach(function (x) {
+        if (x.g) {
+          var e = gapEst(x.g), amt = R.num(x.g.amount), q = e && x.g.what === 'heat' ? e.gcal || 0 : 0, m = amt !== null ? amt * gapMonths(x.g) : e && e.cost > 0 ? e.cost : 0;
+          if (q > 0 || m > 0) { o.gcal += q; o.cost += m; o.est = o.est || q > 0; o.n++; }
+          if (e && e.heatDays) { o.heatDays += e.heatDays; if (!o.from || x.g.from < o.from) o.from = x.g.from; if (x.g.to && (!o.to || x.g.to > o.to)) o.to = x.g.to; }
+          return;
+        }
+        var r = x.r || x, iv = interval(r); if (!iv || iv.dE < 0) return;
+        o.gcal += iv.dE; o.cost += iv.cost; o.n++;
+        if (iv.dE / iv.days >= 0.003) { o.heatDays += iv.days; if (!o.from || iv.from < o.from) o.from = iv.from; if (!o.to || r.htm.date > o.to) o.to = r.htm.date; }
+      });
+      o.perMonth = o.heatDays ? o.gcal / o.heatDays * 30.44 : null; return o;
+    };
     return keys.map(function (k, i) {
-      var s = info[k], lbl = k + '/' + String(k + 1).slice(2), cur = k === TS.seasonOf(td);
-      var q = s && s.gcal > 0 ? '<span class="ss-q"><b>' + esc(fmtN(s.gcal, 3)) + '</b> <small>Гкал</small></span><span class="ss-m">≈ <b>' + esc(money0(s.cost)) + '</b> <small>грн</small></span>'
-        : '<span class="ss-none">' + esc(t(s ? 'hs_noheat' : 'hs_none')) + '</span>';
-      var sub = s && s.from ? [t('hs_period', { a: fmtDate(s.from, true), b: fmtDate(s.to, true) }), s.perMonth ? t('hs_month', { q: fmtN(s.perMonth, 2), m: money0(costOf(s.perMonth, 30).total) }) : ''].filter(Boolean).join(' · ') : '';
+      var s = sumOf(groups[k]), lbl = k + '/' + String(k + 1).slice(2), cur = k === TS.seasonOf(td);
+      var q = s.gcal > 0 ? '<span class="ss-q">' + (s.est ? '≈ ' : '') + '<b>' + esc(fmtN(s.gcal, 3)) + '</b> Гкал</span><span class="ss-dot" aria-hidden="true">·</span><span class="ss-m">≈ <b>' + esc(money0(s.cost)) + '</b> грн</span>'
+        : '<span class="ss-none">' + esc(t(s.n ? 'hs_noheat' : 'hs_none')) + '</span>';
+      var sub = s.from ? [t('hs_period', { a: fmtDate(s.from, true), b: fmtDate(s.to, true) }), s.perMonth ? t('hs_month', { q: fmtN(s.perMonth, 2), m: money0(costOf(s.perMonth, 30).total) }) : ''].filter(Boolean).join(' · ') : '';
       return '<details class="season" data-key="season-' + k + '"' + (i === 0 || cur ? ' open' : '') + '><summary class="ss-head">' +
-        '<span class="ss-top"><b class="ss-t">' + esc(t('hs_title', { s: lbl })) + '</b>' + (cur ? '<span class="pill ' + (run ? 'info' : 'neutral') + '">' + esc(t(run ? 'hs_run' : 'hs_cur')) + '</span>' : '') + ico('chev', 18, 'ss-dd') + '</span>' +
-        '<span class="ss-sum">' + q + '</span>' + (sub ? '<span class="ss-sub">' + esc(sub) + '</span>' : '') + '</summary>' + readingList(groups[k]) + '</details>';
+        '<span class="ss-top"><span class="ss-t">' + esc(t('hs_title', { s: lbl })) + '</span>' + (cur ? '<span class="ss-tag' + (run ? ' on' : '') + '">' + esc(t(run ? 'hs_run' : 'hs_cur')) + '</span>' : '') + '</span>' +
+        '<span class="ss-sum">' + q + '</span>' + (sub ? '<span class="ss-sub">' + esc(sub) + '</span>' : '') + ico('chev', 18, 'ss-dd') + '</summary>' + readingList(groups[k]) + '</details>';
     }).join('') + '<p class="small muted" data-key="hs-hint">' + esc(t('hs_hint')) + '</p>';
   }
 

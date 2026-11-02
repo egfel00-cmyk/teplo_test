@@ -903,7 +903,10 @@ fieldset.field { border: 0; padding: 0; min-width: 0; }
 /* ---- история: дата и чипс статуса строкой над записью; чипс — кнопка, под ним меню «передано / не передано / для себе» ---- */
 .list > li.hli { position: relative; flex-wrap: wrap; column-gap: 8px; row-gap: 2px; }
 .hli > a.rowlink { flex: 1 1 0; min-width: 0; width: auto; }
-@media (max-width: 520px) { .hli > a.rowlink { flex-basis: 100%; } .hli > .st-chip { margin: -2px 0 -4px; } }
+@media (max-width: 520px) { .hli > a.rowlink { flex-basis: 100%; } .hli > .st-chip { margin: -2px 0 -4px; }
+  /* тепло на телефоне: статус — в правом верхнем углу карточки, на строке даты */
+  .hli.hli-heat > .st-chip { position: absolute; top: 6px; right: 12px; margin: 0; }
+  .hli.hli-heat .hr-date { padding-right: 132px; min-height: 26px; display: flex; align-items: center; } }
 .st-chip { position: relative; display: inline-flex; align-items: center; gap: 2px; flex: none; min-height: 36px; padding: 0 2px 0 0; border: 0; background: none; cursor: pointer; font: inherit; color: var(--c-ink-2); border-radius: var(--r-pill); }
 .st-chip::before { content: ''; position: absolute; inset: -6px -8px; }
 .st-chip .pill { pointer-events: none; }
@@ -919,20 +922,25 @@ fieldset.field { border: 0; padding: 0; min-width: 0; }
 .st-mark { flex: none; width: 20px; display: grid; place-items: center; color: var(--c-ok); }
 @media (prefers-reduced-motion: reduce) { .st-chip .st-dd { transition: none; } }
 /* ---- история тепла по отопительным сезонам ---- */
-.season { margin: 0 0 var(--sp-4); }
-.season > .list { border-top-left-radius: 0; border-top-right-radius: 0; }
-.ss-head { list-style: none; cursor: pointer; display: grid; gap: 4px; padding: 14px 16px; background: var(--c-surface); border-radius: 14px; border-left: 6px solid var(--c-supply); }
-.season[open] > .ss-head { border-bottom-left-radius: 0; border-bottom-right-radius: 0; border-bottom: 1px solid var(--c-housing); }
+/* сезон — спокойный раздел: одна тонкая рамка, заголовок текстом, итог строкой, без цветной полосы и крупных цифр */
+.season { margin: 0 0 var(--sp-3); background: var(--c-surface); border: 1px solid var(--c-line); border-radius: 12px; overflow: hidden; }
+.season > .list { border-radius: 0; background: transparent; }
+.ss-head { list-style: none; cursor: pointer; display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: 12px; row-gap: 3px; padding: 14px 16px; }
+.season[open] > .ss-head { border-bottom: 1px solid var(--c-line); }
 .ss-head::-webkit-details-marker { display: none; }
-.ss-head:focus-visible { outline: 3px solid var(--c-info); outline-offset: 2px; }
-.ss-top { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-.ss-t { font-size: var(--fs-l); }
-.ss-dd { margin-left: auto; transform: rotate(90deg); transition: transform .15s; color: var(--c-ink-2); flex: none; }
+.ss-head:hover { background: var(--c-ghost-hover); }
+.ss-head:focus-visible { outline: 2px solid var(--c-info); outline-offset: -2px; }
+.ss-top, .ss-sum, .ss-sub { grid-column: 1; }
+.ss-top { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.ss-t { font-size: 17px; font-weight: 600; letter-spacing: -.005em; }
+.ss-tag { font-size: 13px; color: var(--c-ink-2); } .ss-tag.on { color: var(--c-info); }
+.ss-dd { grid-column: 2; grid-row: 1 / span 3; align-self: center; transform: rotate(90deg); transition: transform .15s; color: var(--c-ink-2); }
 .season[open] .ss-dd { transform: rotate(-90deg); }
-.ss-sum { display: flex; flex-wrap: wrap; gap: 2px 16px; align-items: baseline; }
-.ss-q b, .ss-m b { font-size: 22px; font-weight: 700; } .ss-q small, .ss-m small { font-size: 13px; font-weight: 600; color: var(--c-ink-2); }
-.ss-none { font-size: 15px; font-weight: 600; color: var(--c-ink-2); }
-.ss-sub { font-size: 13px; color: var(--c-ink-2); }
+.ss-sum { display: flex; flex-wrap: wrap; gap: 0 8px; align-items: baseline; font-size: 15px; color: var(--c-ink-2); font-variant-numeric: tabular-nums; }
+.ss-sum b { font-weight: 600; color: var(--c-ink); } .ss-dot { color: var(--c-line); }
+.ss-none { font-size: 15px; color: var(--c-ink-2); }
+.ss-sub { font-size: 13px; color: var(--c-ink-2); line-height: 1.4; }
+@media (prefers-reduced-motion: reduce) { .ss-dd { transition: none; } }
 @media (prefers-reduced-motion: reduce) { .ss-dd { transition: none; } }
 
 /* 14-я сессия: свой проход по телефону 360 px */
@@ -944,6 +952,5 @@ fieldset.field { border: 0; padding: 0; min-width: 0; }
 /* очередь настройки: «лічильник 1 з 5» + полоска прогресса */
 .aw-q .progress { display: block; margin: 8px 0 2px; max-width: 220px; }
 /* шапка сезона: моноширинный шрифт растягивал пробел тысяч («8  252») — как в итогах, обычный шрифт с табличными цифрами */
-.ss-q b, .ss-m b { font-variant-numeric: tabular-nums; letter-spacing: -.01em; }
 /* чипс статуса: стрелка внутри плашки — видно, что нажимается */
 .st-chip .pill { gap: 2px; padding-right: 6px; }
