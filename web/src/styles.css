@@ -741,3 +741,36 @@ fieldset.field { border: 0; padding: 0; min-width: 0; }
 .swatch input:checked + .sw-dot { box-shadow: 0 0 0 3px var(--c-surface), 0 0 0 6px var(--c-ink); }
 .swatch input:checked + .sw-dot .ico { opacity: 1; }
 .swatch input:focus-visible + .sw-dot { outline: 3px solid var(--c-info); outline-offset: 6px; }
+
+/* ---- главная-список квартир (этап 2): карточка квартиры со статусом каждого счётчика ---- */
+.ov-list { gap: 14px; }
+.ov-card .pl-main { gap: 6px; padding: 14px 48px 14px 16px; }
+.ov-card .pl-t b { font-size: var(--fs-l); }
+.ov-next { display: flex; align-items: center; gap: 8px; font-weight: 600; font-size: var(--fs-s); margin-top: 2px; }
+.ov-next.due { color: var(--c-info); } .ov-next.warn { color: var(--c-warn); } .ov-next.ok { color: var(--c-ok); }
+.ov-rows { display: flex; flex-direction: column; gap: 0; margin-top: 4px; border-top: 1px solid var(--c-housing); }
+.ov-row { display: grid; grid-template-columns: 22px minmax(0, auto) minmax(0, 1fr); align-items: center; gap: 4px 10px; padding: 8px 0; border-bottom: 1px solid var(--c-housing); }
+.ov-row:last-child { border-bottom: 0; }
+.ov-k { font-weight: 600; overflow-wrap: anywhere; }
+.ov-st { justify-self: end; text-align: right; font-size: var(--fs-s); color: var(--c-ink-2); }
+.ov-st.ok { color: var(--c-ok); } .ov-st.due { color: var(--c-info); } .ov-st.warn { color: var(--c-warn); font-weight: 600; }
+@media (max-width: 400px) { .ov-row { grid-template-columns: 22px minmax(0, 1fr); } .ov-st { grid-column: 2; justify-self: start; text-align: left; } }
+
+/* ---- мастер «Додати квартиру» ---- */
+.aw-title { margin: 0 0 4px; }
+.aw-kinds { display: grid; gap: 10px; margin: 8px 0 16px; }
+.aw-kind { display: grid; grid-template-columns: 28px minmax(0, 1fr) auto; align-items: center; gap: 10px 12px; padding: 12px 12px 12px 16px; border: 1.5px solid var(--c-field-line); border-radius: 14px; background: var(--c-surface); }
+.aw-kind.on { border-color: var(--c-ink); box-shadow: 0 0 0 1px var(--c-ink) inset; }
+.aw-kind.am-soon { opacity: .6; }
+.aw-kt { display: flex; flex-direction: column; gap: 2px; min-width: 0; } .aw-kt b { font-size: var(--fs-m); }
+.stepper { display: inline-flex; align-items: center; gap: 6px; }
+.stepper .step-b { min-width: 48px; min-height: 48px; padding: 0; font-size: 26px; line-height: 1; border-radius: 12px; }
+.stepper .step-n { min-width: 44px; text-align: center; font-size: var(--fs-l); font-weight: 700; }
+.stepper .step-n .small { font-size: 13px; font-weight: 500; }
+@media (max-width: 400px) { .aw-kind { grid-template-columns: 28px minmax(0, 1fr); } .aw-kind .stepper, .aw-kind > .pill { grid-column: 1 / -1; justify-self: end; } }
+.aw-sum { border-left: 8px solid var(--pc); }
+.aw-sum dl { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 8px 16px; margin: 0; }
+.aw-sum dt { color: var(--c-ink-2); } .aw-sum dd { margin: 0; overflow-wrap: anywhere; }
+@media (max-width: 400px) { .aw-sum dl { grid-template-columns: minmax(0, 1fr); gap: 2px; } .aw-sum dd { margin-bottom: 8px; } }
+.aw-q { margin-bottom: var(--sp-4); }
+.dest-place { margin: 0 0 12px; padding: 4px 0 4px 12px; border-left: 6px solid var(--pc); }

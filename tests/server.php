@@ -346,6 +346,21 @@ $wr = $wst; $wr['places'][0]['meter']['removed'] = '2026-11-02'; $wr['places'][0
 ok('прибраний теплолічильник і водомір — не нагадуємо', !Reminders::needs($wr, 'heat22', '2026-12') && !Reminders::needs($wr, 'water15', '2026-11'));
 $wr['places'][] = ['id' => 'p2', 'name' => 'Мамина', 'water' => ['meters' => [['id' => 'c9', 'kind' => 'cold']]]];
 ok('друга квартира лише з холодною: вода — нагадуємо, тепло — ні', Reminders::needs($wr, 'water15', '2026-11') && !Reminders::needs($wr, 'heat22', '2026-12'));
+// несколько квартир (этап 2): одно сообщение со списком квартир, кнопка в каждую; выключатель у квартиры
+$wm = $wst; $wm['places'][] = ['id' => 'p2', 'name' => 'Мамина', 'water' => ['meters' => [['id' => 'c9', 'kind' => 'cold']]]];
+$pd = Reminders::placesDue($wm, 'water15', '2026-11');
+ok('две квартиры без воды за месяц — обе в списке, без названия — «Квартира 1»', array_column($pd, 'label') === ['Квартира 1', 'Мамина'] && $pd[0]['all'] === 2, $pd);
+$wm2 = $wm; $wm2['places'][1]['remindOff'] = true;
+ok('квартира выключена (remindOff) — про неё молчим, про другую — пишем', array_column(Reminders::placesDue($wm2, 'water15', '2026-11'), 'id') === ['main']);
+$wm3 = $wm2; $wm3['places'][0]['remindOff'] = true;
+ok('обе выключены — не пишем вовсе', !Reminders::needs($wm3, 'water15', '2026-11'));
+$tx = Reminders::text('water15', 'uk', $pd);
+ok('текст: «Квартири: «Квартира 1», «Мамина»», кнопка в каждую (?go=wnew&place=…)', str_contains($tx['text'], 'Квартири: «Квартира 1», «Мамина»') && count($tx['buttons']) === 2
+  && str_ends_with($tx['buttons'][1][1], '?go=wnew&place=p2') && str_contains($tx['buttons'][1][0], 'Мамина'), $tx);
+$tx1 = Reminders::text('heat5', 'ru', [['id' => 'p2', 'label' => 'Мамина', 'all' => 2]]);
+ok('одна из двух ждёт — «Квартира: «Мамина»», кнопка с place', str_contains($tx1['text'], 'Квартира: «Мамина»') && count($tx1['buttons']) === 1 && str_ends_with($tx1['url'], '?go=heat&place=p2'), $tx1);
+$tx0 = Reminders::text('water15', 'uk', Reminders::placesDue($wst, 'water15', '2026-11'));
+ok('одна квартира — как раньше: без списка, кнопка без place', !str_contains($tx0['text'], 'Квартира') && count($tx0['buttons']) === 1 && str_ends_with($tx0['url'], '?go=wnew'), $tx0);
 $rm = new Browser('10.0.13.1'); $rm->req('POST', '/api/auth/telegram/webapp', ['initData' => initData($TOKEN, ['id' => 7777, 'first_name' => 'Нагадай'])]);
 $put = $rm->req('PUT', '/api/state', ['state' => $wst + ['remind' => ['lang' => 'ru']], 'baseVersion' => 0]);
 $sent = []; Telegram::$send = function ($m, $p, $tok = null) use (&$sent) { $sent[] = [$m, $p]; return ['ok' => true]; };
@@ -355,6 +370,12 @@ ok('рассылка: человеку с водомерами — по-русс
   && ($mine[0][1]['reply_markup']['inline_keyboard'][0][0]['web_app']['url'] ?? '') === 'https://teplo.example/?go=wnew', $mine);
 $n1 = count($sent); Reminders::run($kyiv('2026-11-15 11:17'));
 ok('через час — повторно не шлём', count($sent) === $n1);
+$rm2 = new Browser('10.0.13.2'); $rm2->req('POST', '/api/auth/telegram/webapp', ['initData' => initData($TOKEN, ['id' => 7788, 'first_name' => 'Дві'])]);
+$rm2->req('PUT', '/api/state', ['state' => $wm, 'baseVersion' => 0]);
+$sent = []; Reminders::run($kyiv('2026-11-19 10:17'));
+$two = array_values(array_filter($sent, fn($x) => (string)$x[1]['chat_id'] === '7788'));
+$kb = $two[0][1]['reply_markup']['inline_keyboard'] ?? [];
+ok('рассылка двум квартирам: одно сообщение, две кнопки — по одной на квартиру', count($two) === 1 && count($kb) === 2 && str_ends_with($kb[1][0]['web_app']['url'], '&place=p2') && str_contains($two[0][1]['text'], 'Мамина'), $two);
 $row = Db::one("SELECT status FROM reminders_sent WHERE user_id = (SELECT user_id FROM user_identities WHERE external_id = '7777') AND kind = 'water15'");
 ok('итог доставки записан: ok', ($row['status'] ?? '') === 'ok', $row);
 ok('ближайшее после 2 ноября — 5-е, тепло; 5-го в 21:00 — уже 15-е', Reminders::next($kyiv('2026-11-02 10:54')) === ['date' => '2026-11-05', 'kind' => 'heat5', 'ym' => '2026-11'] && Reminders::next($kyiv('2026-11-05 21:00'))['date'] === '2026-11-15');

@@ -1,0 +1,103 @@
+// Несколько квартир, этап 2: главная-список квартир со статусами, мастер «Додати квартиру» (3 шага, +/−, «Перевірте»),
+// настройка счётчиков новой квартиры по очереди, «Усі квартири», выключатель напоминаний у квартиры, ?go=…&place=…,
+// «схоже на показання квартири X». Локальный сервер 127.0.0.1:8013. Запуск: cd tests/e2e && NODE_PATH=$(npm root -g) node e2e_places2.cjs
+const { chromium } = require('playwright'); const demo = require('./demo.cjs');
+let pass = 0, fail = 0; const ok = (n, c, i) => { console.log((c ? '  OK  ' : ' FAIL ') + n + (!c && i !== undefined ? '  → ' + JSON.stringify(i) : '')); c ? pass++ : fail++; };
+(async () => {
+  const b = await chromium.launch(); const ctx = await b.newContext({ viewport: { width: 390, height: 844 } }); const p = await ctx.newPage(); const errs = [];
+  p.on('pageerror', e => errs.push(e.message)); p.on('dialog', d => d.accept());
+  const st = () => p.evaluate(() => JSON.parse(localStorage.getItem('teplo.v1')));
+  const hash = () => p.evaluate(() => location.hash);
+  const go = async (r) => { await p.goto('http://127.0.0.1:8013/#' + r); await p.waitForTimeout(350); };
+  const click = async (sel, w) => { await p.click(sel); await p.waitForTimeout(w || 300); };
+  await p.goto('http://127.0.0.1:8013/'); await p.evaluate(s => localStorage.setItem('teplo.v1', JSON.stringify(s)), demo({}));
+  await p.reload(); await p.waitForTimeout(400);
+  let s;
+  ok('одна квартира: старт — счётчики (#home), «Головна» → #home', !!(await p.$('.ucard')) && (await p.getAttribute('[data-key=nav-home]', 'href')) === '#home');
+
+  // ---- мастер: из настроек → 3 шага
+  await go('prefs'); await click('#pg-places summary', 200); await click('[data-key=prefs-place-add]');
+  ok('«Додати квартиру» → мастер, крок 1 з 2', (await hash()) === '#add-place' && /1/.test(await p.textContent('.wiz-top .count')) && /2/.test(await p.textContent('.wiz-top .count')));
+  await click('[data-act=aw-chip][data-v="Батьків"]', 200);
+  ok('кнопка назви вписує назву', (await p.inputValue('#aw-name')) === 'Батьків');
+  await p.fill('#aw-addr', 'Пушкінська 5, кв. 2'); await click('[data-key=aw-next]');
+  ok('крок 2: газ і світло — «скоро», без кнопок', (await p.$$('.aw-kind.am-soon')).length === 2 && !(await p.$('.aw-kind.am-soon button')));
+  ok('крок 2 (без води) — останній: «Перевірте» і «Створити»', !!(await p.$('[data-key=aw-sum]')) && !!(await p.$('[data-key=aw-create]')));
+  ok('«−» вимкнено на нулі', await p.$eval('[data-key=aw-hot-dec]', e => e.disabled));
+  await click('[data-key=aw-cold-inc]', 200); await click('[data-key=aw-cold-inc]', 200); await click('[data-key=aw-hot-inc]', 200);
+  ok('стало 3 кроки, лічильники в «Перевірте» — ні, бо не останній', /3/.test(await p.textContent('.wiz-top .count')) && !(await p.$('[data-key=aw-sum]')));
+  ok('кількість на екрані: гаряча 1, холодна 2', (await p.textContent('[data-key=aw-hot-n]')).trim() === '1' && (await p.textContent('[data-key=aw-cold-n]')).trim() === '2');
+  await click('[data-key=aw-heat-inc]', 200);
+  ok('опалення: максимум 1 — «+» вимкнено', await p.$eval('[data-key=aw-heat-inc]', e => e.disabled));
+  await click('[data-key=aw-back]', 200);
+  ok('назад на крок 1 — назва й адреса на місці', (await p.inputValue('#aw-name')) === 'Батьків' && (await p.inputValue('#aw-addr')) === 'Пушкінська 5, кв. 2');
+  await click('[data-key=aw-next]', 200); await click('[data-key=aw-next]');
+  ok('крок 3 з 3: рахунок Водоканалу і «Перевірте»', /3/.test(await p.textContent('.wiz-top .count')) && !!(await p.$('#aw-acc')) && !!(await p.$('[data-key=aw-skip]')));
+  const sum = await p.textContent('[data-key=aw-sum]');
+  ok('«Перевірте» повторює суть: назва, адреса, лічильники', /Батьків/.test(sum) && /Пушкінська/.test(sum) && /Опалення/.test(sum) && /Холодна вода ×2/.test(sum), sum);
+  await p.fill('#aw-acc', '7654321'); await p.fill('#aw-sn', 'Петренко'); await p.waitForTimeout(100);
+  ok('рахунок одразу видно в «Перевірте»', (await p.textContent('#aw-sum-acc')).includes('7654321'));
+  await click('[data-key=aw-create]', 400);
+  s = await st(); const np = s.places.find(x => x.name === 'Батьків');
+  ok('квартиру створено: назва, адреса, рахунок, відкрита саме вона', np && np.address === 'Пушкінська 5, кв. 2' && np.water.account === '7654321' && np.water.surname === 'Петренко' && s.placeId === np.id, np);
+  ok('далі — водомір 1 з 4 (гаряча), плашка з назвою квартири', (await hash()) === '#wadd' && /1 з 4/.test(await p.textContent('[data-key=aw-queue]')) && /Батьків/.test(await p.textContent('[data-key=aw-queue]')) && /гаряч/i.test(await p.textContent('h1')));
+  ok('рахунок не питаємо вдруге', !(await p.$('#wa-form #w-acc')));
+  await p.fill('#wa-val', '12'); await click('[data-key=wa-save]', 400);
+  ok('→ водомір 2 з 4 (холодна)', (await hash()) === '#wadd' && /2 з 4/.test(await p.textContent('[data-key=aw-queue]')) && /холодн/i.test(await p.textContent('h1')));
+  await click('[data-key=aw-q-later]', 400);
+  ok('«Налаштую пізніше» → 3 з 4 (друга холодна, просимо назву)', /3 з 4/.test(await p.textContent('[data-key=aw-queue]')) && !!(await p.$('#wa-name')));
+  await click('[data-key=wa-save]', 200);
+  ok('друга холодна без назви — помилка', (await p.textContent('#wa-err')).length > 5);
+  await p.fill('#wa-name', 'ванна'); if (await p.$('#wa-name0')) await p.fill('#wa-name0', 'кухня'); await click('[data-key=wa-save]', 400);
+  ok('→ теплолічильник 4 з 4: вибір моделі', (await hash()) === '#meter' && /4 з 4/.test(await p.textContent('[data-key=aw-queue]')));
+  s = await st(); let q = s.places.find(x => x.id === np.id);
+  ok('водоміри: гаряча (12 на старті), 2 холодних', q.water.meters.length === 3 && q.water.meters.filter(m => m.kind === 'cold').length === 2 && s.water.some(r => r.place === np.id && r.base && Object.values(r.vals).includes('12')), q.water.meters);
+  await go('home');
+  ok('пішли з налаштування — черга скинута, головна квартири без тепла', !(await p.$('[data-key=card-heat]')) && !!(await p.$('[data-key=card-cold]')) && !!(await p.$('[data-key=card-hot]')));
+
+  // ---- главная-список
+  ok('дві квартири: «Головна» → список', (await p.getAttribute('[data-key=nav-home]', 'href')) === '#places' && (await p.getAttribute('[data-key=brand]', 'href')) === '#places');
+  ok('шапка квартири: «Усі квартири» → #places', (await p.getAttribute('[data-key=place-bar-all]', 'href')) === '#places' && /Усі квартири/.test(await p.textContent('[data-key=place-bar-all]')));
+  await p.goto('http://127.0.0.1:8013/'); await p.waitForTimeout(500);
+  ok('відкрили застосунок без адреси — список квартир', (await p.$$('.ov-card')).length === 2 && !!(await p.$('[data-screen=S41]')));
+  const c1 = await p.textContent('[data-key=ov-' + s.places[0].id + ']'), c2 = await p.textContent('[data-key=ov-' + np.id + ']');
+  ok('картка першої: опалення, гаряча, холодна зі статусами', /Опалення/.test(c1) && /Гаряча вода/.test(c1) && /Холодна вода/.test(c1) && /Передати до|Приймання/.test(c1), c1);
+  ok('картка «Батьків»: адреса, «відкрита», холодна ×2, найближчий термін', /Пушкінська/.test(c2) && /відкрита/.test(c2) && /Холодна вода ×2/.test(c2) && /Найближчий термін|Сьогодні/.test(c2), c2);
+  ok('nav «Головна» підсвічена', (await p.getAttribute('[data-key=nav-home]', 'aria-current')) === 'page');
+  await click('[data-key=pl-go-' + s.places[0].id + ']', 400);
+  s = await st();
+  ok('натиснув першу → вона відкрита, її головна (тепло є)', s.placeId === s.places[0].id && (await hash()) === '#home' && !!(await p.$('[data-key=card-heat]')));
+
+  // ---- напоминания: выключатель у квартиры
+  await go('place-' + np.id);
+  ok('на екрані квартири — «Нагадувати про цю квартиру» (увімкнено)', await p.$eval('#pv-remind', e => e.checked));
+  await p.click('#pv-remind'); await p.waitForTimeout(300); s = await st();
+  ok('вимкнули — place.remindOff = true', s.places.find(x => x.id === np.id).remindOff === true);
+  await p.click('#pv-remind'); await p.waitForTimeout(300); s = await st();
+  ok('увімкнули — remindOff прибрано', !s.places.find(x => x.id === np.id).remindOff);
+
+  // ---- кнопка из бота: ?go=wnew&place=<id>
+  await go('places'); await click('[data-key=pl-go-' + s.places[0].id + ']', 300);
+  await p.goto('http://127.0.0.1:8013/?go=wnew&place=' + np.id); await p.waitForTimeout(600); s = await st();
+  ok('?go=wnew&place=… → відкрита та квартира і введення води', s.placeId === np.id && (await hash()) === '#wnew' && /Батьків/.test(await p.textContent('[data-key=place-bar]')));
+  ok('параметри прибрано з адреси', !/go=|place=/.test(await p.evaluate(() => location.search)));
+
+  // ---- «схоже на показання квартири X»: в «Батьків» вписали число гарячого водоміра першої квартири (175 → 176)
+  const hotId = s.places.find(x => x.id === np.id).water.meters.find(m => m.kind === 'hot').id;
+  await p.fill('#wn-' + hotId, '176'); await p.press('#wn-' + hotId, 'Tab'); await p.waitForTimeout(250);
+  const wh = await p.textContent('#wh-' + hotId);
+  ok('гаряча 176 у «Батьків» (там 12) → «схоже на квартиру «Квартира 1»»', /Схоже на показання квартири/.test(wh) && /Квартира 1/.test(wh), wh);
+  await p.fill('#wn-' + hotId, '13'); await p.press('#wn-' + hotId, 'Tab'); await p.waitForTimeout(250);
+  ok('13 (звичайний розхід) — без попередження', !/Схоже на показання/.test(await p.textContent('#wh-' + hotId)));
+
+  // тепло: у «Батьків» теплолічильник (останні прийняті 20,000), а вписали 13,2 — це схоже на першу квартиру (12,910)
+  await p.evaluate((pid) => { const s = JSON.parse(localStorage.getItem('teplo.v1')); const q = s.places.find(x => x.id === pid);
+    q.meter = Object.assign({}, s.places[0].meter); q.baseline = { date: '2026-10-10', energy: '20.000' }; s.placeId = pid; s.meter = q.meter; s.baseline = q.baseline;
+    s.draft = { date: s.demoToday || new Date().toISOString().slice(0, 10), values: { energy: '13.2' }, step: 3 }; localStorage.setItem('teplo.v1', JSON.stringify(s)); }, np.id);
+  await p.reload(); await p.waitForTimeout(300); await go('check');
+  const ck = await p.textContent('#main');
+  ok('тепло 13,2 у «Батьків» (там 20) → перевірка: «схоже на теплолічильник квартири «Квартира 1»»', /Схоже на показання теплолічильника квартири «Квартира 1»/.test(ck) && /Батьків/.test(ck), ck.slice(0, 400));
+
+  ok('без ошибок JS', errs.length === 0, errs);
+  console.log('\nИтог: ' + pass + ' OK, ' + fail + ' FAIL'); await b.close(); process.exit(fail ? 1 : 0);
+})();

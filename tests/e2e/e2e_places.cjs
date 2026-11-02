@@ -1,4 +1,4 @@
-// Несколько квартир, этап 1: вторая квартира только с водой, добавить/прибрати/повернути/замінити лічильник, шапка квартиры,
+// Несколько квартир, этап 1 (новая квартира — через мастер этапа 2, см. e2e_places2.cjs): вторая квартира только с водой, добавить/прибрати/повернути/замінити лічильник, шапка квартиры,
 // рахунки по квартире, удаление квартиры. Локальный сервер 127.0.0.1:8013. Запуск: cd tests/e2e && NODE_PATH=$(npm root -g) node e2e_places.cjs
 const { chromium } = require('playwright'); const demo = require('./demo.cjs');
 let pass = 0, fail = 0; const ok = (n, c, i) => { console.log((c ? '  OK  ' : ' FAIL ') + n + (!c && i !== undefined ? '  → ' + JSON.stringify(i) : '')); c ? pass++ : fail++; };
@@ -15,7 +15,10 @@ let pass = 0, fail = 0; const ok = (n, c, i) => { console.log((c ? '  OK  ' : ' 
   ok('одна квартира — шапки нет, 3 карточки + «Додати лічильник»', !(await p.$('[data-key=place-bar]')) && (await p.$$('.ucard')).length === 3 && !!(await p.$('[data-key=card-add-meter]')));
 
   // добавить квартиру: настройки → квартиры → «Додати квартиру» → экран новой квартиры
+  // (этап 2: «Додати квартиру» — мастер; здесь — пустая квартира без названия: «Далі» → «Створити», дальше — её экран)
   await go('prefs'); await p.click('#pg-places summary'); await p.click('[data-key=prefs-place-add]'); await p.waitForTimeout(350);
+  await p.click('[data-key=aw-next]'); await p.waitForTimeout(250); await p.click('[data-key=aw-create]'); await p.waitForTimeout(350);
+  await go('place-' + (await st()).placeId);
   ok('новая квартира → её экран с подсказкой', /^#place-p/.test(await p.evaluate(() => location.hash)) && !!(await p.$('[data-key=pv-new]')));
   await p.click('[data-act=pv-chip][data-v="Батьків"]'); await p.waitForTimeout(200);
   await p.fill('#pv-addr', 'Пушкінська 5, кв. 2'); await p.waitForTimeout(100);
@@ -89,7 +92,7 @@ let pass = 0, fail = 0; const ok = (n, c, i) => { console.log((c ? '  OK  ' : ' 
   ok('главная без карточки тепла', !(await p.$('[data-key=card-heat]')) && (await p.$$('.ucard')).length === 2);
   await go('history');
   ok('история: вкладка «Опалення» осталась (есть показания)', !!(await p.$('[data-key=kind-heat]')));
-  await p.click('[data-key=nav-home]'); await p.waitForTimeout(250); await p.click('[data-key=card-add-meter]'); await p.waitForTimeout(250); await p.click('[data-key=am-restore-heat]'); await p.waitForTimeout(300);
+  await go('home'); await p.click('[data-key=card-add-meter]'); await p.waitForTimeout(250); await p.click('[data-key=am-restore-heat]'); await p.waitForTimeout(300);
   s = await st(); ok('повернули опалення из выбора', !s.places.find(x => x.id === 'main').meter.removed && !!(await p.$('[data-key=card-heat]')));
 
   // удалить вторую квартиру — с её названием в вопросе

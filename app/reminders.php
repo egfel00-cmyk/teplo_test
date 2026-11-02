@@ -2,7 +2,8 @@
 // Напоминания через Telegram-бота (зовёт cron.php раз в час, шлёт с 10 до 20 по Киеву):
 //  вода — 15-го и 19-го, если в этом месяце ещё нет записи воды (Водоканал принимает до 20-го);
 //  тепло — 5-го (открылось окно ХТМ) и 22-го, если нет показаний, снятых в окне 5–25.
-// Кому: аккаунты с Telegram и состоянием на сервере; выключатель — state.remind.off (Настройки), язык — state.remind.lang.
+// Кому: аккаунты с Telegram и состоянием на сервере; выключатель — state.remind.off (Настройки, все квартиры) и place.remindOff
+// (страница квартиры), язык — state.remind.lang. Несколько квартир — одно сообщение со списком и кнопкой в каждую (?go=…&place=id).
 // Каждое напоминание — не больше раза за месяц (reminders_sent, с итогом Telegram в status — видно в /admin → «Нагадування»);
 // при сбое связи (нет ответа, 429, 5xx) — повтор в следующий час. Человек не нажимал «Старт» у бота → status 'blocked', не повторяем.
 declare(strict_types=1);
@@ -20,9 +21,10 @@ final class Reminders {
     return ['ym' => $d->format('Y-m'), 'kind' => $kind];
   }
 
-  /** Нужно ли это напоминание человеку с таким состоянием (данные — как их хранит сайт: places, water, readings). */
-  public static function needs(array $st, string $kind, string $ym, ?string $today = null): bool {
-    if (!empty($st['remind']['off'])) return false;
+  /** Какие квартиры ждут это напоминание: [['id' => 'p2', 'label' => 'Мамина', 'all' => 2], …] (all — сколько квартир всего).
+   *  Пропускаем: всё выключено (remind.off), квартира выключена (place.remindOff), счётчик снят (gaps) или прибран (removed). */
+  public static function placesDue(array $st, string $kind, string $ym, ?string $today = null): array {
+    if (!empty($st['remind']['off'])) return [];
     $today = $today ?? date('Y-m-d');
     // лічильник знято (ремонт, повірка, заміна) і ще не поставили — про нього не нагадуємо
     $off = function (array $p, string $what) use ($today): bool {
@@ -32,32 +34,38 @@ final class Reminders {
     };
     $places = array_values(array_filter((array)($st['places'] ?? []), fn($p) => is_array($p) && empty($p['deleted'])));
     if (!$places && !empty($st['meter'])) $places = [['id' => 'main', 'meter' => $st['meter']]];
-    $first = $places[0]['id'] ?? 'main';
-    if (str_starts_with($kind, 'water')) {
-      foreach ($places as $p) {
+    $first = $places[0]['id'] ?? 'main'; $all = count($places); $out = [];
+    foreach ($places as $i => $p) {
+      if (!empty($p['remindOff'])) continue;
+      $label = trim((string)($p['name'] ?? '')) ?: (trim((string)($p['address'] ?? '')) ?: ('Квартира ' . ($i + 1)));
+      $need = false;
+      if (str_starts_with($kind, 'water')) {
         // прибранный из квартиры водомер (removed — дата) не напоминает
         $ms = array_filter((array)($p['water']['meters'] ?? []), fn($m) => is_array($m) && empty($m['deleted']) && empty($m['removed']) && !$off($p, (string)($m['id'] ?? '')));
-        if (!$ms) continue;
-        $has = false;
-        foreach ((array)($st['water'] ?? []) as $r)
-          if (is_array($r) && empty($r['deleted']) && empty($r['base']) && ($r['place'] ?? '') === $p['id'] && str_starts_with((string)($r['date'] ?? ''), $ym)) { $has = true; break; }
-        if (!$has) return true;
+        if ($ms) {
+          $need = true;
+          foreach ((array)($st['water'] ?? []) as $r)
+            if (is_array($r) && empty($r['deleted']) && empty($r['base']) && ($r['place'] ?? '') === $p['id'] && str_starts_with((string)($r['date'] ?? ''), $ym)) { $need = false; break; }
+        }
+      } elseif (!empty($p['meter']) && empty($p['meter']['removed']) && !$off($p, 'heat')) {
+        $need = true;
+        foreach ((array)($st['readings'] ?? []) as $r) {
+          $d = (string)($r['htm']['date'] ?? '');
+          if (is_array($r) && empty($r['deleted']) && ($r['place'] ?? $first) === $p['id'] && $d >= "$ym-05" && $d <= "$ym-25") { $need = false; break; }
+        }
       }
-      return false;
+      if ($need) $out[] = ['id' => (string)$p['id'], 'label' => mb_substr($label, 0, 40), 'all' => $all];
     }
-    foreach ($places as $p) {
-      if (empty($p['meter']) || !empty($p['meter']['removed']) || $off($p, 'heat')) continue;
-      $has = false;
-      foreach ((array)($st['readings'] ?? []) as $r) {
-        $d = (string)($r['htm']['date'] ?? '');
-        if (is_array($r) && empty($r['deleted']) && ($r['place'] ?? $first) === $p['id'] && $d >= "$ym-05" && $d <= "$ym-25") { $has = true; break; }
-      }
-      if (!$has) return true;
-    }
-    return false;
+    return $out;
   }
 
-  public static function text(string $kind, string $lang): array {
+  /** Нужно ли это напоминание человеку с таким состоянием (данные — как их хранит сайт: places, water, readings). */
+  public static function needs(array $st, string $kind, string $ym, ?string $today = null): bool {
+    return (bool)self::placesDue($st, $kind, $ym, $today);
+  }
+
+  /** Текст и кнопки. $places — из placesDue: при нескольких квартирах — список («Квартири: Моя, Мамина») и кнопка в каждую. */
+  public static function text(string $kind, string $lang, array $places = []): array {
     $ru = $lang === 'ru';
     $t = [
       'water15' => $ru ? "💧 До 20-го — показания воды в Водоканал. В этом месяце ещё не вносили.\n\nСфотографируйте водомеры — цифры впишутся сами, готовое сообщение для бота Водоканала будет под рукой."
@@ -72,7 +80,15 @@ final class Reminders {
     $off = $ru ? 'Выключить напоминания — в «Настройках» сервиса.' : 'Вимкнути нагадування — у «Налаштуваннях» сервісу.';
     $water = str_starts_with($kind, 'water');
     $btn = $water ? ($ru ? 'Внести воду' : 'Внести воду') : ($ru ? 'Снять показания тепла' : 'Зняти показання тепла');
-    return ['text' => $t . "\n\n" . $off, 'button' => $btn, 'url' => Cfg::appUrl() . '?go=' . ($water ? 'wnew' : 'heat')];
+    $go = Cfg::appUrl() . '?go=' . ($water ? 'wnew' : 'heat');
+    $many = $places && ($places[0]['all'] ?? 1) > 1;
+    if (!$many) return ['text' => $t . "\n\n" . $off, 'button' => $btn, 'url' => $go, 'buttons' => [[$btn, $go]]];
+    // несколько квартир: одно сообщение — в каких квартирах ещё не внесли, кнопка в каждую (не больше 6)
+    $names = array_map(fn($p) => '«' . $p['label'] . '»', $places);
+    $t .= "\n\n" . (count($places) > 1 ? ($ru ? 'Квартиры: ' : 'Квартири: ') : ($ru ? 'Квартира: ' : 'Квартира: ')) . implode(', ', $names) . '.';
+    $btns = array_map(fn($p) => [$btn . ' — ' . $p['label'], $go . '&place=' . rawurlencode($p['id'])], array_slice($places, 0, 6));
+    $off = $ru ? 'Выключить — в «Настройках» сервиса (для всех квартир) или на странице квартиры.' : 'Вимкнути — у «Налаштуваннях» сервісу (для всіх квартир) або на сторінці квартири.';
+    return ['text' => $t . "\n\n" . $off, 'button' => $btns[0][0], 'url' => $btns[0][1], 'buttons' => $btns];
   }
 
   /** Ближайший день напоминания, начиная с сегодня (если окно 10–20 ещё не закрылось): ['date', 'kind', 'ym']. */
@@ -94,9 +110,11 @@ final class Reminders {
     $out = [];
     foreach (self::people() as $row) {
       $st = json_decode((string)$row['data'], true);
-      if (!is_array($st) || !self::needs($st, $kind, $ym)) continue;
+      $ps = is_array($st) ? self::placesDue($st, $kind, $ym) : [];
+      if (!$ps) continue;
       $s = Db::one('SELECT status, sent_at FROM reminders_sent WHERE user_id = ? AND kind = ? AND ym = ?', [(int)$row['user_id'], $kind, $ym]);
-      $out[] = ['user_id' => (int)$row['user_id'], 'username' => $row['username'], 'lang' => (string)($st['remind']['lang'] ?? 'uk'), 'sent' => $s];
+      $out[] = ['user_id' => (int)$row['user_id'], 'username' => $row['username'], 'lang' => (string)($st['remind']['lang'] ?? 'uk'), 'sent' => $s,
+        'places' => $ps[0]['all'] > 1 ? array_column($ps, 'label') : []];
     }
     return $out;
   }
@@ -127,13 +145,14 @@ final class Reminders {
       $uid = (int)$row['user_id'];
       if (Db::one('SELECT 1 AS x FROM reminders_sent WHERE user_id = ? AND kind = ? AND ym = ?', [$uid, $due['kind'], $due['ym']])) continue;
       $st = json_decode((string)$row['data'], true);
-      if (!is_array($st) || !self::needs($st, $due['kind'], $due['ym'])) continue;
-      $m = self::text($due['kind'], (string)($st['remind']['lang'] ?? 'uk'));
+      $ps = is_array($st) ? self::placesDue($st, $due['kind'], $due['ym']) : [];
+      if (!$ps) continue;
+      $m = self::text($due['kind'], (string)($st['remind']['lang'] ?? 'uk'), $ps);
       // сначала отметка (второй запуск cron не пошлёт дубль), потом отправка и её итог
       Db::q('INSERT INTO reminders_sent (user_id, kind, ym, sent_at) VALUES (?, ?, ?, ?)', [$uid, $due['kind'], $due['ym'], Http::iso()]);
       try {
         $r = Telegram::call('sendMessage', ['chat_id' => $row['external_id'], 'text' => $m['text'],
-          'reply_markup' => ['inline_keyboard' => [[['text' => $m['button'], 'web_app' => ['url' => $m['url']]]]]]]);
+          'reply_markup' => ['inline_keyboard' => array_map(fn($b) => [['text' => $b[0], 'web_app' => ['url' => $b[1]]]], $m['buttons'])]]);
       } catch (Throwable $e) { error_log('teplo remind: ' . $e->getMessage()); $r = []; }
       $s = self::status($r);
       if ($s === null) Db::q('DELETE FROM reminders_sent WHERE user_id = ? AND kind = ? AND ym = ?', [$uid, $due['kind'], $due['ym']]);   // сбой связи — через час ещё раз
