@@ -51,8 +51,8 @@ final class Telegram {
   public static function setup(): array {
     $url = Cfg::appUrl(); $out = [];
     $out['setWebhook'] = self::call('setWebhook', ['url' => $url . 'api/bot/webhook', 'secret_token' => (string)Cfg::get('webhook_secret'), 'allowed_updates' => ['message'], 'drop_pending_updates' => true]);
-    $out['setChatMenuButton'] = self::call('setChatMenuButton', ['menu_button' => ['type' => 'web_app', 'text' => 'Теплосервіс', 'web_app' => ['url' => $url]]]);
-    $out['setMyCommands'] = self::call('setMyCommands', ['commands' => [['command' => 'start', 'description' => 'Відкрити Теплосервіс']]]);
+    $out['setChatMenuButton'] = self::call('setChatMenuButton', ['menu_button' => ['type' => 'web_app', 'text' => 'Лічильники', 'web_app' => ['url' => $url]]]);
+    $out['setMyCommands'] = self::call('setMyCommands', ['commands' => [['command' => 'start', 'description' => 'Відкрити Лічильники']]]);
     $errs = []; foreach ($out as $k => $x) if (empty($x['ok'])) $errs[] = $k . ': ' . ($x['description'] ?? 'нет ответа');
     return ['ok' => !$errs, 'appUrl' => $url, 'telegram' => array_map(fn($x) => !empty($x['ok']), $out), 'errors' => $errs];
   }
@@ -146,9 +146,9 @@ final class Telegram {
     $linkText = null;
     if (preg_match('/^\/start\s+link_([a-f0-9]{32})\b/', (string)($msg['text'] ?? ''), $m)) $linkText = self::linkByToken((array)($msg['from'] ?? []), $m[1], $lang);
     $text = $lang === 'ru'
-      ? "Теплосервис помогает снять показания теплосчётчика, проверить их как робот ХТМ и не пропустить окно приёма (5–25 число).\n\nМожно просто прислать сюда фото экранов счётчика — распознаю цифры.\n\nНажмите кнопку — откроется сервис, вход через Telegram произойдёт сам."
-      : "Теплосервіс допомагає зняти показання тепло­лічильника, перевірити їх як робот ХТМ і не пропустити вікно приймання (5–25 число).\n\nМожна просто надіслати сюди фото екранів лічильника — розпізнаю цифри.\n\nНатисніть кнопку — відкриється сервіс, вхід через Telegram відбудеться сам.";
-    $btn = $lang === 'ru' ? 'Открыть Теплосервис' : 'Відкрити Теплосервіс';
+      ? "«Счётчики» помогают снять показания тепла и воды, проверить их и не пропустить сроки: тепло — ХТМ (5–25 число), вода — Водоканал (до 20-го).\n\nМожно просто прислать сюда фото экранов теплосчётчика или водомеров — распознаю цифры.\n\nНажмите кнопку — откроется сервис, вход через Telegram произойдёт сам."
+      : "«Лічильники» допомагають зняти показання тепла й води, перевірити їх і не пропустити строки: тепло — ХТМ (5–25 число), вода — Водоканал (до 20-го).\n\nМожна просто надіслати сюди фото екранів теплолічильника або водомірів — розпізнаю цифри.\n\nНатисніть кнопку — відкриється сервіс, вхід через Telegram відбудеться сам.";
+    $btn = $lang === 'ru' ? 'Открыть «Счётчики»' : 'Відкрити «Лічильники»';
     if ($linkText !== null) $text = $linkText;
     $params = ['chat_id' => $msg['chat']['id'], 'text' => $text,
       'reply_markup' => ['inline_keyboard' => [[['text' => $btn, 'web_app' => ['url' => Cfg::appUrl()]]]]]];

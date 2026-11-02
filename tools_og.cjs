@@ -4,8 +4,8 @@ const { chromium } = require('playwright');
 const path = require('path'), fs = require('fs');
 const BASE = process.argv[2] || 'http://127.0.0.1:8000/';
 const TXT = {
-  uk: { t: 'Показання тепла без відмов робота ХТМ', s: 'Підкажемо, що натискати на лічильнику, перевіримо цифри як робот ХТМ і підготуємо все для кабінету. Безкоштовно.', f: ['Харків', 'Теплолічильники', 'З 5 по 25 число'] },
-  ru: { t: 'Показания тепла без отказов робота ХТМ', s: 'Подскажем, что нажимать на счётчике, проверим цифры как робот ХТМ и подготовим всё для кабинета. Бесплатно.', f: ['Харьков', 'Теплосчётчики', 'С 5 по 25 число'] },
+  uk: { t: 'Тепло й вода — показання без помилок', s: 'Фото лічильників → цифри розпізнано й перевірено, готові для ХТМ і Водоканалу. Безкоштовно.', f: ['Харків', 'Опалення', 'Гаряча й холодна вода'] },
+  ru: { t: 'Тепло и вода — показания без ошибок', s: 'Фото счётчиков → цифры распознаны и проверены, готовы для ХТМ и Водоканала. Бесплатно.', f: ['Харьков', 'Отопление', 'Горячая и холодная вода'] },
 };
 (async () => {
   const br = await chromium.launch();
@@ -25,17 +25,17 @@ const TXT = {
       .chips { display: flex; gap: 10px; margin-top: 30px; flex-wrap: wrap; }
       .chips span { font: 600 19px/1 var(--font); padding: 10px 16px; border-radius: 999px; background: #fff; color: #17211E; }
       .dev { background: #F7F9F8; border-radius: 34px; padding: 34px 30px 38px; box-shadow: 0 24px 60px rgba(23,33,30,.16), inset 0 0 0 2px #CFD7D3; }
-      .dev .lcd { margin: 0; }
+      .dev .lcd { margin: 0; } .dev .drum { margin-top: 26px; transform: scale(1.5); transform-origin: top center; margin-bottom: 30px; }
       .btns { display: flex; justify-content: center; gap: 22px; margin-top: 26px; }
       .btns i { width: 52px; height: 52px; border-radius: 50%; background: #E9EEEB; box-shadow: inset 0 0 0 2px #CFD7D3; }
       .stripe { position: absolute; left: 0; right: 0; bottom: 0; height: 12px; background: linear-gradient(90deg, #D04A1D 0 50%, #2F68B0 50% 100%); }
     </style></head><body><div class="og"><div>
-      <div class="brand"><svg width="46" height="46" viewBox="0 0 28 28" fill="none" stroke-width="3.2" stroke-linecap="round"><path d="M5 7h12a5 5 0 0 1 5 5" stroke="#D04A1D"/><path d="M22 16a5 5 0 0 1-5 5H5" stroke="#2F68B0"/><path d="M22 12v4" stroke="#17211E" stroke-width="2"/></svg>${lang === 'ru' ? 'Теплосервис' : 'Теплосервіс'}</div>
+      <div class="brand"><svg width="46" height="46" viewBox="0 0 28 28" fill="none" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3C11 7.5 6.5 12.5 6.5 17.5A7.5 7.5 0 0 0 14 25" stroke="#D04A1D"/><path d="M14 3c3 4.5 7.5 9.5 7.5 14.5A7.5 7.5 0 0 1 14 25" stroke="#2F68B0"/><path d="M14 18l3.6-3.6" stroke="#17211E" stroke-width="2.2"/><circle cx="14" cy="18" r="1.6" fill="#17211E"/></svg>${lang === 'ru' ? 'Счётчики' : 'Лічильники'}</div>
       <h1>${x.t}</h1><p>${x.s}</p><div class="chips">${x.f.map(c => `<span>${c}</span>`).join('')}</div></div>
-      <div class="dev">${lcd}<div class="btns"><i></i><i></i></div></div><div class="stripe"></div></div></body></html>`);
+      <div class="dev">${lcd}<div class="drum">${'00175'.split('').map(d => `<span>${d}</span>`).join('')}${'921'.split('').map(d => `<span class="r">${d}</span>`).join('')}<small>м³</small></div></div><div class="stripe"></div></div></body></html>`);
     await p.waitForTimeout(300);
-    await p.screenshot({ path: path.join(__dirname, `web/og-${lang}-2.jpg`), type: 'jpeg', quality: 85 });
-    console.log('web/og-' + lang + '-2.jpg');
+    await p.screenshot({ path: path.join(__dirname, `web/og-${lang}-3.jpg`), type: 'jpeg', quality: 85 });
+    console.log('web/og-' + lang + '-3.jpg');
   }
   await br.close();
 })();

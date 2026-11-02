@@ -70,18 +70,18 @@ if ($path === '/' || $path === '/index.php') {
   $site = $scheme . '://' . $host . $base . '/';
   $ru = str_starts_with(strtolower((string)($_SERVER['HTTP_ACCEPT_LANGUAGE'] ?? '')), 'ru');
   $og = $ru
-    ? ['Теплосервис — показания тепла быстро и без ошибок', 'Подскажем, что нажимать на счётчике, проверим цифры как робот ХТМ и подготовим всё для кабинета. Харьков, бесплатно.', 'ru', 'ru_UA']
-    : ['Теплосервіс — показання тепла швидко й без помилок', 'Підкажемо, що натискати на лічильнику, перевіримо цифри як робот ХТМ і підготуємо все для кабінету. Харків, безкоштовно.', 'uk', 'uk_UA'];
+    ? ['Счётчики — тепло и вода в одном месте', 'Фото счётчиков → цифры распознаны и проверены, готовы для ХТМ и Водоканала. Харьков, бесплатно.', 'ru', 'ru_UA']
+    : ['Лічильники — тепло й вода в одному місці', 'Фото лічильників → цифри розпізнано й перевірено, готові для ХТМ і Водоканалу. Харків, безкоштовно.', 'uk', 'uk_UA'];
   $e = fn($s) => htmlspecialchars($s, ENT_QUOTES);
   $meta = '<meta name="description" content="' . $e($og[1]) . '">' .
-    '<meta property="og:type" content="website"><meta property="og:site_name" content="Теплосервіс"><meta property="og:url" content="' . $e($site) . '">' .
+    '<meta property="og:type" content="website"><meta property="og:site_name" content="Лічильники"><meta property="og:url" content="' . $e($site) . '">' .
     '<meta property="og:title" content="' . $e($og[0]) . '"><meta property="og:description" content="' . $e($og[1]) . '"><meta property="og:locale" content="' . $og[3] . '">' .
-    '<meta property="og:image" content="' . $e($site . 'web/og-' . $og[2] . '-2.jpg') . '"><meta property="og:image:secure_url" content="' . $e($site . 'web/og-' . $og[2] . '-2.jpg') . '"><meta property="og:image:type" content="image/jpeg"><meta property="og:image:width" content="1200"><meta property="og:image:height" content="630"><meta property="og:image:alt" content="' . $e($og[0]) . '">' .
-    '<meta name="twitter:card" content="summary_large_image"><meta name="twitter:image" content="' . $e($site . 'web/og-' . $og[2] . '-2.jpg') . '">';
+    '<meta property="og:image" content="' . $e($site . 'web/og-' . $og[2] . '-3.jpg') . '"><meta property="og:image:secure_url" content="' . $e($site . 'web/og-' . $og[2] . '-3.jpg') . '"><meta property="og:image:type" content="image/jpeg"><meta property="og:image:width" content="1200"><meta property="og:image:height" content="630"><meta property="og:image:alt" content="' . $e($og[0]) . '">' .
+    '<meta name="twitter:card" content="summary_large_image"><meta name="twitter:image" content="' . $e($site . 'web/og-' . $og[2] . '-3.jpg') . '">';
   // роботы превью (Telegram, Facebook, WhatsApp, Viber, Slack…) получают крошечную страницу только с превью — быстро и наверняка
   if (preg_match('~TelegramBot|facebookexternalhit|Facebot|Twitterbot|WhatsApp|Viber|Slackbot|Discordbot|LinkedInBot|SkypeUriPreview~i', (string)($_SERVER['HTTP_USER_AGENT'] ?? ''))) {
     header('Content-Type: text/html; charset=utf-8'); header('Cache-Control: public, max-age=600');
-    echo '<!DOCTYPE html><html lang="' . ($ru ? 'ru' : 'uk') . '"><head><meta charset="utf-8"><title>' . $e($og[0]) . '</title>' . $meta . '</head><body><h1>' . $e($og[0]) . '</h1><p>' . $e($og[1]) . '</p><p><img src="' . $e($site . 'web/og-' . $og[2] . '-2.jpg') . '" width="1200" height="630" alt=""></p></body></html>';
+    echo '<!DOCTYPE html><html lang="' . ($ru ? 'ru' : 'uk') . '"><head><meta charset="utf-8"><title>' . $e($og[0]) . '</title>' . $meta . '</head><body><h1>' . $e($og[0]) . '</h1><p>' . $e($og[1]) . '</p><p><img src="' . $e($site . 'web/og-' . $og[2] . '-3.jpg') . '" width="1200" height="630" alt=""></p></body></html>';
     exit;
   }
   $html = preg_replace('~</title>~', '</title>' . $meta, $html, 1);

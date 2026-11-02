@@ -498,3 +498,10 @@ input[type=text]:not(.dmy-native):not(.pl-in), input[type=email], input[type=pas
 .wh .grow b { margin-right: 6px; }
 .field .wcam { margin: 0; font-weight: 400; display: grid; place-items: center; }
 #wsend-vk { scroll-margin-top: 16px; } #wsend-vk:focus, #water-block:focus { outline: none; } #water-block { scroll-margin-top: 76px; }
+
+/* барабан водоміра на привітанні: чорні ролики (м³) + червоні (дроби) */
+.drum { display: flex; align-items: center; gap: 3px; width: max-content; margin: 14px auto 0; padding: 6px 8px; border-radius: 8px; background: #3a3d40; box-shadow: inset 0 1px 3px #0008; }
+.drum span { width: 24px; height: 36px; display: grid; place-items: center; border-radius: 2px; font: 600 22px/1 var(--mono); color: #f3f3f3;
+  background: linear-gradient(#08090a, #2a2c2e 50%, #08090a); }
+.drum span.r { background: linear-gradient(#6e0d12, #c8151d 50%, #6e0d12); }
+.drum small { margin-left: 6px; color: #e8e8e8; font-size: 14px; }
