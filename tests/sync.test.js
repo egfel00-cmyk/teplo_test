@@ -25,4 +25,6 @@ t('исправленная позже запись побеждает стар�
 t('тариф синхронизируется', S.payload({ tariff: 1600, readings: [] }).tariff === 1600);
 t('payload не тащит локальные поля', !('demoToday' in S.payload({ demoToday: 'x', lang: 'ru', readings: [] })) && !('lang' in S.payload({ lang: 'ru' })));
 t('подпись не зависит от updatedAt', S.sig({ a: 1, updatedAt: 1 }) === S.sig({ a: 1, updatedAt: 2 }));
+{ const a = { updatedAt: 1, water: [{ id: 'w1', createdAt: '2026-11-01T10:00:00Z', updatedAt: 5, vals: { h1: '10' } }] }, b = { updatedAt: 2, water: [{ id: 'w1', createdAt: '2026-11-01T10:00:00Z', updatedAt: 9, vals: { h1: '11' } }, { id: 'w2', createdAt: '2026-11-02T10:00:00Z', vals: { h1: '12' } }] };
+  const mm = S.merge(a, b); t('вода: сливается по id, побеждает свежая правка', mm.water.length === 2 && mm.water[0].vals.h1 === '11'); }
 console.log('\nИтог: ' + pass + ' OK, ' + fail + ' FAIL'); process.exit(fail ? 1 : 0);

@@ -447,3 +447,54 @@ input[type=text]:not(.dmy-native):not(.pl-in), input[type=email], input[type=pas
 .kb-open .wiz { gap: 8px; }
 .kb-open .wiz h1 { font-size: 19px; margin-bottom: 6px; }
 .kb-open .wiz .field .help:empty { min-height: 0; margin: 0; }
+
+/* ===== Главная: три карточки учёта (опалення, гаряча, холодна) ===== */
+.ucards { display: grid; gap: 12px; grid-template-columns: minmax(0, 1fr); margin-bottom: 8px; }
+@media (min-width: 720px) { .ucards { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+.ucard { position: relative; background: var(--c-surface); border: 1px solid var(--c-line); border-radius: 16px; }
+.ucard-main { display: flex; flex-direction: column; gap: 4px; padding: 16px 80px 16px 18px; min-height: 124px; color: inherit; text-decoration: none; border-radius: 16px; }
+.ucard-main:hover { background: var(--c-ghost-hover); }
+.ucard-main:focus-visible { outline: 3px solid var(--c-info); outline-offset: 2px; }
+.ucard-top { display: flex; align-items: center; gap: 8px; font-weight: 600; font-size: 16px; }
+.ucard-heat .ucard-top .ico, .ucard-hot .ucard-top .ico, .c-hot { color: var(--c-supply); }
+.ucard-cold .ucard-top .ico, .c-cold { color: var(--c-return); }
+.ucard-val { font: 600 28px/1.15 var(--mono); margin-top: 6px; overflow-wrap: anywhere; }
+.ucard-val small { font: 500 14px var(--font); color: var(--c-ink-2); }
+.ucard-multi { display: inline-block; margin-right: 12px; font: 500 15px var(--font); color: var(--c-ink-2); }
+.ucard-multi b { font: 600 22px var(--mono); color: var(--c-ink); }
+.ucard-sub { font-size: 14px; color: var(--c-ink-2); }
+.ucard-status { font-size: 14px; font-weight: 600; margin-top: 4px; color: var(--c-ink-2); }
+.ucard-status.ok { color: var(--c-ok); } .ucard-status.due { color: var(--c-info); } .ucard-status.warn { color: var(--c-warn); }
+.ucard-add { position: absolute; right: 14px; top: 50%; transform: translateY(-50%); width: 56px; height: 56px; border-radius: 50%; border: 0; background: var(--c-ink); color: var(--c-on-ink); display: grid; place-items: center; cursor: pointer; box-shadow: 0 4px 12px var(--c-shadow); }
+.ucard-add:hover { background: var(--c-ink-hover); }
+.ucard-add:focus-visible { outline: 3px solid var(--c-info); outline-offset: 3px; }
+.ucards-hint { margin: 4px 2px 16px; }
+
+/* ===== Вода: экран вида, ввод, передача ===== */
+.wmeters { display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); margin-bottom: 16px; }
+.wmeter { margin: 0; }
+.wmeter .big small { font: 500 14px var(--font); color: var(--c-ink-2); }
+.wsend h2 { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.cmd { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-top: 6px; }
+.cmd code { flex: 1 1 220px; font: 600 16px/1.4 var(--mono); background: var(--c-field-bg); border: 1.5px solid var(--c-field-line); border-radius: 10px; padding: 10px 12px; overflow-wrap: anywhere; user-select: all; }
+.wsteps { padding-left: 1.3em; } .wsteps li { margin-bottom: 10px; }
+.wvals { list-style: none; padding: 0; margin: 8px 0; }
+.wvals li { display: flex; align-items: center; gap: 12px; padding: 8px 0; border-bottom: 1px solid var(--c-line); }
+.wvals li > span:first-child { flex: 1; } .wvals b { font: 600 18px var(--mono); }
+.wfield .ctl { position: relative; }
+.wcam { flex: none; display: grid; place-items: center; width: 52px; border-left: 1.5px solid var(--c-field-line); cursor: pointer; color: var(--c-ink-2); }
+.wcam:hover { background: var(--c-ghost-hover); color: var(--c-ink); }
+.wcam:focus-within { outline: 3px solid var(--c-info); outline-offset: -3px; }
+.wcam[aria-busy="true"] { opacity: .5; pointer-events: none; }
+.wz-opts { display: grid; gap: 10px; margin: 8px 0 12px; }
+.wz-opt { display: flex; align-items: center; gap: 12px; padding: 14px 16px; border: 1.5px solid var(--c-field-line); border-radius: 14px; background: var(--c-surface); cursor: pointer; color: inherit; text-decoration: none; font: inherit; text-align: left; width: 100%; }
+.wz-opt > span { flex: 1; display: flex; flex-direction: column; gap: 2px; }
+.wz-opt:has(input:checked) { border-color: var(--c-ink); box-shadow: 0 0 0 2px var(--c-ink) inset; }
+.wz-opt input { width: 20px; height: 20px; accent-color: var(--c-ink); flex: none; }
+.wz-opt:hover { background: var(--c-ghost-hover); }
+.wz-link .ico:first-child { color: var(--c-info); }
+.wm-row { border: 1px solid var(--c-line); border-radius: 12px; padding: 8px 14px 12px; margin: 0 0 12px; }
+.wm-row legend { font-weight: 600; padding: 0 6px; display: flex; align-items: center; gap: 6px; }
+.wh .grow b { margin-right: 6px; }
+.field .wcam { margin: 0; font-weight: 400; display: grid; place-items: center; }
+#wsend-vk { scroll-margin-top: 16px; } #wsend-vk:focus, #water-block:focus { outline: none; } #water-block { scroll-margin-top: 76px; }

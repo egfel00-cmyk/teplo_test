@@ -154,6 +154,7 @@
   var ICONS = {
     home: '<path d="M4 11l8-7 8 7"/><path d="M6 10v10h12V10"/>',
     chev: '<path d="M9 6l6 6-6 6"/>',
+    drop: '<path d="M12 3.5c3 4 6 7.2 6 10.5a6 6 0 0 1-12 0c0-3.3 3-6.5 6-10.5z"/>',
     flame: '<path d="M12 3c1 3 5 5 5 10a5 5 0 0 1-10 0c0-2.5 1.5-4 2.5-5 .3 1.6 1.2 2.6 2.5 3 0-3-.7-5.5 0-8z"/>',
     shield: '<path d="M12 3l7 3v5c0 4.5-3 8-7 10-4-2-7-5.5-7-10V6z"/>',
     history: '<path d="M4 6h16M4 12h16M4 18h10"/>',
@@ -276,14 +277,14 @@
     var route = view.route, bare = view.bare;
     var navItems = [['home', 'home', 'nav_home'], ['history', 'history', 'nav_history'], ['stats', 'chart', 'nav_stats']].concat([['save', 'leaf', 'nav_save'], ['help', 'help', 'nav_help'], ['prefs', 'prefs', 'nav_prefs']]);
     var nav = bare ? '' : '<nav class="nav" style="--nav-n:' + navItems.length + '" aria-label="' + esc(t('brand')) + '">' + navItems.map(function (n) {
-      return '<a href="#' + n[0] + '"' + (route === n[0] ? ' aria-current="page"' : '') + ' data-key="nav-' + n[0] + '">' + ico(n[1], 22) + '<span>' + esc(t(n[2])) + '</span></a>';
+      return '<a href="#' + n[0] + '"' + (route === n[0] || (n[0] === 'home' && /^(heat|water-)/.test(route)) ? ' aria-current="page"' : '') + ' data-key="nav-' + n[0] + '">' + ico(n[1], 22) + '<span>' + esc(t(n[2])) + '</span></a>';
     }).join('') + '</nav>';
     var right = bare && view.closeTo
       ? '<a class="btn ghost" href="#' + view.closeTo + '" data-key="wiz-close" aria-label="' + esc(t('close')) + '">' + ico('close', 22) + '<span class="cl-txt">' + esc(t('close')) + '</span></a>'
       : '';
     return '<div class="app' + (bare ? ' bare-app' : '') + '">' +
       '<header class="top"><a class="brand" href="#home" data-key="brand">' + logo() + '<span>' + esc(t('brand')) + '</span></a>' + (window.TEPLO_API ? '<span class="beta" title="' + esc(t('beta_sub')) + '">' + esc(t('beta')) + '</span>' : '') + '<span class="spacer"></span>' + themeBtn() + right + '</header>' +
-      nav + '<main class="main' + (bare ? ' bare' : '') + '" id="main" data-screen="' + view.screen + '" tabindex="-1">' + (['home', 'history', 'stats', 'save'].indexOf(route) >= 0 ? placeSwitch() : '') + view.html + '</main></div>' +
+      nav + '<main class="main' + (bare ? ' bare' : '') + '" id="main" data-screen="' + view.screen + '" tabindex="-1">' + (['home', 'heat', 'water-hot', 'water-cold', 'history', 'stats', 'save'].indexOf(route) >= 0 ? placeSwitch() : '') + view.html + '</main></div>' +
       (window.TEPLO_API ? '<button class="fab' + (bare ? ' fab-bare' : '') + '" data-act="fb-open" data-key="feedback" aria-haspopup="dialog">' + ico('chat', 20) + '<span>' + esc(t('fb_btn')) + '</span></button>' + fbDialog() : '') +
       '<div id="toast-host" aria-live="polite"></div>';
   }
@@ -325,6 +326,316 @@
   // ---------------- экраны ----------------
   var V = {};
 
+  // ================= ВОДА: водомеры квартиры, показания, передача =================
+  var Wt = window.TeploWater;
+  function wcfg() { var p = place(); return (p && p.water) || { account: '', surname: '', meters: [] }; }
+  function wsetCfg(fn) { ensurePlaces(); var p = place(); p.water = JSON.parse(JSON.stringify(wcfg())); fn(p.water); p.updatedAt = Date.now(); save(); }
+  function wmeters(kind) { return (wcfg().meters || []).filter(function (m) { return m && !m.deleted && (!kind || m.kind === kind); }); }
+  function wrecs() { return (S.water || []).filter(function (r) { return r && !r.deleted && r.place === S.placeId; }).sort(function (a, b) { return a.date < b.date ? -1 : a.date > b.date ? 1 : a.base ? -1 : b.base ? 1 : 0; }); }
+  /** Последние внесённые показания (стартовые при настройке — не в счёт: их не передают). */
+  function wlast() { var a = wrecs().filter(function (r) { return !r.base; }); return a.length ? a[a.length - 1] : null; }
+  function wprevFor(mid, beforeDate) { var a = wrecs().filter(function (r) { return r.vals && r.vals[mid] !== undefined && r.vals[mid] !== '' && (!beforeDate || r.date < beforeDate || (r.base && r.date === beforeDate)); }); return a.length ? a[a.length - 1] : null; }
+  function wname(m) { return (m.kind === 'hot' ? t('wt_hot') : t('wt_cold')) + (m.name ? ' · ' + m.name : ''); }
+  function wkindTitle(k) { return k === 'hot' ? t('wt_hot_t') : t('wt_cold_t'); }
+  function thisMonth(d) { return String(d || '').slice(0, 7) === today().slice(0, 7); }
+  function wsentVk(r) { return r && r.sent && r.sent.vk; }
+  function wsentHtm(r) { return r && r.sent && r.sent.htm; }
+  var WICO = { hot: 'drop', cold: 'drop' };
+
+  /** Карточка на главной: последнее, срок, «+» — сразу к вводу. */
+  function ucard(o) {
+    return '<div class="ucard ucard-' + o.kind + '" data-key="card-' + o.kind + '">' +
+      '<a class="ucard-main" href="#' + o.href + '">' +
+        '<span class="ucard-top">' + ico(o.icon, 20) + '<span class="ucard-title">' + esc(o.title) + '</span></span>' +
+        '<span class="ucard-val num">' + o.value + '</span>' +
+        '<span class="ucard-sub">' + esc(o.sub || '') + '</span>' +
+        (o.status ? '<span class="ucard-status ' + (o.tone || '') + '">' + esc(o.status) + '</span>' : '') +
+      '</a>' +
+      '<button type="button" class="ucard-add" data-act="' + o.addAct + '"' + (o.addKind ? ' data-kind="' + o.addKind + '"' : '') + ' data-key="card-' + o.kind + '-add" aria-label="' + esc(o.addLabel) + '" title="' + esc(o.addLabel) + '">' + ico('plus', 26) + '</button></div>';
+  }
+  function heatCard() {
+    if (!S.meter) return ucard({ kind: 'heat', href: 'meter', icon: 'thermo', title: t('uc_heat'), value: '—', sub: t('uc_heat_setup'), addAct: 'setup-heat', addLabel: t('uc_heat_setup_btn') });
+    var last = RD().filter(function (r) { return r.htm && r.htm.date; }).slice(-1)[0], base = S.baseline;
+    var src = last && (!base || last.htm.date >= base.date) ? { date: last.htm.date, energy: last.htm.energy, own: true, status: last.status } : base ? { date: base.date, energy: base.energy } : null;
+    var w = R.windowState(today()), st = '', tone = '';
+    if (last && thisMonth(last.htm.date) && (last.status === 'handed' || last.status === 'accepted')) { st = last.status === 'accepted' ? t('uc_heat_ok') : t('uc_heat_handed'); tone = 'ok'; }
+    else if (w.state === 'open' || w.state === 'soon_recommended') { st = t('uc_heat_due', { d: fmtDate(dayOfMonth(today(), 25)) }); tone = 'due'; }
+    else if (w.state === 'late' || w.state === 'last_day') { st = t('uc_heat_late', { d: fmtDate(dayOfMonth(today(), 25)) }); tone = 'warn'; }
+    else st = t('uc_heat_closed', { d: fmtDate(w.state === 'closed_before' ? dayOfMonth(today(), 5) : nextMonthDay(today(), 5)) });
+    return ucard({ kind: 'heat', href: 'heat', icon: 'thermo', title: t('uc_heat'), value: src ? esc(R.formatForHtm('energy', src.energy)) + ' <small>Гкал</small>' : '—',
+      sub: src ? (src.own ? t('uc_from_you', { d: fmtDate(src.date) }) : t('uc_from_htm', { d: fmtDate(src.date) })) : t('h_last_none'), status: st, tone: tone, addAct: 'read', addLabel: t('uc_add_heat') });
+  }
+  function waterCard(kind) {
+    var ms = wmeters(kind), title = wkindTitle(kind);
+    if (!ms.length) return ucard({ kind: kind, href: 'water-' + kind, icon: 'drop', title: title, value: '—', sub: t('uc_w_setup'), addAct: 'wsetup', addKind: kind, addLabel: t('uc_w_setup_btn') });
+    var last = wlast(), vals = ms.map(function (m) { var r = wprevFor(m.id); return r ? Wt.whole(r.vals[m.id]) : null; });
+    var value = ms.length === 1 ? (vals[0] === null ? '—' : vals[0] + ' <small>м³</small>') : ms.map(function (m, i) { return '<span class="ucard-multi">' + esc(m.name || String(i + 1)) + ' <b>' + (vals[i] === null ? '—' : vals[i]) + '</b></span>'; }).join('') + ' <small>м³</small>';
+    var w = Wt.vkWindow(today()), st, tone = '';
+    var done = last && thisMonth(last.date) && wsentVk(last) && (kind === 'cold' || wsentHtm(last));
+    if (done) { st = t('uc_w_sent'); tone = 'ok'; }
+    else if (last && thisMonth(last.date)) { st = t('uc_w_ready'); tone = 'due'; }
+    else if (w.open) { st = t('uc_w_due', { d: fmtDate(w.deadline) }); tone = w.daysLeft <= 3 ? 'warn' : 'due'; }
+    else st = t('uc_w_next', { d: fmtDate(nextMonthDay(today(), Wt.VK_DEADLINE)) });
+    return ucard({ kind: kind, href: 'water-' + kind, icon: 'drop', title: title, value: value, sub: last ? t('uc_w_last', { d: fmtDate(last.date) }) : t('uc_w_nolast'), status: st, tone: tone, addAct: 'wnew', addKind: kind, addLabel: t('uc_add_w', { k: title.toLowerCase() }) });
+  }
+
+  V.home = function () {
+    var html = '<h1 class="sr">' + esc(t('nav_home')) + (place() && place().name ? ' — ' + esc(place().name) : '') + '</h1>';
+    if (Y().mode === 'server' && !Y().account && (RD().length || wrecs().length) && !S.syncPromptDismissed) {
+      html += '<div class="banner" data-key="home-save-prompt">' + ico('info', 22) + '<div><p><b>' + esc(t('save_prompt')) + '</b></p><p><a href="#login">' + esc(t('login')) + '</a> &nbsp; <button class="linkbtn" data-act="dismiss-sync">' + esc(t('save_prompt_later')) + '</button></p></div></div>';
+    }
+    loadInbox();
+    if (INBOX.items && INBOX.items.length) html += '<div class="banner" data-key="home-inbox">' + ico('camera', 22) + '<div><p><b>' + esc(t('ib_title', { n: INBOX.items.length })) + '</b></p><p>' + esc(t('ib_sub')) + '</p><p><button class="btn" data-act="inbox-run" data-key="home-inbox-run">' + esc(t('ib_run')) + '</button></p></div></div>';
+    var draft = S.draft && (Object.keys(S.draft.values || {}).length || S.draft.step > 0);
+    if (draft && S.meter) html += '<a class="btn big block" style="margin-bottom:16px" href="#step-' + (S.draft.step || 0) + '" data-key="home-continue">' + esc(t('h_continue', { i: (S.draft.step || 0) + 1, n: steps().length })) + '</a>';
+    html += '<div class="ucards">' + heatCard() + waterCard('hot') + waterCard('cold') + '</div>';
+    html += '<p class="small muted ucards-hint">' + esc(t('uc_hint')) + '</p>';
+    if (window.TEPLO_API) html += testReset();
+    return { screen: 'S01', route: 'home', html: html };
+  };
+
+  // ---------- экран вида воды: счётчики, «передать в этом месяце», история ----------
+  function wsendPanel(rec, only) {
+    if (!rec) return '';
+    var cfg = wcfg(), ms = wmeters(), hot = wmeters('hot'), h = '';
+    var cmd = Wt.vkCommand(cfg.account, cfg.surname, ms, rec.vals || {});
+    var vals = '<ul class="wvals">' + ms.filter(function (m) { return rec.vals && rec.vals[m.id] !== undefined && rec.vals[m.id] !== ''; }).map(function (m) {
+      var v = Wt.whole(rec.vals[m.id]); return '<li><span>' + esc(wname(m)) + (m.serial ? ' <span class="muted small">№ ' + esc(m.serial) + '</span>' : '') + '</span><b class="num">' + v + '</b><button class="linkbtn" data-act="copy" data-text="' + v + '">' + esc(t('copy')) + '</button></li>';
+    }).join('') + '</ul>';
+    // Водоканал: холодная и горячая
+    if (only !== 'htm') {
+      h += '<div class="panel wsend" id="wsend-vk" tabindex="-1" data-key="wsend-vk"><h2>' + esc(t('ws_vk_t')) + (wsentVk(rec) ? ' <span class="pill ok">' + ico('check', 14) + ' ' + esc(t('ws_sent')) + '</span>' : '') + '</h2>' +
+        '<p class="small muted">' + esc(t('ws_vk_sub', { d: fmtDate(Wt.vkWindow(today()).deadline) })) + '</p>';
+      if (cmd.noAccount) {
+        h += '<p>' + esc(t('ws_need_acc')) + '</p>' + waccForm();
+      } else if (cmd.missing.length) {
+        h += '<ol class="wsteps"><li>' + esc(t('ws_ids_1')) + '<div class="cmd"><code>' + esc(cmd.info) + '</code><button class="btn sec" data-act="copy" data-text="' + esc(cmd.info) + '">' + ico('copy', 18) + '<span>' + esc(t('copy')) + '</span></button></div></li>' +
+          '<li>' + esc(t('ws_ids_2')) + '</li></ol>' + wmeterIdForm();
+      } else {
+        h += '<p>' + esc(t('ws_cmd_lead')) + '</p><div class="cmd"><code data-key="wsend-cmd">' + esc(cmd.text) + '</code></div>' +
+          '<div class="row-actions" style="margin-top:8px"><button class="btn" data-act="copy-open" data-text="' + esc(cmd.text) + '" data-url="' + Wt.VK_BOT + '" data-key="wsend-copy-open">' + ico('copy', 18) + '<span>' + esc(t('ws_copy_open')) + '</span></button></div>';
+      }
+      h += '<details class="tips-box" style="margin-top:12px"><summary>' + esc(t('ws_other_ways')) + '</summary>' + vals + '<p class="small">' + esc(t('ws_vk_other')) + ' <a href="' + Wt.VK_CABINET + '" target="_blank" rel="noopener">billing.vodokanal.kharkov.ua</a></p></details>' +
+        '<p style="margin-top:12px">' + (wsentVk(rec) ? '<button class="linkbtn" data-act="wsent" data-to="vk" data-v="0" data-id="' + rec.id + '">' + esc(t('ws_unmark')) + '</button>' : '<button class="btn sec" data-act="wsent" data-to="vk" data-v="1" data-id="' + rec.id + '" data-key="wsend-vk-done">' + ico('check', 18) + '<span>' + esc(t('ws_mark')) + '</span></button>') + '</p></div>';
+    }
+    // ХТМ: горячая вода
+    if (hot.length && only !== 'vk') {
+      var hv = '<ul class="wvals">' + hot.filter(function (m) { return rec.vals && rec.vals[m.id] !== undefined && rec.vals[m.id] !== ''; }).map(function (m) { var v = Wt.whole(rec.vals[m.id]); return '<li><span>' + esc(wname(m)) + '</span><b class="num">' + v + '</b><button class="linkbtn" data-act="copy" data-text="' + v + '">' + esc(t('copy')) + '</button></li>'; }).join('') + '</ul>';
+      h += '<div class="panel wsend" data-key="wsend-htm"><h2>' + esc(t('ws_htm_t')) + (wsentHtm(rec) ? ' <span class="pill ok">' + ico('check', 14) + ' ' + esc(t('ws_sent')) + '</span>' : '') + '</h2><p class="small muted">' + esc(t('ws_htm_sub')) + '</p>' + hv +
+        '<div class="row-actions"><a class="btn sec" href="' + HTM_URL + '" target="_blank" rel="noopener">' + esc(t('ws_htm_cab')) + ' ' + ico('ext', 14) + '</a><a class="btn sec" href="' + BOT_URL + '" target="_blank" rel="noopener">@KPHTM_Bot ' + ico('ext', 14) + '</a></div>' +
+        '<p style="margin-top:12px">' + (wsentHtm(rec) ? '<button class="linkbtn" data-act="wsent" data-to="htm" data-v="0" data-id="' + rec.id + '">' + esc(t('ws_unmark')) + '</button>' : '<button class="btn sec" data-act="wsent" data-to="htm" data-v="1" data-id="' + rec.id + '">' + ico('check', 18) + '<span>' + esc(t('ws_mark')) + '</span></button>') + '</p></div>';
+    }
+    return h;
+  }
+  function waccForm() {
+    var c = wcfg();
+    return '<div class="grid2"><div class="field"><label for="w-acc">' + esc(t('wa_acc')) + '</label><div class="ctl"><input id="w-acc" class="num" inputmode="numeric" autocomplete="off" data-wcfg="account" value="' + esc(c.account || '') + '"></div><div class="help">' + esc(t('wa_acc_h')) + '</div></div>' +
+      '<div class="field"><label for="w-sn">' + esc(t('wa_sn')) + '</label><div class="ctl"><input id="w-sn" autocomplete="family-name" data-wcfg="surname" value="' + esc(c.surname || '') + '"></div><div class="help">' + esc(t('wa_sn_h')) + '</div></div></div>';
+  }
+  function wmeterIdForm() {
+    return '<div class="grid2">' + wmeters().map(function (m) { return '<div class="field"><label for="wid-' + m.id + '">' + esc(t('wm_vkid_for', { m: wname(m) })) + '</label><div class="ctl"><input id="wid-' + m.id + '" class="num" inputmode="numeric" autocomplete="off" data-wm="' + m.id + '" data-wf="vkId" value="' + esc(m.vkId || '') + '"></div></div>'; }).join('') + '</div>' +
+      '<p><button class="btn sec" data-act="wrefresh">' + esc(t('wm_ids_done')) + '</button></p>';
+  }
+  function wwater(kind) {
+    var ms = wmeters(kind), title = wkindTitle(kind);
+    if (!ms.length) return { screen: 'S30', route: 'water-' + kind, html: '<h1>' + esc(title) + '</h1><div class="panel"><p>' + esc(t('uc_w_empty')) + '</p><button class="btn big" data-act="wsetup" data-kind="' + kind + '" data-key="water-setup">' + esc(t('uc_w_setup_btn')) + '</button></div>' };
+    var last = wlast(), ser = Wt.series(wrecs(), wmeters()), h = '<h1>' + esc(title) + '</h1>';
+    // счётчики
+    h += '<div class="wmeters">' + ms.map(function (m) {
+      var r = wprevFor(m.id), v = r ? Wt.whole(r.vals[m.id]) : null, days = m.verifiedUntil ? R.daysBetween(today(), m.verifiedUntil) : null;
+      return '<div class="panel wmeter"><div class="small muted">' + esc(wname(m)) + (m.serial ? ' · № ' + esc(m.serial) : '') + '</div><div class="num big">' + (v === null ? '—' : v + ' <small>м³</small>') + '</div><div class="small muted">' + (r ? esc(fmtDate(r.date, true)) : esc(t('uc_w_nolast'))) + '</div>' +
+        (days !== null ? '<div class="small" style="margin-top:4px">' + (days < 0 ? '<span class="pill warn">' + esc(t('wm_ver_exp')) + '</span>' : days <= 60 ? '<span class="pill warn">' + esc(t('mv_soon', { n: days })) + '</span>' : '<span class="muted">' + esc(t('pl_ver', { d: R.toHtmDate(m.verifiedUntil) })) + '</span>') + '</div>' : '') + '</div>';
+    }).join('') + '</div>';
+    h += '<div class="row-actions" style="margin:0 0 16px"><button class="btn big" data-act="wnew" data-kind="' + kind + '" data-key="water-add">' + ico('plus', 22) + '<span>' + esc(t('wn_title')) + '</span></button><a class="btn sec" href="#prefs" data-act="to-water" data-key="water-meters">' + esc(t('wm_manage')) + '</a></div>';
+    // передать в этом месяце
+    if (last && thisMonth(last.date)) h += wsendPanel(last, kind === 'cold' ? 'vk' : null);
+    else { var w = Wt.vkWindow(today()); h += '<div class="banner' + (w.open && w.daysLeft <= 3 ? ' warn' : '') + '">' + ico('clock', 22) + '<div><p><b>' + esc(w.open ? t('uc_w_due', { d: fmtDate(w.deadline) }) : t('uc_w_next', { d: fmtDate(nextMonthDay(today(), Wt.VK_DEADLINE)) })) + '</b></p><p>' + esc(kind === 'hot' ? t('wt_where_hot') : t('wt_where_cold')) + '</p></div></div>'; }
+    // история
+    var rows = ser.slice().reverse().filter(function (x) { return ms.some(function (m) { return x.rec.vals && x.rec.vals[m.id] !== undefined && x.rec.vals[m.id] !== ''; }); });
+    if (rows.length) {
+      h += '<h2 class="section-title">' + esc(t('wh_title')) + '</h2><ul class="list wh">' + rows.map(function (x) {
+        var d = kind === 'hot' ? x.hot : x.cold, c = d === null ? null : (kind === 'hot' ? Wt.cost(0, d, x.rec.date, S.wtariff) : Wt.cost(d, 0, x.rec.date, S.wtariff)).total;
+        var vs = ms.map(function (m) { var v = Wt.whole(x.rec.vals && x.rec.vals[m.id]); return v === null ? '' : (ms.length > 1 ? esc(m.name || '') + ' ' : '') + v; }).filter(Boolean).join(' · ');
+        return '<li><div class="grow"><b>' + esc(fmtDate(x.rec.date, true)) + '</b> <span class="num">' + vs + '</span> <span class="small muted">м³</span>' +
+          '<div class="small muted">' + (d === null ? esc(t('wh_first')) : '+' + d + ' м³ · ≈ ' + esc(money(c)) + ' грн · ' + x.days + ' ' + esc(t('days_short'))) + (wsentVk(x.rec) ? ' · ' + esc(t('wh_sent')) : '') + '</div></div>' +
+          '<button class="linkbtn" data-act="wdel" data-id="' + x.rec.id + '" aria-label="' + esc(t('rec_del') + ': ' + fmtDate(x.rec.date)) + '">' + esc(t('rec_del')) + '</button></li>';
+      }).join('') + '</ul>';
+    }
+    h += '<details class="tips-box" style="margin-top:16px"><summary>' + esc(t('wt_how_t')) + '</summary><ul>' + t(kind === 'hot' ? 'wt_how_hot' : 'wt_how_cold').split('|').map(function (x) { return '<li>' + esc(x) + '</li>'; }).join('') + '</ul></details>';
+    return { screen: 'S30', route: 'water-' + kind, html: h };
+  }
+  V['water-hot'] = function () { return wwater('hot'); };
+  V['water-cold'] = function () { return wwater('cold'); };
+
+  // ---------- ввод показаний воды ----------
+  var WN = { kind: 'hot', date: '', vals: {} };
+  V.wnew = function () {
+    var ms = wmeters(); if (!ms.length) return V.wsetup();
+    var order = ms.slice().sort(function (a, b) { return (a.kind === WN.kind ? 0 : 1) - (b.kind === WN.kind ? 0 : 1); });
+    var date = WN.date || today(), back = 'water-' + WN.kind;
+    var prev = {}; ms.forEach(function (m) { var r = wprevFor(m.id, date); if (r) prev[m.id] = r; });
+    var h = '<h1>' + esc(t('wn_title')) + '</h1><p class="small muted">' + esc(t('wn_lead')) + '</p>' +
+      '<div class="field" style="max-width:280px"><label for="wn-date">' + esc(t('wn_date')) + '</label><div class="ctl"><input id="wn-date" type="date" value="' + esc(date) + '" max="' + today() + '"></div></div>' +
+      '<form id="wn-form" novalidate>' + order.map(function (m) {
+        var p = prev[m.id];
+        return '<div class="field wfield" id="wf-' + m.id + '"><label for="wn-' + m.id + '">' + ico('drop', 16, m.kind === 'hot' ? 'c-hot' : 'c-cold') + ' ' + esc(wname(m)) + '</label>' +
+          '<div class="ctl"><input id="wn-' + m.id + '" class="num" inputmode="numeric" autocomplete="off" data-wn="' + m.id + '" value="' + esc(WN.vals[m.id] || '') + '" placeholder="' + (p ? esc(String(Wt.whole(p.vals[m.id]))) : '') + '" aria-describedby="wh-' + m.id + '"><span class="unit">м³</span>' +
+          '<label class="wcam" title="' + esc(t('wn_photo')) + '"><input type="file" accept="image/*" capture="environment" class="sr" data-wphoto="' + m.id + '" aria-label="' + esc(t('wn_photo') + ': ' + wname(m)) + '">' + ico('camera', 20) + '</label></div>' +
+          '<div class="help" id="wh-' + m.id + '">' + (p ? esc(t('wn_prev', { v: Wt.whole(p.vals[m.id]), d: fmtDate(p.date) })) : esc(t('wn_first'))) + '</div></div>';
+      }).join('') +
+      '<p class="small muted">' + esc(t('wn_digits')) + '</p>' +
+      '<div class="wiz-actions"><button class="btn" type="submit" data-key="wn-save">' + esc(t('wn_save')) + '</button></div></form>';
+    return { screen: 'S31', route: 'wnew', bare: true, closeTo: back, html: h };
+  };
+  function wnRead() { Array.prototype.forEach.call(document.querySelectorAll('[data-wn]'), function (el) { WN.vals[el.getAttribute('data-wn')] = el.value.trim(); }); var d = document.getElementById('wn-date'); if (d && d.value) WN.date = d.value; }
+  function wnCheck(show) {
+    var ms = wmeters(), date = WN.date || today(), prev = {}, vals = {};
+    ms.forEach(function (m) { var r = wprevFor(m.id, date); vals[m.id] = WN.vals[m.id]; prev[m.id] = r; });
+    // проверяем по каждому счётчику против его последнего показания
+    var issues = {};
+    ms.forEach(function (m) { var p = prev[m.id]; var one = Wt.check([m], vals, p ? { date: p.date, vals: p.vals } : null, date); issues[m.id] = one[m.id] || []; });
+    var both = Wt.check(ms, vals, (function () { var pv = {}, pd = null; ms.forEach(function (m) { if (prev[m.id]) { pv[m.id] = prev[m.id].vals[m.id]; pd = pd && pd > prev[m.id].date ? pd : prev[m.id].date; } }); return pd ? { date: pd, vals: pv } : null; })(), date);
+    ms.forEach(function (m) { (both[m.id] || []).forEach(function (x) { if (x.code === 'hot_gt_cold') issues[m.id].push(x); }); });
+    if (show) ms.forEach(function (m) {
+      var el = document.getElementById('wh-' + m.id), fw = document.getElementById('wf-' + m.id); if (!el) return;
+      var list = issues[m.id].filter(function (x) { return x.code !== 'empty' || show === 'submit'; }), p = prev[m.id];
+      var txt = list.map(function (x) { return t('wi_' + x.code, { prev: p ? Wt.whole(p.vals[m.id]) : '', n: x.perMonth || '', w: x.whole }); }).join(' ');
+      var lvl = list.some(function (x) { return x.level === 'block'; }) ? 'block' : list.some(function (x) { return x.level === 'warn'; }) ? 'warn' : list.length ? 'ok' : '';
+      el.textContent = txt || (p ? t('wn_prev', { v: Wt.whole(p.vals[m.id]), d: fmtDate(p.date) }) : t('wn_first'));
+      el.className = 'help' + (lvl ? ' ' + lvl : ''); if (fw) fw.className = 'field wfield' + (lvl === 'block' ? ' is-block' : lvl === 'warn' ? ' is-warn' : '');
+    });
+    return issues;
+  }
+  function wnSave() {
+    wnRead(); var iss = wnCheck('submit');
+    if (Wt.blocked(iss)) { var f = document.querySelector('.wfield.is-block input'); if (f) f.focus(); return; }
+    var vals = {}; wmeters().forEach(function (m) { var v = Wt.whole(WN.vals[m.id]); if (v !== null) vals[m.id] = String(v); });
+    var date = WN.date || today(), now = new Date().toISOString();
+    S.water = S.water || [];
+    // одна запись на квартиру и дату: повторный ввод в тот же день — правка
+    var same = (S.water || []).filter(function (r) { return r && !r.deleted && !r.base && r.place === S.placeId && r.date === date; })[0];
+    if (same) { same.vals = Object.assign({}, same.vals, vals); same.updatedAt = Date.now(); }
+    else S.water.push({ id: Wt.uid(), place: S.placeId, date: date, vals: vals, createdAt: now, updatedAt: Date.now(), sent: {} });
+    if (!S.onboarded) S.onboarded = true;
+    var k = WN.kind; WN = { kind: k, date: '', vals: {} };
+    save(); toast(t('wn_saved')); SCROLL_TO = 'wsend-vk'; go('water-' + k);
+  }
+
+  // ---------- первый вход: какие водомеры ----------
+  var WS = { step: 0, preset: 'hc', vals: {}, kind: 'hot' };
+  var WPRESETS = { hc: [['hot', ''], ['cold', '']], hc2: [['hot', 'кухня'], ['cold', 'кухня'], ['hot', 'ванна'], ['cold', 'ванна']], c: [['cold', '']], h: [['hot', '']] };
+  V.wsetup = function () {
+    var head = '<div class="wiz-top"><span class="count">' + esc(t('s_step', { i: WS.step + 1, n: 3 })) + '</span><span class="progress" aria-hidden="true"><i style="width:' + Math.round((WS.step + 1) / 3 * 100) + '%"></i></span></div>', h = '';
+    if (WS.step === 0) {
+      h = '<h1>' + esc(t('wz_t1')) + '</h1><p class="muted">' + esc(t('wz_l1')) + '</p><div class="wz-opts" role="radiogroup" aria-label="' + esc(t('wz_t1')) + '">' +
+        [['hc', 'wz_hc', 'wz_hc_s'], ['hc2', 'wz_hc2', 'wz_hc2_s'], ['c', 'wz_c', 'wz_c_s'], ['h', 'wz_h', 'wz_h_s']].map(function (o) {
+          return '<label class="wz-opt"><input type="radio" name="wz" value="' + o[0] + '"' + (WS.preset === o[0] ? ' checked' : '') + ' data-act="wz-preset"><span><b>' + esc(t(o[1])) + '</b><span class="small muted">' + esc(t(o[2])) + '</span></span></label>';
+        }).join('') + '</div><p class="small muted">' + esc(t('wz_note1')) + '</p>' +
+        '<div class="wiz-actions"><button class="btn" data-act="wz-next" data-key="wz-next">' + esc(t('next')) + '</button></div>';
+    } else if (WS.step === 1) {
+      var list = WPRESETS[WS.preset];
+      h = '<h1>' + esc(t('wz_t2')) + '</h1><p class="muted">' + esc(t('wz_l2')) + '</p>' + list.map(function (x, i) {
+        var nm = (x[0] === 'hot' ? t('wt_hot') : t('wt_cold')) + (x[1] ? ' · ' + x[1] : '');
+        return '<div class="field"><label for="wz-' + i + '">' + ico('drop', 16, x[0] === 'hot' ? 'c-hot' : 'c-cold') + ' ' + esc(nm) + '</label><div class="ctl"><input id="wz-' + i + '" class="num" inputmode="numeric" autocomplete="off" data-wz="' + i + '" value="' + esc(WS.vals[i] || '') + '"><span class="unit">м³</span></div></div>';
+      }).join('') + '<p class="small muted">' + esc(t('wn_digits')) + '</p>' +
+        '<div class="wiz-actions"><button class="btn sec" data-act="wz-back">' + ico('back', 20) + '<span>' + esc(t('back')) + '</span></button><button class="btn" data-act="wz-next" data-key="wz-next">' + esc(t('next')) + '</button></div>';
+    } else {
+      h = '<h1>' + esc(t('wz_t3')) + '</h1><p class="muted">' + esc(t('wz_l3')) + '</p>' + waccForm() +
+        '<div class="wiz-actions"><button class="btn sec" data-act="wz-back">' + ico('back', 20) + '<span>' + esc(t('back')) + '</span></button><button class="btn" data-act="wz-done" data-key="wz-done">' + esc(t('wz_done')) + '</button></div>' +
+        '<p><button class="linkbtn" data-act="wz-done" data-skip="1">' + esc(t('wz_skip')) + '</button></p>';
+    }
+    return { screen: 'S32', route: 'wsetup', bare: true, closeTo: S.onboarded ? 'home' : 'start', html: head + h };
+  };
+  function wzRead() { Array.prototype.forEach.call(document.querySelectorAll('[data-wz]'), function (el) { WS.vals[el.getAttribute('data-wz')] = el.value.trim(); }); }
+  function wzDone() {
+    wzRead();
+    var list = WPRESETS[WS.preset], ids = [];
+    wsetCfg(function (c) {
+      c.meters = (c.meters || []).filter(function (m) { return m && !m.deleted; });
+      list.forEach(function (x) { var m = { id: Wt.uid(), kind: x[0], name: x[1] || '', serial: '', vkId: '', verifiedUntil: '' }; c.meters.push(m); ids.push(m.id); });
+      var a = document.getElementById('w-acc'), sn = document.getElementById('w-sn'); if (a) c.account = a.value.trim(); if (sn) c.surname = sn.value.trim();
+    });
+    var vals = {}; ids.forEach(function (id, i) { var v = Wt.whole(WS.vals[i]); if (v !== null) vals[id] = String(v); });
+    if (Object.keys(vals).length) { S.water = S.water || []; S.water.push({ id: Wt.uid(), place: S.placeId, date: today(), vals: vals, createdAt: new Date().toISOString(), updatedAt: Date.now(), sent: {}, base: true }); }
+    S.onboarded = true; var k = list[0][0]; WS = { step: 0, preset: 'hc', vals: {}, kind: k };
+    save(); toast(t('wz_saved')); go('water-' + k);
+  }
+
+  // ---------- старт: что будем вести ----------
+  V.start = function () {
+    return { screen: 'S02', route: 'start', bare: true, closeTo: 'welcome', html: '<h1>' + esc(t('st_t')) + '</h1><p class="muted">' + esc(t('st_l')) + '</p><div class="wz-opts">' +
+      '<a class="wz-opt wz-link" href="#meter" data-key="start-heat">' + ico('thermo', 24) + '<span><b>' + esc(t('st_heat')) + '</b><span class="small muted">' + esc(t('st_heat_s')) + '</span></span>' + ico('chev', 20) + '</a>' +
+      '<button class="wz-opt wz-link" data-act="wsetup" data-kind="hot" data-key="start-water">' + ico('drop', 24) + '<span><b>' + esc(t('st_water')) + '</b><span class="small muted">' + esc(t('st_water_s')) + '</span></span>' + ico('chev', 20) + '</button>' +
+      '</div><p class="small muted">' + esc(t('st_both')) + '</p>' };
+  };
+
+  // ---------- настройки: водомеры ----------
+  function waterPanel() {
+    var ms = wmeters();
+    var h = '<div class="panel" id="water-block" tabindex="-1" data-key="prefs-water"><h2>' + esc(t('wm_title')) + (place() && place().name ? ' <span class="muted small">· ' + esc(place().name) + '</span>' : '') + '</h2>';
+    if (!ms.length) return h + '<p class="small muted">' + esc(t('uc_w_empty')) + '</p><button class="btn sec" data-act="wsetup" data-kind="hot">' + ico('plus', 18) + '<span>' + esc(t('uc_w_setup_btn')) + '</span></button></div>';
+    h += '<p class="small muted">' + esc(t('wm_sub')) + '</p>' + ms.map(function (m) {
+      return '<fieldset class="wm-row"><legend>' + ico('drop', 16, m.kind === 'hot' ? 'c-hot' : 'c-cold') + ' ' + esc(wname(m)) + '</legend><div class="grid2">' +
+        '<div class="field"><label for="wmk-' + m.id + '">' + esc(t('wm_kind')) + '</label><div class="ctl"><select id="wmk-' + m.id + '" data-wm="' + m.id + '" data-wf="kind"><option value="hot"' + (m.kind === 'hot' ? ' selected' : '') + '>' + esc(t('wt_hot')) + '</option><option value="cold"' + (m.kind === 'cold' ? ' selected' : '') + '>' + esc(t('wt_cold')) + '</option></select></div></div>' +
+        '<div class="field"><label for="wmn-' + m.id + '">' + esc(t('wm_name')) + '</label><div class="ctl"><input id="wmn-' + m.id + '" data-wm="' + m.id + '" data-wf="name" value="' + esc(m.name || '') + '" placeholder="' + esc(t('wm_name_ph')) + '"></div></div>' +
+        '<div class="field"><label for="wms-' + m.id + '">' + esc(t('wm_serial')) + '</label><div class="ctl"><input id="wms-' + m.id + '" class="num" autocomplete="off" data-wm="' + m.id + '" data-wf="serial" value="' + esc(m.serial || '') + '"></div></div>' +
+        '<div class="field"><label for="wmi-' + m.id + '">' + esc(t('wm_vkid')) + '</label><div class="ctl"><input id="wmi-' + m.id + '" class="num" inputmode="numeric" autocomplete="off" data-wm="' + m.id + '" data-wf="vkId" value="' + esc(m.vkId || '') + '"></div><div class="help">' + esc(t('wm_vkid_h')) + '</div></div>' +
+        '<div class="field"><label for="wmv-' + m.id + '">' + esc(t('mv_date')) + '</label><div class="ctl"><input id="wmv-' + m.id + '" type="date" data-wm="' + m.id + '" data-wf="verifiedUntil" value="' + esc(m.verifiedUntil || '') + '"></div></div>' +
+        '</div><button class="linkbtn" data-act="wm-del" data-id="' + m.id + '">' + esc(t('rec_del')) + '</button></fieldset>';
+    }).join('') +
+      '<div class="row-actions" style="margin-top:8px"><button class="btn sec" data-act="wm-add" data-kind="hot">' + ico('plus', 18) + '<span>' + esc(t('wm_add_hot')) + '</span></button><button class="btn sec" data-act="wm-add" data-kind="cold">' + ico('plus', 18) + '<span>' + esc(t('wm_add_cold')) + '</span></button></div>' +
+      '<h3 style="margin-top:20px">' + esc(t('wm_acc_t')) + '</h3>' + waccForm() + '</div>';
+    return h;
+  }
+
+  // действия воды
+  function waterAct(act, el, e) {
+    switch (act) {
+      case 'wnew': WN = { kind: el.getAttribute('data-kind') || 'hot', date: '', vals: {} }; go(wmeters().length ? 'wnew' : 'wsetup'); return true;
+      case 'wsetup': WS = { step: 0, preset: (el.getAttribute('data-kind') === 'cold' ? 'hc' : 'hc'), vals: {}, kind: el.getAttribute('data-kind') || 'hot' }; go('wsetup'); return true;
+      case 'setup-heat': go('meter'); return true;
+      case 'wz-preset': WS.preset = el.value; return true;
+      case 'wz-next': e.preventDefault(); wzRead(); if (WS.step === 0) { var ch = document.querySelector('input[name="wz"]:checked'); if (ch) WS.preset = ch.value; } WS.step = Math.min(2, WS.step + 1); render(); return true;
+      case 'wz-back': e.preventDefault(); wzRead(); WS.step = Math.max(0, WS.step - 1); render(); return true;
+      case 'wz-done': e.preventDefault(); wzDone(); return true;
+      case 'wsent': { var r = (S.water || []).filter(function (x) { return x.id === el.getAttribute('data-id'); })[0]; if (!r) return true; r.sent = Object.assign({}, r.sent || {}); r.sent[el.getAttribute('data-to')] = el.getAttribute('data-v') === '1' ? today() : ''; r.updatedAt = Date.now(); save(); render(true); return true; }
+      case 'wdel': { if (!confirm(t('wh_del_q'))) return true; var r2 = (S.water || []).filter(function (x) { return x.id === el.getAttribute('data-id'); })[0]; if (r2) { r2.deleted = true; r2.updatedAt = Date.now(); save(); render(true); } return true; }
+      case 'wm-add': wsetCfg(function (c) { c.meters = c.meters || []; c.meters.push({ id: Wt.uid(), kind: el.getAttribute('data-kind'), name: '', serial: '', vkId: '', verifiedUntil: '' }); }); render(true); return true;
+      case 'wm-del': if (!confirm(t('wm_del_q'))) return true; wsetCfg(function (c) { (c.meters || []).forEach(function (m) { if (m.id === el.getAttribute('data-id')) m.deleted = true; }); }); render(true); return true;
+      case 'wrefresh': render(true); return true;
+      case 'to-water': e.preventDefault(); SCROLL_TO = 'water-block'; go('prefs'); return true;
+      case 'copy-open': copyText(el.getAttribute('data-text'), el); setTimeout(function () { var tw = window.Telegram && window.Telegram.WebApp; if (tw && tw.openTelegramLink) tw.openTelegramLink(el.getAttribute('data-url')); else window.open(el.getAttribute('data-url'), '_blank', 'noopener'); }, 250); return true;
+    }
+    return false;
+  }
+  // поля: настройки водомеров, рахунок, ввод
+  document.addEventListener('change', function (e) {
+    var el = e.target; if (!el || !el.getAttribute) return;
+    var k = el.getAttribute('data-wcfg');
+    if (k) { wsetCfg(function (c) { c[k] = el.value.trim(); }); return; }
+    var mid = el.getAttribute('data-wm');
+    if (mid) { var f = el.getAttribute('data-wf'); wsetCfg(function (c) { (c.meters || []).forEach(function (m) { if (m.id === mid) m[f] = el.value.trim(); }); }); if (f === 'kind') render(true); return; }
+    if (el.id === 'wn-date') { WN.date = el.value; wnCheck(true); return; }
+    var ph = el.getAttribute('data-wphoto');
+    if (ph && el.files && el.files[0]) wnPhoto(ph, el.files[0], el);
+  });
+  document.addEventListener('input', function (e) { var el = e.target; if (el && el.getAttribute && el.getAttribute('data-wn')) { WN.vals[el.getAttribute('data-wn')] = el.value.trim(); wnCheck(true); } });
+  document.addEventListener('submit', function (e) { if (e.target && e.target.id === 'wn-form') { e.preventDefault(); wnSave(); } }, true);
+  /** Фото одного водомера → цифры барабана (тот же бесплатный движок в браузере). */
+  function wnPhoto(mid, file, el) {
+    var help = document.getElementById('wh-' + mid), inp = document.getElementById('wn-' + mid), lab = el.closest && el.closest('.wcam');
+    if (!VIS().local) { toast(t('ph_unavail')); return; }
+    if (help) { help.innerHTML = SPIN + ' ' + esc(t('wn_reading')); help.className = 'help'; }
+    if (lab) lab.setAttribute('aria-busy', 'true');
+    VIS()._engine(function () {}).then(function () { return window.TeploOCR.read(file); }).then(function (res) {
+      if (lab) lab.removeAttribute('aria-busy');
+      var p = wprevFor(mid, WN.date || today()), r = Wt.fromOcr(res, p ? p.vals[mid] : null);
+      if (!r) { if (help) { help.textContent = t('wn_photo_none'); help.className = 'help warn'; } return; }
+      if (inp) { inp.value = String(r.value); WN.vals[mid] = String(r.value); }
+      wnCheck(true); if (help && help.className.indexOf('block') < 0) { help.textContent = t('wn_photo_ok', { v: r.value }) + ' ' + help.textContent; }
+    }, function () { if (lab) lab.removeAttribute('aria-busy'); if (help) { help.textContent = t('ph_err_engine'); help.className = 'help warn'; } });
+  }
+
   V.welcome = function () {
     var acc = Y().mode === 'server' && Y().account;
     if (acc) {   // уже вошёл, но лічильник ещё не выбран (новый аккаунт или стёрли данные) — без рекламного экрана, сразу к делу
@@ -332,7 +643,7 @@
       return { screen: 'S00', bare: true, html:
         '<div class="welcome"><div class="welcome-grid"><div class="welcome-lcd" aria-hidden="true">' + lcd([{ text: '13.245', tag: 'Gcal' }], 'hero') + '</div><div>' +
         '<h1>' + esc(t('wa_title')) + '</h1><p class="lead">' + esc(t('wa_lead')) + '</p>' +
-        '<a class="btn big" href="#meter" data-key="welcome-start" data-act="start">' + esc(t('wa_cta')) + '</a>' +
+        '<a class="btn big" href="#start" data-key="welcome-start">' + esc(t('wa_cta')) + '</a>' +
         '<p class="small muted" style="margin-top:16px">' + esc(t('wa_fine', { who: who })) + ' <button class="linkbtn" data-act="logout">' + esc(t('wa_other')) + '</button></p></div>' +
         '</div></div>' };
     }
@@ -340,14 +651,14 @@
       '<div class="welcome"><div class="welcome-grid"><div class="welcome-lcd" aria-hidden="true">' + lcd([{ text: '13.245', tag: 'Gcal' }], 'hero boot') + '</div><div>' +
       '<h1>' + esc(t('w_title')) + '</h1><p class="lead">' + esc(t('w_lead')) + '</p>' +
       '<ul>' + ['w_b1', 'w_b2', 'w_b3'].map(function (k) { return '<li>' + ico('check', 22, 'c-ok') + '<span>' + esc(t(k)) + '</span></li>'; }).join('') + '</ul>' +
-      '<a class="btn big" href="#meter" data-key="welcome-start" data-act="start">' + esc(t('w_cta')) + '</a>' +
+      '<a class="btn big" href="#start" data-key="welcome-start">' + esc(t('w_cta')) + '</a>' +
       (Y().mode === 'server' && !Y().account ? '<p style="margin-top:16px"><a href="#login" data-key="welcome-login">' + esc(t('w_login')) + '</a></p>' : '') +
       '<p class="small muted" style="margin-top:16px">' + esc(Y().mode === 'claude' ? t('sync_claude') : Y().mode === 'server' ? t('w_fine_site') : t('w_fine')) + '</p></div>' +
       '</div></div>' };
   };
 
-  V.home = function () {
-    var m = model(), html = '<h1 class="sr">' + esc(t('nav_home')) + (place() && place().name ? ' — ' + esc(place().name) : '') + '</h1>' + windowBanner();
+  V.heat = function () {
+    var m = model(), html = '<h1>' + esc(t('uc_heat')) + (place() && place().name ? ' — ' + esc(place().name) : '') + '</h1>' + windowBanner();
     var handed = RD().filter(function (r) { return r.status === 'handed'; }).slice(-1)[0];
     if (handed) {
       html += '<div class="banner" data-key="home-waiting">' + ico('clock', 22) + '<div><p><b>' + esc(t('h_waiting')) + '</b></p><p>' + esc(t('h_waiting_sub', { ago: ago(handed.handedAt) })) + '</p>' +
@@ -384,8 +695,7 @@
       html = '<div class="banner" data-key="home-save-prompt">' + ico('info', 22) + '<div><p><b>' + esc(t('save_prompt')) + '</b></p><p><a href="#login">' + esc(t('login')) + '</a> &nbsp; <button class="linkbtn" data-act="dismiss-sync">' + esc(t('save_prompt_later')) + '</button></p></div></div>' + html;
     }
     html += '<div class="hero-grid"><div>' + left + '</div><div>' + right + '</div></div>';
-    if (window.TEPLO_API) html += testReset();
-    return { screen: 'S01', route: 'home', html: html };
+    return { screen: 'S01h', route: 'heat', html: html };
   };
 
   /** Показания без удалённых (удалённые остаются «надгробием» с deleted, чтобы удаление синхронизировалось). */
@@ -980,7 +1290,7 @@
   V.prefs = function () {
     var m = model(), c = S.contacts || {};
     return { screen: 'S11', route: 'prefs', html: '<h1>' + esc(t('p_title')) + '</h1>' + syncPanel() +
-      placesPanel() + meterPanel() +
+      placesPanel() + meterPanel() + waterPanel() +
       '<div class="panel"><h2>' + esc(t('p_contacts')) + '</h2><p class="small muted">' + esc(t('p_contacts_sub')) + '</p><div class="grid2">' +
       '<div class="field"><label for="p-phone">' + esc(t('ho_phone')) + '</label><div class="ctl"><input id="p-phone" type="tel" autocomplete="tel" data-contact="phone" value="' + esc(c.phone || '') + '"></div></div>' +
       '<div class="field"><label for="p-email">' + esc(t('ho_email')) + '</label><div class="ctl"><input id="p-email" type="email" autocomplete="email" data-contact="email" value="' + esc(c.email || '') + '"></div></div></div></div>' +
@@ -1324,9 +1634,9 @@
       ['h-off', ru ? 'Если отопление отключают' : 'Якщо опалення відключають', ru
         ? '<p>Перед отключением снимите и передайте показания. Перед включением — снова снимите и передайте, потом включайте.</p>'
         : '<p>Перед відключенням зніміть і передайте показання. Перед увімкненням — знову зніміть і передайте, потім вмикайте.</p>'],
-      ['h-hw', ru ? 'Горячая вода' : 'Гаряча вода', ru
-        ? '<p>В кабинете ХТМ формы для горячей воды нет — её показания принимает Telegram-бот <a href="' + BOT_URL + '" target="_blank" rel="noopener">@KPHTM_Bot</a> и телефон (057) 341-41-40.</p>'
-        : '<p>У кабінеті ХТМ форми для гарячої води немає — її показання приймає Telegram-бот <a href="' + BOT_URL + '" target="_blank" rel="noopener">@KPHTM_Bot</a> і телефон (057) 341-41-40.</p>'],
+      ['h-hw', ru ? 'Вода: куда и когда' : 'Вода: куди й коли', ru
+        ? '<ul><li><b>Холодная</b> — в КП «Харківводоканал» до 20 числа: бот <a href="https://t.me/hvk_user_bot" target="_blank" rel="noopener">@hvk_user_bot</a>, кабинет billing.vodokanal.kharkov.ua, телефон (057) 707-58-51.</li><li><b>Горячая — в два места</b>: в Водоканал до 20 числа (за водоотведение) и в ХТМ (за саму горячую воду): бот <a href="' + BOT_URL + '" target="_blank" rel="noopener">@KPHTM_Bot</a> или телефон (057) 341-41-40.</li><li>Не пользовались — всё равно передайте те же цифры, иначе начислят по норме.</li><li>Передают целые кубометры — чёрные цифры; красные (литры) не нужны.</li></ul><p>В Теплосервисе: карточки «Горячая вода» и «Холодная вода» на главной — плюс сразу открывает ввод, а после сохранения готово сообщение для бота Водоканала.</p>'
+        : '<ul><li><b>Холодна</b> — у КП «Харківводоканал» до 20 числа: бот <a href="https://t.me/hvk_user_bot" target="_blank" rel="noopener">@hvk_user_bot</a>, кабінет billing.vodokanal.kharkov.ua, телефон (057) 707-58-51.</li><li><b>Гаряча — у два місця</b>: у Водоканал до 20 числа (за водовідведення) і в ХТМ (за саму гарячу воду): бот <a href="' + BOT_URL + '" target="_blank" rel="noopener">@KPHTM_Bot</a> або телефон (057) 341-41-40.</li><li>Не користувалися — однаково передайте ті самі цифри, інакше нарахують за нормою.</li><li>Передають цілі кубометри — чорні цифри; червоні (літри) не потрібні.</li></ul><p>У Теплосервісі: картки «Гаряча вода» й «Холодна вода» на головній — плюс одразу відкриває введення, а після збереження готове повідомлення для бота Водоканалу.</p>'],
       ['h-special', ru ? 'Счётчики ELF, TRUST, ЛТЭ, Ultrameter' : 'Лічильники ELF, TRUST, ЛТЕ, Ultrameter', ru
         ? '<p>Эти приборы считают часы работы только когда идёт теплоноситель. ХТМ советует держать расход выше переходного весь отопительный период и разницу температур больше 3 °C — иначе показания могут не принять, и тогда их подают на бумаге в районный филиал.</p>'
         : '<p>Ці прилади рахують години роботи лише коли йде теплоносій. ХТМ радить тримати витрату вищою за перехідну весь опалювальний період і різницю температур більше 3 °C — інакше показання можуть не прийняти, і тоді їх подають паперово в районну філію.</p>'],
@@ -1350,9 +1660,9 @@
   function routeName() { return (location.hash || '').replace(/^#/, ''); }
   function render(keepScroll) {
     var r = routeName();
-    if (S.onboarded && !S.meter && ['meter', 'help', 'prefs', 'login', 'photo', 'privacy', 'terms'].indexOf(r) < 0) r = 'meter';
+    if (S.onboarded && !S.meter && ['home', '', 'meter', 'help', 'prefs', 'login', 'photo', 'privacy', 'terms', 'start', 'wsetup', 'wnew', 'water-hot', 'water-cold'].indexOf(r) < 0) r = 'meter';
     pendingRender = false;
-    if (!S.onboarded && ['welcome', 'meter', 'baseline', 'help', 'login', 'photo', 'privacy', 'terms'].indexOf(r) < 0) r = S.meter ? 'baseline' : 'welcome';
+    if (!S.onboarded && ['welcome', 'start', 'wsetup', 'meter', 'baseline', 'help', 'login', 'photo', 'privacy', 'terms'].indexOf(r) < 0) r = S.meter ? 'baseline' : 'welcome';
     if (S.onboarded && (!r || r === 'welcome')) r = 'home';
     var view;
     var rm = r.match(/^rec-([\w-]+?)(-edit)?$/);
@@ -1507,6 +1817,7 @@
   document.addEventListener('click', function (e) {
     var el = e.target.closest('[data-act]'); if (!el) return;
     var act = el.getAttribute('data-act');
+    if (waterAct(act, el, e)) return;
     switch (act) {
       case 'start': break;
       case 'read': newDraft(); go('step-0'); break;
