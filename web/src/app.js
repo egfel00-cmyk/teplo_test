@@ -34,8 +34,9 @@
     if (JSON.stringify(p.meter || null) !== JSON.stringify(S.meter || null) || JSON.stringify(p.baseline || null) !== JSON.stringify(S.baseline || null)) { p.meter = S.meter || null; p.baseline = S.baseline || null; p.updatedAt = Date.now(); }
   }
   /** Имя квартиры: своё название («Моя», «Мамина»), иначе адрес, иначе «Квартира N». Адрес — второй строкой, если есть имя. */
-  function placeLabel(p) { var i = places().indexOf(p); return (p && (p.name || p.address)) || (i <= 0 ? t('pl_mine') : t('pl_unnamed', { n: i + 1 })); }
-  function placeSub(p) { return p && p.name && p.address ? p.address : ''; }
+  // без назви перша — «Моя квартира», інші — «Квартира N»; адреса — завжди окремим рядком
+  function placeLabel(p) { var i = places().indexOf(p); return (p && p.name) || (i <= 0 ? t('pl_mine') : t('pl_unnamed', { n: i + 1 })); }
+  function placeSub(p) { return (p && p.address) || ''; }
   // цвет-метка квартиры (вдобавок к названию, не вместо него): ключ в place.color, по умолчанию — по порядку
   var PCOLORS = ['teal', 'violet', 'amber', 'green', 'rose', 'slate'];
   function placeColor(p) { return p && PCOLORS.indexOf(p.color) >= 0 ? p.color : PCOLORS[Math.max(0, places().indexOf(p)) % PCOLORS.length]; }
@@ -678,14 +679,14 @@
       });
     }
     return '<div class="hp-list" data-key="home-places">' + ps.map(function (p) {
-      var st = placeStatus(p.id), sub = placeSub(p) || (p.name ? '' : p.address || '');
+      var st = placeStatus(p.id);
       var due = st.due ? '<span class="ov-next ' + (R.daysBetween(today(), st.due) <= 3 ? 'warn' : 'due') + '">' + ico('clock', 16) + '<span>' + esc(dueText(st.due)) + '</span></span>'
         : st.allOk ? '<span class="ov-next ok">' + ico('check', 16) + '<span>' + esc(t('ov_all_ok')) + '</span></span>' : '';
       var open = hpOpen(p);   // до withPlace: там S.placeId — эта квартира
       return withPlace(p.id, function () {
         var cards = homeCards();
         return '<details class="hp pacc" id="hp-' + esc(p.id) + '" data-pl="' + esc(p.id) + '" style="--pc:var(--pc-' + placeColor(p) + ')" data-key="home-pl-' + esc(p.id) + '"' + (open ? ' open' : '') + '>' +
-          '<summary data-key="home-pl-sum-' + esc(p.id) + '"><span class="pacc-t"><b>' + esc(placeLabel(p)) + '</b>' + (p.name && p.address ? '<span class="small muted">' + esc(p.address) + '</span>' : '') + due +
+          '<summary data-key="home-pl-sum-' + esc(p.id) + '"><span class="pacc-t"><b>' + esc(placeLabel(p)) + '</b>' + (p.address ? '<span class="small muted">' + esc(p.address) + '</span>' : '') + due +
             '<span class="small muted pacc-ks">' + esc(placeKinds(p)) + '</span></span>' + ico('chev', 22, 'pacc-chev') + '</summary><div class="pacc-body">' +
           (HP_EDIT === p.id ? hpEditForm(p) : '<p class="hp-tools"><button type="button" class="linkbtn" data-act="hp-edit" data-id="' + esc(p.id) + '" data-key="home-pl-edit-' + esc(p.id) + '">' + esc(t(p.address ? 'hp_edit' : 'hp_addr_add')) + '</button>' +
             '<a href="#place-' + esc(p.id) + '" data-key="home-pl-set-' + esc(p.id) + '">' + ico('prefs', 16) + ' ' + esc(t('hp_settings')) + '</a></p>') +
@@ -885,7 +886,7 @@
     var srv = ids.filter(function (id) { return !/^l:/.test(id); });
     if (srv.length && window.TEPLO_API && Y().account) api0('/photo/keep', { method: 'POST', body: JSON.stringify({ ids: srv, keep: !!on }) }).catch(function () {});
   }
-  function allRecs() { return (S.readings || []).concat(S.water || []).filter(function (r) { return r && !r.deleted; }); }
+  function allRecs() { return (S.readings || []).concat(S.water || [], S.mrecs || []).filter(function (r) { return r && !r.deleted; }); }
   /** Вошли — догрузить фото, которые пока только в этом браузере; заменить id во всех записях. Лишнее из IndexedDB — убрать. */
   function histFlush() {
     if (HP.flushing || !window.TEPLO_API || !Y().account) return;
@@ -910,15 +911,26 @@
     });
     chain.then(function () { HP.flushing = false; }, function () { HP.flushing = false; });
   }
-  /** Миниатюры фото записи; нажатие — просмотр на весь экран. gal — имя набора для листания. */
-  function photoStrip(list, gal) {
-    list = (list || []).filter(function (p) { return p && p.id; }); if (!list.length) return '';
+  /** «Додати фото показань» к уже сохранённой записи (h:/w:/m: + id): фото — к записи, как при вводе. */
+  document.addEventListener('change', function (e) {
+    var fi = e.target; if (!fi || fi.id !== 'rp-input' || !fi.files || !fi.files.length) return;
+    var ref = fi.getAttribute('data-ref') || '', k = ref.slice(0, 1), id = ref.slice(2), fs = Array.prototype.slice.call(fi.files, 0, 8); fi.value = '';
+    var rec = ((k === 'h' ? S.readings : k === 'w' ? S.water : S.mrecs) || []).filter(function (x) { return x && !x.deleted && x.id === id; })[0]; if (!rec) return;
+    rec.photos = (rec.photos || []).concat(photoRefs(fs.map(function (f) { return rec.meter ? { file: f, meter: rec.meter } : { file: f }; })));
+    rec.updatedAt = Date.now(); save(); toast(t('rp_added')); render(true);
+  });
+  /** Миниатюры фото записи; нажатие — просмотр на весь экран. gal — имя набора для листания; ref — можно добавить фото. */
+  function photoStrip(list, gal, ref) {
+    list = (list || []).filter(function (p) { return p && p.id; }); if (!list.length && !ref) return '';
+    var add = ref ? '<input type="file" id="rp-input" class="sr" tabindex="-1" accept="image/*" multiple data-ref="' + esc(ref) + '" aria-label="' + esc(t('rp_add')) + '">' +
+      '<p><label for="rp-input" class="btn sec" tabindex="0" data-key="rec-photo-add">' + ico('camera', 18) + '<span>' + esc(t('rp_add')) + '</span></label></p>' : '';
+    if (!list.length) return '<section class="hphotos" data-key="rec-photos"><h2 class="section-title">' + ico('camera', 18) + ' ' + esc(t('rp_title')) + '</h2>' + add + '</section>';
     return '<section class="hphotos" data-key="rec-photos"><h2 class="section-title">' + ico('camera', 18) + ' ' + esc(t('hp_title')) + '</h2><ul class="thumbs">' + list.map(function (p, i) {
       var u = hpUrl(p.id), m = p.meter ? wmeters().filter(function (x) { return x.id === p.meter; })[0] : null;
       var gone = HP.missing[p.id] || (!u && !/^l:/.test(p.id));
       return '<li' + (gone ? ' class="gone"' : '') + '><img data-gal="' + esc(gal) + '" data-i="' + i + '" data-hph="' + esc(p.id) + '"' + (u ? ' src="' + esc(u) + '"' : '') + ' alt="' + esc(t('ph_from', { n: i + 1 })) + '" loading="lazy">' +
         (m ? '<span class="n ' + (m.kind === 'hot' ? 'n-hot' : 'n-cold') + '">' + esc(m.name || t('kv_' + m.kind)) + '</span>' : '') + '<span class="gone-t">' + esc(t('hp_gone')) + '</span></li>';
-    }).join('') + '</ul></section>';
+    }).join('') + '</ul>' + add + '</section>';
   }
   /** После отрисовки: подставить фото из IndexedDB; нет на этом устройстве / удалено — подпись вместо картинки. */
   function photoFill() {
@@ -1013,7 +1025,7 @@
     h += '<ul class="list" data-key="wrec-values">' + ms.map(function (m) {
       var d = x.by[m.id];
       return '<li><div class="grow">' + ico('drop', 16, m.kind === 'hot' ? 'c-hot' : 'c-cold') + ' ' + esc(wname(m)) + (m.serial ? ' <span class="small muted">№ ' + esc(m.serial) + '</span>' : '') + (d !== undefined ? '<div class="small muted">+' + d + ' м³</div>' : '') + '</div><b class="num">' + esc(wfmt(r.vals[m.id])) + '</b> <span class="small muted">м³</span></li>';
-    }).join('') + '</ul>' + photoStrip(r.photos, 'w' + r.id) + (r.base ? '' : billsBox('w:' + r.id, r.bills, t('bl_title', { m: monthLabel(String(r.date).slice(0, 7)) })));
+    }).join('') + '</ul>' + photoStrip(r.photos, 'w' + r.id, 'w:' + r.id) + (r.base ? '' : billsBox('w:' + r.id, r.bills, t('bl_title', { m: monthLabel(String(r.date).slice(0, 7)) })));
     if (x.hot !== null || x.cold !== null) {
       var c = Wt.cost(x.cold || 0, x.hot || 0, r.date, S.wtariff);
       h += '<div class="panel" style="margin-top:16px" data-key="wrec-used"><h2>' + esc(t('rec_used_title')) + '</h2><div class="cards2">' +
@@ -1227,7 +1239,8 @@
         links: [mlink('#place-' + esc(p.id || ''), 'home', t('em_manage'), ' data-key="' + k + '-place"')] });
     }).join('');
     var w = SK[k].mod.win(today()), cur = w.open ? ms.map(function (m) { return einWin(m.id, w); }) : null;
-    var right = '<button class="btn big block" data-act="' + SK[k].nw + '" data-key="' + k + '-add">' + ico('plus', 22) + '<span>' + esc(tk(k, 'en_title')) + '</span></button>' + ssendPanel(k, cur);
+    var right = '<button class="btn big block" data-act="' + SK[k].nw + '" data-key="' + k + '-add">' + ico('plus', 22) + '<span>' + esc(tk(k, 'en_title')) + '</span></button>' +
+      (VIS().local ? '<input type="file" id="eq-files" accept="image/*" multiple class="sr" data-k="' + k + '"><label for="eq-files" class="btn sec block wq-photo" tabindex="0" data-key="' + k + '-photo">' + ico('camera', 22) + '<span>' + esc(t('ph_entry')) + '</span></label>' : '') + ssendPanel(k, cur);
     var er = srows(k, 3);
     if (er.total) right += '<h2 class="section-title">' + esc(t('wh_title')) + '</h2>' + er.html + (er.total > 3 ? '<p><button class="btn sec" data-act="view-go" data-v="' + k + '" data-to="history" data-key="' + k + '-all">' + esc(t('wh_all', { n: er.total })) + '</button></p>' : '');
     right += '<details class="tips-box" style="margin-top:16px" data-key="' + k + '-how"><summary>' + esc(tk(k, 'ehow_t')) + '</summary><ul>' + tk(k, 'ehow').split('|').map(function (x) { return '<li>' + esc(x) + '</li>'; }).join('') + '</ul></details>';
@@ -1238,14 +1251,72 @@
   V.gas = function () { return sPage('gas'); };
 
   // ---------- ввод показань світла / газу ----------
-  function enFresh(k) { return { k: k || 'elec', date: '', vals: {}, back: '', skip: '' }; }
+  function enFresh(k) { return { k: k || 'elec', date: '', vals: {}, back: '', skip: '', photos: [], src: {}, auto: {}, busy: false }; }
+  /** «Розпізнати з фото» на введенні світла/газу: фото → движок у браузері → цифри по лічильниках і зонах (EN.src). */
+  function enPhotoBox(k) {
+    if (!VIS().local) return '';
+    var ph = EN.photos || [], ms = smeters(k), h = '<div class="panel wn-photo" data-key="en-photo"><input type="file" id="en-files" accept="image/*" multiple class="sr">';
+    if (EN.busy) return h + '<div class="banner" role="status" style="margin:0">' + SPIN + '<div class="grow"><p id="en-prog">' + esc(EN.prog || t('enp_reading')) + '</p><div class="pbar" aria-hidden="true"><i id="en-pbar" style="width:' + (EN.pct || 2) + '%"></i></div>' +
+      '<p style="margin:10px 0 0"><button class="btn sec" data-act="en-stop" data-key="en-stop">' + ico('close', 18) + '<span>' + esc(t('ph_stop')) + '</span></button></p></div></div></div>';
+    h += '<label for="en-files" class="btn ' + (ph.length ? 'sec' : 'big block') + '" tabindex="0" data-key="en-photo-pick">' + ico('camera', 22) + '<span>' + esc(t(ph.length ? 'enp_more' : 'enp_pick')) + '</span></label>' +
+      (ph.length ? '' : '<p class="small muted" style="margin:8px 0 0">' + esc(t('enp_hint')) + '</p>');
+    if (EN.err) h += '<p class="help warn">' + esc(EN.err) + '</p>';
+    if (!ph.length) return h + '</div>';
+    h += '<ul class="thumbs wn-thumbs">' + ph.map(function (p, i) { return '<li><img data-gal="en" data-i="' + i + '" src="' + p.url + '" alt="' + esc(t('ph_from', { n: i + 1 })) + '"><span class="n">' + (i + 1) + '</span><button class="rm" data-act="en-ph-rm" data-i="' + i + '" aria-label="' + esc(t('ph_remove')) + '">' + ico('close', 16) + '</button></li>'; }).join('') + '</ul>';
+    var lines = ph.map(function (p, i) {
+      if (!p.res) return '';
+      var got = []; ms.forEach(function (m) { SK[k].mod.keys(m).forEach(function (z) { var x = EN.src[m.id + '|' + z]; if (x && x.photo === i) got.push(esc((ms.length > 1 ? (m.name || ename(m)) + ' · ' : '') + ezl(m, z).toLowerCase()) + ' <b class="num">' + (k === 'gas' ? Wt.withFrac(x.v, x.frac) : x.v) + '</b>'); }); });
+      var nm = t('ph_from', { n: i + 1 }); return esc(nm.charAt(0).toUpperCase() + nm.slice(1)) + ' — ' + (got.length ? got.join(', ') : esc(t('enp_none')));
+    }).filter(Boolean);
+    if (lines.length) h += '<p class="small" data-key="en-photo-sum">' + lines.join('<br>') + '</p>';
+    if (Object.keys(EN.src).some(function (q) { return EN.src[q].guess; }) || lines.length) h += '<p class="help warn" data-key="en-photo-check">' + esc(t('enp_guess')) + '</p>';
+    return h + '</div>';
+  }
+  function enProg(pct, msg) {
+    EN.pct = Math.max(EN.pct || 2, Math.round(pct)); EN.prog = msg;
+    var pb = document.getElementById('en-pbar'), el = document.getElementById('en-prog'); if (pb) pb.style.width = EN.pct + '%'; if (el) el.textContent = msg;
+  }
+  function enRun(files) {
+    if (document.getElementById('en-form')) enRead(); EN.err = '';
+    files.forEach(function (f) { EN.photos.push({ file: f, url: URL.createObjectURL(f), res: null }); });
+    var todo = EN.photos.filter(function (p) { return !p.res; }), n = todo.length; if (!n) return;
+    var gen = EN.gen = (EN.gen || 0) + 1, w = EN, live = function () { return EN === w && EN.gen === gen; };
+    var limit = function (pr) { return Promise.race([pr, new Promise(function (ok, bad) { setTimeout(function () { bad(new Error('timeout')); }, 90000); })]); };
+    EN.busy = true; EN.pct = 2; EN.prog = t('enp_reading'); render(true);
+    VIS()._engine(function (q) { if (live()) enProg(q * 15, t('ph_loading', { p: Math.round(q * 100) })); }).then(function () {
+      var chain = Promise.resolve();
+      todo.forEach(function (p, i) {
+        chain = chain.then(function () { if (!live()) return null; enProg(15 + 85 * (i + 0.3) / n, n > 1 ? t('ph_reading', { i: i + 1, n: n }) : t('enp_reading')); return limit(window.TeploOCR.read(p.file, { all: true })); })
+          .then(function (res) { if (res) p.res = { lines: res.lines || [], drums: res.drums || [] }; }, function () { p.res = { lines: [], drums: [] }; });
+      });
+      return chain;
+    }).then(function () { if (!live()) return; EN.busy = false; enAssign(); render(true); enCheck(true); },
+      function () { if (!live()) return; EN.busy = false; EN.err = t('ph_err_engine'); render(true); });
+  }
+  /** Розкласти прочитане з усіх фото по лічильниках і зонах; поле, яке людина вже заповнила сама, не чіпаємо. */
+  function enAssign() {
+    var k = EN.k, md = SK[k].mod, ms = smeters(k), date = EN.date || today(), prevBy = {};
+    ms.forEach(function (m) { var pr = eprev(m.id, date, EN.skip); prevBy[m.id] = pr ? pr.z : {}; });
+    var one = ms.length === 1 && md.keys(ms[0]).length === 1 ? ms[0] : null;
+    var shots = EN.photos.map(function (p) {
+      if (!p.res) return null;
+      var dr = (p.res.drums || []).length ? Wt.fromOcr({ lines: [], drums: p.res.drums }, one ? (prevBy[one.id] || {}).all : null) : null;
+      return { lines: p.res.lines, drum: dr && dr.value !== null && dr.value !== undefined ? { value: dr.value, frac: dr.frac || '', sure: !!dr.sure } : null };
+    });
+    var by = md.fromPhotos(shots, ms, prevBy); EN.src = {};
+    ms.forEach(function (m) { md.keys(m).forEach(function (z) {
+      var x = by[m.id] && by[m.id][z], key = m.id + '|' + z; if (!x) return;
+      EN.vals[m.id] = EN.vals[m.id] || {}; EN.src[key] = x;
+      if (!EN.vals[m.id][z] || EN.auto[key]) { EN.vals[m.id][z] = k === 'gas' ? Wt.withFrac(x.v, x.frac) : String(x.v); EN.auto[key] = true; }
+    }); });
+  }
   var EN = enFresh();
   function sNew(k) {
     var ms = smeters(k), md = SK[k].mod, u = SK[k].unit(); if (!ms.length) { AM_BACK = 'home'; return V['add-meter'](); }
     if (EN.k !== k) EN = enFresh(k);
     var date = EN.date || today(), back = EN.back || SK[k].page, w = md.win(date);
     var h = '<h1>' + esc(tk(k, 'en_title')) + '</h1><p class="small muted">' + esc(tk(k, w.open ? 'en_lead_open' : 'en_lead_closed', { a: fmtDate(w.open ? w.from : w.next), b: fmtDate(w.to) })) + '</p>' +
-      '<div class="field" style="max-width:280px"><label for="en-date">' + esc(t('wn_date')) + '</label><div class="ctl"><input id="en-date" type="date" value="' + esc(date) + '" max="' + today() + '"></div></div><form id="en-form" novalidate>';
+      '<div class="field" style="max-width:280px"><label for="en-date">' + esc(t('wn_date')) + '</label><div class="ctl"><input id="en-date" type="date" value="' + esc(date) + '" max="' + today() + '"></div></div>' + enPhotoBox(k) + '<form id="en-form" novalidate>';
     ms.forEach(function (m) {
       var p = eprev(m.id, date, EN.skip), vs = EN.vals[m.id] || {};
       h += '<fieldset class="efield" data-key="en-' + m.id + '"><legend>' + ico(SK[k].icon, 18, SK[k].cls) + ' ' + esc(ename(m)) + (m.serial ? ' <span class="small muted">№ ' + esc(m.serial) + '</span>' : '') + '</legend>' +
@@ -1261,7 +1332,7 @@
   }
   V.enew = function () { return sNew('elec'); };
   V.gnew = function () { return sNew('gas'); };
-  function enRead() { Array.prototype.forEach.call(document.querySelectorAll('[data-en]'), function (el) { var a = el.getAttribute('data-en').split('|'); EN.vals[a[0]] = EN.vals[a[0]] || {}; EN.vals[a[0]][a[1]] = el.value.trim(); }); var d = document.getElementById('en-date'); if (d && d.value) EN.date = d.value; }
+  function enRead() { Array.prototype.forEach.call(document.querySelectorAll('[data-en]'), function (el) { var a = el.getAttribute('data-en').split('|'); EN.vals[a[0]] = EN.vals[a[0]] || {}; if (EN.auto && EN.auto[a[0] + '|' + a[1]] && EN.vals[a[0]][a[1]] !== el.value.trim()) delete EN.auto[a[0] + '|' + a[1]]; EN.vals[a[0]][a[1]] = el.value.trim(); }); var d = document.getElementById('en-date'); if (d && d.value) EN.date = d.value; }
   function enCheck(show) {
     var k = EN.k, md = SK[k].mod, date = EN.date || today(), all = {};
     smeters(k).forEach(function (m) {
@@ -1288,12 +1359,17 @@
     enRead(); var iss = enCheck('submit'), k = EN.k, md = SK[k].mod;
     if (Object.keys(iss).some(function (x) { return md.blocked(iss[x]); })) { var f = document.querySelector('.wfield.is-block input'); if (f) f.focus(); return; }
     var date = EN.date || today(), now = new Date().toISOString(), own = ownChecked(); S.mrecs = S.mrecs || [];
+    var ms0 = smeters(k), refs = photoRefs((EN.photos || []).map(function (p, i) {
+      var mid = ms0.filter(function (m) { return md.keys(m).some(function (z) { var x = EN.src[m.id + '|' + z]; return x && x.photo === i; }); })[0];
+      return { file: p.file, url: p.url, meter: (mid || ms0[0] || {}).id };
+    }));
     smeters(k).forEach(function (m) {
       var z = {}; md.keys(m).forEach(function (q) { z[q] = md.norm((EN.vals[m.id] || {})[q]); });
+      var mine = refs.filter(function (r) { return r.meter === m.id; });
       // один запис на лічильник і дату: повторне введення того ж дня — правка
       var same = S.mrecs.filter(function (r) { return r && !r.deleted && !r.base && r.place === S.placeId && r.meter === m.id && (r.id === EN.skip || r.date === date); })[0];
-      if (same) { same.z = z; same.date = date; if (own) same.own = true; same.updatedAt = Date.now(); }
-      else S.mrecs.push(Object.assign({ id: md.uid(), place: S.placeId, meter: m.id, kind: k, date: date, z: z, sent: {}, createdAt: now, updatedAt: Date.now() }, own ? { own: true } : {}));
+      if (same) { same.z = z; same.date = date; if (own) same.own = true; if (mine.length) same.photos = (same.photos || []).concat(mine); same.updatedAt = Date.now(); }
+      else S.mrecs.push(Object.assign({ id: md.uid(), place: S.placeId, meter: m.id, kind: k, date: date, z: z, sent: {}, createdAt: now, updatedAt: Date.now() }, own ? { own: true } : {}, mine.length ? { photos: mine } : {}));
     });
     if (!S.onboarded) S.onboarded = true;
     var back = EN.back; EN = enFresh(k); save(); toast(t('wn_saved') + inPlace());
@@ -1365,6 +1441,7 @@
       if (w.open && r.date >= w.from && r.date <= w.to) h += ssendPanel(k, smeters(k).map(function (mm) { return mm.id === m.id ? r : einWin(mm.id, w); }));
       else h += '<p>' + (ssent(k, r) ? '<span class="pill ok">' + ico('check', 14) + ' ' + esc(tk(k, 'ed_org')) + '</span>' : '<span class="pill neutral">' + esc(tk(k, 'ed_org')) + ': ' + esc(t('wh_notsent')) + '</span>') + '</p>';
     }
+    h += photoStrip(r.photos, 'm' + r.id, 'm:' + r.id) + (r.base ? '' : billsBox('m:' + r.id, r.bills, t('bl_title', { m: monthLabel(md.forMonth(r.date)) })));
     h += '<div class="row-actions">' + (r.base ? '' : '<button class="btn sec" data-act="eedit" data-id="' + r.id + '" data-key="erec-edit">' + esc(t('rec_edit')) + '</button>') + '<button class="btn danger" data-act="edel" data-id="' + r.id + '" data-key="erec-del">' + esc(t('rec_del')) + '</button></div>';
     return { screen: 'S09', route: 'history', html: h };
   }
@@ -1559,12 +1636,14 @@
         else { orec.sent = Object.assign({}, orec.sent || {}); if (on) delete orec.sent.no; else orec.sent.no = true; }
         orec.updatedAt = Date.now(); save(); toast(t('b_saved')); render(true); return true;
       }
+      case 'en-stop': EN.gen = (EN.gen || 0) + 1; EN.busy = false; render(true); return true;
+      case 'en-ph-rm': { enRead(); var ri = +el.getAttribute('data-i'); EN.photos.splice(ri, 1); Object.keys(EN.src).forEach(function (q) { var x = EN.src[q]; if (x.photo === ri) { if (EN.auto[q]) { var a0 = q.split('|'); if (EN.vals[a0[0]]) EN.vals[a0[0]][a0[1]] = ''; delete EN.auto[q]; } delete EN.src[q]; } else if (x.photo > ri) x.photo--; }); render(true); return true; }
       case 'enew': EN = enFresh('elec'); go('enew'); return true;
       case 'gnew': EN = enFresh('gas'); go('gnew'); return true;
       case 'esent': { var eids = (el.getAttribute('data-ids') || '').split(','), ev = el.getAttribute('data-v') === '1';
         var esk = SK[el.getAttribute('data-k')] ? SK[el.getAttribute('data-k')].sk : 'obl';
         (S.mrecs || []).forEach(function (x) { if (eids.indexOf(x.id) >= 0) { x.sent = Object.assign({}, x.sent || {}); x.sent[esk] = ev ? today() : ''; x.updatedAt = Date.now(); } }); save(); render(true); return true; }
-      case 'edel': { if (!confirm(t('wh_del_q'))) return true; var ed = (S.mrecs || []).filter(function (x) { return x.id === el.getAttribute('data-id'); })[0]; if (ed) { ed.deleted = true; ed.updatedAt = Date.now(); save(); if (/^erec-/.test(routeName())) go('history'); else render(true); } return true; }
+      case 'edel': { if (!confirm(t('wh_del_q'))) return true; var ed = (S.mrecs || []).filter(function (x) { return x.id === el.getAttribute('data-id'); })[0]; if (ed) { ed.deleted = true; ed.updatedAt = Date.now(); photoKeep(ed.photos, false); billsDrop(ed.bills); save(); if (/^erec-/.test(routeName())) go('history'); else render(true); } return true; }
       case 'eedit': { var ee = mrecs().filter(function (x) { return x.id === el.getAttribute('data-id'); })[0]; if (!ee) return true;
         EN = enFresh(ee.kind === 'gas' ? 'gas' : 'elec'); EN.date = ee.date; EN.skip = ee.id; EN.vals[ee.meter] = {}; Object.keys(ee.z || {}).forEach(function (k) { EN.vals[ee.meter][k] = String(ee.z[k] || '').replace('.', ','); });
         mrecs().forEach(function (x) { if (x.date === ee.date && !x.base && x.meter !== ee.meter && x.kind === ee.kind) { EN.vals[x.meter] = {}; Object.keys(x.z || {}).forEach(function (k) { EN.vals[x.meter][k] = String(x.z[k] || '').replace('.', ','); }); } });
@@ -1761,6 +1840,13 @@
     });
     WN.unused = A.unused;
   }
+  // світло/газ: «Розпізнати з фото» на сторінці виду — одразу до введення; на введенні — ще фото
+  document.addEventListener('change', function (e) {
+    var el = e.target; if (!el || (el.id !== 'eq-files' && el.id !== 'en-files') || !el.files || !el.files.length) return;
+    var fs = Array.prototype.slice.call(el.files, 0, 8); el.value = '';
+    if (el.id === 'eq-files') { var k = el.getAttribute('data-k') === 'gas' ? 'gas' : 'elec'; EN = enFresh(k); go(SK[k].nw); }
+    enRun(fs);
+  });
   // страница водомера: «Розпізнати з фото» — сразу к вводу, фото читаются и раскладываются по водомерам
   document.addEventListener('change', function (e) {
     var el = e.target; if (!el || el.id !== 'wq-files' || !el.files || !el.files.length) return;
@@ -2270,7 +2356,7 @@
         '<div><div class="num mid">' + esc(degTxt(wx.min)) + ' … ' + esc(degTxt(wx.max)) + '</div><div class="small muted">' + esc(t('wx_t_range')) + '</div></div>' +
         '<div><div class="num mid">' + wx.frost + ' / ' + wx.ser.length + '</div><div class="small muted">' + esc(t('wx_t_frost')) + '</div></div>' : '') +
       (wx.day !== null ? '<div><div class="num mid">' + esc(degTxt(wx.day)) + '</div><div class="small muted">' + esc(t('wx_t_day')) + '</div></div>' : '') + '</div>' + wxSpark(wx.ser) + '</div>' : '';
-    return { screen: 'S09', route: 'history', html: head + used + wxp + '<ul class="list" data-key="rec-values">' + rows + '</ul>' + ownBox('h', r) + photoStrip(r.photos, 'h' + r.id) + billsBox('h:' + r.id, r.bills, t('bl_title', { m: monthLabel(String(h.date || '').slice(0, 7)) })) +
+    return { screen: 'S09', route: 'history', html: head + used + wxp + '<ul class="list" data-key="rec-values">' + rows + '</ul>' + ownBox('h', r) + photoStrip(r.photos, 'h' + r.id, 'h:' + r.id) + billsBox('h:' + r.id, r.bills, t('bl_title', { m: monthLabel(String(h.date || '').slice(0, 7)) })) +
       '<div class="row-actions">' + st + '<a class="btn sec" href="#rec-' + r.id + '-edit" data-key="rec-edit">' + esc(t('rec_edit')) + '</a>' +
       '<button class="btn danger" data-act="rec-del-ask" data-key="rec-del">' + esc(t('rec_del')) + '</button></div><div id="rec-del-confirm"></div>' };
   }
@@ -2514,7 +2600,7 @@
   var BILLS = { busy: '' };
   function billOwner(ref) {
     var k = ref.slice(0, 1), id = ref.slice(2), one = function (arr) { return (arr || []).filter(function (x) { return x && !x.deleted && x.id === id; })[0]; };
-    var rec = k === 'h' ? one(S.readings) : k === 'w' ? one(S.water) : null;
+    var rec = k === 'h' ? one(S.readings) : k === 'w' ? one(S.water) : k === 'm' ? one(S.mrecs) : null;
     if (rec) return { list: function () { return (rec.bills || []).slice(); }, set: function (l) { rec.bills = l; rec.updatedAt = Date.now(); save(); } };
     if (k === 'g' && gapById(id)) return { list: function () { return ((gapById(id) || {}).bills || []).slice(); },
       set: function (l) { setGaps(function (gl) { gl.forEach(function (x) { if (x && x.id === id) { x.bills = l; x.updatedAt = Date.now(); } }); }); } };
@@ -3755,7 +3841,7 @@
   });
   document.addEventListener('keydown', function (e) {
     if (e.key === 'Escape' && FB.open) { var tx = document.getElementById('fb-text'); if (tx) FB.text = tx.value; FB.open = false; render(true); return; }
-    if ((e.key === 'Enter' || e.key === ' ') && e.target.matches('label[for="ph-input"], label[for="wq-files"], label[for="wn-files"]')) { e.preventDefault(); var fi = document.getElementById(e.target.getAttribute('for')); if (fi) fi.click(); return; }
+    if ((e.key === 'Enter' || e.key === ' ') && e.target.matches('label[for="ph-input"], label[for="wq-files"], label[for="wn-files"], label[for="rp-input"], label[for="en-files"], label[for="eq-files"]')) { e.preventDefault(); var fi = document.getElementById(e.target.getAttribute('for')); if (fi) fi.click(); return; }
     if (e.key === 'Enter' && e.target.matches('#step-form input[data-field]')) {
       e.preventDefault();
       var inputs = Array.prototype.slice.call(document.querySelectorAll('#step-form input[data-field]:not([type=radio])')).filter(function (x) { return x.offsetParent !== null; });

@@ -144,7 +144,76 @@
   /** Скільки дала б ніч: частка нічного розходу і економія проти однозонного (для двозонних). */
   function nightShare(mo) { var n = 0, all = 0; mo.forEach(function (b) { n += b.dz.night || 0; all += b.kwh; }); return all ? n / all : null; }
 
-  return { PRICE: PRICE, HEAT: HEAT, ZONES: ZONES, COEF: COEF, JUMP: JUMP, JUMP_HEAT: JUMP_HEAT, PHONES: C.phones || [], LINKS: C.links || {},
+  // ---- показання з фото: рядки тексту движка TeploOCR (електронне табло: «T1 010420.5 kWh», «1.8.2 5225») і вікно
+  // барабана (газ, механічний електролічильник — значення вже розібране движком води). Зону визначаємо міткою на табло
+  // (T1/T2/T3, 1.8.1…, 15.8.x; T0 / 1.8.0 — сума, для зон не годиться), а з прошлими — ще й близькістю до них.
+  var ZRE = [/(?:^|[^0-9A-Za-zА-Яа-я])[TТ]\s?([0-4])(?![0-9])/, /(?:^|[^0-9])(?:15|1)\s?[.,]\s?8\s?[.,]\s?([0-4])(?![0-9])/];
+  var URE = /k\s?W\s?[·.*]?\s?h|кВт\s?[·.]?\s?(?:год|ч)|m\s?[3³]|м\s?[3³]/gi;
+  function ocrTxt(v) { return String(v || '').replace(/[０-９]/g, function (c) { return String.fromCharCode(c.charCodeAt(0) - 0xFEE0); }); }
+  function zoneOf(s) {
+    for (var i = 0; i < ZRE.length; i++) { var m = s.match(ZRE[i]); if (m) return +m[1]; }
+    return /ДЕНЬ|DAY/i.test(s) ? 'day' : /НІЧ|НОЧЬ|NIGHT/i.test(s) ? 'night' : null;
+  }
+  /** Кандидати-числа з рядків одного фото: [{digits, frac, sep, zone, unit, y, score}]. */
+  function ocrCands(shot) {
+    var out = [], tags = [];
+    ((shot && shot.lines) || []).forEach(function (l, i) {
+      var y = l.y != null ? l.y : (l.box ? l.box[1] : i * 40), h = l.h || 30;
+      [l.text].concat(l.alts || []).some(function (raw, ai) {
+        var s = ocrTxt(raw), z = zoneOf(s), unit = URE.test(s); URE.lastIndex = 0;
+        var rest = s.replace(/(?:^|[^0-9A-Za-zА-Яа-я])[TТ]\s?[0-4](?![0-9])/g, ' ').replace(/(?:15|1)\s?[.,]\s?8\s?[.,]\s?[0-4](?![0-9])/g, ' ').replace(URE, ' ');
+        if (/[A-Za-zА-Яа-яІіЇїЄє]{2}/.test(rest)) { if (z !== null && !ai) tags.push({ z: z, y: y, h: h }); return false; }
+        var c = rest.replace(/\s+/g, '').replace(/(\d)[Oo]|[Oo](\d)/g, function (x, a, b) { return (a || '') + '0' + (b || ''); }).replace(/[Il|]/g, '1');
+        var m = c.match(/^(\d{1,8})(?:[.,](\d{1,3}))?$/);
+        if (!m) { if (z !== null && !ai && !/\d{3}/.test(c)) tags.push({ z: z, y: y, h: h }); return false; }
+        if (m[1].length < 3 || (!m[2] && m[1].length >= 8 && m[1].charAt(0) !== '0')) return false;   // «50», заводський №
+        out.push({ digits: m[1], frac: m[2] || '', sep: !!m[2], zone: z, unit: unit, y: y, h: h, score: h * (l.score || 1) * (m[2] ? 1.3 : 1) * (unit ? 1.5 : 1) * (m[1].charAt(0) === '0' ? 1.2 : 1) * (ai ? 0.8 : 1) });
+        return true;
+      });
+    });
+    // мітка зони окремим рядком — числу в тому ж ряду (або трохи нижче)
+    out.forEach(function (c) { if (c.zone !== null) return; var best = null; tags.forEach(function (tg) { var dy = Math.abs(tg.y - c.y); if (dy < Math.max(tg.h, c.h) * 1.6 && (!best || dy < best.dy)) best = { dy: dy, z: tg.z }; }); if (best) c.zone = best.z; });
+    return out;
+  }
+  function candVals(c, pv) {
+    if (c.sep || pv === null) return [Number(c.digits)];
+    var d = c.digits, out = []; for (var k = Math.max(1, d.length - 3); k <= d.length; k++) out.push(Number(d.slice(0, k)));
+    return out;
+  }
+  /**
+   * shots: [{lines, drum: {value, frac, sure} | null} | null] — по фото; ms — лічильники; prevBy: {id: {zone: показання}}.
+   * → {id: {zone: {v, frac, photo, why: 'tag'|'prev'|'drum'|'', guess}}}. Одне число — одній зоні; сума (T0) — лише однозонному.
+   */
+  function fromPhotos(shots, ms, prevBy) {
+    var pool = [], used = {}, by = {}, lim = (JUMP_HEAT || JUMP) * 3;
+    (shots || []).forEach(function (sh, i) {
+      if (!sh) return;
+      ocrCands(sh).forEach(function (c) { c.photo = i; pool.push(c); });
+      if (sh.drum && sh.drum.value !== null && sh.drum.value !== undefined) pool.push({ digits: String(sh.drum.value), frac: String(sh.drum.frac || ''), sep: true, zone: null, drum: true, sure: !!sh.drum.sure, score: 1e4, photo: i, y: 0 });
+    });
+    (ms || []).forEach(function (m) {
+      var ks = keys(m), prev = (prevBy && prevBy[m.id]) || {}, res = by[m.id] = {}, opts = [];
+      ks.forEach(function (z) {
+        var pv = num(prev[z]);
+        pool.forEach(function (c, ci) {
+          if (used[ci]) return;
+          var tz = c.zone === null ? null : typeof c.zone === 'number' ? (c.zone === 0 ? (ks.length === 1 ? z : '-') : ks.length > 1 ? (ks[c.zone - 1] || '-') : z) : ks.length > 1 && ks.indexOf(c.zone) >= 0 ? c.zone : z;
+          if (tz && tz !== z) return;
+          var tagged = !!tz && ks.length > 1;
+          if (pv !== null) candVals(c, pv).forEach(function (v) {
+            var dv = v - Math.floor(pv); if (dv < 0 || dv > lim) return;
+            opts.push({ z: z, ci: ci, v: v, frac: c.sep ? c.frac : '', cost: dv / lim - (tagged ? 1 : 0) - (c.drum ? 0.5 : 0) - c.score / 1e6, why: tagged ? 'tag' : c.drum ? 'drum' : 'prev', photo: c.photo });
+          });
+          else opts.push({ z: z, ci: ci, v: Number(c.digits), frac: c.frac, cost: -(tagged ? 1e5 : 0) - c.score + c.photo * 1e-3 + (c.y || 0) * 1e-6, why: tagged ? 'tag' : c.drum ? 'drum' : '', photo: c.photo, guess: !tagged && (ks.length > 1 || !c.drum || !c.sure) });
+        });
+      });
+      opts.sort(function (a, b) { return a.cost - b.cost; });
+      opts.forEach(function (o) { if (res[o.z] || used[o.ci]) return; res[o.z] = { v: o.v, frac: String(o.frac || '').slice(0, 3), photo: o.photo, why: o.why, guess: !!o.guess }; used[o.ci] = true; });
+    });
+    return by;
+  }
+
+  return { PRICE: PRICE, HEAT: HEAT, ZONES: ZONES, COEF: COEF, JUMP: JUMP, JUMP_HEAT: JUMP_HEAT, PHONES: C.phones || [], LINKS: C.links || {}, fromPhotos: fromPhotos, ocrCands: ocrCands,
     num: num, whole: whole, norm: norm, zones: zones, keys: keys, coef: coef, priceAt: priceAt, heatSeason: heatSeason, win: win, forMonth: forMonth, lastDay: lastDay, addMonth: addMonth,
     check: check, blocked: blocked, cost: cost, series: series, monthly: monthly, summary: summary, nightShare: nightShare,
     uid: function () { return (C.idp || 'e') + Date.now().toString(36) + Math.random().toString(36).slice(2, 7); } };

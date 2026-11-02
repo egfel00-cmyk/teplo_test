@@ -349,13 +349,13 @@ ok('друга квартира лише з холодною: вода — на�
 // несколько квартир (этап 2): одно сообщение со списком квартир, кнопка в каждую; выключатель у квартиры
 $wm = $wst; $wm['places'][] = ['id' => 'p2', 'name' => 'Мамина', 'water' => ['meters' => [['id' => 'c9', 'kind' => 'cold']]]];
 $pd = Reminders::placesDue($wm, 'water15', '2026-11');
-ok('две квартиры без воды за месяц — обе в списке, без названия — «Квартира 1»', array_column($pd, 'label') === ['Квартира 1', 'Мамина'] && $pd[0]['all'] === 2, $pd);
+ok('две квартиры без воды за месяц — обе в списке, без названия — «Моя квартира»', array_column($pd, 'label') === ['Моя квартира', 'Мамина'] && $pd[0]['all'] === 2, $pd);
 $wm2 = $wm; $wm2['places'][1]['remindOff'] = true;
 ok('квартира выключена (remindOff) — про неё молчим, про другую — пишем', array_column(Reminders::placesDue($wm2, 'water15', '2026-11'), 'id') === ['main']);
 $wm3 = $wm2; $wm3['places'][0]['remindOff'] = true;
 ok('обе выключены — не пишем вовсе', !Reminders::needs($wm3, 'water15', '2026-11'));
 $tx = Reminders::text('water15', 'uk', $pd);
-ok('текст: «Квартири: «Квартира 1», «Мамина»», кнопка в каждую (?go=wnew&place=…)', str_contains($tx['text'], 'Квартири: «Квартира 1», «Мамина»') && count($tx['buttons']) === 2
+ok('текст: «Квартири: «Моя квартира», «Мамина»», кнопка в каждую (?go=wnew&place=…)', str_contains($tx['text'], 'Квартири: «Моя квартира», «Мамина»') && count($tx['buttons']) === 2
   && str_ends_with($tx['buttons'][1][1], '?go=wnew&place=p2') && str_contains($tx['buttons'][1][0], 'Мамина'), $tx);
 $tx1 = Reminders::text('heat5', 'ru', [['id' => 'p2', 'label' => 'Мамина', 'all' => 2]]);
 ok('одна из двух ждёт — «Квартира: «Мамина»», кнопка с place', str_contains($tx1['text'], 'Квартира: «Мамина»') && count($tx1['buttons']) === 1 && str_ends_with($tx1['url'], '?go=heat&place=p2'), $tx1);

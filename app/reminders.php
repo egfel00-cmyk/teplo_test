@@ -62,7 +62,8 @@ final class Reminders {
     $first = $places[0]['id'] ?? 'main'; $all = count($places); $out = [];
     foreach ($places as $i => $p) {
       if (!empty($p['remindOff'])) continue;
-      $label = trim((string)($p['name'] ?? '')) ?: (trim((string)($p['address'] ?? '')) ?: ('Квартира ' . ($i + 1)));
+      // как в приложении: без названия первая — «Моя квартира», остальные — «Квартира N»
+      $label = trim((string)($p['name'] ?? '')) ?: ($i === 0 ? 'Моя квартира' : 'Квартира ' . ($i + 1));
       $need = false;
       if (str_starts_with($kind, 'elec') || str_starts_with($kind, 'gas')) {
         // світло / газ: у кожного діючого лічильника цього виду є показання (не стартові) у вікні приймання
