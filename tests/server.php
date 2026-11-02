@@ -247,6 +247,30 @@ ok('погода: старый период — из кэша, без запро
 ok('погода: мусор в датах → 422', $boss->req('GET', '/api/admin/weather', null, ['QUERY_STRING' => 'from=x&to=y'])->status === 422);
 Weather::$fetch = null;
 
+echo "\nФото боту в Telegram → входящие аккаунта:\n";
+Cfg::set(['app_url' => 'https://teplo.example/', 'bot_token' => $TOKEN, 'webhook_secret' => 'hook-secret']);
+$sent = []; Telegram::$send = function ($m, $p, $tok = null) use (&$sent) { $sent[] = [$m, $p]; return ['ok' => true]; };
+Telegram::$fetch = fn($id) => $id === 'BIG' ? $png : null;
+@unlink((Cfg::data() ?: sys_get_temp_dir() . '/teplo_data') . '/cache/tgreply_9001');
+$hook = fn(array $msg) => Api::handle(new Req('POST', '/api/bot/webhook', ['REMOTE_ADDR' => '149.154.167.1', 'HTTP_X_TELEGRAM_BOT_API_SECRET_TOKEN' => 'hook-secret'], [], json_encode(['message' => $msg])));
+$pm = fn($date) => ['chat' => ['id' => 9001], 'date' => $date, 'from' => ['id' => 9001, 'first_name' => 'Фото', 'language_code' => 'uk'], 'photo' => [['file_id' => 'SMALL'], ['file_id' => 'BIG']]];
+$t0 = time() - 600; $r = $hook($pm($t0));
+$ib = Db::one("SELECT COUNT(*) AS n FROM bot_inbox b JOIN user_identities i ON i.user_id = b.user_id WHERE i.external_id = '9001'");
+ok('фото сохранено во входящие (берётся самый большой размер), аккаунт Telegram создан', $r->status === 200 && (int)$ib['n'] === 1);
+ok('ответ — кнопка Mini App «Розпізнати фото» с ?inbox=1', ($sent[0][1]['reply_markup']['inline_keyboard'][0][0]['web_app']['url'] ?? '') === 'https://teplo.example/?inbox=1');
+$n0 = count($sent); $hook($pm($t0 + 60));
+ok('второе фото альбома — без повторного ответа', count($sent) === $n0);
+$bad = $pm($t0 + 100); $bad['photo'] = [['file_id' => 'GONE']]; $hook($bad);
+ok('не скачалось — честно просим прислать ещё раз', str_contains($sent[count($sent) - 1][1]['text'] ?? '', 'ще раз'));
+$tgb = new Browser('10.0.12.1'); $tgb->req('POST', '/api/auth/telegram/webapp', ['initData' => initData($TOKEN, ['id' => 9001, 'first_name' => 'Фото'])]);
+$in = $tgb->req('GET', '/api/inbox');
+ok('Mini App видит 2 фото по порядку съёмки', $in->status === 200 && count($in->body['items']) === 2 && $in->body['items'][0]['takenAt'] < $in->body['items'][1]['takenAt']);
+ok('файл отдаётся владельцу', $tgb->req('GET', '/api/inbox/file', null, ['QUERY_STRING' => 'id=' . $in->body['items'][0]['id']])->file['mime'] === 'image/png');
+ok('чужому — нет', $rb->req('GET', '/api/inbox/file', null, ['QUERY_STRING' => 'id=' . $in->body['items'][0]['id']])->status === 404 && count($rb->req('GET', '/api/inbox')->body['items']) === 0);
+$tgb->req('POST', '/api/inbox/done', ['ids' => array_column($in->body['items'], 'id')]);
+ok('после «разобрано» входящие пусты', count($tgb->req('GET', '/api/inbox')->body['items']) === 0);
+Telegram::$send = null; Telegram::$fetch = null;
+
 echo "\nВыход:\n";
 $phone->req('POST', '/api/auth/logout');
 ok('после выхода /api/me → 401', $phone->req('GET', '/api/me')->status === 401);

@@ -77,7 +77,8 @@
       };
       // копия фото — в аналитику (параллельно с загрузкой движка); ошибки загрузки не мешают распознаванию
       var uploads = Promise.resolve();
-      if (self.isIn()) files.forEach(function (f) { uploads = uploads.then(function () { return self.prepare(f); }).then(function (b) { return post('/recognize/upload', b, b.type || 'image/jpeg'); }).then(function (j) { ids.push(j.id); }, function () { /* без копии */ }); });
+      // фото из бота уже лежат на сервере (f._srv) — второй раз не загружаем
+      if (self.isIn()) files.forEach(function (f) { uploads = uploads.then(function () { if (f._srv) { ids.push(f._srv); return; } return self.prepare(f).then(function (b) { return post('/recognize/upload', b, b.type || 'image/jpeg'); }).then(function (j) { ids.push(j.id); }, function () { /* без копии */ }); }); });
       var cancelled = function () { if (signal && signal.aborted) throw fail('cancelled'); };
       return this._engine(function (p) { if (onProgress) onProgress(Math.round(p * 100), 100, 'load'); }).then(function () {
         var chain = Promise.resolve();

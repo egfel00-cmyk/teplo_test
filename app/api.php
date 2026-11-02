@@ -12,7 +12,8 @@
 //  POST /api/auth/logout
 //  GET  /api/state                  → {state, version}
 //  PUT  /api/state                  {state, baseVersion} → {version} | 409 {state, version}
-//  POST /api/bot/webhook            (заголовок X-Telegram-Bot-Api-Secret-Token)
+//  POST /api/bot/webhook            (заголовок X-Telegram-Bot-Api-Secret-Token); фото в чате → bot_inbox
+//  GET  /api/inbox, GET /api/inbox/file?id=…, POST /api/inbox/done {ids} — фото из бота на распознавание в браузере
 //  POST /api/bot/setup              (заголовок X-Setup-Secret = webhook_secret) — вебхук, кнопка меню, /start
 //  POST /api/recognize/upload       фото СЫРЫМ телом (Content-Type: image/*) → {id}
 //  POST /api/docs/upload?place&kind  документ к счётчику (фото/PDF сырым телом) · GET /api/docs · GET /api/docs/file?id · POST /api/docs/delete
@@ -188,6 +189,23 @@ final class Api {
         if (!$user) throw new HttpError(401, 'unauthorized');
         RateLimit::hit('recog_upload', (string)$user['id']);
         return Docs::upload((int)$user['id'], $r->body, $r->header('Content-Type'), $r->query());
+      }
+      // фото, присланные боту: список, файл, «разобрано»
+      case 'GET /api/inbox': {
+        if (!$user) throw new HttpError(401, 'unauthorized');
+        $rows = Db::q('SELECT photo_id, taken_at FROM bot_inbox WHERE user_id = ? AND done = 0 AND taken_at > ? ORDER BY taken_at, created_at', [(int)$user['id'], time() - 7 * 86400])->fetchAll();
+        return ['items' => array_map(fn($x) => ['id' => $x['photo_id'], 'takenAt' => (int)$x['taken_at']], $rows)];
+      }
+      case 'GET /api/inbox/file': {
+        if (!$user) throw new HttpError(401, 'unauthorized');
+        $ph = Db::one('SELECT p.* FROM photos p JOIN bot_inbox b ON b.photo_id = p.id WHERE p.id = ? AND b.user_id = ?', [(string)($r->query()['id'] ?? ''), (int)$user['id']]);
+        if (!$ph || !is_file(Recognize::path($ph))) throw new HttpError(404, 'not_found');
+        $res->file = ['path' => Recognize::path($ph), 'mime' => $ph['mime']]; return [];
+      }
+      case 'POST /api/inbox/done': {
+        if (!$user) throw new HttpError(401, 'unauthorized');
+        foreach (array_slice((array)($in['ids'] ?? []), 0, 50) as $id) Db::q('UPDATE bot_inbox SET done = 1 WHERE photo_id = ? AND user_id = ?', [(string)$id, (int)$user['id']]);
+        return ['ok' => true];
       }
       case 'GET /api/docs': if (!$user) throw new HttpError(401, 'unauthorized'); return Docs::list((int)$user['id']);
       case 'GET /api/docs/file': if (!$user) throw new HttpError(401, 'unauthorized'); $res->file = Docs::file((int)$user['id'], (string)($r->query()['id'] ?? '')); return [];

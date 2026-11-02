@@ -353,6 +353,8 @@
       html += '<div class="banner" data-key="home-waiting">' + ico('clock', 22) + '<div><p><b>' + esc(t('h_waiting')) + '</b></p><p>' + esc(t('h_waiting_sub', { ago: ago(handed.handedAt) })) + '</p>' +
         '<p><a href="#status" data-act="focus" data-id="' + handed.id + '">' + esc(t('h_check_result')) + '</a></p></div></div>';
     }
+    loadInbox();
+    if (INBOX.items && INBOX.items.length) html += '<div class="banner" data-key="home-inbox">' + ico('camera', 22) + '<div><p><b>' + esc(t('ib_title', { n: INBOX.items.length })) + '</b></p><p>' + esc(t('ib_sub')) + '</p><p><button class="btn" data-act="inbox-run" data-key="home-inbox-run">' + esc(t('ib_run')) + '</button></p></div></div>';
     // экран с последними принятыми — главный визуальный якорь
     var left = '';
     if (S.baseline) {
@@ -1060,6 +1062,41 @@
   window.TeploTgLink = function (user) { Y().linkTelegram(user).then(function (j) { if (j._status === 200) { toast(t('login_ok')); render(true); } else toast(authError(j)); }); };
 
   // ---------------- распознавание по фото ----------------
+  /* Фото, присланные боту в Telegram: лежат в аккаунте и ждут; распознаёт браузер, как обычные фото. */
+  var INBOX = { items: null, loading: false, auto: /[?&]inbox=1/.test(location.search) };
+  function api0(path, opts) {
+    opts = opts || {}; var c = (document.cookie.match(/(?:^|; )ts_csrf=([^;]*)/) || [])[1] || '';
+    return fetch(window.TEPLO_API + path, Object.assign({ credentials: 'same-origin', headers: { 'Content-Type': 'application/json', 'X-CSRF': c, Accept: 'application/json' } }, opts));
+  }
+  function loadInbox() {
+    if (!window.TEPLO_API || !Y().account || INBOX.loading) return;
+    INBOX.loading = true;
+    api0('/inbox').then(function (r) { return r.json(); }).then(function (j) {
+      INBOX.loading = false; INBOX.items = (j && j.items) || [];
+      if (INBOX.auto) { try { history.replaceState(null, '', location.pathname + location.hash); } catch (e) { /* нет */ } }
+      if (INBOX.auto && INBOX.items.length && PH.status !== 'working') { INBOX.auto = false; inboxRun(); return; }
+      INBOX.auto = false;
+      if (['home', ''].indexOf(routeName()) >= 0) safeRender();
+    }, function () { INBOX.loading = false; });
+  }
+  function inboxRun() {
+    var items = (INBOX.items || []).slice(); if (!items.length) return;
+    phReset('reading'); PH.inbox = items.map(function (x) { return x.id; }); PH.status = 'working'; PH.progress = t('ib_loading'); PH.pct = 2;
+    go('photo');
+    Promise.all(items.map(function (x) {
+      return fetch(window.TEPLO_API + '/inbox/file?id=' + encodeURIComponent(x.id), { credentials: 'same-origin' }).then(function (r) { if (!r.ok) throw new Error('file'); return r.blob(); }).then(function (b) {
+        var f; try { f = new File([b], x.id + '.jpg', { type: b.type || 'image/jpeg', lastModified: x.takenAt * 1000 }); } catch (e) { f = b; f.lastModified = x.takenAt * 1000; }
+        f._srv = x.id; return f;
+      });
+    })).then(function (files) {
+      PH.files = files; PH.urls = files.map(function (f) { return URL.createObjectURL(f); }); PH.status = 'idle'; PHS.save(true); phRun();
+    }, function () { PH.status = 'idle'; PH.error = t('err_network'); render(true); });
+  }
+  function inboxDone() {
+    var ids = PH.inbox; if (!ids || !ids.length || !window.TEPLO_API) return;
+    PH.inbox = null; INBOX.items = (INBOX.items || []).filter(function (x) { return ids.indexOf(x.id) < 0; });
+    api0('/inbox/done', { method: 'POST', body: JSON.stringify({ ids: ids }) }).catch(function () {});
+  }
   /** Кнопка «в работе»: крутится значок, повторно не нажать; возвращает «готово». */
   function busy(btn) { if (!btn) return function () {}; btn.setAttribute('aria-busy', 'true'); btn.disabled = true; return function () { btn.removeAttribute('aria-busy'); btn.disabled = false; }; }
   var SPIN = '<span class="spin" aria-hidden="true"></span>';
@@ -1093,7 +1130,7 @@
     },
     save: function (withFiles) {
       if (PH.mode === 'model' || !PH.files.length) return;
-      var st = { mode: PH.mode, date: PH.date, status: PH.status === 'done' ? 'done' : 'idle', result: PH.status === 'done' ? PH.result : null, picked: PH.status === 'done' ? PH.picked : null, vals: PH.vals || null, n: PH.files.length, at: Date.now() };
+      var st = { mode: PH.mode, date: PH.date, status: PH.status === 'done' ? 'done' : 'idle', result: PH.status === 'done' ? PH.result : null, picked: PH.status === 'done' ? PH.picked : null, vals: PH.vals || null, inbox: PH.inbox || null, n: PH.files.length, at: Date.now() };
       try { localStorage.setItem(PHS.key, JSON.stringify(st)); } catch (e) { /* переполнено — без сохранения */ }
       if (withFiles) PHS.putFiles(PH.files);
     },
@@ -1104,7 +1141,7 @@
       return PHS.getFiles().then(function (files) {
         if (!files.length) return false;
         PH.mode = st.mode || 'reading'; PH.date = st.date || PH.date; PH.files = files; PH.urls = files.map(function (f) { return URL.createObjectURL(f); });
-        PH.result = st.result; PH.picked = st.picked; PH.vals = st.vals || null; PH.status = st.status === 'done' && st.picked ? 'done' : 'idle';
+        PH.result = st.result; PH.picked = st.picked; PH.vals = st.vals || null; PH.inbox = st.inbox || null; if (PH.inbox) files.forEach(function (f, k) { if (PH.inbox[k]) f._srv = PH.inbox[k]; }); PH.status = st.status === 'done' && st.picked ? 'done' : 'idle';
         return true;
       });
     }
@@ -1233,6 +1270,7 @@
     });
   }
   function phApply() {
+    inboxDone();
     setTimeout(function () { PHS.clear(); }, 0);
     var vals = {}; Array.prototype.forEach.call(document.querySelectorAll('[data-ph]'), function (el) { vals[el.getAttribute('data-ph')] = el.value.trim(); });
     var di = document.getElementById('ph-date'); var date = (di && di.value) || PH.date || today();
@@ -1544,7 +1582,8 @@
       case 'fb-send': fbSend(); break;
       case 'ph-stop': if (PH.ctl) PH.ctl.abort(); break;
       case 'ph-again': PH.status = 'idle'; PHS.save(false); render(true); break;
-      case 'ph-new': phReset(PH.mode); render(true); break;
+      case 'ph-new': inboxDone(); phReset(PH.mode); render(true); break;
+      case 'inbox-run': inboxRun(); break;
       case 'ph-apply': phApply(); break;
       case 'ph-use-model': { var um = M.byId(el.getAttribute('data-id')); S.meter = Object.assign({}, S.meter || {}, { modelId: um.id, unit: el.getAttribute('data-unit') || um.unit }); save(); toast(t('b_saved')); PH.picked = VIS().pick(PH.result, M.TO_GCAL, energyUnit()); render(true); break; }
       case 'auth-mode': authMode = authMode === 'login' ? 'register' : 'login'; render(true); break;
@@ -1660,7 +1699,7 @@
     var onSync = function () {
       var el = document.getElementById('sync-status'); if (el) el.textContent = syncStatusText();
       if (window.TEPLO_API && window.TeploVision && window.TeploSync._cfg) window.TeploVision.initServer(window.TeploSync._cfg, !!window.TeploSync.account);
-      if (!window.TeploSync.account) ADMIN = null; else checkAdmin();
+      if (!window.TeploSync.account) ADMIN = null; else { checkAdmin(); if (INBOX.items === null || INBOX.auto) loadInbox(); }
       if (['prefs', 'login', 'welcome', 'home', 'meter', 'baseline'].indexOf(routeName() || 'welcome') >= 0 || /^step-/.test(routeName())) safeRender();
     };
     window.TeploSync.init(function () { return S; }, applyRemote, onSync);

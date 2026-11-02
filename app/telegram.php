@@ -82,14 +82,72 @@ final class Telegram {
     return $ru ? 'Готово: Telegram привязан к вашему аккаунту. Теперь кнопка ниже и вход через Telegram открывают те же показания.' : 'Готово: Telegram прив’язано до вашого акаунта. Тепер кнопка нижче й вхід через Telegram відкривають ті самі показання.';
   }
 
+  /** Скачать файл Telegram по file_id. В тестах подменяется. */
+  public static $fetch = null;
+  public static function file(string $fileId): ?string {
+    if (self::$fetch) return (self::$fetch)($fileId);
+    $f = self::call('getFile', ['file_id' => $fileId]); $path = $f['result']['file_path'] ?? '';
+    if ($path === '' || ($f['result']['file_size'] ?? 0) > 20 * 1024 * 1024) return null;
+    $ch = curl_init('https://api.telegram.org/file/bot' . Cfg::get('bot_token') . '/' . $path);
+    curl_setopt_array($ch, [CURLOPT_RETURNTRANSFER => true, CURLOPT_TIMEOUT => 20, CURLOPT_MAXFILESIZE => 20 * 1024 * 1024]);
+    $b = curl_exec($ch); $code = curl_getinfo($ch, CURLINFO_HTTP_CODE); curl_close($ch);
+    return $code === 200 && is_string($b) && $b !== '' ? $b : null;
+  }
+  /** Аккаунт этого Telegram (как при входе через Mini App): нет — создаём. */
+  public static function userFor(array $from): int {
+    $tgId = (string)($from['id'] ?? ''); if ($tgId === '') throw new HttpError(400, 'no_user');
+    $idn = Db::one("SELECT * FROM user_identities WHERE type = 'telegram' AND external_id = ?", [$tgId]);
+    if ($idn) return (int)$idn['user_id'];
+    $name = trim(($from['first_name'] ?? '') . ' ' . ($from['last_name'] ?? ''));
+    Db::q('INSERT INTO users (name, created_at) VALUES (?, ?)', [$name ?: null, Http::iso()]); $uid = Db::id();
+    Db::q("INSERT INTO user_identities (user_id, type, external_id, username, linked_at) VALUES (?, 'telegram', ?, ?, ?)", [$uid, $tgId, $from['username'] ?? null, Http::iso()]);
+    return $uid;
+  }
+  /** Фото счётчика в чате с ботом → в «входящие» аккаунта; распознаёт браузер, когда человек откроет сервис кнопкой. */
+  public static function photo(array $msg, string $lang): array {
+    $ru = $lang === 'ru'; $chat = $msg['chat']['id'];
+    $fileId = !empty($msg['photo']) ? (string)end($msg['photo'])['file_id'] : (string)$msg['document']['file_id'];   // самый большой размер — последний
+    $saved = false;
+    try {
+      $uid = self::userFor((array)($msg['from'] ?? []));
+      RateLimit::hit('bot_photo', (string)$uid);
+      $body = self::file($fileId);
+      if ($body !== null) {
+        $info = @getimagesizefromstring($body);
+        $p = Recognize::upload($uid, $body, (string)($info['mime'] ?? 'image/jpeg'));
+        Db::q('INSERT INTO bot_inbox (photo_id, user_id, taken_at, created_at) VALUES (?, ?, ?, ?)', [$p['id'], $uid, (int)($msg['date'] ?? time()), Http::iso()]);
+        $saved = true;
+      }
+    } catch (Throwable $e) { $saved = false; }
+    if (!$saved) {
+      $params = ['chat_id' => $chat, 'text' => $ru ? 'Не удалось сохранить фото. Пришлите его ещё раз (до 20 МБ, JPEG/PNG).' : 'Не вдалося зберегти фото. Надішліть його ще раз (до 20 МБ, JPEG/PNG).'];
+      self::call('sendMessage', $params); return $params;
+    }
+    // альбом приходит отдельными сообщениями — отвечаем один раз на альбом и не чаще раза в минуту на чат
+    $dir = (Cfg::data() ?: sys_get_temp_dir() . '/teplo_data') . '/cache'; if (!is_dir($dir)) @mkdir($dir, 0700, true);
+    $key = $dir . '/tgreply_' . preg_replace('/\D/', '', (string)$chat);
+    $last = @filemtime($key) ?: 0;
+    if (time() - $last < 60) return ['saved' => true, 'reply' => false];
+    @touch($key);
+    $n = (int)(Db::one('SELECT COUNT(*) AS n FROM bot_inbox WHERE user_id = (SELECT user_id FROM user_identities WHERE type = ? AND external_id = ?) AND done = 0', ['telegram', (string)$msg['from']['id']])['n'] ?? 1);
+    $text = $ru
+      ? "📷 Фото получено. Пришлите все экраны счётчика (можно альбомом) — по одному экрану на фото.\n\nКогда всё отправите, нажмите кнопку: сервис распознает цифры и покажет их на проверку."
+      : "📷 Фото отримано. Надішліть усі екрани лічильника (можна альбомом) — по одному екрану на фото.\n\nКоли все надішлете, натисніть кнопку: сервіс розпізнає цифри й покаже їх на перевірку.";
+    $params = ['chat_id' => $chat, 'text' => $text,
+      'reply_markup' => ['inline_keyboard' => [[['text' => $ru ? 'Распознать фото' : 'Розпізнати фото', 'web_app' => ['url' => Cfg::appUrl() . '?inbox=1']]]]]];
+    self::call('sendMessage', $params);
+    return $params;
+  }
+
   public static function handleUpdate(array $u): ?array {
     $msg = $u['message'] ?? null; if (!$msg || empty($msg['chat']['id'])) return null;
     $lang = str_starts_with((string)($msg['from']['language_code'] ?? ''), 'ru') ? 'ru' : 'uk';
+    if (!empty($msg['photo']) || (isset($msg['document']['mime_type']) && preg_match('#^image/(jpeg|png|webp)$#', (string)$msg['document']['mime_type']))) return self::photo($msg, $lang);
     $linkText = null;
     if (preg_match('/^\/start\s+link_([a-f0-9]{32})\b/', (string)($msg['text'] ?? ''), $m)) $linkText = self::linkByToken((array)($msg['from'] ?? []), $m[1], $lang);
     $text = $lang === 'ru'
-      ? "Теплосервис помогает снять показания теплосчётчика, проверить их как робот ХТМ и не пропустить окно приёма (5–25 число).\n\nНажмите кнопку — откроется сервис, вход через Telegram произойдёт сам."
-      : "Теплосервіс допомагає зняти показання тепло­лічильника, перевірити їх як робот ХТМ і не пропустити вікно приймання (5–25 число).\n\nНатисніть кнопку — відкриється сервіс, вхід через Telegram відбудеться сам.";
+      ? "Теплосервис помогает снять показания теплосчётчика, проверить их как робот ХТМ и не пропустить окно приёма (5–25 число).\n\nМожно просто прислать сюда фото экранов счётчика — распознаю цифры.\n\nНажмите кнопку — откроется сервис, вход через Telegram произойдёт сам."
+      : "Теплосервіс допомагає зняти показання тепло­лічильника, перевірити їх як робот ХТМ і не пропустити вікно приймання (5–25 число).\n\nМожна просто надіслати сюди фото екранів лічильника — розпізнаю цифри.\n\nНатисніть кнопку — відкриється сервіс, вхід через Telegram відбудеться сам.";
     $btn = $lang === 'ru' ? 'Открыть Теплосервис' : 'Відкрити Теплосервіс';
     if ($linkText !== null) $text = $linkText;
     $params = ['chat_id' => $msg['chat']['id'], 'text' => $text,

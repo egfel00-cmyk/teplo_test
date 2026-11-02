@@ -30,6 +30,7 @@ final class Cfg {
         'recog_upload' => [120, 3600],   // фото на распознавание: в час на пользователя
         'recog_run' => [40, 86400],      // запросов к нейросети: в сутки на пользователя (пачки по 3 фото)
         'feedback_ip' => [10, 3600],     // отзывов с одного IP в час
+        'bot_photo' => [60, 3600],       // фото боту в Telegram: в час на пользователя
       ],
       'max_body_bytes' => 300 * 1024,
       'max_photo_bytes' => 12 * 1024 * 1024,
@@ -130,6 +131,8 @@ final class Db {
       "CREATE TABLE IF NOT EXISTS docs (id CHAR(24) PRIMARY KEY, user_id INT NOT NULL, place VARCHAR(40) NOT NULL, kind VARCHAR(16) NOT NULL, file VARCHAR(80) NOT NULL, mime VARCHAR(40) NOT NULL, bytes INT NOT NULL, name VARCHAR(120) NULL, created_at VARCHAR(25) NOT NULL)$tail",
       // одноразовые ссылки «привязать Telegram через бота» (t.me/<бот>?start=link_<token>)
       "CREATE TABLE IF NOT EXISTS link_tokens (token CHAR(32) PRIMARY KEY, user_id INT NOT NULL, expires_at INT NOT NULL)$tail",
+      // фото, присланные боту в Telegram: ждут, пока человек откроет сервис — там их распознаёт браузер (бесплатно)
+      "CREATE TABLE IF NOT EXISTS bot_inbox (photo_id CHAR(24) PRIMARY KEY, user_id INT NOT NULL, taken_at INT NOT NULL, done TINYINT NOT NULL DEFAULT 0, created_at VARCHAR(25) NOT NULL)$tail",
       "CREATE TABLE IF NOT EXISTS recog_reports (id $ai, user_id INT NOT NULL, photo_ids TEXT NULL, kind VARCHAR(16) NOT NULL, ok TINYINT NOT NULL DEFAULT 0, text TEXT NOT NULL, data TEXT NULL, created_at VARCHAR(25) NOT NULL)$tail",
     ];
     foreach ($sql as $s) self::$pdo->exec($s);
@@ -173,7 +176,8 @@ final class Http {
 /** Фиксированное окно: не больше N событий за T секунд на ключ. Хранится в БД. */
 final class RateLimit {
   public static function hit(string $name, string $key, bool $count = true): void {
-    [$max, $win] = Cfg::get('limits')[$name];
+    $l = Cfg::get('limits')[$name] ?? null; if (!$l) return;   // лимит не задан — не ограничиваем
+    [$max, $win] = $l;
     $start = intdiv(Http::now(), $win) * $win; $k = substr($name . ':' . $key, 0, 190);
     $row = Db::one('SELECT cnt FROM rate_limits WHERE k = ? AND window_start = ?', [$k, $start]);
     $cnt = $row ? (int)$row['cnt'] : 0;
