@@ -3235,7 +3235,7 @@ input[type=text]:not(.dmy-native):not(.pl-in), input[type=email], input[type=pas
           '<div class="small muted">' + esc((m ? modelName(m) : t('pl_no_meter')) + ' · ' + t('pl_n', { n: n })) + (p.meter && p.meter.verifiedUntil ? ' · ' + esc(t('pl_ver', { d: R.toHtmDate(p.meter.verifiedUntil) })) : '') + '</div></div>' +
           (p.id === S.placeId ? '<span class="pill ok">' + esc(t('pl_active')) + '</span>' : '<button class="btn sec" data-act="pl-use" data-id="' + esc(p.id) + '">' + esc(t('pl_use')) + '</button>') +
           (ps.length > 1 && !n ? '<button class="linkbtn" data-act="pl-del" data-id="' + esc(p.id) + '" style="margin-left:8px">' + esc(t('rec_del')) + '</button>' : '') + '</li>';
-      }).join('') + '</ul><p><button class="btn sec" data-act="pl-add" data-key="prefs-place-add">' + ico('plus', 18) + '<span>' + esc(t('pl_add')) + '</span></button></p></div>';
+      }).join('') + '</ul><p style="margin:16px 0 0"><button class="btn sec" data-act="pl-add" data-key="prefs-place-add">' + ico('plus', 18) + '<span>' + esc(t('pl_add')) + '</span></button></p></div>';
   }
   V.prefs = function () {
     var m = model(), c = S.contacts || {};
@@ -3275,7 +3275,7 @@ input[type=text]:not(.dmy-native):not(.pl-in), input[type=email], input[type=pas
       if (!a.telegram && Y()._cfg && Y()._cfg.botUsername) h += '<h3>' + esc(t('acct_link_tg')) + '</h3><p class="small muted">' + esc(t('acct_link_bot_sub')) + '</p>' +
         '<p><button class="btn" data-act="link-bot" data-key="prefs-link-bot">' + esc(t('acct_link_bot', { bot: Y()._cfg.botUsername })) + '</button></p><div id="tg-widget" data-onauth="TeploTgLink"></div>';
       if (!a.hasPassword) h += '<h3 style="margin-top:16px">' + esc(t('acct_set_pass')) + '</h3><form id="setpass-form" novalidate>' + authFields('new-password') + '<div class="help block" id="setpass-err"></div><button class="btn sec" type="submit">' + esc(t('acct_set_pass_btn')) + '</button></form>';
-      h += '<div class="row-actions"><button class="btn sec" data-act="logout" data-key="prefs-logout">' + esc(t('logout')) + '</button></div><p class="small muted">' + esc(t('logout_sub')) + '</p>';
+      h += '<div class="row-actions"><button class="btn sec" data-act="logout" data-key="prefs-logout">' + esc(t('logout')) + '</button></div><p class="small muted" style="margin-top:8px">' + esc(t('logout_sub')) + '</p>';
     } else if (y.mode === 'server') h += '<p>' + esc(t('sync_local')) + '</p><p>' + esc(t('sync_local_sub_site')) + '</p><a class="btn" href="#login" data-key="prefs-login">' + esc(t('login')) + '</a>';
     else h += '<p>' + esc(t('sync_local')) + '</p><p class="small muted">' + esc(t('sync_local_sub_noserver')) + '</p>';
     return h + '</div>';
