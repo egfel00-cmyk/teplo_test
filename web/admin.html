@@ -51,8 +51,12 @@ input[type=search] { font: 400 15px var(--font); padding: 9px 12px; border: 1.5p
 .center { max-width: 520px; margin: 12vh auto; background: var(--surface); padding: 24px; border-radius: 16px; }
 .zoom { position: fixed; inset: 0; background: rgba(0,0,0,.85); display: grid; place-items: center; z-index: 9; cursor: zoom-out; }
 .zoom img { max-width: 96vw; max-height: 96vh; }
+.okmsg { color: var(--ok); font-weight: 600; } #hist summary { cursor: pointer; } #hist[open] summary { margin-bottom: 10px; }
 pre.state { font: 12px/1.4 var(--mono); background: #F4F7F5; padding: 10px; border-radius: 8px; max-height: 360px; overflow: auto; }
-@media (max-width: 640px) { main { padding: 0 10px 40px; } th, td { padding: 6px; } }
+@media (max-width: 640px) { main { padding: 0 10px 40px; } th, td { padding: 6px; }
+  /* история версий на телефоне — карточками, без горизонтальной прокрутки */
+  #hist thead { display: none; } #hist table, #hist tbody, #hist tr, #hist td { display: block; } #hist tr { padding: 10px 0; border-bottom: 1px solid var(--line); }
+  #hist td { border: 0; padding: 2px 6px; white-space: normal !important; } #hist td[data-l]::before { content: attr(data-l) ': '; color: var(--ink2); font-size: 13px; } #hist td.ha { padding-top: 8px; } }
 </style>
 </head>
 <body>
@@ -275,7 +279,7 @@ pre.state { font: 12px/1.4 var(--mono); background: #F4F7F5; padding: 10px; bord
       '<tr><th>Устройства</th><td>' + ((d.devices || []).length ? d.devices.map(function (x) { return esc((DEV[x.device] || x.device) + ', ' + x.os + (+x.tg ? ', Telegram' : ', браузер') + (+x.pwa ? ', как приложение' : '') + (x.sw ? ', ' + x.sw + ' px' : '')) + ' <span class="muted small">' + x.hits + ' откр., последний раз ' + when(x.last_at) + '</span>'; }).join('<br>') : '<span class="muted">нет данных (собираем с 02.11.2026)</span>') + '</td></tr>' +
       '<tr><th>Регистрация</th><td>' + when(u.created_at) + '</td></tr><tr><th>Последний вход</th><td>' + when(u.last_login_at) + '</td></tr><tr><th>Данные обновлены</th><td>' + when(u.state_at) + '</td></tr>' +
       '<tr><th>Первая настройка</th><td>' + (st.onboarded ? 'пройдена' : '<span class="problem">не пройдена</span>') + '</td></tr></tbody></table></div>' +
-      '<div class="panel"><h2>Квартиры и счётчики (' + ps.length + ')</h2>' + placesBlock(ps, st) + '</div>' +
+      '<div class="panel"><h2>Квартиры и счётчики (' + ps.length + ')</h2>' + placesBlock(ps, st) + '</div>' + histBlock(+u.id) +
       '<div class="panel"><h2>Тепло — показания (' + rd.length + ')</h2>' + (st.baseline ? '<p class="muted small">Последние принятые ХТМ (текущая квартира): ' + [dday(st.baseline.date), st.baseline.energy ? esc(st.baseline.energy) + ' Гкал' : '', st.baseline.volume ? esc(st.baseline.volume) + ' м³' : '', st.baseline.hours ? esc(st.baseline.hours) + ' ч' : '', st.baseline.errCode ? 'код ' + esc(st.baseline.errCode) : ''].filter(Boolean).join(' · ') + '</p>' : '') +
         (rd.length ? '<table><thead><tr><th>Дата</th>' + plh + '<th>Статус</th><th>Проверка</th><th>Источник</th><th>Энергия</th><th>Объём</th><th>Часы</th><th>Коды</th></tr></thead><tbody>' + rd.map(function (r) {
         var h = r.htm || {};
@@ -299,6 +303,59 @@ pre.state { font: 12px/1.4 var(--mono); background: #F4F7F5; padding: 10px; bord
       '<div class="panel"><h2>Входы и действия</h2>' + (d.audit.length ? '<table><tbody>' + d.audit.map(function (a) { return '<tr><td>' + when(a.created_at) + '</td><td>' + esc(a.action) + '</td><td class="mono small muted">' + esc(a.ip || '') + '</td></tr>'; }).join('') + '</tbody></table>' : '<p class="muted">Нет.</p>') + '</div>' +
       '<details class="panel"><summary>Все данные пользователя (как хранятся)</summary><pre class="state">' + esc(JSON.stringify(st, null, 2)) + '</pre></details>';
   };
+
+  // ---- история версий данных (StateHist на сервере): грузится при раскрытии; «Восстановить» — с подтверждением «сейчас → станет»
+  var HIST = { uid: 0, list: null, open: false, msg: null, busy: false };
+  function histTotal(s, k) { var o = (s || {})[k] || {}; return Object.keys(o).reduce(function (a, x) { return a + (+o[x] || 0); }, 0); }
+  function histWhat(h) { var s = (h && h.summary) || {}; return (s.places || 0) + ' кв., счётчиков ' + histTotal(s, 'kinds') + ', показаний ' + histTotal(s, 'recs'); }
+  function histBlock(uid) {
+    if (HIST.uid !== uid) { HIST.uid = uid; HIST.list = null; HIST.open = false; HIST.msg = null; }
+    if (HIST.open && !HIST.list) setTimeout(histLoad, 0);
+    return '<details class="panel" id="hist"' + (HIST.open ? ' open' : '') + '><summary><b>История версий данных</b> <span class="muted small">— вернуть, если сохранение что-то затёрло</span></summary><div id="hist-body">' + histBody() + '</div></details>';
+  }
+  function histBody() {
+    var l = HIST.list, msg = HIST.msg ? '<p class="' + (HIST.msg.ok ? 'okmsg' : 'problem') + '">' + esc(HIST.msg.text) + '</p>' : '';
+    if (!l) return msg + '<p class="muted">Загрузка…</p>';
+    if (!l.length) return msg + '<p class="muted">Данных на сервере нет.</p>';
+    // стало меньше, чем в версии ниже (старше), — красным «было N»: обычно восстанавливают версию под такой строкой
+    var cnt = function (h, prev, f) { var n = f(h), p = prev ? f(prev) : null; return '<span class="mono">' + n + '</span>' + (p !== null && n < p ? ' <span class="problem small">было ' + p + '</span>' : ''); };
+    var fp = function (h) { return (h.summary || {}).places || 0; }, fm = function (h) { return histTotal(h.summary, 'kinds'); }, fr = function (h) { return histTotal(h.summary, 'recs'); };
+    return msg + '<p class="muted small">Каждое сохранение — новая версия; хранятся все за 48 часов, дальше — последняя за день, 30 дней. Красное «было» — в этой версии стало меньше, чем в версии под ней: обычно восстанавливают ту, что ниже.</p>' +
+      '<table><thead><tr><th>Версия</th><th>Сохранена</th><th>Квартиры</th><th>Счётчики</th><th>Показания</th><th></th></tr></thead><tbody>' +
+      l.map(function (h, i) {
+        var prev = l[i + 1] || null, s = h.summary || {};
+        var tag = h.current ? pill('info', 'сейчас') + (h.restoredAt ? '<br><span class="muted small">восстановлена ' + when(h.restoredAt) + '</span>' : '')
+          : '<span class="muted small">' + (h.reason === 'restore' ? 'заменена восстановлением ' : 'до ') + when(h.replacedAt) + '</span>';
+        var act = h.current ? '' : !h.ok ? '<span class="problem small">повреждена</span>'
+          : '<button class="btn" data-hrestore="' + h.id + '">Восстановить</button> <a class="small" target="_blank" rel="noopener" href="' + esc(API + '/admin/state/version?user=' + HIST.uid + '&id=' + h.id) + '">JSON</a>';
+        return '<tr' + (h.current ? ' style="background:#F4F7F5"' : '') + '><td class="mono" data-l="Версия">' + h.version + '</td><td style="white-space:nowrap">' + when(h.savedAt) + '<br>' + tag + '</td>' +
+          '<td data-l="Квартиры">' + cnt(h, prev, fp) + (h.labels && h.labels.length ? '<br><span class="small muted">' + esc(h.labels.join(', ')) + '</span>' : '') + '</td>' +
+          '<td data-l="Счётчики">' + cnt(h, prev, fm) + (fm(h) ? '<br><span class="small">' + kindsLine(s.kinds) + '</span>' : '') + '</td>' +
+          '<td data-l="Показания">' + cnt(h, prev, fr) + (fr(h) ? '<br><span class="small">' + recsLine(s) + '</span>' : '') + '</td><td class="ha" style="white-space:nowrap">' + act + '</td></tr>';
+      }).join('') + '</tbody></table>';
+  }
+  function histPaint() { var b = document.getElementById('hist-body'); if (b) b.innerHTML = histBody(); }
+  function histLoad() {
+    var uid = HIST.uid; if (HIST.loading === uid) return; HIST.loading = uid;
+    return get('/admin/state/history?id=' + uid).then(function (j) { HIST.loading = 0; if (uid !== HIST.uid) return; HIST.list = j.history || []; histPaint(); },
+      function () { HIST.loading = 0; HIST.msg = { ok: false, text: 'Не удалось загрузить историю.' }; histPaint(); });
+  }
+  // toggle не всплывает — ловим на погружении
+  document.addEventListener('toggle', function (e) { if (!e.target || e.target.id !== 'hist') return; HIST.open = e.target.open; if (HIST.open && !HIST.list) histLoad(); }, true);
+  document.addEventListener('click', function (e) {
+    var b = e.target.closest && e.target.closest('[data-hrestore]'); if (!b || HIST.busy) return;
+    var id = +b.getAttribute('data-hrestore'), l = HIST.list || [], h = l.filter(function (x) { return x.id === id; })[0]; if (!h) return;
+    var q = 'Вернуть данные к версии ' + h.version + ' (сохранена ' + when(h.savedAt) + ')?\n\nСейчас: ' + histWhat(l[0]) + '.\nСтанет: ' + histWhat(h) + (h.labels && h.labels.length ? ' (' + h.labels.join(', ') + ')' : '') +
+      '.\n\nТекущие данные останутся в истории — их тоже можно будет вернуть. Устройства человека подхватят версию сами.';
+    if (!confirm(q)) return;
+    HIST.busy = true; b.disabled = true; b.textContent = 'Восстанавливаю…';
+    post('/admin/state/restore', { user: HIST.uid, id: id }).then(function (j) {
+      HIST.busy = false; HIST.list = null; HIST.open = true;
+      HIST.msg = j && j.ok ? { ok: true, text: 'Готово: версия ' + j.from + ' восстановлена как ' + j.version + ' (' + histWhat({ summary: j.summary }) + '). Человек увидит её при следующем открытии сайта, открытый сайт обновится в течение минуты.' }
+        : { ok: false, text: (j && (j.human || j.error)) || 'Не получилось.' };
+      show('user', HIST.uid, true);
+    }, function () { HIST.busy = false; b.disabled = false; b.textContent = 'Восстановить'; HIST.msg = { ok: false, text: 'Сервер недоступен.' }; histPaint(); });
+  });
 
   function wasmOk() { try { return !!new WebAssembly.Module(new Uint8Array([0, 97, 115, 109, 1, 0, 0, 0])); } catch (e) { return false; } }
   var SRC = { admin: 'задан здесь', config: 'из config.php на сервере', 'default': 'по умолчанию' };
@@ -358,7 +415,7 @@ pre.state { font: 12px/1.4 var(--mono); background: #F4F7F5; padding: 10px; bord
     reminders: function () { return get('/admin/reminders').then(function (j) { DATA.reminders = j; }); }
   };
   function show(tab, uid, keepMsg) {
-    TAB = tab; if (!keepMsg) DATA.settingsMsg = {};
+    TAB = tab; if (!keepMsg) { DATA.settingsMsg = {}; HIST.list = null; HIST.msg = null; }
     var p = get('/admin/overview').then(function (j) { DATA.overview = j; });
     p = p.then(uid ? function () { return get('/admin/user?id=' + uid).then(function (j) { DATA.user = j; }); } : (LOAD[tab] || LOAD.overview));
     return p.then(function () { shell((VIEW[tab] || VIEW.overview)()); if (tab === 'users') { var q = document.getElementById('q'); if (q && Q) { q.focus(); q.setSelectionRange(Q.length, Q.length); } } },

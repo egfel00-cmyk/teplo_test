@@ -501,6 +501,53 @@ ok('світло з фото → в аналитике: зона не подпи
   && str_contains((string)$pl7['problem'], 'свет, день: зона не подписана') && !str_contains((string)$pl7['problem'], 'не тепла'), $pl7['problem']);
 ok('газ при настройке без цифр → «показаний газового счётчика не найдено (настройка нового счётчика)»', str_contains((string)$pl8['problem'], 'газового счётчика на фото не найдено (настройка нового счётчика)'), $pl8['problem']);
 
+echo "\nИстория версий данных и восстановление из /admin:\n";
+$hu = new Browser('10.0.21.1'); $hu->req('POST', '/api/auth/register', ['email' => 'hist@example.ua', 'password' => 'hist pass 123']);
+$huid = (int)Db::one("SELECT id FROM users WHERE email = 'hist@example.ua'")['id'];
+$good = ['updatedAt' => 1000, 'onboarded' => true, 'places' => [['id' => 'main', 'name' => 'Победа', 'meter' => ['modelId' => 'sharky774'], 'water' => ['meters' => [['id' => 'c1', 'kind' => 'cold']]], 'updatedAt' => 900]],
+  'readings' => [['id' => 'r1', 'createdAt' => '2026-10-20T08:00:00Z', 'updatedAt' => 800, 'photos' => [['id' => str_repeat('ab', 12)]]]]];
+$bad = ['updatedAt' => 2000, 'onboarded' => true, 'places' => [['id' => 'main', 'name' => '', 'meter' => null, 'water' => ['meters' => []], 'updatedAt' => 2000], ['id' => 'p2', 'name' => 'Чужая', 'updatedAt' => 2000]],
+  'readings' => [['id' => 'r1', 'createdAt' => '2026-10-20T08:00:00Z', 'updatedAt' => 800, 'deleted' => true], ['id' => 'junk', 'createdAt' => '2026-11-03T08:00:00Z', 'updatedAt' => 1990]], 'wipedAt' => 1500];
+ok('первое сохранение — истории ещё нет', $hu->req('PUT', '/api/state', ['state' => $good, 'baseVersion' => 0])->body['version'] === 1 && !Db::one('SELECT id FROM user_state_hist WHERE user_id = ?', [$huid]));
+ok('то же самое ещё раз — версия растёт, копии одинаковых данных не множатся', $hu->req('PUT', '/api/state', ['state' => $good, 'baseVersion' => 1])->body['version'] === 2 && !Db::one('SELECT id FROM user_state_hist WHERE user_id = ?', [$huid]));
+ok('сохранение, затёршее квартиру, — прошлая версия ушла в историю', $hu->req('PUT', '/api/state', ['state' => $bad, 'baseVersion' => 2])->body['version'] === 3);
+$hr = Db::one('SELECT * FROM user_state_hist WHERE user_id = ? ORDER BY id DESC', [$huid]);
+ok('в истории — версия 2, сжатая, с временем сохранения и замены', $hr && (int)$hr['version'] === 2 && $hr['enc'] === (function_exists('gzdeflate') ? 'gz' : '') && $hr['reason'] === 'put'
+  && json_decode((string)StateHist::raw($hr), true)['places'][0]['name'] === 'Победа' && (int)$hr['bytes'] === strlen(json_encode($good, JSON_UNESCAPED_UNICODE)), $hr);
+ok('история не админу — 403', $hu->req('GET', '/api/admin/state/history', null, ['QUERY_STRING' => 'id=' . $huid])->status === 403
+  && $hu->req('POST', '/api/admin/state/restore', ['user' => $huid, 'id' => (int)$hr['id']])->status === 403);
+$hl = $boss->req('GET', '/api/admin/state/history', null, ['QUERY_STRING' => 'id=' . $huid])->body['history'] ?? [];
+ok('история в /admin: сначала текущая (v3, 2 квартиры, тепла нет), дальше v2 (Победа, тепло и холодная)', count($hl) === 2 && !empty($hl[0]['current']) && $hl[0]['version'] === 3 && $hl[0]['summary']['places'] === 2
+  && $hl[0]['summary']['kinds']['heat'] === 0 && $hl[1]['version'] === 2 && $hl[1]['labels'] === ['Победа'] && $hl[1]['summary']['kinds']['heat'] === 1 && $hl[1]['summary']['kinds']['cold'] === 1, $hl);
+ok('версию можно посмотреть целиком; чужой пользователь / нет такой — 404', ($boss->req('GET', '/api/admin/state/version', null, ['QUERY_STRING' => 'user=' . $huid . '&id=' . $hr['id']])->body['state']['places'][0]['name'] ?? '') === 'Победа'
+  && $boss->req('GET', '/api/admin/state/version', null, ['QUERY_STRING' => 'user=' . ($huid + 99) . '&id=' . $hr['id']])->status === 404);
+Db::q('INSERT INTO photos (id, user_id, file, mime, bytes, status, created_at, kept) VALUES (?, ?, ?, ?, ?, ?, ?, 0)', [str_repeat('ab', 12), $huid, 'x.png', 'image/png', 10, 'recognized', Http::iso()]);
+$rs = $boss->req('POST', '/api/admin/state/restore', ['user' => $huid, 'id' => (int)$hr['id']]);
+$now = json_decode((string)Db::one('SELECT data FROM user_state WHERE user_id = ?', [$huid])['data'], true);
+ok('«Восстановить»: версия 2 стала текущей под новым номером 4', $rs->status === 200 && $rs->body['version'] === 4 && $rs->body['from'] === 2 && $now['places'][0]['name'] === 'Победа' && $now['places'][0]['meter']['modelId'] === 'sharky774', $rs->body);
+$ms = $now['restoredAt'] ?? 0;
+ok('…с метками «сейчас» (побеждает копии в браузерах) и restoredAt', $ms > 1700000000000 && $now['updatedAt'] === $ms && $now['places'][0]['updatedAt'] === $ms && $now['readings'][0]['updatedAt'] === $ms && empty($now['readings'][0]['deleted']));
+$pl = array_column($now['places'], null, 'id'); $rr = array_column($now['readings'], null, 'id');
+ok('…квартира и запись, которых в ней не было, — «надгробия»', !empty($pl['p2']['deleted']) && $pl['p2']['updatedAt'] === $ms && !empty($rr['junk']['deleted']) && count($now['readings']) === 2);
+ok('…«стереть всё» из затёртой версии не переносится', !isset($now['wipedAt']));
+ok('…фото записи снова хранится, пока есть запись', (int)Db::one('SELECT kept FROM photos WHERE id = ?', [str_repeat('ab', 12)])['kept'] === 1);
+$hr2 = Db::one('SELECT * FROM user_state_hist WHERE user_id = ? ORDER BY id DESC', [$huid]);
+ok('…а затёртая версия 3 — в истории («заменена восстановлением»), её тоже можно вернуть', (int)$hr2['version'] === 3 && $hr2['reason'] === 'restore' && json_decode((string)StateHist::raw($hr2), true)['places'][1]['name'] === 'Чужая');
+ok('…в «Входах и действиях» человека — кто и что восстановил', str_contains((string)Db::one('SELECT action FROM audit_log WHERE user_id = ? ORDER BY id DESC', [$huid])['action'], 'восстановлена версия 2 → 4 (boss@example.ua)'));
+$c9 = $hu->req('PUT', '/api/state', ['state' => $bad, 'baseVersion' => 3]);
+ok('устройство человека со старой версией → 409 и получает восстановленные данные для слияния', $c9->status === 409 && $c9->body['version'] === 4 && $c9->body['state']['places'][0]['name'] === 'Победа');
+ok('восстановить несуществующую версию — 404', $boss->req('POST', '/api/admin/state/restore', ['user' => $huid, 'id' => 999999])->status === 404);
+// чистка: старше 48 ч — по одной за день, старше 30 дней — нет, за 48 ч — не больше 200
+Db::q('DELETE FROM user_state_hist WHERE user_id = ?', [$huid]);
+$ins = function (int $ago, int $v) use ($huid) { Db::q('INSERT INTO user_state_hist (user_id, version, data, enc, bytes, saved_at, replaced_at, reason) VALUES (?, ?, ?, ?, ?, ?, ?, ?)', [$huid, $v, '{"readings":[]}', '', 15, gmdate('c', time() - $ago - 60), gmdate('c', time() - $ago), 'put']); };
+$d5 = strtotime(gmdate('Y-m-d', time() - 5 * 86400) . 'T12:00:00Z'); $off = time() - $d5;
+$ins($off + 3600, 1); $ins($off + 1800, 2); $ins($off, 3);   // три за один день 5 дней назад
+$ins(40 * 86400, 0);                                          // старше 30 дней
+for ($i = 0; $i < 205; $i++) $ins(3600 + 204 - $i, 100 + $i);  // свежие, по порядку: v100 — самая старая
+$gone = StateHist::cleanup();
+$left = array_map('intval', array_column(Db::q('SELECT version FROM user_state_hist WHERE user_id = ? ORDER BY id', [$huid])->fetchAll(), 'version'));
+ok('чистка истории: за день 5 дней назад осталась последняя (v3), старше 30 дней — нет, свежих — 200', $gone === 8 && in_array(3, $left, true) && !in_array(1, $left, true) && !in_array(2, $left, true) && !in_array(0, $left, true) && count($left) === 201 && !in_array(104, $left, true) && in_array(105, $left, true) && in_array(304, $left, true), [$gone, count($left)]);
+
 echo "\nВыход:\n";
 $phone->req('POST', '/api/auth/logout');
 ok('после выхода /api/me → 401', $phone->req('GET', '/api/me')->status === 401);

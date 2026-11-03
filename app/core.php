@@ -164,7 +164,11 @@ final class Db {
       // с чего работают: телефон / планшет / компьютер (одна строка на браузер в сутки, app/visits.php)
       "CREATE TABLE IF NOT EXISTS visits (day CHAR(10) NOT NULL, vid VARCHAR(24) NOT NULL, user_id INT NULL, device VARCHAR(8) NOT NULL, os VARCHAR(10) NOT NULL, tg TINYINT NOT NULL DEFAULT 0, pwa TINYINT NOT NULL DEFAULT 0, sw SMALLINT NULL, hits INT NOT NULL DEFAULT 1, first_at VARCHAR(25) NOT NULL, last_at VARCHAR(25) NOT NULL, PRIMARY KEY (day, vid))$tail",
       "CREATE TABLE IF NOT EXISTS recog_reports (id $ai, user_id INT NOT NULL, photo_ids TEXT NULL, kind VARCHAR(16) NOT NULL, ok TINYINT NOT NULL DEFAULT 0, text TEXT NOT NULL, data TEXT NULL, created_at VARCHAR(25) NOT NULL)$tail",
+      // прошлые версии user_state (StateHist, app/admin.php): data — JSON, сжатый gz+base64 (enc = 'gz'); saved_at — когда версия стала
+      // текущей, replaced_at — когда её заменили; reason: put — новым сохранением, restore — восстановлением из /admin
+      "CREATE TABLE IF NOT EXISTS user_state_hist (id $ai, user_id INT NOT NULL, version INT NOT NULL, data $txt NOT NULL, enc VARCHAR(4) NOT NULL DEFAULT '', bytes INT NOT NULL DEFAULT 0, saved_at VARCHAR(25) NOT NULL, replaced_at VARCHAR(25) NOT NULL, reason VARCHAR(12) NOT NULL DEFAULT 'put'" . ($my ? ', INDEX ix_state_hist_user (user_id, id)' : '') . ")$tail",
     ];
+    if (!$my) $sql[] = 'CREATE INDEX IF NOT EXISTS ix_state_hist_user ON user_state_hist (user_id, id)';
     foreach ($sql as $s) self::$pdo->exec($s);
     // фото, приложенные к записи истории (тепло/вода), не удаляются по сроку хранения, пока запись есть
     self::addColumn('photos', 'kept', 'TINYINT NOT NULL DEFAULT 0');

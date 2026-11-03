@@ -27,4 +27,20 @@ t('payload не тащит локальные поля', !('demoToday' in S.payl
 t('подпись не зависит от updatedAt', S.sig({ a: 1, updatedAt: 1 }) === S.sig({ a: 1, updatedAt: 2 }));
 { const a = { updatedAt: 1, water: [{ id: 'w1', createdAt: '2026-11-01T10:00:00Z', updatedAt: 5, vals: { h1: '10' } }] }, b = { updatedAt: 2, water: [{ id: 'w1', createdAt: '2026-11-01T10:00:00Z', updatedAt: 9, vals: { h1: '11' } }, { id: 'w2', createdAt: '2026-11-02T10:00:00Z', vals: { h1: '12' } }] };
   const mm = S.merge(a, b); t('вода: сливается по id, побеждает свежая правка', mm.water.length === 2 && mm.water[0].vals.h1 === '11'); }
+
+// восстановление версии из истории (/admin, StateHist::freshen на сервере): всем квартирам и записям — свежая метка, лишним — «надгробия»
+{ const T = 1767000000000, R = T + 50000;
+  const good = { updatedAt: T, places: [{ id: 'main', name: 'Победа', meter: { modelId: 'sharky774' }, water: { meters: [{ id: 'c1', kind: 'cold' }] }, updatedAt: T }], readings: [r('a', T - 9000)] };
+  const bad = { updatedAt: T + 9000, places: [{ id: 'main', name: '', meter: null, water: { meters: [] }, updatedAt: T + 9000 }], readings: [r('a', T - 9000), r('junk', T + 8000, { updatedAt: T + 8000 })] };
+  const restored = { updatedAt: R, restoredAt: R, places: [Object.assign({}, good.places[0], { updatedAt: R })], readings: [Object.assign({}, good.readings[0], { updatedAt: R }), Object.assign({}, bad.readings[1], { deleted: true, updatedAt: R })] };
+  let mr = S.merge(bad, restored);
+  t('восстановленная версия побеждает «плохую» копию в браузере: квартира целиком', mr.places[0].name === 'Победа' && mr.places[0].meter.modelId === 'sharky774' && mr.places[0].water.meters.length === 1);
+  t('…и запись, появившаяся после неё, убирается (надгробие)', mr.readings.filter(x => !x.deleted).map(x => x.id).join() === 'a');
+  t('…в обе стороны слияния', JSON.stringify(S.merge(restored, bad).places) === JSON.stringify(mr.places));
+  const wipedLocal = { updatedAt: T + 9000, wipedAt: T + 9000, onboarded: false, places: [{ id: 'main', name: '', meter: null, updatedAt: 0 }], readings: [] };
+  mr = S.merge(wipedLocal, restored);
+  t('«стереть всё» до восстановления — отменено: записи и квартира вернулись', mr.readings.filter(x => !x.deleted).length === 1 && mr.places[0].name === 'Победа' && !mr.wipedAt && mr.restoredAt === R);
+  mr = S.merge(Object.assign({}, wipedLocal, { wipedAt: R + 1000, updatedAt: R + 1000 }), restored);
+  t('«стереть всё» после восстановления — работает как раньше', mr.readings.length === 0 && mr.wipedAt === R + 1000);
+  t('restoredAt синхронизируется', S.payload({ restoredAt: R, readings: [] }).restoredAt === R); }
 console.log('\nИтог: ' + pass + ' OK, ' + fail + ' FAIL'); process.exit(fail ? 1 : 0);

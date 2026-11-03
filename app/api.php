@@ -11,7 +11,7 @@
 //  POST /api/auth/password          {email, password}    — задать email+пароль аккаунту из Telegram
 //  POST /api/auth/logout
 //  GET  /api/state                  → {state, version}
-//  PUT  /api/state                  {state, baseVersion} → {version} | 409 {state, version}
+//  PUT  /api/state                  {state, baseVersion} → {version} | 409 {state, version}; прошлая версия → user_state_hist (StateHist)
 //  POST /api/bot/webhook            (заголовок X-Telegram-Bot-Api-Secret-Token); фото в чате → bot_inbox
 //  GET  /api/inbox, GET /api/inbox/file?id=…, POST /api/inbox/done {ids} — фото из бота на распознавание в браузере
 //  POST /api/bot/setup              (заголовок X-Setup-Secret = webhook_secret) — вебхук, кнопка меню, /start
@@ -160,11 +160,19 @@ final class Api {
         RateLimit::hit('state_user', (string)$user['id']);
         $state = $in['state'] ?? null; $base = (int)($in['baseVersion'] ?? 0);
         if (!is_array($state) || !isset($state['readings']) || !is_array($state['readings'])) throw new HttpError(422, 'bad_state');
-        $row = Db::one('SELECT data, version FROM user_state WHERE user_id = ?', [$user['id']]);
+        $row = Db::one('SELECT data, version, updated_at FROM user_state WHERE user_id = ?', [$user['id']]);
         $cur = $row ? (int)$row['version'] : 0;
         if ($cur !== $base) throw new HttpError(409, 'conflict', ['state' => json_decode($row['data'], true), 'version' => $cur]);
         $json = json_encode($state, JSON_UNESCAPED_UNICODE);
-        if ($row) Db::q('UPDATE user_state SET data = ?, version = version + 1, updated_at = ? WHERE user_id = ? AND version = ?', [$json, Http::iso(), $user['id'], $cur]);
+        if ($row) {
+          // одновременная запись с другого устройства успела раньше — не затираем её молча, а отдаём как конфликт (клиент сольёт и повторит)
+          if (Db::q('UPDATE user_state SET data = ?, version = version + 1, updated_at = ? WHERE user_id = ? AND version = ?', [$json, Http::iso(), $user['id'], $cur])->rowCount() !== 1) {
+            $now = Db::one('SELECT data, version FROM user_state WHERE user_id = ?', [$user['id']]);
+            throw new HttpError(409, 'conflict', ['state' => json_decode((string)$now['data'], true), 'version' => (int)$now['version']]);
+          }
+          // прошлая версия — в историю (вернуть из /admin, если сохранение что-то затёрло)
+          if ($row['data'] !== $json) StateHist::put((int)$user['id'], (string)$row['data'], $cur, (string)$row['updated_at']);
+        }
         else Db::q('INSERT INTO user_state (user_id, data, version, updated_at) VALUES (?, ?, 1, ?)', [$user['id'], $json, Http::iso()]);
         return ['version' => $cur + 1];
       }

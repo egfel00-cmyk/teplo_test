@@ -188,6 +188,10 @@ final class Admin {
           'telegram' => (bool)Cfg::get('bot_token')];
       }
       case 'GET /api/admin/weather': return Weather::range((string)($q['from'] ?? ''), (string)($q['to'] ?? ''));
+      // история версий данных пользователя и «Восстановить эту версию»
+      case 'GET /api/admin/state/history': return ['history' => StateHist::list((int)($q['id'] ?? 0))];
+      case 'GET /api/admin/state/version': return ['state' => StateHist::get((int)($q['user'] ?? 0), (int)($q['id'] ?? 0))];
+      case 'POST /api/admin/state/restore': return StateHist::restore((int)($in['user'] ?? 0), (int)($in['id'] ?? 0), $me);
       case 'GET /api/admin/reports':
         return ['reports' => Db::q("SELECT r.*, u.email, i.username AS tg_username FROM recog_reports r LEFT JOIN users u ON u.id = r.user_id
           LEFT JOIN user_identities i ON i.user_id = r.user_id AND i.type = 'telegram' ORDER BY r.id DESC LIMIT 500")->fetchAll()];
@@ -225,6 +229,123 @@ final class Admin {
     Db::q('DELETE FROM photos WHERE created_at < ? AND kept = 0', [$before]);
     Db::q('DELETE FROM rate_limits WHERE window_start < ?', [time() - 86400 * 2]);
     Db::q('DELETE FROM sessions WHERE expires_at < ?', [time()]);
+    return $n;
+  }
+}
+
+/** История версий данных пользователя (user_state_hist). При каждом PUT /api/state прошлая версия уходит сюда — если сохранение
+ *  что-то затёрло (03.11.2026 вход затёр квартиру владельца), её можно вернуть из /admin → карточка → «История версий».
+ *  Хранится сжатой (gz + base64). Чистка (cron, раз в час): за последние 48 ч — все (до 200 на человека), старше — последняя за
+ *  каждый день, старше 30 дней — удаляется. */
+final class StateHist {
+  const KEEP_ALL_H = 48, KEEP_ALL_MAX = 200, KEEP_DAYS = 30, LIST_MAX = 300;
+
+  public static function pack(string $json): array {
+    if (function_exists('gzdeflate')) { $z = gzdeflate($json, 6); if ($z !== false) return [base64_encode($z), 'gz']; }
+    return [$json, ''];
+  }
+  public static function raw(array $row): ?string {
+    if (($row['enc'] ?? '') === 'gz') { $b = base64_decode((string)$row['data'], true); $j = $b === false ? false : @gzinflate($b); return is_string($j) ? $j : null; }
+    return (string)$row['data'];
+  }
+  /** Положить версию в историю: json — данные, version — её номер, savedAt — когда она стала текущей. */
+  public static function put(int $uid, string $json, int $version, string $savedAt, string $reason = 'put'): void {
+    [$d, $e] = self::pack($json);
+    Db::q('INSERT INTO user_state_hist (user_id, version, data, enc, bytes, saved_at, replaced_at, reason) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+      [$uid, $version, $d, $e, strlen($json), $savedAt, Http::iso(), $reason]);
+  }
+
+  /** Названия квартир (как в приложении: своё имя, иначе адрес, иначе «Моя квартира» / «Квартира N»). */
+  private static function labels(?array $s): array {
+    $out = []; $i = 0;
+    foreach ((array)($s['places'] ?? []) as $p) {
+      if (!is_array($p) || !empty($p['deleted'])) continue;
+      $out[] = trim((string)($p['name'] ?? '')) ?: (trim((string)($p['address'] ?? '')) ?: ($i ? 'Квартира ' . ($i + 1) : 'Моя квартира')); $i++;
+    }
+    return $out;
+  }
+  private static function item(array $r): array {
+    $j = self::raw($r); $s = $j === null ? null : json_decode($j, true);
+    return ['id' => (int)$r['id'], 'version' => (int)$r['version'], 'savedAt' => $r['saved_at'], 'replacedAt' => $r['replaced_at'], 'reason' => $r['reason'],
+      'bytes' => (int)$r['bytes'], 'ok' => is_array($s), 'summary' => is_array($s) ? Admin::stateSummary($j) : null, 'labels' => is_array($s) ? self::labels($s) : []];
+  }
+  /** Версии пользователя для /admin: сначала текущая (current: true), дальше прошлые — от новых к старым, со сводкой каждой. */
+  public static function list(int $uid): array {
+    $out = [];
+    $cur = Db::one('SELECT data, version, updated_at FROM user_state WHERE user_id = ?', [$uid]);
+    if ($cur) { $s = json_decode((string)$cur['data'], true);
+      $out[] = ['id' => 0, 'current' => true, 'version' => (int)$cur['version'], 'savedAt' => $cur['updated_at'], 'replacedAt' => null, 'reason' => null,
+        'bytes' => strlen((string)$cur['data']), 'ok' => true, 'summary' => Admin::stateSummary((string)$cur['data']), 'labels' => self::labels(is_array($s) ? $s : null),
+        'restoredAt' => is_array($s) && !empty($s['restoredAt']) ? gmdate('c', intdiv((int)$s['restoredAt'], 1000)) : null]; }
+    foreach (Db::q('SELECT * FROM user_state_hist WHERE user_id = ? ORDER BY id DESC LIMIT ' . self::LIST_MAX, [$uid])->fetchAll() as $r) $out[] = self::item($r);
+    return $out;
+  }
+  /** Данные одной версии целиком. */
+  public static function get(int $uid, int $id): array {
+    $r = Db::one('SELECT * FROM user_state_hist WHERE id = ? AND user_id = ?', [$id, $uid]);
+    if (!$r) throw new HttpError(404, 'not_found');
+    $s = json_decode((string)self::raw($r), true);
+    if (!is_array($s)) throw new HttpError(422, 'broken', ['human' => 'Версия повреждена — восстановить её нельзя.']);
+    return $s;
+  }
+
+  /** Восстановленная версия должна победить копии в браузерах человека (там слияние по меткам времени, sync.js): всем квартирам и
+   *  записям — свежая метка; квартиры и записи, которых в этой версии не было (появились позже), — «надгробия» (deleted), чтобы
+   *  устройства их тоже убрали; restoredAt — отменяет более ранний «стереть всё» (wipedAt) на устройствах. Текущая версия при этом
+   *  уходит в историю — восстановление можно отменить, вернув её. */
+  public static function freshen(array $old, ?array $cur, int $ms): array {
+    $s = $old; $s['updatedAt'] = $ms; $s['restoredAt'] = $ms;
+    $fix = function (string $k) use (&$s, $cur, $ms): void {
+      $have = []; $list = [];
+      foreach ((array)($s[$k] ?? []) as $x) { if (!is_array($x)) continue; $x['updatedAt'] = $ms; $list[] = $x; if (isset($x['id'])) $have[(string)$x['id']] = true; }
+      foreach ((array)($cur[$k] ?? []) as $x) { if (!is_array($x) || !isset($x['id']) || isset($have[(string)$x['id']])) continue; $x['deleted'] = true; $x['updatedAt'] = $ms; $list[] = $x; }
+      if ($list || isset($s[$k])) $s[$k] = $list;
+    };
+    foreach (['places', 'readings', 'water', 'mrecs'] as $k) $fix($k);
+    if (!isset($s['readings'])) $s['readings'] = [];
+    return $s;
+  }
+
+  /** «Восстановить эту версию»: данные версии id становятся текущими (новый номер версии), текущие — в историю. */
+  public static function restore(int $uid, int $id, array $admin): array {
+    $old = self::get($uid, $id);
+    $from = (int)Db::one('SELECT version FROM user_state_hist WHERE id = ?', [$id])['version'];
+    $row = Db::one('SELECT data, version, updated_at FROM user_state WHERE user_id = ?', [$uid]);
+    $cur = $row ? json_decode((string)$row['data'], true) : null;
+    $new = self::freshen($old, is_array($cur) ? $cur : null, (int)floor(microtime(true) * 1000));
+    $json = json_encode($new, JSON_UNESCAPED_UNICODE);
+    if ($row) {
+      if (Db::q('UPDATE user_state SET data = ?, version = version + 1, updated_at = ? WHERE user_id = ? AND version = ?', [$json, Http::iso(), $uid, (int)$row['version']])->rowCount() !== 1)
+        throw new HttpError(409, 'conflict', ['human' => 'Человек как раз сохранял данные — обновите карточку и повторите.']);
+      self::put($uid, (string)$row['data'], (int)$row['version'], (string)$row['updated_at'], 'restore');
+    } else Db::q('INSERT INTO user_state (user_id, data, version, updated_at) VALUES (?, ?, 1, ?)', [$uid, $json, Http::iso()]);
+    $ver = $row ? (int)$row['version'] + 1 : 1;
+    // фото записей восстановленной версии снова хранятся, пока есть запись (удаление записи снимало отметку)
+    $ids = [];
+    foreach (['readings', 'water', 'mrecs'] as $k) foreach ((array)($old[$k] ?? []) as $x)
+      if (is_array($x) && empty($x['deleted'])) foreach ((array)($x['photos'] ?? []) as $p) { $pid = is_array($p) ? (string)($p['id'] ?? '') : ''; if (preg_match('/^[a-f0-9]{24}$/', $pid)) $ids[] = $pid; }
+    foreach (array_unique($ids) as $pid) Db::q('UPDATE photos SET kept = 1 WHERE id = ? AND user_id = ?', [$pid, $uid]);
+    $who = $admin['email'] ?: ('#' . $admin['id']);
+    Db::q('INSERT INTO audit_log (user_id, action, ip, created_at) VALUES (?, ?, ?, ?)', [$uid, mb_substr("восстановлена версия $from → $ver ($who)", 0, 60), null, Http::iso()]);
+    return ['ok' => true, 'version' => $ver, 'from' => $from, 'summary' => Admin::stateSummary($json)];
+  }
+
+  /** Чистка (cron.php, раз в час). → сколько версий удалено. */
+  public static function cleanup(?int $now = null): int {
+    $now = $now ?? time(); $n = 0;
+    $all = gmdate('c', $now - self::KEEP_ALL_H * 3600);
+    $n += Db::q('DELETE FROM user_state_hist WHERE replaced_at < ?', [gmdate('c', $now - self::KEEP_DAYS * 86400)])->rowCount();
+    $del = []; $seen = []; $cnt = [];
+    // старше 48 ч — последняя версия каждого дня
+    foreach (Db::q('SELECT id, user_id, replaced_at FROM user_state_hist WHERE replaced_at < ? ORDER BY user_id, id DESC', [$all])->fetchAll() as $r) {
+      $k = $r['user_id'] . ' ' . substr((string)$r['replaced_at'], 0, 10);
+      if (isset($seen[$k])) $del[] = (int)$r['id']; else $seen[$k] = true;
+    }
+    // за 48 ч — все, но не больше KEEP_ALL_MAX на человека
+    foreach (Db::q('SELECT id, user_id FROM user_state_hist WHERE replaced_at >= ? ORDER BY user_id, id DESC', [$all])->fetchAll() as $r) {
+      $u = (int)$r['user_id']; $cnt[$u] = ($cnt[$u] ?? 0) + 1; if ($cnt[$u] > self::KEEP_ALL_MAX) $del[] = (int)$r['id'];
+    }
+    foreach (array_chunk($del, 400) as $ch) $n += Db::q('DELETE FROM user_state_hist WHERE id IN (' . implode(',', array_fill(0, count($ch), '?')) . ')', $ch)->rowCount();
     return $n;
   }
 }

@@ -6,11 +6,12 @@
  *   claude — опубликованный прототип на claude.ai: личный документ data/users/<id>/teplo (возможности db + user);
  *   local  — только этот браузер.
  * Слияние: показания — объединение по id (новее по updatedAt), остальное — из более свежего состояния;
- * wipedAt — «удалить всё» побеждает старые записи.
+ * wipedAt — «удалить всё» побеждает старые записи; restoredAt — версия восстановлена из истории на сервере (/admin): отменяет
+ *   более ранний wipedAt (иначе устройство, где «стёрли всё», выбросило бы восстановленные записи).
  */
 (function (root) {
   'use strict';
-  var SYNC_KEYS = ['v', 'onboarded', 'meter', 'baseline', 'contacts', 'readings', 'draft', 'updatedAt', 'wipedAt', 'tariff', 'bill', 'places', 'water', 'remind', 'wtariff', 'mrecs'];
+  var SYNC_KEYS = ['v', 'onboarded', 'meter', 'baseline', 'contacts', 'readings', 'draft', 'updatedAt', 'wipedAt', 'tariff', 'bill', 'places', 'water', 'remind', 'wtariff', 'mrecs', 'restoredAt'];
 
   function payload(S) { var o = {}; SYNC_KEYS.forEach(function (k) { if (S[k] !== undefined) o[k] = S[k]; }); return o; }
   function sig(p) { var c = Object.assign({}, p); delete c.updatedAt; return JSON.stringify(c); }
@@ -29,7 +30,8 @@
     a = a || {}; b = b || {};
     var aT = a.updatedAt || 0, bT = b.updatedAt || 0, newer = bT > aT ? b : a, older = newer === a ? b : a;
     var out = Object.assign({}, older, newer);
-    var wiped = Math.max(a.wipedAt || 0, b.wipedAt || 0);
+    var wiped = Math.max(a.wipedAt || 0, b.wipedAt || 0), restored = Math.max(a.restoredAt || 0, b.restoredAt || 0);
+    if (wiped && restored > wiped) wiped = 0;   // «стереть всё» до восстановления версии из истории — отменено им
     var map = {};
     (older.readings || []).concat(newer.readings || []).forEach(function (r) {
       if (!r || !r.id) return;
@@ -72,7 +74,7 @@
       if (order.length) out.places = order.map(function (k) { return pm[k]; });
     }
     if (wipeWins) { out.draft = newer.draft || null; out.contacts = newer.contacts || { phone: '', email: '' }; }
-    out.updatedAt = Math.max(aT, bT); out.wipedAt = wiped || undefined;
+    out.updatedAt = Math.max(aT, bT); out.wipedAt = wiped || undefined; out.restoredAt = restored || undefined;
     return out;
   }
 
