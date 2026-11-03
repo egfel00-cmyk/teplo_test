@@ -125,7 +125,9 @@ final class Telegram {
     try {
       $uid = self::userFor((array)($msg['from'] ?? []));
       RateLimit::hit('bot_photo', (string)$uid);
+      $before = VkStatus::bot();
       if ($text !== '') Db::q('INSERT INTO vk_replies (user_id, kind, text, msg_at, created_at) VALUES (?, ?, ?, ?, ?)', [$uid, $kind, mb_substr($text, 0, 3000), $at, Http::iso()]);
+      if ($text !== '') VkStatus::aliveAgain($before, $uid);   // любой ответ бота Водоканала — он работает: пишем тем, кто жаловался
     } catch (Throwable $e) { $kind = 'fail'; }
     $msgs = [
       'ok' => $ru ? "✅ Сохранил подтверждение Водоканала. В «Счётчиках» показания воды отметятся переданными." : "✅ Зберіг підтвердження Водоканалу. У «Лічильниках» показання води позначаться переданими.",

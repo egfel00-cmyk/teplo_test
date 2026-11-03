@@ -829,6 +829,7 @@
       // квартир несколько — за какую передаём (рахунок і цифри — цієї квартири)
       (places().length > 1 ? '<p class="dest-place" style="--pc:var(--pc-' + placeColor(place()) + ')" data-key="where-place"><b>' + esc(t('wd_for', { p: placeLabel(place()) })) + '</b>' + (placeSub(place()) ? '<span class="small muted"> · ' + esc(placeSub(place())) + '</span>' : '') + '</p>' : '') +
       (rec ? '' : '<p class="small muted">' + esc(t('wd_lead')) + '</p>');
+    vkBody = vkStatusLine() + vkBody;
     h += destBox({ key: 'vk', id: 'wsend-vk', org: t('wd_vk_org'), what: kind === 'cold' ? t('wd_vk_cold') : kind === 'hot' ? t('wd_vk_hot') : t('wd_vk_both'),
       due: vkDue, dueTone: w.open && w.daysLeft <= 3 ? 'warn' : 'neutral', sent: rec && wsentVk(rec), body: vkBody, chans: vkChans,
       more: esc(t('wd_vk_more')) + ' ' + telLink('+380577075851', '(057) 707-58-51') + ' · Viber (050) 355-12-12', mark: rec && rec.vkAt && !wsentVk(rec) ? '' : mark('vk', rec && wsentVk(rec)) });
@@ -859,7 +860,8 @@
     var err = VKERR[rec.id] || (vkReplyFor(rec) || {}).kind === 'err';
     return '<div class="vk-ask" data-key="vk-ask"><p><b>' + esc(t('vk_ask')) + '</b></p><div class="row-actions">' +
       '<button class="btn" data-act="wsent" data-to="vk" data-v="1" data-id="' + esc(rec.id) + '" data-key="vk-ok">' + ico('check', 18) + '<span>' + esc(t('vk_ok')) + '</span></button>' +
-      '<button class="btn sec" data-act="vk-err" data-id="' + esc(rec.id) + '" data-key="vk-err">' + esc(t('vk_err')) + '</button></div>' +
+      '<button class="btn sec" data-act="vk-err" data-why="silent" data-id="' + esc(rec.id) + '" data-key="vk-silent">' + esc(t('vk_silent_btn')) + '</button>' +
+      '<button class="btn sec" data-act="vk-err" data-why="err" data-id="' + esc(rec.id) + '" data-key="vk-err">' + esc(t('vk_err')) + '</button></div>' +
       '<p class="small muted">' + esc(t('vk_fw', { b: '@' + ourBot() })) + '</p>' +
       (err ? '<div class="vk-tips" data-key="vk-tips"><ul class="small">' + t('vk_err_tips').split('|').map(function (x) { return '<li>' + esc(x) + '</li>'; }).join('') + '</ul>' + waccForm() + wmeterIdForm() +
         '<p><button class="btn sec" data-act="vk-open" data-text="' + esc(Wt.vkCommand(wcfg().account, wcfg().surname, [], {}).info) + '" data-key="vk-check-ids">' + ico('send', 18) + '<span>' + esc(t('vk_check_ids')) + '</span></button></p></div>' : '') + '</div>';
@@ -893,6 +895,25 @@
     });
     if (hit) { save(); toast(t('vk_conf_toast')); }
     return hit;
+  }
+  /** Що люди роблять з ботом Водоканалу — для статусу «бот відповідає / не відповідає з …» (сервер, VkStatus). */
+  function vkEvent(kind) { if (window.TEPLO_API && Y().account) Y().api('POST', '/vk/event', { kind: kind }).then(function (j) { if (j && j.status) { VKS.data = j.status; VKS.at = Date.now(); safeRender(); } }, function () {}); }
+  var VKS = { data: null, at: 0, busy: false };
+  function vksLoad() {
+    if (!window.TEPLO_API || VKS.busy || Date.now() - VKS.at < 60000) return; VKS.busy = true; VKS.at = Date.now();
+    fetch(window.TEPLO_API + '/vk/status', { credentials: 'same-origin', headers: { Accept: 'application/json' } }).then(function (r) { return r.json(); }).then(function (j) {
+      VKS.busy = false; var was = JSON.stringify(VKS.data); VKS.data = j; if (was !== JSON.stringify(j)) safeRender();
+    }, function () { VKS.busy = false; });
+  }
+  /** Рядок статусу бота (і кабінету) у блоці Водоканалу. */
+  function vkStatusLine() {
+    vksLoad(); var d = VKS.data; if (!d) return '';
+    var b = d.bot || {}, c = d.cab || null, out = '';
+    if (b.state === 'silent') out += '<p class="vk-st warn small" data-key="vk-bot-silent">' + ico('alert', 16) + ' ' + esc(t('vk_bot_silent', { d: vkWhen(b.since), n: b.users })) + '</p>';
+    else if (b.state === 'ok' && b.lastOk) out += '<p class="vk-st ok small muted" data-key="vk-bot-ok">' + esc(t('vk_bot_ok', { d: vkWhen(b.lastOk) })) + '</p>';
+    // кабінет — лише якщо наш сервер хоч раз його відкрив (інакше, може, сайт не пускає закордонні адреси — не лякаємо)
+    if (c && c.everOk) out += '<p class="vk-st small ' + (c.state === 'ok' ? 'muted' : 'warn') + '" data-key="vk-cab-' + c.state + '">' + esc(t(c.state === 'ok' ? 'vk_cab_ok' : 'vk_cab_down', { d: vkWhen(c.state === 'ok' ? c.at : c.since) })) + '</p>';
+    return out;
   }
   function vkPending() { return (S.water || []).some(function (w) { return w && !w.deleted && w.vkAt && !wsentVk(w) && Date.now() - w.vkAt < 30 * 60000; }) || Date.now() - VKR.idsAt < 30 * 60000; }
   VKR.idsAt = 0;
@@ -1837,7 +1858,7 @@
       case 'wz-next': e.preventDefault(); wzRead(); if (WS.step === 0) { var ch = document.querySelector('input[name="wz"]:checked'); if (ch) WS.preset = ch.value; } WS.step = Math.min(2, WS.step + 1); render(); return true;
       case 'wz-back': e.preventDefault(); wzRead(); WS.step = Math.max(0, WS.step - 1); render(); return true;
       case 'wz-done': e.preventDefault(); wzDone(); return true;
-      case 'wsent': { var r = (S.water || []).filter(function (x) { return x.id === el.getAttribute('data-id'); })[0]; if (!r) return true; r.sent = Object.assign({}, r.sent || {}); r.sent[el.getAttribute('data-to')] = el.getAttribute('data-v') === '1' ? today() : ''; r.updatedAt = Date.now(); save(); render(true); return true; }
+      case 'wsent': { var r = (S.water || []).filter(function (x) { return x.id === el.getAttribute('data-id'); })[0]; if (!r) return true; if (el.getAttribute('data-key') === 'vk-ok') vkEvent('ok'); r.sent = Object.assign({}, r.sent || {}); r.sent[el.getAttribute('data-to')] = el.getAttribute('data-v') === '1' ? today() : ''; r.updatedAt = Date.now(); save(); render(true); return true; }
       case 'wdel': { if (!confirm(t('wh_del_q'))) return true; var r2 = (S.water || []).filter(function (x) { return x.id === el.getAttribute('data-id'); })[0]; if (r2) { r2.deleted = true; r2.updatedAt = Date.now(); photoKeep(r2.photos, false); billsDrop(r2.bills); save(); if (/^wrec-/.test(routeName())) go('history'); else render(true); } return true; }
       case 'wedit': { var r3 = wrecs().filter(function (x) { return x.id === el.getAttribute('data-id'); })[0]; if (!r3) return true;
         var k3 = wmeters('hot').some(function (m) { return hasVal(r3, m.id); }) ? 'hot' : 'cold', v3 = {};
@@ -1884,12 +1905,13 @@
       case 'vk-send': case 'vk-open': {
         var vtx = el.getAttribute('data-text'), vurl = Wt.VK_BOT + '?text=' + encodeURIComponent(vtx);
         copyText(vtx, null);   // запасний шлях: вперше бот просить «Старт» — команду можна вставити
+        if (act === 'vk-send') vkEvent('send');
         if (act === 'vk-send') { var vr = (S.water || []).filter(function (x) { return x.id === el.getAttribute('data-id'); })[0]; if (vr) { vr.vkAt = Date.now(); if (vr.sent && vr.sent.vk) { vr.sent = Object.assign({}, vr.sent, { vk: '' }); delete vr.vkConf; } vr.updatedAt = Date.now(); delete VKERR[vr.id]; save(); } }   // ще раз — нове підтвердження
         else VKR.idsAt = Date.now();
         setTimeout(function () { var tw = window.Telegram && window.Telegram.WebApp; if (tw && tw.openTelegramLink) tw.openTelegramLink(vurl); else window.open(vurl, '_blank', 'noopener'); render(true); }, 200);
         return true;
       }
-      case 'vk-err': VKERR[el.getAttribute('data-id')] = true; render(true); return true;
+      case 'vk-err': VKERR[el.getAttribute('data-id')] = true; vkEvent(el.getAttribute('data-why') === 'silent' ? 'silent' : 'err'); render(true); return true;
       case 'vk-id-chip': {
         var empty = Array.prototype.filter.call(document.querySelectorAll('input[data-wf="vkId"]'), function (x) { return !x.value; })[0];
         if (empty) { empty.value = el.getAttribute('data-v'); empty.dispatchEvent(new Event('change', { bubbles: true })); el.classList.add('done'); }

@@ -347,6 +347,28 @@ $vl = $tgb->req('GET', '/api/vk/replies')->body['replies'] ?? [];
 ok('/api/vk/replies: ошибка → err, ID счётчиков → info, чужой бот не сохраняется; новые сверху', count($vl) === 3 && $vl[0]['kind'] === 'info' && $vl[1]['kind'] === 'err' && $vl[2]['kind'] === 'ok', $vl);
 ok('чужим ответы не видны, без входа — 401', count($rb->req('GET', '/api/vk/replies')->body['replies'] ?? []) === 0 && (new Browser('10.0.12.9'))->req('GET', '/api/vk/replies')->status === 401);
 ok('Telegram::vkKind: «не прийнято» — ошибка, «успішно збережено» — ok', Telegram::vkKind('Показання не прийнято') === 'err' && Telegram::vkKind('Дані успішно збережено') === 'ok' && Telegram::vkKind('Баланс: 120 грн') === 'info');
+// работает ли бот Водоканала: признаки жизни — пересланные ответы и «Прийняв», жалобы «не відповідає» после них
+$sil = new Browser('10.0.12.20'); $sil->req('POST', '/api/auth/telegram/webapp', ['initData' => initData($TOKEN, ['id' => 9002, 'first_name' => 'Тиша'])]);
+ok('статус бота без входа: ok (только что пересылали ответы)', ($tgb->req('GET', '/api/vk/status')->body['bot']['state'] ?? '') === 'ok' && (new Browser('10.0.12.21'))->req('GET', '/api/vk/status')->status === 200);
+ok('событие без входа — 401, мусор — 422', (new Browser('10.0.12.22'))->req('POST', '/api/vk/event', ['kind' => 'silent'])->status === 401 && $sil->req('POST', '/api/vk/event', ['kind' => 'boom'])->status === 422);
+Db::q('UPDATE vk_replies SET msg_at = msg_at - 7200'); Db::q("UPDATE vk_events SET at = at - 7200");
+$ev = $sil->req('POST', '/api/vk/event', ['kind' => 'silent'])->body;
+ok('«Не відповідає» после последнего ответа → бот «не відповідає з …», 1 человек', ($ev['status']['bot']['state'] ?? '') === 'silent' && $ev['status']['bot']['users'] === 1 && $ev['status']['bot']['since'] >= time() - 5, $ev);
+$n0 = count($sent); $hook($fw("Показання прийнято", time()));
+$tell = array_values(array_filter(array_slice($sent, $n0), fn($x) => ($x[1]['chat_id'] ?? null) === '9002'));
+ok('кто-то переслал ответ бота → тому, кто жаловался, наш бот пишет «знову відповідає» с кнопкой', count($tell) === 1 && str_contains($tell[0][1]['text'], 'знову відповідає') && str_contains($tell[0][1]['reply_markup']['inline_keyboard'][0][0]['web_app']['url'] ?? '', '?go=water-cold'), $tell);
+ok('…статус снова ok, повторно не пишем', ($tgb->req('GET', '/api/vk/status')->body['bot']['state'] ?? '') === 'ok' && VkStatus::aliveAgain(['state' => 'silent']) === 0);
+// кабинет: сервер открывает страницу входа
+VkStatus::$fetch = fn($u) => ['code' => 200, 'body' => '<title>Сторінка авторизації | Інформаційна система КП "Харківводоканал"</title>', 'err' => null, 'ms' => 300];
+$c1 = VkStatus::probeCabinet(1000);
+VkStatus::$fetch = fn($u) => ['code' => 0, 'body' => '', 'err' => 'Connection timed out', 'ms' => 12000];
+$c2 = VkStatus::probeCabinet(1600); $c3 = VkStatus::probeCabinet(2200);
+VkStatus::$fetch = fn($u) => ['code' => 502, 'body' => 'Bad gateway', 'err' => null, 'ms' => 100];
+$c4 = VkStatus::probeCabinet(2800);
+ok('кабинет: открылся → ok; не открылся → down «с» первого провала; 502 — тоже down; everOk помнит', $c1['state'] === 'ok' && $c2['state'] === 'down' && $c3['since'] === 1600 && $c4['state'] === 'down' && $c4['since'] === 1600 && $c4['everOk'] && $c4['lastOk'] === 1000, [$c1, $c3, $c4]);
+VkStatus::$fetch = fn($u) => ['code' => 200, 'body' => '<html>Харківводоканал вхід</html>', 'err' => null, 'ms' => 200];
+ok('кабинет снова открылся → ok с нового времени; статус для приложения', VkStatus::probeCabinet(3400)['since'] === 3400 && ($tgb->req('GET', '/api/vk/status')->body['cab']['state'] ?? '') === 'ok');
+VkStatus::$fetch = null;
 Telegram::$send = null; Telegram::$fetch = null;
 
 echo "\nНапоминания ботом:\n";

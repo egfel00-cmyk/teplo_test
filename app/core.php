@@ -171,6 +171,9 @@ final class Db {
     // ответы бота Водоканала (@hvk_user_bot), пересланные человеком нашему боту: подтверждение передачи показаний (ok), ошибка (err),
     // прочее (info — например, ответ на /1= с ID счётчиков); msg_at — когда ответил бот Водоканала (unix)
     $sql[] = "CREATE TABLE IF NOT EXISTS vk_replies (id $ai, user_id INT NOT NULL, kind VARCHAR(8) NOT NULL, text TEXT NOT NULL, msg_at INT NOT NULL, created_at VARCHAR(25) NOT NULL)$tail";
+    // что люди делали с ботом Водоканала: send — нажали «Відправити», ok — «Прийняв», silent — «Не відповідає», err — «Помилка»;
+    // notified — тем, кто жаловался «не відповідає», уже написали «бот знову працює»
+    $sql[] = "CREATE TABLE IF NOT EXISTS vk_events (id $ai, user_id INT NOT NULL, kind VARCHAR(8) NOT NULL, at INT NOT NULL, notified TINYINT NOT NULL DEFAULT 0)$tail";
     if (!$my) $sql[] = 'CREATE INDEX IF NOT EXISTS ix_state_hist_user ON user_state_hist (user_id, id)';
     foreach ($sql as $s) self::$pdo->exec($s);
     // фото, приложенные к записи истории (тепло/вода), не удаляются по сроку хранения, пока запись есть

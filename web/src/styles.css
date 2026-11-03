@@ -617,7 +617,8 @@ details.wacc > summary { list-style: none; cursor: pointer; display: flex; align
 .vk-ask > p:first-child { margin: 0 0 8px; } .vk-ask .row-actions { flex-wrap: wrap; } .vk-ask .vk-tips { margin-top: 10px; } .vk-ask .vk-tips ul { margin: 0 0 10px; padding-left: 20px; }
 .vk-reply { margin-top: 10px; padding: 10px 12px; border-radius: 12px; border: 1.5px solid var(--c-field-line); }
 .vk-reply.ok { border-color: var(--c-ok, #1E7B4C); } .vk-reply.bad { border-color: var(--c-bad, #A3142E); }
-.vk-reply p { margin: 0 0 4px; } .vk-text { white-space: pre-wrap; overflow-wrap: anywhere; }
+.vk-reply p { margin: 0 0 4px; }
+.vk-st { margin: 4px 0 8px; display: flex; gap: 6px; align-items: flex-start; } .vk-st.warn { color: var(--c-warn-ink); background: var(--c-warn-soft); border-radius: 10px; padding: 8px 10px; } .vk-text { white-space: pre-wrap; overflow-wrap: anywhere; }
 .dest .tips-box { margin-top: 12px; }
 .dest-mark { margin: 12px 0 0; }
 .gap-add { margin: 12px 0 0; }

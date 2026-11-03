@@ -120,7 +120,7 @@ final class Admin {
           'photos' => $c('SELECT COUNT(*) n FROM photos'), 'photosFailed' => $c("SELECT COUNT(*) n FROM photos WHERE status = 'failed' OR problem IS NOT NULL"),
           'reports' => $c('SELECT COUNT(*) n FROM recog_reports'), 'reportsBad' => $c('SELECT COUNT(*) n FROM recog_reports WHERE ok = 0'),
           'recognition' => (bool)Cfg::get('anthropic_api_key'), 'telegram' => (bool)Cfg::get('bot_token'), 'photoKeepDays' => (int)Cfg::get('photo_keep_days', 90), 'cronAgo' => Cron::age(),
-          'me' => $me['email'] ?: ('tg:' . $me['id']), 'tracking' => $tr,
+          'me' => $me['email'] ?: ('tg:' . $me['id']), 'tracking' => $tr, 'vk' => VkStatus::status(),
         ];
       }
       case 'GET /api/admin/users': {
@@ -230,6 +230,7 @@ final class Admin {
     Db::q('DELETE FROM rate_limits WHERE window_start < ?', [time() - 86400 * 2]);
     Db::q('DELETE FROM sessions WHERE expires_at < ?', [time()]);
     Db::q('DELETE FROM vk_replies WHERE msg_at < ?', [time() - 60 * 86400]);
+    Db::q('DELETE FROM vk_events WHERE at < ?', [time() - 60 * 86400]);
     return $n;
   }
 }
@@ -347,6 +348,70 @@ final class StateHist {
       $u = (int)$r['user_id']; $cnt[$u] = ($cnt[$u] ?? 0) + 1; if ($cnt[$u] > self::KEEP_ALL_MAX) $del[] = (int)$r['id'];
     }
     foreach (array_chunk($del, 400) as $ch) $n += Db::q('DELETE FROM user_state_hist WHERE id IN (' . implode(',', array_fill(0, count($ch), '?')) . ')', $ch)->rowCount();
+    return $n;
+  }
+}
+
+/** Работают ли бот и кабинет Водоканала. Кабинет — сервер сам открывает страницу входа (cron, раз в 10 мин; итог — SITE_DATA/cache/
+ *  vk_status.json). Бот — проверить напрямую нельзя (бот не может писать другому боту): признак жизни — любой пересланный нам ответ
+ *  бота (vk_replies) или «Прийняв» в приложении; «не відповідає» — жалобы после последнего признака жизни (vk_events, за сутки).
+ *  Бот снова ответил — тем, кто жаловался, наш бот пишет «знову працює» (один раз). */
+final class VkStatus {
+  const CAB_URL = 'https://billing.vodokanal.kharkov.ua/login';
+  public static $fetch = null;   // в тестах: fn(string $url): ['code' => int, 'body' => string, 'err' => ?string, 'ms' => int]
+  public static function file(): string { return Cfg::data() . '/cache/vk_status.json'; }
+  public static function read(): array { $j = json_decode((string)@file_get_contents(self::file()), true); return is_array($j) ? $j : []; }
+  private static function write(array $j): void { @mkdir(dirname(self::file()), 0700, true); @file_put_contents(self::file(), json_encode($j, JSON_UNESCAPED_UNICODE), LOCK_EX); }
+  private static function get(string $url): array {
+    $t0 = microtime(true); $ch = curl_init($url);
+    curl_setopt_array($ch, [CURLOPT_RETURNTRANSFER => true, CURLOPT_TIMEOUT => 12, CURLOPT_CONNECTTIMEOUT => 6, CURLOPT_FOLLOWLOCATION => true, CURLOPT_MAXREDIRS => 3,
+      CURLOPT_USERAGENT => 'Mozilla/5.0 (compatible; teplo-status/1.0)', CURLOPT_RANGE => '0-200000']);
+    $body = curl_exec($ch); $code = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE); $err = $body === false ? curl_error($ch) : null; curl_close($ch);
+    return ['code' => $code, 'body' => is_string($body) ? $body : '', 'err' => $err, 'ms' => (int)round((microtime(true) - $t0) * 1000)];
+  }
+  /** Проверить кабинет: страница входа открылась (200 и текст похож на кабинет) — ok, иначе down. */
+  public static function probeCabinet(?int $now = null): array {
+    $now = $now ?? time(); $r = self::$fetch ? (self::$fetch)(self::CAB_URL) : self::get(self::CAB_URL);
+    $ok = (int)$r['code'] === 200 && preg_match('/водоканал|авториз|логін|логин|пароль|login/iu', (string)$r['body']);
+    $j = self::read(); $c = (array)($j['cab'] ?? []); $state = $ok ? 'ok' : 'down';
+    $c = ['state' => $state, 'at' => $now, 'code' => (int)$r['code'], 'ms' => (int)($r['ms'] ?? 0), 'err' => $r['err'] ? mb_substr((string)$r['err'], 0, 120) : null,
+      'since' => ($c['state'] ?? null) === $state ? (int)($c['since'] ?? $now) : $now, 'everOk' => !empty($c['everOk']) || $ok, 'lastOk' => $ok ? $now : ($c['lastOk'] ?? null)];
+    $j['cab'] = $c; $j['log'] = array_slice(array_merge((array)($j['log'] ?? []), [[$now, $state, (int)$r['code']]]), -144);
+    self::write($j); return $c;
+  }
+  public static function bot(?int $now = null): array {
+    $now = $now ?? time();
+    $alive = max((int)(Db::one('SELECT MAX(msg_at) AS n FROM vk_replies')['n'] ?? 0), (int)(Db::one("SELECT MAX(at) AS n FROM vk_events WHERE kind = 'ok'")['n'] ?? 0));
+    $sil = Db::one("SELECT COUNT(DISTINCT user_id) AS n, MIN(at) AS a FROM vk_events WHERE kind = 'silent' AND at > ? AND at > ?", [$alive, $now - 86400]);
+    if ((int)($sil['n'] ?? 0) > 0) return ['state' => 'silent', 'since' => (int)$sil['a'], 'users' => (int)$sil['n'], 'lastOk' => $alive ?: null];
+    if ($alive && $now - $alive < 7 * 86400) return ['state' => 'ok', 'lastOk' => $alive];
+    return ['state' => 'unknown', 'lastOk' => $alive ?: null];
+  }
+  /** Для приложения и /admin. Кабинет, который ни разу не открылся с нашего сервера (может не пускать заграничные адреса), — everOk: false. */
+  public static function status(): array {
+    $c = self::read()['cab'] ?? null;
+    return ['bot' => self::bot(), 'cab' => is_array($c) ? array_intersect_key($c, array_flip(['state', 'at', 'since', 'everOk', 'lastOk', 'code'])) : null];
+  }
+  public static function event(int $uid, string $kind): array {
+    if (!in_array($kind, ['send', 'ok', 'silent', 'err'], true)) throw new HttpError(422, 'bad_kind');
+    $before = self::bot();
+    Db::q('INSERT INTO vk_events (user_id, kind, at, notified) VALUES (?, ?, ?, 0)', [$uid, $kind, time()]);
+    if ($kind === 'ok') self::aliveAgain($before, $uid);
+    return ['ok' => true, 'status' => self::status()];
+  }
+  /** Бот снова отвечает (был «не відповідає») — пишем тем, кто жаловался за 3 дня (кроме того, кто сам это заметил). → сколько написали. */
+  public static function aliveAgain(array $before, int $except = 0): int {
+    if (($before['state'] ?? '') !== 'silent') return 0;
+    $rows = Db::q("SELECT DISTINCT e.user_id, i.external_id, s.data FROM vk_events e JOIN user_identities i ON i.user_id = e.user_id AND i.type = 'telegram'
+      LEFT JOIN user_state s ON s.user_id = e.user_id WHERE e.kind = 'silent' AND e.notified = 0 AND e.at > ? AND e.user_id <> ?", [time() - 3 * 86400, $except])->fetchAll();
+    $n = 0;
+    foreach ($rows as $r) {
+      $st = json_decode((string)($r['data'] ?? ''), true); $ru = (($st['remind']['lang'] ?? '') === 'ru');
+      $p = ['chat_id' => $r['external_id'], 'text' => $ru ? "Бот Водоканала снова отвечает. Откройте «Счётчики» и нажмите «Отправить в Водоканал» ещё раз." : "Бот Водоканалу знову відповідає. Відкрийте «Лічильники» й натисніть «Відправити у Водоканал» ще раз."];
+      if (Cfg::appUrlKnown()) $p['reply_markup'] = ['inline_keyboard' => [[['text' => $ru ? 'Открыть «Счётчики»' : 'Відкрити «Лічильники»', 'web_app' => ['url' => Cfg::appUrl() . '?go=water-cold']]]]];
+      try { Telegram::call('sendMessage', $p); $n++; } catch (Throwable $e) { /* не дошло — не страшно */ }
+    }
+    Db::q("UPDATE vk_events SET notified = 1 WHERE kind = 'silent' AND notified = 0");
     return $n;
   }
 }

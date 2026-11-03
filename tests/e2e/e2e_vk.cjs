@@ -28,8 +28,11 @@ const reply = (uid, kind, text, at) => execFileSync('php', ['-r', '$p=new PDO("s
   let s = await st(); const w = s.water.find(x => x.id === 'wnow');
   ok('у записі — час натискання (vkAt), ще не «передано»', w.vkAt > Date.now() - 60000 && !(w.sent || {}).vk);
   ok('«Що відповів бот Водоканалу?» — «Прийняв» і «Помилка», підказка переслати нашому боту', !!(await p.$('[data-key=vk-ask]')) && !!(await p.$('[data-key=vk-ok]')) && /@heatcount_bot|@\w+bot/.test(await p.textContent('[data-key=vk-ask]')));
+  await p.click('[data-key=vk-silent]'); await wait(800);
+  ok('«Не відповідає» → у блоці «Бот Водоканалу не відповідає з …», телефон і «напишемо в Telegram»', /не відповідає з .*707-58-51.*напишемо/.test(await p.textContent('[data-key=vk-bot-silent]').catch(() => '')));
+  ok('…і підказки', !!(await p.$('[data-key=vk-tips]')));
   await p.click('[data-key=vk-err]'); await wait(300);
-  ok('«Помилка» → підказки, поля рахунку й ID, кнопка «Дізнатися ID у боті»', !!(await p.$('[data-key=vk-tips] #w-acc')) && !!(await p.$('[data-key=vk-tips] [data-wf=vkId]')) && !!(await p.$('[data-key=vk-check-ids]')));
+  ok('«Відповів помилкою» → підказки, поля рахунку й ID, кнопка «Дізнатися ID у боті»', !!(await p.$('[data-key=vk-tips] #w-acc')) && !!(await p.$('[data-key=vk-tips] [data-wf=vkId]')) && !!(await p.$('[data-key=vk-check-ids]')));
   await p.locator('[data-key=where-water]').screenshot({ path: '/tmp/shot_vk_ask.png' });
   // переслана відповідь «прийнято» → запис сам «передано», підтверджено
   reply(uid, 'ok', 'Показання прийнято. Дякуємо!', Math.floor(Date.now() / 1000));
