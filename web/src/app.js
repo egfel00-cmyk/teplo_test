@@ -819,6 +819,10 @@
       // рахунок у 1–4 цифри — майже напевно не той (бот Водоканалу на неіснуючий мовчить): попередження й поля одразу зверху
       var accD = String(wcfg().account || '').replace(/\D/g, '');
       if (!cmd.noAccount && accD.length < 5) vkBody = '<div class="banner warn" data-key="vk-acc-short">' + ico('alert', 20) + '<div><p>' + esc(t('vk_acc_short', { a: accD })) + '</p></div></div>' + waccForm() + vkBody;
+      // однакові ID у двох лічильників — так не буває: бот покаже справжні на /1=
+      var ids = ms.map(function (m) { return String(m.vkId || '').replace(/\D/g, ''); }).filter(Boolean), dup = ids.filter(function (x, i) { return ids.indexOf(x) !== i; })[0];
+      if (!cmd.noAccount && dup) vkBody = '<div class="banner warn" data-key="vk-id-dup">' + ico('alert', 20) + '<div><p>' + esc(t('vk_id_dup', { id: dup })) + '</p>' +
+        '<p><button class="btn sec" data-act="vk-open" data-text="' + esc(cmd.info) + '" data-key="vk-dup-ids">' + ico('send', 18) + '<span>' + esc(t('vk_check_ids')) + '</span></button></p></div></div>' + wmeterIdForm() + vkBody;
       vkBody += '<details class="tips-box"><summary>' + esc(t('wd_vals')) + '</summary>' + valList(ms) + '</details>';
     } else vkBody = '<p class="small" data-key="vk-need-rec">' + esc(t('vk_need_rec')) + '</p>';   // кнопка «Відправити» — після показань цього місяця
     var h = '<section class="panel where" data-key="where-water"><h2>' + ico('send', 20) + '<span>' + esc(t('wd_title')) + '</span></h2>' +
