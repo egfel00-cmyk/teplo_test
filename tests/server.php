@@ -333,6 +333,20 @@ ok('файл отдаётся владельцу', $tgb->req('GET', '/api/inbox/
 ok('чужому — нет', $rb->req('GET', '/api/inbox/file', null, ['QUERY_STRING' => 'id=' . $in->body['items'][0]['id']])->status === 404 && count($rb->req('GET', '/api/inbox')->body['items']) === 0);
 $tgb->req('POST', '/api/inbox/done', ['ids' => array_column($in->body['items'], 'id')]);
 ok('после «разобрано» входящие пусты', count($tgb->req('GET', '/api/inbox')->body['items']) === 0);
+// ответ бота Водоканала, пересланный нам: подтверждение передачи воды
+$fw = fn($text, $date, $user = ['id' => 555, 'is_bot' => true, 'username' => 'hvk_user_bot', 'first_name' => 'КП Харківводоканал']) => ['chat' => ['id' => 9001], 'date' => time(), 'from' => ['id' => 9001, 'first_name' => 'Фото', 'language_code' => 'uk'],
+  'forward_origin' => ['type' => 'user', 'sender_user' => $user, 'date' => $date], 'text' => $text];
+$n0 = count($sent); $hook($fw("Показання прийнято. Дякуємо!\nЛічильник 12345 — 458", time() - 30));
+$vr = Db::one("SELECT r.* FROM vk_replies r JOIN user_identities i ON i.user_id = r.user_id WHERE i.external_id = '9001' ORDER BY r.id DESC");
+ok('переслали ответ @hvk_user_bot «прийнято» → сохранён как ok, время — когда ответил бот', $vr && $vr['kind'] === 'ok' && (int)$vr['msg_at'] === time() - 30 && str_contains($vr['text'], '12345'), $vr);
+ok('…наш бот отвечает «Зберіг підтвердження» с кнопкой в воду', str_contains($sent[count($sent) - 1][1]['text'] ?? '', 'Зберіг підтвердження') && ($sent[count($sent) - 1][1]['reply_markup']['inline_keyboard'][0][0]['web_app']['url'] ?? '') === 'https://teplo.example/?go=water-cold');
+$hook($fw("Помилка: невірне прізвище або особовий рахунок", time() - 20));
+$hook($fw("Особовий рахунок 905614. Лічильники: ID 12345 (холодна), ID 12346 (гаряча)", time() - 10));
+$hook(['chat' => ['id' => 9001], 'date' => time(), 'from' => ['id' => 9001, 'language_code' => 'uk'], 'forward_origin' => ['type' => 'user', 'sender_user' => ['id' => 7, 'is_bot' => true, 'username' => 'other_bot'], 'date' => time()], 'text' => 'Показання прийнято']);
+$vl = $tgb->req('GET', '/api/vk/replies')->body['replies'] ?? [];
+ok('/api/vk/replies: ошибка → err, ID счётчиков → info, чужой бот не сохраняется; новые сверху', count($vl) === 3 && $vl[0]['kind'] === 'info' && $vl[1]['kind'] === 'err' && $vl[2]['kind'] === 'ok', $vl);
+ok('чужим ответы не видны, без входа — 401', count($rb->req('GET', '/api/vk/replies')->body['replies'] ?? []) === 0 && (new Browser('10.0.12.9'))->req('GET', '/api/vk/replies')->status === 401);
+ok('Telegram::vkKind: «не прийнято» — ошибка, «успішно збережено» — ok', Telegram::vkKind('Показання не прийнято') === 'err' && Telegram::vkKind('Дані успішно збережено') === 'ok' && Telegram::vkKind('Баланс: 120 грн') === 'info');
 Telegram::$send = null; Telegram::$fetch = null;
 
 echo "\nНапоминания ботом:\n";

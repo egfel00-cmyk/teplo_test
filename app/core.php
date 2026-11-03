@@ -168,6 +168,9 @@ final class Db {
       // текущей, replaced_at — когда её заменили; reason: put — новым сохранением, restore — восстановлением из /admin
       "CREATE TABLE IF NOT EXISTS user_state_hist (id $ai, user_id INT NOT NULL, version INT NOT NULL, data $txt NOT NULL, enc VARCHAR(4) NOT NULL DEFAULT '', bytes INT NOT NULL DEFAULT 0, saved_at VARCHAR(25) NOT NULL, replaced_at VARCHAR(25) NOT NULL, reason VARCHAR(12) NOT NULL DEFAULT 'put'" . ($my ? ', INDEX ix_state_hist_user (user_id, id)' : '') . ")$tail",
     ];
+    // ответы бота Водоканала (@hvk_user_bot), пересланные человеком нашему боту: подтверждение передачи показаний (ok), ошибка (err),
+    // прочее (info — например, ответ на /1= с ID счётчиков); msg_at — когда ответил бот Водоканала (unix)
+    $sql[] = "CREATE TABLE IF NOT EXISTS vk_replies (id $ai, user_id INT NOT NULL, kind VARCHAR(8) NOT NULL, text TEXT NOT NULL, msg_at INT NOT NULL, created_at VARCHAR(25) NOT NULL)$tail";
     if (!$my) $sql[] = 'CREATE INDEX IF NOT EXISTS ix_state_hist_user ON user_state_hist (user_id, id)';
     foreach ($sql as $s) self::$pdo->exec($s);
     // фото, приложенные к записи истории (тепло/вода), не удаляются по сроку хранения, пока запись есть

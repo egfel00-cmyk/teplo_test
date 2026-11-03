@@ -229,6 +229,7 @@ final class Admin {
     Db::q('DELETE FROM photos WHERE created_at < ? AND kept = 0', [$before]);
     Db::q('DELETE FROM rate_limits WHERE window_start < ?', [time() - 86400 * 2]);
     Db::q('DELETE FROM sessions WHERE expires_at < ?', [time()]);
+    Db::q('DELETE FROM vk_replies WHERE msg_at < ?', [time() - 60 * 86400]);
     return $n;
   }
 }

@@ -20,6 +20,7 @@
 //  GET /api/docs/link?id → {url: 'docs/open?id&e&s'} — подписанная ссылка на 15 мин (открыть PDF во внешнем браузере из Telegram)
 //  GET  /api/photo?id=…             фото к записи истории — байты, только хозяину
 //  POST /api/photo/keep             {ids, keep} — фото записи хранить, пока есть запись (keep=false — снова по сроку photo_keep_days)
+//  GET  /api/vk/replies             ответы бота Водоканала, пересланные нашему боту (подтверждение передачи воды)
 //  GET  /api/weather?from&to       средняя за сутки в Харькове (Open-Meteo, кэш) — для истории
 //  POST /api/recognize/local        {ids, results} — итог распознавания в браузере (свой движок, без нейросети) → в аналитику
 //  POST /api/recognize/run          {ids[≤3], offset, ctx} → распознанное (vision-API, ключ в config.php)
@@ -210,6 +211,11 @@ final class Api {
         foreach (array_slice((array)($in['ids'] ?? []), 0, 100) as $id)
           if (is_string($id) && preg_match('/^[a-f0-9]{24}$/', $id)) $n += Db::q('UPDATE photos SET kept = ? WHERE id = ? AND user_id = ?', [$on, $id, (int)$user['id']])->rowCount();
         return ['ok' => true, 'n' => $n];
+      }
+      case 'GET /api/vk/replies': {   // ответы бота Водоканала, пересланные нашему боту (последние 30 дней)
+        if (!$user) throw new HttpError(401, 'unauthorized');
+        $rows = Db::q('SELECT id, kind, text, msg_at FROM vk_replies WHERE user_id = ? AND msg_at > ? ORDER BY id DESC LIMIT 10', [(int)$user['id'], time() - 30 * 86400])->fetchAll();
+        return ['replies' => array_map(fn($x) => ['id' => (int)$x['id'], 'kind' => $x['kind'], 'text' => $x['text'], 'at' => (int)$x['msg_at']], $rows)];
       }
       case 'GET /api/weather': return Weather::range((string)($r->query()['from'] ?? ''), (string)($r->query()['to'] ?? ''));   // погода к истории — всем, кэш
       case 'POST /api/docs/upload': {   // документ к счётчику сырым телом: ?place=&kind=passport|verification|other&name=

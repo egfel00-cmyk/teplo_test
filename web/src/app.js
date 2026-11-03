@@ -802,11 +802,17 @@
     if (rec) {
       var cmd = Wt.vkCommand(wcfg().account, wcfg().surname, ms, rec.vals || {});
       if (cmd.noAccount) vkBody = '<p>' + esc(t('ws_need_acc')) + '</p>' + waccForm();
-      else if (cmd.missing.length) vkBody = '<ol class="wsteps"><li>' + esc(t('ws_ids_1')) + '<div class="cmd"><code>' + esc(cmd.info) + '</code><button class="btn sec" data-act="copy" data-text="' + esc(cmd.info) + '">' + ico('copy', 18) + '<span>' + esc(t('copy')) + '</span></button></div></li>' +
-        '<li>' + esc(t('ws_ids_2')) + '</li></ol>' + wmeterIdForm();
+      // ID лічильників ще немає: бот покаже їх на /1= — відкриваємо його з готовою командою; переслана нам відповідь — номери кнопками
+      else if (cmd.missing.length) vkBody = '<ol class="wsteps"><li>' + esc(t('vk_ids_1')) + '<div class="cmd"><code>' + esc(cmd.info) + '</code></div>' +
+        '<div class="row-actions" style="margin-top:8px"><button class="btn" data-act="vk-open" data-text="' + esc(cmd.info) + '" data-key="vk-ids">' + ico('send', 18) + '<span>' + esc(t('vk_ids_btn')) + '</span></button></div></li>' +
+        '<li>' + esc(t('ws_ids_2')) + ' ' + esc(t('vk_ids_fw', { b: '@' + ourBot() })) + '</li></ol>' + vkInfoBox() + wmeterIdForm();
       else {
-        vkBody = '<p>' + esc(t('ws_cmd_lead')) + '</p><div class="cmd"><code data-key="wsend-cmd">' + esc(cmd.text) + '</code></div>' +
-          '<div class="row-actions" style="margin-top:8px"><button class="btn" data-act="copy-open" data-text="' + esc(cmd.text) + '" data-url="' + Wt.VK_BOT + '" data-key="wsend-copy-open">' + ico('copy', 18) + '<span>' + esc(t('ws_copy_open')) + '</span></button></div>';
+        // «Відправити»: бот Водоканалу відкривається з набраною командою (t.me/…?text=), людині лишається «Надіслати»; повернулась — «Що відповів бот?»
+        // уже передано — сверху підтвердження, команда й «Відправити ще раз» (якщо виправили цифри) — спокійніше, вторинною кнопкою
+        var vSent = !!wsentVk(rec), vPend = !!rec.vkAt && !vSent;
+        vkBody = (vSent ? vkReplyBox(rec) : '<p>' + esc(t('vk_lead')) + '</p>') + '<div class="cmd"><code data-key="wsend-cmd">' + esc(cmd.text) + '</code></div>' +
+          '<div class="row-actions" style="margin-top:8px"><button class="btn' + (vSent ? ' sec' : '') + '" data-act="vk-send" data-id="' + esc(rec.id) + '" data-text="' + esc(cmd.text) + '" data-key="wsend-vk-send">' + ico('send', 18) + '<span>' + esc(t(vSent || vPend ? 'vk_send_again' : 'vk_send')) + '</span></button></div>' +
+          (vPend ? vkAsk(rec) + vkReplyBox(rec) : '');
         vkChans = vkChans.slice(1);   // бот відкриває кнопка вище
       }
       vkBody += '<details class="tips-box"><summary>' + esc(t('wd_vals')) + '</summary>' + valList(ms) + '</details>';
@@ -817,13 +823,73 @@
       (rec ? '' : '<p class="small muted">' + esc(t('wd_lead')) + '</p>');
     h += destBox({ key: 'vk', id: 'wsend-vk', org: t('wd_vk_org'), what: kind === 'cold' ? t('wd_vk_cold') : kind === 'hot' ? t('wd_vk_hot') : t('wd_vk_both'),
       due: vkDue, dueTone: w.open && w.daysLeft <= 3 ? 'warn' : 'neutral', sent: rec && wsentVk(rec), body: vkBody, chans: vkChans,
-      more: esc(t('wd_vk_more')) + ' ' + telLink('+380577075851', '(057) 707-58-51') + ' · Viber (050) 355-12-12', mark: mark('vk', rec && wsentVk(rec)) });
+      more: esc(t('wd_vk_more')) + ' ' + telLink('+380577075851', '(057) 707-58-51') + ' · Viber (050) 355-12-12', mark: rec && rec.vkAt && !wsentVk(rec) ? '' : mark('vk', rec && wsentVk(rec)) });
     // ХТМ: сама гаряча вода — лише бот і кол-центр (у кабінеті ХТМ форми для гарячої води немає)
     if (withHtm) h += destBox({ key: 'htm', org: t('wd_htm_org'), what: t('wd_htm_what'), sent: rec && wsentHtm(rec),
       body: rec ? valList(hot) : '', chans: [[BOT_URL, t('wd_bot', { b: '@KPHTM_Bot' }), 'send', 'bot']],
       more: esc(t('wd_htm_more')) + ' ' + telLink('+380573414140', '(057) 341-41-40'), mark: mark('htm', rec && wsentHtm(rec)) });
     return h + '</section>';
   }
+  // ---------- бот Водоканалу: відповіді, переслані нашому боту (/api/vk/replies) ----------
+  var VKR = { list: null, at: 0, busy: false }, VKERR = {};
+  function ourBot() { return (Y()._cfg && Y()._cfg.botUsername) || 'heatcount_bot'; }
+  function vkWhen(sec) { var d = new Date(sec * 1000); return fmtDate(d.toISOString().slice(0, 10)) + ', ' + String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0'); }
+  /** Відповідь бота після натискання «Відправити» цього запису (або та, що підтвердила). */
+  function vkReplyFor(rec) {
+    var l = VKR.list || [];
+    if (rec.vkConf) return l.filter(function (r) { return r.id === rec.vkConf.id; })[0] || { id: rec.vkConf.id, kind: 'ok', text: rec.vkConf.text || '', at: rec.vkConf.at };
+    if (!rec.vkAt) return null;
+    return l.filter(function (r) { return r.at * 1000 >= rec.vkAt - 120000; })[0] || null;
+  }
+  function vkReplyBox(rec) {
+    var r = vkReplyFor(rec); if (!r) return '';
+    var ok = rec.vkConf || r.kind === 'ok', bad = !ok && r.kind === 'err';
+    return '<div class="vk-reply' + (ok ? ' ok' : bad ? ' bad' : '') + '" data-key="vk-reply"><p class="small"><b>' + esc(ok ? t('vk_conf', { d: vkWhen(r.at) }) : t('vk_reply_t', { d: vkWhen(r.at) })) + '</b></p>' +
+      (r.text ? '<p class="small vk-text">' + esc(String(r.text).slice(0, 600)) + '</p>' : '') + '</div>';
+  }
+  function vkAsk(rec) {
+    var err = VKERR[rec.id] || (vkReplyFor(rec) || {}).kind === 'err';
+    return '<div class="vk-ask" data-key="vk-ask"><p><b>' + esc(t('vk_ask')) + '</b></p><div class="row-actions">' +
+      '<button class="btn" data-act="wsent" data-to="vk" data-v="1" data-id="' + esc(rec.id) + '" data-key="vk-ok">' + ico('check', 18) + '<span>' + esc(t('vk_ok')) + '</span></button>' +
+      '<button class="btn sec" data-act="vk-err" data-id="' + esc(rec.id) + '" data-key="vk-err">' + esc(t('vk_err')) + '</button></div>' +
+      '<p class="small muted">' + esc(t('vk_fw', { b: '@' + ourBot() })) + '</p>' +
+      (err ? '<div class="vk-tips" data-key="vk-tips"><ul class="small">' + t('vk_err_tips').split('|').map(function (x) { return '<li>' + esc(x) + '</li>'; }).join('') + '</ul>' + waccForm() + wmeterIdForm() +
+        '<p><button class="btn sec" data-act="vk-open" data-text="' + esc(Wt.vkCommand(wcfg().account, wcfg().surname, [], {}).info) + '" data-key="vk-check-ids">' + ico('send', 18) + '<span>' + esc(t('vk_check_ids')) + '</span></button></p></div>' : '') + '</div>';
+  }
+  /** Переслана відповідь на /1= (або будь-яка нова): текст і номери з неї кнопками — натиснув, і номер ліг у порожнє поле ID. */
+  function vkInfoBox() {
+    var r = (VKR.list || []).filter(function (x) { return x.kind !== 'ok'; })[0]; if (!r) return '';
+    var acc = String(wcfg().account || '').replace(/\D/g, ''), seen = {}, nums = (String(r.text).match(/(^|[^\d.,])(\d{3,10})(?![\d.,]\d)/g) || []).map(function (x) { return x.replace(/\D/g, ''); })
+      .filter(function (n) { if (n === acc || seen[n]) return false; seen[n] = 1; return true; }).slice(0, 8);
+    return '<div class="vk-reply" data-key="vk-info"><p class="small"><b>' + esc(t('vk_reply_t', { d: vkWhen(r.at) })) + '</b></p><p class="small vk-text">' + esc(String(r.text).slice(0, 600)) + '</p>' +
+      (nums.length ? '<p class="small muted">' + esc(t('vk_chips')) + '</p><div class="chips">' + nums.map(function (n) { return '<button type="button" class="chip" data-act="vk-id-chip" data-v="' + n + '">' + n + '</button>'; }).join('') + '</div>' : '') + '</div>';
+  }
+  /** Підтягнути відповіді бота; «прийнято» після натискання «Відправити» — позначаємо запис переданим (підтверджено Водоканалом). */
+  function vkLoad(force) {
+    if (!window.TEPLO_API || !Y().account || VKR.busy || (!force && Date.now() - VKR.at < 15000)) return;
+    VKR.busy = true; VKR.at = Date.now();
+    Y().api('GET', '/vk/replies').then(function (j) {
+      VKR.busy = false; if (j._status !== 200) return;
+      var before = JSON.stringify(VKR.list); VKR.list = j.replies || []; var changed = before !== JSON.stringify(VKR.list);
+      if (vkApply() || changed) safeRender();
+    }, function () { VKR.busy = false; });
+  }
+  function vkApply() {
+    var oks = (VKR.list || []).filter(function (r) { return r.kind === 'ok'; }), hit = false;
+    if (!oks.length) return false;
+    var used = {}; (S.water || []).forEach(function (w) { if (w.vkConf) used[w.vkConf.id] = 1; });
+    // свіжіші натискання — першими: відповідь належить останньому запису, відправленому до неї
+    (S.water || []).filter(function (w) { return w && !w.deleted && w.vkAt && !wsentVk(w); }).sort(function (a, b) { return b.vkAt - a.vkAt; }).forEach(function (w) {
+      var r = oks.filter(function (x) { return !used[x.id] && x.at * 1000 >= w.vkAt - 120000; }).sort(function (a, b) { return a.at - b.at; })[0]; if (!r) return;
+      used[r.id] = 1; w.sent = Object.assign({}, w.sent || {}, { vk: today() }); w.vkConf = { id: r.id, at: r.at, text: String(r.text || '').slice(0, 300) }; w.updatedAt = Date.now(); hit = true;
+    });
+    if (hit) { save(); toast(t('vk_conf_toast')); }
+    return hit;
+  }
+  function vkPending() { return (S.water || []).some(function (w) { return w && !w.deleted && w.vkAt && !wsentVk(w) && Date.now() - w.vkAt < 30 * 60000; }) || Date.now() - VKR.idsAt < 30 * 60000; }
+  VKR.idsAt = 0;
+  document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'visible' && (vkPending() || /^(water-|wrec-|wnew)/.test(routeName()))) { vkLoad(true); safeRender(); } });
+  setInterval(function () { if (document.visibilityState === 'visible' && vkPending()) vkLoad(); }, 20000);
   function waccForm() {
     var c = wcfg();
     return '<div class="grid2"><div class="field"><label for="w-acc">' + esc(t('wa_acc')) + '</label><div class="ctl"><input id="w-acc" class="num" inputmode="numeric" autocomplete="off" data-wcfg="account" value="' + esc(c.account || '') + '"></div><div class="help">' + esc(t('wa_acc_h')) + '</div></div>' +
@@ -1807,6 +1873,20 @@
       case 'pl-del-no': { var bx0 = document.getElementById('pl-del-confirm'); if (bx0) bx0.innerHTML = ''; return true; }
       case 'to-water': e.preventDefault(); SCROLL_TO = 'water-block'; go('prefs'); return true;
       case 'to-nometer': e.preventDefault(); SCROLL_TO = 'nometer-w'; go('prefs'); return true;
+      case 'vk-send': case 'vk-open': {
+        var vtx = el.getAttribute('data-text'), vurl = Wt.VK_BOT + '?text=' + encodeURIComponent(vtx);
+        copyText(vtx, null);   // запасний шлях: вперше бот просить «Старт» — команду можна вставити
+        if (act === 'vk-send') { var vr = (S.water || []).filter(function (x) { return x.id === el.getAttribute('data-id'); })[0]; if (vr) { vr.vkAt = Date.now(); if (vr.sent && vr.sent.vk) { vr.sent = Object.assign({}, vr.sent, { vk: '' }); delete vr.vkConf; } vr.updatedAt = Date.now(); delete VKERR[vr.id]; save(); } }   // ще раз — нове підтвердження
+        else VKR.idsAt = Date.now();
+        setTimeout(function () { var tw = window.Telegram && window.Telegram.WebApp; if (tw && tw.openTelegramLink) tw.openTelegramLink(vurl); else window.open(vurl, '_blank', 'noopener'); render(true); }, 200);
+        return true;
+      }
+      case 'vk-err': VKERR[el.getAttribute('data-id')] = true; render(true); return true;
+      case 'vk-id-chip': {
+        var empty = Array.prototype.filter.call(document.querySelectorAll('input[data-wf="vkId"]'), function (x) { return !x.value; })[0];
+        if (empty) { empty.value = el.getAttribute('data-v'); empty.dispatchEvent(new Event('change', { bubbles: true })); el.classList.add('done'); }
+        return true;
+      }
       case 'copy-open': copyText(el.getAttribute('data-text'), el); setTimeout(function () { var tw = window.Telegram && window.Telegram.WebApp; if (tw && tw.openTelegramLink) tw.openTelegramLink(el.getAttribute('data-url')); else window.open(el.getAttribute('data-url'), '_blank', 'noopener'); }, 250); return true;
     }
     return false;
@@ -4248,7 +4328,7 @@
   if (window.TEPLO_API && window.TeploVision) window.TeploVision.initServer({}, false);
   // кнопка из напоминания бота: ?go=wnew — ввод воды, ?go=heat — тепло
   (function () {
-    var g = (location.search.match(/[?&]go=(wnew|heat|enew|elec|gnew|gas|home|places)(?=&|$)/) || [])[1]; if (!g) return;
+    var g = (location.search.match(/[?&]go=(wnew|heat|enew|elec|gnew|gas|home|places|water-cold|water-hot)(?=&|$)/) || [])[1]; if (!g) return;
     var pid = (location.search.match(/[?&]place=([\w-]+)(?=&|$)/) || [])[1];
     var q = location.search.replace(/([?&])(go|place)=[\w-]+(?=&|$)/g, '$1').replace(/&{2,}/g, '&').replace(/\?&/, '?').replace(/[?&]$/, '');
     // напоминание про конкретную квартиру — сразу в неё

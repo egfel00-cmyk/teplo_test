@@ -612,6 +612,12 @@ details.wacc > summary { list-style: none; cursor: pointer; display: flex; align
 .dest-more { margin: 10px 0 0; }
 .dest-more a, .where a[href^="tel:"] { white-space: nowrap; }
 .dest .cmd { margin-top: 6px; }
+/* бот Водоканалу: «Що відповів бот?» і переслана відповідь */
+.vk-ask { margin-top: 12px; padding: 12px 14px; border-radius: 12px; background: var(--c-field-bg); border: 1.5px solid var(--c-field-line); }
+.vk-ask > p:first-child { margin: 0 0 8px; } .vk-ask .row-actions { flex-wrap: wrap; } .vk-ask .vk-tips { margin-top: 10px; } .vk-ask .vk-tips ul { margin: 0 0 10px; padding-left: 20px; }
+.vk-reply { margin-top: 10px; padding: 10px 12px; border-radius: 12px; border: 1.5px solid var(--c-field-line); }
+.vk-reply.ok { border-color: var(--c-ok, #1E7B4C); } .vk-reply.bad { border-color: var(--c-bad, #A3142E); }
+.vk-reply p { margin: 0 0 4px; } .vk-text { white-space: pre-wrap; overflow-wrap: anywhere; }
 .dest .tips-box { margin-top: 12px; }
 .dest-mark { margin: 12px 0 0; }
 .gap-add { margin: 12px 0 0; }

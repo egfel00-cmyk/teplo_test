@@ -103,6 +103,43 @@ final class Telegram {
     Db::q("INSERT INTO user_identities (user_id, type, external_id, username, linked_at) VALUES (?, 'telegram', ?, ?, ?)", [$uid, $tgId, $from['username'] ?? null, Http::iso()]);
     return $uid;
   }
+  const VK_BOT = 'hvk_user_bot';
+  /** Переслано из бота Водоканала (forward_origin — Bot API 7+, forward_from — старые клиенты). */
+  public static function isVkForward(array $msg): bool {
+    $o = $msg['forward_origin'] ?? null; $u = is_array($o) ? ($o['sender_user'] ?? null) : null;
+    if (!is_array($u)) $u = $msg['forward_from'] ?? null;
+    return is_array($u) && strcasecmp((string)($u['username'] ?? ''), self::VK_BOT) === 0;
+  }
+  /** Что ответил бот Водоканала: ok — показания приняты, err — ошибка, info — прочее (ID счётчиков, баланс). */
+  public static function vkKind(string $t): string {
+    if (preg_match('/помилк|ошибк|невірн|неверн|не\s+знайден|не\s+найден|не\s+прийн|не\s+прин|не\s+вдал|не\s+удал|некорект|відхилен|отклонен/iu', $t)) return 'err';
+    if (preg_match('/прийнят|прийнято|принят|збережен|сохранен|успішн|успешн|зарахован|зачислен|отриман|получен/iu', $t)) return 'ok';
+    return 'info';
+  }
+  /** Человек переслал нам ответ бота Водоканала — сохраняем: сервис покажет его у воды и сам отметит «передано» (подтверждено). */
+  public static function vkReply(array $msg, string $lang): array {
+    $ru = $lang === 'ru'; $chat = $msg['chat']['id'];
+    $text = trim((string)($msg['text'] ?? $msg['caption'] ?? ''));
+    $at = (int)($msg['forward_origin']['date'] ?? $msg['forward_date'] ?? $msg['date'] ?? time());
+    $kind = $text === '' ? 'info' : self::vkKind($text);
+    try {
+      $uid = self::userFor((array)($msg['from'] ?? []));
+      RateLimit::hit('bot_photo', (string)$uid);
+      if ($text !== '') Db::q('INSERT INTO vk_replies (user_id, kind, text, msg_at, created_at) VALUES (?, ?, ?, ?, ?)', [$uid, $kind, mb_substr($text, 0, 3000), $at, Http::iso()]);
+    } catch (Throwable $e) { $kind = 'fail'; }
+    $msgs = [
+      'ok' => $ru ? "✅ Сохранил подтверждение Водоканала. В «Счётчиках» показания воды отметятся переданными." : "✅ Зберіг підтвердження Водоканалу. У «Лічильниках» показання води позначаться переданими.",
+      'err' => $ru ? "Водоканал ответил ошибкой. Откройте «Счётчики» — подскажем, что проверить (лицевой счёт, фамилия, ID счётчиков)." : "Водоканал відповів помилкою. Відкрийте «Лічильники» — підкажемо, що перевірити (особовий рахунок, прізвище, ID лічильників).",
+      'info' => $ru ? "Сохранил ответ Водоканала — он виден в «Счётчиках» у воды (ID счётчиков можно вставить оттуда)." : "Зберіг відповідь Водоканалу — її видно в «Лічильниках» біля води (ID лічильників можна вставити звідти).",
+      'fail' => $ru ? "Не удалось сохранить ответ. Перешлите его ещё раз чуть позже." : "Не вдалося зберегти відповідь. Перешліть її ще раз трохи пізніше.",
+    ];
+    $params = ['chat_id' => $chat, 'text' => $text === '' && $kind !== 'fail' ? ($ru ? 'Перешлите текстовый ответ бота Водоканала.' : 'Перешліть текстову відповідь бота Водоканалу.') : $msgs[$kind]];
+    if ($kind !== 'fail') $params['reply_markup'] = ['inline_keyboard' => [[['text' => $ru ? 'Открыть «Счётчики»' : 'Відкрити «Лічильники»', 'web_app' => ['url' => Cfg::appUrl() . '?go=water-cold']]]]];
+    if (!Cfg::appUrlKnown()) unset($params['reply_markup']);
+    self::call('sendMessage', $params);
+    return $params + ['kind' => $kind];
+  }
+
   /** Фото счётчика в чате с ботом → в «входящие» аккаунта; распознаёт браузер, когда человек откроет сервис кнопкой. */
   public static function photo(array $msg, string $lang): array {
     $ru = $lang === 'ru'; $chat = $msg['chat']['id'];
@@ -142,6 +179,7 @@ final class Telegram {
   public static function handleUpdate(array $u): ?array {
     $msg = $u['message'] ?? null; if (!$msg || empty($msg['chat']['id'])) return null;
     $lang = str_starts_with((string)($msg['from']['language_code'] ?? ''), 'ru') ? 'ru' : 'uk';
+    if (self::isVkForward($msg)) return self::vkReply($msg, $lang);
     if (!empty($msg['photo']) || (isset($msg['document']['mime_type']) && preg_match('#^image/(jpeg|png|webp)$#', (string)$msg['document']['mime_type']))) return self::photo($msg, $lang);
     $linkText = null;
     if (preg_match('/^\/start\s+link_([a-f0-9]{32})\b/', (string)($msg['text'] ?? ''), $m)) $linkText = self::linkByToken((array)($msg['from'] ?? []), $m[1], $lang);
