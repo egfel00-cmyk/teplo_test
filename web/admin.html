@@ -107,7 +107,7 @@ pre.state { font: 12px/1.4 var(--mono); background: #F4F7F5; padding: 10px; bord
     return (warn.length ? '<div class="panel" style="background:var(--warns)">' + warn.map(function (w) { return '<p style="margin:4px 0">' + w + '</p>'; }).join('') + '</div>' : '') +
       '<div class="cards">' + c(o.users, 'пользователей всего') + c(o.usersWeek, 'новых за 7 дней') + c(o.activeWeek, 'входили за 7 дней') + c(o.withTelegram, 'с Telegram') + c(o.withData, 'сохранили данные') +
       c(o.feedback, 'сообщений (новых: ' + o.feedbackNew + ')') + c(o.photos, 'фото загружено') + c(o.photosFailed, 'фото с проблемами') + c(o.reportsBad + ' / ' + o.reports, 'распознаваний с замечаниями') + '</div>' +
-      '<p class="muted small">Фото хранятся ' + o.photoKeepDays + ' дней, потом удаляются автоматически.</p>' + trackBlock(o.tracking) + devicesBlock();
+      '<p class="muted small">Фото хранятся ' + o.photoKeepDays + ' дней, потом удаляются автоматически.</p>' + actBlock() + trackBlock(o.tracking) + devicesBlock();
   };
   /** Что ведут: у скольких людей есть каждый вид счётчика и сколько по нему показаний (без удалённых и стартовых). */
   function trackBlock(t) {
@@ -121,6 +121,25 @@ pre.state { font: 12px/1.4 var(--mono); background: #F4F7F5; padding: 10px; bord
   }
   /** С чего работают: телефон / планшет / компьютер, система, Telegram, «на экране Домой», ширина экрана, по дням. */
   var DEV = { mobile: 'Телефон', tablet: 'Планшет', desktop: 'Компьютер' };
+  /** Отклик: сколько браузеров открыли сайт за день (и без входа) и как далеко прошли — клацали, добавили счётчик, внесли показания, вошли. */
+  function actBlock() {
+    var d = DATA.devices; if (!d || !d.act) return '';
+    var days = Object.keys(d.act).sort().reverse().slice(0, 30), s = d.actSum || {}, td = days[0] && d.act[days[0]];
+    var pct = function (n, of) { return of ? ' <span class="muted small">' + Math.round(n * 100 / of) + '%</span>' : ''; };
+    var sel = [7, 30, 90].map(function (n) { return '<button class="btn' + (DDAYS === n ? ' on' : '') + '" data-ddays="' + n + '">' + n + ' дн.</button>'; }).join(' ');
+    var c = function (n, l) { return '<div class="card"><b class="num">' + n + '</b><span>' + l + '</span></div>'; };
+    return '<div class="panel" id="act"><h2>Отклик — все, кто открывал сайт <span class="muted small">(и без входа)</span></h2>' +
+      '<p>' + sel + '</p>' +
+      '<div class="cards">' + c(s.v || 0, 'открыли за ' + d.days + ' дн.') + c(s.new || 0, 'впервые') + c(s.s1 || 0, 'клацали по экранам') + c(s.s2 || 0, 'добавили счётчик') +
+        c(s.s3 || 0, 'внесли показания') + c(s.anon3 || 0, '…из них без входа') + c(s.u || 0, 'вошли в аккаунт') + '</div>' +
+      (days.length ? '<table><thead><tr><th>День</th><th>Открыли</th><th>Впервые</th><th>Клацали</th><th>Добавили счётчик</th><th>Внесли показания</th><th>Вошли</th></tr></thead><tbody>' +
+        days.map(function (k) { var x = d.act[k]; return '<tr><td>' + esc(k.split('-').reverse().join('.')) + '</td><td class="mono">' + x.v + '</td><td class="mono">' + x.new + '</td><td class="mono">' + x.s1 + pct(x.s1, x.v) +
+          '</td><td class="mono">' + x.s2 + pct(x.s2, x.v) + '</td><td class="mono">' + x.s3 + pct(x.s3, x.v) + (x.anon3 ? ' <span class="muted small">(без входа ' + x.anon3 + ')</span>' : '') + '</td><td class="mono">' + x.u + '</td></tr>'; }).join('') + '</tbody></table>'
+        : '<p class="muted">Пока никто не открывал сайт.</p>') +
+      '<p class="muted small">Браузер = случайный id в браузере (без IP и личных данных); телефон и компьютер одного человека — два браузера. «Клацали» — ушли дальше привітання/главной; ' +
+      '«добавили счётчик» и «внесли показания» — по числам из браузера (сами показания не видим, если человек не вошёл). Этапы считаются с 03.11.2026; проверки сессий Claude не считаются.' +
+      (td ? ' Сегодня: открыли ' + td.v + ', клацали ' + td.s1 + ', внесли показания ' + td.s3 + '.' : '') + '</p></div>';
+  }
   function devicesBlock() {
     var d = DATA.devices; if (!d || !d.total) return '';
     var all = d.total.v || 0, pc = function (v) { return all ? Math.round(v * 100 / all) : 0; };

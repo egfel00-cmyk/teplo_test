@@ -195,6 +195,15 @@ ok('устройства: телефон 1 браузер / 2 открытия, 
   && $dv->body['device']['mobile']['v'] === 1 && $dv->body['device']['mobile']['h'] === 2 && $dv->body['device']['desktop']['u'] === 1
   && $dv->body['device']['tablet']['v'] === 1 && $dv->body['device']['desktop']['v'] === 2 && isset($dv->body['os']['other']) && $dv->body['tg']['tg']['v'] === 1 && $dv->body['tg']['web']['v'] === 3 && $dv->body['width']['360–430'] === 1, $dv->body);
 ok('устройства — только админу', $anon->req('GET', '/api/admin/devices')->status === 401);
+// отклик (03.11.2026): без входа — открыл, клацал, добавил счётчик, внёс показания; act-пинг не считается новым открытием
+$anon->req('POST', '/api/visit', ['vid' => 'abc12345phone', 'device' => 'mobile', 'os' => 'iOS', 'act' => 1, 'stage' => 1, 'meters' => 0, 'recs' => 0]);
+$anon->req('POST', '/api/visit', ['vid' => 'abc12345phone', 'device' => 'mobile', 'os' => 'iOS', 'act' => 1, 'stage' => 3, 'meters' => 2, 'recs' => 1]);
+$anon->req('POST', '/api/visit', ['vid' => 'abc12345phone', 'device' => 'mobile', 'os' => 'iOS', 'act' => 1, 'stage' => 1, 'meters' => 1, 'recs' => 0]);   // меньше — не убавляет
+$pad->req('POST', '/api/visit', ['vid' => 'pad12345', 'device' => 'tablet', 'os' => 'Android', 'act' => 1, 'stage' => 1]);
+$vr = Db::one("SELECT hits, stage, meters, recs FROM visits WHERE vid = 'abc12345phone'");
+ok('отклик: этап и числа — максимум за день, act-пинг не добавляет открытий', (int)$vr['hits'] === 2 && (int)$vr['stage'] === 3 && (int)$vr['meters'] === 2 && (int)$vr['recs'] === 1, $vr);
+$da = $boss->req('GET', '/api/admin/devices', null, ['QUERY_STRING' => 'days=7'])->body; $today = Visits::day(); $ta = $da['act'][$today] ?? [];
+ok('отклик по дням: открыли 4, клацали 2, внесли показания 1 (без входа 1), вошёл 1', ($ta['v'] ?? 0) === 4 && $ta['s1'] === 2 && $ta['s3'] === 1 && $ta['anon3'] === 1 && $ta['u'] === 1 && $da['actSum']['s3'] === 1 && $da['actSum']['new'] === 4, [$ta, $da['actSum'] ?? null]);
 $bid = Db::one("SELECT id FROM users WHERE email = 'boss@example.ua'")['id'];
 $bu = $boss->req('GET', '/api/admin/user', null, ['QUERY_STRING' => 'id=' . $bid]);
 ok('карточка человека: его устройства', $bu->status === 200 && count($bu->body['devices']) === 1 && $bu->body['devices'][0]['device'] === 'desktop', $bu->body['devices'] ?? null);

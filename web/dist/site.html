@@ -4704,7 +4704,7 @@ fieldset.field { border: 0; padding: 0; min-width: 0; }
   var lastSig = '', pendingRender = false;
   /** Сохранить: локально всегда; если изменились синхронизируемые данные — отметить время и отправить на другие устройства. */
   function save() {
-    syncPlace();
+    syncPlace(); visitBump();
     // язык напоминаний бота — как в интерфейсе (сервер шлёт на нём)
     if (!S.remind || S.remind.lang !== S.lang) S.remind = Object.assign({}, S.remind || {}, { lang: S.lang });
     var Y = window.TeploSync;
@@ -8448,6 +8448,8 @@ fieldset.field { border: 0; padding: 0; min-width: 0; }
   var SCROLL_TO = null;
   function afterRender(r) {
     enhanceDates(); photoFill(); toastKeep(); if (Y().account) histFlush();
+    // отклик: ушёл дальше привітання/головної — «клацав» (этап 1)
+    if (typeof r === 'string' && r && !/^(welcome|home|places)$/.test(r) && VSTAGE < 1) { VSTAGE = 1; visitBump(); }
     if (SCROLL_TO) { var st0 = document.getElementById(SCROLL_TO); SCROLL_TO = null; if (st0) { var pg0 = st0.closest && st0.closest('details.pgroup'); if (pg0 && !pg0.open) { pg0.open = true; PREF_OPEN[pg0.id.slice(3)] = true; } var wa0 = st0.closest && st0.closest('details.wacc'); if (wa0 && !wa0.open) { wa0.open = true; WH_OPEN[wa0.id.slice(5)] = true; } st0.scrollIntoView({ block: 'start' }); try { st0.focus({ preventScroll: true }); } catch (e0) { /* старый браузер */ } st0.classList.add('flash'); setTimeout(function () { st0.classList.remove('flash'); }, 1600); } }
     if (Y().mode === 'server') mountTelegramWidget();
     var first = document.querySelector('[data-field]:not([type=radio])');
@@ -8816,6 +8818,20 @@ fieldset.field { border: 0; padding: 0; min-width: 0; }
   window.addEventListener('hashchange', onNav); window.addEventListener('popstate', onNav);
   var tw = window.Telegram && window.Telegram.WebApp;
   // аналитика: с чего открыли (телефон / планшет / компьютер, система, Telegram, «Домой») — раз на загрузку; id браузера случайный
+  /** Отклик (для /admin, без личных данных): этап 0 открыл · 1 клацал по экранам · 2 есть счётчик · 3 есть показания; сколько их. */
+  var VSTAGE = 0, VACT = { at: 0, key: '' }, VPING = null;
+  function visitAct() {
+    var live = function (x) { return x && !x.deleted && !x.removed; }, n = 0, rc = 0;
+    (S.places || []).forEach(function (p) { if (p && !p.deleted) { if (live(p.meter)) n++; n += ((p.water || {}).meters || []).filter(live).length + (p.meters || []).filter(live).length; } });
+    rc = (S.readings || []).filter(function (x) { return x && !x.deleted; }).length + (S.water || []).concat(S.mrecs || []).filter(function (x) { return x && !x.deleted; }).length;   // і стартові: людина вписала цифри
+    return { stage: Math.max(VSTAGE, n ? 2 : 0, rc ? 3 : 0), meters: n, recs: rc };
+  }
+  /** Сделал что-то новое (перешёл на экран, добавил счётчик, внёс показания) — дослать в отклик; не чаще раза в минуту. */
+  function visitBump() {
+    if (!VPING) return; var a = visitAct(), k = a.stage + '/' + a.meters + '/' + a.recs; if (k === VACT.key) return;
+    var wait = Math.max(0, 60000 - (Date.now() - VACT.at)); clearTimeout(VACT.tm);
+    VACT.tm = setTimeout(function () { var b = visitAct(), k2 = b.stage + '/' + b.meters + '/' + b.recs; if (k2 === VACT.key) return; VACT.key = k2; VACT.at = Date.now(); VPING(Object.assign({ act: 1 }, b)); }, wait || 1500);
+  }
   (function visit() {
     var ap = window.TeploSync && window.TeploSync.api; if (!ap || !window.TEPLO_API) return;
     if (navigator.webdriver) return;   // проверки сессий (Playwright, «Linux 1440 px») — не люди, в «С чего работают» не считаем
@@ -8825,7 +8841,9 @@ fieldset.field { border: 0; padding: 0; min-width: 0; }
       var tablet = ipad || (/Android/.test(ua) && !/Mobile/.test(ua)) || /Tablet|PlayBook|Silk|Kindle/.test(ua), mobile = !tablet && /Mobi|iPhone|iPod|Android|Windows Phone/.test(ua);
       var os = /iPhone|iPod/.test(ua) || ipad ? 'iOS' : /Android/.test(ua) ? 'Android' : /Windows/.test(ua) ? 'Windows' : /Mac OS X|Macintosh/.test(ua) ? 'macOS' : /Linux|CrOS/.test(ua) ? 'Linux' : 'other';
       var tg0 = window.Telegram && window.Telegram.WebApp, pwa = !!(window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) || navigator.standalone === true;
-      setTimeout(function () { ap('POST', '/visit', { vid: vid, device: tablet ? 'tablet' : mobile ? 'mobile' : 'desktop', os: os, tg: !!(tg0 && tg0.initData), pwa: pwa, sw: Math.round(screen.width || 0) }).catch(function () {}); }, 1500);
+      var base = { vid: vid, device: tablet ? 'tablet' : mobile ? 'mobile' : 'desktop', os: os, tg: !!(tg0 && tg0.initData), pwa: pwa, sw: Math.round(screen.width || 0) };
+      VPING = function (extra) { ap('POST', '/visit', Object.assign({}, base, extra || {})).catch(function () {}); };
+      setTimeout(function () { var a = visitAct(); VACT.key = a.stage + '/' + a.meters + '/' + a.recs; VACT.at = Date.now(); VPING(a); }, 1500);
     } catch (e) { /* без localStorage — не считаем */ }
   })();
   if (tw && tw.initData) { try { tw.ready(); tw.expand(); applyTheme(); if (tw.onEvent) tw.onEvent('themeChanged', function () { applyTheme(); safeRender(); }); } catch (e) { /* старый клиент */ } }

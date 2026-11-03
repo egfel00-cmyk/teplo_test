@@ -30,12 +30,18 @@ final class Visits {
     $tg = !empty($in['tg']) ? 1 : 0; $pwa = !empty($in['pwa']) ? 1 : 0;
     $sw = (int)($in['sw'] ?? 0); $sw = $sw > 0 && $sw < 10000 ? $sw : null;
     $day = self::day(); $now = Http::iso(); $uid = $user ? (int)$user['id'] : null;
-    $upd = fn() => Db::q('UPDATE visits SET hits = hits + 1, last_at = ?, user_id = COALESCE(?, user_id), device = ?, os = ?, tg = ?, pwa = ?, sw = COALESCE(?, sw) WHERE day = ? AND vid = ?',
-      [$now, $uid, $dev, $os, $tg, $pwa, $sw, $day, $vid]);
-    if (Db::one('SELECT 1 AS x FROM visits WHERE day = ? AND vid = ?', [$day, $vid])) $upd();
+    // что успел сделать (числа из состояния браузера, без данных): этап, счётчиков, показаний; повторный пинг (act) — не новое открытие
+    $stage = max(0, min(3, (int)($in['stage'] ?? 0))); $meters = max(0, min(99, (int)($in['meters'] ?? 0))); $recs = max(0, min(9999, (int)($in['recs'] ?? 0)));
+    $hit = empty($in['act']) ? 1 : 0;
+    $row = Db::one('SELECT stage, meters, recs FROM visits WHERE day = ? AND vid = ?', [$day, $vid]);
+    $upd = function (?array $old) use ($now, $uid, $dev, $os, $tg, $pwa, $sw, $day, $vid, $stage, $meters, $recs, $hit) {
+      Db::q('UPDATE visits SET hits = hits + ?, last_at = ?, user_id = COALESCE(?, user_id), device = ?, os = ?, tg = ?, pwa = ?, sw = COALESCE(?, sw), stage = ?, meters = ?, recs = ? WHERE day = ? AND vid = ?',
+        [$hit, $now, $uid, $dev, $os, $tg, $pwa, $sw, max($stage, (int)($old['stage'] ?? 0)), max($meters, (int)($old['meters'] ?? 0)), max($recs, (int)($old['recs'] ?? 0)), $day, $vid]);
+    };
+    if ($row) $upd($row);
     else {
-      try { Db::q('INSERT INTO visits (day, vid, user_id, device, os, tg, pwa, sw, hits, first_at, last_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?)', [$day, $vid, $uid, $dev, $os, $tg, $pwa, $sw, $now, $now]); }
-      catch (PDOException $e) { $upd(); }   // два запроса одновременно — второй просто дописывает
+      try { Db::q('INSERT INTO visits (day, vid, user_id, device, os, tg, pwa, sw, hits, first_at, last_at, stage, meters, recs) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?, ?, ?)', [$day, $vid, $uid, $dev, $os, $tg, $pwa, $sw, $now, $now, $stage, $meters, $recs]); }
+      catch (PDOException $e) { $upd(Db::one('SELECT stage, meters, recs FROM visits WHERE day = ? AND vid = ?', [$day, $vid])); }   // два запроса одновременно — второй дописывает
     }
     return ['ok' => true];
   }
@@ -56,10 +62,22 @@ final class Visits {
     foreach (Db::q('SELECT vid, MAX(sw) AS sw FROM visits WHERE day >= ? AND sw IS NOT NULL GROUP BY vid', [$from])->fetchAll() as $x) {
       $s = (int)$x['sw']; $w[$s < 360 ? 'до 360' : ($s <= 430 ? '360–430' : ($s <= 767 ? '431–767' : ($s <= 1023 ? '768–1023' : ($s <= 1439 ? '1024–1439' : '1440+'))))]++;
     }
+    // отклик по дням — все браузеры, и без входа: открыли, впервые, клацали по экранам, добавили счётчик, внесли показания, вошли
+    $first = [];
+    foreach (Db::q('SELECT vid, MIN(day) AS d FROM visits GROUP BY vid')->fetchAll() as $x) $first[$x['vid']] = $x['d'];
+    $act = []; $sum = ['v' => 0, 'new' => 0, 's1' => 0, 's2' => 0, 's3' => 0, 'anon3' => 0, 'u' => 0]; $seen = [];
+    foreach (Db::q('SELECT day, vid, user_id, stage FROM visits WHERE day >= ? ORDER BY day DESC', [$from])->fetchAll() as $x) {
+      $d = $x['day']; $a = $act[$d] ?? ['v' => 0, 'new' => 0, 's1' => 0, 's2' => 0, 's3' => 0, 'anon3' => 0, 'u' => 0]; $st = (int)$x['stage'];
+      $a['v']++; if (($first[$x['vid']] ?? '') === $d) $a['new']++; if ($st >= 1) $a['s1']++; if ($st >= 2) $a['s2']++; if ($st >= 3) { $a['s3']++; if (!$x['user_id']) $a['anon3']++; } if ($x['user_id']) $a['u']++;
+      $act[$d] = $a;
+      // за период — по браузеру его лучший этап
+      $o = $seen[$x['vid']] ?? ['st' => 0, 'u' => false, 'new' => false]; $o['st'] = max($o['st'], $st); $o['u'] = $o['u'] || (bool)$x['user_id']; $o['new'] = $o['new'] || ($first[$x['vid']] ?? '') >= $from; $seen[$x['vid']] = $o;
+    }
+    foreach ($seen as $o) { $sum['v']++; if ($o['new']) $sum['new']++; if ($o['st'] >= 1) $sum['s1']++; if ($o['st'] >= 2) $sum['s2']++; if ($o['st'] >= 3) { $sum['s3']++; if (!$o['u']) $sum['anon3']++; } if ($o['u']) $sum['u']++; }
     $since = Db::one('SELECT MIN(day) AS d FROM visits');
     return ['days' => $days, 'from' => $from, 'since' => $since['d'] ?? null,
       'total' => ['v' => (int)($tot['v'] ?? 0), 'u' => (int)($tot['u'] ?? 0), 'h' => (int)($tot['h'] ?? 0)],
-      'device' => $grp('device'), 'os' => $grp('os'), 'tg' => $grp('tg', ['web', 'tg']), 'pwa' => $grp('pwa', ['web', 'pwa']), 'width' => $w, 'daily' => $daily];
+      'device' => $grp('device'), 'os' => $grp('os'), 'tg' => $grp('tg', ['web', 'tg']), 'pwa' => $grp('pwa', ['web', 'pwa']), 'width' => $w, 'daily' => $daily, 'act' => $act, 'actSum' => $sum];
   }
 
   /** Устройства человека (для карточки в /admin). */
