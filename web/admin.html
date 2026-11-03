@@ -108,7 +108,12 @@ pre.state { font: 12px/1.4 var(--mono); background: #F4F7F5; padding: 10px; bord
 
     if (o.cronAgo == null || o.cronAgo > 600) warn.push('Фоновые задачи (cron.php) ' + (o.cronAgo == null ? '<b>ни разу не запускались</b>' : '<b>не запускались ' + Math.round(o.cronAgo / 60) + ' мин</b>') + ' — напоминания не уйдут, старые фото не удалятся. Сервер должен запускать cron.php раз в минуту.');
     if (!o.telegram) warn.push('Вход через Telegram <b>выключен</b> — подключите бота во вкладке <a href="#settings">«Настройки»</a>.');
+    // Водоканал: бот (по ответам людей) и кабинет (сервер открывает страницу входа раз в 10 мин)
+    var vk = o.vk || {}, vb = vk.bot || {}, vc = vk.cab;
+    var vkLine = 'Водоканал — бот: ' + (vb.state === 'silent' ? '<b class="problem">не отвечает с ' + when(new Date(vb.since * 1000).toISOString()) + '</b> (заметили: ' + vb.users + ')' : vb.state === 'ok' ? 'отвечал ' + when(new Date(vb.lastOk * 1000).toISOString()) : 'нет данных (никто не пересылал ответов)') +
+      ' · кабинет: ' + (!vc ? 'ещё не проверяли' : vc.state === 'ok' ? 'открывается (' + when(new Date(vc.at * 1000).toISOString()) + ')' : '<b class="problem">не открывается с ' + when(new Date(vc.since * 1000).toISOString()) + '</b>, код ' + esc(vc.code) + (vc.everOk ? '' : ' — с нашего сервера ни разу не открылся (может не пускать заграничные адреса)'));
     return (warn.length ? '<div class="panel" style="background:var(--warns)">' + warn.map(function (w) { return '<p style="margin:4px 0">' + w + '</p>'; }).join('') + '</div>' : '') +
+      '<div class="panel small" data-key="adm-vk">' + vkLine + '</div>' +
       '<div class="cards">' + c(o.users, 'пользователей всего') + c(o.usersWeek, 'новых за 7 дней') + c(o.activeWeek, 'входили за 7 дней') + c(o.withTelegram, 'с Telegram') + c(o.withData, 'сохранили данные') +
       c(o.feedback, 'сообщений (новых: ' + o.feedbackNew + ')') + c(o.photos, 'фото загружено') + c(o.photosFailed, 'фото с проблемами') + c(o.reportsBad + ' / ' + o.reports, 'распознаваний с замечаниями') + '</div>' +
       '<p class="muted small">Фото хранятся ' + o.photoKeepDays + ' дней, потом удаляются автоматически.</p>' + actBlock() + trackBlock(o.tracking) + devicesBlock();
