@@ -3094,6 +3094,14 @@ fieldset.field { border: 0; padding: 0; min-width: 0; }
   function ts(x) { var n = typeof x === 'number' ? x : Date.parse(x || 0); return isFinite(n) ? n : 0; }
 
   /** Слить два состояния (локальное a и удалённое b). Возвращает новое. */
+  /** Есть ли в состоянии данные человека: счётчик в какой-нибудь квартире или запись (показания, вода, світло/газ). */
+  function hasData(st) {
+    if (!st) return false;
+    var live = function (x) { return x && !x.deleted; };
+    if ((st.readings || []).some(live) || (st.water || []).some(live) || (st.mrecs || []).some(live)) return true;
+    if (st.meter && !st.meter.removed) return true;
+    return (st.places || []).some(function (p) { return live(p) && ((p.meter && !p.meter.removed) || ((p.water || {}).meters || []).some(live) || (p.meters || []).some(live)); });
+  }
   function merge(a, b) {
     a = a || {}; b = b || {};
     var aT = a.updatedAt || 0, bT = b.updatedAt || 0, newer = bT > aT ? b : a, older = newer === a ? b : a;
@@ -3227,12 +3235,24 @@ fieldset.field { border: 0; padding: 0; min-width: 0; }
       var self = this;
       return api('GET', '/me').then(function (j) { self.serverReachable = true; self.account = j._status === 200 ? j.user : null; return self.account ? self.pull() : self._set('server', 'idle'); });
     },
-    pull: function () {
+    /** Чей аккаунт в этом браузере (id): пишется после синхронизации, стирается при выходе. Локальные данные без хозяина —
+     *  созданы без входа: при входе в аккаунт, где уже есть данные, они НЕ сливаются с ним (иначе «Моя квартира» без входа с тем же
+     *  id «main» и свежей меткой затирала квартиру аккаунта — 03.11.2026 у владельца пропали счётчики). */
+    _owner: function () { try { return localStorage.getItem('teplo.acct') || ''; } catch (e) { return ''; } },
+    _setOwner: function (id) { try { if (id) localStorage.setItem('teplo.acct', String(id)); else localStorage.removeItem('teplo.acct'); } catch (e) { /* без localStorage */ } },
+    pull: function (login) {
       var self = this; this._set('server', 'syncing');
       return api('GET', '/state').then(function (j) {
         if (j._status !== 200) { if (j._status === 401) self.account = null; self._set('server', 'error'); return; }
         self._version = j.version || 0;
-        if (j.state) { self._lastSig = sig(j.state); self._apply(merge(self._get(), j.state)); }
+        var acc = self.account && self.account.id ? String(self.account.id) : '', same = !login || (acc && self._owner() === acc);
+        if (j.state) {
+          self._lastSig = sig(j.state);
+          // вход в аккаунт, где уже есть данные, с чужими/«без входа» данными в браузере — данные аккаунта главнее, локальные не вливаем
+          if (!same && hasData(j.state)) self._apply(j.state);
+          else self._apply(merge(self._get(), j.state));
+        }
+        if (acc) self._setOwner(acc);
         self._set('server', 'ok'); self._flush();
       });
     },
@@ -3241,14 +3261,14 @@ fieldset.field { border: 0; padding: 0; min-width: 0; }
       var tick = function () { if (self.mode === 'server' && self.account && document.visibilityState === 'visible' && !self._writing) api('GET', '/state?since=' + self._version).then(function (j) { if (j._status === 200 && j.version !== self._version && j.state) { self._version = j.version; self._lastSig = sig(j.state); self._apply(merge(self._get(), j.state)); } }); };
       document.addEventListener('visibilitychange', tick); setInterval(tick, 60000);
     },
-    _after: function (j) { if (j._status === 200 && j.user) { this.account = j.user; return this.pull().then(function () { return j; }); } return Promise.resolve(j); },
+    _after: function (j) { if (j._status === 200 && j.user) { this.account = j.user; return this.pull(true).then(function () { return j; }); } return Promise.resolve(j); },
     login: function (email, password) { var self = this; return api('POST', '/auth/login', { email: email, password: password }).then(function (j) { return self._after(j); }); },
     register: function (email, password) { var self = this; return api('POST', '/auth/register', { email: email, password: password }).then(function (j) { return self._after(j); }); },
     loginTelegramWebApp: function (initData) { var self = this; return api('POST', '/auth/telegram/webapp', { initData: initData }).then(function (j) { self.serverReachable = true; return self._after(j); }); },
     loginTelegramWidget: function (data) { var self = this; return api('POST', '/auth/telegram/widget', data).then(function (j) { return self._after(j); }); },
     linkTelegram: function (data) { var self = this; return api('POST', '/auth/link-telegram', data).then(function (j) { if (j._status === 200) self.account = j.user; self._onChange(); return j; }); },
     setPassword: function (email, password) { var self = this; return api('POST', '/auth/password', { email: email, password: password }).then(function (j) { if (j._status === 200) self.account = j.user; self._onChange(); return j; }); },
-    logout: function () { var self = this; return api('POST', '/auth/logout').then(function () { self.account = null; self._lastSig = ''; self._set('server', 'idle'); }); },
+    logout: function () { var self = this; return api('POST', '/auth/logout').then(function () { self.account = null; self._lastSig = ''; self._setOwner(''); self._set('server', 'idle'); }); },
     config: function () { return api('GET', '/config'); }
   };
 
