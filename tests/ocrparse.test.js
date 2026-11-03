@@ -98,4 +98,9 @@ ok('пустое фото → «знято здалеку/розмите», бе
 { const all = ['20', 'UA.TR', 'HIK2102-02.M2', '003474', 'kW.h', '220V 5(60)A 50Hz', 'PeBepc', '6400 imp/kW·h', 'No9350182 2020p.', 'NOTy EN 62053-21', '61'].join('\n');
   const sc = P.meterScores(all); ok('НІК 2102 з барабаном → electric, води й газу 0', P.meterType(all) === 'electric' && sc.electric >= 5 && !sc.water && !sc.gas && !sc.heat, sc); }
 
+// 03.11.2026, друге фото власника: «ДСТУ EN 62052» рушій читає «CT/ EN 62052--» — «CT» (обратка теплосчётчика) не робить його теплом
+{ const all = ['NiK', '-40°℃+70°', 'HIK2102-02.M2 H1F 2102-02.M2', 'Wh', '220V 5(60)A50Hz', 'PeBepc', '6400 imp/kW', 'No 93501822020 p.', 'ACTy EN 62052- CT/ EN 62052--', 'BCTY EN 62053-2 HCTY EN 62053-2'].join('\n');
+  const sc = P.meterScores(all); ok('НІК 2102, «ДСТУ» прочитано як «CT/» → electric, не тепло', P.meterType(all) === 'electric' && !sc.heat && sc.electric >= 5, sc);
+  ok('табло тепла з «HT»/«CT» без примет світла — тепло, як і було', P.meterType('HT 75.2\nCT 44.1\n°C') === 'heat' && P.meterScores('HT 75.2').heat === true); }
+
 console.log(`\nИтог: ${pass} OK, ${fail} FAIL`); process.exit(fail ? 1 : 0);

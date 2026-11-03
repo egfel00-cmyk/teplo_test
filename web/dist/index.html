@@ -3467,6 +3467,10 @@ fieldset.field { border: 0; padding: 0; min-width: 0; }
     gas: [/\bG\s?(1[.,]6|2[.,]5|4|6|10)\b/, /Q\s*max|Q\s*min|P\s*max/i, /\bkPa\b|кПа/i, /BK-?\s?G|METRIX|ELSTER|GALLUS|САМГАЗ|SAMGAZ|ОКТАВА|OKTAVA|\bGAS\b|ГАЗ/i]
   };
   var HEAT = /G\s?cal|G\s?kal|Гкал|\bGJ\b|MWh|SHARKY|ULTRAHEAT|MULTICAL|SENSOSTAR|\bELF\b|TRUST|SONOMETER|тепл|ТЕПЛ|\bHT\b|\bCT\b/i;
+  // «HT»/«CT» (подача/обратка на табло) — слабая примета: «ДСТУ» на корпусе электросчётчика движок читает «CT/», «CTY»
+  var HEAT_STRONG = /G\s?cal|G\s?kal|Гкал|\bGJ\b|MWh|SHARKY|ULTRAHEAT|MULTICAL|SENSOSTAR|\bELF\b|TRUST|SONOMETER|тепл|ТЕПЛ/i;
+  /** Теплосчётчик на фото: сильные приметы — всегда; одни «HT»/«CT» — только если примет света меньше трёх. */
+  function isHeat(all) { if (HEAT_STRONG.test(all)) return true; if (!HEAT.test(all)) return false; return OTHER.electric.filter(function (re) { return re.test(all); }).length < 3; }
 
   // подписи на экране → поле
   var TAGS = [
@@ -3563,12 +3567,12 @@ fieldset.field { border: 0; padding: 0; min-width: 0; }
 
   /** Сколько примет каждого вида на фото: {heat: bool, electric: n, water: n, gas: n}. */
   function meterScores(all) {
-    var o = { heat: HEAT.test(all) };
+    var o = { heat: isHeat(all) };
     Object.keys(OTHER).forEach(function (k) { o[k] = OTHER[k].filter(function (re) { return re.test(all); }).length; });
     return o;
   }
   function meterType(all) {
-    if (HEAT.test(all)) return 'heat';
+    if (isHeat(all)) return 'heat';
     var best = null, bestN = 0;
     Object.keys(OTHER).forEach(function (k) { var n = OTHER[k].filter(function (re) { return re.test(all); }).length; if (n > bestN) { bestN = n; best = k; } });
     return bestN ? best : null;
@@ -3803,7 +3807,7 @@ fieldset.field { border: 0; padding: 0; min-width: 0; }
     _engine: function (onPct) {
       var base = String(root.TEPLO_API).replace(/\/api\/?$/, '') + '/web/ocr/';
       var script = root.TeploOCR ? Promise.resolve() : (this._script = this._script || new Promise(function (ok, bad) {
-        var s = document.createElement('script'); s.src = base + 'engine.js?v=13'; s.onload = ok; s.onerror = function () { bad(fail('engine_failed')); }; document.head.appendChild(s);
+        var s = document.createElement('script'); s.src = base + 'engine.js?v=14'; s.onload = ok; s.onerror = function () { bad(fail('engine_failed')); }; document.head.appendChild(s);
       }));
       return script.then(function () { return root.TeploOCR.load(base, onPct); }).catch(function (e) { if (e && e.code) throw e; throw fail('engine_failed'); });
     },
@@ -6084,12 +6088,17 @@ fieldset.field { border: 0; padding: 0; min-width: 0; }
       } else {
         // газ — ролики (окно барабана), світло — электронное табло: барабан ему не нужен (ложные «ролики» перебивают число)
         var md = SK[k].mod, pm = { id: 'new', kind: k, zones: k === 'gas' ? 1 : EA.zones || 1 }, ks = md.keys(pm), q0 = tg.replace(/^ea-v-/, '');
-        var dr = k === 'gas' && (res.drums || []).length ? Wt.fromOcr({ lines: [], drums: res.drums }, null) : null;
-        var shots = [{ lines: res.lines || [], drum: dr && dr.value !== null && dr.value !== undefined ? { value: dr.value, frac: dr.frac || '', sure: !!dr.sure } : null }];
+        var dr = (res.drums || []).length ? Wt.fromOcr({ lines: [], drums: res.drums }, null) : null;
+        var drShot = dr && dr.value !== null && dr.value !== undefined ? { value: dr.value, frac: dr.frac || '', sure: !!dr.sure } : null;
+        var shots = [{ lines: res.lines || [], drum: k === 'gas' ? drShot : null }];
         var by = md.fromPhotos(shots, [pm], { new: {} }).new || {}, put = {};
         // зона по метке на табло (T1/T2/1.8.1…); без метки — в то поле, у которого нажали камеру
         ks.forEach(function (q) { if (by[q] && (ks.length === 1 || by[q].why === 'tag')) put[q] = by[q]; });
         if (!Object.keys(put).length) { var one = (md.fromPhotos(shots, [{ id: 'new', kind: k, zones: 1 }], { new: {} }).new || {}).all; if (one) put[ks.indexOf(q0) >= 0 ? q0 : ks[0]] = one; }
+        // механічний лічильник світла з барабаном (НІК 2102): цифр табло немає — беремо барабан (уверений, від 4 цифр); у електронних
+        // табло барабан не беремо першим — хибні «ролики» перебивали число
+        if (!Object.keys(put).length && k === 'elec' && drShot && dr.sure && String(dr.digits || dr.value).length >= 4) {
+          var od = (md.fromPhotos([{ lines: [], drum: drShot }], [{ id: 'new', kind: k, zones: 1 }], { new: {} }).new || {}).all; if (od) put[ks.indexOf(q0) >= 0 ? q0 : ks[0]] = od; }
         ks.forEach(function (q) {
           var x = put[q]; if (!x) return;
           var v = k === 'gas' ? Wt.withFrac(x.v, x.frac) : String(x.v), fi = document.getElementById('ea-v-' + q);

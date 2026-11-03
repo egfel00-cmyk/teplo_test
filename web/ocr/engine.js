@@ -390,13 +390,39 @@
         var mL = cum[sp] / sp, mR = (cum[prof.length] - cum[sp]) / (prof.length - sp), dlt = mR - mL, wv = sp / prof.length * (1 - sp / prof.length) * dlt * dlt;
         if (!best || wv > best.v) best = { sp: sp, d: dlt, v: wv };
       }
+      if (root.TEPLO_PROF) console.log('DBG prof rad', rad, 'cx', Math.round(cx/k), 'U', Math.round(U/k), 'V', Math.round(V/k), 't0', Math.round(t0), 't1', Math.round(t1), 'sp', best && best.sp, 'd', best && best.d.toFixed(2), prof.map(function (f) { return Math.round(f * 9); }).join(''));
       var redSide = best && Math.abs(best.d) > 0.22 ? (best.d > 0 ? 1 : -1) : 0;   // 1 — красные в конце по оси, −1 — в начале, 0 — не видно
+      // Красная часть — сплошное «ядро» (ролики на красном фоне). Перед ним бывает красноватый отсвет (светодиод электросчётчика,
+      // блик) на последних чёрных роликах — Оцу отдаёт их красным («0034» + «77,6» вместо «003477» + «6»): отсвет слабее ядра вдвое
+      // и длиной от ролика — возвращаем чёрным. За ядром — хвост без красного (окно «дотянулось» до надписи kWh) — отрезаем.
+      var tEnd = t1, tBeg = t0;
+      if (redSide === 1 || redSide === -1) {
+        var lo = redSide === 1 ? best.sp : 0, hi = redSide === 1 ? prof.length : best.sp, sw = Math.max(1, Math.round(V * 0.08)), sm = [], mxr = 0, ia, ib, m9;
+        for (ia = 0; ia < prof.length; ia++) { var s9 = 0, n9 = 0; for (ib = Math.max(0, ia - sw); ib <= Math.min(prof.length - 1, ia + sw); ib++) { s9 += prof[ib]; n9++; } sm.push(s9 / n9); }
+        for (ia = lo; ia < hi; ia++) if (sm[ia] > mxr) mxr = sm[ia];
+        if (mxr >= 0.6) {
+          var thr = Math.max(0.45, mxr * 0.8), ca = -1, cb = -1;
+          for (ia = lo; ia < hi; ia++) if (sm[ia] >= thr) { if (ca < 0) ca = ia; cb = ia; }
+          var mean = function (a0, b0) { var s0 = 0; for (var j9 = a0; j9 < b0; j9++) s0 += prof[j9]; return b0 > a0 ? s0 / (b0 - a0) : 0; };
+          if (ca >= 0) {
+            var core = mean(ca, cb + 1), mg = Math.round(V * 0.06);
+            if (redSide === 1) {
+              if (ca - lo >= V * 0.5 && mean(lo, ca) < core * 0.5) best.sp = Math.max(lo, ca - mg);
+              if (hi - cb >= V * 0.5 && mean(cb + 1, hi) < 0.15) tEnd = t0 + Math.min(hi - 1, cb + mg);
+            } else {
+              if (hi - cb >= V * 0.5 && mean(cb + 1, hi) < core * 0.5) best.sp = Math.min(hi, cb + 1 + mg);
+              if (ca - lo >= V * 0.5 && mean(lo, ca) < 0.15) tBeg = t0 + Math.max(lo, ca - mg);
+            }
+          }
+        }
+        if (root.TEPLO_PROF) console.log('DBG red core', mxr.toFixed(2), 'sp', best.sp, 'tBeg', Math.round(tBeg), 'tEnd', Math.round(tEnd));
+      }
       // без красного внутри — посмотреть за концами (красные ролики иногда отдельным окном)
       var e1 = sampleRect(cx + ux * (U / 2 + U * 0.25), cy + uy * (U / 2 + U * 0.25), a, U * 0.4, V * 0.7), e2 = sampleRect(cx - ux * (U / 2 + U * 0.25), cy - uy * (U / 2 + U * 0.25), a, U * 0.4, V * 0.7);
       if (!redSide && Math.max(e1.red, e2.red) > 0.15 && Math.abs(e1.red - e2.red) > 0.1) redSide = e1.red > e2.red ? 2 : -2;
       // чёрная часть [b0, b1] вдоль оси (от начала окна), красная — остальное
       var bt0 = t0, bt1 = t1, rt0 = null, rt1 = null;
-      if (redSide === 1) { bt1 = t0 + best.sp; rt0 = bt1; rt1 = t1; } else if (redSide === -1) { bt0 = t0 + best.sp; rt0 = t0; rt1 = bt0; }
+      if (redSide === 1) { bt1 = t0 + best.sp; rt0 = bt1; rt1 = tEnd; } else if (redSide === -1) { bt0 = t0 + best.sp; rt0 = tBeg; rt1 = bt0; }
       var bcx = sd.cx + ux * (bt0 + bt1) / 2, bcy = sd.cy + uy * (bt0 + bt1) / 2, bU = bt1 - bt0;
       if (bU / V < 1.6) return;
       var dirA = redSide > 0 ? a : redSide < 0 ? a + Math.PI : (Math.cos(a) < 0 ? a + Math.PI : a);
@@ -754,24 +780,44 @@
   function readDrum(src, d) {
     var tries = [d.angle, d.angle + Math.PI], res = [];   // и в обратную сторону: красная рамка или текст у края путают ориентацию
     var chain = Promise.resolve();
+    // цифры из прочитанного: «O» и «U» (у нуля срезан верх — блик, тонкий шрифт) — это 0
+    var dig = function (r) { return r.text.replace(/[OoU]/g, '0').replace(/[^0-9]/g, ''); };
+    var pick = function (outs, ang, hc) {
+      var tally = {};
+      // буквы в прочитанном («L0SOO») — цифры вверх ногами: «5» → «S», «9» → «6»; такое чтение весит меньше
+      outs.forEach(function (r) { var dg = dig(r); if (dg.length < 3) return; var t2 = tally[dg] = tally[dg] || { n: 0, s: 0, j: 0 }; t2.n++; t2.s = Math.max(t2.s, r.score); if (/[^0-9OoU\s.,:;'"`·\-]/.test(r.text)) t2.j++; });
+      var bestK = null, dgs = outs.map(dig);
+      Object.keys(tally).forEach(function (kk) {
+        // обработки, согласные во всём, кроме последней цифры (на переходе у каждой своя), — полголоса
+        var head = kk.slice(0, -1), np = kk.length >= 4 ? dgs.filter(function (x) { return x.length >= head.length && x.length <= kk.length + 1 && x.slice(0, head.length) === head; }).length : 0;
+        var v = tally[kk], ne = v.n + 0.5 * Math.max(0, np - v.n), sc = ne + v.s + (kk.length >= 4 && kk.length <= 8 ? 0.5 : 0) + (/^0/.test(kk) ? 0.6 : 0) + (/^00/.test(kk) ? 0.3 : 0) + (ang === d.angle && d.sure ? 0.3 : 0) - 0.7 * v.j / v.n + hc;
+        if (!bestK || sc > bestK.sc) bestK = { d: kk, sc: sc, n: v.n, s: v.s };
+      });
+      return bestK;
+    };
     tries.forEach(function (ang) {
       var blk = { cx: d.cx, cy: d.cy, w: d.w + d.h * 0.1, h: d.h * 1.1, angle: ang }, outs = [];
       ['inv', 'bin', 'plain'].forEach(function (m) { chain = chain.then(function () { return recTensor(drumTensor(src, blk, m)); }).then(function (r) { r.mode = m; outs.push(r); }); });
       chain = chain.then(function () {
-        var tally = {};
-        // буквы в прочитанном («L0SOO») — цифры вверх ногами: «5» → «S», «9» → «6»; такое чтение весит меньше
-        outs.forEach(function (r) { var dg = r.text.replace(/[Oo]/g, '0').replace(/[^0-9]/g, ''); if (dg.length < 3) return; var t2 = tally[dg] = tally[dg] || { n: 0, s: 0, j: 0 }; t2.n++; t2.s = Math.max(t2.s, r.score); if (/[^0-9Oo\s.,:;'"`·\-]/.test(r.text)) t2.j++; });
-        var bestK = null, dgs = outs.map(function (r) { return r.text.replace(/[Oo]/g, '0').replace(/[^0-9]/g, ''); });
         // ролик между цифрами: в этой стороне его видно в начале ряда — так не бывает (переход идёт с младшего ролика),
         // значит, читаем вверх ногами; в конце ряда — как и должно быть
         var hc = 0; try { var cl0 = drumCells(drumGray(src, blk, 96)), cc = cl0.cells.filter(function (c) { return c.runs.length; }); if (cc.length >= 3) { if (cc[0].half || cc[0].part) hc = -0.6; else if (cc[cc.length - 1].half || cc[cc.length - 1].part) hc = 0.4; } } catch (e) { hc = 0; }
-        Object.keys(tally).forEach(function (kk) {
-          // обработки, согласные во всём, кроме последней цифры (на переходе у каждой своя), — полголоса
-          var head = kk.slice(0, -1), np = kk.length >= 4 ? dgs.filter(function (x) { return x.length >= head.length && x.length <= kk.length + 1 && x.slice(0, head.length) === head; }).length : 0;
-          var v = tally[kk], ne = v.n + 0.5 * Math.max(0, np - v.n), sc = ne + v.s + (kk.length >= 4 && kk.length <= 8 ? 0.5 : 0) + (/^0/.test(kk) ? 0.6 : 0) + (/^00/.test(kk) ? 0.3 : 0) + (ang === d.angle && d.sure ? 0.3 : 0) - 0.7 * v.j / v.n + hc;
-          if (!bestK || sc > bestK.sc) bestK = { d: kk, sc: sc, n: v.n, s: v.s };
-        });
-        res.push({ ang: ang, best: bestK, alts: outs.map(function (r) { return r.text; }) });
+        res.push({ ang: ang, best: pick(outs, ang, hc), alts: outs.map(function (r) { return r.text; }), outs: outs, hc: hc });
+      });
+    });
+    // Окно высокое (видны верх следующих цифр, блики-чёрточки под цифрами — электросчётчик НІК), и целиком все три обработки
+    // читают по-разному («QU3AIY», «J4.441», «003414»): дочитываем полосой по ряду цифр — выше, ниже и по середине окна.
+    chain = chain.then(function () {
+      res.sort(function (p, q) { return (q.best ? q.best.sc : -1) - (p.best ? p.best.sc : -1); });
+      var win = res[0]; if (win.best && win.best.n >= 2) return null;
+      var vx = -Math.sin(win.ang), vy = Math.cos(win.ang), more = [];
+      return [[-0.2, 0.5], [0.2, 0.5], [0, 0.6]].reduce(function (ch, bd) {
+        var bb = { cx: d.cx + vx * bd[0] * d.h, cy: d.cy + vy * bd[0] * d.h, w: d.w + d.h * 0.1, h: d.h * bd[1], angle: win.ang };
+        return ['inv', 'bin', 'plain'].reduce(function (ch2, m) { return ch2.then(function () { return recTensor(drumTensor(src, bb, m)); }).then(function (r) { r.mode = m; r.band = bd[0]; more.push(r); }); }, ch);
+      }, Promise.resolve()).then(function () {
+        var b2 = pick(win.outs.concat(more), win.ang, win.hc);
+        if (b2 && b2.n >= 2 && b2.d.length >= 4 && (!win.best || b2.n > win.best.n)) { win.best = b2; win.alts = win.alts.concat(more.map(function (r) { return r.text; })); win.band = true; }
+        if (root.TEPLO_DRUM_LOG) console.log('DBG band', JSON.stringify(more.map(function (r) { return [r.band, r.mode, r.text]; })), '→', b2 && b2.d);
       });
     });
     var reds = [], lead = 0;
@@ -847,7 +893,13 @@
         // окно барабана водомера (по цвету) — до пяти кандидатов, пока не прочитаем 4+ цифры
         var cands = []; try { cands = findDrums(src); } catch (e) { cands = []; }
         var ch = Promise.resolve();
-        cands.forEach(function (d) { ch = ch.then(function () { if (all ? drums.filter(goodDrum).length >= 4 : drums.some(goodDrum)) return null; return readDrum(src, d).then(function (r) { if (r.text) drums.push(r); }); }); });
+        // «окно» поверх надписи с буквами, и прочитаны те же цифры, что в надписи («ДСТУ EN 62052-1» под красным светодиодом
+        // электросчётчика → «06205»), — это надпись, не ролики. Перевёрнутый барабан текст читает буквами («EELOO»), но цифры другие.
+        var share4 = function (a1, b1) { for (var i4 = 0; i4 + 4 <= a1.length; i4++) if (b1.indexOf(a1.substr(i4, 4)) >= 0) return true; return false; };
+        var onText = function (r) { var a = r.w * r.h, rd = String(r.text || '').replace(/\D/g, ''); return a > 0 && lines.some(function (l) {
+          var ld = String(l.text || '').replace(/\D/g, ''); if (!/[A-Za-zА-Яа-яІіЇїЄє]{2}/.test(l.text) || ld.length < 4 || !share4(ld, rd)) return false;
+          var ix = Math.max(0, Math.min(l.x + l.w, r.x + r.w) - Math.max(l.x, r.x)), iy = Math.max(0, Math.min(l.y + l.h, r.y + r.h) - Math.max(l.y, r.y)); return ix * iy >= 0.5 * a; }); };
+        cands.forEach(function (d) { ch = ch.then(function () { if (all ? drums.filter(goodDrum).length >= 4 : drums.some(goodDrum)) return null; return readDrum(src, d).then(function (r) { if (r.text && !onText(r)) drums.push(r); }); }); });
         return ch;
       }).then(function () {
         if (drums.some(goodDrum)) return null;   // водомер прочитан — приближать нечего
@@ -884,5 +936,5 @@
     return ch.then(function () { return out.join(' | '); }); }); }
   function _rec(file, b) { return toCanvas(file).then(function (c) { return Promise.all([recognize(c, b, 0), recognize(c, b, 0.3), recognize(c, b, 0.55)]); }).then(function (r) { return r.map(function (x) { return x.text + '(' + x.score.toFixed(2) + ')'; }).join(' | '); }); }
   function _readDrums(file) { var src, out = []; return toCanvas(file).then(function (c) { src = c; var ch = Promise.resolve(); findDrums(c).slice(0, 2).forEach(function (d) { ch = ch.then(function () { return readDrum(src, d); }).then(function (r) { out.push(r); }); }); return ch; }).then(function () { free(src); return out; }); }
-  root.TeploOCR = { _det: _det, _rec: _rec, _readDrums: _readDrums, _drums: function (file) { return toCanvas(file).then(function (c) { var r = findDrums(c); free(c); return r; }); }, load: load, read: read, ready: function () { return !!REC; } };
+  root.TeploOCR = { _recBox: function (file, blk, m) { var src; return toCanvas(file).then(function (c) { src = c; return recTensor(drumTensor(src, blk, m)); }).then(function (r) { free(src); return r; }); }, _det: _det, _rec: _rec, _readDrums: _readDrums, _drums: function (file) { return toCanvas(file).then(function (c) { var r = findDrums(c); free(c); return r; }); }, load: load, read: read, ready: function () { return !!REC; } };
 })(typeof window !== 'undefined' ? window : this);

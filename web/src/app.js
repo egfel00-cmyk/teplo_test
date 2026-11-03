@@ -1456,12 +1456,17 @@
       } else {
         // газ — ролики (окно барабана), світло — электронное табло: барабан ему не нужен (ложные «ролики» перебивают число)
         var md = SK[k].mod, pm = { id: 'new', kind: k, zones: k === 'gas' ? 1 : EA.zones || 1 }, ks = md.keys(pm), q0 = tg.replace(/^ea-v-/, '');
-        var dr = k === 'gas' && (res.drums || []).length ? Wt.fromOcr({ lines: [], drums: res.drums }, null) : null;
-        var shots = [{ lines: res.lines || [], drum: dr && dr.value !== null && dr.value !== undefined ? { value: dr.value, frac: dr.frac || '', sure: !!dr.sure } : null }];
+        var dr = (res.drums || []).length ? Wt.fromOcr({ lines: [], drums: res.drums }, null) : null;
+        var drShot = dr && dr.value !== null && dr.value !== undefined ? { value: dr.value, frac: dr.frac || '', sure: !!dr.sure } : null;
+        var shots = [{ lines: res.lines || [], drum: k === 'gas' ? drShot : null }];
         var by = md.fromPhotos(shots, [pm], { new: {} }).new || {}, put = {};
         // зона по метке на табло (T1/T2/1.8.1…); без метки — в то поле, у которого нажали камеру
         ks.forEach(function (q) { if (by[q] && (ks.length === 1 || by[q].why === 'tag')) put[q] = by[q]; });
         if (!Object.keys(put).length) { var one = (md.fromPhotos(shots, [{ id: 'new', kind: k, zones: 1 }], { new: {} }).new || {}).all; if (one) put[ks.indexOf(q0) >= 0 ? q0 : ks[0]] = one; }
+        // механічний лічильник світла з барабаном (НІК 2102): цифр табло немає — беремо барабан (уверений, від 4 цифр); у електронних
+        // табло барабан не беремо першим — хибні «ролики» перебивали число
+        if (!Object.keys(put).length && k === 'elec' && drShot && dr.sure && String(dr.digits || dr.value).length >= 4) {
+          var od = (md.fromPhotos([{ lines: [], drum: drShot }], [{ id: 'new', kind: k, zones: 1 }], { new: {} }).new || {}).all; if (od) put[ks.indexOf(q0) >= 0 ? q0 : ks[0]] = od; }
         ks.forEach(function (q) {
           var x = put[q]; if (!x) return;
           var v = k === 'gas' ? Wt.withFrac(x.v, x.frac) : String(x.v), fi = document.getElementById('ea-v-' + q);

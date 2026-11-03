@@ -23,6 +23,10 @@
     gas: [/\bG\s?(1[.,]6|2[.,]5|4|6|10)\b/, /Q\s*max|Q\s*min|P\s*max/i, /\bkPa\b|кПа/i, /BK-?\s?G|METRIX|ELSTER|GALLUS|САМГАЗ|SAMGAZ|ОКТАВА|OKTAVA|\bGAS\b|ГАЗ/i]
   };
   var HEAT = /G\s?cal|G\s?kal|Гкал|\bGJ\b|MWh|SHARKY|ULTRAHEAT|MULTICAL|SENSOSTAR|\bELF\b|TRUST|SONOMETER|тепл|ТЕПЛ|\bHT\b|\bCT\b/i;
+  // «HT»/«CT» (подача/обратка на табло) — слабая примета: «ДСТУ» на корпусе электросчётчика движок читает «CT/», «CTY»
+  var HEAT_STRONG = /G\s?cal|G\s?kal|Гкал|\bGJ\b|MWh|SHARKY|ULTRAHEAT|MULTICAL|SENSOSTAR|\bELF\b|TRUST|SONOMETER|тепл|ТЕПЛ/i;
+  /** Теплосчётчик на фото: сильные приметы — всегда; одни «HT»/«CT» — только если примет света меньше трёх. */
+  function isHeat(all) { if (HEAT_STRONG.test(all)) return true; if (!HEAT.test(all)) return false; return OTHER.electric.filter(function (re) { return re.test(all); }).length < 3; }
 
   // подписи на экране → поле
   var TAGS = [
@@ -119,12 +123,12 @@
 
   /** Сколько примет каждого вида на фото: {heat: bool, electric: n, water: n, gas: n}. */
   function meterScores(all) {
-    var o = { heat: HEAT.test(all) };
+    var o = { heat: isHeat(all) };
     Object.keys(OTHER).forEach(function (k) { o[k] = OTHER[k].filter(function (re) { return re.test(all); }).length; });
     return o;
   }
   function meterType(all) {
-    if (HEAT.test(all)) return 'heat';
+    if (isHeat(all)) return 'heat';
     var best = null, bestN = 0;
     Object.keys(OTHER).forEach(function (k) { var n = OTHER[k].filter(function (re) { return re.test(all); }).length; if (n > bestN) { bestN = n; best = k; } });
     return bestN ? best : null;
