@@ -802,6 +802,7 @@
     if (rec) {
       var cmd = Wt.vkCommand(wcfg().account, wcfg().surname, ms, rec.vals || {});
       if (cmd.noAccount) vkBody = '<p>' + esc(t('ws_need_acc')) + '</p>' + waccForm();
+
       // ID лічильників ще немає: бот покаже їх на /1= — відкриваємо його з готовою командою; переслана нам відповідь — номери кнопками
       else if (cmd.missing.length) vkBody = '<ol class="wsteps"><li>' + esc(t('vk_ids_1')) + '<div class="cmd"><code>' + esc(cmd.info) + '</code></div>' +
         '<div class="row-actions" style="margin-top:8px"><button class="btn" data-act="vk-open" data-text="' + esc(cmd.info) + '" data-key="vk-ids">' + ico('send', 18) + '<span>' + esc(t('vk_ids_btn')) + '</span></button></div></li>' +
@@ -815,6 +816,9 @@
           (vPend ? vkAsk(rec) + vkReplyBox(rec) : '');
         vkChans = vkChans.slice(1);   // бот відкриває кнопка вище
       }
+      // рахунок у 1–4 цифри — майже напевно не той (бот Водоканалу на неіснуючий мовчить): попередження й поля одразу зверху
+      var accD = String(wcfg().account || '').replace(/\D/g, '');
+      if (!cmd.noAccount && accD.length < 5) vkBody = '<div class="banner warn" data-key="vk-acc-short">' + ico('alert', 20) + '<div><p>' + esc(t('vk_acc_short', { a: accD })) + '</p></div></div>' + waccForm() + vkBody;
       vkBody += '<details class="tips-box"><summary>' + esc(t('wd_vals')) + '</summary>' + valList(ms) + '</details>';
     } else vkBody = '<p class="small" data-key="vk-need-rec">' + esc(t('vk_need_rec')) + '</p>';   // кнопка «Відправити» — після показань цього місяця
     var h = '<section class="panel where" data-key="where-water"><h2>' + ico('send', 20) + '<span>' + esc(t('wd_title')) + '</span></h2>' +
@@ -1895,7 +1899,7 @@
   document.addEventListener('change', function (e) {
     var el = e.target; if (!el || !el.getAttribute) return;
     var k = el.getAttribute('data-wcfg');
-    if (k) { wsetCfg(function (c) { c[k] = el.value.trim(); }); return; }
+    if (k) { wsetCfg(function (c) { c[k] = el.value.trim(); }); if (document.querySelector('[data-key=where-water]')) safeRender(); return; }   // команда для бота — з новим рахунком
     var mid = el.getAttribute('data-wm');
     if (mid) { var f = el.getAttribute('data-wf'); wsetCfg(function (c) { (c.meters || []).forEach(function (m) { if (m.id === mid) m[f] = el.value.trim(); }); }); if (f === 'kind') render(true); return; }
     if (el.id === 'wn-date') { WN.date = el.value; wnCheck(true); return; }
