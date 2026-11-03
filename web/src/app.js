@@ -816,7 +816,7 @@
         vkChans = vkChans.slice(1);   // бот відкриває кнопка вище
       }
       vkBody += '<details class="tips-box"><summary>' + esc(t('wd_vals')) + '</summary>' + valList(ms) + '</details>';
-    }
+    } else vkBody = '<p class="small" data-key="vk-need-rec">' + esc(t('vk_need_rec')) + '</p>';   // кнопка «Відправити» — після показань цього місяця
     var h = '<section class="panel where" data-key="where-water"><h2>' + ico('send', 20) + '<span>' + esc(t('wd_title')) + '</span></h2>' +
       // квартир несколько — за какую передаём (рахунок і цифри — цієї квартири)
       (places().length > 1 ? '<p class="dest-place" style="--pc:var(--pc-' + placeColor(place()) + ')" data-key="where-place"><b>' + esc(t('wd_for', { p: placeLabel(place()) })) + '</b>' + (placeSub(place()) ? '<span class="small muted"> · ' + esc(placeSub(place())) + '</span>' : '') + '</p>' : '') +
