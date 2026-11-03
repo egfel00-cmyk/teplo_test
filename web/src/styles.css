@@ -904,9 +904,9 @@ fieldset.field { border: 0; padding: 0; min-width: 0; }
 .list > li.hli { position: relative; flex-wrap: wrap; column-gap: 8px; row-gap: 2px; }
 .hli > a.rowlink { flex: 1 1 0; min-width: 0; width: auto; }
 @media (max-width: 520px) { .hli > a.rowlink { flex-basis: 100%; } .hli > .st-chip { margin: -2px 0 -4px; }
-  /* тепло на телефоне: статус — в правом верхнем углу карточки, на строке даты */
-  .hli.hli-heat > .st-chip { position: absolute; top: 6px; right: 12px; margin: 0; }
-  .hli.hli-heat .hr-date { padding-right: 132px; min-height: 26px; display: flex; align-items: center; } }
+  /* телефон: статус — в правом верхнем углу карточки, на строке даты (все виды: тепло, вода, світло, газ) */
+  .hli > .st-chip { position: absolute; top: 6px; right: 12px; margin: 0; }
+  .hli .hr-date { padding-right: 142px; min-height: 26px; display: flex; align-items: center; } }
 .st-chip { position: relative; display: inline-flex; align-items: center; gap: 2px; flex: none; min-height: 36px; padding: 0 2px 0 0; border: 0; background: none; cursor: pointer; font: inherit; color: var(--c-ink-2); border-radius: var(--r-pill); }
 .st-chip::before { content: ''; position: absolute; inset: -6px -8px; }
 .st-chip .pill { pointer-events: none; }
@@ -923,9 +923,10 @@ fieldset.field { border: 0; padding: 0; min-width: 0; }
 @media (prefers-reduced-motion: reduce) { .st-chip .st-dd { transition: none; } }
 /* ---- история тепла по отопительным сезонам ---- */
 /* сезон — спокойный раздел: одна тонкая рамка, заголовок текстом, итог строкой, без цветной полосы и крупных цифр */
-.season { margin: 0 0 var(--sp-3); background: var(--c-surface); border: 1px solid var(--c-line); border-radius: 12px; overflow: hidden; }
+.season { margin: 0 0 var(--sp-3); background: var(--c-surface); border: 1px solid var(--c-line); border-radius: 12px; }   /* без overflow:hidden — меню статуса не обрезается */
 .season > .list { border-radius: 0; background: transparent; }
-.ss-head { list-style: none; cursor: pointer; display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: 12px; row-gap: 3px; padding: 14px 16px; }
+.ss-head { list-style: none; cursor: pointer; display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: 12px; row-gap: 3px; padding: 14px 16px; border-radius: 11px; }
+.season[open] > .ss-head { border-bottom-left-radius: 0; border-bottom-right-radius: 0; }
 .season[open] > .ss-head { border-bottom: 1px solid var(--c-line); }
 .ss-head::-webkit-details-marker { display: none; }
 .ss-head:hover { background: var(--c-ghost-hover); }

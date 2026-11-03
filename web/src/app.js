@@ -677,10 +677,10 @@
         return '<section class="hp one" id="hp-' + esc(p.id) + '" data-pl="' + esc(p.id) + '" data-key="home-place"><div class="hp-head">' + ico('home', 24, 'hp-ico') +
           '<div class="hp-id"><b class="hp-name" data-key="home-place-name">' + esc(placeLabel(p)) + '</b>' +
             (HP_EDIT === p.id ? '' : addr ? '<span class="hp-addr">' + esc(addr) + ' <button type="button" class="linkbtn" data-act="hp-edit" data-id="' + esc(p.id) + '" data-key="home-addr-edit">' + esc(t('change')) + '</button></span>'
-              : '<button type="button" class="linkbtn hp-addr-add" data-act="hp-edit" data-id="' + esc(p.id) + '" data-key="home-addr-add">' + ico('plus', 16) + ' ' + esc(t('hp_addr_add')) + '</button>') + '</div>' +
-          '<button type="button" class="btn sec hp-addp" data-act="hp-add-place" data-key="home-add-place" aria-label="' + esc(t('pl_add')) + '">' + ico('plus', 18) + '<span>' + esc(t('hp_place')) + '</span></button></div>' +
+              : '<button type="button" class="linkbtn hp-addr-add" data-act="hp-edit" data-id="' + esc(p.id) + '" data-key="home-addr-add">' + ico('plus', 16) + ' ' + esc(t('hp_addr_add')) + '</button>') + '</div></div>' +
           (HP_EDIT === p.id ? hpEditForm(p) : '') +
-          '<div class="ucards">' + cards.join('') + addTile(!cards.length) + '</div>' + (cards.length ? '<p class="small muted ucards-hint">' + esc(t('uc_hint')) + '</p>' : '') + '</section>';
+          '<div class="ucards">' + cards.join('') + addTile(!cards.length) + '</div>' +
+          '<p class="hp-more"><button type="button" class="btn sec" data-act="hp-add-place" data-key="home-add-place">' + ico('plus', 18) + '<span>' + esc(t('pl_add')) + '</span></button></p>' + (cards.length ? '<p class="small muted ucards-hint">' + esc(t('uc_hint')) + '</p>' : '') + '</section>';
       });
     }
     return '<div class="hp-list" data-key="home-places">' + ps.map(function (p) {
@@ -739,7 +739,6 @@
     if (draft && hasHeat()) html += '<div class="home-draft"><a class="btn big block" href="#step-' + (S.draft.step || 0) + '" data-key="home-continue">' + esc(t('h_continue', { i: (S.draft.step || 0) + 1, n: steps().length })) + '</a>' +
       '<button type="button" class="linkbtn" data-act="wiz-cancel" data-what="heat" data-key="home-draft-cancel">' + esc(t('wz_cancel_draft')) + '</button></div>';
     html += homePlaces();
-    if (window.TEPLO_API) html += testReset();
     return { screen: 'S01', route: 'home', html: html };
   };
 
@@ -2186,7 +2185,10 @@
     el.setAttribute('aria-expanded', 'true');
     // под чипсом, но не за краем экрана
     if (li) { var lr = li.getBoundingClientRect(), cr = el.getBoundingClientRect(), vw = document.documentElement.clientWidth, mw = m.offsetWidth;
-      var x = Math.min(Math.max(8, cr.right - mw), vw - 8 - mw); m.style.left = Math.round(x - lr.left) + 'px'; m.style.top = Math.round(cr.bottom - lr.top + 6) + 'px'; m.style.right = 'auto'; }
+      var x = Math.min(Math.max(8, cr.right - mw), vw - 8 - mw); m.style.left = Math.round(x - lr.left) + 'px'; m.style.right = 'auto';
+      // снизу не влезает (низ экрана, нижнее меню ~70 px) — над чипсом, если сверху места больше
+      var mh = m.offsetHeight, vh = window.innerHeight || document.documentElement.clientHeight, below = vh - 76 - cr.bottom, up = below < mh + 8 && cr.top - 8 > below;
+      m.style.top = Math.round(up ? cr.top - lr.top - mh - 6 : cr.bottom - lr.top + 6) + 'px'; m.classList.toggle('up', up); }
     var f = m.querySelector('.st-opt.on') || m.querySelector('.st-opt'); if (f) f.focus();
   }
   /** Применить статус из меню: вода — sent.vk (+ sent.htm у горячей), світло/газ — sent[obl|grm], тепло — status handed ↔ checked;
@@ -3280,7 +3282,8 @@
         (Y().account ? '<p class="small muted">' + esc(t('p_data_synced')) + '</p>' :
           '<p class="small muted">' + esc(t('p_data_sub')) + '</p><div class="row-actions" style="margin-top:0"><button class="btn sec" data-act="export" data-key="prefs-export">' + ico('copy', 20) + '<span>' + esc(t('p_export')) + '</span></button></div>' +
           '<details class="tips-box" style="margin-top:12px"><summary>' + esc(t('p_import')) + '</summary><form id="import-form" novalidate style="margin-top:8px"><div class="field"><label for="p-import">' + esc(t('p_import_l')) + '</label><div class="ctl"><textarea id="p-import" placeholder="' + esc(t('p_import_ph')) + '"></textarea></div></div><button class="btn sec" type="submit">' + esc(t('p_import_go')) + '</button></form></details>') +
-        '<div style="margin-top:20px"><button class="btn danger" data-act="wipe-ask" data-key="prefs-wipe">' + esc(t('p_wipe')) + '</button><div id="wipe-confirm"></div></div></div>' +
+        // тестовый период: вместо «Видалити всі дані» — «Тестовий режим: почати спочатку» (то же стирание, вход остаётся); раньше блок был и на главной
+        (window.TEPLO_API ? '</div>' + testReset() : '<div style="margin-top:20px"><button class="btn danger" data-act="wipe-ask" data-key="prefs-wipe">' + esc(t('p_wipe')) + '</button><div id="wipe-confirm"></div></div></div>') +
       '<details class="tips-box" data-key="prefs-demo-box"' + (S.demoToday ? ' open' : '') + '><summary>' + esc(t('p_demo')) + '</summary><p class="small muted">' + esc(t('p_demo_sub')) + '</p><div class="field" style="max-width:260px"><label for="p-demo">' + esc(t('p_demo_l')) + '</label><div class="ctl"><input type="date" id="p-demo" data-key="prefs-demo" value="' + esc(S.demoToday || '') + '"></div></div></details>' +
       '')
     ];

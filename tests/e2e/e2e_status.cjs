@@ -73,6 +73,10 @@ const U = 'http://127.0.0.1:8013/';
   await p.goto(U + '#water-hot'); await p.waitForTimeout(400);
   ok('сторінка гарячої: чипси в останніх записах', (await p.$$('[data-key=water-history-hot] .st-chip')).length >= 1);
 
+  // телефон (360 px): у води, як у тепла, статус — у правому верхньому куті картки, на рядку дати
+  await view('hot');
+  const pos = await p.evaluate(() => { const li = document.querySelector('[data-key="st-w20261015"]').closest('li'), c = li.querySelector('.st-chip').getBoundingClientRect(), d = li.querySelector('.hr-date').getBoundingClientRect(), r = li.getBoundingClientRect(); return { top: Math.abs(c.top - d.top) < 14, right: r.right - c.right < 20 }; });
+  ok('вода на телефоні: статус у правому верхньому куті', pos.top && pos.right, pos);
   ok('без помилок JS', !errs.length, errs);
   console.log('\nИтог: ' + pass + ' OK, ' + fail + ' FAIL'); await b.close(); process.exit(fail ? 1 : 0);
 })();

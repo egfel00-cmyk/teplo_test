@@ -37,6 +37,10 @@ const U = 'http://127.0.0.1:8013/';
   const pos = await p.evaluate(() => { const li = document.querySelector('[data-key=season-2025] li.hli-heat'), c = li.querySelector('.st-chip').getBoundingClientRect(), d = li.querySelector('.hr-date').getBoundingClientRect(), r = li.getBoundingClientRect();
     return { top: Math.abs(c.top - d.top) < 14, right: r.right - c.right < 20 }; });
   ok('телефон: статус тепла — в правом верхнем углу карточки, на строке даты', pos.top && pos.right, pos);
+  // меню статуса у последней карточки сезона не обрезается рамкой сезона (было overflow:hidden)
+  { const li = await p.$$('[data-key=season-2025] li.hli'), lc = li[li.length - 1]; await lc.scrollIntoViewIfNeeded(); await (await lc.$('.st-chip')).click(); await p.waitForTimeout(250);
+    const v = await p.evaluate(() => { const m = document.querySelector('.st-menu'), r = m.getBoundingClientRect(); return [[r.left + 20, r.bottom - 8], [r.left + 20, r.top + 8]].every(([x, y]) => { const e = document.elementFromPoint(x, y); return !!(e && e.closest('.st-menu')); }); });
+    ok('последняя карточка сезона: меню статуса видно целиком', v); await p.keyboard.press('Escape'); }
   ok('без ошибок JS', !errs.length, errs);
   console.log('\nИтог: ' + pass + ' OK, ' + fail + ' FAIL'); await b.close(); process.exit(fail ? 1 : 0);
 })();
