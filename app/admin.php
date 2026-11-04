@@ -396,7 +396,18 @@ final class VkStatus {
   public static function status(): array {
     $c = self::read()['cab'] ?? null;
     // send — можно ли отправлять показания через кабинет нашим сервером (VkCab: есть разбор HTML, не выключено)
-    return ['bot' => self::bot(), 'cab' => is_array($c) ? array_intersect_key($c, array_flip(['state', 'at', 'since', 'everOk', 'lastOk', 'code'])) + ['send' => VkCab::ready()] : null];
+    return ['bot' => self::bot(), 'cab' => is_array($c) ? array_intersect_key($c, array_flip(['state', 'at', 'since', 'everOk', 'lastOk', 'code'])) + ['send' => VkCab::ready()] : null,
+      // проба «не знайдено» (VkCab::probe): узнали ли мы ответ живого сайта на выдуманный рахунок — без личных данных
+      'probe' => self::read()['probe'] ?? null];
+  }
+  /** Проба «не знайдено» на живом сайте — раз на VkCab::PROBE_V, когда кабинет открывается; сайт не ответил — ещё до 3 раз. → итог или null. */
+  public static function probeNotFound(?int $now = null): ?array {
+    $j = self::read(); $p = (array)($j['probe'] ?? []); $same = (int)($p['v'] ?? 0) === VkCab::PROBE_V;
+    if (empty($j['cab']['everOk']) || ($j['cab']['state'] ?? '') !== 'ok') return null;
+    if ($same && (($p['error'] ?? '') !== 'cab_down' || (int)($p['tries'] ?? 0) >= 3)) return null;
+    $r = VkCab::probe($now) + ['tries' => $same ? (int)($p['tries'] ?? 0) + 1 : 1];
+    $j = self::read(); $j['probe'] = $r; self::write($j);
+    return $r;
   }
   public static function event(int $uid, string $kind): array {
     if (!in_array($kind, ['send', 'ok', 'silent', 'err'], true)) throw new HttpError(422, 'bad_kind');

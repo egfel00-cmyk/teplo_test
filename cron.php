@@ -15,6 +15,8 @@ require __DIR__ . '/app/vkcab.php';
 $beat = Cron::read(); $beat['last'] = gmdate('c');
 // кабинет Водоканала — открывается ли (раз в 10 минут; статус видят приложение и /admin)
 if ((int)gmdate('i') % 10 === 7) { try { $beat['vkCab'] = VkStatus::probeCabinet()['state']; } catch (Throwable $e) { error_log('teplo vk probe: ' . $e->getMessage()); } }
+// проба «не знайдено»: выдуманный рахунок — узнаём ли мы ответ живого сайта (раз на версию разбора, VkCab::PROBE_V)
+if ((int)gmdate('i') % 10 === 3) { try { $p = VkStatus::probeNotFound(); if ($p) $beat['vkProbe'] = $p['error']; } catch (Throwable $e) { error_log('teplo vk notfound probe: ' . $e->getMessage()); } }
 if ((int)gmdate('i') !== 17) { Cron::write($beat); exit; }
 $h = ['at' => gmdate('c')];
 try { $n = Admin::cleanup(); $h['photos'] = $n; if ($n) echo gmdate('c') . " удалено старых фото: $n\n"; $h['hist'] = StateHist::cleanup(); }

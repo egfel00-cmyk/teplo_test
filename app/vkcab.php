@@ -307,6 +307,19 @@ final class VkCab {
     catch (HttpError $e) { throw new HttpError(429, 'rate_limited', ['human' => self::h('busy')] + $e->extra); }
   }
 
+  // ---------- проба «не знайдено»: как живой сайт отвечает на заведомо чужой рахунок ----------
+  // Сервер сам, без человека, раз на PROBE_V (cron, VkStatus::probeNotFound): вводит выдуманный рахунок и смотрит ответ. Показания не
+  // шлёт. Итог — в журнал (op probe) и в /api/vk/status → probe (рахунок выдуманный, цифры замаскированы). Поправили разбор — PROBE_V + 1.
+  const PROBE_V = 1, PROBE_ACC = '1000001', PROBE_FAM = 'Перевірка';
+  public static function probe(?int $now = null): array {
+    $now = $now ?? time(); $site = []; self::$lang = 'uk';
+    try { self::open(self::PROBE_ACC, self::PROBE_FAM, 'probe'); $err = 'found'; }   // вдруг такой рахунок есть — ничего о нём не пишем
+    catch (HttpError $e) { $err = $e->err; $site = array_map([self::class, 'mask'], array_slice((array)($e->extra['site'] ?? []), 0, 3)); }
+    $l = self::log(); $d = $l ? $l[count($l) - 1] : [];
+    $d = $err !== 'found' && ($d['op'] ?? '') === 'probe' && (int)($d['at'] ?? 0) >= time() - 60 ? array_intersect_key($d, array_flip(['result', 'where', 'steps', 'msgs', 'forms', 'err'])) : [];
+    return ['v' => self::PROBE_V, 'at' => $now, 'error' => $err, 'site' => $site] + $d;
+  }
+
   // ---------- журнал для /admin: структура без личных данных ----------
   private static array $cur = [];
   private static function maskMsgs(array $m): array { return array_map(fn($l) => array_map([self::class, 'mask'], array_slice($l, 0, 5)), $m); }

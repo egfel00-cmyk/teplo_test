@@ -414,6 +414,11 @@ ok('…как браузер: GET /login → cookie → POST с _csrf-frontend �
   && str_contains($vkCalls[1][2], '_csrf-frontend=c00kie') && $VKM['_last']['path'] === '/send-indications' && $vkSent() === 0);
 $r = $cab('/api/vk/cab/check', ['acc' => '905615', 'fam' => 'Шевченко']);
 ok('чужой рахунок → 422 cab_not_found: наше объяснение + слова сайта', $r->status === 422 && $r->body['error'] === 'cab_not_found' && str_contains($r->body['human'], '905615') && str_contains(implode(' ', $r->body['site'] ?? []), 'не знайдено'), $r->body);
+$pc0 = count($vkCalls); $pr = VkStatus::probeNotFound(); $vs = $tgb->req('GET', '/api/vk/status')->body;
+ok('проба «не знайдено» (cron): выдуманный рахунок → cab_not_found, слова сайта и структура — в /api/vk/status без цифр; показания не шлём', ($pr['error'] ?? '') === 'cab_not_found'
+  && ($pr['result'] ?? '') === 'notfound' && str_contains(implode(' ', $pr['site']), 'не знайдено') && ($vs['probe']['error'] ?? '') === 'cab_not_found' && !empty($vs['probe']['forms'])
+  && !preg_match('/\d{4}/', json_encode($vs['probe']['site'] + $vs['probe']['msgs'], JSON_UNESCAPED_UNICODE)) && !array_filter(array_slice($vkCalls, $pc0), fn($c) => str_contains($c[1], '/send-indications')), $pr);
+ok('…раз на версию разбора: повторно не пробуем', VkStatus::probeNotFound() === null && count($vkCalls) === $pc0 + 2);
 $k1 = $ck['meters'][0]['key']; $k2 = $ck['meters'][1]['key']; $n0 = count($sent);
 $r = $cab('/api/vk/cab/send', ['acc' => '905614', 'fam' => 'шевченко', 'items' => [['key' => $k1, 'value' => '458', 'serial' => '0123456', 'name' => 'Холодна'], ['key' => $k2, 'value' => '175', 'serial' => '0654321', 'name' => 'Гаряча']], 'date' => '2026-11-03']);
 $post = $VKM['_lastPost']['post'] ?? [];
@@ -556,6 +561,7 @@ ok('/admin: вкладка напоминаний — ближайшее, жур
 @unlink(Cron::file()); $h0 = (new Browser('10.0.13.8'))->req('GET', '/api/health');
 Cron::write(['last' => gmdate('c', time() - 120)]); $h1 = (new Browser('10.0.13.7'))->req('GET', '/api/health');
 ok('/api/health: cron ни разу → null, был 2 мин назад → ~120 с', $h0->body['cronAgo'] === null && abs(($h1->body['cronAgo'] ?? 0) - 120) <= 2, [$h0->body, $h1->body]);
+ok('/api/health: пересланные ответы ботов — только счёт по боту и итогу, без текстов', (((array)$h1->body['fwd'])['obl ok'] ?? 0) >= 1 && (((array)$h1->body['fwd'])['vk ok'] ?? 0) >= 1 && !preg_match('/прийнят|збережен/iu', json_encode($h1->body['fwd'], JSON_UNESCAPED_UNICODE)), $h1->body['fwd'] ?? null);
 
 echo "\nАналитика: квартиры и все виды счётчиков:\n";
 $mv = new Browser('10.0.14.1'); $mv->req('POST', '/api/auth/register', ['email' => 'many@example.ua', 'password' => 'many pass 123']);
