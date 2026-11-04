@@ -413,10 +413,18 @@ ok('проверка: сайт нашёл рахунок → 2 лічильни�
 ok('…как браузер: GET /login → cookie → POST с _csrf-frontend и NoLoginForm[acc|fam] → редирект с той же сессией; на сайт ничего не отправлено', $vkCalls[0][0] === 'GET' && str_ends_with($vkCalls[0][1], '/login')
   && str_contains($vkCalls[1][2], '_csrf-frontend=c00kie') && $VKM['_last']['path'] === '/send-indications' && $vkSent() === 0);
 $r = $cab('/api/vk/cab/check', ['acc' => '905615', 'fam' => 'Шевченко']);
-ok('чужой рахунок → 422 cab_not_found: наше объяснение + слова сайта', $r->status === 422 && $r->body['error'] === 'cab_not_found' && str_contains($r->body['human'], '905615') && str_contains(implode(' ', $r->body['site'] ?? []), 'не знайдено'), $r->body);
+ok('чужой рахунок (как живой сайт: страница без форм «Не коректні дані…») → 422 cab_not_found: наше объяснение + слова сайта', $r->status === 422 && $r->body['error'] === 'cab_not_found' && str_contains($r->body['human'], '905615') && str_contains($r->body['human'], 'українською') && str_contains(implode(' ', $r->body['site'] ?? []), 'Не коректні дані'), $r->body);
+$r = $cab('/api/vk/cab/check', ['acc' => '977770', 'fam' => 'Шевченко']);
+ok('…и старый вариант: снова форма входа с ошибкой → тоже cab_not_found', $r->status === 422 && $r->body['error'] === 'cab_not_found' && str_contains(implode(' ', $r->body['site'] ?? []), 'не знайдено'), $r->body);
+$r = $cab('/api/vk/cab/check', ['acc' => '905615', 'fam' => 'Шевчэнко']);
+ok('…в прізвищі русские буквы → подсказка «впишіть українською»', $r->status === 422 && str_contains($r->body['human'], 'російські літери'), $r->body['human'] ?? null);
+$vkReal = VkCab::$http; VkCab::$http = fn($m, $url, $b, $c) => str_contains($url, 'get-form-send') ? ['code' => 200, 'body' => '<html><body><div class="alert alert-danger">Сервіс тимчасово недоступний</div></body></html>'] : $vkReal($m, $url, $b, $c);
+$r = $cab('/api/vk/cab/check', ['acc' => '905615', 'fam' => 'Шевченко']);
+ok('…страница без форм с другой ошибкой — не «не знайдено», а cab_changed со словами сайта', $r->status === 502 && $r->body['error'] === 'cab_changed' && str_contains(implode(' ', $r->body['site'] ?? []), 'недоступний'), $r->body);
+VkCab::$http = $vkReal;
 $pc0 = count($vkCalls); $pr = VkStatus::probeNotFound(); $vs = $tgb->req('GET', '/api/vk/status')->body;
 ok('проба «не знайдено» (cron): выдуманный рахунок → cab_not_found, слова сайта и структура — в /api/vk/status без цифр; показания не шлём', ($pr['error'] ?? '') === 'cab_not_found'
-  && ($pr['result'] ?? '') === 'notfound' && str_contains(implode(' ', $pr['site']), 'не знайдено') && ($vs['probe']['error'] ?? '') === 'cab_not_found' && !empty($vs['probe']['forms'])
+  && ($pr['result'] ?? '') === 'notfound' && str_contains(implode(' ', $pr['site']), 'Не коректні дані') && ($vs['probe']['error'] ?? '') === 'cab_not_found' && count($vs['probe']['steps'] ?? []) === 2
   && !preg_match('/\d{4}/', json_encode($vs['probe']['site'] + $vs['probe']['msgs'], JSON_UNESCAPED_UNICODE)) && !array_filter(array_slice($vkCalls, $pc0), fn($c) => str_contains($c[1], '/send-indications')), $pr);
 ok('…раз на версию разбора: повторно не пробуем', VkStatus::probeNotFound() === null && count($vkCalls) === $pc0 + 2);
 $k1 = $ck['meters'][0]['key']; $k2 = $ck['meters'][1]['key']; $n0 = count($sent);

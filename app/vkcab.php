@@ -13,6 +13,8 @@ if (!defined('TEPLO')) { http_response_code(404); exit; }
 
 final class VkCab {
   const BASE = 'https://billing.vodokanal.kharkov.ua';
+  /** Ответ сайта «рахунок не знайдено» (свои слова Водоканала). */
+  const NF_RE = '/не\s*коректн|некоректн|невірн|неверн|не\s+знайден|не\s+найден|не\s+значат|не\s+співпада|не\s+совпада|не\s+існу|не\s+существ/iu';
   /** В тестах: fn(string $method, string $url, ?string $body, string $cookie): ['code', 'body', 'cookies' => [Set-Cookie…], 'location' => ?string, 'err' => ?string] */
   public static $http = null;
   public static function base(): string { return rtrim((string)Cfg::get('vk_cab_base', self::BASE), '/'); }
@@ -36,7 +38,8 @@ final class VkCab {
       'fam' => $ru ? 'Впишите фамилию владельца счёта, как в квитанции (до 20 букв, без инициалов).' : 'Впишіть прізвище власника рахунку, як у квитанції (до 20 літер, без ініціалів).',
       'down' => $ru ? 'Сайт Водоканала сейчас не отвечает. Попробуйте позже или отправьте через бот Водоканала.' : 'Сайт Водоканалу зараз не відповідає. Спробуйте пізніше або надішліть через бот Водоканалу.',
       'nodom' => $ru ? 'Отправка через сайт Водоканала на нашем сервере ещё не включена. Отправьте через бот Водоканала.' : 'Надсилання через сайт Водоканалу на нашому сервері ще не ввімкнене. Надішліть через бот Водоканалу.',
-      'notfound' => $ru ? 'Сайт Водоканала не нашёл счёт {a} с фамилией «{f}». Проверьте по квитанции: лицевой счёт и фамилию владельца.' : 'Сайт Водоканалу не знайшов рахунок {a} з прізвищем «{f}». Перевірте за квитанцією: особовий рахунок і прізвище власника.',
+      'notfound' => $ru ? 'Сайт Водоканала не принял счёт {a} с фамилией «{f}». Проверьте по квитанции лицевой счёт и фамилию владельца — по-украински, без инициалов. Если всё верно, возможно, на счёте не числятся счётчики — тогда отправьте через бот Водоканала.' : 'Сайт Водоканалу не прийняв рахунок {a} з прізвищем «{f}». Перевірте за квитанцією особовий рахунок і прізвище власника — українською, без ініціалів. Якщо все вірно, можливо, на рахунку не значаться лічильники — тоді надішліть через бот Водоканалу.',
+      'ukr' => $ru ? 'В фамилии есть русские буквы (ы, э, ъ, ё) — впишите её по-украински, как в квитанции.' : 'У прізвищі є російські літери (ы, э, ъ, ё) — впишіть його українською, як у квитанції.',
       'changed' => $ru ? 'Сайт Водоканала показал страницу, которую мы не узнали (возможно, он изменился). Отправьте через бот Водоканала — мы уже видим проблему.' : 'Сайт Водоканалу показав сторінку, яку ми не впізнали (можливо, він змінився). Надішліть через бот Водоканалу — ми вже бачимо проблему.',
       'items' => $ru ? 'Нечего отправлять: нет показаний для счётчиков Водоканала.' : 'Нічого надсилати: немає показань для лічильників Водоканалу.',
       'mismatch' => $ru ? 'На сайте Водоканала изменился список счётчиков. Проверьте ещё раз, какой счётчик какой.' : 'На сайті Водоканалу змінився список лічильників. Перевірте ще раз, який лічильник який.',
@@ -121,7 +124,7 @@ final class VkCab {
     $s = ''; foreach ($n->childNodes as $c) $s .= self::text($c) . (in_array(strtolower($c->nodeName), ['td', 'th', 'div', 'p', 'li', 'br', 'label', 'span'], true) ? ' ' : '');
     return $s;
   }
-  public static function mask(string $s): string { return mb_substr(preg_replace('/\d/', '#', self::sp($s)), 0, 160); }
+  public static function mask(string $s): string { return mb_substr(preg_replace('/\d/', '#', self::sp($s)), 0, 260); }
   /** Сообщения сайта: ошибки полей (help-block у has-error), алерты, сводка ошибок. */
   private static function messages(DOMXPath $x): array {
     $out = ['err' => [], 'ok' => [], 'info' => []];
@@ -216,9 +219,11 @@ final class VkCab {
     $form = $x2->query("//form[@id='send-counters-form']")->item(0) ?? $x2->query("//form[.//*[contains(@name,'newIndication')]]")->item(0);
     if (!$form) {
       $msgs = self::messages($x2);
-      $still = $x2->query("//form[@id='no-login-form']")->item(0) !== null;
+      // живой сайт (проба 04.11.2026): чужой рахунок → 200, страница без форм, «Не коректні дані: особовий рахунок або Прізвище абонента, або на
+      // особовому рахунку не значаться лічильники. Можливо необхідно вказати прізвище українською мовою». Старый вариант — снова форма входа.
+      $still = $x2->query("//form[@id='no-login-form']")->item(0) !== null || ($msgs['err'] && preg_match(self::NF_RE, implode(' ', $msgs['err'])));
       self::diag(['result' => $still ? 'notfound' : 'changed', 'where' => 'check', 'msgs' => self::maskMsgs($msgs), 'forms' => self::formsInfo($x2)]);
-      if ($still) throw new HttpError(422, 'cab_not_found', ['human' => self::h('notfound', ['a' => $acc, 'f' => $fam]), 'site' => array_slice($msgs['err'], 0, 3)]);
+      if ($still) throw new HttpError(422, 'cab_not_found', ['human' => self::h('notfound', ['a' => $acc, 'f' => $fam]) . (preg_match('/[ыэъёЫЭЪЁ]/u', $fam) ? ' ' . self::h('ukr') : ''), 'site' => array_slice($msgs['err'], 0, 3)]);
       throw new HttpError(502, 'cab_changed', ['human' => self::h('changed'), 'site' => array_slice(array_merge($msgs['err'], $msgs['info']), 0, 3)]);
     }
     $fields = self::fields($x2, $form); $ms = self::meters($x2, $fields);
@@ -310,7 +315,7 @@ final class VkCab {
   // ---------- проба «не знайдено»: как живой сайт отвечает на заведомо чужой рахунок ----------
   // Сервер сам, без человека, раз на PROBE_V (cron, VkStatus::probeNotFound): вводит выдуманный рахунок и смотрит ответ. Показания не
   // шлёт. Итог — в журнал (op probe) и в /api/vk/status → probe (рахунок выдуманный, цифры замаскированы). Поправили разбор — PROBE_V + 1.
-  const PROBE_V = 1, PROBE_ACC = '1000001', PROBE_FAM = 'Перевірка';
+  const PROBE_V = 2, PROBE_ACC = '1000001', PROBE_FAM = 'Перевірка';
   public static function probe(?int $now = null): array {
     $now = $now ?? time(); $site = []; self::$lang = 'uk';
     try { self::open(self::PROBE_ACC, self::PROBE_FAM, 'probe'); $err = 'found'; }   // вдруг такой рахунок есть — ничего о нём не пишем

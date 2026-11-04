@@ -38,7 +38,9 @@ function vkm_handle(string $method, string $path, array $post, array &$s): array
   if ($path === '/get-form-send-indications' && $method === 'POST') {
     if (!$ok || ($s['cookies']['_csrf-frontend'] ?? '') !== 'c00kie') return [400, vkm_head('Bad Request') . '<div class="alert alert-danger">Не вдалося перевірити ваші дані.</div></body></html>', []];
     $acc = (string)($post['NoLoginForm']['acc'] ?? ''); $fam = mb_strtolower((string)($post['NoLoginForm']['fam'] ?? ''));
-    if ($acc !== VKM_ACC || $fam !== VKM_FAM) return [200, vkm_login('Особовий рахунок не знайдено або прізвище не співпадає.', $acc, (string)($post['NoLoginForm']['fam'] ?? '')), []];
+    // как живой сайт (проба с сервера 04.11.2026): страница без форм с объяснением; рахунок с «7777» — старый вариант (снова форма входа с ошибкой)
+    if (str_contains($acc, '7777')) return [200, vkm_login('Особовий рахунок не знайдено або прізвище не співпадає.', $acc, (string)($post['NoLoginForm']['fam'] ?? '')), []];
+    if ($acc !== VKM_ACC || $fam !== VKM_FAM) return [200, vkm_head('Передача показань') . '<div class="alert alert-danger">Не коректні дані: особовий рахунок або Прізвище абонента , або на особовому рахунку не значаться лічильники. Можливо необхідно вказати прізвище українською мовою</div><p><a href="/login">Назад</a></p></div></div></body></html>', []];
     $s['acc'] = $acc; return [302, '', ['Location: /send-indications']];
   }
   if ($path === '/send-indications' && $method === 'GET') {

@@ -54,7 +54,7 @@ const cab = (state) => { const n = Math.floor(Date.now() / 1000); fs.mkdirSync(D
   await p.reload(); await wait(1200); await p.goto(U + '#wrec-wbad'); await wait(800);
   ok('рахунок змінився → перевірка заново (нічого не показуємо зі старого)', await vis('[data-key=vkc-check]') && !(await p.$('[data-key=vkc-found]')));
   await p.click('[data-key=vkc-check]'); await p.waitForSelector('[data-key=vkc-err-cab_not_found]', { timeout: 8000 }).catch(() => {});
-  ok('чужий рахунок → «не знайшов рахунок 905615 з прізвищем…» і слова сайту', await vis('[data-key=vkc-err-cab_not_found]') && /905615/.test(await p.textContent('[data-key=vkc-err-cab_not_found]')) && /не знайдено/.test(await p.textContent('[data-key=vkc-err-cab_not_found]')));
+  ok('чужий рахунок → «не прийняв рахунок 905615 з прізвищем…» і слова сайту «Не коректні дані…»', await vis('[data-key=vkc-err-cab_not_found]') && /905615/.test(await p.textContent('[data-key=vkc-err-cab_not_found]')) && /Не коректні дані/.test(await p.textContent('[data-key=vkc-err-cab_not_found]')));
   // узкий экран
   await p.setViewportSize({ width: 360, height: 780 }); await wait(300);
   ok('360 px — блок не шире экрана', await p.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1));
