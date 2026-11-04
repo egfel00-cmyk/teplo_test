@@ -104,42 +104,67 @@ final class Telegram {
     return $uid;
   }
   const VK_BOT = 'hvk_user_bot';
-  /** Переслано из бота Водоканала (forward_origin — Bot API 7+, forward_from — старые клиенты). */
-  public static function isVkForward(array $msg): bool {
+  /** Официальные боты поставщиков, чьи ответы человек пересылает нам как подтверждение: вода, свет, газ. */
+  const FWD_BOTS = ['vk' => 'hvk_user_bot', 'obl' => 'Kooz2bot', 'grm' => 'mygrmu_bot'];
+  /** Из чьего бота переслано (forward_origin — Bot API 7+, forward_from — старые клиенты): vk / obl / grm или null. */
+  public static function fwdSrc(array $msg): ?string {
     $o = $msg['forward_origin'] ?? null; $u = is_array($o) ? ($o['sender_user'] ?? null) : null;
     if (!is_array($u)) $u = $msg['forward_from'] ?? null;
-    return is_array($u) && strcasecmp((string)($u['username'] ?? ''), self::VK_BOT) === 0;
+    if (!is_array($u)) return null;
+    foreach (self::FWD_BOTS as $src => $bot) if (strcasecmp((string)($u['username'] ?? ''), $bot) === 0) return $src;
+    return null;
   }
+  /** Переслано из бота Водоканала. */
+  public static function isVkForward(array $msg): bool { return self::fwdSrc($msg) === 'vk'; }
   /** Что ответил бот Водоканала: ok — показания приняты, err — ошибка, info — прочее (ID счётчиков, баланс). */
   public static function vkKind(string $t): string {
-    if (preg_match('/помилк|ошибк|невірн|неверн|не\s+знайден|не\s+найден|не\s+прийн|не\s+прин|не\s+вдал|не\s+удал|некорект|відхилен|отклонен/iu', $t)) return 'err';
+    if (preg_match('/помилк|ошибк|невірн|неверн|не\s+знайден|не\s+найден|не\s+прийн|не\s+прин|не\s+вдал|не\s+удал|не\s+передан|некорект|відхилен|отклонен/iu', $t)) return 'err';
     if (preg_match('/прийнят|прийнято|принят|збережен|сохранен|успішн|успешн|зарахован|зачислен|отриман|получен/iu', $t)) return 'ok';
     return 'info';
   }
-  /** Человек переслал нам ответ бота Водоканала — сохраняем: сервис покажет его у воды и сам отметит «передано» (подтверждено). */
-  public static function vkReply(array $msg, string $lang): array {
+  /** То же для бота света/газа. Там «збережено» бывает и про номер телефона, поэтому ok — только если рядом слово про показания
+   *  («Показники прийнято», «ваші показання успішно передано»); иначе info — человек подтвердит кнопкой «Прийняв». */
+  public static function botKind(string $src, string $t): string {
+    if ($src === 'vk' || self::vkKind($t) === 'err') return self::vkKind($t);
+    $acc = '(?:прийнят|принят|збережен|сохранен|зарахован|зачислен|отриман|получен|передан|внесен|врахован|учтен)';
+    return preg_match('/показ\p{L}*(?:[^\p{L}]+\p{L}+){0,6}?[^\p{L}]+' . $acc . '|' . $acc . '\p{L}*(?:[^\p{L}]+\p{L}+){0,2}?[^\p{L}]+показ/iu', $t) ? 'ok' : 'info';
+  }
+  /** Человек переслал нам ответ бота Водоканала / Харківобленерго / Газмереж — сохраняем: сервис покажет его у счётчика и сам
+   *  отметит «передано» (подтверждено). */
+  public static function vkReply(array $msg, string $lang, string $src = 'vk'): array {
     $ru = $lang === 'ru'; $chat = $msg['chat']['id'];
     $text = trim((string)($msg['text'] ?? $msg['caption'] ?? ''));
     $at = (int)($msg['forward_origin']['date'] ?? $msg['forward_date'] ?? $msg['date'] ?? time());
-    $kind = $text === '' ? 'info' : self::vkKind($text);
+    $kind = $text === '' ? 'info' : self::botKind($src, $text);
     try {
       $uid = self::userFor((array)($msg['from'] ?? []));
       RateLimit::hit('bot_photo', (string)$uid);
-      $before = VkStatus::bot();
-      if ($text !== '') Db::q('INSERT INTO vk_replies (user_id, kind, text, msg_at, created_at) VALUES (?, ?, ?, ?, ?)', [$uid, $kind, mb_substr($text, 0, 3000), $at, Http::iso()]);
-      if ($text !== '') VkStatus::aliveAgain($before, $uid);   // любой ответ бота Водоканала — он работает: пишем тем, кто жаловался
+      $before = $src === 'vk' ? VkStatus::bot() : null;
+      if ($text !== '') Db::q('INSERT INTO vk_replies (user_id, kind, text, msg_at, created_at, src) VALUES (?, ?, ?, ?, ?, ?)', [$uid, $kind, mb_substr($text, 0, 3000), $at, Http::iso(), $src]);
+      if ($text !== '' && $before !== null) VkStatus::aliveAgain($before, $uid);   // любой ответ бота Водоканала — он работает: пишем тем, кто жаловался
     } catch (Throwable $e) { $kind = 'fail'; }
-    $msgs = [
+    $who = [
+      'vk' => [$ru ? 'Водоканала' : 'Водоканалу', $ru ? 'воды' : 'води', 'water-cold'],
+      'obl' => [$ru ? 'Харьковоблэнерго' : 'Харківобленерго', $ru ? 'света' : 'світла', 'elec'],
+      'grm' => [$ru ? 'Газсетей' : 'Газмереж', $ru ? 'газа' : 'газу', 'gas'],
+    ][$src];
+    $msgs = $src === 'vk' ? [
       'ok' => $ru ? "✅ Сохранил подтверждение Водоканала. В «Счётчиках» показания воды отметятся переданными." : "✅ Зберіг підтвердження Водоканалу. У «Лічильниках» показання води позначаться переданими.",
       'err' => $ru ? "Водоканал ответил ошибкой. Откройте «Счётчики» — подскажем, что проверить (лицевой счёт, фамилия, ID счётчиков)." : "Водоканал відповів помилкою. Відкрийте «Лічильники» — підкажемо, що перевірити (особовий рахунок, прізвище, ID лічильників).",
       'info' => $ru ? "Сохранил ответ Водоканала — он виден в «Счётчиках» у воды (ID счётчиков можно вставить оттуда)." : "Зберіг відповідь Водоканалу — її видно в «Лічильниках» біля води (ID лічильників можна вставити звідти).",
-      'fail' => $ru ? "Не удалось сохранить ответ. Перешлите его ещё раз чуть позже." : "Не вдалося зберегти відповідь. Перешліть її ще раз трохи пізніше.",
+    ] : [
+      'ok' => $ru ? "✅ Сохранил подтверждение {$who[0]}. В «Счётчиках» показания {$who[1]} отметятся переданными." : "✅ Зберіг підтвердження {$who[0]}. У «Лічильниках» показання {$who[1]} позначаться переданими.",
+      'err' => $ru ? "Бот {$who[0]} ответил ошибкой. Откройте «Счётчики» — подскажем, что проверить (" . ($src === 'obl' ? 'ЄР — 12 цифр, показания' : 'лицевой счёт, показания') . ")."
+                   : "Бот {$who[0]} відповів помилкою. Відкрийте «Лічильники» — підкажемо, що перевірити (" . ($src === 'obl' ? 'ЄР — 12 цифр, показання' : 'особовий рахунок, показання') . ").",
+      'info' => $ru ? "Сохранил ответ бота {$who[0]} — он виден в «Счётчиках» у {$who[1]}. Если там «принято» — нажмите «Принял»." : "Зберіг відповідь бота {$who[0]} — її видно в «Лічильниках» біля {$who[1]}. Якщо там «прийнято» — натисніть «Прийняв».",
     ];
-    $params = ['chat_id' => $chat, 'text' => $text === '' && $kind !== 'fail' ? ($ru ? 'Перешлите текстовый ответ бота Водоканала.' : 'Перешліть текстову відповідь бота Водоканалу.') : $msgs[$kind]];
-    if ($kind !== 'fail') $params['reply_markup'] = ['inline_keyboard' => [[['text' => $ru ? 'Открыть «Счётчики»' : 'Відкрити «Лічильники»', 'web_app' => ['url' => Cfg::appUrl() . '?go=water-cold']]]]];
+    $msgs['fail'] = $ru ? "Не удалось сохранить ответ. Перешлите его ещё раз чуть позже." : "Не вдалося зберегти відповідь. Перешліть її ще раз трохи пізніше.";
+    $empty = $ru ? "Перешлите текстовый ответ бота {$who[0]}." : "Перешліть текстову відповідь бота {$who[0]}.";
+    $params = ['chat_id' => $chat, 'text' => $text === '' && $kind !== 'fail' ? $empty : $msgs[$kind]];
+    if ($kind !== 'fail') $params['reply_markup'] = ['inline_keyboard' => [[['text' => $ru ? 'Открыть «Счётчики»' : 'Відкрити «Лічильники»', 'web_app' => ['url' => Cfg::appUrl() . '?go=' . $who[2]]]]]];
     if (!Cfg::appUrlKnown()) unset($params['reply_markup']);
     self::call('sendMessage', $params);
-    return $params + ['kind' => $kind];
+    return $params + ['kind' => $kind, 'src' => $src];
   }
 
   /** Фото счётчика в чате с ботом → в «входящие» аккаунта; распознаёт браузер, когда человек откроет сервис кнопкой. */
@@ -181,13 +206,13 @@ final class Telegram {
   public static function handleUpdate(array $u): ?array {
     $msg = $u['message'] ?? null; if (!$msg || empty($msg['chat']['id'])) return null;
     $lang = str_starts_with((string)($msg['from']['language_code'] ?? ''), 'ru') ? 'ru' : 'uk';
-    if (self::isVkForward($msg)) return self::vkReply($msg, $lang);
+    if (($src = self::fwdSrc($msg)) !== null) return self::vkReply($msg, $lang, $src);
     if (!empty($msg['photo']) || (isset($msg['document']['mime_type']) && preg_match('#^image/(jpeg|png|webp)$#', (string)$msg['document']['mime_type']))) return self::photo($msg, $lang);
     $linkText = null;
     if (preg_match('/^\/start\s+link_([a-f0-9]{32})\b/', (string)($msg['text'] ?? ''), $m)) $linkText = self::linkByToken((array)($msg['from'] ?? []), $m[1], $lang);
     $text = $lang === 'ru'
-      ? "«Счётчики» помогают снять показания тепла и воды, проверить их и не пропустить сроки: тепло — ХТМ (5–25 число), вода — Водоканал (до 20-го).\n\nМожно просто прислать сюда фото экранов теплосчётчика или водомеров — распознаю цифры.\n\nНажмите кнопку — откроется сервис, вход через Telegram произойдёт сам."
-      : "«Лічильники» допомагають зняти показання тепла й води, перевірити їх і не пропустити строки: тепло — ХТМ (5–25 число), вода — Водоканал (до 20-го).\n\nМожна просто надіслати сюди фото екранів теплолічильника або водомірів — розпізнаю цифри.\n\nНатисніть кнопку — відкриється сервіс, вхід через Telegram відбудеться сам.";
+      ? "«Счётчики» помогают снять показания тепла и воды, проверить их и не пропустить сроки: тепло — ХТМ (5–25 число), вода — Водоканал (до 20-го).\n\nМожно просто прислать сюда фото экранов теплосчётчика или водомеров — распознаю цифры.\n\nПодали показания в боте Водоканала, Харьковоблэнерго (@Kooz2bot) или Газсетей (@mygrmu_bot)? Перешлите сюда его ответ — отмечу «передано».\n\nНажмите кнопку — откроется сервис, вход через Telegram произойдёт сам."
+      : "«Лічильники» допомагають зняти показання тепла й води, перевірити їх і не пропустити строки: тепло — ХТМ (5–25 число), вода — Водоканал (до 20-го).\n\nМожна просто надіслати сюди фото екранів теплолічильника або водомірів — розпізнаю цифри.\n\nПодали показання в боті Водоканалу, Харківобленерго (@Kooz2bot) чи Газмереж (@mygrmu_bot)? Перешліть сюди його відповідь — позначу «передано».\n\nНатисніть кнопку — відкриється сервіс, вхід через Telegram відбудеться сам.";
     $btn = $lang === 'ru' ? 'Открыть «Счётчики»' : 'Відкрити «Лічильники»';
     if ($linkText !== null) $text = $linkText;
     $params = ['chat_id' => $msg['chat']['id'], 'text' => $text,

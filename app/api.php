@@ -21,6 +21,7 @@
 //  GET  /api/photo?id=…             фото к записи истории — байты, только хозяину
 //  POST /api/photo/keep             {ids, keep} — фото записи хранить, пока есть запись (keep=false — снова по сроку photo_keep_days)
 //  GET  /api/vk/replies             ответы бота Водоканала, пересланные нашему боту (подтверждение передачи воды)
+//  GET  /api/bot/replies?src=obl|grm  то же для света (@Kooz2bot) и газа (@mygrmu_bot)
 //  GET  /api/vk/status · POST /api/vk/event {kind}  работают ли бот и кабинет Водоканала (VkStatus, app/admin.php)
 //  GET  /api/weather?from&to       средняя за сутки в Харькове (Open-Meteo, кэш) — для истории
 //  POST /api/recognize/local        {ids, results} — итог распознавания в браузере (свой движок, без нейросети) → в аналитику
@@ -215,8 +216,14 @@ final class Api {
       }
       case 'GET /api/vk/replies': {   // ответы бота Водоканала, пересланные нашему боту (последние 30 дней)
         if (!$user) throw new HttpError(401, 'unauthorized');
-        $rows = Db::q('SELECT id, kind, text, msg_at FROM vk_replies WHERE user_id = ? AND msg_at > ? ORDER BY id DESC LIMIT 10', [(int)$user['id'], time() - 30 * 86400])->fetchAll();
+        $rows = Db::q("SELECT id, kind, text, msg_at FROM vk_replies WHERE user_id = ? AND src = 'vk' AND msg_at > ? ORDER BY id DESC LIMIT 10", [(int)$user['id'], time() - 30 * 86400])->fetchAll();
         return ['replies' => array_map(fn($x) => ['id' => (int)$x['id'], 'kind' => $x['kind'], 'text' => $x['text'], 'at' => (int)$x['msg_at']], $rows)];
+      }
+      case 'GET /api/bot/replies': {   // то же для света (src=obl, @Kooz2bot) и газа (src=grm, @mygrmu_bot)
+        if (!$user) throw new HttpError(401, 'unauthorized');
+        $src = (string)($r->query()['src'] ?? ''); if (!isset(Telegram::FWD_BOTS[$src]) || $src === 'vk') throw new HttpError(422, 'bad_src');
+        $rows = Db::q('SELECT id, kind, text, msg_at FROM vk_replies WHERE user_id = ? AND src = ? AND msg_at > ? ORDER BY id DESC LIMIT 10', [(int)$user['id'], $src, time() - 30 * 86400])->fetchAll();
+        return ['src' => $src, 'replies' => array_map(fn($x) => ['id' => (int)$x['id'], 'kind' => $x['kind'], 'text' => $x['text'], 'at' => (int)$x['msg_at']], $rows)];
       }
       case 'GET /api/vk/status': return VkStatus::status();   // бот и кабинет Водоканала — работают ли (без входа)
       case 'POST /api/vk/event': {   // «Відправити» / «Прийняв» / «Не відповідає» / «Помилка» — для статуса бота

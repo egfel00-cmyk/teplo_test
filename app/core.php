@@ -184,6 +184,8 @@ final class Db {
     self::addColumn('visits', 'stage', 'TINYINT NOT NULL DEFAULT 0');
     self::addColumn('visits', 'meters', 'INT NOT NULL DEFAULT 0');
     self::addColumn('visits', 'recs', 'INT NOT NULL DEFAULT 0');
+    // чей бот ответил: vk — Водоканал (@hvk_user_bot), obl — Харківобленерго (@Kooz2bot), grm — Газмережі (@mygrmu_bot)
+    self::addColumn('vk_replies', 'src', "VARCHAR(8) NOT NULL DEFAULT 'vk'");
   }
   /** ALTER … ADD COLUMN IF NOT EXISTS (в SQLite такого нет — смотрим список колонок). */
   private static function addColumn(string $t, string $c, string $def): void {

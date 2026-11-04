@@ -381,7 +381,7 @@ final class VkStatus {
   }
   public static function bot(?int $now = null): array {
     $now = $now ?? time();
-    $alive = max((int)(Db::one('SELECT MAX(msg_at) AS n FROM vk_replies')['n'] ?? 0), (int)(Db::one("SELECT MAX(at) AS n FROM vk_events WHERE kind = 'ok'")['n'] ?? 0));
+    $alive = max((int)(Db::one("SELECT MAX(msg_at) AS n FROM vk_replies WHERE src = 'vk'")['n'] ?? 0), (int)(Db::one("SELECT MAX(at) AS n FROM vk_events WHERE kind = 'ok'")['n'] ?? 0));
     $sil = Db::one("SELECT COUNT(DISTINCT user_id) AS n, MIN(at) AS a FROM vk_events WHERE kind = 'silent' AND at > ? AND at > ?", [$alive, $now - 86400]);
     if ((int)($sil['n'] ?? 0) > 0) return ['state' => 'silent', 'since' => (int)$sil['a'], 'users' => (int)$sil['n'], 'lastOk' => $alive ?: null];
     if ($alive && $now - $alive < 7 * 86400) return ['state' => 'ok', 'lastOk' => $alive];

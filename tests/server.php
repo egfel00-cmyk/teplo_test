@@ -347,6 +347,29 @@ $vl = $tgb->req('GET', '/api/vk/replies')->body['replies'] ?? [];
 ok('/api/vk/replies: ошибка → err, ID счётчиков → info, чужой бот не сохраняется; новые сверху', count($vl) === 3 && $vl[0]['kind'] === 'info' && $vl[1]['kind'] === 'err' && $vl[2]['kind'] === 'ok', $vl);
 ok('чужим ответы не видны, без входа — 401', count($rb->req('GET', '/api/vk/replies')->body['replies'] ?? []) === 0 && (new Browser('10.0.12.9'))->req('GET', '/api/vk/replies')->status === 401);
 ok('Telegram::vkKind: «не прийнято» — ошибка, «успішно збережено» — ok', Telegram::vkKind('Показання не прийнято') === 'err' && Telegram::vkKind('Дані успішно збережено') === 'ok' && Telegram::vkKind('Баланс: 120 грн') === 'info');
+// ответы ботов света (@Kooz2bot) и газа (@mygrmu_bot), пересланные нам: подтверждение передачи
+$obl = ['id' => 556, 'is_bot' => true, 'username' => 'Kooz2bot', 'first_name' => 'ХарківОбленергоБот'];
+$grm = ['id' => 557, 'is_bot' => true, 'username' => 'mygrmu_bot', 'first_name' => 'Газмережі'];
+$hook($fw("Дякуємо! Ваші показники успішно передано.", time() - 25, $obl));
+ok('переслали ответ @Kooz2bot «показники передано» → src obl, ok; наш бот — «підтвердження Харківобленерго», кнопка в свет',
+  ($x = Db::one("SELECT * FROM vk_replies ORDER BY id DESC")) && $x['src'] === 'obl' && $x['kind'] === 'ok'
+  && str_contains($sent[count($sent) - 1][1]['text'] ?? '', 'Харківобленерго') && ($sent[count($sent) - 1][1]['reply_markup']['inline_keyboard'][0][0]['web_app']['url'] ?? '') === 'https://teplo.example/?go=elec', $x);
+$hook($fw("Номер телефону збережено. Тепер ви можете передавати показники лічильника", time() - 24, $obl));
+ok('…«номер телефону збережено» — не подтверждение показаний (info)', Db::one("SELECT kind FROM vk_replies ORDER BY id DESC")['kind'] === 'info');
+$hook($fw("Показання лічильника прийнято", time() - 23, $grm));
+ok('переслали ответ @mygrmu_bot → src grm, ok, кнопка в газ', ($x = Db::one("SELECT * FROM vk_replies ORDER BY id DESC")) && $x['src'] === 'grm' && $x['kind'] === 'ok'
+  && ($sent[count($sent) - 1][1]['reply_markup']['inline_keyboard'][0][0]['web_app']['url'] ?? '') === 'https://teplo.example/?go=gas', $x);
+$q = fn($b, $src) => $b->req('GET', '/api/bot/replies', null, ['QUERY_STRING' => 'src=' . $src]);
+$bo = $q($tgb, 'obl')->body['replies'] ?? []; $bg = $q($tgb, 'grm')->body['replies'] ?? [];
+ok('/api/bot/replies: свет — 2 (новые сверху), газ — 1; в /api/vk/replies они не попадают (вода — те же 3)',
+  count($bo) === 2 && $bo[0]['kind'] === 'info' && $bo[1]['kind'] === 'ok' && count($bg) === 1 && $bg[0]['kind'] === 'ok'
+  && count($tgb->req('GET', '/api/vk/replies')->body['replies'] ?? []) === 3, [$bo, $bg]);
+ok('/api/bot/replies: src=vk или мусор — 422, без входа — 401, чужим — пусто', $q($tgb, 'vk')->status === 422 && $q($tgb, 'x')->status === 422
+  && $q(new Browser('10.0.12.8'), 'obl')->status === 401 && count($q($rb, 'obl')->body['replies'] ?? []) === 0);
+ok('Telegram::botKind: «Показники день … ніч … прийнято», «Прийнято показники» — ok; «Дані збережено», «Введіть показники» — info; «не прийнято» — err',
+  Telegram::botKind('obl', 'Показники день 10250 ніч 5130 прийнято') === 'ok' && Telegram::botKind('grm', 'Прийнято показники за жовтень') === 'ok'
+  && Telegram::botKind('obl', 'Дані збережено') === 'info' && Telegram::botKind('obl', 'Введіть показники') === 'info' && Telegram::botKind('grm', 'Показання не прийнято') === 'err'
+  && Telegram::botKind('vk', 'Дані успішно збережено') === 'ok');
 // работает ли бот Водоканала: признаки жизни — пересланные ответы и «Прийняв», жалобы «не відповідає» после них
 $sil = new Browser('10.0.12.20'); $sil->req('POST', '/api/auth/telegram/webapp', ['initData' => initData($TOKEN, ['id' => 9002, 'first_name' => 'Тиша'])]);
 ok('статус бота без входа: ok (только что пересылали ответы)', ($tgb->req('GET', '/api/vk/status')->body['bot']['state'] ?? '') === 'ok' && (new Browser('10.0.12.21'))->req('GET', '/api/vk/status')->status === 200);

@@ -785,7 +785,7 @@
     return '<div class="dest"' + (o.id ? ' id="' + o.id + '" tabindex="-1"' : '') + ' data-key="dest-' + o.key + '"><div class="dest-h"><div class="grow"><b>' + esc(o.org) + '</b><div class="small muted">' + esc(o.what) + '</div></div>' +
       (o.sent ? '<span class="pill ok">' + ico('check', 14) + ' ' + esc(t('ws_sent')) + '</span>' : o.due ? '<span class="pill ' + (o.dueTone || 'neutral') + '">' + esc(o.due) + '</span>' : '') + '</div>' +
       (o.body || '') +
-      (o.chans && o.chans.length ? '<div class="dest-ch">' + o.chans.map(function (c) { return '<a class="btn sec" href="' + c[0] + '" target="_blank" rel="noopener" data-key="dest-' + o.key + '-' + c[3] + '">' + ico(c[2], 18) + '<span>' + esc(c[1]) + '</span></a>'; }).join('') + '</div>' : '') +
+      (o.chans && o.chans.length ? '<div class="dest-ch">' + o.chans.map(function (c) { return '<a class="btn sec" href="' + c[0] + '" target="_blank" rel="noopener" data-key="dest-' + o.key + '-' + c[3] + '"' + (c[4] || '') + '>' + ico(c[2], 18) + '<span>' + esc(c[1]) + '</span></a>'; }).join('') + '</div>' : '') +
       (o.more ? '<p class="small muted dest-more">' + o.more + '</p>' : '') + (o.mark || '') + '</div>';
   }
   function telLink(num, txt) { return '<a href="tel:' + num + '">' + esc(txt) + '</a>'; }
@@ -1282,6 +1282,72 @@
   }
   function elecCard() { return sCard('elec'); }
 
+  // ---------- боти світла (@Kooz2bot) і газу (@mygrmu_bot): відповіді, переслані нашому боту (/api/bot/replies?src=obl|grm) ----------
+  // Як у води: людина подає в офіційному боті сама, пересилає його відповідь нам — і ми самі ставимо «передано» (підтверджено).
+  var SBR = { obl: { list: null, at: 0, busy: false }, grm: { list: null, at: 0, busy: false } }, SBERR = {};
+  function sbKindOf(r) { return r && r.kind === 'gas' ? 'gas' : 'elec'; }
+  function smeterById(id) { var f = null; places().forEach(function (p) { ((p && p.meters) || []).forEach(function (m) { if (m && m.id === id) f = m; }); }); return f; }
+  function dayOf(ms) { var d = new Date(ms); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
+  function sbLoad(k, force) {
+    var st = SBR[SK[k].sk];
+    if (!window.TEPLO_API || !Y().account || st.busy || (!force && Date.now() - st.at < 15000)) return;
+    st.busy = true; st.at = Date.now();
+    Y().api('GET', '/bot/replies?src=' + SK[k].sk).then(function (j) {
+      st.busy = false; if (j._status !== 200) return;
+      var before = JSON.stringify(st.list); st.list = j.replies || []; var changed = before !== JSON.stringify(st.list);
+      if (sbApply(k) || changed) safeRender();
+    }, function () { st.busy = false; });
+  }
+  /** «Прийнято» від бота → «передано» з підтвердженням. Кому: тим, для кого натиснули кнопку бота до відповіді (одне натискання —
+   *  усі лічильники панелі); не натискали (бот відкрили самі) — показанням до дня відповіді, не старшим 10 днів: у тексті є номер
+   *  рахунку — лише цим лічильникам, інакше — лише якщо такі показання в одній квартирі. По одному (найсвіжішому) на лічильник. */
+  function sbApply(k) {
+    var src = SK[k].sk, oks = (SBR[src].list || []).filter(function (r) { return r.kind === 'ok'; }); if (!oks.length) return false;
+    var used = {}; (S.mrecs || []).forEach(function (x) { if (x && x.botConf) used[x.botConf.id] = 1; });
+    var open = function () { return (S.mrecs || []).filter(function (x) { return x && !x.deleted && !x.base && !x.own && sbKindOf(x) === k && !(x.sent && x.sent[src]); }); };
+    var hit = 0;
+    oks.slice().sort(function (a, b) { return a.at - b.at; }).forEach(function (r) {
+      if (used[r.id]) return;
+      var ms = r.at * 1000, rday = dayOf(ms), left = open(), grp;
+      var pressed = left.filter(function (x) { return x.botAt && ms >= x.botAt - 120000 && ms - x.botAt < 3 * 86400000; });
+      if (pressed.length) { var last = Math.max.apply(null, pressed.map(function (x) { return x.botAt; })); grp = pressed.filter(function (x) { return last - x.botAt < 60000; }); }
+      else {
+        var near = left.filter(function (x) { return x.date <= rday && R.daysBetween(x.date, rday) <= 10; });
+        var digits = ' ' + String(r.text || '').replace(/\D+/g, ' ') + ' ';
+        var byAcc = near.filter(function (x) { var a = String((smeterById(x.meter) || {}).account || '').replace(/\D/g, ''); return a.length >= 6 && digits.indexOf(' ' + a + ' ') >= 0; });
+        var pl = {}; near.forEach(function (x) { pl[x.place] = 1; });
+        grp = byAcc.length ? byAcc : Object.keys(pl).length === 1 ? near : [];
+      }
+      var per = {}; grp.forEach(function (x) { if (!per[x.meter] || per[x.meter].date < x.date) per[x.meter] = x; });
+      var recs = Object.keys(per).map(function (m) { return per[m]; }); if (!recs.length) return;
+      used[r.id] = 1;
+      recs.forEach(function (x) { x.sent = Object.assign({}, x.sent || {}); x.sent[src] = today(); x.botConf = { id: r.id, at: r.at, text: String(r.text || '').slice(0, 300) }; x.updatedAt = Date.now(); hit++; });
+    });
+    if (hit) { save(); toast(tk(k, 'ed_conf_toast')); }
+    return hit > 0;
+  }
+  function sbPending(k) { return (S.mrecs || []).some(function (x) { return x && !x.deleted && sbKindOf(x) === k && x.botAt && !(x.sent && x.sent[SK[k].sk]) && Date.now() - x.botAt < 30 * 60000; }); }
+  document.addEventListener('visibilitychange', function () {
+    if (document.visibilityState !== 'visible') return;
+    ['elec', 'gas'].forEach(function (k) { if (sbPending(k) || new RegExp('^(' + SK[k].page + '|erec-|' + SK[k].nw + ')').test(routeName())) sbLoad(k, true); });
+  });
+  setInterval(function () { if (document.visibilityState === 'visible') ['elec', 'gas'].forEach(function (k) { if (sbPending(k)) sbLoad(k); }); }, 20000);
+  /** Блок під кнопкою бота: підтверджено (текст відповіді) · або «Що відповів бот?» після натискання · або підказка, як подати. */
+  function sbBox(k, recs) {
+    var src = SK[k].sk, rs = recs.filter(Boolean), conf = rs.filter(function (x) { return x.botConf; })[0], ids = rs.map(function (x) { return x.id; }).join(',');
+    var fw = esc(t('vk_fw', { b: '@' + ourBot() }));
+    if (conf && rs.every(function (x) { return x.sent && x.sent[src]; })) return '<div class="vk-reply ok" data-key="' + k + '-conf"><p class="small"><b>' + esc(tk(k, 'ed_conf', { d: vkWhen(conf.botConf.at) })) + '</b></p>' +
+      (conf.botConf.text ? '<p class="small vk-text">' + esc(String(conf.botConf.text).slice(0, 600)) + '</p>' : '') + '</div>';
+    var at = Math.max.apply(null, [0].concat(rs.map(function (x) { return x.botAt || 0; })));
+    if (!at || rs.every(function (x) { return x.sent && x.sent[src]; })) return '<p class="small muted" data-key="ed-bot-how">' + esc(tk(k, 'ed_bot_how', { b: '@' + ourBot() })) + '</p>';
+    var r = (SBR[src].list || []).filter(function (y) { return y.at * 1000 >= at - 120000; })[0], err = SBERR[k] || (r && r.kind === 'err');
+    return (r ? '<div class="vk-reply' + (r.kind === 'err' ? ' bad' : '') + '" data-key="' + k + '-reply"><p class="small"><b>' + esc(tk(k, 'ed_reply_t', { d: vkWhen(r.at) })) + '</b></p><p class="small vk-text">' + esc(String(r.text).slice(0, 600)) + '</p></div>' : '') +
+      '<div class="vk-ask" data-key="' + k + '-ask"><p><b>' + esc(tk(k, 'ed_ask')) + '</b></p><div class="row-actions">' +
+      '<button class="btn" data-act="esent" data-k="' + k + '" data-v="1" data-ids="' + esc(ids) + '" data-key="' + k + '-bot-ok">' + ico('check', 18) + '<span>' + esc(t('vk_ok')) + '</span></button>' +
+      '<button class="btn sec" data-act="sb-err" data-k="' + k + '" data-key="' + k + '-bot-err">' + esc(t('vk_err')) + '</button></div>' +
+      '<p class="small muted">' + fw + '</p>' +
+      (err ? '<div class="vk-tips" data-key="' + k + '-tips"><ul class="small">' + tk(k, 'ed_err_tips').split('|').map(function (x) { return '<li>' + esc(x) + '</li>'; }).join('') + '</ul></div>' : '') + '</div>';
+  }
   /** «Куди передати»: світло — Харківобленерго (застосунок, Viber-бот, кол-центр); газ — кабінет Газмереж, SMS 4647, «Куб», кол-центр. */
   function ssendPanel(k, recs) {
     var md = SK[k].mod, w = md.win(today()), ms = smeters(k), have = recs && recs.filter(Boolean).length ? recs : null;
@@ -1294,24 +1360,30 @@
     }).join('') + '</ul>' + (k === 'elec' && El.zones(ms[0] || {}) > 1 ? '<p class="small muted">' + esc(t('ed_nosum')) + '</p>' : '');
     var acc = ms.filter(function (m) { return m.account; }).map(function (m) { return '<p class="small">' + esc(tk(k, 'ed_acc', { a: m.account })) + (ms.length > 1 ? ' · ' + esc(m.name || '') : '') + ' <button class="linkbtn" data-act="copy" data-text="' + esc(m.account) + '">' + esc(t('copy')) + '</button></p>'; }).join('');
     var phones = md.PHONES.map(function (p) { return telLink(p[0], p[1]) + ' <span class="muted">(' + esc(p[2]) + ')</span>'; }).join(', ');
+    // кнопка офіційного бота: є показання — запам'ятовуємо натискання (botAt), щоб пересланий нам «прийнято» ліг саме на них
+    var one = have && have.filter(Boolean).length === 1 && md.zones(ms[0] || {}) <= 1 ? md.whole((have.filter(Boolean)[0].z || {}).all) : null;
+    var botAttr = have ? ' data-act="sbot" data-k="' + k + '" data-ids="' + ids + '"' + (one !== null ? ' data-copy="' + one + '"' : '') : '';
+    if (have) sbLoad(k);
+    var asking = have && !allSent && have.some(function (x) { return x && x.botAt && !ssent(k, x); });
     var more;
     if (k === 'gas') {
       // SMS 4647: «9 цифр рахунку пробіл 5 цифр показань» — готовий текст, якщо є рахунок і показання
       var sms = have && ms.length === 1 ? Gs.smsText(ms[0].account, (have.filter(Boolean)[0].z || {}).all) : null;
       if (have && ms.length === 1 && !sms) body += '<p class="small muted">' + esc(t('gd_noacc')) + '</p>';
       if (sms) body += '<p class="small">' + esc(t('gd_sms_how', { s: sms })) + '</p>';
-      chans = (sms ? [['sms:' + Gs.LINKS.sms + '?&body=' + encodeURIComponent(sms), t('gd_sms'), 'send', 'sms']] : []).concat([[Gs.LINKS.cabinet, t('gd_cab'), 'ext', 'cab']]);
+      chans = [[Gs.LINKS.bot, t('gd_bot'), 'send', 'bot', botAttr]].concat(sms ? [['sms:' + Gs.LINKS.sms + '?&body=' + encodeURIComponent(sms), t('gd_sms'), 'send', 'sms']] : []).concat([[Gs.LINKS.cabinet, t('gd_cab'), 'ext', 'cab']]);
+      if (have) body += sbBox(k, have);
       more = esc(t('gd_more')) + ' ' + phones + '.';
     } else {
       // офіційні канали Харківобленерго: бот @Kooz2bot, онлайн-форма (з капчею — відкриваємо, людина проходить), SMS 4300
       var m0 = ms[0] || {}, acc1 = String(m0.account || '').replace(/\D/g, '');
       var esms = (have && ms.length === 1 && El.zones(m0) <= 1 && acc1.length === 12) ? El.smsText(acc1, (have.filter(Boolean)[0].z || {}).all) : null;
-      chans = [[El.OBL_BOT, t('ed_bot'), 'send', 'bot'], [El.OBL_FORM, t('ed_form'), 'ext', 'form']].concat(esms ? [['sms:' + El.SMS + '?&body=' + encodeURIComponent(esms), t('ed_sms'), 'send', 'sms']] : []);
-      if (have) body += '<p class="small muted" data-key="ed-bot-how">' + esc(t('ed_bot_how')) + '</p>';
+      chans = [[El.OBL_BOT, t('ed_bot'), 'send', 'bot', botAttr], [El.OBL_FORM, t('ed_form'), 'ext', 'form']].concat(esms ? [['sms:' + El.SMS + '?&body=' + encodeURIComponent(esms), t('ed_sms'), 'send', 'sms']] : []);
+      if (have) body += sbBox(k, have);
       if (esms) body += '<p class="small">' + esc(t('ed_sms_how', { s: esms })) + '</p>';
       more = esc(t('ed_more')) + ' ' + phones + '. ' + esc(t('ed_app')) + ' <a href="' + El.OBL_APP_ANDROID + '" target="_blank" rel="noopener">Android</a> · <a href="' + El.OBL_APP_IOS + '" target="_blank" rel="noopener">iPhone</a>. ' + esc(t('ed_zbut')) + ' <a href="' + El.ZBUT_SITE + '" target="_blank" rel="noopener">zbutenergo.kharkov.ua</a>.';
     }
-    var mark = have ? '<p class="dest-mark">' + (allSent ? '<button class="linkbtn" data-act="esent" data-k="' + k + '" data-v="0" data-ids="' + ids + '">' + esc(t('ws_unmark')) + '</button>'
+    var mark = have && !asking ? '<p class="dest-mark">' + (allSent ? '<button class="linkbtn" data-act="esent" data-k="' + k + '" data-v="0" data-ids="' + ids + '">' + esc(t('ws_unmark')) + '</button>'
       : '<button class="btn sec" data-act="esent" data-k="' + k + '" data-v="1" data-ids="' + ids + '" data-key="esend-done">' + ico('check', 18) + '<span>' + esc(t('ws_mark')) + '</span></button>') + '</p>' : '';
     return '<section class="panel where" data-key="where-' + k + '"><h2>' + ico('send', 20) + '<span>' + esc(t('wd_title')) + '</span></h2>' +
       (places().length > 1 ? '<p class="dest-place" style="--pc:var(--pc-' + placeColor(place()) + ')" data-key="where-place"><b>' + esc(t('wd_for', { p: placeLabel(place()) })) + '</b>' + (placeSub(place()) ? '<span class="small muted"> · ' + esc(placeSub(place())) + '</span>' : '') + '</p>' : '') +
@@ -1916,6 +1988,16 @@
         setTimeout(function () { var tw = window.Telegram && window.Telegram.WebApp; if (tw && tw.openTelegramLink) tw.openTelegramLink(vurl); else window.open(vurl, '_blank', 'noopener'); render(true); }, 200);
         return true;
       }
+      case 'sbot': {
+        e.preventDefault();
+        var sbk = el.getAttribute('data-k') === 'gas' ? 'gas' : 'elec', sbids = (el.getAttribute('data-ids') || '').split(','), sbn = Date.now(), sburl = el.getAttribute('href');
+        (S.mrecs || []).forEach(function (x) { if (sbids.indexOf(x.id) >= 0 && !ssent(sbk, x)) { x.botAt = sbn; x.updatedAt = sbn; } });
+        delete SBERR[sbk]; save();
+        if (el.getAttribute('data-copy')) copyText(el.getAttribute('data-copy'), null);   // показання — у буфер: у боті лише вставити
+        var sbtw = window.Telegram && window.Telegram.WebApp; if (sbtw && sbtw.openTelegramLink) sbtw.openTelegramLink(sburl); else window.open(sburl, '_blank', 'noopener');
+        render(true); return true;
+      }
+      case 'sb-err': SBERR[el.getAttribute('data-k') === 'gas' ? 'gas' : 'elec'] = true; render(true); return true;
       case 'vk-err': VKERR[el.getAttribute('data-id')] = true; vkEvent(el.getAttribute('data-why') === 'silent' ? 'silent' : 'err'); render(true); return true;
       case 'vk-id-chip': {
         var empty = Array.prototype.filter.call(document.querySelectorAll('input[data-wf="vkId"]'), function (x) { return !x.value; })[0];
@@ -3870,8 +3952,8 @@
         ? '<p>Показания света принимает <b>Харьковоблэнерго</b> в <b>последние 2 дня месяца и 1–3 числа</b> следующего (поданные 1–3 числа засчитываются на 1-е). Не передали — счёт посчитают «по среднему», потом пересчитают по факту.</p><p>Как: приложение «Харэнерго» (iPhone и Android), Viber-бот Харьковоблэнерго или колл-центр — (057) 342-44-13, (067) 234-04-13, (050) 054-04-13, (063) 054-04-13. Нужен лицевой счёт из платёжки Харьковэнергосбыта — впишите его у счётчика, и сервис подставит его для копирования.</p><p>Только цифры до запятой. У двухзонного счётчика табло само переключается: день — T1 (1.8.1), ночь — T2 (1.8.2); каждую зону — отдельно, не складывая. Общий показатель (1.8.0) не нужен.</p><p>Цена для населения — 4,32 грн за кВт·ч (продлено до 30.04.2027). Ночью (23:00–07:00) по двухзонному — ×0,5; трёхзонный: пик ×1,5, полупик ×1, ночь ×0,4. Дом с электроотоплением и оформленной льготой: 1 октября — 30 апреля 2,64 грн за первые 2000 кВт·ч в месяц — отметьте это у счётчика.</p>'
         : '<p>Показання світла приймає <b>Харківобленерго</b> в <b>останні 2 дні місяця і 1–3 числа</b> наступного (подані 1–3 числа зараховуються на 1-ше). Не передали — рахунок порахують «за середнім», потім перерахують за фактом.</p><p>Як: застосунок «Харенерго» (iPhone і Android), Viber-бот Харківобленерго або кол-центр — (057) 342-44-13, (067) 234-04-13, (050) 054-04-13, (063) 054-04-13. Потрібен особовий рахунок із платіжки Харківенергозбуту — впишіть його в лічильника, і сервіс підставить його для копіювання.</p><p>Лише цифри до коми. У двозонного лічильника табло саме перемикається: день — T1 (1.8.1), ніч — T2 (1.8.2); кожну зону — окремо, не додаючи. Загальний показник (1.8.0) не потрібен.</p><p>Ціна для населення — 4,32 грн за кВт·год (продовжено до 30.04.2027). Вночі (23:00–07:00) за двозонним — ×0,5; тризонний: пік ×1,5, напівпік ×1, ніч ×0,4. Будинок з електроопаленням і оформленою пільгою: 1 жовтня — 30 квітня 2,64 грн за перші 2000 кВт·год на місяць — позначте це в лічильника.</p>'],
       ['h-gas', ru ? 'Газ: когда и куда передавать' : 'Газ: коли й куди передавати', ru
-        ? '<p>Показания газа передают <b>с 1 по 5 число</b> — на 1-е (SMS принимают уже с 28-го). Не передали — начислят по среднему.</p><p>Самое простое — <b>SMS на 4647</b>: 9 цифр лицевого счёта (из платёжки Нафтогаза), пробел, 5 цифр показаний. Впишите счёт у счётчика — сервис соберёт SMS сам, останется нажать «Отправить». Ещё: кабинет Газсетей my.grmu.com.ua, приложение Нафтогаза «Куб», колл-центр (066) 300-28-88, (098) 300-28-88, (093) 300-28-88.</p><p>Записывайте чёрные цифры — целые кубометры; красные (литры) не передают. Цена — Нафтогаз «Фиксированный» 7,96 грн/м³ до 30.04.2027; другой поставщик — впишите свою цену у счётчика. Доставка (распределение) — отдельная плата Газсетям, от показаний не зависит.</p>'
-        : '<p>Показання газу передають <b>з 1 по 5 число</b> — станом на 1-ше (SMS приймають уже з 28-го). Не передали — нарахують за середнім.</p><p>Найпростіше — <b>SMS на 4647</b>: 9 цифр особового рахунку (з платіжки Нафтогазу), пробіл, 5 цифр показань. Впишіть рахунок у лічильника — сервіс складе SMS сам, залишиться натиснути «Надіслати». Ще: кабінет Газмереж my.grmu.com.ua, застосунок Нафтогазу «Куб», кол-центр (066) 300-28-88, (098) 300-28-88, (093) 300-28-88.</p><p>Записуйте чорні цифри — цілі кубометри; червоні (літри) не передають. Ціна — Нафтогаз «Фіксований» 7,96 грн/м³ до 30.04.2027; інший постачальник — впишіть свою ціну в лічильника. Доставка (розподіл) — окрема плата Газмережам, від показань не залежить.</p>'],
+        ? '<p>Показания газа передают <b>с 1 по 5 число</b> — на 1-е (SMS принимают уже с 28-го). Не передали — начислят по среднему.</p><p>Самое простое — <b>SMS на 4647</b>: 9 цифр лицевого счёта (из платёжки Нафтогаза), пробел, 5 цифр показаний. Впишите счёт у счётчика — сервис соберёт SMS сам, останется нажать «Отправить». Ещё: бот Газсетей в Telegram @mygrmu_bot (его ответ «принято» перешлите нам — отметим «передано»), кабинет Газсетей my.grmu.com.ua, приложение Нафтогаза «Куб», колл-центр (066) 300-28-88, (098) 300-28-88, (093) 300-28-88.</p><p>Записывайте чёрные цифры — целые кубометры; красные (литры) не передают. Цена — Нафтогаз «Фиксированный» 7,96 грн/м³ до 30.04.2027; другой поставщик — впишите свою цену у счётчика. Доставка (распределение) — отдельная плата Газсетям, от показаний не зависит.</p>'
+        : '<p>Показання газу передають <b>з 1 по 5 число</b> — станом на 1-ше (SMS приймають уже з 28-го). Не передали — нарахують за середнім.</p><p>Найпростіше — <b>SMS на 4647</b>: 9 цифр особового рахунку (з платіжки Нафтогазу), пробіл, 5 цифр показань. Впишіть рахунок у лічильника — сервіс складе SMS сам, залишиться натиснути «Надіслати». Ще: бот Газмереж у Telegram @mygrmu_bot (його відповідь «прийнято» перешліть нам — позначимо «передано»), кабінет Газмереж my.grmu.com.ua, застосунок Нафтогазу «Куб», кол-центр (066) 300-28-88, (098) 300-28-88, (093) 300-28-88.</p><p>Записуйте чорні цифри — цілі кубометри; червоні (літри) не передають. Ціна — Нафтогаз «Фіксований» 7,96 грн/м³ до 30.04.2027; інший постачальник — впишіть свою ціну в лічильника. Доставка (розподіл) — окрема плата Газмережам, від показань не залежить.</p>'],
       ['h-places', ru ? 'Несколько квартир и свой набор счётчиков' : 'Кілька квартир і свій набір лічильників', ru
         ? '<p>Своя квартира, родителей, сдаёте — у каждой свои счётчики, показания, история и счета. Добавить: <b>Настройки → Квартиры → Добавить квартиру</b> или кнопка под списком квартир — три шага: название и адрес, какие счётчики есть (кнопки «+» и «−»), лицевой счёт Водоканала. Потом сервис по очереди предложит настроить каждый счётчик.</p><p>Когда квартир две и больше, <b>главная — список квартир</b>: у каждой видно, что с каждым счётчиком («Передать до 20.11», «Передано») и ближайший срок. Нажмите на квартиру — откроются её счётчики.</p><p>В квартире — только те счётчики, что в ней есть: <b>«Добавить счётчик»</b> (отопление, горячая или холодная вода; газ и свет — скоро). Счётчик можно <b>заменить</b> (новый после поверки или поломки — расход дальше считается от его показаний) или <b>убрать</b> — история останется, вернуть можно на странице квартиры.</p><p>Где вы сейчас — видно сверху: полоса цвета квартиры и её название; вернуться к списку — <b>«Все квартиры»</b>. Если введённое число похоже на показания счётчика другой квартиры, сервис предупредит.</p><p>Напоминания в Telegram приходят одним сообщением на все квартиры, с кнопкой в каждую. Про отдельную квартиру их можно выключить на её странице.</p>'
         : '<p>Своя квартира, батьків, здаєте — у кожної свої лічильники, показання, історія й рахунки. Додати: <b>Налаштування → Квартири → Додати квартиру</b> або кнопка під списком квартир — три кроки: назва й адреса, які лічильники є (кнопки «+» і «−»), особовий рахунок Водоканалу. Потім сервіс по черзі запропонує налаштувати кожен лічильник.</p><p>Коли квартир дві й більше, <b>головна — список квартир</b>: у кожної видно, що з кожним лічильником («Передати до 20.11», «Передано») і найближчий термін. Натисніть на квартиру — відкриються її лічильники.</p><p>У квартирі — лише ті лічильники, що в ній є: <b>«Додати лічильник»</b> (опалення, гаряча чи холодна вода; газ і світло — скоро). Лічильник можна <b>замінити</b> (новий після повірки чи поломки — розхід далі рахується від його показань) або <b>прибрати</b> — історія залишиться, повернути можна на сторінці квартири.</p><p>Де ви зараз — видно вгорі: смужка кольору квартири та її назва; повернутися до списку — <b>«Усі квартири»</b>. Якщо введене число схоже на показання лічильника іншої квартири, сервіс попередить.</p><p>Нагадування в Telegram приходять одним повідомленням на всі квартири, з кнопкою в кожну. Про окрему квартиру їх можна вимкнути на її сторінці.</p>'],
