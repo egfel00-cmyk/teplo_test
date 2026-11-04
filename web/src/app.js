@@ -728,7 +728,7 @@
   // Сервер раз на 10 хв забирає графік: GET /api/gpv → days[дата][черга] = {off, may} — проміжки в хвилинах від півночі за Києвом.
   // Черга квартири — p.gpv ('3.1'): людина обирає сама (поруч — офіційний пошук черги за адресою). Без адреси блоку немає.
   // Зранку бот надсилає графік на сьогодні (p.gpvTg !== false, потрібен Telegram) — app/gpv.php.
-  var GPV = { data: null, at: 0, busy: false, err: false, pick: {} };
+  var GPV = { data: null, at: 0, busy: false, err: false, pick: {}, addr: {} };
   var GPV_Q = ['1.1', '1.2', '2.1', '2.2', '3.1', '3.2', '4.1', '4.2', '5.1', '5.2', '6.1', '6.2'];
   var GPV_LOOKUP = 'https://www.oblenergo.kharkov.ua/getinfoingao', GPV_CHANNEL = 'https://t.me/kharkivenergy';
   function gpvLoad() {
@@ -751,6 +751,21 @@
     return o;
   }
   function gpvHas(p) { return !!(p && String(p.address || '').trim()); }
+  /** Черга за адресою квартири (сервер шукає в переліку Харківобленерго): знайшли — підставляємо самі (p.gpvAuto), ні — варіанти. */
+  function gpvAddr(p) {
+    var a = String(p.address || '').trim(), c = GPV.addr[a]; if (!a || !window.TEPLO_API) return null;
+    if (c) return c;
+    GPV.addr[a] = { busy: true };
+    fetch(window.TEPLO_API + '/gpv/addr?q=' + encodeURIComponent(a), { credentials: 'same-origin', headers: { Accept: 'application/json' } }).then(function (r) { return r.json(); }).then(function (j) {
+      GPV.addr[a] = j && typeof j.found === 'boolean' ? j : { err: true };
+      var pp = place(p.id);
+      if (j && j.found && pp && String(pp.address || '').trim() === a && (!pp.gpv || (pp.gpvAuto && pp.gpvAuto.addr !== a))) {
+        pp.gpv = j.q; pp.gpvAuto = { addr: a, street: j.street || '', city: j.city || '' }; pp.updatedAt = Date.now(); save();
+      }
+      safeRender();
+    }, function () { GPV.addr[a] = { err: true }; safeRender(); });
+    return GPV.addr[a];
+  }
   function gpvHm(m) { return ('0' + Math.floor(m / 60)).slice(-2) + ':' + ('0' + m % 60).slice(-2); }
   function gpvSpan(iv) { return gpvHm(iv[0]) + '–' + gpvHm(iv[1]); }
   function gpvDur(ivs) { var m = 0; ivs.forEach(function (i) { m += i[1] - i[0]; }); var h = Math.floor(m / 60), r = m % 60; return (h ? t('gpv_h', { n: h }) : '') + (r ? (h ? ' ' : '') + t('gpv_m', { n: r }) : ''); }
@@ -784,17 +799,26 @@
   function gpvBox(p, where) {
     if (!gpvHas(p)) return '';
     gpvLoad();
-    var id = esc(p.id), q = GPV_Q.indexOf(p.gpv) >= 0 ? p.gpv : '', h = '<section class="gpv panel" id="gpv-' + id + '" data-key="gpv-' + where + '">' +
+    var id = esc(p.id), addr = String(p.address).trim(), q = GPV_Q.indexOf(p.gpv) >= 0 ? p.gpv : '', h = '<section class="gpv panel" id="gpv-' + id + '" data-key="gpv-' + where + '">' +
       '<h2 class="gpv-t">' + ico('bolt', 20) + '<span>' + esc(t('gpv_title')) + '</span></h2>';
+    // черга визначається сама за адресою: ще не шукали / адресу змінили після автопідбору — шукаємо
+    var auto = p.gpvAuto && p.gpvAuto.addr === addr, look = (!q || (p.gpvAuto && !auto)) && !GPV.pick[p.id] ? gpvAddr(p) : null;
+    if (look && look.busy) return h + '<p class="small muted" data-key="gpv-finding">' + esc(t('gpv_finding', { a: addr })) + '</p></section>';
+    if (p.gpvAuto && !auto && look && look.found === false) q = '';   // нова адреса, а в переліку її немає — стара черга вже не про неї
     if (!q || GPV.pick[p.id]) {
-      return h + '<p class="small">' + esc(t('gpv_pick_lead', { a: String(p.address).trim() })) + '</p>' +
-        '<div class="gpv-qs" role="group" aria-label="' + esc(t('gpv_pick_aria')) + '">' + GPV_Q.map(function (x) {
+      var opts = look && look.options && look.options.length ? look.options : null, list = opts && !GPV.pick[p.id] ? opts : GPV_Q;
+      var lead = look && look.found === false && !GPV.pick[p.id] ? (opts ? t(look.reason === 'nohouse' ? 'gpv_many_nohouse' : 'gpv_many', { s: look.street || '' }) : look.ready === false ? t('gpv_pick_lead', { a: addr }) : t('gpv_notfound', { a: addr }))
+        : t('gpv_pick_lead', { a: addr });
+      return h + '<p class="small" data-key="gpv-lead">' + esc(lead) + '</p>' +
+        '<div class="gpv-qs' + (opts && list === opts ? ' few' : '') + '" role="group" aria-label="' + esc(t('gpv_pick_aria')) + '">' + list.map(function (x) {
           return '<button type="button" class="chip gpv-q" data-act="gpv-set" data-id="' + id + '" data-q="' + x + '" aria-pressed="' + (x === q) + '" data-key="gpv-q-' + x + '">' + x + '</button>'; }).join('') + '</div>' +
+        (opts && list === opts ? '<p class="small"><button type="button" class="linkbtn" data-act="gpv-all" data-id="' + id + '" data-key="gpv-all">' + esc(t('gpv_all')) + '</button></p>' : '') +
         '<p class="small"><a href="' + GPV_LOOKUP + '" target="_blank" rel="noopener" data-key="gpv-lookup">' + esc(t('gpv_lookup')) + ' ' + ico('ext', 14) + '</a></p>' +
         '<p class="small muted">' + esc(t('gpv_lookup_hint')) + '</p>' +
         (q ? '<p><button type="button" class="linkbtn" data-act="gpv-cancel" data-id="' + id + '" data-key="gpv-cancel">' + esc(t('cancel')) + '</button></p>' : '') + '</section>';
     }
-    h += '<p class="gpv-sub small muted"><span data-key="gpv-q">' + esc(t('gpv_q', { q: q })) + '</span> · <button type="button" class="linkbtn" data-act="gpv-change" data-id="' + id + '" data-key="gpv-change">' + esc(t('gpv_change')) + '</button></p>';
+    h += '<p class="gpv-sub small muted"><span data-key="gpv-q">' + esc(t('gpv_q', { q: q })) + '</span>' + (auto ? ' <span data-key="gpv-auto">' + esc(t('gpv_auto', { s: [p.gpvAuto.street, p.gpvAuto.city].filter(Boolean).join(', ') || addr })) + '</span>' : '') +
+      ' · <button type="button" class="linkbtn" data-act="gpv-change" data-id="' + id + '" data-key="gpv-change">' + esc(t(auto ? 'gpv_wrong' : 'gpv_change')) + '</button></p>';
     var d = GPV.data;
     if (!d) return h + '<p class="small muted" data-key="gpv-wait">' + (GPV.err ? esc(t('gpv_err')) + ' <a href="' + GPV_LOOKUP + '" target="_blank" rel="noopener">' + esc(t('gpv_official')) + '</a>' : esc(t('gpv_loading'))) + '</p></section>';
     var now = kyivNow(), td = gpvDayOf(q, now.ymd), tm = gpvDayOf(q, addDays(now.ymd, 1));
@@ -4438,7 +4462,8 @@
       case 'hp-add-place': hpAddPlace(); break;
       case 'hp-edit': HP_EDIT = el.getAttribute('data-id'); render(true); setTimeout(function () { var f = document.getElementById('hpa-' + HP_EDIT); if (f) f.focus(); }, 30); break;
       case 'hp-cancel': HP_EDIT = ''; render(true); break;
-      case 'gpv-set': { var gp = place(el.getAttribute('data-id')); if (gp) { gp.gpv = el.getAttribute('data-q'); gp.updatedAt = Date.now(); delete GPV.pick[gp.id]; save(); toast(t('gpv_saved', { q: gp.gpv })); SCROLL_TO = 'gpv-' + gp.id; render(true); } break; }
+      case 'gpv-all': GPV.pick[el.getAttribute('data-id')] = true; render(true); break;
+      case 'gpv-set': { var gp = place(el.getAttribute('data-id')); if (gp) { gp.gpv = el.getAttribute('data-q'); delete gp.gpvAuto; gp.updatedAt = Date.now(); delete GPV.pick[gp.id]; save(); toast(t('gpv_saved', { q: gp.gpv })); SCROLL_TO = 'gpv-' + gp.id; render(true); } break; }
       case 'gpv-change': GPV.pick[el.getAttribute('data-id')] = true; SCROLL_TO = 'gpv-' + el.getAttribute('data-id'); render(true); break;
       case 'gpv-cancel': delete GPV.pick[el.getAttribute('data-id')]; render(true); break;
       case 'hp-chip': { var hn = document.getElementById('hpn-' + el.getAttribute('data-id')); if (hn) { hn.value = el.getAttribute('data-v'); hn.focus(); } break; }

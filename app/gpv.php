@@ -178,6 +178,94 @@ final class Gpv {
     return $p + ['gpvList' => $ok];
   }
 
+  // ---------- черга за адресою квартири: довідник з переліку «Адреси та черги» (app/data/gpv_addr.json) ----------
+  // Довідник: {v, src, items: [{c: 'м. Харків', s: 'вул. Сумська', k: скелет назви, h: ['10', '12а'] | null (уся вулиця), q: '3.1'}, …]}.
+  // Адресу людини розбираємо на вулицю й будинок (укр./рос., скорочення, без «кв.» і міста), шукаємо вулицю за «скелетом» назви
+  // (і/и/ы/й → и, є/е/э → е, без м’якого знака й апострофа, рос. «-ская» → «-ська»), допускаємо 1–2 описки; далі — будинок.
+  public static ?array $addrIdx = null;
+  public static function addrFile(): string { return (string)Cfg::get('gpv_addr_file', __DIR__ . '/data/gpv_addr.json'); }
+  public static function addrIndex(): array {
+    if (self::$addrIdx === null) { $j = json_decode((string)@file_get_contents(self::addrFile()), true); self::$addrIdx = is_array($j) && !empty($j['items']) ? $j : []; }
+    return self::$addrIdx;
+  }
+  const STREET_TYPES = 'вулиця|вул|улица|ул|проспект|просп|пр-т|пр|провулок|пров|переулок|пер|площа|площадь|пл|бульвар|бульв|б-р|узвіз|спуск|в\'їзд|в’їзд|вʼїзд|въезд|проїзд|проезд|шосе|шоссе|набережна|набережная|наб|майдан|тупик|лінія|линия|селище|поселок|мікрорайон|микрорайон|мкр|квартал|кв-л|дорога|алея|аллея|сад|парк';
+  /** Скелет назви вулиці для порівняння без різниці укр./рос. і дрібних описок. */
+  public static function skel(string $s): string {
+    $s = mb_strtolower(trim($s)); $s = str_replace(['ё', '’', 'ʼ', '`', '´'], ['е', "'", "'", "'", "'"], $s);
+    $s = preg_replace('/\b(' . self::STREET_TYPES . ')\b\.?/u', ' ', $s);
+    // рос. закінчення прикметників → укр.: Сумская → Сумська, Гагаринский → Гагаринський (скелет однаковий)
+    $s = preg_replace(['/ская\b/u', '/цкая\b/u', '/ская\s/u', '/ая\b/u', '/ое\b/u'], ['ська', 'цька', 'ська ', 'а', 'е'], $s);
+    $s = strtr($s, ['і' => 'и', 'ї' => 'и', 'ы' => 'и', 'й' => 'и', 'є' => 'е', 'э' => 'е', 'ґ' => 'г', 'ь' => '', 'ъ' => '', "'" => '', '-' => ' ', '.' => ' ', ',' => ' ']);
+    return trim(preg_replace('/\s+/u', ' ', $s));
+  }
+  /** Номер будинку до порівняння: «12-А» → «12а», «5/7» → «5/7», «10 корп. 2» → «10к2». */
+  public static function houseKey(string $h): string {
+    $h = mb_strtolower(trim($h)); $h = preg_replace('/\s*(корпус|корп|к)\.?\s*(\d+)/u', 'к$2', $h);
+    return preg_replace('/[\s\-"«»]+/u', '', strtr($h, ['a' => 'а', 'b' => 'б', 'v' => 'в']));
+  }
+  /** Адреса людини → ['street' => 'сумська', 'house' => '10'] (місто, «кв.», індекс — відкидаємо). */
+  public static function splitAddr(string $a): array {
+    $a = mb_strtolower(str_replace(['ё', '№'], ['е', ' '], $a));
+    $a = preg_replace('/\b(кв|квартира|оф|офис|офіс|под|під\'їзд|подъезд|эт|етаж|этаж)\b\.?\s*\d+[\p{L}]?.*$/u', '', $a);
+    $a = preg_replace('/\b\d{5}\b/u', ' ', $a);   // поштовий індекс
+    $a = preg_replace('/(^|[\s,])(м|г|місто|город|смт|с|село)\.?\s*харь?к[іо]в\p{L}*\s*,?/u', ' ', $a);
+    $a = preg_replace('/(^|[\s,])харь?к[іо]в\p{L}*\s*,/u', ' ', $a);
+    // вулиця — до першого номера будинку; будинок — номер (з літерою, дробом, корпусом)
+    if (preg_match('/^(.*?\p{L}[^\d]*?)[\s,.]+(?:буд|будинок|дом|д)?\.?\s*(\d+(?:\s*-?\s*\p{L}(?!\p{L}))?(?:\s*\/\s*\d+(?:\s*-?\s*\p{L}(?!\p{L}))?)?(?:\s*(?:корпус|корп|к)\.?\s*\d+)?)(?=$|[\s,.;])/u', trim($a), $m))
+      return ['street' => trim($m[1], " ,.\t"), 'house' => self::houseKey($m[2])];
+    return ['street' => trim($a, " ,.\t"), 'house' => ''];
+  }
+  private static function lev(string $a, string $b): int {
+    if ($a === $b) return 0;
+    $A = preg_split('//u', $a, -1, PREG_SPLIT_NO_EMPTY); $B = preg_split('//u', $b, -1, PREG_SPLIT_NO_EMPTY);
+    $n = count($A); $m = count($B); if (abs($n - $m) > 3) return 99; $p = range(0, $m);
+    for ($i = 1; $i <= $n; $i++) { $c = [$i]; for ($j = 1; $j <= $m; $j++) $c[$j] = min($p[$j] + 1, $c[$j - 1] + 1, $p[$j - 1] + ($A[$i - 1] === $B[$j - 1] ? 0 : 1)); $p = $c; }
+    return $p[$m];
+  }
+  /** Наскільки назва з довідника схожа на введену: 0 — точно, 1–2 — описка / інший порядок слів, null — ні. */
+  private static function streetScore(string $want, string $k): ?int {
+    if ($want === $k) return 0;
+    $tol = fn($s) => mb_strlen($s) >= 9 ? 2 : (mb_strlen($s) >= 5 ? 1 : 0);
+    if (self::lev($want, $k) <= $tol($k)) return 1;
+    // за словами: усі довгі слова введеної назви є в назві з довідника (ак. Павлова ↔ академіка павлова)
+    $w = array_values(array_filter(explode(' ', $want), fn($x) => mb_strlen($x) >= 4)); $kk = explode(' ', $k);
+    if (!$w) return null;
+    foreach ($w as $x) { $hit = false; foreach ($kk as $y) if (mb_strlen($y) >= 4 && self::lev($x, $y) <= $tol($y)) { $hit = true; break; } if (!$hit) return null; }
+    return 2;
+  }
+  /** GET /api/gpv/addr?q=адреса → черга. found: true + q; або варіанти (вулиця в кількох чергах, будинок не знайшли); або не знайшли вулицю. */
+  public static function lookup(string $addr): array {
+    $idx = self::addrIndex(); $addr = mb_substr(trim($addr), 0, 160);
+    if (!$idx) return ['ready' => false, 'found' => false];
+    $p = self::splitAddr($addr); $want = self::skel($p['street']);
+    $meta = ['ready' => true, 'src' => $idx['src'] ?? null, 'house' => $p['house']];
+    if (mb_strlen($want) < 3) return $meta + ['found' => false, 'reason' => 'street'];
+    $best = null; $hits = [];
+    foreach ($idx['items'] as $it) {
+      $sc = self::streetScore($want, (string)$it['k']); if ($sc === null) continue;
+      if ($best === null || $sc < $best) { $best = $sc; $hits = []; }
+      if ($sc === $best) $hits[] = $it;
+    }
+    if (!$hits) return $meta + ['found' => false, 'reason' => 'street'];
+    // різні вулиці з однаковим «скелетом» у різних містах — беремо Харків, якщо він є
+    $streets = array_values(array_unique(array_map(fn($i) => $i['c'] . '|' . $i['s'], $hits)));
+    if (count($streets) > 1) { $kh = array_values(array_filter($hits, fn($i) => preg_match('/харків/iu', (string)$i['c']))); if ($kh) $hits = $kh; }
+    $street = $hits[0]['s']; $city = $hits[0]['c'];
+    $qs = array_values(array_unique(array_map(fn($i) => (string)$i['q'], $hits))); sort($qs);
+    $h = $p['house'];
+    if ($h !== '') {
+      $num = preg_replace('/\D.*$/u', '', $h); $byNum = [];
+      foreach ($hits as $it) foreach ((array)($it['h'] ?? []) as $x) { $x = self::houseKey((string)$x); if ($x === $h) return $meta + ['found' => true, 'q' => $it['q'], 'street' => $it['s'], 'city' => $it['c'], 'how' => 'house'];
+        if (preg_replace('/\D.*$/u', '', $x) === $num) $byNum[(string)$it['q']] = $it; }
+      if (count($byNum) === 1) { $it = reset($byNum); return $meta + ['found' => true, 'q' => $it['q'], 'street' => $it['s'], 'city' => $it['c'], 'how' => 'num']; }
+    }
+    $whole = array_values(array_filter($hits, fn($i) => !isset($i['h']) || $i['h'] === null || $i['h'] === []));
+    $wq = array_values(array_unique(array_map(fn($i) => (string)$i['q'], $whole)));
+    if (count($wq) === 1 && ($h !== '' || count($qs) === 1)) return $meta + ['found' => true, 'q' => $wq[0], 'street' => $street, 'city' => $city, 'how' => 'street'];
+    if (count($qs) === 1) return $meta + ['found' => true, 'q' => $qs[0], 'street' => $street, 'city' => $city, 'how' => 'street'];
+    return $meta + ['found' => false, 'reason' => $h === '' ? 'nohouse' : 'house', 'street' => $street, 'city' => $city, 'options' => $qs];
+  }
+
   // ---------- ранкове повідомлення в Telegram ----------
   public static function hm(int $m): string { return sprintf('%02d:%02d', intdiv($m, 60), $m % 60); }
   public static function span(array $iv): string { return self::hm($iv[0]) . '–' . self::hm($iv[1]); }
@@ -190,7 +278,10 @@ final class Gpv {
     $out = [];
     foreach (array_values(array_filter((array)($st['places'] ?? []), fn($p) => is_array($p) && empty($p['deleted']))) as $i => $p) {
       $addr = trim((string)($p['address'] ?? '')); $q = (string)($p['gpv'] ?? '');
-      if ($addr === '' || !in_array($q, self::QUEUES, true) || (isset($p['gpvTg']) && $p['gpvTg'] === false)) continue;
+      if ($addr === '' || (isset($p['gpvTg']) && $p['gpvTg'] === false)) continue;
+      // черги ще не підставив застосунок (людина не відкривала) або адресу змінили після автопідбору — визначаємо за адресою самі
+      if ($q === '' || (is_array($p['gpvAuto'] ?? null) && ($p['gpvAuto']['addr'] ?? '') !== $addr)) { $l = self::lookup($addr); $q = !empty($l['found']) ? (string)$l['q'] : ($q !== '' && empty($p['gpvAuto']) ? $q : ''); }
+      if (!in_array($q, self::QUEUES, true)) continue;
       $label = trim((string)($p['name'] ?? '')) ?: ($i === 0 ? 'Моя квартира' : 'Квартира ' . ($i + 1));
       $out[] = ['id' => (string)($p['id'] ?? ''), 'label' => mb_substr($label, 0, 40), 'addr' => mb_substr($addr, 0, 60), 'q' => $q];
     }

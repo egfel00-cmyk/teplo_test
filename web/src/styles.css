@@ -991,6 +991,7 @@ fieldset.field { border: 0; padding: 0; min-width: 0; }
 .gpv-t { display: flex; align-items: center; gap: 8px; font-size: var(--fs-m); margin: 0 0 6px; }
 .gpv-t .ico { color: var(--c-elec, var(--c-ink)); flex: none; }
 .gpv-qs { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 8px; margin: 10px 0 12px; max-width: 520px; }
+.gpv-qs.few { grid-template-columns: repeat(auto-fill, minmax(72px, 96px)); }
 .gpv-q { min-height: 48px; padding: 0; font: 600 var(--fs-m) var(--font); font-variant-numeric: tabular-nums; }
 .gpv-sub { margin: 0 0 8px; }
 .gpv-day { margin: 10px 0 12px; }

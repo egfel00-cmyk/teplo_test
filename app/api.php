@@ -233,6 +233,7 @@ final class Api {
         return ['src' => $src, 'replies' => array_map(fn($x) => ['id' => (int)$x['id'], 'kind' => $x['kind'], 'text' => $x['text'], 'at' => (int)$x['msg_at']], $rows)];
       }
       case 'GET /api/gpv': return Gpv::api();
+      case 'GET /api/gpv/addr': RateLimit::hit('gpv_addr', $ip); return Gpv::lookup((string)($r->query()['q'] ?? ''));   // черга відключень за адресою квартири (адресу не зберігаємо)
       case 'GET /api/gpv/site': return Gpv::site() + ['list' => Gpv::listMeta()];
       case 'GET /api/gpv/list.pdf': { $f = Gpv::listFile(); if (!$f) throw new HttpError(404, 'not_found'); $res->file = $f; return []; }   // официальный перечень «Адреси та черги» (переслан боту из канала обленерго)   // как устроена официальная форма «черга за адресою» (разведка сервером, без личных данных)   // графики отключений света Харьковоблэнерго (без входа; очередь квартиры — в её данных)
       case 'GET /api/vk/status': return VkStatus::status();   // бот и кабинет Водоканала — работают ли (без входа)

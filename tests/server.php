@@ -610,6 +610,25 @@ Gpv::morning($kyiv('2026-11-04 08:15')); $mine2 = array_values(array_filter($sen
 ok('…раз в день: в 8:15 повторно не пишем; отметка gpv-04 — в журнале напоминаний', count($mine2) === 1 && Db::one("SELECT status FROM reminders_sent WHERE kind = 'gpv-04' AND ym = '2026-11'")['status'] === 'ok');
 @unlink(Gpv::file()); $sent = [];
 ok('графика на сегодня нет (не публиковали) — ничего не шлём', Gpv::morning($kyiv('2026-11-06 07:15')) === [] && !$sent);
+// очередь по адресу квартиры — синтетический справочник
+$gcfg = ['app_url' => 'https://teplo.example/', 'bot_token' => $TOKEN, 'webhook_secret' => 'hook-secret', 'admins' => ['emails' => ['boss@example.ua']]];
+Gpv::$addrIdx = null; Cfg::set($gcfg + ['gpv_addr_file' => '/nonexistent/gpv_addr.json']);
+ok('справочника ещё нет → ready: false', Gpv::lookup('вул. Сумська, 10') === ['ready' => false, 'found' => false]);
+$gidx = ['v' => 1, 'src' => ['name' => 'Адреси та черги.pdf'], 'items' => array_map(fn($x) => ['c' => $x[0], 's' => $x[1], 'k' => Gpv::skel($x[1]), 'h' => $x[2], 'q' => $x[3]], [
+  ['м. Харків', 'вул. Сумська', ['10', '12а', '14'], '3.1'], ['м. Харків', 'вул. Сумська', ['50', '52'], '5.2'], ['м. Харків', 'просп. Науки', null, '4.2'],
+  ['м. Харків', 'вул. Академіка Павлова', ['120', '122'], '1.1'], ['м. Харків', 'вул. Гвардійців-Широнінців', null, '6.1'], ['м. Харків', 'вул. Шевченка', ['5'], '2.1'], ['м. Харків', 'вул. Шевченка', null, '2.2'],
+  ['с. Мала Данилівка', 'вул. Сумська', null, '6.2']])];
+$gtmp = sys_get_temp_dir() . '/gpv_addr_test.json'; file_put_contents($gtmp, json_encode($gidx, JSON_UNESCAPED_UNICODE)); Cfg::set($gcfg + ['gpv_addr_file' => $gtmp]); Gpv::$addrIdx = null;
+$gL = fn($a) => Gpv::lookup($a);
+ok('«вул. Сумська, 10, кв. 61» → 3.1 (будинок у переліку)', ($r = $gL('вул. Сумська, 10, кв. 61'))['found'] && $r['q'] === '3.1' && $r['street'] === 'вул. Сумська' && $r['city'] === 'м. Харків', $r);
+ok('по-русски «г. Харьков, ул. Сумская 52» → 5.2; «12-А» → 3.1', ($r = $gL('г. Харьков, ул. Сумская 52'))['found'] && $r['q'] === '5.2' && $gL('Сумська 12-А')['q'] === '3.1', $r);
+ok('вся улица в одной очереди: «пр. Науки, 5» → 4.2; «ак. Павлова 120» → 1.1; описка «Гвардейцев Широнинцев 3» → 6.1',
+  $gL('пр. Науки, 5')['q'] === '4.2' && $gL('ак. Павлова 120')['q'] === '1.1' && ($gL('Гвардейцев Широнинцев 3')['q'] ?? '') === '6.1', [$gL('ак. Павлова 120'), $gL('Гвардейцев Широнинцев 3')]);
+ok('улица в нескольких очередях без номера дома → варианты 3.1 и 5.2', ($r = $gL('Сумська'))['found'] === false && $r['reason'] === 'nohouse' && $r['options'] === ['3.1', '5.2'], $r);
+ok('дом не из списков, но есть «вся остальная улица» → её очередь (Шевченка 7 → 2.2, Шевченка 5 → 2.1)', $gL('Шевченка 7')['q'] === '2.2' && $gL('вул. Шевченка, 5')['q'] === '2.1');
+ok('улицы нет в перечне → found: false, reason street', ($r = $gL('вул. Неіснуюча, 5'))['found'] === false && $r['reason'] === 'street', $r);
+ok('/api/gpv/addr — тот же ответ (без входа)', ((new Browser('10.0.13.25'))->req('GET', '/api/gpv/addr', null, ['QUERY_STRING' => 'q=' . rawurlencode('вул. Сумська, 14')])->body['q'] ?? '') === '3.1');
+@unlink($gtmp); Cfg::set($gcfg); Gpv::$addrIdx = null;
 // перечень «Адреси та черги»: пост из канала Харківобленерго с PDF переслали нашему боту → сохранили, отдаём /api/gpv/list.pdf
 $gpdf = "%PDF-1.4\n% синтетика\n"; Telegram::$fetch = fn($id) => $id === 'pdf-1' ? $gpdf : null; $sent = [];
 $ghook = fn(array $m) => (new Browser('10.0.13.22'))->req('POST', '/api/bot/webhook', ['message' => $m + ['chat' => ['id' => 7781], 'from' => ['id' => 7781, 'first_name' => 'Світло'], 'date' => time()]], ['HTTP_X_TELEGRAM_BOT_API_SECRET_TOKEN' => (string)Cfg::get('webhook_secret')]);
