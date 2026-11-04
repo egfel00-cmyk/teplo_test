@@ -6,3 +6,4 @@ tests/htm-mock/storage/*.txt
 tests/ocr-lab/out/
 tests/ocr-lab/*.local.json
 tests/ocr-lab/*.woff2
+__pycache__/
