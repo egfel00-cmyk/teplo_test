@@ -8,6 +8,8 @@ require __DIR__ . '/app/core.php'; require __DIR__ . '/app/telegram.php'; requir
 $items = [];
 foreach ($raw['items'] as $it) {
   $ck = Gpv::skelCity((string)$it['c']); if (mb_strlen($ck) < 3) continue;
+  // «м. Харків» у переліку — лише при підприємствах (місто обленерго не перелічує): «весь Харків» не пишемо
+  if ((string)$it['s'] === '' && $ck === Gpv::skelCity(Gpv::CITY)) continue;
   $items[] = ['c' => $it['c'], 'ck' => $ck, 's' => $it['s'], 'k' => $it['s'] !== '' ? Gpv::skel((string)$it['s']) : '', 'h' => $it['h'], 'q' => $it['q']];
 }
 file_put_contents($dst, json_encode(['v' => 1, 'src' => ['name' => $argv[3] ?? '', 'sha1' => $argv[4] ?? '', 'rows' => $raw['rows'], 'built' => gmdate('Y-m-d')], 'items' => $items], JSON_UNESCAPED_UNICODE));

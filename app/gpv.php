@@ -211,24 +211,52 @@ final class Gpv {
     if (self::$cities === null) { self::$cities = []; foreach ((array)(self::addrIndex()['items'] ?? []) as $it) self::$cities[(string)$it['ck']] = (self::$cities[(string)$it['ck']] ?? 0) + 1; }
     return self::$cities;
   }
+  /** Той самий населений пункт? Скелети: точно; описка (1 літера, від 5 літер); ініціал у переліку — «ч бишкин» ↔ «червонии бишкин»,
+   *  «ст мерчик» ↔ «старии мерчик», «м рогань» ↔ «мала рогань» (кожне коротке слово — початок довгого, хоч одне слово — повне). */
+  public static function cityLike(string $a, string $b): bool {
+    if ($a === $b) return true;
+    if (mb_strlen($a) >= 5 && mb_strlen($b) >= 5 && self::lev($a, $b) <= 1) return true;
+    $A = explode(' ', $a); $B = explode(' ', $b); if (count($A) !== count($B) || count($A) < 2) return false;
+    $full = 0;
+    foreach ($A as $i => $x) {
+      $y = $B[$i]; if ($x === $y || (mb_strlen($x) >= 5 && self::lev($x, $y) <= 1)) { $full++; continue; }
+      [$s, $l] = mb_strlen($x) <= mb_strlen($y) ? [$x, $y] : [$y, $x];
+      if (mb_strlen($s) > 2 || mb_strlen($l) < 3 || !str_starts_with($l, $s)) return false;
+    }
+    return $full > 0;
+  }
+  /** Скелет пункту з переліку для введеного: точно або cityLike; null — такого немає. */
+  public static function findCity(string $k): ?string {
+    if ($k === '' ) return null; $c = self::cities(); if (isset($c[$k])) return $k;
+    foreach ($c as $ck => $_) if (self::cityLike((string)$ck, $k)) return (string)$ck;
+    return null;
+  }
   /** Адреса людини → ['city' => скелет пункту (немає — Харків), 'street' => 'сумська', 'house' => '10'] (кв., індекс — відкидаємо). */
   public static function splitAddr(string $a): array {
     $a = mb_strtolower(str_replace(['ё', '№'], ['е', ' '], $a)); $city = null;
     // явно: «м. Люботин», «с. Мала Данилівка», «смт Солоницівка» — до коми
-    if (preg_match('/(^|[\s,])(м|г|місто|город|с|село|смт|сел|селище|пос|поселок)(?:\.\s*|\s+)([\p{L}\'’ʼ\-]+(?:\s+[\p{L}\'’ʼ\-]+){0,2}?)\s*(?=,|$)/u', $a, $m)) {
+    if (preg_match('/(^|[\s,])(м|г|місто|город|с|село|смт|сел|селище|пос|поселок)(?:\.\s*|\s+)((?:\p{L}{1,2}\.\s*)?[\p{L}\'’ʼ\-]+(?:(?<=-)\d+)?(?:\s+[\p{L}\'’ʼ\-]+){0,2}?)\s*(?=,|$)/u', $a, $m)) {
       $city = self::skel($m[3]); $a = str_replace($m[0], $m[1] === ',' ? ',' : ' ', $a);
     } else {
       // перший шматок до коми — відомий населений пункт («Люботин, Глінки 5»)
       $seg = explode(',', $a);
-      if (count($seg) > 1 && !preg_match('/\d|\b(' . self::STREET_TYPES . ')\b/u', $seg[0]) && isset(self::cities()[self::skel($seg[0])])) { $city = self::skel($seg[0]); array_shift($seg); $a = implode(',', $seg); }
+      if (count($seg) > 1 && !preg_match('/\d|\b(' . self::STREET_TYPES . ')\b/u', $seg[0]) && self::findCity(self::skel($seg[0])) !== null) { $city = self::skel($seg[0]); array_shift($seg); $a = implode(',', $seg); }
     }
     $a = preg_replace('/\b(кв|квартира|оф|офис|офіс|под|під\'їзд|подъезд|эт|етаж|этаж)\b\.?\s*\d+[\p{L}]?.*$/u', '', $a);
     $a = preg_replace('/\b\d{5}\b/u', ' ', $a);   // поштовий індекс
-    $a = preg_replace('/(^|[\s,])(м|г|місто|город|смт|с|село)\.?\s*харь?к[іо]в\p{L}*\s*,?/u', ' ', $a);
-    $a = preg_replace('/(^|[\s,])харь?к[іо]в\p{L}*\s*,/u', ' ', $a);
-    // вулиця — до першого номера будинку; будинок — номер (з літерою, дробом, корпусом)
-    if (preg_match('/^(.*?\p{L}[^\d]*?)[\s,.]+(?:буд|будинок|дом|д)?\.?\s*(\d+(?:\s*-?\s*\p{L}(?!\p{L}))?(?:\s*\/\s*\d+(?:\s*-?\s*\p{L}(?!\p{L}))?)?(?:\s*(?:корпус|корп|к)\.?\s*\d+)?)(?=$|[\s,.;])/u', trim($a), $m))
-      return ['city' => $city ?? self::skel(self::CITY), 'street' => trim($m[1], " ,.\t"), 'house' => self::houseKey($m[2])];
+    // «м. Харків,» / «Харьков,» — лише назва міста, не «вул. Харківська» / «пров. Харківський»
+    $a = preg_replace('/(^|[\s,])(м|г|місто|город|смт|с|село)\.?\s*харь?к[іо]в[еі]?(?!\p{L})\s*,?/u', ' ', $a);
+    $a = preg_replace('/(^|[\s,])харь?к[іо]в[еі]?(?!\p{L})\s*,/u', ' ', $a);
+    // будинок — номер (з літерою, дробом, корпусом), після якого не йде слово; вулиця — усе до нього. Число на початку назви
+    // вулиці — частина назви: «вул. 8 Березня, 1», «пров. 1-й Московський 3», «вул. Героїв 93-ї бригади 5»
+    $s = trim($a);
+    if (preg_match_all('/(?<=^|[\s,.])(?:(?:буд|будинок|дом|д)\.?\s*)?(\d+(?:\s*-?\s*\p{L}(?!\p{L}))?(?:\s*\/\s*\d+(?:\s*-?\s*\p{L}(?!\p{L}))?)?(?:\s*(?:корпус|корп|к)\.?\s*\d+)?)(?=$|[\s,.;])/u', $s, $mm, PREG_SET_ORDER | PREG_OFFSET_CAPTURE)) {
+      foreach ($mm as $m) {
+        $pre = substr($s, 0, $m[0][1]); $post = substr($s, $m[0][1] + strlen($m[0][0]));
+        if (mb_strlen(self::skel(preg_replace('/\b(буд|будинок|дом|д)\.?\s*$/u', '', $pre))) < 3 || preg_match('/^\s+\p{L}{3,}/u', $post)) continue;
+        return ['city' => $city ?? self::skel(self::CITY), 'street' => trim($pre, " ,.\t"), 'house' => self::houseKey($m[1][0])];
+      }
+    }
     return ['city' => $city ?? self::skel(self::CITY), 'street' => trim($a, " ,.\t"), 'house' => ''];
   }
   private static function lev(string $a, string $b): int {
@@ -257,14 +285,16 @@ final class Gpv {
     $meta = ['ready' => true, 'src' => $idx['src'] ?? null, 'house' => $p['house'], 'kharkiv' => $kh];
     // спершу — населений пункт (перелік обленерго — переважно область; без пункту в адресі вважаємо, що це Харків)
     $cand = array_values(array_filter($idx['items'], fn($it) => ($it['ck'] ?? '') === $p['city']));
-    if (!$cand) foreach ($idx['items'] as $it) if (mb_strlen($p['city']) >= 5 && self::lev((string)($it['ck'] ?? ''), $p['city']) <= 1) $cand[] = $it;
+    if (!$cand) foreach ($idx['items'] as $it) if (self::cityLike((string)($it['ck'] ?? ''), $p['city'])) $cand[] = $it;
     if (!$cand) return $meta + ['found' => false, 'reason' => 'city'];
-    $whole = array_values(array_filter($cand, fn($i) => ($i['k'] ?? '') === ''));
+    // Харків у переліку обленерго — лише окремі підприємства, не місто: «весь пункт» для нього не підставляємо ніколи
+    $whole = $kh ? [] : array_values(array_filter($cand, fn($i) => ($i['k'] ?? '') === ''));
     $wq = array_values(array_unique(array_map(fn($i) => (string)$i['q'], $whole))); sort($wq);
     $cityName = $cand[0]['c'];
+    $aq = array_values(array_unique(array_map(fn($i) => (string)$i['q'], $cand))); sort($aq);
     if (mb_strlen($want) < 3) {
+      if ($kh) return $meta + ['found' => false, 'reason' => 'street', 'city' => $cityName];
       if (count($wq) === 1) return $meta + ['found' => true, 'q' => $wq[0], 'street' => '', 'city' => $cityName, 'how' => 'city'];
-      $aq = array_values(array_unique(array_map(fn($i) => (string)$i['q'], $cand))); sort($aq);
       return $meta + ['found' => false, 'reason' => 'nostreet', 'city' => $cityName, 'options' => array_slice($aq, 0, 12)];
     }
     $best = null; $hits = [];
@@ -277,7 +307,10 @@ final class Gpv {
     if (!$hits) {
       // вулиці в переліку немає, але весь пункт в одній черзі (село) — його черга
       if (count($wq) === 1) return $meta + ['found' => true, 'q' => $wq[0], 'street' => '', 'city' => $cityName, 'how' => 'city'];
-      return $meta + ['found' => false, 'reason' => 'street', 'city' => $cityName];
+      if ($kh) return $meta + ['found' => false, 'reason' => 'street', 'city' => $cityName];
+      // увесь пункт у переліку в одній черзі (перелічені лише вулиці) — вона; у кількох (до 6) — їх на вибір
+      if (!$wq && count($aq) === 1) return $meta + ['found' => true, 'q' => $aq[0], 'street' => '', 'city' => $cityName, 'how' => 'city'];
+      return $meta + ['found' => false, 'reason' => 'street', 'city' => $cityName] + (count($aq) <= 6 ? ['options' => $aq] : []);
     }
     $street = $hits[0]['s']; $city = $hits[0]['c'];
     $qs = array_values(array_unique(array_map(fn($i) => (string)$i['q'], $hits))); sort($qs);

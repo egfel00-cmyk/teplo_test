@@ -18,6 +18,7 @@ const cache = (days) => { fs.mkdirSync(DATA + '/cache', { recursive: true }); fs
   await p.route('**/api/gpv/addr*', r => { const q = new URL(r.request().url()).searchParams.get('q') || '';
     const j = /Сумська, 10/.test(q) ? { ready: true, found: true, q: '3.1', street: 'вул. Сумська', city: 'м. Харків', how: 'house' }
       : /Науки/.test(q) ? { ready: true, found: false, reason: 'nohouse', street: 'просп. Науки', city: 'Харків', options: ['4.1', '4.2'] }
+      : /Чугуїв/.test(q) ? { ready: true, found: false, reason: 'street', kharkiv: false, city: 'Чугуїв', options: ['4.1', '5.2'] }
       : /Пушкінська/.test(q) ? { ready: true, found: false, reason: 'street', kharkiv: true, city: 'Харків' } : { ready: true, found: false, reason: 'city', kharkiv: false };
     r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(j) }); });
   const st = async () => JSON.parse(await p.evaluate(() => localStorage.getItem('teplo.v1')));
@@ -61,6 +62,9 @@ const cache = (days) => { fs.mkdirSync(DATA + '/cache', { recursive: true }); fs
     && /кількох чергах/.test(await p.textContent('[data-key=home-pl-p2] [data-key=gpv-lead]')) && !!(await p.$('[data-key=home-pl-p2] [data-key=gpv-all]')));
   await p.click('[data-key=home-pl-p2] [data-key=home-pl-edit-p2]'); await p.waitForTimeout(200); await p.fill('#hpa-p2', 'вул. Вигадана, 1'); await p.click('[data-key=hp-save]'); await p.waitForTimeout(700);
   ok('адреси немає в переліку → «Не знайшли адресу… Оберіть чергу» і всі 12', /Не знайшли адресу «вул\. Вигадана, 1»/.test(await p.textContent('[data-key=home-pl-p2] [data-key=gpv-lead]')) && (await p.$$('[data-key=home-pl-p2] .gpv-q')).length === 12);
+  await p.click('[data-key=home-pl-p2] [data-key=home-pl-edit-p2]'); await p.waitForTimeout(200); await p.fill('#hpa-p2', 'м. Чугуїв, вул. Вигадана, 3'); await p.click('[data-key=hp-save]'); await p.waitForTimeout(700);
+  ok('вулиці немає в переліку пункту, а пункт у кількох чергах → лише його черги (4.1, 5.2) і «Вашої вулиці немає … для «Чугуїв»»', (await p.$$('[data-key=home-pl-p2] .gpv-q')).length === 2
+    && /Вашої вулиці немає в переліку Харківобленерго для «Чугуїв»/.test(await p.textContent('[data-key=home-pl-p2] [data-key=gpv-lead]')) && !/«»/.test(await p.textContent('[data-key=home-pl-p2] [data-key=gpv-lead]')));
   await p.click('[data-key=home-pl-p2] [data-key=home-pl-edit-p2]'); await p.waitForTimeout(200); await p.fill('#hpa-p2', 'вул. Пушкінська, 5'); await p.click('[data-key=hp-save]'); await p.waitForTimeout(700);
   ok('харківська адреса, якої немає в переліку → «Для міста Харкова … лише пошук на своєму сайті», 12 черг', /Для міста Харкова/.test(await p.textContent('[data-key=home-pl-p2] [data-key=gpv-lead]')) && (await p.$$('[data-key=home-pl-p2] .gpv-q')).length === 12);
   // кнопка з ранкового повідомлення: ?go=gpv&place=main → головна, квартира розгорнута, блок графіка
