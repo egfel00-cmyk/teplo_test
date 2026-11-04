@@ -46,7 +46,8 @@ let pass = 0, fail = 0; const ok = (n, c, i) => { console.log((c ? '  OK  ' : ' 
   s = await st(); const r1 = s.mrecs.find(r => !r.base);
   ok('збережено: день 10130, ніч 5060.7 (ціле — 5060)', r1 && r1.z.day === '10130' && r1.z.night === '5060.7' && r1.meter === m.id, r1);
   ok('після — сторінка світла, «Куди передати»: Харківобленерго, цифри по зонах, рахунок', (await hash()) === '#elec' && /Харківобленерго/.test(await p.textContent('[data-key=where-elec]')) && /10130/.test(await p.textContent('[data-key=esend-vals]')) && /5060/.test(await p.textContent('[data-key=esend-vals]')) && /9876543/.test(await p.textContent('[data-key=where-elec]')));
-  ok('посилання на «Харенерго» і кол-центр', !!(await p.$('[data-key=dest-obl-ios]')) && /342-44-13/.test(await p.textContent('[data-key=where-elec]')));
+  ok('офіційні канали: бот @Kooz2bot і онлайн-форма', /t\.me\/Kooz2bot/.test(await p.getAttribute('[data-key=dest-obl-bot]', 'href')) && !!(await p.$('[data-key=dest-obl-form]')));
+  ok('запасні: застосунок «Харенерго» і кол-центр', /apps\.apple\.com/.test(await p.innerHTML('[data-key=where-elec]')) && /342-44-13/.test(await p.textContent('[data-key=where-elec]')));
   await click('[data-key=esend-done]', 300); s = await st();
   ok('«Я передав(ла)» → sent.obl', s.mrecs.find(r => r.id === r1.id).sent.obl === '2026-11-02');
   await go('home');

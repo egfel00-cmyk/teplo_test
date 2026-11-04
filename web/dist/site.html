@@ -2227,6 +2227,9 @@ fieldset.field { border: 0; padding: 0; min-width: 0; }
       ed_lead: 'Показання світла приймають в останні 2 дні місяця і 1–3 числа наступного. Подані 1–3 числа зараховуються на 1-ше.',
       ed_nosum: 'Кожну зону — окремо, не додавайте їх. Загальний показник (сума зон) не передають.', ed_acc: 'Особовий рахунок {a}',
       ed_app_ios: 'Харенерго — iPhone', ed_app_android: 'Харенерго — Android', ed_more: 'Ще — Viber-бот Харківобленерго і кол-центр:', ed_zbut: 'Особовий рахунок — у платіжці Харківенергозбуту,',
+      ed_bot: 'ХарківОбленергоБот', ed_form: 'Онлайн-форма', ed_sms: 'SMS на 4300', ed_app: 'Є й застосунок Харенерго:',
+      ed_bot_how: 'У боті: перший раз — «Надати номер телефону», далі «Передача показників» → введіть ЄР (12 цифр, вище) і показання. Коли бот підтвердить — натисніть «Я передав(ла)».',
+      ed_sms_how: 'Готовий текст SMS (тариф оператора): {s}',
       em_title: 'Мій електролічильник', em_name: 'Де стоїть / як назвати', em_name_ph: 'квартира, бойлер', em_acc: 'Особовий рахунок', em_acc_h: 'З платіжки Харківенергозбуту — щоб скопіювати при передачі.',
       em_zones_fix: 'Кількість зон змінилась (поставили новий лічильник)? Приберіть цей і додайте новий — історія залишиться.', em_manage: 'Прибрати чи додати лічильник — на сторінці квартири',
       ehow_t: 'Як зняти показання світла',
@@ -3063,6 +3066,9 @@ fieldset.field { border: 0; padding: 0; min-width: 0; }
       ed_lead: 'Показания света принимают в последние 2 дня месяца и 1–3 числа следующего. Поданные 1–3 числа засчитываются на 1-е.',
       ed_nosum: 'Каждую зону — отдельно, не складывайте их. Общий показатель (сумму зон) не передают.', ed_acc: 'Лицевой счёт {a}',
       ed_app_ios: 'Харэнерго — iPhone', ed_app_android: 'Харэнерго — Android', ed_more: 'Ещё — Viber-бот Харьковоблэнерго и колл-центр:', ed_zbut: 'Лицевой счёт — в платёжке Харьковэнергосбыта,',
+      ed_bot: 'ХарьковОблэнергоБот', ed_form: 'Онлайн-форма', ed_sms: 'SMS на 4300', ed_app: 'Есть и приложение Харэнерго:',
+      ed_bot_how: 'В боте: первый раз — «Надати номер телефону», дальше «Передача показників» → введите ЄР (12 цифр, выше) и показания. Когда бот подтвердит — нажмите «Я передав(ла)».',
+      ed_sms_how: 'Готовый текст SMS (тариф оператора): {s}',
       em_title: 'Мой электросчётчик', em_name: 'Где стоит / как назвать', em_name_ph: 'квартира, бойлер', em_acc: 'Лицевой счёт', em_acc_h: 'Из платёжки Харьковэнергосбыта — чтобы скопировать при передаче.',
       em_zones_fix: 'Число зон изменилось (поставили новый счётчик)? Уберите этот и добавьте новый — история останется.', em_manage: 'Убрать или добавить счётчик — на странице квартиры',
       ehow_t: 'Как снять показания света',
@@ -4439,6 +4445,7 @@ fieldset.field { border: 0; padding: 0; min-width: 0; }
   var OBL_APP_IOS = 'https://apps.apple.com/ua/app/id1592629551';
   var OBL_APP_ANDROID = 'https://play.google.com/store/search?q=%D0%A5%D0%B0%D1%80%D0%B5%D0%BD%D0%B5%D1%80%D0%B3%D0%BE&c=apps';
   var ZBUT_SITE = 'https://zbutenergo.kharkov.ua';
+  var OBL_BOT = 'https://t.me/Kooz2bot', OBL_FORM = 'https://www.oblenergo.kharkov.ua/transmissionofmeterreadings', ELEC_SMS = '4300';
   // кол-центр Харківобленерго — номер за оператором зв'язку
   var PHONES = [['+380573424413', '(057) 342-44-13', 'Укртелеком'], ['+380672340413', '(067) 234-04-13', 'Київстар'], ['+380500540413', '(050) 054-04-13', 'Vodafone'], ['+380630540413', '(063) 054-04-13', 'lifecell']];
   function make(C) {
@@ -4651,6 +4658,9 @@ fieldset.field { border: 0; padding: 0; min-width: 0; }
   var elec = make({ price: [{ from: '2000-01-01', p: 4.32 }], heat: { p: 2.64, limit: 2000 }, jump: 1500, jumpHeat: 4000, decimals: 2, idp: 'e',
     phones: PHONES, links: { ios: OBL_APP_IOS, android: OBL_APP_ANDROID, zbut: ZBUT_SITE } });
   elec.OBL_APP_IOS = OBL_APP_IOS; elec.OBL_APP_ANDROID = OBL_APP_ANDROID; elec.ZBUT_SITE = ZBUT_SITE;
+  elec.OBL_BOT = OBL_BOT; elec.OBL_FORM = OBL_FORM; elec.SMS = ELEC_SMS;
+  // SMS Харківобленерго (4300): «12 цифр ЄР пробіл показання» (однозонний). → текст або null
+  elec.smsText = function (acc, v) { var a = String(acc || '').replace(/\D/g, ''), n = elec.whole(v); if (a.length !== 12 || n === null) return null; return a + ' ' + n; };
   // газ — показання 1–5 числа (станом на 1-ше; SMS 4647 — з 28-го); 1–5 число — за попередній місяць
   var gas = make({ price: [{ from: '2000-01-01', p: 7.96 }], jump: 150, jumpHeat: 800, decimals: 3, oneZone: true, lateDays: 5, idp: 'g',
     phones: [['+380663002888', '(066) 300-28-88', 'Vodafone'], ['+380983002888', '(098) 300-28-88', 'Київстар'], ['+380933002888', '(093) 300-28-88', 'lifecell']],
@@ -5973,8 +5983,13 @@ fieldset.field { border: 0; padding: 0; min-width: 0; }
       chans = (sms ? [['sms:' + Gs.LINKS.sms + '?&body=' + encodeURIComponent(sms), t('gd_sms'), 'send', 'sms']] : []).concat([[Gs.LINKS.cabinet, t('gd_cab'), 'ext', 'cab']]);
       more = esc(t('gd_more')) + ' ' + phones + '.';
     } else {
-      chans = [[El.OBL_APP_IOS, t('ed_app_ios'), 'ext', 'ios'], [El.OBL_APP_ANDROID, t('ed_app_android'), 'ext', 'android']];
-      more = esc(t('ed_more')) + ' ' + phones + '. ' + esc(t('ed_zbut')) + ' <a href="' + El.ZBUT_SITE + '" target="_blank" rel="noopener">zbutenergo.kharkov.ua</a>.';
+      // офіційні канали Харківобленерго: бот @Kooz2bot, онлайн-форма (з капчею — відкриваємо, людина проходить), SMS 4300
+      var m0 = ms[0] || {}, acc1 = String(m0.account || '').replace(/\D/g, '');
+      var esms = (have && ms.length === 1 && El.zones(m0) <= 1 && acc1.length === 12) ? El.smsText(acc1, (have.filter(Boolean)[0].z || {}).all) : null;
+      chans = [[El.OBL_BOT, t('ed_bot'), 'send', 'bot'], [El.OBL_FORM, t('ed_form'), 'ext', 'form']].concat(esms ? [['sms:' + El.SMS + '?&body=' + encodeURIComponent(esms), t('ed_sms'), 'send', 'sms']] : []);
+      if (have) body += '<p class="small muted" data-key="ed-bot-how">' + esc(t('ed_bot_how')) + '</p>';
+      if (esms) body += '<p class="small">' + esc(t('ed_sms_how', { s: esms })) + '</p>';
+      more = esc(t('ed_more')) + ' ' + phones + '. ' + esc(t('ed_app')) + ' <a href="' + El.OBL_APP_ANDROID + '" target="_blank" rel="noopener">Android</a> · <a href="' + El.OBL_APP_IOS + '" target="_blank" rel="noopener">iPhone</a>. ' + esc(t('ed_zbut')) + ' <a href="' + El.ZBUT_SITE + '" target="_blank" rel="noopener">zbutenergo.kharkov.ua</a>.';
     }
     var mark = have ? '<p class="dest-mark">' + (allSent ? '<button class="linkbtn" data-act="esent" data-k="' + k + '" data-v="0" data-ids="' + ids + '">' + esc(t('ws_unmark')) + '</button>'
       : '<button class="btn sec" data-act="esent" data-k="' + k + '" data-v="1" data-ids="' + ids + '" data-key="esend-done">' + ico('check', 18) + '<span>' + esc(t('ws_mark')) + '</span></button>') + '</p>' : '';

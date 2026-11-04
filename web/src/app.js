@@ -1303,8 +1303,13 @@
       chans = (sms ? [['sms:' + Gs.LINKS.sms + '?&body=' + encodeURIComponent(sms), t('gd_sms'), 'send', 'sms']] : []).concat([[Gs.LINKS.cabinet, t('gd_cab'), 'ext', 'cab']]);
       more = esc(t('gd_more')) + ' ' + phones + '.';
     } else {
-      chans = [[El.OBL_APP_IOS, t('ed_app_ios'), 'ext', 'ios'], [El.OBL_APP_ANDROID, t('ed_app_android'), 'ext', 'android']];
-      more = esc(t('ed_more')) + ' ' + phones + '. ' + esc(t('ed_zbut')) + ' <a href="' + El.ZBUT_SITE + '" target="_blank" rel="noopener">zbutenergo.kharkov.ua</a>.';
+      // офіційні канали Харківобленерго: бот @Kooz2bot, онлайн-форма (з капчею — відкриваємо, людина проходить), SMS 4300
+      var m0 = ms[0] || {}, acc1 = String(m0.account || '').replace(/\D/g, '');
+      var esms = (have && ms.length === 1 && El.zones(m0) <= 1 && acc1.length === 12) ? El.smsText(acc1, (have.filter(Boolean)[0].z || {}).all) : null;
+      chans = [[El.OBL_BOT, t('ed_bot'), 'send', 'bot'], [El.OBL_FORM, t('ed_form'), 'ext', 'form']].concat(esms ? [['sms:' + El.SMS + '?&body=' + encodeURIComponent(esms), t('ed_sms'), 'send', 'sms']] : []);
+      if (have) body += '<p class="small muted" data-key="ed-bot-how">' + esc(t('ed_bot_how')) + '</p>';
+      if (esms) body += '<p class="small">' + esc(t('ed_sms_how', { s: esms })) + '</p>';
+      more = esc(t('ed_more')) + ' ' + phones + '. ' + esc(t('ed_app')) + ' <a href="' + El.OBL_APP_ANDROID + '" target="_blank" rel="noopener">Android</a> · <a href="' + El.OBL_APP_IOS + '" target="_blank" rel="noopener">iPhone</a>. ' + esc(t('ed_zbut')) + ' <a href="' + El.ZBUT_SITE + '" target="_blank" rel="noopener">zbutenergo.kharkov.ua</a>.';
     }
     var mark = have ? '<p class="dest-mark">' + (allSent ? '<button class="linkbtn" data-act="esent" data-k="' + k + '" data-v="0" data-ids="' + ids + '">' + esc(t('ws_unmark')) + '</button>'
       : '<button class="btn sec" data-act="esent" data-k="' + k + '" data-v="1" data-ids="' + ids + '" data-key="esend-done">' + ico('check', 18) + '<span>' + esc(t('ws_mark')) + '</span></button>') + '</p>' : '';

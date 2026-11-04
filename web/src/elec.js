@@ -18,6 +18,7 @@
   var OBL_APP_IOS = 'https://apps.apple.com/ua/app/id1592629551';
   var OBL_APP_ANDROID = 'https://play.google.com/store/search?q=%D0%A5%D0%B0%D1%80%D0%B5%D0%BD%D0%B5%D1%80%D0%B3%D0%BE&c=apps';
   var ZBUT_SITE = 'https://zbutenergo.kharkov.ua';
+  var OBL_BOT = 'https://t.me/Kooz2bot', OBL_FORM = 'https://www.oblenergo.kharkov.ua/transmissionofmeterreadings', ELEC_SMS = '4300';
   // кол-центр Харківобленерго — номер за оператором зв'язку
   var PHONES = [['+380573424413', '(057) 342-44-13', 'Укртелеком'], ['+380672340413', '(067) 234-04-13', 'Київстар'], ['+380500540413', '(050) 054-04-13', 'Vodafone'], ['+380630540413', '(063) 054-04-13', 'lifecell']];
   function make(C) {
@@ -230,6 +231,9 @@
   var elec = make({ price: [{ from: '2000-01-01', p: 4.32 }], heat: { p: 2.64, limit: 2000 }, jump: 1500, jumpHeat: 4000, decimals: 2, idp: 'e',
     phones: PHONES, links: { ios: OBL_APP_IOS, android: OBL_APP_ANDROID, zbut: ZBUT_SITE } });
   elec.OBL_APP_IOS = OBL_APP_IOS; elec.OBL_APP_ANDROID = OBL_APP_ANDROID; elec.ZBUT_SITE = ZBUT_SITE;
+  elec.OBL_BOT = OBL_BOT; elec.OBL_FORM = OBL_FORM; elec.SMS = ELEC_SMS;
+  // SMS Харківобленерго (4300): «12 цифр ЄР пробіл показання» (однозонний). → текст або null
+  elec.smsText = function (acc, v) { var a = String(acc || '').replace(/\D/g, ''), n = elec.whole(v); if (a.length !== 12 || n === null) return null; return a + ' ' + n; };
   // газ — показання 1–5 числа (станом на 1-ше; SMS 4647 — з 28-го); 1–5 число — за попередній місяць
   var gas = make({ price: [{ from: '2000-01-01', p: 7.96 }], jump: 150, jumpHeat: 800, decimals: 3, oneZone: true, lateDays: 5, idp: 'g',
     phones: [['+380663002888', '(066) 300-28-88', 'Vodafone'], ['+380983002888', '(098) 300-28-88', 'Київстар'], ['+380933002888', '(093) 300-28-88', 'lifecell']],
