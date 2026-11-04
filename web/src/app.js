@@ -776,6 +776,8 @@
       (o.set ? '<details class="mbox-set" id="mbs-' + esc(o.id || o.kind) + '"' + (MB_OPEN[o.id || o.kind] ? ' open' : '') + ' data-key="' + o.key + '-set"><summary>' + ico('prefs', 18) + '<span>' + esc(o.setTitle || t('mb_set')) + '</span>' + ico('chev', 18, 'pacc-chev') + '</summary><div class="mbox-set-b">' + o.set + '</div></details>' : '') +
       (o.links && o.links.length ? '<div class="mbox-links">' + o.links.join('') + '</div>' : '') + '</section>';
   }
+  /** «Лічильник знімали на ремонт, повірку чи міняли?» — внизу «Налаштувань лічильника», не на виду. */
+  function gapSetLink(what) { return '<p class="mbox-set-link">' + mlink('#gap-new-' + esc(what), 'wrench', t('gp_add'), ' data-key="gap-add-' + esc(what) + '"') + '</p>'; }
   function mlink(href, icon, txt, extra) { return '<a href="' + href + '"' + (extra || '') + '>' + ico(icon, 18) + '<span>' + esc(txt) + '</span></a>'; }
   document.addEventListener('toggle', function (e) { var d = e.target; if (d && d.classList && d.classList.contains('mbox-set')) MB_OPEN[d.id.slice(4)] = d.open; }, true);
 
@@ -943,8 +945,8 @@
       return mbox({ key: 'wmeter-' + m.id, id: m.id, kind: kind, icon: 'drop', cls: kind === 'hot' ? 'c-hot' : 'c-cold', name: ms.length > 1 ? wname(m) : title, sub: [m.serial ? '№ ' + m.serial : '', ms.length > 1 ? '' : t('mb_water_sub')].filter(Boolean).join(' · '),
         display: wdrum(r ? r.vals[m.id] : null, kind, 'hero'), cap: cap, fix: fix, body: sc && sc.note ? '<p class="small muted mb-newer">' + esc(sc.note) + '</p>' : '',
         meta: [ver, m.vkId ? esc(t('mb_vkid', { v: m.vkId })) : ''].filter(Boolean),
-        set: wmeterFields(m),
-        links: [mlink('#gap-new-' + esc(m.id), 'wrench', t('gp_add'), ' data-key="gap-add-' + esc(m.id) + '"'), mbPlaceLink()] });
+        set: wmeterFields(m) + gapSetLink(m.id),
+        links: [mbPlaceLink()] });
     }).join('');
     var right = '<button class="btn big block" data-act="wnew" data-kind="' + kind + '" data-key="water-add">' + ico('plus', 22) + '<span>' + esc(t('wn_title')) + '</span></button>' +
       (VIS().local ? '<input type="file" id="wq-files" accept="image/*" multiple class="sr" data-kind="' + kind + '"><label for="wq-files" class="btn sec block wq-photo" tabindex="0" data-key="water-photo">' + ico('camera', 22) + '<span>' + esc(t('ph_entry')) + '</span></label>' : '');
@@ -2224,8 +2226,8 @@
       body: (newer ? '<p class="small muted mb-newer">' + esc(t(newer.own ? 'mb_newer_own' : 'mb_newer_heat', { d: fmtDate(newer.htm.date, true), s: t('status_' + newer.status).toLowerCase() })) + '</p>' : '') +
         (bs ? '' : '<p class="small muted">' + esc(t('h_last_none_sub')) + '</p><p><a class="btn sec" href="#baseline" data-key="home-add-base">' + esc(t('h_add_base')) + '</a></p>'),
       meta: S.meter && S.meter.verifiedUntil ? [esc(t('pl_ver', { d: R.toHtmDate(S.meter.verifiedUntil) }))] : [],
-      set: heatMeterFields(m),
-      links: [mlink('#gap-new-heat', 'wrench', t('gp_add'), ' data-key="gap-add-heat"'), mbPlaceLink()] });
+      set: heatMeterFields(m) + gapSetLink('heat'),
+      links: [mbPlaceLink()] });
     var right = '';
     var n = steps().length;
     if (S.draft && (Object.keys(S.draft.values || {}).length || S.draft.step > 0)) {

@@ -875,6 +875,8 @@ fieldset.field { border: 0; padding: 0; min-width: 0; }
 .mbox-set > summary > span { flex: 1 1 auto; }
 .mbox-set[open] .pacc-chev { transform: rotate(-90deg); }
 .mbox-set-b { padding: 4px 0 8px; }
+.mbox-set-link { margin: 12px 0 0; padding-top: 10px; border-top: 1px solid var(--c-line); font-size: var(--fs-s); }
+.mbox-set-link a { display: inline-flex; align-items: center; gap: 6px; min-height: 36px; }
 .mbox-links { display: flex; flex-wrap: wrap; gap: 4px 18px; margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--c-line); font-size: var(--fs-s); }
 .mbox-links a { display: inline-flex; align-items: center; gap: 6px; min-height: 36px; }
 .mbox + .mbox { margin-top: 12px; }
