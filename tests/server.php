@@ -8,6 +8,7 @@ require __DIR__ . '/../app/reminders.php';
 require __DIR__ . '/../app/recognize.php';
 require __DIR__ . '/../app/admin.php';
 require __DIR__ . '/../app/vkcab.php';
+require __DIR__ . '/../app/gpv.php';
 require __DIR__ . '/../app/visits.php';
 require __DIR__ . '/../app/docs.php';
 require __DIR__ . '/../app/api.php';
@@ -570,6 +571,46 @@ ok('/admin: вкладка напоминаний — ближайшее, жур
 Cron::write(['last' => gmdate('c', time() - 120)]); $h1 = (new Browser('10.0.13.7'))->req('GET', '/api/health');
 ok('/api/health: cron ни разу → null, был 2 мин назад → ~120 с', $h0->body['cronAgo'] === null && abs(($h1->body['cronAgo'] ?? 0) - 120) <= 2, [$h0->body, $h1->body]);
 ok('/api/health: пересланные ответы ботов — только счёт по боту и итогу, без текстов', (((array)$h1->body['fwd'])['obl ok'] ?? 0) >= 1 && (((array)$h1->body['fwd'])['vk ok'] ?? 0) >= 1 && !preg_match('/прийнят|збережен/iu', json_encode($h1->body['fwd'], JSON_UNESCAPED_UNICODE)), $h1->body['fwd'] ?? null);
+
+echo "\nГрафики отключений света (ГПВ Харьковоблэнерго, синтетический файл в формате OE_OUTAGE_DATA):\n";
+$gday = fn(string $ymd) => (new DateTimeImmutable($ymd . ' 00:00', new DateTimeZone('Europe/Kyiv')))->getTimestamp();
+$hrs = fn(array $no, array $first = [], array $second = [], array $may = []) => array_combine(range(1, 24), array_map(fn($h) => in_array($h, $no, true) ? 'no' : (in_array($h, $first, true) ? 'first' : (in_array($h, $second, true) ? 'second' : (in_array($h, $may, true) ? 'maybe' : 'yes'))), range(1, 24)));
+$gq = []; foreach (Gpv::QUEUES as $q) $gq['GPV' . $q] = $hrs([]);
+$g4 = $gq; $g4['GPV1.1'] = $hrs([7, 8, 9, 14, 15, 16, 17, 18, 19, 24], [20], [13]); $g4['GPV3.1'] = $hrs([1, 2], [], [], [10]);
+$g5 = $gq; $g5['GPV1.1'] = $hrs([12]);
+$gsrc = json_encode(['regionId' => 'Kharkiv', 'lastUpdated' => '2026-11-04T05:05:00Z', 'fact' => ['data' => [(string)$gday('2026-11-03') => $gq, (string)$gday('2026-11-04') => $g4, (string)$gday('2026-11-05') => $g5], 'update' => '04.11.2026 07:05', 'today' => $gday('2026-11-04')],
+  'preset' => ['time_type' => ['yes' => 'Світло є', 'no' => 'Світла немає']]]);
+$gp = Gpv::parse($gsrc);
+ok('разбор: 1.1 на 4.11 — 06:00–09:00, 12:30–19:30, 23:00–24:00 (first/second — по 30 хв, сусідні зливаються)', ($gp['days']['2026-11-04']['1.1']['off'] ?? null) === [[360, 540], [750, 1170], [1380, 1440]] && $gp['update'] === '04.11.2026 07:05', $gp['days']['2026-11-04']['1.1'] ?? $gp);
+ok('…«можливе» — окремо, 12 підчерг; мусор — null', ($gp['days']['2026-11-04']['3.1']['may'] ?? null) === [[540, 600]] && count($gp['days']['2026-11-04']) === 12 && Gpv::parse('{"x":1}') === null && Gpv::parse('<html>') === null);
+@unlink(Gpv::file()); Gpv::$http = fn($u) => ['code' => 200, 'body' => $gsrc];
+$now4 = $kyiv('2026-11-04 07:10'); $rf = Gpv::refresh($now4); $ga = Gpv::api($now4);
+ok('cron забрал график → /api/gpv: сегодня и завтра (вчера — нет), время обновления, ссылка на поиск очереди', $rf['ok'] && array_keys((array)$ga['days']) === ['2026-11-04', '2026-11-05'] && $ga['update'] === '04.11.2026 07:05' && !$ga['stale'] && str_contains($ga['lookup'], 'oblenergo.kharkov.ua'), $ga);
+Gpv::$http = fn($u) => ['code' => 503, 'body' => ''];
+$rf2 = Gpv::refresh($now4 + 600);
+ok('источник не ответил — прежний график остаётся, ошибка записана', !$rf2['ok'] && $rf2['err'] === 'HTTP 503' && count((array)Gpv::api($now4 + 600)['days']) === 2 && Gpv::api($now4 + 4 * 3600)['stale']);
+Gpv::$http = fn($u) => ['code' => 200, 'body' => $gsrc]; Gpv::refresh($now4);
+$gst = ['readings' => [], 'places' => [['id' => 'main', 'name' => '', 'address' => 'вул. Сумська, 10', 'gpv' => '1.1'], ['id' => 'p2', 'name' => 'Мамина', 'address' => 'пр. Науки, 5', 'gpv' => '3.1'],
+  ['id' => 'p3', 'name' => 'Дача', 'address' => '', 'gpv' => '2.1'], ['id' => 'p4', 'name' => 'Здаю', 'address' => 'вул. Пушкінська, 1', 'gpv' => '4.1', 'gpvTg' => false], ['id' => 'p5', 'address' => 'x', 'gpv' => '9.9']]];
+ok('кому писать: квартиры с адресом и очередью; без адреса, «не надсилати», кривая очередь — нет', array_column(Gpv::placesFor($gst), 'id') === ['main', 'p2'] && Gpv::placesFor($gst)[0]['label'] === 'Моя квартира');
+$gt = Gpv::text('uk', Gpv::placesFor($gst), Gpv::read()['days']['2026-11-04'], '2026-11-04');
+ok('текст: «на сьогодні, 4 листопада», по квартирі — черга й години без світла, разом; «можливі»; кнопка ?go=gpv', str_contains($gt['text'], 'на сьогодні, 4 листопада') && str_contains($gt['text'], '▌Моя квартира (вул. Сумська, 10) — черга 1.1')
+  && str_contains($gt['text'], 'Без світла: 06:00–09:00, 12:30–19:30, 23:00–24:00 (разом 11 год)') && str_contains($gt['text'], 'Можливі відключення: 09:00–10:00') && str_contains($gt['text'], 'Без світла: 00:00–02:00')
+  && str_ends_with($gt['buttons'][0][1], '?go=gpv'), $gt['text'] ?? $gt);
+$g1 = Gpv::text('ru', [Gpv::placesFor($gst)[1]], Gpv::read()['days']['2026-11-05'], '2026-11-05');
+ok('у этой очереди сегодня отключений нет — не пишем; одна квартира — кнопка с place', $g1 === null && str_ends_with(Gpv::text('ru', [Gpv::placesFor($gst)[0]], Gpv::read()['days']['2026-11-05'], '2026-11-05')['buttons'][0][1], '?go=gpv&place=main'));
+$gb = new Browser('10.0.13.21'); $gb->req('POST', '/api/auth/telegram/webapp', ['initData' => initData($TOKEN, ['id' => 7781, 'first_name' => 'Світло'])]);
+$gpu = $gb->req('PUT', '/api/state', ['state' => $gst, 'baseVersion' => 0]); if ($gpu->status !== 200) echo '   (PUT state: ' . $gpu->status . ' ' . json_encode($gpu->body) . ")\n";
+$sent = []; Telegram::$send = function ($m, $p, $tok = null) use (&$sent) { $sent[] = [$m, $p]; return ['ok' => true]; };
+$gm0 = Gpv::morning($kyiv('2026-11-04 06:55'));
+$gm = Gpv::morning($kyiv('2026-11-04 07:15')); $mine = array_values(array_filter($sent, fn($x) => (string)$x[1]['chat_id'] === '7781'));
+ok('утро: до 7:00 — молчим; в 7:15 — одно сообщение с графиком и кнопкой «Відкрити графік»', $gm0 === [] && count($mine) === 1 && str_contains($mine[0][1]['text'], 'черга 1.1')
+  && ($mine[0][1]['reply_markup']['inline_keyboard'][0][0]['text'] ?? '') === 'Відкрити графік', $mine);
+Gpv::morning($kyiv('2026-11-04 08:15')); $mine2 = array_values(array_filter($sent, fn($x) => (string)$x[1]['chat_id'] === '7781'));
+ok('…раз в день: в 8:15 повторно не пишем; отметка gpv-04 — в журнале напоминаний', count($mine2) === 1 && Db::one("SELECT status FROM reminders_sent WHERE kind = 'gpv-04' AND ym = '2026-11'")['status'] === 'ok');
+@unlink(Gpv::file()); $sent = [];
+ok('графика на сегодня нет (не публиковали) — ничего не шлём', Gpv::morning($kyiv('2026-11-06 07:15')) === [] && !$sent);
+Gpv::$http = null; Telegram::$send = null;
 
 echo "\nАналитика: квартиры и все виды счётчиков:\n";
 $mv = new Browser('10.0.14.1'); $mv->req('POST', '/api/auth/register', ['email' => 'many@example.ua', 'password' => 'many pass 123']);

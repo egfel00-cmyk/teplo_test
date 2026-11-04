@@ -985,3 +985,35 @@ fieldset.field { border: 0; padding: 0; min-width: 0; }
 /* шапка сезона: моноширинный шрифт растягивал пробел тысяч («8  252») — как в итогах, обычный шрифт с табличными цифрами */
 /* чипс статуса: стрелка внутри плашки — видно, что нажимается */
 .st-chip .pill { gap: 2px; padding-right: 6px; }
+
+/* графік відключень світла (ГПВ): черги — сітка великих кнопок, шкала 24 год, «зараз» — текст і значок, не лише колір */
+.gpv { margin: var(--sp-3) 0 var(--sp-4); }
+.gpv-t { display: flex; align-items: center; gap: 8px; font-size: var(--fs-m); margin: 0 0 6px; }
+.gpv-t .ico { color: var(--c-elec, var(--c-ink)); flex: none; }
+.gpv-qs { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 8px; margin: 10px 0 12px; max-width: 520px; }
+.gpv-q { min-height: 48px; padding: 0; font: 600 var(--fs-m) var(--font); font-variant-numeric: tabular-nums; }
+.gpv-sub { margin: 0 0 8px; }
+.gpv-day { margin: 10px 0 12px; }
+.gpv-dt { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; margin: 0 0 8px; }
+.gpv-now { display: inline-flex; align-items: center; gap: 6px; font-weight: 600; font-size: var(--fs-s); }
+.gpv-now.off { color: var(--c-warn); } .gpv-now.on { color: var(--c-ok); }
+:root { --gpv-on: var(--c-ok-soft); --gpv-off: #4a5352; }
+:root[data-theme="dark"] { --gpv-on: #2c4636; --gpv-off: #050708; }
+.gpv-bar { position: relative; height: 24px; border-radius: 6px; background: var(--gpv-on); border: 1px solid var(--c-line); overflow: hidden; max-width: 640px; }
+.gpv-bar i { position: absolute; top: 0; bottom: 0; }
+.gpv-bar i.off { background: var(--gpv-off); }
+.gpv-bar i.may { background: repeating-linear-gradient(135deg, var(--c-warn-soft) 0 6px, var(--c-warn-line) 6px 9px); }
+.gpv-mark { position: absolute; top: 0; bottom: 0; width: 3px; margin-left: -1px; background: var(--c-warn); box-shadow: 0 0 0 1px var(--c-surface); }
+.gpv-ticks { display: flex; justify-content: space-between; max-width: 640px; font-size: 12px; color: var(--c-ink-2); margin-top: 3px; font-variant-numeric: tabular-nums; }
+.gpv-list { margin: 8px 0 0; line-height: 1.45; display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; }
+.gpv-lbl { font-weight: 600; }
+.gpv-ivs { display: contents; }
+.gpv-iv { white-space: nowrap; font-weight: 700; font-variant-numeric: tabular-nums; padding: 3px 10px; border-radius: var(--r-pill); background: var(--gpv-off); color: #fff; }
+.gpv-iv.may { background: var(--c-warn-soft); color: var(--c-warn-ink); border: 1px dashed var(--c-warn-line); }
+.gpv-tot { font-size: var(--fs-s); }
+.gpv-list.ok { color: var(--c-ok); font-weight: 600; }
+.gpv-src { margin: 10px 0 4px; }
+.gpv-tg { margin-top: 6px; font-weight: 500; }
+.gpv-chip { margin-top: 2px; }
+.hp-addr-gpv { margin: 6px 0 0; }
+@media (max-width: 380px) { .gpv-qs { grid-template-columns: repeat(4, minmax(0, 1fr)); } }

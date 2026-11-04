@@ -83,7 +83,8 @@ final class Api {
       case 'GET /api/health': {   // жив ли cron (напоминания, чистка) — без подробностей
         // пересланные ответы ботов поставщиков — только сколько (бот + как поняли), тексты — в /admin: есть ли по чему править botKind
         $fwd = []; try { foreach (Db::q('SELECT src, kind, COUNT(*) AS n FROM vk_replies GROUP BY src, kind')->fetchAll() as $x) $fwd[$x['src'] . ' ' . $x['kind']] = (int)$x['n']; } catch (Throwable $e) {}
-        return ['ok' => true, 'cronAgo' => Cron::age(), 'remind' => (object)(Cron::read()['remind'] ?? []), 'fwd' => (object)$fwd];
+        $g = Gpv::read();
+        return ['ok' => true, 'cronAgo' => Cron::age(), 'remind' => (object)(Cron::read()['remind'] ?? []), 'fwd' => (object)$fwd, 'gpvSent' => (object)(Cron::read()['gpvSent'] ?? []), 'gpv' => ['at' => $g['at'] ?? null, 'update' => $g['update'] ?? null, 'days' => array_keys((array)($g['days'] ?? [])), 'err' => $g['err'] ?? null]];
       }
       case 'GET /api/me': if (!$user) throw new HttpError(401, 'unauthorized'); return ['user' => self::publicUser($user)];
 
@@ -231,6 +232,7 @@ final class Api {
         $rows = Db::q('SELECT id, kind, text, msg_at FROM vk_replies WHERE user_id = ? AND src = ? AND msg_at > ? ORDER BY id DESC LIMIT 10', [(int)$user['id'], $src, time() - 30 * 86400])->fetchAll();
         return ['src' => $src, 'replies' => array_map(fn($x) => ['id' => (int)$x['id'], 'kind' => $x['kind'], 'text' => $x['text'], 'at' => (int)$x['msg_at']], $rows)];
       }
+      case 'GET /api/gpv': return Gpv::api();   // графики отключений света Харьковоблэнерго (без входа; очередь квартиры — в её данных)
       case 'GET /api/vk/status': return VkStatus::status();   // бот и кабинет Водоканала — работают ли (без входа)
       case 'POST /api/vk/event': {   // «Відправити» / «Прийняв» / «Не відповідає» / «Помилка» — для статуса бота
         if (!$user) throw new HttpError(401, 'unauthorized');

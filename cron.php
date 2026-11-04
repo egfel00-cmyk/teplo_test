@@ -12,11 +12,23 @@ require __DIR__ . '/app/recognize.php';
 require __DIR__ . '/app/api.php';
 require __DIR__ . '/app/admin.php';
 require __DIR__ . '/app/vkcab.php';
+require __DIR__ . '/app/gpv.php';
 $beat = Cron::read(); $beat['last'] = gmdate('c');
 // кабинет Водоканала — открывается ли (раз в 10 минут; статус видят приложение и /admin)
 if ((int)gmdate('i') % 10 === 7) { try { $beat['vkCab'] = VkStatus::probeCabinet()['state']; } catch (Throwable $e) { error_log('teplo vk probe: ' . $e->getMessage()); } }
 // проба «не знайдено»: выдуманный рахунок — узнаём ли мы ответ живого сайта (раз на версию разбора, VkCab::PROBE_V)
 if ((int)gmdate('i') % 10 === 3) { try { $p = VkStatus::probeNotFound(); if ($p) $beat['vkProbe'] = $p['error']; } catch (Throwable $e) { error_log('teplo vk notfound probe: ' . $e->getMessage()); } }
+// графики отключений света (ГПВ Харьковоблэнерго) — раз в 10 минут; утром (7–12 по Киеву) — сегодняшний график в Telegram
+if ((int)gmdate('i') % 10 === 5) {
+  try { $g = Gpv::refresh(); $beat['gpv'] = $g['ok'] ? ['ok' => true, 'update' => $g['update']] : ['ok' => false, 'err' => $g['err']]; } catch (Throwable $e) { error_log('teplo gpv: ' . $e->getMessage()); }
+  try {
+    $s = Gpv::morning(time());
+    // итог утренней рассылки по дням (только числа) — /api/health → gpvSent
+    if ($s) { $k = Gpv::kyiv(time())->format('Y-m-d'); $r = (array)($beat['gpvSent'] ?? []); $c = (array)($r[$k]['n'] ?? []);
+      foreach ($s as $x) { $st = str_starts_with($x[2], 'error') ? 'error' : $x[2]; $c[$st] = ($c[$st] ?? 0) + 1; }
+      $r[$k] = ['at' => gmdate('c'), 'n' => $c]; $beat['gpvSent'] = array_slice($r, -7, null, true); }
+  } catch (Throwable $e) { error_log('teplo gpv morning: ' . $e->getMessage()); }
+}
 if ((int)gmdate('i') !== 17) { Cron::write($beat); exit; }
 $h = ['at' => gmdate('c')];
 try { $n = Admin::cleanup(); $h['photos'] = $n; if ($n) echo gmdate('c') . " удалено старых фото: $n\n"; $h['hist'] = StateHist::cleanup(); }
