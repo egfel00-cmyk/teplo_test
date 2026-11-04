@@ -610,6 +610,23 @@ Gpv::morning($kyiv('2026-11-04 08:15')); $mine2 = array_values(array_filter($sen
 ok('…раз в день: в 8:15 повторно не пишем; отметка gpv-04 — в журнале напоминаний', count($mine2) === 1 && Db::one("SELECT status FROM reminders_sent WHERE kind = 'gpv-04' AND ym = '2026-11'")['status'] === 'ok');
 @unlink(Gpv::file()); $sent = [];
 ok('графика на сегодня нет (не публиковали) — ничего не шлём', Gpv::morning($kyiv('2026-11-06 07:15')) === [] && !$sent);
+// кому придёт график и ближайшее напоминание — только числа в /api/health (считает cron)
+$gr0 = Gpv::readiness();
+$gb2 = new Browser('10.0.13.22'); $gb2->req('POST', '/api/auth/telegram/webapp', ['initData' => initData($TOKEN, ['id' => 7782, 'first_name' => 'Без черги'])]);
+$gb2->req('PUT', '/api/state', ['state' => ['readings' => [], 'places' => [['id' => 'main', 'address' => 'вул. Неіснуюча, 999']]], 'baseVersion' => 0]);
+$gr1 = Gpv::readiness();
+ok('сколько получат график: с адресом и очередью — ready; адрес без очереди (не нашли) — noQueue', $gr0['ready'] >= 1 && $gr1['tg'] === $gr0['tg'] + 1 && $gr1['noQueue'] === $gr0['noQueue'] + 1 && $gr1['ready'] === $gr0['ready'], [$gr0, $gr1]);
+$rn = Reminders::nextPreview($kyiv('2026-11-04 21:00'));
+ok('ближайшее напоминание 4.11 вечером — heat5 5.11, сколько положено и сколько уже ушло', ($rn['kind'] ?? '') === 'heat5' && $rn['date'] === '2026-11-05' && $rn['ym'] === '2026-11' && is_int($rn['n']) && is_int($rn['sent']), $rn);
+$vkl0 = @file_get_contents(VkCab::logFile());
+file_put_contents(VkCab::logFile(), json_encode([['at' => time() - 100, 'op' => 'probe', 'result' => 'notfound', 'msgs' => ['err' => ['Не коректні дані: рахунок ###']]], ['at' => time() - 50, 'op' => 'check', 'result' => 'ok', 'user' => 5],
+  ['at' => time() - 40, 'op' => 'send', 'result' => 'unknown', 'user' => 5]], JSON_UNESCAPED_UNICODE));
+Cron::write(Cron::read() + ['gpvReady' => $gr1 + ['at' => gmdate('c')], 'remindNext' => $rn]);
+$hh = (new Browser('10.0.13.23'))->req('GET', '/api/health'); $hv = (array)($hh->body['vkcab']['n'] ?? []);
+ok('/api/health: gpvReady и remindNext из cron; vkcab — счёт «операция итог» и время последней проверки человеком, без слов сайта',
+  ($hh->body['gpvReady']['ready'] ?? null) === $gr1['ready'] && ($hh->body['remindNext']['kind'] ?? '') === 'heat5' && $hv === ['check ok' => 1, 'probe notfound' => 1, 'send unknown' => 1]
+  && abs(strtotime((string)$hh->body['vkcab']['lastUser']) - (time() - 40)) <= 2 && !preg_match('/коректн|###/u', json_encode($hh->body, JSON_UNESCAPED_UNICODE)), $hh->body);
+if ($vkl0 === false) @unlink(VkCab::logFile()); else file_put_contents(VkCab::logFile(), $vkl0);
 // очередь по адресу квартиры — синтетический справочник
 $gcfg = ['app_url' => 'https://teplo.example/', 'bot_token' => $TOKEN, 'webhook_secret' => 'hook-secret', 'admins' => ['emails' => ['boss@example.ua']]];
 Gpv::$addrIdx = null; Cfg::set($gcfg + ['gpv_addr_file' => '/nonexistent/gpv_addr.json']);

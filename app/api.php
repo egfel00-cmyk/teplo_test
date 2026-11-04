@@ -83,8 +83,13 @@ final class Api {
       case 'GET /api/health': {   // жив ли cron (напоминания, чистка) — без подробностей
         // пересланные ответы ботов поставщиков — только сколько (бот + как поняли), тексты — в /admin: есть ли по чему править botKind
         $fwd = []; try { foreach (Db::q('SELECT src, kind, COUNT(*) AS n FROM vk_replies GROUP BY src, kind')->fetchAll() as $x) $fwd[$x['src'] . ' ' . $x['kind']] = (int)$x['n']; } catch (Throwable $e) {}
-        $g = Gpv::read();
-        return ['ok' => true, 'cronAgo' => Cron::age(), 'remind' => (object)(Cron::read()['remind'] ?? []), 'fwd' => (object)$fwd, 'gpvSent' => (object)(Cron::read()['gpvSent'] ?? []), 'gpv' => ['at' => $g['at'] ?? null, 'update' => $g['update'] ?? null, 'days' => array_keys((array)($g['days'] ?? [])), 'err' => $g['err'] ?? null]];
+        $g = Gpv::read(); $cr = Cron::read();
+        // gpvReady / remindNext — кому придут утренний график и ближайшее напоминание (считает cron, только числа);
+        // vkcab — итог журнала кабинета Водоканала по «операция итог» (была ли живая проверка рахунку человеком)
+        return ['ok' => true, 'cronAgo' => Cron::age(), 'remind' => (object)($cr['remind'] ?? []), 'remindNext' => $cr['remindNext'] ?? null, 'fwd' => (object)$fwd,
+          'gpvSent' => (object)($cr['gpvSent'] ?? []), 'gpvReady' => $cr['gpvReady'] ?? null,
+          'gpv' => ['at' => $g['at'] ?? null, 'update' => $g['update'] ?? null, 'days' => array_keys((array)($g['days'] ?? [])), 'err' => $g['err'] ?? null],
+          'vkcab' => VkCab::summary()];
       }
       case 'GET /api/me': if (!$user) throw new HttpError(401, 'unauthorized'); return ['user' => self::publicUser($user)];
 

@@ -164,6 +164,14 @@ final class Reminders {
     return $out;
   }
 
+  /** Ближайшее напоминание и скольким оно уйдёт (ничего не отправляя) — только числа, для /api/health:
+   *  ['date' => '2026-11-05', 'kind' => 'heat5', 'ym' => '2026-11', 'n' => кому положено, 'sent' => уже отправлено] или null. */
+  public static function nextPreview(int $now): ?array {
+    $n = self::next($now); if (!$n) return null;
+    $p = self::preview($n['kind'], $n['ym']);
+    return $n + ['n' => count($p), 'sent' => count(array_filter($p, fn($x) => !empty($x['sent'])))];
+  }
+
   /** Что уже разослано (последние), с итогом Telegram: ok / blocked / no_chat / error: … */
   public static function log(int $limit = 300): array {
     return Db::q("SELECT r.user_id, r.kind, r.ym, r.sent_at, r.status, i.username, u.email FROM reminders_sent r LEFT JOIN users u ON u.id = r.user_id

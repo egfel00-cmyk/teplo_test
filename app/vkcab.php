@@ -325,6 +325,19 @@ final class VkCab {
     return ['v' => self::PROBE_V, 'at' => $now, 'error' => $err, 'site' => $site] + $d;
   }
 
+  /** Итог журнала для /api/health — только числа: сколько записей «операция итог» (check ok, send ok, probe notfound…) среди
+   *  последних 40 и когда была последняя проверка/отправка человека (не проба сервера). Слова сайта и рахунки — только в /admin. */
+  public static function summary(): array {
+    $n = []; $last = null;
+    foreach (self::log() as $e) {
+      $op = preg_replace('/[^a-z]/', '', (string)($e['op'] ?? '')) ?: '?'; $r = preg_replace('/[^a-z_]/', '', (string)($e['result'] ?? '')) ?: '?';
+      $n["$op $r"] = ($n["$op $r"] ?? 0) + 1;
+      if ($op !== 'probe' && (int)($e['at'] ?? 0) > (int)$last) $last = (int)$e['at'];
+    }
+    ksort($n);
+    return ['n' => (object)$n, 'lastUser' => $last ? gmdate('c', $last) : null];
+  }
+
   // ---------- журнал для /admin: структура без личных данных ----------
   private static array $cur = [];
   private static function maskMsgs(array $m): array { return array_map(fn($l) => array_map([self::class, 'mask'], array_slice($l, 0, 5)), $m); }

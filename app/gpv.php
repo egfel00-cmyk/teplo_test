@@ -316,6 +316,20 @@ final class Gpv {
     }
     return $out;
   }
+  /** Скільки людей отримають ранковий графік — лише числа, для /api/health (cron раз на 10 хв, нічого не надсилає):
+   *  tg — увійшли через Telegram; ready — є квартира з адресою й чергою; noQueue — адреса є, а черги немає (Харків-місто, не обрали /
+   *  не знайшли за адресою) — їм нічого не прийде; off — у всіх квартирах з адресою повідомлення вимкнули. */
+  public static function readiness(): array {
+    $c = ['tg' => 0, 'ready' => 0, 'noQueue' => 0, 'off' => 0];
+    foreach (Db::q("SELECT s.data FROM user_identities i JOIN user_state s ON s.user_id = i.user_id WHERE i.type = 'telegram'")->fetchAll() as $row) {
+      $c['tg']++; $st = json_decode((string)$row['data'], true); if (!is_array($st)) continue;
+      if (self::placesFor($st)) { $c['ready']++; continue; }
+      $ps = array_filter((array)($st['places'] ?? []), fn($p) => is_array($p) && empty($p['deleted']) && trim((string)($p['address'] ?? '')) !== '');
+      if (!$ps) continue;
+      if (array_filter($ps, fn($p) => !(isset($p['gpvTg']) && $p['gpvTg'] === false))) $c['noQueue']++; else $c['off']++;
+    }
+    return $c;
+  }
   /** Текст на сьогодні; null — у жодній квартирі сьогодні відключень за графіком немає (тоді не пишемо). */
   public static function text(string $lang, array $ps, array $day, string $date): ?array {
     $ru = $lang === 'ru'; $any = false;

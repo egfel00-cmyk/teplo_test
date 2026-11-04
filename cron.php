@@ -29,6 +29,9 @@ if ((int)gmdate('i') % 10 === 5) {
       foreach ($s as $x) { $st = str_starts_with($x[2], 'error') ? 'error' : $x[2]; $c[$st] = ($c[$st] ?? 0) + 1; }
       $r[$k] = ['at' => gmdate('c'), 'n' => $c]; $beat['gpvSent'] = array_slice($r, -7, null, true); }
   } catch (Throwable $e) { error_log('teplo gpv morning: ' . $e->getMessage()); }
+  // кому завтра/сегодня придут график и ближайшее напоминание — только числа (/api/health → gpvReady, remindNext), ничего не шлём
+  try { $beat['gpvReady'] = Gpv::readiness() + ['at' => gmdate('c')]; } catch (Throwable $e) { error_log('teplo gpv ready: ' . $e->getMessage()); }
+  try { $beat['remindNext'] = Reminders::nextPreview(time()); } catch (Throwable $e) { error_log('teplo remind next: ' . $e->getMessage()); }
 }
 if ((int)gmdate('i') !== 17) { Cron::write($beat); exit; }
 $h = ['at' => gmdate('c')];
