@@ -830,9 +830,14 @@
         var botOpen = (!!rec.vkAt && !wsentVk(rec)) || !!VKERR[rec.id];
         vkBody = vkcBox(rec, ms) + '<details class="tips-box vk-alt"' + (botOpen ? ' open' : '') + ' data-key="vk-alt"><summary>' + esc(t('vkc_or_bot')) + '</summary>' + vkBody + '</details>';
         vkChans = [];
-      }
+      } else if (!cmd.noAccount && vkcGate() === 'login') vkBody = vkcPre('login') + vkBody;   // не ввійшов — скажемо, що через сайт можна
       vkBody += '<details class="tips-box"><summary>' + esc(t('wd_vals')) + '</summary>' + valList(ms) + '</details>';
-    } else vkBody = '<p class="small" data-key="vk-need-rec">' + esc(t('vk_need_rec')) + '</p>';   // кнопка «Відправити» — після показань цього місяця
+    } else {
+      // кнопка «Відправити» — після показань цього місяця; сайт Водоканалу відкривається — шлях через нього видно одразу
+      var vg = vkcGate();
+      vkBody = vg ? vkcPre(vg, kind, ms) : '<p class="small" data-key="vk-need-rec">' + esc(t('vk_need_rec')) + '</p>';
+      if (vg === 'ok') vkBody += '<details class="tips-box vk-alt" data-key="vk-alt"><summary>' + esc(t('vkc_or_bot')) + '</summary><p class="small">' + esc(t('vk_need_rec')) + '</p></details>';
+    }
     var h = '<section class="panel where" data-key="where-water"><h2>' + ico('send', 20) + '<span>' + esc(t('wd_title')) + '</span></h2>' +
       // квартир несколько — за какую передаём (рахунок і цифри — цієї квартири)
       (places().length > 1 ? '<p class="dest-place" style="--pc:var(--pc-' + placeColor(place()) + ')" data-key="where-place"><b>' + esc(t('wd_for', { p: placeLabel(place()) })) + '</b>' + (placeSub(place()) ? '<span class="small muted"> · ' + esc(placeSub(place())) + '</span>' : '') + '</p>' : '') +
@@ -927,7 +932,18 @@
   // Людина натискає «Перевірити на сайті Водоканалу» → бачить, що бачить сайт (лічильники, останні показання), → «Відправити на сайт
   // Водоканалу» → сервер вводить рахунок і прізвище, заповнює форму й надсилає; «прийнято» → передано (підтверджено). ID для бота не потрібні.
   var VKC = { key: '', busy: '', check: null, err: null, res: null, pick: {} };
-  function vkcOn() { var c = VKS.data && VKS.data.cab; return !!(window.TEPLO_API && Y().account && c && c.everOk && c.state === 'ok' && c.send !== false); }
+  function vkcAvail() { var c = VKS.data && VKS.data.cab; return !!(window.TEPLO_API && c && c.everOk && c.state === 'ok' && c.send !== false); }
+  function vkcOn() { return vkcAvail() && !!Y().account; }
+  /** Чого бракує для шляху «через сайт»: '' — сайт не відкривається (лише бот), 'login', 'acc' (рахунок ≥ 5 цифр і прізвище), 'ok'. */
+  function vkcGate() { if (!vkcAvail()) return ''; if (!Y().account) return 'login'; var c = wcfg(); return String(c.account || '').replace(/\D/g, '').length >= 5 && String(c.surname || '').trim() ? 'ok' : 'acc'; }
+  function vkcHead() { return '<div class="vkc" data-key="vkc"><p class="vkc-t"><b>' + esc(t('vkc_t')) + '</b></p>'; }
+  /** Показань цього місяця ще немає: шлях через сайт видно одразу — що потрібно (вхід, рахунок), «Перевірити» (що бачить сайт). */
+  function vkcPre(g, kind, ms) {
+    if (g === 'login') return vkcHead() + '<p class="small">' + esc(t('vkc_login')) + '</p><p><a class="btn sec" href="#login" data-key="vkc-login">' + esc(t('login')) + '</a></p></div>';
+    if (g === 'acc') return vkcHead() + '<p class="small">' + esc(t('vkc_need_acc')) + '</p>' + waccForm() + '</div>';
+    return vkcBox(null, ms) + '<p class="small" data-key="vk-need-rec">' + esc(t('vkc_need_rec')) + '</p>' +
+      '<div class="row-actions"><button class="btn" data-act="wnew" data-kind="' + esc(kind || (wmeters('hot').length ? 'hot' : 'cold')) + '" data-key="vkc-add">' + ico('plus', 18) + '<span>' + esc(t('wn_title')) + '</span></button></div>';
+  }
   function vkcKey() { var c = wcfg(); return (place() ? place().id : '') + '|' + String(c.account || '').replace(/\D/g, '') + '|' + String(c.surname || '').trim().toLowerCase(); }
   function vkcFresh() { if (VKC.key !== vkcKey()) { VKC.key = vkcKey(); VKC.check = null; VKC.err = null; VKC.res = null; VKC.pick = {}; } }
   function vkcDigits(s) { return String(s || '').replace(/\D/g, '').replace(/^0+/, ''); }
@@ -954,12 +970,12 @@
   }
   function vkcBox(rec, ms) {
     vkcFresh(); var c = wcfg(), acc = String(c.account || '').replace(/\D/g, ''), sn = String(c.surname || '').trim();
-    var h = '<div class="vkc" data-key="vkc"><p class="vkc-t"><b>' + esc(t('vkc_t')) + '</b></p>';
-    if (wsentVk(rec)) {   // уже передано: підтвердження (сайтом чи ботом) зверху, повтор — тихо; позначили самі — нічого не додаємо
+    var h = vkcHead();
+    if (rec && wsentVk(rec)) {   // уже передано: підтвердження (сайтом чи ботом) зверху, повтор — тихо; позначили самі — нічого не додаємо
       if (!rec.vkConf) return '';
       return h + vkReplyBox(rec) + '<p class="small"><button class="linkbtn" data-act="vkc-again" data-id="' + esc(rec.id) + '" data-key="vkc-again">' + esc(t('vkc_again')) + '</button></p></div>';
     }
-    if (VKC.res && VKC.res.recId === rec.id && VKC.res.result !== 'ok') h += '<div class="vk-reply bad" role="alert" data-key="vkc-res-' + VKC.res.result + '"><p class="small"><b>' + esc(t(VKC.res.result === 'err' ? 'vkc_err' : 'vkc_unknown')) + '</b></p>' + (VKC.res.text ? '<p class="small vk-text">' + esc(VKC.res.text) + '</p>' : '') + '</div>';
+    if (rec && VKC.res && VKC.res.recId === rec.id && VKC.res.result !== 'ok') h += '<div class="vk-reply bad" role="alert" data-key="vkc-res-' + VKC.res.result + '"><p class="small"><b>' + esc(t(VKC.res.result === 'err' ? 'vkc_err' : 'vkc_unknown')) + '</b></p>' + (VKC.res.text ? '<p class="small vk-text">' + esc(VKC.res.text) + '</p>' : '') + '</div>';
     if (VKC.err) h += '<div class="banner warn" role="alert" data-key="vkc-err-' + esc(VKC.err.error || 'x') + '">' + ico('alert', 20) + '<div><p>' + esc(VKC.err.human || t('vkc_fail')) + '</p>' + (VKC.err.site && VKC.err.site.length ? '<p class="small muted">' + esc(t('vkc_site_says')) + ' «' + esc(VKC.err.site.join(' ')) + '»</p>' : '') + '</div></div>';
     if (!VKC.check) {
       return h + '<p class="small muted">' + esc(t('vkc_lead', { a: acc, f: sn })) + '</p><div class="row-actions"><button class="btn" data-act="vkc-check" data-key="vkc-check"' + (VKC.busy ? ' disabled' : '') + '>' +
@@ -968,6 +984,14 @@
     // сайт знайшов рахунок: наші водоміри ↔ його лічильники, попередження, «Перевірте» і «Відправити»
     var cms = VKC.check.meters, map = vkcMap(ms, cms), withVal = ms.filter(function (m) { return hasVal(rec, m.id); });
     h += '<p class="small" data-key="vkc-found">' + ico('check', 16) + ' ' + esc(t('vkc_found', { a: acc })) + (VKC.check.addr ? ' · ' + esc(VKC.check.addr) : '') + '</p>';
+    // показань ще немає — лише що бачить сайт: наші водоміри ↔ його лічильники з останніми показаннями (відправка — після внесення)
+    if (!rec) {
+      var rest = cms.filter(function (x) { return !ms.some(function (m) { return map[m.id] === x.key; }); });
+      return h + '<ul class="vkc-list" data-key="vkc-site">' + ms.map(function (m) { var cm = cms.filter(function (x) { return x.key === map[m.id]; })[0];
+          return '<li data-key="vkc-s-' + esc(m.id) + '"><div class="vkc-row"><span>' + esc(wname(m)) + (m.serial ? ' <span class="muted small">№ ' + esc(m.serial) + '</span>' : '') + '</span></div><p class="small muted">' +
+            (cm ? esc(t('vkc_on_site', { m: vkcLabel(cm) })) + (vkcPrev(cm) ? ' · ' + esc(vkcPrev(cm)) : '') : esc(t('vkc_not_matched'))) + '</p></li>'; }).join('') +
+        rest.map(function (x) { return '<li data-key="vkc-s-' + esc(x.key) + '"><p class="small muted">' + esc(t('vkc_site_only', { m: vkcLabel(x) })) + (vkcPrev(x) ? ' · ' + esc(vkcPrev(x)) : '') + '</p></li>'; }).join('') + '</ul></div>';
+    }
     var unsure = withVal.some(function (m) { var c0 = cms.filter(function (x) { return x.key === map[m.id]; })[0]; return m.cabKey === undefined && c0 && !(vkcDigits(m.serial) && vkcDigits(c0.label).indexOf(vkcDigits(m.serial)) >= 0); }) && cms.length > 1;
     h += '<ul class="vkc-list">' + withVal.map(function (m) {
       var cur = map[m.id] || '', cm = cms.filter(function (x) { return x.key === cur; })[0], v = Wt.whole(rec.vals[m.id]);

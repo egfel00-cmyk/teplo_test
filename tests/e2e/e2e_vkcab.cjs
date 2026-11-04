@@ -65,7 +65,27 @@ const cab = (state) => { const n = Math.floor(Date.now() / 1000); fs.mkdirSync(D
   await p2.evaluate(() => { const s = JSON.parse(localStorage.getItem('teplo.v1')); const w = s.water.find(x => x.id === 'wnow'); w.sent = {}; delete w.vkConf; w.updatedAt = Date.now(); s.places[0].water.account = '905614'; localStorage.setItem('teplo.v1', JSON.stringify(s)); });
   await p2.reload(); await p2.waitForTimeout(1500);
   ok('кабинет не открывается → блока сайта нет, команда для бота на виду', !(await p2.$('[data-key=vkc]')) && await p2.isVisible('[data-key=wsend-cmd]'));
-  cab('ok');
+  cab('ok'); await p2.close();
+  // 04.11 (20-я сессия): показаний этого месяца ещё нет — путь «через сайт» виден сразу (раньше был только текст про бота)
+  const noRec = async (fn) => { await p.evaluate((src) => { const s = JSON.parse(localStorage.getItem('teplo.v1')); const m = new Date().toISOString().slice(0, 7);
+    s.water.forEach(x => { if (String(x.date).slice(0, 7) === m && !x.deleted) { x.deleted = true; x.updatedAt = Date.now(); } }); s.places[0].water.account = '905614'; s.places[0].water.surname = 'Шевченко'; (new Function('s', src))(s);
+    s.places[0].updatedAt = Date.now(); s.updatedAt = Date.now(); localStorage.setItem('teplo.v1', JSON.stringify(s)); }, fn || ''); await p.reload(); await wait(1200); await p.goto(U + '#water-cold'); await wait(900);
+    if (!(await p.$eval('#wacc-where-water', d => d.open).catch(() => true))) { await p.click('[data-key=where-water-sum]'); await wait(300); }
+    await p.waitForSelector('[data-key=vk-cab-ok]', { timeout: 6000 }).catch(() => {}); await wait(200); };
+  await p.setViewportSize({ width: 390, height: 844 }); await noRec();
+  const pre = await p.textContent('#wsend-vk').catch(() => '');
+  ok('нет показаний месяца → «Через сайт Водоканалу — без бота» с «Перевірити» и «тут з’явиться «Відправити на сайт Водоканалу»»', await vis('[data-key=vkc-check]') && /Відправити на сайт Водоканалу/.test(await p.textContent('[data-key=vk-need-rec]')) && await vis('[data-key=vkc-add]'), pre);
+  ok('…бот — запасной, свёрнут', !!(await p.$('[data-key=vk-alt]')) && !(await p.$eval('[data-key=vk-alt]', d => d.open)));
+  await p.click('[data-key=vkc-check]'); await p.waitForSelector('[data-key=vkc-site]', { timeout: 8000 }).catch(() => {});
+  const site = await p.textContent('[data-key=vkc-site]').catch(() => '');
+  ok('…«Перевірити» без показань → что видит сайт: рахунок, лічильники с последними показаниями, без «Відправити»', /знайшов рахунок 905614/.test(await p.textContent('[data-key=vkc-found]').catch(() => '')) && /№ 0123456 · Холодна · останні на сайті: \d+/.test(site) && !(await p.$('[data-key=vkc-send]')), site);
+  await (await p.$('#wsend-vk')).screenshot({ path: '/tmp/shot_vkc_pre.png' }).catch(() => {});
+  await p.click('[data-key=vkc-add]'); await wait(500);
+  ok('…«Внести показання» → ввод воды', /wnew/.test(p.url()) || !!(await p.$('[data-key=wn-save], .wiz')), p.url());
+  await noRec("s.places[0].water.account = '';");
+  ok('нет рахунку → «потрібні особовий рахунок і прізвище» и поля прямо в блоке', await vis('[data-key=vkc] #w-acc') && /особовий рахунок і прізвище/.test(await p.textContent('[data-key=vkc]')));
+  await p.evaluate(() => window.TeploSync.logout()); await noRec();
+  ok('не вошёл → «Увійдіть — і сервіс сам внесе показання на сайті Водоканалу» с кнопкой входа', await vis('[data-key=vkc-login]') && /Увійдіть/.test(await p.textContent('[data-key=vkc]')));
   ok('без ошибок JS', errs.length === 0, errs);
   await b.close();
   console.log('\nИтог: ' + pass + ' OK, ' + fail + ' FAIL'); process.exit(fail ? 1 : 0);
