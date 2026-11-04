@@ -134,9 +134,48 @@ final class Gpv {
       }
       $out['pages'][] = $pg;
     }
-    $out['retry'] = !array_filter($out['pages'], fn($p) => $p['code'] === 200) && $out['tries'] < 3;
+    $out['retry'] = !array_filter($out['pages'], fn($p) => $p['code'] !== 0) && $out['tries'] < 3;   // 403 Cloudflare — не повторяем (проверку не обходим)
     @mkdir(dirname(self::siteFile()), 0700, true); @file_put_contents(self::siteFile(), json_encode($out, JSON_UNESCAPED_UNICODE), LOCK_EX);
     return $out;
+  }
+
+  // ---------- офіційний перелік «Адреси та черги» (PDF з каналу Харківобленерго) ----------
+  // Сайт обленерго закритий для нашого сервера перевіркою Cloudflare (не обходимо). Перелік адрес за чергами Харківобленерго публікує
+  // PDF-файлом у каналі t.me/kharkivenergy. Пост із файлом пересилають нашому боту → зберігаємо (SITE_DATA/uploads/gpv/list.pdf),
+  // GET /api/gpv/list.pdf — віддаємо (публічний документ обленерго). З нього — довідник адрес, за яким сервер визначає чергу квартири.
+  const LIST_CHANNEL = 'kharkivenergy';
+  public static function listDir(): string { return Cfg::data() . '/uploads/gpv'; }
+  public static function listMeta(): ?array { $j = json_decode((string)@file_get_contents(self::listDir() . '/list.json'), true); return is_array($j) ? $j : null; }
+  public static function listFile(): ?array { $f = self::listDir() . '/list.pdf'; return is_file($f) ? ['path' => $f, 'mime' => 'application/pdf'] : null; }
+  /** PDF «Адреси та черги»: переслано з каналу Харківобленерго або надіслано адміном сервісу (завантажив з каналу сам). */
+  public static function isListDoc(array $msg): bool {
+    $d = $msg['document'] ?? null; if (!is_array($d)) return false;
+    $name = (string)($d['file_name'] ?? '');
+    if ((string)($d['mime_type'] ?? '') !== 'application/pdf' && !preg_match('/\.pdf$/i', $name)) return false;
+    if (!preg_match('/адрес|черг|перелік/iu', $name . ' ' . ($msg['caption'] ?? ''))) return false;
+    $o = $msg['forward_origin'] ?? null; $ch = is_array($o) ? (string)($o['chat']['username'] ?? '') : (string)($msg['forward_from_chat']['username'] ?? '');
+    if (strcasecmp($ch, self::LIST_CHANNEL) === 0) return true;
+    $idn = Db::one("SELECT user_id FROM user_identities WHERE type = 'telegram' AND external_id = ?", [(string)($msg['from']['id'] ?? '')]);
+    $u = $idn ? Db::one('SELECT * FROM users WHERE id = ?', [(int)$idn['user_id']]) : null;
+    return $u ? Admin::is($u) : false;
+  }
+  public static function listFromBot(array $msg, string $lang): array {
+    $ru = $lang === 'ru'; $ok = false; $d = (array)$msg['document'];
+    try {
+      $body = (int)($d['file_size'] ?? 0) <= 10 * 1024 * 1024 ? Telegram::file((string)($d['file_id'] ?? '')) : null;
+      if (is_string($body) && str_starts_with($body, '%PDF')) {
+        @mkdir(self::listDir(), 0700, true);
+        $ok = @file_put_contents(self::listDir() . '/list.pdf', $body, LOCK_EX) !== false;
+        if ($ok) @file_put_contents(self::listDir() . '/list.json', json_encode(['at' => time(), 'name' => mb_substr((string)($d['file_name'] ?? ''), 0, 80), 'bytes' => strlen($body), 'sha1' => sha1($body),
+          'posted' => (int)($msg['forward_origin']['date'] ?? $msg['forward_date'] ?? 0), 'post' => (int)($msg['forward_origin']['message_id'] ?? $msg['forward_from_message_id'] ?? 0)], JSON_UNESCAPED_UNICODE), LOCK_EX);
+      }
+    } catch (Throwable $e) { $ok = false; }
+    $nm = (string)($d['file_name'] ?? 'PDF');
+    $p = ['chat_id' => $msg['chat']['id'], 'text' => $ok
+      ? ($ru ? "✅ Сохранил перечень адресов Харьковоблэнерго («{$nm}»). Очередь отключений по адресу квартиры будет определяться сама." : "✅ Зберіг перелік адрес Харківобленерго («{$nm}»). Черга відключень за адресою квартири визначатиметься сама.")
+      : ($ru ? 'Не удалось сохранить файл. Перешлите его ещё раз.' : 'Не вдалося зберегти файл. Перешліть його ще раз.')];
+    Telegram::call('sendMessage', $p);
+    return $p + ['gpvList' => $ok];
   }
 
   // ---------- ранкове повідомлення в Telegram ----------

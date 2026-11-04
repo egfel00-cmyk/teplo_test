@@ -207,6 +207,8 @@ final class Telegram {
     $msg = $u['message'] ?? null; if (!$msg || empty($msg['chat']['id'])) return null;
     $lang = str_starts_with((string)($msg['from']['language_code'] ?? ''), 'ru') ? 'ru' : 'uk';
     if (($src = self::fwdSrc($msg)) !== null) return self::vkReply($msg, $lang, $src);
+    // перелік «Адреси та черги» з каналу Харківобленерго — для визначення черги відключень за адресою (app/gpv.php)
+    if (class_exists('Gpv') && Gpv::isListDoc($msg)) return Gpv::listFromBot($msg, $lang);
     if (!empty($msg['photo']) || (isset($msg['document']['mime_type']) && preg_match('#^image/(jpeg|png|webp)$#', (string)$msg['document']['mime_type']))) return self::photo($msg, $lang);
     $linkText = null;
     if (preg_match('/^\/start\s+link_([a-f0-9]{32})\b/', (string)($msg['text'] ?? ''), $m)) $linkText = self::linkByToken((array)($msg['from'] ?? []), $m[1], $lang);

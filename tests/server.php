@@ -610,7 +610,17 @@ Gpv::morning($kyiv('2026-11-04 08:15')); $mine2 = array_values(array_filter($sen
 ok('…раз в день: в 8:15 повторно не пишем; отметка gpv-04 — в журнале напоминаний', count($mine2) === 1 && Db::one("SELECT status FROM reminders_sent WHERE kind = 'gpv-04' AND ym = '2026-11'")['status'] === 'ok');
 @unlink(Gpv::file()); $sent = [];
 ok('графика на сегодня нет (не публиковали) — ничего не шлём', Gpv::morning($kyiv('2026-11-06 07:15')) === [] && !$sent);
-Gpv::$http = null; Telegram::$send = null;
+// перечень «Адреси та черги»: пост из канала Харківобленерго с PDF переслали нашему боту → сохранили, отдаём /api/gpv/list.pdf
+$gpdf = "%PDF-1.4\n% синтетика\n"; Telegram::$fetch = fn($id) => $id === 'pdf-1' ? $gpdf : null; $sent = [];
+$ghook = fn(array $m) => (new Browser('10.0.13.22'))->req('POST', '/api/bot/webhook', ['message' => $m + ['chat' => ['id' => 7781], 'from' => ['id' => 7781, 'first_name' => 'Світло'], 'date' => time()]], ['HTTP_X_TELEGRAM_BOT_API_SECRET_TOKEN' => (string)Cfg::get('webhook_secret')]);
+$ghook(['document' => ['file_id' => 'pdf-1', 'file_name' => 'Адреси та черги.pdf', 'mime_type' => 'application/pdf', 'file_size' => 20], 'forward_origin' => ['type' => 'channel', 'chat' => ['id' => -100123, 'username' => 'kharkivenergy', 'type' => 'channel'], 'message_id' => 1445, 'date' => 1761120000]]);
+$gl = (new Browser('10.0.13.23'))->req('GET', '/api/gpv/list.pdf');
+ok('PDF «Адреси та черги» из канала обленерго → сохранён, бот: «Зберіг перелік адрес», /api/gpv/list.pdf отдаёт файл', ($gl->file['mime'] ?? '') === 'application/pdf' && file_get_contents($gl->file['path']) === $gpdf
+  && str_contains(end($sent)[1]['text'] ?? '', 'Зберіг перелік адрес') && (Gpv::listMeta()['post'] ?? 0) === 1445, end($sent));
+@unlink(Gpv::listDir() . '/list.pdf'); @unlink(Gpv::listDir() . '/list.json');
+$ghook(['document' => ['file_id' => 'pdf-1', 'file_name' => 'Адреси та черги.pdf', 'mime_type' => 'application/pdf', 'file_size' => 20]]);
+ok('…тот же файл от обычного человека (не из канала, не админ) — не берём', Gpv::listFile() === null && (new Browser('10.0.13.24'))->req('GET', '/api/gpv/list.pdf')->status === 404);
+Gpv::$http = null; Telegram::$send = null; Telegram::$fetch = null;
 
 echo "\nАналитика: квартиры и все виды счётчиков:\n";
 $mv = new Browser('10.0.14.1'); $mv->req('POST', '/api/auth/register', ['email' => 'many@example.ua', 'password' => 'many pass 123']);
