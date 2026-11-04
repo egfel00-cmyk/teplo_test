@@ -232,7 +232,8 @@ final class Api {
         $rows = Db::q('SELECT id, kind, text, msg_at FROM vk_replies WHERE user_id = ? AND src = ? AND msg_at > ? ORDER BY id DESC LIMIT 10', [(int)$user['id'], $src, time() - 30 * 86400])->fetchAll();
         return ['src' => $src, 'replies' => array_map(fn($x) => ['id' => (int)$x['id'], 'kind' => $x['kind'], 'text' => $x['text'], 'at' => (int)$x['msg_at']], $rows)];
       }
-      case 'GET /api/gpv': return Gpv::api();   // графики отключений света Харьковоблэнерго (без входа; очередь квартиры — в её данных)
+      case 'GET /api/gpv': return Gpv::api();
+      case 'GET /api/gpv/site': return Gpv::site();   // как устроена официальная форма «черга за адресою» (разведка сервером, без личных данных)   // графики отключений света Харьковоблэнерго (без входа; очередь квартиры — в её данных)
       case 'GET /api/vk/status': return VkStatus::status();   // бот и кабинет Водоканала — работают ли (без входа)
       case 'POST /api/vk/event': {   // «Відправити» / «Прийняв» / «Не відповідає» / «Помилка» — для статуса бота
         if (!$user) throw new HttpError(401, 'unauthorized');

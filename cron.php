@@ -20,6 +20,7 @@ if ((int)gmdate('i') % 10 === 7) { try { $beat['vkCab'] = VkStatus::probeCabinet
 if ((int)gmdate('i') % 10 === 3) { try { $p = VkStatus::probeNotFound(); if ($p) $beat['vkProbe'] = $p['error']; } catch (Throwable $e) { error_log('teplo vk notfound probe: ' . $e->getMessage()); } }
 // графики отключений света (ГПВ Харьковоблэнерго) — раз в 10 минут; утром (7–12 по Киеву) — сегодняшний график в Telegram
 if ((int)gmdate('i') % 10 === 5) {
+  try { Gpv::probeSite(); } catch (Throwable $e) { error_log('teplo gpv site: ' . $e->getMessage()); }
   try { $g = Gpv::refresh(); $beat['gpv'] = $g['ok'] ? ['ok' => true, 'update' => $g['update']] : ['ok' => false, 'err' => $g['err']]; } catch (Throwable $e) { error_log('teplo gpv: ' . $e->getMessage()); }
   try {
     $s = Gpv::morning(time());

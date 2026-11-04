@@ -82,6 +82,63 @@ final class Gpv {
       'stale' => empty($j['at']) || $now - (int)$j['at'] > 3 * 3600, 'queues' => self::QUEUES, 'lookup' => self::LOOKUP, 'channel' => self::CHANNEL];
   }
 
+  // ---------- розвідка офіційної форми «черга за адресою» (lookup): як вона влаштована — щоб визначати чергу за адресою квартири ----------
+  // Сервер раз на SITE_V (cron) відкриває сторінку форми (лише GET, нічого не надсилає) і зберігає її будову: форми й поля, перші варіанти
+  // списків, підключені скрипти й шматки коду, де вантажаться вулиці/будинки. Публічно — GET /api/gpv/site (особистих даних там немає).
+  const SITE_V = 1;
+  public static function siteFile(): string { return Cfg::data() . '/cache/gpv_site.json'; }
+  public static function site(): array { $j = json_decode((string)@file_get_contents(self::siteFile()), true); return is_array($j) ? $j : []; }
+  public static function probeSite(?int $now = null): ?array {
+    $old = self::site(); $same = (int)($old['v'] ?? 0) === self::SITE_V; if ($same && empty($old['retry'])) return null;
+    $now = $now ?? time(); $out = ['v' => self::SITE_V, 'at' => $now, 'tries' => $same ? (int)($old['tries'] ?? 0) + 1 : 1, 'pages' => []];
+    foreach ([self::LOOKUP, 'https://www.oblenergo.kharkov.ua/uk/gaoinfo'] as $url) {
+      $r = self::get($url); $pg = ['url' => $url, 'code' => (int)$r['code'], 'err' => $r['err'] ? mb_substr((string)$r['err'], 0, 120) : null, 'bytes' => strlen((string)$r['body'])];
+      $html = (string)$r['body'];
+      if ($html !== '' && class_exists('DOMDocument')) {
+        $d = new DOMDocument(); $prev = libxml_use_internal_errors(true); $d->loadHTML('<?xml encoding="UTF-8">' . $html, LIBXML_NONET | LIBXML_NOERROR | LIBXML_NOWARNING); libxml_clear_errors(); libxml_use_internal_errors($prev);
+        $x = new DOMXPath($d);
+        $pg['title'] = mb_substr(trim((string)($x->query('//title')->item(0)?->textContent ?? '')), 0, 120);
+        $pg['forms'] = [];
+        foreach ($x->query('//form') as $f) { /** @var DOMElement $f */
+          $fl = [];
+          foreach ($x->query('.//input|.//select|.//textarea|.//button', $f) as $e) { /** @var DOMElement $e */
+            $it = ['tag' => strtolower($e->nodeName), 'name' => $e->getAttribute('name'), 'id' => $e->getAttribute('id'), 'type' => $e->getAttribute('type'), 'cls' => mb_substr($e->getAttribute('class'), 0, 80)];
+            if ($it['tag'] === 'input' && $it['type'] === 'hidden') $it['value'] = mb_substr($e->getAttribute('value'), 0, 80);
+            if ($it['tag'] === 'select') { $os = $x->query('.//option', $e); $it['n'] = $os->length; $it['opts'] = []; foreach ($os as $i => $o) { if ($i >= 25) break; $it['opts'][] = [$o->getAttribute('value'), mb_substr(trim($o->textContent), 0, 60)]; } }
+            foreach (['data-url', 'data-action', 'onchange', 'data-ajax', 'data-source'] as $a) if ($e->hasAttribute($a)) $it[$a] = mb_substr($e->getAttribute($a), 0, 200);
+            $fl[] = $it;
+          }
+          $pg['forms'][] = ['id' => $f->getAttribute('id'), 'action' => $f->getAttribute('action'), 'method' => $f->getAttribute('method'), 'cls' => mb_substr($f->getAttribute('class'), 0, 80), 'fields' => array_slice($fl, 0, 40)];
+        }
+        $pg['scripts'] = []; foreach ($x->query('//script[@src]') as $s) $pg['scripts'][] = mb_substr($s->getAttribute('src'), 0, 200);
+        // шматки вбудованого коду про вулиці/будинки/ajax і налаштування Drupal (там адреси ajax-обробників)
+        $pg['inline'] = [];
+        foreach ($x->query('//script[not(@src)]') as $s) {
+          $c = (string)$s->textContent;
+          if (preg_match('/ajax|street|house|vulyc|bud|gao|getinfo|\.post|\$\.get|fetch\(|url\s*:|Drupal\.settings|drupalSettings/i', $c)) $pg['inline'][] = mb_substr(preg_replace('/\s+/', ' ', $c), 0, 4000);
+        }
+        $pg['inline'] = array_slice($pg['inline'], 0, 6);
+        // скрипти самого сайту (не бібліотеки) — шматки навколо ajax/street/house
+        $pg['js'] = [];
+        foreach (array_slice(array_values(array_filter($pg['scripts'], fn($u) => !preg_match('/jquery|google|gtag|analytics|facebook|bootstrap\.min|cloudflare/i', $u))), 0, 6) as $src) {
+          $abs = preg_match('~^https?://~', $src) ? $src : (str_starts_with($src, '//') ? 'https:' . $src : 'https://www.oblenergo.kharkov.ua' . (str_starts_with($src, '/') ? '' : '/') . $src);
+          if (!preg_match('~^https://(www\.)?oblenergo\.kharkov\.ua/~', $abs)) continue;
+          $js = (string)self::get($abs)['body']; $hits = [];
+          if (preg_match_all('/.{0,220}(?:ajax|street|house|getinfo|gao|vulyc|\.post\(|\$\.get|fetch\(|url\s*:).{0,260}/si', $js, $mm)) foreach (array_slice($mm[0], 0, 12) as $h) $hits[] = preg_replace('/\s+/', ' ', $h);
+          $pg['js'][] = ['src' => mb_substr($abs, 0, 200), 'bytes' => strlen($js), 'hits' => $hits];
+        }
+        $pg['links'] = []; foreach ($x->query('//a[@href]') as $a) { $h = $a->getAttribute('href'); if (preg_match('/gao|ingao|getinfo|street|house|chergy|cherg|grafik/i', $h)) $pg['links'][] = mb_substr($h, 0, 160); }
+        $pg['links'] = array_slice(array_values(array_unique($pg['links'])), 0, 20);
+        // видимий текст біля форми (підказки, результат)
+        $pg['text'] = mb_substr(preg_replace('/\s+/u', ' ', trim((string)($x->query('//main|//*[@id="content"]|//body')->item(0)?->textContent ?? ''))), 0, 1500);
+      }
+      $out['pages'][] = $pg;
+    }
+    $out['retry'] = !array_filter($out['pages'], fn($p) => $p['code'] === 200) && $out['tries'] < 3;
+    @mkdir(dirname(self::siteFile()), 0700, true); @file_put_contents(self::siteFile(), json_encode($out, JSON_UNESCAPED_UNICODE), LOCK_EX);
+    return $out;
+  }
+
   // ---------- ранкове повідомлення в Telegram ----------
   public static function hm(int $m): string { return sprintf('%02d:%02d', intdiv($m, 60), $m % 60); }
   public static function span(array $iv): string { return self::hm($iv[0]) . '–' . self::hm($iv[1]); }
