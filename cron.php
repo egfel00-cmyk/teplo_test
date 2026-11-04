@@ -11,6 +11,7 @@ require __DIR__ . '/app/reminders.php';
 require __DIR__ . '/app/recognize.php';
 require __DIR__ . '/app/api.php';
 require __DIR__ . '/app/admin.php';
+require __DIR__ . '/app/vkcab.php';
 $beat = Cron::read(); $beat['last'] = gmdate('c');
 // кабинет Водоканала — открывается ли (раз в 10 минут; статус видят приложение и /admin)
 if ((int)gmdate('i') % 10 === 7) { try { $beat['vkCab'] = VkStatus::probeCabinet()['state']; } catch (Throwable $e) { error_log('teplo vk probe: ' . $e->getMessage()); } }

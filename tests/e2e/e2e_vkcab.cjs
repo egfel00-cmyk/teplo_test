@@ -1,0 +1,72 @@
+// Вода → Водоканал через сайт (кабинет «без реєстрації», 04.11.2026): «Перевірити на сайті Водоканалу» → что видит сайт (лічильники,
+// останні показання) → наші водоміри ↔ лічильники сайту → «Перевірте» → «Відправити на сайт Водоканалу» → «прийнято» → передано
+// (підтверджено). Помилка сайту (менше за попередні) — його слова; чужий рахунок — пояснення; кабінет не відкривається — лише бот.
+// Нужны: сайт 127.0.0.1:8013 (config.php: 'vk_cab_base' => 'http://127.0.0.1:8099') и синтетический кабинет:
+//   php -S 127.0.0.1:8099 tests/vk-mock/router.php        node e2e_vkcab.cjs
+const { chromium } = require('playwright'); const demo = require('./demo.cjs'); const fs = require('fs');
+let pass = 0, fail = 0; const ok = (n, c, x) => { if (c) { pass++; console.log('  OK  ' + n); } else { fail++; console.log(' FAIL ' + n + (x !== undefined ? ' → ' + JSON.stringify(x) : '')); } };
+const U = 'http://127.0.0.1:8013/', M = 'http://127.0.0.1:8099', DATA = process.env.SITE_DATA || '/tmp/teplo_data';
+const cab = (state) => { const n = Math.floor(Date.now() / 1000); fs.mkdirSync(DATA + '/cache', { recursive: true });
+  fs.writeFileSync(DATA + '/cache/vk_status.json', JSON.stringify({ cab: { state, at: n, since: n - 3600, everOk: true, lastOk: state === 'ok' ? n : n - 7200, code: state === 'ok' ? 200 : 0 } })); };
+(async () => {
+  await fetch(M + '/__reset'); cab('ok');
+  const b = await chromium.launch(); const ctx = await b.newContext({ viewport: { width: 390, height: 844 }, locale: 'uk-UA' }); const p = await ctx.newPage();
+  const errs = []; p.on('pageerror', e => errs.push(e.message));
+  const st = async () => JSON.parse(await p.evaluate(() => localStorage.getItem('teplo.v1')) || '{}');
+  const wait = ms => p.waitForTimeout(ms), vis = async sel => !!(await p.$(sel)) && await p.isVisible(sel);
+  const today = new Date().toISOString().slice(0, 10);
+  await p.goto(U); await p.evaluate(() => localStorage.clear()); await p.reload(); await wait(500);
+  ok('регистрация', await p.evaluate(e => window.TeploSync.register(e, 'Pass-12345678').then(j => j._status), 'vkc' + Date.now() + '@teplo.test') === 200);
+  await p.evaluate(([s, d]) => { delete s.demoToday; s.places[0].water.account = '905614'; s.places[0].water.surname = 'Шевченко';
+    s.water.push({ id: 'wnow', place: 'main', date: d, vals: { h1: '176', c1: '440' }, createdAt: d + 'T09:00:00Z', updatedAt: Date.now(), sent: {} }); s.updatedAt = Date.now(); localStorage.setItem('teplo.v1', JSON.stringify(s)); }, [demo({}), today]);
+  await p.reload(); await wait(1500);
+  await p.goto(U + '#wrec-wnow'); await wait(1200);
+  ok('кабинет открывается → в «Куди передати» сверху «Через сайт Водоканалу — без бота» с рахунком і прізвищем', await vis('[data-key=vkc]') && /905614/.test(await p.textContent('[data-key=vkc]')) && /Шевченко/.test(await p.textContent('[data-key=vkc]')));
+  ok('…бот — запасной, в свёрнутой «Або через бот Водоканалу»', !!(await p.$('[data-key=vk-alt]')) && !(await p.$eval('[data-key=vk-alt]', d => d.open)) && !(await vis('[data-key=wsend-cmd]')));
+  ok('до проверки на сайт ничего не уходило', !(await (await fetch(M + '/__store')).json())._last);
+  await p.click('[data-key=vkc-check]'); await p.waitForSelector('[data-key=vkc-found]', { timeout: 8000 }).catch(() => {});
+  ok('«Перевірити» → «Сайт Водоканалу знайшов рахунок 905614» + адрес', /знайшов рахунок 905614/.test(await p.textContent('[data-key=vkc-found]').catch(() => '')) && /Сумська/.test(await p.textContent('[data-key=vkc-found]').catch(() => '')));
+  const mc = await p.textContent('[data-key=vkc-m-c1]'), mh = await p.textContent('[data-key=vkc-m-h1]');
+  ok('наші водоміри ↔ лічильники сайту за видом, одним рядком: «На сайті: № 0123456 · Холодна · останні на сайті: 430 (01.10.2026)»', /На сайті: № 0123456 · Холодна · останні на сайті: 430 \(01\.10\.2026\)/.test(mc) && /На сайті: № 0654321 · Гаряча/.test(mh) && !(await p.$('input[name=vkc-c1]')), [mc, mh]);
+  ok('…підібрали за видом — підказка «Інший лічильник?»', /за видом/.test(await p.textContent('[data-key=vkc-sum]')));
+  await p.click('[data-key=vkc-pick-c1]'); await wait(300);
+  const pick = await p.evaluate(() => ({ c1: (document.querySelector('input[name=vkc-c1]:checked') || {}).value, n: document.querySelectorAll('input[name=vkc-c1]').length }));
+  ok('«Інший лічильник?» → варіанти з сайту + «Не передавати», вибрано холодну 1282444', pick.c1 === 'DynamicModel[newIndication][1282444]' && pick.n === 3, pick);
+  const sum = await p.textContent('[data-key=vkc-sum]');
+  ok('«Перевірте перед відправкою»: рахунок, прізвище, обидва показання', /Рахунок 905614 · Шевченко/.test(sum) && /440/.test(sum) && /176/.test(sum), sum);
+  await p.click('[data-key=vkc-send]'); await p.waitForSelector('[data-key=vkc-again]', { timeout: 8000 }).catch(() => {});
+  let s = await st(); let w = s.water.find(x => x.id === 'wnow'); const store = await (await fetch(M + '/__store')).json();
+  ok('«Відправити на сайт Водоканалу» → сайт прийняв → запис «передано» з підтвердженням (via cab)', (w.sent || {}).vk === today && w.vkConf && w.vkConf.via === 'cab' && /прийнято/.test(w.vkConf.text), w);
+  ok('…на сайт ушли наши цифры: холодна 440, гаряча 176', JSON.stringify(store._lastPost.post.DynamicModel.newIndication) === JSON.stringify({ 1282444: '440', 1282445: '176' }), store._lastPost);
+  ok('…«Підтверджено Водоканалом» і текст сайту, пілюля «передано»', /Підтверджено Водоканалом/.test(await p.textContent('[data-key=vkc]')) && /прийнято/.test(await p.textContent('[data-key=vkc]')) && /передано/i.test(await p.textContent('#wsend-vk .dest-h')));
+  ok('…вибір лічильника на сайті запам’ятали (cabKey)', s.places[0].water.meters.find(m => m.id === 'c1').cabKey === 'DynamicModel[newIndication][1282444]');
+  // ошибка сайта: меньше прошлых
+  await p.evaluate(([d]) => { const s = JSON.parse(localStorage.getItem('teplo.v1')); s.water.push({ id: 'wbad', place: 'main', date: d, vals: { c1: '420' }, createdAt: d + 'T10:00:00Z', updatedAt: Date.now(), sent: {} }); s.updatedAt = Date.now(); localStorage.setItem('teplo.v1', JSON.stringify(s)); }, [today]);
+  await p.reload(); await wait(1200); await p.goto(U + '#wrec-wbad'); await wait(800);
+  await p.click('[data-key=vkc-check]'); await p.waitForSelector('[data-key=vkc-found]', { timeout: 8000 }).catch(() => {});
+  ok('показання менше за останні на сайті → попередження до відправки', await vis('[data-key=vkc-less]') && /440/.test(await p.textContent('[data-key=vkc-less]')));
+  ok('…у «Перевірте» — лише холодна (гарячої в записі немає)', /420/.test(await p.textContent('[data-key=vkc-sum]')) && !/176/.test(await p.textContent('[data-key=vkc-sum]')));
+  await p.click('[data-key=vkc-send]'); await p.waitForSelector('[data-key=vkc-res-err]', { timeout: 8000 }).catch(() => {});
+  s = await st(); w = s.water.find(x => x.id === 'wbad');
+  ok('сайт не прийняв → його слова, запис не «передано»', await vis('[data-key=vkc-res-err]') && /меншими/.test(await p.textContent('[data-key=vkc-res-err]')) && !(w.sent || {}).vk);
+  // чужой рахунок
+  await p.evaluate(() => { const s = JSON.parse(localStorage.getItem('teplo.v1')); s.places[0].water.account = '905615'; s.places[0].updatedAt = Date.now(); s.updatedAt = Date.now(); localStorage.setItem('teplo.v1', JSON.stringify(s)); });
+  await p.reload(); await wait(1200); await p.goto(U + '#wrec-wbad'); await wait(800);
+  ok('рахунок змінився → перевірка заново (нічого не показуємо зі старого)', await vis('[data-key=vkc-check]') && !(await p.$('[data-key=vkc-found]')));
+  await p.click('[data-key=vkc-check]'); await p.waitForSelector('[data-key=vkc-err-cab_not_found]', { timeout: 8000 }).catch(() => {});
+  ok('чужий рахунок → «не знайшов рахунок 905615 з прізвищем…» і слова сайту', await vis('[data-key=vkc-err-cab_not_found]') && /905615/.test(await p.textContent('[data-key=vkc-err-cab_not_found]')) && /не знайдено/.test(await p.textContent('[data-key=vkc-err-cab_not_found]')));
+  // узкий экран
+  await p.setViewportSize({ width: 360, height: 780 }); await wait(300);
+  ok('360 px — блок не шире экрана', await p.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1));
+  await p.screenshot({ path: '/tmp/shot_vkc.png', fullPage: false });
+  // кабинет не открывается → только бот, как раньше
+  cab('down');
+  const p2 = await ctx.newPage(); p2.on('pageerror', e => errs.push(e.message)); await p2.goto(U + '#wrec-wnow'); await p2.waitForTimeout(1500);
+  await p2.evaluate(() => { const s = JSON.parse(localStorage.getItem('teplo.v1')); const w = s.water.find(x => x.id === 'wnow'); w.sent = {}; delete w.vkConf; w.updatedAt = Date.now(); s.places[0].water.account = '905614'; localStorage.setItem('teplo.v1', JSON.stringify(s)); });
+  await p2.reload(); await p2.waitForTimeout(1500);
+  ok('кабинет не открывается → блока сайта нет, команда для бота на виду', !(await p2.$('[data-key=vkc]')) && await p2.isVisible('[data-key=wsend-cmd]'));
+  cab('ok');
+  ok('без ошибок JS', errs.length === 0, errs);
+  await b.close();
+  console.log('\nИтог: ' + pass + ' OK, ' + fail + ' FAIL'); process.exit(fail ? 1 : 0);
+})();

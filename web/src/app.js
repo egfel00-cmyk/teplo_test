@@ -825,6 +825,12 @@
       var ids = ms.map(function (m) { return String(m.vkId || '').replace(/\D/g, ''); }).filter(Boolean), dup = ids.filter(function (x, i) { return ids.indexOf(x) !== i; })[0];
       if (!cmd.noAccount && dup) vkBody = '<div class="banner warn" data-key="vk-id-dup">' + ico('alert', 20) + '<div><p>' + esc(t('vk_id_dup', { id: dup })) + '</p>' +
         '<p><button class="btn sec" data-act="vk-open" data-text="' + esc(cmd.info) + '" data-key="vk-dup-ids">' + ico('send', 18) + '<span>' + esc(t('vk_check_ids')) + '</span></button></p></div></div>' + wmeterIdForm() + vkBody;
+      // сайт Водоканалу відкривається з нашого сервера — відправляємо через нього (без бота й без ID); бот — запасний шлях, у розгортці
+      if (!cmd.noAccount && accD.length >= 5 && String(wcfg().surname || '').trim() && vkcOn()) {
+        var botOpen = (!!rec.vkAt && !wsentVk(rec)) || !!VKERR[rec.id];
+        vkBody = vkcBox(rec, ms) + '<details class="tips-box vk-alt"' + (botOpen ? ' open' : '') + ' data-key="vk-alt"><summary>' + esc(t('vkc_or_bot')) + '</summary>' + vkBody + '</details>';
+        vkChans = [];
+      }
       vkBody += '<details class="tips-box"><summary>' + esc(t('wd_vals')) + '</summary>' + valList(ms) + '</details>';
     } else vkBody = '<p class="small" data-key="vk-need-rec">' + esc(t('vk_need_rec')) + '</p>';   // кнопка «Відправити» — після показань цього місяця
     var h = '<section class="panel where" data-key="where-water"><h2>' + ico('send', 20) + '<span>' + esc(t('wd_title')) + '</span></h2>' +
@@ -916,6 +922,97 @@
     // кабінет — лише якщо наш сервер хоч раз його відкрив (інакше, може, сайт не пускає закордонні адреси — не лякаємо)
     if (c && c.everOk) out += '<p class="vk-st small ' + (c.state === 'ok' ? 'muted' : 'warn') + '" data-key="vk-cab-' + c.state + '">' + esc(t(c.state === 'ok' ? 'vk_cab_ok' : 'vk_cab_down', { d: vkWhen(c.state === 'ok' ? c.at : c.since) })) + '</p>';
     return out;
+  }
+  // ---------- кабінет Водоканалу «без реєстрації»: показання вносить наш сервер (VkCab, app/vkcab.php) ----------
+  // Людина натискає «Перевірити на сайті Водоканалу» → бачить, що бачить сайт (лічильники, останні показання), → «Відправити на сайт
+  // Водоканалу» → сервер вводить рахунок і прізвище, заповнює форму й надсилає; «прийнято» → передано (підтверджено). ID для бота не потрібні.
+  var VKC = { key: '', busy: '', check: null, err: null, res: null, pick: {} };
+  function vkcOn() { var c = VKS.data && VKS.data.cab; return !!(window.TEPLO_API && Y().account && c && c.everOk && c.state === 'ok' && c.send !== false); }
+  function vkcKey() { var c = wcfg(); return (place() ? place().id : '') + '|' + String(c.account || '').replace(/\D/g, '') + '|' + String(c.surname || '').trim().toLowerCase(); }
+  function vkcFresh() { if (VKC.key !== vkcKey()) { VKC.key = vkcKey(); VKC.check = null; VKC.err = null; VKC.res = null; VKC.pick = {}; } }
+  function vkcDigits(s) { return String(s || '').replace(/\D/g, '').replace(/^0+/, ''); }
+  /** Наші водоміри ↔ лічильники на сайті: збережений вибір, номер, вид (холодна/гаряча), останній з одним. → {mid: key|''} */
+  function vkcMap(ms, cms) {
+    var out = {}, used = {};
+    ms.forEach(function (m) { if (m.cabKey !== undefined && (m.cabKey === '' || cms.some(function (c) { return c.key === m.cabKey; }))) { out[m.id] = m.cabKey; if (m.cabKey) used[m.cabKey] = 1; } });
+    ms.forEach(function (m) { if (out[m.id] !== undefined || !vkcDigits(m.serial)) return; var c = cms.filter(function (c) { return !used[c.key] && vkcDigits(c.serial) && (vkcDigits(c.serial) === vkcDigits(m.serial) || vkcDigits(c.label).indexOf(vkcDigits(m.serial)) >= 0); })[0]; if (c) { out[m.id] = c.key; used[c.key] = 1; } });
+    ['cold', 'hot'].forEach(function (k) {
+      var mine = ms.filter(function (m) { return out[m.id] === undefined && m.kind === k; }), theirs = cms.filter(function (c) { return !used[c.key] && c.kind === k; });
+      if (mine.length === 1 && theirs.length === 1) { out[mine[0].id] = theirs[0].key; used[theirs[0].key] = 1; }
+    });
+    var restM = ms.filter(function (m) { return out[m.id] === undefined; }), restC = cms.filter(function (c) { return !used[c.key]; });
+    if (restM.length === 1 && restC.length === 1) out[restM[0].id] = restC[0].key;
+    return out;
+  }
+  function vkcLabel(c) { return [c.serial ? '№ ' + c.serial : '', c.kind ? t(c.kind === 'hot' ? 'wt_hot' : 'wt_cold') : ''].filter(Boolean).join(' · ') || c.label; }
+  function vkcPrev(c) { return c.prev !== null && c.prev !== undefined ? t('vkc_prev', { v: c.prev }) + (c.prevDate ? ' (' + c.prevDate + ')' : '') : ''; }
+  /** Що підемо відправляти: [{m, c, v}] — наші показання цього запису з лічильником на сайті. */
+  function vkcItems(rec, ms) {
+    if (!VKC.check) return [];
+    var map = vkcMap(ms, VKC.check.meters);
+    return ms.filter(function (m) { return hasVal(rec, m.id) && map[m.id]; }).map(function (m) { return { m: m, c: VKC.check.meters.filter(function (c) { return c.key === map[m.id]; })[0], v: Wt.whole(rec.vals[m.id]) }; }).filter(function (x) { return x.c; });
+  }
+  function vkcBox(rec, ms) {
+    vkcFresh(); var c = wcfg(), acc = String(c.account || '').replace(/\D/g, ''), sn = String(c.surname || '').trim();
+    var h = '<div class="vkc" data-key="vkc"><p class="vkc-t"><b>' + esc(t('vkc_t')) + '</b></p>';
+    if (wsentVk(rec)) {   // уже передано: підтвердження (сайтом чи ботом) зверху, повтор — тихо; позначили самі — нічого не додаємо
+      if (!rec.vkConf) return '';
+      return h + vkReplyBox(rec) + '<p class="small"><button class="linkbtn" data-act="vkc-again" data-id="' + esc(rec.id) + '" data-key="vkc-again">' + esc(t('vkc_again')) + '</button></p></div>';
+    }
+    if (VKC.res && VKC.res.recId === rec.id && VKC.res.result !== 'ok') h += '<div class="vk-reply bad" role="alert" data-key="vkc-res-' + VKC.res.result + '"><p class="small"><b>' + esc(t(VKC.res.result === 'err' ? 'vkc_err' : 'vkc_unknown')) + '</b></p>' + (VKC.res.text ? '<p class="small vk-text">' + esc(VKC.res.text) + '</p>' : '') + '</div>';
+    if (VKC.err) h += '<div class="banner warn" role="alert" data-key="vkc-err-' + esc(VKC.err.error || 'x') + '">' + ico('alert', 20) + '<div><p>' + esc(VKC.err.human || t('vkc_fail')) + '</p>' + (VKC.err.site && VKC.err.site.length ? '<p class="small muted">' + esc(t('vkc_site_says')) + ' «' + esc(VKC.err.site.join(' ')) + '»</p>' : '') + '</div></div>';
+    if (!VKC.check) {
+      return h + '<p class="small muted">' + esc(t('vkc_lead', { a: acc, f: sn })) + '</p><div class="row-actions"><button class="btn" data-act="vkc-check" data-key="vkc-check"' + (VKC.busy ? ' disabled' : '') + '>' +
+        (VKC.busy === 'check' ? SPIN + '<span>' + esc(t('vkc_checking')) + '</span>' : ico('check', 18) + '<span>' + esc(t(VKC.err ? 'vkc_retry' : 'vkc_check')) + '</span>') + '</button></div></div>';
+    }
+    // сайт знайшов рахунок: наші водоміри ↔ його лічильники, попередження, «Перевірте» і «Відправити»
+    var cms = VKC.check.meters, map = vkcMap(ms, cms), withVal = ms.filter(function (m) { return hasVal(rec, m.id); });
+    h += '<p class="small" data-key="vkc-found">' + ico('check', 16) + ' ' + esc(t('vkc_found', { a: acc })) + (VKC.check.addr ? ' · ' + esc(VKC.check.addr) : '') + '</p>';
+    var unsure = withVal.some(function (m) { var c0 = cms.filter(function (x) { return x.key === map[m.id]; })[0]; return m.cabKey === undefined && c0 && !(vkcDigits(m.serial) && vkcDigits(c0.label).indexOf(vkcDigits(m.serial)) >= 0); }) && cms.length > 1;
+    h += '<ul class="vkc-list">' + withVal.map(function (m) {
+      var cur = map[m.id] || '', cm = cms.filter(function (x) { return x.key === cur; })[0], v = Wt.whole(rec.vals[m.id]);
+      var less = cm && cm.prev !== null && cm.prev !== undefined && v < cm.prev;
+      return '<li data-key="vkc-m-' + esc(m.id) + '"><div class="vkc-row"><span>' + esc(wname(m)) + (m.serial ? ' <span class="muted small">№ ' + esc(m.serial) + '</span>' : '') + '</span><b class="num">' + v + '</b></div>' +
+        (!cm || VKC.pick[m.id] ? '<fieldset class="vkc-pick"><legend class="small">' + esc(t('vkc_which')) + '</legend>' + cms.map(function (x) {
+          return '<label class="vkc-opt"><input type="radio" name="vkc-' + esc(m.id) + '" data-wm="' + esc(m.id) + '" data-wf="cabKey" value="' + esc(x.key) + '"' + (x.key === cur ? ' checked' : '') + '><span>' + esc(vkcLabel(x)) + (vkcPrev(x) ? ' <span class="muted">· ' + esc(vkcPrev(x)) + '</span>' : '') + '</span></label>'; }).join('') +
+          '<label class="vkc-opt"><input type="radio" name="vkc-' + esc(m.id) + '" data-wm="' + esc(m.id) + '" data-wf="cabKey" value=""' + (!cur ? ' checked' : '') + '><span>' + esc(t('vkc_none')) + '</span></label></fieldset>'
+        : '<p class="small muted">' + esc(t('vkc_on_site', { m: vkcLabel(cm) })) + (vkcPrev(cm) ? ' · ' + esc(vkcPrev(cm)) : '') +
+          (cms.length > 1 ? ' <button class="linkbtn" data-act="vkc-pick" data-id="' + esc(m.id) + '" data-key="vkc-pick-' + esc(m.id) + '">' + esc(t('vkc_other')) + '</button>' : '') + '</p>') +
+        (less ? '<p class="small warn-ink" data-key="vkc-less">' + ico('alert', 16) + ' ' + esc(t('vkc_less', { p: cm.prev })) + '</p>' : '') + '</li>';
+    }).join('') + '</ul>';
+    var items = vkcItems(rec, ms), keys = items.map(function (x) { return x.c.key; }), dup = keys.some(function (k, i) { return keys.indexOf(k) !== i; });
+    if (dup) h += '<p class="small warn-ink" data-key="vkc-dup">' + ico('alert', 16) + ' ' + esc(t('vkc_dup')) + '</p>';
+    else if (!items.length) h += '<p class="small warn-ink" data-key="vkc-nomap">' + esc(t('vkc_nomap')) + '</p>';
+    else h += '<div class="vkc-sum" data-key="vkc-sum"><p class="small"><b>' + esc(t('vkc_check_t')) + '</b></p><p class="small">' + esc(t('vkc_acc_line', { a: acc, f: sn })) + '</p><ul class="small">' +
+      items.map(function (x) { return '<li>' + esc(wname(x.m)) + ' → <b>' + x.v + '</b> <span class="muted">(' + esc(vkcLabel(x.c)) + ')</span></li>'; }).join('') + '</ul>' + (unsure ? '<p class="small muted">' + esc(t('vkc_unsure')) + '</p>' : '') + '</div>';
+    h += '<div class="row-actions"><button class="btn" data-act="vkc-send" data-id="' + esc(rec.id) + '" data-key="vkc-send"' + (VKC.busy || dup || !items.length ? ' disabled' : '') + '>' +
+      (VKC.busy === 'send' ? SPIN + '<span>' + esc(t('vkc_sending')) + '</span>' : ico('send', 18) + '<span>' + esc(t('vkc_send')) + '</span>') + '</button>' +
+      '<button class="btn sec" data-act="vkc-cancel" data-key="vkc-cancel"' + (VKC.busy ? ' disabled' : '') + '>' + esc(t('cancel')) + '</button></div></div>';
+    return h;
+  }
+  function vkcCheck() {
+    var c = wcfg(); vkcFresh(); VKC.busy = 'check'; VKC.err = null; VKC.res = null; safeRender();
+    Y().api('POST', '/vk/cab/check', { acc: c.account, fam: c.surname, lang: S.lang }).then(function (j) {
+      VKC.busy = ''; if (j._status === 200 && j.meters) VKC.check = j; else VKC.err = { error: j.error, human: j.human || t('vkc_fail'), site: j.site || [] }; render(true);
+    }, function () { VKC.busy = ''; VKC.err = { error: 'net', human: t('vkc_fail') }; render(true); });
+  }
+  function vkcSend(recId) {
+    var rec = (S.water || []).filter(function (x) { return x.id === recId; })[0]; if (!rec || !VKC.check || VKC.busy) return;
+    var c = wcfg(), items = vkcItems(rec, wmeters());
+    if (!items.length) return;
+    VKC.busy = 'send'; VKC.res = null; VKC.err = null; safeRender();
+    Y().api('POST', '/vk/cab/send', { acc: c.account, fam: c.surname, lang: S.lang, items: items.map(function (x) { return { key: x.c.key, value: String(x.v), serial: x.c.serial || null, name: wname(x.m) }; }) }).then(function (j) {
+      VKC.busy = '';
+      if (j._status === 200 && j.ok) {
+        // переданим вважаємо лише той запис, з якого відправили; ключ лічильника на сайті запам'ятовуємо
+        wsetCfg(function (cf) { (cf.meters || []).forEach(function (m) { items.forEach(function (x) { if (x.m.id === m.id) m.cabKey = x.c.key; }); }); });
+        rec.sent = Object.assign({}, rec.sent || {}, { vk: today() }); rec.vkConf = { id: j.id, at: j.at, text: String(j.text || '').slice(0, 300), via: 'cab' }; delete rec.vkAt; rec.updatedAt = Date.now();
+        VKC.res = null; VKC.check = null; save(); toast(t('vkc_ok_toast'));
+      } else if (j._status === 200) VKC.res = { recId: recId, result: j.result, text: j.text };
+      else if (j._status === 409 && j.meters) { VKC.check = Object.assign({}, VKC.check, { meters: j.meters }); VKC.err = { error: j.error, human: j.human }; }
+      else VKC.err = { error: j.error, human: j.human || t('vkc_fail'), site: j.site || [] };
+      render(true);
+    }, function () { VKC.busy = ''; VKC.err = { error: 'net', human: t('vkc_fail') }; render(true); });
   }
   function vkPending() { return (S.water || []).some(function (w) { return w && !w.deleted && w.vkAt && !wsentVk(w) && Date.now() - w.vkAt < 30 * 60000; }) || Date.now() - VKR.idsAt < 30 * 60000; }
   VKR.idsAt = 0;
@@ -2000,6 +2097,11 @@
         render(true); return true;
       }
       case 'sb-err': SBERR[el.getAttribute('data-k') === 'gas' ? 'gas' : 'elec'] = true; render(true); return true;
+      case 'vkc-check': vkcCheck(); return true;
+      case 'vkc-send': vkcSend(el.getAttribute('data-id')); return true;
+      case 'vkc-pick': VKC.pick[el.getAttribute('data-id')] = true; render(true); return true;
+      case 'vkc-cancel': VKC.check = null; VKC.res = null; VKC.err = null; render(true); return true;
+      case 'vkc-again': { var va = (S.water || []).filter(function (x) { return x.id === el.getAttribute('data-id'); })[0]; if (va) { va.sent = Object.assign({}, va.sent || {}, { vk: '' }); delete va.vkConf; va.updatedAt = Date.now(); save(); } VKC.check = null; VKC.res = null; render(true); return true; }
       case 'vk-err': VKERR[el.getAttribute('data-id')] = true; vkEvent(el.getAttribute('data-why') === 'silent' ? 'silent' : 'err'); render(true); return true;
       case 'vk-id-chip': {
         var empty = Array.prototype.filter.call(document.querySelectorAll('input[data-wf="vkId"]'), function (x) { return !x.value; })[0];
@@ -2016,7 +2118,7 @@
     var k = el.getAttribute('data-wcfg');
     if (k) { wsetCfg(function (c) { c[k] = el.value.trim(); }); if (document.querySelector('[data-key=where-water]')) safeRender(); return; }   // команда для бота — з новим рахунком
     var mid = el.getAttribute('data-wm');
-    if (mid) { var f = el.getAttribute('data-wf'); wsetCfg(function (c) { (c.meters || []).forEach(function (m) { if (m.id === mid) m[f] = el.value.trim(); }); }); if (f === 'kind') render(true); return; }
+    if (mid) { var f = el.getAttribute('data-wf'); wsetCfg(function (c) { (c.meters || []).forEach(function (m) { if (m.id === mid) m[f] = el.value.trim(); }); }); if (f === 'kind' || f === 'cabKey') render(true); return; }
     if (el.id === 'wn-date') { WN.date = el.value; wnCheck(true); return; }
     var ph = el.getAttribute('data-wphoto');
     if (ph && el.files && el.files[0]) wnPhoto(ph, el.files[0], el);

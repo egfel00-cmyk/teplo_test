@@ -121,6 +121,11 @@ final class Admin {
           'reports' => $c('SELECT COUNT(*) n FROM recog_reports'), 'reportsBad' => $c('SELECT COUNT(*) n FROM recog_reports WHERE ok = 0'),
           'recognition' => (bool)Cfg::get('anthropic_api_key'), 'telegram' => (bool)Cfg::get('bot_token'), 'photoKeepDays' => (int)Cfg::get('photo_keep_days', 90), 'cronAgo' => Cron::age(),
           'me' => $me['email'] ?: ('tg:' . $me['id']), 'tracking' => $tr, 'vk' => VkStatus::status(),
+          // пересланные нам ответы ботов поставщиков (вода / свет / газ) — живые тексты, чтобы поправить Telegram::botKind
+          'botReplies' => Db::q("SELECT r.id, r.user_id, r.src, r.kind, r.text, r.msg_at, u.email, i.username AS tg_username FROM vk_replies r LEFT JOIN users u ON u.id = r.user_id
+            LEFT JOIN user_identities i ON i.user_id = r.user_id AND i.type = 'telegram' ORDER BY r.id DESC LIMIT 30")->fetchAll(),
+          // кабинет Водоканала: что увидел наш сервер при проверках и отправках (структура без личных данных)
+          'vkcab' => array_reverse(array_slice(VkCab::log(), -15)),
         ];
       }
       case 'GET /api/admin/users': {
@@ -390,7 +395,8 @@ final class VkStatus {
   /** Для приложения и /admin. Кабинет, который ни разу не открылся с нашего сервера (может не пускать заграничные адреса), — everOk: false. */
   public static function status(): array {
     $c = self::read()['cab'] ?? null;
-    return ['bot' => self::bot(), 'cab' => is_array($c) ? array_intersect_key($c, array_flip(['state', 'at', 'since', 'everOk', 'lastOk', 'code'])) : null];
+    // send — можно ли отправлять показания через кабинет нашим сервером (VkCab: есть разбор HTML, не выключено)
+    return ['bot' => self::bot(), 'cab' => is_array($c) ? array_intersect_key($c, array_flip(['state', 'at', 'since', 'everOk', 'lastOk', 'code'])) + ['send' => VkCab::ready()] : null];
   }
   public static function event(int $uid, string $kind): array {
     if (!in_array($kind, ['send', 'ok', 'silent', 'err'], true)) throw new HttpError(422, 'bad_kind');

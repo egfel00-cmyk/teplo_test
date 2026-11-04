@@ -23,6 +23,8 @@
 //  GET  /api/vk/replies             ответы бота Водоканала, пересланные нашему боту (подтверждение передачи воды)
 //  GET  /api/bot/replies?src=obl|grm  то же для света (@Kooz2bot) и газа (@mygrmu_bot)
 //  GET  /api/vk/status · POST /api/vk/event {kind}  работают ли бот и кабинет Водоканала (VkStatus, app/admin.php)
+//  POST /api/vk/cab/check {acc, fam} · POST /api/vk/cab/send {acc, fam, items: [{key, value, serial?, name?}], date?}
+//                                   кабинет Водоканала «без реєстрації»: что видит сайт / отправить показания (VkCab, app/vkcab.php)
 //  GET  /api/weather?from&to       средняя за сутки в Харькове (Open-Meteo, кэш) — для истории
 //  POST /api/recognize/local        {ids, results} — итог распознавания в браузере (свой движок, без нейросети) → в аналитику
 //  POST /api/recognize/run          {ids[≤3], offset, ctx} → распознанное (vision-API, ключ в config.php)
@@ -231,6 +233,8 @@ final class Api {
         RateLimit::hit('recog_upload', (string)$user['id']);
         return VkStatus::event((int)$user['id'], (string)($in['kind'] ?? ''));
       }
+      case 'POST /api/vk/cab/check': if (!$user) throw new HttpError(401, 'unauthorized'); return VkCab::check((int)$user['id'], $in);
+      case 'POST /api/vk/cab/send': if (!$user) throw new HttpError(401, 'unauthorized'); return VkCab::send((int)$user['id'], $in);
       case 'GET /api/weather': return Weather::range((string)($r->query()['from'] ?? ''), (string)($r->query()['to'] ?? ''));   // погода к истории — всем, кэш
       case 'POST /api/docs/upload': {   // документ к счётчику сырым телом: ?place=&kind=passport|verification|other&name=
         if (!$user) throw new HttpError(401, 'unauthorized');

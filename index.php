@@ -28,6 +28,7 @@ if (str_starts_with($path, '/api/')) {
   require __DIR__ . '/app/reminders.php';
   require __DIR__ . '/app/recognize.php';
   require __DIR__ . '/app/admin.php';
+  require __DIR__ . '/app/vkcab.php';
   require __DIR__ . '/app/visits.php';
   require __DIR__ . '/app/docs.php';
   require __DIR__ . '/app/api.php';

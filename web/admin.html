@@ -116,8 +116,28 @@ pre.state { font: 12px/1.4 var(--mono); background: #F4F7F5; padding: 10px; bord
       '<div class="panel small" data-key="adm-vk">' + vkLine + '</div>' +
       '<div class="cards">' + c(o.users, 'пользователей всего') + c(o.usersWeek, 'новых за 7 дней') + c(o.activeWeek, 'входили за 7 дней') + c(o.withTelegram, 'с Telegram') + c(o.withData, 'сохранили данные') +
       c(o.feedback, 'сообщений (новых: ' + o.feedbackNew + ')') + c(o.photos, 'фото загружено') + c(o.photosFailed, 'фото с проблемами') + c(o.reportsBad + ' / ' + o.reports, 'распознаваний с замечаниями') + '</div>' +
-      '<p class="muted small">Фото хранятся ' + o.photoKeepDays + ' дней, потом удаляются автоматически.</p>' + actBlock() + trackBlock(o.tracking) + devicesBlock();
+      '<p class="muted small">Фото хранятся ' + o.photoKeepDays + ' дней, потом удаляются автоматически.</p>' + actBlock() + botRepliesBlock(o.botReplies) + vkcabBlock(o.vkcab, vc) + trackBlock(o.tracking) + devicesBlock();
   };
+  /** Ответы ботов поставщиков, которые люди переслали нашему боту: по ним видно, ловит ли Telegram::botKind «прийнято». */
+  function botRepliesBlock(l) {
+    var SRC = { vk: 'Водоканал @hvk_user_bot', obl: 'Харьковоблэнерго @Kooz2bot', grm: 'Газсети @mygrmu_bot' }, KIND = { ok: 'принято', err: 'ошибка', info: 'прочее' };
+    return '<details class="panel" data-key="adm-botreplies"><summary><b>Пересланные ответы ботов поставщиков</b> <span class="muted small">(' + (l || []).length + ')</span></summary>' +
+      (l && l.length ? '<p class="muted small">Как сервис понял ответ: «принято» — отметил «передано» сам; «прочее» — человек жмёт «Прийняв». Если «принято» попало в «прочее» — поправить Telegram::botKind (app/telegram.php).</p>' +
+        '<table><thead><tr><th>Когда</th><th>Бот</th><th>Понял как</th><th>Текст</th><th>Кто</th></tr></thead><tbody>' + l.map(function (r) {
+          return '<tr><td data-l="Когда" class="nowrap">' + when(new Date(r.msg_at * 1000).toISOString()) + '</td><td data-l="Бот">' + esc(SRC[r.src] || r.src) + '</td><td data-l="Понял как"' + (r.kind === 'err' ? ' class="problem"' : '') + '>' + esc(KIND[r.kind] || r.kind) + '</td>' +
+            '<td data-l="Текст" style="white-space:pre-wrap">' + esc(String(r.text || '').slice(0, 500)) + '</td><td data-l="Кто"><a href="#user-' + r.user_id + '" data-user="' + r.user_id + '">' + esc(r.email || (r.tg_username ? '@' + r.tg_username : '#' + r.user_id)) + '</a></td></tr>';
+        }).join('') + '</tbody></table>' : '<p class="muted small">Пока никто не пересылал.</p>') + '</details>';
+  }
+  /** Кабинет Водоканала: проверки рахунку и отправки через наш сервер — что увидели (цифры скрыты #). */
+  function vkcabBlock(l, vc) {
+    var R = { ok: 'ок', err: 'ошибка сайта', unknown: '<b class="problem">непонятный ответ</b>', notfound: 'рахунок не найден', changed: '<b class="problem">страница не узнана</b>', down: '<b class="problem">не отвечает</b>', mismatch: 'список счётчиков другой' };
+    return '<details class="panel" data-key="adm-vkcab"><summary><b>Кабинет Водоканала — проверки и отправки</b> <span class="muted small">(' + (l || []).length + (vc && vc.send === false ? ', <b class="problem">разбор HTML на сервере выключен: нужен php-xml</b>' : '') + ')</span></summary>' +
+      (l && l.length ? '<table><thead><tr><th>Когда</th><th>Что</th><th>Итог</th><th>Подробно</th></tr></thead><tbody>' + l.map(function (d) {
+        var det = { steps: d.steps, where: d.where, msgs: d.msgs, fieldErr: d.fieldErr, form: d.form, forms: d.forms, err: d.err };
+        return '<tr><td data-l="Когда" class="nowrap">' + when(new Date(d.at * 1000).toISOString()) + '</td><td data-l="Что">' + (d.op === 'send' ? 'отправка' + (d.n ? ' (' + d.n + ')' : '') : 'проверка') + (d.user ? ' · <a href="#user-' + d.user + '" data-user="' + d.user + '">#' + d.user + '</a>' : '') + '</td>' +
+          '<td data-l="Итог">' + (R[d.result] || esc(d.result)) + '</td><td data-l="Подробно"><details><summary class="small">структура</summary><pre class="small" style="white-space:pre-wrap;max-width:60ch">' + esc(JSON.stringify(det, null, 1)) + '</pre></details></td></tr>';
+      }).join('') + '</tbody></table>' : '<p class="muted small">Ещё никто не проверял рахунок через сайт Водоканала.</p>') + '</details>';
+  }
   /** Что ведут: у скольких людей есть каждый вид счётчика и сколько по нему показаний (без удалённых и стартовых). */
   function trackBlock(t) {
     if (!t) return '';

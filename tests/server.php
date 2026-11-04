@@ -7,6 +7,7 @@ require __DIR__ . '/../app/telegram.php';
 require __DIR__ . '/../app/reminders.php';
 require __DIR__ . '/../app/recognize.php';
 require __DIR__ . '/../app/admin.php';
+require __DIR__ . '/../app/vkcab.php';
 require __DIR__ . '/../app/visits.php';
 require __DIR__ . '/../app/docs.php';
 require __DIR__ . '/../app/api.php';
@@ -392,6 +393,55 @@ ok('кабинет: открылся → ok; не открылся → down «с
 VkStatus::$fetch = fn($u) => ['code' => 200, 'body' => '<html>Харківводоканал вхід</html>', 'err' => null, 'ms' => 200];
 ok('кабинет снова открылся → ok с нового времени; статус для приложения', VkStatus::probeCabinet(3400)['since'] === 3400 && ($tgb->req('GET', '/api/vk/status')->body['cab']['state'] ?? '') === 'ok');
 VkStatus::$fetch = null;
+// кабинет Водоканала «без реєстрації»: наш сервер вводит рахунок і прізвище, заполняет показания (синтетический кабинет tests/vk-mock)
+echo "\nКабинет Водоканала (VkCab, синтетический кабинет):\n";
+require_once __DIR__ . '/vk-mock/pages.php';
+$VKM = []; $vkCalls = [];
+VkCab::$http = function ($m, $url, $body, $cookie) use (&$VKM, &$vkCalls) { $vkCalls[] = [$m, $url, $cookie];
+  [$code, $html, $h] = vkm_request($m, $url, $body, $cookie, $VKM); $out = ['code' => $code, 'body' => $html, 'cookies' => [], 'location' => null];
+  foreach ($h as $x) { if (stripos($x, 'Set-Cookie:') === 0) $out['cookies'][] = trim(substr($x, 11)); if (stripos($x, 'Location:') === 0) $out['location'] = trim(substr($x, 9)); }
+  return $out; };
+$cab = fn($path, $body) => $tgb->req('POST', $path, $body);
+$vkSent = function () use (&$VKM) { $n = 0; foreach ($VKM as $k => $x) if ($k[0] !== '_' && is_array($x)) $n += (int)($x['sent'] ?? 0); return $n; };
+ok('без входа — 401; кривой рахунок / прізвище — 422 с подсказкой', (new Browser('10.0.12.30'))->req('POST', '/api/vk/cab/check', ['acc' => '905614', 'fam' => 'Шевченко'])->status === 401
+  && ($r = $cab('/api/vk/cab/check', ['acc' => '12', 'fam' => 'Шевченко']))->status === 422 && str_contains($r->body['human'] ?? '', 'особовий рахунок')
+  && $cab('/api/vk/cab/check', ['acc' => '905614', 'fam' => 'x'])->status === 422 && count($vkCalls) === 0);
+$r = $cab('/api/vk/cab/check', ['acc' => '905614', 'fam' => 'Шевченко']); $ck = $r->body;
+ok('проверка: сайт нашёл рахунок → 2 лічильники (ключ поля, №, вид, прошлые показания), даты, адрес', $r->status === 200 && count($ck['meters'] ?? []) === 2
+  && $ck['meters'][0]['key'] === 'DynamicModel[newIndication][1282444]' && $ck['meters'][0]['serial'] === '0123456' && $ck['meters'][0]['kind'] === 'cold' && $ck['meters'][0]['prev'] == 430
+  && $ck['meters'][1]['kind'] === 'hot' && $ck['meters'][1]['prevDate'] === '01.10.2026' && ($ck['dates'][0]['v'] ?? '') === '2026-11-04' && $ck['dates'][0]['sel'] && str_contains((string)$ck['addr'], 'Сумська'), $ck);
+ok('…как браузер: GET /login → cookie → POST с _csrf-frontend и NoLoginForm[acc|fam] → редирект с той же сессией; на сайт ничего не отправлено', $vkCalls[0][0] === 'GET' && str_ends_with($vkCalls[0][1], '/login')
+  && str_contains($vkCalls[1][2], '_csrf-frontend=c00kie') && $VKM['_last']['path'] === '/send-indications' && $vkSent() === 0);
+$r = $cab('/api/vk/cab/check', ['acc' => '905615', 'fam' => 'Шевченко']);
+ok('чужой рахунок → 422 cab_not_found: наше объяснение + слова сайта', $r->status === 422 && $r->body['error'] === 'cab_not_found' && str_contains($r->body['human'], '905615') && str_contains(implode(' ', $r->body['site'] ?? []), 'не знайдено'), $r->body);
+$k1 = $ck['meters'][0]['key']; $k2 = $ck['meters'][1]['key']; $n0 = count($sent);
+$r = $cab('/api/vk/cab/send', ['acc' => '905614', 'fam' => 'шевченко', 'items' => [['key' => $k1, 'value' => '458', 'serial' => '0123456', 'name' => 'Холодна'], ['key' => $k2, 'value' => '175', 'serial' => '0654321', 'name' => 'Гаряча']], 'date' => '2026-11-03']);
+$post = $VKM['_lastPost']['post'] ?? [];
+ok('отправка: сайт принял → ok, текст ответа сайта', $r->status === 200 && $r->body['ok'] === true && $r->body['result'] === 'ok' && str_contains($r->body['text'], 'прийнято'), $r->body);
+ok('…в форму ушли наши цифры, выбранная дата, CSRF и кнопка — как из браузера', ($post['DynamicModel']['newIndication']['1282444'] ?? '') === '458' && ($post['DynamicModel']['newIndication']['1282445'] ?? '') === '175'
+  && ($post['DynamicModel']['dataIndication']['1282444'] ?? '') === '2026-11-03' && ($post['_csrf-frontend'] ?? '') === VKM_TOKEN && array_key_exists('send-button', $post), $post);
+$tm = array_values(array_filter(array_slice($sent, $n0), fn($x) => ($x[1]['chat_id'] ?? null) === '9001'));
+ok('…наш бот пишет в Telegram «✅ Водоканал прийняв» с цифрами и кнопкой в воду', count($tm) === 1 && str_contains($tm[0][1]['text'], 'Водоканал прийняв') && str_contains($tm[0][1]['text'], 'Холодна — 458') && str_contains($tm[0][1]['text'], 'рахунок 905614'), $tm);
+$r = $cab('/api/vk/cab/send', ['acc' => '905614', 'fam' => 'Шевченко', 'items' => [['key' => $k1, 'value' => '400']]]);
+ok('меньше прошлых → сайт вернул форму с ошибкой у поля → ok=false, result err, слова сайта', $r->status === 200 && $r->body['ok'] === false && $r->body['result'] === 'err' && str_contains($r->body['text'], 'меншими'), $r->body);
+$s0 = $vkSent(); $p0 = count($vkCalls);
+$r = $cab('/api/vk/cab/send', ['acc' => '905614', 'fam' => 'Шевченко', 'items' => [['key' => $k1, 'value' => '470', 'serial' => '9999999']]]);
+ok('номер лічильника не совпал с тем, что на сайте → 409 cab_mismatch (форму показаний не отправляли)', $r->status === 409 && $r->body['error'] === 'cab_mismatch' && count($r->body['meters'] ?? []) === 2 && $vkSent() === $s0
+  && !array_filter(array_slice($vkCalls, $p0), fn($c) => $c[0] === 'POST' && str_contains($c[1], '/send-indications')), $r->body);
+$r = $cab('/api/vk/cab/send', ['acc' => '905614', 'fam' => 'Шевченко', 'items' => [['key' => 'evil', 'value' => '1'], ['key' => $k1, 'value' => 'abc']]]);
+ok('мусор вместо показаний / чужие поля → 422 cab_no_items', $r->status === 422 && $r->body['error'] === 'cab_no_items');
+VkCab::$http = fn($m, $url, $b, $c) => ['code' => 0, 'body' => '', 'err' => 'Connection timed out'];
+$r = $cab('/api/vk/cab/check', ['acc' => '905614', 'fam' => 'Шевченко']);
+ok('сайт не отвечает → 502 cab_down с подсказкой про бот', $r->status === 502 && $r->body['error'] === 'cab_down' && str_contains($r->body['human'], 'бот'));
+VkCab::$http = fn($m, $url, $b, $c) => ['code' => 200, 'body' => '<html><body><form id="other"><input name="x"></form></body></html>'];
+ok('страница входа другая → 502 cab_changed', ($r = $cab('/api/vk/cab/check', ['acc' => '905614', 'fam' => 'Шевченко']))->status === 502 && $r->body['error'] === 'cab_changed');
+VkCab::$http = fn($m, $url, $b, $c) => ['code' => 302, 'body' => '', 'location' => 'https://evil.example/steal'];
+ok('редирект на чужой сайт — не идём (cab_changed)', ($r = $cab('/api/vk/cab/check', ['acc' => '905614', 'fam' => 'Шевченко']))->status === 502 && $r->body['error'] === 'cab_changed');
+$lg = VkCab::log(); $all = json_encode($lg, JSON_UNESCAPED_UNICODE);
+ok('журнал для /admin: проверки и отправки с итогом и структурой формы; рахунок, прізвище, адрес и цифры не пишем', count($lg) >= 6 && in_array('ok', array_column($lg, 'result'), true) && in_array('notfound', array_column($lg, 'result'), true)
+  && !str_contains($all, '905614') && !str_contains($all, 'Шевченко') && !str_contains($all, 'Сумська') && !str_contains($all, '0123456') && str_contains($all, 'newIndication'), $lg[count($lg) - 1] ?? null);
+ok('/api/vk/status: у кабинета флаг send (можно отправлять через сайт)', ($tgb->req('GET', '/api/vk/status')->body['cab']['send'] ?? null) === true);
+VkCab::$http = null;
 Telegram::$send = null; Telegram::$fetch = null;
 
 echo "\nНапоминания ботом:\n";

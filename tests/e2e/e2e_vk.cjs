@@ -7,6 +7,7 @@ let pass = 0, fail = 0; const ok = (n, c, x) => { if (c) { pass++; console.log('
 const U = 'http://127.0.0.1:8013/', DB = process.env.DB || '/tmp/teplo_data/dev.sqlite';
 const reply = (uid, kind, text, at) => execFileSync('php', ['-r', '$p=new PDO("sqlite:' + DB + '"); $s=$p->prepare("INSERT INTO vk_replies (user_id, kind, text, msg_at, created_at) VALUES (?,?,?,?,?)"); $s->execute([' + uid + ',$argv[1],$argv[2],' + at + ',gmdate("c")]);', kind, text]);
 (async () => {
+  require('fs').rmSync((process.env.SITE_DATA || '/tmp/teplo_data') + '/cache/vk_status.json', { force: true });   // кабинет «не проверяли» — сценарий бота (кабинет — e2e_vkcab)
   const b = await chromium.launch(); const p = await (await b.newContext({ viewport: { width: 390, height: 844 }, locale: 'uk-UA' })).newPage();
   const errs = []; p.on('pageerror', e => errs.push(e.message));
   const st = async () => JSON.parse(await p.evaluate(() => localStorage.getItem('teplo.v1')) || '{}');
