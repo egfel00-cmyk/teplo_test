@@ -185,7 +185,7 @@ final class Gpv {
   public static ?array $addrIdx = null;
   public static function addrFile(): string { return (string)Cfg::get('gpv_addr_file', __DIR__ . '/data/gpv_addr.json'); }
   public static function addrIndex(): array {
-    if (self::$addrIdx === null) { $j = json_decode((string)@file_get_contents(self::addrFile()), true); self::$addrIdx = is_array($j) && !empty($j['items']) ? $j : []; }
+    if (self::$addrIdx === null) { self::$cities = null; $j = json_decode((string)@file_get_contents(self::addrFile()), true); self::$addrIdx = is_array($j) && !empty($j['items']) ? $j : []; }
     return self::$addrIdx;
   }
   const STREET_TYPES = 'вулиця|вул|улица|ул|проспект|просп|пр-т|пр|провулок|пров|переулок|пер|площа|площадь|пл|бульвар|бульв|б-р|узвіз|спуск|в\'їзд|в’їзд|вʼїзд|въезд|проїзд|проезд|шосе|шоссе|набережна|набережная|наб|майдан|тупик|лінія|линия|селище|поселок|мікрорайон|микрорайон|мкр|квартал|кв-л|дорога|алея|аллея|сад|парк';
@@ -203,17 +203,33 @@ final class Gpv {
     $h = mb_strtolower(trim($h)); $h = preg_replace('/\s*(корпус|корп|к)\.?\s*(\d+)/u', 'к$2', $h);
     return preg_replace('/[\s\-"«»]+/u', '', strtr($h, ['a' => 'а', 'b' => 'б', 'v' => 'в']));
   }
-  /** Адреса людини → ['street' => 'сумська', 'house' => '10'] (місто, «кв.», індекс — відкидаємо). */
+  const CITY = 'Харків';
+  /** Скелет назви населеного пункту: без «м.», «с.», «смт» тощо. */
+  public static function skelCity(string $c): string { return self::skel(preg_replace('/^\s*(м|г|с|смт|сел|селище|село|місто|город|пос|поселок)\.?\s+/iu', '', $c)); }
+  private static ?array $cities = null;
+  private static function cities(): array {
+    if (self::$cities === null) { self::$cities = []; foreach ((array)(self::addrIndex()['items'] ?? []) as $it) self::$cities[(string)$it['ck']] = (self::$cities[(string)$it['ck']] ?? 0) + 1; }
+    return self::$cities;
+  }
+  /** Адреса людини → ['city' => скелет пункту (немає — Харків), 'street' => 'сумська', 'house' => '10'] (кв., індекс — відкидаємо). */
   public static function splitAddr(string $a): array {
-    $a = mb_strtolower(str_replace(['ё', '№'], ['е', ' '], $a));
+    $a = mb_strtolower(str_replace(['ё', '№'], ['е', ' '], $a)); $city = null;
+    // явно: «м. Люботин», «с. Мала Данилівка», «смт Солоницівка» — до коми
+    if (preg_match('/(^|[\s,])(м|г|місто|город|с|село|смт|сел|селище|пос|поселок)(?:\.\s*|\s+)([\p{L}\'’ʼ\-]+(?:\s+[\p{L}\'’ʼ\-]+){0,2}?)\s*(?=,|$)/u', $a, $m)) {
+      $city = self::skel($m[3]); $a = str_replace($m[0], $m[1] === ',' ? ',' : ' ', $a);
+    } else {
+      // перший шматок до коми — відомий населений пункт («Люботин, Глінки 5»)
+      $seg = explode(',', $a);
+      if (count($seg) > 1 && !preg_match('/\d|\b(' . self::STREET_TYPES . ')\b/u', $seg[0]) && isset(self::cities()[self::skel($seg[0])])) { $city = self::skel($seg[0]); array_shift($seg); $a = implode(',', $seg); }
+    }
     $a = preg_replace('/\b(кв|квартира|оф|офис|офіс|под|під\'їзд|подъезд|эт|етаж|этаж)\b\.?\s*\d+[\p{L}]?.*$/u', '', $a);
     $a = preg_replace('/\b\d{5}\b/u', ' ', $a);   // поштовий індекс
     $a = preg_replace('/(^|[\s,])(м|г|місто|город|смт|с|село)\.?\s*харь?к[іо]в\p{L}*\s*,?/u', ' ', $a);
     $a = preg_replace('/(^|[\s,])харь?к[іо]в\p{L}*\s*,/u', ' ', $a);
     // вулиця — до першого номера будинку; будинок — номер (з літерою, дробом, корпусом)
     if (preg_match('/^(.*?\p{L}[^\d]*?)[\s,.]+(?:буд|будинок|дом|д)?\.?\s*(\d+(?:\s*-?\s*\p{L}(?!\p{L}))?(?:\s*\/\s*\d+(?:\s*-?\s*\p{L}(?!\p{L}))?)?(?:\s*(?:корпус|корп|к)\.?\s*\d+)?)(?=$|[\s,.;])/u', trim($a), $m))
-      return ['street' => trim($m[1], " ,.\t"), 'house' => self::houseKey($m[2])];
-    return ['street' => trim($a, " ,.\t"), 'house' => ''];
+      return ['city' => $city ?? self::skel(self::CITY), 'street' => trim($m[1], " ,.\t"), 'house' => self::houseKey($m[2])];
+    return ['city' => $city ?? self::skel(self::CITY), 'street' => trim($a, " ,.\t"), 'house' => ''];
   }
   private static function lev(string $a, string $b): int {
     if ($a === $b) return 0;
@@ -237,19 +253,32 @@ final class Gpv {
   public static function lookup(string $addr): array {
     $idx = self::addrIndex(); $addr = mb_substr(trim($addr), 0, 160);
     if (!$idx) return ['ready' => false, 'found' => false];
-    $p = self::splitAddr($addr); $want = self::skel($p['street']);
-    $meta = ['ready' => true, 'src' => $idx['src'] ?? null, 'house' => $p['house']];
-    if (mb_strlen($want) < 3) return $meta + ['found' => false, 'reason' => 'street'];
+    $p = self::splitAddr($addr); $want = self::skel($p['street']); $kh = $p['city'] === self::skel(self::CITY);
+    $meta = ['ready' => true, 'src' => $idx['src'] ?? null, 'house' => $p['house'], 'kharkiv' => $kh];
+    // спершу — населений пункт (перелік обленерго — переважно область; без пункту в адресі вважаємо, що це Харків)
+    $cand = array_values(array_filter($idx['items'], fn($it) => ($it['ck'] ?? '') === $p['city']));
+    if (!$cand) foreach ($idx['items'] as $it) if (mb_strlen($p['city']) >= 5 && self::lev((string)($it['ck'] ?? ''), $p['city']) <= 1) $cand[] = $it;
+    if (!$cand) return $meta + ['found' => false, 'reason' => 'city'];
+    $whole = array_values(array_filter($cand, fn($i) => ($i['k'] ?? '') === ''));
+    $wq = array_values(array_unique(array_map(fn($i) => (string)$i['q'], $whole))); sort($wq);
+    $cityName = $cand[0]['c'];
+    if (mb_strlen($want) < 3) {
+      if (count($wq) === 1) return $meta + ['found' => true, 'q' => $wq[0], 'street' => '', 'city' => $cityName, 'how' => 'city'];
+      $aq = array_values(array_unique(array_map(fn($i) => (string)$i['q'], $cand))); sort($aq);
+      return $meta + ['found' => false, 'reason' => 'nostreet', 'city' => $cityName, 'options' => array_slice($aq, 0, 12)];
+    }
     $best = null; $hits = [];
-    foreach ($idx['items'] as $it) {
+    foreach ($cand as $it) {
+      if (($it['k'] ?? '') === '') continue;
       $sc = self::streetScore($want, (string)$it['k']); if ($sc === null) continue;
       if ($best === null || $sc < $best) { $best = $sc; $hits = []; }
       if ($sc === $best) $hits[] = $it;
     }
-    if (!$hits) return $meta + ['found' => false, 'reason' => 'street'];
-    // різні вулиці з однаковим «скелетом» у різних містах — беремо Харків, якщо він є
-    $streets = array_values(array_unique(array_map(fn($i) => $i['c'] . '|' . $i['s'], $hits)));
-    if (count($streets) > 1) { $kh = array_values(array_filter($hits, fn($i) => preg_match('/харків/iu', (string)$i['c']))); if ($kh) $hits = $kh; }
+    if (!$hits) {
+      // вулиці в переліку немає, але весь пункт в одній черзі (село) — його черга
+      if (count($wq) === 1) return $meta + ['found' => true, 'q' => $wq[0], 'street' => '', 'city' => $cityName, 'how' => 'city'];
+      return $meta + ['found' => false, 'reason' => 'street', 'city' => $cityName];
+    }
     $street = $hits[0]['s']; $city = $hits[0]['c'];
     $qs = array_values(array_unique(array_map(fn($i) => (string)$i['q'], $hits))); sort($qs);
     $h = $p['house'];
@@ -259,9 +288,9 @@ final class Gpv {
         if (preg_replace('/\D.*$/u', '', $x) === $num) $byNum[(string)$it['q']] = $it; }
       if (count($byNum) === 1) { $it = reset($byNum); return $meta + ['found' => true, 'q' => $it['q'], 'street' => $it['s'], 'city' => $it['c'], 'how' => 'num']; }
     }
-    $whole = array_values(array_filter($hits, fn($i) => !isset($i['h']) || $i['h'] === null || $i['h'] === []));
-    $wq = array_values(array_unique(array_map(fn($i) => (string)$i['q'], $whole)));
-    if (count($wq) === 1 && ($h !== '' || count($qs) === 1)) return $meta + ['found' => true, 'q' => $wq[0], 'street' => $street, 'city' => $city, 'how' => 'street'];
+    $wholeS = array_values(array_filter($hits, fn($i) => !isset($i['h']) || $i['h'] === null || $i['h'] === []));
+    $sq = array_values(array_unique(array_map(fn($i) => (string)$i['q'], $wholeS)));
+    if (count($sq) === 1 && ($h !== '' || count($qs) === 1)) return $meta + ['found' => true, 'q' => $sq[0], 'street' => $street, 'city' => $city, 'how' => 'street'];
     if (count($qs) === 1) return $meta + ['found' => true, 'q' => $qs[0], 'street' => $street, 'city' => $city, 'how' => 'street'];
     return $meta + ['found' => false, 'reason' => $h === '' ? 'nohouse' : 'house', 'street' => $street, 'city' => $city, 'options' => $qs];
   }

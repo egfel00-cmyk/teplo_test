@@ -807,8 +807,10 @@
     if (p.gpvAuto && !auto && look && look.found === false) q = '';   // нова адреса, а в переліку її немає — стара черга вже не про неї
     if (!q || GPV.pick[p.id]) {
       var opts = look && look.options && look.options.length ? look.options : null, list = opts && !GPV.pick[p.id] ? opts : GPV_Q;
-      var lead = look && look.found === false && !GPV.pick[p.id] ? (opts ? t(look.reason === 'nohouse' ? 'gpv_many_nohouse' : 'gpv_many', { s: look.street || '' }) : look.ready === false ? t('gpv_pick_lead', { a: addr }) : t('gpv_notfound', { a: addr }))
-        : t('gpv_pick_lead', { a: addr });
+      var lead = t('gpv_pick_lead', { a: addr });
+      if (look && look.found === false && !GPV.pick[p.id] && look.ready !== false && !look.err)
+        lead = opts ? t(look.reason === 'nohouse' ? 'gpv_many_nohouse' : look.reason === 'nostreet' ? 'gpv_many_nostreet' : 'gpv_many', { s: look.street || '', c: look.city || '' })
+          : look.kharkiv ? t('gpv_kh_none') : t('gpv_notfound', { a: addr });
       return h + '<p class="small" data-key="gpv-lead">' + esc(lead) + '</p>' +
         '<div class="gpv-qs' + (opts && list === opts ? ' few' : '') + '" role="group" aria-label="' + esc(t('gpv_pick_aria')) + '">' + list.map(function (x) {
           return '<button type="button" class="chip gpv-q" data-act="gpv-set" data-id="' + id + '" data-q="' + x + '" aria-pressed="' + (x === q) + '" data-key="gpv-q-' + x + '">' + x + '</button>'; }).join('') + '</div>' +
