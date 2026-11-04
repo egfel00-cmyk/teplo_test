@@ -204,6 +204,8 @@ final class Gpv {
     return preg_replace('/[\s\-"«»]+/u', '', strtr($h, ['a' => 'а', 'b' => 'б', 'v' => 'в']));
   }
   const CITY = 'Харків';
+  /** Скелет — це Харків? «харкив» (Харків), «харков» (Харьков), «харкови»/«харкове» (у Харкові / в Харькове). */
+  public static function isKharkiv(string $k): bool { return (bool)preg_match('/^харк[ио]в[еиу]?$/u', $k); }
   /** Скелет назви населеного пункту: без «м.», «с.», «смт» тощо. */
   public static function skelCity(string $c): string { return self::skel(preg_replace('/^\s*(м|г|с|смт|сел|селище|село|місто|город|пос|поселок)\.?\s+/iu', '', $c)); }
   private static ?array $cities = null;
@@ -242,6 +244,7 @@ final class Gpv {
       $seg = explode(',', $a);
       if (count($seg) > 1 && !preg_match('/\d|\b(' . self::STREET_TYPES . ')\b/u', $seg[0]) && self::findCity(self::skel($seg[0])) !== null) { $city = self::skel($seg[0]); array_shift($seg); $a = implode(',', $seg); }
     }
+    if ($city !== null && self::isKharkiv($city)) $city = null;   // «г. Харьков, …» — це Харків (за замовчуванням), не «пункт харков»
     $a = preg_replace('/\b(кв|квартира|оф|офис|офіс|под|під\'їзд|подъезд|эт|етаж|этаж)\b\.?\s*\d+[\p{L}]?.*$/u', '', $a);
     $a = preg_replace('/\b\d{5}\b/u', ' ', $a);   // поштовий індекс
     // «м. Харків,» / «Харьков,» — лише назва міста, не «вул. Харківська» / «пров. Харківський»
@@ -281,7 +284,7 @@ final class Gpv {
   public static function lookup(string $addr): array {
     $idx = self::addrIndex(); $addr = mb_substr(trim($addr), 0, 160);
     if (!$idx) return ['ready' => false, 'found' => false];
-    $p = self::splitAddr($addr); $want = self::skel($p['street']); $kh = $p['city'] === self::skel(self::CITY);
+    $p = self::splitAddr($addr); $want = self::skel($p['street']); $kh = self::isKharkiv($p['city']);
     $meta = ['ready' => true, 'src' => $idx['src'] ?? null, 'house' => $p['house'], 'kharkiv' => $kh];
     // спершу — населений пункт (перелік обленерго — переважно область; без пункту в адресі вважаємо, що це Харків)
     $cand = array_values(array_filter($idx['items'], fn($it) => ($it['ck'] ?? '') === $p['city']));
@@ -341,8 +344,8 @@ final class Gpv {
     foreach (array_values(array_filter((array)($st['places'] ?? []), fn($p) => is_array($p) && empty($p['deleted']))) as $i => $p) {
       $addr = trim((string)($p['address'] ?? '')); $q = (string)($p['gpv'] ?? '');
       if ($addr === '' || (isset($p['gpvTg']) && $p['gpvTg'] === false)) continue;
-      // черги ще не підставив застосунок (людина не відкривала) або адресу змінили після автопідбору — визначаємо за адресою самі
-      if ($q === '' || (is_array($p['gpvAuto'] ?? null) && ($p['gpvAuto']['addr'] ?? '') !== $addr)) { $l = self::lookup($addr); $q = !empty($l['found']) ? (string)$l['q'] : ($q !== '' && empty($p['gpvAuto']) ? $q : ''); }
+      // черги ще не підставив застосунок (людина не відкривала) або черга «за адресою» (автопідбір; довідник могли виправити) — визначаємо самі
+      if ($q === '' || is_array($p['gpvAuto'] ?? null)) { $l = self::lookup($addr); $q = !empty($l['found']) ? (string)$l['q'] : ($q !== '' && empty($p['gpvAuto']) ? $q : ''); }
       if (!in_array($q, self::QUEUES, true)) continue;
       $label = trim((string)($p['name'] ?? '')) ?: ($i === 0 ? 'Моя квартира' : 'Квартира ' . ($i + 1));
       $out[] = ['id' => (string)($p['id'] ?? ''), 'label' => mb_substr($label, 0, 40), 'addr' => mb_substr($addr, 0, 60), 'q' => $q];

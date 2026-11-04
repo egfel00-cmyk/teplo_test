@@ -5533,8 +5533,11 @@ fieldset.field { border: 0; padding: 0; min-width: 0; }
     fetch(window.TEPLO_API + '/gpv/addr?q=' + encodeURIComponent(a), { credentials: 'same-origin', headers: { Accept: 'application/json' } }).then(function (r) { return r.json(); }).then(function (j) {
       GPV.addr[a] = j && typeof j.found === 'boolean' ? j : { err: true };
       var pp = place(p.id);
-      if (j && j.found && pp && String(pp.address || '').trim() === a && (!pp.gpv || (pp.gpvAuto && pp.gpvAuto.addr !== a))) {
+      if (j && j.found && pp && String(pp.address || '').trim() === a && (!pp.gpv || (pp.gpvAuto && (pp.gpvAuto.addr !== a || pp.gpv !== j.q)))) {
         pp.gpv = j.q; pp.gpvAuto = { addr: a, street: j.street || '', city: j.city || '' }; pp.updatedAt = Date.now(); save();
+      } else if (j && j.found === false && j.ready !== false && pp && pp.gpvAuto && pp.gpvAuto.addr === a && String(pp.address || '').trim() === a) {
+        // черга була «за адресою», а за новим довідником адреси там немає — не тримаємо стару (людина обере сама)
+        pp.gpv = ''; delete pp.gpvAuto; pp.updatedAt = Date.now(); save();
       }
       safeRender();
     }, function () { GPV.addr[a] = { err: true }; safeRender(); });
@@ -5577,6 +5580,7 @@ fieldset.field { border: 0; padding: 0; min-width: 0; }
       '<h2 class="gpv-t">' + ico('bolt', 20) + '<span>' + esc(t('gpv_title')) + '</span></h2>';
     // черга визначається сама за адресою: ще не шукали / адресу змінили після автопідбору — шукаємо
     var auto = p.gpvAuto && p.gpvAuto.addr === addr, look = (!q || (p.gpvAuto && !auto)) && !GPV.pick[p.id] ? gpvAddr(p) : null;
+    if (auto && q && !GPV.pick[p.id]) gpvAddr(p);   // черга «за адресою» — раз за сеанс звіряємо з довідником (його могли виправити)
     if (look && look.busy) return h + '<p class="small muted" data-key="gpv-finding">' + esc(t('gpv_finding', { a: addr })) + '</p></section>';
     if (p.gpvAuto && !auto && look && look.found === false) q = '';   // нова адреса, а в переліку її немає — стара черга вже не про неї
     if (!q || GPV.pick[p.id]) {

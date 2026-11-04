@@ -67,6 +67,11 @@ const cache = (days) => { fs.mkdirSync(DATA + '/cache', { recursive: true }); fs
     && /Вашої вулиці немає в переліку Харківобленерго для «Чугуїв»/.test(await p.textContent('[data-key=home-pl-p2] [data-key=gpv-lead]')) && !/«»/.test(await p.textContent('[data-key=home-pl-p2] [data-key=gpv-lead]')));
   await p.click('[data-key=home-pl-p2] [data-key=home-pl-edit-p2]'); await p.waitForTimeout(200); await p.fill('#hpa-p2', 'вул. Пушкінська, 5'); await p.click('[data-key=hp-save]'); await p.waitForTimeout(700);
   ok('харківська адреса, якої немає в переліку → «Для міста Харкова … лише пошук на своєму сайті», 12 черг', /Для міста Харкова/.test(await p.textContent('[data-key=home-pl-p2] [data-key=gpv-lead]')) && (await p.$$('[data-key=home-pl-p2] .gpv-q')).length === 12);
+  // черга «за адресою» від старого довідника, а за новим адреси немає (Харків) → стару не тримаємо, просимо обрати
+  await p.evaluate(() => { const s = JSON.parse(localStorage.getItem('teplo.v1')); const q = s.places.find(x => x.id === 'p2'); q.gpv = '6.1'; q.gpvAuto = { addr: 'вул. Пушкінська, 5', street: '', city: 'Харків' }; localStorage.setItem('teplo.v1', JSON.stringify(s)); });
+  await p.goto(U + '#home'); await p.reload(); await p.waitForTimeout(900);
+  { const s2 = await st(), q2 = s2.places.find(x => x.id === 'p2');
+    ok('черга «за адресою», якої вже немає в довіднику, знімається сама → «Для міста Харкова…» і 12 черг', !q2.gpv && !q2.gpvAuto && /Для міста Харкова/.test(await p.textContent('[data-key=home-pl-p2] [data-key=gpv-lead]')), q2); }
   // кнопка з ранкового повідомлення: ?go=gpv&place=main → головна, квартира розгорнута, блок графіка
   await p.goto(U + '?go=gpv&place=main'); await p.waitForTimeout(600);
   ok('?go=gpv&place=main → головна, перша квартира розгорнута з графіком', (await p.evaluate(() => location.hash)) === '#home' && await p.$eval('[data-key=home-pl-main]', e => e.open) && !!(await p.$('[data-key=home-pl-main] [data-key=gpv-home]')));
