@@ -600,7 +600,7 @@ input[type=text]:not(.dmy-native):not(.pl-in), input[type=email], input[type=pas
 
 /* «Скасувати й вийти» внизу ввода; черновик на главной */
 .wiz-cancel { margin: var(--sp-5) 0 0; text-align: center; }
-.wiz-cancel .linkbtn { color: var(--c-bad); }
+.wiz-cancel .btn { color: var(--c-ink-2); }
 .home-draft { margin-bottom: 16px; display: grid; gap: 6px; justify-items: center; }
 .home-draft .btn { width: 100%; }
 .home-draft .linkbtn { color: var(--c-ink-2); }
@@ -698,8 +698,7 @@ details.wacc > summary { list-style: none; cursor: pointer; display: flex; align
 .pg-body > .panel + .panel { border-top: 1px solid var(--c-line); padding-top: var(--sp-4); }
 
 /* Итог «сколько и почём» — один шаблон для тепла и воды (статистика, економія) */
-.kpi { margin: 12px 0 16px; padding: 16px 18px; border-radius: 16px; background: var(--c-surface-2, var(--c-surface)); border: 1px solid var(--c-line); border-left: 4px solid var(--c-supply); }
-.kpi.hot { border-left-color: var(--c-return); } .kpi.cold { border-left-color: var(--c-info); }
+.kpi { margin: 12px 0 16px; padding: 16px 18px; border-radius: 16px; background: var(--c-surface-2, var(--c-surface)); border: 1px solid var(--c-line); }   /* без кольорової смуги: вид видно із заголовка сторінки */
 .kpi-row { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 28px; }
 .kpi-q b, .kpi-m b { font-size: 34px; line-height: 1.1; font-weight: 700; font-variant-numeric: tabular-nums; letter-spacing: -.01em; }
 .kpi-q span, .kpi-m span { margin-left: 6px; font-size: 17px; font-weight: 600; color: var(--c-ink-2); }
@@ -716,7 +715,8 @@ details.wacc > summary { list-style: none; cursor: pointer; display: flex; align
 .hrow .hr-q, .hrow .hr-m { font-size: 19px; font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .hrow .hr-q small, .hrow .hr-m small { font-size: 13px; font-weight: 600; color: var(--c-ink-2); }
 .hrow .hr-none { font-size: 15px; font-weight: 600; color: var(--c-ink-2); }
-.hrow .hr-sub { margin-top: 2px; font-size: 13px; color: var(--c-ink-2); }
+.hrow .hr-sub { margin-top: 2px; font-size: 13px; color: var(--c-ink-2); display: flex; flex-wrap: wrap; gap: 0 12px; }
+.mbox-sub, .ss-sub { display: flex !important; flex-wrap: wrap; gap: 0 12px; }
 .hrow .hr-date { margin-bottom: 6px; font-size: 13px; color: var(--c-ink-2); }
 .hrow .hr-ico { align-self: center; display: inline-flex; margin-right: -8px; }
 /* узкий экран: строка истории (тепло и вода) — главное на всю ширину, значки (погода, статус) компактно строкой ниже */
@@ -829,15 +829,16 @@ fieldset.field { border: 0; padding: 0; min-width: 0; }
 
 /* ---- світло (этап 3) ---- */
 .ucard-elec .ucard-top .ico { color: var(--c-elec); }
-.kpi.elec { border-left-color: var(--c-elec); }
 .efield { border: 1.5px solid var(--c-line); border-radius: 14px; padding: 12px 16px 4px; margin: 0 0 16px; background: var(--c-surface); min-width: 0; }
 .efield legend { font-weight: 600; padding: 0 6px; }
 .kind-sw .c-elec { color: var(--c-elec); }
 /* четыре вида (тепло, гаряча, холодна, світло) — на телефоне в две строки по два */
-@media (max-width: 560px) { .kind-sw.many { display: grid; grid-template-columns: 1fr 1fr; border-radius: 16px; } .kind-sw.many button { border-radius: 12px; } }
+/* 4–5 видів на вузькому: 2+2 або 3+2 (а не 2+2+1) */
+@media (max-width: 560px) { .kind-sw.many { display: grid; grid-template-columns: repeat(6, 1fr); border-radius: 16px; } .kind-sw.many button { border-radius: 12px; grid-column: span 2; }
+  .kind-sw.many button:first-child:nth-last-child(4), .kind-sw.many button:first-child:nth-last-child(4) ~ button,
+  .kind-sw.many button:nth-child(4):nth-last-child(2), .kind-sw.many button:nth-child(5):nth-last-child(1) { grid-column: span 3; } }
 /* ---- газ ---- */
 .ucard-gas .ucard-top .ico { color: var(--c-gas); }
-.kpi.gas { border-left-color: var(--c-gas); }
 .kind-sw .c-gas { color: var(--c-gas); }
 
 /* ---- 4 разных табло: тепло — зелёный ЖК, вода — круглый циферблат, свет — тёмный электронный экран, газ — жёлтая панель ---- */
@@ -892,7 +893,7 @@ fieldset.field { border: 0; padding: 0; min-width: 0; }
 .pacc-body .hp-edit { margin-top: 12px; }
 .hp-more { margin: 4px 0 0; }
 /* ---- блок счётчика на его странице: название + табло + данные + настройки одним «прибором» ---- */
-.mbox { --kc: var(--c-ink-2); border-top: 6px solid var(--kc); padding-top: 14px; }
+.mbox { --kc: var(--c-ink-2); }   /* без смуги згори: вид — значком у заголовку */
 .mbox-heat { --kc: var(--c-supply); } .mbox-hot { --kc: var(--c-supply); } .mbox-cold { --kc: var(--c-return); }
 .mbox-elec { --kc: var(--c-elec); } .mbox-gas { --kc: var(--c-gas); }
 .mbox-h { display: flex; align-items: center; gap: 10px; margin: 0 0 12px; }
@@ -1155,3 +1156,12 @@ summary:focus-visible { outline: 3px solid var(--c-info); outline-offset: 2px; b
 .prv-pick:hover { border-color: var(--c-accent, currentColor); }
 .prv-pick:focus-visible { outline: 3px solid var(--c-focus, #4c8dff); outline-offset: 2px; }
 .prov-alts { margin: 4px 0 12px; }
+
+/* «Таблиця всіх проміжків» — акордеон як «Куди передати» */
+details.tbl-acc[open] > .tbl-wrap { margin-top: 12px; }
+/* підпис лінії-норми на графіку — з «ореолом» кольору тла, щоб читався поверх стовпців */
+.chart .ref-l { paint-order: stroke; stroke: var(--c-surface); stroke-width: 4px; stroke-linejoin: round; font-weight: 600; }
+/* «Лише для себе»: галочка біля заголовка, пояснення — звичайним шрифтом */
+.own-chk { align-items: flex-start; }
+.own-chk input { margin-top: 3px; flex: none; }
+.own-chk .small { font-weight: 400; }

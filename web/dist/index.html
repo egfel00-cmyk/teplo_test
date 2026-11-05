@@ -613,7 +613,7 @@ input[type=text]:not(.dmy-native):not(.pl-in), input[type=email], input[type=pas
 
 /* «Скасувати й вийти» внизу ввода; черновик на главной */
 .wiz-cancel { margin: var(--sp-5) 0 0; text-align: center; }
-.wiz-cancel .linkbtn { color: var(--c-bad); }
+.wiz-cancel .btn { color: var(--c-ink-2); }
 .home-draft { margin-bottom: 16px; display: grid; gap: 6px; justify-items: center; }
 .home-draft .btn { width: 100%; }
 .home-draft .linkbtn { color: var(--c-ink-2); }
@@ -711,8 +711,7 @@ details.wacc > summary { list-style: none; cursor: pointer; display: flex; align
 .pg-body > .panel + .panel { border-top: 1px solid var(--c-line); padding-top: var(--sp-4); }
 
 /* Итог «сколько и почём» — один шаблон для тепла и воды (статистика, економія) */
-.kpi { margin: 12px 0 16px; padding: 16px 18px; border-radius: 16px; background: var(--c-surface-2, var(--c-surface)); border: 1px solid var(--c-line); border-left: 4px solid var(--c-supply); }
-.kpi.hot { border-left-color: var(--c-return); } .kpi.cold { border-left-color: var(--c-info); }
+.kpi { margin: 12px 0 16px; padding: 16px 18px; border-radius: 16px; background: var(--c-surface-2, var(--c-surface)); border: 1px solid var(--c-line); }   /* без кольорової смуги: вид видно із заголовка сторінки */
 .kpi-row { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 28px; }
 .kpi-q b, .kpi-m b { font-size: 34px; line-height: 1.1; font-weight: 700; font-variant-numeric: tabular-nums; letter-spacing: -.01em; }
 .kpi-q span, .kpi-m span { margin-left: 6px; font-size: 17px; font-weight: 600; color: var(--c-ink-2); }
@@ -729,7 +728,8 @@ details.wacc > summary { list-style: none; cursor: pointer; display: flex; align
 .hrow .hr-q, .hrow .hr-m { font-size: 19px; font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .hrow .hr-q small, .hrow .hr-m small { font-size: 13px; font-weight: 600; color: var(--c-ink-2); }
 .hrow .hr-none { font-size: 15px; font-weight: 600; color: var(--c-ink-2); }
-.hrow .hr-sub { margin-top: 2px; font-size: 13px; color: var(--c-ink-2); }
+.hrow .hr-sub { margin-top: 2px; font-size: 13px; color: var(--c-ink-2); display: flex; flex-wrap: wrap; gap: 0 12px; }
+.mbox-sub, .ss-sub { display: flex !important; flex-wrap: wrap; gap: 0 12px; }
 .hrow .hr-date { margin-bottom: 6px; font-size: 13px; color: var(--c-ink-2); }
 .hrow .hr-ico { align-self: center; display: inline-flex; margin-right: -8px; }
 /* узкий экран: строка истории (тепло и вода) — главное на всю ширину, значки (погода, статус) компактно строкой ниже */
@@ -842,15 +842,16 @@ fieldset.field { border: 0; padding: 0; min-width: 0; }
 
 /* ---- світло (этап 3) ---- */
 .ucard-elec .ucard-top .ico { color: var(--c-elec); }
-.kpi.elec { border-left-color: var(--c-elec); }
 .efield { border: 1.5px solid var(--c-line); border-radius: 14px; padding: 12px 16px 4px; margin: 0 0 16px; background: var(--c-surface); min-width: 0; }
 .efield legend { font-weight: 600; padding: 0 6px; }
 .kind-sw .c-elec { color: var(--c-elec); }
 /* четыре вида (тепло, гаряча, холодна, світло) — на телефоне в две строки по два */
-@media (max-width: 560px) { .kind-sw.many { display: grid; grid-template-columns: 1fr 1fr; border-radius: 16px; } .kind-sw.many button { border-radius: 12px; } }
+/* 4–5 видів на вузькому: 2+2 або 3+2 (а не 2+2+1) */
+@media (max-width: 560px) { .kind-sw.many { display: grid; grid-template-columns: repeat(6, 1fr); border-radius: 16px; } .kind-sw.many button { border-radius: 12px; grid-column: span 2; }
+  .kind-sw.many button:first-child:nth-last-child(4), .kind-sw.many button:first-child:nth-last-child(4) ~ button,
+  .kind-sw.many button:nth-child(4):nth-last-child(2), .kind-sw.many button:nth-child(5):nth-last-child(1) { grid-column: span 3; } }
 /* ---- газ ---- */
 .ucard-gas .ucard-top .ico { color: var(--c-gas); }
-.kpi.gas { border-left-color: var(--c-gas); }
 .kind-sw .c-gas { color: var(--c-gas); }
 
 /* ---- 4 разных табло: тепло — зелёный ЖК, вода — круглый циферблат, свет — тёмный электронный экран, газ — жёлтая панель ---- */
@@ -905,7 +906,7 @@ fieldset.field { border: 0; padding: 0; min-width: 0; }
 .pacc-body .hp-edit { margin-top: 12px; }
 .hp-more { margin: 4px 0 0; }
 /* ---- блок счётчика на его странице: название + табло + данные + настройки одним «прибором» ---- */
-.mbox { --kc: var(--c-ink-2); border-top: 6px solid var(--kc); padding-top: 14px; }
+.mbox { --kc: var(--c-ink-2); }   /* без смуги згори: вид — значком у заголовку */
 .mbox-heat { --kc: var(--c-supply); } .mbox-hot { --kc: var(--c-supply); } .mbox-cold { --kc: var(--c-return); }
 .mbox-elec { --kc: var(--c-elec); } .mbox-gas { --kc: var(--c-gas); }
 .mbox-h { display: flex; align-items: center; gap: 10px; margin: 0 0 12px; }
@@ -1168,6 +1169,15 @@ summary:focus-visible { outline: 3px solid var(--c-info); outline-offset: 2px; b
 .prv-pick:hover { border-color: var(--c-accent, currentColor); }
 .prv-pick:focus-visible { outline: 3px solid var(--c-focus, #4c8dff); outline-offset: 2px; }
 .prov-alts { margin: 4px 0 12px; }
+
+/* «Таблиця всіх проміжків» — акордеон як «Куди передати» */
+details.tbl-acc[open] > .tbl-wrap { margin-top: 12px; }
+/* підпис лінії-норми на графіку — з «ореолом» кольору тла, щоб читався поверх стовпців */
+.chart .ref-l { paint-order: stroke; stroke: var(--c-surface); stroke-width: 4px; stroke-linejoin: round; font-weight: 600; }
+/* «Лише для себе»: галочка біля заголовка, пояснення — звичайним шрифтом */
+.own-chk { align-items: flex-start; }
+.own-chk input { margin-top: 3px; flex: none; }
+.own-chk .small { font-weight: 400; }
 
 </style>
 <style>.top { padding-top: max(12px, env(safe-area-inset-top)); }</style>
@@ -1628,7 +1638,7 @@ summary:focus-visible { outline: 3px solid var(--c-info); outline-offset: 2px; b
       w_b4: 'Історія, витрати й вартість за кожним лічильником. Показання можна вносити й «лише для себе» — без передачі.',
       w_cta: 'Почати',
       w_fine: 'Без реєстрації. Дані зберігаються лише в цьому браузері.',
-      tg_wait_t: 'Входимо через Telegram…',
+      tg_wait_t: 'Входимо через Telegram…', s_example: 'Так виглядає цей екран на лічильнику',
       tg_wait: 'Завантажуємо ваші квартири й лічильники. Це кілька секунд.',
       tg_fail_t: 'Не вдалося увійти через Telegram',
       tg_fail_old: 'Вікно відкрите надто давно. Закрийте його й відкрийте ще раз з бота — кнопкою «Відкрити».',
@@ -1800,7 +1810,7 @@ summary:focus-visible { outline: 3px solid var(--c-info); outline-offset: 2px; b
       sv_mine_from: 'За показаннями з {a} по {b}.', sv_no_data: 'Коли в Історії будуть показання з різницею хоча б тиждень, тут з’являться ваші цифри: скільки тепла за місяць і скільки дасть мінус градус.',
       sv_tip: 'Порада', sv_all: 'Усі поради з економії →',
       sv_src: 'Джерела: ДБН (мін. 18 °C, у кутових 20 °C), Правила постачання теплової енергії (постанова КМУ № 830), пам’ятка ХТМ щодо квартирних лічильників, рекомендації Danfoss та енергоагенцій. Відсотки — орієнтовні.',
-      hi_used: '+{de} Гкал · ≈ {cost} грн · {days} дн.',
+      hi_used: '+{de} Гкал, ≈ {cost} грн за {days} дн.',
       hi_less: 'Енергія менша за попередні на {de} Гкал — перевірте дату або цифри',
       rec_gone: 'Цих показань уже немає (видалені).',
       rec_src_photo: 'з фото', rec_src_manual: 'введено вручну', rec_edited: 'виправлено',
@@ -1877,7 +1887,7 @@ summary:focus-visible { outline: 3px solid var(--c-info); outline-offset: 2px; b
       st_aria: "Статус: {s}. Змінити", st_sent: "Передано", st_sent_hot: "у Водоканал і ХТМ", st_sent_cold: "у Водоканал", st_sent_elec: "у Харківобленерго",
       st_sent_gas: "Нафтогаз / Газмережі", st_sent_heat: "у ХТМ (кабінет)", st_not: "Не передано", st_own: "Лише для себе", st_own_s: "для статистики — нікуди не передається",
       st_base_not: "Не передавали", bs_lead_s: "стартові зазвичай уже передані", st_done: "Позначено: {s}",
-      hs_title: "Сезон {s}", hs_cur: "поточний", hs_run: "триває", hs_period: "тепло за показаннями {a} – {b}", hs_month: "≈ {q} Гкал · ≈ {m} грн на місяць опалення",
+      hs_title: "Сезон {s}", hs_cur: "поточний", hs_run: "триває", hs_period: "тепло за показаннями {a} – {b}", hs_month: "на місяць опалення: ≈ {q} Гкал, ≈ {m} грн",
       hs_none: "ще немає двох показань — нема з чого рахувати", hs_noheat: "тепла не було",
       hs_hint: "Сезони система складає сама з ваших показань: проміжок — у сезон, на який припадає його середина (травневі показання закривають зиму, вересневі — відкривають нову). Гривні — з абонплатою й часткою ЗБП, як у платіжці.",
       sync_title: "Ваші дані на всіх пристроях",
@@ -2150,7 +2160,7 @@ summary:focus-visible { outline: 3px solid var(--c-info); outline-offset: 2px; b
       wst_lead: 'За вашими показаннями води. Місяць — за датою зняття: так рахують Водоканал і квитанція.',
       wst_empty: 'Потрібно хоча б двоє показань цього водоміра з різними датами.',
       wst_avg: 'м³ у середньому за місяць (останні {n} міс.)', wst_avg_uah: 'грн у середньому за місяць',
-      wst_last: 'за {m} — ≈ {uah} грн', wst_per30: '≈ {v} м³ у перерахунку на 30 днів',
+      wst_last: 'за {m}: ≈ {uah} грн', wst_per30: '≈ {v} м³ у перерахунку на 30 днів',
       wst_m3: 'Кубометри по місяцях', wst_m3_sub: 'Скільки набігло між показаннями; кілька записів за місяць складаються.',
       wst_uah: 'Вартість по місяцях', wst_th_month: 'Місяць',
       wst_tariff_cold: 'Тариф: водопостачання {supply} + водовідведення {drain} грн/м³.',
@@ -2240,12 +2250,12 @@ summary:focus-visible { outline: 3px solid var(--c-info); outline-offset: 2px; b
       hr_nogap: "Розхід не порахувати — перед цим лічильник знімали",
       hr_over_gap: "(без періоду ремонту)",
       hr_est: "оцінка за правилами",
-      kpi_season: "за опалювальний сезон {s} · з абонплатою, як у платіжці",
+      kpi_season: "за опалювальний сезон {s}, з абонплатою, як у платіжці",
       kpi_per_month: "≈ {g} {u} і {m} грн на місяць опалення",
       kpi_ok_share: "подача в нормі: {a} з {b} замірів",
       kpi_w_avg: "у середньому за місяць (останні {n} міс.)",
       kpi_w_last: "{m}: {v} м³ ≈ {uah} грн",
-      kpi_month_bill: "у середньому за місяць (30 днів) · з абонплатою, як у платіжці",
+      kpi_month_bill: "у середньому за місяць (30 днів), з абонплатою, як у платіжці",
       kpi_one_deg: "На 1 °C прохолодніше в квартирі — мінус {g} Гкал, це {uah} на місяць (≈ {y} грн за сезон).",
       kpi_w_ten: "Мінус 10 % води — це {m3} м³ і {uah} щомісяця (≈ {y} грн за рік).",
       ge_title: "Скільки це коштувало",
@@ -2452,7 +2462,7 @@ summary:focus-visible { outline: 3px solid var(--c-info); outline-offset: 2px; b
       ez_all: 'Показання', ez_day: 'День', ez_night: 'Ніч', ez_peak: 'Пік', ez_half: 'Напівпік', ez_night3: 'Ніч',
       ezt_day: 'день', ezt_night: 'ніч', ezt_peak: 'пік', ezt_half: 'н/пік',
       ez_n1: 'Однозонний', ez_n2: 'Двозонний: день і ніч', ez_n3: 'Тризонний: пік, напівпік, ніч',
-      en_title: 'Внести показання світла', en_lead_open: 'Зараз приймають: {a}–{b}. Лише цифри до коми.', en_lead_closed: 'Наступне приймання — {a}–{b}. Внести можна й зараз — передасте у вікно.',
+      en_title: 'Внести показання світла', en_lead_open: 'Зараз приймають: {a}–{b}.', en_lead_closed: 'Наступне приймання — {a}–{b}. Внести можна й зараз — передасте у вікно.',
       en_zones_2: 'Табло перемикається саме: день — T1 (1.8.1), ніч — T2 (1.8.2). Загальний (1.8.0) не потрібен.', en_zones_3: 'Табло перемикається саме: пік, напівпік, ніч — кожну зону окремо.',
       en_digits: 'Лише цифри до коми: 12345,6 → 12345.',
       ei_empty: 'Впишіть показання.', ei_bad: 'Лише цифри, наприклад 12345.', ei_fraction: 'Передається без десятих: {w}.', ei_less: 'Менше, ніж минулого разу ({prev}) — перевірте цифри й зону.',
@@ -2497,7 +2507,7 @@ summary:focus-visible { outline: 3px solid var(--c-info); outline-offset: 2px; b
       w_b4: 'История, расход и стоимость по каждому счётчику. Показания можно вносить и «только для себя» — без передачи.',
       w_cta: 'Начать',
       w_fine: 'Без регистрации. Данные хранятся только в этом браузере.',
-      tg_wait_t: 'Входим через Telegram…',
+      tg_wait_t: 'Входим через Telegram…', s_example: 'Так выглядит этот экран на счётчике',
       tg_wait: 'Загружаем ваши квартиры и счётчики. Это несколько секунд.',
       tg_fail_t: 'Не удалось войти через Telegram',
       tg_fail_old: 'Окно открыто слишком давно. Закройте его и откройте ещё раз из бота — кнопкой «Открыть».',
@@ -2669,7 +2679,7 @@ summary:focus-visible { outline: 3px solid var(--c-info); outline-offset: 2px; b
       sv_mine_from: 'По показаниям с {a} по {b}.', sv_no_data: 'Когда в Истории будут показания с разницей хотя бы неделю, здесь появятся ваши цифры: сколько тепла за месяц и сколько даст минус градус.',
       sv_tip: 'Совет', sv_all: 'Все советы по экономии →',
       sv_src: 'Источники: ДБН (мин. 18 °C, в угловых 20 °C), Правила поставки тепловой энергии (постановление КМУ № 830), памятка ХТМ по квартирным счётчикам, рекомендации Danfoss и энергоагентств. Проценты — ориентировочные.',
-      hi_used: '+{de} Гкал · ≈ {cost} грн · {days} дн.',
+      hi_used: '+{de} Гкал, ≈ {cost} грн за {days} дн.',
       hi_less: 'Энергия меньше предыдущей на {de} Гкал — проверьте дату или цифры',
       rec_gone: 'Этих показаний уже нет (удалены).',
       rec_src_photo: 'с фото', rec_src_manual: 'введено вручную', rec_edited: 'исправлено',
@@ -2746,7 +2756,7 @@ summary:focus-visible { outline: 3px solid var(--c-info); outline-offset: 2px; b
       st_aria: "Статус: {s}. Изменить", st_sent: "Передано", st_sent_hot: "в Водоканал и ХТМ", st_sent_cold: "в Водоканал", st_sent_elec: "в Харьковоблэнерго",
       st_sent_gas: "Нафтогаз / Газсети", st_sent_heat: "в ХТМ (кабинет)", st_not: "Не передано", st_own: "Только для себя", st_own_s: "для статистики — никуда не передаётся",
       st_base_not: "Не передавали", bs_lead_s: "стартовые обычно уже переданы", st_done: "Отмечено: {s}",
-      hs_title: "Сезон {s}", hs_cur: "текущий", hs_run: "идёт", hs_period: "тепло по показаниям {a} – {b}", hs_month: "≈ {q} Гкал · ≈ {m} грн в месяц отопления",
+      hs_title: "Сезон {s}", hs_cur: "текущий", hs_run: "идёт", hs_period: "тепло по показаниям {a} – {b}", hs_month: "в месяц отопления: ≈ {q} Гкал, ≈ {m} грн",
       hs_none: "ещё нет двух показаний — не из чего считать", hs_noheat: "тепла не было",
       hs_hint: "Сезоны система составляет сама из ваших показаний: промежуток — в сезон, на который приходится его середина (майские показания закрывают зиму, сентябрьские — открывают новую). Гривны — с абонплатой и долей ЗБП, как в платёжке.",
       sync_title: "Ваши данные на всех устройствах",
@@ -3019,7 +3029,7 @@ summary:focus-visible { outline: 3px solid var(--c-info); outline-offset: 2px; b
       wst_lead: 'По вашим показаниям воды. Месяц — по дате снятия: так считают Водоканал и квитанция.',
       wst_empty: 'Нужно хотя бы двое показаний этого водомера с разными датами.',
       wst_avg: 'м³ в среднем за месяц (последние {n} мес.)', wst_avg_uah: 'грн в среднем за месяц',
-      wst_last: 'за {m} — ≈ {uah} грн', wst_per30: '≈ {v} м³ в пересчёте на 30 дней',
+      wst_last: 'за {m}: ≈ {uah} грн', wst_per30: '≈ {v} м³ в пересчёте на 30 дней',
       wst_m3: 'Кубометры по месяцам', wst_m3_sub: 'Сколько набежало между показаниями; несколько записей за месяц складываются.',
       wst_uah: 'Стоимость по месяцам', wst_th_month: 'Месяц',
       wst_tariff_cold: 'Тариф: водоснабжение {supply} + водоотведение {drain} грн/м³.',
@@ -3109,12 +3119,12 @@ summary:focus-visible { outline: 3px solid var(--c-info); outline-offset: 2px; b
       hr_nogap: "Расход не посчитать — перед этим счётчик снимали",
       hr_over_gap: "(без периода ремонта)",
       hr_est: "оценка по правилам",
-      kpi_season: "за отопительный сезон {s} · с абонплатой, как в платёжке",
+      kpi_season: "за отопительный сезон {s}, с абонплатой, как в платёжке",
       kpi_per_month: "≈ {g} {u} и {m} грн в месяц отопления",
       kpi_ok_share: "подача в норме: {a} из {b} замеров",
       kpi_w_avg: "в среднем за месяц (последние {n} мес.)",
       kpi_w_last: "{m}: {v} м³ ≈ {uah} грн",
-      kpi_month_bill: "в среднем за месяц (30 дней) · с абонплатой, как в платёжке",
+      kpi_month_bill: "в среднем за месяц (30 дней), с абонплатой, как в платёжке",
       kpi_one_deg: "На 1 °C прохладнее в квартире — минус {g} Гкал, это {uah} в месяц (≈ {y} грн за сезон).",
       kpi_w_ten: "Минус 10 % воды — это {m3} м³ и {uah} ежемесячно (≈ {y} грн за год).",
       ge_title: "Сколько это стоило",
@@ -3321,7 +3331,7 @@ summary:focus-visible { outline: 3px solid var(--c-info); outline-offset: 2px; b
       ez_all: 'Показания', ez_day: 'День', ez_night: 'Ночь', ez_peak: 'Пик', ez_half: 'Полупик', ez_night3: 'Ночь',
       ezt_day: 'день', ezt_night: 'ночь', ezt_peak: 'пик', ezt_half: 'п/пик',
       ez_n1: 'Однозонный', ez_n2: 'Двухзонный: день и ночь', ez_n3: 'Трёхзонный: пик, полупик, ночь',
-      en_title: 'Внести показания света', en_lead_open: 'Сейчас принимают: {a}–{b}. Только цифры до запятой.', en_lead_closed: 'Следующий приём — {a}–{b}. Внести можно и сейчас — передадите в окно.',
+      en_title: 'Внести показания света', en_lead_open: 'Сейчас принимают: {a}–{b}.', en_lead_closed: 'Следующий приём — {a}–{b}. Внести можно и сейчас — передадите в окно.',
       en_zones_2: 'Табло переключается само: день — T1 (1.8.1), ночь — T2 (1.8.2). Общий (1.8.0) не нужен.', en_zones_3: 'Табло переключается само: пик, полупик, ночь — каждую зону отдельно.',
       en_digits: 'Только цифры до запятой: 12345,6 → 12345.',
       ei_empty: 'Впишите показания.', ei_bad: 'Только цифры, например 12345.', ei_fraction: 'Передаётся без десятых: {w}.', ei_less: 'Меньше, чем в прошлый раз ({prev}) — проверьте цифры и зону.',
@@ -5941,7 +5951,7 @@ summary:focus-visible { outline: 3px solid var(--c-info); outline-offset: 2px; b
   }
   function mbox(o) {
     return '<section class="panel mbox mbox-' + o.kind + '" data-key="' + o.key + '">' +
-      '<header class="mbox-h">' + ico(o.icon, 24, o.cls) + '<span class="mbox-t"><b>' + esc(o.name) + '</b>' + (o.sub ? '<span class="small muted">' + esc(o.sub) + '</span>' : '') + '</span></header>' +
+      '<header class="mbox-h">' + ico(o.icon, 24, o.cls) + '<span class="mbox-t"><b>' + esc(o.name) + '</b>' + (o.sub && subSpans(o.sub) ? '<span class="small muted mbox-sub">' + subSpans(o.sub) + '</span>' : '') + '</span></header>' +
       '<div class="mbox-disp">' + o.display + '</div>' +
       '<p class="lcd-cap meta-row"><span>' + esc(o.cap) + '</span>' + (o.fix || '') + '</p>' + (o.body || '') +
       (o.meta && o.meta.length ? '<ul class="mbox-meta">' + o.meta.map(function (x) { return '<li>' + x + '</li>'; }).join('') + '</ul>' : '') +
@@ -6239,7 +6249,7 @@ summary:focus-visible { outline: 3px solid var(--c-info); outline-offset: 2px; b
       else { sc = sentCap(wrecs().filter(function (x) { return hasVal(x, m.id); }), function (x) { return x.base ? baseSent(x) : wsentVk(x) && (kind === 'cold' || wsentHtm(x)); }); r = sc.rec; cap = sc.cap; }
       var fix = r && !r.gap && !r.base ? '<button class="linkbtn" data-act="wedit" data-id="' + r.id + '">' + esc(t('change')) + '</button>' : '';
       var ver = days === null ? '' : days < 0 ? '<span class="pill warn">' + esc(t('wm_ver_exp')) + '</span>' : days <= 60 ? '<span class="pill warn">' + esc(t('mv_soon', { n: days })) + '</span>' : esc(t('pl_ver', { d: R.toHtmDate(m.verifiedUntil) }));
-      return mbox({ key: 'wmeter-' + m.id, id: m.id, kind: kind, icon: 'drop', cls: kind === 'hot' ? 'c-hot' : 'c-cold', name: ms.length > 1 ? wname(m) : title, sub: [m.serial ? '№ ' + m.serial : '', ms.length > 1 ? '' : t('mb_water_sub')].filter(Boolean).join(' · '),
+      return mbox({ key: 'wmeter-' + m.id, id: m.id, kind: kind, icon: 'drop', cls: kind === 'hot' ? 'c-hot' : 'c-cold', name: ms.length > 1 ? wname(m) : title, sub: [m.serial ? '№ ' + m.serial : '', ms.length > 1 ? '' : t('mb_water_sub')],
         display: wdrum(r ? r.vals[m.id] : null, kind, 'hero'), cap: cap, fix: fix, body: sc && sc.note ? '<p class="small muted mb-newer">' + esc(sc.note) + '</p>' : '',
         meta: [ver, m.vkId ? esc(t('mb_vkid', { v: m.vkId })) : ''].filter(Boolean),
         set: wmeterFields(m) + (i0 === 0 ? priceBlock(kind) : '') + gapSetLink(m.id),
@@ -6481,7 +6491,7 @@ summary:focus-visible { outline: 3px solid var(--c-info); outline-offset: 2px; b
       tip: ['≈ ' + money(b.cost) + ' грн', per(b), b.m3 + ' м³'] }; }), { title: t('wst_uah'), dec: 0 });
     var tr = Wt.tariffAt(today(), wtar());
     var trTxt = kind === 'hot' ? t('wst_tariff_hot', { hot: money(tr.hot), drain: money(tr.drain) }) : t('wst_tariff_cold', { supply: money(tr.supply), drain: money(tr.drain) });
-    var table = '<details class="panel"><summary>' + esc(t('stt_table')) + '</summary><div class="tbl-wrap"><table class="tbl"><thead><tr><th>' + esc(t('wst_th_month')) + '</th><th>' + esc(t('stt_th_period')) + '</th><th>м³</th><th>грн</th></tr></thead><tbody>' +
+    var table = '<details class="panel wacc tbl-acc" data-key="stt-table"><summary><h2>' + esc(t('stt_table')) + '</h2>' + ico('chev', 20, 'pacc-chev') + '</summary><div class="tbl-wrap where-b"><table class="tbl"><thead><tr><th>' + esc(t('wst_th_month')) + '</th><th>' + esc(t('stt_th_period')) + '</th><th>м³</th><th>грн</th></tr></thead><tbody>' +
       mo.slice().reverse().map(function (b) { return '<tr><td>' + esc(ymLabel(b.ym)) + '</td><td>' + esc(R.toHtmDate(b.from) + ' – ' + R.toHtmDate(b.to)) + '</td><td class="num">' + b.m3 + '</td><td class="num">' + money(b.cost) + '</td></tr>'; }).join('') + '</tbody></table></div></details>';
     var panel = function (title, sub, chart) { return '<section class="panel chart-panel"><h2>' + esc(title) + '</h2><p class="small muted">' + esc(sub) + '</p>' + chart + '</section>'; };
     return { screen: 'S15', route: 'stats', html: head + '<p class="muted">' + esc(t('wst_lead')) + '</p>' + tiles + gapNote(gaps().filter(function (g) { return wmeters(kind, true).some(function (m) { return m.id === g.what; }); })) + panel(t('wst_m3'), t('wst_m3_sub'), c1) + panel(t('wst_uah'), trTxt, c2) + table + '<p class="small muted">' + esc(t('wst_method')) + '</p>' };
@@ -6792,7 +6802,7 @@ summary:focus-visible { outline: 3px solid var(--c-info); outline-offset: 2px; b
     var left = ms.map(function (m, i) {
       var sc = sentCap(mrecs(m.id), function (x) { return x.base ? baseSent(x) : ssent(k, x); }), r = sc.rec, cap = sc.cap;
       var fix = r && !r.base ? '<button class="linkbtn" data-act="eedit" data-id="' + r.id + '">' + esc(t('change')) + '</button>' : '';
-      return mbox({ key: 'emeter-' + m.id, id: m.id, kind: k, icon: SK[k].icon, cls: SK[k].cls, name: ms.length > 1 ? ename(m) : t(KINDS[k].t), sub: [m.serial ? '№ ' + m.serial : '', ezonesTxt(m)].filter(Boolean).join(' · '),
+      return mbox({ key: 'emeter-' + m.id, id: m.id, kind: k, icon: SK[k].icon, cls: SK[k].cls, name: ms.length > 1 ? ename(m) : t(KINDS[k].t), sub: [m.serial ? '№ ' + m.serial : '', ezonesTxt(m)],
         display: edisplay(m, r, 'hero'), cap: cap, fix: fix, body: sc.note ? '<p class="small muted mb-newer">' + esc(sc.note) + '</p>' : '',
         meta: m.account ? [esc(tk(k, 'ed_acc', { a: m.account }))] : [],
         set: smeterFields(k, m) + (i === 0 ? priceBlock(k) + sheatRow(k) : ''),
@@ -7094,7 +7104,7 @@ summary:focus-visible { outline: 3px solid var(--c-info); outline-offset: 2px; b
       chips: [chip(tk(k, 'kpi_e_last', { m: monthLabel(sm.last.ym), v: sm.last.kwh, uah: money0(sm.last.cost) }), 'clock')].concat(two && allKwh ? [chip(t('kpi_e_night', { p: Math.round(nightKwh / allKwh * 100) }), 'moon')] : []) });
     var c1 = barChart(mo.map(function (b) { return { x: ymLabel(b.ym), v: b.kwh, top: String(b.kwh), color: k === 'gas' ? CH.gas : CH.elec, tip: [b.kwh + ' ' + u, per(b), '≈ ' + money(b.cost) + ' грн'] }; }), { title: tk(k, 'est_kwh'), dec: 0 });
     var c2 = barChart(mo.map(function (b) { return { x: ymLabel(b.ym), v: Math.round(b.cost), top: String(Math.round(b.cost)), color: CH.barSoft, tip: ['≈ ' + money(b.cost) + ' грн', per(b), b.kwh + ' ' + u] }; }), { title: t('wst_uah'), dec: 0 });
-    var table = '<details class="panel"><summary>' + esc(t('stt_table')) + '</summary><div class="tbl-wrap"><table class="tbl"><thead><tr><th>' + esc(t('wst_th_month')) + '</th><th>' + esc(t('stt_th_period')) + '</th><th>' + u + '</th><th>грн</th></tr></thead><tbody>' +
+    var table = '<details class="panel wacc tbl-acc" data-key="stt-table"><summary><h2>' + esc(t('stt_table')) + '</h2>' + ico('chev', 20, 'pacc-chev') + '</summary><div class="tbl-wrap where-b"><table class="tbl"><thead><tr><th>' + esc(t('wst_th_month')) + '</th><th>' + esc(t('stt_th_period')) + '</th><th>' + u + '</th><th>грн</th></tr></thead><tbody>' +
       mo.slice().reverse().map(function (b) { return '<tr><td>' + esc(ymLabel(b.ym)) + '</td><td>' + esc(R.toHtmDate(b.from) + ' – ' + R.toHtmDate(b.to)) + '</td><td class="num">' + b.kwh + '</td><td class="num">' + money(b.cost) + '</td></tr>'; }).join('') + '</tbody></table></div></details>';
     var panel = function (title, sub, chart) { return '<section class="panel chart-panel"><h2>' + esc(title) + '</h2><p class="small muted">' + esc(sub) + '</p>' + chart + '</section>'; };
     var price = k === 'gas' ? (sopts('gas').price || Gs.priceAt(today())) : El.priceAt(today());
@@ -7118,7 +7128,7 @@ summary:focus-visible { outline: 3px solid var(--c-info); outline-offset: 2px; b
 
   // ---------- ввод показаний воды ----------
   /** Кнопка «Скасувати» внизу ввода: бросить всё введённое этим разом и выйти. */
-  function cancelLink(what) { return '<p class="wiz-cancel"><button type="button" class="linkbtn" data-act="wiz-cancel" data-what="' + what + '" data-key="wiz-cancel">' + esc(t('wz_cancel')) + '</button></p>'; }
+  function cancelLink(what) { return '<p class="wiz-cancel"><button type="button" class="btn ter sm" data-act="wiz-cancel" data-what="' + what + '" data-key="wiz-cancel">' + esc(t('wz_cancel')) + '</button></p>'; }
   function wnFresh(kind) { return { kind: kind || 'hot', date: '', vals: {}, photos: [], src: {}, auto: {}, unused: [], busy: false }; }
   var WN = wnFresh('hot');
   V.wnew = function () {
@@ -7596,7 +7606,7 @@ summary:focus-visible { outline: 3px solid var(--c-info); outline-offset: 2px; b
     // экран с последними принятыми — главный визуальный якорь
     var bs = lastAccepted(), newer = RD().filter(function (x) { return x.htm && x.htm.date && (!bs || x.htm.date > bs.date); }).sort(function (a, b) { return a.htm.date < b.htm.date ? -1 : 1; }).slice(-1)[0];
     var left = mbox({ key: bs ? 'home-last' : 'home-last-none', id: 'heat', kind: 'heat', icon: 'thermo', cls: 'c-heat', name: modelName(m),
-      sub: [S.meter && S.meter.serial ? '№ ' + S.meter.serial : '', t('uc_heat') + (energyUnit() !== 'Gcal' ? ' · ' + unitLbl(energyUnit()) : '')].filter(Boolean).join(' · '),
+      sub: [S.meter && S.meter.serial ? '№ ' + S.meter.serial : '', t('uc_heat'), energyUnit() !== 'Gcal' ? unitLbl(energyUnit()) : ''],
       display: lcd([{ text: bs ? R.formatForHtm('energy', bs.energy) : '------', tag: 'Gcal', label: bs ? R.formatForHtm('energy', bs.energy) + ' Гкал' : '—' }], 'hero'),
       cap: bs ? t('h_last_d', { d: fmtDate(bs.date, true) }) : t('h_last_none'), fix: bs ? '<a href="' + (bs.src === 'rec' ? '#rec-' + esc(bs.id) : '#baseline') + '">' + esc(t('change')) + '</a>' : '',
       body: (newer ? '<p class="small muted mb-newer">' + esc(t(newer.own ? 'mb_newer_own' : 'mb_newer_heat', { d: fmtDate(newer.htm.date, true), s: t('status_' + newer.status).toLowerCase() })) + '</p>' : '') +
@@ -7777,6 +7787,8 @@ summary:focus-visible { outline: 3px solid var(--c-info); outline-offset: 2px; b
     var n = (list || []).filter(function (b) { return b && b.id; }).length; if (!n) return '';
     return '<span class="ph-n" title="' + esc(t('bl_n', { n: n })) + '">' + ico('bill', 16) + '<span class="num">' + n + '</span></span>';
   }
+  /** Підпис з кількох шматків: кожен — окремим span, між ними проміжок (CSS gap), без «·» і «—». */
+  function subSpans(a) { return (Array.isArray(a) ? a : [a]).filter(Boolean).map(function (x) { return '<span>' + esc(x) + '</span>'; }).join(''); }
   function histRow(o) {
     var hasQ = o.q !== null && o.q !== undefined, hasM = o.money !== null && o.money !== undefined;
     var main = '<div class="hr-main">' + (o.lead || '') + (hasQ || hasM
@@ -7786,7 +7798,7 @@ summary:focus-visible { outline: 3px solid var(--c-info); outline-offset: 2px; b
     // Есть статус (o.st) — чипс рядом со ссылкой (на телефоне — строкой ниже): своя кнопка, выбор «передано / не передано / для себе»
     return '<li class="' + (o.st ? 'hli' : '') + (o.cls ? ' ' + o.cls : '') + '" data-key="' + esc(o.key) + '"><a class="rowlink hrow" href="' + esc(o.href) + '"><div class="grow">' +
       (o.date ? '<div class="hr-date">' + esc(o.date) + '</div>' : '') + main +
-      '<div class="hr-sub">' + o.sub.filter(Boolean).map(esc).join(' · ') + '</div></div>' + (o.right || '') + '</a>' + (o.st || '') + '</li>';
+      '<div class="hr-sub">' + subSpans(o.sub) + '</div></div>' + (o.right || '') + '</a>' + (o.st || '') + '</li>';
   }
   /** Чипс статуса в истории — кнопка: нажал — меню «Передано · Не передано · Лише для себе» прямо под ним.
    *  src: w (вода) | m (світло, газ) | h (тепло); k — вид (hot/cold/elec/gas/heat); cur: sent | not | own; label — своя надпись
@@ -7949,7 +7961,7 @@ summary:focus-visible { outline: 3px solid var(--c-info); outline-offset: 2px; b
         if (k === 'energy' && energyUnit() !== 'Gcal') tag = energyUnit();
         return { id: 'lcd-' + k, text: typed ? lcdText(k, typed) : sampleText, tag: tag, corner: !!s.lcd.corner, sample: !typed };
       });
-      left = press + lcd(lines, 'step-lcd') + '<p class="lcd-cap" id="lcd-cap">' + esc(Object.keys(S.draft.values).some(function (k) { return s.fields.indexOf(k) >= 0 && S.draft.values[k]; }) ? t('s_on_screen') : (S.lang === 'ru' ? 'Пример — так выглядит экран' : 'Приклад — так виглядає екран')) + '</p>' +
+      left = press + lcd(lines, 'step-lcd') + '<p class="lcd-cap" id="lcd-cap">' + esc(Object.keys(S.draft.values).some(function (k) { return s.fields.indexOf(k) >= 0 && S.draft.values[k]; }) ? t('s_on_screen') : t('s_example')) + '</p>' +
         '<p class="hint">' + esc(L(s.hint)) + '</p>' +
         (m && m.sleepMin ? '<p class="sleep">' + ico('moon', 18) + '<span>' + esc(t('s_sleep', { m: m.sleepMin })) + '</span></p>' : '');
       right = '<h1>' + esc(title) + '</h1>' + s.fields.map(function (k) { return k === 'errCode' ? errCodeField() : numField(k, prev); }).join('');
@@ -8120,12 +8132,12 @@ summary:focus-visible { outline: 3px solid var(--c-info); outline-offset: 2px; b
     };
     return keys.map(function (k, i) {
       var s = sumOf(groups[k]), lbl = k + '/' + String(k + 1).slice(2), cur = k === TS.seasonOf(td);
-      var q = s.gcal > 0 ? '<span class="ss-q">' + (s.est ? '≈ ' : '') + '<b>' + esc(fmtN(s.gcal, 3)) + '</b> Гкал</span><span class="ss-dot" aria-hidden="true">·</span><span class="ss-m">≈ <b>' + esc(money0(s.cost)) + '</b> грн</span>'
+      var q = s.gcal > 0 ? '<span class="ss-q">' + (s.est ? '≈ ' : '') + '<b>' + esc(fmtN(s.gcal, 3)) + '</b> Гкал</span><span class="ss-m">≈ <b>' + esc(money0(s.cost)) + '</b> грн</span>'
         : '<span class="ss-none">' + esc(t(s.n ? 'hs_noheat' : 'hs_none')) + '</span>';
-      var sub = s.from ? [t('hs_period', { a: fmtDate(s.from, true), b: fmtDate(s.to, true) }), s.perMonth ? t('hs_month', { q: fmtN(s.perMonth, 2), m: money0(costOf(s.perMonth, 30).total) }) : ''].filter(Boolean).join(' · ') : '';
+      var sub = s.from ? [t('hs_period', { a: fmtDate(s.from, true), b: fmtDate(s.to, true) }), s.perMonth ? t('hs_month', { q: fmtN(s.perMonth, 2), m: money0(costOf(s.perMonth, 30).total) }) : ''] : null;
       return '<details class="season" data-key="season-' + k + '"' + (i === 0 || cur ? ' open' : '') + '><summary class="ss-head">' +
         '<span class="ss-top"><span class="ss-t">' + esc(t('hs_title', { s: lbl })) + '</span>' + (cur ? '<span class="ss-tag' + (run ? ' on' : '') + '">' + esc(t(run ? 'hs_run' : 'hs_cur')) + '</span>' : '') + '</span>' +
-        '<span class="ss-sum">' + q + '</span>' + (sub ? '<span class="ss-sub">' + esc(sub) + '</span>' : '') + ico('chev', 18, 'ss-dd') + '</summary>' + readingList(groups[k]) + '</details>';
+        '<span class="ss-sum">' + q + '</span>' + (sub ? '<span class="ss-sub">' + subSpans(sub) + '</span>' : '') + ico('chev', 18, 'ss-dd') + '</summary>' + readingList(groups[k]) + '</details>';
     }).join('') + '<p class="small muted" data-key="hs-hint">' + esc(t('hs_hint')) + '</p>';
   }
 
@@ -8198,16 +8210,18 @@ summary:focus-visible { outline: 3px solid var(--c-info); outline-offset: 2px; b
     var g = '';
     var nt = nTicks(max), stp = max / nt, dec = o.dec !== undefined ? (stp < 1 ? (stp < 0.1 ? 2 : 1) : (Math.abs(stp - Math.round(stp)) > 1e-9 ? 1 : 0)) : 1;
     for (var k = 0; k <= nt; k++) { var tv = max * k / nt, yy = y(tv); g += '<line x1="' + L + '" x2="' + (W - R) + '" y1="' + yy + '" y2="' + yy + '" stroke="' + CH.grid + '"/><text x="' + (L - 6) + '" y="' + (yy + 4) + '" text-anchor="end" class="ax">' + esc(fmtN(tv, dec)) + '</text>'; }
+    // підписи над стовпцями — лише якщо вміщаються в слот (інакше «100%0%» злипаються); значення є в підказці
+    var topW = Math.max.apply(null, items.map(function (x) { return String(x.top || '').length; }).concat([0])) * 7 + 6, showTop = topW <= slot;
     var bars = items.map(function (it, i) {
       var cx = L + slot * (i + 0.5), x0 = cx - bw / 2, yt = y(it.v || 0), yb = T + ih, h = Math.max(0, yb - yt), r = Math.min(4, h);
       var path = h > 0 ? 'M' + x0 + ',' + yb + 'V' + (yt + r) + 'Q' + x0 + ',' + yt + ' ' + (x0 + r) + ',' + yt + 'H' + (x0 + bw - r) + 'Q' + (x0 + bw) + ',' + yt + ' ' + (x0 + bw) + ',' + (yt + r) + 'V' + yb + 'Z' : '';
       return '<g class="mk"' + tipAttr(it.tip) + '><rect x="' + (cx - slot / 2) + '" y="' + T + '" width="' + slot + '" height="' + (ih + B) + '" fill="transparent"/>' +
         (path ? '<path d="' + path + '" fill="' + (it.color || (it.soft ? CH.barSoft : CH.bar)) + '"/>' : '') +
-        (it.top ? '<text x="' + cx + '" y="' + (yt - 5) + '" text-anchor="middle" class="vl">' + esc(it.top) + '</text>' : '') +
+        (it.top && showTop ? '<text x="' + cx + '" y="' + Math.max(T + 10, yt - 5) + '" text-anchor="middle" class="vl">' + esc(it.top) + '</text>' : '') +
         (i % Math.ceil(52 / slot) === 0 ? '<text x="' + cx + '" y="' + (T + ih + 17) + '" text-anchor="middle" class="ax">' + esc(it.x) + '</text>' : '') +
         (it.x2 && i % Math.ceil(40 / slot) === 0 ? '<text x="' + cx + '" y="' + (T + ih + 31) + '" text-anchor="middle" class="ax x2">' + esc(it.x2) + '</text>' : '') + '</g>';
     }).join('');
-    var ref = o.ref ? '<line x1="' + L + '" x2="' + (W - R) + '" y1="' + y(o.ref.v) + '" y2="' + y(o.ref.v) + '" stroke="' + CH.ink2 + '" stroke-dasharray="4 4"/><text x="' + (W - R) + '" y="' + (y(o.ref.v) - 5) + '" text-anchor="end" class="ax">' + esc(o.ref.label) + '</text>' : '';
+    var ref = o.ref ? '<line x1="' + L + '" x2="' + (W - R) + '" y1="' + y(o.ref.v) + '" y2="' + y(o.ref.v) + '" stroke="' + CH.ink2 + '" stroke-dasharray="4 4"/><text x="' + (W - R) + '" y="' + (y(o.ref.v) - 5) + '" text-anchor="end" class="ax ref-l">' + esc(o.ref.label) + '</text>' : '';
     return '<svg class="chart" viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="' + esc(o.title) + '">' + g + '<line x1="' + L + '" x2="' + (W - R) + '" y1="' + (T + ih) + '" y2="' + (T + ih) + '" stroke="' + CH.ink2 + '"/>' + bars + ref + '</svg>';
   }
   var ST_ICO = { ok: '✓', low: '↓', bad: '⚠', none: '✕', off: '–' };
@@ -8285,7 +8299,7 @@ summary:focus-visible { outline: 3px solid var(--c-info); outline-offset: 2px; b
     var legend = '<div class="legend small"><span><i class="dot" style="background:' + CH.ink + '"></i>' + esc(t('stl_fact')) + '</span><span><i class="ring"></i>' + esc(t('stl_norm')) + '</span>' +
       ['ok', 'low', 'bad', 'none'].map(function (k) { return '<span><i class="dot" style="background:' + CH[k] + '"></i>' + ST_ICO[k] + ' ' + esc(t('stt_' + k)) + '</span>'; }).join('') + '</div>';
     var panel = function (title, sub, chart, extra) { return chart ? '<section class="panel chart-panel"><h2>' + esc(title) + '</h2><p class="small muted">' + esc(sub) + '</p>' + chart + (extra || '') + '</section>' : ''; };
-    var table = '<details class="panel"><summary>' + esc(t('stt_table')) + '</summary><div class="tbl-wrap"><table class="tbl"><thead><tr><th>' + esc(t('stt_th_period')) + '</th><th>Гкал</th><th>' + esc(t('stt_g30')) + '</th><th>грн</th><th>°C ' + esc(t('stt_th_out')) + '</th><th>' + esc(t('stt_th_hdd')) + '</th><th>ΔT</th><th>м³/год</th><th>' + esc(t('stt_th_share')) + '</th></tr></thead><tbody>' +
+    var table = '<details class="panel wacc tbl-acc" data-key="stt-table"><summary><h2>' + esc(t('stt_table')) + '</h2>' + ico('chev', 20, 'pacc-chev') + '</summary><div class="tbl-wrap where-b"><table class="tbl"><thead><tr><th>' + esc(t('stt_th_period')) + '</th><th>Гкал</th><th>' + esc(t('stt_g30')) + '</th><th>грн</th><th>°C ' + esc(t('stt_th_out')) + '</th><th>' + esc(t('stt_th_hdd')) + '</th><th>ΔT</th><th>м³/год</th><th>' + esc(t('stt_th_share')) + '</th></tr></thead><tbody>' +
       ivs.map(function (it) { return '<tr><td>' + esc(R.toHtmDate(it.from) + ' – ' + R.toHtmDate(it.to)) + '</td><td class="num">' + fmtN(it.dE, 3) + '</td><td class="num">' + fmtN(it.month, 3) + '</td><td class="num">' + money(it.cost) + '</td><td class="num">' + (it.tOut !== undefined ? fmtN(it.tOut, 1) : '—') + '</td><td class="num">' + (it.perHdd != null ? fmtN(it.perHdd, 2) : '—') + '</td><td class="num">' + (it.dT != null ? fmtN(it.dT, 1) : '—') + '</td><td class="num">' + (it.flow != null ? fmtN(it.flow, 3) : '—') + '</td><td class="num">' + (it.share != null ? Math.round(it.share * 100) + '%' : '—') + '</td></tr>'; }).join('') +
       '</tbody></table></div></details>';
     return { screen: 'S15', route: 'stats', html: '<h1>' + esc(t('stt_title')) + '</h1>' + kindSwitch() + '<p class="muted">' + esc(t('stt_lead')) + '</p>' + wxNote + tiles + gapNote(gaps('heat')) +

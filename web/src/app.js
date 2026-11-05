@@ -943,7 +943,7 @@
   }
   function mbox(o) {
     return '<section class="panel mbox mbox-' + o.kind + '" data-key="' + o.key + '">' +
-      '<header class="mbox-h">' + ico(o.icon, 24, o.cls) + '<span class="mbox-t"><b>' + esc(o.name) + '</b>' + (o.sub ? '<span class="small muted">' + esc(o.sub) + '</span>' : '') + '</span></header>' +
+      '<header class="mbox-h">' + ico(o.icon, 24, o.cls) + '<span class="mbox-t"><b>' + esc(o.name) + '</b>' + (o.sub && subSpans(o.sub) ? '<span class="small muted mbox-sub">' + subSpans(o.sub) + '</span>' : '') + '</span></header>' +
       '<div class="mbox-disp">' + o.display + '</div>' +
       '<p class="lcd-cap meta-row"><span>' + esc(o.cap) + '</span>' + (o.fix || '') + '</p>' + (o.body || '') +
       (o.meta && o.meta.length ? '<ul class="mbox-meta">' + o.meta.map(function (x) { return '<li>' + x + '</li>'; }).join('') + '</ul>' : '') +
@@ -1241,7 +1241,7 @@
       else { sc = sentCap(wrecs().filter(function (x) { return hasVal(x, m.id); }), function (x) { return x.base ? baseSent(x) : wsentVk(x) && (kind === 'cold' || wsentHtm(x)); }); r = sc.rec; cap = sc.cap; }
       var fix = r && !r.gap && !r.base ? '<button class="linkbtn" data-act="wedit" data-id="' + r.id + '">' + esc(t('change')) + '</button>' : '';
       var ver = days === null ? '' : days < 0 ? '<span class="pill warn">' + esc(t('wm_ver_exp')) + '</span>' : days <= 60 ? '<span class="pill warn">' + esc(t('mv_soon', { n: days })) + '</span>' : esc(t('pl_ver', { d: R.toHtmDate(m.verifiedUntil) }));
-      return mbox({ key: 'wmeter-' + m.id, id: m.id, kind: kind, icon: 'drop', cls: kind === 'hot' ? 'c-hot' : 'c-cold', name: ms.length > 1 ? wname(m) : title, sub: [m.serial ? '№ ' + m.serial : '', ms.length > 1 ? '' : t('mb_water_sub')].filter(Boolean).join(' · '),
+      return mbox({ key: 'wmeter-' + m.id, id: m.id, kind: kind, icon: 'drop', cls: kind === 'hot' ? 'c-hot' : 'c-cold', name: ms.length > 1 ? wname(m) : title, sub: [m.serial ? '№ ' + m.serial : '', ms.length > 1 ? '' : t('mb_water_sub')],
         display: wdrum(r ? r.vals[m.id] : null, kind, 'hero'), cap: cap, fix: fix, body: sc && sc.note ? '<p class="small muted mb-newer">' + esc(sc.note) + '</p>' : '',
         meta: [ver, m.vkId ? esc(t('mb_vkid', { v: m.vkId })) : ''].filter(Boolean),
         set: wmeterFields(m) + (i0 === 0 ? priceBlock(kind) : '') + gapSetLink(m.id),
@@ -1483,7 +1483,7 @@
       tip: ['≈ ' + money(b.cost) + ' грн', per(b), b.m3 + ' м³'] }; }), { title: t('wst_uah'), dec: 0 });
     var tr = Wt.tariffAt(today(), wtar());
     var trTxt = kind === 'hot' ? t('wst_tariff_hot', { hot: money(tr.hot), drain: money(tr.drain) }) : t('wst_tariff_cold', { supply: money(tr.supply), drain: money(tr.drain) });
-    var table = '<details class="panel"><summary>' + esc(t('stt_table')) + '</summary><div class="tbl-wrap"><table class="tbl"><thead><tr><th>' + esc(t('wst_th_month')) + '</th><th>' + esc(t('stt_th_period')) + '</th><th>м³</th><th>грн</th></tr></thead><tbody>' +
+    var table = '<details class="panel wacc tbl-acc" data-key="stt-table"><summary><h2>' + esc(t('stt_table')) + '</h2>' + ico('chev', 20, 'pacc-chev') + '</summary><div class="tbl-wrap where-b"><table class="tbl"><thead><tr><th>' + esc(t('wst_th_month')) + '</th><th>' + esc(t('stt_th_period')) + '</th><th>м³</th><th>грн</th></tr></thead><tbody>' +
       mo.slice().reverse().map(function (b) { return '<tr><td>' + esc(ymLabel(b.ym)) + '</td><td>' + esc(R.toHtmDate(b.from) + ' – ' + R.toHtmDate(b.to)) + '</td><td class="num">' + b.m3 + '</td><td class="num">' + money(b.cost) + '</td></tr>'; }).join('') + '</tbody></table></div></details>';
     var panel = function (title, sub, chart) { return '<section class="panel chart-panel"><h2>' + esc(title) + '</h2><p class="small muted">' + esc(sub) + '</p>' + chart + '</section>'; };
     return { screen: 'S15', route: 'stats', html: head + '<p class="muted">' + esc(t('wst_lead')) + '</p>' + tiles + gapNote(gaps().filter(function (g) { return wmeters(kind, true).some(function (m) { return m.id === g.what; }); })) + panel(t('wst_m3'), t('wst_m3_sub'), c1) + panel(t('wst_uah'), trTxt, c2) + table + '<p class="small muted">' + esc(t('wst_method')) + '</p>' };
@@ -1794,7 +1794,7 @@
     var left = ms.map(function (m, i) {
       var sc = sentCap(mrecs(m.id), function (x) { return x.base ? baseSent(x) : ssent(k, x); }), r = sc.rec, cap = sc.cap;
       var fix = r && !r.base ? '<button class="linkbtn" data-act="eedit" data-id="' + r.id + '">' + esc(t('change')) + '</button>' : '';
-      return mbox({ key: 'emeter-' + m.id, id: m.id, kind: k, icon: SK[k].icon, cls: SK[k].cls, name: ms.length > 1 ? ename(m) : t(KINDS[k].t), sub: [m.serial ? '№ ' + m.serial : '', ezonesTxt(m)].filter(Boolean).join(' · '),
+      return mbox({ key: 'emeter-' + m.id, id: m.id, kind: k, icon: SK[k].icon, cls: SK[k].cls, name: ms.length > 1 ? ename(m) : t(KINDS[k].t), sub: [m.serial ? '№ ' + m.serial : '', ezonesTxt(m)],
         display: edisplay(m, r, 'hero'), cap: cap, fix: fix, body: sc.note ? '<p class="small muted mb-newer">' + esc(sc.note) + '</p>' : '',
         meta: m.account ? [esc(tk(k, 'ed_acc', { a: m.account }))] : [],
         set: smeterFields(k, m) + (i === 0 ? priceBlock(k) + sheatRow(k) : ''),
@@ -2096,7 +2096,7 @@
       chips: [chip(tk(k, 'kpi_e_last', { m: monthLabel(sm.last.ym), v: sm.last.kwh, uah: money0(sm.last.cost) }), 'clock')].concat(two && allKwh ? [chip(t('kpi_e_night', { p: Math.round(nightKwh / allKwh * 100) }), 'moon')] : []) });
     var c1 = barChart(mo.map(function (b) { return { x: ymLabel(b.ym), v: b.kwh, top: String(b.kwh), color: k === 'gas' ? CH.gas : CH.elec, tip: [b.kwh + ' ' + u, per(b), '≈ ' + money(b.cost) + ' грн'] }; }), { title: tk(k, 'est_kwh'), dec: 0 });
     var c2 = barChart(mo.map(function (b) { return { x: ymLabel(b.ym), v: Math.round(b.cost), top: String(Math.round(b.cost)), color: CH.barSoft, tip: ['≈ ' + money(b.cost) + ' грн', per(b), b.kwh + ' ' + u] }; }), { title: t('wst_uah'), dec: 0 });
-    var table = '<details class="panel"><summary>' + esc(t('stt_table')) + '</summary><div class="tbl-wrap"><table class="tbl"><thead><tr><th>' + esc(t('wst_th_month')) + '</th><th>' + esc(t('stt_th_period')) + '</th><th>' + u + '</th><th>грн</th></tr></thead><tbody>' +
+    var table = '<details class="panel wacc tbl-acc" data-key="stt-table"><summary><h2>' + esc(t('stt_table')) + '</h2>' + ico('chev', 20, 'pacc-chev') + '</summary><div class="tbl-wrap where-b"><table class="tbl"><thead><tr><th>' + esc(t('wst_th_month')) + '</th><th>' + esc(t('stt_th_period')) + '</th><th>' + u + '</th><th>грн</th></tr></thead><tbody>' +
       mo.slice().reverse().map(function (b) { return '<tr><td>' + esc(ymLabel(b.ym)) + '</td><td>' + esc(R.toHtmDate(b.from) + ' – ' + R.toHtmDate(b.to)) + '</td><td class="num">' + b.kwh + '</td><td class="num">' + money(b.cost) + '</td></tr>'; }).join('') + '</tbody></table></div></details>';
     var panel = function (title, sub, chart) { return '<section class="panel chart-panel"><h2>' + esc(title) + '</h2><p class="small muted">' + esc(sub) + '</p>' + chart + '</section>'; };
     var price = k === 'gas' ? (sopts('gas').price || Gs.priceAt(today())) : El.priceAt(today());
@@ -2120,7 +2120,7 @@
 
   // ---------- ввод показаний воды ----------
   /** Кнопка «Скасувати» внизу ввода: бросить всё введённое этим разом и выйти. */
-  function cancelLink(what) { return '<p class="wiz-cancel"><button type="button" class="linkbtn" data-act="wiz-cancel" data-what="' + what + '" data-key="wiz-cancel">' + esc(t('wz_cancel')) + '</button></p>'; }
+  function cancelLink(what) { return '<p class="wiz-cancel"><button type="button" class="btn ter sm" data-act="wiz-cancel" data-what="' + what + '" data-key="wiz-cancel">' + esc(t('wz_cancel')) + '</button></p>'; }
   function wnFresh(kind) { return { kind: kind || 'hot', date: '', vals: {}, photos: [], src: {}, auto: {}, unused: [], busy: false }; }
   var WN = wnFresh('hot');
   V.wnew = function () {
@@ -2598,7 +2598,7 @@
     // экран с последними принятыми — главный визуальный якорь
     var bs = lastAccepted(), newer = RD().filter(function (x) { return x.htm && x.htm.date && (!bs || x.htm.date > bs.date); }).sort(function (a, b) { return a.htm.date < b.htm.date ? -1 : 1; }).slice(-1)[0];
     var left = mbox({ key: bs ? 'home-last' : 'home-last-none', id: 'heat', kind: 'heat', icon: 'thermo', cls: 'c-heat', name: modelName(m),
-      sub: [S.meter && S.meter.serial ? '№ ' + S.meter.serial : '', t('uc_heat') + (energyUnit() !== 'Gcal' ? ' · ' + unitLbl(energyUnit()) : '')].filter(Boolean).join(' · '),
+      sub: [S.meter && S.meter.serial ? '№ ' + S.meter.serial : '', t('uc_heat'), energyUnit() !== 'Gcal' ? unitLbl(energyUnit()) : ''],
       display: lcd([{ text: bs ? R.formatForHtm('energy', bs.energy) : '------', tag: 'Gcal', label: bs ? R.formatForHtm('energy', bs.energy) + ' Гкал' : '—' }], 'hero'),
       cap: bs ? t('h_last_d', { d: fmtDate(bs.date, true) }) : t('h_last_none'), fix: bs ? '<a href="' + (bs.src === 'rec' ? '#rec-' + esc(bs.id) : '#baseline') + '">' + esc(t('change')) + '</a>' : '',
       body: (newer ? '<p class="small muted mb-newer">' + esc(t(newer.own ? 'mb_newer_own' : 'mb_newer_heat', { d: fmtDate(newer.htm.date, true), s: t('status_' + newer.status).toLowerCase() })) + '</p>' : '') +
@@ -2779,6 +2779,8 @@
     var n = (list || []).filter(function (b) { return b && b.id; }).length; if (!n) return '';
     return '<span class="ph-n" title="' + esc(t('bl_n', { n: n })) + '">' + ico('bill', 16) + '<span class="num">' + n + '</span></span>';
   }
+  /** Підпис з кількох шматків: кожен — окремим span, між ними проміжок (CSS gap), без «·» і «—». */
+  function subSpans(a) { return (Array.isArray(a) ? a : [a]).filter(Boolean).map(function (x) { return '<span>' + esc(x) + '</span>'; }).join(''); }
   function histRow(o) {
     var hasQ = o.q !== null && o.q !== undefined, hasM = o.money !== null && o.money !== undefined;
     var main = '<div class="hr-main">' + (o.lead || '') + (hasQ || hasM
@@ -2788,7 +2790,7 @@
     // Есть статус (o.st) — чипс рядом со ссылкой (на телефоне — строкой ниже): своя кнопка, выбор «передано / не передано / для себе»
     return '<li class="' + (o.st ? 'hli' : '') + (o.cls ? ' ' + o.cls : '') + '" data-key="' + esc(o.key) + '"><a class="rowlink hrow" href="' + esc(o.href) + '"><div class="grow">' +
       (o.date ? '<div class="hr-date">' + esc(o.date) + '</div>' : '') + main +
-      '<div class="hr-sub">' + o.sub.filter(Boolean).map(esc).join(' · ') + '</div></div>' + (o.right || '') + '</a>' + (o.st || '') + '</li>';
+      '<div class="hr-sub">' + subSpans(o.sub) + '</div></div>' + (o.right || '') + '</a>' + (o.st || '') + '</li>';
   }
   /** Чипс статуса в истории — кнопка: нажал — меню «Передано · Не передано · Лише для себе» прямо под ним.
    *  src: w (вода) | m (світло, газ) | h (тепло); k — вид (hot/cold/elec/gas/heat); cur: sent | not | own; label — своя надпись
@@ -2951,7 +2953,7 @@
         if (k === 'energy' && energyUnit() !== 'Gcal') tag = energyUnit();
         return { id: 'lcd-' + k, text: typed ? lcdText(k, typed) : sampleText, tag: tag, corner: !!s.lcd.corner, sample: !typed };
       });
-      left = press + lcd(lines, 'step-lcd') + '<p class="lcd-cap" id="lcd-cap">' + esc(Object.keys(S.draft.values).some(function (k) { return s.fields.indexOf(k) >= 0 && S.draft.values[k]; }) ? t('s_on_screen') : (S.lang === 'ru' ? 'Пример — так выглядит экран' : 'Приклад — так виглядає екран')) + '</p>' +
+      left = press + lcd(lines, 'step-lcd') + '<p class="lcd-cap" id="lcd-cap">' + esc(Object.keys(S.draft.values).some(function (k) { return s.fields.indexOf(k) >= 0 && S.draft.values[k]; }) ? t('s_on_screen') : t('s_example')) + '</p>' +
         '<p class="hint">' + esc(L(s.hint)) + '</p>' +
         (m && m.sleepMin ? '<p class="sleep">' + ico('moon', 18) + '<span>' + esc(t('s_sleep', { m: m.sleepMin })) + '</span></p>' : '');
       right = '<h1>' + esc(title) + '</h1>' + s.fields.map(function (k) { return k === 'errCode' ? errCodeField() : numField(k, prev); }).join('');
@@ -3122,12 +3124,12 @@
     };
     return keys.map(function (k, i) {
       var s = sumOf(groups[k]), lbl = k + '/' + String(k + 1).slice(2), cur = k === TS.seasonOf(td);
-      var q = s.gcal > 0 ? '<span class="ss-q">' + (s.est ? '≈ ' : '') + '<b>' + esc(fmtN(s.gcal, 3)) + '</b> Гкал</span><span class="ss-dot" aria-hidden="true">·</span><span class="ss-m">≈ <b>' + esc(money0(s.cost)) + '</b> грн</span>'
+      var q = s.gcal > 0 ? '<span class="ss-q">' + (s.est ? '≈ ' : '') + '<b>' + esc(fmtN(s.gcal, 3)) + '</b> Гкал</span><span class="ss-m">≈ <b>' + esc(money0(s.cost)) + '</b> грн</span>'
         : '<span class="ss-none">' + esc(t(s.n ? 'hs_noheat' : 'hs_none')) + '</span>';
-      var sub = s.from ? [t('hs_period', { a: fmtDate(s.from, true), b: fmtDate(s.to, true) }), s.perMonth ? t('hs_month', { q: fmtN(s.perMonth, 2), m: money0(costOf(s.perMonth, 30).total) }) : ''].filter(Boolean).join(' · ') : '';
+      var sub = s.from ? [t('hs_period', { a: fmtDate(s.from, true), b: fmtDate(s.to, true) }), s.perMonth ? t('hs_month', { q: fmtN(s.perMonth, 2), m: money0(costOf(s.perMonth, 30).total) }) : ''] : null;
       return '<details class="season" data-key="season-' + k + '"' + (i === 0 || cur ? ' open' : '') + '><summary class="ss-head">' +
         '<span class="ss-top"><span class="ss-t">' + esc(t('hs_title', { s: lbl })) + '</span>' + (cur ? '<span class="ss-tag' + (run ? ' on' : '') + '">' + esc(t(run ? 'hs_run' : 'hs_cur')) + '</span>' : '') + '</span>' +
-        '<span class="ss-sum">' + q + '</span>' + (sub ? '<span class="ss-sub">' + esc(sub) + '</span>' : '') + ico('chev', 18, 'ss-dd') + '</summary>' + readingList(groups[k]) + '</details>';
+        '<span class="ss-sum">' + q + '</span>' + (sub ? '<span class="ss-sub">' + subSpans(sub) + '</span>' : '') + ico('chev', 18, 'ss-dd') + '</summary>' + readingList(groups[k]) + '</details>';
     }).join('') + '<p class="small muted" data-key="hs-hint">' + esc(t('hs_hint')) + '</p>';
   }
 
@@ -3200,16 +3202,18 @@
     var g = '';
     var nt = nTicks(max), stp = max / nt, dec = o.dec !== undefined ? (stp < 1 ? (stp < 0.1 ? 2 : 1) : (Math.abs(stp - Math.round(stp)) > 1e-9 ? 1 : 0)) : 1;
     for (var k = 0; k <= nt; k++) { var tv = max * k / nt, yy = y(tv); g += '<line x1="' + L + '" x2="' + (W - R) + '" y1="' + yy + '" y2="' + yy + '" stroke="' + CH.grid + '"/><text x="' + (L - 6) + '" y="' + (yy + 4) + '" text-anchor="end" class="ax">' + esc(fmtN(tv, dec)) + '</text>'; }
+    // підписи над стовпцями — лише якщо вміщаються в слот (інакше «100%0%» злипаються); значення є в підказці
+    var topW = Math.max.apply(null, items.map(function (x) { return String(x.top || '').length; }).concat([0])) * 7 + 6, showTop = topW <= slot;
     var bars = items.map(function (it, i) {
       var cx = L + slot * (i + 0.5), x0 = cx - bw / 2, yt = y(it.v || 0), yb = T + ih, h = Math.max(0, yb - yt), r = Math.min(4, h);
       var path = h > 0 ? 'M' + x0 + ',' + yb + 'V' + (yt + r) + 'Q' + x0 + ',' + yt + ' ' + (x0 + r) + ',' + yt + 'H' + (x0 + bw - r) + 'Q' + (x0 + bw) + ',' + yt + ' ' + (x0 + bw) + ',' + (yt + r) + 'V' + yb + 'Z' : '';
       return '<g class="mk"' + tipAttr(it.tip) + '><rect x="' + (cx - slot / 2) + '" y="' + T + '" width="' + slot + '" height="' + (ih + B) + '" fill="transparent"/>' +
         (path ? '<path d="' + path + '" fill="' + (it.color || (it.soft ? CH.barSoft : CH.bar)) + '"/>' : '') +
-        (it.top ? '<text x="' + cx + '" y="' + (yt - 5) + '" text-anchor="middle" class="vl">' + esc(it.top) + '</text>' : '') +
+        (it.top && showTop ? '<text x="' + cx + '" y="' + Math.max(T + 10, yt - 5) + '" text-anchor="middle" class="vl">' + esc(it.top) + '</text>' : '') +
         (i % Math.ceil(52 / slot) === 0 ? '<text x="' + cx + '" y="' + (T + ih + 17) + '" text-anchor="middle" class="ax">' + esc(it.x) + '</text>' : '') +
         (it.x2 && i % Math.ceil(40 / slot) === 0 ? '<text x="' + cx + '" y="' + (T + ih + 31) + '" text-anchor="middle" class="ax x2">' + esc(it.x2) + '</text>' : '') + '</g>';
     }).join('');
-    var ref = o.ref ? '<line x1="' + L + '" x2="' + (W - R) + '" y1="' + y(o.ref.v) + '" y2="' + y(o.ref.v) + '" stroke="' + CH.ink2 + '" stroke-dasharray="4 4"/><text x="' + (W - R) + '" y="' + (y(o.ref.v) - 5) + '" text-anchor="end" class="ax">' + esc(o.ref.label) + '</text>' : '';
+    var ref = o.ref ? '<line x1="' + L + '" x2="' + (W - R) + '" y1="' + y(o.ref.v) + '" y2="' + y(o.ref.v) + '" stroke="' + CH.ink2 + '" stroke-dasharray="4 4"/><text x="' + (W - R) + '" y="' + (y(o.ref.v) - 5) + '" text-anchor="end" class="ax ref-l">' + esc(o.ref.label) + '</text>' : '';
     return '<svg class="chart" viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="' + esc(o.title) + '">' + g + '<line x1="' + L + '" x2="' + (W - R) + '" y1="' + (T + ih) + '" y2="' + (T + ih) + '" stroke="' + CH.ink2 + '"/>' + bars + ref + '</svg>';
   }
   var ST_ICO = { ok: '✓', low: '↓', bad: '⚠', none: '✕', off: '–' };
@@ -3287,7 +3291,7 @@
     var legend = '<div class="legend small"><span><i class="dot" style="background:' + CH.ink + '"></i>' + esc(t('stl_fact')) + '</span><span><i class="ring"></i>' + esc(t('stl_norm')) + '</span>' +
       ['ok', 'low', 'bad', 'none'].map(function (k) { return '<span><i class="dot" style="background:' + CH[k] + '"></i>' + ST_ICO[k] + ' ' + esc(t('stt_' + k)) + '</span>'; }).join('') + '</div>';
     var panel = function (title, sub, chart, extra) { return chart ? '<section class="panel chart-panel"><h2>' + esc(title) + '</h2><p class="small muted">' + esc(sub) + '</p>' + chart + (extra || '') + '</section>' : ''; };
-    var table = '<details class="panel"><summary>' + esc(t('stt_table')) + '</summary><div class="tbl-wrap"><table class="tbl"><thead><tr><th>' + esc(t('stt_th_period')) + '</th><th>Гкал</th><th>' + esc(t('stt_g30')) + '</th><th>грн</th><th>°C ' + esc(t('stt_th_out')) + '</th><th>' + esc(t('stt_th_hdd')) + '</th><th>ΔT</th><th>м³/год</th><th>' + esc(t('stt_th_share')) + '</th></tr></thead><tbody>' +
+    var table = '<details class="panel wacc tbl-acc" data-key="stt-table"><summary><h2>' + esc(t('stt_table')) + '</h2>' + ico('chev', 20, 'pacc-chev') + '</summary><div class="tbl-wrap where-b"><table class="tbl"><thead><tr><th>' + esc(t('stt_th_period')) + '</th><th>Гкал</th><th>' + esc(t('stt_g30')) + '</th><th>грн</th><th>°C ' + esc(t('stt_th_out')) + '</th><th>' + esc(t('stt_th_hdd')) + '</th><th>ΔT</th><th>м³/год</th><th>' + esc(t('stt_th_share')) + '</th></tr></thead><tbody>' +
       ivs.map(function (it) { return '<tr><td>' + esc(R.toHtmDate(it.from) + ' – ' + R.toHtmDate(it.to)) + '</td><td class="num">' + fmtN(it.dE, 3) + '</td><td class="num">' + fmtN(it.month, 3) + '</td><td class="num">' + money(it.cost) + '</td><td class="num">' + (it.tOut !== undefined ? fmtN(it.tOut, 1) : '—') + '</td><td class="num">' + (it.perHdd != null ? fmtN(it.perHdd, 2) : '—') + '</td><td class="num">' + (it.dT != null ? fmtN(it.dT, 1) : '—') + '</td><td class="num">' + (it.flow != null ? fmtN(it.flow, 3) : '—') + '</td><td class="num">' + (it.share != null ? Math.round(it.share * 100) + '%' : '—') + '</td></tr>'; }).join('') +
       '</tbody></table></div></details>';
     return { screen: 'S15', route: 'stats', html: '<h1>' + esc(t('stt_title')) + '</h1>' + kindSwitch() + '<p class="muted">' + esc(t('stt_lead')) + '</p>' + wxNote + tiles + gapNote(gaps('heat')) +
