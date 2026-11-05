@@ -899,6 +899,13 @@ ok('28-ма сесія: Куп’янськ — КП «Куп’янський �
   && str_contains($vh['water']['org'] ?? '', 'Малороганський') && str_contains($mr['water']['org'] ?? '', 'Малороганський')
   && array_key_exists('org', $np['water'] ?? []) && $np['water']['org'] === null && !str_contains(json_encode($np, JSON_UNESCAPED_UNICODE), 'Новопокровське') && str_contains($es['water']['org'] ?? '', 'Вода Есхара')
   && $kg['water']['supply'] === null && str_contains($kg['water']['note'] ?? '', '2025–2030'), [$kp['water'] ?? null, $np['water'] ?? null, $pc['water'] ?? null]);
+$sv = $w('смт Савинці, вул. Соборна 43'); $mz = $w('с. Морозівка, Ізюмський р-н'); $zm = $w('с. Залиман'); $ck = $w('смт Чкаловське, вул. Світла 1'); $ml = $w('смт Малинівка, вул. Соїча 5');
+$vv = $w('м. Вовчанськ, вул. Соборна 92'); $dr2 = $w('Дергачі, вул. Сумський шлях 1');
+ok('29-та сесія: Савинці — дільниця КП «Балаклійський водоканал», решта Савинської — з платіжки (8,14 була абонплата за сміття), Залиман — 2021; Чкаловське → Пролісне, КП «Пролісненське ЖКЕУ-2013»; Малинівка — тепло 1 463,06; Борова — тепло КПТМ; Вовчанськ — КП «Вовчанськ» і ПТМ; Дергачі — програма відшкодування в note',
+  str_contains($sv['water']['org'] ?? '', 'Балаклійський водоканал') && array_key_exists('org', $mz['water'] ?? []) && $mz['water']['org'] === null && !str_contains(json_encode($mz, JSON_UNESCAPED_UNICODE), '8,14')
+  && str_contains($zm['water']['note'] ?? '', '2021') && str_contains($ck['water']['org'] ?? '', 'Пролісненське') && $ml['heat']['price'] === 1463.06 && str_contains($ml['heat']['org'] ?? '', 'Малинівка')
+  && str_contains($bo['heat']['org'] ?? '', 'теплових мереж') && str_contains($vv['water']['org'] ?? '', 'КП «Вовчанськ»') && str_contains($vv['heat']['org'] ?? '', 'Вовчанське')
+  && $dr2['water']['supply'] === 29.7 && str_contains($dr2['water']['note'] ?? '', 'відшкодування'), [$sv['water'] ?? null, $mz['water'] ?? null, $ck['water'] ?? null, $ml['heat'] ?? null]);
 // кожна громада довідника є в КАТОТТГ (інакше її ніхто не знайде), у кожного тарифу — джерело; кожен «громада/пункт» — справжній пункт цієї громади
 $kh = array_map(fn($id) => Providers::hname((string)$id), array_keys(Providers::kat()['hromadas'])); $bad = [];
 $tariffs = function ($hn, $x) use (&$bad) { foreach ($x as $kd => $o) if ((isset($o['supply']) && $o['supply'] !== null) || (isset($o['drain']) && $o['drain'] !== null) || (isset($o['price']) && $o['price'] !== null)) if (empty($o['src']) || empty($o['src_ru'])) $bad[] = "$hn/$kd без src"; };
