@@ -51,10 +51,21 @@ final class Telegram {
   public static function setup(): array {
     $url = Cfg::appUrl(); $out = [];
     $out['setWebhook'] = self::call('setWebhook', ['url' => $url . 'api/bot/webhook', 'secret_token' => (string)Cfg::get('webhook_secret'), 'allowed_updates' => ['message'], 'drop_pending_updates' => true]);
-    $out['setChatMenuButton'] = self::call('setChatMenuButton', ['menu_button' => ['type' => 'web_app', 'text' => 'Лічильники', 'web_app' => ['url' => $url]]]);
-    $out['setMyCommands'] = self::call('setMyCommands', ['commands' => [['command' => 'start', 'description' => 'Відкрити Лічильники']]]);
+    $out += self::menuSetup();
     $errs = []; foreach ($out as $k => $x) if (empty($x['ok'])) $errs[] = $k . ': ' . ($x['description'] ?? 'нет ответа');
     return ['ok' => !$errs, 'appUrl' => $url, 'telegram' => array_map(fn($x) => !empty($x['ok']), $out), 'errors' => $errs];
+  }
+
+  /** Кнопка меню бота «Відкрити» (за замовчуванням, укр.) і команда /start укр./рос. Telegram не дає підпис кнопки за мовою —
+   *  російськомовним ставимо «Открыть» у їхньому чаті (handleUpdate). cron викликає раз на MENU_V (Cron: botMenuV). */
+  const MENU_V = 2;
+  public static function menuText(string $lang): string { return $lang === 'ru' ? 'Открыть' : 'Відкрити'; }
+  public static function menuSetup(): array {
+    $url = Cfg::appUrl(); $out = [];
+    $out['setChatMenuButton'] = self::call('setChatMenuButton', ['menu_button' => ['type' => 'web_app', 'text' => self::menuText('uk'), 'web_app' => ['url' => $url]]]);
+    $out['setMyCommands'] = self::call('setMyCommands', ['commands' => [['command' => 'start', 'description' => 'Відкрити «Лічильники»']]]);
+    $out['setMyCommands_ru'] = self::call('setMyCommands', ['commands' => [['command' => 'start', 'description' => 'Открыть «Счётчики»']], 'language_code' => 'ru']);
+    return $out;
   }
 
   /** Вебхук: /start (и любое сообщение) → кнопка, открывающая сайт как Mini App. */
@@ -217,6 +228,8 @@ final class Telegram {
       ? "👋 Здравствуйте! Это «Счётчики» — показания всех счётчиков в одном месте.\n\n🔥 Тепло, 💧 горячая и холодная вода, 💡 свет, 🔥 газ — для одной квартиры или нескольких (своей, родительской, той, что сдаёте).\n\nЧто умеет сервис:\n📷 цифры с фото счётчика распознаёт сам — фото можно прислать и прямо сюда, в чат;\n✅ проверит показания, прежде чем вы их передадите;\n📤 подскажет, куда и как передать: ХТМ, Водоканал, облэнерго, газ;\n⏰ напомнит, когда пора подавать показания;\n💡 каждое утро пришлёт график отключений света для вашей очереди;\n📊 сохранит историю и покажет, сколько это стоило.\n\nНажмите кнопку ниже и добавьте первый счётчик — это займёт минуту."
       : "👋 Вітаю! Це «Лічильники» — показання всіх лічильників в одному місці.\n\n🔥 Тепло, 💧 гаряча й холодна вода, 💡 світло, 🔥 газ — для однієї квартири чи кількох (своєї, батьківської, тієї, що здаєте).\n\nЩо вміє сервіс:\n📷 цифри з фото лічильника розпізнає сам — фото можна надіслати й прямо сюди, в чат;\n✅ перевірить показання, перш ніж ви їх передасте;\n📤 підкаже, куди й як передати: ХТМ, Водоканал, обленерго, газ;\n⏰ нагадає, коли час подавати показання;\n💡 щоранку надішле графік відключень світла для вашої черги;\n📊 збереже історію й покаже, скільки це коштувало.\n\nНатисніть кнопку нижче й додайте свій перший лічильник — це займе хвилину.";
     $btn = $lang === 'ru' ? 'Открыть «Счётчики»' : 'Відкрити «Лічильники»';
+    // кнопка меню в цьому чаті — мовою людини (за замовчуванням для всіх — «Відкрити»)
+    if ($lang === 'ru' && preg_match('/^\/start\b/', (string)($msg['text'] ?? ''))) { try { self::call('setChatMenuButton', ['chat_id' => $msg['chat']['id'], 'menu_button' => ['type' => 'web_app', 'text' => self::menuText('ru'), 'web_app' => ['url' => Cfg::appUrl()]]]); } catch (Throwable $e) { /* не головне */ } }
     if ($linkText !== null) $text = $linkText;
     $params = ['chat_id' => $msg['chat']['id'], 'text' => $text,
       'reply_markup' => ['inline_keyboard' => [[['text' => $btn, 'web_app' => ['url' => Cfg::appUrl()]]]]]];

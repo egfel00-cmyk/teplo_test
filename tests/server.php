@@ -820,6 +820,15 @@ $gone = StateHist::cleanup();
 $left = array_map('intval', array_column(Db::q('SELECT version FROM user_state_hist WHERE user_id = ? ORDER BY id', [$huid])->fetchAll(), 'version'));
 ok('чистка истории: за день 5 дней назад осталась последняя (v3), старше 30 дней — нет, свежих — 200', $gone === 8 && in_array(3, $left, true) && !in_array(1, $left, true) && !in_array(2, $left, true) && !in_array(0, $left, true) && count($left) === 201 && !in_array(104, $left, true) && in_array(105, $left, true) && in_array(304, $left, true), [$gone, count($left)]);
 
+// кнопка меню бота: «Відкрити» для всіх, «Открыть» — у чаті російськомовного після /start; команда /start — двома мовами
+$mc = []; Telegram::$send = function ($m, $p, $tok = null) use (&$mc) { $mc[] = [$m, $p]; return ['ok' => true]; };
+Telegram::menuSetup(); Telegram::handleUpdate(['message' => ['chat' => ['id' => 555], 'from' => ['id' => 555, 'language_code' => 'ru'], 'text' => '/start']]);
+Telegram::handleUpdate(['message' => ['chat' => ['id' => 556], 'from' => ['id' => 556, 'language_code' => 'uk'], 'text' => '/start']]);
+$mb = array_values(array_filter($mc, fn($x) => $x[0] === 'setChatMenuButton'));
+ok('кнопка меню бота: «Відкрити» за замовчуванням, «Открыть» у чаті рос. після /start (укр. — без окремої), /start описано укр. і рос.', count($mb) === 2 && $mb[0][1]['menu_button']['text'] === 'Відкрити' && !isset($mb[0][1]['chat_id'])
+  && $mb[1][1]['chat_id'] === 555 && $mb[1][1]['menu_button']['text'] === 'Открыть' && count(array_filter($mc, fn($x) => $x[0] === 'setMyCommands' && ($x[1]['language_code'] ?? '') === 'ru')) === 1
+  && str_contains(end($mc)[1]['text'] ?? '', 'Що вміє сервіс'), $mb);
+Telegram::$send = null;
 echo "\nВыход:\n";
 $phone->req('POST', '/api/auth/logout');
 ok('после выхода /api/me → 401', $phone->req('GET', '/api/me')->status === 401);

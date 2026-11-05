@@ -36,6 +36,10 @@ if ((int)gmdate('i') % 10 === 5) {
   try { $beat['gpvReady'] = Gpv::readiness() + ['at' => gmdate('c')]; } catch (Throwable $e) { error_log('teplo gpv ready: ' . $e->getMessage()); }
   try { $beat['remindNext'] = Reminders::nextPreview(time()); } catch (Throwable $e) { error_log('teplo remind next: ' . $e->getMessage()); }
 }
+// кнопка меню бота й команди — раз на версію (Telegram::MENU_V): «Відкрити» / «Открыть»
+if (Cfg::get('bot_token') && Cfg::appUrlKnown() && (int)($beat['botMenuV'] ?? 0) !== Telegram::MENU_V) {
+  try { $mo = Telegram::menuSetup(); if (!empty($mo['setChatMenuButton']['ok'])) $beat['botMenuV'] = Telegram::MENU_V; } catch (Throwable $e) { error_log('teplo bot menu: ' . $e->getMessage()); }
+}
 if ((int)gmdate('i') !== 17) { Cron::write($beat); exit; }
 $h = ['at' => gmdate('c')];
 try { $n = Admin::cleanup(); $h['photos'] = $n; if ($n) echo gmdate('c') . " удалено старых фото: $n\n"; $h['hist'] = StateHist::cleanup(); $h['events'] = Journal::cleanup(); }
