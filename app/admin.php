@@ -186,7 +186,10 @@ final class Admin {
         $setup = Telegram::setup();
         return ['ok' => $setup['ok'], 'bot' => $me['result']['username'], 'setup' => $setup, 'settings' => self::settings()];
       }
-      case 'GET /api/admin/devices': return Visits::summary((int)($q['days'] ?? 30));
+      case 'GET /api/admin/devices': return Visits::summary((int)($q['days'] ?? 30), !empty($q['all']));
+      case 'GET /api/admin/journal': return Journal::sessions((int)($q['days'] ?? 7), !empty($q['all']));
+      case 'GET /api/admin/journal/session': return Journal::session((string)($q['vid'] ?? ''), (string)($q['sid'] ?? ''));
+      case 'POST /api/admin/journal/tag': Journal::tag((string)($in['vid'] ?? ''), (string)($in['tag'] ?? '')); return ['ok' => true];
       case 'GET /api/admin/reminders': {
         $next = Reminders::next(time());
         return ['next' => $next, 'preview' => $next ? Reminders::preview($next['kind'], $next['ym']) : [], 'log' => Reminders::log(), 'cron' => Cron::read() + ['ago' => Cron::age()],

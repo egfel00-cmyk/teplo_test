@@ -280,6 +280,7 @@ final class Api {
       case 'POST /api/docs/delete': if (!$user) throw new HttpError(401, 'unauthorized'); return Docs::delete((int)$user['id'], (string)($in['id'] ?? ''));
       case 'POST /api/feedback': return Feedback::create($user, $in, $r, $ip);
       case 'POST /api/visit': return Visits::hit($user, $in, $r, $ip);
+      case 'POST /api/events': return Journal::push($user, $in, $r, $ip);   // журнал действий (app/journal.php)
       case 'GET /api/admin/me': if (!$user) throw new HttpError(401, 'unauthorized'); return ['admin' => Admin::is($user)];
       case 'POST /api/bot/setup': {
         $secret = (string)Cfg::get('webhook_secret');

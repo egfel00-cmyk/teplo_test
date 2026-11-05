@@ -45,6 +45,7 @@ input[type=search] { font: 400 15px var(--font); padding: 9px 12px; border: 1.5p
 .ph .noimg { height: 200px; display: grid; place-items: center; background: var(--line); color: var(--ink2); }
 .ph .b { padding: 10px 12px; font-size: 13px; display: grid; gap: 6px; }
 .problem { color: var(--bad); }
+.btn.ghost { background: transparent; color: inherit; border: 1.5px solid var(--line); } td.warn { color: var(--warn); } td.ok { color: var(--ok); }
 .reads { font-family: var(--mono); font-size: 12px; background: var(--lcd); border-radius: 6px; padding: 6px 8px; white-space: pre-wrap; }
 .msg { white-space: pre-wrap; max-width: 60ch; }
 .filters { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-bottom: 12px; }
@@ -95,9 +96,9 @@ pre.state { font: 12px/1.4 var(--mono); background: #F4F7F5; padding: 10px; bord
 
   function shell(body) {
     var o = DATA.overview || {};
-    var tabs = [['overview', 'Сводка'], ['users', 'Пользователи', 0], ['feedback', 'Сообщения', o.feedbackNew], ['photos', 'Фото', 0], ['reports', 'Ошибки распознавания', o.reportsBad], ['reminders', 'Напоминания', o.cronAgo == null || o.cronAgo > 600 ? '!' : 0], ['settings', 'Настройки', !o.telegram ? '!' : 0]];
+    var tabs = [['overview', 'Сводка'], ['users', 'Пользователи', 0], ['feedback', 'Сообщения', o.feedbackNew], ['photos', 'Фото', 0], ['reports', 'Ошибки распознавания', o.reportsBad], ['journal', 'Журнал', 0], ['reminders', 'Напоминания', o.cronAgo == null || o.cronAgo > 600 ? '!' : 0], ['settings', 'Настройки', !o.telegram ? '!' : 0]];
     app.innerHTML = '<header><b>Счётчики · аналитика</b><span class="muted small">' + esc(o.me || '') + '</span><span style="flex:1"></span><a class="btn" href="' + esc(SITE) + '">На сайт</a></header>' +
-      '<nav>' + tabs.map(function (t) { return '<button data-tab="' + t[0] + '"' + (TAB === t[0] ? ' aria-current="true"' : '') + '>' + t[1] + (t[2] ? '<span class="n">' + t[2] + '</span>' : '') + '</button>'; }).join('') + '</nav><main>' + body + '</main>';
+      '<nav>' + tabs.map(function (t) { return '<button data-tab="' + t[0] + '"' + (TAB === t[0] || (TAB === 'jsession' && t[0] === 'journal') ? ' aria-current="true"' : '') + '>' + t[1] + (t[2] ? '<span class="n">' + t[2] + '</span>' : '') + '</button>'; }).join('') + '</nav><main>' + body + '</main>';
   }
 
   var VIEW = {};
@@ -331,6 +332,53 @@ pre.state { font: 12px/1.4 var(--mono); background: #F4F7F5; padding: 10px; bord
 
   // ---- история версий данных (StateHist на сервере): грузится при раскрытии; «Восстановить» — с подтверждением «сейчас → станет»
   var HIST = { uid: 0, list: null, open: false, msg: null, busy: false };
+
+  // ---------- Журнал действий (app/journal.php): сеансы людей и лента событий сеанса ----------
+  var JD = { days: 7, all: false, vid: '', sid: '' };
+  var TAGN = { me: 'это я', test: 'тест' };
+  function hms(iso) { var d = new Date(iso); return isNaN(d) ? esc(iso) : d.toLocaleTimeString('ru-RU', { timeZone: 'Europe/Kyiv', hour: '2-digit', minute: '2-digit', second: '2-digit' }); }
+  function dur(a, b) { var s = Math.max(0, Math.round((new Date(b) - new Date(a)) / 1000)); return s < 60 ? s + ' с' : s < 3600 ? Math.round(s / 60) + ' мин' : (s / 3600).toFixed(1) + ' ч'; }
+  function devLine(d) { if (!d) return ''; return esc(({ mobile: 'телефон', tablet: 'планшет', desktop: 'компьютер' })[d.device] || d.device || '') + (d.os ? ' · ' + esc(d.os) : '') + (d.tgapp ? ' · Telegram' : ''); }
+  function whoS(x) { return x.user ? esc(x.user.email || (x.user.tg ? '@' + x.user.tg : '#' + x.user.id)) : '<span class="muted">без входа</span>'; }
+  /** Событие журнала — словами. → [текст, класс строки] */
+  function evText(e) {
+    var p = e.p || {}, n = e.n;
+    if (n === 'open') return ['Открыл сервис' + (p.tg ? ' в Telegram' : '') + (p.w ? ', экран ' + p.w + ' px' : '') + (p.lang ? ', язык ' + p.lang : '') + (p.li ? ', вошёл' : ', без входа') + ' · квартир ' + (p.places || 0) + ', счётчиков ' + (p.meters || 0) + ', показаний ' + (p.recs || 0), ''];
+    if (n === 'screen') return ['Экран #' + (e.s || 'home'), 'muted'];
+    if (n === 'tap') return ['Нажал ' + (p.x ? '«' + p.x + '»' : '') + (p.a ? ' [' + p.a + ']' : '') + (p.k && !p.a ? ' [' + p.k + ']' : '') + (p.h ? ' → ' + p.h : ''), ''];
+    if (n === 'field') return ['Поле ' + (p.f || p.t || '') + ': ' + (p.files != null ? 'выбрано файлов ' + p.files : p.v ? 'заполнено' : 'пусто') + (p.ok === 0 ? ' — НЕВЕРНО' : ''), p.ok === 0 ? 'problem' : ''];
+    if (n === 'toast') return ['Сообщение: «' + (p.m || '') + '»', 'warn'];
+    if (n === 'alert') return ['На экране: «' + (p.m || '') + '»', 'warn'];
+    if (n === 'saved') { var a = []; if (p.p) a.push((p.p > 0 ? '+' : '') + p.p + ' кв.'); if (p.m) a.push((p.m > 0 ? '+' : '') + p.m + ' счётч.'); if (p.r) a.push((p.r > 0 ? '+' : '') + p.r + ' показ.'); return ['Сохранено: ' + a.join(', ') + (p.li ? '' : ' (без входа — только на этом устройстве)'), 'ok']; }
+    if (n === 'ocr') return [p.err ? 'Фото: ошибка распознавания — ' + p.err : p.ok ? 'Фото: распознано (строк ' + (p.lines || 0) + (p.drums ? ', барабанов ' + p.drums : '') + ', ' + ((p.ms || 0) / 1000).toFixed(1) + ' с)' : 'Фото: цифр не нашли (' + ((p.ms || 0) / 1000).toFixed(1) + ' с)', p.ok ? 'ok' : 'problem'];
+    if (n === 'js_error') return ['Ошибка в приложении: ' + (p.m || '') + (p.at ? ' (' + p.at + ')' : ''), 'problem'];
+    if (n === 'api_error') return ['Ошибка сервера ' + (p.c || '') + (p.e ? ' «' + p.e + '»' : '') + ' — ' + (p.p || ''), 'problem'];
+    return [n + (e.p ? ' ' + JSON.stringify(e.p) : ''), ''];
+  }
+  VIEW.journal = function () {
+    var j = DATA.journal || {}, f = j.funnel || {}, l = j.sessions || [];
+    var step = function (t, v, bad) { return '<div class="panel" style="min-width:120px"><div class="muted small">' + t + '</div><div style="font-size:22px;font-weight:700"' + (bad && v ? ' class="problem"' : '') + '>' + (v || 0) + '</div></div>'; };
+    return '<h2>Журнал действий</h2><p class="muted small">Что люди делали в приложении: экраны, нажатия, сообщения, ошибки, что сохранилось, фото. Свои браузеры (где входил админ или помечено «это я») и тестовые ' + (JD.all ? 'показаны' : 'скрыты — ' + (j.hidden || 0) + ' сеансов') + '. Хранится 60 дней.</p>' +
+      '<p>' + [1, 7, 30].map(function (d) { return '<button class="btn' + (JD.days === d ? '' : ' ghost') + '" data-jdays="' + d + '">' + (d === 1 ? 'Сегодня' : d + ' дней') + '</button> '; }).join('') +
+      '<button class="btn ghost" data-jall="1">' + (JD.all ? 'Скрыть свои и тест' : 'Показать свои и тест') + '</button></p>' +
+      '<div style="display:flex;gap:8px;flex-wrap:wrap">' + step('Открыли', f.opened) + step('Нажимали', f.tapped) + step('Добавили счётчик', f.meter) + step('Внесли показания', f.reading) +
+      step('Пробовали фото', f.photo) + step('Фото не распознано', f.photoFail, 1) + step('Были ошибки', f.errors, 1) + step('Входили', f.login) + '</div>' +
+      (l.length ? '<table><thead><tr><th>Когда</th><th>Кто</th><th>Устройство</th><th>Длилось</th><th>Событий</th><th>Итог</th><th>Путь</th></tr></thead><tbody>' + l.map(function (x) {
+        return '<tr data-js="' + esc(x.vid) + '|' + esc(x.sid) + '" style="cursor:pointer"><td data-l="Когда" class="nowrap">' + when(x.to) + '</td><td data-l="Кто"><b>' + esc(x.label) + '</b>' + (x.tag ? ' ' + pill(x.tag === 'me' ? 'info' : 'warn', TAGN[x.tag] || x.tag) : '') + '<div class="small">' + whoS(x) + '</div></td>' +
+          '<td data-l="Устройство" class="small">' + devLine(x.dev) + '</td><td data-l="Длилось">' + dur(x.from, x.to) + '</td><td data-l="Событий">' + x.n + '</td>' +
+          '<td data-l="Итог">' + (x.saves ? pill('ok', 'сохранял ' + x.saves) + ' ' : '') + (x.errs ? pill('bad', 'ошибок ' + x.errs) + ' ' : '') + (x.toasts ? pill('warn', 'сообщений ' + x.toasts) : '') + '</td>' +
+          '<td data-l="Путь" class="small muted">' + esc((x.path || []).join(' → ')) + '</td></tr>';
+      }).join('') + '</tbody></table>' : '<div class="panel muted">Сеансов за период нет' + (JD.all ? '' : ' (свои и тестовые скрыты)') + '.</div>');
+  };
+  VIEW.jsession = function () {
+    var j = DATA.jsession || {}, ev = j.events || [];
+    return '<p><button class="btn" data-tab="journal">← Журнал</button></p><h2>' + esc(j.label || '') + (j.tag ? ' ' + pill(j.tag === 'me' ? 'info' : 'warn', TAGN[j.tag] || j.tag) : '') + '</h2>' +
+      '<p class="muted small">Браузер ' + esc(j.vid || '') + ' · сеанс ' + esc(j.sid || '') + ' · событий ' + ev.length + (ev.length ? ' · ' + when(ev[0].at) + ' – ' + hms(ev[ev.length - 1].at) : '') + '</p>' +
+      '<p>Пометить этот браузер: <button class="btn ghost" data-jtag="me">Это я</button> <button class="btn ghost" data-jtag="test">Тест</button> <button class="btn ghost" data-jtag="">Снять пометку</button></p>' +
+      '<table><thead><tr><th>Время</th><th>Что произошло</th><th>Экран</th></tr></thead><tbody>' + ev.map(function (e) {
+        var t = evText(e); return '<tr><td data-l="Время" class="nowrap">' + hms(e.at) + '</td><td data-l="Что"' + (t[1] ? ' class="' + t[1] + '"' : '') + '>' + esc(t[0]) + (e.u ? ' <span class="muted small">#' + e.u + '</span>' : '') + '</td><td data-l="Экран" class="small muted">' + esc(e.s || '') + '</td></tr>';
+      }).join('') + '</tbody></table>';
+  };
   function histTotal(s, k) { var o = (s || {})[k] || {}; return Object.keys(o).reduce(function (a, x) { return a + (+o[x] || 0); }, 0); }
   function histWhat(h) { var s = (h && h.summary) || {}; return (s.places || 0) + ' кв., счётчиков ' + histTotal(s, 'kinds') + ', показаний ' + histTotal(s, 'recs'); }
   function histBlock(uid) {
@@ -437,7 +485,9 @@ pre.state { font: 12px/1.4 var(--mono); background: #F4F7F5; padding: 10px; bord
     feedback: function () { return get('/admin/feedback').then(function (j) { DATA.feedback = j.feedback; }); },
     photos: function () { return get('/admin/photos' + (PF === 'problems' ? '?filter=problems' : '')).then(function (j) { DATA.photos = j.photos; }); },
     reports: function () { return get('/admin/reports').then(function (j) { DATA.reports = j.reports; }); },
-    reminders: function () { return get('/admin/reminders').then(function (j) { DATA.reminders = j; }); }
+    reminders: function () { return get('/admin/reminders').then(function (j) { DATA.reminders = j; }); },
+    journal: function () { return get('/admin/journal?days=' + JD.days + (JD.all ? '&all=1' : '')).then(function (j) { DATA.journal = j; }); },
+    jsession: function () { return get('/admin/journal/session?vid=' + encodeURIComponent(JD.vid) + '&sid=' + encodeURIComponent(JD.sid)).then(function (j) { DATA.jsession = j; }); }
   };
   function show(tab, uid, keepMsg) {
     TAB = tab; if (!keepMsg) { DATA.settingsMsg = {}; HIST.list = null; HIST.msg = null; }
@@ -448,6 +498,14 @@ pre.state { font: 12px/1.4 var(--mono); background: #F4F7F5; padding: 10px; bord
   }
 
   document.addEventListener('click', function (e) {
+    var jr = e.target.closest('[data-js],[data-jdays],[data-jall],[data-jtag]');
+    if (jr) {
+      e.preventDefault();
+      if (jr.hasAttribute('data-js')) { location.hash = 'js-' + jr.getAttribute('data-js').replace('|', '-'); return; }
+      if (jr.hasAttribute('data-jdays')) { JD.days = +jr.getAttribute('data-jdays'); show('journal'); return; }
+      if (jr.hasAttribute('data-jall')) { JD.all = !JD.all; show('journal'); return; }
+      if (jr.hasAttribute('data-jtag')) { post('/admin/journal/tag', { vid: JD.vid, tag: jr.getAttribute('data-jtag') }).then(function () { show('jsession'); }); return; }
+    }
     var el = e.target.closest('[data-tab],[data-user],[data-pf],[data-fb],[data-zoom],[data-ddays],.zoom'); if (!el) return;
     if (el.hasAttribute('data-ddays')) { e.preventDefault(); DDAYS = +el.getAttribute('data-ddays'); show('overview'); return; }
     if (el.classList.contains('zoom')) { el.remove(); return; }
@@ -461,7 +519,7 @@ pre.state { font: 12px/1.4 var(--mono); background: #F4F7F5; padding: 10px; bord
   var qt;
   document.addEventListener('input', function (e) { if (e.target.id === 'q') { Q = e.target.value; clearTimeout(qt); qt = setTimeout(function () { show('users'); }, 300); } });
   window.addEventListener('hashchange', route);
-  function route() { var h = (location.hash || '#overview').slice(1), m = h.match(/^user-(\d+)$/); if (m) show('user', +m[1]); else show(h); }
+  function route() { var h = (location.hash || '#overview').slice(1), m = h.match(/^user-(\d+)$/), js = h.match(/^js-([A-Za-z0-9]+)-([A-Za-z0-9]+)$/); if (m) show('user', +m[1]); else if (js) { JD.vid = js[1]; JD.sid = js[2]; show('jsession'); } else show(h); }
 
   function loginForm(err) {
     app.innerHTML = '<form class="center" id="lf"><h2>Вход в аналитику</h2>' +

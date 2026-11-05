@@ -10,6 +10,7 @@ require __DIR__ . '/../app/admin.php';
 require __DIR__ . '/../app/vkcab.php';
 require __DIR__ . '/../app/gpv.php';
 require __DIR__ . '/../app/visits.php';
+require __DIR__ . '/../app/journal.php';
 require __DIR__ . '/../app/docs.php';
 require __DIR__ . '/../app/api.php';
 $TMP = sys_get_temp_dir() . '/teplo_test_' . getmypid(); putenv('SITE_DATA=' . $TMP);
@@ -28,7 +29,7 @@ final class Browser {
   public function __construct(string $ip = '10.0.0.1') { $this->ip = $ip; }
   public function req(string $m, string $path, ?array $body = null, array $extraServer = [], bool $csrf = true, ?string $raw = null): Res {
     if (empty($this->jar['ts_csrf'])) { $r0 = Api::handle(new Req('GET', '/api/config', ['REMOTE_ADDR' => $this->ip], $this->jar)); $this->take($r0); }
-    $server = ['REMOTE_ADDR' => $this->ip, 'HTTP_USER_AGENT' => 'test'] + $extraServer;
+    $server = $extraServer + ['REMOTE_ADDR' => $this->ip, 'HTTP_USER_AGENT' => 'test'];
     if ($csrf && $m !== 'GET') $server['HTTP_X_CSRF'] = $this->jar['ts_csrf'] ?? '';
     $res = Api::handle(new Req($m, $path, $server, $this->jar, $raw ?? ($body === null ? '' : json_encode($body))));
     $this->take($res); return $res;
@@ -192,7 +193,7 @@ $anon->req('POST', '/api/visit', ['vid' => 'junk12345', 'device' => 'фигня'
 ok('разбор User-Agent: Android без Mobile — планшет, Android Mobile — телефон, iPhone — телефон iOS', Visits::guess('Mozilla/5.0 (Linux; Android 13; SM-X200) Safari/537.36') === ['device' => 'tablet', 'os' => 'Android']
   && Visits::guess('Mozilla/5.0 (Linux; Android 14; Pixel 8) Mobile Safari/537.36')['device'] === 'mobile' && Visits::guess('Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X)') === ['device' => 'mobile', 'os' => 'iOS']);
 ok('отметка без vid → 400', $anon->req('POST', '/api/visit', ['vid' => '1'])->status === 400);
-$dv = $boss->req('GET', '/api/admin/devices', null, ['QUERY_STRING' => 'days=30']);
+$dv = $boss->req('GET', '/api/admin/devices', null, ['QUERY_STRING' => 'days=30&all=1']);
 ok('устройства: телефон 1 браузер / 2 открытия, компьютер вошедший, неизвестное → по UA (Android без Mobile = планшет)', $dv->status === 200
   && $dv->body['device']['mobile']['v'] === 1 && $dv->body['device']['mobile']['h'] === 2 && $dv->body['device']['desktop']['u'] === 1
   && $dv->body['device']['tablet']['v'] === 1 && $dv->body['device']['desktop']['v'] === 2 && isset($dv->body['os']['other']) && $dv->body['tg']['tg']['v'] === 1 && $dv->body['tg']['web']['v'] === 3 && $dv->body['width']['360–430'] === 1, $dv->body);
@@ -204,8 +205,33 @@ $anon->req('POST', '/api/visit', ['vid' => 'abc12345phone', 'device' => 'mobile'
 $pad->req('POST', '/api/visit', ['vid' => 'pad12345', 'device' => 'tablet', 'os' => 'Android', 'act' => 1, 'stage' => 1]);
 $vr = Db::one("SELECT hits, stage, meters, recs FROM visits WHERE vid = 'abc12345phone'");
 ok('отклик: этап и числа — максимум за день, act-пинг не добавляет открытий', (int)$vr['hits'] === 2 && (int)$vr['stage'] === 3 && (int)$vr['meters'] === 2 && (int)$vr['recs'] === 1, $vr);
-$da = $boss->req('GET', '/api/admin/devices', null, ['QUERY_STRING' => 'days=7'])->body; $today = Visits::day(); $ta = $da['act'][$today] ?? [];
+$da = $boss->req('GET', '/api/admin/devices', null, ['QUERY_STRING' => 'days=7&all=1'])->body; $today = Visits::day(); $ta = $da['act'][$today] ?? [];
 ok('отклик по дням: открыли 4, клацали 2, внесли показания 1 (без входа 1), вошёл 1', ($ta['v'] ?? 0) === 4 && $ta['s1'] === 2 && $ta['s3'] === 1 && $ta['anon3'] === 1 && $ta['u'] === 1 && $da['actSum']['s3'] === 1 && $da['actSum']['new'] === 4, [$ta, $da['actSum'] ?? null]);
+$dx = $boss->req('GET', '/api/admin/devices', null, ['QUERY_STRING' => 'days=7'])->body; $tx = $dx['act'][$today] ?? [];
+ok('статистика без своих: браузер, где входил админ, не считается (открыли 3, вошёл 0); ?all=1 — все', ($tx['v'] ?? 0) === 3 && ($tx['u'] ?? -1) === 0 && $dx['device']['desktop']['v'] === 1, [$tx, $dx['device'] ?? null]);
+// журнал действий: пачка событий → сеансы в /admin (свои и тест скрыты), лента сеанса, пометки, чистка
+$je = fn(Browser $b, string $vid, string $sid, array $ev, array $srv = []) => $b->req('POST', '/api/events', ['vid' => $vid, 'sid' => $sid, 'now' => 10000, 'ev' => $ev], $srv);
+$j1 = $je($anon, 'abc12345phone', 'sessA1', [['t' => 1000, 'n' => 'open', 's' => 'home', 'p' => ['tg' => 1, 'w' => 390]], ['t' => 2000, 'n' => 'tap', 's' => 'home', 'p' => ['a' => 'wadd', 'x' => 'Додати лічильник']],
+  ['t' => 3000, 'n' => 'field', 's' => 'wnew', 'p' => ['f' => 'wn-c1', 'v' => 1, 'ok' => 0]], ['t' => 4000, 'n' => 'alert', 's' => 'wnew', 'p' => ['m' => 'Показання менше за попередні']],
+  ['t' => 5000, 'n' => 'saved', 's' => 'wnew', 'p' => ['m' => 1, 'li' => 0]], ['t' => 6000, 'n' => 'ocr', 's' => 'wnew', 'p' => ['ok' => 0, 'ms' => 2100]], ['t' => 7000, 'n' => 'api_error', 's' => 'wnew', 'p' => ['p' => '/vk/cab/check', 'c' => 422]],
+  ['t' => 7500, 'n' => 'BAD name!', 's' => 'x'], ['t' => 8000, 'n' => 'tap', 's' => 'home', 'p' => ['x' => str_repeat('я', 300), 'nested' => ['a' => 1]]]]);
+ok('журнал: пачка событий принята (кривое имя пропущено), без vid/sid — 400', $j1->status === 200 && $j1->body['n'] === 8 && $je($anon, '1', 'sessA1', [])->status === 400 && $je($anon, 'abc12345phone', '1', [])->status === 400, $j1->body);
+$je($boss, 'boss1234desk', 'sessB1', [['t' => 9000, 'n' => 'screen', 's' => 'home']]);
+$je($pad, 'pad12345', 'sessP1', [['t' => 9000, 'n' => 'screen', 's' => 'home']], ['HTTP_USER_AGENT' => 'Mozilla/5.0 HeadlessChrome/153.0']);
+ok('журнал: браузер админа помечен «это я» сам, Headless — «тест»', (Db::one("SELECT tag FROM vid_tags WHERE vid = 'boss1234desk'")['tag'] ?? '') === 'me' && (Db::one("SELECT tag FROM vid_tags WHERE vid = 'pad12345'")['tag'] ?? '') === 'test');
+$js = $boss->req('GET', '/api/admin/journal', null, ['QUERY_STRING' => 'days=7'])->body; $jall = $boss->req('GET', '/api/admin/journal', null, ['QUERY_STRING' => 'days=7&all=1'])->body;
+$sa = array_values(array_filter($js['sessions'] ?? [], fn($x) => $x['sid'] === 'sessA1'))[0] ?? null;
+ok('журнал в /admin: сеансы людей (свои и тест скрыты — 2), итог сеанса (ошибки, сообщения, сохранения), шаги', count($js['sessions'] ?? []) === 1 && $js['hidden'] === 2 && count($jall['sessions']) === 3
+  && $sa && $sa['n'] === 8 && $sa['errs'] === 1 && $sa['saves'] === 1 && str_starts_with($sa['label'], 'Гость ') && $js['funnel']['meter'] === 1 && $js['funnel']['photoFail'] === 1 && $js['funnel']['errors'] === 1 && $js['funnel']['opened'] === 1, $js);
+$jt = $boss->req('GET', '/api/admin/journal/session', null, ['QUERY_STRING' => 'vid=abc12345phone&sid=sessA1'])->body; $ev = $jt['events'] ?? [];
+ok('лента сеанса: по порядку, длинный текст обрезан (120), вложенные поля отброшены', count($ev) === 8 && $ev[0]['n'] === 'open' && $ev[3]['p']['m'] === 'Показання менше за попередні' && mb_strlen($ev[7]['p']['x']) === 120 && !isset($ev[7]['p']['nested']) && $ev[0]['at'] <= $ev[7]['at'], $ev[7] ?? $jt);
+$boss->req('POST', '/api/admin/journal/tag', ['vid' => 'abc12345phone', 'tag' => 'test']);
+$jsx = $boss->req('GET', '/api/admin/journal', null, ['QUERY_STRING' => 'days=7'])->body;
+$boss->req('POST', '/api/admin/journal/tag', ['vid' => 'abc12345phone', 'tag' => '']);
+ok('пометка вручную: «тест» — сеанс скрыт; снять — снова виден; журнал — только админу', count($jsx['sessions']) === 0 && count($boss->req('GET', '/api/admin/journal', null, ['QUERY_STRING' => 'days=7'])->body['sessions']) === 1
+  && $anon->req('GET', '/api/admin/journal')->status === 401 && $boss->req('POST', '/api/admin/journal/tag', ['vid' => 'abc12345phone', 'tag' => 'zzz'])->status === 400);
+Db::q("UPDATE events SET day = '2020-01-01' WHERE sid = 'sessB1'");
+ok('чистка журнала: старше 60 дней — удалено', Journal::cleanup() === 1 && !Db::one("SELECT 1 AS x FROM events WHERE sid = 'sessB1'"));
 $bid = Db::one("SELECT id FROM users WHERE email = 'boss@example.ua'")['id'];
 $bu = $boss->req('GET', '/api/admin/user', null, ['QUERY_STRING' => 'id=' . $bid]);
 ok('карточка человека: его устройства', $bu->status === 200 && count($bu->body['devices']) === 1 && $bu->body['devices'][0]['device'] === 'desktop', $bu->body['devices'] ?? null);

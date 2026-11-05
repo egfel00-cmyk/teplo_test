@@ -35,6 +35,7 @@ final class Cfg {
         'vk_cab' => [30, 3600],          // проверок/отправок через кабинет Водоканала: в час на пользователя
         'vk_cab_all' => [400, 3600],     // и всего с нашего сервера — не нагружать сайт Водоканала
         'gpv_addr' => [120, 3600],       // поисков очереди отключений по адресу: в час с одного IP
+        'events_ip' => [900, 3600],      // пачек событий журнала действий с одного IP в час
       ],
       'max_body_bytes' => 300 * 1024,
       'max_photo_bytes' => 12 * 1024 * 1024,
@@ -177,6 +178,11 @@ final class Db {
     // что люди делали с ботом Водоканала: send — нажали «Відправити», ok — «Прийняв», silent — «Не відповідає», err — «Помилка»;
     // notified — тем, кто жаловался «не відповідає», уже написали «бот знову працює»
     $sql[] = "CREATE TABLE IF NOT EXISTS vk_events (id $ai, user_id INT NOT NULL, kind VARCHAR(8) NOT NULL, at INT NOT NULL, notified TINYINT NOT NULL DEFAULT 0)$tail";
+    // журнал действий (app/journal.php): события браузера по сеансам; свои/тестовые браузеры — vid_tags (me / test, manual — вручную в /admin)
+    $sql[] = "CREATE TABLE IF NOT EXISTS events (id $ai, at VARCHAR(25) NOT NULL, day CHAR(10) NOT NULL, vid VARCHAR(24) NOT NULL, sid VARCHAR(16) NOT NULL, user_id INT NULL, name VARCHAR(40) NOT NULL, screen VARCHAR(40) NULL, props TEXT NULL)$tail";
+    $sql[] = "CREATE TABLE IF NOT EXISTS vid_tags (vid VARCHAR(24) PRIMARY KEY, tag VARCHAR(8) NOT NULL, manual TINYINT NOT NULL DEFAULT 0, at VARCHAR(25) NOT NULL)$tail";
+    $sql[] = 'CREATE INDEX IF NOT EXISTS ix_events_day ON events (day)';
+    $sql[] = 'CREATE INDEX IF NOT EXISTS ix_events_vs ON events (vid, sid, id)';
     if (!$my) $sql[] = 'CREATE INDEX IF NOT EXISTS ix_state_hist_user ON user_state_hist (user_id, id)';
     foreach ($sql as $s) self::$pdo->exec($s);
     // фото, приложенные к записи истории (тепло/вода), не удаляются по сроку хранения, пока запись есть

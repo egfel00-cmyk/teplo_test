@@ -31,6 +31,7 @@ if (str_starts_with($path, '/api/')) {
   require __DIR__ . '/app/vkcab.php';
   require __DIR__ . '/app/gpv.php';
   require __DIR__ . '/app/visits.php';
+  require __DIR__ . '/app/journal.php';
   require __DIR__ . '/app/docs.php';
   require __DIR__ . '/app/api.php';
   header('Content-Type: application/json; charset=utf-8');

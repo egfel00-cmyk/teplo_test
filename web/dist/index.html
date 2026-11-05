@@ -4870,7 +4870,7 @@ fieldset.field { border: 0; padding: 0; min-width: 0; }
   var lastSig = '', pendingRender = false;
   /** Сохранить: локально всегда; если изменились синхронизируемые данные — отметить время и отправить на другие устройства. */
   function save() {
-    syncPlace(); visitBump();
+    syncPlace(); visitBump(); jrSaved();
     // язык напоминаний бота — как в интерфейсе (сервер шлёт на нём)
     if (!S.remind || S.remind.lang !== S.lang) S.remind = Object.assign({}, S.remind || {}, { lang: S.lang });
     var Y = window.TeploSync;
@@ -6525,7 +6525,7 @@ fieldset.field { border: 0; padding: 0; min-width: 0; }
     VIS()._engine(function (q) { if (live()) enProg(q * 15, t('ph_loading', { p: Math.round(q * 100) })); }).then(function () {
       var chain = Promise.resolve();
       todo.forEach(function (p, i) {
-        chain = chain.then(function () { if (!live()) return null; enProg(15 + 85 * (i + 0.3) / n, n > 1 ? t('ph_reading', { i: i + 1, n: n }) : t('enp_reading')); return limit(window.TeploOCR.read(p.file, { all: true })); })
+        chain = chain.then(function () { if (!live()) return null; enProg(15 + 85 * (i + 0.3) / n, n > 1 ? t('ph_reading', { i: i + 1, n: n }) : t('enp_reading')); return limit(ocrRead(p.file, { all: true })); })
           .then(function (res) { if (res) p.res = { lines: res.lines || [], drums: res.drums || [] }; }, function () { p.res = { lines: [], drums: [] }; });
       });
       return chain;
@@ -6642,7 +6642,7 @@ fieldset.field { border: 0; padding: 0; min-width: 0; }
     var say = function (txt, warn) { if (help) { help.textContent = txt; help.className = 'help' + (warn ? ' warn' : ''); } };
     if (help) { help.innerHTML = SPIN + ' ' + esc(t('wn_reading')); help.className = 'help'; }
     if (lab) lab.setAttribute('aria-busy', 'true');
-    VIS()._engine(function () {}).then(function () { return window.TeploOCR.read(file, { all: true }); }).then(function (res) {
+    VIS()._engine(function () {}).then(function () { return ocrRead(file, { all: true }); }).then(function (res) {
       if (lab) lab.removeAttribute('aria-busy'); res = res || {};
       var got = [];
       if (water) {
@@ -7056,7 +7056,7 @@ fieldset.field { border: 0; padding: 0; min-width: 0; }
     if (!VIS().local) { toast(t('ph_unavail')); return; }
     if (help) { help.innerHTML = SPIN + ' ' + esc(t('wn_reading')); help.className = 'help'; }
     if (lab) lab.setAttribute('aria-busy', 'true');
-    VIS()._engine(function () {}).then(function () { return window.TeploOCR.read(file); }).then(function (res) {
+    VIS()._engine(function () {}).then(function () { return ocrRead(file); }).then(function (res) {
       wnRead();
       var p = wprevFor(mid, WN.date || today()), r = Wt.fromOcr(res, p ? p.vals[mid] : null);
       WN.photos.forEach(function (x) { x.meters = (x.meters || []).filter(function (k) { return k !== mid; }); });
@@ -7141,7 +7141,7 @@ fieldset.field { border: 0; padding: 0; min-width: 0; }
     VIS()._engine(function (p) { if (live()) wnProg(p * 15, t('ph_loading', { p: Math.round(p * 100) })); }).then(function () {
       var chain = Promise.resolve();
       todo.forEach(function (p, i) {
-        chain = chain.then(function () { if (!live()) return null; wnProg(15 + 85 * (i + 0.3) / n, n > 1 ? t('ph_reading', { i: i + 1, n: n }) : t('wn_reading')); return limit(window.TeploOCR.read(p.file, { all: true })); })
+        chain = chain.then(function () { if (!live()) return null; wnProg(15 + 85 * (i + 0.3) / n, n > 1 ? t('ph_reading', { i: i + 1, n: n }) : t('wn_reading')); return limit(ocrRead(p.file, { all: true })); })
           .then(function (res) { if (res) { p.res = { lines: res.lines, drums: res.drums }; p.ms = res.ms; } }, function () { p.res = { lines: [], drums: [] }; });
       });
       return chain;
@@ -9008,6 +9008,7 @@ fieldset.field { border: 0; padding: 0; min-width: 0; }
   // ---------------- маршрутизация ----------------
   function routeName() { return (location.hash || '').replace(/^#/, ''); }
   function render(keepScroll) {
+    if (JRS && JRS.scr !== (routeName() || 'home')) { JRS.scr = routeName() || 'home'; track('screen'); }
     lastHash = location.hash;
     var r = routeName();
     // в квартире нет теплосчётчика (или его прибрали) — экраны ввода тепла ведут на главную; вкладки показывают то, что есть
@@ -9086,6 +9087,7 @@ fieldset.field { border: 0; padding: 0; min-width: 0; }
   // тост переживает перерисовку: «Збережено» и сразу переход на другой экран — иначе новый экран его стирал
   var TOAST = { msg: '', until: 0 };
   function toast(msg) {
+    track('toast', { m: String(msg == null ? '' : msg).slice(0, 120) });
     TOAST = { msg: msg, until: Date.now() + 2400 };
     var host = document.getElementById('toast-host'); if (!host) return;
     host.innerHTML = '<div class="toast">' + esc(msg) + '</div>';
@@ -9446,6 +9448,45 @@ fieldset.field { border: 0; padding: 0; min-width: 0; }
   window.addEventListener('hashchange', onNav); window.addEventListener('popstate', onNav);
   var tw = window.Telegram && window.Telegram.WebApp;
   // аналитика: с чего открыли (телефон / планшет / компьютер, система, Telegram, «Домой») — раз на загрузку; id браузера случайный
+  // ---------- журнал действий (/admin → «Журнал», app/journal.php): что человек делал — экраны, нажатия, поля (заполнено/пусто,
+  // без значений), сообщения и ошибки, что сохранилось, распознавание фото. Пачками раз в ~4 с и при уходе со страницы. ----------
+  var JRS = null;   // {vid, sid, at, q, tm, scr, prev}
+  function jrId() { return (Date.now().toString(36) + Math.random().toString(36).slice(2, 10)).replace(/[^a-z0-9]/g, '').slice(0, 16); }
+  function track(n, p) {
+    if (!JRS) return;
+    try {
+      var now = Date.now(); if (now - JRS.at > 1800000) JRS.sid = jrId(); JRS.at = now;   // 30 мин тиші — новий сеанс
+      try { sessionStorage.setItem('teplo.sid', JSON.stringify({ id: JRS.sid, at: now })); } catch (e) { /* приватний режим */ }
+      JRS.q.push({ t: now, n: n, s: routeName() || 'home', p: p });
+      if (JRS.q.length > 200) JRS.q.splice(0, JRS.q.length - 200);
+      clearTimeout(JRS.tm); JRS.tm = setTimeout(jrFlush, JRS.q.length >= 20 ? 0 : 4000);
+    } catch (e) { /* журнал не має ламати застосунок */ }
+  }
+  function jrFlush() {
+    if (!JRS || !JRS.q.length) return;
+    var m = document.cookie.match(/(?:^|; )ts_csrf=([^;]*)/);
+    if (!m) { if (!JRS.cfg && window.TeploSync) { JRS.cfg = 1; window.TeploSync.api('GET', '/config').then(jrFlush, function () {}); } return; }
+    while (JRS.q.length) {
+      var ev = JRS.q.splice(0, 40);
+      try { fetch(window.TEPLO_API + '/events', { method: 'POST', keepalive: true, credentials: 'same-origin', headers: { 'Content-Type': 'application/json', 'X-CSRF': decodeURIComponent(m[1]) },
+        body: JSON.stringify({ vid: JRS.vid, sid: JRS.sid, now: Date.now(), ev: ev }) }).catch(function () {}); } catch (e) { /* старий браузер */ }
+    }
+  }
+  /** Що додалося після збереження: квартири (p), лічильники (m), показання (r); li — увійшов (дані йдуть на сервер). */
+  function jrCounts() { var a = visitAct(); return { p: (S.places || []).filter(function (x) { return x && !x.deleted; }).length, m: a.meters, r: a.recs }; }
+  function jrSaved() {
+    if (!JRS) return; var c = jrCounts(), o = JRS.prev, d = {}, any = false; JRS.prev = c; if (!o) return;
+    ['p', 'm', 'r'].forEach(function (k) { if (c[k] !== o[k]) { d[k] = c[k] - o[k]; any = true; } });
+    if (any) { d.li = window.TeploSync && window.TeploSync.mode === 'server' ? 1 : 0; track('saved', d); }
+  }
+  /** Розпізнавання фото з записом у журнал: скільки рядків/барабанів знайшов рушій, час, помилка. */
+  function ocrRead(file, opts) {
+    var t0 = Date.now();
+    return window.TeploOCR.read(file, opts).then(function (res) {
+      var r = res || {}; track('ocr', { ok: (r.lines && r.lines.length) || (r.drums && r.drums.length) ? 1 : 0, lines: (r.lines || []).length, drums: (r.drums || []).length, ms: Date.now() - t0, w: (file && file.size) ? Math.round(file.size / 1024) : undefined });
+      return res;
+    }, function (e) { track('ocr', { ok: 0, ms: Date.now() - t0, err: String((e && e.message) || e).slice(0, 100) }); throw e; });
+  }
   /** Отклик (для /admin, без личных данных): этап 0 открыл · 1 клацал по экранам · 2 есть счётчик · 3 есть показания; сколько их. */
   var VSTAGE = 0, VACT = { at: 0, key: '' }, VPING = null;
   function visitAct() {
@@ -9460,6 +9501,56 @@ fieldset.field { border: 0; padding: 0; min-width: 0; }
     var wait = Math.max(0, 60000 - (Date.now() - VACT.at)); clearTimeout(VACT.tm);
     VACT.tm = setTimeout(function () { var b = visitAct(), k2 = b.stage + '/' + b.meters + '/' + b.recs; if (k2 === VACT.key) return; VACT.key = k2; VACT.at = Date.now(); VPING(Object.assign({ act: 1 }, b)); }, wait || 1500);
   }
+  (function journal() {
+    if (!window.TEPLO_API || navigator.webdriver) return;   // проверки сесій (Playwright) — не люди
+    try {
+      var vid = localStorage.getItem('teplo.vid'); if (!vid) { vid = (Date.now().toString(36) + Math.random().toString(36).slice(2, 12)).replace(/[^a-z0-9]/g, ''); localStorage.setItem('teplo.vid', vid); }
+      var o = null; try { o = JSON.parse(sessionStorage.getItem('teplo.sid') || 'null'); } catch (e) { o = null; }
+      JRS = { vid: vid, sid: o && o.id && Date.now() - o.at < 1800000 ? o.id : jrId(), at: Date.now(), q: [], tm: null, scr: '', prev: null };
+      JRS.prev = jrCounts();
+    } catch (e) { JRS = null; return; }
+    var tg1 = window.Telegram && window.Telegram.WebApp;
+    track('open', { tg: tg1 && tg1.initData ? 1 : 0, w: Math.round(window.innerWidth || 0), lang: S.lang, li: window.TeploSync && window.TeploSync.mode === 'server' ? 1 : 0, places: JRS.prev.p, meters: JRS.prev.m, recs: JRS.prev.r });
+    JRS.scr = routeName() || 'home'; track('screen');
+    // нажатия: data-act / data-key / підпис кнопки (до 40 знаків)
+    document.addEventListener('click', function (e) {
+      var el = e.target && e.target.closest && e.target.closest('[data-act],[data-key],button,a[href],[role=button],label'); if (!el) return;
+      var tx = (el.getAttribute('aria-label') || el.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 40);
+      track('tap', { a: el.getAttribute('data-act') || undefined, k: el.getAttribute('data-key') || undefined, h: el.tagName === 'A' ? (el.getAttribute('href') || '').slice(0, 60) : undefined, x: tx || undefined });
+    }, true);
+    // поля: заповнено чи ні, валідне чи ні (значень не пишемо); файли — скільки обрано
+    document.addEventListener('change', function (e) {
+      var el = e.target; if (!el || !el.tagName || !/^(INPUT|SELECT|TEXTAREA)$/.test(el.tagName) || el.type === 'password') return;
+      var chk = el.type === 'checkbox' || el.type === 'radio';
+      track('field', { f: (el.id || el.name || el.getAttribute('data-key') || '').slice(0, 40), t: el.type || el.tagName.toLowerCase(), v: chk ? (el.checked ? 1 : 0) : (String(el.value || '').trim() ? 1 : 0),
+        ok: el.validity && !chk ? (el.validity.valid ? 1 : 0) : undefined, files: el.type === 'file' ? (el.files || []).length : undefined });
+    }, true);
+    // помилки JS
+    window.addEventListener('error', function (e) { track('js_error', { m: String(e.message || 'error').slice(0, 120), at: String((e.filename || '').split('/').pop() + ':' + (e.lineno || 0) + ':' + (e.colno || 0)).slice(0, 60) }); });
+    window.addEventListener('unhandledrejection', function (e) { var r = e.reason; track('js_error', { m: String((r && r.message) || r || 'rejection').slice(0, 120), at: 'promise' }); });
+    // повідомлення на сторінці (role=alert, .warn) — що людині сказали «не так»
+    var seen = typeof WeakMap === 'function' ? new WeakMap() : null, mt = null;
+    if (seen && window.MutationObserver) new MutationObserver(function () {
+      clearTimeout(mt); mt = setTimeout(function () {
+        [].forEach.call(document.querySelectorAll('[role=alert], .warn'), function (el) {
+          var tx = (el.textContent || '').replace(/\s+/g, ' ').trim(); if (!tx || seen.get(el) === tx || el.offsetParent === null) return;
+          seen.set(el, tx); track('alert', { m: tx.slice(0, 120), k: el.getAttribute('data-key') || undefined });
+        });
+      }, 400);
+    }).observe(document.body, { childList: true, subtree: true, characterData: true });
+    // помилки сервера (4xx/5xx) у запитах застосунку
+    var Y0 = window.TeploSync;
+    if (Y0 && Y0.api && !Y0.api._jr) {
+      var oa = Y0.api;
+      Y0.api = function (m, path, body) {
+        return oa(m, path, body).then(function (j) { if (j && j._status >= 400 && path !== '/events') track('api_error', { p: String(path || '').split('?')[0].slice(0, 50), c: j._status, e: String(j.error || '').slice(0, 40) || undefined }); return j; },
+          function (err) { track('api_error', { p: String(path || '').split('?')[0].slice(0, 50), c: 0, e: 'network' }); throw err; });
+      };
+      Y0.api._jr = 1;
+    }
+    document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'hidden') jrFlush(); });
+    window.addEventListener('pagehide', jrFlush);
+  })();
   (function visit() {
     var ap = window.TeploSync && window.TeploSync.api; if (!ap || !window.TEPLO_API) return;
     if (navigator.webdriver) return;   // проверки сессий (Playwright, «Linux 1440 px») — не люди, в «С чего работают» не считаем
