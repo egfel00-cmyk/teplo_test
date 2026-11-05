@@ -567,7 +567,12 @@ input[type=text]:not(.dmy-native):not(.pl-in), input[type=email], input[type=pas
 .kind-sw button:hover { color: var(--c-ink); }
 .kind-sw button[aria-pressed="true"] { background: var(--c-surface); color: var(--c-ink); box-shadow: 0 1px 3px rgba(0,0,0,.18), inset 0 0 0 1.5px var(--c-ink); }
 .kind-sw .c-heat { color: var(--c-supply); }
-@media (max-width: 380px) { .kind-sw button { font-size: 14px; padding: 0 6px; gap: 4px; } }
+/* узко: «Холодна»/«Холодная» обрезалась краем переключателя (320 px — uk, до 390 px — ru). Кнопки могут сжиматься, подписи — многоточием
+   (на крайний случай); до 420 px — мельче отступы, до 340 px у трёх кнопок без значков: подпись важнее (значок без подписи понимают 38 %). */
+.kind-sw { min-width: 0; } .kind-sw button { min-width: 0; flex: 1 1 auto; } .kind-sw button span { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+@media (max-width: 420px) { .kind-sw button { font-size: 14px; padding: 0 6px; gap: 4px; } .kind-sw button .ico { width: 16px; height: 16px; } }
+@media (max-width: 340px) { .kind-sw:not(.many) button .ico { display: none; } .kind-sw:not(.many) button { padding: 0 4px; } }
+@media (max-width: 370px) { .kind-sw.many button .ico { display: none; } .kind-sw.many button { padding: 0 4px; } }
 .list.wh .rowlink .pill { flex: none; }
 .ph-n { display: inline-flex; align-items: center; gap: 3px; color: var(--c-ink-2); font-size: 14px; flex: none; }
 /* фото в записи истории */
