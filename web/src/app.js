@@ -1780,9 +1780,10 @@
     var lines = ph.map(function (p, i) {
       if (!p.res) return '';
       var got = []; ms.forEach(function (m) { SK[k].mod.keys(m).forEach(function (z) { var x = EN.src[m.id + '|' + z]; if (x && x.photo === i) got.push(esc((ms.length > 1 ? (m.name || ename(m)) + ' · ' : '') + ezl(m, z).toLowerCase()) + ' <b class="num">' + (k === 'gas' ? Wt.withFrac(x.v, x.frac) : x.v) + '</b>'); }); });
-      var nm = t('ph_from', { n: i + 1 }); return esc(nm.charAt(0).toUpperCase() + nm.slice(1)) + ' — ' + (got.length ? got.join(', ') : esc(t('enp_none')));
+      var nm = t('ph_from', { n: i + 1 }); return esc(nm.charAt(0).toUpperCase() + nm.slice(1)) + ' ' + (got.length ? got.join(', ') : esc(t(noMeterOnPhoto(p.res) ? 'enp_nometer' : 'enp_none')));
     }).filter(Boolean);
     if (lines.length) h += '<p class="small" data-key="en-photo-sum">' + lines.join('<br>') + '</p>';
+    if (Object.keys(EN.src).some(function (q) { return EN.src[q].edge; })) h += '<p class="help warn" data-key="en-photo-edge">' + esc(t('enp_edge')) + '</p>';
     if (Object.keys(EN.src).some(function (q) { return EN.src[q].guess; }) || lines.length) h += '<p class="help warn" data-key="en-photo-check">' + esc(t('enp_guess')) + '</p>';
     return h + '</div>';
   }
@@ -1800,8 +1801,8 @@
     VIS()._engine(function (q) { if (live()) enProg(q * 15, t('ph_loading', { p: Math.round(q * 100) })); }).then(function () {
       var chain = Promise.resolve();
       todo.forEach(function (p, i) {
-        chain = chain.then(function () { if (!live()) return null; enProg(15 + 85 * (i + 0.3) / n, n > 1 ? t('ph_reading', { i: i + 1, n: n }) : t('enp_reading')); return limit(ocrRead(p.file, { all: true })); })
-          .then(function (res) { if (res) p.res = { lines: res.lines || [], drums: res.drums || [] }; }, function () { p.res = { lines: [], drums: [] }; });
+        chain = chain.then(function () { if (!live()) return null; enProg(15 + 85 * (i + 0.3) / n, n > 1 ? t('ph_reading', { i: i + 1, n: n }) : t('enp_reading')); p.t0 = Date.now(); return limit(ocrRead(p.file, { all: true })); })
+          .then(function (res) { p.ms = Date.now() - (p.t0 || Date.now()); if (res) p.res = { lines: res.lines || [], drums: res.drums || [] }; }, function () { p.res = { lines: [], drums: [] }; });
       });
       return chain;
     }).then(function () { if (!live()) return; EN.busy = false; enAssign(); render(true); enCheck(true); enReport(); },
@@ -1824,8 +1825,9 @@
     var one = ms.length === 1 && md.keys(ms[0]).length === 1 ? ms[0] : null;
     var shots = EN.photos.map(function (p) {
       if (!p.res) return null;
-      var dr = (p.res.drums || []).length ? Wt.fromOcr({ lines: [], drums: p.res.drums }, one ? (prevBy[one.id] || {}).all : null) : null;
-      return { lines: p.res.lines, drum: dr && dr.value !== null && dr.value !== undefined ? { value: dr.value, frac: dr.frac || '', sure: !!dr.sure } : null };
+      // світло: свій розбір барабана (5–6 чорних + 1 червоний, перемички, звірка з рядком тексту); газ — як водомір (5 + 3 червоні)
+      var dr = k === 'elec' ? El.drumPick(p.res.drums, p.res.lines) : (p.res.drums || []).length ? Wt.fromOcr({ lines: [], drums: p.res.drums }, one ? (prevBy[one.id] || {}).all : null) : null;
+      return { lines: p.res.lines, drum: dr && dr.value !== null && dr.value !== undefined ? { value: dr.value, digits: dr.digits || '', frac: dr.frac || '', sure: !!dr.sure, edge: !!dr.edge, alts: dr.alts || [] } : null };
     });
     var by = md.fromPhotos(shots, ms, prevBy); EN.src = {};
     ms.forEach(function (m) { md.keys(m).forEach(function (z) {
@@ -4264,6 +4266,12 @@
     if (s.electric && s.electric >= s.water && s.electric >= s.gas) return 'elec';
     if (s.gas >= 2 && s.gas > s.water) return 'gas';
     return null;
+  }
+  /** На фото взагалі не лічильник (афіша, скрин, документ): жодної прикмети лічильника, ні барабана, ні числа від 4 цифр. */
+  function noMeterOnPhoto(res) {
+    if (!res || !window.TeploOCRParse || !TeploOCRParse.meterScores) return false;
+    var all = (res.lines || []).map(function (l) { return [l.text].concat(l.alts || []).join(' '); }).join('\n'), s = TeploOCRParse.meterScores(all);
+    return !s.heat && !s.electric && !s.water && !s.gas && !(res.drums || []).some(function (d) { return String(d.text || '').replace(/\D/g, '').length >= 4; }) && !/\d{4}/.test(all.replace(/\s+/g, ''));
   }
   function phSimpleKind(x) { return x && x.ocr ? photoKind(x.ocr) : x && x.meterType === 'electric' ? 'elec' : null; }
   /** Фото світла/газу з пачки (або з бота) → введення світла/газу: прочитане розкладаємо по зонах, як «Розпізнати з фото». */

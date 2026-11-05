@@ -192,7 +192,10 @@
     (shots || []).forEach(function (sh, i) {
       if (!sh) return;
       ocrCands(sh).forEach(function (c) { c.photo = i; pool.push(c); });
-      if (sh.drum && sh.drum.value !== null && sh.drum.value !== undefined) pool.push({ digits: String(sh.drum.value), frac: String(sh.drum.frac || ''), sep: true, zone: null, drum: true, sure: !!sh.drum.sure, score: 1e4, photo: i, y: 0 });
+      // цифри барабана — з нулями попереду (003477 — шість роликів, не «4 цифри»)
+      if (sh.drum && sh.drum.value !== null && sh.drum.value !== undefined) [sh.drum].concat(sh.drum.alts || []).forEach(function (d, j) {
+        pool.push({ digits: String(d.digits || d.value), frac: String(d.frac || ''), sep: true, zone: null, drum: true, sure: !!d.sure, edge: !!d.edge, score: 1e4 - j * 10, photo: i, y: j });
+      });
     });
     (ms || []).forEach(function (m) {
       var ks = keys(m), prev = (prevBy && prevBy[m.id]) || {}, res = by[m.id] = {}, opts = [];
@@ -205,13 +208,13 @@
           var tagged = !!tz && ks.length > 1;
           if (pv !== null) candVals(c, pv).forEach(function (v) {
             var dv = v - Math.floor(pv); if (dv < 0 || dv > lim) return;
-            opts.push({ z: z, ci: ci, v: v, frac: c.sep ? c.frac : '', cost: dv / lim - (tagged ? 1 : 0) - (c.drum ? 0.5 : 0) - c.score / 1e6, why: tagged ? 'tag' : c.drum ? 'drum' : 'prev', photo: c.photo });
+            opts.push({ z: z, ci: ci, v: v, frac: c.sep ? c.frac : '', cost: dv / lim - (tagged ? 1 : 0) - (c.drum ? 0.5 : 0) - c.score / 1e6, why: tagged ? 'tag' : c.drum ? 'drum' : 'prev', photo: c.photo, guess: !!c.edge, edge: !!c.edge });
           });
           else opts.push({ z: z, ci: ci, v: Number(c.digits), frac: c.frac, cost: -(tagged ? 1e5 : 0) - c.score + c.photo * 1e-3 + (c.y || 0) * 1e-6, why: tagged ? 'tag' : c.drum ? 'drum' : '', photo: c.photo, guess: !tagged && (ks.length > 1 || !c.drum || !c.sure) });
         });
       });
       opts.sort(function (a, b) { return a.cost - b.cost; });
-      opts.forEach(function (o) { if (res[o.z] || used[o.ci]) return; res[o.z] = { v: o.v, frac: String(o.frac || '').slice(0, 3), photo: o.photo, why: o.why, guess: !!o.guess }; used[o.ci] = true; });
+      opts.forEach(function (o) { if (res[o.z] || used[o.ci]) return; res[o.z] = { v: o.v, frac: String(o.frac || '').slice(0, 3), photo: o.photo, why: o.why, guess: !!o.guess, edge: !!(o.edge || (pool[o.ci] && pool[o.ci].edge)) }; used[o.ci] = true; });
       // однозонний: на фото число менше прошлого (помилка в минулому записі чи інший лічильник) — не ховаємо «цифр не знайшли»,
       // а ставимо найкраще прочитане (від 5 цифр, як на барабані/табло, і саме менше — не «склеєне» з десятими) з позначкою:
       // перевірка скаже «менше, ніж минулого разу»
@@ -247,6 +250,35 @@
     } });
   /** SMS для Нафтогазу: «123456789 01234» — 9 цифр рахунку, пробіл, 5 цифр показань (нулі попереду). */
   gas.smsText = function (acc, v) { var a = String(acc || '').replace(/\D/g, ''), n = gas.whole(v); if (a.length !== 9 || n === null || n > 99999) return null; return a + ' ' + String(n).padStart(5, '0'); };
+  /** Барабан індукційного лічильника світла (НІК 2102, СО-505…): 5–6 чорних роликів + 1 червоний (десяті кВт·год).
+   *  Кандидати — з барабанів движка і з рядків тексту («0034846» = 003484 + червона 6). Перемичку між роликами движок
+   *  інколи читає «1» («0013474» на 6 роликах) — пробуємо прибрати по одній «1». Голосуємо: однакове число з двох джерел —
+   *  впевнено. Червона 7–9 чи 0 — останній чорний ролик може бути між цифрами: показання — «перевірте останню цифру».
+   *  → { value, digits, frac, sure, edge, votes } або null. */
+  elec.drumPick = function (drums, lines) {
+    var c = [];
+    var add = function (dg, red, w, src) {
+      dg = String(dg || ''); red = String(red || '').replace(/\D/g, '').slice(0, 1);
+      if (dg.length < 4 || dg.length > 7) return;
+      if (dg.length === 7 && /^0/.test(dg) && !red) { red = dg.slice(6); dg = dg.slice(0, 6); }
+      if (dg.length === 7) { for (var i = 1; i < 7; i++) if (dg[i] === '1') add(dg.slice(0, i) + dg.slice(i + 1), red, w * 0.8, src + '-1'); return; }
+      c.push({ dg: dg, v: Number(dg), red: red, w: w + (/^0/.test(dg) ? 1 : 0) + (dg.length >= 5 ? 0.3 : 0) + (red ? 0.4 : 0), src: src });
+    };
+    (drums || []).forEach(function (d) { if (d && d.text) add(String(d.text).replace(/\D/g, ''), d.red, 1 + (d.find || d.score || 0) + (d.sure ? 0.3 : 0), 'drum'); });
+    (lines || []).forEach(function (l) {
+      var tx = String((l && (l.text || l.t)) || l || '').replace(/\s+/g, ''), m = tx.match(/(^|\D)(0{1,3}\d{3,5})(\d?)(?=\D|$)/g);
+      (m || []).forEach(function (x) { var d = x.replace(/\D/g, ''); if (d.length >= 6 && d.length <= 7 && /^0/.test(d)) add(d.length === 7 ? d.slice(0, 6) : d, d.length === 7 ? d.slice(6) : '', 1.6, 'line'); });
+    });
+    if (!c.length) return null;
+    var by = {};
+    c.forEach(function (x) { var b = by[x.v] = by[x.v] || { v: x.v, w: 0, n: 0, src: {}, red: '', dg: x.dg }; b.w = Math.max(b.w, x.w); if (!b.src[x.src.split('-')[0] + x.dg.length]) { b.n++; b.src[x.src.split('-')[0] + x.dg.length] = 1; } if (!b.red && x.red) b.red = x.red; if (x.dg.length > b.dg.length) b.dg = x.dg; });
+    var all = Object.keys(by).map(function (k) { return by[k]; }).filter(function (b) { return b.v > 0 || /^0+$/.test(b.dg); });
+    if (!all.length) return null;
+    all.sort(function (a, b) { return b.n - a.n || b.w - a.w; });
+    var top = all[0], edge = /^[7890]$/.test(top.red);
+    var mk = function (b) { var e = /^[7890]$/.test(b.red); return { value: b.v, digits: b.dg, frac: b.red, sure: b.n >= 2 && !e, edge: e, votes: b.n }; };
+    var out = mk(top); out.alts = all.slice(1, 3).map(mk); return out;
+  };
   elec.make = make; elec.gas = gas;
   if (typeof module !== 'undefined' && module.exports) module.exports = elec; else { root.TeploElec = elec; root.TeploGas = gas; }
 })(typeof window !== 'undefined' ? window : this);
