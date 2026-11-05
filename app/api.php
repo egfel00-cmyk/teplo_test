@@ -60,7 +60,10 @@ final class Api {
       $isHook = $r->path === '/api/bot/webhook' || $r->path === '/api/bot/setup';
       if (!$isHook) RateLimit::hit('ip_all', $ip);
       // CSRF: для изменяющих запросов заголовок X-CSRF должен совпасть с cookie ts_csrf (double submit) + SameSite=Lax
-      if (!$isHook && $r->method !== 'GET') {
+      // Без перевірки: вхід Mini App (initData підписана Telegram), журнал дій і запити із заголовком X-Session (вікно Telegram, де
+      // cookie не зберігаються: чужий сайт власний заголовок без CORS не надішле, а cookie такі запити не використовують).
+      $csrfFree = $isHook || $r->path === '/api/auth/telegram/webapp' || $r->path === '/api/events' || $r->header('X-Session') !== '';
+      if (!$csrfFree && $r->method !== 'GET') {
         $c = (string)($r->cookies['ts_csrf'] ?? ''); $h = $r->header('X-CSRF');
         if ($c === '' || !hash_equals($c, $h)) throw new HttpError(403, 'csrf');
       }
@@ -125,8 +128,9 @@ final class Api {
           Db::q("INSERT INTO user_identities (user_id, type, external_id, username, linked_at) VALUES (?, 'telegram', ?, ?, ?)", [$uid, $tg['id'], $tg['username'], Http::iso()]);
           $u = self::userById($uid);
         }
-        self::startSession($res, $u, $r, $ip); self::audit($u['id'], 'login_telegram', $ip);
-        return ['user' => self::publicUser($u)];
+        $tok = self::startSession($res, $u, $r, $ip); self::audit($u['id'], 'login_telegram', $ip);
+        // Mini App: токен сесії й у відповіді — вікно Telegram на Mac інколи не зберігає cookie; тоді застосунок шле його заголовком X-Session
+        return ['user' => self::publicUser($u)] + ($p === '/api/auth/telegram/webapp' ? ['session' => $tok] : []);
       }
       case 'POST /api/auth/link-bot': {   // ссылка на бота для привязки Telegram без виджета (работает при любом CSP)
         if (!$user) throw new HttpError(401, 'unauthorized');
@@ -160,6 +164,7 @@ final class Api {
       }
       case 'POST /api/auth/logout': {
         if (!empty($r->cookies['ts_sid'])) Db::q('DELETE FROM sessions WHERE token_hash = ?', [hash('sha256', (string)$r->cookies['ts_sid'])]);
+        if ($r->header('X-Session') !== '') Db::q('DELETE FROM sessions WHERE token_hash = ?', [hash('sha256', $r->header('X-Session'))]);
         self::cookie($res, 'ts_sid', '', 1, true);
         return ['ok' => true];
       }
@@ -238,7 +243,8 @@ final class Api {
         return ['src' => $src, 'replies' => array_map(fn($x) => ['id' => (int)$x['id'], 'kind' => $x['kind'], 'text' => $x['text'], 'at' => (int)$x['msg_at']], $rows)];
       }
       case 'GET /api/gpv': return Gpv::api();
-      case 'GET /api/providers': RateLimit::hit('prov', $ip); return Providers::lookup((string)($r->query()['q'] ?? ''));   // постачальники й тарифи за адресою (адресу не зберігаємо)
+      case 'GET /api/providers': { RateLimit::hit('prov', $ip); $q = $r->query();   // постачальники й тарифи за адресою (адресу не зберігаємо); n+h — уточнений пункт
+        return Providers::lookup((string)($q['q'] ?? ''), isset($q['n']) ? (string)$q['n'] : null, isset($q['h']) ? (string)$q['h'] : null); }
       case 'GET /api/gpv/addr': RateLimit::hit('gpv_addr', $ip); return Gpv::lookup((string)($r->query()['q'] ?? ''));   // черга відключень за адресою квартири (адресу не зберігаємо)
       case 'GET /api/gpv/site': return Gpv::site() + ['list' => Gpv::listMeta(), 'docs' => Gpv::docsMeta()];
       case 'GET /api/gpv/doc': { $f = Gpv::docFile((string)($r->query()['k'] ?? '')); if (!$f) throw new HttpError(404, 'not_found'); $res->file = $f; return []; }   // офіційний PDF-перелік з сайту обленерго (сервер забирає раз на добу)
@@ -318,18 +324,19 @@ final class Api {
       'telegram' => $tg ? ['id' => $tg['external_id'], 'username' => $tg['username']] : null];
   }
   private static function sessionUser(Req $r): ?array {
-    $t = (string)($r->cookies['ts_sid'] ?? ''); if ($t === '') return null;
+    $t = (string)($r->cookies['ts_sid'] ?? ''); if ($t === '') $t = substr($r->header('X-Session'), 0, 128); if ($t === '') return null;
     $s = Db::one('SELECT * FROM sessions WHERE token_hash = ?', [hash('sha256', $t)]);
     if (!$s || (int)$s['expires_at'] < Http::now()) return null;
     return Db::one('SELECT * FROM users WHERE id = ?', [$s['user_id']]);
   }
-  private static function startSession(Res $res, array $u, Req $r, string $ip): void {
+  private static function startSession(Res $res, array $u, Req $r, string $ip): string {
     $t = bin2hex(random_bytes(32)); $exp = Http::now() + 86400 * (int)Cfg::get('session_days', 30);
     Db::q('INSERT INTO sessions (token_hash, user_id, created_at, expires_at, ip, ua) VALUES (?, ?, ?, ?, ?, ?)', [hash('sha256', $t), $u['id'], Http::now(), $exp, $ip, substr($r->header('User-Agent'), 0, 200)]);
     Db::q('UPDATE users SET last_login_at = ? WHERE id = ?', [Http::iso(), $u['id']]);
     // старая сессия этого браузера больше не нужна
     if (!empty($r->cookies['ts_sid'])) Db::q('DELETE FROM sessions WHERE token_hash = ?', [hash('sha256', (string)$r->cookies['ts_sid'])]);
     self::cookie($res, 'ts_sid', $t, $exp, true);
+    return $t;
   }
   private static function cookie(Res $res, string $name, string $val, int $exp, bool $httpOnly): void {
     // путь cookie = адрес сайта: на общем домене pokabot.xyz не пересекаемся с другими сайтами

@@ -34,7 +34,7 @@
       var self = this, api = root.TEPLO_API, ids = []; self.lastIds = ids;
       if (!self.isIn()) return Promise.reject(fail('not_signed_in'));
       var post = function (path, body, type) {
-        if (!cookie('ts_csrf')) return fetch(api + '/config', { credentials: 'same-origin' }).then(function () { return post(path, body, type); });
+        if (!cookie('ts_csrf') && !post.tried && !(root.TeploSync && root.TeploSync.hasSess && root.TeploSync.hasSess())) { post.tried = true; return fetch(api + '/config', { credentials: 'same-origin' }).then(function () { return post(path, body, type); }); }
         return fetch(api + path, { method: 'POST', body: body, signal: signal, credentials: 'same-origin', headers: { 'Content-Type': type, 'X-CSRF': cookie('ts_csrf'), 'Accept': 'application/json' } })
           .then(function (r) { return r.json().catch(function () { return {}; }).then(function (j) { if (!r.ok) throw fail(httpCode(r.status)); return j; }); });
       };

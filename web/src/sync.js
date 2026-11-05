@@ -80,14 +80,34 @@
 
   // ---------------- бэкенд: свой сервер ----------------
   function cookie(name) { var m = document.cookie.match(new RegExp('(?:^|; )' + name + '=([^;]*)')); return m ? decodeURIComponent(m[1]) : ''; }
-  function api(method, path, body) {
-    // CSRF: перед первым изменяющим запросом получить cookie ts_csrf (сервер выдаёт её на любой GET)
-    if (method !== 'GET' && !cookie('ts_csrf')) return api('GET', '/config').then(function () { return api(method, path, body); });
+  // Сесія вікна Telegram: токен із входу Mini App — на випадок, коли вікно Telegram (Mac) не зберігає cookie. Живе до закриття вікна.
+  var SESS = (function () { try { return root.sessionStorage.getItem('teplo.tgs') || ''; } catch (e) { return ''; } })();
+  function setSess(t) { SESS = t || ''; try { if (SESS) root.sessionStorage.setItem('teplo.tgs', SESS); else root.sessionStorage.removeItem('teplo.tgs'); } catch (e) { /* без sessionStorage — лише в пам'яті */ } }
+  function api(method, path, body, again) {
+    // CSRF: перед первым изменяющим запросом получить cookie ts_csrf (сервер выдаёт её на любой GET) — один раз: если cookie не
+    // зберігаються (вікно Telegram), повторювати безкінечно не можна; вхід Mini App і запити з X-Session сервер пускає без неї
+    if (method !== 'GET' && !cookie('ts_csrf') && !SESS && !again && path !== '/auth/telegram/webapp') return api('GET', '/config').then(function () { return api(method, path, body, true); });
     var h = { 'Accept': 'application/json' };
-    if (method !== 'GET') { h['Content-Type'] = 'application/json'; h['X-CSRF'] = cookie('ts_csrf'); }
+    if (method !== 'GET') { h['Content-Type'] = 'application/json'; if (cookie('ts_csrf')) h['X-CSRF'] = cookie('ts_csrf'); }
+    if (SESS) h['X-Session'] = SESS;
     return fetch(root.TEPLO_API + path, { method: method, headers: h, credentials: 'same-origin', body: body ? JSON.stringify(body) : undefined })
       .then(function (res) { return res.json().catch(function () { return {}; }).then(function (j) { j._status = res.status; return j; }); });
   }
+  // Усі запити застосунку до свого API (і прямі fetch з app.js / recognize.js) несуть X-Session, якщо вхід був через Telegram
+  if (root.fetch && !root.fetch._teplo) {
+    var of = root.fetch.bind(root);
+    root.fetch = function (url, opts) {
+      try {
+        if (SESS && typeof url === 'string' && root.TEPLO_API && url.indexOf(root.TEPLO_API) === 0) {
+          opts = Object.assign({}, opts || {}); var hh = new Headers(opts.headers || {}); hh.set('X-Session', SESS); opts.headers = hh;
+        }
+      } catch (e) { /* старий браузер — як є */ }
+      return of(url, opts);
+    };
+    root.fetch._teplo = true;
+  }
+  /** Запит із межею часу: вікно Telegram інколи «висить» без відповіді — не чекати вічно. */
+  function withTimeout(pr, ms) { return new Promise(function (ok, bad) { var t = setTimeout(function () { bad(new Error('timeout')); }, ms); pr.then(function (v) { clearTimeout(t); ok(v); }, function (e) { clearTimeout(t); bad(e); }); }); }
 
   var Sync = {
     api: api,
@@ -153,9 +173,28 @@
     _initServer: function () {
       var self = this;
       var tg = root.Telegram && root.Telegram.WebApp;
-      var start = tg && tg.initData ? this.loginTelegramWebApp(tg.initData) : this.refreshMe();
+      var start = tg && tg.initData ? this.tgLogin() : this.refreshMe();
       return start.then(function () { self._startPolling(); }, function () { self._set('local', 'offline'); });
     },
+    /** Вхід у вікні Telegram за підписаними initData. tg = {state: pending|ok|fail, code, err, ms} — застосунок показує «Входимо…»
+     *  замість привітання, а при невдачі — причину й «Спробувати ще раз». */
+    tg: null,
+    tgLogin: function () {
+      var self = this, tw = root.Telegram && root.Telegram.WebApp, t0 = Date.now();
+      if (!tw || !tw.initData) return this.refreshMe();
+      this.tg = { state: 'pending' }; this._onChange();
+      return withTimeout(this.loginTelegramWebApp(tw.initData), 15000).then(function (j) {
+        if (j && j._status === 200 && self.account) { self.tg = { state: 'ok', ms: Date.now() - t0 }; self._onChange(); return j; }
+        var f = { state: 'fail', code: (j && j._status) || 0, err: (j && j.error) || '', ms: Date.now() - t0 };
+        // підпис Telegram не прийняли — може, у вікні вже є вхід (cookie чи X-Session): перевіримо, перш ніж казати «не вдалося»
+        return self.refreshMe().then(function () { self.tg = self.account ? { state: 'ok', ms: Date.now() - t0, via: 'session', code: f.code, err: f.err } : f; self._onChange(); return j; },
+          function () { self.tg = f; self._onChange(); return j; });
+      }, function (e) {
+        self.tg = { state: 'fail', code: 0, err: String((e && e.message) || 'network').slice(0, 40), ms: Date.now() - t0 }; self._onChange();
+        throw e;
+      });
+    },
+    retryTg: function () { var self = this; return this.tgLogin().then(function () { self._set('server', self.status === 'ok' ? 'ok' : 'idle'); }, function () { self._set('local', 'offline'); }); },
     refreshMe: function () {
       var self = this;
       return api('GET', '/me').then(function (j) { self.serverReachable = true; self.account = j._status === 200 ? j.user : null; return self.account ? self.pull() : self._set('server', 'idle'); });
@@ -189,11 +228,12 @@
     _after: function (j) { if (j._status === 200 && j.user) { this.account = j.user; return this.pull(true).then(function () { return j; }); } return Promise.resolve(j); },
     login: function (email, password) { var self = this; return api('POST', '/auth/login', { email: email, password: password }).then(function (j) { return self._after(j); }); },
     register: function (email, password) { var self = this; return api('POST', '/auth/register', { email: email, password: password }).then(function (j) { return self._after(j); }); },
-    loginTelegramWebApp: function (initData) { var self = this; return api('POST', '/auth/telegram/webapp', { initData: initData }).then(function (j) { self.serverReachable = true; return self._after(j); }); },
+    loginTelegramWebApp: function (initData) { var self = this; return api('POST', '/auth/telegram/webapp', { initData: initData }).then(function (j) { self.serverReachable = true; if (j._status === 200 && j.session) setSess(j.session); delete j.session; return self._after(j); }); },
     loginTelegramWidget: function (data) { var self = this; return api('POST', '/auth/telegram/widget', data).then(function (j) { return self._after(j); }); },
     linkTelegram: function (data) { var self = this; return api('POST', '/auth/link-telegram', data).then(function (j) { if (j._status === 200) self.account = j.user; self._onChange(); return j; }); },
     setPassword: function (email, password) { var self = this; return api('POST', '/auth/password', { email: email, password: password }).then(function (j) { if (j._status === 200) self.account = j.user; self._onChange(); return j; }); },
-    logout: function () { var self = this; return api('POST', '/auth/logout').then(function () { self.account = null; self._lastSig = ''; self._setOwner(''); self._set('server', 'idle'); }); },
+    logout: function () { var self = this; return api('POST', '/auth/logout').then(function () { setSess(''); self.account = null; self._lastSig = ''; self._setOwner(''); self._set('server', 'idle'); }); },
+    hasSess: function () { return !!SESS; },
     config: function () { return api('GET', '/config'); }
   };
 

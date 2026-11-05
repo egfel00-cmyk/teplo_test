@@ -16,7 +16,7 @@ let pass = 0, fail = 0; const ok = (n, c, x) => { if (c) { pass++; console.log('
   const st = async () => JSON.parse(await p.evaluate(() => localStorage.getItem('teplo.v1')));
   await p.goto(U + '#place-p2'); await p.reload(); await p.waitForTimeout(900);
   const txt = async (k) => (await p.textContent('[data-key=' + k + ']')) || '';
-  ok('екран квартири: «Постачальники й тарифи» для «Мала Данилівка» (Малоданилівська селищна громада)', /Для «Мала Данилівка» \(Малоданилівська селищна громада\)/.test(await txt('prov-lead')));
+  ok('екран квартири: «Постачальники й тарифи» для «Мала Данилівка» (Малоданилівська громада)', /Для «Мала Данилівка» \(Малоданилівська громада, Харківський район\)/.test(await txt('prov-lead')));
   const el = await txt('prov-elec');
   ok('світло: ПрАТ «Харківенергозбут», мережі Харківобленерго, 4,32 грн за кВт·год до 30.04.2027, підказка й «Так, у мене так» / «У мене інакше»', /Харківенергозбут/.test(el) && /Харківобленерго/.test(el) && /4,32 грн за кВт·год, ціна діє до 30 квітня 2027/.test(el)
     && !!(await p.$('[data-key=prov-yes-elec]')) && !!(await p.$('[data-key=prov-other-elec]')) && /ЖБК/.test(el), el);
@@ -58,7 +58,7 @@ let pass = 0, fail = 0; const ok = (n, c, x) => { if (c) { pass++; console.log('
   ok('Налаштування → «Тариф, грн/Гкал» показує тариф квартири 1600', /1600|1\s600/.test(await p.inputValue('#p-tariff').catch(() => '')), await p.inputValue('#p-tariff').catch(() => 'нет поля'));
   await p.goto(U + '#place-main'); await p.waitForTimeout(600);
   ok('360 px — блок не ширший за екран', await p.evaluate(() => document.documentElement.scrollWidth <= 361));
-  await p.evaluate(() => { const s = JSON.parse(localStorage.getItem('teplo.v1')); s.places[0].address = 'Пісочин, вул. Набережна 3'; localStorage.setItem('teplo.v1', JSON.stringify(s)); }); await p.reload(); await p.waitForTimeout(800);
+  await p.evaluate(() => { const s = JSON.parse(localStorage.getItem('teplo.v1')); s.places[0].address = 'с. Неіснуюче, вул. Набережна 3'; localStorage.setItem('teplo.v1', JSON.stringify(s)); }); await p.reload(); await p.waitForTimeout(800);
   ok('незнайомий пункт → «довідника ще немає… впишіть з платіжок», без вигаданого Харкова', /довідника ще немає/.test(await txt('prov-lead')) && /Хто постачає — невідомо/.test(await txt('prov-water')));
   ok('без помилок JS', !errs.length, errs);
   console.log('\nИтог: ' + pass + ' OK, ' + fail + ' FAIL'); await b.close(); process.exit(fail ? 1 : 0);

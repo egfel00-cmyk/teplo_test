@@ -15,8 +15,12 @@ if len(sys.argv) > 2:
     renamed = {x['id']: x['name'] for x in old if x['id'] in cur and cur[x['id']] != x['name']}
 # старі назви, якими ще пишуть адреси (перейменування 2016–2024)
 OLD = {'Берестин': ['Красноград'], 'Златопіль': ['Первомайський'], 'Південне': ['Южний', 'Южное', 'Южный']}
+# громади, перейменовані слідом за центром (2024), у КАТОТТГ ще під старими назвами
+H_NEW = {'Красноградська': 'Берестинська', 'Первомайська': 'Златопільська'}
+for h in H.values(): h['n'] = H_NEW.get(h['n'], h['n'])
 for s in S:
-    al = list(OLD.get(s['n'], [])) + ([renamed[s['id']]] if s['id'] in renamed else [])
+    # старі назви — лише місту (у Солоницівській громаді є село Південне, яке Южним не було)
+    al = (list(OLD.get(s['n'], [])) if s['c'] == 'M' else []) + ([renamed[s['id']]] if s['id'] in renamed else [])
     if al: s['old'] = al
 out = {'src': 'КАТОТТГ (github.com/suprun/katottg.json), станом на ' + str(d.get('valid_on', '')), 'districts': P, 'hromadas': H,
        'settlements': [{k: v for k, v in s.items() if k != 'id'} for s in S]}

@@ -110,6 +110,8 @@
     S = Object.assign(defaults(), m, keep);
     ensurePlaces(); var ap = place(); if (ap && (ap.meter || ap.baseline || S.places.length > 1)) { S.meter = ap.meter || null; S.baseline = ap.baseline || null; }
     lastSig = window.TeploSync.sig(window.TeploSync.payload(S)); persist();
+    // кнопка з нагадування відкрилась до входу — тепер квартири є: у потрібну квартиру й лічильник
+    if (DEEP && S.onboarded) { var dp = DEEP; DEEP = null; deepLink(dp.g, dp.pid, dp.q); }
     safeRender();
   }
   function safeRender() {
@@ -2520,6 +2522,28 @@
     return '<div class="welcome-lcd whero" aria-hidden="true" data-key="welcome-hero">' + cell('heat', lcd([{ text: '13.245', tag: 'Gcal' }], 'boot'), t('kd_heat')) + cell('hot', wdrum('175.921', 'hot'), t('st_water')) +
       cell('elec', elcd([{ text: '10420' }]), t('kd_elec')) + cell('gas', wdrum('1225.4', 'gas'), t('kd_gas')) + '</div>';
   }
+  // ---------- вхід у вікні Telegram (Mini App) ----------
+  function tgPending() {
+    var y = window.TeploSync, tw = window.Telegram && window.Telegram.WebApp;
+    if (!y || !window.TEPLO_API || !tw || !tw.initData) return false;
+    return !y.tg || y.tg.state === 'pending';   // ще не почався (перший кадр) або йде
+  }
+  V.tgwait = function () {
+    return { screen: 'S00', route: 'tgwait', bare: true, html: '<div class="welcome tgwait" data-key="tg-wait"><div class="tgw-b" role="status" aria-live="polite">' +
+      '<span class="spin" aria-hidden="true"></span><h1>' + esc(t('tg_wait_t')) + '</h1><p class="muted">' + esc(t('tg_wait')) + '</p></div></div>' };
+  };
+  /** Вхід через Telegram не вдався: чому (людською мовою) і що робити — замість мовчазного «як новому». */
+  function tgFailBox() {
+    var g = Y().tg; if (!g || g.state !== 'fail' || (Y().mode === 'server' && Y().account)) return '';
+    var why = g.err === 'telegram_expired' ? t('tg_fail_old') : g.code === 0 ? t('tg_fail_net') : t('tg_fail_other', { c: g.code });
+    return '<div class="banner warn" data-key="tg-fail" role="alert">' + ico('alert', 22) + '<div><p><b>' + esc(t('tg_fail_t')) + '</b></p><p>' + esc(why) + '</p>' +
+      '<p class="row-actions"><button type="button" class="btn sec" data-act="tg-retry" data-key="tg-retry">' + esc(t('tg_retry')) + '</button>' +
+      '<a href="#login" class="btn ter" data-key="tg-login">' + esc(t('tg_login_mail')) + '</a></p></div></div>';
+  }
+  document.addEventListener('click', function (e) {
+    var b = e.target.closest && e.target.closest('[data-act="tg-retry"]'); if (!b || !window.TeploSync || !window.TeploSync.retryTg) return;
+    e.preventDefault(); window.TeploSync.retryTg(); safeRender();
+  });
   V.welcome = function () {
     var acc = Y().mode === 'server' && Y().account;
     if (acc) {   // уже вошёл, но лічильник ещё не выбран (новый аккаунт или стёрли данные) — без рекламного экрана, сразу к делу
@@ -2532,7 +2556,7 @@
         '</div></div>' };
     }
     var bul = [['camera', 'w_b1'], ['send', 'w_b2'], ['home', 'w_b3'], ['chart', 'w_b4']];
-    return { screen: 'S00', bare: true, html:
+    return { screen: 'S00', bare: true, html: tgFailBox() +
       '<div class="welcome"><div class="welcome-grid">' + welcomeHero() + '<div>' +
       '<h1>' + esc(t('w_title')) + '</h1><p class="lead">' + esc(t('w_lead')) + '</p>' +
       '<ul>' + bul.map(function (b) { return '<li data-key="welcome-' + b[1] + '">' + ico(b[0], 22, 'c-ok') + '<span>' + esc(t(b[1])) + '</span></li>'; }).join('') + '</ul>' +
@@ -3625,7 +3649,7 @@
     var j = prvLoad(a);
     if (!j || j.busy) return h + '<p class="small muted" data-key="prov-loading">' + esc(t('prv_loading')) + '</p></section>';
     var nat = (j && j.national) || {}, pl = j.found ? j.place : null;
-    h += '<p class="small muted" data-key="prov-lead">' + esc(pl ? t('prv_lead', { c: pl.name, h: pl.hromada }) + (j.how === 'default' ? ' ' + t('prv_kh_default') : '') : j.err ? t('prv_err') : t('prv_nf', { a: a })) + '</p>';
+    h += '<p class="small muted" data-key="prov-lead">' + esc(pl ? t('prv_lead', { c: pl.name, h: pl.hromada, d: pl.district }) + (j.how === 'default' ? ' ' + t('prv_kh_default') : '') : j.err ? t('prv_err') : t('prv_nf', { a: a })) + '</p>';
     return h + ks.map(function (k) { return prvRow(p, k, j.found ? j.kinds[k] : null, nat); }).join('') + '</section>';
   }
   document.addEventListener('click', function (e) {
@@ -4436,7 +4460,9 @@
     // світла в квартирі немає (або прибрали) — сторінка світла веде на головну
     if (S.onboarded && SK[r] && !smeters(r).length) { r = 'home'; try { history.replaceState(null, '', '#home'); } catch (e1) { /* старий браузер */ } }
     pendingRender = false;
-    if (!S.onboarded && ['welcome', 'start', 'wsetup', 'wadd', 'eadd', 'gadd', 'meter', 'baseline', 'help', 'login', 'photo', 'privacy', 'terms'].indexOf(r) < 0) r = S.meter ? 'baseline' : 'welcome';
+    // вікно Telegram: даних тут ще немає, а вхід за підписом Telegram іде — не показуємо привітання «як новому» (воно лякає: «мої дані зникли»)
+    if (!S.onboarded && tgPending() && ['help', 'privacy', 'terms', 'login'].indexOf(r) < 0) r = 'tgwait';
+    else if (!S.onboarded && ['welcome', 'start', 'wsetup', 'wadd', 'eadd', 'gadd', 'meter', 'baseline', 'help', 'login', 'photo', 'privacy', 'terms'].indexOf(r) < 0) r = S.meter ? 'baseline' : 'welcome';
     if (S.onboarded && (!r || r === 'welcome' || r === 'start')) r = homeRoute();
     var view;
     var rm = r.match(/^rec-([\w-]+?)(-edit)?$/), wm = r.match(/^wrec-([\w-]+)$/), gn = r.match(/^gap-new-([\w-]+)$/), gm = !gn && r.match(/^gap-([\w-]+)$/), pm = r.match(/^place-([\w-]+)$/), em = r.match(/^erec-([\w-]+)$/);
@@ -4901,11 +4927,11 @@
   }
   function jrFlush() {
     if (!JRS || !JRS.q.length) return;
-    var m = document.cookie.match(/(?:^|; )ts_csrf=([^;]*)/);
-    if (!m) { if (!JRS.cfg && window.TeploSync) { JRS.cfg = 1; window.TeploSync.api('GET', '/config').then(jrFlush, function () {}); } return; }
+    // cookie немає (вікно Telegram, що їх не зберігає) — однаково шлемо: сервер приймає журнал без CSRF, інакше такі сеанси зникали б безслідно
+    var m = document.cookie.match(/(?:^|; )ts_csrf=([^;]*)/), jh = { 'Content-Type': 'application/json' }; if (m) jh['X-CSRF'] = decodeURIComponent(m[1]);
     while (JRS.q.length) {
       var ev = JRS.q.splice(0, 40);
-      try { fetch(window.TEPLO_API + '/events', { method: 'POST', keepalive: true, credentials: 'same-origin', headers: { 'Content-Type': 'application/json', 'X-CSRF': decodeURIComponent(m[1]) },
+      try { fetch(window.TEPLO_API + '/events', { method: 'POST', keepalive: true, credentials: 'same-origin', headers: jh,
         body: JSON.stringify({ vid: JRS.vid, sid: JRS.sid, now: Date.now(), ev: ev }) }).catch(function () {}); } catch (e) { /* старий браузер */ }
     }
   }
@@ -5005,10 +5031,7 @@
   if (tw && tw.initData) { try { tw.ready(); tw.expand(); applyTheme(); if (tw.onEvent) tw.onEvent('themeChanged', function () { applyTheme(); safeRender(); }); } catch (e) { /* старый клиент */ } }
   if (window.TEPLO_API && window.TeploVision) window.TeploVision.initServer({}, false);
   // кнопка из напоминания бота: ?go=wnew — ввод воды, ?go=heat — тепло
-  (function () {
-    var g = (location.search.match(/[?&]go=(wnew|heat|enew|elec|gnew|gas|home|places|water-cold|water-hot|gpv)(?=&|$)/) || [])[1]; if (!g) return;
-    var pid = (location.search.match(/[?&]place=([\w-]+)(?=&|$)/) || [])[1];
-    var q = location.search.replace(/([?&])(go|place)=[\w-]+(?=&|$)/g, '$1').replace(/&{2,}/g, '&').replace(/\?&/, '?').replace(/[?&]$/, '');
+  function deepLink(g, pid, q) {
     // напоминание про конкретную квартиру — сразу в неё
     if (pid && place(pid)) { switchPlace(pid); WX.key = ''; }
     // графік відключень з ранкового повідомлення: сторінка світла квартири з розгорнутим блоком (без електролічильника — екран квартири)
@@ -5017,6 +5040,16 @@
     try { history.replaceState(null, '', location.pathname + q + '#' + g); } catch (e) { location.hash = g; }
     if (g === 'wnew') WN = wnFresh(wmeters('hot').length ? 'hot' : 'cold');
     if (g === 'enew' || g === 'gnew') EN = enFresh(g === 'gnew' ? 'gas' : 'elec');
+  }
+  var DEEP = null, TGS = '';
+  (function () {
+    var g = (location.search.match(/[?&]go=(wnew|heat|enew|elec|gnew|gas|home|places|water-cold|water-hot|gpv)(?=&|$)/) || [])[1]; if (!g) return;
+    var pid = (location.search.match(/[?&]place=([\w-]+)(?=&|$)/) || [])[1];
+    var q = location.search.replace(/([?&])(go|place)=[\w-]+(?=&|$)/g, '$1').replace(/&{2,}/g, '&').replace(/\?&/, '?').replace(/[?&]$/, '');
+    deepLink(g, pid, q);
+    // у цьому вікні ще немає квартир (вхід через Telegram триває) — повторимо, коли дані прийдуть із сервера
+    var tw2 = window.Telegram && window.Telegram.WebApp;
+    if (!S.onboarded || (pid && !place(pid))) if (tw2 && tw2.initData) DEEP = { g: g, pid: pid, q: q };
   })();
   render();
   PHS.restore().then(function (ok) { if (ok && routeName() === 'photo') safeRender(); });
@@ -5025,7 +5058,12 @@
       var el = document.getElementById('sync-status'); if (el) el.textContent = syncStatusText();
       if (window.TEPLO_API && window.TeploVision && window.TeploSync._cfg) window.TeploVision.initServer(window.TeploSync._cfg, !!window.TeploSync.account);
       if (!window.TeploSync.account) ADMIN = null; else { checkAdmin(); if (INBOX.items === null || INBOX.auto) loadInbox(); histFlush(); }
-      if (['prefs', 'login', 'welcome', 'home', 'meter', 'baseline'].indexOf(routeName() || 'welcome') >= 0 || /^step-/.test(routeName())) safeRender();
+      var tgs = window.TeploSync.tg ? window.TeploSync.tg.state : '';
+      if (tgs !== TGS) {
+        TGS = tgs; var g = window.TeploSync.tg || {}, tw3 = window.Telegram && window.Telegram.WebApp;
+        if (tgs === 'ok' || tgs === 'fail') track('tg_login', { ok: tgs === 'ok' ? 1 : 0, c: g.code || undefined, e: g.err || undefined, ms: g.ms, via: g.via, pf: tw3 && tw3.platform, v: tw3 && tw3.version, ck: /(?:^|; )ts_csrf=/.test(document.cookie) ? 1 : 0 });
+        safeRender();
+      } else if (['prefs', 'login', 'welcome', 'home', 'meter', 'baseline', 'tgwait'].indexOf(routeName() || 'welcome') >= 0 || /^step-/.test(routeName())) safeRender();
       // карточка записи: вход/выход меняет блок платёжек — перерисовать только его (и только при смене входа: иначе открытый выбор файла потеряется)
       var bx = document.querySelector('section.bills[data-ref]'); if (bx && (bx.getAttribute('data-acc') === '1') !== !!window.TeploSync.account) billsRefresh(bx.getAttribute('data-ref'));
     };

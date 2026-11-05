@@ -404,6 +404,11 @@ label.btn { cursor: pointer; }
 @keyframes spin { to { transform: rotate(360deg); } }
 .spin { display: inline-block; flex: none; width: 20px; height: 20px; border: 2.5px solid currentColor; border-right-color: transparent; border-radius: 50%; animation: spin .8s linear infinite; vertical-align: -4px; }
 .banner > .spin { width: 22px; height: 22px; margin-top: 2px; }
+/* вхід у вікні Telegram — спокійний екран замість привітання «як новому» */
+.tgwait { min-height: 60vh; display: grid; place-items: center; text-align: center; }
+.tgw-b { max-width: 420px; padding: 24px; }
+.tgw-b .spin { width: 36px; height: 36px; border-width: 3px; color: var(--c-accent, currentColor); margin-bottom: 16px; }
+.tgw-b h1 { font-size: 1.5rem; margin: 0 0 8px; }
 .btn[aria-busy="true"] { pointer-events: none; opacity: .85; }
 .btn[aria-busy="true"]::before { content: ''; flex: none; width: 18px; height: 18px; border: 2.5px solid currentColor; border-right-color: transparent; border-radius: 50%; animation: spin .8s linear infinite; }
 .pbar { height: 6px; border-radius: 3px; background: var(--c-line); overflow: hidden; margin-top: 10px; }
@@ -1616,6 +1621,14 @@ summary:focus-visible { outline: 3px solid var(--c-info); outline-offset: 2px; b
       w_b4: 'Історія, витрати й вартість за кожним лічильником. Показання можна вносити й «лише для себе» — без передачі.',
       w_cta: 'Почати',
       w_fine: 'Без реєстрації. Дані зберігаються лише в цьому браузері.',
+      tg_wait_t: 'Входимо через Telegram…',
+      tg_wait: 'Завантажуємо ваші квартири й лічильники. Це кілька секунд.',
+      tg_fail_t: 'Не вдалося увійти через Telegram',
+      tg_fail_old: 'Вікно відкрите надто давно. Закрийте його й відкрийте ще раз з бота — кнопкою «Відкрити».',
+      tg_fail_net: 'Сервер не відповів. Перевірте інтернет і спробуйте ще раз.',
+      tg_fail_other: 'Сервер відповів помилкою {c}. Спробуйте ще раз — ваші дані на місці, в акаунті.',
+      tg_retry: 'Спробувати ще раз',
+      tg_login_mail: 'Увійти поштою',
 
       win_closed_before: 'Приймання показань відкриється {date}.',
       win_closed_before_sub: 'Показання, зняті зараз, ХТМ не прийме — зніміть їх з 5 по 23 число.',
@@ -2373,7 +2386,7 @@ summary:focus-visible { outline: 3px solid var(--c-info); outline-offset: 2px; b
       pv_del: 'Видалити квартиру', pv_del_q: 'Видалити квартиру «{p}»? Разом з нею зникнуть її лічильники й показання (записів: {n}).',
       pv_del_yes: 'Так, видалити «{p}»', pv_deleted: 'Квартиру «{p}» видалено',
       // ---- квартиры, этап 2: главная-список, мастер «Додати квартиру», напоминания по квартирам, «не та квартира»
-      prv_title: 'Постачальники й тарифи', prv_lead: 'Для «{c}» ({h}). Звірте з платіжками — тоді гроші в застосунку рахуватимуться точно.', prv_kh_default: 'Населеного пункту в адресі немає — вважаємо, що це Харків.', prv_noaddr: 'Додайте адресу квартири — підкажемо, хто постачає світло, газ, воду й тепло і за якими тарифами.', prv_loading: 'Шукаємо постачальників за адресою…', prv_err: 'Не вдалося завантажити довідник постачальників. Впишіть дані з платіжок.', prv_nf: 'Для адреси «{a}» довідника ще немає. Впишіть постачальників і ціни з платіжок.', prv_k_elec: 'Світло', prv_k_gas: 'Газ', prv_k_water: 'Вода', prv_k_heat: 'Тепло', prv_net: 'Мережі: {n}', prv_grm: 'Доставка газу: {g}, {p} грн за 1 м³ річної потужності (окремий рахунок)', prv_p_elec: '{p} грн за кВт·год, ціна діє до {d}', prv_p_gas: '{p} грн за м³, тариф «{n}» до {d}', prv_p_own: '{p} грн за м³ (з вашої платіжки)', prv_p_water: '{s} грн за м³ води і {d} грн водовідведення', prv_p_water1: '{s} грн за м³ води', prv_from_bill: '(з вашої платіжки)', prv_since: 'з {d}', prv_p_none: 'Тариф невідомий, впишіть з платіжки', prv_p_heat: '{p} грн за Гкал з ПДВ і {a} грн абонплати на місяць', prv_heat_calc: 'Поки рахуємо за тарифом ХТМ, {p} грн за Гкал. Впишіть свій з платіжки.', prv_heatp: 'Тариф, грн за Гкал', mp_title: 'Ціна', mp_elec: 'Ціна, грн за кВт·год', mp_own: 'Ціна з вашої платіжки.', mp_unknown: 'Ціну для «{c}» ще не знайшли. Впишіть її з платіжки, тоді гроші рахуватимуться точно.', mp_noaddr: 'Додайте адресу квартири, і ціни підставляться самі за вашим населеним пунктом.', mp_from: 'Ціна від: {s}. Інша на платіжці? Впишіть свою.', mp_gas_grm: 'Нафтогаз, доставка: {g}, {p} грн за 1 м³ річної потужності окремим рахунком', prv_src: 'Звідки ці дані', prv_org_none: 'Хто постачає — невідомо', prv_ok: 'звірено', prv_own: 'з платіжки', prv_yes: 'Так, у мене так', prv_other: 'У мене інакше', prv_fill: 'Вписати з платіжки', prv_change: 'Змінити', prv_name: 'Хто виставляє рахунок', prv_supply: 'Вода, грн за м³', prv_drain: 'Водовідведення, грн за м³ (якщо є)', prv_gasp: 'Ціна газу, грн за м³', prv_saved: 'Збережено', pn_send: '{k}: передати {w}', pn_ready: '{k}: внесено, передати {w}', pn_today: 'сьогодні, останній день', pn_tmr: 'до завтра', pn_until: 'до {d}, ще {n} дн.', pst_off: 'знято', pst_sent: 'передано', pst_until: 'до {d}', pst_ready: 'внесено, до {d}', pst_from: 'з {d}', pst_today: 'Сьогодні останній день', pst_tmr: 'Завтра останній день', pst_left: '{n} дн.', pst_today_s: 'сьогодні останній день', pst_tmr_s: 'до завтра', acc_close: 'Згорнути', ov_due: 'Найближчий термін — {d}, залишилось {n} дн.', ov_due_today: 'Сьогодні останній день — {d}', ov_all_ok: 'Цього місяця все передано',
+      prv_title: 'Постачальники й тарифи', prv_lead: 'Для «{c}» ({h} громада, {d} район). Звірте з платіжками — тоді гроші в застосунку рахуватимуться точно.', prv_kh_default: 'Населеного пункту в адресі немає — вважаємо, що це Харків.', prv_noaddr: 'Додайте адресу квартири — підкажемо, хто постачає світло, газ, воду й тепло і за якими тарифами.', prv_loading: 'Шукаємо постачальників за адресою…', prv_err: 'Не вдалося завантажити довідник постачальників. Впишіть дані з платіжок.', prv_nf: 'Для адреси «{a}» довідника ще немає. Впишіть постачальників і ціни з платіжок.', prv_k_elec: 'Світло', prv_k_gas: 'Газ', prv_k_water: 'Вода', prv_k_heat: 'Тепло', prv_net: 'Мережі: {n}', prv_grm: 'Доставка газу: {g}, {p} грн за 1 м³ річної потужності (окремий рахунок)', prv_p_elec: '{p} грн за кВт·год, ціна діє до {d}', prv_p_gas: '{p} грн за м³, тариф «{n}» до {d}', prv_p_own: '{p} грн за м³ (з вашої платіжки)', prv_p_water: '{s} грн за м³ води і {d} грн водовідведення', prv_p_water1: '{s} грн за м³ води', prv_from_bill: '(з вашої платіжки)', prv_since: 'з {d}', prv_p_none: 'Тариф невідомий, впишіть з платіжки', prv_p_heat: '{p} грн за Гкал з ПДВ і {a} грн абонплати на місяць', prv_heat_calc: 'Поки рахуємо за тарифом ХТМ, {p} грн за Гкал. Впишіть свій з платіжки.', prv_heatp: 'Тариф, грн за Гкал', mp_title: 'Ціна', mp_elec: 'Ціна, грн за кВт·год', mp_own: 'Ціна з вашої платіжки.', mp_unknown: 'Ціну для «{c}» ще не знайшли. Впишіть її з платіжки, тоді гроші рахуватимуться точно.', mp_noaddr: 'Додайте адресу квартири, і ціни підставляться самі за вашим населеним пунктом.', mp_from: 'Ціна від: {s}. Інша на платіжці? Впишіть свою.', mp_gas_grm: 'Нафтогаз, доставка: {g}, {p} грн за 1 м³ річної потужності окремим рахунком', prv_src: 'Звідки ці дані', prv_org_none: 'Хто постачає — невідомо', prv_ok: 'звірено', prv_own: 'з платіжки', prv_yes: 'Так, у мене так', prv_other: 'У мене інакше', prv_fill: 'Вписати з платіжки', prv_change: 'Змінити', prv_name: 'Хто виставляє рахунок', prv_supply: 'Вода, грн за м³', prv_drain: 'Водовідведення, грн за м³ (якщо є)', prv_gasp: 'Ціна газу, грн за м³', prv_saved: 'Збережено', pn_send: '{k}: передати {w}', pn_ready: '{k}: внесено, передати {w}', pn_today: 'сьогодні, останній день', pn_tmr: 'до завтра', pn_until: 'до {d}, ще {n} дн.', pst_off: 'знято', pst_sent: 'передано', pst_until: 'до {d}', pst_ready: 'внесено, до {d}', pst_from: 'з {d}', pst_today: 'Сьогодні останній день', pst_tmr: 'Завтра останній день', pst_left: '{n} дн.', pst_today_s: 'сьогодні останній день', pst_tmr_s: 'до завтра', acc_close: 'Згорнути', ov_due: 'Найближчий термін — {d}, залишилось {n} дн.', ov_due_today: 'Сьогодні останній день — {d}', ov_all_ok: 'Цього місяця все передано',
       ov_none: 'Лічильників ще немає — натисніть, щоб додати', ov_cur: 'відкрита', ov_open: 'Відкрити квартиру «{p}»',
       aw_title: 'Нова квартира', aw_step: 'Крок {i} з {n}',
       aw_t1: 'Як назвати квартиру?', aw_l1: 'Назва — щоб не плутати квартири між собою. Адреса — за бажанням.',
@@ -2477,6 +2490,14 @@ summary:focus-visible { outline: 3px solid var(--c-info); outline-offset: 2px; b
       w_b4: 'История, расход и стоимость по каждому счётчику. Показания можно вносить и «только для себя» — без передачи.',
       w_cta: 'Начать',
       w_fine: 'Без регистрации. Данные хранятся только в этом браузере.',
+      tg_wait_t: 'Входим через Telegram…',
+      tg_wait: 'Загружаем ваши квартиры и счётчики. Это несколько секунд.',
+      tg_fail_t: 'Не удалось войти через Telegram',
+      tg_fail_old: 'Окно открыто слишком давно. Закройте его и откройте ещё раз из бота — кнопкой «Открыть».',
+      tg_fail_net: 'Сервер не ответил. Проверьте интернет и попробуйте ещё раз.',
+      tg_fail_other: 'Сервер ответил ошибкой {c}. Попробуйте ещё раз — ваши данные на месте, в аккаунте.',
+      tg_retry: 'Попробовать ещё раз',
+      tg_login_mail: 'Войти по почте',
 
       win_closed_before: 'Приём показаний откроется {date}.',
       win_closed_before_sub: 'Показания, снятые сейчас, ХТМ не примет — снимите их с 5 по 23 число.',
@@ -3234,7 +3255,7 @@ summary:focus-visible { outline: 3px solid var(--c-info); outline-offset: 2px; b
       pv_del: 'Удалить квартиру', pv_del_q: 'Удалить квартиру «{p}»? Вместе с ней пропадут её счётчики и показания (записей: {n}).',
       pv_del_yes: 'Да, удалить «{p}»', pv_deleted: 'Квартира «{p}» удалена',
       // ---- квартиры, этап 2: главная-список, мастер «Добавить квартиру», напоминания по квартирам, «не та квартира»
-      prv_title: 'Поставщики и тарифы', prv_lead: 'Для «{c}» ({h}). Сверьте с платёжками — тогда деньги в приложении будут считаться точно.', prv_kh_default: 'Населённого пункта в адресе нет — считаем, что это Харьков.', prv_noaddr: 'Добавьте адрес квартиры — подскажем, кто поставляет свет, газ, воду и тепло и по каким тарифам.', prv_loading: 'Ищем поставщиков по адресу…', prv_err: 'Не удалось загрузить справочник поставщиков. Впишите данные из платёжек.', prv_nf: 'Для адреса «{a}» справочника ещё нет. Впишите поставщиков и цены из платёжек.', prv_k_elec: 'Свет', prv_k_gas: 'Газ', prv_k_water: 'Вода', prv_k_heat: 'Тепло', prv_net: 'Сети: {n}', prv_grm: 'Доставка газа: {g}, {p} грн за 1 м³ годовой мощности (отдельный счёт)', prv_p_elec: '{p} грн за кВт·ч, цена действует до {d}', prv_p_gas: '{p} грн за м³, тариф «{n}» до {d}', prv_p_own: '{p} грн за м³ (из вашей платёжки)', prv_p_water: '{s} грн за м³ воды и {d} грн водоотведения', prv_p_water1: '{s} грн за м³ воды', prv_from_bill: '(из вашей платёжки)', prv_since: 'с {d}', prv_p_none: 'Тариф неизвестен, впишите из платёжки', prv_p_heat: '{p} грн за Гкал с НДС и {a} грн абонплаты в месяц', prv_heat_calc: 'Пока считаем по тарифу ХТМ, {p} грн за Гкал. Впишите свой из платёжки.', prv_heatp: 'Тариф, грн за Гкал', mp_title: 'Цена', mp_elec: 'Цена, грн за кВт·ч', mp_own: 'Цена из вашей платёжки.', mp_unknown: 'Цену для «{c}» ещё не нашли. Впишите её из платёжки, тогда деньги будут считаться точно.', mp_noaddr: 'Добавьте адрес квартиры, и цены подставятся сами по вашему населённому пункту.', mp_from: 'Цена от: {s}. Другая в платёжке? Впишите свою.', mp_gas_grm: 'Нафтогаз, доставка: {g}, {p} грн за 1 м³ годовой мощности отдельным счётом', prv_src: 'Откуда эти данные', prv_org_none: 'Кто поставляет — неизвестно', prv_ok: 'сверено', prv_own: 'из платёжки', prv_yes: 'Да, у меня так', prv_other: 'У меня иначе', prv_fill: 'Вписать из платёжки', prv_change: 'Изменить', prv_name: 'Кто выставляет счёт', prv_supply: 'Вода, грн за м³', prv_drain: 'Водоотведение, грн за м³ (если есть)', prv_gasp: 'Цена газа, грн за м³', prv_saved: 'Сохранено', pn_send: '{k}: передать {w}', pn_ready: '{k}: внесено, передать {w}', pn_today: 'сегодня, последний день', pn_tmr: 'до завтра', pn_until: 'до {d}, ещё {n} дн.', pst_off: 'снят', pst_sent: 'передано', pst_until: 'до {d}', pst_ready: 'внесено, до {d}', pst_from: 'с {d}', pst_today: 'Сегодня последний день', pst_tmr: 'Завтра последний день', pst_left: '{n} дн.', pst_today_s: 'сегодня последний день', pst_tmr_s: 'до завтра', acc_close: 'Свернуть', ov_due: 'Ближайший срок — {d}, осталось {n} дн.', ov_due_today: 'Сегодня последний день — {d}', ov_all_ok: 'В этом месяце всё передано',
+      prv_title: 'Поставщики и тарифы', prv_lead: 'Для «{c}» ({h} громада, {d} район). Сверьте с платёжками — тогда деньги в приложении будут считаться точно.', prv_kh_default: 'Населённого пункта в адресе нет — считаем, что это Харьков.', prv_noaddr: 'Добавьте адрес квартиры — подскажем, кто поставляет свет, газ, воду и тепло и по каким тарифам.', prv_loading: 'Ищем поставщиков по адресу…', prv_err: 'Не удалось загрузить справочник поставщиков. Впишите данные из платёжек.', prv_nf: 'Для адреса «{a}» справочника ещё нет. Впишите поставщиков и цены из платёжек.', prv_k_elec: 'Свет', prv_k_gas: 'Газ', prv_k_water: 'Вода', prv_k_heat: 'Тепло', prv_net: 'Сети: {n}', prv_grm: 'Доставка газа: {g}, {p} грн за 1 м³ годовой мощности (отдельный счёт)', prv_p_elec: '{p} грн за кВт·ч, цена действует до {d}', prv_p_gas: '{p} грн за м³, тариф «{n}» до {d}', prv_p_own: '{p} грн за м³ (из вашей платёжки)', prv_p_water: '{s} грн за м³ воды и {d} грн водоотведения', prv_p_water1: '{s} грн за м³ воды', prv_from_bill: '(из вашей платёжки)', prv_since: 'с {d}', prv_p_none: 'Тариф неизвестен, впишите из платёжки', prv_p_heat: '{p} грн за Гкал с НДС и {a} грн абонплаты в месяц', prv_heat_calc: 'Пока считаем по тарифу ХТМ, {p} грн за Гкал. Впишите свой из платёжки.', prv_heatp: 'Тариф, грн за Гкал', mp_title: 'Цена', mp_elec: 'Цена, грн за кВт·ч', mp_own: 'Цена из вашей платёжки.', mp_unknown: 'Цену для «{c}» ещё не нашли. Впишите её из платёжки, тогда деньги будут считаться точно.', mp_noaddr: 'Добавьте адрес квартиры, и цены подставятся сами по вашему населённому пункту.', mp_from: 'Цена от: {s}. Другая в платёжке? Впишите свою.', mp_gas_grm: 'Нафтогаз, доставка: {g}, {p} грн за 1 м³ годовой мощности отдельным счётом', prv_src: 'Откуда эти данные', prv_org_none: 'Кто поставляет — неизвестно', prv_ok: 'сверено', prv_own: 'из платёжки', prv_yes: 'Да, у меня так', prv_other: 'У меня иначе', prv_fill: 'Вписать из платёжки', prv_change: 'Изменить', prv_name: 'Кто выставляет счёт', prv_supply: 'Вода, грн за м³', prv_drain: 'Водоотведение, грн за м³ (если есть)', prv_gasp: 'Цена газа, грн за м³', prv_saved: 'Сохранено', pn_send: '{k}: передать {w}', pn_ready: '{k}: внесено, передать {w}', pn_today: 'сегодня, последний день', pn_tmr: 'до завтра', pn_until: 'до {d}, ещё {n} дн.', pst_off: 'снят', pst_sent: 'передано', pst_until: 'до {d}', pst_ready: 'внесено, до {d}', pst_from: 'с {d}', pst_today: 'Сегодня последний день', pst_tmr: 'Завтра последний день', pst_left: '{n} дн.', pst_today_s: 'сегодня последний день', pst_tmr_s: 'до завтра', acc_close: 'Свернуть', ov_due: 'Ближайший срок — {d}, осталось {n} дн.', ov_due_today: 'Сегодня последний день — {d}', ov_all_ok: 'В этом месяце всё передано',
       ov_none: 'Счётчиков ещё нет — нажмите, чтобы добавить', ov_cur: 'открыта', ov_open: 'Открыть квартиру «{p}»',
       aw_title: 'Новая квартира', aw_step: 'Шаг {i} из {n}',
       aw_t1: 'Как назвать квартиру?', aw_l1: 'Название — чтобы не путать квартиры между собой. Адрес — по желанию.',
@@ -3417,14 +3438,34 @@ summary:focus-visible { outline: 3px solid var(--c-info); outline-offset: 2px; b
 
   // ---------------- бэкенд: свой сервер ----------------
   function cookie(name) { var m = document.cookie.match(new RegExp('(?:^|; )' + name + '=([^;]*)')); return m ? decodeURIComponent(m[1]) : ''; }
-  function api(method, path, body) {
-    // CSRF: перед первым изменяющим запросом получить cookie ts_csrf (сервер выдаёт её на любой GET)
-    if (method !== 'GET' && !cookie('ts_csrf')) return api('GET', '/config').then(function () { return api(method, path, body); });
+  // Сесія вікна Telegram: токен із входу Mini App — на випадок, коли вікно Telegram (Mac) не зберігає cookie. Живе до закриття вікна.
+  var SESS = (function () { try { return root.sessionStorage.getItem('teplo.tgs') || ''; } catch (e) { return ''; } })();
+  function setSess(t) { SESS = t || ''; try { if (SESS) root.sessionStorage.setItem('teplo.tgs', SESS); else root.sessionStorage.removeItem('teplo.tgs'); } catch (e) { /* без sessionStorage — лише в пам'яті */ } }
+  function api(method, path, body, again) {
+    // CSRF: перед первым изменяющим запросом получить cookie ts_csrf (сервер выдаёт её на любой GET) — один раз: если cookie не
+    // зберігаються (вікно Telegram), повторювати безкінечно не можна; вхід Mini App і запити з X-Session сервер пускає без неї
+    if (method !== 'GET' && !cookie('ts_csrf') && !SESS && !again && path !== '/auth/telegram/webapp') return api('GET', '/config').then(function () { return api(method, path, body, true); });
     var h = { 'Accept': 'application/json' };
-    if (method !== 'GET') { h['Content-Type'] = 'application/json'; h['X-CSRF'] = cookie('ts_csrf'); }
+    if (method !== 'GET') { h['Content-Type'] = 'application/json'; if (cookie('ts_csrf')) h['X-CSRF'] = cookie('ts_csrf'); }
+    if (SESS) h['X-Session'] = SESS;
     return fetch(root.TEPLO_API + path, { method: method, headers: h, credentials: 'same-origin', body: body ? JSON.stringify(body) : undefined })
       .then(function (res) { return res.json().catch(function () { return {}; }).then(function (j) { j._status = res.status; return j; }); });
   }
+  // Усі запити застосунку до свого API (і прямі fetch з app.js / recognize.js) несуть X-Session, якщо вхід був через Telegram
+  if (root.fetch && !root.fetch._teplo) {
+    var of = root.fetch.bind(root);
+    root.fetch = function (url, opts) {
+      try {
+        if (SESS && typeof url === 'string' && root.TEPLO_API && url.indexOf(root.TEPLO_API) === 0) {
+          opts = Object.assign({}, opts || {}); var hh = new Headers(opts.headers || {}); hh.set('X-Session', SESS); opts.headers = hh;
+        }
+      } catch (e) { /* старий браузер — як є */ }
+      return of(url, opts);
+    };
+    root.fetch._teplo = true;
+  }
+  /** Запит із межею часу: вікно Telegram інколи «висить» без відповіді — не чекати вічно. */
+  function withTimeout(pr, ms) { return new Promise(function (ok, bad) { var t = setTimeout(function () { bad(new Error('timeout')); }, ms); pr.then(function (v) { clearTimeout(t); ok(v); }, function (e) { clearTimeout(t); bad(e); }); }); }
 
   var Sync = {
     api: api,
@@ -3490,9 +3531,28 @@ summary:focus-visible { outline: 3px solid var(--c-info); outline-offset: 2px; b
     _initServer: function () {
       var self = this;
       var tg = root.Telegram && root.Telegram.WebApp;
-      var start = tg && tg.initData ? this.loginTelegramWebApp(tg.initData) : this.refreshMe();
+      var start = tg && tg.initData ? this.tgLogin() : this.refreshMe();
       return start.then(function () { self._startPolling(); }, function () { self._set('local', 'offline'); });
     },
+    /** Вхід у вікні Telegram за підписаними initData. tg = {state: pending|ok|fail, code, err, ms} — застосунок показує «Входимо…»
+     *  замість привітання, а при невдачі — причину й «Спробувати ще раз». */
+    tg: null,
+    tgLogin: function () {
+      var self = this, tw = root.Telegram && root.Telegram.WebApp, t0 = Date.now();
+      if (!tw || !tw.initData) return this.refreshMe();
+      this.tg = { state: 'pending' }; this._onChange();
+      return withTimeout(this.loginTelegramWebApp(tw.initData), 15000).then(function (j) {
+        if (j && j._status === 200 && self.account) { self.tg = { state: 'ok', ms: Date.now() - t0 }; self._onChange(); return j; }
+        var f = { state: 'fail', code: (j && j._status) || 0, err: (j && j.error) || '', ms: Date.now() - t0 };
+        // підпис Telegram не прийняли — може, у вікні вже є вхід (cookie чи X-Session): перевіримо, перш ніж казати «не вдалося»
+        return self.refreshMe().then(function () { self.tg = self.account ? { state: 'ok', ms: Date.now() - t0, via: 'session', code: f.code, err: f.err } : f; self._onChange(); return j; },
+          function () { self.tg = f; self._onChange(); return j; });
+      }, function (e) {
+        self.tg = { state: 'fail', code: 0, err: String((e && e.message) || 'network').slice(0, 40), ms: Date.now() - t0 }; self._onChange();
+        throw e;
+      });
+    },
+    retryTg: function () { var self = this; return this.tgLogin().then(function () { self._set('server', self.status === 'ok' ? 'ok' : 'idle'); }, function () { self._set('local', 'offline'); }); },
     refreshMe: function () {
       var self = this;
       return api('GET', '/me').then(function (j) { self.serverReachable = true; self.account = j._status === 200 ? j.user : null; return self.account ? self.pull() : self._set('server', 'idle'); });
@@ -3526,11 +3586,12 @@ summary:focus-visible { outline: 3px solid var(--c-info); outline-offset: 2px; b
     _after: function (j) { if (j._status === 200 && j.user) { this.account = j.user; return this.pull(true).then(function () { return j; }); } return Promise.resolve(j); },
     login: function (email, password) { var self = this; return api('POST', '/auth/login', { email: email, password: password }).then(function (j) { return self._after(j); }); },
     register: function (email, password) { var self = this; return api('POST', '/auth/register', { email: email, password: password }).then(function (j) { return self._after(j); }); },
-    loginTelegramWebApp: function (initData) { var self = this; return api('POST', '/auth/telegram/webapp', { initData: initData }).then(function (j) { self.serverReachable = true; return self._after(j); }); },
+    loginTelegramWebApp: function (initData) { var self = this; return api('POST', '/auth/telegram/webapp', { initData: initData }).then(function (j) { self.serverReachable = true; if (j._status === 200 && j.session) setSess(j.session); delete j.session; return self._after(j); }); },
     loginTelegramWidget: function (data) { var self = this; return api('POST', '/auth/telegram/widget', data).then(function (j) { return self._after(j); }); },
     linkTelegram: function (data) { var self = this; return api('POST', '/auth/link-telegram', data).then(function (j) { if (j._status === 200) self.account = j.user; self._onChange(); return j; }); },
     setPassword: function (email, password) { var self = this; return api('POST', '/auth/password', { email: email, password: password }).then(function (j) { if (j._status === 200) self.account = j.user; self._onChange(); return j; }); },
-    logout: function () { var self = this; return api('POST', '/auth/logout').then(function () { self.account = null; self._lastSig = ''; self._setOwner(''); self._set('server', 'idle'); }); },
+    logout: function () { var self = this; return api('POST', '/auth/logout').then(function () { setSess(''); self.account = null; self._lastSig = ''; self._setOwner(''); self._set('server', 'idle'); }); },
+    hasSess: function () { return !!SESS; },
     config: function () { return api('GET', '/config'); }
   };
 
@@ -4038,7 +4099,7 @@ summary:focus-visible { outline: 3px solid var(--c-info); outline-offset: 2px; b
       var self = this, api = root.TEPLO_API, ids = []; self.lastIds = ids;
       if (!self.isIn()) return Promise.reject(fail('not_signed_in'));
       var post = function (path, body, type) {
-        if (!cookie('ts_csrf')) return fetch(api + '/config', { credentials: 'same-origin' }).then(function () { return post(path, body, type); });
+        if (!cookie('ts_csrf') && !post.tried && !(root.TeploSync && root.TeploSync.hasSess && root.TeploSync.hasSess())) { post.tried = true; return fetch(api + '/config', { credentials: 'same-origin' }).then(function () { return post(path, body, type); }); }
         return fetch(api + path, { method: 'POST', body: body, signal: signal, credentials: 'same-origin', headers: { 'Content-Type': type, 'X-CSRF': cookie('ts_csrf'), 'Accept': 'application/json' } })
           .then(function (r) { return r.json().catch(function () { return {}; }).then(function (j) { if (!r.ok) throw fail(httpCode(r.status)); return j; }); });
       };
@@ -5040,6 +5101,8 @@ summary:focus-visible { outline: 3px solid var(--c-info); outline-offset: 2px; b
     S = Object.assign(defaults(), m, keep);
     ensurePlaces(); var ap = place(); if (ap && (ap.meter || ap.baseline || S.places.length > 1)) { S.meter = ap.meter || null; S.baseline = ap.baseline || null; }
     lastSig = window.TeploSync.sig(window.TeploSync.payload(S)); persist();
+    // кнопка з нагадування відкрилась до входу — тепер квартири є: у потрібну квартиру й лічильник
+    if (DEEP && S.onboarded) { var dp = DEEP; DEEP = null; deepLink(dp.g, dp.pid, dp.q); }
     safeRender();
   }
   function safeRender() {
@@ -7450,6 +7513,28 @@ summary:focus-visible { outline: 3px solid var(--c-info); outline-offset: 2px; b
     return '<div class="welcome-lcd whero" aria-hidden="true" data-key="welcome-hero">' + cell('heat', lcd([{ text: '13.245', tag: 'Gcal' }], 'boot'), t('kd_heat')) + cell('hot', wdrum('175.921', 'hot'), t('st_water')) +
       cell('elec', elcd([{ text: '10420' }]), t('kd_elec')) + cell('gas', wdrum('1225.4', 'gas'), t('kd_gas')) + '</div>';
   }
+  // ---------- вхід у вікні Telegram (Mini App) ----------
+  function tgPending() {
+    var y = window.TeploSync, tw = window.Telegram && window.Telegram.WebApp;
+    if (!y || !window.TEPLO_API || !tw || !tw.initData) return false;
+    return !y.tg || y.tg.state === 'pending';   // ще не почався (перший кадр) або йде
+  }
+  V.tgwait = function () {
+    return { screen: 'S00', route: 'tgwait', bare: true, html: '<div class="welcome tgwait" data-key="tg-wait"><div class="tgw-b" role="status" aria-live="polite">' +
+      '<span class="spin" aria-hidden="true"></span><h1>' + esc(t('tg_wait_t')) + '</h1><p class="muted">' + esc(t('tg_wait')) + '</p></div></div>' };
+  };
+  /** Вхід через Telegram не вдався: чому (людською мовою) і що робити — замість мовчазного «як новому». */
+  function tgFailBox() {
+    var g = Y().tg; if (!g || g.state !== 'fail' || (Y().mode === 'server' && Y().account)) return '';
+    var why = g.err === 'telegram_expired' ? t('tg_fail_old') : g.code === 0 ? t('tg_fail_net') : t('tg_fail_other', { c: g.code });
+    return '<div class="banner warn" data-key="tg-fail" role="alert">' + ico('alert', 22) + '<div><p><b>' + esc(t('tg_fail_t')) + '</b></p><p>' + esc(why) + '</p>' +
+      '<p class="row-actions"><button type="button" class="btn sec" data-act="tg-retry" data-key="tg-retry">' + esc(t('tg_retry')) + '</button>' +
+      '<a href="#login" class="btn ter" data-key="tg-login">' + esc(t('tg_login_mail')) + '</a></p></div></div>';
+  }
+  document.addEventListener('click', function (e) {
+    var b = e.target.closest && e.target.closest('[data-act="tg-retry"]'); if (!b || !window.TeploSync || !window.TeploSync.retryTg) return;
+    e.preventDefault(); window.TeploSync.retryTg(); safeRender();
+  });
   V.welcome = function () {
     var acc = Y().mode === 'server' && Y().account;
     if (acc) {   // уже вошёл, но лічильник ещё не выбран (новый аккаунт или стёрли данные) — без рекламного экрана, сразу к делу
@@ -7462,7 +7547,7 @@ summary:focus-visible { outline: 3px solid var(--c-info); outline-offset: 2px; b
         '</div></div>' };
     }
     var bul = [['camera', 'w_b1'], ['send', 'w_b2'], ['home', 'w_b3'], ['chart', 'w_b4']];
-    return { screen: 'S00', bare: true, html:
+    return { screen: 'S00', bare: true, html: tgFailBox() +
       '<div class="welcome"><div class="welcome-grid">' + welcomeHero() + '<div>' +
       '<h1>' + esc(t('w_title')) + '</h1><p class="lead">' + esc(t('w_lead')) + '</p>' +
       '<ul>' + bul.map(function (b) { return '<li data-key="welcome-' + b[1] + '">' + ico(b[0], 22, 'c-ok') + '<span>' + esc(t(b[1])) + '</span></li>'; }).join('') + '</ul>' +
@@ -8555,7 +8640,7 @@ summary:focus-visible { outline: 3px solid var(--c-info); outline-offset: 2px; b
     var j = prvLoad(a);
     if (!j || j.busy) return h + '<p class="small muted" data-key="prov-loading">' + esc(t('prv_loading')) + '</p></section>';
     var nat = (j && j.national) || {}, pl = j.found ? j.place : null;
-    h += '<p class="small muted" data-key="prov-lead">' + esc(pl ? t('prv_lead', { c: pl.name, h: pl.hromada }) + (j.how === 'default' ? ' ' + t('prv_kh_default') : '') : j.err ? t('prv_err') : t('prv_nf', { a: a })) + '</p>';
+    h += '<p class="small muted" data-key="prov-lead">' + esc(pl ? t('prv_lead', { c: pl.name, h: pl.hromada, d: pl.district }) + (j.how === 'default' ? ' ' + t('prv_kh_default') : '') : j.err ? t('prv_err') : t('prv_nf', { a: a })) + '</p>';
     return h + ks.map(function (k) { return prvRow(p, k, j.found ? j.kinds[k] : null, nat); }).join('') + '</section>';
   }
   document.addEventListener('click', function (e) {
@@ -9366,7 +9451,9 @@ summary:focus-visible { outline: 3px solid var(--c-info); outline-offset: 2px; b
     // світла в квартирі немає (або прибрали) — сторінка світла веде на головну
     if (S.onboarded && SK[r] && !smeters(r).length) { r = 'home'; try { history.replaceState(null, '', '#home'); } catch (e1) { /* старий браузер */ } }
     pendingRender = false;
-    if (!S.onboarded && ['welcome', 'start', 'wsetup', 'wadd', 'eadd', 'gadd', 'meter', 'baseline', 'help', 'login', 'photo', 'privacy', 'terms'].indexOf(r) < 0) r = S.meter ? 'baseline' : 'welcome';
+    // вікно Telegram: даних тут ще немає, а вхід за підписом Telegram іде — не показуємо привітання «як новому» (воно лякає: «мої дані зникли»)
+    if (!S.onboarded && tgPending() && ['help', 'privacy', 'terms', 'login'].indexOf(r) < 0) r = 'tgwait';
+    else if (!S.onboarded && ['welcome', 'start', 'wsetup', 'wadd', 'eadd', 'gadd', 'meter', 'baseline', 'help', 'login', 'photo', 'privacy', 'terms'].indexOf(r) < 0) r = S.meter ? 'baseline' : 'welcome';
     if (S.onboarded && (!r || r === 'welcome' || r === 'start')) r = homeRoute();
     var view;
     var rm = r.match(/^rec-([\w-]+?)(-edit)?$/), wm = r.match(/^wrec-([\w-]+)$/), gn = r.match(/^gap-new-([\w-]+)$/), gm = !gn && r.match(/^gap-([\w-]+)$/), pm = r.match(/^place-([\w-]+)$/), em = r.match(/^erec-([\w-]+)$/);
@@ -9831,11 +9918,11 @@ summary:focus-visible { outline: 3px solid var(--c-info); outline-offset: 2px; b
   }
   function jrFlush() {
     if (!JRS || !JRS.q.length) return;
-    var m = document.cookie.match(/(?:^|; )ts_csrf=([^;]*)/);
-    if (!m) { if (!JRS.cfg && window.TeploSync) { JRS.cfg = 1; window.TeploSync.api('GET', '/config').then(jrFlush, function () {}); } return; }
+    // cookie немає (вікно Telegram, що їх не зберігає) — однаково шлемо: сервер приймає журнал без CSRF, інакше такі сеанси зникали б безслідно
+    var m = document.cookie.match(/(?:^|; )ts_csrf=([^;]*)/), jh = { 'Content-Type': 'application/json' }; if (m) jh['X-CSRF'] = decodeURIComponent(m[1]);
     while (JRS.q.length) {
       var ev = JRS.q.splice(0, 40);
-      try { fetch(window.TEPLO_API + '/events', { method: 'POST', keepalive: true, credentials: 'same-origin', headers: { 'Content-Type': 'application/json', 'X-CSRF': decodeURIComponent(m[1]) },
+      try { fetch(window.TEPLO_API + '/events', { method: 'POST', keepalive: true, credentials: 'same-origin', headers: jh,
         body: JSON.stringify({ vid: JRS.vid, sid: JRS.sid, now: Date.now(), ev: ev }) }).catch(function () {}); } catch (e) { /* старий браузер */ }
     }
   }
@@ -9935,10 +10022,7 @@ summary:focus-visible { outline: 3px solid var(--c-info); outline-offset: 2px; b
   if (tw && tw.initData) { try { tw.ready(); tw.expand(); applyTheme(); if (tw.onEvent) tw.onEvent('themeChanged', function () { applyTheme(); safeRender(); }); } catch (e) { /* старый клиент */ } }
   if (window.TEPLO_API && window.TeploVision) window.TeploVision.initServer({}, false);
   // кнопка из напоминания бота: ?go=wnew — ввод воды, ?go=heat — тепло
-  (function () {
-    var g = (location.search.match(/[?&]go=(wnew|heat|enew|elec|gnew|gas|home|places|water-cold|water-hot|gpv)(?=&|$)/) || [])[1]; if (!g) return;
-    var pid = (location.search.match(/[?&]place=([\w-]+)(?=&|$)/) || [])[1];
-    var q = location.search.replace(/([?&])(go|place)=[\w-]+(?=&|$)/g, '$1').replace(/&{2,}/g, '&').replace(/\?&/, '?').replace(/[?&]$/, '');
+  function deepLink(g, pid, q) {
     // напоминание про конкретную квартиру — сразу в неё
     if (pid && place(pid)) { switchPlace(pid); WX.key = ''; }
     // графік відключень з ранкового повідомлення: сторінка світла квартири з розгорнутим блоком (без електролічильника — екран квартири)
@@ -9947,6 +10031,16 @@ summary:focus-visible { outline: 3px solid var(--c-info); outline-offset: 2px; b
     try { history.replaceState(null, '', location.pathname + q + '#' + g); } catch (e) { location.hash = g; }
     if (g === 'wnew') WN = wnFresh(wmeters('hot').length ? 'hot' : 'cold');
     if (g === 'enew' || g === 'gnew') EN = enFresh(g === 'gnew' ? 'gas' : 'elec');
+  }
+  var DEEP = null, TGS = '';
+  (function () {
+    var g = (location.search.match(/[?&]go=(wnew|heat|enew|elec|gnew|gas|home|places|water-cold|water-hot|gpv)(?=&|$)/) || [])[1]; if (!g) return;
+    var pid = (location.search.match(/[?&]place=([\w-]+)(?=&|$)/) || [])[1];
+    var q = location.search.replace(/([?&])(go|place)=[\w-]+(?=&|$)/g, '$1').replace(/&{2,}/g, '&').replace(/\?&/, '?').replace(/[?&]$/, '');
+    deepLink(g, pid, q);
+    // у цьому вікні ще немає квартир (вхід через Telegram триває) — повторимо, коли дані прийдуть із сервера
+    var tw2 = window.Telegram && window.Telegram.WebApp;
+    if (!S.onboarded || (pid && !place(pid))) if (tw2 && tw2.initData) DEEP = { g: g, pid: pid, q: q };
   })();
   render();
   PHS.restore().then(function (ok) { if (ok && routeName() === 'photo') safeRender(); });
@@ -9955,7 +10049,12 @@ summary:focus-visible { outline: 3px solid var(--c-info); outline-offset: 2px; b
       var el = document.getElementById('sync-status'); if (el) el.textContent = syncStatusText();
       if (window.TEPLO_API && window.TeploVision && window.TeploSync._cfg) window.TeploVision.initServer(window.TeploSync._cfg, !!window.TeploSync.account);
       if (!window.TeploSync.account) ADMIN = null; else { checkAdmin(); if (INBOX.items === null || INBOX.auto) loadInbox(); histFlush(); }
-      if (['prefs', 'login', 'welcome', 'home', 'meter', 'baseline'].indexOf(routeName() || 'welcome') >= 0 || /^step-/.test(routeName())) safeRender();
+      var tgs = window.TeploSync.tg ? window.TeploSync.tg.state : '';
+      if (tgs !== TGS) {
+        TGS = tgs; var g = window.TeploSync.tg || {}, tw3 = window.Telegram && window.Telegram.WebApp;
+        if (tgs === 'ok' || tgs === 'fail') track('tg_login', { ok: tgs === 'ok' ? 1 : 0, c: g.code || undefined, e: g.err || undefined, ms: g.ms, via: g.via, pf: tw3 && tw3.platform, v: tw3 && tw3.version, ck: /(?:^|; )ts_csrf=/.test(document.cookie) ? 1 : 0 });
+        safeRender();
+      } else if (['prefs', 'login', 'welcome', 'home', 'meter', 'baseline', 'tgwait'].indexOf(routeName() || 'welcome') >= 0 || /^step-/.test(routeName())) safeRender();
       // карточка записи: вход/выход меняет блок платёжек — перерисовать только его (и только при смене входа: иначе открытый выбор файла потеряется)
       var bx = document.querySelector('section.bills[data-ref]'); if (bx && (bx.getAttribute('data-acc') === '1') !== !!window.TeploSync.account) billsRefresh(bx.getAttribute('data-ref'));
     };
