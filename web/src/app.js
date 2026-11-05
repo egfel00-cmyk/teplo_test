@@ -1229,7 +1229,7 @@
     var last = wlast(), h = '<h1>' + esc(title) + (place() && place().name ? ' — ' + esc(place().name) : '') + '</h1>';
     ms.forEach(function (m) { h += gapBanner(m.id); });
     // табло кожного водоміра — як екран тепла: останні показання, дата, повірка
-    var left = ms.map(function (m) {
+    var left = ms.map(function (m, i0) {
       var r = wprevFor(m.id), days = m.verifiedUntil ? R.daysBetween(today(), m.verifiedUntil) : null, sc = null, cap;
       if (r && r.gap) cap = t('wm_cap_gap', { d: fmtDate(r.date, true) });
       else { sc = sentCap(wrecs().filter(function (x) { return hasVal(x, m.id); }), function (x) { return x.base ? baseSent(x) : wsentVk(x) && (kind === 'cold' || wsentHtm(x)); }); r = sc.rec; cap = sc.cap; }
@@ -1238,7 +1238,7 @@
       return mbox({ key: 'wmeter-' + m.id, id: m.id, kind: kind, icon: 'drop', cls: kind === 'hot' ? 'c-hot' : 'c-cold', name: ms.length > 1 ? wname(m) : title, sub: [m.serial ? '№ ' + m.serial : '', ms.length > 1 ? '' : t('mb_water_sub')].filter(Boolean).join(' · '),
         display: wdrum(r ? r.vals[m.id] : null, kind, 'hero'), cap: cap, fix: fix, body: sc && sc.note ? '<p class="small muted mb-newer">' + esc(sc.note) + '</p>' : '',
         meta: [ver, m.vkId ? esc(t('mb_vkid', { v: m.vkId })) : ''].filter(Boolean),
-        set: wmeterFields(m) + gapSetLink(m.id),
+        set: wmeterFields(m) + (i0 === 0 ? priceBlock(kind) : '') + gapSetLink(m.id),
         links: [mbPlaceLink()] });
     }).join('');
     var right = '<button class="btn big block" data-act="wnew" data-kind="' + kind + '" data-key="water-add">' + ico('plus', 22) + '<span>' + esc(t('wn_title')) + '</span></button>' +
@@ -1541,7 +1541,7 @@
   /** Останнє показання лічильника до дати (не включно; стартове того ж дня — так). */
   function eprev(mid, date, skipId) { var a = mrecs(mid).filter(function (r) { return r.id !== skipId && (!date || r.date < date || (r.base && r.date === date)); }); return a.length ? a[a.length - 1] : null; }
   function elastOf(mid) { var a = mrecs(mid); return a.length ? a[a.length - 1] : null; }
-  function sopts(k) { var p = place() || {}; return { heating: !!p[SK[k].heat], price: k === 'gas' ? R.num(p.gasPrice) : null }; }
+  function sopts(k) { var p = place() || {}; return { heating: !!p[SK[k].heat], price: k === 'gas' ? R.num(p.gasPrice) : R.num(((p.prov || {}).elec || {}).price) }; }
   function eopts() { return sopts('elec'); }
   function ename(m) { return t((m && m.kind) === 'gas' ? 'kd_gas' : 'kd_elec') + (m && m.name ? ' · ' + m.name : ''); }
   /** Назва зони: «День», «Ніч», «Пік», «Напівпік»; одна зона — «Показання». */
@@ -1710,7 +1710,7 @@
   function sheatRow(k) {
     var p = place() || {};
     return '<label class="check-row" style="margin-top:12px"><input type="checkbox" id="' + (k === 'gas' ? 'g' : 'e') + '-heat" data-heat="' + SK[k].heat + '"' + (p[SK[k].heat] ? ' checked' : '') + ' data-key="' + k + '-heat"><span>' + esc(tk(k, 'eh_on')) + '</span></label><p class="small muted" style="margin:4px 0 0">' + esc(tk(k, 'eh_sub')) + '</p>' +
-      (k === 'gas' ? '<div class="field" style="max-width:260px;margin-top:12px"><label for="g-price">' + esc(t('gh_price')) + '</label><div class="ctl"><input id="g-price" class="num" inputmode="decimal" autocomplete="off" placeholder="' + esc(money(Gs.priceAt(today()))) + '" value="' + esc(p.gasPrice ? String(p.gasPrice).replace('.', ',') : '') + '"><span class="unit">грн</span></div><div class="help">' + esc(t('gh_price_h')) + '</div></div>' : '');
+      '';
   }
   function eheatRow() { return sheatRow('elec'); }
   /** Поля лічильника світла/газу (назва, рахунок, №); зони — поки немає жодного показання (новий лічильник квартири). */
@@ -1727,6 +1727,45 @@
     return '<div class="grid2"><div class="field"><span class="lbl">' + esc(t('p_meter')) + '</span><p style="margin:0"><b>' + esc(modelName(m)) + '</b> · <a href="#meter" data-key="mb-heat-model">' + esc(t('change')) + '</a></p></div>' +
       '<div class="field"><label for="p-ver">' + esc(t('mv_date')) + '</label><div class="ctl"><input id="p-ver" type="date" value="' + esc((S.meter && S.meter.verifiedUntil) || '') + '"></div></div></div>';
   }
+  /** «Ціна» в налаштуваннях кожного лічильника: відома — вже вписана (з довідника за адресою чи з платіжки), невідома — порожнє
+   *  поле і прохання вписати з платіжки. k: heat | hot | cold | elec | gas. Пишемо в квартиру: p.prov[heat|water|elec].price…, p.gasPrice, p.bill.abon. */
+  function priceBlock(k) {
+    var p = place() || {}, a = String(p.address || '').trim(), j = a ? prvLoad(a) : null, reg = j && j.found && j.kinds ? j.kinds : null;
+    var pk = k === 'hot' || k === 'cold' ? 'water' : k, my = (p.prov || {})[pk] || {}, d = reg && reg[pk], f = function (v) { return v === null || v === undefined || v === '' ? '' : money(v); };
+    var fld = function (id, lbl, val, unit, ph) { return '<div class="field"><label for="' + id + '">' + esc(lbl) + '</label><div class="ctl"><input id="' + id + '" class="num" inputmode="decimal" autocomplete="off" data-mp="' + id + '" value="' + esc(val) + '"' + (ph ? ' placeholder="' + esc(ph) + '"' : '') + '><span class="unit">' + esc(unit) + '</span></div></div>'; };
+    var h = '', own = false, unknown = false, src = '';
+    if (k === 'heat') {
+      own = R.num(my.price) > 0; unknown = !own && reg && d !== undefined && !(d && R.num(d.price) > 0) && !(R.num(S.tariff) > 0);
+      h = fld('mp-heat', t('prv_heatp'), unknown ? '' : f(tariff()), 'грн') + fld('mp-abon', t('p_abon_l'), f(bill().abon), 'грн');
+      src = d && d.org ? d.org : '';
+    } else if (pk === 'water') {
+      var tr = Wt.tariffAt(today(), wtar()); own = R.num(my.supply) > 0;
+      unknown = !own && !!reg && !(d && R.num(d.supply) > 0) && !(S.wtariff && R.num(S.wtariff.supply) > 0);
+      h = fld('mp-ws', t('prv_supply'), unknown ? '' : f(tr.supply), 'грн') + fld('mp-wd', t('prv_drain'), unknown ? '' : f(tr.drain), 'грн') + (k === 'hot' ? fld('mp-wh', t('wtp_hot'), f(tr.hot), 'грн') : '');
+      src = (d && d.org) || '';
+    } else if (k === 'elec') {
+      own = R.num(my.price) > 0; h = fld('mp-ep', t('mp_elec'), f(own ? R.num(my.price) : El.priceAt(today())), 'грн');
+      src = (d && d.org) || '';
+    } else if (k === 'gas') {
+      own = R.num(p.gasPrice) > 0; h = fld('g-price', t('gh_price'), f(own ? R.num(p.gasPrice) : Gs.priceAt(today())), 'грн');
+      src = (reg && reg.gas && reg.gas.grm) ? t('mp_gas_grm', { g: reg.gas.grm, p: String(reg.gas.dist).replace('.', ',') }) : '';
+    }
+    var note = own ? t('mp_own') : unknown ? t('mp_unknown', { c: (j.place && j.place.name) || a }) : !a ? t('mp_noaddr') : src ? t('mp_from', { s: src }) : '';
+    return '<div class="mp" data-key="mp-' + k + '"><h4 class="mp-h">' + esc(t('mp_title')) + '</h4><div class="grid2">' + h + '</div>' +
+      (note ? '<p class="small ' + (unknown ? 'warn-text' : 'muted') + '" data-key="mp-note-' + k + '">' + esc(note) + '</p>' : '') + '</div>';
+  }
+  document.addEventListener('change', function (e) {
+    var el = e.target, id = el && el.getAttribute && el.getAttribute('data-mp'); if (!id || id === 'g-price') return;
+    ensurePlaces(); var p = place(), v = R.num(String(el.value).replace(/\s/g, '')); p.prov = p.prov || {};
+    var put = function (k, f, max) { var o = Object.assign({}, p.prov[k] || {}); if (v !== null && v >= 0 && v < max) o[f] = v; else delete o[f]; o.at = today(); p.prov[k] = o; };
+    if (id === 'mp-heat') put('heat', 'price', 100000);
+    else if (id === 'mp-abon') { if (v !== null && v >= 0 && v < 10000) p.bill = Object.assign({}, p.bill || {}, { abon: v }); }
+    else if (id === 'mp-ws') put('water', 'supply', 1000);
+    else if (id === 'mp-wd') { put('water', 'drain', 1000); if (v === 0) p.prov.water.drain = 0; }
+    else if (id === 'mp-wh') put('water', 'hot', 1000);
+    else if (id === 'mp-ep') put('elec', 'price', 100);
+    p.updatedAt = Date.now(); WX.key = ''; save(); toast(t('b_saved')); render(true);
+  });
   /** Одна й та сама ссилка в усіх лічильників: квартира — її лічильники (додати, замінити, прибрати) і рахунки. */
   function mbPlaceLink(key) { var p = place() || {}; return mlink('#place-' + esc(p.id || ''), 'home', t('mb_place'), ' data-key="' + (key || 'mb-place') + '"'); }
   function smeterFields(k, m) {
@@ -1748,7 +1787,7 @@
       return mbox({ key: 'emeter-' + m.id, id: m.id, kind: k, icon: SK[k].icon, cls: SK[k].cls, name: ms.length > 1 ? ename(m) : t(KINDS[k].t), sub: [m.serial ? '№ ' + m.serial : '', ezonesTxt(m)].filter(Boolean).join(' · '),
         display: edisplay(m, r, 'hero'), cap: cap, fix: fix, body: sc.note ? '<p class="small muted mb-newer">' + esc(sc.note) + '</p>' : '',
         meta: m.account ? [esc(tk(k, 'ed_acc', { a: m.account }))] : [],
-        set: smeterFields(k, m) + (i === 0 ? sheatRow(k) : ''),
+        set: smeterFields(k, m) + (i === 0 ? priceBlock(k) + sheatRow(k) : ''),
         links: [mbPlaceLink(k + '-place')] });
     }).join('');
     if (k === 'elec') left += gpvBox(p, 'elec');
@@ -2530,7 +2569,7 @@
       body: (newer ? '<p class="small muted mb-newer">' + esc(t(newer.own ? 'mb_newer_own' : 'mb_newer_heat', { d: fmtDate(newer.htm.date, true), s: t('status_' + newer.status).toLowerCase() })) + '</p>' : '') +
         (bs ? '' : '<p class="small muted">' + esc(t('h_last_none_sub')) + '</p><p><a class="btn sec" href="#baseline" data-key="home-add-base">' + esc(t('h_add_base')) + '</a></p>'),
       meta: S.meter && S.meter.verifiedUntil ? [esc(t('pl_ver', { d: R.toHtmDate(S.meter.verifiedUntil) }))] : [],
-      set: heatMeterFields(m) + gapSetLink('heat'),
+      set: heatMeterFields(m) + priceBlock('heat') + gapSetLink('heat'),
       links: [mbPlaceLink()] });
     var right = '';
     var n = steps().length;
@@ -3529,8 +3568,8 @@
   /** Тариф води квартири: свій з платіжки (p.prov.water) — главніше за загальний (wtar()). */
   function wtar() {
     var p = place() || {}, w = p.prov && p.prov.water;
-    if (!w || !(R.num(w.supply) > 0)) return S.wtariff;
-    return Object.assign({}, S.wtariff || {}, { supply: R.num(w.supply), drain: R.num(w.drain) > 0 ? R.num(w.drain) : 0 });
+    if (!w || !(R.num(w.supply) > 0)) return R.num(w && w.hot) > 0 ? Object.assign({}, S.wtariff || {}, { hot: R.num(w.hot) }) : S.wtariff;
+    return Object.assign({}, S.wtariff || {}, { supply: R.num(w.supply), drain: R.num(w.drain) > 0 ? R.num(w.drain) : 0 }, R.num(w.hot) > 0 ? { hot: R.num(w.hot) } : {});
   }
   function prvKinds() { var k = []; if (emeters().length) k.push('elec'); if (smeters('gas').length) k.push('gas'); if (wmeters().length) k.push('water'); if (hasHeat()) k.push('heat'); return k; }
   var PRV_ICO = { elec: ['bolt', 'c-elec'], gas: ['flame', 'c-gas'], water: ['drop', 'c-cold'], heat: ['thermo', 'c-hot'] };

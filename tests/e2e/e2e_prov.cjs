@@ -27,6 +27,14 @@ let pass = 0, fail = 0; const ok = (n, c, x) => { if (c) { pass++; console.log('
   ok('«Звідки ці дані» — джерело тарифу світла згорнуте', !!(await p.$('[data-key=prov-elec] details.prov-src')) && !(await p.$eval('[data-key=prov-elec] details.prov-src', d => d.open)));
   await p.click('[data-key=prov-yes-elec]'); await p.waitForTimeout(300); let sv = await st();
   ok('«Так, у мене так» → світло звірено (p.prov.elec.ok), позначка «звірено», кнопки підтвердження зникли', sv.places[1].prov && sv.places[1].prov.elec.ok === 1 && /звірено/.test(await txt('prov-elec')) && !(await p.$('[data-key=prov-yes-elec]')));
+  // «Ціна» в налаштуваннях лічильника: вода в Малій Данилівці невідома — порожньо і прохання вписати; світло — 4,32
+  await p.goto(U + '#water-cold'); await p.waitForTimeout(700); await p.click('[data-key$=-set] summary'); await p.waitForTimeout(200);
+  ok('холодна в Малій Данилівці: «Ціна» — поле води порожнє, «ще не знайшли… впишіть з платіжки»', await p.inputValue('#mp-ws') === '' && /ще не знайшли/.test(await txt('mp-note-cold')), [await p.inputValue('#mp-ws'), await txt('mp-note-cold').catch(() => '')]);
+  await p.goto(U + '#elec'); await p.waitForTimeout(700); await p.click('[data-key$=-set] summary'); await p.waitForTimeout(200);
+  ok('світло: «Ціна» — 4,32 вже вписано, від Харківенергозбуту', await p.inputValue('#mp-ep') === '4,32' && /Харківенергозбут/.test(await txt('mp-note-elec')), [await p.inputValue('#mp-ep'), await txt('mp-note-elec').catch(() => '')]);
+  await p.fill('#mp-ep', '5'); await p.press('#mp-ep', 'Tab'); await p.waitForTimeout(300); sv = await st();
+  ok('світло: вписали 5 → ціна квартири 5 («з вашої платіжки»)', sv.places[1].prov.elec.price === 5 && /з вашої платіжки/.test(await txt('mp-note-elec')), sv.places[1].prov.elec);
+  await p.goto(U + '#place-p2'); await p.waitForTimeout(600);
   await p.click('[data-key=prov-other-water]'); await p.waitForTimeout(200);
   ok('вода → форма: хто виставляє (підставлено з довідника), ціна води й водовідведення', await p.inputValue('#prv-n-water') === 'КП «Малоданилівський комунальник»' && !!(await p.$('#prv-s')) && !!(await p.$('#prv-d')));
   await p.fill('#prv-s', '30,5'); await p.click('[data-key=prov-save-water]'); await p.waitForTimeout(300); sv = await st();

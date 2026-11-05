@@ -1139,3 +1139,7 @@ summary:focus-visible { outline: 3px solid var(--c-info); outline-offset: 2px; b
 .pn-row { display: flex; align-items: flex-start; gap: 6px; font-size: var(--fs-s); line-height: 1.4; color: var(--c-ink-2); }
 .pn-row > .ico { flex: none; margin-top: 2px; }
 .pn-row.hot { color: var(--c-warn); font-weight: 600; }
+/* «Ціна» в налаштуваннях лічильника */
+.mp { margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--c-line); }
+.mp-h { margin: 0 0 8px; font-size: 16px; font-weight: 700; }
+.mp .warn-text, .warn-text { color: var(--c-warn-ink); font-weight: 600; }
