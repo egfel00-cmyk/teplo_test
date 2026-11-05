@@ -59,6 +59,16 @@ let pass = 0, fail = 0; const ok = (n, c, i) => { console.log((c ? '  OK  ' : ' 
   ok('дві квартири: «Головна» і логотип → #home', (await p.getAttribute('[data-key=nav-home]', 'href')) === '#home' && (await p.getAttribute('[data-key=brand]', 'href')) === '#home');
   await go('water-cold');
   ok('шапка квартири: «Усі квартири» → #home', (await p.getAttribute('[data-key=place-bar-all]', 'href')) === '#home' && /Усі квартири/.test(await p.textContent('[data-key=place-bar-all]')));
+  // історія / статистика / економія: чия — видно кнопками з назвами квартир, перемикається тут же
+  await go('history');
+  const psw = async () => p.$$eval('[data-key=place-switch] button', bs => bs.map(b => [b.textContent.trim(), b.getAttribute('aria-pressed')]));
+  const h0 = await psw();
+  ok('історія: «Квартира:» і обидві квартири кнопками, натиснута поточна (Батьків), без «Усі квартири»', h0.length === 2 && h0.some(x => /Батьків/.test(x[0]) && x[1] === 'true') && h0.some(x => /Моя квартира/.test(x[0]) && x[1] === 'false') && !(await p.$('[data-key=place-bar]')), h0);
+  await p.click('[data-key=place-sw-' + s.places[0].id + ']'); await p.waitForTimeout(300);
+  ok('натиснули «Моя квартира» — історія її (є опалення), квартира перемкнулась', (await st()).placeId === s.places[0].id && (await hash()) === '#history' && (await psw()).some(x => /Моя квартира/.test(x[0]) && x[1] === 'true'));
+  await go('stats'); const h1 = await psw();
+  ok('статистика — той самий перемикач, вибрана «Моя квартира»', h1.length === 2 && h1.some(x => /Моя квартира/.test(x[0]) && x[1] === 'true'), h1);
+  await p.click('[data-key=place-sw-' + np.id + ']'); await p.waitForTimeout(300);
   await p.goto('http://127.0.0.1:8013/'); await p.waitForTimeout(500);
   ok('відкрили застосунок без адреси — головна з двома квартирами', (await p.$$('details.pacc')).length === 2 && !!(await p.$('[data-screen=S01]')));
   const c1 = await p.textContent('[data-key=home-pl-' + s.places[0].id + '] summary'), c2 = await p.textContent('[data-key=home-pl-' + np.id + '] summary');

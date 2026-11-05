@@ -358,8 +358,6 @@ label.btn { cursor: pointer; }
 .ctip[hidden] { display: none; } .wx:focus-visible { outline: 2px solid var(--c-ink); outline-offset: 2px; }
 
 /* квартиры */
-.place-sw { display: inline-flex; align-items: center; gap: 8px; background: var(--c-field-bg); border: 1.5px solid var(--c-field-line); border-radius: 999px; padding: 4px 6px 4px 12px; margin-bottom: 16px; }
-.place-sw select { border: 0; background: transparent; font: inherit; font-weight: 600; padding: 6px 4px; max-width: 70vw; }
 .pl-in { width: 100%; color: var(--c-ink); border: 0; border-bottom: 1.5px dashed var(--c-field-line); background: transparent; font: inherit; font-weight: 600; padding: 4px 0; }
 .pl-in:focus { outline: none; border-bottom-color: var(--c-ink); }
 .docs { list-style: none; padding: 0; margin: 8px 0; display: grid; gap: 8px; }
@@ -431,7 +429,6 @@ label.btn { cursor: pointer; }
 
 /* поля ввода без .field (настройки, формы) — те же различимые границы */
 input[type=text]:not(.dmy-native):not(.pl-in), input[type=email], input[type=password], input[type=tel], input[type=number], select, textarea { color: var(--c-ink); }
-.place-sw select { color: var(--c-ink); }
 .choice input, .models input { accent-color: var(--c-ink); }
 
 /* текст-подсказка в полях — тот же контраст, что у второстепенного текста */
@@ -751,6 +748,12 @@ details.wacc > summary { list-style: none; cursor: pointer; display: flex; align
 .place-bar .pb-name .small, .place-bar .pb-sub { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .place-bar .pb-all { flex: none; min-height: 44px; padding: 0 12px; font-size: var(--fs-s); }
 .place-bar.compact { gap: 8px; padding: 8px 12px; flex-wrap: wrap; }
+.place-sw { margin: 0 0 var(--sp-4); }
+.place-sw .ps-lbl { display: block; margin: 0 0 6px; }
+.place-sw .ps-btns { display: flex; flex-wrap: wrap; gap: 8px; }
+.place-sw button { display: inline-flex; align-items: center; min-height: 44px; padding: 0 16px; border-radius: var(--r-pill); border: 1.5px solid var(--c-field-line); background: var(--c-field-bg); font: 600 15px var(--font); color: var(--c-ink-2); cursor: pointer; max-width: 100%; text-align: left; }
+.place-sw button span:last-child { overflow-wrap: anywhere; }
+.place-sw button[aria-pressed="true"] { background: var(--c-surface); color: var(--c-ink); border-color: var(--c-ink); box-shadow: inset 0 0 0 1px var(--c-ink); }
 .place-bar.compact b { font-size: var(--fs-s); }
 @media (max-width: 380px) { .place-bar .pb-all .ico { display: none; } .place-bar .pb-all { padding: 0 10px; } }
 .ucard-addm { grid-column: 1 / -1; display: flex; align-items: center; gap: 14px; width: 100%; padding: 12px 16px; min-height: 68px; border: 2px dashed var(--c-field-line); border-radius: 16px; background: transparent; color: var(--c-ink); font: inherit; text-align: left; cursor: pointer; }
@@ -5058,6 +5061,13 @@ details.tbl-acc[open] > .tbl-wrap { margin-top: 12px; }
     return '<div class="place-bar" style="--pc:var(--pc-' + placeColor(p) + ')" data-key="place-bar"><a class="pb-name" href="#home" data-key="place-bar-name" title="' + esc(t('pv_back_all')) + '"><b>' + esc(placeLabel(p)) + '</b>' + (sub ? '<span class="small muted">' + esc(sub) + '</span>' : '') + '</a>' +
       '<a class="btn sec pb-all" href="#home" data-key="place-bar-all">' + ico('back', 18) + '<span>' + esc(t('pv_back_all')) + '</span></a></div>';
   }
+  /** История, статистика, экономия при ≥ 2 квартирах: чья — видно сразу и меняется тут же (кнопки с названием и цветом, не список). */
+  function placeSwitch() {
+    var ps = places(), cur = place(); if (ps.length < 2 || !cur) return '';
+    return '<div class="place-sw" role="group" aria-label="' + esc(t('pb_where')) + '" data-key="place-switch"><span class="small muted ps-lbl">' + esc(t('pb_where')) + '</span><div class="ps-btns">' + ps.map(function (p) {
+      return '<button type="button" data-act="place-view" data-id="' + esc(p.id) + '" aria-pressed="' + (p.id === cur.id) + '" style="--pc:var(--pc-' + placeColor(p) + ')" data-key="place-sw-' + esc(p.id) + '"><span class="pdot" aria-hidden="true"></span><span>' + esc(placeLabel(p)) + '</span></button>';
+    }).join('') + '</div></div>';
+  }
   function switchPlace(id) {
     syncPlace(); var p = place(id); if (!p || id === S.placeId) return;
     S.placeId = id; S.meter = p.meter || null; S.baseline = p.baseline || null; S.draft = null; S.focusId = null; save();
@@ -5396,7 +5406,7 @@ details.tbl-acc[open] > .tbl-wrap { margin-top: 12px; }
       : '';
     return '<div class="app' + (bare ? ' bare-app' : '') + '">' +
       '<header class="top' + (right ? ' has-close' : '') + '"><a class="brand" href="#' + homeRoute() + '" data-key="brand">' + logo() + '<span>' + esc(t('brand')) + '</span></a>' + (window.TEPLO_API ? '<span class="beta" title="' + esc(t('beta_sub')) + '" data-key="beta">' + 'Test <span class="ver">beta 0,5 литра</span></span>' : '') + '<span class="spacer"></span>' + themeBtn() + right + '</header>' +
-      nav + '<main class="main' + (bare ? ' bare' : '') + '" id="main" data-screen="' + view.screen + '" tabindex="-1">' + (/^(heat|water-hot|water-cold|elec|gas|history|stats|save)$/.test(route) ? placeBar() : /^(wnew|wadd|enew|eadd|gnew|gadd|add-meter|step|step-\d+|check|handover|baseline|meter|photo)$/.test(route) ? placeBar(true) : '') + view.html + '</main></div>' +
+      nav + '<main class="main' + (bare ? ' bare' : '') + '" id="main" data-screen="' + view.screen + '" tabindex="-1">' + (/^(history|stats|save)$/.test(route) ? placeSwitch() : /^(heat|water-hot|water-cold|elec|gas)$/.test(route) ? placeBar() : /^(wnew|wadd|enew|eadd|gnew|gadd|add-meter|step|step-\d+|check|handover|baseline|meter|photo)$/.test(route) ? placeBar(true) : '') + view.html + '</main></div>' +
       (window.TEPLO_API ? '<button class="fab' + (bare ? ' fab-bare' : '') + '" data-act="fb-open" data-key="feedback" aria-haspopup="dialog">' + ico('chat', 20) + '<span>' + esc(t('fb_btn')) + '</span></button>' + fbDialog() : '') +
       '<div id="toast-host" aria-live="polite"></div>';
   }
@@ -7301,6 +7311,7 @@ details.tbl-acc[open] > .tbl-wrap { margin-top: 12px; }
         Object.keys(r3.vals || {}).forEach(function (k) { v3[k] = wfmt(r3.vals[k]); });
         WN = Object.assign(wnFresh(k3), { date: r3.date, vals: v3, back: 'wrec-' + r3.id }); go('wnew'); return true; }
       case 'view': S.view = el.getAttribute('data-v'); persist(); render(true); return true;
+      case 'place-view': switchPlace(el.getAttribute('data-id')); render(true); return true;
       case 'wn-stop': { wnRead(); WN.gen = -1; WN.busy = false; WN.photos = WN.photos.filter(function (p) { return p.res; }); if (WN.photos.some(function (p) { return !p.fixed; })) wnAssign(); render(true); wnCheck(true); return true; }
       case 'wn-swap': { wnRead(); var a = el.getAttribute('data-a'), b = el.getAttribute('data-b'), va = WN.vals[a], sa = WN.src[a];
         WN.vals[a] = WN.vals[b]; WN.vals[b] = va; WN.src[a] = WN.src[b]; WN.src[b] = sa;
