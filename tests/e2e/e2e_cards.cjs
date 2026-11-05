@@ -38,7 +38,7 @@ const U = 'http://127.0.0.1:8013/';
   // ---- 3. сторінка лічильника — без рахунків під назвою, без «Змінити» і без налаштувань (владелец 05.11 20:45–20:46): усе — на екрані квартири
   await go('water-hot');
   const hh = await txt('[data-key=wmeter-h1] .mbox-h');
-  ok('гаряча вода: під назвою без рахунку, прізвища й №; без «Змінити» і «Налаштувань лічильника»', !/123456|Шевченко|№/.test(hh) && !(await p.$('[data-key=wmeter-h1] [data-act=wedit]')) && !(await p.$('[data-key=wmeter-h1-set]')), hh);
+  ok('гаряча вода: під назвою без рахунку, прізвища й №; без «Змінити»; «Налаштування лічильника» — акордеоном', !/123456|Шевченко|№/.test(hh) && !(await p.$('[data-key=wmeter-h1] [data-act=wedit]')) && !!(await p.$('[data-key=wmeter-h1-set]')), hh);
   ok('біля «Передано 15 жовтня» — «Копіювати» 175', (await p.getAttribute('[data-key=wmeter-h1-copy]', 'data-text')) === '175');
   await go('place-main'); await p.click('[data-key=pv-set-h1] summary'); await p.waitForTimeout(200);
   ok('екран квартири: налаштування водоміра (№, код у боті — з «Копіювати») і рахунок/прізвище Водоканалу', !!(await p.$('[data-key=copy-w-acc]')) && !!(await p.$('[data-key=copy-w-sn]')) && !!(await p.$('[data-key=copy-mbsn-h1]')) && !!(await p.$('[data-key=copy-mbi-h1]')));
@@ -48,7 +48,7 @@ const U = 'http://127.0.0.1:8013/';
   ok('«Копіювати» особовий рахунок → у буфері 123456, тост «Скопійовано»', (await p.evaluate(() => navigator.clipboard.readText())) === '123456' && /Скопійовано/i.test(await txt('#toast-host')));
   // тепло: особовий рахунок ХТМ — у налаштуваннях лічильника на екрані квартири
   await go('heat');
-  ok('опалення: заголовок «Опалення», під ним модель, без «Змінити» і налаштувань', /Опалення/.test(await txt('[data-key=home-last] .mbox-t b')) && /SHARKY/.test(await txt('[data-key=home-last] .mbox-sub')) && !(await p.$('[data-key=home-last-set]')));
+  ok('опалення: заголовок «Опалення», під ним модель, без «Змінити»; налаштування — акордеоном', /Опалення/.test(await txt('[data-key=home-last] .mbox-t b')) && /SHARKY/.test(await txt('[data-key=home-last] .mbox-sub')) && !!(await p.$('[data-key=home-last-set]')));
   await go('place-main'); await p.click('[data-key=pv-set-heat] summary'); await p.waitForTimeout(200);
   await p.fill('#p-hacc', '12345678'); await p.press('#p-hacc', 'Tab'); await p.waitForTimeout(500);
   let s = await st();

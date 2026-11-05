@@ -23,13 +23,21 @@ let pass = 0, fail = 0; const ok = (n, c, i) => { console.log((c ? '  OK  ' : ' 
   ok('у виборі «Світло» і «Газ» активні (не «скоро»)', !!(await p.$('[data-key=am-elec][data-act=am-pick]')) && !!(await p.$('[data-key=am-gas][data-act=am-pick]')) && !(await p.$('.am-soon')));
   await click('[data-key=am-elec]');
   ok('форма: 3 варіанти зон, однозонний — одне поле', (await hash()) === '#eadd' && (await p.$$('input[name=ea-z]')).length === 3 && (await p.$$('[data-ea]')).length === 1);
-  await p.fill('#ea-v-all', '777'); await click('[data-key=ea-z2]');
-  ok('двозонний — поля «день» і «ніч», введене не губиться при перемиканні', (await p.$$('[data-ea]')).length === 2 && !!(await p.$('#ea-v-day')));
+  await p.fill('#ea-v-all', '777'); await p.fill('#ea-acc', '9876543'); await p.fill('#ea-serial', 'NIK-55');
+  // журнал 05.11: гість відмітив «Електроопалення» (тост «Збережено» ще до лічильника, форма перемальовувалась) — і пішов
+  await p.evaluate(() => { window.__toasts = []; new MutationObserver(() => { const el = document.querySelector('.toast'); if (el && el.textContent) window.__toasts.push(el.textContent); }).observe(document.body, { subtree: true, childList: true, characterData: true }); });
+  await click('[data-key=elec-heat]', 300);
+  ok('«Електроопалення» у формі: без «Збережено», квартира ще не змінена, рахунок і № на місці', !(await p.evaluate(() => window.__toasts.join('|'))).includes('Збережено') && !(await st()).places[0].elecHeat
+    && (await p.inputValue('#ea-acc')) === '9876543' && (await p.inputValue('#ea-serial')) === 'NIK-55' && await p.isChecked('[data-key=elec-heat]'));
+  await click('[data-key=ea-z2]');
+  ok('двозонний — поля «день» і «ніч»; рахунок, № і галочка не губляться при перемиканні', (await p.$$('[data-ea]')).length === 2 && !!(await p.$('#ea-v-day'))
+    && (await p.inputValue('#ea-acc')) === '9876543' && (await p.inputValue('#ea-serial')) === 'NIK-55' && await p.isChecked('[data-key=elec-heat]'));
   await p.fill('#ea-v-day', '10000'); await click('[data-key=ea-save]', 200);
   ok('лише одна зона — помилка «усі зони або жодної»', /усі зони/i.test(await p.textContent('#ea-err')));
-  await p.fill('#ea-v-night', '5000'); await p.fill('#ea-acc', '9876543'); await click('[data-key=ea-save]', 400);
+  await p.fill('#ea-v-night', '5000'); await click('[data-key=ea-save]', 400);
   s = await st(); const m = (s.places[0].meters || [])[0];
-  ok('лічильник у квартирі: 2 зони, рахунок; стартові 10000/5000', m && m.kind === 'elec' && m.zones === 2 && m.account === '9876543' && (s.mrecs || []).some(r => r.base && r.meter === m.id && r.z.day === '10000' && r.z.night === '5000'), { m, r: s.mrecs });
+  ok('лічильник у квартирі: 2 зони, рахунок, №; стартові 10000/5000; електроопалення — разом із лічильником', m && m.kind === 'elec' && m.zones === 2 && m.account === '9876543' && m.serial === 'NIK-55' && s.places[0].elecHeat === true && (s.mrecs || []).some(r => r.base && r.meter === m.id && r.z.day === '10000' && r.z.night === '5000'), { m, r: s.mrecs, h: s.places[0].elecHeat });
+  s.places[0].elecHeat = false; delete s.places[0].elecHeat; await p.evaluate(v => localStorage.setItem('teplo.v1', JSON.stringify(v)), s); await p.reload(); await p.waitForTimeout(400); await go('place-main');
   ok('після — назад у налаштування квартири, світло в списку', (await hash()) === '#place-main' && !!(await p.$('[data-key=pv-m-' + m.id + ']')));
   await go('elec');
   ok('сторінка світла з табло «день/ніч»; рахунку й № під назвою немає (рахунок — у «Куди передати» й налаштуваннях квартири)', /день/.test(await p.textContent('[data-key=emeter-' + m.id + ']')) && !/9876543/.test(await p.textContent('[data-key=emeter-' + m.id + '] .mbox-h')) && !/№/.test(await p.textContent('[data-key=emeter-' + m.id + '] .mbox-h')));

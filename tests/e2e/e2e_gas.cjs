@@ -60,7 +60,7 @@ let pass = 0, fail = 0; const ok = (n, c, i) => { console.log((c ? '  OK  ' : ' 
   ok('поля газу (налаштування — на екрані квартири): Газмережі, Нафтогаз, EIC — з «Копіювати»', (await p.$$('#emg-' + m.id + ', #ema-' + m.id + ', #eme-' + m.id)).length === 3 && !!(await p.$('[data-key=copy-emg-' + m.id + ']')) && !!(await p.$('[data-key=copy-eme-' + m.id + ']'))
     && (await p.inputValue('#emg-' + m.id)) === '1320012345');
   await go('gas');
-  ok('сторінка газу: без рахунків під назвою, без «Змінити» і без «Налаштувань лічильника»', !/Рахунок/.test(await p.textContent('[data-key=emeter-' + m.id + ']')) && !(await p.$('[data-key=emeter-' + m.id + '] [data-act=eedit]')) && !(await p.$('[data-key=emeter-' + m.id + '] details.mbox-set')));
+  ok('сторінка газу: без рахунків під назвою, без «Змінити»; «Налаштування лічильника» з рахунками й ціною — акордеоном', !/Рахунок/.test(await p.textContent('[data-key=emeter-' + m.id + '] .mbox-h')) && !(await p.$('[data-key=emeter-' + m.id + '] [data-act=eedit]')) && !!(await p.$('[data-key=emeter-' + m.id + '] details.mbox-set #ea-grm, [data-key=emeter-' + m.id + '] details.mbox-set [data-ef=grm]')) && !!(await p.$('[data-key=emeter-' + m.id + '] details.mbox-set #g-price')));
   await setF('#ema-' + m.id, '12345678'); const w8 = await p.textContent('[data-key=ema-' + m.id + '-warn]'); await go('gas');
   ok('8 цифр — жовта підказка «9 цифр, а тут 8» і в «Куди передати» «а вписано 8»', /9 цифр, а тут 8/.test(w8) && /а вписано 8/.test(await p.textContent('[data-key=where-gas]')));
   await setF('#eme-' + m.id, ' 56xm19a2 05987456 '); s = await st(); gm = s.places[0].meters.find(x => x.id === m.id);
@@ -82,6 +82,13 @@ let pass = 0, fail = 0; const ok = (n, c, i) => { console.log((c ? '  OK  ' : ' 
   s = await st(); s.demoToday = '2026-12-01'; s.mrecs.push({ id: 'gdec', place: s.places[0].id, meter: m.id, kind: 'gas', date: '2026-12-01', z: { all: '1300' }, sent: {}, createdAt: '2026-12-01T08:00:00Z', updatedAt: 1 });
   await p.evaluate(v => localStorage.setItem('teplo.v1', JSON.stringify(v)), s); await p.reload(); await p.waitForTimeout(500); await go('gas');
   ok('з 28.11 — без SMS 4647, «Куб» лишається', !(await p.$('[data-key=dest-grm-sms]')) && !(await p.$('[data-key=gd-sms-end]')) && !!(await p.$('[data-key=dest-grm-kub]')));
+  // з 28.11 ніде немає «4647»: сторінка газу з налаштуваннями лічильника, екран квартири, «Куди передати» без показань, довідка
+  const no4647 = async () => !/4647/.test(await p.evaluate(() => document.getElementById('main').textContent));
+  const gPage = await no4647(); await go('place-main'); const gPlace = await no4647();
+  s = await st(); s.mrecs = s.mrecs.filter(r => r.kind !== 'gas' || r.base); await p.evaluate(v => localStorage.setItem('teplo.v1', JSON.stringify(v)), s); await p.reload(); await p.waitForTimeout(400);
+  await go('gas'); const gLead = await no4647() && /з 1 по 5 число/.test(await p.textContent('[data-key=where-gas]'));
+  await go('help'); const hg = await p.evaluate(() => document.getElementById('main').textContent);
+  ok('з 28.11 — «4647» ніде: сторінка газу, квартира, «Куди передати» без показань; довідка — «Куб», 0 800 303 104 і «SMS не приймають»', gPage && gPlace && gLead && !/Найпростіше — SMS/.test(hg) && /SMS на 4647 з 28 листопада 2026 не приймають/.test(hg) && /«Куб»/.test(hg) && /0 800 303 104/.test(hg), { gPage, gPlace, gLead });
   s = await st(); s.demoToday = '2026-11-02'; s.mrecs = s.mrecs.filter(r => r.id !== 'gdec'); await p.evaluate(v => localStorage.setItem('teplo.v1', JSON.stringify(v)), s); await p.reload(); await p.waitForTimeout(400);
   // мастер: газ у черзі останнім з «простих», перед теплом
   await go('add-place'); await click('[data-key=aw-next]');

@@ -10,14 +10,16 @@ const U = 'http://127.0.0.1:8013/';
   await p.goto(U); await p.evaluate(s => localStorage.setItem('teplo.v1', JSON.stringify(s)), demo({ elec: true, gas: true }));
   const open = async (r) => { await p.goto(U + '#' + r); await p.reload(); await p.waitForTimeout(500); };
   const info = () => p.evaluate(() => ({
-    set: !!document.querySelector('.mbox .mbox-set'), setTitle: (document.querySelector('.mbox .mbox-set > summary') || {}).textContent || '',
+    set: !!document.querySelector('.mbox .mbox-set'), setOpen: !!document.querySelector('.mbox .mbox-set[open]'),
+    price: !!document.querySelector('.mbox .mbox-set #mp-heat, .mbox .mbox-set #mp-ws, .mbox .mbox-set #mp-ep, .mbox .mbox-set #g-price'), setTitle: (document.querySelector('.mbox .mbox-set > summary') || {}).textContent || '',
     place: !!document.querySelector('.mbox-links a[href^="#place-"]'), toPrefs: !!document.querySelector('.mbox-links a[href="#prefs"]'),
     wacc: (() => { const d = document.querySelector('details.wacc'); return d ? (d.open ? 'open' : 'closed') : 'none'; })(),
     cap: (document.querySelector('.mbox .lcd-cap') || {}).textContent || '', box: (document.querySelector('.mbox') || {}).textContent || '' }));
   const all = {};
   for (const r of ['heat', 'water-hot', 'water-cold', 'elec', 'gas']) { await open(r); all[r] = await info(); }
-  ok('у всіх 5 лічильників на сторінці — без «Налаштувань лічильника» і ссилки на квартиру (вони на екрані квартири, владелец 05.11)',
-    Object.values(all).every(x => !x.set && !x.place && !x.toPrefs), all);
+  // владелец 05.11 21:35: «верни аккордеон» — «Налаштування лічильника» (номери, ціна) знову на сторінці лічильника, згорнуті; посилання на квартиру — ні
+  ok('у всіх 5 лічильників на сторінці — згорнуті «Налаштування показань» (рахунки, №, ціна); без посилання на квартиру',
+    Object.values(all).every(x => x.set && !x.setOpen && x.price && /Налаштування показань/.test(x.setTitle) && !x.place && !x.toPrefs), all);
   await open('place-main');
   ok('екран квартири: у кожного з 5 лічильників — свої «Налаштування лічильника»', (await p.$$('[data-key=pv-meters] details.mrow-set')).length === 5);
   ok('«Куди передати» — акордеон, закритий', Object.values(all).every(x => x.wacc === 'closed'), Object.fromEntries(Object.entries(all).map(([k, v]) => [k, v.wacc])));

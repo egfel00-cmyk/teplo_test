@@ -576,7 +576,9 @@ ok('свет: показания 1.12 (в окне за ноябрь) — мол
 $gs = ['places' => [['id' => 'main', 'meters' => [['id' => 'g1', 'kind' => 'gas']]]], 'mrecs' => []];
 ok('газ: 1.12 — gas1 за ноябрь (за 4 дня до 5-го), 4.12 — ничего; окно 28.11–5.12', (Reminders::due($kyiv('2026-12-01 10:17')) ?? []) === ['ym' => '2026-11', 'kind' => 'gas1'] && Reminders::due($kyiv('2026-12-04 15:17')) === null && Reminders::gasWindow('2026-11') === ['2026-11-28', '2026-12-05']);
 ok('газ: без показаний — напоминаем; показания 30.11 (SMS с 28-го) — молчим', Reminders::needs($gs, 'gas1', '2026-11') && !Reminders::needs(array_merge($gs, ['mrecs' => [['id' => 'x', 'place' => 'main', 'meter' => 'g1', 'date' => '2026-11-30', 'z' => ['all' => '5']]]]), 'gas1', '2026-11'));
-ok('газ: кнопка ?go=gnew, про SMS 4647', str_ends_with(Reminders::text('gas1', 'uk', Reminders::placesDue($gs, 'gas1', '2026-11'))['url'], '?go=gnew') && str_contains(Reminders::text('gas1', 'ru')['text'], '4647'));
+ok('газ: кнопка ?go=gnew, до 27.11 — про SMS 4647', str_ends_with(Reminders::text('gas1', 'uk', Reminders::placesDue($gs, 'gas1', '2026-11'))['url'], '?go=gnew') && str_contains(Reminders::text('gas1', 'ru', [], '2026-11-01')['text'], '4647'));
+$g12 = [Reminders::text('gas1', 'uk', [], '2026-12-01')['text'], Reminders::text('gas1', 'ru', [], '2026-12-01')['text']];
+ok('газ: с 28.11 (SMS 4647 закрыли) — без SMS, «Куб» и 0 800 303 104', !str_contains($g12[0] . $g12[1], '4647') && !str_contains($g12[0] . $g12[1], 'SMS') && str_contains($g12[0], '«Куб»') && str_contains($g12[1], '0 800 303 104'), $g12);
 $te = Reminders::text('elec1', 'uk', Reminders::placesDue($es, 'elec1', '2026-12'));
 ok('свет: текст про Харківобленерго, кнопка ?go=enew', str_contains($te['text'], 'Харківобленерго') && str_contains($te['url'], '?go=enew&place=main') && str_contains($te['button'], 'світло'), $te);
 ok('ответы Telegram: 403 → blocked, нет чата → no_chat, сбой связи/429 → повторить', Reminders::status(['ok' => false, 'error_code' => 403, 'description' => 'Forbidden: bot was blocked by the user']) === 'blocked'
