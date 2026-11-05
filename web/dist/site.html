@@ -4941,7 +4941,7 @@ summary:focus-visible { outline: 3px solid var(--c-info); outline-offset: 2px; b
     var ps = places(), p = place(); if (ps.length < 2 || !p) return '';
     var sub = placeSub(p);
     if (compact) return '<div class="place-bar compact" style="--pc:var(--pc-' + placeColor(p) + ')" data-key="place-bar"><span class="small muted">' + esc(t('pb_where')) + '</span><b>' + esc(placeLabel(p)) + '</b>' + (sub ? '<span class="small muted pb-sub">' + esc(sub) + '</span>' : '') + '</div>';
-    return '<div class="place-bar" style="--pc:var(--pc-' + placeColor(p) + ')" data-key="place-bar"><a class="pb-name" href="#place-' + esc(p.id) + '" data-key="place-bar-name"><b>' + esc(placeLabel(p)) + '</b>' + (sub ? '<span class="small muted">' + esc(sub) + '</span>' : '') + '</a>' +
+    return '<div class="place-bar" style="--pc:var(--pc-' + placeColor(p) + ')" data-key="place-bar"><a class="pb-name" href="#home" data-key="place-bar-name" title="' + esc(t('pv_back_all')) + '"><b>' + esc(placeLabel(p)) + '</b>' + (sub ? '<span class="small muted">' + esc(sub) + '</span>' : '') + '</a>' +
       '<a class="btn sec pb-all" href="#home" data-key="place-bar-all">' + ico('back', 18) + '<span>' + esc(t('pv_back_all')) + '</span></a></div>';
   }
   function switchPlace(id) {
@@ -5611,9 +5611,10 @@ summary:focus-visible { outline: 3px solid var(--c-info); outline-offset: 2px; b
         return '<details class="hp pacc" id="hp-' + esc(p.id) + '" data-pl="' + esc(p.id) + '" style="--pc:var(--pc-' + placeColor(p) + ')" data-key="home-pl-' + esc(p.id) + '"' + (open ? ' open' : '') + '>' +
           '<summary data-key="home-pl-sum-' + esc(p.id) + '"><span class="pacc-t"><b><i class="pdot" aria-hidden="true"></i>' + esc(placeLabel(p)) + '</b>' + (p.address ? '<span class="pacc-addr">' + esc(p.address) + '</span>' : '') + '</span>' +
             ico('chev', 22, 'pacc-chev') + due + '</summary><div class="pacc-body">' +
-          (HP_EDIT === p.id ? hpEditForm(p) : '<p class="hp-tools"><button type="button" class="btn ter sm" data-act="hp-edit" data-id="' + esc(p.id) + '" data-key="home-pl-edit-' + esc(p.id) + '">' + ico('edit', 18) + '<span>' + esc(t(p.address ? 'hp_edit' : 'hp_addr_add')) + '</span></button>' +
-            '<a class="btn ter sm" href="#place-' + esc(p.id) + '" data-key="home-pl-set-' + esc(p.id) + '">' + ico('prefs', 18) + '<span>' + esc(t('hp_settings')) + '</span></a></p>') +
-          '<div class="ucards">' + cards.join('') + addTile(!cards.length) + '</div></div></details>';
+          (HP_EDIT === p.id ? hpEditForm(p) : '') +
+          '<div class="ucards">' + cards.join('') + addTile(!cards.length) + '</div>' +
+          // назва, адреса, рахунки, постачальники — усе на екрані квартири; тут лише вхід туди, під лічильниками
+          '<p class="hp-tools"><a class="btn ter sm" href="#place-' + esc(p.id) + '" data-key="home-pl-set-' + esc(p.id) + '">' + ico('prefs', 18) + '<span>' + esc(t('hp_settings')) + '</span></a></p></div></details>';
       });
     }).join('') + '<p class="hp-more"><button type="button" class="btn sec" data-act="hp-add-place" data-key="home-add-place">' + ico('plus', 18) + '<span>' + esc(t('pl_add')) + '</span></button></p>' +
       '<p class="small muted ucards-hint">' + esc(t('hp_hint')) + '</p></div>';
