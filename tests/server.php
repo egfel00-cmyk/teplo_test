@@ -487,58 +487,59 @@ Telegram::$send = null; Telegram::$fetch = null;
 
 echo "\nНапоминания ботом:\n";
 $kyiv = fn(string $local) => (new DateTimeImmutable($local, new DateTimeZone('Europe/Kyiv')))->getTimestamp();
-ok('15-го в 10:17 по Киеву — вода', (Reminders::due($kyiv('2026-11-15 10:17'))['kind'] ?? '') === 'water15');
-ok('рано утром и в другие дни — ничего', Reminders::due($kyiv('2026-11-15 08:17')) === null && Reminders::due($kyiv('2026-11-16 12:17')) === null);
-ok('5-го — тепло, 22-го — тепло, 19-го — вода', Reminders::due($kyiv('2026-11-05 11:17'))['kind'] === 'heat5' && Reminders::due($kyiv('2026-11-22 19:17'))['kind'] === 'heat22' && Reminders::due($kyiv('2026-11-19 10:17'))['kind'] === 'water19');
+ok('16-го в 10:17 по Киеву — вода (за 4 дня до 20-го)', (Reminders::due($kyiv('2026-11-16 10:17'))['kind'] ?? '') === 'water16');
+ok('рано утром и в другие дни — ничего', Reminders::due($kyiv('2026-11-16 08:17')) === null && Reminders::due($kyiv('2026-11-15 12:17')) === null);
+ok('21-го — тепло (за 4 дня до 25-го); 5, 15, 19, 22-го и 2, 4-го — ничего (одно напоминание, владелец 05.11)', Reminders::due($kyiv('2026-11-21 19:17'))['kind'] === 'heat21'
+  && !array_filter(['05', '15', '19', '22'], fn($d) => Reminders::due($kyiv("2026-11-$d 11:17")) !== null) && Reminders::due($kyiv('2026-12-02 11:17')) === null && Reminders::due($kyiv('2026-12-04 11:17')) === null);
 $wst = ['places' => [['id' => 'main', 'meter' => ['modelId' => 'sharky774'], 'water' => ['meters' => [['id' => 'h1', 'kind' => 'hot']]]]],
   'readings' => [['id' => 'r1', 'htm' => ['date' => '2026-11-06', 'energy' => '10']]], 'water' => [['id' => 'b', 'place' => 'main', 'date' => '2026-11-01', 'base' => true, 'vals' => ['h1' => '5']]]];
-ok('вода: в этом месяце только стартовые — напоминаем', Reminders::needs($wst, 'water15', '2026-11'));
+ok('вода: в этом месяце только стартовые — напоминаем', Reminders::needs($wst, 'water16', '2026-11'));
 $w2 = $wst; $w2['water'][] = ['id' => 'w', 'place' => 'main', 'date' => '2026-11-10', 'vals' => ['h1' => '7']];
-ok('вода: запись этого месяца есть — молчим', !Reminders::needs($w2, 'water15', '2026-11'));
+ok('вода: запись этого месяца есть — молчим', !Reminders::needs($w2, 'water16', '2026-11'));
 $w3 = $wst; $w3['water'][] = ['id' => 'wo', 'place' => 'main', 'date' => '2026-11-10', 'vals' => ['h1' => '7'], 'own' => true];
 $w3['readings'] = [['id' => 'r9', 'htm' => ['date' => '2026-11-06', 'energy' => '10'], 'own' => true]];
-ok('«лише для себе» — не передача: вода и тепло этого месяца «для себя» — всё равно напоминаем', Reminders::needs($w3, 'water15', '2026-11') && Reminders::needs($w3, 'heat22', '2026-11'));
-ok('тепло: показания в окне 5–25 есть — молчим; в прошлом месяце — напоминаем', !Reminders::needs($wst, 'heat22', '2026-11') && Reminders::needs($wst, 'heat22', '2026-12'));
-ok('без водомеров про воду не пишем; выключено в настройках — не пишем', !Reminders::needs(['places' => [['id' => 'main']]], 'water15', '2026-11') && !Reminders::needs($wst + ['remind' => ['off' => true]], 'water15', '2026-11'));
+ok('«лише для себе» — не передача: вода и тепло этого месяца «для себя» — всё равно напоминаем', Reminders::needs($w3, 'water16', '2026-11') && Reminders::needs($w3, 'heat21', '2026-11'));
+ok('тепло: показания в окне 5–25 есть — молчим; в прошлом месяце — напоминаем', !Reminders::needs($wst, 'heat21', '2026-11') && Reminders::needs($wst, 'heat21', '2026-12'));
+ok('без водомеров про воду не пишем; выключено в настройках — не пишем', !Reminders::needs(['places' => [['id' => 'main']]], 'water16', '2026-11') && !Reminders::needs($wst + ['remind' => ['off' => true]], 'water16', '2026-11'));
 $wg = $wst; $wg['places'][0]['gaps'] = [['id' => 'g1', 'what' => 'h1', 'from' => '2026-11-03', 'to' => ''], ['id' => 'g2', 'what' => 'heat', 'from' => '2026-12-01', 'to' => '2026-12-10']];
-ok('лічильник знято (ремонт/повірка): водомір — не нагадуємо; тепло — лише поки знято', !Reminders::needs($wg, 'water15', '2026-11', '2026-11-15')
-  && !Reminders::needs($wg, 'heat5', '2026-12', '2026-12-05') && Reminders::needs($wg, 'heat22', '2026-12', '2026-12-22'));
+ok('лічильник знято (ремонт/повірка): водомір — не нагадуємо; тепло — лише поки знято', !Reminders::needs($wg, 'water16', '2026-11', '2026-11-15')
+  && !Reminders::needs($wg, 'heat21', '2026-12', '2026-12-05') && Reminders::needs($wg, 'heat21', '2026-12', '2026-12-22'));
 // прибрали лічильник з квартири (removed): про нього не нагадуємо; друга квартира лише з холодною — нагадуємо про воду
 $wr = $wst; $wr['places'][0]['meter']['removed'] = '2026-11-02'; $wr['places'][0]['water']['meters'][0]['removed'] = '2026-11-02';
-ok('прибраний теплолічильник і водомір — не нагадуємо', !Reminders::needs($wr, 'heat22', '2026-12') && !Reminders::needs($wr, 'water15', '2026-11'));
+ok('прибраний теплолічильник і водомір — не нагадуємо', !Reminders::needs($wr, 'heat21', '2026-12') && !Reminders::needs($wr, 'water16', '2026-11'));
 $wr['places'][] = ['id' => 'p2', 'name' => 'Мамина', 'water' => ['meters' => [['id' => 'c9', 'kind' => 'cold']]]];
-ok('друга квартира лише з холодною: вода — нагадуємо, тепло — ні', Reminders::needs($wr, 'water15', '2026-11') && !Reminders::needs($wr, 'heat22', '2026-12'));
+ok('друга квартира лише з холодною: вода — нагадуємо, тепло — ні', Reminders::needs($wr, 'water16', '2026-11') && !Reminders::needs($wr, 'heat21', '2026-12'));
 // несколько квартир (этап 2): одно сообщение со списком квартир, кнопка в каждую; выключатель у квартиры
 $wm = $wst; $wm['places'][] = ['id' => 'p2', 'name' => 'Мамина', 'water' => ['meters' => [['id' => 'c9', 'kind' => 'cold']]]];
-$pd = Reminders::placesDue($wm, 'water15', '2026-11');
+$pd = Reminders::placesDue($wm, 'water16', '2026-11');
 ok('две квартиры без воды за месяц — обе в списке, без названия — «Моя квартира»', array_column($pd, 'label') === ['Моя квартира', 'Мамина'] && $pd[0]['all'] === 2, $pd);
 $wm2 = $wm; $wm2['places'][1]['remindOff'] = true;
-ok('квартира выключена (remindOff) — про неё молчим, про другую — пишем', array_column(Reminders::placesDue($wm2, 'water15', '2026-11'), 'id') === ['main']);
+ok('квартира выключена (remindOff) — про неё молчим, про другую — пишем', array_column(Reminders::placesDue($wm2, 'water16', '2026-11'), 'id') === ['main']);
 $wm3 = $wm2; $wm3['places'][0]['remindOff'] = true;
-ok('обе выключены — не пишем вовсе', !Reminders::needs($wm3, 'water15', '2026-11'));
-$tx = Reminders::text('water15', 'uk', $pd);
+ok('обе выключены — не пишем вовсе', !Reminders::needs($wm3, 'water16', '2026-11'));
+$tx = Reminders::text('water16', 'uk', $pd);
 ok('текст: «Квартири: «Моя квартира», «Мамина»», кнопка в каждую (?go=wnew&place=…)', str_contains($tx['text'], 'Квартири: «Моя квартира», «Мамина»') && count($tx['buttons']) === 2
   && str_ends_with($tx['buttons'][1][1], '?go=wnew&place=p2') && str_contains($tx['buttons'][1][0], 'Мамина'), $tx);
-$tx1 = Reminders::text('heat5', 'ru', [['id' => 'p2', 'label' => 'Мамина', 'all' => 2]]);
+$tx1 = Reminders::text('heat21', 'ru', [['id' => 'p2', 'label' => 'Мамина', 'all' => 2]]);
 ok('одна из двух ждёт — «Квартира: «Мамина»», кнопка с place', str_contains($tx1['text'], 'Квартира: «Мамина»') && count($tx1['buttons']) === 1 && str_ends_with($tx1['url'], '?go=heat&place=p2'), $tx1);
-$tx0 = Reminders::text('water15', 'uk', Reminders::placesDue($wst, 'water15', '2026-11'));
+$tx0 = Reminders::text('water16', 'uk', Reminders::placesDue($wst, 'water16', '2026-11'));
 ok('одна квартира — как раньше: без списка, кнопка без place', !str_contains($tx0['text'], 'Квартира') && count($tx0['buttons']) === 1 && str_ends_with($tx0['url'], '?go=wnew'), $tx0);
 $rm = new Browser('10.0.13.1'); $rm->req('POST', '/api/auth/telegram/webapp', ['initData' => initData($TOKEN, ['id' => 7777, 'first_name' => 'Нагадай'])]);
 $put = $rm->req('PUT', '/api/state', ['state' => $wst + ['remind' => ['lang' => 'ru']], 'baseVersion' => 0]);
 $sent = []; Telegram::$send = function ($m, $p, $tok = null) use (&$sent) { $sent[] = [$m, $p]; return ['ok' => true]; };
-$res = Reminders::run($kyiv('2026-11-15 10:17'));
+$res = Reminders::run($kyiv('2026-11-16 10:17'));
 $mine = array_values(array_filter($sent, fn($x) => (string)$x[1]['chat_id'] === '7777'));
 ok('рассылка: человеку с водомерами — по-русски, кнопка открывает ввод воды', $put->status === 200 && count($mine) === 1 && str_contains($mine[0][1]['text'], 'Водоканал') && str_contains($mine[0][1]['text'], 'Настройках')
   && ($mine[0][1]['reply_markup']['inline_keyboard'][0][0]['web_app']['url'] ?? '') === 'https://teplo.example/?go=wnew', $mine);
-$n1 = count($sent); Reminders::run($kyiv('2026-11-15 11:17'));
+$n1 = count($sent); Reminders::run($kyiv('2026-11-16 11:17'));
 ok('через час — повторно не шлём', count($sent) === $n1);
 $rm2 = new Browser('10.0.13.2'); $rm2->req('POST', '/api/auth/telegram/webapp', ['initData' => initData($TOKEN, ['id' => 7788, 'first_name' => 'Дві'])]);
 $rm2->req('PUT', '/api/state', ['state' => $wm, 'baseVersion' => 0]);
-$sent = []; Reminders::run($kyiv('2026-11-19 10:17'));
+$sent = []; Reminders::run($kyiv('2026-11-16 12:17'));
 $two = array_values(array_filter($sent, fn($x) => (string)$x[1]['chat_id'] === '7788'));
 $kb = $two[0][1]['reply_markup']['inline_keyboard'] ?? [];
 ok('рассылка двум квартирам: одно сообщение, две кнопки — по одной на квартиру', count($two) === 1 && count($kb) === 2 && str_ends_with($kb[1][0]['web_app']['url'], '&place=p2') && str_contains($two[0][1]['text'], 'Мамина'), $two);
-$row = Db::one("SELECT status FROM reminders_sent WHERE user_id = (SELECT user_id FROM user_identities WHERE external_id = '7777') AND kind = 'water15'");
+$row = Db::one("SELECT status FROM reminders_sent WHERE user_id = (SELECT user_id FROM user_identities WHERE external_id = '7777') AND kind = 'water16'");
 ok('итог доставки записан: ok', ($row['status'] ?? '') === 'ok', $row);
 // cron (CLI) без app_url: HTTP_HOST нет — адрес из вебхука бота, а не https://localhost (02.11.2026 elec2 → error)
 $cfgKeep = ['app_url' => 'https://teplo.example/', 'bot_token' => $TOKEN, 'webhook_secret' => 'hook-secret'];
@@ -546,48 +547,49 @@ $hostKeep = $_SERVER['HTTP_HOST'] ?? null; unset($_SERVER['HTTP_HOST']);
 Cfg::set(['app_url' => '', 'bot_token' => $TOKEN, 'webhook_secret' => 'hook-secret']);
 $hookCalls = 0; Telegram::$send = function ($m, $p, $tok = null) use (&$sent, &$hookCalls) { if ($m === 'getWebhookInfo') { $hookCalls++; return ['ok' => true, 'result' => ['url' => 'https://pokabot.xyz/teplo_test/api/bot/webhook']]; } $sent[] = [$m, $p]; return ['ok' => true]; };
 ok('cron без app_url: адрес сайта — из вебхука бота (один запрос)', Cfg::appUrl() === 'https://pokabot.xyz/teplo_test/' && Cfg::appUrl() === 'https://pokabot.xyz/teplo_test/' && $hookCalls === 1 && Cfg::appUrlKnown(), Cfg::appUrl());
-$tx2 = Reminders::text('heat5', 'uk');
+$tx2 = Reminders::text('heat21', 'uk');
 ok('кнопка напоминания — на настоящий адрес, не localhost', $tx2['url'] === 'https://pokabot.xyz/teplo_test/?go=heat', $tx2['url']);
 Cfg::set(['app_url' => '', 'bot_token' => $TOKEN, 'webhook_secret' => 'hook-secret']);
 Telegram::$send = function ($m, $p, $tok = null) use (&$sent) { if ($m === 'getWebhookInfo') return ['ok' => true, 'result' => ['url' => '']]; $sent[] = [$m, $p]; return ['ok' => true]; };
 ok('вебхука нет — адрес неизвестен (кнопок не будет, текст дойдёт)', !Cfg::appUrlKnown());
-Db::q("DELETE FROM reminders_sent WHERE kind = 'water15'"); $sent = []; Reminders::run($kyiv('2026-11-15 12:17'));
+Db::q("DELETE FROM reminders_sent WHERE kind = 'water16'"); $sent = []; Reminders::run($kyiv('2026-11-16 13:17'));
 $nb = array_values(array_filter($sent, fn($x) => (string)$x[1]['chat_id'] === '7777'));
 ok('…и напоминание уходит без кнопки, а не с ошибкой', count($nb) === 1 && !isset($nb[0][1]['reply_markup']), $nb);
 if ($hostKeep !== null) $_SERVER['HTTP_HOST'] = $hostKeep;
 Cfg::set($cfgKeep); Telegram::$send = function ($m, $p, $tok = null) use (&$sent) { $sent[] = [$m, $p]; return ['ok' => true]; };
-ok('ближайшее после 4 ноября — 5-е, тепло; 3-го — 4-е, газ за октябрь; 5-го в 21:00 — уже 15-е', Reminders::next($kyiv('2026-11-04 20:54')) === ['date' => '2026-11-05', 'kind' => 'heat5', 'ym' => '2026-11'] && Reminders::next($kyiv('2026-11-03 10:54')) === ['date' => '2026-11-04', 'kind' => 'gas4', 'ym' => '2026-10'] && Reminders::next($kyiv('2026-11-05 21:00'))['date'] === '2026-11-15');
+ok('ближайшее после 4 ноября — 16-е, вода; 16-го в 21:00 — 21-е, тепло; 25.11 — 29.11, свет; 30.11 — 1.12, газ за ноябрь', Reminders::next($kyiv('2026-11-04 20:54')) === ['date' => '2026-11-16', 'kind' => 'water16', 'ym' => '2026-11']
+  && Reminders::next($kyiv('2026-11-16 21:00')) === ['date' => '2026-11-21', 'kind' => 'heat21', 'ym' => '2026-11'] && Reminders::next($kyiv('2026-11-25 12:00'))['kind'] === 'elec1' && Reminders::next($kyiv('2026-11-30 21:00')) === ['date' => '2026-12-01', 'kind' => 'gas1', 'ym' => '2026-11']);
 // світло: передостанній день місяця (вікно відкрилось) і 2-ге (завтра останній), ym — місяць, за який показання
-ok('свет: 29.11 — elec1 за ноябрь, 2.12 — elec2 за ноябрь, 27.02.2027 — elec1; 2.11 после 20:00 → следующее 5-е', (Reminders::due($kyiv('2026-11-29 10:17')) ?? []) === ['ym' => '2026-11', 'kind' => 'elec1']
-  && (Reminders::due($kyiv('2026-12-02 12:17')) ?? []) === ['ym' => '2026-11', 'kind' => 'elec2'] && (Reminders::due($kyiv('2027-02-27 10:17'))['kind'] ?? '') === 'elec1'
-  && Reminders::next($kyiv('2026-11-02 20:30'))['date'] === '2026-11-04' && Reminders::elecWindow('2026-11') === ['2026-11-29', '2026-12-03']);
+ok('свет: 29.11 — elec1 за ноябрь (за 4 дня до 3.12), 2.12 — ничего, 27.02.2027 — elec1; 2.11 после 20:00 → следующее 16-е', (Reminders::due($kyiv('2026-11-29 10:17')) ?? []) === ['ym' => '2026-11', 'kind' => 'elec1']
+  && Reminders::due($kyiv('2026-12-02 12:17')) === null && (Reminders::due($kyiv('2027-02-27 10:17'))['kind'] ?? '') === 'elec1'
+  && Reminders::next($kyiv('2026-11-02 20:30'))['date'] === '2026-11-16' && Reminders::elecWindow('2026-11') === ['2026-11-29', '2026-12-03']);
 $es = ['places' => [['id' => 'main', 'meters' => [['id' => 'e1', 'kind' => 'elec', 'zones' => 2]]], ['id' => 'p2', 'name' => 'Мамина', 'meters' => [['id' => 'e2', 'kind' => 'elec', 'removed' => '2026-10-01']]]],
   'mrecs' => [['id' => 'b', 'place' => 'main', 'meter' => 'e1', 'date' => '2026-11-29', 'base' => true, 'z' => ['day' => '1', 'night' => '1']]]];
 ok('свет: только стартовые в окне — напоминаем; прибранный счётчик — нет', array_column(Reminders::placesDue($es, 'elec1', '2026-11'), 'id') === ['main']);
 $es['mrecs'][] = ['id' => 'o', 'place' => 'main', 'meter' => 'e1', 'date' => '2026-11-30', 'own' => true, 'z' => ['day' => '3', 'night' => '1']];
 ok('свет: показания «лише для себе» в окне — всё равно напоминаем', Reminders::needs($es, 'elec1', '2026-11'));
 $ws = ['places' => [['id' => 'main', 'water' => ['meters' => [['id' => 'c1', 'kind' => 'cold']]]]], 'water' => [['id' => 'w', 'place' => 'main', 'date' => '2026-11-10', 'own' => true, 'vals' => ['c1' => '5']]]];
-ok('вода: только «лише для себе» в месяце — напоминаем', Reminders::needs($ws, 'water15', '2026-11'));
+ok('вода: только «лише для себе» в месяце — напоминаем', Reminders::needs($ws, 'water16', '2026-11'));
 $es['mrecs'][] = ['id' => 'r', 'place' => 'main', 'meter' => 'e1', 'date' => '2026-12-01', 'z' => ['day' => '5', 'night' => '2']];
-ok('свет: показания 1.12 (в окне за ноябрь) — молчим; за декабрь — напоминаем', !Reminders::needs($es, 'elec2', '2026-11') && Reminders::needs($es, 'elec1', '2026-12'));
+ok('свет: показания 1.12 (в окне за ноябрь) — молчим; за декабрь — напоминаем', !Reminders::needs($es, 'elec1', '2026-11') && Reminders::needs($es, 'elec1', '2026-12'));
 // газ: 1-го і 4-го за попередній місяць; вікно — з 28-го по 5-те
 $gs = ['places' => [['id' => 'main', 'meters' => [['id' => 'g1', 'kind' => 'gas']]]], 'mrecs' => []];
-ok('газ: 1.12 — gas1 за ноябрь, 4.12 — gas4; окно 28.11–5.12', (Reminders::due($kyiv('2026-12-01 10:17')) ?? []) === ['ym' => '2026-11', 'kind' => 'gas1'] && (Reminders::due($kyiv('2026-12-04 15:17'))['kind'] ?? '') === 'gas4' && Reminders::gasWindow('2026-11') === ['2026-11-28', '2026-12-05']);
-ok('газ: без показаний — напоминаем; показания 30.11 (SMS с 28-го) — молчим', Reminders::needs($gs, 'gas1', '2026-11') && !Reminders::needs(array_merge($gs, ['mrecs' => [['id' => 'x', 'place' => 'main', 'meter' => 'g1', 'date' => '2026-11-30', 'z' => ['all' => '5']]]]), 'gas4', '2026-11'));
+ok('газ: 1.12 — gas1 за ноябрь (за 4 дня до 5-го), 4.12 — ничего; окно 28.11–5.12', (Reminders::due($kyiv('2026-12-01 10:17')) ?? []) === ['ym' => '2026-11', 'kind' => 'gas1'] && Reminders::due($kyiv('2026-12-04 15:17')) === null && Reminders::gasWindow('2026-11') === ['2026-11-28', '2026-12-05']);
+ok('газ: без показаний — напоминаем; показания 30.11 (SMS с 28-го) — молчим', Reminders::needs($gs, 'gas1', '2026-11') && !Reminders::needs(array_merge($gs, ['mrecs' => [['id' => 'x', 'place' => 'main', 'meter' => 'g1', 'date' => '2026-11-30', 'z' => ['all' => '5']]]]), 'gas1', '2026-11'));
 ok('газ: кнопка ?go=gnew, про SMS 4647', str_ends_with(Reminders::text('gas1', 'uk', Reminders::placesDue($gs, 'gas1', '2026-11'))['url'], '?go=gnew') && str_contains(Reminders::text('gas1', 'ru')['text'], '4647'));
 $te = Reminders::text('elec1', 'uk', Reminders::placesDue($es, 'elec1', '2026-12'));
 ok('свет: текст про Харківобленерго, кнопка ?go=enew', str_contains($te['text'], 'Харківобленерго') && str_contains($te['url'], '?go=enew&place=main') && str_contains($te['button'], 'світло'), $te);
 ok('ответы Telegram: 403 → blocked, нет чата → no_chat, сбой связи/429 → повторить', Reminders::status(['ok' => false, 'error_code' => 403, 'description' => 'Forbidden: bot was blocked by the user']) === 'blocked'
   && Reminders::status(['ok' => false, 'error_code' => 400, 'description' => 'Bad Request: chat not found']) === 'no_chat' && Reminders::status([]) === null && Reminders::status(['ok' => false, 'error_code' => 429]) === null);
-$pv = Reminders::preview('heat5', '2026-12'); $me7 = array_values(array_filter($pv, fn($x) => $x['lang'] === 'ru'));
-ok('предпросмотр на 5 декабря: человек в списке, ещё не отправлено', count($me7) === 1 && $me7[0]['sent'] === null, $pv);
+$pv = Reminders::preview('heat21', '2026-12'); $me7 = array_values(array_filter($pv, fn($x) => $x['lang'] === 'ru'));
+ok('предпросмотр на 21 декабря: человек в списке, ещё не отправлено', count($me7) === 1 && $me7[0]['sent'] === null, $pv);
 $tries = 0; Telegram::$send = function () use (&$tries) { $tries++; return []; };
-Reminders::run($kyiv('2026-12-05 10:17'));
-$cnt = fn() => (int)(Db::one("SELECT COUNT(*) n FROM reminders_sent WHERE kind = 'heat5' AND ym = '2026-12'")['n'] ?? 0);
+Reminders::run($kyiv('2026-12-21 10:17'));
+$cnt = fn() => (int)(Db::one("SELECT COUNT(*) n FROM reminders_sent WHERE kind = 'heat21' AND ym = '2026-12'")['n'] ?? 0);
 ok('сбой связи — отметки нет, через час повтор', $tries >= 1 && $cnt() === 0);
 Telegram::$send = fn() => ['ok' => false, 'error_code' => 403, 'description' => 'Forbidden: bot can\'t initiate conversation with a user'];
-Reminders::run($kyiv('2026-12-05 11:17'));
-$bl = Db::q("SELECT status FROM reminders_sent WHERE kind = 'heat5' AND ym = '2026-12'")->fetchAll(PDO::FETCH_COLUMN);
+Reminders::run($kyiv('2026-12-21 11:17'));
+$bl = Db::q("SELECT status FROM reminders_sent WHERE kind = 'heat21' AND ym = '2026-12'")->fetchAll(PDO::FETCH_COLUMN);
 ok('не нажимал «Старт» — blocked, больше не пробуем', $bl && !array_diff($bl, ['blocked']), $bl);
 Telegram::$send = null;
 Cfg::set(['app_url' => 'https://teplo.example/', 'bot_token' => $TOKEN, 'webhook_secret' => 'hook-secret', 'admins' => ['emails' => ['boss@example.ua']]]);
@@ -649,14 +651,14 @@ $gb2->req('PUT', '/api/state', ['state' => ['readings' => [], 'places' => [['id'
 $gr1 = Gpv::readiness();
 ok('сколько получат график: с адресом и очередью — ready; адрес без очереди (не нашли) — noQueue', $gr0['ready'] >= 1 && $gr1['tg'] === $gr0['tg'] + 1 && $gr1['noQueue'] === $gr0['noQueue'] + 1 && $gr1['ready'] === $gr0['ready'], [$gr0, $gr1]);
 $rn = Reminders::nextPreview($kyiv('2026-11-04 21:00'));
-ok('ближайшее напоминание 4.11 вечером — heat5 5.11, сколько положено и сколько уже ушло', ($rn['kind'] ?? '') === 'heat5' && $rn['date'] === '2026-11-05' && $rn['ym'] === '2026-11' && is_int($rn['n']) && is_int($rn['sent']), $rn);
+ok('ближайшее напоминание 4.11 вечером — water16 16.11, сколько положено и сколько уже ушло', ($rn['kind'] ?? '') === 'water16' && $rn['date'] === '2026-11-16' && $rn['ym'] === '2026-11' && is_int($rn['n']) && is_int($rn['sent']), $rn);
 $vkl0 = @file_get_contents(VkCab::logFile());
 file_put_contents(VkCab::logFile(), json_encode([['at' => time() - 100, 'op' => 'probe', 'result' => 'notfound', 'msgs' => ['err' => ['Не коректні дані: рахунок ###']]], ['at' => time() - 50, 'op' => 'check', 'result' => 'ok', 'user' => 5],
   ['at' => time() - 40, 'op' => 'send', 'result' => 'unknown', 'user' => 5]], JSON_UNESCAPED_UNICODE));
 Cron::write(Cron::read() + ['gpvReady' => $gr1 + ['at' => gmdate('c')], 'remindNext' => $rn]);
 $hh = (new Browser('10.0.13.23'))->req('GET', '/api/health'); $hv = (array)($hh->body['vkcab']['n'] ?? []);
 ok('/api/health: gpvReady и remindNext из cron; vkcab — счёт «операция итог» и время последней проверки человеком, без слов сайта',
-  ($hh->body['gpvReady']['ready'] ?? null) === $gr1['ready'] && ($hh->body['remindNext']['kind'] ?? '') === 'heat5' && $hv === ['check ok' => 1, 'probe notfound' => 1, 'send unknown' => 1]
+  ($hh->body['gpvReady']['ready'] ?? null) === $gr1['ready'] && ($hh->body['remindNext']['kind'] ?? '') === 'water16' && $hv === ['check ok' => 1, 'probe notfound' => 1, 'send unknown' => 1]
   && abs(strtotime((string)$hh->body['vkcab']['lastUser']) - (time() - 40)) <= 2 && !preg_match('/коректн|###/u', json_encode($hh->body, JSON_UNESCAPED_UNICODE)), $hh->body);
 if ($vkl0 === false) @unlink(VkCab::logFile()); else file_put_contents(VkCab::logFile(), $vkl0);
 // очередь по адресу квартиры — синтетический справочник

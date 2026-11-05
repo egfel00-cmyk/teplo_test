@@ -258,14 +258,15 @@ pre.state { font: 12px/1.4 var(--mono); background: #F4F7F5; padding: 10px; bord
       }).join('') + '</tbody></table>' + (rs.length ? '' : '<p class="muted">Пока пусто.</p>') + '</div>';
   };
 
-  var KIND = { heat5: 'тепло, 5-го', heat22: 'тепло, 22-го', water15: 'вода, 15-го', water19: 'вода, 19-го', elec1: 'свет, окно открылось', elec2: 'свет, 2-го (завтра последний)', gas1: 'газ, 1-го', gas4: 'газ, 4-го (завтра последний)' };
+  var KIND = { heat21: 'тепло, 21-го', water16: 'вода, 16-го', elec1: 'свет, предпоследний день', gas1: 'газ, 1-го',
+    heat5: 'тепло, 5-го (до 05.11.2026)', heat22: 'тепло, 22-го (до 05.11.2026)', water15: 'вода, 15-го (до 05.11.2026)', water19: 'вода, 19-го (до 05.11.2026)', elec2: 'свет, 2-го (до 05.11.2026)', gas4: 'газ, 4-го (до 05.11.2026)' };
   var RST = { ok: ['ok', 'доставлено'], blocked: ['warn', 'не доставлено: не нажимал «Старт» у бота или остановил его'], no_chat: ['warn', 'не доставлено: нет чата с ботом'] };
   function rstatus(s) { if (!s) return pill('warn', 'нет итога'); var x = RST[s]; return x ? pill(x[0], x[1]) : pill('bad', s); }
   VIEW.reminders = function () {
     var d = DATA.reminders || {}, n = d.next || {}, c = d.cron || {}, pv = d.preview || [], lg = d.log || [];
     var h = c.hourly || {}, hr = h.reminders ? Object.keys(h.reminders).map(function (k) { return esc(k) + ': ' + h.reminders[k]; }).join(', ') : '';
     var cronLine = c.ago == null ? pill('bad', 'cron ни разу не запускался') : c.ago > 600 ? pill('bad', 'cron молчит ' + Math.round(c.ago / 60) + ' мин') : pill('ok', 'cron работает') + ' <span class="muted small">последний запуск ' + when(c.last) + '</span>';
-    return '<div class="panel"><h2>Как это работает</h2><p class="small">Бот пишет тем, кто входил через Telegram: <b>тепло</b> — 5-го (открылось окно ХТМ) и 22-го, если в окне 5–25 нет показаний; <b>вода</b> — 15-го и 19-го, если в этом месяце не вносили. ' +
+    return '<div class="panel"><h2>Как это работает</h2><p class="small">Бот пишет тем, кто входил через Telegram, одно сообщение за 4 дня до конца приёма, если ещё не внесли: <b>тепло</b> — 21-го (окно ХТМ 5–25); <b>вода</b> — 16-го (до 20-го); <b>свет</b> — в предпоследний день месяца (до 3-го); <b>газ</b> — 1-го (до 5-го). ' +
       'С 10 до 20 по Киеву, в :17 каждого часа; каждое — раз в месяц. Выключается в «Настройках» сервиса.</p><p>' + cronLine +
       (h.at ? '<br><span class="muted small">последний часовой проход ' + when(h.at) + (hr ? ' · напоминаний: ' + hr : '') + (h.remindError ? ' · ошибка: ' + esc(h.remindError) : '') + '</span>' : '') + '</p>' +
       (d.telegram ? '' : '<p class="problem">Бот не подключён — напоминания не уходят (вкладка «Настройки»).</p>') + '</div>' +
