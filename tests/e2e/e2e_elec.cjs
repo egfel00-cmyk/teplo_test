@@ -32,7 +32,7 @@ let pass = 0, fail = 0; const ok = (n, c, i) => { console.log((c ? '  OK  ' : ' 
   ok('лічильник у квартирі: 2 зони, рахунок; стартові 10000/5000', m && m.kind === 'elec' && m.zones === 2 && m.account === '9876543' && (s.mrecs || []).some(r => r.base && r.meter === m.id && r.z.day === '10000' && r.z.night === '5000'), { m, r: s.mrecs });
   ok('після — назад у налаштування квартири, світло в списку', (await hash()) === '#place-main' && !!(await p.$('[data-key=pv-m-' + m.id + ']')));
   await go('elec');
-  ok('сторінка світла з табло «день/ніч», під назвою — особовий рахунок, без №', /день/.test(await p.textContent('[data-key=emeter-' + m.id + ']')) && /Особовий рахунок 9876543/.test(await p.textContent('[data-key=emeter-' + m.id + '] .mbox-sub')) && !/№/.test(await p.textContent('[data-key=emeter-' + m.id + '] .mbox-h')));
+  ok('сторінка світла з табло «день/ніч»; рахунку й № під назвою немає (рахунок — у «Куди передати» й налаштуваннях квартири)', /день/.test(await p.textContent('[data-key=emeter-' + m.id + ']')) && !/9876543/.test(await p.textContent('[data-key=emeter-' + m.id + '] .mbox-h')) && !/№/.test(await p.textContent('[data-key=emeter-' + m.id + '] .mbox-h')));
   await go('home');
   ok('головна: карточка «Світло» зі статусом', !!(await p.$('[data-key=card-elec]')) && /Передати|Наступне/.test(await p.textContent('[data-key=card-elec]')));
 
@@ -72,7 +72,7 @@ let pass = 0, fail = 0; const ok = (n, c, i) => { console.log((c ? '  OK  ' : ' 
   ok('економія: «Ваше споживання» і поради', !!(await p.$('[data-key=esave-mine]')) && !!(await p.$('[data-key=esave-tips]')));
 
   // ---- електроопалення, прибрати/повернути
-  await go('elec'); await p.click('#e-heat'); await p.waitForTimeout(250); s = await st();
+  await go('place-main'); await p.click('#e-heat'); await p.waitForTimeout(250); s = await st();
   ok('галочка «електроопалення» — у квартири', s.places[0].elecHeat === true);
   await go('place-main');
   ok('екран квартири: рядок світла без «Замінити»', !!(await p.$('[data-key=pv-m-' + m.id + ']')) && !(await p.$('[data-key=pv-replace-' + m.id + ']')));

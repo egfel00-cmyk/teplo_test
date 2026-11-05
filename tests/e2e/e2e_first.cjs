@@ -19,7 +19,7 @@ const U = 'http://127.0.0.1:8013/';
 
   // 1. привітання
   await fresh();
-  ok('привітання: 4 табло (тепло, вода, світло, газ) і 4 пункти', (await p.$$('[data-key=welcome-hero] figure')).length === 4 && !!(await p.$('[data-key=welcome-hero] .lcd:not(.elcd)')) && !!(await p.$('[data-key=welcome-hero] .wdrum')) && !!(await p.$('[data-key=welcome-hero] .elcd')) && !!(await p.$('[data-key=welcome-hero] .gdrum')) && (await p.$$('.welcome li')).length === 4);
+  ok('привітання-лендинг: 4 табло на сцені, 3 кроки, 5 карток можливостей, заклик угорі й унизу', (await p.$$('[data-key=welcome-hero] figure')).length === 4 && !!(await p.$('[data-key=welcome-hero] .lcd:not(.elcd)')) && !!(await p.$('[data-key=welcome-hero] .wdrum')) && !!(await p.$('[data-key=welcome-hero] .elcd')) && !!(await p.$('[data-key=welcome-hero] .gdrum')) && (await p.$$('.lp-step')).length === 3 && (await p.$$('.lp-cell')).length === 5 && (await p.$$('[data-key=welcome-start], [data-key=welcome-start-end]')).length === 2);
   const wtxt = await p.textContent('.welcome');
   ok('у тексті — світло й газ, «з фото», кілька квартир, «лише для себе»', /світло й газ/.test(wtxt) && /З фото/.test(wtxt) && /Кілька квартир/.test(wtxt) && /лише для себе/.test(wtxt));
   await p.click('[data-key=welcome-start]'); await p.waitForTimeout(400);
@@ -88,7 +88,7 @@ const U = 'http://127.0.0.1:8013/';
   // 5. рос. мова
   const pr = await (await b.newContext({ viewport: { width: 360, height: 800 }, locale: 'ru-RU' })).newPage();
   await pr.goto(U); await pr.evaluate(() => localStorage.clear()); await pr.reload(); await pr.waitForTimeout(500);
-  ok('ru: «Все счётчики квартиры — в одном месте»', /Все счётчики квартиры/.test(await pr.textContent('h1')));
+  ok('ru: «Показания счётчиков — за минуту»', /Показания счётчиков — за минуту/.test(await pr.textContent('h1')));
   await pr.goto(U + '#start'); await pr.waitForTimeout(300);
   ok('ru: «Какие счётчики есть в вашей квартире?»', /Какие счётчики есть/.test(await pr.textContent('h1')));
 

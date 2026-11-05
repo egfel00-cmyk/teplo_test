@@ -223,6 +223,7 @@
 
   // ---------------- иконки ----------------
   var ICONS = {
+    bell: '<path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/>', arrow: '<path d="M5 12h14"/><path d="m12 5 7 7-7 7"/>',
     home: '<path d="M4 11l8-7 8 7"/><path d="M6 10v10h12V10"/>',
     chev: '<path d="M9 6l6 6-6 6"/>',
     drop: '<path d="M12 3.5c3 4 6 7.2 6 10.5a6 6 0 0 1-12 0c0-3.3 3-6.5 6-10.5z"/>',
@@ -399,7 +400,7 @@
       : '';
     return '<div class="app' + (bare ? ' bare-app' : '') + '">' +
       '<header class="top' + (right ? ' has-close' : '') + '"><a class="brand" href="#' + homeRoute() + '" data-key="brand">' + logo() + '<span>' + esc(t('brand')) + '</span></a>' + (window.TEPLO_API ? '<span class="beta" title="' + esc(t('beta_sub')) + '" data-key="beta">' + 'Test <span class="ver">beta 0,5 литра</span></span>' : '') + '<span class="spacer"></span>' + themeBtn() + right + '</header>' +
-      nav + '<main class="main' + (bare ? ' bare' : '') + '" id="main" data-screen="' + view.screen + '" tabindex="-1">' + (/^(history|stats|save)$/.test(route) ? placeSwitch() : /^(heat|water-hot|water-cold|elec|gas)$/.test(route) ? placeBar() : /^(wnew|wadd|enew|eadd|gnew|gadd|add-meter|step|step-\d+|check|handover|baseline|meter|photo)$/.test(route) ? placeBar(true) : '') + view.html + '</main></div>' +
+      nav + '<main class="main' + (bare ? ' bare' : '') + (view.wide ? ' wide' : '') + '" id="main" data-screen="' + view.screen + '" tabindex="-1">' + (/^(history|stats|save)$/.test(route) ? placeSwitch() : /^(heat|water-hot|water-cold|elec|gas)$/.test(route) ? placeBar() : /^(wnew|wadd|enew|eadd|gnew|gadd|add-meter|step|step-\d+|check|handover|baseline|meter|photo)$/.test(route) ? placeBar(true) : '') + view.html + '</main></div>' +
       (window.TEPLO_API ? '<button class="fab' + (bare ? ' fab-bare' : '') + '" data-act="fb-open" data-key="feedback" aria-haspopup="dialog">' + ico('chat', 20) + '<span>' + esc(t('fb_btn')) + '</span></button>' + fbDialog() : '') +
       '<div id="toast-host" aria-live="polite"></div>';
   }
@@ -1289,13 +1290,10 @@
       var r = wprevFor(m.id), days = m.verifiedUntil ? R.daysBetween(today(), m.verifiedUntil) : null, sc = null, cap;
       if (r && r.gap) cap = t('wm_cap_gap', { d: fmtDate(r.date, true) });
       else { sc = sentCap(wrecs().filter(function (x) { return hasVal(x, m.id); }), function (x) { return x.base ? baseSent(x) : wsentVk(x) && (kind === 'cold' || wsentHtm(x)); }); r = sc.rec; cap = sc.cap; }
-      var fix = r && !r.gap && !r.base ? '<button class="linkbtn" data-act="wedit" data-id="' + r.id + '">' + esc(t('change')) + '</button>' : '';
       var ver = days === null ? '' : days < 0 ? '<span class="pill warn">' + esc(t('wm_ver_exp')) + '</span>' : days <= 60 ? '<span class="pill warn">' + esc(t('mv_soon', { n: days })) + '</span>' : esc(t('pl_ver', { d: R.toHtmDate(m.verifiedUntil) }));
-      return mbox({ key: 'wmeter-' + m.id, id: m.id, kind: kind, icon: 'drop', cls: kind === 'hot' ? 'c-hot' : 'c-cold', name: ms.length > 1 ? wname(m) : title, sub: [wcfg().account ? t('ed_acc', { a: wcfg().account }) : '', wcfg().surname || ''],
-        display: wdrum(r ? r.vals[m.id] : null, kind, 'hero'), cap: cap, fix: fix, copy: r && r.vals && r.vals[m.id] !== undefined && r.vals[m.id] !== '' ? Wt.whole(r.vals[m.id]) : '', body: sc && sc.note ? '<p class="small muted mb-newer">' + esc(sc.note) + '</p>' : '',
-        meta: [ver, m.vkId ? esc(t('mb_vkid', { v: m.vkId })) : ''].filter(Boolean),
-        set: wmeterFields(m, i0 === 0) + (i0 === 0 ? priceBlock(kind) : '') + gapSetLink(m.id),
-        links: [mbPlaceLink()] });
+      return mbox({ key: 'wmeter-' + m.id, id: m.id, kind: kind, icon: 'drop', cls: kind === 'hot' ? 'c-hot' : 'c-cold', name: ms.length > 1 ? wname(m) : title,
+        display: wdrum(r ? r.vals[m.id] : null, kind, 'hero'), cap: cap, copy: r && r.vals && r.vals[m.id] !== undefined && r.vals[m.id] !== '' ? Wt.whole(r.vals[m.id]) : '', body: sc && sc.note ? '<p class="small muted mb-newer">' + esc(sc.note) + '</p>' : '',
+        meta: [ver, m.vkId ? esc(t('mb_vkid', { v: m.vkId })) : ''].filter(Boolean) });
     }).join('');
     var right = '<button class="btn big block" data-act="wnew" data-kind="' + kind + '" data-key="water-add">' + ico('plus', 22) + '<span>' + esc(t('wn_title')) + '</span></button>' +
       (VIS().local ? '<input type="file" id="wq-files" accept="image/*" multiple class="sr" data-kind="' + kind + '"><label for="wq-files" class="btn sec block wq-photo" tabindex="0" data-key="water-photo">' + ico('camera', 22) + '<span>' + esc(t('ph_entry')) + '</span></label>' : '');
@@ -1596,8 +1594,6 @@
   function eicNorm(x) { return String(x || '').replace(/\s+/g, '').toUpperCase().slice(0, 20); }
   /** Номери лічильника світла/газу для показу й копіювання: [ключ підпису, значення]. Газ — Газмережі, Нафтогаз, EIC. */
   function saccList(k, m) { if (!m) return []; return (k === 'gas' ? [['gd_grm', m.grm], ['gd_naf', m.account], ['gd_eic', m.eic]] : [['ed_acc', m.account]]).filter(function (x) { return x[1]; }); }
-  /** Під назвою лічильника — рахунки (EIC — лише в налаштуваннях і в «Куди передати»). */
-  function saccSub(k, m) { return saccList(k, m).filter(function (x) { return x[0] !== 'gd_eic'; }).map(function (x) { return tk(k, x[0], { a: x[1] }); }); }
   function pmeters(kind, all) { var p = place(); return byKind(((p && p.meters) || []).filter(function (m) { return m && !m.deleted && (all || !m.removed) && (!kind || m.kind === kind); })); }
   function setPMeters(fn) { ensurePlaces(); var p = place(); p.meters = JSON.parse(JSON.stringify(p.meters || [])); fn(p.meters); p.updatedAt = Date.now(); save(); }
   function smeters(k, all) { return pmeters(k, all); }
@@ -1732,15 +1728,17 @@
     var more;
     if (k === 'gas') {
       // SMS 4647: «9 цифр рахунку пробіл 5 цифр показань» — готовий текст, якщо є рахунок і показання
-      var sms = have && ms.length === 1 ? Gs.smsText(ms[0].account, (have.filter(Boolean)[0].z || {}).all) : null;
+      var smsOn = today() <= Gs.SMS_UNTIL, sms = smsOn && have && ms.length === 1 ? Gs.smsText(ms[0].account, (have.filter(Boolean)[0].z || {}).all) : null;
       var nafN = ms.length === 1 ? dgt(ms[0].account).length : 9;
-      if (have && ms.length === 1 && !sms && nafN !== 9) body += '<p class="small" data-key="gd-noacc">' + esc(nafN ? t('gd_badacc', { n: nafN }) : t('gd_noacc')) + ' <a href="' + Gs.LINKS.find + '" target="_blank" rel="noopener" data-key="gd-find">' + esc(t('gd_find')) + ' ' + ico('ext', 14) + '</a></p>';
+      if (smsOn && have && ms.length === 1 && !sms && nafN !== 9) body += '<p class="small" data-key="gd-noacc">' + esc(nafN ? t('gd_badacc', { n: nafN }) : t('gd_noacc')) + ' <a href="' + Gs.LINKS.find + '" target="_blank" rel="noopener" data-key="gd-find">' + esc(t('gd_find')) + ' ' + ico('ext', 14) + '</a></p>';
       if (sms) body += '<p class="small">' + esc(t('gd_sms_how', { s: sms })) + '</p>';
-      chans = [[Gs.LINKS.bot, t('gd_bot'), 'send', 'bot', botAttr]].concat(sms ? [['sms:' + Gs.LINKS.sms + '?&body=' + encodeURIComponent(sms), t('gd_sms'), 'send', 'sms']] : []).concat([[Gs.LINKS.cabinet, t('gd_cab'), 'ext', 'cab']]);
+      if (smsOn) body += '<p class="small muted" data-key="gd-sms-end">' + esc(t('gd_sms_end', { d: fmtDate(Gs.SMS_UNTIL) })) + '</p>';
+      chans = [[Gs.LINKS.bot, t('gd_bot'), 'send', 'bot', botAttr], [Gs.LINKS.kub, t('gd_kub'), 'ext', 'kub']].concat(sms ? [['sms:' + Gs.LINKS.sms + '?&body=' + encodeURIComponent(sms), t('gd_sms'), 'send', 'sms']] : []).concat([[Gs.LINKS.cabinet, t('gd_cab'), 'ext', 'cab']]);
       if (have) body += sbBox(k, have);
       // бот Газмереж питає філію: у Харкові — «Харківська міська», в області — «Харківська» (за довідником адреси)
       var gdp = prvOf('gas'); if (gdp && gdp.grm) body += '<p class="small muted" data-key="gd-fil">' + esc(t('gd_fil', { g: String(gdp.grm).replace(/^Газмережі,\s*/, '') })) + '</p>';
-      more = '<p class="dm-t">' + esc(t('gd_call')) + '</p>' + phones + '<p>' + esc(t('gd_app_note')) + '</p>';
+      more = '<p class="dm-t">' + esc(t('gd_kub_call')) + '</p><ul class="dm-ph"><li>' + telLink(Gs.KUB_TEL[0], Gs.KUB_TEL[1]) + '<span class="muted">' + esc(t('gd_kub_free')) + '</span></li></ul>' +
+        '<p class="dm-t">' + esc(t('gd_call')) + '</p>' + phones;
     } else {
       // офіційні канали Харківобленерго: бот @Kooz2bot, онлайн-форма (з капчею — відкриваємо, людина проходить), SMS 4300
       var m0 = ms[0] || {}, acc1 = String(m0.account || '').replace(/\D/g, '');
@@ -1867,11 +1865,8 @@
     var ms = smeters(k), p = place() || {}, h = '<h1 class="sr">' + esc(t(KINDS[k].t)) + (p.name ? ' — ' + esc(p.name) : '') + '</h1>';
     var left = ms.map(function (m, i) {
       var sc = sentCap(mrecs(m.id), function (x) { return x.base ? baseSent(x) : ssent(k, x); }), r = sc.rec, cap = sc.cap;
-      var fix = r && !r.base ? '<button class="linkbtn" data-act="eedit" data-id="' + r.id + '">' + esc(t('change')) + '</button>' : '';
-      return mbox({ key: 'emeter-' + m.id, id: m.id, kind: k, icon: SK[k].icon, cls: SK[k].cls, name: ms.length > 1 ? ename(m) : t(KINDS[k].t), sub: saccSub(k, m).concat([ezonesTxt(m)]),
-        display: edisplay(m, r, 'hero'), cap: cap, fix: fix, copy: r && r.z && SK[k].mod.zones(m) <= 1 && SK[k].mod.whole(r.z.all) !== null ? SK[k].mod.whole(r.z.all) : '', body: sc.note ? '<p class="small muted mb-newer">' + esc(sc.note) + '</p>' : '',
-        set: smeterFields(k, m) + (i === 0 ? priceBlock(k) + sheatRow(k) : ''),
-        links: [mbPlaceLink(k + '-place')] });
+      return mbox({ key: 'emeter-' + m.id, id: m.id, kind: k, icon: SK[k].icon, cls: SK[k].cls, name: ms.length > 1 ? ename(m) : t(KINDS[k].t), sub: [ezonesTxt(m)],
+        display: edisplay(m, r, 'hero'), cap: cap, copy: r && r.z && SK[k].mod.zones(m) <= 1 && SK[k].mod.whole(r.z.all) !== null ? SK[k].mod.whole(r.z.all) : '', body: sc.note ? '<p class="small muted mb-newer">' + esc(sc.note) + '</p>' : '' });
     }).join('');
     if (k === 'elec') left += gpvBox(p, 'elec');
     var w = SK[k].mod.win(today()), cur = w.open ? ms.map(function (m) { return einWin(m.id, w); }) : null;
@@ -2629,27 +2624,129 @@
     var b = e.target.closest && e.target.closest('[data-act="tg-retry"]'); if (!b || !window.TeploSync || !window.TeploSync.retryTg) return;
     e.preventDefault(); window.TeploSync.retryTg(); safeRender();
   });
+  // ---------- привітання-лендинг ----------
+  /** Темна «сцена» з чотирма сяйвами (тепло, вода, світло, газ — кольори видів), телефон зі спрощеною головною і справжні табло
+   *  на різній глибині. Паралакс — CSS scroll-timeline (де нема — JS нижче), нахил за курсором — лише миша; prefers-reduced-motion —
+   *  усе статично. Графіка — декор (aria-hidden), зміст — у тексті. par: сяйва рухаються з прокруткою (лише в першому екрані). */
+  function lpAuras(par) {
+    return '<div class="lp-bg" aria-hidden="true"><span class="lp-grid"></span>' + [['heat', .3], ['water', .18], ['elec', .4], ['gas', .24]].map(function (a) {
+      return '<span class="lp-ap' + (par ? ' lp-par' : '') + '" style="--k:' + a[1] + '"><span class="lp-aura a-' + a[0] + '"></span></span>'; }).join('') + '</div>';
+  }
+  function lpTiles() {
+    var tile = function (k, html, cap, kp) {
+      return '<div class="lp-tile t-' + k + ' lp-par" style="--k:' + kp + '"><div class="lp-bob"><figure class="whero-c lp-fig">' + html +
+        '<figcaption>' + ico(KINDS[k].icon, 16, KINDS[k].cls) + '<span>' + esc(cap) + '</span></figcaption></figure></div></div>';
+    };
+    return tile('heat', lcd([{ text: '13.245', tag: 'Gcal' }], 'boot'), t('kd_heat'), -.16) + tile('hot', wdrum('175.921', 'hot'), t('st_water'), -.08) +
+      tile('elec', elcd([{ text: '10420' }]), t('kd_elec'), -.22) + tile('gas', wdrum('1225.4', 'gas'), t('kd_gas'), -.12);
+  }
+  function lpPhone() {
+    var card = function (k, name, disp, pill, tone) {
+      return '<div class="lpp-card"><div class="lpp-h">' + ico(KINDS[k].icon, 13, KINDS[k].cls) + '<b>' + esc(name) + '</b></div>' + disp +
+        '<span class="lpp-pill ' + tone + '">' + ico(tone === 'ok' ? 'check' : 'clock', 11) + '<span>' + esc(pill) + '</span></span></div>';
+    };
+    return '<div class="lp-phone lp-par" style="--k:-.04"><div class="lpp-screen"><span class="lpp-island"></span>' +
+      '<div class="lpp-top"><span class="lpp-logo">' + logo() + '</span><span class="lpp-pl"><b>' + esc(t('pl_mine')) + '</b><i>' + esc(t('lp_ph_addr')) + '</i></span></div>' +
+      card('heat', t('kd_heat'), '<div class="lpp-lcd"><span>13.245</span><i>Gcal</i></div>', t('lp_ph_due'), 'warn') +
+      card('hot', t('kd_hot'), '<div class="lpp-drum"><span>00175</span><span class="r">921</span><i>м³</i></div>', t('lp_ph_sent'), 'ok') +
+      card('elec', t('kd_elec'), '<div class="lpp-el"><span>10420</span><i>kWh</i></div>', t('lp_ph_soon'), 'info') +
+      '<div class="lpp-nav">' + ['home', 'history', 'chart', 'prefs'].map(function (n, i) { return '<span' + (i ? '' : ' class="on"') + '>' + ico(n, 15) + '</span>'; }).join('') + '</div></div></div>';
+  }
+  function lpHero(o) {
+    return '<section class="lp-hero" data-key="lp-hero">' + lpAuras(true) + '<div class="lp-in"><div class="lp-copy">' +
+      (o.badge ? '<p class="lp-badge"><span class="lp-dot" aria-hidden="true"></span>' + esc(o.badge) + '</p>' : '') +
+      '<h1 class="lp-h1">' + o.h1 + '</h1><p class="lp-lead">' + esc(o.lead) + '</p><div class="lp-ctas">' + o.cta + '</div>' + (o.after || '') + '</div>' +
+      '<div class="lp-stage" aria-hidden="true" data-key="welcome-hero">' + lpPhone() + lpTiles() + '</div></div></section>';
+  }
+  function lpCta(key, label) { return '<a class="lp-btn" href="#start" data-key="' + key + '"><span>' + esc(label) + '</span>' + ico('arrow', 22) + '</a>'; }
+  function lpDest() {
+    var ds = [['heat', 'ХТМ'], ['cold', t('lp_d_vk')], ['elec', t('lp_d_obl')], ['gas', t('lp_d_grm')], ['gas', t('lp_d_naf')]];
+    return '<section class="lp-sec lp-dest lp-rv" data-key="lp-dest"><p class="lp-dest-t">' + esc(t('lp_dest_t')) + '</p><ul class="lp-chips">' +
+      ds.map(function (d) { return '<li>' + ico(KINDS[d[0]].icon, 16, KINDS[d[0]].cls) + '<span>' + esc(d[1]) + '</span></li>'; }).join('') + '</ul></section>';
+  }
+  function lpSteps() {
+    var arts = [
+      '<div class="lp-art art-photo"><span class="vf tl"></span><span class="vf tr"></span><span class="vf bl"></span><span class="vf br"></span>' + lcd([{ text: '13.245', tag: 'Gcal' }]) + '<span class="scan"></span></div>',
+      '<div class="lp-art art-check"><div class="lpa-field"><span class="lpa-v">13,245</span><span class="lpa-u">Гкал</span><span class="lpa-ok-i">' + ico('check', 18) + '</span></div>' +
+        '<p class="lpa-l ok">' + ico('check', 16) + '<span>' + esc(t('lp_s2_ok')) + '</span></p><p class="lpa-l warn">' + ico('alert', 16) + '<span>' + esc(t('lp_s2_warn')) + '</span></p></div>',
+      '<div class="lp-art art-send"><div class="lpa-dest">' + ico('send', 18) + '<span><b>' + esc(t('lp_s3_dest')) + '</b><i>' + esc(t('lp_s3_sub')) + '</i></span>' + ico('ext', 16) + '</div>' +
+        '<div class="lpa-chip">' + ico('copy', 14) + '<span>' + esc(t('lp_s3_copied')) + '</span></div><div class="lpa-chip ok">' + ico('check', 14) + '<span>' + esc(t('lp_s3_done')) + '</span></div></div>'
+    ];
+    return '<section class="lp-sec" data-key="lp-steps"><h2 class="lp-h2 lp-rv">' + esc(t('lp_steps_t')) + '</h2><ol class="lp-steps">' + [1, 2, 3].map(function (n) {
+      return '<li class="lp-step lp-rv" data-key="lp-step-' + n + '"><div class="lp-art-w" aria-hidden="true">' + arts[n - 1] + '</div><div class="lp-step-tx"><span class="lp-num" aria-hidden="true">' + n + '</span>' +
+        '<h3>' + esc(t('lp_s' + n + '_t')) + '</h3><p>' + esc(t('lp_s' + n)) + '</p></div></li>';
+    }).join('') + '</ol></section>';
+  }
+  /** Строки приймання на місяці (1–30): вікно кожного виду і день нагадування (за 4 дні до кінця), лінія «сьогодні». */
+  function lpDue() {
+    var td = Math.min(30, +String(today()).slice(8, 10) || 1);
+    var rows = [['heat', 'kd_heat', 'ХТМ', [[5, 25]], 21], ['cold', 'st_water', t('lp_d_vk_s'), [[1, 20]], 16], ['elec', 'kd_elec', t('lp_d_obl_s'), [[1, 3], [29, 30]], 29], ['gas', 'kd_gas', t('lp_d_grm'), [[1, 5]], 1]];
+    var cells = function (ws, bell) { var h = ''; for (var i = 1; i <= 30; i++) h += '<span class="' + (ws.some(function (w) { return i >= w[0] && i <= w[1]; }) ? 'on' : '') + (i === bell ? ' bell' : '') + '"></span>'; return h; };
+    return '<div class="lp-due" aria-hidden="true" style="--td:' + td + '">' + rows.map(function (r) {
+      return '<span class="lpd-l">' + ico(KINDS[r[0]].icon, 15, KINDS[r[0]].cls) + '<span><b>' + esc(t(r[1])) + '</b><i>' + esc(r[2]) + '</i></span></span><span class="lpd-track k-' + r[0] + '">' + cells(r[3], r[4]) + '</span>';
+    }).join('') + '<span></span><span class="lpd-ax">' + [1, 5, 10, 15, 20, 25, 30].map(function (n) { return '<i style="--d:' + n + '">' + n + '</i>'; }).join('') + '</span>' +
+      '<span class="lpd-leg"><span class="lpd-bell"></span>' + esc(t('lp_due_bell')) + '</span><span class="lpd-today"><i>' + esc(t('lp_today')) + '</i></span></div>';
+  }
+  function lpTg() {
+    return '<div class="lp-tg" aria-hidden="true"><div class="lpt-head"><span class="lpt-av">' + logo() + '</span><span><b>' + esc(t('brand')) + '</b><i>@' + esc(ourBot()) + '</i></span></div>' +
+      '<div class="lpt-msg">' + ico('bell', 15) + '<p>' + esc(t('lp_tg_msg')) + '</p><span class="lpt-time">10:17</span></div><div class="lpt-btn">' + esc(t('lp_tg_btn')) + '</div></div>';
+  }
+  function lpPlaces() {
+    return '<div class="lp-pl" aria-hidden="true">' + [['teal', 1], ['violet', 2], ['amber', 3]].map(function (p) {
+      return '<div class="lpl-c" style="--pc:var(--pc-' + p[0] + ');--i:' + (p[1] - 1) + '"><span class="lpl-dot"></span><span><b>' + esc(t('lp_pl' + p[1])) + '</b><i>' + esc(t('lp_pl' + p[1] + 's')) + '</i></span>' + ico('chev', 16) + '</div>';
+    }).join('') + '</div>';
+  }
+  function lpCost() {
+    var mon = t('lp_mon').split('|'), m = (+String(today()).slice(5, 7) || 1) - 1, v = [12, 9, 10, 14, 22, 33];
+    return '<div class="lp-cost" aria-hidden="true"><div class="lpc-top"><b>≈ 263 грн</b><span>' + esc(t('lp_cost_cap')) + '</span></div><div class="lpc-bars">' + v.map(function (x, i) {
+      return '<span class="lpc-b' + (i === v.length - 1 ? ' cur' : '') + '"><span style="--h:' + Math.round(x / 33 * 100) + '%"></span><i>' + esc(mon[(m - v.length + 1 + i + 12) % 12]) + '</i></span>';
+    }).join('') + '</div></div>';
+  }
+  function lpGpv() {
+    var off = [[8, 12], [16, 20]], h = '';
+    for (var i = 0; i < 24; i++) h += '<span class="' + (off.some(function (o) { return i >= o[0] && i < o[1]; }) ? 'off' : 'on') + '"></span>';
+    return '<div class="lp-gpv" aria-hidden="true"><div class="lpg-top"><span class="lpg-q">' + ico('bolt', 14) + esc(t('lp_gpv_q')) + '</span><span class="muted">' + esc(t('lp_gpv_day')) + '</span></div><div class="lpg-bar">' + h + '</div>' +
+      '<div class="lpg-ax"><i>00</i><i>06</i><i>12</i><i>18</i><i>24</i></div><div class="lpg-leg"><span class="on"></span>' + esc(t('lp_gpv_on')) + '<span class="off"></span>' + esc(t('lp_gpv_off')) + '</div></div>';
+  }
+  function lpBento() {
+    var cell = function (key, art) { return '<article class="lp-cell c-' + key + ' lp-rv" data-key="lp-' + key + '"><div class="lp-cell-tx"><h3>' + esc(t('lp_' + key + '_t')) + '</h3><p>' + esc(t('lp_' + key)) + '</p></div>' + art + '</article>'; };
+    return '<section class="lp-sec" data-key="lp-bento"><h2 class="lp-h2 lp-rv">' + esc(t('lp_bento_t')) + '</h2><div class="lp-bento">' +
+      cell('due', lpDue()) + cell('tg', lpTg()) + cell('pl', lpPlaces()) + cell('cost', lpCost()) + cell('gpv', lpGpv()) + '</div></section>';
+  }
   V.welcome = function () {
     var acc = Y().mode === 'server' && Y().account;
-    if (acc) {   // уже вошёл, но лічильник ещё не выбран (новый аккаунт или стёрли данные) — без рекламного экрана, сразу к делу
+    if (acc) {   // уже вошёл, но лічильник ещё не выбран (новый аккаунт или стёрли данные) — без рекламы, сразу к делу
       var who = acc.email || (acc.telegram && (acc.telegram.username ? '@' + acc.telegram.username : acc.telegram.name)) || '';
-      return { screen: 'S00', bare: true, html:
-        '<div class="welcome"><div class="welcome-grid">' + welcomeHero() + '<div>' +
-        '<h1>' + esc(t('wl_title')) + '</h1><p class="lead">' + esc(t('wl_lead')) + '</p>' +
-        '<a class="btn big" href="#start" data-key="welcome-start">' + esc(t('wl_cta')) + '</a>' +
-        '<p class="small muted" style="margin-top:16px">' + esc(t('wl_fine', { who: who })) + ' <button class="linkbtn" data-act="logout">' + esc(t('wl_other')) + '</button></p></div>' +
-        '</div></div>' };
+      return { screen: 'S00', bare: true, wide: true, html: '<div class="welcome lp">' + lpHero({ h1: esc(t('wl_title')), lead: t('wl_lead'),
+        cta: '<a class="lp-btn" href="#start" data-key="welcome-start"><span>' + esc(t('wl_cta')) + '</span>' + ico('arrow', 22) + '</a>',
+        after: '<p class="lp-who">' + esc(t('wl_fine', { who: who })) + ' <button class="linkbtn" data-act="logout">' + esc(t('wl_other')) + '</button></p>' }) + '</div>' };
     }
-    var bul = [['camera', 'w_b1'], ['send', 'w_b2'], ['home', 'w_b3'], ['chart', 'w_b4']];
-    return { screen: 'S00', bare: true, html: tgFailBox() +
-      '<div class="welcome"><div class="welcome-grid">' + welcomeHero() + '<div>' +
-      '<h1>' + esc(t('w_title')) + '</h1><p class="lead">' + esc(t('w_lead')) + '</p>' +
-      '<ul>' + bul.map(function (b) { return '<li data-key="welcome-' + b[1] + '">' + ico(b[0], 22, 'c-ok') + '<span>' + esc(t(b[1])) + '</span></li>'; }).join('') + '</ul>' +
-      '<a class="btn big" href="#start" data-key="welcome-start">' + esc(t('w_cta')) + '</a>' +
-      (Y().mode === 'server' && !Y().account ? '<p style="margin-top:16px"><a href="#login" data-key="welcome-login">' + esc(t('w_login')) + '</a></p>' : '') +
-      '<p class="small muted" style="margin-top:16px">' + esc(Y().mode === 'claude' ? t('sync_claude') : Y().mode === 'server' ? t('w_fine_site') : t('w_fine')) + '</p></div>' +
-      '</div></div>' };
+    var login = Y().mode === 'server' && !Y().account, fine = Y().mode === 'claude' ? t('sync_claude') : Y().mode === 'server' ? t('w_fine_site') : t('w_fine');
+    return { screen: 'S00', bare: true, wide: true, html: tgFailBox() + '<div class="welcome lp">' +
+      lpHero({ badge: t('lp_badge'), h1: esc(t('lp_h1a')) + ' <span class="lp-grad">' + esc(t('lp_h1b')) + '</span>', lead: t('lp_lead'),
+        cta: lpCta('welcome-start', t('lp_cta')) + (login ? '<a class="lp-link" href="#login" data-key="welcome-login">' + esc(t('w_login')) + '</a>' : ''),
+        after: '<ul class="lp-trust">' + ['lp_tr1', 'lp_tr2', 'lp_tr3'].map(function (k) { return '<li>' + ico('check', 16) + '<span>' + esc(t(k)) + '</span></li>'; }).join('') + '</ul>' }) +
+      lpDest() + lpSteps() + lpBento() +
+      '<section class="lp-end lp-rv" data-key="lp-end">' + lpAuras(false) + '<h2>' + esc(t('lp_end_t')) + '</h2><p>' + esc(t('lp_end')) + '</p><div class="lp-ctas">' + lpCta('welcome-start-end', t('lp_cta')) + '</div></section>' +
+      '<p class="lp-fine small muted">' + esc(fine) + '</p></div>' };
   };
+  // паралакс там, де нема CSS scroll-timeline (Firefox, старі Safari), і нахил сцени за курсором (лише миша); reduced-motion — нічого
+  (function () {
+    var mq = window.matchMedia ? function (q) { return window.matchMedia(q).matches; } : function () { return false; };
+    var css = window.CSS && CSS.supports && CSS.supports('animation-timeline: scroll()'), tick = false;
+    function frame() {
+      tick = false; if (mq('(prefers-reduced-motion: reduce)')) return;
+      var els = document.querySelectorAll('.lp-hero .lp-par'); if (!els.length) return;
+      var y = Math.min(window.pageYOffset || 0, 700);
+      for (var i = 0; i < els.length; i++) els[i].style.translate = '0 ' + (y * (parseFloat(els[i].style.getPropertyValue('--k')) || 0)).toFixed(1) + 'px';
+    }
+    if (!css) window.addEventListener('scroll', function () { if (!tick) { tick = true; requestAnimationFrame(frame); } }, { passive: true });
+    if (mq('(hover: hover) and (pointer: fine)')) document.addEventListener('pointermove', function (e) {
+      var h = e.target && e.target.closest && e.target.closest('.lp-hero'), st = h && h.querySelector('.lp-stage'); if (!st || mq('(prefers-reduced-motion: reduce)')) return;
+      var r = h.getBoundingClientRect(), x = (e.clientX - r.left) / r.width - .5, y = (e.clientY - r.top) / r.height - .5;
+      st.style.setProperty('--rx', (x * 10).toFixed(2) + 'deg'); st.style.setProperty('--ry', (-y * 7).toFixed(2) + 'deg');
+    }, { passive: true });
+  })();
 
   /** «Куди передати» для тепла: лише кабінет ХТМ, 5–25 числа; є перевірені показання — до покрокової передачі. */
   function heatWhere() {
@@ -2674,18 +2771,15 @@
     if (INBOX.items && INBOX.items.length) html += '<div class="banner" data-key="home-inbox">' + ico('camera', 22) + '<div><p><b>' + esc(t('ib_title', { n: INBOX.items.length })) + '</b></p><p>' + esc(t('ib_sub')) + '</p><p><button class="btn" data-act="inbox-run" data-key="home-inbox-run">' + esc(t('ib_run')) + '</button></p></div></div>';
     // экран с последними принятыми — главный визуальный якорь
     var bs = lastAccepted(), newer = RD().filter(function (x) { return x.htm && x.htm.date && (!bs || x.htm.date > bs.date); }).sort(function (a, b) { return a.htm.date < b.htm.date ? -1 : 1; }).slice(-1)[0];
-    // під назвою виду — особовий рахунок (владелец 05.11), № лічильника — лише в налаштуваннях; рахунку ще немає — модель
-    var hacc = S.meter && S.meter.account;
+    // під назвою виду — модель; рахунок і № — лише в налаштуваннях і в «Куди передати» (владелец 05.11 20:45: «з лічильників прибрати номери рахунків»)
     var left = mbox({ key: bs ? 'home-last' : 'home-last-none', id: 'heat', kind: 'heat', icon: 'thermo', cls: 'c-heat', name: t('uc_heat'),
-      sub: [hacc ? t('ed_acc', { a: hacc }) : modelName(m), energyUnit() !== 'Gcal' ? unitLbl(energyUnit()) : ''],
+      sub: [modelName(m), energyUnit() !== 'Gcal' ? unitLbl(energyUnit()) : ''],
       display: lcd([{ text: bs ? R.formatForHtm('energy', bs.energy) : '------', tag: 'Gcal', label: bs ? R.formatForHtm('energy', bs.energy) + ' Гкал' : '—' }], 'hero'),
       copy: bs && R.num(bs.energy) !== null ? R.formatForHtm('energy', bs.energy) : '',
-      cap: bs ? t('h_last_d', { d: fmtDate(bs.date, true) }) : t('h_last_none'), fix: bs ? '<a href="' + (bs.src === 'rec' ? '#rec-' + esc(bs.id) : '#baseline') + '">' + esc(t('change')) + '</a>' : '',
+      cap: bs ? t('h_last_d', { d: fmtDate(bs.date, true) }) : t('h_last_none'),
       body: (newer ? '<p class="small muted mb-newer">' + esc(t(newer.own ? 'mb_newer_own' : 'mb_newer_heat', { d: fmtDate(newer.htm.date, true), s: t('status_' + newer.status).toLowerCase() })) + '</p>' : '') +
         (bs ? '' : '<p class="small muted">' + esc(t('h_last_none_sub')) + '</p><p><a class="btn sec" href="#baseline" data-key="home-add-base">' + esc(t('h_add_base')) + '</a></p>'),
-      meta: S.meter && S.meter.verifiedUntil ? [esc(t('pl_ver', { d: R.toHtmDate(S.meter.verifiedUntil) }))] : [],
-      set: heatMeterFields(m) + priceBlock('heat') + gapSetLink('heat'),
-      links: [mbPlaceLink()] });
+      meta: S.meter && S.meter.verifiedUntil ? [esc(t('pl_ver', { d: R.toHtmDate(S.meter.verifiedUntil) }))] : [] });
     var right = '';
     var n = steps().length;
     if (S.draft && (Object.keys(S.draft.values || {}).length || S.draft.step > 0)) {
@@ -3680,7 +3774,8 @@
   function mrow(o) {
     return '<li class="mrow" data-key="pv-m-' + esc(o.what) + '"><a class="mrow-main" href="#' + o.href + '">' + ico(KINDS[o.kind].icon, 22, KINDS[o.kind].cls) + '<span class="grow"><b>' + esc(o.title) + '</b>' + (o.sub ? '<span class="small muted">' + esc(o.sub) + '</span>' : '') + '</span>' + ico('chev', 20) + '</a>' +
       '<div class="mrow-act">' + (o.noReplace ? '' : '<button type="button" class="btn ter sm" data-act="m-replace" data-what="' + esc(o.what) + '" data-key="pv-replace-' + esc(o.what) + '">' + ico('wrench', 18) + '<span>' + esc(t('mr_replace')) + '</span></button>') +
-      '<button type="button" class="btn ter sm quiet-bad" data-act="m-remove" data-what="' + esc(o.what) + '" data-key="pv-remove-' + esc(o.what) + '">' + ico('close', 18) + '<span>' + esc(t('mr_remove')) + '</span></button></div></li>';
+      '<button type="button" class="btn ter sm quiet-bad" data-act="m-remove" data-what="' + esc(o.what) + '" data-key="pv-remove-' + esc(o.what) + '">' + ico('close', 18) + '<span>' + esc(t('mr_remove')) + '</span></button></div>' +
+      (o.set ? '<details class="mbox-set mrow-set" id="mbs-' + esc(o.what) + '"' + (MB_OPEN[o.what] ? ' open' : '') + ' data-key="pv-set-' + esc(o.what) + '"><summary>' + ico('prefs', 18) + '<span>' + esc(t('mb_set')) + '</span>' + ico('chev', 18, 'pacc-chev') + '</summary><div class="mbox-set-b">' + o.set + '</div></details>' : '') + '</li>';
   }
   function verTxt(v) { return v ? t('pl_ver', { d: R.toHtmDate(v) }) : ''; }
   // ---------- постачальники й тарифи за адресою квартири (GET /api/providers, довідник app/data/providers.json) ----------
@@ -3846,9 +3941,9 @@
     if (fresh) h += '<div class="banner" data-key="pv-new">' + ico('info', 22) + '<div><p><b>' + esc(t('pv_new_t')) + '</b></p><p>' + esc(t('pv_new')) + '</p></div></div>';
     // лічильники
     var rows = [];
-    if (hasHeat()) rows.push(mrow({ what: 'heat', kind: 'heat', title: t('kd_heat'), href: 'heat', sub: [modelName(model()), verTxt(S.meter.verifiedUntil)].filter(Boolean).join(' · ') }));
-    ms.forEach(function (m) { rows.push(mrow({ what: m.id, kind: m.kind, title: wkindTitle(m.kind) + (m.name ? ' · ' + m.name : ''), href: 'water-' + m.kind, sub: verTxt(m.verifiedUntil) })); });
-    ['elec', 'gas'].forEach(function (k) { smeters(k).forEach(function (m) { rows.push(mrow({ what: m.id, kind: k, title: ename(m), href: SK[k].page, noReplace: true, sub: saccSub(k, m).concat([ezonesTxt(m)]).filter(Boolean).join(' · ') })); }); });
+    if (hasHeat()) rows.push(mrow({ what: 'heat', kind: 'heat', title: t('kd_heat'), href: 'heat', sub: [modelName(model()), verTxt(S.meter.verifiedUntil)].filter(Boolean).join(' · '), set: heatMeterFields(model()) + gapSetLink('heat') }));
+    ms.forEach(function (m) { rows.push(mrow({ what: m.id, kind: m.kind, title: wkindTitle(m.kind) + (m.name ? ' · ' + m.name : ''), href: 'water-' + m.kind, sub: verTxt(m.verifiedUntil), set: wmeterFields(m, false) + gapSetLink(m.id) })); });
+    ['elec', 'gas'].forEach(function (k) { smeters(k).forEach(function (m) { rows.push(mrow({ what: m.id, kind: k, title: ename(m), href: SK[k].page, noReplace: true, sub: ezonesTxt(m), set: smeterFields(k, m) })); }); });
     h += '<section class="panel" data-key="pv-meters"><h2>' + esc(t('pv_meters')) + '</h2>' + (rows.length ? '<ul class="mlist">' + rows.join('') + '</ul>' : '<p class="muted">' + esc(t('pv_none')) + '</p>') +
       '<p style="margin:12px 0 0"><button class="btn' + (rows.length ? ' sec' : '') + '" data-act="add-meter" data-back="place-' + esc(p.id) + '" data-key="pv-add-meter">' + ico('plus', 20) + '<span>' + esc(t('am_tile')) + '</span></button></p>';
     var rm = removedMeters();

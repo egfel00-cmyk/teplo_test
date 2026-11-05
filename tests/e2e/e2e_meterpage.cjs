@@ -16,8 +16,10 @@ const U = 'http://127.0.0.1:8013/';
     cap: (document.querySelector('.mbox .lcd-cap') || {}).textContent || '', box: (document.querySelector('.mbox') || {}).textContent || '' }));
   const all = {};
   for (const r of ['heat', 'water-hot', 'water-cold', 'elec', 'gas']) { await open(r); all[r] = await info(); }
-  ok('у всіх 5 лічильників — «Налаштування лічильника» в блоці і ссилка «Квартира: лічильники й рахунки», без переходу в загальні Налаштування',
-    Object.values(all).every(x => x.set && /Налаштування лічильника/.test(x.setTitle) && x.place && !x.toPrefs), all);
+  ok('у всіх 5 лічильників на сторінці — без «Налаштувань лічильника» і ссилки на квартиру (вони на екрані квартири, владелец 05.11)',
+    Object.values(all).every(x => !x.set && !x.place && !x.toPrefs), all);
+  await open('place-main');
+  ok('екран квартири: у кожного з 5 лічильників — свої «Налаштування лічильника»', (await p.$$('[data-key=pv-meters] details.mrow-set')).length === 5);
   ok('«Куди передати» — акордеон, закритий', Object.values(all).every(x => x.wacc === 'closed'), Object.fromEntries(Object.entries(all).map(([k, v]) => [k, v.wacc])));
   ok('тепло: без «Інструкція перевірена» і «Звірити в кабінеті ХТМ»', !/Інструкція перевірена|Звірити в кабінеті/.test(all.heat.box), all.heat.box.slice(0, 200));
   ok('тепло: останні прийняті — найпізніше «прийнято» з історії (10 квітня 2026), а не «Останні прийняті» з кабінету (10 грудня 2025)', /10 квітня 2026/.test(all.heat.cap), all.heat.cap);

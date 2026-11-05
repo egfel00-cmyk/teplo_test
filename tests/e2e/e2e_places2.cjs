@@ -128,7 +128,7 @@ let pass = 0, fail = 0; const ok = (n, c, i) => { console.log((c ? '  OK  ' : ' 
   const ord = ['heat', 'hot', 'cold', 'elec', 'gas'], sorted = a => a.every((x, i) => !i || ord.indexOf(a[i - 1]) <= ord.indexOf(x));
   ok('головна «Здаю»: опалення, гаряча, холодна, світло, газ — як в інших квартирах', JSON.stringify(zk) === JSON.stringify(ord), zk);
   await go('place-pz'); await p.waitForTimeout(900);
-  const zm = await p.$$eval('[data-key=pv-meters] .mrow b', es => es.map(e => e.textContent));
+  const zm = await p.$$eval('[data-key=pv-meters] .mrow-main b', es => es.map(e => e.textContent));
   ok('екран квартири: лічильники в тому ж порядку', /Опалення/.test(zm[0]) && /Гаряча/.test(zm[1]) && /Холодна/.test(zm[2]) && /Світло/.test(zm[3]) && /Газ/.test(zm[4]), zm);
   const zp = await p.$$eval('.prov-row', es => es.map(e => e.getAttribute('data-key').replace('prov-', '')));
   ok('«Постачальники й тарифи»: опалення, вода, світло, газ', JSON.stringify(zp) === JSON.stringify(['heat', 'water', 'elec', 'gas']), zp);

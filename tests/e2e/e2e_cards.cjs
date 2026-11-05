@@ -35,27 +35,28 @@ const U = 'http://127.0.0.1:8013/';
   ok('екран квартири: «Додати лічильник», «Прибрати», назад — «Головна»', !!(await p.$('[data-key=pv-add-meter]')) && !!(await p.$('[data-key=pv-remove-h1]')) && (await p.getAttribute('[data-key=pv-back]', 'href')) === '#home');
   ok('екран квартири: у рядках водомірів без №', !/№/.test(await txt('[data-key=pv-meters]')), await txt('[data-key=pv-meters]'));
 
-  // ---- 3. під назвою — особовий рахунок і прізвище; № — лише в налаштуваннях; «Копіювати»
+  // ---- 3. сторінка лічильника — без рахунків під назвою, без «Змінити» і без налаштувань (владелец 05.11 20:45–20:46): усе — на екрані квартири
   await go('water-hot');
-  const sub = await txt('[data-key=wmeter-h1] .mbox-sub');
-  ok('гаряча вода: під назвою «Особовий рахунок 123456» і «Шевченко», без №', /Особовий рахунок 123456/.test(sub) && /Шевченко/.test(sub) && !/№|20123456/.test(await txt('[data-key=wmeter-h1] .mbox-h')), sub);
+  const hh = await txt('[data-key=wmeter-h1] .mbox-h');
+  ok('гаряча вода: під назвою без рахунку, прізвища й №; без «Змінити» і «Налаштувань лічильника»', !/123456|Шевченко|№/.test(hh) && !(await p.$('[data-key=wmeter-h1] [data-act=wedit]')) && !(await p.$('[data-key=wmeter-h1-set]')), hh);
   ok('біля «Передано 15 жовтня» — «Копіювати» 175', (await p.getAttribute('[data-key=wmeter-h1-copy]', 'data-text')) === '175');
-  await p.click('[data-key=wmeter-h1-set] summary'); await p.waitForTimeout(200);
-  ok('налаштування водоміра: рахунок і прізвище Водоканалу, №, код у боті — з «Копіювати»', !!(await p.$('[data-key=copy-mw-acc]')) && !!(await p.$('[data-key=copy-mw-sn]')) && !!(await p.$('[data-key=copy-mbsn-h1]')) && !!(await p.$('[data-key=copy-mbi-h1]')));
+  await go('place-main'); await p.click('[data-key=pv-set-h1] summary'); await p.waitForTimeout(200);
+  ok('екран квартири: налаштування водоміра (№, код у боті — з «Копіювати») і рахунок/прізвище Водоканалу', !!(await p.$('[data-key=copy-w-acc]')) && !!(await p.$('[data-key=copy-w-sn]')) && !!(await p.$('[data-key=copy-mbsn-h1]')) && !!(await p.$('[data-key=copy-mbi-h1]')));
   await p.click('[data-key=copy-mbsn-h1]'); await p.waitForTimeout(300);
   ok('«Копіювати» № → у буфері 20123456', (await p.evaluate(() => navigator.clipboard.readText())) === '20123456');
-  await p.click('[data-key=copy-mw-acc]'); await p.waitForTimeout(300);
+  await p.click('[data-key=copy-w-acc]'); await p.waitForTimeout(300);
   ok('«Копіювати» особовий рахунок → у буфері 123456, тост «Скопійовано»', (await p.evaluate(() => navigator.clipboard.readText())) === '123456' && /Скопійовано/i.test(await txt('#toast-host')));
-  // тепло: особовий рахунок ХТМ — нове поле
-  await go('heat'); await p.click('[data-key=home-last-set] summary'); await p.waitForTimeout(200);
-  ok('опалення: заголовок «Опалення», під ним модель (рахунку ще нема)', /Опалення/.test(await txt('[data-key=home-last] .mbox-t b')) && /SHARKY/.test(await txt('[data-key=home-last] .mbox-sub')));
+  // тепло: особовий рахунок ХТМ — у налаштуваннях лічильника на екрані квартири
+  await go('heat');
+  ok('опалення: заголовок «Опалення», під ним модель, без «Змінити» і налаштувань', /Опалення/.test(await txt('[data-key=home-last] .mbox-t b')) && /SHARKY/.test(await txt('[data-key=home-last] .mbox-sub')) && !(await p.$('[data-key=home-last-set]')));
+  await go('place-main'); await p.click('[data-key=pv-set-heat] summary'); await p.waitForTimeout(200);
   await p.fill('#p-hacc', '12345678'); await p.press('#p-hacc', 'Tab'); await p.waitForTimeout(500);
   let s = await st();
-  ok('опалення: рахунок ХТМ збережено в квартирі й показано під назвою', s.places[0].meter.account === '12345678' && /Особовий рахунок 12345678/.test(await txt('[data-key=home-last] .mbox-sub')), s.places[0].meter);
-  await p.click('[data-key=home-last-set] summary').catch(() => {}); await p.waitForTimeout(200);
-  if (!(await p.isVisible('[data-key=copy-p-hacc]'))) { await p.click('[data-key=home-last-set] summary'); await p.waitForTimeout(200); }
+  ok('опалення: рахунок ХТМ збережено в квартирі; під назвою на сторінці — не показуємо', s.places[0].meter.account === '12345678', s.places[0].meter);
+  if (!(await p.isVisible('[data-key=copy-p-hacc]'))) { await p.click('[data-key=pv-set-heat] summary'); await p.waitForTimeout(200); }
   await p.click('[data-key=copy-p-hacc]'); await p.waitForTimeout(300);
   ok('«Копіювати» рахунок ХТМ → 12345678', (await p.evaluate(() => navigator.clipboard.readText())) === '12345678');
+  await go('heat'); ok('сторінка опалення: рахунку під назвою немає', !/12345678/.test(await txt('[data-key=home-last] .mbox-h')));
 
   // ---- 4. картка запису: «Куди передати» згорнуто, «лише для себе» — внизу, «Копіювати» у кожного показання
   await load(demo({ elec: true }));
@@ -84,7 +85,7 @@ const U = 'http://127.0.0.1:8013/';
   await q.goto(U); await q.evaluate(x => localStorage.setItem('teplo.v1', JSON.stringify(x)), demo({ elec: true, gas: true, second: true })); await q.goto(U + '#home'); await q.reload(); await q.waitForTimeout(500);
   ok('ru: плитка «Настройки квартиры», 320 px без переполнения', /Настройки квартиры/.test(await q.textContent('[data-key=card-place-set]')) && await q.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1));
   await q.goto(U + '#elec'); await q.waitForTimeout(400);
-  ok('ru: свет — «Лицевой счёт 9876543» под названием', /Лицевой счёт 9876543/.test(await q.textContent('[data-key=emeter-e1] .mbox-sub')) && await q.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1));
+  ok('ru: свет — без счёта под названием, без горизонтальной прокрутки', !/9876543/.test(await q.textContent('[data-key=emeter-e1] .mbox-h')) && await q.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1));
 
   ok('без помилок JS', !errs.length, errs);
   console.log('\nИтог: ' + pass + ' OK, ' + fail + ' FAIL'); await b.close(); process.exit(fail ? 1 : 0);

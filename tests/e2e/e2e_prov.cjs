@@ -27,13 +27,7 @@ let pass = 0, fail = 0; const ok = (n, c, x) => { if (c) { pass++; console.log('
   ok('«Звідки ці дані» — джерело тарифу світла згорнуте', !!(await p.$('[data-key=prov-elec] details.prov-src')) && !(await p.$eval('[data-key=prov-elec] details.prov-src', d => d.open)));
   await p.click('[data-key=prov-yes-elec]'); await p.waitForTimeout(300); let sv = await st();
   ok('«Так, у мене так» → світло звірено (p.prov.elec.ok), позначка «звірено», кнопки підтвердження зникли', sv.places[1].prov && sv.places[1].prov.elec.ok === 1 && /звірено/.test(await txt('prov-elec')) && !(await p.$('[data-key=prov-yes-elec]')));
-  // «Ціна» в налаштуваннях лічильника: вода в Малій Данилівці невідома — порожньо і прохання вписати; світло — 4,32
-  await p.goto(U + '#water-cold'); await p.waitForTimeout(700); await p.click('[data-key$=-set] summary'); await p.waitForTimeout(200);
-  ok('холодна в Малій Данилівці: «Ціна» — поле води порожнє, «ще не знайшли… впишіть з платіжки»', await p.inputValue('#mp-ws') === '' && /ще не знайшли/.test(await txt('mp-note-cold')), [await p.inputValue('#mp-ws'), await txt('mp-note-cold').catch(() => '')]);
-  await p.goto(U + '#elec'); await p.waitForTimeout(700); await p.click('[data-key$=-set] summary'); await p.waitForTimeout(200);
-  ok('світло: «Ціна» — 4,32 вже вписано, від Харківенергозбуту', await p.inputValue('#mp-ep') === '4,32' && /Харківенергозбут/.test(await txt('mp-note-elec')), [await p.inputValue('#mp-ep'), await txt('mp-note-elec').catch(() => '')]);
-  await p.fill('#mp-ep', '5'); await p.press('#mp-ep', 'Tab'); await p.waitForTimeout(300); sv = await st();
-  ok('світло: вписали 5 → ціна квартири 5 («з вашої платіжки»)', sv.places[1].prov.elec.price === 5 && /з вашої платіжки/.test(await txt('mp-note-elec')), sv.places[1].prov.elec);
+  // «Ціна» в налаштуваннях лічильника прибрали разом з налаштуваннями зі сторінки лічильника (владелец 05.11): ціни — у «Постачальники й тарифи» квартири
   await p.goto(U + '#place-p2'); await p.waitForTimeout(600);
   await p.click('[data-key=prov-other-water]'); await p.waitForTimeout(200);
   ok('вода → форма: хто виставляє (підставлено з довідника), ціна води й водовідведення', await p.inputValue('#prv-n-water') === 'КП «Малоданилівський комунальник»' && !!(await p.$('#prv-s')) && !!(await p.$('#prv-d')));
@@ -75,15 +69,11 @@ let pass = 0, fail = 0; const ok = (n, c, x) => { if (c) { pass++; console.log('
   await p.goto(U + '#water-cold'); await p.waitForTimeout(900);
   const wd = await txt('where-water');
   ok('«Куди передати» воду в Берестині — КП «Берестин-Водоканал», без бота @hvk_user_bot і без кабінету Харківводоканалу', /Берестин-Водоканал/.test(wd) && !/hvk_user_bot|Харківводоканал/.test(wd), wd.slice(0, 200));
-  await p.click('[data-key=wmeter-c1-set] summary, [data-key$=-set] summary').catch(() => {}); await p.waitForTimeout(300);
-  ok('«Ціна» холодної води — 71,88 і 107,74 (довідник громади), а не харківські 49,446', await p.evaluate(() => { const a = document.getElementById('mp-ws'), d = document.getElementById('mp-wd'); return !!a && /71,88/.test(a.value) && /107,74/.test(d.value); }), await p.evaluate(() => [((document.getElementById('mp-ws') || {}).value), ((document.getElementById('mp-wd') || {}).value)]));
   // Рогань: вода й тепло — КП «Теплові мережі Роганської селищної ради»; тепло — свій тариф 1 839,62 без харківської абонплати, і за ним рахуємо
   await p.evaluate(() => { const s = JSON.parse(localStorage.getItem('teplo.v1')); s.places[0].address = 'смт Рогань, вул. Шкільна 3'; delete s.places[0].prov; delete s.places[0].bill; delete s.bill; delete s.tariff; localStorage.setItem('teplo.v1', JSON.stringify(s)); });
   await p.goto(U + '#place-main'); await p.reload(); await p.waitForTimeout(900);
   const rh = await txt('prov-heat'), rw = await txt('prov-water');
   ok('Рогань: тепло — КП «Теплові мережі Роганської селищної ради», 1 839,62 грн за Гкал з ПДВ без «29,40 абонплати»; вода 21,54 і 16,97', /Роганської селищної ради/.test(rh) && /1\s839,62 грн за Гкал з ПДВ/.test(rh) && !/29,40/.test(rh) && /21,54.*16,97/.test(rw), [rh, rw]);
-  await p.goto(U + '#heat'); await p.waitForTimeout(700); await p.click('[data-key$=-set] summary').catch(() => {}); await p.waitForTimeout(300);
-  ok('Рогань: «Ціна» тепла — 1 839,62 і абонплата 0 (не ХТМ)', await p.evaluate(() => { const h = document.getElementById('mp-heat'), a = document.getElementById('mp-abon'); return !!h && /1\s?839,62/.test(h.value) && a && /^0(,00)?$/.test(a.value); }), await p.evaluate(() => [((document.getElementById('mp-heat') || {}).value), ((document.getElementById('mp-abon') || {}).value)]));
   // 27-ма сесія: Буди — свій постачальник у пункті (не УЖКГ м. Південне і не його «Куди платити»); Люботин — 56,88 і 76,68 з 01.10.2026
   await p.evaluate(() => { const s = JSON.parse(localStorage.getItem('teplo.v1')); s.places[0].address = 'смт Буди, вул. Шевченка 2'; delete s.places[0].prov; localStorage.setItem('teplo.v1', JSON.stringify(s)); });
   await p.goto(U + '#place-main'); await p.reload(); await p.waitForTimeout(900);

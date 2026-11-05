@@ -242,13 +242,15 @@
   // газ — показання 1–5 числа (станом на 1-ше; SMS 4647 — з 28-го); 1–5 число — за попередній місяць
   var gas = make({ price: [{ from: '2000-01-01', p: 7.96 }], jump: 150, jumpHeat: 800, decimals: 3, oneZone: true, lateDays: 5, idp: 'g',
     phones: [['+380663002888', '(066) 300-28-88', 'Vodafone'], ['+380983002888', '(098) 300-28-88', 'Київстар'], ['+380933002888', '(093) 300-28-88', 'lifecell']],
-    links: { cabinet: 'https://my.grmu.com.ua/', sms: '4647', bot: 'https://t.me/mygrmu_bot', find: 'https://gas.ua/uk/home/find-account' },
+    links: { cabinet: 'https://my.grmu.com.ua/', sms: '4647', bot: 'https://t.me/mygrmu_bot', find: 'https://gas.ua/uk/home/find-account', kub: 'https://kub.energy/download' },
     win: function (today, h) {
       var ym = String(today).slice(0, 7), d = +String(today).slice(8, 10), pm = h.addMonth(ym, -1), nm = h.addMonth(ym, 1);
       if (d <= 5) return { open: true, ym: pm, from: ym + '-01', to: ym + '-05', daysLeft: 5 - d };
       return { open: false, ym: ym, from: nm + '-01', to: nm + '-05', next: nm + '-01', daysLeft: null };
     } });
   /** SMS для Нафтогазу: «123456789 01234» — 9 цифр рахунку, пробіл, 5 цифр показань (нулі попереду). */
+  // SMS 4647 вимикають з 28.11.2026 (відповідь 4647: «передавайте в застосунку Куб або 0800303104») — останній день SMS
+  gas.SMS_UNTIL = '2026-11-27'; gas.KUB_TEL = ['+380800303104', '0 800 303 104'];
   gas.smsText = function (acc, v) { var a = String(acc || '').replace(/\D/g, ''), n = gas.whole(v); if (a.length !== 9 || n === null || n > 99999) return null; return a + ' ' + String(n).padStart(5, '0'); };
   /** Барабан індукційного лічильника світла (НІК 2102, СО-505…): 5–6 чорних роликів + 1 червоний (десяті кВт·год).
    *  Кандидати — з барабанів движка і з рядків тексту («0034846» = 003484 + червона 6). Перемичку між роликами движок
