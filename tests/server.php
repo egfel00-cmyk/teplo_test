@@ -891,6 +891,14 @@ $sh = $w('смт Сахновщина, вул. Шевченка 10'); $bv = $w('
 ok('нові громади 27-ї: Сахновщина 29,15 / 27,92 з 10.01.2022 і телефони КВКП; Барвінкове — водовідведення 108,11, вода невідома; Борова — Борівське КВКП без тарифу',
   $sh['water']['supply'] === 29.15 && $sh['water']['drain'] === 27.92 && count($sh['water']['phones'] ?? []) === 3 && $bv['water']['supply'] === null && $bv['water']['drain'] === 108.11
   && str_contains($bo['water']['org'] ?? '', 'Борівське') && $bo['water']['supply'] === null, [$sh['water'] ?? null, $bv['water'] ?? null]);
+$kp = $w('м. Куп’янськ, вул. Соборна 1'); $vb = $w('смт Великий Бурлук, вул. Шевченка 2'); $pc = $w('Печенеги, ул. Независимости 5'); $ol = $w('с. Картамиш, вул. Миру 3');
+$vh = $w('с. Вільхівка, вул. Центральна 1'); $np = $w('смт Новопокровка, вул. Дворянська 9'); $kg = $w('смт Кегичівка, вул. Волошина 7');
+ok('28-ма сесія: Куп’янськ — КП «Куп’янський водоканал» і тепло «Куп’янськтеплоенерго»; Великий Бурлук — КВКП «Водоканал»; Печеніги — КП «Джерело»; Картамиш (Олексіївська) — «Агрокомунгосп»; Вільхівка — «Малороганський комунгосп» (як і Мала Рогань); Новопокровка — без чужого КП «Новопокровське» (то Дніпропетровщина), Есхар — «Вода Есхара»; Кегичівка — ціна з платіжки',
+  str_contains($kp['water']['org'] ?? '', 'Куп’янський водоканал') && str_contains($kp['heat']['org'] ?? '', 'Куп’янськтеплоенерго') && $kp['water']['supply'] === null
+  && str_contains($vb['water']['org'] ?? '', 'Великобурлуцьке') && str_contains($pc['water']['org'] ?? '', 'Джерело') && str_contains($ol['water']['org'] ?? '', 'Агрокомунгосп')
+  && str_contains($vh['water']['org'] ?? '', 'Малороганський') && str_contains($mr['water']['org'] ?? '', 'Малороганський')
+  && array_key_exists('org', $np['water'] ?? []) && $np['water']['org'] === null && !str_contains(json_encode($np, JSON_UNESCAPED_UNICODE), 'Новопокровське') && str_contains($es['water']['org'] ?? '', 'Вода Есхара')
+  && $kg['water']['supply'] === null && str_contains($kg['water']['note'] ?? '', '2025–2030'), [$kp['water'] ?? null, $np['water'] ?? null, $pc['water'] ?? null]);
 // кожна громада довідника є в КАТОТТГ (інакше її ніхто не знайде), у кожного тарифу — джерело; кожен «громада/пункт» — справжній пункт цієї громади
 $kh = array_map(fn($id) => Providers::hname((string)$id), array_keys(Providers::kat()['hromadas'])); $bad = [];
 $tariffs = function ($hn, $x) use (&$bad) { foreach ($x as $kd => $o) if ((isset($o['supply']) && $o['supply'] !== null) || (isset($o['drain']) && $o['drain'] !== null) || (isset($o['price']) && $o['price'] !== null)) if (empty($o['src']) || empty($o['src_ru'])) $bad[] = "$hn/$kd без src"; };
