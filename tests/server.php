@@ -590,6 +590,11 @@ Gpv::$http = fn($u) => ['code' => 503, 'body' => ''];
 $rf2 = Gpv::refresh($now4 + 600);
 ok('источник не ответил — прежний график остаётся, ошибка записана', !$rf2['ok'] && $rf2['err'] === 'HTTP 503' && count((array)Gpv::api($now4 + 600)['days']) === 2 && Gpv::api($now4 + 4 * 3600)['stale']);
 Gpv::$http = fn($u) => ['code' => 200, 'body' => $gsrc]; Gpv::refresh($now4);
+Gpv::$http = fn($u) => str_contains($u, '.pdf') ? ['code' => 200, 'body' => "%PDF-1.4 test"] : ['code' => 200, 'body' => $gsrc];
+$fd = Gpv::fetchDocs($now4); $fd2 = Gpv::fetchDocs($now4 + 600);
+$dd = (new Browser('10.0.13.24'))->req('GET', '/api/gpv/doc', null, ['QUERY_STRING' => 'k=vul']);
+ok('офіційний PDF з сайту обленерго: сервер забрав (раз на добу), /api/gpv/doc?k=vul віддає; невідомий k — 404', $fd['ok'] && $fd['docs']['vul']['bytes'] === 13 && $fd2 === null && $dd->status === 200 && (new Browser('10.0.13.24'))->req('GET', '/api/gpv/doc', null, ['QUERY_STRING' => 'k=../x'])->status === 404, [$fd, $dd->status]);
+Gpv::$http = fn($u) => ['code' => 200, 'body' => $gsrc];
 $gst = ['readings' => [], 'places' => [['id' => 'main', 'name' => '', 'address' => 'вул. Сумська, 10', 'gpv' => '1.1'], ['id' => 'p2', 'name' => 'Мамина', 'address' => 'пр. Науки, 5', 'gpv' => '3.1'],
   ['id' => 'p3', 'name' => 'Дача', 'address' => '', 'gpv' => '2.1'], ['id' => 'p4', 'name' => 'Здаю', 'address' => 'вул. Пушкінська, 1', 'gpv' => '4.1', 'gpvTg' => false], ['id' => 'p5', 'address' => 'x', 'gpv' => '9.9']]];
 ok('кому писать: квартиры с адресом и очередью; без адреса, «не надсилати», кривая очередь — нет', array_column(Gpv::placesFor($gst), 'id') === ['main', 'p2'] && Gpv::placesFor($gst)[0]['label'] === 'Моя квартира');

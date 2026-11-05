@@ -148,6 +148,31 @@ final class Gpv {
   public static function listDir(): string { return Cfg::data() . '/uploads/gpv'; }
   public static function listMeta(): ?array { $j = json_decode((string)@file_get_contents(self::listDir() . '/list.json'), true); return is_array($j) ? $j : null; }
   public static function listFile(): ?array { $f = self::listDir() . '/list.pdf'; return is_file($f) ? ['path' => $f, 'mime' => 'application/pdf'] : null; }
+
+  // ---------- офіційні PDF-переліки на сайті обленерго (статичні файли — без форм і перевірок) ----------
+  // «Вулиці та черги.pdf» (22.10.2025; преса подавала як перелік для Харкова). Сервер забирає раз на добу (cron), зберігає в
+  // SITE_DATA/uploads/gpv/doc-<k>.pdf; GET /api/gpv/doc?k=… — віддає (публічний документ обленерго), GET /api/gpv/site → docs — стан.
+  const DOCS_V = 1;
+  const DOCS = ['vul' => 'https://oblenergo.kharkiv.ua/sites/default/files/pdf/%D0%92%D1%83%D0%BB%D0%B8%D1%86%D1%96%20%D1%82%D0%B0%20%D1%87%D0%B5%D1%80%D0%B3%D0%B8.pdf'];
+  public static function docsMeta(): array { $j = json_decode((string)@file_get_contents(self::listDir() . '/docs.json'), true); return is_array($j) ? $j : []; }
+  public static function fetchDocs(?int $now = null): ?array {
+    $now = $now ?? time(); $m = self::docsMeta(); $same = (int)($m['v'] ?? 0) === self::DOCS_V;
+    // раз на добу; не вдалося — ще раз за 10 хв, але не більше 6 спроб поспіль
+    if ($same && (!empty($m['ok']) ? $now - (int)($m['at'] ?? 0) < 86400 : (int)($m['tries'] ?? 0) >= 6 && $now - (int)($m['at'] ?? 0) < 86400)) return null;
+    $out = ['v' => self::DOCS_V, 'at' => $now, 'tries' => $same && empty($m['ok']) ? (int)($m['tries'] ?? 0) + 1 : 1, 'docs' => [], 'ok' => true];
+    @mkdir(self::listDir(), 0700, true);
+    foreach (self::DOCS as $k => $url) {
+      $r = self::get($url); $b = (string)$r['body']; $ok = (int)$r['code'] === 200 && str_starts_with($b, '%PDF');
+      $d = ['url' => $url, 'code' => (int)$r['code'], 'bytes' => strlen($b), 'err' => $r['err'] ? mb_substr((string)$r['err'], 0, 120) : null, 'ok' => $ok];
+      if ($ok) { @file_put_contents(self::listDir() . "/doc-$k.pdf", $b, LOCK_EX); $d['sha1'] = sha1($b); }
+      elseif (is_file(self::listDir() . "/doc-$k.pdf")) $d['kept'] = true;   // попередня копія лишається
+      if (!$ok) $out['ok'] = false;
+      $out['docs'][$k] = $d;
+    }
+    @file_put_contents(self::listDir() . '/docs.json', json_encode($out, JSON_UNESCAPED_UNICODE), LOCK_EX);
+    return $out;
+  }
+  public static function docFile(string $k): ?array { $f = self::listDir() . '/doc-' . preg_replace('/[^a-z]/', '', $k) . '.pdf'; return isset(self::DOCS[$k]) && is_file($f) ? ['path' => $f, 'mime' => 'application/pdf'] : null; }
   /** PDF «Адреси та черги»: переслано з каналу Харківобленерго або надіслано адміном сервісу (завантажив з каналу сам). */
   public static function isListDoc(array $msg): bool {
     $d = $msg['document'] ?? null; if (!is_array($d)) return false;
