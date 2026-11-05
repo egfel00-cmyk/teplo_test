@@ -6241,7 +6241,7 @@ details.tbl-acc[open] > .tbl-wrap { margin-top: 12px; }
   function wwater(kind) {
     var ms = wmeters(kind), title = wkindTitle(kind);
     if (!ms.length) return { screen: 'S30', route: 'water-' + kind, html: '<h1>' + esc(title) + '</h1><div class="panel"><p>' + esc(t('uc_w_empty')) + '</p><button class="btn big" data-act="wsetup" data-kind="' + kind + '" data-key="water-setup">' + esc(t('uc_w_setup_btn')) + '</button></div>' + wsendPanel(null, kind) };
-    var last = wlast(), h = '<h1>' + esc(title) + (place() && place().name ? ' — ' + esc(place().name) : '') + '</h1>';
+    var last = wlast(), h = '<h1 class="sr">' + esc(title) + (place() && place().name ? ' — ' + esc(place().name) : '') + '</h1>';
     ms.forEach(function (m) { h += gapBanner(m.id); });
     // табло кожного водоміра — як екран тепла: останні показання, дата, повірка
     var left = ms.map(function (m, i0) {
@@ -6799,7 +6799,7 @@ details.tbl-acc[open] > .tbl-wrap { margin-top: 12px; }
   }
   /** Сторінка виду: табло кожного лічильника, «Внести», «Куди передати», історія, налаштування лічильника. */
   function sPage(k) {
-    var ms = smeters(k), p = place() || {}, h = '<h1>' + esc(t(KINDS[k].t)) + (p.name ? ' — ' + esc(p.name) : '') + '</h1>';
+    var ms = smeters(k), p = place() || {}, h = '<h1 class="sr">' + esc(t(KINDS[k].t)) + (p.name ? ' — ' + esc(p.name) : '') + '</h1>';
     var left = ms.map(function (m, i) {
       var sc = sentCap(mrecs(m.id), function (x) { return x.base ? baseSent(x) : ssent(k, x); }), r = sc.rec, cap = sc.cap;
       var fix = r && !r.base ? '<button class="linkbtn" data-act="eedit" data-id="' + r.id + '">' + esc(t('change')) + '</button>' : '';
@@ -7596,7 +7596,7 @@ details.tbl-acc[open] > .tbl-wrap { margin-top: 12px; }
         chans: [[HTM_URL, t('ho_open'), 'ext', 'cab']], more: esc(t('wd_heat_more')) + ' ' + telLink('+380573414140', '(057) 341-41-40') }) + '</section>';
   }
   V.heat = function () {
-    var m = model(), html = '<h1>' + esc(t('uc_heat')) + (place() && place().name ? ' — ' + esc(place().name) : '') + '</h1>' + (openGap('heat') ? gapBanner('heat') : windowBanner());
+    var m = model(), html = '<h1 class="sr">' + esc(t('uc_heat')) + (place() && place().name ? ' — ' + esc(place().name) : '') + '</h1>' + (openGap('heat') ? gapBanner('heat') : windowBanner());
     var handed = RD().filter(function (r) { return r.status === 'handed'; }).slice(-1)[0];
     if (handed) {
       html += '<div class="banner" data-key="home-waiting">' + ico('clock', 22) + '<div><p><b>' + esc(t('h_waiting')) + '</b></p><p>' + esc(t('h_waiting_sub', { ago: ago(handed.handedAt) })) + '</p>' +
