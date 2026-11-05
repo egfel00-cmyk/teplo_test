@@ -173,6 +173,24 @@ final class Providers {
     }
     return null;
   }
+  /** Сьогоднішня дата для датованих тарифів (тести підставляють свою). */
+  public static ?string $today = null;
+  /** Наступний затверджений тариф (next: {from, supply, drain, price} або їх список): з дати from він і є чинним, раніше — лишається
+   *  в відповіді як «з … буде …». Харківводоканал: 49,446 / 20,82 з 01.10.2026 → 57,504 / 27,992 з 01.01.2027. */
+  public static function dated(array $o, ?string $today = null): array {
+    if (empty($o['next']) || !is_array($o['next'])) return $o;
+    $today = $today ?? self::$today ?? date('Y-m-d');
+    $steps = array_is_list($o['next']) ? $o['next'] : [$o['next']];
+    usort($steps, fn($a, $b) => strcmp((string)($a['from'] ?? ''), (string)($b['from'] ?? '')));
+    unset($o['next']); $later = [];
+    foreach ($steps as $s) {
+      if (!is_array($s) || empty($s['from'])) continue;
+      if ((string)$s['from'] <= $today) { foreach (['supply', 'drain', 'price', 'abon', 'from'] as $f) if (array_key_exists($f, $s)) $o[$f] = $s[$f]; }
+      else $later[] = $s;
+    }
+    if ($later) $o['next'] = $later[0];
+    return $o;
+  }
   /** Довідник по видах для пункту: oblast ← громада ← пункт. Вода й тепло громади заміняють обласне «невідомо» цілком. */
   public static function kinds(array $p): array {
     $d = self::data(); $ob = (array)($d['oblast'] ?? []); $hr = (array)($d['hromadas'][$p['hromada']] ?? []);
@@ -182,7 +200,7 @@ final class Providers {
       if (in_array($kd, ['water', 'heat'], true) && (isset($hr[$kd]) || isset($st[$kd]))) $o = [];
       $o = array_merge($o, (array)($hr[$kd] ?? []), (array)($st[$kd] ?? []));
       if (in_array($kd, ['water', 'heat'], true) && !array_key_exists('org', $o)) $o['org'] = null;
-      $out[$kd] = $o;
+      $out[$kd] = self::dated($o);
     }
     return $out;
   }

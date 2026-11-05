@@ -46,6 +46,7 @@ let pass = 0, fail = 0; const ok = (n, c, x) => { if (c) { pass++; console.log('
   // Харків: адреса з вулиці
   await p.goto(U + '#place-main'); await p.waitForTimeout(800);
   ok('Харків без пункту в адресі: «вважаємо, що це Харків», вода — Харківводоканал 49,45 і 20,82 з 01.10.2026', /вважаємо, що це Харків/.test(await txt('prov-lead')) && /Харківводоканал/.test(await txt('prov-water')) && /49,45 грн за м³ води і 20,82 грн водовідведення з 1 жовтня 2026/.test(await txt('prov-water')), await txt('prov-water'));
+  ok('Харків: наступний тариф Харківводоканалу — «З 1 січня 2027 — 57,50 грн за м³ води і 27,99 грн водовідведення»', /З 1 січня 2027 — 57,50 грн за м³ води і 27,99 грн водовідведення/.test(await txt('prov-next-water')), await txt('prov-next-water').catch(() => ''));
   const ht = await txt('prov-heat');
   ok('Харків: тепло — КП «Харківські теплові мережі», тариф той, за яким рахуємо: 1 539,50 грн за Гкал з ПДВ і 29,40 грн абонплати (не «невідомий»)',
     /Харківські теплові мережі/.test(ht) && /1\s539,50 грн за Гкал з ПДВ і 29,40 грн абонплати/.test(ht) && !/невідомий/.test(ht), ht);
@@ -76,6 +77,13 @@ let pass = 0, fail = 0; const ok = (n, c, x) => { if (c) { pass++; console.log('
   ok('«Куди передати» воду в Берестині — КП «Берестин-Водоканал», без бота @hvk_user_bot і без кабінету Харківводоканалу', /Берестин-Водоканал/.test(wd) && !/hvk_user_bot|Харківводоканал/.test(wd), wd.slice(0, 200));
   await p.click('[data-key=wmeter-c1-set] summary, [data-key$=-set] summary').catch(() => {}); await p.waitForTimeout(300);
   ok('«Ціна» холодної води — 71,88 і 107,74 (довідник громади), а не харківські 49,446', await p.evaluate(() => { const a = document.getElementById('mp-ws'), d = document.getElementById('mp-wd'); return !!a && /71,88/.test(a.value) && /107,74/.test(d.value); }), await p.evaluate(() => [((document.getElementById('mp-ws') || {}).value), ((document.getElementById('mp-wd') || {}).value)]));
+  // Рогань: вода й тепло — КП «Теплові мережі Роганської селищної ради»; тепло — свій тариф 1 839,62 без харківської абонплати, і за ним рахуємо
+  await p.evaluate(() => { const s = JSON.parse(localStorage.getItem('teplo.v1')); s.places[0].address = 'смт Рогань, вул. Шкільна 3'; delete s.places[0].prov; delete s.places[0].bill; delete s.bill; delete s.tariff; localStorage.setItem('teplo.v1', JSON.stringify(s)); });
+  await p.goto(U + '#place-main'); await p.reload(); await p.waitForTimeout(900);
+  const rh = await txt('prov-heat'), rw = await txt('prov-water');
+  ok('Рогань: тепло — КП «Теплові мережі Роганської селищної ради», 1 839,62 грн за Гкал з ПДВ без «29,40 абонплати»; вода 21,54 і 16,97', /Роганської селищної ради/.test(rh) && /1\s839,62 грн за Гкал з ПДВ/.test(rh) && !/29,40/.test(rh) && /21,54.*16,97/.test(rw), [rh, rw]);
+  await p.goto(U + '#heat'); await p.waitForTimeout(700); await p.click('[data-key$=-set] summary').catch(() => {}); await p.waitForTimeout(300);
+  ok('Рогань: «Ціна» тепла — 1 839,62 і абонплата 0 (не ХТМ)', await p.evaluate(() => { const h = document.getElementById('mp-heat'), a = document.getElementById('mp-abon'); return !!h && /1\s?839,62/.test(h.value) && a && /^0(,00)?$/.test(a.value); }), await p.evaluate(() => [((document.getElementById('mp-heat') || {}).value), ((document.getElementById('mp-abon') || {}).value)]));
   // Мала Данилівка: вода — КП без тарифу; «Куди передати» — «Ваш постачальник»… немає: є назва КП і «як передавати — на платіжці»; газ — філія в боті
   await p.evaluate(() => { const s = JSON.parse(localStorage.getItem('teplo.v1')); s.placeId = 'p2'; localStorage.setItem('teplo.v1', JSON.stringify(s)); }); await p.goto(U + '#water-cold'); await p.reload(); await p.waitForTimeout(900);
   const wd2 = await txt('where-water');

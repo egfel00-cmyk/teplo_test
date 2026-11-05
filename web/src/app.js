@@ -2700,7 +2700,12 @@
   /* Платіжка ХТМ: до сплати = (ваше тепло за лічильником + ваша частка ЗБП) × тариф + абонплата.
      ЗБП — загальнобудинкові потреби (сходи, підвал): частка пропорційна площі, у платіжці — стовпець «на ЗБП» у рядку вашого вузла. */
   // абонплата и доля ЗБП — свои у каждой квартиры (place.bill); у первой — откат на прежние общие S.bill
-  function bill() { var p = place() || {}, first = (places()[0] || {}).id === p.id, b = Object.assign({}, first ? S.bill || {} : {}, p.bill || {}), ab = R.num(b.abon), mz = R.num(b.mzk); return { abon: ab !== null && ab >= 0 ? ab : R.C.ABON, mzk: mz !== null && mz >= 0 ? mz : 0 }; }
+  // своєї абонплати немає: тепло від ХТМ — абонплата ХТМ; тепло громади (Рогань) — її абонплата з довідника, а невідома — 0 (не харківська)
+  function bill() {
+    var p = place() || {}, first = (places()[0] || {}).id === p.id, b = Object.assign({}, first ? S.bill || {} : {}, p.bill || {}), ab = R.num(b.abon), mz = R.num(b.mzk), dflt = R.C.ABON;
+    if (!(ab !== null && ab >= 0)) { var d = prvOf('heat'), da = d ? R.num(d.abon) : null; if (d && d.org && d.via !== 'htm') dflt = da !== null && da >= 0 ? da : 0; }
+    return { abon: ab !== null && ab >= 0 ? ab : dflt, mzk: mz !== null && mz >= 0 ? mz : 0 };
+  }
   var MONTH_DAYS = 365.25 / 12;
   function costOf(dE, days) {
     // ХТМ рахує ЗБП і абонплату помісячно: проміжок ~місяць — рівно один місяць
@@ -3656,7 +3661,7 @@
     if (k === 'heat') {
       // гроші за тепло застосунок рахує завжди: за тарифом квартири (з платіжки), а якщо його немає — за тарифом із довідника або ХТМ
       var hp = R.num(my.price), dp = d && R.num(d.price), used = tariff();
-      if (hp || dp) price = t('prv_p_heat', { p: money(used), a: money(bill().abon) }) + (hp ? ' ' + t('prv_from_bill') : '');
+      if (hp || dp) price = t(bill().abon > 0 ? 'prv_p_heat' : 'prv_p_heat1', { p: money(used), a: money(bill().abon) }) + (hp ? ' ' + t('prv_from_bill') : '');
       else lines.push(t('prv_heat_calc', { p: money(used) }));
     }
     if (k === 'elec') { if (d && d.net) lines.push(t('prv_net', { n: d.net })); if (nat.elec) price = t('prv_p_elec', { p: money(nat.elec.price), d: fmtDate(nat.elec.to, true) }); }
@@ -3669,6 +3674,10 @@
       var s = R.num(my.supply) || (d && d.supply), dr = my.supply ? R.num(my.drain) : d && d.drain;
       price = s ? (dr ? t('prv_p_water', { s: money(s), d: money(dr) }) : t('prv_p_water1', { s: money(s) })) + (my.supply ? ' ' + t('prv_from_bill') : d && d.from ? ' ' + t('prv_since', { d: fmtDate(d.from, true) }) : '') : '';
     }
+    // наступний затверджений тариф (Харківводоканал з 01.01.2027): «З 01.01.2027 — 57,50 грн за м³ води і 27,99 грн водовідведення»
+    var nx = d && d.next && String(d.next.from || '') > today() ? d.next : null, nxt = '';
+    if (nx && k === 'water' && !my.supply && R.num(nx.supply) > 0) nxt = t(R.num(nx.drain) > 0 ? 'prv_next' : 'prv_next1', { d: fmtDate(nx.from, true), s: money(R.num(nx.supply)), dr: money(R.num(nx.drain)) });
+    if (nx && k === 'heat' && !R.num(my.price) && R.num(nx.price) > 0) nxt = t('prv_next_heat', { d: fmtDate(nx.from, true), p: money(R.num(nx.price)) });
     var src = k === 'elec' ? ploc(nat.elec, 'src') : k === 'gas' ? [!my.price && nat.gas ? ploc(nat.gas, 'src') : '', ploc(d, 'distSrc')].filter(Boolean).join('. ') : ploc(d, 'src');
     var need = (d && d.check && !my.ok && !own) || !org || (k === 'water' && !price);
     var h = '<div class="prov-row' + (need ? ' need' : '') + '" data-key="prov-' + k + '"><span class="pst-ico ' + PRV_ICO[k][1] + '">' + ico(PRV_ICO[k][0], 20) + '</span><div class="prov-b">' +
@@ -3676,6 +3685,7 @@
       '<p class="prov-org">' + (org ? esc(org) : '<span class="muted">' + esc(t('prv_org_none')) + '</span>') + '</p>' +
       lines.map(function (x) { return '<p class="small muted">' + esc(x) + '</p>'; }).join('') +
       '<p class="prov-price' + (price ? '' : ' none') + '">' + esc(price || t('prv_p_none')) + '</p>' +
+      (nxt ? '<p class="small muted" data-key="prov-next-' + k + '">' + esc(nxt) + '</p>' : '') +
       (src && !own ? '<details class="prov-src"><summary>' + esc(t('prv_src')) + '</summary><p class="small muted">' + esc(src) + '</p></details>' : '') +
       ((need || !(my.ok || own)) && d && d.note && !ed ? '<p class="small prov-note">' + esc(ploc(d, 'note')) + '</p>' : '') +
       (d && ploc(d, 'pay') && !ed ? '<p class="small prov-pay" data-key="prov-pay-' + k + '"><b>' + esc(t('ld_pay_t')) + '</b> ' + esc(ploc(d, 'pay')) + '</p>' : '');

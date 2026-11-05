@@ -830,7 +830,8 @@ ok('кнопка меню бота: «Відкрити» за замовчува
   && $mb[1][1]['chat_id'] === 555 && $mb[1][1]['menu_button']['text'] === 'Открыть' && count(array_filter($mc, fn($x) => $x[0] === 'setMyCommands' && ($x[1]['language_code'] ?? '') === 'ru')) === 1
   && str_contains(end($mc)[1]['text'] ?? '', 'Що вміє сервіс'), $mb);
 Telegram::$send = null;
-// постачальники й тарифи за адресою (app/data/providers.json)
+// постачальники й тарифи за адресою (app/data/providers.json); дата — фіксована, бо тарифи датовані
+Providers::$today = '2026-11-05';
 $pv = fn($q) => Providers::lookup($q);
 $a1 = $pv('Малая Даниловка, ул.Академическая 10, кв.20'); $a2 = $pv('смт Мала Данилівка, вул. Академічна, 10, кв. 20'); $a3 = $pv('с-ще Мала Данилівка, Академічна 10');
 ok('постачальники: «Малая Даниловка, ул.Академическая 10» / «смт Мала Данилівка…» / «с-ще …» → Мала Данилівка (КАТОТТГ), громада, Газмережі Харківська філія 2,388, вода — КП «Малоданилівський комунальник» без тарифу',
@@ -854,6 +855,30 @@ $m1 = $v('Миколаївка, вул. Миру 5'); $m2 = $v('с. Олекса
 ok('v2: Миколаївка (17 у області, 13 громад) → reason ambiguous і список «Уточніть» (пункт, громада, район); старий район звужує; уточнення n+h → how settled',
   !$m1['found'] && $m1['reason'] === 'ambiguous' && count($m1['candidates']) >= 12 && !empty($m1['candidates'][0]['hromada']) && !empty($m1['candidates'][0]['district'])
   && !$m2['found'] && count($m2['candidates']) === 2 && $m3['found'] && $m3['how'] === 'settled' && $m3['place']['h'] === $m1['candidates'][3]['h'], [count($m1['candidates'] ?? []), $m2['candidates'] ?? $m2, $m3['how'] ?? $m3]);
+// довідник, 26-та сесія: датований тариф Харківводоканалу, виправлення й нові громади
+$hw = $k1['kinds']['water'];
+Providers::$today = '2027-01-02'; Providers::reset(); $hw2 = $pv('пр. Победы 86А, кв. 61')['kinds']['water']; Providers::$today = '2026-11-05'; Providers::reset();
+ok('Харківводоканал: до 01.01.2027 — 49,446 / 20,82 і next 57,504 / 27,992; з 02.01.2027 — уже 57,504 / 27,992 з 2027-01-01, без next',
+  $hw['supply'] === 49.446 && $hw['drain'] === 20.82 && ($hw['next']['from'] ?? '') === '2027-01-01' && $hw['next']['supply'] === 57.504 && $hw['next']['drain'] === 27.992
+  && $hw2['supply'] === 57.504 && $hw2['drain'] === 27.992 && $hw2['from'] === '2027-01-01' && !isset($hw2['next']), [$hw, $hw2]);
+ok('Providers::dated: список кроків — чинний останній, що настав; наступний — у next; без next — як є',
+  Providers::dated(['supply' => 1, 'next' => [['from' => '2027-06-01', 'supply' => 3], ['from' => '2026-01-01', 'supply' => 2]]], '2026-11-05') === ['supply' => 2, 'from' => '2026-01-01', 'next' => ['from' => '2027-06-01', 'supply' => 3]]
+  && Providers::dated(['supply' => 5], '2026-11-05') === ['supply' => 5]);
+$w = fn($q) => $pv($q)['kinds'] ?? [];
+$bl = $w('Балаклія, вул. Жовтнева 5'); $lz = $w('м. Лозова, вул. Ломоносова 2'); $cg = $w('Чугуїв, вул. Миру 2'); $mf = $w('Мерефа, вул. Дніпровська 1');
+ok('вода: Балаклія — населення 19,40 / 35,00 (не 47,08 — то бюджет); Лозова 48 / 51 з 01.11.2024 і бот; Чугуїв 31,62 / 22,62; Мерефа — водовідведення 54,33',
+  $bl['water']['supply'] === 19.4 && $bl['water']['drain'] === 35.0 && $lz['water']['supply'] === 48.0 && $lz['water']['drain'] === 51.0 && $lz['water']['from'] === '2024-11-01'
+  && str_contains($lz['water']['bot'] ?? '', 't.me/') && $cg['water']['supply'] === 31.62 && $cg['water']['drain'] === 22.62 && $mf['water']['drain'] === 54.33, [$bl['water'] ?? null, $lz['water'] ?? null]);
+$bg = $w('Богодухов, ул. Шевченко 1'); $rg = $w('смт Рогань, вул. Шкільна 3'); $pd = $w('Южный, Кирова 5'); $bz = $w('Безлюдовка, ул. Мира 2'); $sl = $w('Слобожанське, вул. Ювілейна 4'); $zl = $w('г. Первомайский, мкр 1/2');
+ok('нові громади: Богодухів 29,26 / 48,19; Рогань — вода 21,54 / 16,97 і тепло 1 839,62 (не ХТМ); Південне 28,84 без водовідведення; Безлюдівка 23,072 / 23,667; Слобожанське — тепло від Зміївської ТЕС; Златопіль — КП «Тепломережі»',
+  $bg['water']['supply'] === 29.26 && $bg['water']['drain'] === 48.19 && $rg['water']['supply'] === 21.54 && $rg['heat']['price'] === 1839.62 && !isset($rg['heat']['via'])
+  && $pd['water']['supply'] === 28.84 && $pd['water']['drain'] === null && $bz['water']['supply'] === 23.072 && str_contains($sl['heat']['org'] ?? '', 'Зміївська ТЕС')
+  && str_contains($zl['water']['org'] ?? '', 'Тепломережі') && str_contains($zl['heat']['org'] ?? '', 'Тепломережі'), [$bg['water'] ?? null, $rg['heat'] ?? null, $pd['water'] ?? null]);
+// кожна громада довідника є в КАТОТТГ (інакше її ніхто не знайде), у кожного тарифу — джерело
+$kh = array_map(fn($id) => Providers::hname((string)$id), array_keys(Providers::kat()['hromadas'])); $bad = [];
+foreach (Providers::data()['hromadas'] as $hn => $x) { if (!in_array($hn, $kh, true)) $bad[] = $hn;
+  foreach ($x as $kd => $o) if ((isset($o['supply']) && $o['supply'] !== null) || (isset($o['price']) && $o['price'] !== null)) if (empty($o['src']) || empty($o['src_ru'])) $bad[] = "$hn/$kd без src"; }
+ok('довідник: усі громади є в КАТОТТГ, у кожного тарифу є джерело (укр. і рос.)', !$bad, $bad);
 { $res = $phone->req('GET', '/api/providers', null, ['QUERY_STRING' => 'q=' . rawurlencode('Малая Даниловка, Академическая 10')]);
   ok('GET /api/providers?q= → 200, Мала Данилівка', $res->status === 200 && ($res->body['place']['name'] ?? '') === 'Мала Данилівка', [$res->status, $res->body]); }
 echo "\nВыход:\n";
