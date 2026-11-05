@@ -4545,7 +4545,8 @@
   }
 
   // ---------------- маршрутизация ----------------
-  function routeName() { return (location.hash || '').replace(/^#/, ''); }
+  // Telegram открывает Mini App с «#tgWebAppData=…» — это не экран, а данные входа: считаем главной (иначе журнал писал «tgWebAppDataquery_id…»)
+  function routeName() { var h = (location.hash || '').replace(/^#/, ''); return /^tgWebApp/.test(h) ? '' : h; }
   function render(keepScroll) {
     if (JRS && JRS.scr !== (routeName() || 'home')) { JRS.scr = routeName() || 'home'; track('screen'); }
     lastHash = location.hash;

@@ -931,6 +931,16 @@ ok('довідник: усі громади й пункти є в КАТОТТГ
   for ($i = 0; $i < 700; $i++) ErrLog::add('GET', '/api/x' . $i, new RuntimeException(str_repeat('x', 150)));
   $n = count(file(ErrLog::file())); ok('ErrLog обрезается (≤ ' . (ErrLog::KEEP + 400) . ' строк)', $n <= ErrLog::KEEP + 400 && ErrLog::list(1)[0]['p'] === '/api/x699', $n);
   @unlink(ErrLog::file()); }
+{ // лимит одним запросом (INSERT … ON CONFLICT): счёт точный, строка уже есть (соседний запрос успел) — не 500, а +1; на пределе — 429
+  $lk = 'rl_test:' . bin2hex(random_bytes(3)); [$lmax, $lwin] = Cfg::get('limits')['login_ip']; $lst = intdiv(Http::now(), $lwin) * $lwin;
+  Db::q('INSERT INTO rate_limits (k, window_start, cnt) VALUES (?, ?, 1)', ['login_ip:' . $lk, $lst]);   // как будто соседний запрос вставил между SELECT и INSERT
+  $codes = []; for ($i = 0; $i < $lmax; $i++) { try { RateLimit::hit('login_ip', $lk); $codes[] = 200; } catch (HttpError $e) { $codes[] = $e->status; } }
+  $cnt = (int)Db::one('SELECT cnt FROM rate_limits WHERE k = ? AND window_start = ?', ['login_ip:' . $lk, $lst])['cnt'];
+  ok("RateLimit: строка уже есть — +1 без ошибки, на {$lmax}-м — 429, счёт $lmax", $codes === array_merge(array_fill(0, $lmax - 1, 200), [429]) && $cnt === $lmax, [$codes, $cnt]); }
+{ // журнал: «#tgWebAppData=…» (Mini App открылся со своими данными входа) — экран «home», данных входа в журнале нет
+  $je($anon, 'tgw12345hash', 'sessTG1', [['t' => 1000, 'n' => 'screen', 's' => 'tgWebAppData=query_id%3DAAH0XucP%26user%3D%257B%257D&tgWebAppVersion=8.0']]);
+  $sc = Db::one("SELECT screen FROM events WHERE vid = 'tgw12345hash'")['screen'] ?? null;
+  ok('журнал: экран «tgWebAppData=…» записан как home', $sc === 'home', $sc); }
 echo "\nВыход:\n";
 $phone->req('POST', '/api/auth/logout');
 ok('после выхода /api/me → 401', $phone->req('GET', '/api/me')->status === 401);

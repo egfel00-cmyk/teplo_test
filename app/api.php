@@ -125,7 +125,11 @@ final class Api {
         else {
           Db::q('INSERT INTO users (name, created_at) VALUES (?, ?)', [$tg['name'] ?: null, Http::iso()]);
           $uid = Db::id();
-          Db::q("INSERT INTO user_identities (user_id, type, external_id, username, linked_at) VALUES (?, 'telegram', ?, ?, ?)", [$uid, $tg['id'], $tg['username'], Http::iso()]);
+          try { Db::q("INSERT INTO user_identities (user_id, type, external_id, username, linked_at) VALUES (?, 'telegram', ?, ?, ?)", [$uid, $tg['id'], $tg['username'], Http::iso()]); }
+          catch (PDOException $e) {   // два первых входа разом: второй — в ту же учётку, лишнего пустого пользователя не оставляем
+            $idn = Db::one("SELECT * FROM user_identities WHERE type = 'telegram' AND external_id = ?", [$tg['id']]); if (!$idn) throw $e;
+            Db::q('DELETE FROM users WHERE id = ?', [$uid]); $uid = (int)$idn['user_id'];
+          }
           $u = self::userById($uid);
         }
         $tok = self::startSession($res, $u, $r, $ip); self::audit($u['id'], 'login_telegram', $ip);
@@ -193,7 +197,11 @@ final class Api {
           // прошлая версия — в историю (вернуть из /admin, если сохранение что-то затёрло)
           if ($row['data'] !== $json) StateHist::put((int)$user['id'], (string)$row['data'], $cur, (string)$row['updated_at']);
         }
-        else Db::q('INSERT INTO user_state (user_id, data, version, updated_at) VALUES (?, ?, 1, ?)', [$user['id'], $json, Http::iso()]);
+        else try { Db::q('INSERT INTO user_state (user_id, data, version, updated_at) VALUES (?, ?, 1, ?)', [$user['id'], $json, Http::iso()]); }
+        catch (PDOException $e) {   // первая запись с двух устройств разом — вторая получает конфликт (клиент сольёт и повторит), а не 500
+          $now = Db::one('SELECT data, version FROM user_state WHERE user_id = ?', [$user['id']]); if (!$now) throw $e;
+          throw new HttpError(409, 'conflict', ['state' => json_decode((string)$now['data'], true), 'version' => (int)$now['version']]);
+        }
         return ['version' => $cur + 1];
       }
 

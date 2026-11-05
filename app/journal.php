@@ -14,6 +14,8 @@ final class Journal {
   const TAGS = ['me', 'test'];
 
   private static function vid($v): string { return substr(preg_replace('/[^A-Za-z0-9]/', '', (string)$v), 0, 24); }
+  /** Экран: «#tgWebAppData=…» (старые клиенты слали данные входа Telegram как экран) — это главная. */
+  private static function screen(string $s): ?string { if (str_starts_with($s, 'tgWebApp')) return 'home'; return substr(preg_replace('/[^A-Za-z0-9_.:#-]/', '', $s), 0, 40) ?: null; }
   private static function clean($v, int $len): string { return mb_substr(preg_replace('/[\x00-\x1F\x7F]+/u', ' ', (string)$v), 0, $len); }
 
   /** POST /api/events — пачка событий браузера. → ['ok' => true, 'n' => сколько записали] */
@@ -39,7 +41,7 @@ final class Journal {
       }
       $pj = $props ? json_encode($props, JSON_UNESCAPED_UNICODE) : null; if ($pj !== null && strlen($pj) > 900) $pj = mb_strcut($pj, 0, 900);
       Db::q('INSERT INTO events (at, day, vid, sid, user_id, name, screen, props) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-        [$at, Visits::day($now - $ago), $vid, $sid, $uid, $name, substr(preg_replace('/[^A-Za-z0-9_.:#-]/', '', (string)($e['s'] ?? '')), 0, 40) ?: null, $pj]);
+        [$at, Visits::day($now - $ago), $vid, $sid, $uid, $name, self::screen((string)($e['s'] ?? '')), $pj]);
       $n++;
     }
     return ['ok' => true, 'n' => $n];
@@ -53,7 +55,8 @@ final class Journal {
     $old = Db::one('SELECT tag, manual FROM vid_tags WHERE vid = ?', [$vid]);
     if ($old && !$force && ((int)$old['manual'] || $old['tag'] === $tag)) return;
     if ($old) Db::q('UPDATE vid_tags SET tag = ?, manual = ?, at = ? WHERE vid = ?', [$tag, $force ? 1 : 0, Http::iso(), $vid]);
-    else Db::q('INSERT INTO vid_tags (vid, tag, manual, at) VALUES (?, ?, ?, ?)', [$vid, $tag, $force ? 1 : 0, Http::iso()]);
+    else try { Db::q('INSERT INTO vid_tags (vid, tag, manual, at) VALUES (?, ?, ?, ?)', [$vid, $tag, $force ? 1 : 0, Http::iso()]); }
+    catch (PDOException $e) { if ($force) Db::q('UPDATE vid_tags SET tag = ?, manual = 1, at = ? WHERE vid = ?', [$tag, Http::iso(), $vid]); }   // соседний запрос успел пометить
   }
   /** Свои и тестовые браузеры: [vid => 'me'|'test'] — помеченные + те, где входил админ (по визитам и журналу). */
   public static function internal(): array {

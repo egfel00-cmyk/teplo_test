@@ -249,10 +249,10 @@ final class RateLimit {
     $row = Db::one('SELECT cnt FROM rate_limits WHERE k = ? AND window_start = ?', [$k, $start]);
     $cnt = $row ? (int)$row['cnt'] : 0;
     if ($cnt >= $max) throw new HttpError(429, 'rate_limited', ['retryAfter' => $start + $win - Http::now()]);
-    if ($count) {
-      if ($row) Db::q('UPDATE rate_limits SET cnt = cnt + 1 WHERE k = ? AND window_start = ?', [$k, $start]);
-      else Db::q('INSERT INTO rate_limits (k, window_start, cnt) VALUES (?, ?, 1)', [$k, $start]);
-    }
+    // одним запросом: «прочитал — вставил» гонялось — два запроса в начале окна оба вставляли, второй падал 500 (дубль ключа)
+    if ($count) Db::q(Db::driver() === 'sqlite'
+      ? 'INSERT INTO rate_limits (k, window_start, cnt) VALUES (?, ?, 1) ON CONFLICT (k, window_start) DO UPDATE SET cnt = cnt + 1'
+      : 'INSERT INTO rate_limits (k, window_start, cnt) VALUES (?, ?, 1) ON DUPLICATE KEY UPDATE cnt = cnt + 1', [$k, $start]);
     if (random_int(1, 200) === 1) Db::q('DELETE FROM rate_limits WHERE window_start < ?', [Http::now() - 86400 * 2]);
   }
   public static function check(string $name, string $key): void { self::hit($name, $key, false); }
