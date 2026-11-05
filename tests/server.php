@@ -874,11 +874,30 @@ ok('нові громади: Богодухів 29,26 / 48,19; Рогань — 
   $bg['water']['supply'] === 29.26 && $bg['water']['drain'] === 48.19 && $rg['water']['supply'] === 21.54 && $rg['heat']['price'] === 1839.62 && !isset($rg['heat']['via'])
   && $pd['water']['supply'] === 28.84 && $pd['water']['drain'] === null && $bz['water']['supply'] === 23.072 && str_contains($sl['heat']['org'] ?? '', 'Зміївська ТЕС')
   && str_contains($zl['water']['org'] ?? '', 'Тепломережі') && str_contains($zl['heat']['org'] ?? '', 'Тепломережі'), [$bg['water'] ?? null, $rg['heat'] ?? null, $pd['water'] ?? null]);
-// кожна громада довідника є в КАТОТТГ (інакше її ніхто не знайде), у кожного тарифу — джерело
+$lb = $w('Люботин, вул. Слобожанська 26'); $zv = $w('Зміїв, вул. Харківська 1'); $iz = $w('Ізюм, вул. Соборна 1'); $dr = $w('Дергачі, вул. Сумський шлях 1'); $sn = $w('Солоницівка, вул. Пушкіна 3');
+ok('27-ма сесія: Люботин 56,88 / 76,68 з 01.10.2026 (рішення № 423); Зміїв 70 / 80,70 з 01.08.2026; Ізюм 26,904 / 22,968; Дергачі 29,70 / 9,65 і тепло КП «Постачальник послуг»; Солоницівка — вода 69,72 від КП, тепло лишається ХТМ',
+  $lb['water']['supply'] === 56.88 && $lb['water']['drain'] === 76.68 && $lb['water']['from'] === '2026-10-01' && $zv['water']['supply'] === 70.0 && $zv['water']['drain'] === 80.7
+  && $iz['water']['supply'] === 26.904 && $iz['water']['drain'] === 22.968 && $dr['water']['supply'] === 29.7 && str_contains($dr['heat']['org'] ?? '', 'Постачальник послуг')
+  && $sn['water']['supply'] === 69.72 && $sn['water']['drain'] === null && str_contains($sn['water']['org'] ?? '', 'Солоницівське') && ($sn['heat']['via'] ?? '') === 'htm', [$lb['water'] ?? null, $sn['water'] ?? null]);
+$kt = $w('с. Котлярі, вул. Миру 1'); $bu = $w('смт Буди, вул. Шевченка 2'); $fs = $w('с. Феськи, вул. Центральна 3'); $es = $w('Есхар, вул. Шевченка 1'); $mr = $w('с. Мала Рогань, вул. Миру 4');
+ok('пункти зі своїм постачальником: Котлярі 16,29 / 11,75 (решта Безлюдівської — 23,072); Буди — КП «Будиводоканал»; Феськи — «Феськівське ЖКГ»; Есхар — «Вода Есхара»; Мала Рогань — «Малороганський комунгосп»',
+  $kt['water']['supply'] === 16.29 && $kt['water']['drain'] === 11.75 && $bz['water']['supply'] === 23.072 && str_contains($bu['water']['org'] ?? '', 'Будиводоканал') && $bu['water']['supply'] === null
+  && str_contains($fs['water']['org'] ?? '', 'Феськівське') && str_contains($es['water']['org'] ?? '', 'Вода Есхара') && str_contains($mr['water']['org'] ?? '', 'Малороганський'), [$kt['water'] ?? null, $bu['water'] ?? null]);
+$iy = $pv('с. Іськів Яр'); $sb = $pv('Сосновий Бір, вул. Лісна 1'); $dk = $v('Олександрівка, Дергачівський р.');
+ok('назва на «-р» — не район: Есхар, Іськів Яр, Сосновий Бір знаходяться; «Дергачівський р.» і далі — підказка району',
+  ($es['org'] ?? null) === null && ($iy['place']['name'] ?? '') === 'Іськів Яр' && ($sb['place']['name'] ?? '') === 'Сосновий Бір' && ($dk['reason'] ?? '') === 'ambiguous'
+  && Providers::parse('Олександрівка, Дергачівський р.')['d'] === [Providers::nk('Дергачівський')], [$iy['place'] ?? $iy, $sb['place'] ?? $sb]);
+$sh = $w('смт Сахновщина, вул. Шевченка 10'); $bv = $w('Барвінкове, вул. Соборна 1'); $bo = $w('Борова, вул. Миру 76');
+ok('нові громади 27-ї: Сахновщина 29,15 / 27,92 з 10.01.2022 і телефони КВКП; Барвінкове — водовідведення 108,11, вода невідома; Борова — Борівське КВКП без тарифу',
+  $sh['water']['supply'] === 29.15 && $sh['water']['drain'] === 27.92 && count($sh['water']['phones'] ?? []) === 3 && $bv['water']['supply'] === null && $bv['water']['drain'] === 108.11
+  && str_contains($bo['water']['org'] ?? '', 'Борівське') && $bo['water']['supply'] === null, [$sh['water'] ?? null, $bv['water'] ?? null]);
+// кожна громада довідника є в КАТОТТГ (інакше її ніхто не знайде), у кожного тарифу — джерело; кожен «громада/пункт» — справжній пункт цієї громади
 $kh = array_map(fn($id) => Providers::hname((string)$id), array_keys(Providers::kat()['hromadas'])); $bad = [];
-foreach (Providers::data()['hromadas'] as $hn => $x) { if (!in_array($hn, $kh, true)) $bad[] = $hn;
-  foreach ($x as $kd => $o) if ((isset($o['supply']) && $o['supply'] !== null) || (isset($o['price']) && $o['price'] !== null)) if (empty($o['src']) || empty($o['src_ru'])) $bad[] = "$hn/$kd без src"; }
-ok('довідник: усі громади є в КАТОТТГ, у кожного тарифу є джерело (укр. і рос.)', !$bad, $bad);
+$tariffs = function ($hn, $x) use (&$bad) { foreach ($x as $kd => $o) if ((isset($o['supply']) && $o['supply'] !== null) || (isset($o['drain']) && $o['drain'] !== null) || (isset($o['price']) && $o['price'] !== null)) if (empty($o['src']) || empty($o['src_ru'])) $bad[] = "$hn/$kd без src"; };
+foreach (Providers::data()['hromadas'] as $hn => $x) { if (!in_array($hn, $kh, true)) $bad[] = $hn; $tariffs($hn, $x); }
+$katSt = []; foreach (Providers::kat()['settlements'] as $s) $katSt[Providers::hname((string)$s['h']) . '/' . $s['n']] = true;
+foreach ((array)(Providers::data()['settlements'] ?? []) as $key => $x) { if (!isset($katSt[$key])) $bad[] = "пункт $key"; $tariffs($key, $x); }
+ok('довідник: усі громади й пункти є в КАТОТТГ, у кожного тарифу є джерело (укр. і рос.)', !$bad, $bad);
 { $res = $phone->req('GET', '/api/providers', null, ['QUERY_STRING' => 'q=' . rawurlencode('Малая Даниловка, Академическая 10')]);
   ok('GET /api/providers?q= → 200, Мала Данилівка', $res->status === 200 && ($res->body['place']['name'] ?? '') === 'Мала Данилівка', [$res->status, $res->body]); }
 echo "\nВыход:\n";

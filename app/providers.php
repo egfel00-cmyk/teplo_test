@@ -79,7 +79,8 @@ final class Providers {
     $c = []; $hd = []; $hh = []; $first = null; $firstStreet = false;
     foreach ($segs as $s) {
       if (preg_match('/^(україна|украина|ukraine)$/u', $s) || preg_match('/^\d{5}$/u', $s) || preg_match('/(^|\s)(обл|область|обл\.)(\.|\s|$)/u', $s)) continue;
-      if (preg_match('/^(.+?)\s*(?:р-н|р-он|район|р\.\s*н|р)\.?$/u', $s, $m) || preg_match('/^(?:р-н|район)\.?\s+(.+)$/u', $s, $m)) { $hd[] = self::nk($m[1]); continue; }
+      // «р-н» можна впритул, а «р»/«район» — лише окремим словом: інакше Есхар, Іськів Яр, Сосновий Бір ставали «районом»
+      if (preg_match('/^(.+?)(?:\s*(?:р-н|р-он|р\.\s*н)|\s+(?:район|р))\.?$/u', $s, $m) || preg_match('/^(?:р-н|район)\.?\s+(.+)$/u', $s, $m)) { $hd[] = self::nk($m[1]); continue; }
       if (preg_match('/^(.+?)\s+(?:(?:міська|селищна|сільська|городская|поселковая|сельская)\s+)?(?:(?:територіальна|территориальная)\s+)?(?:громада|тг|отг|рада|сільрада|сельсовет|община)$/u', $s, $m)) { $hh[] = self::nk($m[1]); continue; }
       $isFirst = $first === null; if ($isFirst) $first = $s;
       if (preg_match('/^(м|г|місто|город|смт|пгт|с\s*-\s*ще|селище|сел|поселок|пос|п|с|село)(?:\.\s*|\s+)(.+)$/u', $s, $m)) {
@@ -198,7 +199,10 @@ final class Providers {
     foreach (['elec', 'gas', 'water', 'heat'] as $kd) {
       $o = (array)($ob[$kd] ?? []);
       if (in_array($kd, ['water', 'heat'], true) && (isset($hr[$kd]) || isset($st[$kd]))) $o = [];
-      $o = array_merge($o, (array)($hr[$kd] ?? []), (array)($st[$kd] ?? []));
+      $hk = (array)($hr[$kd] ?? []); $sk = (array)($st[$kd] ?? []);
+      // у пункті інший постачальник (Буди, Феськи, Есхар…) — від громади нічого не беремо: ні дати, ні «куди платити», ні телефонів
+      if (in_array($kd, ['water', 'heat'], true) && array_key_exists('org', $sk) && ($sk['org'] ?? null) !== ($hk['org'] ?? null)) $hk = [];
+      $o = array_merge($o, $hk, $sk);
       if (in_array($kd, ['water', 'heat'], true) && !array_key_exists('org', $o)) $o['org'] = null;
       $out[$kd] = self::dated($o);
     }

@@ -84,6 +84,15 @@ let pass = 0, fail = 0; const ok = (n, c, x) => { if (c) { pass++; console.log('
   ok('Рогань: тепло — КП «Теплові мережі Роганської селищної ради», 1 839,62 грн за Гкал з ПДВ без «29,40 абонплати»; вода 21,54 і 16,97', /Роганської селищної ради/.test(rh) && /1\s839,62 грн за Гкал з ПДВ/.test(rh) && !/29,40/.test(rh) && /21,54.*16,97/.test(rw), [rh, rw]);
   await p.goto(U + '#heat'); await p.waitForTimeout(700); await p.click('[data-key$=-set] summary').catch(() => {}); await p.waitForTimeout(300);
   ok('Рогань: «Ціна» тепла — 1 839,62 і абонплата 0 (не ХТМ)', await p.evaluate(() => { const h = document.getElementById('mp-heat'), a = document.getElementById('mp-abon'); return !!h && /1\s?839,62/.test(h.value) && a && /^0(,00)?$/.test(a.value); }), await p.evaluate(() => [((document.getElementById('mp-heat') || {}).value), ((document.getElementById('mp-abon') || {}).value)]));
+  // 27-ма сесія: Буди — свій постачальник у пункті (не УЖКГ м. Південне і не його «Куди платити»); Люботин — 56,88 і 76,68 з 01.10.2026
+  await p.evaluate(() => { const s = JSON.parse(localStorage.getItem('teplo.v1')); s.places[0].address = 'смт Буди, вул. Шевченка 2'; delete s.places[0].prov; localStorage.setItem('teplo.v1', JSON.stringify(s)); });
+  await p.goto(U + '#place-main'); await p.reload(); await p.waitForTimeout(900);
+  const bw = await txt('prov-water');
+  ok('Буди: вода — КП «Будиводоканал», тариф невідомий, без «Управлінню ЖКГ м. Південне» в «Куди платити»', /Будиводоканал/.test(bw) && !/ЖКГ м\. Південне|33561483/.test(bw), bw.slice(0, 300));
+  await p.evaluate(() => { const s = JSON.parse(localStorage.getItem('teplo.v1')); s.places[0].address = 'м. Люботин, вул. Слобожанська 26'; delete s.places[0].prov; localStorage.setItem('teplo.v1', JSON.stringify(s)); });
+  await p.reload(); await p.waitForTimeout(900);
+  const lw = await txt('prov-water');
+  ok('Люботин: ВККУ 56,88 і 76,68 з 01.10.2026 (рішення № 423)', /ВККУ/.test(lw) && /56,88.*76,68/.test(lw), lw.slice(0, 300));
   // Мала Данилівка: вода — КП без тарифу; «Куди передати» — «Ваш постачальник»… немає: є назва КП і «як передавати — на платіжці»; газ — філія в боті
   await p.evaluate(() => { const s = JSON.parse(localStorage.getItem('teplo.v1')); s.placeId = 'p2'; localStorage.setItem('teplo.v1', JSON.stringify(s)); }); await p.goto(U + '#water-cold'); await p.reload(); await p.waitForTimeout(900);
   const wd2 = await txt('where-water');
