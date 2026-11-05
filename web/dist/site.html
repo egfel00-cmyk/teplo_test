@@ -1002,6 +1002,33 @@ fieldset.field { border: 0; padding: 0; min-width: 0; }
 /* графік відключень світла (ГПВ): черги — сітка великих кнопок, шкала 24 год, «зараз» — текст і значок, не лише колір */
 .gpv { margin: var(--sp-3) 0 var(--sp-4); }
 .gpv-t { display: flex; align-items: center; gap: 8px; font-size: var(--fs-m); margin: 0 0 6px; }
+/* акордеон графіка: згорнутий — назва й один рядок «Сьогодні без світла: …» */
+details.gacc > summary { list-style: none; cursor: pointer; display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; column-gap: 8px; min-height: 44px; margin: -4px 0; }
+.gacc > summary::-webkit-details-marker { display: none; }
+.gacc > summary .gpv-t { margin: 0; grid-column: 1; }
+.gacc > summary .pacc-chev { grid-column: 2; grid-row: 1 / span 2; transform: rotate(90deg); transition: transform .15s; color: var(--c-ink-2); }
+.gacc[open] > summary .pacc-chev { transform: rotate(-90deg); }
+.gpv-brief { grid-column: 1; margin: 4px 0 0 28px; font-weight: 600; line-height: 1.4; overflow-wrap: anywhere; font-variant-numeric: tabular-nums; }
+.gpv-brief.off { color: var(--c-warn); } .gpv-brief.ok { color: var(--c-ok); } .gpv-brief.need { color: var(--c-ink-2); font-weight: 500; }
+.gacc[open] > .gpv-b { margin-top: 12px; }
+.gpv-wide { margin: 14px 0 6px; max-width: 640px; }
+.gpv-wide h3 { font-size: var(--fs-s); margin: 0 0 6px; }
+.gpv-wd { margin: 0 0 10px; }
+.gpv-wl { margin: 0 0 4px; font-size: var(--fs-s); }
+.gpv-hrs { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 6px 3px; }
+.gpv-hr { display: flex; flex-direction: column; align-items: stretch; gap: 2px; }
+.gpv-hc { display: flex; height: 22px; border-radius: 4px; overflow: hidden; border: 1px solid var(--c-line); }
+.gpv-hc i, .gpv-leg i { flex: 1; background: var(--gpv-on); }
+.gpv-hc i + i { border-left: 1px solid var(--c-surface); }
+.gpv-hc i.off, .gpv-leg i.off { background: var(--gpv-off); }
+.gpv-hc i.may, .gpv-leg i.may { background: repeating-linear-gradient(135deg, var(--c-warn-soft) 0 4px, var(--c-warn-line) 4px 6px); }
+.gpv-hr small { font-size: 11px; text-align: center; color: var(--c-ink-2); font-variant-numeric: tabular-nums; }
+.gpv-hr.now .gpv-hc { outline: 2px solid var(--c-warn); outline-offset: 1px; }
+.gpv-hr.now small { color: var(--c-warn); font-weight: 700; }
+.gpv-leg { display: flex; flex-wrap: wrap; gap: 4px 14px; margin: 6px 0 0; color: var(--c-ink-2); }
+.gpv-leg span { display: inline-flex; align-items: center; gap: 6px; }
+.gpv-leg i { display: inline-block; width: 16px; height: 12px; border-radius: 3px; border: 1px solid var(--c-line); flex: none; }
+@media (min-width: 720px) { .gpv-hrs { grid-template-columns: repeat(24, minmax(0, 1fr)); } }
 .gpv-t .ico { color: var(--c-elec, var(--c-ink)); flex: none; }
 .gpv-qs { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 8px; margin: 10px 0 12px; max-width: 520px; }
 .gpv-qs.few { grid-template-columns: repeat(auto-fill, minmax(72px, 96px)); }
@@ -1028,7 +1055,6 @@ fieldset.field { border: 0; padding: 0; min-width: 0; }
 .gpv-list.ok { color: var(--c-ok); font-weight: 600; }
 .gpv-src { margin: 10px 0 4px; }
 .gpv-tg { margin-top: 6px; font-weight: 500; }
-.gpv-chip { margin-top: 2px; }
 .hp-addr-gpv { margin: 6px 0 0; }
 @media (max-width: 380px) { .gpv-qs { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
 
@@ -2338,7 +2364,7 @@ fieldset.field { border: 0; padding: 0; min-width: 0; }
       help_title: 'Довідка',
       ago_min: '{n} хв тому', ago_h: '{n} год тому', ago_d: '{n} дн. тому', ago_now: 'щойно',
       pl_mine: "Моя квартира", hp_name: "Назва", hp_addr: "Адреса", hp_addr_ph: "вул. Сумська, 10, кв. 5", hp_addr_add: "Додати адресу", hp_place: "Квартира", hp_edit: "Назва й адреса", hp_settings: "Налаштування квартири", hp_hint: "Натисніть на квартиру, щоб розгорнути її лічильники. Плюс на картці — одразу внести показання.", hp_added: "Додано «{p}»: холодна вода й світло. Впишіть назву й адресу, решту лічильників — «Додати лічильник».", mb_set: "Налаштування лічильника", mb_set_open: "Налаштування лічильника", mb_water_sub: "водомір", mb_vkid: "Код у боті Водоканалу: {v}", own_chk: "Лише для себе — не передавати", own_chk_s: "Для вашої статистики: у «Куди передати» не потрапить, оплата — за переданими показаннями.", own_pill: "для себе", own_on: "Це показання лише для вашої статистики — нікуди не передається.", own_set: "Позначити «лише для себе»", own_unset: "Буду передавати", own_paid: "від передачі {d}", own_paid_t: "За це платите: {q} від передачі {d}", own_between: "між ними для себе: {n}", bs_sent: "Стартові показання передано", bs_unsent: "Не передавали", bs_mark: "Позначити: передано", bs_lead: "Стартові показання зазвичай уже передані — так і позначено.", rp_add: "Додати фото показань", rp_added: "Фото додано до запису", rp_title: "Фото показань", enp_pick: "Розпізнати з фото", enp_more: "Ще фото", enp_hint: "Сфотографуйте табло (кожну зону окремо, якщо їх кілька) — цифри підставимо самі, ви перевірите.", enp_none: "цифр не знайшли", enp_guess: "Цифри взяли з фото — перевірте кожне поле перед збереженням.", enp_reading: "Читаю фото…",
-      gpv_title: "Графік відключень світла", gpv_finding: "Визначаємо чергу за адресою «{a}»…", gpv_auto: "— за адресою ({s})", gpv_wrong: "Не та черга?", gpv_notfound: "Не знайшли адресу «{a}» у переліку Харківобленерго. Оберіть чергу — її можна дізнатися на їхньому сайті за адресою.", gpv_many: "Вулиця «{s}» у переліку в кількох чергах, а ваш будинок окремо не вказано. Оберіть свою:", gpv_many_nohouse: "Вулиця «{s}» — у кількох чергах. Допишіть номер будинку в адресі або оберіть чергу:", gpv_all: "Показати всі черги", gpv_many_nostreet: "У «{c}» адреси в кількох чергах. Допишіть вулицю в адресі або оберіть чергу:", gpv_many_street: "Вашої вулиці немає в переліку Харківобленерго для «{c}». Адреси «{c}» — у таких чергах; оберіть свою (перевірити можна на сайті обленерго):", gpv_kh_none: "Для міста Харкова Харківобленерго не публікує перелік адрес за чергами — лише пошук на своєму сайті. Подивіться там свою чергу один раз і оберіть її тут:", gpv_pick_lead: "Оберіть чергу відключень для адреси «{a}». Її можна дізнатися на сайті Харківобленерго за адресою.", gpv_pick_aria: "Черга відключень", gpv_lookup: "Дізнатися чергу за адресою — Харківобленерго", gpv_lookup_hint: "На сайті оберіть населений пункт, вулицю й будинок і натисніть «Відіслати». Черга виглядає так: 3.1 або 5.2.", gpv_q: "Черга {q}", gpv_change: "Змінити чергу", gpv_err: "Не вдалося завантажити графік.", gpv_official: "Подивитися на сайті Харківобленерго", gpv_loading: "Завантажуємо графік…", gpv_today: "Сьогодні, {d}", gpv_tomorrow: "Завтра, {d}", gpv_tmr_none: "Графік на завтра ще не опублікували.", gpv_today_none: "На сьогодні графіка відключень немає — Харківобленерго його не публікувало. Можливі аварійні відключення.", gpv_now_off: "зараз світла немає — до {t}", gpv_now_next: "зараз світло є — вимкнуть о {t}", gpv_now_rest: "сьогодні більше не вимикають", gpv_now_free: "світло є", gpv_off: "Без світла:", gpv_total: "разом {d}", gpv_h: "{n} год", gpv_m: "{n} хв", gpv_free: "Відключень за графіком немає.", gpv_may: "Можливі відключення:", gpv_src: "Дані Харківобленерго, оновлено {d}. Графік може змінюватися, бувають аварійні відключення поза графіком.", gpv_stale: "Давно не оновлювався — перевірте в Харківобленерго.", gpv_channel: "Канал Харківобленерго", gpv_tg: "Надсилати графік у Telegram щоранку (о 7:00, коли є відключення)", gpv_tg_on: "Графік приходитиме щоранку", gpv_tg_off: "Ранкові повідомлення вимкнено", gpv_tg_need: "Щоб графік приходив у Telegram щоранку — під’єднайте Telegram у «Налаштуваннях».", gpv_tg_login: "Увійдіть через Telegram — графік приходитиме щоранку.", gpv_saved: "Черга {q} — збережено", gpv_chip_off: "без світла до {t}", gpv_chip_next: "світло вимкнуть о {t}", hp_addr_gpv: "За адресою покажемо графік відключень світла.",
+      gpv_title: "Графік відключень світла", gpv_finding: "Визначаємо чергу за адресою «{a}»…", gpv_auto: "— за адресою ({s})", gpv_wrong: "Не та черга?", gpv_notfound: "Не знайшли адресу «{a}» у переліку Харківобленерго. Оберіть чергу — її можна дізнатися на їхньому сайті за адресою.", gpv_many: "Вулиця «{s}» у переліку в кількох чергах, а ваш будинок окремо не вказано. Оберіть свою:", gpv_many_nohouse: "Вулиця «{s}» — у кількох чергах. Допишіть номер будинку в адресі або оберіть чергу:", gpv_all: "Показати всі черги", gpv_many_nostreet: "У «{c}» адреси в кількох чергах. Допишіть вулицю в адресі або оберіть чергу:", gpv_many_street: "Вашої вулиці немає в переліку Харківобленерго для «{c}». Адреси «{c}» — у таких чергах; оберіть свою (перевірити можна на сайті обленерго):", gpv_kh_none: "Для міста Харкова Харківобленерго не публікує перелік адрес за чергами — лише пошук на своєму сайті. Подивіться там свою чергу один раз і оберіть її тут:", gpv_pick_lead: "Оберіть чергу відключень для адреси «{a}». Її можна дізнатися на сайті Харківобленерго за адресою.", gpv_pick_aria: "Черга відключень", gpv_lookup: "Дізнатися чергу за адресою — Харківобленерго", gpv_lookup_hint: "На сайті оберіть населений пункт, вулицю й будинок і натисніть «Відіслати». Черга виглядає так: 3.1 або 5.2.", gpv_q: "Черга {q}", gpv_change: "Змінити чергу", gpv_err: "Не вдалося завантажити графік.", gpv_official: "Подивитися на сайті Харківобленерго", gpv_loading: "Завантажуємо графік…", gpv_today: "Сьогодні, {d}", gpv_tomorrow: "Завтра, {d}", gpv_tmr_none: "Графік на завтра ще не опублікували.", gpv_today_none: "На сьогодні графіка відключень немає — Харківобленерго його не публікувало. Можливі аварійні відключення.", gpv_now_off: "зараз світла немає — до {t}", gpv_now_next: "зараз світло є — вимкнуть о {t}", gpv_now_rest: "сьогодні більше не вимикають", gpv_now_free: "світло є", gpv_off: "Без світла:", gpv_total: "разом {d}", gpv_h: "{n} год", gpv_m: "{n} хв", gpv_free: "Відключень за графіком немає.", gpv_may: "Можливі відключення:", gpv_src: "Дані Харківобленерго, оновлено {d}. Графік може змінюватися, бувають аварійні відключення поза графіком.", gpv_stale: "Давно не оновлювався — перевірте в Харківобленерго.", gpv_channel: "Канал Харківобленерго", gpv_tg: "Надсилати графік у Telegram щоранку (о 7:00, коли є відключення)", gpv_tg_on: "Графік приходитиме щоранку", gpv_tg_off: "Ранкові повідомлення вимкнено", gpv_tg_need: "Щоб графік приходив у Telegram щоранку — під’єднайте Telegram у «Налаштуваннях».", gpv_tg_login: "Увійдіть через Telegram — графік приходитиме щоранку.", gpv_saved: "Черга {q} — збережено", gpv_b_finding: "Визначаємо чергу за адресою…", gpv_b_pick: "Оберіть чергу відключень", gpv_b_off: "Сьогодні без світла: {l}", gpv_b_may: "Сьогодні можливі відключення: {l}", gpv_b_free: "Сьогодні відключень немає", gpv_b_none: "Графіка на сьогодні ще немає", gpv_wide: "Погодинно", gpv_leg_off: "світла немає", gpv_leg_may: "можливо", gpv_leg_on: "світло є", hp_addr_gpv: "За адресою покажемо графік відключень світла — на сторінці «Світло».",
     },
     ru: {
       brand: 'Счётчики',
@@ -3199,7 +3225,7 @@ fieldset.field { border: 0; padding: 0; min-width: 0; }
       help_title: 'Справка',
       ago_min: '{n} мин назад', ago_h: '{n} ч назад', ago_d: '{n} дн. назад', ago_now: 'только что',
       pl_mine: "Моя квартира", hp_name: "Название", hp_addr: "Адрес", hp_addr_ph: "ул. Сумская, 10, кв. 5", hp_addr_add: "Добавить адрес", hp_place: "Квартира", hp_edit: "Название и адрес", hp_settings: "Настройки квартиры", hp_hint: "Нажмите на квартиру, чтобы развернуть её счётчики. Плюс на карточке — сразу внести показания.", hp_added: "Добавлено «{p}»: холодная вода и свет. Впишите название и адрес, остальные счётчики — «Добавить счётчик».", mb_set: "Настройки счётчика", mb_set_open: "Настройки счётчика", mb_water_sub: "водомер", mb_vkid: "Код в боте Водоканала: {v}", own_chk: "Только для себя — не передавать", own_chk_s: "Для вашей статистики: в «Куда передать» не попадёт, оплата — по переданным показаниям.", own_pill: "для себя", own_on: "Это показание только для вашей статистики — никуда не передаётся.", own_set: "Отметить «только для себя»", own_unset: "Буду передавать", own_paid: "от передачи {d}", own_paid_t: "За это платите: {q} от передачи {d}", own_between: "между ними для себя: {n}", bs_sent: "Стартовые показания переданы", bs_unsent: "Не передавали", bs_mark: "Отметить: передано", bs_lead: "Стартовые показания обычно уже переданы — так и отмечено.", rp_add: "Добавить фото показаний", rp_added: "Фото добавлено к записи", rp_title: "Фото показаний", enp_pick: "Распознать с фото", enp_more: "Ещё фото", enp_hint: "Сфотографируйте табло (каждую зону отдельно, если их несколько) — цифры подставим сами, вы проверите.", enp_none: "цифр не нашли", enp_guess: "Цифры взяли с фото — проверьте каждое поле перед сохранением.", enp_reading: "Читаю фото…",
-      gpv_title: "График отключений света", gpv_finding: "Определяем очередь по адресу «{a}»…", gpv_auto: "— по адресу ({s})", gpv_wrong: "Не та очередь?", gpv_notfound: "Не нашли адрес «{a}» в перечне Харьковоблэнерго. Выберите очередь — её можно узнать на их сайте по адресу.", gpv_many: "Улица «{s}» в перечне в нескольких очередях, а ваш дом отдельно не указан. Выберите свою:", gpv_many_nohouse: "Улица «{s}» — в нескольких очередях. Допишите номер дома в адресе или выберите очередь:", gpv_all: "Показать все очереди", gpv_many_nostreet: "В «{c}» адреса в нескольких очередях. Допишите улицу в адресе или выберите очередь:", gpv_many_street: "Вашей улицы нет в перечне Харьковоблэнерго для «{c}». Адреса «{c}» — в таких очередях; выберите свою (проверить можно на сайте облэнерго):", gpv_kh_none: "Для города Харькова Харьковоблэнерго не публикует перечень адресов по очередям — только поиск на своём сайте. Посмотрите там свою очередь один раз и выберите её здесь:", gpv_pick_lead: "Выберите очередь отключений для адреса «{a}». Её можно узнать на сайте Харьковоблэнерго по адресу.", gpv_pick_aria: "Очередь отключений", gpv_lookup: "Узнать очередь по адресу — Харьковоблэнерго", gpv_lookup_hint: "На сайте выберите населённый пункт, улицу и дом и нажмите «Відіслати». Очередь выглядит так: 3.1 или 5.2.", gpv_q: "Очередь {q}", gpv_change: "Изменить очередь", gpv_err: "Не удалось загрузить график.", gpv_official: "Посмотреть на сайте Харьковоблэнерго", gpv_loading: "Загружаем график…", gpv_today: "Сегодня, {d}", gpv_tomorrow: "Завтра, {d}", gpv_tmr_none: "График на завтра ещё не опубликовали.", gpv_today_none: "На сегодня графика отключений нет — Харьковоблэнерго его не публиковало. Возможны аварийные отключения.", gpv_now_off: "сейчас света нет — до {t}", gpv_now_next: "сейчас свет есть — отключат в {t}", gpv_now_rest: "сегодня больше не отключают", gpv_now_free: "свет есть", gpv_off: "Без света:", gpv_total: "всего {d}", gpv_h: "{n} ч", gpv_m: "{n} мин", gpv_free: "Отключений по графику нет.", gpv_may: "Возможны отключения:", gpv_src: "Данные Харьковоблэнерго, обновлено {d}. График может меняться, бывают аварийные отключения вне графика.", gpv_stale: "Давно не обновлялся — проверьте в Харьковоблэнерго.", gpv_channel: "Канал Харьковоблэнерго", gpv_tg: "Присылать график в Telegram каждое утро (в 7:00, когда есть отключения)", gpv_tg_on: "График будет приходить каждое утро", gpv_tg_off: "Утренние сообщения выключены", gpv_tg_need: "Чтобы график приходил в Telegram каждое утро — подключите Telegram в «Настройках».", gpv_tg_login: "Войдите через Telegram — график будет приходить каждое утро.", gpv_saved: "Очередь {q} — сохранено", gpv_chip_off: "без света до {t}", gpv_chip_next: "свет отключат в {t}", hp_addr_gpv: "По адресу покажем график отключений света."
+      gpv_title: "График отключений света", gpv_finding: "Определяем очередь по адресу «{a}»…", gpv_auto: "— по адресу ({s})", gpv_wrong: "Не та очередь?", gpv_notfound: "Не нашли адрес «{a}» в перечне Харьковоблэнерго. Выберите очередь — её можно узнать на их сайте по адресу.", gpv_many: "Улица «{s}» в перечне в нескольких очередях, а ваш дом отдельно не указан. Выберите свою:", gpv_many_nohouse: "Улица «{s}» — в нескольких очередях. Допишите номер дома в адресе или выберите очередь:", gpv_all: "Показать все очереди", gpv_many_nostreet: "В «{c}» адреса в нескольких очередях. Допишите улицу в адресе или выберите очередь:", gpv_many_street: "Вашей улицы нет в перечне Харьковоблэнерго для «{c}». Адреса «{c}» — в таких очередях; выберите свою (проверить можно на сайте облэнерго):", gpv_kh_none: "Для города Харькова Харьковоблэнерго не публикует перечень адресов по очередям — только поиск на своём сайте. Посмотрите там свою очередь один раз и выберите её здесь:", gpv_pick_lead: "Выберите очередь отключений для адреса «{a}». Её можно узнать на сайте Харьковоблэнерго по адресу.", gpv_pick_aria: "Очередь отключений", gpv_lookup: "Узнать очередь по адресу — Харьковоблэнерго", gpv_lookup_hint: "На сайте выберите населённый пункт, улицу и дом и нажмите «Відіслати». Очередь выглядит так: 3.1 или 5.2.", gpv_q: "Очередь {q}", gpv_change: "Изменить очередь", gpv_err: "Не удалось загрузить график.", gpv_official: "Посмотреть на сайте Харьковоблэнерго", gpv_loading: "Загружаем график…", gpv_today: "Сегодня, {d}", gpv_tomorrow: "Завтра, {d}", gpv_tmr_none: "График на завтра ещё не опубликовали.", gpv_today_none: "На сегодня графика отключений нет — Харьковоблэнерго его не публиковало. Возможны аварийные отключения.", gpv_now_off: "сейчас света нет — до {t}", gpv_now_next: "сейчас свет есть — отключат в {t}", gpv_now_rest: "сегодня больше не отключают", gpv_now_free: "свет есть", gpv_off: "Без света:", gpv_total: "всего {d}", gpv_h: "{n} ч", gpv_m: "{n} мин", gpv_free: "Отключений по графику нет.", gpv_may: "Возможны отключения:", gpv_src: "Данные Харьковоблэнерго, обновлено {d}. График может меняться, бывают аварийные отключения вне графика.", gpv_stale: "Давно не обновлялся — проверьте в Харьковоблэнерго.", gpv_channel: "Канал Харьковоблэнерго", gpv_tg: "Присылать график в Telegram каждое утро (в 7:00, когда есть отключения)", gpv_tg_on: "График будет приходить каждое утро", gpv_tg_off: "Утренние сообщения выключены", gpv_tg_need: "Чтобы график приходил в Telegram каждое утро — подключите Telegram в «Настройках».", gpv_tg_login: "Войдите через Telegram — график будет приходить каждое утро.", gpv_saved: "Очередь {q} — сохранено", gpv_b_finding: "Определяем очередь по адресу…", gpv_b_pick: "Выберите очередь отключений", gpv_b_off: "Сегодня без света: {l}", gpv_b_may: "Сегодня возможны отключения: {l}", gpv_b_free: "Сегодня отключений нет", gpv_b_none: "Графика на сегодня ещё нет", gpv_wide: "По часам", gpv_leg_off: "света нет", gpv_leg_may: "возможно", gpv_leg_on: "свет есть", hp_addr_gpv: "По адресу покажем график отключений света — на странице «Свет»."
     }
   };
   var MONTHS = {
@@ -5459,7 +5485,7 @@ fieldset.field { border: 0; padding: 0; min-width: 0; }
           '<div class="hp-id"><b class="hp-name" data-key="home-place-name">' + esc(placeLabel(p)) + '</b>' +
             (HP_EDIT === p.id ? '' : addr ? '<span class="hp-addr">' + esc(addr) + ' <button type="button" class="linkbtn" data-act="hp-edit" data-id="' + esc(p.id) + '" data-key="home-addr-edit">' + esc(t('change')) + '</button></span>'
               : '<button type="button" class="linkbtn hp-addr-add" data-act="hp-edit" data-id="' + esc(p.id) + '" data-key="home-addr-add">' + ico('plus', 16) + ' ' + esc(t('hp_addr_add')) + '</button>') + '</div></div>' +
-          (HP_EDIT === p.id ? hpEditForm(p) : '') + gpvBox(p, 'home') +
+          (HP_EDIT === p.id ? hpEditForm(p) : '') +
           '<div class="ucards">' + cards.join('') + addTile(!cards.length) + '</div>' +
           '<p class="hp-more"><button type="button" class="btn sec" data-act="hp-add-place" data-key="home-add-place">' + ico('plus', 18) + '<span>' + esc(t('pl_add')) + '</span></button></p>' + (cards.length ? '<p class="small muted ucards-hint">' + esc(t('uc_hint')) + '</p>' : '') + '</section>';
       });
@@ -5472,10 +5498,10 @@ fieldset.field { border: 0; padding: 0; min-width: 0; }
       return withPlace(p.id, function () {
         var cards = homeCards();
         return '<details class="hp pacc" id="hp-' + esc(p.id) + '" data-pl="' + esc(p.id) + '" style="--pc:var(--pc-' + placeColor(p) + ')" data-key="home-pl-' + esc(p.id) + '"' + (open ? ' open' : '') + '>' +
-          '<summary data-key="home-pl-sum-' + esc(p.id) + '"><span class="pacc-t"><b>' + esc(placeLabel(p)) + '</b>' + (p.address ? '<span class="small muted">' + esc(p.address) + '</span>' : '') + due + gpvChip(p) +
+          '<summary data-key="home-pl-sum-' + esc(p.id) + '"><span class="pacc-t"><b>' + esc(placeLabel(p)) + '</b>' + (p.address ? '<span class="small muted">' + esc(p.address) + '</span>' : '') + due +
             '<span class="small muted pacc-ks">' + esc(placeKinds(p)) + '</span></span>' + ico('chev', 22, 'pacc-chev') + '</summary><div class="pacc-body">' +
           (HP_EDIT === p.id ? hpEditForm(p) : '<p class="hp-tools"><button type="button" class="linkbtn" data-act="hp-edit" data-id="' + esc(p.id) + '" data-key="home-pl-edit-' + esc(p.id) + '">' + esc(t(p.address ? 'hp_edit' : 'hp_addr_add')) + '</button>' +
-            '<a href="#place-' + esc(p.id) + '" data-key="home-pl-set-' + esc(p.id) + '">' + ico('prefs', 16) + ' ' + esc(t('hp_settings')) + '</a></p>') + gpvBox(p, 'home') +
+            '<a href="#place-' + esc(p.id) + '" data-key="home-pl-set-' + esc(p.id) + '">' + ico('prefs', 16) + ' ' + esc(t('hp_settings')) + '</a></p>') +
           '<div class="ucards">' + cards.join('') + addTile(!cards.length) + '</div></div></details>';
       });
     }).join('') + '<p class="hp-more"><button type="button" class="btn sec" data-act="hp-add-place" data-key="home-add-place">' + ico('plus', 18) + '<span>' + esc(t('pl_add')) + '</span></button></p>' +
@@ -5572,16 +5598,46 @@ fieldset.field { border: 0; padding: 0; min-width: 0; }
     if (may.length) h += '<p class="gpv-list"><span class="gpv-lbl">' + esc(t('gpv_may')) + '</span>' + ivs(may, ' may') + '</p>';
     return h + '</div>';
   }
-  /** Блок «Графік відключень світла» квартири: вибір черги → сьогодні (зараз є/немає, шкала 24 год, години) і завтра. */
+  /** Погодинно: 24 клітинки (по 12 у рядку), кожна — дві половини години: світла немає / можливо / є. Поточна година — рамкою. */
+  function gpvHours(day, nowMin) {
+    var off = day.off || [], may = day.may || [];
+    var st = function (a) { var m = a + 15, f = function (l) { return l.some(function (x) { return m >= x[0] && m < x[1]; }); }; return f(off) ? 'off' : f(may) ? 'may' : 'on'; };
+    var h = '<div class="gpv-hrs" aria-hidden="true">';
+    for (var i = 0; i < 24; i++) {
+      var cur = nowMin !== null && Math.floor(nowMin / 60) === i;
+      h += '<span class="gpv-hr' + (cur ? ' now' : '') + '"><span class="gpv-hc"><i class="' + st(i * 60) + '"></i><i class="' + st(i * 60 + 30) + '"></i></span><small>' + ('0' + i).slice(-2) + '</small></span>';
+    }
+    return h + '</div>';
+  }
+  /** Розширений графік у розгорнутому блоці: сьогодні й завтра погодинно, з легендою (кольори — лише вдобавок до списків годин вище). */
+  function gpvWide(td, tm, now) {
+    if (!td && !tm) return '';
+    var row = function (d, l, nm) { return '<div class="gpv-wd"><p class="gpv-wl"><b>' + esc(l) + '</b></p>' + gpvHours(d, nm) + '</div>'; };
+    return '<section class="gpv-wide" data-key="gpv-wide"><h3>' + esc(t('gpv_wide')) + '</h3>' +
+      (td ? row(td, t('gpv_today', { d: fmtDate(now.ymd) }), now.min) : '') + (tm ? row(tm, t('gpv_tomorrow', { d: fmtDate(addDays(now.ymd, 1)) }), null) : '') +
+      '<p class="gpv-leg small"><span><i class="off"></i>' + esc(t('gpv_leg_off')) + '</span><span><i class="may"></i>' + esc(t('gpv_leg_may')) + '</span><span><i class="on"></i>' + esc(t('gpv_leg_on')) + '</span></p></section>';
+  }
+  /** Блок «Графік відключень світла» квартири — акордеон (згорнутий): у шапці лише «Сьогодні без світла: 06:00–09:00, …»
+   *  (або «Оберіть чергу відключень»); розгорнуто — вибір черги / сьогодні (зараз є/немає, шкала 24 год, години), завтра,
+   *  погодинно, джерело, Telegram. На сторінці світла (`#elec`); квартира без електролічильника — на її екрані. */
+  var GPV_OPEN = {};
   function gpvBox(p, where) {
     if (!gpvHas(p)) return '';
+    var b = gpvBody(p), id = esc(p.id);
+    return '<details class="panel gpv gacc" id="gpv-' + id + '" data-gpv="' + id + '" data-key="gpv-' + where + '"' + (GPV_OPEN[p.id] ? ' open' : '') + '>' +
+      '<summary data-key="gpv-sum"><h2 class="gpv-t">' + ico('bolt', 20) + '<span>' + esc(t('gpv_title')) + '</span></h2>' +
+      '<span class="gpv-brief' + (b.cls ? ' ' + b.cls : '') + '" data-key="gpv-brief">' + esc(b.brief) + '</span>' + ico('chev', 20, 'pacc-chev') + '</summary>' +
+      '<div class="gpv-b">' + b.html + '</div></details>';
+  }
+  document.addEventListener('toggle', function (e) { var d = e.target; if (d && d.classList && d.classList.contains('gacc')) GPV_OPEN[d.getAttribute('data-gpv')] = d.open; }, true);
+  /** Вміст блоку: {brief — рядок для згорнутого, cls, html — розгорнуте}. */
+  function gpvBody(p) {
     gpvLoad();
-    var id = esc(p.id), addr = String(p.address).trim(), q = GPV_Q.indexOf(p.gpv) >= 0 ? p.gpv : '', h = '<section class="gpv panel" id="gpv-' + id + '" data-key="gpv-' + where + '">' +
-      '<h2 class="gpv-t">' + ico('bolt', 20) + '<span>' + esc(t('gpv_title')) + '</span></h2>';
+    var id = esc(p.id), addr = String(p.address).trim(), q = GPV_Q.indexOf(p.gpv) >= 0 ? p.gpv : '', h = '';
     // черга визначається сама за адресою: ще не шукали / адресу змінили після автопідбору — шукаємо
     var auto = p.gpvAuto && p.gpvAuto.addr === addr, look = (!q || (p.gpvAuto && !auto)) && !GPV.pick[p.id] ? gpvAddr(p) : null;
     if (auto && q && !GPV.pick[p.id]) gpvAddr(p);   // черга «за адресою» — раз за сеанс звіряємо з довідником (його могли виправити)
-    if (look && look.busy) return h + '<p class="small muted" data-key="gpv-finding">' + esc(t('gpv_finding', { a: addr })) + '</p></section>';
+    if (look && look.busy) return { brief: t('gpv_b_finding'), html: '<p class="small muted" data-key="gpv-finding">' + esc(t('gpv_finding', { a: addr })) + '</p>' };
     if (p.gpvAuto && !auto && look && look.found === false) q = '';   // нова адреса, а в переліку її немає — стара черга вже не про неї
     if (!q || GPV.pick[p.id]) {
       var opts = look && look.options && look.options.length ? look.options : null, list = opts && !GPV.pick[p.id] ? opts : GPV_Q;
@@ -5589,21 +5645,26 @@ fieldset.field { border: 0; padding: 0; min-width: 0; }
       if (look && look.found === false && !GPV.pick[p.id] && look.ready !== false && !look.err)
         lead = opts ? t(look.reason === 'nohouse' ? 'gpv_many_nohouse' : look.reason === 'nostreet' ? 'gpv_many_nostreet' : look.reason === 'street' ? 'gpv_many_street' : 'gpv_many', { s: look.street || '', c: look.city || '' })
           : look.kharkiv ? t('gpv_kh_none') : t('gpv_notfound', { a: addr });
-      return h + '<p class="small" data-key="gpv-lead">' + esc(lead) + '</p>' +
+      return { brief: q ? t('gpv_q', { q: q }) : t('gpv_b_pick'), cls: q ? '' : 'need', html: '<p class="small" data-key="gpv-lead">' + esc(lead) + '</p>' +
         '<div class="gpv-qs' + (opts && list === opts ? ' few' : '') + '" role="group" aria-label="' + esc(t('gpv_pick_aria')) + '">' + list.map(function (x) {
           return '<button type="button" class="chip gpv-q" data-act="gpv-set" data-id="' + id + '" data-q="' + x + '" aria-pressed="' + (x === q) + '" data-key="gpv-q-' + x + '">' + x + '</button>'; }).join('') + '</div>' +
         (opts && list === opts ? '<p class="small"><button type="button" class="linkbtn" data-act="gpv-all" data-id="' + id + '" data-key="gpv-all">' + esc(t('gpv_all')) + '</button></p>' : '') +
         '<p class="small"><a href="' + GPV_LOOKUP + '" target="_blank" rel="noopener" data-key="gpv-lookup">' + esc(t('gpv_lookup')) + ' ' + ico('ext', 14) + '</a></p>' +
         '<p class="small muted">' + esc(t('gpv_lookup_hint')) + '</p>' +
-        (q ? '<p><button type="button" class="linkbtn" data-act="gpv-cancel" data-id="' + id + '" data-key="gpv-cancel">' + esc(t('cancel')) + '</button></p>' : '') + '</section>';
+        (q ? '<p><button type="button" class="linkbtn" data-act="gpv-cancel" data-id="' + id + '" data-key="gpv-cancel">' + esc(t('cancel')) + '</button></p>' : '') };
     }
     h += '<p class="gpv-sub small muted"><span data-key="gpv-q">' + esc(t('gpv_q', { q: q })) + '</span>' + (auto ? ' <span data-key="gpv-auto">' + esc(t('gpv_auto', { s: [p.gpvAuto.street, p.gpvAuto.city].filter(Boolean).join(', ') || addr })) + '</span>' : '') +
       ' · <button type="button" class="linkbtn" data-act="gpv-change" data-id="' + id + '" data-key="gpv-change">' + esc(t(auto ? 'gpv_wrong' : 'gpv_change')) + '</button></p>';
     var d = GPV.data;
-    if (!d) return h + '<p class="small muted" data-key="gpv-wait">' + (GPV.err ? esc(t('gpv_err')) + ' <a href="' + GPV_LOOKUP + '" target="_blank" rel="noopener">' + esc(t('gpv_official')) + '</a>' : esc(t('gpv_loading'))) + '</p></section>';
-    var now = kyivNow(), td = gpvDayOf(q, now.ymd), tm = gpvDayOf(q, addDays(now.ymd, 1));
+    if (!d) return { brief: t(GPV.err ? 'gpv_err' : 'gpv_loading'), html: h + '<p class="small muted" data-key="gpv-wait">' + (GPV.err ? esc(t('gpv_err')) + ' <a href="' + GPV_LOOKUP + '" target="_blank" rel="noopener">' + esc(t('gpv_official')) + '</a>' : esc(t('gpv_loading'))) + '</p>' };
+    var now = kyivNow(), td = gpvDayOf(q, now.ymd), tm = gpvDayOf(q, addDays(now.ymd, 1)), brief, cls = '';
+    if (!td) brief = t('gpv_b_none');
+    else if ((td.off || []).length) { brief = t('gpv_b_off', { l: td.off.map(gpvSpan).join(', ') }); cls = gpvNowState(td, now.min).off ? 'off' : 'due'; }
+    else if ((td.may || []).length) brief = t('gpv_b_may', { l: td.may.map(gpvSpan).join(', ') });
+    else { brief = t('gpv_b_free'); cls = 'ok'; }
     h += td ? gpvDay(td, t('gpv_today', { d: fmtDate(now.ymd) }), now) : '<p class="gpv-list" data-key="gpv-today-none">' + esc(t('gpv_today_none')) + '</p>';
     h += tm ? gpvDay(tm, t('gpv_tomorrow', { d: fmtDate(addDays(now.ymd, 1)) }), null) : '<p class="small muted" data-key="gpv-tmr-none">' + esc(t('gpv_tmr_none')) + '</p>';
+    h += gpvWide(td, tm, now);
     h += '<p class="small muted gpv-src">' + esc(t('gpv_src', { d: d.update || '—' })) + (d.stale ? ' <b class="warn">' + esc(t('gpv_stale')) + '</b>' : '') +
       ' <a href="' + GPV_CHANNEL + '" target="_blank" rel="noopener" data-key="gpv-channel">' + esc(t('gpv_channel')) + '</a></p>';
     if (window.TEPLO_API) {
@@ -5611,14 +5672,7 @@ fieldset.field { border: 0; padding: 0; min-width: 0; }
       h += tg ? '<label class="check-row gpv-tg"><input type="checkbox" data-gpvtg="' + id + '"' + (p.gpvTg === false ? '' : ' checked') + ' data-key="gpv-tg"><span>' + esc(t('gpv_tg')) + '</span></label>'
         : '<p class="small muted" data-key="gpv-tg-need">' + ico('info', 16) + ' ' + esc(t(acc ? 'gpv_tg_need' : 'gpv_tg_login')) + '</p>';
     }
-    return h + '</section>';
-  }
-  /** Коротко в шапці квартири (список квартир): «без світла до 12:30» / «вимкнуть о 16:00». */
-  function gpvChip(p) {
-    if (!gpvHas(p) || GPV_Q.indexOf(p.gpv) < 0) return '';
-    gpvLoad(); var now = kyivNow(), day = gpvDayOf(p.gpv, now.ymd); if (!day || !(day.off || []).length) return '';
-    var s = gpvNowState(day, now.min); if (!s.off && s.next === undefined) return '';
-    return '<span class="ov-next gpv-chip ' + (s.off ? 'warn' : 'due') + '" data-key="gpv-chip-' + esc(p.id) + '">' + ico('bolt', 16) + '<span>' + esc(s.off ? t('gpv_chip_off', { t: gpvHm(s.until) }) : t('gpv_chip_next', { t: gpvHm(s.next) })) + '</span></span>';
+    return { brief: brief, cls: cls, html: h };
   }
   document.addEventListener('change', function (e) {
     var el = e.target, id = el && el.getAttribute && el.getAttribute('data-gpvtg'), p = id && place(id); if (!p) return;
@@ -8267,6 +8321,8 @@ fieldset.field { border: 0; padding: 0; min-width: 0; }
       '<div class="field"><label for="pv-name">' + esc(t('pv_name')) + '</label><div class="ctl"><input id="pv-name" data-plf="name" maxlength="40" autocomplete="off" value="' + esc(p.name || '') + '" placeholder="' + esc(t('pv_name_ph')) + '"></div><div class="chips" role="group" aria-label="' + esc(t('pv_name')) + '">' + chips + '</div></div>' +
       '<div class="field"><label for="pv-addr">' + esc(t('pl_addr')) + ' <span class="muted small">(' + esc(t('b_opt')) + ')</span></label><div class="ctl"><input id="pv-addr" data-plf="address" maxlength="120" autocomplete="street-address" value="' + esc(p.address || '') + '" placeholder="' + esc(t('pl_addr_ph')) + '"></div></div>' +
       '<fieldset class="field"><legend class="lbl">' + esc(t('pv_color')) + '</legend><div class="swatches">' + sw + '</div><div class="small muted">' + esc(t('pv_color_h')) + '</div></fieldset></section>';
+    // графік відключень — на сторінці світла; у квартири без електролічильника — тут
+    if (!emeters().length) h += gpvBox(p, 'place');
     // свои рахунки
     var money = '';
     if (hasHeat()) money += '<h3>' + esc(t('pv_m_heat')) + '</h3><div class="grid2">' +
@@ -9244,9 +9300,9 @@ fieldset.field { border: 0; padding: 0; min-width: 0; }
       case 'hp-add-place': hpAddPlace(); break;
       case 'hp-edit': HP_EDIT = el.getAttribute('data-id'); render(true); setTimeout(function () { var f = document.getElementById('hpa-' + HP_EDIT); if (f) f.focus(); }, 30); break;
       case 'hp-cancel': HP_EDIT = ''; render(true); break;
-      case 'gpv-all': GPV.pick[el.getAttribute('data-id')] = true; render(true); break;
+      case 'gpv-all': GPV.pick[el.getAttribute('data-id')] = true; GPV_OPEN[el.getAttribute('data-id')] = true; render(true); break;
       case 'gpv-set': { var gp = place(el.getAttribute('data-id')); if (gp) { gp.gpv = el.getAttribute('data-q'); delete gp.gpvAuto; gp.updatedAt = Date.now(); delete GPV.pick[gp.id]; save(); toast(t('gpv_saved', { q: gp.gpv })); SCROLL_TO = 'gpv-' + gp.id; render(true); } break; }
-      case 'gpv-change': GPV.pick[el.getAttribute('data-id')] = true; SCROLL_TO = 'gpv-' + el.getAttribute('data-id'); render(true); break;
+      case 'gpv-change': GPV.pick[el.getAttribute('data-id')] = true; GPV_OPEN[el.getAttribute('data-id')] = true; SCROLL_TO = 'gpv-' + el.getAttribute('data-id'); render(true); break;
       case 'gpv-cancel': delete GPV.pick[el.getAttribute('data-id')]; render(true); break;
       case 'hp-chip': { var hn = document.getElementById('hpn-' + el.getAttribute('data-id')); if (hn) { hn.value = el.getAttribute('data-v'); hn.focus(); } break; }
       case 'pl-add': PW = pwFresh(routeName() || homeRoute()); go('add-place'); break;
@@ -9575,9 +9631,9 @@ fieldset.field { border: 0; padding: 0; min-width: 0; }
     var q = location.search.replace(/([?&])(go|place)=[\w-]+(?=&|$)/g, '$1').replace(/&{2,}/g, '&').replace(/\?&/, '?').replace(/[?&]$/, '');
     // напоминание про конкретную квартиру — сразу в неё
     if (pid && place(pid)) { switchPlace(pid); WX.key = ''; }
-    // графік відключень з ранкового повідомлення: головна, розгорнута квартира й її блок графіка
+    // графік відключень з ранкового повідомлення: сторінка світла квартири з розгорнутим блоком (без електролічильника — екран квартири)
     if (g === 'gpv') { var gpl = (pid && place(pid)) || places().filter(function (x) { return gpvHas(x) && x.gpv; })[0] || place(); g = 'home';
-      if (gpl) { S.homeOpen = S.homeOpen || {}; S.homeOpen[gpl.id] = true; SCROLL_TO = 'gpv-' + gpl.id; } }
+      if (gpl) { if (gpl.id !== S.placeId) { switchPlace(gpl.id); WX.key = ''; } GPV_OPEN[gpl.id] = true; SCROLL_TO = 'gpv-' + gpl.id; g = smeters('elec').length ? 'elec' : 'place-' + gpl.id; } }
     try { history.replaceState(null, '', location.pathname + q + '#' + g); } catch (e) { location.hash = g; }
     if (g === 'wnew') WN = wnFresh(wmeters('hot').length ? 'hot' : 'cold');
     if (g === 'enew' || g === 'gnew') EN = enFresh(g === 'gnew' ? 'gas' : 'elec');

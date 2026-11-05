@@ -685,7 +685,7 @@
           '<div class="hp-id"><b class="hp-name" data-key="home-place-name">' + esc(placeLabel(p)) + '</b>' +
             (HP_EDIT === p.id ? '' : addr ? '<span class="hp-addr">' + esc(addr) + ' <button type="button" class="linkbtn" data-act="hp-edit" data-id="' + esc(p.id) + '" data-key="home-addr-edit">' + esc(t('change')) + '</button></span>'
               : '<button type="button" class="linkbtn hp-addr-add" data-act="hp-edit" data-id="' + esc(p.id) + '" data-key="home-addr-add">' + ico('plus', 16) + ' ' + esc(t('hp_addr_add')) + '</button>') + '</div></div>' +
-          (HP_EDIT === p.id ? hpEditForm(p) : '') + gpvBox(p, 'home') +
+          (HP_EDIT === p.id ? hpEditForm(p) : '') +
           '<div class="ucards">' + cards.join('') + addTile(!cards.length) + '</div>' +
           '<p class="hp-more"><button type="button" class="btn sec" data-act="hp-add-place" data-key="home-add-place">' + ico('plus', 18) + '<span>' + esc(t('pl_add')) + '</span></button></p>' + (cards.length ? '<p class="small muted ucards-hint">' + esc(t('uc_hint')) + '</p>' : '') + '</section>';
       });
@@ -698,10 +698,10 @@
       return withPlace(p.id, function () {
         var cards = homeCards();
         return '<details class="hp pacc" id="hp-' + esc(p.id) + '" data-pl="' + esc(p.id) + '" style="--pc:var(--pc-' + placeColor(p) + ')" data-key="home-pl-' + esc(p.id) + '"' + (open ? ' open' : '') + '>' +
-          '<summary data-key="home-pl-sum-' + esc(p.id) + '"><span class="pacc-t"><b>' + esc(placeLabel(p)) + '</b>' + (p.address ? '<span class="small muted">' + esc(p.address) + '</span>' : '') + due + gpvChip(p) +
+          '<summary data-key="home-pl-sum-' + esc(p.id) + '"><span class="pacc-t"><b>' + esc(placeLabel(p)) + '</b>' + (p.address ? '<span class="small muted">' + esc(p.address) + '</span>' : '') + due +
             '<span class="small muted pacc-ks">' + esc(placeKinds(p)) + '</span></span>' + ico('chev', 22, 'pacc-chev') + '</summary><div class="pacc-body">' +
           (HP_EDIT === p.id ? hpEditForm(p) : '<p class="hp-tools"><button type="button" class="linkbtn" data-act="hp-edit" data-id="' + esc(p.id) + '" data-key="home-pl-edit-' + esc(p.id) + '">' + esc(t(p.address ? 'hp_edit' : 'hp_addr_add')) + '</button>' +
-            '<a href="#place-' + esc(p.id) + '" data-key="home-pl-set-' + esc(p.id) + '">' + ico('prefs', 16) + ' ' + esc(t('hp_settings')) + '</a></p>') + gpvBox(p, 'home') +
+            '<a href="#place-' + esc(p.id) + '" data-key="home-pl-set-' + esc(p.id) + '">' + ico('prefs', 16) + ' ' + esc(t('hp_settings')) + '</a></p>') +
           '<div class="ucards">' + cards.join('') + addTile(!cards.length) + '</div></div></details>';
       });
     }).join('') + '<p class="hp-more"><button type="button" class="btn sec" data-act="hp-add-place" data-key="home-add-place">' + ico('plus', 18) + '<span>' + esc(t('pl_add')) + '</span></button></p>' +
@@ -798,16 +798,46 @@
     if (may.length) h += '<p class="gpv-list"><span class="gpv-lbl">' + esc(t('gpv_may')) + '</span>' + ivs(may, ' may') + '</p>';
     return h + '</div>';
   }
-  /** Блок «Графік відключень світла» квартири: вибір черги → сьогодні (зараз є/немає, шкала 24 год, години) і завтра. */
+  /** Погодинно: 24 клітинки (по 12 у рядку), кожна — дві половини години: світла немає / можливо / є. Поточна година — рамкою. */
+  function gpvHours(day, nowMin) {
+    var off = day.off || [], may = day.may || [];
+    var st = function (a) { var m = a + 15, f = function (l) { return l.some(function (x) { return m >= x[0] && m < x[1]; }); }; return f(off) ? 'off' : f(may) ? 'may' : 'on'; };
+    var h = '<div class="gpv-hrs" aria-hidden="true">';
+    for (var i = 0; i < 24; i++) {
+      var cur = nowMin !== null && Math.floor(nowMin / 60) === i;
+      h += '<span class="gpv-hr' + (cur ? ' now' : '') + '"><span class="gpv-hc"><i class="' + st(i * 60) + '"></i><i class="' + st(i * 60 + 30) + '"></i></span><small>' + ('0' + i).slice(-2) + '</small></span>';
+    }
+    return h + '</div>';
+  }
+  /** Розширений графік у розгорнутому блоці: сьогодні й завтра погодинно, з легендою (кольори — лише вдобавок до списків годин вище). */
+  function gpvWide(td, tm, now) {
+    if (!td && !tm) return '';
+    var row = function (d, l, nm) { return '<div class="gpv-wd"><p class="gpv-wl"><b>' + esc(l) + '</b></p>' + gpvHours(d, nm) + '</div>'; };
+    return '<section class="gpv-wide" data-key="gpv-wide"><h3>' + esc(t('gpv_wide')) + '</h3>' +
+      (td ? row(td, t('gpv_today', { d: fmtDate(now.ymd) }), now.min) : '') + (tm ? row(tm, t('gpv_tomorrow', { d: fmtDate(addDays(now.ymd, 1)) }), null) : '') +
+      '<p class="gpv-leg small"><span><i class="off"></i>' + esc(t('gpv_leg_off')) + '</span><span><i class="may"></i>' + esc(t('gpv_leg_may')) + '</span><span><i class="on"></i>' + esc(t('gpv_leg_on')) + '</span></p></section>';
+  }
+  /** Блок «Графік відключень світла» квартири — акордеон (згорнутий): у шапці лише «Сьогодні без світла: 06:00–09:00, …»
+   *  (або «Оберіть чергу відключень»); розгорнуто — вибір черги / сьогодні (зараз є/немає, шкала 24 год, години), завтра,
+   *  погодинно, джерело, Telegram. На сторінці світла (`#elec`); квартира без електролічильника — на її екрані. */
+  var GPV_OPEN = {};
   function gpvBox(p, where) {
     if (!gpvHas(p)) return '';
+    var b = gpvBody(p), id = esc(p.id);
+    return '<details class="panel gpv gacc" id="gpv-' + id + '" data-gpv="' + id + '" data-key="gpv-' + where + '"' + (GPV_OPEN[p.id] ? ' open' : '') + '>' +
+      '<summary data-key="gpv-sum"><h2 class="gpv-t">' + ico('bolt', 20) + '<span>' + esc(t('gpv_title')) + '</span></h2>' +
+      '<span class="gpv-brief' + (b.cls ? ' ' + b.cls : '') + '" data-key="gpv-brief">' + esc(b.brief) + '</span>' + ico('chev', 20, 'pacc-chev') + '</summary>' +
+      '<div class="gpv-b">' + b.html + '</div></details>';
+  }
+  document.addEventListener('toggle', function (e) { var d = e.target; if (d && d.classList && d.classList.contains('gacc')) GPV_OPEN[d.getAttribute('data-gpv')] = d.open; }, true);
+  /** Вміст блоку: {brief — рядок для згорнутого, cls, html — розгорнуте}. */
+  function gpvBody(p) {
     gpvLoad();
-    var id = esc(p.id), addr = String(p.address).trim(), q = GPV_Q.indexOf(p.gpv) >= 0 ? p.gpv : '', h = '<section class="gpv panel" id="gpv-' + id + '" data-key="gpv-' + where + '">' +
-      '<h2 class="gpv-t">' + ico('bolt', 20) + '<span>' + esc(t('gpv_title')) + '</span></h2>';
+    var id = esc(p.id), addr = String(p.address).trim(), q = GPV_Q.indexOf(p.gpv) >= 0 ? p.gpv : '', h = '';
     // черга визначається сама за адресою: ще не шукали / адресу змінили після автопідбору — шукаємо
     var auto = p.gpvAuto && p.gpvAuto.addr === addr, look = (!q || (p.gpvAuto && !auto)) && !GPV.pick[p.id] ? gpvAddr(p) : null;
     if (auto && q && !GPV.pick[p.id]) gpvAddr(p);   // черга «за адресою» — раз за сеанс звіряємо з довідником (його могли виправити)
-    if (look && look.busy) return h + '<p class="small muted" data-key="gpv-finding">' + esc(t('gpv_finding', { a: addr })) + '</p></section>';
+    if (look && look.busy) return { brief: t('gpv_b_finding'), html: '<p class="small muted" data-key="gpv-finding">' + esc(t('gpv_finding', { a: addr })) + '</p>' };
     if (p.gpvAuto && !auto && look && look.found === false) q = '';   // нова адреса, а в переліку її немає — стара черга вже не про неї
     if (!q || GPV.pick[p.id]) {
       var opts = look && look.options && look.options.length ? look.options : null, list = opts && !GPV.pick[p.id] ? opts : GPV_Q;
@@ -815,21 +845,26 @@
       if (look && look.found === false && !GPV.pick[p.id] && look.ready !== false && !look.err)
         lead = opts ? t(look.reason === 'nohouse' ? 'gpv_many_nohouse' : look.reason === 'nostreet' ? 'gpv_many_nostreet' : look.reason === 'street' ? 'gpv_many_street' : 'gpv_many', { s: look.street || '', c: look.city || '' })
           : look.kharkiv ? t('gpv_kh_none') : t('gpv_notfound', { a: addr });
-      return h + '<p class="small" data-key="gpv-lead">' + esc(lead) + '</p>' +
+      return { brief: q ? t('gpv_q', { q: q }) : t('gpv_b_pick'), cls: q ? '' : 'need', html: '<p class="small" data-key="gpv-lead">' + esc(lead) + '</p>' +
         '<div class="gpv-qs' + (opts && list === opts ? ' few' : '') + '" role="group" aria-label="' + esc(t('gpv_pick_aria')) + '">' + list.map(function (x) {
           return '<button type="button" class="chip gpv-q" data-act="gpv-set" data-id="' + id + '" data-q="' + x + '" aria-pressed="' + (x === q) + '" data-key="gpv-q-' + x + '">' + x + '</button>'; }).join('') + '</div>' +
         (opts && list === opts ? '<p class="small"><button type="button" class="linkbtn" data-act="gpv-all" data-id="' + id + '" data-key="gpv-all">' + esc(t('gpv_all')) + '</button></p>' : '') +
         '<p class="small"><a href="' + GPV_LOOKUP + '" target="_blank" rel="noopener" data-key="gpv-lookup">' + esc(t('gpv_lookup')) + ' ' + ico('ext', 14) + '</a></p>' +
         '<p class="small muted">' + esc(t('gpv_lookup_hint')) + '</p>' +
-        (q ? '<p><button type="button" class="linkbtn" data-act="gpv-cancel" data-id="' + id + '" data-key="gpv-cancel">' + esc(t('cancel')) + '</button></p>' : '') + '</section>';
+        (q ? '<p><button type="button" class="linkbtn" data-act="gpv-cancel" data-id="' + id + '" data-key="gpv-cancel">' + esc(t('cancel')) + '</button></p>' : '') };
     }
     h += '<p class="gpv-sub small muted"><span data-key="gpv-q">' + esc(t('gpv_q', { q: q })) + '</span>' + (auto ? ' <span data-key="gpv-auto">' + esc(t('gpv_auto', { s: [p.gpvAuto.street, p.gpvAuto.city].filter(Boolean).join(', ') || addr })) + '</span>' : '') +
       ' · <button type="button" class="linkbtn" data-act="gpv-change" data-id="' + id + '" data-key="gpv-change">' + esc(t(auto ? 'gpv_wrong' : 'gpv_change')) + '</button></p>';
     var d = GPV.data;
-    if (!d) return h + '<p class="small muted" data-key="gpv-wait">' + (GPV.err ? esc(t('gpv_err')) + ' <a href="' + GPV_LOOKUP + '" target="_blank" rel="noopener">' + esc(t('gpv_official')) + '</a>' : esc(t('gpv_loading'))) + '</p></section>';
-    var now = kyivNow(), td = gpvDayOf(q, now.ymd), tm = gpvDayOf(q, addDays(now.ymd, 1));
+    if (!d) return { brief: t(GPV.err ? 'gpv_err' : 'gpv_loading'), html: h + '<p class="small muted" data-key="gpv-wait">' + (GPV.err ? esc(t('gpv_err')) + ' <a href="' + GPV_LOOKUP + '" target="_blank" rel="noopener">' + esc(t('gpv_official')) + '</a>' : esc(t('gpv_loading'))) + '</p>' };
+    var now = kyivNow(), td = gpvDayOf(q, now.ymd), tm = gpvDayOf(q, addDays(now.ymd, 1)), brief, cls = '';
+    if (!td) brief = t('gpv_b_none');
+    else if ((td.off || []).length) { brief = t('gpv_b_off', { l: td.off.map(gpvSpan).join(', ') }); cls = gpvNowState(td, now.min).off ? 'off' : 'due'; }
+    else if ((td.may || []).length) brief = t('gpv_b_may', { l: td.may.map(gpvSpan).join(', ') });
+    else { brief = t('gpv_b_free'); cls = 'ok'; }
     h += td ? gpvDay(td, t('gpv_today', { d: fmtDate(now.ymd) }), now) : '<p class="gpv-list" data-key="gpv-today-none">' + esc(t('gpv_today_none')) + '</p>';
     h += tm ? gpvDay(tm, t('gpv_tomorrow', { d: fmtDate(addDays(now.ymd, 1)) }), null) : '<p class="small muted" data-key="gpv-tmr-none">' + esc(t('gpv_tmr_none')) + '</p>';
+    h += gpvWide(td, tm, now);
     h += '<p class="small muted gpv-src">' + esc(t('gpv_src', { d: d.update || '—' })) + (d.stale ? ' <b class="warn">' + esc(t('gpv_stale')) + '</b>' : '') +
       ' <a href="' + GPV_CHANNEL + '" target="_blank" rel="noopener" data-key="gpv-channel">' + esc(t('gpv_channel')) + '</a></p>';
     if (window.TEPLO_API) {
@@ -837,14 +872,7 @@
       h += tg ? '<label class="check-row gpv-tg"><input type="checkbox" data-gpvtg="' + id + '"' + (p.gpvTg === false ? '' : ' checked') + ' data-key="gpv-tg"><span>' + esc(t('gpv_tg')) + '</span></label>'
         : '<p class="small muted" data-key="gpv-tg-need">' + ico('info', 16) + ' ' + esc(t(acc ? 'gpv_tg_need' : 'gpv_tg_login')) + '</p>';
     }
-    return h + '</section>';
-  }
-  /** Коротко в шапці квартири (список квартир): «без світла до 12:30» / «вимкнуть о 16:00». */
-  function gpvChip(p) {
-    if (!gpvHas(p) || GPV_Q.indexOf(p.gpv) < 0) return '';
-    gpvLoad(); var now = kyivNow(), day = gpvDayOf(p.gpv, now.ymd); if (!day || !(day.off || []).length) return '';
-    var s = gpvNowState(day, now.min); if (!s.off && s.next === undefined) return '';
-    return '<span class="ov-next gpv-chip ' + (s.off ? 'warn' : 'due') + '" data-key="gpv-chip-' + esc(p.id) + '">' + ico('bolt', 16) + '<span>' + esc(s.off ? t('gpv_chip_off', { t: gpvHm(s.until) }) : t('gpv_chip_next', { t: gpvHm(s.next) })) + '</span></span>';
+    return { brief: brief, cls: cls, html: h };
   }
   document.addEventListener('change', function (e) {
     var el = e.target, id = el && el.getAttribute && el.getAttribute('data-gpvtg'), p = id && place(id); if (!p) return;
@@ -3493,6 +3521,8 @@
       '<div class="field"><label for="pv-name">' + esc(t('pv_name')) + '</label><div class="ctl"><input id="pv-name" data-plf="name" maxlength="40" autocomplete="off" value="' + esc(p.name || '') + '" placeholder="' + esc(t('pv_name_ph')) + '"></div><div class="chips" role="group" aria-label="' + esc(t('pv_name')) + '">' + chips + '</div></div>' +
       '<div class="field"><label for="pv-addr">' + esc(t('pl_addr')) + ' <span class="muted small">(' + esc(t('b_opt')) + ')</span></label><div class="ctl"><input id="pv-addr" data-plf="address" maxlength="120" autocomplete="street-address" value="' + esc(p.address || '') + '" placeholder="' + esc(t('pl_addr_ph')) + '"></div></div>' +
       '<fieldset class="field"><legend class="lbl">' + esc(t('pv_color')) + '</legend><div class="swatches">' + sw + '</div><div class="small muted">' + esc(t('pv_color_h')) + '</div></fieldset></section>';
+    // графік відключень — на сторінці світла; у квартири без електролічильника — тут
+    if (!emeters().length) h += gpvBox(p, 'place');
     // свои рахунки
     var money = '';
     if (hasHeat()) money += '<h3>' + esc(t('pv_m_heat')) + '</h3><div class="grid2">' +
@@ -4470,9 +4500,9 @@
       case 'hp-add-place': hpAddPlace(); break;
       case 'hp-edit': HP_EDIT = el.getAttribute('data-id'); render(true); setTimeout(function () { var f = document.getElementById('hpa-' + HP_EDIT); if (f) f.focus(); }, 30); break;
       case 'hp-cancel': HP_EDIT = ''; render(true); break;
-      case 'gpv-all': GPV.pick[el.getAttribute('data-id')] = true; render(true); break;
+      case 'gpv-all': GPV.pick[el.getAttribute('data-id')] = true; GPV_OPEN[el.getAttribute('data-id')] = true; render(true); break;
       case 'gpv-set': { var gp = place(el.getAttribute('data-id')); if (gp) { gp.gpv = el.getAttribute('data-q'); delete gp.gpvAuto; gp.updatedAt = Date.now(); delete GPV.pick[gp.id]; save(); toast(t('gpv_saved', { q: gp.gpv })); SCROLL_TO = 'gpv-' + gp.id; render(true); } break; }
-      case 'gpv-change': GPV.pick[el.getAttribute('data-id')] = true; SCROLL_TO = 'gpv-' + el.getAttribute('data-id'); render(true); break;
+      case 'gpv-change': GPV.pick[el.getAttribute('data-id')] = true; GPV_OPEN[el.getAttribute('data-id')] = true; SCROLL_TO = 'gpv-' + el.getAttribute('data-id'); render(true); break;
       case 'gpv-cancel': delete GPV.pick[el.getAttribute('data-id')]; render(true); break;
       case 'hp-chip': { var hn = document.getElementById('hpn-' + el.getAttribute('data-id')); if (hn) { hn.value = el.getAttribute('data-v'); hn.focus(); } break; }
       case 'pl-add': PW = pwFresh(routeName() || homeRoute()); go('add-place'); break;
@@ -4801,9 +4831,9 @@
     var q = location.search.replace(/([?&])(go|place)=[\w-]+(?=&|$)/g, '$1').replace(/&{2,}/g, '&').replace(/\?&/, '?').replace(/[?&]$/, '');
     // напоминание про конкретную квартиру — сразу в неё
     if (pid && place(pid)) { switchPlace(pid); WX.key = ''; }
-    // графік відключень з ранкового повідомлення: головна, розгорнута квартира й її блок графіка
+    // графік відключень з ранкового повідомлення: сторінка світла квартири з розгорнутим блоком (без електролічильника — екран квартири)
     if (g === 'gpv') { var gpl = (pid && place(pid)) || places().filter(function (x) { return gpvHas(x) && x.gpv; })[0] || place(); g = 'home';
-      if (gpl) { S.homeOpen = S.homeOpen || {}; S.homeOpen[gpl.id] = true; SCROLL_TO = 'gpv-' + gpl.id; } }
+      if (gpl) { if (gpl.id !== S.placeId) { switchPlace(gpl.id); WX.key = ''; } GPV_OPEN[gpl.id] = true; SCROLL_TO = 'gpv-' + gpl.id; g = smeters('elec').length ? 'elec' : 'place-' + gpl.id; } }
     try { history.replaceState(null, '', location.pathname + q + '#' + g); } catch (e) { location.hash = g; }
     if (g === 'wnew') WN = wnFresh(wmeters('hot').length ? 'hot' : 'cold');
     if (g === 'enew' || g === 'gnew') EN = enFresh(g === 'gnew' ? 'gas' : 'elec');

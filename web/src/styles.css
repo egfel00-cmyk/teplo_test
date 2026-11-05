@@ -989,6 +989,33 @@ fieldset.field { border: 0; padding: 0; min-width: 0; }
 /* графік відключень світла (ГПВ): черги — сітка великих кнопок, шкала 24 год, «зараз» — текст і значок, не лише колір */
 .gpv { margin: var(--sp-3) 0 var(--sp-4); }
 .gpv-t { display: flex; align-items: center; gap: 8px; font-size: var(--fs-m); margin: 0 0 6px; }
+/* акордеон графіка: згорнутий — назва й один рядок «Сьогодні без світла: …» */
+details.gacc > summary { list-style: none; cursor: pointer; display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; column-gap: 8px; min-height: 44px; margin: -4px 0; }
+.gacc > summary::-webkit-details-marker { display: none; }
+.gacc > summary .gpv-t { margin: 0; grid-column: 1; }
+.gacc > summary .pacc-chev { grid-column: 2; grid-row: 1 / span 2; transform: rotate(90deg); transition: transform .15s; color: var(--c-ink-2); }
+.gacc[open] > summary .pacc-chev { transform: rotate(-90deg); }
+.gpv-brief { grid-column: 1; margin: 4px 0 0 28px; font-weight: 600; line-height: 1.4; overflow-wrap: anywhere; font-variant-numeric: tabular-nums; }
+.gpv-brief.off { color: var(--c-warn); } .gpv-brief.ok { color: var(--c-ok); } .gpv-brief.need { color: var(--c-ink-2); font-weight: 500; }
+.gacc[open] > .gpv-b { margin-top: 12px; }
+.gpv-wide { margin: 14px 0 6px; max-width: 640px; }
+.gpv-wide h3 { font-size: var(--fs-s); margin: 0 0 6px; }
+.gpv-wd { margin: 0 0 10px; }
+.gpv-wl { margin: 0 0 4px; font-size: var(--fs-s); }
+.gpv-hrs { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 6px 3px; }
+.gpv-hr { display: flex; flex-direction: column; align-items: stretch; gap: 2px; }
+.gpv-hc { display: flex; height: 22px; border-radius: 4px; overflow: hidden; border: 1px solid var(--c-line); }
+.gpv-hc i, .gpv-leg i { flex: 1; background: var(--gpv-on); }
+.gpv-hc i + i { border-left: 1px solid var(--c-surface); }
+.gpv-hc i.off, .gpv-leg i.off { background: var(--gpv-off); }
+.gpv-hc i.may, .gpv-leg i.may { background: repeating-linear-gradient(135deg, var(--c-warn-soft) 0 4px, var(--c-warn-line) 4px 6px); }
+.gpv-hr small { font-size: 11px; text-align: center; color: var(--c-ink-2); font-variant-numeric: tabular-nums; }
+.gpv-hr.now .gpv-hc { outline: 2px solid var(--c-warn); outline-offset: 1px; }
+.gpv-hr.now small { color: var(--c-warn); font-weight: 700; }
+.gpv-leg { display: flex; flex-wrap: wrap; gap: 4px 14px; margin: 6px 0 0; color: var(--c-ink-2); }
+.gpv-leg span { display: inline-flex; align-items: center; gap: 6px; }
+.gpv-leg i { display: inline-block; width: 16px; height: 12px; border-radius: 3px; border: 1px solid var(--c-line); flex: none; }
+@media (min-width: 720px) { .gpv-hrs { grid-template-columns: repeat(24, minmax(0, 1fr)); } }
 .gpv-t .ico { color: var(--c-elec, var(--c-ink)); flex: none; }
 .gpv-qs { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 8px; margin: 10px 0 12px; max-width: 520px; }
 .gpv-qs.few { grid-template-columns: repeat(auto-fill, minmax(72px, 96px)); }
@@ -1015,6 +1042,5 @@ fieldset.field { border: 0; padding: 0; min-width: 0; }
 .gpv-list.ok { color: var(--c-ok); font-weight: 600; }
 .gpv-src { margin: 10px 0 4px; }
 .gpv-tg { margin-top: 6px; font-weight: 500; }
-.gpv-chip { margin-top: 2px; }
 .hp-addr-gpv { margin: 6px 0 0; }
 @media (max-width: 380px) { .gpv-qs { grid-template-columns: repeat(4, minmax(0, 1fr)); } }

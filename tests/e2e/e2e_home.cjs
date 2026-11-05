@@ -11,6 +11,7 @@ let pass = 0, fail = 0; const ok = (n, c, x) => { if (c) { pass++; console.log('
   await p.click('[data-key=home-addr-add]'); await p.waitForTimeout(200);
   await p.fill('#hpa-main', 'вул. Сумська, 10, кв. 61'); await p.click('[data-key=hp-save]'); await p.waitForTimeout(300);
   let s = await st();
+  ok('графіка відключень на головній немає й з адресою (він на сторінці світла)', !(await p.$('.gpv')));
   ok('адресу збережено, назва лишилась за замовчуванням', s.places[0].address === 'вул. Сумська, 10, кв. 61' && !s.places[0].name && /Сумська/.test(await p.textContent('[data-key=home-place]')) && /Моя квартира/.test(await p.textContent('[data-key=home-place-name]')));
   await p.click('[data-key=home-add-place]'); await p.waitForTimeout(400); s = await st();
   const np = s.places[1];
