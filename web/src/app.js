@@ -441,7 +441,7 @@
   function wcfg() { var p = place(); return (p && p.water) || { account: '', surname: '', meters: [] }; }
   function wsetCfg(fn) { ensurePlaces(); var p = place(); p.water = JSON.parse(JSON.stringify(wcfg())); fn(p.water); p.updatedAt = Date.now(); save(); }
   /** Водомеры квартиры. Прибранные (m.removed — дата) — только с all: их история остаётся в Історії/Статистиці. */
-  function wmeters(kind, all) { return (wcfg().meters || []).filter(function (m) { return m && !m.deleted && (all || !m.removed) && (!kind || m.kind === kind); }); }
+  function wmeters(kind, all) { return byKind((wcfg().meters || []).filter(function (m) { return m && !m.deleted && (all || !m.removed) && (!kind || m.kind === kind); })); }
   function wrecs() { return (S.water || []).filter(function (r) { return r && !r.deleted && r.place === S.placeId; }).sort(function (a, b) { return a.date < b.date ? -1 : a.date > b.date ? 1 : a.base ? -1 : b.base ? 1 : 0; }); }
   /** Последние внесённые показания (стартовые при настройке — не в счёт: их не передают). */
   function wlast() { var a = wrecs().filter(function (r) { return !r.base && !r.own; }); return a.length ? a[a.length - 1] : null; }
@@ -496,7 +496,12 @@
     gas: { icon: 'flame', cls: 'c-gas', t: 'kd_gas', s: 'kd_gas_s', max: 2 },
     elec: { icon: 'bolt', cls: 'c-elec', t: 'kd_elec', s: 'kd_elec_s', max: 2 }
   };
-  var KIND_ORDER = ['heat', 'hot', 'cold', 'elec', 'gas'];   // как на привітанні и в очереди настройки: світло, потом газ
+  // Один порядок видов везде и во всех квартирах (владелец 05.11): опалення, гаряча, холодна, світло, газ —
+  // главная, экран квартиры (счётчики, «Постачальники й тарифи», рахунки, прибрані), вкладки, мастера.
+  var KIND_ORDER = ['heat', 'hot', 'cold', 'elec', 'gas'];
+  function kindRank(k) { var i = KIND_ORDER.indexOf(k === 'water' ? 'hot' : k); return i < 0 ? 99 : i; }
+  /** Счётчики по порядку видов; внутри вида — как добавляли (сортируем копию, хранение не трогаем). */
+  function byKind(a) { return a.map(function (m, i) { return [m, i]; }).sort(function (x, y) { return kindRank(x[0].kind) - kindRank(y[0].kind) || x[1] - y[1]; }).map(function (x) { return x[0]; }); }
   function hasHeat() { return !!(S.meter && !S.meter.removed); }
   /** Есть ли хоть один счётчик в любой квартире (вход на новом устройстве: уже настроен — сразу на главную). */
   function anyMeters() {
@@ -531,7 +536,7 @@
     var a = []; if (S.meter && S.meter.removed) a.push({ what: 'heat', kind: 'heat', title: t('kd_heat'), at: S.meter.removed });
     wmeters(null, true).filter(function (m) { return m.removed; }).forEach(function (m) { a.push({ what: m.id, kind: m.kind, title: wname(m), at: m.removed }); });
     pmeters(null, true).filter(function (m) { return m.removed; }).forEach(function (m) { a.push({ what: m.id, kind: m.kind, title: ename(m), at: m.removed }); });
-    return a;
+    return byKind(a);
   }
 
   // ================= лічильник знімали: ремонт, повірка, заміна (тепло й кожен водомір) =================
@@ -1546,7 +1551,7 @@
     if (k === 'gas') { var g = key.replace(/^(ue_|kpi_e_|e)/, function (x) { return x === 'ue_' ? 'ug_' : x === 'kpi_e_' ? 'kpi_g_' : 'g'; }); if (I.T.uk[g] !== undefined) return t(g, v); }
     return t(key, v);
   }
-  function pmeters(kind, all) { var p = place(); return ((p && p.meters) || []).filter(function (m) { return m && !m.deleted && (all || !m.removed) && (!kind || m.kind === kind); }); }
+  function pmeters(kind, all) { var p = place(); return byKind(((p && p.meters) || []).filter(function (m) { return m && !m.deleted && (all || !m.removed) && (!kind || m.kind === kind); })); }
   function setPMeters(fn) { ensurePlaces(); var p = place(); p.meters = JSON.parse(JSON.stringify(p.meters || [])); fn(p.meters); p.updatedAt = Date.now(); save(); }
   function smeters(k, all) { return pmeters(k, all); }
   function emeters(all) { return pmeters('elec', all); }
@@ -3661,7 +3666,7 @@
     if (!(R.num(w.supply) > 0)) return R.num(w.hot) > 0 ? Object.assign({}, base || {}, { hot: R.num(w.hot) }) : base;
     return Object.assign({}, base || {}, { supply: R.num(w.supply), drain: R.num(w.drain) > 0 ? R.num(w.drain) : 0 }, R.num(w.hot) > 0 ? { hot: R.num(w.hot) } : {});
   }
-  function prvKinds() { var k = []; if (emeters().length) k.push('elec'); if (smeters('gas').length) k.push('gas'); if (wmeters().length) k.push('water'); if (hasHeat()) k.push('heat'); return k; }
+  function prvKinds() { var k = []; if (hasHeat()) k.push('heat'); if (wmeters().length) k.push('water'); if (emeters().length) k.push('elec'); if (smeters('gas').length) k.push('gas'); return k; }
   var PRV_ICO = { elec: ['bolt', 'c-elec'], gas: ['flame', 'c-gas'], water: ['drop', 'c-cold'], heat: ['thermo', 'c-hot'] };
   function prvRow(p, k, d, nat) {
     var my = (p.prov || {})[k] || {}, own = !!(my.name || my.supply || my.price), ed = PRV.edit[k], org = my.name || (d && d.org) || '';
