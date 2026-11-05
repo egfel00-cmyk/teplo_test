@@ -683,6 +683,12 @@ $ghook(['document' => ['file_id' => 'pdf-1', 'file_name' => 'Адреси та �
 $gl = (new Browser('10.0.13.23'))->req('GET', '/api/gpv/list.pdf');
 ok('PDF «Адреси та черги» из канала обленерго → сохранён, бот: «Зберіг перелік адрес», /api/gpv/list.pdf отдаёт файл', ($gl->file['mime'] ?? '') === 'application/pdf' && file_get_contents($gl->file['path']) === $gpdf
   && str_contains(end($sent)[1]['text'] ?? '', 'Зберіг перелік адрес') && (Gpv::listMeta()['post'] ?? 0) === 1445, end($sent));
+$gpdf2 = "%PDF-1.4\n% місто\n"; Telegram::$fetch = fn($id) => $id === 'pdf-1' ? $gpdf : ($id === 'pdf-2' ? $gpdf2 : null);
+$ghook(['document' => ['file_id' => 'pdf-2', 'file_name' => 'Вулиці та черги.pdf', 'mime_type' => 'application/pdf', 'file_size' => 20], 'forward_origin' => ['type' => 'channel', 'chat' => ['id' => -100123, 'username' => 'kharkivenergy', 'type' => 'channel'], 'message_id' => 1500, 'date' => 1761120000]]);
+$f1 = substr(sha1($gpdf), 0, 10); $g1 = (new Browser('10.0.13.23'))->req('GET', '/api/gpv/list.pdf', null, ['QUERY_STRING' => 'f=' . $f1]); $g2 = (new Browser('10.0.13.23'))->req('GET', '/api/gpv/list.pdf');
+ok('другий перелік («Вулиці та черги») не затирає перший: list.pdf — останній, ?f=<sha10> — кожен окремо, у list.json — обидва', file_get_contents($g2->file['path']) === $gpdf2 && file_get_contents($g1->file['path']) === $gpdf
+  && count(Gpv::listMeta()['all'] ?? []) === 2 && (new Browser('10.0.13.23'))->req('GET', '/api/gpv/list.pdf', null, ['QUERY_STRING' => 'f=../../x'])->file['path'] === $g2->file['path'], Gpv::listMeta());
+foreach (glob(Gpv::listDir() . '/list-*.pdf') as $x) @unlink($x);
 @unlink(Gpv::listDir() . '/list.pdf'); @unlink(Gpv::listDir() . '/list.json');
 $ghook(['document' => ['file_id' => 'pdf-1', 'file_name' => 'Адреси та черги.pdf', 'mime_type' => 'application/pdf', 'file_size' => 20]]);
 ok('…тот же файл от обычного человека (не из канала, не админ) — не берём', Gpv::listFile() === null && (new Browser('10.0.13.24'))->req('GET', '/api/gpv/list.pdf')->status === 404);

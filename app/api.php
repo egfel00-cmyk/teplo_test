@@ -241,7 +241,7 @@ final class Api {
       case 'GET /api/gpv/addr': RateLimit::hit('gpv_addr', $ip); return Gpv::lookup((string)($r->query()['q'] ?? ''));   // черга відключень за адресою квартири (адресу не зберігаємо)
       case 'GET /api/gpv/site': return Gpv::site() + ['list' => Gpv::listMeta(), 'docs' => Gpv::docsMeta()];
       case 'GET /api/gpv/doc': { $f = Gpv::docFile((string)($r->query()['k'] ?? '')); if (!$f) throw new HttpError(404, 'not_found'); $res->file = $f; return []; }   // офіційний PDF-перелік з сайту обленерго (сервер забирає раз на добу)
-      case 'GET /api/gpv/list.pdf': { $f = Gpv::listFile(); if (!$f) throw new HttpError(404, 'not_found'); $res->file = $f; return []; }   // официальный перечень «Адреси та черги» (переслан боту из канала обленерго)   // как устроена официальная форма «черга за адресою» (разведка сервером, без личных данных)   // графики отключений света Харьковоблэнерго (без входа; очередь квартиры — в её данных)
+      case 'GET /api/gpv/list.pdf': { $f = Gpv::listFile((string)($r->query()['f'] ?? '')); if (!$f) throw new HttpError(404, 'not_found'); $res->file = $f; return []; }   // официальный перечень «Адреси та черги» (переслан боту из канала обленерго)   // как устроена официальная форма «черга за адресою» (разведка сервером, без личных данных)   // графики отключений света Харьковоблэнерго (без входа; очередь квартиры — в её данных)
       case 'GET /api/vk/status': return VkStatus::status();   // бот и кабинет Водоканала — работают ли (без входа)
       case 'POST /api/vk/event': {   // «Відправити» / «Прийняв» / «Не відповідає» / «Помилка» — для статуса бота
         if (!$user) throw new HttpError(401, 'unauthorized');

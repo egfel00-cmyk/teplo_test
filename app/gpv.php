@@ -25,11 +25,11 @@ final class Gpv {
   public static function read(): array { $j = json_decode((string)@file_get_contents(self::file()), true); return is_array($j) ? $j : []; }
   private static function write(array $j): void { @mkdir(dirname(self::file()), 0700, true); @file_put_contents(self::file(), json_encode($j, JSON_UNESCAPED_UNICODE), LOCK_EX); }
   private static function src(): string { return (string)Cfg::get('gpv_src', self::SRC); }
-  private static function get(string $url): array {
+  private static function get(string $url, int $max = 2 * 1024 * 1024): array {
     if (self::$http) return (self::$http)($url) + ['err' => null];
     $ch = curl_init($url);
     curl_setopt_array($ch, [CURLOPT_RETURNTRANSFER => true, CURLOPT_TIMEOUT => 15, CURLOPT_CONNECTTIMEOUT => 6, CURLOPT_FOLLOWLOCATION => true, CURLOPT_MAXREDIRS => 3,
-      CURLOPT_USERAGENT => 'Mozilla/5.0 (compatible; Lichylnyky/1.0; +' . Cfg::appUrl() . ')', CURLOPT_ENCODING => '', CURLOPT_MAXFILESIZE => 2 * 1024 * 1024]);
+      CURLOPT_USERAGENT => 'Mozilla/5.0 (compatible; Lichylnyky/1.0; +' . Cfg::appUrl() . ')', CURLOPT_ENCODING => '', CURLOPT_MAXFILESIZE => $max]);
     $b = curl_exec($ch); $code = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE); $err = $b === false ? curl_error($ch) : null; curl_close($ch);
     return ['code' => $code, 'body' => is_string($b) ? $b : '', 'err' => $err];
   }
@@ -147,13 +147,17 @@ final class Gpv {
   const LIST_CHANNEL = 'kharkivenergy';
   public static function listDir(): string { return Cfg::data() . '/uploads/gpv'; }
   public static function listMeta(): ?array { $j = json_decode((string)@file_get_contents(self::listDir() . '/list.json'), true); return is_array($j) ? $j : null; }
-  public static function listFile(): ?array { $f = self::listDir() . '/list.pdf'; return is_file($f) ? ['path' => $f, 'mime' => 'application/pdf'] : null; }
+  public static function listFile(string $f = ''): ?array { $f = $f !== '' && preg_match('/^[0-9a-f]{10}$/', $f) ? self::listDir() . "/list-$f.pdf" : self::listDir() . '/list.pdf'; return is_file($f) ? ['path' => $f, 'mime' => 'application/pdf'] : null; }
 
   // ---------- офіційні PDF-переліки на сайті обленерго (статичні файли — без форм і перевірок) ----------
   // «Вулиці та черги.pdf» (22.10.2025; преса подавала як перелік для Харкова). Сервер забирає раз на добу (cron), зберігає в
   // SITE_DATA/uploads/gpv/doc-<k>.pdf; GET /api/gpv/doc?k=… — віддає (публічний документ обленерго), GET /api/gpv/site → docs — стан.
-  const DOCS_V = 1;
-  const DOCS = ['vul' => 'https://oblenergo.kharkiv.ua/sites/default/files/pdf/%D0%92%D1%83%D0%BB%D0%B8%D1%86%D1%96%20%D1%82%D0%B0%20%D1%87%D0%B5%D1%80%D0%B3%D0%B8.pdf'];
+  // Сайт обленерго віддає нашому серверу 403 (Cloudflare, не обходимо) — тоді перелік пересилають боту (див. нижче). Ще — PDF Харківської ОВА
+  // «Графік відключень електроенергії в м. Харкові…» (групи відключень, у т. ч. вулиці Харкова; дата — невідома, перевірити за змістом).
+  const DOCS_V = 2;
+  const DOCS = ['vul' => 'https://oblenergo.kharkiv.ua/sites/default/files/pdf/%D0%92%D1%83%D0%BB%D0%B8%D1%86%D1%96%20%D1%82%D0%B0%20%D1%87%D0%B5%D1%80%D0%B3%D0%B8.pdf',
+    'odaa' => 'https://kharkivoda.gov.ua/content/documents/1265/126431/files/%D0%93%D1%80%D1%83%D0%BF%D0%B8%20%D0%B2%D1%96%D0%B4%D0%BA%D0%BB%D1%8E%D1%87%D0%B5%D0%BD%D1%8C_merged(1).pdf',
+    'odab' => 'https://kharkivoda.gov.ua/content/documents/1267/126629/files/%D0%93%D1%80%D1%83%D0%BF%D0%B8%20%D0%B2%D1%96%D0%B4%D0%BA%D0%BB%D1%8E%D1%87%D0%B5%D0%BD%D1%8C_%D0%BE%D0%BD%D0%BE%D0%B2%D0%B8%D1%82%D0%B8(2).pdf'];
   public static function docsMeta(): array { $j = json_decode((string)@file_get_contents(self::listDir() . '/docs.json'), true); return is_array($j) ? $j : []; }
   public static function fetchDocs(?int $now = null): ?array {
     $now = $now ?? time(); $m = self::docsMeta(); $same = (int)($m['v'] ?? 0) === self::DOCS_V;
@@ -162,7 +166,7 @@ final class Gpv {
     $out = ['v' => self::DOCS_V, 'at' => $now, 'tries' => $same && empty($m['ok']) ? (int)($m['tries'] ?? 0) + 1 : 1, 'docs' => [], 'ok' => true];
     @mkdir(self::listDir(), 0700, true);
     foreach (self::DOCS as $k => $url) {
-      $r = self::get($url); $b = (string)$r['body']; $ok = (int)$r['code'] === 200 && str_starts_with($b, '%PDF');
+      $r = self::get($url, 20 * 1024 * 1024); $b = (string)$r['body']; $ok = (int)$r['code'] === 200 && str_starts_with($b, '%PDF');
       $d = ['url' => $url, 'code' => (int)$r['code'], 'bytes' => strlen($b), 'err' => $r['err'] ? mb_substr((string)$r['err'], 0, 120) : null, 'ok' => $ok];
       if ($ok) { @file_put_contents(self::listDir() . "/doc-$k.pdf", $b, LOCK_EX); $d['sha1'] = sha1($b); }
       elseif (is_file(self::listDir() . "/doc-$k.pdf")) $d['kept'] = true;   // попередня копія лишається
@@ -192,13 +196,20 @@ final class Gpv {
       if (is_string($body) && str_starts_with($body, '%PDF')) {
         @mkdir(self::listDir(), 0700, true);
         $ok = @file_put_contents(self::listDir() . '/list.pdf', $body, LOCK_EX) !== false;
-        if ($ok) @file_put_contents(self::listDir() . '/list.json', json_encode(['at' => time(), 'name' => mb_substr((string)($d['file_name'] ?? ''), 0, 80), 'bytes' => strlen($body), 'sha1' => sha1($body),
-          'posted' => (int)($msg['forward_origin']['date'] ?? $msg['forward_date'] ?? 0), 'post' => (int)($msg['forward_origin']['message_id'] ?? $msg['forward_from_message_id'] ?? 0)], JSON_UNESCAPED_UNICODE), LOCK_EX);
+        $meta = ['at' => time(), 'name' => mb_substr((string)($d['file_name'] ?? ''), 0, 80), 'bytes' => strlen($body), 'sha1' => sha1($body), 'f' => substr(sha1($body), 0, 10),
+          'posted' => (int)($msg['forward_origin']['date'] ?? $msg['forward_date'] ?? 0), 'post' => (int)($msg['forward_origin']['message_id'] ?? $msg['forward_from_message_id'] ?? 0)];
+        if ($ok) {
+          // кожен перелік — ще й окремою копією (область, місто… не затирають один одного): GET /api/gpv/list.pdf?f=<sha10>
+          @file_put_contents(self::listDir() . '/list-' . $meta['f'] . '.pdf', $body, LOCK_EX);
+          $all = array_values(array_filter((array)(self::listMeta()['all'] ?? []), fn($x) => ($x['f'] ?? '') !== $meta['f']));
+          $all[] = array_intersect_key($meta, array_flip(['at', 'name', 'bytes', 'f', 'posted']));
+          @file_put_contents(self::listDir() . '/list.json', json_encode($meta + ['all' => array_slice($all, -20)], JSON_UNESCAPED_UNICODE), LOCK_EX);
+        }
       }
     } catch (Throwable $e) { $ok = false; }
     $nm = (string)($d['file_name'] ?? 'PDF');
     $p = ['chat_id' => $msg['chat']['id'], 'text' => $ok
-      ? ($ru ? "✅ Сохранил перечень адресов Харьковоблэнерго («{$nm}»). Очередь отключений по адресу квартиры будет определяться сама." : "✅ Зберіг перелік адрес Харківобленерго («{$nm}»). Черга відключень за адресою квартири визначатиметься сама.")
+      ? ($ru ? "✅ Сохранил перечень адресов Харьковоблэнерго («{$nm}»). Из него обновим справочник — очередь по адресу квартиры будет определяться сама." : "✅ Зберіг перелік адрес Харківобленерго («{$nm}»). З нього оновимо довідник — черга за адресою квартири визначатиметься сама.")
       : ($ru ? 'Не удалось сохранить файл. Перешлите его ещё раз.' : 'Не вдалося зберегти файл. Перешліть його ще раз.')];
     Telegram::call('sendMessage', $p);
     return $p + ['gpvList' => $ok];
