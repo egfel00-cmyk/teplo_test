@@ -20,6 +20,8 @@ const reply = (uid, kind, text, at) => execFileSync('php', ['-r', '$p=new PDO("s
   await p.reload(); await wait(2000);
   await p.evaluate(() => { window.__opened = []; window.open = u => { window.__opened.push(u); return null; }; });
   await p.goto(U + '#wrec-wnow'); await wait(500); await p.evaluate(() => { window.__opened = []; window.open = u => { window.__opened.push(u); return null; }; });
+  ok('картка запису: «Куди передати» згорнуто (акордеон), «лише для себе» — внизу', !(await p.$eval('details.wacc', d => d.open)) && (await p.evaluate(() => { const a = document.querySelector('[data-key=own-box]'), b = document.querySelector('[data-key=wrec-del]'); return !!(a && b && (b.compareDocumentPosition(a) & Node.DOCUMENT_POSITION_FOLLOWING)); })));
+  await p.click('[data-key=where-water-sum]'); await wait(200);
   const cmd = await p.textContent('[data-key=wsend-cmd]');
   ok('готова команда для бота: /2=рахунок:Прізвище|ID-показання', cmd === '/2=123456:Шевченко|555-176,777-440', cmd);
   ok('кнопка «Відправити у Водоканал»', /Відправити у Водоканал/.test(await p.textContent('[data-key=wsend-vk-send]')));
@@ -44,13 +46,14 @@ const reply = (uid, kind, text, at) => execFileSync('php', ['-r', '$p=new PDO("s
   await p.locator('[data-key=where-water]').screenshot({ path: '/tmp/shot_vk_conf.png' });
   // кнопка «Прийняв» вручну (без пересилання) — для наступного запису
   await p.evaluate(d => { const s = JSON.parse(localStorage.getItem('teplo.v1')); s.water.push({ id: 'wnow2', place: 'main', date: d, vals: { h1: '177', c1: '441' }, createdAt: d + 'T10:00:00Z', updatedAt: Date.now(), sent: {}, vkAt: Date.now() }); localStorage.setItem('teplo.v1', JSON.stringify(s)); }, today);
-  await p.reload(); await wait(1500); await p.goto(U + '#wrec-wnow2'); await wait(500);
+  await p.reload(); await wait(1500); await p.goto(U + '#wrec-wnow2'); await wait(500); await p.click('[data-key=where-water-sum]'); await wait(200);
   ok('стара відповідь не підтверджує новий запис (вона раніша за натискання)', !(((await st()).water.find(x => x.id === 'wnow2').sent || {}).vk));
   await p.click('[data-key=vk-ok]'); await wait(300);
   ok('«Прийняв — позначити передано» → передано', ((await st()).water.find(x => x.id === 'wnow2').sent || {}).vk === today);
   // ID лічильників: немає — кнопка з /1=, переслана відповідь — номери кнопками
   await p.evaluate(() => { const s = JSON.parse(localStorage.getItem('teplo.v1')); s.places[0].water.meters.forEach(m => { m.vkId = ''; }); s.places[0].updatedAt = Date.now(); s.water.find(x => x.id === 'wnow2').sent = {}; s.water.find(x => x.id === 'wnow2').updatedAt = Date.now(); localStorage.setItem('teplo.v1', JSON.stringify(s)); });
   await p.reload(); await wait(1500); await p.goto(U + '#wrec-wnow2'); await wait(500); await p.evaluate(() => { window.__opened = []; window.open = u => { window.__opened.push(u); return null; }; });
+  await p.click('[data-key=where-water-sum]'); await wait(200);
   await p.click('[data-key=vk-ids]'); await wait(500);
   ok('немає ID → «Відкрити бот із командою» /1=рахунок:Прізвище', (await p.evaluate(() => window.__opened))[0] === 'https://t.me/hvk_user_bot?text=' + encodeURIComponent('/1=123456:Шевченко'));
   reply(uid, 'info', 'Особовий рахунок 123456. Борг 0,00 грн.\nЛічильник ID 70012 (холодна), ID 70013 (гаряча)', Math.floor(Date.now() / 1000) + 1);

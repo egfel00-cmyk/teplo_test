@@ -27,9 +27,9 @@ let pass = 0, fail = 0; const ok = (n, c, x) => { if (c) { pass++; console.log('
   await p.click('[data-key=home-pl-sum-main]'); await p.waitForTimeout(200);
   await p.click('[data-key=home-pl-main] [data-key=card-hot] .ucard-main'); await p.waitForTimeout(400); s = await st();
   ok('картка гарячої в секції першої → її сторінка й квартира', (await p.evaluate(() => location.hash)) === '#water-hot' && s.placeId === 'main');
-  // 03.11: «Тестовий режим: почати спочатку» — только в Налаштуваннях; одна квартира — «Додати квартиру» под «Додати лічильник»
+  // 03.11: «Тестовий режим: почати спочатку» — только в Налаштуваннях; одна квартира — «Додати квартиру» под плиткой «Налаштування квартири» (05.11)
   await p.goto('http://127.0.0.1:8013/'); await p.evaluate(s => localStorage.setItem('teplo.v1', JSON.stringify(s)), demo({})); await p.goto('http://127.0.0.1:8013/#home'); await p.reload(); await p.waitForTimeout(400);
-  ok('головна: без «Тестовий режим», «Додати квартиру» — під плиткою «Додати лічильник»', !(await p.$('[data-key=test-reset]')) && await p.evaluate(() => { const b = document.querySelector('[data-key=home-add-place]'), u = document.querySelector('.ucards'); return !!(b && u && !u.contains(b) && (u.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING)); }));
+  ok('головна: без «Тестовий режим», «Додати квартиру» — під плиткою «Налаштування квартири»', !(await p.$('[data-key=test-reset]')) && await p.evaluate(() => { const b = document.querySelector('[data-key=home-add-place]'), u = document.querySelector('.ucards'); return !!(b && u && !u.contains(b) && (u.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING)); }));
   await p.goto('http://127.0.0.1:8013/#prefs'); await p.waitForTimeout(300); await p.click('[data-key=pg-data] > summary'); await p.waitForTimeout(200);
   ok('Налаштування → Дані: «Тестовий режим: почати спочатку» (одна кнопка стирання)', !!(await p.$('[data-key=test-reset]')) && !(await p.$('[data-key=prefs-wipe]')) && (await p.$$('#wipe-confirm')).length === 1);
   ok('без помилок JS', !errs.length, errs);

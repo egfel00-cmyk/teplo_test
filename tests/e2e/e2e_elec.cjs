@@ -19,7 +19,7 @@ let pass = 0, fail = 0; const ok = (n, c, i) => { console.log((c ? '  OK  ' : ' 
   ok('#elec без лічильника → головна', (await hash()) === '#home');
 
   // ---- додати: «Додати лічильник» → Світло → форма
-  await click('[data-key=card-add-meter]'); 
+  await click('[data-key=card-place-set]'); await click('[data-key=pv-add-meter]');   // «Додати лічильник» — у налаштуваннях квартири
   ok('у виборі «Світло» і «Газ» активні (не «скоро»)', !!(await p.$('[data-key=am-elec][data-act=am-pick]')) && !!(await p.$('[data-key=am-gas][data-act=am-pick]')) && !(await p.$('.am-soon')));
   await click('[data-key=am-elec]');
   ok('форма: 3 варіанти зон, однозонний — одне поле', (await hash()) === '#eadd' && (await p.$$('input[name=ea-z]')).length === 3 && (await p.$$('[data-ea]')).length === 1);
@@ -30,7 +30,9 @@ let pass = 0, fail = 0; const ok = (n, c, i) => { console.log((c ? '  OK  ' : ' 
   await p.fill('#ea-v-night', '5000'); await p.fill('#ea-acc', '9876543'); await click('[data-key=ea-save]', 400);
   s = await st(); const m = (s.places[0].meters || [])[0];
   ok('лічильник у квартирі: 2 зони, рахунок; стартові 10000/5000', m && m.kind === 'elec' && m.zones === 2 && m.account === '9876543' && (s.mrecs || []).some(r => r.base && r.meter === m.id && r.z.day === '10000' && r.z.night === '5000'), { m, r: s.mrecs });
-  ok('після — сторінка світла з табло «день/ніч»', (await hash()) === '#elec' && /день/.test(await p.textContent('[data-key=emeter-' + m.id + ']')));
+  ok('після — назад у налаштування квартири, світло в списку', (await hash()) === '#place-main' && !!(await p.$('[data-key=pv-m-' + m.id + ']')));
+  await go('elec');
+  ok('сторінка світла з табло «день/ніч», під назвою — особовий рахунок, без №', /день/.test(await p.textContent('[data-key=emeter-' + m.id + ']')) && /Особовий рахунок 9876543/.test(await p.textContent('[data-key=emeter-' + m.id + '] .mbox-sub')) && !/№/.test(await p.textContent('[data-key=emeter-' + m.id + '] .mbox-h')));
   await go('home');
   ok('головна: карточка «Світло» зі статусом', !!(await p.$('[data-key=card-elec]')) && /Передати|Наступне/.test(await p.textContent('[data-key=card-elec]')));
 

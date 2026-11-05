@@ -521,6 +521,15 @@ input[type=text]:not(.dmy-native):not(.pl-in), input[type=email], input[type=pas
 .wcam:hover { background: var(--c-ghost-hover); color: var(--c-ink); }
 .wcam:focus-within { outline: 3px solid var(--c-info); outline-offset: -3px; }
 .wcam[aria-busy="true"] { opacity: .5; pointer-events: none; }
+/* «Копіювати» прямо в полі (рахунок, №, код у боті) — як камера у поля вводу */
+.ctl-copy { flex: none; display: grid; place-items: center; width: 52px; border: 0; border-left: 1.5px solid var(--c-field-line); background: transparent; color: var(--c-ink-2); cursor: pointer; padding: 0; }
+.ctl-copy:hover { background: var(--c-ghost-hover); color: var(--c-ink); }
+.ctl-copy:focus-visible { outline: 3px solid var(--c-info); outline-offset: -3px; }
+.ctl-copy.done { color: var(--c-ok); }
+.copy-ico { flex: none; display: inline-grid; place-items: center; width: 40px; height: 40px; margin-left: 4px; border: 1.5px solid var(--c-line); border-radius: 10px; background: transparent; color: var(--c-ink-2); cursor: pointer; padding: 0; vertical-align: middle; }
+.copy-ico:hover { background: var(--c-ghost-hover); color: var(--c-ink); } .copy-ico:focus-visible { outline: 3px solid var(--c-info); outline-offset: 2px; }
+.copy-ico.done { color: var(--c-ok); border-color: var(--c-ok); }
+.lcd-cap .copy-ico { width: 36px; height: 36px; margin-left: auto; }
 .wz-opts { display: grid; gap: 10px; margin: 8px 0 12px; }
 .wz-opt { display: flex; align-items: center; gap: 12px; padding: 14px 16px; border: 1.5px solid var(--c-field-line); border-radius: 14px; background: var(--c-surface); cursor: pointer; color: inherit; text-decoration: none; font: inherit; text-align: left; width: 100%; }
 .wz-opt > span { flex: 1; display: flex; flex-direction: column; gap: 2px; }
@@ -758,6 +767,10 @@ details.wacc > summary { list-style: none; cursor: pointer; display: flex; align
 .ucard-addm.big .am-plus { width: 60px; height: 60px; }
 .ucard-addm.big .am-txt b { font-size: var(--fs-l); }
 .ucard-addm .am-cta { pointer-events: none; }
+/* «Налаштування квартири» под счётчиками — та же плитка, но сплошная рамка и шестерёнка (вход, не «добавить») */
+a.ucard-addm { text-decoration: none; }
+.ucard-pset { border-style: solid; border-width: 1.5px; background: var(--c-surface); }
+.ucard-pset .am-plus { background: var(--c-surface-2); color: var(--c-ink); }
 .am-opt .ico.c-hot, .am-opt .ico.c-heat { color: var(--c-supply); } .am-opt .ico.c-cold { color: var(--c-return); }
 .am-opt .ico.c-gas { color: var(--c-gas); } .am-opt .ico.c-elec { color: var(--c-elec); }
 .am-opt > .ico:first-child { flex: none; }

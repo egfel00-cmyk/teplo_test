@@ -9,12 +9,14 @@ let pass = 0, fail = 0; const ok = (n, c, i) => { console.log((c ? '  OK  ' : ' 
   // на главной при ≥ 2 квартирах — секции-аккордеон: ищем внутри секции текущей квартиры
   const inCur = async (sel) => { const s0 = JSON.parse(await p.evaluate(() => localStorage.getItem('teplo.v1'))); return (s0.places || []).filter(x => !x.deleted).length > 1 ? '[data-key=home-pl-' + s0.placeId + '] ' + sel : sel; };
   const go = async (r) => { await p.goto('http://127.0.0.1:8013/#' + r); await p.waitForTimeout(350); };
+  // «Додати лічильник» — на экране квартиры: главная → плитка «Налаштування квартири» → «Додати лічильник»
+  const addMeter = async () => { await p.click(await inCur('[data-key=card-place-set]')); await p.waitForTimeout(300); await p.click('[data-key=pv-add-meter]'); await p.waitForTimeout(250); };
   await p.goto('http://127.0.0.1:8013/'); await p.evaluate(s => localStorage.setItem('teplo.v1', JSON.stringify(s)), Object.assign(demo({}), { bill: { abon: 30, mzk: 0.0126 } }));
   // старое хранение: адрес в name → name пустое, адрес в address
   await p.evaluate(() => { const s = JSON.parse(localStorage.getItem('teplo.v1')); s.places[0].name = 'Сумська 10, кв. 61'; delete s.places[0].v; localStorage.setItem('teplo.v1', JSON.stringify(s)); });
   await p.reload(); await go('home');
   let s;
-  ok('одна квартира — шапки нет, 3 карточки + «Додати лічильник»', !(await p.$('[data-key=place-bar]')) && (await p.$$('.ucard')).length === 3 && !!(await p.$('[data-key=card-add-meter]')));
+  ok('одна квартира — шапки нет, 3 карточки + «Налаштування квартири» (вместо «Додати лічильник»)', !(await p.$('[data-key=place-bar]')) && (await p.$$('.ucard')).length === 3 && !(await p.$('[data-key=card-add-meter]')) && (await p.getAttribute('[data-key=card-place-set]', 'href')) === '#place-main');
 
   // добавить квартиру: настройки → квартиры → «Додати квартиру» → экран новой квартиры
   // (этап 2: «Додати квартиру» — мастер; здесь — пустая квартира без названия: «Далі» → «Створити», дальше — её экран)
@@ -42,19 +44,20 @@ let pass = 0, fail = 0; const ok = (n, c, i) => { console.log((c ? '  OK  ' : ' 
   ok('назад — на экран квартиры', (await p.evaluate(() => location.hash)) === '#place-' + p2.id);
   await go('home');
   const sec2 = '[data-key=home-pl-' + p2.id + '] ';
-  ok('главная: секция второй квартиры открыта — только «Холодна» + «Додати»', (await p.$$(sec2 + '.ucard')).length === 1 && !!(await p.$(sec2 + '[data-key=card-cold]')) && !(await p.$(sec2 + '[data-key=card-heat]')) && !!(await p.$(sec2 + '[data-key=card-add-meter]')));
+  ok('главная: секция второй квартиры открыта — только «Холодна» + «Налаштування квартири»', (await p.$$(sec2 + '.ucard')).length === 1 && !!(await p.$(sec2 + '[data-key=card-cold]')) && !(await p.$(sec2 + '[data-key=card-heat]')) && !!(await p.$(sec2 + '[data-key=card-place-set]')) && !(await p.$(sec2 + '[data-key=home-pl-set-' + p2.id + ']')));
   await go('water-cold');
   ok('шапка: «Батьків», адрес, «Інша квартира»', /Батьків/.test(await p.textContent('[data-key=place-bar]')) && /Пушкінська/.test(await p.textContent('[data-key=place-bar]')) && !!(await p.$('[data-key=place-bar-all]')));
   await go('heat');
   ok('#heat в квартире без тепла → главная (и адрес #home)', (await p.evaluate(() => location.hash)) === '#home' && !!(await p.$('[data-key=card-cold]')));
   // второй холодный — нужна назва; первый можно назвать тут же
-  await p.click(await inCur('[data-key=card-add-meter]')); await p.click('[data-key=am-cold]'); await p.waitForTimeout(300);
+  await addMeter(); await p.click('[data-key=am-cold]'); await p.waitForTimeout(300);
   await p.click('[data-key=wa-save]'); await p.waitForTimeout(150);
   ok('второй холодный без назви — просим назвать', (await p.textContent('#wa-err')).length > 5);
   await p.fill('#wa-name', 'ванна'); await p.fill('#wa-name0', 'кухня'); await p.click('[data-key=wa-save]'); await p.waitForTimeout(400);
   s = await st(); q = s.places.find(x => x.id === p2.id);
   ok('два холодных: «кухня» и «ванна»', q.water.meters.map(m => m.name).join() === 'кухня,ванна', q.water.meters);
-  ok('после добавления из главной — страница холодной', (await p.evaluate(() => location.hash)) === '#water-cold');
+  ok('после добавления из налаштувань квартири — назад туда', (await p.evaluate(() => location.hash)) === '#place-' + p2.id);
+  await go('water-cold');
   // ввод воды — тост с названием квартиры
   await p.click('[data-key=water-add]'); await p.waitForTimeout(300);
   const ids = q.water.meters.map(m => m.id);
@@ -96,8 +99,8 @@ let pass = 0, fail = 0; const ok = (n, c, i) => { console.log((c ? '  OK  ' : ' 
   ok('главная без карточки тепла', !(await p.$(await inCur('[data-key=card-heat]'))) && (await p.$$(await inCur('.ucard'))).length === 2);
   await go('history');
   ok('история: вкладка «Опалення» осталась (есть показания)', !!(await p.$('[data-key=kind-heat]')));
-  await go('home'); await p.click(await inCur('[data-key=card-add-meter]')); await p.waitForTimeout(250); await p.click('[data-key=am-restore-heat]'); await p.waitForTimeout(300);
-  s = await st(); ok('повернули опалення из выбора', !s.places.find(x => x.id === 'main').meter.removed && !!(await p.$(await inCur('[data-key=card-heat]'))));
+  await go('home'); await addMeter(); await p.click('[data-key=am-restore-heat]'); await p.waitForTimeout(300);
+  s = await st(); await go('home'); ok('повернули опалення из выбора', !s.places.find(x => x.id === 'main').meter.removed && !!(await p.$(await inCur('[data-key=card-heat]'))));
 
   // удалить вторую квартиру — с её названием в вопросе
   await go('place-' + p2.id); await p.click('[data-key=pv-del]'); await p.waitForTimeout(150);

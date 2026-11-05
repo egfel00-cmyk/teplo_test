@@ -14,12 +14,14 @@ let pass = 0, fail = 0; const ok = (n, c, i) => { console.log((c ? '  OK  ' : ' 
   await p.goto('http://127.0.0.1:8013/'); await p.evaluate(s => localStorage.setItem('teplo.v1', JSON.stringify(s)), demo({}));
   await p.reload(); await p.waitForTimeout(400);
   let s;
-  await click('[data-key=card-add-meter]'); await click('[data-key=am-gas]');
+  await click('[data-key=card-place-set]'); await click('[data-key=pv-add-meter]'); await click('[data-key=am-gas]');
   ok('форма газу: без вибору зон, одне поле м³', (await hash()) === '#gadd' && !(await p.$('input[name=ea-z]')) && (await p.$$('[data-ea]')).length === 1);
   await p.fill('#ea-v-all', '1180,5'); await p.fill('#ea-acc', '123456789'); await click('[data-key=ea-save]', 400);
   s = await st(); const m = s.places[0].meters.find(x => x.kind === 'gas');
   ok('лічильник газу + стартові 1180.5', m && m.account === '123456789' && s.mrecs.some(r => r.base && r.meter === m.id && r.z.all === '1180.5'), { m, r: s.mrecs });
-  ok('сторінка газу з барабаном', (await hash()) === '#gas' && !!(await p.$('[data-key=emeter-' + m.id + '] .gdrum')));
+  ok('після — налаштування квартири', (await hash()) === '#place-main');
+  await go('gas');
+  ok('сторінка газу з барабаном', !!(await p.$('[data-key=emeter-' + m.id + '] .gdrum')));
   await go('home'); ok('головна: карточка «Газ»', !!(await p.$('[data-key=card-gas]')));
   await click('[data-key=card-gas-add]', 400);
   ok('введення: «Зараз приймають: 1 листопада–5 листопада»', (await hash()) === '#gnew' && /1 листопада.*5 листопада/.test(await p.textContent('#main')));
