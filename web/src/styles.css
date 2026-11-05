@@ -1148,3 +1148,10 @@ summary:focus-visible { outline: 3px solid var(--c-info); outline-offset: 2px; b
 .mp { margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--c-line); }
 .mp-h { margin: 0 0 8px; font-size: 16px; font-weight: 700; }
 .mp .warn-text, .warn-text { color: var(--c-warn-ink); font-weight: 600; }
+
+/* «Уточніть пункт»: крупні рядки-кнопки (пункт, тип, громада, район) замість випадного списку */
+.prv-picks { list-style: none; margin: 8px 0 12px; padding: 0; display: grid; gap: 8px; }
+.prv-pick { width: 100%; text-align: left; display: grid; gap: 2px; padding: 12px 14px; min-height: 48px; border: 1px solid var(--c-line); border-radius: 12px; background: var(--c-surface); color: inherit; font: inherit; cursor: pointer; }
+.prv-pick:hover { border-color: var(--c-accent, currentColor); }
+.prv-pick:focus-visible { outline: 3px solid var(--c-focus, #4c8dff); outline-offset: 2px; }
+.prov-alts { margin: 4px 0 12px; }

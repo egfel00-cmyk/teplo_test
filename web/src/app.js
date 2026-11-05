@@ -973,6 +973,10 @@
     var mark = function (to, sent) { return rec ? '<p class="dest-mark">' + (sent ? '<button class="linkbtn" data-act="wsent" data-to="' + to + '" data-v="0" data-id="' + rec.id + '">' + esc(t('ws_unmark')) + '</button>' : '<button class="btn sec" data-act="wsent" data-to="' + to + '" data-v="1" data-id="' + rec.id + '" data-key="wsend-' + to + '-done">' + ico('check', 18) + '<span>' + esc(t('ws_mark')) + '</span></button>') + '</p>' : ''; };
     var valList = function (list) { return '<ul class="wvals">' + list.filter(function (m) { return rec.vals && rec.vals[m.id] !== undefined && rec.vals[m.id] !== ''; }).map(function (m) {
       var v = Wt.whole(rec.vals[m.id]); return '<li><span>' + esc(wname(m)) + (m.serial ? ' <span class="muted small">№ ' + esc(m.serial) + '</span>' : '') + '</span><b class="num">' + v + '</b><button class="linkbtn" data-act="copy" data-text="' + v + '">' + esc(t('copy')) + '</button></li>'; }).join('') + '</ul>'; };
+    // квартира не в Харкові (за довідником — інший постачальник води): контакти її водоканалу, без бота й кабінету Харківводоканалу
+    var ld = prvOf('water');
+    if (ld && ld.via !== 'hvk') return '<section class="panel where" data-key="where-water"><h2>' + ico('send', 20) + '<span>' + esc(t('wd_title')) + '</span></h2>' + wherePlaceLine() +
+      localDest('water', ld, rec ? valList(ms) : '', rec ? mark('vk', wsentVk(rec)) : '', rec && wsentVk(rec)) + '</section>';
     // Водоканал: холодна (вода + відведення) і гаряча (лише відведення) — одна команда для бота на всі водоміри
     var vkBody = '', vkChans = [[Wt.VK_BOT, t('wd_bot', { b: '@hvk_user_bot' }), 'send', 'bot'], [Wt.VK_CABINET, t('wd_cab_vk'), 'ext', 'cab']];
     if (rec) {
@@ -1671,6 +1675,8 @@
       if (sms) body += '<p class="small">' + esc(t('gd_sms_how', { s: sms })) + '</p>';
       chans = [[Gs.LINKS.bot, t('gd_bot'), 'send', 'bot', botAttr]].concat(sms ? [['sms:' + Gs.LINKS.sms + '?&body=' + encodeURIComponent(sms), t('gd_sms'), 'send', 'sms']] : []).concat([[Gs.LINKS.cabinet, t('gd_cab'), 'ext', 'cab']]);
       if (have) body += sbBox(k, have);
+      // бот Газмереж питає філію: у Харкові — «Харківська міська», в області — «Харківська» (за довідником адреси)
+      var gdp = prvOf('gas'); if (gdp && gdp.grm) body += '<p class="small muted" data-key="gd-fil">' + esc(t('gd_fil', { g: String(gdp.grm).replace(/^Газмережі,\s*/, '') })) + '</p>';
       more = '<p class="dm-t">' + esc(t('gd_call')) + '</p>' + phones + '<p>' + esc(t('gd_app_note')) + '</p>';
     } else {
       // офіційні канали Харківобленерго: бот @Kooz2bot, онлайн-форма (з капчею — відкриваємо, людина проходить), SMS 4300
@@ -1732,7 +1738,7 @@
   /** «Ціна» в налаштуваннях кожного лічильника: відома — вже вписана (з довідника за адресою чи з платіжки), невідома — порожнє
    *  поле і прохання вписати з платіжки. k: heat | hot | cold | elec | gas. Пишемо в квартиру: p.prov[heat|water|elec].price…, p.gasPrice, p.bill.abon. */
   function priceBlock(k) {
-    var p = place() || {}, a = String(p.address || '').trim(), j = a ? prvLoad(a) : null, reg = j && j.found && j.kinds ? j.kinds : null;
+    var p = place() || {}, a = String(p.address || '').trim(), j = a ? prvLoad(p) : null, reg = j && j.found && j.kinds ? j.kinds : null;
     var pk = k === 'hot' || k === 'cold' ? 'water' : k, my = (p.prov || {})[pk] || {}, d = reg && reg[pk], f = function (v) { return v === null || v === undefined || v === '' ? '' : money(v); };
     var fld = function (id, lbl, val, unit, ph) { return '<div class="field"><label for="' + id + '">' + esc(lbl) + '</label><div class="ctl"><input id="' + id + '" class="num" inputmode="decimal" autocomplete="off" data-mp="' + id + '" value="' + esc(val) + '"' + (ph ? ' placeholder="' + esc(ph) + '"' : '') + '><span class="unit">' + esc(unit) + '</span></div></div>'; };
     var h = '', own = false, unknown = false, src = '';
@@ -1743,7 +1749,9 @@
     } else if (pk === 'water') {
       var tr = Wt.tariffAt(today(), wtar()); own = R.num(my.supply) > 0;
       unknown = !own && !!reg && !(d && R.num(d.supply) > 0) && !(S.wtariff && R.num(S.wtariff.supply) > 0);
-      h = fld('mp-ws', t('prv_supply'), unknown ? '' : f(tr.supply), 'грн') + fld('mp-wd', t('prv_drain'), unknown ? '' : f(tr.drain), 'грн') + (k === 'hot' ? fld('mp-wh', t('wtp_hot'), f(tr.hot), 'грн') : '');
+      // водовідведення громади невідоме (Мерефа) — порожнє поле, а не харківське
+      var drainUnk = !own && d && d.via !== 'hvk' && R.num(d.supply) > 0 && !(R.num(d.drain) > 0) && d.drain !== 0;
+      h = fld('mp-ws', t('prv_supply'), unknown ? '' : f(tr.supply), 'грн') + fld('mp-wd', t('prv_drain'), unknown || drainUnk ? '' : f(tr.drain), 'грн') + (k === 'hot' ? fld('mp-wh', t('wtp_hot'), f(tr.hot), 'грн') : '');
       src = (d && d.org) || '';
     } else if (k === 'elec') {
       own = R.num(my.price) > 0; h = fld('mp-ep', t('mp_elec'), f(own ? R.num(my.price) : El.priceAt(today())), 'грн');
@@ -2568,6 +2576,9 @@
 
   /** «Куди передати» для тепла: лише кабінет ХТМ, 5–25 числа; є перевірені показання — до покрокової передачі. */
   function heatWhere() {
+    // тепло квартири постачає не ХТМ (інша громада) — контакти її постачальника з довідника
+    var ld = prvOf('heat');
+    if (ld && ld.via !== 'htm') return '<section class="panel where" data-key="where-heat"><h2>' + ico('send', 20) + '<span>' + esc(t('wd_title')) + '</span></h2>' + wherePlaceLine() + localDest('heat', ld, '', '', false) + '</section>';
     var ready = RD().filter(function (r) { return r.status === 'checked'; }).slice(-1)[0], w = R.windowState(today());
     var due = w.state === 'closed_before' ? t('wd_heat_from', { d: fmtDate(dayOfMonth(today(), 5)) }) : w.state === 'closed_after' ? t('wd_heat_from', { d: fmtDate(nextMonthDay(today(), 5)) }) : t('wd_due', { d: fmtDate(dayOfMonth(today(), 25)) });
     var body = ready ? '<div class="row-actions" style="margin-top:8px"><a class="btn" href="#handover" data-act="focus" data-id="' + ready.id + '" data-key="where-heat-handover">' + ico('copy', 18) + '<span>' + esc(t('wd_heat_ready', { d: fmtDate(ready.htm.date) })) + '</span></a></div>' : '';
@@ -2680,7 +2691,11 @@
   /** Показания без удалённых (удалённые остаются «надгробием» с deleted, чтобы удаление синхронизировалось). */
   function RD() { var first = S.places && S.places[0] ? S.places[0].id : 'main'; return (S.readings || []).filter(function (r) { return r && !r.deleted && (r.place || first) === S.placeId; }); }
   /** Тариф тепла, грн/Гкал: свій у квартири (place.prov.heat.price — з платіжки або з Налаштувань), далі старий спільний S.tariff, далі ХТМ. */
-  function tariff() { var p = place() || {}, h = (p.prov || {}).heat || {}, pn = R.num(h.price); if (pn && pn > 0) return pn; var n = R.num(S.tariff); return n && n > 0 ? n : R.C.TARIFF; }
+  function tariff() {
+    var p = place() || {}, h = (p.prov || {}).heat || {}, pn = R.num(h.price); if (pn && pn > 0) return pn;
+    var d = prvOf('heat'); if (d && d.via !== 'htm' && R.num(d.price) > 0) return R.num(d.price);   // тепло не від ХТМ — тариф із довідника громади
+    var n = R.num(S.tariff); return n && n > 0 ? n : R.C.TARIFF;
+  }
   function tariffSet(v) { var p = place(); if (!p) { S.tariff = v; return; } p.prov = p.prov || {}; p.prov.heat = Object.assign({}, p.prov.heat || {}, { price: v, at: today() }); p.updatedAt = Date.now(); }
   /* Платіжка ХТМ: до сплати = (ваше тепло за лічильником + ваша частка ЗБП) × тариф + абонплата.
      ЗБП — загальнобудинкові потреби (сходи, підвал): частка пропорційна площі, у платіжці — стовпець «на ЗБП» у рядку вашого вузла. */
@@ -3582,18 +3597,52 @@
   // ---------- постачальники й тарифи за адресою квартири (GET /api/providers, довідник app/data/providers.json) ----------
   // p.prov[k] = { ok: 1 } — людина підтвердила, що так і є; { name, supply, drain, price, at } — її дані з платіжки (k: elec, gas, water, heat).
   var PRV = { addr: {}, edit: {} };
-  function prvLoad(a) {
-    if (!a || !window.TEPLO_API) return null; if (PRV.addr[a]) return PRV.addr[a];
-    PRV.addr[a] = { busy: true };
-    fetch(window.TEPLO_API + '/providers?q=' + encodeURIComponent(a), { credentials: 'same-origin', headers: { Accept: 'application/json' } }).then(function (r) { return r.json(); })
-      .then(function (j) { PRV.addr[a] = j && typeof j.found === 'boolean' ? j : { err: true }; safeRender(); }, function () { PRV.addr[a] = { err: true }; safeRender(); });
-    return PRV.addr[a];
+  /** Уточнений людиною пункт (Миколаївок у області 17) — лише для тієї адреси, при якій його обрали. */
+  function prvSettle(p) { var a = String((p && p.address) || '').trim(), st = p && p.settle; return st && st.a === a && st.n && st.h ? st : null; }
+  /** Довідник для квартири: адреса (+ уточнений пункт). a — адреса рядком (старий виклик) або квартира. */
+  function prvLoad(pa) {
+    var p = typeof pa === 'string' ? null : pa, a = String(p ? p.address || '' : pa || '').trim(); if (!a || !window.TEPLO_API) return null;
+    var st = prvSettle(p), key = a + (st ? '|' + st.n + '|' + st.h : ''); if (PRV.addr[key]) return PRV.addr[key];
+    PRV.addr[key] = { busy: true };
+    fetch(window.TEPLO_API + '/providers?q=' + encodeURIComponent(a) + (st ? '&n=' + encodeURIComponent(st.n) + '&h=' + encodeURIComponent(st.h) : ''), { credentials: 'same-origin', headers: { Accept: 'application/json' } }).then(function (r) { return r.json(); })
+      .then(function (j) { PRV.addr[key] = j && typeof j.found === 'boolean' ? j : { err: true }; safeRender(); }, function () { PRV.addr[key] = { err: true }; safeRender(); });
+    return PRV.addr[key];
+  }
+  /** Довідник поточної квартири по видах (або null): для «Куди передати», «Ціни». Без адреси — null (як і було: Харків за замовчуванням). */
+  function prvKinds0(p) { p = p || place(); var j = p && String(p.address || '').trim() ? prvLoad(p) : null; return j && j.found && j.kinds ? j : null; }
+  /** Текст довідника мовою інтерфейсу: note_ru / how_ru …, якщо є. */
+  function ploc(d, f) { return d ? (S.lang === 'ru' && d[f + '_ru']) || d[f] || '' : ''; }
+  function kindWord(c) { return t('pk_' + (c === 'M' ? 'm' : c === 'X' ? 'x' : 'c')); }
+  function placeWhere(pl) { return t('prv_where', { k: kindWord(pl.kind), h: pl.hromada, d: pl.district }); }
+  /** Постачальник виду (elec|gas|water|heat) поточної квартири з довідника; null — адреси немає (як і було — Харків) чи ще вантажиться. */
+  function prvOf(k) { var j = prvKinds0(); return j ? Object.assign({ _place: j.place }, j.kinds[k] || {}) : null; }
+  function wherePlaceLine() {
+    return places().length > 1 ? '<p class="dest-place" style="--pc:var(--pc-' + placeColor(place()) + ')" data-key="where-place"><b>' + esc(t('wd_for', { p: placeLabel(place()) })) + '</b>' + (placeSub(place()) ? '<span class="small muted"> · ' + esc(placeSub(place())) + '</span>' : '') + '</p>' : '';
+  }
+  /** «Куди передати» для води чи тепла поза Харковом: хто (з довідника чи з платіжки людини), як і коли, сайт/бот/кабінет, телефони, куди платити.
+   *  Постачальника не знайшли — чесно: «впишіть з платіжки» з переходом у «Постачальники й тарифи». */
+  function localDest(k, d, vals, mark, sent) {
+    var p = place() || {}, own = (p.prov || {})[k] || {}, org = own.name || d.org || '', pl = d._place || {};
+    var how = ploc(d, 'how'), pay = ploc(d, 'pay'), phones = (d.phones || []).slice();
+    if (own.phone) phones.unshift([String(own.phone).replace(/[^\d+]/g, ''), own.phone, t('ld_own_phone')]);
+    var chans = [];
+    if (d.cab) chans.push([d.cab, t('ld_cab'), 'ext', 'cab']);
+    if (d.bot) chans.push([d.bot, t('wd_bot', { b: '@' + String(d.bot).replace(/^.*t\.me\//, '') }), 'send', 'bot']);
+    if (d.site) chans.push([d.site, t('ld_site'), 'ext', 'site']);
+    var body = vals || '';
+    if (!org) body += '<p data-key="ld-unk">' + esc(t('ld_unk_' + k, { c: pl.name || '' })) + '</p><p><a class="btn sec" href="#place-' + esc(p.id || '') + '" data-act="prv-go" data-key="ld-fill">' + ico('edit', 18) + '<span>' + esc(t('prv_fill')) + '</span></a></p>';
+    else body += '<p class="small" data-key="ld-how">' + esc(how || t('ld_how_unk')) + '</p>';
+    var more = (phones.length ? '<p class="dm-t">' + esc(t('ld_call')) + '</p><ul class="dm-ph">' + phones.map(function (x) { return '<li>' + telLink(x[0], x[1]) + (x[2] ? '<span class="muted">' + esc(x[2]) + '</span>' : '') + '</li>'; }).join('') + '</ul>' : '') +
+      (pay ? '<p class="dm-t">' + esc(t('ld_pay_t')) + '</p><p>' + esc(pay) + '</p>' : '');
+    return destBox({ key: 'loc-' + k, org: org || t('ld_org_' + k), what: t('ld_what_' + k), sent: sent, body: body, chans: chans, more: more, mark: org ? mark : '' });
   }
   /** Тариф води квартири: свій з платіжки (p.prov.water) — главніше за загальний (wtar()). */
   function wtar() {
-    var p = place() || {}, w = p.prov && p.prov.water;
-    if (!w || !(R.num(w.supply) > 0)) return R.num(w && w.hot) > 0 ? Object.assign({}, S.wtariff || {}, { hot: R.num(w.hot) }) : S.wtariff;
-    return Object.assign({}, S.wtariff || {}, { supply: R.num(w.supply), drain: R.num(w.drain) > 0 ? R.num(w.drain) : 0 }, R.num(w.hot) > 0 ? { hot: R.num(w.hot) } : {});
+    var p = place() || {}, w = (p.prov && p.prov.water) || {}, d = prvOf('water'), base = S.wtariff;
+    // квартира не в Харкові: тариф її водоканалу з довідника (якщо відомий) — замість харківського
+    if (d && d.via !== 'hvk' && R.num(d.supply) > 0) base = Object.assign({}, S.wtariff || {}, { supply: R.num(d.supply) }, R.num(d.drain) > 0 ? { drain: R.num(d.drain) } : {});
+    if (!(R.num(w.supply) > 0)) return R.num(w.hot) > 0 ? Object.assign({}, base || {}, { hot: R.num(w.hot) }) : base;
+    return Object.assign({}, base || {}, { supply: R.num(w.supply), drain: R.num(w.drain) > 0 ? R.num(w.drain) : 0 }, R.num(w.hot) > 0 ? { hot: R.num(w.hot) } : {});
   }
   function prvKinds() { var k = []; if (emeters().length) k.push('elec'); if (smeters('gas').length) k.push('gas'); if (wmeters().length) k.push('water'); if (hasHeat()) k.push('heat'); return k; }
   var PRV_ICO = { elec: ['bolt', 'c-elec'], gas: ['flame', 'c-gas'], water: ['drop', 'c-cold'], heat: ['thermo', 'c-hot'] };
@@ -3616,7 +3665,7 @@
       var s = R.num(my.supply) || (d && d.supply), dr = my.supply ? R.num(my.drain) : d && d.drain;
       price = s ? (dr ? t('prv_p_water', { s: money(s), d: money(dr) }) : t('prv_p_water1', { s: money(s) })) + (my.supply ? ' ' + t('prv_from_bill') : d && d.from ? ' ' + t('prv_since', { d: fmtDate(d.from, true) }) : '') : '';
     }
-    var src = k === 'elec' ? nat.elec && nat.elec.src : k === 'gas' ? [!my.price && nat.gas ? nat.gas.src : '', d && d.distSrc].filter(Boolean).join('. ') : d && d.src;
+    var src = k === 'elec' ? ploc(nat.elec, 'src') : k === 'gas' ? [!my.price && nat.gas ? ploc(nat.gas, 'src') : '', ploc(d, 'distSrc')].filter(Boolean).join('. ') : ploc(d, 'src');
     var need = (d && d.check && !my.ok && !own) || !org || (k === 'water' && !price);
     var h = '<div class="prov-row' + (need ? ' need' : '') + '" data-key="prov-' + k + '"><span class="pst-ico ' + PRV_ICO[k][1] + '">' + ico(PRV_ICO[k][0], 20) + '</span><div class="prov-b">' +
       '<p class="prov-k"><b>' + esc(t('prv_k_' + k)) + '</b>' + (my.ok || own ? '<span class="prov-ok">' + ico('check', 16) + esc(t(own ? 'prv_own' : 'prv_ok')) + '</span>' : '') + '</p>' +
@@ -3624,9 +3673,12 @@
       lines.map(function (x) { return '<p class="small muted">' + esc(x) + '</p>'; }).join('') +
       '<p class="prov-price' + (price ? '' : ' none') + '">' + esc(price || t('prv_p_none')) + '</p>' +
       (src && !own ? '<details class="prov-src"><summary>' + esc(t('prv_src')) + '</summary><p class="small muted">' + esc(src) + '</p></details>' : '') +
-      ((need || !(my.ok || own)) && d && d.note && !ed ? '<p class="small prov-note">' + esc(d.note) + '</p>' : '');
+      ((need || !(my.ok || own)) && d && d.note && !ed ? '<p class="small prov-note">' + esc(ploc(d, 'note')) + '</p>' : '') +
+      (d && ploc(d, 'pay') && !ed ? '<p class="small prov-pay" data-key="prov-pay-' + k + '"><b>' + esc(t('ld_pay_t')) + '</b> ' + esc(ploc(d, 'pay')) + '</p>' : '');
     if (ed) {
       h += '<div class="prov-form" data-key="prov-form-' + k + '"><div class="field"><label for="prv-n-' + k + '">' + esc(t('prv_name')) + '</label><div class="ctl"><input id="prv-n-' + k + '" maxlength="80" value="' + esc(my.name || (d && d.org) || '') + '"></div></div>' +
+        // телефон постачальника з платіжки — для «Куди передати», коли в довіднику його немає
+        (k === 'water' || k === 'heat' ? '<div class="field" style="max-width:320px"><label for="prv-p-' + k + '">' + esc(t('prv_phone')) + ' <span class="muted small">(' + esc(t('b_opt')) + ')</span></label><div class="ctl"><input id="prv-p-' + k + '" inputmode="tel" autocomplete="off" maxlength="30" value="' + esc(my.phone || '') + '"></div></div>' : '') +
         (k === 'water' ? '<div class="grid2"><div class="field"><label for="prv-s">' + esc(t('prv_supply')) + '</label><div class="ctl"><input id="prv-s" class="num" inputmode="decimal" value="' + esc(my.supply ? String(my.supply).replace('.', ',') : '') + '"><span class="unit">грн</span></div></div>' +
           '<div class="field"><label for="prv-d">' + esc(t('prv_drain')) + '</label><div class="ctl"><input id="prv-d" class="num" inputmode="decimal" value="' + esc(my.drain ? String(my.drain).replace('.', ',') : '') + '"><span class="unit">грн</span></div></div></div>' : '') +
         (k === 'heat' ? '<div class="grid2"><div class="field"><label for="prv-h">' + esc(t('prv_heatp')) + '</label><div class="ctl"><input id="prv-h" class="num" inputmode="decimal" value="' + esc(money(tariff())) + '"><span class="unit">грн</span></div></div>' +
@@ -3646,22 +3698,39 @@
     var ks = prvKinds(); if (!ks.length) return '';
     var a = String(p.address || '').trim(), h = '<section class="panel prov" id="prov" data-key="pv-prov"><h2>' + esc(t('prv_title')) + '</h2>';
     if (!a) return h + '<p class="small muted" data-key="prov-noaddr">' + esc(t('prv_noaddr')) + '</p></section>';
-    var j = prvLoad(a);
+    var j = prvLoad(p);
     if (!j || j.busy) return h + '<p class="small muted" data-key="prov-loading">' + esc(t('prv_loading')) + '</p></section>';
     var nat = (j && j.national) || {}, pl = j.found ? j.place : null;
-    h += '<p class="small muted" data-key="prov-lead">' + esc(pl ? t('prv_lead', { c: pl.name, h: pl.hromada, d: pl.district }) + (j.how === 'default' ? ' ' + t('prv_kh_default') : '') : j.err ? t('prv_err') : t('prv_nf', { a: a })) + '</p>';
+    var pick = function (x) { return '<li><button type="button" class="prv-pick" data-act="prv-settle" data-k="place" data-n="' + esc(x.n) + '" data-h="' + esc(x.h) + '" data-key="prov-pick-' + esc(x.h) + '">' +
+      '<b>' + esc(x.name) + '</b><span class="small muted">' + esc(placeWhere(x)) + '</span></button></li>'; };
+    if (j.candidates && j.candidates.length) {
+      // кілька пунктів з такою назвою (чи схожих) — людина обирає свій: крупні рядки, без випадного списку
+      h += '<p data-key="prov-lead"><b>' + esc(t(j.reason === 'typo' ? 'prv_ask_typo' : 'prv_ask', { a: a })) + '</b></p><ul class="prv-picks" data-key="prov-picks">' + j.candidates.map(pick).join('') + '</ul>' +
+        '<p class="small muted">' + esc(t('prv_ask_none')) + '</p>';
+      return h + ks.map(function (k) { return prvRow(p, k, null, nat); }).join('') + '</section>';
+    }
+    var lead = pl ? t('prv_lead', { c: pl.name, h: pl.hromada, d: pl.district }) + (j.how === 'default' ? ' ' + t('prv_kh_default') : '') : j.err ? t('prv_err') : t('prv_nf', { a: a });
+    if (pl && j.how === 'typo') lead = t('prv_typo', { c: pl.name, w: placeWhere(pl) });
+    h += '<p class="small muted" data-key="prov-lead">' + esc(lead) + '</p>';
+    // уточнений пункт — можна змінити; знайшли місто, а є й села з такою назвою — «Не той?»
+    if (pl && j.how === 'settled') h += '<p class="small"><button type="button" class="linkbtn" data-act="prv-unsettle" data-k="place" data-key="prov-unsettle">' + esc(t('prv_unsettle')) + '</button></p>';
+    else if (pl && j.alts && j.alts.length) h += '<details class="prov-alts tips-box" data-key="prov-alts"><summary>' + esc(t('prv_alts', { c: pl.name })) + '</summary><ul class="prv-picks">' + j.alts.map(pick).join('') + '</ul></details>';
     return h + ks.map(function (k) { return prvRow(p, k, j.found ? j.kinds[k] : null, nat); }).join('') + '</section>';
   }
   document.addEventListener('click', function (e) {
     var b = e.target.closest && e.target.closest('[data-act^="prv-"]'); if (!b) return;
+    if (b.getAttribute('data-act') === 'prv-go') { SCROLL_TO = 'prov'; return; }   // посилання на екран квартири — далі за href
     var k = b.getAttribute('data-k'), p = place(), act = b.getAttribute('data-act'); if (!p || !k) return;
     p.prov = p.prov || {};
-    if (act === 'prv-yes') { p.prov[k] = { ok: 1, at: today() }; p.updatedAt = Date.now(); save(); toast(t('prv_saved')); }
+    if (act === 'prv-settle') { p.settle = { a: String(p.address || '').trim(), n: b.getAttribute('data-n'), h: b.getAttribute('data-h') }; p.updatedAt = Date.now(); WX.key = ''; save(); toast(t('prv_settled', { c: p.settle.n })); }
+    else if (act === 'prv-unsettle') { delete p.settle; p.updatedAt = Date.now(); WX.key = ''; save(); }
+    else if (act === 'prv-yes') { p.prov[k] = { ok: 1, at: today() }; p.updatedAt = Date.now(); save(); toast(t('prv_saved')); }
     else if (act === 'prv-other') PRV.edit[k] = true;
     else if (act === 'prv-cancel') delete PRV.edit[k];
     else if (act === 'prv-save') {
       var v = function (id) { var el = document.getElementById(id); return el ? String(el.value).trim() : ''; };
       var o = { name: v('prv-n-' + k).slice(0, 80), at: today() };
+      if ((k === 'water' || k === 'heat') && /\d{5,}/.test(v('prv-p-' + k).replace(/\D/g, ''))) o.phone = v('prv-p-' + k).slice(0, 30);
       if (k === 'water') { var s = R.num(v('prv-s')), dr = R.num(v('prv-d')); if (s > 0 && s < 1000) o.supply = s; if (dr > 0 && dr < 1000) o.drain = dr; }
       if (k === 'gas') { var g = R.num(v('prv-g')); if (g > 0 && g < 100) { o.price = g; p.gasPrice = g; } }
       if (k === 'heat') { var hv = R.num(v('prv-h').replace(/\s/g, '')), av = R.num(v('prv-a').replace(/\s/g, ''));

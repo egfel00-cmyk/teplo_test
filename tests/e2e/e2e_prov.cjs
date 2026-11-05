@@ -60,6 +60,28 @@ let pass = 0, fail = 0; const ok = (n, c, x) => { if (c) { pass++; console.log('
   ok('360 px — блок не ширший за екран', await p.evaluate(() => document.documentElement.scrollWidth <= 361));
   await p.evaluate(() => { const s = JSON.parse(localStorage.getItem('teplo.v1')); s.places[0].address = 'с. Неіснуюче, вул. Набережна 3'; localStorage.setItem('teplo.v1', JSON.stringify(s)); }); await p.reload(); await p.waitForTimeout(800);
   ok('незнайомий пункт → «довідника ще немає… впишіть з платіжок», без вигаданого Харкова', /довідника ще немає/.test(await txt('prov-lead')) && /Хто постачає — невідомо/.test(await txt('prov-water')));
+  // довідник v2: Миколаївка — «Уточніть» (список пунктів з громадою й районом), вибір запам'ятовується для цієї адреси
+  await p.evaluate(() => { const s = JSON.parse(localStorage.getItem('teplo.v1')); s.places[0].address = 'Миколаївка, вул. Миру 5'; delete s.places[0].settle; localStorage.setItem('teplo.v1', JSON.stringify(s)); }); await p.reload(); await p.waitForTimeout(900);
+  const picks = await p.$$eval('.prv-pick', els => els.map(e => e.textContent));
+  ok('Миколаївка → «Пунктів із такою назвою кілька. Де ваша квартира?» і ≥ 12 рядків «Миколаївка / село, … громада, … район»', /Де ваша квартира/.test(await txt('prov-lead')) && picks.length >= 12 && /громада, .* район/.test(picks[1] || ''), picks.slice(0, 3));
+  await p.click('.prv-pick >> nth=2'); await p.waitForTimeout(900); sv = await st();
+  ok('вибір → p.settle {a, n, h}, «Для «Миколаївка» (… громада, … район)», «Обрати інший пункт»', sv.places[0].settle && sv.places[0].settle.a === 'Миколаївка, вул. Миру 5' && /^UA63/.test(sv.places[0].settle.h) && /Для «Миколаївка» \(/.test(await txt('prov-lead')) && !!(await p.$('[data-key=prov-unsettle]')), sv.places[0].settle);
+  await p.click('[data-key=prov-unsettle]'); await p.waitForTimeout(900);
+  ok('«Обрати інший пункт» → знову список', (await p.$$('.prv-pick')).length >= 12);
+  // Берестин: тариф КП «Берестин-Водоканал» (71,88 + 107,74) у «Ціні» й у розрахунку; «Куди передати» — його блок, не Харківводоканал
+  await p.evaluate(() => { const s = JSON.parse(localStorage.getItem('teplo.v1')); s.places[0].address = 'м. Красноград, вул. Полтавська 10'; delete s.places[0].prov; localStorage.setItem('teplo.v1', JSON.stringify(s)); }); await p.reload(); await p.waitForTimeout(900);
+  ok('Красноград (стара назва) → Берестин, вода «КП «Берестин-Водоканал»» 71,88 і 107,74 з 01.06.2026', /Берестин/.test(await txt('prov-lead')) && /Берестин-Водоканал/.test(await txt('prov-water')) && /71,88.*107,74/.test(await txt('prov-water')), await txt('prov-water'));
+  await p.goto(U + '#water-cold'); await p.waitForTimeout(900);
+  const wd = await txt('where-water');
+  ok('«Куди передати» воду в Берестині — КП «Берестин-Водоканал», без бота @hvk_user_bot і без кабінету Харківводоканалу', /Берестин-Водоканал/.test(wd) && !/hvk_user_bot|Харківводоканал/.test(wd), wd.slice(0, 200));
+  await p.click('[data-key=wmeter-c1-set] summary, [data-key$=-set] summary').catch(() => {}); await p.waitForTimeout(300);
+  ok('«Ціна» холодної води — 71,88 і 107,74 (довідник громади), а не харківські 49,446', await p.evaluate(() => { const a = document.getElementById('mp-ws'), d = document.getElementById('mp-wd'); return !!a && /71,88/.test(a.value) && /107,74/.test(d.value); }), await p.evaluate(() => [((document.getElementById('mp-ws') || {}).value), ((document.getElementById('mp-wd') || {}).value)]));
+  // Мала Данилівка: вода — КП без тарифу; «Куди передати» — «Ваш постачальник»… немає: є назва КП і «як передавати — на платіжці»; газ — філія в боті
+  await p.evaluate(() => { const s = JSON.parse(localStorage.getItem('teplo.v1')); s.placeId = 'p2'; localStorage.setItem('teplo.v1', JSON.stringify(s)); }); await p.goto(U + '#water-cold'); await p.reload(); await p.waitForTimeout(900);
+  const wd2 = await txt('where-water');
+  ok('Мала Данилівка: «Куди передати» — КП «Малоданилівський комунальник» і підказка, без Харківводоканалу', /Малоданилівський комунальник/.test(wd2) && !/hvk_user_bot/.test(wd2), wd2.slice(0, 200));
+  await p.goto(U + '#gas'); await p.waitForTimeout(700); await p.click('[data-key=where-gas] summary').catch(() => {}); await p.waitForTimeout(200);
+  ok('газ у Малій Данилівці: «У боті Газмереж оберіть філію: Харківська філія»', /оберіть філію: Харківська філія/.test(await txt('where-gas')), (await txt('where-gas')).slice(0, 300));
   ok('без помилок JS', !errs.length, errs);
   console.log('\nИтог: ' + pass + ' OK, ' + fail + ' FAIL'); await b.close(); process.exit(fail ? 1 : 0);
 })();
