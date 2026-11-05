@@ -906,6 +906,12 @@ ok('29-та сесія: Савинці — дільниця КП «Балакл�
   && str_contains($zm['water']['note'] ?? '', '2021') && str_contains($ck['water']['org'] ?? '', 'Пролісненське') && $ml['heat']['price'] === 1463.06 && str_contains($ml['heat']['org'] ?? '', 'Малинівка')
   && str_contains($bo['heat']['org'] ?? '', 'теплових мереж') && str_contains($vv['water']['org'] ?? '', 'КП «Вовчанськ»') && str_contains($vv['heat']['org'] ?? '', 'Вовчанське')
   && $dr2['water']['supply'] === 29.7 && str_contains($dr2['water']['note'] ?? '', 'відшкодування'), [$sv['water'] ?? null, $mz['water'] ?? null, $ck['water'] ?? null, $ml['heat'] ?? null]);
+// 30-та сесія: Чкаловська громада → Пролісненська (розпорядження КМУ № 1331-р від 26.11.2025): нова назва в місці й довіднику, стара в адресі теж звужує
+{ $p1 = $v('смт Пролісне, вул. Світла 1'); $p2 = $v('с. Миколаївка, Чкаловська громада'); $p3 = $v('с. Миколаївка, Пролісненська громада'); $p4 = $v('с. Миколаївка, Пролисненская громада');
+  ok('Пролісненська громада: назва, стара «Чкаловська» в адресі, рос. написання; вода — КП «Пролісненське ЖКЕУ-2013»',
+    ($p1['place']['hromada'] ?? '') === 'Пролісненська' && str_contains($p1['kinds']['water']['org'] ?? '', 'Пролісненське')
+    && $p2['found'] && $p2['place']['n'] === 'Миколаївка' && $p2['place']['hromada'] === 'Пролісненська' && $p3['found'] && $p3['place']['h'] === $p2['place']['h'] && $p4['found'] && $p4['place']['h'] === $p2['place']['h']
+    && !isset(Providers::data()['hromadas']['Чкаловська']), [$p1['place'] ?? $p1, $p2['candidates'] ?? $p2['place'] ?? null]); }
 // кожна громада довідника є в КАТОТТГ (інакше її ніхто не знайде), у кожного тарифу — джерело; кожен «громада/пункт» — справжній пункт цієї громади
 $kh = array_map(fn($id) => Providers::hname((string)$id), array_keys(Providers::kat()['hromadas'])); $bad = [];
 $tariffs = function ($hn, $x) use (&$bad) { foreach ($x as $kd => $o) if ((isset($o['supply']) && $o['supply'] !== null) || (isset($o['drain']) && $o['drain'] !== null) || (isset($o['price']) && $o['price'] !== null)) if (empty($o['src']) || empty($o['src_ru'])) $bad[] = "$hn/$kd без src"; };

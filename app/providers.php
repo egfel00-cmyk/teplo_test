@@ -59,12 +59,15 @@ final class Providers {
     foreach ((array)$k['districts'] as $id => $nm) $d[self::nk((string)$nm)] = (string)$id;
     $did = array_flip((array)$k['districts']);
     foreach (self::OLD_DISTRICTS as $o => $n) if (isset($did[$n])) $d[self::nk($o)] = (string)$did[$n];
-    foreach ((array)$k['hromadas'] as $id => $x) $h[self::nk(self::hname((string)$id))] = (string)$id;
+    // громада — і нинішньою назвою, і старою (адреси ще пишуть «Чкаловська громада», «Красноградська»)
+    foreach ((array)$k['hromadas'] as $id => $x) foreach (array_merge([self::hname((string)$id), (string)($x['n'] ?? '')], (array)($x['old'] ?? []), array_keys(self::H_NEW, self::hname((string)$id), true)) as $nm) { $key = self::nk($nm); if ($key !== '') $h[$key] = (string)$id; }
     return self::$ix = ['by' => $by, 'd' => $d, 'h' => $h];
   }
-  /** Назва громади, як її пишуть зараз (у КАТОТТГ 2025 ще старі: Красноградська → Берестинська, Первомайська → Златопільська). */
+  /** Перейменовані громади (у КАТОТТГ 2025 ще старі назви; Чкаловська — розпорядження КМУ № 1331-р від 26.11.2025, з 05.01.2026). */
+  const H_NEW = ['Красноградська' => 'Берестинська', 'Первомайська' => 'Златопільська', 'Чкаловська' => 'Пролісненська'];
+  /** Назва громади, як її пишуть зараз. */
   public static function hname(string $hid): string {
-    $n = (string)(self::kat()['hromadas'][$hid]['n'] ?? ''); return ['Красноградська' => 'Берестинська', 'Первомайська' => 'Златопільська'][$n] ?? $n;
+    $n = (string)(self::kat()['hromadas'][$hid]['n'] ?? ''); return self::H_NEW[$n] ?? $n;
   }
   private static function typeOf(string $p): string {
     $p = preg_replace('/\s+/u', '', $p);
