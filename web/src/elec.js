@@ -242,7 +242,7 @@
   // газ — показання 1–5 числа (станом на 1-ше; SMS 4647 — з 28-го); 1–5 число — за попередній місяць
   var gas = make({ price: [{ from: '2000-01-01', p: 7.96 }], jump: 150, jumpHeat: 800, decimals: 3, oneZone: true, lateDays: 5, idp: 'g',
     phones: [['+380663002888', '(066) 300-28-88', 'Vodafone'], ['+380983002888', '(098) 300-28-88', 'Київстар'], ['+380933002888', '(093) 300-28-88', 'lifecell']],
-    links: { cabinet: 'https://my.grmu.com.ua/', sms: '4647', bot: 'https://t.me/mygrmu_bot' },
+    links: { cabinet: 'https://my.grmu.com.ua/', sms: '4647', bot: 'https://t.me/mygrmu_bot', find: 'https://gas.ua/uk/home/find-account' },
     win: function (today, h) {
       var ym = String(today).slice(0, 7), d = +String(today).slice(8, 10), pm = h.addMonth(ym, -1), nm = h.addMonth(ym, 1);
       if (d <= 5) return { open: true, ym: pm, from: ym + '-01', to: ym + '-05', daysLeft: 5 - d };

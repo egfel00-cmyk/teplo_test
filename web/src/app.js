@@ -21,11 +21,14 @@
   // ---- квартиры: у каждой свой адрес, счётчик, последние принятые и история. S.meter/S.baseline — данные активной квартиры.
   function places() { return (S.places || []).filter(function (p) { return p && !p.deleted; }); }
   function place(id) { var k = id || S.placeId; return places().filter(function (p) { return p.id === k; })[0] || null; }
+  var GASMV = false; // перенесли рахунок газу — зберегти (і на сервер) після запуску
   function ensurePlaces() {
     if (!Array.isArray(S.places)) S.places = [];
     if (!places().length) S.places.push({ id: S.places.length ? 'p' + Date.now().toString(36) : 'main', name: '', v: 2, meter: S.meter || null, baseline: S.baseline || null, updatedAt: 0 });
     // раньше в name писали адрес («Адреса квартири») — теперь name — название («Моя», «Батьків»), адрес — отдельно
     places().forEach(function (p) { if (!p.v) { if (p.name && !p.address) { p.address = p.name; p.name = ''; } p.v = 2; } });
+    // газ: 10 цифр у «рахунку Нафтогазу» — це рахунок Газмереж (доставка; у Нафтогазу 9 цифр) — переносимо в його поле
+    places().forEach(function (p) { (p.meters || []).forEach(function (m) { if (gasMove(m)) { p.updatedAt = Date.now(); GASMV = true; } }); });
     if (!S.placeId || !place(S.placeId)) { var f = places()[0]; S.placeId = f.id; S.meter = f.meter || S.meter || null; S.baseline = f.baseline || S.baseline || null; }
   }
   /** Перенести текущие S.meter/S.baseline в запись активной квартиры (перед сохранением). */
@@ -120,6 +123,7 @@
     // кнопка з нагадування відкрилась до входу — тепер квартири є: у потрібну квартиру й лічильник
     if (DEEP && S.onboarded) { var dp = DEEP; DEEP = null; deepLink(dp.g, dp.pid, dp.q); }
     safeRender();
+    if (GASMV) { GASMV = false; save(); }
   }
   function safeRender() {
     var a = document.activeElement;
@@ -133,6 +137,7 @@
     return /^ru\b/i.test(l) ? 'ru' : 'uk';
   }
   var S = load(); ensurePlaces();
+  if (GASMV) setTimeout(function () { GASMV = false; save(); }, 0);
   // S.meter/S.baseline — зеркало текущей квартиры: при запуске берём из неё (не из того, что лежало сверху)
   (function () { var ap = place(); if (ap && places().length > 1) { S.meter = ap.meter || null; S.baseline = ap.baseline || null; } })();
   // ---- тема: авто (как в системе / Telegram) · светлая · тёмная; выбор хранится на этом устройстве
@@ -1585,6 +1590,14 @@
     if (k === 'gas') { var g = key.replace(/^(ue_|kpi_e_|e)/, function (x) { return x === 'ue_' ? 'ug_' : x === 'kpi_e_' ? 'kpi_g_' : 'g'; }); if (I.T.uk[g] !== undefined) return t(g, v); }
     return t(key, v);
   }
+  // газ: два рахунки — Газмережі (доставка, 10 цифр, Харків 131…/132…) і Нафтогаз (сам газ, 9 цифр — для SMS 4647), і EIC-код точки (16 символів, 56…)
+  function dgt(x) { return String(x || '').replace(/\D/g, ''); }
+  function gasMove(m) { if (!m || m.kind !== 'gas' || m.grm || dgt(m.account).length !== 10) return false; m.grm = m.account; m.account = ''; return true; }
+  function eicNorm(x) { return String(x || '').replace(/\s+/g, '').toUpperCase().slice(0, 20); }
+  /** Номери лічильника світла/газу для показу й копіювання: [ключ підпису, значення]. Газ — Газмережі, Нафтогаз, EIC. */
+  function saccList(k, m) { if (!m) return []; return (k === 'gas' ? [['gd_grm', m.grm], ['gd_naf', m.account], ['gd_eic', m.eic]] : [['ed_acc', m.account]]).filter(function (x) { return x[1]; }); }
+  /** Під назвою лічильника — рахунки (EIC — лише в налаштуваннях і в «Куди передати»). */
+  function saccSub(k, m) { return saccList(k, m).filter(function (x) { return x[0] !== 'gd_eic'; }).map(function (x) { return tk(k, x[0], { a: x[1] }); }); }
   function pmeters(kind, all) { var p = place(); return byKind(((p && p.meters) || []).filter(function (m) { return m && !m.deleted && (all || !m.removed) && (!kind || m.kind === kind); })); }
   function setPMeters(fn) { ensurePlaces(); var p = place(); p.meters = JSON.parse(JSON.stringify(p.meters || [])); fn(p.meters); p.updatedAt = Date.now(); save(); }
   function smeters(k, all) { return pmeters(k, all); }
@@ -1664,7 +1677,7 @@
       else {
         var near = left.filter(function (x) { return x.date <= rday && R.daysBetween(x.date, rday) <= 10; });
         var digits = ' ' + String(r.text || '').replace(/\D+/g, ' ') + ' ';
-        var byAcc = near.filter(function (x) { var a = String((smeterById(x.meter) || {}).account || '').replace(/\D/g, ''); return a.length >= 6 && digits.indexOf(' ' + a + ' ') >= 0; });
+        var byAcc = near.filter(function (x) { var sm = smeterById(x.meter) || {}; return [sm.account, sm.grm].some(function (y) { var a = dgt(y); return a.length >= 6 && digits.indexOf(' ' + a + ' ') >= 0; }); });
         var pl = {}; near.forEach(function (x) { pl[x.place] = 1; });
         grp = byAcc.length ? byAcc : Object.keys(pl).length === 1 ? near : [];
       }
@@ -1708,7 +1721,7 @@
       var r = have.filter(function (x) { return x && x.meter === m.id; })[0]; if (!r) return '';
       return md.keys(m).map(function (z) { var v = md.whole(r.z[z]); return '<li><span>' + esc((ms.length > 1 ? (m.name || ename(m)) + ' · ' : '') + ezl(m, z)) + '</span><b class="num">' + v + '</b><button class="linkbtn" data-act="copy" data-text="' + v + '">' + esc(t('copy')) + '</button></li>'; }).join('');
     }).join('') + '</ul>' + (k === 'elec' && El.zones(ms[0] || {}) > 1 ? '<p class="small muted">' + esc(t('ed_nosum')) + '</p>' : '');
-    var acc = ms.filter(function (m) { return m.account; }).map(function (m) { return '<p class="small">' + esc(tk(k, 'ed_acc', { a: m.account })) + (ms.length > 1 ? ' · ' + esc(m.name || '') : '') + ' <button class="linkbtn" data-act="copy" data-text="' + esc(m.account) + '">' + esc(t('copy')) + '</button></p>'; }).join('');
+    var acc = ms.map(function (m) { return saccList(k, m).map(function (x) { return '<p class="small" data-key="esend-' + x[0] + '-' + m.id + '">' + esc(tk(k, x[0], { a: x[1] })) + (ms.length > 1 ? ' · ' + esc(m.name || '') : '') + ' <button class="linkbtn" data-act="copy" data-text="' + esc(x[1]) + '">' + esc(t('copy')) + '</button></p>'; }).join(''); }).join('');
     // кол-центр — стовпчиком: номер і оператор у рядок, кожен номер окремо (зручно читати й натискати)
     var phones = '<ul class="dm-ph">' + md.PHONES.map(function (p) { return '<li>' + telLink(p[0], p[1]) + '<span class="muted">' + esc(p[2]) + '</span></li>'; }).join('') + '</ul>';
     // кнопка офіційного бота: є показання — запам'ятовуємо натискання (botAt), щоб пересланий нам «прийнято» ліг саме на них
@@ -1720,7 +1733,8 @@
     if (k === 'gas') {
       // SMS 4647: «9 цифр рахунку пробіл 5 цифр показань» — готовий текст, якщо є рахунок і показання
       var sms = have && ms.length === 1 ? Gs.smsText(ms[0].account, (have.filter(Boolean)[0].z || {}).all) : null;
-      if (have && ms.length === 1 && !sms) body += '<p class="small muted">' + esc(t('gd_noacc')) + '</p>';
+      var nafN = ms.length === 1 ? dgt(ms[0].account).length : 9;
+      if (have && ms.length === 1 && !sms && nafN !== 9) body += '<p class="small" data-key="gd-noacc">' + esc(nafN ? t('gd_badacc', { n: nafN }) : t('gd_noacc')) + ' <a href="' + Gs.LINKS.find + '" target="_blank" rel="noopener" data-key="gd-find">' + esc(t('gd_find')) + ' ' + ico('ext', 14) + '</a></p>';
       if (sms) body += '<p class="small">' + esc(t('gd_sms_how', { s: sms })) + '</p>';
       chans = [[Gs.LINKS.bot, t('gd_bot'), 'send', 'bot', botAttr]].concat(sms ? [['sms:' + Gs.LINKS.sms + '?&body=' + encodeURIComponent(sms), t('gd_sms'), 'send', 'sms']] : []).concat([[Gs.LINKS.cabinet, t('gd_cab'), 'ext', 'cab']]);
       if (have) body += sbBox(k, have);
@@ -1830,11 +1844,19 @@
   });
   /** Одна й та сама ссилка в усіх лічильників: квартира — її лічильники (додати, замінити, прибрати) і рахунки. */
   function mbPlaceLink(key) { var p = place() || {}; return mlink('#place-' + esc(p.id || ''), 'home', t('mb_place'), ' data-key="' + (key || 'mb-place') + '"'); }
+  /** Поле номера лічильника (рахунок, EIC) з «Копіювати»; warn — підказка жовтим (скільки цифр бракує). */
+  function sfld(m, f, pre, lbl, attrs, help, warn) {
+    var id = pre + m.id;
+    return '<div class="field"><label for="' + id + '">' + esc(lbl) + '</label><div class="ctl"><input id="' + id + '" class="num" autocomplete="off" ' + attrs + ' data-em="' + m.id + '" data-ef="' + f + '" value="' + esc(m[f] || '') + '">' + ctlCopy(id) + '</div>' +
+      (warn ? '<div class="help warn" data-key="' + id + '-warn">' + esc(warn) + '</div>' : '') + (help ? '<div class="help">' + esc(help) + '</div>' : '') + '</div>';
+  }
   function smeterFields(k, m) {
     var zfree = k === 'elec' && !mrecs(m.id).length;
     return '<div class="grid2">' +
       '<div class="field"><label for="emn-' + m.id + '">' + esc(t('em_name')) + '</label><div class="ctl"><input id="emn-' + m.id + '" maxlength="40" data-em="' + m.id + '" data-ef="name" value="' + esc(m.name || '') + '" placeholder="' + esc(tk(k, 'em_name_ph')) + '"></div></div>' +
-      '<div class="field"><label for="ema-' + m.id + '">' + esc(t('em_acc')) + '</label><div class="ctl"><input id="ema-' + m.id + '" class="num" inputmode="numeric" autocomplete="off" data-em="' + m.id + '" data-ef="account" value="' + esc(m.account || '') + '">' + ctlCopy('ema-' + m.id) + '</div><div class="help">' + esc(tk(k, 'em_acc_h')) + '</div></div>' +
+      (k === 'gas' ? sfld(m, 'grm', 'emg-', t('gm_grm'), 'inputmode="numeric"', t('gm_grm_h'), m.grm && dgt(m.grm).length !== 10 ? t('gm_e_grm', { n: dgt(m.grm).length }) : '') : '') +
+      sfld(m, 'account', 'ema-', tk(k, 'em_acc'), 'inputmode="numeric"', tk(k, 'em_acc_h'), k === 'gas' && m.account && dgt(m.account).length !== 9 ? t('gm_e_acc', { n: dgt(m.account).length }) : '') +
+      (k === 'gas' ? sfld(m, 'eic', 'eme-', t('gm_eic'), 'autocapitalize="characters" spellcheck="false" maxlength="20"', t('gm_eic_h'), !m.eic ? '' : m.eic.length !== 16 ? t('gm_e_eic', { n: m.eic.length }) : !/^56/.test(m.eic) ? t('gm_e_eic56') : '') : '') +
       '<div class="field"><label for="ems-' + m.id + '">' + esc(t('wm_serial')) + '</label><div class="ctl"><input id="ems-' + m.id + '" class="num" autocomplete="off" data-em="' + m.id + '" data-ef="serial" value="' + esc(m.serial || '') + '">' + ctlCopy('ems-' + m.id) + '</div></div></div>' +
       (zfree ? '<fieldset class="field"><legend class="lbl">' + esc(t('ea_zones')) + '</legend><div class="wz-opts" role="radiogroup">' + [1, 2, 3].map(function (n) {
         return '<label class="wz-opt"><input type="radio" name="emz-' + m.id + '" value="' + n + '"' + (El.zones(m) === n ? ' checked' : '') + ' data-em="' + m.id + '" data-ef="zones" data-key="em-z' + n + '"><span><b>' + esc(t('ez_n' + n)) + '</b><span class="small muted">' + esc(t('ea_z' + n + '_s')) + '</span></span></label>';
@@ -1846,7 +1868,7 @@
     var left = ms.map(function (m, i) {
       var sc = sentCap(mrecs(m.id), function (x) { return x.base ? baseSent(x) : ssent(k, x); }), r = sc.rec, cap = sc.cap;
       var fix = r && !r.base ? '<button class="linkbtn" data-act="eedit" data-id="' + r.id + '">' + esc(t('change')) + '</button>' : '';
-      return mbox({ key: 'emeter-' + m.id, id: m.id, kind: k, icon: SK[k].icon, cls: SK[k].cls, name: ms.length > 1 ? ename(m) : t(KINDS[k].t), sub: [m.account ? tk(k, 'ed_acc', { a: m.account }) : '', ezonesTxt(m)],
+      return mbox({ key: 'emeter-' + m.id, id: m.id, kind: k, icon: SK[k].icon, cls: SK[k].cls, name: ms.length > 1 ? ename(m) : t(KINDS[k].t), sub: saccSub(k, m).concat([ezonesTxt(m)]),
         display: edisplay(m, r, 'hero'), cap: cap, fix: fix, copy: r && r.z && SK[k].mod.zones(m) <= 1 && SK[k].mod.whole(r.z.all) !== null ? SK[k].mod.whole(r.z.all) : '', body: sc.note ? '<p class="small muted mb-newer">' + esc(sc.note) + '</p>' : '',
         set: smeterFields(k, m) + (i === 0 ? priceBlock(k) + sheatRow(k) : ''),
         links: [mbPlaceLink(k + '-place')] });
@@ -2067,7 +2089,9 @@
       }).join('') + '</div></fieldset>' : '') +
       md.keys(mz).map(function (q) { return phHelp(fld('ea-v-' + q, t('ea_val') + (z > 1 ? ': ' + ezl(mz, q).toLowerCase() : ''), 'class="num" inputmode="decimal" autocomplete="off" data-ea="' + q + '" value="' + esc(EA.vals[q] || '') + '"', u, q === md.keys(mz).slice(-1)[0] ? t('ea_val_h') : '', true, startCam('ea-v-' + q, tk(k, 'ea_title'))), 'ea-v-' + q); }).join('') +
       (same.length ? fld('ea-name', t('em_name'), 'maxlength="40" autocomplete="off" placeholder="' + esc(tk(k, 'em_name_ph')) + '"', '', t('ea_name_need', { n: same.length }), false) : '') +
-      fld('ea-acc', t('em_acc'), 'class="num" inputmode="numeric" autocomplete="off"', '', tk(k, 'em_acc_h'), true) +
+      (k === 'gas' ? fld('ea-grm', t('gm_grm'), 'class="num" inputmode="numeric" autocomplete="off"', '', t('gm_grm_h'), true) : '') +
+      fld('ea-acc', tk(k, 'em_acc'), 'class="num" inputmode="numeric" autocomplete="off"', '', tk(k, 'em_acc_h'), true) +
+      (k === 'gas' ? fld('ea-eic', t('gm_eic'), 'class="num" autocomplete="off" autocapitalize="characters" spellcheck="false" maxlength="20"', '', t('gm_eic_h'), true) : '') +
       fld('ea-serial', t('wm_serial'), 'class="num" autocomplete="off"', '', '', true) +
       (same.length ? '' : sheatRow(k)) +
       '<div class="help block" id="ea-err" role="alert"></div></div>' +
@@ -2087,7 +2111,7 @@
     var box = document.getElementById('ea-err');
     if (err) { if (box) box.textContent = err; var bi = document.getElementById(bad); if (bi) bi.focus(); return; }
     var id = md.uid();
-    setPMeters(function (list) { list.push(Object.assign({ id: id, kind: k, name: name, serial: v('ea-serial'), account: v('ea-acc'), createdAt: today() }, k === 'elec' ? { zones: mz.zones } : {})); });
+    setPMeters(function (list) { var nm = Object.assign({ id: id, kind: k, name: name, serial: v('ea-serial'), account: v('ea-acc'), createdAt: today() }, k === 'elec' ? { zones: mz.zones } : { grm: v('ea-grm'), eic: eicNorm(v('ea-eic')) }); gasMove(nm); list.push(nm); });
     if (filled) { S.mrecs = S.mrecs || []; S.mrecs.push({ id: md.uid(), place: S.placeId, meter: id, kind: k, date: today(), z: z, base: true, sent: {}, createdAt: new Date().toISOString(), updatedAt: Date.now() }); }
     S.onboarded = true; S.view = k; save(); toast(tk(k, 'ea_added') + inPlace());
     var back = EA.back; EA = { kind: k, back: '', zones: 1, vals: {} };
@@ -3824,7 +3848,7 @@
     var rows = [];
     if (hasHeat()) rows.push(mrow({ what: 'heat', kind: 'heat', title: t('kd_heat'), href: 'heat', sub: [modelName(model()), verTxt(S.meter.verifiedUntil)].filter(Boolean).join(' · ') }));
     ms.forEach(function (m) { rows.push(mrow({ what: m.id, kind: m.kind, title: wkindTitle(m.kind) + (m.name ? ' · ' + m.name : ''), href: 'water-' + m.kind, sub: verTxt(m.verifiedUntil) })); });
-    ['elec', 'gas'].forEach(function (k) { smeters(k).forEach(function (m) { rows.push(mrow({ what: m.id, kind: k, title: ename(m), href: SK[k].page, noReplace: true, sub: [m.account ? tk(k, 'ed_acc', { a: m.account }) : '', ezonesTxt(m)].filter(Boolean).join(' · ') })); }); });
+    ['elec', 'gas'].forEach(function (k) { smeters(k).forEach(function (m) { rows.push(mrow({ what: m.id, kind: k, title: ename(m), href: SK[k].page, noReplace: true, sub: saccSub(k, m).concat([ezonesTxt(m)]).filter(Boolean).join(' · ') })); }); });
     h += '<section class="panel" data-key="pv-meters"><h2>' + esc(t('pv_meters')) + '</h2>' + (rows.length ? '<ul class="mlist">' + rows.join('') + '</ul>' : '<p class="muted">' + esc(t('pv_none')) + '</p>') +
       '<p style="margin:12px 0 0"><button class="btn' + (rows.length ? ' sec' : '') + '" data-act="add-meter" data-back="place-' + esc(p.id) + '" data-key="pv-add-meter">' + ico('plus', 20) + '<span>' + esc(t('am_tile')) + '</span></button></p>';
     var rm = removedMeters();
@@ -4048,8 +4072,8 @@
   document.addEventListener('change', function (e) {
     var el = e.target; if (!el || !el.getAttribute) return;
     var mid = el.getAttribute('data-em');
-    if (mid) { var f = el.getAttribute('data-ef'), v = el.value.trim().slice(0, 40); if (f === 'zones') v = Math.min(3, Math.max(1, +v || 1));
-      setPMeters(function (list) { list.forEach(function (m) { if (m.id === mid) m[f] = v; }); }); toast(t('b_saved')); if (f === 'zones') { MB_OPEN[mid] = true; render(true); } else if (f === 'account' || f === 'name') safeRender(); return; }
+    if (mid) { var f = el.getAttribute('data-ef'), v = el.value.trim().slice(0, 40), moved = false; if (f === 'zones') v = Math.min(3, Math.max(1, +v || 1)); if (f === 'eic') v = eicNorm(v);
+      setPMeters(function (list) { list.forEach(function (m) { if (m.id === mid) { m[f] = v; if (f === 'account') moved = gasMove(m); } }); }); toast(moved ? t('gm_moved') : t('b_saved')); if (f === 'zones') { MB_OPEN[mid] = true; render(true); } else if (f === 'account' || f === 'name' || f === 'grm' || f === 'eic') { MB_OPEN[mid] = true; safeRender(); } return; }
     var hk = el.getAttribute('data-heat');
     // ціна й пільга змінюють вартість у історії — перемалювати сторінку
     if (hk === 'elecHeat' || hk === 'gasHeat') { ensurePlaces(); var pp = place(); if (el.checked) pp[hk] = true; else delete pp[hk]; pp.updatedAt = Date.now(); save(); toast(t('b_saved')); render(true); return; }

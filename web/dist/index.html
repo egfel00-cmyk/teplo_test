@@ -2444,8 +2444,13 @@ details.tbl-acc[open] > .tbl-wrap { margin-top: 12px; }
       kv_gas: 'Газ', ug_add: 'Внести показання газу', aw_q_gas: 'Цифри можна пропустити — натисніть «Додати лічильник».', pv_m_gas: 'Газ (Нафтогаз)',
       gd_org: 'Нафтогаз / Газмережі', gd_what: 'Показання газу · газ — Нафтогаз, доставка — Газмережі', gd_lead: 'Показання газу приймають з 1 по 5 число — станом на 1-ше. SMS на 4647 — уже з 28-го.',
       gd_acc: 'Особовий рахунок {a}', gd_sms: 'SMS на 4647', gd_cab: 'Кабінет Газмереж', gd_more: 'Ще — застосунок Нафтогазу «Куб» і кол-центр:', gd_call: 'Кол-центр', gd_app_note: 'Також можна в застосунку Нафтогазу «Куб».',
-      gd_sms_how: 'Готове SMS на 4647 (рахунок, пробіл, 5 цифр): {s}', gd_noacc: 'Впишіть особовий рахунок (9 цифр із платіжки Нафтогазу) у лічильника — і тут з’явиться готове SMS.',
-      gm_title: 'Мій газовий лічильник', gm_name_ph: 'кухня, котел', gm_acc_h: 'З платіжки Нафтогазу — 9 цифр; потрібен для SMS 4647.',
+      gd_sms_how: 'Готове SMS на 4647 (рахунок, пробіл, 5 цифр): {s}', gd_noacc: 'Для SMS на 4647 потрібен рахунок Нафтогазу — 9 цифр із платіжки за газ (не за доставку). Впишіть його в «Налаштуваннях лічильника» — і тут з’явиться готове SMS.',
+      gm_title: 'Мій газовий лічильник', gm_name_ph: 'кухня, котел', gm_acc: 'Особовий рахунок Нафтогазу', gm_acc_h: 'З платіжки за газ (Нафтогаз) — 9 цифр; потрібен для SMS 4647.',
+      gm_grm: 'Особовий рахунок Газмереж', gm_grm_h: 'З платіжки за доставку газу — 10 цифр (Харків і область — з 131 чи 132). Для бота й кабінету Газмереж.',
+      gm_eic: 'EIC-код', gm_eic_h: '16 латинських літер і цифр, починається з 56 — є на платіжках за газ і за доставку.',
+      gm_e_acc: 'У рахунку Нафтогазу 9 цифр, а тут {n}.', gm_e_grm: 'У рахунку Газмереж 10 цифр, а тут {n}.', gm_e_eic: 'EIC-код — 16 символів, а тут {n}.', gm_e_eic56: 'EIC-код газу починається з 56 — перевірте.',
+      gm_moved: 'Це рахунок Газмереж (10 цифр) — записав у його поле', gd_grm: 'Рахунок Газмереж {a}', gd_naf: 'Рахунок Нафтогазу {a}', gd_eic: 'EIC-код {a}',
+      gd_badacc: 'Для SMS на 4647 потрібен рахунок Нафтогазу — 9 цифр із платіжки за газ, а вписано {n}.', gd_find: 'Дізнатися рахунок Нафтогазу за EIC-кодом (gas.ua)',
       ghow_t: 'Як зняти показання газу', ghow: 'Записуйте чорні цифри — цілі кубометри. Червоні (після коми) — літри, їх не передають.|Передавайте з 1 по 5 число — показання станом на 1-ше. Не передали — нарахують за середнім.|Газом не користувалися — передайте ті самі цифри, що минулого разу.',
       gh_on: 'Газовий котел (опалення газом)', gh_sub: 'Тоді взимку великий розхід — нормально, без попереджень.', gh_price: 'Ціна газу, грн за м³',
       gh_price_h: 'Нафтогаз «Фіксований» — 7,96 до 30.04.2027. Інший постачальник — впишіть ціну з платіжки.', gh_hint: 'Натисніть рядок — показання, скільки набігло і почім. Місяць — той, за який зараховано: показання 1–5 числа — за попередній.',
@@ -3314,8 +3319,13 @@ details.tbl-acc[open] > .tbl-wrap { margin-top: 12px; }
       kv_gas: 'Газ', ug_add: 'Внести показания газа', aw_q_gas: 'Цифры можно пропустить — нажмите «Добавить счётчик».', pv_m_gas: 'Газ (Нафтогаз)',
       gd_org: 'Нафтогаз / Газсети', gd_what: 'Показания газа · газ — Нафтогаз, доставка — Газсети', gd_lead: 'Показания газа принимают с 1 по 5 число — на 1-е. SMS на 4647 — уже с 28-го.',
       gd_acc: 'Лицевой счёт {a}', gd_sms: 'SMS на 4647', gd_cab: 'Кабинет Газсетей', gd_more: 'Ещё — приложение Нафтогаза «Куб» и колл-центр:', gd_call: 'Колл-центр', gd_app_note: 'Также можно в приложении Нафтогаза «Куб».',
-      gd_sms_how: 'Готовое SMS на 4647 (счёт, пробел, 5 цифр): {s}', gd_noacc: 'Впишите лицевой счёт (9 цифр из платёжки Нафтогаза) у счётчика — и здесь появится готовое SMS.',
-      gm_title: 'Мой газовый счётчик', gm_name_ph: 'кухня, котёл', gm_acc_h: 'Из платёжки Нафтогаза — 9 цифр; нужен для SMS 4647.',
+      gd_sms_how: 'Готовое SMS на 4647 (счёт, пробел, 5 цифр): {s}', gd_noacc: 'Для SMS на 4647 нужен счёт Нафтогаза — 9 цифр из платёжки за газ (не за доставку). Впишите его в «Настройках счётчика» — и здесь появится готовое SMS.',
+      gm_title: 'Мой газовый счётчик', gm_name_ph: 'кухня, котёл', gm_acc: 'Лицевой счёт Нафтогаза', gm_acc_h: 'Из платёжки за газ (Нафтогаз) — 9 цифр; нужен для SMS 4647.',
+      gm_grm: 'Лицевой счёт Газсетей', gm_grm_h: 'Из платёжки за доставку газа — 10 цифр (Харьков и область — с 131 или 132). Для бота и кабинета Газсетей.',
+      gm_eic: 'EIC-код', gm_eic_h: '16 латинских букв и цифр, начинается с 56 — есть на платёжках за газ и за доставку.',
+      gm_e_acc: 'В счёте Нафтогаза 9 цифр, а здесь {n}.', gm_e_grm: 'В счёте Газсетей 10 цифр, а здесь {n}.', gm_e_eic: 'EIC-код — 16 символов, а здесь {n}.', gm_e_eic56: 'EIC-код газа начинается с 56 — проверьте.',
+      gm_moved: 'Это счёт Газсетей (10 цифр) — записал в его поле', gd_grm: 'Счёт Газсетей {a}', gd_naf: 'Счёт Нафтогаза {a}', gd_eic: 'EIC-код {a}',
+      gd_badacc: 'Для SMS на 4647 нужен счёт Нафтогаза — 9 цифр из платёжки за газ, а вписано {n}.', gd_find: 'Узнать счёт Нафтогаза по EIC-коду (gas.ua)',
       ghow_t: 'Как снять показания газа', ghow: 'Записывайте чёрные цифры — целые кубометры. Красные (после запятой) — литры, их не передают.|Передавайте с 1 по 5 число — показания на 1-е. Не передали — начислят по среднему.|Газом не пользовались — передайте те же цифры, что в прошлый раз.',
       gh_on: 'Газовый котёл (отопление газом)', gh_sub: 'Тогда зимой большой расход — нормально, без предупреждений.', gh_price: 'Цена газа, грн за м³',
       gh_price_h: 'Нафтогаз «Фиксированный» — 7,96 до 30.04.2027. Другой поставщик — впишите цену из платёжки.', gh_hint: 'Нажмите строку — показания, сколько набежало и почём. Месяц — тот, за который засчитано: показания 1–5 числа — за предыдущий.',
@@ -4986,7 +4996,7 @@ details.tbl-acc[open] > .tbl-wrap { margin-top: 12px; }
   // газ — показання 1–5 числа (станом на 1-ше; SMS 4647 — з 28-го); 1–5 число — за попередній місяць
   var gas = make({ price: [{ from: '2000-01-01', p: 7.96 }], jump: 150, jumpHeat: 800, decimals: 3, oneZone: true, lateDays: 5, idp: 'g',
     phones: [['+380663002888', '(066) 300-28-88', 'Vodafone'], ['+380983002888', '(098) 300-28-88', 'Київстар'], ['+380933002888', '(093) 300-28-88', 'lifecell']],
-    links: { cabinet: 'https://my.grmu.com.ua/', sms: '4647', bot: 'https://t.me/mygrmu_bot' },
+    links: { cabinet: 'https://my.grmu.com.ua/', sms: '4647', bot: 'https://t.me/mygrmu_bot', find: 'https://gas.ua/uk/home/find-account' },
     win: function (today, h) {
       var ym = String(today).slice(0, 7), d = +String(today).slice(8, 10), pm = h.addMonth(ym, -1), nm = h.addMonth(ym, 1);
       if (d <= 5) return { open: true, ym: pm, from: ym + '-01', to: ym + '-05', daysLeft: 5 - d };
@@ -5052,11 +5062,14 @@ details.tbl-acc[open] > .tbl-wrap { margin-top: 12px; }
   // ---- квартиры: у каждой свой адрес, счётчик, последние принятые и история. S.meter/S.baseline — данные активной квартиры.
   function places() { return (S.places || []).filter(function (p) { return p && !p.deleted; }); }
   function place(id) { var k = id || S.placeId; return places().filter(function (p) { return p.id === k; })[0] || null; }
+  var GASMV = false; // перенесли рахунок газу — зберегти (і на сервер) після запуску
   function ensurePlaces() {
     if (!Array.isArray(S.places)) S.places = [];
     if (!places().length) S.places.push({ id: S.places.length ? 'p' + Date.now().toString(36) : 'main', name: '', v: 2, meter: S.meter || null, baseline: S.baseline || null, updatedAt: 0 });
     // раньше в name писали адрес («Адреса квартири») — теперь name — название («Моя», «Батьків»), адрес — отдельно
     places().forEach(function (p) { if (!p.v) { if (p.name && !p.address) { p.address = p.name; p.name = ''; } p.v = 2; } });
+    // газ: 10 цифр у «рахунку Нафтогазу» — це рахунок Газмереж (доставка; у Нафтогазу 9 цифр) — переносимо в його поле
+    places().forEach(function (p) { (p.meters || []).forEach(function (m) { if (gasMove(m)) { p.updatedAt = Date.now(); GASMV = true; } }); });
     if (!S.placeId || !place(S.placeId)) { var f = places()[0]; S.placeId = f.id; S.meter = f.meter || S.meter || null; S.baseline = f.baseline || S.baseline || null; }
   }
   /** Перенести текущие S.meter/S.baseline в запись активной квартиры (перед сохранением). */
@@ -5151,6 +5164,7 @@ details.tbl-acc[open] > .tbl-wrap { margin-top: 12px; }
     // кнопка з нагадування відкрилась до входу — тепер квартири є: у потрібну квартиру й лічильник
     if (DEEP && S.onboarded) { var dp = DEEP; DEEP = null; deepLink(dp.g, dp.pid, dp.q); }
     safeRender();
+    if (GASMV) { GASMV = false; save(); }
   }
   function safeRender() {
     var a = document.activeElement;
@@ -5164,6 +5178,7 @@ details.tbl-acc[open] > .tbl-wrap { margin-top: 12px; }
     return /^ru\b/i.test(l) ? 'ru' : 'uk';
   }
   var S = load(); ensurePlaces();
+  if (GASMV) setTimeout(function () { GASMV = false; save(); }, 0);
   // S.meter/S.baseline — зеркало текущей квартиры: при запуске берём из неё (не из того, что лежало сверху)
   (function () { var ap = place(); if (ap && places().length > 1) { S.meter = ap.meter || null; S.baseline = ap.baseline || null; } })();
   // ---- тема: авто (как в системе / Telegram) · светлая · тёмная; выбор хранится на этом устройстве
@@ -6616,6 +6631,14 @@ details.tbl-acc[open] > .tbl-wrap { margin-top: 12px; }
     if (k === 'gas') { var g = key.replace(/^(ue_|kpi_e_|e)/, function (x) { return x === 'ue_' ? 'ug_' : x === 'kpi_e_' ? 'kpi_g_' : 'g'; }); if (I.T.uk[g] !== undefined) return t(g, v); }
     return t(key, v);
   }
+  // газ: два рахунки — Газмережі (доставка, 10 цифр, Харків 131…/132…) і Нафтогаз (сам газ, 9 цифр — для SMS 4647), і EIC-код точки (16 символів, 56…)
+  function dgt(x) { return String(x || '').replace(/\D/g, ''); }
+  function gasMove(m) { if (!m || m.kind !== 'gas' || m.grm || dgt(m.account).length !== 10) return false; m.grm = m.account; m.account = ''; return true; }
+  function eicNorm(x) { return String(x || '').replace(/\s+/g, '').toUpperCase().slice(0, 20); }
+  /** Номери лічильника світла/газу для показу й копіювання: [ключ підпису, значення]. Газ — Газмережі, Нафтогаз, EIC. */
+  function saccList(k, m) { if (!m) return []; return (k === 'gas' ? [['gd_grm', m.grm], ['gd_naf', m.account], ['gd_eic', m.eic]] : [['ed_acc', m.account]]).filter(function (x) { return x[1]; }); }
+  /** Під назвою лічильника — рахунки (EIC — лише в налаштуваннях і в «Куди передати»). */
+  function saccSub(k, m) { return saccList(k, m).filter(function (x) { return x[0] !== 'gd_eic'; }).map(function (x) { return tk(k, x[0], { a: x[1] }); }); }
   function pmeters(kind, all) { var p = place(); return byKind(((p && p.meters) || []).filter(function (m) { return m && !m.deleted && (all || !m.removed) && (!kind || m.kind === kind); })); }
   function setPMeters(fn) { ensurePlaces(); var p = place(); p.meters = JSON.parse(JSON.stringify(p.meters || [])); fn(p.meters); p.updatedAt = Date.now(); save(); }
   function smeters(k, all) { return pmeters(k, all); }
@@ -6695,7 +6718,7 @@ details.tbl-acc[open] > .tbl-wrap { margin-top: 12px; }
       else {
         var near = left.filter(function (x) { return x.date <= rday && R.daysBetween(x.date, rday) <= 10; });
         var digits = ' ' + String(r.text || '').replace(/\D+/g, ' ') + ' ';
-        var byAcc = near.filter(function (x) { var a = String((smeterById(x.meter) || {}).account || '').replace(/\D/g, ''); return a.length >= 6 && digits.indexOf(' ' + a + ' ') >= 0; });
+        var byAcc = near.filter(function (x) { var sm = smeterById(x.meter) || {}; return [sm.account, sm.grm].some(function (y) { var a = dgt(y); return a.length >= 6 && digits.indexOf(' ' + a + ' ') >= 0; }); });
         var pl = {}; near.forEach(function (x) { pl[x.place] = 1; });
         grp = byAcc.length ? byAcc : Object.keys(pl).length === 1 ? near : [];
       }
@@ -6739,7 +6762,7 @@ details.tbl-acc[open] > .tbl-wrap { margin-top: 12px; }
       var r = have.filter(function (x) { return x && x.meter === m.id; })[0]; if (!r) return '';
       return md.keys(m).map(function (z) { var v = md.whole(r.z[z]); return '<li><span>' + esc((ms.length > 1 ? (m.name || ename(m)) + ' · ' : '') + ezl(m, z)) + '</span><b class="num">' + v + '</b><button class="linkbtn" data-act="copy" data-text="' + v + '">' + esc(t('copy')) + '</button></li>'; }).join('');
     }).join('') + '</ul>' + (k === 'elec' && El.zones(ms[0] || {}) > 1 ? '<p class="small muted">' + esc(t('ed_nosum')) + '</p>' : '');
-    var acc = ms.filter(function (m) { return m.account; }).map(function (m) { return '<p class="small">' + esc(tk(k, 'ed_acc', { a: m.account })) + (ms.length > 1 ? ' · ' + esc(m.name || '') : '') + ' <button class="linkbtn" data-act="copy" data-text="' + esc(m.account) + '">' + esc(t('copy')) + '</button></p>'; }).join('');
+    var acc = ms.map(function (m) { return saccList(k, m).map(function (x) { return '<p class="small" data-key="esend-' + x[0] + '-' + m.id + '">' + esc(tk(k, x[0], { a: x[1] })) + (ms.length > 1 ? ' · ' + esc(m.name || '') : '') + ' <button class="linkbtn" data-act="copy" data-text="' + esc(x[1]) + '">' + esc(t('copy')) + '</button></p>'; }).join(''); }).join('');
     // кол-центр — стовпчиком: номер і оператор у рядок, кожен номер окремо (зручно читати й натискати)
     var phones = '<ul class="dm-ph">' + md.PHONES.map(function (p) { return '<li>' + telLink(p[0], p[1]) + '<span class="muted">' + esc(p[2]) + '</span></li>'; }).join('') + '</ul>';
     // кнопка офіційного бота: є показання — запам'ятовуємо натискання (botAt), щоб пересланий нам «прийнято» ліг саме на них
@@ -6751,7 +6774,8 @@ details.tbl-acc[open] > .tbl-wrap { margin-top: 12px; }
     if (k === 'gas') {
       // SMS 4647: «9 цифр рахунку пробіл 5 цифр показань» — готовий текст, якщо є рахунок і показання
       var sms = have && ms.length === 1 ? Gs.smsText(ms[0].account, (have.filter(Boolean)[0].z || {}).all) : null;
-      if (have && ms.length === 1 && !sms) body += '<p class="small muted">' + esc(t('gd_noacc')) + '</p>';
+      var nafN = ms.length === 1 ? dgt(ms[0].account).length : 9;
+      if (have && ms.length === 1 && !sms && nafN !== 9) body += '<p class="small" data-key="gd-noacc">' + esc(nafN ? t('gd_badacc', { n: nafN }) : t('gd_noacc')) + ' <a href="' + Gs.LINKS.find + '" target="_blank" rel="noopener" data-key="gd-find">' + esc(t('gd_find')) + ' ' + ico('ext', 14) + '</a></p>';
       if (sms) body += '<p class="small">' + esc(t('gd_sms_how', { s: sms })) + '</p>';
       chans = [[Gs.LINKS.bot, t('gd_bot'), 'send', 'bot', botAttr]].concat(sms ? [['sms:' + Gs.LINKS.sms + '?&body=' + encodeURIComponent(sms), t('gd_sms'), 'send', 'sms']] : []).concat([[Gs.LINKS.cabinet, t('gd_cab'), 'ext', 'cab']]);
       if (have) body += sbBox(k, have);
@@ -6861,11 +6885,19 @@ details.tbl-acc[open] > .tbl-wrap { margin-top: 12px; }
   });
   /** Одна й та сама ссилка в усіх лічильників: квартира — її лічильники (додати, замінити, прибрати) і рахунки. */
   function mbPlaceLink(key) { var p = place() || {}; return mlink('#place-' + esc(p.id || ''), 'home', t('mb_place'), ' data-key="' + (key || 'mb-place') + '"'); }
+  /** Поле номера лічильника (рахунок, EIC) з «Копіювати»; warn — підказка жовтим (скільки цифр бракує). */
+  function sfld(m, f, pre, lbl, attrs, help, warn) {
+    var id = pre + m.id;
+    return '<div class="field"><label for="' + id + '">' + esc(lbl) + '</label><div class="ctl"><input id="' + id + '" class="num" autocomplete="off" ' + attrs + ' data-em="' + m.id + '" data-ef="' + f + '" value="' + esc(m[f] || '') + '">' + ctlCopy(id) + '</div>' +
+      (warn ? '<div class="help warn" data-key="' + id + '-warn">' + esc(warn) + '</div>' : '') + (help ? '<div class="help">' + esc(help) + '</div>' : '') + '</div>';
+  }
   function smeterFields(k, m) {
     var zfree = k === 'elec' && !mrecs(m.id).length;
     return '<div class="grid2">' +
       '<div class="field"><label for="emn-' + m.id + '">' + esc(t('em_name')) + '</label><div class="ctl"><input id="emn-' + m.id + '" maxlength="40" data-em="' + m.id + '" data-ef="name" value="' + esc(m.name || '') + '" placeholder="' + esc(tk(k, 'em_name_ph')) + '"></div></div>' +
-      '<div class="field"><label for="ema-' + m.id + '">' + esc(t('em_acc')) + '</label><div class="ctl"><input id="ema-' + m.id + '" class="num" inputmode="numeric" autocomplete="off" data-em="' + m.id + '" data-ef="account" value="' + esc(m.account || '') + '">' + ctlCopy('ema-' + m.id) + '</div><div class="help">' + esc(tk(k, 'em_acc_h')) + '</div></div>' +
+      (k === 'gas' ? sfld(m, 'grm', 'emg-', t('gm_grm'), 'inputmode="numeric"', t('gm_grm_h'), m.grm && dgt(m.grm).length !== 10 ? t('gm_e_grm', { n: dgt(m.grm).length }) : '') : '') +
+      sfld(m, 'account', 'ema-', tk(k, 'em_acc'), 'inputmode="numeric"', tk(k, 'em_acc_h'), k === 'gas' && m.account && dgt(m.account).length !== 9 ? t('gm_e_acc', { n: dgt(m.account).length }) : '') +
+      (k === 'gas' ? sfld(m, 'eic', 'eme-', t('gm_eic'), 'autocapitalize="characters" spellcheck="false" maxlength="20"', t('gm_eic_h'), !m.eic ? '' : m.eic.length !== 16 ? t('gm_e_eic', { n: m.eic.length }) : !/^56/.test(m.eic) ? t('gm_e_eic56') : '') : '') +
       '<div class="field"><label for="ems-' + m.id + '">' + esc(t('wm_serial')) + '</label><div class="ctl"><input id="ems-' + m.id + '" class="num" autocomplete="off" data-em="' + m.id + '" data-ef="serial" value="' + esc(m.serial || '') + '">' + ctlCopy('ems-' + m.id) + '</div></div></div>' +
       (zfree ? '<fieldset class="field"><legend class="lbl">' + esc(t('ea_zones')) + '</legend><div class="wz-opts" role="radiogroup">' + [1, 2, 3].map(function (n) {
         return '<label class="wz-opt"><input type="radio" name="emz-' + m.id + '" value="' + n + '"' + (El.zones(m) === n ? ' checked' : '') + ' data-em="' + m.id + '" data-ef="zones" data-key="em-z' + n + '"><span><b>' + esc(t('ez_n' + n)) + '</b><span class="small muted">' + esc(t('ea_z' + n + '_s')) + '</span></span></label>';
@@ -6877,7 +6909,7 @@ details.tbl-acc[open] > .tbl-wrap { margin-top: 12px; }
     var left = ms.map(function (m, i) {
       var sc = sentCap(mrecs(m.id), function (x) { return x.base ? baseSent(x) : ssent(k, x); }), r = sc.rec, cap = sc.cap;
       var fix = r && !r.base ? '<button class="linkbtn" data-act="eedit" data-id="' + r.id + '">' + esc(t('change')) + '</button>' : '';
-      return mbox({ key: 'emeter-' + m.id, id: m.id, kind: k, icon: SK[k].icon, cls: SK[k].cls, name: ms.length > 1 ? ename(m) : t(KINDS[k].t), sub: [m.account ? tk(k, 'ed_acc', { a: m.account }) : '', ezonesTxt(m)],
+      return mbox({ key: 'emeter-' + m.id, id: m.id, kind: k, icon: SK[k].icon, cls: SK[k].cls, name: ms.length > 1 ? ename(m) : t(KINDS[k].t), sub: saccSub(k, m).concat([ezonesTxt(m)]),
         display: edisplay(m, r, 'hero'), cap: cap, fix: fix, copy: r && r.z && SK[k].mod.zones(m) <= 1 && SK[k].mod.whole(r.z.all) !== null ? SK[k].mod.whole(r.z.all) : '', body: sc.note ? '<p class="small muted mb-newer">' + esc(sc.note) + '</p>' : '',
         set: smeterFields(k, m) + (i === 0 ? priceBlock(k) + sheatRow(k) : ''),
         links: [mbPlaceLink(k + '-place')] });
@@ -7098,7 +7130,9 @@ details.tbl-acc[open] > .tbl-wrap { margin-top: 12px; }
       }).join('') + '</div></fieldset>' : '') +
       md.keys(mz).map(function (q) { return phHelp(fld('ea-v-' + q, t('ea_val') + (z > 1 ? ': ' + ezl(mz, q).toLowerCase() : ''), 'class="num" inputmode="decimal" autocomplete="off" data-ea="' + q + '" value="' + esc(EA.vals[q] || '') + '"', u, q === md.keys(mz).slice(-1)[0] ? t('ea_val_h') : '', true, startCam('ea-v-' + q, tk(k, 'ea_title'))), 'ea-v-' + q); }).join('') +
       (same.length ? fld('ea-name', t('em_name'), 'maxlength="40" autocomplete="off" placeholder="' + esc(tk(k, 'em_name_ph')) + '"', '', t('ea_name_need', { n: same.length }), false) : '') +
-      fld('ea-acc', t('em_acc'), 'class="num" inputmode="numeric" autocomplete="off"', '', tk(k, 'em_acc_h'), true) +
+      (k === 'gas' ? fld('ea-grm', t('gm_grm'), 'class="num" inputmode="numeric" autocomplete="off"', '', t('gm_grm_h'), true) : '') +
+      fld('ea-acc', tk(k, 'em_acc'), 'class="num" inputmode="numeric" autocomplete="off"', '', tk(k, 'em_acc_h'), true) +
+      (k === 'gas' ? fld('ea-eic', t('gm_eic'), 'class="num" autocomplete="off" autocapitalize="characters" spellcheck="false" maxlength="20"', '', t('gm_eic_h'), true) : '') +
       fld('ea-serial', t('wm_serial'), 'class="num" autocomplete="off"', '', '', true) +
       (same.length ? '' : sheatRow(k)) +
       '<div class="help block" id="ea-err" role="alert"></div></div>' +
@@ -7118,7 +7152,7 @@ details.tbl-acc[open] > .tbl-wrap { margin-top: 12px; }
     var box = document.getElementById('ea-err');
     if (err) { if (box) box.textContent = err; var bi = document.getElementById(bad); if (bi) bi.focus(); return; }
     var id = md.uid();
-    setPMeters(function (list) { list.push(Object.assign({ id: id, kind: k, name: name, serial: v('ea-serial'), account: v('ea-acc'), createdAt: today() }, k === 'elec' ? { zones: mz.zones } : {})); });
+    setPMeters(function (list) { var nm = Object.assign({ id: id, kind: k, name: name, serial: v('ea-serial'), account: v('ea-acc'), createdAt: today() }, k === 'elec' ? { zones: mz.zones } : { grm: v('ea-grm'), eic: eicNorm(v('ea-eic')) }); gasMove(nm); list.push(nm); });
     if (filled) { S.mrecs = S.mrecs || []; S.mrecs.push({ id: md.uid(), place: S.placeId, meter: id, kind: k, date: today(), z: z, base: true, sent: {}, createdAt: new Date().toISOString(), updatedAt: Date.now() }); }
     S.onboarded = true; S.view = k; save(); toast(tk(k, 'ea_added') + inPlace());
     var back = EA.back; EA = { kind: k, back: '', zones: 1, vals: {} };
@@ -8855,7 +8889,7 @@ details.tbl-acc[open] > .tbl-wrap { margin-top: 12px; }
     var rows = [];
     if (hasHeat()) rows.push(mrow({ what: 'heat', kind: 'heat', title: t('kd_heat'), href: 'heat', sub: [modelName(model()), verTxt(S.meter.verifiedUntil)].filter(Boolean).join(' · ') }));
     ms.forEach(function (m) { rows.push(mrow({ what: m.id, kind: m.kind, title: wkindTitle(m.kind) + (m.name ? ' · ' + m.name : ''), href: 'water-' + m.kind, sub: verTxt(m.verifiedUntil) })); });
-    ['elec', 'gas'].forEach(function (k) { smeters(k).forEach(function (m) { rows.push(mrow({ what: m.id, kind: k, title: ename(m), href: SK[k].page, noReplace: true, sub: [m.account ? tk(k, 'ed_acc', { a: m.account }) : '', ezonesTxt(m)].filter(Boolean).join(' · ') })); }); });
+    ['elec', 'gas'].forEach(function (k) { smeters(k).forEach(function (m) { rows.push(mrow({ what: m.id, kind: k, title: ename(m), href: SK[k].page, noReplace: true, sub: saccSub(k, m).concat([ezonesTxt(m)]).filter(Boolean).join(' · ') })); }); });
     h += '<section class="panel" data-key="pv-meters"><h2>' + esc(t('pv_meters')) + '</h2>' + (rows.length ? '<ul class="mlist">' + rows.join('') + '</ul>' : '<p class="muted">' + esc(t('pv_none')) + '</p>') +
       '<p style="margin:12px 0 0"><button class="btn' + (rows.length ? ' sec' : '') + '" data-act="add-meter" data-back="place-' + esc(p.id) + '" data-key="pv-add-meter">' + ico('plus', 20) + '<span>' + esc(t('am_tile')) + '</span></button></p>';
     var rm = removedMeters();
@@ -9079,8 +9113,8 @@ details.tbl-acc[open] > .tbl-wrap { margin-top: 12px; }
   document.addEventListener('change', function (e) {
     var el = e.target; if (!el || !el.getAttribute) return;
     var mid = el.getAttribute('data-em');
-    if (mid) { var f = el.getAttribute('data-ef'), v = el.value.trim().slice(0, 40); if (f === 'zones') v = Math.min(3, Math.max(1, +v || 1));
-      setPMeters(function (list) { list.forEach(function (m) { if (m.id === mid) m[f] = v; }); }); toast(t('b_saved')); if (f === 'zones') { MB_OPEN[mid] = true; render(true); } else if (f === 'account' || f === 'name') safeRender(); return; }
+    if (mid) { var f = el.getAttribute('data-ef'), v = el.value.trim().slice(0, 40), moved = false; if (f === 'zones') v = Math.min(3, Math.max(1, +v || 1)); if (f === 'eic') v = eicNorm(v);
+      setPMeters(function (list) { list.forEach(function (m) { if (m.id === mid) { m[f] = v; if (f === 'account') moved = gasMove(m); } }); }); toast(moved ? t('gm_moved') : t('b_saved')); if (f === 'zones') { MB_OPEN[mid] = true; render(true); } else if (f === 'account' || f === 'name' || f === 'grm' || f === 'eic') { MB_OPEN[mid] = true; safeRender(); } return; }
     var hk = el.getAttribute('data-heat');
     // ціна й пільга змінюють вартість у історії — перемалювати сторінку
     if (hk === 'elecHeat' || hk === 'gasHeat') { ensurePlaces(); var pp = place(); if (el.checked) pp[hk] = true; else delete pp[hk]; pp.updatedAt = Date.now(); save(); toast(t('b_saved')); render(true); return; }

@@ -16,6 +16,7 @@ let pass = 0, fail = 0; const ok = (n, c, i) => { console.log((c ? '  OK  ' : ' 
   let s;
   await click('[data-key=card-place-set]'); await click('[data-key=pv-add-meter]'); await click('[data-key=am-gas]');
   ok('форма газу: без вибору зон, одне поле м³', (await hash()) === '#gadd' && !(await p.$('input[name=ea-z]')) && (await p.$$('[data-ea]')).length === 1);
+  ok('форма газу: рахунок Газмереж, Нафтогазу, EIC', !!(await p.$('#ea-grm')) && !!(await p.$('#ea-eic')) && /Нафтогазу/.test(await p.textContent('label[for=ea-acc]')));
   await p.fill('#ea-v-all', '1180,5'); await p.fill('#ea-acc', '123456789'); await click('[data-key=ea-save]', 400);
   s = await st(); const m = s.places[0].meters.find(x => x.kind === 'gas');
   ok('лічильник газу + стартові 1180.5', m && m.account === '123456789' && s.mrecs.some(r => r.base && r.meter === m.id && r.z.all === '1180.5'), { m, r: s.mrecs });
@@ -48,7 +49,32 @@ let pass = 0, fail = 0; const ok = (n, c, i) => { console.log((c ? '  OK  ' : ' 
   await go('save'); await click('[data-key=kind-gas]', 300); ok('економія газу: поради', !!(await p.$('[data-key=gsave-tips]')) && /на газі/.test(await p.textContent('h1')));
   // без рахунку — підказка замість SMS
   await go('gas'); await p.fill('#ema-' + m.id, ''); await p.press('#ema-' + m.id, 'Tab'); await p.waitForTimeout(300); await p.reload(); await p.waitForTimeout(400);
-  ok('без рахунку — «впишіть особовий рахунок», без кнопки SMS', /Впишіть особовий рахунок/.test(await p.textContent('[data-key=where-gas]')) && !(await p.$('[data-key=dest-grm-sms]')));
+  ok('без рахунку — «потрібен рахунок Нафтогазу» + gas.ua за EIC, без кнопки SMS', /потрібен рахунок Нафтогазу — 9 цифр/.test(await p.textContent('[data-key=where-gas]')) && !(await p.$('[data-key=dest-grm-sms]'))
+    && (await p.getAttribute('[data-key=gd-find]', 'href')) === 'https://gas.ua/uk/home/find-account');
+  // два рахунки й EIC: 10 цифр у рахунку Нафтогазу — це Газмережі (переносимо), EIC — великими без пробілів
+  const setF = async (sel, v) => { await go('gas'); await p.fill(sel, v); await p.press(sel, 'Tab'); await p.waitForTimeout(350); };
+  await setF('#ema-' + m.id, '1320012345'); s = await st(); let gm = s.places[0].meters.find(x => x.id === m.id);
+  ok('10 цифр у «рахунку Нафтогазу» → рахунок Газмереж, тост', gm.grm === '1320012345' && gm.account === '' && /рахунок Газмереж/.test(await p.textContent('#toast-host')), gm);
+  await go('gas');
+  ok('поля газу: Газмережі, Нафтогаз, EIC — з «Копіювати»', (await p.$$('#emg-' + m.id + ', #ema-' + m.id + ', #eme-' + m.id)).length === 3 && !!(await p.$('[data-key=copy-emg-' + m.id + ']')) && !!(await p.$('[data-key=copy-eme-' + m.id + ']'))
+    && (await p.inputValue('#emg-' + m.id)) === '1320012345');
+  ok('під назвою — «Рахунок Газмереж 1320012345»', /Рахунок Газмереж 1320012345/.test(await p.textContent('[data-key=emeter-' + m.id + '] .mbox-sub')));
+  await setF('#ema-' + m.id, '12345678'); await go('gas');
+  ok('8 цифр — жовта підказка «9 цифр, а тут 8» і в «Куди передати» «а вписано 8»', /9 цифр, а тут 8/.test(await p.textContent('[data-key=ema-' + m.id + '-warn]')) && /а вписано 8/.test(await p.textContent('[data-key=where-gas]')));
+  await setF('#eme-' + m.id, ' 56xm19a2 05987456 '); s = await st(); gm = s.places[0].meters.find(x => x.id === m.id);
+  ok('EIC — великими без пробілів', gm.eic === '56XM19A205987456', gm);
+  await setF('#ema-' + m.id, '123456789'); await go('gas'); const wg = await p.textContent('[data-key=where-gas]');
+  ok('«Куди передати»: рахунок Газмереж, Нафтогазу, EIC — кожен з «Копіювати», SMS знову є',
+    /Рахунок Газмереж 1320012345/.test(wg) && /Рахунок Нафтогазу 123456789/.test(wg) && /EIC-код 56XM19A205987456/.test(wg) && !(await p.$('[data-key=gd-noacc]'))
+    && (await p.getAttribute('[data-key=esend-gd_eic-' + m.id + '] [data-act=copy]', 'data-text')) === '56XM19A205987456'
+    && (await p.getAttribute('[data-key=esend-gd_grm-' + m.id + '] [data-act=copy]', 'data-text')) === '1320012345', wg);
+  await setF('#eme-' + m.id, '56XM19A2059874'); await go('gas');
+  ok('EIC 14 символів — «16 символів, а тут 14»', /16 символів, а тут 14/.test(await p.textContent('[data-key=eme-' + m.id + '-warn]')));
+  // старі дані: 10 цифр в account без grm — переносяться при відкритті
+  s = await st(); s.places[0].meters.forEach(x => { if (x.id === m.id) { x.account = '1310099999'; delete x.grm; } });
+  await p.evaluate(v => localStorage.setItem('teplo.v1', JSON.stringify(v)), s); await p.reload(); await p.waitForTimeout(400); await go('gas'); await p.waitForTimeout(200);
+  s = await st(); gm = s.places[0].meters.find(x => x.id === m.id);
+  ok('старі дані: 10 цифр → Газмережі при відкритті', gm.grm === '1310099999' && gm.account === '', gm);
   // мастер: газ у черзі останнім з «простих», перед теплом
   await go('add-place'); await click('[data-key=aw-next]');
   await click('[data-key=aw-gas-inc]', 200); await click('[data-key=aw-heat-inc]', 200); await click('[data-key=aw-create]', 400);
