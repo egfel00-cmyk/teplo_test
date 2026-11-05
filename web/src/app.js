@@ -2614,7 +2614,9 @@
 
   /** Показания без удалённых (удалённые остаются «надгробием» с deleted, чтобы удаление синхронизировалось). */
   function RD() { var first = S.places && S.places[0] ? S.places[0].id : 'main'; return (S.readings || []).filter(function (r) { return r && !r.deleted && (r.place || first) === S.placeId; }); }
-  function tariff() { var n = R.num(S.tariff); return n && n > 0 ? n : R.C.TARIFF; }
+  /** Тариф тепла, грн/Гкал: свій у квартири (place.prov.heat.price — з платіжки або з Налаштувань), далі старий спільний S.tariff, далі ХТМ. */
+  function tariff() { var p = place() || {}, h = (p.prov || {}).heat || {}, pn = R.num(h.price); if (pn && pn > 0) return pn; var n = R.num(S.tariff); return n && n > 0 ? n : R.C.TARIFF; }
+  function tariffSet(v) { var p = place(); if (!p) { S.tariff = v; return; } p.prov = p.prov || {}; p.prov.heat = Object.assign({}, p.prov.heat || {}, { price: v, at: today() }); p.updatedAt = Date.now(); }
   /* Платіжка ХТМ: до сплати = (ваше тепло за лічильником + ваша частка ЗБП) × тариф + абонплата.
      ЗБП — загальнобудинкові потреби (сходи, підвал): частка пропорційна площі, у платіжці — стовпець «на ЗБП» у рядку вашого вузла. */
   // абонплата и доля ЗБП — свои у каждой квартиры (place.bill); у первой — откат на прежние общие S.bill
@@ -3533,6 +3535,12 @@
   function prvRow(p, k, d, nat) {
     var my = (p.prov || {})[k] || {}, own = !!(my.name || my.supply || my.price), ed = PRV.edit[k], org = my.name || (d && d.org) || '';
     var lines = [], price = '';
+    if (k === 'heat') {
+      // гроші за тепло застосунок рахує завжди: за тарифом квартири (з платіжки), а якщо його немає — за тарифом із довідника або ХТМ
+      var hp = R.num(my.price), dp = d && R.num(d.price), used = tariff();
+      if (hp || dp) price = t('prv_p_heat', { p: money(used), a: money(bill().abon) }) + (hp ? ' ' + t('prv_from_bill') : '');
+      else lines.push(t('prv_heat_calc', { p: money(used) }));
+    }
     if (k === 'elec') { if (d && d.net) lines.push(t('prv_net', { n: d.net })); if (nat.elec) price = t('prv_p_elec', { p: money(nat.elec.price), d: fmtDate(nat.elec.to, true) }); }
     if (k === 'gas') {
       if (my.price) price = t('prv_p_own', { p: money(R.num(my.price)) });
@@ -3551,11 +3559,13 @@
       lines.map(function (x) { return '<p class="small muted">' + esc(x) + '</p>'; }).join('') +
       '<p class="prov-price' + (price ? '' : ' none') + '">' + esc(price || t('prv_p_none')) + '</p>' +
       (src && !own ? '<details class="prov-src"><summary>' + esc(t('prv_src')) + '</summary><p class="small muted">' + esc(src) + '</p></details>' : '') +
-      (need && d && d.note && !ed ? '<p class="small prov-note">' + esc(d.note) + '</p>' : '');
+      ((need || !(my.ok || own)) && d && d.note && !ed ? '<p class="small prov-note">' + esc(d.note) + '</p>' : '');
     if (ed) {
       h += '<div class="prov-form" data-key="prov-form-' + k + '"><div class="field"><label for="prv-n-' + k + '">' + esc(t('prv_name')) + '</label><div class="ctl"><input id="prv-n-' + k + '" maxlength="80" value="' + esc(my.name || (d && d.org) || '') + '"></div></div>' +
         (k === 'water' ? '<div class="grid2"><div class="field"><label for="prv-s">' + esc(t('prv_supply')) + '</label><div class="ctl"><input id="prv-s" class="num" inputmode="decimal" value="' + esc(my.supply ? String(my.supply).replace('.', ',') : '') + '"><span class="unit">грн</span></div></div>' +
           '<div class="field"><label for="prv-d">' + esc(t('prv_drain')) + '</label><div class="ctl"><input id="prv-d" class="num" inputmode="decimal" value="' + esc(my.drain ? String(my.drain).replace('.', ',') : '') + '"><span class="unit">грн</span></div></div></div>' : '') +
+        (k === 'heat' ? '<div class="grid2"><div class="field"><label for="prv-h">' + esc(t('prv_heatp')) + '</label><div class="ctl"><input id="prv-h" class="num" inputmode="decimal" value="' + esc(money(tariff())) + '"><span class="unit">грн</span></div></div>' +
+          '<div class="field"><label for="prv-a">' + esc(t('p_abon_l')) + '</label><div class="ctl"><input id="prv-a" class="num" inputmode="decimal" value="' + esc(money(bill().abon)) + '"><span class="unit">грн</span></div></div></div>' : '') +
         (k === 'gas' ? '<div class="field" style="max-width:260px"><label for="prv-g">' + esc(t('prv_gasp')) + '</label><div class="ctl"><input id="prv-g" class="num" inputmode="decimal" value="' + esc(my.price ? String(my.price).replace('.', ',') : '') + '" placeholder="' + esc(nat.gas ? money(nat.gas.price) : '') + '"><span class="unit">грн</span></div></div>' : '') +
         '<div class="row-actions"><button type="button" class="btn sec" data-act="prv-cancel" data-k="' + k + '">' + esc(t('cancel')) + '</button><button type="button" class="btn" data-act="prv-save" data-k="' + k + '" data-key="prov-save-' + k + '">' + esc(t('save')) + '</button></div></div>';
     } else if (need && org && !(k === 'water' && !price)) {
@@ -3589,6 +3599,9 @@
       var o = { name: v('prv-n-' + k).slice(0, 80), at: today() };
       if (k === 'water') { var s = R.num(v('prv-s')), dr = R.num(v('prv-d')); if (s > 0 && s < 1000) o.supply = s; if (dr > 0 && dr < 1000) o.drain = dr; }
       if (k === 'gas') { var g = R.num(v('prv-g')); if (g > 0 && g < 100) { o.price = g; p.gasPrice = g; } }
+      if (k === 'heat') { var hv = R.num(v('prv-h').replace(/\s/g, '')), av = R.num(v('prv-a').replace(/\s/g, ''));
+        if (hv > 0 && hv < 100000) o.price = hv;
+        if (av !== null && av >= 0 && av < 10000) p.bill = Object.assign({}, p.bill || {}, { abon: av }); }
       p.prov[k] = o; delete PRV.edit[k]; p.updatedAt = Date.now(); WX.key = ''; save(); toast(t('prv_saved'));
     } else return;
     SCROLL_TO = 'prov'; render(true);
@@ -4718,7 +4731,7 @@
       var nk = el.getAttribute('data-nm'), nv = el.value.trim() === '' ? null : R.num(el.value.replace(',', '.'));
       if (nv === null || (nv > 0 && nv < (nk === 'persons' ? 50 : 100))) wsetCfg(function (c) { if (nv === null) delete c[nk]; else c[nk] = nk === 'persons' ? Math.round(nv) : nv; });
     }
-    if (el.id === 'p-tariff') { var tn = R.num(el.value.replace(',', '.')); if (tn && tn > 0 && tn < 100000) { S.tariff = tn; save(); } }
+    if (el.id === 'p-tariff') { var tn = R.num(el.value.replace(',', '.')); if (tn && tn > 0 && tn < 100000) { tariffSet(tn); save(); } }
     if (el.id === 'p-abon' || el.id === 'p-mzk') {
       var bv = el.value.trim() === '' ? (el.id === 'p-mzk' ? 0 : R.C.ABON) : R.num(el.value.replace(',', '.'));
       if (bv !== null && bv >= 0 && bv < 10000) { ensurePlaces(); var pb = place(); pb.bill = Object.assign({}, pb.bill || {}); pb.bill[el.id === 'p-abon' ? 'abon' : 'mzk'] = bv; pb.updatedAt = Date.now(); save(); }
