@@ -9,6 +9,7 @@ require __DIR__ . '/../app/recognize.php';
 require __DIR__ . '/../app/admin.php';
 require __DIR__ . '/../app/vkcab.php';
 require __DIR__ . '/../app/gpv.php';
+require __DIR__ . '/../app/providers.php';
 require __DIR__ . '/../app/visits.php';
 require __DIR__ . '/../app/journal.php';
 require __DIR__ . '/../app/docs.php';
@@ -829,6 +830,18 @@ ok('кнопка меню бота: «Відкрити» за замовчува
   && $mb[1][1]['chat_id'] === 555 && $mb[1][1]['menu_button']['text'] === 'Открыть' && count(array_filter($mc, fn($x) => $x[0] === 'setMyCommands' && ($x[1]['language_code'] ?? '') === 'ru')) === 1
   && str_contains(end($mc)[1]['text'] ?? '', 'Що вміє сервіс'), $mb);
 Telegram::$send = null;
+// постачальники й тарифи за адресою (app/data/providers.json)
+$pv = fn($q) => Providers::lookup($q);
+$a1 = $pv('Малая Даниловка, ул.Академическая 10, кв.20'); $a2 = $pv('смт Мала Данилівка, вул. Академічна, 10, кв. 20'); $a3 = $pv('с-ще Мала Данилівка, Академічна 10');
+ok('постачальники: «Малая Даниловка, ул.Академическая 10» / «смт Мала Данилівка…» / «с-ще …» → Мала Данилівка, громада, Газмережі Харківська філія 2,388, вода — КП «Малоданилівський комунальник» без тарифу',
+  $a1['found'] && $a1['place']['id'] === 'mala-danylivka' && $a2['place']['id'] === 'mala-danylivka' && $a3['place']['id'] === 'mala-danylivka' && $a1['how'] === 'name'
+  && $a1['place']['hromada'] === 'Малоданилівська селищна громада' && $a1['kinds']['gas']['dist'] === 2.388 && $a1['kinds']['water']['supply'] === null && str_contains($a1['kinds']['water']['org'], 'Малоданилівський'), $a1);
+$k1 = $pv('пр. Победы 86А, кв. 61'); $k2 = $pv('Харьков, ул. Сумская 10'); $k3 = $pv('Пісочин, вул. Набережна 3');
+ok('Харків: адреса з вулиці без пункту → Харків (how default), «Харьков, …» → Харків (name); незнайомий пункт → found false (не вигадуємо Харків); світло 4,32 і газ 7,96 — загальнодержавні з джерелом',
+  $k1['found'] && $k1['place']['id'] === 'kharkiv' && $k1['how'] === 'default' && $k2['place']['id'] === 'kharkiv' && $k2['how'] === 'name' && !$k3['found'] && $k3['reason'] === 'place'
+  && $k1['national']['elec']['price'] === 4.32 && $k1['national']['gas']['price'] === 7.96 && $k1['national']['elec']['to'] === '2027-04-30' && $k1['kinds']['water']['supply'] === 49.446 && $k1['kinds']['gas']['dist'] === 0.516, [$k1['how'] ?? null, $k3]);
+{ $res = $phone->req('GET', '/api/providers', null, ['QUERY_STRING' => 'q=' . rawurlencode('Малая Даниловка, Академическая 10')]);
+  ok('GET /api/providers?q= → 200, Мала Данилівка', $res->status === 200 && ($res->body['place']['id'] ?? '') === 'mala-danylivka', [$res->status, $res->body]); }
 echo "\nВыход:\n";
 $phone->req('POST', '/api/auth/logout');
 ok('после выхода /api/me → 401', $phone->req('GET', '/api/me')->status === 401);

@@ -547,7 +547,7 @@
     if (!g || !g.from) return null;
     if (g.what === 'heat') return window.TeploStats ? TeploStats.gapHeat(g, TeploStats.intervals(RD(), S.baseline, null, tariff(), gaps('heat').filter(function (x) { return x.id !== g.id; }).concat([g])), { today: today(), tariff: tariff() }) : null;
     var m = wmeters(null, true).filter(function (x) { return x.id === g.what; })[0], c = wcfg();
-    return m ? Wt.gapWater(g, wrecs(), m, { today: today(), custom: S.wtariff, persons: c.persons, cfg: c }) : null;
+    return m ? Wt.gapWater(g, wrecs(), m, { today: today(), custom: wtar(), persons: c.persons, cfg: c }) : null;
   }
   function monthLabel(ym) { try { return new Date(ym + '-15T12:00:00Z').toLocaleDateString(S.lang === 'ru' ? 'ru-RU' : 'uk-UA', { month: 'long', year: 'numeric' }).replace(/\s*(р\.|г\.)$/, ''); } catch (e) { return ymLabel(ym); } }
   /** Блок «Скільки це коштувало» у формі періоду: правило, підсумок, по місяцях, порівняння з платіжкою. */
@@ -610,7 +610,7 @@
     if (last && thisMonth(last.htm.date) && (last.status === 'handed' || last.status === 'accepted')) return { st: last.status === 'accepted' ? t('uc_heat_ok') : t('uc_heat_handed'), tone: 'ok' };
     if (w.state === 'open' || w.state === 'soon_recommended') return { st: t('uc_heat_due', { d: fmtDate(d25) }), tone: 'due', due: d25 };
     if (w.state === 'late' || w.state === 'last_day') return { st: t('uc_heat_late', { d: fmtDate(d25) }), tone: 'warn', due: d25 };
-    return { st: t('uc_heat_closed', { d: fmtDate(w.state === 'closed_before' ? dayOfMonth(today(), 5) : nextMonthDay(today(), 5)) }), tone: '' };
+    var hn = w.state === 'closed_before' ? dayOfMonth(today(), 5) : nextMonthDay(today(), 5); return { st: t('uc_heat_closed', { d: fmtDate(hn) }), tone: '', from: hn };
   }
   /** Статус воды вида kind ('hot' | 'cold') текущей квартиры — как heatStatus. */
   function waterStatus(kind) {
@@ -618,9 +618,9 @@
     var done = last && thisMonth(last.date) && wsentVk(last) && (kind === 'cold' || wsentHtm(last));
     if (gap) return { st: t('gp_card_off', { d: fmtDate(gap.from) }), tone: 'warn', off: true };
     if (done) return { st: t('uc_w_sent'), tone: 'ok' };
-    if (last && thisMonth(last.date)) return { st: t('uc_w_ready'), tone: 'due', due: w.open ? w.deadline : null };
+    if (last && thisMonth(last.date)) return { st: t('uc_w_ready'), tone: 'due', due: w.open ? w.deadline : null, ready: true };
     if (w.open) return { st: t('uc_w_due', { d: fmtDate(w.deadline) }), tone: w.daysLeft <= 3 ? 'warn' : 'due', due: w.deadline };
-    return { st: t('uc_w_next', { d: fmtDate(nextMonthDay(today(), Wt.VK_DEADLINE)) }), tone: '' };
+    return { st: t('uc_w_next', { d: fmtDate(nextMonthDay(today(), Wt.VK_DEADLINE)) }), tone: '', until: nextMonthDay(today(), Wt.VK_DEADLINE) };
   }
   /** Карточка на главной: табло с последними показаниями, срок, «+» — сразу к вводу. */
   function ucard(o) {
@@ -633,11 +633,13 @@
       '</a>' +
       '<button type="button" class="ucard-add' + (o.tone === 'warn' ? ' hot' : '') + '" data-act="' + o.addAct + '"' + (o.addKind ? ' data-kind="' + o.addKind + '"' : '') + ' data-key="card-' + o.kind + '-add" aria-label="' + esc(o.addLabel) + '" title="' + esc(o.addLabel) + '">' + ico('plus', 26) + '</button></div>';
   }
+  /** Рядок статусу на картці головної: передано / знято — завжди; строк — лише за 4 дні до кінця; «наступна передача» — ні. */
+  function cardSt(o) { if (!o) return ''; if (o.off || o.tone === 'ok') return o.st; return dueSoon(o) !== null ? o.st : ''; }
   function heatCard() {
     if (!S.meter) return ucard({ kind: 'heat', href: 'meter', icon: 'thermo', title: t('uc_heat'), display: lcd([{ text: '------', tag: 'Gcal', label: '—' }], 'card empty'), sub: t('uc_heat_setup'), addAct: 'setup-heat', addLabel: t('uc_heat_setup_btn') });
     var last = RD().filter(function (r) { return r.htm && r.htm.date; }).slice(-1)[0], base = S.baseline;
     var src = last && (!base || last.htm.date >= base.date) ? { date: last.htm.date, energy: last.htm.energy, own: true, status: last.status } : base ? { date: base.date, energy: base.energy } : null;
-    var hs = heatStatus(), st = hs.st, tone = hs.tone;
+    var hs = heatStatus(), st = cardSt(hs), tone = st ? hs.tone : '';
     var val = src && R.num(src.energy) !== null ? R.formatForHtm('energy', src.energy) : '';
     return ucard({ kind: 'heat', href: 'heat', icon: 'thermo', title: t('uc_heat'),
       display: lcd([{ text: val || '------', tag: 'Gcal', label: val ? val + ' Гкал' : '—' }], 'card'),
@@ -651,7 +653,7 @@
     var display = ms.length === 1 ? wdrum(recs[0] ? recs[0].vals[ms[0].id] : null, kind, 'card') : ms.map(function (m, i) {
       return '<div class="wd-multi"><span class="wd-name">' + esc(m.name || (t('wm_n') + ' ' + (i + 1))) + '</span>' + wdrum(recs[i] ? recs[i].vals[m.id] : null, kind, 'card sm') + '</div>';
     }).join('');
-    var ws = waterStatus(kind), st = ws.st, tone = ws.tone;
+    var ws = waterStatus(kind), st = cardSt(ws), tone = st ? ws.tone : '';
     var lastK = recs.filter(Boolean).sort(function (a, b) { return a.date < b.date ? 1 : -1; })[0];
     return ucard({ kind: kind, href: 'water-' + kind, icon: 'drop', title: title, display: display, sub: lastK && !lastK.base ? t('uc_w_last', { d: fmtDate(lastK.date) }) : lastK ? t('uc_w_start', { d: fmtDate(lastK.date) }) : t('uc_w_nolast'), status: st, tone: tone, addAct: 'wnew', addKind: kind, addLabel: t('uc_add_w', { k: title.toLowerCase() }) });
   }
@@ -677,16 +679,17 @@
   }
   /** Шапка квартири в списку: рядок на кожен вид лічильників — значок, назва, що робити й до коли (спершу термінове).
    *  Без «Найближчий термін — …» і переліку через крапку: людина одразу бачить, ЩО і ДО КОЛИ передати. */
+  /** Строк показуємо лише за 4 дні до кінця (владелец 05.11: інакше перевантаження). null — не показувати. */
+  var DUE_SOON = 4;
+  function dueSoon(r) { if (!r || r.off || r.tone === 'ok' || !r.due) return null; var n = R.daysBetween(today(), r.due); return n <= DUE_SOON ? n : null; }
   function pstRows(p) {
-    var ps = placeStatus(p.id); if (!ps.rows.length) return '<span class="pst-none small muted">' + esc(t('ov_none')) + '</span>';
-    var rank = { warn: 0, due: 1, ok: 2 }, td = today();
-    var rows = ps.rows.slice().sort(function (a, b) { var x = (rank[a.tone] !== undefined ? rank[a.tone] : 3) - (rank[b.tone] !== undefined ? rank[b.tone] : 3); return x || String(a.due || '9').localeCompare(String(b.due || '9')); });
-    return '<span class="pst" data-key="pst-' + esc(p.id) + '">' + rows.map(function (r) {
-      var n = r.due ? R.daysBetween(td, r.due) : null, tone = r.off ? 'warn' : r.tone || '', urgent = n !== null && n <= 1 && (tone === 'due' || tone === 'warn');
-      var tag = urgent ? '<span class="pst-tag warn" title="' + esc(t(n <= 0 ? 'pst_today' : 'pst_tmr')) + '">' + esc(t(n <= 0 ? 'pst_today_s' : 'pst_tmr_s')) + '</span>' : n !== null && n > 1 && tone && tone !== 'ok' ? '<span class="pst-left">' + esc(t('pst_left', { n: n })) + '</span>' : '';
-      var si = tone === 'ok' ? 'check' : urgent || tone === 'warn' ? 'alert' : tone === 'due' ? 'clock' : '';
-      return '<span class="pst-row ' + (urgent ? 'warn' : tone) + '" data-key="pst-' + esc(p.id) + '-' + r.kind + '"><span class="pst-ico ' + KINDS[r.kind].cls + '">' + ico(KINDS[r.kind].icon, 20) + '</span>' +
-        '<span class="pst-k">' + esc(r.title) + '</span><span class="pst-st">' + (si ? ico(si, 16) : '') + '<span>' + esc(r.st) + '</span></span>' + (tag ? '<span class="pst-r">' + tag + '</span>' : '') + '</span>';
+    var ps = placeStatus(p.id), td = today();
+    var soon = ps.rows.filter(function (r) { return dueSoon(r) !== null; }).sort(function (a, b) { return String(a.due).localeCompare(String(b.due)); });
+    if (!soon.length) return '';
+    // тихо, одним-двома рядками під адресою: що й до коли — без переліку всіх лічильників
+    return '<span class="pnote" data-key="pst-' + esc(p.id) + '">' + soon.map(function (r) {
+      var n = R.daysBetween(td, r.due), when = n <= 0 ? t('pn_today') : n === 1 ? t('pn_tmr') : t('pn_until', { d: fmtDate(r.due), n: n });
+      return '<span class="pn-row' + (n <= 1 ? ' hot' : '') + '" data-key="pst-' + esc(p.id) + '-' + r.kind + '">' + ico('clock', 16) + '<span>' + esc(t(r.ready ? 'pn_ready' : 'pn_send', { k: r.title, w: when })) + '</span></span>';
     }).join('') + '</span>';
   }
   function hpOpen(p) { var o = S.homeOpen || {}; return o[p.id] !== undefined ? !!o[p.id] : p.id === S.placeId; }
@@ -711,7 +714,7 @@
       return withPlace(p.id, function () {
         var cards = homeCards();
         return '<details class="hp pacc" id="hp-' + esc(p.id) + '" data-pl="' + esc(p.id) + '" style="--pc:var(--pc-' + placeColor(p) + ')" data-key="home-pl-' + esc(p.id) + '"' + (open ? ' open' : '') + '>' +
-          '<summary data-key="home-pl-sum-' + esc(p.id) + '"><span class="pacc-t"><b>' + esc(placeLabel(p)) + '</b>' + (p.address ? '<span class="pacc-addr">' + esc(p.address) + '</span>' : '') + '</span>' +
+          '<summary data-key="home-pl-sum-' + esc(p.id) + '"><span class="pacc-t"><b><i class="pdot" aria-hidden="true"></i>' + esc(placeLabel(p)) + '</b>' + (p.address ? '<span class="pacc-addr">' + esc(p.address) + '</span>' : '') + '</span>' +
             ico('chev', 22, 'pacc-chev') + due + '</summary><div class="pacc-body">' +
           (HP_EDIT === p.id ? hpEditForm(p) : '<p class="hp-tools"><button type="button" class="btn ter sm" data-act="hp-edit" data-id="' + esc(p.id) + '" data-key="home-pl-edit-' + esc(p.id) + '">' + ico('edit', 18) + '<span>' + esc(t(p.address ? 'hp_edit' : 'hp_addr_add')) + '</span></button>' +
             '<a class="btn ter sm" href="#place-' + esc(p.id) + '" data-key="home-pl-set-' + esc(p.id) + '">' + ico('prefs', 18) + '<span>' + esc(t('hp_settings')) + '</span></a></p>') +
@@ -956,7 +959,7 @@
       (o.sent ? '<span class="pill ok">' + ico('check', 14) + ' ' + esc(t('ws_sent')) + '</span>' : o.due ? '<span class="pill ' + (o.dueTone || 'neutral') + '">' + esc(o.due) + '</span>' : '') + '</div>' +
       (o.body || '') +
       (o.chans && o.chans.length ? '<div class="dest-ch">' + o.chans.map(function (c) { return '<a class="btn sec" href="' + c[0] + '" target="_blank" rel="noopener" data-key="dest-' + o.key + '-' + c[3] + '"' + (c[4] || '') + '>' + ico(c[2], 18) + '<span>' + esc(c[1]) + '</span></a>'; }).join('') + '</div>' : '') +
-      (o.more ? '<p class="small muted dest-more">' + o.more + '</p>' : '') + (o.mark || '') + '</div>';
+      (o.more ? '<div class="dest-more" data-key="dest-more">' + o.more + '</div>' : '') + (o.mark || '') + '</div>';
   }
   function telLink(num, txt) { return '<a href="tel:' + num + '">' + esc(txt) + '</a>'; }
   /** «Куди передати» для води. kind: 'cold' — лише Водоканал; 'hot' або null (картка запису, є гаряча) — Водоканал і ХТМ.
@@ -1013,7 +1016,7 @@
     vkBody = vkStatusLine() + vkBody;
     h += destBox({ key: 'vk', id: 'wsend-vk', org: t('wd_vk_org'), what: kind === 'cold' ? t('wd_vk_cold') : kind === 'hot' ? t('wd_vk_hot') : t('wd_vk_both'),
       due: vkDue, dueTone: w.open && w.daysLeft <= 3 ? 'warn' : 'neutral', sent: rec && wsentVk(rec), body: vkBody, chans: vkChans,
-      more: esc(t('wd_vk_more')) + ' ' + telLink('+380577075851', '(057) 707-58-51') + ' · Viber (050) 355-12-12', mark: rec && rec.vkAt && !wsentVk(rec) ? '' : mark('vk', rec && wsentVk(rec)) });
+      more: '<p class="dm-t">' + esc(t('wd_vk_call')) + '</p><ul class="dm-ph"><li>' + telLink('+380577075851', '(057) 707-58-51') + '<span class="muted">' + esc(t('wd_vk_24')) + '</span></li><li><b>(050) 355-12-12</b><span class="muted">Viber</span></li></ul>', mark: rec && rec.vkAt && !wsentVk(rec) ? '' : mark('vk', rec && wsentVk(rec)) });
     // ХТМ: сама гаряча вода — лише бот і кол-центр (у кабінеті ХТМ форми для гарячої води немає)
     if (withHtm) h += destBox({ key: 'htm', org: t('wd_htm_org'), what: t('wd_htm_what'), sent: rec && wsentHtm(rec),
       body: rec ? valList(hot) : '', chans: [[BOT_URL, t('wd_bot', { b: '@KPHTM_Bot' }), 'send', 'bot']],
@@ -1381,7 +1384,7 @@
     }).join('') + '</div>';
   }
   function hasVal(r, mid) { return !!(r && r.vals && r.vals[mid] !== undefined && r.vals[mid] !== '' && r.vals[mid] !== null); }
-  function wcostOf(kind, d, date) { return (kind === 'hot' ? Wt.cost(0, d, date, S.wtariff) : Wt.cost(d, 0, date, S.wtariff)).total; }
+  function wcostOf(kind, d, date) { return (kind === 'hot' ? Wt.cost(0, d, date, wtar()) : Wt.cost(d, 0, date, wtar())).total; }
   /** Строки истории воды по виду (новые сверху): дата, показания, сколько набежало и почём, передано, фото → карточка записи. */
   function wrows(kind, limit) {
     var ms = wmeters(kind, true), ser = Wt.series(wrecs(), wmeters(null, true), gaps());
@@ -1441,7 +1444,7 @@
       return '<li><div class="grow">' + ico('drop', 16, m.kind === 'hot' ? 'c-hot' : 'c-cold') + ' ' + esc(wname(m)) + (m.serial ? ' <span class="small muted">№ ' + esc(m.serial) + '</span>' : '') + (d !== undefined ? '<div class="small muted">+' + d + ' м³</div>' : '') + '</div><b class="num">' + esc(wfmt(r.vals[m.id])) + '</b> <span class="small muted">м³</span></li>';
     }).join('') + '</ul>' + photoStrip(r.photos, 'w' + r.id, 'w:' + r.id) + (r.base ? '' : billsBox('w:' + r.id, r.bills, t('bl_title', { m: monthLabel(String(r.date).slice(0, 7)) })));
     if (x.hot !== null || x.cold !== null) {
-      var c = Wt.cost(x.cold || 0, x.hot || 0, r.date, S.wtariff);
+      var c = Wt.cost(x.cold || 0, x.hot || 0, r.date, wtar());
       h += '<div class="panel" style="margin-top:16px" data-key="wrec-used"><h2>' + esc(t('rec_used_title')) + '</h2><div class="cards2">' +
         (x.hot !== null ? '<div><div class="num big c-hot">' + x.hot + ' <small>м³</small></div><div class="small muted">' + esc(t('wr_hot_for', { d: x.daysHot })) + '</div></div>' : '') +
         (x.cold !== null ? '<div><div class="num big c-cold">' + x.cold + ' <small>м³</small></div><div class="small muted">' + esc(t('wr_cold_for', { d: x.daysCold })) + '</div></div>' : '') +
@@ -1461,7 +1464,7 @@
   /** Статистика воды: м³ по месяцам (месяц — по дате снятия), среднее, стоимость по тарифам. */
   function wstats(kind) {
     chColors();
-    var mo = Wt.monthly(Wt.series(wrecs(), wmeters(null, true), gaps()), kind, S.wtariff), sm = Wt.summary(mo), head = '<h1>' + esc(t('stt_title')) + '</h1>' + kindSwitch();
+    var mo = Wt.monthly(Wt.series(wrecs(), wmeters(null, true), gaps()), kind, wtar()), sm = Wt.summary(mo), head = '<h1>' + esc(t('stt_title')) + '</h1>' + kindSwitch();
     if (!mo.length) return { screen: 'S15', route: 'stats', html: head + '<div class="panel"><p class="muted">' + esc(t('wst_empty')) + '</p></div>' };
     var per = function (b) { return t('stt_period', { a: R.toHtmDate(b.from), b: R.toHtmDate(b.to), d: b.days }); };
     var tiles = kpi({ key: 'wstats-kpi', tone: kind, q: fmtN(sm.perMonth, 1), unit: 'м³', money: sm.uahMonth, cap: t('kpi_w_avg', { n: sm.months }),
@@ -1471,7 +1474,7 @@
       tip: [b.m3 + ' м³', per(b), '≈ ' + money(b.cost) + ' грн', b.days < 25 || b.days > 37 ? t('wst_per30', { v: fmtN(b.perMonth, 1) }) : ''] }; }), { title: t('wst_m3'), dec: 0 });
     var c2 = barChart(mo.map(function (b) { return { x: ymLabel(b.ym), v: Math.round(b.cost), top: String(Math.round(b.cost)), color: CH.barSoft,
       tip: ['≈ ' + money(b.cost) + ' грн', per(b), b.m3 + ' м³'] }; }), { title: t('wst_uah'), dec: 0 });
-    var tr = Wt.tariffAt(today(), S.wtariff);
+    var tr = Wt.tariffAt(today(), wtar());
     var trTxt = kind === 'hot' ? t('wst_tariff_hot', { hot: money(tr.hot), drain: money(tr.drain) }) : t('wst_tariff_cold', { supply: money(tr.supply), drain: money(tr.drain) });
     var table = '<details class="panel"><summary>' + esc(t('stt_table')) + '</summary><div class="tbl-wrap"><table class="tbl"><thead><tr><th>' + esc(t('wst_th_month')) + '</th><th>' + esc(t('stt_th_period')) + '</th><th>м³</th><th>грн</th></tr></thead><tbody>' +
       mo.slice().reverse().map(function (b) { return '<tr><td>' + esc(ymLabel(b.ym)) + '</td><td>' + esc(R.toHtmDate(b.from) + ' – ' + R.toHtmDate(b.to)) + '</td><td class="num">' + b.m3 + '</td><td class="num">' + money(b.cost) + '</td></tr>'; }).join('') + '</tbody></table></div></details>';
@@ -1480,7 +1483,7 @@
   }
   /** Советы по воде (Харьков: Водоканал — холодная и отведение, ХТМ — горячая). */
   function wtips() {
-    var tr = Wt.tariffAt(today(), S.wtariff), hot = money(tr.hot + tr.drain), cold = money(tr.supply + tr.drain), ru = S.lang === 'ru';
+    var tr = Wt.tariffAt(today(), wtar()), hot = money(tr.hot + tr.drain), cold = money(tr.supply + tr.drain), ru = S.lang === 'ru';
     return ru ? [
       ['Проверьте, нет ли утечки', 'Закройте все краны и 10–15 минут не пользуйтесь водой. Если красные ролики или «звёздочка» на циферблате водомера крутятся — где-то течёт. Чаще всего виноват бачок унитаза или капающий кран.'],
       ['Бачок унитаза', 'Подтекающий бачок может незаметно тратить сотни литров в сутки. Проверка: несколько капель пищевого красителя в бачок — если через 15–20 минут цвет появился в чаше, меняйте клапан или грушу.'],
@@ -1504,7 +1507,7 @@
     ];
   }
   function wsave(kind) {
-    var sm = Wt.summary(Wt.monthly(Wt.series(wrecs(), wmeters(null, true), gaps()), kind, S.wtariff)), list = wtips();
+    var sm = Wt.summary(Wt.monthly(Wt.series(wrecs(), wmeters(null, true), gaps()), kind, wtar())), list = wtips();
     var mine = sm ? '<div class="panel" data-key="wsave-mine"><h2>' + esc(t('sv_mine')) + '</h2>' +
       kpi({ key: 'wsave-kpi', tone: kind, q: fmtN(sm.perMonth, 1), unit: 'м³', money: sm.uahMonth, cap: t('kpi_w_avg', { n: sm.months }) }) +
       tipLine('drop', t('kpi_w_ten', { m3: fmtN(sm.perMonth * 0.1, 1), uah: '<b>' + esc(money0(sm.uahMonth * 0.1)) + ' грн</b>', y: esc(money0(sm.uahMonth * 1.2)) })) + '</div>'
@@ -1558,9 +1561,9 @@
   /** Статус світла/газу квартири для картки й списку квартир (як heatStatus/waterStatus). */
   function sStatus(k) {
     var ms = smeters(k), w = SK[k].mod.win(today()), recs = ms.map(function (m) { return einWin(m.id, w); });
-    if (!w.open) return { st: t('ue_next', { a: fmtDate(w.next), b: fmtDate(w.to) }), tone: '' };
+    if (!w.open) return { st: t('ue_next', { a: fmtDate(w.next), b: fmtDate(w.to) }), tone: '', from: w.next };
     if (recs.every(function (r) { return ssent(k, r); })) return { st: t('uc_w_sent'), tone: 'ok' };
-    if (recs.every(Boolean)) return { st: t('uc_w_ready'), tone: 'due', due: w.to };
+    if (recs.every(Boolean)) return { st: t('uc_w_ready'), tone: 'due', due: w.to, ready: true };
     return { st: t('ue_due', { a: fmtDate(w.from), b: fmtDate(w.to) }), tone: w.daysLeft <= 1 ? 'warn' : 'due', due: w.to };
   }
   function elecStatus() { return sStatus('elec'); }
@@ -1569,7 +1572,7 @@
     var display = ms.length === 1 ? edisplay(ms[0], elastOf(ms[0].id), 'card') : ms.map(function (m) { return '<div class="wd-multi"><span class="wd-name">' + esc(m.name || ename(m)) + '</span>' + edisplay(m, elastOf(m.id), 'card' + (k === 'gas' ? ' sm' : '')) + '</div>'; }).join('');
     var last = ms.map(function (m) { return elastOf(m.id); }).filter(Boolean).sort(function (a, b) { return a.date < b.date ? 1 : -1; })[0];
     return ucard({ kind: k, href: SK[k].page, icon: SK[k].icon, title: t(KINDS[k].t), display: display, sub: last ? (last.base ? t('uc_w_start', { d: fmtDate(last.date) }) : t('uc_w_last', { d: fmtDate(last.date) })) : t('uc_w_nolast'),
-      status: es.st, tone: es.tone, addAct: SK[k].nw, addLabel: tk(k, 'ue_add') });
+      status: cardSt(es), tone: cardSt(es) ? es.tone : '', addAct: SK[k].nw, addLabel: tk(k, 'ue_add') });
   }
   function elecCard() { return sCard('elec'); }
 
@@ -1630,7 +1633,7 @@
     if (conf && rs.every(function (x) { return x.sent && x.sent[src]; })) return '<div class="vk-reply ok" data-key="' + k + '-conf"><p class="small"><b>' + esc(tk(k, 'ed_conf', { d: vkWhen(conf.botConf.at) })) + '</b></p>' +
       (conf.botConf.text ? '<p class="small vk-text">' + esc(String(conf.botConf.text).slice(0, 600)) + '</p>' : '') + '</div>';
     var at = Math.max.apply(null, [0].concat(rs.map(function (x) { return x.botAt || 0; })));
-    if (!at || rs.every(function (x) { return x.sent && x.sent[src]; })) return '<p class="small muted" data-key="ed-bot-how">' + esc(tk(k, 'ed_bot_how', { b: '@' + ourBot() })) + '</p>';
+    if (!at || rs.every(function (x) { return x.sent && x.sent[src]; })) return '<div class="bot-how" data-key="ed-bot-how"><p class="dm-t">' + esc(t('bot_how_t')) + '</p><ol>' + tk(k, 'ed_bot_steps', { b: '@' + ourBot() }).split('|').map(function (x) { return '<li>' + esc(x) + '</li>'; }).join('') + '</ol></div>';
     var r = (SBR[src].list || []).filter(function (y) { return y.at * 1000 >= at - 120000; })[0], err = SBERR[k] || (r && r.kind === 'err');
     return (r ? '<div class="vk-reply' + (r.kind === 'err' ? ' bad' : '') + '" data-key="' + k + '-reply"><p class="small"><b>' + esc(tk(k, 'ed_reply_t', { d: vkWhen(r.at) })) + '</b></p><p class="small vk-text">' + esc(String(r.text).slice(0, 600)) + '</p></div>' : '') +
       '<div class="vk-ask" data-key="' + k + '-ask"><p><b>' + esc(tk(k, 'ed_ask')) + '</b></p><div class="row-actions">' +
@@ -1650,7 +1653,8 @@
       return md.keys(m).map(function (z) { var v = md.whole(r.z[z]); return '<li><span>' + esc((ms.length > 1 ? (m.name || ename(m)) + ' · ' : '') + ezl(m, z)) + '</span><b class="num">' + v + '</b><button class="linkbtn" data-act="copy" data-text="' + v + '">' + esc(t('copy')) + '</button></li>'; }).join('');
     }).join('') + '</ul>' + (k === 'elec' && El.zones(ms[0] || {}) > 1 ? '<p class="small muted">' + esc(t('ed_nosum')) + '</p>' : '');
     var acc = ms.filter(function (m) { return m.account; }).map(function (m) { return '<p class="small">' + esc(tk(k, 'ed_acc', { a: m.account })) + (ms.length > 1 ? ' · ' + esc(m.name || '') : '') + ' <button class="linkbtn" data-act="copy" data-text="' + esc(m.account) + '">' + esc(t('copy')) + '</button></p>'; }).join('');
-    var phones = md.PHONES.map(function (p) { return telLink(p[0], p[1]) + ' <span class="muted">(' + esc(p[2]) + ')</span>'; }).join(', ');
+    // кол-центр — стовпчиком: номер і оператор у рядок, кожен номер окремо (зручно читати й натискати)
+    var phones = '<ul class="dm-ph">' + md.PHONES.map(function (p) { return '<li>' + telLink(p[0], p[1]) + '<span class="muted">' + esc(p[2]) + '</span></li>'; }).join('') + '</ul>';
     // кнопка офіційного бота: є показання — запам'ятовуємо натискання (botAt), щоб пересланий нам «прийнято» ліг саме на них
     var one = have && have.filter(Boolean).length === 1 && md.zones(ms[0] || {}) <= 1 ? md.whole((have.filter(Boolean)[0].z || {}).all) : null;
     var botAttr = have ? ' data-act="sbot" data-k="' + k + '" data-ids="' + ids + '"' + (one !== null ? ' data-copy="' + one + '"' : '') : '';
@@ -1664,7 +1668,7 @@
       if (sms) body += '<p class="small">' + esc(t('gd_sms_how', { s: sms })) + '</p>';
       chans = [[Gs.LINKS.bot, t('gd_bot'), 'send', 'bot', botAttr]].concat(sms ? [['sms:' + Gs.LINKS.sms + '?&body=' + encodeURIComponent(sms), t('gd_sms'), 'send', 'sms']] : []).concat([[Gs.LINKS.cabinet, t('gd_cab'), 'ext', 'cab']]);
       if (have) body += sbBox(k, have);
-      more = esc(t('gd_more')) + ' ' + phones + '.';
+      more = '<p class="dm-t">' + esc(t('gd_call')) + '</p>' + phones + '<p>' + esc(t('gd_app_note')) + '</p>';
     } else {
       // офіційні канали Харківобленерго: бот @Kooz2bot, онлайн-форма (з капчею — відкриваємо, людина проходить), SMS 4300
       var m0 = ms[0] || {}, acc1 = String(m0.account || '').replace(/\D/g, '');
@@ -1672,7 +1676,9 @@
       chans = [[El.OBL_BOT, t('ed_bot'), 'send', 'bot', botAttr], [El.OBL_FORM, t('ed_form'), 'ext', 'form']].concat(esms ? [['sms:' + El.SMS + '?&body=' + encodeURIComponent(esms), t('ed_sms'), 'send', 'sms']] : []);
       if (have) body += sbBox(k, have);
       if (esms) body += '<p class="small">' + esc(t('ed_sms_how', { s: esms })) + '</p>';
-      more = esc(t('ed_more')) + ' ' + phones + '. ' + esc(t('ed_app')) + ' <a href="' + El.OBL_APP_ANDROID + '" target="_blank" rel="noopener">Android</a> · <a href="' + El.OBL_APP_IOS + '" target="_blank" rel="noopener">iPhone</a>. ' + esc(t('ed_zbut')) + ' <a href="' + El.ZBUT_SITE + '" target="_blank" rel="noopener">zbutenergo.kharkov.ua</a>.';
+      more = '<p class="dm-t">' + esc(t('ed_call')) + '</p>' + phones + '<p>' + esc(t('ed_viber')) + '</p>' +
+        '<p class="dm-t">' + esc(t('ed_app_t')) + '</p><p class="dm-links"><a href="' + El.OBL_APP_ANDROID + '" target="_blank" rel="noopener">Android ' + ico('ext', 14) + '</a><a href="' + El.OBL_APP_IOS + '" target="_blank" rel="noopener">iPhone ' + ico('ext', 14) + '</a></p>' +
+        '<p class="dm-t">' + esc(t('ed_acc_t')) + '</p><p>' + esc(t('ed_zbut2')) + ' <a href="' + El.ZBUT_SITE + '" target="_blank" rel="noopener">zbutenergo.kharkov.ua</a></p>';
     }
     var mark = have && !asking ? '<p class="dest-mark">' + (allSent ? '<button class="linkbtn" data-act="esent" data-k="' + k + '" data-v="0" data-ids="' + ids + '">' + esc(t('ws_unmark')) + '</button>'
       : '<button class="btn sec" data-act="esent" data-k="' + k + '" data-v="1" data-ids="' + ids + '" data-key="esend-done">' + ico('check', 18) + '<span>' + esc(t('ws_mark')) + '</span></button>') + '</p>' : '';
@@ -3505,6 +3511,87 @@
       '<button type="button" class="btn ter sm quiet-bad" data-act="m-remove" data-what="' + esc(o.what) + '" data-key="pv-remove-' + esc(o.what) + '">' + ico('close', 18) + '<span>' + esc(t('mr_remove')) + '</span></button></div></li>';
   }
   function verTxt(v) { return v ? t('pl_ver', { d: R.toHtmDate(v) }) : ''; }
+  // ---------- постачальники й тарифи за адресою квартири (GET /api/providers, довідник app/data/providers.json) ----------
+  // p.prov[k] = { ok: 1 } — людина підтвердила, що так і є; { name, supply, drain, price, at } — її дані з платіжки (k: elec, gas, water, heat).
+  var PRV = { addr: {}, edit: {} };
+  function prvLoad(a) {
+    if (!a || !window.TEPLO_API) return null; if (PRV.addr[a]) return PRV.addr[a];
+    PRV.addr[a] = { busy: true };
+    fetch(window.TEPLO_API + '/providers?q=' + encodeURIComponent(a), { credentials: 'same-origin', headers: { Accept: 'application/json' } }).then(function (r) { return r.json(); })
+      .then(function (j) { PRV.addr[a] = j && typeof j.found === 'boolean' ? j : { err: true }; safeRender(); }, function () { PRV.addr[a] = { err: true }; safeRender(); });
+    return PRV.addr[a];
+  }
+  /** Тариф води квартири: свій з платіжки (p.prov.water) — главніше за загальний (wtar()). */
+  function wtar() {
+    var p = place() || {}, w = p.prov && p.prov.water;
+    if (!w || !(R.num(w.supply) > 0)) return S.wtariff;
+    return Object.assign({}, S.wtariff || {}, { supply: R.num(w.supply), drain: R.num(w.drain) > 0 ? R.num(w.drain) : 0 });
+  }
+  function prvKinds() { var k = []; if (emeters().length) k.push('elec'); if (smeters('gas').length) k.push('gas'); if (wmeters().length) k.push('water'); if (hasHeat()) k.push('heat'); return k; }
+  var PRV_ICO = { elec: ['bolt', 'c-elec'], gas: ['flame', 'c-gas'], water: ['drop', 'c-cold'], heat: ['thermo', 'c-hot'] };
+  function prvRow(p, k, d, nat) {
+    var my = (p.prov || {})[k] || {}, own = !!(my.name || my.supply || my.price), ed = PRV.edit[k], org = my.name || (d && d.org) || '';
+    var lines = [], price = '';
+    if (k === 'elec') { if (d && d.net) lines.push(t('prv_net', { n: d.net })); if (nat.elec) price = t('prv_p_elec', { p: money(nat.elec.price), d: fmtDate(nat.elec.to, true) }); }
+    if (k === 'gas') {
+      if (my.price) price = t('prv_p_own', { p: money(R.num(my.price)) });
+      else if (nat.gas) price = t('prv_p_gas', { p: money(nat.gas.price), n: nat.gas.plan, d: fmtDate(nat.gas.to, true) });
+      if (d && d.grm) lines.push(t('prv_grm', { g: d.grm, p: String(d.dist).replace('.', ',') }));
+    }
+    if (k === 'water') {
+      var s = R.num(my.supply) || (d && d.supply), dr = my.supply ? R.num(my.drain) : d && d.drain;
+      price = s ? (dr ? t('prv_p_water', { s: money(s), d: money(dr) }) : t('prv_p_water1', { s: money(s) })) + (my.supply ? ' ' + t('prv_from_bill') : d && d.from ? ' ' + t('prv_since', { d: fmtDate(d.from, true) }) : '') : '';
+    }
+    var src = k === 'elec' ? nat.elec && nat.elec.src : k === 'gas' ? [!my.price && nat.gas ? nat.gas.src : '', d && d.distSrc].filter(Boolean).join('. ') : d && d.src;
+    var need = (d && d.check && !my.ok && !own) || !org || (k === 'water' && !price);
+    var h = '<div class="prov-row' + (need ? ' need' : '') + '" data-key="prov-' + k + '"><span class="pst-ico ' + PRV_ICO[k][1] + '">' + ico(PRV_ICO[k][0], 20) + '</span><div class="prov-b">' +
+      '<p class="prov-k"><b>' + esc(t('prv_k_' + k)) + '</b>' + (my.ok || own ? '<span class="prov-ok">' + ico('check', 16) + esc(t(own ? 'prv_own' : 'prv_ok')) + '</span>' : '') + '</p>' +
+      '<p class="prov-org">' + (org ? esc(org) : '<span class="muted">' + esc(t('prv_org_none')) + '</span>') + '</p>' +
+      lines.map(function (x) { return '<p class="small muted">' + esc(x) + '</p>'; }).join('') +
+      '<p class="prov-price' + (price ? '' : ' none') + '">' + esc(price || t('prv_p_none')) + '</p>' +
+      (src && !own ? '<details class="prov-src"><summary>' + esc(t('prv_src')) + '</summary><p class="small muted">' + esc(src) + '</p></details>' : '') +
+      (need && d && d.note && !ed ? '<p class="small prov-note">' + esc(d.note) + '</p>' : '');
+    if (ed) {
+      h += '<div class="prov-form" data-key="prov-form-' + k + '"><div class="field"><label for="prv-n-' + k + '">' + esc(t('prv_name')) + '</label><div class="ctl"><input id="prv-n-' + k + '" maxlength="80" value="' + esc(my.name || (d && d.org) || '') + '"></div></div>' +
+        (k === 'water' ? '<div class="grid2"><div class="field"><label for="prv-s">' + esc(t('prv_supply')) + '</label><div class="ctl"><input id="prv-s" class="num" inputmode="decimal" value="' + esc(my.supply ? String(my.supply).replace('.', ',') : '') + '"><span class="unit">грн</span></div></div>' +
+          '<div class="field"><label for="prv-d">' + esc(t('prv_drain')) + '</label><div class="ctl"><input id="prv-d" class="num" inputmode="decimal" value="' + esc(my.drain ? String(my.drain).replace('.', ',') : '') + '"><span class="unit">грн</span></div></div></div>' : '') +
+        (k === 'gas' ? '<div class="field" style="max-width:260px"><label for="prv-g">' + esc(t('prv_gasp')) + '</label><div class="ctl"><input id="prv-g" class="num" inputmode="decimal" value="' + esc(my.price ? String(my.price).replace('.', ',') : '') + '" placeholder="' + esc(nat.gas ? money(nat.gas.price) : '') + '"><span class="unit">грн</span></div></div>' : '') +
+        '<div class="row-actions"><button type="button" class="btn sec" data-act="prv-cancel" data-k="' + k + '">' + esc(t('cancel')) + '</button><button type="button" class="btn" data-act="prv-save" data-k="' + k + '" data-key="prov-save-' + k + '">' + esc(t('save')) + '</button></div></div>';
+    } else if (need && org && !(k === 'water' && !price)) {
+      h += '<p class="prov-act"><button type="button" class="btn sec sm" data-act="prv-yes" data-k="' + k + '" data-key="prov-yes-' + k + '">' + ico('check', 18) + '<span>' + esc(t('prv_yes')) + '</span></button>' +
+        '<button type="button" class="btn ter sm" data-act="prv-other" data-k="' + k + '" data-key="prov-other-' + k + '">' + ico('edit', 18) + '<span>' + esc(t('prv_other')) + '</span></button></p>';
+    } else {
+      h += '<p class="prov-act"><button type="button" class="btn ' + (need ? 'sec' : 'ter') + ' sm" data-act="prv-other" data-k="' + k + '" data-key="prov-other-' + k + '">' + ico('edit', 18) + '<span>' + esc(t(need ? 'prv_fill' : 'prv_change')) + '</span></button></p>';
+    }
+    return h + '</div></div>';
+  }
+  /** Блок «Постачальники й тарифи» на екрані квартири — лише для видів, що є в квартирі. */
+  function provPanel(p) {
+    var ks = prvKinds(); if (!ks.length) return '';
+    var a = String(p.address || '').trim(), h = '<section class="panel prov" id="prov" data-key="pv-prov"><h2>' + esc(t('prv_title')) + '</h2>';
+    if (!a) return h + '<p class="small muted" data-key="prov-noaddr">' + esc(t('prv_noaddr')) + '</p></section>';
+    var j = prvLoad(a);
+    if (!j || j.busy) return h + '<p class="small muted" data-key="prov-loading">' + esc(t('prv_loading')) + '</p></section>';
+    var nat = (j && j.national) || {}, pl = j.found ? j.place : null;
+    h += '<p class="small muted" data-key="prov-lead">' + esc(pl ? t('prv_lead', { c: pl.name, h: pl.hromada }) + (j.how === 'default' ? ' ' + t('prv_kh_default') : '') : j.err ? t('prv_err') : t('prv_nf', { a: a })) + '</p>';
+    return h + ks.map(function (k) { return prvRow(p, k, j.found ? j.kinds[k] : null, nat); }).join('') + '</section>';
+  }
+  document.addEventListener('click', function (e) {
+    var b = e.target.closest && e.target.closest('[data-act^="prv-"]'); if (!b) return;
+    var k = b.getAttribute('data-k'), p = place(), act = b.getAttribute('data-act'); if (!p || !k) return;
+    p.prov = p.prov || {};
+    if (act === 'prv-yes') { p.prov[k] = { ok: 1, at: today() }; p.updatedAt = Date.now(); save(); toast(t('prv_saved')); }
+    else if (act === 'prv-other') PRV.edit[k] = true;
+    else if (act === 'prv-cancel') delete PRV.edit[k];
+    else if (act === 'prv-save') {
+      var v = function (id) { var el = document.getElementById(id); return el ? String(el.value).trim() : ''; };
+      var o = { name: v('prv-n-' + k).slice(0, 80), at: today() };
+      if (k === 'water') { var s = R.num(v('prv-s')), dr = R.num(v('prv-d')); if (s > 0 && s < 1000) o.supply = s; if (dr > 0 && dr < 1000) o.drain = dr; }
+      if (k === 'gas') { var g = R.num(v('prv-g')); if (g > 0 && g < 100) { o.price = g; p.gasPrice = g; } }
+      p.prov[k] = o; delete PRV.edit[k]; p.updatedAt = Date.now(); WX.key = ''; save(); toast(t('prv_saved'));
+    } else return;
+    SCROLL_TO = 'prov'; render(true);
+  });
   /** Экран квартиры: её счётчики, название/адрес/цвет, свои рахунки; удалить. Открыть экран = перейти в эту квартиру. */
   function placeView(id) {
     var p = place(id);
@@ -3527,6 +3614,7 @@
         '<button type="button" class="btn sec" data-act="m-restore" data-what="' + esc(x.what) + '" data-key="pv-restore-' + esc(x.what) + '">' + esc(t('am_restore')) + '</button></div></li>';
     }).join('') + '</ul>';
     h += '</section>';
+    h += provPanel(p);
     // про квартиру
     var chips = t('pv_chips').split('|').map(function (c) { return '<button type="button" class="chip" data-act="pv-chip" data-v="' + esc(c) + '" aria-pressed="' + (p.name === c) + '">' + esc(c) + '</button>'; }).join('');
     var sw = PCOLORS.map(function (c) { return '<label class="swatch" style="--pc:var(--pc-' + c + ')"><input type="radio" name="pv-color" value="' + c + '"' + (placeColor(p) === c ? ' checked' : '') + '><span class="sw-dot" aria-hidden="true">' + ico('check', 20) + '</span><span class="sr">' + esc(t('pc_' + c)) + '</span></label>'; }).join('');

@@ -20,7 +20,7 @@
   function tariffAt(date, custom) {
     var t = TARIFFS[0]; TARIFFS.forEach(function (x) { if (String(date || '') >= x.from) t = x; });
     var c = custom || {};
-    return { supply: num(c.supply) || t.supply, drain: num(c.drain) || t.drain, hot: num(c.hot) || HOT };
+    return { supply: num(c.supply) || t.supply, drain: c.drain === 0 ? 0 : num(c.drain) || t.drain, hot: num(c.hot) || HOT };   // drain 0 — водовідведення немає (тариф квартири з платіжки)
   }
   /** Стоимость за объём: холодная = водоснабжение + отведение; горячая = тариф ХТМ + отведение Водоканала. */
   function cost(dCold, dHot, date, custom) {

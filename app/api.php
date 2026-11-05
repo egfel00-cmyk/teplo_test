@@ -238,6 +238,7 @@ final class Api {
         return ['src' => $src, 'replies' => array_map(fn($x) => ['id' => (int)$x['id'], 'kind' => $x['kind'], 'text' => $x['text'], 'at' => (int)$x['msg_at']], $rows)];
       }
       case 'GET /api/gpv': return Gpv::api();
+      case 'GET /api/providers': RateLimit::hit('prov', $ip); return Providers::lookup((string)($r->query()['q'] ?? ''));   // постачальники й тарифи за адресою (адресу не зберігаємо)
       case 'GET /api/gpv/addr': RateLimit::hit('gpv_addr', $ip); return Gpv::lookup((string)($r->query()['q'] ?? ''));   // черга відключень за адресою квартири (адресу не зберігаємо)
       case 'GET /api/gpv/site': return Gpv::site() + ['list' => Gpv::listMeta(), 'docs' => Gpv::docsMeta()];
       case 'GET /api/gpv/doc': { $f = Gpv::docFile((string)($r->query()['k'] ?? '')); if (!$f) throw new HttpError(404, 'not_found'); $res->file = $f; return []; }   // офіційний PDF-перелік з сайту обленерго (сервер забирає раз на добу)
