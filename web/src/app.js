@@ -730,7 +730,7 @@
   // Зранку бот надсилає графік на сьогодні (p.gpvTg !== false, потрібен Telegram) — app/gpv.php.
   var GPV = { data: null, at: 0, busy: false, err: false, pick: {}, addr: {} };
   var GPV_Q = ['1.1', '1.2', '2.1', '2.2', '3.1', '3.2', '4.1', '4.2', '5.1', '5.2', '6.1', '6.2'];
-  var GPV_LOOKUP = 'https://www.oblenergo.kharkov.ua/getinfoingao', GPV_CHANNEL = 'https://t.me/kharkivenergy';
+  var GPV_LOOKUP = 'https://oblenergo.kharkiv.ua/uk/gaoinfo', GPV_CHANNEL = 'https://t.me/kharkivenergy';
   function gpvLoad() {
     if (!window.TEPLO_API || GPV.busy || Date.now() - GPV.at < 600000) return; GPV.busy = true; GPV.at = Date.now();
     fetch(window.TEPLO_API + '/gpv', { credentials: 'same-origin', headers: { Accept: 'application/json' } }).then(function (r) { return r.json(); }).then(function (j) {

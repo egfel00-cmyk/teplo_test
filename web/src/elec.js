@@ -20,7 +20,7 @@
   var OBL_APP_IOS = 'https://apps.apple.com/ua/app/id1592629551';
   var OBL_APP_ANDROID = 'https://play.google.com/store/search?q=%D0%A5%D0%B0%D1%80%D0%B5%D0%BD%D0%B5%D1%80%D0%B3%D0%BE&c=apps';
   var ZBUT_SITE = 'https://zbutenergo.kharkov.ua';
-  var OBL_BOT = 'https://t.me/Kooz2bot', OBL_FORM = 'https://www.oblenergo.kharkov.ua/transmissionofmeterreadings', ELEC_SMS = '4300';
+  var OBL_BOT = 'https://t.me/Kooz2bot', OBL_FORM = 'https://oblenergo.kharkiv.ua/uk/transmissionofmeterreadings', ELEC_SMS = '4300';
   // кол-центр Харківобленерго — номер за оператором зв'язку
   var PHONES = [['+380573424413', '(057) 342-44-13', 'Укртелеком'], ['+380672340413', '(067) 234-04-13', 'Київстар'], ['+380500540413', '(050) 054-04-13', 'Vodafone'], ['+380630540413', '(063) 054-04-13', 'lifecell']];
   function make(C) {

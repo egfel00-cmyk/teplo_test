@@ -585,7 +585,7 @@ ok('разбор: 1.1 на 4.11 — 06:00–09:00, 12:30–19:30, 23:00–24:00 
 ok('…«можливе» — окремо, 12 підчерг; мусор — null', ($gp['days']['2026-11-04']['3.1']['may'] ?? null) === [[540, 600]] && count($gp['days']['2026-11-04']) === 12 && Gpv::parse('{"x":1}') === null && Gpv::parse('<html>') === null);
 @unlink(Gpv::file()); Gpv::$http = fn($u) => ['code' => 200, 'body' => $gsrc];
 $now4 = $kyiv('2026-11-04 07:10'); $rf = Gpv::refresh($now4); $ga = Gpv::api($now4);
-ok('cron забрал график → /api/gpv: сегодня и завтра (вчера — нет), время обновления, ссылка на поиск очереди', $rf['ok'] && array_keys((array)$ga['days']) === ['2026-11-04', '2026-11-05'] && $ga['update'] === '04.11.2026 07:05' && !$ga['stale'] && str_contains($ga['lookup'], 'oblenergo.kharkov.ua'), $ga);
+ok('cron забрал график → /api/gpv: сегодня и завтра (вчера — нет), время обновления, ссылка на поиск очереди', $rf['ok'] && array_keys((array)$ga['days']) === ['2026-11-04', '2026-11-05'] && $ga['update'] === '04.11.2026 07:05' && !$ga['stale'] && str_contains($ga['lookup'], 'oblenergo.kharkiv.ua'), $ga);
 Gpv::$http = fn($u) => ['code' => 503, 'body' => ''];
 $rf2 = Gpv::refresh($now4 + 600);
 ok('источник не ответил — прежний график остаётся, ошибка записана', !$rf2['ok'] && $rf2['err'] === 'HTTP 503' && count((array)Gpv::api($now4 + 600)['days']) === 2 && Gpv::api($now4 + 4 * 3600)['stale']);

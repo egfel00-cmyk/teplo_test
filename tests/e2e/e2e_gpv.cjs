@@ -35,7 +35,7 @@ const cache = (days) => { fs.mkdirSync(DATA + '/cache', { recursive: true }); fs
   ok('є адреса → черга визначилась сама (3.1 «— за адресою (вул. Сумська, м. Харків)»), без вибору', s.places[0].gpv === '3.1' && s.places[0].gpvAuto && s.places[0].gpvAuto.addr === 'вул. Сумська, 10, кв. 61'
     && /за адресою \(вул\. Сумська, м\. Харків\)/.test(await p.textContent('[data-key=gpv-auto]')) && !(await p.$('[data-key=gpv-home] .gpv-q')), s.places[0]);
   await p.click('[data-key=gpv-change]'); await p.waitForTimeout(200);
-  ok('«Не та черга?» → 12 кнопок і посилання на офіційний пошук', (await p.$$('[data-key=gpv-home] .gpv-q')).length === 12 && /getinfoingao/.test(await p.getAttribute('[data-key=gpv-lookup]', 'href')));
+  ok('«Не та черга?» → 12 кнопок і посилання на офіційний пошук', (await p.$$('[data-key=gpv-home] .gpv-q')).length === 12 && /oblenergo\.kharkiv\.ua\/uk\/gaoinfo/.test(await p.getAttribute('[data-key=gpv-lookup]', 'href')));
   await p.click('[data-key=gpv-q-1\\.1]'); await p.waitForTimeout(400); s = await st();
   ok('обрали 1.1 вручну → збережено, автопідбір знято (адресу не перевизначаємо)', s.places[0].gpv === '1.1' && !s.places[0].gpvAuto && /Черга 1\.1/.test(await p.textContent('[data-key=gpv-q]')) && !(await p.$('[data-key=gpv-auto]')));
   const box = await p.textContent('[data-key=gpv-home]');

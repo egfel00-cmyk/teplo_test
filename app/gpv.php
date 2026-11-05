@@ -15,8 +15,9 @@ final class Gpv {
   const SRC = 'https://raw.githubusercontent.com/yaroslav2901/OE_OUTAGE_DATA/main/data/Kharkivoblenerho.json';
   const TZ = 'Europe/Kyiv';
   const QUEUES = ['1.1', '1.2', '2.1', '2.2', '3.1', '3.2', '4.1', '4.2', '5.1', '5.2', '6.1', '6.2'];
-  /** Офіційно: черга за адресою (населений пункт → вулиця → будинок) і канал з графіками. */
-  const LOOKUP = 'https://www.oblenergo.kharkov.ua/getinfoingao';
+  /** Офіційно: черга за адресою (населений пункт → вулиця → будинок → «Відіслати»; відповідь лише після перевірки Cloudflare Turnstile —
+   *  тому сервер чергу за адресою там не дізнається, лише людина) і канал з графіками. Сайт переїхав з oblenergo.kharkov.ua (старі адреси перенаправляють). */
+  const LOOKUP = 'https://oblenergo.kharkiv.ua/uk/gaoinfo';
   const CHANNEL = 'https://t.me/kharkivenergy';
   /** У тестах: fn(string $url): ['code' => int, 'body' => string, 'err' => ?string] */
   public static $http = null;
