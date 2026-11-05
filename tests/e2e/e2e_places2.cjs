@@ -63,7 +63,7 @@ let pass = 0, fail = 0; const ok = (n, c, i) => { console.log((c ? '  OK  ' : ' 
   ok('відкрили застосунок без адреси — головна з двома квартирами', (await p.$$('details.pacc')).length === 2 && !!(await p.$('[data-screen=S01]')));
   const c1 = await p.textContent('[data-key=home-pl-' + s.places[0].id + '] summary'), c2 = await p.textContent('[data-key=home-pl-' + np.id + '] summary');
   ok('секція першої: «Моя квартира», опалення, гаряча, холодна', /Моя квартира/.test(c1) && /Опалення/.test(c1) && /Гаряча/.test(c1) && /Холодна/.test(c1), c1);
-  ok('секція «Батьків»: адреса, холодна ×2, найближчий термін', /Пушкінська/.test(c2) && /Холодна ×2/.test(c2) && /Найближчий термін|Сьогодні/.test(c2), c2);
+  ok('секція «Батьків»: адреса, по рядку на вид — «Холодна вода ×2 · Передати до … · N дн.»', /Пушкінська/.test(c2) && /Холодна вода ×2/.test(c2) && /Передати до \d+ \S+/.test(c2) && /\d+ дн\.|сьогодні|завтра/.test(c2), c2);
   ok('відкрита секція поточної квартири, у ній її картки', await p.$eval('[data-key=home-pl-' + np.id + ']', e => e.open) && !!(await p.$('[data-key=home-pl-' + np.id + '] [data-key=card-cold]')));
   await p.click('[data-key=home-pl-sum-' + s.places[0].id + ']'); await p.waitForTimeout(200);
   ok('розгорнули першу — там тепло; стан запам’ятовано', !!(await p.$('[data-key=home-pl-' + s.places[0].id + '] [data-key=card-heat]')) && (await st()).homeOpen[s.places[0].id] === true);

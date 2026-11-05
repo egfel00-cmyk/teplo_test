@@ -21,7 +21,7 @@ const U = 'http://127.0.0.1:8013/';
   ok('«Куди передати» — акордеон, закритий', Object.values(all).every(x => x.wacc === 'closed'), Object.fromEntries(Object.entries(all).map(([k, v]) => [k, v.wacc])));
   ok('тепло: без «Інструкція перевірена» і «Звірити в кабінеті ХТМ»', !/Інструкція перевірена|Звірити в кабінеті/.test(all.heat.box), all.heat.box.slice(0, 200));
   ok('тепло: останні прийняті — найпізніше «прийнято» з історії (10 квітня 2026), а не «Останні прийняті» з кабінету (10 грудня 2025)', /10 квітня 2026/.test(all.heat.cap), all.heat.cap);
-  ok('світло: останні передані 1 жовтня, новіший 31 жовтня — «ще не передано»', /Останні передані · 1 жовтня 2026/.test(all.elec.cap) && /31 жовтня 2026 — ще не передано/.test(all.elec.box), all.elec.cap);
+  ok('світло: останні передані 1 жовтня, новіший 31 жовтня — «ще не передано»', /Передано 1 жовтня 2026/.test(all.elec.cap) && /31 жовтня 2026, ще не передано/.test(all.elec.box), all.elec.cap);
   await open('heat'); await p.click('details.wacc > summary'); await p.waitForTimeout(200);
   ok('тап по «Куди передати» — розкривається (кабінет ХТМ усередині)', await p.$eval('details.wacc', d => d.open) && !!(await p.$('[data-key=dest-htm-heat-cab]')));
   await p.evaluate(() => { location.hash = '#history'; }); await p.waitForTimeout(300); await p.evaluate(() => { location.hash = '#heat'; }); await p.waitForTimeout(400);

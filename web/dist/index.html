@@ -53,7 +53,7 @@
   --wx-cold-bg: #142235; --wx-cold-ink: #A9C8F2; --wx-zero-bg: #1E2824; --wx-zero-ink: #C4CFCA; --wx-warm-bg: #2C2310; --wx-warm-ink: #F1D39C;
   --spark-cold: #7EA6E0; --spark-warm: #D9A24A; --spark-axis: #2D3934;
 }
-:root[data-theme="dark"] .btn.danger { color: var(--c-on-ink); }
+:root[data-theme="dark"] .btn.danger.solid { color: var(--c-on-ink); }
 :root[data-theme="dark"] img { filter: brightness(.92); }
 @media (prefers-reduced-motion: no-preference) { body { transition: background-color .25s ease, color .25s ease; } }
 * { box-sizing: border-box; }
@@ -102,7 +102,16 @@ a { color: var(--c-return); text-underline-offset: 3px; }
 .btn.sec:hover { border-color: var(--c-ink-2); }
 .btn.ghost { background: transparent; border-color: transparent; color: var(--c-ink); padding: 0 var(--sp-3); }
 .btn.ghost:hover { background: var(--c-ghost-hover); }
-.btn.danger { background: var(--c-bad); border-color: var(--c-bad); }
+.btn.danger { background: transparent; border-color: var(--c-bad); color: var(--c-bad); }   /* первый шаг удаления — контур */
+.btn.danger:hover { background: var(--c-bad-soft); border-color: var(--c-bad); }
+.btn.danger.solid { background: var(--c-bad); color: #fff; }                                   /* окончательное «Так, видалити» */
+.btn.danger.solid:hover { filter: brightness(1.08); background: var(--c-bad); }
+/* третичная: действие строки (замінити, прибрати, назва й адреса) — без рамки, не спорит с главной кнопкой */
+.btn.ter { background: transparent; border-color: transparent; color: var(--c-ink); padding: 0 10px; font-weight: 500; }
+.btn.ter:hover { background: var(--c-ghost-hover); border-color: transparent; }
+.btn.ter .ico { color: var(--c-ink-2); }
+.btn.sm { min-height: 40px; font-size: var(--fs-s); gap: 6px; }
+.btn.ter.quiet-bad, .btn.ter.quiet-bad .ico { color: var(--c-bad); }
 .btn.block { width: 100%; }
 .btn.big { min-height: 56px; font-size: var(--fs-l); }
 .row-actions { display: flex; flex-wrap: wrap; gap: var(--sp-3); margin-top: var(--sp-5); }
@@ -139,6 +148,7 @@ a { color: var(--c-return); text-underline-offset: 3px; }
 /* ---------- блоки ---------- */
 .panel { background: var(--c-surface); border-radius: 14px; padding: var(--sp-4); margin: 0 0 var(--sp-4); }
 .panel > h2:first-child, .panel > h3:first-child { margin-top: 0; }
+.panel > h3:not(:first-child), .panel > p + h3, .panel > .field + h3 { margin-top: var(--sp-5); }
 .section-title { font-size: var(--fs-m); font-weight: 600; margin: var(--sp-5) 0 var(--sp-2); }
 .list { list-style: none; margin: 0; padding: 0; background: var(--c-surface); border-radius: 14px; }
 .list > li { display: flex; align-items: center; gap: var(--sp-3); padding: var(--sp-3) var(--sp-4); border-bottom: 1px solid var(--c-housing); min-height: 56px; }
@@ -175,8 +185,8 @@ a { color: var(--c-return); text-underline-offset: 3px; }
 .field .help.ok { color: var(--c-ok); } .field .help.warn { color: var(--c-warn); } .field .help.block { color: var(--c-bad); font-weight: 500; }
 .field.is-block .ctl { border-color: var(--c-bad); } .field.is-warn .ctl { border-color: var(--c-warn-line); }
 .field .ctl.supply { border-left: 5px solid var(--c-supply); } .field .ctl.return { border-left: 5px solid var(--c-return); }
-.grid2 { display: grid; gap: 0 var(--sp-4); grid-template-columns: minmax(0, 1fr); }
-@media (min-width: 600px) { .grid2 { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } }
+.grid2 { display: grid; gap: 0 var(--sp-4); grid-template-columns: minmax(0, 1fr); align-items: start; }
+@media (min-width: 600px) { .grid2 { grid-template-columns: repeat(auto-fill, minmax(min(100%, 280px), 1fr)); } }
 .choice { display: flex; gap: var(--sp-2); flex-wrap: wrap; }
 .choice label { display: inline-flex; align-items: center; gap: 8px; min-height: var(--tap); padding: 0 var(--sp-4); border: 1.5px solid var(--c-field-line); border-radius: var(--r-btn); background: var(--c-surface); cursor: pointer; font-weight: 500; }
 .choice input { accent-color: var(--c-ink); width: 18px; height: 18px; }
@@ -494,8 +504,10 @@ input[type=text]:not(.dmy-native):not(.pl-in), input[type=email], input[type=pas
 .ucard-sub { font-size: 14px; color: var(--c-ink-2); }
 .ucard-status { font-size: 14px; font-weight: 600; margin-top: 4px; color: var(--c-ink-2); }
 .ucard-status.ok { color: var(--c-ok); } .ucard-status.due { color: var(--c-info); } .ucard-status.warn { color: var(--c-warn); }
-.ucard-add { position: absolute; right: 12px; top: 12px; width: 52px; height: 52px; border-radius: 50%; border: 0; background: var(--c-ink); color: var(--c-on-ink); display: grid; place-items: center; cursor: pointer; box-shadow: 0 4px 12px var(--c-shadow); }
-.ucard-add:hover { background: var(--c-ink-hover); }
+.ucard-add { position: absolute; right: 12px; top: 12px; width: 52px; height: 52px; border-radius: 50%; border: 1.5px solid var(--c-field-line); background: var(--c-surface-2); color: var(--c-ink); display: grid; place-items: center; cursor: pointer; }
+.ucard-add:hover { border-color: var(--c-ink); background: var(--c-surface); }
+.ucard-add.hot { border-color: var(--c-ink); background: var(--c-ink); color: var(--c-on-ink); box-shadow: 0 4px 12px var(--c-shadow); }
+.ucard-add.hot:hover { background: var(--c-ink-hover); }
 .ucard-add:focus-visible { outline: 3px solid var(--c-info); outline-offset: 3px; }
 /* ЖК на карточке тепла: во всю ширину, цифры не выше 44 px */
 .lcd.card { padding: 10px 12px 8px; border-width: 4px; }
@@ -683,8 +695,10 @@ details.wacc > summary { list-style: none; cursor: pointer; display: flex; align
 .pgroup > summary:hover { background: var(--c-ghost-hover); }
 .pgroup > summary:focus-visible { outline: 3px solid var(--c-info); outline-offset: 2px; }
 .pgroup > summary > .ico:first-child { flex: none; color: var(--c-ink-2); }
-.pgroup > summary > .ico:last-child { flex: none; margin-left: auto; transition: transform .15s; color: var(--c-ink-2); }
-.pgroup[open] > summary > .ico:last-child { transform: rotate(90deg); }
+.pgroup > summary > .pacc-chev { margin-left: auto; }
+.pgroup[open] > summary .pacc-chev { transform: rotate(-90deg); }
+.pgroup[open] > summary { border-bottom: 1px solid var(--c-line); border-radius: 14px 14px 0 0; }
+.pg-body { padding-top: var(--sp-4) !important; }
 .pg-t { display: grid; gap: 2px; min-width: 0; }
 .pg-t b { font-size: var(--fs-m); }
 .pg-body { padding: 0 16px 8px; }
@@ -769,8 +783,8 @@ a.mrow-main:hover { background: var(--c-ghost-hover); }
 .mrow-main .grow { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
 .mrow-main .grow b { overflow-wrap: anywhere; }
 .mrow-main > .ico { flex: none; } .mrow-main > .ico:last-child { color: var(--c-ink-2); }
-.mrow-act { display: flex; flex-wrap: wrap; gap: 8px; padding: 0 14px 12px; }
-.mrow-act .btn { min-height: 44px; padding: 0 14px; font-size: var(--fs-s); flex: 1 1 auto; }
+.mrow-act { display: flex; flex-wrap: wrap; gap: 4px 8px; padding: 0 10px 8px 40px; margin-top: -4px; }
+.mrow-act .btn { min-height: 40px; padding: 0 10px; flex: none; }
 .mlist.removed .mrow { background: transparent; border-style: dashed; }
 .mlist.removed .mrow-main .btn { flex: none; min-height: 44px; padding: 0 14px; }
 .chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
@@ -894,7 +908,7 @@ fieldset.field { border: 0; padding: 0; min-width: 0; }
 .mbox-t b { font-size: var(--fs-l); line-height: 1.2; overflow-wrap: anywhere; }
 .mbox-disp { display: grid; }
 .mbox-meta { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 4px; font-size: var(--fs-s); color: var(--c-ink-2); }
-.mbox-meta li::before { content: '·'; margin-right: 6px; color: var(--kc); font-weight: 700; }
+.mbox-meta li { line-height: 1.4; }
 .mbox-set { margin-top: 12px; border-top: 1px solid var(--c-line); }
 .mbox-set > summary { list-style: none; display: flex; align-items: center; gap: 8px; min-height: 48px; cursor: pointer; font-weight: 600; color: var(--c-ink); }
 .mbox-set > summary::-webkit-details-marker { display: none; }
@@ -1057,6 +1071,48 @@ details.gacc > summary { list-style: none; cursor: pointer; display: grid; grid-
 .gpv-tg { margin-top: 6px; font-weight: 500; }
 .hp-addr-gpv { margin: 6px 0 0; }
 @media (max-width: 380px) { .gpv-qs { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+
+/* ---------- аккордеоны: один вид во всей системе (05.11) ----------
+   Закрытый — шапка и круглая «ручка» со стрелкой вниз; открытый — стрелка вверх, содержимое визуально внутри,
+   внизу «Згорнути». Касание всей шапки ≥ 44 px. */
+.pacc-chev { flex: none; box-sizing: border-box; width: 34px !important; height: 34px !important; padding: 7px; border-radius: 50%; background: var(--c-surface-2); border: 1px solid var(--c-line); color: var(--c-ink) !important; transform: rotate(90deg); transition: transform .15s, background .15s; }
+summary:hover .pacc-chev { background: var(--c-surface); border-color: var(--c-field-line); }
+.acc-foot { display: flex; justify-content: center; margin: var(--sp-3) 0 0; padding-top: var(--sp-2); border-top: 1px dashed var(--c-line); }
+.acc-foot .acc-up { transform: rotate(-90deg); }
+.pacc > .acc-foot { margin: 0; padding: 6px 12px 10px; background: var(--c-surface-2); border-top: 0; }
+.pgroup > .acc-foot { margin: 0 16px; padding-bottom: 8px; }
+/* настройки счётчика: открытое содержимое — в подложке, видно, где кончается */
+.mbox-set[open] > summary { margin-bottom: 4px; }
+.mbox-set[open] > .mbox-set-b { background: var(--c-surface-2); border: 1px solid var(--c-line); border-radius: 12px; padding: 14px 14px 4px; }
+.mbox-set[open] > .acc-foot { border-top: 0; padding-top: 0; }
+summary:focus-visible { outline: 3px solid var(--c-info); outline-offset: 2px; border-radius: 10px; }
+
+/* ---------- квартира в списке на главной: что и до когда передать ---------- */
+.pacc > summary { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: start; gap: 10px 12px; padding: 16px 16px 14px; }
+.pacc > summary .pacc-chev { grid-column: 2; grid-row: 1; margin-top: 2px; }
+.pacc-t { grid-column: 1; gap: 4px; }
+.pacc-addr { font-size: var(--fs-s); color: var(--c-ink-2); overflow-wrap: anywhere; line-height: 1.4; }
+.pst { grid-column: 1 / -1; display: grid; gap: 0; border-top: 1px solid var(--c-line); margin-top: 2px; }
+.pst-none { grid-column: 1 / -1; }
+.pst-row { display: grid; grid-template-columns: 36px minmax(0, 1fr) auto; column-gap: 12px; row-gap: 2px; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--c-line); }
+.pst-k, .pst-st { grid-column: 2; }
+.pst-r { grid-column: 3; grid-row: 1 / span 2; justify-self: end; text-align: right; }
+.pst-row:last-child { border-bottom: 0; padding-bottom: 2px; }
+.pst-ico { grid-row: 1 / span 2; width: 36px; height: 36px; border-radius: 10px; display: grid; place-items: center; background: var(--c-surface-2); border: 1px solid var(--c-line); }
+.pst-ico.c-elec { color: var(--c-elec); } .pst-ico.c-gas { color: var(--c-gas); }
+.pst-k { font-weight: 600; line-height: 1.3; overflow-wrap: anywhere; }
+.pst-st { display: flex; flex-wrap: nowrap; align-items: flex-start; gap: 6px; font-size: var(--fs-s); color: var(--c-ink-2); line-height: 1.35; }
+.pst-st > .ico { flex: none; margin-top: 2px; } .pst-st > span { min-width: 0; }
+.pst-row.due .pst-st { color: var(--c-info); } .pst-row.ok .pst-st { color: var(--c-ok); } .pst-row.warn .pst-st { color: var(--c-warn); }
+.pst-left { color: var(--c-ink-2); font-size: var(--fs-s); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.pst-tag { display: inline-flex; align-items: center; min-height: 24px; padding: 0 10px; border-radius: var(--r-pill); font-weight: 600; font-size: 14px; }
+.pst-tag.warn { background: var(--c-warn-soft); color: var(--c-warn-ink); border: 1px solid var(--c-warn-line); }
+.hp-tools { gap: 4px 8px; margin: 10px 0; }
+.hp-tools .btn { padding: 0 8px; }
+
+.tips-box > summary { list-style: none; justify-content: space-between; }
+.tips-box > summary::-webkit-details-marker { display: none; }
+.tips-box[open] > summary .pacc-chev { transform: rotate(-90deg); }
 
 </style>
 <style>.top { padding-top: max(12px, env(safe-area-inset-top)); }</style>
@@ -1528,7 +1584,7 @@ details.gacc > summary { list-style: none; cursor: pointer; display: grid; grid-
       win_closed_after: 'Приймання закрите на нарахування. Відкриється {date}.',
       win_closed_after_sub: 'Пропущений місяць нарахують за будинковим лічильником; після наступних показань буде перерахунок.',
 
-      h_last: 'Останні прийняті ХТМ',
+      h_last: 'Останні прийняті ХТМ', h_last_d: 'Прийнято ХТМ {d}',
       h_last_none: 'Ще немає прийнятих показань',
       h_last_none_sub: 'Відкрийте особистий кабінет на сайті ХТМ → «Приймання показань по теплу» й перепишіть звідти останні прийняті показання — тоді перевірка нових буде точною.', h_cab_link: 'Кабінет ХТМ (hts.kharkov.ua)',
       h_add_base: 'Внести останні прийняті',
@@ -1868,7 +1924,7 @@ details.gacc > summary { list-style: none; cursor: pointer; display: grid; grid-
       uc_heat_ok: "Прийнято ХТМ",
       uc_heat_handed: "Передано, чекаємо ХТМ",
       uc_heat_due: "Передати до {d}",
-      uc_heat_late: "Останні дні — до {d}",
+      uc_heat_late: "Передати до {d}",
       uc_heat_closed: "Приймання з {d}",
       uc_from_you: "ваші від {d}",
       uc_from_htm: "прийняті ХТМ {d}",
@@ -1876,9 +1932,9 @@ details.gacc > summary { list-style: none; cursor: pointer; display: grid; grid-
       uc_w_setup: "Додайте водоміри — 1 хвилина",
       uc_w_setup_btn: "Додати водоміри",
       uc_w_sent: "Передано цього місяця",
-      uc_w_ready: "Внесено — залишилось передати",
+      uc_w_ready: "Внесено, залишилось передати",
       uc_w_due: "Передати до {d}",
-      uc_w_next: "Наступне — до {d}",
+      uc_w_next: "Наступна передача до {d}",
       uc_w_last: "внесено {d}",
       uc_w_nolast: "ще не вносили",
       uc_add_w: "Внести показання: {k}",
@@ -2216,7 +2272,7 @@ details.gacc > summary { list-style: none; cursor: pointer; display: grid; grid-
       h_cab_check: "Звірити в кабінеті ХТМ",
       wm_cap_gap: "після встановлення, {d}",
       wm_cap_base: "стартові, {d}",
-      mb_cap_sent: "Останні передані · {d}", mb_cap_none: "Ще не передавали", mb_newer: "Внесено {d} — ще не передано", mb_newer_own: "Внесено {d} — лише для себе",
+      mb_cap_sent: "Передано {d}", mb_cap_none: "Ще не передавали", mb_newer: "Внесено {d}, ще не передано", mb_newer_own: "Внесено {d} — лише для себе",
       mb_newer_heat: "Новіші: {d} — {s}", mb_place: "Квартира: лічильники й рахунки",
       wm_last: "Останні показання",
       wm_title_k: "Водоміри",
@@ -2274,7 +2330,7 @@ details.gacc > summary { list-style: none; cursor: pointer; display: grid; grid-
       pv_del: 'Видалити квартиру', pv_del_q: 'Видалити квартиру «{p}»? Разом з нею зникнуть її лічильники й показання (записів: {n}).',
       pv_del_yes: 'Так, видалити «{p}»', pv_deleted: 'Квартиру «{p}» видалено',
       // ---- квартиры, этап 2: главная-список, мастер «Додати квартиру», напоминания по квартирам, «не та квартира»
-      ov_due: 'Найближчий термін — {d}, залишилось {n} дн.', ov_due_today: 'Сьогодні останній день — {d}', ov_all_ok: 'Цього місяця все передано',
+      pst_today: 'Сьогодні останній день', pst_tmr: 'Завтра останній день', pst_left: '{n} дн.', pst_today_s: 'сьогодні', pst_tmr_s: 'завтра', acc_close: 'Згорнути', ov_due: 'Найближчий термін — {d}, залишилось {n} дн.', ov_due_today: 'Сьогодні останній день — {d}', ov_all_ok: 'Цього місяця все передано',
       ov_none: 'Лічильників ще немає — натисніть, щоб додати', ov_cur: 'відкрита', ov_open: 'Відкрити квартиру «{p}»',
       aw_title: 'Нова квартира', aw_step: 'Крок {i} з {n}',
       aw_t1: 'Як назвати квартиру?', aw_l1: 'Назва — щоб не плутати квартири між собою. Адреса — за бажанням.',
@@ -2309,7 +2365,7 @@ details.gacc > summary { list-style: none; cursor: pointer; display: grid; grid-
       gsv_g1: 'Кухня', gsv_g2: 'Гаряча вода', gsv_g3: 'Котел і опалення',
       gsv_tips: 'Кришка на каструлі|З кришкою вода закипає швидше, а газу йде на чверть менше.||Полум’я — під дно|Язики полум’я, що виходять за дно, гріють повітря. Зменште вогонь до розміру посуду.||Пальник і посуд|Малий посуд — на малий пальник. Рівне дно гріється рівномірно й швидше.||Газова колонка|Не ставте найвищу температуру: краще помірна, без доливання холодної. Ощадна лійка в душі зменшує і воду, і газ.||Не лийте гарячу даремно|Закривайте кран, поки намилюєте руки чи посуд.||Котел: температура|Кожен градус менше вдома — приблизно 5–6 % газу. Вночі й коли нікого немає — знижуйте.||Котел: обслуговування|Раз на рік — огляд і чистка: брудний теплообмінник «з’їдає» до 10 % газу.||Утеплення|Ущільнювачі на вікнах і дверях, штори вночі, батарея без меблів перед нею — тепло не тікає.',
       // ---- світло (этап 3): Харківобленерго, вікно — останні 2 дні місяця і 1–3 число, зони, ціна 4,32
-      en_prev: 'Минулого разу {v} кВт·год ({d})', eh_base: 'стартові — з налаштування лічильника', esv_title: 'Як заощадити на світлі', kv_elec: 'Світло', ue_add: 'Внести показання світла', ue_next: 'Наступне — {a}–{b}', ue_due: 'Передати {a}–{b}', aw_q_elec: 'Оберіть, скільки зон на лічильнику, — решту можна пропустити.', pv_m_elec: 'Світло (Харківенергозбут)',
+      en_prev: 'Минулого разу {v} кВт·год ({d})', eh_base: 'стартові — з налаштування лічильника', esv_title: 'Як заощадити на світлі', kv_elec: 'Світло', ue_add: 'Внести показання світла', ue_next: 'Наступна передача {a}–{b}', ue_due: 'Передати {a}–{b}', aw_q_elec: 'Оберіть, скільки зон на лічильнику, — решту можна пропустити.', pv_m_elec: 'Світло (Харківенергозбут)',
       ed_org: 'Харківобленерго', ed_what: 'Показання світла · рахунок виставляє Харківенергозбут', ed_due: 'до {d}', ed_due_next: '{a}–{b}',
       ed_lead: 'Показання світла приймають в останні 2 дні місяця і 1–3 числа наступного. Подані 1–3 числа зараховуються на 1-ше.',
       ed_nosum: 'Кожну зону — окремо, не додавайте їх. Загальний показник (сума зон) не передають.', ed_acc: 'Особовий рахунок {a}',
@@ -2389,7 +2445,7 @@ details.gacc > summary { list-style: none; cursor: pointer; display: grid; grid-
       win_closed_after: 'Приём закрыт на начисления. Откроется {date}.',
       win_closed_after_sub: 'Пропущенный месяц начислят по домовому счётчику; после следующих показаний будет перерасчёт.',
 
-      h_last: 'Последние принятые ХТМ',
+      h_last: 'Последние принятые ХТМ', h_last_d: 'Принято ХТМ {d}',
       h_last_none: 'Ещё нет принятых показаний',
       h_last_none_sub: 'Откройте личный кабинет на сайте ХТМ → «Приймання показань по теплу» и перепишите оттуда последние принятые показания — тогда проверка новых будет точной.', h_cab_link: 'Кабинет ХТМ (hts.kharkov.ua)',
       h_add_base: 'Внести последние принятые',
@@ -2729,7 +2785,7 @@ details.gacc > summary { list-style: none; cursor: pointer; display: grid; grid-
       uc_heat_ok: "Принято ХТМ",
       uc_heat_handed: "Передано, ждём ХТМ",
       uc_heat_due: "Передать до {d}",
-      uc_heat_late: "Последние дни — до {d}",
+      uc_heat_late: "Передать до {d}",
       uc_heat_closed: "Приём с {d}",
       uc_from_you: "ваши от {d}",
       uc_from_htm: "приняты ХТМ {d}",
@@ -2737,9 +2793,9 @@ details.gacc > summary { list-style: none; cursor: pointer; display: grid; grid-
       uc_w_setup: "Добавьте водомеры — 1 минута",
       uc_w_setup_btn: "Добавить водомеры",
       uc_w_sent: "Передано в этом месяце",
-      uc_w_ready: "Внесено — осталось передать",
+      uc_w_ready: "Внесено, осталось передать",
       uc_w_due: "Передать до {d}",
-      uc_w_next: "Следующее — до {d}",
+      uc_w_next: "Следующая передача до {d}",
       uc_w_last: "внесено {d}",
       uc_w_nolast: "ещё не вносили",
       uc_add_w: "Внести показания: {k}",
@@ -3077,7 +3133,7 @@ details.gacc > summary { list-style: none; cursor: pointer; display: grid; grid-
       h_cab_check: "Сверить в кабинете ХТМ",
       wm_cap_gap: "после установки, {d}",
       wm_cap_base: "стартовые, {d}",
-      mb_cap_sent: "Последние переданные · {d}", mb_cap_none: "Ещё не передавали", mb_newer: "Внесено {d} — ещё не передано", mb_newer_own: "Внесено {d} — только для себя",
+      mb_cap_sent: "Передано {d}", mb_cap_none: "Ещё не передавали", mb_newer: "Внесено {d}, ещё не передано", mb_newer_own: "Внесено {d} — только для себя",
       mb_newer_heat: "Новее: {d} — {s}", mb_place: "Квартира: счётчики и счета",
       wm_last: "Последние показания",
       wm_title_k: "Водомеры",
@@ -3135,7 +3191,7 @@ details.gacc > summary { list-style: none; cursor: pointer; display: grid; grid-
       pv_del: 'Удалить квартиру', pv_del_q: 'Удалить квартиру «{p}»? Вместе с ней пропадут её счётчики и показания (записей: {n}).',
       pv_del_yes: 'Да, удалить «{p}»', pv_deleted: 'Квартира «{p}» удалена',
       // ---- квартиры, этап 2: главная-список, мастер «Добавить квартиру», напоминания по квартирам, «не та квартира»
-      ov_due: 'Ближайший срок — {d}, осталось {n} дн.', ov_due_today: 'Сегодня последний день — {d}', ov_all_ok: 'В этом месяце всё передано',
+      pst_today: 'Сегодня последний день', pst_tmr: 'Завтра последний день', pst_left: '{n} дн.', pst_today_s: 'сегодня', pst_tmr_s: 'завтра', acc_close: 'Свернуть', ov_due: 'Ближайший срок — {d}, осталось {n} дн.', ov_due_today: 'Сегодня последний день — {d}', ov_all_ok: 'В этом месяце всё передано',
       ov_none: 'Счётчиков ещё нет — нажмите, чтобы добавить', ov_cur: 'открыта', ov_open: 'Открыть квартиру «{p}»',
       aw_title: 'Новая квартира', aw_step: 'Шаг {i} из {n}',
       aw_t1: 'Как назвать квартиру?', aw_l1: 'Название — чтобы не путать квартиры между собой. Адрес — по желанию.',
@@ -3170,7 +3226,7 @@ details.gacc > summary { list-style: none; cursor: pointer; display: grid; grid-
       gsv_g1: 'Кухня', gsv_g2: 'Горячая вода', gsv_g3: 'Котёл и отопление',
       gsv_tips: 'Крышка на кастрюле|С крышкой вода закипает быстрее, а газа уходит на четверть меньше.||Пламя — под дно|Языки пламени, выходящие за дно, греют воздух. Уменьшите огонь до размера посуды.||Конфорка и посуда|Маленькая посуда — на маленькую конфорку. Ровное дно греется равномерно и быстрее.||Газовая колонка|Не ставьте самую высокую температуру: лучше умеренная, без доливания холодной. Экономная лейка в душе уменьшает и воду, и газ.||Не лейте горячую зря|Закрывайте кран, пока намыливаете руки или посуду.||Котёл: температура|Каждый градус меньше дома — примерно 5–6 % газа. Ночью и когда никого нет — снижайте.||Котёл: обслуживание|Раз в год — осмотр и чистка: грязный теплообменник «съедает» до 10 % газа.||Утепление|Уплотнители на окнах и дверях, шторы ночью, батарея без мебели перед ней — тепло не уходит.',
       // ---- свет (этап 3): Харьковоблэнерго, окно — последние 2 дня месяца и 1–3 число, зоны, цена 4,32
-      en_prev: 'В прошлый раз {v} кВт·ч ({d})', eh_base: 'стартовые — с настройки счётчика', esv_title: 'Как сэкономить на свете', kv_elec: 'Свет', ue_add: 'Внести показания света', ue_next: 'Следующее — {a}–{b}', ue_due: 'Передать {a}–{b}', aw_q_elec: 'Выберите, сколько зон на счётчике, — остальное можно пропустить.', pv_m_elec: 'Свет (Харьковэнергосбыт)',
+      en_prev: 'В прошлый раз {v} кВт·ч ({d})', eh_base: 'стартовые — с настройки счётчика', esv_title: 'Как сэкономить на свете', kv_elec: 'Свет', ue_add: 'Внести показания света', ue_next: 'Следующая передача {a}–{b}', ue_due: 'Передать {a}–{b}', aw_q_elec: 'Выберите, сколько зон на счётчике, — остальное можно пропустить.', pv_m_elec: 'Свет (Харьковэнергосбыт)',
       ed_org: 'Харьковоблэнерго', ed_what: 'Показания света · счёт выставляет Харьковэнергосбыт', ed_due: 'до {d}', ed_due_next: '{a}–{b}',
       ed_lead: 'Показания света принимают в последние 2 дня месяца и 1–3 числа следующего. Поданные 1–3 числа засчитываются на 1-е.',
       ed_nosum: 'Каждую зону — отдельно, не складывайте их. Общий показатель (сумму зон) не передают.', ed_acc: 'Лицевой счёт {a}',
@@ -5035,6 +5091,7 @@ details.gacc > summary { list-style: none; cursor: pointer; display: grid; grid-
     chat: '<path d="M4 5h16v11H9l-5 4z"/><path d="M8 9h8M8 12h5"/>',
     camera: '<path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/>',
     bill: '<path d="M6 3h12v18l-2.5-1.6L13 21l-2-1.6L9 21l-3-1.8z"/><path d="M9 8h6M9 11.5h6M9 15h3.5"/>',
+    edit: '<path d="M4 20h4L18.5 9.5a2.1 2.1 0 0 0-4-4L4 16v4z"/><path d="M13.5 6.5l4 4"/>',
     wrench: '<path d="M14.5 5.5a4 4 0 0 0 4.9 4.9l-8.9 8.9a2 2 0 0 1-2.8-2.8l8.9-8.9a4 4 0 0 0-2.1-2.1z"/><path d="M14.5 5.5L17 3l2.5 2.5"/>',
     phone: '<path d="M5 4h4l1.5 4.5-2.5 1.5a11 11 0 0 0 6 6l1.5-2.5L20 15v4a1 1 0 0 1-1 1A16 16 0 0 1 4 5a1 1 0 0 1 1-1z"/>',
     send: '<path d="M21 3L3 10.5l7 2.5 2.5 7z"/><path d="M10 13l11-10"/>',
@@ -5429,7 +5486,7 @@ details.gacc > summary { list-style: none; cursor: pointer; display: grid; grid-
         '<span class="ucard-sub">' + esc(o.sub || '') + '</span>' +
         (o.status ? '<span class="ucard-status ' + (o.tone || '') + '">' + esc(o.status) + '</span>' : '') +
       '</a>' +
-      '<button type="button" class="ucard-add" data-act="' + o.addAct + '"' + (o.addKind ? ' data-kind="' + o.addKind + '"' : '') + ' data-key="card-' + o.kind + '-add" aria-label="' + esc(o.addLabel) + '" title="' + esc(o.addLabel) + '">' + ico('plus', 26) + '</button></div>';
+      '<button type="button" class="ucard-add' + (o.tone === 'warn' ? ' hot' : '') + '" data-act="' + o.addAct + '"' + (o.addKind ? ' data-kind="' + o.addKind + '"' : '') + ' data-key="card-' + o.kind + '-add" aria-label="' + esc(o.addLabel) + '" title="' + esc(o.addLabel) + '">' + ico('plus', 26) + '</button></div>';
   }
   function heatCard() {
     if (!S.meter) return ucard({ kind: 'heat', href: 'meter', icon: 'thermo', title: t('uc_heat'), display: lcd([{ text: '------', tag: 'Gcal', label: '—' }], 'card empty'), sub: t('uc_heat_setup'), addAct: 'setup-heat', addLabel: t('uc_heat_setup_btn') });
@@ -5473,6 +5530,20 @@ details.gacc > summary { list-style: none; cursor: pointer; display: grid; grid-
       '<div class="field"><label for="hpa-' + id + '">' + esc(t('hp_addr')) + '</label><div class="ctl"><input id="hpa-' + id + '" maxlength="120" autocomplete="street-address" value="' + esc(p.address || '') + '" placeholder="' + esc(t('hp_addr_ph')) + '"></div><p class="small muted hp-addr-gpv">' + esc(t('hp_addr_gpv')) + '</p></div></div>' +
       '<div class="row-actions"><button type="button" class="btn sec" data-act="hp-cancel">' + esc(t('cancel')) + '</button><button type="submit" class="btn" data-key="hp-save">' + esc(t('save')) + '</button></div></form>';
   }
+  /** Шапка квартири в списку: рядок на кожен вид лічильників — значок, назва, що робити й до коли (спершу термінове).
+   *  Без «Найближчий термін — …» і переліку через крапку: людина одразу бачить, ЩО і ДО КОЛИ передати. */
+  function pstRows(p) {
+    var ps = placeStatus(p.id); if (!ps.rows.length) return '<span class="pst-none small muted">' + esc(t('ov_none')) + '</span>';
+    var rank = { warn: 0, due: 1, ok: 2 }, td = today();
+    var rows = ps.rows.slice().sort(function (a, b) { var x = (rank[a.tone] !== undefined ? rank[a.tone] : 3) - (rank[b.tone] !== undefined ? rank[b.tone] : 3); return x || String(a.due || '9').localeCompare(String(b.due || '9')); });
+    return '<span class="pst" data-key="pst-' + esc(p.id) + '">' + rows.map(function (r) {
+      var n = r.due ? R.daysBetween(td, r.due) : null, tone = r.off ? 'warn' : r.tone || '', urgent = n !== null && n <= 1 && (tone === 'due' || tone === 'warn');
+      var tag = urgent ? '<span class="pst-tag warn" title="' + esc(t(n <= 0 ? 'pst_today' : 'pst_tmr')) + '">' + esc(t(n <= 0 ? 'pst_today_s' : 'pst_tmr_s')) + '</span>' : n !== null && n > 1 && tone && tone !== 'ok' ? '<span class="pst-left">' + esc(t('pst_left', { n: n })) + '</span>' : '';
+      var si = tone === 'ok' ? 'check' : urgent || tone === 'warn' ? 'alert' : tone === 'due' ? 'clock' : '';
+      return '<span class="pst-row ' + (urgent ? 'warn' : tone) + '" data-key="pst-' + esc(p.id) + '-' + r.kind + '"><span class="pst-ico ' + KINDS[r.kind].cls + '">' + ico(KINDS[r.kind].icon, 20) + '</span>' +
+        '<span class="pst-k">' + esc(r.title) + '</span><span class="pst-st">' + (si ? ico(si, 16) : '') + '<span>' + esc(r.st) + '</span></span>' + (tag ? '<span class="pst-r">' + tag + '</span>' : '') + '</span>';
+    }).join('') + '</span>';
+  }
   function hpOpen(p) { var o = S.homeOpen || {}; return o[p.id] !== undefined ? !!o[p.id] : p.id === S.placeId; }
   function homePlaces() {
     var ps = places();
@@ -5490,17 +5561,15 @@ details.gacc > summary { list-style: none; cursor: pointer; display: grid; grid-
       });
     }
     return '<div class="hp-list" data-key="home-places">' + ps.map(function (p) {
-      var st = placeStatus(p.id);
-      var due = st.due ? '<span class="ov-next ' + (R.daysBetween(today(), st.due) <= 3 ? 'warn' : 'due') + '">' + ico('clock', 16) + '<span>' + esc(dueText(st.due)) + '</span></span>'
-        : st.allOk ? '<span class="ov-next ok">' + ico('check', 16) + '<span>' + esc(t('ov_all_ok')) + '</span></span>' : '';
+      var due = pstRows(p);
       var open = hpOpen(p);   // до withPlace: там S.placeId — эта квартира
       return withPlace(p.id, function () {
         var cards = homeCards();
         return '<details class="hp pacc" id="hp-' + esc(p.id) + '" data-pl="' + esc(p.id) + '" style="--pc:var(--pc-' + placeColor(p) + ')" data-key="home-pl-' + esc(p.id) + '"' + (open ? ' open' : '') + '>' +
-          '<summary data-key="home-pl-sum-' + esc(p.id) + '"><span class="pacc-t"><b>' + esc(placeLabel(p)) + '</b>' + (p.address ? '<span class="small muted">' + esc(p.address) + '</span>' : '') + due +
-            '<span class="small muted pacc-ks">' + esc(placeKinds(p)) + '</span></span>' + ico('chev', 22, 'pacc-chev') + '</summary><div class="pacc-body">' +
-          (HP_EDIT === p.id ? hpEditForm(p) : '<p class="hp-tools"><button type="button" class="linkbtn" data-act="hp-edit" data-id="' + esc(p.id) + '" data-key="home-pl-edit-' + esc(p.id) + '">' + esc(t(p.address ? 'hp_edit' : 'hp_addr_add')) + '</button>' +
-            '<a href="#place-' + esc(p.id) + '" data-key="home-pl-set-' + esc(p.id) + '">' + ico('prefs', 16) + ' ' + esc(t('hp_settings')) + '</a></p>') +
+          '<summary data-key="home-pl-sum-' + esc(p.id) + '"><span class="pacc-t"><b>' + esc(placeLabel(p)) + '</b>' + (p.address ? '<span class="pacc-addr">' + esc(p.address) + '</span>' : '') + '</span>' +
+            ico('chev', 22, 'pacc-chev') + due + '</summary><div class="pacc-body">' +
+          (HP_EDIT === p.id ? hpEditForm(p) : '<p class="hp-tools"><button type="button" class="btn ter sm" data-act="hp-edit" data-id="' + esc(p.id) + '" data-key="home-pl-edit-' + esc(p.id) + '">' + ico('edit', 18) + '<span>' + esc(t(p.address ? 'hp_edit' : 'hp_addr_add')) + '</span></button>' +
+            '<a class="btn ter sm" href="#place-' + esc(p.id) + '" data-key="home-pl-set-' + esc(p.id) + '">' + ico('prefs', 18) + '<span>' + esc(t('hp_settings')) + '</span></a></p>') +
           '<div class="ucards">' + cards.join('') + addTile(!cards.length) + '</div></div></details>';
       });
     }).join('') + '<p class="hp-more"><button type="button" class="btn sec" data-act="hp-add-place" data-key="home-add-place">' + ico('plus', 18) + '<span>' + esc(t('pl_add')) + '</span></button></p>' +
@@ -6551,7 +6620,7 @@ details.gacc > summary { list-style: none; cursor: pointer; display: grid; grid-
     var ph = EN.photos || [], ms = smeters(k), h = '<div class="panel wn-photo" data-key="en-photo"><input type="file" id="en-files" accept="image/*" multiple class="sr">';
     if (EN.busy) return h + '<div class="banner" role="status" style="margin:0">' + SPIN + '<div class="grow"><p id="en-prog">' + esc(EN.prog || t('enp_reading')) + '</p><div class="pbar" aria-hidden="true"><i id="en-pbar" style="width:' + (EN.pct || 2) + '%"></i></div>' +
       '<p style="margin:10px 0 0"><button class="btn sec" data-act="en-stop" data-key="en-stop">' + ico('close', 18) + '<span>' + esc(t('ph_stop')) + '</span></button></p></div></div></div>';
-    h += '<label for="en-files" class="btn ' + (ph.length ? 'sec' : 'big block') + '" tabindex="0" data-key="en-photo-pick">' + ico('camera', 22) + '<span>' + esc(t(ph.length ? 'enp_more' : 'enp_pick')) + '</span></label>' +
+    h += '<label for="en-files" class="btn sec' + (ph.length ? '' : ' block') + '" tabindex="0" data-key="en-photo-pick">' + ico('camera', 22) + '<span>' + esc(t(ph.length ? 'enp_more' : 'enp_pick')) + '</span></label>' +
       (ph.length ? '' : '<p class="small muted" style="margin:8px 0 0">' + esc(t('enp_hint')) + '</p>');
     if (EN.err) h += '<p class="help warn">' + esc(EN.err) + '</p>';
     if (!ph.length) return h + '</div>';
@@ -7052,7 +7121,7 @@ details.gacc > summary { list-style: none; cursor: pointer; display: grid; grid-
       case 'pv-chip': { ensurePlaces(); var pc = place(); pc.name = el.getAttribute('data-v'); pc.updatedAt = Date.now(); save(); render(true); return true; }
       case 'pl-del-ask': { var dq = place(el.getAttribute('data-id')), box = document.getElementById('pl-del-confirm'); if (!dq || !box) return true;
         var dn = (S.readings || []).filter(function (r) { return r && !r.deleted && r.place === dq.id; }).length + (S.water || []).filter(function (r) { return r && !r.deleted && !r.base && r.place === dq.id; }).length;
-        box.innerHTML = '<div class="banner warn" style="margin-top:16px" role="alert">' + ico('alert', 22) + '<div><p><b>' + esc(t('pv_del_q', { p: placeLabel(dq), n: dn })) + '</b></p><div class="row-actions" style="margin-top:8px"><button class="btn sec" data-act="pl-del-no">' + esc(t('cancel')) + '</button><button class="btn danger" data-act="pl-del" data-id="' + esc(dq.id) + '" data-key="pv-del-yes">' + esc(t('pv_del_yes', { p: placeLabel(dq) })) + '</button></div></div></div>';
+        box.innerHTML = '<div class="banner warn" style="margin-top:16px" role="alert">' + ico('alert', 22) + '<div><p><b>' + esc(t('pv_del_q', { p: placeLabel(dq), n: dn })) + '</b></p><div class="row-actions" style="margin-top:8px"><button class="btn sec" data-act="pl-del-no">' + esc(t('cancel')) + '</button><button class="btn danger solid" data-act="pl-del" data-id="' + esc(dq.id) + '" data-key="pv-del-yes">' + esc(t('pv_del_yes', { p: placeLabel(dq) })) + '</button></div></div></div>';
         var yes = box.querySelector('[data-act=pl-del]'); if (yes) yes.focus(); return true; }
       case 'pl-del-no': { var bx0 = document.getElementById('pl-del-confirm'); if (bx0) bx0.innerHTML = ''; return true; }
       case 'to-water': e.preventDefault(); SCROLL_TO = 'water-block'; go('prefs'); return true;
@@ -7151,7 +7220,7 @@ details.gacc > summary { list-style: none; cursor: pointer; display: grid; grid-
     var ph = WN.photos || [], ms = wmeters(), h = '<div class="panel wn-photo" data-key="wn-photo"><input type="file" id="wn-files" accept="image/*" multiple class="sr" data-key="wn-files">';
     if (WN.busy) h += '<div class="banner" role="status" style="margin:0">' + SPIN + '<div class="grow"><p id="wn-prog">' + esc(WN.prog || t('wn_reading')) + '</p><div class="pbar" aria-hidden="true"><i id="wn-pbar" style="width:' + (WN.pct || 2) + '%"></i></div>' +
       '<p style="margin:10px 0 0"><button class="btn sec" data-act="wn-stop" data-key="wn-stop">' + ico('close', 18) + '<span>' + esc(t('ph_stop')) + '</span></button></p></div></div>';
-    else h += '<label for="wn-files" class="btn ' + (ph.length ? 'sec' : 'big block') + '" tabindex="0" data-key="wn-photo-pick">' + ico('camera', 22) + '<span>' + esc(ph.length ? t('wnp_more') : t('wnp_pick')) + '</span></label>' +
+    else h += '<label for="wn-files" class="btn sec' + (ph.length ? '' : ' block') + '" tabindex="0" data-key="wn-photo-pick">' + ico('camera', 22) + '<span>' + esc(ph.length ? t('wnp_more') : t('wnp_pick')) + '</span></label>' +
       (ph.length ? '' : '<p class="small muted" style="margin:8px 0 0">' + esc(t('wnp_hint')) + '</p>');
     if (WN.err) h += '<p class="help warn">' + esc(WN.err) + '</p>';
     if (ph.length) {
@@ -7303,7 +7372,7 @@ details.gacc > summary { list-style: none; cursor: pointer; display: grid; grid-
     var left = mbox({ key: bs ? 'home-last' : 'home-last-none', id: 'heat', kind: 'heat', icon: 'thermo', cls: 'c-heat', name: modelName(m),
       sub: [S.meter && S.meter.serial ? '№ ' + S.meter.serial : '', t('uc_heat') + (energyUnit() !== 'Gcal' ? ' · ' + unitLbl(energyUnit()) : '')].filter(Boolean).join(' · '),
       display: lcd([{ text: bs ? R.formatForHtm('energy', bs.energy) : '------', tag: 'Gcal', label: bs ? R.formatForHtm('energy', bs.energy) + ' Гкал' : '—' }], 'hero'),
-      cap: bs ? t('h_last') + ' · ' + fmtDate(bs.date, true) : t('h_last_none'), fix: bs ? '<a href="' + (bs.src === 'rec' ? '#rec-' + esc(bs.id) : '#baseline') + '">' + esc(t('change')) + '</a>' : '',
+      cap: bs ? t('h_last_d', { d: fmtDate(bs.date, true) }) : t('h_last_none'), fix: bs ? '<a href="' + (bs.src === 'rec' ? '#rec-' + esc(bs.id) : '#baseline') + '">' + esc(t('change')) + '</a>' : '',
       body: (newer ? '<p class="small muted mb-newer">' + esc(t(newer.own ? 'mb_newer_own' : 'mb_newer_heat', { d: fmtDate(newer.htm.date, true), s: t('status_' + newer.status).toLowerCase() })) + '</p>' : '') +
         (bs ? '' : '<p class="small muted">' + esc(t('h_last_none_sub')) + '</p><p><a class="btn sec" href="#baseline" data-key="home-add-base">' + esc(t('h_add_base')) + '</a></p>'),
       meta: S.meter && S.meter.verifiedUntil ? [esc(t('pl_ver', { d: R.toHtmDate(S.meter.verifiedUntil) }))] : [],
@@ -8287,8 +8356,8 @@ details.gacc > summary { list-style: none; cursor: pointer; display: grid; grid-
   /** Строка счётчика на экране квартиры: открыть · замінити · прибрати. */
   function mrow(o) {
     return '<li class="mrow" data-key="pv-m-' + esc(o.what) + '"><a class="mrow-main" href="#' + o.href + '">' + ico(KINDS[o.kind].icon, 22, KINDS[o.kind].cls) + '<span class="grow"><b>' + esc(o.title) + '</b>' + (o.sub ? '<span class="small muted">' + esc(o.sub) + '</span>' : '') + '</span>' + ico('chev', 20) + '</a>' +
-      '<div class="mrow-act">' + (o.noReplace ? '' : '<button type="button" class="btn sec" data-act="m-replace" data-what="' + esc(o.what) + '" data-key="pv-replace-' + esc(o.what) + '">' + ico('wrench', 18) + '<span>' + esc(t('mr_replace')) + '</span></button>') +
-      '<button type="button" class="btn sec" data-act="m-remove" data-what="' + esc(o.what) + '" data-key="pv-remove-' + esc(o.what) + '">' + ico('close', 18) + '<span>' + esc(t('mr_remove')) + '</span></button></div></li>';
+      '<div class="mrow-act">' + (o.noReplace ? '' : '<button type="button" class="btn ter sm" data-act="m-replace" data-what="' + esc(o.what) + '" data-key="pv-replace-' + esc(o.what) + '">' + ico('wrench', 18) + '<span>' + esc(t('mr_replace')) + '</span></button>') +
+      '<button type="button" class="btn ter sm quiet-bad" data-act="m-remove" data-what="' + esc(o.what) + '" data-key="pv-remove-' + esc(o.what) + '">' + ico('close', 18) + '<span>' + esc(t('mr_remove')) + '</span></button></div></li>';
   }
   function verTxt(v) { return v ? t('pl_ver', { d: R.toHtmDate(v) }) : ''; }
   /** Экран квартиры: её счётчики, название/адрес/цвет, свои рахунки; удалить. Открыть экран = перейти в эту квартиру. */
@@ -8555,7 +8624,7 @@ details.gacc > summary { list-style: none; cursor: pointer; display: grid; grid-
   /** Настройки — группы-аккордеоны по смыслу; открытые запоминаются (перерисовка их не сворачивает). */
   var PREF_OPEN = {};
   function prefGroup(id, icon, title, sub, html) {
-    return '<details class="pgroup" id="pg-' + id + '" data-key="pg-' + id + '"' + (PREF_OPEN[id] ? ' open' : '') + '><summary>' + ico(icon, 22) + '<span class="pg-t"><b>' + esc(title) + '</b>' + (sub ? '<span class="small muted">' + esc(sub) + '</span>' : '') + '</span>' + ico('chev', 18) + '</summary><div class="pg-body">' + html + '</div></details>';
+    return '<details class="pgroup" id="pg-' + id + '" data-key="pg-' + id + '"' + (PREF_OPEN[id] ? ' open' : '') + '><summary>' + ico(icon, 22) + '<span class="pg-t"><b>' + esc(title) + '</b>' + (sub ? '<span class="small muted">' + esc(sub) + '</span>' : '') + '</span>' + ico('chev', 20, 'pacc-chev') + '</summary><div class="pg-body">' + html + '</div></details>';
   }
   document.addEventListener('toggle', function (e) { var d = e.target; if (d && d.classList && d.classList.contains('pgroup')) PREF_OPEN[d.id.slice(3)] = d.open; }, true);
   /** Тарифы воды: свои цифры поверх тарифов Харкова; как считается цена. */
@@ -9126,8 +9195,26 @@ details.gacc > summary { list-style: none; cursor: pointer; display: grid; grid-
     });
   }
 
+  /** Довгі акордеони (налаштування лічильника, «Куди передати», графік, групи налаштувань, квартира на головній):
+   *  унизу розгорнутого — «Згорнути», щоб не шукати шапку вгорі. Додаємо при відкритті — працює й після часткових перемальовувань. */
+  var ACC_SEL = 'details.mbox-set, details.wacc, details.gacc, details.pgroup, details.pacc';
+  function accFoot(d) {
+    if (!d || !d.matches || !d.matches(ACC_SEL) || !d.open) return;
+    var last = d.lastElementChild; if (last && last.classList.contains('acc-foot')) return;
+    var f = document.createElement('div'); f.className = 'acc-foot';
+    f.innerHTML = '<button type="button" class="btn ter sm" data-act="acc-close" data-key="acc-close">' + ico('chev', 18, 'acc-up') + '<span>' + esc(t('acc_close')) + '</span></button>';
+    d.appendChild(f);
+  }
+  document.addEventListener('toggle', function (e) { accFoot(e.target); }, true);
+  document.addEventListener('click', function (e) {
+    var b = e.target.closest && e.target.closest('[data-act="acc-close"]'); if (!b) return;
+    var d = b.closest('details'); if (!d) return; e.preventDefault(); e.stopPropagation(); d.open = false;
+    var sm = d.querySelector('summary'); if (sm) { var r = sm.getBoundingClientRect(); if (r.top < 0 || r.top > innerHeight - 60) sm.scrollIntoView({ block: 'start' }); try { sm.focus({ preventScroll: true }); } catch (e1) { /* старий браузер */ } }
+  }, true);
   var SCROLL_TO = null;
   function afterRender(r) {
+    Array.prototype.forEach.call(document.querySelectorAll(ACC_SEL), accFoot);
+    Array.prototype.forEach.call(document.querySelectorAll('details.tips-box > summary'), function (sm) { if (!sm.querySelector('.pacc-chev')) sm.insertAdjacentHTML('beforeend', ico('chev', 18, 'pacc-chev')); });
     enhanceDates(); photoFill(); toastKeep(); if (Y().account) histFlush();
     // отклик: ушёл дальше привітання/головної — «клацав» (этап 1)
     if (typeof r === 'string' && r && !/^(welcome|home|places)$/.test(r) && VSTAGE < 1) { VSTAGE = 1; visitBump(); }
@@ -9318,7 +9405,7 @@ details.gacc > summary { list-style: none; cursor: pointer; display: grid; grid-
         pqNext(); break; }
       case 'pl-del': { var dp = place(el.getAttribute('data-id')); if (dp && places().length > 1) { var dl = placeLabel(dp); dp.deleted = true; dp.updatedAt = Date.now(); if (dp.id === S.placeId) { S.placeId = null; S.meter = null; S.baseline = null; S.draft = null; ensurePlaces(); } save(); toast(t('pv_deleted', { p: dl })); go(places().length > 1 ? 'places' : 'home'); } break; }
       case 'focus': S.focusId = el.getAttribute('data-id'); save(); break;
-      case 'rec-del-ask': { var bx = document.getElementById('rec-del-confirm'); if (bx) bx.innerHTML = '<div class="banner warn" style="margin-top:16px">' + ico('alert', 22) + '<div><p>' + esc(t('rec_del_q')) + '</p><div class="row-actions" style="margin-top:8px"><button class="btn danger" data-act="rec-del-yes">' + esc(t('rec_del')) + '</button></div></div></div>'; break; }
+      case 'rec-del-ask': { var bx = document.getElementById('rec-del-confirm'); if (bx) bx.innerHTML = '<div class="banner warn" style="margin-top:16px">' + ico('alert', 22) + '<div><p>' + esc(t('rec_del_q')) + '</p><div class="row-actions" style="margin-top:8px"><button class="btn danger solid" data-act="rec-del-yes">' + esc(t('rec_del')) + '</button></div></div></div>'; break; }
       case 'rec-del-yes': { var m2 = routeName().match(/^rec-([\w-]+)$/), rx = m2 && RD().filter(function (x) { return x.id === m2[1]; })[0];
         if (rx) { rx.deleted = true; rx.updatedAt = Date.now(); photoKeep(rx.photos, false); billsDrop(rx.bills); if (S.focusId === rx.id) S.focusId = null; save(); toast(t('rec_deleted')); } go('history'); break; }
       case 'accepted': {
@@ -9335,7 +9422,7 @@ details.gacc > summary { list-style: none; cursor: pointer; display: grid; grid-
       case 'to-meter': { e.preventDefault(); SCROLL_TO = 'meter-block'; go('prefs'); break; }
       case 'scroll': { var tg = document.getElementById(el.getAttribute('data-target')); if (tg) tg.scrollIntoView({ behavior: 'smooth', block: 'start' }); break; }
       case 'export': copyText(JSON.stringify(S), el); break;
-      case 'wipe-ask': document.getElementById('wipe-confirm').innerHTML = '<div class="confirm"><p>' + esc(t(el.getAttribute('data-test') || (Y().mode === 'server' && Y().account) ? 'tr_confirm' : 'p_wipe_confirm')) + '</p><div class="row-actions" style="margin-top:8px"><button class="btn sec" data-act="wipe-no">' + esc(t('cancel')) + '</button><button class="btn danger" data-act="wipe-yes" data-key="prefs-wipe-yes">' + esc(t('p_wipe_yes')) + '</button></div></div>'; break;
+      case 'wipe-ask': document.getElementById('wipe-confirm').innerHTML = '<div class="confirm"><p>' + esc(t(el.getAttribute('data-test') || (Y().mode === 'server' && Y().account) ? 'tr_confirm' : 'p_wipe_confirm')) + '</p><div class="row-actions" style="margin-top:8px"><button class="btn sec" data-act="wipe-no">' + esc(t('cancel')) + '</button><button class="btn danger solid" data-act="wipe-yes" data-key="prefs-wipe-yes">' + esc(t('p_wipe_yes')) + '</button></div></div>'; break;
       case 'photo': {
         if (el.getAttribute('data-mode') === 'baseline') {   // не потерять уже введённое руками
           var typed = {}; Array.prototype.forEach.call(document.querySelectorAll('[data-b]'), function (x) { if (x.value.trim()) typed[x.getAttribute('data-b')] = x.value.trim(); });
