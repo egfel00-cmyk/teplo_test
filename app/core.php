@@ -266,3 +266,23 @@ final class Cron {
   /** Сколько секунд назад запускался cron (null — ни разу). */
   public static function age(): ?int { $t = strtotime((string)(self::read()['last'] ?? '')); return $t ? max(0, time() - $t) : null; }
 }
+
+/** Сбои сервера (500) для /admin → «Сводка»: логов сервера у сессий нет. SITE_DATA/tmp/errors.jsonl, последние ~200 строк.
+ *  Без тела запроса и личных данных: метод, путь, текст исключения, файл:строка. */
+final class ErrLog {
+  const KEEP = 200;
+  public static function file(): string { return Cfg::data() . '/tmp/errors.jsonl'; }
+  public static function add(string $method, string $path, Throwable $e): void {
+    $f = self::file(); @mkdir(dirname($f), 0700, true);
+    $line = json_encode(['at' => time(), 'm' => $method, 'p' => substr($path, 0, 80), 'e' => substr(get_class($e) . ': ' . $e->getMessage(), 0, 300),
+      'w' => basename($e->getFile()) . ':' . $e->getLine()], JSON_UNESCAPED_UNICODE) . "\n";
+    @file_put_contents($f, $line, FILE_APPEND | LOCK_EX);
+    clearstatcache(true, $f); if (@filesize($f) > 120000) { $a = @file($f) ?: []; @file_put_contents($f, implode('', array_slice($a, -self::KEEP)), LOCK_EX); }
+  }
+  /** Последние n сбоев, новые сверху. */
+  public static function list(int $n = 30): array {
+    $a = @file(self::file(), FILE_IGNORE_NEW_LINES) ?: []; $out = [];
+    foreach (array_reverse(array_slice($a, -$n)) as $l) { $j = json_decode($l, true); if (is_array($j)) $out[] = $j; }
+    return $out;
+  }
+}

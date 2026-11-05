@@ -43,6 +43,8 @@ if (str_starts_with($path, '/api/')) {
     $res = Api::handle(new Req($_SERVER['REQUEST_METHOD'] ?? 'GET', $path, $_SERVER, $_COOKIE, $body));
   } catch (Throwable $e) {
     error_log('teplo: ' . $e->getMessage() . ' @ ' . $e->getFile() . ':' . $e->getLine());
+    // журнал сбоев сервера для /admin (логов сервера у сессий нет): последние ~200 — SITE_DATA/tmp/errors.jsonl
+    try { ErrLog::add($_SERVER['REQUEST_METHOD'] ?? 'GET', $path, $e); } catch (Throwable $e2) { /* без журнала */ }
     $res = new Res(500, ['error' => 'server']);
   }
   http_response_code($res->status);

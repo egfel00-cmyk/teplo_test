@@ -117,8 +117,16 @@ pre.state { font: 12px/1.4 var(--mono); background: #F4F7F5; padding: 10px; bord
       '<div class="panel small" data-key="adm-vk">' + vkLine + '</div>' +
       '<div class="cards">' + c(o.users, 'пользователей всего') + c(o.usersWeek, 'новых за 7 дней') + c(o.activeWeek, 'входили за 7 дней') + c(o.withTelegram, 'с Telegram') + c(o.withData, 'сохранили данные') +
       c(o.feedback, 'сообщений (новых: ' + o.feedbackNew + ')') + c(o.photos, 'фото загружено') + c(o.photosFailed, 'фото с проблемами') + c(o.reportsBad + ' / ' + o.reports, 'распознаваний с замечаниями') + '</div>' +
-      '<p class="muted small">Фото хранятся ' + o.photoKeepDays + ' дней, потом удаляются автоматически.</p>' + actBlock() + botRepliesBlock(o.botReplies) + vkcabBlock(o.vkcab, vc) + trackBlock(o.tracking) + devicesBlock();
+      '<p class="muted small">Фото хранятся ' + o.photoKeepDays + ' дней, потом удаляются автоматически.</p>' + actBlock() + errorsBlock(o.errors) + botRepliesBlock(o.botReplies) + vkcabBlock(o.vkcab, vc) + trackBlock(o.tracking) + devicesBlock();
   };
+  /** Сбои сервера (500): что упало — по ним чинить; пусто — хорошо. */
+  function errorsBlock(l) {
+    l = l || []; var day = l.filter(function (x) { return Date.now() / 1000 - x.at < 86400; }).length;
+    return '<details class="panel" data-key="adm-errors"' + (day ? ' open' : '') + '><summary><b>Сбои сервера</b> <span class="muted small">(' + (day ? '<b class="problem">за сутки: ' + day + '</b>, ' : '') + 'всего ' + l.length + ')</span></summary>' +
+      (l.length ? '<table><thead><tr><th>Когда</th><th>Запрос</th><th>Что</th><th>Где</th></tr></thead><tbody>' + l.map(function (x) {
+        return '<tr><td data-l="Когда" class="nowrap">' + when(new Date(x.at * 1000).toISOString()) + '</td><td data-l="Запрос">' + esc(x.m + ' ' + x.p) + '</td><td data-l="Что" style="white-space:pre-wrap">' + esc(x.e) + '</td><td data-l="Где" class="nowrap">' + esc(x.w) + '</td></tr>';
+      }).join('') + '</tbody></table>' : '<p class="muted small">Сбоев нет.</p>') + '</details>';
+  }
   /** Ответы ботов поставщиков, которые люди переслали нашему боту: по ним видно, ловит ли Telegram::botKind «прийнято». */
   function botRepliesBlock(l) {
     var SRC = { vk: 'Водоканал @hvk_user_bot', obl: 'Харьковоблэнерго @Kooz2bot', grm: 'Газсети @mygrmu_bot' }, KIND = { ok: 'принято', err: 'ошибка', info: 'прочее' };

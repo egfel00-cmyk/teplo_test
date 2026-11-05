@@ -5085,15 +5085,19 @@
         ok: el.validity && !chk ? (el.validity.valid ? 1 : 0) : undefined, files: el.type === 'file' ? (el.files || []).length : undefined });
     }, true);
     // помилки JS
-    window.addEventListener('error', function (e) { track('js_error', { m: String(e.message || 'error').slice(0, 120), at: String((e.filename || '').split('/').pop() + ':' + (e.lineno || 0) + ':' + (e.colno || 0)).slice(0, 60) }); });
+    // «Script error.» без файла — чужой скрипт (Telegram, Cloudflare): подробностей браузер не дает, в журнале только шум
+    window.addEventListener('error', function (e) { if (/^Script error\.?$/.test(String(e.message || '')) && !e.filename) return; track('js_error', { m: String(e.message || 'error').slice(0, 120), at: String((e.filename || '').split('/').pop() + ':' + (e.lineno || 0) + ':' + (e.colno || 0)).slice(0, 60) }); });
     window.addEventListener('unhandledrejection', function (e) { var r = e.reason; track('js_error', { m: String((r && r.message) || r || 'rejection').slice(0, 120), at: 'promise' }); });
-    // повідомлення на сторінці (role=alert, .warn) — що людині сказали «не так»
-    var seen = typeof WeakMap === 'function' ? new WeakMap() : null, mt = null;
+    // повідомлення на сторінці — що людині сказали «не так»: помилки й попередження (role=alert, банери, підказки під полем).
+    // Статуси термінів («Передати 1–5 листопада», «сьогодні», графік світла) — не повідомлення: раніше кожна перемальовка
+    // писала їх знову (за 05.11 — 90 рядків «alert» на одному екрані). Те саме повідомлення на тому ж екрані — один раз.
+    var seen = typeof WeakMap === 'function' ? new WeakMap() : null, said = {}, mt = null;
     if (seen && window.MutationObserver) new MutationObserver(function () {
       clearTimeout(mt); mt = setTimeout(function () {
-        [].forEach.call(document.querySelectorAll('[role=alert], .warn'), function (el) {
+        [].forEach.call(document.querySelectorAll('[role=alert], .banner.warn, .banner.bad, .help.warn, .help.bad, .warn-ink'), function (el) {
           var tx = (el.textContent || '').replace(/\s+/g, ' ').trim(); if (!tx || seen.get(el) === tx || el.offsetParent === null) return;
-          seen.set(el, tx); track('alert', { m: tx.slice(0, 120), k: el.getAttribute('data-key') || undefined });
+          seen.set(el, tx); var sk = routeName() + '|' + tx; if (said[sk]) return; said[sk] = 1;
+          track('alert', { m: tx.slice(0, 120), k: el.getAttribute('data-key') || undefined });
         });
       }, 400);
     }).observe(document.body, { childList: true, subtree: true, characterData: true });

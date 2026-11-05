@@ -915,6 +915,16 @@ foreach ((array)(Providers::data()['settlements'] ?? []) as $key => $x) { if (!i
 ok('довідник: усі громади й пункти є в КАТОТТГ, у кожного тарифу є джерело (укр. і рос.)', !$bad, $bad);
 { $res = $phone->req('GET', '/api/providers', null, ['QUERY_STRING' => 'q=' . rawurlencode('Малая Даниловка, Академическая 10')]);
   ok('GET /api/providers?q= → 200, Мала Данилівка', $res->status === 200 && ($res->body['place']['name'] ?? '') === 'Мала Данилівка', [$res->status, $res->body]); }
+{ // журнал сбоев сервера для /admin: пишется, новые сверху, без лишнего; обрезается до последних KEEP
+  ErrLog::add('GET', '/api/bot/replies', new RuntimeException('SQLSTATE[HY000] boom'));
+  ErrLog::add('POST', '/api/state', new LogicException('second'));
+  $el = ErrLog::list(5);
+  ok('ErrLog: новые сверху, метод/путь/текст/где', count($el) === 2 && $el[0]['p'] === '/api/state' && str_contains($el[1]['e'], 'RuntimeException: SQLSTATE') && preg_match('/\.php:\d+$/', $el[0]['w']), $el);
+  $ov = Admin::route('GET /api/admin/overview', [], [], ['id' => 1, 'email' => 'a@b.c']);
+  ok('сводка /admin отдаёт errors', isset($ov['errors']) && count($ov['errors']) === 2);
+  for ($i = 0; $i < 700; $i++) ErrLog::add('GET', '/api/x' . $i, new RuntimeException(str_repeat('x', 150)));
+  $n = count(file(ErrLog::file())); ok('ErrLog обрезается (≤ ' . (ErrLog::KEEP + 400) . ' строк)', $n <= ErrLog::KEEP + 400 && ErrLog::list(1)[0]['p'] === '/api/x699', $n);
+  @unlink(ErrLog::file()); }
 echo "\nВыход:\n";
 $phone->req('POST', '/api/auth/logout');
 ok('после выхода /api/me → 401', $phone->req('GET', '/api/me')->status === 401);
