@@ -3,7 +3,7 @@
 #   bash /srv/sites/teplo_test/tools_peredai.sh
 # Что делает: 1) добавляет peredai.com.ua в ingress cloudflared (туннель управляется локально, сервис как у pokabot.xyz —
 # http://localhost:8080), проверяет конфиг и перезапускает туннель (при ошибке — откат); 2) настраивает сайт под домен
-# (tools_site_add.sh --domain); 3) печатает короткую сводку. Повторный запуск безопасен. Полный журнал — /root/peredai.log.
+# (tools_site_add.sh --domain); 3) печатает короткую сводку латиницей (веб-консоль Hetzner не показывает кириллицу). Повторный запуск безопасен. Полный журнал — /root/peredai.log.
 set -u
 DOM=peredai.com.ua
 LOG=/root/peredai.log
@@ -11,15 +11,15 @@ exec > >(tee "$LOG") 2>&1
 
 CF=$(systemctl cat cloudflared 2>/dev/null | grep -oP -- '--config[= ]\K\S+' | head -1)
 [ -z "$CF" ] && CF=$(ls /etc/cloudflared/config.y*ml /root/.cloudflared/config.y*ml 2>/dev/null | head -1)
-echo "== конфиг туннеля: ${CF:-не найден}"
-if [ -z "$CF" ]; then echo "!! конфиг cloudflared не найден"; systemctl cat cloudflared 2>&1 | head -20; exit 1; fi
+echo "== tunnel config: ${CF:-NOT FOUND}"
+if [ -z "$CF" ]; then echo "!! cloudflared config not found"; systemctl cat cloudflared 2>&1 | head -20; exit 1; fi
 
 cp "$CF" "$CF.bak-peredai"
 if grep -q "$DOM" "$CF"; then
-  echo "== $DOM уже есть в конфиге"
+  echo "== $DOM already in config"
 else
   sed -i -E "s/^(\s*)- service: *http_status:404/\1- hostname: $DOM\n\1  service: http:\/\/localhost:8080\n&/" "$CF"
-  grep -q "$DOM" "$CF" || echo "!! не нашёл строку http_status:404 — правку не внёс"
+  grep -q "$DOM" "$CF" || echo "!! http_status:404 line not found - config NOT changed"
 fi
 echo "== ingress:"; sed -n '/ingress:/,$p' "$CF"
 
@@ -30,10 +30,10 @@ if cloudflared tunnel --config "$CF" ingress validate </dev/null; then
   TUN=$(systemctl is-active cloudflared)
 else
   cp "$CF.bak-peredai" "$CF"
-  echo "!! конфиг не прошёл проверку — откат, cloudflared не перезапускал"
+  echo "!! config invalid - rolled back, cloudflared NOT restarted"
 fi
 
-echo "== настройка сайта под $DOM"
+echo "== site setup for $DOM"
 bash /srv/app/tools_site_add.sh teplo_test --domain "$DOM" </dev/null
 sleep 2
 
@@ -43,10 +43,10 @@ OLDP=$(curl -s -H "Host: $DOM" http://localhost:8080/ | grep -c '/teplo_test/')
 OLD=$(curl -s -o /dev/null -w '%{http_code} %{redirect_url}' https://pokabot.xyz/teplo_test/)
 
 echo
-echo "===== ИТОГ ====="
-echo "туннель:            $TUN"
-echo "$DOM на сервере: $NEW (ждём 200)"
-echo "wasm в CSP:         $CSP (ждём 1)"
-echo "старые пути:        $OLDP (ждём 0)"
-echo "старый адрес:       $OLD"
-echo "журнал:             $LOG"
+echo "===== RESULT ====="
+echo "tunnel:      $TUN (want active)"
+echo "new domain:  $NEW (want 200)"
+echo "wasm csp:    $CSP (want 1)"
+echo "old paths:   $OLDP (want 0)"
+echo "old address: $OLD"
+echo "log:         $LOG"
