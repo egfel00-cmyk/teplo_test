@@ -127,7 +127,9 @@ function heat_form(array $bad, array $old): string {
   $h = '<form action="' . h(acc_url('/cabinet/heat')) . '" method="post" enctype="application/x-www-form-urlencoded" class="stand-card" id="heat-form">' . ($changed ? '<p data-marker="stand-markup-changed">Розмітку змінено (сценарій markup_changed).</p>' : '');
   foreach ($lbl as $k => $label) {
     $name = F($k) . ($changed && $k === 'energy' ? '_v2' : '');
-    $h .= '<label class="' . (in_array($k, $bad, true) ? 'has-error' : '') . '">' . h($label) . '<input type="text" name="' . h($name) . '" id="' . h(F($k)) . '" value="' . h($old[$k] ?? '') . '"></label>';
+    // телефон — как на живом кабинете 06.11.2026: подсказка с телефоном из профиля, часть цифр скрыта
+    $ph = $k === 'phone' ? ' placeholder="(067) ***-**-45"' : ($k === 'date' ? ' placeholder="ДД.ММ.РРРР"' : '');
+    $h .= '<label class="' . (in_array($k, $bad, true) ? 'has-error' : '') . '">' . h($label) . '<input type="text" name="' . h($name) . '" id="' . h(F($k)) . '" value="' . h($old[$k] ?? '') . '"' . $ph . '></label>';
   }
   return $h . '<input type="submit" name="' . h(F('submit')) . '" value="Зберегти показання"></form>';   // как на живом кабинете (06.11.2026)
 }
@@ -147,6 +149,7 @@ function do_save(): void {
   }
   foreach (['tSupply', 'tReturn'] as $k) if (!in_array($k, $bad, true) && (float)$in[$k] == 0.0) { $bad[] = $k; $msgs[] = 'Температура подачі/повернення не може бути «0».'; }
   if ($in['phone'] === '') { $bad[] = 'phone'; $msgs[] = 'Введіть контактний телефон.'; }
+  elseif (!preg_match('/^\(0\d{2}\) \d{3}-\d{2}-\d{2}$/', $in['phone'])) { $bad[] = 'phone'; $msgs[] = 'Телефон у форматі (0XX) XXX-XX-XX.'; }   // гипотеза стенда: формат как в подсказке
   if (!filter_var($in['email'], FILTER_VALIDATE_EMAIL)) { $bad[] = 'email'; $msgs[] = 'Введіть email.'; }
   $s = st();
   if (!$bad && $ymd) {

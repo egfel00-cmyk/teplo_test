@@ -230,8 +230,11 @@ final class HtmCab {
       if (preg_match('/ПУ\s+([^,№]{2,40}?),?\s*№\s*([\w\-\/\.]{2,30})\s*$/u', CabWeb::sp($hn->textContent), $m)) { $o['meter'] = ['model' => trim($m[1]), 'serial' => trim($m[2])]; break; }
     }
     foreach (self::F as $k => $id) { $n = $x->query("//*[@id='head_$id']")->item(0); if ($n) $o['base'][$k] = CabWeb::sp($n->textContent); }
-    if (preg_match("/min_date\s*=\s*'([\d.]+)'/", $r['body'], $m)) $o['min'] = $m[1];
-    if (preg_match("/max_date\s*=\s*'([\d.]+)'/", $r['body'], $m)) $o['max'] = $m[1];
+    // окно дат формы: «min_date = '05.11.2026'» (снятие 01.11); на живом 06.11 так не нашлось — терпимо к кавычкам, minDate:, «2026-11-05»
+    foreach (['min', 'max'] as $k) if (preg_match('/\b' . $k . '_?date["\']?\s*[=:]\s*(?:new\s+Date\(\s*)?["\']?(\d{1,4}[.\/-]\d{1,2}[.\/-]\d{2,4})/i', $r['body'], $m)) $o[$k] = self::dmy($m[1]);
+    // для сверки: как страница задаёт окно дат (куски скриптов рядом с min/max/datepicker, без личных данных — только даты и слова)
+    $o['dateJs'] = [];
+    if (preg_match_all('/[^;{}\n]{0,60}\b(?:min_?date|max_?date|datetimepicker|datepicker)\b[^;{}\n]{0,80}/iu', $r['body'], $mm)) foreach (array_slice(array_unique($mm[0]), 0, 4) as $sn) $o['dateJs'][] = mb_substr(CabWeb::sp((string)preg_replace('/\d{5,}/u', '#', $sn)), 0, 150);
     $form = null;
     foreach ($x->query('//form') as $f) { foreach ($x->query('.//input', $f) as $i) if (strcasecmp((string)$i->getAttribute('name'), self::F['energy']) === 0 || stripos((string)$i->getAttribute('name'), 'LastValue') !== false) { $form = $f; break 2; } }
     if ($form) {
@@ -262,6 +265,19 @@ final class HtmCab {
     }
     unset($cur);
     return $o;
+  }
+  /** «2026-11-05» / «5.11.2026» → «05.11.2026». */
+  public static function dmy(string $s): string {
+    if (preg_match('/^(\d{4})[.\/-](\d{1,2})[.\/-](\d{1,2})$/', $s, $m)) return sprintf('%02d.%02d.%04d', $m[3], $m[2], $m[1]);
+    if (preg_match('/^(\d{1,2})[.\/-](\d{1,2})[.\/-](\d{4})$/', $s, $m)) return sprintf('%02d.%02d.%04d', $m[1], $m[2], $m[3]);
+    return $s;
+  }
+  /** Телефон в том виде, что подсказывает форма: placeholder «(067) ***-**-45» (живой кабинет 06.11) → «(050) 111-22-33»; иначе как есть (+380…). */
+  public static function phoneFor(string $phone, string $ph): string {
+    $d = preg_replace('/\D/', '', $phone); if (strlen($d) === 12 && str_starts_with($d, '380')) $d = substr($d, 2);
+    if (strlen($d) !== 10 || $d[0] !== '0') return $phone;
+    if (preg_match('/^\(\S{3}\)(\s?)\S{3}-\S{2}-\S{2}$/u', trim($ph), $m)) return '(' . substr($d, 0, 3) . ')' . $m[1] . substr($d, 3, 3) . '-' . substr($d, 6, 2) . '-' . substr($d, 8, 2);
+    return $phone;
   }
   /** Формат как в журнале ХТМ: точка, 3 знака у энергии/объёма/расхода/мощности, 2 — у температур; часы — целые. */
   public static function fmt(string $k, $v): string {
@@ -303,7 +319,8 @@ final class HtmCab {
       $role = $pl['roles'][$f['name']] ?? '#skip';
       if (isset($want[$role])) $pairs[] = [$f['name'], $want[$role]];
       elseif ($role === '#hidden' || $role === '#button') $pairs[] = [$f['name'], $f['value']];
-      elseif (in_array($role, ['phone', 'email', 'note'], true)) $pairs[] = [$f['name'], (string)($contact[$role] ?? '')];
+      elseif ($role === 'phone') $pairs[] = [$f['name'], self::phoneFor((string)($contact['phone'] ?? ''), (string)($f['ph'] ?? ''))];
+      elseif (in_array($role, ['email', 'note'], true)) $pairs[] = [$f['name'], (string)($contact[$role] ?? '')];
     }
     $want = [strtolower(self::F['date']) => $want['date'], strtolower(self::F['energy']) => $want['energy']];
     $r = $this->post($h['action'], $pairs);
