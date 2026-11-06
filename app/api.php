@@ -92,7 +92,7 @@ final class Api {
         return ['ok' => true, 'cronAgo' => Cron::age(), 'remind' => (object)($cr['remind'] ?? []), 'remindNext' => $cr['remindNext'] ?? null, 'fwd' => (object)$fwd,
           'gpvSent' => (object)($cr['gpvSent'] ?? []), 'gpvReady' => $cr['gpvReady'] ?? null,
           'gpv' => ['at' => $g['at'] ?? null, 'update' => $g['update'] ?? null, 'days' => array_keys((array)($g['days'] ?? [])), 'err' => $g['err'] ?? null],
-          'vkcab' => VkCab::summary()];
+          'vkcab' => VkCab::summary(), 'cabs' => (object)CabProbe::read()];
       }
       case 'GET /api/me': if (!$user) throw new HttpError(401, 'unauthorized'); return ['user' => self::publicUser($user)];
 

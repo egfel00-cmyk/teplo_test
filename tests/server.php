@@ -8,6 +8,7 @@ require __DIR__ . '/../app/reminders.php';
 require __DIR__ . '/../app/recognize.php';
 require __DIR__ . '/../app/admin.php';
 require __DIR__ . '/../app/vkcab.php';
+require __DIR__ . '/../app/cabs.php';
 require __DIR__ . '/../app/gpv.php';
 require __DIR__ . '/../app/providers.php';
 require __DIR__ . '/../app/visits.php';
@@ -948,6 +949,21 @@ ok('довідник: усі громади й пункти є в КАТОТТГ
 echo "\nВыход:\n";
 $phone->req('POST', '/api/auth/logout');
 ok('после выхода /api/me → 401', $phone->req('GET', '/api/me')->status === 401);
+
+echo "\n— кабинеты поставщиков: проба страниц входа (CabProbe)\n";
+CabWeb::$http = function ($m, $url, $b, $c, $h) {
+  if (str_contains($url, 'hts.kharkov.ua/cabinet')) return ['code' => 200, 'body' => mb_convert_encoding('<html><script src="https://www.google.com/recaptcha/api.js"></script><form><input name="email"><input name="passw" type="password"></form>Кабінет</html>', 'Windows-1251', 'UTF-8')];
+  if (str_contains($url, 'pa.oblenergo')) return ['code' => 302, 'body' => '', 'location' => 'https://evil.example/login'];
+  if (str_contains($url, 'my.grmu.com.ua')) return ['code' => 200, 'body' => '<div id="app" data-page="' . htmlspecialchars(json_encode(['component' => 'Auth/Login', 'props' => ['captcha' => 'sitekey123']]), ENT_QUOTES) . '"></div>'];
+  return ['code' => 0, 'body' => '', 'err' => 'no route'];
+};
+$pr = CabProbe::run();
+ok('ХТМ: форма входа есть, скрипт reCAPTCHA без виджета → ok', ($pr['htm']['ok'] ?? null) === true && $pr['htm']['script'] === true && $pr['htm']['widget'] === false, $pr['htm']);
+ok('обленерго: редирект на чужой сайт → не ok, offsite', ($pr['obl']['ok'] ?? null) === false && ($pr['obl']['offsite'] ?? '') === 'evil.example', $pr['obl']);
+ok('Газмережі: Inertia с captcha в props → не ok', ($pr['grm']['ok'] ?? null) === false && ($pr['grm']['captchaProp'] ?? null) === true && ($pr['grm']['component'] ?? '') === 'Auth/Login', $pr['grm']);
+ok('проба записана и видна в /api/health', (CabProbe::read()['v'] ?? 0) === CabProbe::V && ($pr['htm']['lastOk'] ?? null) !== null && $pr['obl']['lastOk'] === null);
+ok('турникет Cloudflare → widget', CabWeb::captcha('<input type="hidden" name="cf-turnstile-response">')['widget'] === true);
+CabWeb::$http = null;
 
 echo "\nИтог: $pass OK, $fail FAIL\n";
 exit($fail ? 1 : 0);
