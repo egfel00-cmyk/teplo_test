@@ -651,6 +651,7 @@ details.wacc > summary { list-style: none; cursor: pointer; display: flex; align
 /* кабінет ХТМ: робот вносить за людину (#htmcab, панель на «Передайте») */
 .hc h2 { display: flex; gap: 8px; align-items: center; margin-top: 0; }
 .hc .vkc-sum { margin-top: 8px; }
+.ha { margin-top: var(--sp-5, 24px); } .ha .ok-ink { color: var(--c-ok-ink, var(--c-ok)); display: flex; gap: 6px; align-items: center; margin: 0; }
 .hc-how { margin: 0 0 var(--sp-4); padding-left: 20px; } .hc-how li { margin: 4px 0; }
 .hc-consent { display: flex; gap: 12px; align-items: flex-start; margin: 12px 0; padding: 12px; border-radius: 12px; background: var(--c-field-bg); border: 1.5px solid var(--c-field-line); cursor: pointer; }
 .hc-consent input, .hc-show input { width: 22px; height: 22px; flex: none; margin: 1px 0 0; }

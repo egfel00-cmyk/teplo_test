@@ -299,7 +299,7 @@ final class HtmSvc {
     // захватываем строку: второй cron или «Внести зараз» в ту же секунду не внесёт дважды
     if (Db::q("UPDATE cab_jobs SET status = 'sending', updated_at = ? WHERE id = ? AND status = 'queued'", [Http::iso(), $j['id']])->rowCount() !== 1) return self::pubJob(Db::one('SELECT * FROM cab_jobs WHERE id = ?', [$j['id']]));
     try {
-      [$a, $r] = self::submit($uid, (string)$j['acc'], (array)$p['vals'], (string)($p['phone'] ?? ''), (string)($p['email'] ?? ''), 'auto');
+      [$a, $r] = self::submit($uid, (string)$j['acc'], (array)$p['vals'], (string)($p['phone'] ?? ''), (string)($p['email'] ?? ''), 'autosend');
       return self::record($uid, $a, $p, $r, (int)$j['id']);
     } catch (Throwable $e) {
       $why = $e instanceof HttpError ? preg_replace('/^cab_/', '', $e->err) : 'down';
@@ -410,17 +410,22 @@ final class HtmSvc {
   }
   /** /api/health → htmcab: «операция итог» по журналу, последняя операция человека, последняя увиденная форма (имена и типы полей) и внесения по статусам. */
   public static function summary(): array {
-    $n = []; $last = null; $form = null;
+    $n = []; $last = null; $form = null; $seen = null;
     foreach (self::log() as $e) {
+      // что робот прочитал со страницы тепла при последней проверке — без значений: нашёл ли прибор, какие «последние принятые», окно, статусы журнала
+      if (($e['op'] ?? '') === 'check' && ($e['result'] ?? '') === 'ok') $seen = ['at' => gmdate('c', (int)$e['at']), 'meter' => $e['meter'] ?? null, 'base' => $e['base'] ?? [],
+        'open' => !empty($e['form']['open']), 'minMax' => $e['form']['minMax'] ?? null, 'journal' => array_count_values(array_map('strval', (array)($e['journal'] ?? []))), 'closed' => $e['closed'] ?? null];
       $k = preg_replace('/[^a-z]/', '', (string)($e['op'] ?? '?')) . ' ' . preg_replace('/[^a-z_,]/', '', (string)($e['result'] ?? '?'));
       $n[$k] = ($n[$k] ?? 0) + 1;
       if (($e['op'] ?? '') !== 'recheck') $last = max((int)$last, (int)($e['at'] ?? 0));
       if (!empty($e['form']['open'])) $form = ['at' => gmdate('c', (int)$e['at']), 'match' => $e['form']['match'], 'missing' => $e['form']['missing'], 'unknown' => $e['form']['unknown'],
-        'fields' => array_map(fn($f) => trim(($f['n'] ?? '') . ':' . ($f['t'] ?? '') . (isset($f['r']) ? '→' . $f['r'] : '')), $e['form']['fields'] ?? [])];
+        'fields' => array_map(fn($f) => trim(($f['n'] ?? '') . ':' . ($f['t'] ?? '') . (isset($f['r']) ? '→' . $f['r'] : '')), $e['form']['fields'] ?? []),
+        // подсказки сайта к полям (обязательное, длина, шаблон, placeholder) — чтобы сверить формат телефона и чисел
+        'hints' => (object)array_filter(array_combine(array_map(fn($f) => (string)($f['n'] ?? ''), $e['form']['fields'] ?? []), array_map(fn($f) => implode(' ', array_filter([!empty($f['req']) ? 'req' : '', isset($f['max']) ? 'max=' . $f['max'] : '', isset($f['pat']) ? 'pat=' . $f['pat'] : '', isset($f['ph']) ? 'ph=' . $f['ph'] : ''])), $e['form']['fields'] ?? [])))];
     }
     ksort($n); $jobs = [];
     try { foreach (Db::q('SELECT status, COUNT(*) AS c FROM cab_jobs WHERE prov = ? GROUP BY status', [self::PROV])->fetchAll() as $x) $jobs[$x['status']] = (int)$x['c']; } catch (Throwable $e) {}
     $cr = 0; try { $cr = (int)(Db::one('SELECT COUNT(*) AS c FROM cab_creds WHERE prov = ?', [self::PROV])['c'] ?? 0); } catch (Throwable $e) {}
-    return ['n' => (object)$n, 'lastUser' => $last ? gmdate('c', $last) : null, 'connected' => $cr, 'jobs' => (object)$jobs, 'form' => $form];
+    return ['n' => (object)$n, 'lastUser' => $last ? gmdate('c', $last) : null, 'connected' => $cr, 'jobs' => (object)$jobs, 'form' => $form, 'seen' => $seen];
   }
 }

@@ -1,5 +1,5 @@
 {
-  "_comment": "Контракт стенда = htm-adapter-spec.json из снятия 01.11.2026 (папка «cluade chrome out»). Подтверждено: вход, навигация, head_*-ids, журнал. Гипотеза до 5–25.11: имена полей формы, phone/email/note, тексты flash и строки «ожидает проверки». После этапа D поправить здесь — стенд и адаптер читают одни имена.",
+  "_comment": "Контракт стенда = htm-adapter-spec.json из снятия 01.11.2026 (папка «cluade chrome out»). Подтверждено: вход, навигация, head_*-ids, журнал. Имена полей формы подтверждены на живом кабинете 06.11.2026. Гипотеза до первой живой отправки: тексты flash и строки «ожидает проверки».",
   "encoding": "Windows-1251",
   "login": {
     "account": "rash", "surname": "lastn", "account_submit": "acc-signin",
@@ -8,8 +8,8 @@
   "form": {
     "date": "LastDtPok", "energy": "LastValuePok", "volume": "LastRashPok", "flow": "HeatRash", "power": "HeatPower",
     "tSupply": "TempPod", "tReturn": "TempO", "hours": "LastTimePok", "errHours": "ErrorTime", "errCode": "ErrorKod",
-    "phone": "Phone", "email": "Email", "note": "Note", "submit": "save-pok",
-    "_hypothesis": ["energy..errCode без префикса head_", "phone", "email", "note", "submit"]
+    "phone": "phone", "email": "email", "note": "Comment", "submit": "send",
+    "_confirmed": "06.11.2026 — живой кабинет владельца (/api/health → htmcab.form): все имена как здесь, кнопка — <input type=submit name=send>, hidden-полей нет"
   },
   "window": { "from": 5, "recommended": 23, "to": 25 },
   "robot_delay_sec_default": 1200,

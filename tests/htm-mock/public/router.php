@@ -129,7 +129,7 @@ function heat_form(array $bad, array $old): string {
     $name = F($k) . ($changed && $k === 'energy' ? '_v2' : '');
     $h .= '<label class="' . (in_array($k, $bad, true) ? 'has-error' : '') . '">' . h($label) . '<input type="text" name="' . h($name) . '" id="' . h(F($k)) . '" value="' . h($old[$k] ?? '') . '"></label>';
   }
-  return $h . '<button type="submit" name="' . h(F('submit')) . '">Зберегти показання</button></form>';
+  return $h . '<input type="submit" name="' . h(F('submit')) . '" value="Зберегти показання"></form>';   // как на живом кабинете (06.11.2026)
 }
 function do_save(): void {
   if (!window_open()) { page_heat(); return; }
