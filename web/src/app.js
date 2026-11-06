@@ -7,6 +7,7 @@
 (function () {
   'use strict';
   var R = window.TeploRules, M = window.TeploModels, I = window.TeploI18n;
+  var SEO_TITLE = document.title;   // заголовок страницы от сервера (под поиск) — до первой отрисовки
   var APP_VER = '1.0';   // версия сборки (бейдж «Test beta» в шапке убран 06.11.2026 по просьбе владельца)
   var HTM_URL = 'https://www.hts.kharkov.ua/cabinet/login';
   var BOT_URL = 'https://t.me/KPHTM_Bot';
@@ -4770,7 +4771,7 @@
     if (FB.open) { var ft = document.getElementById('fb-text'), fc = document.getElementById('fb-contact'); if (ft) FB.text = ft.value; if (fc) FB.contact = fc.value; }
     document.getElementById('root').innerHTML = shell(view);
     document.documentElement.lang = S.lang;
-    document.title = t('brand');
+    document.title = view.html.indexOf('lp-hero') >= 0 && SEO_TITLE ? SEO_TITLE : t('brand');   // на лендинге — заголовок для поиска (его ставит index.php)
     if (keepScroll !== true) window.scrollTo(0, 0);
     afterRender(r);
   }

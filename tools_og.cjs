@@ -1,41 +1,42 @@
-// Картинка для превью ссылки в мессенджерах (1200×630): web/og-uk.png и web/og-ru.png.
-// Берёт настоящий ЖК-экран со страницы (локальный сервер должен быть запущен). Запуск: node tools_og.cjs http://127.0.0.1:8000/teplo_test/
+// Картинка для превью ссылки в мессенджерах и соцсетях (1200×630): web/og-uk-4.jpg и web/og-ru-4.jpg.
+// Снимает настоящий первый экран лендинга (телефон + четыре табло: тепло, вода, світло, газ), подставляет короткий текст и адрес сайта.
+// Локальный сервер должен быть запущен: SITE_BASE= SITE_DATA=/tmp/teplo_data php -S 127.0.0.1:8013 index.php
+// Запуск: NODE_PATH=$(npm root -g) node tools_og.cjs [http://127.0.0.1:8013/] [peredai.com.ua]
 const { chromium } = require('playwright');
-const path = require('path'), fs = require('fs');
-const BASE = process.argv[2] || 'http://127.0.0.1:8000/';
+const path = require('path');
+const BASE = process.argv[2] || 'http://127.0.0.1:8013/';
+const DOMAIN = process.argv[3] || 'peredai.com.ua';
 const TXT = {
-  uk: { t: 'Тепло й вода — показання без помилок', s: 'Фото лічильників → цифри розпізнано й перевірено, готові для ХТМ і Водоканалу. Безкоштовно.', f: ['Харків', 'Опалення', 'Гаряча й холодна вода'] },
-  ru: { t: 'Тепло и вода — показания без ошибок', s: 'Фото счётчиков → цифры распознаны и проверены, готовы для ХТМ и Водоканала. Бесплатно.', f: ['Харьков', 'Отопление', 'Горячая и холодная вода'] },
+  uk: { locale: 'uk-UA', lead: 'Тепло, вода, світло й газ: сфотографуйте — цифри розпізнаються самі. Підкажемо, куди й до якого числа передати.', badge: 'Харків і область · безкоштовно' },
+  ru: { locale: 'ru-RU', lead: 'Тепло, вода, свет и газ: сфотографируйте — цифры распознаются сами. Подскажем, куда и до какого числа передать.', badge: 'Харьков и область · бесплатно' },
 };
 (async () => {
   const br = await chromium.launch();
-  const p = await br.newPage({ viewport: { width: 1200, height: 630 } });
-  await p.goto(BASE); await p.waitForSelector('.lcd');
-  const lcd = await p.$eval('.lcd', e => e.outerHTML);
-  const css = fs.readFileSync(path.join(__dirname, 'web/src/styles.css'), 'utf8');
   for (const lang of Object.keys(TXT)) {
     const x = TXT[lang];
-    await p.setContent(`<html><head><style>${css}
-      :root { --font: "IBM Plex Sans", Inter, sans-serif; }
-      body { margin: 0; width: 1200px; height: 630px; overflow: hidden; background: #E9EEEB; font-family: var(--font); }
-      .og { display: grid; grid-template-columns: 1fr 470px; gap: 56px; align-items: center; height: 630px; padding: 0 72px; box-sizing: border-box; position: relative; }
-      .brand { display: flex; gap: 14px; align-items: center; font: 600 34px/1 var(--font); color: #17211E; margin-bottom: 34px; }
-      h1 { font: 600 58px/1.06 var(--font); letter-spacing: -0.02em; margin: 0 0 24px; color: #17211E; }
-      p { font: 400 26px/1.4 var(--font); color: #4A5652; margin: 0; max-width: none; }
-      .chips { display: flex; gap: 10px; margin-top: 30px; flex-wrap: wrap; }
-      .chips span { font: 600 19px/1 var(--font); padding: 10px 16px; border-radius: 999px; background: #fff; color: #17211E; }
-      .dev { background: #F7F9F8; border-radius: 34px; padding: 34px 30px 38px; box-shadow: 0 24px 60px rgba(23,33,30,.16), inset 0 0 0 2px #CFD7D3; }
-      .dev .lcd { margin: 0; } .dev .drum { margin-top: 26px; transform: scale(1.5); transform-origin: top center; margin-bottom: 30px; }
-      .btns { display: flex; justify-content: center; gap: 22px; margin-top: 26px; }
-      .btns i { width: 52px; height: 52px; border-radius: 50%; background: #E9EEEB; box-shadow: inset 0 0 0 2px #CFD7D3; }
-      .stripe { position: absolute; left: 0; right: 0; bottom: 0; height: 12px; background: linear-gradient(90deg, #D04A1D 0 50%, #2F68B0 50% 100%); }
-    </style></head><body><div class="og"><div>
-      <div class="brand"><svg width="46" height="46" viewBox="0 0 28 28" fill="none" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3C11 7.5 6.5 12.5 6.5 17.5A7.5 7.5 0 0 0 14 25" stroke="#D04A1D"/><path d="M14 3c3 4.5 7.5 9.5 7.5 14.5A7.5 7.5 0 0 1 14 25" stroke="#2F68B0"/><path d="M14 18l3.6-3.6" stroke="#17211E" stroke-width="2.2"/><circle cx="14" cy="18" r="1.6" fill="#17211E"/></svg>${lang === 'ru' ? 'Счётчики' : 'Лічильники'}</div>
-      <h1>${x.t}</h1><p>${x.s}</p><div class="chips">${x.f.map(c => `<span>${c}</span>`).join('')}</div></div>
-      <div class="dev">${lcd}<div class="drum">${'00175'.split('').map(d => `<span>${d}</span>`).join('')}${'921'.split('').map(d => `<span class="r">${d}</span>`).join('')}<small>м³</small></div></div><div class="stripe"></div></div></body></html>`);
-    await p.waitForTimeout(300);
-    await p.screenshot({ path: path.join(__dirname, `web/og-${lang}-3.jpg`), type: 'jpeg', quality: 85 });
-    console.log('web/og-' + lang + '-3.jpg');
+    const ctx = await br.newContext({ viewport: { width: 1200, height: 630 }, locale: x.locale, deviceScaleFactor: 1, reducedMotion: 'reduce' });
+    await ctx.addInitScript(() => { try { localStorage.setItem('teplo.v1', JSON.stringify({ v: 1, theme: 'light' })); } catch (e) {} });
+    const p = await ctx.newPage();
+    await p.route('**/api/events', r => r.abort());
+    await p.goto(BASE); await p.waitForSelector('.lp-hero'); await p.waitForTimeout(1500);
+    await p.evaluate(({ x, domain }) => {
+      document.querySelectorAll('.top, .fab, .lp-ctas, .lp-trust, .lp-link, .lp-hero ~ *').forEach(e => e.style.display = 'none');
+      const h = document.querySelector('.lp-hero');
+      Object.assign(h.style, { margin: '0', borderRadius: '0', width: '1200px', height: '630px', minHeight: '0', boxSizing: 'border-box' });
+      document.querySelector('.lp-badge').lastChild.textContent = x.badge;
+      document.querySelector('.lp-lead').textContent = x.lead;
+      const d = document.createElement('p'); d.textContent = domain;
+      Object.assign(d.style, { margin: '26px 0 0', font: '600 30px/1 var(--font, sans-serif)', color: '#fff', letterSpacing: '.01em' });
+      document.querySelector('.lp-copy').appendChild(d);
+      window.scrollTo(0, 0);
+      const r = h.getBoundingClientRect(); window.scrollBy(0, r.top);
+    }, { x, domain: DOMAIN });
+    await p.waitForTimeout(600);
+    const box = await (await p.$('.lp-hero')).boundingBox();
+    const out = path.join(__dirname, `web/og-${lang}-4.jpg`);
+    await p.screenshot({ path: out, type: 'jpeg', quality: 86, clip: { x: box.x, y: box.y, width: 1200, height: 630 } });
+    console.log(out, Math.round(box.width) + '×' + Math.round(box.height));
+    await ctx.close();
   }
   await br.close();
 })();
