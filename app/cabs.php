@@ -59,7 +59,7 @@ final class CabWeb {
       if (!$this->sameSite($url)) return ['code' => 0, 'body' => '', 'url' => $url, 'err' => 'offsite', 'offsite' => (string)parse_url($url, PHP_URL_HOST)];
       $t = microtime(true);
       $r = $this->once($method, $url, $body, $headers);
-      $this->steps[] = [$method, (string)(parse_url($url, PHP_URL_PATH) ?: '/'), (int)$r['code'], (int)round((microtime(true) - $t) * 1000)];
+      $this->steps[] = [$method, (string)(parse_url($url, PHP_URL_PATH) ?: '/'), (int)$r['code'], (int)round((microtime(true) - $t) * 1000)] + (!empty($r['err']) ? [4 => mb_substr((string)$r['err'], 0, 90)] : []);
       if (in_array((int)$r['code'], [301, 302, 303, 307, 308], true) && !empty($r['location'])) {
         $url = self::abs(trim((string)$r['location']), $url);
         if (!in_array((int)$r['code'], [307, 308], true)) { $method = 'GET'; $body = null; }

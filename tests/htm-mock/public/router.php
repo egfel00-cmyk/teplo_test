@@ -99,6 +99,8 @@ function journal_table(array $recs): string {
   return $h . '</table>';
 }
 function page_heat(string $flash = '', string $flashCls = '', array $bad = [], array $old = []): void {
+  // сценарий heat_down: вход есть, а страница тепла отвечает 503 (живой кабинет 06.11 22:14 — «check down» дважды)
+  if (scenario() === 'heat_down') { http_response_code(503); echo 'Service Unavailable'; exit; }
   robot_tick();
   $s = st(); $m = $s['meter']; $t = today();
   $body = '<h3 class="panel-title">ВІДОМІСТЬ ОБЛІКУ СПОЖИВАННЯ ТЕПЛОВОЇ ЕНЕРГІЇ НА ' . ua_date($t) . ': ПУ ' . h($m['model']) . ', №' . h($m['sn']) . '</h3>'

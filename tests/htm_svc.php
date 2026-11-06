@@ -163,6 +163,12 @@ $ls = HtmSvc::summary()['lastSend'] ?? [];
 ok('…/api/health → lastSend: отказ правил и окно страницы (как у «Перевірити»), без текста', ($ls['op'] ?? '') === 'send' && ($ls['result'] ?? '') === 'bad_value' && ($ls['field'] ?? '') === 'date'
   && ($ls['minMax'] ?? null) === false && str_contains(json_encode($ls['dateJs'] ?? []), 'datetimepicker') && isset($ls['alerts']['err']), $ls);
 stand('act=set&scenario=ok&today=2026-11-21&robot_delay=99999'); Db::q('DELETE FROM rate_limits');
+// сайт ХТМ не отвечает: 424 со словами для человека (502 Cloudflare подменил бы своей страницей), в /api/health — шаги сбоя без рахунку
+stand('act=set&scenario=heat_down&today=2026-11-21&robot_delay=99999'); $r = $b->req('POST', '/api/cab/htm/check', ['lang' => 'uk']);
+ok('страница тепла 503 → 424 cab_down «Сайт ХТМ зараз не відповідає»', $r->status === 424 && ($r->body['error'] ?? '') === 'cab_down' && str_contains((string)($r->body['human'] ?? ''), 'не відповідає'), $r->body);
+$le = HtmSvc::summary()['lastErr'] ?? []; $lj = json_encode($le, JSON_UNESCAPED_UNICODE);
+ok('…/api/health → lastErr: шаг, на котором упало, без рахунку и прізвища', ($le['op'] ?? '') === 'check' && ($le['result'] ?? '') === 'down' && str_contains($lj, '"\/cabinet\/heat\/{acc}\/{sur}",503') && !str_contains($lj, '1000000061'), $le);
+stand('act=set&scenario=ok&today=2026-11-21&robot_delay=99999'); Db::q('DELETE FROM rate_limits');
 
 // «Забути пароль»: вход удалён, внесения на проверке → unknown без сообщения
 stand('act=set&today=2026-11-21&robot_delay=99999');

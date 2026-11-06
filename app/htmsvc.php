@@ -55,9 +55,11 @@ final class HtmSvc {
   private static function fail(int $st, string $k, array $p = [], array $extra = []): HttpError { return new HttpError($st, 'cab_' . $k, ['human' => self::h($k, $p)] + $extra); }
   /** Отказ робота → ответ приложению: свой код и человеческий текст; слова сайта — только при отказе входа и ошибке формы. */
   private static function cabErr(CabErr $e): HttpError {
-    $map = ['bad_login' => 401, 'captcha' => 423, 'down' => 502, 'changed' => 502, 'form_changed' => 409, 'closed' => 409, 'form_error' => 422, 'bad_value' => 422];
+    // «сайт ХТМ не отвечает / незнакомая страница» — 424, не 502: 502 и 504 от нас Cloudflare подменяет своей HTML-страницей, и приложение
+    // вместо «Сайт ХТМ зараз не відповідає» писало «Не вдалося зв'язатися з сервером» (06.11 22:14, «Перевірити» владельца)
+    $map = ['bad_login' => 401, 'captcha' => 423, 'down' => 424, 'changed' => 424, 'form_changed' => 409, 'closed' => 409, 'form_error' => 422, 'bad_value' => 422];
     $site = in_array($e->err, ['bad_login', 'form_error', 'closed'], true) && $e->site !== '' ? ['site' => mb_substr($e->site, 0, 300)] : [];
-    return self::fail($map[$e->err] ?? 502, isset($map[$e->err]) && $e->err !== 'bad_value' ? $e->err : 'changed', [], $site);
+    return self::fail($map[$e->err] ?? 424, isset($map[$e->err]) && $e->err !== 'bad_value' ? $e->err : 'changed', [], $site);
   }
   private static function limit(int $uid): void {
     try { RateLimit::hit('htm_cab', (string)$uid); RateLimit::hit('htm_cab_all', 'all'); }
@@ -427,11 +429,14 @@ final class HtmSvc {
   }
   /** /api/health → htmcab: «операция итог» по журналу, последняя операция человека, последняя увиденная форма (имена и типы полей) и внесения по статусам. */
   public static function summary(): array {
-    $n = []; $last = null; $form = null; $seen = null; $lastSend = null;
+    $n = []; $last = null; $form = null; $seen = null; $lastSend = null; $lastErr = null;
     foreach (self::log() as $e) {
       // что робот прочитал со страницы тепла при последней проверке — без значений: нашёл ли прибор, какие «последние принятые», окно, статусы журнала
       if (($e['op'] ?? '') === 'check' && ($e['result'] ?? '') === 'ok') $seen = ['at' => gmdate('c', (int)$e['at']), 'meter' => $e['meter'] ?? null, 'base' => $e['base'] ?? [],
         'open' => !empty($e['form']['open']), 'minMax' => $e['form']['minMax'] ?? null, 'win' => $e['form']['win'] ?? null, 'dateJs' => $e['dateJs'] ?? null, 'alerts' => $e['alerts'] ?? null, 'journal' => array_count_values(array_map('strval', (array)($e['journal'] ?? []))), 'closed' => $e['closed'] ?? null];
+      // последний сбой робота (сайт не ответил, страница не та, капча…) — по шагам: метод, путь без рахунку, код, мс, ошибка сети
+      if (!in_array((string)($e['result'] ?? ''), ['ok', 'pending', 'unseen', 'rejected', 'on', 'off', 'queued', 'bad_value', 'bad_login'], true) && ($e['op'] ?? '') !== 'recheck')
+        $lastErr = ['at' => gmdate('c', (int)$e['at']), 'op' => $e['op'] ?? null, 'result' => $e['result'] ?? null, 'where' => $e['where'] ?? null, 'steps' => array_slice((array)($e['steps'] ?? []), -8)];
       // последнее внесение (кнопкой или автоподачей) — итог и что было на странице: окно дат, плашки до отправки, ответ сайта (цифры скрыты)
       if (in_array($e['op'] ?? '', ['send', 'autosend'], true) && ($e['where'] ?? '') !== 'login') $lastSend = ['at' => gmdate('c', (int)$e['at']), 'op' => $e['op'], 'result' => $e['result'] ?? null, 'field' => $e['field'] ?? null,
         'flash' => ($e['flash'] ?? '') !== '', 'site' => ($e['site'] ?? '') !== '', 'banners' => $e['banners'] ?? null] + (array)($e['page'] ?? []);   // сами слова — только в /admin: /api/health открыт всем
@@ -446,6 +451,6 @@ final class HtmSvc {
     ksort($n); $jobs = [];
     try { foreach (Db::q('SELECT status, COUNT(*) AS c FROM cab_jobs WHERE prov = ? GROUP BY status', [self::PROV])->fetchAll() as $x) $jobs[$x['status']] = (int)$x['c']; } catch (Throwable $e) {}
     $cr = 0; try { $cr = (int)(Db::one('SELECT COUNT(*) AS c FROM cab_creds WHERE prov = ?', [self::PROV])['c'] ?? 0); } catch (Throwable $e) {}
-    return ['n' => (object)$n, 'lastUser' => $last ? gmdate('c', $last) : null, 'connected' => $cr, 'jobs' => (object)$jobs, 'form' => $form, 'seen' => $seen, 'lastSend' => $lastSend];
+    return ['n' => (object)$n, 'lastUser' => $last ? gmdate('c', $last) : null, 'connected' => $cr, 'jobs' => (object)$jobs, 'form' => $form, 'seen' => $seen, 'lastSend' => $lastSend, 'lastErr' => $lastErr];
   }
 }

@@ -452,7 +452,7 @@ $r = $cab('/api/vk/cab/check', ['acc' => '905615', 'fam' => 'Шевчэнко'])
 ok('…в прізвищі русские буквы → подсказка «впишіть українською»', $r->status === 422 && str_contains($r->body['human'], 'російські літери'), $r->body['human'] ?? null);
 $vkReal = VkCab::$http; VkCab::$http = fn($m, $url, $b, $c) => str_contains($url, 'get-form-send') ? ['code' => 200, 'body' => '<html><body><div class="alert alert-danger">Сервіс тимчасово недоступний</div></body></html>'] : $vkReal($m, $url, $b, $c);
 $r = $cab('/api/vk/cab/check', ['acc' => '905615', 'fam' => 'Шевченко']);
-ok('…страница без форм с другой ошибкой — не «не знайдено», а cab_changed со словами сайта', $r->status === 502 && $r->body['error'] === 'cab_changed' && str_contains(implode(' ', $r->body['site'] ?? []), 'недоступний'), $r->body);
+ok('…страница без форм с другой ошибкой — не «не знайдено», а cab_changed со словами сайта', $r->status === 424 && $r->body['error'] === 'cab_changed' && str_contains(implode(' ', $r->body['site'] ?? []), 'недоступний'), $r->body);
 VkCab::$http = $vkReal;
 $pc0 = count($vkCalls); $pr = VkStatus::probeNotFound(); $vs = $tgb->req('GET', '/api/vk/status')->body;
 ok('проба «не знайдено» (cron): выдуманный рахунок → cab_not_found, слова сайта и структура — в /api/vk/status без цифр; показания не шлём', ($pr['error'] ?? '') === 'cab_not_found'
@@ -477,11 +477,11 @@ $r = $cab('/api/vk/cab/send', ['acc' => '905614', 'fam' => 'Шевченко', '
 ok('мусор вместо показаний / чужие поля → 422 cab_no_items', $r->status === 422 && $r->body['error'] === 'cab_no_items');
 VkCab::$http = fn($m, $url, $b, $c) => ['code' => 0, 'body' => '', 'err' => 'Connection timed out'];
 $r = $cab('/api/vk/cab/check', ['acc' => '905614', 'fam' => 'Шевченко']);
-ok('сайт не отвечает → 502 cab_down с подсказкой про бот', $r->status === 502 && $r->body['error'] === 'cab_down' && str_contains($r->body['human'], 'бот'));
+ok('сайт не отвечает → 424 cab_down с подсказкой про бот (502 Cloudflare подменил бы своей страницей)', $r->status === 424 && $r->body['error'] === 'cab_down' && str_contains($r->body['human'], 'бот'));
 VkCab::$http = fn($m, $url, $b, $c) => ['code' => 200, 'body' => '<html><body><form id="other"><input name="x"></form></body></html>'];
-ok('страница входа другая → 502 cab_changed', ($r = $cab('/api/vk/cab/check', ['acc' => '905614', 'fam' => 'Шевченко']))->status === 502 && $r->body['error'] === 'cab_changed');
+ok('страница входа другая → 424 cab_changed', ($r = $cab('/api/vk/cab/check', ['acc' => '905614', 'fam' => 'Шевченко']))->status === 424 && $r->body['error'] === 'cab_changed');
 VkCab::$http = fn($m, $url, $b, $c) => ['code' => 302, 'body' => '', 'location' => 'https://evil.example/steal'];
-ok('редирект на чужой сайт — не идём (cab_changed)', ($r = $cab('/api/vk/cab/check', ['acc' => '905614', 'fam' => 'Шевченко']))->status === 502 && $r->body['error'] === 'cab_changed');
+ok('редирект на чужой сайт — не идём (cab_changed)', ($r = $cab('/api/vk/cab/check', ['acc' => '905614', 'fam' => 'Шевченко']))->status === 424 && $r->body['error'] === 'cab_changed');
 $lg = VkCab::log(); $all = json_encode($lg, JSON_UNESCAPED_UNICODE);
 ok('журнал для /admin: проверки и отправки с итогом и структурой формы; рахунок, прізвище, адрес и цифры не пишем', count($lg) >= 6 && in_array('ok', array_column($lg, 'result'), true) && in_array('notfound', array_column($lg, 'result'), true)
   && !str_contains($all, '905614') && !str_contains($all, 'Шевченко') && !str_contains($all, 'Сумська') && !str_contains($all, '0123456') && str_contains($all, 'newIndication'), $lg[count($lg) - 1] ?? null);

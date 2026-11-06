@@ -96,10 +96,10 @@ final class VkCab {
   }
   private static function req(string $method, string $url, ?string $body = null): array {
     for ($i = 0; $i < 5; $i++) {
-      if (!self::sameSite($url)) throw new HttpError(502, 'cab_changed', ['human' => self::h('changed')]);
+      if (!self::sameSite($url)) throw new HttpError(424, 'cab_changed', ['human' => self::h('changed')]);
       $r = self::once($method, $url, $body);
       self::$steps[] = [$method, (string)(parse_url($url, PHP_URL_PATH) ?: '/'), (int)$r['code']];
-      if ((int)$r['code'] === 0 || (int)$r['code'] >= 500) { self::diag(['result' => 'down', 'err' => $r['err'] ? mb_substr((string)$r['err'], 0, 100) : null]); throw new HttpError(502, 'cab_down', ['human' => self::h('down')]); }
+      if ((int)$r['code'] === 0 || (int)$r['code'] >= 500) { self::diag(['result' => 'down', 'err' => $r['err'] ? mb_substr((string)$r['err'], 0, 100) : null]); throw new HttpError(424, 'cab_down', ['human' => self::h('down')]); }
       if (in_array((int)$r['code'], [301, 302, 303, 307, 308], true) && !empty($r['location'])) {
         $url = self::abs(trim((string)$r['location']), $url);
         if (!in_array((int)$r['code'], [307, 308], true)) { $method = 'GET'; $body = null; }
@@ -107,7 +107,7 @@ final class VkCab {
       }
       return $r + ['url' => $url];
     }
-    throw new HttpError(502, 'cab_changed', ['human' => self::h('changed')]);
+    throw new HttpError(424, 'cab_changed', ['human' => self::h('changed')]);
   }
   private static function encode(array $pairs): string { return implode('&', array_map(fn($p) => urlencode((string)$p[0]) . '=' . urlencode((string)$p[1]), $pairs)); }
 
@@ -205,7 +205,7 @@ final class VkCab {
     $login = self::req('GET', self::base() . '/login');
     $x = self::dom((string)$login['body']);
     $f = $x->query("//form[@id='no-login-form']")->item(0) ?? $x->query("//form[.//input[contains(@name,'NoLoginForm')]]")->item(0);
-    if (!$f) { self::diag(['result' => 'changed', 'where' => 'login', 'forms' => self::formsInfo($x)]); throw new HttpError(502, 'cab_changed', ['human' => self::h('changed')]); }
+    if (!$f) { self::diag(['result' => 'changed', 'where' => 'login', 'forms' => self::formsInfo($x)]); throw new HttpError(424, 'cab_changed', ['human' => self::h('changed')]); }
     $pairs = [];
     foreach (self::fields($x, $f) as $fl) {
       $v = $fl['value'];
@@ -227,10 +227,10 @@ final class VkCab {
       $still = $x2->query("//form[@id='no-login-form']")->item(0) !== null || ($msgs['err'] && preg_match(self::NF_RE, implode(' ', $msgs['err'])));
       self::diag(['result' => $still ? 'notfound' : 'changed', 'where' => 'check', 'msgs' => self::maskMsgs($msgs), 'forms' => self::formsInfo($x2)]);
       if ($still) throw new HttpError(422, 'cab_not_found', ['human' => self::h('notfound', ['a' => $acc, 'f' => $fam]) . (preg_match('/[ыэъёЫЭЪЁ]/u', $fam) ? ' ' . self::h('ukr') : ''), 'site' => array_slice($msgs['err'], 0, 3)]);
-      throw new HttpError(502, 'cab_changed', ['human' => self::h('changed'), 'site' => array_slice(array_merge($msgs['err'], $msgs['info']), 0, 3)]);
+      throw new HttpError(424, 'cab_changed', ['human' => self::h('changed'), 'site' => array_slice(array_merge($msgs['err'], $msgs['info']), 0, 3)]);
     }
     $fields = self::fields($x2, $form); $ms = self::meters($x2, $fields);
-    if (!$ms) { self::diag(['result' => 'changed', 'where' => 'form', 'forms' => self::formsInfo($x2)]); throw new HttpError(502, 'cab_changed', ['human' => self::h('changed')]); }
+    if (!$ms) { self::diag(['result' => 'changed', 'where' => 'form', 'forms' => self::formsInfo($x2)]); throw new HttpError(424, 'cab_changed', ['human' => self::h('changed')]); }
     return ['x' => $x2, 'form' => $form, 'fields' => $fields, 'meters' => $ms, 'page' => $page];
   }
   private static function pubMeters(array $ms): array { return array_map(fn($m) => array_intersect_key($m, array_flip(['key', 'label', 'kind', 'serial', 'prev', 'prevDate'])), $ms); }
