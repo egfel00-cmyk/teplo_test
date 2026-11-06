@@ -34,7 +34,7 @@ final class CabWeb {
     if (self::$http) $r = (self::$http)($method, $url, $body, $cookie, $headers) + ['cookies' => [], 'location' => null, 'err' => null];
     else {
       $left = $this->left(); if ($left < 3) return ['code' => 0, 'body' => '', 'cookies' => [], 'location' => null, 'err' => 'time budget'];
-      $hdr = ['cookies' => [], 'location' => null];
+      $hdr = ['cookies' => [], 'location' => null, 'h' => []];
       $h = array_merge(['Accept: text/html,application/xhtml+xml,application/json;q=0.9', 'Accept-Language: uk-UA,uk;q=0.9'], $headers);
       if ($cookie !== '') $h[] = 'Cookie: ' . $cookie;
       if ($this->ch === null) $this->ch = curl_init(); else curl_reset($this->ch);
@@ -44,6 +44,7 @@ final class CabWeb {
         CURLOPT_HEADERFUNCTION => function ($c, $line) use (&$hdr) {
           if (preg_match('/^set-cookie:\s*(.+)$/i', trim($line), $m)) $hdr['cookies'][] = $m[1];
           if (preg_match('/^location:\s*(.+)$/i', trim($line), $m)) $hdr['location'] = $m[1];
+          if (preg_match('/^(cf-mitigated|server):\s*(.{0,40})/i', trim($line), $m)) $hdr['h'][strtolower($m[1])] = strtolower(trim($m[2]));   // вид отказа Cloudflare (CabWeb::cfKind)
           return strlen($line);
         }]);
       if ($method === 'POST') { curl_setopt($ch, CURLOPT_POST, true); curl_setopt($ch, CURLOPT_POSTFIELDS, (string)$body); }
@@ -76,7 +77,7 @@ final class CabWeb {
       }
       $b = (string)$r['body'];
       if ($this->charset !== 'UTF-8' && $b !== '' && !mb_check_encoding($b, 'UTF-8')) $b = (string)mb_convert_encoding($b, 'UTF-8', $this->charset);
-      return ['code' => (int)$r['code'], 'body' => $b, 'url' => $url, 'err' => $r['err'] ?? null, 'offsite' => null];
+      return ['code' => (int)$r['code'], 'body' => $b, 'url' => $url, 'err' => $r['err'] ?? null, 'offsite' => null, 'h' => (array)($r['h'] ?? [])];
     }
     return ['code' => 0, 'body' => '', 'url' => $url, 'err' => 'redirects', 'offsite' => null];
   }
@@ -101,10 +102,31 @@ final class CabWeb {
     $cf = in_array($code, [403, 503], true) && (bool)preg_match('/cf-chl|challenge-platform|Just a moment|Attention Required/i', $html);
     return ['widget' => $widget, 'script' => $script, 'cf' => $cf];
   }
+  /** Какой отказ Cloudflare: geo — сайт закрыл страну (1009: из Украины пустит), challenge — проверка «вы человек» (managed/JS challenge),
+   *  block — правило WAF (1020, «you have been blocked», бан IP 1006–1008), ua — подпись клиента (1010), rate — лимит (1015/1012); null — не Cloudflare.
+   *  → ['cfKind', 'cfCode' (номер ошибки), 'cfCc' (страна из текста 1009)] — только коды, без слов страницы. */
+  public static function cfKind(string $html, int $code, array $h = []): array {
+    $isCf = ($h['server'] ?? '') === 'cloudflare' || isset($h['cf-mitigated']) || (bool)preg_match('/cloudflare/i', $html);
+    if (!in_array($code, [403, 429, 503], true) || !$isCf) return [];
+    $o = [];
+    if (preg_match('/cf-error-code[^>]*>\s*(\d{4})|Error\s+(?:code:?\s*)?(?:<[^>]+>\s*)*(1\d{3})\b/i', $html, $m)) $o['cfCode'] = (int)($m[1] !== '' ? $m[1] : $m[2]);
+    if (preg_match('/banned the country or region your IP address is in \(([A-Z]{2})\)/', $html, $m)) $o['cfCc'] = $m[1];
+    $n = $o['cfCode'] ?? 0;
+    $o['cfKind'] = match (true) {
+      $n === 1009 || isset($o['cfCc']) => 'geo',
+      $n === 1010 => 'ua',
+      $n === 1015 || $n === 1012 => 'rate',
+      in_array($n, [1006, 1007, 1008, 1020], true) => 'block',
+      ($h['cf-mitigated'] ?? '') === 'challenge' || (bool)preg_match('/cf-chl|challenge-platform|Just a moment/i', $html) => 'challenge',
+      (bool)preg_match('/you have been blocked|Attention Required/i', $html) => 'block',
+      default => 'other',
+    };
+    return $o;
+  }
 }
 
 final class CabProbe {
-  const V = 1;
+  const V = 2;   // 2: вид отказа Cloudflare (cfKind/cfCode/cfCc) и robots.txt — понять, пустит ли обленерго из Украины (ретранслятор)
   /** Что пробуем: страница входа и признак «это наша форма входа». */
   const SITES = [
     'htm' => ['url' => 'https://www.hts.kharkov.ua/cabinet', 'host' => '/(^|\.)hts\.kharkov\.ua$/i', 'form' => '/name="passw"/i', 'cs' => 'Windows-1251'],
@@ -124,6 +146,9 @@ final class CabProbe {
     if ($r['code'] === 200 || $r['code'] === 403 || $r['code'] === 503) {
       $o['form'] = (bool)preg_match($s['form'], $r['body']);
       $o += CabWeb::captcha($r['body'], $r['code']);
+      $o += CabWeb::cfKind($r['body'], $r['code'], $r['h'] ?? []);
+      // отказ Cloudflare: robots.txt того же сайта — закрыт весь сайт (страна/сеть) или только страницы (бот-проверка)
+      if (isset($o['cfKind'])) { $rb = $w->req('GET', CabWeb::abs('/robots.txt', $s['url'])); $o['robots'] = (int)$rb['code']; }
       if ($k === 'grm' && preg_match('/data-page="([^"]+)"/', $r['body'], $m)) {   // Laravel + Inertia: настройки страницы входа — JSON в атрибуте
         $p = json_decode(html_entity_decode($m[1], ENT_QUOTES | ENT_HTML5, 'UTF-8'), true);
         if (is_array($p)) { $o['component'] = mb_substr((string)($p['component'] ?? ''), 0, 40); $o['captchaProp'] = !empty($p['props']['captcha']); }

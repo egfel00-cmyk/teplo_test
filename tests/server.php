@@ -966,7 +966,29 @@ ok('обленерго: редирект на чужой сайт → не ok, o
 ok('Газмережі: Inertia с captcha в props → не ok', ($pr['grm']['ok'] ?? null) === false && ($pr['grm']['captchaProp'] ?? null) === true && ($pr['grm']['component'] ?? '') === 'Auth/Login', $pr['grm']);
 ok('проба записана и видна в /api/health', (CabProbe::read()['v'] ?? 0) === CabProbe::V && ($pr['htm']['lastOk'] ?? null) !== null && $pr['obl']['lastOk'] === null);
 ok('турникет Cloudflare → widget', CabWeb::captcha('<input type="hidden" name="cf-turnstile-response">')['widget'] === true);
+// вид отказа Cloudflare: от него зависит, пустит ли обленерго ретранслятор из Украины
+$geo = '<!DOCTYPE html><title>Access denied | pa.oblenergo.kharkov.ua used Cloudflare to restrict access</title><h1><span>Error</span><span class="cf-error-code">1009</span></h1>'
+  . '<p>The owner of this website (pa.oblenergo.kharkov.ua) has banned the country or region your IP address is in (DE) from accessing this website.</p>Cloudflare Ray ID';
+$robots = [];
+CabWeb::$http = function ($m, $url, $b, $c, $h) use (&$geo, &$robots) {
+  if (str_ends_with($url, '/robots.txt')) { $robots[] = $url; return ['code' => str_contains($geo, '1009') ? 403 : 200, 'body' => 'User-agent: *', 'h' => ['server' => 'cloudflare']]; }
+  if (str_contains($url, 'pa.oblenergo')) return ['code' => 403, 'body' => $geo, 'h' => ['server' => 'cloudflare'] + (str_contains($geo, 'Just a moment') ? ['cf-mitigated' => 'challenge'] : [])];
+  return ['code' => 200, 'body' => '<form><input name="passw"></form>'];
+};
+$o = CabProbe::one('obl');
+ok('обленерго 1009 → cfKind geo, страна DE, robots тоже закрыт', ($o['cfKind'] ?? '') === 'geo' && ($o['cfCode'] ?? 0) === 1009 && ($o['cfCc'] ?? '') === 'DE' && ($o['robots'] ?? 0) === 403 && $o['ok'] === false
+  && $robots === ['https://pa.oblenergo.kharkov.ua/robots.txt'], $o);
+$geo = '<!DOCTYPE html><html><head><title>Just a moment...</title></head><body><script src="/cdn-cgi/challenge-platform/h/g/orchestrate/chl_page/v1"></script></body></html>';
+$o = CabProbe::one('obl');
+ok('обленерго «Just a moment» + cf-mitigated → challenge, robots открыт', ($o['cfKind'] ?? '') === 'challenge' && !isset($o['cfCode']) && ($o['cf'] ?? null) === true && ($o['robots'] ?? 0) === 200, $o);
+$geo = '<title>Attention Required! | Cloudflare</title><h1>Sorry, you have been blocked</h1><span class="cf-error-code">1020</span>';
+ok('1020 → block', (CabProbe::one('obl')['cfKind'] ?? '') === 'block');
+$o = CabProbe::one('htm');
+ok('без Cloudflare — ни cfKind, ни robots', !isset($o['cfKind']) && !isset($o['robots']) && $o['ok'] === true, $o);
+ok('403 своего сайта без Cloudflare → не cfKind', CabWeb::cfKind('<h1>Forbidden</h1>', 403, ['server' => 'nginx']) === []);
 CabWeb::$http = null;
+$hj = (array)(new Browser('10.0.13.9'))->req('GET', '/api/health')->body;
+ok('/api/health → rev совпадает с tests/rev.php', ($hj['rev'] ?? '') === trim((string)shell_exec('php ' . escapeshellarg(__DIR__ . '/rev.php'))) && preg_match('/^[0-9a-f]{12}$/', $hj['rev'] ?? ''), $hj['rev'] ?? null);
 
 echo "\n— IndexNow (Bing и др.): ключ сайта и пинг раз на сборку\n";
 $calls = []; IndexNow::$http = function ($url) use (&$calls) { $calls[] = $url; return ['code' => count($calls) === 1 ? 429 : 202, 'err' => null]; };

@@ -83,6 +83,11 @@ final class Api {
     return $res;
   }
 
+  public static function rev(): string {
+    $root = dirname(__DIR__); $h = '';
+    foreach (array_merge([$root . '/index.php', $root . '/cron.php'], glob(__DIR__ . '/*.php') ?: []) as $f) $h .= basename($f) . ':' . (string)@md5_file($f) . ';';
+    return substr(md5($h), 0, 12);
+  }
   private static function route(Req $r, Res $res, ?array $user, string $ip): array {
     $m = $r->method; $p = $r->path; $in = $r->json();
     switch ("$m $p") {
@@ -94,7 +99,8 @@ final class Api {
         $g = Gpv::read(); $cr = Cron::read();
         // gpvReady / remindNext — кому придут утренний график и ближайшее напоминание (считает cron, только числа);
         // vkcab — итог журнала кабинета Водоканала по «операция итог» (была ли живая проверка рахунку человеком)
-        return ['ok' => true, 'cronAgo' => Cron::age(), 'remind' => (object)($cr['remind'] ?? []), 'remindNext' => $cr['remindNext'] ?? null, 'fwd' => (object)$fwd,
+        // rev — отпечаток серверного кода (md5 файлов app/*.php, index.php, cron.php): сверить с `php tests/rev.php`, что пуш уже на бою
+        return ['ok' => true, 'rev' => self::rev(), 'cronAgo' => Cron::age(), 'remind' => (object)($cr['remind'] ?? []), 'remindNext' => $cr['remindNext'] ?? null, 'fwd' => (object)$fwd,
           'gpvSent' => (object)($cr['gpvSent'] ?? []), 'gpvReady' => $cr['gpvReady'] ?? null,
           'gpv' => ['at' => $g['at'] ?? null, 'update' => $g['update'] ?? null, 'days' => array_keys((array)($g['days'] ?? [])), 'err' => $g['err'] ?? null],
           'vkcab' => VkCab::summary(), 'cabs' => (object)CabProbe::read(),
