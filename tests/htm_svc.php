@@ -159,11 +159,17 @@ $sn = HtmSvc::summary()['seen'] ?? []; ok('…/api/health → seen.dateJs: ка�
 ok('…/api/health → seen.alerts: сколько плашек на странице, без текста', is_array($sn['alerts'] ?? null) && isset($sn['alerts']['err'], $sn['alerts']['ok']) && !str_contains(json_encode($sn), 'Увага'), $sn['alerts'] ?? null);
 $r = $b->req('POST', '/api/cab/htm/send', ['rid' => 'w1', 'vals' => ['date' => $kv->modify('+1 day')->format('d.m.Y'), 'energy' => '16.000', 'hours' => '35300'] + $V]);
 ok('…дата «завтра» — не вносим', $r->status === 422 && ($r->body['field'] ?? '') === 'date', $r->body);
+$ls = HtmSvc::summary()['lastSend'] ?? [];
+ok('…/api/health → lastSend: отказ правил и окно страницы (как у «Перевірити»), без текста', ($ls['op'] ?? '') === 'send' && ($ls['result'] ?? '') === 'bad_value' && ($ls['field'] ?? '') === 'date'
+  && ($ls['minMax'] ?? null) === false && str_contains(json_encode($ls['dateJs'] ?? []), 'datetimepicker') && isset($ls['alerts']['err']), $ls);
 stand('act=set&scenario=ok&today=2026-11-21&robot_delay=99999'); Db::q('DELETE FROM rate_limits');
 
 // «Забути пароль»: вход удалён, внесения на проверке → unknown без сообщения
 stand('act=set&today=2026-11-21&robot_delay=99999');
 $r = $b->req('POST', '/api/cab/htm/send', ['rid' => 'r6', 'vals' => ['date' => '21.11.2026', 'energy' => '15.300', 'volume' => '2341', 'hours' => '35200', 'errHours' => '153'] + $V]); ok('ещё внесение', ($r->body['job']['status'] ?? '') === 'pending', $r->body);
+$ls = HtmSvc::summary()['lastSend'] ?? []; $lj = json_encode(array_diff_key($ls, ['dateJs' => 1]), JSON_UNESCAPED_UNICODE);   // dateJs — куски скрипта страницы, как в seen
+ok('…lastSend: итог внесения, окно и плашки; ни слов сайта, ни рахунку', in_array($ls['result'] ?? '', ['pending', 'unseen'], true) && is_bool($ls['flash'] ?? null) && array_key_exists('win', $ls) && isset($ls['alerts'])
+  && !str_contains($lj, '1000000061') && !preg_match('/[А-Яа-яІіЇїЄє]{4,}/u', $lj), $ls);
 $r = $b->req('POST', '/api/cab/forget', ['prov' => 'htm']);
 ok('забыть пароль: входа нет', $r->status === 200 && $r->body['connected'] === false && !Db::one('SELECT id FROM cab_creds'), $r->body);
 $jf = array_values(array_filter($r->body['jobs'], fn($j) => $j['rid'] === 'r6'))[0] ?? [];

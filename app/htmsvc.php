@@ -157,6 +157,11 @@ final class HtmSvc {
       'fields' => array_slice(array_map(fn($f) => array_filter(['n' => $f['name'], 't' => $f['type'], 'r' => $pl['roles'][$f['name']] ?? null, 'ph' => CabWeb::mask((string)($f['ph'] ?? ''), 40) ?: null, 'max' => $f['max'] ?? null, 'pat' => ($f['pattern'] ?? '') ?: null, 'req' => !empty($f['req']) ?: null], fn($v) => $v !== null), $h['fields']), 0, 40),
       'minMax' => $h['min'] !== null && $h['max'] !== null, 'win' => $h['win'] ?? null];
   }
+  /** Как страница тепла задаёт окно дат и сколько на ней плашек — без значений и личных данных (то же, что пишет «Перевірити»):
+   *  пишется и при внесении, чтобы первое живое внесение само показало окно, не дожидаясь «Перевірити». */
+  private static function page(array $h): array {
+    return ['minMax' => $h['min'] !== null && $h['max'] !== null, 'win' => $h['win'] ?? null, 'dateJs' => $h['dateJs'] ?? [], 'alerts' => $h['alerts'] ?? null];
+  }
   private static function pubJournal(array $j): array {
     return array_map(fn($r) => ['date' => $r['date'], 'energy' => $r['energy'], 'status' => $r['status'], 'text' => mb_substr((string)$r['text'], 0, 300), 'reason' => $r['reason'] ?? null], array_slice($j, 0, 8));
   }
@@ -274,21 +279,22 @@ final class HtmSvc {
     [$cab, $acc, $c] = self::enter($uid, $want, $op);
     $ex = self::js($c['extra']);
     try {
-      $h = $cab->heat($acc['acc'], $acc['sur']);
-      if (!$h['open']) { self::diag(['op' => $op, 'user' => $uid, 'result' => 'closed', 'closed' => $h['closed'] ? CabWeb::mask($h['closed'], 160) : null, 'steps' => $cab->w->steps]); throw self::fail(409, 'closed', [], $h['closed'] ? ['site' => mb_substr($h['closed'], 0, 300)] : []); }
+      $h = $cab->heat($acc['acc'], $acc['sur']); $pg = self::page($h);
+      if (!$h['open']) { self::diag(['op' => $op, 'user' => $uid, 'result' => 'closed', 'closed' => $h['closed'] ? CabWeb::mask($h['closed'], 160) : null, 'page' => $pg, 'steps' => $cab->w->steps]); throw self::fail(409, 'closed', [], $h['closed'] ? ['site' => mb_substr($h['closed'], 0, 300)] : []); }
       $fi = self::formInfo($h);
-      if (!$fi['match']) { self::diag(['op' => $op, 'user' => $uid, 'result' => 'form_changed', 'form' => $fi, 'steps' => $cab->w->steps]); throw self::fail(409, 'form_changed'); }
-      self::rules($vals, $h);
+      if (!$fi['match']) { self::diag(['op' => $op, 'user' => $uid, 'result' => 'form_changed', 'form' => $fi, 'page' => $pg, 'steps' => $cab->w->steps]); throw self::fail(409, 'form_changed'); }
+      try { self::rules($vals, $h); }
+      catch (HttpError $e) { self::diag(['op' => $op, 'user' => $uid, 'result' => preg_replace('/^cab_/', '', $e->err), 'field' => $e->extra['field'] ?? null, 'page' => $pg, 'steps' => $cab->w->steps]); throw $e; }
       $phone = $phone ?: (string)($ex['phone'] ?? '');
       $email = $email ?: (string)$c['login'];
       if ($phone === '' && in_array('phone', array_column($fi['fields'], 'r'), true)) throw self::fail(422, 'need_phone');
       $r = $cab->save($acc['acc'], $acc['sur'], $vals, ['phone' => $phone, 'email' => $email, 'note' => ''], $h);
     } catch (CabErr $e) {
-      self::diag(['op' => $op, 'user' => $uid, 'result' => $e->err, 'site' => CabWeb::mask($e->site), 'fields' => $cab->log['fields'] ?? null, 'steps' => $cab->w->steps]);
+      self::diag(['op' => $op, 'user' => $uid, 'result' => $e->err, 'site' => CabWeb::mask($e->site), 'fields' => $cab->log['fields'] ?? null, 'page' => $pg ?? null, 'banners' => $cab->log['banners'] ?? null, 'steps' => $cab->w->steps]);
       throw self::cabErr($e);
     } finally { $cab->logout(); }
     if ($phone !== '' && $phone !== ($ex['phone'] ?? '')) Db::q('UPDATE cab_creds SET extra = ? WHERE user_id = ? AND prov = ?', [json_encode(['phone' => $phone] + $ex, JSON_UNESCAPED_UNICODE), $uid, self::PROV]);
-    self::diag(['op' => $op, 'user' => $uid, 'result' => in_array($r['status'], ['ok', 'rejected'], true) ? $r['status'] : (!empty($r['unseen']) ? 'unseen' : 'pending'), 'flash' => CabWeb::mask((string)$r['flash'], 160), 'banners' => $cab->log['banners'] ?? null, 'steps' => $cab->w->steps]);
+    self::diag(['op' => $op, 'user' => $uid, 'result' => in_array($r['status'], ['ok', 'rejected'], true) ? $r['status'] : (!empty($r['unseen']) ? 'unseen' : 'pending'), 'flash' => CabWeb::mask((string)$r['flash'], 160), 'banners' => $cab->log['banners'] ?? null, 'page' => $pg, 'steps' => $cab->w->steps]);
     return [$acc['acc'], $r];
   }
   /** Итог внесения → строка cab_jobs (новая или из очереди). Сразу «прийнято/не прийнято» — Telegram сразу, иначе ждём робота ХТМ. */
@@ -421,11 +427,14 @@ final class HtmSvc {
   }
   /** /api/health → htmcab: «операция итог» по журналу, последняя операция человека, последняя увиденная форма (имена и типы полей) и внесения по статусам. */
   public static function summary(): array {
-    $n = []; $last = null; $form = null; $seen = null;
+    $n = []; $last = null; $form = null; $seen = null; $lastSend = null;
     foreach (self::log() as $e) {
       // что робот прочитал со страницы тепла при последней проверке — без значений: нашёл ли прибор, какие «последние принятые», окно, статусы журнала
       if (($e['op'] ?? '') === 'check' && ($e['result'] ?? '') === 'ok') $seen = ['at' => gmdate('c', (int)$e['at']), 'meter' => $e['meter'] ?? null, 'base' => $e['base'] ?? [],
         'open' => !empty($e['form']['open']), 'minMax' => $e['form']['minMax'] ?? null, 'win' => $e['form']['win'] ?? null, 'dateJs' => $e['dateJs'] ?? null, 'alerts' => $e['alerts'] ?? null, 'journal' => array_count_values(array_map('strval', (array)($e['journal'] ?? []))), 'closed' => $e['closed'] ?? null];
+      // последнее внесение (кнопкой или автоподачей) — итог и что было на странице: окно дат, плашки до отправки, ответ сайта (цифры скрыты)
+      if (in_array($e['op'] ?? '', ['send', 'autosend'], true) && ($e['where'] ?? '') !== 'login') $lastSend = ['at' => gmdate('c', (int)$e['at']), 'op' => $e['op'], 'result' => $e['result'] ?? null, 'field' => $e['field'] ?? null,
+        'flash' => ($e['flash'] ?? '') !== '', 'site' => ($e['site'] ?? '') !== '', 'banners' => $e['banners'] ?? null] + (array)($e['page'] ?? []);   // сами слова — только в /admin: /api/health открыт всем
       $k = preg_replace('/[^a-z]/', '', (string)($e['op'] ?? '?')) . ' ' . preg_replace('/[^a-z_,]/', '', (string)($e['result'] ?? '?'));
       $n[$k] = ($n[$k] ?? 0) + 1;
       if (($e['op'] ?? '') !== 'recheck') $last = max((int)$last, (int)($e['at'] ?? 0));
@@ -437,6 +446,6 @@ final class HtmSvc {
     ksort($n); $jobs = [];
     try { foreach (Db::q('SELECT status, COUNT(*) AS c FROM cab_jobs WHERE prov = ? GROUP BY status', [self::PROV])->fetchAll() as $x) $jobs[$x['status']] = (int)$x['c']; } catch (Throwable $e) {}
     $cr = 0; try { $cr = (int)(Db::one('SELECT COUNT(*) AS c FROM cab_creds WHERE prov = ?', [self::PROV])['c'] ?? 0); } catch (Throwable $e) {}
-    return ['n' => (object)$n, 'lastUser' => $last ? gmdate('c', $last) : null, 'connected' => $cr, 'jobs' => (object)$jobs, 'form' => $form, 'seen' => $seen];
+    return ['n' => (object)$n, 'lastUser' => $last ? gmdate('c', $last) : null, 'connected' => $cr, 'jobs' => (object)$jobs, 'form' => $form, 'seen' => $seen, 'lastSend' => $lastSend];
   }
 }

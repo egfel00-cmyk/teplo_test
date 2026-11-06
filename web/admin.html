@@ -149,11 +149,11 @@ pre.state { font: 12px/1.4 var(--mono); background: #F4F7F5; padding: 10px; bord
   }
   /** Кабинет ХТМ: подключения, проверки, внесения, перепроверки журнала роботом сервера (без паролей и рахунков; цифры в словах сайта — #). */
   function htmcabBlock(l) {
-    var OP = { connect: 'подключение', check: 'проверка', send: 'внесение', recheck: 'перепроверка журнала', forget: '«забыть пароль»' };
+    var OP = { connect: 'подключение', check: 'проверка', send: 'внесение', autosend: 'автоподача', queue: 'в очередь автоподачи', auto: 'автоподача вкл/выкл', recheck: 'перепроверка журнала', forget: '«забыть пароль»' };
     var R = { ok: 'ок', pending: 'на проверке у ХТМ', rejected: 'ХТМ не принял', bad_login: 'неверный пароль', captcha: '<b class="problem">капча</b>', down: '<b class="problem">не отвечает</b>', changed: '<b class="problem">страница не узнана</b>', form_changed: '<b class="problem">форма другая — не отправляли</b>', form_error: '<b class="problem">сайт не сохранил</b>', closed: 'окно закрыто', no_accs: 'нет рахунков' };
     return '<details class="panel" data-key="adm-htmcab"><summary><b>Кабинет ХТМ — подключения и внесения</b> <span class="muted small">(' + (l || []).length + ')</span></summary>' +
       (l && l.length ? '<table><thead><tr><th>Когда</th><th>Что</th><th>Итог</th><th>Подробно</th></tr></thead><tbody>' + l.map(function (d) {
-        var det = { steps: d.steps, where: d.where, site: d.site, form: d.form, fields: d.fields, journal: d.journal, base: d.base, closed: d.closed, flash: d.flash, n: d.n };
+        var det = { steps: d.steps, where: d.where, site: d.site, field: d.field, form: d.form, fields: d.fields, journal: d.journal, base: d.base, closed: d.closed, flash: d.flash, banners: d.banners, page: d.page, n: d.n };
         return '<tr><td data-l="Когда" class="nowrap">' + when(new Date(d.at * 1000).toISOString()) + '</td><td data-l="Что">' + esc(OP[d.op] || d.op) + (d.user ? ' · <a href="#user-' + d.user + '" data-user="' + d.user + '">#' + d.user + '</a>' : '') + '</td>' +
           '<td data-l="Итог">' + (R[d.result] || esc(d.result)) + (d.form && d.form.open ? (d.form.match ? ' · форма как ждали' : ' · <b class="problem">форма: нет ' + esc((d.form.missing || []).join(', ')) + ' лишние ' + esc((d.form.unknown || []).join(', ')) + '</b>') : '') + '</td>' +
           '<td data-l="Подробно"><details><summary class="small">структура</summary><pre class="small" style="white-space:pre-wrap;max-width:60ch">' + esc(JSON.stringify(det, null, 1)) + '</pre></details></td></tr>';
