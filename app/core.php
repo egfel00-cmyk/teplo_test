@@ -175,6 +175,9 @@ final class Db {
     ];
     // ответы бота Водоканала (@hvk_user_bot), пересланные человеком нашему боту: подтверждение передачи показаний (ok), ошибка (err),
     // прочее (info — например, ответ на /1= с ID счётчиков); msg_at — когда ответил бот Водоканала (unix)
+    // кабинеты поставщиков: логин и пароль человека (пароль зашифрован ключом из SITE_DATA, CabVault) и задания робота
+    $sql[] = "CREATE TABLE IF NOT EXISTS cab_creds (id $ai, user_id INT NOT NULL, prov VARCHAR(8) NOT NULL, login VARCHAR(190) NOT NULL, secret TEXT NOT NULL, extra TEXT NULL, state VARCHAR(16) NOT NULL, info TEXT NULL, created_at VARCHAR(25) NOT NULL, checked_at VARCHAR(25) NULL, UNIQUE (user_id, prov))$tail";
+    $sql[] = "CREATE TABLE IF NOT EXISTS cab_jobs (id $ai, user_id INT NOT NULL, prov VARCHAR(8) NOT NULL, acc VARCHAR(40) NOT NULL, payload TEXT NOT NULL, status VARCHAR(16) NOT NULL, result TEXT NULL, tries INT NOT NULL DEFAULT 0, next_at INT NOT NULL DEFAULT 0, created_at VARCHAR(25) NOT NULL, updated_at VARCHAR(25) NOT NULL)$tail";
     $sql[] = "CREATE TABLE IF NOT EXISTS vk_replies (id $ai, user_id INT NOT NULL, kind VARCHAR(8) NOT NULL, text TEXT NOT NULL, msg_at INT NOT NULL, created_at VARCHAR(25) NOT NULL)$tail";
     // что люди делали с ботом Водоканала: send — нажали «Відправити», ok — «Прийняв», silent — «Не відповідає», err — «Помилка»;
     // notified — тем, кто жаловался «не відповідає», уже написали «бот знову працює»

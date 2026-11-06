@@ -78,6 +78,7 @@ final class CabWeb {
   }
   public static function dom(string $html): DOMXPath {
     $d = new DOMDocument(); libxml_use_internal_errors(true);
+    $html = preg_replace('/<meta\b[^>]*charset\s*=[^>]*>/i', '', $html);   // текст уже в UTF-8 — объявление windows-1251 сбило бы разбор
     $d->loadHTML('<?xml encoding="UTF-8">' . $html, LIBXML_NONET | LIBXML_NOERROR | LIBXML_NOWARNING); libxml_clear_errors();
     return new DOMXPath($d);
   }
@@ -135,5 +136,167 @@ final class CabProbe {
     }
     unset($out['running']); self::save($out);
     return $out;
+  }
+}
+
+/** Пароли кабинетов: AES-256-GCM, ключ — случайный, в SITE_DATA/uploads/settings/cab.key (0600), не в базе и не в git.
+ *  Утечёт база — паролей не прочитать; взломают сервер целиком — не спасёт ничто, поэтому «забути пароль» у человека всегда под рукой. */
+final class CabVault {
+  public static function keyFile(): string { return Cfg::data() . '/uploads/settings/cab.key'; }
+  private static function key(): string {
+    $f = self::keyFile(); $k = @file_get_contents($f);
+    if (is_string($k) && strlen($k) === 32) return $k;
+    @mkdir(dirname($f), 0700, true);
+    $h = @fopen($f, 'x');   // создаёт только первый; второй процесс прочитает созданный
+    if ($h) { fwrite($h, random_bytes(32)); fclose($h); @chmod($f, 0600); }
+    $k = @file_get_contents($f);
+    if (!is_string($k) || strlen($k) !== 32) throw new RuntimeException('cab key unavailable');
+    return $k;
+  }
+  public static function enc(string $s): string {
+    $n = random_bytes(12); $tag = '';
+    $c = openssl_encrypt($s, 'aes-256-gcm', self::key(), OPENSSL_RAW_DATA, $n, $tag);
+    if ($c === false) throw new RuntimeException('encrypt');
+    return 'g1:' . base64_encode($n . $tag . $c);
+  }
+  public static function dec(string $e): ?string {
+    if (!str_starts_with($e, 'g1:')) return null; $b = base64_decode(substr($e, 3), true); if ($b === false || strlen($b) < 29) return null;
+    $p = openssl_decrypt(substr($b, 28), 'aes-256-gcm', self::key(), OPENSSL_RAW_DATA, substr($b, 0, 12), substr($b, 12, 16));
+    return $p === false ? null : $p;
+  }
+}
+
+/** Отказ кабинета: код для приложения + слова сайта (цифры замаскированы при записи в журнал). */
+final class CabErr extends Exception {
+  public function __construct(public string $err, public string $site = '', public array $extra = []) { parent::__construct($err); }
+}
+
+/** Кабинет КП «ХТМ» (тепло). Контракт — docs/теплосервис — кабинет ХТМ (снятие 01.11.2026), стенд — tests/htm-mock.
+ *  Вход email + пароль (windows-1251, без CSRF), форма показаний открыта 5–25, итог проверки робота ХТМ — в журнале через 15–30 минут. */
+final class HtmCab {
+  const BASE = 'https://www.hts.kharkov.ua';
+  const F = ['date' => 'LastDtPok', 'energy' => 'LastValuePok', 'volume' => 'LastRashPok', 'flow' => 'HeatRash', 'power' => 'HeatPower',
+    'tSupply' => 'TempPod', 'tReturn' => 'TempO', 'hours' => 'LastTimePok', 'errHours' => 'ErrorTime', 'errCode' => 'ErrorKod'];
+  const DEC = ['energy' => 3, 'volume' => 3, 'flow' => 3, 'power' => 3, 'tSupply' => 2, 'tReturn' => 2];
+  public CabWeb $w;
+  public array $log = [];
+  public static function base(): string { return rtrim((string)Cfg::get('htm_cab_base', self::BASE), '/'); }
+  public function __construct(float $budget = 25.0) {
+    $host = preg_quote((string)parse_url(self::base(), PHP_URL_HOST), '/');
+    $this->w = new CabWeb('/^(www\.)?' . preg_replace('/^www\\\\\./', '', $host) . '$/i', $budget, 'Windows-1251');
+  }
+  private function get(string $path): array { return $this->guard($this->w->req('GET', CabWeb::abs($path, self::base() . '/'))); }
+  private function post(string $url, array $pairs): array { return $this->guard($this->w->req('POST', $url, $this->w->encode($pairs), ['Content-Type: application/x-www-form-urlencoded'])); }
+  private function guard(array $r): array {
+    if ($r['offsite']) throw new CabErr('changed', 'redirect ' . $r['offsite']);
+    if ($r['code'] === 0 || $r['code'] >= 500) throw new CabErr('down', (string)($r['err'] ?? $r['code']));
+    $c = CabWeb::captcha($r['body'], $r['code']);
+    if ($c['widget'] || $c['cf']) throw new CabErr('captcha');
+    return $r;
+  }
+  private static function msgs(DOMXPath $x): array {
+    $out = ['err' => [], 'ok' => []];
+    foreach ($x->query("//*[contains(@class,'alert') or contains(@class,'flash') or contains(@class,'help-block')]") as $n) {
+      $t = CabWeb::sp($n->textContent); if ($t === '' || mb_strlen($t) > 400) continue;
+      $cls = (string)$n->getAttribute('class');
+      $out[str_contains($cls, 'success') ? 'ok' : (str_contains($cls, 'danger') || str_contains($cls, 'error') || str_contains($cls, 'help-block') ? 'err' : 'ok')][] = $t;
+    }
+    return $out;
+  }
+  public function login(string $email, string $pass): array {
+    $this->get('/cabinet');
+    $r = $this->post(self::base() . '/cabinet/login', [['email', $email], ['passw', $pass], ['email-signin', '']]);
+    if (str_contains($r['body'], '/cabinet/logout')) return $r;
+    $m = self::msgs(CabWeb::dom($r['body']));
+    throw new CabErr('bad_login', implode(' ', array_slice($m['err'], 0, 2)));
+  }
+  /** Особові рахунки кабинета: [['acc' => '…', 'sur' => 'ПРІЗВИЩЕ']] — из ссылок /cabinet/{рахунок}/{прізвище}. */
+  public function accounts(array $home): array {
+    $out = [];
+    foreach ([$home, $this->get('/cabinet/list')] as $r) {
+      if (!preg_match_all('~href="(?:https?://[^"/]+)?/cabinet/(?:heat/)?(\d{4,14})/([^"/?#]+)"~u', $r['body'], $m, PREG_SET_ORDER)) continue;
+      foreach ($m as $x) { $sur = rawurldecode(html_entity_decode($x[2])); if (!isset($out[$x[1]])) $out[$x[1]] = ['acc' => $x[1], 'sur' => $sur]; }
+    }
+    return array_values($out);
+  }
+  private static function url(string $acc, string $sur, string $what = 'heat'): string { return self::base() . '/cabinet/' . $what . '/' . rawurlencode($acc) . '/' . rawurlencode(mb_strtoupper($sur)); }
+  /** Страница тепла: прибор, последние принятые, открыта ли форма, журнал. */
+  public function heat(string $acc, string $sur): array {
+    $r = $this->get(self::url($acc, $sur)); $x = CabWeb::dom($r['body']); $txt = CabWeb::sp($x->document->textContent ?? '');
+    $o = ['url' => $r['url'], 'meter' => null, 'base' => [], 'open' => false, 'closed' => null, 'min' => null, 'max' => null, 'journal' => [], 'fields' => [], 'html' => $r['body']];
+    foreach ($x->query('//h1|//h2|//h3|//h4|//caption|//div[contains(@class,"title")]') as $hn) {   // «ВІДОМІСТЬ … НА dd.mm.yyyy: ПУ <модель>, №<номер>»
+      if (preg_match('/ПУ\s+([^,№]{2,40}?),?\s*№\s*([\w\-\/\.]{2,30})\s*$/u', CabWeb::sp($hn->textContent), $m)) { $o['meter'] = ['model' => trim($m[1]), 'serial' => trim($m[2])]; break; }
+    }
+    foreach (self::F as $k => $id) { $n = $x->query("//*[@id='head_$id']")->item(0); if ($n) $o['base'][$k] = CabWeb::sp($n->textContent); }
+    if (preg_match("/min_date\s*=\s*'([\d.]+)'/", $r['body'], $m)) $o['min'] = $m[1];
+    if (preg_match("/max_date\s*=\s*'([\d.]+)'/", $r['body'], $m)) $o['max'] = $m[1];
+    $form = null;
+    foreach ($x->query('//form') as $f) { foreach ($x->query('.//input', $f) as $i) if (strcasecmp((string)$i->getAttribute('name'), self::F['energy']) === 0 || stripos((string)$i->getAttribute('name'), 'LastValue') !== false) { $form = $f; break 2; } }
+    if ($form) {
+      $o['open'] = true; $o['action'] = CabWeb::abs((string)($form->getAttribute('action') ?: $r['url']), $r['url']);
+      foreach ($x->query('.//input|.//select|.//textarea|.//button', $form) as $i) {
+        $nm = (string)$i->getAttribute('name'); if ($nm === '') continue;
+        $o['fields'][] = ['name' => $nm, 'type' => strtolower($i->nodeName === 'input' ? ($i->getAttribute('type') ?: 'text') : $i->nodeName), 'value' => (string)$i->getAttribute('value')];
+      }
+    } elseif (preg_match('/[^.]*тимчасово\s+зупинен[^.]*\.[^.]*\./u', $txt, $m)) $o['closed'] = trim($m[0]);
+    // журнал: строка из ≥10 ячеек с датой → «Примітки» → «Статус: …»
+    $rows = $x->query('//tr'); $cur = null;
+    foreach ($rows as $tr) {
+      $tds = $x->query('./td', $tr); $first = $tds->length ? CabWeb::sp($tds->item(0)->textContent) : '';
+      if ($tds->length >= 10 && preg_match('/^\d{2}\.\d{2}\.\d{4}$/', $first) && !$x->query("./td[starts-with(@id,'head_')]", $tr)->length) {
+        $cls = (string)$tds->item(0)->getAttribute('class');
+        $cur = ['date' => $first, 'energy' => CabWeb::sp($tds->item(1)->textContent), 'cls' => $cls, 'status' => str_contains($cls, 'bg-success') ? 'ok' : (str_contains($cls, 'bg-danger') ? 'rejected' : 'pending'), 'text' => ''];
+        $o['journal'][] = &$cur; continue;
+      }
+      $t = CabWeb::sp($tr->textContent);
+      if ($cur !== null && preg_match('/^Статус:\s*(.*)$/u', $t, $m)) {
+        $cur['text'] = $m[1];
+        if (preg_match('/успішно|прийнят[оі]\b/u', $m[1]) && !preg_match('/не\s+при[йн]{1,2}ят/u', $m[1])) $cur['status'] = 'ok';
+        elseif (preg_match('/не\s+при[йн]{1,2}ят[іи]?\s*(?:з\s+причини:?)?\s*(.*)$/u', $m[1], $mm)) { $cur['status'] = 'rejected'; $cur['reason'] = trim($mm[1]); }
+        unset($cur); $cur = null;
+      }
+    }
+    unset($cur);
+    return $o;
+  }
+  /** Формат как в журнале ХТМ: точка, 3 знака у энергии/объёма/расхода/мощности, 2 — у температур; часы — целые. */
+  public static function fmt(string $k, $v): string {
+    if ($k === 'date' || $k === 'errCode') return trim((string)$v);
+    $v = str_replace([',', ' '], ['.', ''], trim((string)$v));
+    if (!is_numeric($v)) throw new CabErr('bad_value', $k);
+    return isset(self::DEC[$k]) ? number_format((float)$v, self::DEC[$k], '.', '') : (string)(int)round((float)$v);
+  }
+  /** Сохранить показания. vals: date (dd.mm.yyyy) + energy … errCode; contact: phone, email, note.
+   *  → ['status' => 'pending'|'ok'|'rejected', 'text', 'flash'] или CabErr (closed, form_changed, form_error, …). Ничего не шлём, если форма не та. */
+  public function save(string $acc, string $sur, array $vals, array $contact): array {
+    $h = $this->heat($acc, $sur);
+    if (!$h['open']) throw new CabErr('closed', (string)$h['closed']);
+    $want = [];
+    foreach (self::F as $k => $name) { if (!array_key_exists($k, $vals)) throw new CabErr('bad_value', $k); $want[strtolower($name)] = self::fmt($k, $vals[$k]); }
+    $pairs = []; $used = []; $unknown = [];
+    foreach ($h['fields'] as $f) {
+      $ln = strtolower($f['name']);
+      if (isset($want[$ln])) { $pairs[] = [$f['name'], $want[$ln]]; $used[$ln] = 1; continue; }
+      if ($f['type'] === 'hidden') { $pairs[] = [$f['name'], $f['value']]; continue; }
+      if (in_array($f['type'], ['submit', 'button'], true)) { if (!isset($used['#btn'])) { $pairs[] = [$f['name'], $f['value']]; $used['#btn'] = 1; } continue; }
+      if (preg_match('/phone|tel/i', $f['name'])) { $pairs[] = [$f['name'], (string)($contact['phone'] ?? '')]; continue; }
+      if (preg_match('/e-?mail/i', $f['name'])) { $pairs[] = [$f['name'], (string)($contact['email'] ?? '')]; continue; }
+      if (preg_match('/note|prim|comment|koment/i', $f['name'])) { $pairs[] = [$f['name'], (string)($contact['note'] ?? '')]; continue; }
+      if (in_array($f['type'], ['checkbox', 'radio'], true)) continue;
+      $unknown[] = $f['name'];
+    }
+    $missing = array_diff(array_keys($want), array_keys($used));
+    if ($missing || $unknown) { $this->log['fields'] = array_column($h['fields'], 'name'); throw new CabErr('form_changed', 'missing: ' . implode(',', $missing) . ' unknown: ' . implode(',', $unknown)); }
+    $r = $this->post($h['action'], $pairs);
+    $m = self::msgs(CabWeb::dom($r['body']));
+    $after = $this->heat($acc, $sur);
+    $row = self::find($after['journal'], $want[strtolower(self::F['date'])], $want[strtolower(self::F['energy'])]);
+    if (!$row) throw new CabErr('form_error', implode(' ', array_slice($m['err'] ?: $m['ok'], 0, 2)));
+    return ['status' => $row['status'], 'text' => $row['text'], 'reason' => $row['reason'] ?? null, 'flash' => implode(' ', array_slice($m['ok'], 0, 1))];
+  }
+  /** Строка журнала по дате и энергии (энергию сравниваем числом). */
+  public static function find(array $journal, string $date, string $energy): ?array {
+    foreach ($journal as $j) if ($j['date'] === $date && abs((float)$j['energy'] - (float)$energy) < 0.0005) return $j;
+    return null;
   }
 }
