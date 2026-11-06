@@ -638,6 +638,10 @@ details.wacc > summary { list-style: none; cursor: pointer; display: flex; align
 .dest-h .pill { flex: none; margin-top: 2px; }
 .dest-ch { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
 .dest-ch .btn { flex: 1 1 200px; justify-content: center; }
+/* кабинет подключён — «Відправити у фоні» выделена среди каналов: полная заливка + кольцо; приписка — что именно уйдёт */
+.btn.dest-bg { box-shadow: 0 0 0 4px var(--c-focus-ring); font-weight: 700; }
+.dest-note { margin: 8px 0 0; }
+.row-actions + .dest-note { margin-top: -4px; }
 .dest-more { margin: 10px 0 0; }
 .dest-more a, .where a[href^="tel:"] { white-space: nowrap; }
 .dest .cmd { margin-top: 6px; }

@@ -26,7 +26,7 @@ const cron = mins => execFileSync('php', ['-r', `define('TEPLO',1); foreach (['c
   await p.goto(U + '#heat'); await wait(1200);
   const wh = await p.$('[data-key=where-heat]'); if (wh) { const sm = await p.$('[data-key=where-heat] summary, [data-key=where-heat] [data-act=where-toggle]'); if (sm) await sm.click().catch(() => {}); }
   await wait(300);
-  ok('«Куди передати» тепла: «Підключити кабінет ХТМ — робот вноситиме…»', !!(await p.$('[data-key=where-heat-cab-off] a[href="#htmcab"]')));
+  ok("«Куди передати» тепла: «Підключити кабінет» — кнопка в ряду каналів", !!(await p.$("[data-key=dest-htm-heat] .dest-ch a[href=\"#htmcab\"][data-key=cab-connect-where]")) && !!(await p.$("[data-key=cab-off-where]")));
   await p.goto(U + '#handover'); await wait(1000);
   ok('«Передайте в ХТМ»: панель «Внести за мене в кабінет ХТМ» з «Підключити кабінет ХТМ»', await vis('[data-key=handover-auto] [data-key=hc-connect]'), await txt('[data-key=handover-auto]'));
   await p.click('[data-key=hc-connect]'); await wait(700);
