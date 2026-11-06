@@ -6,8 +6,11 @@
 //  POST /api/cab/forget           {prov: 'htm'} — «Забути пароль»: вход удаляем сразу, внесения на проверке больше не перечитываем
 //  POST /api/cab/htm/check        {acc?, lang} — что видит кабинет: прибор, последние принятые, окно, журнал; структура формы — в журнал
 //                                   (имена и типы полей, без значений и личных данных) и в /api/health → htmcab.form
-//  POST /api/cab/htm/send         {acc?, rid, vals: {date, energy, …, errCode}, phone?, email?, lang} — внести. Дальше cron (HtmSvc::cron)
+//  POST /api/cab/htm/send         {acc?, rid, vals: {date, energy, …, errCode}, phone?, email?, lang, delay?} — внести. Дальше cron (HtmSvc::cron)
 //                                   перечитывает журнал через AFTER минут → Telegram «✅ ХТМ прийняв» / «❌ не прийняв: причина»
+//  Автоподача (по согласию, переключатель на экране кабинета): фото в бот → приложение распознало, все проверки пройдены → send {delay: true}
+//  ставит внесение в очередь (queued) на AUTO_DELAY секунд — Telegram «📝 внесемо о HH:MM», можно скасувати; cron вносит сам.
+//  POST /api/cab/htm/auto {on}    — включить/выключить автоподачу · POST /api/cab/htm/cancel {job} · POST /api/cab/htm/now {job}
 declare(strict_types=1);
 if (!defined('TEPLO')) { http_response_code(404); exit; }
 
@@ -15,6 +18,8 @@ final class HtmSvc {
   const PROV = 'htm';
   /** Когда перечитать журнал после внесения (минуты): робот ХТМ проверяет 15–30 минут, иногда дольше. */
   const AFTER = [20, 40, 70, 130, 360];
+  /** Автоподача: сколько секунд внесение ждёт в очереди (можно отменить), прежде чем робот внесёт сам. */
+  public static function autoDelay(): int { return max(60, (int)Cfg::get('htm_auto_delay', 600)); }
   public static function logFile(): string { return Cfg::data() . '/cache/htmcab_log.json'; }
   public static function log(): array { $j = json_decode((string)@file_get_contents(self::logFile()), true); return is_array($j) ? $j : []; }
 
@@ -41,6 +46,8 @@ final class HtmSvc {
       'need_phone' => $ru ? 'Форма ХТМ требует телефон — впишите его.' : 'Форма ХТМ вимагає телефон — впишіть його.',
       'form_error' => $ru ? 'Сайт ХТМ не сохранил показания.' : 'Сайт ХТМ не зберіг показання.',
       'busy' => $ru ? 'Слишком много попыток. Подождите немного и попробуйте снова.' : 'Забагато спроб. Зачекайте трохи й спробуйте знову.',
+      'auto_off' => $ru ? 'Автоподача выключена — внесите кнопкой «Внести в кабинет ХТМ».' : 'Автоподачу вимкнено — внесіть кнопкою «Внести в кабінет ХТМ».',
+      'no_job' => $ru ? 'Это внесение уже не в очереди.' : 'Це внесення вже не в черзі.',
     ][$k];
     foreach ($p as $a => $b) $m = str_replace('{' . $a . '}', (string)$b, $m);
     return $m;
@@ -75,13 +82,13 @@ final class HtmSvc {
     $c = self::creds($uid); $info = $c ? self::js($c['info']) : []; $ex = $c ? self::js($c['extra']) : [];
     $jobs = Db::q('SELECT * FROM cab_jobs WHERE user_id = ? AND prov = ? ORDER BY id DESC LIMIT 12', [$uid, self::PROV])->fetchAll();
     return ['connected' => (bool)$c, 'login' => $c['login'] ?? null, 'state' => $c['state'] ?? null, 'accounts' => self::pubAccs((array)($info['accounts'] ?? [])),
-      'phone' => $ex['phone'] ?? '', 'since' => $c['created_at'] ?? null, 'checkedAt' => $c['checked_at'] ?? null, 'jobs' => array_map([self::class, 'pubJob'], $jobs)];
+      'phone' => $ex['phone'] ?? '', 'auto' => !empty($ex['auto']), 'autoDelay' => self::autoDelay(), 'since' => $c['created_at'] ?? null, 'checkedAt' => $c['checked_at'] ?? null, 'jobs' => array_map([self::class, 'pubJob'], $jobs)];
   }
   public static function pubJob(array $j): array {
     $p = self::js($j['payload']); $r = self::js($j['result']);
     return ['id' => (int)$j['id'], 'acc' => $j['acc'], 'rid' => $p['rid'] ?? null, 'place' => $p['place'] ?? null, 'date' => $p['vals']['date'] ?? null, 'energy' => $p['vals']['energy'] ?? null,
       'status' => $j['status'], 'text' => $r['text'] ?? '', 'reason' => $r['reason'] ?? null, 'why' => $r['why'] ?? null, 'at' => strtotime((string)$j['created_at']) ?: null,
-      'checkedAt' => $r['checkedAt'] ?? null, 'nextAt' => $j['status'] === 'pending' ? (int)$j['next_at'] : null];
+      'checkedAt' => $r['checkedAt'] ?? null, 'nextAt' => in_array($j['status'], ['pending', 'queued'], true) ? (int)$j['next_at'] : null, 'auto' => !empty($p['auto']), 'human' => $r['human'] ?? null];
   }
 
   /** POST /api/cab/htm/connect — пробный вход; не пустил — ничего не храним. */
@@ -99,7 +106,8 @@ final class HtmSvc {
     finally { $cab->logout(); }
     $info = json_encode(['accounts' => $accs, 'at' => time()], JSON_UNESCAPED_UNICODE);
     $old = self::creds($uid); if ($phone === '' && $old) $phone = (string)(self::js($old['extra'])['phone'] ?? '');   // подключили заново без телефона — прежний остаётся
-    $extra = json_encode(['phone' => $phone, 'consentAt' => gmdate('c'), 'lang' => self::$lang], JSON_UNESCAPED_UNICODE);
+    $extra = ['phone' => $phone, 'consentAt' => gmdate('c'), 'lang' => self::$lang]; if ($old && !empty(self::js($old['extra'])['auto'])) $extra['auto'] = true;   // подключили заново — автоподача как была
+    $extra = json_encode($extra, JSON_UNESCAPED_UNICODE);
     $sec = CabVault::enc($pass);
     if ($old) Db::q("UPDATE cab_creds SET login = ?, secret = ?, extra = ?, state = 'ok', info = ?, created_at = ?, checked_at = ? WHERE user_id = ? AND prov = ?", [$email, $sec, $extra, $info, Http::iso(), Http::iso(), $uid, self::PROV]);
     else Db::q("INSERT INTO cab_creds (user_id, prov, login, secret, extra, state, info, created_at, checked_at) VALUES (?, ?, ?, ?, ?, 'ok', ?, ?, ?)", [$uid, self::PROV, $email, $sec, $extra, $info, Http::iso(), Http::iso()]);
@@ -113,6 +121,7 @@ final class HtmSvc {
     if (($in['prov'] ?? self::PROV) !== self::PROV) throw new HttpError(422, 'bad_prov');
     Db::q('DELETE FROM cab_creds WHERE user_id = ? AND prov = ?', [$uid, self::PROV]);
     Db::q("UPDATE cab_jobs SET status = 'unknown', result = ?, updated_at = ? WHERE user_id = ? AND prov = ? AND status = 'pending'", [json_encode(['why' => 'forgot', 'checkedAt' => time()]), Http::iso(), $uid, self::PROV]);
+    Db::q("UPDATE cab_jobs SET status = 'cancelled', result = ?, next_at = 0, updated_at = ? WHERE user_id = ? AND prov = ? AND status = 'queued'", [json_encode(['why' => 'forgot', 'checkedAt' => time()]), Http::iso(), $uid, self::PROV]);
     Db::q('INSERT INTO audit_log (user_id, action, ip, created_at) VALUES (?, ?, ?, ?)', [$uid, 'htm_cab_forget', null, Http::iso()]);
     self::diag(['op' => 'forget', 'user' => $uid, 'result' => 'ok']);
     return ['ok' => true] + self::status($uid);
@@ -202,51 +211,133 @@ final class HtmSvc {
     foreach (['tSupply', 'tReturn'] as $k) { $t = (float)$v[$k]; if ($t < 5 || $t > 95) throw self::bad($k, 'від 5 до 95 °C.', 'от 5 до 95 °C.'); }
   }
 
-  /** POST /api/cab/htm/send — внести показания (только по нажатию человека). Повтор того же — возвращает уже созданное. */
+  /** POST /api/cab/htm/auto {on} — автоподача: фото в бот → приложение распознало и проверило → внесение в очередь, робот вносит сам. */
+  public static function auto(int $uid, array $in): array {
+    self::lang($in);
+    $c = self::creds($uid); if (!$c) throw self::fail(409, 'off');
+    $on = ($in['on'] ?? false) === true; $ex = self::js($c['extra']);
+    if ($on) { $ex['auto'] = true; $ex['autoAt'] = gmdate('c'); } else unset($ex['auto'], $ex['autoAt']);
+    Db::q('UPDATE cab_creds SET extra = ? WHERE user_id = ? AND prov = ?', [json_encode($ex, JSON_UNESCAPED_UNICODE), $uid, self::PROV]);
+    if (!$on) Db::q("UPDATE cab_jobs SET status = 'cancelled', result = ?, next_at = 0, updated_at = ? WHERE user_id = ? AND prov = ? AND status = 'queued'", [json_encode(['why' => 'auto_off', 'checkedAt' => time()]), Http::iso(), $uid, self::PROV]);
+    Db::q('INSERT INTO audit_log (user_id, action, ip, created_at) VALUES (?, ?, ?, ?)', [$uid, 'htm_cab_auto_' . ($on ? 'on' : 'off'), null, Http::iso()]);
+    self::diag(['op' => 'auto', 'user' => $uid, 'result' => $on ? 'on' : 'off']);
+    return ['ok' => true] + self::status($uid);
+  }
+  /** Включена ли автоподача у человека (бот по ней выбирает кнопку «Розпізнати й внести»). */
+  public static function autoOn(int $uid): bool { $c = self::creds($uid); return $c && $c['state'] !== 'bad_login' && !empty(self::js($c['extra'])['auto']); }
+
+  /** POST /api/cab/htm/send — внести показания (по нажатию человека; delay — автоподача: в очередь, робот внесёт сам через autoDelay()).
+   *  Повтор того же — возвращает уже созданное. */
   public static function send(int $uid, array $in): array {
     self::lang($in);
     $rid = substr(preg_replace('/[^\w\-]/', '', (string)($in['rid'] ?? '')), 0, 40); $place = substr(preg_replace('/[^\w\-]/', '', (string)($in['place'] ?? '')), 0, 40);
     $vals = self::vals((array)($in['vals'] ?? []));
-    if (!self::creds($uid)) throw self::fail(409, 'off');
-    foreach (Db::q("SELECT * FROM cab_jobs WHERE user_id = ? AND prov = ? AND status IN ('pending', 'ok') ORDER BY id DESC LIMIT 12", [$uid, self::PROV])->fetchAll() as $j) {
+    $c = self::creds($uid); if (!$c) throw self::fail(409, 'off');
+    foreach (Db::q("SELECT * FROM cab_jobs WHERE user_id = ? AND prov = ? AND status IN ('queued', 'pending', 'ok') ORDER BY id DESC LIMIT 12", [$uid, self::PROV])->fetchAll() as $j) {
       $p = self::js($j['payload']);
       // то же показание (дата + энергия) уже внесено и не отклонено — второй раз не вносим (двойное нажатие, второе устройство)
       if (($p['vals']['date'] ?? '') === $vals['date'] && abs((float)($p['vals']['energy'] ?? -1) - (float)$vals['energy']) < 0.0005) return ['ok' => true, 'dup' => true, 'job' => self::pubJob($j)];
     }
+    $acc = preg_replace('/\D/', '', (string)($in['acc'] ?? ''));
+    $phone = self::phone($in['phone'] ?? ''); $email = filter_var(trim((string)($in['email'] ?? '')), FILTER_VALIDATE_EMAIL) ?: '';
+    $payload = ['rid' => $rid, 'place' => $place, 'vals' => $vals, 'lang' => self::$lang];
+    if (($in['delay'] ?? false) === true) {
+      if ($c['state'] === 'bad_login') throw self::fail(401, 'relogin');
+      if (empty(self::js($c['extra'])['auto'])) throw self::fail(409, 'auto_off');
+      self::limit($uid);
+      $at = time() + self::autoDelay();
+      Db::q("INSERT INTO cab_jobs (user_id, prov, acc, payload, status, result, tries, next_at, created_at, updated_at) VALUES (?, ?, ?, ?, 'queued', ?, 0, ?, ?, ?)",
+        [$uid, self::PROV, $acc, json_encode($payload + ['auto' => true, 'phone' => $phone, 'email' => $email], JSON_UNESCAPED_UNICODE), json_encode(['checkedAt' => time()]), $at, Http::iso(), Http::iso()]);
+      $job = Db::one('SELECT * FROM cab_jobs WHERE id = ?', [Db::id()]);
+      Db::q('INSERT INTO audit_log (user_id, action, ip, created_at) VALUES (?, ?, ?, ?)', [$uid, 'htm_cab_send_queued', null, Http::iso()]);
+      self::diag(['op' => 'queue', 'user' => $uid, 'result' => 'queued']);
+      self::notify($uid, self::pubJob($job));
+      return ['ok' => true, 'job' => self::pubJob($job)];
+    }
     self::limit($uid);
-    [$cab, $acc, $c] = self::enter($uid, (string)($in['acc'] ?? ''), 'send');
+    [$a, $r] = self::submit($uid, $acc, $vals, $phone, $email, 'send');
+    return ['ok' => true, 'job' => self::record($uid, $a, $payload, $r)];
+  }
+  /** Войти, проверить форму и правила против «последних принятых», внести. → [рахунок, итог HtmCab::save]. Ошибки — HttpError с человеческим текстом. */
+  private static function submit(int $uid, string $want, array $vals, string $phone, string $email, string $op): array {
+    [$cab, $acc, $c] = self::enter($uid, $want, $op);
     $ex = self::js($c['extra']);
     try {
       $h = $cab->heat($acc['acc'], $acc['sur']);
-      if (!$h['open']) { self::diag(['op' => 'send', 'user' => $uid, 'result' => 'closed', 'closed' => $h['closed'] ? CabWeb::mask($h['closed'], 160) : null, 'steps' => $cab->w->steps]); throw self::fail(409, 'closed', [], $h['closed'] ? ['site' => mb_substr($h['closed'], 0, 300)] : []); }
+      if (!$h['open']) { self::diag(['op' => $op, 'user' => $uid, 'result' => 'closed', 'closed' => $h['closed'] ? CabWeb::mask($h['closed'], 160) : null, 'steps' => $cab->w->steps]); throw self::fail(409, 'closed', [], $h['closed'] ? ['site' => mb_substr($h['closed'], 0, 300)] : []); }
       $fi = self::formInfo($h);
-      if (!$fi['match']) { self::diag(['op' => 'send', 'user' => $uid, 'result' => 'form_changed', 'form' => $fi, 'steps' => $cab->w->steps]); throw self::fail(409, 'form_changed'); }
+      if (!$fi['match']) { self::diag(['op' => $op, 'user' => $uid, 'result' => 'form_changed', 'form' => $fi, 'steps' => $cab->w->steps]); throw self::fail(409, 'form_changed'); }
       self::rules($vals, $h);
-      $phone = self::phone($in['phone'] ?? '') ?: (string)($ex['phone'] ?? '');
-      $email = filter_var(trim((string)($in['email'] ?? '')), FILTER_VALIDATE_EMAIL) ?: (string)$c['login'];
+      $phone = $phone ?: (string)($ex['phone'] ?? '');
+      $email = $email ?: (string)$c['login'];
       if ($phone === '' && in_array('phone', array_column($fi['fields'], 'r'), true)) throw self::fail(422, 'need_phone');
       $r = $cab->save($acc['acc'], $acc['sur'], $vals, ['phone' => $phone, 'email' => $email, 'note' => ''], $h);
     } catch (CabErr $e) {
-      self::diag(['op' => 'send', 'user' => $uid, 'result' => $e->err, 'site' => CabWeb::mask($e->site), 'fields' => $cab->log['fields'] ?? null, 'steps' => $cab->w->steps]);
+      self::diag(['op' => $op, 'user' => $uid, 'result' => $e->err, 'site' => CabWeb::mask($e->site), 'fields' => $cab->log['fields'] ?? null, 'steps' => $cab->w->steps]);
       throw self::cabErr($e);
     } finally { $cab->logout(); }
     if ($phone !== '' && $phone !== ($ex['phone'] ?? '')) Db::q('UPDATE cab_creds SET extra = ? WHERE user_id = ? AND prov = ?', [json_encode(['phone' => $phone] + $ex, JSON_UNESCAPED_UNICODE), $uid, self::PROV]);
+    self::diag(['op' => $op, 'user' => $uid, 'result' => in_array($r['status'], ['ok', 'rejected'], true) ? $r['status'] : 'pending', 'flash' => CabWeb::mask((string)$r['flash'], 160), 'steps' => $cab->w->steps]);
+    return [$acc['acc'], $r];
+  }
+  /** Итог внесения → строка cab_jobs (новая или из очереди). Сразу «прийнято/не прийнято» — Telegram сразу, иначе ждём робота ХТМ. */
+  private static function record(int $uid, string $acc, array $payload, array $r, ?int $jobId = null): array {
     $st = in_array($r['status'], ['ok', 'rejected'], true) ? $r['status'] : 'pending';
     $res = ['text' => mb_substr((string)$r['text'], 0, 400), 'reason' => $r['reason'] ? mb_substr((string)$r['reason'], 0, 400) : null, 'flash' => mb_substr((string)$r['flash'], 0, 300), 'checkedAt' => time()];
-    Db::q('INSERT INTO cab_jobs (user_id, prov, acc, payload, status, result, tries, next_at, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, 0, ?, ?, ?)',
-      [$uid, self::PROV, $acc['acc'], json_encode(['rid' => $rid, 'place' => $place, 'vals' => $vals, 'lang' => self::$lang], JSON_UNESCAPED_UNICODE), $st, json_encode($res, JSON_UNESCAPED_UNICODE),
-       $st === 'pending' ? time() + self::AFTER[0] * 60 : 0, Http::iso(), Http::iso()]);
-    $job = Db::one('SELECT * FROM cab_jobs WHERE id = ?', [Db::id()]);
+    $next = $st === 'pending' ? time() + self::AFTER[0] * 60 : 0;
+    if ($jobId) Db::q('UPDATE cab_jobs SET acc = ?, status = ?, result = ?, tries = 0, next_at = ?, created_at = ?, updated_at = ? WHERE id = ?', [$acc, $st, json_encode($res, JSON_UNESCAPED_UNICODE), $next, Http::iso(), Http::iso(), $jobId]);
+    else Db::q('INSERT INTO cab_jobs (user_id, prov, acc, payload, status, result, tries, next_at, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, 0, ?, ?, ?)',
+      [$uid, self::PROV, $acc, json_encode($payload, JSON_UNESCAPED_UNICODE), $st, json_encode($res, JSON_UNESCAPED_UNICODE), $next, Http::iso(), Http::iso()]);
+    $job = Db::one('SELECT * FROM cab_jobs WHERE id = ?', [$jobId ?: Db::id()]);
     Db::q('INSERT INTO audit_log (user_id, action, ip, created_at) VALUES (?, ?, ?, ?)', [$uid, 'htm_cab_send_' . $st, null, Http::iso()]);
-    self::diag(['op' => 'send', 'user' => $uid, 'result' => $st, 'flash' => CabWeb::mask((string)$r['flash'], 160), 'steps' => $cab->w->steps]);
     if ($st !== 'pending') self::notify($uid, self::pubJob($job));
-    return ['ok' => true, 'job' => self::pubJob($job)];
+    return self::pubJob($job);
+  }
+  /** Внесение из очереди автоподачи: сейчас (кнопка «Внести зараз» или cron по сроку). Не вышло — failed с человеческим текстом и Telegram. */
+  private static function runQueued(array $j): array {
+    $uid = (int)$j['user_id']; $p = self::js($j['payload']); self::$lang = ($p['lang'] ?? '') === 'ru' ? 'ru' : 'uk';
+    // захватываем строку: второй cron или «Внести зараз» в ту же секунду не внесёт дважды
+    if (Db::q("UPDATE cab_jobs SET status = 'sending', updated_at = ? WHERE id = ? AND status = 'queued'", [Http::iso(), $j['id']])->rowCount() !== 1) return self::pubJob(Db::one('SELECT * FROM cab_jobs WHERE id = ?', [$j['id']]));
+    try {
+      [$a, $r] = self::submit($uid, (string)$j['acc'], (array)$p['vals'], (string)($p['phone'] ?? ''), (string)($p['email'] ?? ''), 'auto');
+      return self::record($uid, $a, $p, $r, (int)$j['id']);
+    } catch (Throwable $e) {
+      $why = $e instanceof HttpError ? preg_replace('/^cab_/', '', $e->err) : 'down';
+      $human = $e instanceof HttpError ? (string)($e->extra['human'] ?? '') : self::h('down');
+      Db::q("UPDATE cab_jobs SET status = 'failed', result = ?, next_at = 0, updated_at = ? WHERE id = ?", [json_encode(['why' => $why, 'human' => mb_substr($human, 0, 300), 'field' => $e instanceof HttpError ? ($e->extra['field'] ?? null) : null, 'checkedAt' => time()], JSON_UNESCAPED_UNICODE), Http::iso(), $j['id']]);
+      Db::q('INSERT INTO audit_log (user_id, action, ip, created_at) VALUES (?, ?, ?, ?)', [$uid, 'htm_cab_auto_failed', null, Http::iso()]);
+      $job = self::pubJob(Db::one('SELECT * FROM cab_jobs WHERE id = ?', [$j['id']]));
+      self::notify($uid, $job);
+      return $job;
+    }
+  }
+  private static function queued(int $uid, array $in): array {
+    $j = Db::one("SELECT * FROM cab_jobs WHERE id = ? AND user_id = ? AND prov = ?", [(int)($in['job'] ?? 0), $uid, self::PROV]);
+    if (!$j || $j['status'] !== 'queued') throw self::fail(409, 'no_job', [], $j ? ['job' => self::pubJob($j)] : []);
+    return $j;
+  }
+  /** POST /api/cab/htm/cancel {job} — отменить внесение из очереди автоподачи. */
+  public static function cancel(int $uid, array $in): array {
+    self::lang($in); $j = self::queued($uid, $in);
+    Db::q("UPDATE cab_jobs SET status = 'cancelled', result = ?, next_at = 0, updated_at = ? WHERE id = ? AND status = 'queued'", [json_encode(['why' => 'user', 'checkedAt' => time()]), Http::iso(), $j['id']]);
+    Db::q('INSERT INTO audit_log (user_id, action, ip, created_at) VALUES (?, ?, ?, ?)', [$uid, 'htm_cab_auto_cancel', null, Http::iso()]);
+    self::diag(['op' => 'cancel', 'user' => $uid, 'result' => 'ok']);
+    return ['ok' => true, 'job' => self::pubJob(Db::one('SELECT * FROM cab_jobs WHERE id = ?', [$j['id']]))];
+  }
+  /** POST /api/cab/htm/now {job} — внести из очереди сейчас, не дожидаясь срока. */
+  public static function now(int $uid, array $in): array {
+    self::lang($in); $j = self::queued($uid, $in); self::limit($uid);
+    return ['ok' => true, 'job' => self::runQueued($j)];
   }
 
   // ---------- cron: перечитать журнал ----------
   /** Внесения «на перевірці» — раз в минуту не больше 6, по одному входу на человека. → [[job id, итог], …] */
   public static function cron(?int $now = null): array {
     $now = $now ?? time(); $out = [];
+    // автоподача: срок очереди вышел — вносим (не больше 3 за минуту: каждое — свой вход в кабинет)
+    foreach (Db::q("SELECT * FROM cab_jobs WHERE prov = ? AND status = 'queued' AND next_at <= ? ORDER BY next_at LIMIT 3", [self::PROV, $now])->fetchAll() as $j) {
+      $r = self::runQueued($j); $out[] = [(int)$j['id'], 'auto ' . $r['status']];
+    }
     $jobs = Db::q("SELECT * FROM cab_jobs WHERE prov = ? AND status = 'pending' AND next_at <= ? ORDER BY next_at LIMIT 6", [self::PROV, $now])->fetchAll();
     $by = []; foreach ($jobs as $j) $by[(int)$j['user_id']][] = $j;
     foreach ($by as $uid => $list) {
@@ -287,8 +378,16 @@ final class HtmSvc {
   public static function notify(int $uid, array $job): void {
     $tg = Db::one("SELECT external_id FROM user_identities WHERE user_id = ? AND type = 'telegram'", [$uid]); if (!$tg || !Cfg::get('bot_token')) return;
     $jr = Db::one('SELECT payload FROM cab_jobs WHERE id = ?', [$job['id']]); $ru = (self::js($jr['payload'] ?? '')['lang'] ?? 'uk') === 'ru';
-    $what = ($ru ? 'от ' : 'від ') . $job['date'] . ' (' . $job['energy'] . ($ru ? ' Гкал, счёт ' : ' Гкал, рахунок ') . $job['acc'] . ')';
-    if ($job['status'] === 'ok') $txt = ($ru ? "✅ ХТМ принял показания тепла $what." : "✅ ХТМ прийняв показання тепла $what.") . ($job['text'] !== '' ? "\n«" . $job['text'] . '»' : '');
+    $what = ($ru ? 'от ' : 'від ') . $job['date'] . ' (' . $job['energy'] . ' Гкал' . ($job['acc'] ? ($ru ? ', счёт ' : ', рахунок ') . $job['acc'] : '') . ')';
+    if ($job['status'] === 'cancelled') return;
+    if ($job['status'] === 'queued') {
+      $hm = (new DateTimeImmutable('@' . (int)$job['nextAt']))->setTimezone(new DateTimeZone('Europe/Kyiv'))->format('H:i');
+      $txt = $ru ? "📝 Распознали показания тепла $what — все проверки пройдены.\nВнесём в кабинет ХТМ в $hm. Что-то не так — нажмите «Отменить» в «Счётчиках» до этого времени."
+                 : "📝 Розпізнали показання тепла $what — усі перевірки пройдено.\nВнесемо в кабінет ХТМ о $hm. Щось не так — натисніть «Скасувати» в «Лічильниках» до цього часу.";
+    }
+    elseif ($job['status'] === 'failed') $txt = ($ru ? "⚠️ Не внесли показания тепла $what в кабинет ХТМ.\n" : "⚠️ Не внесли показання тепла $what у кабінет ХТМ.\n") . ($job['human'] ?: self::h('down')) .
+      ($ru ? "\n\nОткройте «Счётчики» — там можно исправить и внести кнопкой или внести самим на сайте ХТМ." : "\n\nВідкрийте «Лічильники» — там можна виправити й внести кнопкою або внести самим на сайті ХТМ.");
+    elseif ($job['status'] === 'ok') $txt = ($ru ? "✅ ХТМ принял показания тепла $what." : "✅ ХТМ прийняв показання тепла $what.") . ($job['text'] !== '' ? "\n«" . $job['text'] . '»' : '');
     elseif ($job['status'] === 'rejected') $txt = ($ru ? "❌ ХТМ не принял показания тепла $what.\nПричина: " : "❌ ХТМ не прийняв показання тепла $what.\nПричина: ") . ($job['reason'] ?: $job['text'] ?: '—') .
       ($ru ? "\n\nОткройте «Счётчики» — подскажем, что исправить, и внесём снова." : "\n\nВідкрийте «Лічильники» — підкажемо, що виправити, і внесемо знову.");
     elseif ($job['why'] === 'relogin') $txt = $ru ? "🔑 Пароль от кабинета ХТМ больше не подходит — робот не может проверить показания $what. Подключите кабинет заново в «Счётчиках» или посмотрите журнал на сайте ХТМ." : "🔑 Пароль від кабінету ХТМ більше не підходить — робот не може перевірити показання $what. Підключіть кабінет знову в «Лічильниках» або подивіться журнал на сайті ХТМ.";

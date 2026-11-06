@@ -26,7 +26,8 @@
 //  POST /api/vk/cab/check {acc, fam} · POST /api/vk/cab/send {acc, fam, items: [{key, value, serial?, name?}], date?}
 //                                   кабинет Водоканала «без реєстрації»: что видит сайт / отправить показания (VkCab, app/vkcab.php)
 //  GET  /api/cab/htm · POST /api/cab/htm/connect {email, password, phone?, consent} · POST /api/cab/forget {prov}
-//  POST /api/cab/htm/check {acc?} · POST /api/cab/htm/send {acc?, rid, place, vals}   кабинет ХТМ по паролю человека (HtmSvc, app/htmsvc.php)
+//  POST /api/cab/htm/check {acc?} · POST /api/cab/htm/send {acc?, rid, place, vals, delay?}   кабинет ХТМ по паролю человека (HtmSvc, app/htmsvc.php)
+//  POST /api/cab/htm/auto {on} · POST /api/cab/htm/cancel {job} · POST /api/cab/htm/now {job}   автоподача: очередь внесений после фото в бот
 //  GET  /api/weather?from&to       средняя за сутки в Харькове (Open-Meteo, кэш) — для истории
 //  POST /api/recognize/local        {ids, results} — итог распознавания в браузере (свой движок, без нейросети) → в аналитику
 //  POST /api/recognize/run          {ids[≤3], offset, ctx} → распознанное (vision-API, ключ в config.php)
@@ -273,6 +274,9 @@ final class Api {
       case 'POST /api/cab/htm/connect': if (!$user) throw new HttpError(401, 'unauthorized'); return HtmSvc::connect((int)$user['id'], $in);
       case 'POST /api/cab/htm/check': if (!$user) throw new HttpError(401, 'unauthorized'); return HtmSvc::check((int)$user['id'], $in);
       case 'POST /api/cab/htm/send': if (!$user) throw new HttpError(401, 'unauthorized'); return HtmSvc::send((int)$user['id'], $in);
+      case 'POST /api/cab/htm/auto': if (!$user) throw new HttpError(401, 'unauthorized'); return HtmSvc::auto((int)$user['id'], $in);
+      case 'POST /api/cab/htm/cancel': if (!$user) throw new HttpError(401, 'unauthorized'); return HtmSvc::cancel((int)$user['id'], $in);
+      case 'POST /api/cab/htm/now': if (!$user) throw new HttpError(401, 'unauthorized'); return HtmSvc::now((int)$user['id'], $in);
       case 'POST /api/cab/forget': if (!$user) throw new HttpError(401, 'unauthorized'); return HtmSvc::forget((int)$user['id'], $in);
       case 'GET /api/weather': return Weather::range((string)($r->query()['from'] ?? ''), (string)($r->query()['to'] ?? ''));   // погода к истории — всем, кэш
       case 'POST /api/docs/upload': {   // документ к счётчику сырым телом: ?place=&kind=passport|verification|other&name=

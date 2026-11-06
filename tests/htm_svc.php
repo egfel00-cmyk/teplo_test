@@ -92,12 +92,69 @@ $r = $b->req('POST', '/api/cab/htm/check', []); ok('пароль не подхо
 ok('…и state bad_login', Db::one('SELECT state FROM cab_creds')['state'] === 'bad_login');
 $r = $b->req('POST', '/api/cab/htm/connect', ['email' => 'test@stand.local', 'password' => 'stand-pass-123', 'consent' => true]); ok('подключить заново', $r->status === 200 && $r->body['state'] === 'ok', $r->body);
 
+// автоподача: фото в бот → приложение проверило → в очередь; cron вносит сам через autoDelay(); можно отменить или «внести зараз»
+stand('act=set&today=2026-11-16&robot_delay=99999'); Db::q('DELETE FROM rate_limits');   // тестов больше, чем 20 заходов в час на человека
+$VA = ['date' => '16.11.2026', 'energy' => '15.200', 'volume' => '2362.7', 'hours' => '35222', 'errHours' => '153'] + $V;   // часы: 10.11 35078 + 6 сут
+$r = $b->req('POST', '/api/cab/htm/send', ['rid' => 'a1', 'place' => 'p1', 'vals' => $VA, 'delay' => true]); ok('автоподача выключена → в очередь нельзя', $r->status === 409 && $r->body['error'] === 'cab_auto_off', $r->body);
+$r = $b->req('GET', '/api/cab/htm'); ok('статус: auto false', $r->body['auto'] === false && $r->body['autoDelay'] >= 60, $r->body);
+$r = $b->req('POST', '/api/cab/htm/auto', ['on' => true]); ok('включить автоподачу', $r->status === 200 && $r->body['auto'] === true, $r->body);
+ok('бот: автоподача включена у человека', HtmSvc::autoOn($uid));
+// бот: фото при автоподаче → кнопка «Розпізнати й внести»
+Telegram::$fetch = fn($id) => base64_decode('/9j/4AAQSkZJRgABAQEASABIAAD/2wBDAP//////////////////////////////////////////////////////////////////////////////////////wgALCAABAAEBAREA/8QAFBABAAAAAAAAAAAAAAAAAAAAAP/aAAgBAQABPxA=');
+@unlink((Cfg::data() ?: sys_get_temp_dir() . '/teplo_data') . '/cache/tgreply_777'); $SENT = [];
+$tp = Telegram::photo(['chat' => ['id' => 777], 'from' => ['id' => 777], 'date' => time(), 'photo' => [['file_id' => 'f1']]], 'uk');
+ok('бот: «Розпізнати й внести» → ?inbox=1&auto=1', !empty($tp['auto']) && str_contains($tp['reply_markup']['inline_keyboard'][0][0]['web_app']['url'] ?? '', '?inbox=1&auto=1') && str_contains($tp['text'], 'внесемо'), $tp);
+$SENT = [];
+$r = $b->req('POST', '/api/cab/htm/send', ['rid' => 'a1', 'place' => 'p1', 'vals' => $VA, 'delay' => true, 'lang' => 'uk']);
+$qj = $r->body['job'] ?? []; $qid = (int)($qj['id'] ?? 0);
+ok('в очередь: queued, срок через autoDelay', $r->status === 200 && $qj['status'] === 'queued' && $qj['auto'] === true && $qj['nextAt'] >= time() + HtmSvc::autoDelay() - 5, $r->body);
+ok('Telegram «📝 внесемо о HH:MM» (по-киевски)', str_starts_with($SENT[0]['text'] ?? '', '📝 Розпізнали') && preg_match('/о \d{2}:\d{2}/u', $SENT[0]['text']) && str_contains($SENT[0]['text'], 'Скасувати'), $SENT);
+$r = $b->req('POST', '/api/cab/htm/send', ['rid' => 'a1', 'place' => 'p1', 'vals' => $VA, 'delay' => true]); ok('повтор того же — та же очередь, не дубль', !empty($r->body['dup']) && $r->body['job']['id'] === $qid, $r->body);
+$n0 = count(HtmSvc::cron(time() + 60)); ok('cron до срока очередь не трогает', Db::one('SELECT status FROM cab_jobs WHERE id = ?', [$qid])['status'] === 'queued');
+$SENT = []; $out = HtmSvc::cron(time() + HtmSvc::autoDelay() + 30);
+ok('cron по сроку внёс сам → на проверке робота ХТМ', in_array([$qid, 'auto pending'], $out, true) && Db::one('SELECT status FROM cab_jobs WHERE id = ?', [$qid])['status'] === 'pending', $out);
+$r = $b->req('GET', '/api/cab/htm'); $jq = array_values(array_filter($r->body['jobs'], fn($j) => $j['id'] === $qid))[0] ?? [];
+ok('…рахунок из кабинета, auto, следующая проверка через 20 мин', $jq['acc'] === '1000000061' && $jq['auto'] === true && $jq['status'] === 'pending' && $jq['nextAt'] > time() + 1000, $jq);
+stand('act=robot'); $SENT = [];
+$out = HtmSvc::cron(time() + 25 * 60); ok('…потом «прийнято» и ✅ в Telegram', in_array([$qid, 'ok'], $out, true) && str_starts_with($SENT[0]['text'] ?? '', '✅'), [$out, $SENT]);
+// отмена
+stand('act=set&today=2026-11-17&robot_delay=99999');
+$r = $b->req('POST', '/api/cab/htm/send', ['rid' => 'a2', 'place' => 'p1', 'vals' => ['date' => '17.11.2026', 'energy' => '15.400', 'hours' => '35246'] + $VA, 'delay' => true]); $c2 = (int)($r->body['job']['id'] ?? 0);
+$r = $b->req('POST', '/api/cab/htm/cancel', ['job' => $c2]); ok('«Скасувати» → cancelled', $r->status === 200 && $r->body['job']['status'] === 'cancelled', $r->body);
+HtmSvc::cron(time() + HtmSvc::autoDelay() + 30); ok('…и cron не вносит', Db::one('SELECT status FROM cab_jobs WHERE id = ?', [$c2])['status'] === 'cancelled');
+$r = $b->req('POST', '/api/cab/htm/cancel', ['job' => $c2]); ok('отменить уже отменённое — cab_no_job', $r->status === 409 && $r->body['error'] === 'cab_no_job', $r->body);
+// «Внести зараз»
+$r = $b->req('POST', '/api/cab/htm/send', ['rid' => 'a3', 'place' => 'p1', 'vals' => ['date' => '17.11.2026', 'energy' => '15.410', 'hours' => '35246'] + $VA, 'delay' => true]); $c3 = (int)($r->body['job']['id'] ?? 0);
+$r = $b->req('POST', '/api/cab/htm/now', ['job' => $c3]); ok('«Внести зараз» → внесено сразу', $r->status === 200 && $r->body['job']['status'] === 'pending' && $r->body['job']['id'] === $c3, $r->body);
+// не прошло правила кабинета на момент внесения → failed с человеческим текстом и ⚠️ в Telegram
+$r = $b->req('POST', '/api/cab/htm/send', ['rid' => 'a4', 'place' => 'p1', 'vals' => ['date' => '17.11.2026', 'energy' => '13.000', 'hours' => '35246'] + $VA, 'delay' => true]); $c4 = (int)($r->body['job']['id'] ?? 0);
+$SENT = []; $out = HtmSvc::cron(time() + HtmSvc::autoDelay() + 30);
+$f4 = HtmSvc::pubJob(Db::one('SELECT * FROM cab_jobs WHERE id = ?', [$c4]));
+ok('меньше последних принятых → failed, ничего не внесено', $f4['status'] === 'failed' && $f4['why'] === 'bad_value' && str_contains((string)$f4['human'], 'Накопичена енергія'), $f4);
+ok('…⚠️ в Telegram с причиной', str_starts_with($SENT[0]['text'] ?? '', '⚠️ Не внесли') && str_contains($SENT[0]['text'], 'Накопичена'), $SENT);
+// окно закрыто к сроку очереди
+stand('act=set&today=2026-11-26&robot_delay=99999');
+$r = $b->req('POST', '/api/cab/htm/send', ['rid' => 'a5', 'place' => 'p1', 'vals' => ['date' => '19.11.2026', 'energy' => '15.600', 'hours' => '35200'] + $VA, 'delay' => true]); $c5 = (int)($r->body['job']['id'] ?? 0);
+HtmSvc::cron(time() + HtmSvc::autoDelay() + 30); $f5 = HtmSvc::pubJob(Db::one('SELECT * FROM cab_jobs WHERE id = ?', [$c5]));
+ok('прийом закрито → failed closed', $f5['status'] === 'failed' && $f5['why'] === 'closed', $f5);
+// выключить автоподачу — очередь отменяется
+stand('act=set&today=2026-11-18&robot_delay=99999');
+$r = $b->req('POST', '/api/cab/htm/send', ['rid' => 'a6', 'place' => 'p1', 'vals' => ['date' => '18.11.2026', 'energy' => '15.700', 'hours' => '35210'] + $VA, 'delay' => true]); $c6 = (int)($r->body['job']['id'] ?? 0);
+$r = $b->req('POST', '/api/cab/htm/auto', ['on' => false]); ok('выключить автоподачу → очередь отменена', $r->body['auto'] === false && Db::one('SELECT status FROM cab_jobs WHERE id = ?', [$c6])['status'] === 'cancelled', $r->body);
+@unlink((Cfg::data() ?: sys_get_temp_dir() . '/teplo_data') . '/cache/tgreply_777');
+$tp = Telegram::photo(['chat' => ['id' => 777], 'from' => ['id' => 777], 'date' => time(), 'photo' => [['file_id' => 'f2']]], 'uk');
+ok('бот без автоподачи — прежняя кнопка «Розпізнати фото»', empty($tp['auto']) && str_ends_with($tp['reply_markup']['inline_keyboard'][0][0]['web_app']['url'] ?? '', '?inbox=1'), $tp);
+Db::q('DELETE FROM rate_limits');
+$r = $b->req('POST', '/api/cab/htm/auto', ['on' => true]); $r = $b->req('POST', '/api/cab/htm/send', ['rid' => 'a7', 'place' => 'p1', 'vals' => ['date' => '18.11.2026', 'energy' => '15.800', 'hours' => '35220'] + $VA, 'delay' => true]); $c7 = (int)($r->body['job']['id'] ?? 0);
+
 // «Забути пароль»: вход удалён, внесения на проверке → unknown без сообщения
 stand('act=set&today=2026-11-21&robot_delay=99999');
 $r = $b->req('POST', '/api/cab/htm/send', ['rid' => 'r6', 'vals' => ['date' => '21.11.2026', 'energy' => '15.300', 'volume' => '2341', 'hours' => '35200', 'errHours' => '153'] + $V]); ok('ещё внесение', ($r->body['job']['status'] ?? '') === 'pending', $r->body);
 $r = $b->req('POST', '/api/cab/forget', ['prov' => 'htm']);
 ok('забыть пароль: входа нет', $r->status === 200 && $r->body['connected'] === false && !Db::one('SELECT id FROM cab_creds'), $r->body);
-ok('…внесение на проверке → unknown (forgot)', ($r->body['jobs'][0]['status'] ?? '') === 'unknown' && $r->body['jobs'][0]['why'] === 'forgot', $r->body['jobs'][0] ?? null);
+$jf = array_values(array_filter($r->body['jobs'], fn($j) => $j['rid'] === 'r6'))[0] ?? [];
+ok('…внесение на проверке → unknown (forgot)', ($jf['status'] ?? '') === 'unknown' && $jf['why'] === 'forgot', $jf);
+ok('…очередь автоподачи → cancelled', Db::one('SELECT status FROM cab_jobs WHERE id = ?', [$c7])['status'] === 'cancelled');
 $r = $b->req('POST', '/api/cab/htm/send', ['rid' => 'r7', 'vals' => $V]); ok('без кабинета — cab_off', $r->status === 409 && $r->body['error'] === 'cab_off', $r->body);
 $b2 = new B(); $r = $b2->req('GET', '/api/cab/htm'); ok('без входа в сервис — 401', $r->status === 401);
 stand('act=reset'); stand('act=set&scenario=ok');

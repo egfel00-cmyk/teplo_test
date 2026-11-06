@@ -2817,8 +2817,11 @@
     ((HC.st && HC.st.jobs) || []).forEach(function (j) {
       var r = j.rid && hcRec(j.rid); if (!r || !r.cab || r.cab.job !== j.id) return;
       var c = { job: j.id, at: j.at, status: j.status, nextAt: j.nextAt, why: j.why || null, text: String(j.text || '').slice(0, 400) };
+      if (j.human) c.human = String(j.human).slice(0, 300);
       if (JSON.stringify(c) !== JSON.stringify(r.cab)) { r.cab = c; r.updatedAt = Date.now(); ch = true; }
       if (r.status !== 'handed') return;
+      // автоподача: скасовано або робот не зміг внести — запис знову «перевірено»: виправити чи внести кнопкою
+      if (j.status === 'failed' || j.status === 'cancelled') { r.status = 'checked'; delete r.handedAt; r.updatedAt = Date.now(); ch = true; return; }
       if (j.status === 'ok') {
         r.status = 'accepted'; r.result = { at: new Date((j.checkedAt || j.at || Date.now() / 1000) * 1000).toISOString(), via: 'cab' }; r.updatedAt = Date.now(); ch = true;
         var p = place(r.place) || place(); if (p && p.id === S.placeId) S.baseline = Object.assign({}, r.htm); else if (p) { p.baseline = Object.assign({}, r.htm); p.updatedAt = Date.now(); }
@@ -2834,6 +2837,26 @@
     var accs = (HC.st && HC.st.accounts) || [], p = (r && place(r.place)) || place(), m = p && p.id === S.placeId ? S.meter : p && p.meter, my = String((m && m.account) || '').replace(/\D/g, '');
     var hit = accs.filter(function (a) { return a.acc === my; })[0]; if (hit) return hit;
     return accs.length === 1 ? accs[0] : null;
+  }
+  function hcAutoOn() { return !!(hcConn() && HC.st.auto); }
+  function hcHM(sec) { var d = new Date(sec * 1000); return ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2); }
+  /** Автоподача: поставити перевірений запис у чергу сервера (робот внесе сам через autoDelay, можна скасувати). */
+  function hcQueue(r, acc) {
+    var vals = {}; R.FIELDS.forEach(function (f) { vals[f.key] = R.formatForHtm(f.key, r.htm[f.key]); });
+    var c = S.contacts || {};
+    hcCall('send', '/cab/htm/send', { acc: acc ? acc.acc : '', rid: r.id, place: r.place || S.placeId, vals: vals, phone: c.phone || '', email: c.email || '', delay: true }, function (j) {
+      var jb = j.job; if (HC.st) HC.st.jobs = [jb].concat((HC.st.jobs || []).filter(function (x) { return x.id !== jb.id; }));
+      r.status = 'handed'; r.handedAt = new Date().toISOString(); r.cab = { job: jb.id, at: jb.at, status: jb.status, nextAt: jb.nextAt, auto: true }; r.updatedAt = Date.now();
+      var p = place(r.place) || place(), m = p && p.id === S.placeId ? S.meter : p && p.meter; if (m && !m.account && acc) m.account = acc.acc;
+      hcApply(); S.focusId = r.id; save(); toast(jb.status === 'queued' ? t('ha_toast', { at: hcHM(jb.nextAt) }) : t('hc_toast')); go('status');
+    });
+  }
+  /** Перемикач автоподачі на екрані кабінету (окрема згода: вносити без «Так, внести» після фото в бот). */
+  function hcAutoBox() {
+    var on = !!HC.st.auto, m = Math.round((HC.st.autoDelay || 600) / 60);
+    return '<div class="panel ha" data-key="ha-box"><h2>' + ico('camera', 20) + '<span>' + esc(t('ha_t')) + '</span></h2><p class="small">' + esc(t('ha_sub', { m: m })) + '</p>' +
+      '<label class="hc-consent"><input type="checkbox" data-act="hc-auto" data-key="ha-toggle"' + (on ? ' checked' : '') + (HC.busy ? ' disabled' : '') + '> <span>' + esc(t('ha_consent', { m: m })) + '</span></label>' +
+      (on ? '<p class="small ok-ink" data-key="ha-on">' + ico('check', 16) + ' ' + esc(t('ha_on_hint')) + '</p>' : '') + '</div>';
   }
   function hcErrBox(e) {
     if (!e) return '';
@@ -2876,12 +2899,15 @@
   function hcWait(r) {
     hcLoad();
     var c = r.cab || {}, tg = Y().account && Y().account.telegram, at = c.nextAt ? new Date(c.nextAt * 1000) : null;
+    if (c.status === 'queued' || c.status === 'sending') return '<div class="banner" data-key="status-cab-queued">' + ico('clock', 22) + '<div><p><b>' + esc(t(c.status === 'sending' ? 'ha_sending' : 'ha_q_t', { at: c.nextAt ? hcHM(c.nextAt) : '…' })) + '</b></p><p>' + esc(t('ha_q_sub')) + '</p>' +
+      (c.status === 'queued' ? '<div class="row-actions" style="margin-top:8px"><button class="btn" data-act="hc-now" data-id="' + esc(String(c.job)) + '" data-key="status-cab-now"' + (HC.busy ? ' disabled' : '') + '>' + (HC.busy === 'now' ? SPIN + '<span>' + esc(t('hc_sending')) + '</span>' : ico('send', 18) + '<span>' + esc(t('ha_now')) + '</span>') + '</button>' +
+        '<button class="btn sec" data-act="hc-unqueue" data-id="' + esc(String(c.job)) + '" data-key="status-cab-cancel"' + (HC.busy ? ' disabled' : '') + '>' + esc(t('ha_cancel')) + '</button></div>' : '') + hcErrBox(HC.err) + '</div></div>';
     if (c.status === 'unknown') return '<div class="banner warn" data-key="status-cab-unknown">' + ico('clock', 22) + '<div><p><b>' + esc(t(c.why === 'relogin' ? 'hc_u_relogin' : c.why === 'forgot' ? 'hc_u_forgot' : 'hc_u_slow')) + '</b></p><p>' + esc(t('hc_u_self')) + '</p></div></div>';
     return '<div class="banner" data-key="status-cab-wait">' + ico('clock', 22) + '<div><p><b>' + esc(t('hc_w_t')) + '</b></p><p>' + esc(t('hc_w_ago', { ago: ago(r.handedAt) })) + '</p>' +
       '<p>' + esc(t(tg ? 'hc_w_tg' : 'hc_w_here', { at: at ? ('0' + at.getHours()).slice(-2) + ':' + ('0' + at.getMinutes()).slice(-2) : '…' })) + '</p>' +
       '<p><button class="linkbtn" data-act="hc-refresh" data-key="status-cab-refresh">' + (HC.loading ? SPIN + ' ' : '') + esc(t('hc_refresh')) + '</button></p></div></div>';
   }
-  function hcJobPill(j) { var k = { ok: 'ok', rejected: 'bad', pending: 'neutral', unknown: 'warn' }[j.status] || 'neutral'; return '<span class="pill ' + k + '">' + esc(t('hc_j_' + j.status)) + '</span>'; }
+  function hcJobPill(j) { var k = { ok: 'ok', rejected: 'bad', pending: 'neutral', unknown: 'warn', queued: 'neutral', sending: 'neutral', failed: 'bad', cancelled: 'neutral' }[j.status] || 'neutral'; return '<span class="pill ' + k + '">' + esc(t('hc_j_' + j.status)) + '</span>'; }
   /** Що бачить кабінет (POST /cab/htm/check): прилад, останні прийняті, прийом показань, журнал, форма. */
   function hcCheckBox(c) {
     if (!c) return '';
@@ -2920,10 +2946,10 @@
       (accs.length === 1 ? '<p class="small">' + esc(t('hc_acc1', { a: accs[0].acc, s: accs[0].sur })) + '</p>' : hcPickAcc()) +
       (acc && S.meter && String(S.meter.account || '').replace(/\D/g, '') !== acc.acc && accs.length === 1 && S.meter.account ? '<p class="small warn-ink">' + ico('alert', 16) + ' ' + esc(t('hc_acc_diff', { a: S.meter.account })) + '</p>' : '') +
       hcErrBox(HC.err) + hcCheckBox(HC.check) +
-      '<div class="row-actions"><button class="btn' + (HC.check ? ' sec' : '') + '" data-act="hc-check" data-key="hc-check-go"' + (HC.busy ? ' disabled' : '') + '>' + (HC.busy === 'check' ? SPIN + '<span>' + esc(t('hc_checking')) + '</span>' : esc(t('hc_check'))) + '</button></div>';
+      '<div class="row-actions"><button class="btn' + (HC.check ? ' sec' : '') + '" data-act="hc-check" data-key="hc-check-go"' + (HC.busy ? ' disabled' : '') + '>' + (HC.busy === 'check' ? SPIN + '<span>' + esc(t('hc_checking')) + '</span>' : esc(t('hc_check'))) + '</button></div>' + hcAutoBox();
     var jobs = (st.jobs || []).slice(0, 6);
     if (jobs.length) h += '<h2 class="section-title">' + esc(t('hc_jobs')) + '</h2><ul class="list hc-jobs" data-key="hc-jobs">' + jobs.map(function (j) {
-      return '<li><div><b>' + esc(j.date) + '</b> · <span class="num">' + esc(j.energy) + '</span> Гкал <span class="muted small">' + esc(t('hc_c_acc_s', { a: j.acc })) + '</span>' + (j.reason ? '<div class="small muted">' + esc(j.reason) + '</div>' : '') + '</div>' + hcJobPill(j) + '</li>'; }).join('') + '</ul>';
+      return '<li><div><b>' + esc(j.date) + '</b> · <span class="num">' + esc(j.energy) + '</span> Гкал <span class="muted small">' + esc(t('hc_c_acc_s', { a: j.acc })) + '</span>' + (j.reason || j.human ? '<div class="small muted">' + esc(j.reason || j.human) + '</div>' : '') + '</div>' + hcJobPill(j) + '</li>'; }).join('') + '</ul>';
     h += '<div class="panel" style="margin-top:24px" data-key="hc-forget-box"><p class="small">' + esc(t('hc_forget_sub')) + '</p>' +
       (HC.forget ? '<div class="banner warn">' + ico('alert', 22) + '<div><p>' + esc(t('hc_forget_q')) + '</p><div class="row-actions" style="margin-top:8px"><button class="btn sec" data-act="hc-forget-no">' + esc(t('cancel')) + '</button><button class="btn danger solid" data-act="hc-forget-yes" data-key="hc-forget-yes"' + (HC.busy ? ' disabled' : '') + '>' + esc(t('hc_forget')) + '</button></div></div></div>'
         : '<button class="btn danger" data-act="hc-forget" data-key="hc-forget">' + esc(t('hc_forget')) + '</button>') + '</div>';
@@ -2937,6 +2963,7 @@
         HC.err = { error: j.error, human: j.human || (j.error === 'rate_limited' ? t('hc_busy') : t('hc_fail')), site: j.site, field: j.field }; if (j.accounts && HC.st) HC.st.accounts = j.accounts;
         if (j.error === 'cab_bad_login' && HC.form) HC.form.pass = '';   // невірний пароль — набрати заново, як на будь-якому вході
         if (j.error === 'cab_relogin') HC.at = 0;
+        if (j.job && HC.st) { HC.st.jobs = [j.job].concat((HC.st.jobs || []).filter(function (x) { return x.id !== j.job.id; })); if (hcApply()) save(); }
       }
       render(true);
     }, function () { HC.busy = ''; HC.err = { error: 'net', human: t('hc_fail') }; render(true); });
@@ -2956,7 +2983,7 @@
     });
   }
   setInterval(function () {
-    if (document.visibilityState === 'visible' && hcOn() && (S.readings || []).some(function (r) { return r && !r.deleted && r.status === 'handed' && r.cab && r.cab.status === 'pending'; })) hcLoad(true);
+    if (document.visibilityState === 'visible' && hcOn() && (S.readings || []).some(function (r) { return r && !r.deleted && r.status === 'handed' && r.cab && /^(pending|queued|sending)$/.test(r.cab.status); })) hcLoad(true);
   }, 60000);
   document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'visible' && /^(heat|handover|status|htmcab|history)$/.test(routeName())) hcLoad(true); });
   document.addEventListener('submit', function (e) {
@@ -2979,6 +3006,7 @@
     var a = el.getAttribute('data-act');
     if (a === 'hc-show') { var pw = document.getElementById('hc-pass'); HC.showPass = el.checked; if (pw) pw.type = el.checked ? 'text' : 'password'; return; }
     if (a === 'hc-acc') { if (S.meter) { S.meter.account = el.value; save(); } HC.err = null; render(true); return; }
+    if (a === 'hc-auto') { var want = !!el.checked; hcCall('auto', '/cab/htm/auto', { on: want }, function (j) { HC.st = j; HC.at = Date.now(); if (hcApply()) save(); toast(t(want ? 'ha_on' : 'ha_off')); }); return; }
     e.preventDefault();
     if (a === 'hc-ask') { HC.confirm = el.getAttribute('data-id'); HC.err = null; render(true); var cf = document.querySelector('[data-key="hc-confirm"]'); if (cf && cf.scrollIntoView) cf.scrollIntoView({ block: 'center' }); }
     else if (a === 'hc-cancel') { HC.confirm = null; HC.err = null; render(true); }
@@ -2986,6 +3014,10 @@
     else if (a === 'hc-refresh') { hcLoad(true); render(true); }
     else if (a === 'hc-check') hcCall('check', '/cab/htm/check', { acc: (hcAcc() || {}).acc || '' }, function (c) { HC.check = c; hcLoad(true); });
     else if (a === 'hc-forget') { HC.forget = true; render(true); }
+    else if (a === 'hc-now' || a === 'hc-unqueue') hcCall(a === 'hc-now' ? 'now' : 'unqueue', a === 'hc-now' ? '/cab/htm/now' : '/cab/htm/cancel', { job: +el.getAttribute('data-id') }, function (j) {
+      var jb = j.job; if (HC.st) HC.st.jobs = [jb].concat((HC.st.jobs || []).filter(function (x) { return x.id !== jb.id; }));
+      if (hcApply()) save(); toast(t(a === 'hc-now' ? (jb.status === 'failed' ? 'ha_failed_t' : 'hc_toast') : 'ha_cancelled_toast')); render(true);
+    });
     else if (a === 'hc-forget-no') { HC.forget = false; render(true); }
     else if (a === 'hc-forget-yes') hcCall('forget', '/cab/forget', { prov: 'htm' }, function (j) { HC.st = j; HC.forget = false; HC.check = null; hcApply(); save(); toast(t('hc_forgot')); });
   });
@@ -3489,6 +3521,13 @@
         '<form id="reject-form" data-id="' + r.id + '" style="display:none;margin-top:24px" novalidate><div class="field"><label for="rej-text">' + esc(t('st_paste')) + '</label><div class="ctl"><textarea id="rej-text" placeholder="Статус: Показання не прийняті з причини: …"></textarea></div></div>' +
         '<button type="submit" class="btn" data-key="status-decode">' + esc(t('st_decode')) + '</button></form>' +
         '<p style="margin-top:24px"><a href="' + HTM_URL + '" target="_blank" rel="noopener">' + esc(t('ho_open')) + '</a></p>';
+    } else if (r.status === 'checked' && r.cab && /^(failed|cancelled)$/.test(r.cab.status)) {
+      // автоподача не внесла (скасовано або робот не зміг) — показання збережено: виправити або внести кнопкою
+      var fl = r.cab.status === 'failed';
+      body = '<div class="banner ' + (fl ? 'bad' : '') + '" data-key="status-cab-' + r.cab.status + '">' + ico(fl ? 'alert' : 'info', 22) + '<div><p><b>' + esc(t(fl ? 'ha_failed_t' : 'ha_cancelled')) + '</b></p>' +
+        (fl && r.cab.human ? '<p>' + esc(r.cab.human) + '</p>' : '') + '<p class="small">' + esc(t('ha_failed_fix')) + '</p></div></div>' +
+        '<div class="row-actions"><button class="btn" data-act="ha-handover" data-id="' + r.id + '" data-key="status-cab-handover">' + ico('send', 18) + '<span>' + esc(t('ha_go_send')) + '</span></button>' +
+        '<button class="btn sec" data-act="refix" data-id="' + r.id + '" data-key="status-refix">' + esc(t('st_refix')) + '</button></div>';
     } else {
       body = '<p><span class="pill">' + esc(t('status_' + r.status)) + '</span></p><a class="btn" href="#home">' + esc(t('nav_home')) + '</a>';
     }
@@ -4589,6 +4628,7 @@
   function inboxRun() {
     var items = (INBOX.items || []).slice(); if (!items.length) return;
     phReset('reading'); PH.inbox = items.map(function (x) { return x.id; }); PH.status = 'working'; PH.progress = t('ib_loading'); PH.pct = 2;
+    PH.inboxAt = Math.max.apply(null, items.map(function (x) { return +x.takenAt || 0; })); hcLoad(true);   // автоподача: дата зняття — коли сфотографовано
     var gen = ++PH_GEN; PH.gen = gen;
     go('photo');
     Promise.all(items.map(function (x) {
@@ -4678,7 +4718,7 @@
     return shell_(lead + err + input + (PH.files.length ? thumbs(true) : '') + date + '<div class="row-actions">' + pick + go_ + '</div>' + '<p class="small muted" style="margin-top:16px">' + esc(t('ph_privacy')) + '</p>');
   }
   function photoResult() {
-    var p = PH.picked || {}, res = PH.result || {}, mt = res.meter || {}, h = '';
+    var p = PH.picked || {}, res = PH.result || {}, mt = res.meter || {}, h = phAutoBanner();
     var mm = mt.modelId ? M.byId(mt.modelId) : null;
     if (mm && (!S.meter || S.meter.modelId !== mm.id)) h += '<div class="banner" data-key="photo-meter">' + ico('info', 22) + '<div><p><b>' + esc(t('ph_meter_found', { m: modelName(mm) })) + '</b></p><p><button class="linkbtn" data-act="ph-use-model" data-id="' + mm.id + '" data-unit="' + esc(mt.energyUnit || '') + '">' + esc(t('ph_meter_use')) + '</button></p></div></div>';
     var noteTxt = function (x) { return x.note ? (t('pn_' + x.note) !== 'pn_' + x.note && t('pn_' + x.note) ? t('pn_' + x.note) : x.note) : ''; };
@@ -4801,7 +4841,9 @@
       var unit = PH.mode === 'baseline' ? 'Gcal' : (res.meter && res.meter.energyUnit && !S.meter) ? res.meter.energyUnit : energyUnit();
       PH.picked = y.pick(res, M.TO_GCAL, unit);
       if (!Object.keys(PH.picked).length) { PH.status = 'idle'; PH.error = phErr('nothing'); render(true); return; }
-      PH.status = 'done'; PH.vals = null; PHS.save(false); render(true);
+      PH.status = 'done'; PH.vals = null; PH.autoWhy = null;
+      if (PH.inbox && PH.mode === 'reading' && hcAutoOn() && phAuto()) return;
+      PHS.save(false); render(true);
     }, function (e) {
       if (PH.gen !== gen) return;
       if (PH.ctl) try { PH.ctl.abort(); } catch (x) { /* нет */ }
@@ -4862,6 +4904,50 @@
     var need = WN.photos.some(function (p) { return !p.res; });
     go('wnew');
     if (need) wnRun([]); else { wnAssign(); render(true); wnCheck(true); }
+  }
+  /** Автоподача (фото з бота, увімкнено на екрані кабінету ХТМ): чому НЕ вносимо самі — або null, якщо все гаразд.
+   *  Вносимо лише те, що прочитано впевнено, повністю й без жодного зауваження перевірки — інакше звичайна перевірка людиною. */
+  function phAutoWhy() {
+    var p = PH.picked || {}, keys = R.FIELDS.filter(function (f) { return f.key !== 'date'; }).map(function (f) { return f.key; });
+    if (PH.waterIdx && PH.waterIdx.length) return { k: 'mixed' };
+    if (!S.meter || !model()) return { k: 'meter' };
+    if (!S.baseline || !S.baseline.date) return { k: 'base' };
+    var miss = keys.filter(function (k) { return !p[k] || String(p[k].value) === ''; });
+    if (miss.length) return { k: 'missing', list: miss.map(function (k) { return fieldLabel(k).toLowerCase(); }).join(', ') };
+    var unsure = keys.filter(function (k) { return p[k].conflict || !(p[k].confidence >= 0.85); });
+    if (unsure.length) return { k: 'unsure', list: unsure.map(function (k) { return fieldLabel(k).toLowerCase(); }).join(', ') };
+    if (windowClosed()) return { k: 'closed' };
+    if (!hcConn()) return { k: 'cab' };
+    var heatPl = places().filter(function (x) { var m = x.id === S.placeId ? S.meter : x.meter; return m && !m.removed; });
+    var my = String((S.meter && S.meter.account) || '').replace(/\D/g, ''), acc = hcAcc();
+    if (!acc) return { k: 'acc' };
+    if (heatPl.length > 1 && acc.acc !== my) return { k: 'place' };   // кілька квартир з опаленням — лише з явно вписаним рахунком
+    if (!((S.contacts || {}).phone || HC.st.phone)) return { k: 'phone' };
+    var d = phAutoDraft(), res = runCheck(d);
+    if (res.verdict !== 'ok') return { k: 'check', res: res };
+    return null;
+  }
+  function phAutoDraft() {
+    var p = PH.picked || {}, vals = {}, conf = {};
+    R.FIELDS.forEach(function (f) { if (f.key !== 'date' && p[f.key]) { vals[f.key] = String(p[f.key].value); conf[f.key] = p[f.key].confidence; } });
+    var d = PH.inboxAt ? R.ymd(new Date(PH.inboxAt * 1000)) : today(); if (d > today()) d = today();
+    return { date: d, values: vals, step: steps().length - 1, source: 'photo', photoConf: conf, auto: true, startedAt: new Date().toISOString() };
+  }
+  /** Усе прочитано й перевірено → запис «перевірено» + черга внесення (робот внесе сам, можна скасувати). true — зроблено. */
+  function phAuto() {
+    var why = phAutoWhy(); if (why) { PH.autoWhy = why; return false; }
+    var files = PH.files.slice(), inbox = PH.inbox;
+    S.draft = phAutoDraft(); S._lastCheck = runCheck(S.draft); phReport(S.draft.values);
+    var rd = saveReading('checked'); rd.auto = true; delete S._lastCheck;
+    PH.inbox = inbox; inboxDone(); phReset('reading');
+    Promise.race([VIS().pendingUploads || Promise.resolve(), new Promise(function (ok) { setTimeout(ok, 5000); })]).then(function () { rd.photos = photoRefs(files.map(function (f) { return { file: f }; })); rd.updatedAt = Date.now(); save(); });
+    // спершу — «Передайте в ХТМ» цього запису: не вдасться поставити в чергу (мережа, ліміт) — там причина й кнопка «Внести»; вдалося — «Статус»
+    S.focusId = rd.id; save(); go('handover'); hcQueue(rd, hcAcc(rd));
+    return true;
+  }
+  function phAutoBanner() {
+    var w = PH.autoWhy; if (!w) return '';
+    return '<div class="banner warn" data-key="photo-auto-why" data-why="' + esc(w.k) + '">' + ico('info', 22) + '<div><p><b>' + esc(t('ha_why_t')) + '</b></p><p>' + esc(t('ha_why_' + w.k, { list: w.list || '' })) + '</p><p class="small">' + esc(t('ha_why_sub')) + '</p></div></div>';
   }
   function phApply() {
     inboxDone();
@@ -5260,6 +5346,7 @@
         render(); break;
       }
       case 'show-reject': { var f = document.getElementById('reject-form'); if (f) { f.style.display = ''; document.getElementById('rej-text').focus(); } break; }
+      case 'ha-handover': S.focusId = el.getAttribute('data-id'); HC.confirm = null; HC.err = null; save(); go('handover'); break;
       case 'refix': {
         var rr = RD().filter(function (x) { return x.id === el.getAttribute('data-id'); })[0];
         if (rr) { S.draft = { date: rr.htm.date, values: Object.assign({}, rr.raw), step: steps().length - 1, fixOf: rr.id }; save(); go('check'); }
