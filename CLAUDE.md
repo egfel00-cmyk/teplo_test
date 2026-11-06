@@ -2,12 +2,15 @@
 
 ## Где живёт и как попадает на сервер
 - Репозиторий github.com/egfel00-cmyk/teplo_test, ветка main. Корень репозитория = корень сайта.
-- Сервер pokabot (Hetzner, за Cloudflare) подтягивает main раз в минуту (`/srv/sites/teplo_test`).
-  Адрес сейчас: https://pokabot.xyz/teplo_test/ — позже свой домен (тогда поменять адрес здесь).
+- Сервер pokabot (Hetzner, за Cloudflare Tunnel — ingress в /etc/cloudflared/config.yml на сервере) подтягивает main раз в минуту
+  (`/srv/sites/teplo_test`). Адрес: **https://peredai.com.ua/** (свой домен с 06.11.2026, SITE_BASE=''); старый
+  https://pokabot.xyz/teplo_test/… отвечает 301 на новый.
 - Всё запушенное в main через минуту на бою. Коммитить и пушить сразу и автоматически — не ждать команды.
 - Доступа к серверу у сессий НЕТ (ни SSH, ни панели). Всё серверное — только кодом в репозитории. Настройку сервера
   (Caddy, PHP, база) меняет владелец одной командой: sudo bash /srv/app/tools_site_add.sh teplo_test [--domain …].
-- После пуша — проверить на бою: curl -s -o /dev/null -w '%{http_code}' https://pokabot.xyz/teplo_test/… (через 1–2 мин).
+- После пуша — проверить на бою (через 1–2 мин): curl -s -o /dev/null -w '%{http_code}' https://peredai.com.ua/…
+  Если прокси сессии не пускает peredai.com.ua (нет в разрешённых доменах) — GET через WebFetch (JSON, напр. /api/health) или
+  встроенный браузер владельца (если чат связан с его компьютером); pokabot.xyz/teplo_test/… теперь только 301.
 
 ## Как устроен сервер для сайта (PHP 8.5, Caddy 2.6, MariaDB 11.8)
 - index.php — фронт-контроллер: любой путь, которого нет файлом, уходит в /index.php.
