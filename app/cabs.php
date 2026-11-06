@@ -106,7 +106,7 @@ final class CabProbe {
   /** Пора ли пробовать: раз в 30 минут (минута 11 и 41) или сразу после новой версии пробы. */
   public static function due(?int $now = null): bool { $now = $now ?? time(); return ((int)gmdate('i', $now) % 30 === 11) || (int)(self::read()['v'] ?? 0) !== self::V; }
   public static function one(string $k): array {
-    $s = self::SITES[$k]; $w = new CabWeb($s['host'], 14.0, $s['cs']); $t = microtime(true);
+    $s = self::SITES[$k]; $w = new CabWeb($s['host'], 10.0, $s['cs']); $t = microtime(true);
     $r = $w->req('GET', $s['url']);
     $o = ['code' => $r['code'], 'ms' => (int)round((microtime(true) - $t) * 1000), 'at' => gmdate('c')];
     if ($r['err']) $o['err'] = mb_substr((string)$r['err'], 0, 80);
@@ -122,14 +122,18 @@ final class CabProbe {
     $o['ok'] = $r['code'] === 200 && !empty($o['form']) && empty($o['widget']) && empty($o['cf']) && empty($o['captchaProp']);
     return $o;
   }
+  private static function save(array $j): void { @mkdir(dirname(self::file()), 0700, true); @file_put_contents(self::file(), json_encode($j, JSON_UNESCAPED_UNICODE), LOCK_EX); }
+  /** Пробует сайты по одному и пишет итог после каждого — если cron оборвут на медленном сайте, остальное уже видно. */
   public static function run(): array {
-    $out = ['v' => self::V, 'at' => gmdate('c')];
-    foreach (array_keys(self::SITES) as $k) { try { $out[$k] = self::one($k); } catch (Throwable $e) { $out[$k] = ['code' => 0, 'err' => mb_substr($e->getMessage(), 0, 80), 'ok' => false]; } }
-    $prev = self::read();
-    foreach (array_keys(self::SITES) as $k) {   // когда последний раз открывался — чтобы видеть «был доступен, перестал»
-      $out[$k]['lastOk'] = !empty($out[$k]['ok']) ? $out[$k]['at'] : ($prev[$k]['lastOk'] ?? null);
+    $prev = self::read(); $out = ['v' => self::V, 'at' => gmdate('c'), 'running' => true] + array_intersect_key($prev, self::SITES);
+    self::save($out);
+    foreach (array_keys(self::SITES) as $k) {
+      $out[$k] = ['code' => 0, 'err' => 'started', 'ok' => false, 'at' => gmdate('c')] + ['lastOk' => $prev[$k]['lastOk'] ?? null]; self::save($out);
+      try { $o = self::one($k); } catch (Throwable $e) { $o = ['code' => 0, 'err' => mb_substr($e->getMessage(), 0, 80), 'ok' => false, 'at' => gmdate('c')]; }
+      $o['lastOk'] = !empty($o['ok']) ? $o['at'] : ($prev[$k]['lastOk'] ?? null);   // когда последний раз открывался
+      $out[$k] = $o; self::save($out);
     }
-    @mkdir(dirname(self::file()), 0700, true); @file_put_contents(self::file(), json_encode($out, JSON_UNESCAPED_UNICODE), LOCK_EX);
+    unset($out['running']); self::save($out);
     return $out;
   }
 }
