@@ -2166,6 +2166,19 @@ details.tbl-acc[open] > .tbl-wrap { margin-top: 12px; }
       cab_bg_note: "Буде надіслано останні зібрані показання: {what}.",
       cab_bg_heat: "від {d} — {e} Гкал{a}",
       cab_bg_acc: ", рахунок {a}",
+      vc_title: "Сайт Водоканалу",
+      vc_conn_btn: "Підключити сайт Водоканалу",
+      vc_conn_ok: "Сайт Водоканалу підключено",
+      vc_need: "Підключіть сайт Водоканалу — особовий рахунок і прізвище, як у квитанції, — і надсилатимемо показання самі, без бота.",
+      vc_pitch: "Надсилатимемо показання води на сайт Харківводоканалу самі — кнопкою «Відправити у фоні» або автоматично після фото в бот, якщо ввімкнете. Пароль не потрібен: сайт пускає за особовим рахунком і прізвищем, як у квитанції.",
+      vc_go: "Підключити й перевірити",
+      vc_on_sub: "Внесете показання води — і в «Куди передати» буде «Відправити у фоні».",
+      vc_edit: "Змінити",
+      vc_auto_t: "Автовідправка після фото в бот",
+      vc_auto_on: "Увімкнено: надішліть фото холодного водоміра нашому боту й натисніть «Розпізнати й внести».",
+      vc_sn_h: "Точно як у квитанції — сайт Водоканалу звіряє.",
+      vc_bad: "Впишіть особовий рахунок (від 5 цифр) і прізвище — як у квитанції Водоканалу.",
+      vc_down: "Сайт Водоканалу зараз не відкривається з нашого сервера — передавайте через бота Водоканалу. Щойно сайт запрацює, тут можна буде підключитися.",
       cab_conn_btn: "Підключити кабінет",
       cab_conn_ok: "Кабінет підключено",
       cab_bg_off: "Підключіть кабінет — і показання можна буде відправляти у фоні: робот внесе їх і перевірить, чи прийняли.",
@@ -3234,6 +3247,19 @@ details.tbl-acc[open] > .tbl-wrap { margin-top: 12px; }
       cab_bg_note: "Будут отправлены последние собранные показания: {what}.",
       cab_bg_heat: "от {d} — {e} Гкал{a}",
       cab_bg_acc: ", счёт {a}",
+      vc_title: "Сайт Водоканала",
+      vc_conn_btn: "Подключить сайт Водоканала",
+      vc_conn_ok: "Сайт Водоканала подключён",
+      vc_need: "Подключите сайт Водоканала — лицевой счёт и фамилию, как в квитанции, — и будем отправлять показания сами, без бота.",
+      vc_pitch: "Будем отправлять показания воды на сайт Харьковводоканала сами — кнопкой «Отправить в фоне» или автоматически после фото в бот, если включите. Пароль не нужен: сайт пускает по лицевому счёту и фамилии, как в квитанции.",
+      vc_go: "Подключить и проверить",
+      vc_on_sub: "Внесёте показания воды — и в «Куда передать» будет «Отправить в фоне».",
+      vc_edit: "Изменить",
+      vc_auto_t: "Автоотправка после фото в бот",
+      vc_auto_on: "Включено: пришлите фото холодного водомера нашему боту и нажмите «Распознать и внести».",
+      vc_sn_h: "Точно как в квитанции — сайт Водоканала сверяет.",
+      vc_bad: "Впишите лицевой счёт (от 5 цифр) и фамилию — как в квитанции Водоканала.",
+      vc_down: "Сайт Водоканала сейчас не открывается с нашего сервера — передавайте через бота Водоканала. Как только сайт заработает, здесь можно будет подключиться.",
       cab_conn_btn: "Подключить кабинет",
       cab_conn_ok: "Кабинет подключён",
       cab_bg_off: "Подключите кабинет — и показания можно будет отправлять в фоне: робот внесёт их и проверит, приняли ли.",
@@ -6724,7 +6750,7 @@ details.tbl-acc[open] > .tbl-wrap { margin-top: 12px; }
     var vkBody = '', vkChans = [[Wt.VK_BOT, t('wd_bot', { b: '@hvk_user_bot' }), 'send', 'bot'], [Wt.VK_CABINET, t('wd_cab_vk'), 'ext', 'cab']];
     if (rec) {
       var cmd = Wt.vkCommand(wcfg().account, wcfg().surname, ms, rec.vals || {});
-      if (cmd.noAccount) vkBody = '<p>' + esc(t('ws_need_acc')) + '</p>' + waccForm();
+      if (cmd.noAccount) vkBody = vkcOn() ? '<p class="small" data-key="vc-need">' + esc(t('vc_need')) + '</p>' : '<p>' + esc(t('ws_need_acc')) + '</p>' + waccForm();
 
       // ID лічильників ще немає: бот покаже їх на /1= — відкриваємо його з готовою командою; переслана нам відповідь — номери кнопками
       else if (cmd.missing.length) vkBody = '<ol class="wsteps"><li>' + esc(t('vk_ids_1')) + '<div class="cmd"><code>' + esc(cmd.info) + '</code></div>' +
@@ -6764,8 +6790,13 @@ details.tbl-acc[open] > .tbl-wrap { margin-top: 12px; }
       (places().length > 1 ? '<p class="dest-place" style="--pc:var(--pc-' + placeColor(place()) + ')" data-key="where-place"><b>' + esc(t('wd_for', { p: placeLabel(place()) })) + '</b>' + (placeSub(place()) ? '<span class="small muted"> · ' + esc(placeSub(place())) + '</span>' : '') + '</p>' : '') +
       (rec ? '' : '<p class="small muted">' + esc(t('wd_lead')) + '</p>');
     vkBody = vkStatusLine() + vkBody;
+    // сайт Водоканалу — равноценная кнопка в ряду каналов, как «Підключити кабінет» у тепла (просьба владельца 06.11): не подключён — «Підключити сайт Водоканалу»;
+    // подключён, а показаний ещё нет — «Сайт Водоканалу підключено» (туда же); есть показания — выделенная «Відправити у фоні» (vjBox) вместо этого ряда
+    var vg2 = vkcGate(), vkChx = '';
+    if (vg2 === 'acc') vkChx = '<a class="btn sec" href="#vkcab" data-key="vk-connect">' + ico('plus', 18) + '<span>' + esc(t('vc_conn_btn')) + '</span></a>';
+    else if (vg2 === 'ok' && !rec) vkChx = '<a class="btn sec" href="#vkcab" data-key="vk-conn-on">' + ico('check', 18) + '<span>' + esc(t('vc_conn_ok')) + '</span></a>';
     h += destBox({ key: 'vk', id: 'wsend-vk', org: t('wd_vk_org'), what: kind === 'cold' ? t('wd_vk_cold') : kind === 'hot' ? t('wd_vk_hot') : t('wd_vk_both'),
-      due: vkDue, dueTone: w.open && w.daysLeft <= 3 ? 'warn' : 'neutral', sent: rec && wsentVk(rec), body: vkBody, chans: vkChans,
+      due: vkDue, dueTone: w.open && w.daysLeft <= 3 ? 'warn' : 'neutral', sent: rec && wsentVk(rec), body: vkBody, chans: vkChans, chx: vkChans.length || !rec ? vkChx : '',
       more: '<p class="dm-t">' + esc(t('wd_vk_call')) + '</p><ul class="dm-ph"><li>' + telLink('+380577075851', '(057) 707-58-51') + '<span class="muted">' + esc(t('wd_vk_24')) + '</span></li><li><b>(050) 355-12-12</b><span class="muted">Viber</span></li></ul>', mark: rec && rec.vkAt && !wsentVk(rec) ? '' : mark('vk', rec && wsentVk(rec)) });
     // ХТМ: сама гаряча вода — лише бот і кол-центр (у кабінеті ХТМ форми для гарячої води немає)
     if (withHtm) h += destBox({ key: 'htm', org: t('wd_htm_org'), what: t('wd_htm_what'), sent: rec && wsentHtm(rec),
@@ -6861,7 +6892,7 @@ details.tbl-acc[open] > .tbl-wrap { margin-top: 12px; }
   /** Показань цього місяця ще немає: шлях через сайт видно одразу — що потрібно (вхід, рахунок), «Перевірити» (що бачить сайт). */
   function vkcPre(g, kind, ms) {
     if (g === 'login') return vkcHead() + '<p class="small">' + esc(t('vkc_login')) + '</p><p><a class="btn sec" href="#login" data-key="vkc-login">' + esc(t('login')) + '</a></p></div>';
-    if (g === 'acc') return vkcHead() + '<p class="small">' + esc(t('vkc_need_acc')) + '</p>' + waccForm() + '</div>';
+    if (g === 'acc') return vkcHead() + '<p class="small" data-key="vc-need">' + esc(t('vc_need')) + '</p></div>';
     return vkcBox(null, ms) + '<p class="small" data-key="vk-need-rec">' + esc(t('vkc_need_rec')) + '</p>' +
       '<div class="row-actions"><button class="btn" data-act="wnew" data-kind="' + esc(kind || (wmeters('hot').length ? 'hot' : 'cold')) + '" data-key="vkc-add">' + ico('plus', 18) + '<span>' + esc(t('wn_title')) + '</span></button></div>';
   }
@@ -7040,12 +7071,53 @@ details.tbl-acc[open] > .tbl-wrap { margin-top: 12px; }
     h += '</div>';
     var c = wcfg(), accOk = String(c.account || '').replace(/\D/g, '').length >= 5 && String(c.surname || '').trim(), on = vjAutoOn(), m = Math.round(((VJ.st && VJ.st.autoDelay) || 600) / 60);
     h += '<div class="panel" data-key="prefs-cab-vk"><h2>' + ico('drop', 20, 'c-cold') + '<span>' + esc(t('pc_vk_t')) + '</span></h2><p class="small muted">' + esc(t('pc_vk_sub')) + '</p>' +
-      (accOk ? '' : '<p class="small warn-ink" data-key="prefs-vk-need">' + ico('alert', 16) + ' ' + esc(t('pc_vk_need')) + '</p>') +
+      (accOk ? '' : '<p class="small warn-ink" data-key="prefs-vk-need">' + ico('alert', 16) + ' ' + esc(t('pc_vk_need')) + '</p><p><a class="btn sec" href="#vkcab" data-key="prefs-vk-connect">' + ico('plus', 18) + '<span>' + esc(t('vc_conn_btn')) + '</span></a></p>') +
       '<label class="hc-consent"><input type="checkbox" data-act="vj-auto" data-key="prefs-vk-auto"' + (on ? ' checked' : '') + (VJ.busy || !VJ.st ? ' disabled' : '') + '> <span>' + esc(t('pc_vk_auto', { m: m })) + '</span></label>' +
       (VJ.err && !VJ.errFor ? '<div class="banner bad" role="alert">' + ico('alert', 22) + '<div><p>' + esc(VJ.err.human) + '</p></div></div>' : '') +
-      (on ? '<div class="row-actions"><button class="btn danger" data-act="vj-off" data-key="prefs-vk-off"' + (VJ.busy ? ' disabled' : '') + '>' + esc(t('pc_vk_off_btn')) + '</button></div>' : '') + '</div>';
+      '<div class="row-actions">' + (accOk ? '<a class="btn sec" href="#vkcab" data-key="prefs-vk-manage">' + esc(t('pc_manage')) + '</a>' : '') + (on ? '<button class="btn danger" data-act="vj-off" data-key="prefs-vk-off"' + (VJ.busy ? ' disabled' : '') + '>' + esc(t('pc_vk_off_btn')) + '</button>' : '') + '</div></div>';
     return h;
   }
+  // ================= «Сайт Водоканалу» (#vkcab): як «Кабінет ХТМ» для тепла =================
+  // Пароля немає: сайт Водоканалу пускає за особовим рахунком і прізвищем (як у квитанції). Вони — у налаштуваннях води квартири (wcfg),
+  // на сервер ідуть лише разом із надсиланням. «Підключити» = вписати їх і перевірити на сайті; там же — згода на автовідправку.
+  var VCE = { edit: false };
+  V.vkcab = function () {
+    var back = wmeters('cold').length ? 'water-cold' : wmeters('hot').length ? 'water-hot' : 'home';
+    var h = '<div class="wiz-top"><a class="btn ghost" href="#' + back + '">' + ico('back', 20) + '<span>' + esc(t('back')) + '</span></a></div><h1>' + esc(t('vc_title')) + '</h1>' + wherePlaceLine();
+    var out = function (x) { return { screen: 'S30v', route: 'vkcab', bare: true, closeTo: back, html: h + x }; };
+    if (!hcOn()) return out('<p>' + esc(t('vc_pitch')) + '</p><p>' + esc(t('vkc_login')) + '</p><a class="btn" href="#login" data-key="vc-login">' + esc(t('login')) + '</a>');
+    vksLoad(); vjLoad();
+    if (!VKS.data) return out('<p class="muted">' + SPIN + ' ' + esc(t('hc_loading')) + '</p>');
+    if (!vkcAvail()) return out('<div class="banner warn" data-key="vc-down">' + ico('alert', 22) + '<div><p>' + esc(t('vc_down')) + '</p></div></div>');
+    var c = wcfg(), ms = wmeters();
+    if (vkcGate() !== 'ok' || VCE.edit) {
+      return out('<p>' + esc(t('vc_pitch')) + '</p><form id="vc-form" class="panel" novalidate data-key="vc-form">' + waccFields('vc', c, true) +
+        '<p class="small muted">' + esc(t('pc_vk_sub')) + ' <a href="#privacy">' + esc(t('hc_privacy')) + '</a></p>' +
+        '<div class="row-actions"><button type="submit" class="btn big" data-key="vc-go">' + esc(t('vc_go')) + '</button>' +
+        (VCE.edit && vkcGate() === 'ok' ? '<button type="button" class="btn sec" data-act="vc-edit-no">' + esc(t('cancel')) + '</button>' : '') + '</div></form>');
+    }
+    var acc = String(c.account || '').replace(/\D/g, ''), m = Math.round(((VJ.st && VJ.st.autoDelay) || 600) / 60);
+    return out('<div class="verdict ok" data-key="vc-on">' + levelIco('ok', 28) + '<span>' + esc(t('vc_conn_ok')) + '</span></div>' +
+      '<p>' + esc(t('vc_on_sub')) + '</p><p class="small">' + esc(t('vkc_acc_line', { a: acc, f: String(c.surname || '').trim() })) + ' <button class="linkbtn" data-act="vc-edit" data-key="vc-edit">' + esc(t('vc_edit')) + '</button></p>' +
+      vkcBox(null, ms) +
+      '<div class="panel hc ha" data-key="vc-auto-box"><h2>' + ico('camera', 20) + '<span>' + esc(t('vc_auto_t')) + '</span></h2><label class="hc-consent"><input type="checkbox" data-act="vj-auto" data-key="vc-auto"' + (vjAutoOn() ? ' checked' : '') + (VJ.busy || !VJ.st ? ' disabled' : '') + '> <span>' + esc(t('pc_vk_auto', { m: m })) + '</span></label>' +
+      (vjAutoOn() ? '<p class="small ok-ink" data-key="vc-auto-on">' + ico('check', 16) + ' ' + esc(t('vc_auto_on')) + '</p>' : '') +
+      (VJ.err && !VJ.errFor ? '<div class="banner bad" role="alert">' + ico('alert', 22) + '<div><p>' + esc(VJ.err.human) + '</p></div></div>' : '') + '</div>' +
+      '<p class="small muted">' + esc(t('pc_vk_sub')) + '</p>');
+  };
+  document.addEventListener('click', function (e) {
+    var el = e.target.closest && e.target.closest('[data-act="vc-edit"], [data-act="vc-edit-no"]'); if (!el) return;
+    e.preventDefault(); VCE.edit = el.getAttribute('data-act') === 'vc-edit'; render(true);
+  });
+  // «Підключити й перевірити»: рахунок і прізвище — у налаштування води квартири, потім «Перевірити на сайті Водоканалу» (що бачить сайт — нижче)
+  document.addEventListener('submit', function (e) {
+    if (!e.target || e.target.id !== 'vc-form') return; e.preventDefault();
+    var a = (document.getElementById('vc-acc') || {}).value || '', sn = (document.getElementById('vc-sn') || {}).value || '';
+    a = String(a).trim(); sn = String(sn).trim();
+    if (a.replace(/\D/g, '').length < 5 || !sn) { toast(t('vc_bad')); return; }
+    wsetCfg(function (cf) { cf.account = a; cf.surname = sn; });
+    VCE.edit = false; vkcCheck();
+  }, true);
   function cabsSub() { var n = (hcOn() && hcConn() ? 1 : 0) + (vjAutoOn() ? 1 : 0); return n ? t('pc_sub_on', { n: n }) : t('pg_cabs_s'); }
   /** Фото водомірів із бота при автовідправці: чому НЕ надсилаємо самі — або null. Лише холодна, усе прочитано впевнено, без зауважень перевірки. */
   function wnAutoWhy() {
@@ -7085,9 +7157,11 @@ details.tbl-acc[open] > .tbl-wrap { margin-top: 12px; }
     return waccFields('w', c);
   }
   /** Особовий рахунок Водоканалу і прізвище (одні на квартиру) — поля з копіюванням. pre — префікс id (на сторінці може бути двічі). */
-  function waccFields(pre, c) {
-    return '<div class="grid2"><div class="field"><label for="' + pre + '-acc">' + esc(t('wa_acc')) + '</label><div class="ctl"><input id="' + pre + '-acc" class="num" inputmode="numeric" autocomplete="off" data-wcfg="account" value="' + esc(c.account || '') + '">' + ctlCopy(pre + '-acc') + '</div><div class="help">' + esc(t('wa_acc_h')) + '</div></div>' +
-      '<div class="field"><label for="' + pre + '-sn">' + esc(t('wa_sn')) + '</label><div class="ctl"><input id="' + pre + '-sn" autocomplete="family-name" data-wcfg="surname" value="' + esc(c.surname || '') + '">' + ctlCopy(pre + '-sn') + '</div><div class="help">' + esc(t('wa_sn_h')) + '</div></div></div>';
+  function waccFields(pre, c, onSubmit) {
+    // onSubmit — поля формы (экран «Сайт Водоканалу»): сохраняем только по кнопке, а не каждое изменение
+    var a = onSubmit ? '' : ' data-wcfg="account"', f = onSubmit ? '' : ' data-wcfg="surname"';
+    return '<div class="grid2"><div class="field"><label for="' + pre + '-acc">' + esc(t('wa_acc')) + '</label><div class="ctl"><input id="' + pre + '-acc" class="num" inputmode="numeric" autocomplete="off"' + a + ' value="' + esc(c.account || '') + '">' + ctlCopy(pre + '-acc') + '</div><div class="help">' + esc(t('wa_acc_h')) + '</div></div>' +
+      '<div class="field"><label for="' + pre + '-sn">' + esc(t('wa_sn')) + '</label><div class="ctl"><input id="' + pre + '-sn" autocomplete="family-name"' + f + ' value="' + esc(c.surname || '') + '">' + ctlCopy(pre + '-sn') + '</div><div class="help">' + esc(t(onSubmit ? 'vc_sn_h' : 'wa_sn_h')) + '</div></div></div>';
   }
   function wmeterIdForm() {
     return '<div class="grid2">' + wmeters().map(function (m) { return '<div class="field"><label for="wid-' + m.id + '">' + esc(t('wm_vkid_for', { m: wname(m) })) + '</label><div class="ctl"><input id="wid-' + m.id + '" class="num" inputmode="numeric" autocomplete="off" data-wm="' + m.id + '" data-wf="vkId" value="' + esc(m.vkId || '') + '"></div></div>'; }).join('') + '</div>' +

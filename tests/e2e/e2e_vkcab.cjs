@@ -83,7 +83,8 @@ const cab = (state) => { const n = Math.floor(Date.now() / 1000); fs.mkdirSync(D
   await p.click('[data-key=vkc-add]'); await wait(500);
   ok('…«Внести показання» → ввод воды', /wnew/.test(p.url()) || !!(await p.$('[data-key=wn-save], .wiz')), p.url());
   await noRec("s.places[0].water.account = '';");
-  ok('нет рахунку → «потрібні особовий рахунок і прізвище» и поля прямо в блоке', await vis('[data-key=vkc] #w-acc') && /особовий рахунок і прізвище/.test(await p.textContent('[data-key=vkc]')));
+  // с 06.11 (просьба владельца): полей в блоке нет — «Підключіть сайт Водоканалу…» и равноценная кнопка «Підключити сайт Водоканалу» → #vkcab
+  ok('нет рахунку → «Підключіть сайт Водоканалу» и кнопка «Підключити сайт Водоканалу» в ряду каналов', !(await p.$('[data-key=vkc] #w-acc')) && /особовий рахунок і прізвище/.test(await p.textContent('[data-key=vkc]')) && await vis('[data-key=vk-connect]'));
   await p.evaluate(() => window.TeploSync.logout()); await noRec();
   ok('не вошёл → «Увійдіть — і сервіс сам внесе показання на сайті Водоканалу» с кнопкой входа', await vis('[data-key=vkc-login]') && /Увійдіть/.test(await p.textContent('[data-key=vkc]')));
   ok('без ошибок JS', errs.length === 0, errs);
