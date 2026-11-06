@@ -2784,11 +2784,212 @@
     if (ld && ld.via !== 'htm') return '<section class="panel where" data-key="where-heat"><h2>' + ico('send', 20) + '<span>' + esc(t('wd_title')) + '</span></h2>' + wherePlaceLine() + localDest('heat', ld, '', '', false) + '</section>';
     var ready = RD().filter(function (r) { return r.status === 'checked'; }).slice(-1)[0], w = R.windowState(today());
     var due = w.state === 'closed_before' ? t('wd_heat_from', { d: fmtDate(dayOfMonth(today(), 5)) }) : w.state === 'closed_after' ? t('wd_heat_from', { d: fmtDate(nextMonthDay(today(), 5)) }) : t('wd_due', { d: fmtDate(dayOfMonth(today(), 25)) });
-    var body = ready ? '<div class="row-actions" style="margin-top:8px"><a class="btn" href="#handover" data-act="focus" data-id="' + ready.id + '" data-key="where-heat-handover">' + ico('copy', 18) + '<span>' + esc(t('wd_heat_ready', { d: fmtDate(ready.htm.date) })) + '</span></a></div>' : '';
+    if (hcOn()) hcLoad();
+    var on = hcOn() && hcConn();
+    var body = (ready ? '<div class="row-actions" style="margin-top:8px"><a class="btn" href="#handover" data-act="focus" data-id="' + ready.id + '" data-key="where-heat-handover">' + ico(on ? 'send' : 'copy', 18) + '<span>' + esc(t(on ? 'hc_where_ready' : 'wd_heat_ready', { d: fmtDate(ready.htm.date) })) + '</span></a></div>' : '') +
+      // кабінет ХТМ: підключено — робот внесе сам; ні — запросити підключити (лише тим, хто увійшов: пароль живе на сервері)
+      (on ? '<p class="small" data-key="where-heat-cab-on">' + ico('check', 16) + ' ' + esc(t('hc_where_on')) + ' <a href="#htmcab">' + esc(t('hc_manage_s')) + '</a></p>'
+        : hcOn() && HC.st ? '<p class="small" data-key="where-heat-cab-off"><a href="#htmcab">' + esc(t('hc_connect')) + '</a> — ' + esc(t('hc_where_off')) + '</p>' : '');
     return '<section class="panel where" data-key="where-heat"><h2>' + ico('send', 20) + '<span>' + esc(t('wd_title')) + '</span></h2>' +
       destBox({ key: 'htm-heat', org: t('wd_htm_org'), what: t('wd_heat_what'), due: due, dueTone: w.state === 'late' || w.state === 'last_day' ? 'warn' : 'neutral', body: body,
         chans: [[HTM_URL, t('ho_open'), 'ext', 'cab']], more: esc(t('wd_heat_more')) + ' ' + telLink('+380573414140', '(057) 341-41-40') }) + '</section>';
   }
+  // ================= кабінет ХТМ: робот вносить показання за людину (сервер, app/htmsvc.php) =================
+  // Пароль від кабінету — лише на сервері, зашифрований; тут — стан (підключено, рахунки, внесення й їх перевірка роботом ХТМ).
+  // Внесення — лише натисканням «Внести» з повтором суті («Перевірте»). Підсумок перевірки ХТМ приходить із сервера (cron) → запис історії.
+  // form — набране у формі підключення (пароль лише в пам'яті сторінки, не в стані й не в localStorage), щоб перемальовка після помилки його не стирала
+  var HC = { acc: 0, st: null, at: 0, loading: false, busy: '', err: null, check: null, confirm: null, forget: false, showPass: false, form: null };
+  function hcOn() { return !!(window.TEPLO_API && Y().mode === 'server' && Y().account); }
+  function hcConn() { return !!(HC.st && HC.st.connected && HC.st.state !== 'bad_login'); }
+  function hcLoad(force) {
+    if (!hcOn() || HC.loading || (!force && Date.now() - HC.at < 15000)) return;
+    HC.loading = true; HC.at = Date.now();
+    Y().api('GET', '/cab/htm').then(function (j) {
+      HC.loading = false; if (j._status !== 200) return;
+      var before = JSON.stringify(HC.st); HC.st = j; var ch = hcApply();
+      if (ch) save(); if (ch || before !== JSON.stringify(j)) safeRender();
+    }, function () { HC.loading = false; });
+  }
+  function hcRec(id) { return (S.readings || []).filter(function (x) { return x && !x.deleted && x.id === id; })[0] || null; }
+  /** Підсумки внесень → записи історії: прийнято / не прийнято (з порадою, як у ручному «вставте статус»). Позначене людиною вручну не чіпаємо. */
+  function hcApply() {
+    var ch = false;
+    ((HC.st && HC.st.jobs) || []).forEach(function (j) {
+      var r = j.rid && hcRec(j.rid); if (!r || !r.cab || r.cab.job !== j.id) return;
+      var c = { job: j.id, at: j.at, status: j.status, nextAt: j.nextAt, why: j.why || null, text: String(j.text || '').slice(0, 400) };
+      if (JSON.stringify(c) !== JSON.stringify(r.cab)) { r.cab = c; r.updatedAt = Date.now(); ch = true; }
+      if (r.status !== 'handed') return;
+      if (j.status === 'ok') {
+        r.status = 'accepted'; r.result = { at: new Date((j.checkedAt || j.at || Date.now() / 1000) * 1000).toISOString(), via: 'cab' }; r.updatedAt = Date.now(); ch = true;
+        var p = place(r.place) || place(); if (p && p.id === S.placeId) S.baseline = Object.assign({}, r.htm); else if (p) { p.baseline = Object.assign({}, r.htm); p.updatedAt = Date.now(); }
+      } else if (j.status === 'rejected') {
+        var txt = j.text || ('Показання не прийняті з причини: ' + (j.reason || '')), dec = R.decodeRobot(txt);
+        r.status = 'rejected'; r.robot = { text: txt, code: dec.code, fix: dec.fix || null, via: 'cab' }; r.updatedAt = Date.now(); ch = true;
+      }
+    });
+    return ch;
+  }
+  /** Рахунок ХТМ квартири запису: з налаштувань лічильника, якщо він є в кабінеті; один у кабінеті — він. */
+  function hcAcc(r) {
+    var accs = (HC.st && HC.st.accounts) || [], p = (r && place(r.place)) || place(), m = p && p.id === S.placeId ? S.meter : p && p.meter, my = String((m && m.account) || '').replace(/\D/g, '');
+    var hit = accs.filter(function (a) { return a.acc === my; })[0]; if (hit) return hit;
+    return accs.length === 1 ? accs[0] : null;
+  }
+  function hcErrBox(e) {
+    if (!e) return '';
+    return '<div class="banner bad" role="alert" data-key="hc-err" data-err="' + esc(e.error || '') + '">' + ico('alert', 22) + '<div><p>' + esc(e.human || t('hc_fail')) + '</p>' +
+      (e.site ? '<p class="small muted">' + esc(t('hc_site')) + ' «' + esc(String(e.site).slice(0, 300)) + '»</p>' : '') + '</div></div>';
+  }
+  /** Вибір рахунку квартири, коли в кабінеті їх кілька (записуємо в налаштування теплолічильника цієї квартири). */
+  function hcPickAcc() {
+    var accs = (HC.st && HC.st.accounts) || [], cur = hcAcc();
+    if (accs.length < 2) return '';
+    return '<fieldset class="vkc-pick" data-key="hc-pick"><legend class="small">' + esc(t('hc_pick', { p: placeLabel(place()) })) + '</legend>' + accs.map(function (a) {
+      return '<label class="vkc-opt"><input type="radio" name="hc-acc" data-act="hc-acc" value="' + esc(a.acc) + '"' + (cur && cur.acc === a.acc ? ' checked' : '') + '><span class="num">' + esc(a.acc) + '</span> <span class="muted">' + esc(a.sur) + '</span></label>'; }).join('') + '</fieldset>';
+  }
+  /** Панель на екрані «Передайте в ХТМ»: підключити кабінет / «Внести в кабінет ХТМ» з підтвердженням / вже внесено. */
+  function hcPanel(r) {
+    var h = '<div class="panel hc" data-key="handover-auto" id="hc-panel"><h2>' + ico('send', 20) + '<span>' + esc(t('hc_auto_t')) + '</span></h2>';
+    if (!hcOn()) return h + '<p class="small">' + esc(t('hc_need_login')) + '</p><a class="btn sec" href="#login" data-key="hc-login">' + esc(t('login')) + '</a></div>';
+    hcLoad();
+    if (!HC.st) return h + '<p class="small muted">' + SPIN + ' ' + esc(t('hc_loading')) + '</p></div>';
+    if (!hcConn()) return h + '<p class="small">' + esc(t(HC.st.state === 'bad_login' ? 'hc_relogin' : 'hc_pitch')) + '</p><a class="btn" href="#htmcab" data-key="hc-connect">' + ico('plus', 18) + '<span>' + esc(t('hc_connect')) + '</span></a></div>';
+    if (r.cab && (r.cab.status === 'pending' || r.cab.status === 'ok')) return h + '<p class="small">' + esc(t(r.cab.status === 'ok' ? 'hc_done_ok' : 'hc_done_wait')) + '</p><a class="btn sec" href="#status" data-act="focus" data-id="' + esc(r.id) + '" data-key="hc-status">' + esc(t('rec_status')) + '</a></div>';
+    var acc = hcAcc(r), c = S.contacts || {};
+    h += '<p class="small">' + esc(t('hc_ready', { e: HC.st.login })) + '</p>';
+    if (!acc) return h + hcPickAcc() + '</div>';
+    if (HC.confirm === r.id) {
+      h += '<div class="vkc-sum" data-key="hc-confirm" role="group" aria-label="' + esc(t('hc_check_t')) + '"><p class="small"><b>' + esc(t('hc_check_t')) + '</b></p><ul class="small">' +
+        '<li>' + esc(t('hc_c_place', { p: placeLabel(place(r.place) || place()) })) + '</li><li>' + esc(t('hc_c_acc', { a: acc.acc, s: acc.sur })) + '</li>' +
+        '<li>' + esc(t('hc_c_vals', { d: R.formatForHtm('date', r.htm.date), e: R.formatForHtm('energy', r.htm.energy) })) + '</li>' +
+        '<li>' + esc(t('hc_c_contact', { p: c.phone || (HC.st.phone || '—'), m: c.email || HC.st.login })) + '</li></ul>' + hcErrBox(HC.err) +
+        '<div class="row-actions"><button class="btn" data-act="hc-send" data-id="' + esc(r.id) + '" data-key="hc-send"' + (HC.busy ? ' disabled' : '') + '>' +
+        (HC.busy === 'send' ? SPIN + '<span>' + esc(t('hc_sending')) + '</span>' : ico('send', 18) + '<span>' + esc(t('hc_send_yes')) + '</span>') + '</button>' +
+        '<button class="btn sec" data-act="hc-cancel" data-key="hc-cancel"' + (HC.busy ? ' disabled' : '') + '>' + esc(t('cancel')) + '</button></div></div>';
+    } else {
+      h += hcErrBox(HC.err) + (!(c.phone || HC.st.phone) ? '<p class="small warn-ink" data-key="hc-nophone">' + ico('alert', 16) + ' ' + esc(t('hc_nophone')) + ' <a href="#prefs">' + esc(t('nav_prefs')) + '</a></p>' : '') +
+        '<button class="btn big block" data-act="hc-ask" data-id="' + esc(r.id) + '" data-key="hc-ask">' + ico('send', 22) + '<span>' + esc(t('hc_send')) + '</span></button>';
+    }
+    return h + '<p class="small muted" style="margin-top:8px"><a href="#htmcab" data-key="hc-manage">' + esc(t('hc_manage')) + '</a></p></div>';
+  }
+  /** На «Статусі»: внесено роботом — чекаємо перевірки ХТМ; сервер сам перечитує журнал і пише в Telegram. */
+  function hcWait(r) {
+    hcLoad();
+    var c = r.cab || {}, tg = Y().account && Y().account.telegram, at = c.nextAt ? new Date(c.nextAt * 1000) : null;
+    if (c.status === 'unknown') return '<div class="banner warn" data-key="status-cab-unknown">' + ico('clock', 22) + '<div><p><b>' + esc(t(c.why === 'relogin' ? 'hc_u_relogin' : c.why === 'forgot' ? 'hc_u_forgot' : 'hc_u_slow')) + '</b></p><p>' + esc(t('hc_u_self')) + '</p></div></div>';
+    return '<div class="banner" data-key="status-cab-wait">' + ico('clock', 22) + '<div><p><b>' + esc(t('hc_w_t')) + '</b></p><p>' + esc(t('hc_w_ago', { ago: ago(r.handedAt) })) + '</p>' +
+      '<p>' + esc(t(tg ? 'hc_w_tg' : 'hc_w_here', { at: at ? ('0' + at.getHours()).slice(-2) + ':' + ('0' + at.getMinutes()).slice(-2) : '…' })) + '</p>' +
+      '<p><button class="linkbtn" data-act="hc-refresh" data-key="status-cab-refresh">' + (HC.loading ? SPIN + ' ' : '') + esc(t('hc_refresh')) + '</button></p></div></div>';
+  }
+  function hcJobPill(j) { var k = { ok: 'ok', rejected: 'bad', pending: 'neutral', unknown: 'warn' }[j.status] || 'neutral'; return '<span class="pill ' + k + '">' + esc(t('hc_j_' + j.status)) + '</span>'; }
+  /** Що бачить кабінет (POST /cab/htm/check): прилад, останні прийняті, прийом показань, журнал, форма. */
+  function hcCheckBox(c) {
+    if (!c) return '';
+    var b = c.base || {}, rows = [];
+    if (c.meter) rows.push([t('hc_k_meter'), c.meter.model + ' № ' + c.meter.serial]);
+    if (b.date) rows.push([t('hc_k_last'), b.date + ' · ' + (b.energy || '—') + ' Гкал']);
+    rows.push([t('hc_k_open'), c.open ? t('hc_open_yes', { a: c.min || '', b: c.max || '' }) : (c.closed || t('hc_open_no'))]);
+    var jr = (c.journal || []).slice(0, 4).map(function (x) { return '<li>' + esc(x.date) + ' · <span class="num">' + esc(x.energy) + '</span> ' + hcJobPill({ status: x.status === 'ok' ? 'ok' : x.status === 'rejected' ? 'rejected' : 'pending' }) + (x.reason ? '<div class="small muted">' + esc(x.reason) + '</div>' : '') + '</li>'; }).join('');
+    var form = c.form || {};
+    return '<div class="panel" data-key="hc-check"><h3>' + esc(t('hc_seen')) + '</h3><dl class="hc-kv">' + rows.map(function (x) { return '<dt>' + esc(x[0]) + '</dt><dd>' + esc(x[1]) + '</dd>'; }).join('') + '</dl>' +
+      (jr ? '<p class="small" style="margin-top:12px"><b>' + esc(t('hc_k_journal')) + '</b></p><ul class="list small hc-jr">' + jr + '</ul>' : '') +
+      (form.open ? '<p class="small ' + (form.match ? '' : 'warn-ink') + '" data-key="hc-form" data-match="' + (form.match ? 1 : 0) + '">' + ico(form.match ? 'check' : 'alert', 16) + ' ' + esc(t(form.match ? 'hc_form_ok' : 'hc_form_bad')) + '</p>' : '') + '</div>';
+  }
+  V.htmcab = function () {
+    var h = '<div class="wiz-top"><a class="btn ghost" href="#heat">' + ico('back', 20) + '<span>' + esc(t('back')) + '</span></a></div><h1>' + esc(t('hc_title')) + '</h1>';
+    if (!hcOn()) return { screen: 'S07c', route: 'htmcab', bare: true, closeTo: 'heat', html: h + '<p>' + esc(t('hc_pitch')) + '</p><p>' + esc(t('hc_need_login')) + '</p><a class="btn" href="#login">' + esc(t('login')) + '</a>' };
+    hcLoad();
+    if (!HC.st) return { screen: 'S07c', route: 'htmcab', bare: true, closeTo: 'heat', html: h + '<p class="muted">' + SPIN + ' ' + esc(t('hc_loading')) + '</p>' };
+    if (!hcConn()) {
+      var c = S.contacts || {}, fm = HC.form || {};
+      h += (HC.st.state === 'bad_login' ? '<div class="banner warn">' + ico('alert', 22) + '<div><p>' + esc(t('hc_relogin')) + '</p></div></div>' : '') +
+        '<p>' + esc(t('hc_lead')) + '</p><ul class="small hc-how"><li>' + esc(t('hc_how1')) + '</li><li>' + esc(t('hc_how2')) + '</li><li>' + esc(t('hc_how3')) + '</li></ul>' +
+        '<form id="hc-form" class="panel" novalidate data-key="hc-form-connect">' +
+        '<div class="field"><label for="hc-email">' + esc(t('hc_email')) + '</label><div class="ctl"><input id="hc-email" type="email" inputmode="email" autocomplete="username" spellcheck="false" value="' + esc(fm.email !== undefined ? fm.email : HC.st.login || c.email || '') + '"></div><div class="help">' + esc(t('hc_email_h')) + '</div></div>' +
+        '<div class="field"><label for="hc-pass">' + esc(t('hc_pass')) + '</label><div class="ctl"><input id="hc-pass" type="' + (HC.showPass ? 'text' : 'password') + '" autocomplete="current-password" spellcheck="false" value="' + esc(fm.pass || '') + '"></div>' +
+        '<label class="hc-show small"><input type="checkbox" data-act="hc-show"' + (HC.showPass ? ' checked' : '') + '> ' + esc(t('hc_show')) + '</label></div>' +
+        '<div class="field"><label for="hc-phone">' + esc(t('hc_phone')) + '</label><div class="ctl"><input id="hc-phone" type="tel" inputmode="tel" autocomplete="tel" value="' + esc(fm.phone !== undefined ? fm.phone : c.phone || HC.st.phone || '') + '"></div><div class="help">' + esc(t('hc_phone_h')) + '</div></div>' +
+        '<label class="hc-consent"><input type="checkbox" id="hc-consent"' + (fm.consent ? ' checked' : '') + '> <span>' + esc(t('hc_consent')) + '</span></label>' +
+        '<p class="small muted">' + esc(t('hc_indep')) + ' <a href="#privacy">' + esc(t('hc_privacy')) + '</a></p>' + hcErrBox(HC.err) +
+        '<div class="row-actions"><button type="submit" class="btn big" data-key="hc-connect-go"' + (HC.busy ? ' disabled' : '') + '>' + (HC.busy === 'connect' ? SPIN + '<span>' + esc(t('hc_connecting')) + '</span>' : esc(t('hc_connect_go'))) + '</button></div></form>';
+      return { screen: 'S07c', route: 'htmcab', bare: true, closeTo: 'heat', html: h };
+    }
+    var st = HC.st, accs = st.accounts || [], acc = hcAcc();
+    h += '<div class="verdict ok" data-key="hc-connected">' + levelIco('ok', 28) + '<span>' + esc(t('hc_on')) + '</span></div>' +
+      '<p>' + esc(t('hc_on_sub', { e: st.login })) + '</p>' +
+      (accs.length === 1 ? '<p class="small">' + esc(t('hc_acc1', { a: accs[0].acc, s: accs[0].sur })) + '</p>' : hcPickAcc()) +
+      (acc && S.meter && String(S.meter.account || '').replace(/\D/g, '') !== acc.acc && accs.length === 1 && S.meter.account ? '<p class="small warn-ink">' + ico('alert', 16) + ' ' + esc(t('hc_acc_diff', { a: S.meter.account })) + '</p>' : '') +
+      hcErrBox(HC.err) + hcCheckBox(HC.check) +
+      '<div class="row-actions"><button class="btn' + (HC.check ? ' sec' : '') + '" data-act="hc-check" data-key="hc-check-go"' + (HC.busy ? ' disabled' : '') + '>' + (HC.busy === 'check' ? SPIN + '<span>' + esc(t('hc_checking')) + '</span>' : esc(t('hc_check'))) + '</button></div>';
+    var jobs = (st.jobs || []).slice(0, 6);
+    if (jobs.length) h += '<h2 class="section-title">' + esc(t('hc_jobs')) + '</h2><ul class="list hc-jobs" data-key="hc-jobs">' + jobs.map(function (j) {
+      return '<li><div><b>' + esc(j.date) + '</b> · <span class="num">' + esc(j.energy) + '</span> Гкал <span class="muted small">' + esc(t('hc_c_acc_s', { a: j.acc })) + '</span>' + (j.reason ? '<div class="small muted">' + esc(j.reason) + '</div>' : '') + '</div>' + hcJobPill(j) + '</li>'; }).join('') + '</ul>';
+    h += '<div class="panel" style="margin-top:24px" data-key="hc-forget-box"><p class="small">' + esc(t('hc_forget_sub')) + '</p>' +
+      (HC.forget ? '<div class="banner warn">' + ico('alert', 22) + '<div><p>' + esc(t('hc_forget_q')) + '</p><div class="row-actions" style="margin-top:8px"><button class="btn sec" data-act="hc-forget-no">' + esc(t('cancel')) + '</button><button class="btn danger solid" data-act="hc-forget-yes" data-key="hc-forget-yes"' + (HC.busy ? ' disabled' : '') + '>' + esc(t('hc_forget')) + '</button></div></div></div>'
+        : '<button class="btn danger" data-act="hc-forget" data-key="hc-forget">' + esc(t('hc_forget')) + '</button>') + '</div>';
+    return { screen: 'S07c', route: 'htmcab', bare: true, closeTo: 'heat', html: h };
+  };
+  function hcCall(kind, path, body, ok) {
+    HC.busy = kind; HC.err = null; safeRender();
+    Y().api('POST', path, Object.assign({ lang: S.lang }, body)).then(function (j) {
+      HC.busy = '';
+      if (j._status === 200) ok(j); else {
+        HC.err = { error: j.error, human: j.human || (j.error === 'rate_limited' ? t('hc_busy') : t('hc_fail')), site: j.site, field: j.field }; if (j.accounts && HC.st) HC.st.accounts = j.accounts;
+        if (j.error === 'cab_bad_login' && HC.form) HC.form.pass = '';   // невірний пароль — набрати заново, як на будь-якому вході
+        if (j.error === 'cab_relogin') HC.at = 0;
+      }
+      render(true);
+    }, function () { HC.busy = ''; HC.err = { error: 'net', human: t('hc_fail') }; render(true); });
+  }
+  function hcSend(id) {
+    var r = hcRec(id), acc = r && hcAcc(r); if (!r || !acc || HC.busy) return;
+    var vals = {}; R.FIELDS.forEach(function (f) { vals[f.key] = R.formatForHtm(f.key, r.htm[f.key]); });
+    var c = S.contacts || {};
+    hcCall('send', '/cab/htm/send', { acc: acc.acc, rid: r.id, place: r.place || S.placeId, vals: vals, phone: c.phone || '', email: c.email || '' }, function (j) {
+      HC.confirm = null; var jb = j.job;
+      if (HC.st) HC.st.jobs = [jb].concat((HC.st.jobs || []).filter(function (x) { return x.id !== jb.id; }));
+      if (r.status !== 'handed' && r.status !== 'accepted') { r.status = 'handed'; r.handedAt = new Date().toISOString(); }
+      r.cab = { job: jb.id, at: jb.at, status: 'pending' }; r.updatedAt = Date.now();
+      // рахунок, яким внесли, — у налаштування теплолічильника квартири (наступного разу без вибору)
+      var p = place(r.place) || place(), m = p && p.id === S.placeId ? S.meter : p && p.meter; if (m && !m.account) m.account = acc.acc;
+      hcApply(); S.focusId = r.id; save(); toast(t(jb.status === 'ok' ? 'hc_toast_ok' : 'hc_toast')); go('status');
+    });
+  }
+  setInterval(function () {
+    if (document.visibilityState === 'visible' && hcOn() && (S.readings || []).some(function (r) { return r && !r.deleted && r.status === 'handed' && r.cab && r.cab.status === 'pending'; })) hcLoad(true);
+  }, 60000);
+  document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'visible' && /^(heat|handover|status|htmcab|history)$/.test(routeName())) hcLoad(true); });
+  document.addEventListener('submit', function (e) {
+    if (!e.target || e.target.id !== 'hc-form') return; e.preventDefault(); if (HC.busy) return;
+    var v = function (id) { var x = document.getElementById(id); return x ? x.value.trim() : ''; };
+    var cons = document.getElementById('hc-consent'), email = v('hc-email'), pass = (document.getElementById('hc-pass') || {}).value || '', phone = v('hc-phone');
+    HC.form = { email: email, pass: pass, phone: phone, consent: !!(cons && cons.checked) };
+    if (!email || !pass) { HC.err = { human: t(!email ? 'hc_e_email' : 'hc_e_pass') }; render(true); return; }
+    if (!cons || !cons.checked) { HC.err = { error: 'cab_consent', human: t('hc_e_consent') }; render(true); return; }
+    if (phone && !(S.contacts || {}).phone) { S.contacts = Object.assign({}, S.contacts || {}, { phone: phone }); save(); }
+    hcCall('connect', '/cab/htm/connect', { email: email, password: pass, phone: phone, consent: true }, function (j) {
+      HC.st = j; HC.at = Date.now(); HC.showPass = false; HC.check = null; HC.form = null; toast(t('hc_on'));
+      // з екрана «Передайте» прийшли — туди й повертаємось
+      if (S.focusId && hcRec(S.focusId) && hcRec(S.focusId).status === 'checked') { go('handover'); return; }
+      hcCall('check', '/cab/htm/check', { acc: (hcAcc() || {}).acc || '' }, function (c) { HC.check = c; });
+    });
+  });
+  document.addEventListener('click', function (e) {
+    var el = e.target.closest && e.target.closest('[data-act^="hc-"]'); if (!el) return;
+    var a = el.getAttribute('data-act');
+    if (a === 'hc-show') { var pw = document.getElementById('hc-pass'); HC.showPass = el.checked; if (pw) pw.type = el.checked ? 'text' : 'password'; return; }
+    if (a === 'hc-acc') { if (S.meter) { S.meter.account = el.value; save(); } HC.err = null; render(true); return; }
+    e.preventDefault();
+    if (a === 'hc-ask') { HC.confirm = el.getAttribute('data-id'); HC.err = null; render(true); var cf = document.querySelector('[data-key="hc-confirm"]'); if (cf && cf.scrollIntoView) cf.scrollIntoView({ block: 'center' }); }
+    else if (a === 'hc-cancel') { HC.confirm = null; HC.err = null; render(true); }
+    else if (a === 'hc-send') hcSend(el.getAttribute('data-id'));
+    else if (a === 'hc-refresh') { hcLoad(true); render(true); }
+    else if (a === 'hc-check') hcCall('check', '/cab/htm/check', { acc: (hcAcc() || {}).acc || '' }, function (c) { HC.check = c; hcLoad(true); });
+    else if (a === 'hc-forget') { HC.forget = true; render(true); }
+    else if (a === 'hc-forget-no') { HC.forget = false; render(true); }
+    else if (a === 'hc-forget-yes') hcCall('forget', '/cab/forget', { prov: 'htm' }, function (j) { HC.st = j; HC.forget = false; HC.check = null; hcApply(); save(); toast(t('hc_forgot')); });
+  });
+
   V.heat = function () {
     var m = model(), html = '<h1 class="sr">' + esc(t('uc_heat')) + (place() && place().name ? ' — ' + esc(place().name) : '') + '</h1>' + (openGap('heat') ? gapBanner('heat') : windowBanner());
     var handed = RD().filter(function (r) { return r.status === 'handed'; }).slice(-1)[0];
@@ -3250,9 +3451,10 @@
       '<div class="cols"><div class="ho-values"><ul class="copy-list" data-key="handover-values">' + rows.join('') + '</ul>' +
       '<div class="row-actions"><button class="btn sec" data-act="copy" data-text="' + esc(all) + '" data-key="copy-all">' + ico('copy', 20) + '<span>' + esc(t('ho_copy_all')) + '</span></button></div>' +
       (c.phone && c.email ? '' : '<div class="banner warn" style="margin-top:16px">' + ico('alert', 22) + '<div><p>' + esc(t('ho_contacts_none')) + ' <a href="#prefs">' + esc(t('nav_prefs')) + '</a></p></div></div>') + '</div>' +
-      '<div class="ho-steps"><div class="panel"><h2>' + esc(t('ho_steps_title')) + '</h2><ol class="steps"><li>' + esc(t('ho_s1')) + '</li><li>' + esc(t('ho_s2')) + '</li><li>' + esc(t('ho_s3')) + '</li><li>' + esc(t('ho_s4')) + '</li></ol>' +
+      // кабінет підключено — робот вносить сам, це головний шлях; вручну — нижче, запасний
+      '<div class="ho-steps">' + (hcConn() ? hcPanel(r) : '') + '<div class="panel"><h2>' + esc(t(hcConn() ? 'ho_steps_self' : 'ho_steps_title')) + '</h2><ol class="steps"><li>' + esc(t('ho_s1')) + '</li><li>' + esc(t('ho_s2')) + '</li><li>' + esc(t('ho_s3')) + '</li><li>' + esc(t('ho_s4')) + '</li></ol>' +
       '<a class="btn sec block" href="' + HTM_URL + '" target="_blank" rel="noopener" data-key="handover-open">' + ico('ext', 20) + '<span>' + esc(t('ho_open')) + '</span></a></div>' +
-      '<div class="panel soon" data-key="handover-auto"><h3>' + esc(t('ho_auto')) + ' <span class="pill">' + (S.lang === 'ru' ? 'скоро' : 'незабаром') + '</span></h3><p class="small muted" style="margin:0">' + esc(t('ho_auto_sub')) + '</p></div></div></div>' +
+      (hcConn() ? '' : hcPanel(r)) + '</div></div>' +
       '<div class="row-actions"><button class="btn big" data-act="handed" data-id="' + r.id + '" data-key="handover-done">' + ico('check', 22) + '<span>' + esc(t('ho_saved')) + '</span></button></div>' };
   };
 
@@ -3270,8 +3472,13 @@
       body = '<div class="verdict block" data-key="status-rejected">' + levelIco('block', 28) + '<span>' + esc(t('st_rejected')) + '</span></div>' +
         (r.robot && r.robot.text ? '<p class="small muted">«' + esc(r.robot.text) + '»</p>' : '') +
         '<div class="banner ' + (dec.fix ? 'warn' : 'bad') + '">' + ico('info', 22) + '<div><p>' + esc(dec.fix ? L(dec.fix) : t('st_unknown')) + '</p></div></div>' +
-        '<p class="small muted">' + esc(t('st_refix_sub')) + '</p>' +
+        '<p class="small muted">' + esc(t(r.robot && r.robot.via === 'cab' ? 'hc_refix_sub' : 'st_refix_sub')) + '</p>' +
         '<div class="row-actions"><button class="btn" data-act="refix" data-id="' + r.id + '" data-key="status-refix">' + esc(t('st_refix')) + '</button></div>';
+    } else if (r.status === 'handed' && r.cab) {
+      // вніс робот: сервер сам перечитує журнал ХТМ; «подивився сам» — запасне
+      body = hcWait(r) + '<details class="tips-box" style="margin-top:16px" data-key="status-cab-self"><summary>' + esc(t('hc_self_t')) + '</summary><p class="small">' + esc(t('st_how')) + '</p>' +
+        '<div class="row-actions"><button class="btn sec" data-act="accepted" data-id="' + r.id + '" data-key="status-ok">' + ico('check', 22) + '<span>' + esc(t('st_ok_btn')) + '</span></button>' +
+        '<a class="btn sec" href="' + HTM_URL + '" target="_blank" rel="noopener">' + ico('ext', 18) + '<span>' + esc(t('ho_open')) + '</span></a></div></details>';
     } else if (r.status === 'handed') {
       var mins = Math.round((Date.now() - Date.parse(r.handedAt)) / 60000);
       var at = new Date(Date.parse(r.handedAt) + 30 * 60000);
@@ -3585,15 +3792,17 @@
     var upd = '<p class="small muted">' + esc(ru ? 'Редакция от 06.11.2026' : 'Редакція від 06.11.2026') + '</p>';
     var fb = '<button class="linkbtn" data-act="fb-open">' + esc(ru ? '«Отзыв»' : '«Відгук»') + '</button>';
     if (kind === 'privacy') return '<h1>' + esc(t('lg_privacy')) + '</h1>' + upd + (ru ? [
-      sec('Кратко', P('«Счётчики» помогают снять показания квартирных счётчиков тепла, воды, света и газа и подготовить их для КП «Харьковские тепловые сети» (ХТМ), КП «Харківводоканал», АО «Харьковоблэнерго», «Газсетей» и «Нафтогаза». Мы собираем минимум данных, не продаём их и не передаём для рекламы. Сервис не связан с этими поставщиками и ничего им сам не передаёт — показания вносите вы.')),
+      sec('Кратко', P('«Счётчики» помогают снять показания квартирных счётчиков тепла, воды, света и газа и подготовить их для КП «Харьковские тепловые сети» (ХТМ), КП «Харківводоканал», АО «Харьковоблэнерго», «Газсетей» и «Нафтогаза». Мы собираем минимум данных, не продаём их и не передаём для рекламы. Сервис не связан с этими поставщиками. Сам он передаёт показания только когда вы нажмёте «Отправить» или «Внести»: на сайт Водоканала и — если вы подключили свой кабинет ХТМ — в этот кабинет.')),
       sec('Какие данные', UL(['Без входа — показания, счётчик, адреса квартир и настройки хранятся только в вашем браузере.', 'После входа — e-mail (пароль хранится только в виде хеша) или ваш Telegram ID и имя, а также те же данные для синхронизации между устройствами.', 'Фото счётчика при распознавании: распознаются прямо в браузере; вошедшим копия фото и результат хранятся на сервере до 90 дней, чтобы улучшать распознавание (тестовая версия).', 'Документы счётчика (паспорт, поверка), если вы их загрузили, — до удаления вами.', 'Отзывы и контакт, который вы указали в отзыве.', 'Технические журналы сервера (IP-адрес, время запроса) — для безопасности, недолго.'])),
+      sec('Кабинет ХТМ (если подключите)', UL(['E-mail и пароль от кабинета ХТМ — только если вы сами подключили кабинет и дали согласие. Пароль хранится на сервере зашифрованным (AES-256), ключ — отдельно от базы данных; в журналах сервера пароля нет.', 'Робот входит в кабинет только чтобы внести показания тепла по вашему нажатию «Внести» и потом проверить журнал ХТМ (несколько раз в течение 6 часов). Ничего другого в кабинете не меняет.', 'Телефон и e-mail вместе с показаниями получает ХТМ — этого требует их форма.', '«Забыть пароль» на экране «Кабинет ХТМ» и «Удалить все данные» удаляют пароль с сервера сразу.'])),
       sec('Зачем', UL(['чтобы сервис работал: проверка показаний, история, синхронизация, вход;', 'чтобы улучшать распознавание фото и исправлять ошибки;', 'чтобы ответить на ваш отзыв.'])),
       sec('Кто ещё получает данные', UL(['Хостинг: сервер Hetzner (Германия, ЕС) за Cloudflare (защита и доставка).', 'Telegram — если вы входите через Telegram.', 'Open-Meteo — получает только координаты Харькова для погоды, без ваших данных.', 'Anthropic (Claude) — только если владелец включит серверное распознавание: тогда фото вошедших отправляются на распознавание.'])),
       sec('Файлы cookie', P('Только необходимые: cookie сессии входа и защитный cookie от подделки запросов. Без рекламных и аналитических трекеров.')),
       sec('Ваши права', P('По Закону Украины «О защите персональных данных» вы можете узнать, какие данные о вас хранятся, исправить или удалить их. «Настройки» → «Удалить все данные» стирает данные с устройства и из аккаунта; фото и документы удаляются вместе с аккаунтом. Вопросы — через кнопку ' + fb + '.'))
     ] : [
-      sec('Коротко', P('«Лічильники» допомагають зняти показання квартирних лічильників тепла, води, світла й газу та підготувати їх для КП «Харківські теплові мережі» (ХТМ), КП «Харківводоканал», АТ «Харківобленерго», «Газмереж» і «Нафтогазу». Ми збираємо мінімум даних, не продаємо їх і не передаємо для реклами. Сервіс не пов’язаний із цими постачальниками і нічого їм сам не передає — показання вносите ви.')),
+      sec('Коротко', P('«Лічильники» допомагають зняти показання квартирних лічильників тепла, води, світла й газу та підготувати їх для КП «Харківські теплові мережі» (ХТМ), КП «Харківводоканал», АТ «Харківобленерго», «Газмереж» і «Нафтогазу». Ми збираємо мінімум даних, не продаємо їх і не передаємо для реклами. Сервіс не пов’язаний із цими постачальниками. Сам він передає показання лише тоді, коли ви натиснете «Відправити» чи «Внести»: на сайт Водоканалу і — якщо ви підключили свій кабінет ХТМ — у цей кабінет.')),
       sec('Які дані', UL(['Без входу — показання, лічильник, адреси квартир і налаштування зберігаються лише у вашому браузері.', 'Після входу — e-mail (пароль зберігається лише як геш) або ваш Telegram ID та ім’я, а також ті самі дані для синхронізації між пристроями.', 'Фото лічильника під час розпізнавання: розпізнаються просто в браузері; тим, хто увійшов, копія фото й результат зберігаються на сервері до 90 днів, щоб покращувати розпізнавання (тестова версія).', 'Документи лічильника (паспорт, повірка), якщо ви їх завантажили, — доки ви їх не видалите.', 'Відгуки й контакт, який ви вказали у відгуку.', 'Технічні журнали сервера (IP-адреса, час запиту) — для безпеки, недовго.'])),
+      sec('Кабінет ХТМ (якщо підключите)', UL(['E-mail і пароль від кабінету ХТМ — лише якщо ви самі підключили кабінет і дали згоду. Пароль зберігається на сервері зашифрованим (AES-256), ключ — окремо від бази даних; у журналах сервера пароля немає.', 'Робот входить у кабінет лише щоб внести показання тепла за вашим натисканням «Внести» і потім перевірити журнал ХТМ (кілька разів протягом 6 годин). Нічого іншого в кабінеті не змінює.', 'Телефон і e-mail разом із показаннями отримує ХТМ — цього вимагає їхня форма.', '«Забути пароль» на екрані «Кабінет ХТМ» і «Видалити всі дані» видаляють пароль із сервера одразу.'])),
       sec('Навіщо', UL(['щоб сервіс працював: перевірка показань, історія, синхронізація, вхід;', 'щоб покращувати розпізнавання фото й виправляти помилки;', 'щоб відповісти на ваш відгук.'])),
       sec('Хто ще отримує дані', UL(['Хостинг: сервер Hetzner (Німеччина, ЄС) за Cloudflare (захист і доставка).', 'Telegram — якщо ви входите через Telegram.', 'Open-Meteo — отримує лише координати Харкова для погоди, без ваших даних.', 'Anthropic (Claude) — лише якщо власник увімкне серверне розпізнавання: тоді фото тих, хто увійшов, надсилаються на розпізнавання.'])),
       sec('Файли cookie', P('Лише необхідні: cookie сесії входу й захисний cookie від підробки запитів. Без рекламних і аналітичних трекерів.')),
@@ -5086,7 +5295,8 @@
       case 'logout': ADMIN = null; busy(el); Y().logout().then(function () { S = defaults(); S.lang = browserLang(); ensurePlaces(); lastSig = window.TeploSync.sig(window.TeploSync.payload(S)); persist(); toast(t('logged_out')); go('welcome'); }); break;
       case 'dismiss-sync': S.syncPromptDismissed = true; persist(); render(true); break;
       case 'wipe-no': document.getElementById('wipe-confirm').innerHTML = ''; break;
-      case 'wipe-yes': { var now = Date.now(); S = defaults(); S.lang = browserLang(); S.wipedAt = now; ensurePlaces(); phReset(); FB.open = false; save(); toast(t('p_wiped')); go('welcome'); break; }
+      case 'wipe-yes': { if (hcOn() && HC.st && HC.st.connected) { Y().api('POST', '/cab/forget', { prov: 'htm' }).catch(function () {}); HC.st = null; HC.at = 0; }   // «стерти все» — і пароль кабінету ХТМ
+        var now = Date.now(); S = defaults(); S.lang = browserLang(); S.wipedAt = now; ensurePlaces(); phReset(); FB.open = false; save(); toast(t('p_wiped')); go('welcome'); break; }
     }
   });
 
@@ -5381,6 +5591,9 @@
       var el = document.getElementById('sync-status'); if (el) el.textContent = syncStatusText();
       if (window.TEPLO_API && window.TeploVision && window.TeploSync._cfg) window.TeploVision.initServer(window.TeploSync._cfg, !!window.TeploSync.account);
       if (!window.TeploSync.account) ADMIN = null; else { checkAdmin(); if (INBOX.items === null || INBOX.auto) loadInbox(); histFlush(); }
+      // вхід з’явився/змінився — стан кабінету ХТМ іншого акаунта не показуємо; екрани тепла перемалювати (вони залежать від входу)
+      var accId = window.TeploSync.account ? window.TeploSync.account.id : 0;
+      if (accId !== HC.acc) { HC.acc = accId; HC.st = null; HC.at = 0; HC.check = null; HC.err = null; HC.form = null; if (/^(heat|handover|status|htmcab)$/.test(routeName())) safeRender(); }
       var tgs = window.TeploSync.tg ? window.TeploSync.tg.state : '';
       if (tgs !== TGS) {
         TGS = tgs; var g = window.TeploSync.tg || {}, tw3 = window.Telegram && window.Telegram.WebApp;

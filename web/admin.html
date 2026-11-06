@@ -117,7 +117,7 @@ pre.state { font: 12px/1.4 var(--mono); background: #F4F7F5; padding: 10px; bord
       '<div class="panel small" data-key="adm-vk">' + vkLine + '</div>' +
       '<div class="cards">' + c(o.users, 'пользователей всего') + c(o.usersWeek, 'новых за 7 дней') + c(o.activeWeek, 'входили за 7 дней') + c(o.withTelegram, 'с Telegram') + c(o.withData, 'сохранили данные') +
       c(o.feedback, 'сообщений (новых: ' + o.feedbackNew + ')') + c(o.photos, 'фото загружено') + c(o.photosFailed, 'фото с проблемами') + c(o.reportsBad + ' / ' + o.reports, 'распознаваний с замечаниями') + '</div>' +
-      '<p class="muted small">Фото хранятся ' + o.photoKeepDays + ' дней, потом удаляются автоматически.</p>' + actBlock() + errorsBlock(o.errors) + botRepliesBlock(o.botReplies) + vkcabBlock(o.vkcab, vc) + trackBlock(o.tracking) + devicesBlock();
+      '<p class="muted small">Фото хранятся ' + o.photoKeepDays + ' дней, потом удаляются автоматически.</p>' + actBlock() + errorsBlock(o.errors) + botRepliesBlock(o.botReplies) + vkcabBlock(o.vkcab, vc) + htmcabBlock(o.htmcab) + trackBlock(o.tracking) + devicesBlock();
   };
   /** Сбои сервера (500): что упало — по ним чинить; пусто — хорошо. */
   function errorsBlock(l) {
@@ -146,6 +146,18 @@ pre.state { font: 12px/1.4 var(--mono); background: #F4F7F5; padding: 10px; bord
         return '<tr><td data-l="Когда" class="nowrap">' + when(new Date(d.at * 1000).toISOString()) + '</td><td data-l="Что">' + (d.op === 'send' ? 'отправка' + (d.n ? ' (' + d.n + ')' : '') : d.op === 'probe' ? 'проба сервера (выдуманный рахунок)' : 'проверка') + (d.user ? ' · <a href="#user-' + d.user + '" data-user="' + d.user + '">#' + d.user + '</a>' : '') + '</td>' +
           '<td data-l="Итог">' + (R[d.result] || esc(d.result)) + '</td><td data-l="Подробно"><details><summary class="small">структура</summary><pre class="small" style="white-space:pre-wrap;max-width:60ch">' + esc(JSON.stringify(det, null, 1)) + '</pre></details></td></tr>';
       }).join('') + '</tbody></table>' : '<p class="muted small">Ещё никто не проверял рахунок через сайт Водоканала.</p>') + '</details>';
+  }
+  /** Кабинет ХТМ: подключения, проверки, внесения, перепроверки журнала роботом сервера (без паролей и рахунков; цифры в словах сайта — #). */
+  function htmcabBlock(l) {
+    var OP = { connect: 'подключение', check: 'проверка', send: 'внесение', recheck: 'перепроверка журнала', forget: '«забыть пароль»' };
+    var R = { ok: 'ок', pending: 'на проверке у ХТМ', rejected: 'ХТМ не принял', bad_login: 'неверный пароль', captcha: '<b class="problem">капча</b>', down: '<b class="problem">не отвечает</b>', changed: '<b class="problem">страница не узнана</b>', form_changed: '<b class="problem">форма другая — не отправляли</b>', form_error: '<b class="problem">сайт не сохранил</b>', closed: 'окно закрыто', no_accs: 'нет рахунков' };
+    return '<details class="panel" data-key="adm-htmcab"><summary><b>Кабинет ХТМ — подключения и внесения</b> <span class="muted small">(' + (l || []).length + ')</span></summary>' +
+      (l && l.length ? '<table><thead><tr><th>Когда</th><th>Что</th><th>Итог</th><th>Подробно</th></tr></thead><tbody>' + l.map(function (d) {
+        var det = { steps: d.steps, where: d.where, site: d.site, form: d.form, fields: d.fields, journal: d.journal, base: d.base, closed: d.closed, flash: d.flash, n: d.n };
+        return '<tr><td data-l="Когда" class="nowrap">' + when(new Date(d.at * 1000).toISOString()) + '</td><td data-l="Что">' + esc(OP[d.op] || d.op) + (d.user ? ' · <a href="#user-' + d.user + '" data-user="' + d.user + '">#' + d.user + '</a>' : '') + '</td>' +
+          '<td data-l="Итог">' + (R[d.result] || esc(d.result)) + (d.form && d.form.open ? (d.form.match ? ' · форма как ждали' : ' · <b class="problem">форма: нет ' + esc((d.form.missing || []).join(', ')) + ' лишние ' + esc((d.form.unknown || []).join(', ')) + '</b>') : '') + '</td>' +
+          '<td data-l="Подробно"><details><summary class="small">структура</summary><pre class="small" style="white-space:pre-wrap;max-width:60ch">' + esc(JSON.stringify(det, null, 1)) + '</pre></details></td></tr>';
+      }).join('') + '</tbody></table>' : '<p class="muted small">Ещё никто не подключал кабинет ХТМ.</p>') + '</details>';
   }
   /** Что ведут: у скольких людей есть каждый вид счётчика и сколько по нему показаний (без удалённых и стартовых). */
   function trackBlock(t) {

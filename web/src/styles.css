@@ -648,6 +648,17 @@ details.wacc > summary { list-style: none; cursor: pointer; display: flex; align
 .vk-reply.ok { border-color: var(--c-ok, #1E7B4C); } .vk-reply.bad { border-color: var(--c-bad, #A3142E); }
 .vk-reply p { margin: 0 0 4px; }
 /* кабінет Водоканалу: перевірка рахунку, вибір лічильника на сайті, «Перевірте» */
+/* кабінет ХТМ: робот вносить за людину (#htmcab, панель на «Передайте») */
+.hc h2 { display: flex; gap: 8px; align-items: center; margin-top: 0; }
+.hc .vkc-sum { margin-top: 8px; }
+.hc-how { margin: 0 0 var(--sp-4); padding-left: 20px; } .hc-how li { margin: 4px 0; }
+.hc-consent { display: flex; gap: 12px; align-items: flex-start; margin: 12px 0; padding: 12px; border-radius: 12px; background: var(--c-field-bg); border: 1.5px solid var(--c-field-line); cursor: pointer; }
+.hc-consent input, .hc-show input { width: 22px; height: 22px; flex: none; margin: 1px 0 0; }
+.hc-show, .field label.hc-show { display: inline-flex; margin: 4px 0 0; font-weight: 400; gap: 8px; align-items: center; min-height: 44px; cursor: pointer; }
+.hc-kv { display: grid; grid-template-columns: minmax(0, auto) minmax(0, 1fr); gap: 8px 16px; margin: 0; }
+.hc-kv dt { color: var(--c-ink-2); } .hc-kv dd { margin: 0; font-weight: 600; overflow-wrap: anywhere; }
+@media (max-width: 420px) { .hc-kv { grid-template-columns: 1fr; gap: 2px; } .hc-kv dd { margin-bottom: 8px; } }
+.hc-jobs > li, .hc-jr > li { justify-content: space-between; } .hc-jr { background: none; } .hc-jr > li { padding: 6px 0; min-height: 0; display: block; }
 .vkc { margin: 4px 0 12px; } .vkc-t { margin: 0 0 6px; } .vkc .row-actions { flex-wrap: wrap; margin-top: 8px; }
 .vkc-list { list-style: none; margin: 8px 0; padding: 0; display: grid; gap: 8px; }
 .vkc-list > li { padding: 10px 12px; border-radius: 12px; border: 1.5px solid var(--c-field-line); background: var(--c-surface); }

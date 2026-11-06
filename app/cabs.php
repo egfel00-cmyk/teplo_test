@@ -210,6 +210,8 @@ final class HtmCab {
     $m = self::msgs(CabWeb::dom($r['body']));
     throw new CabErr('bad_login', implode(' ', array_slice($m['err'], 0, 2)));
   }
+  /** Выйти (вежливо: не оставлять сессий робота на сайте ХТМ); ошибки не важны. */
+  public function logout(): void { try { if ($this->w->jar) $this->w->req('GET', self::base() . '/cabinet/logout'); } catch (Throwable $e) {} }
   /** Особові рахунки кабинета: [['acc' => '…', 'sur' => 'ПРІЗВИЩЕ']] — из ссылок /cabinet/{рахунок}/{прізвище}. */
   public function accounts(array $home): array {
     $out = [];
@@ -236,7 +238,9 @@ final class HtmCab {
       $o['open'] = true; $o['action'] = CabWeb::abs((string)($form->getAttribute('action') ?: $r['url']), $r['url']);
       foreach ($x->query('.//input|.//select|.//textarea|.//button', $form) as $i) {
         $nm = (string)$i->getAttribute('name'); if ($nm === '') continue;
-        $o['fields'][] = ['name' => $nm, 'type' => strtolower($i->nodeName === 'input' ? ($i->getAttribute('type') ?: 'text') : $i->nodeName), 'value' => (string)$i->getAttribute('value')];
+        // подсказки сайта к полю (маска телефона, длина) — для сверки формы; значения в журнал не пишем
+        $o['fields'][] = ['name' => $nm, 'type' => strtolower($i->nodeName === 'input' ? ($i->getAttribute('type') ?: 'text') : $i->nodeName), 'value' => (string)$i->getAttribute('value'),
+          'ph' => mb_substr((string)$i->getAttribute('placeholder'), 0, 40), 'max' => (int)$i->getAttribute('maxlength') ?: null, 'pattern' => mb_substr((string)$i->getAttribute('pattern'), 0, 60), 'req' => $i->hasAttribute('required')];
       }
     } elseif (preg_match('/[^.]*тимчасово\s+зупинен[^.]*\.[^.]*\./u', $txt, $m)) $o['closed'] = trim($m[0]);
     // журнал: строка из ≥10 ячеек с датой → «Примітки» → «Статус: …»
@@ -266,27 +270,42 @@ final class HtmCab {
     if (!is_numeric($v)) throw new CabErr('bad_value', $k);
     return isset(self::DEC[$k]) ? number_format((float)$v, self::DEC[$k], '.', '') : (string)(int)round((float)$v);
   }
-  /** Сохранить показания. vals: date (dd.mm.yyyy) + energy … errCode; contact: phone, email, note.
+  /** Как робот понимает поля открытой формы (без значений): у каждого поля роль — наше значение (date…errCode), hidden/кнопка как есть,
+   *  контакт (phone, email, note), галочка (не трогаем) или «незнакомое». → ['roles' => [имя => роль], 'missing' => [наши, которых нет], 'unknown' => [имена], 'match' => bool]. */
+  public static function plan(array $fields): array {
+    $ours = []; foreach (self::F as $k => $name) $ours[strtolower($name)] = $k;
+    $roles = []; $seen = []; $unknown = []; $btn = false;
+    foreach ($fields as $f) {
+      $nm = (string)$f['name']; $ln = strtolower($nm);
+      if (isset($ours[$ln])) { $roles[$nm] = $ours[$ln]; $seen[$ours[$ln]] = 1; continue; }
+      if ($f['type'] === 'hidden') { $roles[$nm] = '#hidden'; continue; }
+      if (in_array($f['type'], ['submit', 'button'], true)) { $roles[$nm] = $btn ? '#skip' : '#button'; $btn = true; continue; }
+      if (preg_match('/phone|tel/i', $nm)) { $roles[$nm] = 'phone'; continue; }
+      if (preg_match('/e-?mail/i', $nm)) { $roles[$nm] = 'email'; continue; }
+      if (preg_match('/note|prim|comment|koment/i', $nm)) { $roles[$nm] = 'note'; continue; }
+      if (in_array($f['type'], ['checkbox', 'radio'], true)) { $roles[$nm] = '#skip'; continue; }
+      $roles[$nm] = '?'; $unknown[] = $nm;
+    }
+    $missing = array_values(array_diff(array_keys(self::F), array_keys($seen)));
+    return ['roles' => $roles, 'missing' => $missing, 'unknown' => $unknown, 'match' => !$missing && !$unknown];
+  }
+  /** Сохранить показания. vals: date (dd.mm.yyyy) + energy … errCode; contact: phone, email, note; h — уже открытая страница heat() (не открывать второй раз).
    *  → ['status' => 'pending'|'ok'|'rejected', 'text', 'flash'] или CabErr (closed, form_changed, form_error, …). Ничего не шлём, если форма не та. */
-  public function save(string $acc, string $sur, array $vals, array $contact): array {
-    $h = $this->heat($acc, $sur);
+  public function save(string $acc, string $sur, array $vals, array $contact, ?array $h = null): array {
+    $h = $h ?? $this->heat($acc, $sur);
     if (!$h['open']) throw new CabErr('closed', (string)$h['closed']);
     $want = [];
-    foreach (self::F as $k => $name) { if (!array_key_exists($k, $vals)) throw new CabErr('bad_value', $k); $want[strtolower($name)] = self::fmt($k, $vals[$k]); }
-    $pairs = []; $used = []; $unknown = [];
+    foreach (self::F as $k => $name) { if (!array_key_exists($k, $vals)) throw new CabErr('bad_value', $k); $want[$k] = self::fmt($k, $vals[$k]); }
+    $pl = self::plan($h['fields']);
+    if (!$pl['match']) { $this->log['fields'] = array_column($h['fields'], 'name'); throw new CabErr('form_changed', 'missing: ' . implode(',', $pl['missing']) . ' unknown: ' . implode(',', $pl['unknown'])); }
+    $pairs = [];
     foreach ($h['fields'] as $f) {
-      $ln = strtolower($f['name']);
-      if (isset($want[$ln])) { $pairs[] = [$f['name'], $want[$ln]]; $used[$ln] = 1; continue; }
-      if ($f['type'] === 'hidden') { $pairs[] = [$f['name'], $f['value']]; continue; }
-      if (in_array($f['type'], ['submit', 'button'], true)) { if (!isset($used['#btn'])) { $pairs[] = [$f['name'], $f['value']]; $used['#btn'] = 1; } continue; }
-      if (preg_match('/phone|tel/i', $f['name'])) { $pairs[] = [$f['name'], (string)($contact['phone'] ?? '')]; continue; }
-      if (preg_match('/e-?mail/i', $f['name'])) { $pairs[] = [$f['name'], (string)($contact['email'] ?? '')]; continue; }
-      if (preg_match('/note|prim|comment|koment/i', $f['name'])) { $pairs[] = [$f['name'], (string)($contact['note'] ?? '')]; continue; }
-      if (in_array($f['type'], ['checkbox', 'radio'], true)) continue;
-      $unknown[] = $f['name'];
+      $role = $pl['roles'][$f['name']] ?? '#skip';
+      if (isset($want[$role])) $pairs[] = [$f['name'], $want[$role]];
+      elseif ($role === '#hidden' || $role === '#button') $pairs[] = [$f['name'], $f['value']];
+      elseif (in_array($role, ['phone', 'email', 'note'], true)) $pairs[] = [$f['name'], (string)($contact[$role] ?? '')];
     }
-    $missing = array_diff(array_keys($want), array_keys($used));
-    if ($missing || $unknown) { $this->log['fields'] = array_column($h['fields'], 'name'); throw new CabErr('form_changed', 'missing: ' . implode(',', $missing) . ' unknown: ' . implode(',', $unknown)); }
+    $want = [strtolower(self::F['date']) => $want['date'], strtolower(self::F['energy']) => $want['energy']];
     $r = $this->post($h['action'], $pairs);
     $m = self::msgs(CabWeb::dom($r['body']));
     $after = $this->heat($acc, $sur);

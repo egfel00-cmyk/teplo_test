@@ -126,6 +126,7 @@ final class Admin {
             LEFT JOIN user_identities i ON i.user_id = r.user_id AND i.type = 'telegram' ORDER BY r.id DESC LIMIT 30")->fetchAll(),
           // кабинет Водоканала: что увидел наш сервер при проверках и отправках (структура без личных данных)
           'vkcab' => array_reverse(array_slice(VkCab::log(), -15)),
+          'htmcab' => array_reverse(array_slice(HtmSvc::log(), -15)),
           // сбои сервера (500): что упало и где — SITE_DATA/tmp/errors.jsonl
           'errors' => ErrLog::list(30),
         ];

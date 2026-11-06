@@ -13,6 +13,7 @@ require __DIR__ . '/app/api.php';
 require __DIR__ . '/app/admin.php';
 require __DIR__ . '/app/vkcab.php';
 require __DIR__ . '/app/cabs.php';
+require __DIR__ . '/app/htmsvc.php';
 require __DIR__ . '/app/gpv.php';
 require __DIR__ . '/app/visits.php';
 require __DIR__ . '/app/journal.php';
@@ -23,6 +24,8 @@ if ((int)gmdate('i') % 10 === 7) { try { $beat['vkCab'] = VkStatus::probeCabinet
 if ((int)gmdate('i') % 10 === 3) { try { $p = VkStatus::probeNotFound(); if ($p) $beat['vkProbe'] = $p['error']; } catch (Throwable $e) { error_log('teplo vk notfound probe: ' . $e->getMessage()); } }
 // кабинеты ХТМ, обленерго, Газмереж — пускают ли наш сервер и нет ли капчи (раз в 30 минут; /api/health → cabs)
 if (CabProbe::due()) { try { CabProbe::run(); } catch (Throwable $e) { error_log('teplo cab probe: ' . $e->getMessage()); } }
+// внесённые роботом показания ХТМ — перечитать журнал кабинета (20/40/70/130/360 мин), итог → Telegram
+try { $hc = HtmSvc::cron(); if ($hc) $beat['htmRecheck'] = ['at' => gmdate('c'), 'n' => array_count_values(array_map(fn($x) => explode(' ', $x[1])[0], $hc))]; } catch (Throwable $e) { error_log('teplo htm recheck: ' . $e->getMessage()); }
 // графики отключений света (ГПВ Харьковоблэнерго) — раз в 10 минут; утром (7–12 по Киеву) — сегодняшний график в Telegram
 if ((int)gmdate('i') % 10 === 5) {
   try { Gpv::probeSite(); } catch (Throwable $e) { error_log('teplo gpv site: ' . $e->getMessage()); }
