@@ -44,7 +44,10 @@ const U = 'http://127.0.0.1:8013/', SHOTS = process.env.SHOTS || '/tmp';
     return fetch('api/auth/register', { method: 'POST', headers: h, body: JSON.stringify({ email: 'boss@teplo.test', password: 'Boss-12345678' }) }).then(r => r.status === 200 ? 200 :
       fetch('api/auth/login', { method: 'POST', headers: h, body: JSON.stringify({ email: 'boss@teplo.test', password: 'Boss-12345678' }) }).then(r2 => r2.status)); });
   ok('админ вошёл', breg === 200, breg);
-  await a.goto(U + 'admin#user-' + uid); await a.waitForSelector('#hist'); await a.click('#hist summary'); await a.waitForSelector('#hist [data-hrestore]');
+  await a.goto(U + 'admin#user-' + uid);
+  // нет #hist = boss@teplo.test не админ (так «падал» до 41-й сессии): в config.php нужно 'admins' => ['emails' => ['boss@teplo.test']]
+  if (!(await a.waitForSelector('#hist', { timeout: 8000 }).catch(() => null))) { console.log(" FAIL /admin не открылся: впишите 'admins' => ['emails' => ['boss@teplo.test']] в SITE_DATA/config.php"); await b.close(); process.exit(1); }
+  await a.click('#hist summary'); await a.waitForSelector('#hist [data-hrestore]');
   const rows = await a.$$eval('#hist tbody tr', trs => trs.map(t => t.innerText.replace(/\s+/g, ' ')));
   ok('версии: сверху текущая («сейчас»), ниже прошлые', rows.length >= 3 && /сейчас/.test(rows[0]), rows.slice(0, 3));
   ok('у затёршей версии красное «было» (квартиру и счётчики потеряли)', await a.$eval('#hist tbody tr', tr => tr.querySelectorAll('.problem').length >= 1));

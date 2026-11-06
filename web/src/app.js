@@ -2796,7 +2796,8 @@
     return '<section class="lp-hero" data-key="lp-hero">' + lpAuras(true) + '<div class="lp-in"><div class="lp-copy">' +
       (o.badge ? '<p class="lp-badge"><span class="lp-dot" aria-hidden="true"></span>' + esc(o.badge) + '</p>' : '') +
       '<h1 class="lp-h1">' + o.h1 + '</h1><p class="lp-lead">' + esc(o.lead) + '</p><div class="lp-ctas">' + o.cta + '</div>' + (o.after || '') + '</div>' +
-      '<div class="lp-stage" aria-hidden="true" data-key="welcome-hero">' + lpPhone() + lpTiles() + '</div></div></section>';
+      // сцену принимают за кнопку (журнал 06.11: 5 нажатий подряд) — ведёт туда же, куда «Почати»; с клавиатуры — только сама кнопка
+      '<a class="lp-stage" href="#start" tabindex="-1" aria-hidden="true" data-key="welcome-hero">' + lpPhone() + lpTiles() + '</a></div></section>';
   }
   /** Футер лендинга: о сервисе, документы (политика, соглашение), связь; «независимый сервис». */
   function lpFoot(login) {

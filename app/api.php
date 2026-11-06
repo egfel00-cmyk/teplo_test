@@ -99,7 +99,8 @@ final class Api {
           'gpv' => ['at' => $g['at'] ?? null, 'update' => $g['update'] ?? null, 'days' => array_keys((array)($g['days'] ?? [])), 'err' => $g['err'] ?? null],
           'vkcab' => VkCab::summary(), 'cabs' => (object)CabProbe::read(),
           // кабинет ХТМ: итоги операций, сколько подключено, внесения по статусам и последняя увиденная форма (имена/типы полей, без значений)
-          'htmcab' => HtmSvc::summary(), 'vksvc' => VkSvc::summary()];
+          'htmcab' => HtmSvc::summary(), 'vksvc' => VkSvc::summary(),
+          'indexnow' => class_exists('IndexNow', false) ? IndexNow::summary() : null];
       }
       case 'GET /api/me': if (!$user) throw new HttpError(401, 'unauthorized'); return ['user' => self::publicUser($user)];
 

@@ -37,6 +37,7 @@ if (str_starts_with($path, '/api/')) {
   require __DIR__ . '/app/visits.php';
   require __DIR__ . '/app/journal.php';
   require __DIR__ . '/app/docs.php';
+  require __DIR__ . '/app/indexnow.php';
   require __DIR__ . '/app/api.php';
   header('Content-Type: application/json; charset=utf-8');
   header('Cache-Control: no-store');
@@ -115,6 +116,9 @@ if ($path === '/' || $path === '/index.php') {
   echo $html;
   exit;
 }
+
+// IndexNow (Bing и др.): ключ сайта по адресу /<32 hex>.txt — поисковик проверяет им пинг из cron (app/indexnow.php)
+if (preg_match('~^/[0-9a-f]{32}\.txt$~', $path)) { require __DIR__ . '/app/indexnow.php'; if (IndexNow::serve($path)) exit; }
 
 // поисковики: robots.txt и sitemap.xml — адрес из запроса (домен не зашиваем). Cloudflare дописывает свои строки (content signals) сверху.
 if ($path === '/robots.txt' || $path === '/sitemap.xml') {

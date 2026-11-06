@@ -16,6 +16,7 @@ require __DIR__ . '/../app/providers.php';
 require __DIR__ . '/../app/visits.php';
 require __DIR__ . '/../app/journal.php';
 require __DIR__ . '/../app/docs.php';
+require __DIR__ . '/../app/indexnow.php';
 require __DIR__ . '/../app/api.php';
 $TMP = sys_get_temp_dir() . '/teplo_test_' . getmypid(); putenv('SITE_DATA=' . $TMP);
 
@@ -966,6 +967,23 @@ ok('Газмережі: Inertia с captcha в props → не ok', ($pr['grm']['o
 ok('проба записана и видна в /api/health', (CabProbe::read()['v'] ?? 0) === CabProbe::V && ($pr['htm']['lastOk'] ?? null) !== null && $pr['obl']['lastOk'] === null);
 ok('турникет Cloudflare → widget', CabWeb::captcha('<input type="hidden" name="cf-turnstile-response">')['widget'] === true);
 CabWeb::$http = null;
+
+echo "\n— IndexNow (Bing и др.): ключ сайта и пинг раз на сборку\n";
+$calls = []; IndexNow::$http = function ($url) use (&$calls) { $calls[] = $url; return ['code' => count($calls) === 1 ? 429 : 202, 'err' => null]; };
+ok('ключа ещё нет — /<hex>.txt не отдаём', IndexNow::key() === '' && IndexNow::serve('/' . str_repeat('a', 32) . '.txt') === false);
+ok('localhost — не пингуем и ключ не создаём', IndexNow::run('https://localhost/') === null && IndexNow::key() === '' && !$calls);
+$t0 = 1_800_000_000; $r1 = IndexNow::run('https://teplo.example/', $t0); $k = IndexNow::key();
+ok('первый пинг: ключ создан, адрес и ключ в запросе', preg_match('/^[0-9a-f]{32}$/', $k) && count($calls) === 1 && $calls[0] === IndexNow::API . '?url=' . rawurlencode('https://teplo.example/') . '&key=' . $k && $r1['code'] === 429, [$calls, $r1]);
+ok('429 — повтор не раньше чем через сутки', IndexNow::run('https://teplo.example/', $t0 + 3600) === null && count($calls) === 1);
+$r2 = IndexNow::run('https://teplo.example/', $t0 + 86400 + 60);
+ok('через сутки — повтор, 202 → принято', count($calls) === 2 && $r2['code'] === 202);
+ok('та же сборка после 202 — молчим', IndexNow::run('https://teplo.example/', $t0 + 2 * 86400) === null && count($calls) === 2);
+ok('другой адрес сайта — пингуем снова', IndexNow::run('https://peredai.example/', $t0 + 2 * 86400) !== null && count($calls) === 3);
+ob_start(); $sv = IndexNow::serve('/' . $k . '.txt'); $body = ob_get_clean();
+ok('/<ключ>.txt отдаёт ключ, чужой — нет', $sv === true && $body === $k && IndexNow::serve('/' . strrev($k) . '.txt') === false);
+$hs = IndexNow::summary();
+ok('/api/health → indexnow: код и дата, без ключа', ($hs['code'] ?? 0) === 202 && $hs['key'] === true && !str_contains(json_encode($hs), $k), $hs);
+IndexNow::$http = null;
 
 echo "\nИтог: $pass OK, $fail FAIL\n";
 exit($fail ? 1 : 0);

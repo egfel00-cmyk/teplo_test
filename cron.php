@@ -18,6 +18,7 @@ require __DIR__ . '/app/vksvc.php';
 require __DIR__ . '/app/gpv.php';
 require __DIR__ . '/app/visits.php';
 require __DIR__ . '/app/journal.php';
+require __DIR__ . '/app/indexnow.php';
 $beat = Cron::read(); $beat['last'] = gmdate('c');
 // кабинет Водоканала — открывается ли (раз в 10 минут; статус видят приложение и /admin)
 if ((int)gmdate('i') % 10 === 7) { try { $beat['vkCab'] = VkStatus::probeCabinet()['state']; } catch (Throwable $e) { error_log('teplo vk probe: ' . $e->getMessage()); } }
@@ -53,6 +54,8 @@ if ((int)gmdate('i') !== 17) { Cron::write($beat); exit; }
 $h = ['at' => gmdate('c')];
 try { $n = Admin::cleanup(); $h['photos'] = $n; if ($n) echo gmdate('c') . " удалено старых фото: $n\n"; $h['hist'] = StateHist::cleanup(); $h['events'] = Journal::cleanup(); }
 catch (Throwable $e) { $h['error'] = mb_substr($e->getMessage(), 0, 200); error_log('teplo cron: ' . $e->getMessage()); }
+// новая сборка сайта → IndexNow (Bing и др.), раз на сборку; /api/health → indexnow
+if (Cfg::appUrlKnown()) { try { IndexNow::run(Cfg::appUrl()); } catch (Throwable $e) { error_log('teplo indexnow: ' . $e->getMessage()); } }
 try {
   $s = Reminders::run(time());
   if ($s) {
