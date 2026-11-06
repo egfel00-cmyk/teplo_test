@@ -7,7 +7,7 @@
 (function () {
   'use strict';
   var R = window.TeploRules, M = window.TeploModels, I = window.TeploI18n;
-  var APP_VER = '1.0';   // версия сборки; в шапке по просьбе владельца — «Test beta 0,5 литра»
+  var APP_VER = '1.0';   // версия сборки (бейдж «Test beta» в шапке убран 06.11.2026 по просьбе владельца)
   var HTM_URL = 'https://www.hts.kharkov.ua/cabinet/login';
   var BOT_URL = 'https://t.me/KPHTM_Bot';
 
@@ -399,7 +399,7 @@
       ? '<a class="btn ghost" href="#' + view.closeTo + '" data-key="wiz-close" aria-label="' + esc(t('close')) + '">' + ico('close', 22) + '<span class="cl-txt">' + esc(t('close')) + '</span></a>'
       : '';
     return '<div class="app' + (bare ? ' bare-app' : '') + '">' +
-      '<header class="top' + (right ? ' has-close' : '') + '"><a class="brand" href="#' + homeRoute() + '" data-key="brand">' + logo() + '<span>' + esc(t('brand')) + '</span></a>' + (window.TEPLO_API ? '<span class="beta" title="' + esc(t('beta_sub')) + '" data-key="beta">' + 'Test <span class="ver">beta 0,5 литра</span></span>' : '') + '<span class="spacer"></span>' + themeBtn() + right + '</header>' +
+      '<header class="top' + (right ? ' has-close' : '') + '"><a class="brand" href="#' + homeRoute() + '" data-key="brand">' + logo() + '<span>' + esc(t('brand')) + '</span></a>' + '<span class="spacer"></span>' + themeBtn() + right + '</header>' +
       nav + '<main class="main' + (bare ? ' bare' : '') + (view.wide ? ' wide' : '') + '" id="main" data-screen="' + view.screen + '" tabindex="-1">' + (/^(history|stats|save)$/.test(route) ? placeSwitch() : /^(heat|water-hot|water-cold|elec|gas)$/.test(route) ? placeBar() : /^(wnew|wadd|enew|eadd|gnew|gadd|add-meter|step|step-\d+|check|handover|baseline|meter|photo)$/.test(route) ? placeBar(true) : '') + view.html + '</main></div>' +
       (window.TEPLO_API ? '<button class="fab' + (bare ? ' fab-bare' : '') + '" data-act="fb-open" data-key="feedback" aria-haspopup="dialog">' + ico('chat', 20) + '<span>' + esc(t('fb_btn')) + '</span></button>' + fbDialog() : '') +
       '<div id="toast-host" aria-live="polite"></div>';
@@ -431,12 +431,6 @@
       if (j && j._status === 200) { FB.open = false; FB.text = ''; FB.contact = ''; render(true); toast(t('fb_ok')); return; }
       FB.err = j && j._status === 429 ? t('fb_rate') : t('fb_fail'); render(true);
     }, function () { FB.sending = false; FB.err = t('fb_fail'); render(true); });
-  }
-
-  /** Только на тестовый период: обнулиться и пройти всё как при первом открытии (стирает и на сервере, вход остаётся). */
-  function testReset() {
-    return '<div class="panel test-reset" data-key="test-reset"><h2>' + esc(t('tr_title')) + '</h2><p class="small muted">' + esc(t('tr_sub')) + '</p>' +
-      '<button class="btn danger" data-act="wipe-ask" data-test="1" data-key="test-reset-btn">' + esc(t('tr_btn')) + '</button><div id="wipe-confirm"></div></div>';
   }
 
   // ---------------- экраны ----------------
@@ -4279,8 +4273,9 @@
           '<p class="small muted">' + esc(t('p_data_sub')) + '</p><div class="row-actions" style="margin-top:0"><button class="btn sec" data-act="export" data-key="prefs-export">' + ico('copy', 20) + '<span>' + esc(t('p_export')) + '</span></button></div>' +
           '<details class="tips-box" style="margin-top:12px"><summary>' + esc(t('p_import')) + '</summary><form id="import-form" novalidate style="margin-top:8px"><div class="field"><label for="p-import">' + esc(t('p_import_l')) + '</label><div class="ctl"><textarea id="p-import" placeholder="' + esc(t('p_import_ph')) + '"></textarea></div></div><button class="btn sec" type="submit">' + esc(t('p_import_go')) + '</button></form></details>') +
         // тестовый период: вместо «Видалити всі дані» — «Тестовий режим: почати спочатку» (то же стирание, вход остаётся); раньше блок был и на главной
-        (window.TEPLO_API ? '</div>' + testReset() : '<div style="margin-top:20px"><button class="btn danger" data-act="wipe-ask" data-key="prefs-wipe">' + esc(t('p_wipe')) + '</button><div id="wipe-confirm"></div></div></div>') +
-      '<details class="tips-box" data-key="prefs-demo-box"' + (S.demoToday ? ' open' : '') + '><summary>' + esc(t('p_demo')) + '</summary><p class="small muted">' + esc(t('p_demo_sub')) + '</p><div class="field" style="max-width:260px"><label for="p-demo">' + esc(t('p_demo_l')) + '</label><div class="ctl"><input type="date" id="p-demo" data-key="prefs-demo" value="' + esc(S.demoToday || '') + '"></div></div></details>' +
+        // «Видалити всі дані» (с входом — стирает и в аккаунте, вход остаётся); тестовый блок «почати спочатку» убран 06.11.2026
+        '<div style="margin-top:20px"><button class="btn danger" data-act="wipe-ask" data-key="prefs-wipe">' + esc(t('p_wipe')) + '</button><div id="wipe-confirm"></div></div></div>' +
+      (!S.demoToday ? '' : '<details class="tips-box" data-key="prefs-demo-box" open><summary>' + esc(t('p_demo')) + '</summary><p class="small muted">' + esc(t('p_demo_sub')) + '</p><div class="field" style="max-width:260px"><label for="p-demo">' + esc(t('p_demo_l')) + '</label><div class="ctl"><input type="date" id="p-demo" data-key="prefs-demo" value="' + esc(S.demoToday || '') + '"></div></div></details>') +
       '')
     ];
     return { screen: 'S11', route: 'prefs', html: '<h1>' + esc(t('p_title')) + '</h1><div class="pgroups">' + groups.join('') + '</div>' +

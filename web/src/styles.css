@@ -275,7 +275,6 @@ details.where p { margin-top: var(--sp-2); }
 label.btn { cursor: pointer; }
 
 /* ---------- тестовая версия, отзыв ---------- */
-.beta { font: 600 12px/1 var(--font); letter-spacing: .02em; color: var(--c-warn); background: var(--c-warn-soft); border-radius: var(--r-pill); padding: 5px 9px; }
 .fab { position: fixed; right: var(--sp-4); bottom: calc(58px + env(safe-area-inset-bottom) + var(--sp-3)); z-index: 6; display: inline-flex; align-items: center; gap: 6px;
   min-height: 44px; padding: 0 16px 0 12px; border-radius: var(--r-pill); border: 1.5px solid var(--c-field-line); background: var(--c-surface); color: var(--c-ink);
   font: 600 var(--fs-s)/1 var(--font); box-shadow: 0 6px 18px var(--c-shadow); cursor: pointer; }
@@ -371,7 +370,6 @@ label.btn { cursor: pointer; }
 .brand { min-width: 0; } .brand span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 @media (max-width: 359px) {
   .top { gap: 4px; padding: var(--sp-3); } .brand { gap: 6px; }
-  .beta { font-size: 10px; padding: 4px 6px; }
   .top .theme-btn { width: 44px; height: 44px; } .top .btn { min-height: 44px; padding: 0 10px; } .top .theme-btn + .btn { margin-left: 0; }
 }
 
@@ -687,8 +685,6 @@ details.wacc > summary { list-style: none; cursor: pointer; display: flex; align
 .banner ul.plain { list-style: none; padding: 0; margin: 4px 0 0; display: grid; gap: 2px; }
 .ucard .empty { opacity: .5; filter: saturate(.4); }
 
-.beta .ver { text-transform: none; letter-spacing: 0; font-weight: 500; opacity: .85; white-space: nowrap; }
-.beta { white-space: nowrap; }
 /* кнопка «Уся історія (N)» и ссылки под списком — не прилипают к нему */
 .list + p, .list + .gap-add { margin-top: var(--sp-3); }
 .wq-photo { margin-top: var(--sp-3); }
@@ -1021,7 +1017,6 @@ fieldset.field { border: 0; padding: 0; min-width: 0; }
 
 /* 14-я сессия: свой проход по телефону 360 px */
 /* шапка 360–389 px: «Лічильники» обрезалось до «Лічиль…» из-за плашки Test beta */
-@media (max-width: 389px) { .beta { font-size: 10px; padding: 4px 6px; } }
 @media (min-width: 360px) and (max-width: 389px) { .top { gap: 6px; } }
 /* модели теплосчётчика: плашка «Інструкція перевірена» сжимала название до «SHARKY 77» и наезжала на него — теперь строкой ниже */
 .models .grow .pill { margin-top: 4px; }
