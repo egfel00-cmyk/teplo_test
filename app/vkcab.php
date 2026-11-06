@@ -24,13 +24,14 @@ final class VkCab {
   public static function log(): array { $j = json_decode((string)@file_get_contents(self::logFile()), true); return is_array($j) ? $j : []; }
 
   // ---------- что приходит из приложения ----------
-  private static function input(array $in): array {
+  public static function input(array $in): array {
     $acc = preg_replace('/\D/', '', (string)($in['acc'] ?? '')); $fam = trim(preg_replace('/\s+/u', ' ', (string)($in['fam'] ?? '')));
     if (strlen($acc) < 3 || strlen($acc) > 14) throw new HttpError(422, 'bad_acc', ['human' => self::h('acc')]);
     if (mb_strlen($fam) < 2 || mb_strlen($fam) > 20 || !preg_match("/^[\p{L}'’ʼ\- ]+$/u", $fam)) throw new HttpError(422, 'bad_fam', ['human' => self::h('fam')]);
     return [$acc, $fam];
   }
   private static $lang = 'uk';
+  public static function lang(string $l): void { self::$lang = $l === 'ru' ? 'ru' : 'uk'; }
   private static function h(string $k, array $p = []): string {
     $ru = self::$lang === 'ru';
     $m = [
@@ -44,6 +45,8 @@ final class VkCab {
       'items' => $ru ? 'Нечего отправлять: нет показаний для счётчиков Водоканала.' : 'Нічого надсилати: немає показань для лічильників Водоканалу.',
       'mismatch' => $ru ? 'На сайте Водоканала изменился список счётчиков. Проверьте ещё раз, какой счётчик какой.' : 'На сайті Водоканалу змінився список лічильників. Перевірте ще раз, який лічильник який.',
       'busy' => $ru ? 'Слишком много попыток. Подождите немного и попробуйте снова.' : 'Забагато спроб. Зачекайте трохи й спробуйте знову.',
+      'less' => $ru ? 'Показание «{n}» меньше, чем Водоканал уже знает ({p}) — не отправили. Проверьте цифры.' : 'Показання «{n}» менше, ніж Водоканал уже знає ({p}) — не надіслали. Перевірте цифри.',
+      'which' => $ru ? 'Не поняли, какой счётчик на сайте Водоканала какой. Отправьте кнопкой «Проверить» — там можно выбрать.' : 'Не зрозуміли, який лічильник на сайті Водоканалу який. Надішліть через «Перевірити» — там можна вибрати.',
     ][$k];
     foreach ($p as $a => $b) $m = str_replace('{' . $a . '}', (string)$b, $m);
     return $m;
@@ -245,33 +248,62 @@ final class VkCab {
     return ['ok' => true, 'meters' => self::pubMeters($c['meters']), 'dates' => self::dates($c['fields']), 'addr' => self::addr($c['x'])];
   }
 
+  /** Показания из запроса → [{key|null, value, serial, name, kind}] (до 6). keyless — ключ поля сайта можно не знать (очередь: сервер найдёт сам). */
+  public static function items(array $raw, bool $keyless = false): array {
+    $out = [];
+    foreach (array_slice($raw, 0, 6) as $it) {
+      if (!is_array($it)) continue; $v = str_replace(',', '.', trim((string)($it['value'] ?? '')));
+      $key = is_string($it['key'] ?? null) && self::isInd($it['key']) ? $it['key'] : null;
+      if (!preg_match('/^\d{1,7}(?:\.\d{1,3})?$/', $v) || (!$keyless && $key === null)) continue;
+      $out[] = ['key' => $key, 'value' => $v, 'serial' => isset($it['serial']) && $it['serial'] !== '' ? mb_substr((string)$it['serial'], 0, 30) : null, 'name' => mb_substr(trim((string)($it['name'] ?? '')), 0, 40),
+        'kind' => in_array($it['kind'] ?? null, ['cold', 'hot'], true) ? $it['kind'] : null];
+    }
+    return $out;
+  }
+
   /** POST /api/vk/cab/send {acc, fam, items: [{key, value, serial?, name?}], date?, lang?} — отправить показания. Только по нажатию человека. */
   public static function send(int $uid, array $in): array {
     self::$lang = ($in['lang'] ?? '') === 'ru' ? 'ru' : 'uk';
     [$acc, $fam] = self::input($in);
-    $items = [];
-    foreach (array_slice((array)($in['items'] ?? []), 0, 6) as $it) {
-      if (!is_array($it)) continue; $v = str_replace(',', '.', trim((string)($it['value'] ?? '')));
-      if (!preg_match('/^\d{1,7}(?:\.\d{1,3})?$/', $v) || !is_string($it['key'] ?? null) || !self::isInd($it['key'])) continue;
-      $items[$it['key']] = ['value' => $v, 'serial' => isset($it['serial']) ? (string)$it['serial'] : null, 'name' => mb_substr(trim((string)($it['name'] ?? '')), 0, 40)];
-    }
+    $items = self::items((array)($in['items'] ?? []));
     if (!$items) throw new HttpError(422, 'cab_no_items', ['human' => self::h('items')]);
     self::limit($uid);
-    $c = self::open($acc, $fam, 'send');
+    $r = self::deliver($uid, $acc, $fam, $items, isset($in['date']) ? (string)$in['date'] : null, 'send', false);
+    return ['ok' => $r['result'] === 'ok', 'result' => $r['result'], 'text' => $r['text'], 'at' => $r['at'], 'id' => 'cab-' . $r['at'], 'keys' => $r['keys']];
+  }
+  /** Войти по рахунку и прізвищу, разложить показания по лічильникам сайта, отправить форму. → ['result' => ok|err|unknown, 'text', 'at', 'keys' => [i => ключ поля]].
+   *  strict (очередь, без человека): ключ можно не знать — сервер найдёт лічильник по номеру, виду или единственный; меньше того, что сайт уже знает, — не шлём.
+   *  Не узнали страницу / не тот рахунок / не поняли, какой лічильник, — HttpError (ничего не отправлено). */
+  public static function deliver(int $uid, string $acc, string $fam, array $items, ?string $date, string $op, bool $strict): array {
+    $c = self::open($acc, $fam, $op);
     $byKey = []; foreach ($c['meters'] as $m) $byKey[$m['key']] = $m;
-    foreach ($items as $k => $it) {
-      $m = $byKey[$k] ?? null;
-      $digits = fn($s) => preg_replace('/\D/', '', (string)$s);
-      if (!$m || ($it['serial'] && $digits($it['serial']) !== '' && !str_contains($digits($m['label']), $digits($it['serial'])))) {
-        self::diag(['result' => 'mismatch', 'where' => 'send', 'form' => self::formInfo($c['x'], $c['form'], $c['fields'], $c['meters'])]);
-        throw new HttpError(409, 'cab_mismatch', ['human' => self::h('mismatch'), 'meters' => self::pubMeters($c['meters'])]);
+    $digits = fn($s) => preg_replace('/\D/', '', (string)$s); $used = []; $map = [];
+    $miss = function () use ($c) { self::diag(['result' => 'mismatch', 'where' => 'send', 'form' => self::formInfo($c['x'], $c['form'], $c['fields'], $c['meters'])]); return new HttpError(409, 'cab_mismatch', ['human' => self::h('mismatch'), 'meters' => self::pubMeters($c['meters'])]); };
+    foreach ($items as $i => $it) {
+      $sd = ltrim($digits($it['serial']), '0');
+      $m = $it['key'] !== null ? ($byKey[$it['key']] ?? null) : null;
+      $bad = $m && $sd !== '' && !str_contains($digits($m['label']), $sd);
+      if (!$strict) { if (!$m || $bad) throw $miss(); }
+      else {
+        if ($bad) $m = null;
+        if (!$m && $sd !== '') foreach ($c['meters'] as $x) if (!isset($used[$x['key']]) && str_contains($digits($x['label']), $sd)) { $m = $x; break; }
+        if (!$m && $it['kind']) {
+          $cand = array_values(array_filter($c['meters'], fn($x) => !isset($used[$x['key']]) && $x['kind'] === $it['kind']));
+          if (count($cand) === 1 && count(array_filter($items, fn($y) => $y['kind'] === $it['kind'])) === 1) $m = $cand[0];
+        }
+        if (!$m && count($c['meters']) === 1 && count($items) === 1) $m = $c['meters'][0];
+        if (!$m) { self::diag(['result' => 'which', 'where' => 'send', 'form' => self::formInfo($c['x'], $c['form'], $c['fields'], $c['meters'])]); throw new HttpError(409, 'cab_which', ['human' => self::h('which'), 'meters' => self::pubMeters($c['meters'])]); }
+        if ($m['prev'] !== null && (float)$it['value'] < (float)$m['prev']) { self::diag(['result' => 'less', 'where' => 'send']); throw new HttpError(422, 'cab_less', ['human' => self::h('less', ['n' => $it['name'] ?: $it['value'], 'p' => $m['prev']]), 'item' => $i]); }
       }
+      if (isset($used[$m['key']])) throw $miss();
+      $used[$m['key']] = 1; $map[$i] = $m['key'];
     }
+    $vals = []; foreach ($items as $i => $it) $vals[$map[$i]] = $it['value'];
     // поля формы как у браузера; показания — в свои поля, дата — выбранная человеком (если есть такая), иначе как предложил сайт
-    $date = isset($in['date']) ? (string)$in['date'] : null; $pairs = [];
+    $pairs = [];
     foreach ($c['fields'] as $f) {
       $v = $f['value'];
-      if (isset($items[$f['name']])) $v = $items[$f['name']]['value'];
+      if (isset($vals[$f['name']])) $v = $vals[$f['name']];
       elseif ($f['type'] === 'select' && self::isDate($f['name']) && $date !== null && in_array($date, array_column($f['opts'], 'v'), true)) $v = $date;
       $pairs[] = [$f['name'], $v];
     }
@@ -285,29 +317,29 @@ final class VkCab {
     // форма вернулась с ошибками у наших полей — это «помилка», даже если где-то есть общий алерт
     $fieldErr = [];
     $f2 = $x->query("//form[@id='send-counters-form']")->item(0) ?? $x->query("//form[.//*[contains(@name,'newIndication')]]")->item(0);
-    if ($f2) foreach (self::meters($x, self::fields($x, $f2)) as $m) if (isset($items[$m['key']]) && $m['row'] instanceof DOMElement) {
+    if ($f2) foreach (self::meters($x, self::fields($x, $f2)) as $m) if (isset($vals[$m['key']]) && $m['row'] instanceof DOMElement) {
       foreach ($x->query('.//*[' . self::cls('help-block') . ' or ' . self::cls('invalid-feedback') . ']', $m['row']) as $hb) { $t = self::sp($hb->textContent); if ($t !== '') $fieldErr[] = $t; }
     }
     if ($fieldErr || ($msgs['err'] && !$msgs['ok'])) $result = 'err';
     elseif ($msgs['ok'] || $okText) $result = 'ok';
     else $result = 'unknown';
     $text = $result === 'err' ? implode(' ', array_slice(array_unique(array_merge($fieldErr, $msgs['err'])), 0, 3)) : implode(' ', array_slice($msgs['ok'] ?: $okText ?: $msgs['info'], 0, 2));
-    self::diag(['result' => $result, 'where' => 'send', 'form' => self::formInfo($c['x'], $c['form'], $c['fields'], $c['meters']), 'msgs' => self::maskMsgs($msgs), 'fieldErr' => array_map([self::class, 'mask'], $fieldErr), 'n' => count($items), 'user' => $uid]);
-    Db::q('INSERT INTO audit_log (user_id, action, ip, created_at) VALUES (?, ?, ?, ?)', [$uid, 'vk_cab_send_' . $result, null, Http::iso()]);
+    self::diag(['result' => $result, 'where' => $op, 'form' => self::formInfo($c['x'], $c['form'], $c['fields'], $c['meters']), 'msgs' => self::maskMsgs($msgs), 'fieldErr' => array_map([self::class, 'mask'], $fieldErr), 'n' => count($items), 'user' => $uid]);
+    Db::q('INSERT INTO audit_log (user_id, action, ip, created_at) VALUES (?, ?, ?, ?)', [$uid, 'vk_cab_' . $op . '_' . $result, null, Http::iso()]);
     $at = time();
-    if ($result === 'ok') self::notify($uid, $acc, $items, $byKey, $text);
-    return ['ok' => $result === 'ok', 'result' => $result, 'text' => mb_substr($text, 0, 400), 'at' => $at, 'id' => 'cab-' . $at];
+    if ($result === 'ok') self::notify($uid, $acc, array_map(fn($it, $i) => ['name' => $it['name'] ?: ($byKey[$map[$i]]['serial'] ? '№ ' . $byKey[$map[$i]]['serial'] : ''), 'value' => $it['value']], $items, array_keys($items)), $text);
+    return ['result' => $result, 'text' => mb_substr($text, 0, 400), 'at' => $at, 'keys' => $map];
   }
-  /** «✅ Водоканал прийняв» — в Telegram человеку (если привязан). */
-  private static function notify(int $uid, string $acc, array $items, array $byKey, string $text): void {
+  /** «✅ Водоканал прийняв» — в Telegram человеку (если привязан). lines: [{name, value}] */
+  public static function notify(int $uid, string $acc, array $lines, string $text, ?string $head = null): void {
     $tg = Db::one("SELECT external_id FROM user_identities WHERE user_id = ? AND type = 'telegram'", [$uid]); if (!$tg || !Cfg::get('bot_token')) return;
-    $ru = self::$lang === 'ru'; $lines = [];
-    foreach ($items as $k => $it) $lines[] = '• ' . ($it['name'] ?: ($byKey[$k]['serial'] ? '№ ' . $byKey[$k]['serial'] : ($ru ? 'счётчик' : 'лічильник'))) . ' — ' . $it['value'];
-    $p = ['chat_id' => $tg['external_id'], 'text' => ($ru ? "✅ Водоканал принял показания (счёт $acc):\n" : "✅ Водоканал прийняв показання (рахунок $acc):\n") . implode("\n", $lines) . ($text !== '' ? "\n\n" . ($ru ? 'Ответ сайта: ' : 'Відповідь сайту: ') . '«' . mb_substr($text, 0, 300) . '»' : '')];
+    $ru = self::$lang === 'ru'; $l = [];
+    foreach ($lines as $it) $l[] = '• ' . ($it['name'] ?: ($ru ? 'счётчик' : 'лічильник')) . ' — ' . $it['value'];
+    $p = ['chat_id' => $tg['external_id'], 'text' => ($head ?? ($ru ? "✅ Водоканал принял показания (счёт $acc):" : "✅ Водоканал прийняв показання (рахунок $acc):")) . "\n" . implode("\n", $l) . ($text !== '' ? "\n\n" . ($ru ? 'Ответ сайта: ' : 'Відповідь сайту: ') . '«' . mb_substr($text, 0, 300) . '»' : '')];
     if (Cfg::appUrlKnown()) $p['reply_markup'] = ['inline_keyboard' => [[['text' => $ru ? 'Открыть «Счётчики»' : 'Відкрити «Лічильники»', 'web_app' => ['url' => Cfg::appUrl() . '?go=water-cold']]]]];
     try { Telegram::call('sendMessage', $p); } catch (Throwable $e) { /* не дошло — не страшно */ }
   }
-  private static function limit(int $uid): void {
+  public static function limit(int $uid): void {
     try { RateLimit::hit('vk_cab', (string)$uid); RateLimit::hit('vk_cab_all', 'all'); }
     catch (HttpError $e) { throw new HttpError(429, 'rate_limited', ['human' => self::h('busy')] + $e->extra); }
   }

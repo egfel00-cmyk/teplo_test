@@ -28,6 +28,8 @@
 //  GET  /api/cab/htm · POST /api/cab/htm/connect {email, password, phone?, consent} · POST /api/cab/forget {prov}
 //  POST /api/cab/htm/check {acc?} · POST /api/cab/htm/send {acc?, rid, place, vals, delay?}   кабинет ХТМ по паролю человека (HtmSvc, app/htmsvc.php)
 //  POST /api/cab/htm/auto {on} · POST /api/cab/htm/cancel {job} · POST /api/cab/htm/now {job}   автоподача: очередь внесений после фото в бот
+//  GET /api/vk/jobs · POST /api/vk/queue {acc, fam, rid, place, items, auto?} · POST /api/vk/auto {on, consent} · POST /api/vk/job/cancel|now {job}
+//                                   вода → сайт Водоканалу «у фоні» и автоподача після фото в бот (VkSvc, app/vksvc.php)
 //  GET  /api/weather?from&to       средняя за сутки в Харькове (Open-Meteo, кэш) — для истории
 //  POST /api/recognize/local        {ids, results} — итог распознавания в браузере (свой движок, без нейросети) → в аналитику
 //  POST /api/recognize/run          {ids[≤3], offset, ctx} → распознанное (vision-API, ключ в config.php)
@@ -97,7 +99,7 @@ final class Api {
           'gpv' => ['at' => $g['at'] ?? null, 'update' => $g['update'] ?? null, 'days' => array_keys((array)($g['days'] ?? [])), 'err' => $g['err'] ?? null],
           'vkcab' => VkCab::summary(), 'cabs' => (object)CabProbe::read(),
           // кабинет ХТМ: итоги операций, сколько подключено, внесения по статусам и последняя увиденная форма (имена/типы полей, без значений)
-          'htmcab' => HtmSvc::summary()];
+          'htmcab' => HtmSvc::summary(), 'vksvc' => VkSvc::summary()];
       }
       case 'GET /api/me': if (!$user) throw new HttpError(401, 'unauthorized'); return ['user' => self::publicUser($user)];
 
@@ -277,7 +279,12 @@ final class Api {
       case 'POST /api/cab/htm/auto': if (!$user) throw new HttpError(401, 'unauthorized'); return HtmSvc::auto((int)$user['id'], $in);
       case 'POST /api/cab/htm/cancel': if (!$user) throw new HttpError(401, 'unauthorized'); return HtmSvc::cancel((int)$user['id'], $in);
       case 'POST /api/cab/htm/now': if (!$user) throw new HttpError(401, 'unauthorized'); return HtmSvc::now((int)$user['id'], $in);
-      case 'POST /api/cab/forget': if (!$user) throw new HttpError(401, 'unauthorized'); return HtmSvc::forget((int)$user['id'], $in);
+      case 'POST /api/cab/forget': if (!$user) throw new HttpError(401, 'unauthorized'); return ($in['prov'] ?? '') === 'vk' ? VkSvc::forget((int)$user['id']) : HtmSvc::forget((int)$user['id'], $in);
+      case 'GET /api/vk/jobs': if (!$user) throw new HttpError(401, 'unauthorized'); return VkSvc::status((int)$user['id']);
+      case 'POST /api/vk/queue': if (!$user) throw new HttpError(401, 'unauthorized'); return VkSvc::queue((int)$user['id'], $in);
+      case 'POST /api/vk/auto': if (!$user) throw new HttpError(401, 'unauthorized'); return VkSvc::auto((int)$user['id'], $in);
+      case 'POST /api/vk/job/cancel': if (!$user) throw new HttpError(401, 'unauthorized'); return VkSvc::cancel((int)$user['id'], $in);
+      case 'POST /api/vk/job/now': if (!$user) throw new HttpError(401, 'unauthorized'); return VkSvc::now((int)$user['id'], $in);
       case 'GET /api/weather': return Weather::range((string)($r->query()['from'] ?? ''), (string)($r->query()['to'] ?? ''));   // погода к истории — всем, кэш
       case 'POST /api/docs/upload': {   // документ к счётчику сырым телом: ?place=&kind=passport|verification|other&name=
         if (!$user) throw new HttpError(401, 'unauthorized');

@@ -3,7 +3,7 @@
 // Запуск: стенд на 127.0.0.1:8099 (скопировать tests/htm-mock во /tmp, php -S 127.0.0.1:8099 -t public public/router.php), затем php tests/htm_svc.php
 declare(strict_types=1);
 define('TEPLO', 1);
-foreach (['core', 'telegram', 'reminders', 'recognize', 'admin', 'vkcab', 'cabs', 'htmsvc', 'gpv', 'providers', 'visits', 'journal', 'docs', 'api'] as $f) require __DIR__ . "/../app/$f.php";
+foreach (['core', 'telegram', 'reminders', 'recognize', 'admin', 'vkcab', 'cabs', 'htmsvc', 'vksvc', 'gpv', 'providers', 'visits', 'journal', 'docs', 'api'] as $f) require __DIR__ . "/../app/$f.php";
 $TMP = sys_get_temp_dir() . '/teplo_htmsvc_' . getmypid(); putenv('SITE_DATA=' . $TMP);
 $BASE = getenv('HTM_BASE') ?: 'http://127.0.0.1:8099';
 Cfg::set(['app_url' => 'https://teplo.example/', 'bot_token' => '1:TEST', 'htm_cab_base' => $BASE, 'cookie_secure' => false]);
@@ -103,7 +103,7 @@ ok('бот: автоподача включена у человека', HtmSvc::
 Telegram::$fetch = fn($id) => base64_decode('/9j/4AAQSkZJRgABAQEASABIAAD/2wBDAP//////////////////////////////////////////////////////////////////////////////////////wgALCAABAAEBAREA/8QAFBABAAAAAAAAAAAAAAAAAAAAAP/aAAgBAQABPxA=');
 @unlink((Cfg::data() ?: sys_get_temp_dir() . '/teplo_data') . '/cache/tgreply_777'); $SENT = [];
 $tp = Telegram::photo(['chat' => ['id' => 777], 'from' => ['id' => 777], 'date' => time(), 'photo' => [['file_id' => 'f1']]], 'uk');
-ok('бот: «Розпізнати й внести» → ?inbox=1&auto=1', !empty($tp['auto']) && str_contains($tp['reply_markup']['inline_keyboard'][0][0]['web_app']['url'] ?? '', '?inbox=1&auto=1') && str_contains($tp['text'], 'внесемо'), $tp);
+ok('бот: «Розпізнати й внести» → ?inbox=1&auto=1', !empty($tp['auto']) && str_contains($tp['reply_markup']['inline_keyboard'][0][0]['web_app']['url'] ?? '', '?inbox=1&auto=1') && str_contains($tp['text'], 'у кабінет ХТМ'), $tp);
 $SENT = [];
 $r = $b->req('POST', '/api/cab/htm/send', ['rid' => 'a1', 'place' => 'p1', 'vals' => $VA, 'delay' => true, 'lang' => 'uk']);
 $qj = $r->body['job'] ?? []; $qid = (int)($qj['id'] ?? 0);
@@ -146,6 +146,19 @@ $tp = Telegram::photo(['chat' => ['id' => 777], 'from' => ['id' => 777], 'date' 
 ok('бот без автоподачи — прежняя кнопка «Розпізнати фото»', empty($tp['auto']) && str_ends_with($tp['reply_markup']['inline_keyboard'][0][0]['web_app']['url'] ?? '', '?inbox=1'), $tp);
 Db::q('DELETE FROM rate_limits');
 $r = $b->req('POST', '/api/cab/htm/auto', ['on' => true]); $r = $b->req('POST', '/api/cab/htm/send', ['rid' => 'a7', 'place' => 'p1', 'vals' => ['date' => '18.11.2026', 'energy' => '15.800', 'hours' => '35220'] + $VA, 'delay' => true]); $c7 = (int)($r->body['job']['id'] ?? 0);
+
+// окно дат без min/max на странице (живой кабинет 06.11 их так не показал): по календарю Киева — 1-е число … сегодня
+ok('окно по календарю Киева (30.11 22:30 UTC = 01.12 у Києві) и со страницы', HtmSvc::window(['min' => null, 'max' => null], gmmktime(22, 30, 0, 11, 30, 2026)) === ['01.12.2026', '01.12.2026']
+  && HtmSvc::window(['min' => '05.11.2026', 'max' => '20.11.2026']) === ['05.11.2026', '20.11.2026']);
+ok('журнал: дата без нуля и энергия с запятой — та же строка', (HtmCab::find([['date' => '6.11.2026', 'energy' => '14,445', 'status' => 'ok']], '06.11.2026', '14.445')['status'] ?? '') === 'ok');
+$kv = new DateTimeImmutable('now', new DateTimeZone('Europe/Kyiv'));
+stand('act=set&scenario=nominmax&today=' . $kv->format('Y-m-d') . '&robot_delay=99999'); Db::q('DELETE FROM rate_limits');
+$r = $b->req('POST', '/api/cab/htm/check', ['lang' => 'uk']);
+ok('check без min/max: окно по календарю', $r->status === 200 && ($r->body['winSrc'] ?? '') === 'calendar' && $r->body['min'] === $kv->format('01.m.Y') && $r->body['max'] === $kv->format('d.m.Y'), $r->body);
+$sn = HtmSvc::summary()['seen'] ?? []; ok('…/api/health → seen.dateJs: как страница задаёт дату', str_contains(json_encode($sn['dateJs'] ?? [], JSON_UNESCAPED_UNICODE), 'datetimepicker') && ($sn['minMax'] ?? null) === false, $sn);
+$r = $b->req('POST', '/api/cab/htm/send', ['rid' => 'w1', 'vals' => ['date' => $kv->modify('+1 day')->format('d.m.Y'), 'energy' => '16.000', 'hours' => '35300'] + $V]);
+ok('…дата «завтра» — не вносим', $r->status === 422 && ($r->body['field'] ?? '') === 'date', $r->body);
+stand('act=set&scenario=ok&today=2026-11-21&robot_delay=99999'); Db::q('DELETE FROM rate_limits');
 
 // «Забути пароль»: вход удалён, внесения на проверке → unknown без сообщения
 stand('act=set&today=2026-11-21&robot_delay=99999');

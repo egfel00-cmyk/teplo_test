@@ -155,7 +155,7 @@ final class HtmSvc {
     $pl = HtmCab::plan($h['fields']);
     return ['open' => true, 'action' => (string)parse_url((string)($h['action'] ?? ''), PHP_URL_PATH), 'match' => $pl['match'], 'missing' => $pl['missing'], 'unknown' => $pl['unknown'],
       'fields' => array_slice(array_map(fn($f) => array_filter(['n' => $f['name'], 't' => $f['type'], 'r' => $pl['roles'][$f['name']] ?? null, 'ph' => CabWeb::mask((string)($f['ph'] ?? ''), 40) ?: null, 'max' => $f['max'] ?? null, 'pat' => ($f['pattern'] ?? '') ?: null, 'req' => !empty($f['req']) ?: null], fn($v) => $v !== null), $h['fields']), 0, 40),
-      'minMax' => $h['min'] !== null && $h['max'] !== null];
+      'minMax' => $h['min'] !== null && $h['max'] !== null, 'win' => $h['win'] ?? null];
   }
   private static function pubJournal(array $j): array {
     return array_map(fn($r) => ['date' => $r['date'], 'energy' => $r['energy'], 'status' => $r['status'], 'text' => mb_substr((string)$r['text'], 0, 300), 'reason' => $r['reason'] ?? null], array_slice($j, 0, 8));
@@ -169,8 +169,9 @@ final class HtmSvc {
     catch (CabErr $e) { self::diag(['op' => 'check', 'user' => $uid, 'result' => $e->err, 'steps' => $cab->w->steps]); throw self::cabErr($e); }
     finally { $cab->logout(); }
     $fi = self::formInfo($h);
-    self::diag(['op' => 'check', 'user' => $uid, 'result' => 'ok', 'meter' => (bool)$h['meter'], 'base' => array_keys($h['base']), 'form' => $fi, 'win' => [$h['min'] !== null, $h['max'] !== null], 'dateJs' => $h['dateJs'] ?? [], 'journal' => array_map(fn($r) => $r['status'], $h['journal']), 'closed' => $h['closed'] ? CabWeb::mask($h['closed'], 160) : null, 'steps' => $cab->w->steps]);
-    return ['ok' => true, 'acc' => $acc['acc'], 'meter' => $h['meter'], 'base' => (object)$h['base'], 'open' => $h['open'], 'closed' => $h['closed'], 'min' => $h['min'], 'max' => $h['max'],
+    self::diag(['op' => 'check', 'user' => $uid, 'result' => 'ok', 'meter' => (bool)$h['meter'], 'base' => array_keys($h['base']), 'form' => $fi, 'win' => [$h['min'] !== null, $h['max'] !== null, $h['win'] ?? null], 'dateJs' => $h['dateJs'] ?? [], 'journal' => array_map(fn($r) => $r['status'], $h['journal']), 'closed' => $h['closed'] ? CabWeb::mask($h['closed'], 160) : null, 'steps' => $cab->w->steps]);
+    [$lo, $hi] = self::window($h);
+    return ['ok' => true, 'acc' => $acc['acc'], 'meter' => $h['meter'], 'base' => (object)$h['base'], 'open' => $h['open'], 'closed' => $h['closed'], 'min' => $lo, 'max' => $hi, 'winSrc' => $h['min'] !== null && $h['max'] !== null ? 'page' : 'calendar',
       'journal' => self::pubJournal($h['journal']), 'form' => ['open' => $h['open'], 'match' => $fi['match'] ?? null, 'phone' => in_array('phone', array_column($fi['fields'] ?? [], 'r'), true)]];
   }
 
@@ -184,6 +185,13 @@ final class HtmSvc {
   }
   private static function bad(string $k, string $uk, string $ru): HttpError { return self::fail(422, 'bad_value', ['f' => self::label($k), 'why' => self::$lang === 'ru' ? $ru : $uk], ['field' => $k]); }
   private static function dt(string $s): ?int { if (!preg_match('/^(\d{2})\.(\d{2})\.(\d{4})$/', $s, $m) || !checkdate((int)$m[2], (int)$m[1], (int)$m[3])) return null; return gmmktime(0, 0, 0, (int)$m[2], (int)$m[1], (int)$m[3]); }
+  /** Окно дат формы → [від, до] (dd.mm.yyyy): со страницы кабинета; чего нет — по календарю Киева (1-е число месяца … сегодня). */
+  public static function window(array $h, ?int $now = null): array {
+    $k = (new DateTimeImmutable('@' . ($now ?? time())))->setTimezone(new DateTimeZone('Europe/Kyiv'));
+    $lo = $h['min'] && self::dt((string)$h['min']) ? (string)$h['min'] : $k->format('01.m.Y');
+    $hi = $h['max'] && self::dt((string)$h['max']) ? (string)$h['max'] : $k->format('d.m.Y');
+    return [$lo, $hi];
+  }
   /** Значения из приложения → формат журнала ХТМ (точка, знаки); всё 10 обязательны. */
   private static function vals(array $v): array {
     $out = [];
@@ -200,8 +208,11 @@ final class HtmSvc {
   /** Главные правила робота ХТМ против «последних принятых» из кабинета (полные — в приложении, web/src/rules.js). */
   private static function rules(array $v, array $h): void {
     $d = self::dt($v['date']); $b = $h['base'];
-    if ($h['min'] && ($m = self::dt($h['min'])) && $d < $m) throw self::bad('date', 'кабінет приймає дати від ' . $h['min'] . '.', 'кабинет принимает даты от ' . $h['min'] . '.');
-    if ($h['max'] && ($m = self::dt($h['max'])) && $d > $m) throw self::bad('date', 'кабінет приймає дати до ' . $h['max'] . '.', 'кабинет принимает даты до ' . $h['max'] . '.');
+    // окно дат: со страницы (min/max датапикера), иначе — по календарю, как правило ХТМ «показання поточного місяця»: с 1-го числа по сегодня (Киев).
+    // Важно для очереди: внесение, поставленное 31-го, а внесённое 1-го, или дата «завтра» — не уйдут.
+    [$lo, $hi] = self::window($h);
+    if ($d < self::dt($lo)) throw self::bad('date', 'кабінет приймає дати від ' . $lo . '.', 'кабинет принимает даты от ' . $lo . '.');
+    if ($d > self::dt($hi)) throw self::bad('date', 'кабінет приймає дати до ' . $hi . '.', 'кабинет принимает даты до ' . $hi . '.');
     if (!empty($b['date']) && ($bd = self::dt((string)$b['date'])) && $d <= $bd) throw self::bad('date', 'має бути пізніше останніх прийнятих (' . $b['date'] . ').', 'должна быть позже последних принятых (' . $b['date'] . ').');
     $num = fn($s) => is_numeric(str_replace([',', ' '], ['.', ''], (string)$s)) ? (float)str_replace([',', ' '], ['.', ''], (string)$s) : null;
     foreach (['energy', 'volume', 'hours', 'errHours'] as $k) {
@@ -277,7 +288,7 @@ final class HtmSvc {
       throw self::cabErr($e);
     } finally { $cab->logout(); }
     if ($phone !== '' && $phone !== ($ex['phone'] ?? '')) Db::q('UPDATE cab_creds SET extra = ? WHERE user_id = ? AND prov = ?', [json_encode(['phone' => $phone] + $ex, JSON_UNESCAPED_UNICODE), $uid, self::PROV]);
-    self::diag(['op' => $op, 'user' => $uid, 'result' => in_array($r['status'], ['ok', 'rejected'], true) ? $r['status'] : 'pending', 'flash' => CabWeb::mask((string)$r['flash'], 160), 'steps' => $cab->w->steps]);
+    self::diag(['op' => $op, 'user' => $uid, 'result' => in_array($r['status'], ['ok', 'rejected'], true) ? $r['status'] : (!empty($r['unseen']) ? 'unseen' : 'pending'), 'flash' => CabWeb::mask((string)$r['flash'], 160), 'steps' => $cab->w->steps]);
     return [$acc['acc'], $r];
   }
   /** Итог внесения → строка cab_jobs (новая или из очереди). Сразу «прийнято/не прийнято» — Telegram сразу, иначе ждём робота ХТМ. */
@@ -414,7 +425,7 @@ final class HtmSvc {
     foreach (self::log() as $e) {
       // что робот прочитал со страницы тепла при последней проверке — без значений: нашёл ли прибор, какие «последние принятые», окно, статусы журнала
       if (($e['op'] ?? '') === 'check' && ($e['result'] ?? '') === 'ok') $seen = ['at' => gmdate('c', (int)$e['at']), 'meter' => $e['meter'] ?? null, 'base' => $e['base'] ?? [],
-        'open' => !empty($e['form']['open']), 'minMax' => $e['form']['minMax'] ?? null, 'dateJs' => $e['dateJs'] ?? null, 'journal' => array_count_values(array_map('strval', (array)($e['journal'] ?? []))), 'closed' => $e['closed'] ?? null];
+        'open' => !empty($e['form']['open']), 'minMax' => $e['form']['minMax'] ?? null, 'win' => $e['form']['win'] ?? null, 'dateJs' => $e['dateJs'] ?? null, 'journal' => array_count_values(array_map('strval', (array)($e['journal'] ?? []))), 'closed' => $e['closed'] ?? null];
       $k = preg_replace('/[^a-z]/', '', (string)($e['op'] ?? '?')) . ' ' . preg_replace('/[^a-z_,]/', '', (string)($e['result'] ?? '?'));
       $n[$k] = ($n[$k] ?? 0) + 1;
       if (($e['op'] ?? '') !== 'recheck') $last = max((int)$last, (int)($e['at'] ?? 0));

@@ -225,16 +225,22 @@ final class HtmCab {
   /** Страница тепла: прибор, последние принятые, открыта ли форма, журнал. */
   public function heat(string $acc, string $sur): array {
     $r = $this->get(self::url($acc, $sur)); $x = CabWeb::dom($r['body']); $txt = CabWeb::sp($x->document->textContent ?? '');
-    $o = ['url' => $r['url'], 'meter' => null, 'base' => [], 'open' => false, 'closed' => null, 'min' => null, 'max' => null, 'journal' => [], 'fields' => [], 'html' => $r['body']];
+    $o = ['url' => $r['url'], 'meter' => null, 'base' => [], 'open' => false, 'closed' => null, 'min' => null, 'max' => null, 'win' => null, 'journal' => [], 'fields' => [], 'html' => $r['body']];
     foreach ($x->query('//h1|//h2|//h3|//h4|//caption|//div[contains(@class,"title")]') as $hn) {   // «ВІДОМІСТЬ … НА dd.mm.yyyy: ПУ <модель>, №<номер>»
       if (preg_match('/ПУ\s+([^,№]{2,40}?),?\s*№\s*([\w\-\/\.]{2,30})\s*$/u', CabWeb::sp($hn->textContent), $m)) { $o['meter'] = ['model' => trim($m[1]), 'serial' => trim($m[2])]; break; }
     }
     foreach (self::F as $k => $id) { $n = $x->query("//*[@id='head_$id']")->item(0); if ($n) $o['base'][$k] = CabWeb::sp($n->textContent); }
-    // окно дат формы: «min_date = '05.11.2026'» (снятие 01.11); на живом 06.11 так не нашлось — терпимо к кавычкам, minDate:, «2026-11-05»
-    foreach (['min', 'max'] as $k) if (preg_match('/\b' . $k . '_?date["\']?\s*[=:]\s*(?:new\s+Date\(\s*)?["\']?(\d{1,4}[.\/-]\d{1,2}[.\/-]\d{2,4})/i', $r['body'], $m)) $o[$k] = self::dmy($m[1]);
+    // окно дат формы: «min_date = '05.11.2026'» (снятие 01.11); на живом 06.11 так не нашлось — терпимо к кавычкам, minDate:, startDate: (bootstrap-datepicker),
+    // «2026-11-05»; и атрибуты самого поля даты (min/max, data-min-date, data-date-start-date). Не нашли — окно считает HtmSvc по календарю (1-е число … сегодня).
+    $D = '["\']?(\d{1,4}[.\/-]\d{1,2}[.\/-]\d{2,4})';
+    foreach (['min' => 'min_?date|start_?date', 'max' => 'max_?date|end_?date'] as $k => $re) if (preg_match('/\b(?:' . $re . ')["\']?\s*[=:]\s*(?:new\s+Date\(\s*)?' . $D . '/i', $r['body'], $m)) { $o[$k] = self::dmy($m[1]); $o['win'] = 'js'; }
+    $dn = $x->query("//input[@name='" . self::F['date'] . "' or @id='" . self::F['date'] . "']")->item(0);
+    if ($dn instanceof DOMElement) foreach (['min' => ['min', 'data-min-date', 'data-date-start-date', 'data-mindate'], 'max' => ['max', 'data-max-date', 'data-date-end-date', 'data-maxdate']] as $k => $attrs)
+      foreach ($attrs as $at) if ($o[$k] === null && preg_match('/^\s*' . substr($D, 5) . '\s*$/', (string)$dn->getAttribute($at), $m)) { $o[$k] = self::dmy($m[1]); $o['win'] = 'attr'; }
     // для сверки: как страница задаёт окно дат (куски скриптов рядом с min/max/datepicker, без личных данных — только даты и слова)
     $o['dateJs'] = [];
-    if (preg_match_all('/[^;{}\n]{0,60}\b(?:min_?date|max_?date|datetimepicker|datepicker)\b[^;{}\n]{0,80}/iu', $r['body'], $mm)) foreach (array_slice(array_unique($mm[0]), 0, 4) as $sn) $o['dateJs'][] = mb_substr(CabWeb::sp((string)preg_replace('/\d{5,}/u', '#', $sn)), 0, 150);
+    if (preg_match_all('/[^;{}\n]{0,60}\b(?:min_?date|max_?date|start_?date|end_?date|datetimepicker|datepicker)\b[^;{}\n]{0,80}/iu', $r['body'], $mm)) foreach (array_slice(array_unique($mm[0]), 0, 4) as $sn) $o['dateJs'][] = mb_substr(CabWeb::sp((string)preg_replace('/\d{5,}/u', '#', $sn)), 0, 150);
+    if ($dn instanceof DOMElement) { $a = []; foreach ($dn->attributes as $at) if (!in_array($at->name, ['value', 'name', 'id'], true)) $a[] = $at->name . (preg_match('/date|min|max/i', $at->name) ? '=' . mb_substr(preg_replace('/\d{5,}/', '#', $at->value), 0, 30) : ''); if ($a) $o['dateJs'][] = 'input: ' . implode(' ', array_slice($a, 0, 10)); }
     $form = null;
     foreach ($x->query('//form') as $f) { foreach ($x->query('.//input', $f) as $i) if (strcasecmp((string)$i->getAttribute('name'), self::F['energy']) === 0 || stripos((string)$i->getAttribute('name'), 'LastValue') !== false) { $form = $f; break 2; } }
     if ($form) {
@@ -327,12 +333,16 @@ final class HtmCab {
     $m = self::msgs(CabWeb::dom($r['body']));
     $after = $this->heat($acc, $sur);
     $row = self::find($after['journal'], $want[strtolower(self::F['date'])], $want[strtolower(self::F['energy'])]);
-    if (!$row) throw new CabErr('form_error', implode(' ', array_slice($m['err'] ?: $m['ok'], 0, 2)));
+    // сайт сказал «ошибка» — не сохранено; ошибок нет, а строки в журнале ещё нет (журнал обновляется не сразу) — не «не зберіг»,
+    // а «на перевірці»: cron перечитает журнал и, не найдя за 6 ч, честно скажет «перевірте самі»
+    if (!$row && $m['err']) throw new CabErr('form_error', implode(' ', array_slice($m['err'], 0, 2)));
+    if (!$row) { $this->log['unseen'] = true; return ['status' => 'pending', 'text' => '', 'reason' => null, 'flash' => implode(' ', array_slice($m['ok'], 0, 1)), 'unseen' => true]; }
     return ['status' => $row['status'], 'text' => $row['text'], 'reason' => $row['reason'] ?? null, 'flash' => implode(' ', array_slice($m['ok'], 0, 1))];
   }
   /** Строка журнала по дате и энергии (энергию сравниваем числом). */
   public static function find(array $journal, string $date, string $energy): ?array {
-    foreach ($journal as $j) if ($j['date'] === $date && abs((float)$j['energy'] - (float)$energy) < 0.0005) return $j;
+    $n = fn($v) => (float)str_replace([',', ' ', "\u{a0}"], ['.', '', ''], trim((string)$v));   // «14,445» / «14 445.000» — как бы ни показал журнал
+    foreach ($journal as $j) if (self::dmy(trim((string)$j['date'])) === self::dmy(trim($date)) && abs($n($j['energy']) - $n($energy)) < 0.0005) return $j;
     return null;
   }
 }

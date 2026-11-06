@@ -110,7 +110,7 @@ function page_heat(string $flash = '', string $flashCls = '', array $bad = [], a
   if (window_open()) {
     $first = (new DateTimeImmutable($t))->format('Y-m-01');
     $body .= '<p>' . h(TX('window_rule')) . '</p><p>Введіть показання на нову дату або клікніть іконку в полі дати, щоб відредагувати введені раніше показання:</p>'
-      . '<script>var min_date = \'' . ua_date($first) . '\'; var max_date = \'' . ua_date($t) . '\';</script>'
+      . (scenario() === 'nominmax' ? '<script>$(function () { $(\'#LastDtPok\').datetimepicker({ format: \'DD.MM.YYYY\' }); });</script>' : '<script>var min_date = \'' . ua_date($first) . '\'; var max_date = \'' . ua_date($t) . '\';</script>')
       . heat_form($bad, $old);
   } else {
     $next = (new DateTimeImmutable($t))->modify((int)substr($t, 8, 2) > 25 ? 'first day of next month' : 'first day of this month')->format('Y-m-d');
