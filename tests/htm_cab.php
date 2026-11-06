@@ -66,4 +66,16 @@ ok('испорченный шифр → null', CabVault::dec('g1:' . base64_enco
 ok('телефон по подсказке «(0XX) ***-**-XX» → «(050) 111-22-33»', HtmCab::phoneFor('+380501112233', '(067) ***-**-45') === '(050) 111-22-33' && HtmCab::phoneFor('0501112233', '(___)___-__-__') === '(050)111-22-33');
 ok('без подсказки и чужой номер — как есть', HtmCab::phoneFor('+380501112233', '') === '+380501112233' && HtmCab::phoneFor('+48123456789', '(067) ***-**-45') === '+48123456789');
 ok('окно дат: «2026-11-05» и «5.11.2026» → 05.11.2026', HtmCab::dmy('2026-11-05') === '05.11.2026' && HtmCab::dmy('5.11.2026') === '05.11.2026');
+
+// живой кабинет 06.11 22:14: новое соединение на /cabinet/list не установилось за 6 с → «сайт не відповідає», хотя вход прошёл
+$n = 0; CabWeb::$http = function ($m, $u, $b, $c, $h) use (&$n) { $n++; return $n === 1 ? ['code' => 0, 'body' => '', 'err' => 'Connection timed out after 6001 milliseconds'] : ['code' => 200, 'body' => 'ok']; };
+$w = new CabWeb('/^x\.test$/i'); $r = $w->req('GET', 'https://x.test/a');
+ok('GET не соединился — ещё раз; в шагах видно ошибку сети', $r['code'] === 200 && count($w->steps) === 2 && str_contains((string)($w->steps[0][4] ?? ''), 'timed out'), $w->steps);
+$n = 0; $w = new CabWeb('/^x\.test$/i'); $r = $w->req('POST', 'https://x.test/a', 'x=1');
+ok('POST не соединился — не повторяем (мог сохраниться)', $r['code'] === 0 && count($w->steps) === 1, $w->steps);
+CabWeb::$http = fn($m, $u, $b, $c, $h) => str_contains($u, '/cabinet/list') ? ['code' => 0, 'body' => '', 'err' => 'Connection timed out'] : ['code' => 200, 'body' => '<html></html>'];
+$acc = (new HtmCab())->accounts(['body' => '<a href="/cabinet/heat/1000000061/%D0%A2%D0%95%D0%A1%D0%A2%D0%9E%D0%92%D0%98%D0%99">Тепло</a>']);
+ok('/cabinet/list не ответил, рахунок есть на главной — берём его', ($acc[0]['acc'] ?? '') === '1000000061' && ($acc[0]['sur'] ?? '') === 'ТЕСТОВИЙ', $acc);
+try { (new HtmCab())->accounts(['body' => '<html>без рахунків</html>']); ok('…на главной рахунків нет — честно «сайт не відповідає»', false); } catch (CabErr $e) { ok('…на главной рахунків нет — честно «сайт не відповідає»', $e->err === 'down', $e->err); }
+CabWeb::$http = null;
 echo "\nИтог: $pass OK, $fail FAIL\n"; exit($fail ? 1 : 0);

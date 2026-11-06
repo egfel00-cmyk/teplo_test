@@ -13,6 +13,9 @@ final class CabWeb {
   public array $jar = [];
   public array $steps = [];
   private float $t0;
+  /** Один curl на весь заход робота: соединение и TLS-сессия переиспользуются (живой кабинет ХТМ 06.11 22:14 — новое соединение на 5-м запросе
+   *  не установилось за 6 с, хотя предыдущие прошли). curl_reset между запросами сбрасывает опции, но не живые соединения. */
+  private $ch = null;
   public function __construct(private string $hostRe, private float $budget = 25.0, private string $charset = 'UTF-8') { $this->t0 = microtime(true); }
 
   public static function ua(): string { return 'Mozilla/5.0 (compatible; Lichylnyky/1.0; +' . Cfg::appUrl() . ')'; }
@@ -34,8 +37,9 @@ final class CabWeb {
       $hdr = ['cookies' => [], 'location' => null];
       $h = array_merge(['Accept: text/html,application/xhtml+xml,application/json;q=0.9', 'Accept-Language: uk-UA,uk;q=0.9'], $headers);
       if ($cookie !== '') $h[] = 'Cookie: ' . $cookie;
-      $ch = curl_init($url);
-      curl_setopt_array($ch, [CURLOPT_RETURNTRANSFER => true, CURLOPT_FOLLOWLOCATION => false, CURLOPT_TIMEOUT => (int)max(2, min(12, $left - 1)), CURLOPT_CONNECTTIMEOUT => 6,
+      if ($this->ch === null) $this->ch = curl_init(); else curl_reset($this->ch);
+      $ch = $this->ch;
+      curl_setopt_array($ch, [CURLOPT_URL => $url, CURLOPT_RETURNTRANSFER => true, CURLOPT_FOLLOWLOCATION => false, CURLOPT_TIMEOUT => (int)max(2, min(12, $left - 1)), CURLOPT_CONNECTTIMEOUT => 6,
         CURLOPT_USERAGENT => self::ua(), CURLOPT_HTTPHEADER => $h, CURLOPT_ENCODING => '', CURLOPT_MAXFILESIZE => 4 * 1024 * 1024,
         CURLOPT_HEADERFUNCTION => function ($c, $line) use (&$hdr) {
           if (preg_match('/^set-cookie:\s*(.+)$/i', trim($line), $m)) $hdr['cookies'][] = $m[1];
@@ -43,7 +47,8 @@ final class CabWeb {
           return strlen($line);
         }]);
       if ($method === 'POST') { curl_setopt($ch, CURLOPT_POST, true); curl_setopt($ch, CURLOPT_POSTFIELDS, (string)$body); }
-      $b = curl_exec($ch); $code = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE); $err = $b === false ? curl_error($ch) : null; curl_close($ch);
+      $b = curl_exec($ch); $code = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE); $err = $b === false ? curl_error($ch) : null;
+      if ($b === false) { curl_close($ch); $this->ch = null; }   // сеть подвела — следующая попытка на свежем соединении
       $r = ['code' => $code, 'body' => is_string($b) ? $b : '', 'err' => $err] + $hdr;
     }
     foreach ((array)$r['cookies'] as $sc) {
@@ -57,9 +62,13 @@ final class CabWeb {
   public function req(string $method, string $url, ?string $body = null, array $headers = []): array {
     for ($i = 0; $i < 6; $i++) {
       if (!$this->sameSite($url)) return ['code' => 0, 'body' => '', 'url' => $url, 'err' => 'offsite', 'offsite' => (string)parse_url($url, PHP_URL_HOST)];
-      $t = microtime(true);
-      $r = $this->once($method, $url, $body, $headers);
-      $this->steps[] = [$method, (string)(parse_url($url, PHP_URL_PATH) ?: '/'), (int)$r['code'], (int)round((microtime(true) - $t) * 1000)] + (!empty($r['err']) ? [4 => mb_substr((string)$r['err'], 0, 90)] : []);
+      for ($try = 0; ; $try++) {
+        $t = microtime(true);
+        $r = $this->once($method, $url, $body, $headers);
+        $this->steps[] = [$method, (string)(parse_url($url, PHP_URL_PATH) ?: '/'), (int)$r['code'], (int)round((microtime(true) - $t) * 1000)] + (!empty($r['err']) ? [4 => mb_substr((string)$r['err'], 0, 90)] : []);
+        // не соединились / оборвалось — GET повторяем один раз (он ничего не меняет на сайте); POST — никогда: могли и сохранить
+        if ((int)$r['code'] !== 0 || $method !== 'GET' || $try >= 1 || ($r['err'] ?? '') === 'time budget' || ($r['err'] ?? '') === 'offsite' || $this->left() < 8) break;
+      }
       if (in_array((int)$r['code'], [301, 302, 303, 307, 308], true) && !empty($r['location'])) {
         $url = self::abs(trim((string)$r['location']), $url);
         if (!in_array((int)$r['code'], [307, 308], true)) { $method = 'GET'; $body = null; }
@@ -215,7 +224,10 @@ final class HtmCab {
   /** Особові рахунки кабинета: [['acc' => '…', 'sur' => 'ПРІЗВИЩЕ']] — из ссылок /cabinet/{рахунок}/{прізвище}. */
   public function accounts(array $home): array {
     $out = [];
-    foreach ([$home, $this->get('/cabinet/list')] as $r) {
+    $pages = [$home];
+    try { $pages[] = $this->get('/cabinet/list'); }
+    catch (CabErr $e) { if ($e->err !== 'down' || !preg_match('~href="(?:https?://[^"/]+)?/cabinet/(?:heat/)?\d{4,14}/~', (string)$home['body'])) throw $e; }   // список не открылся, но рахунки видны на главной
+    foreach ($pages as $r) {
       if (!preg_match_all('~href="(?:https?://[^"/]+)?/cabinet/(?:heat/)?(\d{4,14})/([^"/?#]+)"~u', $r['body'], $m, PREG_SET_ORDER)) continue;
       foreach ($m as $x) { $sur = rawurldecode(html_entity_decode($x[2])); if (!isset($out[$x[1]])) $out[$x[1]] = ['acc' => $x[1], 'sur' => $sur]; }
     }
