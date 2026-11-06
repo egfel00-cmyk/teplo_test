@@ -283,6 +283,7 @@ label.btn { cursor: pointer; }
 .fab.fab-bare { bottom: calc(env(safe-area-inset-bottom) + var(--sp-4)); }
 @media (max-width: 420px) { .fab span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); } .fab { padding: 0; width: 48px; justify-content: center; } }
 @media (min-width: 960px) { .fab { bottom: var(--sp-5); right: var(--sp-5); } }
+@media (max-width: 959px) { .fab { transition: opacity .15s, visibility 0s; } .fab-off .fab { opacity: 0; visibility: hidden; transition: opacity .15s, visibility 0s .15s; } }   /* кнопки формы на экране — «Відгук» их не закрывает */
 .fb-back { position: fixed; inset: 0; background: var(--c-scrim); z-index: 20; }
 .fb { position: fixed; z-index: 21; left: 50%; top: 50%; transform: translate(-50%, -50%); width: min(520px, calc(100vw - 24px)); max-height: calc(100vh - 24px); overflow: auto;
   background: var(--c-surface); border-radius: 16px; padding: var(--sp-5); box-shadow: 0 20px 50px var(--c-shadow-strong); }
@@ -537,6 +538,8 @@ input[type=text]:not(.dmy-native):not(.pl-in), input[type=email], input[type=pas
 .wz-opt input { width: 20px; height: 20px; accent-color: var(--c-ink); flex: none; }
 .field label.wz-opt { display: flex; margin-bottom: 0; font-weight: inherit; }
 .wz-opt:hover { background: var(--c-ghost-hover); }
+.ea-zones .wz-opts { gap: 8px; }   /* зоны в форме нового світла — плотнее: кнопка «Додати» ближе к первому экрану */
+.ea-zones .wz-opt { padding: 10px 14px; }
 .wz-link .ico:first-child { color: var(--c-info); }
 .wm-row { border: 1px solid var(--c-line); border-radius: 12px; padding: 8px 14px 12px; margin: 0 0 12px; }
 .wm-row legend { font-weight: 600; padding: 0 6px; display: flex; align-items: center; gap: 6px; }

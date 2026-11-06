@@ -296,6 +296,7 @@ label.btn { cursor: pointer; }
 .fab.fab-bare { bottom: calc(env(safe-area-inset-bottom) + var(--sp-4)); }
 @media (max-width: 420px) { .fab span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); } .fab { padding: 0; width: 48px; justify-content: center; } }
 @media (min-width: 960px) { .fab { bottom: var(--sp-5); right: var(--sp-5); } }
+@media (max-width: 959px) { .fab { transition: opacity .15s, visibility 0s; } .fab-off .fab { opacity: 0; visibility: hidden; transition: opacity .15s, visibility 0s .15s; } }   /* кнопки формы на экране — «Відгук» их не закрывает */
 .fb-back { position: fixed; inset: 0; background: var(--c-scrim); z-index: 20; }
 .fb { position: fixed; z-index: 21; left: 50%; top: 50%; transform: translate(-50%, -50%); width: min(520px, calc(100vw - 24px)); max-height: calc(100vh - 24px); overflow: auto;
   background: var(--c-surface); border-radius: 16px; padding: var(--sp-5); box-shadow: 0 20px 50px var(--c-shadow-strong); }
@@ -550,6 +551,8 @@ input[type=text]:not(.dmy-native):not(.pl-in), input[type=email], input[type=pas
 .wz-opt input { width: 20px; height: 20px; accent-color: var(--c-ink); flex: none; }
 .field label.wz-opt { display: flex; margin-bottom: 0; font-weight: inherit; }
 .wz-opt:hover { background: var(--c-ghost-hover); }
+.ea-zones .wz-opts { gap: 8px; }   /* зоны в форме нового світла — плотнее: кнопка «Додати» ближе к первому экрану */
+.ea-zones .wz-opt { padding: 10px 14px; }
 .wz-link .ico:first-child { color: var(--c-info); }
 .wm-row { border: 1px solid var(--c-line); border-radius: 12px; padding: 8px 14px 12px; margin: 0 0 12px; }
 .wm-row legend { font-weight: 600; padding: 0 6px; display: flex; align-items: center; gap: 6px; }
@@ -2698,14 +2701,14 @@ details.tbl-acc[open] > .tbl-wrap { margin-top: 12px; }
       aw_n0: 'немає', aw_dec: 'Менше: {k}', aw_inc: 'Більше: {k}', aw_max: 'Більше не буває', aw_soon_s: 'Скоро',
       aw_sum: 'Перевірте, перш ніж створити', aw_sum_name: 'Квартира', aw_sum_meters: 'Лічильники', aw_sum_acc: 'Рахунок Водоканалу', aw_sum_none: 'поки немає — додасте пізніше', aw_sum_noacc: 'не вказано',
       aw_create: 'Створити квартиру', aw_skip_acc: 'Пропустити — вкажу пізніше', aw_created: 'Квартиру «{p}» створено',
-      aw_q: 'Нова квартира «{p}»: лічильник {i}\u00a0з\u00a0{n}', aw_q_later: 'Налаштую пізніше', aw_q_heat: 'Залишився теплолічильник — оберіть модель.',
+      aw_q: 'Нова квартира «{p}»: лічильник {i}\u00a0з\u00a0{n}', aw_q_later: 'Налаштую пізніше', wa_more: 'Заводський номер і повірка', aw_q_heat: 'Залишився теплолічильник — оберіть модель.',
       pv_remind: 'Нагадування в Telegram', pv_remind_l: 'Нагадувати про цю квартиру', pv_remind_h: 'Бот нагадає, коли настане час передати показання її лічильників.',
       pv_remind_all_off: 'Зараз нагадування вимкнено для всіх квартир — увімкнути можна в Налаштуваннях.',
       wi_other: 'Схоже на показання квартири «{p}» (там останні {v}). Зараз відкрита «{c}» — перевірте, куди вносите.',
       c_other_place: 'Схоже на показання теплолічильника квартири «{p}» (там {v} Гкал). Зараз відкрита «{c}».', c_other_place_fix: 'Якщо це інша квартира — скасуйте введення й відкрийте її через «Усі квартири».',
       wd_for: 'Квартира: {p}',
       // ---- газ (этап 3): Нафтогаз 7,96 грн/м³, показання 1–5 числа, SMS 4647, кабінет Газмереж, «Куб»
-      kv_gas: 'Газ', ug_add: 'Внести показання газу', aw_q_gas: 'Цифри можна пропустити — натисніть «Додати лічильник».', pv_m_gas: 'Газ (Нафтогаз)',
+      kv_gas: 'Газ', ug_add: 'Внести показання газу', ga_more: 'Рахунки, EIC, № лічильника, котел', pv_m_gas: 'Газ (Нафтогаз)',
       gd_org: 'Нафтогаз / Газмережі', gd_what: 'Показання газу · газ — Нафтогаз, доставка — Газмережі', gd_lead: 'Показання газу приймають з 1 по 5 число — станом на 1-ше. SMS на 4647 — уже з 28-го.',
       gd_kub: 'Застосунок «Куб»', gd_kub_call: 'Передати телефоном', gd_kub_free: 'безкоштовно', gd_sms_end: 'SMS на 4647 приймають до {d}; далі — застосунок «Куб» або 0 800 303 104.', gd_acc: 'Особовий рахунок {a}', gd_sms: 'SMS на 4647', gd_cab: 'Кабінет Газмереж', gd_more: 'Ще — застосунок Нафтогазу «Куб» і кол-центр:', gd_call: 'Кол-центр', gd_app_note: 'Також можна в застосунку Нафтогазу «Куб».',
       gd_sms_how: 'Готове SMS на 4647 (рахунок, пробіл, 5 цифр): {s}', gd_noacc: 'Для SMS на 4647 потрібен рахунок Нафтогазу — 9 цифр із платіжки за газ (не за доставку). Впишіть його в «Налаштуваннях лічильника» — і тут з’явиться готове SMS.',
@@ -2729,7 +2732,7 @@ details.tbl-acc[open] > .tbl-wrap { margin-top: 12px; }
       gsv_g1: 'Кухня', gsv_g2: 'Гаряча вода', gsv_g3: 'Котел і опалення',
       gsv_tips: 'Кришка на каструлі|З кришкою вода закипає швидше, а газу йде на чверть менше.||Полум’я — під дно|Язики полум’я, що виходять за дно, гріють повітря. Зменште вогонь до розміру посуду.||Пальник і посуд|Малий посуд — на малий пальник. Рівне дно гріється рівномірно й швидше.||Газова колонка|Не ставте найвищу температуру: краще помірна, без доливання холодної. Ощадна лійка в душі зменшує і воду, і газ.||Не лийте гарячу даремно|Закривайте кран, поки намилюєте руки чи посуд.||Котел: температура|Кожен градус менше вдома — приблизно 5–6 % газу. Вночі й коли нікого немає — знижуйте.||Котел: обслуговування|Раз на рік — огляд і чистка: брудний теплообмінник «з’їдає» до 10 % газу.||Утеплення|Ущільнювачі на вікнах і дверях, штори вночі, батарея без меблів перед нею — тепло не тікає.',
       // ---- світло (этап 3): Харківобленерго, вікно — останні 2 дні місяця і 1–3 число, зони, ціна 4,32
-      en_prev: 'Минулого разу {v} кВт·год ({d})', eh_base: 'стартові — з налаштування лічильника', esv_title: 'Як заощадити на світлі', kv_elec: 'Світло', ue_add: 'Внести показання світла', ue_next: 'Наступна передача {a}–{b}', ue_due: 'Передати {a}–{b}', aw_q_elec: 'Оберіть, скільки зон на лічильнику, — решту можна пропустити.', pv_m_elec: 'Світло (Харківенергозбут)',
+      en_prev: 'Минулого разу {v} кВт·год ({d})', eh_base: 'стартові — з налаштування лічильника', esv_title: 'Як заощадити на світлі', kv_elec: 'Світло', ue_add: 'Внести показання світла', ue_next: 'Наступна передача {a}–{b}', ue_due: 'Передати {a}–{b}', ea_more: 'Рахунок, № лічильника, електроопалення', pv_m_elec: 'Світло (Харківенергозбут)',
       ed_org: 'Харківобленерго', ed_what: 'Показання світла · рахунок виставляє Харківенергозбут', ed_due: 'до {d}', ed_due_next: '{a}–{b}',
       ed_lead: 'Показання світла приймають в останні 2 дні місяця і 1–3 числа наступного. Подані 1–3 числа зараховуються на 1-ше.',
       ed_nosum: 'Кожну зону — окремо, не додавайте їх. Загальний показник (сума зон) не передають.', ed_acc: 'Особовий рахунок {a}',
@@ -3597,14 +3600,14 @@ details.tbl-acc[open] > .tbl-wrap { margin-top: 12px; }
       aw_n0: 'нет', aw_dec: 'Меньше: {k}', aw_inc: 'Больше: {k}', aw_max: 'Больше не бывает', aw_soon_s: 'Скоро',
       aw_sum: 'Проверьте, прежде чем создать', aw_sum_name: 'Квартира', aw_sum_meters: 'Счётчики', aw_sum_acc: 'Счёт Водоканала', aw_sum_none: 'пока нет — добавите позже', aw_sum_noacc: 'не указан',
       aw_create: 'Создать квартиру', aw_skip_acc: 'Пропустить — укажу позже', aw_created: 'Квартира «{p}» создана',
-      aw_q: 'Новая квартира «{p}»: счётчик {i}\u00a0из\u00a0{n}', aw_q_later: 'Настрою позже', aw_q_heat: 'Остался теплосчётчик — выберите модель.',
+      aw_q: 'Новая квартира «{p}»: счётчик {i}\u00a0из\u00a0{n}', aw_q_later: 'Настрою позже', wa_more: 'Заводской номер и поверка', aw_q_heat: 'Остался теплосчётчик — выберите модель.',
       pv_remind: 'Напоминания в Telegram', pv_remind_l: 'Напоминать об этой квартире', pv_remind_h: 'Бот напомнит, когда придёт время передать показания её счётчиков.',
       pv_remind_all_off: 'Сейчас напоминания выключены для всех квартир — включить можно в Настройках.',
       wi_other: 'Похоже на показания квартиры «{p}» (там последние {v}). Сейчас открыта «{c}» — проверьте, куда вносите.',
       c_other_place: 'Похоже на показания теплосчётчика квартиры «{p}» (там {v} Гкал). Сейчас открыта «{c}».', c_other_place_fix: 'Если это другая квартира — отмените ввод и откройте её через «Все квартиры».',
       wd_for: 'Квартира: {p}',
       // ---- газ (этап 3): Нафтогаз 7,96 грн/м³, показания 1–5 числа, SMS 4647, кабинет Газсетей, «Куб»
-      kv_gas: 'Газ', ug_add: 'Внести показания газа', aw_q_gas: 'Цифры можно пропустить — нажмите «Добавить счётчик».', pv_m_gas: 'Газ (Нафтогаз)',
+      kv_gas: 'Газ', ug_add: 'Внести показания газа', ga_more: 'Счета, EIC, № счётчика, котёл', pv_m_gas: 'Газ (Нафтогаз)',
       gd_org: 'Нафтогаз / Газсети', gd_what: 'Показания газа · газ — Нафтогаз, доставка — Газсети', gd_lead: 'Показания газа принимают с 1 по 5 число — на 1-е. SMS на 4647 — уже с 28-го.',
       gd_kub: 'Приложение «Куб»', gd_kub_call: 'Передать по телефону', gd_kub_free: 'бесплатно', gd_sms_end: 'SMS на 4647 принимают до {d}; дальше — приложение «Куб» или 0 800 303 104.', gd_acc: 'Лицевой счёт {a}', gd_sms: 'SMS на 4647', gd_cab: 'Кабинет Газсетей', gd_more: 'Ещё — приложение Нафтогаза «Куб» и колл-центр:', gd_call: 'Колл-центр', gd_app_note: 'Также можно в приложении Нафтогаза «Куб».',
       gd_sms_how: 'Готовое SMS на 4647 (счёт, пробел, 5 цифр): {s}', gd_noacc: 'Для SMS на 4647 нужен счёт Нафтогаза — 9 цифр из платёжки за газ (не за доставку). Впишите его в «Настройках счётчика» — и здесь появится готовое SMS.',
@@ -3628,7 +3631,7 @@ details.tbl-acc[open] > .tbl-wrap { margin-top: 12px; }
       gsv_g1: 'Кухня', gsv_g2: 'Горячая вода', gsv_g3: 'Котёл и отопление',
       gsv_tips: 'Крышка на кастрюле|С крышкой вода закипает быстрее, а газа уходит на четверть меньше.||Пламя — под дно|Языки пламени, выходящие за дно, греют воздух. Уменьшите огонь до размера посуды.||Конфорка и посуда|Маленькая посуда — на маленькую конфорку. Ровное дно греется равномерно и быстрее.||Газовая колонка|Не ставьте самую высокую температуру: лучше умеренная, без доливания холодной. Экономная лейка в душе уменьшает и воду, и газ.||Не лейте горячую зря|Закрывайте кран, пока намыливаете руки или посуду.||Котёл: температура|Каждый градус меньше дома — примерно 5–6 % газа. Ночью и когда никого нет — снижайте.||Котёл: обслуживание|Раз в год — осмотр и чистка: грязный теплообменник «съедает» до 10 % газа.||Утепление|Уплотнители на окнах и дверях, шторы ночью, батарея без мебели перед ней — тепло не уходит.',
       // ---- свет (этап 3): Харьковоблэнерго, окно — последние 2 дня месяца и 1–3 число, зоны, цена 4,32
-      en_prev: 'В прошлый раз {v} кВт·ч ({d})', eh_base: 'стартовые — с настройки счётчика', esv_title: 'Как сэкономить на свете', kv_elec: 'Свет', ue_add: 'Внести показания света', ue_next: 'Следующая передача {a}–{b}', ue_due: 'Передать {a}–{b}', aw_q_elec: 'Выберите, сколько зон на счётчике, — остальное можно пропустить.', pv_m_elec: 'Свет (Харьковэнергосбыт)',
+      en_prev: 'В прошлый раз {v} кВт·ч ({d})', eh_base: 'стартовые — с настройки счётчика', esv_title: 'Как сэкономить на свете', kv_elec: 'Свет', ue_add: 'Внести показания света', ue_next: 'Следующая передача {a}–{b}', ue_due: 'Передать {a}–{b}', ea_more: 'Счёт, № счётчика, электроотопление', pv_m_elec: 'Свет (Харьковэнергосбыт)',
       ed_org: 'Харьковоблэнерго', ed_what: 'Показания света · счёт выставляет Харьковэнергосбыт', ed_due: 'до {d}', ed_due_next: '{a}–{b}',
       ed_lead: 'Показания света принимают в последние 2 дня месяца и 1–3 числа следующего. Поданные 1–3 числа засчитываются на 1-е.',
       ed_nosum: 'Каждую зону — отдельно, не складывайте их. Общий показатель (сумму зон) не передают.', ed_acc: 'Лицевой счёт {a}',
@@ -7420,18 +7423,24 @@ details.tbl-acc[open] > .tbl-wrap { margin-top: 12px; }
     var same = smeters(k), z = k === 'gas' ? 1 : EA.zones || 1, back = EA.back || 'home', opt = ' <span class="muted small">(' + esc(t('b_opt')) + ')</span>', u = SK[k].unit();
     var fv = function (id) { return EA.f && EA.f[id] ? ' value="' + esc(EA.f[id]) + '"' : ''; };
     var fld = function (id, lbl, attrs, unit, help, optional, after) { return '<div class="field"><label for="' + id + '">' + esc(lbl) + (optional ? opt : '') + '</label><div class="ctl"><input id="' + id + '" ' + attrs + (/^ea-v-/.test(id) ? '' : fv(id)) + '>' + (unit ? '<span class="unit">' + unit + '</span>' : '') + (after || '') + '</div>' + (help ? '<div class="help">' + esc(help) + '</div>' : '') + '</div>'; };
-    var mz = { kind: k, zones: z }, md = SK[k].mod;
+    var mz = { kind: k, zones: z }, md = SK[k].mod, inQ = !!(PQ && PQ.place === S.placeId);
+    // рахунки, № і опалення: у черзі налаштування — згорнуто (головне — зони й цифри; кнопка «Додати» ближче)
+    var more = (k === 'gas' ? fld('ea-grm', t('gm_grm'), 'class="num" inputmode="numeric" autocomplete="off"', '', t('gm_grm_h'), true) : '') +
+      fld('ea-acc', tk(k, 'em_acc'), 'class="num" inputmode="numeric" autocomplete="off"', '', tk(k, 'em_acc_h'), true) +
+      (k === 'gas' ? fld('ea-eic', t('gm_eic'), 'class="num" autocomplete="off" autocapitalize="characters" spellcheck="false" maxlength="20"', '', t('gm_eic_h'), true) : '') +
+      fld('ea-serial', t('wm_serial'), 'class="num" autocomplete="off"', '', '', true) +
+      (same.length ? '' : sheatRow(k, true));
+    if (inQ) {
+      var mOpen = EA.more || EA.heat === true || EA_F.some(function (id) { return id !== 'ea-name' && EA.f && EA.f[id]; });
+      more = '<details class="mbox-set ea-more"' + (mOpen ? ' open' : '') + ' data-key="ea-more"><summary>' + ico('prefs', 18) + '<span>' + esc(tk(k, 'ea_more')) + opt + '</span>' + ico('chev', 18, 'pacc-chev') + '</summary><div class="mbox-set-b">' + more + '</div></details>';
+    }
     var h = pqBanner() + '<h1>' + ico(SK[k].icon, 26, SK[k].cls) + ' ' + esc(tk(k, 'ea_title')) + '</h1><p class="muted">' + esc(tk(k, 'ea_lead')) + '</p><form id="ea-form" novalidate><div class="panel">' +
-      (k === 'elec' ? '<fieldset class="field"><legend class="lbl">' + esc(t('ea_zones')) + '</legend><div class="wz-opts" role="radiogroup">' + [1, 2, 3].map(function (n) {
+      (k === 'elec' ? '<fieldset class="field ea-zones"><legend class="lbl">' + esc(t('ea_zones')) + '</legend><div class="wz-opts" role="radiogroup">' + [1, 2, 3].map(function (n) {
         return '<label class="wz-opt"><input type="radio" name="ea-z" value="' + n + '"' + (z === n ? ' checked' : '') + ' data-act="ea-zones" data-key="ea-z' + n + '"><span><b>' + esc(t('ez_n' + n)) + '</b><span class="small muted">' + esc(t('ea_z' + n + '_s')) + '</span></span></label>';
       }).join('') + '</div></fieldset>' : '') +
       md.keys(mz).map(function (q) { return phHelp(fld('ea-v-' + q, t('ea_val') + (z > 1 ? ': ' + ezl(mz, q).toLowerCase() : ''), 'class="num" inputmode="decimal" autocomplete="off" data-ea="' + q + '" value="' + esc(EA.vals[q] || '') + '"', u, q === md.keys(mz).slice(-1)[0] ? t('ea_val_h') : '', true, startCam('ea-v-' + q, tk(k, 'ea_title'))), 'ea-v-' + q); }).join('') +
       (same.length ? fld('ea-name', t('em_name'), 'maxlength="40" autocomplete="off" placeholder="' + esc(tk(k, 'em_name_ph')) + '"', '', t('ea_name_need', { n: same.length }), false) : '') +
-      (k === 'gas' ? fld('ea-grm', t('gm_grm'), 'class="num" inputmode="numeric" autocomplete="off"', '', t('gm_grm_h'), true) : '') +
-      fld('ea-acc', tk(k, 'em_acc'), 'class="num" inputmode="numeric" autocomplete="off"', '', tk(k, 'em_acc_h'), true) +
-      (k === 'gas' ? fld('ea-eic', t('gm_eic'), 'class="num" autocomplete="off" autocapitalize="characters" spellcheck="false" maxlength="20"', '', t('gm_eic_h'), true) : '') +
-      fld('ea-serial', t('wm_serial'), 'class="num" autocomplete="off"', '', '', true) +
-      (same.length ? '' : sheatRow(k, true)) +
+      more +
       '<div class="help block" id="ea-err" role="alert"></div></div>' +
       '<div class="wiz-actions"><a class="btn sec" href="#' + esc(back) + '">' + esc(t('cancel')) + '</a><button type="submit" class="btn" data-key="ea-save">' + esc(t('ea_add')) + '</button></div></form>';
     return { screen: k === 'gas' ? 'S57' : 'S52', route: SK[k].add, bare: true, closeTo: back, html: h };
@@ -9442,7 +9451,7 @@ details.tbl-acc[open] > .tbl-wrap { margin-top: 12px; }
     var i = heat ? PQ.total : PQ.i + 1;
     return '<div class="banner aw-q" data-key="aw-queue">' + ico('home', 22) + '<div><p><b>' + esc(PQ.first ? t('fs_q', { i: i, n: PQ.total }) : t('aw_q', { p: placeLabel(place()), i: i, n: PQ.total })) + '</b></p>' +
       '<span class="progress" aria-hidden="true"><i style="width:' + Math.round(i / PQ.total * 100) + '%"></i></span>' +
-      (heat ? '<p>' + esc(t('aw_q_heat')) + '</p>' : SK[PQ.list[PQ.i]] ? '<p>' + esc(t(PQ.list[PQ.i] === 'gas' ? 'aw_q_gas' : 'aw_q_elec')) + '</p>' : '<p><button type="button" class="linkbtn" data-act="pq-later" data-key="aw-q-later">' + esc(t('aw_q_later')) + '</button></p>') + '</div></div>';
+      (heat ? '<p>' + esc(t('aw_q_heat')) + '</p>' : '<p><button type="button" class="linkbtn" data-act="pq-later" data-key="aw-q-later">' + esc(t('aw_q_later')) + '</button></p>') + '</div></div>';
   }
 
   /** Какой счётчик добавить: опалення · гаряча · холодна · газ (скоро) · електрика (скоро); прибранные — «Повернути». */
@@ -9472,7 +9481,10 @@ details.tbl-acc[open] > .tbl-wrap { margin-top: 12px; }
       fld('wa-name', t('wa_name'), 'maxlength="40" autocomplete="off" placeholder="' + esc(t('wa_name_ph')) + '"', '', same.length ? t('wa_name_need', { n: same.length }) : t('wa_name_h'), !same.length) +
       (same.length === 1 && !same[0].name ? fld('wa-name0', t('wa_name0'), 'maxlength="40" autocomplete="off" placeholder="' + esc(t('wa_name0_ph')) + '"', '', '', true) : '') +
       phHelp(fld('wa-val', t('wa_val'), 'class="num" inputmode="decimal" autocomplete="off"', 'м³', t('wa_val_h'), true, startCam('wa-val', wkindTitle(k))), 'wa-val') +
-      '<div class="grid2">' + fld('wa-serial', t('wm_serial'), 'class="num" autocomplete="off"', '', '', true) + fld('wa-ver', t('mv_date'), 'type="date"', '', '', true) + '</div>' +
+      (function () {   // № і повірка: у черзі налаштування — згорнуто, як рахунки у світла/газу
+        var g = '<div class="grid2">' + fld('wa-serial', t('wm_serial'), 'class="num" autocomplete="off"', '', '', true) + fld('wa-ver', t('mv_date'), 'type="date"', '', '', true) + '</div>';
+        return inQ ? '<details class="mbox-set wa-more" data-key="wa-more"><summary>' + ico('prefs', 18) + '<span>' + esc(t('wa_more')) + opt + '</span>' + ico('chev', 18, 'pacc-chev') + '</summary><div class="mbox-set-b">' + g + '</div></details>' : g;
+      })() +
       '<div class="help block" id="wa-err" role="alert"></div></div>' +
       (c.account || inQ ? '' : '<div class="panel"><h2>' + esc(t('wm_acc_t')) + opt + '</h2><p class="small muted">' + esc(t('wa_acc_s')) + '</p>' + waccForm() + '</div>') +
       '<div class="wiz-actions"><a class="btn sec" href="#' + esc(back) + '">' + esc(t('cancel')) + '</a><button type="submit" class="btn" data-key="wa-save">' + esc(t('wa_add')) + '</button></div></form>';
@@ -10145,17 +10157,26 @@ details.tbl-acc[open] > .tbl-wrap { margin-top: 12px; }
     f.innerHTML = '<button type="button" class="btn ter sm" data-act="acc-close" data-key="acc-close">' + ico('chev', 18, 'acc-up') + '<span>' + esc(t('acc_close')) + '</span></button>';
     d.appendChild(f);
   }
-  document.addEventListener('toggle', function (e) { accFoot(e.target); }, true);
+  document.addEventListener('toggle', function (e) { accFoot(e.target); if (e.target.classList && e.target.classList.contains('ea-more')) EA.more = e.target.open; }, true);
   document.addEventListener('click', function (e) {
     var b = e.target.closest && e.target.closest('[data-act="acc-close"]'); if (!b) return;
     var d = b.closest('details'); if (!d) return; e.preventDefault(); e.stopPropagation(); d.open = false;
     var sm = d.querySelector('summary'); if (sm) { var r = sm.getBoundingClientRect(); if (r.top < 0 || r.top > innerHeight - 60) sm.scrollIntoView({ block: 'start' }); try { sm.focus({ preventScroll: true }); } catch (e1) { /* старий браузер */ } }
   }, true);
+  /** «Відгук» (плаваюча кнопка) не закриває головну кнопку форми: коли ряд кнопок мастера/форми на екрані — ховаємо (стилі — лише на телефоні). */
+  var FAB_IO = null;
+  function fabWatch() {
+    if (FAB_IO) { FAB_IO.disconnect(); FAB_IO = null; }
+    document.body.classList.remove('fab-off');
+    var acts = document.querySelectorAll('main .wiz-actions'); if (!acts.length || !('IntersectionObserver' in window)) return;
+    FAB_IO = new IntersectionObserver(function (es) { es.forEach(function (e) { document.body.classList.toggle('fab-off', e.isIntersecting); }); });
+    FAB_IO.observe(acts[acts.length - 1]);
+  }
   var SCROLL_TO = null;
   function afterRender(r) {
     Array.prototype.forEach.call(document.querySelectorAll(ACC_SEL), accFoot);
     Array.prototype.forEach.call(document.querySelectorAll('details.tips-box > summary'), function (sm) { if (!sm.querySelector('.pacc-chev')) sm.insertAdjacentHTML('beforeend', ico('chev', 18, 'pacc-chev')); });
-    enhanceDates(); photoFill(); toastKeep(); if (Y().account) histFlush();
+    enhanceDates(); photoFill(); toastKeep(); fabWatch(); if (Y().account) histFlush();
     // отклик: ушёл дальше привітання/головної — «клацав» (этап 1)
     if (typeof r === 'string' && r && !/^(welcome|home|places)$/.test(r) && VSTAGE < 1) { VSTAGE = 1; visitBump(); }
     if (SCROLL_TO) { var st0 = document.getElementById(SCROLL_TO); SCROLL_TO = null; if (st0) { var pg0 = st0.closest && st0.closest('details.pgroup'); if (pg0 && !pg0.open) { pg0.open = true; PREF_OPEN[pg0.id.slice(3)] = true; } var wa0 = st0.closest && st0.closest('details.wacc'); if (wa0 && !wa0.open) { wa0.open = true; waccStore(wa0)[wa0.id.slice(5)] = true; } st0.scrollIntoView({ block: 'start' }); try { st0.focus({ preventScroll: true }); } catch (e0) { /* старый браузер */ } st0.classList.add('flash'); setTimeout(function () { st0.classList.remove('flash'); }, 1600); } }
@@ -10342,7 +10363,11 @@ details.tbl-acc[open] > .tbl-wrap { margin-top: 12px; }
         var awf = document.querySelector('[data-key=aw-' + awk + '-' + (el.getAttribute('data-d') === '1' ? 'inc' : 'dec') + ']'); if (awf && !awf.disabled) awf.focus(); break; }
       case 'aw-create': pwCreate(el.getAttribute('data-skip') === '1'); break;
       case 'pq-later': {   // водомір є, а № і цифри — пізніше: додаємо без деталей
-        if (PQ && PQ.place === S.placeId && PQ.i < PQ.list.length) { var qk = PQ.list[PQ.i], qsame = wmeters(qk); wsetCfg(function (c) { c.meters = c.meters || []; c.meters.push({ id: Wt.uid(), kind: qk, name: qsame.length ? String(qsame.length + 1) : '', serial: '', vkId: '', verifiedUntil: '' }); }); PQ.i++; S.onboarded = true; save(); }
+        if (PQ && PQ.place === S.placeId && PQ.i < PQ.list.length && SK[PQ.list[PQ.i]]) {   // світло/газ: одна зона, рахунок і № — потім у налаштуваннях
+          var sk = PQ.list[PQ.i], ssame = smeters(sk), sid = SK[sk].mod.uid();
+          setPMeters(function (list) { list.push(Object.assign({ id: sid, kind: sk, name: ssame.length ? String(ssame.length + 1) : '', serial: '', account: '', createdAt: today() }, sk === 'elec' ? { zones: 1 } : { grm: '', eic: '' })); });
+          EA = { kind: sk, back: '', zones: 1, vals: {}, f: {} }; PQ.i++; S.onboarded = true; save();
+        } else if (PQ && PQ.place === S.placeId && PQ.i < PQ.list.length) { var qk = PQ.list[PQ.i], qsame = wmeters(qk); wsetCfg(function (c) { c.meters = c.meters || []; c.meters.push({ id: Wt.uid(), kind: qk, name: qsame.length ? String(qsame.length + 1) : '', serial: '', vkId: '', verifiedUntil: '' }); }); PQ.i++; S.onboarded = true; save(); }
         pqNext(); break; }
       case 'pl-del': { var dp = place(el.getAttribute('data-id')); if (dp && places().length > 1) { var dl = placeLabel(dp); dp.deleted = true; dp.updatedAt = Date.now(); if (dp.id === S.placeId) { S.placeId = null; S.meter = null; S.baseline = null; S.draft = null; ensurePlaces(); } save(); toast(t('pv_deleted', { p: dl })); go(places().length > 1 ? 'places' : 'home'); } break; }
       case 'focus': S.focusId = el.getAttribute('data-id'); save(); break;

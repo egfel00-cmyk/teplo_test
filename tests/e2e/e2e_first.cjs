@@ -1,5 +1,6 @@
 // Первый вход (#welcome → #start → очередь настройки): квартира «Моя квартира», 5 видов с образцами табло, «з фото» у
-// «Показання зараз», «Скасувати» возвращает к выбору, вход на новом устройстве, вошедший без счётчиков.
+// «Показання зараз», «Скасувати» возвращает к выбору, «Налаштую пізніше» у світла/газу и свёрнутые рахунки в очереди,
+// вход на новом устройстве, вошедший без счётчиков.
 // node e2e_first.cjs  (локальный сервер 127.0.0.1:8013)
 const { chromium } = require('playwright');
 const fs = require('fs');
@@ -84,6 +85,27 @@ const U = 'http://127.0.0.1:8013/';
   await p.click('[data-key=aw-cold-inc]'); await p.click('[data-key=aw-next]'); await p.waitForTimeout(200); await p.click('[data-key=aw-skip]'); await p.waitForTimeout(400);
   await p.click('[data-key=aw-q-later]'); await p.waitForTimeout(500); s = await st();
   ok('холодна «пізніше» → головна, а не привітання', s.onboarded === true && (await hash()) === '#home' && !!(await p.$('[data-key=card-cold]')));
+
+  // 4б. как у гостей 14EK/1EII (iPhone 440 px, ушли на #eadd): світло/газ в очереди — «Налаштую пізніше», рахунки/№ свёрнуты, кнопка без прокрутки
+  const pq = await (await b.newContext({ viewport: { width: 440, height: 956 }, locale: 'uk-UA' })).newPage(); pq.on('pageerror', e => errs.push(e.message));
+  const pst = async () => JSON.parse(await pq.evaluate(() => localStorage.getItem('teplo.v1')) || '{}'), ph = () => pq.evaluate(() => location.hash);
+  await pq.goto(U); await pq.evaluate(() => localStorage.clear()); await pq.goto(U + '#start'); await pq.waitForTimeout(500);
+  await pq.click('[data-key=aw-elec-inc]'); await pq.click('[data-key=aw-gas-inc]'); await pq.click('[data-key=aw-cold-inc]');
+  await pq.click('[data-key=aw-next]'); await pq.waitForTimeout(200); await pq.click('[data-key=aw-skip]'); await pq.waitForTimeout(400);
+  ok('водомір у черзі: № і повірка згорнуті', (await ph()) === '#wadd' && !!(await pq.$('details.wa-more:not([open]) #wa-serial')));
+  await pq.click('[data-key=wa-save]'); await pq.waitForTimeout(400);
+  ok('світло в черзі: «Налаштую пізніше», рахунок/№ згорнуті, «Додати» видно без прокрутки', (await ph()) === '#eadd' && !!(await pq.$('[data-key=aw-q-later]')) && !!(await pq.$('details.ea-more:not([open]) #ea-acc')) &&
+    await pq.evaluate(() => document.querySelector('[data-key=ea-save]').getBoundingClientRect().bottom <= innerHeight));
+  ok('«Відгук» сховано, поки кнопки форми на екрані', await pq.evaluate(() => getComputedStyle(document.querySelector('[data-key=feedback]')).visibility === 'hidden'));
+  await pq.click('[data-key=ea-more] summary'); await pq.fill('#ea-acc', '123456789012'); await pq.click('[data-key=ea-z2]'); await pq.waitForTimeout(300);
+  ok('зміна зон: розгорнуте лишається, рахунок на місці', !!(await pq.$('details.ea-more[open]')) && (await pq.inputValue('#ea-acc')) === '123456789012');
+  await pq.click('[data-key=aw-q-later]'); await pq.waitForTimeout(400); s = await pst();
+  const qel = (s.places[0].meters || []).find(m => m.kind === 'elec');
+  ok('«пізніше» у світла: лічильник з 1 зоною без рахунку → газ «3 з 3» (теж згорнуто)', qel && qel.zones === 1 && !qel.account && (await ph()) === '#gadd' && /3\sз\s3/.test(await pq.textContent('[data-key=aw-queue]')) && !!(await pq.$('details.ea-more:not([open]) #ea-grm')), qel);
+  await pq.click('[data-key=aw-q-later]'); await pq.waitForTimeout(500); s = await pst();
+  ok('«пізніше» у газу → головна з 3 картками, «Готово!»', (await ph()) === '#home' && !!(await pq.$('[data-key=card-gas]')) && !!(await pq.$('[data-key=card-elec]')) && !!(await pq.$('[data-key=card-cold]')) && /Готово/.test(await pq.textContent('#toast-host')) && s.onboarded === true);
+  await pq.goto(U + '#place-main'); await pq.waitForTimeout(400); await pq.click('[data-key=pv-add-meter]'); await pq.waitForTimeout(300); await pq.click('[data-key=am-elec]'); await pq.waitForTimeout(300);
+  ok('світло не з черги: поля відкрито, без «пізніше»', (await ph()) === '#eadd' && !(await pq.$('details.ea-more')) && !!(await pq.$('#ea-acc')) && !(await pq.$('[data-key=aw-q-later]')));
 
   // 5. рос. мова
   const pr = await (await b.newContext({ viewport: { width: 360, height: 800 }, locale: 'ru-RU' })).newPage();
