@@ -1427,3 +1427,17 @@ details.tbl-acc[open] > .tbl-wrap { margin-top: 12px; }
 /* «Налаштування лічильника» — на екрані квартири, під рядком лічильника */
 .mrow-set { margin: 0 14px 10px; }
 .mrow-set > summary { min-height: 44px; font-size: var(--fs-s); }
+
+/* футер лендинга (06.11.2026): о сервисе, документы, связь */
+.lp-foot { margin: 40px 0 0; padding: 32px 20px calc(24px + env(safe-area-inset-bottom)); border-top: 1px solid var(--c-line); color: var(--c-ink-2); font-size: 15px; }
+.lpf-in { max-width: 1120px; margin: 0 auto; display: grid; grid-template-columns: 1.6fr 1fr 1fr 1fr; gap: 24px 32px; }
+.lpf-logo { display: flex; align-items: center; gap: 10px; color: var(--c-ink); font-size: 17px; }
+.lpf-logo svg { width: 28px; height: 28px; }
+.lpf-brand p { margin: 10px 0 0; max-width: 34ch; }
+.lpf-col h3 { margin: 0 0 8px; font-size: 13px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: var(--c-ink-3, var(--c-ink-2)); }
+.lpf-col ul { list-style: none; margin: 0; padding: 0; }
+.lpf-col li a, .lpf-col li .linkbtn { display: inline-flex; align-items: center; min-height: 40px; color: var(--c-ink); text-decoration: none; font: inherit; }
+.lpf-col li a:hover, .lpf-col li .linkbtn:hover { text-decoration: underline; }
+.lpf-bot { max-width: 1120px; margin: 24px auto 0; padding-top: 16px; border-top: 1px solid var(--c-line); display: flex; flex-wrap: wrap; gap: 6px 24px; justify-content: space-between; font-size: 13px; }
+@media (max-width: 760px) { .lpf-in { grid-template-columns: 1fr 1fr; } .lpf-brand { grid-column: 1 / -1; } }
+@media (max-width: 380px) { .lpf-in { grid-template-columns: 1fr; } }

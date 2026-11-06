@@ -139,7 +139,8 @@ function seoStatic(bool $ru, callable $e): string {
     '<h2>' . $e($t('lp_dest_t')) . '</h2><ul><li>' . ($ru ? 'ХТМ (Харьковские тепловые сети)' : 'ХТМ (Харківські теплові мережі)') . '</li>' . $li(['lp_d_vk', 'lp_d_obl', 'lp_d_grm', 'lp_d_naf']) . '</ul>' .
     '<h2>' . $e($t('lp_steps_t')) . '</h2><ol>' . $card('lp_s1_t', 'lp_s1') . $card('lp_s2_t', 'lp_s2') . $card('lp_s3_t', 'lp_s3') . '</ol>' .
     '<h2>' . $e($t('lp_bento_t')) . '</h2><ul>' . $card('lp_due_t', 'lp_due') . $card('lp_tg_t', 'lp_tg') . $card('lp_pl_t', 'lp_pl') . $card('lp_cost_t', 'lp_cost') . $card('lp_gpv_t', 'lp_gpv') . '</ul>' .
-    '<h2>' . $e($t('lp_end_t')) . '</h2><p>' . $e($t('lp_end')) . '</p></main>';
+    '<h2>' . $e($t('lp_end_t')) . '</h2><p>' . $e($t('lp_end')) . '</p>' .
+    '<footer><p>' . $e($t('lf_about')) . '</p><p><a href="#privacy">' . $e($t('lg_privacy')) . '</a> · <a href="#terms">' . $e($t('lg_terms')) . '</a> · <a href="#help">' . $e($t('nav_help')) . '</a></p><p>' . $e($t('lf_indep')) . '</p></footer></main>';
 }
 
 http_response_code(404);
