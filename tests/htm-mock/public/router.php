@@ -107,6 +107,9 @@ function page_heat(string $flash = '', string $flashCls = '', array $bad = [], a
     . '<tr><th>П.І.П-б.</th><td>{{SURNAME}}</td></tr><tr><th>Адреса</th><td>{{ADDRESS}}</td></tr></table>'
     . '<h4>Показання, що пройшли раніше за розрахунком</h4><table class="stand-tbl"><tr>' . row_cells($s['baseline'], 'bg-info-gray', true) . '</tr></table>';
   if ($flash) $body .= '<div class="alert ' . $flashCls . ' flash">' . $flash . '</div>';
+  // сценарий banners: постоянные плашки сайта (есть до и после отправки) — робот не должен принимать их за ошибку своей отправки
+  if (scenario() === 'banners') $body .= '<div class="alert alert-danger" data-marker="stand-banner-debt">Увага! Нікому не повідомляйте пароль від кабінету.</div>'
+    . '<div class="alert alert-info">Рекомендуємо подавати показання до 23 числа.</div>';
   if (window_open()) {
     $first = (new DateTimeImmutable($t))->format('Y-m-01');
     $body .= '<p>' . h(TX('window_rule')) . '</p><p>Введіть показання на нову дату або клікніть іконку в полі дати, щоб відредагувати введені раніше показання:</p>'
@@ -116,7 +119,8 @@ function page_heat(string $flash = '', string $flashCls = '', array $bad = [], a
     $next = (new DateTimeImmutable($t))->modify((int)substr($t, 8, 2) > 25 ? 'first day of next month' : 'first day of this month')->format('Y-m-d');
     $body .= '<div class="alert alert-warning" data-marker="stand-period-closed">' . h(TX('closed', ['month' => month_ua($t, false), 'next' => month_ua($next)])) . '</div>';
   }
-  $recent = array_slice($s['journal'], -5);
+  // сценарий banners: журнал обновляется не сразу — новых строк «на перевірці» на странице ещё нет
+  $recent = array_slice(scenario() === 'banners' ? array_values(array_filter($s['journal'], fn($r) => $r['status'] !== 'pending')) : $s['journal'], -5);
   $body .= '<h4>Ж У Р Н А Л — Останні записи | <a href="' . h(acc_url('/cabinet/heat/viewall') . '/' . $m['sn']) . '">Всі записи</a></h4>' . journal_table($recent)
     . '<p><a href="/cabinet/heat/help">Правила роботи з журналом</a></p>';
   page('Кабінет | Приймання показань по теплу', $body, 200, true);
@@ -129,7 +133,8 @@ function heat_form(array $bad, array $old): string {
     $name = F($k) . ($changed && $k === 'energy' ? '_v2' : '');
     // телефон — как на живом кабинете 06.11.2026: подсказка с телефоном из профиля, часть цифр скрыта
     $ph = $k === 'phone' ? ' placeholder="(067) ***-**-45"' : ($k === 'date' ? ' placeholder="ДД.ММ.РРРР"' : '');
-    $h .= '<label class="' . (in_array($k, $bad, true) ? 'has-error' : '') . '">' . h($label) . '<input type="text" name="' . h($name) . '" id="' . h(F($k)) . '" value="' . h($old[$k] ?? '') . '"' . $ph . '></label>';
+    $h .= '<label class="' . (in_array($k, $bad, true) ? 'has-error' : '') . '">' . h($label) . '<input type="text" name="' . h($name) . '" id="' . h(F($k)) . '" value="' . h($old[$k] ?? '') . '"' . $ph . '>'
+      . ($k === 'date' && scenario() === 'banners' ? '<span class="help-block">Тільки показання поточного місяця</span>' : '') . '</label>';
   }
   return $h . '<input type="submit" name="' . h(F('submit')) . '" value="Зберегти показання"></form>';   // как на живом кабинете (06.11.2026)
 }

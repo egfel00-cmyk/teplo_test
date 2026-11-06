@@ -5,7 +5,7 @@ declare(strict_types=1);
 
 const ROOT = __DIR__ . '/..';
 const SCENARIOS = ['ok', 'bad_credentials', 'account_login_closed', 'window_open', 'period_closed', 'robot_reject', 'captcha',
-  'session_expired', 'server_500', 'maintenance', 'markup_changed', 'slow', 'nominmax'];
+  'session_expired', 'server_500', 'maintenance', 'markup_changed', 'slow', 'nominmax', 'banners'];
 
 function cfg(): array { static $c; return $c ??= json_decode((string)file_get_contents(ROOT . '/config/stand.json'), true); }
 function F(string $k): string { return cfg()['form'][$k]; }

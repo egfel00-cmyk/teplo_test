@@ -241,6 +241,7 @@ final class HtmCab {
     $o['dateJs'] = [];
     if (preg_match_all('/[^;{}\n]{0,60}\b(?:min_?date|max_?date|start_?date|end_?date|datetimepicker|datepicker)\b[^;{}\n]{0,80}/iu', $r['body'], $mm)) foreach (array_slice(array_unique($mm[0]), 0, 4) as $sn) $o['dateJs'][] = mb_substr(CabWeb::sp((string)preg_replace('/\d{5,}/u', '#', $sn)), 0, 150);
     if ($dn instanceof DOMElement) { $a = []; foreach ($dn->attributes as $at) if (!in_array($at->name, ['value', 'name', 'id'], true)) $a[] = $at->name . (preg_match('/date|min|max/i', $at->name) ? '=' . mb_substr(preg_replace('/\d{5,}/', '#', $at->value), 0, 30) : ''); if ($a) $o['dateJs'][] = 'input: ' . implode(' ', array_slice($a, 0, 10)); }
+    $al = self::msgs($x); $o['alerts'] = ['err' => count($al['err']), 'ok' => count($al['ok'])];   // постоянные плашки страницы — только сколько (сверка с живым)
     $form = null;
     foreach ($x->query('//form') as $f) { foreach ($x->query('.//input', $f) as $i) if (strcasecmp((string)$i->getAttribute('name'), self::F['energy']) === 0 || stripos((string)$i->getAttribute('name'), 'LastValue') !== false) { $form = $f; break 2; } }
     if ($form) {
@@ -329,8 +330,12 @@ final class HtmCab {
       elseif (in_array($role, ['email', 'note'], true)) $pairs[] = [$f['name'], (string)($contact[$role] ?? '')];
     }
     $want = [strtolower(self::F['date']) => $want['date'], strtolower(self::F['energy']) => $want['energy']];
+    // плашки, что были на странице ещё до отправки (красный баннер сайта, подсказка help-block у поля, «рекомендуємо до 23»), — не ответ на нашу отправку
+    $was = ($h['html'] ?? '') !== '' ? self::msgs(CabWeb::dom((string)$h['html'])) : ['err' => [], 'ok' => []];
     $r = $this->post($h['action'], $pairs);
     $m = self::msgs(CabWeb::dom($r['body']));
+    foreach (['err', 'ok'] as $k) $m[$k] = array_values(array_diff($m[$k], $was[$k]));
+    if ($was['err'] || $was['ok']) $this->log['banners'] = count($was['err']) + count($was['ok']);
     $after = $this->heat($acc, $sur);
     $row = self::find($after['journal'], $want[strtolower(self::F['date'])], $want[strtolower(self::F['energy'])]);
     // сайт сказал «ошибка» — не сохранено; ошибок нет, а строки в журнале ещё нет (журнал обновляется не сразу) — не «не зберіг»,

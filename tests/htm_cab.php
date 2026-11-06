@@ -48,6 +48,16 @@ try { (new HtmCab())->login('test@stand.local', 'stand-pass-123'); ok('капч�
 // сайт лёг
 stand('act=reset'); stand('act=set&scenario=server_500&today=2026-11-10&robot_delay=0');
 try { (new HtmCab())->login('test@stand.local', 'stand-pass-123'); ok('500 → down', false); } catch (CabErr $e) { ok('500 → down', $e->err === 'down', $e->err); }
+// постоянные плашки сайта (красный баннер, подсказка help-block у даты) и журнал, который обновляется не сразу:
+// после отправки — «на перевірці» (unseen), а не form_error из-за баннера, что был на странице и до отправки
+stand('act=reset'); stand('act=set&scenario=banners&today=2026-11-10&robot_delay=1200');
+$h = new HtmCab(); $h->login('test@stand.local', 'stand-pass-123');
+try { $r = $h->save('1000000061', 'Тестовий', $V, $C); ok('плашки сайта до отправки — не ошибка: pending, unseen, flash — «збережено»', $r['status'] === 'pending' && !empty($r['unseen']) && str_contains($r['flash'], 'збережено'), $r); }
+catch (CabErr $e) { ok('плашки сайта до отправки — не ошибка: pending, unseen, flash — «збережено»', false, [$e->err, $e->site]); }
+stand('act=reset'); stand('act=set&scenario=banners&today=2026-11-10&robot_delay=0');
+$h = new HtmCab(); $h->login('test@stand.local', 'stand-pass-123');
+try { $h->save('1000000061', 'Тестовий', $V, ['phone' => ''] + $C); ok('настоящая ошибка при плашках → form_error словами сайта, без баннера', false); }
+catch (CabErr $e) { ok('настоящая ошибка при плашках → form_error словами сайта, без баннера', $e->err === 'form_error' && str_contains($e->site, 'телефон') && !str_contains($e->site, 'пароль'), [$e->err, $e->site]); }
 stand('act=reset'); stand('act=set&scenario=ok');
 // пароли
 $e = CabVault::enc('секрет-пароль'); ok('пароль шифруется и расшифровывается', $e !== 'секрет-пароль' && CabVault::dec($e) === 'секрет-пароль' && is_file(CabVault::keyFile()));

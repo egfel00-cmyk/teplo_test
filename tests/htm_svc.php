@@ -156,6 +156,7 @@ stand('act=set&scenario=nominmax&today=' . $kv->format('Y-m-d') . '&robot_delay=
 $r = $b->req('POST', '/api/cab/htm/check', ['lang' => 'uk']);
 ok('check без min/max: окно по календарю', $r->status === 200 && ($r->body['winSrc'] ?? '') === 'calendar' && $r->body['min'] === $kv->format('01.m.Y') && $r->body['max'] === $kv->format('d.m.Y'), $r->body);
 $sn = HtmSvc::summary()['seen'] ?? []; ok('…/api/health → seen.dateJs: как страница задаёт дату', str_contains(json_encode($sn['dateJs'] ?? [], JSON_UNESCAPED_UNICODE), 'datetimepicker') && ($sn['minMax'] ?? null) === false, $sn);
+ok('…/api/health → seen.alerts: сколько плашек на странице, без текста', is_array($sn['alerts'] ?? null) && isset($sn['alerts']['err'], $sn['alerts']['ok']) && !str_contains(json_encode($sn), 'Увага'), $sn['alerts'] ?? null);
 $r = $b->req('POST', '/api/cab/htm/send', ['rid' => 'w1', 'vals' => ['date' => $kv->modify('+1 day')->format('d.m.Y'), 'energy' => '16.000', 'hours' => '35300'] + $V]);
 ok('…дата «завтра» — не вносим', $r->status === 422 && ($r->body['field'] ?? '') === 'date', $r->body);
 stand('act=set&scenario=ok&today=2026-11-21&robot_delay=99999'); Db::q('DELETE FROM rate_limits');
