@@ -526,6 +526,11 @@ ok('…скелет страницы: теги, классы, data-* без те
 ok('…куски скрипта сайта (не jQuery) — в /api/vk/status → recheck.js; «человек» в /api/health не сдвинулся; второй раз не входим', ($rc['js'][0]['src'] ?? '') === '/js/common.js' && count($vkJs) === 1
   && str_contains(implode(' ', $rc['js'][0]['bits']), 'newIndication') && ($tgb->req('GET', '/api/vk/status')->body['recheck']['js'][0]['src'] ?? '') === '/js/common.js'
   && VkCab::summary()['lastUser'] === $lu0 && (VkCab::summary()['lastErr']['op'] ?? '') === 'recheck' && VkStatus::recheck() === null, $rc['js'] ?? null);
+$t7 = gmmktime(5, 30, 0, 11, 8, 2026);   // 07:30 по Киеву
+$closed = ['v' => VkStatus::RECHECK_V, 'at' => $t7 - 21 * 3600, 'res' => [['error' => 'ok', 'meters' => 0], ['error' => 'cab_not_found', 'meters' => 0]]];
+ok('Водоканал: период закрыт («прийняті») — заходим снова раз в сутки в 7-м часу по Киеву, до открытой формы', VkStatus::recheckDue($closed, $t7) && !VkStatus::recheckDue($closed, $t7 + 3 * 3600)
+  && !VkStatus::recheckDue(['at' => $t7 - 2 * 3600] + $closed, $t7) && !VkStatus::recheckDue(['res' => [['error' => 'ok', 'meters' => 2]]] + $closed, $t7)
+  && !VkStatus::recheckDue(['res' => [['error' => 'cab_changed', 'meters' => 0]]] + $closed, $t7) && !VkStatus::recheckDue(['res' => [['error' => 'cab_not_found', 'meters' => 0]]] + $closed, $t7) && VkStatus::recheckDue(['v' => 0] + $closed, $t7));
 VkCab::$http = null;
 Telegram::$send = null; Telegram::$fetch = null;
 
@@ -1033,6 +1038,45 @@ ok('403 своего сайта без Cloudflare → не cfKind', CabWeb::cfKi
 CabWeb::$http = null;
 $hj = (array)(new Browser('10.0.13.9'))->req('GET', '/api/health')->body;
 ok('/api/health → rev совпадает с tests/rev.php', ($hj['rev'] ?? '') === trim((string)shell_exec('php ' . escapeshellarg(__DIR__ . '/rev.php'))) && preg_match('/^[0-9a-f]{12}$/', $hj['rev'] ?? ''), $hj['rev'] ?? null);
+
+echo "\n— Проба обленерго из Украины: NAS шлёт вывод curl -i -L, сервер разбирает (RelayProbe)\n";
+$cfOut = "HTTP/2 403 \r\ndate: Sat, 07 Nov 2026 03:00:00 GMT\r\ncontent-type: text/html; charset=UTF-8\r\ncf-mitigated: challenge\r\nserver: cloudflare\r\ncf-ray: 8f00-KBP\r\n\r\n"
+  . '<!DOCTYPE html><html><head><title>Just a moment...</title></head><body><div id="challenge-error-text">Enable JavaScript and cookies to continue</div><script>(function(){window._cf_chl_opt={cType: "managed"};var a=document.createElement("script");a.src="/cdn-cgi/challenge-platform/h/g/orchestrate/chl_page/v1?ray=8f00";})();</script></body></html>'
+  . "\n#lichylnyky 403 0 0.41\n";
+$sp = RelayProbe::split($cfOut);
+ok('split: код, заголовки, тело и метка curl -w', $sp['codes'] === [403] && ($sp['h']['cf-mitigated'] ?? '') === 'challenge' && str_starts_with($sp['body'], '<!DOCTYPE') && !str_contains($sp['body'], '#lichylnyky') && ($sp['w'] ?? null) === ['code' => 403, 'redirects' => 0, 's' => 0.41], $sp['w'] ?? $sp['codes']);
+$a = RelayProbe::analyze('obl', $cfOut);
+ok('managed challenge → cloudflare/challenge, формы нет', $a['verdict'] === 'cloudflare' && ($a['cfKind'] ?? '') === 'challenge' && $a['form'] === false && $a['code'] === 403 && !empty($a['cfRay']), $a);
+$loginHtml = '<html><head><title>Особистий кабінет</title><script src="/frontend/web/assets/1a2b/yii.js"></script></head><body><div class="site-login"><form id="login-form" action="/frontend/web/index.php/uk/site/login" method="post">'
+  . '<input type="hidden" name="_csrf-frontend" value="abc"><input type="text" name="LoginForm[email]" required><input type="password" name="LoginForm[password]" required><input type="checkbox" name="LoginForm[rememberMe]" value="1"><button type="submit" name="login-button">Увійти</button></form></div></body></html>';
+$redir = "HTTP/1.1 301 Moved Permanently\r\nLocation: https://pa.oblenergo.kharkov.ua/frontend/web/index.php/uk/site/login\r\nServer: cloudflare\r\n\r\nHTTP/1.1 200 OK\r\nServer: cloudflare\r\nContent-Type: text/html\r\n\r\n" . $loginHtml . "\n#lichylnyky 200 1 0.88\n";
+$a = RelayProbe::analyze('obl', $redir);
+ok('кабинет пустил (200 после редиректа) → ok: форма входа, поля, без капчи', $a['verdict'] === 'ok' && $a['codes'] === [301, 200] && ($a['final'] ?? '') === '/frontend/web/index.php/uk/site/login' && $a['form'] === true && !isset($a['cfKind']) && !isset($a['captchaKind'])
+  && in_array('password:LoginForm[password]*', $a['forms'][0]['fields'] ?? [], true) && in_array('hidden:_csrf-frontend', $a['forms'][0]['fields'], true) && ($a['forms'][0]['method'] ?? '') === 'post' && ($a['title'] ?? '') === 'Особистий кабінет', $a);
+ok('…скелет формы: теги и имена без значений', str_contains($a['skel'] ?? '', '<form id="login-form"') && str_contains($a['skel'], 'name="LoginForm[password]"') && !str_contains($a['skel'], 'abc'), $a['skel'] ?? null);
+$formTs = "HTTP/2 200\r\nserver: cloudflare\r\n\r\n" . '<html><body><form id="pokaz" action="/uk/transmissionofmeterreadings" method="post"><input name="account" type="text"><input name="value1" type="number"><div class="cf-turnstile" data-sitekey="0x4AAAAAAABBBBBBBBCCCCCC"></div><button type="submit">Передати</button></form><script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async></script></body></html>';
+$a = RelayProbe::analyze('form', $formTs);
+ok('онлайн-форма с Turnstile → captcha turnstile (в фоне не подать — не обходим)', $a['verdict'] === 'captcha' && ($a['captchaKind'] ?? '') === 'turnstile' && $a['form'] === true && !empty($a['widget']), $a);
+$formJs = "HTTP/2 200\r\nserver: nginx\r\n\r\n" . '<html><body><div id="app"><input id="acc" name="acc" type="text"><input name="zone1" type="text"><button id="send">OK</button></div><script>$("#send").on("click",function(){$.post("/api/meter-readings/send",{acc:$("#acc").val()});});</script></body></html>';
+$a = RelayProbe::analyze('form', $formJs);
+ok('онлайн-форма на JS (поля вне <form>, AJAX) → ok, поля и адрес отправки', $a['verdict'] === 'ok' && $a['form'] === true && in_array('text:acc', $a['loose'] ?? [], true) && in_array('/api/meter-readings/send', $a['ajax'] ?? [], true), $a);
+ok('пустой вывод (curl не достучался) → down', RelayProbe::analyze('obl', "\n#lichylnyky 000 0 25.00\n")['verdict'] === 'down');
+ok('команда для NAS: обе страницы, наш адрес, синтаксис sh', str_contains(RelayProbe::command('https://peredai.com.ua'), RelayProbe::T['obl']['url']) && str_contains(RelayProbe::command('https://peredai.com.ua'), 'https://peredai.com.ua/api/relay/probe?t=$t&via=nas')
+  && (function () { $f = tempnam(sys_get_temp_dir(), 'cmd'); file_put_contents($f, RelayProbe::command()); exec('sh -n ' . escapeshellarg($f) . ' 2>&1', $o, $rc); @unlink($f); return $rc === 0; })());
+$nas = new Browser('10.0.14.1');
+$r = $nas->req('POST', '/api/relay/probe', null, ['QUERY_STRING' => 't=obl&via=nas', 'HTTP_CF_IPCOUNTRY' => 'UA', 'CONTENT_TYPE' => 'text/plain'], false, $cfOut);
+ok('API: без cookie и X-CSRF (curl с NAS) принимается, страна из CF-IPCountry', $r->status === 200 && $r->body['verdict'] === 'cloudflare' && $r->body['cc'] === 'UA' && ($r->body['cfKind'] ?? '') === 'challenge', [$r->status, $r->body]);
+$r = (new Browser('10.0.14.2'))->req('POST', '/api/relay/probe', null, ['QUERY_STRING' => 't=form&via=nas', 'HTTP_CF_IPCOUNTRY' => 'UA'], false, $formJs . "\n#lichylnyky 200 0 0.3\n");
+$hj = (array)(new Browser('10.0.14.3'))->req('GET', '/api/health')->body; $up = json_decode(json_encode($hj['uaProbe'] ?? []), true);
+ok('/api/health → uaProbe: obl и form, страна, via, без скелета', ($up['obl']['verdict'] ?? '') === 'cloudflare' && ($up['form']['verdict'] ?? '') === 'ok' && ($up['obl']['cc'] ?? '') === 'UA' && ($up['obl']['via'] ?? '') === 'nas' && !isset($up['form']['skel']) && ($up['obl']['n'] ?? 0) === 1, $up);
+$g = (new Browser('10.0.14.3'))->req('GET', '/api/relay/probe', null, ['QUERY_STRING' => 't=form'])->body;
+ok('GET /api/relay/probe?t=form — целиком (поля вне форм, AJAX) и команда', ($g['probe']['loose'][0] ?? '') === 'text:acc' && str_contains($g['command'], 'curl -s -i -L'), $g);
+ok('чужая цель → 422', (new Browser('10.0.14.4'))->req('POST', '/api/relay/probe', null, ['QUERY_STRING' => 't=evil'], false, 'x')->status === 422);
+$pj = RelayProbe::dir() . '/probe.json'; $jj = json_decode((string)file_get_contents($pj), true); $jj['obl']['v'] = 0; $jj['obl']['verdict'] = 'stale'; file_put_contents($pj, json_encode($jj));
+$rd = RelayProbe::read();
+ok('старая версия разбора перечитывается из сохранённого вывода (время и страна — прежние)', ($rd['obl']['v'] ?? 0) === RelayProbe::V && $rd['obl']['verdict'] === 'cloudflare' && $rd['obl']['cc'] === 'UA' && $rd['obl']['at'] === $jj['obl']['at'], $rd['obl'] ?? null);
+ok('лимит тела: документы и фото — max_photo_bytes, вывод curl — max_probe_bytes, прочее — max_body_bytes', Api::bodyLimit('/api/docs/upload') === Cfg::get('max_photo_bytes') && Api::bodyLimit('/api/recognize/upload') === Cfg::get('max_photo_bytes')
+  && Api::bodyLimit('/api/relay/probe') === 3 * 1024 * 1024 && Api::bodyLimit('/api/state') === Cfg::get('max_body_bytes'));
 
 echo "\n— IndexNow (Bing и др.): ключ сайта и пинг раз на сборку\n";
 $calls = []; IndexNow::$http = function ($url) use (&$calls) { $calls[] = $url; return ['code' => count($calls) === 1 ? 429 : 202, 'err' => null]; };

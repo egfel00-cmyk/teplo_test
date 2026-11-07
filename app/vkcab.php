@@ -489,7 +489,7 @@ final class VkCab {
   public static array $lastScripts = [];
   /** Скелет разметки: теги и атрибуты (id, class, name, type, form, action, data-*…) без текста и значений; цифры — #, прізвище/рахунок — ***.
    *  «…» — у элемента есть текст, «value?» — у поля есть значение. Для разбора «сайт изменился» без личных данных. */
-  private static function skel(DOMNode $n, string $fam, string $acc, int $depth): string {
+  public static function skel(DOMNode $n, string $fam, string $acc, int $depth): string {
     if (!$n instanceof DOMElement || $depth > 18) return '';
     $tag = strtolower($n->nodeName);
     if (in_array($tag, ['script', 'style', 'svg', 'noscript', 'head', 'nav', 'footer', 'header', 'link', 'meta', 'option', 'br', 'hr', 'img'], true)) return '';

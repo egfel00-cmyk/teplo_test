@@ -30,6 +30,7 @@
 //  POST /api/cab/htm/auto {on} · POST /api/cab/htm/cancel {job} · POST /api/cab/htm/now {job}   автоподача: очередь внесений после фото в бот
 //  GET /api/vk/jobs · POST /api/vk/queue {acc, fam, rid, place, items, auto?} · POST /api/vk/auto {on, consent} · POST /api/vk/job/cancel|now {job}
 //                                   вода → сайт Водоканалу «у фоні» и автоподача після фото в бот (VkSvc, app/vksvc.php)
+//  POST /api/relay/probe?t=obl|form&via=nas  вывод curl -i -L страницы обленерго с NAS владельца (без входа, сырой текст) → RelayProbe; GET — итог и команда
 //  GET  /api/weather?from&to       средняя за сутки в Харькове (Open-Meteo, кэш) — для истории
 //  POST /api/recognize/local        {ids, results} — итог распознавания в браузере (свой движок, без нейросети) → в аналитику
 //  POST /api/recognize/run          {ids[≤3], offset, ctx} → распознанное (vision-API, ключ в config.php)
@@ -60,14 +61,14 @@ final class Api {
     $res = new Res();
     try {
       $ip = Http::ip($r->server);
-      $isUpload = $r->path === '/api/recognize/upload' || $r->path === '/api/docs/upload';
-      if (strlen($r->body) > (int)Cfg::get($isUpload ? 'max_photo_bytes' : 'max_body_bytes')) throw new HttpError(413, 'too_large');
+      if (strlen($r->body) > self::bodyLimit($r->path)) throw new HttpError(413, 'too_large');
       $isHook = $r->path === '/api/bot/webhook' || $r->path === '/api/bot/setup';
       if (!$isHook) RateLimit::hit('ip_all', $ip);
       // CSRF: для изменяющих запросов заголовок X-CSRF должен совпасть с cookie ts_csrf (double submit) + SameSite=Lax
       // Без перевірки: вхід Mini App (initData підписана Telegram), журнал дій і запити із заголовком X-Session (вікно Telegram, де
       // cookie не зберігаються: чужий сайт власний заголовок без CORS не надішле, а cookie такі запити не використовують).
-      $csrfFree = $isHook || $r->path === '/api/auth/telegram/webapp' || $r->path === '/api/events' || $r->header('X-Session') !== '';
+      // проба обленерго с NAS (RelayProbe) — curl без cookie и без входа: подделывать нечего, ничего от имени человека не меняет
+      $csrfFree = $isHook || $r->path === '/api/auth/telegram/webapp' || $r->path === '/api/events' || $r->path === '/api/relay/probe' || $r->header('X-Session') !== '';
       if (!$csrfFree && $r->method !== 'GET') {
         $c = (string)($r->cookies['ts_csrf'] ?? ''); $h = $r->header('X-CSRF');
         if ($c === '' || !hash_equals($c, $h)) throw new HttpError(403, 'csrf');
@@ -83,6 +84,11 @@ final class Api {
     return $res;
   }
 
+  /** Сколько байт тела принимаем: фото и документы (платёжки PDF) — до max_photo_bytes, вывод curl с NAS — max_probe_bytes, остальное — max_body_bytes.
+   *  index.php читает php://input тем же лимитом (+1 байт — чтобы отличить «ровно лимит» от «больше»). */
+  public static function bodyLimit(string $path): int {
+    return (int)Cfg::get(in_array($path, ['/api/recognize/upload', '/api/docs/upload'], true) ? 'max_photo_bytes' : ($path === '/api/relay/probe' ? 'max_probe_bytes' : 'max_body_bytes'));
+  }
   public static function rev(): string {
     $root = dirname(__DIR__); $h = '';
     foreach (array_merge([$root . '/index.php', $root . '/cron.php'], glob(__DIR__ . '/*.php') ?: []) as $f) $h .= basename($f) . ':' . (string)@md5_file($f) . ';';
@@ -106,6 +112,8 @@ final class Api {
           'vkcab' => VkCab::summary(), 'cabs' => (object)CabProbe::read(),
           // кабинет ХТМ: итоги операций, сколько подключено, внесения по статусам и последняя увиденная форма (имена/типы полей, без значений)
           'htmcab' => HtmSvc::summary(), 'vksvc' => VkSvc::summary(),
+          // проба обленерго с украинского адреса (NAS владельца → POST /api/relay/probe): код, Cloudflare, капча, формы — решает, быть ли ретранслятору
+          'uaProbe' => (object)RelayProbe::summary(),
           'indexnow' => class_exists('IndexNow', false) ? IndexNow::summary() : null];
       }
       case 'GET /api/me': if (!$user) throw new HttpError(401, 'unauthorized'); return ['user' => self::publicUser($user)];
@@ -271,6 +279,11 @@ final class Api {
       case 'GET /api/gpv/site': return Gpv::site() + ['list' => Gpv::listMeta(), 'docs' => Gpv::docsMeta()];
       case 'GET /api/gpv/doc': { $f = Gpv::docFile((string)($r->query()['k'] ?? '')); if (!$f) throw new HttpError(404, 'not_found'); $res->file = $f; return []; }   // офіційний PDF-перелік з сайту обленерго (сервер забирає раз на добу)
       case 'GET /api/gpv/list.pdf': { $f = Gpv::listFile((string)($r->query()['f'] ?? '')); if (!$f) throw new HttpError(404, 'not_found'); $res->file = $f; return []; }   // официальный перечень «Адреси та черги» (переслан боту из канала обленерго)   // как устроена официальная форма «черга за адресою» (разведка сервером, без личных данных)   // графики отключений света Харьковоблэнерго (без входа; очередь квартиры — в её данных)
+      case 'POST /api/relay/probe': {   // вывод curl -i -L страницы обленерго с NAS владельца (команда — RelayProbe::command)
+        RateLimit::hit('relay_ip', $ip);
+        return RelayProbe::accept((string)($r->query()['t'] ?? ''), $r->body, $r->header('CF-IPCountry'), (string)($r->query()['via'] ?? ''));
+      }
+      case 'GET /api/relay/probe': return RelayProbe::one((string)($r->query()['t'] ?? ''));
       case 'GET /api/vk/status': return VkStatus::status();   // бот и кабинет Водоканала — работают ли (без входа)
       case 'POST /api/vk/event': {   // «Відправити» / «Прийняв» / «Не відповідає» / «Помилка» — для статуса бота
         if (!$user) throw new HttpError(401, 'unauthorized');

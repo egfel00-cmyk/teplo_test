@@ -6,7 +6,7 @@ define('TEPLO', 1);
 foreach (['core', 'telegram', 'reminders', 'recognize', 'admin', 'vkcab', 'cabs', 'htmsvc', 'vksvc', 'gpv', 'providers', 'visits', 'journal', 'docs', 'api'] as $f) require __DIR__ . "/../app/$f.php";
 $TMP = sys_get_temp_dir() . '/teplo_htmsvc_' . getmypid(); putenv('SITE_DATA=' . $TMP);
 $BASE = getenv('HTM_BASE') ?: 'http://127.0.0.1:8099';
-Cfg::set(['app_url' => 'https://teplo.example/', 'bot_token' => '1:TEST', 'htm_cab_base' => $BASE, 'cookie_secure' => false]);
+Cfg::set(['app_url' => 'https://teplo.example/', 'bot_token' => '1:TEST', 'htm_cab_base' => $BASE, 'cookie_secure' => false, 'admins' => ['emails' => ['u1@example.com'], 'telegram' => []]]);
 Db::set(new PDO('sqlite::memory:', null, null, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION, PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC])); Db::migrate();
 $SENT = []; Telegram::$send = function ($m, $p) use (&$SENT) { $SENT[] = $p; return ['ok' => true]; };
 $pass = 0; $fail = 0;
@@ -39,6 +39,15 @@ $r = $b->req('POST', '/api/cab/htm/check', ['lang' => 'uk']);
 ok('check: прибор, последние принятые, окно открыто', $r->status === 200 && ($r->body['meter']['serial'] ?? '') === '70000061' && $r->body['open'] && ($r->body['base']->energy ?? '') === '13.245', $r->body);
 ok('check: форма как ждали, есть телефон', ($r->body['form']['match'] ?? null) === true && $r->body['form']['phone'] === true, $r->body['form'] ?? null);
 $h = HtmSvc::summary(); ok('/api/health → htmcab.form: имена полей без значений', ($h['form']['match'] ?? null) === true && in_array('LastValuePok:text→energy', $h['form']['fields'], true) && !str_contains(json_encode($h), '1000000061'), $h['form'] ?? null);
+// «Перевірити» без кнопки (cron): учётка админа, только чтение, раз на LOOK_V; «человек» в /api/health не сдвигается
+$lu0 = HtmSvc::summary()['lastUser']; $jobs0 = (int)Db::one('SELECT COUNT(*) AS c FROM cab_jobs')['c']; sleep(1);
+$lk = HtmSvc::lookAdmins(); $hs = HtmSvc::summary();
+ok('cron look: кабинет админа прочитан, seen.by cron, ничего не внесено', $lk === ['ok'] && ($hs['seen']['by'] ?? '') === 'cron' && $hs['seen']['open'] === true && $hs['lastUser'] === $lu0
+  && (int)Db::one('SELECT COUNT(*) AS c FROM cab_jobs')['c'] === $jobs0 && ($hs['look']['res'] ?? null) === ['ok'] && ($hs['n']->{'look ok'} ?? 0) === 1, [$lk, $hs['seen'] ?? null, $hs['look'] ?? null]);
+ok('…второй раз на той же версии — не входим', HtmSvc::lookAdmins() === null && HtmSvc::lookAdmins(time() + 3600) === null);
+@unlink(HtmSvc::lookFile()); Cfg::set(['app_url' => 'https://teplo.example/', 'bot_token' => '1:TEST', 'htm_cab_base' => $BASE, 'cookie_secure' => false, 'admins' => ['emails' => ['boss@example.com'], 'telegram' => []]]);
+ok('…не админ — его кабинет cron не трогает', HtmSvc::lookAdmins() === [] && (HtmSvc::summary()['n']->{'look ok'} ?? 0) === 1);
+Cfg::set(['app_url' => 'https://teplo.example/', 'bot_token' => '1:TEST', 'htm_cab_base' => $BASE, 'cookie_secure' => false, 'admins' => ['emails' => ['u1@example.com'], 'telegram' => []]]);
 $lg = json_encode(HtmSvc::log(), JSON_UNESCAPED_UNICODE); ok('журнал без пароля, email и рахунку', !str_contains($lg, 'stand-pass') && !str_contains($lg, 'test@stand') && !str_contains($lg, '1000000061'));
 
 $V = ['date' => '10.11.2026', 'energy' => '14.445', 'volume' => '2332.676', 'flow' => '0.063', 'power' => '1.5', 'tSupply' => '50.12', 'tReturn' => '30.4', 'hours' => '35078', 'errHours' => '153', 'errCode' => 'E---'];

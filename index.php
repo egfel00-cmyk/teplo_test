@@ -43,7 +43,7 @@ if (str_starts_with($path, '/api/')) {
   header('Cache-Control: no-store');
   header('X-Robots-Tag: noindex');
   try {
-    $limit = (int)Cfg::get($path === '/api/recognize/upload' ? 'max_photo_bytes' : 'max_body_bytes');
+    $limit = Api::bodyLimit($path);   // было: только /api/recognize/upload — документы (PDF платёжки) больше 300 КБ обрезались молча
     $body = (string)file_get_contents('php://input', false, null, 0, $limit + 1);
     $res = Api::handle(new Req($_SERVER['REQUEST_METHOD'] ?? 'GET', $path, $_SERVER, $_COOKIE, $body));
   } catch (Throwable $e) {

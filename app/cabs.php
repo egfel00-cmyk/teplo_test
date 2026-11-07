@@ -200,6 +200,150 @@ final class CabProbe {
   }
 }
 
+/** Проба обленерго «из Украины» — решает, будет ли ретранслятор на NAS. Нашему серверу (Германия) Cloudflare обленерго отвечает managed challenge
+ *  (CabProbe: 403, cf-mitigated challenge, robots.txt тоже 403). Пустит ли тот же сайт домашний украинский адрес — проверяет NAS владельца:
+ *  curl -i -L страницы с тем же User-Agent и Accept, что у робота (CabWeb), и весь вывод — сюда: POST /api/relay/probe?t=obl|form&via=nas (сырой текст).
+ *  Разбираем здесь: коды по шагам, вид отказа Cloudflare, капча (чья), формы и их поля, поля вне форм, скрипты, AJAX-адреса, скелет главной формы.
+ *  Храним структуру и сам вывод: это публичные страницы без входа (личных данных нет) — новая версия разбора (V) перечитает его без нового запуска на NAS.
+ *  Страна отправителя — CF-IPCountry от Cloudflare перед нашим сайтом (IP не пишем). /api/health → uaProbe (без скелета), GET /api/relay/probe?t= — целиком. */
+final class RelayProbe {
+  const V = 1;
+  /** obl — кабинет (вход email + пароль, без капчи); form — онлайн-форма «передача показників» (рахунок + показання, без входа). */
+  const T = [
+    'obl' => ['url' => 'https://pa.oblenergo.kharkov.ua/frontend/web/index.php/uk/site/login', 'form' => '/LoginForm\[password\]/'],
+    'form' => ['url' => 'https://oblenergo.kharkiv.ua/uk/transmissionofmeterreadings', 'form' => null],
+  ];
+  /** Метка, которую дописывает curl -w в конце вывода: итоговый код, сколько редиректов, секунды. */
+  const MARK = '#lichylnyky';
+  public static function dir(): string { return Cfg::data() . '/cache/ua_probe'; }
+  private static function rawFile(string $t): string { return self::dir() . '/' . $t . '.raw'; }
+  private static function file(): string { return self::dir() . '/probe.json'; }
+  private static function load(): array { $j = json_decode((string)@file_get_contents(self::file()), true); return is_array($j) ? $j : []; }
+  private static function save(array $j): void { @mkdir(self::dir(), 0700, true); @file_put_contents(self::file(), json_encode($j, JSON_UNESCAPED_UNICODE), LOCK_EX); }
+
+  /** Команда для NAS / Mac (одна строка): обе страницы → сюда. Та же строка — в docs и в ответе владельцу. */
+  public static function command(string $base = 'https://peredai.com.ua'): string {
+    $base = rtrim($base, '/');
+    return "UA='Mozilla/5.0 (compatible; Lichylnyky/1.0; +$base/)'; for t in obl form; do case \$t in obl) u='" . self::T['obl']['url'] . "';; form) u='" . self::T['form']['url'] . "';; esac; "
+      . "curl -s -i -L -m 25 -A \"\$UA\" -H 'Accept: text/html,application/xhtml+xml,application/json;q=0.9' -H 'Accept-Language: uk-UA,uk;q=0.9' -w '\\n" . self::MARK . " %{http_code} %{num_redirects} %{time_total}\\n' \"\$u\""
+      . " | curl -s -m 30 -H 'Content-Type: text/plain' --data-binary @- \"$base/api/relay/probe?t=\$t&via=nas\"; echo; done";
+  }
+
+  /** Вывод curl -i -L (+ метка -w) → ['codes' => коды по шагам, 'h' => заголовки последнего ответа (имена — строчными), 'body', 'w' => ?['code', 'redirects', 's']]. */
+  public static function split(string $raw): array {
+    $w = null;
+    if (preg_match('/\r?\n?' . preg_quote(self::MARK, '/') . ' (\d{3}) (\d+) ([\d.,]+)\s*$/', $raw, $m, PREG_OFFSET_CAPTURE)) {
+      $w = ['code' => (int)$m[1][0], 'redirects' => (int)$m[2][0], 's' => round((float)str_replace(',', '.', $m[3][0]), 2)]; $raw = substr($raw, 0, $m[0][1]);
+    }
+    $codes = []; $h = []; $loc = null;
+    // блоки заголовков подряд: редиректы (-L) и «HTTP/1.1 200 Connection established» прокси; тело — после последнего
+    while (count($codes) < 12 && preg_match('~^HTTP/[\d.]+\s+(\d{3})[^\r\n]*\r?\n~', $raw, $m)) {
+      $a = strpos($raw, "\r\n\r\n"); $b = strpos($raw, "\n\n");
+      $end = $a === false ? ($b === false ? strlen($raw) : $b + 2) : ($b === false || $a < $b ? $a + 4 : $b + 2);
+      $block = substr($raw, 0, $end); $raw = (string)substr($raw, $end);
+      $codes[] = (int)$m[1]; $h = [];
+      foreach (preg_split('/\r?\n/', $block) as $ln) if (preg_match('/^([A-Za-z0-9\-]+):\s*(.*)$/', $ln, $mm)) $h[strtolower($mm[1])] = mb_substr(trim($mm[2]), 0, 200);
+      if (isset($h['location'])) $loc = $h['location'];   // куда вёл последний редирект
+    }
+    return ['codes' => $codes, 'h' => $h, 'body' => $raw, 'w' => $w, 'loc' => $loc];
+  }
+  /** Адрес без запроса: host + path (страницы публичные — цифры не прячем). */
+  private static function loc(string $u, string $from): string {
+    $a = CabWeb::abs(trim($u), $from); $p = parse_url($a);
+    $same = strcasecmp((string)($p['host'] ?? ''), (string)parse_url($from, PHP_URL_HOST)) === 0;
+    return mb_substr(($same ? '' : (string)($p['host'] ?? '')) . (string)($p['path'] ?? '/'), 0, 120);
+  }
+  /** Разбор одной страницы. → структура без слов страницы (кроме заголовка <title> публичного сайта). */
+  public static function analyze(string $t, string $raw): array {
+    $s = self::split($raw); $body = $s['body']; $url = self::T[$t]['url'];
+    $code = $s['codes'] ? (int)end($s['codes']) : (int)($s['w']['code'] ?? 0);
+    $o = ['v' => self::V, 'code' => $code, 'codes' => $s['codes'], 'len' => strlen($body)] + ($s['w'] ? ['w' => $s['w']] : []);
+    if (count($s['codes']) > 1 && $s['loc'] !== null) $o['final'] = self::loc((string)$s['loc'], $url);
+    $hh = array_filter(['server' => strtolower((string)($s['h']['server'] ?? '')), 'cf-mitigated' => strtolower((string)($s['h']['cf-mitigated'] ?? ''))], fn($v) => $v !== '');
+    if ($hh) $o['h'] = $hh;
+    if (isset($s['h']['cf-ray'])) $o['cfRay'] = true;
+    $o += CabWeb::captcha($body, $code);
+    $o += CabWeb::cfKind($body, $code, $hh);
+    // чья капча: ключ на странице (data-sitekey) или скрипт; reCAPTCHA v3 (render=6L…) — невидимая, тоже капча
+    if (preg_match_all('/data-sitekey=["\']([^"\']+)/i', $body, $m)) foreach ($m[1] as $k) if ($kk = CabProbe::captchaKind($k)) { $o['captchaKind'] = $kk; break; }
+    if (!isset($o['captchaKind'])) $o['captchaKind'] = match (true) {
+      (bool)preg_match('~challenges\.cloudflare\.com/turnstile~i', $body) => 'turnstile', (bool)preg_match('~hcaptcha\.com/1/api\.js~i', $body) => 'hcaptcha',
+      (bool)preg_match('~recaptcha/(?:api|enterprise)\.js\?[^"\']*render=6L~i', $body) => 'recaptcha3', (bool)preg_match('~recaptcha/(?:api|enterprise)\.js~i', $body) => 'recaptcha', default => null };
+    if ($o['captchaKind'] === null) unset($o['captchaKind']);
+    $o['form'] = false;
+    if ($body !== '' && preg_match('/<(?:html|body|form|div|input)\b/i', $body)) {
+      $x = CabWeb::dom($body);
+      if (($tn = $x->query('//title')->item(0)) && ($tt = CabWeb::sp($tn->textContent)) !== '') $o['title'] = mb_substr($tt, 0, 90);
+      $fieldOf = function (DOMElement $i): ?string {
+        $tag = strtolower($i->nodeName); $nm = (string)$i->getAttribute('name');
+        if ($nm === '' && $tag !== 'button') return null;
+        $type = $tag === 'input' ? strtolower($i->getAttribute('type') ?: 'text') : $tag;
+        return $type . ':' . mb_substr($nm !== '' ? $nm : '(' . ($i->getAttribute('id') ?: 'button') . ')', 0, 50) . ($i->hasAttribute('required') ? '*' : '');
+      };
+      $forms = []; $best = null; $bestN = -1; $visible = 0;
+      foreach ($x->query('//form') as $f) {
+        $fs = []; $vis = 0;
+        foreach ($x->query('.//input|.//select|.//textarea|.//button', $f) as $i) if ($i instanceof DOMElement && ($fd = $fieldOf($i)) !== null) { $fs[] = $fd; if (preg_match('/^(text|number|tel|email|password|search|textarea|select):/', $fd)) $vis++; }
+        $id = (string)$f->getAttribute('id'); if ($id !== '') foreach ($x->query("//*[@form='" . str_replace("'", '', $id) . "']") as $i) if ($i instanceof DOMElement && ($fd = $fieldOf($i)) !== null) { $fs[] = $fd; $vis++; }
+        $forms[] = array_filter(['id' => mb_substr($id, 0, 40) ?: null, 'action' => self::loc((string)($f->getAttribute('action') ?: $url), $url), 'method' => strtolower($f->getAttribute('method') ?: 'get'), 'n' => count($fs), 'fields' => array_slice($fs, 0, 30)], fn($v) => $v !== null);
+        if ($vis > $bestN) { $bestN = $vis; $best = $f; } $visible = max($visible, $vis);
+        if (count($forms) >= 8) break;
+      }
+      $o['forms'] = $forms;
+      // поля вне <form> — форма на JS (собирает и шлёт сама)
+      $loose = []; foreach ($x->query('//input[not(ancestor::form)][not(@form)]|//select[not(ancestor::form)][not(@form)]|//textarea[not(ancestor::form)][not(@form)]') as $i) if ($i instanceof DOMElement && ($fd = $fieldOf($i)) !== null) $loose[] = $fd;
+      if ($loose) $o['loose'] = array_slice(array_values(array_unique($loose)), 0, 25);
+      $u = fn(array $a, int $n) => array_slice(array_values(array_unique(array_filter($a, fn($v) => $v !== ''))), 0, $n);
+      $sc = []; foreach ($x->query('//script[@src]') as $e) $sc[] = self::loc((string)$e->getAttribute('src'), $url);
+      $o['scripts'] = $u($sc, 20);
+      $aj = []; foreach ($x->query('//script[not(@src)]') as $e) if (preg_match_all('~["\'](?:https?://([a-z0-9.\-]+))?(/[a-z][a-z0-9_\-]*(?:/[a-z0-9_\-.]+)+)(?:\?[^"\']*)?["\']~i', $e->textContent, $mm, PREG_SET_ORDER)) foreach ($mm as $q) $aj[] = ($q[1] ?? '') . $q[2];
+      $o['ajax'] = $u($aj, 20);
+      $fr = []; foreach ($x->query('//iframe[@src]') as $e) $fr[] = self::loc((string)$e->getAttribute('src'), $url);
+      if ($fr) $o['frames'] = $u($fr, 6);
+      $re = self::T[$t]['form'];
+      // кабинет — по полю пароля; онлайн-форма — есть форма (или поля вне форм) хотя бы с одним полем для ввода
+      $o['form'] = $re ? (bool)preg_match($re, $body) : ($visible > 0 || (bool)array_filter($loose, fn($fd) => (bool)preg_match('/^(text|number|tel|search|textarea|select):/', $fd)));
+      $root = $best ? $best->parentNode : null;
+      if ($root instanceof DOMElement) $o['skel'] = mb_substr(VkCab::skel($root, '', '', 0), 0, 8000);
+    }
+    $o['verdict'] = match (true) {
+      $code === 0 && $o['len'] === 0 => 'down',
+      isset($o['cfKind']) => 'cloudflare',
+      !empty($o['widget']) || in_array($o['captchaKind'] ?? '', ['turnstile', 'hcaptcha', 'recaptcha3'], true) => 'captcha',
+      $code === 200 && $o['form'] => 'ok',
+      $code === 200 => 'noform',
+      default => 'other',
+    };
+    return $o;
+  }
+  /** POST /api/relay/probe?t=obl|form&via=nas — вывод curl с NAS. → короткий итог (его видно в Терминале / журнале задачи DSM). */
+  public static function accept(string $t, string $raw, string $cc, string $via): array {
+    if (!isset(self::T[$t])) throw new HttpError(422, 'bad_target', ['targets' => array_keys(self::T)]);
+    $o = self::analyze($t, $raw);
+    $j = self::load(); $prev = (array)($j[$t] ?? []);
+    $o = ['at' => gmdate('c'), 'cc' => (preg_match('/^[A-Z]{2}$/', strtoupper($cc)) ? strtoupper($cc) : null), 'via' => (substr((string)preg_replace('/[^a-z0-9]/', '', strtolower($via)), 0, 12) ?: null), 'n' => (int)($prev['n'] ?? 0) + 1] + $o;
+    @mkdir(self::dir(), 0700, true); @file_put_contents(self::rawFile($t), $raw, LOCK_EX);
+    $j[$t] = $o; self::save($j);
+    return ['ok' => true, 't' => $t, 'verdict' => $o['verdict'], 'code' => $o['code'], 'cc' => $o['cc']] + (isset($o['cfKind']) ? ['cfKind' => $o['cfKind']] : []) + (isset($o['captchaKind']) ? ['captcha' => $o['captchaKind']] : []);
+  }
+  /** Все пробы; разобранные старой версией — перечитать из сохранённого вывода (время, страна, via — прежние). */
+  public static function read(): array {
+    $j = self::load(); $ch = false;
+    foreach (array_keys(self::T) as $t) {
+      if (!isset($j[$t]) || (int)($j[$t]['v'] ?? 0) === self::V || !is_file(self::rawFile($t))) continue;
+      $j[$t] = array_intersect_key($j[$t], array_flip(['at', 'cc', 'via', 'n'])) + self::analyze($t, (string)@file_get_contents(self::rawFile($t))); $ch = true;
+    }
+    if ($ch) self::save($j);
+    return $j;
+  }
+  /** /api/health → uaProbe: без скелета формы (он — в GET /api/relay/probe?t=). */
+  public static function summary(): array {
+    $out = []; foreach (self::read() as $t => $o) if (isset(self::T[$t]) && is_array($o)) { unset($o['skel']); $out[$t] = $o; }
+    return $out;
+  }
+  public static function one(string $t): array { if (!isset(self::T[$t])) throw new HttpError(422, 'bad_target', ['targets' => array_keys(self::T)]); return ['t' => $t, 'url' => self::T[$t]['url'], 'probe' => self::read()[$t] ?? null, 'command' => self::command(Cfg::appUrlKnown() ? Cfg::appUrl() : 'https://peredai.com.ua')]; }
+}
+
 /** Пароли кабинетов: AES-256-GCM, ключ — случайный, в SITE_DATA/uploads/settings/cab.key (0600), не в базе и не в git.
  *  Утечёт база — паролей не прочитать; взломают сервер целиком — не спасёт ничто, поэтому «забути пароль» у человека всегда под рукой. */
 final class CabVault {

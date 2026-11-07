@@ -171,15 +171,45 @@ final class HtmSvc {
   /** POST /api/cab/htm/check — что видит кабинет. Ничего не вносит. */
   public static function check(int $uid, array $in): array {
     self::lang($in); self::limit($uid);
-    [$cab, $acc] = self::enter($uid, (string)($in['acc'] ?? ''), 'check');
-    try { $h = $cab->heat($acc['acc'], $acc['sur']); }
-    catch (CabErr $e) { self::diag(['op' => 'check', 'user' => $uid, 'result' => $e->err, 'steps' => $cab->w->steps]); throw self::cabErr($e); }
-    finally { $cab->logout(); }
-    $fi = self::formInfo($h);
-    self::diag(['op' => 'check', 'user' => $uid, 'result' => 'ok', 'meter' => (bool)$h['meter'], 'base' => array_keys($h['base']), 'form' => $fi, 'win' => [$h['min'] !== null, $h['max'] !== null, $h['win'] ?? null], 'dateJs' => $h['dateJs'] ?? [], 'alerts' => $h['alerts'] ?? null, 'journal' => array_map(fn($r) => $r['status'], $h['journal']), 'closed' => $h['closed'] ? CabWeb::mask($h['closed'], 160) : null, 'steps' => $cab->w->steps]);
+    [$acc, $h, $fi] = self::look($uid, (string)($in['acc'] ?? ''), 'check');
     [$lo, $hi] = self::window($h);
     return ['ok' => true, 'acc' => $acc['acc'], 'meter' => $h['meter'], 'base' => (object)$h['base'], 'open' => $h['open'], 'closed' => $h['closed'], 'min' => $lo, 'max' => $hi, 'winSrc' => $h['min'] !== null && $h['max'] !== null ? 'page' : 'calendar',
       'journal' => self::pubJournal($h['journal']), 'form' => ['open' => $h['open'], 'match' => $fi['match'] ?? null, 'phone' => in_array('phone', array_column($fi['fields'] ?? [], 'r'), true)]];
+  }
+
+  /** Войти и прочитать страницу тепла — ничего не вносит. op: check (кнопка человека) | look (cron, учётки админа). → [рахунок, страница, форма без значений]. */
+  private static function look(int $uid, string $want, string $op): array {
+    [$cab, $acc] = self::enter($uid, $want, $op);
+    try { $h = $cab->heat($acc['acc'], $acc['sur']); }
+    catch (CabErr $e) { self::diag(['op' => $op, 'user' => $uid, 'result' => $e->err, 'steps' => $cab->w->steps]); throw self::cabErr($e); }
+    finally { $cab->logout(); }
+    $fi = self::formInfo($h);
+    self::diag(['op' => $op, 'user' => $uid, 'result' => 'ok', 'meter' => (bool)$h['meter'], 'base' => array_keys($h['base']), 'form' => $fi, 'win' => [$h['min'] !== null, $h['max'] !== null, $h['win'] ?? null], 'dateJs' => $h['dateJs'] ?? [], 'alerts' => $h['alerts'] ?? null, 'journal' => array_map(fn($r) => $r['status'], $h['journal']), 'closed' => $h['closed'] ? CabWeb::mask($h['closed'], 160) : null, 'steps' => $cab->w->steps]);
+    return [$acc, $h, $fi];
+  }
+  /** «Перевірити» без кнопки: владелец неделю не нажимал (06.11 17:26 — последний раз, а окно дат, плашки и журнал нужны до первого живого внесения).
+   *  Раз на LOOK_V (сайт не ответил — ещё до 3 раз, через 10 мин) сервер сам читает кабинеты ХТМ УЧЁТОК АДМИНА (config.php → admins), как VkStatus::recheck
+   *  у Водоканала: только чтение, ничего не вносит; рахунок — первый из кабинета. Итог — /api/health → htmcab.seen (by: cron) и htmcab.look. → итоги или null. */
+  const LOOK_V = 1;
+  public static function lookFile(): string { return Cfg::data() . '/cache/htm_look.json'; }
+  public static function lookState(): array { $j = json_decode((string)@file_get_contents(self::lookFile()), true); return is_array($j) ? $j : []; }
+  public static function lookAdmins(?int $now = null): ?array {
+    $now = $now ?? time(); $j = self::lookState();
+    if ((int)($j['v'] ?? 0) === self::LOOK_V) {   // уже было на этой версии: повтор — только если сайт ХТМ не ответил (до 3 раз, не чаще раза в 10 мин)
+      $retry = in_array('cab_down', (array)($j['res'] ?? []), true) && (int)($j['tries'] ?? 0) < 3 && $now - (int)($j['at'] ?? 0) >= 600;
+      if (!$retry) return null;
+    }
+    $res = [];
+    foreach (Db::q("SELECT c.user_id, c.info, u.email FROM cab_creds c JOIN users u ON u.id = c.user_id WHERE c.prov = ? AND c.state <> 'bad_login' ORDER BY c.user_id", [self::PROV])->fetchAll() as $c) {
+      if (count($res) >= 2) break;
+      if (!Admin::is(['id' => (int)$c['user_id'], 'email' => $c['email']])) continue;
+      $acc = (string)(self::js($c['info'])['accounts'][0]['acc'] ?? '');
+      try { self::look((int)$c['user_id'], $acc, 'look'); $res[] = 'ok'; } catch (HttpError $e) { $res[] = $e->err; }
+    }
+    $same = (int)($j['v'] ?? 0) === self::LOOK_V;
+    $j = ['v' => self::LOOK_V, 'at' => $now, 'res' => $res, 'tries' => ($same ? (int)($j['tries'] ?? 0) : 0) + 1];
+    @mkdir(dirname(self::lookFile()), 0700, true); @file_put_contents(self::lookFile(), json_encode($j), LOCK_EX);
+    return $res;
   }
 
   // ---------- внести ----------
@@ -432,7 +462,7 @@ final class HtmSvc {
     $n = []; $last = null; $form = null; $seen = null; $lastSend = null; $lastErr = null;
     foreach (self::log() as $e) {
       // что робот прочитал со страницы тепла при последней проверке — без значений: нашёл ли прибор, какие «последние принятые», окно, статусы журнала
-      if (($e['op'] ?? '') === 'check' && ($e['result'] ?? '') === 'ok') $seen = ['at' => gmdate('c', (int)$e['at']), 'meter' => $e['meter'] ?? null, 'base' => $e['base'] ?? [],
+      if (in_array($e['op'] ?? '', ['check', 'look'], true) && ($e['result'] ?? '') === 'ok') $seen = ['at' => gmdate('c', (int)$e['at']), 'by' => ($e['op'] ?? '') === 'look' ? 'cron' : 'user', 'meter' => $e['meter'] ?? null, 'base' => $e['base'] ?? [],
         'open' => !empty($e['form']['open']), 'minMax' => $e['form']['minMax'] ?? null, 'win' => $e['form']['win'] ?? null, 'dateJs' => $e['dateJs'] ?? null, 'alerts' => $e['alerts'] ?? null, 'journal' => array_count_values(array_map('strval', (array)($e['journal'] ?? []))), 'closed' => $e['closed'] ?? null];
       // последний сбой робота (сайт не ответил, страница не та, капча…) — по шагам: метод, путь без рахунку, код, мс, ошибка сети
       if (!in_array((string)($e['result'] ?? ''), ['ok', 'pending', 'unseen', 'rejected', 'on', 'off', 'queued', 'bad_value', 'bad_login'], true) && ($e['op'] ?? '') !== 'recheck')
@@ -442,7 +472,7 @@ final class HtmSvc {
         'flash' => ($e['flash'] ?? '') !== '', 'site' => ($e['site'] ?? '') !== '', 'banners' => $e['banners'] ?? null] + (array)($e['page'] ?? []);   // сами слова — только в /admin: /api/health открыт всем
       $k = preg_replace('/[^a-z]/', '', (string)($e['op'] ?? '?')) . ' ' . preg_replace('/[^a-z_,]/', '', (string)($e['result'] ?? '?'));
       $n[$k] = ($n[$k] ?? 0) + 1;
-      if (($e['op'] ?? '') !== 'recheck') $last = max((int)$last, (int)($e['at'] ?? 0));
+      if (!in_array($e['op'] ?? '', ['recheck', 'look'], true)) $last = max((int)$last, (int)($e['at'] ?? 0));   // cron — не человек
       if (!empty($e['form']['open'])) $form = ['at' => gmdate('c', (int)$e['at']), 'match' => $e['form']['match'], 'missing' => $e['form']['missing'], 'unknown' => $e['form']['unknown'],
         'fields' => array_map(fn($f) => trim(($f['n'] ?? '') . ':' . ($f['t'] ?? '') . (isset($f['r']) ? '→' . $f['r'] : '')), $e['form']['fields'] ?? []),
         // подсказки сайта к полям (обязательное, длина, шаблон, placeholder) — чтобы сверить формат телефона и чисел
@@ -451,6 +481,7 @@ final class HtmSvc {
     ksort($n); $jobs = [];
     try { foreach (Db::q('SELECT status, COUNT(*) AS c FROM cab_jobs WHERE prov = ? GROUP BY status', [self::PROV])->fetchAll() as $x) $jobs[$x['status']] = (int)$x['c']; } catch (Throwable $e) {}
     $cr = 0; try { $cr = (int)(Db::one('SELECT COUNT(*) AS c FROM cab_creds WHERE prov = ?', [self::PROV])['c'] ?? 0); } catch (Throwable $e) {}
-    return ['n' => (object)$n, 'lastUser' => $last ? gmdate('c', $last) : null, 'connected' => $cr, 'jobs' => (object)$jobs, 'form' => $form, 'seen' => $seen, 'lastSend' => $lastSend, 'lastErr' => $lastErr];
+    $lk = self::lookState(); $look = $lk ? ['v' => (int)($lk['v'] ?? 0), 'at' => gmdate('c', (int)($lk['at'] ?? 0)), 'res' => (array)($lk['res'] ?? []), 'tries' => (int)($lk['tries'] ?? 0)] : null;
+    return ['n' => (object)$n, 'lastUser' => $last ? gmdate('c', $last) : null, 'connected' => $cr, 'jobs' => (object)$jobs, 'form' => $form, 'seen' => $seen, 'lastSend' => $lastSend, 'lastErr' => $lastErr, 'look' => $look];
   }
 }

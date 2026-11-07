@@ -410,8 +410,17 @@ final class VkStatus {
    *  Водоканала рахунком и прізвищем из сохранённых квартир УЧЁТОК АДМИНА (config.php → admins) — только чтение, ничего не отправляет —
    *  и пишет скелет страницы (журнал, /api/health → vkcab.lastErr) и куски скриптов сайта (/api/vk/status → recheck.js). → итог или null. */
   const RECHECK_V = 1;
-  public static function recheck(): ?array {
-    $j = self::read(); if ((int)($j['recheck']['v'] ?? 0) === self::RECHECK_V || !VkCab::ready()) return null;
+  /** Тот же заход, пока у рахунків админа период закрыт («показання прийняті», полей нет): раз в сутки, в 7-м часу по Киеву, — до первого
+   *  открытого периода (форма показаний с полями или незнакомая страница — она и пишется в журнал скелетом). Потом — только с новой RECHECK_V. */
+  public static function recheckDue(array $rc, int $now): bool {
+    if ((int)($rc['v'] ?? 0) !== self::RECHECK_V) return true;
+    $res = (array)($rc['res'] ?? []);
+    $closed = $res && !array_filter($res, fn($x) => ($x['error'] ?? '') === 'ok' && (int)($x['meters'] ?? 0) > 0) && array_filter($res, fn($x) => ($x['error'] ?? '') === 'ok');
+    return $closed && $now - (int)($rc['at'] ?? 0) >= 20 * 3600 && (int)Gpv::kyiv($now)->format('G') === 7;
+  }
+  public static function recheck(?int $now = null): ?array {
+    $now = $now ?? time();
+    $j = self::read(); if (!self::recheckDue((array)($j['recheck'] ?? []), $now) || !VkCab::ready()) return null;
     if (empty($j['cab']['everOk'])) return null;
     $res = []; $js = []; $seen = [];
     foreach (Db::q('SELECT u.id, u.email, s.data FROM users u JOIN user_state s ON s.user_id = u.id')->fetchAll() as $u) {
@@ -426,7 +435,10 @@ final class VkStatus {
       }
     }
     if (!$js) $js = VkCab::scriptBits([VkCab::base() . '/js/common.js']);   // скрипт сайта открыт и без входа
-    $j = self::read(); $j['recheck'] = ['v' => self::RECHECK_V, 'at' => time(), 'res' => $res, 'js' => $js]; self::write($j);
+    $j = self::read(); $prev = (array)($j['recheck'] ?? []);
+    $j['recheck'] = ['v' => self::RECHECK_V, 'at' => $now, 'res' => $res, 'js' => $js, 'n' => ((int)($prev['v'] ?? 0) === self::RECHECK_V ? (int)($prev['n'] ?? 1) : 0) + 1];
+    if (array_filter($res, fn($x) => ($x['error'] ?? '') === 'ok' && (int)($x['meters'] ?? 0) > 0)) $j['recheck']['formAt'] = $now;   // увидели открытый период
+    self::write($j);
     return $j['recheck'];
   }
   /** Проба «не знайдено» на живом сайте — раз на VkCab::PROBE_V, когда кабинет открывается; сайт не ответил — ещё до 3 раз. → итог или null. */
