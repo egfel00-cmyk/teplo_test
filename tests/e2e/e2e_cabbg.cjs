@@ -24,7 +24,7 @@ const php = code => execFileSync('php', ['-r', `define('TEPLO',1); foreach (['co
   const H = { date: '2026-11-10', energy: '14.445', volume: '2332.676', flow: '0.063', power: '1.5', tSupply: '50.12', tReturn: '30.4', hours: '35078', errHours: '153', errCode: 'E---' };
   await p.evaluate(([s, h, d]) => {
     s.readings.push({ id: 'rnow', place: 'main', htm: h, raw: {}, unit: 'Gcal', status: 'checked', createdAt: '2026-11-10T09:00:00Z', updatedAt: Date.now(), source: 'manual' });
-    s.places[0].water.account = '905614'; s.places[0].water.surname = 'Шевченко'; s.contacts = { phone: '050 111 22 33' };
+    s.vkBill = { main: { at: Date.now() } }; s.places[0].water.account = '905614'; s.places[0].water.surname = 'Шевченко'; s.contacts = { phone: '050 111 22 33' };
     s.water.push({ id: 'wnow', place: 'main', date: d, vals: { h1: '176', c1: '440' }, createdAt: d + 'T09:00:00Z', updatedAt: Date.now(), sent: {} });
     s.updatedAt = Date.now(); localStorage.setItem('teplo.v1', JSON.stringify(s));
   }, [demo({ today: '2026-11-10' }), H, today]);

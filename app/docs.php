@@ -20,14 +20,19 @@ final class Docs {
     if ($ctype === 'application/pdf') { if (!str_starts_with($body, '%PDF-')) throw new HttpError(415, 'bad_file'); $mime = 'application/pdf'; $ext = 'pdf'; }
     else { $info = @getimagesizefromstring($body); if (!$info || !isset(self::IMG[$info['mime'] ?? ''])) throw new HttpError(415, 'bad_file'); $mime = $info['mime']; $ext = self::IMG[$mime]; }
     if ((int)(Db::one('SELECT COUNT(*) n FROM docs WHERE user_id = ?', [$uid])['n'] ?? 0) >= self::MAX_PER_USER) throw new HttpError(429, 'too_many_docs');
+    return ['doc' => self::put($uid, $body, $mime, $ext, (string)($q['place'] ?? 'main'), $kind, mb_substr(trim((string)($q['name'] ?? '')), 0, 120) ?: null)];
+  }
+  /** Сохранить файл и строку docs. meta — для скачанных сервером сами: src (vk), ym (за какой месяц), sha (отпечаток). */
+  public static function put(int $uid, string $body, string $mime, string $ext, string $place, string $kind, ?string $name, array $meta = []): array {
     $dir = self::root() . '/' . $uid; if (!is_dir($dir) && !@mkdir($dir, 0700, true) && !is_dir($dir)) throw new HttpError(500, 'storage');
     $id = bin2hex(random_bytes(12)); $file = $id . '.' . $ext;
     if (file_put_contents($dir . '/' . $file, $body) === false) throw new HttpError(500, 'storage');
-    $name = mb_substr(trim((string)($q['name'] ?? '')), 0, 120) ?: null;
-    Db::q('INSERT INTO docs (id, user_id, place, kind, file, mime, bytes, name, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)', [$id, $uid, self::place((string)($q['place'] ?? 'main')), $kind, $file, $mime, strlen($body), $name, Http::iso()]);
-    return ['doc' => self::one($uid, $id)];
+    Db::q('INSERT INTO docs (id, user_id, place, kind, file, mime, bytes, name, created_at, src, ym, sha) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      [$id, $uid, self::place($place), $kind, $file, $mime, strlen($body), $name, Http::iso(), $meta['src'] ?? null, $meta['ym'] ?? null, $meta['sha'] ?? null]);
+    return self::one($uid, $id);
   }
-  private static function pub(array $d): array { return ['id' => $d['id'], 'place' => $d['place'], 'kind' => $d['kind'], 'mime' => $d['mime'], 'bytes' => (int)$d['bytes'], 'name' => $d['name'], 'createdAt' => $d['created_at']]; }
+  public static function bySha(int $uid, string $sha): ?array { $d = Db::one('SELECT * FROM docs WHERE user_id = ? AND sha = ?', [$uid, $sha]); return $d ? self::pub($d) : null; }
+  private static function pub(array $d): array { return ['id' => $d['id'], 'place' => $d['place'], 'kind' => $d['kind'], 'mime' => $d['mime'], 'bytes' => (int)$d['bytes'], 'name' => $d['name'], 'createdAt' => $d['created_at']] + (!empty($d['src']) ? ['src' => $d['src'], 'ym' => $d['ym'] ?? null] : []); }
   private static function one(int $uid, string $id): ?array { $d = Db::one('SELECT * FROM docs WHERE id = ? AND user_id = ?', [$id, $uid]); return $d ? self::pub($d) : null; }
   public static function list(int $uid): array { return ['docs' => array_map([self::class, 'pub'], Db::q('SELECT * FROM docs WHERE user_id = ? ORDER BY created_at DESC', [$uid])->fetchAll())]; }
   public static function file(int $uid, string $id): array {

@@ -211,6 +211,10 @@ final class Db {
     self::addColumn('visits', 'recs', 'INT NOT NULL DEFAULT 0');
     // чей бот ответил: vk — Водоканал (@hvk_user_bot), obl — Харківобленерго (@Kooz2bot), grm — Газмережі (@mygrmu_bot)
     self::addColumn('vk_replies', 'src', "VARCHAR(8) NOT NULL DEFAULT 'vk'");
+    // документы, скачанные сервером сами (квитанция Водоканала): откуда, за какой месяц, отпечаток — не качать и не прикреплять дважды
+    self::addColumn('docs', 'src', 'VARCHAR(8) NULL');
+    self::addColumn('docs', 'ym', 'CHAR(7) NULL');
+    self::addColumn('docs', 'sha', 'CHAR(40) NULL');
   }
   /** ALTER … ADD COLUMN IF NOT EXISTS (в SQLite такого нет — смотрим список колонок). */
   private static function addColumn(string $t, string $c, string $def): void {

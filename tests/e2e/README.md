@@ -75,3 +75,6 @@
   `/__last` — что пришло POST); в /tmp/teplo_data/config.php — sqlite, admins `boss@teplo.test`, `relay_prefixes => ['http://127.0.0.1:8097/']`, `relay_url_form` и
   `relay_url_obl` на стенд. Тест берёт настоящий сценарий из /admin и запускает его (цикл 50 с → 6–14 с). BusyBox как в DSM: `apt-get install busybox-static`,
   `/tmp/bb` — ссылки find/tail/date/mkdir/rm/chmod/sleep/cat/sh на busybox и curl.
+- `node e2e_vkbill.cjs` — квитанция Водоканала в фоне (8/8): при заходе (с 1-го по 25-е, раз в сутки) сервер входит на стенд 8098 рахунком 905616, берёт PDF из iframe
+  `…checkPDF.pdf`, мы прикрепляем его к записи воды прошлого месяца («Платіжка за жовтень 2026», `auto: 'vk'`), тост; повторный заход — не спрашиваем; та же квитанция (отпечаток) — не
+  прикрепляем; 26-го — не спрашиваем. Тесты, которые сами правят localStorage на живой странице (vkcab, vkauto, cabbg), гасят фон: `s.vkBill = { main: { at: Date.now() } }`.

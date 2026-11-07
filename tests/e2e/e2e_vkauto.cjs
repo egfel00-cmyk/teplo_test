@@ -26,7 +26,7 @@ const fake = drum => ({ engine: 'local', meter: null, photos: [{ index: 0, kind:
   await p.goto(U); await p.evaluate(() => localStorage.clear()); await p.reload(); await wait(500);
   ok('регистрация', await p.evaluate(e => window.TeploSync.register(e, 'Pass-12345678').then(j => j._status), 'va' + Date.now() + '@teplo.test') === 200);
   const uid = await p.evaluate(() => window.TeploSync.account.id);
-  await p.evaluate(s => { delete s.demoToday; s.places[0].water.account = '905614'; s.places[0].water.surname = 'Шевченко'; s.water = s.water.filter(w => w.base || w.date < '2026-11-01'); s.updatedAt = Date.now(); localStorage.setItem('teplo.v1', JSON.stringify(s)); }, demo({}));
+  await p.evaluate(s => { delete s.demoToday; s.vkBill = { main: { at: Date.now() } }; s.places[0].water.account = '905614'; s.places[0].water.surname = 'Шевченко'; s.water = s.water.filter(w => w.base || w.date < '2026-11-01'); s.updatedAt = Date.now(); localStorage.setItem('teplo.v1', JSON.stringify(s)); }, demo({}));
   await p.reload(); await wait(1200);
   ok('згода на автовідправку води', await p.evaluate(() => window.TeploSync.api('POST', '/vk/auto', { on: true, consent: true }).then(j => j.auto)) === true);
   const putPhoto = async () => {

@@ -4,6 +4,8 @@ require __DIR__ . '/pages.php'; $GLOBALS['VKM_HOST'] = $_SERVER['HTTP_HOST'] ?? 
 $f = sys_get_temp_dir() . '/vkm_store.json'; $store = json_decode((string)@file_get_contents($f), true) ?: [];
 if (($_SERVER['REQUEST_URI'] ?? '') === '/__reset') { @unlink($f); echo 'ok'; return; }
 if (($_SERVER['REQUEST_URI'] ?? '') === '/__store') { header('Content-Type: application/json'); echo json_encode($store, JSON_UNESCAPED_UNICODE); return; }
+// квитанция (как на живом сайте: iframe /tmp/….checkPDF.pdf на странице после входа); текст — /tmp/vkm_bill.txt (сменить — «новая квитанция»)
+if (preg_match('~^/tmp/[\w.]+\.checkPDF\.pdf$~', (string)parse_url($_SERVER['REQUEST_URI'] ?? '', PHP_URL_PATH))) { header('Content-Type: application/pdf'); echo "%PDF-1.4\n% " . (@file_get_contents('/tmp/vkm_bill.txt') ?: 'kvytantsiia') . "\n%%EOF\n"; return; }
 [$code, $html, $h] = vkm_request($_SERVER['REQUEST_METHOD'], $_SERVER['REQUEST_URI'], file_get_contents('php://input'), (string)($_SERVER['HTTP_COOKIE'] ?? ''), $store);
 file_put_contents($f, json_encode($store, JSON_UNESCAPED_UNICODE));
 http_response_code($code); foreach ($h as $x) header($x, false); header('Content-Type: text/html; charset=UTF-8'); echo $html;

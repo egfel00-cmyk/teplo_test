@@ -2443,7 +2443,7 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
       mv_docs_none: 'Ще немає документів.', mv_docs_login: 'Увійдіть, щоб зберігати фото паспорта й документів повірки.',
       mv_kind_passport: 'Паспорт лічильника', mv_kind_verification: 'Повірка', mv_kind_other: 'Документ',
       mv_add_passport: 'Фото паспорта', mv_add_ver: 'Документ повірки', mv_uploading: 'Завантажую…', mv_saved: 'Документ збережено',
-      bl_title: "Платіжка за {m}",
+      bl_title: "Платіжка за {m}", vkb_added: "Квитанцію Водоканалу за {m} додано до запису ({p})",
       bl_title_gap: "Платіжки за ці місяці",
       bl_sub: "Фото чи PDF платіжки — щоб звіряти нараховане з показаннями. Можна кілька файлів: обидві сторінки, тепло й вода окремо.",
       bl_add: "Додати платіжку (фото чи PDF)",
@@ -3539,7 +3539,7 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
       mv_docs_none: 'Пока нет документов.', mv_docs_login: 'Войдите, чтобы хранить фото паспорта и документов поверки.',
       mv_kind_passport: 'Паспорт счётчика', mv_kind_verification: 'Поверка', mv_kind_other: 'Документ',
       mv_add_passport: 'Фото паспорта', mv_add_ver: 'Документ поверки', mv_uploading: 'Загружаю…', mv_saved: 'Документ сохранён',
-      bl_title: "Платёжка за {m}",
+      bl_title: "Платёжка за {m}", vkb_added: "Квитанция Водоканала за {m} добавлена к записи ({p})",
       bl_title_gap: "Платёжки за эти месяцы",
       bl_sub: "Фото или PDF платёжки — чтобы сверять начисленное с показаниями. Можно несколько файлов: обе страницы, тепло и вода отдельно.",
       bl_add: "Добавить платёжку (фото или PDF)",
@@ -7147,7 +7147,7 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
   function vksLoad() {
     if (!window.TEPLO_API || VKS.busy || Date.now() - VKS.at < 60000) return; VKS.busy = true; VKS.at = Date.now();
     fetch(window.TEPLO_API + '/vk/status', { credentials: 'same-origin', headers: { Accept: 'application/json' } }).then(function (r) { return r.json(); }).then(function (j) {
-      VKS.busy = false; var was = JSON.stringify(VKS.data); VKS.data = j; if (was !== JSON.stringify(j)) safeRender();
+      VKS.busy = false; var was = JSON.stringify(VKS.data); VKS.data = j; if (was !== JSON.stringify(j)) safeRender(); vkBills();
     }, function () { VKS.busy = false; });
   }
   /** Рядок статусу бота (і кабінету) у блоці Водоканалу. */
@@ -7166,6 +7166,31 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
   var VKC = { key: '', busy: '', check: null, err: null, res: null, pick: {} };
   function vkcAvail() { var c = VKS.data && VKS.data.cab; return !!(window.TEPLO_API && c && c.everOk && c.state === 'ok' && c.send !== false); }
   function vkcOn() { return vkcAvail() && !!Y().account; }
+  /** Квитанція Водоканалу у фоні (владелец 07.11): при заході, раз на добу, з 1-го по 25-те — у квартирі з рахунком і прізвищем для сайту Водоканалу
+   *  є запис води за минулий місяць без квитанції → сервер заходить на сайт (лише читає), нову квитанцію кладе в документи, ми прикріплюємо її
+   *  до цього запису («Платіжка за <місяць>»). Та сама, що вже була (сайт ще не оновив), — спробуємо завтра. */
+  var VKB = { busy: false };
+  function vkbTarget(pid, ym) {
+    return withPlace(pid, function () { return wrecs().filter(function (r) { return !r.base && String(r.date).slice(0, 7) === ym && !(r.bills || []).some(function (b) { return b && b.auto === 'vk'; }); }).slice(-1)[0] || null; });
+  }
+  function vkBills() {
+    if (VKB.busy || !window.TEPLO_API || !Y().account) return;
+    if (!VKS.data) { vksLoad(); return; }   // стан сайту Водоканалу ще не знаємо — дізнаємось і повернемось сюди
+    if (!vkcOn()) return;
+    var td = today(); if (+td.slice(8, 10) > 25) return;
+    var d = new Date(+td.slice(0, 4), +td.slice(5, 7) - 2, 1), ym = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+    S.vkBill = S.vkBill || {};
+    var p = places().filter(function (x) { var w = x.water || {}, st = S.vkBill[x.id] || {};
+      return String(w.account || '').replace(/\D/g, '').length >= 5 && String(w.surname || '').trim() && st.got !== ym && !(st.at && Date.now() - st.at < 20 * 3600e3) && vkbTarget(x.id, ym); })[0];   // got — уже прикріпили (видалили самі — не повертаємо)
+    if (!p) return;
+    VKB.busy = true; S.vkBill[p.id] = { at: Date.now() }; save();
+    Y().api('POST', '/vk/bill', { acc: p.water.account, fam: p.water.surname, place: p.id, lang: S.lang }).then(function (j) {
+      VKB.busy = false; if (!(j && j._status === 200 && j.doc) || j.same) return;
+      var my = j.ym || ym, rec = vkbTarget(p.id, my) || vkbTarget(p.id, ym); if (!rec) return;
+      rec.bills = (rec.bills || []).concat([{ id: j.doc.id, mime: j.doc.mime, name: j.doc.name || '', bytes: j.doc.bytes, at: j.doc.createdAt, auto: 'vk' }]); rec.updatedAt = Date.now(); S.vkBill[p.id] = { at: Date.now(), got: ym }; save();
+      track('vk_bill', { ym: my, g: j.guess ? 1 : 0 }); toast(t('vkb_added', { m: monthLabel(String(rec.date).slice(0, 7)), p: placeLabel(p) })); safeRender();
+    }, function () { VKB.busy = false; });
+  }
   /** Чого бракує для шляху «через сайт»: '' — сайт не відкривається (лише бот), 'login', 'acc' (рахунок ≥ 5 цифр і прізвище), 'ok'. */
   function vkcGate() { if (!vkcAvail()) return ''; if (!Y().account) return 'login'; var c = wcfg(); return String(c.account || '').replace(/\D/g, '').length >= 5 && String(c.surname || '').trim() ? 'ok' : 'acc'; }
   function vkcHead() { return '<div class="vkc" data-key="vkc"><p class="vkc-t"><b>' + esc(t('vkc_t')) + '</b></p>'; }
@@ -12026,7 +12051,7 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
     var onSync = function () {
       var el = document.getElementById('sync-status'); if (el) el.textContent = syncStatusText();
       if (window.TEPLO_API && window.TeploVision && window.TeploSync._cfg) window.TeploVision.initServer(window.TeploSync._cfg, !!window.TeploSync.account);
-      if (!window.TeploSync.account) ADMIN = null; else { checkAdmin(); if (INBOX.items === null || INBOX.auto) loadInbox(); histFlush(); }
+      if (!window.TeploSync.account) ADMIN = null; else { checkAdmin(); if (INBOX.items === null || INBOX.auto) loadInbox(); histFlush(); vkBills(); }
       // вхід з’явився/змінився — стан кабінету ХТМ іншого акаунта не показуємо; екрани тепла перемалювати (вони залежать від входу)
       var accId = window.TeploSync.account ? window.TeploSync.account.id : 0;
       if (accId !== HC.acc) { HC.acc = accId; HC.st = null; HC.at = 0; HC.check = null; HC.err = null; HC.form = null; if (/^(heat|handover|status|htmcab)$/.test(routeName())) safeRender(); }

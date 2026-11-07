@@ -23,6 +23,7 @@
 //  GET  /api/vk/replies             ответы бота Водоканала, пересланные нашему боту (подтверждение передачи воды)
 //  GET  /api/bot/replies?src=obl|grm  то же для света (@Kooz2bot) и газа (@mygrmu_bot)
 //  GET  /api/vk/status · POST /api/vk/event {kind}  работают ли бот и кабинет Водоканала (VkStatus, app/admin.php)
+//  POST /api/vk/bill {acc, fam, place} — квитанция Водоканала (PDF) в docs, если новая
 //  POST /api/vk/cab/check {acc, fam} · POST /api/vk/cab/send {acc, fam, items: [{key, value, serial?, name?}], date?}
 //                                   кабинет Водоканала «без реєстрації»: что видит сайт / отправить показания (VkCab, app/vkcab.php)
 //  GET  /api/cab/htm · POST /api/cab/htm/connect {email, password, phone?, consent} · POST /api/cab/forget {prov}
@@ -301,6 +302,7 @@ final class Api {
         return VkStatus::event((int)$user['id'], (string)($in['kind'] ?? ''));
       }
       case 'POST /api/vk/cab/check': if (!$user) throw new HttpError(401, 'unauthorized'); return VkCab::check((int)$user['id'], $in);
+      case 'POST /api/vk/bill': if (!$user) throw new HttpError(401, 'unauthorized'); return VkCab::bill((int)$user['id'], $in);   // квитанція з сайту Водоканалу — у фоні при заході
       case 'POST /api/vk/cab/send': if (!$user) throw new HttpError(401, 'unauthorized'); return VkCab::send((int)$user['id'], $in);
       case 'GET /api/cab/htm': if (!$user) throw new HttpError(401, 'unauthorized'); return HtmSvc::status((int)$user['id']);
       case 'POST /api/cab/htm/connect': if (!$user) throw new HttpError(401, 'unauthorized'); return HtmSvc::connect((int)$user['id'], $in);

@@ -280,6 +280,30 @@ final class VkCab {
   }
 
   /** POST /api/vk/cab/check {acc, fam} — что видит сайт Водоканала: лічильники (номер, вид, прошлые показания) и даты. */
+  /** POST /api/vk/bill {acc, fam, place} — квитанция с сайта Водоканала (на странице после входа — iframe …checkPDF.pdf), в фоне при заходе человека.
+   *  Новая (другой отпечаток) → docs (kind bill, src vk, ym — месяц из текста страницы, иначе прошлый по Киеву); та же, что уже есть, — same. Ничего не вносим. */
+  public static function bill(int $uid, array $in): array {
+    self::$lang = ($in['lang'] ?? '') === 'ru' ? 'ru' : 'uk';
+    [$acc, $fam] = self::input($in); self::limit($uid);
+    $c = self::open($acc, $fam, 'bill'); $x = $c['x']; $from = (string)$c['page']['url']; $src = null;
+    foreach ($x->query('//iframe[@src]|//embed[@src]|//object[@data]|//a[@href]') as $e) {
+      $s = (string)($e->getAttribute('src') ?: $e->getAttribute('data') ?: $e->getAttribute('href'));
+      if (preg_match('~checkPDF|\.pdf(?:[?#]|$)~i', $s)) { $src = $s; break; }
+    }
+    if ($src === null) { self::diag(['result' => 'nobill', 'where' => 'bill', 'user' => $uid]); return ['none' => true]; }
+    $r = self::req('GET', self::abs($src, $from));
+    if ((int)$r['code'] !== 200 || !str_starts_with((string)$r['body'], '%PDF-')) { self::diag(['result' => 'badbill', 'where' => 'bill', 'code' => (int)$r['code'], 'user' => $uid]); return ['none' => true]; }
+    $sha = sha1((string)$r['body']);
+    if ($d = Docs::bySha($uid, $sha)) return ['same' => true, 'doc' => $d];
+    $txt = self::sp((string)($x->query('//body')->item(0)?->textContent ?? ''));
+    $ym = preg_match('/(?:квитанц\w*|рахунок\s+за|сч[её]т\s+за)\D{0,40}?(січ\w*|лют\w*|берез\w*|квіт\w*|трав\w*|черв\w*|лип\w*|серп\w*|верес\w*|жовт\w*|листоп\w*|груд\w*)\s+(20\d\d)/iu', $txt, $m) ? self::month($m[1], $m[2]) : null;
+    $guess = $ym === null;
+    if ($guess) { $k = new DateTimeImmutable('now', new DateTimeZone('Europe/Kyiv')); $ym = $k->modify('first day of last month')->format('Y-m'); }
+    $mn = ['січень', 'лютий', 'березень', 'квітень', 'травень', 'червень', 'липень', 'серпень', 'вересень', 'жовтень', 'листопад', 'грудень'][(int)substr($ym, 5, 2) - 1];
+    $doc = Docs::put($uid, (string)$r['body'], 'application/pdf', 'pdf', (string)($in['place'] ?? 'main'), 'bill', 'Квитанція Водоканалу, ' . $mn . ' ' . substr($ym, 0, 4), ['src' => 'vk', 'ym' => $ym, 'sha' => $sha]);
+    self::diag(['result' => 'bill', 'where' => 'bill', 'guess' => $guess, 'user' => $uid]);
+    return ['doc' => $doc, 'ym' => $ym, 'guess' => $guess];
+  }
   public static function check(int $uid, array $in): array {
     self::$lang = ($in['lang'] ?? '') === 'ru' ? 'ru' : 'uk';
     [$acc, $fam] = self::input($in); self::limit($uid);

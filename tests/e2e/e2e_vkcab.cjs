@@ -17,7 +17,8 @@ const cab = (state) => { const n = Math.floor(Date.now() / 1000); fs.mkdirSync(D
   const today = new Date().toISOString().slice(0, 10);
   await p.goto(U); await p.evaluate(() => localStorage.clear()); await p.reload(); await wait(500);
   ok('регистрация', await p.evaluate(e => window.TeploSync.register(e, 'Pass-12345678').then(j => j._status), 'vkc' + Date.now() + '@teplo.test') === 200);
-  await p.evaluate(([s, d]) => { delete s.demoToday; s.places[0].water.account = '905614'; s.places[0].water.surname = 'Шевченко';
+  // квитанция в фоне (e2e_vkbill) тут не нужна: тест сам правит localStorage на живой странице — фоновое сохранение его бы перетёрло
+  await p.evaluate(([s, d]) => { delete s.demoToday; s.vkBill = { main: { at: Date.now() } }; s.places[0].water.account = '905614'; s.places[0].water.surname = 'Шевченко';
     s.water.push({ id: 'wnow', place: 'main', date: d, vals: { h1: '176', c1: '440' }, createdAt: d + 'T09:00:00Z', updatedAt: Date.now(), sent: {} }); s.updatedAt = Date.now(); localStorage.setItem('teplo.v1', JSON.stringify(s)); }, [demo({}), today]);
   await p.reload(); await wait(1500);
   await p.goto(U + '#wrec-wnow'); await wait(1200); await p.click('[data-key=where-water-sum]'); await wait(300);
