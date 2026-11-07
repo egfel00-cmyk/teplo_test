@@ -404,7 +404,30 @@ final class VkStatus {
     // send — можно ли отправлять показания через кабинет нашим сервером (VkCab: есть разбор HTML, не выключено)
     return ['bot' => self::bot(), 'cab' => is_array($c) ? array_intersect_key($c, array_flip(['state', 'at', 'since', 'everOk', 'lastOk', 'code'])) + ['send' => VkCab::ready()] : null,
       // проба «не знайдено» (VkCab::probe): узнали ли мы ответ живого сайта на выдуманный рахунок — без личных данных
-      'probe' => self::read()['probe'] ?? null];
+      'probe' => self::read()['probe'] ?? null, 'recheck' => self::read()['recheck'] ?? null];
+  }
+  /** Диагностика «незнайома сторінка» (живой «Перевірити» 07.11.2026 → форма показаний без полей): раз на RECHECK_V сервер сам входит на сайт
+   *  Водоканала рахунком и прізвищем из сохранённых квартир УЧЁТОК АДМИНА (config.php → admins) — только чтение, ничего не отправляет —
+   *  и пишет скелет страницы (журнал, /api/health → vkcab.lastErr) и куски скриптов сайта (/api/vk/status → recheck.js). → итог или null. */
+  const RECHECK_V = 1;
+  public static function recheck(): ?array {
+    $j = self::read(); if ((int)($j['recheck']['v'] ?? 0) === self::RECHECK_V || !VkCab::ready()) return null;
+    if (empty($j['cab']['everOk'])) return null;
+    $res = []; $js = []; $seen = [];
+    foreach (Db::q('SELECT u.id, u.email, s.data FROM users u JOIN user_state s ON s.user_id = u.id')->fetchAll() as $u) {
+      if (!Admin::is(['id' => (int)$u['id'], 'email' => $u['email']])) continue;
+      $st = json_decode((string)$u['data'], true); if (!is_array($st)) continue;
+      foreach ((array)($st['places'] ?? []) as $pl) {
+        $w = (array)($pl['water'] ?? []); $acc = preg_replace('/\D/', '', (string)($w['account'] ?? '')); $fam = trim((string)($w['surname'] ?? ''));
+        if (strlen($acc) < 5 || $fam === '' || isset($seen[$acc]) || count($res) >= 3) continue;
+        $seen[$acc] = 1;
+        try { $in = VkCab::input(['acc' => $acc, 'fam' => $fam]); } catch (HttpError $e) { continue; }
+        $d = VkCab::diagnose($in[0], $in[1]); $res[] = ['error' => $d['error'], 'meters' => $d['meters']]; if (!$js && $d['js']) $js = $d['js'];
+      }
+    }
+    if (!$js) $js = VkCab::scriptBits([VkCab::base() . '/js/common.js']);   // скрипт сайта открыт и без входа
+    $j = self::read(); $j['recheck'] = ['v' => self::RECHECK_V, 'at' => time(), 'res' => $res, 'js' => $js]; self::write($j);
+    return $j['recheck'];
   }
   /** Проба «не знайдено» на живом сайте — раз на VkCab::PROBE_V, когда кабинет открывается; сайт не ответил — ещё до 3 раз. → итог или null. */
   public static function probeNotFound(?int $now = null): ?array {

@@ -24,6 +24,8 @@ $beat = Cron::read(); $beat['last'] = gmdate('c');
 if ((int)gmdate('i') % 10 === 7) { try { $beat['vkCab'] = VkStatus::probeCabinet()['state']; } catch (Throwable $e) { error_log('teplo vk probe: ' . $e->getMessage()); } }
 // проба «не знайдено»: выдуманный рахунок — узнаём ли мы ответ живого сайта (раз на версию разбора, VkCab::PROBE_V)
 if ((int)gmdate('i') % 10 === 3) { try { $p = VkStatus::probeNotFound(); if ($p) $beat['vkProbe'] = $p['error']; } catch (Throwable $e) { error_log('teplo vk notfound probe: ' . $e->getMessage()); } }
+// диагностика «незнайома сторінка» Водоканала: раз на версию — учётки админа, только чтение (VkStatus::recheck)
+try { $rc = VkStatus::recheck(); if ($rc) $beat['vkRecheck'] = ['at' => gmdate('c'), 'res' => $rc['res']]; } catch (Throwable $e) { error_log('teplo vk recheck: ' . $e->getMessage()); }
 // кабинеты ХТМ, обленерго, Газмереж — пускают ли наш сервер и нет ли капчи (раз в 30 минут; /api/health → cabs)
 if (CabProbe::due()) { try { CabProbe::run(); } catch (Throwable $e) { error_log('teplo cab probe: ' . $e->getMessage()); } }
 // внесённые роботом показания ХТМ — перечитать журнал кабинета (20/40/70/130/360 мин), итог → Telegram

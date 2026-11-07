@@ -46,6 +46,9 @@ final class VkCab {
       'mismatch' => $ru ? 'На сайте Водоканала изменился список счётчиков. Проверьте ещё раз, какой счётчик какой.' : 'На сайті Водоканалу змінився список лічильників. Перевірте ще раз, який лічильник який.',
       'busy' => $ru ? 'Слишком много попыток. Подождите немного и попробуйте снова.' : 'Забагато спроб. Зачекайте трохи й спробуйте знову.',
       'less' => $ru ? 'Показание «{n}» меньше, чем Водоканал уже знает ({p}) — не отправили. Проверьте цифры.' : 'Показання «{n}» менше, ніж Водоканал уже знає ({p}) — не надіслали. Перевірте цифри.',
+      'done' => $ru ? 'За этот период на сайте Водоканала показания уже переданы: {l}. Повторно сайт не принимает до следующего периода. Если цифры не ваши — обратитесь в Водоканал.' : 'За цей період на сайті Водоканалу показання вже передані: {l}. Повторно сайт не приймає до наступного періоду. Якщо цифри не ваші — зверніться до Водоканалу.',
+      'accepted' => $ru ? 'Показания счётчиков за текущий период приняты (сайт Водоканала).' : 'Показання лічильників за поточний період прийняті (сайт Водоканалу).',
+      'hot' => $ru ? 'горячая' : 'гаряча', 'cold' => $ru ? 'холодная' : 'холодна',
       'which' => $ru ? 'Не поняли, какой счётчик на сайте Водоканала какой. Отправьте кнопкой «Проверить» — там можно выбрать.' : 'Не зрозуміли, який лічильник на сайті Водоканалу який. Надішліть через «Перевірити» — там можна вибрати.',
     ][$k];
     foreach ($p as $a => $b) $m = str_replace('{' . $a . '}', (string)$b, $m);
@@ -145,8 +148,9 @@ final class VkCab {
   }
   /** Поля формы так, как их отправил бы браузер: [[name, value], …] + сами элементы для подмены. */
   private static function fields(DOMXPath $x, DOMElement $form): array {
-    $out = [];
-    foreach ($x->query('.//input|.//select|.//textarea', $form) as $e) {
+    $out = []; $els = iterator_to_array($x->query('.//input|.//select|.//textarea', $form)); $fid = $form->getAttribute('id');
+    if ($fid !== '') foreach ($x->query('//input[@form]|//select[@form]|//textarea[@form]') as $e) if ($e instanceof DOMElement && $e->getAttribute('form') === $fid && !in_array($e, $els, true)) $els[] = $e;
+    foreach ($els as $e) {
       /** @var DOMElement $e */
       $name = $e->getAttribute('name'); if ($name === '' || $e->hasAttribute('disabled')) continue;
       $tag = strtolower($e->nodeName); $type = strtolower($e->getAttribute('type') ?: 'text');
@@ -193,7 +197,42 @@ final class VkCab {
     return $out;
   }
   private static function addr(DOMXPath $x): ?string {
-    foreach ($x->query('//body//text()') as $t) { $s = self::sp($t->nodeValue); if (preg_match('/^(?:адреса?:?\s*)?(?:м\.\s*\S+,?\s*)?(?:вул|вулиця|ул|улица|просп|проспект|пров|провулок|пер|переулок|пл|площа|бульв|бульвар|шосе|узвіз|майдан|набережна)\.?\s+\S/iu', $s)) return mb_substr($s, 0, 120); }
+    foreach ($x->query('//body//text()') as $t) { $s = self::sp($t->nodeValue); if (preg_match('/^(?:адреса?:?\s*)?(?:м\.\s*\S+,?\s*)?(?:вул|вулиця|ул|улица|просп|проспект|пр|пров|провулок|пер|переулок|пл|площа|бульв|бульвар|шосе|узвіз|майдан|набережна)\.?\s+\S/iu', $s)) return mb_substr($s, 0, 120); }
+    return null;
+  }
+
+  /** Показания этого периода уже на сайте (живой сайт 07.11.2026, рахунок владельца): полей ввода нет, у каждого лічильника — блок
+   *  «Гаряча вода (№ 8221019)» · «дата наступної повірки - 7 лютого 2026 р.» · «Передані показання за листопад 2026, м³: [132.000]» ·
+   *  «ПОКАЗАННЯ ЛІЧИЛЬНИКІВ ЗА ПОТОЧНИЙ ПЕРІОД ПРИЙНЯТІ» · «НЕ ПОТРЕБУЮТЬ ДОДАТКОВОЇ ПЕРЕДАЧІ ІНШИМИ СПОСОБАМИ».
+   *  → [{kind, serial, value, period (YYYY-MM), accepted, verify (YYYY-MM-DD)}] — по тексту, не по классам (вёрстку мы видели только скрином). */
+  const TITLE_RE = '/(гаряч\p{L}*|горяч\p{L}*|холодн\p{L}*)\s+вод\p{L}*\s*\(\s*№\s*([^\s()]+)\s*\)/iu';
+  public static function done(DOMXPath $x): array {
+    $out = []; $seen = []; $all = self::sp((string)($x->query('//body')->item(0)?->textContent ?? ''));
+    foreach ($x->query("//body//*[contains(., '№')][not(*[contains(., '№')])]") as $e) {
+      $t = $e; for ($i = 0; $i < 4 && $t instanceof DOMElement; $i++) { $tx = self::sp($t->textContent); if (mb_strlen($tx) <= 100 && preg_match(self::TITLE_RE, $tx, $m)) break; $t = $t->parentNode; $m = null; }
+      if (empty($m) || !$t instanceof DOMElement || isset($seen[$m[2]])) continue;
+      $seen[$m[2]] = 1;
+      $blk = null; $cur = $t;
+      for ($i = 0; $i < 8 && $cur->parentNode instanceof DOMElement; $i++) { $cur = $cur->parentNode; if (preg_match_all(self::TITLE_RE, self::sp($cur->textContent)) === 1) $blk = $cur; else break; }
+      $bt = self::sp(($blk ?? $t)->textContent);
+      $val = null;
+      foreach ($x->query('.//input', $blk ?? $t) as $in) { $v = str_replace(',', '.', trim($in->getAttribute('value'))); if (preg_match('/^\d+(?:\.\d+)?$/', $v)) { $val = $v; break; } }
+      if ($val === null && preg_match('/(?:передан|показан)\p{L}*[^:]{0,60}:\s*(\d+(?:[.,]\d+)?)/iu', $bt, $mv)) $val = str_replace(',', '.', $mv[1]);
+      $period = preg_match('/за\s+(\p{L}+)\s+(\d{4})/iu', $bt, $mp) ? self::month($mp[1], $mp[2]) : null;
+      $verify = null;
+      if (preg_match('/повір\p{L}*\s*[-–—:]?\s*(\d{1,2})\s+(\p{L}+)\s+(\d{4})/iu', $bt, $mvr)) { $mm = self::month($mvr[2], $mvr[3]); $verify = $mm ? $mm . '-' . str_pad($mvr[1], 2, '0', STR_PAD_LEFT) : null; }
+      elseif (preg_match('/повір\p{L}*\D{0,10}(\d{1,2})\.(\d{1,2})\.(\d{4})/iu', $bt, $mvr)) $verify = sprintf('%04d-%02d-%02d', $mvr[3], $mvr[2], $mvr[1]);
+      $out[] = ['kind' => preg_match('/^(гаряч|горяч)/iu', $m[1]) ? 'hot' : 'cold', 'serial' => mb_substr($m[2], 0, 30), 'value' => $val !== null ? (float)$val : null, 'period' => $period,
+        'accepted' => (bool)preg_match('/прийнят|принят/iu', $blk ? $bt : $all), 'verify' => $verify];
+    }
+    return array_slice($out, 0, 6);
+  }
+  /** «листопад 2026», «листопада», «ноябрь», «ноября» → '2026-11'. */
+  public static function month(string $w, string $y): ?string {
+    $w = mb_strtolower($w);
+    $st = ['січ' => 1, 'лют' => 2, 'берез' => 3, 'квіт' => 4, 'трав' => 5, 'черв' => 6, 'лип' => 7, 'серп' => 8, 'верес' => 9, 'жовт' => 10, 'листоп' => 11, 'груд' => 12,
+      'янв' => 1, 'фев' => 2, 'март' => 3, 'апр' => 4, 'мая' => 5, 'май' => 5, 'июн' => 6, 'июл' => 7, 'авг' => 8, 'сент' => 9, 'окт' => 10, 'нояб' => 11, 'дек' => 12];
+    foreach ($st as $k => $n) if (str_starts_with($w, $k)) return sprintf('%04d-%02d', (int)$y, $n);
     return null;
   }
 
@@ -230,8 +269,9 @@ final class VkCab {
       throw new HttpError(424, 'cab_changed', ['human' => self::h('changed'), 'site' => array_slice(array_merge($msgs['err'], $msgs['info']), 0, 3)]);
     }
     $fields = self::fields($x2, $form); $ms = self::meters($x2, $fields);
+    if (!$ms && ($dn = self::done($x2))) return ['x' => $x2, 'form' => $form, 'fields' => $fields, 'meters' => [], 'done' => $dn, 'page' => $page];
     if (!$ms) { self::diag(['result' => 'changed', 'where' => 'form', 'forms' => self::formsInfo($x2), 'page' => self::pageInfo($x2, $page, $fam, $acc)]); throw new HttpError(424, 'cab_changed', ['human' => self::h('changed')]); }
-    return ['x' => $x2, 'form' => $form, 'fields' => $fields, 'meters' => $ms, 'page' => $page];
+    return ['x' => $x2, 'form' => $form, 'fields' => $fields, 'meters' => $ms, 'done' => self::done($x2), 'page' => $page];
   }
   private static function pubMeters(array $ms): array { return array_map(fn($m) => array_intersect_key($m, array_flip(['key', 'label', 'kind', 'serial', 'prev', 'prevDate'])), $ms); }
   private static function dates(array $fields): array {
@@ -244,8 +284,8 @@ final class VkCab {
     self::$lang = ($in['lang'] ?? '') === 'ru' ? 'ru' : 'uk';
     [$acc, $fam] = self::input($in); self::limit($uid);
     $c = self::open($acc, $fam, 'check');
-    self::diag(['result' => 'ok', 'where' => 'check', 'form' => self::formInfo($c['x'], $c['form'], $c['fields'], $c['meters']), 'msgs' => self::maskMsgs(self::messages($c['x'])), 'user' => $uid]);
-    return ['ok' => true, 'meters' => self::pubMeters($c['meters']), 'dates' => self::dates($c['fields']), 'addr' => self::addr($c['x'])];
+    self::diag(['result' => $c['meters'] ? 'ok' : 'done', 'where' => 'check', 'form' => self::formInfo($c['x'], $c['form'], $c['fields'], $c['meters']), 'msgs' => self::maskMsgs(self::messages($c['x'])), 'done' => count($c['done']), 'user' => $uid]);
+    return ['ok' => true, 'meters' => self::pubMeters($c['meters']), 'done' => $c['done'], 'dates' => self::dates($c['fields']), 'addr' => self::addr($c['x'])];
   }
 
   /** Показания из запроса → [{key|null, value, serial, name, kind}] (до 6). keyless — ключ поля сайта можно не знать (очередь: сервер найдёт сам). */
@@ -276,6 +316,7 @@ final class VkCab {
    *  Не узнали страницу / не тот рахунок / не поняли, какой лічильник, — HttpError (ничего не отправлено). */
   public static function deliver(int $uid, string $acc, string $fam, array $items, ?string $date, string $op, bool $strict): array {
     $c = self::open($acc, $fam, $op);
+    if (!$c['meters']) return self::already($uid, $acc, $items, $c['done'], $op);
     $byKey = []; foreach ($c['meters'] as $m) $byKey[$m['key']] = $m;
     $digits = fn($s) => preg_replace('/\D/', '', (string)$s); $used = []; $map = [];
     $miss = function () use ($c) { self::diag(['result' => 'mismatch', 'where' => 'send', 'form' => self::formInfo($c['x'], $c['form'], $c['fields'], $c['meters'])]); return new HttpError(409, 'cab_mismatch', ['human' => self::h('mismatch'), 'meters' => self::pubMeters($c['meters'])]); };
@@ -320,15 +361,38 @@ final class VkCab {
     if ($f2) foreach (self::meters($x, self::fields($x, $f2)) as $m) if (isset($vals[$m['key']]) && $m['row'] instanceof DOMElement) {
       foreach ($x->query('.//*[' . self::cls('help-block') . ' or ' . self::cls('invalid-feedback') . ']', $m['row']) as $hb) { $t = self::sp($hb->textContent); if ($t !== '') $fieldErr[] = $t; }
     }
-    if ($fieldErr || ($msgs['err'] && !$msgs['ok'])) $result = 'err';
+    $dn = self::done($x); $same = $dn && !array_filter($items, fn($it) => !self::doneFor($it, $dn) || abs((float)self::doneFor($it, $dn)['value'] - (float)$it['value']) > 0.0005 || !self::doneFor($it, $dn)['accepted']);
+    if ($same) $result = 'ok';
+    elseif ($fieldErr || ($msgs['err'] && !$msgs['ok'])) $result = 'err';
     elseif ($msgs['ok'] || $okText) $result = 'ok';
     else $result = 'unknown';
+    if ($same && !$msgs['ok'] && !$okText) $okText = [self::h('accepted')];
     $text = $result === 'err' ? implode(' ', array_slice(array_unique(array_merge($fieldErr, $msgs['err'])), 0, 3)) : implode(' ', array_slice($msgs['ok'] ?: $okText ?: $msgs['info'], 0, 2));
     self::diag(['result' => $result, 'where' => $op, 'form' => self::formInfo($c['x'], $c['form'], $c['fields'], $c['meters']), 'msgs' => self::maskMsgs($msgs), 'fieldErr' => array_map([self::class, 'mask'], $fieldErr), 'n' => count($items), 'user' => $uid]);
     Db::q('INSERT INTO audit_log (user_id, action, ip, created_at) VALUES (?, ?, ?, ?)', [$uid, 'vk_cab_' . $op . '_' . $result, null, Http::iso()]);
     $at = time();
     if ($result === 'ok') self::notify($uid, $acc, array_map(fn($it, $i) => ['name' => $it['name'] ?: ($byKey[$map[$i]]['serial'] ? '№ ' . $byKey[$map[$i]]['serial'] : ''), 'value' => $it['value']], $items, array_keys($items)), $text);
     return ['result' => $result, 'text' => mb_substr($text, 0, 400), 'at' => $at, 'keys' => $map];
+  }
+  /** Блок «прийняті» для нашего показания: по номеру лічильника, иначе по виду (если такой один). */
+  public static function doneFor(array $it, array $done): ?array {
+    $d = fn($s) => ltrim(preg_replace('/\D/', '', (string)$s), '0'); $sd = $d($it['serial'] ?? '');
+    if ($sd !== '') foreach ($done as $b) if ($d($b['serial']) !== '' && (str_contains($d($b['serial']), $sd) || str_contains($sd, $d($b['serial'])))) return $b;
+    $k = $it['kind'] ?? null; if (!$k && is_string($it['key'] ?? null)) foreach ($done as $b) if ($d($b['serial']) !== '' && str_contains($d($it['key']), $d($b['serial']))) return $b;
+    $same = array_values(array_filter($done, fn($b) => $k && $b['kind'] === $k)); return count($same) === 1 ? $same[0] : (count($done) === 1 ? $done[0] : null);
+  }
+  /** Полей ввода нет — показания этого периода уже на сайте. Наши цифры те же и сайт их принял → ok (ничего не шлём);
+   *  другие или сайт не сказал «прийняті» → 409 cab_done со списком того, что на сайте (повторно сайт не принимает). */
+  private static function already(int $uid, string $acc, array $items, array $done, string $op): array {
+    if (!$done) { self::diag(['result' => 'changed', 'where' => 'form']); throw new HttpError(424, 'cab_changed', ['human' => self::h('changed')]); }
+    $match = !array_filter($items, function ($it) use ($done) { $b = self::doneFor($it, $done); return !$b || !$b['accepted'] || $b['value'] === null || abs($b['value'] - (float)$it['value']) > 0.0005; });
+    self::diag(['result' => $match ? 'already' : 'done', 'where' => $op, 'done' => count($done), 'n' => count($items), 'user' => $uid]);
+    if (!$match) {
+      $list = implode('; ', array_map(fn($b) => self::h($b['kind'] === 'hot' ? 'hot' : 'cold') . ($b['serial'] ? ' № ' . $b['serial'] : '') . ' — ' . ($b['value'] !== null ? rtrim(rtrim(number_format($b['value'], 3, '.', ''), '0'), '.') : '?'), $done));
+      throw new HttpError(409, 'cab_done', ['human' => self::h('done', ['l' => $list]), 'done' => $done]);
+    }
+    self::notify($uid, $acc, array_map(fn($it) => ['name' => $it['name'] ?: '', 'value' => $it['value']], $items), self::h('accepted'));
+    return ['result' => 'ok', 'text' => self::h('accepted'), 'at' => time(), 'keys' => [], 'already' => true];
   }
   /** «✅ Водоканал прийняв» — в Telegram человеку (если привязан). lines: [{name, value}] */
   public static function notify(int $uid, string $acc, array $lines, string $text, ?string $head = null): void {
@@ -364,7 +428,7 @@ final class VkCab {
     foreach (self::log() as $e) {
       $op = preg_replace('/[^a-z]/', '', (string)($e['op'] ?? '')) ?: '?'; $r = preg_replace('/[^a-z_]/', '', (string)($e['result'] ?? '')) ?: '?';
       $n["$op $r"] = ($n["$op $r"] ?? 0) + 1;
-      if ($op !== 'probe' && (int)($e['at'] ?? 0) > (int)$last) $last = (int)$e['at'];
+      if ($op !== 'probe' && $op !== 'recheck' && (int)($e['at'] ?? 0) > (int)$last) $last = (int)$e['at'];
     }
     ksort($n);
     // последний сбой человека (не проба): шаги и структура страницы без слов сайта — как htmcab.lastErr
@@ -413,11 +477,63 @@ final class VkCab {
     foreach ($x->query('//script[not(@src)]') as $e) if (preg_match_all('~["\'](/[a-z][a-z0-9_\-]*(?:/[a-z0-9_\-.]+)*)(?:\?[^"\']*)?["\']~i', $e->textContent, $m)) foreach ($m[1] as $u) $ajax[] = preg_replace('/\d/', '#', $u);
     $links = []; foreach ($x->query('//a[@href]') as $e) { $h = $e->getAttribute('href'); if ($h !== '' && $h[0] !== '#' && !preg_match('~^(?:mailto|tel|javascript):~i', $h)) $links[] = $path($h); }
     $frames = []; foreach ($x->query('//iframe[@src]') as $e) $frames[] = (string)parse_url($e->getAttribute('src'), PHP_URL_HOST) . $path($e->getAttribute('src'));
+    self::$lastScripts = []; foreach ($x->query('//script[@src]') as $e) self::$lastScripts[] = self::abs($e->getAttribute('src'), (string)($resp['url'] ?? self::base()));
+    $root = $x->query("//form[@id='send-counters-form']/..")->item(0) ?? $x->query('//body')->item(0);
+    $skel = $root ? mb_substr(self::skel($root, $fam, $acc, 0), 0, 9000) : '';
     $j = json_decode($html, true); $u = fn(array $a, int $n) => array_slice(array_values(array_unique(array_filter($a, fn($v) => $v !== ''))), 0, $n);
     return ['url' => $path((string)($resp['url'] ?? '')), 'code' => (int)($resp['code'] ?? 0), 'ctype' => mb_substr((string)($resp['ctype'] ?? ''), 0, 60), 'len' => strlen($html),
       'json' => is_array($j) ? array_slice(array_keys($j), 0, 12) : null, 'tables' => $x->query('//table')->length, 'rows' => $x->query('//tr')->length,
       'names' => $u($names, 40), 'scripts' => $u($scripts, 15), 'ajax' => $u($ajax, 20), 'links' => $u($links, 25), 'frames' => $u($frames, 5),
-      'captcha' => (bool)preg_match('~g-recaptcha|cf-turnstile|h-captcha|recaptcha/api\.js|challenges\.cloudflare\.com~i', $html), 'text' => $u($txt, 16)];
+      'captcha' => (bool)preg_match('~g-recaptcha|cf-turnstile|h-captcha|recaptcha/api\.js|challenges\.cloudflare\.com~i', $html), 'skel' => $skel, 'text' => $u($txt, 16)];
+  }
+  public static array $lastScripts = [];
+  /** Скелет разметки: теги и атрибуты (id, class, name, type, form, action, data-*…) без текста и значений; цифры — #, прізвище/рахунок — ***.
+   *  «…» — у элемента есть текст, «value?» — у поля есть значение. Для разбора «сайт изменился» без личных данных. */
+  private static function skel(DOMNode $n, string $fam, string $acc, int $depth): string {
+    if (!$n instanceof DOMElement || $depth > 18) return '';
+    $tag = strtolower($n->nodeName);
+    if (in_array($tag, ['script', 'style', 'svg', 'noscript', 'head', 'nav', 'footer', 'header', 'link', 'meta', 'option', 'br', 'hr', 'img'], true)) return '';
+    $v = function (string $s) use ($fam, $acc): string {
+      foreach (array_filter([$fam, $acc], fn($q) => mb_strlen($q) >= 2) as $q) $s = preg_replace('/' . preg_quote($q, '/') . '/iu', '***', $s);
+      return mb_substr(str_replace('"', "'", preg_replace('/\d/', '#', self::sp($s))), 0, 70);
+    };
+    $a = '';
+    foreach ($n->attributes as $at) { $k = strtolower($at->name);
+      if (in_array($k, ['id', 'class', 'name', 'type', 'form', 'action', 'method', 'for', 'role', 'disabled', 'readonly', 'onclick', 'onchange', 'href', 'src', 'colspan'], true) || str_starts_with($k, 'data-') || str_starts_with($k, 'aria-')) $a .= ' ' . $k . '="' . $v((string)$at->value) . '"';
+      elseif ($k === 'value' && $at->value !== '') $a .= ' value?';
+    }
+    if ($tag === 'select') $a .= ' options=' . $n->getElementsByTagName('option')->length;
+    $txt = false; $kids = '';
+    foreach ($n->childNodes as $c) { if ($c instanceof DOMText && trim($c->nodeValue) !== '') $txt = true; else $kids .= self::skel($c, $fam, $acc, $depth + 1); if (strlen($kids) > 12000) break; }
+    return '<' . $tag . $a . '>' . ($txt ? '…' : '') . $kids . (in_array($tag, ['input'], true) ? '' : '</' . $tag . '>');
+  }
+
+  // ---------- диагностика «сайт показал незнакомую страницу» (cron, VkStatus::recheck — только для учёток админа, только чтение) ----------
+  /** Войти тем же рахунком и прізвищем, ничего не отправляя: что на странице (журнал — op recheck), и куски скриптов сайта о лічильниках. */
+  public static function diagnose(string $acc, string $fam): array {
+    self::$lang = 'uk'; self::$lastScripts = []; $err = 'ok'; $meters = 0;
+    try { $c = self::open($acc, $fam, 'recheck'); $meters = count($c['meters']); self::diag(['result' => 'ok', 'where' => 'recheck', 'form' => self::formInfo($c['x'], $c['form'], $c['fields'], $c['meters']), 'page' => self::pageInfo($c['x'], $c['page'], $fam, $acc)]); }
+    catch (HttpError $e) { $err = $e->err; }
+    return ['error' => $err, 'meters' => $meters, 'js' => self::scriptBits(self::$lastScripts)];
+  }
+  /** Скрипты самого сайта (не jQuery/Bootstrap/Yii) — куски вокруг слов о форме показаний. Код сайта, личных данных в нём нет. */
+  public static function scriptBits(array $srcs): array {
+    $out = []; self::$t0 = microtime(true); $vendor = '~jquery|bootstrap|/yii[^/]*\.js|yii\.(?:validation|activeForm|gridView|captcha)|select2|moment|datepicker|kartik|fontawesome|popper|toastr|sweetalert|inputmask|pjax~i';
+    foreach (array_slice(array_values(array_unique($srcs)), 0, 25) as $src) {
+      if (!self::sameSite($src) || preg_match($vendor, $src) || count($out) >= 5) continue;
+      try { $r = self::once('GET', $src, null); } catch (Throwable $e) { continue; }
+      $js = (string)($r['body'] ?? ''); $bits = []; $used = [];
+      if (preg_match_all('~send-counters|newIndication|dataIndication|Indication|counters|NoLoginForm|get-form|DynamicModel|\.ajax\s*\(|\$\.post\s*\(|\$\.get\s*\(|fetch\s*\(|\.load\s*\(|beforeSubmit|\.submit\s*\(~i', $js, $m, PREG_OFFSET_CAPTURE)) {
+        foreach ($m[0] as [$w, $off]) {
+          $a = max(0, $off - 250); if ($used && $a <= end($used)) continue;
+          $b = min(strlen($js), $off + 650); $used[] = $b;
+          $bits[] = mb_convert_encoding(substr($js, $a, $b - $a), 'UTF-8', 'UTF-8');
+          if (count($bits) >= 14) break;
+        }
+      }
+      $out[] = ['src' => (string)parse_url($src, PHP_URL_PATH), 'code' => (int)($r['code'] ?? 0), 'bytes' => strlen($js), 'bits' => $bits];
+    }
+    return $out;
   }
   private static function formInfo(DOMXPath $x, DOMElement $form, array $fields, array $ms): array {
     return ['id' => $form->getAttribute('id'), 'action' => (string)parse_url($form->getAttribute('action'), PHP_URL_PATH), 'method' => $form->getAttribute('method'),

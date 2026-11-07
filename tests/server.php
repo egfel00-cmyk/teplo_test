@@ -450,6 +450,16 @@ $r = $cab('/api/vk/cab/check', ['acc' => '977770', 'fam' => 'Шевченко'])
 ok('…и старый вариант: снова форма входа с ошибкой → тоже cab_not_found', $r->status === 422 && $r->body['error'] === 'cab_not_found' && str_contains(implode(' ', $r->body['site'] ?? []), 'не знайдено'), $r->body);
 $r = $cab('/api/vk/cab/check', ['acc' => '905615', 'fam' => 'Шевчэнко']);
 ok('…в прізвищі русские буквы → подсказка «впишіть українською»', $r->status === 422 && str_contains($r->body['human'], 'російські літери'), $r->body['human'] ?? null);
+// живой сайт 07.11.2026 (рахунок владельца): показания за листопад уже приняты — полей ввода нет, блоки «Передані показання … ПРИЙНЯТІ»
+$r = $cab('/api/vk/cab/check', ['acc' => '905616', 'fam' => 'Шевченко']); $dn = $r->body['done'] ?? [];
+ok('показания периода уже на сайте → 200, meters пусто, done: вид, №, цифры, период, «прийняті», повірка; адрес «пр. …»', $r->status === 200 && ($r->body['meters'] ?? null) === [] && count($dn) === 2
+  && $dn[0]['kind'] === 'hot' && $dn[0]['serial'] === '8221019' && $dn[0]['value'] == 132 && $dn[0]['period'] === '2026-11' && $dn[0]['accepted'] === true && $dn[0]['verify'] === '2026-02-07'
+  && $dn[1]['kind'] === 'cold' && $dn[1]['serial'] === '8254605' && $dn[1]['value'] == 179 && $dn[1]['verify'] === '2026-11-07' && str_contains((string)($r->body['addr'] ?? ''), 'Перемоги'), $r->body);
+$p0 = count($vkCalls);
+$dr = VkCab::deliver(1, '905616', 'Шевченко', [['key' => null, 'value' => '132', 'serial' => '8221019', 'name' => 'Гаряча', 'kind' => 'hot'], ['key' => null, 'value' => '179', 'serial' => null, 'name' => 'Холодна', 'kind' => 'cold']], null, 'bgsend', true);
+ok('…очередь с теми же цифрами → ok «вже прийняті», на сайт ничего не шлём', $dr['result'] === 'ok' && !empty($dr['already']) && str_contains($dr['text'], 'прийняті') && count($vkCalls) === $p0 + 2, $dr);
+try { VkCab::deliver(1, '905616', 'Шевченко', [['key' => null, 'value' => '140', 'serial' => '8221019', 'name' => 'Гаряча', 'kind' => 'hot']], null, 'bgsend', true); $de = null; } catch (HttpError $e) { $de = $e; }
+ok('…другие цифры → 409 cab_done: что уже на сайте, повторно не принимает', $de && $de->status === 409 && $de->err === 'cab_done' && str_contains($de->extra['human'], 'гаряча № 8221019 — 132') && str_contains($de->extra['human'], 'холодна № 8254605 — 179'), $de ? $de->extra : null);
 $vkReal = VkCab::$http; VkCab::$http = fn($m, $url, $b, $c) => str_contains($url, 'get-form-send') ? ['code' => 200, 'body' => '<html><body><div class="alert alert-danger">Сервіс тимчасово недоступний</div></body></html>'] : $vkReal($m, $url, $b, $c);
 $r = $cab('/api/vk/cab/check', ['acc' => '905615', 'fam' => 'Шевченко']);
 ok('…страница без форм с другой ошибкой — не «не знайдено», а cab_changed со словами сайта', $r->status === 424 && $r->body['error'] === 'cab_changed' && str_contains(implode(' ', $r->body['site'] ?? []), 'недоступний'), $r->body);
@@ -498,6 +508,24 @@ $lg = VkCab::log(); $all = json_encode($lg, JSON_UNESCAPED_UNICODE);
 ok('журнал для /admin: проверки и отправки с итогом и структурой формы; рахунок, прізвище, адрес и цифры не пишем', count($lg) >= 6 && in_array('ok', array_column($lg, 'result'), true) && in_array('notfound', array_column($lg, 'result'), true)
   && !str_contains($all, '905614') && !str_contains($all, 'Шевченко') && !str_contains($all, 'Сумська') && !str_contains($all, '0123456') && str_contains($all, 'newIndication'), $lg[count($lg) - 1] ?? null);
 ok('/api/vk/status: у кабинета флаг send (можно отправлять через сайт)', ($tgb->req('GET', '/api/vk/status')->body['cab']['send'] ?? null) === true);
+// диагностика «незнайома сторінка» (cron, VkStatus::recheck): живой сайт 07.11 — форма показаний без полей (их строит common.js) → сервер сам,
+// только чтение, входит рахунком и прізвищем из квартир учёток админа; скелет страницы — в журнал и /api/health, куски скрипта сайта — в /api/vk/status
+$adm = Db::one("SELECT id FROM users WHERE email = 'admin@teplo.test'"); if (!$adm) { Db::q("INSERT INTO users (email, created_at) VALUES ('admin@teplo.test', ?)", [Http::iso()]); $adm = Db::one("SELECT id FROM users WHERE email = 'admin@teplo.test'"); }
+Db::q('DELETE FROM user_state WHERE user_id = ?', [$adm['id']]);
+Db::q('INSERT INTO user_state (user_id, data, version, updated_at) VALUES (?, ?, 1, ?)', [$adm['id'], json_encode(['places' => [['id' => 'p1', 'water' => ['account' => '905614', 'surname' => 'Шевченко']], ['id' => 'p2', 'water' => ['account' => '', 'surname' => '']]]], JSON_UNESCAPED_UNICODE), Http::iso()]);
+$vkJs = []; VkCab::$http = function ($m, $url, $b, $c) use ($vkReal, &$vkJs) {
+  if (str_contains($url, '/js/common.js')) { $vkJs[] = $url; return ['code' => 200, 'body' => "var x = 1;\n$(document).on('click', '.ind-edit', function () { var id = $(this).data('counter');\n  $('#send-counters-form').append('<input name=\"DynamicModel[newIndication][' + id + ']\">'); });"]; }
+  if (str_contains($url, 'get-form-send')) return ['code' => 200, 'body' => '<html><head><script src="/js/common.js?v=3"></script><script src="/assets/ab12/jquery.min.js"></script></head><body><div class="wrap"><form id="send-counters-form" action="/counters#">'
+    . '<input type="hidden" name="_csrf-frontend" value="t"><input type="hidden" name="DynamicModel[acc]" value="905614"></form><table class="table"><tr><th>Лічильник</th></tr><tr data-id="1282444"><td>Шевченко</td><td><input type="text" class="ind" data-counter="0123456"></td></tr></table></div></body></html>'];
+  return $vkReal($m, $url, $b, $c); };
+$lu0 = VkCab::summary()['lastUser']; $rc = VkStatus::recheck(); $rl = VkCab::log(); $rl = $rl[count($rl) - 1]; $rlj = json_encode($rl, JSON_UNESCAPED_UNICODE);
+ok('диагностика: одна квартира админа с рахунком → вход только на чтение (форму показаний не шлём), итог cab_changed', count($rc['res'] ?? []) === 1 && $rc['res'][0]['error'] === 'cab_changed'
+  && ($rl['op'] ?? '') === 'recheck' && !array_filter(array_slice($vkCalls, -3), fn($c) => str_contains($c[1], '/counters')), $rc);
+ok('…скелет страницы: теги, классы, data-* без текста; рахунок, прізвище и цифры не пишем', str_contains($rl['page']['skel'] ?? '', '<form id="send-counters-form"') && str_contains($rl['page']['skel'], 'data-counter="#######"')
+  && str_contains($rl['page']['skel'], 'value?') && !preg_match('/905614|Шевченко|0123456/u', json_encode($rl['page']['skel'], JSON_UNESCAPED_UNICODE)), $rl['page']['skel'] ?? null);
+ok('…куски скрипта сайта (не jQuery) — в /api/vk/status → recheck.js; «человек» в /api/health не сдвинулся; второй раз не входим', ($rc['js'][0]['src'] ?? '') === '/js/common.js' && count($vkJs) === 1
+  && str_contains(implode(' ', $rc['js'][0]['bits']), 'newIndication') && ($tgb->req('GET', '/api/vk/status')->body['recheck']['js'][0]['src'] ?? '') === '/js/common.js'
+  && VkCab::summary()['lastUser'] === $lu0 && (VkCab::summary()['lastErr']['op'] ?? '') === 'recheck' && VkStatus::recheck() === null, $rc['js'] ?? null);
 VkCab::$http = null;
 Telegram::$send = null; Telegram::$fetch = null;
 

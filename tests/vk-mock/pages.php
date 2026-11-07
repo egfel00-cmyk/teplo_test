@@ -31,6 +31,21 @@ function vkm_form(array $ms, ?string $flash = null, array $errs = [], array $val
     '<table class="table table-bordered"><thead><tr><th>№ лічильника</th><th>Послуга</th><th>Дата попередніх показань</th><th>Попередні показання</th><th>Нові показання</th><th>Дата показань</th></tr></thead><tbody>' . $rows . '</tbody></table>' .
     '<button type="submit" class="btn btn-success" name="send-button">Передати показання</button></form></div></div></body></html>';
 }
+/** Показания периода уже приняты (живой сайт 07.11.2026, скрин владельца): полей ввода нет, у лічильника — блок с «Передані показання за
+ *  листопад 2026, м³» (readonly без name), «дата наступної повірки», «ПОКАЗАННЯ … ПРИЙНЯТІ». Вёрстка выдумана, тексты — как на сайте. Рахунок VKM_ACC_DONE. */
+const VKM_ACC_DONE = '905616';
+function vkm_done(): string {
+  $blk = fn($cls, $t, $n, $ver, $v) => '<div class="panel ' . $cls . '"><div class="panel-heading"><h3 class="panel-title"><i>' . $t . ' (№ ' . $n . ')</i></h3></div><div class="panel-body">'
+    . '<div class="alert alert-warning">дата наступної повірки - <span class="text-danger">' . $ver . '</span></div>'
+    . '<div class="row"><label class="col-sm-8">Передані показання за листопад 2026 , м<sup>3</sup>:</label><div class="col-sm-4"><input type="text" class="form-control" value="' . $v . '" readonly></div></div>'
+    . '<div class="ind-ok">ПОКАЗАННЯ ЛІЧИЛЬНИКІВ ЗА ПОТОЧНИЙ ПЕРІОД ПРИЙНЯТІ</div><div class="ind-no">НЕ ПОТРЕБУЮТЬ ДОДАТКОВОЇ ПЕРЕДАЧІ ІНШИМИ СПОСОБАМИ</div></div></div>';
+  return vkm_head('Передача показань') . '<h3>Система прийому показань приладів обліку</h3><div class="panel panel-primary"><div class="panel-heading">Стан особового рахунку № ' . VKM_ACC_DONE . '</div>'
+    . '<table class="table"><tr><td>Адреса</td><td>:</td><td>пр. Перемоги 1, кв. 2</td></tr><tr><td>Сума поточного боргу</td><td>:</td><td>43.19 грн</td></tr><tr><td>Дата / сума останньої оплати</td><td>:</td><td>21 жовтня 2026 р. / 167.61 грн</td></tr></table></div>'
+    . '<form id="send-counters-form" action="/counters#" method="post"><input type="hidden" name="_csrf-frontend" value="' . VKM_TOKEN . '"><input type="hidden" name="DynamicModel[acc]" value="' . VKM_ACC_DONE . '">'
+    . $blk('panel-danger', 'Гаряча вода', '8221019', '7 лютого 2026 р.', '132.000') . $blk('panel-info', 'Холодна вода', '8254605', '7 листопада 2026 р.', '179.000') . '</form>'
+    . '<div class="alert alert-success">Показання чотирьохтарифного лічильника можна передати в кабінеті теплових мереж. <a href="https://www.hts.kharkov.ua/cabinet">Перейти →</a></div>'
+    . '<p>Завантажити квитанцію:</p><iframe src="/tmp/1.123456.checkPDF.pdf"></iframe></div></div></body></html>';
+}
 /** Один запрос к «кабинету». $s — сессия (cookie PHPSESSID): acc, sent. → [code, body, headers[]] */
 function vkm_handle(string $method, string $path, array $post, array &$s): array {
   $ok = ($post['_csrf-frontend'] ?? '') === VKM_TOKEN;
@@ -39,6 +54,7 @@ function vkm_handle(string $method, string $path, array $post, array &$s): array
     if (!$ok || ($s['cookies']['_csrf-frontend'] ?? '') !== 'c00kie') return [400, vkm_head('Bad Request') . '<div class="alert alert-danger">Не вдалося перевірити ваші дані.</div></body></html>', []];
     $acc = (string)($post['NoLoginForm']['acc'] ?? ''); $fam = mb_strtolower((string)($post['NoLoginForm']['fam'] ?? ''));
     // как живой сайт (проба с сервера 04.11.2026): страница без форм с объяснением; рахунок с «7777» — старый вариант (снова форма входа с ошибкой)
+    if ($acc === VKM_ACC_DONE && $fam === VKM_FAM) return [200, vkm_done(), []];   // как живой сайт: страница сразу в ответ на POST
     if (str_contains($acc, '7777')) return [200, vkm_login('Особовий рахунок не знайдено або прізвище не співпадає.', $acc, (string)($post['NoLoginForm']['fam'] ?? '')), []];
     if ($acc !== VKM_ACC || $fam !== VKM_FAM) return [200, vkm_head('Передача показань') . '<div class="alert alert-danger">Не коректні дані: особовий рахунок або Прізвище абонента , або на особовому рахунку не значаться лічильники. Можливо необхідно вказати прізвище українською мовою</div><p><a href="/login">Назад</a></p></div></div></body></html>', []];
     $s['acc'] = $acc; return [302, '', ['Location: /send-indications']];

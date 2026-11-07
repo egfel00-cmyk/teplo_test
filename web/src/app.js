@@ -1209,6 +1209,9 @@
     // сайт знайшов рахунок: наші водоміри ↔ його лічильники, попередження, «Перевірте» і «Відправити»
     var cms = VKC.check.meters, map = vkcMap(ms, cms), withVal = ms.filter(function (m) { return hasVal(rec, m.id); });
     h += '<p class="small" data-key="vkc-found">' + ico('check', 16) + ' ' + esc(t('vkc_found', { a: acc })) + (VKC.check.addr ? ' · ' + esc(VKC.check.addr) : '') + '</p>';
+    // показання цього періоду на сайті вже прийняті (полів вводу немає): що саме, повірка; наш запис з тими ж цифрами — «Позначити передано»
+    var dn = VKC.check.done || [];
+    if (dn.length && !cms.length) return h + vkcDone(dn, rec, ms) + '</div>';
     // показань ще немає — лише що бачить сайт: наші водоміри ↔ його лічильники з останніми показаннями (відправка — після внесення)
     if (!rec) {
       var rest = cms.filter(function (x) { return !ms.some(function (m) { return map[m.id] === x.key; }); });
@@ -1238,6 +1241,27 @@
       (VKC.busy === 'send' ? SPIN + '<span>' + esc(t('vkc_sending')) + '</span>' : ico('send', 18) + '<span>' + esc(t('vkc_send')) + '</span>') + '</button>' +
       '<button class="btn sec" data-act="vkc-cancel" data-key="vkc-cancel"' + (VKC.busy ? ' disabled' : '') + '>' + esc(t('cancel')) + '</button></div></div>';
     return h;
+  }
+  var VKC_MN = { uk: ['січень', 'лютий', 'березень', 'квітень', 'травень', 'червень', 'липень', 'серпень', 'вересень', 'жовтень', 'листопад', 'грудень'],
+    ru: ['январь', 'февраль', 'март', 'апрель', 'май', 'июнь', 'июль', 'август', 'сентябрь', 'октябрь', 'ноябрь', 'декабрь'] };
+  /** Сайт Водоканалу вже прийняв показання періоду: лічильники сайту (вид, №, цифри, «прийнято», повірка) і що з нашим записом. */
+  function vkcDone(dn, rec, ms) {
+    var p = dn[0].period, pl = p ? (VKC_MN[S.lang] || VKC_MN.uk)[+p.slice(5, 7) - 1] + ' ' + p.slice(0, 4) : '';
+    var num = function (v) { return v === null || v === undefined ? '?' : String(Math.round(v * 1000) / 1000); };
+    var h = '<div class="vk-reply ok" data-key="vkc-done"><p class="small"><b>' + esc(t(dn.every(function (d) { return d.accepted; }) ? 'vkc_done_t' : 'vkc_done_t2', { p: pl })) + '</b></p><ul class="small vkc-done">' +
+      dn.map(function (d) {
+        var ver = d.verify ? (d.verify <= today() ? '<span class="warn-ink" data-key="vkc-ver-over">' + esc(t('vkc_ver_over', { d: fmtDate(d.verify, true) })) + '</span>' : '<span class="muted">' + esc(t('vkc_ver', { d: fmtDate(d.verify, true) })) + '</span>') : '';
+        return '<li data-key="vkc-d-' + esc(d.serial || d.kind) + '">' + esc(t(d.kind === 'hot' ? 'wt_hot' : 'wt_cold')) + (d.serial ? ' № ' + esc(d.serial) : '') + ' — <b class="num">' + num(d.value) + '</b> м³' +
+          (d.accepted ? ' · ' + esc(t('vkc_done_ok')) : '') + (ver ? '<br>' + ver : '') + '</li>';
+      }).join('') + '</ul><p class="small muted">' + esc(t('vkc_done_note')) + '</p></div>';
+    if (!rec || wsentVk(rec)) return h;
+    // наші водоміри з показаннями ↔ лічильники сайту: за номером, інакше за видом (якщо один)
+    var pick = function (m) { var sd = vkcDigits(m.serial); return dn.filter(function (d) { return sd && vkcDigits(d.serial) && (vkcDigits(d.serial).indexOf(sd) >= 0 || sd.indexOf(vkcDigits(d.serial)) >= 0); })[0] ||
+      (dn.filter(function (d) { return d.kind === m.kind; }).length === 1 ? dn.filter(function (d) { return d.kind === m.kind; })[0] : null); };
+    var mine = ms.filter(function (m) { return hasVal(rec, m.id); }), diff = mine.filter(function (m) { var d = pick(m); return !d || d.value === null || Math.abs(d.value - Wt.whole(rec.vals[m.id])) > 0.0005; });
+    if (mine.length && !diff.length && dn.every(function (d) { return d.accepted; }))
+      return h + '<p class="small" data-key="vkc-done-same">' + esc(t('vkc_done_same')) + '</p><div class="row-actions"><button class="btn" data-act="wsent" data-to="vk" data-v="1" data-id="' + esc(rec.id) + '" data-key="vkc-done-mark">' + ico('check', 18) + '<span>' + esc(t('vkc_done_mark')) + '</span></button></div>';
+    return h + (diff.length ? '<p class="small warn-ink" data-key="vkc-done-diff">' + ico('alert', 16) + ' ' + esc(t('vkc_done_diff', { l: diff.map(function (m) { var d = pick(m); return wname(m) + ': ' + Wt.whole(rec.vals[m.id]) + ' / ' + (d ? num(d.value) : '—'); }).join('; ') })) + '</p>' : '');
   }
   function vkcCheck() {
     var c = wcfg(); vkcFresh(); VKC.busy = 'check'; VKC.err = null; VKC.res = null; safeRender();
