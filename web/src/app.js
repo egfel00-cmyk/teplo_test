@@ -346,7 +346,7 @@
   function lcd(lines, cls) {
     return '<div class="lcd ' + (cls || '') + '">' + lines.map(function (ln) {
       var tag = ln.tag ? '<span class="tag' + (ln.corner ? ' corner' : '') + '">' + esc(ln.tag) + '</span>' : '';
-      return '<div class="line' + (ln.sample ? ' sample' : '') + '"' + (ln.id ? ' id="' + ln.id + '"' : '') + '>' + segSvg(ln.text, ln.label) + (ln.corner ? '' : tag) + '</div>' + (ln.corner ? tag : '');
+      return '<div class="line' + (ln.sample ? ' sample' : '') + '"' + (ln.id ? ' id="' + ln.id + '"' : '') + ' data-v="' + esc(String(ln.text == null ? '' : ln.text)) + '">' + segSvg(ln.text, ln.label) + (ln.corner ? '' : tag) + '</div>' + (ln.corner ? tag : '');
     }).join('') + '</div>';
   }
 
@@ -367,7 +367,7 @@
    *  угорі — мітка зони/«kWh» і червоний світлодіод імпульсів. lines: [{text, zone, label}] — по рядку на зону. */
   function elcd(lines, cls) {
     return '<div class="lcd elcd ' + (cls || '') + '"><div class="el-hd" aria-hidden="true"><span class="el-led"></span><span class="el-imp">imp</span><span class="el-u">kWh</span></div>' + lines.map(function (ln) {
-      return '<div class="line">' + (ln.zone ? '<span class="el-z">' + esc(ln.zone) + '</span>' : '') + segSvg(ln.text, ln.label) + '</div>';
+      return '<div class="line" data-v="' + esc(String(ln.text == null ? '' : ln.text)) + '">' + (ln.zone ? '<span class="el-z">' + esc(ln.zone) + '</span>' : '') + segSvg(ln.text, ln.label) + '</div>';
     }).join('') + '</div>';
   }
 
@@ -448,12 +448,16 @@
       : '';
     return '<div class="app' + (bare ? ' bare-app' : '') + '">' +
       '<header class="top' + (right ? ' has-close' : '') + '"><a class="brand" href="#' + homeRoute() + '" data-key="brand">' + logo() + '<span>' + esc(t('brand')) + '</span><span class="beta-tag" data-key="beta">' + esc(t('beta_tag')) + '</span></a>' + '<span class="spacer"></span>' + right + '</header>' +
-      nav + '<main class="main' + (bare ? ' bare' : '') + (view.wide ? ' wide' : '') + '" id="main" data-screen="' + view.screen + '" tabindex="-1">' + (/^(history|stats|save)$/.test(route) ? placeSwitch() : /^(heat|water-hot|water-cold|elec|gas)$/.test(route) ? placeBar() : /^(wnew|wadd|enew|eadd|gnew|gadd|add-meter|step|step-\d+|check|handover|baseline|meter|photo)$/.test(route) ? placeBar(true) : '') + view.html + '</main></div>' +
+      nav + '<main class="main' + (bare ? ' bare' : '') + (view.wide ? ' wide' : '') + enterCls(route) + '" id="main" data-screen="' + view.screen + '" tabindex="-1">' + (/^(history|stats|save)$/.test(route) ? placeSwitch() : /^(heat|water-hot|water-cold|elec|gas)$/.test(route) ? placeBar() : /^(wnew|wadd|enew|eadd|gnew|gadd|add-meter|step|step-\d+|check|handover|baseline|meter|photo)$/.test(route) ? placeBar(true) : '') + view.html + '</main></div>' +
       (window.TEPLO_API && !ccAsk() ? '<button class="fab' + (bare ? ' fab-bare' : '') + '" data-act="fb-open" data-key="feedback" aria-haspopup="dialog">' + ico('chat', 20) + '<span>' + esc(t('fb_btn')) + '</span></button>' + fbDialog() : '') +
       (bare ? ccBanner().replace('class="cc"', 'class="cc cc-bare"') : ccBanner()) +
       '<div id="toast-host" aria-live="polite"></div>';
   }
 
+
+  /** Вхід на головну чи список квартир — картки з’являються м’яко по черзі (раз на вхід, не на кожну перемальовку; «Зменшити рух» і автотести — без). */
+  var ENTER_LAST = '';
+  function enterCls(route) { var was = ENTER_LAST; ENTER_LAST = route; return route !== was && /^(home|places)$/.test(route) && !navigator.webdriver && !calmMotion() ? ' enter' : ''; }
 
   // ---------------- отзыв (плавающая кнопка) ----------------
   var FB = { open: false, sending: false, text: '', contact: '', err: '' };
@@ -1111,8 +1115,8 @@
     } else {
       // кнопка «Відправити» — після показань цього місяця; сайт Водоканалу відкривається — шлях через нього видно одразу
       var vg = vkcGate();
+      // бот Водоканалу тут — лише кнопкою в ряду каналів (07.11: була ще розгортка «Або через бот…» — дубль)
       vkBody = vg ? vkcPre(vg, kind, ms) : '<p class="small" data-key="vk-need-rec">' + esc(t('vk_need_rec')) + '</p>';
-      if (vg === 'ok') vkBody += '<details class="tips-box vk-alt" data-key="vk-alt"><summary>' + esc(t('vkc_or_bot')) + '</summary><p class="small">' + esc(t('vk_need_rec')) + '</p></details>';
     }
     var h = '<section class="panel where" data-key="where-water"><h2>' + ico('send', 20) + '<span>' + esc(t('wd_title')) + '</span></h2>' +
       // квартир несколько — за какую передаём (рахунок і цифри — цієї квартири)
@@ -1222,8 +1226,9 @@
   function vkcPre(g, kind, ms) {
     if (g === 'login') return vkcHead() + '<p class="small">' + esc(t('vkc_login')) + '</p><p><a class="btn sec" href="#login" data-key="vkc-login">' + esc(t('login')) + '</a></p></div>';
     if (g === 'acc') return vkcHead() + '<p class="small" data-key="vc-need">' + esc(t('vc_need')) + '</p></div>';
-    return vkcBox(null, ms) + '<p class="small" data-key="vk-need-rec">' + esc(t('vkc_need_rec')) + '</p>' +
-      '<div class="row-actions"><button class="btn" data-act="wnew" data-kind="' + esc(kind || (wmeters('hot').length ? 'hot' : 'cold')) + '" data-key="vkc-add">' + ico('plus', 18) + '<span>' + esc(t('wn_title')) + '</span></button></div>';
+    // «Внести показання води» тут не дублюємо — велика кнопка вже над «Куди передати» (07.11); сайт уже прийняв цей період — підказка «з’явиться кнопка» зайва
+    var box = vkcBox(null, ms), dn = VKC.check && (VKC.check.done || []).length && !(VKC.check.meters || []).length;
+    return box + (dn ? '' : '<p class="small" data-key="vk-need-rec">' + esc(t('vkc_need_rec')) + '</p>');
   }
   function vkcKey() { var c = wcfg(); return (place() ? place().id : '') + '|' + String(c.account || '').replace(/\D/g, '') + '|' + String(c.surname || '').trim().toLowerCase(); }
   function vkcFresh() { if (VKC.key !== vkcKey()) { VKC.key = vkcKey(); VKC.check = null; VKC.err = null; VKC.res = null; VKC.pick = {}; } }
@@ -3777,10 +3782,12 @@
   };
   /** Що з показаннями в кабінеті: «На перевірці» / «Прийнято» — вибір тут же, людина лишається на сторінці передачі (владелец 07.11).
    *  «Не прийнято» з поясненням причини — окремим посиланням на екран статусу. */
+  var HO_POP = '';
   function hoStatus(r) {
     var cur = /^(handed|accepted|rejected)$/.test(r.status) && !r.own ? r.status : '';
+    var pop = HO_POP; HO_POP = '';
     var opt = function (v, title, sub) { var on = cur === v;
-      return '<button type="button" role="radio" aria-checked="' + on + '" class="ho-opt' + (on ? ' on' : '') + '" data-act="ho-st" data-v="' + v + '" data-id="' + esc(r.id) + '" data-key="ho-st-' + v + '">' +
+      return '<button type="button" role="radio" aria-checked="' + on + '" class="ho-opt' + (on ? ' on' : '') + (on && pop === v ? ' pop' : '') + '" data-act="ho-st" data-v="' + v + '" data-id="' + esc(r.id) + '" data-key="ho-st-' + v + '">' +
         '<span class="ho-mark">' + (on ? ico('check', 22) : '') + '</span><span><b>' + esc(title) + '</b><span class="small muted">' + esc(sub) + '</span></span></button>'; };
     return '<section class="panel ho-st" data-key="ho-status"><h2 id="ho-st-h">' + esc(t('ho_st_t')) + '</h2><p class="small muted">' + esc(t('ho_st_sub')) + '</p>' +
       '<div class="ho-opts" role="radiogroup" aria-labelledby="ho-st-h">' + opt('handed', t('st_rev'), t('st_rev_s')) + opt('accepted', t('st_acc'), t('st_acc_s')) + '</div>' +
@@ -5436,8 +5443,9 @@
   document.addEventListener('toggle', function (e) { accFoot(e.target); if (e.target.classList && e.target.classList.contains('ea-more')) EA.more = e.target.open; }, true);
   document.addEventListener('click', function (e) {
     var b = e.target.closest && e.target.closest('[data-act="acc-close"]'); if (!b) return;
-    var d = b.closest('details'); if (!d) return; e.preventDefault(); e.stopPropagation(); d.open = false;
+    var d = b.closest('details'); if (!d) return; e.preventDefault(); e.stopPropagation();
     var sm = d.querySelector('summary'); if (sm) { var r = sm.getBoundingClientRect(); if (r.top < 0 || r.top > innerHeight - 60) sm.scrollIntoView({ block: 'start' }); try { sm.focus({ preventScroll: true }); } catch (e1) { /* старий браузер */ } }
+    if (d.matches('details.pacc')) paccAnim(d, false); else d.open = false;
   }, true);
   /** «Відгук» (плаваюча кнопка) не закриває головну кнопку форми: коли ряд кнопок мастера/форми на екрані — ховаємо (стилі — лише на телефоні). */
   var FAB_IO = null;
@@ -5449,7 +5457,61 @@
     FAB_IO.observe(acts[acts.length - 1]);
   }
   var SCROLL_TO = null;
+  // ---- «живі» цифри (владелец 07.11): відкрили екран лічильника — ролики води й газу докручуються до своїх цифр (праві, літри, — довше, як у
+  // справжнього лічильника), табло тепла й світла коротко «дораховує» до показань. Лише при вході на екран; «Зменшити рух» у системі — без анімації.
+  function calmMotion() { return !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches); }
+  // екран часто перемальовується одразу після входу (статус Водоканалу, синхронізація) — анімація продовжується з того ж місця (el — скільки мс минуло)
+  var LIVE = { r: '', t0: 0 }, LIVE_MS = 1700;
+  function liveDigits(root, el) {
+    if (!root || calmMotion() || navigator.webdriver) return;   // автотести читають цифри одразу — їм анімація лише заважає
+    el = el || 0;
+    Array.prototype.forEach.call(root.querySelectorAll('.wd-win'), function (win) {
+      Array.prototype.forEach.call(win.querySelectorAll('.wd-c'), function (c, i) {
+        var d = c.textContent, dur = 520 + i * 70; if (!/^\d$/.test(d) || el >= dur) return;
+        var k = 3 + i * 2, seq = []; for (var j = k; j >= 0; j--) seq.push((+d - j + 100) % 10);
+        c.classList.add('rolling'); c.innerHTML = '<span class="wd-roll" style="--k:' + k + ';--dur:' + dur + 'ms;animation-delay:-' + Math.round(el) + 'ms" aria-hidden="true">' + seq.map(function (x) { return '<span>' + x + '</span>'; }).join('') + '</span>';
+        var done = function () { if (c.classList.contains('rolling')) { c.classList.remove('rolling'); c.textContent = d; } };
+        c.firstChild.addEventListener('animationend', done); setTimeout(done, dur - el + 200);
+      });
+    });
+    Array.prototype.forEach.call(root.querySelectorAll('.lcd .line[data-v]:not(.sample)'), function (ln) {
+      var v = ln.getAttribute('data-v'), m = /^(\d+)(?:[.,](\d+))?$/.exec(v), svg = ln.querySelector('svg.seg'); if (!m || !svg) return;
+      var dec = (m[2] || '').length, to = parseFloat(v.replace(',', '.')), from = to * 0.82, orig = svg.outerHTML, lbl = svg.getAttribute('aria-label') || v, t0 = 0, dur = 750;
+      if (!(to > 0) || el >= dur) return;
+      var step = function (now) {
+        if (!ln.isConnected) return; if (!t0) t0 = now - el;
+        var q = Math.min(1, (now - t0) / dur), e = 1 - Math.pow(1 - q, 3), sv = ln.querySelector('svg.seg'); if (!sv) return;
+        if (q >= 1) { sv.outerHTML = orig; return; }
+        var txt = (from + (to - from) * e).toFixed(dec); while (txt.length < v.length) txt = ' ' + txt;
+        sv.outerHTML = segSvg(txt, lbl); requestAnimationFrame(step);
+      };
+      requestAnimationFrame(step);
+    });
+  }
+  // ---- картки квартир (details.pacc) розкриваються й згортаються плавно: <details> сам не анімується — ведемо висоту (Web Animations)
+  function paccAnim(d, open) {
+    var h0 = d.getBoundingClientRect().height;   // до скасування: натиснули ще раз посеред руху — їдемо від поточної висоти
+    if (d._an) { try { d._an.cancel(); } catch (e) { /* */ } d._an = null; }
+    if (!d.animate || calmMotion()) { d.open = open; return; }
+    var sum = d.querySelector(':scope > summary'); d._dir = open ? 'open' : 'close';
+    if (open) { d.open = true; accFoot(d); }   // «Згорнути» внизу — до заміру висоти (інакше в кінці ривок на її висоту)
+    var h1 = open ? d.offsetHeight : (sum ? sum.offsetHeight : 0) + (d.offsetHeight - d.clientHeight);
+    if (Math.abs(h1 - h0) < 2) { d.open = open; return; }
+    var body = d.querySelector(':scope > .pacc-body');
+    d.style.overflow = 'hidden';
+    var an = d._an = d.animate([{ height: h0 + 'px' }, { height: h1 + 'px' }], { duration: open ? 280 : 220, easing: open ? 'cubic-bezier(.2,.7,.2,1)' : 'cubic-bezier(.4,0,.6,1)' });
+    if (body && open) body.animate([{ opacity: 0, transform: 'translateY(-6px)' }, { opacity: 1, transform: 'none' }], { duration: 260, easing: 'ease-out' });
+    an.onfinish = function () { d._an = null; d.style.overflow = ''; if (!open) d.open = false; };   // закрита — лише в кінці, щоб вміст було видно під час руху
+    an.oncancel = function () { d.style.overflow = ''; };
+  }
+  document.addEventListener('click', function (e) {
+    var sm = e.target.closest && e.target.closest('summary'), d = sm && sm.parentElement;
+    if (!d || !d.matches || !d.matches('details.pacc') || sm !== d.querySelector(':scope > summary')) return;
+    e.preventDefault(); paccAnim(d, d._an ? d._dir === 'close' : !d.open);   // посеред згортання — знову розкрити
+  });
   function afterRender(r) {
+    if (r !== LIVE.r) { LIVE.r = r; LIVE.t0 = /^(heat|water-hot|water-cold|elec|gas)$/.test(r) ? Date.now() : 0; }
+    if (LIVE.t0 && Date.now() - LIVE.t0 < LIVE_MS) liveDigits(document.getElementById('main'), Date.now() - LIVE.t0);
     Array.prototype.forEach.call(document.querySelectorAll(ACC_SEL), accFoot);
     Array.prototype.forEach.call(document.querySelectorAll('details.tips-box > summary'), function (sm) { if (!sm.querySelector('.pacc-chev')) sm.insertAdjacentHTML('beforeend', ico('chev', 18, 'pacc-chev')); });
     enhanceDates(); photoFill(); toastKeep(); fabWatch(); if (Y().account) histFlush();
@@ -5658,7 +5720,7 @@
       }
       case 'ho-st': {   // «Передача в кабінет ХТМ»: На перевірці / Прийнято — лишаємось на цій сторінці
         var hr = RD().filter(function (x) { return x.id === el.getAttribute('data-id'); })[0], hv = el.getAttribute('data-v');
-        if (hr && (hr.status !== hv || hr.own)) { heatSetStatus(hr, hv); S.focusId = hr.id; save(); toast(t('st_done', { s: t(hv === 'accepted' ? 'st_acc' : 'st_rev').toLowerCase() })); }
+        if (hr && (hr.status !== hv || hr.own)) { heatSetStatus(hr, hv); S.focusId = hr.id; HO_POP = hv; save(); toast(t('st_done', { s: t(hv === 'accepted' ? 'st_acc' : 'st_rev').toLowerCase() })); }
         render(true); { var hf = document.querySelector('[data-key=ho-st-' + hv + ']'); if (hf) hf.focus(); } break;
       }
       case 'show-reject': { var f = document.getElementById('reject-form'); if (f) { f.style.display = ''; document.getElementById('rej-text').focus(); } break; }

@@ -1116,7 +1116,8 @@ summary:focus-visible { outline: 3px solid var(--c-info); outline-offset: 2px; b
 
 /* ---------- квартира в списке на главной: по строке на счётчик — что и до когда ---------- */
 .pacc > summary { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: start; gap: 4px 12px; padding: 16px 16px 14px; }
-.pacc > summary .pacc-chev { grid-column: 2; grid-row: 1; margin-top: calc((var(--fs-l) * 1.25 - 34px) / 2); }   /* центр кружка — на центре строки названия (07.11) */
+.pacc > summary .pacc-chev { grid-column: 2; grid-row: 1; align-self: center; }   /* кружок — по центру шапки: название + адрес (владелец 07.11) */
+.pacc > summary > .pacc-t { align-self: center; }
 .pacc-t { grid-column: 1; gap: 2px; }
 .pacc-addr { font-size: var(--fs-s); color: var(--c-ink-2); line-height: 1.4; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .pst { grid-column: 1 / -1; display: grid; gap: 6px; margin-top: 10px; }
@@ -1535,3 +1536,26 @@ details.bot-how[open] > ol { margin-top: 4px; }
 .cc-dacts { display: grid; gap: 8px; margin: 14px 0 6px; }
 @media (min-width: 600px) { .cc-dacts { grid-template-columns: 1fr 1fr 1fr; } .cc-dacts .btn { padding: 0 10px; } }
 .legal-foot .linkbtn { color: var(--c-ink-2); min-height: 44px; font-size: 14px; text-decoration: none; }
+
+/* «Налаштування показань» внизу картки лічильника (07.11): рядок по центру свого блоку — від лінії зверху до низу картки стільки ж, скільки знизу */
+.mbox > .mbox-set > summary { padding-top: 16px; }
+.mbox > .mbox-set[open] > summary { padding-top: 12px; }
+
+/* «живі» ролики (07.11): цифра докручується знизу вгору; стовпчик цифр висотою з ролик, зсув — на k ролика */
+.wd-c.rolling { position: relative; overflow: hidden; }
+.wd-roll { position: absolute; left: 0; right: 0; top: 0; height: 100%; display: flex; flex-direction: column; animation: wdRoll var(--dur, 700ms) cubic-bezier(.25, .8, .25, 1) both; }
+.wd-roll > span { flex: none; height: 100%; display: grid; place-items: center; }
+@keyframes wdRoll { from { transform: translateY(0); } to { transform: translateY(calc(-100% * var(--k))); } }
+
+/* вхід на головну / список квартир (07.11): картки з’являються м’яко по черзі */
+.main.enter .ucards > *, .main.enter .pl-list > li, .main.enter > .pacc, .main.enter .hp { animation: cardIn .42s cubic-bezier(.2, .7, .2, 1) both; }
+.main.enter .ucards > :nth-child(2), .main.enter .pl-list > li:nth-child(2), .main.enter .hp:nth-of-type(2) { animation-delay: 60ms; }
+.main.enter .ucards > :nth-child(3), .main.enter .pl-list > li:nth-child(3), .main.enter .hp:nth-of-type(3) { animation-delay: 120ms; }
+.main.enter .ucards > :nth-child(4), .main.enter .pl-list > li:nth-child(4) { animation-delay: 180ms; }
+.main.enter .ucards > :nth-child(n+5), .main.enter .pl-list > li:nth-child(n+5) { animation-delay: 220ms; }
+@keyframes cardIn { from { opacity: 0; transform: translateY(10px) scale(.985); } to { opacity: 1; transform: none; } }
+/* «На перевірці» / «Прийнято»: галочка «клацає» в момент вибору */
+.ho-opt.pop .ho-mark { animation: markPop .34s cubic-bezier(.3, 1.6, .5, 1) both; }
+.ho-opt.pop .ho-mark svg { stroke-dasharray: 30; animation: markDraw .32s .08s ease-out both; }
+@keyframes markPop { 0% { transform: scale(.6); } 100% { transform: scale(1); } }
+@keyframes markDraw { from { stroke-dashoffset: 30; } to { stroke-dashoffset: 0; } }

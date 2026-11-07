@@ -74,13 +74,14 @@ const cab = (state) => { const n = Math.floor(Date.now() / 1000); fs.mkdirSync(D
     await p.waitForSelector('[data-key=vk-cab-ok]', { timeout: 6000 }).catch(() => {}); await wait(200); };
   await p.setViewportSize({ width: 390, height: 844 }); await noRec();
   const pre = await p.textContent('#wsend-vk').catch(() => '');
-  ok('нет показаний месяца → «Через сайт Водоканалу» с «Перевірити» и «тут з’явиться «Відправити на сайт Водоканалу»»', await vis('[data-key=vkc-check]') && /Відправити на сайт Водоканалу/.test(await p.textContent('[data-key=vk-need-rec]')) && await vis('[data-key=vkc-add]'), pre);
-  ok('…бот — запасной, свёрнут', !!(await p.$('[data-key=vk-alt]')) && !(await p.$eval('[data-key=vk-alt]', d => d.open)));
+  ok('нет показаний месяца → «Через сайт Водоканалу» с «Перевірити» и «тут з’явиться «Відправити на сайт Водоканалу»»', await vis('[data-key=vkc-check]') && /Відправити на сайт Водоканалу/.test(await p.textContent('[data-key=vk-need-rec]')), pre);
+  ok('…без дублів (07.11): «Внести показання води» внутри нет (есть над «Куди передати»), бот — одной кнопкой, без «Або через бот»',
+    !(await p.$('#wsend-vk [data-act=wnew]')) && await vis('[data-key=water-add]') && !(await p.$('#wsend-vk [data-key=vk-alt]')) && (pre.match(/hvk_user_bot/g) || []).length === 1, pre);
   await p.click('[data-key=vkc-check]'); await p.waitForSelector('[data-key=vkc-site]', { timeout: 8000 }).catch(() => {});
   const site = await p.textContent('[data-key=vkc-site]').catch(() => '');
   ok('…«Перевірити» без показань → что видит сайт: рахунок, лічильники с последними показаниями, без «Відправити»', /знайшов рахунок 905614/.test(await p.textContent('[data-key=vkc-found]').catch(() => '')) && /№ 0123456 · Холодна · останні на сайті: \d+/.test(site) && !(await p.$('[data-key=vkc-send]')), site);
   await (await p.$('#wsend-vk')).screenshot({ path: '/tmp/shot_vkc_pre.png' }).catch(() => {});
-  await p.click('[data-key=vkc-add]'); await wait(500);
+  await p.click('[data-key=water-add]'); await wait(500);
   ok('…«Внести показання» → ввод воды', /wnew/.test(p.url()) || !!(await p.$('[data-key=wn-save], .wiz')), p.url());
   await noRec("s.places[0].water.account = '';");
   // с 06.11 (просьба владельца): полей в блоке нет — «Підключіть сайт Водоканалу…» и равноценная кнопка «Підключити сайт Водоканалу» → #vkcab
