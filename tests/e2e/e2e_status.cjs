@@ -61,8 +61,14 @@ const U = 'http://127.0.0.1:8013/';
   ok('тепло: чипс з «Прийнято»', /Прийнято/.test(await chip('r3')));
   await pick('r3', 'not'); s = await st(); r = s.readings.find(x => x.id === 'r3');
   ok('тепло «Не передано» → status checked, «Підготовлено»', r.status === 'checked' && /Підготовлено/.test(await chip('r3')), r.status);
-  await pick('r3', 'sent'); s = await st(); r = s.readings.find(x => x.id === 'r3');
-  ok('тепло «Передано» → handed, «На перевірці»', r.status === 'handed' && !!r.handedAt && /На перевірці/.test(await chip('r3')), r.status);
+  await p.click('[data-key="st-r3"]'); await p.waitForTimeout(150);
+  const hopts = await p.$$eval('[data-key=st-menu] .st-opt', a => a.map(x => x.textContent));
+  ok('тепло: меню «Прийнято · На перевірці · Не передано · Лише для себе» (07.11)', hopts.length === 4 && /^Прийнято/.test(hopts[0]) && /^На перевірці/.test(hopts[1]) && /Не передано/.test(hopts[2]) && /для себе/.test(hopts[3]), hopts);
+  await p.keyboard.press('Escape'); await p.waitForTimeout(100);
+  await pick('r3', 'handed'); s = await st(); r = s.readings.find(x => x.id === 'r3');
+  ok('тепло «На перевірці» → handed', r.status === 'handed' && !!r.handedAt && /На перевірці/.test(await chip('r3')), r.status);
+  await pick('r3', 'accepted'); s = await st(); r = s.readings.find(x => x.id === 'r3');
+  ok('тепло «Прийнято» → accepted, сам (via self), чипс «Прийнято»', r.status === 'accepted' && r.result && r.result.via === 'self' && /Прийнято/.test(await chip('r3')) && /прийнято/.test(await p.textContent('#toast-host')), r);
   await pick('r3', 'own'); s = await st(); r = s.readings.find(x => x.id === 'r3');
   ok('тепло «Лише для себе» → own', r.own === true && /для себе/.test(await chip('r3')));
 

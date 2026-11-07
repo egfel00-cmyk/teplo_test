@@ -117,7 +117,7 @@
   }
   /** Пришли данные с другого устройства (уже слитые с локальными). */
   function applyRemote(m) {
-    var keep = { lang: S.lang, demoToday: S.demoToday, focusId: S.focusId, _pickModel: S._pickModel, syncPromptDismissed: S.syncPromptDismissed, placeId: S.placeId, theme: S.theme, view: S.view, homeOpen: S.homeOpen };
+    var keep = { lang: S.lang, demoToday: S.demoToday, focusId: S.focusId, _pickModel: S._pickModel, syncPromptDismissed: S.syncPromptDismissed, placeId: S.placeId, theme: S.theme, themeV: S.themeV, view: S.view, homeOpen: S.homeOpen };
     S = Object.assign(defaults(), m, keep);
     ensurePlaces(); var ap = place(); if (ap && (ap.meter || ap.baseline || S.places.length > 1)) { S.meter = ap.meter || null; S.baseline = ap.baseline || null; }
     lastSig = window.TeploSync.sig(window.TeploSync.payload(S)); persist();
@@ -141,7 +141,9 @@
   if (GASMV) setTimeout(function () { GASMV = false; save(); }, 0);
   // S.meter/S.baseline — зеркало текущей квартиры: при запуске берём из неё (не из того, что лежало сверху)
   (function () { var ap = place(); if (ap && places().length > 1) { S.meter = ap.meter || null; S.baseline = ap.baseline || null; } })();
-  // ---- тема: авто (как в системе / Telegram) · светлая · тёмная; выбор хранится на этом устройстве
+  // ---- тема: авто (как в системе / Telegram) · светлая · тёмная; выбор хранится на этом устройстве, меняется только в Налаштуваннях.
+  // 07.11: перемикач у шапці прибрано — хто перемкнув його раніше, один раз повертаємо «як у телефоні»
+  if (S.themeV !== 2) { S.theme = 'auto'; S.themeV = 2; persist(); }
   function resolvedTheme() {
     var th = S.theme || 'auto'; if (th !== 'auto') return th;
     var tw0 = window.Telegram && window.Telegram.WebApp; if (tw0 && tw0.initData && tw0.colorScheme) return tw0.colorScheme === 'dark' ? 'dark' : 'light';
@@ -385,11 +387,6 @@
   function newDraft() { S.draft = { date: today(), values: {}, step: 0, startedAt: new Date().toISOString() }; save(); }
 
   // ---------------- оболочка ----------------
-  /** Кнопка в шапке: светлая ↔ тёмная (запоминается на устройстве; «как в системе» — в Налаштуваннях). */
-  function themeBtn() {
-    var dark = resolvedTheme() === 'dark', lbl = dark ? t('th_to_light') : t('th_to_dark');
-    return '<button type="button" class="theme-btn" data-act="theme-toggle" data-key="theme-toggle" aria-label="' + esc(lbl) + '" title="' + esc(lbl) + '">' + ico(dark ? 'sun' : 'moon', 22) + '</button>';
-  }
   function shell(view) {
     var route = view.route, bare = view.bare;
     var navItems = [[homeRoute(), 'home', 'nav_home'], ['history', 'history', 'nav_history'], ['stats', 'chart', 'nav_stats']].concat([['save', 'leaf', 'nav_save'], ['help', 'help', 'nav_help'], ['prefs', 'prefs', 'nav_prefs']]);
@@ -400,7 +397,7 @@
       ? '<a class="btn ghost" href="#' + view.closeTo + '" data-key="wiz-close" aria-label="' + esc(t('close')) + '">' + ico('close', 22) + '<span class="cl-txt">' + esc(t('close')) + '</span></a>'
       : '';
     return '<div class="app' + (bare ? ' bare-app' : '') + '">' +
-      '<header class="top' + (right ? ' has-close' : '') + '"><a class="brand" href="#' + homeRoute() + '" data-key="brand">' + logo() + '<span>' + esc(t('brand')) + '</span></a>' + '<span class="spacer"></span>' + themeBtn() + right + '</header>' +
+      '<header class="top' + (right ? ' has-close' : '') + '"><a class="brand" href="#' + homeRoute() + '" data-key="brand">' + logo() + '<span>' + esc(t('brand')) + '</span><span class="beta-tag" data-key="beta">' + esc(t('beta_tag')) + '</span></a>' + '<span class="spacer"></span>' + right + '</header>' +
       nav + '<main class="main' + (bare ? ' bare' : '') + (view.wide ? ' wide' : '') + '" id="main" data-screen="' + view.screen + '" tabindex="-1">' + (/^(history|stats|save)$/.test(route) ? placeSwitch() : /^(heat|water-hot|water-cold|elec|gas)$/.test(route) ? placeBar() : /^(wnew|wadd|enew|eadd|gnew|gadd|add-meter|step|step-\d+|check|handover|baseline|meter|photo)$/.test(route) ? placeBar(true) : '') + view.html + '</main></div>' +
       (window.TEPLO_API ? '<button class="fab' + (bare ? ' fab-bare' : '') + '" data-act="fb-open" data-key="feedback" aria-haspopup="dialog">' + ico('chat', 20) + '<span>' + esc(t('fb_btn')) + '</span></button>' + fbDialog() : '') +
       '<div id="toast-host" aria-live="polite"></div>';
@@ -3466,7 +3463,9 @@
   function stOpen(el) {
     var was = el.getAttribute('aria-expanded') === 'true'; stClose(); if (was) return;
     var src = el.getAttribute('data-src'), k = el.getAttribute('data-k'), cur = el.getAttribute('data-cur'), base = el.getAttribute('data-base') === '1';
-    var opts = base ? [['sent', 'st_sent', 'bs_lead_s'], ['not', 'st_base_not', '']] : [['sent', 'st_sent', 'st_sent_' + (k === 'hot' ? 'hot' : k)], ['not', 'st_not', ''], ['own', 'st_own', 'st_own_s']];
+    var opts = base ? [['sent', 'st_sent', 'bs_lead_s'], ['not', 'st_base_not', '']]
+      : src === 'h' ? [['accepted', 'st_acc', 'st_acc_s'], ['handed', 'st_rev', 'st_rev_s']].concat(cur === 'rejected' ? [['rejected', 'st_rej', 'st_rej_s']] : [], [['not', 'st_not', ''], ['own', 'st_own', 'st_own_s']])
+      : [['sent', 'st_sent', 'st_sent_' + (k === 'hot' ? 'hot' : k)], ['not', 'st_not', ''], ['own', 'st_own', 'st_own_s']];
     var m = document.createElement('div'); m.className = 'st-menu'; m.setAttribute('role', 'menu'); m.setAttribute('data-key', 'st-menu');
     m.innerHTML = opts.map(function (o) {
       var on = o[0] === cur, sub = o[2] ? t(o[2]) : '';
@@ -3482,6 +3481,18 @@
       var mh = m.offsetHeight, vh = window.innerHeight || document.documentElement.clientHeight, below = vh - 76 - cr.bottom, up = below < mh + 8 && cr.top - 8 > below;
       m.style.top = Math.round(up ? cr.top - lr.top - mh - 6 : cr.bottom - lr.top + 6) + 'px'; m.classList.toggle('up', up); }
     var f = m.querySelector('.st-opt.on') || m.querySelector('.st-opt'); if (f) f.focus();
+  }
+  /** Статус показань тепла вручну (меню статусу в історії, екран «Передача в кабінет ХТМ»): accepted — ХТМ прийняв (рядок у журналі зелений),
+   *  handed — збережено в кабінеті, ХТМ перевіряє, checked — не передано. «Останні прийняті» беруться з найпізнішого прийнятого (lastAccepted). */
+  function heatSetStatus(r, v) {
+    if (!r) return; var now = new Date().toISOString(); delete r.own;
+    if (v === 'accepted') {
+      r.status = 'accepted'; if (!r.handedAt) r.handedAt = now;
+      r.result = Object.assign({}, r.result || {}, { at: now, via: (r.result && r.result.via) || 'self' });
+      if (r.htm && r.htm.date && (!S.baseline || !S.baseline.date || r.htm.date >= S.baseline.date)) S.baseline = Object.assign({}, r.htm);
+    } else if (v === 'handed') { r.status = 'handed'; if (!r.handedAt) r.handedAt = now; delete r.result; }
+    else { r.status = 'checked'; delete r.handedAt; delete r.result; }
+    r.updatedAt = Date.now();
   }
   /** Применить статус из меню: вода — sent.vk (+ sent.htm у горячей), світло/газ — sent[obl|grm], тепло — status handed ↔ checked;
    *  «для себе» — r.own; стартовые — sent.no. Одна запись воды — общая для горячей и холодной: «не передано» у горячей снимает
@@ -3499,14 +3510,16 @@
         if (v === 'sent') { if (!r.sent.vk) r.sent.vk = d; if (k === 'hot' && !r.sent.htm) r.sent.htm = d; }
         else if (k === 'hot') r.sent.htm = ''; else r.sent.vk = '';
       } else if (src === 'm') { var sk = SK[k] ? SK[k].sk : 'obl'; r.sent[sk] = v === 'sent' ? (r.sent[sk] || d) : ''; }
+      else if (v === 'accepted' || v === 'handed') { if (r.status !== v) heatSetStatus(r, v); }
+      else if (v === 'rejected') { /* «Не прийнято» — лише показуємо поточний; розбір причини — на екрані статусу */ }
       else {
         if (v === 'sent' && !/^(handed|accepted|rejected)$/.test(r.status)) { r.status = 'handed'; r.handedAt = new Date().toISOString(); }
-        if (v === 'not' && /^(handed|accepted|rejected)$/.test(r.status)) { r.status = 'checked'; delete r.handedAt; }
+        if (v === 'not' && /^(handed|accepted|rejected)$/.test(r.status)) heatSetStatus(r, 'not');
       }
     }
     if (src === 'h' && !Object.keys(r.sent).length) delete r.sent;
     r.updatedAt = Date.now(); save();
-    toast(t('st_done', { s: t(r.base ? (v === 'sent' ? 'st_sent' : 'st_base_not') : v === 'own' ? 'st_own' : v === 'sent' ? 'st_sent' : 'st_not').toLowerCase() }));
+    toast(t('st_done', { s: t(r.base ? (v === 'sent' ? 'st_sent' : 'st_base_not') : v === 'own' ? 'st_own' : v === 'accepted' ? 'st_acc' : v === 'handed' ? 'st_rev' : v === 'rejected' ? 'st_rej' : v === 'sent' ? 'st_sent' : 'st_not').toLowerCase() }));
     render(true);
     var b = document.querySelector('[data-key="st-' + id + '"]'); if (b) try { b.focus({ preventScroll: true }); } catch (e0) { b.focus(); }
   }
@@ -3533,7 +3546,7 @@
         none: iv ? t('hi_less', { de: Math.abs(iv.dE).toFixed(3) }) : t(gaps('heat').some(function (g) { return g.from < r.htm.date; }) ? 'hr_nogap' : 'hr_first'),
         date: fmtDate(r.htm.date, true), sub: [t('hr_on_meter', { v: R.formatForHtm('energy', r.htm.energy), u: 'Гкал' }), iv ? iv.days + '\u00a0' + t('days_short') + (iv.overGap ? ' ' + t('hr_over_gap') : '') : ''],
         right: wxChip(wxFor(r)) + billMark(r.bills),
-        st: stChip('h', r, 'heat', r.own ? 'own' : /^(handed|accepted|rejected)$/.test(r.status) ? 'sent' : 'not', r.own ? '' : '<span class="pill ' + cls + '">' + esc(t('status_' + r.status)) + '</span>') });
+        st: stChip('h', r, 'heat', r.own ? 'own' : /^(handed|accepted|rejected)$/.test(r.status) ? r.status : 'not', r.own ? '' : '<span class="pill ' + cls + '">' + esc(t('status_' + r.status)) + '</span>') });
     })[0];
   }
 
@@ -3709,8 +3722,21 @@
       '<div class="ho-steps">' + (hcConn() ? hcPanel(r) : '') + '<div class="panel"><h2>' + esc(t(hcConn() ? 'ho_steps_self' : 'ho_steps_title')) + '</h2><ol class="steps"><li>' + esc(t('ho_s1')) + '</li><li>' + esc(t('ho_s2')) + '</li><li>' + esc(t('ho_s3')) + '</li><li>' + esc(t('ho_s4')) + '</li></ol>' +
       '<a class="btn sec block" href="' + HTM_URL + '" target="_blank" rel="noopener" data-key="handover-open">' + ico('ext', 20) + '<span>' + esc(t('ho_open')) + '</span></a></div>' +
       (hcConn() ? '' : hcPanel(r)) + '</div></div>' +
-      '<div class="row-actions"><button class="btn big" data-act="handed" data-id="' + r.id + '" data-key="handover-done">' + ico('check', 22) + '<span>' + esc(t('ho_saved')) + '</span></button></div>' };
+      hoStatus(r) };
   };
+  /** Що з показаннями в кабінеті: «На перевірці» / «Прийнято» — вибір тут же, людина лишається на сторінці передачі (владелец 07.11).
+   *  «Не прийнято» з поясненням причини — окремим посиланням на екран статусу. */
+  function hoStatus(r) {
+    var cur = /^(handed|accepted|rejected)$/.test(r.status) && !r.own ? r.status : '';
+    var opt = function (v, title, sub) { var on = cur === v;
+      return '<button type="button" role="radio" aria-checked="' + on + '" class="ho-opt' + (on ? ' on' : '') + '" data-act="ho-st" data-v="' + v + '" data-id="' + esc(r.id) + '" data-key="ho-st-' + v + '">' +
+        '<span class="ho-mark">' + (on ? ico('check', 22) : '') + '</span><span><b>' + esc(title) + '</b><span class="small muted">' + esc(sub) + '</span></span></button>'; };
+    return '<section class="panel ho-st" data-key="ho-status"><h2 id="ho-st-h">' + esc(t('ho_st_t')) + '</h2><p class="small muted">' + esc(t('ho_st_sub')) + '</p>' +
+      '<div class="ho-opts" role="radiogroup" aria-labelledby="ho-st-h">' + opt('handed', t('st_rev'), t('st_rev_s')) + opt('accepted', t('st_acc'), t('st_acc_s')) + '</div>' +
+      (cur === 'accepted' ? '<div class="banner ok" data-key="ho-accepted" role="status">' + levelIco('ok', 22) + '<div><p><b>' + esc(t('st_accepted')) + '</b></p><p>' + esc(t('st_accepted_sub')) + '</p></div></div>' : '') +
+      (cur === 'rejected' ? '<div class="banner warn" data-key="ho-rejected">' + ico('alert', 22) + '<div><p><b>' + esc(t('st_rejected')) + '</b></p><p><a href="#status" data-act="focus" data-id="' + esc(r.id) + '">' + esc(t('ho_st_why')) + '</a></p></div></div>'
+        : cur === 'handed' ? '<p class="small ho-bad"><a href="#status" data-act="focus" data-id="' + esc(r.id) + '" data-key="ho-st-bad">' + esc(t('ho_st_bad')) + '</a></p>' : '') + '</section>';
+  }
 
   V.status = function () {
     var r = RD().filter(function (x) { return x.id === S.focusId; })[0] || RD().filter(function (x) { return x.status === 'handed'; }).slice(-1)[0];
@@ -5542,7 +5568,6 @@
         fetch(window.TEPLO_API + '/docs/delete', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json', 'X-CSRF': (document.cookie.match(/(?:^|; )ts_csrf=([^;]*)/) || [])[1] || '' }, body: JSON.stringify({ id: el.getAttribute('data-id') }) })
           .then(function () { loadDocs(true); }); break;
       }
-      case 'theme-toggle': S.theme = resolvedTheme() === 'dark' ? 'light' : 'dark'; persist(); applyTheme(); render(true); { var tb = document.querySelector('[data-key=theme-toggle]'); if (tb) tb.focus(); } break;
       case 'theme': S.theme = el.getAttribute('data-v'); persist(); applyTheme(); render(true); break;
       case 'pl-use': switchPlace(el.getAttribute('data-id')); WX.key = ''; toast(t('pl_switched', { p: placeLabel(place()) })); go('home'); break;
       case 'hp-add-place': hpAddPlace(); break;
@@ -5576,8 +5601,13 @@
         if (rx) { rx.deleted = true; rx.updatedAt = Date.now(); photoKeep(rx.photos, false); billsDrop(rx.bills); if (S.focusId === rx.id) S.focusId = null; save(); toast(t('rec_deleted')); } go('history'); break; }
       case 'accepted': {
         var ra = RD().filter(function (x) { return x.id === el.getAttribute('data-id'); })[0];
-        if (ra) { ra.status = 'accepted'; ra.updatedAt = Date.now(); ra.result = { at: new Date().toISOString() }; S.baseline = Object.assign({}, ra.htm); save(); }
+        if (ra) { heatSetStatus(ra, 'accepted'); save(); }
         render(); break;
+      }
+      case 'ho-st': {   // «Передача в кабінет ХТМ»: На перевірці / Прийнято — лишаємось на цій сторінці
+        var hr = RD().filter(function (x) { return x.id === el.getAttribute('data-id'); })[0], hv = el.getAttribute('data-v');
+        if (hr && (hr.status !== hv || hr.own)) { heatSetStatus(hr, hv); S.focusId = hr.id; save(); toast(t('st_done', { s: t(hv === 'accepted' ? 'st_acc' : 'st_rev').toLowerCase() })); }
+        render(true); { var hf = document.querySelector('[data-key=ho-st-' + hv + ']'); if (hf) hf.focus(); } break;
       }
       case 'show-reject': { var f = document.getElementById('reject-form'); if (f) { f.style.display = ''; document.getElementById('rej-text').focus(); } break; }
       case 'ha-handover': S.focusId = el.getAttribute('data-id'); HC.confirm = null; HC.err = null; save(); go('handover'); break;

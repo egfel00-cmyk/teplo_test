@@ -31,7 +31,7 @@ let pass = 0, fail = 0; const ok = (n, c, x) => { if (c) { pass++; console.log('
   await p.goto('http://127.0.0.1:8013/'); await p.evaluate(s => localStorage.setItem('teplo.v1', JSON.stringify(s)), demo({})); await p.goto('http://127.0.0.1:8013/#home'); await p.reload(); await p.waitForTimeout(400);
   ok('головна: без «Тестовий режим», «Додати квартиру» — під плиткою «Налаштування квартири»', !(await p.$('[data-key=test-reset]')) && await p.evaluate(() => { const b = document.querySelector('[data-key=home-add-place]'), u = document.querySelector('.ucards'); return !!(b && u && !u.contains(b) && (u.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING)); }));
   await p.goto('http://127.0.0.1:8013/#prefs'); await p.waitForTimeout(300); await p.click('[data-key=pg-data] > summary'); await p.waitForTimeout(200);
-  ok('Налаштування → Дані: «Видалити всі дані» без тестового режиму, в шапці нет «Test beta»', !(await p.$('[data-key=test-reset]')) && !!(await p.$('[data-key=prefs-wipe]')) && (await p.$$('#wipe-confirm')).length === 1 && !(await p.$('[data-key=beta]')) && !/beta|0,5 литра/i.test(await p.$eval('header.top', e => e.textContent)));
+  ok('Налаштування → Дані: «Видалити всі дані» без тестового режиму; в шапці — лише коротка «бета» (07.11), без «Test beta»', !(await p.$('[data-key=test-reset]')) && !!(await p.$('[data-key=prefs-wipe]')) && (await p.$$('#wipe-confirm')).length === 1 && (await p.textContent('[data-key=beta]')) === 'бета' && !/beta|0,5 литра/i.test(await p.$eval('header.top', e => e.textContent)));
   ok('без помилок JS', !errs.length, errs);
   console.log('\nИтог: ' + pass + ' OK, ' + fail + ' FAIL'); await b.close(); process.exit(fail ? 1 : 0);
 })();

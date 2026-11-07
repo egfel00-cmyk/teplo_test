@@ -363,14 +363,11 @@ label.btn { cursor: pointer; }
   [data-key="reading-list"] .rowlink > .grow { flex: 1 1 100%; }
   [data-key="reading-list"] .rowlink > .wx { margin-left: 0; }
 }
-.theme-btn { display: grid; place-items: center; width: var(--tap); height: var(--tap); border: 1.5px solid var(--c-field-line); border-radius: 50%; background: var(--c-surface); color: var(--c-ink); cursor: pointer; flex: none; }
-.theme-btn:hover { border-color: var(--c-ink-2); }
-.top .theme-btn + .btn { margin-left: var(--sp-2); }
 /* узкие телефоны (320–359 px): шапка «логотип · ТЕСТ · тема · ✕» не влезала — страница ездила вбок */
 .brand { min-width: 0; } .brand span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 @media (max-width: 359px) {
   .top { gap: 4px; padding: var(--sp-3); } .brand { gap: 6px; }
-  .top .theme-btn { width: 44px; height: 44px; } .top .btn { min-height: 44px; padding: 0 10px; } .top .theme-btn + .btn { margin-left: 0; }
+  .top .btn { min-height: 44px; padding: 0 10px; }
 }
 
 /* просмотр фото на весь экран */
@@ -1487,3 +1484,25 @@ details.bot-how[open] > ol { margin-top: 4px; }
 /* плашка «Ремонт» у рядку періоду без лічильника — на місці статусу («Прийнято»), але не кнопка */
 .st-chip.st-static { cursor: default; padding: 0; }
 .st-chip.st-static::before { content: none; }
+
+/* ---- шапка (07.11): «бета» біля назви; перемикача теми немає — тема як у телефоні, примусово лише в Налаштуваннях ---- */
+.brand .beta-tag { flex: none; overflow: visible; display: inline-flex; align-items: center; height: 20px; padding: 0 7px; margin-left: -2px; border-radius: 999px;
+  font-size: 12px; font-weight: 600; line-height: 1; letter-spacing: .02em; color: var(--c-info, var(--c-ink-2)); background: var(--c-surface-2); border: 1px solid var(--c-line); }
+
+/* ---- «Передача в кабінет ХТМ» (07.11): статус вибором тут же — «На перевірці» / «Прийнято» ---- */
+.ho-st { margin-top: var(--sp-5); }
+.ho-st h2 { margin-bottom: 4px; }
+.ho-opts { display: grid; gap: 10px; margin-top: var(--sp-3); }
+@media (min-width: 600px) { .ho-opts { grid-template-columns: 1fr 1fr; } }
+.ho-opt { display: flex; align-items: center; gap: 12px; width: 100%; min-height: 64px; padding: 10px 14px; border: 1.5px solid var(--c-field-line); border-radius: var(--r-btn);
+  background: var(--c-surface); color: var(--c-ink); font: inherit; text-align: left; cursor: pointer; }
+.ho-opt:hover { border-color: var(--c-ink-2); }
+.ho-opt:focus-visible { outline: 3px solid var(--c-focus-ring); outline-offset: 2px; }
+.ho-opt > span:last-child { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.ho-opt b { font-size: var(--fs-m); }
+.ho-mark { flex: none; box-sizing: border-box; display: grid; place-items: center; width: 32px; height: 32px; border-radius: 50%; border: 2px solid var(--c-field-line); background: var(--c-surface); }   /* як радіокнопка: порожнє коло / галочка */
+.ho-opt.on { border-color: var(--c-ok); background: var(--c-ok-soft); }
+.ho-opt.on .ho-mark { background: var(--c-ok); border-color: var(--c-ok); color: var(--c-surface); }
+.ho-opt.on b { color: var(--c-ok-ink, var(--c-ink)); }
+.ho-st .banner { margin-top: var(--sp-3); }
+.ho-bad { margin: var(--sp-3) 0 0; }
