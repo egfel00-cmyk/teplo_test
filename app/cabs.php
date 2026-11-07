@@ -126,7 +126,7 @@ final class CabWeb {
 }
 
 final class CabProbe {
-  const V = 3;   // 2: вид отказа Cloudflare (cfKind/cfCode/cfCc) и robots.txt — понять, пустит ли обленерго из Украины (ретранслятор); 3: что в настройке captcha Газмереж (captchaShape) — включена ли
+  const V = 4;   // 4: captchaKind — turnstile (ключ 0x4…) / recaptcha (6L…) / hcaptcha (uuid); 2: вид отказа Cloudflare (cfKind/cfCode/cfCc) и robots.txt — понять, пустит ли обленерго из Украины (ретранслятор); 3: что в настройке captcha Газмереж (captchaShape) — включена ли
   /** Что пробуем: страница входа и признак «это наша форма входа». */
   const SITES = [
     'htm' => ['url' => 'https://www.hts.kharkov.ua/cabinet', 'host' => '/(^|\.)hts\.kharkov\.ua$/i', 'form' => '/name="passw"/i', 'cs' => 'Windows-1251'],
@@ -156,6 +156,7 @@ final class CabProbe {
           // какая это настройка: {enabled: false, …} — капча выключена; ключи и типы без значений (строки — длина), булевы и числа — как есть
           $o['captchaShape'] = self::shape($p['props']['captcha'] ?? null);
           $o['captchaOn'] = self::captchaOn($p['props']['captcha'] ?? null);
+          $o['captchaKind'] = self::captchaKind($p['props']['captcha'] ?? null);
           $o['props'] = array_slice(array_keys((array)($p['props'] ?? [])), 0, 30);
         }
       }
@@ -168,6 +169,13 @@ final class CabProbe {
     if (is_array($v)) { if ($d >= 2) return 'arr:' . count($v); $o = []; foreach (array_slice($v, 0, 15, true) as $k => $x) $o[(string)$k] = self::shape($x, $d + 1); return $o; }
     if (is_string($v)) return preg_match('/^[a-z_\-]{1,20}$/i', $v) ? $v : 'str:' . strlen($v);
     return $v;
+  }
+  /** Чья капча по публичному ключу сайта: Cloudflare Turnstile — «0x4…», Google reCAPTCHA — «6L…», hCaptcha — uuid. */
+  public static function captchaKind($v): ?string {
+    if (is_array($v)) { foreach ($v as $x) if (is_string($x) && ($k = self::captchaKind($x))) return $k; return null; }
+    if (!is_string($v)) return null;
+    return match (true) { (bool)preg_match('/^0x4[A-Za-z0-9_\-]{10,}$/', $v) => 'turnstile', (bool)preg_match('/^6L[A-Za-z0-9_\-]{20,}$/', $v) => 'recaptcha',
+      (bool)preg_match('/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i', $v) => 'hcaptcha', default => null };
   }
   /** Включена ли капча по настройке: true/false/null (не поняли). Массив с enabled/active/on/required — по нему; пустое/false/0 — нет. */
   public static function captchaOn($v): ?bool {

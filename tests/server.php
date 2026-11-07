@@ -1006,6 +1006,7 @@ ok('обленерго: редирект на чужой сайт → не ok, o
 ok('Газмережі: Inertia с captcha в props → не ok', ($pr['grm']['ok'] ?? null) === false && ($pr['grm']['captchaProp'] ?? null) === true && ($pr['grm']['component'] ?? '') === 'Auth/Login', $pr['grm']);
 ok('…форма настройки капчи без значений: строка → длина, включена', ($pr['grm']['captchaShape'] ?? null) === 'str:10' && ($pr['grm']['captchaOn'] ?? null) === true && ($pr['grm']['props'] ?? null) === ['captcha'], $pr['grm']);
 ok('captchaOn: {enabled: false, siteKey} → выключена; {siteKey} → не поняли; null → нет; shape прячет значения', CabProbe::captchaOn(['enabled' => false, 'siteKey' => 'abc']) === false && CabProbe::captchaOn(['siteKey' => 'abc']) === null
+  && CabProbe::captchaKind('0x4AAAAAAABkMYinukE8nzYS') === 'turnstile' && CabProbe::captchaKind('6LeIxAcTAAAAAJcZVRqyHh71UMIEGNQ_MXjiZKhI') === 'recaptcha' && CabProbe::captchaKind('sitekey123') === null
   && CabProbe::captchaOn(null) === false && CabProbe::shape(['enabled' => false, 'siteKey' => '6LcAAAAA', 'driver' => 'turnstile']) === ['enabled' => false, 'siteKey' => 'str:8', 'driver' => 'turnstile']);
 ok('проба записана и видна в /api/health', (CabProbe::read()['v'] ?? 0) === CabProbe::V && ($pr['htm']['lastOk'] ?? null) !== null && $pr['obl']['lastOk'] === null);
 ok('турникет Cloudflare → widget', CabWeb::captcha('<input type="hidden" name="cf-turnstile-response">')['widget'] === true);
