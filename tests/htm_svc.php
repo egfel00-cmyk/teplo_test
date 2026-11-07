@@ -185,27 +185,44 @@ $stH = fn(array $pl, array $rd) => ['readings' => $rd, 'tariff' => new stdClass(
 $plH = fn(string $id, string $acc, array $m = []) => ['id' => $id, 'name' => 'Моя', 'meter' => ['model' => 'Sharky 774', 'account' => $acc] + $m];
 $rdH = fn(string $id, string $place, string $date) => ['id' => $id, 'place' => $place, 'htm' => ['date' => $date, 'energy' => 13.5], 'status' => 'accepted', 'updatedAt' => 1000];
 $accs = [['acc' => '1000000061', 'sur' => 'ТЕСТОВИЙ']];
-$wy = array_map(fn($x) => $x[0], HtmBills::why($stH([$plH('a', '1000000061'), $plH('b', '1000000061', ['billAuto' => false]), $plH('c', '555555'), $plH('d', '1000000061')], [$rdH('h1', 'a', '2026-10-20'), $rdH('h0', 'd', '2026-09-20')]), $accs, '2026-10'));
-ok('квитанции ХТМ: причины по квартирам — ok, off («Квитанції самі» выключено), noacc (рахунок не из кабинета), norec (нет записи тепла за жовтень)', $wy === ['ok', 'off', 'noacc', 'norec'], $wy);
-$w1 = HtmBills::why($stH([['id' => 'a', 'meter' => ['model' => 'X']]], [$rdH('h1', 'a', '2026-10-20')]), $accs, '2026-10');
+$wy = array_map(fn($x) => $x[0], HtmBills::why($stH([$plH('a', '1000000061'), $plH('b', '1000000061', ['billAuto' => false]), $plH('c', '555555'), $plH('d', '1000000061')], [$rdH('h1', 'a', '2026-10-20')]), $accs));
+ok('квитанции ХТМ: причины по квартирам — ok, off («Квитанції самі» выключено), noacc (рахунок не из кабинета), ok и без записи за месяц', $wy === ['ok', 'off', 'noacc', 'ok'], $wy);
+$w1 = HtmBills::why($stH([['id' => 'a', 'meter' => ['model' => 'X']]], [$rdH('h1', 'a', '2026-10-20')]), $accs);
 ok('…без рахунку у счётчика: одна квартира с теплом и один рахунок в кабинете — берём его', ($w1[0][1]['acc'] ?? '') === '1000000061', $w1);
 Db::q('DELETE FROM user_state WHERE user_id = ?', [$uid]);
 Db::q('INSERT INTO user_state (user_id, data, version, updated_at) VALUES (?, ?, 1, ?)', [$uid, json_encode($stH([$plH('p1', '1000000061')], [$rdH('h1', 'p1', '2026-10-20'), $rdH('h2', 'p1', '2026-09-18')]), JSON_UNESCAPED_UNICODE), Http::iso()]);
 @unlink(HtmBills::file()); $lu0 = HtmSvc::summary()['lastUser']; Db::q('DELETE FROM rate_limits');
+$SD = fn() => json_decode(Db::one('SELECT data FROM user_state WHERE user_id = ?', [$uid])['data'], true);
 ok('квитанции ХТМ: ночью (23:30 по Киеву) и рано утром — не ходим', HtmBills::cron(gmmktime(21, 30, 0, 11, 7, 2026)) === [] && HtmBills::cron(gmmktime(4, 0, 0, 11, 7, 2026)) === []);
-$cr = HtmBills::cron($tB); $sH = json_decode(Db::one('SELECT data FROM user_state WHERE user_id = ?', [$uid])['data'], true); $bl = $sH['readings'][0]['bills'] ?? [];
-$dH = Db::one("SELECT * FROM docs WHERE user_id = ? AND src = 'htm'", [$uid]);
-ok('квитанции ХТМ: 7-го в 10:00 — вход (только чтение), PDF из «Платежі» в документы (src htm, ym 2026-10), к записи тепла жовтня — bills auto htm', $cr === [[$uid, 'got']] && $dH && $dH['ym'] === '2026-10' && $dH['kind'] === 'bill' && $dH['place'] === 'p1'
-  && count($bl) === 1 && $bl[0]['auto'] === 'htm' && $bl[0]['id'] === $dH['id'] && str_contains($bl[0]['name'], 'ХТМ, жовтень 2026') && ($sH['readings'][1]['bills'] ?? null) === null && $sH['updatedAt'] === 555, [$cr, $bl, $dH]);
+// кабинет (как живой 07.11): «Сформувати рахунок» → HTML «Рахунок за вересень 2026 року» → к показаниям ВЕРЕСНЯ (месяц рахунку = месяц показаний)
+$cr = HtmBills::cron($tB); $sH = $SD(); $bl = $sH['readings'][1]['bills'] ?? [];
+$dH = Db::one("SELECT * FROM docs WHERE user_id = ? AND src = 'htm'", [$uid]); $hh = $dH ? (string)@file_get_contents(Docs::root() . '/' . $uid . '/' . $dH['file']) : '';
+ok('квитанции ХТМ: 7-го в 10:00 — вход (только чтение), рахунок за вересень (HTML) в документы (src htm, ym 2026-09), к записи тепла 18.09 — bills auto htm, до сплати', $cr === [[$uid, 'got']] && $dH && $dH['ym'] === '2026-09' && $dH['mime'] === 'text/html' && $dH['place'] === 'p1'
+  && count($bl) === 1 && $bl[0]['auto'] === 'htm' && $bl[0]['id'] === $dH['id'] && ($bl[0]['ym'] ?? '') === '2026-09' && ($bl[0]['pay'] ?? '') === '245.30' && str_contains($bl[0]['name'], 'ХТМ, вересень 2026')
+  && ($sH['readings'][0]['bills'] ?? null) === null && $sH['updatedAt'] === 555, [$cr, $bl, $dH]);
+ok('…копия рахунку: без скриптов, кнопок «Друкувати/Назад», ссылок и обработчиков; стиль и картинка сайта — внутри (data:), UTF-8', $hh !== '' && !preg_match('/<script|onclick|javascript:|<button|href=|Друкувати|history\.back/iu', $hh)
+  && str_contains($hh, 'data:image/png;base64,') && str_contains($hh, '.bill{') && str_contains($hh, 'ДО СПЛАТИ') && str_contains($hh, '<meta charset="utf-8">') && str_contains($hh, 'Копія рахунку з кабінету'), mb_substr($hh, 0, 400));
 ok('…прошлая версия — в историю (htmbill); «человек» в журнале кабинета не сдвинулся', (Db::one('SELECT reason FROM user_state_hist WHERE user_id = ? ORDER BY id DESC LIMIT 1', [$uid])['reason'] ?? '') === 'htmbill'
   && HtmSvc::summary()['lastUser'] === $lu0 && (HtmSvc::summary()['n']->{'autobill bill'} ?? 0) === 1);
 $c2 = HtmBills::cron($tB + 60); $hb = HtmBills::summary(); $hj = json_encode($hb, JSON_UNESCAPED_UNICODE);
-ok('…через минуту — некуда идти (уже прикрепили): пауза, /api/health → htmBills без рахунку и людей', $c2 === [] && ($hb['last']['res'] ?? '') === 'got' && ($hb['n']->{'2026-10'}['got'] ?? 0) === 1 && (array)($hb['scan']['k'] ?? []) === ['hasbill' => 1] && ($hb['scan']['cabs'] ?? 0) === 1
-  && !preg_match('/1000000061|ТЕСТОВИЙ|u1@example/u', $hj), $hb);
-// та же квитанция в кабинете, а запись — новая (листопад): прошлая квитанция не за тот месяц → same, через 20 ч снова
+ok('…через минуту — квартиру уже смотрели (раз в 20 ч): пауза, /api/health → htmBills: месяц рахунку, вид, без рахунку и людей', $c2 === [] && ($hb['last']['res'] ?? '') === 'got' && ($hb['last']['ym'] ?? '') === '2026-09' && ($hb['last']['kind'] ?? '') === 'html'
+  && (array)($hb['scan']['k'] ?? []) === ['retry' => 1] && ($hb['scan']['cabs'] ?? 0) === 1 && !preg_match('/1000000061|ТЕСТОВИЙ|u1@example/u', $hj), $hb);
+$c2b = HtmBills::cron($tB + 21 * 3600);
+ok('…через 21 ч в кабинете тот же рахунок за вересень — same, второй раз не кладём', $c2b === [[$uid, 'same']] && count($SD()['readings'][1]['bills'] ?? []) === 1, $c2b);
+// новый рахунок за жовтень, а показаний за жовтень нет → отдельная «Платіжка ХТМ» за жовтень в истории тепла
+stand('act=set&scenario=ok&today=2026-11-21&robot_delay=99999&bill_ym=2026-10&bill_pay=1234.56');
 Db::q('UPDATE user_state SET data = ? WHERE user_id = ?', [json_encode($stH([$plH('p1', '1000000061')], [$rdH('h3', 'p1', '2026-11-20')]), JSON_UNESCAPED_UNICODE), $uid]); @unlink(HtmBills::file());
-$c3 = HtmBills::cron(gmmktime(8, 0, 0, 12, 3, 2026)); $c4 = HtmBills::cron(gmmktime(9, 0, 0, 12, 3, 2026));
-ok('квитанции ХТМ: в кабинете ещё квитанция за жовтень, нужна за листопад → same, не кладём; раньше чем через 20 ч не ходим', $c3 === [[$uid, 'same']] && $c4 === [] && !isset(json_decode(Db::one('SELECT data FROM user_state WHERE user_id = ?', [$uid])['data'], true)['readings'][0]['bills']), [$c3, $c4]);
+$c3 = HtmBills::cron(gmmktime(8, 0, 0, 12, 3, 2026)); $c4 = HtmBills::cron(gmmktime(9, 0, 0, 12, 3, 2026)); $sN = $SD(); $hbr = array_values(array_filter($sN['readings'], fn($r) => !empty($r['billOnly'])));
+ok('квитанции ХТМ: рахунок за жовтень, показаний за жовтень нет → «Платіжка ХТМ» (billOnly, ym 2026-10, дата 31.10) с квитанцией; запись листопада не тронута; раньше 20 ч не ходим',
+  $c3 === [[$uid, 'new']] && $c4 === [] && count($hbr) === 1 && $hbr[0]['ym'] === '2026-10' && $hbr[0]['htm']['date'] === '2026-10-31' && $hbr[0]['place'] === 'p1' && ($hbr[0]['bills'][0]['pay'] ?? '') === '1234.56'
+  && !isset($sN['readings'][0]['bills']), [$c3, $c4, $hbr]);
+// человек убрал файл из «Платіжки» — за этот месяц больше не кладём
+$sN['readings'] = array_map(function ($r) { if (!empty($r['billOnly'])) $r['bills'] = []; return $r; }, $sN['readings']); Db::q('UPDATE user_state SET data = ? WHERE user_id = ?', [json_encode($sN, JSON_UNESCAPED_UNICODE), $uid]);
+$c5 = HtmBills::cron(gmmktime(8, 0, 0, 12, 4, 2026));
+ok('…человек убрал квитанцию — через сутки тот же месяц не возвращаем (same)', $c5 === [[$uid, 'same']] && (array_values(array_filter($SD()['readings'], fn($r) => !empty($r['billOnly'])))[0]['bills'] ?? null) === [], $c5);
+stand('act=set&scenario=ok&today=2026-11-21&robot_delay=99999&bill_ym=none');
+ok('…рахунок ещё не сформован («рахунок ще не сформовано») — nobill, ничего не кладём', HtmBills::cron(gmmktime(8, 0, 0, 12, 5, 2026)) === [[$uid, 'nobill']]);
+stand('act=set&scenario=ok&today=2026-11-21&robot_delay=99999&bill_ym=');
 $plOff = $plH('p1', '1000000061', ['billAuto' => false]); Db::q('UPDATE user_state SET data = ? WHERE user_id = ?', [json_encode($stH([$plOff], [$rdH('h3', 'p1', '2026-11-20')]), JSON_UNESCAPED_UNICODE), $uid]); @unlink(HtmBills::file());
 ok('…«Квитанції самі» выключено — не ходим', HtmBills::cron(gmmktime(8, 0, 0, 12, 4, 2026)) === [] && (array)(HtmBills::summary()['scan']['k'] ?? []) === ['off' => 1]);
 Db::q('DELETE FROM rate_limits');

@@ -68,6 +68,30 @@ final class Telegram {
     return $out;
   }
 
+  /** Новый бот вместо старого (владелец 07.11.2026: «все описание перенести с прошлого бота в новый и настройки тоже»): через Bot API у старого бота читаем
+   *  описание (description), «О боте» (short description) и команды — по умолчанию и для uk/ru/en — и записываем новому; у старого снимаем вебхук (иначе его
+   *  сообщения шли бы к нам и отвечал бы новый бот). Имя, аватар, домен входа (/setdomain), privacy — только в @BotFather, их Bot API не переносит.
+   *  Вызывать ПОСЛЕ setup() нового (setup ставит /start — старые команды, если их больше, перекрывают). → ['copied' => [что], 'skipped' => [что], 'errors' => [...]] */
+  public static function copyProfile(string $old, string $new): array {
+    $out = ['copied' => [], 'skipped' => [], 'errors' => []];
+    if ($old === '' || $old === $new) return $out;
+    $me = self::call('getMe', [], $old); if (empty($me['ok'])) { $out['errors'][] = 'old getMe: ' . ($me['description'] ?? 'нет ответа'); return $out; }
+    foreach (['', 'uk', 'ru', 'en'] as $lc) {
+      $q = $lc === '' ? [] : ['language_code' => $lc]; $tag = $lc === '' ? 'default' : $lc;
+      foreach ([['getMyDescription', 'setMyDescription', 'description'], ['getMyShortDescription', 'setMyShortDescription', 'short_description']] as [$get, $set, $k]) {
+        $g = self::call($get, $q, $old); $v = (string)($g['result'][$k] ?? '');
+        if (empty($g['ok'])) { $out['errors'][] = "$get $tag: " . ($g['description'] ?? 'нет ответа'); continue; }
+        if ($v === '') { $out['skipped'][] = "$k $tag"; continue; }
+        $r = self::call($set, $q + [$k => $v], $new); if (!empty($r['ok'])) $out['copied'][] = "$k $tag"; else $out['errors'][] = "$set $tag: " . ($r['description'] ?? 'нет ответа');
+      }
+      $g = self::call('getMyCommands', $q, $old); $cmds = array_values(array_filter((array)($g['result'] ?? []), fn($c) => is_array($c) && !empty($c['command'])));
+      if ($cmds && count($cmds) > 1) { $r = self::call('setMyCommands', $q + ['commands' => array_map(fn($c) => ['command' => (string)$c['command'], 'description' => (string)($c['description'] ?? '')], $cmds)], $new); if (!empty($r['ok'])) $out['copied'][] = "commands $tag"; else $out['errors'][] = "setMyCommands $tag: " . ($r['description'] ?? 'нет ответа'); }
+    }
+    $d = self::call('deleteWebhook', [], $old); if (!empty($d['ok'])) $out['copied'][] = 'old webhook off'; else $out['errors'][] = 'old deleteWebhook: ' . ($d['description'] ?? 'нет ответа');
+    $out['old'] = (string)($me['result']['username'] ?? '');
+    return $out;
+  }
+
   /** Вебхук: /start (и любое сообщение) → кнопка, открывающая сайт как Mini App. */
   /** /start link_<token>: привязать этот Telegram к аккаунту, который попросил ссылку на сайте. Возвращает текст ответа. */
   public static function linkByToken(array $from, string $token, string $lang): string {

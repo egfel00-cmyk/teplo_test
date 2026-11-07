@@ -59,6 +59,8 @@ if (str_starts_with($path, '/api/')) {
   http_response_code($res->status);
   if ($res->file && $res->status === 200) {   // фото для аналитики: папка данных наружу не отдаётся, только так
     header('Content-Type: ' . $res->file['mime']); header('Cache-Control: private, max-age=86400'); header('Content-Length: ' . filesize($res->file['path']));
+    // копия рахунку ХТМ (страница сайта, Docs src htm): без скриптов и без запросов наружу — даже если в копии что-то осталось
+    if ($res->file['mime'] === 'text/html') { header('Content-Type: text/html; charset=utf-8'); header("Content-Security-Policy: sandbox; default-src 'none'; style-src 'unsafe-inline'; img-src data:; font-src data:"); header('X-Content-Type-Options: nosniff'); header('Referrer-Policy: no-referrer'); }
     readfile($res->file['path']); exit;
   }
   if ($res->text !== null) { header('Content-Type: text/plain; charset=utf-8'); echo $res->text; exit; }   // ретранслятор NAS читает текст строками (sh)

@@ -31,6 +31,8 @@ if (str_starts_with($path, '/cabinet')) {
   if ($path === "/cabinet/heat/viewall/$ACC/$SUR/$SN") { page_viewall(); return; }
   // платежі і квитанція — синтетика стенда (07.11.2026): на живом кабинете раздел /cabinet/payments/… есть, его вид не снят — осмотр робота (HtmCab::explore) покажет
   if ($path === "/cabinet/payments/$ACC/$SUR") { page_payments(); return; }
+  // рахунок — как на живом кабинете (осмотр 07.11.2026): «Сформувати рахунок» → HTML «Рахунок за <місяць> <рік> року» с «Друкувати»/«Назад»; PDF нет
+  if ($path === "/cabinet/bill/print/$ACC/$SUR") { page_bill(isset($_GET['hint'])); return; }
   if ($path === "/cabinet/payments/print/$ACC/$SUR/2026-10") { log_req('bill_pdf'); header('Content-Type: application/pdf'); header('Content-Disposition: inline; filename="kvit_' . $ACC . '_2026-10.pdf"'); echo "%PDF-1.4\n% stand kvytantsiia HTM 2026-10\n%%EOF\n"; return; }
 }
 page('404', '<p>Немає такої сторінки на стенді: ' . h($path) . '</p>', 404, logged_in());
@@ -70,7 +72,9 @@ function do_login(): void {
 function page_account(): void {
   $c = st()['credentials'];
   page('Кабінет | Стан особового рахунку', '<h1>Стан особового рахунку № ' . h($c['account']) . ' — розрахунковий місяць ' . h(month_ua(today(), false)) . ' ' . substr(today(), 0, 4) . '</h1>'
-    . '<p><a href="' . h(acc_url('/cabinet/heat')) . '">Залишити показання по теплу</a></p><p class="stand-note">Таблиця нарахувань на стенді не імітується.</p>', 200, true);
+    . '<p><a href="' . h(acc_url('/cabinet/heat')) . '">Залишити показання по теплу</a></p>'
+    . '<p><a href="' . h(acc_url('/cabinet/bill/print')) . '">Сформувати рахунок</a> · <a href="' . h(acc_url('/cabinet/bill/print')) . '?hint=pdf">Зберегти рахунок в PDF</a> · <a href="' . h(acc_url('/cabinet/payments')) . '">Переглянути архів платежів</a></p>'
+    . '<p class="stand-note">Таблиця нарахувань на стенді не імітується.</p>', 200, true);
 }
 function page_list(): void {
   $c = st()['credentials'];
@@ -78,11 +82,29 @@ function page_list(): void {
     . '<tr><td>1</td><td><a href="' . h(acc_url()) . '">' . h($c['account']) . '</a></td><td>' . h(mb_strtoupper($c['surname'])) . '</td><td>{{ADDRESS}}</td><td>—</td></tr></table>', 200, true);
 }
 function page_card(): void { page('Кабінет | Особовий рахунок', '<h1>Особовий рахунок ' . h(st()['credentials']['account']) . '</h1><p><a href="' . h(acc_url('/cabinet/heat')) . '">Залишити показання по теплу</a></p><p><a href="' . h(acc_url('/cabinet/payments')) . '">Платежі та нарахування</a></p>', 200, true); }
-function page_payments(): void {
-  page('Кабінет | Платежі', '<h1>Нарахування та платежі</h1><table class="stand-tbl"><tr><th>Місяць</th><th>Нараховано, грн</th><th>Сплачено, грн</th><th>Квитанція</th></tr>'
-    . '<tr><td>Жовтень 2026</td><td>1234.56</td><td>0.00</td><td><a href="' . h(acc_url('/cabinet/payments/print') . '/2026-10') . '">Квитанція за жовтень</a></td></tr></table>', 200, true);
+function page_payments(): void {   // как живой «Архів платежів» (07.11): дата и сумма, ссылки на довідки — квитанций здесь нет
+  page('Кабінет | Архів платежів', '<h1>Архів платежів</h1><p><a href="' . h(acc_url('/cabinet/spravka')) . '">Довідка щодо нарахувань та оплати за послугу</a></p><table class="stand-tbl"><tr><th>Дата</th><th>Сума, грн.</th></tr>'
+    . '<tr><th colspan="2">Поточні платежі (з 01.11.2026):</th></tr><tr><td>03.11.2026</td><td>245.30</td></tr><tr><th colspan="2">Платежі в розрахунковому місяці:</th></tr></table>', 200, true);
 }
 
+/** Рахунок (синтетика по виду живого 07.11): своя страница без меню стенда, windows-1251, стиль и картинка — с сайта, кнопки на JS.
+ *  Месяц — opt bill_ym (по умолчанию 2026-09), до сплати — opt bill_pay; bill_ym=none — страница «рахунок ще не сформовано». */
+function page_bill(bool $hint): void {
+  $ym = opt('bill_ym', '2026-09'); $pay = opt('bill_pay', '245.30'); $c = st()['credentials'];
+  header('Content-Type: text/html; charset=windows-1251'); log_req('bill_page', ['ym' => $ym]);
+  if ($ym === 'none') { echo mb_convert_encoding('<!doctype html><html><head><title>Кабінет</title></head><body><p>Рахунок ще не сформовано.</p></body></html>', 'Windows-1251', 'UTF-8'); return; }
+  $mn = ['січень', 'лютий', 'березень', 'квітень', 'травень', 'червень', 'липень', 'серпень', 'вересень', 'жовтень', 'листопад', 'грудень'][(int)substr($ym, 5, 2) - 1] . ' ' . substr($ym, 0, 4);
+  $html = '<!doctype html><html lang="uk"><head><meta charset="windows-1251"><title>Рахунок за ' . $mn . ' року</title><link rel="stylesheet" href="/assets/bill.css">'
+    . '<script>function pr(){window.print()}</script></head><body>'
+    . ($hint ? '<p class="hint">Щоб зберегти рахунок в PDF, натисніть кнопку "Друкувати" та виберіть у діалозі друку опцію "Зберегти як PDF".</p>' : '')
+    . '<div class="noprint"><button onclick="pr()">Друкувати</button> <a href="javascript:history.back()">Назад</a></div>'
+    . '<div class="bill"><img src="/assets/bill-logo.png" alt="ХТМ" width="40" height="40"><h2>Рахунок за послуги за ' . $mn . ' року</h2><p>Одержувач: КП «Харківські теплові мережі»</p>'
+    . '<p>Особовий рахунок ' . h($c['account']) . ', ' . h(mb_strtoupper($c['surname'])) . '</p>'
+    . '<table class="t"><tr><td>-ПЕРЕПЛАТА/+БОРГ за послугу з постачання: теплової енергії</td><td>0.00</td></tr><tr><td>Нараховано за послугу, грн</td><td>' . h($pay) . '</td></tr>'
+    . '<tr><td>Нараховано плати за абонентське обслуговування, грн</td><td>0.00</td></tr><tr class="sum"><td><b>ДО СПЛАТИ</b></td><td><b>' . h($pay) . '</b></td></tr></table>'
+    . '<p><a href="/cabinet/heat/help" onclick="return false">довідка</a></p></div></body></html>';
+  echo mb_convert_encoding($html, 'Windows-1251', 'UTF-8');
+}
 function row_cells(array $r, string $cls = '', bool $head = false): string {
   $keys = ['date', 'energy', 'volume', 'flow', 'power', 'tSupply', 'tReturn', 'hours', 'errHours', 'errCode'];
   $ids = ['date' => 'LastDtPok', 'energy' => 'LastValuePok', 'volume' => 'LastRashPok', 'flow' => 'HeatRash', 'power' => 'HeatPower', 'tSupply' => 'TempPod', 'tReturn' => 'TempO', 'hours' => 'LastTimePok', 'errHours' => 'ErrorTime', 'errCode' => 'ErrorKod'];
@@ -197,7 +219,8 @@ function page_admin(): void {
 }
 function do_admin(): void {
   $a = $_POST['act'] ?? '';
-  if ($a === 'set') { opt_set('scenario', in_array($_POST['scenario'] ?? '', SCENARIOS, true) && $_POST['scenario'] !== 'ok' ? $_POST['scenario'] : ''); opt_set('today', preg_match('/^\d{4}-\d{2}-\d{2}$/', $_POST['today'] ?? '') ? $_POST['today'] : ''); opt_set('robot_delay', ctype_digit($_POST['robot_delay'] ?? '') ? $_POST['robot_delay'] : ''); }
+  if ($a === 'set') { opt_set('scenario', in_array($_POST['scenario'] ?? '', SCENARIOS, true) && $_POST['scenario'] !== 'ok' ? $_POST['scenario'] : ''); opt_set('today', preg_match('/^\d{4}-\d{2}-\d{2}$/', $_POST['today'] ?? '') ? $_POST['today'] : ''); opt_set('robot_delay', ctype_digit($_POST['robot_delay'] ?? '') ? $_POST['robot_delay'] : '');
+    if (isset($_POST['bill_ym'])) opt_set('bill_ym', preg_match('/^(20\d\d-\d\d|none)$/', $_POST['bill_ym']) ? $_POST['bill_ym'] : ''); if (isset($_POST['bill_pay'])) opt_set('bill_pay', preg_match('/^-?\d+\.\d\d$/', $_POST['bill_pay']) ? $_POST['bill_pay'] : ''); }
   if ($a === 'robot') robot_tick(true);
   if ($a === 'reset') st_reset();
   if ($a === 'clear') @unlink(ROOT . '/storage/journal.jsonl');

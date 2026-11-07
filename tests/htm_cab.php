@@ -67,17 +67,21 @@ ok('телефон по подсказке «(0XX) ***-**-XX» → «(050) 111-2
 ok('без подсказки и чужой номер — как есть', HtmCab::phoneFor('+380501112233', '') === '+380501112233' && HtmCab::phoneFor('+48123456789', '(067) ***-**-45') === '+48123456789');
 ok('окно дат: «2026-11-05» и «5.11.2026» → 05.11.2026', HtmCab::dmy('2026-11-05') === '05.11.2026' && HtmCab::dmy('5.11.2026') === '05.11.2026');
 
-// осмотр кабинета: где квитанция (explore) — карточка → «Платежі» → «Квитанція за жовтень» (PDF); без рахунку, прізвища и цифр
-stand('act=reset'); stand('act=set&scenario=ok&today=2026-11-10&robot_delay=0');
+// осмотр кабинета (как живой 07.11): главная → «Сформувати рахунок» — HTML-страница «Рахунок за вересень 2026 року», PDF нет; без рахунку, прізвища и цифр
+stand('act=reset'); stand('act=set&scenario=ok&today=2026-11-10&robot_delay=0&bill_ym=&bill_pay=');
 $h = new HtmCab(); $home = $h->login('test@stand.local', 'stand-pass-123'); $acc = $h->accounts($home); $p = $h->heat($acc[0]['acc'], $acc[0]['sur']);
-$ex = $h->explore([$h->home['url'] => $h->home['body'], $p['url'] => $p['html']], $acc[0]['acc'], $acc[0]['sur']); $body = $ex['billBody']; $raw = $ex['billRaw'] ?? []; unset($ex['billBody'], $ex['billRaw']);
-$ej = json_encode($ex, JSON_UNESCAPED_UNICODE); $pp = array_column($ex['pages'], 'p');
-ok('осмотр: главная, тепло, карточка рахунку и «Платежі»; квитанция — PDF по ссылке «Квитанція за жовтень»', in_array('/cabinet/{acc}/{sur}', $pp, true) && in_array('/cabinet/payments/{acc}/{sur}', $pp, true)
-  && ($ex['bill']['pdf'] ?? false) === true && ($ex['bill']['p'] ?? '') === '/cabinet/payments/print/{acc}/{sur}/####-##' && str_starts_with((string)$body, '%PDF-') && str_contains((string)$ex['bill']['type'], 'pdf'), $ex);
+$ex = $h->explore([$h->home['url'] => $h->home['body'], $p['url'] => $p['html']], $acc[0]['acc'], $acc[0]['sur']); unset($ex['billBody'], $ex['billRaw']);
+$ej = json_encode($ex, JSON_UNESCAPED_UNICODE); $pp = array_column($ex['pages'], 'p'); $tr = array_column($ex['tried'] ?? [], 'p');
+ok('осмотр: главная, тепло, карточка рахунку и «Архів платежів» (+ довідка); «Сформувати рахунок» — HTML, не PDF', in_array('/cabinet/{acc}/{sur}', $pp, true) && in_array('/cabinet/payments/{acc}/{sur}', $pp, true)
+  && in_array('/cabinet/spravka/{acc}/{sur}', $pp, true) && in_array('/cabinet/bill/print/{acc}/{sur}', $tr, true) && $ex['bill'] === null, $ex);
 $strs = []; array_walk_recursive($ex, function ($v) use (&$strs) { if (is_string($v)) $strs[] = $v; });
-ok('…в осмотре нет рахунку, прізвища и цифр; заголовки таблицы платежей видны', !preg_match('/1000000061|ТЕСТОВИЙ|Тестовий|\d/u', implode(' ', $strs)) && in_array('Квитанція', $ex['pages'][array_search('/cabinet/payments/{acc}/{sur}', $pp, true)]['th'], true), $ej);
+ok('…в осмотре нет рахунку, прізвища и цифр', !preg_match('/1000000061|ТЕСТОВИЙ|Тестовий|\d/u', str_replace('windows-1251', '', implode(' ', $strs))), $ej);
+$bp = $h->billPage($acc[0]['acc'], $acc[0]['sur']);
+ok('рахунок: по ссылке «Сформувати рахунок» (не ?hint=pdf) — месяц из заголовка 2026-09, до сплати 245.30', ($bp['ym'] ?? '') === '2026-09' && ($bp['pay'] ?? '') === '245.30' && str_contains((string)($bp['url'] ?? ''), '/cabinet/bill/print/') && !str_contains((string)$bp['url'], 'hint'), $bp ? array_diff_key($bp, ['html' => 1, 'text' => 1]) : null);
+$bd = $h->billDoc($bp);
+ok('…копия: стиль и картинка сайта внутри, без скриптов/кнопок/ссылок', $bd['css'] >= 1 && $bd['img'] === 1 && !preg_match('/<script|onclick|<button|href=|Друкувати/iu', $bd['html']) && str_contains($bd['html'], 'Рахунок за послуги за вересень 2026'), [$bd['css'], $bd['img']]);
+ok('monthOf: «Рахунок за вересень 2026 року» → 2026-09, «грудень 2025» → 2025-12', HtmCab::monthOf('Рахунок за вересень 2026 року') === '2026-09' && HtmCab::monthOf('за грудень 2025') === '2025-12');
 $bad = array_filter(array_column(array_slice($h->w->steps, 0), 1), fn($x) => preg_match('~logout|/add|remove|settings~', $x));
-ok('…сырое (только вызывающему): месяц по строке таблицы и имени файла — 2026-10', HtmCab::monthOf((string)($raw['row'] ?? '')) === '2026-10' && HtmCab::monthOf((string)($raw['disp'] ?? '')) === '2026-10', $raw);
 ok('…только GET и не трогает add/remove/settings', !array_filter($h->w->steps, fn($s) => $s[0] !== 'GET' && !str_contains($s[1], '/cabinet/login')) && !$bad, $h->w->steps);
 
 // живой кабинет 06.11 22:14: новое соединение на /cabinet/list не установилось за 6 с → «сайт не відповідає», хотя вход прошёл

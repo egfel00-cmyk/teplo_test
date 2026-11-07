@@ -637,7 +637,7 @@ final class HtmCab {
     // карточка рахунку и разделы «платежі / рахунки / квитанції» — не больше 4 страниц
     $card = $base . '/cabinet/' . rawurlencode($acc) . '/' . rawurlencode($surU);
     $todo = [$card]; $done = array_map('strval', array_keys($pages));
-    foreach ((array)($out['_next'] ?? []) as $u) if ($safe($u) && preg_match('~/cabinet/(payments?|pay|rahun\w*|kvit\w*|bill\w*|invoice\w*|spr-teplo|nach\w*|saldo|borg)~i', (string)parse_url($u, PHP_URL_PATH))) $todo[] = $u;
+    foreach ((array)($out['_next'] ?? []) as $u) if ($safe($u) && preg_match('~/cabinet/(payments?|pay|rahun\w*|kvit\w*|bill\w*|invoice\w*|spr-teplo|spravka|sprvds|nach\w*|saldo|borg)~i', (string)parse_url($u, PHP_URL_PATH))) $todo[] = $u;
     $n = 0; $i = 0;
     while ($i < count($todo)) {
       $u = $todo[$i++];
@@ -648,7 +648,7 @@ final class HtmCab {
       try { $r = $this->get($u); } catch (CabErr $e) { $out['pages'][] = ['p' => $mp($u), 'err' => $e->err]; continue; }
       $done[] = $r['url'];
       $scan($r['url'], $r['body'], (int)$r['code']);
-      foreach ((array)($out['_next'] ?? []) as $u2) if ($safe($u2) && preg_match('~/cabinet/(payments?|rahun\w*|kvit\w*|bill\w*|invoice\w*)~i', (string)parse_url($u2, PHP_URL_PATH)) && !in_array($u2, $todo, true)) $todo[] = $u2;
+      foreach ((array)($out['_next'] ?? []) as $u2) if ($safe($u2) && preg_match('~/cabinet/(payments?|rahun\w*|kvit\w*|bill\w*|invoice\w*|spravka|sprvds)~i', (string)parse_url($u2, PHP_URL_PATH)) && !in_array($u2, $todo, true)) $todo[] = $u2;
     }
     unset($out['_next']);
     // квитанция: самые похожие ссылки с сайта ХТМ (рамка/embed — первыми), не больше 2 GET; уже открытые страницы — не в счёт
@@ -669,6 +669,82 @@ final class HtmCab {
     }
     unset($out['_next']); $out['cands'] = count($cands);
     return $out;
+  }
+  /** Рахунок из кабинета (живой кабинет, осмотр 07.11.2026): на главной «Сформувати рахунок» → /cabinet/bill/print/{acc}/{sur} — HTML-страница
+   *  «Рахунок за <місяць> <рік> року» с кнопками «Друкувати» / «Назад». PDF кабинет не отдаёт: «Зберегти рахунок в PDF» (?hint=pdf) — та же страница
+   *  с подсказкой «Друкувати → Зберегти як PDF». Только GET. → ['url', 'html' (UTF-8), 'title', 'ym', 'text', 'pay'] | null (не рахунок / месяц не понять). */
+  public function billPage(string $acc, string $sur): ?array {
+    $u = null;
+    if (!empty($this->home['body'])) foreach (CabWeb::dom((string)$this->home['body'])->query('//a[@href]') as $a) {
+      $h = CabWeb::abs(trim((string)$a->getAttribute('href')), (string)$this->home['url']);
+      if (preg_match('~^/cabinet/bill/print/~i', (string)parse_url($h, PHP_URL_PATH)) && !str_contains((string)parse_url($h, PHP_URL_QUERY), 'pdf') && $this->w->sameSite($h)) { $u = $h; break; }
+    }
+    $r = $this->get($u ?? self::url($acc, $sur, 'bill/print'));
+    if ($r['code'] !== 200 || $r['body'] === '' || str_starts_with($r['body'], '%PDF-')) return null;
+    $x = CabWeb::dom($r['body']); $title = CabWeb::sp((string)($x->query('//title')->item(0)?->textContent ?? ''));
+    $text = CabWeb::sp(implode(' ', array_map(fn($t) => $t->nodeValue, iterator_to_array($x->query('//body//text()[not(ancestor::script) and not(ancestor::style)]')))));
+    $head = $title . ' | ' . mb_substr($text, 0, 400);
+    if (!preg_match('/рахун(ок|ку)\s+(за\s+послуг\S*\s+)?за\s/iu', $head)) return null;
+    $ym = self::monthOf($title) ?? self::monthOf(mb_substr($text, 0, 400));
+    if ($ym === null) return null;
+    $pay = preg_match('/до\s+сплати\D{0,30}?(-?\d[\d\x{a0} ]{0,9}(?:[.,]\d{1,2})?)/iu', $text, $m) ? str_replace([',', ' ', "\u{a0}"], ['.', '', ''], $m[1]) : null;
+    return ['url' => $r['url'], 'html' => $r['body'], 'title' => $title, 'ym' => $ym, 'text' => $text, 'pay' => $pay !== null && is_numeric($pay) ? $pay : null];
+  }
+  private static function cleanCss(string $c): string {
+    $c = preg_replace('~@import[^;]*;?|expression\s*\(|javascript\s*:|behavior\s*:|-moz-binding|</?style~i', '', $c);
+    return mb_substr((string)$c, 0, 300000);
+  }
+  /** Копия рахунку в историю: самостоятельная страница — без скриптов, кнопок, форм и ссылок; стили (link) и картинки сайта ХТМ — внутри (data:),
+   *  пока сессия кабинета жива (до logout). Отдаём со своего сервера под CSP sandbox (index.php): ни скриптов, ни запросов наружу.
+   *  $b — billPage(). → ['html', 'css' => n, 'img' => n] */
+  public function billDoc(array $b): array {
+    $x = CabWeb::dom((string)$b['html']); $d = $x->document; $css = []; $nimg = 0; $got = 0;
+    foreach (iterator_to_array($x->query('//link[@href]')) as $l) {
+      if (!preg_match('/stylesheet/i', (string)$l->getAttribute('rel')) || count($css) >= 3 || $this->w->left() < 6) continue;
+      $u = CabWeb::abs(trim((string)$l->getAttribute('href')), (string)$b['url']); if (!$this->w->sameSite($u)) continue;
+      try { $r = $this->w->req('GET', $u); if ($r['code'] === 200 && strlen($r['body']) < 400000 && !preg_match('~<(html|script|body)\b~i', $r['body'])) $css[] = self::cleanCss($r['body']); } catch (Throwable $e) {}
+    }
+    foreach (iterator_to_array($x->query('//style')) as $st) $css[] = self::cleanCss((string)$st->textContent);
+    foreach (iterator_to_array($x->query('//img')) as $im) {
+      $src = trim((string)$im->getAttribute('src')); $data = null;
+      if (preg_match('~^data:image/(png|jpeg|gif|webp);base64,[A-Za-z0-9+/=\s]+$~i', $src)) $data = $src;
+      elseif ($src !== '' && $nimg < 8 && $this->w->left() >= 6) {
+        $u = CabWeb::abs($src, (string)$b['url']);
+        if ($this->w->sameSite($u)) {
+          $nimg++;
+          try {
+            $r = $this->w->req('GET', $u); $info = $r['code'] === 200 && strlen($r['body']) < 400000 ? @getimagesizefromstring($r['body']) : false;
+            if ($info && in_array($info['mime'] ?? '', ['image/png', 'image/jpeg', 'image/gif', 'image/webp'], true)) { $data = 'data:' . $info['mime'] . ';base64,' . base64_encode($r['body']); $got++; }
+          } catch (Throwable $e) {}
+        }
+      }
+      foreach (iterator_to_array($im->attributes) as $at) if (!in_array(strtolower($at->name), ['alt', 'width', 'height', 'style', 'class', 'align', 'border'], true)) $im->removeAttribute($at->name);
+      if ($data) $im->setAttribute('src', $data); else $im->parentNode?->removeChild($im);
+    }
+    // кнопки страницы («Друкувати», «Назад», «Зберегти в PDF») — не нужны в копии
+    foreach (iterator_to_array($x->query('//a|//span|//div|//td|//p')) as $n) {
+      $t = CabWeb::sp((string)$n->textContent);
+      if (mb_strlen($t) <= 30 && preg_match('/^(друкувати|друк|роздрукувати|назад|печать|печатать|print|back|зберегти\s.*pdf)$/iu', $t) && ($n->nodeName === 'a' || $n->hasAttribute('onclick') || !$x->query('.//table', $n)->length)) $n->parentNode?->removeChild($n);
+    }
+    foreach (['script', 'noscript', 'iframe', 'frame', 'frameset', 'object', 'embed', 'applet', 'input', 'button', 'select', 'textarea', 'link', 'meta', 'base', 'style', 'template', 'video', 'audio', 'source', 'canvas', 'title', 'head'] as $tag)
+      foreach (iterator_to_array($d->getElementsByTagName($tag)) as $n) $n->parentNode?->removeChild($n);
+    foreach (iterator_to_array($d->getElementsByTagName('form')) as $f) { while ($f->firstChild) $f->parentNode->insertBefore($f->firstChild, $f); $f->parentNode->removeChild($f); }
+    foreach (iterator_to_array($x->query('//*')) as $n) {
+      foreach (iterator_to_array($n->attributes) as $at) {
+        $an = strtolower($at->name);
+        if (str_starts_with($an, 'on') || in_array($an, ['href', 'xlink:href', 'action', 'formaction', 'target', 'srcset', 'src', 'data', 'ping', 'background', 'poster'], true) && !($n->nodeName === 'img' && $an === 'src')) $n->removeAttribute($at->name);
+        elseif ($an === 'style') $n->setAttribute('style', self::cleanCss((string)$at->value));
+      }
+    }
+    $body = $d->getElementsByTagName('body')->item(0); $inner = '';
+    if ($body) foreach ($body->childNodes as $c) $inner .= $d->saveHTML($c);
+    $title = htmlspecialchars((string)$b['title'], ENT_QUOTES, 'UTF-8');
+    $note = 'Копія рахунку з кабінету КП «ХТМ» (hts.kharkov.ua), збережено ' . (new DateTimeImmutable('now', new DateTimeZone('Europe/Kyiv')))->format('d.m.Y') . ' сервісом «Лічильники». Зберегти PDF — «Друк» у меню браузера.';
+    $html = '<!DOCTYPE html><html lang="uk"><head><meta charset="utf-8"><meta name="viewport" content="width=820"><meta name="robots" content="noindex"><title>' . $title . '</title>'
+      . ($css ? '<style>' . implode("\n", $css) . '</style>' : '')
+      . '<style>.lc-copy{font:13px/1.4 system-ui,-apple-system,sans-serif;color:#444;background:#f2f2f2;border:1px solid #ddd;border-radius:6px;padding:6px 10px;margin:8px 0 12px}@media print{.lc-copy{display:none}}</style></head>'
+      . '<body><div class="lc-copy">' . htmlspecialchars($note, ENT_QUOTES, 'UTF-8') . '</div>' . $inner . '</body></html>';
+    return ['html' => $html, 'css' => count($css), 'img' => $got];
   }
   /** «2026-11-05» / «5.11.2026» → «05.11.2026». */
   public static function dmy(string $s): string {

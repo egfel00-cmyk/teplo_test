@@ -1228,12 +1228,12 @@
   function vkbIds(st) {
     var o = {};
     ((st && st.water) || []).forEach(function (r) { ((r && r.bills) || []).forEach(function (b) { if (b && b.auto === 'vk' && b.id) o[b.id] = { r: r, at: b.at, k: 'vk', d: r.date }; }); });
-    ((st && st.readings) || []).forEach(function (r) { ((r && r.bills) || []).forEach(function (b) { if (b && b.auto === 'htm' && b.id) o[b.id] = { r: r, at: b.at, k: 'htm', d: r.htm && r.htm.date }; }); });
+    ((st && st.readings) || []).forEach(function (r) { ((r && r.bills) || []).forEach(function (b) { if (b && b.auto === 'htm' && b.id) o[b.id] = { r: r, at: b.at, k: 'htm', d: b.ym ? b.ym + '-01' : r.htm && r.htm.date }; }); });
     return o;
   }
   function vkbToast(before) {
     var now = vkbIds(S), id = Object.keys(now).filter(function (k) { return !before[k] && Date.now() - (Date.parse(now[k].at) || 0) < 3 * 864e5; })[0]; if (!id) return;
-    var x = now[id], r = x.r; toast(t(x.k === 'htm' ? 'hcb_added' : 'vkb_added', { m: monthLabel(String(x.d || '').slice(0, 7)), p: placeLabel(place(r.place) || place()) })); track(x.k === 'htm' ? 'htm_bill_seen' : 'vk_bill_seen');
+    var x = now[id], r = x.r; toast(t(x.k === 'htm' ? (r.billOnly ? 'hcb_new' : 'hcb_added') : 'vkb_added', { m: monthLabel(String(x.d || '').slice(0, 7)), p: placeLabel(place(r.place) || place()) })); track(x.k === 'htm' ? 'htm_bill_seen' : 'vk_bill_seen');
   }
   /** «Квитанції самі» ХТМ — у квартирах з теплолічильником (за замовчуванням увімкнено; вимкнено — meter.billAuto === false). */
   function hcbPlaces() { return places().filter(function (p) { var m = p.id === S.placeId ? S.meter : p.meter; return !!(m && !m.removed); }); }
@@ -3428,7 +3428,9 @@
   }
 
   /** Показания без удалённых (удалённые остаются «надгробием» с deleted, чтобы удаление синхронизировалось). */
-  function RD() { var first = S.places && S.places[0] ? S.places[0].id : 'main'; return (S.readings || []).filter(function (r) { return r && !r.deleted && (r.place || first) === S.placeId; }); }
+  function RD() { var first = S.places && S.places[0] ? S.places[0].id : 'main'; return (S.readings || []).filter(function (r) { return r && !r.deleted && !r.billOnly && (r.place || first) === S.placeId; }); }
+  /** «Платіжка ХТМ» — квитанція з кабінету ХТМ за місяць, коли показань за нього немає (HtmBills на сервері; billOnly, ym). Не показання: лише в історії. */
+  function RDB() { var first = S.places && S.places[0] ? S.places[0].id : 'main'; return (S.readings || []).filter(function (r) { return r && !r.deleted && r.billOnly && r.ym && (r.place || first) === S.placeId; }); }
   /** Тариф тепла, грн/Гкал: свій у квартири (place.prov.heat.price — з платіжки або з Налаштувань), далі старий спільний S.tariff, далі ХТМ. */
   function tariff() {
     var p = place() || {}, h = (p.prov || {}).heat || {}, pn = R.num(h.price); if (pn && pn > 0) return pn;
@@ -3616,12 +3618,19 @@
     if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { var os = Array.prototype.slice.call(m.querySelectorAll('.st-opt')), i = os.indexOf(document.activeElement); i = (i + (e.key === 'ArrowDown' ? 1 : -1) + os.length) % os.length; os[i].focus(); e.preventDefault(); }
   });
   function heatMixed(limit) {
-    var arr = RD().map(function (r) { return { d: (r.htm && r.htm.date) || '', r: r }; }).concat(gaps('heat').map(function (g) { return { d: g.from, g: g }; }));
+    var arr = RD().map(function (r) { return { d: (r.htm && r.htm.date) || '', r: r }; }).concat(gaps('heat').map(function (g) { return { d: g.from, g: g }; }), RDB().map(function (r) { return { d: (r.htm && r.htm.date) || r.ym + '-28', b: r }; }));
     arr.sort(function (a, b) { return a.d < b.d ? 1 : a.d > b.d ? -1 : a.g ? -1 : 1; });
     return limit ? arr.slice(0, limit) : arr;
   }
   function readingList(arr) {
-    return '<ul class="list" data-key="reading-list">' + arr.map(function (x) { return x.g ? gapItem(x.g) : readingItem(x.r || x); }).join('') + '</ul>';
+    return '<ul class="list" data-key="reading-list">' + arr.map(function (x) { return x.g ? gapItem(x.g) : x.b ? hbillItem(x.b) : readingItem(x.r || x); }).join('') + '</ul>';
+  }
+  /** Сума «до сплати» з квитанції ХТМ (сервер узяв зі сторінки рахунку), якщо є. */
+  function hbillPay(r) { var b = ((r && r.bills) || []).filter(function (x) { return x && x.auto === 'htm' && R.num(x.pay) !== null; })[0]; return b ? R.num(b.pay) : null; }
+  function hbillItem(r) {
+    var pay = hbillPay(r);
+    return histRow({ cls: 'hli-heat hli-bill', key: 'hbill-' + r.id, href: '#rec-' + r.id, lead: '<span class="hr-bill">' + ico('bill', 16) + esc(t('hb_title')) + '</span>',
+      none: pay !== null ? t('hb_pay', { s: money(pay) }) : t('hb_none'), date: monthLabel(r.ym), sub: [pay !== null ? t('hb_none') : '', t('hb_sub')], right: billMark(r.bills) });
   }
   function readingItem(r) {
     return [r].map(function (r) {
@@ -3894,7 +3903,7 @@
     var of = {}, info = {}; ss.forEach(function (s) { info[s.season] = s; s.ids.forEach(function (id) { of[id] = s.season; }); });
     var groups = {};
     arr.forEach(function (x) {
-      var k = x.g ? TS.seasonOf(x.g.from) : of[x.r.id] !== undefined ? of[x.r.id] : TS.seasonOf(x.r.htm.date);
+      var k = x.g ? TS.seasonOf(x.g.from) : x.b ? TS.seasonOf(x.d) : of[x.r.id] !== undefined ? of[x.r.id] : TS.seasonOf(x.r.htm.date);
       (groups[k] = groups[k] || []).push(x);
     });
     var keys = Object.keys(groups).map(Number).sort(function (a, b) { return b - a; }), td = today(), run = +td.slice(5, 7) >= 10 || +td.slice(5, 7) <= 4;
@@ -3909,6 +3918,7 @@
           if (e && e.heatDays) { o.heatDays += e.heatDays; if (!o.from || x.g.from < o.from) o.from = x.g.from; if (x.g.to && (!o.to || x.g.to > o.to)) o.to = x.g.to; }
           return;
         }
+        if (x.b) return;   // «Платіжка ХТМ» — не показання
         var r = x.r || x, iv = interval(r); if (!iv || iv.dE < 0) return;
         o.gcal += iv.dE; o.cost += iv.cost; o.n++;
         if (iv.dE / iv.days >= 0.003) { o.heatDays += iv.days; if (!o.from || iv.from < o.from) o.from = iv.from; if (!o.to || r.htm.date > o.to) o.to = r.htm.date; }
@@ -3929,6 +3939,7 @@
   /** Карточка показаний из истории: все 10 значений, сколько набежало и почём; правка и удаление. */
   function recView(id, edit) {
     var r = RD().filter(function (x) { return x.id === id; })[0];
+    if (!r) { var hb = RDB().filter(function (x) { return x.id === id; })[0]; if (hb) return hbillView(hb); }
     if (!r) return { screen: 'S09', route: 'history', html: '<h1>' + esc(t('hi_title')) + '</h1><p class="muted">' + esc(t('rec_gone')) + '</p><a class="btn" href="#history">' + esc(t('back')) + '</a>' };
     var h = r.htm || {}, iv = interval(r), cls = { accepted: 'ok', rejected: 'bad', handed: 'info' }[r.status] || 'neutral';
     var head = '<p><a href="#history">← ' + esc(t('hi_title')) + '</a></p><h1>' + esc(fmtDate(h.date, true)) + '</h1>' +
@@ -3962,6 +3973,15 @@
     return { screen: 'S09', route: 'history', html: head + used + wxp + '<ul class="list" data-key="rec-values">' + rows + '</ul>' + photoStrip(r.photos, 'h' + r.id, 'h:' + r.id) + billsBox('h:' + r.id, r.bills, t('bl_title', { m: monthLabel(String(h.date || '').slice(0, 7)) })) +
       '<div class="row-actions">' + st + '<a class="btn sec" href="#rec-' + r.id + '-edit" data-key="rec-edit">' + esc(t('rec_edit')) + '</a>' +
       '<button class="btn danger" data-act="rec-del-ask" data-key="rec-del">' + esc(t('rec_del')) + '</button></div><div id="rec-del-confirm"></div>' + ownBox('h', r) };
+  }
+
+  /** «Платіжка ХТМ» без показань: квитанція (копія сторінки рахунку з кабінету ХТМ), сума до сплати; прибрати запис. */
+  function hbillView(r) {
+    var pay = hbillPay(r), m = monthLabel(r.ym);
+    return { screen: 'S09', route: 'history', html: '<p><a href="#history">← ' + esc(t('hi_title')) + '</a></p><h1>' + esc(t('hb_title')) + ' · ' + esc(m) + '</h1>' +
+      '<p class="small muted" data-key="hb-sub">' + esc(t('hb_view_sub')) + '</p>' + (pay !== null ? '<p data-key="hb-pay"><b class="num big">' + esc(money(pay)) + '</b> <span class="small muted">грн · ' + esc(t('hb_pay_lbl')) + '</span></p>' : '') +
+      billsBox('h:' + r.id, r.bills, t('bl_title', { m: m })) +
+      '<div class="row-actions"><button class="btn danger" data-act="rec-del-ask" data-key="rec-del">' + esc(t('rec_del')) + '</button></div><div id="rec-del-confirm"></div>' };
   }
 
   // ---------------- статистика (пока только владельцу) ----------------
@@ -4222,10 +4242,10 @@
     var busy = BILLS.busy === ref;
     h += '<p class="small muted">' + esc(t('bl_sub')) + '</p>';
     if (list.length) h += '<ul class="docs">' + list.map(function (b, i) {
-      var url = window.TEPLO_API + '/docs/file?id=' + b.id, img = b.mime !== 'application/pdf';
+      var url = window.TEPLO_API + '/docs/file?id=' + b.id, page = b.mime === 'text/html', img = b.mime !== 'application/pdf' && !page;
       var th = img ? '<span class="doc-th"><img src="' + esc(url) + '" data-gal="b' + esc(ref) + '" alt="' + esc(t('bl_img', { n: i + 1 })) + '" loading="lazy"></span>'
-        : '<a class="doc-th" href="' + esc(url) + '" target="_blank" rel="noopener" data-act="bill-open" data-id="' + esc(b.id) + '" aria-label="' + esc(t('mv_open') + ': ' + (b.name || 'PDF')) + '"><span class="pdf">PDF</span></a>';
-      return '<li>' + th + '<div class="grow"><b class="bill-name">' + esc(b.name || (img ? t('bl_photo') : 'PDF')) + '</b><div class="small muted">' + esc((b.auto === 'vk' ? t('bl_auto_vk') + ' · ' : b.auto === 'htm' ? t('bl_auto_htm') + ' · ' : '') + (b.at ? fmtDate(String(b.at).slice(0, 10), true) + ' · ' : '')) + Math.max(1, Math.round((b.bytes || 0) / 1024)) + ' КБ</div></div>' +
+        : '<a class="doc-th" href="' + esc(url) + '" target="_blank" rel="noopener" data-act="bill-open" data-id="' + esc(b.id) + '" aria-label="' + esc(t('mv_open') + ': ' + (b.name || 'PDF')) + '"><span class="pdf">' + (page ? 'ХТМ' : 'PDF') + '</span></a>';
+      return '<li>' + th + '<div class="grow"><b class="bill-name">' + esc(b.name || (img ? t('bl_photo') : 'PDF')) + '</b><div class="small muted">' + esc((b.auto === 'vk' ? t('bl_auto_vk') + ' · ' : b.auto === 'htm' ? t('bl_auto_htm') + ' · ' : '') + (R.num(b.pay) !== null ? t('hb_pay', { s: money(R.num(b.pay)) }) + ' · ' : '') + (b.at ? fmtDate(String(b.at).slice(0, 10), true) + ' · ' : '')) + Math.max(1, Math.round((b.bytes || 0) / 1024)) + ' КБ</div></div>' +
         '<button type="button" class="linkbtn" data-act="bill-del" data-ref="' + esc(ref) + '" data-id="' + esc(b.id) + '"' + (busy ? ' disabled' : '') + '>' + esc(t('rec_del')) + '</button></li>';
     }).join('') + '</ul>';
     return h + '<input type="file" id="bill-input" class="sr" tabindex="-1" multiple aria-label="' + esc(t('bl_add')) + '" accept="image/jpeg,image/png,image/webp,image/heic,application/pdf">' +
@@ -5666,13 +5686,18 @@
     if (w) w.className = 'field' + (res.level === 'block' ? ' is-block' : res.level === 'warn' ? ' is-warn' : '');
   }
 
+  /** Внесли показання за місяць, на який уже є «Платіжка ХТМ» (квитанція без показань), — квитанція переїжджає до них, «Платіжка» зникає. */
+  function hbillAdopt(rd) {
+    var ym = String((rd.htm && rd.htm.date) || '').slice(0, 7); if (!ym) return;
+    RDB().forEach(function (b) { if (b.ym !== ym || (b.place || S.placeId) !== (rd.place || S.placeId)) return; rd.bills = (rd.bills || []).concat(b.bills || []); b.bills = []; b.deleted = true; b.updatedAt = Date.now(); });
+  }
   function saveReading(status) {
     var res = S._lastCheck || runCheck(S.draft), htm = draftReadingGcal(S.draft);
     var rd = { id: uid(), place: S.placeId, htm: htm, raw: Object.assign({}, S.draft.values), unit: energyUnit(), status: status, createdAt: new Date().toISOString(), updatedAt: Date.now(), source: S.draft.source || 'manual',
       verdict: res.verdict, codes: res.items.map(function (x) { return x.code; }),
       derived: Object.assign({}, res.derived, S.baseline ? { days: R.daysBetween(S.baseline.date, htm.date) } : {}) };
     if (S.draft.photos && S.draft.photos.length) rd.photos = S.draft.photos.slice();
-    S.readings.push(rd); S.draft = null; S.focusId = rd.id; save();
+    S.readings.push(rd); hbillAdopt(rd); S.draft = null; S.focusId = rd.id; save();
     return rd;
   }
 
@@ -5761,7 +5786,7 @@
       case 'pl-del': { var dp = place(el.getAttribute('data-id')); if (dp && places().length > 1) { var dl = placeLabel(dp); dp.deleted = true; dp.updatedAt = Date.now(); if (dp.id === S.placeId) { S.placeId = null; S.meter = null; S.baseline = null; S.draft = null; ensurePlaces(); } save(); toast(t('pv_deleted', { p: dl })); go(places().length > 1 ? 'places' : 'home'); } break; }
       case 'focus': S.focusId = el.getAttribute('data-id'); save(); break;
       case 'rec-del-ask': { var bx = document.getElementById('rec-del-confirm'); if (bx) bx.innerHTML = '<div class="banner warn" style="margin-top:16px">' + ico('alert', 22) + '<div><p>' + esc(t('rec_del_q')) + '</p><div class="row-actions" style="margin-top:8px"><button class="btn danger solid" data-act="rec-del-yes">' + esc(t('rec_del')) + '</button></div></div></div>'; break; }
-      case 'rec-del-yes': { var m2 = routeName().match(/^rec-([\w-]+)$/), rx = m2 && RD().filter(function (x) { return x.id === m2[1]; })[0];
+      case 'rec-del-yes': { var m2 = routeName().match(/^rec-([\w-]+)$/), rx = m2 && RD().concat(RDB()).filter(function (x) { return x.id === m2[1]; })[0];
         if (rx) { rx.deleted = true; rx.updatedAt = Date.now(); photoKeep(rx.photos, false); billsDrop(rx.bills); if (S.focusId === rx.id) S.focusId = null; save(); toast(t('rec_deleted')); } go('history'); break; }
       case 'accepted': {
         var ra = RD().filter(function (x) { return x.id === el.getAttribute('data-id'); })[0];

@@ -89,7 +89,7 @@ final class Reminders {
         $need = true;
         foreach ((array)($st['readings'] ?? []) as $r) {
           $d = (string)($r['htm']['date'] ?? '');
-          if (is_array($r) && empty($r['deleted']) && empty($r['own']) && ($r['place'] ?? $first) === $p['id'] && $d >= "$ym-05" && $d <= "$ym-25") { $need = false; break; }
+          if (is_array($r) && empty($r['deleted']) && empty($r['own']) && empty($r['billOnly']) && ($r['place'] ?? $first) === $p['id'] && $d >= "$ym-05" && $d <= "$ym-25") { $need = false; break; }
         }
       }
       if ($need) $out[] = ['id' => (string)$p['id'], 'label' => mb_substr($label, 0, 40), 'all' => $all];

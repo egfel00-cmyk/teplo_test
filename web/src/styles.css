@@ -739,6 +739,8 @@ details.wacc > summary { list-style: none; cursor: pointer; display: flex; align
 .hrow .hr-q, .hrow .hr-m { font-size: 19px; font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .hrow .hr-q small, .hrow .hr-m small { font-size: 13px; font-weight: 600; color: var(--c-ink-2); }
 .hrow .hr-none { font-size: 15px; font-weight: 600; color: var(--c-ink-2); }
+.hrow .hr-bill { display: inline-flex; align-items: center; gap: 6px; font-size: 15px; font-weight: 700; color: var(--c-ink); }
+.hrow .hr-bill .ico { color: var(--bt-hist, currentColor); }
 .hrow .hr-sub { margin-top: 2px; font-size: 13px; color: var(--c-ink-2); display: flex; flex-wrap: wrap; gap: 0 12px; }
 .mbox-sub, .ss-sub { display: flex !important; flex-wrap: wrap; gap: 0 12px; }
 .hrow .hr-date { margin-bottom: 6px; font-size: 13px; color: var(--c-ink-2); }

@@ -48,7 +48,7 @@ final class Admin {
       foreach (array_merge((array)($p['water']['meters'] ?? []), (array)($p['meters'] ?? [])) as $m)
         if ($alive($m) && isset($out['kinds'][$m['kind'] ?? ''])) $out['kinds'][$m['kind']]++;
     }
-    $rd = array_values(array_filter((array)($s['readings'] ?? []), $live));
+    $rd = array_values(array_filter((array)($s['readings'] ?? []), fn($x) => $live($x) && empty($x['billOnly'])));   // «Платіжка ХТМ» — не показания
     $wr = array_values(array_filter((array)($s['water'] ?? []), fn($x) => $live($x) && empty($x['base'])));
     $mr = array_values(array_filter((array)($s['mrecs'] ?? []), fn($x) => $live($x) && empty($x['base'])));
     $all = array_merge($rd, $wr, $mr);
@@ -198,10 +198,13 @@ final class Admin {
         if (!preg_match('/^\d{5,15}:[A-Za-z0-9_\-]{30,60}$/', $token)) throw new HttpError(422, 'bad_token', ['human' => 'Токен выглядит как 1234567890:AA… — скопируйте его из сообщения @BotFather целиком.']);
         $me = Telegram::call('getMe', [], $token);
         if (empty($me['ok']) || empty($me['result']['username'])) throw new HttpError(422, 'token_rejected', ['human' => 'Telegram не принял токен: ' . ($me['description'] ?? 'нет ответа') . '. Ничего не сохранено.']);
+        $was = (string)Cfg::get('bot_token');   // прежний бот — перенести его описание и команды новому (Telegram::copyProfile)
         Cfg::saveRuntime(['bot_token' => $token, 'bot_username' => (string)$me['result']['username'],
           'webhook_secret' => Cfg::runtime()['webhook_secret'] ?? (Cfg::get('webhook_secret') ?: bin2hex(random_bytes(24)))]);
         $setup = Telegram::setup();
-        return ['ok' => $setup['ok'], 'bot' => $me['result']['username'], 'setup' => $setup, 'settings' => self::settings()];
+        $moved = $was !== '' && $was !== $token ? Telegram::copyProfile($was, $token) : null;
+        if ($moved) @file_put_contents(Cfg::data() . '/cache/bot_moved.json', json_encode(['at' => time(), 'from' => $moved['old'] ?? '', 'to' => (string)$me['result']['username'], 'copied' => $moved['copied'], 'skipped' => $moved['skipped'], 'errors' => $moved['errors']], JSON_UNESCAPED_UNICODE), LOCK_EX);
+        return ['ok' => $setup['ok'], 'bot' => $me['result']['username'], 'setup' => $setup, 'moved' => $moved, 'settings' => self::settings()];
       }
       case 'GET /api/admin/devices': return Visits::summary((int)($q['days'] ?? 30), !empty($q['all']));
       case 'GET /api/admin/journal': return Journal::sessions((int)($q['days'] ?? 7), !empty($q['all']));
