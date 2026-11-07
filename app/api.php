@@ -211,7 +211,6 @@ final class Api {
         $row = Db::one('SELECT data, version FROM user_state WHERE user_id = ?', [$user['id']]);
         return ['state' => $row ? json_decode($row['data'], true) : null, 'version' => $row ? (int)$row['version'] : 0];
       }
-      case 'GET /api/bot/adopt': return Admin::adopt((string)($r->query()['t'] ?? ''), (string)($r->server['REMOTE_ADDR'] ?? ''));   // одноразовая смена бота (Admin::adopt)
       case 'PUT /api/state': {
         if (!$user) throw new HttpError(401, 'unauthorized');
         RateLimit::hit('state_user', (string)$user['id']);

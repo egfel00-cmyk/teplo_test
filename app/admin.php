@@ -234,16 +234,6 @@ final class Admin {
     if ($moved) @file_put_contents(Cfg::data() . '/cache/bot_moved.json', json_encode(['at' => time(), 'from' => $moved['old'] ?? '', 'to' => (string)$me['result']['username'], 'copied' => $moved['copied'], 'skipped' => $moved['skipped'], 'errors' => $moved['errors']], JSON_UNESCAPED_UNICODE), LOCK_EX);
     return ['ok' => $setup['ok'], 'bot' => $me['result']['username'], 'setup' => $setup, 'moved' => $moved];
   }
-  /** Смена бота без /admin (владелец 07.11.2026 прислал токен нового бота в чат; у сессии нет доступа к серверу): GET /api/bot/adopt?t=<токен> примет
-   *  ТОЛЬКО токен с этим sha256 (в git — лишь отпечаток, сам токен — нет). Тот же токен уже стоит — ничего не делает. Убрать после смены. */
-  const BOT_ADOPT = '419f6f34b6cb2e4794c050e6b0327bcad4978b13e76de8677895c6ce69f7dfed';
-  public static function adopt(string $t, string $ip): array {
-    RateLimit::hit('bot_adopt', $ip);
-    $h = hash('sha256', $t);   // ответ — всегда 200 с причиной (WebFetch сессии не показывает тело ошибок); сам токен не возвращаем
-    if ($t === '' || !hash_equals(self::BOT_ADOPT, $h)) return ['ok' => false, 'error' => 'not_this_token', 'len' => strlen($t), 'h' => substr($h, 0, 8)];
-    if ((string)Cfg::get('bot_token') === $t) return ['ok' => true, 'already' => true, 'bot' => (string)Cfg::get('bot_username')];
-    try { return self::setBot($t); } catch (HttpError $e) { return ['ok' => false, 'error' => $e->err, 'human' => $e->extra['human'] ?? null]; }
-  }
   private static function settings(): array {
     $tg = null;
     if (Cfg::get('bot_token')) { $w = Telegram::call('getWebhookInfo', []); $r = $w['result'] ?? [];

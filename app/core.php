@@ -26,7 +26,7 @@ final class Cfg {
       'trusted_proxies' => array_merge(['127.0.0.1/32', '::1/128'], self::cloudflare()),
       'limits' => [
         'ip_all' => [120, 60], 'login_ip' => [10, 300], 'login_fail_acc' => [5, 900], 'register_ip' => [5, 3600],
-        'telegram_ip' => [30, 300], 'state_user' => [60, 60], 'bot_adopt' => [10, 3600],
+        'telegram_ip' => [30, 300], 'state_user' => [60, 60],
         'recog_upload' => [120, 3600],   // фото на распознавание: в час на пользователя
         'recog_run' => [40, 86400],      // запросов к нейросети: в сутки на пользователя (пачки по 3 фото)
         'feedback_ip' => [10, 3600],     // отзывов с одного IP в час
