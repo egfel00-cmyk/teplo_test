@@ -1,11 +1,11 @@
 // Вода → Водоканал через сайт (кабинет «без реєстрації», 04.11.2026): «Перевірити на сайті Водоканалу» → что видит сайт (лічильники,
 // останні показання) → наші водоміри ↔ лічильники сайту → «Перевірте» → «Відправити на сайт Водоканалу» → «прийнято» → передано
 // (підтверджено). Помилка сайту (менше за попередні) — його слова; чужий рахунок — пояснення; кабінет не відкривається — лише бот.
-// Нужны: сайт 127.0.0.1:8013 (config.php: 'vk_cab_base' => 'http://127.0.0.1:8099') и синтетический кабинет:
-//   php -S 127.0.0.1:8099 tests/vk-mock/router.php        node e2e_vkcab.cjs
+// Нужны: сайт 127.0.0.1:8013 (config.php: 'vk_cab_base' => 'http://127.0.0.1:8098'; 8099 — стенд ХТМ) и синтетический кабинет:
+//   php -S 127.0.0.1:8098 tests/vk-mock/router.php        node e2e_vkcab.cjs
 const { chromium } = require('playwright'); const demo = require('./demo.cjs'); const fs = require('fs');
 let pass = 0, fail = 0; const ok = (n, c, x) => { if (c) { pass++; console.log('  OK  ' + n); } else { fail++; console.log(' FAIL ' + n + (x !== undefined ? ' → ' + JSON.stringify(x) : '')); } };
-const U = 'http://127.0.0.1:8013/', M = 'http://127.0.0.1:8099', DATA = process.env.SITE_DATA || '/tmp/teplo_data';
+const U = 'http://127.0.0.1:8013/', M = process.env.VK_MOCK || 'http://127.0.0.1:8098', DATA = process.env.SITE_DATA || '/tmp/teplo_data';
 const cab = (state) => { const n = Math.floor(Date.now() / 1000); fs.mkdirSync(DATA + '/cache', { recursive: true });
   fs.writeFileSync(DATA + '/cache/vk_status.json', JSON.stringify({ cab: { state, at: n, since: n - 3600, everOk: true, lastOk: state === 'ok' ? n : n - 7200, code: state === 'ok' ? 200 : 0 } })); };
 (async () => {

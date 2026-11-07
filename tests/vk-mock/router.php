@@ -1,6 +1,6 @@
 <?php
-// php -S 127.0.0.1:8099 tests/vk-mock/router.php — синтетический кабинет Водоканала для e2e (config.php: 'vk_cab_base' => 'http://127.0.0.1:8099').
-require __DIR__ . '/pages.php'; $GLOBALS['VKM_HOST'] = $_SERVER['HTTP_HOST'] ?? '127.0.0.1:8099';
+// php -S 127.0.0.1:8098 tests/vk-mock/router.php — синтетический кабинет Водоканала для e2e (config.php: 'vk_cab_base' => 'http://127.0.0.1:8098'; 8099 — стенд ХТМ).
+require __DIR__ . '/pages.php'; $GLOBALS['VKM_HOST'] = $_SERVER['HTTP_HOST'] ?? '127.0.0.1:8098';
 $f = sys_get_temp_dir() . '/vkm_store.json'; $store = json_decode((string)@file_get_contents($f), true) ?: [];
 if (($_SERVER['REQUEST_URI'] ?? '') === '/__reset') { @unlink($f); echo 'ok'; return; }
 if (($_SERVER['REQUEST_URI'] ?? '') === '/__store') { header('Content-Type: application/json'); echo json_encode($store, JSON_UNESCAPED_UNICODE); return; }
