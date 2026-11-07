@@ -117,7 +117,7 @@ pre.state { font: 12px/1.4 var(--mono); background: #F4F7F5; padding: 10px; bord
       '<div class="panel small" data-key="adm-vk">' + vkLine + '</div>' +
       '<div class="cards">' + c(o.users, 'пользователей всего') + c(o.usersWeek, 'новых за 7 дней') + c(o.activeWeek, 'входили за 7 дней') + c(o.withTelegram, 'с Telegram') + c(o.withData, 'сохранили данные') +
       c(o.feedback, 'сообщений (новых: ' + o.feedbackNew + ')') + c(o.photos, 'фото загружено') + c(o.photosFailed, 'фото с проблемами') + c(o.reportsBad + ' / ' + o.reports, 'распознаваний с замечаниями') + '</div>' +
-      '<p class="muted small">Фото хранятся ' + o.photoKeepDays + ' дней, потом удаляются автоматически.</p>' + actBlock() + errorsBlock(o.errors) + botRepliesBlock(o.botReplies) + vkcabBlock(o.vkcab, vc) + htmcabBlock(o.htmcab) + trackBlock(o.tracking) + devicesBlock();
+      '<p class="muted small">Фото хранятся ' + o.photoKeepDays + ' дней, потом удаляются автоматически.</p>' + actBlock() + errorsBlock(o.errors) + botRepliesBlock(o.botReplies) + uaProbeBlock(o.uaProbe, o.uaCmd) + vkcabBlock(o.vkcab, vc) + htmcabBlock(o.htmcab) + trackBlock(o.tracking) + devicesBlock();
   };
   /** Сбои сервера (500): что упало — по ним чинить; пусто — хорошо. */
   function errorsBlock(l) {
@@ -146,6 +146,33 @@ pre.state { font: 12px/1.4 var(--mono); background: #F4F7F5; padding: 10px; bord
         return '<tr><td data-l="Когда" class="nowrap">' + when(new Date(d.at * 1000).toISOString()) + '</td><td data-l="Что">' + (d.op === 'send' ? 'отправка' + (d.n ? ' (' + d.n + ')' : '') : d.op === 'probe' ? 'проба сервера (выдуманный рахунок)' : 'проверка') + (d.user ? ' · <a href="#user-' + d.user + '" data-user="' + d.user + '">#' + d.user + '</a>' : '') + '</td>' +
           '<td data-l="Итог">' + (R[d.result] || esc(d.result)) + '</td><td data-l="Подробно"><details><summary class="small">структура</summary><pre class="small" style="white-space:pre-wrap;max-width:60ch">' + esc(JSON.stringify(det, null, 1)) + '</pre></details></td></tr>';
       }).join('') + '</tbody></table>' : '<p class="muted small">Ещё никто не проверял рахунок через сайт Водоканала.</p>') + '</details>';
+  }
+  /** Свет: пускает ли обленерго робота с украинского адреса. Нет итога — команда с «Скопировать» и как запустить на NAS / Mac; есть — что это значит. */
+  function uaProbeBlock(p, cmd) {
+    p = p || {}; var T = { obl: 'Кабинет pa.oblenergo (вход по паролю)', form: 'Онлайн-форма «передача показників» (без входа)' };
+    var V = { ok: pill('ok', 'пускает') + ' страница открылась, форма есть, Cloudflare и капчи нет', cloudflare: pill('bad', 'Cloudflare') + ' не пускает робота и из Украины',
+      captcha: pill('bad', 'капча') + ' на странице капча — робот не пройдёт', noform: pill('warn', 'без формы') + ' страница открылась, но формы ввода нет',
+      down: pill('warn', 'не ответил') + ' сайт не ответил — запустить ещё раз', other: pill('warn', 'непонятно') + ' ответ не узнали — смотреть «структура»' };
+    var got = Object.keys(T).filter(function (t) { return p[t]; });
+    var ua = function (t) { return p[t] && p[t].cc === 'UA'; }, ok = function (t) { return p[t] && p[t].verdict === 'ok' && ua(t); };
+    var bad = function (t) { return p[t] && (p[t].verdict === 'cloudflare' || p[t].verdict === 'captcha') && ua(t); };
+    var mean = !got.length ? '' : ok('form') ? '<b>Ретранслятор на NAS реален — начать с онлайн-формы</b> (рахунок + показання, без пароля).' : ok('obl') ? '<b>Ретранслятор на NAS реален — через кабинет</b> (вход по паролю, без капчи).'
+      : (bad('obl') && bad('form')) ? '<b>Свет остаётся вручную</b> (бот @Kooz2bot, форма на сайте, SMS 4300): робота не пускают и из Украины.'
+      : got.some(function (t) { return p[t].cc && p[t].cc !== 'UA'; }) ? '<b class="problem">Запуск был не из Украины</b> — для решения нужен запуск с украинского адреса (NAS или Mac дома).' : 'Решения пока нет — см. строки ниже.';
+    var steps = '<ol class="small" style="margin:6px 0 10px;padding-left:20px"><li><b>NAS</b> (можно с телефона, DSM в браузере): Панель управления → Планировщик заданий → Создать → Запланированная задача → Пользовательский сценарий.</li>' +
+      '<li>«Общие» — пользователь любой (можно root); «Настройки задачи» → «Выполнить команду» — вставить строку ниже → OK.</li><li>Выбрать задачу → «Выполнить». Через несколько секунд итог появится здесь (обновить страницу).</li>' +
+      '<li>Или <b>Mac</b> дома: Терминал → вставить ту же строку → Enter.</li></ol>';
+    return '<details class="panel" data-key="adm-uaprobe"' + (got.length ? '' : ' open') + '><summary><b>Свет — пускает ли обленерго робота из Украины</b> <span class="muted small">(' + (got.length ? 'проба: ' + got.length + ' из 2' : 'ещё не запускали') + ')</span></summary>' +
+      (mean ? '<p>' + mean + '</p>' : '<p class="small">Одна команда с домашнего NAS или Mac открывает две публичные страницы обленерго и присылает их сюда. Никуда не входит, ничего не вводит. По итогу решаем: ретранслятор на NAS или свет вручную.</p>') +
+      (got.length ? '<table><thead><tr><th>Страница</th><th>Итог</th><th>Откуда</th><th>Подробно</th></tr></thead><tbody>' + got.map(function (t) {
+        var o = p[t], det = { code: o.code, codes: o.codes, final: o.final, cfKind: o.cfKind, cfCode: o.cfCode, captchaKind: o.captchaKind, widget: o.widget, title: o.title, forms: o.forms, loose: o.loose, ajax: o.ajax, frames: o.frames, n: o.n };
+        return '<tr><td data-l="Страница">' + esc(T[t]) + '</td><td data-l="Итог">' + (V[o.verdict] || esc(o.verdict)) + ' <span class="muted small">· код ' + esc(o.code) + '</span></td>' +
+          '<td data-l="Откуда" class="nowrap">' + (o.cc ? (o.cc === 'UA' ? 'Украина' : '<b class="problem">' + esc(o.cc) + '</b>') : '?') + (o.via ? ' · ' + esc(o.via) : '') + '<br><span class="muted small">' + when(o.at) + '</span></td>' +
+          '<td data-l="Подробно"><details><summary class="small">структура</summary><pre class="small" style="white-space:pre-wrap;max-width:60ch">' + esc(JSON.stringify(det, null, 1)) + '</pre></details></td></tr>';
+      }).join('') + '</tbody></table>' : '') +
+      (cmd ? (got.length ? '<details><summary class="small">Запустить ещё раз</summary>' : '') + steps +
+        '<pre class="small mono" data-key="ua-cmd" style="white-space:pre-wrap;word-break:break-all;background:var(--housing);padding:10px;border-radius:8px;user-select:all">' + esc(cmd) + '</pre>' +
+        '<p><button class="btn" data-copy="ua-cmd">Скопировать команду</button> <span class="muted small" data-key="ua-copied"></span></p>' + (got.length ? '</details>' : '') : '') + '</details>';
   }
   /** Кабинет ХТМ: подключения, проверки, внесения, перепроверки журнала роботом сервера (без паролей и рахунков; цифры в словах сайта — #). */
   function htmcabBlock(l) {
@@ -527,6 +554,11 @@ pre.state { font: 12px/1.4 var(--mono); background: #F4F7F5; padding: 10px; bord
       if (jr.hasAttribute('data-jall')) { JD.all = !JD.all; show('journal'); return; }
       if (jr.hasAttribute('data-jtag')) { post('/admin/journal/tag', { vid: JD.vid, tag: jr.getAttribute('data-jtag') }).then(function () { show('jsession'); }); return; }
     }
+    var cp = e.target.closest('[data-copy]');
+    if (cp) { var src = document.querySelector('[data-key="' + cp.getAttribute('data-copy') + '"]'), msg = document.querySelector('[data-key=ua-copied]'), txt = src ? src.textContent : '';
+      var done = function (ok) { if (msg) msg.textContent = ok ? 'Скопировано' : 'Не вышло — выделите текст выше и скопируйте вручную'; };
+      if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(txt).then(function () { done(true); }, function () { done(false); }); else done(false);
+      return; }
     var el = e.target.closest('[data-tab],[data-user],[data-pf],[data-fb],[data-zoom],[data-ddays],.zoom'); if (!el) return;
     if (el.hasAttribute('data-ddays')) { e.preventDefault(); DDAYS = +el.getAttribute('data-ddays'); show('overview'); return; }
     if (el.classList.contains('zoom')) { el.remove(); return; }

@@ -127,6 +127,8 @@ final class Admin {
           // кабинет Водоканала: что увидел наш сервер при проверках и отправках (структура без личных данных)
           'vkcab' => array_reverse(array_slice(VkCab::log(), -15)),
           'htmcab' => array_reverse(array_slice(HtmSvc::log(), -15)),
+          // свет: проба обленерго с украинского адреса (NAS/Mac владельца) — итог и команда с кнопкой «Скопировать»
+          'uaProbe' => (object)RelayProbe::summary(), 'uaCmd' => RelayProbe::command(Cfg::appUrlKnown() ? Cfg::appUrl() : 'https://peredai.com.ua'),
           // сбои сервера (500): что упало и где — SITE_DATA/tmp/errors.jsonl
           'errors' => ErrLog::list(30),
         ];
