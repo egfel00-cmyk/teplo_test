@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "WebFetch(domain:peredai.com.ua)",
+      "WebFetch(domain:pokabot.xyz)",
+      "Bash(php tests/rev.php)"
+    ]
+  }
+}
