@@ -12,7 +12,8 @@ const U = 'http://127.0.0.1:8013/';
   const blocks = await p.$$eval('details.season', a => a.map(d => ({ k: d.getAttribute('data-key'), open: d.open, t: d.querySelector('summary').textContent })));
   ok('два сезона: 2025/26 раскрыт, 2024/25 свёрнут', blocks.length === 2 && blocks[0].k === 'season-2025' && blocks[0].open && blocks[1].k === 'season-2024' && !blocks[1].open, blocks);
   ok('итоги: 2025/26 — 5,150 Гкал, 2024/25 — 5,760 Гкал, у обоих гривни', /5,150\s*Гкал/.test(blocks[0].t) && /5,760\s*Гкал/.test(blocks[1].t) && /грн/.test(blocks[0].t) && /грн/.test(blocks[1].t), blocks.map(x => x.t));
-  ok('где шло тепло и в среднем за месяц', /тепло за показаннями 10 жовтня 2024 – 14 квітня 2025/.test(blocks[1].t) && /на місяць опалення/.test(blocks[1].t));
+  // 07.11.2026: без «тепло за показаннями» и «на місяць опалення» — даты и «/ міс» понятны сами
+  ok('где шло тепло и в среднем за месяц', /10 жовтня 2024 – 14 квітня 2025/.test(blocks[1].t) && /грн \/ міс/.test(blocks[1].t) && !/тепло за показаннями|на місяць опалення/.test(blocks[1].t), blocks[1].t);
   ok('май (12.05.2025) — в зиме 2024/25, сентябрь (15.09.2025) — в 2025/26', !!(await p.$('[data-key=season-2024] [data-key=reading-s7]')) && !!(await p.$('[data-key=season-2025] [data-key=reading-s8]')));
   ok('строки сезона — внутри него, новые сверху', (await p.$$eval('[data-key=season-2025] .list > li', a => a.map(x => x.getAttribute('data-key'))))[0] === 'reading-r3');
   await p.click('[data-key=season-2024] summary'); await p.waitForTimeout(200);
@@ -28,7 +29,7 @@ const U = 'http://127.0.0.1:8013/';
   ok('без прошлых сезонов — один блок 2025/26', (await p.$$('details.season')).length === 1 && /Сезон 2025\/26/.test(await p.textContent('details.season summary')));
   // рус.
   p = await page({ seasons: true }, 'ru-RU');
-  ok('ru: «тепло по показаниям», «в месяц отопления»', /тепло по показаниям/.test(await p.textContent('[data-key=season-2024] summary')) && /в месяц отопления/.test(await p.textContent('[data-key=season-2024] summary')));
+  ok('ru: даты и «/ мес» (без «тепло по показаниям», «в месяц отопления» — 07.11)', /грн \/ мес/.test(await p.textContent('[data-key=season-2024] summary')) && !/тепло по показаниям|в месяц отопления/.test(await p.textContent('[data-key=season-2024] summary')));
   // итог сезона = сумма его строк, в т. ч. период без лічильника (≈) — раньше ремонт выпадал из суммы (скрин владельца 02.11)
   p = await page({ seasons: true, gaps: true }, 'uk-UA');
   const sm = await p.evaluate(() => { const d = document.querySelector('[data-key=season-2025]'), n = s => parseFloat(String(s).replace(/[^0-9,.-]/g, '').replace(',', '.')) || 0;

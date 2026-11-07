@@ -35,7 +35,8 @@ let pass = 0, fail = 0; const ok = (n, c, i) => { console.log((c ? '  OK  ' : ' 
   s = await st(); const r1 = s.mrecs.find(r => !r.base && r.kind === 'gas');
   ok('збережено 1195.327', r1 && r1.z.all === '1195.327', r1);
   const wp = await p.textContent('[data-key=where-gas]');
-  ok('«Куди передати»: готове SMS «123456789 01195», кнопка SMS і кабінет Газмереж', /123456789 01195/.test(wp) && !!(await p.$('[data-key=dest-grm-sms]')) && !!(await p.$('[data-key=dest-grm-cab]')), wp);
+  // 07.11: готовий текст SMS — у самій кнопці (окремим рядком — дубль); «Куб» і кабінет — у згорнутих «Інші способи»
+  ok('«Куди передати»: кнопка SMS з готовим текстом «123456789 01195», кабінет Газмереж — в «Інші способи»', /123456789%2001195|123456789 01195/.test(await p.getAttribute('[data-key=dest-grm-sms]', 'href')) && !!(await p.$('details.dest-more [data-key=dest-grm-cab]')), wp);
   ok('посилання SMS — sms:4647 з текстом', /^sms:4647\?&body=123456789%2001195$/.test(await p.getAttribute('[data-key=dest-grm-sms]', 'href')));
   await click('[data-key=esend-done]', 300); s = await st();
   ok('«Я передав(ла)» → sent.grm', s.mrecs.find(r => r.id === r1.id).sent.grm === '2026-11-02');
@@ -78,7 +79,8 @@ let pass = 0, fail = 0; const ok = (n, c, i) => { console.log((c ? '  OK  ' : ' 
   s = await st(); gm = s.places[0].meters.find(x => x.id === m.id);
   ok('старі дані: 10 цифр → Газмережі при відкритті', gm.grm === '1310099999' && gm.account === '', gm);
   await go('gas'); await p.click('[data-key=where-gas-sum]').catch(() => {}); await p.waitForTimeout(200);
-  ok('«Куб»: кнопка застосунку, 0 800 303 104; SMS — «до 27 листопада»', (await p.getAttribute('[data-key=dest-grm-kub]', 'href')) === 'https://kub.energy/download' && /0 800 303 104/.test(await p.textContent('[data-key=where-gas]')) && /27 листопада/.test(await p.textContent('[data-key=gd-sms-end]')));
+  // 07.11: рядок «SMS на 4647 приймають до 27 листопада» прибрано (кнопка SMS сама зникає з 28.11), «Куб» — в «Інші способи»
+  ok('«Куб»: посилання на застосунок і 0 800 303 104 — в «Інші способи»; без рядка про кінець SMS', (await p.getAttribute('details.dest-more [data-key=dest-grm-kub]', 'href')) === 'https://kub.energy/download' && /0 800 303 104/.test(await p.textContent('[data-key=where-gas]')) && !(await p.$('[data-key=gd-sms-end]')));
   s = await st(); s.demoToday = '2026-12-01'; s.mrecs.push({ id: 'gdec', place: s.places[0].id, meter: m.id, kind: 'gas', date: '2026-12-01', z: { all: '1300' }, sent: {}, createdAt: '2026-12-01T08:00:00Z', updatedAt: 1 });
   await p.evaluate(v => localStorage.setItem('teplo.v1', JSON.stringify(v)), s); await p.reload(); await p.waitForTimeout(500); await go('gas');
   ok('з 28.11 — без SMS 4647, «Куб» лишається', !(await p.$('[data-key=dest-grm-sms]')) && !(await p.$('[data-key=gd-sms-end]')) && !!(await p.$('[data-key=dest-grm-kub]')));
@@ -86,7 +88,8 @@ let pass = 0, fail = 0; const ok = (n, c, i) => { console.log((c ? '  OK  ' : ' 
   const no4647 = async () => !/4647/.test(await p.evaluate(() => document.getElementById('main').textContent));
   const gPage = await no4647(); await go('place-main'); const gPlace = await no4647();
   s = await st(); s.mrecs = s.mrecs.filter(r => r.kind !== 'gas' || r.base); await p.evaluate(v => localStorage.setItem('teplo.v1', JSON.stringify(v)), s); await p.reload(); await p.waitForTimeout(400);
-  await go('gas'); const gLead = await no4647() && /з 1 по 5 число/.test(await p.textContent('[data-key=where-gas]'));
+  // 07.11: підказку «приймають з 1 по 5 число» з «Куди передати» прибрано — строк і так у плашці («1 грудня – 5 грудня»)
+  await go('gas'); const gLead = await no4647() && /грудня/.test(await p.textContent('[data-key=where-gas] .dest-h .pill'));
   await go('help'); const hg = await p.evaluate(() => document.getElementById('main').textContent);
   ok('з 28.11 — «4647» ніде: сторінка газу, квартира, «Куди передати» без показань; довідка — «Куб», 0 800 303 104 і «SMS не приймають»', gPage && gPlace && gLead && !/Найпростіше — SMS/.test(hg) && /SMS на 4647 з 28 листопада 2026 не приймають/.test(hg) && /«Куб»/.test(hg) && /0 800 303 104/.test(hg), { gPage, gPlace, gLead });
   s = await st(); s.demoToday = '2026-11-02'; s.mrecs = s.mrecs.filter(r => r.id !== 'gdec'); await p.evaluate(v => localStorage.setItem('teplo.v1', JSON.stringify(v)), s); await p.reload(); await p.waitForTimeout(400);

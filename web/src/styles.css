@@ -611,8 +611,9 @@ input[type=text]:not(.dmy-native):not(.pl-in), input[type=email], input[type=pas
 .check-row input { width: 22px; height: 22px; accent-color: var(--c-ink); flex: none; }
 
 /* «Скасувати й вийти» внизу ввода; черновик на главной */
-.wiz-cancel { margin: var(--sp-5) 0 0; text-align: center; }
-.wiz-cancel .btn { color: var(--c-ink-2); }
+/* «Скасувати й вийти» — кнопка з рамкою під головною (07.11: сірий текст не читався як кнопка) */
+.wiz-cancel { margin: var(--sp-3) 0 0; }
+.wiz-cancel .btn .ico { color: var(--c-ink-2); }
 .home-draft { margin-bottom: 16px; display: grid; gap: 6px; justify-items: center; }
 .home-draft .btn { width: 100%; }
 .home-draft .linkbtn { color: var(--c-ink-2); }
@@ -1457,3 +1458,32 @@ details.tbl-acc[open] > .tbl-wrap { margin-top: 12px; }
 .lpf-bot { max-width: 1120px; margin: 24px auto 0; padding-top: 16px; border-top: 1px solid var(--c-line); display: flex; flex-wrap: wrap; gap: 6px 24px; justify-content: space-between; font-size: 13px; }
 @media (max-width: 760px) { .lpf-in { grid-template-columns: 1fr 1fr; } .lpf-brand { grid-column: 1 / -1; } }
 @media (max-width: 380px) { .lpf-in { grid-template-columns: 1fr; } }
+
+/* ---- сторінка лічильника (07.11): «Куди передати» — кнопка в рамці на місці «Розпізнати з фото»; відкрита — та сама рамка навколо вмісту ---- */
+details.wacc.wacc-btn { background: transparent; border: 1.5px solid var(--c-field-line); border-radius: var(--r-btn); padding: 0; margin: var(--sp-3) 0 var(--sp-4); }
+details.wacc.wacc-btn:hover { border-color: var(--c-ink-2); }
+details.wacc.wacc-btn > summary { position: relative; justify-content: center; min-height: 56px; margin: 0; padding: 0 44px; }
+details.wacc.wacc-btn > summary h2 { flex: 0 1 auto; font-size: var(--fs-l); font-weight: 600; justify-content: center; }
+details.wacc.wacc-btn > summary .pacc-chev { position: absolute; right: 16px; top: 50%; margin-top: -10px; }
+details.wacc.wacc-btn[open] > summary { border-bottom: 1px solid var(--c-line); }
+details.wacc.wacc-btn[open] > .where-b { margin: 0; padding: var(--sp-3) var(--sp-4) var(--sp-4); }
+details.wacc.wacc-btn > summary:focus-visible { outline: 3px solid var(--c-focus-ring); outline-offset: 2px; border-radius: var(--r-btn); }
+
+/* історія на сторінці лічильника — окремий блок */
+.mhist { margin-top: var(--sp-5); }
+.mhist-h { display: flex; align-items: center; gap: 8px; margin: 0 0 var(--sp-3); font-size: var(--fs-l); }
+.mhist-h .ico { color: var(--c-ink-2); flex: none; }
+.mhist-n { margin-left: auto; min-width: 28px; height: 28px; padding: 0 8px; border-radius: 14px; background: var(--c-field-bg); color: var(--c-ink-2); font-size: var(--fs-s); font-weight: 600; display: inline-flex; align-items: center; justify-content: center; }
+.mhist-all { margin-top: var(--sp-3); }
+
+/* «Інші способи» і «Як це в боті» — згорнуто */
+details.dest-more > summary, details.bot-how > summary { list-style: none; cursor: pointer; display: flex; align-items: center; gap: 6px; min-height: 40px; color: var(--c-ink); font-weight: 600; text-decoration: none; }
+details.dest-more > summary::-webkit-details-marker, details.bot-how > summary::-webkit-details-marker { display: none; }
+details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { transform: rotate(90deg); transition: transform .15s; color: var(--c-ink-2); }
+details.dest-more[open] > summary .pacc-chev, details.bot-how[open] > summary .pacc-chev { transform: rotate(-90deg); }
+.dest-more-b { padding-top: 4px; }
+details.bot-how[open] > ol { margin-top: 4px; }
+
+/* плашка «Ремонт» у рядку періоду без лічильника — на місці статусу («Прийнято»), але не кнопка */
+.st-chip.st-static { cursor: default; padding: 0; }
+.st-chip.st-static::before { content: none; }

@@ -608,7 +608,8 @@
     // крупно — сколько тепла/воды (оценка) и сколько денег: по платёжке, если записано, иначе оценка
     return histRow({ cls: 'gap-row', key: 'gap-' + g.id, href: '#gap-' + g.id, lead: '<span class="hr-ico">' + ico('wrench', 18, 'c-warn') + '</span>',
       q: qv > 0 ? '≈ ' + fmtN(qv, heat ? 3 : 1) : null, unit: gapUnit(g), money: amt !== null ? amt * mo : e && e.cost > 0 ? e.cost : null, none: t('gp_row'), date: gapPeriod(g), sub: bits,
-      right: billMark(g.bills) + '<span class="pill ' + (g.to && g.to <= today() ? 'neutral' : 'warn') + '">' + esc(t('gp_r_' + (g.reason || 'other'))) + '</span>' });
+      // «Ремонт / Повірка / Заміна» — там само, де «Прийнято» в інших записах: праворуч на рядку дати (владелец 07.11), не внизу
+      right: billMark(g.bills), st: '<span class="st-chip st-static" data-key="gap-st-' + g.id + '"><span class="pill ' + (g.to && g.to <= today() ? 'neutral' : 'warn') + '">' + esc(t('gp_r_' + (g.reason || 'other'))) + '</span></span>' });
   }
 
   /** Банер на сторінці лічильника: зараз без лічильника → «поставили назад». */
@@ -965,7 +966,7 @@
   function whereAcc(h, recId) {
     var m = /^<section class="panel where" data-key="([^"]+)"><h2>([\s\S]*?)<\/h2>([\s\S]*)<\/section>$/.exec(h); if (!m) return h;
     var id = recId ? 'wacr-' + recId + '--' + m[1] : 'wacc-' + m[1], open = (recId ? WR_OPEN : WH_OPEN)[id.slice(5)];
-    return '<details class="panel where wacc" id="' + id + '" data-key="' + m[1] + '"' + (open ? ' open' : '') + '><summary data-key="' + m[1] + '-sum"><h2>' + m[2] + '</h2>' + ico('chev', 20, 'pacc-chev') + '</summary><div class="where-b">' + m[3] + '</div></details>';
+    return '<details class="panel where wacc' + (recId ? '' : ' wacc-btn') + '" id="' + id + '" data-key="' + m[1] + '"' + (open ? ' open' : '') + '><summary data-key="' + m[1] + '-sum"><h2>' + m[2] + '</h2>' + ico('chev', 20, 'pacc-chev') + '</summary><div class="where-b">' + m[3] + '</div></details>';
   }
   var WR_OPEN = {};   // «Куди передати» в картці запису історії: відкривали — лишається відкритим до перезавантаження
   function waccStore(d) { return d.id.indexOf('wacr-') === 0 ? WR_OPEN : WH_OPEN; }
@@ -983,6 +984,12 @@
   function ctlCopy(id) { return '<button type="button" class="ctl-copy" data-act="copy-in" data-for="' + id + '" data-key="copy-' + id + '" aria-label="' + esc(t('copy')) + '" title="' + esc(t('copy')) + '">' + ico('copy', 20) + '</button>'; }
   /** Маленька кнопка «Копіювати» біля показання (у бот чи кабінет вставити цифри). */
   function copyIco(text, key) { return text === null || text === undefined || text === '' ? '' : '<button type="button" class="copy-ico" data-act="copy" data-text="' + esc(String(text)) + '"' + (key ? ' data-key="' + key + '"' : '') + ' aria-label="' + esc(t('copy_v', { v: text })) + '" title="' + esc(t('copy')) + '">' + ico('copy', 18) + '</button>'; }
+  /** Історія на сторінці лічильника — окремим блоком (владелец 07.11: «показать более явно, обособленно»): заголовок з кількістю,
+   *  останні 3 записи, «Уся історія (N)» — лише коли записів більше. */
+  function histPanel(rows, total, allBtn, k) {
+    return '<section class="panel mhist" data-key="' + k + '-hist"><h2 class="mhist-h">' + ico('history', 20) + '<span>' + esc(t('wh_title')) + '</span>' + (total > 3 ? '<span class="mhist-n">' + total + '</span>' : '') + '</h2>' +
+      rows + (total > 3 ? '<div class="mhist-all">' + allBtn + '</div>' : '') + '</section>';
+  }
   function mbox(o) {
     return '<section class="panel mbox mbox-' + o.kind + '" data-key="' + o.key + '">' +
       '<header class="mbox-h">' + ico(o.icon, 24, o.cls) + '<span class="mbox-t"><b>' + esc(o.name) + '</b>' + (o.sub && subSpans(o.sub) ? '<span class="small muted mbox-sub">' + subSpans(o.sub) + '</span>' : '') + '</span></header>' +
@@ -1000,11 +1007,12 @@
   // ---------- экран вида воды: табло, «куди передати», история ----------
   /** Один адресат: кому, за що, строк; готові цифри (якщо є показання цього місяця); куди саме — кнопки; позначка «передано». */
   function destBox(o) {
-    return '<div class="dest"' + (o.id ? ' id="' + o.id + '" tabindex="-1"' : '') + ' data-key="dest-' + o.key + '"><div class="dest-h"><div class="grow"><b>' + esc(o.org) + '</b><div class="small muted">' + esc(o.what) + '</div></div>' +
+    return '<div class="dest"' + (o.id ? ' id="' + o.id + '" tabindex="-1"' : '') + ' data-key="dest-' + o.key + '"><div class="dest-h"><div class="grow"><b>' + esc(o.org) + '</b>' + (o.what ? '<div class="small muted">' + esc(o.what) + '</div>' : '') + '</div>' +
       (o.sent ? '<span class="pill ok">' + ico('check', 14) + ' ' + esc(t('ws_sent')) + '</span>' : o.due ? '<span class="pill ' + (o.dueTone || 'neutral') + '">' + esc(o.due) + '</span>' : '') + '</div>' +
       (o.body || '') +
       ((o.chans && o.chans.length) || o.chx ? '<div class="dest-ch">' + (o.chans || []).map(function (c) { return '<a class="btn sec" href="' + c[0] + '" target="_blank" rel="noopener" data-key="dest-' + o.key + '-' + c[3] + '"' + (c[4] || '') + '>' + ico(c[2], 18) + '<span>' + esc(c[1]) + '</span></a>'; }).join('') + (o.chx || '') + '</div>' : '') + (o.note || '') +
-      (o.more ? '<div class="dest-more" data-key="dest-more">' + o.more + '</div>' : '') + (o.mark || '') + '</div>';
+      // телефоны, приложения, запасные каналы — свёрнуто «Інші способи» (владелец 07.11: «много лишней и дублирующейся информации»)
+      (o.more ? '<details class="dest-more" data-key="dest-more"><summary>' + esc(t('dest_more')) + ico('chev', 16, 'pacc-chev') + '</summary><div class="dest-more-b">' + o.more + '</div></details>' : '') + (o.mark || '') + '</div>';
   }
   function telLink(num, txt) { return '<a href="tel:' + num + '">' + esc(txt) + '</a>'; }
   /** «Куди передати» для води. kind: 'cold' — лише Водоканал; 'hot' або null (картка запису, є гаряча) — Водоканал і ХТМ.
@@ -1061,20 +1069,20 @@
     var h = '<section class="panel where" data-key="where-water"><h2>' + ico('send', 20) + '<span>' + esc(t('wd_title')) + '</span></h2>' +
       // квартир несколько — за какую передаём (рахунок і цифри — цієї квартири)
       (places().length > 1 ? '<p class="dest-place" style="--pc:var(--pc-' + placeColor(place()) + ')" data-key="where-place"><b>' + esc(t('wd_for', { p: placeLabel(place()) })) + '</b>' + (placeSub(place()) ? '<span class="small muted"> · ' + esc(placeSub(place())) + '</span>' : '') + '</p>' : '') +
-      (rec ? '' : '<p class="small muted">' + esc(t('wd_lead')) + '</p>');
+      '';
     vkBody = vkStatusLine() + vkBody;
     // сайт Водоканалу — равноценная кнопка в ряду каналов, как «Підключити кабінет» у тепла (просьба владельца 06.11): не подключён — «Підключити сайт Водоканалу»;
     // подключён, а показаний ещё нет — «Сайт Водоканалу підключено» (туда же); есть показания — выделенная «Відправити у фоні» (vjBox) вместо этого ряда
     var vg2 = vkcGate(), vkChx = '';
     if (vg2 === 'acc') vkChx = '<a class="btn sec" href="#vkcab" data-key="vk-connect">' + ico('plus', 18) + '<span>' + esc(t('vc_conn_btn')) + '</span></a>';
     else if (vg2 === 'ok' && !rec) vkChx = '<a class="btn sec" href="#vkcab" data-key="vk-conn-on">' + ico('check', 18) + '<span>' + esc(t('vc_conn_ok')) + '</span></a>';
-    h += destBox({ key: 'vk', id: 'wsend-vk', org: t('wd_vk_org'), what: kind === 'cold' ? t('wd_vk_cold') : kind === 'hot' ? t('wd_vk_hot') : t('wd_vk_both'),
+    h += destBox({ key: 'vk', id: 'wsend-vk', org: t('wd_vk_org'), what: kind === 'cold' ? '' : kind === 'hot' ? t('wd_vk_hot') : t('wd_vk_both'),
       due: vkDue, dueTone: w.open && w.daysLeft <= 3 ? 'warn' : 'neutral', sent: rec && wsentVk(rec), body: vkBody, chans: vkChans, chx: vkChans.length || !rec ? vkChx : '',
       more: '<p class="dm-t">' + esc(t('wd_vk_call')) + '</p><ul class="dm-ph"><li>' + telLink('+380577075851', '(057) 707-58-51') + '<span class="muted">' + esc(t('wd_vk_24')) + '</span></li><li><b>(050) 355-12-12</b><span class="muted">Viber</span></li></ul>', mark: rec && rec.vkAt && !wsentVk(rec) ? '' : mark('vk', rec && wsentVk(rec)) });
     // ХТМ: сама гаряча вода — лише бот і кол-центр (у кабінеті ХТМ форми для гарячої води немає)
     if (withHtm) h += destBox({ key: 'htm', org: t('wd_htm_org'), what: t('wd_htm_what'), sent: rec && wsentHtm(rec),
       body: rec ? valList(hot) : '', chans: [[BOT_URL, t('wd_bot', { b: '@KPHTM_Bot' }), 'send', 'bot']],
-      more: esc(t('wd_htm_more')) + ' ' + telLink('+380573414140', '(057) 341-41-40'), mark: mark('htm', rec && wsentHtm(rec)) });
+      more: '<p class="dm-t">' + esc(t('wd_htm_more')) + '</p><ul class="dm-ph"><li>' + telLink('+380573414140', '(057) 341-41-40') + '</li></ul>', mark: mark('htm', rec && wsentHtm(rec)) });
     return h + '</section>';
   }
   // ---------- бот Водоканалу: відповіді, переслані нашому боту (/api/vk/replies) ----------
@@ -1148,9 +1156,9 @@
     vksLoad(); var d = VKS.data; if (!d) return '';
     var b = d.bot || {}, c = d.cab || null, out = '';
     if (b.state === 'silent') out += '<p class="vk-st warn small" data-key="vk-bot-silent">' + ico('alert', 16) + ' ' + esc(t('vk_bot_silent', { d: vkWhen(b.since), n: b.users })) + '</p>';
-    else if (b.state === 'ok' && b.lastOk) out += '<p class="vk-st ok small muted" data-key="vk-bot-ok">' + esc(t('vk_bot_ok', { d: vkWhen(b.lastOk) })) + '</p>';
+    // «бот/кабінет працює (перевірено …)» не показуємо — лише коли щось не так (владелец 07.11: лишнее)
     // кабінет — лише якщо наш сервер хоч раз його відкрив (інакше, може, сайт не пускає закордонні адреси — не лякаємо)
-    if (c && c.everOk) out += '<p class="vk-st small ' + (c.state === 'ok' ? 'muted' : 'warn') + '" data-key="vk-cab-' + c.state + '">' + esc(t(c.state === 'ok' ? 'vk_cab_ok' : 'vk_cab_down', { d: vkWhen(c.state === 'ok' ? c.at : c.since) })) + '</p>';
+    if (c && c.everOk && c.state !== 'ok') out += '<p class="vk-st small warn" data-key="vk-cab-' + c.state + '">' + esc(t('vk_cab_down', { d: vkWhen(c.since) })) + '</p>';
     return out;
   }
   // ---------- кабінет Водоканалу «без реєстрації»: показання вносить наш сервер (VkCab, app/vkcab.php) ----------
@@ -1481,13 +1489,13 @@
         // «Налаштування показань» — акордеон: рахунок, №, ціна (владелец 05.11 21:35–21:40: «верни аккордеон… переназови»)
         set: wmeterFields(m, i0 === 0) + (i0 === 0 ? priceBlock(kind) : '') + gapSetLink(m.id) , setTitle: t('mb_set_read') });
     }).join('');
-    var right = '<button class="btn big block" data-act="wnew" data-kind="' + kind + '" data-key="water-add">' + ico('plus', 22) + '<span>' + esc(t('wn_title')) + '</span></button>' +
-      (VIS().local ? '<input type="file" id="wq-files" accept="image/*" multiple class="sr" data-kind="' + kind + '"><label for="wq-files" class="btn sec block wq-photo" tabindex="0" data-key="water-photo">' + ico('camera', 22) + '<span>' + esc(t('ph_entry')) + '</span></label>' : '');
+    // «Розпізнати з фото» — лише на введенні показань (владелец 07.11); тут на її місці — «Куди передати» в рамці
+    var right = '<button class="btn big block" data-act="wnew" data-kind="' + kind + '" data-key="water-add">' + ico('plus', 22) + '<span>' + esc(t('wn_title')) + '</span></button>';
     // куди передати: є показання цього місяця — з готовими цифрами, інакше — куди й до якого числа
     right += whereAcc(wsendPanel(last && thisMonth(last.date) ? last : null, kind));
     // історія: останні три (разом із періодами без лічильника), решта — у вкладці «Історія»
     var wr = wrows(kind, 3);
-    if (wr.total) right += '<h2 class="section-title">' + esc(t('wh_title')) + '</h2>' + wr.html + (wr.total > 3 ? '<p><button class="btn sec" data-act="view-go" data-v="' + kind + '" data-to="history" data-key="water-all">' + esc(t('wh_all', { n: wr.total })) + '</button></p>' : '');
+    if (wr.total) right += histPanel(wr.html, wr.total, '<button class="btn sec block" data-act="view-go" data-v="' + kind + '" data-to="history" data-key="water-all">' + esc(t('wh_all', { n: wr.total })) + '</button>', 'water');
     right += '<details class="tips-box" style="margin-top:16px"><summary>' + esc(t('wt_how_t')) + '</summary><ul>' + t(kind === 'hot' ? 'wt_how_hot' : 'wt_how_cold').split('|').map(function (x) { return '<li>' + esc(x) + '</li>'; }).join('') + '</ul></details>';
     h += '<div class="hero-grid"><div class="wm-col">' + left + '</div><div>' + right + '</div></div>';
     return { screen: 'S30', route: 'water-' + kind, html: h };
@@ -1889,7 +1897,7 @@
     if (conf && rs.every(function (x) { return x.sent && x.sent[src]; })) return '<div class="vk-reply ok" data-key="' + k + '-conf"><p class="small"><b>' + esc(tk(k, 'ed_conf', { d: vkWhen(conf.botConf.at) })) + '</b></p>' +
       (conf.botConf.text ? '<p class="small vk-text">' + esc(String(conf.botConf.text).slice(0, 600)) + '</p>' : '') + '</div>';
     var at = Math.max.apply(null, [0].concat(rs.map(function (x) { return x.botAt || 0; })));
-    if (!at || rs.every(function (x) { return x.sent && x.sent[src]; })) return '<div class="bot-how" data-key="ed-bot-how"><p class="dm-t">' + esc(t('bot_how_t')) + '</p><ol>' + tk(k, 'ed_bot_steps', { b: '@' + ourBot() }).split('|').map(function (x) { return '<li>' + esc(x) + '</li>'; }).join('') + '</ol></div>';
+    if (!at || rs.every(function (x) { return x.sent && x.sent[src]; })) return '<details class="bot-how" data-key="ed-bot-how"><summary>' + esc(t('bot_how_t')) + ico('chev', 16, 'pacc-chev') + '</summary><ol>' + tk(k, 'ed_bot_steps', { b: '@' + ourBot() }).split('|').map(function (x) { return '<li>' + esc(x) + '</li>'; }).join('') + '</ol></details>';
     var r = (SBR[src].list || []).filter(function (y) { return y.at * 1000 >= at - 120000; })[0], err = SBERR[k] || (r && r.kind === 'err');
     return (r ? '<div class="vk-reply' + (r.kind === 'err' ? ' bad' : '') + '" data-key="' + k + '-reply"><p class="small"><b>' + esc(tk(k, 'ed_reply_t', { d: vkWhen(r.at) })) + '</b></p><p class="small vk-text">' + esc(String(r.text).slice(0, 600)) + '</p></div>' : '') +
       '<div class="vk-ask" data-key="' + k + '-ask"><p><b>' + esc(tk(k, 'ed_ask')) + '</b></p><div class="row-actions">' +
@@ -1922,31 +1930,27 @@
       var smsOn = today() <= Gs.SMS_UNTIL, sms = smsOn && have && ms.length === 1 ? Gs.smsText(ms[0].account, (have.filter(Boolean)[0].z || {}).all) : null;
       var nafN = ms.length === 1 ? dgt(ms[0].account).length : 9;
       if (smsOn && have && ms.length === 1 && !sms && nafN !== 9) body += '<p class="small" data-key="gd-noacc">' + esc(nafN ? t('gd_badacc', { n: nafN }) : t('gd_noacc')) + ' <a href="' + Gs.LINKS.find + '" target="_blank" rel="noopener" data-key="gd-find">' + esc(t('gd_find')) + ' ' + ico('ext', 14) + '</a></p>';
-      if (sms) body += '<p class="small">' + esc(t('gd_sms_how', { s: sms })) + '</p>';
-      if (smsOn) body += '<p class="small muted" data-key="gd-sms-end">' + esc(t('gd_sms_end', { d: fmtDate(Gs.SMS_UNTIL) })) + '</p>';
-      chans = [[Gs.LINKS.bot, t('gd_bot'), 'send', 'bot', botAttr], [Gs.LINKS.kub, t('gd_kub'), 'ext', 'kub']].concat(sms ? [['sms:' + Gs.LINKS.sms + '?&body=' + encodeURIComponent(sms), t('gd_sms'), 'send', 'sms']] : []).concat([[Gs.LINKS.cabinet, t('gd_cab'), 'ext', 'cab']]);
-      if (have) body += sbBox(k, have);
+      // готовий текст SMS — уже в кнопці «SMS на 4647» (відкриває SMS з набраним текстом); окремим рядком — дубль
+      chans = [[Gs.LINKS.bot, t('gd_bot'), 'send', 'bot', botAttr]].concat(sms ? [['sms:' + Gs.LINKS.sms + '?&body=' + encodeURIComponent(sms), t('gd_sms'), 'send', 'sms']] : []);
       // бот Газмереж питає філію: у Харкові — «Харківська міська», в області — «Харківська» (за довідником адреси)
       var gdp = prvOf('gas'); if (gdp && gdp.grm) body += '<p class="small muted" data-key="gd-fil">' + esc(t('gd_fil', { g: String(gdp.grm).replace(/^Газмережі,\s*/, '') })) + '</p>';
-      more = '<p class="dm-t">' + esc(t('gd_kub_call')) + '</p><ul class="dm-ph"><li>' + telLink(Gs.KUB_TEL[0], Gs.KUB_TEL[1]) + '<span class="muted">' + esc(t('gd_kub_free')) + '</span></li></ul>' +
+      more = '<p class="dm-links"><a href="' + Gs.LINKS.kub + '" target="_blank" rel="noopener" data-key="dest-grm-kub">' + esc(t('gd_kub')) + ' ' + ico('ext', 14) + '</a><a href="' + Gs.LINKS.cabinet + '" target="_blank" rel="noopener" data-key="dest-grm-cab">' + esc(t('gd_cab')) + ' ' + ico('ext', 14) + '</a></p>' +
+        '<p class="dm-t">' + esc(t('gd_kub_call')) + '</p><ul class="dm-ph"><li>' + telLink(Gs.KUB_TEL[0], Gs.KUB_TEL[1]) + '<span class="muted">' + esc(t('gd_kub_free')) + '</span></li></ul>' +
         '<p class="dm-t">' + esc(t('gd_call')) + '</p>' + phones;
     } else {
       // офіційні канали Харківобленерго: бот @Kooz2bot, онлайн-форма (з капчею — відкриваємо, людина проходить), SMS 4300
       var m0 = ms[0] || {}, acc1 = String(m0.account || '').replace(/\D/g, '');
       var esms = (have && ms.length === 1 && El.zones(m0) <= 1 && acc1.length === 12) ? El.smsText(acc1, (have.filter(Boolean)[0].z || {}).all) : null;
       chans = [[El.OBL_BOT, t('ed_bot'), 'send', 'bot', botAttr], [El.OBL_FORM, t('ed_form'), 'ext', 'form']].concat(esms ? [['sms:' + El.SMS + '?&body=' + encodeURIComponent(esms), t('ed_sms'), 'send', 'sms']] : []);
-      if (have) body += sbBox(k, have);
-      if (esms) body += '<p class="small">' + esc(t('ed_sms_how', { s: esms })) + '</p>';
-      more = '<p class="dm-t">' + esc(t('ed_call')) + '</p>' + phones + '<p>' + esc(t('ed_viber')) + '</p>' +
+      more = '<p class="dm-t">' + esc(t('ed_call')) + '</p>' + phones +
         '<p class="dm-t">' + esc(t('ed_app_t')) + '</p><p class="dm-links"><a href="' + El.OBL_APP_ANDROID + '" target="_blank" rel="noopener">Android ' + ico('ext', 14) + '</a><a href="' + El.OBL_APP_IOS + '" target="_blank" rel="noopener">iPhone ' + ico('ext', 14) + '</a></p>' +
-        '<p class="dm-t">' + esc(t('ed_acc_t')) + '</p><p>' + esc(t('ed_zbut2')) + ' <a href="' + El.ZBUT_SITE + '" target="_blank" rel="noopener">zbutenergo.kharkov.ua</a></p>';
+        (ms.some(function (m) { return !dgt(m.account); }) ? '<p class="dm-t">' + esc(t('ed_acc_t')) + '</p><p>' + esc(t('ed_zbut2')) + ' <a href="' + El.ZBUT_SITE + '" target="_blank" rel="noopener">zbutenergo.kharkov.ua</a></p>' : '');
     }
     var mark = have && !asking ? '<p class="dest-mark">' + (allSent ? '<button class="linkbtn" data-act="esent" data-k="' + k + '" data-v="0" data-ids="' + ids + '">' + esc(t('ws_unmark')) + '</button>'
       : '<button class="btn sec" data-act="esent" data-k="' + k + '" data-v="1" data-ids="' + ids + '" data-key="esend-done">' + ico('check', 18) + '<span>' + esc(t('ws_mark')) + '</span></button>') + '</p>' : '';
     return '<section class="panel where" data-key="where-' + k + '"><h2>' + ico('send', 20) + '<span>' + esc(t('wd_title')) + '</span></h2>' +
       (places().length > 1 ? '<p class="dest-place" style="--pc:var(--pc-' + placeColor(place()) + ')" data-key="where-place"><b>' + esc(t('wd_for', { p: placeLabel(place()) })) + '</b>' + (placeSub(place()) ? '<span class="small muted"> · ' + esc(placeSub(place())) + '</span>' : '') + '</p>' : '') +
-      (have ? '' : '<p class="small muted">' + esc(tk(k, 'ed_lead')) + '</p>') +
-      destBox({ key: k === 'gas' ? 'grm' : 'obl', id: 'esend', org: tk(k, 'ed_org'), what: tk(k, 'ed_what'), due: due, dueTone: w.open && w.daysLeft <= 1 ? 'warn' : 'neutral', sent: allSent, body: body + acc, chans: chans, more: more, mark: mark }) + '</section>';
+      destBox({ key: k === 'gas' ? 'grm' : 'obl', id: 'esend', org: tk(k, 'ed_org'), what: '', due: due, dueTone: w.open && w.daysLeft <= 1 ? 'warn' : 'neutral', sent: allSent, body: body + acc, chans: chans, note: have ? sbBox(k, have) : '', more: more, mark: mark }) + '</section>';   // цифри → рахунок → кнопки → «Як це в боті» / відповідь бота
   }
   /** Рядки історії (нові зверху): скільки набігло і почім, на лічильнику, передано. */
   function srows(k, limit) {
@@ -2062,10 +2066,9 @@
     }).join('');
     if (k === 'elec') left += gpvBox(p, 'elec');
     var w = SK[k].mod.win(today()), cur = w.open ? ms.map(function (m) { return einWin(m.id, w); }) : null;
-    var right = '<button class="btn big block" data-act="' + SK[k].nw + '" data-key="' + k + '-add">' + ico('plus', 22) + '<span>' + esc(tk(k, 'en_title')) + '</span></button>' +
-      (VIS().local ? '<input type="file" id="eq-files" accept="image/*" multiple class="sr" data-k="' + k + '"><label for="eq-files" class="btn sec block wq-photo" tabindex="0" data-key="' + k + '-photo">' + ico('camera', 22) + '<span>' + esc(t('ph_entry')) + '</span></label>' : '') + whereAcc(ssendPanel(k, cur));
+    var right = '<button class="btn big block" data-act="' + SK[k].nw + '" data-key="' + k + '-add">' + ico('plus', 22) + '<span>' + esc(tk(k, 'en_title')) + '</span></button>' + whereAcc(ssendPanel(k, cur));
     var er = srows(k, 3);
-    if (er.total) right += '<h2 class="section-title">' + esc(t('wh_title')) + '</h2>' + er.html + (er.total > 3 ? '<p><button class="btn sec" data-act="view-go" data-v="' + k + '" data-to="history" data-key="' + k + '-all">' + esc(t('wh_all', { n: er.total })) + '</button></p>' : '');
+    if (er.total) right += histPanel(er.html, er.total, '<button class="btn sec block" data-act="view-go" data-v="' + k + '" data-to="history" data-key="' + k + '-all">' + esc(t('wh_all', { n: er.total })) + '</button>', k);
     right += '<details class="tips-box" style="margin-top:16px" data-key="' + k + '-how"><summary>' + esc(tk(k, 'ehow_t')) + '</summary><ul>' + tk(k, 'ehow').split('|').map(function (x) { return '<li>' + esc(x) + '</li>'; }).join('') + '</ul></details>';
     h += '<div class="hero-grid"><div class="wm-col">' + left + '</div><div>' + right + '</div></div>';
     return { screen: k === 'gas' ? 'S55' : 'S50', route: k, html: h };
@@ -2397,7 +2400,8 @@
 
   // ---------- ввод показаний воды ----------
   /** Кнопка «Скасувати» внизу ввода: бросить всё введённое этим разом и выйти. */
-  function cancelLink(what) { return '<p class="wiz-cancel"><button type="button" class="btn ter sm" data-act="wiz-cancel" data-what="' + what + '" data-key="wiz-cancel">' + esc(t('wz_cancel')) + '</button></p>'; }
+  /** «Скасувати й вийти» — кнопка з рамкою на всю ширину під головною (владелец 07.11: сірий текст «не зчитується як кнопка»). */
+  function cancelLink(what) { return '<p class="wiz-cancel"><button type="button" class="btn sec block" data-act="wiz-cancel" data-what="' + what + '" data-key="wiz-cancel">' + ico('cross', 18) + '<span>' + esc(t('wz_cancel')) + '</span></button></p>'; }
   function wnFresh(kind) { return { kind: kind || 'hot', date: '', vals: {}, photos: [], src: {}, auto: {}, unused: [], busy: false }; }
   var WN = wnFresh('hot');
   V.wnew = function () {
@@ -2986,8 +2990,8 @@
     var body = ready && !on ? '<div class="row-actions" style="margin-top:8px"><a class="btn" href="#handover" data-act="focus" data-id="' + ready.id + '" data-key="where-heat-handover">' + ico('copy', 18) + '<span>' + esc(t('wd_heat_ready', { d: fmtDate(ready.htm.date) })) + '</span></a></div>' : '';
     var bg = cabBgHeat(ready, 'where');
     return '<section class="panel where" data-key="where-heat"><h2>' + ico('send', 20) + '<span>' + esc(t('wd_title')) + '</span></h2>' +
-      destBox({ key: 'htm-heat', org: t('wd_htm_org'), what: t('wd_heat_what'), due: due, dueTone: w.state === 'late' || w.state === 'last_day' ? 'warn' : 'neutral', body: body,
-        chans: [[HTM_URL, t('ho_open'), 'ext', 'cab']], chx: bg.btn, note: bg.note, more: esc(t('wd_heat_more')) + ' ' + telLink('+380573414140', '(057) 341-41-40') }) + '</section>';
+      destBox({ key: 'htm-heat', org: t('wd_htm_org'), what: '', due: due, dueTone: w.state === 'late' || w.state === 'last_day' ? 'warn' : 'neutral', body: body,
+        chans: [[HTM_URL, t('ho_open'), 'ext', 'cab']], chx: bg.btn, note: bg.note, more: '<p class="dm-t">' + esc(t('wd_heat_more')) + '</p><ul class="dm-ph"><li>' + telLink('+380573414140', '(057) 341-41-40') + '</li></ul>' }) + '</section>';
   }
   /** Кабінет ХТМ у ряду каналів «Куди передати» (і на екранах перевірки та фото): не підключено — «Підключити кабінет», рівноцінна кнопка;
    *  підключено й є зібрані показання — виділена «Відправити у фоні» з припискою, що саме піде; надсилає людина сама натисканням. */
@@ -3265,12 +3269,11 @@
       right += '<a class="btn big block" href="#step-' + (S.draft.step || 0) + '" data-key="home-continue">' + esc(t('h_continue', { i: (S.draft.step || 0) + 1, n: n })) + '</a>' +
         '<button class="linkbtn" style="margin-top:8px" data-act="restart" data-key="home-restart">' + esc(t('h_read')) + ' — ' + (S.lang === 'ru' ? 'заново' : 'спочатку') + '</button>';
     } else {
-      right += '<button class="btn big block" data-act="read" data-key="home-read">' + esc(t('h_read')) + '</button>';
-      if (VIS().available) right += '<button class="btn sec block" style="margin-top:12px" data-act="photo" data-mode="reading" data-key="home-photo">' + ico('camera', 22) + '<span>' + esc(t('ph_entry')) + '</span></button>';
+      right += '<button class="btn big block" data-act="read" data-key="home-read">' + esc(t('h_read')) + '</button>';   // фото — на кроках введення («з фото»)
     }
     right += whereAcc(heatWhere());
     var recent = heatMixed(3);
-    if (recent.length) right += '<h2 class="section-title">' + esc(t('h_recent')) + '</h2>' + readingList(recent) + (RD().length + gaps('heat').length > 3 ? '<p><button class="btn sec" data-act="view-go" data-v="heat" data-to="history">' + esc(t('wh_all', { n: RD().length + gaps('heat').length })) + '</button></p>' : '');
+    if (recent.length) right += histPanel(readingList(recent), RD().length + gaps('heat').length, '<button class="btn sec block" data-act="view-go" data-v="heat" data-to="history" data-key="heat-all">' + esc(t('wh_all', { n: RD().length + gaps('heat').length })) + '</button>', 'heat');
     if (Y().mode === 'server' && !Y().account && RD().length && !S.syncPromptDismissed) {
       html = '<div class="banner" data-key="home-save-prompt">' + ico('info', 22) + '<div><p><b>' + esc(t('save_prompt')) + '</b></p><p><a href="#login">' + esc(t('login')) + '</a> &nbsp; <button class="linkbtn" data-act="dismiss-sync">' + esc(t('save_prompt_later')) + '</button></p></div></div>' + html;
     }

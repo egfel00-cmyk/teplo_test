@@ -13,8 +13,10 @@ let pass = 0, fail = 0; const ok = (n, c, x) => { if (c) { pass++; console.log('
   const st = async () => JSON.parse(await p.evaluate(() => localStorage.getItem('teplo.v1')));
   await p.goto('http://127.0.0.1:8013/'); await p.evaluate(s => localStorage.setItem('teplo.v1', JSON.stringify(s)), demo({ elec: 2, gas: true }));
   await p.goto('http://127.0.0.1:8013/#elec'); await p.reload(); await p.waitForTimeout(500);
-  ok('сторінка світла: «Розпізнати з фото»', !!(await p.$('[data-key=elec-photo]')));
-  await p.setInputFiles('#eq-files', ['/tmp/elph/t1.png', '/tmp/elph/t2.png']);
+  // 07.11.2026: «Розпізнати з фото» — лише на введенні показань, на сторінці лічильника його немає
+  ok('сторінка світла: без «Розпізнати з фото»', !(await p.$('[data-key=elec-photo]')) && !(await p.$('#eq-files')));
+  await p.click('[data-key=elec-add]'); await p.waitForSelector('#en-files', { state: 'attached' });
+  await p.setInputFiles('#en-files', ['/tmp/elph/t1.png', '/tmp/elph/t2.png']);
   await p.waitForSelector('[data-key=en-photo-sum]', { timeout: 180000 });
   const day = await p.inputValue('#en-e1-day'), night = await p.inputValue('#en-e1-night');
   ok('T1 → день 10530, T2 → ніч 5290', day === '10530' && night === '5290', { day, night, sum: await p.textContent('[data-key=en-photo-sum]') });
@@ -35,7 +37,8 @@ let pass = 0, fail = 0; const ok = (n, c, x) => { if (c) { pass++; console.log('
   ok('«Не передавали» → sent.no', s.mrecs.find(x => x.id === 'm20260731').sent.no === true && !!(await p.$('[data-key=base-mark]')));
   // газ з фото
   await p.goto('http://127.0.0.1:8013/#gas'); await p.waitForTimeout(400);
-  await p.setInputFiles('#eq-files', '/tmp/elph/g.png');
+  await p.click('[data-key=gas-add]'); await p.waitForSelector('#en-files', { state: 'attached' });
+  await p.setInputFiles('#en-files', '/tmp/elph/g.png');
   await p.waitForSelector('[data-key=en-photo-sum]', { timeout: 180000 });
   const gv = await p.inputValue('#en-g1-all');
   ok('газ з фото → 1256', /^1256/.test(gv), { gv, sum: await p.textContent('[data-key=en-photo-sum]') });

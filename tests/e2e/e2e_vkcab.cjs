@@ -21,7 +21,7 @@ const cab = (state) => { const n = Math.floor(Date.now() / 1000); fs.mkdirSync(D
     s.water.push({ id: 'wnow', place: 'main', date: d, vals: { h1: '176', c1: '440' }, createdAt: d + 'T09:00:00Z', updatedAt: Date.now(), sent: {} }); s.updatedAt = Date.now(); localStorage.setItem('teplo.v1', JSON.stringify(s)); }, [demo({}), today]);
   await p.reload(); await wait(1500);
   await p.goto(U + '#wrec-wnow'); await wait(1200); await p.click('[data-key=where-water-sum]'); await wait(300);
-  ok('кабинет открывается → в «Куди передати» сверху «Через сайт Водоканалу — без бота» с рахунком і прізвищем', await vis('[data-key=vkc]') && /905614/.test(await p.textContent('[data-key=vkc]')) && /Шевченко/.test(await p.textContent('[data-key=vkc]')));
+  ok('кабинет открывается → в «Куди передати» сверху «Через сайт Водоканалу» с рахунком і прізвищем', await vis('[data-key=vkc]') && /905614/.test(await p.textContent('[data-key=vkc]')) && /Шевченко/.test(await p.textContent('[data-key=vkc]')));
   ok('…бот — запасной, в свёрнутой «Або через бот Водоканалу»', !!(await p.$('[data-key=vk-alt]')) && !(await p.$eval('[data-key=vk-alt]', d => d.open)) && !(await vis('[data-key=wsend-cmd]')));
   ok('до проверки на сайт ничего не уходило', !(await (await fetch(M + '/__store')).json())._last);
   await p.click('[data-key=vkc-check]'); await p.waitForSelector('[data-key=vkc-found]', { timeout: 8000 }).catch(() => {});
@@ -74,7 +74,7 @@ const cab = (state) => { const n = Math.floor(Date.now() / 1000); fs.mkdirSync(D
     await p.waitForSelector('[data-key=vk-cab-ok]', { timeout: 6000 }).catch(() => {}); await wait(200); };
   await p.setViewportSize({ width: 390, height: 844 }); await noRec();
   const pre = await p.textContent('#wsend-vk').catch(() => '');
-  ok('нет показаний месяца → «Через сайт Водоканалу — без бота» с «Перевірити» и «тут з’явиться «Відправити на сайт Водоканалу»»', await vis('[data-key=vkc-check]') && /Відправити на сайт Водоканалу/.test(await p.textContent('[data-key=vk-need-rec]')) && await vis('[data-key=vkc-add]'), pre);
+  ok('нет показаний месяца → «Через сайт Водоканалу» с «Перевірити» и «тут з’явиться «Відправити на сайт Водоканалу»»', await vis('[data-key=vkc-check]') && /Відправити на сайт Водоканалу/.test(await p.textContent('[data-key=vk-need-rec]')) && await vis('[data-key=vkc-add]'), pre);
   ok('…бот — запасной, свёрнут', !!(await p.$('[data-key=vk-alt]')) && !(await p.$eval('[data-key=vk-alt]', d => d.open)));
   await p.click('[data-key=vkc-check]'); await p.waitForSelector('[data-key=vkc-site]', { timeout: 8000 }).catch(() => {});
   const site = await p.textContent('[data-key=vkc-site]').catch(() => '');

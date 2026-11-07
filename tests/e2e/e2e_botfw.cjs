@@ -48,7 +48,9 @@ const reply = (uid, src, kind, text, at) => execFileSync('php', ['-r', '$p=new P
   // ---- газ: бот Газмереж першим; не натискали — «прийнято» з номером рахунку лягає на цей лічильник
   await p.goto(U + '#gas'); await wait(500); await openWhere();
   const chans = await p.$$eval('[data-key=dest-grm] .dest-ch a', a => a.map(x => x.getAttribute('href')));
-  ok('газ: перший канал — бот Газмереж t.me/mygrmu_bot, далі «Куб», SMS 4647 (до 27.11) і кабінет', chans[0] === 'https://t.me/mygrmu_bot' && /kub\.energy/.test(chans[1] || '') && /^sms:4647/.test(chans[2] || '') && /grmu/.test(chans[3] || ''), chans);
+  // 07.11: кнопками — лише бот і SMS (до 27.11); «Куб» і кабінет — у згорнутих «Інші способи»
+  ok('газ: перший канал — бот Газмереж t.me/mygrmu_bot, далі SMS 4647 (до 27.11); «Куб» і кабінет — в «Інші способи»', chans[0] === 'https://t.me/mygrmu_bot' && /^sms:4647/.test(chans[1] || '') && chans.length === 2
+    && !!(await p.$('details.dest-more [data-key=dest-grm-kub]')) && !!(await p.$('details.dest-more [data-key=dest-grm-cab]')), chans);
   ok('газ: підказка — «Поділитись номером», філія, перешліть відповідь', /Поділитись номером/.test(await p.textContent('[data-key=ed-bot-how]')) && /перешліть/i.test(await p.textContent('[data-key=ed-bot-how]')));
   reply(uid, 'grm', 'ok', 'Показання по особовому рахунку 123456789 прийнято', now() + 2); await back(); await openWhere();
   const g = await rec('n20261101');
