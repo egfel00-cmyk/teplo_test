@@ -1636,6 +1636,11 @@ details.wacc.wacc-btn > summary .pacc-chev { position: static; margin: 0 0 0 aut
 .where > h2 .bt-ico, .wacc > summary h2 .bt-ico { margin: 0; }
 .mhist-h { gap: 10px; }
 .mbox-set > summary > .bt-ico { padding: 7px; border-radius: 10px; }
+/* шапки аккордеонов внутри блоков (владелец 07.11): высота при открытии не меняется, значок, заголовок и шеврон — по центру полосы, тап ≥ 48 px */
+.mbox-set > summary, .mbox > .mbox-set > summary, .mbox > .mbox-set[open] > summary, .mbox-set[open] > summary { padding: 8px 0; min-height: 56px; margin: 0; }
+.mbox-set[open] > .mbox-set-b { margin-top: 4px; }
+details.dest-more > summary, details.bot-how > summary { min-height: 48px; padding: 6px 0; gap: 10px; }
+details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { margin-left: auto; }
 
 </style>
 <style>.top { padding-top: max(12px, env(safe-area-inset-top)); }</style>
@@ -2849,7 +2854,7 @@ details.wacc.wacc-btn > summary .pacc-chev { position: static; margin: 0 0 0 aut
       wsv_no_data: 'Коли в Історії будуть хоча б двоє показань цього водоміра, тут з’являться ваші цифри.',
       wsv_g1: 'Витоки', wsv_g2: 'Кран і душ', wsv_g3: 'Техніка', wsv_g4: 'Контроль витрат',
       wnp_lead: 'Сфотографуйте водоміри — цифри впишуться самі, перевірте й збережіть. Або впишіть чорні цифри барабана вручну.',
-      wnp_pick: 'З фото', wnp_more: 'Додати фото',
+      wnp_pick: 'Розпізнати з фото', wnp_more: 'Додати фото',
       wnp_hint: 'Один кадр з обома водомірами або по кадру на кожен. Барабан — прямо й близько, без відблиску спалаху.',
       wnp_src: 'З фото {n}: {v}', wnp_src_half: 'З фото {n}: {p} — останній барабан між цифрами, допишіть меншу.', wnp_src_none: 'Фото {n}: цифр барабана не видно — впишіть вручну.',
       wnp_why_serial: '(за заводським №)', wnp_why_tint: '(за кольором кільця)', wnp_why_prev: '(за минулими показаннями)', wnp_why_swap: '(поміняли місцями)',
@@ -3945,7 +3950,7 @@ details.wacc.wacc-btn > summary .pacc-chev { position: static; margin: 0 0 0 aut
       wsv_no_data: 'Когда в Истории будут хотя бы двое показаний этого водомера, здесь появятся ваши цифры.',
       wsv_g1: 'Утечки', wsv_g2: 'Кран и душ', wsv_g3: 'Техника', wsv_g4: 'Контроль расходов',
       wnp_lead: 'Сфотографируйте водомеры — цифры впишутся сами, проверьте и сохраните. Или впишите чёрные цифры барабана вручную.',
-      wnp_pick: 'С фото', wnp_more: 'Добавить фото',
+      wnp_pick: 'Распознать с фото', wnp_more: 'Добавить фото',
       wnp_hint: 'Один кадр с обоими водомерами или по кадру на каждый. Барабан — прямо и близко, без блика вспышки.',
       wnp_src: 'С фото {n}: {v}', wnp_src_half: 'С фото {n}: {p} — последний барабан между цифрами, допишите меньшую.', wnp_src_none: 'Фото {n}: цифр барабана не видно — впишите вручную.',
       wnp_why_serial: '(по заводскому №)', wnp_why_tint: '(по цвету кольца)', wnp_why_prev: '(по прошлым показаниям)', wnp_why_swap: '(поменяли местами)',
