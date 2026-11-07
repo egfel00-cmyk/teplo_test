@@ -191,7 +191,7 @@ final class HtmSvc {
     finally { $cab->logout(); }
     $fi = self::formInfo($h);
     self::diag(['op' => $op, 'user' => $uid, 'result' => 'ok', 'meter' => (bool)$h['meter'], 'base' => array_keys($h['base']), 'form' => $fi, 'win' => [$h['min'] !== null, $h['max'] !== null, $h['win'] ?? null], 'dateJs' => $h['dateJs'] ?? [], 'alerts' => $h['alerts'] ?? null, 'journal' => array_map(fn($r) => $r['status'], $h['journal']), 'closed' => $h['closed'] ? CabWeb::mask($h['closed'], 160) : null,
-      'explore' => $ex ? array_diff_key($ex, ['billBody' => 1]) : null, 'steps' => $cab->w->steps]);
+      'explore' => $ex ? array_diff_key($ex, ['billBody' => 1, 'billRaw' => 1]) : null, 'steps' => $cab->w->steps]);
     return [$acc, $h, $fi, $ex];
   }
   /** «Перевірити» без кнопки: владелец неделю не нажимал (06.11 17:26 — последний раз, а окно дат, плашки и журнал нужны до первого живого внесения).
@@ -217,6 +217,30 @@ final class HtmSvc {
     $j = ['v' => self::LOOK_V, 'at' => $now, 'res' => $res, 'tries' => ($same ? (int)($j['tries'] ?? 0) : 0) + 1];
     @mkdir(dirname(self::lookFile()), 0700, true); @file_put_contents(self::lookFile(), json_encode($j), LOCK_EX);
     return $res;
+  }
+
+  /** Квитанция из кабинета ХТМ (только чтение): вход сохранённым паролем, осмотр (главная → карточка рахунку → платежі) и PDF, похожий на квитанцию за $ym.
+   *  Новая (другой отпечаток) → docs (kind bill, src htm, ym — месяц из ссылки/строки таблицы/имени файла, иначе $ym как догадка); та же — same; нет — none.
+   *  Журнал кабинета: op autobill (cron — не человек), итог bill | nobill, осмотр без цифр и прізвищ. → {doc, ym, guess} | {same, doc} | {none} */
+  public static function bill(int $uid, string $want, string $place, string $ym): array {
+    [$cab, $acc] = self::enter($uid, $want, 'autobill');
+    try {
+      $pg = []; if (!empty($cab->home['url'])) $pg[(string)$cab->home['url']] = (string)$cab->home['body'];
+      $ex = $cab->explore($pg, $acc['acc'], $acc['sur'], $ym);
+    }
+    catch (CabErr $e) { self::diag(['op' => 'autobill', 'user' => $uid, 'result' => $e->err, 'steps' => $cab->w->steps]); throw self::cabErr($e); }
+    finally { $cab->logout(); }
+    $body = (string)($ex['billBody'] ?? ''); $raw = (array)($ex['billRaw'] ?? []);
+    $pub = array_diff_key($ex, ['billBody' => 1, 'billRaw' => 1]);
+    if ($body === '') { self::diag(['op' => 'autobill', 'user' => $uid, 'result' => 'nobill', 'explore' => $pub, 'steps' => $cab->w->steps]); return ['none' => true]; }
+    $sha = sha1($body);
+    if ($d = Docs::bySha($uid, $sha)) { self::diag(['op' => 'autobill', 'user' => $uid, 'result' => 'same', 'steps' => $cab->w->steps]); return ['same' => true, 'doc' => $d, 'ym' => (string)($d['ym'] ?? '')]; }
+    $dym = HtmCab::monthOf((string)($raw['txt'] ?? '')) ?? HtmCab::monthOf((string)($raw['row'] ?? '')) ?? HtmCab::monthOf((string)($raw['disp'] ?? '')) ?? HtmCab::monthOf((string)($raw['u'] ?? ''));
+    $guess = $dym === null; $dym = $dym ?? $ym;
+    $mn = ['січень', 'лютий', 'березень', 'квітень', 'травень', 'червень', 'липень', 'серпень', 'вересень', 'жовтень', 'листопад', 'грудень'][(int)substr($dym, 5, 2) - 1];
+    $doc = Docs::put($uid, $body, 'application/pdf', 'pdf', $place, 'bill', 'Квитанція ХТМ, ' . $mn . ' ' . substr($dym, 0, 4), ['src' => 'htm', 'ym' => $dym, 'sha' => $sha]);
+    self::diag(['op' => 'autobill', 'user' => $uid, 'result' => 'bill', 'guess' => $guess, 'bill' => $pub['bill'] ?? null, 'steps' => $cab->w->steps]);
+    return ['doc' => $doc, 'ym' => $dym, 'guess' => $guess];
   }
 
   // ---------- внести ----------
@@ -474,14 +498,14 @@ final class HtmSvc {
       if (in_array($e['op'] ?? '', ['check', 'look'], true) && ($e['result'] ?? '') === 'ok') $seen = ['at' => gmdate('c', (int)$e['at']), 'by' => ($e['op'] ?? '') === 'look' ? 'cron' : 'user', 'meter' => $e['meter'] ?? null, 'base' => $e['base'] ?? [],
         'open' => !empty($e['form']['open']), 'minMax' => $e['form']['minMax'] ?? null, 'win' => $e['form']['win'] ?? null, 'dateJs' => $e['dateJs'] ?? null, 'alerts' => $e['alerts'] ?? null, 'journal' => array_count_values(array_map('strval', (array)($e['journal'] ?? []))), 'closed' => $e['closed'] ?? null];
       // последний сбой робота (сайт не ответил, страница не та, капча…) — по шагам: метод, путь без рахунку, код, мс, ошибка сети
-      if (!in_array((string)($e['result'] ?? ''), ['ok', 'pending', 'unseen', 'rejected', 'on', 'off', 'queued', 'bad_value', 'bad_login'], true) && ($e['op'] ?? '') !== 'recheck')
+      if (!in_array((string)($e['result'] ?? ''), ['ok', 'pending', 'unseen', 'rejected', 'on', 'off', 'queued', 'bad_value', 'bad_login', 'bill', 'same', 'nobill'], true) && ($e['op'] ?? '') !== 'recheck')
         $lastErr = ['at' => gmdate('c', (int)$e['at']), 'op' => $e['op'] ?? null, 'result' => $e['result'] ?? null, 'where' => $e['where'] ?? null, 'steps' => array_slice((array)($e['steps'] ?? []), -8)];
       // последнее внесение (кнопкой или автоподачей) — итог и что было на странице: окно дат, плашки до отправки, ответ сайта (цифры скрыты)
       if (in_array($e['op'] ?? '', ['send', 'autosend'], true) && ($e['where'] ?? '') !== 'login') $lastSend = ['at' => gmdate('c', (int)$e['at']), 'op' => $e['op'], 'result' => $e['result'] ?? null, 'field' => $e['field'] ?? null,
         'flash' => ($e['flash'] ?? '') !== '', 'site' => ($e['site'] ?? '') !== '', 'banners' => $e['banners'] ?? null] + (array)($e['page'] ?? []);   // сами слова — только в /admin: /api/health открыт всем
       $k = preg_replace('/[^a-z]/', '', (string)($e['op'] ?? '?')) . ' ' . preg_replace('/[^a-z_,]/', '', (string)($e['result'] ?? '?'));
       $n[$k] = ($n[$k] ?? 0) + 1;
-      if (!in_array($e['op'] ?? '', ['recheck', 'look'], true)) $last = max((int)$last, (int)($e['at'] ?? 0));   // cron — не человек
+      if (!in_array($e['op'] ?? '', ['recheck', 'look', 'autobill'], true)) $last = max((int)$last, (int)($e['at'] ?? 0));   // cron — не человек
       if (!empty($e['form']['open'])) $form = ['at' => gmdate('c', (int)$e['at']), 'match' => $e['form']['match'], 'missing' => $e['form']['missing'], 'unknown' => $e['form']['unknown'],
         'fields' => array_map(fn($f) => trim(($f['n'] ?? '') . ':' . ($f['t'] ?? '') . (isset($f['r']) ? '→' . $f['r'] : '')), $e['form']['fields'] ?? []),
         // подсказки сайта к полям (обязательное, длина, шаблон, placeholder) — чтобы сверить формат телефона и чисел
@@ -492,5 +516,127 @@ final class HtmSvc {
     $cr = 0; try { $cr = (int)(Db::one('SELECT COUNT(*) AS c FROM cab_creds WHERE prov = ?', [self::PROV])['c'] ?? 0); } catch (Throwable $e) {}
     $lk = self::lookState(); $look = $lk ? ['v' => (int)($lk['v'] ?? 0), 'at' => gmdate('c', (int)($lk['at'] ?? 0)), 'res' => (array)($lk['res'] ?? []), 'tries' => (int)($lk['tries'] ?? 0)] : null;
     return ['n' => (object)$n, 'lastUser' => $last ? gmdate('c', $last) : null, 'connected' => $cr, 'jobs' => (object)$jobs, 'form' => $form, 'seen' => $seen, 'lastSend' => $lastSend, 'lastErr' => $lastErr, 'look' => $look, 'explore' => $explore];
+  }
+}
+
+/** Квитанции ХТМ в фоне, без человека (владелец 07.11.2026: «платёжки ХТМ тоже автоматом скачивались в запись об оплате в истории»).
+ *  Как VkBills у Водоканала. Кто: подключил кабинет ХТМ (cab_creds htm, пароль подходит, не капча) и не выключил «Квитанції самі» (place.meter.billAuto !== false).
+ *  Куда: запись тепла (state.readings) квартиры за прошлый месяц по Киеву — к ней bills += {…, auto: 'htm'}; рахунок квартиры — place.meter.account
+ *  (среди рахунків кабинета), без него — единственный рахунок кабинета, если в данных одна квартира с теплосчётчиком. Записи за месяц нет — не ходим.
+ *  Когда: каждый день 7:00–21:59 по Киеву, один вход за минуту на всех; та же квитанция — снова через 20 ч; взяли — за этот месяц больше не ходим.
+ *  Только чтение: вход, GET страниц, выход. Ничего не вносим. /api/health → htmBills. */
+final class HtmBills {
+  const RETRY = 20 * 3600, FROM_H = 7, TO_H = 22, IDLE = 1800;
+  public static function file(): string { return Cfg::data() . '/cache/htm_bills.json'; }
+  public static function read(): array { $j = json_decode((string)@file_get_contents(self::file()), true); return is_array($j) ? $j : []; }
+  private static function write(array $j): void { @mkdir(dirname(self::file()), 0700, true); @file_put_contents(self::file(), json_encode($j, JSON_UNESCAPED_UNICODE), LOCK_EX); }
+  public static function ym(int $now): string { return Gpv::kyiv($now)->modify('first day of last month')->format('Y-m'); }
+  private static function live(array $st): array {
+    $ps = array_values(array_filter((array)($st['places'] ?? []), fn($p) => is_array($p) && empty($p['deleted']) && !empty($p['id'])));
+    if (!$ps && !empty($st['meter'])) $ps = [['id' => 'main', 'meter' => $st['meter']]];
+    return $ps;
+  }
+  private static function first(array $places): string { return (string)($places[0]['id'] ?? 'main'); }
+  private static function dateOf($r): string { $r = (array)$r; return (string)(((array)($r['htm'] ?? []))['date'] ?? ''); }
+  /** Запись тепла квартиры за ym, к которой положить квитанцию: не удалена, последняя по дате; у записи месяца уже есть квитанция ХТМ — null. */
+  public static function recIdx(array $readings, string $place, string $first, string $ym): ?int {
+    $best = null; $bd = '';
+    foreach ($readings as $i => $r) {
+      $ra = (array)$r; if (empty($ra['id']) || !empty($ra['deleted'])) continue;
+      $d = self::dateOf($r); if ((string)($ra['place'] ?? $first) !== $place || substr($d, 0, 7) !== $ym) continue;
+      foreach ((array)($ra['bills'] ?? []) as $b) if ((((array)$b)['auto'] ?? '') === 'htm') return null;
+      if ($best === null || $d >= $bd) { $best = $i; $bd = $d; }
+    }
+    return $best;
+  }
+  private static function hasBill(array $readings, string $place, string $first, string $ym): bool {
+    foreach ($readings as $r) { $ra = (array)$r; if (empty($ra['deleted']) && (string)($ra['place'] ?? $first) === $place && substr(self::dateOf($r), 0, 7) === $ym) foreach ((array)($ra['bills'] ?? []) as $b) if ((((array)$b)['auto'] ?? '') === 'htm') return true; }
+    return false;
+  }
+  /** Каждая квартира с теплосчётчиком: [причина, цель]. off — «Квитанції самі» выключено, noacc — рахунок квартиры не из этого кабинета (или не понять, какой),
+   *  norec — нет записи тепла за ym, hasbill — квитанция уже прикреплена, ok — цель {place, acc}. $accs — рахунки кабинета [{acc, sur}]. */
+  public static function why(array $st, array $accs, string $ym): array {
+    $places = self::live($st); if (!$places) return [];
+    $first = self::first($places); $rd = (array)($st['readings'] ?? []); $out = [];
+    $heat = array_values(array_filter($places, fn($p) => is_array($p['meter'] ?? null) && empty($p['meter']['removed'])));
+    $have = array_map(fn($a) => (string)($a['acc'] ?? ''), $accs);
+    foreach ($heat as $p) {
+      $m = (array)$p['meter']; $id = (string)$p['id'];
+      if (($m['billAuto'] ?? null) === false) { $out[] = ['off', null]; continue; }
+      $acc = preg_replace('/\D/', '', (string)($m['account'] ?? ''));
+      if ($acc === '' && count($have) === 1 && count($heat) === 1) $acc = $have[0];
+      if ($acc === '' || !in_array($acc, $have, true)) { $out[] = ['noacc', null]; continue; }
+      if (self::recIdx($rd, $id, $first, $ym) === null) { $out[] = [self::hasBill($rd, $id, $first, $ym) ? 'hasbill' : 'norec', null]; continue; }
+      $out[] = ['ok', ['place' => $id, 'acc' => $acc]];
+    }
+    return $out;
+  }
+  /** Прикрепить квитанцию к записи тепла за ym в данных человека (новая версия; конфликт с устройством — до 3 попыток; прошлая — в историю, причина htmbill). */
+  public static function attach(int $uid, string $place, string $ym, array $doc): bool {
+    for ($i = 0; $i < 3; $i++) {
+      $row = Db::one('SELECT data, version, updated_at FROM user_state WHERE user_id = ?', [$uid]); if (!$row) return false;
+      $st = json_decode((string)$row['data']); $arr = json_decode((string)$row['data'], true);   // объекты: пустые {} остаются {}
+      if (!is_object($st) || !is_array($arr) || !isset($st->readings) || !is_array($st->readings)) return false;
+      $idx = self::recIdx($st->readings, $place, self::first(self::live($arr)), $ym); if ($idx === null) return false;
+      $r = $st->readings[$idx]; if (!isset($r->bills) || !is_array($r->bills)) $r->bills = [];
+      $r->bills[] = (object)['id' => (string)$doc['id'], 'mime' => (string)($doc['mime'] ?? 'application/pdf'), 'name' => (string)($doc['name'] ?? ''), 'bytes' => (int)($doc['bytes'] ?? 0), 'at' => (string)($doc['createdAt'] ?? Http::iso()), 'auto' => 'htm'];
+      $r->updatedAt = (int)round(microtime(true) * 1000);   // запись новее — при слиянии с устройством побеждает она
+      $json = json_encode($st, JSON_UNESCAPED_UNICODE); if ($json === false) return false;
+      if (Db::q('UPDATE user_state SET data = ?, version = version + 1, updated_at = ? WHERE user_id = ? AND version = ?', [$json, Http::iso(), $uid, (int)$row['version']])->rowCount() === 1) {
+        StateHist::put($uid, (string)$row['data'], (int)$row['version'], (string)$row['updated_at'], 'htmbill');
+        return true;
+      }
+    }
+    return false;
+  }
+  /** cron: одна квартира за запуск. → [[uid, итог]] или [] */
+  public static function cron(?int $now = null): array {
+    $now = $now ?? time(); $h = (int)Gpv::kyiv($now)->format('G');
+    if ($h < self::FROM_H || $h >= self::TO_H || Cfg::get('htm_bills_auto', true) === false) return [];
+    $j = self::read(); if ((int)($j['idle'] ?? 0) > $now) return [];
+    $ym = self::ym($now); $todo = null; $cnt = [];
+    $rows = Db::q("SELECT c.user_id, c.info, s.data FROM cab_creds c JOIN user_state s ON s.user_id = c.user_id WHERE c.prov = 'htm' AND c.state NOT IN ('bad_login', 'captcha') ORDER BY c.user_id")->fetchAll();
+    foreach ($rows as $row) {
+      $st = json_decode((string)$row['data'], true); if (!is_array($st)) continue;
+      $info = json_decode((string)$row['info'], true); $accs = (array)(is_array($info) ? ($info['accounts'] ?? []) : []);
+      foreach (self::why($st, $accs, $ym) as [$why, $t]) {
+        if ($t) {
+          $e = (array)($j['p'][$row['user_id'] . '|' . $t['place']] ?? []);
+          $why = ($e['got'] ?? '') === $ym ? 'got' : ($now - (int)($e['at'] ?? 0) < self::RETRY ? 'retry' : '');
+          if ($why === '') { $todo = [(int)$row['user_id'], $t]; break 2; }
+        }
+        $cnt[$why] = ($cnt[$why] ?? 0) + 1;
+      }
+    }
+    if (!$todo) { $j['idle'] = $now + self::IDLE; $j['scan'] = ['at' => $now, 'ym' => $ym, 'cabs' => count($rows), 'k' => $cnt]; self::write($j); return []; }
+    [$uid, $t] = $todo; $key = $uid . '|' . $t['place'];
+    $e = (array)($j['p'][$key] ?? []); $e = ['at' => $now, 'ym' => $ym, 'n' => ($e['ym'] ?? '') === $ym ? (int)($e['n'] ?? 0) + 1 : 1] + array_intersect_key($e, ['got' => 1]);
+    $j['p'][$key] = $e; self::write($j);   // отметка до входа: упадём посередине — не повторим через минуту
+    $guess = null;
+    try {
+      RateLimit::hit('htm_cab_all', 'all');
+      $r = HtmSvc::bill($uid, $t['acc'], $t['place'], $ym);
+      $doc = $r['doc'] ?? null; $dym = (string)($r['ym'] ?? ''); $guess = $r['guess'] ?? null;
+      if (!empty($r['none']) || !$doc) $res = 'nobill';
+      elseif (!empty($r['same']) && $dym !== $ym) $res = 'same';   // в кабинете ещё прошлая квитанция
+      else {
+        $ok = self::attach($uid, $t['place'], $dym !== '' ? $dym : $ym, $doc);
+        $res = $ok ? (!empty($r['same']) ? 'attached' : 'got') : 'norec';
+        if ($ok && $dym === $ym) $e['got'] = $ym;
+      }
+    } catch (HttpError $x) { $res = preg_replace('/^(cab|htm)_/', '', $x->err) ?: 'err'; }
+    catch (Throwable $x) { $res = 'down'; error_log('teplo htm bills: ' . $x->getMessage()); }
+    $e['res'] = $res;
+    $j = self::read(); $j['p'][$key] = $e; $j['last'] = ['at' => $now, 'res' => $res] + ($guess !== null ? ['guess' => (bool)$guess] : []);
+    $n = (array)($j['n'][$ym] ?? []); $n[$res] = (int)($n[$res] ?? 0) + 1; $j['n'] = array_slice([$ym => $n] + (array)($j['n'] ?? []), 0, 3, true);
+    self::write($j);
+    return [[$uid, $res]];
+  }
+  /** /api/health → htmBills: последний итог, счёт по месяцам и почему последний обход никуда не пошёл (без рахунків и людей). */
+  public static function summary(): array {
+    $j = self::read();
+    return ['last' => isset($j['last']) ? ['at' => gmdate('c', (int)$j['last']['at'])] + array_diff_key($j['last'], ['at' => 1]) : null, 'n' => (object)($j['n'] ?? []), 'places' => count((array)($j['p'] ?? [])),
+      'idleTill' => !empty($j['idle']) && $j['idle'] > time() ? gmdate('c', (int)$j['idle']) : null,
+      'scan' => isset($j['scan']) ? ['at' => gmdate('c', (int)$j['scan']['at']), 'ym' => (string)$j['scan']['ym'], 'cabs' => (int)($j['scan']['cabs'] ?? 0), 'k' => (object)($j['scan']['k'] ?? [])] : null];
   }
 }

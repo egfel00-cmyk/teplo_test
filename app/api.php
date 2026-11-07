@@ -119,7 +119,7 @@ final class Api {
           'gpv' => ['at' => $g['at'] ?? null, 'update' => $g['update'] ?? null, 'days' => array_keys((array)($g['days'] ?? [])), 'err' => $g['err'] ?? null],
           'vkcab' => VkCab::summary(), 'cabs' => (object)CabProbe::read(),
           // кабинет ХТМ: итоги операций, сколько подключено, внесения по статусам и последняя увиденная форма (имена/типы полей, без значений)
-          'htmcab' => HtmSvc::summary(), 'vksvc' => VkSvc::summary(), 'vkBills' => VkBills::summary(),
+          'htmcab' => HtmSvc::summary(), 'vksvc' => VkSvc::summary(), 'vkBills' => VkBills::summary(), 'htmBills' => HtmBills::summary(),
           // проба обленерго с украинского адреса (NAS владельца → POST /api/relay/probe): код, Cloudflare, капча, формы — решает, быть ли ретранслятору
           'uaProbe' => (object)RelayProbe::summary(), 'uaCheck' => (object)UaCheck::summary(),
           // ретранслятор на NAS: включён ли, на связи ли (сек. назад, версия сценария, страна), пауза, задания по состояниям

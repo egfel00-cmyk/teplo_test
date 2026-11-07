@@ -70,13 +70,14 @@ ok('окно дат: «2026-11-05» и «5.11.2026» → 05.11.2026', HtmCab::dm
 // осмотр кабинета: где квитанция (explore) — карточка → «Платежі» → «Квитанція за жовтень» (PDF); без рахунку, прізвища и цифр
 stand('act=reset'); stand('act=set&scenario=ok&today=2026-11-10&robot_delay=0');
 $h = new HtmCab(); $home = $h->login('test@stand.local', 'stand-pass-123'); $acc = $h->accounts($home); $p = $h->heat($acc[0]['acc'], $acc[0]['sur']);
-$ex = $h->explore([$h->home['url'] => $h->home['body'], $p['url'] => $p['html']], $acc[0]['acc'], $acc[0]['sur']); $body = $ex['billBody']; unset($ex['billBody']);
+$ex = $h->explore([$h->home['url'] => $h->home['body'], $p['url'] => $p['html']], $acc[0]['acc'], $acc[0]['sur']); $body = $ex['billBody']; $raw = $ex['billRaw'] ?? []; unset($ex['billBody'], $ex['billRaw']);
 $ej = json_encode($ex, JSON_UNESCAPED_UNICODE); $pp = array_column($ex['pages'], 'p');
 ok('осмотр: главная, тепло, карточка рахунку и «Платежі»; квитанция — PDF по ссылке «Квитанція за жовтень»', in_array('/cabinet/{acc}/{sur}', $pp, true) && in_array('/cabinet/payments/{acc}/{sur}', $pp, true)
   && ($ex['bill']['pdf'] ?? false) === true && ($ex['bill']['p'] ?? '') === '/cabinet/payments/print/{acc}/{sur}/####-##' && str_starts_with((string)$body, '%PDF-') && str_contains((string)$ex['bill']['type'], 'pdf'), $ex);
 $strs = []; array_walk_recursive($ex, function ($v) use (&$strs) { if (is_string($v)) $strs[] = $v; });
 ok('…в осмотре нет рахунку, прізвища и цифр; заголовки таблицы платежей видны', !preg_match('/1000000061|ТЕСТОВИЙ|Тестовий|\d/u', implode(' ', $strs)) && in_array('Квитанція', $ex['pages'][array_search('/cabinet/payments/{acc}/{sur}', $pp, true)]['th'], true), $ej);
 $bad = array_filter(array_column(array_slice($h->w->steps, 0), 1), fn($x) => preg_match('~logout|/add|remove|settings~', $x));
+ok('…сырое (только вызывающему): месяц по строке таблицы и имени файла — 2026-10', HtmCab::monthOf((string)($raw['row'] ?? '')) === '2026-10' && HtmCab::monthOf((string)($raw['disp'] ?? '')) === '2026-10', $raw);
 ok('…только GET и не трогает add/remove/settings', !array_filter($h->w->steps, fn($s) => $s[0] !== 'GET' && !str_contains($s[1], '/cabinet/login')) && !$bad, $h->w->steps);
 
 // живой кабинет 06.11 22:14: новое соединение на /cabinet/list не установилось за 6 с → «сайт не відповідає», хотя вход прошёл

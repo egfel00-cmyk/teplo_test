@@ -575,6 +575,17 @@ final class HtmCab {
     unset($cur);
     return $o;
   }
+  /** Месяц квитанции по тексту: «жовтень 2026», «за октябрь 2026», «2026-10», «10.2026», «202610» → «2026-10»; не нашли — null. */
+  public static function monthOf(string $s): ?string {
+    $names = ['01' => 'січ|январ', '02' => 'лют|феврал', '03' => 'берез|март', '04' => 'квіт|апрел', '05' => 'трав|ма[йя]', '06' => 'черв|июн', '07' => 'лип|июл', '08' => 'серп|август',
+      '09' => 'верес|сентябр', '10' => 'жовт|октябр', '11' => 'листоп|ноябр', '12' => 'груд|декабр'];
+    $best = null;
+    foreach ($names as $mm => $re) if (preg_match('/(?<![\p{L}])(?:' . $re . ')[\p{L}]*\s+(20\d\d)(?!\d)/iu', $s, $m, PREG_OFFSET_CAPTURE) && ($best === null || $m[0][1] < $best[0])) $best = [$m[0][1], $m[1][0] . '-' . $mm];
+    if ($best) return $best[1];
+    if (preg_match('/(?<!\d)(20\d\d)[-_.\/]?(0[1-9]|1[0-2])(?![\d])/', $s, $m)) return $m[1] . '-' . $m[2];
+    if (preg_match('/(?<![\d.])(0[1-9]|1[0-2])[._\/-](20\d\d)(?!\d)/', $s, $m)) return $m[2] . '-' . $m[1];
+    return null;
+  }
   /** Насколько ссылка похожа на квитанцию: 0 — нет; рамка/embed — выше всех (решает вызывающий), «.pdf», «квитанція», «друк» — 2, «рахунок за…» — 1. */
   public static function billish(string $href, string $text): int {
     if (preg_match('~\.pdf\b|pdf|kvit|kvyt|invoice|receipt|print|druk~i', $href) || preg_match('/квитанц|квітанц|рахунок[- ]повідомлен|платіжк|роздрук|друк|pdf/iu', $text)) return 2;
@@ -583,8 +594,9 @@ final class HtmCab {
   /** Осмотр кабинета для сверки (только чтение): главная, карточка рахунку, платежи и похожие разделы — какие ссылки, рамки, заголовки таблиц;
    *  первая ссылка, похожая на квитанцию, — GET и что пришло (PDF ли, размер, тип). Ничего не нажимаем: POST, logout, add, remove — никогда.
    *  Без личных данных: рахунок и прізвище в адресах и текстах → {acc}/{sur}, цифры → #. $pages — уже открытые страницы [путь => html].
-   *  → ['pages' => [...], 'bill' => {...}|null, 'billBody' => ?string (сам PDF — только вызывающему, не в журнал)] */
-  public function explore(array $pages, string $acc, string $sur): array {
+   *  $ym — нужный месяц квитанции («2026-10»): ссылка с этим месяцем в тексте/строке таблицы/адресе — первой.
+   *  → ['pages' => [...], 'bill' => {...}|null, 'billBody' => ?string, 'billRaw' => {u, txt, row, disp} (сам PDF и сырой текст — только вызывающему, не в журнал)] */
+  public function explore(array $pages, string $acc, string $sur, ?string $ym = null): array {
     $base = self::base(); $surU = mb_strtoupper($sur);
     $mp = function (string $u) use ($acc, $sur, $surU): string {
       $p = (string)(parse_url($u, PHP_URL_PATH) ?: '/'); $q = (string)(parse_url($u, PHP_URL_QUERY) ?? '');
@@ -603,13 +615,16 @@ final class HtmCab {
         $abs = CabWeb::abs($href, $url); $k = $mp($abs); $txt = CabWeb::sp($a->textContent);
         $own = preg_match('~^/cabinet/\{acc\}/\{sur\}/?$~', $k);   // ссылка на свой рахунок — текст (адрес) не пишем
         if (count($pg['links']) < 40 && !isset($seen[$url . '|' . $k])) { $seen[$url . '|' . $k] = 1; $pg['links'][] = [$k, $own || mb_strlen($txt) > 60 ? '' : $mt($txt, 40)]; }
-        if ($sc = self::billish($href, $txt)) $cands[] = ['u' => $abs, 'k' => $k, 'how' => 'a', 'txt' => $mt($txt, 40), 'sc' => $sc];
+        if ($sc = self::billish($href, $txt)) {
+          $row = $a; while ($row && !in_array(strtolower($row->nodeName), ['tr', 'li', 'p', 'div'], true)) $row = $row->parentNode;   // строка таблицы рядом: «Жовтень 2026 … Квитанція»
+          $cands[] = ['u' => $abs, 'k' => $k, 'how' => 'a', 'txt' => $mt($txt, 40), 'sc' => $sc, 'raw' => ['txt' => mb_substr($txt, 0, 120), 'row' => $row ? mb_substr(CabWeb::sp(implode(' ', array_map(fn($t) => $t->nodeValue, iterator_to_array($x->query('.//text()', $row))))), 0, 200) : '']];
+        }
         $out['_next'][] = $abs;
       }
       foreach ($x->query('//iframe[@src]|//embed[@src]|//object[@data]') as $f) {
         $src = trim((string)($f->getAttribute('src') ?: $f->getAttribute('data'))); if ($src === '') continue;
         $abs = CabWeb::abs($src, $url); $pg['frames'][] = $f->nodeName . ' ' . $mp($abs);
-        $cands[] = ['u' => $abs, 'k' => $mp($abs), 'how' => $f->nodeName, 'txt' => '', 'sc' => 3];
+        $cands[] = ['u' => $abs, 'k' => $mp($abs), 'how' => $f->nodeName, 'txt' => '', 'sc' => 3, 'raw' => ['txt' => '', 'row' => mb_substr(CabWeb::sp((string)($x->query('//h1|//h2|//h3')->item(0)?->textContent ?? '')), 0, 200)]];
       }
       foreach ($x->query('//form') as $f) $pg['forms'][] = strtoupper((string)($f->getAttribute('method') ?: 'get')) . ' ' . $mp(CabWeb::abs((string)($f->getAttribute('action') ?: $url), $url)) . ' ' . implode(',', array_slice(array_map(fn($i) => (string)$i->getAttribute('name'), iterator_to_array($x->query('.//input[@name]|.//select[@name]|.//button[@name]', $f))), 0, 10));
       foreach ($x->query('//th') as $th) { $t = $mt($th->textContent, 40); if ($t !== '' && count($pg['th']) < 20) $pg['th'][] = $t; }
@@ -640,7 +655,8 @@ final class HtmCab {
     $out['tried'] = []; $uniq = [];
     while (count($out['tried']) < 3 && $this->w->left() >= 7) {
       $c = null;   // самая похожая из ещё не открытых (рамки страницы-обёртки, найденные по дороге, — тоже)
-      foreach ($cands as $x) if (!isset($uniq[$x['u']]) && !in_array($x['u'], $done, true) && $this->w->sameSite($x['u']) && !preg_match('~logout|/add\b|remove|delete~i', $x['u']) && ($c === null || $x['sc'] > $c['sc'])) $c = $x;
+      $score = fn($x) => $x['sc'] * 10 + ($ym !== null && self::monthOf($x['raw']['txt'] . ' | ' . $x['raw']['row'] . ' | ' . rawurldecode($x['u'])) === $ym ? 5 : 0);
+      foreach ($cands as $x) if (!isset($uniq[$x['u']]) && !in_array($x['u'], $done, true) && $this->w->sameSite($x['u']) && !preg_match('~logout|/add\b|remove|delete~i', $x['u']) && ($c === null || $score($x) > $score($c))) $c = $x;
       if (!$c) break;
       $uniq[$c['u']] = 1;
       try { $r = $this->get($c['u']); } catch (CabErr $e) { $out['tried'][] = ['p' => $c['k'], 'how' => $c['how'], 'err' => $e->err]; continue; }
@@ -648,7 +664,7 @@ final class HtmCab {
       $t = ['p' => $c['k'], 'how' => $c['how'], 'txt' => $c['txt'], 'code' => (int)$r['code'], 'type' => mb_substr((string)($r['h']['content-type'] ?? ''), 0, 60), 'pdf' => $pdf, 'bytes' => strlen($b),
         'disp' => $mt((string)($r['h']['content-disposition'] ?? ''), 80), 'html' => $pdf ? null : $mt((string)(CabWeb::dom($b)->query('//title')->item(0)?->textContent ?? ''), 60)];
       $out['tried'][] = $t; $done[] = $r['url'];
-      if ($pdf) { $out['bill'] = $t; $out['billBody'] = $b; break; }
+      if ($pdf) { $out['bill'] = $t; $out['billBody'] = $b; $out['billRaw'] = $c['raw'] + ['u' => rawurldecode($c['u']), 'disp' => (string)($r['h']['content-disposition'] ?? '')]; break; }
       if ($r['code'] === 200 && $b !== '') $scan($r['url'], $b, 200);   // страница-обёртка квитанции: её рамки и ссылки — тоже кандидаты
     }
     unset($out['_next']); $out['cands'] = count($cands);
