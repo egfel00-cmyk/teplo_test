@@ -1579,10 +1579,11 @@ details.bot-how[open] > ol { margin-top: 4px; }
   --bt-set: #9EACA6;
 }
 .panel.where { --bt-acc: var(--bt-send); --bt-bg: var(--bt-send-bg); --bt-line: var(--bt-send-line); }
-.mhist { --bt-acc: var(--bt-hist); --bt-bg: var(--bt-hist-bg); --bt-line: var(--bt-hist-line); }
+/* «Історія» — фоном карточки счётчика (белая, без рамки; владелец 07.11), индиго — только значок */
+.mhist { --bt-acc: var(--bt-hist); --bt-bg: var(--c-surface); --bt-line: var(--c-line); }
 .tips-box.bt-help { --bt-acc: var(--bt-help); --bt-bg: var(--bt-help-bg); --bt-line: var(--bt-help-line); }
 .mbox-set { --bt-acc: var(--bt-set); }
-.panel.where, .mhist, .tips-box.bt-help { background: var(--bt-bg); border: 1px solid var(--bt-line); }
+.panel.where, .tips-box.bt-help { background: var(--bt-bg); border: 1px solid var(--bt-line); }
 details.wacc.wacc-btn { background: var(--bt-bg); border: 1px solid var(--bt-line); }
 details.wacc.wacc-btn:hover, .tips-box.bt-help > summary:hover { border-color: var(--bt-acc); }
 details.wacc.wacc-btn[open] > summary { border-bottom-color: var(--bt-line); }

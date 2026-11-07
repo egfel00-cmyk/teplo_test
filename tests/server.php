@@ -1237,5 +1237,8 @@ ok('relay: окно света — 29.11 и 2.12 да, 15.11 нет (Киев)',
 $sc = Relay::script('https://peredai.com.ua', 'abc123');
 ok('relay: сценарий — ключ в заголовке, белый список адресов, без -L', str_contains($sc, "K='abc123'") && str_contains($sc, 'X-Relay-Key: $K') && str_contains($sc, "P='https://oblenergo.kharkiv.ua/ ") && !preg_match('/curl[^\n]* -L /', $sc), null);
 
+Db::q('INSERT INTO reminders_sent (user_id, kind, ym, sent_at, status) VALUES (?, ?, ?, ?, ?)', [424242, 'elec2', '2026-10', '2026-11-02T16:17:01+00:00', 'error: Bad Request: chat 777001 is deactivated']);
+$re = json_decode(json_encode((new Browser())->req('GET', '/api/health')->body['remindErr'] ?? []), true);
+ok('/api/health → remindErr: вид, месяц, ответ Telegram, цифры замаскированы', ($re[0]['kind'] ?? '') === 'elec2' && str_contains($re[0]['status'], 'chat ###### is deactivated') && !str_contains(json_encode($re), '777001'), $re);
 echo "\nИтог: $pass OK, $fail FAIL\n";
 exit($fail ? 1 : 0);

@@ -1564,7 +1564,7 @@
     // історія: останні три (разом із періодами без лічильника), решта — у вкладці «Історія»
     var wr = wrows(kind, 3);
     if (wr.total) right += histPanel(wr.html, wr.total, '<button class="btn sec block" data-act="view-go" data-v="' + kind + '" data-to="history" data-key="water-all">' + esc(t('wh_all', { n: wr.total })) + '</button>', 'water');
-    right += '<details class="tips-box bt-help" style="margin-top:16px" data-key="water-how"><summary>' + ico('help', 18, 'bt-ico') + '<span>' + esc(t('wt_how_t')) + '</span></summary><ul>' + t(kind === 'hot' ? 'wt_how_hot' : 'wt_how_cold').split('|').map(function (x) { return '<li>' + esc(x) + '</li>'; }).join('') + '</ul></details>';
+    // «Як знімати й куди передавати» на екрані лічильника прибрано (владелец 07.11) — це є в «Довідці» й у «Куди передати»
     h += '<div class="hero-grid"><div class="wm-col">' + left + '</div><div>' + right + '</div></div>';
     return { screen: 'S30', route: 'water-' + kind, html: h };
   }
@@ -2137,7 +2137,7 @@
     var right = '<button class="btn big block" data-act="' + SK[k].nw + '" data-key="' + k + '-add">' + ico('plus', 22) + '<span>' + esc(tk(k, 'en_title')) + '</span></button>' + whereAcc(ssendPanel(k, cur));
     var er = srows(k, 3);
     if (er.total) right += histPanel(er.html, er.total, '<button class="btn sec block" data-act="view-go" data-v="' + k + '" data-to="history" data-key="' + k + '-all">' + esc(t('wh_all', { n: er.total })) + '</button>', k);
-    right += '<details class="tips-box bt-help" style="margin-top:16px" data-key="' + k + '-how"><summary>' + ico('help', 18, 'bt-ico') + '<span>' + esc(tk(k, 'ehow_t')) + '</span></summary><ul>' + tk(k, 'ehow').split('|').map(function (x) { return '<li>' + esc(x) + '</li>'; }).join('') + '</ul></details>';
+    // «Як знімати й куди передавати» прибрано (владелец 07.11)
     h += '<div class="hero-grid"><div class="wm-col">' + left + '</div><div>' + right + '</div></div>';
     return { screen: k === 'gas' ? 'S55' : 'S50', route: k, html: h };
   }
