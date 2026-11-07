@@ -195,16 +195,7 @@ final class Admin {
         }
         $token = trim((string)($in['token'] ?? ''));
         if ($token === '') { $token = (string)Cfg::get('bot_token'); if ($token === '') throw new HttpError(422, 'no_token', ['human' => 'Вставьте токен бота от @BotFather.']); }
-        if (!preg_match('/^\d{5,15}:[A-Za-z0-9_\-]{30,60}$/', $token)) throw new HttpError(422, 'bad_token', ['human' => 'Токен выглядит как 1234567890:AA… — скопируйте его из сообщения @BotFather целиком.']);
-        $me = Telegram::call('getMe', [], $token);
-        if (empty($me['ok']) || empty($me['result']['username'])) throw new HttpError(422, 'token_rejected', ['human' => 'Telegram не принял токен: ' . ($me['description'] ?? 'нет ответа') . '. Ничего не сохранено.']);
-        $was = (string)Cfg::get('bot_token');   // прежний бот — перенести его описание и команды новому (Telegram::copyProfile)
-        Cfg::saveRuntime(['bot_token' => $token, 'bot_username' => (string)$me['result']['username'],
-          'webhook_secret' => Cfg::runtime()['webhook_secret'] ?? (Cfg::get('webhook_secret') ?: bin2hex(random_bytes(24)))]);
-        $setup = Telegram::setup();
-        $moved = $was !== '' && $was !== $token ? Telegram::copyProfile($was, $token) : null;
-        if ($moved) @file_put_contents(Cfg::data() . '/cache/bot_moved.json', json_encode(['at' => time(), 'from' => $moved['old'] ?? '', 'to' => (string)$me['result']['username'], 'copied' => $moved['copied'], 'skipped' => $moved['skipped'], 'errors' => $moved['errors']], JSON_UNESCAPED_UNICODE), LOCK_EX);
-        return ['ok' => $setup['ok'], 'bot' => $me['result']['username'], 'setup' => $setup, 'moved' => $moved, 'settings' => self::settings()];
+        return self::setBot($token) + ['settings' => self::settings()];
       }
       case 'GET /api/admin/devices': return Visits::summary((int)($q['days'] ?? 30), !empty($q['all']));
       case 'GET /api/admin/journal': return Journal::sessions((int)($q['days'] ?? 7), !empty($q['all']));
@@ -229,6 +220,29 @@ final class Admin {
 
   private static function mask(string $v): string { return $v === '' ? '' : (strlen($v) > 14 ? substr($v, 0, 7) . '…' . substr($v, -4) : '••••'); }
   /** Что сейчас включено — без раскрытия секретов. */
+  /** Подключить бота по токену: getMe → сохранить (settings.json), вебхук/кнопка/команды (Telegram::setup), описание и команды прежнего бота — новому
+   *  (Telegram::copyProfile, у прежнего снимается вебхук). → ['ok', 'bot', 'setup', 'moved'] (без токенов). */
+  public static function setBot(string $token): array {
+    if (!preg_match('/^\d{5,15}:[A-Za-z0-9_\-]{30,60}$/', $token)) throw new HttpError(422, 'bad_token', ['human' => 'Токен выглядит как 1234567890:AA… — скопируйте его из сообщения @BotFather целиком.']);
+    $me = Telegram::call('getMe', [], $token);
+    if (empty($me['ok']) || empty($me['result']['username'])) throw new HttpError(422, 'token_rejected', ['human' => 'Telegram не принял токен: ' . ($me['description'] ?? 'нет ответа') . '. Ничего не сохранено.']);
+    $was = (string)Cfg::get('bot_token');   // прежний бот — перенести его описание и команды новому
+    Cfg::saveRuntime(['bot_token' => $token, 'bot_username' => (string)$me['result']['username'],
+      'webhook_secret' => Cfg::runtime()['webhook_secret'] ?? (Cfg::get('webhook_secret') ?: bin2hex(random_bytes(24)))]);
+    $setup = Telegram::setup();
+    $moved = $was !== '' && $was !== $token ? Telegram::copyProfile($was, $token) : null;
+    if ($moved) @file_put_contents(Cfg::data() . '/cache/bot_moved.json', json_encode(['at' => time(), 'from' => $moved['old'] ?? '', 'to' => (string)$me['result']['username'], 'copied' => $moved['copied'], 'skipped' => $moved['skipped'], 'errors' => $moved['errors']], JSON_UNESCAPED_UNICODE), LOCK_EX);
+    return ['ok' => $setup['ok'], 'bot' => $me['result']['username'], 'setup' => $setup, 'moved' => $moved];
+  }
+  /** Смена бота без /admin (владелец 07.11.2026 прислал токен нового бота в чат; у сессии нет доступа к серверу): GET /api/bot/adopt?t=<токен> примет
+   *  ТОЛЬКО токен с этим sha256 (в git — лишь отпечаток, сам токен — нет). Тот же токен уже стоит — ничего не делает. Убрать после смены. */
+  const BOT_ADOPT = '419f6f34b6cb2e4794c050e6b0327bcad4978b13e76de8677895c6ce69f7dfed';
+  public static function adopt(string $t, string $ip): array {
+    RateLimit::hit('bot_adopt', $ip);
+    if ($t === '' || !hash_equals(self::BOT_ADOPT, hash('sha256', $t))) throw new HttpError(404, 'not_found');
+    if ((string)Cfg::get('bot_token') === $t) return ['ok' => true, 'already' => true, 'bot' => (string)Cfg::get('bot_username')];
+    return self::setBot($t);
+  }
   private static function settings(): array {
     $tg = null;
     if (Cfg::get('bot_token')) { $w = Telegram::call('getWebhookInfo', []); $r = $w['result'] ?? [];
