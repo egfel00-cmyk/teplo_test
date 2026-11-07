@@ -206,6 +206,96 @@ final class CabProbe {
  *  Разбираем здесь: коды по шагам, вид отказа Cloudflare, капча (чья), формы и их поля, поля вне форм, скрипты, AJAX-адреса, скелет главной формы.
  *  Храним структуру и сам вывод: это публичные страницы без входа (личных данных нет) — новая версия разбора (V) перечитает его без нового запуска на NAS.
  *  Страна отправителя — CF-IPCountry от Cloudflare перед нашим сайтом (IP не пишем). /api/health → uaProbe (без скелета), GET /api/relay/probe?t= — целиком. */
+/** Обленерго с украинских узлов check-host.net — ответ «пустят ли из Украины», пока NAS владельца не запустил RelayProbe. Узел check-host делает обычный
+ *  GET страницы и отдаёт только код ответа (тела нет). 200 с Украины → нашему серверу отказ по стране/сети, домашний адрес почти наверняка пустят;
+ *  403/503 и с Украины → проверка ботов на весь сайт: узлы — дата-центры, домашний адрес ещё может пройти, решит только NAS. Ничего не вводим и не шлём.
+ *  Раз на V, два шага cron: start — список узлов (nodes/hosts) → украинские (до 4) → check-http обеих страниц RelayProbe::T; через ≥ 20 с — check-result
+ *  (до 8 раз, пока все узлы не ответят). /api/health → uaCheck. */
+final class UaCheck {
+  const V = 1;
+  const API = 'https://check-host.net';
+  /** в тестах: fn(string $url): ['code' => int, 'body' => string] */
+  public static $http = null;
+  private static int $code = 0;   // код последнего ответа API — для подсказки, если формат не тот
+  public static function file(): string { return Cfg::data() . '/cache/ua_check.json'; }
+  public static function read(): array { $j = json_decode((string)@file_get_contents(self::file()), true); return is_array($j) ? $j : []; }
+  private static function save(array $j): void { @mkdir(dirname(self::file()), 0700, true); @file_put_contents(self::file(), json_encode($j, JSON_UNESCAPED_UNICODE), LOCK_EX); }
+  private static function get(string $path): ?array {
+    $url = self::API . $path;
+    if (self::$http) $r = (self::$http)($url);
+    else {
+      $ch = curl_init($url);
+      curl_setopt_array($ch, [CURLOPT_RETURNTRANSFER => true, CURLOPT_TIMEOUT => 15, CURLOPT_CONNECTTIMEOUT => 6, CURLOPT_USERAGENT => CabWeb::ua(),
+        CURLOPT_HTTPHEADER => ['Accept: application/json'], CURLOPT_MAXFILESIZE => 1024 * 1024]);
+      $b = curl_exec($ch); $r = ['code' => (int)curl_getinfo($ch, CURLINFO_HTTP_CODE), 'body' => is_string($b) ? $b : '']; curl_close($ch);
+    }
+    self::$code = (int)$r['code'];
+    $j = $r['code'] === 200 ? json_decode((string)$r['body'], true) : null;
+    return is_array($j) ? $j : null;
+  }
+  /** Что пришло вместо ожидаемого (без значений): код и ключи ответа / текст error. */
+  private static function hint(?array $r): array {
+    if ($r === null) return ['code' => self::$code];
+    return ['keys' => array_slice(array_map('strval', array_keys($r)), 0, 6)] + (isset($r['error']) ? ['error' => mb_substr((string)$r['error'], 0, 60)] : []);
+  }
+  /** Украинские узлы из nodes/hosts: location ["ua", "Ukraine", "Kyiv"] (или имя ua1.node…) → [имя => город]. */
+  public static function uaNodes(array $hosts): array {
+    $o = [];
+    foreach ((array)($hosts['nodes'] ?? []) as $name => $n) {
+      $loc = array_values((array)($n['location'] ?? []));
+      if (strtolower((string)($loc[0] ?? '')) === 'ua' || preg_match('/^ua\d*\./i', (string)$name)) $o[(string)$name] = mb_substr((string)($loc[2] ?? $loc[1] ?? ''), 0, 30);
+    }
+    return array_slice($o, 0, 4, true);
+  }
+  /** Ответ узла check-http: [[1, 0.13, "OK", "200", ip]] / [[0, 3.0, "Connection timed out", null, null]] / null (ещё идёт). IP сайта не пишем. */
+  public static function cell($x): ?array {
+    if (!is_array($x) || !is_array($x[0] ?? null)) return null;
+    $a = $x[0]; $code = isset($a[3]) && is_numeric($a[3]) ? (int)$a[3] : null;
+    return ['code' => $code, 'ok' => (bool)($a[0] ?? false), 'msg' => mb_substr((string)($a[2] ?? ''), 0, 40), 'ms' => (int)round((float)($a[1] ?? 0) * 1000)];
+  }
+  /** По странице: хоть один узел — 200 → ok; все ответившие — 403/503 → blocked; не ответили/другое → unknown. */
+  public static function verdict(array $cells): string {
+    $codes = array_values(array_filter(array_map(fn($c) => $c['code'] ?? null, $cells), fn($c) => $c !== null));
+    if (in_array(200, $codes, true)) return 'ok';
+    if ($codes && !array_diff($codes, [403, 503])) return 'blocked';
+    return 'unknown';
+  }
+  public static function run(?int $now = null): ?array {
+    $now = $now ?? time(); $j = self::read();
+    if ((int)($j['v'] ?? 0) !== self::V) {   // шаг 1: узлы и запуск проверок
+      $j = ['v' => self::V, 'at' => gmdate('c', $now), 'ts' => $now, 'tries' => 0, 'req' => [], 'res' => []];
+      $h = self::get('/nodes/hosts'); $nodes = self::uaNodes($h ?? []);
+      $j['nodes'] = $nodes;
+      if (!$nodes) { $j['done'] = true; $j['err'] = 'no_ua_nodes'; $j['hint'] = self::hint($h) + ['n' => count((array)($h['nodes'] ?? []))]; self::save($j); return $j; }
+      $q = implode('', array_map(fn($n) => '&node=' . rawurlencode($n), array_keys($nodes)));
+      foreach (RelayProbe::T as $t => $x) {
+        $r = self::get('/check-http?host=' . rawurlencode($x['url']) . $q);
+        if (!empty($r['request_id'])) $j['req'][$t] = (string)$r['request_id']; else $j['res'][$t] = ['err' => 'start_failed', 'hint' => self::hint($r)];
+      }
+      if (!$j['req']) { $j['done'] = true; $j['err'] = 'start_failed'; }
+      self::save($j); return $j;
+    }
+    if (!empty($j['done']) || $now - (int)($j['ts'] ?? 0) < 20) return null;   // шаг 2: результаты (не чаще раза в 20 с)
+    $j['ts'] = $now; $j['tries'] = (int)($j['tries'] ?? 0) + 1; $pending = 0;
+    foreach ((array)$j['req'] as $t => $id) {
+      $r = self::get('/check-result/' . rawurlencode((string)$id)); $cells = [];
+      foreach (array_keys((array)$j['nodes']) as $n) { $c = is_array($r) ? self::cell($r[$n] ?? null) : null; if ($c === null) $pending++; else $cells[$n] = $c; }
+      $j['res'][$t] = ['nodes' => $cells, 'verdict' => self::verdict($cells)];
+    }
+    if (!$pending || $j['tries'] >= 8) { $j['done'] = true; $j['doneAt'] = gmdate('c', $now); }
+    self::save($j); return $j;
+  }
+  /** Для /api/health: узлы, по страницам — вердикт и «код сообщение» по узлам. */
+  public static function summary(): array {
+    $j = self::read(); if (!$j) return [];
+    $o = ['v' => $j['v'] ?? null, 'at' => $j['at'] ?? null, 'done' => !empty($j['done']), 'nodes' => $j['nodes'] ?? [], 'tries' => $j['tries'] ?? 0];
+    if (!empty($j['err'])) $o['err'] = $j['err'];
+    if (!empty($j['hint'])) $o['hint'] = $j['hint'];
+    foreach ((array)($j['res'] ?? []) as $t => $x) $o[$t] = ['verdict' => $x['verdict'] ?? ($x['err'] ?? null), 'nodes' => array_map(fn($c) => trim(($c['code'] ?? '—') . ' ' . ($c['msg'] ?? '')), (array)($x['nodes'] ?? []))] + (isset($x['hint']) ? ['hint' => $x['hint']] : []);
+    return $o;
+  }
+}
+
 final class RelayProbe {
   const V = 1;
   /** obl — кабинет (вход email + пароль, без капчи); form — онлайн-форма «передача показників» (рахунок + показання, без входа). */

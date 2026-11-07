@@ -29,6 +29,8 @@ if ((int)gmdate('i') % 10 === 3) { try { $p = VkStatus::probeNotFound(); if ($p)
 try { $rc = VkStatus::recheck(); if ($rc) $beat['vkRecheck'] = ['at' => gmdate('c'), 'res' => $rc['res']]; } catch (Throwable $e) { error_log('teplo vk recheck: ' . $e->getMessage()); }
 // кабинеты ХТМ, обленерго, Газмереж — пускают ли наш сервер и нет ли капчи (раз в 30 минут; /api/health → cabs)
 if (CabProbe::due()) { try { CabProbe::run(); } catch (Throwable $e) { error_log('teplo cab probe: ' . $e->getMessage()); } }
+// обленерго с украинских узлов check-host.net — только коды ответа страниц, раз на версию (UaCheck; /api/health → uaCheck)
+try { UaCheck::run(); } catch (Throwable $e) { error_log('teplo ua check: ' . $e->getMessage()); }
 // «Перевірити» кабинета ХТМ без кнопки: раз на версию — учётки админа, только чтение (HtmSvc::lookAdmins; /api/health → htmcab.seen, by cron)
 try { $lk = HtmSvc::lookAdmins(); if ($lk !== null) $beat['htmLook'] = ['at' => gmdate('c'), 'res' => $lk]; } catch (Throwable $e) { error_log('teplo htm look: ' . $e->getMessage()); }
 // внесённые роботом показания ХТМ — перечитать журнал кабинета (20/40/70/130/360 мин), итог → Telegram

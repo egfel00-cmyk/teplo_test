@@ -1078,6 +1078,45 @@ ok('старая версия разбора перечитывается из �
 ok('лимит тела: документы и фото — max_photo_bytes, вывод curl — max_probe_bytes, прочее — max_body_bytes', Api::bodyLimit('/api/docs/upload') === Cfg::get('max_photo_bytes') && Api::bodyLimit('/api/recognize/upload') === Cfg::get('max_photo_bytes')
   && Api::bodyLimit('/api/relay/probe') === 3 * 1024 * 1024 && Api::bodyLimit('/api/state') === Cfg::get('max_body_bytes'));
 
+echo "\n— Обленерго с украинских узлов check-host.net (UaCheck): только коды ответа, раз на версию\n";
+$hosts = ['nodes' => ['de1.node.check-host.net' => ['location' => ['de', 'Germany', 'Frankfurt']], 'ua1.node.check-host.net' => ['location' => ['ua', 'Ukraine', 'Kyiv']],
+  'ua3.node.check-host.net' => ['location' => ['ua', 'Ukraine', 'Khmelnytskyi']], 'pl1.node.check-host.net' => ['location' => ['pl', 'Poland', 'Poznan']]]];
+ok('украинские узлы: по location и только они', UaCheck::uaNodes($hosts) === ['ua1.node.check-host.net' => 'Kyiv', 'ua3.node.check-host.net' => 'Khmelnytskyi'] && UaCheck::uaNodes(['nodes' => ['ua2.node.check-host.net' => []]]) === ['ua2.node.check-host.net' => '']);
+ok('ответ узла: 200 / таймаут без кода / ещё идёт', UaCheck::cell([[1, 0.13, 'OK', '200', '1.2.3.4']]) === ['code' => 200, 'ok' => true, 'msg' => 'OK', 'ms' => 130]
+  && UaCheck::cell([[0, 3.0, 'Connection timed out', null, null]])['code'] === null && UaCheck::cell(null) === null && UaCheck::cell([null]) === null);
+ok('вердикт: есть 200 → ok, все 403/503 → blocked, иначе unknown', UaCheck::verdict([['code' => 403], ['code' => 200]]) === 'ok' && UaCheck::verdict([['code' => 403], ['code' => 503]]) === 'blocked'
+  && UaCheck::verdict([['code' => null]]) === 'unknown' && UaCheck::verdict([]) === 'unknown' && UaCheck::verdict([['code' => 403], ['code' => null]]) === 'blocked');
+$uc = []; $pollN = 0;
+UaCheck::$http = function (string $url) use (&$uc, &$pollN, $hosts) {
+  $uc[] = $url;
+  if (str_ends_with($url, '/nodes/hosts')) return ['code' => 200, 'body' => json_encode($hosts)];
+  if (str_contains($url, '/check-http?')) return ['code' => 200, 'body' => json_encode(['ok' => 1, 'request_id' => str_contains($url, 'pa.oblenergo') ? 'r-obl' : 'r-form'])];
+  if (str_contains($url, '/check-result/r-obl')) { $pollN++; return ['code' => 200, 'body' => json_encode(['ua1.node.check-host.net' => [[0, 0.1, 'Forbidden', '403', '1.1.1.1']], 'ua3.node.check-host.net' => $pollN > 1 ? [[0, 0.2, 'Forbidden', '403', '1.1.1.1']] : null])]; }
+  if (str_contains($url, '/check-result/r-form')) return ['code' => 200, 'body' => json_encode(['ua1.node.check-host.net' => [[1, 0.3, 'OK', '200', '2.2.2.2']], 'ua3.node.check-host.net' => [[0, 0.2, 'Forbidden', '403', '2.2.2.2']]])];
+  return ['code' => 404, 'body' => ''];
+};
+$t0 = 1_800_000_000; $u1 = UaCheck::run($t0);
+ok('шаг 1: узлы, check-http обеих страниц только с украинских узлов', ($u1['req'] ?? []) === ['obl' => 'r-obl', 'form' => 'r-form'] && count($uc) === 3
+  && str_contains($uc[1], 'host=' . rawurlencode(RelayProbe::T['obl']['url'])) && str_contains($uc[1], '&node=ua1.node.check-host.net&node=ua3.node.check-host.net') && !str_contains($uc[1], 'de1'), [$u1, $uc]);
+ok('результат не раньше чем через 20 с', UaCheck::run($t0 + 10) === null && count($uc) === 3);
+$u2 = UaCheck::run($t0 + 25);
+ok('шаг 2: один узел ещё идёт → не готово, форма уже ok', empty($u2['done']) && $u2['res']['form']['verdict'] === 'ok' && count($u2['res']['obl']['nodes']) === 1, $u2);
+$u3 = UaCheck::run($t0 + 50);
+ok('все ответили → готово: кабинет blocked (403 с Украины), форма ok', !empty($u3['done']) && $u3['res']['obl']['verdict'] === 'blocked' && $u3['tries'] === 2, $u3);
+ok('готово — больше не ходим', UaCheck::run($t0 + 500) === null && count($uc) === 7);
+$hj = (array)(new Browser('10.0.14.5'))->req('GET', '/api/health')->body; $uk = json_decode(json_encode($hj['uaCheck'] ?? []), true);
+ok('/api/health → uaCheck: вердикты и «код сообщение» по узлам, без IP сайта', ($uk['obl']['verdict'] ?? '') === 'blocked' && ($uk['form']['nodes']['ua1.node.check-host.net'] ?? '') === '200 OK'
+  && ($uk['nodes']['ua1.node.check-host.net'] ?? '') === 'Kyiv' && !str_contains(json_encode($uk), '1.1.1.1'), $uk);
+@unlink(UaCheck::file()); $uc = [];
+UaCheck::$http = fn(string $url) => ['code' => 200, 'body' => json_encode(['nodes' => ['de1.node.check-host.net' => ['location' => ['de', 'Germany', 'Frankfurt']]]])];
+$u4 = UaCheck::run($t0);
+ok('нет украинских узлов → готово с no_ua_nodes и подсказкой (сколько узлов всего), проверок не запускаем', !empty($u4['done']) && $u4['err'] === 'no_ua_nodes' && ($u4['hint']['n'] ?? 0) === 1 && UaCheck::run($t0 + 100) === null, $u4);
+@unlink(UaCheck::file());
+UaCheck::$http = fn(string $url) => str_ends_with($url, '/nodes/hosts') ? ['code' => 200, 'body' => json_encode($hosts)] : ['code' => 200, 'body' => json_encode(['error' => 'limit_exceeded'])];
+$u5 = UaCheck::run($t0);
+ok('check-http не дал request_id → start_failed с текстом error', !empty($u5['done']) && ($u5['res']['obl']['hint']['error'] ?? '') === 'limit_exceeded' && ($u5['err'] ?? '') === 'start_failed', $u5);
+@unlink(UaCheck::file()); UaCheck::$http = null;
+
 echo "\n— IndexNow (Bing и др.): ключ сайта и пинг раз на сборку\n";
 $calls = []; IndexNow::$http = function ($url) use (&$calls) { $calls[] = $url; return ['code' => count($calls) === 1 ? 429 : 202, 'err' => null]; };
 ok('ключа ещё нет — /<hex>.txt не отдаём', IndexNow::key() === '' && IndexNow::serve('/' . str_repeat('a', 32) . '.txt') === false);

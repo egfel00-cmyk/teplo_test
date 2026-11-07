@@ -113,7 +113,7 @@ final class Api {
           // кабинет ХТМ: итоги операций, сколько подключено, внесения по статусам и последняя увиденная форма (имена/типы полей, без значений)
           'htmcab' => HtmSvc::summary(), 'vksvc' => VkSvc::summary(),
           // проба обленерго с украинского адреса (NAS владельца → POST /api/relay/probe): код, Cloudflare, капча, формы — решает, быть ли ретранслятору
-          'uaProbe' => (object)RelayProbe::summary(),
+          'uaProbe' => (object)RelayProbe::summary(), 'uaCheck' => (object)UaCheck::summary(),
           'indexnow' => class_exists('IndexNow', false) ? IndexNow::summary() : null];
       }
       case 'GET /api/me': if (!$user) throw new HttpError(401, 'unauthorized'); return ['user' => self::publicUser($user)];
