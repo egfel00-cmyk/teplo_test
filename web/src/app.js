@@ -779,7 +779,7 @@
     // тихо, одним-двома рядками під адресою: що й до коли — без переліку всіх лічильників
     return '<span class="pnote" data-key="pst-' + esc(p.id) + '">' + soon.map(function (r) {
       var n = R.daysBetween(td, r.due), when = n <= 0 ? t('pn_today') : n === 1 ? t('pn_tmr') : t('pn_until', { d: fmtDate(r.due), n: n });
-      return '<span class="pn-row' + (n <= 1 ? ' hot' : '') + '" data-key="pst-' + esc(p.id) + '-' + r.kind + '">' + ico('clock', 16) + '<span>' + esc(t(r.ready ? 'pn_ready' : 'pn_send', { k: r.title, w: when })) + '</span></span>';
+      return '<span class="pn-row k-' + r.kind + (n <= 1 ? ' hot' : '') + '" data-key="pst-' + esc(p.id) + '-' + r.kind + '">' + ico(KINDS[r.kind].icon, 16, KINDS[r.kind].cls) + '<span>' + esc(t(r.ready ? 'pn_ready' : 'pn_send', { k: r.title, w: when })) + '</span></span>';
     }).join('') + '</span>';
   }
   function hpOpen(p) { var o = S.homeOpen || {}; return o[p.id] !== undefined ? !!o[p.id] : p.id === S.placeId; }
@@ -1039,7 +1039,7 @@
   /** Історія на сторінці лічильника — окремим блоком (владелец 07.11: «показать более явно, обособленно»): заголовок з кількістю,
    *  останні 3 записи, «Уся історія (N)» — лише коли записів більше. */
   function histPanel(rows, total, allBtn, k) {
-    return '<section class="panel mhist" data-key="' + k + '-hist"><h2 class="mhist-h">' + ico('history', 20) + '<span>' + esc(t('wh_title')) + '</span>' + (total > 3 ? '<span class="mhist-n">' + total + '</span>' : '') + '</h2>' +
+    return '<section class="panel mhist" data-key="' + k + '-hist"><h2 class="mhist-h">' + ico('history', 18, 'bt-ico') + '<span>' + esc(t('wh_title')) + '</span>' + (total > 3 ? '<span class="mhist-n">' + total + '</span>' : '') + '</h2>' +
       rows + (total > 3 ? '<div class="mhist-all">' + allBtn + '</div>' : '') + '</section>';
   }
   function mbox(o) {
@@ -1048,7 +1048,7 @@
       '<div class="mbox-disp">' + o.display + '</div>' +
       '<p class="lcd-cap meta-row"><span>' + esc(o.cap) + '</span>' + (o.fix || '') + copyIco(o.copy, o.key + '-copy') + '</p>' + (o.body || '') +
       (o.meta && o.meta.length ? '<ul class="mbox-meta">' + o.meta.map(function (x) { return '<li>' + x + '</li>'; }).join('') + '</ul>' : '') +
-      (o.set ? '<details class="mbox-set" id="mbs-' + esc(o.id || o.kind) + '"' + (MB_OPEN[o.id || o.kind] ? ' open' : '') + ' data-key="' + o.key + '-set"><summary>' + ico('prefs', 18) + '<span>' + esc(o.setTitle || t('mb_set')) + '</span>' + ico('chev', 18, 'pacc-chev') + '</summary><div class="mbox-set-b">' + o.set + '</div></details>' : '') +
+      (o.set ? '<details class="mbox-set" id="mbs-' + esc(o.id || o.kind) + '"' + (MB_OPEN[o.id || o.kind] ? ' open' : '') + ' data-key="' + o.key + '-set"><summary>' + ico('prefs', 18, 'bt-ico') + '<span>' + esc(o.setTitle || t('mb_set')) + '</span>' + ico('chev', 18, 'pacc-chev') + '</summary><div class="mbox-set-b">' + o.set + '</div></details>' : '') +
       (o.links && o.links.length ? '<div class="mbox-links">' + o.links.join('') + '</div>' : '') + '</section>';
   }
   /** «Лічильник знімали на ремонт, повірку чи міняли?» — внизу «Налаштувань лічильника», не на виду. */
@@ -1077,7 +1077,7 @@
       var v = Wt.whole(rec.vals[m.id]); return '<li><span>' + esc(wname(m)) + '</span><b class="num">' + v + '</b><button class="linkbtn" data-act="copy" data-text="' + v + '">' + esc(t('copy')) + '</button></li>'; }).join('') + '</ul>'; };
     // квартира не в Харкові (за довідником — інший постачальник води): контакти її водоканалу, без бота й кабінету Харківводоканалу
     var ld = prvOf('water');
-    if (ld && ld.via !== 'hvk') return '<section class="panel where" data-key="where-water"><h2>' + ico('send', 20) + '<span>' + esc(t('wd_title')) + '</span></h2>' + wherePlaceLine() +
+    if (ld && ld.via !== 'hvk') return '<section class="panel where" data-key="where-water"><h2>' + ico('send', 18, 'bt-ico') + '<span>' + esc(t('wd_title')) + '</span></h2>' + wherePlaceLine() +
       localDest('water', ld, rec ? valList(ms) : '', rec ? mark('vk', wsentVk(rec)) : '', rec && wsentVk(rec)) + '</section>';
     // Водоканал: холодна (вода + відведення) і гаряча (лише відведення) — одна команда для бота на всі водоміри
     var vkBody = '', vkChans = [[Wt.VK_BOT, t('wd_bot', { b: '@hvk_user_bot' }), 'send', 'bot'], [Wt.VK_CABINET, t('wd_cab_vk'), 'ext', 'cab']];
@@ -1118,7 +1118,7 @@
       // бот Водоканалу тут — лише кнопкою в ряду каналів (07.11: була ще розгортка «Або через бот…» — дубль)
       vkBody = vg ? vkcPre(vg, kind, ms) : '<p class="small" data-key="vk-need-rec">' + esc(t('vk_need_rec')) + '</p>';
     }
-    var h = '<section class="panel where" data-key="where-water"><h2>' + ico('send', 20) + '<span>' + esc(t('wd_title')) + '</span></h2>' +
+    var h = '<section class="panel where" data-key="where-water"><h2>' + ico('send', 18, 'bt-ico') + '<span>' + esc(t('wd_title')) + '</span></h2>' +
       // квартир несколько — за какую передаём (рахунок і цифри — цієї квартири)
       (places().length > 1 ? '<p class="dest-place" style="--pc:var(--pc-' + placeColor(place()) + ')" data-key="where-place"><b>' + esc(t('wd_for', { p: placeLabel(place()) })) + '</b>' + (placeSub(place()) ? '<span class="small muted"> · ' + esc(placeSub(place())) + '</span>' : '') + '</p>' : '') +
       '';
@@ -1549,7 +1549,7 @@
     // історія: останні три (разом із періодами без лічильника), решта — у вкладці «Історія»
     var wr = wrows(kind, 3);
     if (wr.total) right += histPanel(wr.html, wr.total, '<button class="btn sec block" data-act="view-go" data-v="' + kind + '" data-to="history" data-key="water-all">' + esc(t('wh_all', { n: wr.total })) + '</button>', 'water');
-    right += '<details class="tips-box" style="margin-top:16px"><summary>' + esc(t('wt_how_t')) + '</summary><ul>' + t(kind === 'hot' ? 'wt_how_hot' : 'wt_how_cold').split('|').map(function (x) { return '<li>' + esc(x) + '</li>'; }).join('') + '</ul></details>';
+    right += '<details class="tips-box bt-help" style="margin-top:16px" data-key="water-how"><summary>' + ico('help', 18, 'bt-ico') + '<span>' + esc(t('wt_how_t')) + '</span></summary><ul>' + t(kind === 'hot' ? 'wt_how_hot' : 'wt_how_cold').split('|').map(function (x) { return '<li>' + esc(x) + '</li>'; }).join('') + '</ul></details>';
     h += '<div class="hero-grid"><div class="wm-col">' + left + '</div><div>' + right + '</div></div>';
     return { screen: 'S30', route: 'water-' + kind, html: h };
   }
@@ -2001,7 +2001,7 @@
     }
     var mark = have && !asking ? '<p class="dest-mark">' + (allSent ? '<button class="linkbtn" data-act="esent" data-k="' + k + '" data-v="0" data-ids="' + ids + '">' + esc(t('ws_unmark')) + '</button>'
       : '<button class="btn sec" data-act="esent" data-k="' + k + '" data-v="1" data-ids="' + ids + '" data-key="esend-done">' + ico('check', 18) + '<span>' + esc(t('ws_mark')) + '</span></button>') + '</p>' : '';
-    return '<section class="panel where" data-key="where-' + k + '"><h2>' + ico('send', 20) + '<span>' + esc(t('wd_title')) + '</span></h2>' +
+    return '<section class="panel where" data-key="where-' + k + '"><h2>' + ico('send', 18, 'bt-ico') + '<span>' + esc(t('wd_title')) + '</span></h2>' +
       (places().length > 1 ? '<p class="dest-place" style="--pc:var(--pc-' + placeColor(place()) + ')" data-key="where-place"><b>' + esc(t('wd_for', { p: placeLabel(place()) })) + '</b>' + (placeSub(place()) ? '<span class="small muted"> · ' + esc(placeSub(place())) + '</span>' : '') + '</p>' : '') +
       destBox({ key: k === 'gas' ? 'grm' : 'obl', id: 'esend', org: tk(k, 'ed_org'), what: '', due: due, dueTone: w.open && w.daysLeft <= 1 ? 'warn' : 'neutral', sent: allSent, body: body + acc, chans: chans, note: have ? sbBox(k, have) : '', more: more, mark: mark }) + '</section>';   // цифри → рахунок → кнопки → «Як це в боті» / відповідь бота
   }
@@ -2122,7 +2122,7 @@
     var right = '<button class="btn big block" data-act="' + SK[k].nw + '" data-key="' + k + '-add">' + ico('plus', 22) + '<span>' + esc(tk(k, 'en_title')) + '</span></button>' + whereAcc(ssendPanel(k, cur));
     var er = srows(k, 3);
     if (er.total) right += histPanel(er.html, er.total, '<button class="btn sec block" data-act="view-go" data-v="' + k + '" data-to="history" data-key="' + k + '-all">' + esc(t('wh_all', { n: er.total })) + '</button>', k);
-    right += '<details class="tips-box" style="margin-top:16px" data-key="' + k + '-how"><summary>' + esc(tk(k, 'ehow_t')) + '</summary><ul>' + tk(k, 'ehow').split('|').map(function (x) { return '<li>' + esc(x) + '</li>'; }).join('') + '</ul></details>';
+    right += '<details class="tips-box bt-help" style="margin-top:16px" data-key="' + k + '-how"><summary>' + ico('help', 18, 'bt-ico') + '<span>' + esc(tk(k, 'ehow_t')) + '</span></summary><ul>' + tk(k, 'ehow').split('|').map(function (x) { return '<li>' + esc(x) + '</li>'; }).join('') + '</ul></details>';
     h += '<div class="hero-grid"><div class="wm-col">' + left + '</div><div>' + right + '</div></div>';
     return { screen: k === 'gas' ? 'S55' : 'S50', route: k, html: h };
   }
@@ -2335,7 +2335,7 @@
       (same.length ? '' : sheatRow(k, true));
     if (inQ) {
       var mOpen = EA.more || EA.heat === true || EA_F.some(function (id) { return id !== 'ea-name' && EA.f && EA.f[id]; });
-      more = '<details class="mbox-set ea-more"' + (mOpen ? ' open' : '') + ' data-key="ea-more"><summary>' + ico('prefs', 18) + '<span>' + esc(tk(k, 'ea_more')) + opt + '</span>' + ico('chev', 18, 'pacc-chev') + '</summary><div class="mbox-set-b">' + more + '</div></details>';
+      more = '<details class="mbox-set ea-more"' + (mOpen ? ' open' : '') + ' data-key="ea-more"><summary>' + ico('prefs', 18, 'bt-ico') + '<span>' + esc(tk(k, 'ea_more')) + opt + '</span>' + ico('chev', 18, 'pacc-chev') + '</summary><div class="mbox-set-b">' + more + '</div></details>';
     }
     var h = pqBanner() + '<h1>' + ico(SK[k].icon, 26, SK[k].cls) + ' ' + esc(tk(k, 'ea_title')) + '</h1><p class="muted">' + esc(tk(k, 'ea_lead')) + '</p><form id="ea-form" novalidate><div class="panel">' +
       (k === 'elec' ? '<fieldset class="field ea-zones"><legend class="lbl">' + esc(t('ea_zones')) + '</legend><div class="wz-opts" role="radiogroup">' + [1, 2, 3].map(function (n) {
@@ -3034,7 +3034,7 @@
   function heatWhere() {
     // тепло квартири постачає не ХТМ (інша громада) — контакти її постачальника з довідника
     var ld = prvOf('heat');
-    if (ld && ld.via !== 'htm') return '<section class="panel where" data-key="where-heat"><h2>' + ico('send', 20) + '<span>' + esc(t('wd_title')) + '</span></h2>' + wherePlaceLine() + localDest('heat', ld, '', '', false) + '</section>';
+    if (ld && ld.via !== 'htm') return '<section class="panel where" data-key="where-heat"><h2>' + ico('send', 18, 'bt-ico') + '<span>' + esc(t('wd_title')) + '</span></h2>' + wherePlaceLine() + localDest('heat', ld, '', '', false) + '</section>';
     var ready = RD().filter(function (r) { return r.status === 'checked'; }).slice(-1)[0], w = R.windowState(today());
     var due = w.state === 'closed_before' ? t('wd_heat_from', { d: fmtDate(dayOfMonth(today(), 5)) }) : w.state === 'closed_after' ? t('wd_heat_from', { d: fmtDate(nextMonthDay(today(), 5)) }) : t('wd_due', { d: fmtDate(dayOfMonth(today(), 25)) });
     if (hcOn()) hcLoad();
@@ -3042,7 +3042,7 @@
     // вручну (скопіювати й вставити в кабінет) — коли кабінет не підключено; підключено — головне «Відправити у фоні» в ряду каналів
     var body = ready && !on ? '<div class="row-actions" style="margin-top:8px"><a class="btn" href="#handover" data-act="focus" data-id="' + ready.id + '" data-key="where-heat-handover">' + ico('copy', 18) + '<span>' + esc(t('wd_heat_ready', { d: fmtDate(ready.htm.date) })) + '</span></a></div>' : '';
     var bg = cabBgHeat(ready, 'where');
-    return '<section class="panel where" data-key="where-heat"><h2>' + ico('send', 20) + '<span>' + esc(t('wd_title')) + '</span></h2>' +
+    return '<section class="panel where" data-key="where-heat"><h2>' + ico('send', 18, 'bt-ico') + '<span>' + esc(t('wd_title')) + '</span></h2>' +
       destBox({ key: 'htm-heat', org: t('wd_htm_org'), what: '', due: due, dueTone: w.state === 'late' || w.state === 'last_day' ? 'warn' : 'neutral', body: body,
         chans: [[HTM_URL, t('ho_open'), 'ext', 'cab']], chx: bg.btn, note: bg.note, more: '<p class="dm-t">' + esc(t('wd_heat_more')) + '</p><ul class="dm-ph"><li>' + telLink('+380573414140', '(057) 341-41-40') + '</li></ul>' }) + '</section>';
   }
@@ -4362,7 +4362,7 @@
     return '<li class="mrow" data-key="pv-m-' + esc(o.what) + '"><a class="mrow-main" href="#' + o.href + '">' + ico(KINDS[o.kind].icon, 22, KINDS[o.kind].cls) + '<span class="grow"><b>' + esc(o.title) + '</b>' + (o.sub ? '<span class="small muted">' + esc(o.sub) + '</span>' : '') + '</span>' + ico('chev', 20) + '</a>' +
       '<div class="mrow-act">' + (o.noReplace ? '' : '<button type="button" class="btn ter sm" data-act="m-replace" data-what="' + esc(o.what) + '" data-key="pv-replace-' + esc(o.what) + '">' + ico('wrench', 18) + '<span>' + esc(t('mr_replace')) + '</span></button>') +
       '<button type="button" class="btn ter sm quiet-bad" data-act="m-remove" data-what="' + esc(o.what) + '" data-key="pv-remove-' + esc(o.what) + '">' + ico('close', 18) + '<span>' + esc(t('mr_remove')) + '</span></button></div>' +
-      (o.set ? '<details class="mbox-set mrow-set" id="mbs-' + esc(o.what) + '"' + (MB_OPEN[o.what] ? ' open' : '') + ' data-key="pv-set-' + esc(o.what) + '"><summary>' + ico('prefs', 18) + '<span>' + esc(t('mb_set')) + '</span>' + ico('chev', 18, 'pacc-chev') + '</summary><div class="mbox-set-b">' + o.set + '</div></details>' : '') + '</li>';
+      (o.set ? '<details class="mbox-set mrow-set" id="mbs-' + esc(o.what) + '"' + (MB_OPEN[o.what] ? ' open' : '') + ' data-key="pv-set-' + esc(o.what) + '"><summary>' + ico('prefs', 18, 'bt-ico') + '<span>' + esc(t('mb_set')) + '</span>' + ico('chev', 18, 'pacc-chev') + '</summary><div class="mbox-set-b">' + o.set + '</div></details>' : '') + '</li>';
   }
   function verTxt(v) { return v ? t('pl_ver', { d: R.toHtmDate(v) }) : ''; }
   // ---------- постачальники й тарифи за адресою квартири (GET /api/providers, довідник app/data/providers.json) ----------
@@ -4710,7 +4710,7 @@
       phHelp(fld('wa-val', t('wa_val'), 'class="num" inputmode="decimal" autocomplete="off"', 'м³', t('wa_val_h'), true, startCam('wa-val', wkindTitle(k))), 'wa-val') +
       (function () {   // № і повірка: у черзі налаштування — згорнуто, як рахунки у світла/газу
         var g = '<div class="grid2">' + fld('wa-serial', t('wm_serial'), 'class="num" autocomplete="off"', '', '', true) + fld('wa-ver', t('mv_date'), 'type="date"', '', '', true) + '</div>';
-        return inQ ? '<details class="mbox-set wa-more" data-key="wa-more"><summary>' + ico('prefs', 18) + '<span>' + esc(t('wa_more')) + opt + '</span>' + ico('chev', 18, 'pacc-chev') + '</summary><div class="mbox-set-b">' + g + '</div></details>' : g;
+        return inQ ? '<details class="mbox-set wa-more" data-key="wa-more"><summary>' + ico('prefs', 18, 'bt-ico') + '<span>' + esc(t('wa_more')) + opt + '</span>' + ico('chev', 18, 'pacc-chev') + '</summary><div class="mbox-set-b">' + g + '</div></details>' : g;
       })() +
       '<div class="help block" id="wa-err" role="alert"></div></div>' +
       (c.account || inQ ? '' : '<div class="panel"><h2>' + esc(t('wm_acc_t')) + opt + '</h2><p class="small muted">' + esc(t('wa_acc_s')) + '</p>' + waccForm() + '</div>') +

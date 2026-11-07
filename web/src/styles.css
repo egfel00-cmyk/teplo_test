@@ -1559,3 +1559,60 @@ details.bot-how[open] > ol { margin-top: 4px; }
 .ho-opt.pop .ho-mark svg { stroke-dasharray: 30; animation: markDraw .32s .08s ease-out both; }
 @keyframes markPop { 0% { transform: scale(.6); } 100% { transform: scale(1); } }
 @keyframes markDraw { from { stroke-dashoffset: 30; } to { stroke-dashoffset: 0; } }
+
+/* ---------- тон блока (владелец 07.11.2026): на экране любого счётчика одинаковые блоки — один оттенок ----------
+   Блок узнаётся по цветовому пятну, не читая заголовок: «Куди передати» — бирюзовый, «Історія» — индиго, «Як зняти» — оливковый,
+   «Налаштування» — серый. Заливка + рамка тона + значок в плашке тона (не полоса сбоку — полосы убраны в 23-й). Слово и значок остаются:
+   цвет — не единственный признак. Табло счётчика — белое (пятно там — сам экран прибора), главная кнопка — тёмная, статусы — свои цвета. */
+:root {
+  --bt-send: #0F6A7B; --bt-send-bg: #DFF1F5; --bt-send-line: #9CCAD6;
+  --bt-hist: #474C9E; --bt-hist-bg: #EFEFFA; --bt-hist-line: #C4C7E9;
+  --bt-help: #56641B; --bt-help-bg: #F1F4E2; --bt-help-line: #C5CE98;
+  --bt-set: #4A5652;
+}
+:root[data-theme="dark"] {
+  --bt-send: #7DCBDB; --bt-send-bg: #10262A; --bt-send-line: #2A5560;
+  --bt-hist: #AEB2F3; --bt-hist-bg: #1A1C31; --bt-hist-line: #3A3E70;
+  --bt-help: #C4D282; --bt-help-bg: #1E2310; --bt-help-line: #4A5428;
+  --bt-set: #9EACA6;
+}
+.panel.where { --bt-acc: var(--bt-send); --bt-bg: var(--bt-send-bg); --bt-line: var(--bt-send-line); }
+.mhist { --bt-acc: var(--bt-hist); --bt-bg: var(--bt-hist-bg); --bt-line: var(--bt-hist-line); }
+.tips-box.bt-help { --bt-acc: var(--bt-help); --bt-bg: var(--bt-help-bg); --bt-line: var(--bt-help-line); }
+.mbox-set { --bt-acc: var(--bt-set); }
+.panel.where, .mhist, .tips-box.bt-help { background: var(--bt-bg); border: 1px solid var(--bt-line); }
+details.wacc.wacc-btn { background: var(--bt-bg); border: 1px solid var(--bt-line); }
+details.wacc.wacc-btn:hover, .tips-box.bt-help > summary:hover { border-color: var(--bt-acc); }
+details.wacc.wacc-btn[open] > summary { border-bottom-color: var(--bt-line); }
+.ico.bt-ico { flex: none; box-sizing: content-box; padding: 7px; border-radius: 10px; background: var(--bt-acc, var(--c-ink-2)); color: var(--c-on-ink); }
+.where > h2 .bt-ico, .wacc > summary h2 .bt-ico { margin: -4px 2px -4px 0; }
+.mhist-h .ico.bt-ico { color: var(--c-on-ink); }
+.mhist .list { border: 1px solid var(--bt-line); }
+.mhist-n { background: var(--c-surface); border: 1px solid var(--bt-line); color: var(--bt-acc); }
+.tips-box.bt-help { padding: 10px 14px 10px 12px; }
+.tips-box.bt-help > summary { justify-content: flex-start; gap: 10px; min-height: 40px; }
+.tips-box.bt-help > summary > span { flex: 1 1 auto; min-width: 0; }
+.tips-box.bt-help[open] > ul { margin-left: 2px; }
+.mbox-set > summary { gap: 10px; }
+.mbox-set > summary > .bt-ico { padding: 6px; border-radius: 9px; }
+/* «Налаштування квартири» на главной — тот же серый тон «налаштувань», что и у «Налаштування показань» */
+.ucard-pset .am-plus { background: var(--bt-set); border-color: var(--bt-set); color: var(--c-on-ink); border-radius: 12px; }
+
+/* цвет квартиры (--pc) — тем же приёмом: свёрнутая карточка на главной и шапка «где я» залиты её цветом */
+@supports (background: color-mix(in srgb, red 10%, white)) {
+  .pacc { border-color: color-mix(in srgb, var(--pc) 32%, var(--c-line)); }
+  .pacc > summary { background: color-mix(in srgb, var(--pc) 13%, var(--c-surface)); }
+  .pacc > summary:hover { background: color-mix(in srgb, var(--pc) 19%, var(--c-surface)); }
+  .pacc[open] > summary { border-bottom: 1px solid color-mix(in srgb, var(--pc) 32%, var(--c-line)); }
+  .pacc[open] > .pacc-body { border-top: 0; }
+  .place-bar { background: color-mix(in srgb, var(--pc) 13%, var(--c-surface)); border-color: color-mix(in srgb, var(--pc) 32%, var(--c-line)); }
+  :root[data-theme="dark"] .pacc > summary, :root[data-theme="dark"] .place-bar { background: color-mix(in srgb, var(--pc) 15%, var(--c-surface)); }
+  :root[data-theme="dark"] .pacc > summary:hover { background: color-mix(in srgb, var(--pc) 21%, var(--c-surface)); }
+  /* строки сроков в шапке квартиры: вид счётчика — своим тоном (тот же значок и цвет, что на его табло) */
+  .pn-row { --kc: var(--c-ink-2); justify-self: start; align-items: center; padding: 4px 12px 4px 8px; border-radius: 10px; color: var(--c-ink);
+    background: color-mix(in srgb, var(--kc) 12%, var(--c-surface)); border: 1px solid color-mix(in srgb, var(--kc) 30%, transparent); }
+  .pn-row > .ico { margin-top: 0; }
+  .pn-row.k-heat, .pn-row.k-hot { --kc: var(--c-supply); } .pn-row.k-cold { --kc: var(--c-return); }
+  .pn-row.k-elec { --kc: var(--c-elec); } .pn-row.k-gas { --kc: var(--c-gas); }
+  .pn-row.hot { color: var(--c-warn-ink); }
+}
