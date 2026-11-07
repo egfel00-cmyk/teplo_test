@@ -41,6 +41,7 @@ if (str_starts_with($path, '/api/')) {
   require __DIR__ . '/app/journal.php';
   require __DIR__ . '/app/docs.php';
   require __DIR__ . '/app/indexnow.php';
+  require __DIR__ . '/app/relay.php';
   require __DIR__ . '/app/api.php';
   header('Content-Type: application/json; charset=utf-8');
   header('Cache-Control: no-store');
@@ -60,6 +61,7 @@ if (str_starts_with($path, '/api/')) {
     header('Content-Type: ' . $res->file['mime']); header('Cache-Control: private, max-age=86400'); header('Content-Length: ' . filesize($res->file['path']));
     readfile($res->file['path']); exit;
   }
+  if ($res->text !== null) { header('Content-Type: text/plain; charset=utf-8'); echo $res->text; exit; }   // ретранслятор NAS читает текст строками (sh)
   if ($res->status === 429 && isset($res->body['retryAfter'])) header('Retry-After: ' . (int)$res->body['retryAfter']);
   foreach ($res->cookies as [$n, $v, $o]) setcookie($n, $v, $o);
   echo json_encode($res->body, JSON_UNESCAPED_UNICODE);

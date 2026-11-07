@@ -30,6 +30,8 @@
 //  POST /api/cab/htm/auto {on} · POST /api/cab/htm/cancel {job} · POST /api/cab/htm/now {job}   автоподача: очередь внесений после фото в бот
 //  GET /api/vk/jobs · POST /api/vk/queue {acc, fam, rid, place, items, auto?} · POST /api/vk/auto {on, consent} · POST /api/vk/job/cancel|now {job}
 //                                   вода → сайт Водоканалу «у фоні» и автоподача після фото в бот (VkSvc, app/vksvc.php)
+//  GET  /api/relay/next?v=           ретранслятор NAS (X-Relay-Key): «idle N» или шаг задания текстом (Relay)
+//  POST /api/relay/done?id=&s=[&e=]  сырой вывод curl -i шага → «ok» / «ok end»
 //  POST /api/relay/probe?t=obl|form&via=nas  вывод curl -i -L страницы обленерго с NAS владельца (без входа, сырой текст) → RelayProbe; GET — итог и команда
 //  GET  /api/weather?from&to       средняя за сутки в Харькове (Open-Meteo, кэш) — для истории
 //  POST /api/recognize/local        {ids, results} — итог распознавания в браузере (свой движок, без нейросети) → в аналитику
@@ -53,6 +55,8 @@ final class Res {
   public array $cookies = [];
   /** Если задан — index.php отдаёт файл ['path','mime'] вместо JSON. */
   public ?array $file = null;
+  /** Если задан — index.php отдаёт text/plain (ретранслятор NAS: sh читает строки). */
+  public ?string $text = null;
   public function __construct(public int $status = 200, public array $body = []) {}
 }
 
@@ -68,7 +72,7 @@ final class Api {
       // Без перевірки: вхід Mini App (initData підписана Telegram), журнал дій, вибір у банері cookie і запити із заголовком X-Session (вікно Telegram, де
       // cookie не зберігаються: чужий сайт власний заголовок без CORS не надішле, а cookie такі запити не використовують).
       // проба обленерго с NAS (RelayProbe) — curl без cookie и без входа: подделывать нечего, ничего от имени человека не меняет
-      $csrfFree = $isHook || $r->path === '/api/auth/telegram/webapp' || $r->path === '/api/events' || $r->path === '/api/consent' || $r->path === '/api/relay/probe' || $r->header('X-Session') !== '';
+      $csrfFree = $isHook || $r->path === '/api/auth/telegram/webapp' || $r->path === '/api/events' || $r->path === '/api/consent' || $r->path === '/api/relay/probe' || $r->path === '/api/relay/done' || $r->header('X-Session') !== '';
       if (!$csrfFree && $r->method !== 'GET') {
         $c = (string)($r->cookies['ts_csrf'] ?? ''); $h = $r->header('X-CSRF');
         if ($c === '' || !hash_equals($c, $h)) throw new HttpError(403, 'csrf');
@@ -87,7 +91,7 @@ final class Api {
   /** Сколько байт тела принимаем: фото и документы (платёжки PDF) — до max_photo_bytes, вывод curl с NAS — max_probe_bytes, остальное — max_body_bytes.
    *  index.php читает php://input тем же лимитом (+1 байт — чтобы отличить «ровно лимит» от «больше»). */
   public static function bodyLimit(string $path): int {
-    return (int)Cfg::get(in_array($path, ['/api/recognize/upload', '/api/docs/upload'], true) ? 'max_photo_bytes' : ($path === '/api/relay/probe' ? 'max_probe_bytes' : 'max_body_bytes'));
+    return (int)Cfg::get(in_array($path, ['/api/recognize/upload', '/api/docs/upload'], true) ? 'max_photo_bytes' : (in_array($path, ['/api/relay/probe', '/api/relay/done'], true) ? 'max_probe_bytes' : 'max_body_bytes'));
   }
   public static function rev(): string {
     $root = dirname(__DIR__); $h = '';
@@ -114,6 +118,8 @@ final class Api {
           'htmcab' => HtmSvc::summary(), 'vksvc' => VkSvc::summary(),
           // проба обленерго с украинского адреса (NAS владельца → POST /api/relay/probe): код, Cloudflare, капча, формы — решает, быть ли ретранслятору
           'uaProbe' => (object)RelayProbe::summary(), 'uaCheck' => (object)UaCheck::summary(),
+          // ретранслятор на NAS: включён ли, на связи ли (сек. назад, версия сценария, страна), пауза, задания по состояниям
+          'relay' => Relay::summary(),
           'indexnow' => class_exists('IndexNow', false) ? IndexNow::summary() : null];
       }
       case 'GET /api/me': if (!$user) throw new HttpError(401, 'unauthorized'); return ['user' => self::publicUser($user)];
@@ -284,6 +290,10 @@ final class Api {
         return RelayProbe::accept((string)($r->query()['t'] ?? ''), $r->body, $r->header('CF-IPCountry'), (string)($r->query()['via'] ?? ''));
       }
       case 'GET /api/relay/probe': return RelayProbe::one((string)($r->query()['t'] ?? ''));
+      // ретранслятор: NAS спрашивает шаг (текст «idle N» или «job id step» + строки) и возвращает сырой вывод curl -i; ключ — заголовок X-Relay-Key
+      case 'GET /api/relay/next': { Relay::auth($r->header('X-Relay-Key'), $ip); $res->text = Relay::next((int)($r->query()['v'] ?? 0), $r->header('CF-IPCountry')); return []; }
+      case 'POST /api/relay/done': { Relay::auth($r->header('X-Relay-Key'), $ip); $q = $r->query();
+        $res->text = Relay::done((int)($q['id'] ?? 0), (int)($q['s'] ?? -1), $r->body, $r->header('CF-IPCountry'), (string)preg_replace('/[^a-z]/', '', (string)($q['e'] ?? ''))); return []; }
       case 'GET /api/vk/status': return VkStatus::status();   // бот и кабинет Водоканала — работают ли (без входа)
       case 'POST /api/vk/event': {   // «Відправити» / «Прийняв» / «Не відповідає» / «Помилка» — для статуса бота
         if (!$user) throw new HttpError(401, 'unauthorized');

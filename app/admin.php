@@ -107,6 +107,14 @@ final class Admin {
 
   public static function route(string $key, array $q, array $in, array $me): array {
     switch ($key) {
+      // ретранслятор на NAS (Relay): токен, проба, сухая проверка формы, подача света, пауза
+      case 'GET /api/admin/relay': return Relay::admin(Cfg::appUrlKnown() ? Cfg::appUrl() : 'https://peredai.com.ua');
+      case 'POST /api/admin/relay/token': Relay::newToken(); return Relay::admin(Cfg::appUrlKnown() ? Cfg::appUrl() : 'https://peredai.com.ua');
+      case 'POST /api/admin/relay/off': Relay::off(); return Relay::admin(Cfg::appUrlKnown() ? Cfg::appUrl() : 'https://peredai.com.ua');
+      case 'POST /api/admin/relay/resume': Relay::resume(); return Relay::admin(Cfg::appUrlKnown() ? Cfg::appUrl() : 'https://peredai.com.ua');
+      case 'POST /api/admin/relay/probe': if (!Relay::on()) throw new HttpError(409, 'relay_off'); return ['ok' => true, 'id' => Relay::create('probe', [], (int)$me['id'])];
+      case 'POST /api/admin/relay/dry': return Relay::send($in, $me, true);
+      case 'POST /api/admin/relay/send': return Relay::send($in, $me, false);
       case 'GET /api/admin/overview': {
         $c = fn($sql, $p = []) => (int)(Db::one($sql, $p)['n'] ?? 0);
         $week = gmdate('c', time() - 7 * 86400); $tr = self::tracking();
@@ -131,6 +139,8 @@ final class Admin {
           'htmcab' => array_reverse(array_slice(HtmSvc::log(), -15)),
           // свет: проба обленерго с украинского адреса (NAS/Mac владельца) — итог и команда с кнопкой «Скопировать»
           'uaProbe' => (object)RelayProbe::summary(), 'uaCmd' => RelayProbe::command(Cfg::appUrlKnown() ? Cfg::appUrl() : 'https://peredai.com.ua'),
+          // ретранслятор на NAS: токен и сценарий для DSM, на связи ли, очередь, пауза
+          'relay' => Relay::admin(Cfg::appUrlKnown() ? Cfg::appUrl() : 'https://peredai.com.ua'),
           // сбои сервера (500): что упало и где — SITE_DATA/tmp/errors.jsonl
           'errors' => ErrLog::list(30),
         ];

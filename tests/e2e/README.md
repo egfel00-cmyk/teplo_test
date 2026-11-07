@@ -68,3 +68,10 @@
   `php -S 127.0.0.1:8098 tests/vk-mock/router.php` и в /tmp/teplo_data/config.php `'vk_cab_base' => 'http://127.0.0.1:8098'` (8099 — стенд ХТМ); тест сам пишет
   `cache/vk_status.json` (кабинет ok/down). «Перевірити» → лічильники сайту, «Інший лічильник?», «Перевірте» → «Відправити» → передано
   (via cab), ошибка сайта (меньше прошлых), чужой рахунок, 360 px, кабинет не открывается → только бот.
+- `node e2e_relay.cjs` — /admin → «Свет — ретранслятор на NAS» (16/16): включить (ключ + сценарий DSM), «Скопировать сценарий», проверка без отправки и подача
+  в очередь, ошибки ввода словами, вне окна — «окно приёма закрыто» (галочка «вне окна приёма»), пауза → «Продолжить», «Выключить». Нужен admin `boss@teplo.test`.
+- **Ретранслятор целиком** (не Playwright): `php tests/relay_nas.php [sh|bash|"env PATH=/tmp/bb /usr/bin/busybox sh"]` (26/26; `RELAY_FULL=1` — ещё ожидание GAP 60 с
+  и «рахунок не знайдено», 27/27). Сервер 8013 + стенд обленерго `php -S 127.0.0.1:8097 tests/obl-mock/router.php` (сценарии `ok|twozone|twostep|cf|captcha|redirect_off`,
+  `/__last` — что пришло POST); в /tmp/teplo_data/config.php — sqlite, admins `boss@teplo.test`, `relay_prefixes => ['http://127.0.0.1:8097/']`, `relay_url_form` и
+  `relay_url_obl` на стенд. Тест берёт настоящий сценарий из /admin и запускает его (цикл 50 с → 6–14 с). BusyBox как в DSM: `apt-get install busybox-static`,
+  `/tmp/bb` — ссылки find/tail/date/mkdir/rm/chmod/sleep/cat/sh на busybox и curl.

@@ -41,6 +41,7 @@ final class Cfg {
         'prov' => [120, 3600],           // постачальники й тарифи за адресою: в час з одного IP       // поисков очереди отключений по адресу: в час с одного IP
         'events_ip' => [900, 3600],      // пачек событий журнала действий с одного IP в час
         'relay_ip' => [20, 3600],        // проб обленерго с NAS (POST /api/relay/probe) с одного IP в час
+        'relay_bad' => [30, 3600],       // ретранслятор: запросов с неверным ключом с одного IP в час
       ],
       'max_body_bytes' => 300 * 1024,
       'max_photo_bytes' => 12 * 1024 * 1024,
@@ -183,6 +184,8 @@ final class Db {
     // кабинеты поставщиков: логин и пароль человека (пароль зашифрован ключом из SITE_DATA, CabVault) и задания робота
     $sql[] = "CREATE TABLE IF NOT EXISTS cab_creds (id $ai, user_id INT NOT NULL, prov VARCHAR(8) NOT NULL, login VARCHAR(190) NOT NULL, secret TEXT NOT NULL, extra TEXT NULL, state VARCHAR(16) NOT NULL, info TEXT NULL, created_at VARCHAR(25) NOT NULL, checked_at VARCHAR(25) NULL, UNIQUE (user_id, prov))$tail";
     $sql[] = "CREATE TABLE IF NOT EXISTS cab_jobs (id $ai, user_id INT NOT NULL, prov VARCHAR(8) NOT NULL, acc VARCHAR(40) NOT NULL, payload TEXT NOT NULL, status VARCHAR(16) NOT NULL, result TEXT NULL, tries INT NOT NULL DEFAULT 0, next_at INT NOT NULL DEFAULT 0, created_at VARCHAR(25) NOT NULL, updated_at VARCHAR(25) NOT NULL)$tail";
+    // ретранслятор на NAS (Relay): задания — проба страниц, сухая проверка формы, подача света; шаг выдаётся NAS по одному
+    $sql[] = "CREATE TABLE IF NOT EXISTS relay_jobs (id $ai, kind VARCHAR(8) NOT NULL, user_id INT NULL, payload TEXT NULL, state VARCHAR(10) NOT NULL, step INT NOT NULL DEFAULT 0, req TEXT NULL, ctx TEXT NULL, log TEXT NULL, result TEXT NULL, err VARCHAR(40) NULL, created_at INT NOT NULL, taken_at INT NULL, done_at INT NULL)$tail";
     $sql[] = "CREATE TABLE IF NOT EXISTS vk_replies (id $ai, user_id INT NOT NULL, kind VARCHAR(8) NOT NULL, text TEXT NOT NULL, msg_at INT NOT NULL, created_at VARCHAR(25) NOT NULL)$tail";
     // что люди делали с ботом Водоканала: send — нажали «Відправити», ok — «Прийняв», silent — «Не відповідає», err — «Помилка»;
     // notified — тем, кто жаловался «не відповідає», уже написали «бот знову працює»

@@ -17,6 +17,7 @@ require __DIR__ . '/../app/visits.php';
 require __DIR__ . '/../app/journal.php';
 require __DIR__ . '/../app/docs.php';
 require __DIR__ . '/../app/indexnow.php';
+require __DIR__ . '/../app/relay.php';
 require __DIR__ . '/../app/api.php';
 $TMP = sys_get_temp_dir() . '/teplo_test_' . getmypid(); putenv('SITE_DATA=' . $TMP);
 
@@ -1133,6 +1134,45 @@ ok('/<ключ>.txt отдаёт ключ, чужой — нет', $sv === true 
 $hs = IndexNow::summary();
 ok('/api/health → indexnow: код и дата, без ключа', ($hs['code'] ?? 0) === 202 && $hs['key'] === true && !str_contains(json_encode($hs), $k), $hs);
 IndexNow::$http = null;
+
+echo "\n— Ретранслятор на NAS (Relay): ключ, протокол next/done, разбор формы обленерго\n";
+$rb = new Browser('10.9.9.9');
+$r = $rb->req('GET', '/api/relay/next', null, ['HTTP_X_RELAY_KEY' => 'nope']);
+ok('relay: без токена — 403 relay_key', $r->status === 403 && ($r->body['error'] ?? '') === 'relay_key', $r->body);
+Relay::newToken(); $tok = Relay::conf()['token'];
+$r = $rb->req('GET', '/api/relay/next', null, ['QUERY_STRING' => 'v=1', 'HTTP_X_RELAY_KEY' => $tok, 'HTTP_CF_IPCOUNTRY' => 'UA']);
+ok('relay: первое задание — проба формы, текстом', $r->status === 200 && $r->text !== null && preg_match('/^job (\d+) 0\nmethod GET\nurl https:\/\/oblenergo\.kharkiv\.ua\/uk\/transmissionofmeterreadings\nh Accept: /', $r->text), $r->text);
+preg_match('/^job (\d+)/', (string)$r->text, $m); $pid = (int)($m[1] ?? 0);
+$r2 = $rb->req('GET', '/api/relay/next', null, ['QUERY_STRING' => 'v=1', 'HTTP_X_RELAY_KEY' => $tok]);
+ok('relay: пока шаг не вернулся — idle', str_starts_with((string)$r2->text, 'idle '), $r2->text);
+$formHtml = "HTTP/1.1 200 OK\r\nContent-Type: text/html\r\n\r\n<html><body><form action=\"/uk/send\" method=\"post\"><input type=hidden name=_t value=abc><label for=a>Особовий рахунок</label><input id=a name=acc required>"
+  . "<label for=v>Показники лічильника</label><input id=v name=val required><button name=go value=1>OK</button></form></body></html>\n#lichylnyky 200 0 0.4\n";
+$r = $rb->req('POST', '/api/relay/done', null, ['QUERY_STRING' => 'id=' . $pid . '&s=0', 'HTTP_X_RELAY_KEY' => $tok, 'HTTP_CF_IPCOUNTRY' => 'UA'], false, $formHtml);
+ok('relay: done без CSRF-заголовка, «ok» и следующий шаг — кабинет', $r->status === 200 && $r->text === "ok\n" && Relay::job($pid)['step'] === 1 && str_contains(Relay::job($pid)['req']['u'], 'pa.oblenergo'), [$r->status, $r->text, $r->body]);
+$r = $rb->req('POST', '/api/relay/done', null, ['QUERY_STRING' => 'id=' . $pid . '&s=0', 'HTTP_X_RELAY_KEY' => $tok], false, $formHtml);
+ok('relay: повтор старого шага — stale', $r->text === "stale\n", $r->text);
+$r = $rb->req('GET', '/api/relay/next', null, ['QUERY_STRING' => 'v=1', 'HTTP_X_RELAY_KEY' => $tok]);
+$cf = "HTTP/2 403\r\nserver: cloudflare\r\ncf-mitigated: challenge\r\n\r\n<html><title>Just a moment...</title></html>\n#lichylnyky 403 0 0.1\n";
+$r = $rb->req('POST', '/api/relay/done', null, ['QUERY_STRING' => 'id=' . $pid . '&s=1', 'HTTP_X_RELAY_KEY' => $tok, 'HTTP_CF_IPCOUNTRY' => 'UA'], false, $cf);
+$pj = Relay::job($pid);
+ok('relay: проба готова — форма ok + план, кабинет cloudflare; «ok end»', $r->text === "ok end\n" && $pj['state'] === 'done' && $pj['result']['form'] === 'ok' && $pj['result']['obl'] === 'cloudflare' && ($pj['result']['plan']['roles'] ?? []) === ['acc' => 'acc', 'val' => 'all'], $pj['result']);
+$h = (new Browser())->req('GET', '/api/health')->body['relay'] ?? [];
+ok('relay: /api/health — на связи, UA, v 1, без ключа', $h['online'] === true && $h['cc'] === 'UA' && $h['v'] === 1 && !str_contains(json_encode($h), $tok), $h);
+$pl = RelayForm::plan('<form method="post"><input type="hidden" name="_csrf" value="x"><label for="a">Номер особового рахунку</label><input id="a" name="F[ls]" required><button type="submit">Далі</button></form>', 'https://oblenergo.kharkiv.ua/uk/x', ['acc' => '123456', 'zones' => ['all' => '5']]);
+ok('relay: форма только с рахунком — шаг «acc» (двухшаговая)', $pl['ok'] && ($pl['step'] ?? '') === 'acc' && $pl['pairs'][1] === ['F[ls]', '123456'], $pl);
+$pl = RelayForm::plan('<form method="post"><label for="a">Особовий рахунок</label><input id="a" name="acc" required><label for="n">Номер лічильника</label><input id="n" name="num" required><label for="v">Показання</label><input id="v" name="v" required></form>', 'https://oblenergo.kharkiv.ua/uk/x', ['acc' => '123456', 'zones' => ['all' => '5']]);
+ok('relay: «номер лічильника» — не показання; нет номера → unknown_fields', !$pl['ok'] && $pl['err'] === 'unknown_fields' && $pl['unknown'] === ['num:serial'] && $pl['roles'] === ['acc' => 'acc', 'v' => 'all'], $pl);
+$pl = RelayForm::plan('<form method="post"><input name="acc" placeholder="Особовий рахунок"><input name="z1" placeholder="Пік"><input name="z2" placeholder="Напівпік"><input name="z3" placeholder="Ніч"></form>', 'https://oblenergo.kharkiv.ua/uk/x', ['acc' => '1', 'zones' => ['peak' => '3', 'half' => '2', 'night' => '1']]);
+ok('relay: трёхзонна — пік, напівпік, ніч', $pl['ok'] && $pl['roles'] === ['acc' => 'acc', 'z1' => 'peak', 'z2' => 'half', 'z3' => 'night'], $pl);
+$v = RelayForm::verdict(RelayProbe::split("HTTP/1.1 200 OK\r\nContent-Type: application/json\r\n\r\n{\"success\":false,\"message\":\"Невірний рахунок 123\"}"));
+$v2 = RelayForm::verdict(RelayProbe::split("HTTP/1.1 200 OK\r\nContent-Type: application/json\r\n\r\n{\"status\":\"ok\",\"message\":\"Показники прийнято\"}"));
+ok('relay: ответ JSON — ошибка / принято, цифры → #', $v['kind'] === 'err' && str_contains($v['msg'], '###') && $v2['kind'] === 'ok', [$v, $v2]);
+$e = null; try { Relay::send(['acc' => '12', 'zones' => ['all' => '1']], ['id' => 1], true); } catch (HttpError $x) { $e = $x->err; }
+$e2 = null; try { Relay::send(['acc' => '123456', 'zones' => ['day' => '1']], ['id' => 1], true); } catch (HttpError $x) { $e2 = $x->err; }
+ok('relay: проверка ввода — короткий рахунок, одна зона из двух', $e === 'bad_acc' && $e2 === 'bad_zones', [$e, $e2]);
+ok('relay: окно света — 29.11 и 2.12 да, 15.11 нет (Киев)', Relay::elecWin(strtotime('2026-11-29 10:00 UTC')) && Relay::elecWin(strtotime('2026-12-02 10:00 UTC')) && !Relay::elecWin(strtotime('2026-11-15 10:00 UTC')) && !Relay::elecWin(strtotime('2026-11-28 10:00 UTC')));
+$sc = Relay::script('https://peredai.com.ua', 'abc123');
+ok('relay: сценарий — ключ в заголовке, белый список адресов, без -L', str_contains($sc, "K='abc123'") && str_contains($sc, 'X-Relay-Key: $K') && str_contains($sc, "P='https://oblenergo.kharkiv.ua/ ") && !preg_match('/curl[^\n]* -L /', $sc), null);
 
 echo "\nИтог: $pass OK, $fail FAIL\n";
 exit($fail ? 1 : 0);

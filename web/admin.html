@@ -116,7 +116,7 @@ pre.state { font: 12px/1.4 var(--mono); background: #F4F7F5; padding: 10px; bord
       '<div class="panel small" data-key="adm-vk">' + vkLine + '</div>' +
       '<div class="cards">' + c(o.users, 'пользователей всего') + c(o.usersWeek, 'новых за 7 дней') + c(o.activeWeek, 'входили за 7 дней') + c(o.withTelegram, 'с Telegram') + c(o.withData, 'сохранили данные') +
       c(o.feedback, 'сообщений (новых: ' + o.feedbackNew + ')') + c(o.photos, 'фото загружено') + c(o.photosFailed, 'фото с проблемами') + c(o.reportsBad + ' / ' + o.reports, 'распознаваний с замечаниями') + '</div>' +
-      '<p class="muted small">Фото хранятся ' + o.photoKeepDays + ' дней, потом удаляются автоматически.</p>' + consentLine(o.consent) + actBlock() + errorsBlock(o.errors) + botRepliesBlock(o.botReplies) + uaProbeBlock(o.uaProbe, o.uaCmd) + vkcabBlock(o.vkcab, vc) + htmcabBlock(o.htmcab) + trackBlock(o.tracking) + devicesBlock();
+      '<p class="muted small">Фото хранятся ' + o.photoKeepDays + ' дней, потом удаляются автоматически.</p>' + consentLine(o.consent) + actBlock() + errorsBlock(o.errors) + botRepliesBlock(o.botReplies) + relayBlock(o.relay) + uaProbeBlock(o.uaProbe, o.uaCmd) + vkcabBlock(o.vkcab, vc) + htmcabBlock(o.htmcab) + trackBlock(o.tracking) + devicesBlock();
   };
   /** Баннер cookie (с 07.11.2026): журнал действий и «С чего работают» пишутся только у тех, кто разрешил аналитику — иначе цифры кажутся «пропавшими». */
   function consentLine(c) {
@@ -154,6 +154,44 @@ pre.state { font: 12px/1.4 var(--mono); background: #F4F7F5; padding: 10px; bord
       }).join('') + '</tbody></table>' : '<p class="muted small">Ещё никто не проверял рахунок через сайт Водоканала.</p>') + '</details>';
   }
   /** Свет: пускает ли обленерго робота с украинского адреса. Нет итога — команда с «Скопировать» и как запустить на NAS / Mac; есть — что это значит. */
+  /** Свет — ретранслятор на NAS: токен и сценарий для DSM, на связи ли, пауза, проба, проверка без отправки и подача, очередь. */
+  function relayBlock(r) {
+    if (!r) return '';
+    var K = { probe: 'проба страниц', dry: 'проверка без отправки', send: 'подача' };
+    var E = { cloudflare: 'Cloudflare не пустил', captcha: 'капча на форме', unknown_page: 'ответ сайта не узнали', unknown_fields: 'в форме непонятные обязательные поля', missing: 'не хватает данных (зоны?)',
+      no_form: 'формы нет', js_form: 'форма на JS — адрес отправки не виден', offsite: 'адрес не обленерго', nas_refused: 'NAS отказался (адрес не из его списка)', timeout: 'NAS не вернул шаг за 3 мин',
+      expired: 'не выполнено за сутки', site_err: 'сайт отказал (данные)', down: 'сайт не ответил', too_many_steps: 'слишком много шагов', redirect_loop: 'редиректы по кругу', server: 'сбой нашего сервера' };
+    var S = { new: pill('warn', 'ждёт NAS'), run: pill('warn', 'выполняется'), done: pill('ok', 'готово'), fail: pill('bad', 'не вышло') };
+    var on = r.on, st = !on ? '<b>выключен</b>' : r.online ? pill('ok', 'на связи') + ' ' + esc(r.seenAgo) + ' с назад · ' + (r.cc === 'UA' ? 'Украина' : '<b class="problem">' + esc(r.cc || '?') + '</b>') + ' · сценарий v' + esc(r.v)
+      : (r.seenAgo == null ? pill('warn', 'NAS ещё не выходил на связь') : pill('bad', 'не на связи') + ' ' + Math.round(r.seenAgo / 60) + ' мин');
+    var old = on && r.v && r.v < r.V ? '<p class="problem">Сценарий на NAS устарел (v' + esc(r.v) + ', нужен v' + esc(r.V) + ') — скопируйте новый в задачу DSM.</p>' : '';
+    var pause = r.paused ? '<div class="panel" style="background:var(--warns)"><p><b>Пауза — подачи остановлены</b>: ' + esc(E[r.paused.why] || r.paused.why) + (r.pausedJob ? ' (задание #' + esc(r.pausedJob) + ')' : '') + ', ' + when(r.paused.at) +
+      '. Сначала посмотреть «подробно» у задания.</p><p><button class="btn" data-relay="resume">Продолжить</button></p></div>' : '';
+    var steps = '<ol class="small" style="margin:6px 0 10px;padding-left:20px"><li>DSM (можно с телефона): Панель управления → Планировщик заданий → Создать → Запланированная задача → Пользовательский сценарий.</li>' +
+      '<li>«Общие»: имя «Лічильники — ретранслятор», пользователь — <b>свой</b> (не root).</li><li>«Расписание»: ежедневно, первый запуск 00:00, повторять <b>каждую минуту</b>, последний запуск 23:59.</li>' +
+      '<li>«Настройки задачи» → «Выполнить команду» — вставить сценарий ниже → OK (письма о каждом запуске не включать).</li><li>Через минуту здесь будет «на связи», первым делом NAS сделает пробу формы.</li></ol>' +
+      '<p class="muted small">Входящие порты не нужны: NAS сам раз в несколько секунд спрашивает задания. Ходит только на сайты обленерго (список в сценарии). Ключ — в сценарии; «Новый ключ» — старый перестанет работать.</p>';
+    var jobs = (r.jobsList || []).map(function (j) {
+      var res = j.result || {}, msg = j.state === 'done' ? (j.kind === 'probe' ? 'форма: ' + esc(res.form || '?') + ', кабинет: ' + esc(res.obl || '?') + (res.plan ? (res.plan.ok ? ' · план ок' : ' · <b class="problem">план: ' + esc(E[res.plan.err] || res.plan.err) + '</b>') : '') : j.kind === 'dry' ? 'заполнили бы: ' + esc((res.fields || []).join(', ')) : esc(res.msg || 'принято'))
+        : j.state === 'fail' ? '<b class="problem">' + esc(E[j.err] || j.err) + '</b>' + (res.msg ? ' — ' + esc(res.msg) : '') : '';
+      var p = j.payload || {}, what = esc(K[j.kind] || j.kind) + (p.acc ? ' · ' + esc(p.acc) + ' · ' + esc(Object.keys(p.zones || {}).map(function (k) { return (k === 'all' ? '' : k + ' ') + p.zones[k]; }).join(', ')) : '');
+      return '<tr><td data-l="№">#' + j.id + '</td><td data-l="Что">' + what + '</td><td data-l="Итог">' + (S[j.state] || esc(j.state)) + ' ' + msg + '</td><td data-l="Когда" class="nowrap">' + when(new Date(j.at * 1000).toISOString()) + '</td>' +
+        '<td data-l="Подробно"><details><summary class="small">подробно</summary><pre class="small" style="white-space:pre-wrap;max-width:60ch">' + esc(JSON.stringify({ log: j.log, result: j.result }, null, 1)) + '</pre></details></td></tr>';
+    }).join('');
+    var zf = function (k, l) { return '<label class="small" style="display:inline-block;margin:0 8px 6px 0">' + l + '<br><input data-rz="' + k + '" inputmode="decimal" style="width:8em;font:inherit;padding:8px;border:1.5px solid var(--line);border-radius:8px"></label>'; };
+    var form = '<div class="panel" style="margin:10px 0"><p><b>Показания света через NAS</b> <span class="muted small">— пока только админы (свой и мамин рахунок). Окно приёма: предпоследний день месяца — 3-е; сейчас ' + (r.win ? 'открыто' : 'закрыто') + '. Между подачами ≥ ' + esc(r.gap) + ' с.</span></p>' +
+      '<p><label class="small">Особовий рахунок<br><input data-ra inputmode="numeric" style="width:12em;font:inherit;padding:8px;border:1.5px solid var(--line);border-radius:8px"></label></p>' +
+      '<p class="small" style="margin:0 0 4px">Однозонный — только «Показания»; двухзонный — день и ночь; трёхзонный — пик, полупик, ночь.</p>' + zf('all', 'Показания') + zf('day', 'День') + zf('night', 'Ночь') + zf('peak', 'Пик') + zf('half', 'Полупик') +
+      '<p><button class="btn" data-relay="dry">Проверить без отправки</button> <button class="btn" data-relay="send">Отправить</button> <label class="small"><input type="checkbox" data-rforce> вне окна приёма</label> <span class="small" data-key="relay-msg"></span></p></div>';
+    return '<details class="panel" data-key="adm-relay"' + (on && !r.paused && r.online ? '' : ' open') + '><summary><b>Свет — ретранслятор на NAS</b> <span class="small">' + st + '</span></summary>' + pause + old +
+      (!on ? '<p class="small">Обленерго не пускает наш сервер, а украинский адрес — пускает. NAS дома забирает у сервера задания и открывает сайт обленерго со своего адреса: проба формы, затем подача «рахунок + показання» — только по кнопке.</p>' +
+        '<p><button class="btn" data-relay="token">Включить: создать ключ и сценарий</button></p>' :
+        '<details' + (r.seenAgo == null ? ' open' : '') + '><summary class="small">Сценарий для NAS и как поставить</summary>' + steps +
+        '<pre class="small mono" data-key="relay-script" style="white-space:pre-wrap;word-break:break-all;background:var(--housing);padding:10px;border-radius:8px;user-select:all;max-height:22em;overflow:auto">' + esc(r.script || '') + '</pre>' +
+        '<p><button class="btn" data-copy="relay-script">Скопировать сценарий</button> <span class="muted small" data-copied></span></p></details>' + form +
+        '<p><button class="btn" data-relay="probe">Проба страниц ещё раз</button> <button class="btn" data-relay="token">Новый ключ</button> <button class="btn" data-relay="off">Выключить</button></p>' +
+        (jobs ? '<table><thead><tr><th>№</th><th>Что</th><th>Итог</th><th>Когда</th><th>Подробно</th></tr></thead><tbody>' + jobs + '</tbody></table>' : '<p class="muted small">Заданий ещё не было.</p>')) + '</details>';
+  }
   function uaProbeBlock(p, cmd) {
     p = p || {}; var T = { obl: 'Кабинет pa.oblenergo (вход по паролю)', form: 'Онлайн-форма «передача показників» (без входа)' };
     var V = { ok: pill('ok', 'пускает') + ' страница открылась, форма есть, Cloudflare и капчи нет', cloudflare: pill('bad', 'Cloudflare') + ' не пускает робота и из Украины',
@@ -560,8 +598,28 @@ pre.state { font: 12px/1.4 var(--mono); background: #F4F7F5; padding: 10px; bord
       if (jr.hasAttribute('data-jall')) { JD.all = !JD.all; show('journal'); return; }
       if (jr.hasAttribute('data-jtag')) { post('/admin/journal/tag', { vid: JD.vid, tag: jr.getAttribute('data-jtag') }).then(function () { show('jsession'); }); return; }
     }
+    var rl = e.target.closest('[data-relay]');
+    if (rl) {
+      var act = rl.getAttribute('data-relay'), rm = document.querySelector('[data-key=relay-msg]'), say = function (t) { if (rm) rm.textContent = t; };
+      if (act === 'off' && !confirm('Выключить ретранслятор? Сценарий на NAS перестанет получать задания.')) return;
+      if (act === 'token' && rl.textContent.indexOf('Новый') === 0 && !confirm('Новый ключ: старый сценарий на NAS перестанет работать — его нужно будет заменить. Продолжить?')) return;
+      var body = {};
+      if (act === 'dry' || act === 'send') {
+        var acc = (document.querySelector('[data-ra]') || {}).value || '', z = {};
+        Array.prototype.forEach.call(document.querySelectorAll('[data-rz]'), function (i) { if (i.value.trim()) z[i.getAttribute('data-rz')] = i.value.trim(); });
+        body = { acc: acc, zones: z, force: (document.querySelector('[data-rforce]') || {}).checked ? 1 : 0 };
+        if (act === 'send' && !confirm('Отправить в Харківобленерго: рахунок ' + acc + ', показания ' + JSON.stringify(z) + '?')) return;
+      }
+      var RE = { bad_acc: 'рахунок — 5–20 цифр', bad_zones: 'зоны: только «Показания», или день + ночь, или пик + полупик + ночь', bad_value: 'показания — цифры', window_closed: 'окно приёма закрыто (отметьте «вне окна», если нужно)', busy: 'предыдущая подача ещё не закончилась', relay_paused: 'пауза — сначала «Продолжить»', relay_off: 'ретранслятор выключен' };
+      say('…'); post('/admin/relay/' + act, body).then(function (j) {
+        if (j && j.error) { say('Не вышло: ' + (RE[j.error] || j.error)); return; }
+        if (j && j.id) say('Задание #' + j.id + ' в очереди' + (j.online === false ? ' — NAS сейчас не на связи, выполнится, когда выйдет' : ''));
+        show('overview');
+      }, function () { say('Сервер недоступен'); });
+      return;
+    }
     var cp = e.target.closest('[data-copy]');
-    if (cp) { var src = document.querySelector('[data-key="' + cp.getAttribute('data-copy') + '"]'), msg = document.querySelector('[data-key=ua-copied]'), txt = src ? src.textContent : '';
+    if (cp) { var src = document.querySelector('[data-key="' + cp.getAttribute('data-copy') + '"]'), msg = cp.parentNode.querySelector('[data-copied]') || document.querySelector('[data-key=ua-copied]'), txt = src ? src.textContent : '';
       var done = function (ok) { if (msg) msg.textContent = ok ? 'Скопировано' : 'Не вышло — выделите текст выше и скопируйте вручную'; };
       if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(txt).then(function () { done(true); }, function () { done(false); }); else done(false);
       return; }
