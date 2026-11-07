@@ -5513,26 +5513,46 @@
       requestAnimationFrame(step);
     });
   }
-  // ---- картки квартир (details.pacc) розкриваються й згортаються плавно: <details> сам не анімується — ведемо висоту (Web Animations)
+  // ---- картки квартир (details.pacc) розкриваються й згортаються плавно: <details> сам не анімується — ведемо висоту (Web Animations).
+  // Владелец 07.11 (iPhone): «треба тапнути двічі, картка мелькає». Тому: намір (відкрита/закрита) — одразу в S.homeOpen і на стрілці
+  // (перемальовка посеред руху не повертає стару; тап видно миттєво); закриття — fill forwards і скасування після open=false (без кадру
+  // повної висоти в кінці, WebKit); запасний таймер, якщо finish не прийде; другий click без нового дотику за 350 мс — дубль, не розвертаємо.
+  function paccWant(d) { return d._an ? d._dir === 'open' : d.open; }
+  function paccDone(d) {
+    var an = d._an; if (!an) return; d._an = null; clearTimeout(d._tm);
+    if (d._dir === 'close') { d.open = false; d.classList.remove('shut'); }   // закрита — лише в кінці, щоб вміст було видно під час руху
+    try { an.cancel(); } catch (e) { /* */ }   // fill forwards знято — висота знову своя (уже закрита / вже відкрита)
+  }
   function paccAnim(d, open) {
     var h0 = d.getBoundingClientRect().height;   // до скасування: натиснули ще раз посеред руху — їдемо від поточної висоти
-    if (d._an) { try { d._an.cancel(); } catch (e) { /* */ } d._an = null; }
-    if (!d.animate || calmMotion()) { d.open = open; return; }
+    var was = d._an ? d._dir : '';
+    if (d._an) { var a0 = d._an; d._an = null; clearTimeout(d._tm); try { a0.cancel(); } catch (e) { /* */ } }
+    var id = d.getAttribute('data-pl'); if (id) { S.homeOpen = S.homeOpen || {}; S.homeOpen[id] = open; persist(); }
+    d.classList.toggle('shut', !open);
+    if (!d.animate || calmMotion()) { d.classList.remove('shut'); d.open = open; return; }
     var sum = d.querySelector(':scope > summary'); d._dir = open ? 'open' : 'close';
     if (open) { d.open = true; accFoot(d); }   // «Згорнути» внизу — до заміру висоти (інакше в кінці ривок на її висоту)
     var h1 = open ? d.offsetHeight : (sum ? sum.offsetHeight : 0) + (d.offsetHeight - d.clientHeight);
-    if (Math.abs(h1 - h0) < 2) { d.open = open; return; }
-    var body = d.querySelector(':scope > .pacc-body');
-    d.style.overflow = 'hidden';
-    var an = d._an = d.animate([{ height: h0 + 'px' }, { height: h1 + 'px' }], { duration: open ? 280 : 220, easing: open ? 'cubic-bezier(.2,.7,.2,1)' : 'cubic-bezier(.4,0,.6,1)' });
-    if (body && open) body.animate([{ opacity: 0, transform: 'translateY(-6px)' }, { opacity: 1, transform: 'none' }], { duration: 260, easing: 'ease-out' });
-    an.onfinish = function () { d._an = null; d.style.overflow = ''; if (!open) d.open = false; };   // закрита — лише в кінці, щоб вміст було видно під час руху
-    an.oncancel = function () { d.style.overflow = ''; };
+    if (Math.abs(h1 - h0) < 2) { d.classList.remove('shut'); d.open = open; return; }
+    var body = d.querySelector(':scope > .pacc-body'), dur = open ? 280 : 220;
+    var an = d._an = d.animate([{ height: h0 + 'px' }, { height: h1 + 'px' }], { duration: dur, easing: open ? 'cubic-bezier(.2,.7,.2,1)' : 'cubic-bezier(.4,0,.6,1)', fill: 'forwards' });
+    // вміст проявляється лише при відкритті з закритої (посеред згортання він і так видно — без блимання)
+    if (body && open && was !== 'close') body.animate([{ opacity: 0, transform: 'translateY(-6px)' }, { opacity: 1, transform: 'none' }], { duration: 260, easing: 'ease-out' });
+    an.onfinish = function () { if (d._an === an) paccDone(d); };
+    d._tm = setTimeout(function () { if (d._an === an) paccDone(d); }, dur + 150);
   }
+  // дотик/натискання на шапку — справжня дія; click без нього впритул до попереднього — дубль (WebView)
+  document.addEventListener('pointerdown', function (e) {
+    var sm = e.target.closest && e.target.closest('details.pacc > summary'); if (sm) sm.parentElement._pd = Date.now();
+  }, true);
   document.addEventListener('click', function (e) {
     var sm = e.target.closest && e.target.closest('summary'), d = sm && sm.parentElement;
     if (!d || !d.matches || !d.matches('details.pacc') || sm !== d.querySelector(':scope > summary')) return;
-    e.preventDefault(); paccAnim(d, d._an ? d._dir === 'close' : !d.open);   // посеред згортання — знову розкрити
+    e.preventDefault();
+    var now = Date.now();
+    if (d._ck && now - d._ck < 350 && !(d._pd > d._ck)) return;   // дубль того ж тапу — не розвертаємо анімацію назад
+    d._ck = now;
+    paccAnim(d, !paccWant(d));   // посеред руху — у протилежний бік від поточного наміру
   });
   function afterRender(r) {
     if (r !== LIVE.r) { LIVE.r = r; LIVE.t0 = /^(heat|water-hot|water-cold|elec|gas)$/.test(r) ? Date.now() : 0; }
