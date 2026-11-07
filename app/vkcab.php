@@ -259,7 +259,14 @@ final class VkCab {
     $page = self::req('POST', $action, self::encode($pairs));
     $x2 = self::dom((string)$page['body']);
     $form = $x2->query("//form[@id='send-counters-form']")->item(0) ?? $x2->query("//form[.//*[contains(@name,'newIndication')]]")->item(0);
-    if (!$form) {
+    // квитанция: поля показаний не нужны — на живом сайте в открытый период их строит скрипт (страница «форма без полей», 07.11.2026),
+    // а iframe с квитанцией есть и там; важно только, что вошли (не «не знайдено»)
+    $billOp = $op === 'bill' || $op === 'autobill';
+    if (!$form || $billOp) {
+      if ($billOp && $x2->query("//form[@id='no-login-form']")->item(0) === null) {
+        $msgs = self::messages($x2);
+        if (!($msgs['err'] && preg_match(self::NF_RE, implode(' ', $msgs['err'])))) return ['x' => $x2, 'form' => $form, 'fields' => [], 'meters' => [], 'done' => [], 'page' => $page];
+      }
       $msgs = self::messages($x2);
       // живой сайт (проба 04.11.2026): чужой рахунок → 200, страница без форм, «Не коректні дані: особовий рахунок або Прізвище абонента, або на
       // особовому рахунку не значаться лічильники. Можливо необхідно вказати прізвище українською мовою». Старый вариант — снова форма входа.
@@ -285,7 +292,11 @@ final class VkCab {
   public static function bill(int $uid, array $in): array {
     self::$lang = ($in['lang'] ?? '') === 'ru' ? 'ru' : 'uk';
     [$acc, $fam] = self::input($in); self::limit($uid);
-    $c = self::open($acc, $fam, 'bill'); $x = $c['x']; $from = (string)$c['page']['url']; $src = null;
+    return self::fetchBill($uid, $acc, $fam, (string)($in['place'] ?? 'main'), 'bill');
+  }
+  /** Квитанция с сайта: общая часть кнопки (op bill) и фона без человека (op autobill, VkBills::cron). → {doc, ym, guess} | {same, doc} | {none} */
+  public static function fetchBill(int $uid, string $acc, string $fam, string $place, string $op): array {
+    $c = self::open($acc, $fam, $op); $x = $c['x']; $from = (string)$c['page']['url']; $src = null;
     foreach ($x->query('//iframe[@src]|//embed[@src]|//object[@data]|//a[@href]') as $e) {
       $s = (string)($e->getAttribute('src') ?: $e->getAttribute('data') ?: $e->getAttribute('href'));
       if (preg_match('~checkPDF|\.pdf(?:[?#]|$)~i', $s)) { $src = $s; break; }
@@ -300,7 +311,7 @@ final class VkCab {
     $guess = $ym === null;
     if ($guess) { $k = new DateTimeImmutable('now', new DateTimeZone('Europe/Kyiv')); $ym = $k->modify('first day of last month')->format('Y-m'); }
     $mn = ['січень', 'лютий', 'березень', 'квітень', 'травень', 'червень', 'липень', 'серпень', 'вересень', 'жовтень', 'листопад', 'грудень'][(int)substr($ym, 5, 2) - 1];
-    $doc = Docs::put($uid, (string)$r['body'], 'application/pdf', 'pdf', (string)($in['place'] ?? 'main'), 'bill', 'Квитанція Водоканалу, ' . $mn . ' ' . substr($ym, 0, 4), ['src' => 'vk', 'ym' => $ym, 'sha' => $sha]);
+    $doc = Docs::put($uid, (string)$r['body'], 'application/pdf', 'pdf', $place, 'bill', 'Квитанція Водоканалу, ' . $mn . ' ' . substr($ym, 0, 4), ['src' => 'vk', 'ym' => $ym, 'sha' => $sha]);
     self::diag(['result' => 'bill', 'where' => 'bill', 'guess' => $guess, 'user' => $uid]);
     return ['doc' => $doc, 'ym' => $ym, 'guess' => $guess];
   }
@@ -452,7 +463,7 @@ final class VkCab {
     foreach (self::log() as $e) {
       $op = preg_replace('/[^a-z]/', '', (string)($e['op'] ?? '')) ?: '?'; $r = preg_replace('/[^a-z_]/', '', (string)($e['result'] ?? '')) ?: '?';
       $n["$op $r"] = ($n["$op $r"] ?? 0) + 1;
-      if ($op !== 'probe' && $op !== 'recheck' && (int)($e['at'] ?? 0) > (int)$last) $last = (int)$e['at'];
+      if (!in_array($op, ['probe', 'recheck', 'autobill'], true) && (int)($e['at'] ?? 0) > (int)$last) $last = (int)$e['at'];
     }
     ksort($n);
     // последний сбой человека (не проба): шаги и структура страницы без слов сайта — как htmcab.lastErr

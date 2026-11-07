@@ -15,6 +15,7 @@ require __DIR__ . '/app/vkcab.php';
 require __DIR__ . '/app/cabs.php';
 require __DIR__ . '/app/htmsvc.php';
 require __DIR__ . '/app/vksvc.php';
+require __DIR__ . '/app/docs.php';
 require __DIR__ . '/app/gpv.php';
 require __DIR__ . '/app/visits.php';
 require __DIR__ . '/app/journal.php';
@@ -37,6 +38,8 @@ try { $lk = HtmSvc::lookAdmins(); if ($lk !== null) $beat['htmLook'] = ['at' => 
 try { $hc = HtmSvc::cron(); if ($hc) $beat['htmRecheck'] = ['at' => gmdate('c'), 'n' => array_count_values(array_map(fn($x) => explode(' ', $x[1])[0], $hc))]; } catch (Throwable $e) { error_log('teplo htm recheck: ' . $e->getMessage()); }
 // вода → сайт Водоканалу у фоні / автоподача: очередь по сроку (VkSvc)
 try { $vq = VkSvc::cron(); if ($vq) $beat['vkQueue'] = ['at' => gmdate('c'), 'n' => array_count_values(array_map(fn($x) => $x[1], $vq))]; } catch (Throwable $e) { error_log('teplo vk queue: ' . $e->getMessage()); }
+// квитанции Водоканала в фоне, без человека: 1–25 число, 7–22 по Киеву, один вход за минуту (VkBills; /api/health → vkBills)
+try { $vb = VkBills::cron(); if ($vb) $beat['vkBills'] = ['at' => gmdate('c'), 'res' => $vb[0][1]]; } catch (Throwable $e) { error_log('teplo vk bills: ' . $e->getMessage()); }
 // графики отключений света (ГПВ Харьковоблэнерго) — раз в 10 минут; утром (7–12 по Киеву) — сегодняшний график в Telegram
 if ((int)gmdate('i') % 10 === 5) {
   try { Gpv::probeSite(); } catch (Throwable $e) { error_log('teplo gpv site: ' . $e->getMessage()); }

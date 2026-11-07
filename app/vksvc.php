@@ -164,3 +164,113 @@ final class VkSvc {
     return ['jobs' => (object)$jobs, 'auto' => $n];
   }
 }
+
+/** Квитанции Водоканала в фоне, без участия человека (владелец 07.11.2026: «квитанции скачивать и добавлять в фоне автоматом без участия юзера»).
+ *  cron, с 1-го по 25-е, 7:00–21:59 по Киеву, не больше одного входа на сайт за минуту. Квартира подходит, если человек сам вписал для сайта
+ *  Водоканала особовий рахунок і прізвище, не выключил «Квитанції самі» (place.water.billAuto !== false) и у неё есть запись воды за прошлый
+ *  месяц без квитанции с сайта. Тогда входим «без реєстрації» (только чтение, как «Перевірити»), новую квитанцию (другой отпечаток) кладём в документы
+ *  и прикрепляем к записи прямо в данных человека на сервере (`bills += {…, auto: 'vk'}`, новая версия; прошлая — в историю, как при сохранении) —
+ *  на любом устройстве она появится при следующей синхронизации. Та же, что уже есть (сайт ещё не обновил), — снова через RETRY; взяли за месяц —
+ *  больше за него не ходим (даже если человек убрал файл); «не знайдено» — не ходим, пока рахунок или прізвище не изменятся. Ничего не вносим. */
+final class VkBills {
+  const RETRY = 20 * 3600, FROM_H = 7, TO_H = 22, IDLE = 1800;
+  public static function file(): string { return Cfg::data() . '/cache/vk_bills.json'; }
+  public static function read(): array { $j = json_decode((string)@file_get_contents(self::file()), true); return is_array($j) ? $j : []; }
+  private static function write(array $j): void { @mkdir(dirname(self::file()), 0700, true); @file_put_contents(self::file(), json_encode($j, JSON_UNESCAPED_UNICODE), LOCK_EX); }
+  /** За какой месяц квитанция: прошлый по Киеву. */
+  public static function ym(int $now): string { return Gpv::kyiv($now)->modify('first day of last month')->format('Y-m'); }
+  /** Отпечаток данных входа — помнить «не знайдено» без самих рахунку и прізвища. */
+  private static function sig(array $t): string { return substr(sha1($t['acc'] . '|' . mb_strtolower($t['fam'])), 0, 12); }
+  private static function first(array $places): string { return (string)($places[0]['id'] ?? 'main'); }
+  private static function live(array $st): array { return array_values(array_filter((array)($st['places'] ?? []), fn($p) => is_array($p) && empty($p['deleted']) && !empty($p['id']))); }
+  /** Запись воды квартиры за месяц ym, к которой можно прикрепить квитанцию: не стартовая, последняя по дате; у какой-то записи месяца уже есть
+   *  квитанция с сайта — null (второй раз не кладём). $water — массив записей (массивы или объекты). → индекс в $water или null */
+  public static function recIdx(array $water, string $place, string $first, string $ym): ?int {
+    $best = null; $bd = '';
+    foreach ($water as $i => $r) {
+      $r = (array)$r; if (empty($r['id']) || !empty($r['deleted']) || !empty($r['base'])) continue;
+      if ((string)($r['place'] ?? $first) !== $place || substr((string)($r['date'] ?? ''), 0, 7) !== $ym) continue;
+      foreach ((array)($r['bills'] ?? []) as $b) if ((((array)$b)['auto'] ?? '') === 'vk') return null;
+      if ($best === null || (string)$r['date'] >= $bd) { $best = $i; $bd = (string)$r['date']; }
+    }
+    return $best;
+  }
+  /** Квартиры состояния, где можно взять квитанцию за ym. → [{place, acc, fam}] */
+  public static function targets(array $st, string $ym): array {
+    $places = self::live($st); if (!$places) return [];
+    $first = self::first($places); $out = [];
+    foreach ($places as $p) {
+      $w = (array)($p['water'] ?? []); if (($w['billAuto'] ?? null) === false) continue;
+      try { [$acc, $fam] = VkCab::input(['acc' => (string)($w['account'] ?? ''), 'fam' => (string)($w['surname'] ?? '')]); } catch (HttpError $e) { continue; }
+      if (self::recIdx((array)($st['water'] ?? []), (string)$p['id'], $first, $ym) === null) continue;
+      $out[] = ['place' => (string)$p['id'], 'acc' => $acc, 'fam' => $fam];
+    }
+    return $out;
+  }
+  /** Прикрепить квитанцию к записи воды за ym в данных человека (новая версия; конфликт с устройством — до 3 попыток). → прикрепили ли */
+  public static function attach(int $uid, string $place, string $ym, array $doc): bool {
+    for ($i = 0; $i < 3; $i++) {
+      $row = Db::one('SELECT data, version, updated_at FROM user_state WHERE user_id = ?', [$uid]); if (!$row) return false;
+      $st = json_decode((string)$row['data']);   // объекты, не массивы: пустые {} остаются {}
+      $arr = json_decode((string)$row['data'], true);
+      if (!is_object($st) || !is_array($arr) || !isset($st->water) || !is_array($st->water)) return false;
+      $idx = self::recIdx($st->water, $place, self::first(self::live($arr)), $ym); if ($idx === null) return false;
+      $r = $st->water[$idx]; if (!isset($r->bills) || !is_array($r->bills)) $r->bills = [];
+      $r->bills[] = (object)['id' => (string)$doc['id'], 'mime' => (string)($doc['mime'] ?? 'application/pdf'), 'name' => (string)($doc['name'] ?? ''), 'bytes' => (int)($doc['bytes'] ?? 0), 'at' => (string)($doc['createdAt'] ?? Http::iso()), 'auto' => 'vk'];
+      $r->updatedAt = (int)round(microtime(true) * 1000);   // запись новее — при слиянии с устройством побеждает она (остальное не трогаем)
+      $json = json_encode($st, JSON_UNESCAPED_UNICODE); if ($json === false) return false;
+      if (Db::q('UPDATE user_state SET data = ?, version = version + 1, updated_at = ? WHERE user_id = ? AND version = ?', [$json, Http::iso(), $uid, (int)$row['version']])->rowCount() === 1) {
+        StateHist::put($uid, (string)$row['data'], (int)$row['version'], (string)$row['updated_at'], 'vkbill');
+        return true;
+      }
+    }
+    return false;
+  }
+  /** cron: одна квартира за запуск. → [[uid, итог]] или [] */
+  public static function cron(?int $now = null): array {
+    $now = $now ?? time(); $k = Gpv::kyiv($now); $h = (int)$k->format('G');
+    if ((int)$k->format('j') > 25 || $h < self::FROM_H || $h >= self::TO_H || !VkCab::ready() || Cfg::get('vk_bills_auto', true) === false) return [];
+    $cab = (array)(VkStatus::read()['cab'] ?? []); if (empty($cab['everOk']) || ($cab['state'] ?? '') !== 'ok') return [];
+    $j = self::read(); if ((int)($j['idle'] ?? 0) > $now) return [];
+    $ym = self::ym($now); $todo = null;
+    foreach (Db::q('SELECT user_id, data FROM user_state ORDER BY user_id')->fetchAll() as $row) {
+      $st = json_decode((string)$row['data'], true); if (!is_array($st)) continue;
+      foreach (self::targets($st, $ym) as $t) {
+        $e = (array)($j['p'][$row['user_id'] . '|' . $t['place']] ?? []);
+        if (($e['got'] ?? '') === $ym || (($e['bad'] ?? '') !== '' && $e['bad'] === self::sig($t)) || $now - (int)($e['at'] ?? 0) < self::RETRY) continue;
+        $todo = [(int)$row['user_id'], $t]; break 2;
+      }
+    }
+    if (!$todo) { $j['idle'] = $now + self::IDLE; self::write($j); return []; }   // некуда идти — не перебираем всех каждую минуту
+    [$uid, $t] = $todo; $key = $uid . '|' . $t['place'];
+    $e = (array)($j['p'][$key] ?? []); $e = ['at' => $now, 'ym' => $ym, 'n' => ($e['ym'] ?? '') === $ym ? (int)($e['n'] ?? 0) + 1 : 1] + array_intersect_key($e, ['got' => 1]);
+    $j['p'][$key] = $e; self::write($j);   // отметка до входа: упадём посередине — не повторим через минуту
+    $r = []; $guess = null;
+    try {
+      RateLimit::hit('vk_cab_all', 'all');
+      $r = VkCab::fetchBill($uid, $t['acc'], $t['fam'], $t['place'], 'autobill');
+      $doc = $r['doc'] ?? null; $dym = (string)($r['ym'] ?? ($doc['ym'] ?? '')); $guess = $r['guess'] ?? null;
+      if (!empty($r['none'])) $res = 'nobill';
+      elseif (!$doc || $dym === '') $res = 'nobill';
+      elseif (!empty($r['same']) && $dym !== $ym) $res = 'same';   // сайт ещё показывает прошлую квитанцию
+      else {
+        // квитанция за месяц со страницы может оказаться не тем месяцем — кладём к своему месяцу, если такая запись есть
+        $ok = self::attach($uid, $t['place'], $dym, $doc);
+        $res = $ok ? (!empty($r['same']) ? 'attached' : 'got') : 'norec';
+        if ($ok && $dym === $ym) $e['got'] = $ym;
+      }
+    } catch (HttpError $x) { $res = $x->err === 'cab_not_found' ? 'notfound' : (preg_replace('/^(cab|vk)_/', '', $x->err) ?: 'err'); if ($res === 'notfound') $e['bad'] = self::sig($t); }
+    catch (Throwable $x) { $res = 'down'; error_log('teplo vk bills: ' . $x->getMessage()); }
+    $e['res'] = $res;
+    $j = self::read(); $j['p'][$key] = $e; $j['last'] = ['at' => $now, 'res' => $res] + ($guess !== null ? ['guess' => (bool)$guess] : []);
+    $n = (array)($j['n'][$ym] ?? []); $n[$res] = (int)($n[$res] ?? 0) + 1; $j['n'] = array_slice([$ym => $n] + (array)($j['n'] ?? []), 0, 3, true);
+    self::write($j);
+    return [[$uid, $res]];
+  }
+  /** /api/health → vkBills: последний итог и счёт по месяцам (без рахунків и людей). */
+  public static function summary(): array {
+    $j = self::read();
+    return ['last' => isset($j['last']) ? ['at' => gmdate('c', (int)$j['last']['at'])] + array_diff_key($j['last'], ['at' => 1]) : null, 'n' => (object)($j['n'] ?? []), 'places' => count((array)($j['p'] ?? [])),
+      'idleTill' => !empty($j['idle']) && $j['idle'] > time() ? gmdate('c', (int)$j['idle']) : null];
+  }
+}

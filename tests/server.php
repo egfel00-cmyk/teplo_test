@@ -532,6 +532,69 @@ $closed = ['v' => VkStatus::RECHECK_V, 'at' => $t7 - 21 * 3600, 'res' => [['erro
 ok('Водоканал: период закрыт («прийняті») — заходим снова раз в сутки в 7-м часу по Киеву, до открытой формы', VkStatus::recheckDue($closed, $t7) && !VkStatus::recheckDue($closed, $t7 + 3 * 3600)
   && !VkStatus::recheckDue(['at' => $t7 - 2 * 3600] + $closed, $t7) && !VkStatus::recheckDue(['res' => [['error' => 'ok', 'meters' => 2]]] + $closed, $t7)
   && !VkStatus::recheckDue(['res' => [['error' => 'cab_changed', 'meters' => 0]]] + $closed, $t7) && !VkStatus::recheckDue(['res' => [['error' => 'cab_not_found', 'meters' => 0]]] + $closed, $t7) && VkStatus::recheckDue(['v' => 0] + $closed, $t7));
+// квитанции Водоканала в фоне, без человека (VkBills, cron; владелец 07.11.2026)
+echo "\nКвитанции Водоканала в фоне (VkBills):\n";
+$vkPdf = "%PDF-1.4\n% kvyt-zhovten\n%%EOF\n"; $vkPdfN = 0;
+$vkJsForm = '<html><body><div class="wrap"><form id="send-counters-form" action="/counters#"><input type="hidden" name="_csrf-frontend" value="t"><input type="hidden" name="DynamicModel[acc]" value="905614"></form>'
+  . '<table class="table"><tr><th>Лічильник</th></tr><tr data-id="1282444"><td><input type="text" class="ind" data-counter="0123456"></td></tr></table><p>Завантажити квитанцію:</p><iframe src="/tmp/1.654321.checkPDF.pdf"></iframe></div></body></html>';
+VkCab::$http = function ($m, $url, $b, $c) use ($vkReal, &$vkPdf, &$vkPdfN, $vkJsForm) {
+  $path = (string)parse_url($url, PHP_URL_PATH);
+  if (preg_match('~^/tmp/[\w.]+\.checkPDF\.pdf$~', $path)) { $vkPdfN++; return ['code' => 200, 'body' => $vkPdf]; }
+  if (str_contains($url, 'get-form-send') && str_contains((string)$b, '905614')) return ['code' => 200, 'body' => $vkJsForm];   // живой открытый период: форма без полей
+  return $vkReal($m, $url, $b, $c); };
+$mkU = function (string $email, array $st) { Db::q('INSERT INTO users (email, created_at) VALUES (?, ?)', [$email, Http::iso()]); $id = (int)Db::one('SELECT id FROM users WHERE email = ?', [$email])['id'];
+  Db::q('INSERT INTO user_state (user_id, data, version, updated_at) VALUES (?, ?, 1, ?)', [$id, json_encode($st, JSON_UNESCAPED_UNICODE), Http::iso()]); return $id; };
+$stOf = fn(int $id) => Db::one('SELECT data, version FROM user_state WHERE user_id = ?', [$id]);
+$recW = fn(string $id, string $place, string $date, array $x = []) => ['id' => $id, 'place' => $place, 'date' => $date, 'vals' => ['m1' => 12.5], 'createdAt' => $date . 'T08:00:00Z', 'updatedAt' => 1000] + $x;
+$plW = fn(string $id, string $acc, string $fam, array $w = []) => ['id' => $id, 'name' => 'Мамина', 'updatedAt' => 5, 'water' => ['account' => $acc, 'surname' => $fam, 'meters' => [['id' => 'm1', 'kind' => 'cold']]] + $w];
+// выбор квартир
+$st = ['places' => [$plW('a', '905616', 'Шевченко'), $plW('b', '905617', 'Шевченко', ['billAuto' => false]), $plW('c', '12', 'Шевченко'), $plW('d', '905618', 'Коваль')],
+  'water' => [$recW('w1', 'a', '2026-10-14'), $recW('w2', 'b', '2026-10-14'), $recW('w3', 'c', '2026-10-14'), $recW('w4', 'd', '2026-10-01', ['base' => true]), $recW('w5', 'a', '2026-09-14')]];
+$tg = VkBills::targets($st, '2026-10');
+ok('квитанции: подходит квартира с рахунком і прізвищем и записью за прошлый месяц; «Квитанції самі» выключено, кривой рахунок, только стартовая — нет', count($tg) === 1 && $tg[0] === ['place' => 'a', 'acc' => '905616', 'fam' => 'Шевченко'], $tg);
+$st2 = $st; $st2['water'][0]['bills'] = [['id' => 'x', 'auto' => 'vk']];
+$st3 = ['places' => [$plW('main', '905616', 'Шевченко')], 'water' => [['id' => 'old', 'date' => '2026-10-03', 'vals' => []]]];
+ok('…у записи месяца уже есть квитанция с сайта — нет; старая запись без place — к первой квартире', VkBills::targets($st2, '2026-10') === [] && count(VkBills::targets($st3, '2026-10')) === 1 && VkBills::recIdx($st['water'], 'a', 'a', '2026-10') === 0);
+// окно и состояние сайта
+$tB = gmmktime(8, 0, 0, 11, 7, 2026);   // 10:00 по Киеву, 7 листопада → квитанция за жовтень
+VkStatus::$fetch = fn($u) => ['code' => 200, 'body' => '<html>Харківводоканал вхід</html>', 'err' => null, 'ms' => 200]; VkStatus::probeCabinet($tB - 300); VkStatus::$fetch = null;
+Db::q('DELETE FROM user_state'); Db::q('DELETE FROM docs'); @unlink(VkBills::file());
+$uA = $mkU('bill-a@example.ua', ['readings' => [], 'tariff' => new stdClass(), 'remind' => new stdClass(), 'updatedAt' => 777,
+  'places' => [$plW('a', '905616', 'Шевченко')], 'water' => [$recW('w1', 'a', '2026-10-14'), $recW('w0', 'a', '2026-09-12')]]);
+$n0 = count($vkCalls);
+ok('квитанции: 26-го, ночью (23:30 по Киеву) и рано утром — не ходим', VkBills::cron(gmmktime(8, 0, 0, 11, 26, 2026)) === [] && VkBills::cron(gmmktime(21, 30, 0, 11, 7, 2026)) === [] && VkBills::cron(gmmktime(4, 0, 0, 11, 7, 2026)) === [] && count($vkCalls) === $n0);
+$lu0 = VkCab::summary()['lastUser']; $v0 = (int)$stOf($uA)['version'];
+$cr = VkBills::cron($tB); $sA = json_decode($stOf($uA)['data'], true); $bl = $sA['water'][0]['bills'] ?? [];
+$dA = Db::one('SELECT * FROM docs WHERE user_id = ?', [$uA]);
+ok('квитанции: 7-го в 10:00 — вход (только чтение), PDF в документы (src vk, ym 2026-10, место a), к записи жовтня — bills auto vk', $cr === [[$uA, 'got']] && $dA && $dA['src'] === 'vk' && $dA['ym'] === '2026-10' && $dA['place'] === 'a' && $dA['kind'] === 'bill'
+  && count($bl) === 1 && $bl[0]['auto'] === 'vk' && $bl[0]['id'] === $dA['id'] && $bl[0]['mime'] === 'application/pdf' && str_contains($bl[0]['name'], 'жовтень 2026') && $vkPdfN === 1 && !array_filter(array_slice($vkCalls, $n0), fn($c) => $c[0] === 'POST' && str_contains($c[1], '/counters')), [$cr, $bl, $dA]);
+$rawA = $stOf($uA)['data'];
+ok('…в данных человека: новая версия, запись новее (updatedAt), остальное как было ({} осталось {}), прошлая версия — в историю (vkbill)', (int)$stOf($uA)['version'] === $v0 + 1 && $sA['water'][0]['updatedAt'] > 1000 && ($sA['water'][1]['bills'] ?? null) === null
+  && $sA['updatedAt'] === 777 && str_contains($rawA, '"tariff":{}') && str_contains($rawA, '"remind":{}') && (Db::one("SELECT reason FROM user_state_hist WHERE user_id = ? ORDER BY id DESC LIMIT 1", [$uA])['reason'] ?? '') === 'vkbill', $rawA);
+ok('…«человек» в журнале кабинета не сдвинулся; через минуту — некуда идти (уже прикрепили) → пауза, на сайт не ходим', VkCab::summary()['lastUser'] === $lu0 && VkBills::cron($tB + 60) === [] && $vkPdfN === 1 && !empty(VkBills::read()['idle']));
+// та же квитанция (сайт не обновил) → через RETRY снова; новая — к своему месяцу
+@unlink(VkBills::file());
+$uB = $mkU('bill-b@example.ua', ['readings' => [], 'places' => [$plW('p1', '905616', 'Шевченко')], 'water' => [$recW('b1', 'p1', '2026-10-20')]]);
+Db::q('INSERT INTO docs (id, user_id, place, kind, file, mime, bytes, name, created_at, src, ym, sha) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', [str_repeat('b', 24), $uB, 'p1', 'bill', 'x.pdf', 'application/pdf', 10, 'Квитанція Водоканалу, вересень 2026', Http::iso(), 'vk', '2026-09', sha1($vkPdf)]);
+$c1 = VkBills::cron($tB + 120); $c2 = VkBills::cron($tB + 180); $vkPdf = "%PDF-1.4\n% kvyt-zhovten-nova\n%%EOF\n";
+$c3 = VkBills::cron($tB + 3 * 3600); $c4 = VkBills::cron($tB + 21 * 3600); $sB = json_decode($stOf($uB)['data'], true);
+ok('квитанции: сайт ещё показывает прошлую (тот же отпечаток, вересень) → same, не кладём; раньше чем через 20 ч не повторяем; новая — got', $c1 === [[$uB, 'same']] && $c2 === [] && $c3 === [] && $c4 === [[$uB, 'got']]
+  && count($sB['water'][0]['bills'] ?? []) === 1 && (VkBills::read()['p'][$uB . '|p1']['got'] ?? '') === '2026-10' && (VkBills::read()['p'][$uB . '|p1']['n'] ?? 0) === 2, [$c1, $c2, $c3, $c4, VkBills::read()['p'] ?? null]);
+$h = json_decode(json_encode((new Browser())->req('GET', '/api/health')->body['vkBills'] ?? [], JSON_UNESCAPED_UNICODE), true); $hj = json_encode($h, JSON_UNESCAPED_UNICODE);
+ok('…/api/health → vkBills: последний итог и счёт за месяц, без рахунків, прізвищ и людей', ($h['last']['res'] ?? '') === 'got' && ($h['n']['2026-10']['got'] ?? 0) === 1 && !preg_match('/905616|Шевченко|bill-b|"' . $uB . '\|/u', $hj), $h);
+// «не знайдено» — не ходим, пока не изменят рахунок/прізвище; «Квитанції самі» выключили — не ходим
+@unlink(VkBills::file()); Db::q('DELETE FROM user_state WHERE user_id IN (?, ?)', [$uA, $uB]);
+$uD = $mkU('bill-d@example.ua', ['readings' => [], 'places' => [$plW('q', '905615', 'Шевченко')], 'water' => [$recW('d1', 'q', '2026-10-20')]]);
+$d1 = VkBills::cron($tB); $d2 = VkBills::cron($tB + 22 * 3600);
+Db::q('UPDATE user_state SET data = ? WHERE user_id = ?', [json_encode(['readings' => [], 'places' => [$plW('q', '905614', 'Шевченко')], 'water' => [$recW('d1', 'q', '2026-10-20')]], JSON_UNESCAPED_UNICODE), $uD]);
+$vkPdf = "%PDF-1.4\n% kvyt-d\n%%EOF\n"; @unlink(VkBills::file());
+$d3 = VkBills::cron($tB + 23 * 3600);
+ok('квитанции: чужой рахунок → notfound, на следующий день не ходим; исправили на свой (страница «форма без полей», как живой сайт в открытый период) → got', $d1 === [[$uD, 'notfound']] && $d2 === [] && $d3 === [[$uD, 'got']], [$d1, $d2, $d3]);
+Db::q('UPDATE user_state SET data = ? WHERE user_id = ?', [json_encode(['readings' => [], 'places' => [$plW('q', '905614', 'Шевченко', ['billAuto' => false])], 'water' => [$recW('d2', 'q', '2026-11-20')]], JSON_UNESCAPED_UNICODE), $uD]);
+@unlink(VkBills::file());
+ok('…«Квитанції самі» выключено — не ходим', VkBills::cron(gmmktime(8, 0, 0, 12, 3, 2026)) === []);
+$r = $cab('/api/vk/bill', ['acc' => '905614', 'fam' => 'Шевченко', 'place' => 'main']);
+ok('кнопка/приложение: страница «форма без полей» (открытый период) — квитанция всё равно берётся (раньше — «форма змінилась»)', $r->status === 200 && (!empty($r->body['doc']) || !empty($r->body['same'])), $r->body);
 VkCab::$http = null;
 Telegram::$send = null; Telegram::$fetch = null;
 
