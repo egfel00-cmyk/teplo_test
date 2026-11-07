@@ -1629,6 +1629,13 @@ details.wacc.wacc-btn[open] > summary { border-bottom-color: var(--bt-line); }
   .pn-row.k-elec { --kc: var(--c-elec); } .pn-row.k-gas { --kc: var(--c-gas); }
   .pn-row.hot { color: var(--c-warn-ink); }
 }
+/* «Куди передати» — как «Історія» и «Налаштування показань» (владелец 07.11): значок и заголовок слева, шеврон справа, плашки 32 px на одной линии */
+details.wacc.wacc-btn > summary { justify-content: flex-start; gap: 10px; padding: 0 16px; }
+details.wacc.wacc-btn > summary h2 { flex: 1 1 auto; justify-content: flex-start; gap: 10px; }
+details.wacc.wacc-btn > summary .pacc-chev { position: static; margin: 0 0 0 auto; }
+.where > h2 .bt-ico, .wacc > summary h2 .bt-ico { margin: 0; }
+.mhist-h { gap: 10px; }
+.mbox-set > summary > .bt-ico { padding: 7px; border-radius: 10px; }
 
 </style>
 <style>.top { padding-top: max(12px, env(safe-area-inset-top)); }</style>
