@@ -126,7 +126,7 @@ final class CabWeb {
 }
 
 final class CabProbe {
-  const V = 2;   // 2: вид отказа Cloudflare (cfKind/cfCode/cfCc) и robots.txt — понять, пустит ли обленерго из Украины (ретранслятор)
+  const V = 3;   // 2: вид отказа Cloudflare (cfKind/cfCode/cfCc) и robots.txt — понять, пустит ли обленерго из Украины (ретранслятор); 3: что в настройке captcha Газмереж (captchaShape) — включена ли
   /** Что пробуем: страница входа и признак «это наша форма входа». */
   const SITES = [
     'htm' => ['url' => 'https://www.hts.kharkov.ua/cabinet', 'host' => '/(^|\.)hts\.kharkov\.ua$/i', 'form' => '/name="passw"/i', 'cs' => 'Windows-1251'],
@@ -151,11 +151,30 @@ final class CabProbe {
       if (isset($o['cfKind'])) { $rb = $w->req('GET', CabWeb::abs('/robots.txt', $s['url'])); $o['robots'] = (int)$rb['code']; }
       if ($k === 'grm' && preg_match('/data-page="([^"]+)"/', $r['body'], $m)) {   // Laravel + Inertia: настройки страницы входа — JSON в атрибуте
         $p = json_decode(html_entity_decode($m[1], ENT_QUOTES | ENT_HTML5, 'UTF-8'), true);
-        if (is_array($p)) { $o['component'] = mb_substr((string)($p['component'] ?? ''), 0, 40); $o['captchaProp'] = !empty($p['props']['captcha']); }
+        if (is_array($p)) {
+          $o['component'] = mb_substr((string)($p['component'] ?? ''), 0, 40); $o['captchaProp'] = !empty($p['props']['captcha']);
+          // какая это настройка: {enabled: false, …} — капча выключена; ключи и типы без значений (строки — длина), булевы и числа — как есть
+          $o['captchaShape'] = self::shape($p['props']['captcha'] ?? null);
+          $o['captchaOn'] = self::captchaOn($p['props']['captcha'] ?? null);
+          $o['props'] = array_slice(array_keys((array)($p['props'] ?? [])), 0, 30);
+        }
       }
     }
-    $o['ok'] = $r['code'] === 200 && !empty($o['form']) && empty($o['widget']) && empty($o['cf']) && empty($o['captchaProp']);
+    $o['ok'] = $r['code'] === 200 && !empty($o['form']) && empty($o['widget']) && empty($o['cf']) && ($k === 'grm' ? ($o['captchaOn'] ?? null) === false : empty($o['captchaProp']));
     return $o;
+  }
+  /** Форма значения без самих значений: bool/число/null — как есть, строка — 'str:<длина>' (короткое слово-тип вроде «recaptcha» — целиком), массив — по ключам (2 уровня). */
+  public static function shape($v, int $d = 0) {
+    if (is_array($v)) { if ($d >= 2) return 'arr:' . count($v); $o = []; foreach (array_slice($v, 0, 15, true) as $k => $x) $o[(string)$k] = self::shape($x, $d + 1); return $o; }
+    if (is_string($v)) return preg_match('/^[a-z_\-]{1,20}$/i', $v) ? $v : 'str:' . strlen($v);
+    return $v;
+  }
+  /** Включена ли капча по настройке: true/false/null (не поняли). Массив с enabled/active/on/required — по нему; пустое/false/0 — нет. */
+  public static function captchaOn($v): ?bool {
+    if ($v === null || $v === false || $v === 0 || $v === '' || $v === []) return false;
+    if ($v === true || is_string($v) || is_int($v)) return true;
+    if (is_array($v)) { foreach (['enabled', 'enable', 'active', 'on', 'required', 'show', 'visible', 'is_enabled'] as $k) if (array_key_exists($k, $v)) return (bool)$v[$k]; return null; }
+    return null;
   }
   private static function save(array $j): void { @mkdir(dirname(self::file()), 0700, true); @file_put_contents(self::file(), json_encode($j, JSON_UNESCAPED_UNICODE), LOCK_EX); }
   /** Пробует сайты по одному и пишет итог после каждого — если cron оборвут на медленном сайте, остальное уже видно. */
