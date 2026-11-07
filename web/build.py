@@ -11,11 +11,23 @@ ROOT = pathlib.Path(__file__).resolve().parent
 SRC = ROOT / "src"
 SERVER_HEAD = ('<script src="https://telegram.org/js/telegram-web-app.js"></script>\n'
                "<script>window.TEPLO_API = '__TEPLO_API__'; window.TEPLO_BUILD = '__TEPLO_BUILD__';</script>")
+# Шрифты: сайт — со своего сервера (web/fonts, IP посетителя не уходит Google); автономный файл (открыть без сервера) — по-прежнему Google Fonts
+GOOGLE_FONTS = ('<link rel="preconnect" href="https://fonts.googleapis.com">\n'
+                '<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>\n'
+                '<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">')
+
+
+def own_fonts() -> str:
+    css = (ROOT / "fonts" / "fonts.css").read_text(encoding="utf-8")
+    css = re.sub(r"^/\*.*?\*/\s*", "", css, flags=re.S).replace("url(plex-", "url(web/fonts/plex-")
+    pre = "".join(f'<link rel="preload" href="web/fonts/{f}" as="font" type="font/woff2" crossorigin>\n' for f in ("plex-sans-cyr.woff2", "plex-sans-lat.woff2"))
+    return pre + "<style>\n" + css.strip() + "\n</style>"
 
 
 def build(server: bool) -> str:
     html = (SRC / "index.html").read_text(encoding="utf-8")
     css = (SRC / "styles.css").read_text(encoding="utf-8")
+    html = html.replace("<!--FONTS-->", own_fonts() if server else GOOGLE_FONTS)
     html = html.replace('<link rel="stylesheet" href="styles.css">', "<style>\n" + css + "\n</style>")
     html = html.replace("<!--SERVER_HEAD-->", SERVER_HEAD if server else "")
 

@@ -16,6 +16,9 @@ if (PHP_SAPI === 'cli-server' && preg_match('~^/web/ocr/[\w.-]+\.(js|mjs|wasm|on
   $ext = pathinfo($path, PATHINFO_EXTENSION);
   header('Content-Type: ' . (['js' => 'text/javascript', 'mjs' => 'text/javascript', 'wasm' => 'application/wasm', 'txt' => 'text/plain; charset=utf-8'][$ext] ?? 'application/octet-stream')); readfile(__DIR__ . $path); exit;
 }
+if (PHP_SAPI === 'cli-server' && preg_match('~^/web/fonts/[\w.-]+\.(woff2|css|txt)$~', $path, $fm) && is_file(__DIR__ . $path)) {   // свои шрифты (IBM Plex)
+  header('Content-Type: ' . ['woff2' => 'font/woff2', 'css' => 'text/css; charset=utf-8', 'txt' => 'text/plain; charset=utf-8'][$fm[1]]); readfile(__DIR__ . $path); exit;
+}
 if (PHP_SAPI === 'cli-server' && $path !== '/' && preg_match('~^/web/[\w.-]+\.(png|jpg|svg)$~', $path) && is_file(__DIR__ . $path)) {
   header('Content-Type: ' . (str_ends_with($path, '.svg') ? 'image/svg+xml' : 'image/' . (str_ends_with($path, '-2.jpg') ? 'png' : 'jpeg'))); readfile(__DIR__ . $path); exit;
 }
@@ -67,8 +70,9 @@ if ($path === '/admin' || $path === '/admin/') {   // аналитика вла�
   header('Content-Type: text/html; charset=utf-8');
   header('Cache-Control: no-cache');
   header('X-Robots-Tag: noindex');
-  header("Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob:; connect-src 'self'; base-uri 'none'; frame-ancestors 'none'");
-  echo str_replace("'__TEPLO_API__'", json_encode($base . '/api'), (string)file_get_contents(__DIR__ . '/web/admin.html'));
+  header("Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: blob:; connect-src 'self'; base-uri 'none'; frame-ancestors 'none'");
+  // шрифты — свои (web/fonts); путь от корня сайта, чтобы /admin/ со слешем тоже их находил
+  echo str_replace(["'__TEPLO_API__'", 'href="web/fonts/'], [json_encode($base . '/api'), 'href="' . $base . '/web/fonts/'], (string)file_get_contents(__DIR__ . '/web/admin.html'));
   exit;
 }
 
@@ -112,7 +116,7 @@ if ($path === '/' || $path === '/index.php') {
   $html = str_replace('<div id="root"></div>', '<div id="root">' . seoStatic($ru, $e) . '</div>', $html);
   header('Content-Type: text/html; charset=utf-8');
   header('Cache-Control: no-cache');
-  header("Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' https://telegram.org; frame-src https://oauth.telegram.org; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob: https://t.me https://telegram.org; connect-src 'self'; base-uri 'none'; form-action 'self'");
+  header("Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' https://telegram.org; frame-src https://oauth.telegram.org; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: blob: https://t.me https://telegram.org; connect-src 'self'; base-uri 'none'; form-action 'self'");
   echo $html;
   exit;
 }
