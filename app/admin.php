@@ -239,9 +239,10 @@ final class Admin {
   const BOT_ADOPT = '419f6f34b6cb2e4794c050e6b0327bcad4978b13e76de8677895c6ce69f7dfed';
   public static function adopt(string $t, string $ip): array {
     RateLimit::hit('bot_adopt', $ip);
-    if ($t === '' || !hash_equals(self::BOT_ADOPT, hash('sha256', $t))) throw new HttpError(404, 'not_found');
+    $h = hash('sha256', $t);   // ответ — всегда 200 с причиной (WebFetch сессии не показывает тело ошибок); сам токен не возвращаем
+    if ($t === '' || !hash_equals(self::BOT_ADOPT, $h)) return ['ok' => false, 'error' => 'not_this_token', 'len' => strlen($t), 'h' => substr($h, 0, 8)];
     if ((string)Cfg::get('bot_token') === $t) return ['ok' => true, 'already' => true, 'bot' => (string)Cfg::get('bot_username')];
-    return self::setBot($t);
+    try { return self::setBot($t); } catch (HttpError $e) { return ['ok' => false, 'error' => $e->err, 'human' => $e->extra['human'] ?? null]; }
   }
   private static function settings(): array {
     $tg = null;
