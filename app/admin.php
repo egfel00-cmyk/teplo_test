@@ -121,6 +121,8 @@ final class Admin {
           'reports' => $c('SELECT COUNT(*) n FROM recog_reports'), 'reportsBad' => $c('SELECT COUNT(*) n FROM recog_reports WHERE ok = 0'),
           'recognition' => (bool)Cfg::get('anthropic_api_key'), 'telegram' => (bool)Cfg::get('bot_token'), 'photoKeepDays' => (int)Cfg::get('photo_keep_days', 90), 'cronAgo' => Cron::age(),
           'me' => $me['email'] ?: ('tg:' . $me['id']), 'tracking' => $tr, 'vk' => VkStatus::status(),
+          // баннер cookie: сколько браузеров разрешили аналитику (журнал и «С чего работают» видят только их)
+          'consent' => Consent::summary(30),
           // пересланные нам ответы ботов поставщиков (вода / свет / газ) — живые тексты, чтобы поправить Telegram::botKind
           'botReplies' => Db::q("SELECT r.id, r.user_id, r.src, r.kind, r.text, r.msg_at, u.email, i.username AS tg_username FROM vk_replies r LEFT JOIN users u ON u.id = r.user_id
             LEFT JOIN user_identities i ON i.user_id = r.user_id AND i.type = 'telegram' ORDER BY r.id DESC LIMIT 30")->fetchAll(),

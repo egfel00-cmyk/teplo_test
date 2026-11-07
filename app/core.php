@@ -31,6 +31,7 @@ final class Cfg {
         'recog_run' => [40, 86400],      // запросов к нейросети: в сутки на пользователя (пачки по 3 фото)
         'feedback_ip' => [10, 3600],     // отзывов с одного IP в час
         'visit_ip' => [120, 3600],       // отметок «открыли сайт» с одного IP в час (устройства в аналитике)
+        'consent_ip' => [60, 3600],      // записей «выбор в баннере cookie» с одного IP в час
         'bot_photo' => [60, 3600],       // фото боту в Telegram: в час на пользователя
         'vk_cab' => [30, 3600],          // проверок/отправок через кабинет Водоканала: в час на пользователя
         'vk_cab_all' => [400, 3600],     // и всего с нашего сервера — не нагружать сайт Водоканала
@@ -189,6 +190,10 @@ final class Db {
     // журнал действий (app/journal.php): события браузера по сеансам; свои/тестовые браузеры — vid_tags (me / test, manual — вручную в /admin)
     $sql[] = "CREATE TABLE IF NOT EXISTS events (id $ai, at VARCHAR(25) NOT NULL, day CHAR(10) NOT NULL, vid VARCHAR(24) NOT NULL, sid VARCHAR(16) NOT NULL, user_id INT NULL, name VARCHAR(40) NOT NULL, screen VARCHAR(40) NULL, props TEXT NULL)$tail";
     $sql[] = "CREATE TABLE IF NOT EXISTS vid_tags (vid VARCHAR(24) PRIMARY KEY, tag VARCHAR(8) NOT NULL, manual TINYINT NOT NULL DEFAULT 0, at VARCHAR(25) NOT NULL)$tail";
+    // согласие на cookie (баннер, 07.11.2026): решение браузера — подтверждение согласия; cid — случайный id согласия из браузера (не vid аналитики),
+    // v — версия текста/категорий, analytics 0/1, how: accept · reject · save. IP и User-Agent не храним
+    $sql[] = "CREATE TABLE IF NOT EXISTS consents (id $ai, cid VARCHAR(24) NOT NULL, user_id INT NULL, v SMALLINT NOT NULL, analytics TINYINT NOT NULL, how VARCHAR(8) NOT NULL, at VARCHAR(25) NOT NULL)$tail";
+    $sql[] = 'CREATE INDEX IF NOT EXISTS ix_consents_cid ON consents (cid, id)';
     $sql[] = 'CREATE INDEX IF NOT EXISTS ix_events_day ON events (day)';
     $sql[] = 'CREATE INDEX IF NOT EXISTS ix_events_vs ON events (vid, sid, id)';
     if (!$my) $sql[] = 'CREATE INDEX IF NOT EXISTS ix_state_hist_user ON user_state_hist (user_id, id)';

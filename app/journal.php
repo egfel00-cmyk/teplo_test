@@ -122,6 +122,8 @@ final class Journal {
   }
   public static function cleanup(?int $now = null): int {
     $d = Visits::day(($now ?? time()) - self::KEEP_DAYS * 86400);
+    // отметки «открыли сайт» (visits) — до 12 месяцев: так написано в политике и в баннере cookie (07.11.2026)
+    Db::q('DELETE FROM visits WHERE day < ?', [Visits::day(($now ?? time()) - 365 * 86400)]);
     return Db::q('DELETE FROM events WHERE day < ?', [$d])->rowCount();
   }
 }

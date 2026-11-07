@@ -5,7 +5,7 @@ const U = 'http://127.0.0.1:8013/';
 let pass = 0, fail = 0; const ok = (n, c, x) => { if (c) { pass++; console.log('  OK  ' + n); } else { fail++; console.log(' FAIL ' + n + (x !== undefined ? ' → ' + JSON.stringify(x).slice(0, 600) : '')); } };
 (async () => {
   const b = await chromium.launch(); const ctx = await b.newContext({ viewport: { width: 390, height: 800 } });
-  await ctx.addInitScript(() => { Object.defineProperty(navigator, 'webdriver', { get: () => false }); });
+  await ctx.addInitScript(() => { Object.defineProperty(navigator, 'webdriver', { get: () => false }); localStorage.setItem('teplo.cc', JSON.stringify({ v: 1, a: 1, at: new Date().toISOString(), id: 'e2econsent01' })); });   // журнал — лише зі згодою на аналітику (банер cookie, 07.11)
   const p = await ctx.newPage(); const errs = []; p.on('pageerror', e => errs.push(e.message));
   const sent = []; await p.route('**/api/events', async r => { try { sent.push(JSON.parse(r.request().postData() || '{}')); } catch (e) { /* */ } await r.continue(); });
   await p.goto(U); await p.evaluate(s => localStorage.setItem('teplo.v1', JSON.stringify(s)), demo({ today: new Date().toISOString().slice(0, 10) })); await p.reload(); await p.waitForTimeout(800);

@@ -5,6 +5,31 @@ declare(strict_types=1);
 // не человек; IP и User-Agent не храним. Одна строка на браузер в сутки (по Киеву), hits — сколько раз открывали.
 // Вошёл — к строке пишется user_id (видно в карточке человека в /admin). Сводка — GET /api/admin/devices?days=30.
 
+/** Согласие на cookie (баннер «Файли cookie» на сайте, 07.11.2026). Браузер шлёт выбор: «Прийняти все» / «Відхилити» / «Зберегти вибір»
+ *  (в т.ч. позже — изменил или отозвал). Храним каждое решение — так можно подтвердить, что согласие было (GDPR ст. 7(1)); IP и UA — нет.
+ *  Аналитика (журнал действий, отметки «открыли сайт» с vid) в браузере включается только после согласия — см. web/src/app.js (CC). */
+final class Consent {
+  const V = 1;                                   // версия категорий: сменится состав — баннер спросит заново
+  const HOW = ['accept', 'reject', 'save'];
+  public static function record(?array $user, array $in, string $ip): array {
+    RateLimit::hit('consent_ip', $ip);
+    $cid = substr(preg_replace('/[^A-Za-z0-9]/', '', (string)($in['id'] ?? '')), 0, 24);
+    if (strlen($cid) < 8) throw new HttpError(400, 'bad_id');
+    $how = in_array($in['how'] ?? '', self::HOW, true) ? $in['how'] : 'save';
+    $v = max(1, min(999, (int)($in['v'] ?? self::V)));
+    Db::q('INSERT INTO consents (cid, user_id, v, analytics, how, at) VALUES (?, ?, ?, ?, ?, ?)', [$cid, $user ? (int)$user['id'] : null, $v, empty($in['a']) ? 0 : 1, $how, Http::iso()]);
+    return ['ok' => true];
+  }
+  /** Для /admin: последнее решение каждого браузера за $days дней — сколько разрешили аналитику, сколько нет, сколько меняли решение. */
+  public static function summary(int $days = 30): array {
+    $from = gmdate('c', time() - max(1, $days) * 86400);
+    $rows = Db::q('SELECT c.analytics, c.how FROM consents c WHERE c.at >= ? AND c.id = (SELECT MAX(c2.id) FROM consents c2 WHERE c2.cid = c.cid)', [$from])->fetchAll();
+    $yes = count(array_filter($rows, fn($r) => (int)$r['analytics'] === 1));
+    $chg = (int)(Db::one('SELECT COUNT(*) n FROM (SELECT cid FROM consents WHERE at >= ? GROUP BY cid HAVING COUNT(*) > 1) x', [$from])['n'] ?? 0);
+    return ['days' => $days, 'total' => count($rows), 'yes' => $yes, 'no' => count($rows) - $yes, 'changed' => $chg];
+  }
+}
+
 final class Visits {
   const DEVICES = ['mobile', 'tablet', 'desktop'];
   const OS = ['iOS', 'Android', 'Windows', 'macOS', 'Linux', 'other'];

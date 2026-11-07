@@ -65,10 +65,10 @@ final class Api {
       $isHook = $r->path === '/api/bot/webhook' || $r->path === '/api/bot/setup';
       if (!$isHook) RateLimit::hit('ip_all', $ip);
       // CSRF: для изменяющих запросов заголовок X-CSRF должен совпасть с cookie ts_csrf (double submit) + SameSite=Lax
-      // Без перевірки: вхід Mini App (initData підписана Telegram), журнал дій і запити із заголовком X-Session (вікно Telegram, де
+      // Без перевірки: вхід Mini App (initData підписана Telegram), журнал дій, вибір у банері cookie і запити із заголовком X-Session (вікно Telegram, де
       // cookie не зберігаються: чужий сайт власний заголовок без CORS не надішле, а cookie такі запити не використовують).
       // проба обленерго с NAS (RelayProbe) — curl без cookie и без входа: подделывать нечего, ничего от имени человека не меняет
-      $csrfFree = $isHook || $r->path === '/api/auth/telegram/webapp' || $r->path === '/api/events' || $r->path === '/api/relay/probe' || $r->header('X-Session') !== '';
+      $csrfFree = $isHook || $r->path === '/api/auth/telegram/webapp' || $r->path === '/api/events' || $r->path === '/api/consent' || $r->path === '/api/relay/probe' || $r->header('X-Session') !== '';
       if (!$csrfFree && $r->method !== 'GET') {
         $c = (string)($r->cookies['ts_csrf'] ?? ''); $h = $r->header('X-CSRF');
         if ($c === '' || !hash_equals($c, $h)) throw new HttpError(403, 'csrf');
@@ -336,6 +336,7 @@ final class Api {
       case 'POST /api/feedback': return Feedback::create($user, $in, $r, $ip);
       case 'POST /api/visit': return Visits::hit($user, $in, $r, $ip);
       case 'POST /api/events': return Journal::push($user, $in, $r, $ip);   // журнал действий (app/journal.php)
+      case 'POST /api/consent': return Consent::record($user, $in, $ip);   // выбор в баннере cookie (app/visits.php)
       case 'GET /api/admin/me': if (!$user) throw new HttpError(401, 'unauthorized'); return ['admin' => Admin::is($user)];
       case 'POST /api/bot/setup': {
         $secret = (string)Cfg::get('webhook_secret');

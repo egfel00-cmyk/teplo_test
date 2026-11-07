@@ -18,7 +18,7 @@ const stub = (id, user) => `window.Telegram={WebApp:{initData:${JSON.stringify(i
 async function page(b, id, user, url) {
   const ctx = await b.newContext({ viewport: { width: 1200, height: 900 } }); const p = await ctx.newPage(); const errs = [];
   p.on('pageerror', e => errs.push(e.message));
-  await p.addInitScript(() => Object.defineProperty(navigator, 'webdriver', { get: () => false }));   // журнал мовчить під автотестом — тут він потрібен
+  await p.addInitScript(() => { Object.defineProperty(navigator, 'webdriver', { get: () => false }); localStorage.setItem('teplo.cc', JSON.stringify({ v: 1, a: 1, at: new Date().toISOString(), id: 'e2econsent01' })); });   // журнал — лише зі згодою (банер cookie)   // журнал мовчить під автотестом — тут він потрібен
   await p.route('https://telegram.org/**', r => r.fulfill({ status: 200, contentType: 'application/javascript', body: r.request().url().includes('telegram-web-app') ? stub(id, user) : '' }));
   // вікно, що не зберігає cookie: прибираємо Set-Cookie з усіх відповідей сервера
   await p.route(BASE + '/**', async r => { const res = await r.fetch(); const h = Object.assign({}, res.headers()); delete h['set-cookie']; await r.fulfill({ response: res, headers: h }); });

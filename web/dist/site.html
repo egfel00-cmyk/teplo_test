@@ -1520,6 +1520,35 @@ details.bot-how[open] > ol { margin-top: 4px; }
 .ho-st .banner { margin-top: var(--sp-3); }
 .ho-bad { margin: var(--sp-3) 0 0; }
 
+/* ---- банер cookie (07.11.2026): внизу над меню, не модальний; «Прийняти все» і «Відхилити» — однакові; на компʼютері — картка справа внизу ---- */
+.cc { position: fixed; z-index: 15; left: 8px; right: 8px; bottom: calc(58px + env(safe-area-inset-bottom) + 8px); max-height: calc(100vh - 150px); overflow: auto;
+  background: var(--c-surface); color: var(--c-ink); border: 1.5px solid var(--c-field-line); border-radius: 16px; padding: 14px 16px 6px;
+  box-shadow: 0 10px 30px var(--c-shadow), 0 1px 3px var(--c-shadow); }
+.cc.cc-bare { bottom: calc(env(safe-area-inset-bottom) + 8px); }
+.cc h2 { display: flex; align-items: center; gap: 8px; margin: 0 0 6px; font-size: var(--fs-m); line-height: 1.3; }
+.cc h2 .ico { flex: none; color: var(--c-info); }
+.cc p { margin: 0 0 12px; font-size: var(--fs-s); line-height: 1.45; color: var(--c-ink-2); }
+.cc-acts { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.cc-acts .btn { min-height: 48px; padding: 0 10px; }
+.cc-cust { display: flex; align-items: center; justify-content: center; gap: 6px; width: 100%; min-height: 44px; margin-top: 2px; color: var(--c-ink); }
+.cc-cust .ico { color: var(--c-ink-2); }
+@media (min-width: 960px) { .cc { left: auto; right: var(--sp-5); bottom: var(--sp-5); width: 420px; } }
+.kb-open .cc { display: none; }
+/* «Налаштування cookie» — у діалозі відгуку (.fb): категорії-плашки, перемикач аналітики */
+.cc-dlg h2 { margin-top: 0; }
+.cc-dlg .cc-cat { border: 1px solid var(--c-line); border-radius: 12px; padding: 10px 14px 12px; margin: 0 0 10px; background: var(--c-surface-2); }
+.cc-dlg .cc-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 44px; cursor: pointer; }
+.cc-dlg .cc-cat p { margin: 2px 0 0; color: var(--c-ink-2); }
+.cc-dlg .cc-sw { appearance: none; -webkit-appearance: none; flex: none; position: relative; box-sizing: border-box; width: 52px; height: 30px; margin: 0; padding: 0; border-radius: 999px;
+  background: var(--c-line); border: 1.5px solid var(--c-field-line); cursor: pointer; transition: background .15s, border-color .15s; }
+.cc-dlg .cc-sw::after { content: ''; position: absolute; top: 2px; left: 2px; width: 23px; height: 23px; border-radius: 50%; background: var(--c-surface); box-shadow: 0 1px 3px var(--c-shadow); transition: transform .15s; }
+.cc-dlg .cc-sw:checked { background: var(--c-ok); border-color: var(--c-ok); }
+.cc-dlg .cc-sw:checked::after { transform: translateX(22px); }
+.cc-dlg .cc-sw:focus-visible { outline: 3px solid var(--c-focus-ring); outline-offset: 2px; }
+.cc-dacts { display: grid; gap: 8px; margin: 14px 0 6px; }
+@media (min-width: 600px) { .cc-dacts { grid-template-columns: 1fr 1fr 1fr; } .cc-dacts .btn { padding: 0 10px; } }
+.legal-foot .linkbtn { color: var(--c-ink-2); min-height: 44px; font-size: 14px; text-decoration: none; }
+
 </style>
 <style>.top { padding-top: max(12px, env(safe-area-inset-top)); }</style>
 </head>
@@ -2434,6 +2463,13 @@ details.bot-how[open] > ol { margin-top: 4px; }
       st_rej: "Не прийнято", st_rej_s: "ХТМ відхилив — причина на екрані статусу", beta_tag: "бета",
       ho_st_t: "Що з показаннями в кабінеті ХТМ?", ho_st_sub: "Зберегли в кабінеті — позначте «На перевірці». За 15–30 хвилин гляньте журнал: рядок зелений — позначте «Прийнято».",
       ho_st_bad: "Не прийняли? Розберемо причину", ho_st_why: "Чому не прийняли й що виправити",
+      cc_t: "Файли cookie", cc_p: "Необхідні cookie — для входу й захисту. З вашого дозволу ще збираємо знеособлену статистику: які екрани відкривають і де помилки — щоб зробити сервіс зручнішим. Без реклами.",
+      cc_more: "Докладніше", cc_accept: "Прийняти все", cc_reject: "Відхилити", cc_reject_all: "Відхилити все", cc_custom: "Налаштувати", cc_link: "Налаштування cookie",
+      cc_set_t: "Налаштування cookie", cc_set_p: "Оберіть, що дозволяєте. Змінити можна будь-коли.", cc_need: "Необхідні", cc_always: "Завжди ввімкнені",
+      cc_need_p: "Вхід в акаунт, захист від підробки запитів, ваші показання й налаштування в цьому браузері, захист Cloudflare від атак. Без них сайт не працює.",
+      cc_an: "Аналітика", cc_an_p: "Випадковий номер браузера (не ваше ім’я), які екрани відкривали й що натискали — без значень полів, показань і паролів, помилки, тип пристрою й ширина екрана. Бачить лише команда сервісу; журнал зберігаємо 60 днів.",
+      cc_save: "Зберегти вибір", cc_change: "Змінити вибір: Налаштування → внизу «Налаштування cookie». Докладно —",
+      cc_ok_yes: "Дякуємо! Аналітику ввімкнено", cc_ok_no: "Збережено: лише необхідні cookie", cc_now_yes: "Зараз: аналітику дозволено ({d})", cc_now_no: "Зараз: лише необхідні ({d})",
       hs_title: "Сезон {s}", hs_cur: "поточний", hs_run: "триває", hs_period: "{a} – {b}", hs_month: "≈ {q} Гкал, ≈ {m} грн / міс",
       hs_none: "ще немає двох показань — нема з чого рахувати", hs_noheat: "тепла не було",
       hs_hint: "Сезони система складає сама з ваших показань: проміжок — у сезон, на який припадає його середина (травневі показання закривають зиму, вересневі — відкривають нову). Гривні — з абонплатою й часткою ЗБП, як у платіжці.",
@@ -3523,6 +3559,13 @@ details.bot-how[open] > ol { margin-top: 4px; }
       st_rej: "Не принято", st_rej_s: "ХТМ отклонил — причина на экране статуса", beta_tag: "бета",
       ho_st_t: "Что с показаниями в кабинете ХТМ?", ho_st_sub: "Сохранили в кабинете — отметьте «На проверке». Через 15–30 минут загляните в журнал: строка зелёная — отметьте «Принято».",
       ho_st_bad: "Не приняли? Разберём причину", ho_st_why: "Почему не приняли и что исправить",
+      cc_t: "Файлы cookie", cc_p: "Необходимые cookie — для входа и защиты. С вашего разрешения ещё собираем обезличенную статистику: какие экраны открывают и где ошибки — чтобы сделать сервис удобнее. Без рекламы.",
+      cc_more: "Подробнее", cc_accept: "Принять все", cc_reject: "Отклонить", cc_reject_all: "Отклонить все", cc_custom: "Настроить", cc_link: "Настройки cookie",
+      cc_set_t: "Настройки cookie", cc_set_p: "Выберите, что разрешаете. Изменить можно в любой момент.", cc_need: "Необходимые", cc_always: "Всегда включены",
+      cc_need_p: "Вход в аккаунт, защита от подделки запросов, ваши показания и настройки в этом браузере, защита Cloudflare от атак. Без них сайт не работает.",
+      cc_an: "Аналитика", cc_an_p: "Случайный номер браузера (не ваше имя), какие экраны открывали и что нажимали — без значений полей, показаний и паролей, ошибки, тип устройства и ширина экрана. Видит только команда сервиса; журнал храним 60 дней.",
+      cc_save: "Сохранить выбор", cc_change: "Изменить выбор: Настройки → внизу «Настройки cookie». Подробно —",
+      cc_ok_yes: "Спасибо! Аналитика включена", cc_ok_no: "Сохранено: только необходимые cookie", cc_now_yes: "Сейчас: аналитика разрешена ({d})", cc_now_no: "Сейчас: только необходимые ({d})",
       hs_title: "Сезон {s}", hs_cur: "текущий", hs_run: "идёт", hs_period: "{a} – {b}", hs_month: "≈ {q} Гкал, ≈ {m} грн / мес",
       hs_none: "ещё нет двух показаний — не из чего считать", hs_noheat: "тепла не было",
       hs_hint: "Сезоны система составляет сама из ваших показаний: промежуток — в сезон, на который приходится его середина (майские показания закрывают зиму, сентябрьские — открывают новую). Гривны — с абонплатой и долей ЗБП, как в платёжке.",
@@ -5949,6 +5992,56 @@ details.bot-how[open] > ol { margin-top: 4px; }
   }
   applyTheme();
   if (window.matchMedia) { var mq = window.matchMedia('(prefers-color-scheme: dark)'); var onMq = function () { if ((S.theme || 'auto') === 'auto') { applyTheme(); if (typeof render === 'function') safeRender(); } }; if (mq.addEventListener) mq.addEventListener('change', onMq); else if (mq.addListener) mq.addListener(onMq); }
+  // ---- згода на cookie (07.11.2026). Необхідні — завжди (вхід ts_sid, захист ts_csrf, ваші дані в цьому браузері, Cloudflare).
+  // Аналітика — журнал дій і позначка «відкрили сайт» з випадковим id браузера (teplo.vid) — лише після згоди; до відповіді події
+  // тримаються лише в пам'яті сторінки (погодились — дошлемо, відмовились — стерли). Вибір — у localStorage 'teplo.cc' {v, a, at, id};
+  // кожен вибір записується на сервері (POST /api/consent, без IP) — підтвердження згоди. Змінити/відкликати — Налаштування → «Файли cookie»,
+  // низ сторінки, «Політика конфіденційності». v — версія категорій: зміниться склад — банер спитає знову; згода діє 12 місяців.
+  var CC_V = 1, CC_KEY = 'teplo.cc', CC_DAYS = 365, CCMEM = null;
+  var CCU = { open: false, a: false };   // відкрито «Налаштування cookie»; стан перемикача «Аналітика» в ньому
+  function ccGet() {
+    var c = CCMEM; try { var x = localStorage.getItem(CC_KEY); if (x) c = JSON.parse(x); } catch (e) { /* без сховища — лише пам'ять */ }
+    return c && c.v === CC_V && Date.now() - Date.parse(c.at) < CC_DAYS * 86400000 ? c : null;
+  }
+  function ccOn() { var c = ccGet(); return !!(c && c.a); }
+  /** Питати є про що, лише коли сайт працює із сервером (там аналітика) і це не автотест (у них аналітика й так вимкнена). */
+  function ccAsk() { return !!window.TEPLO_API && !navigator.webdriver && !ccGet(); }
+  function ccSet(a, how) {
+    var old = ccGet(), c = { v: CC_V, a: a ? 1 : 0, at: new Date().toISOString(), id: (old && old.id) || jrId() };
+    CCMEM = c; try { localStorage.setItem(CC_KEY, JSON.stringify(c)); } catch (e) { /* приватний режим — до кінця сеансу */ }
+    var api = window.TeploSync && window.TeploSync.api; if (api && window.TEPLO_API) api('POST', '/consent', { id: c.id, v: CC_V, a: c.a, how: how }).catch(function () {});
+    if (a) ccStart(); else ccStop();
+  }
+  /** Банер при першому відвідуванні: не модальний, внизу; «Прийняти все» і «Відхилити» — однакові кнопки, «Налаштувати» — центр вибору. */
+  function ccBanner() {
+    if (CCU.open) return ccCenter();
+    if (!ccAsk()) return '';
+    return '<section class="cc" role="region" aria-labelledby="cc-h" data-key="cc-banner"><h2 id="cc-h">' + ico('info', 20) + '<span>' + esc(t('cc_t')) + '</span></h2>' +
+      '<p>' + esc(t('cc_p')) + ' <a href="#privacy" data-key="cc-more">' + esc(t('cc_more')) + '</a></p>' +
+      '<div class="cc-acts"><button type="button" class="btn sec" data-act="cc-all" data-key="cc-accept">' + esc(t('cc_accept')) + '</button>' +
+      '<button type="button" class="btn sec" data-act="cc-none" data-key="cc-reject">' + esc(t('cc_reject')) + '</button></div>' +
+      '<button type="button" class="linkbtn cc-cust" data-act="cc-open" data-key="cc-customize">' + ico('prefs', 18) + '<span>' + esc(t('cc_custom')) + '</span></button></section>';
+  }
+  /** «Налаштування cookie» (Cookie Preference Center): необхідні — завжди, аналітика — перемикач; зберегти / прийняти все / відхилити все. */
+  function ccCenter() {
+    var c = ccGet();
+    return '<div class="fb-back" data-act="cc-close"></div><div class="fb cc-dlg" role="dialog" aria-modal="true" aria-labelledby="cc-dh" data-key="cc-dialog">' +
+      '<h2 id="cc-dh">' + esc(t('cc_set_t')) + '</h2><p class="small muted">' + esc(t('cc_set_p')) + '</p>' +
+      '<div class="cc-cat" data-key="cc-cat-need"><div class="cc-row"><b>' + esc(t('cc_need')) + '</b><span class="pill ok">' + esc(t('cc_always')) + '</span></div><p class="small">' + esc(t('cc_need_p')) + '</p></div>' +
+      '<div class="cc-cat" data-key="cc-cat-an"><label class="cc-row" for="cc-an"><b>' + esc(t('cc_an')) + '</b><input type="checkbox" role="switch" class="cc-sw" id="cc-an" data-key="cc-analytics"' + (CCU.a ? ' checked' : '') + '></label>' +
+      '<p class="small">' + esc(t('cc_an_p')) + '</p></div>' +
+      (c ? '<p class="small muted" data-key="cc-now">' + esc(t(c.a ? 'cc_now_yes' : 'cc_now_no', { d: fmtDate(String(c.at).slice(0, 10), true) })) + '</p>' : '') +
+      '<div class="cc-dacts"><button type="button" class="btn" data-act="cc-save" data-key="cc-save">' + esc(t('cc_save')) + '</button>' +
+      '<button type="button" class="btn sec" data-act="cc-all" data-key="cc-accept-all">' + esc(t('cc_accept')) + '</button>' +
+      '<button type="button" class="btn sec" data-act="cc-none" data-key="cc-reject-all">' + esc(t('cc_reject_all')) + '</button></div>' +
+      '<p class="small muted">' + esc(t('cc_change')) + ' <a href="#privacy" data-act="cc-close" data-key="cc-policy">' + esc(t('lg_privacy')) + '</a></p></div>';
+  }
+  function ccOpen() { CCU.open = true; CCU.a = ccOn(); render(true); setTimeout(function () { var x = document.getElementById('cc-an'); if (x) x.focus(); }, 0); }
+  /** Відповів у банері чи в налаштуваннях: закрити, коротко підтвердити; фокус — на головне (банер зник). */
+  function ccDone(a, how) {
+    ccSet(a, how); CCU.open = false; render(true); toast(t(a ? 'cc_ok_yes' : 'cc_ok_no'));
+    var m = document.getElementById('main'); if (m && document.activeElement === document.body) try { m.focus({ preventScroll: true }); } catch (e) { /* старий браузер */ }
+  }
   var ADMIN = null, LINKWAIT = false;
   // Вкладка открыта давно (на телефоне вкладки живут днями) — после обновления сайта в ней старый код.
   // При возврате на вкладку и при запуске сверяем версию сборки и тихо перезагружаемся, если ничего не делается.
@@ -6191,7 +6284,8 @@ details.bot-how[open] > ol { margin-top: 4px; }
     return '<div class="app' + (bare ? ' bare-app' : '') + '">' +
       '<header class="top' + (right ? ' has-close' : '') + '"><a class="brand" href="#' + homeRoute() + '" data-key="brand">' + logo() + '<span>' + esc(t('brand')) + '</span><span class="beta-tag" data-key="beta">' + esc(t('beta_tag')) + '</span></a>' + '<span class="spacer"></span>' + right + '</header>' +
       nav + '<main class="main' + (bare ? ' bare' : '') + (view.wide ? ' wide' : '') + '" id="main" data-screen="' + view.screen + '" tabindex="-1">' + (/^(history|stats|save)$/.test(route) ? placeSwitch() : /^(heat|water-hot|water-cold|elec|gas)$/.test(route) ? placeBar() : /^(wnew|wadd|enew|eadd|gnew|gadd|add-meter|step|step-\d+|check|handover|baseline|meter|photo)$/.test(route) ? placeBar(true) : '') + view.html + '</main></div>' +
-      (window.TEPLO_API ? '<button class="fab' + (bare ? ' fab-bare' : '') + '" data-act="fb-open" data-key="feedback" aria-haspopup="dialog">' + ico('chat', 20) + '<span>' + esc(t('fb_btn')) + '</span></button>' + fbDialog() : '') +
+      (window.TEPLO_API && !ccAsk() ? '<button class="fab' + (bare ? ' fab-bare' : '') + '" data-act="fb-open" data-key="feedback" aria-haspopup="dialog">' + ico('chat', 20) + '<span>' + esc(t('fb_btn')) + '</span></button>' + fbDialog() : '') +
+      (bare ? ccBanner().replace('class="cc"', 'class="cc cc-bare"') : ccBanner()) +
       '<div id="toast-host" aria-live="polite"></div>';
   }
 
@@ -8672,7 +8766,7 @@ details.bot-how[open] > ol { margin-top: 4px; }
     return '<footer class="lp-foot" data-key="lp-foot"><div class="lpf-in">' +
       '<div class="lpf-brand"><div class="lpf-logo">' + logo() + '<b>' + esc(t('brand')) + '</b></div><p>' + esc(t('lf_about')) + '</p></div>' +
       col(t('lf_service'), [a('#start', t('lp_cta'), 'lpf-start')].concat(login ? [a('#login', t('lf_login'), 'lpf-login')] : []).concat([a('#help', t('nav_help'), 'lpf-help')])) +
-      col(t('lf_docs'), [a('#privacy', t('lg_privacy'), 'lpf-privacy'), a('#terms', t('lg_terms'), 'lpf-terms')]) +
+      col(t('lf_docs'), [a('#privacy', t('lg_privacy'), 'lpf-privacy'), a('#terms', t('lg_terms'), 'lpf-terms')].concat(window.TEPLO_API ? ['<li><button type="button" class="linkbtn" data-act="cc-open" data-key="lpf-cookie">' + esc(t('cc_link')) + '</button></li>'] : [])) +
       col(t('lf_contact'), ['<li><button class="linkbtn" data-act="fb-open" data-key="lpf-fb">' + esc(t('lf_write')) + '</button></li>'].concat(bot ? ['<li><a href="https://t.me/' + esc(bot) + '" target="_blank" rel="noopener" data-key="lpf-bot">' + esc(t('lf_bot')) + '</a></li>'] : [])) +
       '</div><div class="lpf-bot"><span>© ' + new Date().getFullYear() + ' ' + esc(t('brand')) + '</span><span>' + esc(t('lf_indep')) + '</span></div></footer>';
   }
@@ -9870,23 +9964,24 @@ details.bot-how[open] > ol { margin-top: 4px; }
   function legalPage(kind) {
     var ru = S.lang === 'ru', sec = function (h, body) { return '<section class="panel legal"><h2>' + esc(h) + '</h2>' + body + '</section>'; };
     var P = function (x) { return '<p>' + x + '</p>'; }, UL = function (a) { return '<ul>' + a.map(function (x) { return '<li>' + x + '</li>'; }).join('') + '</ul>'; };
-    var upd = '<p class="small muted">' + esc(ru ? 'Редакция от 06.11.2026' : 'Редакція від 06.11.2026') + '</p>';
+    var upd = '<p class="small muted">' + esc(ru ? 'Редакция от 07.11.2026' : 'Редакція від 07.11.2026') + '</p>';
+    var ccBtn = window.TEPLO_API ? '<p><button type="button" class="btn sec" data-act="cc-open" data-key="privacy-cookie">' + ico('prefs', 18) + '<span>' + esc(t('cc_link')) + '</span></button></p>' : '';
     var fb = '<button class="linkbtn" data-act="fb-open">' + esc(ru ? '«Отзыв»' : '«Відгук»') + '</button>';
     if (kind === 'privacy') return '<h1>' + esc(t('lg_privacy')) + '</h1>' + upd + (ru ? [
       sec('Кратко', P('«Счётчики» помогают снять показания квартирных счётчиков тепла, воды, света и газа и подготовить их для КП «Харьковские тепловые сети» (ХТМ), КП «Харківводоканал», АО «Харьковоблэнерго», «Газсетей» и «Нафтогаза». Мы собираем минимум данных, не продаём их и не передаём для рекламы. Сервис не связан с этими поставщиками. Сам он передаёт показания, когда вы нажмёте «Отправить», «Отправить в фоне» или «Внести» (на сайт Водоканала и — если вы подключили свой кабинет ХТМ — в этот кабинет), или после фото в бот — только если вы сами включили автоотправку.')),
-      sec('Какие данные', UL(['Без входа — показания, счётчик, адреса квартир и настройки хранятся только в вашем браузере.', 'После входа — e-mail (пароль хранится только в виде хеша) или ваш Telegram ID и имя, а также те же данные для синхронизации между устройствами.', 'Фото счётчика при распознавании: распознаются прямо в браузере; вошедшим копия фото и результат хранятся на сервере до 90 дней, чтобы улучшать распознавание (тестовая версия).', 'Документы счётчика (паспорт, поверка), если вы их загрузили, — до удаления вами.', 'Отзывы и контакт, который вы указали в отзыве.', 'Технические журналы сервера (IP-адрес, время запроса) — для безопасности, недолго.'])),
+      sec('Какие данные', UL(['Без входа — показания, счётчик, адреса квартир и настройки хранятся только в вашем браузере.', 'После входа — e-mail (пароль хранится только в виде хеша) или ваш Telegram ID и имя, а также те же данные для синхронизации между устройствами.', 'Фото счётчика при распознавании: распознаются прямо в браузере; вошедшим копия фото и результат хранятся на сервере до 90 дней, чтобы улучшать распознавание (тестовая версия).', 'Документы счётчика (паспорт, поверка), если вы их загрузили, — до удаления вами.', 'Отзывы и контакт, который вы указали в отзыве.', 'Технические журналы сервера (IP-адрес, время запроса) — для безопасности, недолго.', 'Только с вашего согласия (баннер «Файлы cookie»): обезличенная статистика — случайный номер браузера, какие экраны открывали и что нажимали (без значений полей, показаний и паролей), ошибки, тип устройства и ширина экрана.'])),
       sec('Кабинеты поставщиков: доступы и согласие (если подключите)', UL(['Храним доступ к кабинету ХТМ — e-mail и пароль — и запись о вашем согласии на обработку персональных данных (дата и текст согласия) — только если вы сами подключили кабинет, и пока вы его не отключите. Пароль хранится на сервере зашифрованным (AES-256), ключ — отдельно от базы данных; в журналах сервера пароля нет.', 'Робот входит в кабинет только чтобы внести показания тепла по вашему нажатию «Внести» и потом проверить журнал ХТМ (несколько раз в течение 6 часов). Ничего другого в кабинете не меняет.', 'Автоподача (только если вы сами включили её на экране «Кабинет ХТМ»): после фото экранов в наш бот и кнопки «Распознать и внести» робот вносит показания сам — только когда все значения прочитаны уверенно и проверки пройдены; за 10 минут до внесения пишем вам в Telegram, и внесение можно отменить. Выключить можно в любой момент.', 'Телефон и e-mail вместе с показаниями получает ХТМ — этого требует их форма.', 'Сайт Водоканала: лицевой счёт и фамилию берём из ваших настроек воды. Для «Отправить в фоне» и автоотправки они лежат на сервере (фамилия — зашифрованной) только до конца отправки, потом стираются. Согласие на автоотправку воды (с датой) храним, пока вы его не отзовёте.', 'Отключить кабинет, выключить автоотправку или отозвать согласие — «Настройки» → «Кабинеты и автоотправка»; «Забыть пароль» на экране «Кабинет ХТМ» и «Удалить все данные» удаляют пароль и согласие с сервера сразу.'])),
-      sec('Зачем', UL(['чтобы сервис работал: проверка показаний, история, синхронизация, вход;', 'чтобы улучшать распознавание фото и исправлять ошибки;', 'чтобы ответить на ваш отзыв.'])),
+      sec('Зачем', UL(['чтобы сервис работал: проверка показаний, история, синхронизация, вход;', 'чтобы улучшать распознавание фото и исправлять ошибки;', 'с вашего согласия — чтобы видеть, где интерфейс неудобен и где возникают ошибки;', 'чтобы ответить на ваш отзыв.'])),
       sec('Кто ещё получает данные', UL(['Хостинг: сервер Hetzner (Германия, ЕС) за Cloudflare (защита и доставка).', 'Telegram — если вы входите через Telegram.', 'Open-Meteo — получает только координаты Харькова для погоды, без ваших данных.', 'Anthropic (Claude) — только если владелец включит серверное распознавание: тогда фото вошедших отправляются на распознавание.'])),
-      sec('Файлы cookie', P('Только необходимые: cookie сессии входа и защитный cookie от подделки запросов. Без рекламных и аналитических трекеров.')),
+      sec('Файлы cookie', UL(['<b>Необходимые</b> (всегда): ts_sid — сессия входа, 30 дней; ts_csrf — защита от подделки запросов, 1 год; данные приложения в памяти браузера (localStorage) — показания и настройки, пока вы их не удалите; служебные cookie Cloudflare — защита от атак.', '<b>Аналитика</b> (только если вы разрешили): teplo.vid — случайный номер браузера в localStorage; журнал действий хранится на сервере 60 дней, отметки «открыли сайт» (устройство, система, ширина экрана) — 12 месяцев. Видит только команда сервиса, не передаём никому.', 'Рекламы и чужих трекеров нет.', 'При первом визите сайт спрашивает: «Принять все», «Отклонить» или «Настроить». Пока вы не ответили, аналитика не пишется. Ваш выбор (без IP) записываем на сервере — так видно, что согласие было. Изменить или отозвать — в любой момент: кнопка ниже, «Настройки» внизу страницы или «Настройки cookie» в подвале сайта.']) + ccBtn),
       sec('Ваши права', P('По Закону Украины «О защите персональных данных» вы можете узнать, какие данные о вас хранятся, исправить или удалить их. «Настройки» → «Удалить все данные» стирает данные с устройства и из аккаунта; фото и документы удаляются вместе с аккаунтом. Вопросы — через кнопку ' + fb + '.'))
     ] : [
       sec('Коротко', P('«Лічильники» допомагають зняти показання квартирних лічильників тепла, води, світла й газу та підготувати їх для КП «Харківські теплові мережі» (ХТМ), КП «Харківводоканал», АТ «Харківобленерго», «Газмереж» і «Нафтогазу». Ми збираємо мінімум даних, не продаємо їх і не передаємо для реклами. Сервіс не пов’язаний із цими постачальниками. Сам він передає показання, коли ви натиснете «Відправити», «Відправити у фоні» чи «Внести» (на сайт Водоканалу і — якщо ви підключили свій кабінет ХТМ — у цей кабінет), або після фото в бот — лише якщо ви самі ввімкнули автовідправку.')),
-      sec('Які дані', UL(['Без входу — показання, лічильник, адреси квартир і налаштування зберігаються лише у вашому браузері.', 'Після входу — e-mail (пароль зберігається лише як геш) або ваш Telegram ID та ім’я, а також ті самі дані для синхронізації між пристроями.', 'Фото лічильника під час розпізнавання: розпізнаються просто в браузері; тим, хто увійшов, копія фото й результат зберігаються на сервері до 90 днів, щоб покращувати розпізнавання (тестова версія).', 'Документи лічильника (паспорт, повірка), якщо ви їх завантажили, — доки ви їх не видалите.', 'Відгуки й контакт, який ви вказали у відгуку.', 'Технічні журнали сервера (IP-адреса, час запиту) — для безпеки, недовго.'])),
+      sec('Які дані', UL(['Без входу — показання, лічильник, адреси квартир і налаштування зберігаються лише у вашому браузері.', 'Після входу — e-mail (пароль зберігається лише як геш) або ваш Telegram ID та ім’я, а також ті самі дані для синхронізації між пристроями.', 'Фото лічильника під час розпізнавання: розпізнаються просто в браузері; тим, хто увійшов, копія фото й результат зберігаються на сервері до 90 днів, щоб покращувати розпізнавання (тестова версія).', 'Документи лічильника (паспорт, повірка), якщо ви їх завантажили, — доки ви їх не видалите.', 'Відгуки й контакт, який ви вказали у відгуку.', 'Технічні журнали сервера (IP-адреса, час запиту) — для безпеки, недовго.', 'Лише з вашої згоди (банер «Файли cookie»): знеособлена статистика — випадковий номер браузера, які екрани відкривали й що натискали (без значень полів, показань і паролів), помилки, тип пристрою й ширина екрана.'])),
       sec('Кабінети постачальників: доступи й згода (якщо підключите)', UL(['Зберігаємо доступ до кабінету ХТМ — e-mail і пароль — та запис про вашу згоду на обробку персональних даних (дата й текст згоди) — лише якщо ви самі підключили кабінет, і доки ви його не відключите. Пароль зберігається на сервері зашифрованим (AES-256), ключ — окремо від бази даних; у журналах сервера пароля немає.', 'Робот входить у кабінет лише щоб внести показання тепла за вашим натисканням «Внести» і потім перевірити журнал ХТМ (кілька разів протягом 6 годин). Нічого іншого в кабінеті не змінює.', 'Автоподача (лише якщо ви її самі ввімкнули на екрані «Кабінет ХТМ»): після фото екранів у наш бот і кнопки «Розпізнати й внести» робот вносить показання сам — лише коли всі значення прочитано впевнено й перевірки пройдено; за 10 хвилин до внесення пишемо вам у Telegram, і внесення можна скасувати. Вимкнути можна будь-коли.', 'Телефон і e-mail разом із показаннями отримує ХТМ — цього вимагає їхня форма.', 'Сайт Водоканалу: особовий рахунок і прізвище беремо з ваших налаштувань води. Для «Відправити у фоні» й автовідправки вони лежать на сервері (прізвище — зашифрованим) лише до кінця надсилання, потім стираються. Згоду на автовідправку води (з датою) зберігаємо, доки ви її не відкличете.', 'Відключити кабінет, вимкнути автовідправку чи відкликати згоду — «Налаштування» → «Кабінети й автовідправка»; «Забути пароль» на екрані «Кабінет ХТМ» і «Видалити всі дані» видаляють пароль і згоду з сервера одразу.'])),
-      sec('Навіщо', UL(['щоб сервіс працював: перевірка показань, історія, синхронізація, вхід;', 'щоб покращувати розпізнавання фото й виправляти помилки;', 'щоб відповісти на ваш відгук.'])),
+      sec('Навіщо', UL(['щоб сервіс працював: перевірка показань, історія, синхронізація, вхід;', 'щоб покращувати розпізнавання фото й виправляти помилки;', 'з вашої згоди — щоб бачити, де інтерфейс незручний і де виникають помилки;', 'щоб відповісти на ваш відгук.'])),
       sec('Хто ще отримує дані', UL(['Хостинг: сервер Hetzner (Німеччина, ЄС) за Cloudflare (захист і доставка).', 'Telegram — якщо ви входите через Telegram.', 'Open-Meteo — отримує лише координати Харкова для погоди, без ваших даних.', 'Anthropic (Claude) — лише якщо власник увімкне серверне розпізнавання: тоді фото тих, хто увійшов, надсилаються на розпізнавання.'])),
-      sec('Файли cookie', P('Лише необхідні: cookie сесії входу й захисний cookie від підробки запитів. Без рекламних і аналітичних трекерів.')),
+      sec('Файли cookie', UL(['<b>Необхідні</b> (завжди): ts_sid — сесія входу, 30 днів; ts_csrf — захист від підробки запитів, 1 рік; дані застосунку в пам’яті браузера (localStorage) — показання й налаштування, доки ви їх не видалите; службові cookie Cloudflare — захист від атак.', '<b>Аналітика</b> (лише якщо ви дозволили): teplo.vid — випадковий номер браузера в localStorage; журнал дій зберігається на сервері 60 днів, позначки «відкрили сайт» (пристрій, система, ширина екрана) — 12 місяців. Бачить лише команда сервісу, нікому не передаємо.', 'Реклами й чужих трекерів немає.', 'Під час першого візиту сайт питає: «Прийняти все», «Відхилити» чи «Налаштувати». Доки ви не відповіли, аналітика не пишеться. Ваш вибір (без IP) записуємо на сервері — так видно, що згода була. Змінити чи відкликати — будь-коли: кнопка нижче, «Налаштування» внизу сторінки чи «Налаштування cookie» в підвалі сайту.']) + ccBtn),
       sec('Ваші права', P('За Законом України «Про захист персональних даних» ви можете дізнатися, які дані про вас зберігаються, виправити чи видалити їх. «Налаштування» → «Видалити всі дані» стирає дані з пристрою та з акаунта; фото й документи видаляються разом з акаунтом. Питання — через кнопку ' + fb + '.'))
     ]).join('');
     return '<h1>' + esc(t('lg_terms')) + '</h1>' + upd + (ru ? [
@@ -10583,7 +10678,7 @@ details.bot-how[open] > ol { margin-top: 4px; }
       '')
     ];
     return { screen: 'S11', route: 'prefs', html: '<h1>' + esc(t('p_title')) + '</h1><div class="pgroups">' + groups.join('') + '</div>' +
-      '<footer class="legal-foot" data-key="prefs-legal"><a href="#privacy">' + esc(t('lg_privacy')) + '</a><a href="#terms">' + esc(t('lg_terms')) + '</a></footer>' };
+      '<footer class="legal-foot" data-key="prefs-legal"><a href="#privacy">' + esc(t('lg_privacy')) + '</a><a href="#terms">' + esc(t('lg_terms')) + '</a>' + (window.TEPLO_API ? '<button type="button" class="linkbtn" data-act="cc-open" data-key="prefs-cookie">' + esc(t('cc_link')) + '</button>' : '') + '</footer>' };
   };
 
   // ---------------- синхронизация и вход ----------------
@@ -11424,6 +11519,11 @@ details.bot-how[open] > ol { margin-top: 4px; }
       case 'ph-remove': { var ix = +el.getAttribute('data-i'); try { URL.revokeObjectURL(PH.urls[ix]); } catch (e2) { /* нет */ } PH.files.splice(ix, 1); PH.urls.splice(ix, 1); if (PH.files.length) PHS.save(true); else PHS.clear(); render(true); break; }
       case 'ph-run': phRun(); break;
       case 'fb-open': FB.open = true; FB.err = ''; render(true); setTimeout(function () { var x = document.getElementById('fb-text'); if (x) x.focus(); }, 0); break;
+      case 'cc-all': ccDone(true, 'accept'); break;
+      case 'cc-none': ccDone(false, 'reject'); break;
+      case 'cc-save': { var cx = document.getElementById('cc-an'); ccDone(!!(cx && cx.checked), 'save'); break; }
+      case 'cc-open': ccOpen(); break;
+      case 'cc-close': { var wasCc = CCU.open; CCU.open = false; if (wasCc) render(true); break; }   // і посилання «Політика» в діалозі — закрити й перейти
       case 'fb-close': { var tx = document.getElementById('fb-text'); if (tx) FB.text = tx.value; FB.open = false; render(true); break; }
       case 'fb-send': fbSend(); break;
       case 'ph-stop': PH.gen = -1; if (PH.ctl) PH.ctl.abort(); PH.status = 'idle'; PH.progress = ''; PH.error = ''; render(true); break;
@@ -11498,6 +11598,7 @@ details.bot-how[open] > ol { margin-top: 4px; }
     else if (e.target && e.target.id === 'ph-date' && PH.files.length) { PH.date = e.target.value; PHS.save(false); }
   });
   document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape' && CCU.open) { CCU.open = false; render(true); return; }
     if (e.key === 'Escape' && FB.open) { var tx = document.getElementById('fb-text'); if (tx) FB.text = tx.value; FB.open = false; render(true); return; }
     if ((e.key === 'Enter' || e.key === ' ') && e.target.matches('label[for="ph-input"], label[for="wq-files"], label[for="wn-files"], label[for="rp-input"], label[for="en-files"], label[for="eq-files"]')) { e.preventDefault(); var fi = document.getElementById(e.target.getAttribute('for')); if (fi) fi.click(); return; }
     if (e.key === 'Enter' && e.target.matches('#step-form input[data-field]')) {
@@ -11591,15 +11692,33 @@ details.bot-how[open] > ol { margin-top: 4px; }
   function track(n, p) {
     if (!JRS) return;
     try {
+      var on = ccOn(); if (!on && ccGet()) return;   // від аналітики відмовились — нічого не збираємо
       var now = Date.now(); if (now - JRS.at > 1800000) JRS.sid = jrId(); JRS.at = now;   // 30 мин тиші — новий сеанс
-      try { sessionStorage.setItem('teplo.sid', JSON.stringify({ id: JRS.sid, at: now })); } catch (e) { /* приватний режим */ }
+      if (on) try { sessionStorage.setItem('teplo.sid', JSON.stringify({ id: JRS.sid, at: now })); } catch (e) { /* приватний режим */ }
       JRS.q.push({ t: now, n: n, s: routeName() || 'home', p: p });
       if (JRS.q.length > 200) JRS.q.splice(0, JRS.q.length - 200);
+      if (!on) return;   // на банер ще не відповіли — лише в пам'яті цієї сторінки; «Прийняти» — дошлемо (ccStart)
       clearTimeout(JRS.tm); JRS.tm = setTimeout(jrFlush, JRS.q.length >= 20 ? 0 : 4000);
     } catch (e) { /* журнал не має ламати застосунок */ }
   }
+  /** Випадковий id браузера для аналітики (localStorage) — створюємо лише після згоди. */
+  function jrVid() {
+    try { var v = localStorage.getItem('teplo.vid'); if (!v) { v = (Date.now().toString(36) + Math.random().toString(36).slice(2, 12)).replace(/[^a-z0-9]/g, ''); localStorage.setItem('teplo.vid', v); } return v; }
+    catch (e) { return ''; }
+  }
+  /** Згода є: id браузера, дослати накопичене з відкриття сторінки й першу позначку «відкрили сайт». */
+  function ccStart() {
+    if (JRS) { if (!JRS.vid) JRS.vid = jrVid(); jrFlush(); }
+    if (VPEND && VPING) { VPEND = false; var a = visitAct(); VACT.key = a.stage + '/' + a.meters + '/' + a.recs; VACT.at = Date.now(); VPING(a); }
+  }
+  /** Відмовились або відкликали: стерти накопичене й id браузера; на сервері вже прийняте лишається до свого строку (журнал — 60 днів). */
+  function ccStop() {
+    if (JRS) { JRS.q = []; JRS.vid = ''; clearTimeout(JRS.tm); } VPEND = false;
+    try { localStorage.removeItem('teplo.vid'); } catch (e) { /* немає */ } try { sessionStorage.removeItem('teplo.sid'); } catch (e) { /* немає */ }
+  }
   function jrFlush() {
-    if (!JRS || !JRS.q.length) return;
+    if (!JRS || !JRS.q.length || !ccOn()) return;
+    if (!JRS.vid) JRS.vid = jrVid(); if (!JRS.vid) return;
     // cookie немає (вікно Telegram, що їх не зберігає) — однаково шлемо: сервер приймає журнал без CSRF, інакше такі сеанси зникали б безслідно
     var m = document.cookie.match(/(?:^|; )ts_csrf=([^;]*)/), jh = { 'Content-Type': 'application/json' }; if (m) jh['X-CSRF'] = decodeURIComponent(m[1]);
     while (JRS.q.length) {
@@ -11624,7 +11743,7 @@ details.bot-how[open] > ol { margin-top: 4px; }
     }, function (e) { track('ocr', { ok: 0, ms: Date.now() - t0, err: String((e && e.message) || e).slice(0, 100) }); throw e; });
   }
   /** Отклик (для /admin, без личных данных): этап 0 открыл · 1 клацал по экранам · 2 есть счётчик · 3 есть показания; сколько их. */
-  var VSTAGE = 0, VACT = { at: 0, key: '' }, VPING = null;
+  var VSTAGE = 0, VACT = { at: 0, key: '' }, VPING = null, VPEND = false;   // VPEND — перша позначка чекає згоди на банері
   function visitAct() {
     var live = function (x) { return x && !x.deleted && !x.removed; }, n = 0, rc = 0;
     (S.places || []).forEach(function (p) { if (p && !p.deleted) { if (live(p.meter)) n++; n += ((p.water || {}).meters || []).filter(live).length + (p.meters || []).filter(live).length; } });
@@ -11640,9 +11759,8 @@ details.bot-how[open] > ol { margin-top: 4px; }
   (function journal() {
     if (!window.TEPLO_API || navigator.webdriver) return;   // проверки сесій (Playwright) — не люди
     try {
-      var vid = localStorage.getItem('teplo.vid'); if (!vid) { vid = (Date.now().toString(36) + Math.random().toString(36).slice(2, 12)).replace(/[^a-z0-9]/g, ''); localStorage.setItem('teplo.vid', vid); }
-      var o = null; try { o = JSON.parse(sessionStorage.getItem('teplo.sid') || 'null'); } catch (e) { o = null; }
-      JRS = { vid: vid, sid: o && o.id && Date.now() - o.at < 1800000 ? o.id : jrId(), at: Date.now(), q: [], tm: null, scr: '', prev: null };
+      var on0 = ccOn(), o = null; if (on0) try { o = JSON.parse(sessionStorage.getItem('teplo.sid') || 'null'); } catch (e) { o = null; }
+      JRS = { vid: on0 ? jrVid() : '', sid: o && o.id && Date.now() - o.at < 1800000 ? o.id : jrId(), at: Date.now(), q: [], tm: null, scr: '', prev: null };
       JRS.prev = jrCounts();
     } catch (e) { JRS = null; return; }
     var tg1 = window.Telegram && window.Telegram.WebApp;
@@ -11695,14 +11813,14 @@ details.bot-how[open] > ol { margin-top: 4px; }
     var ap = window.TeploSync && window.TeploSync.api; if (!ap || !window.TEPLO_API) return;
     if (navigator.webdriver) return;   // проверки сессий (Playwright, «Linux 1440 px») — не люди, в «С чего работают» не считаем
     try {
-      var vid = localStorage.getItem('teplo.vid'); if (!vid) { vid = (Date.now().toString(36) + Math.random().toString(36).slice(2, 12)).replace(/[^a-z0-9]/g, ''); localStorage.setItem('teplo.vid', vid); }
       var ua = navigator.userAgent || '', ipad = /iPad/.test(ua) || (/Macintosh/.test(ua) && (navigator.maxTouchPoints || 0) > 1);
       var tablet = ipad || (/Android/.test(ua) && !/Mobile/.test(ua)) || /Tablet|PlayBook|Silk|Kindle/.test(ua), mobile = !tablet && /Mobi|iPhone|iPod|Android|Windows Phone/.test(ua);
       var os = /iPhone|iPod/.test(ua) || ipad ? 'iOS' : /Android/.test(ua) ? 'Android' : /Windows/.test(ua) ? 'Windows' : /Mac OS X|Macintosh/.test(ua) ? 'macOS' : /Linux|CrOS/.test(ua) ? 'Linux' : 'other';
       var tg0 = window.Telegram && window.Telegram.WebApp, pwa = !!(window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) || navigator.standalone === true;
-      var base = { vid: vid, device: tablet ? 'tablet' : mobile ? 'mobile' : 'desktop', os: os, tg: !!(tg0 && tg0.initData), pwa: pwa, sw: Math.round(screen.width || 0) };
-      VPING = function (extra) { ap('POST', '/visit', Object.assign({}, base, extra || {})).catch(function () {}); };
-      setTimeout(function () { var a = visitAct(); VACT.key = a.stage + '/' + a.meters + '/' + a.recs; VACT.at = Date.now(); VPING(a); }, 1500);
+      var base = { device: tablet ? 'tablet' : mobile ? 'mobile' : 'desktop', os: os, tg: !!(tg0 && tg0.initData), pwa: pwa, sw: Math.round(screen.width || 0) };
+      // лише зі згодою на аналітику (банер cookie): id браузера — у localStorage
+      VPING = function (extra) { if (!ccOn()) return; var vid = jrVid(); if (!vid) return; ap('POST', '/visit', Object.assign({ vid: vid }, base, extra || {})).catch(function () {}); };
+      setTimeout(function () { if (!ccOn()) { VPEND = !ccGet(); return; } var a = visitAct(); VACT.key = a.stage + '/' + a.meters + '/' + a.recs; VACT.at = Date.now(); VPING(a); }, 1500);
     } catch (e) { /* без localStorage — не считаем */ }
   })();
   if (tw && tw.initData) { try { tw.ready(); tw.expand(); applyTheme(); if (tw.onEvent) tw.onEvent('themeChanged', function () { applyTheme(); safeRender(); }); } catch (e) { /* старый клиент */ } }

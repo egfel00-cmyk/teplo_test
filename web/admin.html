@@ -117,8 +117,15 @@ pre.state { font: 12px/1.4 var(--mono); background: #F4F7F5; padding: 10px; bord
       '<div class="panel small" data-key="adm-vk">' + vkLine + '</div>' +
       '<div class="cards">' + c(o.users, 'пользователей всего') + c(o.usersWeek, 'новых за 7 дней') + c(o.activeWeek, 'входили за 7 дней') + c(o.withTelegram, 'с Telegram') + c(o.withData, 'сохранили данные') +
       c(o.feedback, 'сообщений (новых: ' + o.feedbackNew + ')') + c(o.photos, 'фото загружено') + c(o.photosFailed, 'фото с проблемами') + c(o.reportsBad + ' / ' + o.reports, 'распознаваний с замечаниями') + '</div>' +
-      '<p class="muted small">Фото хранятся ' + o.photoKeepDays + ' дней, потом удаляются автоматически.</p>' + actBlock() + errorsBlock(o.errors) + botRepliesBlock(o.botReplies) + uaProbeBlock(o.uaProbe, o.uaCmd) + vkcabBlock(o.vkcab, vc) + htmcabBlock(o.htmcab) + trackBlock(o.tracking) + devicesBlock();
+      '<p class="muted small">Фото хранятся ' + o.photoKeepDays + ' дней, потом удаляются автоматически.</p>' + consentLine(o.consent) + actBlock() + errorsBlock(o.errors) + botRepliesBlock(o.botReplies) + uaProbeBlock(o.uaProbe, o.uaCmd) + vkcabBlock(o.vkcab, vc) + htmcabBlock(o.htmcab) + trackBlock(o.tracking) + devicesBlock();
   };
+  /** Баннер cookie (с 07.11.2026): журнал действий и «С чего работают» пишутся только у тех, кто разрешил аналитику — иначе цифры кажутся «пропавшими». */
+  function consentLine(c) {
+    if (!c) return '';
+    var pc = c.total ? Math.round(c.yes * 100 / c.total) : 0;
+    return '<p class="small" data-key="adm-consent"><b>Cookie</b> за ' + c.days + ' дней: ' + (c.total ? 'разрешили аналитику <b>' + c.yes + '</b> из ' + c.total + ' браузеров (' + pc + ' %), отказались ' + c.no +
+      (c.changed ? ', меняли решение ' + c.changed : '') : 'ещё никто не выбирал') + '. <span class="muted">Журнал действий и «С чего работают» видят только разрешивших; кто не ответил на баннер — не считается.</span></p>';
+  }
   /** Сбои сервера (500): что упало — по ним чинить; пусто — хорошо. */
   function errorsBlock(l) {
     l = l || []; var day = l.filter(function (x) { return Date.now() / 1000 - x.at < 86400; }).length;
