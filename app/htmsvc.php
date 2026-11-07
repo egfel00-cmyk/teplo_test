@@ -180,17 +180,24 @@ final class HtmSvc {
   /** Войти и прочитать страницу тепла — ничего не вносит. op: check (кнопка человека) | look (cron, учётки админа). → [рахунок, страница, форма без значений]. */
   private static function look(int $uid, string $want, string $op): array {
     [$cab, $acc] = self::enter($uid, $want, $op);
-    try { $h = $cab->heat($acc['acc'], $acc['sur']); }
+    $ex = null;
+    try {
+      $h = $cab->heat($acc['acc'], $acc['sur']);
+      // осмотр кабинета (только чтение): где квитанция — меню, карточка рахунку, платежі; сбой осмотра «Перевірити» не ломает
+      $pg = []; if (!empty($cab->home['url'])) $pg[(string)$cab->home['url']] = (string)$cab->home['body']; $pg[(string)$h['url']] = (string)$h['html'];
+      try { $ex = $cab->explore($pg, $acc['acc'], $acc['sur']); } catch (Throwable $e) { $ex = ['err' => CabWeb::mask($e->getMessage(), 80)]; }
+    }
     catch (CabErr $e) { self::diag(['op' => $op, 'user' => $uid, 'result' => $e->err, 'steps' => $cab->w->steps]); throw self::cabErr($e); }
     finally { $cab->logout(); }
     $fi = self::formInfo($h);
-    self::diag(['op' => $op, 'user' => $uid, 'result' => 'ok', 'meter' => (bool)$h['meter'], 'base' => array_keys($h['base']), 'form' => $fi, 'win' => [$h['min'] !== null, $h['max'] !== null, $h['win'] ?? null], 'dateJs' => $h['dateJs'] ?? [], 'alerts' => $h['alerts'] ?? null, 'journal' => array_map(fn($r) => $r['status'], $h['journal']), 'closed' => $h['closed'] ? CabWeb::mask($h['closed'], 160) : null, 'steps' => $cab->w->steps]);
-    return [$acc, $h, $fi];
+    self::diag(['op' => $op, 'user' => $uid, 'result' => 'ok', 'meter' => (bool)$h['meter'], 'base' => array_keys($h['base']), 'form' => $fi, 'win' => [$h['min'] !== null, $h['max'] !== null, $h['win'] ?? null], 'dateJs' => $h['dateJs'] ?? [], 'alerts' => $h['alerts'] ?? null, 'journal' => array_map(fn($r) => $r['status'], $h['journal']), 'closed' => $h['closed'] ? CabWeb::mask($h['closed'], 160) : null,
+      'explore' => $ex ? array_diff_key($ex, ['billBody' => 1]) : null, 'steps' => $cab->w->steps]);
+    return [$acc, $h, $fi, $ex];
   }
   /** «Перевірити» без кнопки: владелец неделю не нажимал (06.11 17:26 — последний раз, а окно дат, плашки и журнал нужны до первого живого внесения).
    *  Раз на LOOK_V (сайт не ответил — ещё до 3 раз, через 10 мин) сервер сам читает кабинеты ХТМ УЧЁТОК АДМИНА (config.php → admins), как VkStatus::recheck
    *  у Водоканала: только чтение, ничего не вносит; рахунок — первый из кабинета. Итог — /api/health → htmcab.seen (by: cron) и htmcab.look. → итоги или null. */
-  const LOOK_V = 1;
+  const LOOK_V = 2;   // 2: осмотр кабинета — где квитанция (explore), 07.11.2026
   public static function lookFile(): string { return Cfg::data() . '/cache/htm_look.json'; }
   public static function lookState(): array { $j = json_decode((string)@file_get_contents(self::lookFile()), true); return is_array($j) ? $j : []; }
   public static function lookAdmins(?int $now = null): ?array {
@@ -459,8 +466,10 @@ final class HtmSvc {
   }
   /** /api/health → htmcab: «операция итог» по журналу, последняя операция человека, последняя увиденная форма (имена и типы полей) и внесения по статусам. */
   public static function summary(): array {
-    $n = []; $last = null; $form = null; $seen = null; $lastSend = null; $lastErr = null;
+    $n = []; $last = null; $form = null; $seen = null; $lastSend = null; $lastErr = null; $explore = null;
     foreach (self::log() as $e) {
+      // осмотр кабинета: страницы (пути без рахунку, ссылки, рамки, заголовки таблиц), похожая на квитанцию ссылка и что по ней пришло — без цифр и прізвищ
+      if (!empty($e['explore'])) $explore = ['at' => gmdate('c', (int)$e['at']), 'by' => ($e['op'] ?? '') === 'look' ? 'cron' : 'user'] + (array)$e['explore'];
       // что робот прочитал со страницы тепла при последней проверке — без значений: нашёл ли прибор, какие «последние принятые», окно, статусы журнала
       if (in_array($e['op'] ?? '', ['check', 'look'], true) && ($e['result'] ?? '') === 'ok') $seen = ['at' => gmdate('c', (int)$e['at']), 'by' => ($e['op'] ?? '') === 'look' ? 'cron' : 'user', 'meter' => $e['meter'] ?? null, 'base' => $e['base'] ?? [],
         'open' => !empty($e['form']['open']), 'minMax' => $e['form']['minMax'] ?? null, 'win' => $e['form']['win'] ?? null, 'dateJs' => $e['dateJs'] ?? null, 'alerts' => $e['alerts'] ?? null, 'journal' => array_count_values(array_map('strval', (array)($e['journal'] ?? []))), 'closed' => $e['closed'] ?? null];
@@ -482,6 +491,6 @@ final class HtmSvc {
     try { foreach (Db::q('SELECT status, COUNT(*) AS c FROM cab_jobs WHERE prov = ? GROUP BY status', [self::PROV])->fetchAll() as $x) $jobs[$x['status']] = (int)$x['c']; } catch (Throwable $e) {}
     $cr = 0; try { $cr = (int)(Db::one('SELECT COUNT(*) AS c FROM cab_creds WHERE prov = ?', [self::PROV])['c'] ?? 0); } catch (Throwable $e) {}
     $lk = self::lookState(); $look = $lk ? ['v' => (int)($lk['v'] ?? 0), 'at' => gmdate('c', (int)($lk['at'] ?? 0)), 'res' => (array)($lk['res'] ?? []), 'tries' => (int)($lk['tries'] ?? 0)] : null;
-    return ['n' => (object)$n, 'lastUser' => $last ? gmdate('c', $last) : null, 'connected' => $cr, 'jobs' => (object)$jobs, 'form' => $form, 'seen' => $seen, 'lastSend' => $lastSend, 'lastErr' => $lastErr, 'look' => $look];
+    return ['n' => (object)$n, 'lastUser' => $last ? gmdate('c', $last) : null, 'connected' => $cr, 'jobs' => (object)$jobs, 'form' => $form, 'seen' => $seen, 'lastSend' => $lastSend, 'lastErr' => $lastErr, 'look' => $look, 'explore' => $explore];
   }
 }

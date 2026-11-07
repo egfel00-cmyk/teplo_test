@@ -45,6 +45,7 @@ final class CabWeb {
           if (preg_match('/^set-cookie:\s*(.+)$/i', trim($line), $m)) $hdr['cookies'][] = $m[1];
           if (preg_match('/^location:\s*(.+)$/i', trim($line), $m)) $hdr['location'] = $m[1];
           if (preg_match('/^(cf-mitigated|server):\s*(.{0,40})/i', trim($line), $m)) $hdr['h'][strtolower($m[1])] = strtolower(trim($m[2]));   // вид отказа Cloudflare (CabWeb::cfKind)
+          if (preg_match('/^(content-type|content-disposition):\s*(.{0,160})/i', trim($line), $m)) $hdr['h'][strtolower($m[1])] = trim($m[2]);   // квитанция: PDF ли и как названа
           return strlen($line);
         }]);
       if ($method === 'POST') { curl_setopt($ch, CURLOPT_POST, true); curl_setopt($ch, CURLOPT_POSTFIELDS, (string)$body); }
@@ -76,7 +77,8 @@ final class CabWeb {
         continue;
       }
       $b = (string)$r['body'];
-      if ($this->charset !== 'UTF-8' && $b !== '' && !mb_check_encoding($b, 'UTF-8')) $b = (string)mb_convert_encoding($b, 'UTF-8', $this->charset);
+      // перекодировать только текст: PDF (квитанция) и прочие файлы — как пришли
+      if ($this->charset !== 'UTF-8' && $b !== '' && !str_starts_with($b, '%PDF-') && !str_contains($b, "\0") && !mb_check_encoding($b, 'UTF-8')) $b = (string)mb_convert_encoding($b, 'UTF-8', $this->charset);
       return ['code' => (int)$r['code'], 'body' => $b, 'url' => $url, 'err' => $r['err'] ?? null, 'offsite' => null, 'h' => (array)($r['h'] ?? [])];
     }
     return ['code' => 0, 'body' => '', 'url' => $url, 'err' => 'redirects', 'offsite' => null];
@@ -475,6 +477,8 @@ final class HtmCab {
   const DEC = ['energy' => 3, 'volume' => 3, 'flow' => 3, 'power' => 3, 'tSupply' => 2, 'tReturn' => 2];
   public CabWeb $w;
   public array $log = [];
+  /** главная кабинета после входа (url, body) — для осмотра (explore) */
+  public ?array $home = null;
   public static function base(): string { return rtrim((string)Cfg::get('htm_cab_base', self::BASE), '/'); }
   public function __construct(float $budget = 25.0) {
     $host = preg_quote((string)parse_url(self::base(), PHP_URL_HOST), '/');
@@ -501,7 +505,7 @@ final class HtmCab {
   public function login(string $email, string $pass): array {
     $this->get('/cabinet');
     $r = $this->post(self::base() . '/cabinet/login', [['email', $email], ['passw', $pass], ['email-signin', '']]);
-    if (str_contains($r['body'], '/cabinet/logout')) return $r;
+    if (str_contains($r['body'], '/cabinet/logout')) { $this->home = $r; return $r; }
     $m = self::msgs(CabWeb::dom($r['body']));
     throw new CabErr('bad_login', implode(' ', array_slice($m['err'], 0, 2)));
   }
@@ -570,6 +574,85 @@ final class HtmCab {
     }
     unset($cur);
     return $o;
+  }
+  /** Насколько ссылка похожа на квитанцию: 0 — нет; рамка/embed — выше всех (решает вызывающий), «.pdf», «квитанція», «друк» — 2, «рахунок за…» — 1. */
+  public static function billish(string $href, string $text): int {
+    if (preg_match('~\.pdf\b|pdf|kvit|kvyt|invoice|receipt|print|druk~i', $href) || preg_match('/квитанц|квітанц|рахунок[- ]повідомлен|платіжк|роздрук|друк|pdf/iu', $text)) return 2;
+    return preg_match('~rahunok|rakhunok|/bill~i', $href) || preg_match('/рахун(ок|ку)\s+за\b|завантажити/iu', $text) ? 1 : 0;
+  }
+  /** Осмотр кабинета для сверки (только чтение): главная, карточка рахунку, платежи и похожие разделы — какие ссылки, рамки, заголовки таблиц;
+   *  первая ссылка, похожая на квитанцию, — GET и что пришло (PDF ли, размер, тип). Ничего не нажимаем: POST, logout, add, remove — никогда.
+   *  Без личных данных: рахунок и прізвище в адресах и текстах → {acc}/{sur}, цифры → #. $pages — уже открытые страницы [путь => html].
+   *  → ['pages' => [...], 'bill' => {...}|null, 'billBody' => ?string (сам PDF — только вызывающему, не в журнал)] */
+  public function explore(array $pages, string $acc, string $sur): array {
+    $base = self::base(); $surU = mb_strtoupper($sur);
+    $mp = function (string $u) use ($acc, $sur, $surU): string {
+      $p = (string)(parse_url($u, PHP_URL_PATH) ?: '/'); $q = (string)(parse_url($u, PHP_URL_QUERY) ?? '');
+      $p = rawurldecode($p); $q = rawurldecode($q);
+      foreach ([[$acc, '{acc}'], [$surU, '{sur}'], [$sur, '{sur}']] as [$k, $v]) if ($k !== '') { $p = str_ireplace($k, $v, $p); $q = str_ireplace($k, $v, $q); }
+      $p = preg_replace('/\d/', '#', $p); $q = preg_replace('/\d/', '#', $q);
+      return mb_substr($p . ($q !== '' ? '?' . $q : ''), 0, 120);
+    };
+    $mt = function (string $t, int $n = 50) use ($sur, $surU): string { $t = CabWeb::sp($t); foreach ([$surU, $sur] as $k) if ($k !== '') $t = str_ireplace($k, '{sur}', $t); return CabWeb::mask($t, $n); };
+    $safe = fn(string $u) => $this->w->sameSite($u) && preg_match('~^/cabinet(/|$)~', (string)parse_url($u, PHP_URL_PATH)) && !preg_match('~logout|/add\b|remove|delete|/del\b|settings|/heat/~i', (string)parse_url($u, PHP_URL_PATH));
+    $out = ['pages' => [], 'bill' => null, 'billBody' => null]; $cands = []; $seen = [];
+    $scan = function (string $url, string $html, int $code) use (&$out, &$cands, &$seen, $mp, $mt, $acc) {
+      $x = CabWeb::dom($html); $pg = ['p' => $mp($url), 'code' => $code, 'title' => $mt((string)($x->query('//title')->item(0)?->textContent ?? ''), 80), 'links' => [], 'frames' => [], 'th' => [], 'say' => [], 'forms' => []];
+      foreach ($x->query('//a[@href]') as $a) {
+        $href = trim((string)$a->getAttribute('href')); if ($href === '' || $href[0] === '#' || preg_match('/^(javascript|mailto|tel):/i', $href)) continue;
+        $abs = CabWeb::abs($href, $url); $k = $mp($abs); $txt = CabWeb::sp($a->textContent);
+        $own = preg_match('~^/cabinet/\{acc\}/\{sur\}/?$~', $k);   // ссылка на свой рахунок — текст (адрес) не пишем
+        if (count($pg['links']) < 40 && !isset($seen[$url . '|' . $k])) { $seen[$url . '|' . $k] = 1; $pg['links'][] = [$k, $own || mb_strlen($txt) > 60 ? '' : $mt($txt, 40)]; }
+        if ($sc = self::billish($href, $txt)) $cands[] = ['u' => $abs, 'k' => $k, 'how' => 'a', 'txt' => $mt($txt, 40), 'sc' => $sc];
+        $out['_next'][] = $abs;
+      }
+      foreach ($x->query('//iframe[@src]|//embed[@src]|//object[@data]') as $f) {
+        $src = trim((string)($f->getAttribute('src') ?: $f->getAttribute('data'))); if ($src === '') continue;
+        $abs = CabWeb::abs($src, $url); $pg['frames'][] = $f->nodeName . ' ' . $mp($abs);
+        $cands[] = ['u' => $abs, 'k' => $mp($abs), 'how' => $f->nodeName, 'txt' => '', 'sc' => 3];
+      }
+      foreach ($x->query('//form') as $f) $pg['forms'][] = strtoupper((string)($f->getAttribute('method') ?: 'get')) . ' ' . $mp(CabWeb::abs((string)($f->getAttribute('action') ?: $url), $url)) . ' ' . implode(',', array_slice(array_map(fn($i) => (string)$i->getAttribute('name'), iterator_to_array($x->query('.//input[@name]|.//select[@name]|.//button[@name]', $f))), 0, 10));
+      foreach ($x->query('//th') as $th) { $t = $mt($th->textContent, 40); if ($t !== '' && count($pg['th']) < 20) $pg['th'][] = $t; }
+      $txt = CabWeb::sp(implode(' ', array_map(fn($t) => $t->nodeValue, iterator_to_array($x->query('//body//text()[not(ancestor::script) and not(ancestor::style)]')))));   // ячейки — через пробел
+      if (preg_match_all('/[^.!?\n]{0,40}(?:квитанц|рахунок\s+за|рахунку\s+за|сформ|друк|завантаж|нараховано|до\s+сплати|сплачено|борг)[^.!?\n]{0,40}/iu', $txt, $m)) foreach (array_slice(array_unique($m[0]), 0, 6) as $sn) $pg['say'][] = $mt($sn, 90);
+      $pg['forms'] = array_slice($pg['forms'], 0, 6);
+      $out['pages'][] = $pg;
+    };
+    foreach ($pages as $u => $html) $scan((string)$u, (string)$html, 200);
+    // карточка рахунку и разделы «платежі / рахунки / квитанції» — не больше 4 страниц
+    $card = $base . '/cabinet/' . rawurlencode($acc) . '/' . rawurlencode($surU);
+    $todo = [$card]; $done = array_map('strval', array_keys($pages));
+    foreach ((array)($out['_next'] ?? []) as $u) if ($safe($u) && preg_match('~/cabinet/(payments?|pay|rahun\w*|kvit\w*|bill\w*|invoice\w*|spr-teplo|nach\w*|saldo|borg)~i', (string)parse_url($u, PHP_URL_PATH))) $todo[] = $u;
+    $n = 0; $i = 0;
+    while ($i < count($todo)) {
+      $u = $todo[$i++];
+      if ($n >= 4 || $this->w->left() < 9) break;
+      if (in_array($u, $done, true) || !$safe($u)) continue;
+      if (array_filter($cands, fn($c) => $c['u'] === $u && $c['sc'] >= 2)) continue;   // похожее на квитанцию — не страница: откроем ниже как файл
+      $done[] = $u; $n++; $out['_next'] = [];
+      try { $r = $this->get($u); } catch (CabErr $e) { $out['pages'][] = ['p' => $mp($u), 'err' => $e->err]; continue; }
+      $done[] = $r['url'];
+      $scan($r['url'], $r['body'], (int)$r['code']);
+      foreach ((array)($out['_next'] ?? []) as $u2) if ($safe($u2) && preg_match('~/cabinet/(payments?|rahun\w*|kvit\w*|bill\w*|invoice\w*)~i', (string)parse_url($u2, PHP_URL_PATH)) && !in_array($u2, $todo, true)) $todo[] = $u2;
+    }
+    unset($out['_next']);
+    // квитанция: самые похожие ссылки с сайта ХТМ (рамка/embed — первыми), не больше 2 GET; уже открытые страницы — не в счёт
+    $out['tried'] = []; $uniq = [];
+    while (count($out['tried']) < 3 && $this->w->left() >= 7) {
+      $c = null;   // самая похожая из ещё не открытых (рамки страницы-обёртки, найденные по дороге, — тоже)
+      foreach ($cands as $x) if (!isset($uniq[$x['u']]) && !in_array($x['u'], $done, true) && $this->w->sameSite($x['u']) && !preg_match('~logout|/add\b|remove|delete~i', $x['u']) && ($c === null || $x['sc'] > $c['sc'])) $c = $x;
+      if (!$c) break;
+      $uniq[$c['u']] = 1;
+      try { $r = $this->get($c['u']); } catch (CabErr $e) { $out['tried'][] = ['p' => $c['k'], 'how' => $c['how'], 'err' => $e->err]; continue; }
+      $b = (string)$r['body']; $pdf = str_starts_with($b, '%PDF-');
+      $t = ['p' => $c['k'], 'how' => $c['how'], 'txt' => $c['txt'], 'code' => (int)$r['code'], 'type' => mb_substr((string)($r['h']['content-type'] ?? ''), 0, 60), 'pdf' => $pdf, 'bytes' => strlen($b),
+        'disp' => $mt((string)($r['h']['content-disposition'] ?? ''), 80), 'html' => $pdf ? null : $mt((string)(CabWeb::dom($b)->query('//title')->item(0)?->textContent ?? ''), 60)];
+      $out['tried'][] = $t; $done[] = $r['url'];
+      if ($pdf) { $out['bill'] = $t; $out['billBody'] = $b; break; }
+      if ($r['code'] === 200 && $b !== '') $scan($r['url'], $b, 200);   // страница-обёртка квитанции: её рамки и ссылки — тоже кандидаты
+    }
+    unset($out['_next']); $out['cands'] = count($cands);
+    return $out;
   }
   /** «2026-11-05» / «5.11.2026» → «05.11.2026». */
   public static function dmy(string $s): string {

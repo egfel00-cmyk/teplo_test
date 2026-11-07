@@ -29,6 +29,9 @@ if (str_starts_with($path, '/cabinet')) {
   if ($path === "/cabinet/$ACC/$SUR") { page_card(); return; }
   if ($path === "/cabinet/heat/$ACC/$SUR") { $method === 'POST' ? do_save() : page_heat(); return; }
   if ($path === "/cabinet/heat/viewall/$ACC/$SUR/$SN") { page_viewall(); return; }
+  // платежі і квитанція — синтетика стенда (07.11.2026): на живом кабинете раздел /cabinet/payments/… есть, его вид не снят — осмотр робота (HtmCab::explore) покажет
+  if ($path === "/cabinet/payments/$ACC/$SUR") { page_payments(); return; }
+  if ($path === "/cabinet/payments/print/$ACC/$SUR/2026-10") { log_req('bill_pdf'); header('Content-Type: application/pdf'); header('Content-Disposition: inline; filename="kvit_' . $ACC . '_2026-10.pdf"'); echo "%PDF-1.4\n% stand kvytantsiia HTM 2026-10\n%%EOF\n"; return; }
 }
 page('404', '<p>Немає такої сторінки на стенді: ' . h($path) . '</p>', 404, logged_in());
 
@@ -74,7 +77,11 @@ function page_list(): void {
   page('Кабінет | Список квартир (особових рахунків)', '<h1>Список квартир</h1><table class="stand-tbl"><tr><th>№</th><th>Особовий рахунок</th><th>Прізвище</th><th>Адреса</th><th>Дії</th></tr>'
     . '<tr><td>1</td><td><a href="' . h(acc_url()) . '">' . h($c['account']) . '</a></td><td>' . h(mb_strtoupper($c['surname'])) . '</td><td>{{ADDRESS}}</td><td>—</td></tr></table>', 200, true);
 }
-function page_card(): void { page('Кабінет | Особовий рахунок', '<h1>Особовий рахунок ' . h(st()['credentials']['account']) . '</h1><p><a href="' . h(acc_url('/cabinet/heat')) . '">Залишити показання по теплу</a></p>', 200, true); }
+function page_card(): void { page('Кабінет | Особовий рахунок', '<h1>Особовий рахунок ' . h(st()['credentials']['account']) . '</h1><p><a href="' . h(acc_url('/cabinet/heat')) . '">Залишити показання по теплу</a></p><p><a href="' . h(acc_url('/cabinet/payments')) . '">Платежі та нарахування</a></p>', 200, true); }
+function page_payments(): void {
+  page('Кабінет | Платежі', '<h1>Нарахування та платежі</h1><table class="stand-tbl"><tr><th>Місяць</th><th>Нараховано, грн</th><th>Сплачено, грн</th><th>Квитанція</th></tr>'
+    . '<tr><td>Жовтень 2026</td><td>1234.56</td><td>0.00</td><td><a href="' . h(acc_url('/cabinet/payments/print') . '/2026-10') . '">Квитанція за жовтень</a></td></tr></table>', 200, true);
+}
 
 function row_cells(array $r, string $cls = '', bool $head = false): string {
   $keys = ['date', 'energy', 'volume', 'flow', 'power', 'tSupply', 'tReturn', 'hours', 'errHours', 'errCode'];

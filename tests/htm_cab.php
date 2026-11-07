@@ -67,6 +67,18 @@ ok('телефон по подсказке «(0XX) ***-**-XX» → «(050) 111-2
 ok('без подсказки и чужой номер — как есть', HtmCab::phoneFor('+380501112233', '') === '+380501112233' && HtmCab::phoneFor('+48123456789', '(067) ***-**-45') === '+48123456789');
 ok('окно дат: «2026-11-05» и «5.11.2026» → 05.11.2026', HtmCab::dmy('2026-11-05') === '05.11.2026' && HtmCab::dmy('5.11.2026') === '05.11.2026');
 
+// осмотр кабинета: где квитанция (explore) — карточка → «Платежі» → «Квитанція за жовтень» (PDF); без рахунку, прізвища и цифр
+stand('act=reset'); stand('act=set&scenario=ok&today=2026-11-10&robot_delay=0');
+$h = new HtmCab(); $home = $h->login('test@stand.local', 'stand-pass-123'); $acc = $h->accounts($home); $p = $h->heat($acc[0]['acc'], $acc[0]['sur']);
+$ex = $h->explore([$h->home['url'] => $h->home['body'], $p['url'] => $p['html']], $acc[0]['acc'], $acc[0]['sur']); $body = $ex['billBody']; unset($ex['billBody']);
+$ej = json_encode($ex, JSON_UNESCAPED_UNICODE); $pp = array_column($ex['pages'], 'p');
+ok('осмотр: главная, тепло, карточка рахунку и «Платежі»; квитанция — PDF по ссылке «Квитанція за жовтень»', in_array('/cabinet/{acc}/{sur}', $pp, true) && in_array('/cabinet/payments/{acc}/{sur}', $pp, true)
+  && ($ex['bill']['pdf'] ?? false) === true && ($ex['bill']['p'] ?? '') === '/cabinet/payments/print/{acc}/{sur}/####-##' && str_starts_with((string)$body, '%PDF-') && str_contains((string)$ex['bill']['type'], 'pdf'), $ex);
+$strs = []; array_walk_recursive($ex, function ($v) use (&$strs) { if (is_string($v)) $strs[] = $v; });
+ok('…в осмотре нет рахунку, прізвища и цифр; заголовки таблицы платежей видны', !preg_match('/1000000061|ТЕСТОВИЙ|Тестовий|\d/u', implode(' ', $strs)) && in_array('Квитанція', $ex['pages'][array_search('/cabinet/payments/{acc}/{sur}', $pp, true)]['th'], true), $ej);
+$bad = array_filter(array_column(array_slice($h->w->steps, 0), 1), fn($x) => preg_match('~logout|/add|remove|settings~', $x));
+ok('…только GET и не трогает add/remove/settings', !array_filter($h->w->steps, fn($s) => $s[0] !== 'GET' && !str_contains($s[1], '/cabinet/login')) && !$bad, $h->w->steps);
+
 // живой кабинет 06.11 22:14: новое соединение на /cabinet/list не установилось за 6 с → «сайт не відповідає», хотя вход прошёл
 $n = 0; CabWeb::$http = function ($m, $u, $b, $c, $h) use (&$n) { $n++; return $n === 1 ? ['code' => 0, 'body' => '', 'err' => 'Connection timed out after 6001 milliseconds'] : ['code' => 200, 'body' => 'ok']; };
 $w = new CabWeb('/^x\.test$/i'); $r = $w->req('GET', 'https://x.test/a');
