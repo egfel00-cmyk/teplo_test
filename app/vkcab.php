@@ -14,7 +14,7 @@ if (!defined('TEPLO')) { http_response_code(404); exit; }
 final class VkCab {
   const BASE = 'https://billing.vodokanal.kharkov.ua';
   /** Ответ сайта «рахунок не знайдено» (свои слова Водоканала). */
-  const NF_RE = '/не\s*коректн|некоректн|невірн|неверн|не\s+знайден|не\s+найден|не\s+значат|не\s+співпада|не\s+совпада|не\s+існу|не\s+существ/iu';
+  const NF_RE = '/не\s*коректн|некоректн|невірн|неверн|не\s+знайден|не\s+найден|не\s+значат|не\s+співпада|не\s+совпада|не\s+існу|не\s+существ|не\s+відповіда|не\s+соответств/iu';
   /** В тестах: fn(string $method, string $url, ?string $body, string $cookie): ['code', 'body', 'cookies' => [Set-Cookie…], 'location' => ?string, 'err' => ?string] */
   public static $http = null;
   public static function base(): string { return rtrim((string)Cfg::get('vk_cab_base', self::BASE), '/'); }
@@ -84,8 +84,8 @@ final class VkCab {
           return strlen($line);
         }]);
       if ($method === 'POST') { curl_setopt($ch, CURLOPT_POST, true); curl_setopt($ch, CURLOPT_POSTFIELDS, (string)$body); }
-      $b = curl_exec($ch); $code = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE); $err = $b === false ? curl_error($ch) : null; curl_close($ch);
-      $r = ['code' => $code, 'body' => is_string($b) ? $b : '', 'err' => $err] + $hdr;
+      $b = curl_exec($ch); $code = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE); $ct = (string)curl_getinfo($ch, CURLINFO_CONTENT_TYPE); $err = $b === false ? curl_error($ch) : null; curl_close($ch);
+      $r = ['code' => $code, 'body' => is_string($b) ? $b : '', 'err' => $err, 'ctype' => $ct] + $hdr;
     }
     foreach ((array)$r['cookies'] as $sc) {
       if (!preg_match('/^\s*([^=;\s]+)=([^;]*)(.*)$/', (string)$sc, $m)) continue;
@@ -205,7 +205,7 @@ final class VkCab {
     $login = self::req('GET', self::base() . '/login');
     $x = self::dom((string)$login['body']);
     $f = $x->query("//form[@id='no-login-form']")->item(0) ?? $x->query("//form[.//input[contains(@name,'NoLoginForm')]]")->item(0);
-    if (!$f) { self::diag(['result' => 'changed', 'where' => 'login', 'forms' => self::formsInfo($x)]); throw new HttpError(424, 'cab_changed', ['human' => self::h('changed')]); }
+    if (!$f) { self::diag(['result' => 'changed', 'where' => 'login', 'forms' => self::formsInfo($x), 'page' => self::pageInfo($x, $login, $fam, $acc)]); throw new HttpError(424, 'cab_changed', ['human' => self::h('changed')]); }
     $pairs = [];
     foreach (self::fields($x, $f) as $fl) {
       $v = $fl['value'];
@@ -225,12 +225,12 @@ final class VkCab {
       // живой сайт (проба 04.11.2026): чужой рахунок → 200, страница без форм, «Не коректні дані: особовий рахунок або Прізвище абонента, або на
       // особовому рахунку не значаться лічильники. Можливо необхідно вказати прізвище українською мовою». Старый вариант — снова форма входа.
       $still = $x2->query("//form[@id='no-login-form']")->item(0) !== null || ($msgs['err'] && preg_match(self::NF_RE, implode(' ', $msgs['err'])));
-      self::diag(['result' => $still ? 'notfound' : 'changed', 'where' => 'check', 'msgs' => self::maskMsgs($msgs), 'forms' => self::formsInfo($x2)]);
+      self::diag(['result' => $still ? 'notfound' : 'changed', 'where' => 'check', 'msgs' => self::maskMsgs($msgs), 'forms' => self::formsInfo($x2)] + ($still ? [] : ['page' => self::pageInfo($x2, $page, $fam, $acc)]));
       if ($still) throw new HttpError(422, 'cab_not_found', ['human' => self::h('notfound', ['a' => $acc, 'f' => $fam]) . (preg_match('/[ыэъёЫЭЪЁ]/u', $fam) ? ' ' . self::h('ukr') : ''), 'site' => array_slice($msgs['err'], 0, 3)]);
       throw new HttpError(424, 'cab_changed', ['human' => self::h('changed'), 'site' => array_slice(array_merge($msgs['err'], $msgs['info']), 0, 3)]);
     }
     $fields = self::fields($x2, $form); $ms = self::meters($x2, $fields);
-    if (!$ms) { self::diag(['result' => 'changed', 'where' => 'form', 'forms' => self::formsInfo($x2)]); throw new HttpError(424, 'cab_changed', ['human' => self::h('changed')]); }
+    if (!$ms) { self::diag(['result' => 'changed', 'where' => 'form', 'forms' => self::formsInfo($x2), 'page' => self::pageInfo($x2, $page, $fam, $acc)]); throw new HttpError(424, 'cab_changed', ['human' => self::h('changed')]); }
     return ['x' => $x2, 'form' => $form, 'fields' => $fields, 'meters' => $ms, 'page' => $page];
   }
   private static function pubMeters(array $ms): array { return array_map(fn($m) => array_intersect_key($m, array_flip(['key', 'label', 'kind', 'serial', 'prev', 'prevDate'])), $ms); }
@@ -367,7 +367,17 @@ final class VkCab {
       if ($op !== 'probe' && (int)($e['at'] ?? 0) > (int)$last) $last = (int)$e['at'];
     }
     ksort($n);
-    return ['n' => (object)$n, 'lastUser' => $last ? gmdate('c', $last) : null];
+    // последний сбой человека (не проба): шаги и структура страницы без слов сайта — как htmcab.lastErr
+    $le = null;
+    foreach (array_reverse(self::log()) as $e) if (($e['op'] ?? '') !== 'probe' && in_array($e['result'] ?? '', ['changed', 'down', 'mismatch', 'which'], true)) {
+      $le = ['at' => gmdate('c', (int)($e['at'] ?? 0))] + array_intersect_key($e, array_flip(['op', 'result', 'where', 'steps', 'err']));
+      if (isset($le['steps'])) $le['steps'] = array_map(fn($st) => [(string)($st[0] ?? ''), preg_replace('/\d/', '#', (string)($st[1] ?? '')), (int)($st[2] ?? 0)], (array)$le['steps']);
+      if (isset($e['forms'])) $le['forms'] = array_map(fn($f) => ['id' => $f['id'] ?? '', 'action' => preg_replace('/\d/', '#', (string)($f['action'] ?? '')), 'names' => array_map(fn($v) => preg_replace('/\d/', '#', (string)$v), (array)($f['names'] ?? []))], (array)$e['forms']);
+      if (isset($e['msgs'])) $le['msgsN'] = array_map(fn($l) => count((array)$l), (array)$e['msgs']);
+      if (isset($e['page'])) { $le['page'] = $e['page']; unset($le['page']['text']); }
+      break;
+    }
+    return ['n' => (object)$n, 'lastUser' => $last ? gmdate('c', $last) : null, 'lastErr' => $le];
   }
 
   // ---------- журнал для /admin: структура без личных данных ----------
@@ -380,6 +390,34 @@ final class VkCab {
       $out[] = ['id' => $f->getAttribute('id'), 'action' => (string)parse_url($f->getAttribute('action'), PHP_URL_PATH), 'names' => array_slice(array_values(array_unique($names)), 0, 30)];
     }
     return array_slice($out, 0, 6);
+  }
+  /** Страница, которую не узнали: что на ней есть (для разбора «сайт изменился»). Без личных данных: цифры — #, прізвище и рахунок — ***,
+   *  строки, похожие на адрес, не пишем. text (заголовки, подписи — слова сайта) — только в /admin; остальное — структура (и в /api/health). */
+  private static function pageInfo(DOMXPath $x, array $resp, string $fam = '', string $acc = ''): array {
+    $html = (string)($resp['body'] ?? '');
+    $clean = function (string $s) use ($fam, $acc): string {
+      $s = self::sp($s);
+      foreach (array_filter([$fam, $acc], fn($v) => mb_strlen($v) >= 2) as $v) $s = preg_replace('/' . preg_quote($v, '/') . '/iu', '***', $s);
+      return self::mask($s);
+    };
+    $path = fn(string $u): string => preg_replace('/\d/', '#', (string)(parse_url($u, PHP_URL_PATH) ?? ''));
+    $txt = [];
+    foreach ($x->query('//title|//h1|//h2|//h3|//h4|//h5|//legend|//label|//th|//button|//*[' . self::cls('panel-heading') . ' or ' . self::cls('card-header') . ' or ' . self::cls('modal-title') . ']') as $e) {
+      $t = self::sp(self::text($e)); if ($e instanceof DOMElement && strtolower($e->nodeName) === 'button') $t = self::sp($e->textContent);
+      if ($t === '' || preg_match('/(?:^|\s)(?:вул|вулиця|ул|улица|просп|проспект|пров|пер|бульв|кв)\.?\s/iu', $t)) continue;
+      $txt[] = mb_substr($clean($t), 0, 120); if (count($txt) >= 16) break;
+    }
+    $names = []; foreach ($x->query('//input[@name]|//select[@name]|//textarea[@name]|//button[@name]') as $e) $names[] = strtolower($e->nodeName) . ':' . preg_replace('/\d/', '#', $e->getAttribute('name'));
+    $scripts = []; foreach ($x->query('//script[@src]') as $e) $scripts[] = $path($e->getAttribute('src'));
+    $ajax = [];
+    foreach ($x->query('//script[not(@src)]') as $e) if (preg_match_all('~["\'](/[a-z][a-z0-9_\-]*(?:/[a-z0-9_\-.]+)*)(?:\?[^"\']*)?["\']~i', $e->textContent, $m)) foreach ($m[1] as $u) $ajax[] = preg_replace('/\d/', '#', $u);
+    $links = []; foreach ($x->query('//a[@href]') as $e) { $h = $e->getAttribute('href'); if ($h !== '' && $h[0] !== '#' && !preg_match('~^(?:mailto|tel|javascript):~i', $h)) $links[] = $path($h); }
+    $frames = []; foreach ($x->query('//iframe[@src]') as $e) $frames[] = (string)parse_url($e->getAttribute('src'), PHP_URL_HOST) . $path($e->getAttribute('src'));
+    $j = json_decode($html, true); $u = fn(array $a, int $n) => array_slice(array_values(array_unique(array_filter($a, fn($v) => $v !== ''))), 0, $n);
+    return ['url' => $path((string)($resp['url'] ?? '')), 'code' => (int)($resp['code'] ?? 0), 'ctype' => mb_substr((string)($resp['ctype'] ?? ''), 0, 60), 'len' => strlen($html),
+      'json' => is_array($j) ? array_slice(array_keys($j), 0, 12) : null, 'tables' => $x->query('//table')->length, 'rows' => $x->query('//tr')->length,
+      'names' => $u($names, 40), 'scripts' => $u($scripts, 15), 'ajax' => $u($ajax, 20), 'links' => $u($links, 25), 'frames' => $u($frames, 5),
+      'captcha' => (bool)preg_match('~g-recaptcha|cf-turnstile|h-captcha|recaptcha/api\.js|challenges\.cloudflare\.com~i', $html), 'text' => $u($txt, 16)];
   }
   private static function formInfo(DOMXPath $x, DOMElement $form, array $fields, array $ms): array {
     return ['id' => $form->getAttribute('id'), 'action' => (string)parse_url($form->getAttribute('action'), PHP_URL_PATH), 'method' => $form->getAttribute('method'),

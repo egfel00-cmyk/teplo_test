@@ -453,6 +453,18 @@ ok('…в прізвищі русские буквы → подсказка «в
 $vkReal = VkCab::$http; VkCab::$http = fn($m, $url, $b, $c) => str_contains($url, 'get-form-send') ? ['code' => 200, 'body' => '<html><body><div class="alert alert-danger">Сервіс тимчасово недоступний</div></body></html>'] : $vkReal($m, $url, $b, $c);
 $r = $cab('/api/vk/cab/check', ['acc' => '905615', 'fam' => 'Шевченко']);
 ok('…страница без форм с другой ошибкой — не «не знайдено», а cab_changed со словами сайта', $r->status === 424 && $r->body['error'] === 'cab_changed' && str_contains(implode(' ', $r->body['site'] ?? []), 'недоступний'), $r->body);
+// живой «Перевірити» 07.11 01:42 UTC: сайт показал страницу, которую не узнали → журнал пишет, что на ней есть (поля, скрипты, AJAX-адреса)
+VkCab::$http = fn($m, $url, $b, $c) => str_contains($url, 'get-form-send') ? ['code' => 200, 'ctype' => 'text/html; charset=UTF-8', 'body' => '<html><head><title>Абонент Шевченко, о/р 905615</title><script src="/js/common.js?v=17"></script></head><body>'
+  . '<h3>Показання лічильників</h3><p>вул. Сумська, 10</p><input type="hidden" name="acc" value="905615"><div id="counters"></div><a href="/site/logout">Вихід</a><a href="/abonent/905615/history">Історія</a>'
+  . '<script>$(function(){ $.post("/get-counters", {acc: "905615"}, function(h){ $("#counters").html(h); }); });</script></body></html>'] : $vkReal($m, $url, $b, $c);
+$r = $cab('/api/vk/cab/check', ['acc' => '905615', 'fam' => 'Шевченко']); $vle = VkCab::summary()['lastErr'] ?? []; $vlj = json_encode($vle, JSON_UNESCAPED_UNICODE);
+$vlast = VkCab::log(); $vlast = $vlast[count($vlast) - 1]['page'] ?? []; $vlaj = json_encode($vlast, JSON_UNESCAPED_UNICODE);
+ok('…страница без формы показаний → cab_changed; /api/health → vkcab.lastErr: шаги и структура (скрипты, AJAX-адреса, поля, ссылки), без слов сайта, рахунку и прізвища', $r->status === 424
+  && ($vle['result'] ?? '') === 'changed' && ($vle['where'] ?? '') === 'check' && in_array('/get-counters', $vle['page']['ajax'] ?? [], true) && in_array('/js/common.js', $vle['page']['scripts'] ?? [], true)
+  && in_array('input:acc', $vle['page']['names'] ?? [], true) && in_array('/abonent/######/history', $vle['page']['links'] ?? [], true) && str_starts_with($vle['page']['ctype'] ?? '', 'text/html') && !isset($vle['page']['text'])
+  && !preg_match('/905615|Шевченко|Показання|Сумськ/u', $vlj), $vle);
+ok('…в журнале /admin — ещё и заголовки страницы: прізвище и рахунок — ***, цифры — #, адрес не пишем', in_array('Показання лічильників', $vlast['text'] ?? [], true)
+  && !preg_match('/905615|Шевченко|Сумськ/u', $vlaj) && str_contains($vlaj, 'Абонент ***'), $vlast);
 VkCab::$http = $vkReal;
 $pc0 = count($vkCalls); $pr = VkStatus::probeNotFound(); $vs = $tgb->req('GET', '/api/vk/status')->body;
 ok('проба «не знайдено» (cron): выдуманный рахунок → cab_not_found, слова сайта и структура — в /api/vk/status без цифр; показания не шлём', ($pr['error'] ?? '') === 'cab_not_found'
