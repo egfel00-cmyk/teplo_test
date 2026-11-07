@@ -195,17 +195,31 @@ final class VkBills {
     }
     return $best;
   }
-  /** Квартиры состояния, где можно взять квитанцию за ym. → [{place, acc, fam}] */
-  public static function targets(array $st, string $ym): array {
+  /** Квитанция с сайта у записи квартиры за месяц ym уже есть. */
+  private static function hasBill(array $water, string $place, string $first, string $ym): bool {
+    foreach ($water as $r) {
+      $r = (array)$r; if (empty($r['id']) || !empty($r['deleted']) || (string)($r['place'] ?? $first) !== $place || substr((string)($r['date'] ?? ''), 0, 7) !== $ym) continue;
+      foreach ((array)($r['bills'] ?? []) as $b) if ((((array)$b)['auto'] ?? '') === 'vk') return true;
+    }
+    return false;
+  }
+  /** Каждая живая квартира состояния: [причина, цель]. Причины: off — «Квитанції самі» выключено, noacc — нет рахунку/прізвища (или кривые),
+   *  norec — нет записи воды за ym (стартовая не в счёт), hasbill — квитанция с сайта уже прикреплена, ok — можно идти (цель {place, acc, fam}). */
+  public static function why(array $st, string $ym): array {
     $places = self::live($st); if (!$places) return [];
-    $first = self::first($places); $out = [];
+    $first = self::first($places); $water = (array)($st['water'] ?? []); $out = [];
     foreach ($places as $p) {
-      $w = (array)($p['water'] ?? []); if (($w['billAuto'] ?? null) === false) continue;
-      try { [$acc, $fam] = VkCab::input(['acc' => (string)($w['account'] ?? ''), 'fam' => (string)($w['surname'] ?? '')]); } catch (HttpError $e) { continue; }
-      if (self::recIdx((array)($st['water'] ?? []), (string)$p['id'], $first, $ym) === null) continue;
-      $out[] = ['place' => (string)$p['id'], 'acc' => $acc, 'fam' => $fam];
+      $w = (array)($p['water'] ?? []); $id = (string)$p['id'];
+      if (($w['billAuto'] ?? null) === false) { $out[] = ['off', null]; continue; }
+      try { [$acc, $fam] = VkCab::input(['acc' => (string)($w['account'] ?? ''), 'fam' => (string)($w['surname'] ?? '')]); } catch (HttpError $e) { $out[] = ['noacc', null]; continue; }
+      if (self::recIdx($water, $id, $first, $ym) === null) { $out[] = [self::hasBill($water, $id, $first, $ym) ? 'hasbill' : 'norec', null]; continue; }
+      $out[] = ['ok', ['place' => $id, 'acc' => $acc, 'fam' => $fam]];
     }
     return $out;
+  }
+  /** Квартиры состояния, где можно взять квитанцию за ym. → [{place, acc, fam}] */
+  public static function targets(array $st, string $ym): array {
+    return array_values(array_map(fn($x) => $x[1], array_filter(self::why($st, $ym), fn($x) => $x[0] === 'ok')));
   }
   /** Прикрепить квитанцию к записи воды за ym в данных человека (новая версия; конфликт с устройством — до 3 попыток). → прикрепили ли */
   public static function attach(int $uid, string $place, string $ym, array $doc): bool {
@@ -232,16 +246,20 @@ final class VkBills {
     if ((int)$k->format('j') > 25 || $h < self::FROM_H || $h >= self::TO_H || !VkCab::ready() || Cfg::get('vk_bills_auto', true) === false) return [];
     $cab = (array)(VkStatus::read()['cab'] ?? []); if (empty($cab['everOk']) || ($cab['state'] ?? '') !== 'ok') return [];
     $j = self::read(); if ((int)($j['idle'] ?? 0) > $now) return [];
-    $ym = self::ym($now); $todo = null;
+    $ym = self::ym($now); $todo = null; $cnt = [];
     foreach (Db::q('SELECT user_id, data FROM user_state ORDER BY user_id')->fetchAll() as $row) {
       $st = json_decode((string)$row['data'], true); if (!is_array($st)) continue;
-      foreach (self::targets($st, $ym) as $t) {
-        $e = (array)($j['p'][$row['user_id'] . '|' . $t['place']] ?? []);
-        if (($e['got'] ?? '') === $ym || (($e['bad'] ?? '') !== '' && $e['bad'] === self::sig($t)) || $now - (int)($e['at'] ?? 0) < self::RETRY) continue;
-        $todo = [(int)$row['user_id'], $t]; break 2;
+      foreach (self::why($st, $ym) as [$why, $t]) {
+        if ($t) {
+          $e = (array)($j['p'][$row['user_id'] . '|' . $t['place']] ?? []);
+          $why = ($e['got'] ?? '') === $ym ? 'got' : ((($e['bad'] ?? '') !== '' && $e['bad'] === self::sig($t)) ? 'notfound' : ($now - (int)($e['at'] ?? 0) < self::RETRY ? 'retry' : ''));
+          if ($why === '') { $todo = [(int)$row['user_id'], $t]; break 2; }
+        }
+        $cnt[$why] = ($cnt[$why] ?? 0) + 1;
       }
     }
-    if (!$todo) { $j['idle'] = $now + self::IDLE; self::write($j); return []; }   // некуда идти — не перебираем всех каждую минуту
+    // некуда идти — не перебираем всех каждую минуту; почему некуда — счёт квартир по причинам (без людей и рахунків), для /api/health
+    if (!$todo) { $j['idle'] = $now + self::IDLE; $j['scan'] = ['at' => $now, 'ym' => $ym, 'k' => $cnt]; self::write($j); return []; }
     [$uid, $t] = $todo; $key = $uid . '|' . $t['place'];
     $e = (array)($j['p'][$key] ?? []); $e = ['at' => $now, 'ym' => $ym, 'n' => ($e['ym'] ?? '') === $ym ? (int)($e['n'] ?? 0) + 1 : 1] + array_intersect_key($e, ['got' => 1]);
     $j['p'][$key] = $e; self::write($j);   // отметка до входа: упадём посередине — не повторим через минуту
@@ -267,10 +285,12 @@ final class VkBills {
     self::write($j);
     return [[$uid, $res]];
   }
-  /** /api/health → vkBills: последний итог и счёт по месяцам (без рахунків и людей). */
+  /** /api/health → vkBills: последний итог, счёт по месяцам и почему последний обход никуда не пошёл (без рахунків и людей). */
   public static function summary(): array {
     $j = self::read();
     return ['last' => isset($j['last']) ? ['at' => gmdate('c', (int)$j['last']['at'])] + array_diff_key($j['last'], ['at' => 1]) : null, 'n' => (object)($j['n'] ?? []), 'places' => count((array)($j['p'] ?? [])),
-      'idleTill' => !empty($j['idle']) && $j['idle'] > time() ? gmdate('c', (int)$j['idle']) : null];
+      'idleTill' => !empty($j['idle']) && $j['idle'] > time() ? gmdate('c', (int)$j['idle']) : null,
+      // последний обход без цели: сколько квартир по какой причине пропущено (off, noacc, norec, hasbill, got, notfound, retry)
+      'scan' => isset($j['scan']) ? ['at' => gmdate('c', (int)$j['scan']['at']), 'ym' => (string)$j['scan']['ym'], 'k' => (object)($j['scan']['k'] ?? [])] : null];
   }
 }

@@ -552,6 +552,8 @@ $st = ['places' => [$plW('a', '905616', 'Шевченко'), $plW('b', '905617',
   'water' => [$recW('w1', 'a', '2026-10-14'), $recW('w2', 'b', '2026-10-14'), $recW('w3', 'c', '2026-10-14'), $recW('w4', 'd', '2026-10-01', ['base' => true]), $recW('w5', 'a', '2026-09-14')]];
 $tg = VkBills::targets($st, '2026-10');
 ok('квитанции: подходит квартира с рахунком і прізвищем и записью за прошлый месяц; «Квитанції самі» выключено, кривой рахунок, только стартовая — нет', count($tg) === 1 && $tg[0] === ['place' => 'a', 'acc' => '905616', 'fam' => 'Шевченко'], $tg);
+$wy = array_map(fn($x) => $x[0], VkBills::why($st, '2026-10'));
+ok('…причины по квартирам: ok, off («Квитанції самі» выключено), noacc (кривой рахунок), norec (только стартовая)', $wy === ['ok', 'off', 'noacc', 'norec'], $wy);
 $st2 = $st; $st2['water'][0]['bills'] = [['id' => 'x', 'auto' => 'vk']];
 $st3 = ['places' => [$plW('main', '905616', 'Шевченко')], 'water' => [['id' => 'old', 'date' => '2026-10-03', 'vals' => []]]];
 ok('…у записи месяца уже есть квитанция с сайта — нет; старая запись без place — к первой квартире', VkBills::targets($st2, '2026-10') === [] && count(VkBills::targets($st3, '2026-10')) === 1 && VkBills::recIdx($st['water'], 'a', 'a', '2026-10') === 0);
@@ -572,6 +574,8 @@ $rawA = $stOf($uA)['data'];
 ok('…в данных человека: новая версия, запись новее (updatedAt), остальное как было ({} осталось {}), прошлая версия — в историю (vkbill)', (int)$stOf($uA)['version'] === $v0 + 1 && $sA['water'][0]['updatedAt'] > 1000 && ($sA['water'][1]['bills'] ?? null) === null
   && $sA['updatedAt'] === 777 && str_contains($rawA, '"tariff":{}') && str_contains($rawA, '"remind":{}') && (Db::one("SELECT reason FROM user_state_hist WHERE user_id = ? ORDER BY id DESC LIMIT 1", [$uA])['reason'] ?? '') === 'vkbill', $rawA);
 ok('…«человек» в журнале кабинета не сдвинулся; через минуту — некуда идти (уже прикрепили) → пауза, на сайт не ходим', VkCab::summary()['lastUser'] === $lu0 && VkBills::cron($tB + 60) === [] && $vkPdfN === 1 && !empty(VkBills::read()['idle']));
+$sc = (array)(VkBills::summary()['scan'] ?? []);
+ok('…/api/health → vkBills.scan: почему обход никуда не пошёл — квитанция уже есть (hasbill), месяц жовтень', ($sc['ym'] ?? '') === '2026-10' && (array)($sc['k'] ?? []) === ['hasbill' => 1], $sc);
 // та же квитанция (сайт не обновил) → через RETRY снова; новая — к своему месяцу
 @unlink(VkBills::file());
 $uB = $mkU('bill-b@example.ua', ['readings' => [], 'places' => [$plW('p1', '905616', 'Шевченко')], 'water' => [$recW('b1', 'p1', '2026-10-20')]]);
