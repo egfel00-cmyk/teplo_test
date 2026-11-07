@@ -923,7 +923,7 @@ fieldset.field { border: 0; padding: 0; min-width: 0; }
 .pacc-ks { overflow-wrap: anywhere; }
 .pacc-chev { flex: none; transform: rotate(90deg); transition: transform .15s; color: var(--c-ink-2); }
 .pacc[open] .pacc-chev { transform: rotate(-90deg); }
-.pacc-body { padding: 0 12px 12px; border-top: 1px solid var(--c-line); background: var(--c-surface-2); }
+.pacc-body { padding: 12px; border-top: 1px solid var(--c-line); background: var(--c-surface-2); }
 .pacc-body .ucards { margin: 0; }
 .hp-tools { display: flex; flex-wrap: wrap; gap: 6px 18px; align-items: center; margin: 10px 4px; font-size: var(--fs-s); }
 .hp-tools a { display: inline-flex; align-items: center; gap: 4px; min-height: 32px; }
@@ -1119,7 +1119,7 @@ summary:focus-visible { outline: 3px solid var(--c-info); outline-offset: 2px; b
 
 /* ---------- квартира в списке на главной: по строке на счётчик — что и до когда ---------- */
 .pacc > summary { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: start; gap: 4px 12px; padding: 16px 16px 14px; }
-.pacc > summary .pacc-chev { grid-column: 2; grid-row: 1; }
+.pacc > summary .pacc-chev { grid-column: 2; grid-row: 1; margin-top: calc((var(--fs-l) * 1.25 - 34px) / 2); }   /* центр кружка — на центре строки названия (07.11) */
 .pacc-t { grid-column: 1; gap: 2px; }
 .pacc-addr { font-size: var(--fs-s); color: var(--c-ink-2); line-height: 1.4; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .pst { grid-column: 1 / -1; display: grid; gap: 6px; margin-top: 10px; }
@@ -1462,9 +1462,9 @@ details.tbl-acc[open] > .tbl-wrap { margin-top: 12px; }
 /* ---- сторінка лічильника (07.11): «Куди передати» — кнопка в рамці на місці «Розпізнати з фото»; відкрита — та сама рамка навколо вмісту ---- */
 details.wacc.wacc-btn { background: transparent; border: 1.5px solid var(--c-field-line); border-radius: var(--r-btn); padding: 0; margin: var(--sp-3) 0 var(--sp-4); }
 details.wacc.wacc-btn:hover { border-color: var(--c-ink-2); }
-details.wacc.wacc-btn > summary { position: relative; justify-content: center; min-height: 56px; margin: 0; padding: 0 44px; }
+details.wacc.wacc-btn > summary { position: relative; justify-content: center; min-height: 56px; margin: 0; padding: 0 56px; }
 details.wacc.wacc-btn > summary h2 { flex: 0 1 auto; font-size: var(--fs-l); font-weight: 600; justify-content: center; }
-details.wacc.wacc-btn > summary .pacc-chev { position: absolute; right: 16px; top: 50%; margin-top: -10px; }
+details.wacc.wacc-btn > summary .pacc-chev { position: absolute; right: 16px; top: calc(50% - 17px); margin: 0; }   /* кружок 34 px — по центру кнопки (было -10px от старого значка 20 px) */
 details.wacc.wacc-btn[open] > summary { border-bottom: 1px solid var(--c-line); }
 details.wacc.wacc-btn[open] > .where-b { margin: 0; padding: var(--sp-3) var(--sp-4) var(--sp-4); }
 details.wacc.wacc-btn > summary:focus-visible { outline: 3px solid var(--c-focus-ring); outline-offset: 2px; border-radius: var(--r-btn); }
