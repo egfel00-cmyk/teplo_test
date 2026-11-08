@@ -1131,6 +1131,12 @@ ok('довідник: усі громади й пункти є в КАТОТТГ
     && ($zl['place']['r'] ?? '') === 'lv' && $zl['kinds']['water']['supply'] === 35.22 && $yv['kinds']['water']['supply'] === 36.54 && $yv['kinds']['water']['drain'] === null
     && !empty($re['kinds']['water']['check']) && str_contains($ob['kinds']['water']['org'] ?? '', 'Обухівводоканал') && $ob['kinds']['water']['supply'] === null,
     [$vg['kinds']['water'] ?? $vg, $zl['place'] ?? $zl, $yv['kinds']['water'] ?? $yv, $ob['kinds']['water'] ?? $ob]);
+  // 60-та сесія
+  $bs = $v('Буськ, вул. Шевченка 1'); $ss = $v('Старий Самбір, вул. Л. Українки 1'); $td = $v('Теплодар, вул. Енергетиків 1'); $vs = $v('Васильків, вул. Соборна 1');
+  ok('громади 60-ї: Буськ 46,92 / 27,38, Старий Самбір 36,34 / 22,80 (звірити), Теплодар 46,44 / 33,06 (звірити), Васильків — організації без тарифу й Васильківтепломережа',
+    $bs['kinds']['water']['supply'] === 46.92 && $bs['kinds']['water']['drain'] === 27.38 && $ss['kinds']['water']['drain'] === 22.8 && !empty($ss['kinds']['water']['check'])
+    && ($td['place']['r'] ?? '') === 'od' && $td['kinds']['water']['supply'] === 46.44 && ($vs['place']['r'] ?? '') === 'kv' && $vs['kinds']['water']['supply'] === null
+    && str_contains($vs['kinds']['heat']['org'] ?? '', 'Васильківтепломережа'), [$bs['kinds']['water'] ?? $bs, $td['place'] ?? $td, $vs['kinds'] ?? $vs]);
   $pd2 = $v('Южный, Кирова 5'); $mk = $v('Миколаївка, Київська обл.');
   ok('однакові назви в областях: без області — Харківщина першою, Одещина в «Не той?»; «Миколаївка, Київська обл.» — лише дві київські',
     ($pd2['place']['r'] ?? '') === 'kh' && in_array('od', array_column($pd2['alts'] ?? [], 'r'), true) && !$mk['found'] && count($mk['candidates']) === 2 && $mk['candidates'][0]['oblast'] === 'Київська', [$pd2['alts'] ?? $pd2, $mk['candidates'] ?? $mk]);
