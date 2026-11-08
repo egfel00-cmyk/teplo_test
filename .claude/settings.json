@@ -3,6 +3,8 @@
     "allow": [
       "WebFetch(domain:peredai.com.ua)",
       "WebFetch(domain:pokabot.xyz)",
+      "WebFetch(domain:data.loda.gov.ua)",
+      "WebFetch(domain:rada.info)",
       "Bash(php tests/rev.php)",
       "mcp__claude-in-chrome__tabs_context_mcp",
       "mcp__claude-in-chrome__tabs_create_mcp",
