@@ -679,7 +679,7 @@ final class HtmBills {
 /** Нарахування ХТМ по місяцях («Довідка по теплу» кабінету) — особисті дані людини: SITE_DATA/cache/htm_spr/<uid>_<квартира>.json (наружу не віддається),
  *  приложению — GET /api/htm/spr (лише своє). Для /api/health — лише скільки рядків, які колонки знайшли й маска формату (без цифр). */
 final class HtmSpr {
-  const BILLS_V = 3;
+  const BILLS_V = 5;
   public static function dir(): string { return Cfg::data() . '/cache/htm_spr'; }
   private static function file(int $uid, string $place): string { return self::dir() . '/' . $uid . '_' . substr(preg_replace('/[^A-Za-z0-9_-]/', '', $place), 0, 40) . '.json'; }
   public static function save(int $uid, string $place, array $sp): void {
@@ -773,6 +773,42 @@ final class HtmSpr {
     }
     return $out;
   }
+  /** Живий рахунок ХТМ (будова з бою 08.11, shape): таблиця «Послуги з постачання | Тариф | Витрата… | Кількість… | Нараховано за послугу | Пільга |
+   *  Нараховано плати за абонентське обслуговування | −Переплата/+борг на 1… | Оплачено у… | Нараховано за місяць (= послуга − пільга + абонплата) |
+   *  Перерахунки… | Нараховано всього | −Переплата/+борг на кінець», рядки «теплової енергії» і «гарячої води» (colspan/rowspan), під теплом —
+   *  «донараховано до кінця поточного місяця» і «… нарахування до кінця попереднього місяця», «ДО СПЛАТИ». Колонки — за позицією з урахуванням colspan.
+   *  → ['heat' => [cost, lgota, abon, debt, paid, month, recalc, total, end], 'hot' => […], 'pre' => донараховано, 'unpre' => зняте за попередній, 'pay'] або [] */
+  public static function billTable(string $html): array {
+    if (trim($html) === '') return [];
+    $x = CabWeb::dom($html); $num = fn(string $s) => preg_match('/^[-+]?\d{1,9}(?:[.,]\d{1,3})?$/', $v = str_replace([' ', "\u{a0}", 'грн.', 'грн'], '', CabWeb::sp($s))) ? (float)str_replace(',', '.', $v) : null;
+    $cells = function ($tr) use ($x) { $o = []; $p = 0; foreach ($x->query('./td|./th', $tr) as $c) { $o[] = [$p, CabWeb::sp((string)$c->textContent)]; $p += max(1, (int)$c->getAttribute('colspan')); } return $o; };
+    $map = null; $out = [];
+    foreach ($x->query('//tr[not(.//table)]') as $tr) {
+      $cs = $cells($tr); $t = implode(' | ', array_column($cs, 1));
+      if ($map === null) {
+        if (!preg_match('/нараховано за послугу/iu', $t) || count($cs) < 8) continue;
+        $map = []; $nb = 0;
+        foreach ($cs as [$p, $h]) {
+          $k = preg_match('/нараховано за послугу/iu', $h) ? 'cost' : (preg_match('/пільг/iu', $h) ? 'lgota' : (preg_match('/абонентськ/iu', $h) ? 'abon' : (preg_match('/переплат|борг/iu', $h) ? ($nb++ ? 'end' : 'debt')
+            : (preg_match('/оплачено/iu', $h) ? 'paid' : (preg_match('/за місяць/iu', $h) ? 'month' : (preg_match('/перерахун/iu', $h) ? 'recalc' : (preg_match('/всього|усього/iu', $h) ? 'total' : null)))))));
+          if ($k !== null && !isset($map[$k])) $map[$k] = $p;
+        }
+        continue;
+      }
+      $first = mb_strtolower($cs[0][1] ?? '');
+      if (preg_match('/донараховано до кінця поточного/u', $t)) {
+        for ($i = 0; $i < count($cs); $i++) { $v = $num($cs[$i][1]); if ($v === null) continue; $lab = mb_strtolower($cs[$i - 1][1] ?? ''); if (str_contains($lab, 'поточного')) $out['pre'] = $v; elseif (str_contains($lab, 'попереднього')) $out['unpre'] = $v; }
+        continue;
+      }
+      if (preg_match('/^до сплати/u', $first)) { foreach ($cs as $i => [$p, $s]) if ($i > 0 && ($v = $num($s)) !== null) { $out['pay'] = $v; break; } continue; }
+      $svc = str_contains($first, 'тепло') ? 'heat' : (str_contains($first, 'гаряч') ? 'hot' : null);
+      if ($svc === null || isset($out[$svc])) continue;
+      $byPos = []; foreach ($cs as [$p, $s]) $byPos[$p] = $num($s);
+      $r = []; foreach ($map as $k => $p) if (array_key_exists($p, $byPos) && $byPos[$p] !== null) $r[$k] = $byPos[$p];
+      if ($r) $out[$svc] = $r;
+    }
+    return $out;
+  }
   /** Рядки квитанції → debt (переплата «−» / борг «+»), cost (нараховано за послугу), abon (абонентське), lgota (пільга, субсидія), recalc (перерахунок), pay (до сплати). */
   public static function billKeys(array $lines): array {
     $k = [];
@@ -798,7 +834,9 @@ final class HtmSpr {
         if (isset($b['cost']) && $nn($r, 'cost') !== null) $e['cost'] = $pc((float)$b['cost'], $nn($r, 'cost'));
         if (isset($b['abon']) && $nn($r, 'abon') !== null) $e['abon'] = $pc((float)$b['abon'], $nn($r, 'abon'));
         $tot = ($nn($r, 'cost') ?? 0) + ($nn($r, 'abon') ?? 0) - max(0, $nn($r, 'lgota') ?? 0);
-        if (isset($b['pay']) && $tot > 0) $e['pay'] = $pc((float)$b['pay'] - (float)($b['debt'] ?? 0), $tot);
+        if (isset($b['month']) && $tot > 0) $e['month'] = $pc((float)$b['month'], $tot);   // «Нараховано за місяць» рахунку против «Разом» довідки
+        if (isset($b['pre']) && $nn($r, 'cost') > 0) $e['pre%'] = round(((float)$b['pre'] - (float)($b['unpre'] ?? 0)) / $nn($r, 'cost') * 100, 1) + 0.0;   // донараховано до кінця місяця − зняте за попередній, % від довідки
+        elseif (isset($b['pay']) && !isset($b['month']) && $tot > 0) $e['pay'] = $pc((float)$b['pay'] - (float)($b['debt'] ?? 0), $tot);
         if (!$e) continue;
         $err[$ym][$al] = $e;
         if (isset($e['cost'])) { $of[$al]++; if ($e['cost'] !== null && abs($e['cost']) <= 0.5) $okN[$al]++; }
@@ -820,9 +858,12 @@ final class HtmSpr {
       if ((string)$d['mime'] !== 'text/html') { $pdf++; continue; }
       $html = (string)@file_get_contents(Docs::root() . '/' . $uid . '/' . basename((string)$d['file'])); $ls = self::billLines($html);
       if ($lines === null) { $lines = array_map(fn($l) => self::gw((string)$l), array_column($ls, 0)); $shape = self::billShape($html); }
-      $k = self::billKeys($ls); if ($k && !isset($bills[(string)$d['ym']])) $bills[(string)$d['ym']] = $k;
+      $bt = self::billTable($html);   // живий формат (колонки); стенд і старі — рядки «мітка | сума»
+      $k = isset($bt['heat']) ? $bt['heat'] + array_intersect_key($bt, ['pre' => 1, 'unpre' => 1, 'pay' => 1]) + ['hot' => isset($bt['hot'])] : self::billKeys($ls);
+      if ($k && !isset($bills[(string)$d['ym']])) $bills[(string)$d['ym']] = $k;
     }
-    $out = self::billCheck($rows, $bills) + ['lines' => $lines ?? [], 'shape' => $shape ?? [], 'pdf' => $pdf];
+    $lk = $bills ? array_keys(array_filter((array)reset($bills), fn($v) => $v !== null && $v !== false)) : [];   // які поля рахунку розпізнано (без сум)
+    $out = self::billCheck($rows, $bills) + ['keys' => $lk, 'lines' => $lines ?? [], 'shape' => $shape ?? [], 'pdf' => $pdf];
     @file_put_contents($cf, json_encode(['key' => $key, 'out' => $out], JSON_UNESCAPED_UNICODE), LOCK_EX);
     return $out;
   }
