@@ -131,6 +131,8 @@ $bc = HtmSpr::billCheck($sr, ['2026-01' => $bk1, '2026-03' => HtmSpr::billKeys(H
 ok('квитанція → рядки (мітки без цифр) і ключі: борг, нараховано, абонплата, до сплати; против довідки — січень збігся (0 %), березень = довідка лютого (prev), лише відсотки',
   ($bk1['debt'] ?? null) === 100.0 && ($bk1['cost'] ?? null) === 3783.51 && ($bk1['abon'] ?? null) === 29.4 && ($bk1['pay'] ?? null) === 3912.91 && !preg_match('/\d/u', implode(' ', array_column($bl1, 0)))
   && ($bc['err']->{'2026-01'}['same'] ?? null) === ['cost' => 0.0, 'abon' => 0.0, 'pay' => 0.0] && ($bc['err']->{'2026-03'}['prev']['cost'] ?? null) === 0.0 && ($bc['err']->{'2026-03'}['prev']['pay'] ?? null) === 0.0
+  && HtmSpr::gw('Іваненко Петро, вул. Сумська, 10') === 'Ж Ж, Ж. Ж, ##' && HtmSpr::gw('-ПЕРЕПЛАТА/+БОРГ за послугу з постачання: теплової енергії') === '-ПЕРЕПЛАТА/+БОРГ за послугу з постачання: теплової енергії'
+  && count(HtmSpr::billShape($bh('0', '1', '2', '3'))['rows'] ?? []) === 5 && !preg_match('/ТЕСТОВИЙ|1000|Ж/u', json_encode(HtmSpr::billShape($bh('0', '1', '2', '3')), JSON_UNESCAPED_UNICODE))
   && $bc['ok'] === ['same' => 1, 'prev' => 1, 'next' => 0] && $bc['months'] === ['2026-01', '2026-03'] && !preg_match('/3783|3912|ТЕСТОВИЙ/u', json_encode($bc, JSON_UNESCAPED_UNICODE)), [$bl1, $bk1, $bc]);
 $bad =array_filter(array_column(array_slice($h->w->steps, 0), 1), fn($x) => preg_match('~logout|/add|remove|settings~', $x));
 ok('…только GET и не трогает add/remove/settings', !array_filter($h->w->steps, fn($s) => $s[0] !== 'GET' && !str_contains($s[1], '/cabinet/login')) && !$bad, $h->w->steps);

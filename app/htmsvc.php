@@ -739,6 +739,37 @@ final class HtmSpr {
     }
     return $out;
   }
+  /** Мітка з рахунку без людей: цифри → #, лише загальні слова рахунків; будь-яке інше слово (прізвище, вулиця) → Ж. */
+  public static function gw(string $s, int $n = 60): string {
+    static $voc = null;
+    if ($voc === null) $voc = array_flip(explode(' ', 'нараховано нарахування донараховано до кінця кінець поточного попереднього наступного місяця місяць місяці теплової теплова теплову енергії енергія енергію '
+      . 'гарячої гаряча гарячу холодної води вода воду послуга послугу послуги послуг послугою за з із та і й на в у по від для абонентське абонентського обслуговування плати плата '
+      . 'оплата оплати оплачено сплачено сплати сплатити сплачено надійшло надходження борг боргу переплата переплати сальдо початок початку періоду період разом всього усього '
+      . 'перерахунок перерахунку перерахунки пільга пільги субсидія субсидії постачання тариф тарифом тарифу обсяг обсягу спожито спожита гкал грн кількість сума суми '
+      . 'показання показань лічильника лічильник квартира квартири площа площі опалення вартість ціна норма нормою середнім середньомісячним коригування компенсація '
+      . 'пеня штраф інші дата номер пдв рік року станом комунальна комунальні частка будинку внутрішньобудинкової системи загальнобудинкових витрати втрати витрата '
+      . 'місяців одержувач рахунок особовий'));
+    return mb_substr((string)preg_replace_callback('/\p{L}[\p{L}\'’-]*/u', fn($m) => isset($voc[mb_strtolower($m[0])]) ? $m[0] : 'Ж', CabWeb::mask($s, 400)), 0, $n);
+  }
+  /** Будова таблиць рахунку без сум і людей (живий рахунок 08.11 інший, ніж стенд: рядки «теплової енергії», «донараховано до кінця поточного
+   *  місяця», «гарячої води» — колонки треба побачити): по рядках — кількість клітинок і маски (gw: цифри → #, не загальні слова → Ж,
+   *  colspan/rowspan). До 3 таблиць, до 16 рядків. */
+  public static function billShape(string $html): array {
+    if (trim($html) === '') return [];
+    $x = CabWeb::dom($html); $out = ['tables' => $x->query('//table')->length, 'rows' => []];
+    foreach ($x->query('//table') as $ti => $tb) {
+      if ($ti >= 3) break;
+      foreach ($x->query('.//tr', $tb) as $tr) {
+        if (count($out['rows']) >= 16) break 2; $cs = [];
+        foreach ($x->query('./td|./th', $tr) as $c) {
+          $sp = ((int)$c->getAttribute('colspan') > 1 ? ' [c' . (int)$c->getAttribute('colspan') . ']' : '') . ((int)$c->getAttribute('rowspan') > 1 ? ' [r' . (int)$c->getAttribute('rowspan') . ']' : '');
+          $cs[] = ($c->nodeName === 'th' ? 'th:' : '') . self::gw((string)$c->textContent, 70) . $sp;
+        }
+        if ($cs) $out['rows'][] = 't' . $ti . ' ' . count($cs) . ': ' . implode(' | ', $cs);
+      }
+    }
+    return $out;
+  }
   /** Рядки квитанції → debt (переплата «−» / борг «+»), cost (нараховано за послугу), abon (абонентське), lgota (пільга, субсидія), recalc (перерахунок), pay (до сплати). */
   public static function billKeys(array $lines): array {
     $k = [];
@@ -781,14 +812,14 @@ final class HtmSpr {
     $key = sha1(implode(',', array_column($ds, 'id')) . '|' . json_encode($rows));
     $cf = self::dir() . '/_bills.json'; $c = json_decode((string)@file_get_contents($cf), true);
     if (is_array($c) && ($c['key'] ?? '') === $key && isset($c['out'])) return $c['out'];
-    $bills = []; $lines = null; $pdf = 0;
+    $bills = []; $lines = null; $shape = null; $pdf = 0;
     foreach ($ds as $d) {
       if ((string)$d['mime'] !== 'text/html') { $pdf++; continue; }
-      $ls = self::billLines((string)@file_get_contents(Docs::root() . '/' . $uid . '/' . basename((string)$d['file'])));
-      if ($lines === null) $lines = array_column($ls, 0);
+      $html = (string)@file_get_contents(Docs::root() . '/' . $uid . '/' . basename((string)$d['file'])); $ls = self::billLines($html);
+      if ($lines === null) { $lines = array_map(fn($l) => self::gw((string)$l), array_column($ls, 0)); $shape = self::billShape($html); }
       $k = self::billKeys($ls); if ($k && !isset($bills[(string)$d['ym']])) $bills[(string)$d['ym']] = $k;
     }
-    $out = self::billCheck($rows, $bills) + ['lines' => $lines ?? [], 'pdf' => $pdf];
+    $out = self::billCheck($rows, $bills) + ['lines' => $lines ?? [], 'shape' => $shape ?? [], 'pdf' => $pdf];
     @file_put_contents($cf, json_encode(['key' => $key, 'out' => $out], JSON_UNESCAPED_UNICODE), LOCK_EX);
     return $out;
   }
