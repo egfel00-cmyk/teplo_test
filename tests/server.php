@@ -1187,6 +1187,12 @@ ok('довідник: усі громади й пункти є в КАТОТТГ
     && str_contains($lpv['kinds']['water']['org'] ?? '', 'Миколаївводоканал') && $lpv['kinds']['water']['supply'] === 33.84 && !str_contains($trs['kinds']['water']['org'] ?? '', 'Миколаївводоканал')
     && str_contains($pgr['kinds']['water']['org'] ?? '', 'Миклашів') && $pgr['kinds']['water']['drain'] === 5.13,
     [$dbt['kinds'] ?? $dbt, $krs['place'] ?? $krs, $slv['place'] ?? $slv, $lpv['place'] ?? $lpv, $trs['place'] ?? $trs, $pgr['place'] ?? $pgr]);
+  $kil = $v('Килия, ул. Мира 1'); $shv = $v('Шевченкове, Кілійська громада'); $lsk = $v('Ліски, Кілійська громада'); $ttb = $v('Татарбунари, вул. Гульченка 16'); $bsh = $v('Баштанівка, Татарбунарська громада'); $brz = $v('Березівка, Одеська обл., вул. Миру 1');
+  ok('Одещина 64-ї: Кілія 37,42 / 35,12 (рос.), Шевченкове — пункт 85,08, Ліски — за домогосподарство в note; Татарбунари 30 / 30, Баштанівка — дві ціни в note; Березівка — без тарифу, орієнтир 2023 у note',
+    ($kil['place']['r'] ?? '') === 'od' && $kil['kinds']['water']['supply'] === 37.42 && $kil['kinds']['water']['drain'] === 35.12 && $shv['kinds']['water']['supply'] === 85.08
+    && $lsk['kinds']['water']['supply'] === null && str_contains($lsk['kinds']['water']['note'] ?? '', '195,40') && $ttb['kinds']['water']['supply'] === 30.0 && $ttb['kinds']['water']['drain'] === 30.0
+    && $bsh['kinds']['water']['supply'] === null && str_contains($bsh['kinds']['water']['note'] ?? '', '50,00') && ($brz['place']['r'] ?? '') === 'od' && $brz['kinds']['water']['supply'] === null && str_contains($brz['kinds']['water']['note'] ?? '', '33,36'),
+    [$kil['place'] ?? $kil, $shv['place'] ?? $shv, $bsh['place'] ?? $bsh, $brz['place'] ?? $brz]);
   $pd2 =$v('Южный, Кирова 5'); $mk = $v('Миколаївка, Київська обл.');
   ok('однакові назви в областях: без області — Харківщина першою, Одещина в «Не той?»; «Миколаївка, Київська обл.» — лише дві київські',
     ($pd2['place']['r'] ?? '') === 'kh' && in_array('od', array_column($pd2['alts'] ?? [], 'r'), true) && !$mk['found'] && count($mk['candidates']) === 2 && $mk['candidates'][0]['oblast'] === 'Київська', [$pd2['alts'] ?? $pd2, $mk['candidates'] ?? $mk]);
