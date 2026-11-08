@@ -1175,6 +1175,18 @@ ok('довідник: усі громади й пункти є в КАТОТТГ
     && $blz['kinds']['water']['supply'] === 30.0 && $blz['kinds']['water']['drain'] === null && ($tur['place']['r'] ?? '') === 'lv' && $tur['kinds']['water']['org'] === null && !empty($tur['kinds']['water']['src'])
     && ($sqv['place']['r'] ?? '') === 'kv' && $sqv['kinds']['water']['supply'] === 31.92 && $rvr['kinds']['water']['drain'] === 43.5,
     [$chr['kinds']['heat'] ?? $chr, $vy['place'] ?? $vy, $myk['place'] ?? $myk, $tur['place'] ?? $tur, $sqv['place'] ?? $sqv]);
+  // 64-та сесія
+  $dbt = $v('Добротвір, вул. Шевченка 1'); $shd = $v('Східниця, вул. Шевченка 1'); $nyr = $v('Новий Яричів, вул. Шевченка 1'); $krs = $v('Красне, Золочівський р-н, вул. Шевченка 1');
+  $slv = $v('Славское, ул. Шевченко 1'); $zhr = $v('Журавно, вул. Шевченка 1'); $lpv = $v('Липівка, Тростянецька громада'); $trs = $v('Тростянець, Стрийський р-н, вул. Шевченка 1'); $pgr = $v('Підгірне, Підберізцівська громада');
+  ok('громади 64-ї: Добротвір 20,89 / 23,17 і ГВ 36,61, тепло — два виконавці без ціни; Східниця 62,5 / 14,05; Новий Яричів 26,36 / 24,64; Красне 30,88 / 17,57; Славське 17,5 / 22,5 (рос.); Журавно — разом у note; Липівка — пункт Миколаївводоканалу, а Тростянець — без; Підгірне — свій постачальник',
+    ($dbt['place']['r'] ?? '') === 'lv' && $dbt['kinds']['water']['supply'] === 20.89 && $dbt['kinds']['water']['drain'] === 23.17 && $dbt['kinds']['water']['hot'] === 36.61
+    && $dbt['kinds']['heat']['price'] === null && str_contains($dbt['kinds']['heat']['note'] ?? '', '629,64') && str_contains($dbt['kinds']['heat']['note'] ?? '', '2474,41')
+    && $shd['kinds']['water']['supply'] === 62.5 && $shd['kinds']['water']['drain'] === 14.05 && $nyr['kinds']['water']['drain'] === 24.64
+    && ($krs['place']['r'] ?? '') === 'lv' && $krs['kinds']['water']['supply'] === 30.88 && ($slv['place']['r'] ?? '') === 'lv' && $slv['kinds']['water']['drain'] === 22.5
+    && $zhr['kinds']['water']['supply'] === null && str_contains($zhr['kinds']['water']['note'] ?? '', '56,04')
+    && str_contains($lpv['kinds']['water']['org'] ?? '', 'Миколаївводоканал') && $lpv['kinds']['water']['supply'] === 33.84 && !str_contains($trs['kinds']['water']['org'] ?? '', 'Миколаївводоканал')
+    && str_contains($pgr['kinds']['water']['org'] ?? '', 'Миклашів') && $pgr['kinds']['water']['drain'] === 5.13,
+    [$dbt['kinds'] ?? $dbt, $krs['place'] ?? $krs, $slv['place'] ?? $slv, $lpv['place'] ?? $lpv, $trs['place'] ?? $trs, $pgr['place'] ?? $pgr]);
   $pd2 =$v('Южный, Кирова 5'); $mk = $v('Миколаївка, Київська обл.');
   ok('однакові назви в областях: без області — Харківщина першою, Одещина в «Не той?»; «Миколаївка, Київська обл.» — лише дві київські',
     ($pd2['place']['r'] ?? '') === 'kh' && in_array('od', array_column($pd2['alts'] ?? [], 'r'), true) && !$mk['found'] && count($mk['candidates']) === 2 && $mk['candidates'][0]['oblast'] === 'Київська', [$pd2['alts'] ?? $pd2, $mk['candidates'] ?? $mk]);
