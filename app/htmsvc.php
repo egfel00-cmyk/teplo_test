@@ -726,7 +726,23 @@ final class HtmSpr {
    *  плюс публичные тарифы (грн/Гкал, абонплата). formula — витрата по квартирі = різниця + втрати × S_кв / S_буд (Методика № 315);
    *  tariff — нараховано / витрата по місяцях; paid — сколько месяцев «надходження» (тот же или следующий месяц) = нараховано + абонплата − пільга;
    *  calc — наш расчёт приложения (hsprCalib + costOf: різниця × (1 + k) × тариф + абонплата) против суммы ХТМ, ошибка в % по месяцам. */
+  /** «Площа будинку» в довідці буває неможливою — живий кабінет 08.11: у листопаді й січні двозначна (як квартира), в інші місяці чотиризначна.
+   *  Тоді S_кв/S_буд ≈ 1 замість ≈ 0,01 і частка будинку «× S» завищена в ~100 разів. Будинок менший за 3 квартири — описка: беремо медіану
+   *  нормальних місяців. → [рядки з виправленою площею, [ym…] виправлених, cv нормальних площ %]. */
+  public static function fixArea(array $rows): array {
+    $nn = fn($r, $k) => isset($r[$k]) && is_numeric($r[$k]) ? (float)$r[$k] : null;
+    $odd = fn($r) => $nn($r, 'sHouse') !== null && $nn($r, 'sFlat') > 0 && $nn($r, 'sHouse') < 3 * $nn($r, 'sFlat');
+    $ok = []; foreach ($rows as $r) if ($nn($r, 'sHouse') > 0 && !$odd($r)) $ok[] = $nn($r, 'sHouse');
+    if (!$ok) return [$rows, [], null];
+    sort($ok); $n = count($ok); $med = $n % 2 ? $ok[intdiv($n, 2)] : ($ok[$n / 2 - 1] + $ok[$n / 2]) / 2;
+    $m = array_sum($ok) / $n; $cv = $n > 1 && $m > 0 ? round(sqrt(array_sum(array_map(fn($x) => ($x - $m) ** 2, $ok)) / ($n - 1)) / $m * 100, 2) : null;
+    $fixed = [];
+    foreach ($rows as &$r) if ($odd($r)) { $r['sHouse'] = $med; $fixed[] = (string)$r['ym']; }
+    unset($r);
+    return [$rows, $fixed, $cv];
+  }
   public static function check(array $rows, array $own = []): array {
+    [$rows, $areaFix, $areaCv] = self::fixArea($rows);
     $nn = fn($r, $k) => isset($r[$k]) && is_numeric($r[$k]) ? (float)$r[$k] : null;
     $pc = fn(float $a, float $b) => $b != 0.0 ? round(($a - $b) / abs($b) * 100, 1) : null;
     $sum = fn($r) => ($nn($r, 'cost') ?? 0) + ($nn($r, 'abon') ?? 0) - max(0, $nn($r, 'lgota') ?? 0);
@@ -775,7 +791,9 @@ final class HtmSpr {
     return ['units' => array_values(array_unique(array_filter(array_map(fn($r) => $r['unit'] ?? null, $rows)))), 'curPrev' => ['of' => $cpn, 'ok' => $cp], 'hyp' => $hyp, 'toFlat' => $rat,
       's' => ($s0 = $q($rows[count($rows) - 1])[3]) !== null ? round($s0, 5) : null, 'formula' => $fo, 'tariff' => $tar, 'abon' => array_values(array_unique(array_filter(array_map(fn($r) => $nn($r, 'abon'), $rows), fn($v) => $v !== null))),
       'lgota' => count(array_filter($rows, fn($r) => $nn($r, 'lgota') > 0)), 'share' => $share, 'k' => round($k, 3), 'paid' => $paid,
-      'calc' => ['err' => $calc, 'max' => $ce ? max($ce) : null] + ($nb ? ['bld' => $nb] : [])] + ($own ? ['own' => self::ownFit($rows, $own)] : []);
+      'calc' => ['err' => $calc, 'max' => $ce ? max($ce) : null] + ($nb ? ['bld' => $nb] : []),
+      // площа будинку: які місяці виправлено (описка ХТМ) і чи стала вона в інші місяці (cv %)
+      'area' => ['fixed' => $areaFix, 'cv' => $areaCv]] + ($own ? ['own' => self::ownFit($rows, $own)] : []);
   }
   /** Тепло свого лічильника за місяць (Гкал) по журналу кабінету: кінець місяця — останні показання з датою в цьому місяці (same),
    *  у наступному (next) або лінійно на 1-ше число наступного (interp); відхилені — не беремо. → [ym => e] */
@@ -862,7 +880,14 @@ final class HtmSpr {
       asort($loo);
       $hm = []; foreach ($hy as $k => $a) $hm[$k] = round($med($a), 1); asort($hm);
       $rr = []; foreach ($ra as $k => $a) $rr[$k] = ['med' => round($med($a), 3), 'cv' => $cv($a)];
-      $out['al'][$al] = ['iv' => count($iv), 'months' => array_sum(array_column($iv, 'n')), 'over' => count($iv) - $neg, 'hyp' => $hm, 'ratio' => $rr] + ($loo ? ['loo' => $loo, 'money' => $mon] : []);
+      // по проміжках (без чисел людей): місяці, своє — % від витрати ХТМ, частка понад своє відносно кожної основи — у разах від медіани
+      $ivs = [];
+      foreach ($iv as $i) {
+        $x = $i['v'] - $i['e']; $row = ['ms' => implode(',', $i['ms']), 'own%' => round($i['e'] / $i['v'] * 100, 1)];
+        foreach ($B as $k => $f) { $b0 = $f($i); $m0 = $rr[$k]['med'] ?? null; if ($b0 > 0 && $m0) $row[$k] = round($x / $b0 / $m0, 2); }
+        $ivs[] = $row;
+      }
+      $out['al'][$al] = ['iv' => count($iv), 'months' => array_sum(array_column($iv, 'n')), 'over' => count($iv) - $neg, 'hyp' => $hm, 'ratio' => $rr, 'ivs' => $ivs] + ($loo ? ['loo' => $loo, 'money' => $mon] : []);
       $top = $hm ? reset($hm) : null; if ($top !== null && count($iv) >= 2 && ($best === null || $top < $best[1])) $best = [$al, $top, array_key_first($hm)];
       if ($loo && ($model === null || reset($loo) < $model['err'])) $model = ['al' => $al, 'basis' => array_key_first($loo), 'err' => reset($loo), 'money' => $mon[array_key_first($loo)] ?? null, 'own' => $loo['own'] ?? null, 'iv' => count($iv)];
     }

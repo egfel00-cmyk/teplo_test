@@ -2463,6 +2463,7 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
       bl_open_err: "Не вдалося відкрити файл — спробуйте ще раз.",
       mv_bad_file: 'Потрібне фото (JPEG, PNG, WebP) або PDF.', mv_too_big: 'Файл завеликий (до 12 МБ).', mv_del_q: 'Видалити документ?',
       pl_title: 'Мої квартири', pl_sub: 'У кожної квартири свої лічильники, показання, історія й рахунки.', pl_unnamed: 'Квартира {n}',
+      hsp_area_odd: 'Площа будинку в довідці цього місяця менша за три квартири — схоже на описку ХТМ. Частку будинку рахуємо з площею інших місяців.',
       af_city: 'Населений пункт', af_city_ph: 'Почніть писати: Харків, Львів, Бровари…', af_street: 'Вулиця, будинок, квартира', af_street_ph: 'вул. Сумська, 10, кв. 61',
       af_pick: 'Оберіть зі списку — так точно знайдемо постачальників і тарифи.', af_none: 'Такого населеного пункту не знайшли. Перевірте назву.', af_busy: 'Шукаємо…',
       af_where: '{k} · {h} громада, {d} район, {o} обл.', af_where_ky: 'місто · столиця', af_list: 'Населені пункти', af_default: 'Як у квартири «{p}» — можна змінити.',
@@ -3568,6 +3569,7 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
       bl_open_err: "Не удалось открыть файл — попробуйте ещё раз.",
       mv_bad_file: 'Нужно фото (JPEG, PNG, WebP) или PDF.', mv_too_big: 'Файл слишком большой (до 12 МБ).', mv_del_q: 'Удалить документ?',
       pl_title: 'Мои квартиры', pl_sub: 'У каждой квартиры свои счётчики, показания, история и счета.', pl_unnamed: 'Квартира {n}',
+      hsp_area_odd: 'Площадь дома в справке этого месяца меньше трёх квартир — похоже на описку ХТМ. Долю дома считаем с площадью других месяцев.',
       af_city: 'Населённый пункт', af_city_ph: 'Начните писать: Харьков, Львов, Бровары…', af_street: 'Улица, дом, квартира', af_street_ph: 'ул. Сумская, 10, кв. 61',
       af_pick: 'Выберите из списка — так точно найдём поставщиков и тарифы.', af_none: 'Такого населённого пункта не нашли. Проверьте название.', af_busy: 'Ищем…',
       af_where: '{k} · {h} громада, {d} район, {o} обл.', af_where_ky: 'город · столица', af_list: 'Населённые пункты', af_default: 'Как у квартиры «{p}» — можно изменить.',
@@ -10020,7 +10022,7 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
     return '<div class="panel" data-key="rec-htm"><h2>' + esc(t('hsp_title', { m: monthLabel(x.ym) })) + '</h2><ul class="list">' +
       // у довідці показання будинкового лічильника (живий кабінет 08.11: різниця в десятки разів більша за витрату квартири) — показуємо будинок окремо, без «частки»
       (bld ? li(t('hsp_bdiff'), fmtN(x.diff, 3) + ' Гкал') + (x.loss !== null ? li(t('hsp_loss'), fmtN(x.loss, 3) + ' Гкал') : '') + (x.house !== null && x.house !== undefined ? li(t('hsp_house'), fmtN(x.house, 3) + ' Гкал') : '')
-        + (x.sFlat && x.sHouse ? li(t('hsp_area'), fmtN(x.sFlat, 1) + ' / ' + fmtN(x.sHouse, 1) + ' м²') : '') : '') +
+        + (x.sFlat && x.sHouse ? li(t('hsp_area'), fmtN(x.sFlat, 1) + ' / ' + fmtN(x.sHouse, 1) + ' м²') + (x.sHouse < 3 * x.sFlat ? '<li class="small muted" data-key="hsp-area-odd">' + esc(t('hsp_area_odd')) + '</li>' : '') : '') : '') +
       (!bld && x.diff !== null ? li(t('hsp_diff'), fmtN(x.diff, 3) + ' Гкал') : '') +
       (sh !== null ? li(t('hsp_share') + (x.loss !== null && x.sFlat && x.sHouse ? ' (' + fmtN(x.loss, 1) + ' × ' + fmtN(x.sFlat, 1) + ' / ' + fmtN(x.sHouse, 1) + ' м²)' : ''), fmtN(sh, 3) + ' Гкал') : '') +
       // свій лічильник за місяць (журнал ХТМ) і частка будинку понад нього — як ХТМ рахує квартиру з лічильником (Методика № 315)
