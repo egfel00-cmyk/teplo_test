@@ -750,7 +750,9 @@ final class HtmSpr {
     $sd = array_sum(array_map(fn($r) => $nn($r, 'diff'), $hr)); $sl = array_sum(array_map(fn($r) => $nn($r, 'flat') - $nn($r, 'diff'), $hr));
     $k = $sd > 0 && count($hr) >= 2 ? $sl / $sd : 0.0; $ab = null; foreach ($rows as $r) if ($nn($r, 'abon') > 0) $ab = $nn($r, 'abon');
     $calc = [];
-    if ($tm) foreach ($rows as $r) { $d = $nn($r, 'diff'); $s = $sum($r); if ($d !== null && $d >= 0 && $s > 0) $calc[$r['ym']] = $pc($d * (1 + $k) * $tm + ($ab ?? 0), $s); }
+    // строки з будинковим лічильником (різниця втричі й більше за витрату квартири) так не рахуються — їх перевіряє own.model (свій лічильник + частка будинку)
+    $bld = fn($r) => $nn($r, 'diff') !== null && $nn($r, 'flat') > 0 && $nn($r, 'diff') > $nn($r, 'flat') * 3; $nb = count(array_filter($rows, $bld));
+    if ($tm) foreach ($rows as $r) { $d = $nn($r, 'diff'); $s = $sum($r); if ($d !== null && $d >= 0 && $s > 0 && !$bld($r)) $calc[$r['ym']] = $pc($d * (1 + $k) * $tm + ($ab ?? 0), $s); }
     $ce = array_map('abs', array_filter($calc, fn($v) => $v !== null));
     // что на самом деле в колонках (живая довідка 08.11: різниця в десятки раз больше витрати): гипотезы витрати по квартирі — медиана |ошибки| в %
     $q = fn($r) => [$nn($r, 'diff'), $nn($r, 'loss'), $nn($r, 'house'), ($nn($r, 'sHouse') ?? 0) > 0 ? ($nn($r, 'sFlat') ?? 0) / $nn($r, 'sHouse') : null, $nn($r, 'flat')];
@@ -769,11 +771,38 @@ final class HtmSpr {
     return ['units' => array_values(array_unique(array_filter(array_map(fn($r) => $r['unit'] ?? null, $rows)))), 'curPrev' => ['of' => $cpn, 'ok' => $cp], 'hyp' => $hyp, 'toFlat' => $rat,
       's' => ($s0 = $q($rows[count($rows) - 1])[3]) !== null ? round($s0, 5) : null, 'formula' => $fo, 'tariff' => $tar, 'abon' => array_values(array_unique(array_filter(array_map(fn($r) => $nn($r, 'abon'), $rows), fn($v) => $v !== null))),
       'lgota' => count(array_filter($rows, fn($r) => $nn($r, 'lgota') > 0)), 'share' => $share, 'k' => round($k, 3), 'paid' => $paid,
-      'calc' => ['err' => $calc, 'max' => $ce ? max($ce) : null]] + ($own ? ['own' => self::ownFit($rows, $own)] : []);
+      'calc' => ['err' => $calc, 'max' => $ce ? max($ce) : null] + ($nb ? ['bld' => $nb] : [])] + ($own ? ['own' => self::ownFit($rows, $own)] : []);
   }
   /** Тепло свого лічильника за місяць (Гкал) по журналу кабінету: кінець місяця — останні показання з датою в цьому місяці (same),
    *  у наступному (next) або лінійно на 1-ше число наступного (interp); відхилені — не беремо. → [ym => e] */
   public static function ownMonths(array $own, string $al): array {
+    $end = self::ownEnds($own, $al);
+    $out = []; foreach ($end as $m => $e) { $pm = date('Y-m', strtotime($m . '-01 -1 month')); if (isset($end[$pm]) && $e >= $end[$pm]) $out[$m] = $e - $end[$pm]; }
+    return $out;
+  }
+  /** Проміжки між показаннями свого лічильника — і через пропущені місяці (до 4): живий журнал 08.11 — 13 записів, а сусідніх місяців у довідці лише 1.
+   *  Лише місяці, які є в довідці з витратою. → [{ms: [ym…], e: своє за проміжок, v: Σ витрата, D/L/H: Σ різниця/втрати/усього × S_кв/S_буд, sf, money: Σ нараховано + абонплата − пільга, cost, n}] */
+  public static function ownIntervals(array $rows, array $own, string $al): array {
+    $nn = fn($r, $k) => isset($r[$k]) && is_numeric($r[$k]) ? (float)$r[$k] : null;
+    $by = []; foreach ($rows as $r) if (isset($r['ym']) && $nn($r, 'flat') !== null) $by[$r['ym']] = $r;
+    $end = self::ownEnds($own, $al); $ks = array_keys($end); $out = [];
+    for ($i = 1; $i < count($ks); $i++) {
+      [$a, $b] = [$ks[$i - 1], $ks[$i]]; $de = $end[$b] - $end[$a]; if ($de < 0) continue;
+      $ms = []; for ($m = date('Y-m', strtotime($a . '-01 +1 month')); $m <= $b && count($ms) <= 4; $m = date('Y-m', strtotime($m . '-01 +1 month'))) $ms[] = $m;
+      if (count($ms) > 4 || array_filter($ms, fn($m) => !isset($by[$m]))) continue;
+      $iv = ['ms' => $ms, 'e' => $de, 'v' => 0.0, 'D' => 0.0, 'L' => 0.0, 'H' => 0.0, 'sf' => null, 'money' => 0.0, 'cost' => 0.0, 'n' => count($ms)];
+      foreach ($ms as $m) {
+        $r = $by[$m]; $sh = $nn($r, 'sHouse'); $sf = $nn($r, 'sFlat'); $s = $sh > 0 && $sf !== null ? $sf / $sh : 0.0;
+        $iv['v'] += $nn($r, 'flat'); $iv['D'] += ($nn($r, 'diff') ?? 0) * $s; $iv['L'] += ($nn($r, 'loss') ?? 0) * $s; $iv['H'] += ($nn($r, 'house') ?? 0) * $s;
+        if ($sf > 0) $iv['sf'] = $sf;
+        $iv['cost'] += $nn($r, 'cost') ?? 0; $iv['money'] += ($nn($r, 'cost') ?? 0) + ($nn($r, 'abon') ?? 0) - max(0, $nn($r, 'lgota') ?? 0);
+      }
+      if ($iv['v'] > 0) $out[] = $iv;
+    }
+    return $out;
+  }
+  /** Кінці місяців свого лічильника [ym => Гкал] (по зростанню): same — останні показання з датою в цьому місяці, next — у наступному, interp — лінійно на 1-ше. */
+  public static function ownEnds(array $own, string $al): array {
     $p = array_values(array_filter($own, fn($r) => ($r['status'] ?? '') !== 'rejected' && isset($r['date'], $r['energy']) && is_numeric($r['energy'])));
     usort($p, fn($a, $b) => strcmp($a['date'], $b['date'])); if (count($p) < 2) return [];
     $end = [];
@@ -786,39 +815,55 @@ final class HtmSpr {
         if ($lo && $hi && $t($hi['date']) > $t($lo['date']) && $t($hi['date']) - $t($lo['date']) <= 75) $end[$m] = (float)$lo['energy'] + ((float)$hi['energy'] - (float)$lo['energy']) * ($b - $t($lo['date'])) / ($t($hi['date']) - $t($lo['date']));
       }
     } else foreach ($p as $r) { $m = substr($r['date'], 0, 7); if ($al === 'next') $m = date('Y-m', strtotime($m . '-01 -1 month')); $end[$m] = (float)$r['energy']; }
-    $out = []; foreach ($end as $m => $e) { $pm = date('Y-m', strtotime($m . '-01 -1 month')); if (isset($end[$pm]) && $e >= $end[$pm]) $out[$m] = $e - $end[$pm]; }
-    return $out;
+    ksort($end); return $end;
   }
   /** «Витрата по квартирі» проти свого лічильника (Методика № 315: свій лічильник + частка будинку) — без чисел людей: лише % похибки й сталість співвідношень.
-   *  hyp — медіана |похибки| в %; ratio — частка понад свій лічильник (v − e) відносно втрат × S, усього по будинку × S, свого тепла, площі квартири (на 1000 м²): медіана й розкид (cv);
-   *  scale — поточні показання довідки / свої (якщо це той самий лічильник в інших одиницях). Найсталіше співвідношення = формула ХТМ. */
+   *  Рахує по проміжках між показаннями (ownIntervals: і через пропущені місяці), а не лише по сусідніх місяцях.
+   *  hyp — медіана |похибки| в % для готових формул; ratio — частка понад свій лічильник x = v − e відносно втрат × S, усього по будинку × S, свого тепла,
+   *  площі квартири (на 1000 м² за місяць): медіана й розкид (cv); loo — та ж частка з коефіцієнтом, підібраним БЕЗ цього проміжку (чесна перевірка: яка основа
+   *  передбачає витрату ХТМ); money — гроші так само: (e + c × основа) × тариф + абонплата проти нарахованого ХТМ. Найменша loo = формула ХТМ.
+   *  scale — поточні показання довідки / свої (якщо це той самий лічильник в інших одиницях). */
   public static function ownFit(array $rows, array $own): array {
     $nn = fn($r, $k) => isset($r[$k]) && is_numeric($r[$k]) ? (float)$r[$k] : null;
     $med = function (array $a) { if (!$a) return null; sort($a); $n = count($a); return $n % 2 ? $a[intdiv($n, 2)] : ($a[$n / 2 - 1] + $a[$n / 2]) / 2; };
     $cv = function (array $a) { $n = count($a); if ($n < 2) return null; $m = array_sum($a) / $n; if (abs($m) < 1e-9) return null; $v = 0; foreach ($a as $x) $v += ($x - $m) ** 2; return round(sqrt($v / ($n - 1)) / abs($m) * 100, 1); };
-    $H = ['own' => fn($e, $d, $l, $h, $s, $sf) => $e, 'own+loss*s' => fn($e, $d, $l, $h, $s, $sf) => $e + $l * $s, 'own+house*s' => fn($e, $d, $l, $h, $s, $sf) => $e + $h * $s,
-      'own+diff*s' => fn($e, $d, $l, $h, $s, $sf) => $e + $d * $s, 'own/4.1868' => fn($e, $d, $l, $h, $s, $sf) => $e / 4.1868, 'own*0.86' => fn($e, $d, $l, $h, $s, $sf) => $e * 0.86,
-      'own/4.1868+loss*s' => fn($e, $d, $l, $h, $s, $sf) => $e / 4.1868 + $l * $s, 'own*0.86+loss*s' => fn($e, $d, $l, $h, $s, $sf) => $e * 0.86 + $l * $s];
-    $R = ['loss*s' => fn($x, $e, $d, $l, $h, $s, $sf) => $l !== null && $s ? $x / ($l * $s) : null, 'house*s' => fn($x, $e, $d, $l, $h, $s, $sf) => $h !== null && $s ? $x / ($h * $s) : null,
-      'own' => fn($x, $e, $d, $l, $h, $s, $sf) => $e > 0 ? $x / $e : null, 'area' => fn($x, $e, $d, $l, $h, $s, $sf) => $sf > 0 ? $x / $sf * 1000 : null];
+    // готові формули на сумах проміжку: e — своє, D/L/H — Σ різниця/втрати/усього по будинку × S_кв/S_буд
+    $H = ['own' => fn($i) => $i['e'], 'own+loss*s' => fn($i) => $i['e'] + $i['L'], 'own+house*s' => fn($i) => $i['e'] + $i['H'], 'own+diff*s' => fn($i) => $i['e'] + $i['D'],
+      'own/4.1868' => fn($i) => $i['e'] / 4.1868, 'own*0.86' => fn($i) => $i['e'] * 0.86, 'own/4.1868+loss*s' => fn($i) => $i['e'] / 4.1868 + $i['L'], 'own*0.86+loss*s' => fn($i) => $i['e'] * 0.86 + $i['L']];
+    // основи частки понад свій лічильник: x ≈ c × основа
+    $B = ['loss*s' => fn($i) => $i['L'], 'house*s' => fn($i) => $i['H'], 'own' => fn($i) => $i['e'], 'area' => fn($i) => $i['sf'] > 0 ? $i['sf'] * $i['n'] / 1000 : 0.0];
+    $tv = []; foreach ($rows as $r) { $f = $nn($r, 'flat'); $c = $nn($r, 'cost'); if ($f > 0 && $c > 0 && $c / $f > 300 && $c / $f < 10000) $tv[] = $c / $f; }
+    $tar = $med($tv); $ab = null; foreach ($rows as $r) if ($nn($r, 'abon') > 0) $ab = $nn($r, 'abon');
     $out = ['n' => count($own), 'from' => $own ? substr((string)$own[0]['date'], 0, 7) : null, 'to' => $own ? substr((string)$own[count($own) - 1]['date'], 0, 7) : null,
       'rejected' => count(array_filter($own, fn($r) => ($r['status'] ?? '') === 'rejected')), 'al' => []];
-    $best = null;
+    $best = null; $model = null;
     foreach (['same', 'next', 'interp'] as $al) {
-      $em = self::ownMonths($own, $al); $hy = []; $ra = []; $n = 0; $neg = 0;
-      foreach ($rows as $r) {
-        $e = $em[$r['ym']] ?? null; $v = $nn($r, 'flat'); if ($e === null || !($v > 0)) continue; $n++;
-        [$d, $l, $h, $sh, $sf] = [$nn($r, 'diff'), $nn($r, 'loss'), $nn($r, 'house'), $nn($r, 'sHouse'), $nn($r, 'sFlat')]; $s = $sh > 0 && $sf !== null ? $sf / $sh : null;
-        foreach ($H as $k => $f) { if (str_contains($k, '*s') && ($s === null || (str_contains($k, 'loss') ? $l : (str_contains($k, 'house') ? $h : $d)) === null)) continue; $hy[$k][] = abs(($f($e, $d, $l, $h, $s, $sf) - $v) / $v * 100); }
-        $x = $v - $e; if ($x < 0) $neg++;
-        foreach ($R as $k => $f) { $q = $f($x, $e, $d, $l, $h, $s, $sf); if ($q !== null) $ra[$k][] = $q; }
+      $iv = self::ownIntervals($rows, $own, $al); $hy = []; $ra = []; $neg = 0;
+      foreach ($iv as $i) {
+        foreach ($H as $k => $f) $hy[$k][] = abs(($f($i) - $i['v']) / $i['v'] * 100);
+        $x = $i['v'] - $i['e']; if ($x < 0) $neg++;
+        foreach ($B as $k => $f) { $b = $f($i); if ($b > 0) $ra[$k][] = $x / $b; }
       }
+      $loo = []; $mon = [];
+      if (count($iv) >= 2) foreach ($B as $k => $f) {
+        $es = []; $ms = [];
+        foreach ($iv as $j => $i) {
+          $sx = 0.0; $sb = 0.0; foreach ($iv as $j2 => $i2) if ($j2 !== $j && $f($i2) > 0) { $sx += $i2['v'] - $i2['e']; $sb += $f($i2); }
+          if ($sb <= 0 || !($f($i) > 0)) continue;
+          $p = $i['e'] + $sx / $sb * $f($i); $es[] = abs($p - $i['v']) / $i['v'] * 100;
+          if ($tar && $i['money'] > 0) $ms[] = abs($p * $tar + ($ab ?? 0) * $i['n'] - $i['money']) / $i['money'] * 100;
+        }
+        if ($es) $loo[$k] = round($med($es), 1); if ($ms) $mon[$k] = round($med($ms), 1);
+      }
+      asort($loo);
       $hm = []; foreach ($hy as $k => $a) $hm[$k] = round($med($a), 1); asort($hm);
       $rr = []; foreach ($ra as $k => $a) $rr[$k] = ['med' => round($med($a), 3), 'cv' => $cv($a)];
-      $out['al'][$al] = ['months' => $n, 'over' => $n - $neg, 'hyp' => $hm, 'ratio' => $rr];
-      $top = $hm ? reset($hm) : null; if ($top !== null && $n >= 2 && ($best === null || $top < $best[1])) $best = [$al, $top, array_key_first($hm)];
+      $out['al'][$al] = ['iv' => count($iv), 'months' => array_sum(array_column($iv, 'n')), 'over' => count($iv) - $neg, 'hyp' => $hm, 'ratio' => $rr] + ($loo ? ['loo' => $loo, 'money' => $mon] : []);
+      $top = $hm ? reset($hm) : null; if ($top !== null && count($iv) >= 2 && ($best === null || $top < $best[1])) $best = [$al, $top, array_key_first($hm)];
+      if ($loo && ($model === null || reset($loo) < $model['err'])) $model = ['al' => $al, 'basis' => array_key_first($loo), 'err' => reset($loo), 'money' => $mon[array_key_first($loo)] ?? null, 'own' => $loo['own'] ?? null, 'iv' => count($iv)];
     }
     if ($best) $out['best'] = ['al' => $best[0], 'hyp' => $best[2], 'err' => $best[1]];
+    if ($model) $out['model'] = $model;
     // ті самі це показання, що в довідці (поточні), лише в інших одиницях?
     $em = []; foreach ($own as $r) if (($r['status'] ?? '') !== 'rejected') $em[substr((string)$r['date'], 0, 7)] = (float)$r['energy'];
     $sc = []; foreach ($rows as $r) { $c = $nn($r, 'cur'); if ($c !== null && ($em[$r['ym']] ?? 0) > 0) $sc[] = $c / $em[$r['ym']]; }

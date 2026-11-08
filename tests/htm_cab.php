@@ -97,6 +97,19 @@ $fit = HtmSpr::ownFit($sh['rows'], $own); $hj = json_encode($fit, JSON_UNESCAPED
 ok('формула ХТМ із довідки й журналу: найкраще — свій лічильник + втрати × S_кв/S_буд (похибка ~0 %), кінець місяця — показання в цьому місяці; відхилені не беремо; без чисел людей',
   ($fit['best']['hyp'] ?? '') === 'own+loss*s' && ($fit['best']['al'] ?? '') === 'same' && ($fit['best']['err'] ?? 99) < 0.1 && ($fit['al']['same']['months'] ?? 0) === 6
   && ($fit['al']['same']['ratio']['loss*s']['cv'] ?? 99) < 0.5 && ($fit['al']['same']['hyp']['own'] ?? 0) > 5 && !preg_match('/energy|date|3012\.5|512\.1|56\.6|12\.15/', $hj), $fit);
+// 60-я: живой журнал — 13 записей, но с пропусками месяцев: сусідніх місяців у довідці лише 1 → сравниваем по проміжках між показаннями (через пропуски до 4 міс.)
+$sB = 56.6 / 5700; $hB = ['2025-11' => 40.0, '2025-12' => 46.0, '2026-01' => 49.0, '2026-02' => 28.0, '2026-03' => 11.0]; $eB = ['2025-11' => 0.5, '2025-12' => 1.0, '2026-01' => 1.4, '2026-02' => 1.3, '2026-03' => 0.9];
+$mkRows = function (callable $v) use ($sB, $hB, $eB) { $o = [['ym' => '2025-10', 'flat' => 0.05, 'cost' => 77.0, 'abon' => 29.4, 'sFlat' => 56.6]];
+  foreach ($hB as $m => $h) { $fl = round($v($eB[$m], $h * $sB), 5); $o[] = ['ym' => $m, 'diff' => $h, 'house' => $h, 'loss' => ['2025-11' => 5.0, '2025-12' => 4.2, '2026-01' => 3.6, '2026-02' => 3.9, '2026-03' => 2.2][$m], 'sHouse' => 5700.0, 'sFlat' => 56.6, 'flat' => $fl, 'cost' => round($fl * 1539.5, 2), 'abon' => 29.4, 'lgota' => null]; } return $o; };
+$jB = [['2025-10-20', 10.0], ['2025-12-15', 11.5], ['2026-01-15', 12.9], ['2026-02-02', 50.0, 'rejected'], ['2026-03-14', 15.1], ['2026-04-15', 15.2]];
+$jB = array_map(fn($r) => ['date' => $r[0], 'energy' => $r[1], 'status' => $r[2] ?? 'ok'], $jB);
+$fB = HtmSpr::ownFit($mkRows(fn($e, $hs) => $e + 1.1 * $hs), $jB); $sm = $fB['al']['same'] ?? [];
+ok('журнал с пропусками: проміжки листопад–грудень, січень, лютий–березень (3 проміжки, 5 місяців; квітня в довідці нема) → формула «своє + 1,1 × будинок × S_кв/S_буд» перевіркою без себе (~0 %), гроші так само; «своє × (1 + k)» хуже',
+  ($sm['iv'] ?? 0) === 3 && ($sm['months'] ?? 0) === 5 && ($fB['model']['al'] ?? '') === 'same' && ($fB['model']['basis'] ?? '') === 'house*s' && ($fB['model']['err'] ?? 99) < 0.1
+  && ($fB['model']['money'] ?? 99) < 0.2 && ($sm['loo']['own'] ?? 0) > 3 && ($sm['ratio']['house*s']['cv'] ?? 99) < 0.1, $fB);
+$fC = HtmSpr::ownFit($mkRows(fn($e, $hs) => $e * 1.2), $jB);
+ok('…а если ХТМ берёт процент от свого тепла — «own» (k = 20 %), без чисел людей', ($fC['model']['basis'] ?? '') === 'own' && ($fC['model']['err'] ?? 99) < 0.1
+  && !preg_match('/energy|date|5700|56\.6/', json_encode($fC)), $fC);
 stand('act=set&scenario=ok&today=2026-11-10&robot_delay=0&spr=');
 $bad = array_filter(array_column(array_slice($h->w->steps, 0), 1), fn($x) => preg_match('~logout|/add|remove|settings~', $x));
 ok('…только GET и не трогает add/remove/settings', !array_filter($h->w->steps, fn($s) => $s[0] !== 'GET' && !str_contains($s[1], '/cabinet/login')) && !$bad, $h->w->steps);
