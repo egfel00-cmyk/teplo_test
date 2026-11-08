@@ -186,6 +186,8 @@ final class HtmSvc {
       // осмотр кабинета (только чтение): где квитанция — меню, карточка рахунку, платежі; сбой осмотра «Перевірити» не ломает
       $pg = []; if (!empty($cab->home['url'])) $pg[(string)$cab->home['url']] = (string)$cab->home['body']; $pg[(string)$h['url']] = (string)$h['html'];
       try { $ex = $cab->explore($pg, $acc['acc'], $acc['sur']); } catch (Throwable $e) { $ex = ['err' => CabWeb::mask($e->getMessage(), 80)]; }
+      // «Довідка по теплу» — только структура таблицы (заголовки, маски ячеек), без чисел
+      try { $sp = $cab->sprTeplo($acc['acc'], $acc['sur']); if ($sp) HtmSpr::saveShape($sp); } catch (Throwable $e) {}
     }
     catch (CabErr $e) { self::diag(['op' => $op, 'user' => $uid, 'result' => $e->err, 'steps' => $cab->w->steps]); throw self::cabErr($e); }
     finally { $cab->logout(); }
@@ -197,7 +199,7 @@ final class HtmSvc {
   /** «Перевірити» без кнопки: владелец неделю не нажимал (06.11 17:26 — последний раз, а окно дат, плашки и журнал нужны до первого живого внесения).
    *  Раз на LOOK_V (сайт не ответил — ещё до 3 раз, через 10 мин) сервер сам читает кабинеты ХТМ УЧЁТОК АДМИНА (config.php → admins), как VkStatus::recheck
    *  у Водоканала: только чтение, ничего не вносит; рахунок — первый из кабинета. Итог — /api/health → htmcab.seen (by: cron) и htmcab.look. → итоги или null. */
-  const LOOK_V = 3;   // 2: осмотр кабинета — где квитанция (explore), 07.11.2026; 3: + «Довідки щодо нарахувань» (spravka, sprvds) — есть ли прошлые рахунки
+  const LOOK_V = 4;   // 2: осмотр кабинета — где квитанция (explore), 07.11.2026; 3: + «Довідки щодо нарахувань» (spravka, sprvds) — есть ли прошлые рахунки; 4: + структура «Довідки по теплу» (08.11)
   public static function lookFile(): string { return Cfg::data() . '/cache/htm_look.json'; }
   public static function lookState(): array { $j = json_decode((string)@file_get_contents(self::lookFile()), true); return is_array($j) ? $j : []; }
   public static function lookAdmins(?int $now = null): ?array {
@@ -677,7 +679,14 @@ final class HtmSpr {
     $rs = $sp['rows']; @file_put_contents(self::dir() . '/_last.json', json_encode(['at' => time(), 'rows' => count($rs), 'cols' => $sp['cols'], 'fmt' => $sp['fmt'],
       'from' => $rs ? $rs[0]['ym'] : null, 'to' => $rs ? $rs[count($rs) - 1]['ym'] : null,
       // какие поля в строках заполнены (сколько строк с числом) — проверить разбор на живом без самих чисел
-      'filled' => (object)array_map(fn($k) => count(array_filter($rs, fn($r) => isset($r[$k]) && $r[$k] !== null)), array_combine($sp['cols'], $sp['cols']))], JSON_UNESCAPED_UNICODE), LOCK_EX);
+      'filled' => (object)array_map(fn($k) => count(array_filter($rs, fn($r) => isset($r[$k]) && $r[$k] !== null)), array_combine($sp['cols'], $sp['cols'])),
+      'shape' => $sp['shape'] ?? null], JSON_UNESCAPED_UNICODE), LOCK_EX);
+  }
+  /** Только структура таблицы (осмотр кабинета админа, HtmSvc::look): в _last.json → shape, строки людей не трогаем. */
+  public static function saveShape(array $sp): void {
+    @mkdir(self::dir(), 0700, true); $f = self::dir() . '/_last.json'; $j = json_decode((string)@file_get_contents($f), true);
+    $j = is_array($j) ? $j : ['at' => time(), 'rows' => count($sp['rows']), 'cols' => $sp['cols'], 'fmt' => $sp['fmt']];
+    $j['shape'] = ($sp['shape'] ?? []) + ['at' => gmdate('c')]; @file_put_contents($f, json_encode($j, JSON_UNESCAPED_UNICODE), LOCK_EX);
   }
   /** Свої дані: [{place, at, rows}] */
   public static function mine(int $uid): array {

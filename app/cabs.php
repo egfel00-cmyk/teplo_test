@@ -713,7 +713,17 @@ final class HtmCab {
       $rows[] = $row;
     }
     usort($rows, fn($a, $b) => strcmp($a['ym'], $b['ym']));
-    return ['rows' => array_slice($rows, -36), 'cols' => array_keys($map), 'fmt' => $fmt];
+    // структура таблицы без чисел (живая довідка 08.11: втрати/по будинку скачут по месяцам — разобрать, где съезжают колонки):
+    // заголовки с colspan/rowspan, сколько строк шапки, по строкам — число ячеек и маски (цифры → #)
+    $sp = function ($n) { $c = (int)$n->getAttribute('colspan'); $r = (int)$n->getAttribute('rowspan'); return ($c > 1 ? ' [c' . $c . ']' : '') . ($r > 1 ? ' [r' . $r . ']' : ''); };
+    $heads = []; foreach ($x->query('.//th', $tb) as $th) $heads[] = mb_substr(CabWeb::sp($th->textContent), 0, 40) . $sp($th);
+    $shape = ['nc' => $nc, 'heads' => $heads, 'thRows' => $x->query('.//tr[th]', $tb)->length, 'map' => $map, 'rows' => []];
+    foreach ($x->query('.//tr[td]', $tb) as $i => $tr) {
+      if (count($shape['rows']) >= 8) break; $cs = [];
+      foreach ($x->query('./td', $tr) as $td) $cs[] = CabWeb::mask($td->textContent, 16) . $sp($td);
+      $shape['rows'][] = count($cs) . ': ' . implode(' | ', $cs);
+    }
+    return ['rows' => array_slice($rows, -36), 'cols' => array_keys($map), 'fmt' => $fmt, 'shape' => $shape];
   }
   public function billPage(string $acc, string $sur): ?array {
     $u = null;

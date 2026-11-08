@@ -44,6 +44,9 @@ $lu0 = HtmSvc::summary()['lastUser']; $jobs0 = (int)Db::one('SELECT COUNT(*) AS 
 $lk = HtmSvc::lookAdmins(); $hs = HtmSvc::summary();
 ok('cron look: кабинет админа прочитан, seen.by cron, ничего не внесено', $lk === ['ok'] && ($hs['seen']['by'] ?? '') === 'cron' && $hs['seen']['open'] === true && $hs['lastUser'] === $lu0
   && (int)Db::one('SELECT COUNT(*) AS c FROM cab_jobs')['c'] === $jobs0 && ($hs['look']['res'] ?? null) === ['ok'] && ($hs['n']->{'look ok'} ?? 0) === 1, [$lk, $hs['seen'] ?? null, $hs['look'] ?? null]);
+$shp = HtmSpr::summary()['shape'] ?? [];
+ok('…и структура «Довідки по теплу»: 14 заголовков, 1 строка шапки, строки — 14 ячеек масками без цифр (/api/health → htmSpr.shape)', count($shp['heads'] ?? []) === 14 && ($shp['thRows'] ?? 0) === 1
+  && count($shp['rows'] ?? []) === 6 && str_starts_with($shp['rows'][0] ?? '', '14: ##.#### | Гкал') && !preg_match('/\d/', preg_replace('/^\d+: /m', '', implode("\n", $shp['rows'] ?? []))) && ($shp['map']['flat'] ?? 0) === 9, $shp);
 ok('…второй раз на той же версии — не входим', HtmSvc::lookAdmins() === null && HtmSvc::lookAdmins(time() + 3600) === null);
 @unlink(HtmSvc::lookFile()); Cfg::set(['app_url' => 'https://teplo.example/', 'bot_token' => '1:TEST', 'htm_cab_base' => $BASE, 'cookie_secure' => false, 'admins' => ['emails' => ['boss@example.com'], 'telegram' => []]]);
 ok('…не админ — его кабинет cron не трогает', HtmSvc::lookAdmins() === [] && (HtmSvc::summary()['n']->{'look ok'} ?? 0) === 1);
