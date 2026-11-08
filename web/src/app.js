@@ -3583,7 +3583,13 @@
     // у довідці будинковий лічильник (живий кабінет 08.11) — частка будинку відносно свого лічильника квартири (журнал ХТМ або власні показання)
     // основа «площа»: частка будинку — Гкал за місяць (a × площа квартири), лише в місяці з теплом
     var mzk = null;
-    if (k === null) { var of = hsprOwnFit(); if (of) { k = of.k; n = of.n; if (of.basis === 'area') mzk = of.a * of.sf; } }
+    // 65-я, квитанції власника за 2024–2026: з лічильником ХТМ бере (своє + ЗБП) × тариф, ЗБП — 0,005–0,018 Гкал/міс. «Частка будинку» з довідки більша —
+    // це місяці за середнім (показання відхилені, лічильник знімали) або проміжок через літо: таку не беремо, лише ЗБП на м² (раніше завищувало історію вдвічі)
+    if (k === null) {
+      var of = hsprOwnFit(), sfl = rows.filter(function (x) { return x.sFlat > 0; }).slice(-1)[0], ar = sfl ? sfl.sFlat : R.num((place() || {}).area);
+      if (of && (of.basis === 'area' ? of.a <= R.C.ZBP_MAX_M2 : of.k <= 0.05)) { k = of.k; n = of.n; if (of.basis === 'area') mzk = of.a * of.sf; }
+      else if (rows.some(hsprBld) && ar > 0) { k = 0; mzk = R.C.ZBP_M2 * ar; }
+    }
     return { tariff: tr.length ? Math.round(tr[Math.floor(tr.length / 2)] * 100) / 100 : null, k: k, abon: ab ? ab.abon : null, n: n, mzk: mzk };
   }
   function tariffSet(v) { var p = place(); if (!p) { S.tariff = v; return; } p.prov = p.prov || {}; p.prov.heat = Object.assign({}, p.prov.heat || {}, { price: v, at: today() }); p.updatedAt = Date.now(); }
@@ -4039,6 +4045,9 @@
     var li = function (k, v, b) { return '<li><div class="grow small' + (b ? '' : ' muted') + '">' + esc(k) + '</div>' + (b ? '<b class="num">' + esc(v) + '</b>' : '<span class="num">' + esc(v) + '</span>') + '</li>'; };
     var tar = x.flat > 0 && x.cost !== null ? x.cost / x.flat : null, bld = hsprBld(x), sh = !bld && x.flat !== null && x.diff !== null ? x.flat - x.diff : null;
     var of = bld ? hsprOwnFit() : null, oe = of && of.e[x.ym] > 0 && x.flat >= of.e[x.ym] ? of.e[x.ym] : null;
+    // місяць за середнім: у журналі ХТМ немає прийнятих показань свого лічильника за цей місяць, або ХТМ нарахував помітно більше за «своє + ЗБП»
+    var ol = bld ? hsprOwnList() : [], inM = function (st) { return ol.filter(function (o) { return o.date && o.date.slice(0, 7) === x.ym && (st ? o.status === st : o.status !== 'rejected'); }); };
+    var rej = inM('rejected')[0], avg = bld && ol.length >= 2 && x.flat > 0 && (!inM().length || (oe !== null && x.flat - oe > Math.max(0.03, R.C.ZBP_MAX_M2 * (x.sFlat || 60))));
     return '<div class="panel" data-key="rec-htm"><h2>' + esc(t('hsp_title', { m: monthLabel(x.ym) })) + '</h2><ul class="list">' +
       // у довідці показання будинкового лічильника (живий кабінет 08.11: різниця в десятки разів більша за витрату квартири) — показуємо будинок окремо, без «частки»
       (bld ? li(t('hsp_bdiff'), fmtN(x.diff, 3) + ' Гкал') + (x.loss !== null ? li(t('hsp_loss'), fmtN(x.loss, 3) + ' Гкал') : '') + (x.house !== null && x.house !== undefined ? li(t('hsp_house'), fmtN(x.house, 3) + ' Гкал') : '')
@@ -4050,7 +4059,8 @@
       (x.flat !== null ? li(t('hsp_flat'), fmtN(x.flat, 3) + ' Гкал', true) : '') +
       (tar !== null ? li(t('hsp_tariff'), money(tar) + ' грн/Гкал') : '') +
       (x.cost !== null ? li(t('hsp_cost'), money(x.cost) + ' грн') : '') + (x.abon !== null ? li(t('hsp_abon'), money(x.abon) + ' грн') : '') +
-      (x.lgota > 0 ? li(t('hsp_lgota'), '−' + money(x.lgota) + ' грн') : '') + li(t('hsp_total'), money(hsprSum(x)) + ' грн', true) + '</ul>' +
+      (x.lgota > 0 ? li(t('hsp_lgota'), '−' + money(x.lgota) + ' грн') : '') + li(t('hsp_total'), money(hsprSum(x)) + ' грн', true) +
+      (avg ? '<li class="small muted" data-key="hsp-avg">' + esc(t('hsp_avg') + (rej ? ' ' + t('hsp_avg_rej', { d: fmtDate(rej.date), v: fmtN(rej.energy, 3) }) : '')) + '</li>' : '') + '</ul>' +
       (iv && iv.dE >= 0 ? '<p class="small muted">' + esc(t('hsp_ours', { s: money(iv.cost) })) + '</p>' : '') + '<p class="small muted">' + esc(t('hsp_src')) + '</p></div>';
   }
   /** Вкладки без единого счётчика в квартире — пусто и «Додати лічильник». */

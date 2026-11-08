@@ -53,18 +53,19 @@ const U = 'http://127.0.0.1:8013/', DATA = process.env.SITE_DATA || '/tmp/teplo_
   const panC = await p.textContent('[data-key=rec-htm]').catch(() => ''); await p.locator('[data-key=rec-htm]').screenshot({ path: '/tmp/shot_htmspr_own.png' }).catch(() => {});
   ok('картка лютого: «Ваш лічильник за місяць» 1,290, «Частка будинку понад ваш лічильник» 0,258, витрата 1,548; відхилені показання з журналу не беремо', /Ваш лічильник за місяць/.test(panC) && /1,290 Гкал/.test(panC)
     && /Частка будинку понад ваш лічильник/.test(panC) && /0,258 Гкал/.test(panC) && /1,548 Гкал/.test(panC) && !/Частка теплових втрат/.test(panC), panC);
+  ok('…і примітка: місяць, схоже, за середнім (своє + ЗБП менше, ніж нарахував ХТМ)', /за середнім/.test(panC), panC);
   await p.goto(U + '#rec-r3'); await wait(1500);
   const usedC = await p.textContent('[data-key=rec-used]').catch(() => '');
-  const gotC = Number((usedC.match(/≈\s*([\d\s ]+,\d\d)/) || [])[1]?.replace(/[\s ]/g, '').replace(',', '.')), expC = 0.53 * 1539.5 * 1.2 + 29.4;
-  ok('квітень (довідки ще немає): своє тепло × (1 + частка будинку 20 %) × 1539,50 + абонплата 29,40 (≈ ' + expC.toFixed(2) + ')', Math.abs(gotC - expC) < 0.6 && /частка будинку/.test(usedC), [gotC, usedC]);
+  const gotC = Number((usedC.match(/≈\s*([\d\s ]+,\d\d)/) || [])[1]?.replace(/[\s ]/g, '').replace(',', '.')), expC = (0.53 + 0.00025 * 56.6) * 1539.5 + 29.4;   // 65-я: частка 20 % свого тепла — не ЗБП (місяці за середнім), беремо лише ЗБП на м²
+  ok('квітень (довідки ще немає): «частка будинку» 20 % — не ЗБП, не беремо: (своє 0,53 + ЗБП 0,00025 × 56,6) × 1539,50 + 29,40 (≈ ' + expC.toFixed(2) + ')', Math.abs(gotC - expC) < 0.6 && /частка будинку/.test(usedC), [gotC, usedC]);
   // 60-я: живой кабинет — «своє × (1 + k)» не держится (перевірка без себе ~80 %), а частка на м² — лучше; приложение выбирает основу само
   const rowsD = rowsC.map(r => { const fl = Math.round((eM[r.ym] + 0.5) * 1e5) / 1e5; return Object.assign({}, r, { flat: fl, cost: Math.round(fl * 1539.5 * 100) / 100 }); });
   execFileSync('php', ['-r', `define('TEPLO',1); require 'app/core.php'; require 'app/htmsvc.php'; HtmSpr::save(${uid}, 'main', ['rows' => json_decode('${JSON.stringify(rowsD)}', true), 'own' => json_decode('${JSON.stringify(own)}', true), 'cols' => ['ym','flat','cost'], 'fmt' => ['ym' => '##.####', 'num' => '#.#####']]);`],
     { env: Object.assign({}, process.env, { SITE_DATA: DATA, SITE_BASE: '' }), cwd: path.join(__dirname, '../..') });
   await p.goto(U + '#rec-r1'); await wait(300); await p.reload(); await wait(2500); await p.goto(U + '#rec-r3'); await wait(1500);
   const usedD = await p.textContent('[data-key=rec-used]').catch(() => '');
-  const gotD = Number((usedD.match(/≈\s*([\d\s ]+,\d\d)/) || [])[1]?.replace(/[\s ]/g, '').replace(',', '.')), expD = (0.53 + 0.5) * 1539.5 + 29.4;
-  ok('частка будинку ~0,5 Гкал на місяць незалежно від свого тепла → основа «площа»: квітень = (0,53 + 0,5) × 1539,50 + 29,40 (≈ ' + expD.toFixed(2) + ')', Math.abs(gotD - expD) < 0.6 && /частка будинку/.test(usedD), [gotD, usedD]);
+  const gotD = Number((usedD.match(/≈\s*([\d\s ]+,\d\d)/) || [])[1]?.replace(/[\s ]/g, '').replace(',', '.')), expD = (0.53 + 0.00025 * 56.6) * 1539.5 + 29.4;   // 65-я: 0,5 Гкал/міс на 56,6 м² — у 20 разів більше за ЗБП із квитанцій
+  ok('частка будинку ~0,5 Гкал на місяць — не ЗБП (квитанції: 0,005–0,018): квітень = (0,53 + 0,00025 × 56,6) × 1539,50 + 29,40 (≈ ' + expD.toFixed(2) + ')', Math.abs(gotD - expD) < 0.6 && /частка будинку/.test(usedD), [gotD, usedD]);
   ok('без ошибок JS', !errs.length, errs);
   console.log('Итог: ' + pass + ' OK, ' + fail + ' FAIL'); await b.close(); process.exit(fail ? 1 : 0);
 })();
