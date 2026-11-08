@@ -1193,6 +1193,15 @@ ok('довідник: усі громади й пункти є в КАТОТТГ
     && $lsk['kinds']['water']['supply'] === null && str_contains($lsk['kinds']['water']['note'] ?? '', '195,40') && $ttb['kinds']['water']['supply'] === 30.0 && $ttb['kinds']['water']['drain'] === 30.0
     && $bsh['kinds']['water']['supply'] === null && str_contains($bsh['kinds']['water']['note'] ?? '', '50,00') && ($brz['place']['r'] ?? '') === 'od' && $brz['kinds']['water']['supply'] === null && str_contains($brz['kinds']['water']['note'] ?? '', '33,36'),
     [$kil['place'] ?? $kil, $shv['place'] ?? $shv, $bsh['place'] ?? $bsh, $brz['place'] ?? $brz]);
+  // 65-та сесія: Львівщина — сайти громад (gromada.org.ua: /sitemap/, рішення на rada.info)
+  $pus = $v('Пустомити, вул. Шевченка 1'); $mur = $v('Сороки-Львівські, вул. Польова 1'); $kul = $v('Куликов, ул. Шевченко 1'); $skl = $v('Сокільники, вул. Стрийська 1');
+  $prs = $v('Поршна, Солонківська громада'); $sln = $v('Солонка, вул. Шевченка 1'); $shc = $v('Щирець, вул. Шевченка 1');
+  ok('громади 65-ї: Пустомити 33,30 / 47,64 з 01.04.2026; Сороки-Львівські — КП «ЕкоУстрій» 33,01 / 21,30; Куликів (рос.) 30,55 без стоків; Сокільники — Львівводоканал, стоки з платіжки; Поршна — 12,45 (пункт), Солонка — без тарифу; Щирець — підказка в note',
+    ($pus['place']['r'] ?? '') === 'lv' && $pus['kinds']['water']['supply'] === 33.3 && $pus['kinds']['water']['drain'] === 47.64 && ($pus['kinds']['water']['from'] ?? '') === '2026-04-01'
+    && str_contains($mur['kinds']['water']['org'] ?? '', 'ЕкоУстрій') && $mur['kinds']['water']['drain'] === 21.3 && ($kul['place']['r'] ?? '') === 'lv' && $kul['kinds']['water']['supply'] === 30.55 && $kul['kinds']['water']['drain'] === null
+    && str_contains($skl['kinds']['water']['org'] ?? '', 'Львівводоканал') && $skl['kinds']['water']['drain'] === null && str_contains($prs['kinds']['water']['org'] ?? '', 'Винниківське') && $prs['kinds']['water']['supply'] === 12.45
+    && $sln['kinds']['water']['supply'] === null && ($sln['place']['r'] ?? '') === 'lv' && $shc['kinds']['water']['supply'] === null && str_contains($shc['kinds']['water']['note'] ?? '', 'Пустомитиводоканал'),
+    [$pus['place'] ?? $pus, $mur['place'] ?? $mur, $kul['place'] ?? $kul, $skl['place'] ?? $skl, $prs['place'] ?? $prs, $sln['place'] ?? $sln]);
   $pd2 =$v('Южный, Кирова 5'); $mk = $v('Миколаївка, Київська обл.');
   ok('однакові назви в областях: без області — Харківщина першою, Одещина в «Не той?»; «Миколаївка, Київська обл.» — лише дві київські',
     ($pd2['place']['r'] ?? '') === 'kh' && in_array('od', array_column($pd2['alts'] ?? [], 'r'), true) && !$mk['found'] && count($mk['candidates']) === 2 && $mk['candidates'][0]['oblast'] === 'Київська', [$pd2['alts'] ?? $pd2, $mk['candidates'] ?? $mk]);
