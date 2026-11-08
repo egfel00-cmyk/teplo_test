@@ -1188,11 +1188,22 @@ ok('довідник: усі громади й пункти є в КАТОТТГ
     && str_contains($pgr['kinds']['water']['org'] ?? '', 'Миклашів') && $pgr['kinds']['water']['drain'] === 5.13,
     [$dbt['kinds'] ?? $dbt, $krs['place'] ?? $krs, $slv['place'] ?? $slv, $lpv['place'] ?? $lpv, $trs['place'] ?? $trs, $pgr['place'] ?? $pgr]);
   $kil = $v('Килия, ул. Мира 1'); $shv = $v('Шевченкове, Кілійська громада'); $lsk = $v('Ліски, Кілійська громада'); $ttb = $v('Татарбунари, вул. Гульченка 16'); $bsh = $v('Баштанівка, Татарбунарська громада'); $brz = $v('Березівка, Одеська обл., вул. Миру 1');
-  ok('Одещина 64-ї: Кілія 37,42 / 35,12 (рос.), Шевченкове — пункт 85,08, Ліски — за домогосподарство в note; Татарбунари 30 / 30, Баштанівка — дві ціни в note; Березівка — без тарифу, орієнтир 2023 у note',
-    ($kil['place']['r'] ?? '') === 'od' && $kil['kinds']['water']['supply'] === 37.42 && $kil['kinds']['water']['drain'] === 35.12 && $shv['kinds']['water']['supply'] === 85.08
-    && $lsk['kinds']['water']['supply'] === null && str_contains($lsk['kinds']['water']['note'] ?? '', '195,40') && $ttb['kinds']['water']['supply'] === 30.0 && $ttb['kinds']['water']['drain'] === 30.0
-    && $bsh['kinds']['water']['supply'] === null && str_contains($bsh['kinds']['water']['note'] ?? '', '50,00') && ($brz['place']['r'] ?? '') === 'od' && $brz['kinds']['water']['supply'] === null && str_contains($brz['kinds']['water']['note'] ?? '', '33,36'),
+  // 66-та: Кілія — рішення № 202 від 31.03.2026; Татарбунари — з 01.01.2026 (№ 281); Березівка — рішення № 08-134 (2021)
+  ok('Одещина 64-ї/66-ї: Кілія 63,41 / 57,65 (рос.), Шевченкове — пункт 85,08, Ліски — за домогосподарство в note (211,65); Татарбунари 35 / 35 з 01.01.2026, Баштанівка — дві ціни в note; Березівка — 15,00 (2021, check), орієнтир 2023 у note',
+    ($kil['place']['r'] ?? '') === 'od' && $kil['kinds']['water']['supply'] === 63.41 && $kil['kinds']['water']['drain'] === 57.65 && $shv['kinds']['water']['supply'] === 85.08
+    && $lsk['kinds']['water']['supply'] === null && str_contains($lsk['kinds']['water']['note'] ?? '', '211,65') && $ttb['kinds']['water']['supply'] === 35.0 && $ttb['kinds']['water']['drain'] === 35.0
+    && ($ttb['kinds']['water']['from'] ?? '') === '2026-01-01' && $bsh['kinds']['water']['supply'] === null && str_contains($bsh['kinds']['water']['note'] ?? '', '60') && ($brz['place']['r'] ?? '') === 'od'
+    && $brz['kinds']['water']['supply'] === 15.0 && !empty($brz['kinds']['water']['check']) && str_contains($brz['kinds']['water']['note'] ?? '', '33,36'),
     [$kil['place'] ?? $kil, $shv['place'] ?? $shv, $bsh['place'] ?? $bsh, $brz['place'] ?? $brz]);
+  $dlz = $v('Дельжилер, Татарбунарська громада'); $stk = $v('Струмок, Татарбунарська громада'); $spk = $v('Спаське, Татарбунарська громада'); $bll = $v('Білолісся, вул. Шевченка 1');
+  $gnz = $v('Гніздичів, вул. Грушевського 1'); $kzv = $v('Козьова, вул. Європейська 1'); $brn = $v('Бориня, вул. Франка 1');
+  ok('громади 66-ї: Дельжилер — КП «Дмитрівка» 60 з 01.05.2026; Струмок і Спаське — КП «Струмочок» 60; Білолісся — 30; Гніздичів, Козьова, Бориня — Львівщина без тарифу, «з платіжки» в note',
+    str_contains($dlz['kinds']['water']['org'] ?? '', 'Дмитрівка') && $dlz['kinds']['water']['supply'] === 60.0 && ($dlz['kinds']['water']['from'] ?? '') === '2026-05-01'
+    && str_contains($stk['kinds']['water']['org'] ?? '', 'Струмочок') && $stk['kinds']['water']['supply'] === 60.0 && $spk['kinds']['water']['supply'] === 60.0 && $bll['kinds']['water']['supply'] === 30.0
+    && ($gnz['place']['r'] ?? '') === 'lv' && $gnz['kinds']['water']['supply'] === null && str_contains($gnz['kinds']['water']['note'] ?? '', 'платіжки')
+    && ($kzv['place']['r'] ?? '') === 'lv' && ($kzv['place']['hromada'] ?? '') === 'Козівська' && $kzv['kinds']['water']['supply'] === null
+    && ($brn['place']['r'] ?? '') === 'lv' && str_contains($brn['kinds']['water']['note'] ?? '', 'Житлово-комунальне господарство'),
+    [$dlz['place'] ?? $dlz, $stk['place'] ?? $stk, $bll['place'] ?? $bll, $gnz['place'] ?? $gnz, $kzv['place'] ?? $kzv, $brn['place'] ?? $brn]);
   // 65-та сесія: Львівщина — сайти громад (gromada.org.ua: /sitemap/, рішення на rada.info)
   $pus = $v('Пустомити, вул. Шевченка 1'); $mur = $v('Сороки-Львівські, вул. Польова 1'); $kul = $v('Куликов, ул. Шевченко 1'); $skl = $v('Сокільники, вул. Стрийська 1');
   $prs = $v('Поршна, Солонківська громада'); $sln = $v('Солонка, вул. Шевченка 1'); $shc = $v('Щирець, вул. Шевченка 1');
