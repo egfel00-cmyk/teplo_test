@@ -17,6 +17,7 @@ require __DIR__ . '/app/htmsvc.php';
 require __DIR__ . '/app/vksvc.php';
 require __DIR__ . '/app/docs.php';
 require __DIR__ . '/app/gpv.php';
+require __DIR__ . '/app/providers.php';
 require __DIR__ . '/app/visits.php';
 require __DIR__ . '/app/journal.php';
 require __DIR__ . '/app/indexnow.php';
