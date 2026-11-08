@@ -84,12 +84,28 @@ function page_list(): void {
     . '<tr><td>1</td><td><a href="' . h(acc_url()) . '">' . h($c['account']) . '</a></td><td>' . h(mb_strtoupper($c['surname'])) . '</td><td>{{ADDRESS}}</td><td>—</td></tr></table>', 200, true);
 }
 function page_card(): void { page('Кабінет | Особовий рахунок', '<h1>Особовий рахунок ' . h(st()['credentials']['account']) . '</h1><p><a href="' . h(acc_url('/cabinet/heat')) . '">Залишити показання по теплу</a></p><p><a href="' . h(acc_url('/cabinet/payments')) . '">Платежі та нарахування</a></p>', 200, true); }
+/** opt spr=house — довідка як на живому кабінеті 08.11: показання й різниця — БУДИНКОВОГО лічильника (10–99 Гкал), витрата по квартирі = свій лічильник
+ *  (журнал «Всі записи», house_own()) + теплові втрати × S_кв / S_буд (стенд обирає таку формулу, щоб робот її знайшов). */
+function house_own(): array { return [['2025-09-26', 8.9], ['2025-10-28', 9.05], ['2025-11-27', 9.7], ['2025-12-29', 10.55], ['2026-01-28', 11.45], ['2026-02-26', 12.15], ['2026-03-27', 12.6]]; }
+function page_spr_house(array $h): void {
+  $own = []; foreach (house_own() as [$d, $e]) $own[substr($d, 0, 7)] = $e;
+  $hd = ['2025-10' => [12.4, 1.1], '2025-11' => [48.6, 3.9], '2025-12' => [71.2, 5.2], '2026-01' => [80.5, 6.0], '2026-02' => [66.3, 4.9], '2026-03' => [41.7, 3.2]];
+  $prev = 512.1; $tr = ''; $fmt = fn($v, $n) => number_format($v, $n, ',', '');
+  foreach ($hd as $ym => [$d, $loss]) {
+    $pm = date('Y-m', strtotime($ym . '-01 -1 month')); $e = $own[$ym] - $own[$pm]; $fl = round($e + $loss * 56.6 / 3012.5, 5); $cur = $prev + $d;
+    $c = [substr($ym, 5, 2) . '.' . substr($ym, 0, 4), 'ГКал', $fmt($prev, 5), $fmt($cur, 5), $fmt($d, 5), $fmt($loss, 5), $fmt($d + $loss, 5), '3012,50', '56,60', $fmt($fl, 5),
+      number_format($fl * 1539.50, 2, ',', ''), '29,40', '', number_format($fl * 1539.50 + 29.4 - 37, 2, ',', '')];
+    $tr .= '<tr>' . implode('', array_map(fn($v) => '<td>' . h($v) . '</td>', $c)) . '</tr>'; $prev = $cur;
+  }
+  page('Кабінет | Довідка по теплу (нова)', '<h1>Довідка по теплу (нова)</h1><table class="stand-tbl"><tr>' . implode('', array_map(fn($v) => '<th>' . h($v) . '</th>', $h)) . '</tr>' . $tr . '</table>', 200, true);
+}
 function page_spr(): void {
   log_req('spr');
   $h = ['Місяць, рік', 'Одиниці виміру приладу обліку', 'Попередні показання', 'Поточні показання', 'Різниця показань', 'Теплові втрати, Гкал', 'Всього по будинку, Гкал', 'Площа будинку, м2',
     'Площа квартири, м2', 'Витрата по квартирі, Гкал', 'Нараховано за пп т/е, грн.', 'Абонентна плата, грн.', 'Пільга, грн.', 'Надходження, грн'];
   // жовтень 2025 … березень 2026: різниця показань + частка втрат будинку (втрати × 56,6 / 7902,8) = витрата; нараховано = витрата × 1539,50
   $rows = [['10.2025', '9,000', '9,200', 61.2], ['11.2025', '9,200', '9,950', 180.4], ['12.2025', '9,950', '10,850', 230.1], ['01.2026', '10,850', '11,700', 251.7], ['02.2026', '11,700', '12,380', 210.3], ['03.2026', '12,380', '12,910', 150.6]];
+  if (opt('spr') === 'house') { page_spr_house($h); return; }
   $tr = '';
   foreach ($rows as [$m, $a, $b, $loss]) {
     $d = (float)str_replace(',', '.', $b) - (float)str_replace(',', '.', $a); $sh = round($loss * 56.6 / 7902.8, 3); $fl = round($d + $sh, 3);
@@ -220,8 +236,12 @@ function do_save(): void {
   page_heat('<span data-marker="stand-saved">' . h(TX('flash_saved')) . '</span>', 'alert-success');
 }
 function page_viewall(): void {
-  robot_tick(); $s = st();
-  page('Кабінет | Перегляд журналу показань по теплу', '<h1>ПЕРЕГЛЯД ВСІХ ЗАПИСІВ ЖУРНАЛУ: ПУ ' . h($s['meter']['model']) . ', №' . h($s['meter']['sn']) . '</h1>' . journal_table($s['journal']), 200, true);
+  robot_tick(); $s = st(); $j = $s['journal'];
+  // spr=house: минулий сезон у журналі (прийняті) + одна відхилена — робот її не бере
+  if (opt('spr') === 'house') { $old = []; foreach (house_own() as [$d, $e]) $old[] = ['date' => $d, 'energy' => $e, 'volume' => 2300, 'flow' => 0.06, 'power' => 1.5, 'tSupply' => 50, 'tReturn' => 30, 'hours' => 30000, 'errHours' => 150, 'errCode' => 'E---', 'note' => '', 'status' => 'accepted', 'status_text' => 'Статус: Показання успішно прийняті'];
+    array_splice($old, 3, 0, [['date' => '2025-12-20', 'energy' => 99.9, 'volume' => 2300, 'flow' => 0.06, 'power' => 1.5, 'tSupply' => 50, 'tReturn' => 30, 'hours' => 30000, 'errHours' => 150, 'errCode' => 'E---', 'note' => '', 'status' => 'rejected', 'status_text' => 'Статус: Показання не прийняті з причини: завеликі']]);
+    $j = array_merge($old, $j); }
+  page('Кабінет | Перегляд журналу показань по теплу', '<h1>ПЕРЕГЛЯД ВСІХ ЗАПИСІВ ЖУРНАЛУ: ПУ ' . h($s['meter']['model']) . ', №' . h($s['meter']['sn']) . '</h1>' . journal_table($j), 200, true);
 }
 
 // ---------------- админка стенда ----------------
@@ -237,6 +257,7 @@ function page_admin(): void {
 function do_admin(): void {
   $a = $_POST['act'] ?? '';
   if ($a === 'set') { opt_set('scenario', in_array($_POST['scenario'] ?? '', SCENARIOS, true) && $_POST['scenario'] !== 'ok' ? $_POST['scenario'] : ''); opt_set('today', preg_match('/^\d{4}-\d{2}-\d{2}$/', $_POST['today'] ?? '') ? $_POST['today'] : ''); opt_set('robot_delay', ctype_digit($_POST['robot_delay'] ?? '') ? $_POST['robot_delay'] : '');
+    if (isset($_POST['spr'])) opt_set('spr', $_POST['spr'] === 'house' ? 'house' : '');
     if (isset($_POST['bill_ym'])) opt_set('bill_ym', preg_match('/^(20\d\d-\d\d|none)$/', $_POST['bill_ym']) ? $_POST['bill_ym'] : ''); if (isset($_POST['bill_pay'])) opt_set('bill_pay', preg_match('/^-?\d+\.\d\d$/', $_POST['bill_pay']) ? $_POST['bill_pay'] : ''); }
   if ($a === 'robot') robot_tick(true);
   if ($a === 'reset') st_reset();

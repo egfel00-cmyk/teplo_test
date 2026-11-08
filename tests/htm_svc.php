@@ -216,6 +216,16 @@ ok('…сверка довідки в /api/health → htmSpr.check: витрат
   ($ck['formula']['of'] ?? 0) === 6 && ($ck['formula']['ok'] ?? 0) === 6 && array_values(array_unique($ck['tariff'] ?? [])) === [1539.5] && ($ck['abon'] ?? []) === [29.4]
   && ($ck['paid']['of'] ?? 0) === 5 && ($ck['paid']['same'] ?? 9) === 0 && ($ck['calc']['max'] ?? 99) < 15 && count($ck['calc']['err'] ?? []) === 6 && ($ck['k'] ?? 0) > 1.9
   && array_key_first($ck['hyp'] ?? []) === 'diff+loss*s' && ($ck['curPrev']['ok'] ?? 0) === 6 && ($ck['units'] ?? []) === ['Гкал'] && isset($ck['toFlat']['2026-01']['diff']), $ck);
+$ow = $spm[0]['own'] ?? null;
+ok('…и журнал свого лічильника («Всі записи») — к довідке этого человека (GET /api/htm/spr → own: дата, Гкал, статус); в /api/health → check.own — только счёт и % (без показаний)',
+  is_array($ow) && count($ow) >= 1 && !array_filter($ow, fn($r) => !preg_match('/^\d{4}-\d\d-\d\d$/', $r['date']) || !is_float($r['energy'])) && ($ck['own']['n'] ?? 0) === count($ow)
+  && !preg_match('/"energy"|"date"/', $spj), [$ow, $ck['own'] ?? null]);
+// LOOK_V 5 на бою: осмотр кабинета админа дописывает журнал к УЖЕ сохранённой довідке (квартиру знает bill), не создаёт новых файлов
+$sf = glob(HtmSpr::dir() . '/' . $uid . '_*.json'); $fj = json_decode(file_get_contents($sf[0]), true); unset($fj['own']); file_put_contents($sf[0], json_encode($fj));
+$lf = json_decode(file_get_contents(HtmSvc::lookFile()), true); $lf['v'] = HtmSvc::LOOK_V - 1; file_put_contents(HtmSvc::lookFile(), json_encode($lf));
+$lk2 = HtmSvc::lookAdmins(); $sm2 = HtmSpr::mine($uid);
+ok('…осмотр кабинета админа (новая LOOK_V) — журнал свого лічильника к его довідке, квартира та же, файлов не прибавилось', $lk2 === ['ok'] && count($sm2) === 1 && $sm2[0]['place'] === 'p1'
+  && count($sm2[0]['own'] ?? []) === count($ow) && count(glob(HtmSpr::dir() . '/' . $uid . '_*.json')) === 1, [$lk2, $sm2]);
 $c2 = HtmBills::cron($tB + 60); $hb = HtmBills::summary(); $hj = json_encode($hb, JSON_UNESCAPED_UNICODE);
 ok('…через минуту — квартиру уже смотрели (раз в 20 ч): пауза, /api/health → htmBills: месяц рахунку, вид, без рахунку и людей', $c2 === [] && ($hb['last']['res'] ?? '') === 'got' && ($hb['last']['ym'] ?? '') === '2026-09' && ($hb['last']['kind'] ?? '') === 'html'
   && (array)($hb['scan']['k'] ?? []) === ['retry' => 1] && ($hb['scan']['cabs'] ?? 0) === 1 && !preg_match('/1000000061|ТЕСТОВИЙ|u1@example/u', $hj), $hb);

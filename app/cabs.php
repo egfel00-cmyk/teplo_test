@@ -555,8 +555,12 @@ final class HtmCab {
           'ph' => mb_substr((string)$i->getAttribute('placeholder'), 0, 40), 'max' => (int)$i->getAttribute('maxlength') ?: null, 'pattern' => mb_substr((string)$i->getAttribute('pattern'), 0, 60), 'req' => $i->hasAttribute('required')];
       }
     } elseif (preg_match('/[^.]*тимчасово\s+зупинен[^.]*\.[^.]*\./u', $txt, $m)) $o['closed'] = trim($m[0]);
-    // журнал: строка из ≥10 ячеек с датой → «Примітки» → «Статус: …»
-    $rows = $x->query('//tr'); $cur = null;
+    $o['journal'] = self::journalRows($x);
+    return $o;
+  }
+  /** Журнал показань (страница тепла — последние, «Всі записи» — весь): строка из ≥10 ячеек с датой → «Примітки» → «Статус: …». */
+  public static function journalRows(DOMXPath $x): array {
+    $o = ['journal' => []]; $rows = $x->query('//tr'); $cur = null;
     foreach ($rows as $tr) {
       $tds = $x->query('./td', $tr); $first = $tds->length ? CabWeb::sp($tds->item(0)->textContent) : '';
       if ($tds->length >= 10 && preg_match('/^\d{2}\.\d{2}\.\d{4}$/', $first) && !$x->query("./td[starts-with(@id,'head_')]", $tr)->length) {
@@ -573,7 +577,26 @@ final class HtmCab {
       }
     }
     unset($cur);
-    return $o;
+    return $o['journal'];
+  }
+  /** Весь журнал квартирного лічильника (только чтение): «Всі записи» /cabinet/heat/viewall/{acc}/{sur}/{SN} со страницы тепла; не открылся — последние со страницы.
+   *  Для сверки «Довідки по теплу» (08.11: показання там — будинкового лічильника, а витрата квартири = свій лічильник + частка будинку, Методика № 315).
+   *  $h — итог heat(). → [{date: 'YYYY-MM-DD', energy: float, status}] по дате. */
+  public function ownJournal(array $h, string $acc, string $sur): array {
+    $u = null; $rows = (array)($h['journal'] ?? []);
+    if (preg_match('~href="([^"]*/cabinet/heat/viewall/[^"]+)"~u', (string)($h['html'] ?? ''), $m)) $u = html_entity_decode($m[1]);
+    elseif (!empty($h['meter']['serial'])) $u = self::url($acc, $sur, 'heat/viewall') . '/' . rawurlencode((string)$h['meter']['serial']);
+    if ($u) {
+      try { $r = $this->get($u); if ($r['code'] === 200) { $j = self::journalRows(CabWeb::dom($r['body'])); if (count($j) >= count($rows)) $rows = $j; } }
+      catch (CabErr $e) { if ($e->err === 'captcha') throw $e; }
+    }
+    $out = [];
+    foreach ($rows as $r) {
+      if (!preg_match('/^(\d{2})\.(\d{2})\.(\d{4})$/', (string)$r['date'], $m) || ($e = self::num((string)$r['energy'])) === null) continue;
+      $out[] = ['date' => "$m[3]-$m[2]-$m[1]", 'energy' => $e, 'status' => (string)$r['status']];
+    }
+    usort($out, fn($a, $b) => strcmp($a['date'], $b['date']));
+    return $out;
   }
   /** Месяц квитанции по тексту: «жовтень 2026», «за октябрь 2026», «2026-10», «10.2026», «202610» → «2026-10»; не нашли — null. */
   public static function monthOf(string $s): ?string {

@@ -42,6 +42,21 @@ const U = 'http://127.0.0.1:8013/', DATA = process.env.SITE_DATA || '/tmp/teplo_
   const panB = await p.textContent('[data-key=rec-htm]').catch(() => '');
   ok('довідка з будинковим лічильником: «Будинковий лічильник: різниця показань 45,200», втрати й усього по будинку, площі 56,6 / 3012,5, витрата 0,926; без «Частки втрат»', /Будинковий лічильник: різниця показань/.test(panB) && /45,200 Гкал/.test(panB)
     && /49,300 Гкал/.test(panB) && /56,6 \/ 3012,5 м²/.test(panB) && /0,926 Гкал/.test(panB) && !/Частка теплових втрат/.test(panB) && !/−\d/.test(panB), panB);
+  // 59-я сессия: витрата квартири = свій лічильник (журнал ХТМ «Всі записи», сервер кладе в own) + частка будинку понад нього; тут частка 20 % свого тепла
+  const own = [['2025-12-12', 9.0], ['2026-01-12', 10.112], ['2026-02-11', 11.402], ['2026-03-12', 12.38]].map(([d, e]) => ({ date: d, energy: e, status: 'ok' })).concat([{ date: '2026-02-20', energy: 99.9, status: 'rejected' }]);
+  const eM = { '2026-01': 1.112, '2026-02': 1.29, '2026-03': 0.978 }, rowsC = Object.keys(eM).map((ym, i) => { const fl = Math.round(eM[ym] * 1.2 * 1e5) / 1e5;
+    return { ym, prev: 600 + i * 50, cur: 645.2 + i * 50, diff: 45.2, loss: 4.1, house: 49.3, sHouse: 3012.5, sFlat: 56.6, flat: fl, cost: Math.round(fl * 1539.5 * 100) / 100, abon: 29.4, lgota: 0, paid: null }; });
+  execFileSync('php', ['-r', `define('TEPLO',1); require 'app/core.php'; require 'app/htmsvc.php'; HtmSpr::save(${uid}, 'main', ['rows' => json_decode('${JSON.stringify(rowsC)}', true), 'own' => json_decode('${JSON.stringify(own)}', true), 'cols' => ['ym','flat','cost'], 'fmt' => ['ym' => '##.####', 'num' => '#.#####']]);`],
+    { env: Object.assign({}, process.env, { SITE_DATA: DATA, SITE_BASE: '' }), cwd: path.join(__dirname, '../..') });
+  ok('GET /api/htm/spr — свій журнал (own) разом із довідкою', await p.evaluate(() => window.TeploSync.api('GET', '/htm/spr').then(j => (j.places[0].own || []).length === 5)));
+  await p.goto(U + '#rec-r1'); await wait(300); await p.reload(); await wait(2500);
+  const panC = await p.textContent('[data-key=rec-htm]').catch(() => ''); await p.locator('[data-key=rec-htm]').screenshot({ path: '/tmp/shot_htmspr_own.png' }).catch(() => {});
+  ok('картка лютого: «Ваш лічильник за місяць» 1,290, «Частка будинку понад ваш лічильник» 0,258, витрата 1,548; відхилені показання з журналу не беремо', /Ваш лічильник за місяць/.test(panC) && /1,290 Гкал/.test(panC)
+    && /Частка будинку понад ваш лічильник/.test(panC) && /0,258 Гкал/.test(panC) && /1,548 Гкал/.test(panC) && !/Частка теплових втрат/.test(panC), panC);
+  await p.goto(U + '#rec-r3'); await wait(1500);
+  const usedC = await p.textContent('[data-key=rec-used]').catch(() => '');
+  const gotC = Number((usedC.match(/≈\s*([\d\s ]+,\d\d)/) || [])[1]?.replace(/[\s ]/g, '').replace(',', '.')), expC = 0.53 * 1539.5 * 1.2 + 29.4;
+  ok('квітень (довідки ще немає): своє тепло × (1 + частка будинку 20 %) × 1539,50 + абонплата 29,40 (≈ ' + expC.toFixed(2) + ')', Math.abs(gotC - expC) < 0.6 && /частка будинку/.test(usedC), [gotC, usedC]);
   ok('без ошибок JS', !errs.length, errs);
   console.log('Итог: ' + pass + ' OK, ' + fail + ' FAIL'); await b.close(); process.exit(fail ? 1 : 0);
 })();

@@ -3492,6 +3492,45 @@
     }, function () { HSPR.busy = false; HSPR.at = Date.now(); HSPR.places = HSPR.places || []; });
   }
   function hspr() { var x = (HSPR.places || []).filter(function (p) { return p.place === S.placeId; })[0]; return (x && x.rows) || []; }
+  /** Журнал свого лічильника для довідки з будинковим лічильником: з кабінету ХТМ (сервер, «Всі записи»), а немає — власні показання в застосунку. */
+  function hsprOwnList() {
+    var x = (HSPR.places || []).filter(function (p) { return p.place === S.placeId; })[0], own = (x && x.own) || [];
+    if (own.length >= 2) return own;
+    return RD().filter(function (r) { return !r.own && r.htm && r.htm.date && R.num(r.htm.energy) !== null; }).map(function (r) { return { date: r.htm.date.slice(0, 10), energy: R.num(r.htm.energy), status: 'ok' }; });
+  }
+  /** Тепло свого лічильника по місяцях (як HtmSpr::ownMonths на сервері): кінець місяця — показання цього місяця (same), наступного (next) або лінійно на 1-ше (interp). */
+  function hsprOwnMonths(own, al) {
+    var p = own.filter(function (r) { return r.status !== 'rejected' && r.date && typeof r.energy === 'number'; }).sort(function (a, b) { return a.date < b.date ? -1 : 1; });
+    if (p.length < 2) return {};
+    var ymAdd = function (m, k) { var y = +m.slice(0, 4), mo = +m.slice(5, 7) - 1 + k; y += Math.floor(mo / 12); mo = ((mo % 12) + 12) % 12; return y + '-' + (mo < 9 ? '0' : '') + (mo + 1); };
+    var day = function (d) { return Date.UTC(+d.slice(0, 4), +d.slice(5, 7) - 1, +d.slice(8, 10)) / 864e5; }, end = {};
+    if (al === 'interp') {
+      for (var m = p[0].date.slice(0, 7), last = p[p.length - 1].date.slice(0, 7); m <= last; m = ymAdd(m, 1)) {
+        var b = day(ymAdd(m, 1) + '-01'), lo = null, hi = null;
+        p.forEach(function (r) { if (day(r.date) <= b) lo = r; else if (!hi) hi = r; });
+        if (lo && hi && day(hi.date) > day(lo.date) && day(hi.date) - day(lo.date) <= 75) end[m] = lo.energy + (hi.energy - lo.energy) * (b - day(lo.date)) / (day(hi.date) - day(lo.date));
+      }
+    } else p.forEach(function (r) { var mm = r.date.slice(0, 7); end[al === 'next' ? ymAdd(mm, -1) : mm] = r.energy; });
+    var out = {}; Object.keys(end).forEach(function (mm) { var pm = ymAdd(mm, -1); if (end[pm] !== undefined && end[mm] >= end[pm]) out[mm] = end[mm] - end[pm]; });
+    return out;
+  }
+  /** Довідка з будинковим лічильником: тепло свого лічильника за кожен місяць довідки й частка будинку понад нього k = Σ(витрата − своє) / Σ своє.
+   *  Вирівнювання кінця місяця — те, де модель «своє × (1 + k)» ближча до витрати ХТМ. → {e: {ym: Гкал}, k, n} | null */
+  var HOF = { key: null, v: null };
+  function hsprOwnFit() {
+    var key = HSPR.at + '|' + S.placeId + '|' + (S.readings || []).length + '|' + (S.updatedAt || 0); if (HOF.key === key) return HOF.v;
+    HOF.key = key; HOF.v = null;
+    var rows = hspr().filter(function (x) { return hsprBld(x); }), own = hsprOwnList(); if (!rows.length || own.length < 2) return null;
+    var best = null;
+    ['same', 'interp', 'next'].forEach(function (al) {
+      var em = hsprOwnMonths(own, al), hr = rows.filter(function (x) { return em[x.ym] > 0 && x.flat >= em[x.ym]; }).slice(-8), se = 0, sx = 0;
+      if (hr.length < 2) return;
+      hr.forEach(function (x) { se += em[x.ym]; sx += x.flat - em[x.ym]; });
+      var k = sx / se, er = hr.map(function (x) { return Math.abs(em[x.ym] * (1 + k) - x.flat) / x.flat; }).sort(function (a, b) { return a - b; })[Math.floor(hr.length / 2)];
+      if (!best || er < best.err) best = { e: em, k: k, n: hr.length, al: al, err: er };
+    });
+    return (HOF.v = best);
+  }
   /** Рядок довідки ХТМ для запису показань: за поточними показаннями (Гкал або як на лічильнику), інакше — за місяцем зняття. */
   function hsprFor(r) {
     var rows = hspr(); if (!rows.length || !r || !r.htm || !r.htm.date) return null;
@@ -3509,8 +3548,10 @@
     var tr = rows.filter(function (x) { return x.flat > 0 && x.cost > 0; }).map(function (x) { return x.cost / x.flat; }).filter(function (v) { return v > 300 && v < 10000; }).sort(function (a, b) { return a - b; });
     var hr = rows.filter(function (x) { return x.diff > 0 && x.flat !== null && x.flat >= x.diff && !hsprBld(x); }).slice(-8), sd = 0, sl = 0;
     hr.forEach(function (x) { sd += x.diff; sl += x.flat - x.diff; });
-    var ab = rows.filter(function (x) { return x.abon > 0; }).slice(-1)[0];
-    return { tariff: tr.length ? Math.round(tr[Math.floor(tr.length / 2)] * 100) / 100 : null, k: sd > 0 && hr.length >= 2 ? sl / sd : null, abon: ab ? ab.abon : null, n: hr.length };
+    var ab = rows.filter(function (x) { return x.abon > 0; }).slice(-1)[0], k = sd > 0 && hr.length >= 2 ? sl / sd : null, n = hr.length;
+    // у довідці будинковий лічильник (живий кабінет 08.11) — частка будинку відносно свого лічильника квартири (журнал ХТМ або власні показання)
+    if (k === null) { var of = hsprOwnFit(); if (of) { k = of.k; n = of.n; } }
+    return { tariff: tr.length ? Math.round(tr[Math.floor(tr.length / 2)] * 100) / 100 : null, k: k, abon: ab ? ab.abon : null, n: n };
   }
   function tariffSet(v) { var p = place(); if (!p) { S.tariff = v; return; } p.prov = p.prov || {}; p.prov.heat = Object.assign({}, p.prov.heat || {}, { price: v, at: today() }); p.updatedAt = Date.now(); }
   /* Платіжка ХТМ: до сплати = (ваше тепло за лічильником + ваша частка ЗБП) × тариф + абонплата.
@@ -3964,12 +4005,15 @@
     hsprLoad(); var x = r.own ? null : hsprFor(r); if (!x) return '';
     var li = function (k, v, b) { return '<li><div class="grow small' + (b ? '' : ' muted') + '">' + esc(k) + '</div>' + (b ? '<b class="num">' + esc(v) + '</b>' : '<span class="num">' + esc(v) + '</span>') + '</li>'; };
     var tar = x.flat > 0 && x.cost !== null ? x.cost / x.flat : null, bld = hsprBld(x), sh = !bld && x.flat !== null && x.diff !== null ? x.flat - x.diff : null;
+    var of = bld ? hsprOwnFit() : null, oe = of && of.e[x.ym] > 0 && x.flat >= of.e[x.ym] ? of.e[x.ym] : null;
     return '<div class="panel" data-key="rec-htm"><h2>' + esc(t('hsp_title', { m: monthLabel(x.ym) })) + '</h2><ul class="list">' +
       // у довідці показання будинкового лічильника (живий кабінет 08.11: різниця в десятки разів більша за витрату квартири) — показуємо будинок окремо, без «частки»
       (bld ? li(t('hsp_bdiff'), fmtN(x.diff, 3) + ' Гкал') + (x.loss !== null ? li(t('hsp_loss'), fmtN(x.loss, 3) + ' Гкал') : '') + (x.house !== null && x.house !== undefined ? li(t('hsp_house'), fmtN(x.house, 3) + ' Гкал') : '')
         + (x.sFlat && x.sHouse ? li(t('hsp_area'), fmtN(x.sFlat, 1) + ' / ' + fmtN(x.sHouse, 1) + ' м²') : '') : '') +
       (!bld && x.diff !== null ? li(t('hsp_diff'), fmtN(x.diff, 3) + ' Гкал') : '') +
       (sh !== null ? li(t('hsp_share') + (x.loss !== null && x.sFlat && x.sHouse ? ' (' + fmtN(x.loss, 1) + ' × ' + fmtN(x.sFlat, 1) + ' / ' + fmtN(x.sHouse, 1) + ' м²)' : ''), fmtN(sh, 3) + ' Гкал') : '') +
+      // свій лічильник за місяць (журнал ХТМ) і частка будинку понад нього — як ХТМ рахує квартиру з лічильником (Методика № 315)
+      (oe !== null ? li(t('hsp_own'), fmtN(oe, 3) + ' Гкал') + li(t('hsp_over'), fmtN(x.flat - oe, 3) + ' Гкал') : '') +
       (x.flat !== null ? li(t('hsp_flat'), fmtN(x.flat, 3) + ' Гкал', true) : '') +
       (tar !== null ? li(t('hsp_tariff'), money(tar) + ' грн/Гкал') : '') +
       (x.cost !== null ? li(t('hsp_cost'), money(x.cost) + ' грн') : '') + (x.abon !== null ? li(t('hsp_abon'), money(x.abon) + ' грн') : '') +

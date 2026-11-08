@@ -186,8 +186,9 @@ final class HtmSvc {
       // осмотр кабинета (только чтение): где квитанция — меню, карточка рахунку, платежі; сбой осмотра «Перевірити» не ломает
       $pg = []; if (!empty($cab->home['url'])) $pg[(string)$cab->home['url']] = (string)$cab->home['body']; $pg[(string)$h['url']] = (string)$h['html'];
       try { $ex = $cab->explore($pg, $acc['acc'], $acc['sur']); } catch (Throwable $e) { $ex = ['err' => CabWeb::mask($e->getMessage(), 80)]; }
-      // «Довідка по теплу» — только структура таблицы (заголовки, маски ячеек), без чисел
-      try { $sp = $cab->sprTeplo($acc['acc'], $acc['sur']); if ($sp) HtmSpr::saveShape($sp); } catch (Throwable $e) {}
+      // «Довідка по теплу» — структура таблицы (заголовки, маски ячеек) в _last; LOOK_V 5: + весь журнал квартирного лічильника (viewall) к уже сохранённой довідке
+      // этой учётки (свои данные админа, как у bill) — сервер сверяет «витрату по квартирі» со своим лічильником (HtmSpr::check → own)
+      try { $sp = $cab->sprTeplo($acc['acc'], $acc['sur']); if ($sp) { HtmSpr::saveShape($sp); HtmSpr::refresh($uid, $sp, $cab->ownJournal($h, $acc['acc'], $acc['sur'])); } } catch (Throwable $e) {}
     }
     catch (CabErr $e) { self::diag(['op' => $op, 'user' => $uid, 'result' => $e->err, 'steps' => $cab->w->steps]); throw self::cabErr($e); }
     finally { $cab->logout(); }
@@ -199,7 +200,8 @@ final class HtmSvc {
   /** «Перевірити» без кнопки: владелец неделю не нажимал (06.11 17:26 — последний раз, а окно дат, плашки и журнал нужны до первого живого внесения).
    *  Раз на LOOK_V (сайт не ответил — ещё до 3 раз, через 10 мин) сервер сам читает кабинеты ХТМ УЧЁТОК АДМИНА (config.php → admins), как VkStatus::recheck
    *  у Водоканала: только чтение, ничего не вносит; рахунок — первый из кабинета. Итог — /api/health → htmcab.seen (by: cron) и htmcab.look. → итоги или null. */
-  const LOOK_V = 4;   // 2: осмотр кабинета — где квитанция (explore), 07.11.2026; 3: + «Довідки щодо нарахувань» (spravka, sprvds) — есть ли прошлые рахунки; 4: + структура «Довідки по теплу» (08.11)
+  const LOOK_V = 5;   // 2: осмотр кабинета — где квитанция (explore), 07.11.2026; 3: + «Довідки щодо нарахувань» (spravka, sprvds) — есть ли прошлые рахунки; 4: + структура «Довідки по теплу» (08.11);
+                      // 5: + журнал квартирного лічильника (viewall) к довідке — формула «витрати по квартирі» (08.11, 59-я сессия)
   public static function lookFile(): string { return Cfg::data() . '/cache/htm_look.json'; }
   public static function lookState(): array { $j = json_decode((string)@file_get_contents(self::lookFile()), true); return is_array($j) ? $j : []; }
   public static function lookAdmins(?int $now = null): ?array {
@@ -233,7 +235,13 @@ final class HtmSvc {
       if ($bp) $bd = $cab->billDoc($bp);
       else { $pg = []; if (!empty($cab->home['url'])) $pg[(string)$cab->home['url']] = (string)$cab->home['body']; $ex = $cab->explore($pg, $acc['acc'], $acc['sur'], $ym); }
       // «Довідка по теплу» — нарахування ХТМ по місяцях (втрати будинку, витрата по квартирі, абонплата): той самий вхід, лише читання
-      try { $sp = $cab->sprTeplo($acc['acc'], $acc['sur']); if ($sp) HtmSpr::save($uid, $place, $sp); } catch (CabErr $e) { if ($e->err === 'captcha') throw $e; }
+      try {
+        $sp = $cab->sprTeplo($acc['acc'], $acc['sur']);
+        if ($sp) {   // + журнал свого лічильника (витрата по квартирі = свій лічильник + частка будинку) — той самий вхід, лише читання
+          try { $sp['own'] = $cab->ownJournal($cab->heat($acc['acc'], $acc['sur']), $acc['acc'], $acc['sur']); } catch (CabErr $e) { if ($e->err === 'captcha') throw $e; }
+          HtmSpr::save($uid, $place, $sp);
+        }
+      } catch (CabErr $e) { if ($e->err === 'captcha') throw $e; }
     }
     catch (CabErr $e) { self::diag(['op' => 'autobill', 'user' => $uid, 'result' => $e->err, 'steps' => $cab->w->steps]); throw self::cabErr($e); }
     finally { $cab->logout(); }
@@ -674,8 +682,10 @@ final class HtmSpr {
   public static function dir(): string { return Cfg::data() . '/cache/htm_spr'; }
   private static function file(int $uid, string $place): string { return self::dir() . '/' . $uid . '_' . substr(preg_replace('/[^A-Za-z0-9_-]/', '', $place), 0, 40) . '.json'; }
   public static function save(int $uid, string $place, array $sp): void {
-    @mkdir(self::dir(), 0700, true);
-    @file_put_contents(self::file($uid, $place), json_encode(['at' => time(), 'place' => $place, 'rows' => $sp['rows']], JSON_UNESCAPED_UNICODE), LOCK_EX);
+    @mkdir(self::dir(), 0700, true); $f = self::file($uid, $place);
+    // журнал свого лічильника не прочитався в цей раз — лишаємо прежній
+    $own = isset($sp['own']) && is_array($sp['own']) ? array_values($sp['own']) : ((json_decode((string)@file_get_contents($f), true) ?: [])['own'] ?? null);
+    @file_put_contents($f, json_encode(['at' => time(), 'place' => $place, 'rows' => $sp['rows']] + ($own !== null ? ['own' => $own] : []), JSON_UNESCAPED_UNICODE), LOCK_EX);
     $rs = $sp['rows']; @file_put_contents(self::dir() . '/_last.json', json_encode(['at' => time(), 'rows' => count($rs), 'cols' => $sp['cols'], 'fmt' => $sp['fmt'],
       'from' => $rs ? $rs[0]['ym'] : null, 'to' => $rs ? $rs[count($rs) - 1]['ym'] : null,
       // какие поля в строках заполнены (сколько строк с числом) — проверить разбор на живом без самих чисел
@@ -688,24 +698,31 @@ final class HtmSpr {
     $j = is_array($j) ? $j : ['at' => time(), 'rows' => count($sp['rows']), 'cols' => $sp['cols'], 'fmt' => $sp['fmt']];
     $j['shape'] = ($sp['shape'] ?? []) + ['at' => gmdate('c')]; @file_put_contents($f, json_encode($j, JSON_UNESCAPED_UNICODE), LOCK_EX);
   }
-  /** Свої дані: [{place, at, rows}] */
+  /** Осмотр кабинета админа (HtmSvc::look): свежая довідка и журнал свого лічильника — в уже сохранённые файлы этой учётки (квартиру знает bill). */
+  public static function refresh(int $uid, array $sp, array $own): void {
+    foreach ((glob(self::dir() . '/' . $uid . '_*.json') ?: []) as $f) {
+      $j = json_decode((string)@file_get_contents($f), true); if (!is_array($j) || !isset($j['place'])) continue;
+      self::save($uid, (string)$j['place'], ['rows' => $sp['rows'] ?: $j['rows'], 'cols' => $sp['cols'], 'fmt' => $sp['fmt'], 'shape' => $sp['shape'] ?? null] + ($own ? ['own' => $own] : []));
+    }
+  }
+  /** Свої дані: [{place, at, rows, own}] — own: журнал свого лічильника з кабінету [{date, energy, status}] */
   public static function mine(int $uid): array {
     $out = [];
-    foreach ((glob(self::dir() . '/' . $uid . '_*.json') ?: []) as $f) { $j = json_decode((string)@file_get_contents($f), true); if (is_array($j) && !empty($j['rows'])) $out[] = ['place' => (string)$j['place'], 'at' => gmdate('c', (int)$j['at']), 'rows' => $j['rows']]; }
+    foreach ((glob(self::dir() . '/' . $uid . '_*.json') ?: []) as $f) { $j = json_decode((string)@file_get_contents($f), true); if (is_array($j) && !empty($j['rows'])) $out[] = ['place' => (string)$j['place'], 'at' => gmdate('c', (int)$j['at']), 'rows' => $j['rows'], 'own' => $j['own'] ?? []]; }
     return $out;
   }
   public static function summary(): ?array {
     $j = json_decode((string)@file_get_contents(self::dir() . '/_last.json'), true); if (!is_array($j)) return null;
     // сверка — по последней сохранённой довідке (та, о которой _last): без людей и без личных сумм и Гкал
     $nf = null; foreach ((glob(self::dir() . '/*_*.json') ?: []) as $f) if (basename($f) !== '_last.json' && ($nf === null || filemtime($f) > filemtime($nf))) $nf = $f;
-    $rows = $nf ? (json_decode((string)@file_get_contents($nf), true)['rows'] ?? []) : [];
-    return ['at' => gmdate('c', (int)$j['at'])] + array_diff_key($j, ['at' => 1]) + ($rows ? ['check' => self::check($rows)] : []);
+    $fj = $nf ? (json_decode((string)@file_get_contents($nf), true) ?: []) : []; $rows = $fj['rows'] ?? [];
+    return ['at' => gmdate('c', (int)$j['at'])] + array_diff_key($j, ['at' => 1]) + ($rows ? ['check' => self::check($rows, (array)($fj['own'] ?? []))] : []);
   }
   /** Сверка довідки ХТМ (владелец 08.11: «цены в платежках больше — чтобы совпадало»), без личных чисел — только доли и проценты,
    *  плюс публичные тарифы (грн/Гкал, абонплата). formula — витрата по квартирі = різниця + втрати × S_кв / S_буд (Методика № 315);
    *  tariff — нараховано / витрата по місяцях; paid — сколько месяцев «надходження» (тот же или следующий месяц) = нараховано + абонплата − пільга;
    *  calc — наш расчёт приложения (hsprCalib + costOf: різниця × (1 + k) × тариф + абонплата) против суммы ХТМ, ошибка в % по месяцам. */
-  public static function check(array $rows): array {
+  public static function check(array $rows, array $own = []): array {
     $nn = fn($r, $k) => isset($r[$k]) && is_numeric($r[$k]) ? (float)$r[$k] : null;
     $pc = fn(float $a, float $b) => $b != 0.0 ? round(($a - $b) / abs($b) * 100, 1) : null;
     $sum = fn($r) => ($nn($r, 'cost') ?? 0) + ($nn($r, 'abon') ?? 0) - max(0, $nn($r, 'lgota') ?? 0);
@@ -752,6 +769,60 @@ final class HtmSpr {
     return ['units' => array_values(array_unique(array_filter(array_map(fn($r) => $r['unit'] ?? null, $rows)))), 'curPrev' => ['of' => $cpn, 'ok' => $cp], 'hyp' => $hyp, 'toFlat' => $rat,
       's' => ($s0 = $q($rows[count($rows) - 1])[3]) !== null ? round($s0, 5) : null, 'formula' => $fo, 'tariff' => $tar, 'abon' => array_values(array_unique(array_filter(array_map(fn($r) => $nn($r, 'abon'), $rows), fn($v) => $v !== null))),
       'lgota' => count(array_filter($rows, fn($r) => $nn($r, 'lgota') > 0)), 'share' => $share, 'k' => round($k, 3), 'paid' => $paid,
-      'calc' => ['err' => $calc, 'max' => $ce ? max($ce) : null]];
+      'calc' => ['err' => $calc, 'max' => $ce ? max($ce) : null]] + ($own ? ['own' => self::ownFit($rows, $own)] : []);
+  }
+  /** Тепло свого лічильника за місяць (Гкал) по журналу кабінету: кінець місяця — останні показання з датою в цьому місяці (same),
+   *  у наступному (next) або лінійно на 1-ше число наступного (interp); відхилені — не беремо. → [ym => e] */
+  public static function ownMonths(array $own, string $al): array {
+    $p = array_values(array_filter($own, fn($r) => ($r['status'] ?? '') !== 'rejected' && isset($r['date'], $r['energy']) && is_numeric($r['energy'])));
+    usort($p, fn($a, $b) => strcmp($a['date'], $b['date'])); if (count($p) < 2) return [];
+    $end = [];
+    if ($al === 'interp') {
+      $t = fn(string $d) => (int)(strtotime($d . ' 00:00:00 UTC') / 86400);
+      $m0 = substr($p[0]['date'], 0, 7); $m1 = substr($p[count($p) - 1]['date'], 0, 7);
+      for ($m = $m0; $m <= $m1; $m = date('Y-m', strtotime($m . '-01 +1 month'))) {
+        $b = $t(date('Y-m-d', strtotime($m . '-01 +1 month'))); $lo = null; $hi = null;
+        foreach ($p as $r) { if ($t($r['date']) <= $b) $lo = $r; elseif ($hi === null) $hi = $r; }
+        if ($lo && $hi && $t($hi['date']) > $t($lo['date']) && $t($hi['date']) - $t($lo['date']) <= 75) $end[$m] = (float)$lo['energy'] + ((float)$hi['energy'] - (float)$lo['energy']) * ($b - $t($lo['date'])) / ($t($hi['date']) - $t($lo['date']));
+      }
+    } else foreach ($p as $r) { $m = substr($r['date'], 0, 7); if ($al === 'next') $m = date('Y-m', strtotime($m . '-01 -1 month')); $end[$m] = (float)$r['energy']; }
+    $out = []; foreach ($end as $m => $e) { $pm = date('Y-m', strtotime($m . '-01 -1 month')); if (isset($end[$pm]) && $e >= $end[$pm]) $out[$m] = $e - $end[$pm]; }
+    return $out;
+  }
+  /** «Витрата по квартирі» проти свого лічильника (Методика № 315: свій лічильник + частка будинку) — без чисел людей: лише % похибки й сталість співвідношень.
+   *  hyp — медіана |похибки| в %; ratio — частка понад свій лічильник (v − e) відносно втрат × S, усього по будинку × S, свого тепла, площі квартири (на 1000 м²): медіана й розкид (cv);
+   *  scale — поточні показання довідки / свої (якщо це той самий лічильник в інших одиницях). Найсталіше співвідношення = формула ХТМ. */
+  public static function ownFit(array $rows, array $own): array {
+    $nn = fn($r, $k) => isset($r[$k]) && is_numeric($r[$k]) ? (float)$r[$k] : null;
+    $med = function (array $a) { if (!$a) return null; sort($a); $n = count($a); return $n % 2 ? $a[intdiv($n, 2)] : ($a[$n / 2 - 1] + $a[$n / 2]) / 2; };
+    $cv = function (array $a) { $n = count($a); if ($n < 2) return null; $m = array_sum($a) / $n; if (abs($m) < 1e-9) return null; $v = 0; foreach ($a as $x) $v += ($x - $m) ** 2; return round(sqrt($v / ($n - 1)) / abs($m) * 100, 1); };
+    $H = ['own' => fn($e, $d, $l, $h, $s, $sf) => $e, 'own+loss*s' => fn($e, $d, $l, $h, $s, $sf) => $e + $l * $s, 'own+house*s' => fn($e, $d, $l, $h, $s, $sf) => $e + $h * $s,
+      'own+diff*s' => fn($e, $d, $l, $h, $s, $sf) => $e + $d * $s, 'own/4.1868' => fn($e, $d, $l, $h, $s, $sf) => $e / 4.1868, 'own*0.86' => fn($e, $d, $l, $h, $s, $sf) => $e * 0.86,
+      'own/4.1868+loss*s' => fn($e, $d, $l, $h, $s, $sf) => $e / 4.1868 + $l * $s, 'own*0.86+loss*s' => fn($e, $d, $l, $h, $s, $sf) => $e * 0.86 + $l * $s];
+    $R = ['loss*s' => fn($x, $e, $d, $l, $h, $s, $sf) => $l !== null && $s ? $x / ($l * $s) : null, 'house*s' => fn($x, $e, $d, $l, $h, $s, $sf) => $h !== null && $s ? $x / ($h * $s) : null,
+      'own' => fn($x, $e, $d, $l, $h, $s, $sf) => $e > 0 ? $x / $e : null, 'area' => fn($x, $e, $d, $l, $h, $s, $sf) => $sf > 0 ? $x / $sf * 1000 : null];
+    $out = ['n' => count($own), 'from' => $own ? substr((string)$own[0]['date'], 0, 7) : null, 'to' => $own ? substr((string)$own[count($own) - 1]['date'], 0, 7) : null,
+      'rejected' => count(array_filter($own, fn($r) => ($r['status'] ?? '') === 'rejected')), 'al' => []];
+    $best = null;
+    foreach (['same', 'next', 'interp'] as $al) {
+      $em = self::ownMonths($own, $al); $hy = []; $ra = []; $n = 0; $neg = 0;
+      foreach ($rows as $r) {
+        $e = $em[$r['ym']] ?? null; $v = $nn($r, 'flat'); if ($e === null || !($v > 0)) continue; $n++;
+        [$d, $l, $h, $sh, $sf] = [$nn($r, 'diff'), $nn($r, 'loss'), $nn($r, 'house'), $nn($r, 'sHouse'), $nn($r, 'sFlat')]; $s = $sh > 0 && $sf !== null ? $sf / $sh : null;
+        foreach ($H as $k => $f) { if (str_contains($k, '*s') && ($s === null || (str_contains($k, 'loss') ? $l : (str_contains($k, 'house') ? $h : $d)) === null)) continue; $hy[$k][] = abs(($f($e, $d, $l, $h, $s, $sf) - $v) / $v * 100); }
+        $x = $v - $e; if ($x < 0) $neg++;
+        foreach ($R as $k => $f) { $q = $f($x, $e, $d, $l, $h, $s, $sf); if ($q !== null) $ra[$k][] = $q; }
+      }
+      $hm = []; foreach ($hy as $k => $a) $hm[$k] = round($med($a), 1); asort($hm);
+      $rr = []; foreach ($ra as $k => $a) $rr[$k] = ['med' => round($med($a), 3), 'cv' => $cv($a)];
+      $out['al'][$al] = ['months' => $n, 'over' => $n - $neg, 'hyp' => $hm, 'ratio' => $rr];
+      $top = $hm ? reset($hm) : null; if ($top !== null && $n >= 2 && ($best === null || $top < $best[1])) $best = [$al, $top, array_key_first($hm)];
+    }
+    if ($best) $out['best'] = ['al' => $best[0], 'hyp' => $best[2], 'err' => $best[1]];
+    // ті самі це показання, що в довідці (поточні), лише в інших одиницях?
+    $em = []; foreach ($own as $r) if (($r['status'] ?? '') !== 'rejected') $em[substr((string)$r['date'], 0, 7)] = (float)$r['energy'];
+    $sc = []; foreach ($rows as $r) { $c = $nn($r, 'cur'); if ($c !== null && ($em[$r['ym']] ?? 0) > 0) $sc[] = $c / $em[$r['ym']]; }
+    if ($sc) $out['scale'] = ['med' => round($med($sc), 4), 'cv' => $cv($sc), 'n' => count($sc)];
+    return $out;
   }
 }

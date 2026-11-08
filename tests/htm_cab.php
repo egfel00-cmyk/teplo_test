@@ -10,7 +10,7 @@ Cfg::set(['app_url' => 'https://teplo.example/', 'htm_cab_base' => $BASE]);
 $pass = 0; $fail = 0;
 function ok(string $n, bool $c, $info = null): void { global $pass, $fail; echo ($c ? '  OK  ' : ' FAIL ') . $n . (!$c && $info !== null ? '  → ' . json_encode($info, JSON_UNESCAPED_UNICODE) : '') . "\n"; $c ? $pass++ : $fail++; }
 function stand(string $body): void { global $BASE; $ch = curl_init($BASE . '/stand/admin'); curl_setopt_array($ch, [CURLOPT_POST => 1, CURLOPT_POSTFIELDS => $body, CURLOPT_RETURNTRANSFER => 1]); curl_exec($ch); curl_close($ch); }
-stand('act=reset'); stand('act=set&scenario=ok&today=2026-11-10&robot_delay=0');
+stand('act=reset'); stand('act=set&scenario=ok&today=2026-11-10&robot_delay=0&spr=');
 
 $V = ['date' => '10.11.2026', 'energy' => '14.445', 'volume' => '2332,676', 'flow' => '0.063', 'power' => '1.5', 'tSupply' => '50.12', 'tReturn' => '30.4', 'hours' => '35078', 'errHours' => '153', 'errCode' => 'E---'];
 $C = ['phone' => '+380501112233', 'email' => 'test@stand.local', 'note' => ''];
@@ -87,6 +87,17 @@ ok('«Довідка по теплу» (как живая: заголовки 07
 $sp2 = HtmCab::parseSpr('<table><tr><th>Абонентна плата, грн.</th><th>Місяць, рік</th><th>Витрата по квартирі, Гкал</th><th>Нараховано за пп т/е, грн.</th></tr><tr><td>29,40</td><td>Листопад 2025</td><td>0,812</td><td>1 250,07</td></tr><tr><td></td><td>Разом</td><td>9</td><td>9</td></tr></table>');
 ok('…колонки в другом порядке, месяц словом, «1 250,07» → 1250.07; строка «Разом» — не месяц', count($sp2['rows']) === 1 && $sp2['rows'][0]['ym'] === '2025-11' && $sp2['rows'][0]['cost'] == 1250.07 && $sp2['rows'][0]['abon'] == 29.4, $sp2);
 ok('monthOf: «Рахунок за вересень 2026 року» → 2026-09, «грудень 2025» → 2025-12', HtmCab::monthOf('Рахунок за вересень 2026 року') === '2026-09' && HtmCab::monthOf('за грудень 2025') === '2025-12');
+// живой кабинет 08.11: в довідці — будинковий лічильник; витрата квартири = свій лічильник (журнал «Всі записи») + частка будинку
+stand('act=set&scenario=ok&today=2026-11-10&robot_delay=0&spr=house');
+$h3 = new HtmCab(); $h3->login('test@stand.local', 'stand-pass-123'); $hp = $h3->heat($acc[0]['acc'], $acc[0]['sur']); $own = $h3->ownJournal($hp, $acc[0]['acc'], $acc[0]['sur']);
+ok('журнал свого лічильника — «Всі записи»: минулий сезон (7 прийнятих + 1 відхилена) і нові, по даті, Гкал числом', count($own) >= 8 && $own[0]['date'] === '2025-09-26' && $own[0]['energy'] == 8.9
+  && count(array_filter($own, fn($r) => $r['status'] === 'rejected')) === 1 && count(array_filter($own, fn($r) => $r['status'] === 'ok')) >= 7, $own);
+$sh = $h3->sprTeplo($acc[0]['acc'], $acc[0]['sur']); require_once __DIR__ . '/../app/htmsvc.php';
+$fit = HtmSpr::ownFit($sh['rows'], $own); $hj = json_encode($fit, JSON_UNESCAPED_UNICODE);
+ok('формула ХТМ із довідки й журналу: найкраще — свій лічильник + втрати × S_кв/S_буд (похибка ~0 %), кінець місяця — показання в цьому місяці; відхилені не беремо; без чисел людей',
+  ($fit['best']['hyp'] ?? '') === 'own+loss*s' && ($fit['best']['al'] ?? '') === 'same' && ($fit['best']['err'] ?? 99) < 0.1 && ($fit['al']['same']['months'] ?? 0) === 6
+  && ($fit['al']['same']['ratio']['loss*s']['cv'] ?? 99) < 0.5 && ($fit['al']['same']['hyp']['own'] ?? 0) > 5 && !preg_match('/energy|date|3012\.5|512\.1|56\.6|12\.15/', $hj), $fit);
+stand('act=set&scenario=ok&today=2026-11-10&robot_delay=0&spr=');
 $bad = array_filter(array_column(array_slice($h->w->steps, 0), 1), fn($x) => preg_match('~logout|/add|remove|settings~', $x));
 ok('…только GET и не трогает add/remove/settings', !array_filter($h->w->steps, fn($s) => $s[0] !== 'GET' && !str_contains($s[1], '/cabinet/login')) && !$bad, $h->w->steps);
 
