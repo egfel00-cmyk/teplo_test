@@ -20,7 +20,7 @@ let pass = 0, fail = 0; const ok = (n, c, i) => { console.log((c ? '  OK  ' : ' 
   ok('«Додати квартиру» → мастер, крок 1 з 2', (await hash()) === '#add-place' && /1/.test(await p.textContent('.wiz-top .count')) && /2/.test(await p.textContent('.wiz-top .count')));
   await click('[data-act=aw-chip][data-v="Батьків"]', 200);
   ok('кнопка назви вписує назву', (await p.inputValue('#aw-name')) === 'Батьків');
-  await p.fill('#aw-addr', 'Пушкінська 5, кв. 2'); await click('[data-key=aw-next]');
+  await p.fill('#aw-street', 'Пушкінська 5, кв. 2'); await click('[data-key=aw-next]');
   ok('крок 2: світло й газ — з кнопками «+»/«−», «скоро» немає', (await p.$$('.aw-kind.am-soon')).length === 0 && !!(await p.$('[data-key=aw-elec-inc]')) && !!(await p.$('[data-key=aw-gas-inc]')));
   ok('крок 2 (без води) — останній: «Перевірте» і «Створити»', !!(await p.$('[data-key=aw-sum]')) && !!(await p.$('[data-key=aw-create]')));
   ok('«−» вимкнено на нулі', await p.$eval('[data-key=aw-hot-dec]', e => e.disabled));
@@ -30,7 +30,7 @@ let pass = 0, fail = 0; const ok = (n, c, i) => { console.log((c ? '  OK  ' : ' 
   await click('[data-key=aw-heat-inc]', 200);
   ok('опалення: максимум 1 — «+» вимкнено', await p.$eval('[data-key=aw-heat-inc]', e => e.disabled));
   await click('[data-key=aw-back]', 200);
-  ok('назад на крок 1 — назва й адреса на місці', (await p.inputValue('#aw-name')) === 'Батьків' && (await p.inputValue('#aw-addr')) === 'Пушкінська 5, кв. 2');
+  ok('назад на крок 1 — назва й адреса на місці', (await p.inputValue('#aw-name')) === 'Батьків' && (await p.inputValue('#aw-street')) === 'Пушкінська 5, кв. 2');
   await click('[data-key=aw-next]', 200); await click('[data-key=aw-next]');
   ok('крок 3 з 3: рахунок Водоканалу і «Перевірте»', /3/.test(await p.textContent('.wiz-top .count')) && !!(await p.$('#aw-acc')) && !!(await p.$('[data-key=aw-skip]')));
   const sum = await p.textContent('[data-key=aw-sum]');
@@ -39,7 +39,7 @@ let pass = 0, fail = 0; const ok = (n, c, i) => { console.log((c ? '  OK  ' : ' 
   ok('рахунок одразу видно в «Перевірте»', (await p.textContent('#aw-sum-acc')).includes('7654321'));
   await click('[data-key=aw-create]', 400);
   s = await st(); const np = s.places.find(x => x.name === 'Батьків');
-  ok('квартиру створено: назва, адреса, рахунок, відкрита саме вона', np && np.address === 'Пушкінська 5, кв. 2' && np.water.account === '7654321' && np.water.surname === 'Петренко' && s.placeId === np.id, np);
+  ok('квартиру створено: назва, адреса, рахунок, відкрита саме вона', np && /(^|, )Пушкінська 5, кв\. 2$/.test(np.address) && np.water.account === '7654321' && np.water.surname === 'Петренко' && s.placeId === np.id, np);
   ok('далі — водомір 1 з 4 (гаряча), плашка з назвою квартири', (await hash()) === '#wadd' && /1\sз\s4/.test(await p.textContent('[data-key=aw-queue]')) && /Батьків/.test(await p.textContent('[data-key=aw-queue]')) && /гаряч/i.test(await p.textContent('h1')));
   ok('рахунок не питаємо вдруге', !(await p.$('#wa-form #w-acc')));
   await p.fill('#wa-val', '12'); await click('[data-key=wa-save]', 400);

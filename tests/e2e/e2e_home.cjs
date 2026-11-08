@@ -9,16 +9,16 @@ let pass = 0, fail = 0; const ok = (n, c, x) => { if (c) { pass++; console.log('
   await p.goto('http://127.0.0.1:8013/#home'); await p.reload(); await p.waitForTimeout(500);
   ok('одна квартира: «Моя квартира», «Додати адресу», «+ Квартира», без аккордеона', /Моя квартира/.test(await p.textContent('[data-key=home-place-name]')) && !!(await p.$('[data-key=home-addr-add]')) && !!(await p.$('[data-key=home-add-place]')) && !(await p.$('details.pacc')));
   await p.click('[data-key=home-addr-add]'); await p.waitForTimeout(200);
-  await p.fill('#hpa-main', 'вул. Сумська, 10, кв. 61'); await p.click('[data-key=hp-save]'); await p.waitForTimeout(300);
+  await p.fill('#hpa-main-street', 'вул. Сумська, 10, кв. 61'); await p.click('[data-key=hp-save]'); await p.waitForTimeout(300);
   let s = await st();
   ok('графіка відключень на головній немає й з адресою (він на сторінці світла)', !(await p.$('.gpv')));
   ok('адресу збережено, назва лишилась за замовчуванням', s.places[0].address === 'вул. Сумська, 10, кв. 61' && !s.places[0].name && /Сумська/.test(await p.textContent('[data-key=home-place]')) && /Моя квартира/.test(await p.textContent('[data-key=home-place-name]')));
   await p.click('[data-key=home-add-place]'); await p.waitForTimeout(400); s = await st();
   const np = s.places[1];
   ok('«+ Квартира» → друга квартира з холодною і світлом, вона поточна', s.places.length === 2 && np.water.meters.length === 1 && np.water.meters[0].kind === 'cold' && np.meters.length === 1 && np.meters[0].kind === 'elec' && s.placeId === np.id, np);
-  ok('аккордеон: дві секції, нова відкрита з формою назви й адреси та картками «Холодна» і «Світло»', (await p.$$('details.pacc')).length === 2 && await p.$eval('[data-key=home-pl-' + np.id + ']', e => e.open) && !!(await p.$('#hpa-' + np.id)) && !!(await p.$('[data-key=home-pl-' + np.id + '] [data-key=card-cold]')) && !!(await p.$('[data-key=home-pl-' + np.id + '] [data-key=card-elec]')));
-  await p.click('[data-key=home-pl-' + np.id + '] .chip >> nth=1'); await p.fill('#hpa-' + np.id, 'Пушкінська 5'); await p.click('[data-key=hp-save]'); await p.waitForTimeout(300); s = await st();
-  ok('назва кнопкою «Батьків» і адреса', s.places[1].name === 'Батьків' && s.places[1].address === 'Пушкінська 5' && /Батьків/.test(await p.textContent('[data-key=home-pl-sum-' + np.id + ']')));
+  ok('аккордеон: дві секції, нова відкрита з формою назви й адреси та картками «Холодна» і «Світло»', (await p.$$('details.pacc')).length === 2 && await p.$eval('[data-key=home-pl-' + np.id + ']', e => e.open) && !!(await p.$('#hpa-' + np.id + '-street')) && !!(await p.$('[data-key=home-pl-' + np.id + '] [data-key=card-cold]')) && !!(await p.$('[data-key=home-pl-' + np.id + '] [data-key=card-elec]')));
+  await p.click('[data-key=home-pl-' + np.id + '] .chip >> nth=1'); await p.fill('#hpa-' + np.id + '-street', 'Пушкінська 5'); await p.click('[data-key=hp-save]'); await p.waitForTimeout(300); s = await st();
+  ok('назва кнопкою «Батьків» і адреса', s.places[1].name === 'Батьків' && /(^|, )Пушкінська 5$/.test(s.places[1].address) && /Батьків/.test(await p.textContent('[data-key=home-pl-sum-' + np.id + ']')));
   ok('перша секція — «Моя квартира» з адресою', /Моя квартира/.test(await p.textContent('[data-key=home-pl-sum-main]')) && /Сумська/.test(await p.textContent('[data-key=home-pl-sum-main]')));
   // «+» світла в секції «Батьків» — введення світла саме цієї квартири
   await p.click('[data-key=home-pl-' + np.id + '] [data-key=card-elec-add]'); await p.waitForTimeout(400); s = await st();

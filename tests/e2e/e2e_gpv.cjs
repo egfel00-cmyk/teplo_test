@@ -34,7 +34,7 @@ const cache = (days) => { fs.mkdirSync(DATA + '/cache', { recursive: true }); fs
   await p.goto(U + '#home'); await p.waitForTimeout(300);
   await p.click('[data-key=home-addr-add]'); await p.waitForTimeout(200);
   ok('у полі адреси — підказка «…графік відключень світла — на сторінці «Світло»»', /графік відключень світла — на сторінці «Світло»/.test(await p.textContent('.hp-addr-gpv')));
-  await p.fill('#hpa-main', 'вул. Сумська, 10, кв. 61'); await p.click('[data-key=hp-save]'); await p.waitForTimeout(700);
+  await p.fill('#hpa-main-street', 'вул. Сумська, 10, кв. 61'); await p.click('[data-key=hp-save]'); await p.waitForTimeout(700);
   ok('головна з адресою — графіка немає (лише на сторінці світла)', !(await p.$('.gpv')) && !(await p.$('[data-key=gpv-home]')));
   await p.goto(U + '#elec'); await p.waitForTimeout(800);
   let s = await st();
@@ -78,12 +78,12 @@ const cache = (days) => { fs.mkdirSync(DATA + '/cache', { recursive: true }); fs
   ok('дві квартири: на головній графіка немає, у шапці квартири — без «світло вимкнуть»', !(await p.$('.gpv')) && !/вимкнуть|без світла/.test(await p.textContent('[data-key=home-pl-sum-main]')));
   await p.goto(U + '#place-p2'); await p.waitForTimeout(300);
   ok('екран квартири без світла й без адреси — графіка немає', !(await p.$('[data-key=gpv-place]')));
-  await p.fill('#pv-addr', 'просп. Науки'); await p.dispatchEvent('#pv-addr', 'change'); await p.goto(U + '#place-p2'); await p.reload(); await p.waitForTimeout(800);
+  await p.fill('#pv-street', 'просп. Науки'); await p.click('h1'); await p.goto(U + '#place-p2'); await p.reload(); await p.waitForTimeout(800);
   ok('квартира без електролічильника, з адресою → графік на її екрані, згорнутий: «Оберіть чергу відключень»', !!(await p.$('[data-key=gpv-place]')) && !(await isOpen('gpv-place')) && (await brief('gpv-place')).trim() === 'Оберіть чергу відключень');
   await p.click('[data-key=gpv-place] [data-key=gpv-sum]'); await p.waitForTimeout(200);
   ok('вулиця в кількох чергах без номера будинку → лише її черги (4.1, 4.2) і «Допишіть номер будинку…», «Показати всі черги»', (await p.$$('[data-key=gpv-place] .gpv-q')).length === 2
     && /кількох чергах/.test(await p.textContent('[data-key=gpv-place] [data-key=gpv-lead]')) && !!(await p.$('[data-key=gpv-place] [data-key=gpv-all]')));
-  const setAddr = async (a) => { await p.fill('#pv-addr', a); await p.dispatchEvent('#pv-addr', 'change'); await p.reload(); await p.waitForTimeout(800); await p.click('[data-key=gpv-place] [data-key=gpv-sum]'); await p.waitForTimeout(200); };
+  const setAddr = async (a) => { await p.evaluate((a) => { const s = JSON.parse(localStorage.getItem('teplo.v1')); const q = s.places.find(x => x.id === 'p2'); q.address = a; delete q.city; delete q.street; delete q.settle; localStorage.setItem('teplo.v1', JSON.stringify(s)); }, a); await p.reload(); await p.waitForTimeout(800); await p.click('[data-key=gpv-place] [data-key=gpv-sum]'); await p.waitForTimeout(200); };
   await setAddr('вул. Вигадана, 1');
   ok('адреси немає в переліку → «Не знайшли адресу… Оберіть чергу» і всі 12', /Не знайшли адресу «вул\. Вигадана, 1»/.test(await p.textContent('[data-key=gpv-place] [data-key=gpv-lead]')) && (await p.$$('[data-key=gpv-place] .gpv-q')).length === 12);
   await setAddr('м. Чугуїв, вул. Вигадана, 3');

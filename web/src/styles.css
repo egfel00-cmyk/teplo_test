@@ -1633,3 +1633,18 @@ details.wacc.wacc-btn > summary .pacc-chev { position: static; margin: 0 0 0 aut
 .mbox-set[open] > .mbox-set-b { margin-top: 4px; }
 details.dest-more > summary, details.bot-how > summary { min-height: 48px; padding: 6px 0; gap: 10px; }
 details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { margin-left: auto; }
+
+/* ---- адреса квартири: населений пункт з підказкою + вулиця (61-а сесія) ---- */
+.addr-f { display: grid; gap: 0 var(--sp-4); grid-template-columns: minmax(0, 1fr); align-items: start; }
+@media (min-width: 640px) { .addr-f { grid-template-columns: minmax(0, 2fr) minmax(0, 3fr); } }
+.af-list { list-style: none; margin: 6px 0 0; padding: 4px; border: 1.5px solid var(--c-field-line); border-radius: var(--r-field); background: var(--c-surface); max-height: 320px; overflow: auto; }
+.af-list[hidden] { display: none; }
+.af-opt { display: flex; flex-direction: column; gap: 2px; padding: 10px 12px; min-height: 48px; justify-content: center; border-radius: 8px; cursor: pointer; }
+.af-opt b { font-weight: 600; }
+.af-opt:hover, .af-opt.act { background: var(--c-ghost-hover); }
+.af-opt.act { box-shadow: inset 3px 0 0 var(--c-ink); }
+.af-where { margin: 6px 0 0; min-height: 1.5em; color: var(--c-ink-2); display: flex; gap: 6px; align-items: flex-start; }
+.af-where.ok { color: var(--c-ok); } .af-where.bad { color: var(--c-bad); }
+.af-where svg { flex: none; margin-top: 2px; }
+.af-hint { margin: 4px 0 0; }
+.aw-addr-t, .pv-addr-t { margin: var(--sp-4) 0 var(--sp-2); font-size: var(--fs-m); }

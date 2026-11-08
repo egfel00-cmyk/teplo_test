@@ -25,10 +25,10 @@ let pass = 0, fail = 0; const ok = (n, c, i) => { console.log((c ? '  OK  ' : ' 
   await go('place-' + (await st()).placeId);
   ok('новая квартира → её экран с подсказкой', /^#place-p/.test(await p.evaluate(() => location.hash)) && !!(await p.$('[data-key=pv-new]')));
   await p.click('[data-act=pv-chip][data-v="Батьків"]'); await p.waitForTimeout(200);
-  await p.fill('#pv-addr', 'Пушкінська 5, кв. 2'); await p.waitForTimeout(100);
+  await p.fill('#pv-street', 'Пушкінська 5, кв. 2'); await p.waitForTimeout(100);
   s = await st(); const p2 = s.places.find(x => x.id === s.placeId);
   ok('миграция: адрес из name → address', s.places[0].address === 'Сумська 10, кв. 61' && s.places[0].name === '' && s.places[0].v === 2, s.places[0]);
-  ok('название кнопкой, адрес полем, цвет — не как у первой', p2.name === 'Батьків' && p2.address === 'Пушкінська 5, кв. 2' && p2.color && p2.color !== 'teal', p2);
+  ok('название кнопкой, адрес полем, цвет — не как у первой', p2.name === 'Батьків' && /(^|, )Пушкінська 5, кв\. 2$/.test(p2.address) && p2.color && p2.color !== 'teal', p2);
   ok('шапка квартиры не на экране квартиры, h1 = название', (await p.textContent('h1')).includes('Батьків'));
   // «Додати лічильник» → холодна → форма нового водомера
   await p.click('[data-key=pv-add-meter]'); await p.waitForTimeout(300);

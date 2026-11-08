@@ -59,11 +59,11 @@ final class Providers {
 
   /** Скелет назви пункту без укр./рос. різниці й дрібниць: «Малая Даниловка» = «Мала Данилівка», «Чугуев» = «Чугуїв»,
    *  «Александровка» = «Олександрівка», «Балаклея» = «Балаклія», «Шевченково» = «Шевченкове», «Слатино» = «Слатине». */
-  public static function nk(string $s): string {
+  public static function nk(string $s, bool $ends = true): string {
     $s = mb_strtolower(trim($s));
     $s = str_replace(['ё', '’', 'ʼ', '`', '´', "'", '"', '«', '»'], ['е', '', '', '', '', '', '', '', ''], $s);
     $s = preg_replace(['/(?<!\p{L})алекс/u', '/(?<!\p{L})никол/u', '/(?<!\p{L})ольх/u', '/(?<!\p{L})ольш/u'], ['олекс', 'микол', 'вільх', 'вільш'], $s);
-    $s = Gpv::skel((string)$s);
+    $s = Gpv::skel((string)$s); if (!$ends) return trim($s);
     $w = array_map(fn($x) => (string)preg_replace(['/[ое]вка$/u', '/[ое]в$/u', '/[ое]во$/u', '/ино$/u', '/ея$/u', '/ие$/u', '/([жчшщ])я$/u'],
       ['ивка', 'ив', 'ове', 'ине', 'ия', 'и', '$1а'], $x), explode(' ', $s));
     return trim(implode(' ', array_filter($w, fn($x) => $x !== '')));
@@ -217,6 +217,34 @@ final class Providers {
       foreach ($ix['by'][self::nk('Харків')] ?? [] as $i) if ($k['settlements'][$i]['c'] === 'M' && ($k['settlements'][$i]['r'] ?? 'kh') === 'kh') return ['p' => self::sp($i), 'how' => 'default', 'alts' => []];
     }
     return null;
+  }
+  /** Підказка населеного пункту під час набору (форма адреси квартири, 61-а сесія): «Льв» → Львів, «Мала Дан» → Мала Данилівка,
+   *  рос. й з описками («Александровк», «Харьк», «Киев»). Порядок: точна назва → початок назви → описка; міста → селища → села;
+   *  регіон $pref (де вже є квартира людини) — першим. До 8 штук. GET /api/places/suggest?q=…&r=kh. Нічого не зберігаємо. */
+  public static function suggest(string $q, string $pref = ''): array {
+    $q = mb_strtolower(trim(mb_substr($q, 0, 60)));
+    $q = trim((string)preg_replace('/^(м|г|с|смт|пгт|сел|селище|село|с\s*-\s*ще|місто|город|пос|поселок)(?:\.\s*|\s+)/u', '', $q));
+    $key = self::nk($q); $L = mb_strlen($key); if ($L < 2) return ['items' => []];
+    // недописане слово: «Нов» — не «нів» (заміна закінчень nk лише для цілих слів) — початок без заміни
+    $kp = self::nk($q, false); $Lp = mb_strlen($kp);
+    $ix = self::ix(); $k = self::kat(); $hits = [];
+    foreach ($ix['by'] as $kk => $is) {
+      $kk = (string)$kk;
+      if ($kk === $key) $sc = 0; elseif (str_starts_with($kk, $key) || ($Lp >= 2 && str_starts_with($kk, $kp))) $sc = 1;
+      elseif ($L >= 4 && self::lev($key, mb_substr($kk, 0, $L)) <= ($L >= 7 ? 2 : 1)) $sc = 2;
+      else continue;
+      foreach ($is as $i) $hits[$i] = min($hits[$i] ?? 9, $sc);
+    }
+    $rk = ['M' => 0, 'X' => 1, 'C' => 2]; $ro = array_flip(array_keys(self::REGIONS)); $S = $k['settlements'];
+    $ids = array_keys($hits);
+    usort($ids, fn($a, $b) => [$hits[$a], ($S[$a]['r'] ?? 'kh') === $pref ? 0 : 1, $rk[$S[$a]['c']] ?? 3, $ro[$S[$a]['r'] ?? 'kh'] ?? 9, (string)$S[$a]['n']]
+      <=> [$hits[$b], ($S[$b]['r'] ?? 'kh') === $pref ? 0 : 1, $rk[$S[$b]['c']] ?? 3, $ro[$S[$b]['r'] ?? 'kh'] ?? 9, (string)$S[$b]['n']]);
+    $out = []; $seen = [];
+    foreach ($ids as $i) {
+      $p = self::sp($i); $u = $p['n'] . '|' . $p['h']; if (isset($seen[$u])) continue; $seen[$u] = 1;
+      $out[] = self::pub($p) + ['c' => $p['c']]; if (count($out) >= 8) break;
+    }
+    return ['items' => $out];
   }
   /** Сьогоднішня дата для датованих тарифів (тести підставляють свою). */
   public static ?string $today = null;

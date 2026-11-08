@@ -1666,6 +1666,21 @@ details.wacc.wacc-btn > summary .pacc-chev { position: static; margin: 0 0 0 aut
 details.dest-more > summary, details.bot-how > summary { min-height: 48px; padding: 6px 0; gap: 10px; }
 details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { margin-left: auto; }
 
+/* ---- адреса квартири: населений пункт з підказкою + вулиця (61-а сесія) ---- */
+.addr-f { display: grid; gap: 0 var(--sp-4); grid-template-columns: minmax(0, 1fr); align-items: start; }
+@media (min-width: 640px) { .addr-f { grid-template-columns: minmax(0, 2fr) minmax(0, 3fr); } }
+.af-list { list-style: none; margin: 6px 0 0; padding: 4px; border: 1.5px solid var(--c-field-line); border-radius: var(--r-field); background: var(--c-surface); max-height: 320px; overflow: auto; }
+.af-list[hidden] { display: none; }
+.af-opt { display: flex; flex-direction: column; gap: 2px; padding: 10px 12px; min-height: 48px; justify-content: center; border-radius: 8px; cursor: pointer; }
+.af-opt b { font-weight: 600; }
+.af-opt:hover, .af-opt.act { background: var(--c-ghost-hover); }
+.af-opt.act { box-shadow: inset 3px 0 0 var(--c-ink); }
+.af-where { margin: 6px 0 0; min-height: 1.5em; color: var(--c-ink-2); display: flex; gap: 6px; align-items: flex-start; }
+.af-where.ok { color: var(--c-ok); } .af-where.bad { color: var(--c-bad); }
+.af-where svg { flex: none; margin-top: 2px; }
+.af-hint { margin: 4px 0 0; }
+.aw-addr-t, .pv-addr-t { margin: var(--sp-4) 0 var(--sp-2); font-size: var(--fs-m); }
+
 </style>
 <style>.top { padding-top: max(12px, env(safe-area-inset-top)); }</style>
 </head>
@@ -2468,6 +2483,9 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
       bl_open_err: "Не вдалося відкрити файл — спробуйте ще раз.",
       mv_bad_file: 'Потрібне фото (JPEG, PNG, WebP) або PDF.', mv_too_big: 'Файл завеликий (до 12 МБ).', mv_del_q: 'Видалити документ?',
       pl_title: 'Мої квартири', pl_sub: 'У кожної квартири свої лічильники, показання, історія й рахунки.', pl_unnamed: 'Квартира {n}',
+      af_city: 'Населений пункт', af_city_ph: 'Почніть писати: Харків, Львів, Бровари…', af_street: 'Вулиця, будинок, квартира', af_street_ph: 'вул. Сумська, 10, кв. 61',
+      af_pick: 'Оберіть зі списку — так точно знайдемо постачальників і тарифи.', af_none: 'Такого населеного пункту не знайшли. Перевірте назву.', af_busy: 'Шукаємо…',
+      af_where: '{k} · {h} громада, {d} район, {o} обл.', af_where_ky: 'місто · столиця', af_list: 'Населені пункти', af_default: 'Як у квартири «{p}» — можна змінити.',
       pl_addr: 'Адреса квартири', pl_addr_ph: 'вул. Сумська, 10, кв. 61', pl_no_meter: 'лічильник не обрано', pl_n: 'показань: {n}', pl_ver: 'повірка до {d}',
       pl_active: 'зараз', pl_use: 'Перейти', pl_add: 'Додати квартиру', pl_switch: 'Квартира', pl_switched: 'Квартира: {p}',
       nav_stats: 'Статистика',
@@ -3570,6 +3588,9 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
       bl_open_err: "Не удалось открыть файл — попробуйте ещё раз.",
       mv_bad_file: 'Нужно фото (JPEG, PNG, WebP) или PDF.', mv_too_big: 'Файл слишком большой (до 12 МБ).', mv_del_q: 'Удалить документ?',
       pl_title: 'Мои квартиры', pl_sub: 'У каждой квартиры свои счётчики, показания, история и счета.', pl_unnamed: 'Квартира {n}',
+      af_city: 'Населённый пункт', af_city_ph: 'Начните писать: Харьков, Львов, Бровары…', af_street: 'Улица, дом, квартира', af_street_ph: 'ул. Сумская, 10, кв. 61',
+      af_pick: 'Выберите из списка — так точно найдём поставщиков и тарифы.', af_none: 'Такого населённого пункта не нашли. Проверьте название.', af_busy: 'Ищем…',
+      af_where: '{k} · {h} громада, {d} район, {o} обл.', af_where_ky: 'город · столица', af_list: 'Населённые пункты', af_default: 'Как у квартиры «{p}» — можно изменить.',
       pl_addr: 'Адрес квартиры', pl_addr_ph: 'ул. Сумская, 10, кв. 61', pl_no_meter: 'счётчик не выбран', pl_n: 'показаний: {n}', pl_ver: 'поверка до {d}',
       pl_active: 'сейчас', pl_use: 'Перейти', pl_add: 'Добавить квартиру', pl_switch: 'Квартира', pl_switched: 'Квартира: {p}',
       nav_stats: 'Статистика',
@@ -6741,10 +6762,10 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
   }
   function hpEditForm(p) {
     var id = esc(p.id), idx = places().indexOf(p);
-    return '<form class="hp-edit" data-hp-form="' + id + '" novalidate data-key="hp-edit-form"><div class="grid2">' +
+    return '<form class="hp-edit" data-hp-form="' + id + '" novalidate data-key="hp-edit-form"><div class="hp-name">' +
       '<div class="field"><label for="hpn-' + id + '">' + esc(t('hp_name')) + '</label><div class="ctl"><input id="hpn-' + id + '" maxlength="40" autocomplete="off" value="' + esc(p.name || '') + '" placeholder="' + esc(idx <= 0 ? t('pl_mine') : t('pl_unnamed', { n: idx + 1 })) + '"></div>' +
         '<div class="pv-chips">' + t('pv_chips').split('|').map(function (c) { return '<button type="button" class="chip" data-act="hp-chip" data-id="' + id + '" data-v="' + esc(c) + '">' + esc(c) + '</button>'; }).join('') + '</div></div>' +
-      '<div class="field"><label for="hpa-' + id + '">' + esc(t('hp_addr')) + '</label><div class="ctl"><input id="hpa-' + id + '" maxlength="120" autocomplete="street-address" value="' + esc(p.address || '') + '" placeholder="' + esc(t('hp_addr_ph')) + '"></div><p class="small muted hp-addr-gpv">' + esc(t('hp_addr_gpv')) + '</p></div></div>' +
+      '</div>' + addrFieldsFor('hpa-' + id, p, false) + (afKh(p) ? '<p class="small muted hp-addr-gpv">' + esc(t('hp_addr_gpv')) + '</p>' : '') +
       '<div class="row-actions"><button type="button" class="btn sec" data-act="hp-cancel">' + esc(t('cancel')) + '</button><button type="submit" class="btn" data-key="hp-save">' + esc(t('save')) + '</button></div></form>';
   }
   /** Шапка квартири в списку: рядок на кожен вид лічильників — значок, назва, що робити й до коли (спершу термінове).
@@ -6800,14 +6821,15 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
     var np = { id: 'p' + Date.now().toString(36), name: '', address: '', v: 2, color: nextColor(), meter: null, baseline: null,
       water: { account: '', surname: '', meters: [{ id: Wt.uid(), kind: 'cold', name: '', serial: '', vkId: '', verifiedUntil: '' }] },
       meters: [{ id: El.uid(), kind: 'elec', name: '', zones: 1, serial: '', account: '', createdAt: today() }], updatedAt: Date.now() };
+    var dc = cityDefault(); if (dc) addrApply(np, { city: dc.city, typed: '', street: '' });   // пункт — як у першої квартири (владелец 08.11)
     S.places.push(np); switchPlace(np.id); WX.key = '';
     S.homeOpen = S.homeOpen || {}; S.homeOpen[np.id] = true; HP_EDIT = np.id; save();
     toast(t('hp_added', { p: placeLabel(place()) })); SCROLL_TO = 'hp-' + np.id;
     if (routeName() === 'home') render(true); else go('home');
   }
   function hpSave(id) {
-    var p = place(id), n = document.getElementById('hpn-' + id), a = document.getElementById('hpa-' + id); if (!p) return;
-    p.name = String(n ? n.value : p.name || '').trim().slice(0, 40); p.address = String(a ? a.value : p.address || '').trim().slice(0, 120); p.updatedAt = Date.now();
+    var p = place(id), n = document.getElementById('hpn-' + id); if (!p) return;
+    p.name = String(n ? n.value : p.name || '').trim().slice(0, 40); addrApply(p, addrRead('hpa-' + id)); p.updatedAt = Date.now();
     HP_EDIT = ''; save(); toast(t('b_saved')); render(true);
   }
 
@@ -6837,7 +6859,9 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
     if (S.demoToday) o.ymd = S.demoToday; if (typeof S.demoMin === 'number') o.min = S.demoMin;
     return o;
   }
-  function gpvHas(p) { return !!(p && String(p.address || '').trim()); }
+  /** Графік Харківобленерго — лише для Харківщини: пункт не обрано (стара адреса рядком) чи обрано на Харківщині й є вулиця. */
+  function afKh(p) { return !(p && p.city && p.city.n) || p.city.r === 'kh'; }
+  function gpvHas(p) { return !!(p && String(p.address || '').trim() && afKh(p) && (!(p.city && p.city.n) || String(p.street || '').trim())); }
   /** Черга за адресою квартири (сервер шукає в переліку Харківобленерго): знайшли — підставляємо самі (p.gpvAuto), ні — варіанти. */
   function gpvAddr(p) {
     var a = String(p.address || '').trim(), c = GPV.addr[a]; if (!a || !window.TEPLO_API) return null;
@@ -9790,7 +9814,6 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
     var note = pm && pm.id !== 'other' ? '<p class="small muted">' + esc(L(pm.note)) + '</p>' : '';
     return { screen: 'S02', route: 'meter', bare: !S.onboarded, closeTo: S.onboarded ? 'home' : 'start', html: pqBanner(true) +
       '<h1>' + esc(t('m_title')) + '</h1><p class="muted">' + esc(t('m_lead')) + '</p>' +
-      (!(place() || {}).name ? '<div class="field" style="max-width:520px"><label for="pl-addr">' + esc(t('pl_addr')) + ' <span class="muted small">(' + esc(t('b_opt')) + ')</span></label><div class="ctl"><input id="pl-addr" data-plf="address" autocomplete="street-address" placeholder="' + esc(t('pl_addr_ph')) + '" value="' + esc((place() || {}).address || '') + '"></div></div>' : '') +
       '<details class="where" data-key="meter-where"><summary>' + esc(t('m_where')) + '</summary><p>' + esc(t('m_where_text')) + '</p></details>' +
       (VIS().available ? '<p><button class="btn sec" data-act="photo" data-mode="model" data-key="meter-photo">' + ico('camera', 20) + '<span>' + esc(t('ph_model_entry')) + '</span></button></p>' : '') +
       '<ul class="list models" data-key="meter-list">' + list + '</ul>' + (pm ? '<div style="margin-top:16px">' + note + unitBlock + '</div>' : '') +
@@ -10562,6 +10585,138 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
       (o.set ? '<details class="mbox-set mrow-set" id="mbs-' + esc(o.what) + '"' + (MB_OPEN[o.what] ? ' open' : '') + ' data-key="pv-set-' + esc(o.what) + '"><summary>' + ico('prefs', 18, 'bt-ico') + '<span>' + esc(t('mb_set')) + '</span>' + ico('chev', 18, 'pacc-chev') + '</summary><div class="mbox-set-b">' + o.set + '</div></details>' : '') + '</li>';
   }
   function verTxt(v) { return v ? t('pl_ver', { d: R.toHtmDate(v) }) : ''; }
+  // ---------- адреса квартири: населений пункт з підказкою + вулиця, будинок, квартира (61-а сесія, владелец 08.11) ----------
+  // p.city = {n, h, r, c, hromada, district, oblast} — обраний зі списку пункт (КАТОТТГ: Харківщина, Київщина, Київ, Одещина, Львівщина);
+  // p.street — «вул. Сумська, 10, кв. 61»; p.address — разом, як і було («м. Харків, вул. Сумська, 10, кв. 61»): графік відключень, довідник,
+  // підпис квартири; p.settle — точний пункт для довідника (без «Уточніть»). Нова квартира — з пунктом першої (Харків → Харків, Львів → Львів).
+  var AF = {}, SUG = {};
+  function afPre(c) { return c === 'M' ? 'м. ' : c === 'X' ? 'селище ' : c === 'C' ? 'с. ' : ''; }
+  function afCity(x) { return x && x.n && x.h ? { n: String(x.n), h: String(x.h), r: String(x.r || 'kh'), c: String(x.c || x.kind || ''), hromada: String(x.hromada || ''), district: String(x.district || ''), oblast: String(x.oblast || '') } : null; }
+  function afWhere(c) { return c.r === 'ky' ? t('af_where_ky') : t('af_where', { k: kindWord(c.c), h: c.hromada, d: c.district, o: c.oblast }); }
+  /** Скелет назви для грубого порівняння (укр./рос.): Харків = Харьков, Львів = Львов. */
+  function afSk(s) { return String(s || '').toLowerCase().replace(/[’ʼ'`"«»]/g, '').replace(/ё/g, 'е').replace(/[іїйиы]/g, 'и').replace(/[єэ]/g, 'е').replace(/ґ/g, 'г').replace(/ь/g, '').replace(/^(м|г|с|смт|селище|село|місто|город|пгт|с-ще)\.?\s+/, '').replace(/(ов|ев|ив)$/, 'ив').trim(); }
+  /** Пункт квартири: обраний (p.city) або знайдений довідником за старою адресою одним рядком. */
+  function cityOf(p) {
+    if (!p) return null; if (p.city && p.city.n) return afCity(p.city);
+    if (!String(p.address || '').trim()) return null;
+    var j = prvLoad(p); return j && j.found && j.place ? afCity(j.place) : null;
+  }
+  /** Вулиця квартири: p.street або стара адреса без назви пункту, області, району й громади. */
+  function streetOf(p, c) {
+    if (!p) return ''; if (p.city && p.city.n) return String(p.street || '');
+    var parts = String(p.address || '').split(','), sk = c ? afSk(c.n) : '';
+    return parts.filter(function (x) {
+      var s = x.trim(), k = afSk(s); if (!s) return false;
+      if (/(^|\s)(обл|область|р-н|район|громада|тг|україна|украина)(\.|\s|$)/i.test(s) || /^\d{5}$/.test(s)) return false;
+      return !(sk && k && (k === sk || (k.length >= 4 && sk.indexOf(k.slice(0, 4)) === 0 && Math.abs(k.length - sk.length) <= 3)));
+    }).map(function (x) { return x.trim(); }).join(', ');
+  }
+  /** Пункт за замовчуванням для нової квартири — з першої квартири, де він відомий. */
+  function cityDefault() { var ps = places(); for (var i = 0; i < ps.length; i++) { var c = cityOf(ps[i]); if (c) return { city: c, from: ps[i] }; } return null; }
+  function afCompose(c, typed, street) {
+    var head = c ? afPre(c.c) + c.n : String(typed || '').trim(); street = String(street || '').trim();
+    return (head && street ? head + ', ' + street : head || street).slice(0, 120);
+  }
+  /** Поля адреси. pfx — префікс id; o = {city, typed, street, live (зберігати одразу в поточну квартиру), hint (рядок під пунктом)}. */
+  function addrFields(pfx, o) {
+    var c = afCity(o.city); AF[pfx] = { city: c, items: [], act: -1, q: '', live: !!o.live, busy: false, r0: c ? c.r : '' };
+    var val = c ? c.n : String(o.typed || '');
+    return '<div class="addr-f" data-af="' + pfx + '" data-key="af-' + pfx + '">' +
+      '<div class="field af-city"><label for="' + pfx + '-city">' + esc(t('af_city')) + '</label><div class="ctl"><input id="' + pfx + '-city" data-acity="' + pfx + '" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="' + pfx + '-cl" aria-describedby="' + pfx + '-where" autocomplete="off" autocapitalize="words" spellcheck="false" maxlength="60" value="' + esc(val) + '" placeholder="' + esc(t('af_city_ph')) + '"></div>' +
+      '<ul class="af-list" id="' + pfx + '-cl" role="listbox" aria-label="' + esc(t('af_list')) + '" hidden></ul>' +
+      '<p class="small af-where' + (c ? ' ok' : '') + '" id="' + pfx + '-where" aria-live="polite">' + (c ? ico('check', 16) + '<span>' + esc(afWhere(c)) + '</span>' : esc(val ? t('af_pick') : '')) + '</p>' + (o.hint ? '<p class="small muted af-hint">' + esc(o.hint) + '</p>' : '') + '</div>' +
+      '<div class="field"><label for="' + pfx + '-street">' + esc(t('af_street')) + '</label><div class="ctl"><input id="' + pfx + '-street" data-astreet="' + pfx + '" maxlength="100" autocomplete="street-address" value="' + esc(o.street || '') + '" placeholder="' + esc(t('af_street_ph')) + '"></div></div></div>';
+  }
+  /** Поля квартири p (екран квартири, «Назва й адреса» на головній). */
+  function addrFieldsFor(pfx, p, live) {
+    var c = cityOf(p), d = !c && !String((p && p.address) || '').trim() ? cityDefault() : null;
+    return addrFields(pfx, { city: c || (d && d.city), typed: c ? '' : '', street: streetOf(p, c), live: live, hint: d && d.from !== p ? t('af_default', { p: placeLabel(d.from) }) : '' });
+  }
+  /** Що в полях: {city|null, typed, street}. Набрали назву без вибору — беремо точний збіг зі списку, якщо він один. */
+  function addrRead(pfx) {
+    var st = AF[pfx], ci = document.getElementById(pfx + '-city'), si = document.getElementById(pfx + '-street'); if (!st || !ci) return null;
+    var typed = String(ci.value || '').trim(), c = st.city && afSk(st.city.n) === afSk(typed) ? st.city : null;
+    if (!c && typed) { var ex = st.items.filter(function (x) { return afSk(x.n) === afSk(typed); }); if (ex.length === 1 || (ex.length > 1 && ex[0].c === 'M' && ex[1].c !== 'M')) c = afCity(ex[0]); }
+    return { city: c, typed: c ? '' : typed, street: si ? String(si.value || '').trim().slice(0, 100) : '' };
+  }
+  /** Записати адресу в квартиру: пункт, вулиця, рядок адреси й точний пункт для довідника. */
+  function addrApply(p, a) {
+    if (!p || !a) return false;
+    var addr = afCompose(a.city, a.typed, a.street), was = [p.address || '', JSON.stringify(p.city || null), p.street || ''].join('|');
+    if (a.city) { p.city = a.city; p.street = a.street; p.settle = { a: addr, n: a.city.n, h: a.city.h }; }
+    else { delete p.city; delete p.street; if (!p.settle || p.settle.a !== addr) delete p.settle; }
+    p.address = addr;
+    if (was === [p.address, JSON.stringify(p.city || null), p.street || ''].join('|')) return false;
+    p.updatedAt = Date.now(); return true;
+  }
+  function afPaint(pfx) {
+    var st = AF[pfx], ul = document.getElementById(pfx + '-cl'), ci = document.getElementById(pfx + '-city'), w = document.getElementById(pfx + '-where'); if (!st || !ul || !ci) return;
+    var open = document.activeElement === ci && st.items.length > 0 && !(st.city && afSk(st.city.n) === afSk(ci.value));
+    ul.innerHTML = st.items.map(function (x, i) {
+      var c = afCity(x);
+      return '<li role="option" id="' + pfx + '-o' + i + '" class="af-opt' + (i === st.act ? ' act' : '') + '" aria-selected="' + (i === st.act) + '" data-aopt="' + pfx + '" data-i="' + i + '"><b>' + esc(afPre(c.c) + c.n) + '</b><span class="small muted">' + esc(afWhere(c)) + '</span></li>';
+    }).join('');
+    ul.hidden = !open; ci.setAttribute('aria-expanded', String(open));
+    if (open && st.act >= 0) ci.setAttribute('aria-activedescendant', pfx + '-o' + st.act); else ci.removeAttribute('aria-activedescendant');
+    if (w) {
+      var v = String(ci.value || '').trim(), c0 = st.city && afSk(st.city.n) === afSk(v) ? st.city : null;
+      w.className = 'small af-where' + (c0 ? ' ok' : v && !st.busy && !st.items.length && st.q === v ? ' bad' : '');
+      w.innerHTML = c0 ? ico('check', 16) + '<span>' + esc(afWhere(c0)) + '</span>' : esc(!v ? '' : st.busy ? t('af_busy') : st.q === v && !st.items.length ? t('af_none') : t('af_pick'));
+    }
+  }
+  var AF_T = 0;
+  function afSuggest(pfx) {
+    var st = AF[pfx], ci = document.getElementById(pfx + '-city'); if (!st || !ci) return;
+    var q = String(ci.value || '').trim(); clearTimeout(AF_T);
+    if (q.length < 2 || !window.TEPLO_API) { st.items = []; st.act = -1; st.q = q; st.busy = false; afPaint(pfx); return; }
+    var d = st.r0 ? null : cityDefault(), r = st.r0 || (d ? d.city.r : '') || 'kh', sk = q + '|' + r;   // свій регіон — першим; невідомо — Харківщина (звідси більшість)
+    if (SUG[sk]) { st.items = SUG[sk]; st.q = q; st.act = -1; st.busy = false; afPaint(pfx); return; }
+    st.busy = true; afPaint(pfx);
+    AF_T = setTimeout(function () {
+      fetch(window.TEPLO_API + '/places/suggest?q=' + encodeURIComponent(q) + '&r=' + r, { credentials: 'same-origin', headers: { Accept: 'application/json' } }).then(function (x) { return x.json(); })
+        .then(function (j) { SUG[sk] = (j && j.items) || []; if (AF[pfx] !== st) return; var cur = document.getElementById(pfx + '-city'); if (cur && String(cur.value).trim() === q) { st.items = SUG[sk]; st.q = q; st.act = -1; st.busy = false; afPaint(pfx); } },
+          function () { st.busy = false; st.q = q; afPaint(pfx); });
+    }, 200);
+  }
+  function afPick(pfx, i) {
+    var st = AF[pfx], x = st && st.items[i], ci = document.getElementById(pfx + '-city'); if (!x || !ci) return;
+    st.city = afCity(x); st.act = -1; ci.value = st.city.n; afPaint(pfx);
+    var si = document.getElementById(pfx + '-street');
+    if (st.live) { ensurePlaces(); if (addrApply(place(), addrRead(pfx))) { save(); render(true); si = document.getElementById(pfx + '-street'); } }
+    if (si) si.focus();
+  }
+  document.addEventListener('input', function (e) {
+    var el = e.target, pfx = el && el.getAttribute && (el.getAttribute('data-acity') || el.getAttribute('data-astreet')); if (!pfx || !AF[pfx]) return;
+    if (el.getAttribute('data-acity')) { var st0 = AF[pfx]; if (st0.city && afSk(st0.city.n) !== afSk(el.value)) st0.city = null; afSuggest(pfx); }
+    if (AF[pfx].live) { ensurePlaces(); if (addrApply(place(), addrRead(pfx))) save(); }
+  });
+  document.addEventListener('keydown', function (e) {
+    var el = e.target, pfx = el && el.getAttribute && el.getAttribute('data-acity'), st = pfx && AF[pfx]; if (!st) return;
+    var ul = document.getElementById(pfx + '-cl'), open = ul && !ul.hidden, n = st.items.length;
+    if (e.key === 'ArrowDown' && n) { e.preventDefault(); if (!open) { afPaint(pfx); } st.act = (st.act + 1) % n; afPaint(pfx); }
+    else if (e.key === 'ArrowUp' && n && open) { e.preventDefault(); st.act = st.act <= 0 ? n - 1 : st.act - 1; afPaint(pfx); }
+    else if (e.key === 'Enter' && open) { e.preventDefault(); afPick(pfx, st.act >= 0 ? st.act : 0); }
+    else if (e.key === 'Escape' && open) { e.preventDefault(); st.act = -1; ul.hidden = true; el.setAttribute('aria-expanded', 'false'); }
+  });
+  // вибір мишею/пальцем: mousedown — щоб поле не втратило фокус до вибору
+  document.addEventListener('mousedown', function (e) { var o = e.target.closest && e.target.closest('[data-aopt]'); if (o) e.preventDefault(); });
+  document.addEventListener('click', function (e) { var o = e.target.closest && e.target.closest('[data-aopt]'); if (o) afPick(o.getAttribute('data-aopt'), +o.getAttribute('data-i')); });
+  document.addEventListener('focusin', function (e) { var pfx = e.target && e.target.getAttribute && e.target.getAttribute('data-acity'); if (pfx && AF[pfx] && AF[pfx].items.length) afPaint(pfx); });
+  // «жива» форма (екран квартири): пішли з адреси не в інше поле — показати відкладене (довідник для нового пункту)
+  document.addEventListener('focusout', function (e) {
+    var pfx = e.target && e.target.getAttribute && (e.target.getAttribute('data-acity') || e.target.getAttribute('data-astreet'));
+    var rt = e.relatedTarget; if (!pfx || !AF[pfx] || !AF[pfx].live || (rt && /^(INPUT|TEXTAREA|SELECT|BUTTON|A|SUMMARY|LABEL)$/.test(rt.tagName))) return;
+    setTimeout(function () { var a = document.activeElement; if (pendingRender && !(a && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName))) render(true); }, 220);
+  });
+  document.addEventListener('focusout', function (e) {
+    var pfx = e.target && e.target.getAttribute && e.target.getAttribute('data-acity'); if (!pfx || !AF[pfx]) return;
+    setTimeout(function () {
+      var st = AF[pfx]; if (!st) return; var a = addrRead(pfx);
+      if (a && a.city && !st.city) { st.city = a.city; var ci = document.getElementById(pfx + '-city'); if (ci) ci.value = a.city.n; if (st.live) { ensurePlaces(); if (addrApply(place(), a)) save(); } }
+      afPaint(pfx);
+    }, 150);
+  });
+
   // ---------- постачальники й тарифи за адресою квартири (GET /api/providers, довідник app/data/providers.json) ----------
   // p.prov[k] = { ok: 1 } — людина підтвердила, що так і є; { name, supply, drain, price, at } — її дані з платіжки (k: elec, gas, water, heat).
   var PRV = { addr: {}, edit: {} };
@@ -10733,7 +10888,7 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
     var p = place(id);
     if (!p) return { screen: 'S42', route: 'places', html: '<h1>' + esc(t('pl_title')) + '</h1><p class="muted">' + esc(t('rec_gone')) + '</p><a class="btn" href="#places">' + esc(t('back')) + '</a>' };
     if (id !== S.placeId) { switchPlace(id); WX.key = ''; p = place(); }
-    var many = places().length > 1, ms = wmeters(), sub = placeSub(p), fresh = !p.name && !p.address && !hasHeat() && !ms.length && !pmeters().length;
+    var many = places().length > 1, ms = wmeters(), sub = placeSub(p), fresh = !p.name && !String((p.city && p.city.n ? p.street : p.address) || '').trim() && !hasHeat() && !ms.length && !pmeters().length;
     // сюда приходят с главной (плитка «Налаштування квартири») — туда и назад
     var h = '<p><a href="#' + (many ? 'places' : 'home') + '" data-key="pv-back">← ' + esc(t(many ? 'pv_back_all' : 'nav_home')) + '</a></p>' +
       '<h1 class="pv-h" style="--pc:var(--pc-' + placeColor(p) + ')"><span class="pv-dot" aria-hidden="true"></span><span>' + esc(placeLabel(p)) + (sub ? '<span class="small muted pv-sub">' + esc(sub) + '</span>' : '') + '</span></h1>';
@@ -10757,7 +10912,7 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
     var sw = PCOLORS.map(function (c) { return '<label class="swatch" style="--pc:var(--pc-' + c + ')"><input type="radio" name="pv-color" value="' + c + '"' + (placeColor(p) === c ? ' checked' : '') + '><span class="sw-dot" aria-hidden="true">' + ico('check', 20) + '</span><span class="sr">' + esc(t('pc_' + c)) + '</span></label>'; }).join('');
     h += '<section class="panel" data-key="pv-about"><h2>' + esc(t('pv_about')) + '</h2>' +
       '<div class="field"><label for="pv-name">' + esc(t('pv_name')) + '</label><div class="ctl"><input id="pv-name" data-plf="name" maxlength="40" autocomplete="off" value="' + esc(p.name || '') + '" placeholder="' + esc(t('pv_name_ph')) + '"></div><div class="chips" role="group" aria-label="' + esc(t('pv_name')) + '">' + chips + '</div></div>' +
-      '<div class="field"><label for="pv-addr">' + esc(t('pl_addr')) + ' <span class="muted small">(' + esc(t('b_opt')) + ')</span></label><div class="ctl"><input id="pv-addr" data-plf="address" maxlength="120" autocomplete="street-address" value="' + esc(p.address || '') + '" placeholder="' + esc(t('pl_addr_ph')) + '"></div></div>' +
+      '<h3 class="pv-addr-t">' + esc(t('pl_addr')) + ' <span class="muted small">(' + esc(t('b_opt')) + ')</span></h3>' + addrFieldsFor('pv', p, true) +
       '<fieldset class="field"><legend class="lbl">' + esc(t('pv_color')) + '</legend><div class="swatches">' + sw + '</div><div class="small muted">' + esc(t('pv_color_h')) + '</div></fieldset></section>';
     // графік відключень — на сторінці світла; у квартири без електролічильника — тут
     if (!emeters().length) h += gpvBox(p, 'place');
@@ -10784,15 +10939,15 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
   // счётчика по очереди (PQ): водомеры по одному (#wadd), теплосчётчик — последним (#meter, дальше обычный путь).
   // Первый вход (#start, PW.first) — тот же мастер для первой квартиры «Моя квартира», без шага названия:
   // 1) які лічильники є (табло-образцы, +/−) 2) рахунок Водоканалу — только если есть водомеры; назва й адреса — потом на главной.
-  function pwFresh(back, first) { return { step: 0, first: !!first, name: '', address: '', n: { heat: 0, hot: 0, cold: 0, elec: 0, gas: 0 }, account: '', surname: '', back: back || 'places', err: '' }; }
+  function pwFresh(back, first) { return { step: 0, first: !!first, name: '', city: undefined, cityTyped: '', street: '', n: { heat: 0, hot: 0, cold: 0, elec: 0, gas: 0 }, account: '', surname: '', back: back || 'places', err: '' }; }
   var PW = pwFresh(), PQ = null;
   function pwSteps() { var w = PW.n.hot + PW.n.cold > 0; return PW.first ? (w ? 2 : 1) : (w ? 3 : 2); }
   function pwKind(i) { return (PW.first ? ['kinds', 'acc'] : ['name', 'kinds', 'acc'])[i]; }
   function pwAny() { return KIND_ORDER.some(function (k) { return PW.n[k] > 0; }); }
   function pwRead() {
     var v = function (id) { var el = document.getElementById(id); return el ? String(el.value || '') : null; };
-    var a = v('aw-name'), b = v('aw-addr'), c = v('aw-acc'), d = v('aw-sn');
-    if (a !== null) PW.name = a.slice(0, 40); if (b !== null) PW.address = b.slice(0, 120); if (c !== null) PW.account = c.trim(); if (d !== null) PW.surname = d.trim();
+    var a = v('aw-name'), c = v('aw-acc'), d = v('aw-sn'), ad = addrRead('aw');
+    if (a !== null) PW.name = a.slice(0, 40); if (ad) { PW.city = ad.city; PW.cityTyped = ad.typed; PW.street = ad.street; } if (c !== null) PW.account = c.trim(); if (d !== null) PW.surname = d.trim();
   }
   function pwMetersText() {
     var a = KIND_ORDER.filter(function (k) { return PW.n[k]; }).map(function (k) { return t(KINDS[k].t) + (PW.n[k] > 1 ? ' ×' + PW.n[k] : ''); });
@@ -10801,7 +10956,7 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
   /** «Перевірте» — повтор сути перед созданием. */
   function pwSummary() {
     var nm = PW.first ? placeLabel(place()) : PW.name.trim() || t('pl_unnamed', { n: places().length + 1 }), water = PW.n.hot + PW.n.cold > 0;
-    var sub = PW.first ? t('fs_sum_hint') : PW.address.trim();
+    var sub = PW.first ? t('fs_sum_hint') : afCompose(PW.city, PW.cityTyped, PW.street);
     return '<section class="panel aw-sum" style="--pc:var(--pc-' + (PW.first ? placeColor(place()) : nextColor()) + ')" data-key="aw-sum"><h2>' + esc(t(PW.first ? 'fs_sum' : 'aw_sum')) + '</h2><dl>' +
       '<dt>' + esc(t('aw_sum_name')) + '</dt><dd><b>' + esc(nm) + '</b>' + (sub ? '<span class="small muted"> · ' + esc(sub) + '</span>' : '') + '</dd>' +
       '<dt>' + esc(t('aw_sum_meters')) + '</dt><dd>' + esc(pwMetersText()) + '</dd>' +
@@ -10825,6 +10980,11 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
         '<button type="button" class="btn ' + (c ? 'sec ' : '') + 'step-b" data-act="aw-n" data-kind="' + k + '" data-d="1" data-key="aw-' + k + '-inc" aria-label="' + esc(t('aw_inc', { k: title })) + '"' + (c >= max ? ' disabled title="' + esc(t('aw_max')) + '"' : '') + '>+</button></span></div>';
     }).join('') + '</div>';
   }
+  /** Адреса в мастері: пункт — як у першої квартири, доки людина не змінить. */
+  function awAddr() {
+    var d = null; if (PW.city === undefined) { d = cityDefault(); PW.city = d ? d.city : null; }
+    return addrFields('aw', { city: PW.city, typed: PW.cityTyped, street: PW.street, hint: d ? t('af_default', { p: placeLabel(d.from) }) : '' });
+  }
   V['add-place'] = function () {
     var n = pwSteps(); if (PW.step > n - 1) PW.step = n - 1;
     var i = PW.step, last = i === n - 1, back = PW.back || 'places', h = '', kind = pwKind(i), first = PW.first;
@@ -10835,7 +10995,7 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
       var chips = t('pv_chips').split('|').map(function (c) { return '<button type="button" class="chip" data-act="aw-chip" data-v="' + esc(c) + '" aria-pressed="' + (PW.name === c) + '">' + esc(c) + '</button>'; }).join('');
       h = '<h1>' + esc(t('aw_t1')) + '</h1><p class="muted">' + esc(t('aw_l1')) + '</p><div class="panel">' +
         '<div class="field"><label for="aw-name">' + esc(t('pv_name')) + '</label><div class="ctl"><input id="aw-name" maxlength="40" autocomplete="off" value="' + esc(PW.name) + '" placeholder="' + esc(t('pv_name_ph')) + '"></div><div class="chips" role="group" aria-label="' + esc(t('pv_name')) + '">' + chips + '</div></div>' +
-        '<div class="field"><label for="aw-addr">' + esc(t('pl_addr')) + ' <span class="muted small">(' + esc(t('b_opt')) + ')</span></label><div class="ctl"><input id="aw-addr" maxlength="120" autocomplete="street-address" value="' + esc(PW.address) + '" placeholder="' + esc(t('pl_addr_ph')) + '"></div></div></div>';
+        '<h2 class="aw-addr-t">' + esc(t('pl_addr')) + ' <span class="muted small">(' + esc(t('b_opt')) + ')</span></h2>' + awAddr() + '</div>';
     } else if (kind === 'kinds') {
       h = '<h1>' + esc(t(first ? 'fs_t1' : 'aw_t2')) + '</h1><p class="muted">' + esc(t(first ? 'fs_l1' : 'aw_l2')) + '</p>' + awKinds() +
         (PW.err ? '<div class="banner warn" role="alert" data-key="aw-err">' + ico('alert', 22) + '<div><p><b>' + esc(PW.err) + '</b></p></div></div>' : '') +
@@ -10866,8 +11026,9 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
     if (first) {   // первая квартира уже есть («Моя квартира») — пишем в неё только рахунок Водоканалу
       if (water && !skipAcc && (PW.account || PW.surname)) wsetCfg(function (c) { c.account = PW.account; c.surname = PW.surname; });
     } else {
-      var np = { id: 'p' + Date.now().toString(36), name: PW.name.trim(), address: PW.address.trim(), v: 2, color: nextColor(), meter: null, baseline: null,
+      var np = { id: 'p' + Date.now().toString(36), name: PW.name.trim(), address: '', v: 2, color: nextColor(), meter: null, baseline: null,
         water: { account: water && !skipAcc ? PW.account : '', surname: water && !skipAcc ? PW.surname : '', meters: [] }, updatedAt: Date.now() };
+      addrApply(np, { city: PW.city || null, typed: PW.cityTyped || '', street: PW.street || '' });
       S.places.push(np); switchPlace(np.id); WX.key = ''; save();
     }
     PQ = list.length || PW.n.heat ? { place: S.placeId, list: list, i: 0, heat: !!PW.n.heat, total: list.length + (PW.n.heat ? 1 : 0), first: first } : null;
@@ -11922,7 +12083,7 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
       case 'theme': S.theme = el.getAttribute('data-v'); persist(); applyTheme(); render(true); break;
       case 'pl-use': switchPlace(el.getAttribute('data-id')); WX.key = ''; toast(t('pl_switched', { p: placeLabel(place()) })); go('home'); break;
       case 'hp-add-place': hpAddPlace(); break;
-      case 'hp-edit': HP_EDIT = el.getAttribute('data-id'); render(true); setTimeout(function () { var f = document.getElementById('hpa-' + HP_EDIT); if (f) f.focus(); }, 30); break;
+      case 'hp-edit': HP_EDIT = el.getAttribute('data-id'); render(true); setTimeout(function () { var f = document.getElementById('hpa-' + HP_EDIT + '-' + (cityOf(place(HP_EDIT)) ? 'street' : 'city')); if (f) f.focus(); }, 30); break;
       case 'hp-cancel': HP_EDIT = ''; render(true); break;
       case 'gpv-all': GPV.pick[el.getAttribute('data-id')] = true; GPV_OPEN[el.getAttribute('data-id')] = true; render(true); break;
       case 'gpv-set': { var gp = place(el.getAttribute('data-id')); if (gp) { gp.gpv = el.getAttribute('data-q'); delete gp.gpvAuto; gp.updatedAt = Date.now(); delete GPV.pick[gp.id]; save(); toast(t('gpv_saved', { q: gp.gpv })); SCROLL_TO = 'gpv-' + gp.id; render(true); } break; }

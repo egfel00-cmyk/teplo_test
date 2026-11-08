@@ -38,6 +38,7 @@
 //  POST /api/recognize/local        {ids, results} — итог распознавания в браузере (свой движок, без нейросети) → в аналитику
 //  POST /api/recognize/run          {ids[≤3], offset, ctx} → распознанное (vision-API, ключ в config.php)
 //  POST /api/recognize/report       {ids, missing, conflicts, corrections} — итог для аналитики
+//  GET  /api/places/suggest?q=&r=   підказка населеного пункту у формі адреси (Providers::suggest), вхід не потрібен
 //  POST /api/visit                  {vid, device, os, tg, pwa, sw} — с чего открыли сайт (аналитика устройств), вход не нужен
 //  POST /api/feedback               {text, contact?, page, screen, lang} — плавающая кнопка «Відгук», вход не нужен
 //  GET  /api/admin/*                аналитика владельца (только admins из config.php), см. app/admin.php
@@ -296,6 +297,8 @@ final class Api {
       case 'GET /api/gpv': return Gpv::api();
       case 'GET /api/providers': { RateLimit::hit('prov', $ip); $q = $r->query();   // постачальники й тарифи за адресою (адресу не зберігаємо); n+h — уточнений пункт
         return Providers::lookup((string)($q['q'] ?? ''), isset($q['n']) ? (string)$q['n'] : null, isset($q['h']) ? (string)$q['h'] : null); }
+      case 'GET /api/places/suggest': { RateLimit::hit('plsug', $ip); $q = $r->query();   // підказка населеного пункту у формі адреси (нічого не зберігаємо)
+        return Providers::suggest((string)($q['q'] ?? ''), preg_replace('/[^a-z]/', '', (string)($q['r'] ?? ''))); }
       case 'GET /api/gpv/addr': RateLimit::hit('gpv_addr', $ip); return Gpv::lookup((string)($r->query()['q'] ?? ''));   // черга відключень за адресою квартири (адресу не зберігаємо)
       case 'GET /api/gpv/site': return Gpv::site() + ['list' => Gpv::listMeta(), 'docs' => Gpv::docsMeta()];
       case 'GET /api/gpv/doc': { $f = Gpv::docFile((string)($r->query()['k'] ?? '')); if (!$f) throw new HttpError(404, 'not_found'); $res->file = $f; return []; }   // офіційний PDF-перелік з сайту обленерго (сервер забирає раз на добу)

@@ -376,11 +376,13 @@ final class Gpv {
     return trim(($h ? $h . ($ru ? ' ч' : ' год') : '') . ($r ? ' ' . $r . ($ru ? ' мин' : ' хв') : '')) ?: '0';
   }
   /** Квартири з адресою й обраною чергою, де ранкове повідомлення не вимкнули: [['id', 'label', 'addr', 'q'], …]. */
+  /** Квартира на Харківщині (графік Харківобленерго): пункт не обрано (адреса рядком — як було) чи обрано з r = kh (форма адреси, 61-а сесія). */
+  public static function khPlace(array $p): bool { $c = $p['city'] ?? null; return !is_array($c) || empty($c['n']) || ($c['r'] ?? 'kh') === 'kh'; }
   public static function placesFor(array $st): array {
     $out = [];
     foreach (array_values(array_filter((array)($st['places'] ?? []), fn($p) => is_array($p) && empty($p['deleted']))) as $i => $p) {
       $addr = trim((string)($p['address'] ?? '')); $q = (string)($p['gpv'] ?? '');
-      if ($addr === '' || (isset($p['gpvTg']) && $p['gpvTg'] === false)) continue;
+      if ($addr === '' || (isset($p['gpvTg']) && $p['gpvTg'] === false) || !self::khPlace($p)) continue;
       // черги ще не підставив застосунок (людина не відкривала) або черга «за адресою» (автопідбір; довідник могли виправити) — визначаємо самі
       if ($q === '' || is_array($p['gpvAuto'] ?? null)) { $l = self::lookup($addr); $q = !empty($l['found']) ? (string)$l['q'] : ($q !== '' && empty($p['gpvAuto']) ? $q : ''); }
       if (!in_array($q, self::QUEUES, true)) continue;
@@ -397,7 +399,7 @@ final class Gpv {
     foreach (Db::q("SELECT s.data FROM user_identities i JOIN user_state s ON s.user_id = i.user_id WHERE i.type = 'telegram'")->fetchAll() as $row) {
       $c['tg']++; $st = json_decode((string)$row['data'], true); if (!is_array($st)) continue;
       if (self::placesFor($st)) { $c['ready']++; continue; }
-      $ps = array_filter((array)($st['places'] ?? []), fn($p) => is_array($p) && empty($p['deleted']) && trim((string)($p['address'] ?? '')) !== '');
+      $ps = array_filter((array)($st['places'] ?? []), fn($p) => is_array($p) && empty($p['deleted']) && trim((string)($p['address'] ?? '')) !== '' && self::khPlace($p));
       if (!$ps) continue;
       if (array_filter($ps, fn($p) => !(isset($p['gpvTg']) && $p['gpvTg'] === false))) $c['noQueue']++; else $c['off']++;
     }
