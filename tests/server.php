@@ -1310,6 +1310,24 @@ ok('довідник: усі громади й пункти є в КАТОТТГ
     && str_contains($ztk['kinds']['water']['org'] ?? '', 'Бугаз') && $ztk['kinds']['water']['supply'] === null
     && ($sum['place']['hromada'] ?? '') === 'Шевченківська' && array_key_exists('org', $sum['kinds']['heat'] ?? []) && $sum['kinds']['heat']['org'] === null && str_contains($sum['kinds']['heat']['src'] ?? '', '№ 608'),
     [$trt['place'] ?? $trt, $brz['place'] ?? $brz, $chv['place'] ?? $chv, $ptrN, count($prs['candidates'] ?? []), $ztk['kinds']['water'] ?? $ztk, $sum['kinds']['heat'] ?? $sum]);
+  // 72-га: Одещина — селища без води: Любашівка 47,40 (№ 246), Саврань 47,88, Шабо 44,00 / 61,00 (№ 92/2026), Сергіївка 15,00 / 12,00 у межах норми (№ 259; № 187 скасоване);
+  // Окни, Захарівка, Велика Михайлівка, Сарата — постачальник є, ціна з платіжки; Тарутинська — 23,00 у всіх КП (села без стоків)
+  $lbs = $v('Любашівка, вул. Князя Володимира 84'); $svr = $v('Саврань, вул. Соборна 9'); $shb2 = $v('Шабо, вул. Центральна 1'); $srg = $v('Сергеевка, ул. Гагарина 3, Одесская обл.');
+  $ppz = $v('Попаздра, Сергіївська громада'); $okn = $v('Окни, вул. Центральна 1'); $zhr = $v('Захарівка, Роздільнянський р-н'); $vmh = $v('Велика Михайлівка, вул. Центральна 123');
+  $srt = $v('Сарата, вул. Захисників України 44'); $smh = $v('Михайлівка, Саратська громада'); $rvn = $v('Рівне, Тарутинська громада'); $trt2 = $v('Бессарабське, вул. Широка 1');
+  ok('72-га: Любашівка 47,40; Саврань 47,88; Шабо 44,00 / 61,00; Сергіївка (рос.) 15,00 / 12,00, Попаздра — з платіжки; Окни, Захарівка, Велика Михайлівка, Сарата — постачальник без ціни; села Саратської — з платіжки; Рівне (Тарутинська) — 23,00 без стоків, Бессарабське — 23,00 / 30,00',
+    ($lbs['place']['hromada'] ?? '') === 'Любашівська' && str_contains($lbs['kinds']['water']['org'] ?? '', 'Джерело') && $lbs['kinds']['water']['supply'] === 47.4 && str_contains($lbs['kinds']['water']['note'] ?? '', '80,50')
+    && $svr['kinds']['water']['supply'] === 47.88 && ($svr['kinds']['water']['from'] ?? '') === '2023-12-01'
+    && $shb2['kinds']['water']['supply'] === 44.0 && $shb2['kinds']['water']['drain'] === 61.0 && empty($shb2['kinds']['water']['check']) && ($shb2['kinds']['water']['from'] ?? '') === '2026-06-01'
+    && ($srg['place']['name'] ?? '') === 'Сергіївка' && $srg['kinds']['water']['supply'] === 15.0 && $srg['kinds']['water']['drain'] === 12.0 && str_contains($srg['kinds']['water']['note'] ?? '', '3,6 м³')
+    && str_contains($ppz['kinds']['water']['org'] ?? '', 'Курорт-Сервіс') && $ppz['kinds']['water']['supply'] === null
+    && str_contains($okn['kinds']['water']['org'] ?? '', 'Красноокнянський') && $okn['kinds']['water']['supply'] === null
+    && ($zhr['place']['hromada'] ?? '') === 'Захарівська' && $zhr['kinds']['water']['supply'] === null && !empty($zhr['kinds']['water']['phones'])
+    && str_contains($vmh['kinds']['water']['org'] ?? '', 'Злагода') && $vmh['kinds']['water']['supply'] === null && str_contains($vmh['kinds']['water']['note'] ?? '', '43,71')
+    && str_contains($srt['kinds']['water']['org'] ?? '', 'Сарата Комунсервіс') && $srt['kinds']['water']['supply'] === null && ($smh['kinds']['water']['org'] ?? null) === null
+    && ($rvn['place']['hromada'] ?? '') === 'Тарутинська' && ($rvn['kinds']['water']['org'] ?? null) === null && $rvn['kinds']['water']['supply'] === 23.0 && $rvn['kinds']['water']['drain'] === null
+    && $trt2['kinds']['water']['supply'] === 23.0 && $trt2['kinds']['water']['drain'] === 30.0 && str_contains($trt2['kinds']['water']['src'] ?? '', '28.12.2023'),
+    [$lbs['kinds']['water'] ?? $lbs, $shb2['kinds']['water'] ?? $shb2, $srg['place'] ?? $srg, $zhr['place'] ?? $zhr, $rvn['kinds']['water'] ?? $rvn]);
   // 65-та сесія: Львівщина — сайти громад (gromada.org.ua: /sitemap/, рішення на rada.info)
   $pus = $v('Пустомити, вул. Шевченка 1'); $mur = $v('Сороки-Львівські, вул. Польова 1'); $kul = $v('Куликов, ул. Шевченко 1'); $skl = $v('Сокільники, вул. Стрийська 1');
   $prs = $v('Поршна, Солонківська громада'); $sln = $v('Солонка, вул. Шевченка 1'); $shc = $v('Щирець, вул. Шевченка 1');
