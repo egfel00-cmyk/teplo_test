@@ -3601,14 +3601,31 @@
     var p = place() || {}, first = (places()[0] || {}).id === p.id, b = Object.assign({}, first ? S.bill || {} : {}, p.bill || {}), ab = R.num(b.abon), mz = R.num(b.mzk), dflt = R.C.ABON;
     if (!(ab !== null && ab >= 0)) { var d = prvOf('heat'), da = d ? R.num(d.abon) : null; if (d && d.org && d.via !== 'htm') dflt = da !== null && da >= 0 ? da : 0; }
     // своєї частки ЗБП не вписали — частка теплових втрат будинку з нарахувань ХТМ (відносно власного тепла); абонплата — як нараховує ХТМ
-    var hc = hsprCalib(), own = mz !== null && mz > 0;
-    return { abon: ab !== null && ab >= 0 ? ab : (hc && hc.abon !== null ? hc.abon : dflt), mzk: own ? mz : (hc && hc.mzk > 0 ? hc.mzk : 0), heatOnly: !own && !!(hc && hc.mzk > 0),
+    // 66-я: довідки ХТМ немає (чи з неї частку не вивели) — для всіх із теплом ХТМ і відомою площею частка ЗБП = ZBP_M2 × площа (квитанції 2024–2026)
+    var hc = hsprCalib(), own = mz !== null && mz > 0, am = hc && hc.mzk > 0 ? hc.mzk : !own && (!hc || hc.k === null) ? zbpDefault() : 0;
+    return { abon: ab !== null && ab >= 0 ? ab : (hc && hc.abon !== null ? hc.abon : dflt), mzk: own ? mz : am, heatOnly: !own && am > 0, auto: !own && am > 0 ? am : 0, own: own ? mz : null,
       k: !own && hc && hc.k !== null ? hc.k : 0 };
   }
+  /** Поле «Ваша частка ЗБП»: значення — лише вписане людиною; порожнє — підказка, скільки рахуємо самі (з довідки ХТМ чи 0,00025 Гкал на м²). */
+  function mzkField() {
+    var b = bill(), a = R.num((place() || {}).area), f = function (v) { return String(+v.toFixed(5)).replace('.', ','); };
+    var h = b.own !== null ? t('p_mzk_h') : b.auto > 0 ? t('p_mzk_auto', { v: f(b.auto) }) + ' ' + (hsprCalib() && hsprCalib().mzk > 0 ? t('p_mzk_spr') : t('p_mzk_m2', { a: String(a).replace('.', ',') })) : heatHtm() ? t('p_mzk_noarea') : t('p_mzk_h');
+    return '<div class="field"><label for="p-mzk">' + esc(t('p_mzk_l')) + '</label><div class="ctl"><input id="p-mzk" class="num" inputmode="decimal" placeholder="' + esc(b.auto > 0 ? f(b.auto) : '0,01262') + '" value="' + esc(b.own !== null ? f(b.own) : '') + '"></div><div class="small muted" data-key="p-mzk-h">' + esc(h) + '</div></div>';
+  }
+  /** Тепло від ХТМ: адреси немає (Харків за замовчуванням) або постачальник тепла в довіднику — ХТМ. */
+  function heatHtm() { var d = prvOf('heat'); return !d || d.via === 'htm'; }
+  /** Частка ЗБП за замовчуванням, Гкал/міс: тепло ХТМ і площа квартири відома — R.C.ZBP_M2 × площа, інакше 0. */
+  function zbpDefault() { var a = R.num((place() || {}).area); return heatHtm() && a > 0 && a < 1000 ? R.C.ZBP_M2 * a : 0; }
+  /** Скільки з m місяців проміжку, що закінчується датою to, — опалювальні (жовтень–квітень): ЗБП ХТМ нараховує лише в них. */
+  function heatMonths(m, to) {
+    if (!to || !(m >= 1)) return m;
+    var n = 0, ym = String(to).slice(0, 7); for (var i = 0; i < Math.round(m); i++) { var mo = +ymAdd(ym, -i).slice(5, 7); if (mo >= 10 || mo <= 4) n++; }
+    return n;
+  }
   var MONTH_DAYS = 365.25 / 12;
-  function costOf(dE, days) {
-    // ХТМ рахує ЗБП і абонплату помісячно: проміжок ~місяць — рівно один місяць
-    var b = bill(), m = days >= 20 ? Math.max(1, Math.round(days / MONTH_DAYS)) : days > 0 ? days / MONTH_DAYS : 0, mz = b.mzk > 0 ? (b.heatOnly && !(dE > 0) ? 0 : b.mzk * m) : Math.max(0, dE) * b.k, heat = Math.max(0, dE) * tariff();
+  function costOf(dE, days, to) {
+    // ХТМ рахує ЗБП і абонплату помісячно: проміжок ~місяць — рівно один місяць; ЗБП «лише з теплом» — і лише в опалювальні місяці проміжку (to — дата кінця)
+    var b = bill(), m = days >= 20 ? Math.max(1, Math.round(days / MONTH_DAYS)) : days > 0 ? days / MONTH_DAYS : 0, mz = b.mzk > 0 ? (b.heatOnly && !(dE > 0) ? 0 : b.mzk * (b.heatOnly ? heatMonths(m, to) : m)) : Math.max(0, dE) * b.k, heat = Math.max(0, dE) * tariff();
     return { heat: heat, mzk: mz * tariff(), abon: b.abon * m, total: heat + mz * tariff() + b.abon * m, gcal: Math.max(0, dE) + mz };
   }
   /** Сколько тепла набежало с прошлых показаний (по дате снятия) или с последних принятых ХТМ, и сколько это стоит. */
@@ -3628,7 +3645,7 @@
       else off = R.daysBetween(g.from, g.to);   // той самий лічильник не рахував, поки його не було
     }
     var dE = e - R.num(from.energy), days = Math.max(1, R.daysBetween(from.date, d) - off);
-    var c = costOf(dE, days);
+    var c = costOf(dE, days, d);
     return { dE: dE, days: days, cost: c.total, parts: c, from: from.date, fromBase: !prev && !g, fromGap: !!g, overGap: off > 0 };
   }
   /** Погода к показаниям: средняя/мин/макс на улице за промежуток (до 4 мес.) и в день снятия; ряд по дням — для мини-графика. */
@@ -3798,7 +3815,7 @@
       return histRow({ cls: 'hli-heat', key: 'reading-' + r.id, href: '#rec-' + r.id, q: ok ? '+' + fmtN(iv.dE, 3) : null, unit: 'Гкал', money: hx && hx.cost !== null ? hsprSum(hx) : ok ? iv.cost : null, moneyExact: !!(hx && hx.cost !== null),
         none: iv ? t('hi_less', { de: Math.abs(iv.dE).toFixed(3) }) : t(gaps('heat').some(function (g) { return g.from < r.htm.date; }) ? 'hr_nogap' : 'hr_first'),
         date: fmtDate(r.htm.date, true), sub: [t('hr_on_meter', { v: R.formatForHtm('energy', r.htm.energy), u: 'Гкал' }), iv ? iv.days + '\u00a0' + t('days_short') + (iv.overGap ? ' ' + t('hr_over_gap') : '') : '',
-          hx && hx.flat !== null ? t('hsp_row', { g: fmtN(hx.flat, 3) }) : ''],
+          hx && hx.flat !== null ? t('hsp_row', { g: fmtN(hx.flat, 3) }) : '', hbillPay(r) !== null ? t('hb_pay', { s: money(hbillPay(r)) }) : ''],
         right: wxChip(wxFor(r)) + billMark(r.bills),
         st: stChip('h', r, 'heat', r.own ? 'own' : /^(handed|accepted|rejected)$/.test(r.status) ? r.status : 'not', r.own ? '' : '<span class="pill ' + cls + '">' + esc(t('status_' + r.status)) + '</span>') });
     })[0];
@@ -4081,7 +4098,7 @@
    *  где шло тепло, в среднем за месяц опалення. Новый сезон (и текущий) раскрыт, старые — свёрнуты, итог видно и так. */
   function seasonList(arr) {
     if (!window.TeploStats) return readingList(arr);
-    var TS = TeploStats, ss = TS.seasons(TS.intervals(RD(), S.baseline, null, tariff(), gaps('heat')), function (iv) { return costOf(iv.dE, iv.days).total; }, today());
+    var TS = TeploStats, ss = TS.seasons(TS.intervals(RD(), S.baseline, null, tariff(), gaps('heat')), function (iv) { return costOf(iv.dE, iv.days, iv.to).total; }, today());
     var of = {}, info = {}; ss.forEach(function (s) { info[s.season] = s; s.ids.forEach(function (id) { of[id] = s.season; }); });
     var groups = {};
     arr.forEach(function (x) {
@@ -4259,7 +4276,7 @@
     chColors();   // тестовый период: статистика открыта всем
     var St = window.TeploStats; loadWeather(); hsprLoad();
     var w = WX.days, ivs = St.intervals(RD(), S.baseline, w, tariff(), gaps('heat')), cl = St.coolant(RD(), S.baseline, w);
-    ivs.forEach(function (it) { it.cost = +costOf(it.dE, it.days).total.toFixed(2); });
+    ivs.forEach(function (it) { it.cost = +costOf(it.dE, it.days, it.to).total.toFixed(2); });
     if (!ivs.length) return { screen: 'S15', route: 'stats', html: '<h1>' + esc(t('stt_title')) + '</h1>' + kindSwitch() + '<div class="panel"><p class="muted">' + esc(t('stt_empty')) + '</p></div>' };
     var summer = function (it) { return it.days > 100; };
     var lbl = function (it) { return shortDate(it.to); };
@@ -4933,7 +4950,7 @@
     if (hasHeat()) money += '<h3>' + esc(t('pv_m_heat')) + '</h3><div class="grid2">' +
       '<div class="field"><label for="p-area">' + esc(t('nm_area')) + ' <span class="muted small">(' + esc(t('b_opt')) + ')</span></label><div class="ctl"><input id="p-area" class="num" inputmode="decimal" autocomplete="off" value="' + esc(p.area ? String(p.area).replace('.', ',') : '') + '"><span class="unit">м²</span></div></div>' +
       '<div class="field"><label for="p-abon">' + esc(t('p_abon_l')) + '</label><div class="ctl"><input id="p-abon" class="num" inputmode="decimal" value="' + esc(bill().abon.toFixed(2).replace('.', ',')) + '"></div></div>' +
-      '<div class="field"><label for="p-mzk">' + esc(t('p_mzk_l')) + '</label><div class="ctl"><input id="p-mzk" class="num" inputmode="decimal" placeholder="0,01262" value="' + esc(bill().mzk ? String(bill().mzk).replace('.', ',') : '') + '"></div><div class="small muted">' + esc(t('p_mzk_h')) + '</div></div></div>';
+      mzkField() + '</div>';
     if (ms.length) money += '<h3>' + esc(t('pv_m_water')) + '</h3>' + waccForm() +
       '<div class="field" style="max-width:260px"><label for="p-persons">' + esc(t('nm_persons')) + ' <span class="muted small">(' + esc(t('b_opt')) + ')</span></label><div class="ctl"><input id="p-persons" class="num" inputmode="numeric" autocomplete="off" data-nm="persons" value="' + esc(wcfg().persons || '') + '"></div><div class="small muted">' + esc(t('pv_persons_h')) + '</div></div>';
     if (emeters().length) money += '<h3>' + esc(t('pv_m_elec')) + '</h3>' + eheatRow();
@@ -5210,7 +5227,7 @@
       prefGroup('heat', 'thermo', t('pg_heat'), hasHeat() ? modelName(m) : t('pg_heat_none'), meterPanel() + '<div class="panel" data-key="prefs-bill"><h2>' + esc(t('p_tariff')) + (places().length > 1 ? ' <span class="muted small">· ' + esc(placeLabel(place())) + '</span>' : '') + '</h2><p class="small muted">' + esc(t('p_tariff_sub')) + '</p>' +
         '<div class="grid2"><div class="field"><label for="p-tariff">' + esc(t('p_tariff_l')) + '</label><div class="ctl"><input id="p-tariff" class="num" inputmode="decimal" data-key="prefs-tariff" value="' + esc(tariff().toFixed(2).replace('.', ',')) + '"></div></div>' +
         '<div class="field"><label for="p-abon">' + esc(t('p_abon_l')) + '</label><div class="ctl"><input id="p-abon" class="num" inputmode="decimal" value="' + esc(bill().abon.toFixed(2).replace('.', ',')) + '"></div></div>' +
-        '<div class="field"><label for="p-mzk">' + esc(t('p_mzk_l')) + '</label><div class="ctl"><input id="p-mzk" class="num" inputmode="decimal" placeholder="0,01262" value="' + esc(bill().mzk ? String(bill().mzk).replace('.', ',') : '') + '"></div><div class="small muted">' + esc(t('p_mzk_h')) + '</div></div></div>' +
+        mzkField() + '</div>' +
         '<details class="tips-box" style="margin-top:12px"><summary>' + esc(t('p_bill_how_t')) + '</summary><p class="small">' + esc(t('p_bill_how')) + '</p></details></div>' +
       (hasHeat() ? nometerHeatPanel() : '')),
       prefGroup('water', 'drop', t('pg_water'), ms.length ? t('pg_water_n', { n: ms.length }) : t('pg_heat_none'), waterPanel() + wtariffPanel() + (ms.length ? nometerWaterPanel() : '')),

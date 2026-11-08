@@ -680,6 +680,9 @@ final class HtmBills {
  *  приложению — GET /api/htm/spr (лише своє). Для /api/health — лише скільки рядків, які колонки знайшли й маска формату (без цифр). */
 final class HtmSpr {
   const BILLS_V = 5;
+  // частка ЗБП квартири з лічильником, Гкал на м² за місяць опалення (14 квитанцій ХТМ 2024–2026, як R.C.ZBP_M2 у web/src/rules.js);
+  // «частка будинку» понад свій лічильник більша за ZBP_MAX_M2 (чи 5 % свого тепла) — це місяці за середнім, а не формула ХТМ
+  const ZBP_M2 = 0.00025, ZBP_MAX_M2 = 0.0006, ZBP_MAX_OWN = 0.05;
   public static function dir(): string { return Cfg::data() . '/cache/htm_spr'; }
   private static function file(int $uid, string $place): string { return self::dir() . '/' . $uid . '_' . substr(preg_replace('/[^A-Za-z0-9_-]/', '', $place), 0, 40) . '.json'; }
   public static function save(int $uid, string $place, array $sp): void {
@@ -1003,7 +1006,7 @@ final class HtmSpr {
     $tar = $med($tv); $ab = null; foreach ($rows as $r) if ($nn($r, 'abon') > 0) $ab = $nn($r, 'abon');
     $out = ['n' => count($own), 'from' => $own ? substr((string)$own[0]['date'], 0, 7) : null, 'to' => $own ? substr((string)$own[count($own) - 1]['date'], 0, 7) : null,
       'rejected' => count(array_filter($own, fn($r) => ($r['status'] ?? '') === 'rejected')), 'al' => []];
-    $best = null; $model = null;
+    $best = null; $model = null; $fit = []; $zl = null;
     foreach (['same', 'next', 'interp'] as $al) {
       $iv = self::ownIntervals($rows, $own, $al); $hy = []; $ra = []; $neg = 0;
       foreach ($iv as $i) {
@@ -1012,6 +1015,7 @@ final class HtmSpr {
         foreach ($B as $k => $f) { $b = $f($i); if ($b > 0) $ra[$k][] = $x / $b; }
       }
       $loo = []; $mon = [];
+      foreach (['own', 'area'] as $k) { $sx = 0.0; $sb = 0.0; foreach ($iv as $i) { $b = $B[$k]($i); if ($b > 0) { $sx += $i['v'] - $i['e']; $sb += $b; } } if ($sb > 0) $fit[$al][$k] = max(0.0, $sx / $sb); }
       if (count($iv) >= 2) foreach ($B as $k => $f) {
         $es = []; $ms = [];
         foreach ($iv as $j => $i) {
@@ -1035,6 +1039,13 @@ final class HtmSpr {
       $out['al'][$al] = ['iv' => count($iv), 'months' => array_sum(array_column($iv, 'n')), 'over' => count($iv) - $neg, 'hyp' => $hm, 'ratio' => $rr, 'ivs' => $ivs] + ($loo ? ['loo' => $loo, 'money' => $mon] : []);
       $top = $hm ? reset($hm) : null; if ($top !== null && count($iv) >= 2 && ($best === null || $top < $best[1])) $best = [$al, $top, array_key_first($hm)];
       if ($loo && ($model === null || reset($loo) < $model['err'])) $model = ['al' => $al, 'basis' => array_key_first($loo), 'err' => reset($loo), 'money' => $mon[array_key_first($loo)] ?? null, 'own' => $loo['own'] ?? null, 'iv' => count($iv)];
+      foreach (['own', 'area'] as $k) if (isset($loo[$k], $fit[$al][$k]) && ($zl === null || $loo[$k] < $zl['err'])) $zl = ['al' => $al, 'basis' => $k, 'err' => $loo[$k]];
+    }
+    // як hsprCalib у браузері: підбір частки (основа own чи area, найменша помилка «без себе») беремо, лише якщо він схожий на ЗБП; інакше — ZBP_M2 × площа
+    if ($zl) {
+      $c = $fit[$zl['al']][$zl['basis']]; $m2 = $zl['basis'] === 'area' ? $c / 1000 : null;
+      $ok = $zl['basis'] === 'area' ? $m2 <= self::ZBP_MAX_M2 : $c <= self::ZBP_MAX_OWN;
+      $out['zbp'] = $zl + ['c' => round($c, 4), 'perM2' => $m2 === null ? null : round($m2, 5), 'ok' => $ok, 'use' => $ok ? 'fit' : 'm2', 'm2' => self::ZBP_M2];
     }
     if ($best) $out['best'] = ['al' => $best[0], 'hyp' => $best[2], 'err' => $best[1]];
     if ($model) $out['model'] = $model;
