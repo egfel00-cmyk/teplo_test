@@ -951,6 +951,56 @@ ok('кнопка меню бота: «Відкрити» за замовчува
   && $mb[1][1]['chat_id'] === 555 && $mb[1][1]['menu_button']['text'] === 'Открыть' && count(array_filter($mc, fn($x) => $x[0] === 'setMyCommands' && ($x[1]['language_code'] ?? '') === 'ru')) === 1
   && str_contains(end($mc)[1]['text'] ?? '', 'Що вміє сервіс'), $mb);
 Telegram::$send = null;
+// смена бота из чата: админ пересылает сообщение @BotFather с токеном нового бота (владелец 07.11: «перенеси и настрой бот сам»)
+{
+  $NEW = '7777777777:AAHnewTokenForTestsOnly_0123456789ab'; $rt0 = Cfg::runtime(); $calls = [];
+  Telegram::$send = function ($m, $p, $tok = null) use (&$calls, $NEW, $TOKEN) {
+    $calls[] = [$m, $p, $tok];
+    if ($m === 'getMe') return $tok === $NEW ? ['ok' => true, 'result' => ['username' => 'NewTeploBot']] : ($tok === $TOKEN ? ['ok' => true, 'result' => ['username' => 'TeploTestBot']] : ['ok' => false, 'description' => 'Unauthorized']);
+    if ($m === 'getMyDescription') return ['ok' => true, 'result' => ['description' => ($p['language_code'] ?? '') === 'ru' ? 'Описание' : 'Опис']];
+    if ($m === 'getMyShortDescription') return ['ok' => true, 'result' => ['short_description' => '']];
+    if ($m === 'getMyCommands') return ['ok' => true, 'result' => [['command' => 'start', 'description' => 'Почати'], ['command' => 'help', 'description' => 'Довідка']]];
+    return ['ok' => true];
+  };
+  $bf = "Done! Congratulations on your new bot. You will find it at t.me/NewTeploBot.\n\nUse this token to access the HTTP API:\n$NEW\nKeep your token secure and store it safely.";
+  $r0 = Telegram::handleUpdate(['message' => ['message_id' => 41, 'chat' => ['id' => 4241, 'type' => 'private'], 'from' => ['id' => 4241, 'language_code' => 'uk'], 'text' => $bf]]);
+  $del = array_values(array_filter($calls, fn($c) => $c[0] === 'deleteMessage'));
+  ok('бот из чата: токен от НЕ админа — не меняем, сообщение с токеном удалено (старым ботом), ответ «лише адміністратор»', ($r0['bot'] ?? '') === 'not_admin' && Cfg::get('bot_token') === $TOKEN
+    && count($del) === 1 && $del[0][1]['message_id'] === 41 && $del[0][2] === $TOKEN && str_contains((string)($r0['text'] ?? ''), 'адміністратор') && !array_filter($calls, fn($c) => $c[0] === 'getMe'), $calls);
+  $bossId = (int)(Db::one('SELECT id FROM users WHERE email = ?', ['boss@example.ua'])['id'] ?? 0);
+  if (!$bossId) { Db::q('INSERT INTO users (email, created_at) VALUES (?, ?)', ['boss@example.ua', Http::iso()]); $bossId = (int)Db::id(); }
+  $bossTg = Db::one("SELECT * FROM user_identities WHERE user_id = ? AND type = 'telegram'", [$bossId]); Db::q("DELETE FROM user_identities WHERE user_id = ? AND type = 'telegram'", [$bossId]);
+  Db::q("INSERT INTO user_identities (user_id, type, external_id, username, linked_at) VALUES (?, 'telegram', '4242', 'boss_tg', ?)", [$bossId, Http::iso()]);
+  ok('…у админа есть Telegram (привязан к учётке админа) — /api/health → bot.adminTg', Admin::hasTg() === true && Admin::isTg(['id' => 4242]) && !Admin::isTg(['id' => 4241]));
+  $calls = [];
+  $r1 = Telegram::handleUpdate(['message' => ['message_id' => 42, 'chat' => ['id' => 4242, 'type' => 'private'], 'from' => ['id' => 4242, 'language_code' => 'uk'],
+    'forward_origin' => ['type' => 'user', 'sender_user' => ['id' => 93372553, 'username' => 'BotFather']], 'text' => $bf]]);
+  $by = fn($m, $tok = null) => array_values(array_filter($calls, fn($c) => $c[0] === $m && ($tok === null || $c[2] === $tok)));
+  $last = end($calls);
+  ok('бот из чата: админ переслал сообщение @BotFather — новый токен сохранён, вебхук новому (тот же secret), описание и команды перенесены, у старого вебхук снят',
+    ($r1['bot'] ?? '') === 'ok' && Cfg::get('bot_token') === $NEW && Cfg::get('bot_username') === 'NewTeploBot' && Cfg::get('bot_token_prev') === $TOKEN && Cfg::get('webhook_secret') === 'hook-secret'
+    && count($by('setWebhook', null)) === 1 && ($by('setWebhook')[0][1]['secret_token'] ?? '') === 'hook-secret' && count($by('setMyDescription', $NEW)) === 4 && count($by('setMyCommands', $NEW)) >= 1
+    && count($by('deleteWebhook', $TOKEN)) === 1 && ($by('deleteMessage')[0][2] ?? '') === $TOKEN, $calls);
+  ok('…ответ — от старого бота (чат с ним): «тепер сервіс — @NewTeploBot», что перенесено, /setdomain с адресом сайта, кнопка на нового; токена в ответе нет',
+    $last[0] === 'sendMessage' && $last[2] === $TOKEN && str_contains($last[1]['text'], '@NewTeploBot') && str_contains($last[1]['text'], 'опис, команди') && str_contains($last[1]['text'], '/setdomain → @NewTeploBot → teplo.example')
+    && ($last[1]['reply_markup']['inline_keyboard'][0][0]['url'] ?? '') === 'https://t.me/NewTeploBot' && !str_contains(json_encode($last[1]), 'AAHnew'), $last);
+  $hb = (new Browser('10.0.13.5'))->req('GET', '/api/health')->body['bot'] ?? []; $hj = json_encode($hb);
+  ok('…/api/health → bot: имя нового, прежний есть, смена (с кого на кого, что перенесено), попытка из чата ok — без токенов', ($hb['username'] ?? '') === 'NewTeploBot' && ($hb['prev'] ?? null) === true
+    && ($hb['moved']['from'] ?? '') === 'TeploTestBot' && ($hb['moved']['to'] ?? '') === 'NewTeploBot' && ($hb['chat']['res'] ?? '') === 'ok' && !str_contains($hj, 'AAHnew') && !str_contains($hj, 'TEST-TOKEN'), $hb);
+  $wa = (new Browser('10.0.13.6'))->req('POST', '/api/auth/telegram/webapp', ['initData' => initData($TOKEN, ['id' => 9070, 'first_name' => 'Старий'])]);
+  $wb = (new Browser('10.0.13.7'))->req('POST', '/api/auth/telegram/webapp', ['initData' => initData($NEW, ['id' => 9071, 'first_name' => 'Новий'])]);
+  $wc = (new Browser('10.0.13.8'))->req('POST', '/api/auth/telegram/webapp', ['initData' => initData('555:SOMEONE-ELSE-token-xx', ['id' => 9072, 'first_name' => 'Чужий'])]);
+  ok('…вход в Mini App: из меню нового бота и ещё из меню прежнего — да, подпись чужого бота — 401', $wa->status === 200 && $wb->status === 200 && $wc->status === 401, [$wa->status, $wb->status, $wc->status]);
+  $calls = []; $r2 = Telegram::handleUpdate(['message' => ['message_id' => 43, 'chat' => ['id' => 4242, 'type' => 'private'], 'from' => ['id' => 4242, 'language_code' => 'ru'], 'text' => $NEW]]);
+  $r3 = Telegram::handleUpdate(['message' => ['message_id' => 44, 'chat' => ['id' => 4242, 'type' => 'private'], 'from' => ['id' => 4242, 'language_code' => 'uk'], 'text' => '8888888888:AAHrejectedTokenForTests_0123456789']]);
+  ok('…тот же токен ещё раз — «уже подключён», ничего не меняем; токен, который Telegram не принял, — «Не вийшло», бот прежний', ($r2['bot'] ?? '') === 'same' && ($r3['bot'] ?? '') === 'err'
+    && str_contains((string)$r3['text'], 'Telegram не принял') && Cfg::get('bot_token') === $NEW, [$r2, $r3]);
+  // вернуть тестовый бот: дальше тесты ждут TeploTestBot
+  Cfg::saveRuntime(['bot_token' => null, 'bot_username' => null, 'bot_token_prev' => null, 'webhook_secret' => $rt0['webhook_secret'] ?? null]);
+  Db::q("DELETE FROM user_identities WHERE external_id = '4242'");
+  if ($bossTg) Db::q('INSERT INTO user_identities (user_id, type, external_id, username, linked_at) VALUES (?, ?, ?, ?, ?)', [$bossId, 'telegram', $bossTg['external_id'], $bossTg['username'], $bossTg['linked_at']]);
+}
+Telegram::$send = null;
 // постачальники й тарифи за адресою (app/data/providers.json); дата — фіксована, бо тарифи датовані
 Providers::$today = '2026-11-05';
 $pv = fn($q) => Providers::lookup($q);

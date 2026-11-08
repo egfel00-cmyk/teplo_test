@@ -124,6 +124,8 @@ final class Api {
           'uaProbe' => (object)RelayProbe::summary(), 'uaCheck' => (object)UaCheck::summary(),
           // ретранслятор на NAS: включён ли, на связи ли (сек. назад, версия сценария, страна), пауза, задания по состояниям
           'relay' => Relay::summary(),
+          // бот: имя, последняя смена (с кого на кого, что перенесено — числа) и попытка сменить из чата; токенов нет
+          'bot' => Telegram::health(),
           'indexnow' => class_exists('IndexNow', false) ? IndexNow::summary() : null];
       }
       case 'GET /api/me': if (!$user) throw new HttpError(401, 'unauthorized'); return ['user' => self::publicUser($user)];
@@ -151,7 +153,11 @@ final class Api {
       case 'POST /api/auth/telegram/webapp':
       case 'POST /api/auth/telegram/widget': {
         RateLimit::hit('telegram_ip', $ip);
-        $tg = $p === '/api/auth/telegram/webapp' ? Telegram::verifyWebApp((string)($in['initData'] ?? ''), (string)Cfg::get('bot_token')) : Telegram::verifyWidget($in, (string)Cfg::get('bot_token'));
+        if ($p === '/api/auth/telegram/webapp') {
+          // после смены бота (Admin::setBot) сайт ещё открывают из меню прежнего — его подпись тоже принимаем
+          try { $tg = Telegram::verifyWebApp((string)($in['initData'] ?? ''), (string)Cfg::get('bot_token')); }
+          catch (HttpError $e) { $prev = (string)Cfg::get('bot_token_prev'); if ($e->err !== 'telegram_bad_signature' || $prev === '') throw $e; $tg = Telegram::verifyWebApp((string)($in['initData'] ?? ''), $prev); }
+        } else $tg = Telegram::verifyWidget($in, (string)Cfg::get('bot_token'));
         $idn = Db::one("SELECT * FROM user_identities WHERE type = 'telegram' AND external_id = ?", [$tg['id']]);
         if ($idn) { $u = self::userById((int)$idn['user_id']); Db::q("UPDATE user_identities SET username = ? WHERE id = ?", [$tg['username'], $idn['id']]); }
         else {

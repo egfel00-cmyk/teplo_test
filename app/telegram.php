@@ -253,9 +253,62 @@ final class Telegram {
     return $params;
   }
 
+  /** Токен бота в тексте (в т.ч. пересланное сообщение @BotFather «Use this token…»). */
+  public static function tokenIn(array $msg): ?string {
+    return preg_match('/(?<![\w:])(\d{6,15}:[A-Za-z0-9_\-]{30,60})(?![\w\-])/', (string)($msg['text'] ?? $msg['caption'] ?? ''), $m) ? $m[1] : null;
+  }
+  private static function chatLog(string $res): void { @file_put_contents(Cfg::data() . '/cache/bot_chat.json', json_encode(['at' => time(), 'res' => $res]), LOCK_EX); }
+  /** Смена бота из чата (владелец 07.11: «перенеси и настрой бот сам»): админ присылает или пересылает текущему боту сообщение @BotFather с токеном
+   *  нового → то же, что /admin → «Настройки» → Telegram (Admin::setBot: getMe, сохранить, вебхук, перенос описания и команд, у старого — снять вебхук).
+   *  Только в личке и только от Telegram админа (Admin::isTg). Сообщение с токеном удаляем из чата; ответ — от старого бота (чат с ним). */
+  public static function botFromChat(array $msg, string $token, string $lang): array {
+    $chat = $msg['chat']['id']; $old = (string)Cfg::get('bot_token'); $ru = $lang === 'ru'; $private = ($msg['chat']['type'] ?? 'private') === 'private';
+    if ($private && !empty($msg['message_id'])) { try { self::call('deleteMessage', ['chat_id' => $chat, 'message_id' => $msg['message_id']], $old); } catch (Throwable $e) {} }
+    if (!$private || !Admin::isTg((array)($msg['from'] ?? []))) {
+      self::chatLog('not_admin');
+      $p = ['chat_id' => $chat, 'text' => $ru
+        ? "🔒 Это похоже на токен бота. Сменить бота сервиса может только администратор — из своего Telegram, привязанного к учётке администратора. Сообщение с токеном удалено."
+        : "🔒 Це схоже на токен бота. Змінити бота сервісу може лише адміністратор — зі свого Telegram, прив’язаного до облікового запису адміністратора. Повідомлення з токеном видалено."];
+      self::call('sendMessage', $p, $old); return $p + ['bot' => 'not_admin'];
+    }
+    if ($token === $old) {
+      self::chatLog('same');
+      $p = ['chat_id' => $chat, 'text' => $ru ? "Этот бот уже подключён — ничего не менял. Сообщение с токеном удалено." : "Цей бот уже підключено — нічого не міняв. Повідомлення з токеном видалено."];
+      self::call('sendMessage', $p, $old); return $p + ['bot' => 'same'];
+    }
+    try { $r = Admin::setBot($token); }
+    catch (HttpError $e) {
+      self::chatLog('err ' . $e->err);
+      $p = ['chat_id' => $chat, 'text' => ($ru ? '⚠️ Не вышло: ' : '⚠️ Не вийшло: ') . ($e->extra['human'] ?? $e->err) . ($ru ? "\n\nБот остался прежним. Сообщение с токеном удалено." : "\n\nБот лишився попередній. Повідомлення з токеном видалено.")];
+      self::call('sendMessage', $p, $old); return $p + ['bot' => 'err'];
+    }
+    $new = (string)$r['bot']; $mv = (array)($r['moved'] ?? []); $cp = implode(' ', (array)($mv['copied'] ?? []));
+    $what = array_values(array_filter([preg_match('/(^| )description /', $cp) ? ($ru ? 'описание' : 'опис') : '',
+      str_contains($cp, 'short_description') ? ($ru ? 'короткое описание' : 'короткий опис') : '', str_contains($cp, 'commands') ? ($ru ? 'команды' : 'команди') : '']));
+    $nErr = count((array)($mv['errors'] ?? [])) + count((array)($r['setup']['errors'] ?? []));
+    $host = (string)parse_url(Cfg::appUrl(), PHP_URL_HOST);
+    self::chatLog($nErr ? 'ok_partial' : 'ok');
+    $text = $ru
+      ? "✅ Бот заменён: теперь сервис — @$new.\nПеренесено со старого: " . ($what ? implode(', ', $what) : 'нечего (описания у старого не было)') . '.' . ($nErr ? "\nНе удалось: $nErr (подробности — /admin → «Настройки»)." : '')
+        . "\n\nОсталось в @BotFather (это умеет только он):\n• /setdomain → @$new → $host — чтобы на сайте работал вход через Telegram;\n• по желанию — аватар (/setuserpic).\n\nОткройте @$new и нажмите «Старт» — напоминания и графики теперь будут приходить оттуда. Сообщение с токеном удалено."
+      : "✅ Бота замінено: тепер сервіс — @$new.\nПеренесено зі старого: " . ($what ? implode(', ', $what) : 'нічого (опису в старого не було)') . '.' . ($nErr ? "\nНе вдалося: $nErr (деталі — /admin → «Настройки»)." : '')
+        . "\n\nЛишилось у @BotFather (це вміє лише він):\n• /setdomain → @$new → $host — щоб на сайті працював вхід через Telegram;\n• за бажанням — аватар (/setuserpic).\n\nВідкрийте @$new і натисніть «Старт» — нагадування й графіки тепер приходитимуть звідти. Повідомлення з токеном видалено.";
+    $p = ['chat_id' => $chat, 'text' => $text, 'reply_markup' => ['inline_keyboard' => [[['text' => '@' . $new, 'url' => 'https://t.me/' . $new]]]]];
+    self::call('sendMessage', $p, $old); return $p + ['bot' => 'ok'];
+  }
+  /** /api/health → bot: имя бота, есть ли прежний (вход из его меню), есть ли у админа Telegram для смены из чата, последняя смена и попытка из чата. Без токенов. */
+  public static function health(): array {
+    $mv = json_decode((string)@file_get_contents(Cfg::data() . '/cache/bot_moved.json'), true); $ch = json_decode((string)@file_get_contents(Cfg::data() . '/cache/bot_chat.json'), true);
+    $adm = null; try { $adm = Admin::hasTg(); } catch (Throwable $e) {}
+    return ['username' => (string)Cfg::get('bot_username') ?: null, 'prev' => (string)Cfg::get('bot_token_prev') !== '', 'adminTg' => $adm,
+      'moved' => is_array($mv) ? ['at' => gmdate('c', (int)($mv['at'] ?? 0)), 'from' => (string)($mv['from'] ?? ''), 'to' => (string)($mv['to'] ?? ''), 'copied' => array_values((array)($mv['copied'] ?? [])), 'errors' => count((array)($mv['errors'] ?? []))] : null,
+      'chat' => is_array($ch) ? ['at' => gmdate('c', (int)($ch['at'] ?? 0)), 'res' => (string)($ch['res'] ?? '')] : null];
+  }
+
   public static function handleUpdate(array $u): ?array {
     $msg = $u['message'] ?? null; if (!$msg || empty($msg['chat']['id'])) return null;
     $lang = str_starts_with((string)($msg['from']['language_code'] ?? ''), 'ru') ? 'ru' : 'uk';
+    if (($tk = self::tokenIn($msg)) !== null) return self::botFromChat($msg, $tk, $lang);
     if (($src = self::fwdSrc($msg)) !== null) return self::vkReply($msg, $lang, $src);
     // перелік «Адреси та черги» з каналу Харківобленерго — для визначення черги відключень за адресою (app/gpv.php)
     if (class_exists('Gpv') && Gpv::isListDoc($msg)) return Gpv::listFromBot($msg, $lang);

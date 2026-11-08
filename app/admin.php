@@ -19,6 +19,23 @@ final class Feedback {
 }
 
 final class Admin {
+  /** Telegram-отправитель (from из сообщения боту) — админ: его id/username в admins.telegram или этот Telegram привязан к учётке админа. */
+  public static function isTg(array $from): bool {
+    if (empty($from['id'])) return false;
+    $tgList = array_map(fn($x) => mb_strtolower(ltrim((string)$x, '@')), (array)(((array)Cfg::get('admins', []))['telegram'] ?? []));
+    if (in_array((string)$from['id'], $tgList, true) || (!empty($from['username']) && in_array(mb_strtolower((string)$from['username']), $tgList, true))) return true;
+    $idn = Db::one("SELECT user_id FROM user_identities WHERE type = 'telegram' AND external_id = ?", [(string)$from['id']]);
+    $u = $idn ? Db::one('SELECT * FROM users WHERE id = ?', [(int)$idn['user_id']]) : null;
+    return self::is($u ?: null);
+  }
+  /** Есть ли у админов Telegram, с которого можно сменить бота из чата (для /api/health — только да/нет). */
+  public static function hasTg(): bool {
+    if ((array)(((array)Cfg::get('admins', []))['telegram'] ?? [])) return true;
+    $emails = array_map('mb_strtolower', (array)(((array)Cfg::get('admins', []))['emails'] ?? [])); if (!$emails) return false;
+    foreach (Db::q("SELECT u.email FROM user_identities i JOIN users u ON u.id = i.user_id WHERE i.type = 'telegram' AND u.email IS NOT NULL")->fetchAll() as $x)
+      if (in_array(mb_strtolower((string)$x['email']), $emails, true)) return true;
+    return false;
+  }
   public static function is(?array $u): bool {
     if (!$u) return false;
     $a = (array)Cfg::get('admins', []);
@@ -228,7 +245,9 @@ final class Admin {
     if (empty($me['ok']) || empty($me['result']['username'])) throw new HttpError(422, 'token_rejected', ['human' => 'Telegram не принял токен: ' . ($me['description'] ?? 'нет ответа') . '. Ничего не сохранено.']);
     $was = (string)Cfg::get('bot_token');   // прежний бот — перенести его описание и команды новому
     Cfg::saveRuntime(['bot_token' => $token, 'bot_username' => (string)$me['result']['username'],
-      'webhook_secret' => Cfg::runtime()['webhook_secret'] ?? (Cfg::get('webhook_secret') ?: bin2hex(random_bytes(24)))]);
+      'webhook_secret' => Cfg::runtime()['webhook_secret'] ?? (Cfg::get('webhook_secret') ?: bin2hex(random_bytes(24)))]
+      // прежний бот: люди ещё открывают сайт из его меню — их вход (initData подписан старым токеном) примем, пока не нажмут «Старт» у нового
+      + ($was !== '' && $was !== $token ? ['bot_token_prev' => $was] : []));
     $setup = Telegram::setup();
     $moved = $was !== '' && $was !== $token ? Telegram::copyProfile($was, $token) : null;
     if ($moved) @file_put_contents(Cfg::data() . '/cache/bot_moved.json', json_encode(['at' => time(), 'from' => $moved['old'] ?? '', 'to' => (string)$me['result']['username'], 'copied' => $moved['copied'], 'skipped' => $moved['skipped'], 'errors' => $moved['errors']], JSON_UNESCAPED_UNICODE), LOCK_EX);
