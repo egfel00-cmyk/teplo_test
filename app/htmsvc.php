@@ -679,7 +679,7 @@ final class HtmBills {
 /** Нарахування ХТМ по місяцях («Довідка по теплу» кабінету) — особисті дані людини: SITE_DATA/cache/htm_spr/<uid>_<квартира>.json (наружу не віддається),
  *  приложению — GET /api/htm/spr (лише своє). Для /api/health — лише скільки рядків, які колонки знайшли й маска формату (без цифр). */
 final class HtmSpr {
-  const BILLS_V = 2;
+  const BILLS_V = 3;
   public static function dir(): string { return Cfg::data() . '/cache/htm_spr'; }
   private static function file(int $uid, string $place): string { return self::dir() . '/' . $uid . '_' . substr(preg_replace('/[^A-Za-z0-9_-]/', '', $place), 0, 40) . '.json'; }
   public static function save(int $uid, string $place, array $sp): void {
@@ -749,7 +749,9 @@ final class HtmSpr {
       . 'перерахунок перерахунку перерахунки пільга пільги субсидія субсидії постачання тариф тарифом тарифу обсяг обсягу спожито спожита гкал грн кількість сума суми '
       . 'показання показань лічильника лічильник квартира квартири площа площі опалення вартість ціна норма нормою середнім середньомісячним коригування компенсація '
       . 'пеня штраф інші дата номер пдв рік року станом комунальна комунальні частка будинку внутрішньобудинкової системи загальнобудинкових витрати втрати витрата '
-      . 'місяців одержувач рахунок особовий'));
+      . 'місяців одержувач рахунок особовий отримувач платник адреса поточні попередні поточне попереднє різниця одиниця виміру дата сплатити кількість осіб опалювана '
+      . 'м2 м³ куб код єдрпоу iban банк призначення платежу споживання будинковий квартирний розподіл мзк кінці поточні показники вид тепла теплота тепло квартирі '
+      . 'гвп цо вартістю нараховано: всього: разом: обсяг, гкал, грн, лічильника, тарифу, сума, мзк, плата, борг, переплата, енергія, вода, послуга, послуги,'));
     return mb_substr((string)preg_replace_callback('/\p{L}[\p{L}\'’-]*/u', fn($m) => isset($voc[mb_strtolower($m[0])]) ? $m[0] : 'Ж', CabWeb::mask($s, 400)), 0, $n);
   }
   /** Будова таблиць рахунку без сум і людей (живий рахунок 08.11 інший, ніж стенд: рядки «теплової енергії», «донараховано до кінця поточного
@@ -758,15 +760,15 @@ final class HtmSpr {
   public static function billShape(string $html): array {
     if (trim($html) === '') return [];
     $x = CabWeb::dom($html); $out = ['tables' => $x->query('//table')->length, 'rows' => []];
-    foreach ($x->query('//table') as $ti => $tb) {
-      if ($ti >= 3) break;
-      foreach ($x->query('.//tr', $tb) as $tr) {
-        if (count($out['rows']) >= 16) break 2; $cs = [];
+    // лише «листові» рядки (без вкладених таблиць: живий рахунок — одна таблиця-макет із вкладеними) і лише з числами — там суми
+    foreach ([0] as $ti) {
+      foreach ($x->query('//tr[not(.//table)]') as $tr) {
+        if (count($out['rows']) >= 40) break 2; if (!preg_match('/\d/', (string)$tr->textContent)) continue; $cs = [];
         foreach ($x->query('./td|./th', $tr) as $c) {
           $sp = ((int)$c->getAttribute('colspan') > 1 ? ' [c' . (int)$c->getAttribute('colspan') . ']' : '') . ((int)$c->getAttribute('rowspan') > 1 ? ' [r' . (int)$c->getAttribute('rowspan') . ']' : '');
-          $cs[] = ($c->nodeName === 'th' ? 'th:' : '') . self::gw((string)$c->textContent, 70) . $sp;
+          $cs[] = ($c->nodeName === 'th' ? 'th:' : '') . self::gw((string)$c->textContent, 45) . $sp;
         }
-        if ($cs) $out['rows'][] = 't' . $ti . ' ' . count($cs) . ': ' . implode(' | ', $cs);
+        if ($cs) $out['rows'][] = count($cs) . ': ' . implode(' | ', $cs);
       }
     }
     return $out;
