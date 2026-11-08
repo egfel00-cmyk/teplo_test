@@ -95,9 +95,9 @@ pre.state { font: 12px/1.4 var(--mono); background: #F4F7F5; padding: 10px; bord
 
   function shell(body) {
     var o = DATA.overview || {};
-    var tabs = [['overview', 'Сводка'], ['users', 'Пользователи', 0], ['feedback', 'Сообщения', o.feedbackNew], ['photos', 'Фото', 0], ['reports', 'Ошибки распознавания', o.reportsBad], ['journal', 'Журнал', 0], ['reminders', 'Напоминания', o.cronAgo == null || o.cronAgo > 600 ? '!' : 0], ['settings', 'Настройки', !o.telegram ? '!' : 0]];
+    var tabs = [['overview', 'Сводка'], ['users', 'Пользователи', 0], ['feedback', 'Сообщения', o.feedbackNew], ['photos', 'Фото', 0], ['reports', 'Ошибки распознавания', o.reportsBad], ['journal', 'Журнал', 0], ['reminders', 'Напоминания', o.cronAgo == null || o.cronAgo > 600 ? '!' : 0], ['prov', 'Справочник', 0], ['settings', 'Настройки', !o.telegram ? '!' : 0]];
     app.innerHTML = '<header><b>Счётчики · аналитика</b><span class="muted small">' + esc(o.me || '') + '</span><span style="flex:1"></span><a class="btn" href="' + esc(SITE) + '">На сайт</a></header>' +
-      '<nav>' + tabs.map(function (t) { return '<button data-tab="' + t[0] + '"' + (TAB === t[0] || (TAB === 'jsession' && t[0] === 'journal') ? ' aria-current="true"' : '') + '>' + t[1] + (t[2] ? '<span class="n">' + t[2] + '</span>' : '') + '</button>'; }).join('') + '</nav><main>' + body + '</main>';
+      '<nav>' + tabs.map(function (t) { return '<button data-tab="' + t[0] + '"' + (TAB === t[0] || (TAB === 'jsession' && t[0] === 'journal') || (/^prov/.test(TAB) && t[0] === 'prov') ? ' aria-current="true"' : '') + '>' + t[1] + (t[2] ? '<span class="n">' + t[2] + '</span>' : '') + '</button>'; }).join('') + '</nav><main>' + body + '</main>';
   }
 
   var VIEW = {};
@@ -570,7 +570,148 @@ pre.state { font: 12px/1.4 var(--mono); background: #F4F7F5; padding: 10px; bord
     if (e.target.id === 'tc' && confirm('Отключить бота от сайта?')) saveSettings('/admin/settings/telegram', { clear: 1 }, 't', function () { return 'Бот отключён.'; });
   });
 
+  // ---------- «Справочник»: поставщики, тарифы и каналы по областям — правка без сессии (ProvEdit поверх репозитория) ----------
+  var PV = { r: '', scope: '', key: '', q: '', msg: {}, find: null };
+  var PK = { water: 'Вода', heat: 'Тепло', elec: 'Свет', gas: 'Газ' };
+  var PSC = { oblast: 'вся область', hromadas: 'громада', settlements: 'пункт' };
+  var ROBOT = { '': 'не проверяли', server: 'робот с нашего сервера', relay: 'только из Украины (ретранслятор)', captcha: 'капча — вручную', bot: 'только бот', phone: 'только телефон / SMS', none: 'нет онлайн-канала' };
+  var VERD = { login: ['ok', 'вход по паролю, без капчи'], form: ['ok', 'форма без пароля'], spa: ['info', 'приложение (JS) — смотреть руками'], page: ['info', 'страница без формы'], captcha: ['warn', 'капча'], cf: ['bad', 'Cloudflare не пускает сервер'], down: ['bad', 'не отвечает'], bad: ['bad', 'плохой адрес'] };
+  function pvHash(r, scope, key) { return 'prov' + (r ? '/' + r + (scope ? '/' + scope + (key ? '/' + encodeURIComponent(key) : '') : '') : ''); }
+  function money(v) { return v === null || v === undefined || v === '' ? '' : String(v).replace('.', ','); }
+  function verd(o) { if (!o) return ''; var v = VERD[o.verdict] || ['info', o.verdict]; return pill(v[0], v[1]) + ' <span class="muted small">' + esc((o.code || '') + (o.ms ? ' · ' + o.ms + ' мс' : '') + (o.at ? ' · ' + dday(o.at) : '')) + (o.fields && o.fields.length ? ' · поля: ' + esc(o.fields.join(', ')) : '') + '</span>'; }
+  function kshort(x, kd) {
+    if (!x) return '<span class="muted">—</span>';
+    var t = x.org ? esc(x.org) : '<span class="muted">не знаем</span>', p = [];
+    if (kd === 'water' && x.supply != null) p.push(money(x.supply) + (x.drain != null ? ' / ' + money(x.drain) : ''));
+    if (kd === 'heat' && x.price != null) p.push(money(x.price) + ' за Гкал');
+    if (kd === 'gas' && x.grm) t = esc(x.grm) + (x.dist != null ? ' · ' + money(x.dist) : '');
+    if (x.ch) p.push(x.ch.join(', '));
+    return t + (p.length ? '<div class="muted small">' + esc(p.join(' · ')) + '</div>' : '') + (x.check ? ' ' + pill('warn', 'сверить') : '') + (x.robot ? ' ' + pill(x.robot === 'server' ? 'ok' : 'info', ROBOT[x.robot] || x.robot) : '');
+  }
+  VIEW.prov = function () {
+    var o = DATA.prov || {}, h = '<h2>Справочник поставщиков и тарифов</h2><p class="muted small">Что здесь поправите — сразу видят люди. Правки лежат на сервере поверх файлов репозитория; сессия Claude на старте переносит их в репозиторий. ' +
+      (o.edits && o.edits.edits ? 'Сейчас правок: <b>' + o.edits.edits + '</b>' + (o.edits.at ? ', последняя ' + when(o.edits.at) : '') + '.' : 'Правок пока нет.') + '</p>';
+    h += '<div class="panel"><form id="pvf" class="filters"><input type="search" id="pvq" placeholder="Адрес квартиры — найти громаду" value="' + esc(PV.q) + '"><button class="btn" type="submit">Найти</button></form>';
+    var f = PV.find;
+    if (f) {
+      if (f.found) h += '<p><b>' + esc(f.place.name) + '</b> — ' + esc(f.place.hromada) + ' громада' + (f.place.district ? ', ' + esc(f.place.district) + ' р-н' : '') + ', ' + esc(f.place.oblast) + ' <a class="btn" href="#' + pvHash(f.place.r, 'hromadas', f.hkey || f.place.hromada) + '">Открыть громаду</a></p>' +
+        '<p class="small muted">Вода: ' + esc((f.kinds.water || {}).org || '—') + ' · Тепло: ' + esc((f.kinds.heat || {}).org || '—') + ' · Свет: ' + esc((f.kinds.elec || {}).org || '—') + ' · Газ: ' + esc((f.kinds.gas || {}).grm || '—') + '</p>';
+      else h += '<p class="problem">' + (f.candidates ? 'Несколько пунктов: ' + f.candidates.slice(0, 8).map(function (c) { return esc(c.name + ' (' + c.hromada + ', ' + c.oblast + ')'); }).join('; ') : 'Не нашли такой пункт.') + '</p>';
+    }
+    h += '</div><div class="cards">' + (o.regions || []).map(function (r) {
+      return '<a class="card" href="#' + pvHash(r.r) + '" style="text-decoration:none;color:inherit"><div class="v" style="font:600 18px/1.2 var(--font)">' + esc(r.name) + '</div><div class="k">громад ' + r.hromadas + ' · с водой ' + r.water + ' (тариф ' + r.waterTariff + ') · тепло ' + r.heat +
+        (r.edits ? ' · правок ' + r.edits : '') + '</div><div class="k">' + esc(r.elec || '') + (r.gas ? ' · ' + esc(r.gas) : '') + '</div></a>';
+    }).join('') + '</div>';
+    var s = o.seen || [];
+    h += '<div class="panel"><h3>Что ищут люди</h3><p class="muted small">Громады, которые открывали по адресу квартиры (сами адреса не храним). Сверху — где нет поставщика воды или её тарифа: с них и начинать. Не нашли пункт: ' + (o.nf || 0) + ' раз.</p>' +
+      (s.length ? '<table><tr><th>Громада</th><th>Область</th><th>Раз</th><th>Последний</th><th>Не хватает</th></tr>' + s.map(function (x) {
+        return '<tr class="click" data-pvgo="' + esc(pvHash(x.r, 'hromadas', x.key)) + '"><td>' + esc(x.name) + (x.p ? '<div class="muted small">' + esc(x.p) + '</div>' : '') + '</td><td>' + esc(x.oblast) + '</td><td>' + x.n + '</td><td>' + dday(x.at) + '</td><td>' +
+          (x.w ? pill('bad', 'вода') + ' ' : !x.wt ? pill('warn', 'тариф воды') + ' ' : '') + (x.h ? pill('warn', 'тепло') : '') + '</td></tr>';
+      }).join('') + '</table>' : '<p class="muted">Пока никто не искал.</p>') + '</div>';
+    var pb = o.probe || {};
+    h += '<div class="panel"><h3>Можно ли подавать без человека</h3><p class="muted small">Сервер раз в неделю открывает каждый кабинет и форму из справочника (только страницу входа, ничего не вводит).</p><p>' +
+      (Object.keys(pb).length ? Object.keys(pb).map(function (k) { var v = VERD[k] || ['info', k]; return pill(v[0], v[1] + ': ' + pb[k]); }).join(' ') : '<span class="muted">Ещё не проверяли.</span>') + '</p></div>';
+    var lg = o.log || [];
+    h += '<div class="panel"><h3>Последние правки</h3>' + (lg.length ? '<table><tr><th>Когда</th><th>Кто</th><th>Где</th><th>Что</th><th></th></tr>' + lg.map(function (x, i) {
+      return '<tr><td>' + when(x.at) + '</td><td class="small">' + esc(x.who) + '</td><td><a href="#' + pvHash(x.r, x.scope, x.key) + '">' + esc((x.key || PSC[x.scope]) + ' · ' + x.r) + '</a></td><td>' + esc(PK[x.kind] || x.kind) + ' — ' + esc(x.op === 'revert' ? 'как в репозитории' : x.op === 'off' ? 'убрано' : 'изменено') + '</td>' +
+        '<td><button class="btn" data-pvundo="' + i + '">Откатить</button></td></tr>';
+    }).join('') + '</table>' : '<p class="muted">Правок нет.</p>') + '</div>';
+    return h;
+  };
+  VIEW.provr = function () {
+    // фильтр: сперва совпадения по названию громады и центру, ниже — по району
+    var o = DATA.provr || {}, q = (PV.q2 || '').toLowerCase(), hit = function (x) { return (x.name + ' ' + x.center).toLowerCase().indexOf(q) >= 0; };
+    var rows = !q ? (o.hromadas || []) : (o.hromadas || []).filter(hit).concat((o.hromadas || []).filter(function (x) { return !hit(x) && x.district.toLowerCase().indexOf(q) >= 0; }));
+    var h = '<p><a class="btn" href="#prov">← Справочник</a></p><h2>' + esc(o.name || '') + (o.r === 'ky' ? '' : ' область') + '</h2>';
+    h += '<div class="panel"><h3>Вся область <a class="btn" href="#' + pvHash(o.r, 'oblast') + '">Изменить</a></h3><table>' + ['elec', 'gas', 'water', 'heat'].map(function (k) {
+      return '<tr><th>' + PK[k] + (o.oblastEdited && o.oblastEdited.indexOf(k) >= 0 ? ' ' + pill('info', 'правка') : '') + '</th><td>' + kshort((o.oblast || {})[k], k) + '</td></tr>';
+    }).join('') + '</table><p class="muted small">Вода и тепло области — то, что видят люди, если у громады своего нет (обычно «впишите с платёжки»).</p></div>';
+    h += '<div class="panel"><div class="filters"><input type="search" id="pvq2" placeholder="Громада, центр или район" value="' + esc(PV.q2 || '') + '"><span class="muted small">' + rows.length + ' из ' + (o.hromadas || []).length + '</span></div>' +
+      '<table><tr><th>Громада</th><th>Район</th><th>Вода</th><th>Тепло</th><th>Ищут</th></tr>' + rows.map(function (x) {
+        return '<tr class="click" data-pvgo="' + esc(pvHash(o.r, 'hromadas', x.key)) + '"><td><b>' + esc(x.name) + '</b><div class="muted small">' + esc(x.center) + ' · пунктов ' + x.points + (x.own ? ' · свои у ' + x.own : '') + '</div>' +
+          (x.edited.length ? pill('info', 'правка: ' + x.edited.map(function (k) { return PK[k]; }).join(', ')) : '') + '</td><td class="small">' + esc(x.district) + '</td><td>' + kshort(x.water, 'water') + '</td><td>' + kshort(x.heat, 'heat') + '</td><td>' + (x.seen ? x.seen.n : '') + '</td></tr>';
+      }).join('') + '</table></div>';
+    return h;
+  };
+  function pvFld(id, label, val, hint, wide) {
+    return '<p><label>' + esc(label) + (hint ? ' <span class="muted small">' + esc(hint) + '</span>' : '') + '<br>' + (wide ? '<textarea data-pvf="' + id + '" rows="' + (wide === 2 ? 4 : 2) + '" style="width:100%;font:inherit;padding:8px;border:1.5px solid var(--line);border-radius:10px">' + esc(val == null ? '' : val) + '</textarea>'
+      : '<input data-pvf="' + id + '" value="' + esc(val == null ? '' : val) + '" style="width:100%;font:inherit;padding:8px;border:1.5px solid var(--line);border-radius:10px">') + '</label></p>';
+  }
+  function pvForm(kd, c) {
+    c = c || {};
+    var h = pvFld('org', kd === 'gas' ? 'Поставщик газа' : 'Организация', c.org, kd === 'water' || kd === 'heat' ? 'пусто — «не знаем, впишите с платёжки»' : '');
+    if (kd === 'water') h += '<div class="cards">' + pvFld('supply', 'Вода, грн/м³', money(c.supply), 'пусто — неизвестно') + pvFld('drain', 'Водоотведение, грн/м³', money(c.drain)) + pvFld('hot', 'Горячая вода, грн/м³', money(c.hot)) + pvFld('from', 'С даты', c.from, 'ГГГГ-ММ-ДД') + '</div>';
+    if (kd === 'heat') h += '<div class="cards">' + pvFld('price', 'Тепло, грн/Гкал', money(c.price), 'пусто — неизвестно') + pvFld('abon', 'Абонплата, грн/мес', money(c.abon)) + pvFld('from', 'С даты', c.from, 'ГГГГ-ММ-ДД') + '</div>';
+    if (kd === 'elec') h += pvFld('net', 'Оператор сети (ОСР)', c.net);
+    if (kd === 'gas') h += '<div class="cards">' + pvFld('grm', 'Оператор сети (кому показания)', c.grm) + pvFld('dist', 'Доставка, грн/м³', money(c.dist)) + pvFld('distFrom', 'С даты', c.distFrom) + '</div>' + pvFld('distSrc', 'Откуда тариф доставки', c.distSrc, '', 1);
+    h += pvFld('how', 'Как и когда передавать показания', c.how, 'людям — простыми словами, сроки', 2) +
+      '<div class="cards">' + pvFld('cab', 'Личный кабинет', c.cab, 'https://…') + pvFld('bot', 'Бот (Telegram)', c.bot, 'https://t.me/…') + pvFld('site', 'Сайт / форма', c.site, 'https://…') + pvFld('app', 'Приложение', c.app, 'https://…') + '</div>' +
+      pvFld('phones', 'Телефоны', (c.phones || []).map(function (p) { return p[1] + (p[2] ? '; ' + p[2] : ''); }).join('\n'), 'по строке: номер; подпись', 2) +
+      pvFld('pay', 'Куда платить', c.pay, '', 1) + pvFld('note', 'Подсказка людям', c.note, 'показывается, если надо сверить или вписать', 2) + pvFld('src', 'Источник цифр', c.src, 'решение, номер, дата, сайт — для проверки', 2) +
+      '<p><label><input type="checkbox" data-pvf="check"' + (c.check ? ' checked' : '') + '> Не уверены — просить людей сверить с платёжкой</label></p>' +
+      '<p><label>Подача без человека<br><select data-pvf="robot" style="font:inherit;padding:8px;border-radius:10px">' + Object.keys(ROBOT).map(function (k) { return '<option value="' + k + '"' + ((c.robot || '') === k ? ' selected' : '') + '>' + esc(ROBOT[k]) + '</option>'; }).join('') + '</select></label></p>' +
+      pvFld('robot_note', 'Заметка о подаче', c.robot_note, 'что видно на сайте: вход, капча, поля', 1) +
+      '<details><summary class="muted">По-русски (необязательно — иначе люди увидят украинский)</summary>' + pvFld('how_ru', 'Как и когда', c.how_ru, '', 2) + pvFld('pay_ru', 'Куда платить', c.pay_ru, '', 1) + pvFld('note_ru', 'Подсказка', c.note_ru, '', 2) + pvFld('src_ru', 'Источник', c.src_ru, '', 2) + (kd === 'gas' ? pvFld('distSrc_ru', 'Откуда тариф доставки', c.distSrc_ru, '', 1) : '') + '</details>' +
+      '<details><summary class="muted">Как JSON (для всего остального: next — будущий тариф, via)</summary><textarea data-pjson rows="8" style="width:100%;font:12px/1.4 var(--mono);padding:8px;border:1.5px solid var(--line);border-radius:10px">' + esc(JSON.stringify(c, null, 1)) + '</textarea>' +
+      '<p><button class="btn" data-pvsave="json">Сохранить JSON</button></p></details>';
+    return h;
+  }
+  VIEW.prove = function () {
+    var o = DATA.prove || {}, title = o.scope === 'oblast' ? 'Вся область' : o.key;
+    var back = '<p><a class="btn" href="#' + pvHash(o.r) + '">← ' + esc(o.region || '') + '</a>' + (o.scope === 'settlements' ? ' <a class="btn" href="#' + pvHash(o.r, 'hromadas', String(o.key).split('/')[0]) + '">← громада</a>' : '') + '</p>';
+    var h = back + '<h2>' + esc(title) + ' <span class="muted small">' + esc(PSC[o.scope] || '') + ', ' + esc(o.region || '') + '</span></h2>';
+    if (o.scope !== 'oblast') h += '<p class="muted small">Пусто у громады — люди видят то, что задано для всей области. Пункт со своим поставщиком (село со своим КП) — ниже, «Пункты громады».</p>';
+    h += ['water', 'heat', 'elec', 'gas'].map(function (kd) {
+      var k = (o.kinds || {})[kd] || {}, c = k.cur, msg = PV.msg[kd] || '', sh = o.show && o.show[kd];
+      var open = !!c || PV.open === kd;
+      return '<details class="panel" data-pvk="' + kd + '"' + (open ? ' open' : '') + '><summary><b>' + PK[kd] + '</b> ' + (c ? kshort({ org: c.org, supply: c.supply, drain: c.drain, price: c.price, grm: c.grm, dist: c.dist, check: c.check, robot: c.robot }, kd) : '<span class="muted">нет на этом уровне' + (sh && (sh.org || sh.grm) ? ' — люди видят: ' + esc(sh.grm || sh.org) : '') + '</span>') +
+        (k.edited ? ' ' + pill('info', 'правка') : '') + '</summary>' + pvForm(kd, c) +
+        (k.probe ? '<p>Проба: ' + Object.keys(k.probe).map(function (f) { return esc(f) + ' ' + verd(k.probe[f]); }).join('<br>') + '</p>' : '') +
+        '<p class="filters"><button class="btn" data-pvsave="form" style="background:var(--ink);color:#fff">Сохранить</button>' +
+        (c && (c.cab || c.site) ? '<button class="btn" data-pvprobe="' + esc(c.cab || c.site) + '">Проверить ' + (c.cab ? 'кабинет' : 'сайт') + ' с сервера</button>' : '') +
+        (k.edited ? '<button class="btn" data-pvsave="revert">Вернуть как в репозитории</button>' : '') +
+        (c && o.scope !== 'oblast' ? '<button class="btn" data-pvsave="off">Убрать (взять уровень выше)</button>' : '') + '<span class="okmsg" data-pvmsg="' + kd + '">' + esc(msg) + '</span></p></details>';
+    }).join('');
+    if (o.points && o.points.length) h += '<div class="panel"><h3>Пункты громады</h3><p class="muted small">Нажмите пункт, чтобы задать ему своего поставщика (вода, тепло) вместо громадского.</p><p>' + o.points.map(function (p) {
+      return '<a class="btn" style="margin:0 6px 6px 0;display:inline-block" href="#' + pvHash(o.r, 'settlements', o.key + '/' + p.n) + '">' + esc(p.n) + (p.c === 'M' ? ' (м.)' : p.c === 'X' ? ' (смт)' : '') + (p.own ? ' ★' : '') + '</a>';
+    }).join('') + '</p></div>';
+    return h;
+  };
+  function pvCollect(box) {
+    var v = {}; Array.prototype.forEach.call(box.querySelectorAll('[data-pvf]'), function (i) { var f = i.getAttribute('data-pvf'); v[f] = i.type === 'checkbox' ? i.checked : i.value; });
+    v.phones = String(v.phones || '').split('\n').map(function (x) { return x.trim(); }).filter(Boolean).map(function (x) { var p = x.split(';'); return [p[0].trim(), p[0].trim(), (p[1] || '').trim()]; });
+    var old = (DATA.prove.kinds[box.getAttribute('data-pvk')] || {}).cur || {};
+    ['next', 'via', 'months', 'limit', 'heat'].forEach(function (f) { if (old[f] !== undefined) v[f] = old[f]; });   // поля без формы — как были
+    return v;
+  }
+  document.addEventListener('submit', function (e) {
+    if (e.target.id !== 'pvf') return; e.preventDefault(); PV.q = document.getElementById('pvq').value.trim(); if (!PV.q) return;
+    get('/admin/prov/find?q=' + encodeURIComponent(PV.q)).then(function (j) { PV.find = j; if (j.found) j.hkey = j.place.hkey || j.place.hromada; shell(VIEW.prov()); });
+  });
+  document.addEventListener('input', function (e) { if (e.target.id === 'pvq2') { PV.q2 = e.target.value; var pos = e.target.selectionStart; shell(VIEW.provr()); var i = document.getElementById('pvq2'); if (i) { i.focus(); i.setSelectionRange(pos, pos); } } });
+  document.addEventListener('click', function (e) {
+    var g = e.target.closest('[data-pvgo]'); if (g) { location.hash = g.getAttribute('data-pvgo'); return; }
+    var u = e.target.closest('[data-pvundo]');
+    if (u) { var x = (DATA.prov.log || [])[+u.getAttribute('data-pvundo')]; if (!x || !confirm('Вернуть «' + (PK[x.kind] || x.kind) + '» для ' + (x.key || 'области') + ' как было до этой правки?')) return;
+      post('/admin/prov/save', { r: x.r, scope: x.scope, key: x.key, kind: x.kind, value: x.prev === null || x.prev === undefined ? null : x.prev }).then(function () { show('prov'); }); return; }
+    var pr = e.target.closest('[data-pvprobe]');
+    if (pr) { e.preventDefault(); var bx = pr.closest('[data-pvk]'), m = bx.querySelector('[data-pvmsg]'); m.textContent = 'Проверяем…';
+      post('/admin/prov/probe', { url: pr.getAttribute('data-pvprobe') }).then(function (j) { m.innerHTML = j.probe ? verd(j.probe) : esc(j.error || 'не вышло'); }, function () { m.textContent = 'Сервер недоступен'; }); return; }
+    var sv = e.target.closest('[data-pvsave]'); if (!sv) return; e.preventDefault();
+    var box = sv.closest('[data-pvk]'), kd = box.getAttribute('data-pvk'), how = sv.getAttribute('data-pvsave'), o = DATA.prove, val;
+    if (how === 'form') val = pvCollect(box);
+    else if (how === 'json') { try { val = JSON.parse(box.querySelector('[data-pjson]').value); } catch (er) { box.querySelector('[data-pvmsg]').textContent = 'JSON с ошибкой: ' + er.message; return; } }
+    else if (how === 'revert') { if (!confirm('Вернуть «' + PK[kd] + '» как в репозитории? Ваша правка уйдёт (её можно откатить в журнале).')) return; val = null; }
+    else if (how === 'off') { if (!confirm('Убрать «' + PK[kd] + '» на этом уровне? Люди увидят то, что задано выше (громада или область).')) return; val = false; }
+    post('/admin/prov/save', { r: o.r, scope: o.scope, key: o.key, kind: kd, value: val }).then(function (j) {
+      if (j && j.error) { box.querySelector('[data-pvmsg]').textContent = 'Не сохранено: ' + j.error; return; }
+      DATA.prove = j; PV.msg = {}; PV.msg[kd] = 'Сохранено ' + new Date().toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }); PV.open = kd; shell(VIEW.prove());
+    }, function () { box.querySelector('[data-pvmsg]').textContent = 'Сервер недоступен'; });
+  });
   var LOAD = {
+    prov: function () { return get('/admin/prov').then(function (j) { DATA.prov = j; }); },
+    provr: function () { return get('/admin/prov/region?r=' + PV.r).then(function (j) { DATA.provr = j; }); },
+    prove: function () { PV.msg = PV.keepMsg ? PV.msg : {}; PV.keepMsg = false; return get('/admin/prov/entry?r=' + PV.r + '&scope=' + PV.scope + '&key=' + encodeURIComponent(PV.key)).then(function (j) { DATA.prove = j; }); },
     settings: function () { return get('/admin/settings').then(function (j) { DATA.settings = j; }); },
     overview: function () { return get('/admin/devices?days=' + DDAYS).then(function (j) { DATA.devices = j; }); },
     users: function () { return get('/admin/users?q=' + encodeURIComponent(Q)).then(function (j) { DATA.users = j.users; }); },
@@ -636,7 +777,9 @@ pre.state { font: 12px/1.4 var(--mono); background: #F4F7F5; padding: 10px; bord
   var qt;
   document.addEventListener('input', function (e) { if (e.target.id === 'q') { Q = e.target.value; clearTimeout(qt); qt = setTimeout(function () { show('users'); }, 300); } });
   window.addEventListener('hashchange', route);
-  function route() { var h = (location.hash || '#overview').slice(1), m = h.match(/^user-(\d+)$/), js = h.match(/^js-([A-Za-z0-9]+)-([A-Za-z0-9]+)$/); if (m) show('user', +m[1]); else if (js) { JD.vid = js[1]; JD.sid = js[2]; show('jsession'); } else show(h); }
+  function route() { var h = (location.hash || '#overview').slice(1), m = h.match(/^user-(\d+)$/), js = h.match(/^js-([A-Za-z0-9]+)-([A-Za-z0-9]+)$/), pv = h.match(/^prov\/([a-z]{2})(?:\/(oblast|hromadas|settlements)(?:\/(.+))?)?$/);
+    if (pv) { PV.r = pv[1]; if (pv[2]) { PV.scope = pv[2]; PV.key = pv[3] ? decodeURIComponent(pv[3]) : ''; show('prove'); } else show('provr'); return; }
+    if (m) show('user', +m[1]); else if (js) { JD.vid = js[1]; JD.sid = js[2]; show('jsession'); } else show(h); }
 
   function loginForm(err) {
     app.innerHTML = '<form class="center" id="lf"><h2>Вход в аналитику</h2>' +

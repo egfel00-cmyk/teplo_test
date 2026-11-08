@@ -132,6 +132,21 @@ final class Admin {
       case 'POST /api/admin/relay/probe': if (!Relay::on()) throw new HttpError(409, 'relay_off'); return ['ok' => true, 'id' => Relay::create('probe', [], (int)$me['id'])];
       case 'POST /api/admin/relay/dry': return Relay::send($in, $me, true);
       case 'POST /api/admin/relay/send': return Relay::send($in, $me, false);
+      // довідник постачальників і тарифів: власник править сам — правки поверх файлів репозиторію (ProvEdit), сесія забирає їх у git
+      case 'GET /api/admin/prov': return ProvAdmin::overview();
+      case 'GET /api/admin/prov/region': return ProvAdmin::region((string)($q['r'] ?? ''));
+      case 'GET /api/admin/prov/entry': return ProvAdmin::entry((string)($q['r'] ?? ''), (string)($q['scope'] ?? ''), (string)($q['key'] ?? ''));
+      case 'POST /api/admin/prov/save': {
+        $v = $in['value'] ?? null; if (!($v === null || $v === false || is_array($v))) throw new HttpError(422, 'bad_value');
+        ProvEdit::save((string)($in['r'] ?? ''), (string)($in['scope'] ?? ''), (string)($in['key'] ?? ''), (string)($in['kind'] ?? ''), $v, (string)($me['email'] ?? $me['id'] ?? 'admin'));
+        return ProvAdmin::entry((string)$in['r'], (string)$in['scope'], (string)$in['key']);
+      }
+      case 'POST /api/admin/prov/probe': {   // проба кабінету/форми з нашого сервера зараз (лише GET сторінки)
+        $u = (string)($in['url'] ?? ''); if (!preg_match('~^https://[^\s"<>]+$~', $u)) throw new HttpError(422, 'bad_url');
+        $o = ProvProbe::one($u); if (isset(ProvProbe::urls()[$u])) ProvProbe::store($u, $o); return ['url' => $u, 'probe' => $o];
+      }
+      case 'GET /api/admin/prov/find': { ProvEdit::$track = false; return Providers::lookup((string)($q['q'] ?? '')); }
+      case 'GET /api/admin/prov/edits': return ProvEdit::all() + ['probe' => ProvProbe::read()];   // правки для перенесення в репозиторій
       case 'GET /api/admin/overview': {
         $c = fn($sql, $p = []) => (int)(Db::one($sql, $p)['n'] ?? 0);
         $week = gmdate('c', time() - 7 * 86400); $tr = self::tracking();

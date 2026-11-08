@@ -118,7 +118,7 @@ final class Api {
         return ['ok' => true, 'rev' => self::rev(), 'cronAgo' => Cron::age(), 'remind' => (object)($cr['remind'] ?? []), 'remindNext' => $cr['remindNext'] ?? null, 'remindErr' => $rerr, 'fwd' => (object)$fwd,
           'gpvSent' => (object)($cr['gpvSent'] ?? []), 'gpvReady' => $cr['gpvReady'] ?? null,
           'gpv' => ['at' => $g['at'] ?? null, 'update' => $g['update'] ?? null, 'days' => array_keys((array)($g['days'] ?? [])), 'err' => $g['err'] ?? null],
-          'vkcab' => VkCab::summary(), 'cabs' => (object)CabProbe::read(),
+          'vkcab' => VkCab::summary(), 'cabs' => (object)CabProbe::read(), 'prov' => ProvAdmin::health(),
           // кабинет ХТМ: итоги операций, сколько подключено, внесения по статусам и последняя увиденная форма (имена/типы полей, без значений)
           'htmcab' => HtmSvc::summary(), 'vksvc' => VkSvc::summary(), 'vkBills' => VkBills::summary(), 'htmBills' => HtmBills::summary(), 'htmSpr' => HtmSpr::summary(),
           // проба обленерго с украинского адреса (NAS владельца → POST /api/relay/probe): код, Cloudflare, капча, формы — решает, быть ли ретранслятору

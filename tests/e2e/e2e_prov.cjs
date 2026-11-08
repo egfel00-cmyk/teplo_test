@@ -89,6 +89,20 @@ let pass = 0, fail = 0; const ok = (n, c, x) => { if (c) { pass++; console.log('
   ok('Мала Данилівка: «Куди передати» — КП «Малоданилівський комунальник» і підказка, без Харківводоканалу', /Малоданилівський комунальник/.test(wd2) && !/hvk_user_bot/.test(wd2), wd2.slice(0, 200));
   await p.goto(U + '#gas'); await p.waitForTimeout(700); await p.click('[data-key=where-gas] summary').catch(() => {}); await p.waitForTimeout(200);
   ok('газ у Малій Данилівці: «У боті Газмереж оберіть філію: Харківська філія»', /оберіть філію: Харківська філія/.test(await txt('where-gas')), (await txt('where-gas')).slice(0, 300));
+  // 57-ма сесія: Київ — «столиця», вода Київводоканалу 36,85 + 26,94; світло — «Куди передати» YASNO (місцевий блок, не Харківобленерго); газ — Київгаз (не бот Газмереж)
+  await p.evaluate(() => { const s = JSON.parse(localStorage.getItem('teplo.v1')); s.placeId = 'p2'; s.places[1].address = 'м. Київ, вул. Хрещатик 1'; delete s.places[1].prov; delete s.places[1].settle; localStorage.setItem('teplo.v1', JSON.stringify(s)); });
+  await p.goto(U + '#place-p2'); await p.reload(); await p.waitForTimeout(900);
+  ok('Київ: «Для «Київ» (столиця)», вода — Київводоканал 36,85 і 26,94', /Для «Київ» \(столиця\)/.test(await txt('prov-lead')) && /Київводоканал/.test(await txt('prov-water')) && /36,85.*26,94/.test(await txt('prov-water')), (await txt('prov-lead')) + ' | ' + (await txt('prov-water')).slice(0, 200));
+  ok('Київ: світло — YASNO, мережі ДТЕК Київські електромережі; газ — доставка ПАТ «Київгаз» 0,384', /YASNO/.test(await txt('prov-elec')) && /ДТЕК Київські електромережі/.test(await txt('prov-elec')) && /Київгаз».*0,384/.test(await txt('prov-gas')), (await txt('prov-gas')).slice(0, 200));
+  await p.goto(U + '#elec'); await p.waitForTimeout(800);
+  const ke = await txt('where-elec');
+  ok('Київ, «Куди передати» світло: YASNO, кабінет і сайт, без бота Харківобленерго', /YASNO/.test(ke) && !!(await p.$('[data-key=dest-loc-elec-cab]')) && !/Kooz2bot|Харківобленерго/.test(ke), ke.slice(0, 300));
+  await p.goto(U + '#gas'); await p.waitForTimeout(800);
+  const kg = await txt('where-gas');
+  ok('Київ, «Куди передати» газ: ПАТ «Київгаз», без бота Газмереж', /Київгаз/.test(kg) && !/mygrmu_bot|Газмереж/.test(kg), kg.slice(0, 300));
+  await p.evaluate(() => { const s = JSON.parse(localStorage.getItem('teplo.v1')); s.places[1].address = 'Бровары, ул. Киевская 1'; localStorage.setItem('teplo.v1', JSON.stringify(s)); });
+  await p.goto(U + '#place-p2'); await p.reload(); await p.waitForTimeout(900);
+  ok('Бровари: «Броварська громада, Броварський район, Київська обл.», вода — «не знаємо, впишіть»', /Броварський район, Київська обл\./.test(await txt('prov-lead')) && /Газмережі, Київська філія, 1,788/.test(await txt('prov-gas')), (await txt('prov-lead')));
   ok('без помилок JS', !errs.length, errs);
   console.log('\nИтог: ' + pass + ' OK, ' + fail + ' FAIL'); await b.close(); process.exit(fail ? 1 : 0);
 })();

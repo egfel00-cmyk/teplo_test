@@ -2051,7 +2051,7 @@
       // готовий текст SMS — уже в кнопці «SMS на 4647» (відкриває SMS з набраним текстом); окремим рядком — дубль
       chans = [[Gs.LINKS.bot, t('gd_bot'), 'send', 'bot', botAttr]].concat(sms ? [['sms:' + Gs.LINKS.sms + '?&body=' + encodeURIComponent(sms), t('gd_sms'), 'send', 'sms']] : []);
       // бот Газмереж питає філію: у Харкові — «Харківська міська», в області — «Харківська» (за довідником адреси)
-      var gdp = prvOf('gas'); if (gdp && gdp.grm) body += '<p class="small muted" data-key="gd-fil">' + esc(t('gd_fil', { g: String(gdp.grm).replace(/^Газмережі,\s*/, '') })) + '</p>';
+      var gdp = prvOf('gas'); if (gdp && gdp.grm && /^Газмережі/.test(gdp.grm)) body += '<p class="small muted" data-key="gd-fil">' + esc(t('gd_fil', { g: String(gdp.grm).replace(/^Газмережі,\s*/, '') })) + '</p>';
       more = '<p class="dm-links"><a href="' + Gs.LINKS.kub + '" target="_blank" rel="noopener" data-key="dest-grm-kub">' + esc(t('gd_kub')) + ' ' + ico('ext', 14) + '</a><a href="' + Gs.LINKS.cabinet + '" target="_blank" rel="noopener" data-key="dest-grm-cab">' + esc(t('gd_cab')) + ' ' + ico('ext', 14) + '</a></p>' +
         '<p class="dm-t">' + esc(t('gd_kub_call')) + '</p><ul class="dm-ph"><li>' + telLink(Gs.KUB_TEL[0], Gs.KUB_TEL[1]) + '<span class="muted">' + esc(t('gd_kub_free')) + '</span></li></ul>' +
         '<p class="dm-t">' + esc(t('gd_call')) + '</p>' + phones;
@@ -2066,6 +2066,11 @@
     }
     var mark = have && !asking ? '<p class="dest-mark">' + (allSent ? '<button class="linkbtn" data-act="esent" data-k="' + k + '" data-v="0" data-ids="' + ids + '">' + esc(t('ws_unmark')) + '</button>'
       : '<button class="btn sec" data-act="esent" data-k="' + k + '" data-v="1" data-ids="' + ids + '" data-key="esend-done">' + ico('check', 18) + '<span>' + esc(t('ws_mark')) + '</span></button>') + '</p>' : '';
+    // квартира поза Харківщиною: не Харківобленерго / не бот Газмереж, а місцевий постачальник із довідника (як і коли, кабінет, бот, телефони)
+    var loc = prvLocal(k);
+    if (loc) return '<section class="panel where" data-key="where-' + k + '"><h2>' + ico('send', 18, 'bt-ico') + '<span>' + esc(t('wd_title')) + '</span></h2>' + wherePlaceLine() +
+      localDest(k, loc, body + acc, have ? '<p class="dest-mark">' + (allSent ? '<button class="linkbtn" data-act="esent" data-k="' + k + '" data-v="0" data-ids="' + ids + '">' + esc(t('ws_unmark')) + '</button>'
+        : '<button class="btn sec" data-act="esent" data-k="' + k + '" data-v="1" data-ids="' + ids + '" data-key="esend-done">' + ico('check', 18) + '<span>' + esc(t('ws_mark')) + '</span></button>') + '</p>' : '', allSent) + '</section>';
     return '<section class="panel where" data-key="where-' + k + '"><h2>' + ico('send', 18, 'bt-ico') + '<span>' + esc(t('wd_title')) + '</span></h2>' +
       (places().length > 1 ? '<p class="dest-place" style="--pc:var(--pc-' + placeColor(place()) + ')" data-key="where-place"><b>' + esc(t('wd_for', { p: placeLabel(place()) })) + '</b>' + (placeSub(place()) ? '<span class="small muted"> · ' + esc(placeSub(place())) + '</span>' : '') + '</p>' : '') +
       destBox({ key: k === 'gas' ? 'grm' : 'obl', id: 'esend', org: tk(k, 'ed_org'), what: '', due: due, dueTone: w.open && w.daysLeft <= 1 ? 'warn' : 'neutral', sent: allSent, body: body + acc, chans: chans, note: have ? sbBox(k, have) : '', more: more, mark: mark }) + '</section>';   // цифри → рахунок → кнопки → «Як це в боті» / відповідь бота
@@ -4519,7 +4524,19 @@
   /** Текст довідника мовою інтерфейсу: note_ru / how_ru …, якщо є. */
   function ploc(d, f) { return d ? (S.lang === 'ru' && d[f + '_ru']) || d[f] || '' : ''; }
   function kindWord(c) { return t('pk_' + (c === 'M' ? 'm' : c === 'X' ? 'x' : 'c')); }
-  function placeWhere(pl) { return t('prv_where', { k: kindWord(pl.kind), h: pl.hromada, d: pl.district }); }
+  /** «місто, Броварська громада, Броварський район, Київська обл.» — область лише поза Харківщиною; Київ — «столиця». */
+  function placeWhere(pl) {
+    if (pl.r === 'ky') return t('prv_where_ky');
+    var w = t('prv_where', { k: kindWord(pl.kind), h: pl.hromada, d: pl.district });
+    return pl.r && pl.r !== 'kh' && pl.oblast ? w + ', ' + t('prv_obl', { o: pl.oblast }) : w;
+  }
+  /** Квартира поза Харківщиною: світло (і газ не від Газмереж) — блок місцевого постачальника замість харківських каналів. */
+  function prvLocal(k) {
+    var d = prvOf(k), r = d && d._place && d._place.r; if (!d || !r || r === 'kh') return null;
+    if (k === 'elec') return d;
+    if (k === 'gas' && d.grm && !/^Газмережі/.test(d.grm)) return Object.assign({}, d, { org: d.grm });
+    return null;
+  }
   /** Постачальник виду (elec|gas|water|heat) поточної квартири з довідника; null — адреси немає (як і було — Харків) чи ще вантажиться. */
   function prvOf(k) { var j = prvKinds0(); return j ? Object.assign({ _place: j.place }, j.kinds[k] || {}) : null; }
   function wherePlaceLine() {
@@ -4535,6 +4552,8 @@
     if (d.cab) chans.push([d.cab, t('ld_cab'), 'ext', 'cab']);
     if (d.bot) chans.push([d.bot, t('wd_bot', { b: '@' + String(d.bot).replace(/^.*t\.me\//, '') }), 'send', 'bot']);
     if (d.site) chans.push([d.site, t('ld_site'), 'ext', 'site']);
+    if (d.app) chans.push([d.app, t('ld_app'), 'ext', 'app']);
+    if (d.viber) chans.push([d.viber, 'Viber', 'send', 'viber']);
     var body = vals || '';
     if (!org) body += '<p data-key="ld-unk">' + esc(t('ld_unk_' + k, { c: pl.name || '' })) + '</p><p><a class="btn sec" href="#place-' + esc(p.id || '') + '" data-act="prv-go" data-key="ld-fill">' + ico('edit', 18) + '<span>' + esc(t('prv_fill')) + '</span></a></p>';
     else body += '<p class="small" data-key="ld-how">' + esc(how || t('ld_how_unk')) + '</p>';
@@ -4547,6 +4566,7 @@
     var p = place() || {}, w = (p.prov && p.prov.water) || {}, d = prvOf('water'), base = S.wtariff;
     // квартира не в Харкові: тариф її водоканалу з довідника (якщо відомий) — замість харківського
     if (d && d.via !== 'hvk' && R.num(d.supply) > 0) base = Object.assign({}, S.wtariff || {}, { supply: R.num(d.supply) }, R.num(d.drain) > 0 ? { drain: R.num(d.drain) } : {});
+    if (d && d.via !== 'hvk' && R.num(d.hot) > 0) base = Object.assign({}, base || S.wtariff || {}, { hot: R.num(d.hot) });   // гаряча вода міста (Київтеплоенерго 97,89)
     if (!(R.num(w.supply) > 0)) return R.num(w.hot) > 0 ? Object.assign({}, base || {}, { hot: R.num(w.hot) }) : base;
     return Object.assign({}, base || {}, { supply: R.num(w.supply), drain: R.num(w.drain) > 0 ? R.num(w.drain) : 0 }, R.num(w.hot) > 0 ? { hot: R.num(w.hot) } : {});
   }
@@ -4620,7 +4640,7 @@
         '<p class="small muted">' + esc(t('prv_ask_none')) + '</p>';
       return h + ks.map(function (k) { return prvRow(p, k, null, nat); }).join('') + '</section>';
     }
-    var lead = pl ? t('prv_lead', { c: pl.name, h: pl.hromada, d: pl.district }) + (j.how === 'default' ? ' ' + t('prv_kh_default') : '') : j.err ? t('prv_err') : t('prv_nf', { a: a });
+    var lead = pl ? (pl.r && pl.r !== 'kh' ? t('prv_lead2', { c: pl.name, w: placeWhere(pl) }) : t('prv_lead', { c: pl.name, h: pl.hromada, d: pl.district })) + (j.how === 'default' ? ' ' + t('prv_kh_default') : '') : j.err ? t('prv_err') : t('prv_nf', { a: a });
     if (pl && j.how === 'typo') lead = t('prv_typo', { c: pl.name, w: placeWhere(pl) });
     h += '<p class="small muted" data-key="prov-lead">' + esc(lead) + '</p>';
     // уточнений пункт — можна змінити; знайшли місто, а є й села з такою назвою — «Не той?»
