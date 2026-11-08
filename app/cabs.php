@@ -673,6 +673,48 @@ final class HtmCab {
   /** Рахунок из кабинета (живой кабинет, осмотр 07.11.2026): на главной «Сформувати рахунок» → /cabinet/bill/print/{acc}/{sur} — HTML-страница
    *  «Рахунок за <місяць> <рік> року» с кнопками «Друкувати» / «Назад». PDF кабинет не отдаёт: «Зберегти рахунок в PDF» (?hint=pdf) — та же страница
    *  с подсказкой «Друкувати → Зберегти як PDF». Только GET. → ['url', 'html' (UTF-8), 'title', 'ym', 'text', 'pay'] | null (не рахунок / месяц не понять). */
+  /** «Довідка по теплу» (/cabinet/spr-teplo/{acc}/{sur}, 08.11): по місяцях — показання, різниця, теплові втрати й усього по будинку, площі, витрата по квартирі,
+   *  нараховано, абонплата, пільга, надходження. Тільки читання. Колонки — за текстом заголовків (порядок може змінитись).
+   *  → ['rows' => [{ym, prev, cur, diff, loss, house, sHouse, sFlat, flat, cost, abon, lgota, paid, unit}], 'cols' => [ключі, що знайшли], 'fmt' => {ym, num} (маска, без цифр)] | null */
+  public function sprTeplo(string $acc, string $sur): ?array {
+    $r = $this->get(self::url($acc, $sur, 'spr-teplo'));
+    if ($r['code'] !== 200 || $r['body'] === '') return null;
+    return self::parseSpr($r['body']);
+  }
+  const SPR = ['ym' => '/місяць/iu', 'unit' => '/одиниц/iu', 'prev' => '/попередн/iu', 'cur' => '/поточн/iu', 'diff' => '/різниц/iu', 'loss' => '/втрат/iu', 'house' => '/по\s*будинку/iu',
+    'sHouse' => '/площа\s+будинку/iu', 'sFlat' => '/площа\s+квартир/iu', 'flat' => '/витрата\s+по\s+квартир/iu', 'cost' => '/нараховано/iu', 'abon' => '/абонент/iu', 'lgota' => '/пільг/iu', 'paid' => '/надходж/iu'];
+  public static function num(string $s): ?float {
+    $s = str_replace(["\u{a0}", "\u{202f}", ' '], '', trim($s)); if ($s === '' || $s === '-' || $s === '—') return null;
+    $s = str_replace(',', '.', $s); return is_numeric($s) ? (float)$s : null;
+  }
+  public static function parseSpr(string $html): ?array {
+    $x = CabWeb::dom($html); $best = null;
+    foreach ($x->query('//table') as $tb) {
+      $ths = []; foreach ($x->query('.//th', $tb) as $th) $ths[] = CabWeb::sp($th->textContent);
+      if (!$ths) { $tr0 = $x->query('.//tr', $tb)->item(0); if ($tr0) foreach ($x->query('./td', $tr0) as $td) $ths[] = CabWeb::sp($td->textContent); }
+      $map = []; foreach ($ths as $i => $t) foreach (self::SPR as $k => $re) if (!isset($map[$k]) && preg_match($re, $t)) { $map[$k] = $i; break; }
+      if (isset($map['ym'], $map['flat']) && (!$best || count($map) > count($best[1]))) $best = [$tb, $map, count($ths)];
+    }
+    if (!$best) return null;
+    [$tb, $map, $nc] = $best; $rows = []; $fmt = ['ym' => null, 'num' => null];
+    foreach ($x->query('.//tr', $tb) as $tr) {
+      $tds = []; foreach ($x->query('./td', $tr) as $td) $tds[] = CabWeb::sp($td->textContent);
+      if (count($tds) < max(3, count($map) - 2)) continue;
+      // строки короче шапки (первая ячейка объединена) — выравниваем по правому краю
+      $off = count($tds) < $nc ? count($tds) - $nc : 0;
+      $cell = function (string $k) use ($tds, $map, $off) { $i = ($map[$k] ?? -99) + $off; return $i >= 0 && isset($tds[$i]) ? $tds[$i] : null; };
+      $mc = (string)($tds[$map['ym']] ?? ''); $ym = preg_match('/^(\d{1,2})\.(\d{1,2})\.(20\d\d)$/', $mc, $m) ? $m[3] . '-' . str_pad($m[2], 2, '0', STR_PAD_LEFT) : self::monthOf($mc);
+      if ($ym === null && preg_match('/^(\d{1,2})[.\/](20\d\d)$/', $mc, $m)) $ym = $m[2] . '-' . str_pad($m[1], 2, '0', STR_PAD_LEFT);
+      if ($ym === null) continue;
+      $row = ['ym' => $ym];
+      foreach (array_keys(self::SPR) as $k) if (!in_array($k, ['ym', 'unit'], true)) { $c = $cell($k); $row[$k] = $c === null ? null : self::num($c); }
+      $u = $cell('unit'); if ($u !== null && $u !== '') $row['unit'] = mb_substr($u, 0, 12);
+      $fmt['ym'] = $fmt['ym'] ?? CabWeb::mask($mc, 20); if ($fmt['num'] === null && ($c = $cell('flat')) !== null && $c !== '') $fmt['num'] = CabWeb::mask($c, 20);
+      $rows[] = $row;
+    }
+    usort($rows, fn($a, $b) => strcmp($a['ym'], $b['ym']));
+    return ['rows' => array_slice($rows, -36), 'cols' => array_keys($map), 'fmt' => $fmt];
+  }
   public function billPage(string $acc, string $sur): ?array {
     $u = null;
     if (!empty($this->home['body'])) foreach (CabWeb::dom((string)$this->home['body'])->query('//a[@href]') as $a) {

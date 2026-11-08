@@ -21,7 +21,7 @@ final class B {
   }
   private function take(Res $r): void { foreach ($r->cookies as [$n, $v, $o]) { if ($o['expires'] < time()) unset($this->jar[$n]); else $this->jar[$n] = $v; } }
 }
-stand('act=reset'); stand('act=set&scenario=ok&today=2026-11-10&robot_delay=99999');
+stand('act=reset'); stand('act=set&scenario=ok&today=2026-11-10&robot_delay=99999&bill_ym=&bill_pay=');   // рахунок — по умолчанию (прошлый прогон мог оставить свой)
 $b = new B();
 $r = $b->req('POST', '/api/auth/register', ['email' => 'u1@example.com', 'password' => 'long-pass-1']); ok('вход в сервис', $r->status === 200);
 $uid = (int)$r->body['user']['id'];
@@ -204,6 +204,10 @@ ok('…копия рахунку: без скриптов, кнопок «Дру
   && str_contains($hh, 'data:image/png;base64,') && str_contains($hh, '.bill{') && str_contains($hh, 'ДО СПЛАТИ') && str_contains($hh, '<meta charset="utf-8">') && str_contains($hh, 'Копія рахунку з кабінету'), mb_substr($hh, 0, 400));
 ok('…прошлая версия — в историю (htmbill); «человек» в журнале кабинета не сдвинулся', (Db::one('SELECT reason FROM user_state_hist WHERE user_id = ? ORDER BY id DESC LIMIT 1', [$uid])['reason'] ?? '') === 'htmbill'
   && HtmSvc::summary()['lastUser'] === $lu0 && (HtmSvc::summary()['n']->{'autobill bill'} ?? 0) === 1);
+$spm = HtmSpr::mine($uid); $sps = HtmSpr::summary(); $spj = json_encode($sps, JSON_UNESCAPED_UNICODE);
+ok('…тем же входом — «Довідка по теплу»: 6 місяців нарахувань ХТМ сохранены для этого человека и квартиры; /api/health → htmSpr — сколько и какие колонки, без чисел и людей',
+  count($spm) === 1 && count($spm[0]['rows']) === 6 && ($spm[0]['rows'][5]['ym'] ?? '') === '2026-03' && ($sps['rows'] ?? 0) === 6 && count($sps['cols'] ?? []) === 14 && ($sps['from'] ?? '') === '2025-10'
+  && ($sps['filled']->flat ?? $sps['filled']['flat'] ?? 0) === 6 && !preg_match('/1000000061|ТЕСТОВИЙ|1539|7902/u', $spj) && HtmSpr::mine($uid + 999) === [], [$spm, $sps]);
 $c2 = HtmBills::cron($tB + 60); $hb = HtmBills::summary(); $hj = json_encode($hb, JSON_UNESCAPED_UNICODE);
 ok('…через минуту — квартиру уже смотрели (раз в 20 ч): пауза, /api/health → htmBills: месяц рахунку, вид, без рахунку и людей', $c2 === [] && ($hb['last']['res'] ?? '') === 'got' && ($hb['last']['ym'] ?? '') === '2026-09' && ($hb['last']['kind'] ?? '') === 'html'
   && (array)($hb['scan']['k'] ?? []) === ['retry' => 1] && ($hb['scan']['cabs'] ?? 0) === 1 && !preg_match('/1000000061|ТЕСТОВИЙ|u1@example/u', $hj), $hb);

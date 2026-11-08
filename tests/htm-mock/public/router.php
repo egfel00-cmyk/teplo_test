@@ -31,6 +31,8 @@ if (str_starts_with($path, '/cabinet')) {
   if ($path === "/cabinet/heat/viewall/$ACC/$SUR/$SN") { page_viewall(); return; }
   // платежі і квитанція — синтетика стенда (07.11.2026): на живом кабинете раздел /cabinet/payments/… есть, его вид не снят — осмотр робота (HtmCab::explore) покажет
   if ($path === "/cabinet/payments/$ACC/$SUR") { page_payments(); return; }
+  // «Довідка по теплу (нова)» — заголовки как на живом (осмотр 07.11.2026, htmcab.explore th); значения — синтетика
+  if ($path === "/cabinet/spr-teplo/$ACC/$SUR") { page_spr(); return; }
   // рахунок — как на живом кабинете (осмотр 07.11.2026): «Сформувати рахунок» → HTML «Рахунок за <місяць> <рік> року» с «Друкувати»/«Назад»; PDF нет
   if ($path === "/cabinet/bill/print/$ACC/$SUR") { page_bill(isset($_GET['hint'])); return; }
   if ($path === "/cabinet/payments/print/$ACC/$SUR/2026-10") { log_req('bill_pdf'); header('Content-Type: application/pdf'); header('Content-Disposition: inline; filename="kvit_' . $ACC . '_2026-10.pdf"'); echo "%PDF-1.4\n% stand kvytantsiia HTM 2026-10\n%%EOF\n"; return; }
@@ -82,6 +84,21 @@ function page_list(): void {
     . '<tr><td>1</td><td><a href="' . h(acc_url()) . '">' . h($c['account']) . '</a></td><td>' . h(mb_strtoupper($c['surname'])) . '</td><td>{{ADDRESS}}</td><td>—</td></tr></table>', 200, true);
 }
 function page_card(): void { page('Кабінет | Особовий рахунок', '<h1>Особовий рахунок ' . h(st()['credentials']['account']) . '</h1><p><a href="' . h(acc_url('/cabinet/heat')) . '">Залишити показання по теплу</a></p><p><a href="' . h(acc_url('/cabinet/payments')) . '">Платежі та нарахування</a></p>', 200, true); }
+function page_spr(): void {
+  log_req('spr');
+  $h = ['Місяць, рік', 'Одиниці виміру приладу обліку', 'Попередні показання', 'Поточні показання', 'Різниця показань', 'Теплові втрати, Гкал', 'Всього по будинку, Гкал', 'Площа будинку, м2',
+    'Площа квартири, м2', 'Витрата по квартирі, Гкал', 'Нараховано за пп т/е, грн.', 'Абонентна плата, грн.', 'Пільга, грн.', 'Надходження, грн'];
+  // жовтень 2025 … березень 2026: різниця показань + частка втрат будинку (втрати × 56,6 / 7902,8) = витрата; нараховано = витрата × 1539,50
+  $rows = [['10.2025', '9,000', '9,200', 61.2], ['11.2025', '9,200', '9,950', 180.4], ['12.2025', '9,950', '10,850', 230.1], ['01.2026', '10,850', '11,700', 251.7], ['02.2026', '11,700', '12,380', 210.3], ['03.2026', '12,380', '12,910', 150.6]];
+  $tr = '';
+  foreach ($rows as [$m, $a, $b, $loss]) {
+    $d = (float)str_replace(',', '.', $b) - (float)str_replace(',', '.', $a); $sh = round($loss * 56.6 / 7902.8, 3); $fl = round($d + $sh, 3);
+    $c = [$m, 'Гкал', $a, $b, number_format($d, 3, ',', ''), number_format($loss, 3, ',', ''), number_format($loss * 6.5, 3, ',', ''), '7902,80', '56,60', number_format($fl, 3, ',', ''),
+      number_format($fl * 1539.50, 2, ',', ' '), '29,40', '0,00', $m === '03.2026' ? '' : '1 500,00'];
+    $tr .= '<tr>' . implode('', array_map(fn($v) => '<td>' . h($v) . '</td>', $c)) . '</tr>';
+  }
+  page('Кабінет | Довідка по теплу (нова)', '<h1>Довідка по теплу (нова)</h1><table class="stand-tbl"><tr>' . implode('', array_map(fn($v) => '<th>' . h($v) . '</th>', $h)) . '</tr>' . $tr . '</table>', 200, true);
+}
 function page_payments(): void {   // как живой «Архів платежів» (07.11): дата и сумма, ссылки на довідки — квитанций здесь нет
   page('Кабінет | Архів платежів', '<h1>Архів платежів</h1><p><a href="' . h(acc_url('/cabinet/spravka')) . '">Довідка щодо нарахувань та оплати за послугу</a></p><table class="stand-tbl"><tr><th>Дата</th><th>Сума, грн.</th></tr>'
     . '<tr><th colspan="2">Поточні платежі (з 01.11.2026):</th></tr><tr><td>03.11.2026</td><td>245.30</td></tr><tr><th colspan="2">Платежі в розрахунковому місяці:</th></tr></table>', 200, true);

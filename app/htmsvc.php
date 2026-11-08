@@ -230,6 +230,8 @@ final class HtmSvc {
       try { $bp = $cab->billPage($acc['acc'], $acc['sur']); } catch (CabErr $e) { if ($e->err !== 'down') throw $e; }
       if ($bp) $bd = $cab->billDoc($bp);
       else { $pg = []; if (!empty($cab->home['url'])) $pg[(string)$cab->home['url']] = (string)$cab->home['body']; $ex = $cab->explore($pg, $acc['acc'], $acc['sur'], $ym); }
+      // «Довідка по теплу» — нарахування ХТМ по місяцях (втрати будинку, витрата по квартирі, абонплата): той самий вхід, лише читання
+      try { $sp = $cab->sprTeplo($acc['acc'], $acc['sur']); if ($sp) HtmSpr::save($uid, $place, $sp); } catch (CabErr $e) { if ($e->err === 'captcha') throw $e; }
     }
     catch (CabErr $e) { self::diag(['op' => 'autobill', 'user' => $uid, 'result' => $e->err, 'steps' => $cab->w->steps]); throw self::cabErr($e); }
     finally { $cab->logout(); }
@@ -662,4 +664,26 @@ final class HtmBills {
       'idleTill' => !empty($j['idle']) && $j['idle'] > time() ? gmdate('c', (int)$j['idle']) : null,
       'scan' => isset($j['scan']) ? ['at' => gmdate('c', (int)$j['scan']['at']), 'ym' => (string)$j['scan']['ym'], 'cabs' => (int)($j['scan']['cabs'] ?? 0), 'k' => (object)($j['scan']['k'] ?? [])] : null];
   }
+}
+
+/** Нарахування ХТМ по місяцях («Довідка по теплу» кабінету) — особисті дані людини: SITE_DATA/cache/htm_spr/<uid>_<квартира>.json (наружу не віддається),
+ *  приложению — GET /api/htm/spr (лише своє). Для /api/health — лише скільки рядків, які колонки знайшли й маска формату (без цифр). */
+final class HtmSpr {
+  public static function dir(): string { return Cfg::data() . '/cache/htm_spr'; }
+  private static function file(int $uid, string $place): string { return self::dir() . '/' . $uid . '_' . substr(preg_replace('/[^A-Za-z0-9_-]/', '', $place), 0, 40) . '.json'; }
+  public static function save(int $uid, string $place, array $sp): void {
+    @mkdir(self::dir(), 0700, true);
+    @file_put_contents(self::file($uid, $place), json_encode(['at' => time(), 'place' => $place, 'rows' => $sp['rows']], JSON_UNESCAPED_UNICODE), LOCK_EX);
+    $rs = $sp['rows']; @file_put_contents(self::dir() . '/_last.json', json_encode(['at' => time(), 'rows' => count($rs), 'cols' => $sp['cols'], 'fmt' => $sp['fmt'],
+      'from' => $rs ? $rs[0]['ym'] : null, 'to' => $rs ? $rs[count($rs) - 1]['ym'] : null,
+      // какие поля в строках заполнены (сколько строк с числом) — проверить разбор на живом без самих чисел
+      'filled' => (object)array_map(fn($k) => count(array_filter($rs, fn($r) => isset($r[$k]) && $r[$k] !== null)), array_combine($sp['cols'], $sp['cols']))], JSON_UNESCAPED_UNICODE), LOCK_EX);
+  }
+  /** Свої дані: [{place, at, rows}] */
+  public static function mine(int $uid): array {
+    $out = [];
+    foreach ((glob(self::dir() . '/' . $uid . '_*.json') ?: []) as $f) { $j = json_decode((string)@file_get_contents($f), true); if (is_array($j) && !empty($j['rows'])) $out[] = ['place' => (string)$j['place'], 'at' => gmdate('c', (int)$j['at']), 'rows' => $j['rows']]; }
+    return $out;
+  }
+  public static function summary(): ?array { $j = json_decode((string)@file_get_contents(self::dir() . '/_last.json'), true); return is_array($j) ? ['at' => gmdate('c', (int)$j['at'])] + array_diff_key($j, ['at' => 1]) : null; }
 }

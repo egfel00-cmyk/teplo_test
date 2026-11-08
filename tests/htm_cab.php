@@ -80,6 +80,12 @@ $bp = $h->billPage($acc[0]['acc'], $acc[0]['sur']);
 ok('рахунок: по ссылке «Сформувати рахунок» (не ?hint=pdf) — месяц из заголовка 2026-09, до сплати 245.30', ($bp['ym'] ?? '') === '2026-09' && ($bp['pay'] ?? '') === '245.30' && str_contains((string)($bp['url'] ?? ''), '/cabinet/bill/print/') && !str_contains((string)$bp['url'], 'hint'), $bp ? array_diff_key($bp, ['html' => 1, 'text' => 1]) : null);
 $bd = $h->billDoc($bp);
 ok('…копия: стиль и картинка сайта внутри, без скриптов/кнопок/ссылок', $bd['css'] >= 1 && $bd['img'] === 1 && !preg_match('/<script|onclick|<button|href=|Друкувати/iu', $bd['html']) && str_contains($bd['html'], 'Рахунок за послуги за вересень 2026'), [$bd['css'], $bd['img']]);
+$sp = $h->sprTeplo($acc[0]['acc'], $acc[0]['sur']); $r1 = $sp['rows'][1] ?? [];
+ok('«Довідка по теплу» (как живая: заголовки 07.11): 6 місяців, колонки за текстом; листопад 2025: різниця 0,750, втрати 180,4, витрата 2,042 (+ частка втрат 180,4 × 56,6 / 7902,8), абонплата 29,40',
+  count($sp['rows'] ?? []) === 6 && ($r1['ym'] ?? '') === '2025-11' && abs(($r1['diff'] ?? 0) - 0.75) < 1e-9 && abs(($r1['loss'] ?? 0) - 180.4) < 1e-9 && ($r1['sHouse'] ?? 0) == 7902.8 && ($r1['sFlat'] ?? 0) == 56.6
+  && abs(($r1['flat'] ?? 0) - 2.042) < 1e-9 && abs(($r1['cost'] ?? 0) - 3143.66) < 0.011 && ($r1['abon'] ?? 0) == 29.4 && array_key_exists('paid', $sp['rows'][5] ?? []) && $sp['rows'][5]['paid'] === null && count($sp['cols']) === 14 && ($sp['fmt']['ym'] ?? '') === '##.####', $sp);
+$sp2 = HtmCab::parseSpr('<table><tr><th>Абонентна плата, грн.</th><th>Місяць, рік</th><th>Витрата по квартирі, Гкал</th><th>Нараховано за пп т/е, грн.</th></tr><tr><td>29,40</td><td>Листопад 2025</td><td>0,812</td><td>1 250,07</td></tr><tr><td></td><td>Разом</td><td>9</td><td>9</td></tr></table>');
+ok('…колонки в другом порядке, месяц словом, «1 250,07» → 1250.07; строка «Разом» — не месяц', count($sp2['rows']) === 1 && $sp2['rows'][0]['ym'] === '2025-11' && $sp2['rows'][0]['cost'] == 1250.07 && $sp2['rows'][0]['abon'] == 29.4, $sp2);
 ok('monthOf: «Рахунок за вересень 2026 року» → 2026-09, «грудень 2025» → 2025-12', HtmCab::monthOf('Рахунок за вересень 2026 року') === '2026-09' && HtmCab::monthOf('за грудень 2025') === '2025-12');
 $bad = array_filter(array_column(array_slice($h->w->steps, 0), 1), fn($x) => preg_match('~logout|/add|remove|settings~', $x));
 ok('…только GET и не трогает add/remove/settings', !array_filter($h->w->steps, fn($s) => $s[0] !== 'GET' && !str_contains($s[1], '/cabinet/login')) && !$bad, $h->w->steps);
