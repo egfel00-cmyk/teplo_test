@@ -211,7 +211,8 @@ ok('…тем же входом — «Довідка по теплу»: 6 міс
 $ck = $sps['check'] ?? [];
 ok('…сверка довідки в /api/health → htmSpr.check: витрата = різниця + втрати × S_кв/S_буд (6 из 6), тариф 1539,50 по месяцам, «надходження» ≠ нарахованому, наш расчёт — в пределах 15 %, без личных сумм',
   ($ck['formula']['of'] ?? 0) === 6 && ($ck['formula']['ok'] ?? 0) === 6 && array_values(array_unique($ck['tariff'] ?? [])) === [1539.5] && ($ck['abon'] ?? []) === [29.4]
-  && ($ck['paid']['of'] ?? 0) === 5 && ($ck['paid']['same'] ?? 9) === 0 && ($ck['calc']['max'] ?? 99) < 15 && count($ck['calc']['err'] ?? []) === 6 && ($ck['k'] ?? 0) > 1.9, $ck);
+  && ($ck['paid']['of'] ?? 0) === 5 && ($ck['paid']['same'] ?? 9) === 0 && ($ck['calc']['max'] ?? 99) < 15 && count($ck['calc']['err'] ?? []) === 6 && ($ck['k'] ?? 0) > 1.9
+  && array_key_first($ck['hyp'] ?? []) === 'diff+loss*s' && ($ck['curPrev']['ok'] ?? 0) === 6 && ($ck['units'] ?? []) === ['Гкал'] && isset($ck['toFlat']['2026-01']['diff']), $ck);
 $c2 = HtmBills::cron($tB + 60); $hb = HtmBills::summary(); $hj = json_encode($hb, JSON_UNESCAPED_UNICODE);
 ok('…через минуту — квартиру уже смотрели (раз в 20 ч): пауза, /api/health → htmBills: месяц рахунку, вид, без рахунку и людей', $c2 === [] && ($hb['last']['res'] ?? '') === 'got' && ($hb['last']['ym'] ?? '') === '2026-09' && ($hb['last']['kind'] ?? '') === 'html'
   && (array)($hb['scan']['k'] ?? []) === ['retry' => 1] && ($hb['scan']['cabs'] ?? 0) === 1 && !preg_match('/1000000061|ТЕСТОВИЙ|u1@example/u', $hj), $hb);

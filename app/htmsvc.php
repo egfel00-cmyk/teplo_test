@@ -726,7 +726,22 @@ final class HtmSpr {
     $calc = [];
     if ($tm) foreach ($rows as $r) { $d = $nn($r, 'diff'); $s = $sum($r); if ($d !== null && $d >= 0 && $s > 0) $calc[$r['ym']] = $pc($d * (1 + $k) * $tm + ($ab ?? 0), $s); }
     $ce = array_map('abs', array_filter($calc, fn($v) => $v !== null));
-    return ['formula' => $fo, 'tariff' => $tar, 'abon' => array_values(array_unique(array_filter(array_map(fn($r) => $nn($r, 'abon'), $rows), fn($v) => $v !== null))),
+    // что на самом деле в колонках (живая довідка 08.11: різниця в десятки раз больше витрати): гипотезы витрати по квартирі — медиана |ошибки| в %
+    $q = fn($r) => [$nn($r, 'diff'), $nn($r, 'loss'), $nn($r, 'house'), ($nn($r, 'sHouse') ?? 0) > 0 ? ($nn($r, 'sFlat') ?? 0) / $nn($r, 'sHouse') : null, $nn($r, 'flat')];
+    $H = ['diff+loss*s' => fn($d, $l, $h, $s) => $d + $l * $s, 'house*s' => fn($d, $l, $h, $s) => $h * $s, 'diff*s' => fn($d, $l, $h, $s) => $d * $s, '(diff+loss)*s' => fn($d, $l, $h, $s) => ($d + $l) * $s,
+      '(diff-loss)*s' => fn($d, $l, $h, $s) => ($d - $l) * $s, 'loss*s' => fn($d, $l, $h, $s) => $l * $s, '(house-loss)*s' => fn($d, $l, $h, $s) => ($h - $l) * $s, '(house-diff)*s' => fn($d, $l, $h, $s) => ($h - $d) * $s,
+      'diff/1163+loss*s' => fn($d, $l, $h, $s) => $d / 1163 + $l * $s, 'diff/1.163+loss*s' => fn($d, $l, $h, $s) => $d / 1.163 + $l * $s, 'diff/4.1868+loss*s' => fn($d, $l, $h, $s) => $d / 4.1868 + $l * $s];
+    $hyp = [];
+    foreach ($H as $name => $f) {
+      $es = []; foreach ($rows as $r) { [$d, $l, $h, $s, $fl] = $q($r); if ($d === null || $l === null || $h === null || $s === null || !($fl > 0)) continue; $es[] = abs(($f($d, $l, $h, $s) - $fl) / $fl * 100); }
+      if ($es) { sort($es); $hyp[$name] = round($es[intdiv(count($es), 2)], 1); }
+    }
+    asort($hyp);
+    $cp = 0; $cpn = 0; foreach ($rows as $r) { $p = $nn($r, 'prev'); $c = $nn($r, 'cur'); $d = $nn($r, 'diff'); if ($p === null || $c === null || $d === null) continue; $cpn++; if (abs($c - $p - $d) <= max(0.0015, abs($d) * 0.001)) $cp++; }
+    $rat = []; foreach ($rows as $r) { [$d, $l, $h, $s, $fl] = $q($r); if ($fl > 0) $rat[$r['ym']] = array_filter(['diff' => $d !== null ? round($d / $fl, 2) : null, 'loss*s' => $l !== null && $s ? round($l * $s / $fl, 2) : null,
+      'house*s' => $h !== null && $s ? round($h * $s / $fl, 2) : null, 'loss/house' => $h > 0 && $l !== null ? round($l / $h, 3) : null], fn($v) => $v !== null); }
+    return ['units' => array_values(array_unique(array_filter(array_map(fn($r) => $r['unit'] ?? null, $rows)))), 'curPrev' => ['of' => $cpn, 'ok' => $cp], 'hyp' => $hyp, 'toFlat' => $rat,
+      's' => ($s0 = $q($rows[count($rows) - 1])[3]) !== null ? round($s0, 5) : null, 'formula' => $fo, 'tariff' => $tar, 'abon' => array_values(array_unique(array_filter(array_map(fn($r) => $nn($r, 'abon'), $rows), fn($v) => $v !== null))),
       'lgota' => count(array_filter($rows, fn($r) => $nn($r, 'lgota') > 0)), 'share' => $share, 'k' => round($k, 3), 'paid' => $paid,
       'calc' => ['err' => $calc, 'max' => $ce ? max($ce) : null]];
   }
