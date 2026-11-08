@@ -1154,7 +1154,16 @@ ok('довідник: усі громади й пункти є в КАТОТТГ
     && ($bl['place']['r'] ?? '') === 'od' && $bl['kinds']['water']['supply'] === 31.14 && count($bl['kinds']['water']['phones'] ?? []) === 2 && $bg['kinds']['water']['drain'] === 34.18
     && str_contains($iz['kinds']['water']['org'] ?? '', 'Ізмаїльське') && $iz['kinds']['water']['supply'] === null && ($yg['place']['r'] ?? '') === 'kv' && str_contains($yg['kinds']['water']['org'] ?? '', 'Яготинське'),
     [$nr['place'] ?? $nr, $bl['kinds']['water'] ?? $bl, $iz['kinds']['water'] ?? $iz]);
-  $pd2 = $v('Южный, Кирова 5'); $mk = $v('Миколаївка, Київська обл.');
+  // 62-га сесія
+  $rz = $v('Ржищев, ул. Франко 3'); $tt = $v('Тетіїв, вул. Соборна 1'); $rd = $v('Раздельная, ул. Шевченко 81'); $nc = $v('Нові Чобручі, вул. Миру 1');
+  $zd = $v('Жидачів, вул. Шевченка 1'); $sko = $v('Сколе, вул. Данила Галицького 1'); $mr = $v('Моршин, вул. Шевченка 1'); $kb = $v('Кам’янка-Бузька, вул. Шевченка 1'); $ms = $v('Мостиська, вул. Грушевського 1');
+  ok('громади 62-ї: Ржищів 55 / 75 (рос. «Ржищев»), Тетіїв 37 / 36 і 2 телефони, Роздільна 61,97 (звірити), Нові Чобручі — пункт 55,98, Жидачів 35,73 / 37,58, Сколе 24,86 / 40,88, Моршин 49,92 з 01.06.2025, Кам’янка-Бузька й Мостиська — підприємство без тарифу',
+    ($rz['place']['r'] ?? '') === 'kv' && $rz['kinds']['water']['supply'] === 55.0 && $rz['kinds']['water']['drain'] === 75.0 && $tt['kinds']['water']['drain'] === 36.0 && count($tt['kinds']['water']['phones'] ?? []) === 2
+    && ($rd['place']['r'] ?? '') === 'od' && $rd['kinds']['water']['supply'] === 61.97 && !empty($rd['kinds']['water']['check']) && $nc['kinds']['water']['supply'] === 55.98 && $nc['kinds']['water']['from'] === '2025-06-01'
+    && ($zd['place']['r'] ?? '') === 'lv' && $zd['kinds']['water']['drain'] === 37.58 && $sko['kinds']['water']['supply'] === 24.86 && $mr['kinds']['water']['from'] === '2025-06-01'
+    && str_contains($kb['kinds']['water']['org'] ?? '', 'Кам’янкаводоканал') && $kb['kinds']['water']['supply'] === null && $ms['kinds']['water']['supply'] === null,
+    [$rz['place'] ?? $rz, $rd['kinds']['water'] ?? $rd, $nc['place'] ?? $nc, $kb['place'] ?? $kb]);
+  $pd2 =$v('Южный, Кирова 5'); $mk = $v('Миколаївка, Київська обл.');
   ok('однакові назви в областях: без області — Харківщина першою, Одещина в «Не той?»; «Миколаївка, Київська обл.» — лише дві київські',
     ($pd2['place']['r'] ?? '') === 'kh' && in_array('od', array_column($pd2['alts'] ?? [], 'r'), true) && !$mk['found'] && count($mk['candidates']) === 2 && $mk['candidates'][0]['oblast'] === 'Київська', [$pd2['alts'] ?? $pd2, $mk['candidates'] ?? $mk]);
   // однакові назви громад в одній області — ключ «Назва (центр)» / «Назва (район р-н)»
@@ -1168,8 +1177,8 @@ ok('довідник: усі громади й пункти є в КАТОТТГ
   ok('довідники областей: громади й пункти є в КАТОТТГ, у тарифів є src і src_ru, посилання — https', !$bad2 && !$bad, array_merge($bad2, $bad)); }
 // правки довідника з /admin (ProvEdit): власник править сам — поверх репозиторію, з журналом і відкатом
 { $r0 = $boss->req('GET', '/api/admin/prov'); $rk = $boss->req('GET', '/api/admin/prov/region', null, ['QUERY_STRING' => 'r=kv']);
-  $brv = array_values(array_filter($rk->body['hromadas'] ?? [], fn($x) => $x['key'] === 'Ржищівська'))[0] ?? null;
-  ok('/admin «Справочник»: регіони з лічильниками громад, Київщина — 69 громад, Ржищівська без води; без входу — 401',
+  $brv = array_values(array_filter($rk->body['hromadas'] ?? [], fn($x) => $x['key'] === 'Козинська'))[0] ?? null;
+  ok('/admin «Справочник»: регіони з лічильниками громад, Київщина — 69 громад, Козинська без води; без входу — 401',
     $r0->status === 200 && count($r0->body['regions']) === 5 && $rk->status === 200 && count($rk->body['hromadas']) === 69 && $brv && $brv['water'] === null && $anon->req('GET', '/api/admin/prov')->status === 401, [$r0->status, $rk->status, $brv]);
   $sv = $boss->req('POST', '/api/admin/prov/save', ['r' => 'kv', 'scope' => 'hromadas', 'key' => 'Броварська', 'kind' => 'water',
     'value' => ['org' => 'КП «Броваритепловодоенергія»', 'supply' => '40,5', 'drain' => '', 'phones' => ['(04594) 1-23-45; диспетчер'], 'cab' => 'javascript:alert(1)', 'site' => 'https://example.ua/pokaz', 'robot' => 'hack', 'x' => 1, 'check' => true, 'src' => 'тест', 'src_ru' => 'тест']]);
