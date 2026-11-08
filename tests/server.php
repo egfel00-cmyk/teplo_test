@@ -1113,9 +1113,16 @@ ok('довідник: усі громади й пункти є в КАТОТТГ
     && $ky['kinds']['heat']['price'] === 1654.41 && str_contains($ky['kinds']['elec']['org'] ?? '', 'YASNO') && $ky['kinds']['gas']['grm'] === 'ПАТ «Київгаз»' && $ky['kinds']['gas']['dist'] === 0.384 && $ky['place']['district'] === ''
     && ($od['place']['oblast'] ?? '') === 'Одеська' && str_contains($od['kinds']['water']['org'] ?? '', 'Інфоксводоканал') && str_contains($od['kinds']['gas']['grm'] ?? '', 'Одесагаз')
     && ($lv['place']['r'] ?? '') === 'lv' && $lv['kinds']['water']['supply'] === 36.036 && $lv['kinds']['gas']['grm'] === 'Газмережі, Львівська філія', [$ky['place'] ?? $ky, $od['place'] ?? $od]);
-  ok('області: Фастів (вода невідома), «Белая Церковь» → Біла Церква, Червоноград → Шептицький (стара назва), «Южное, Одесская обл.» → Південне Одещини (область в адресі); вода невідома — org null, світло й газ — обласні',
-    ($br['place']['oblast'] ?? '') === 'Київська' && $br['kinds']['water']['org'] === null && str_contains($br['kinds']['gas']['grm'] ?? '', 'Київська філія')
+  ok('області: Фастів (з 58-ї — Фастівводоканал 31,404 / 42,936), «Белая Церковь» → Біла Церква, Червоноград → Шептицький (стара назва), «Южное, Одесская обл.» → Південне Одещини (область в адресі); світло й газ — обласні',
+    ($br['place']['oblast'] ?? '') === 'Київська' && $br['kinds']['water']['supply'] === 31.404 && $br['kinds']['water']['drain'] === 42.936 && str_contains($br['kinds']['gas']['grm'] ?? '', 'Київська філія')
     && ($bc['place']['name'] ?? '') === 'Біла Церква' && $bc['kinds']['water']['supply'] === 36.9 && $bv['kinds']['water']['drain'] === 33.52 && ($sh['place']['name'] ?? '') === 'Шептицький' && $sh['how'] === 'old' && ($yu['place']['r'] ?? '') === 'od' && ($yu['place']['hromada'] ?? '') === 'Південненська', [$yu['place'] ?? $yu, $sh['place'] ?? $sh]);
+  // 58-ма сесія: громади трьох областей
+  $bo = $v('Бориспіль, вул. Київський Шлях 2'); $ch = $v('Черноморск, ул. 1 Мая 1'); $st = $v('Стрий, вул. Шевченка 5'); $tr = $v('Трускавець, вул. Січових Стрільців 1'); $bj = $v('Боярка, вул. Хрещатик 1');
+  ok('громади: Бориспіль 46,80 / 28,14 (з 01.09.2026), «Черноморск» → Чорноморськводоканал 59,46 / 35,52, Стрий 38,163 / 27,12 (звірити), Трускавець — організація без розподілу тарифу (разом 94,76 у підказці), Боярка 32,46 / 29,93',
+    $bo['kinds']['water']['supply'] === 46.8 && $bo['kinds']['water']['drain'] === 28.14 && ($ch['place']['hromada'] ?? '') === 'Чорноморська' && $ch['kinds']['water']['supply'] === 59.46 && $ch['kinds']['water']['drain'] === 35.52
+    && $st['kinds']['water']['supply'] === 38.163 && !empty($st['kinds']['water']['check']) && str_contains($tr['kinds']['water']['org'] ?? '', 'Трускавецький') && $tr['kinds']['water']['supply'] === null
+    && str_contains($tr['kinds']['water']['note'] ?? '', '94,76') && $bj['kinds']['water']['supply'] === 32.46 && $sh['kinds']['water']['supply'] === 36.84,
+    [$bo['kinds']['water'] ?? $bo, $ch['place'] ?? $ch, $tr['kinds']['water'] ?? $tr]);
   $pd2 = $v('Южный, Кирова 5'); $mk = $v('Миколаївка, Київська обл.');
   ok('однакові назви в областях: без області — Харківщина першою, Одещина в «Не той?»; «Миколаївка, Київська обл.» — лише дві київські',
     ($pd2['place']['r'] ?? '') === 'kh' && in_array('od', array_column($pd2['alts'] ?? [], 'r'), true) && !$mk['found'] && count($mk['candidates']) === 2 && $mk['candidates'][0]['oblast'] === 'Київська', [$pd2['alts'] ?? $pd2, $mk['candidates'] ?? $mk]);
@@ -1130,8 +1137,8 @@ ok('довідник: усі громади й пункти є в КАТОТТГ
   ok('довідники областей: громади й пункти є в КАТОТТГ, у тарифів є src і src_ru, посилання — https', !$bad2 && !$bad, array_merge($bad2, $bad)); }
 // правки довідника з /admin (ProvEdit): власник править сам — поверх репозиторію, з журналом і відкатом
 { $r0 = $boss->req('GET', '/api/admin/prov'); $rk = $boss->req('GET', '/api/admin/prov/region', null, ['QUERY_STRING' => 'r=kv']);
-  $brv = array_values(array_filter($rk->body['hromadas'] ?? [], fn($x) => $x['key'] === 'Фастівська'))[0] ?? null;
-  ok('/admin «Справочник»: регіони з лічильниками громад, Київщина — 69 громад, Фастівська без води; без входу — 401',
+  $brv = array_values(array_filter($rk->body['hromadas'] ?? [], fn($x) => $x['key'] === 'Обухівська'))[0] ?? null;
+  ok('/admin «Справочник»: регіони з лічильниками громад, Київщина — 69 громад, Обухівська без води; без входу — 401',
     $r0->status === 200 && count($r0->body['regions']) === 5 && $rk->status === 200 && count($rk->body['hromadas']) === 69 && $brv && $brv['water'] === null && $anon->req('GET', '/api/admin/prov')->status === 401, [$r0->status, $rk->status, $brv]);
   $sv = $boss->req('POST', '/api/admin/prov/save', ['r' => 'kv', 'scope' => 'hromadas', 'key' => 'Броварська', 'kind' => 'water',
     'value' => ['org' => 'КП «Броваритепловодоенергія»', 'supply' => '40,5', 'drain' => '', 'phones' => ['(04594) 1-23-45; диспетчер'], 'cab' => 'javascript:alert(1)', 'site' => 'https://example.ua/pokaz', 'robot' => 'hack', 'x' => 1, 'check' => true, 'src' => 'тест', 'src_ru' => 'тест']]);
