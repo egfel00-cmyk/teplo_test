@@ -20,6 +20,9 @@ const cron = (ts, reset) => JSON.parse(execFileSync('php', [path.join(__dirname,
   // рахунок і прізвище є, а запису води за жовтень немає (останній — 16.09)
   const d0 = demo({ today: '2026-11-06' }); d0.water = d0.water.filter(r => r.id !== 'w20261015'); d0.places[0].water.account = '905616'; d0.places[0].water.surname = 'Шевченко'; d0.updatedAt = Date.now();
   await p.evaluate(s => localStorage.setItem('teplo.v1', JSON.stringify(s)), d0); await p.reload(); await wait(2500);
+  // інші люди локальної бази (прошлі прогони) — не мешают: cron берёт первую подходящую квартиру
+  const me = await p.evaluate(() => window.TeploSync.api('GET', '/me').then(j => j.user.id));
+  execFileSync('php', ['-r', `define('TEPLO',1); require 'app/core.php'; Db::q('DELETE FROM user_state WHERE user_id <> ?', [${me}]);`], { env: Object.assign({}, process.env, { SITE_DATA: DATA, SITE_BASE: '' }), cwd: path.join(__dirname, '../..') });
   const c1 = cron(T, true);
   ok('cron 7-го: запису води за жовтень немає → «Платіжка» (new)', c1.length === 1 && c1[0][1] === 'new', c1);
   const s1 = await srv(), po = pays(s1);
@@ -46,7 +49,7 @@ const cron = (ts, reset) => JSON.parse(execFileSync('php', [path.join(__dirname,
   await wait(2500); const s2 = await srv();
   ok('…на сервері те саме; cron наступного дня не ходить (квитанцію за жовтень уже взяли)', pays(s2).length === 0 && ((s2.water || []).filter(r => r.date === '2026-10-20')[0].bills || []).length === 1 && JSON.stringify(cron(T + 21 * 3600)) === '[]');
   // запис показань прийшов синхронізацією (інший пристрій / автовідправка), а квитанція ще в «Платіжці» (на сервері) — переносимо при синхронізації
-  const uid = await p.evaluate(() => window.TeploSync.api('GET', '/me').then(j => j.user.id));
+  const uid = me;
   execFileSync('php', ['-r', `define('TEPLO',1); require 'app/core.php'; $r = Db::one('SELECT data FROM user_state WHERE user_id = ?', [${uid}]); $s = json_decode($r['data']); $now = (int)round(microtime(true) * 1000);
     foreach ($s->water as $w) if (($w->date ?? '') === '2026-10-20') { $s->water[] = (object)['id' => 'vbsync1', 'place' => $w->place, 'billOnly' => true, 'ym' => '2026-10', 'date' => '2026-10-31', 'vals' => new stdClass(), 'bills' => $w->bills, 'source' => 'vk', 'createdAt' => $now, 'updatedAt' => $now]; $w->bills = []; $w->updatedAt = $now; break; }
     Db::q('UPDATE user_state SET data = ?, version = version + 1 WHERE user_id = ?', [json_encode($s, JSON_UNESCAPED_UNICODE), ${uid}]);`], { env: Object.assign({}, process.env, { SITE_DATA: DATA, SITE_BASE: '' }), cwd: path.join(__dirname, '../..') });

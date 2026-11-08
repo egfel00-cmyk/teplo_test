@@ -2518,7 +2518,11 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
       p_mzk_h: 'З платіжки: стовпець «на ЗБП» у рядку «вузол розподільного обліку». Можна не вказувати — це зазвичай менше 1 %.',
       p_bill_how_t: 'Як рахує платіжка ХТМ (приклад)',
       p_bill_how: 'Ваш лічильник: 11,448 − 9,003 = 2,445 Гкал. Частка ЗБП (сходи, підвал — пропорційно площі): 0,01262 Гкал. Разом 2,45762 Гкал × 1 539,50 = 3 783,51 грн. Абонплата 29,40 грн. Нараховано 3 812,91 грн; ± перерахунки попередніх періодів. Показання ХТМ знімає близько 20-го числа — у платіжці дати показань саме такі.',
-      rec_parts: 'з них тепло {heat} + ЗБП {mzk} + абонплата {abon} грн',
+      rec_parts: 'з них тепло {heat} + частка будинку (втрати, ЗБП) {mzk} + абонплата {abon} грн',
+      hsp_row: 'ХТМ нарахував {g} Гкал', hsp_title: 'Нараховано ХТМ за {m}', hsp_diff: 'Різниця показань лічильника', hsp_share: 'Частка теплових втрат будинку',
+      hsp_flat: 'Витрата по квартирі', hsp_tariff: 'Тариф', hsp_cost: 'Нараховано за тепло', hsp_abon: 'Абонплата', hsp_lgota: 'Пільга', hsp_total: 'Разом за місяць',
+      hsp_ours: 'Наш розрахунок за показаннями: ≈ {s} грн. Далі рахуємо так само, як ХТМ: тариф, частку втрат будинку й абонплату беремо з цих нарахувань.',
+      hsp_src: 'З «Довідки по теплу» вашого кабінету ХТМ — сервер бере її сам разом із квитанцією, лише читає.',
       hi_title: 'Історія',
       hi_empty: 'Тут з’являться ваші показання.',
       hi_empty_cta: 'Зняти перші показання',
@@ -3616,7 +3620,11 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
       p_mzk_h: 'Из платёжки: столбец «на ЗБП» в строке «вузол розподільного обліку». Можно не указывать — обычно это меньше 1 %.',
       p_bill_how_t: 'Как считает платёжка ХТМ (пример)',
       p_bill_how: 'Ваш счётчик: 11,448 − 9,003 = 2,445 Гкал. Доля ЗБП (лестницы, подвал — пропорционально площади): 0,01262 Гкал. Итого 2,45762 Гкал × 1 539,50 = 3 783,51 грн. Абонплата 29,40 грн. Начислено 3 812,91 грн; ± перерасчёты прошлых периодов. Показания ХТМ снимает около 20-го числа — в платёжке даты показаний именно такие.',
-      rec_parts: 'из них тепло {heat} + ЗБП {mzk} + абонплата {abon} грн',
+      rec_parts: 'из них тепло {heat} + доля дома (потери, ОДН) {mzk} + абонплата {abon} грн',
+      hsp_row: 'ХТМ начислил {g} Гкал', hsp_title: 'Начислено ХТМ за {m}', hsp_diff: 'Разница показаний счётчика', hsp_share: 'Доля тепловых потерь дома',
+      hsp_flat: 'Расход по квартире', hsp_tariff: 'Тариф', hsp_cost: 'Начислено за тепло', hsp_abon: 'Абонплата', hsp_lgota: 'Льгота', hsp_total: 'Итого за месяц',
+      hsp_ours: 'Наш расчёт по показаниям: ≈ {s} грн. Дальше считаем так же, как ХТМ: тариф, долю потерь дома и абонплату берём из этих начислений.',
+      hsp_src: 'Из «Справки по теплу» вашего кабинета ХТМ — сервер берёт её сам вместе с квитанцией, только читает.',
       hi_title: 'История',
       hi_empty: 'Здесь появятся ваши показания.',
       hi_empty_cta: 'Снять первые показания',
@@ -9438,9 +9446,41 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
   function RDB() { var first = S.places && S.places[0] ? S.places[0].id : 'main'; return (S.readings || []).filter(function (r) { return r && !r.deleted && r.billOnly && r.ym && (r.place || first) === S.placeId; }); }
   /** Тариф тепла, грн/Гкал: свій у квартири (place.prov.heat.price — з платіжки або з Налаштувань), далі старий спільний S.tariff, далі ХТМ. */
   function tariff() {
+    var hc = hsprCalib(); if (hc && hc.tariff) return hc.tariff;   // скільки ХТМ справді нараховує за Гкал (із довідки кабінету)
     var p = place() || {}, h = (p.prov || {}).heat || {}, pn = R.num(h.price); if (pn && pn > 0) return pn;
     var d = prvOf('heat'); if (d && d.via !== 'htm' && R.num(d.price) > 0) return R.num(d.price);   // тепло не від ХТМ — тариф із довідника громади
     var n = R.num(S.tariff); return n && n > 0 ? n : R.C.TARIFF;
+  }
+  // ---- нарахування ХТМ по місяцях («Довідка по теплу» кабінету ХТМ; сервер бере разом із квитанцією — HtmSpr, GET /api/htm/spr) ----
+  // З них: офіційна сума місяця в історії й картці показань, а розрахунок підлаштовується — тариф (нараховано / витрата), частка теплових втрат
+  // будинку (витрата по квартирі − різниця показань) і абонплата. Владелец 08.11: «цены в платежках больше — дополни расчёты, чтобы совпадало».
+  var HSPR = { at: 0, places: null, busy: false };
+  function hsprLoad() {
+    if (!window.TEPLO_API || HSPR.busy || !Y().account || (HSPR.places && Date.now() - HSPR.at < 600000)) return;
+    HSPR.busy = true;
+    window.TeploSync.api('GET', '/htm/spr').then(function (j) {
+      HSPR.busy = false; HSPR.at = Date.now(); var had = HSPR.places ? JSON.stringify(HSPR.places) : ''; HSPR.places = (j && j.places) || [];
+      if (JSON.stringify(HSPR.places) !== had && /^(history|stats|rec-|heat|home|$)/.test(routeName())) safeRender();
+    }, function () { HSPR.busy = false; HSPR.at = Date.now(); HSPR.places = HSPR.places || []; });
+  }
+  function hspr() { var x = (HSPR.places || []).filter(function (p) { return p.place === S.placeId; })[0]; return (x && x.rows) || []; }
+  /** Рядок довідки ХТМ для запису показань: за поточними показаннями (Гкал або як на лічильнику), інакше — за місяцем зняття. */
+  function hsprFor(r) {
+    var rows = hspr(); if (!rows.length || !r || !r.htm || !r.htm.date) return null;
+    var vs = [R.num(r.htm.energy), R.num(r.raw && r.raw.energy)].filter(function (v) { return v !== null; });
+    return rows.filter(function (x) { return x.cur !== null && x.cur !== undefined && vs.some(function (v) { return Math.abs(x.cur - v) < 0.0015; }); })[0]
+      || rows.filter(function (x) { return x.ym === r.htm.date.slice(0, 7); })[0] || null;
+  }
+  /** Офіційно за місяць: нараховано за тепло + абонплата − пільга. */
+  function hsprSum(x) { return (x.cost || 0) + (x.abon || 0) - (x.lgota > 0 ? x.lgota : 0); }
+  /** Підлаштування розрахунку під нарахування ХТМ: тариф (медіана нараховано/витрата), частка втрат будинку відносно власного тепла, абонплата. */
+  function hsprCalib() {
+    var rows = hspr(); if (!rows.length) return null;
+    var tr = rows.filter(function (x) { return x.flat > 0 && x.cost > 0; }).map(function (x) { return x.cost / x.flat; }).filter(function (v) { return v > 300 && v < 10000; }).sort(function (a, b) { return a - b; });
+    var hr = rows.filter(function (x) { return x.diff > 0 && x.flat !== null && x.flat >= x.diff; }).slice(-8), sd = 0, sl = 0;
+    hr.forEach(function (x) { sd += x.diff; sl += x.flat - x.diff; });
+    var ab = rows.filter(function (x) { return x.abon > 0; }).slice(-1)[0];
+    return { tariff: tr.length ? Math.round(tr[Math.floor(tr.length / 2)] * 100) / 100 : null, k: sd > 0 && hr.length >= 2 ? sl / sd : null, abon: ab ? ab.abon : null, n: hr.length };
   }
   function tariffSet(v) { var p = place(); if (!p) { S.tariff = v; return; } p.prov = p.prov || {}; p.prov.heat = Object.assign({}, p.prov.heat || {}, { price: v, at: today() }); p.updatedAt = Date.now(); }
   /* Платіжка ХТМ: до сплати = (ваше тепло за лічильником + ваша частка ЗБП) × тариф + абонплата.
@@ -9450,12 +9490,14 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
   function bill() {
     var p = place() || {}, first = (places()[0] || {}).id === p.id, b = Object.assign({}, first ? S.bill || {} : {}, p.bill || {}), ab = R.num(b.abon), mz = R.num(b.mzk), dflt = R.C.ABON;
     if (!(ab !== null && ab >= 0)) { var d = prvOf('heat'), da = d ? R.num(d.abon) : null; if (d && d.org && d.via !== 'htm') dflt = da !== null && da >= 0 ? da : 0; }
-    return { abon: ab !== null && ab >= 0 ? ab : dflt, mzk: mz !== null && mz >= 0 ? mz : 0 };
+    // своєї частки ЗБП не вписали — частка теплових втрат будинку з нарахувань ХТМ (відносно власного тепла); абонплата — як нараховує ХТМ
+    var hc = hsprCalib(), own = mz !== null && mz > 0;
+    return { abon: ab !== null && ab >= 0 ? ab : (hc && hc.abon !== null ? hc.abon : dflt), mzk: own ? mz : 0, k: !own && hc && hc.k !== null ? hc.k : 0 };
   }
   var MONTH_DAYS = 365.25 / 12;
   function costOf(dE, days) {
     // ХТМ рахує ЗБП і абонплату помісячно: проміжок ~місяць — рівно один місяць
-    var b = bill(), m = days >= 20 ? Math.max(1, Math.round(days / MONTH_DAYS)) : days > 0 ? days / MONTH_DAYS : 0, mz = b.mzk * m, heat = Math.max(0, dE) * tariff();
+    var b = bill(), m = days >= 20 ? Math.max(1, Math.round(days / MONTH_DAYS)) : days > 0 ? days / MONTH_DAYS : 0, mz = b.mzk > 0 ? b.mzk * m : Math.max(0, dE) * b.k, heat = Math.max(0, dE) * tariff();
     return { heat: heat, mzk: mz * tariff(), abon: b.abon * m, total: heat + mz * tariff() + b.abon * m, gcal: Math.max(0, dE) + mz };
   }
   /** Сколько тепла набежало с прошлых показаний (по дате снятия) или с последних принятых ХТМ, и сколько это стоит. */
@@ -9535,7 +9577,7 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
   function histRow(o) {
     var hasQ = o.q !== null && o.q !== undefined, hasM = o.money !== null && o.money !== undefined;
     var main = '<div class="hr-main">' + (o.lead || '') + (hasQ || hasM
-      ? (hasQ ? '<span class="hr-q">' + esc(o.q) + ' <small>' + esc(o.unit) + '</small></span>' : '') + (hasM ? '<span class="hr-m">≈ ' + esc(money0(o.money)) + ' <small>грн</small></span>' : '')
+      ? (hasQ ? '<span class="hr-q">' + esc(o.q) + ' <small>' + esc(o.unit) + '</small></span>' : '') + (hasM ? '<span class="hr-m">' + (o.moneyExact ? '' : '≈ ') + esc(money0(o.money)) + ' <small>грн</small></span>' : '')
       : '<span class="hr-none">' + esc(o.none || '') + '</span>') + '</div>';
     // дата — сверху, отдельной строкой с отступом (тем же мелким шрифтом), ниже — сколько и почём.
     // Есть статус (o.st) — чипс рядом со ссылкой (на телефоне — строкой ниже): своя кнопка, выбор «передано / не передано / для себе»
@@ -9640,11 +9682,12 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
   function readingItem(r) {
     return [r].map(function (r) {
       var cls = { accepted: 'ok', rejected: 'bad', handed: 'info', checked: 'neutral', intermediate: 'neutral' }[r.status] || 'neutral';
-      var iv = interval(r), ok = iv && iv.dE >= 0;
-      // вся строка — в карточку показаний (там же правка, удаление, статус); главное — расход и деньги
-      return histRow({ cls: 'hli-heat', key: 'reading-' + r.id, href: '#rec-' + r.id, q: ok ? '+' + fmtN(iv.dE, 3) : null, unit: 'Гкал', money: ok ? iv.cost : null,
+      var iv = interval(r), ok = iv && iv.dE >= 0, hx = r.own ? null : hsprFor(r);
+      // вся строка — в карточку показаний (там же правка, удаление, статус); главное — расход и деньги; є нарахування ХТМ за місяць — його сума
+      return histRow({ cls: 'hli-heat', key: 'reading-' + r.id, href: '#rec-' + r.id, q: ok ? '+' + fmtN(iv.dE, 3) : null, unit: 'Гкал', money: hx && hx.cost !== null ? hsprSum(hx) : ok ? iv.cost : null, moneyExact: !!(hx && hx.cost !== null),
         none: iv ? t('hi_less', { de: Math.abs(iv.dE).toFixed(3) }) : t(gaps('heat').some(function (g) { return g.from < r.htm.date; }) ? 'hr_nogap' : 'hr_first'),
-        date: fmtDate(r.htm.date, true), sub: [t('hr_on_meter', { v: R.formatForHtm('energy', r.htm.energy), u: 'Гкал' }), iv ? iv.days + '\u00a0' + t('days_short') + (iv.overGap ? ' ' + t('hr_over_gap') : '') : ''],
+        date: fmtDate(r.htm.date, true), sub: [t('hr_on_meter', { v: R.formatForHtm('energy', r.htm.energy), u: 'Гкал' }), iv ? iv.days + '\u00a0' + t('days_short') + (iv.overGap ? ' ' + t('hr_over_gap') : '') : '',
+          hx && hx.flat !== null ? t('hsp_row', { g: fmtN(hx.flat, 3) }) : ''],
         right: wxChip(wxFor(r)) + billMark(r.bills),
         st: stChip('h', r, 'heat', r.own ? 'own' : /^(handed|accepted|rejected)$/.test(r.status) ? r.status : 'not', r.own ? '' : '<span class="pill ' + cls + '">' + esc(t('status_' + r.status)) + '</span>') });
     })[0];
@@ -9886,6 +9929,20 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
     return { screen: 'S08', route: 'status', html: head + body };
   };
 
+  /** Картка показань: як нарахував ХТМ за цей місяць (довідка кабінету) — різниця показань, частка втрат будинку, тариф, абонплата, пільга, разом; і наш розрахунок поруч. */
+  function hsprPanel(r, iv) {
+    hsprLoad(); var x = r.own ? null : hsprFor(r); if (!x) return '';
+    var li = function (k, v, b) { return '<li><div class="grow small' + (b ? '' : ' muted') + '">' + esc(k) + '</div>' + (b ? '<b class="num">' + esc(v) + '</b>' : '<span class="num">' + esc(v) + '</span>') + '</li>'; };
+    var sh = x.flat !== null && x.diff !== null ? x.flat - x.diff : null, tar = x.flat > 0 && x.cost !== null ? x.cost / x.flat : null;
+    return '<div class="panel" data-key="rec-htm"><h2>' + esc(t('hsp_title', { m: monthLabel(x.ym) })) + '</h2><ul class="list">' +
+      (x.diff !== null ? li(t('hsp_diff'), fmtN(x.diff, 3) + ' Гкал') : '') +
+      (sh !== null ? li(t('hsp_share') + (x.loss !== null && x.sFlat && x.sHouse ? ' (' + fmtN(x.loss, 1) + ' × ' + fmtN(x.sFlat, 1) + ' / ' + fmtN(x.sHouse, 1) + ' м²)' : ''), fmtN(sh, 3) + ' Гкал') : '') +
+      (x.flat !== null ? li(t('hsp_flat'), fmtN(x.flat, 3) + ' Гкал', true) : '') +
+      (tar !== null ? li(t('hsp_tariff'), money(tar) + ' грн/Гкал') : '') +
+      (x.cost !== null ? li(t('hsp_cost'), money(x.cost) + ' грн') : '') + (x.abon !== null ? li(t('hsp_abon'), money(x.abon) + ' грн') : '') +
+      (x.lgota > 0 ? li(t('hsp_lgota'), '−' + money(x.lgota) + ' грн') : '') + li(t('hsp_total'), money(hsprSum(x)) + ' грн', true) + '</ul>' +
+      (iv && iv.dE >= 0 ? '<p class="small muted">' + esc(t('hsp_ours', { s: money(iv.cost) })) + '</p>' : '') + '<p class="small muted">' + esc(t('hsp_src')) + '</p></div>';
+  }
   /** Вкладки без единого счётчика в квартире — пусто и «Додати лічильник». */
   function noMeters(route, title) {
     return { screen: 'S09', route: route, html: '<h1>' + esc(t(title)) + '</h1><div class="panel" data-key="no-meters"><p class="muted">' + esc(t('hi_nometers')) + '</p><button class="btn" data-act="add-meter" data-key="no-meters-add">' + ico('plus', 20) + '<span>' + esc(t('am_tile')) + '</span></button></div>' };
@@ -9894,7 +9951,7 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
   V.stats = function () { if (!kinds().length) return noMeters('stats', 'stt_title'); var k = curView(); return k === 'heat' ? heatStats() : SK[k] ? sstats(k) : wstats(k); };
   V.save = function () { if (!kinds().length) return noMeters('save', 'wsv_title'); var k = curView(); return k === 'heat' ? heatSave() : SK[k] ? ssave(k) : wsave(k); };
   function heatHistory() {
-    if (window.TeploStats) loadWeather();
+    if (window.TeploStats) loadWeather(); hsprLoad();
     var arr = heatMixed();
     return { screen: 'S09', route: 'history', html: '<h1>' + esc(t('hi_title')) + '</h1>' + kindSwitch() +
       (arr.length ? seasonList(arr) : '<div class="panel"><p class="muted">' + esc(t('hi_empty')) + '</p><button class="btn" data-act="read">' + esc(t('hi_empty_cta')) + '</button></div>') + gapAddLink('heat') };
@@ -9975,7 +10032,7 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
         '<div><div class="num mid">' + esc(degTxt(wx.min)) + ' … ' + esc(degTxt(wx.max)) + '</div><div class="small muted">' + esc(t('wx_t_range')) + '</div></div>' +
         '<div><div class="num mid">' + wx.frost + ' / ' + wx.ser.length + '</div><div class="small muted">' + esc(t('wx_t_frost')) + '</div></div>' : '') +
       (wx.day !== null ? '<div><div class="num mid">' + esc(degTxt(wx.day)) + '</div><div class="small muted">' + esc(t('wx_t_day')) + '</div></div>' : '') + '</div>' + wxSpark(wx.ser) + '</div>' : '';
-    return { screen: 'S09', route: 'history', html: head + used + wxp + '<ul class="list" data-key="rec-values">' + rows + '</ul>' + photoStrip(r.photos, 'h' + r.id, 'h:' + r.id) + billsBox('h:' + r.id, r.bills, t('bl_title', { m: monthLabel(String(h.date || '').slice(0, 7)) })) +
+    return { screen: 'S09', route: 'history', html: head + used + hsprPanel(r, iv) + wxp + '<ul class="list" data-key="rec-values">' + rows + '</ul>' + photoStrip(r.photos, 'h' + r.id, 'h:' + r.id) + billsBox('h:' + r.id, r.bills, t('bl_title', { m: monthLabel(String(h.date || '').slice(0, 7)) })) +
       '<div class="row-actions">' + st + '<a class="btn sec" href="#rec-' + r.id + '-edit" data-key="rec-edit">' + esc(t('rec_edit')) + '</a>' +
       '<button class="btn danger" data-act="rec-del-ask" data-key="rec-del">' + esc(t('rec_del')) + '</button></div><div id="rec-del-confirm"></div>' + ownBox('h', r) };
   }
@@ -10080,7 +10137,7 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
   }
   function heatStats() {
     chColors();   // тестовый период: статистика открыта всем
-    var St = window.TeploStats; loadWeather();
+    var St = window.TeploStats; loadWeather(); hsprLoad();
     var w = WX.days, ivs = St.intervals(RD(), S.baseline, w, tariff(), gaps('heat')), cl = St.coolant(RD(), S.baseline, w);
     ivs.forEach(function (it) { it.cost = +costOf(it.dE, it.days).total.toFixed(2); });
     if (!ivs.length) return { screen: 'S15', route: 'stats', html: '<h1>' + esc(t('stt_title')) + '</h1>' + kindSwitch() + '<div class="panel"><p class="muted">' + esc(t('stt_empty')) + '</p></div>' };
