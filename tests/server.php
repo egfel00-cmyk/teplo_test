@@ -1215,6 +1215,21 @@ ok('довідник: усі громади й пункти є в КАТОТТГ
     && str_contains($trd['kinds']['water']['note'] ?? '', 'платіжки') && $pmz['kinds']['water']['supply'] === null && $chy['kinds']['water']['supply'] === null
     && ($nrs['place']['hromada'] ?? '') === 'Татарбунарська' && $nrs['kinds']['water']['supply'] === null && ($nrs['kinds']['water']['org'] ?? null) === null,
     [$vsl['place'] ?? $vsl, $trd['place'] ?? $trd, $trd['kinds']['water'] ?? null, $nrs['place'] ?? $nrs]);
+  // 67-ма: пригород Одеси — Таїрове, Сухий Лиман, Лиманка, Фонтанка, Овідіополь (Калаглія, Миколаївка), Великодолинське, Авангард (Хлібодарське)
+  $tai = $v('Таирово, ул. Перемоги 1'); $slm = $v('Сухий Лиман, Таїровська громада'); $lmk = $v('Лиманка, Таїровська громада'); $fnt = $v('Фонтанка, вул. Степна 1');
+  $kry = $v('Крижанівка, Фонтанська громада'); $ovd = $v('Овидиополь, ул. Колесниченко 1'); $klg = $v('Калаглія, Овідіопольська громада'); $mkv = $v('Миколаївка, Овідіопольська громада');
+  $vdl = $v('Великодолинське, вул. Соборна 1'); $avg = $v('Авангард, вул. Добрянського 1'); $hld = $v('Хлібодарське, Авангардівська громада');
+  ok('пригород Одеси 67-ї: Таїрове 35,84 / 38,42 (рос.); Сухий Лиман — КП «Лиман» 30,50 з 01.09.2026; Лиманка — без тарифу; Фонтанка й Крижанівка — КП «Надія» 39,80 / 36,50; Овідіополь 47,94 / 115,81, Калаглія 35, Миколаївка 38,20; Великодолинське 57,65 з 01.11.2026; Авангард — Драгнава 24,84, Хлібодарське — без тарифу',
+    ($tai['place']['hromada'] ?? '') === 'Таїровська' && $tai['kinds']['water']['supply'] === 35.84 && $tai['kinds']['water']['drain'] === 38.42
+    && str_contains($slm['kinds']['water']['org'] ?? '', 'Лиман') && $slm['kinds']['water']['supply'] === 30.5 && ($slm['kinds']['water']['from'] ?? '') === '2026-09-01' && str_contains($slm['kinds']['water']['note'] ?? '', '40,70')
+    && $lmk['kinds']['water']['supply'] === null && ($lmk['kinds']['water']['org'] ?? null) === null
+    && ($fnt['place']['hromada'] ?? '') === 'Фонтанська' && $fnt['kinds']['water']['supply'] === 39.8 && $fnt['kinds']['water']['drain'] === 36.5 && $kry['kinds']['water']['supply'] === 39.8
+    && ($ovd['place']['hromada'] ?? '') === 'Овідіопольська' && $ovd['kinds']['water']['supply'] === 47.94 && $ovd['kinds']['water']['drain'] === 115.81
+    && str_contains($klg['kinds']['water']['org'] ?? '', 'Кришталь') && $klg['kinds']['water']['supply'] === 35.0 && $klg['kinds']['water']['drain'] === null && $mkv['kinds']['water']['supply'] === 38.2
+    && $vdl['kinds']['water']['supply'] === 57.65 && ($vdl['kinds']['water']['from'] ?? '') === '2026-11-01'
+    && ($avg['place']['hromada'] ?? '') === 'Авангардівська' && str_contains($avg['kinds']['water']['org'] ?? '', 'Драгнава') && $avg['kinds']['water']['supply'] === 24.84
+    && $hld['kinds']['water']['supply'] === null && ($hld['kinds']['water']['org'] ?? null) === null,
+    [$tai['place'] ?? $tai, $slm['place'] ?? $slm, $fnt['place'] ?? $fnt, $ovd['place'] ?? $ovd, $mkv['place'] ?? $mkv, $vdl['place'] ?? $vdl, $avg['place'] ?? $avg, $hld['place'] ?? $hld]);
   // 65-та сесія: Львівщина — сайти громад (gromada.org.ua: /sitemap/, рішення на rada.info)
   $pus = $v('Пустомити, вул. Шевченка 1'); $mur = $v('Сороки-Львівські, вул. Польова 1'); $kul = $v('Куликов, ул. Шевченко 1'); $skl = $v('Сокільники, вул. Стрийська 1');
   $prs = $v('Поршна, Солонківська громада'); $sln = $v('Солонка, вул. Шевченка 1'); $shc = $v('Щирець, вул. Шевченка 1');
