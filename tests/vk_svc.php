@@ -3,7 +3,7 @@
 // Запуск: php tests/vk_svc.php
 declare(strict_types=1);
 define('TEPLO', 1);
-foreach (['core', 'telegram', 'reminders', 'recognize', 'admin', 'vkcab', 'cabs', 'htmsvc', 'vksvc', 'gpv', 'providers', 'visits', 'journal', 'docs', 'api'] as $f) require __DIR__ . "/../app/$f.php";
+foreach (['core', 'telegram', 'reminders', 'recognize', 'admin', 'vkcab', 'cabs', 'htmsvc', 'vksvc', 'gpv', 'providers', 'visits', 'journal', 'docs', 'relay', 'api'] as $f) require __DIR__ . "/../app/$f.php";
 require __DIR__ . '/vk-mock/pages.php';
 $TMP = sys_get_temp_dir() . '/teplo_vksvc_' . getmypid(); putenv('SITE_DATA=' . $TMP);
 Cfg::set(['app_url' => 'https://teplo.example/', 'bot_token' => '1:TEST', 'vk_cab_base' => 'https://billing.vodokanal.kharkov.ua', 'cookie_secure' => false]);

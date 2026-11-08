@@ -152,6 +152,10 @@ ok('живий рахунок: тепло — нараховано, пільга
   ($lt['heat'] ?? null) === ['cost' => 3783.51, 'lgota' => 0.0, 'abon' => 29.4, 'debt' => 100.0, 'paid' => 100.0, 'month' => 3812.91, 'recalc' => 0.0, 'total' => 3812.91, 'end' => 3812.91]
   && ($lt['pre'] ?? null) === 500.0 && ($lt['unpre'] ?? null) === 400.0 && ($lt['hot']['month'] ?? null) === 252.2 && ($lt['pay'] ?? null) === 4065.11
   && ($lc['err']->{'2026-09'}['same'] ?? null) === ['cost' => 0.0, 'abon' => 0.0, 'month' => 0.0, 'pre%' => 2.6], [$lt, $lc]);
+// 66-я: у запис квитанції — те, що пояснює «до сплати» (тепло наперед, зняте за попередній, за місяць тепло й ГВ) — рядками з двома знаками
+$bpz = HtmSvc::billParts($lt);
+ok('billParts живого рахунку: pre 500.00, unpre 400.00, heatM 3812.91, hotM 252.20 (у запис квитанції — для пояснення «з них наперед»)',
+  $bpz === ['pre' => '500.00', 'unpre' => '400.00', 'heatM' => '3812.91', 'hotM' => '252.20'] && HtmSvc::billParts([]) === [], $bpz);
 $bad = array_filter(array_column(array_slice($h->w->steps, 0), 1), fn($x) => preg_match('~logout|/add|remove|settings~', $x));
 ok('…только GET и не трогает add/remove/settings', !array_filter($h->w->steps, fn($s) => $s[0] !== 'GET' && !str_contains($s[1], '/cabinet/login')) && !$bad, $h->w->steps);
 

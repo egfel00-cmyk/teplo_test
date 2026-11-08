@@ -45,11 +45,21 @@ const U = 'http://127.0.0.1:8013/';
   t = sp((await p.textContent('[data-key=rec-used]').catch(() => '')).replace(/\s/g, ' '));
   ok('Львів (тепло не від ХТМ): частка ЗБП 0,00', /ЗБП\) 0,00/.test(t), t);
 
-  // 6. історія: у записі є квитанція ХТМ — поруч «до сплати 1 234,56 грн»
-  await put(s => { s.places[0].area = 54.3; s.readings.filter(r => r.id === 'r3')[0].bills = [{ id: 'd1', auto: 'htm', name: 'Квитанція ХТМ, квітень 2026', mime: 'text/html', pay: '1234.56', at: '2026-05-07T08:00:00Z', bytes: 4000 }]; });
+  // 6. історія: у записі є квитанція ХТМ — поруч «до сплати 1 234,56 грн»; з 11.2025 у рахунку тепло наперед — «з них наперед 225,79 грн» і пояснення в картці
+  await put(s => { s.places[0].area = 54.3; s.readings.filter(r => r.id === 'r3')[0].bills = [{ id: 'd1', auto: 'htm', name: 'Квитанція ХТМ, квітень 2026', mime: 'text/html', pay: '1234.56', at: '2026-05-07T08:00:00Z', bytes: 4000 }];
+    s.readings.filter(r => r.id === 'r2')[0].bills = [{ id: 'd2', auto: 'htm', name: 'Квитанція ХТМ, березень 2026', mime: 'text/html', pay: '3000.00', pre: '225.79', unpre: '-613.35', at: '2026-04-07T08:00:00Z', bytes: 4000 }]; });
   await p.goto(U + '#history'); await p.reload(); await wait(1500);
   t = sp(await p.textContent('[data-key=reading-r3]').catch(() => ''));
-  ok('історія: рядок квітня — «до сплати 1 234,56 грн» з квитанції', /до сплати 1 234,56 грн/.test(t), t);
+  ok('історія: рядок квітня — «до сплати 1 234,56 грн» з квитанції', /до сплати 1 234,56 грн/.test(t) && !/наперед/.test(t), t);
+  t = sp(await p.textContent('[data-key=reading-r2]').catch(() => ''));
+  ok('…березня — «до сплати 3 000,00 грн, з них наперед 225,79 грн»', /до сплати 3 000,00 грн, з них наперед 225,79 грн/.test(t), t);
+  // платіжки в картці — лише вошедшим (квитанції ХТМ приходять із сервера): входимо й кладемо той самий стан
+  ok('регистрация', await p.evaluate(e => window.TeploSync.register(e, 'Pass-12345678').then(j => j._status), 'zb' + Date.now() + '@teplo.test') === 200);
+  await p.evaluate(() => { const s = JSON.parse(localStorage.getItem('teplo.v1')); s.readings.filter(r => r.id === 'r2')[0].bills = [{ id: 'd2', auto: 'htm', name: 'Квитанція ХТМ, березень 2026', mime: 'text/html', pay: '3000.00', pre: '225.79', unpre: '-613.35', at: '2026-04-07T08:00:00Z', bytes: 4000 }];
+    s.updatedAt = Date.now(); localStorage.setItem('teplo.v1', JSON.stringify(s)); });
+  await p.goto(U + '#rec-r2'); await p.reload(); await wait(2500);
+  t = sp(await p.textContent('[data-key=hb-pre-why]').catch(() => ''));
+  ok('картка березня: чому до сплати більше — наперед 225,79, знято 613,35, ГВ і борг', /225,79/.test(t) && /613,35/.test(t) && /донараховано до кінця поточного місяця/.test(t), t);
 
   ok('без ошибок JS', !errs.length, errs);
   await b.close(); console.log('\nИтог: ' + pass + ' OK, ' + fail + ' FAIL'); process.exit(fail ? 1 : 0);

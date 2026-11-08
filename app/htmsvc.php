@@ -227,6 +227,14 @@ final class HtmSvc {
    *  → копия страницы (HtmCab::billDoc: без скриптов, стили и картинки внутри) в docs (kind bill, src htm, mime text/html, ym — из заголовка рахунку).
    *  Рахунку нет — запасной путь: осмотр кабинета и PDF, похожий на квитанцию за $ym (как было до 07.11). Та же (отпечаток текста) — same; нет — none.
    *  Журнал кабинета: op autobill (cron — не человек), итог bill | same | nobill — без цифр и прізвищ. → {doc, ym, pay, kind} | {same, doc, ym, pay} | {none} */
+  /** З таблиці рахунку (HtmSpr::billTable) — те, що пояснює «до сплати» людині: нараховано за місяць за тепло й ГВ і тепло наперед
+   *  («донараховано до кінця поточного місяця» / «… до кінця попереднього місяця» — зняте). Лише числа рахунку цієї людини, у її ж запис. */
+  public static function billParts(array $bt): array {
+    $o = [];
+    foreach (['pre' => $bt['pre'] ?? null, 'unpre' => $bt['unpre'] ?? null, 'heatM' => $bt['heat']['month'] ?? null, 'hotM' => $bt['hot']['month'] ?? null] as $k => $v)
+      if (is_int($v) || is_float($v)) $o[$k] = number_format((float)$v, 2, '.', '');
+    return $o;
+  }
   public static function bill(int $uid, string $want, string $place, string $ym): array {
     [$cab, $acc] = self::enter($uid, $want, 'autobill');
     $bp = null; $bd = null; $ex = null;
@@ -248,10 +256,11 @@ final class HtmSvc {
     $mn = fn(string $m) => ['січень', 'лютий', 'березень', 'квітень', 'травень', 'червень', 'липень', 'серпень', 'вересень', 'жовтень', 'листопад', 'грудень'][(int)substr($m, 5, 2) - 1] . ' ' . substr($m, 0, 4);
     if ($bp && $bd) {
       $sha = sha1('htm|' . $bp['text']); $info = ['ym' => $bp['ym'], 'pay' => $bp['pay'] !== null, 'bytes' => strlen($bd['html']), 'css' => $bd['css'], 'img' => $bd['img']];
-      if ($d = Docs::bySha($uid, $sha)) { self::diag(['op' => 'autobill', 'user' => $uid, 'result' => 'same', 'page' => $info, 'steps' => $cab->w->steps]); return ['same' => true, 'doc' => $d, 'ym' => $bp['ym'], 'pay' => $bp['pay'], 'kind' => 'html']; }
+      $parts = self::billParts(HtmSpr::billTable((string)$bp['html']));
+      if ($d = Docs::bySha($uid, $sha)) { self::diag(['op' => 'autobill', 'user' => $uid, 'result' => 'same', 'page' => $info, 'steps' => $cab->w->steps]); return ['same' => true, 'doc' => $d, 'ym' => $bp['ym'], 'pay' => $bp['pay'], 'parts' => $parts, 'kind' => 'html']; }
       $doc = Docs::put($uid, $bd['html'], 'text/html', 'html', $place, 'bill', 'Квитанція ХТМ, ' . $mn($bp['ym']), ['src' => 'htm', 'ym' => $bp['ym'], 'sha' => $sha]);
       self::diag(['op' => 'autobill', 'user' => $uid, 'result' => 'bill', 'page' => $info, 'steps' => $cab->w->steps]);
-      return ['doc' => $doc, 'ym' => $bp['ym'], 'pay' => $bp['pay'], 'guess' => false, 'kind' => 'html'];
+      return ['doc' => $doc, 'ym' => $bp['ym'], 'pay' => $bp['pay'], 'parts' => $parts, 'guess' => false, 'kind' => 'html'];
     }
     $body = (string)($ex['billBody'] ?? ''); $raw = (array)($ex['billRaw'] ?? []);
     $pub = array_diff_key((array)$ex, ['billBody' => 1, 'billRaw' => 1]);
@@ -605,7 +614,8 @@ final class HtmBills {
       [$idx, $have] = self::target($st->readings, $place, self::first(self::live($arr)), $ym); if ($have) return 'have';
       $ms = (int)round(microtime(true) * 1000);   // запись новее — при слиянии с устройством побеждает она
       $bill = (object)(['id' => (string)$doc['id'], 'mime' => (string)($doc['mime'] ?? 'application/pdf'), 'name' => (string)($doc['name'] ?? ''), 'bytes' => (int)($doc['bytes'] ?? 0), 'at' => (string)($doc['createdAt'] ?? Http::iso()), 'auto' => 'htm', 'ym' => $ym]
-        + (isset($doc['pay']) && is_numeric($doc['pay']) ? ['pay' => (string)$doc['pay']] : []));
+        + (isset($doc['pay']) && is_numeric($doc['pay']) ? ['pay' => (string)$doc['pay']] : [])
+        + array_filter(array_intersect_key((array)($doc['parts'] ?? []), ['pre' => 1, 'unpre' => 1, 'heatM' => 1, 'hotM' => 1]), 'is_numeric'));
       if ($idx !== null) {
         $r = $st->readings[$idx]; if (!isset($r->bills) || !is_array($r->bills)) $r->bills = [];
         $r->bills[] = $bill; $r->updatedAt = $ms; $res = empty($r->billOnly) ? 'got' : 'new';
@@ -654,7 +664,7 @@ final class HtmBills {
       if (!empty($r['none']) || !$doc || $dym === '') $res = 'nobill';
       elseif (in_array($dym, $got, true)) $res = 'same';   // за этот месяц уже клали (человек мог убрать файл — не возвращаем)
       else {
-        $res = self::attach($uid, $t['place'], $dym, $doc + ['pay' => $r['pay'] ?? null]);
+        $res = self::attach($uid, $t['place'], $dym, $doc + ['pay' => $r['pay'] ?? null, 'parts' => $r['parts'] ?? []]);
         if (in_array($res, ['got', 'new', 'have'], true)) $e['got'] = array_slice(array_values(array_unique(array_merge([$dym], $got))), 0, 24);
         if ($res === 'have') $res = 'same';
       }

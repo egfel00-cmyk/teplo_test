@@ -3802,10 +3802,15 @@
   }
   /** Сума «до сплати» з квитанції ХТМ (сервер узяв зі сторінки рахунку), якщо є. */
   function hbillPay(r) { var b = ((r && r.bills) || []).filter(function (x) { return x && x.auto === 'htm' && R.num(x.pay) !== null; })[0]; return b ? R.num(b.pay) : null; }
+  /** «до сплати … грн» з квитанції ХТМ, а є тепло наперед до кінця місяця — «…, з них наперед … грн». */
+  function hbillPayTxt(r) {
+    var b = ((r && r.bills) || []).filter(function (x) { return x && x.auto === 'htm' && R.num(x.pay) !== null; })[0]; if (!b) return '';
+    return t('hb_pay', { s: money(R.num(b.pay)) }) + (R.num(b.pre) > 0 ? ', ' + t('hb_pre', { s: money(R.num(b.pre)) }) : '');
+  }
   function hbillItem(r) {
     var pay = hbillPay(r);
     return histRow({ cls: 'hli-heat hli-bill', key: 'hbill-' + r.id, href: '#rec-' + r.id, lead: '<span class="hr-bill">' + ico('bill', 16) + esc(t('hb_title')) + '</span>',
-      none: pay !== null ? t('hb_pay', { s: money(pay) }) : t('hb_none'), date: monthLabel(r.ym), sub: [pay !== null ? t('hb_none') : '', t('hb_sub')], right: billMark(r.bills) });
+      none: pay !== null ? hbillPayTxt(r) : t('hb_none'), date: monthLabel(r.ym), sub: [pay !== null ? t('hb_none') : '', t('hb_sub')], right: billMark(r.bills) });
   }
   function readingItem(r) {
     return [r].map(function (r) {
@@ -3815,7 +3820,7 @@
       return histRow({ cls: 'hli-heat', key: 'reading-' + r.id, href: '#rec-' + r.id, q: ok ? '+' + fmtN(iv.dE, 3) : null, unit: 'Гкал', money: hx && hx.cost !== null ? hsprSum(hx) : ok ? iv.cost : null, moneyExact: !!(hx && hx.cost !== null),
         none: iv ? t('hi_less', { de: Math.abs(iv.dE).toFixed(3) }) : t(gaps('heat').some(function (g) { return g.from < r.htm.date; }) ? 'hr_nogap' : 'hr_first'),
         date: fmtDate(r.htm.date, true), sub: [t('hr_on_meter', { v: R.formatForHtm('energy', r.htm.energy), u: 'Гкал' }), iv ? iv.days + '\u00a0' + t('days_short') + (iv.overGap ? ' ' + t('hr_over_gap') : '') : '',
-          hx && hx.flat !== null ? t('hsp_row', { g: fmtN(hx.flat, 3) }) : '', hbillPay(r) !== null ? t('hb_pay', { s: money(hbillPay(r)) }) : ''],
+          hx && hx.flat !== null ? t('hsp_row', { g: fmtN(hx.flat, 3) }) : '', hbillPayTxt(r)],
         right: wxChip(wxFor(r)) + billMark(r.bills),
         st: stChip('h', r, 'heat', r.own ? 'own' : /^(handed|accepted|rejected)$/.test(r.status) ? r.status : 'not', r.own ? '' : '<span class="pill ' + cls + '">' + esc(t('status_' + r.status)) + '</span>') });
     })[0];
@@ -4444,9 +4449,12 @@
       var url = window.TEPLO_API + '/docs/file?id=' + b.id, page = b.mime === 'text/html', img = b.mime !== 'application/pdf' && !page;
       var th = img ? '<span class="doc-th"><img src="' + esc(url) + '" data-gal="b' + esc(ref) + '" alt="' + esc(t('bl_img', { n: i + 1 })) + '" loading="lazy"></span>'
         : '<a class="doc-th" href="' + esc(url) + '" target="_blank" rel="noopener" data-act="bill-open" data-id="' + esc(b.id) + '" aria-label="' + esc(t('mv_open') + ': ' + (b.name || 'PDF')) + '"><span class="pdf">' + (page ? 'ХТМ' : 'PDF') + '</span></a>';
-      return '<li>' + th + '<div class="grow"><b class="bill-name">' + esc(b.name || (img ? t('bl_photo') : 'PDF')) + '</b><div class="small muted">' + esc((b.auto === 'vk' ? t('bl_auto_vk') + ' · ' : b.auto === 'htm' ? t('bl_auto_htm') + ' · ' : '') + (R.num(b.pay) !== null ? t('hb_pay', { s: money(R.num(b.pay)) }) + ' · ' : '') + (b.at ? fmtDate(String(b.at).slice(0, 10), true) + ' · ' : '')) + Math.max(1, Math.round((b.bytes || 0) / 1024)) + ' КБ</div></div>' +
+      return '<li>' + th + '<div class="grow"><b class="bill-name">' + esc(b.name || (img ? t('bl_photo') : 'PDF')) + '</b><div class="small muted">' + esc((b.auto === 'vk' ? t('bl_auto_vk') + ' · ' : b.auto === 'htm' ? t('bl_auto_htm') + ' · ' : '') + (R.num(b.pay) !== null ? t('hb_pay', { s: money(R.num(b.pay)) }) + ' · ' : '') + (R.num(b.pre) > 0 ? t('hb_pre', { s: money(R.num(b.pre)) }) + ' · ' : '') + (b.at ? fmtDate(String(b.at).slice(0, 10), true) + ' · ' : '')) + Math.max(1, Math.round((b.bytes || 0) / 1024)) + ' КБ</div></div>' +
         '<button type="button" class="linkbtn" data-act="bill-del" data-ref="' + esc(ref) + '" data-id="' + esc(b.id) + '"' + (busy ? ' disabled' : '') + '>' + esc(t('rec_del')) + '</button></li>';
     }).join('') + '</ul>';
+    // квитанція ХТМ (з 11.2025): тепло наперед до кінця місяця і зняте за попередній — чому «до сплати» не дорівнює теплу за показаннями
+    var hp = list.filter(function (b) { return b.auto === 'htm' && R.num(b.pre) > 0; })[0];
+    if (hp) h += '<p class="small muted" data-key="hb-pre-why">' + esc(t('hb_pre_why', { p: money(R.num(hp.pre)), u: money(Math.abs(R.num(hp.unpre) || 0)) })) + '</p>';
     return h + '<input type="file" id="bill-input" class="sr" tabindex="-1" multiple aria-label="' + esc(t('bl_add')) + '" accept="image/jpeg,image/png,image/webp,image/heic,application/pdf">' +
       '<button type="button" class="btn sec" data-act="bill-add" data-ref="' + esc(ref) + '" data-key="bill-add"' + (busy ? ' disabled' : '') + '>' + ico('plus', 18) + '<span>' + esc(t(list.length ? 'bl_add_more' : 'bl_add')) + '</span></button>' +
       (busy ? '<p class="small muted" role="status">' + SPIN + ' ' + esc(t('mv_uploading')) + '</p>' : '') + '</section>';
