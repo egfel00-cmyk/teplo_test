@@ -1156,6 +1156,10 @@ ok('довідник: усі громади й пункти є в КАТОТТГ
   ok('ProvProbe: адреси кабінетів довідника зібрані; вердикт за сторінкою (пароль → login, капча, Cloudflare)', isset(ProvProbe::urls()['https://my.vodokanal.kiev.ua/'])
     && ProvProbe::verdict(['code' => 200, 'pass' => true]) === 'login' && ProvProbe::verdict(['code' => 200, 'pass' => true, 'widget' => true]) === 'captcha' && ProvProbe::verdict(['code' => 403, 'cfKind' => 'challenge']) === 'cf'
     && ProvProbe::verdict(['code' => 200, 'forms' => 1, 'fields' => ['acc']]) === 'form' && ProvProbe::verdict(['code' => 0]) === 'down');
+  ProvProbe::store('https://my.vodokanal.kiev.ua/', ['code' => 200, 'ms' => 300, 'at' => gmdate('c'), 'pass' => true, 'forms' => 1, 'fields' => ['login', 'password'], 'widget' => false, 'script' => true, 'verdict' => 'login']);
+  $pl = (array)($phone->req('GET', '/api/health')->body['prov']['list'] ?? []); $pk = $pl['my.vodokanal.kiev.ua/'] ?? [];
+  ok('/api/health → prov.list: по адресу — вердикт, поля, скрипт капчи, где в справочнике', ($pk['v'] ?? '') === 'login' && ($pk['fields'] ?? '') === 'login,password' && ($pk['cap'] ?? '') === 'script'
+    && in_array('ky:Київ.water.cab', array_map(fn($x) => preg_replace('/=.*/', '', $x), (array)($pk['in'] ?? [])), true), $pk);
   // правка, що збігається з репозиторієм (сесія вже перенесла), прибирається сама; інші лишаються
   $same = Providers::raw('ky')['hromadas']['Київ']['heat'];
   $boss->req('POST', '/api/admin/prov/save', ['r' => 'ky', 'scope' => 'hromadas', 'key' => 'Київ', 'kind' => 'heat', 'value' => $same]);

@@ -477,6 +477,22 @@ final class ProvProbe {
     return 'page';
   }
   public static function summary(): array { $n = []; foreach (self::read() as $o) { $v = (string)($o['verdict'] ?? '?'); $n[$v] = ($n[$v] ?? 0) + 1; } return $n; }
+  /** /api/health → prov.list: по каждому адресу справочника (сайты поставщиков, не людей) — вердикт, код, пароль/формы/поля, капча, Cloudflare;
+   *  где в справочнике (регион:громада.вид.поле) и что там стоит в robot — чтобы проставить robot без /admin. */
+  public static function brief(): array {
+    $o = []; $urls = self::urls();
+    foreach (self::read() as $url => $x) {
+      $w = []; foreach ((array)($urls[$url] ?? []) as [$r, $sc, $key, $kd, $f]) {
+        $d = Providers::rdata($r); $node = $sc === 'oblast' ? (array)($d['oblast'][$kd] ?? []) : (array)($d[$sc][$key][$kd] ?? []);
+        $w[] = $r . ':' . ($sc === 'oblast' ? 'oblast' : $key) . '.' . $kd . '.' . $f . (isset($node['robot']) ? '=' . $node['robot'] : '');
+      }
+      $o[mb_substr(preg_replace('~^https://~', '', (string)$url), 0, 90)] = array_filter(['v' => $x['verdict'] ?? null, 'code' => $x['code'] ?? null, 'ms' => $x['ms'] ?? null, 'err' => $x['err'] ?? null,
+        'pass' => !empty($x['pass']) ?: null, 'forms' => $x['forms'] ?? null, 'fields' => !empty($x['fields']) ? implode(',', (array)$x['fields']) : null,
+        'cap' => !empty($x['widget']) ? 'widget' : (!empty($x['script']) ? 'script' : null), 'cf' => $x['cfKind'] ?? (!empty($x['cf']) ? 'cf' : null), 'spa' => !empty($x['spa']) ?: null,
+        'at' => isset($x['at']) ? substr((string)$x['at'], 0, 16) : null, 'in' => $w ?: null], fn($v) => $v !== null && $v !== 0 && $v !== '');
+    }
+    ksort($o); return $o;
+  }
 }
 
 /** /admin → «Справочник»: обзор регионов, громады области, запись для правки, что ищут люди. Только чтение — пишет ProvEdit. */
@@ -515,7 +531,7 @@ final class ProvAdmin {
   }
   /** /api/health → prov: регіони (громад, з водою), правки /admin (скільки, коли — сесії забрати в репозиторій), проба кабінетів, скільки адрес не знайшли. Без адрес і людей. */
   public static function health(): array {
-    $s = ProvEdit::seenAll(); $o = ['regions' => [], 'edits' => ProvEdit::summary(), 'probe' => (object)ProvProbe::summary(), 'nf' => (int)($s['_nf']['n'] ?? 0), 'seen' => count($s) - (isset($s['_nf']) ? 1 : 0)];
+    $s = ProvEdit::seenAll(); $o = ['regions' => [], 'edits' => ProvEdit::summary(), 'probe' => (object)ProvProbe::summary(), 'list' => (object)ProvProbe::brief(), 'nf' => (int)($s['_nf']['n'] ?? 0), 'seen' => count($s) - (isset($s['_nf']) ? 1 : 0)];
     foreach (Providers::REGIONS as $r => $n) { $d = Providers::rdata($r); $o['regions'][$r] = ['h' => count(self::hmap($r)), 'w' => count(array_filter($d['hromadas'], fn($x) => !empty($x['water']['org']))), 'u' => $d['updated']]; }
     return $o;
   }

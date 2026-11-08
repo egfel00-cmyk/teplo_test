@@ -207,7 +207,11 @@ ok('…прошлая версия — в историю (htmbill); «челов
 $spm = HtmSpr::mine($uid); $sps = HtmSpr::summary(); $spj = json_encode($sps, JSON_UNESCAPED_UNICODE);
 ok('…тем же входом — «Довідка по теплу»: 6 місяців нарахувань ХТМ сохранены для этого человека и квартиры; /api/health → htmSpr — сколько и какие колонки, без чисел и людей',
   count($spm) === 1 && count($spm[0]['rows']) === 6 && ($spm[0]['rows'][5]['ym'] ?? '') === '2026-03' && ($sps['rows'] ?? 0) === 6 && count($sps['cols'] ?? []) === 14 && ($sps['from'] ?? '') === '2025-10'
-  && ($sps['filled']->flat ?? $sps['filled']['flat'] ?? 0) === 6 && !preg_match('/1000000061|ТЕСТОВИЙ|1539|7902/u', $spj) && HtmSpr::mine($uid + 999) === [], [$spm, $sps]);
+  && ($sps['filled']->flat ?? $sps['filled']['flat'] ?? 0) === 6 && !preg_match('/1000000061|ТЕСТОВИЙ|7902|12\.91|1 ?500/u', $spj) && HtmSpr::mine($uid + 999) === [], [$spm, $sps]);
+$ck = $sps['check'] ?? [];
+ok('…сверка довідки в /api/health → htmSpr.check: витрата = різниця + втрати × S_кв/S_буд (6 из 6), тариф 1539,50 по месяцам, «надходження» ≠ нарахованому, наш расчёт — в пределах 15 %, без личных сумм',
+  ($ck['formula']['of'] ?? 0) === 6 && ($ck['formula']['ok'] ?? 0) === 6 && array_values(array_unique($ck['tariff'] ?? [])) === [1539.5] && ($ck['abon'] ?? []) === [29.4]
+  && ($ck['paid']['of'] ?? 0) === 5 && ($ck['paid']['same'] ?? 9) === 0 && ($ck['calc']['max'] ?? 99) < 15 && count($ck['calc']['err'] ?? []) === 6 && ($ck['k'] ?? 0) > 1.9, $ck);
 $c2 = HtmBills::cron($tB + 60); $hb = HtmBills::summary(); $hj = json_encode($hb, JSON_UNESCAPED_UNICODE);
 ok('…через минуту — квартиру уже смотрели (раз в 20 ч): пауза, /api/health → htmBills: месяц рахунку, вид, без рахунку и людей', $c2 === [] && ($hb['last']['res'] ?? '') === 'got' && ($hb['last']['ym'] ?? '') === '2026-09' && ($hb['last']['kind'] ?? '') === 'html'
   && (array)($hb['scan']['k'] ?? []) === ['retry' => 1] && ($hb['scan']['cabs'] ?? 0) === 1 && !preg_match('/1000000061|ТЕСТОВИЙ|u1@example/u', $hj), $hb);

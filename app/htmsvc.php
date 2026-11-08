@@ -685,5 +685,49 @@ final class HtmSpr {
     foreach ((glob(self::dir() . '/' . $uid . '_*.json') ?: []) as $f) { $j = json_decode((string)@file_get_contents($f), true); if (is_array($j) && !empty($j['rows'])) $out[] = ['place' => (string)$j['place'], 'at' => gmdate('c', (int)$j['at']), 'rows' => $j['rows']]; }
     return $out;
   }
-  public static function summary(): ?array { $j = json_decode((string)@file_get_contents(self::dir() . '/_last.json'), true); return is_array($j) ? ['at' => gmdate('c', (int)$j['at'])] + array_diff_key($j, ['at' => 1]) : null; }
+  public static function summary(): ?array {
+    $j = json_decode((string)@file_get_contents(self::dir() . '/_last.json'), true); if (!is_array($j)) return null;
+    // сверка — по последней сохранённой довідке (та, о которой _last): без людей и без личных сумм и Гкал
+    $nf = null; foreach ((glob(self::dir() . '/*_*.json') ?: []) as $f) if (basename($f) !== '_last.json' && ($nf === null || filemtime($f) > filemtime($nf))) $nf = $f;
+    $rows = $nf ? (json_decode((string)@file_get_contents($nf), true)['rows'] ?? []) : [];
+    return ['at' => gmdate('c', (int)$j['at'])] + array_diff_key($j, ['at' => 1]) + ($rows ? ['check' => self::check($rows)] : []);
+  }
+  /** Сверка довідки ХТМ (владелец 08.11: «цены в платежках больше — чтобы совпадало»), без личных чисел — только доли и проценты,
+   *  плюс публичные тарифы (грн/Гкал, абонплата). formula — витрата по квартирі = різниця + втрати × S_кв / S_буд (Методика № 315);
+   *  tariff — нараховано / витрата по місяцях; paid — сколько месяцев «надходження» (тот же или следующий месяц) = нараховано + абонплата − пільга;
+   *  calc — наш расчёт приложения (hsprCalib + costOf: різниця × (1 + k) × тариф + абонплата) против суммы ХТМ, ошибка в % по месяцам. */
+  public static function check(array $rows): array {
+    $nn = fn($r, $k) => isset($r[$k]) && is_numeric($r[$k]) ? (float)$r[$k] : null;
+    $pc = fn(float $a, float $b) => $b != 0.0 ? round(($a - $b) / abs($b) * 100, 1) : null;
+    $sum = fn($r) => ($nn($r, 'cost') ?? 0) + ($nn($r, 'abon') ?? 0) - max(0, $nn($r, 'lgota') ?? 0);
+    $fo = ['of' => 0, 'ok' => 0, 'err' => []]; $tar = []; $share = [];
+    foreach ($rows as $r) {
+      [$d, $l, $sh, $sf, $fl, $c] = [$nn($r, 'diff'), $nn($r, 'loss'), $nn($r, 'sHouse'), $nn($r, 'sFlat'), $nn($r, 'flat'), $nn($r, 'cost')];
+      if ($d !== null && $l !== null && $sh > 0 && $sf !== null && $fl !== null) {
+        $fo['of']++; $e = $d + $l * $sf / $sh - $fl; if (abs($e) <= max(0.002, abs($fl) * 0.005)) $fo['ok']++; $fo['err'][$r['ym']] = $fl > 0 ? round($e / $fl * 100, 2) + 0.0 : null;
+      }
+      if ($fl > 0 && $c !== null) $tar[$r['ym']] = round($c / $fl, 2);
+      if ($d > 0 && $fl !== null) $share[$r['ym']] = round(($fl - $d) / $d, 3);
+    }
+    // надходження: оплата за месяц приходит в том же или следующем месяце
+    $by = []; foreach ($rows as $r) $by[$r['ym']] = $r;
+    $paid = ['of' => 0, 'same' => 0, 'next' => 0, 'err' => []];
+    foreach ($rows as $r) {
+      $s = $sum($r); if ($s <= 0) continue; $nx = date('Y-m', strtotime($r['ym'] . '-01 +1 month'));
+      $p0 = $nn($r, 'paid'); $p1 = isset($by[$nx]) ? $nn($by[$nx], 'paid') : null; if ($p0 === null && $p1 === null) continue;
+      $paid['of']++; if ($p0 !== null && abs($p0 - $s) <= 1) $paid['same']++; elseif ($p1 !== null && abs($p1 - $s) <= 1) $paid['next']++;
+      $paid['err'][$r['ym']] = ['same' => $p0 !== null ? $pc($p0, $s) : null, 'next' => $p1 !== null ? $pc($p1, $s) : null];
+    }
+    // наш расчёт — как приложение (hsprCalib): тариф — медиана, k — Σ(витрата − різниця) / Σ різниця за последние 8 месяцев, абонплата — последняя
+    $tv = array_values(array_filter($tar, fn($v) => $v > 300 && $v < 10000)); sort($tv); $tm = $tv ? $tv[intdiv(count($tv), 2)] : null;
+    $hr = array_slice(array_values(array_filter($rows, fn($r) => $nn($r, 'diff') > 0 && $nn($r, 'flat') !== null && $nn($r, 'flat') >= $nn($r, 'diff'))), -8);
+    $sd = array_sum(array_map(fn($r) => $nn($r, 'diff'), $hr)); $sl = array_sum(array_map(fn($r) => $nn($r, 'flat') - $nn($r, 'diff'), $hr));
+    $k = $sd > 0 && count($hr) >= 2 ? $sl / $sd : 0.0; $ab = null; foreach ($rows as $r) if ($nn($r, 'abon') > 0) $ab = $nn($r, 'abon');
+    $calc = [];
+    if ($tm) foreach ($rows as $r) { $d = $nn($r, 'diff'); $s = $sum($r); if ($d !== null && $d >= 0 && $s > 0) $calc[$r['ym']] = $pc($d * (1 + $k) * $tm + ($ab ?? 0), $s); }
+    $ce = array_map('abs', array_filter($calc, fn($v) => $v !== null));
+    return ['formula' => $fo, 'tariff' => $tar, 'abon' => array_values(array_unique(array_filter(array_map(fn($r) => $nn($r, 'abon'), $rows), fn($v) => $v !== null))),
+      'lgota' => count(array_filter($rows, fn($r) => $nn($r, 'lgota') > 0)), 'share' => $share, 'k' => round($k, 3), 'paid' => $paid,
+      'calc' => ['err' => $calc, 'max' => $ce ? max($ce) : null]];
+  }
 }
