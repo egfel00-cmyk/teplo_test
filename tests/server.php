@@ -1147,6 +1147,13 @@ ok('довідник: усі громади й пункти є в КАТОТТГ
     $bs['kinds']['water']['supply'] === 46.92 && $bs['kinds']['water']['drain'] === 27.38 && $ss['kinds']['water']['drain'] === 22.8 && !empty($ss['kinds']['water']['check'])
     && ($td['place']['r'] ?? '') === 'od' && $td['kinds']['water']['supply'] === 46.44 && ($vs['place']['r'] ?? '') === 'kv' && $vs['kinds']['water']['supply'] === null
     && str_contains($vs['kinds']['heat']['org'] ?? '', 'Васильківтепломережа'), [$bs['kinds']['water'] ?? $bs, $td['place'] ?? $td, $vs['kinds'] ?? $vs]);
+  // 61-ша сесія
+  $nr = $v('Новый Раздол, ул. Шевченко 5'); $sk = $v('Сокаль, вул. Шептицького 1'); $bl = $v('Беляевка, ул. Горького 3'); $bg = $v('м. Болград, вул. Миру 1'); $iz = $v('Измаил, пр. Мира 2'); $yg = $v('Яготин, вул. Незалежності 1');
+  ok('громади 61-ї: Новий Розділ 47,8 / 37,9 (рос. «Новый Раздол»), Сокаль 34,25 / 52,94 з 01.09.2026, Біляївка 31,14 / 48,90 і телефони, Болград 36,04 / 34,18, Ізмаїл і Яготин — підприємство без тарифу',
+    ($nr['place']['name'] ?? '') === 'Новий Розділ' && $nr['kinds']['water']['supply'] === 47.8 && $nr['kinds']['water']['drain'] === 37.9 && $sk['kinds']['water']['drain'] === 52.94 && $sk['kinds']['water']['from'] === '2026-09-01'
+    && ($bl['place']['r'] ?? '') === 'od' && $bl['kinds']['water']['supply'] === 31.14 && count($bl['kinds']['water']['phones'] ?? []) === 2 && $bg['kinds']['water']['drain'] === 34.18
+    && str_contains($iz['kinds']['water']['org'] ?? '', 'Ізмаїльське') && $iz['kinds']['water']['supply'] === null && ($yg['place']['r'] ?? '') === 'kv' && str_contains($yg['kinds']['water']['org'] ?? '', 'Яготинське'),
+    [$nr['place'] ?? $nr, $bl['kinds']['water'] ?? $bl, $iz['kinds']['water'] ?? $iz]);
   $pd2 = $v('Южный, Кирова 5'); $mk = $v('Миколаївка, Київська обл.');
   ok('однакові назви в областях: без області — Харківщина першою, Одещина в «Не той?»; «Миколаївка, Київська обл.» — лише дві київські',
     ($pd2['place']['r'] ?? '') === 'kh' && in_array('od', array_column($pd2['alts'] ?? [], 'r'), true) && !$mk['found'] && count($mk['candidates']) === 2 && $mk['candidates'][0]['oblast'] === 'Київська', [$pd2['alts'] ?? $pd2, $mk['candidates'] ?? $mk]);
@@ -1161,8 +1168,8 @@ ok('довідник: усі громади й пункти є в КАТОТТГ
   ok('довідники областей: громади й пункти є в КАТОТТГ, у тарифів є src і src_ru, посилання — https', !$bad2 && !$bad, array_merge($bad2, $bad)); }
 // правки довідника з /admin (ProvEdit): власник править сам — поверх репозиторію, з журналом і відкатом
 { $r0 = $boss->req('GET', '/api/admin/prov'); $rk = $boss->req('GET', '/api/admin/prov/region', null, ['QUERY_STRING' => 'r=kv']);
-  $brv = array_values(array_filter($rk->body['hromadas'] ?? [], fn($x) => $x['key'] === 'Кагарлицька'))[0] ?? null;
-  ok('/admin «Справочник»: регіони з лічильниками громад, Київщина — 69 громад, Кагарлицька без води; без входу — 401',
+  $brv = array_values(array_filter($rk->body['hromadas'] ?? [], fn($x) => $x['key'] === 'Ржищівська'))[0] ?? null;
+  ok('/admin «Справочник»: регіони з лічильниками громад, Київщина — 69 громад, Ржищівська без води; без входу — 401',
     $r0->status === 200 && count($r0->body['regions']) === 5 && $rk->status === 200 && count($rk->body['hromadas']) === 69 && $brv && $brv['water'] === null && $anon->req('GET', '/api/admin/prov')->status === 401, [$r0->status, $rk->status, $brv]);
   $sv = $boss->req('POST', '/api/admin/prov/save', ['r' => 'kv', 'scope' => 'hromadas', 'key' => 'Броварська', 'kind' => 'water',
     'value' => ['org' => 'КП «Броваритепловодоенергія»', 'supply' => '40,5', 'drain' => '', 'phones' => ['(04594) 1-23-45; диспетчер'], 'cab' => 'javascript:alert(1)', 'site' => 'https://example.ua/pokaz', 'robot' => 'hack', 'x' => 1, 'check' => true, 'src' => 'тест', 'src_ru' => 'тест']]);
