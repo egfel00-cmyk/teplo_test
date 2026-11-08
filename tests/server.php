@@ -1149,10 +1149,10 @@ ok('довідник: усі громади й пункти є в КАТОТТГ
     && str_contains($vs['kinds']['heat']['org'] ?? '', 'Васильківтепломережа'), [$bs['kinds']['water'] ?? $bs, $td['place'] ?? $td, $vs['kinds'] ?? $vs]);
   // 61-ша сесія
   $nr = $v('Новый Раздол, ул. Шевченко 5'); $sk = $v('Сокаль, вул. Шептицького 1'); $bl = $v('Беляевка, ул. Горького 3'); $bg = $v('м. Болград, вул. Миру 1'); $iz = $v('Измаил, пр. Мира 2'); $yg = $v('Яготин, вул. Незалежності 1');
-  ok('громади 61-ї: Новий Розділ 47,8 / 37,9 (рос. «Новый Раздол»), Сокаль 34,25 / 52,94 з 01.08.2026 (№ 190), Біляївка 31,14 / 48,90 і телефони, Болград 36,04 / 34,18, Ізмаїл і Яготин — підприємство без тарифу',
+  ok('громади 61-ї: Новий Розділ 47,8 / 37,9 (рос. «Новый Раздол»), Сокаль 34,25 / 52,94 з 01.08.2026 (№ 190), Біляївка 31,14 / 48,90 і телефони, Болград 36,04 / 34,18, Ізмаїл і Яготин — підприємство (Ізмаїл з 73-ї — з тарифом)',
     ($nr['place']['name'] ?? '') === 'Новий Розділ' && $nr['kinds']['water']['supply'] === 47.8 && $nr['kinds']['water']['drain'] === 37.9 && $sk['kinds']['water']['drain'] === 52.94 && $sk['kinds']['water']['from'] === '2026-08-01'
     && ($bl['place']['r'] ?? '') === 'od' && $bl['kinds']['water']['supply'] === 31.14 && count($bl['kinds']['water']['phones'] ?? []) === 2 && $bg['kinds']['water']['drain'] === 34.18
-    && str_contains($iz['kinds']['water']['org'] ?? '', 'Ізмаїльське') && $iz['kinds']['water']['supply'] === null && ($yg['place']['r'] ?? '') === 'kv' && str_contains($yg['kinds']['water']['org'] ?? '', 'Яготинське'),
+    && str_contains($iz['kinds']['water']['org'] ?? '', 'Ізмаїльське') && ($yg['place']['r'] ?? '') === 'kv' && str_contains($yg['kinds']['water']['org'] ?? '', 'Яготинське'),
     [$nr['place'] ?? $nr, $bl['kinds']['water'] ?? $bl, $iz['kinds']['water'] ?? $iz]);
   // 62-га сесія
   $rz = $v('Ржищев, ул. Франко 3'); $tt = $v('Тетіїв, вул. Соборна 1'); $rd = $v('Раздельная, ул. Шевченко 81'); $nc = $v('Нові Чобручі, вул. Миру 1');
@@ -1166,10 +1166,10 @@ ok('довідник: усі громади й пункти є в КАТОТТГ
   // 63-тя сесія
   $chr = $v('Черноморск, ул. 1 Мая 1'); $vy = $v('Вилкове, вул. Дунайська 1'); $myk = $v('Миколаїв, Львівська обл., вул. Шевченка 1'); $bib = $v('Бібрка, вул. Шевченка 1');
   $nkl = $v('Новий Калинів, вул. Шевченка 1'); $blz = $v('Белз, вул. Шевченка 1'); $tur = $v('Турка, вул. Шевченка 1'); $sqv = $v('Сквира, вул. Богачевського 28'); $rvr = $v('Рава-Руська, вул. Шевченка 1');
-  ok('громади 63-ї: Чорноморськ — тепло КП «ЧТЕ» без ціни, вода — кабінет, бот і 5 телефонів; Вилкове — КП без тарифу; Миколаїв (Львівщина) 33,84 / 34,64; Бібрка 53,28 / 45,96; Новий Калинів — вода й тепло; Белз 30 без стоків; Турка — постачальник з платіжки; Сквира 31,92 / 47,86; Рава-Руська 34,5 / 43,5',
+  ok('громади 63-ї: Чорноморськ — тепло КП «ЧТЕ» без ціни, вода — кабінет, бот і 5 телефонів; Вилкове — КП (з 73-ї — «Зміїний» з тарифом); Миколаїв (Львівщина) 33,84 / 34,64; Бібрка 53,28 / 45,96; Новий Калинів — вода й тепло; Белз 30 без стоків; Турка — постачальник з платіжки; Сквира 31,92 / 47,86; Рава-Руська 34,5 / 43,5',
     str_contains($chr['kinds']['heat']['org'] ?? '', 'Чорноморськтеплоенерго') && $chr['kinds']['heat']['price'] === null && !empty($chr['kinds']['heat']['check'])
     && ($chr['kinds']['water']['cab'] ?? '') === 'https://cvk.od.ua/' && str_contains($chr['kinds']['water']['bot'] ?? '', 'cvk_od_bot') && count($chr['kinds']['water']['phones'] ?? []) === 5
-    && ($vy['place']['r'] ?? '') === 'od' && str_contains($vy['kinds']['water']['org'] ?? '', 'Вилківський') && $vy['kinds']['water']['supply'] === null
+    && ($vy['place']['r'] ?? '') === 'od' && ($vy['kinds']['water']['org'] ?? '') !== ''
     && ($myk['place']['r'] ?? '') === 'lv' && $myk['kinds']['water']['supply'] === 33.84 && $myk['kinds']['water']['drain'] === 34.64
     && $bib['kinds']['water']['supply'] === 53.28 && $bib['kinds']['water']['drain'] === 45.96 && $nkl['kinds']['water']['supply'] === 25.98 && str_contains($nkl['kinds']['heat']['org'] ?? '', 'Новокалинівське')
     && $blz['kinds']['water']['supply'] === 30.0 && $blz['kinds']['water']['drain'] === null && ($tur['place']['r'] ?? '') === 'lv' && $tur['kinds']['water']['org'] === null && !empty($tur['kinds']['water']['src'])
@@ -1304,7 +1304,7 @@ ok('довідник: усі громади й пункти є в КАТОТТГ
   $prs = $v('Перше Травня, Київська обл.'); $ztk = $v('Затока, вул. Приморська 5'); $sum = $v('Сумське, Шевченківська громада');
   $ptrN = array_column($ptr['candidates'] ?? [], 'n');
   ok('71-ша: Тарутине → Бессарабське (23,00 / 30,00, № 299), Березине → Соборне, Червоне (Львівщина) → Галицьке; «Петрівка, Березівський р-н» — спершу нинішні Петрівки, Буялик (стара Петрівка) — останнім; Перше Травня (Київщина) — 4 перейменовані на вибір; Затока — КП «Бугаз» без тарифу; Сумське — тепло без постачальника',
-    ($trt['place']['name'] ?? '') === 'Бессарабське' && ($trt['how'] ?? '') === 'old' && $trt['kinds']['water']['supply'] === 23.0 && $trt['kinds']['water']['drain'] === 30.0 && !empty($trt['kinds']['water']['check'])
+    ($trt['place']['name'] ?? '') === 'Бессарабське' && ($trt['how'] ?? '') === 'old' && $trt['kinds']['water']['supply'] === 23.0 && $trt['kinds']['water']['drain'] === 30.0 && str_contains($trt['kinds']['water']['src'] ?? '', '№ 299')
     && ($brz['place']['name'] ?? '') === 'Соборне' && ($chv['place']['name'] ?? '') === 'Галицьке' && ($chv['place']['district'] ?? '') === 'Золочівський'
     && count($ptrN) >= 3 && $ptrN[0] === 'Петрівка' && end($ptrN) === 'Буялик' && count($prs['candidates'] ?? []) === 4
     && str_contains($ztk['kinds']['water']['org'] ?? '', 'Бугаз') && $ztk['kinds']['water']['supply'] === null
@@ -1322,12 +1322,33 @@ ok('довідник: усі громади й пункти є в КАТОТТГ
     && ($srg['place']['name'] ?? '') === 'Сергіївка' && $srg['kinds']['water']['supply'] === 15.0 && $srg['kinds']['water']['drain'] === 12.0 && str_contains($srg['kinds']['water']['note'] ?? '', '3,6 м³')
     && str_contains($ppz['kinds']['water']['org'] ?? '', 'Курорт-Сервіс') && $ppz['kinds']['water']['supply'] === null
     && str_contains($okn['kinds']['water']['org'] ?? '', 'Красноокнянський') && $okn['kinds']['water']['supply'] === null
-    && ($zhr['place']['hromada'] ?? '') === 'Захарівська' && $zhr['kinds']['water']['supply'] === null && !empty($zhr['kinds']['water']['phones'])
-    && str_contains($vmh['kinds']['water']['org'] ?? '', 'Злагода') && $vmh['kinds']['water']['supply'] === null && str_contains($vmh['kinds']['water']['note'] ?? '', '43,71')
+    && ($zhr['place']['hromada'] ?? '') === 'Захарівська' && !empty($zhr['kinds']['water']['phones'])
+    && str_contains($vmh['kinds']['water']['org'] ?? '', 'Злагода') && str_contains($vmh['kinds']['water']['note'] ?? '', '43,71')
     && str_contains($srt['kinds']['water']['org'] ?? '', 'Сарата Комунсервіс') && $srt['kinds']['water']['supply'] === null && ($smh['kinds']['water']['org'] ?? null) === null
-    && ($rvn['place']['hromada'] ?? '') === 'Тарутинська' && ($rvn['kinds']['water']['org'] ?? null) === null && $rvn['kinds']['water']['supply'] === 23.0 && $rvn['kinds']['water']['drain'] === null
+    && ($rvn['place']['hromada'] ?? '') === 'Тарутинська' && $rvn['kinds']['water']['supply'] === 23.0 && $rvn['kinds']['water']['drain'] === null
     && $trt2['kinds']['water']['supply'] === 23.0 && $trt2['kinds']['water']['drain'] === 30.0 && str_contains($trt2['kinds']['water']['src'] ?? '', '28.12.2023'),
     [$lbs['kinds']['water'] ?? $lbs, $shb2['kinds']['water'] ?? $shb2, $srg['place'] ?? $srg, $zhr['place'] ?? $zhr, $rvn['kinds']['water'] ?? $rvn]);
+  // 73-тя: Велика Михайлівка — 43,71 не прийнято (93-тя сесія), діє 21,00; Захарівка — 52,10 з 01.12.2024 (№ 2693-VIII);
+  // Тарутинська — КП по селах (Соборне, Підгірне, Петрівськ, Серпневе, Рівне, Вільне — 23,00, продовжено на 2026), решта сіл — з платіжки;
+  // Ізмаїл 34,30 / 42,30 (№ 431), Балта 65,64 / 71,26 (№ 92), Вилкове — КП «Зміїний» 38,40 / 43,33, Приморське 42,00; Бородінська 25,00; Лиманська (Лиманське) — 3 КП по селах
+  $vmh3 = $v('Велика Михайлівка, вул. Центральна 1'); $zhr3 = $v('Захарівка, Одеська обл.'); $sbr = $v('Березине, Одеська обл.'); $pdg = $v('Підгірне, Тарутинська громада');
+  $vln = $v('Вільне, Тарутинська громада'); $kls = $v('Калачівка, Тарутинська громада'); $izm = $v('Измаил, ул. Покровская 1'); $blt = $v('Балта, вул. Шевченка 1');
+  $vlk = $v('Вилкове, вул. Шевченка 1'); $prm = $v('Приморське, Вилківська громада'); $dsn = $v('Десантне, Вилківська громада'); $bdj = $v('Бородино, Одесская обл.');
+  $kch = $v('Кучурган, Лиманська громада');
+  ok('73-тя: Велика Михайлівка 21,00 (43,71 не прийнято); Захарівка 52,10; Березине → Соборне — «Побутовець» 23,00; Підгірне — «Джерело» з телефоном; Вільне — «Сількомунгосп»; Калачівка — з платіжки; Ізмаїл (рос.) 34,30 / 42,30; Балта 65,64 / 71,26; Вилкове — «Зміїний» 38,40 / 43,33; Приморське 42,00, Десантне — з платіжки; Бородино (рос.) → Буджак 25,00; Кучурган — КП «Кучурганський водограй» без ціни',
+    $vmh3['kinds']['water']['supply'] === 21.0 && str_contains($vmh3['kinds']['water']['src'] ?? '', 'НЕ ПРИЙНЯТО')
+    && $zhr3['kinds']['water']['supply'] === 52.1 && ($zhr3['kinds']['water']['from'] ?? '') === '2024-12-01' && str_contains($zhr3['kinds']['water']['src'] ?? '', '2693-VIII')
+    && ($sbr['place']['name'] ?? '') === 'Соборне' && str_contains($sbr['kinds']['water']['org'] ?? '', 'Побутовець') && $sbr['kinds']['water']['supply'] === 23.0 && str_contains($sbr['kinds']['water']['src'] ?? '', '1816')
+    && str_contains($pdg['kinds']['water']['org'] ?? '', 'Джерело') && !empty($pdg['kinds']['water']['phones']) && str_contains($vln['kinds']['water']['org'] ?? '', 'Сількомунгосп')
+    && ($kls['place']['hromada'] ?? '') === 'Тарутинська' && ($kls['kinds']['water']['org'] ?? null) === null && $kls['kinds']['water']['supply'] === null
+    && ($izm['place']['name'] ?? '') === 'Ізмаїл' && $izm['kinds']['water']['supply'] === 34.3 && $izm['kinds']['water']['drain'] === 42.3
+    && $blt['kinds']['water']['supply'] === 65.64 && $blt['kinds']['water']['drain'] === 71.26 && ($blt['kinds']['water']['from'] ?? '') === '2024-06-01'
+    && str_contains($vlk['kinds']['water']['org'] ?? '', 'Зміїний') && $vlk['kinds']['water']['supply'] === 38.4 && $vlk['kinds']['water']['drain'] === 43.33
+    && str_contains($prm['kinds']['water']['org'] ?? '', 'Приморське') && $prm['kinds']['water']['supply'] === 42.0 && $prm['kinds']['water']['drain'] === null
+    && ($dsn['kinds']['water']['org'] ?? null) === null && $dsn['kinds']['water']['supply'] === null
+    && ($bdj['place']['name'] ?? '') === 'Буджак' && $bdj['kinds']['water']['supply'] === 25.0
+    && str_contains($kch['kinds']['water']['org'] ?? '', 'Кучурганський') && $kch['kinds']['water']['supply'] === null,
+    [$vmh3['kinds']['water']['supply'] ?? $vmh3, $zhr3['kinds']['water']['supply'] ?? $zhr3, $sbr['place'] ?? $sbr, $kls['place'] ?? $kls, $izm['place'] ?? $izm, $blt['kinds']['water'] ?? $blt, $vlk['kinds']['water']['org'] ?? $vlk, $dsn['place'] ?? $dsn, $bdj['place'] ?? $bdj, $kch['place'] ?? $kch]);
   // 65-та сесія: Львівщина — сайти громад (gromada.org.ua: /sitemap/, рішення на rada.info)
   $pus = $v('Пустомити, вул. Шевченка 1'); $mur = $v('Сороки-Львівські, вул. Польова 1'); $kul = $v('Куликов, ул. Шевченко 1'); $skl = $v('Сокільники, вул. Стрийська 1');
   $prs = $v('Поршна, Солонківська громада'); $sln = $v('Солонка, вул. Шевченка 1'); $shc = $v('Щирець, вул. Шевченка 1');
