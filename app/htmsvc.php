@@ -718,9 +718,79 @@ final class HtmSpr {
   public static function summary(): ?array {
     $j = json_decode((string)@file_get_contents(self::dir() . '/_last.json'), true); if (!is_array($j)) return null;
     // сверка — по последней сохранённой довідке (та, о которой _last): без людей и без личных сумм и Гкал
-    $nf = null; foreach ((glob(self::dir() . '/*_*.json') ?: []) as $f) if (basename($f) !== '_last.json' && ($nf === null || filemtime($f) > filemtime($nf))) $nf = $f;
+    $nf = null; foreach ((glob(self::dir() . '/*_*.json') ?: []) as $f) if (basename($f)[0] !== '_' && ($nf === null || filemtime($f) > filemtime($nf))) $nf = $f;
     $fj = $nf ? (json_decode((string)@file_get_contents($nf), true) ?: []) : []; $rows = $fj['rows'] ?? [];
-    return ['at' => gmdate('c', (int)$j['at'])] + array_diff_key($j, ['at' => 1]) + ($rows ? ['check' => self::check($rows, (array)($fj['own'] ?? []))] : []);
+    $ck = $rows ? self::check($rows, (array)($fj['own'] ?? [])) : null;
+    // квитанції тієї ж квартири (копії рахунків з кабінету) против довідки — «Разом» сходиться з рахунком? (лише відсотки й мітки рядків)
+    if ($ck !== null && preg_match('/^(\d+)_([A-Za-z0-9_-]+)\.json$/', basename((string)$nf), $m)) { try { $bc = self::billsOf((int)$m[1], $m[2], $rows); if ($bc) $ck['bills'] = $bc; } catch (Throwable $e) {} }
+    return ['at' => gmdate('c', (int)$j['at'])] + array_diff_key($j, ['at' => 1]) + ($ck !== null ? ['check' => $ck] : []);
+  }
+  /** Квитанція ХТМ (копія рахунку, Docs src htm) → рядки таблиці [мітка, число]; цифри в мітці → #. Живий рахунок 07.11: «-ПЕРЕПЛАТА/+БОРГ…»,
+   *  «Нараховано за послугу, грн», «Нараховано плати за абонентське обслуговування, грн», «ДО СПЛАТИ». */
+  public static function billLines(string $html): array {
+    if (trim($html) === '') return [];
+    $x = CabWeb::dom($html); $out = [];
+    foreach ($x->query('//tr') as $tr) {
+      $tds = $x->query('./td|./th', $tr); if ($tds->length < 2) continue;
+      $lab = CabWeb::sp((string)$tds->item(0)->textContent); $v = str_replace([' ', "\u{a0}", ','], ['', '', '.'], CabWeb::sp((string)$tds->item($tds->length - 1)->textContent));
+      if ($lab === '' || !preg_match('/^[-+]?\d{1,9}(\.\d{1,3})?$/', $v)) continue;
+      $out[] = [mb_substr((string)preg_replace('/\d/u', '#', $lab), 0, 80), (float)$v];
+      if (count($out) >= 30) break;
+    }
+    return $out;
+  }
+  /** Рядки квитанції → debt (переплата «−» / борг «+»), cost (нараховано за послугу), abon (абонентське), lgota (пільга, субсидія), recalc (перерахунок), pay (до сплати). */
+  public static function billKeys(array $lines): array {
+    $k = [];
+    foreach ($lines as [$l, $v]) {
+      $key = preg_match('/до\s+сплати|до\s+оплати/iu', $l) ? 'pay' : (preg_match('/переплат|борг/iu', $l) ? 'debt' : (preg_match('/абонент/iu', $l) ? 'abon'
+        : (preg_match('/пільг|субсид/iu', $l) ? 'lgota' : (preg_match('/перерахун|коригув/iu', $l) ? 'recalc' : (preg_match('/нарахован/iu', $l) ? 'cost' : null)))));
+      if ($key !== null && !isset($k[$key])) $k[$key] = $v;
+    }
+    return $k;
+  }
+  /** Звірка квитанцій з довідкою: $bills — [ym => billKeys]. Для кожного місяця квитанції — рядок довідки того ж місяця (same), попереднього (prev),
+   *  наступного (next): нараховано (cost) і абонплата квитанції против довідки, «до сплати − борг» против «Разом» довідки (нараховано + абонплата − пільга).
+   *  → {of, months, err: {ym: {al: {cost, abon, pay}}}, ok: {al: місяців, де нараховано збіглося до 0,5 %}, best} — лише відсотки. */
+  public static function billCheck(array $rows, array $bills): array {
+    $nn = fn($r, $k) => isset($r[$k]) && is_numeric($r[$k]) ? (float)$r[$k] : null;
+    $pc = fn(float $a, float $b) => abs($b) < 0.005 ? (abs($a) < 0.005 ? 0.0 : null) : round(($a - $b) / abs($b) * 100, 2) + 0.0;
+    $by = []; foreach ($rows as $r) if (isset($r['ym'])) $by[(string)$r['ym']] = $r;
+    ksort($bills); $err = []; $okN = ['same' => 0, 'prev' => 0, 'next' => 0]; $of = ['same' => 0, 'prev' => 0, 'next' => 0];
+    foreach ($bills as $ym => $b) {
+      foreach (['same' => 0, 'prev' => -1, 'next' => 1] as $al => $sh) {
+        $m = date('Y-m', strtotime($ym . '-01 ' . ($sh < 0 ? '-1' : '+' . $sh) . ' month')); $r = $by[$m] ?? null; if (!$r) continue;
+        $e = [];
+        if (isset($b['cost']) && $nn($r, 'cost') !== null) $e['cost'] = $pc((float)$b['cost'], $nn($r, 'cost'));
+        if (isset($b['abon']) && $nn($r, 'abon') !== null) $e['abon'] = $pc((float)$b['abon'], $nn($r, 'abon'));
+        $tot = ($nn($r, 'cost') ?? 0) + ($nn($r, 'abon') ?? 0) - max(0, $nn($r, 'lgota') ?? 0);
+        if (isset($b['pay']) && $tot > 0) $e['pay'] = $pc((float)$b['pay'] - (float)($b['debt'] ?? 0), $tot);
+        if (!$e) continue;
+        $err[$ym][$al] = $e;
+        if (isset($e['cost'])) { $of[$al]++; if ($e['cost'] !== null && abs($e['cost']) <= 0.5) $okN[$al]++; }
+      }
+    }
+    $best = null; foreach ($okN as $al => $n) if ($n > 0 && ($best === null || $n > $okN[$best])) $best = $al;
+    return ['of' => count($bills), 'months' => array_keys($bills), 'err' => (object)$err, 'ok' => $okN, 'cmp' => $of, 'best' => $best];
+  }
+  /** Квитанції людини по квартирі (Docs src htm, HTML) → billCheck з довідкою + мітки рядків останнього рахунку (як виглядає живий рахунок).
+   *  Кеш — cache/htm_spr/_bills.json за списком документів і часом довідки, щоб /api/health не розбирав HTML щоразу. */
+  public static function billsOf(int $uid, string $place, array $rows): ?array {
+    $ds = Db::q("SELECT id, file, ym, mime FROM docs WHERE user_id = ? AND place = ? AND src = 'htm' AND ym IS NOT NULL ORDER BY created_at DESC LIMIT 24", [$uid, $place])->fetchAll();
+    if (!$ds) return null;
+    $key = sha1(implode(',', array_column($ds, 'id')) . '|' . json_encode($rows));
+    $cf = self::dir() . '/_bills.json'; $c = json_decode((string)@file_get_contents($cf), true);
+    if (is_array($c) && ($c['key'] ?? '') === $key && isset($c['out'])) return $c['out'];
+    $bills = []; $lines = null; $pdf = 0;
+    foreach ($ds as $d) {
+      if ((string)$d['mime'] !== 'text/html') { $pdf++; continue; }
+      $ls = self::billLines((string)@file_get_contents(Docs::root() . '/' . $uid . '/' . basename((string)$d['file'])));
+      if ($lines === null) $lines = array_column($ls, 0);
+      $k = self::billKeys($ls); if ($k && !isset($bills[(string)$d['ym']])) $bills[(string)$d['ym']] = $k;
+    }
+    $out = self::billCheck($rows, $bills) + ['lines' => $lines ?? [], 'pdf' => $pdf];
+    @file_put_contents($cf, json_encode(['key' => $key, 'out' => $out], JSON_UNESCAPED_UNICODE), LOCK_EX);
+    return $out;
   }
   /** Сверка довідки ХТМ (владелец 08.11: «цены в платежках больше — чтобы совпадало»), без личных чисел — только доли и проценты,
    *  плюс публичные тарифы (грн/Гкал, абонплата). formula — витрата по квартирі = різниця + втрати × S_кв / S_буд (Методика № 315);

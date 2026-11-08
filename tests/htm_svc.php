@@ -216,6 +216,10 @@ ok('…сверка довідки в /api/health → htmSpr.check: витрат
   ($ck['formula']['of'] ?? 0) === 6 && ($ck['formula']['ok'] ?? 0) === 6 && array_values(array_unique($ck['tariff'] ?? [])) === [1539.5] && ($ck['abon'] ?? []) === [29.4]
   && ($ck['paid']['of'] ?? 0) === 5 && ($ck['paid']['same'] ?? 9) === 0 && ($ck['calc']['max'] ?? 99) < 15 && count($ck['calc']['err'] ?? []) === 6 && ($ck['k'] ?? 0) > 1.9
   && array_key_first($ck['hyp'] ?? []) === 'diff+loss*s' && ($ck['curPrev']['ok'] ?? 0) === 6 && ($ck['units'] ?? []) === ['Гкал'] && isset($ck['toFlat']['2026-01']['diff']), $ck);
+$cb = $ck['bills'] ?? [];
+ok('…квитанції тієї ж квартири против довідки (check.bills): рахунок за вересень, мітки рядків рахунку (борг, нараховано, абонплата, до сплати); сусідніх місяців у довідці нема — порівнювати нема з чим; без сум',
+  ($cb['of'] ?? 0) === 1 && ($cb['months'] ?? []) === ['2026-09'] && count($cb['lines'] ?? []) === 4 && preg_match('/ПЕРЕПЛАТА.*Нараховано за послугу.*абонентське.*ДО СПЛАТИ/u', implode(' | ', $cb['lines'] ?? []))
+  && ($cb['ok'] ?? []) === ['same' => 0, 'prev' => 0, 'next' => 0] && !preg_match('/245\.3|1000000061|ТЕСТОВИЙ/u', $spj), $cb);
 $ow = $spm[0]['own'] ?? null;
 ok('…и журнал свого лічильника («Всі записи») — к довідке этого человека (GET /api/htm/spr → own: дата, Гкал, статус); в /api/health → check.own — только счёт и % (без показаний)',
   is_array($ow) && count($ow) >= 1 && !array_filter($ow, fn($r) => !preg_match('/^\d{4}-\d\d-\d\d$/', $r['date']) || !is_float($r['energy'])) && ($ck['own']['n'] ?? 0) === count($ow)

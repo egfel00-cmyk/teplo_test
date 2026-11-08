@@ -121,7 +121,18 @@ $fC = HtmSpr::ownFit($mkRows(fn($e, $hs) => $e * 1.2), $jB);
 ok('…а если ХТМ берёт процент от свого тепла — «own» (k = 20 %), без чисел людей', ($fC['model']['basis'] ?? '') === 'own' && ($fC['model']['err'] ?? 99) < 0.1
   && !preg_match('/energy|date|5700|56\.6/', json_encode($fC)), $fC);
 stand('act=set&scenario=ok&today=2026-11-10&robot_delay=0&spr=');
-$bad = array_filter(array_column(array_slice($h->w->steps, 0), 1), fn($x) => preg_match('~logout|/add|remove|settings~', $x));
+// квитанція (копія рахунку, як живий 07.11) против довідки: нараховано, абонплата, «до сплати − борг» = «Разом»; рахунок за інший місяць — видно зсув
+$bh = fn($debt, $cost, $ab, $pay) => '<html><body><p>Особовий рахунок 1000000061, ТЕСТОВИЙ</p><table class="t"><tr><td>-ПЕРЕПЛАТА/+БОРГ за послугу з постачання: теплової енергії</td><td>' . $debt . '</td></tr>'
+  . '<tr><td>Нараховано за послугу, грн</td><td>' . $cost . '</td></tr><tr><td>Нараховано плати за абонентське обслуговування, грн</td><td>' . $ab . '</td></tr><tr class="sum"><td><b>ДО СПЛАТИ</b></td><td><b>' . $pay . '</b></td></tr>'
+  . '<tr><td>Рахунок № 1000000061</td><td>1000000061</td></tr></table></body></html>';
+$bl1 = HtmSpr::billLines($bh('100.00', '3 783,51', '29.40', '3912.91')); $bk1 = HtmSpr::billKeys($bl1);
+$sr = [['ym' => '2026-01', 'cost' => 3783.51, 'abon' => 29.4, 'lgota' => 0], ['ym' => '2026-02', 'cost' => 3000.0, 'abon' => 29.4]];
+$bc = HtmSpr::billCheck($sr, ['2026-01' => $bk1, '2026-03' => HtmSpr::billKeys(HtmSpr::billLines($bh('-50', '3000.00', '29.40', '2979.40')))]);
+ok('квитанція → рядки (мітки без цифр) і ключі: борг, нараховано, абонплата, до сплати; против довідки — січень збігся (0 %), березень = довідка лютого (prev), лише відсотки',
+  ($bk1['debt'] ?? null) === 100.0 && ($bk1['cost'] ?? null) === 3783.51 && ($bk1['abon'] ?? null) === 29.4 && ($bk1['pay'] ?? null) === 3912.91 && !preg_match('/\d/u', implode(' ', array_column($bl1, 0)))
+  && ($bc['err']->{'2026-01'}['same'] ?? null) === ['cost' => 0.0, 'abon' => 0.0, 'pay' => 0.0] && ($bc['err']->{'2026-03'}['prev']['cost'] ?? null) === 0.0 && ($bc['err']->{'2026-03'}['prev']['pay'] ?? null) === 0.0
+  && $bc['ok'] === ['same' => 1, 'prev' => 1, 'next' => 0] && $bc['months'] === ['2026-01', '2026-03'] && !preg_match('/3783|3912|ТЕСТОВИЙ/u', json_encode($bc, JSON_UNESCAPED_UNICODE)), [$bl1, $bk1, $bc]);
+$bad =array_filter(array_column(array_slice($h->w->steps, 0), 1), fn($x) => preg_match('~logout|/add|remove|settings~', $x));
 ok('…только GET и не трогает add/remove/settings', !array_filter($h->w->steps, fn($s) => $s[0] !== 'GET' && !str_contains($s[1], '/cabinet/login')) && !$bad, $h->w->steps);
 
 // живой кабинет 06.11 22:14: новое соединение на /cabinet/list не установилось за 6 с → «сайт не відповідає», хотя вход прошёл
