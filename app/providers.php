@@ -185,8 +185,12 @@ final class Providers {
         $kk = implode(' ', array_slice($words, 0, $len)); if (!isset($ix['by'][$kk])) continue;
         if ($len < count($words) && !$cd['strong'] && $cd['fuzzy']) { /* перший шматок «Харків Сумська» — теж ок */ }
         $is = $filter($ix['by'][$kk], $cd['t']);
-        $old = true; foreach ($is as $i) if (self::nk((string)$k['settlements'][$i]['n']) === $kk) $old = false;
-        return $pick($is, $old ? 'old' : 'name', $cd['t']);
+        // нинішня назва важливіша за стару: «Петрівка» — це села Петрівка, а не селище Буялик (Петрівка до 2024, ВР № 3984-IX); перейменовані — в кінець «Не той?»/«Уточніть»
+        $cur = array_values(array_filter($is, fn($i) => self::nk((string)$k['settlements'][$i]['n']) === $kk));
+        if (!$cur) return $pick($is, 'old', $cd['t']);
+        $res = $pick($cur, 'name', $cd['t']); $os = array_map([self::class, 'sp'], array_values(array_diff($is, $cur)));
+        if ($os) { if (isset($res['alts'])) $res['alts'] = array_merge($res['alts'], $os); else $res['candidates'] = array_slice(array_merge($res['candidates'], $os), 0, 20); }
+        return $res;
       }
     }
     // 2) описка — лише для назв із «м.», «с.», «смт» і першого шматка адреси
@@ -233,7 +237,8 @@ final class Providers {
       if ($kk === $key) $sc = 0; elseif (str_starts_with($kk, $key) || ($Lp >= 2 && str_starts_with($kk, $kp))) $sc = 1;
       elseif ($L >= 4 && self::lev($key, mb_substr($kk, 0, $L)) <= ($L >= 7 ? 2 : 1)) $sc = 2;
       else continue;
-      foreach ($is as $i) $hits[$i] = min($hits[$i] ?? 9, $sc);
+      // збіг за старою назвою (перейменовані 2024) — після нинішніх з тим самим рівнем збігу
+      foreach ($is as $i) $hits[$i] = min($hits[$i] ?? 99, $sc * 2 + (self::nk((string)$k['settlements'][$i]['n']) === $kk ? 0 : 1));
     }
     $rk = ['M' => 0, 'X' => 1, 'C' => 2]; $ro = array_flip(array_keys(self::REGIONS)); $S = $k['settlements'];
     $ids = array_keys($hits);
