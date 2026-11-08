@@ -120,6 +120,39 @@ final class Journal {
       Db::q('SELECT at, name, screen, props, user_id FROM events WHERE vid = ? AND sid = ? ORDER BY id LIMIT 1500', [$vid, $sid])->fetchAll());
     return ['vid' => $vid, 'sid' => $sid, 'label' => self::label($vid), 'tag' => self::internal()[$vid] ?? null, 'events' => $ev];
   }
+  /** /api/health → errs: ошибки у людей за $days дней одной сводкой — без людей (разобрать без /admin, когда браузер владельца недоступен).
+   *  JS-ошибки и ошибки API — по тексту/месту, сколько раз и у скольких браузеров, на каких экранах; тосты — только те, что видели ≥ 3 браузера
+   *  (системные сообщения, не личные); устройства браузеров с ошибками. Длинные числа замаскированы. Свои и тестовые не считаем. */
+  public static function errSummary(int $days = 3): array {
+    $from = Visits::day(time() - (max(1, $days) - 1) * 86400); $ex = self::exclSql();
+    $mask = fn($v) => preg_replace('/\d{5,}/', '#', (string)$v);
+    $pv = function ($props) { $p = json_decode((string)$props, true); return is_array($p) ? $p : []; };
+    $grp = []; $scr = []; $errVids = [];
+    foreach (Db::q("SELECT vid, name, screen, props, at FROM events WHERE day >= ? AND name IN ('js_error', 'api_error')$ex ORDER BY id", [$from])->fetchAll() as $e) {
+      $p = $pv($e['props']); $errVids[(string)$e['vid']] = true;
+      $k = $e['name'] === 'js_error' ? 'js|' . $mask($p['m'] ?? '') . '|' . ($p['at'] ?? '') : 'api|' . ($p['p'] ?? '') . '|' . ($p['c'] ?? '') . '|' . ($p['e'] ?? '');
+      $g = &$grp[$k]; $g = $g ?? ['n' => 0, 'vids' => [], 'last' => '', 'scr' => []];
+      $g['n']++; $g['vids'][(string)$e['vid']] = true; $g['last'] = (string)$e['at']; $sc = (string)($e['screen'] ?? ''); $g['scr'][$sc] = ($g['scr'][$sc] ?? 0) + 1; unset($g);
+    }
+    uasort($grp, fn($a, $b) => count($b['vids']) <=> count($a['vids']) ?: $b['n'] <=> $a['n']);
+    $js = []; $api = [];
+    foreach ($grp as $k => $g) {
+      arsort($g['scr']); $row = ['n' => $g['n'], 'vids' => count($g['vids']), 'last' => $g['last'], 'scr' => array_slice(array_keys($g['scr']), 0, 3)];
+      $f = explode('|', $k);
+      if ($f[0] === 'js' && count($js) < 15) $js[] = ['m' => $f[1], 'at' => $f[2]] + $row;
+      if ($f[0] === 'api' && count($api) < 15) $api[] = ['p' => $f[1], 'c' => (int)$f[2], 'e' => $f[3]] + $row;
+    }
+    $toasts = [];
+    foreach (Db::q("SELECT props, COUNT(*) AS n, COUNT(DISTINCT vid) AS v FROM events WHERE day >= ? AND name = 'toast'$ex GROUP BY props HAVING COUNT(DISTINCT vid) >= 3 ORDER BY v DESC LIMIT 15", [$from])->fetchAll() as $t)
+      $toasts[] = ['m' => $mask($pv($t['props'])['m'] ?? ''), 'n' => (int)$t['n'], 'vids' => (int)$t['v']];
+    $int = self::internal(); $dev = [];
+    if ($errVids) foreach (Db::q('SELECT vid, device, os, tg FROM visits WHERE day >= ?', [$from])->fetchAll() as $v) if (isset($errVids[(string)$v['vid']]) && !isset($int[(string)$v['vid']])) {
+      $k = $v['device'] . ' ' . $v['os'] . ((int)$v['tg'] ? ' tg' : ''); $dev[$k][(string)$v['vid']] = true; }
+    $dev = array_map('count', $dev); arsort($dev);
+    $people = 0; foreach (Db::q('SELECT DISTINCT vid FROM visits WHERE day >= ?', [$from])->fetchAll() as $v) if (!isset($int[(string)$v['vid']])) $people++;
+    $withEv = (int)(Db::one("SELECT COUNT(DISTINCT vid) AS n FROM events WHERE day >= ?$ex", [$from])['n'] ?? 0);
+    return ['from' => $from, 'people' => $people, 'journal' => $withEv, 'withErr' => count(array_diff_key($errVids, $int)), 'js' => $js, 'api' => $api, 'toasts' => $toasts, 'dev' => (object)$dev];
+  }
   public static function cleanup(?int $now = null): int {
     $d = Visits::day(($now ?? time()) - self::KEEP_DAYS * 86400);
     // отметки «открыли сайт» (visits) — до 12 месяцев: так написано в политике и в баннере cookie (07.11.2026)

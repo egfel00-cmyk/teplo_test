@@ -126,6 +126,8 @@ final class Api {
           'relay' => Relay::summary(),
           // бот: имя, последняя смена (с кого на кого, что перенесено — числа) и попытка сменить из чата; токенов нет
           'bot' => Telegram::health(),
+          // ошибки у людей за 3 дня: JS и API по месту, тосты (≥ 3 браузера), устройства — числа и тексты ошибок, без людей
+          'errs' => (function () { try { return Journal::errSummary(3); } catch (Throwable $e) { return ['err' => $e->getMessage()]; } })(),
           'indexnow' => class_exists('IndexNow', false) ? IndexNow::summary() : null];
       }
       case 'GET /api/me': if (!$user) throw new HttpError(401, 'unauthorized'); return ['user' => self::publicUser($user)];

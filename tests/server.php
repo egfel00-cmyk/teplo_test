@@ -1112,6 +1112,15 @@ ok('довідник: усі громади й пункти є в КАТОТТГ
   $je($anon, 'tgw12345hash', 'sessTG1', [['t' => 1000, 'n' => 'screen', 's' => 'tgWebAppData=query_id%3DAAH0XucP%26user%3D%257B%257D&tgWebAppVersion=8.0']]);
   $sc = Db::one("SELECT screen FROM events WHERE vid = 'tgw12345hash'")['screen'] ?? null;
   ok('журнал: экран «tgWebAppData=…» записан как home', $sc === 'home', $sc); }
+{ // /api/health → errs: ошибки у людей без людей — JS по месту, API по адресу, тосты только общие (≥ 3 браузера), числа замаскированы
+  $d = Visits::day(); $ins = fn($vid, $n, $scr, $p) => Db::q('INSERT INTO events (at, day, vid, sid, user_id, name, screen, props) VALUES (?, ?, ?, ?, NULL, ?, ?, ?)', [gmdate('c'), $d, $vid, 'errsum1', $n, $scr, json_encode($p, JSON_UNESCAPED_UNICODE)]);
+  foreach (['errvidAAAA1', 'errvidAAAA2', 'errvidAAAA3'] as $i => $v) { $ins($v, 'js_error', 'water', ['m' => "Cannot read properties of undefined (reading 'vals')", 'at' => 'site.html:12:3456']); $ins($v, 'toast', 'home', ['m' => 'Не вдалося зберегти']); }
+  $ins('errvidAAAA1', 'api_error', 'home', ['p' => '/state', 'c' => 409, 'e' => 'conflict']); $ins('errvidAAAA1', 'toast', 'home', ['m' => 'Збережено: Мамина 1234567']);
+  $es = Journal::errSummary(1); $j0 = $es['js'][0] ?? []; $tj = json_encode($es['toasts'], JSON_UNESCAPED_UNICODE);
+  ok('ошибки за дни одной сводкой: JS — текст, место, 3 браузера; API — /state 409; тост «Не вдалося зберегти» (3 браузера) есть, личный (1 браузер) — нет',
+    ($j0['m'] ?? '') === "Cannot read properties of undefined (reading 'vals')" && ($j0['at'] ?? '') === 'site.html:12:3456' && ($j0['vids'] ?? 0) === 3 && ($j0['scr'][0] ?? '') === 'water'
+    && array_filter($es['api'], fn($a) => $a['p'] === '/state' && $a['c'] === 409) && str_contains($tj, 'Не вдалося зберегти') && !str_contains($tj, 'Мамина') && $es['withErr'] >= 3, $es);
+  Db::q("DELETE FROM events WHERE sid = 'errsum1'"); }
 echo "\nВыход:\n";
 $phone->req('POST', '/api/auth/logout');
 ok('после выхода /api/me → 401', $phone->req('GET', '/api/me')->status === 401);
