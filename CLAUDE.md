@@ -43,6 +43,11 @@
   сырым телом: fetch(url, {method:'POST', body: file, headers:{'Content-Type': file.type}}) и php://input; до 24 МБ.
 - Запрещены exec/system/shell_exec/proc_open/popen; open_basedir — только папки сайта; 30 с и 128 МБ на запрос.
 
+## Справочник областей (поставщики, тарифы, «Куди передати» по адресу)
+- Как добавлять области и громады, формат, проверка «можно ли без человека» — `skills/oblast-providers/SKILL.md` (скилл lichylnyky-oblast).
+- Владелец правит сам в /admin → «Справочник» (правки поверх репозитория). `/api/health → prov.edits` > 0 — в начале сессии перенести
+  их в `app/data/prov_<r>.json` / `providers.json` (GET /api/admin/prov/edits), cron сам уберёт перенесённые.
+
 ## Распознавание фото
 - По умолчанию — в браузере человека, бесплатно: web/ocr/engine.js (PaddleOCR PP-OCRv4 + onnxruntime-web WASM, ~30 МБ, грузится
   при первом «з фото»), разбор текста в поля — web/src/ocrparse.js (подписи Gcal/m³/HT/CT/ON/EH, «тени» сегментов,

@@ -1107,15 +1107,15 @@ foreach ((array)(Providers::data()['settlements'] ?? []) as $key => $x) { if (!i
 ok('довідник: усі громади й пункти є в КАТОТТГ, у кожного тарифу є джерело (укр. і рос.)', !$bad, $bad);
 // 57-ма сесія: області — Київ, Київщина, Одещина, Львівщина (КАТОТТГ <r>_katottg.json, довідник prov_<r>.json)
 { $ky = $v('м. Київ, вул. Хрещатик 1'); $ky2 = $v('Киев, ул. Крещатик 22'); $od = $v('Одесса, ул. Дерибасовская 5'); $lv = $v('Львов, ул. Городоцкая 10');
-  $br = $v('Бровари, вул. Київська 1'); $bc = $v('Белая Церковь, ул. Ярослава Мудрого 1'); $sh = $v('Червоноград, вул. Шевченка 1'); $yu = $v('Южное, Одесская обл., ул. Строителей 1');
-  ok('області: Київ (і «Киев») — Київводоканал 36,85 / 26,94, гаряча 97,89, Київтеплоенерго 1 654,41, YASNO, Київгаз 0,384; Одеса — Інфоксводоканал, Одесагаз; Львів — Львівводоканал 36,04 / 20,34, Газмережі Львівська філія',
+  $br = $v('Фастів, вул. Соборна 1'); $bv = $v('Бровари, вул. Київська 1'); $bc = $v('Белая Церковь, ул. Ярослава Мудрого 1'); $sh = $v('Червоноград, вул. Шевченка 1'); $yu = $v('Южное, Одесская обл., ул. Строителей 1');
+  ok('області: Київ (і «Киев») — Київводоканал 36,85 / 26,94, гаряча 97,89, Київтеплоенерго 1 654,41, YASNO, Київгаз 0,384; Одеса — Інфоксводоканал, Одесагаз; Львів — Львівводоканал 36,036 / 20,34, Газмережі Львівська філія',
     ($ky['place']['r'] ?? '') === 'ky' && ($ky2['place']['name'] ?? '') === 'Київ' && $ky['kinds']['water']['supply'] === 36.85 && $ky['kinds']['water']['drain'] === 26.94 && $ky['kinds']['water']['hot'] === 97.89
     && $ky['kinds']['heat']['price'] === 1654.41 && str_contains($ky['kinds']['elec']['org'] ?? '', 'YASNO') && $ky['kinds']['gas']['grm'] === 'ПАТ «Київгаз»' && $ky['kinds']['gas']['dist'] === 0.384 && $ky['place']['district'] === ''
     && ($od['place']['oblast'] ?? '') === 'Одеська' && str_contains($od['kinds']['water']['org'] ?? '', 'Інфоксводоканал') && str_contains($od['kinds']['gas']['grm'] ?? '', 'Одесагаз')
-    && ($lv['place']['r'] ?? '') === 'lv' && $lv['kinds']['water']['supply'] === 36.04 && $lv['kinds']['gas']['grm'] === 'Газмережі, Львівська філія', [$ky['place'] ?? $ky, $od['place'] ?? $od]);
-  ok('області: Бровари, «Белая Церковь» → Біла Церква, Червоноград → Шептицький (стара назва), «Южное, Одесская обл.» → Південне Одещини (область в адресі); вода невідома — org null, світло й газ — обласні',
+    && ($lv['place']['r'] ?? '') === 'lv' && $lv['kinds']['water']['supply'] === 36.036 && $lv['kinds']['gas']['grm'] === 'Газмережі, Львівська філія', [$ky['place'] ?? $ky, $od['place'] ?? $od]);
+  ok('області: Фастів (вода невідома), «Белая Церковь» → Біла Церква, Червоноград → Шептицький (стара назва), «Южное, Одесская обл.» → Південне Одещини (область в адресі); вода невідома — org null, світло й газ — обласні',
     ($br['place']['oblast'] ?? '') === 'Київська' && $br['kinds']['water']['org'] === null && str_contains($br['kinds']['gas']['grm'] ?? '', 'Київська філія')
-    && ($bc['place']['name'] ?? '') === 'Біла Церква' && ($sh['place']['name'] ?? '') === 'Шептицький' && $sh['how'] === 'old' && ($yu['place']['r'] ?? '') === 'od' && ($yu['place']['hromada'] ?? '') === 'Південненська', [$yu['place'] ?? $yu, $sh['place'] ?? $sh]);
+    && ($bc['place']['name'] ?? '') === 'Біла Церква' && $bc['kinds']['water']['supply'] === 36.9 && $bv['kinds']['water']['drain'] === 33.52 && ($sh['place']['name'] ?? '') === 'Шептицький' && $sh['how'] === 'old' && ($yu['place']['r'] ?? '') === 'od' && ($yu['place']['hromada'] ?? '') === 'Південненська', [$yu['place'] ?? $yu, $sh['place'] ?? $sh]);
   $pd2 = $v('Южный, Кирова 5'); $mk = $v('Миколаївка, Київська обл.');
   ok('однакові назви в областях: без області — Харківщина першою, Одещина в «Не той?»; «Миколаївка, Київська обл.» — лише дві київські',
     ($pd2['place']['r'] ?? '') === 'kh' && in_array('od', array_column($pd2['alts'] ?? [], 'r'), true) && !$mk['found'] && count($mk['candidates']) === 2 && $mk['candidates'][0]['oblast'] === 'Київська', [$pd2['alts'] ?? $pd2, $mk['candidates'] ?? $mk]);
@@ -1130,8 +1130,8 @@ ok('довідник: усі громади й пункти є в КАТОТТГ
   ok('довідники областей: громади й пункти є в КАТОТТГ, у тарифів є src і src_ru, посилання — https', !$bad2 && !$bad, array_merge($bad2, $bad)); }
 // правки довідника з /admin (ProvEdit): власник править сам — поверх репозиторію, з журналом і відкатом
 { $r0 = $boss->req('GET', '/api/admin/prov'); $rk = $boss->req('GET', '/api/admin/prov/region', null, ['QUERY_STRING' => 'r=kv']);
-  $brv = array_values(array_filter($rk->body['hromadas'] ?? [], fn($x) => $x['key'] === 'Броварська'))[0] ?? null;
-  ok('/admin «Справочник»: регіони з лічильниками громад, Київщина — 69 громад, Броварська без води; без входу — 401',
+  $brv = array_values(array_filter($rk->body['hromadas'] ?? [], fn($x) => $x['key'] === 'Фастівська'))[0] ?? null;
+  ok('/admin «Справочник»: регіони з лічильниками громад, Київщина — 69 громад, Фастівська без води; без входу — 401',
     $r0->status === 200 && count($r0->body['regions']) === 5 && $rk->status === 200 && count($rk->body['hromadas']) === 69 && $brv && $brv['water'] === null && $anon->req('GET', '/api/admin/prov')->status === 401, [$r0->status, $rk->status, $brv]);
   $sv = $boss->req('POST', '/api/admin/prov/save', ['r' => 'kv', 'scope' => 'hromadas', 'key' => 'Броварська', 'kind' => 'water',
     'value' => ['org' => 'КП «Броваритепловодоенергія»', 'supply' => '40,5', 'drain' => '', 'phones' => ['(04594) 1-23-45; диспетчер'], 'cab' => 'javascript:alert(1)', 'site' => 'https://example.ua/pokaz', 'robot' => 'hack', 'x' => 1, 'check' => true, 'src' => 'тест', 'src_ru' => 'тест']]);
@@ -1150,12 +1150,17 @@ ok('довідник: усі громади й пункти є в КАТОТТГ
   $vn = $v('м. Винники, вул. Галицька 1')['kinds']['water']; $lv2 = $v('Львів, вул. Городоцька 10')['kinds']['water'];
   ok('/admin entry: Львівська — вода з репозиторію, пункти громади (Винники); пункт зі своїм постачальником — лише у Винниках, без тарифу Львова',
     $en->status === 200 && str_contains($en->body['kinds']['water']['cur']['org'] ?? '', 'Львівводоканал') && in_array('Винники', array_column($en->body['points'] ?? [], 'n'), true)
-    && $st->status === 200 && $vn['org'] === 'КП «Винниківське»' && $vn['supply'] === null && $lv2['supply'] === 36.04, [$vn, $en->status]);
+    && $st->status === 200 && $vn['org'] === 'КП «Винниківське»' && $vn['supply'] === null && $lv2['supply'] === 36.036, [$vn, $en->status]);
   $hl = $phone->req('GET', '/api/health')->body['prov'] ?? null;
   ok('/api/health → prov: регіони, правки, проба, скільки шукали (без адрес)', is_array($hl) && isset($hl['regions']['kv']['h']) && $hl['regions']['kv']['h'] === 69 && ($hl['edits']['edits'] ?? 0) >= 2 && !str_contains(json_encode($hl, JSON_UNESCAPED_UNICODE), 'Київська 1'), $hl);
   ok('ProvProbe: адреси кабінетів довідника зібрані; вердикт за сторінкою (пароль → login, капча, Cloudflare)', isset(ProvProbe::urls()['https://my.vodokanal.kiev.ua/'])
     && ProvProbe::verdict(['code' => 200, 'pass' => true]) === 'login' && ProvProbe::verdict(['code' => 200, 'pass' => true, 'widget' => true]) === 'captcha' && ProvProbe::verdict(['code' => 403, 'cfKind' => 'challenge']) === 'cf'
     && ProvProbe::verdict(['code' => 200, 'forms' => 1, 'fields' => ['acc']]) === 'form' && ProvProbe::verdict(['code' => 0]) === 'down');
+  // правка, що збігається з репозиторієм (сесія вже перенесла), прибирається сама; інші лишаються
+  $same = Providers::raw('ky')['hromadas']['Київ']['heat'];
+  $boss->req('POST', '/api/admin/prov/save', ['r' => 'ky', 'scope' => 'hromadas', 'key' => 'Київ', 'kind' => 'heat', 'value' => $same]);
+  $before = ProvEdit::summary()['edits']; $pr = ProvEdit::prune(); $after = ProvEdit::summary()['edits']; ProvEdit::reset();
+  ok('ProvEdit::prune: правка = репозиторій → прибрана (тепло Києва), чужі правки (Винники) лишились', $pr === 1 && $after === $before - 1 && $v('м. Винники, вул. Галицька 1')['kinds']['water']['org'] === 'КП «Винниківське»', [$before, $pr, $after]);
   // прибрати правки — далі тести бачать репозиторій
   @unlink(ProvEdit::file()); Providers::reset(); }
 { $res = $phone->req('GET', '/api/providers', null, ['QUERY_STRING' => 'q=' . rawurlencode('Малая Даниловка, Академическая 10')]);

@@ -366,6 +366,28 @@ final class ProvEdit {
   public static function cur(string $r, string $scope, string $key, string $kind) {
     $d = Providers::rdata($r); return $scope === 'oblast' ? ($d['oblast'][$kind] ?? null) : ($d[$scope][$key][$kind] ?? null);
   }
+  /** Правки, які вже є в репозиторії (сесія перенесла їх у prov_<r>.json), прибираємо — цикл «власник править → сесія забирає в git» замикається сам.
+   *  Порівнюємо з файлом репозиторію; журнал лишається. → скільки прибрали. */
+  public static function prune(): int {
+    $f = self::file(); if (!is_file($f)) return 0;
+    $h = fopen($f, 'c+'); if (!$h) return 0; flock($h, LOCK_EX); $j = json_decode((string)stream_get_contents($h), true); $j = is_array($j) ? $j : []; $n = 0;
+    // порівнюємо як збереже форма (clean) і без порядку ключів: у репозиторії бувають порожні поля й інший порядок
+    $norm = function ($v) use (&$norm) { if (!is_array($v)) return $v; if (!array_is_list($v)) ksort($v); return array_map($norm, $v); };
+    $same = fn($a, $b) => $b !== null && json_encode($norm($a), JSON_UNESCAPED_UNICODE) === json_encode($norm(self::clean((array)$b)), JSON_UNESCAPED_UNICODE);
+    foreach ((array)($j['r'] ?? []) as $r => $x) {
+      $raw = Providers::raw((string)$r);
+      foreach ((array)($x['oblast'] ?? []) as $kd => $v) if ($v !== false && $same($v, $raw['oblast'][$kd] ?? null)) { unset($j['r'][$r]['oblast'][$kd]); $n++; }
+      foreach (['hromadas', 'settlements'] as $sc) foreach ((array)($x[$sc] ?? []) as $key => $kinds) foreach ((array)$kinds as $kd => $v) {
+        $b = $raw[$sc][$key][$kd] ?? null;
+        if (($v === false && $b === null) || ($v !== false && $same($v, $b))) { unset($j['r'][$r][$sc][$key][$kd]); $n++; if (empty($j['r'][$r][$sc][$key])) unset($j['r'][$r][$sc][$key]); }
+      }
+      foreach (self::SCOPES as $sc) if (isset($j['r'][$r][$sc]) && empty($j['r'][$r][$sc])) unset($j['r'][$r][$sc]);
+      if (empty($j['r'][$r])) unset($j['r'][$r]);
+    }
+    if ($n) { ftruncate($h, 0); rewind($h); fwrite($h, json_encode($j, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT)); fflush($h); }
+    flock($h, LOCK_UN); fclose($h); if ($n) { self::reset(); Providers::reset(); }
+    return $n;
+  }
   /** Скільки правок і коли остання — для /api/health (сесія знає, що є що забрати в репозиторій). */
   public static function summary(): array {
     $j = self::all(); $n = 0; foreach ((array)($j['r'] ?? []) as $r) { $n += count((array)($r['oblast'] ?? [])); foreach (['hromadas', 'settlements'] as $sc) foreach ((array)($r[$sc] ?? []) as $x) $n += count((array)$x); }

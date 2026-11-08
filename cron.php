@@ -30,6 +30,8 @@ if ((int)gmdate('i') % 10 === 3) { try { $p = VkStatus::probeNotFound(); if ($p)
 try { $rc = VkStatus::recheck(); if ($rc) $beat['vkRecheck'] = ['at' => gmdate('c'), 'res' => $rc['res']]; } catch (Throwable $e) { error_log('teplo vk recheck: ' . $e->getMessage()); }
 // кабинеты ХТМ, обленерго, Газмереж — пускают ли наш сервер и нет ли капчи (раз в 30 минут; /api/health → cabs)
 if (CabProbe::due()) { try { CabProbe::run(); } catch (Throwable $e) { error_log('teplo cab probe: ' . $e->getMessage()); } }
+// правки справочника из /admin, уже перенесённые сессией в репозиторий, — убрать (раз в час)
+if ((int)gmdate('i') === 17) { try { $pn = ProvEdit::prune(); if ($pn) $beat['provPrune'] = $pn; } catch (Throwable $e) { error_log('teplo prov prune: ' . $e->getMessage()); } }
 // кабинеты и формы из справочника областей (ProvProbe): пустят ли наш сервер, есть ли капча — одна адрес в 2 минуты, каждая раз в 7 дней (/api/health → prov.probe)
 if ((int)gmdate('i') % 2 === 1) { try { $pp = ProvProbe::run(); if ($pp) $beat['provProbe'] = ['at' => gmdate('c'), 'host' => parse_url($pp, PHP_URL_HOST)]; } catch (Throwable $e) { error_log('teplo prov probe: ' . $e->getMessage()); } }
 // обленерго с украинских узлов check-host.net — только коды ответа страниц, раз на версию (UaCheck; /api/health → uaCheck)
