@@ -73,7 +73,8 @@ final class Api {
       // Без перевірки: вхід Mini App (initData підписана Telegram), журнал дій, вибір у банері cookie і запити із заголовком X-Session (вікно Telegram, де
       // cookie не зберігаються: чужий сайт власний заголовок без CORS не надішле, а cookie такі запити не використовують).
       // проба обленерго с NAS (RelayProbe) — curl без cookie и без входа: подделывать нечего, ничего от имени человека не меняет
-      $csrfFree = $isHook || $r->path === '/api/auth/telegram/webapp' || $r->path === '/api/events' || $r->path === '/api/consent' || $r->path === '/api/relay/probe' || $r->path === '/api/relay/done' || $r->header('X-Session') !== '';
+      // /api/visit — отметка «открыли сайт» (аналитика, как журнал): подделывать нечего; с CSRF терялась у новых посетителей (08.11)
+      $csrfFree = $isHook || $r->path === '/api/auth/telegram/webapp' || $r->path === '/api/events' || $r->path === '/api/consent' || $r->path === '/api/visit' || $r->path === '/api/relay/probe' || $r->path === '/api/relay/done' || $r->header('X-Session') !== '';
       if (!$csrfFree && $r->method !== 'GET') {
         $c = (string)($r->cookies['ts_csrf'] ?? ''); $h = $r->header('X-CSRF');
         if ($c === '' || !hash_equals($c, $h)) throw new HttpError(403, 'csrf');

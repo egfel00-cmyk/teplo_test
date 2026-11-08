@@ -83,15 +83,28 @@
   // Сесія вікна Telegram: токен із входу Mini App — на випадок, коли вікно Telegram (Mac) не зберігає cookie. Живе до закриття вікна.
   var SESS = (function () { try { return root.sessionStorage.getItem('teplo.tgs') || ''; } catch (e) { return ''; } })();
   function setSess(t) { SESS = t || ''; try { if (SESS) root.sessionStorage.setItem('teplo.tgs', SESS); else root.sessionStorage.removeItem('teplo.tgs'); } catch (e) { /* без sessionStorage — лише в пам'яті */ } }
+  // CSRF-cookie (сервер выдаёт её со страницей и на любой запрос без неё): нет её — ОДИН общий запрос за ней на всех (08.11: параллельные
+  // запросы без cookie получали каждый свою, и X-CSRF расходился с cookie → 403 у новых посетителей)
+  var CSRF_P = null;
+  function csrfReady() {
+    if (cookie('ts_csrf') || SESS) return Promise.resolve();
+    if (!CSRF_P) CSRF_P = fetch(root.TEPLO_API + '/config', { headers: { 'Accept': 'application/json' }, credentials: 'same-origin' }).then(function () {}, function () {}).then(function () { CSRF_P = null; });
+    return CSRF_P;
+  }
   function api(method, path, body, again) {
-    // CSRF: перед первым изменяющим запросом получить cookie ts_csrf (сервер выдаёт её на любой GET) — один раз: если cookie не
-    // зберігаються (вікно Telegram), повторювати безкінечно не можна; вхід Mini App і запити з X-Session сервер пускає без неї
-    if (method !== 'GET' && !cookie('ts_csrf') && !SESS && !again && path !== '/auth/telegram/webapp') return api('GET', '/config').then(function () { return api(method, path, body, true); });
-    var h = { 'Accept': 'application/json' };
-    if (method !== 'GET') { h['Content-Type'] = 'application/json'; if (cookie('ts_csrf')) h['X-CSRF'] = cookie('ts_csrf'); }
+    // перед первым изменяющим запросом — cookie ts_csrf; один раз: если cookie не зберігаються (вікно Telegram), повторювати безкінечно не можна;
+    // вхід Mini App і запити з X-Session сервер пускає без неї
+    if (method !== 'GET' && !cookie('ts_csrf') && !SESS && !again && path !== '/auth/telegram/webapp') return csrfReady().then(function () { return api(method, path, body, true); });
+    var h = { 'Accept': 'application/json' }, sent = '';
+    if (method !== 'GET') { h['Content-Type'] = 'application/json'; sent = cookie('ts_csrf'); if (sent) h['X-CSRF'] = sent; }
     if (SESS) h['X-Session'] = SESS;
     return fetch(root.TEPLO_API + path, { method: method, headers: h, credentials: 'same-origin', body: body ? JSON.stringify(body) : undefined })
-      .then(function (res) { return res.json().catch(function () { return {}; }).then(function (j) { j._status = res.status; return j; }); });
+      .then(function (res) { return res.json().catch(function () { return {}; }).then(function (j) { j._status = res.status; return j; }); })
+      .then(function (j) {
+        // cookie сменилась, пока запрос летел (соседний ответ выдал новую) — повторить один раз с той, что теперь в браузере
+        if (j._status === 403 && j.error === 'csrf' && again !== 2 && cookie('ts_csrf') && cookie('ts_csrf') !== sent) return api(method, path, body, 2);
+        return j;
+      });
   }
   // Усі запити застосунку до свого API (і прямі fetch з app.js / recognize.js) несуть X-Session, якщо вхід був через Telegram
   if (root.fetch && !root.fetch._teplo) {

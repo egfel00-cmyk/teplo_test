@@ -127,6 +127,7 @@
     safeRender();
     if (GASMV) { GASMV = false; save(); }
     if (window.TEPLO_API) vkbToast(vkb0);
+    if (billAdoptAll()) save();
   }
   function safeRender() {
     var a = document.activeElement;
@@ -497,7 +498,7 @@
   function wsetCfg(fn) { ensurePlaces(); var p = place(); p.water = JSON.parse(JSON.stringify(wcfg())); fn(p.water); p.updatedAt = Date.now(); save(); }
   /** Водомеры квартиры. Прибранные (m.removed — дата) — только с all: их история остаётся в Історії/Статистиці. */
   function wmeters(kind, all) { return byKind((wcfg().meters || []).filter(function (m) { return m && !m.deleted && (all || !m.removed) && (!kind || m.kind === kind); })); }
-  function wrecs() { return (S.water || []).filter(function (r) { return r && !r.deleted && r.place === S.placeId; }).sort(function (a, b) { return a.date < b.date ? -1 : a.date > b.date ? 1 : a.base ? -1 : b.base ? 1 : 0; }); }
+  function wrecs() { return (S.water || []).filter(function (r) { return r && !r.deleted && !r.billOnly && r.place === S.placeId; }).sort(function (a, b) { return a.date < b.date ? -1 : a.date > b.date ? 1 : a.base ? -1 : b.base ? 1 : 0; }); }
   /** Последние внесённые показания (стартовые при настройке — не в счёт: их не передают). */
   function wlast() { var a = wrecs().filter(function (r) { return !r.base && !r.own; }); return a.length ? a[a.length - 1] : null; }
   // «лише для себе» (r.own): показання для статистики — нікуди не передаються; оплата — між переданими показаннями.
@@ -1227,13 +1228,13 @@
   // Квитанції ХТМ — так само (HtmBills: кабінет ХТМ підключено → раз на добу, 7–22, лише читає) до запису тепла за минулий місяць; auto: 'htm'.
   function vkbIds(st) {
     var o = {};
-    ((st && st.water) || []).forEach(function (r) { ((r && r.bills) || []).forEach(function (b) { if (b && b.auto === 'vk' && b.id) o[b.id] = { r: r, at: b.at, k: 'vk', d: r.date }; }); });
+    ((st && st.water) || []).forEach(function (r) { ((r && r.bills) || []).forEach(function (b) { if (b && b.auto === 'vk' && b.id) o[b.id] = { r: r, at: b.at, k: 'vk', d: b.ym ? b.ym + '-01' : r.date }; }); });
     ((st && st.readings) || []).forEach(function (r) { ((r && r.bills) || []).forEach(function (b) { if (b && b.auto === 'htm' && b.id) o[b.id] = { r: r, at: b.at, k: 'htm', d: b.ym ? b.ym + '-01' : r.htm && r.htm.date }; }); });
     return o;
   }
   function vkbToast(before) {
     var now = vkbIds(S), id = Object.keys(now).filter(function (k) { return !before[k] && Date.now() - (Date.parse(now[k].at) || 0) < 3 * 864e5; })[0]; if (!id) return;
-    var x = now[id], r = x.r; toast(t(x.k === 'htm' ? (r.billOnly ? 'hcb_new' : 'hcb_added') : 'vkb_added', { m: monthLabel(String(x.d || '').slice(0, 7)), p: placeLabel(place(r.place) || place()) })); track(x.k === 'htm' ? 'htm_bill_seen' : 'vk_bill_seen');
+    var x = now[id], r = x.r; toast(t(x.k === 'htm' ? (r.billOnly ? 'hcb_new' : 'hcb_added') : (r.billOnly ? 'vkb_new' : 'vkb_added'), { m: monthLabel(String(x.d || '').slice(0, 7)), p: placeLabel(place(r.place) || place()) })); track(x.k === 'htm' ? 'htm_bill_seen' : 'vk_bill_seen');
   }
   /** «Квитанції самі» ХТМ — у квартирах з теплолічильником (за замовчуванням увімкнено; вимкнено — meter.billAuto === false). */
   function hcbPlaces() { return places().filter(function (p) { var m = p.id === S.placeId ? S.meter : p.meter; return !!(m && !m.removed); }); }
@@ -1718,6 +1719,36 @@
   function hasVal(r, mid) { return !!(r && r.vals && r.vals[mid] !== undefined && r.vals[mid] !== '' && r.vals[mid] !== null); }
   function wcostOf(kind, d, date) { return (kind === 'hot' ? Wt.cost(0, d, date, wtar()) : Wt.cost(d, 0, date, wtar())).total; }
   /** Строки истории воды по виду (новые сверху): дата, показания, сколько набежало и почём, передано, фото → карточка записи. */
+  /** «Платіжки Водоканалу» поточної квартири: квитанція з сайту Водоканалу за місяць, показань води за який немає (сервер, VkBills, 08.11). */
+  function WRB() { return (S.water || []).filter(function (r) { return r && !r.deleted && r.billOnly && r.ym && r.place === S.placeId; }); }
+  function wbKind() { return wmeters('cold', true).length || !wmeters('hot', true).length ? 'cold' : 'hot'; }
+  function vbillItem(r) {
+    return histRow({ cls: 'hli-bill', key: 'vbill-' + r.id, href: '#wrec-' + r.id, lead: '<span class="hr-bill">' + ico('bill', 16) + esc(t('vb_title')) + '</span>',
+      none: t('vb_none'), date: monthLabel(r.ym), sub: [t('hb_sub')], right: billMark(r.bills) });
+  }
+  /** «Платіжка Водоканалу» без показань: квитанція (PDF з сайту Водоканалу); прибрати запис. */
+  function vbillView(r) {
+    var m = monthLabel(r.ym);
+    return { screen: 'S09', route: 'history', html: '<p><a href="#history">← ' + esc(t('hi_title')) + '</a></p><h1>' + esc(t('vb_title')) + ' · ' + esc(m) + '</h1>' +
+      '<p class="small muted" data-key="vb-sub">' + esc(t('vb_view_sub')) + '</p>' + billsBox('w:' + r.id, r.bills, t('bl_title', { m: m })) +
+      '<div class="row-actions"><button class="btn danger" data-act="wdel" data-id="' + r.id + '" data-key="wrec-del">' + esc(t('rec_del')) + '</button></div>' };
+  }
+  /** Внесли показання води за місяць, на який уже є «Платіжка Водоканалу», — квитанція переїжджає до них, «Платіжка» зникає. */
+  function wbillAdopt(rec) {
+    var ym = String((rec && rec.date) || '').slice(0, 7), n = 0; if (!ym || rec.base || rec.billOnly) return 0;
+    (S.water || []).forEach(function (b) { if (!b || b.deleted || !b.billOnly || b.ym !== ym || b.place !== rec.place) return; rec.bills = (rec.bills || []).concat(b.bills || []); rec.updatedAt = Date.now(); b.bills = []; b.deleted = true; b.updatedAt = Date.now(); n++; });
+    return n;
+  }
+  /** Після синхронізації: показання за місяць є (внесли з іншого пристрою чи сервер — автовідправка), а квитанція ще в «Платіжці» — переносимо (тепло й вода). */
+  function billAdoptAll() {
+    var n = 0, first = S.places && S.places[0] ? S.places[0].id : 'main';
+    (S.water || []).forEach(function (r) { if (r && !r.deleted && !r.base && !r.billOnly && r.date && (S.water || []).some(function (b) { return b && !b.deleted && b.billOnly && b.ym === r.date.slice(0, 7) && b.place === r.place; })) n += wbillAdopt(r); });
+    (S.readings || []).forEach(function (r) {
+      if (!r || r.deleted || r.billOnly || !r.htm || !r.htm.date) return; var ym = r.htm.date.slice(0, 7), pl = r.place || first;
+      (S.readings || []).forEach(function (b) { if (!b || b.deleted || !b.billOnly || b.ym !== ym || (b.place || first) !== pl) return; r.bills = (r.bills || []).concat(b.bills || []); r.updatedAt = Date.now(); b.bills = []; b.deleted = true; b.updatedAt = Date.now(); n++; });
+    });
+    return n;
+  }
   function wrows(kind, limit) {
     var ms = wmeters(kind, true), ser = Wt.series(wrecs(), wmeters(null, true), gaps());
     // передані — від попередньої переданої (за це платите); «для себе» — від попереднього будь-якого
@@ -1726,13 +1757,16 @@
     var rows = ser.slice().reverse().filter(function (x) { return ms.some(function (m) { return hasVal(x.rec, m.id); }); });
     // периоды без водоміра — вперемешку с записями (по дате снятия)
     var gl = gaps().filter(function (g) { return ms.some(function (m) { return m.id === g.what; }); });
+    // «Платіжка Водоканалу» (квитанція з сайту без показань за місяць) — у холодній воді (немає холодних водомірів — у гарячій)
     rows = rows.map(function (x) { return { d: x.rec.date, x: x }; }).concat(gl.map(function (g) { return { d: g.from, g: g }; }))
+      .concat(kind === wbKind() ? WRB().map(function (b) { return { d: b.date || b.ym + '-28', b: b }; }) : [])
       .sort(function (a, b) { return a.d < b.d ? 1 : a.d > b.d ? -1 : a.g ? -1 : 1; });
     var total = rows.length;
     if (limit) rows = rows.slice(0, limit);
     if (!rows.length) return { total: 0, html: '' };
     return { total: total, html: '<ul class="list wh" data-key="water-history-' + kind + '">' + rows.map(function (y) {
       if (y.g) return gapItem(y.g, ms.length > 1);
+      if (y.b) return vbillItem(y.b);
       var x = y.x, own = !!x.rec.own, pf = own || x.rec.base ? null : paidFrom(all, x.rec, hasK);
       if (pf && paid[x.rec.id]) x = paid[x.rec.id];
       var d = kind === 'hot' ? x.hot : x.cold, days = kind === 'hot' ? x.daysHot : x.daysCold;
@@ -1766,6 +1800,7 @@
   }
   /** Карточка записи воды: показания всех водомеров, сколько набежало и почём, передача, фото; правка и удаление. */
   function wrecView(id) {
+    var vb = WRB().filter(function (x) { return x.id === id; })[0]; if (vb) return vbillView(vb);
     var r = wrecs().filter(function (x) { return x.id === id; })[0], back = '<p><a href="#history">← ' + esc(t('hi_title')) + '</a></p>';
     if (!r) return { screen: 'S09', route: 'history', html: back + '<p class="muted">' + esc(t('rec_gone')) + '</p>' };
     var x = Wt.series(wrecs(), wmeters(null, true), gaps()).filter(function (s0) { return s0.rec.id === id; })[0] || { by: {}, hot: null, cold: null };
@@ -2542,12 +2577,13 @@
     var date = WN.date || today(), now = new Date().toISOString();
     S.water = S.water || [];
     // одна запись на квартиру и дату: повторный ввод в тот же день — правка
-    var same = (S.water || []).filter(function (r) { return r && !r.deleted && !r.base && r.place === S.placeId && r.date === date; })[0];
+    var same = (S.water || []).filter(function (r) { return r && !r.deleted && !r.base && !r.billOnly && r.place === S.placeId && r.date === date; })[0];
     // фото, с которых сняли, — к записи (видны в истории)
     var refs = photoRefs((WN.photos || []).map(function (p) { return { file: p.file, meter: p.meters && p.meters.length === 1 ? p.meters[0] : undefined }; }));
     var rec = same;
     if (same) { same.vals = Object.assign({}, same.vals, vals); if (refs.length) same.photos = (same.photos || []).concat(refs); if (own) same.own = true; same.updatedAt = Date.now(); }
     else S.water.push(rec = Object.assign({ id: Wt.uid(), place: S.placeId, date: date, vals: vals, createdAt: now, updatedAt: Date.now(), sent: {} }, refs.length ? { photos: refs } : {}, own ? { own: true } : {}));
+    wbillAdopt(rec);
     if (!S.onboarded) S.onboarded = true;
     if (WN.inbox && WN.inbox.length && window.TEPLO_API) { var ib = WN.inbox; INBOX.items = (INBOX.items || []).filter(function (x) { return ib.indexOf(x.id) < 0; }); api0('/inbox/done', { method: 'POST', body: JSON.stringify({ ids: ib }) }).catch(function () {}); }
     var k = WN.kind, back = WN.back; WN = wnFresh(k);
