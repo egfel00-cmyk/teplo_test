@@ -9475,11 +9475,11 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
     if (own.length >= 2) return own;
     return RD().filter(function (r) { return !r.own && r.htm && r.htm.date && R.num(r.htm.energy) !== null; }).map(function (r) { return { date: r.htm.date.slice(0, 10), energy: R.num(r.htm.energy), status: 'ok' }; });
   }
-  /** Тепло свого лічильника по місяцях (як HtmSpr::ownMonths на сервері): кінець місяця — показання цього місяця (same), наступного (next) або лінійно на 1-ше (interp). */
-  function hsprOwnMonths(own, al) {
+  function ymAdd(m, k) { var y = +m.slice(0, 4), mo = +m.slice(5, 7) - 1 + k; y += Math.floor(mo / 12); mo = ((mo % 12) + 12) % 12; return y + '-' + (mo < 9 ? '0' : '') + (mo + 1); }
+  /** Кінці місяців свого лічильника {ym: Гкал} (як HtmSpr::ownEnds): same — останні показання цього місяця, next — наступного, interp — лінійно на 1-ше. */
+  function hsprOwnEnds(own, al) {
     var p = own.filter(function (r) { return r.status !== 'rejected' && r.date && typeof r.energy === 'number'; }).sort(function (a, b) { return a.date < b.date ? -1 : 1; });
     if (p.length < 2) return {};
-    var ymAdd = function (m, k) { var y = +m.slice(0, 4), mo = +m.slice(5, 7) - 1 + k; y += Math.floor(mo / 12); mo = ((mo % 12) + 12) % 12; return y + '-' + (mo < 9 ? '0' : '') + (mo + 1); };
     var day = function (d) { return Date.UTC(+d.slice(0, 4), +d.slice(5, 7) - 1, +d.slice(8, 10)) / 864e5; }, end = {};
     if (al === 'interp') {
       for (var m = p[0].date.slice(0, 7), last = p[p.length - 1].date.slice(0, 7); m <= last; m = ymAdd(m, 1)) {
@@ -9488,24 +9488,52 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
         if (lo && hi && day(hi.date) > day(lo.date) && day(hi.date) - day(lo.date) <= 75) end[m] = lo.energy + (hi.energy - lo.energy) * (b - day(lo.date)) / (day(hi.date) - day(lo.date));
       }
     } else p.forEach(function (r) { var mm = r.date.slice(0, 7); end[al === 'next' ? ymAdd(mm, -1) : mm] = r.energy; });
-    var out = {}; Object.keys(end).forEach(function (mm) { var pm = ymAdd(mm, -1); if (end[pm] !== undefined && end[mm] >= end[pm]) out[mm] = end[mm] - end[pm]; });
+    return end;
+  }
+  /** Тепло свого лічильника по сусідніх місяцях (для картки місяця). */
+  function hsprOwnMonths(own, al) {
+    var end = hsprOwnEnds(own, al), out = {};
+    Object.keys(end).forEach(function (mm) { var pm = ymAdd(mm, -1); if (end[pm] !== undefined && end[mm] >= end[pm]) out[mm] = end[mm] - end[pm]; });
     return out;
   }
-  /** Довідка з будинковим лічильником: тепло свого лічильника за кожен місяць довідки й частка будинку понад нього k = Σ(витрата − своє) / Σ своє.
-   *  Вирівнювання кінця місяця — те, де модель «своє × (1 + k)» ближча до витрати ХТМ. → {e: {ym: Гкал}, k, n} | null */
+  /** Проміжки між показаннями свого лічильника — і через пропущені місяці (до 4), як HtmSpr::ownIntervals: [{e, v, sf, n}] лише з місяців, що є в довідці. */
+  function hsprOwnIntervals(rows, own, al) {
+    var by = {}; rows.forEach(function (x) { if (typeof x.flat === 'number') by[x.ym] = x; });
+    var end = hsprOwnEnds(own, al), ks = Object.keys(end).sort(), out = [];
+    for (var i = 1; i < ks.length; i++) {
+      var de = end[ks[i]] - end[ks[i - 1]], ms = [];
+      if (de < 0) continue;
+      for (var m = ymAdd(ks[i - 1], 1); m <= ks[i] && ms.length <= 4; m = ymAdd(m, 1)) ms.push(m);
+      if (ms.length > 4 || ms.some(function (mm) { return !by[mm]; })) continue;
+      var iv = { e: de, v: 0, sf: null, n: ms.length };
+      ms.forEach(function (mm) { iv.v += by[mm].flat; if (by[mm].sFlat > 0) iv.sf = by[mm].sFlat; });
+      if (iv.v > 0) out.push(iv);
+    }
+    return out;
+  }
+  /** Довідка з будинковим лічильником: частка будинку понад свій лічильник (витрата ХТМ − своє). Основа частки — та, що краще передбачає витрату ХТМ
+   *  перевіркою «без себе» по проміжках між показаннями (як /api/health → htmSpr.check.own.model): own — частка від свого тепла (k), area — Гкал на м² за місяць (a).
+   *  Живий кабінет 08.11: «своє × (1 + k)» помилялось на ~80 %, «на м²» — ~35 %. → {e: {ym: Гкал}, basis, k, a, sf, n, al, err} | null */
   var HOF = { key: null, v: null };
   function hsprOwnFit() {
     var key = HSPR.at + '|' + S.placeId + '|' + (S.readings || []).length + '|' + (S.updatedAt || 0); if (HOF.key === key) return HOF.v;
     HOF.key = key; HOF.v = null;
     var rows = hspr().filter(function (x) { return hsprBld(x); }), own = hsprOwnList(); if (!rows.length || own.length < 2) return null;
-    var best = null;
+    var med = function (a) { a = a.slice().sort(function (x, y) { return x - y; }); return a[Math.floor(a.length / 2)]; };
+    var B = { own: function (i) { return i.e; }, area: function (i) { return i.sf > 0 ? i.sf * i.n : 0; } }, best = null;
     ['same', 'interp', 'next'].forEach(function (al) {
-      var em = hsprOwnMonths(own, al), hr = rows.filter(function (x) { return em[x.ym] > 0 && x.flat >= em[x.ym]; }).slice(-8), se = 0, sx = 0;
-      if (hr.length < 2) return;
-      hr.forEach(function (x) { se += em[x.ym]; sx += x.flat - em[x.ym]; });
-      var k = sx / se, er = hr.map(function (x) { return Math.abs(em[x.ym] * (1 + k) - x.flat) / x.flat; }).sort(function (a, b) { return a - b; })[Math.floor(hr.length / 2)];
-      if (!best || er < best.err) best = { e: em, k: k, n: hr.length, al: al, err: er };
+      var iv = hsprOwnIntervals(rows, own, al), em = hsprOwnMonths(own, al);
+      if (!iv.length || iv.reduce(function (s, i) { return s + i.n; }, 0) < 2) return;
+      Object.keys(B).forEach(function (bs) {
+        var f = B[bs], ok = iv.filter(function (i) { return f(i) > 0; }); if (!ok.length) return;
+        var sx = 0, sb = 0; ok.forEach(function (i) { sx += i.v - i.e; sb += f(i); });
+        // перевірка без себе (≥ 2 проміжки), інакше — як є
+        var er = med(ok.map(function (i) { var x = sx, b = sb; if (ok.length >= 2) { x -= i.v - i.e; b -= f(i); } return b > 0 ? Math.abs(i.e + x / b * f(i) - i.v) / i.v : 1; }));
+        var c = { e: em, basis: bs, c: Math.max(0, sx / sb), n: ok.length, al: al, err: er + (ok.length >= 2 ? 0 : 1) };
+        if (!best || c.err < best.err) best = c;
+      });
     });
+    if (best) { var sf = rows.filter(function (x) { return x.sFlat > 0; }).slice(-1)[0]; best.k = best.basis === 'own' ? best.c : 0; best.a = best.basis === 'area' ? best.c : 0; best.sf = sf ? sf.sFlat : null; if (best.basis === 'area' && !best.sf) best = null; }
     return (HOF.v = best);
   }
   /** Рядок довідки ХТМ для запису показань: за поточними показаннями (Гкал або як на лічильнику), інакше — за місяцем зняття. */
@@ -9527,8 +9555,10 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
     hr.forEach(function (x) { sd += x.diff; sl += x.flat - x.diff; });
     var ab = rows.filter(function (x) { return x.abon > 0; }).slice(-1)[0], k = sd > 0 && hr.length >= 2 ? sl / sd : null, n = hr.length;
     // у довідці будинковий лічильник (живий кабінет 08.11) — частка будинку відносно свого лічильника квартири (журнал ХТМ або власні показання)
-    if (k === null) { var of = hsprOwnFit(); if (of) { k = of.k; n = of.n; } }
-    return { tariff: tr.length ? Math.round(tr[Math.floor(tr.length / 2)] * 100) / 100 : null, k: k, abon: ab ? ab.abon : null, n: n };
+    // основа «площа»: частка будинку — Гкал за місяць (a × площа квартири), лише в місяці з теплом
+    var mzk = null;
+    if (k === null) { var of = hsprOwnFit(); if (of) { k = of.k; n = of.n; if (of.basis === 'area') mzk = of.a * of.sf; } }
+    return { tariff: tr.length ? Math.round(tr[Math.floor(tr.length / 2)] * 100) / 100 : null, k: k, abon: ab ? ab.abon : null, n: n, mzk: mzk };
   }
   function tariffSet(v) { var p = place(); if (!p) { S.tariff = v; return; } p.prov = p.prov || {}; p.prov.heat = Object.assign({}, p.prov.heat || {}, { price: v, at: today() }); p.updatedAt = Date.now(); }
   /* Платіжка ХТМ: до сплати = (ваше тепло за лічильником + ваша частка ЗБП) × тариф + абонплата.
@@ -9540,12 +9570,13 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
     if (!(ab !== null && ab >= 0)) { var d = prvOf('heat'), da = d ? R.num(d.abon) : null; if (d && d.org && d.via !== 'htm') dflt = da !== null && da >= 0 ? da : 0; }
     // своєї частки ЗБП не вписали — частка теплових втрат будинку з нарахувань ХТМ (відносно власного тепла); абонплата — як нараховує ХТМ
     var hc = hsprCalib(), own = mz !== null && mz > 0;
-    return { abon: ab !== null && ab >= 0 ? ab : (hc && hc.abon !== null ? hc.abon : dflt), mzk: own ? mz : 0, k: !own && hc && hc.k !== null ? hc.k : 0 };
+    return { abon: ab !== null && ab >= 0 ? ab : (hc && hc.abon !== null ? hc.abon : dflt), mzk: own ? mz : (hc && hc.mzk > 0 ? hc.mzk : 0), heatOnly: !own && !!(hc && hc.mzk > 0),
+      k: !own && hc && hc.k !== null ? hc.k : 0 };
   }
   var MONTH_DAYS = 365.25 / 12;
   function costOf(dE, days) {
     // ХТМ рахує ЗБП і абонплату помісячно: проміжок ~місяць — рівно один місяць
-    var b = bill(), m = days >= 20 ? Math.max(1, Math.round(days / MONTH_DAYS)) : days > 0 ? days / MONTH_DAYS : 0, mz = b.mzk > 0 ? b.mzk * m : Math.max(0, dE) * b.k, heat = Math.max(0, dE) * tariff();
+    var b = bill(), m = days >= 20 ? Math.max(1, Math.round(days / MONTH_DAYS)) : days > 0 ? days / MONTH_DAYS : 0, mz = b.mzk > 0 ? (b.heatOnly && !(dE > 0) ? 0 : b.mzk * m) : Math.max(0, dE) * b.k, heat = Math.max(0, dE) * tariff();
     return { heat: heat, mzk: mz * tariff(), abon: b.abon * m, total: heat + mz * tariff() + b.abon * m, gcal: Math.max(0, dE) + mz };
   }
   /** Сколько тепла набежало с прошлых показаний (по дате снятия) или с последних принятых ХТМ, и сколько это стоит. */

@@ -684,8 +684,12 @@ final class HtmSpr {
   public static function save(int $uid, string $place, array $sp): void {
     @mkdir(self::dir(), 0700, true); $f = self::file($uid, $place);
     // журнал свого лічильника не прочитався в цей раз — лишаємо прежній
-    $own = isset($sp['own']) && is_array($sp['own']) ? array_values($sp['own']) : ((json_decode((string)@file_get_contents($f), true) ?: [])['own'] ?? null);
-    @file_put_contents($f, json_encode(['at' => time(), 'place' => $place, 'rows' => $sp['rows']] + ($own !== null ? ['own' => $own] : []), JSON_UNESCAPED_UNICODE), LOCK_EX);
+    $old = json_decode((string)@file_get_contents($f), true) ?: [];
+    $own = isset($sp['own']) && is_array($sp['own']) ? array_values($sp['own']) : ($old['own'] ?? null);
+    // довідка в кабінеті — лише останній сезон: місяці копимо (свіжий рядок місяця — поверх старого), щоб звірка формули росла з кожним сезоном; до 36 місяців
+    $by = []; foreach (array_merge((array)($old['rows'] ?? []), (array)$sp['rows']) as $r) if (isset($r['ym'])) $by[(string)$r['ym']] = $r;
+    ksort($by); $rows = array_slice(array_values($by), -36);
+    @file_put_contents($f, json_encode(['at' => time(), 'place' => $place, 'rows' => $rows] + ($own !== null ? ['own' => $own] : []), JSON_UNESCAPED_UNICODE), LOCK_EX);
     $rs = $sp['rows']; @file_put_contents(self::dir() . '/_last.json', json_encode(['at' => time(), 'rows' => count($rs), 'cols' => $sp['cols'], 'fmt' => $sp['fmt'],
       'from' => $rs ? $rs[0]['ym'] : null, 'to' => $rs ? $rs[count($rs) - 1]['ym'] : null,
       // какие поля в строках заполнены (сколько строк с числом) — проверить разбор на живом без самих чисел
