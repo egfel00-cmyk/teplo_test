@@ -3496,16 +3496,18 @@
   function hsprFor(r) {
     var rows = hspr(); if (!rows.length || !r || !r.htm || !r.htm.date) return null;
     var vs = [R.num(r.htm.energy), R.num(r.raw && r.raw.energy)].filter(function (v) { return v !== null; });
-    return rows.filter(function (x) { return x.cur !== null && x.cur !== undefined && vs.some(function (v) { return Math.abs(x.cur - v) < 0.0015; }); })[0]
+    return rows.filter(function (x) { return !hsprBld(x) && x.cur !== null && x.cur !== undefined && vs.some(function (v) { return Math.abs(x.cur - v) < 0.0015; }); })[0]
       || rows.filter(function (x) { return x.ym === r.htm.date.slice(0, 7); })[0] || null;
   }
+  /** Показання в довідці — будинкового лічильника, а не квартири: різниця втричі й більше за витрату квартири. */
+  function hsprBld(x) { return !!(x && x.diff !== null && x.diff !== undefined && x.flat > 0 && x.diff > x.flat * 3); }
   /** Офіційно за місяць: нараховано за тепло + абонплата − пільга. */
   function hsprSum(x) { return (x.cost || 0) + (x.abon || 0) - (x.lgota > 0 ? x.lgota : 0); }
   /** Підлаштування розрахунку під нарахування ХТМ: тариф (медіана нараховано/витрата), частка втрат будинку відносно власного тепла, абонплата. */
   function hsprCalib() {
     var rows = hspr(); if (!rows.length) return null;
     var tr = rows.filter(function (x) { return x.flat > 0 && x.cost > 0; }).map(function (x) { return x.cost / x.flat; }).filter(function (v) { return v > 300 && v < 10000; }).sort(function (a, b) { return a - b; });
-    var hr = rows.filter(function (x) { return x.diff > 0 && x.flat !== null && x.flat >= x.diff; }).slice(-8), sd = 0, sl = 0;
+    var hr = rows.filter(function (x) { return x.diff > 0 && x.flat !== null && x.flat >= x.diff && !hsprBld(x); }).slice(-8), sd = 0, sl = 0;
     hr.forEach(function (x) { sd += x.diff; sl += x.flat - x.diff; });
     var ab = rows.filter(function (x) { return x.abon > 0; }).slice(-1)[0];
     return { tariff: tr.length ? Math.round(tr[Math.floor(tr.length / 2)] * 100) / 100 : null, k: sd > 0 && hr.length >= 2 ? sl / sd : null, abon: ab ? ab.abon : null, n: hr.length };
@@ -3961,9 +3963,12 @@
   function hsprPanel(r, iv) {
     hsprLoad(); var x = r.own ? null : hsprFor(r); if (!x) return '';
     var li = function (k, v, b) { return '<li><div class="grow small' + (b ? '' : ' muted') + '">' + esc(k) + '</div>' + (b ? '<b class="num">' + esc(v) + '</b>' : '<span class="num">' + esc(v) + '</span>') + '</li>'; };
-    var sh = x.flat !== null && x.diff !== null ? x.flat - x.diff : null, tar = x.flat > 0 && x.cost !== null ? x.cost / x.flat : null;
+    var tar = x.flat > 0 && x.cost !== null ? x.cost / x.flat : null, bld = hsprBld(x), sh = !bld && x.flat !== null && x.diff !== null ? x.flat - x.diff : null;
     return '<div class="panel" data-key="rec-htm"><h2>' + esc(t('hsp_title', { m: monthLabel(x.ym) })) + '</h2><ul class="list">' +
-      (x.diff !== null ? li(t('hsp_diff'), fmtN(x.diff, 3) + ' Гкал') : '') +
+      // у довідці показання будинкового лічильника (живий кабінет 08.11: різниця в десятки разів більша за витрату квартири) — показуємо будинок окремо, без «частки»
+      (bld ? li(t('hsp_bdiff'), fmtN(x.diff, 3) + ' Гкал') + (x.loss !== null ? li(t('hsp_loss'), fmtN(x.loss, 3) + ' Гкал') : '') + (x.house !== null && x.house !== undefined ? li(t('hsp_house'), fmtN(x.house, 3) + ' Гкал') : '')
+        + (x.sFlat && x.sHouse ? li(t('hsp_area'), fmtN(x.sFlat, 1) + ' / ' + fmtN(x.sHouse, 1) + ' м²') : '') : '') +
+      (!bld && x.diff !== null ? li(t('hsp_diff'), fmtN(x.diff, 3) + ' Гкал') : '') +
       (sh !== null ? li(t('hsp_share') + (x.loss !== null && x.sFlat && x.sHouse ? ' (' + fmtN(x.loss, 1) + ' × ' + fmtN(x.sFlat, 1) + ' / ' + fmtN(x.sHouse, 1) + ' м²)' : ''), fmtN(sh, 3) + ' Гкал') : '') +
       (x.flat !== null ? li(t('hsp_flat'), fmtN(x.flat, 3) + ' Гкал', true) : '') +
       (tar !== null ? li(t('hsp_tariff'), money(tar) + ' грн/Гкал') : '') +

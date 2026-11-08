@@ -2519,7 +2519,7 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
       p_bill_how_t: 'Як рахує платіжка ХТМ (приклад)',
       p_bill_how: 'Ваш лічильник: 11,448 − 9,003 = 2,445 Гкал. Частка ЗБП (сходи, підвал — пропорційно площі): 0,01262 Гкал. Разом 2,45762 Гкал × 1 539,50 = 3 783,51 грн. Абонплата 29,40 грн. Нараховано 3 812,91 грн; ± перерахунки попередніх періодів. Показання ХТМ знімає близько 20-го числа — у платіжці дати показань саме такі.',
       rec_parts: 'з них тепло {heat} + частка будинку (втрати, ЗБП) {mzk} + абонплата {abon} грн',
-      hsp_row: 'ХТМ нарахував {g} Гкал', hsp_title: 'Нараховано ХТМ за {m}', hsp_diff: 'Різниця показань лічильника', hsp_share: 'Частка теплових втрат будинку',
+      hsp_row: 'ХТМ нарахував {g} Гкал', hsp_title: 'Нараховано ХТМ за {m}', hsp_diff: 'Різниця показань лічильника', hsp_share: 'Частка теплових втрат будинку', hsp_bdiff: 'Будинковий лічильник: різниця показань', hsp_loss: 'Теплові втрати будинку', hsp_house: 'Усього по будинку', hsp_area: 'Площа квартири / будинку',
       hsp_flat: 'Витрата по квартирі', hsp_tariff: 'Тариф', hsp_cost: 'Нараховано за тепло', hsp_abon: 'Абонплата', hsp_lgota: 'Пільга', hsp_total: 'Разом за місяць',
       hsp_ours: 'Наш розрахунок за показаннями: ≈ {s} грн. Далі рахуємо так само, як ХТМ: тариф, частку втрат будинку й абонплату беремо з цих нарахувань.',
       hsp_src: 'З «Довідки по теплу» вашого кабінету ХТМ — сервер бере її сам разом із квитанцією, лише читає.',
@@ -3621,7 +3621,7 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
       p_bill_how_t: 'Как считает платёжка ХТМ (пример)',
       p_bill_how: 'Ваш счётчик: 11,448 − 9,003 = 2,445 Гкал. Доля ЗБП (лестницы, подвал — пропорционально площади): 0,01262 Гкал. Итого 2,45762 Гкал × 1 539,50 = 3 783,51 грн. Абонплата 29,40 грн. Начислено 3 812,91 грн; ± перерасчёты прошлых периодов. Показания ХТМ снимает около 20-го числа — в платёжке даты показаний именно такие.',
       rec_parts: 'из них тепло {heat} + доля дома (потери, ОДН) {mzk} + абонплата {abon} грн',
-      hsp_row: 'ХТМ начислил {g} Гкал', hsp_title: 'Начислено ХТМ за {m}', hsp_diff: 'Разница показаний счётчика', hsp_share: 'Доля тепловых потерь дома',
+      hsp_row: 'ХТМ начислил {g} Гкал', hsp_title: 'Начислено ХТМ за {m}', hsp_diff: 'Разница показаний счётчика', hsp_share: 'Доля тепловых потерь дома', hsp_bdiff: 'Домовой счётчик: разница показаний', hsp_loss: 'Тепловые потери дома', hsp_house: 'Всего по дому', hsp_area: 'Площадь квартиры / дома',
       hsp_flat: 'Расход по квартире', hsp_tariff: 'Тариф', hsp_cost: 'Начислено за тепло', hsp_abon: 'Абонплата', hsp_lgota: 'Льгота', hsp_total: 'Итого за месяц',
       hsp_ours: 'Наш расчёт по показаниям: ≈ {s} грн. Дальше считаем так же, как ХТМ: тариф, долю потерь дома и абонплату берём из этих начислений.',
       hsp_src: 'Из «Справки по теплу» вашего кабинета ХТМ — сервер берёт её сам вместе с квитанцией, только читает.',
@@ -9473,16 +9473,18 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
   function hsprFor(r) {
     var rows = hspr(); if (!rows.length || !r || !r.htm || !r.htm.date) return null;
     var vs = [R.num(r.htm.energy), R.num(r.raw && r.raw.energy)].filter(function (v) { return v !== null; });
-    return rows.filter(function (x) { return x.cur !== null && x.cur !== undefined && vs.some(function (v) { return Math.abs(x.cur - v) < 0.0015; }); })[0]
+    return rows.filter(function (x) { return !hsprBld(x) && x.cur !== null && x.cur !== undefined && vs.some(function (v) { return Math.abs(x.cur - v) < 0.0015; }); })[0]
       || rows.filter(function (x) { return x.ym === r.htm.date.slice(0, 7); })[0] || null;
   }
+  /** Показання в довідці — будинкового лічильника, а не квартири: різниця втричі й більше за витрату квартири. */
+  function hsprBld(x) { return !!(x && x.diff !== null && x.diff !== undefined && x.flat > 0 && x.diff > x.flat * 3); }
   /** Офіційно за місяць: нараховано за тепло + абонплата − пільга. */
   function hsprSum(x) { return (x.cost || 0) + (x.abon || 0) - (x.lgota > 0 ? x.lgota : 0); }
   /** Підлаштування розрахунку під нарахування ХТМ: тариф (медіана нараховано/витрата), частка втрат будинку відносно власного тепла, абонплата. */
   function hsprCalib() {
     var rows = hspr(); if (!rows.length) return null;
     var tr = rows.filter(function (x) { return x.flat > 0 && x.cost > 0; }).map(function (x) { return x.cost / x.flat; }).filter(function (v) { return v > 300 && v < 10000; }).sort(function (a, b) { return a - b; });
-    var hr = rows.filter(function (x) { return x.diff > 0 && x.flat !== null && x.flat >= x.diff; }).slice(-8), sd = 0, sl = 0;
+    var hr = rows.filter(function (x) { return x.diff > 0 && x.flat !== null && x.flat >= x.diff && !hsprBld(x); }).slice(-8), sd = 0, sl = 0;
     hr.forEach(function (x) { sd += x.diff; sl += x.flat - x.diff; });
     var ab = rows.filter(function (x) { return x.abon > 0; }).slice(-1)[0];
     return { tariff: tr.length ? Math.round(tr[Math.floor(tr.length / 2)] * 100) / 100 : null, k: sd > 0 && hr.length >= 2 ? sl / sd : null, abon: ab ? ab.abon : null, n: hr.length };
@@ -9938,9 +9940,12 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
   function hsprPanel(r, iv) {
     hsprLoad(); var x = r.own ? null : hsprFor(r); if (!x) return '';
     var li = function (k, v, b) { return '<li><div class="grow small' + (b ? '' : ' muted') + '">' + esc(k) + '</div>' + (b ? '<b class="num">' + esc(v) + '</b>' : '<span class="num">' + esc(v) + '</span>') + '</li>'; };
-    var sh = x.flat !== null && x.diff !== null ? x.flat - x.diff : null, tar = x.flat > 0 && x.cost !== null ? x.cost / x.flat : null;
+    var tar = x.flat > 0 && x.cost !== null ? x.cost / x.flat : null, bld = hsprBld(x), sh = !bld && x.flat !== null && x.diff !== null ? x.flat - x.diff : null;
     return '<div class="panel" data-key="rec-htm"><h2>' + esc(t('hsp_title', { m: monthLabel(x.ym) })) + '</h2><ul class="list">' +
-      (x.diff !== null ? li(t('hsp_diff'), fmtN(x.diff, 3) + ' Гкал') : '') +
+      // у довідці показання будинкового лічильника (живий кабінет 08.11: різниця в десятки разів більша за витрату квартири) — показуємо будинок окремо, без «частки»
+      (bld ? li(t('hsp_bdiff'), fmtN(x.diff, 3) + ' Гкал') + (x.loss !== null ? li(t('hsp_loss'), fmtN(x.loss, 3) + ' Гкал') : '') + (x.house !== null && x.house !== undefined ? li(t('hsp_house'), fmtN(x.house, 3) + ' Гкал') : '')
+        + (x.sFlat && x.sHouse ? li(t('hsp_area'), fmtN(x.sFlat, 1) + ' / ' + fmtN(x.sHouse, 1) + ' м²') : '') : '') +
+      (!bld && x.diff !== null ? li(t('hsp_diff'), fmtN(x.diff, 3) + ' Гкал') : '') +
       (sh !== null ? li(t('hsp_share') + (x.loss !== null && x.sFlat && x.sHouse ? ' (' + fmtN(x.loss, 1) + ' × ' + fmtN(x.sFlat, 1) + ' / ' + fmtN(x.sHouse, 1) + ' м²)' : ''), fmtN(sh, 3) + ' Гкал') : '') +
       (x.flat !== null ? li(t('hsp_flat'), fmtN(x.flat, 3) + ' Гкал', true) : '') +
       (tar !== null ? li(t('hsp_tariff'), money(tar) + ' грн/Гкал') : '') +

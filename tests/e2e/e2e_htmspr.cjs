@@ -34,6 +34,14 @@ const U = 'http://127.0.0.1:8013/', DATA = process.env.SITE_DATA || '/tmp/teplo_
   const k = (2.796 - 1.29 + 2.057 - 0.978) / (1.29 + 0.978), exp = 0.53 * 1654.41 * (1 + k) + 31.2;
   const got = Number((used.match(/≈\s*([\d\s ]+,\d\d)/) || [])[1]?.replace(/[\s ]/g, '').replace(',', '.'));
   ok('квітень (без довідки): розрахунок як у ХТМ — тариф 1654,41, частка втрат будинку за попередні місяці, абонплата 31,20 (≈ ' + exp.toFixed(2) + ')', Math.abs(got - exp) < 0.6 && /частка будинку/.test(used) && /1\s?654,41/.test(used), [got, used]);
+  // живий кабінет 08.11: показання в довідці — будинкового лічильника (різниця 45 Гкал, а квартирі нараховано 0,926) — без «частки втрат» мінусом
+  const rowsB = [{ ym: '2026-02', prev: 512.1, cur: 557.3, diff: 45.2, loss: 4.1, house: 49.3, sHouse: 3012.5, sFlat: 56.6, flat: 0.926, cost: 1425.58, abon: 29.4, lgota: 0, paid: 1400 }];
+  execFileSync('php', ['-r', `define('TEPLO',1); require 'app/core.php'; require 'app/htmsvc.php'; HtmSpr::save(${uid}, 'main', ['rows' => json_decode('${JSON.stringify(rowsB)}', true), 'cols' => ['ym','flat','cost'], 'fmt' => ['ym' => '##.####', 'num' => '#.#####']]);`],
+    { env: Object.assign({}, process.env, { SITE_DATA: DATA, SITE_BASE: '' }), cwd: path.join(__dirname, '../..') });
+  await p.goto(U + '#rec-r1'); await wait(300); await p.reload(); await wait(2500);
+  const panB = await p.textContent('[data-key=rec-htm]').catch(() => '');
+  ok('довідка з будинковим лічильником: «Будинковий лічильник: різниця показань 45,200», втрати й усього по будинку, площі 56,6 / 3012,5, витрата 0,926; без «Частки втрат»', /Будинковий лічильник: різниця показань/.test(panB) && /45,200 Гкал/.test(panB)
+    && /49,300 Гкал/.test(panB) && /56,6 \/ 3012,5 м²/.test(panB) && /0,926 Гкал/.test(panB) && !/Частка теплових втрат/.test(panB) && !/−\d/.test(panB), panB);
   ok('без ошибок JS', !errs.length, errs);
   console.log('Итог: ' + pass + ' OK, ' + fail + ' FAIL'); await b.close(); process.exit(fail ? 1 : 0);
 })();
