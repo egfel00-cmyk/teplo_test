@@ -679,6 +679,7 @@ final class HtmBills {
 /** Нарахування ХТМ по місяцях («Довідка по теплу» кабінету) — особисті дані людини: SITE_DATA/cache/htm_spr/<uid>_<квартира>.json (наружу не віддається),
  *  приложению — GET /api/htm/spr (лише своє). Для /api/health — лише скільки рядків, які колонки знайшли й маска формату (без цифр). */
 final class HtmSpr {
+  const BILLS_V = 2;
   public static function dir(): string { return Cfg::data() . '/cache/htm_spr'; }
   private static function file(int $uid, string $place): string { return self::dir() . '/' . $uid . '_' . substr(preg_replace('/[^A-Za-z0-9_-]/', '', $place), 0, 40) . '.json'; }
   public static function save(int $uid, string $place, array $sp): void {
@@ -809,7 +810,7 @@ final class HtmSpr {
   public static function billsOf(int $uid, string $place, array $rows): ?array {
     $ds = Db::q("SELECT id, file, ym, mime FROM docs WHERE user_id = ? AND place = ? AND src = 'htm' AND ym IS NOT NULL ORDER BY created_at DESC LIMIT 24", [$uid, $place])->fetchAll();
     if (!$ds) return null;
-    $key = sha1(implode(',', array_column($ds, 'id')) . '|' . json_encode($rows));
+    $key = sha1(self::BILLS_V . '|' . implode(',', array_column($ds, 'id')) . '|' . json_encode($rows));   // BILLS_V — новий розбір, кеш заново
     $cf = self::dir() . '/_bills.json'; $c = json_decode((string)@file_get_contents($cf), true);
     if (is_array($c) && ($c['key'] ?? '') === $key && isset($c['out'])) return $c['out'];
     $bills = []; $lines = null; $shape = null; $pdf = 0;
