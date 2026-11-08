@@ -1349,6 +1349,25 @@ ok('довідник: усі громади й пункти є в КАТОТТГ
     && ($bdj['place']['name'] ?? '') === 'Буджак' && $bdj['kinds']['water']['supply'] === 25.0
     && str_contains($kch['kinds']['water']['org'] ?? '', 'Кучурганський') && $kch['kinds']['water']['supply'] === null,
     [$vmh3['kinds']['water']['supply'] ?? $vmh3, $zhr3['kinds']['water']['supply'] ?? $zhr3, $sbr['place'] ?? $sbr, $kls['place'] ?? $kls, $izm['place'] ?? $izm, $blt['kinds']['water'] ?? $blt, $vlk['kinds']['water']['org'] ?? $vlk, $dsn['place'] ?? $dsn, $bdj['place'] ?? $bdj, $kch['place'] ?? $kch]);
+  // 74-та: Одещина — 9 громад без води: Старокозацька (КП, ТОВ і ФОП по селах: 34,32 / 29,98 / 35,00), Тузли 52,80 (№ 69/2026, з ПДВ), Суворовська — без тарифу (підвіз, кооператив),
+  // Саф’яни 50,00 (№ 114), Броска — мережа Ізмаїла, Вигода 38,39 / Кам’янка 46,80 / Василівка 36,00, Куяльницька — з платіжки, Затишшя 25,00 / Перехрестове 18,00, Цебрикове 45,00, Великоплоске 60,00
+  $stk = $v('Старокозаче, вул. Миру 1'); $rsi = $v('Руськоіванівка, Старокозацька громада'); $krn = $v('Карналіївка, Старокозацька громада'); $zln = $v('Зеленівка, Старокозацька громада');
+  $tzl = $v('Лебедівка, Тузлівська громада'); $svv = $v('Суворово, Одесская обл.'); $sfn = $v('Сафьяны, Измаильский р-н'); $brs = $v('Броска, Саф’янівська громада');
+  $vgd = $v('Вигода, вул. Нова 1'); $kmn = $v('Кам’янка, Вигодянська громада'); $sct = $v('Секретарівка, Вигодянська громада'); $kln = $v('Куяльник, вул. Куяльницька 1');
+  $zts = $v('Торосове, Затишанська громада'); $prh = $v('Перехрестове, Затишанська громада'); $cbr = $v('Цебрикове, вул. Миру 1'); $vpl = $v('Великоплоске, вул. Центральна 1');
+  ok('74-та: Старокозаче 34,32 (намір 48,39), Руськоіванівка 29,98, Карналіївка — ФОП 35,00, Зеленівка — з платіжки; Тузли 52,80 з ПДВ; Суворове (рос.) → Катлабуг — без тарифу; Саф’яни (рос.) 50,00; Броска — Ізмаїл 34,30; Вигода 38,39, Кам’янка 46,80, Секретарівка — з платіжки; Куяльник — з платіжки; Торосове 25,00, Перехрестове 18,00 (проєкт 25,00); Цебрикове 45,00; Великоплоске 60,00',
+    ($stk['place']['hromada'] ?? '') === 'Старокозацька' && $stk['kinds']['water']['supply'] === 34.32 && str_contains($stk['kinds']['water']['note'] ?? '', '48,39') && str_contains($stk['kinds']['water']['src'] ?? '', '№ 3028')
+    && $rsi['kinds']['water']['supply'] === 29.98 && str_contains($krn['kinds']['water']['org'] ?? '', 'ФОП') && $krn['kinds']['water']['supply'] === 35.0
+    && ($zln['kinds']['water']['org'] ?? null) === null && $zln['kinds']['water']['supply'] === null
+    && $tzl['kinds']['water']['supply'] === 52.8 && ($tzl['kinds']['water']['from'] ?? '') === '2026-09-01' && str_contains($tzl['kinds']['water']['src'] ?? '', '69/2026')
+    && ($svv['place']['name'] ?? '') === 'Катлабуг' && $svv['kinds']['water']['supply'] === null && str_contains($svv['kinds']['water']['note'] ?? '', 'Водогосподар')
+    && ($sfn['place']['name'] ?? '') === 'Саф’яни' && $sfn['kinds']['water']['supply'] === 50.0 && str_contains($sfn['kinds']['water']['src'] ?? '', '№ 114')
+    && str_contains($brs['kinds']['water']['org'] ?? '', 'Ізмаїльське') && $brs['kinds']['water']['supply'] === 34.3 && !empty($brs['kinds']['water']['check'])
+    && $vgd['kinds']['water']['supply'] === 38.39 && $kmn['kinds']['water']['supply'] === 46.8 && str_contains($kmn['kinds']['water']['src'] ?? '', '№ 1641') && $sct['kinds']['water']['supply'] === null
+    && ($kln['place']['hromada'] ?? '') === 'Куяльницька' && $kln['kinds']['water']['supply'] === null
+    && $zts['kinds']['water']['supply'] === 25.0 && str_contains($zts['kinds']['water']['org'] ?? '', 'Господар') && $prh['kinds']['water']['supply'] === 18.0 && !empty($prh['kinds']['water']['check'])
+    && $cbr['kinds']['water']['supply'] === 45.0 && str_contains($cbr['kinds']['water']['src'] ?? '', '2271-VIII') && $vpl['kinds']['water']['supply'] === 60.0 && ($vpl['kinds']['water']['from'] ?? '') === '2026-09-01',
+    [$stk['kinds']['water'] ?? $stk, $svv['place'] ?? $svv, $sfn['place'] ?? $sfn, $brs['kinds']['water']['org'] ?? $brs, $kmn['kinds']['water'] ?? $kmn, $prh['kinds']['water'] ?? $prh, $cbr['kinds']['water'] ?? $cbr]);
   // 65-та сесія: Львівщина — сайти громад (gromada.org.ua: /sitemap/, рішення на rada.info)
   $pus = $v('Пустомити, вул. Шевченка 1'); $mur = $v('Сороки-Львівські, вул. Польова 1'); $kul = $v('Куликов, ул. Шевченко 1'); $skl = $v('Сокільники, вул. Стрийська 1');
   $prs = $v('Поршна, Солонківська громада'); $sln = $v('Солонка, вул. Шевченка 1'); $shc = $v('Щирець, вул. Шевченка 1');
