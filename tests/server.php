@@ -641,6 +641,21 @@ $wr = $wst; $wr['places'][0]['meter']['removed'] = '2026-11-02'; $wr['places'][0
 ok('прибраний теплолічильник і водомір — не нагадуємо', !Reminders::needs($wr, 'heat21', '2026-12') && !Reminders::needs($wr, 'water16', '2026-11'));
 $wr['places'][] = ['id' => 'p2', 'name' => 'Мамина', 'water' => ['meters' => [['id' => 'c9', 'kind' => 'cold']]]];
 ok('друга квартира лише з холодною: вода — нагадуємо, тепло — ні', Reminders::needs($wr, 'water16', '2026-11') && !Reminders::needs($wr, 'heat21', '2026-12'));
+// 80-та: регіон за адресою — Львів: без «ХТМ», «до 20-го», «Харківобленерго»; тепло не за ХТМ — не нагадуємо
+$lvp = ['id' => 'main', 'address' => 'м. Львів, вул. Городоцька, 10', 'city' => ['n' => 'Львів', 'h' => 'UA46060250000025047', 'r' => 'lv'], 'meter' => ['modelId' => 'sharky774'],
+  'water' => ['meters' => [['id' => 'c1', 'kind' => 'cold']]], 'meters' => [['id' => 'e1', 'kind' => 'elec']]];
+$lvs = ['places' => [$lvp]];
+$lw = Reminders::placesDue($lvs, 'water16', '2026-11'); $lwt = Reminders::text('water16', 'uk', $lw)['text'];
+$le = Reminders::placesDue($lvs, 'elec1', '2026-11'); $let = Reminders::text('elec1', 'ru', $le)['text'];
+ok('Львів: вода — без «до 20-го» і бота Водоканалу, постачальник — Львівводоканал; світло — Львівенергозбут, без Харківобленерго; тепло (не ХТМ) — не нагадуємо',
+  ($lw[0]['kh'] ?? null) === false && str_contains($lwt, 'Львівводоканал') && !str_contains($lwt, '20-го') && !str_contains($lwt, 'бота Водоканалу')
+  && str_contains($let, 'Львівенергозбут') && !str_contains($let, 'Харьков') && !str_contains($let, 'Харэнерго') && !Reminders::needs($lvs, 'heat21', '2026-12'), [$lw, $lwt, $let]);
+$khs = ['places' => [['id' => 'main', 'address' => 'м. Харків, вул. Сумська, 10', 'meter' => ['modelId' => 'sharky774'], 'water' => ['meters' => [['id' => 'c1', 'kind' => 'cold']]]]]];
+$kw = Reminders::placesDue($khs, 'water16', '2026-11');
+ok('Харків за адресою — як було: «До 20-го», Водоканал; тепло (ХТМ) — нагадуємо', ($kw[0]['kh'] ?? null) === true && str_contains(Reminders::text('water16', 'uk', $kw)['text'], 'До 20-го') && Reminders::needs($khs, 'heat21', '2026-12'), $kw);
+$mix = ['places' => [$khs['places'][0], ['id' => 'p2', 'name' => 'Львів'] + $lvp]];
+$mt = Reminders::text('water16', 'uk', Reminders::placesDue($mix, 'water16', '2026-11'))['text'];
+ok('Харків + Львів в одному повідомленні — загальний текст без «до 20-го», постачальника не називаємо (різні)', !str_contains($mt, '20-го') && !str_contains($mt, 'постачальник') && str_contains($mt, '«Львів»'), $mt);
 // несколько квартир (этап 2): одно сообщение со списком квартир, кнопка в каждую; выключатель у квартиры
 $wm = $wst; $wm['places'][] = ['id' => 'p2', 'name' => 'Мамина', 'water' => ['meters' => [['id' => 'c9', 'kind' => 'cold']]]];
 $pd = Reminders::placesDue($wm, 'water16', '2026-11');
