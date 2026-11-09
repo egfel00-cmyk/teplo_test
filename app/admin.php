@@ -229,6 +229,8 @@ final class Admin {
         if ($token === '') { $token = (string)Cfg::get('bot_token'); if ($token === '') throw new HttpError(422, 'no_token', ['human' => 'Вставьте токен бота от @BotFather.']); }
         return self::setBot($token) + ['settings' => self::settings()];
       }
+      // почта (81-я): проверить тестовым письмом и только потом сохранить; clear — удалить
+      case 'POST /api/admin/settings/mail': return Mail::adminSave($in) + ['settings' => self::settings()];
       case 'GET /api/admin/devices': return Visits::summary((int)($q['days'] ?? 30), !empty($q['all']));
       case 'GET /api/admin/journal': return Journal::sessions((int)($q['days'] ?? 7), !empty($q['all']));
       case 'GET /api/admin/journal/session': return Journal::session((string)($q['vid'] ?? ''), (string)($q['sid'] ?? ''));
@@ -276,6 +278,7 @@ final class Admin {
       'anthropic' => ['key' => self::mask((string)Cfg::get('anthropic_api_key')), 'source' => Cfg::source('anthropic_api_key'), 'model' => (string)Cfg::get('anthropic_model'), 'modelSource' => Cfg::source('anthropic_model') ?? 'default'],
       'telegram' => ['token' => self::mask((string)Cfg::get('bot_token')), 'source' => Cfg::source('bot_token'), 'username' => (string)Cfg::get('bot_username'), 'webhook' => $tg,
         'webhookExpected' => Cfg::appUrl() . 'api/bot/webhook'],
+      'mail' => Mail::adminView(),
       'appUrl' => Cfg::appUrl(), 'host' => parse_url(Cfg::appUrl(), PHP_URL_HOST),
     ];
   }

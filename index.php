@@ -28,6 +28,7 @@ header('Referrer-Policy: same-origin');
 if (str_starts_with($path, '/api/')) {
   require __DIR__ . '/app/core.php';
   require __DIR__ . '/app/telegram.php';
+require __DIR__ . '/app/mail.php';
   require __DIR__ . '/app/reminders.php';
   require __DIR__ . '/app/recognize.php';
   require __DIR__ . '/app/admin.php';
@@ -63,6 +64,7 @@ if (str_starts_with($path, '/api/')) {
     if ($res->file['mime'] === 'text/html') { header('Content-Type: text/html; charset=utf-8'); header("Content-Security-Policy: sandbox; default-src 'none'; style-src 'unsafe-inline'; img-src data:; font-src data:"); header('X-Content-Type-Options: nosniff'); header('Referrer-Policy: no-referrer'); }
     readfile($res->file['path']); exit;
   }
+  if ($res->html !== null) { header('Content-Type: text/html; charset=utf-8'); header('Cache-Control: no-store'); echo $res->html; exit; }   // отписка от писем (ссылка из письма)
   if ($res->text !== null) { header('Content-Type: text/plain; charset=utf-8'); echo $res->text; exit; }   // ретранслятор NAS читает текст строками (sh)
   if ($res->status === 429 && isset($res->body['retryAfter'])) header('Retry-After: ' . (int)$res->body['retryAfter']);
   foreach ($res->cookies as [$n, $v, $o]) setcookie($n, $v, $o);

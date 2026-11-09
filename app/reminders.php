@@ -255,4 +255,57 @@ final class Reminders {
     }
     return $out;
   }
+
+  /** Нагадування на e-mail (81-я): у кого є пошта й немає Telegram, або Telegram цього разу не дійшов (blocked / no_chat — бот змінився, не натиснули «Старт»).
+   *  Ті самі правила, що й у Telegram (placesDue, вимкнення); відписка — посиланням у листі (mail_optout). Позначка — reminders_sent з kind '<kind>.m'.
+   *  → [[user_id, kind, status], …]; status: ok / error: … ; ліміт листів на добу — решта наступної години (рядок прибираємо). */
+  public static function runMail(int $now): array {
+    if (!class_exists('Mail', false) || !Mail::on()) return [];
+    $due = self::due($now); if (!$due) return [];
+    $mk = $due['kind'] . '.m'; $out = [];
+    $rows = Db::q("SELECT u.id AS user_id, u.email, s.data,
+        (SELECT r.status FROM reminders_sent r WHERE r.user_id = u.id AND r.kind = ? AND r.ym = ?) AS tg,
+        (SELECT COUNT(*) FROM user_identities i WHERE i.user_id = u.id AND i.type = 'telegram') AS has_tg
+      FROM users u JOIN user_state s ON s.user_id = u.id WHERE u.email IS NOT NULL", [$due['kind'], $due['ym']])->fetchAll();
+    foreach ($rows as $row) {
+      $uid = (int)$row['user_id']; $email = (string)$row['email'];
+      if (!Mail::deliverable($email)) continue;
+      if ((int)$row['has_tg'] > 0 && !in_array($row['tg'], ['blocked', 'no_chat'], true)) continue;   // Telegram дійшов (або ще не пробували)
+      if (Mail::optedOut($uid)) continue;
+      if (Db::one('SELECT 1 AS x FROM reminders_sent WHERE user_id = ? AND kind = ? AND ym = ?', [$uid, $mk, $due['ym']])) continue;
+      $st = json_decode((string)$row['data'], true);
+      $ps = is_array($st) ? self::placesDue($st, $due['kind'], $due['ym']) : [];
+      if (!$ps) continue;
+      $lang = (string)($st['remind']['lang'] ?? 'uk');
+      $mail = self::mailBody(self::text($due['kind'], $lang, $ps), $lang, $uid);
+      Db::q('INSERT INTO reminders_sent (user_id, kind, ym, sent_at) VALUES (?, ?, ?, ?)', [$uid, $mk, $due['ym'], Http::iso()]);
+      $s = 'ok';
+      try { Mail::send(['to' => $email, 'kind' => 'remind', 'user' => $uid, 'subject' => $mail['subject'], 'text' => $mail['text'], 'html' => $mail['html'],
+        'headers' => ['List-Unsubscribe' => '<' . Mail::optoutUrl($uid) . '>', 'List-Unsubscribe-Post' => 'List-Unsubscribe=One-Click']]); }
+      catch (HttpError $e) { $s = $e->err === 'day_limit' ? null : 'error: ' . mb_substr((string)($e->extra['human'] ?? $e->err), 0, 70); }
+      if ($s === null) { Db::q('DELETE FROM reminders_sent WHERE user_id = ? AND kind = ? AND ym = ?', [$uid, $mk, $due['ym']]); break; }
+      Db::q('UPDATE reminders_sent SET status = ? WHERE user_id = ? AND kind = ? AND ym = ?', [$s, $uid, $mk, $due['ym']]);
+      $out[] = [$uid, $mk, $s];
+    }
+    return $out;
+  }
+
+  /** Лист із тексту Telegram-нагадування: тема — перше речення, кнопки — посилання, внизу — відписка. → [subject, text, html] */
+  public static function mailBody(array $m, string $lang, int $uid): array {
+    $ru = $lang === 'ru';
+    $lines = explode("\n", $m['text']);
+    $first = trim($lines[0]); $subject = preg_split('/(?<=[.!])\s/u', $first)[0] ?? $first; $subject = rtrim($subject, '.');
+    // «Вимкнути — у Налаштуваннях» — для листа: посилання на відписку
+    $body = trim(preg_replace('/\n\n(Вимкнути|Выключить)[^\n]*$/u', '', $m['text']));
+    $off = Mail::optoutUrl($uid);
+    $offT = $ru ? 'Больше не присылать напоминания на e-mail' : 'Більше не надсилати нагадування на e-mail';
+    $why = $ru ? 'Вы получили это письмо, потому что вошли в «Лічильники» по e-mail.' : 'Ви отримали цей лист, бо входили в «Лічильники» за e-mail.';
+    $text = $body . "\n\n" . implode("\n", array_map(fn($b) => $b[0] . ': ' . $b[1], $m['buttons'])) . "\n\n—\n" . $why . "\n" . $offT . ': ' . $off . "\n";
+    $h = fn($x) => htmlspecialchars($x, ENT_QUOTES);
+    $html = '<!doctype html><html><body style="font:16px/1.5 system-ui,-apple-system,Segoe UI,sans-serif;color:#1d2433;max-width:560px">'
+      . '<p>' . nl2br($h($body)) . '</p>'
+      . implode('', array_map(fn($b) => '<p><a href="' . $h($b[1]) . '" style="display:inline-block;padding:12px 18px;border-radius:10px;background:#1d4ed8;color:#fff;text-decoration:none">' . $h($b[0]) . '</a></p>', $m['buttons']))
+      . '<p style="color:#5b6577;font-size:13px;margin-top:28px">' . $h($why) . '<br><a href="' . $h($off) . '" style="color:#5b6577">' . $h($offT) . '</a></p></body></html>';
+    return ['subject' => $subject, 'text' => $text, 'html' => $html];
+  }
 }

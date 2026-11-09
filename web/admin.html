@@ -550,10 +550,37 @@ pre.state { font: 12px/1.4 var(--mono); background: #F4F7F5; padding: 10px; bord
       '<li>Проверка: откройте бота, нажмите «Старт» — придёт кнопка «Відкрити «Лічильники»», сервис откроется уже с входом.</li></ol>' +
       '<form id="ft"><p><label>Токен бота<br><input id="tk" type="password" autocomplete="off" placeholder="' + (t.token ? 'оставьте пустым, чтобы переподключить текущего' : '1234567890:AA…') + '" ' + INP + '></label></p>' +
       note('t') + '<p><button class="btn" type="submit">' + (t.token ? 'Сохранить и переподключить' : 'Подключить') + '</button>' + (t.source === 'admin' ? ' <button class="btn" type="button" id="tc">Отключить бота</button>' : '') + '</p></form></div>' +
+      mailPanel(d.mail || {}, note) +
       '<p class="muted small">Значения, заданные здесь, главнее config.php. Адрес сайта для бота: <span class="mono">' + esc(d.appUrl || '') + '</span></p>';
   };
+  // почта (81-я): SMTP внешнего сервиса по 587 — сводка владельцу, нагадування людям без Telegram, подача e-mail
+  var DIG = { day: 'каждый день (8:00)', week: 'по понедельникам', off: 'не присылать' };
+  function mailPanel(m0, note) {
+    // после ошибки форма перерисовывается — введённое не теряем (кроме ключа)
+    var m = Object.assign({}, m0, DATA.mailDraft || {}), opt = function (v) { return '<option value="' + v + '"' + ((m.digest || 'day') === v ? ' selected' : '') + '>' + DIG[v] + '</option>'; };
+    var rows = (m.recent || []).map(function (x) { return '<tr><td class="small">' + when(new Date(x.at * 1000).toISOString()) + '</td><td class="small">' + esc(x.kind) + '</td><td class="small">' + esc(x.rcpt) + '</td><td class="small">' + esc(x.subject) + '</td><td>' +
+      (x.status === 'sent' ? pill('ok', 'ушло') : pill('bad', 'сбой') + ' <span class="small problem">' + esc(x.err || '') + '</span>') + '</td></tr>'; }).join('');
+    return '<div class="panel"><h2>Пошта (письма с сайта)</h2>' +
+      '<p>' + (m.on ? pill('ok', 'работает') + ' <span class="mono">' + esc(m.host) + ':' + esc(m.port) + '</span> от <span class="mono">' + esc(m.from) + '</span> <span class="muted small">(' + esc(SRC[m.source] || '') + '; за сутки ' + (m.day || 0) + ' из ' + (m.dayMax || 250) + ')</span>' : pill('warn', 'не настроена')) + '</p>' +
+      '<p class="small">Для чего: <b>сводка вам на почту</b> (люди, показания, сбои, отзывы), <b>нагадування людям без Telegram</b> (с отпиской в каждом письме) и дальше — <b>подача показаний e-mail</b> (Львівобленерго, Львівводоканал).</p>' +
+      '<ol class="small" style="padding-left:20px;line-height:1.6">' +
+      '<li>Наш сервер (Hetzner) не выпускает порты 25 и 465 — нужен почтовый сервис с портом <b>587</b>.</li>' +
+      '<li><b>Brevo</b> (советую, 300 писем в сутки бесплатно): регистрация на brevo.com → Senders, Domains → Domains → добавить <span class="mono">' + esc(DATA.settings && DATA.settings.host || 'peredai.com.ua') + '</span> и внести показанные записи в Cloudflare → DNS → SMTP &amp; API → «Generate a new SMTP key». Сервер <span class="mono">smtp-relay.brevo.com</span>, логин — со страницы SMTP, отправитель — например <span class="mono">noreply@' + esc(DATA.settings && DATA.settings.host || 'peredai.com.ua') + '</span>.</li>' +
+      '<li>Или <b>Gmail</b>: двухэтапная проверка → «Пароли приложений» → пароль. Сервер <span class="mono">smtp.gmail.com</span>, логин и отправитель — ваш Gmail.</li>' +
+      '<li>«Проверить и сохранить» — сервер пришлёт тестовое письмо на «Куда сводку»; не дошло — ничего не сохранится.</li></ol>' +
+      '<form id="fm"><p><label>Сервер SMTP<br><input id="mh" class="mono" value="' + esc(m.host || '') + '" placeholder="smtp-relay.brevo.com" ' + INP + '></label></p>' +
+      '<p><label>Порт<br><input id="mp" class="mono" inputmode="numeric" value="' + esc(m.port || 587) + '" ' + INP + '></label></p>' +
+      '<p><label>Логин<br><input id="mu" class="mono" autocomplete="off" value="' + esc(m.user || '') + '" ' + INP + '></label></p>' +
+      '<p><label>Ключ SMTP / пароль приложения<br><input id="mk" type="password" autocomplete="off" placeholder="' + (m.pass ? 'оставьте пустым, чтобы не менять (' + esc(m.pass) + ')' : 'xsmtpsib-… или 16 букв от Google') + '" ' + INP + '></label></p>' +
+      '<p><label>Отправитель (адрес)<br><input id="mf" class="mono" value="' + esc(m.from || '') + '" placeholder="noreply@peredai.com.ua" ' + INP + '></label></p>' +
+      '<p><label>Имя отправителя<br><input id="mn" value="' + esc(m.name || 'Лічильники') + '" ' + INP + '></label></p>' +
+      '<p><label>Куда сводку (ваш e-mail)<br><input id="ma" class="mono" value="' + esc(m.admin || '') + '" placeholder="you@gmail.com" ' + INP + '></label></p>' +
+      '<p><label>Сводка<br><select id="md" ' + INP + '>' + opt('day') + opt('week') + opt('off') + '</select></label></p>' +
+      note('m') + '<p><button class="btn" type="submit">Проверить и сохранить</button>' + (m.source === 'admin' ? ' <button class="btn" type="button" id="mc">Удалить настройки почты</button>' : '') + '</p></form>' +
+      (rows ? '<h3>Последние письма</h3><div style="overflow-x:auto"><table><tr><th>когда</th><th>что</th><th>кому</th><th>тема</th><th>итог</th></tr>' + rows + '</table></div>' : '') + '</div>';
+  }
   function saveSettings(path, body, k, okText) {
-    var btns = document.querySelectorAll('#fa button, #ft button'); btns.forEach(function (b) { b.disabled = true; });
+    var btns = document.querySelectorAll('#fa button, #ft button, #fm button'); btns.forEach(function (b) { b.disabled = true; });
     return post(path, body).then(function (r) {
       DATA.settingsMsg = DATA.settingsMsg || {};
       if (r && r.settings) DATA.settings = r.settings;
@@ -563,10 +590,14 @@ pre.state { font: 12px/1.4 var(--mono); background: #F4F7F5; padding: 10px; bord
   }
   document.addEventListener('submit', function (e) {
     if (e.target.id === 'fa') { e.preventDefault(); saveSettings('/admin/settings/anthropic', { key: document.getElementById('ak').value.trim(), model: document.getElementById('am').value.trim() }, 'a', function (r) { return 'Ключ работает (модель ' + ((r.checked && r.checked.model) || '') + '), распознавание включено. Можно пробовать «з фото» на сайте.'; }); }
+    if (e.target.id === 'fm') { e.preventDefault(); var g = function (id) { return document.getElementById(id).value.trim(); };
+      var mb = { host: g('mh'), port: +g('mp') || 587, user: g('mu'), from: g('mf'), name: g('mn'), admin: g('ma'), digest: g('md') }; DATA.mailDraft = mb;
+      saveSettings('/admin/settings/mail', Object.assign({ pass: document.getElementById('mk').value }, mb), 'm', function (r) { DATA.mailDraft = null; return 'Тестовое письмо ушло на ' + r.sent + ' — проверьте почту (и «Спам»). Настройки сохранены.'; }); }
     if (e.target.id === 'ft') { e.preventDefault(); saveSettings('/admin/settings/telegram', { token: document.getElementById('tk').value.trim() }, 't', function (r) { return 'Бот @' + r.bot + ' подключён: вебхук, кнопка меню и /start настроены. Не забудьте /setdomain в @BotFather.'; }); }
   });
   document.addEventListener('click', function (e) {
     if (e.target.id === 'ac' && confirm('Удалить ключ API? Распознавание выключится.')) saveSettings('/admin/settings/anthropic', { clear: 1 }, 'a', function () { return 'Ключ удалён.'; });
+    if (e.target.id === 'mc' && confirm('Удалить настройки почты? Сводка и письма людям перестанут уходить.')) saveSettings('/admin/settings/mail', { clear: 1 }, 'm', function () { DATA.mailDraft = null; return 'Настройки почты удалены.'; });
     if (e.target.id === 'tc' && confirm('Отключить бота от сайта?')) saveSettings('/admin/settings/telegram', { clear: 1 }, 't', function () { return 'Бот отключён.'; });
   });
 

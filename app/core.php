@@ -9,7 +9,8 @@ final class Cfg {
   private static ?array $o = null;
   /** Ключи, которые владелец может задать из /admin → «Настройки» (лежат в SITE_DATA/uploads/settings/settings.json, не в git).
    *  Непустое значение оттуда главнее config.php — чтобы включать/менять без доступа к серверу. */
-  const RUNTIME = ['anthropic_api_key', 'anthropic_model', 'bot_token', 'bot_username', 'webhook_secret', 'bot_token_prev'];   // bot_token_prev — прежний бот после смены: вход в Mini App из его меню ещё работает
+  const RUNTIME = ['anthropic_api_key', 'anthropic_model', 'bot_token', 'bot_username', 'webhook_secret', 'bot_token_prev',
+    'smtp_host', 'smtp_port', 'smtp_user', 'smtp_pass', 'smtp_from', 'smtp_from_name', 'mail_admin_to', 'mail_digest'];   // почта (81-я, app/mail.php)   // bot_token_prev — прежний бот после смены: вход в Mini App из его меню ещё работает
 
   /** Значения по умолчанию; секреты и база — только из SITE_DATA/config.php (не из git). */
   private static function defaults(): array {
@@ -18,6 +19,8 @@ final class Cfg {
       'app_url' => null,          // по умолчанию — https://<хост><SITE_BASE>/
       'bot_token' => '', 'bot_username' => '', 'webhook_secret' => '',
       'anthropic_api_key' => '', 'anthropic_model' => 'claude-sonnet-5-5',
+      // почта (app/mail.php): SMTP внешнего сервиса по 587 — Hetzner закрывает 25 и 465; задаётся в /admin → «Настройки» → «Пошта»
+      'smtp_host' => '', 'smtp_port' => '587', 'smtp_user' => '', 'smtp_pass' => '', 'smtp_from' => '', 'smtp_from_name' => '', 'mail_admin_to' => '', 'mail_digest' => '',
       'cookie_secure' => true, 'session_days' => 30,
       // кто видит аналитику (/admin): email аккаунта или Telegram id
       'admins' => ['emails' => ['admin@teplo.test'], 'telegram' => []],   // тестовый период: учётка владельца уже создана на бою; заменить в config.php

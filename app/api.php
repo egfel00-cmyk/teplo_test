@@ -60,6 +60,8 @@ final class Res {
   public ?array $file = null;
   /** Если задан — index.php отдаёт text/plain (ретранслятор NAS: sh читает строки). */
   public ?string $text = null;
+  /** Если задан — index.php отдаёт text/html (страница отписки от писем /api/mail/off). */
+  public ?string $html = null;
   public function __construct(public int $status = 200, public array $body = []) {}
 }
 
@@ -76,7 +78,7 @@ final class Api {
       // cookie не зберігаються: чужий сайт власний заголовок без CORS не надішле, а cookie такі запити не використовують).
       // проба обленерго с NAS (RelayProbe) — curl без cookie и без входа: подделывать нечего, ничего от имени человека не меняет
       // /api/visit — отметка «открыли сайт» (аналитика, как журнал): подделывать нечего; с CSRF терялась у новых посетителей (08.11)
-      $csrfFree = $isHook || $r->path === '/api/auth/telegram/webapp' || $r->path === '/api/events' || $r->path === '/api/consent' || $r->path === '/api/visit' || $r->path === '/api/relay/probe' || $r->path === '/api/relay/done' || $r->header('X-Session') !== '';
+      $csrfFree = $isHook || $r->path === '/api/auth/telegram/webapp' || $r->path === '/api/events' || $r->path === '/api/consent' || $r->path === '/api/visit' || $r->path === '/api/relay/probe' || $r->path === '/api/relay/done' || $r->path === '/api/mail/off' || $r->header('X-Session') !== '';   // /api/mail/off — по подписи из письма (и One-Click из почтовика)
       if (!$csrfFree && $r->method !== 'GET') {
         $c = (string)($r->cookies['ts_csrf'] ?? ''); $h = $r->header('X-CSRF');
         if ($c === '' || !hash_equals($c, $h)) throw new HttpError(403, 'csrf');
@@ -132,7 +134,15 @@ final class Api {
           'bot' => Telegram::health(),
           // ошибки у людей за 3 дня: JS и API по месту, тосты (≥ 3 браузера), устройства — числа и тексты ошибок, без людей
           'errs' => (function () { try { return Journal::errSummary(3); } catch (Throwable $e) { return ['err' => $e->getMessage()]; } })(),
-          'indexnow' => class_exists('IndexNow', false) ? IndexNow::summary() : null];
+          'indexnow' => class_exists('IndexNow', false) ? IndexNow::summary() : null,
+          // почта (81-я): включена ли, сколько писем за сутки по видам и итогам, последний сбой — без адресов
+          'mail' => class_exists('Mail', false) ? Mail::health() : null];
+      }
+      // отписка от нагадувань на e-mail: GET — страница с кнопкой (почтовые сканеры ходят по ссылкам — по GET не отписываем), POST — отписать (и One-Click)
+      case 'GET /api/mail/off': case 'POST /api/mail/off': {
+        $q = $r->query(); $uid = (int)($q['u'] ?? 0); $t = (string)($q['t'] ?? ''); $ok = $uid > 0 && hash_equals(Mail::optoutToken($uid), $t);
+        $done = $ok && $m === 'POST' && Mail::optout($uid, $t);
+        $res->html = Mail::optoutPage($ok, $done, $uid, $t); return [];
       }
       case 'GET /api/me': if (!$user) throw new HttpError(401, 'unauthorized'); return ['user' => self::publicUser($user)];
       // нарахування ХТМ по місяцях із «Довідки по теплу» кабінету (робот бере разом із квитанцією) — лише свої

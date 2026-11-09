@@ -4,6 +4,7 @@ declare(strict_types=1);
 define('TEPLO', 1);
 require __DIR__ . '/../app/core.php';
 require __DIR__ . '/../app/telegram.php';
+require __DIR__ . '/../app/mail.php';
 require __DIR__ . '/../app/reminders.php';
 require __DIR__ . '/../app/recognize.php';
 require __DIR__ . '/../app/admin.php';
@@ -1755,6 +1756,67 @@ ok('Mini App нынешнего бота с allows_write_to_bot → плашка
 $wx = (new Browser('10.0.14.4'))->req('POST', '/api/bot/write-ok', []);
 ok('write-ok без входа — 401', $wx->status === 401, $wx->status);
 Telegram::$send = null;
+
+echo "\nПочта (81-ша): SMTP, налаштування в /admin, зведення, нагадування на e-mail:\n";
+$enc = Mail::hdr('Лічильники: пошта працює — тест довгої теми з кирилицею, щоб розбилася на шматки');
+ok('тема кирилицею — encoded-word, розкодовується назад', iconv_mime_decode($enc, 0, 'UTF-8') === 'Лічильники: пошта працює — тест довгої теми з кирилицею, щоб розбилася на шматки' && !preg_match('/[^\x20-\x7e\r\n]/', $enc), $enc);
+$mc = ['host' => '127.0.0.1', 'port' => 2525, 'user' => 'u', 'pass' => 'p', 'from' => 'noreply@peredai.com.ua', 'name' => 'Лічильники', 'admin' => 'boss@example.ua', 'digest' => 'day'];
+$eml = Mail::build($mc, ['a@example.ua'], [], '', "Тема\r\nBcc: evil@x.ua", "Рядок 1\n.крапка на початку", null, 'id1@peredai.com.ua');
+ok('інʼєкція заголовка через тему не проходить (Bcc не зʼявляється окремим рядком)', !preg_match('/^Bcc:/mi', $eml) && str_contains($eml, 'From: =?UTF-8?B?'));
+$p0 = strpos($eml, "\r\n\r\n");
+ok('тіло — base64 UTF-8, текст як є', base64_decode(str_replace("\r\n", '', substr($eml, $p0 + 4))) === "Рядок 1\r\n.крапка на початку");
+ok('адреси: заглушки (*.test) не шлемо, нормальні — так; кома/кутові дужки — ні', !Mail::deliverable('admin@teplo.test') && Mail::deliverable('ivan@gmail.com') && !Mail::valid('a@b.ua, c@d.ua') && !Mail::valid('<a@b.ua>'));
+// справжній SMTP-діалог із підробленим сервером (без TLS — лише localhost)
+$sf = sys_get_temp_dir() . '/smtp_fake_' . getmypid() . '.eml'; @unlink($sf); @unlink($sf . '.ready');
+$pr = proc_open([PHP_BINARY, __DIR__ . '/smtp_fake.php', '2525', $sf, '3'], [], $pipes);
+for ($i = 0; $i < 50 && !is_file($sf . '.ready'); $i++) usleep(100000);
+$e1 = Mail::smtp($mc, $mc['from'], ['a@example.ua'], $eml);
+ok('SMTP: вхід, лист прийнято; рядок із крапкою на початку — подвоєна крапка в потоці (dot-stuffing)', $e1 === null && str_contains((string)@file_get_contents($sf), 'Message-ID: <id1@peredai.com.ua>'), $e1);
+$e2 = Mail::smtp(['pass' => 'wrong'] + $mc, $mc['from'], ['a@example.ua'], $eml);
+ok('SMTP: невірний ключ — людською мовою, без пароля в тексті', is_string($e2) && str_contains($e2, 'не принял логин') && !str_contains($e2, 'wrong'), $e2);
+$e3 = Mail::smtp($mc, $mc['from'], ['nobody@example.ua'], $eml);
+ok('SMTP: отримувача не прийнято — так і кажемо', is_string($e3) && str_contains($e3, 'nobody@example.ua'), $e3);
+proc_terminate($pr); proc_close($pr); @unlink($sf); @unlink($sf . '.ready');
+ok('чужий сервер без STARTTLS — пароль відкритим каналом не шлемо', str_contains((string)Mail::smtp(['host' => 'localhost.invalid', 'port' => 587] + $mc, 'a@b.ua', ['c@d.ua'], 'x'), 'Не удалось подключиться'));
+// налаштування в /admin: перевірка тестовим листом, лише потім збереження
+$sent = []; Mail::$send = function ($c, $from, $rcpt, $data) use (&$sent) { $sent[] = [$c, $rcpt, $data]; return $c['pass'] === 'bad' ? 'Сервер не принял логин или пароль (ключ SMTP): 535' : null; };
+$r = $boss->req('POST', '/api/admin/settings/mail', ['host' => 'smtp-relay.brevo.com', 'port' => 465, 'user' => 'x@smtp-brevo.com', 'pass' => 'k', 'from' => 'noreply@peredai.com.ua']);
+ok('порт 465 — «Hetzner не випускає, вкажіть 587», нічого не збережено', $r->status === 422 && ($r->body['error'] ?? '') === 'port_blocked' && !Mail::on());
+$r = $boss->req('POST', '/api/admin/settings/mail', ['host' => 'smtp-relay.brevo.com', 'port' => 587, 'user' => 'x@smtp-brevo.com', 'pass' => 'bad', 'from' => 'noreply@peredai.com.ua', 'admin' => 'boss@gmail.com']);
+ok('ключ не підійшов — «Проверка не прошла, ничего не сохранено»', $r->status === 422 && str_contains((string)($r->body['human'] ?? ''), 'ничего не сохранено') && !Mail::on(), $r->body);
+$r = $boss->req('POST', '/api/admin/settings/mail', ['host' => 'smtp-relay.brevo.com', 'port' => 587, 'user' => 'x@smtp-brevo.com', 'pass' => 'xsmtpsib-secret-key-123456', 'from' => 'noreply@peredai.com.ua', 'admin' => 'boss@gmail.com']);
+$mv = $r->body['settings']['mail'] ?? [];
+ok('ключ підійшов: тестовий лист на пошту аналітики, збережено; ключ назовні — маскою', $r->status === 200 && Mail::on() && ($r->body['sent'] ?? '') === 'boss@gmail.com' && ($sent[count($sent) - 1][1] ?? []) === ['boss@gmail.com']
+  && ($mv['pass'] ?? '') !== 'xsmtpsib-secret-key-123456' && !str_contains(json_encode($r->body), 'secret-key') && ($mv['from'] ?? '') === 'noreply@peredai.com.ua', $mv);
+$r = $boss->req('POST', '/api/admin/settings/mail', ['digest' => 'week']);
+ok('змінити частоту без повторного ключа', $r->status === 200 && Mail::conf()['digest'] === 'week' && Mail::conf()['pass'] === 'xsmtpsib-secret-key-123456');
+ok('не адмін — відмова, налаштування не стерто', in_array((new Browser('10.9.9.9'))->req('POST', '/api/admin/settings/mail', ['clear' => 1])->status, [401, 403], true) && Mail::on());
+$hm = (new Browser('10.9.9.10'))->req('GET', '/api/health')->body['mail'] ?? [];
+ok('/api/health → mail: увімкнено, за добу test sent, без адрес', !empty($hm['on']) && (int)($hm['day']->{'test sent'} ?? (array)$hm['day']['test sent'] ?? 0) >= 1 && !str_contains(json_encode($hm), '@'), $hm);
+// зведення владельцу
+$boss->req('POST', '/api/admin/settings/mail', ['digest' => 'day']);
+ok('зведення: о 7-й ранку — ні, о 8:17 — так, удруге за день — ні; щотижня — лише в понеділок', Mail::digestDue($kyiv('2026-11-10 07:17'), null) === null && Mail::digestDue($kyiv('2026-11-10 08:17'), null) === '2026-11-10'
+  && Mail::digestDue($kyiv('2026-11-10 09:17'), '2026-11-10') === null);
+$n0 = count($sent); $dk = Mail::digest($kyiv('2026-11-10 08:17'), null); $dg = end($sent);
+ok('зведення пішло на пошту аналітики: тема з відвідувачами, текст з посиланням на /admin', $dk === '2026-11-10' && count($sent) === $n0 + 1 && $dg[1] === ['boss@gmail.com'] && str_contains(base64_decode(preg_replace('/\s+/', '', substr($dg[2], strpos($dg[2], "\r\n\r\n") + 4))), 'admin'));
+// нагадування на e-mail: є пошта, немає Telegram
+$mu = new Browser('10.7.7.7'); $mr = $mu->req('POST', '/api/auth/register', ['email' => 'olena@gmail.com', 'password' => 'Lichylnyky-2026!']);
+$muid = (int)(Db::one("SELECT id FROM users WHERE email = 'olena@gmail.com'")['id'] ?? 0);
+Db::q('INSERT INTO user_state (user_id, data, version, updated_at) VALUES (?, ?, 1, ?)', [$muid, json_encode($wst), Http::iso()]);
+$n0 = count($sent); $rm = Reminders::runMail($kyiv('2026-11-16 12:17')); $ml = end($sent);
+ok('нагадування на e-mail: людині без Telegram — один лист, з відпискою (List-Unsubscribe)', $muid > 0 && count(array_filter($rm, fn($x) => $x[0] === $muid && $x[2] === 'ok')) === 1 && $ml[1] === ['olena@gmail.com'] && str_contains($ml[2], 'List-Unsubscribe: <https://teplo.example/api/mail/off?u=' . $muid . '&t='), $rm);
+ok('удруге в той самий місяць — ні', !array_filter(Reminders::runMail($kyiv('2026-11-16 13:17')), fn($x) => $x[0] === $muid));
+$ou = new Browser('10.7.7.8'); $tok = Mail::optoutToken($muid);
+$pg = $ou->req('GET', '/api/mail/off', null, ['QUERY_STRING' => "u=$muid&t=$tok"]);
+ok('посилання відписки: GET — сторінка з кнопкою, ще не відписано (поштові сканери)', $pg->html !== null && str_contains($pg->html, '<form method="post"') && !Mail::optedOut($muid));
+$pg = $ou->req('POST', '/api/mail/off', null, ['QUERY_STRING' => "u=$muid&t=$tok"], false, 'List-Unsubscribe=One-Click');
+$bad = $ou->req('POST', '/api/mail/off', null, ['QUERY_STRING' => 'u=' . $muid . '&t=000000000000000000000000'], false);
+ok('POST (і One-Click без CSRF) — відписано; чужий підпис — «посилання застаріле»', Mail::optedOut($muid) && str_contains((string)$pg->html, 'вимкнено') && str_contains((string)$bad->html, 'застаріле'));
+Db::q("DELETE FROM reminders_sent WHERE user_id = ? AND kind = 'water16.m'", [$muid]);
+ok('відписаному — більше не шлемо', !array_filter(Reminders::runMail($kyiv('2026-11-16 14:17')), fn($x) => $x[0] === $muid));
+$mb = Reminders::mailBody(Reminders::text('water16', 'uk', Reminders::placesDue($wst, 'water16', '2026-11')), 'uk', $muid);
+ok('лист: тема — перше речення, кнопка — посилання, без «Вимкнути — у Налаштуваннях»', str_starts_with($mb['subject'], '💧 До 20-го') && !str_contains($mb['text'], 'Налаштуваннях») сервісу') && str_contains($mb['html'], '?go=wnew'), $mb['subject']);
+Mail::$send = null; Cfg::saveRuntime(array_fill_keys(Mail::KEYS, null));
 
 echo "\nИтог: $pass OK, $fail FAIL\n";
 exit($fail ? 1 : 0);
