@@ -1648,3 +1648,56 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
 .af-where svg { flex: none; margin-top: 2px; }
 .af-hint { margin: 4px 0 0; }
 .aw-addr-t, .pv-addr-t { margin: var(--sp-4) 0 var(--sp-2); font-size: var(--fs-m); }
+
+/* ---------- Блок фото на введенні показань (09.11.2026): порожній / з фото / сканер / завантаження модуля ---------- */
+.phd { position: relative; border-radius: 28px; background: var(--c-surface-2); border: 1px solid var(--c-line); overflow: hidden; min-height: 210px; }
+.phd-empty { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; min-height: 210px; padding: 28px 16px; cursor: pointer; text-align: center; }
+.phd-empty:focus-visible { outline: 3px solid var(--c-focus-ring); outline-offset: -3px; border-radius: 28px; }
+.phd-ico { color: var(--c-ink-2); opacity: .75; }
+.phd-t { font-size: 18px; font-weight: 600; color: var(--c-ink-2); }
+.phd-pill { display: inline-flex; align-items: center; gap: 10px; min-height: 48px; padding: 0 22px; border-radius: 999px; background: var(--c-warn-soft); color: var(--c-warn); font-size: 17px; font-weight: 600; margin-top: 6px; transition: transform .15s ease, filter .15s ease; }
+.phd-empty:hover .phd-pill { filter: brightness(1.06); } .phd-empty:active .phd-pill { transform: scale(.97); }
+.phd.has { border-color: transparent; background: #0b0f0e; }
+.phd-strip { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; }
+.phd-strip::-webkit-scrollbar { display: none; }
+.phd-slide { position: relative; flex: 0 0 100%; scroll-snap-align: center; height: 230px; }
+.phd.many .phd-slide { flex-basis: 88%; } .phd.many .phd-slide + .phd-slide { margin-left: 6px; }
+.phd-slide img { width: 100%; height: 100%; object-fit: cover; display: block; cursor: zoom-in; }
+.phd-x { position: absolute; top: 12px; right: 12px; width: 44px; height: 44px; border-radius: 50%; border: 0; background: rgba(0, 0, 0, .55); color: #fff; display: flex; align-items: center; justify-content: center; cursor: pointer; backdrop-filter: blur(6px); }
+.phd-x:hover { background: rgba(0, 0, 0, .7); }
+.phd-n { position: absolute; top: 14px; left: 14px; background: rgba(0, 0, 0, .55); color: #fff; font-size: 13px; font-weight: 600; border-radius: 999px; padding: 3px 10px; }
+.phd-slide .wn-tags { left: 12px; right: 12px; bottom: 12px; } .phd-slide .wn-tags i { font-size: 13px; padding: 2px 8px; }
+.phd-more { display: inline-flex; align-items: center; gap: 6px; margin: 10px 0 0; font-weight: 600; color: var(--c-ink); cursor: pointer; text-decoration: underline; text-underline-offset: 3px; min-height: 44px; }
+.phd-hint { margin: 10px 0 0; }
+.phd-tips { margin: 6px 0 0; } .phd-tips summary { cursor: pointer; font-weight: 600; min-height: 44px; display: flex; align-items: center; }
+.phd-tips ul { margin: 0 0 4px; padding-left: 20px; } .phd-tips li { margin: 4px 0; }
+/* розпізнавання й завантаження — поверх фото */
+.phd-over { position: absolute; inset: 0; display: flex; flex-direction: column; justify-content: flex-end; color: #fff;
+  background: linear-gradient(180deg, rgba(5, 10, 9, .25) 0%, rgba(5, 10, 9, .35) 45%, rgba(5, 10, 9, .85) 100%); }
+.phd-st { position: relative; padding: 14px 16px 14px; display: grid; grid-template-columns: 1fr auto; gap: 8px 12px; align-items: center; }
+.phd-msg { margin: 0; font-weight: 600; font-size: 15px; grid-column: 1; }
+.phd-bar { grid-column: 1 / -1; height: 6px; border-radius: 99px; background: rgba(255, 255, 255, .18); overflow: hidden; }
+.phd-bar i { display: block; height: 100%; border-radius: 99px; background: linear-gradient(90deg, #7fe0b0, #8DB4EE); transition: width .4s ease; position: relative; }
+.phd-bar i::after { content: ''; position: absolute; inset: 0; background: linear-gradient(90deg, transparent, rgba(255, 255, 255, .55), transparent); animation: phd-shine 1.4s linear infinite; }
+.phd-stop { grid-column: 2; grid-row: 1; display: inline-flex; align-items: center; gap: 6px; min-height: 36px; padding: 0 14px; border-radius: 999px; border: 1px solid rgba(255, 255, 255, .35); background: rgba(0, 0, 0, .3); color: #fff; font-weight: 600; cursor: pointer; }
+/* сканер: рамка-видошукач і промінь */
+.phd-scan { position: absolute; inset: 18px 18px 86px; pointer-events: none; }
+.phd-scan b { position: absolute; width: 26px; height: 26px; border: 3px solid #7fe0b0; filter: drop-shadow(0 0 6px rgba(127, 224, 176, .7)); animation: phd-pulse 1.6s ease-in-out infinite; }
+.phd-scan .k1 { left: 0; top: 0; border-right: 0; border-bottom: 0; border-top-left-radius: 10px; } .phd-scan .k2 { right: 0; top: 0; border-left: 0; border-bottom: 0; border-top-right-radius: 10px; }
+.phd-scan .k3 { left: 0; bottom: 0; border-right: 0; border-top: 0; border-bottom-left-radius: 10px; } .phd-scan .k4 { right: 0; bottom: 0; border-left: 0; border-top: 0; border-bottom-right-radius: 10px; }
+.phd-beam { position: absolute; left: 4%; right: 4%; height: 3px; top: 0; border-radius: 3px; background: linear-gradient(90deg, transparent, #7fe0b0 20%, #c9f7e0 50%, #7fe0b0 80%, transparent);
+  box-shadow: 0 0 14px 3px rgba(127, 224, 176, .55), 0 -18px 30px rgba(127, 224, 176, .18); animation: phd-beam 2.1s cubic-bezier(.45, 0, .55, 1) infinite alternate; }
+/* завантаження модуля: кільце з відсотками в центрі, сканер ховаємо */
+.phd-load { position: absolute; left: 50%; top: calc(50% - 34px); width: 76px; height: 76px; margin: -38px 0 0 -38px; display: none; align-items: center; justify-content: center; color: #fff; }
+.phd-ring { position: absolute; inset: 0; width: 76px; height: 76px; transform: rotate(-90deg); }
+.phd-ring circle { fill: none; stroke-width: 4; } .phd-ring .bg { stroke: rgba(255, 255, 255, .18); }
+.phd-ring .fg { stroke: #7fe0b0; stroke-linecap: round; transition: stroke-dashoffset .35s ease; filter: drop-shadow(0 0 4px rgba(127, 224, 176, .6)); }
+.phd-load { flex-direction: column; gap: 1px; } .phd-load .ico { animation: phd-drop 1.2s ease-in-out infinite; }
+.phd-pct { position: relative; font-size: 14px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.phd[data-stage=load] .phd-load { display: flex; } .phd[data-stage=load] .phd-scan { display: none; }
+.phd[data-stage=load] .phd-over { background: rgba(5, 10, 9, .72); backdrop-filter: blur(3px); }
+@keyframes phd-beam { from { top: 0; } to { top: calc(100% - 3px); } }
+@keyframes phd-pulse { 0%, 100% { opacity: 1; } 50% { opacity: .55; } }
+@keyframes phd-shine { from { transform: translateX(-100%); } to { transform: translateX(100%); } }
+@keyframes phd-drop { 0%, 100% { transform: translateY(-3px); } 50% { transform: translateY(3px); } }
+@media (prefers-reduced-motion: reduce) { .phd-beam { animation-duration: 6s; } .phd-scan b, .phd-load .ico, .phd-bar i::after { animation: none; } }

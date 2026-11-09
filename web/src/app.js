@@ -306,6 +306,9 @@
     moon: '<path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/>',
     chat: '<path d="M4 5h16v11H9l-5 4z"/><path d="M8 9h8M8 12h5"/>',
     camera: '<path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/>',
+    image: '<rect x="3" y="4.5" width="18" height="15" rx="3.5"/><circle cx="9" cy="10" r="1.8"/><path d="M21 16.5l-5.2-5.2L7 20"/>',
+    images: '<rect x="7.5" y="7.5" width="13.5" height="12" rx="2.5"/><path d="M4 15.5V6.5A2.5 2.5 0 0 1 6.5 4H16"/><path d="M21 16.5l-4-4-6.3 6.5"/><circle cx="12" cy="11.5" r="1.2"/>',
+    download: '<path d="M12 4v11"/><path d="m7 10 5 5 5-5"/><path d="M5 20h14"/>',
     bill: '<path d="M6 3h12v18l-2.5-1.6L13 21l-2-1.6L9 21l-3-1.8z"/><path d="M9 8h6M9 11.5h6M9 15h3.5"/>',
     edit: '<path d="M4 20h4L18.5 9.5a2.1 2.1 0 0 0-4-4L4 16v4z"/><path d="M13.5 6.5l4 4"/>',
     wrench: '<path d="M14.5 5.5a4 4 0 0 0 4.9 4.9l-8.9 8.9a2 2 0 0 1-2.8-2.8l8.9-8.9a4 4 0 0 0-2.1-2.1z"/><path d="M14.5 5.5L17 3l2.5 2.5"/>',
@@ -2227,18 +2230,48 @@
   V.gas = function () { return sPage('gas'); };
 
   // ---------- ввод показань світла / газу ----------
+  /** Блок фото на введенні показань (вода, світло, газ), як у дизайні 09.11: порожній — картка «Додайте фото лічильника» і пігулка «Зняти чи вибрати фото»;
+   *  з фото — фото на всю картку з × (кілька — гортати вбік); розпізнавання — сканер поверх фото; перше завантаження модуля (~30 МБ) — кільце з відсотками.
+   *  o: {p: 'en'|'wn' (id: p-files, p-phd, p-prog, p-pbar, p-ring), photos, busy, stage: load|read, q (0–1 модуля), pct, prog, stop, rm, tags(i), hint, more}. */
+  var PHD_C = 125.66;   // довжина кола кільця (r = 20)
+  function phCard(o) {
+    var p = o.p, ph = o.photos || [], st = o.busy ? (o.stage || 'read') : '';
+    var h = '<div class="phd' + (ph.length ? ' has' : '') + (ph.length > 1 ? ' many' : '') + '" id="' + p + '-phd" data-stage="' + st + '" data-key="' + p + '-phd">';
+    if (!ph.length) h += '<label for="' + p + '-files" class="phd-empty" tabindex="0" data-key="' + p + '-photo-pick">' + ico('image', 52, 'phd-ico') +
+      '<span class="phd-t">' + esc(t('phd_add')) + '</span><span class="phd-pill">' + ico('images', 22) + '<span>' + esc(t('phd_pick')) + '</span></span></label>';
+    else h += '<div class="phd-strip">' + ph.map(function (x, i) {
+      return '<div class="phd-slide"><img data-gal="' + p + '" data-i="' + i + '" src="' + x.url + '" alt="' + esc(t('ph_from', { n: i + 1 })) + '">' +
+        (ph.length > 1 ? '<span class="phd-n">' + (i + 1) + ' / ' + ph.length + '</span>' : '') +
+        (o.busy ? '' : '<button type="button" class="phd-x" data-act="' + o.rm + '" data-i="' + i + '" aria-label="' + esc(t('ph_remove')) + '">' + ico('close', 22) + '</button>') +
+        (o.tags ? o.tags(i) : '') + '</div>';
+    }).join('') + '</div>';
+    if (o.busy) h += '<div class="phd-over" role="status" aria-live="polite">' +
+      '<div class="phd-load" aria-hidden="true"><svg class="phd-ring" viewBox="0 0 48 48"><circle class="bg" cx="24" cy="24" r="20"/><circle class="fg" id="' + p + '-ring" cx="24" cy="24" r="20" style="stroke-dasharray:' + PHD_C + ';stroke-dashoffset:' + (PHD_C * (1 - Math.max(0, Math.min(1, o.q || 0)))).toFixed(1) + '"/></svg>' + ico('download', 18) + '<b class="phd-pct" id="' + p + '-lpct">' + Math.round((o.q || 0) * 100) + '%</b></div>' +
+      '<div class="phd-scan" aria-hidden="true"><i class="phd-beam"></i><b class="k1"></b><b class="k2"></b><b class="k3"></b><b class="k4"></b></div>' +
+      '<div class="phd-st"><p class="phd-msg" id="' + p + '-prog">' + esc(o.prog || '') + '</p>' +
+      '<div class="phd-bar" aria-hidden="true"><i id="' + p + '-pbar" style="width:' + (o.pct || 2) + '%"></i></div>' +
+      '<button type="button" class="phd-stop" data-act="' + o.stop + '" data-key="' + o.stop + '">' + ico('close', 16) + '<span>' + esc(t('ph_stop')) + '</span></button></div></div>';
+    h += '</div>';
+    if (ph.length && !o.busy) h += '<label for="' + p + '-files" class="phd-more" tabindex="0" data-key="' + p + '-photo-pick">' + ico('plus', 18) + '<span>' + esc(o.more) + '</span></label>';
+    if (!ph.length) h += '<p class="small muted phd-hint">' + esc(o.hint) + '</p>' +
+      '<details class="phd-tips" data-key="' + p + '-tips"><summary>' + esc(t('ph_tips_t')) + '</summary><ul>' + t('phd_tips').split('|').map(function (x) { return '<li>' + esc(x) + '</li>'; }).join('') + '</ul></details>';
+    return h;
+  }
+  /** Етап і кільце модуля — без перемальовування (прогрес ллється часто). */
+  function phdStage(p, stage, q) {
+    var c = document.getElementById(p + '-phd'); if (c && stage) c.setAttribute('data-stage', stage);
+    if (q === undefined || q === null) return; q = Math.max(0, Math.min(1, q));
+    var r = document.getElementById(p + '-ring'), n = document.getElementById(p + '-lpct'); if (r) r.style.strokeDashoffset = (PHD_C * (1 - q)).toFixed(1); if (n) n.textContent = Math.round(q * 100) + '%';
+  }
   function enFresh(k) { return { k: k || 'elec', date: '', vals: {}, back: '', skip: '', photos: [], src: {}, auto: {}, busy: false }; }
   /** «Розпізнати з фото» на введенні світла/газу: фото → движок у браузері → цифри по лічильниках і зонах (EN.src). */
   function enPhotoBox(k) {
     if (!VIS().local) return '';
     var ph = EN.photos || [], ms = smeters(k), h = '<div class="panel wn-photo" data-key="en-photo"><input type="file" id="en-files" accept="image/*" multiple class="sr">';
-    if (EN.busy) return h + '<div class="banner" role="status" style="margin:0">' + SPIN + '<div class="grow"><p id="en-prog">' + esc(EN.prog || t('enp_reading')) + '</p><div class="pbar" aria-hidden="true"><i id="en-pbar" style="width:' + (EN.pct || 2) + '%"></i></div>' +
-      '<p style="margin:10px 0 0"><button class="btn sec" data-act="en-stop" data-key="en-stop">' + ico('close', 18) + '<span>' + esc(t('ph_stop')) + '</span></button></p></div></div></div>';
-    h += '<label for="en-files" class="btn sec' + (ph.length ? '' : ' block') + '" tabindex="0" data-key="en-photo-pick">' + ico('camera', 22) + '<span>' + esc(t(ph.length ? 'enp_more' : 'enp_pick')) + '</span></label>' +
-      (ph.length ? '' : '<p class="small muted" style="margin:8px 0 0">' + esc(t('enp_hint')) + '</p>');
+    h += phCard({ p: 'en', photos: ph, busy: EN.busy, stage: EN.stage, q: EN.q, pct: EN.pct, prog: EN.prog || t('enp_reading'), stop: 'en-stop', rm: 'en-ph-rm', hint: t('enp_hint'), more: t('enp_more') });
+    if (EN.busy) return h + '</div>';
     if (EN.err) h += '<p class="help warn">' + esc(EN.err) + '</p>';
     if (!ph.length) return h + '</div>';
-    h += '<ul class="thumbs wn-thumbs">' + ph.map(function (p, i) { return '<li><img data-gal="en" data-i="' + i + '" src="' + p.url + '" alt="' + esc(t('ph_from', { n: i + 1 })) + '"><span class="n">' + (i + 1) + '</span><button class="rm" data-act="en-ph-rm" data-i="' + i + '" aria-label="' + esc(t('ph_remove')) + '">' + ico('close', 16) + '</button></li>'; }).join('') + '</ul>';
     var lines = ph.map(function (p, i) {
       if (!p.res) return '';
       var got = []; ms.forEach(function (m) { SK[k].mod.keys(m).forEach(function (z) { var x = EN.src[m.id + '|' + z]; if (x && x.photo === i) got.push(esc((ms.length > 1 ? (m.name || ename(m)) + ' · ' : '') + ezl(m, z).toLowerCase()) + ' <b class="num">' + (k === 'gas' ? Wt.withFrac(x.v, x.frac) : x.v) + '</b>'); }); });
@@ -2249,8 +2282,8 @@
     if (Object.keys(EN.src).some(function (q) { return EN.src[q].guess; }) || lines.length) h += '<p class="help warn" data-key="en-photo-check">' + esc(t('enp_guess')) + '</p>';
     return h + '</div>';
   }
-  function enProg(pct, msg) {
-    EN.pct = Math.max(EN.pct || 2, Math.round(pct)); EN.prog = msg;
+  function enProg(pct, msg, stage, q) {
+    EN.pct = Math.max(EN.pct || 2, Math.round(pct)); EN.prog = msg; if (stage) EN.stage = stage; if (q !== undefined) EN.q = q; phdStage('en', stage, q);
     var pb = document.getElementById('en-pbar'), el = document.getElementById('en-prog'); if (pb) pb.style.width = EN.pct + '%'; if (el) el.textContent = msg;
   }
   function enRun(files) {
@@ -2259,11 +2292,11 @@
     var todo = EN.photos.filter(function (p) { return !p.res; }), n = todo.length; if (!n) return;
     var gen = EN.gen = (EN.gen || 0) + 1, w = EN, live = function () { return EN === w && EN.gen === gen; };
     var limit = function (pr) { return Promise.race([pr, new Promise(function (ok, bad) { setTimeout(function () { bad(new Error('timeout')); }, 90000); })]); };
-    EN.busy = true; EN.pct = 2; EN.prog = t('enp_reading'); render(true);
-    VIS()._engine(function (q) { if (live()) enProg(q * 15, t('ph_loading', { p: Math.round(q * 100) })); }).then(function () {
+    EN.busy = true; EN.pct = 2; EN.prog = t('enp_reading'); EN.stage = 'read'; EN.q = 0; render(true);
+    VIS()._engine(function (q) { if (live()) enProg(q * 15, t('phd_load'), q < 1 ? 'load' : 'read', q); }).then(function () {
       var chain = Promise.resolve();
       todo.forEach(function (p, i) {
-        chain = chain.then(function () { if (!live()) return null; enProg(15 + 85 * (i + 0.3) / n, n > 1 ? t('ph_reading', { i: i + 1, n: n }) : t('enp_reading')); p.t0 = Date.now(); return limit(ocrRead(p.file, { all: true })); })
+        chain = chain.then(function () { if (!live()) return null; enProg(15 + 85 * (i + 0.3) / n, n > 1 ? t('ph_reading', { i: i + 1, n: n }) : t('enp_reading'), 'read'); p.t0 = Date.now(); return limit(ocrRead(p.file, { all: true })); })
           .then(function (res) { p.ms = Date.now() - (p.t0 || Date.now()); if (res) p.res = { lines: res.lines || [], drums: res.drums || [] }; }, function () { p.res = { lines: [], drums: [] }; });
       });
       return chain;
@@ -2860,18 +2893,13 @@
   function wnPhotoBox() {
     if (!VIS().local) return '';
     var ph = WN.photos || [], ms = wmeters(), h = '<div class="panel wn-photo" data-key="wn-photo"><input type="file" id="wn-files" accept="image/*" multiple class="sr" data-key="wn-files">';
-    if (WN.busy) h += '<div class="banner" role="status" style="margin:0">' + SPIN + '<div class="grow"><p id="wn-prog">' + esc(WN.prog || t('wn_reading')) + '</p><div class="pbar" aria-hidden="true"><i id="wn-pbar" style="width:' + (WN.pct || 2) + '%"></i></div>' +
-      '<p style="margin:10px 0 0"><button class="btn sec" data-act="wn-stop" data-key="wn-stop">' + ico('close', 18) + '<span>' + esc(t('ph_stop')) + '</span></button></p></div></div>';
-    else h += '<label for="wn-files" class="btn sec' + (ph.length ? '' : ' block') + '" tabindex="0" data-key="wn-photo-pick">' + ico('camera', 22) + '<span>' + esc(ph.length ? t('wnp_more') : t('wnp_pick')) + '</span></label>' +
-      (ph.length ? '' : '<p class="small muted" style="margin:8px 0 0">' + esc(t('wnp_hint')) + '</p>');
+    var wtags = function (i) {
+      var mine = ms.filter(function (m) { return (ph[i].meters || []).indexOf(m.id) >= 0; });
+      return mine.length ? '<span class="wn-tags">' + mine.map(function (m) { return '<i class="' + (m.kind === 'hot' ? 'n-hot' : 'n-cold') + '">' + esc(m.name || t('kv_' + m.kind)) + '</i>'; }).join('') + '</span>' : '';
+    };
+    h += phCard({ p: 'wn', photos: ph, busy: WN.busy, stage: WN.stage, q: WN.q, pct: WN.pct, prog: WN.prog || t('wn_reading'), stop: 'wn-stop', rm: 'wn-ph-rm', tags: wtags, hint: t('wnp_hint'), more: t('wnp_more') });
     if (WN.err) h += '<p class="help warn">' + esc(WN.err) + '</p>';
     if (ph.length) {
-      h += '<ul class="thumbs wn-thumbs">' + ph.map(function (p, i) {
-        var mine = ms.filter(function (m) { return (p.meters || []).indexOf(m.id) >= 0; });
-        return '<li><img data-gal="wn" data-i="' + i + '" src="' + p.url + '" alt="' + esc(t('ph_from', { n: i + 1 })) + '"><span class="n">' + (i + 1) + '</span>' +
-          (WN.busy ? '' : '<button class="rm" data-act="wn-ph-rm" data-i="' + i + '" aria-label="' + esc(t('ph_remove')) + '">' + ico('close', 16) + '</button>') +
-          (mine.length ? '<span class="wn-tags">' + mine.map(function (m) { return '<i class="' + (m.kind === 'hot' ? 'n-hot' : 'n-cold') + '">' + esc(m.name || t('kv_' + m.kind)) + '</i>'; }).join('') + '</span>' : '') + '</li>';
-      }).join('') + '</ul>';
       if (!WN.busy) {
         var lines = ph.map(function (p, i) {
           var mine = ms.filter(function (m) { return (p.meters || []).indexOf(m.id) >= 0; });
@@ -2889,8 +2917,8 @@
     }
     return h + '</div>';
   }
-  function wnProg(pct, msg) {
-    WN.pct = Math.max(WN.pct || 2, Math.round(pct)); WN.prog = msg;
+  function wnProg(pct, msg, stage, q) {
+    WN.pct = Math.max(WN.pct || 2, Math.round(pct)); WN.prog = msg; if (stage) WN.stage = stage; if (q !== undefined) WN.q = q; phdStage('wn', stage, q);
     var pb = document.getElementById('wn-pbar'), el = document.getElementById('wn-prog');
     if (pb) pb.style.width = WN.pct + '%'; if (el) el.textContent = msg;
   }
@@ -2900,13 +2928,13 @@
     files.forEach(function (f) { WN.photos.push({ file: f, url: URL.createObjectURL(f), res: null, meters: [] }); });
     var todo = WN.photos.filter(function (p) { return !p.res; }), n = todo.length; if (!n) return;
     var gen = WN.gen = (WN.gen > 0 ? WN.gen : 0) + 1, w = WN, live = function () { return WN === w && WN.gen === gen; };
-    WN.busy = true; WN.pct = 2; WN.prog = t('wn_reading'); render(true);
+    WN.busy = true; WN.pct = 2; WN.prog = t('wn_reading'); WN.stage = 'read'; WN.q = 0; render(true);
     // фото не дольше 90 с: зависло — считаем «не прочитано» и идём дальше (кнопка «Зупинити» — сразу)
     var limit = function (pr) { return Promise.race([pr, new Promise(function (ok, bad) { setTimeout(function () { bad(new Error('timeout')); }, 90000); })]); };
-    VIS()._engine(function (p) { if (live()) wnProg(p * 15, t('ph_loading', { p: Math.round(p * 100) })); }).then(function () {
+    VIS()._engine(function (p) { if (live()) wnProg(p * 15, t('phd_load'), p < 1 ? 'load' : 'read', p); }).then(function () {
       var chain = Promise.resolve();
       todo.forEach(function (p, i) {
-        chain = chain.then(function () { if (!live()) return null; wnProg(15 + 85 * (i + 0.3) / n, n > 1 ? t('ph_reading', { i: i + 1, n: n }) : t('wn_reading')); return limit(ocrRead(p.file, { all: true })); })
+        chain = chain.then(function () { if (!live()) return null; wnProg(15 + 85 * (i + 0.3) / n, n > 1 ? t('ph_reading', { i: i + 1, n: n }) : t('wn_reading'), 'read'); return limit(ocrRead(p.file, { all: true })); })
           .then(function (res) { if (res) { p.res = { lines: res.lines, drums: res.drums }; p.ms = res.ms; } }, function () { p.res = { lines: [], drums: [] }; });
       });
       return chain;
