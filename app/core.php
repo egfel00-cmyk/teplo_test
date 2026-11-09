@@ -115,10 +115,16 @@ final class Cfg {
     // кнопки напоминаний вели на https://localhost/… и Telegram отвечал ошибкой (02.11.2026: elec2 → error)
     if (self::$hook === null) {
       self::$hook = '';
+      // последний узнанный адрес — в SITE_DATA/cache/app_url: сбой getWebhookInfo не должен снимать кнопки с напоминаний (77-я)
+      $keep = self::data() !== '' ? self::data() . '/cache/app_url' : '';
       if (class_exists('Telegram', false) && self::get('bot_token')) {
-        $r = Telegram::call('getWebhookInfo', []);
-        if (preg_match('~^(https://[^/?#\s]+/(?:[^?#\s]*/)?)api/bot/webhook~', (string)($r['result']['url'] ?? ''), $m)) self::$hook = $m[1];
+        try { $r = Telegram::call('getWebhookInfo', []); } catch (Throwable $e) { $r = []; }
+        if (preg_match('~^(https://[^/?#\s]+/(?:[^?#\s]*/)?)api/bot/webhook~', (string)($r['result']['url'] ?? ''), $m)) {
+          self::$hook = $m[1];
+          if ($keep !== '' && @file_get_contents($keep) !== self::$hook) { @mkdir(dirname($keep), 0700, true); @file_put_contents($keep, self::$hook, LOCK_EX); }
+        }
       }
+      if (self::$hook === '' && $keep !== '' && preg_match('~^https://(?!localhost[:/])[^/?#\s]+/[^?#\s]*$~', (string)@file_get_contents($keep), $m)) self::$hook = $m[0];
     }
     return self::$hook !== '' ? self::$hook : 'https://localhost' . self::base() . '/';
   }

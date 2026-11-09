@@ -681,6 +681,15 @@ $hookCalls = 0; Telegram::$send = function ($m, $p, $tok = null) use (&$sent, &$
 ok('cron без app_url: адрес сайта — из вебхука бота (один запрос)', Cfg::appUrl() === 'https://pokabot.xyz/teplo_test/' && Cfg::appUrl() === 'https://pokabot.xyz/teplo_test/' && $hookCalls === 1 && Cfg::appUrlKnown(), Cfg::appUrl());
 $tx2 = Reminders::text('heat21', 'uk');
 ok('кнопка напоминания — на настоящий адрес, не localhost', $tx2['url'] === 'https://pokabot.xyz/teplo_test/?go=heat', $tx2['url']);
+// 77-я: узнанный адрес хранится в SITE_DATA/cache/app_url — сбой getWebhookInfo (сеть, 5xx) кнопки не снимает
+ok('узнанный по вебхуку адрес записан в cache/app_url', @file_get_contents(Cfg::data() . '/cache/app_url') === 'https://pokabot.xyz/teplo_test/');
+Cfg::set(['app_url' => '', 'bot_token' => $TOKEN, 'webhook_secret' => 'hook-secret']);
+Telegram::$send = function ($m, $p, $tok = null) use (&$sent) { if ($m === 'getWebhookInfo') return []; $sent[] = [$m, $p]; return ['ok' => true]; };
+ok('getWebhookInfo не ответил — адрес из cache/app_url, кнопки остаются', Cfg::appUrl() === 'https://pokabot.xyz/teplo_test/' && Cfg::appUrlKnown(), Cfg::appUrl());
+@file_put_contents(Cfg::data() . '/cache/app_url', 'https://localhost/');
+Cfg::set(['app_url' => '', 'bot_token' => $TOKEN, 'webhook_secret' => 'hook-secret']);
+ok('в cache/app_url заглушка localhost — не верим', !Cfg::appUrlKnown(), Cfg::appUrl());
+@unlink(Cfg::data() . '/cache/app_url');
 Cfg::set(['app_url' => '', 'bot_token' => $TOKEN, 'webhook_secret' => 'hook-secret']);
 Telegram::$send = function ($m, $p, $tok = null) use (&$sent) { if ($m === 'getWebhookInfo') return ['ok' => true, 'result' => ['url' => '']]; $sent[] = [$m, $p]; return ['ok' => true]; };
 ok('вебхука нет — адрес неизвестен (кнопок не будет, текст дойдёт)', !Cfg::appUrlKnown());

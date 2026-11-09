@@ -69,7 +69,8 @@ if (Cfg::get('bot_token') && Cfg::appUrlKnown() && (int)($beat['botMenuV'] ?? 0)
   try { $mo = Telegram::menuSetup(); if (!empty($mo['setChatMenuButton']['ok'])) $beat['botMenuV'] = Telegram::MENU_V; } catch (Throwable $e) { error_log('teplo bot menu: ' . $e->getMessage()); }
 }
 if ((int)gmdate('i') !== 17) { Cron::write($beat); exit; }
-$h = ['at' => gmdate('c')];
+// app — какой адрес сайта cron (CLI, без HTTP_HOST) подставит в кнопки Telegram: проверка из /api/health, что не localhost (elec2 02.11.2026)
+$h = ['at' => gmdate('c'), 'app' => (string)parse_url(Cfg::appUrl(), PHP_URL_HOST)];
 try { $n = Admin::cleanup(); $h['photos'] = $n; if ($n) echo gmdate('c') . " удалено старых фото: $n\n"; $h['hist'] = StateHist::cleanup(); $h['events'] = Journal::cleanup(); }
 catch (Throwable $e) { $h['error'] = mb_substr($e->getMessage(), 0, 200); error_log('teplo cron: ' . $e->getMessage()); }
 // новая сборка сайта → IndexNow (Bing и др.), раз на сборку; /api/health → indexnow

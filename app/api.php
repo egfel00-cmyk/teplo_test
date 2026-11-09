@@ -111,12 +111,13 @@ final class Api {
         $fwd = []; try { foreach (Db::q('SELECT src, kind, COUNT(*) AS n FROM vk_replies GROUP BY src, kind')->fetchAll() as $x) $fwd[$x['src'] . ' ' . $x['kind']] = (int)$x['n']; } catch (Throwable $e) {}
         $g = Gpv::read(); $cr = Cron::read();
         // ошибки рассылки напоминаний (не blocked/no_chat): вид, месяц, когда и ответ Telegram — цифры замаскированы, без людей (разобрать без /admin)
+        // только за 3 недели: старая ошибка (elec2 02.11.2026 — кнопка на localhost, исправлено c5f9c64) не висит в каждой сверке
         $rerr = []; try { foreach (Db::q("SELECT kind, ym, sent_at, status FROM reminders_sent WHERE status LIKE 'error%' ORDER BY sent_at DESC LIMIT 3")->fetchAll() as $x)
-          $rerr[] = ['kind' => $x['kind'], 'ym' => $x['ym'], 'at' => $x['sent_at'], 'status' => preg_replace('/\d/', '#', mb_substr((string)$x['status'], 0, 90))]; } catch (Throwable $e) {}
+          if (strtotime((string)$x['sent_at']) > time() - 21 * 86400) $rerr[] = ['kind' => $x['kind'], 'ym' => $x['ym'], 'at' => $x['sent_at'], 'status' => preg_replace('/\d/', '#', mb_substr((string)$x['status'], 0, 90))]; } catch (Throwable $e) {}
         // gpvReady / remindNext — кому придут утренний график и ближайшее напоминание (считает cron, только числа);
         // vkcab — итог журнала кабинета Водоканала по «операция итог» (была ли живая проверка рахунку человеком)
         // rev — отпечаток серверного кода (md5 файлов app/*.php, index.php, cron.php): сверить с `php tests/rev.php`, что пуш уже на бою
-        return ['ok' => true, 'rev' => self::rev(), 'cronAgo' => Cron::age(), 'remind' => (object)($cr['remind'] ?? []), 'remindNext' => $cr['remindNext'] ?? null, 'remindErr' => $rerr, 'fwd' => (object)$fwd,
+        return ['ok' => true, 'rev' => self::rev(), 'cronAgo' => Cron::age(), 'remind' => (object)($cr['remind'] ?? []), 'remindNext' => $cr['remindNext'] ?? null, 'remindErr' => $rerr, 'cronApp' => $cr['hourly']['app'] ?? null, 'fwd' => (object)$fwd,
           'gpvSent' => (object)($cr['gpvSent'] ?? []), 'gpvReady' => $cr['gpvReady'] ?? null,
           'gpv' => ['at' => $g['at'] ?? null, 'update' => $g['update'] ?? null, 'days' => array_keys((array)($g['days'] ?? [])), 'err' => $g['err'] ?? null],
           'vkcab' => VkCab::summary(), 'cabs' => (object)CabProbe::read(), 'prov' => ProvAdmin::health(),
