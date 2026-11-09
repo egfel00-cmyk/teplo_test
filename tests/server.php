@@ -1496,6 +1496,16 @@ ok('довідник: усі громади й пункти є в КАТОТТГ
     && ($kf85['place']['h'] ?? '') !== ($kl85['place']['h'] ?? '') && str_contains($kf85['kinds']['water']['note'] ?? '', 'Джерело-20')
     && str_contains($ds85['kinds']['water']['org'] ?? '', 'Дослідницьке'),
     [$vd85['place'] ?? $vd85, $kl85['place'] ?? $kl85, $kf85['place'] ?? $kf85, $kr85['place'] ?? $kr85, $ds85['place'] ?? $ds85]);
+  // 86-та сесія: Київщина — останні 11 громад (69 з 69): Студеники 34 / 18,80 (звірити), Дівички — КП «ЖКГ», Єрківці — ТОВ «КЕГ», Фурси — «не знайшли» з КП громади, Томашівка — «не знайшли»
+  $sd86 = $v('Студеники, Бориспільський р-н, вул. Шевченка 1'); $dv86 = $v('Дівички, Бориспільський р-н, вул. Шевченка 1'); $er86 = $v('Єрківці, Бориспільський р-н, вул. Шевченка 1');
+  $fr86 = $v('Фурси, Білоцерківський р-н, вул. Шевченка 1'); $tm86 = $v('Томашівка, Фастівський р-н, вул. Шевченка 1');
+  ok('громади 86-ї: Студеники 34 / 18,80 з 01.06.2024 (звірити), Дівички — КП «ЖКГ» і абонплата, Єрківці — ТОВ «КЕГ», Фурси — КП ЖКВП «Фурсівське» лише в підказці, Томашівка — «не знайшли»',
+    ($sd86['place']['r'] ?? '') === 'kv' && $sd86['kinds']['water']['supply'] === 34.0 && $sd86['kinds']['water']['drain'] === 18.8 && $sd86['kinds']['water']['from'] === '2024-06-01' && !empty($sd86['kinds']['water']['check'])
+    && str_contains($dv86['kinds']['water']['org'] ?? '', 'Дівичківської') && str_contains($dv86['kinds']['water']['note'] ?? '', '20 грн')
+    && str_contains($er86['kinds']['water']['org'] ?? '', 'Комунально-експлуатаційне') && ($er86['place']['h'] ?? '') === ($dv86['place']['h'] ?? '')
+    && $fr86['kinds']['water']['org'] === null && str_contains($fr86['kinds']['water']['note'] ?? '', 'Фурсівське')
+    && $tm86['kinds']['water']['org'] === null && str_contains($tm86['kinds']['water']['src'] ?? '', '09.11.2026'),
+    [$sd86['place'] ?? $sd86, $dv86['place'] ?? $dv86, $er86['place'] ?? $er86, $fr86['place'] ?? $fr86, $tm86['place'] ?? $tm86]);
   // однакові назви громад в одній області — ключ «Назва (центр)» / «Назва (район р-н)»
   $keys = array_map(fn($id) => Providers::hkey((string)$id), array_keys(array_filter(Providers::kat()['hromadas'], fn($h) => in_array($h['r'] ?? '', ['kv', 'od'], true))));
   ok('ключі громад унікальні в області: Чорноморська (Чорноморськ) і (Чорноморське), Калинівська (Броварський р-н)', count($keys) === count(array_unique($keys)) && in_array('Чорноморська (Чорноморськ)', $keys, true) && in_array('Калинівська (Броварський р-н)', $keys, true));
@@ -1507,9 +1517,11 @@ ok('довідник: усі громади й пункти є в КАТОТТГ
   ok('довідники областей: громади й пункти є в КАТОТТГ, у тарифів є src і src_ru, посилання — https', !$bad2 && !$bad, array_merge($bad2, $bad)); }
 // правки довідника з /admin (ProvEdit): власник править сам — поверх репозиторію, з журналом і відкатом
 { $r0 = $boss->req('GET', '/api/admin/prov'); $rk = $boss->req('GET', '/api/admin/prov/region', null, ['QUERY_STRING' => 'r=kv']);
-  $brv = array_values(array_filter($rk->body['hromadas'] ?? [], fn($x) => $x['key'] === 'Медвинська'))[0] ?? null;
-  ok('/admin «Справочник»: регіони з лічильниками громад, Київщина — 69 громад, Медвинська без води (Козинська з 85-ї — з водою); без входу — 401',
-    $r0->status === 200 && count($r0->body['regions']) === 5 && $rk->status === 200 && count($rk->body['hromadas']) === 69 && $brv && $brv['water'] === null && $anon->req('GET', '/api/admin/prov')->status === 401, [$r0->status, $rk->status, $brv]);
+  $rh = $boss->req('GET', '/api/admin/prov/region', null, ['QUERY_STRING' => 'r=kh']);
+  $brv = array_values(array_filter($rh->body['hromadas'] ?? [], fn($x) => $x['key'] === 'Липецька'))[0] ?? null;
+  $kvw = count(array_filter($rk->body['hromadas'] ?? [], fn($x) => $x['water'] !== null));
+  ok('/admin «Справочник»: регіони з лічильниками громад, Київщина — 69 громад і всі з водою (86-та), Липецька (Харківщина) без води; без входу — 401',
+    $r0->status === 200 && count($r0->body['regions']) === 5 && $rk->status === 200 && count($rk->body['hromadas']) === 69 && $kvw === 69 && $brv && $brv['water'] === null && $anon->req('GET', '/api/admin/prov')->status === 401, [$r0->status, $rk->status, $kvw, $brv]);
   $sv = $boss->req('POST', '/api/admin/prov/save', ['r' => 'kv', 'scope' => 'hromadas', 'key' => 'Броварська', 'kind' => 'water',
     'value' => ['org' => 'КП «Броваритепловодоенергія»', 'supply' => '40,5', 'drain' => '', 'phones' => ['(04594) 1-23-45; диспетчер'], 'cab' => 'javascript:alert(1)', 'site' => 'https://example.ua/pokaz', 'robot' => 'hack', 'x' => 1, 'check' => true, 'src' => 'тест', 'src_ru' => 'тест']]);
   $w2 = $v('Бровари, вул. Київська 1')['kinds']['water'];
