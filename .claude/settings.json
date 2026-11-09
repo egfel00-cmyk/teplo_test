@@ -18,7 +18,15 @@
       "mcp__claude-in-chrome__javascript_tool",
       "mcp__claude-in-chrome__read_console_messages",
       "mcp__claude-in-chrome__read_network_requests",
-      "mcp__claude-in-chrome__list_connected_browsers"
+      "mcp__claude-in-chrome__list_connected_browsers",
+      "WebFetch",
+      "WebSearch",
+      "mcp__remote-devices",
+      "mcp__claude-in-chrome",
+      "mcp__claude-code-remote__add_repo",
+      "mcp__claude-code-remote__register_repo_root",
+      "Bash(php tests/server.php)",
+      "Bash(python3 tests/design_lint.py)"
     ]
   }
 }
