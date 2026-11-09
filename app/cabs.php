@@ -784,17 +784,17 @@ final class HtmCab {
   /** Текст страницы-довідки по строкам: pre — как есть, иначе br/p/div/tr/li — перенос; скрипты и меню (nav, a) — без них. Строки — сырые (личные). */
   public static function textDoc(string $html): array {
     $x = CabWeb::dom($html); $pre = $x->query('//pre');
-    if ($pre->length) { $raw = ''; foreach ($pre as $p) $raw .= (string)$p->textContent . "\n"; }
-    else {
-      $b = preg_replace('~<(script|style|nav|head)\b.*?</\1>~is', '', $html);
-      $b = preg_replace('~<a\b[^>]*>.*?</a>~is', '', (string)$b);
-      $b = preg_replace('~<br\s*/?>|</(p|div|tr|li|h\d|table|caption)>~i', "\n", (string)$b);
-      $b = preg_replace('~</t[dh]>~i', ' | ', (string)$b);
-      $raw = html_entity_decode(strip_tags((string)$b), ENT_QUOTES | ENT_HTML5, 'UTF-8');
-    }
+    // живой кабинет 09.11: довідка — <pre> с <br> (и, может, таблицей) внутри: textContent pre — одной строкой, а DOM выносит таблицу из pre —
+    // поэтому внутренность pre берём из самого HTML
+    if (preg_match_all('~<pre\b[^>]*>(.*?)</pre>~is', $html, $pm) && trim(implode('', $pm[1])) !== '') $b = implode("\n", $pm[1]);
+    else { $b = preg_replace('~<(script|style|nav|head)\b.*?</\1>~is', '', $html); $b = preg_replace('~<a\b[^>]*>.*?</a>~is', '', (string)$b); }
+    $b = preg_replace('~<(script|style)\b.*?</\1>~is', '', (string)$b);
+    $b = preg_replace('~<br\s*/?>|</(p|div|tr|li|h\d|table|caption|pre)>~i', "\n", (string)$b);
+    $b = preg_replace('~</t[dh]>~i', ' | ', (string)$b);
+    $raw = html_entity_decode(strip_tags((string)$b), ENT_QUOTES | ENT_HTML5, 'UTF-8');
     $lines = [];
-    foreach (preg_split('/\R/u', (string)$raw) as $l) { $l = rtrim(str_replace("\u{a0}", ' ', $l)); if (trim($l, " |\t") === '') continue; $lines[] = $l; if (count($lines) >= 200) break; }
-    return ['lines' => $lines, 'pre' => $pre->length, 'tables' => $x->query('//table')->length, 'forms' => $x->query('//form')->length, 'sel' => $x->query('//select')->length];
+    foreach (preg_split('/\R/u', (string)$raw) as $l) { $l = rtrim(str_replace("\u{a0}", ' ', $l), " |\t"); if (trim($l, " |\t-") === '' && !preg_match('/-{5,}/', $l)) continue; $lines[] = $l; if (count($lines) >= 240) break; }
+    return ['lines' => $lines, 'pre' => $pre->length, 'tables' => $x->query('//table')->length, 'trs' => $x->query('//tr')->length, 'forms' => $x->query('//form')->length, 'sel' => $x->query('//select')->length];
   }
   public function billPage(string $acc, string $sur): ?array {
     $u = null;
