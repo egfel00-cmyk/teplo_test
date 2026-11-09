@@ -202,10 +202,11 @@ final class HtmSvc {
   /** «Перевірити» без кнопки: владелец неделю не нажимал (06.11 17:26 — последний раз, а окно дат, плашки и журнал нужны до первого живого внесения).
    *  Раз на LOOK_V (сайт не ответил — ещё до 3 раз, через 10 мин) сервер сам читает кабинеты ХТМ УЧЁТОК АДМИНА (config.php → admins), как VkStatus::recheck
    *  у Водоканала: только чтение, ничего не вносит; рахунок — первый из кабинета. Итог — /api/health → htmcab.seen (by: cron) и htmcab.look. → итоги или null. */
-  const LOOK_V = 9;   // 2: осмотр кабинета — где квитанция (explore), 07.11.2026; 3: + «Довідки щодо нарахувань» (spravka, sprvds) — есть ли прошлые рахунки; 4: + структура «Довідки по теплу» (08.11);
+  const LOOK_V = 10;   // 2: осмотр кабинета — где квитанция (explore), 07.11.2026; 3: + «Довідки щодо нарахувань» (spravka, sprvds) — есть ли прошлые рахунки; 4: + структура «Довідки по теплу» (08.11);
                       // 5: + журнал квартирного лічильника (viewall) к довідке — формула «витрати по квартирі» (08.11, 59-я сессия)
                       // 6: + архив рахунків — адрес рахунку за прошлый месяц и строки «Довідок щодо нарахувань» масками (09.11, 82-я)
                       // 7: довідка — <pre> с таблицей внутри (на 6 вышла одной строкой): строки по br/tr; до 90 строк по 160 знаков
+                      // 10: звірка нарахувань з довідкою по теплу — % похибки за місяцями (той самий / попередній / наступний)
                       // 9: нарахування ХТМ по всіх місяцях (HtmCab::spravka) — до довідки учётки адміна (09.11, 82-а)
                       // 8: довідка — таблиця з фіксованою шириною: пробіли зберігаємо (колонки), шапка таблиці (рядки з «|») — слова як є (не особисті), цифри → #
   /** LOOK_V 6: есть ли в кабинете прошлые рахунки (HtmCab::archive) — отдельным входом, только чтение. В журнал — без цифр и людей:
@@ -786,8 +787,18 @@ final class HtmSpr {
       if (isset($h['cost'], $x['cost']) && abs($h['cost'] - (float)$x['cost'] - (float)($x['abon'] ?? 0)) < 0.02) $ck['cost']++;
       if (isset($h['cost'], $x['cost']) && abs($h['cost'] - (float)$x['cost']) < 0.02) $ck['costNoAbon']++;
     }
+    // який місяць довідки по теплу відповідає рядку нарахувань (той самий, попередній, наступний): похибка Гкал і грн у % — без самих чисел
+    $pc = fn($a, $b) => $b != 0 ? round(($a - $b) / abs($b) * 100, 1) : null; $err = [];
+    foreach ($rs as $r) {
+      $h = (array)($r['heat'] ?? []); if (!isset($h['gcal']) && !isset($h['cost'])) continue;
+      foreach (['same' => 0, 'prev' => -1, 'next' => 1] as $al => $sh) {
+        $m = date('Y-m', strtotime($r['ym'] . '-01 ' . ($sh < 0 ? '-1' : '+' . $sh) . ' month')); $x = $by[$m] ?? null; if (!$x) continue;
+        $e = array_filter(['g' => isset($h['gcal'], $x['flat']) ? $pc((float)$h['gcal'], (float)$x['flat']) : null, 'c' => isset($h['cost'], $x['cost']) ? $pc((float)$h['cost'], (float)$x['cost'] + (float)($x['abon'] ?? 0)) : null], fn($v) => $v !== null);
+        if ($e) $err[$al][$r['ym']] = $e;
+      }
+    }
     $j = json_decode((string)@file_get_contents(self::dir() . '/_last.json'), true); $j = is_array($j) ? $j : ['at' => time()];
-    $j['nar'] = ['at' => gmdate('c'), 'n' => count($rs), 'from' => $rs ? $rs[0]['ym'] : null, 'to' => $rs ? $rs[count($rs) - 1]['ym'] : null, 'filled' => (object)$fill, 'check' => $ck];
+    $j['nar'] = ['at' => gmdate('c'), 'n' => count($rs), 'from' => $rs ? $rs[0]['ym'] : null, 'to' => $rs ? $rs[count($rs) - 1]['ym'] : null, 'filled' => (object)$fill, 'check' => $ck, 'err' => (object)$err];
     @mkdir(self::dir(), 0700, true); @file_put_contents(self::dir() . '/_last.json', json_encode($j, JSON_UNESCAPED_UNICODE), LOCK_EX);
   }
   /** Только структура таблицы (осмотр кабинета админа, HtmSvc::look): в _last.json → shape, строки людей не трогаем. */
