@@ -821,7 +821,10 @@
         return ['inv', 'bin', 'plain'].reduce(function (ch2, m) { return ch2.then(function () { return recTensor(drumTensor(src, bb, m)); }).then(function (r) { r.mode = m; r.band = bd[0]; more.push(r); }); }, ch);
       }, Promise.resolve()).then(function () {
         var b2 = pick(win.outs.concat(more), win.ang, win.hc);
-        if (b2 && b2.n >= 2 && b2.d.length >= 4 && (!win.best || b2.n > win.best.n)) { win.best = b2; win.alts = win.alts.concat(more.map(function (r) { return r.text; })); win.band = true; }
+        if (b2 && b2.n >= 2 && b2.d.length >= 4 && (!win.best || b2.n > win.best.n)) { win.best = b2; win.alts = win.alts.concat(more.map(function (r) { return r.text; })); win.band = true;
+          // какая полоса прочла ряд — по ней же читаем и красный (в высоком окне НІК иначе читается нижний сосед: «3» вместо «2»)
+          var bc = {}; more.forEach(function (r) { if (dig(r) === b2.d) bc[r.band] = (bc[r.band] || 0) + 1; });
+          var bk = Object.keys(bc).sort(function (a, b) { return bc[b] - bc[a]; })[0]; if (bk !== undefined) win.bandBd = [+bk, +bk === 0 ? 0.6 : 0.5]; }
         if (root.TEPLO_DRUM_LOG) console.log('DBG band', JSON.stringify(more.map(function (r) { return [r.band, r.mode, r.text]; })), '→', b2 && b2.d);
       });
     });
@@ -868,6 +871,7 @@
       var rb = d.redBox;
       if (!rb) { var ux = Math.cos(win.ang), uy = Math.sin(win.ang), rl = d.w * 0.6; rb = { cx: d.cx + ux * (d.w / 2 + rl / 2 + d.h * 0.04), cy: d.cy + uy * (d.w / 2 + rl / 2 + d.h * 0.04), w: rl, h: d.h }; }
       rb = { cx: rb.cx, cy: rb.cy, w: rb.w, h: rb.h * 1.05, angle: win.ang };
+      if (win.bandBd) { var bvx = -Math.sin(win.ang), bvy = Math.cos(win.ang); rb = { cx: rb.cx + bvx * win.bandBd[0] * d.h, cy: rb.cy + bvy * win.bandBd[0] * d.h, w: rb.w, h: d.h * win.bandBd[1], angle: win.ang }; }
       return ['red', 'bin', 'plain'].reduce(function (ch2, m) { return ch2.then(function () { return recTensor(drumTensor(src, rb, m)); }).then(function (r) { reds.push(r); }); }, Promise.resolve());
     });
     return chain.then(function () {
