@@ -26,6 +26,14 @@ const U = 'http://127.0.0.1:8013/', DATA = process.env.SITE_DATA || '/tmp/teplo_
   ok('…квітень (довідки ще немає) — наш розрахунок «≈»', /≈/.test(h3) && !/ХТМ нарахував/.test(h3), h3);
   await p.goto(U + '#rec-r1'); await wait(1500);
   const pan = await p.textContent('[data-key=rec-htm]').catch(() => '');
+  // акордеон (81-ша): згорнуто, у заголовку — «Гкал · грн», стоїть після показань і фото, перед блоком платіжки; тап — розгортає
+  const acc = await p.evaluate(() => { const d = document.querySelector('details[data-key=rec-htm]'); if (!d) return null; const vals = document.querySelector('[data-key=rec-values]'), nx = d.nextElementSibling;
+    return { open: d.open, brief: (d.querySelector('.hacc-brief') || {}).textContent || '', afterVals: !!(vals && (vals.compareDocumentPosition(d) & 4)), next: nx ? (nx.getAttribute('data-key') || nx.className) : '', h: Math.round(d.getBoundingClientRect().height) }; });
+  ok('«Нараховано ХТМ» — згорнутий акордеон (≤ 110 px), підсумок «2,796 Гкал · 4 656,93 грн», після показань, перед платіжкою', acc && !acc.open && /2,796 Гкал · 4\s?656,93 грн/.test(acc.brief) && acc.afterVals && /bill/i.test(acc.next) && acc.h <= 110, acc);
+  await p.click('[data-key=rec-htm-sum]'); await wait(300);
+  ok('тап по заголовку — розгорнуто, рядки розрахунку видно', await p.evaluate(() => { const d = document.querySelector('details[data-key=rec-htm]'); return d.open && d.querySelector('.hacc-b').getBoundingClientRect().height > 100; }));
+  await p.locator('[data-key=rec-htm]').screenshot({ path: '/tmp/shot_hacc_open.png' }).catch(() => {});
+  await p.click('[data-key=rec-htm-sum]'); await wait(200); await p.locator('[data-key=rec-htm]').screenshot({ path: '/tmp/shot_hacc.png' }).catch(() => {});
   ok('картка лютого: «Нараховано ХТМ за лютий 2026» — різниця 1,290, частка втрат 1,506 (210,3 × 56,6 / 7902,8 м²), витрата 2,796, тариф 1 654,41, абонплата, разом', /Нараховано ХТМ за лютий 2026/.test(pan)
     && /1,290 Гкал/.test(pan) && /1,506 Гкал/.test(pan) && /210,3 × 56,6 \/ 7902,8/.test(pan) && /2,796 Гкал/.test(pan) && /1\s?654,41/.test(pan) && /31,20/.test(pan) && /4\s?656,93/.test(pan), pan);
   await p.goto(U + '#rec-r3'); await wait(1500);

@@ -619,6 +619,17 @@ input[type=text]:not(.dmy-native):not(.pl-in), input[type=email], input[type=pas
 .where { margin-top: var(--sp-4); }
 .where > h2 { display: flex; align-items: center; gap: 8px; }
 /* «Куди передати» на сторінці лічильника — акордеон */
+/* «Нараховано ХТМ за …» у записі тепла — акордеон (09.11): згорнуто — підсумок «Гкал · грн» */
+details.hacc > summary { list-style: none; cursor: pointer; min-height: 44px; margin: -4px 0; }
+.hacc > summary::-webkit-details-marker { display: none; }
+.hacc > summary h2 { display: flex; align-items: center; gap: 8px; margin: 0; }
+.hacc > summary h2 .grow { display: flex; flex-direction: column; gap: 2px; }
+.hacc-brief { font-weight: 400; font-family: inherit; }
+.hacc[open] .hacc-brief { display: none; }
+.hacc > summary .pacc-chev { transform: rotate(90deg); transition: transform .15s; color: var(--c-ink-2); flex: none; }
+.hacc[open] > summary .pacc-chev { transform: rotate(-90deg); }
+.hacc[open] > .hacc-b { margin-top: 12px; }
+@media (prefers-reduced-motion: reduce) { .hacc > summary .pacc-chev { transition: none; } }
 details.wacc > summary { list-style: none; cursor: pointer; display: flex; align-items: center; gap: 8px; margin: -4px 0; min-height: 44px; color: inherit; text-decoration: none; }   /* details.where (подсказка «где модель») красит summary ссылкой — тут не надо */
 .wacc > summary::-webkit-details-marker { display: none; }
 .wacc > summary h2 { display: flex; align-items: center; gap: 8px; margin: 0; flex: 1; }

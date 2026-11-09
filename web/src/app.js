@@ -4136,6 +4136,8 @@
   };
 
   /** Картка показань: як нарахував ХТМ за цей місяць (довідка кабінету) — різниця показань, частка втрат будинку, тариф, абонплата, пільга, разом; і наш розрахунок поруч. */
+  var HSP_OPEN = {};
+  document.addEventListener('toggle', function (e) { var d = e.target; if (d && d.classList && d.classList.contains('hacc')) HSP_OPEN[d.id.slice(5)] = d.open; }, true);
   function hsprPanel(r, iv) {
     hsprLoad(); var x = r.own ? null : hsprFor(r); if (!x) return '';
     var li = function (k, v, b) { return '<li><div class="grow small' + (b ? '' : ' muted') + '">' + esc(k) + '</div>' + (b ? '<b class="num">' + esc(v) + '</b>' : '<span class="num">' + esc(v) + '</span>') + '</li>'; };
@@ -4144,7 +4146,10 @@
     // місяць за середнім: у журналі ХТМ немає прийнятих показань свого лічильника за цей місяць, або ХТМ нарахував помітно більше за «своє + ЗБП»
     var ol = bld ? hsprOwnList() : [], inM = function (st) { return ol.filter(function (o) { return o.date && o.date.slice(0, 7) === x.ym && (st ? o.status === st : o.status !== 'rejected'); }); };
     var rej = inM('rejected')[0], avg = bld && ol.length >= 2 && x.flat > 0 && (!inM().length || (oe !== null && x.flat - oe > Math.max(0.03, R.C.ZBP_MAX_M2 * (x.sFlat || 60))));
-    return '<div class="panel" data-key="rec-htm"><h2>' + esc(t('hsp_title', { m: monthLabel(x.ym) })) + '</h2><ul class="list">' +
+    // акордеон (власник 09.11): багато рядків заважали — згорнуто лише підсумок «Гкал · грн», розгорнуто — розрахунок; стоїть перед платіжкою
+    var brief = (x.flat !== null ? fmtN(x.flat, 3) + ' Гкал · ' : '') + money(hsprSum(x)) + ' грн';
+    return '<details class="panel hacc" id="hacc-' + esc(r.id) + '" data-key="rec-htm"' + (HSP_OPEN[r.id] ? ' open' : '') + '><summary data-key="rec-htm-sum"><h2><span class="grow">' + esc(t('hsp_title', { m: monthLabel(x.ym) })) +
+      '<span class="hacc-brief small muted">' + esc(brief) + (avg ? ' · ' + esc(t('hsp_avg_b')) : '') + '</span></span>' + ico('chev', 20, 'pacc-chev') + '</h2></summary><div class="hacc-b"><ul class="list">' +
       // у довідці показання будинкового лічильника (живий кабінет 08.11: різниця в десятки разів більша за витрату квартири) — показуємо будинок окремо, без «частки»
       (bld ? li(t('hsp_bdiff'), fmtN(x.diff, 3) + ' Гкал') + (x.loss !== null ? li(t('hsp_loss'), fmtN(x.loss, 3) + ' Гкал') : '') + (x.house !== null && x.house !== undefined ? li(t('hsp_house'), fmtN(x.house, 3) + ' Гкал') : '')
         + (x.sFlat && x.sHouse ? li(t('hsp_area'), fmtN(x.sFlat, 1) + ' / ' + fmtN(x.sHouse, 1) + ' м²') + (x.sHouse < 3 * x.sFlat ? '<li class="small muted" data-key="hsp-area-odd">' + esc(t('hsp_area_odd')) + '</li>' : '') : '') : '') +
@@ -4157,7 +4162,7 @@
       (x.cost !== null ? li(t('hsp_cost'), money(x.cost) + ' грн') : '') + (x.abon !== null ? li(t('hsp_abon'), money(x.abon) + ' грн') : '') +
       (x.lgota > 0 ? li(t('hsp_lgota'), '−' + money(x.lgota) + ' грн') : '') + li(t('hsp_total'), money(hsprSum(x)) + ' грн', true) +
       (avg ? '<li class="small muted" data-key="hsp-avg">' + esc(t('hsp_avg') + (rej ? ' ' + t('hsp_avg_rej', { d: fmtDate(rej.date), v: fmtN(rej.energy, 3) }) : '')) + '</li>' : '') + '</ul>' +
-      (iv && iv.dE >= 0 ? '<p class="small muted">' + esc(t('hsp_ours', { s: money(iv.cost) })) + '</p>' : '') + '<p class="small muted">' + esc(t('hsp_src')) + '</p></div>';
+      (iv && iv.dE >= 0 ? '<p class="small muted">' + esc(t('hsp_ours', { s: money(iv.cost) })) + '</p>' : '') + '<p class="small muted">' + esc(t('hsp_src')) + '</p></div></details>';
   }
   /** Вкладки без единого счётчика в квартире — пусто и «Додати лічильник». */
   function noMeters(route, title) {
@@ -4248,7 +4253,7 @@
         '<div><div class="num mid">' + esc(degTxt(wx.min)) + ' … ' + esc(degTxt(wx.max)) + '</div><div class="small muted">' + esc(t('wx_t_range')) + '</div></div>' +
         '<div><div class="num mid">' + wx.frost + ' / ' + wx.ser.length + '</div><div class="small muted">' + esc(t('wx_t_frost')) + '</div></div>' : '') +
       (wx.day !== null ? '<div><div class="num mid">' + esc(degTxt(wx.day)) + '</div><div class="small muted">' + esc(t('wx_t_day')) + '</div></div>' : '') + '</div>' + wxSpark(wx.ser) + '</div>' : '';
-    return { screen: 'S09', route: 'history', html: head + used + hsprPanel(r, iv) + wxp + '<ul class="list" data-key="rec-values">' + rows + '</ul>' + photoStrip(r.photos, 'h' + r.id, 'h:' + r.id) + billsBox('h:' + r.id, r.bills, t('bl_title', { m: monthLabel(String(h.date || '').slice(0, 7)) })) +
+    return { screen: 'S09', route: 'history', html: head + used + wxp + '<ul class="list" data-key="rec-values">' + rows + '</ul>' + photoStrip(r.photos, 'h' + r.id, 'h:' + r.id) + hsprPanel(r, iv) + billsBox('h:' + r.id, r.bills, t('bl_title', { m: monthLabel(String(h.date || '').slice(0, 7)) })) +
       '<div class="row-actions">' + st + '<a class="btn sec" href="#rec-' + r.id + '-edit" data-key="rec-edit">' + esc(t('rec_edit')) + '</a>' +
       '<button class="btn danger" data-act="rec-del-ask" data-key="rec-del">' + esc(t('rec_del')) + '</button></div><div id="rec-del-confirm"></div>' + ownBox('h', r) };
   }

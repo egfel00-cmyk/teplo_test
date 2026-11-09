@@ -632,6 +632,17 @@ input[type=text]:not(.dmy-native):not(.pl-in), input[type=email], input[type=pas
 .where { margin-top: var(--sp-4); }
 .where > h2 { display: flex; align-items: center; gap: 8px; }
 /* «Куди передати» на сторінці лічильника — акордеон */
+/* «Нараховано ХТМ за …» у записі тепла — акордеон (09.11): згорнуто — підсумок «Гкал · грн» */
+details.hacc > summary { list-style: none; cursor: pointer; min-height: 44px; margin: -4px 0; }
+.hacc > summary::-webkit-details-marker { display: none; }
+.hacc > summary h2 { display: flex; align-items: center; gap: 8px; margin: 0; }
+.hacc > summary h2 .grow { display: flex; flex-direction: column; gap: 2px; }
+.hacc-brief { font-weight: 400; font-family: inherit; }
+.hacc[open] .hacc-brief { display: none; }
+.hacc > summary .pacc-chev { transform: rotate(90deg); transition: transform .15s; color: var(--c-ink-2); flex: none; }
+.hacc[open] > summary .pacc-chev { transform: rotate(-90deg); }
+.hacc[open] > .hacc-b { margin-top: 12px; }
+@media (prefers-reduced-motion: reduce) { .hacc > summary .pacc-chev { transition: none; } }
 details.wacc > summary { list-style: none; cursor: pointer; display: flex; align-items: center; gap: 8px; margin: -4px 0; min-height: 44px; color: inherit; text-decoration: none; }   /* details.where (подсказка «где модель») красит summary ссылкой — тут не надо */
 .wacc > summary::-webkit-details-marker { display: none; }
 .wacc > summary h2 { display: flex; align-items: center; gap: 8px; margin: 0; flex: 1; }
@@ -2585,7 +2596,7 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
       p_bill_how_t: 'Як рахує платіжка ХТМ (приклад)',
       p_bill_how: 'Ваш лічильник: 11,448 − 9,003 = 2,445 Гкал. Частка ЗБП (сходи, підвал — пропорційно площі): 0,01262 Гкал. Разом 2,45762 Гкал × 1 539,50 = 3 783,51 грн. Абонплата 29,40 грн. Нараховано 3 812,91 грн; ± перерахунки попередніх періодів. Показання ХТМ знімає близько 20-го числа — у платіжці дати показань саме такі.',
       rec_parts: 'з них тепло {heat} + частка будинку (втрати, ЗБП) {mzk} + абонплата {abon} грн',
-      hsp_row: 'ХТМ нарахував {g} Гкал', hsp_title: 'Нараховано ХТМ за {m}', hsp_diff: 'Різниця показань лічильника', hsp_share: 'Частка теплових втрат будинку', hsp_bdiff: 'Будинковий лічильник: різниця показань', hsp_loss: 'Теплові втрати будинку', hsp_house: 'Усього по будинку', hsp_area: 'Площа квартири / будинку',
+      hsp_row: 'ХТМ нарахував {g} Гкал', hsp_avg_b: 'схоже, за середнім', hsp_title: 'Нараховано ХТМ за {m}', hsp_diff: 'Різниця показань лічильника', hsp_share: 'Частка теплових втрат будинку', hsp_bdiff: 'Будинковий лічильник: різниця показань', hsp_loss: 'Теплові втрати будинку', hsp_house: 'Усього по будинку', hsp_area: 'Площа квартири / будинку',
       hsp_flat: 'Витрата по квартирі', hsp_own: 'Ваш лічильник за місяць (журнал ХТМ)', hsp_over: 'Частка будинку понад ваш лічильник', hsp_tariff: 'Тариф', hsp_cost: 'Нараховано за тепло', hsp_abon: 'Абонплата', hsp_lgota: 'Пільга', hsp_total: 'Разом за місяць',
       hsp_ours: 'Наш розрахунок за показаннями: ≈ {s} грн. Далі рахуємо так само, як ХТМ: тариф, частку будинку понад ваш лічильник і абонплату беремо з цих нарахувань.',
       hsp_src: 'З «Довідки по теплу» вашого кабінету ХТМ — сервер бере її сам разом із квитанцією, лише читає.',
@@ -3701,7 +3712,7 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
       p_bill_how_t: 'Как считает платёжка ХТМ (пример)',
       p_bill_how: 'Ваш счётчик: 11,448 − 9,003 = 2,445 Гкал. Доля ЗБП (лестницы, подвал — пропорционально площади): 0,01262 Гкал. Итого 2,45762 Гкал × 1 539,50 = 3 783,51 грн. Абонплата 29,40 грн. Начислено 3 812,91 грн; ± перерасчёты прошлых периодов. Показания ХТМ снимает около 20-го числа — в платёжке даты показаний именно такие.',
       rec_parts: 'из них тепло {heat} + доля дома (потери, ОДН) {mzk} + абонплата {abon} грн',
-      hsp_row: 'ХТМ начислил {g} Гкал', hsp_title: 'Начислено ХТМ за {m}', hsp_diff: 'Разница показаний счётчика', hsp_share: 'Доля тепловых потерь дома', hsp_bdiff: 'Домовой счётчик: разница показаний', hsp_loss: 'Тепловые потери дома', hsp_house: 'Всего по дому', hsp_area: 'Площадь квартиры / дома',
+      hsp_row: 'ХТМ начислил {g} Гкал', hsp_avg_b: 'похоже, по среднему', hsp_title: 'Начислено ХТМ за {m}', hsp_diff: 'Разница показаний счётчика', hsp_share: 'Доля тепловых потерь дома', hsp_bdiff: 'Домовой счётчик: разница показаний', hsp_loss: 'Тепловые потери дома', hsp_house: 'Всего по дому', hsp_area: 'Площадь квартиры / дома',
       hsp_flat: 'Расход по квартире', hsp_own: 'Ваш счётчик за месяц (журнал ХТМ)', hsp_over: 'Доля дома сверх вашего счётчика', hsp_tariff: 'Тариф', hsp_cost: 'Начислено за тепло', hsp_abon: 'Абонплата', hsp_lgota: 'Льгота', hsp_total: 'Итого за месяц',
       hsp_ours: 'Наш расчёт по показаниям: ≈ {s} грн. Дальше считаем так же, как ХТМ: тариф, долю дома сверх вашего счётчика и абонплату берём из этих начислений.',
       hsp_src: 'Из «Справки по теплу» вашего кабинета ХТМ — сервер берёт её сам вместе с квитанцией, только читает.',
@@ -10201,6 +10212,8 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
   };
 
   /** Картка показань: як нарахував ХТМ за цей місяць (довідка кабінету) — різниця показань, частка втрат будинку, тариф, абонплата, пільга, разом; і наш розрахунок поруч. */
+  var HSP_OPEN = {};
+  document.addEventListener('toggle', function (e) { var d = e.target; if (d && d.classList && d.classList.contains('hacc')) HSP_OPEN[d.id.slice(5)] = d.open; }, true);
   function hsprPanel(r, iv) {
     hsprLoad(); var x = r.own ? null : hsprFor(r); if (!x) return '';
     var li = function (k, v, b) { return '<li><div class="grow small' + (b ? '' : ' muted') + '">' + esc(k) + '</div>' + (b ? '<b class="num">' + esc(v) + '</b>' : '<span class="num">' + esc(v) + '</span>') + '</li>'; };
@@ -10209,7 +10222,10 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
     // місяць за середнім: у журналі ХТМ немає прийнятих показань свого лічильника за цей місяць, або ХТМ нарахував помітно більше за «своє + ЗБП»
     var ol = bld ? hsprOwnList() : [], inM = function (st) { return ol.filter(function (o) { return o.date && o.date.slice(0, 7) === x.ym && (st ? o.status === st : o.status !== 'rejected'); }); };
     var rej = inM('rejected')[0], avg = bld && ol.length >= 2 && x.flat > 0 && (!inM().length || (oe !== null && x.flat - oe > Math.max(0.03, R.C.ZBP_MAX_M2 * (x.sFlat || 60))));
-    return '<div class="panel" data-key="rec-htm"><h2>' + esc(t('hsp_title', { m: monthLabel(x.ym) })) + '</h2><ul class="list">' +
+    // акордеон (власник 09.11): багато рядків заважали — згорнуто лише підсумок «Гкал · грн», розгорнуто — розрахунок; стоїть перед платіжкою
+    var brief = (x.flat !== null ? fmtN(x.flat, 3) + ' Гкал · ' : '') + money(hsprSum(x)) + ' грн';
+    return '<details class="panel hacc" id="hacc-' + esc(r.id) + '" data-key="rec-htm"' + (HSP_OPEN[r.id] ? ' open' : '') + '><summary data-key="rec-htm-sum"><h2><span class="grow">' + esc(t('hsp_title', { m: monthLabel(x.ym) })) +
+      '<span class="hacc-brief small muted">' + esc(brief) + (avg ? ' · ' + esc(t('hsp_avg_b')) : '') + '</span></span>' + ico('chev', 20, 'pacc-chev') + '</h2></summary><div class="hacc-b"><ul class="list">' +
       // у довідці показання будинкового лічильника (живий кабінет 08.11: різниця в десятки разів більша за витрату квартири) — показуємо будинок окремо, без «частки»
       (bld ? li(t('hsp_bdiff'), fmtN(x.diff, 3) + ' Гкал') + (x.loss !== null ? li(t('hsp_loss'), fmtN(x.loss, 3) + ' Гкал') : '') + (x.house !== null && x.house !== undefined ? li(t('hsp_house'), fmtN(x.house, 3) + ' Гкал') : '')
         + (x.sFlat && x.sHouse ? li(t('hsp_area'), fmtN(x.sFlat, 1) + ' / ' + fmtN(x.sHouse, 1) + ' м²') + (x.sHouse < 3 * x.sFlat ? '<li class="small muted" data-key="hsp-area-odd">' + esc(t('hsp_area_odd')) + '</li>' : '') : '') : '') +
@@ -10222,7 +10238,7 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
       (x.cost !== null ? li(t('hsp_cost'), money(x.cost) + ' грн') : '') + (x.abon !== null ? li(t('hsp_abon'), money(x.abon) + ' грн') : '') +
       (x.lgota > 0 ? li(t('hsp_lgota'), '−' + money(x.lgota) + ' грн') : '') + li(t('hsp_total'), money(hsprSum(x)) + ' грн', true) +
       (avg ? '<li class="small muted" data-key="hsp-avg">' + esc(t('hsp_avg') + (rej ? ' ' + t('hsp_avg_rej', { d: fmtDate(rej.date), v: fmtN(rej.energy, 3) }) : '')) + '</li>' : '') + '</ul>' +
-      (iv && iv.dE >= 0 ? '<p class="small muted">' + esc(t('hsp_ours', { s: money(iv.cost) })) + '</p>' : '') + '<p class="small muted">' + esc(t('hsp_src')) + '</p></div>';
+      (iv && iv.dE >= 0 ? '<p class="small muted">' + esc(t('hsp_ours', { s: money(iv.cost) })) + '</p>' : '') + '<p class="small muted">' + esc(t('hsp_src')) + '</p></div></details>';
   }
   /** Вкладки без единого счётчика в квартире — пусто и «Додати лічильник». */
   function noMeters(route, title) {
@@ -10313,7 +10329,7 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
         '<div><div class="num mid">' + esc(degTxt(wx.min)) + ' … ' + esc(degTxt(wx.max)) + '</div><div class="small muted">' + esc(t('wx_t_range')) + '</div></div>' +
         '<div><div class="num mid">' + wx.frost + ' / ' + wx.ser.length + '</div><div class="small muted">' + esc(t('wx_t_frost')) + '</div></div>' : '') +
       (wx.day !== null ? '<div><div class="num mid">' + esc(degTxt(wx.day)) + '</div><div class="small muted">' + esc(t('wx_t_day')) + '</div></div>' : '') + '</div>' + wxSpark(wx.ser) + '</div>' : '';
-    return { screen: 'S09', route: 'history', html: head + used + hsprPanel(r, iv) + wxp + '<ul class="list" data-key="rec-values">' + rows + '</ul>' + photoStrip(r.photos, 'h' + r.id, 'h:' + r.id) + billsBox('h:' + r.id, r.bills, t('bl_title', { m: monthLabel(String(h.date || '').slice(0, 7)) })) +
+    return { screen: 'S09', route: 'history', html: head + used + wxp + '<ul class="list" data-key="rec-values">' + rows + '</ul>' + photoStrip(r.photos, 'h' + r.id, 'h:' + r.id) + hsprPanel(r, iv) + billsBox('h:' + r.id, r.bills, t('bl_title', { m: monthLabel(String(h.date || '').slice(0, 7)) })) +
       '<div class="row-actions">' + st + '<a class="btn sec" href="#rec-' + r.id + '-edit" data-key="rec-edit">' + esc(t('rec_edit')) + '</a>' +
       '<button class="btn danger" data-act="rec-del-ask" data-key="rec-del">' + esc(t('rec_del')) + '</button></div><div id="rec-del-confirm"></div>' + ownBox('h', r) };
   }
