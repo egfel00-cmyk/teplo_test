@@ -990,6 +990,14 @@ $mb = array_values(array_filter($mc, fn($x) => $x[0] === 'setChatMenuButton'));
 ok('кнопка меню бота: «Відкрити» за замовчуванням, «Открыть» у чаті рос. після /start (укр. — без окремої), /start описано укр. і рос.', count($mb) === 2 && $mb[0][1]['menu_button']['text'] === 'Відкрити' && !isset($mb[0][1]['chat_id'])
   && $mb[1][1]['chat_id'] === 555 && $mb[1][1]['menu_button']['text'] === 'Открыть' && count(array_filter($mc, fn($x) => $x[0] === 'setMyCommands' && ($x[1]['language_code'] ?? '') === 'ru')) === 1
   && str_contains(end($mc)[1]['text'] ?? '', 'Що вміє сервіс'), $mb);
+// опис бота (84-я): за замовчуванням/uk/ru — свій текст у лімітах Telegram (512 / 120), чотири області; en — порожньо (покаже за замовчуванням)
+$ds = []; foreach ($mc as [$m, $p]) if (in_array($m, ['setMyDescription', 'setMyShortDescription'], true)) $ds[$m . ':' . ($p['language_code'] ?? '')] = $p['description'] ?? $p['short_description'] ?? null;
+ok('опис бота: 8 викликів, укр. за замовчуванням і uk, рос. для ru, en порожній; ≤ 512 і ≤ 120 знаків; чотири області; без «!»', count($ds) === 8
+  && $ds['setMyDescription:'] === $ds['setMyDescription:uk'] && str_contains($ds['setMyDescription:'], 'Львівщина') && str_contains($ds['setMyDescription:'], 'Одещина')
+  && str_contains($ds['setMyDescription:ru'], 'Львовская') && $ds['setMyDescription:en'] === '' && $ds['setMyShortDescription:en'] === ''
+  && max(array_map('mb_strlen', array_filter($ds, fn($v, $k) => str_starts_with($k, 'setMyDescription'), ARRAY_FILTER_USE_BOTH))) <= 512
+  && max(array_map('mb_strlen', array_filter($ds, fn($v, $k) => str_starts_with($k, 'setMyShortDescription'), ARRAY_FILTER_USE_BOTH))) <= 120
+  && !preg_grep('/!/', $ds) && (Telegram::health()['about']['ok'] ?? 0) === 8, array_map('mb_strlen', $ds));
 Telegram::$send = null;
 // смена бота из чата: админ пересылает сообщение @BotFather с токеном нового бота (владелец 07.11: «перенеси и настрой бот сам»)
 {

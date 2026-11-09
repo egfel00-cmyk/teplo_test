@@ -90,6 +90,9 @@ a { color: var(--c-return); text-underline-offset: 3px; }
 .btn[disabled] { background: var(--c-line); border-color: var(--c-line); color: var(--c-ink-2); cursor: not-allowed; }
 .btn.sec { background: var(--c-surface); color: var(--c-ink); border-color: var(--c-field-line); }
 .btn.sec:hover { border-color: var(--c-ink-2); }
+/* площа з рахунку ХТМ під полем площі (84-а) */
+.area-htm { margin-top: var(--sp-2); }
+.area-htm p { margin: 0 0 var(--sp-2); }
 .btn.ghost { background: transparent; border-color: transparent; color: var(--c-ink); padding: 0 var(--sp-3); }
 .btn.ghost:hover { background: var(--c-ghost-hover); }
 .btn.danger { background: transparent; border-color: var(--c-bad); color: var(--c-bad); }   /* первый шаг удаления — контур */

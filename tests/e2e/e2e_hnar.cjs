@@ -61,6 +61,14 @@ const U = 'http://127.0.0.1:8013/', DATA = process.env.SITE_DATA || '/tmp/teplo_
   await p.goto(U + '#rec-m1'); await p.reload(); await wait(2500); await p.click('[data-key=rec-htm-sum]').catch(() => {}); await wait(300);
   const wj = await p.$eval('[data-key=hsp-why]', e => [e.getAttribute('data-why'), e.textContent]).catch(() => null);
   ok('квітня в застосунку немає, у журналі ХТМ — є: те саме пояснення (0,305 Гкал з показань 3 квітня 2026)', wj && wj[0] === 'tail' && /0,305 Гкал/.test(wj[1]) && /3 квітня 2026/.test(wj[1]), wj);
+  // площа (84-а): у застосунку 59 (у владельца так), ХТМ рахує за 54,30 — під полем площі на екрані квартири підказка й «Взяти 54,30 м²»
+  await p.evaluate(() => { const s = JSON.parse(localStorage.getItem('teplo.v1')); s.places[0].area = 59; s.places[0].updatedAt = Date.now(); s.updatedAt = Date.now(); localStorage.setItem('teplo.v1', JSON.stringify(s)); });
+  await p.goto(U + '#place-' + st.places[0].id); await p.reload(); await wait(2500);
+  const ah = await p.$eval('[data-key=area-htm]', e => e.textContent).catch(() => '');
+  ok('площа 59 → під полем «ХТМ рахує за 54,30 м²» і кнопка «Взяти 54,30 м²»', /ХТМ рахує за 54,30 м²/.test(ah) && /Взяти 54,30 м²/.test(ah), ah);
+  await p.click('[data-act=area-htm]'); await wait(800);
+  const av = await p.$eval('#p-area', e => e.value).catch(() => '');
+  ok('…після дотику — 54,3 у полі, підказки більше немає', av === '54,3' && !(await p.$('[data-key=area-htm]')), av);
   ok('без помилок JS', !errs.length, errs);
   console.log('Итог: ' + pass + ' OK, ' + fail + ' FAIL'); await b.close(); process.exit(fail ? 1 : 0);
 })();

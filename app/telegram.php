@@ -74,14 +74,47 @@ final class Telegram {
   }
 
   /** Кнопка меню бота «Відкрити» (за замовчуванням, укр.) і команда /start укр./рос. Telegram не дає підпис кнопки за мовою —
-   *  російськомовним ставимо «Открыть» у їхньому чаті (handleUpdate). cron викликає раз на MENU_V (Cron: botMenuV). */
-  const MENU_V = 2;
+   *  російськомовним ставимо «Открыть» у їхньому чаті (handleUpdate). cron викликає раз на MENU_V (Cron: botMenuV).
+   *  MENU_V 3 (84-я): ще й опис бота і «Про бота» — about(). */
+  const MENU_V = 3;
   public static function menuText(string $lang): string { return $lang === 'ru' ? 'Открыть' : 'Відкрити'; }
+
+  /** Опис бота (порожній чат — «Що вміє цей бот?», до 512 знаків) і «Про бота» в профілі (до 120). Раніше стояв текст старого бота
+   *  (перенесений 07.11, «Харків»); 84-я: чотири області, фото, куди передати, нагадування — як на лендингу. */
+  public static function about(string $lang): array {
+    $host = (string)parse_url(Cfg::appUrl(), PHP_URL_HOST) ?: 'peredai.com.ua';
+    if ($lang === 'ru') return [
+      'description' => "«Счётчики» — показания тепла, воды, света и газа в одном месте.\n\n"
+        . "• Сфотографируйте счётчик — цифры распознаются сами.\n• Подскажем, куда и до какого числа передать, — с готовым текстом.\n"
+        . "• Напомним здесь, в Telegram, за 4 дня до конца приёма.\n• Несколько квартир — у каждой свои счётчики.\n\n"
+        . "Бесплатно — Харьковская, Киевская, Одесская и Львовская области. Начните чат кнопкой внизу.",
+      'short_description' => "Показания счётчиков: фото → цифры, куда и до какого числа передать, напоминания. Бесплатно. $host"];
+    return [
+      'description' => "«Лічильники» — показання тепла, води, світла й газу в одному місці.\n\n"
+        . "• Сфотографуйте лічильник — цифри розпізнаються самі.\n• Підкажемо, куди й до якого числа передати, — з готовим текстом.\n"
+        . "• Нагадаємо тут, у Telegram, за 4 дні до кінця прийому.\n• Кілька квартир — у кожної свої лічильники.\n\n"
+        . "Безкоштовно — Харківщина, Київщина, Одещина, Львівщина. Почніть чат кнопкою внизу.",
+      'short_description' => "Показання лічильників: фото → цифри, куди й до якого числа передати, нагадування. Безкоштовно. $host"];
+  }
+
   public static function menuSetup(): array {
     $url = Cfg::appUrl(); $out = [];
     $out['setChatMenuButton'] = self::call('setChatMenuButton', ['menu_button' => ['type' => 'web_app', 'text' => self::menuText('uk'), 'web_app' => ['url' => $url]]]);
     $out['setMyCommands'] = self::call('setMyCommands', ['commands' => [['command' => 'start', 'description' => 'Відкрити «Лічильники»']]]);
     $out['setMyCommands_ru'] = self::call('setMyCommands', ['commands' => [['command' => 'start', 'description' => 'Открыть «Счётчики»']], 'language_code' => 'ru']);
+    // прежний опис (за замовчуванням) — один раз у кеш: що було до нас (/api/health → bot.about.prev), щоб можна було повернути
+    $pf = Cfg::data() . '/cache/bot_about_prev.json';
+    if (!is_file($pf)) { $g = self::call('getMyDescription', []); if (!empty($g['ok'])) @file_put_contents($pf, json_encode(['at' => time(), 'description' => (string)($g['result']['description'] ?? '')], JSON_UNESCAPED_UNICODE)); }
+    // за замовчуванням і uk — українською, ru — російською; en — порожньо (Telegram покаже за замовчуванням)
+    $ab = ['at' => time(), 'v' => self::MENU_V, 'ok' => 0, 'errors' => []];
+    foreach (['' => 'uk', 'uk' => 'uk', 'ru' => 'ru', 'en' => null] as $lc => $l) {
+      $q = $lc !== '' ? ['language_code' => $lc] : []; $a = $l ? self::about($l) : ['description' => '', 'short_description' => ''];
+      foreach (['setMyDescription' => 'description', 'setMyShortDescription' => 'short_description'] as $set => $k) {
+        $r = self::call($set, $q + [$k => $a[$k]]); $out[$set . ($lc !== '' ? "_$lc" : '')] = $r;
+        if (!empty($r['ok'])) $ab['ok']++; else $ab['errors'][] = $set . ($lc !== '' ? " $lc" : '') . ': ' . mb_substr((string)($r['description'] ?? 'нет ответа'), 0, 80);
+      }
+    }
+    @file_put_contents(Cfg::data() . '/cache/bot_about.json', json_encode($ab, JSON_UNESCAPED_UNICODE));
     return $out;
   }
 
@@ -320,7 +353,14 @@ final class Telegram {
     return ['username' => (string)Cfg::get('bot_username') ?: null, 'prev' => (string)Cfg::get('bot_token_prev') !== '', 'adminTg' => $adm,
       'moved' => is_array($mv) ? ['at' => gmdate('c', (int)($mv['at'] ?? 0)), 'from' => (string)($mv['from'] ?? ''), 'to' => (string)($mv['to'] ?? ''), 'copied' => array_values((array)($mv['copied'] ?? [])), 'errors' => count((array)($mv['errors'] ?? []))] : null,
       'chat' => is_array($ch) ? ['at' => gmdate('c', (int)($ch['at'] ?? 0)), 'res' => (string)($ch['res'] ?? '')] : null,
-      'needStart' => self::needStartCount()];
+      'needStart' => self::needStartCount(), 'about' => self::aboutHealth()];
+  }
+  /** Опис бота (84-я): коли й якої версії поставлено, скільки вдалося з 8, помилки Telegram; prev — початок опису, що стояв до нас (текст бота публічний). */
+  private static function aboutHealth(): ?array {
+    $ab = json_decode((string)@file_get_contents(Cfg::data() . '/cache/bot_about.json'), true); $pv = json_decode((string)@file_get_contents(Cfg::data() . '/cache/bot_about_prev.json'), true);
+    if (!is_array($ab) && !is_array($pv)) return null;
+    return ['at' => is_array($ab) ? gmdate('c', (int)($ab['at'] ?? 0)) : null, 'v' => $ab['v'] ?? null, 'ok' => $ab['ok'] ?? null, 'errors' => array_values((array)($ab['errors'] ?? [])),
+      'prev' => is_array($pv) ? mb_substr((string)($pv['description'] ?? ''), 0, 120) : null];
   }
   /** Скольким людям сейчас показывается плашка «натисніть Старт» (последний итог рассылки no_chat/blocked, после него боту не писали) — только число. */
   public static function needStartCount(): ?int {

@@ -3591,7 +3591,7 @@
     HSPR.busy = true;
     window.TeploSync.api('GET', '/htm/spr').then(function (j) {
       HSPR.busy = false; HSPR.at = Date.now(); var had = HSPR.places ? JSON.stringify(HSPR.places) : ''; HSPR.places = (j && j.places) || [];
-      if (JSON.stringify(HSPR.places) !== had && /^(history|stats|rec-|heat|home|$)/.test(routeName())) safeRender();
+      if (JSON.stringify(HSPR.places) !== had && /^(history|stats|rec-|heat|home|place-|prefs|$)/.test(routeName())) safeRender();
     }, function () { HSPR.busy = false; HSPR.at = Date.now(); HSPR.places = HSPR.places || []; });
   }
   function hspr() { var x = (HSPR.places || []).filter(function (p) { return p.place === S.placeId; })[0]; return (x && x.rows) || []; }
@@ -4168,6 +4168,25 @@
   // Архіву рахунків у кабінеті немає (лише останній), а ця довідка — помісячно з 2021 р.: Гкал, нараховано (з абонплатою), пільга, перерахунок, надходження, сальдо.
   function hnarAll() { var x = (HSPR.places || []).filter(function (p) { return p.place === S.placeId; })[0]; return (x && x.nar && x.nar.rows) || []; }
   function hnarHeat(ym) { var n = hnarAll().filter(function (r) { return r.ym === ym; })[0]; return n && n.heat ? n.heat : null; }
+  /** Опалювана площа, за якою рахує ХТМ (84-а; у владельца в застосунку 59, у рахунку 54,30): останній місяць «Довідки щодо нарахувань» з площею,
+   *  інакше «Довідка по теплу». → число | null */
+  function htmArea() {
+    var best = null; hnarAll().forEach(function (r) { if (r.heat && r.heat.area > 0 && r.heat.area < 10000 && (!best || r.ym > best.ym)) best = { ym: r.ym, a: r.heat.area }; });
+    if (best) return best.a;
+    var x = hspr().filter(function (r) { return r.sFlat > 0 && r.sFlat < 10000; }).slice(-1)[0]; return x ? x.sFlat : null;
+  }
+  /** Під полем площі: ХТМ знає іншу (чи площі ще немає) — показати й дати взяти одним дотиком. */
+  function areaHint() {
+    if (!heatHtm()) return ''; hsprLoad();
+    var a = htmArea(), my = R.num((place() || {}).area); if (!a || (my && Math.abs(my - a) < 0.05)) return '';
+    return '<div class="area-htm" data-key="area-htm"><p class="small muted">' + esc(t(my ? 'area_htm_diff' : 'area_htm', { a: fmtN(a, 2) })) + '</p>' +
+      '<button type="button" class="btn sec" data-act="area-htm" data-a="' + a + '">' + esc(t('area_htm_btn', { a: fmtN(a, 2) })) + '</button></div>';
+  }
+  document.addEventListener('click', function (e) {
+    var b = e.target.closest && e.target.closest('[data-act="area-htm"]'); if (!b) return;
+    ensurePlaces(); var a = R.num(b.getAttribute('data-a')), p = place(); if (!p || !(a > 0 && a < 10000)) return;
+    p.area = a; p.updatedAt = Date.now(); save(); toast(t('area_htm_ok', { a: fmtN(a, 2) })); safeRender();
+  });
   /** ХТМ за місяць: Гкал і гроші — з «Довідки по теплу» (поточний сезон, докладно) або з нарахувань (усі місяці). → {g, money, x, n, area} | null */
   function htmMonth(ym) {
     var x = hspr().filter(function (r) { return r.ym === ym && !(r.flat === null || r.flat === undefined); })[0] || null, n = hnarHeat(ym);
@@ -5189,7 +5208,7 @@
     // свои рахунки
     var money = '';
     if (hasHeat()) money += '<h3>' + esc(t('pv_m_heat')) + '</h3><div class="grid2">' +
-      '<div class="field"><label for="p-area">' + esc(t('nm_area')) + ' <span class="muted small">(' + esc(t('b_opt')) + ')</span></label><div class="ctl"><input id="p-area" class="num" inputmode="decimal" autocomplete="off" value="' + esc(p.area ? String(p.area).replace('.', ',') : '') + '"><span class="unit">м²</span></div></div>' +
+      '<div class="field"><label for="p-area">' + esc(t('nm_area')) + ' <span class="muted small">(' + esc(t('b_opt')) + ')</span></label><div class="ctl"><input id="p-area" class="num" inputmode="decimal" autocomplete="off" value="' + esc(p.area ? String(p.area).replace('.', ',') : '') + '"><span class="unit">м²</span></div>' + areaHint() + '</div>' +
       '<div class="field"><label for="p-abon">' + esc(t('p_abon_l')) + '</label><div class="ctl"><input id="p-abon" class="num" inputmode="decimal" value="' + esc(bill().abon.toFixed(2).replace('.', ',')) + '"></div></div>' +
       mzkField() + '</div>';
     if (ms.length) money += '<h3>' + esc(t('pv_m_water')) + '</h3>' + waccForm() +
@@ -5446,7 +5465,7 @@
     var p = place() || {};
     return '<div class="panel" id="nometer-h" tabindex="-1" data-key="prefs-nometer-h"><h2>' + esc(t('nm_h_t')) + '</h2><p class="small muted">' + esc(t('nm_h_sub', { p: money(tariff()) })) + '</p>' +
       '<ul class="plain small nm-rules">' + t('nm_h_l').split('|').map(function (x) { return '<li>' + esc(x) + '</li>'; }).join('') + '</ul>' +
-      '<div class="field" style="max-width:260px"><label for="p-area">' + esc(t('nm_area')) + ' <span class="muted small">(' + esc(t('b_opt')) + ')</span></label><div class="ctl"><input id="p-area" class="num" inputmode="decimal" autocomplete="off" value="' + esc(p.area ? String(p.area).replace('.', ',') : '') + '"><span class="unit">м²</span></div><div class="small muted">' + esc(t('nm_area_h')) + '</div></div></div>';
+      '<div class="field" style="max-width:260px"><label for="p-area">' + esc(t('nm_area')) + ' <span class="muted small">(' + esc(t('b_opt')) + ')</span></label><div class="ctl"><input id="p-area" class="num" inputmode="decimal" autocomplete="off" value="' + esc(p.area ? String(p.area).replace('.', ',') : '') + '"><span class="unit">м²</span></div><div class="small muted">' + esc(t('nm_area_h')) + '</div>' + areaHint() + '</div></div>';
   }
   function nometerWaterPanel() {
     var c = wcfg(), nr = Wt.normOf(c), f = function (v) { return String(v).replace('.', ','); };

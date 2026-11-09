@@ -122,6 +122,9 @@ a { color: var(--c-return); text-underline-offset: 3px; }
 .btn[disabled] { background: var(--c-line); border-color: var(--c-line); color: var(--c-ink-2); cursor: not-allowed; }
 .btn.sec { background: var(--c-surface); color: var(--c-ink); border-color: var(--c-field-line); }
 .btn.sec:hover { border-color: var(--c-ink-2); }
+/* площа з рахунку ХТМ під полем площі (84-а) */
+.area-htm { margin-top: var(--sp-2); }
+.area-htm p { margin: 0 0 var(--sp-2); }
 .btn.ghost { background: transparent; border-color: transparent; color: var(--c-ink); padding: 0 var(--sp-3); }
 .btn.ghost:hover { background: var(--c-ghost-hover); }
 .btn.danger { background: transparent; border-color: var(--c-bad); color: var(--c-bad); }   /* первый шаг удаления — контур */
@@ -412,7 +415,7 @@ label.btn { cursor: pointer; }
 .bcards li.bc-auto { display: block; padding: 0; overflow: hidden; }
 .bc-head { display: flex; align-items: center; gap: 12px; padding: 12px 12px 4px; color: inherit; text-decoration: none; min-height: 56px; }
 .bc-head:hover .bill-name { text-decoration: underline; text-underline-offset: 3px; }
-.bc-badge { flex: none; width: 48px; height: 48px; border-radius: 12px; display: grid; place-items: center; font: 800 13px var(--mono); letter-spacing: .02em; color: #fff; background: #b4232a; }
+.bc-badge { flex: none; width: 48px; height: 48px; border-radius: 12px; display: grid; place-items: center; font: 600 13px var(--mono); letter-spacing: .02em; color: #fff; background: #b4232a; }
 .bc-badge.vk { background: #1f5fae; }
 .bc-t { display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 0; }
 .bc-go { color: var(--c-ink-2); flex: none; }
@@ -1098,7 +1101,7 @@ fieldset.field { border: 0; padding: 0; min-width: 0; }
 .ss-head:focus-visible { outline: 2px solid var(--c-info); outline-offset: -2px; }
 .ss-top, .ss-sum, .ss-sub { grid-column: 1; }
 .ss-top { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
-.ss-t { font-size: 17px; font-weight: 600; letter-spacing: -.005em; }
+.ss-t { font-size: 17px; font-weight: 600; }
 .ss-tag { font-size: 13px; color: var(--c-ink-2); } .ss-tag.on { color: var(--c-info); }
 .ss-dd { grid-column: 2; grid-row: 1 / span 3; align-self: center; transform: rotate(90deg); transition: transform .15s var(--ease); color: var(--c-ink-2); }
 .season[open] .ss-dd { transform: rotate(-90deg); }
@@ -1287,7 +1290,7 @@ details.tbl-acc[open] > .tbl-wrap { margin-top: 12px; }
 @media (min-width: 960px) { .main.wide { margin: 0; padding: 0 0 var(--sp-7); } }
 .lp { max-width: none; --lp-fg: #F3F8F5; --lp-fg2: rgba(243, 248, 245, .80); --lp-edge: rgba(255, 255, 255, .14); }
 .lp-hero, .lp-end { position: relative; isolation: isolate; overflow: hidden; overflow: clip; color: var(--lp-fg);
-  background: linear-gradient(165deg, #12201C 0%, #0A110F 52%, #0C1417 100%); }
+  background: #0E1714; }   /* 83-я: один тон чорнила, без переливів */
 .lp-hero { margin: 0 10px; border-radius: 28px; padding: 34px 20px 0; }
 :root[data-theme="dark"] .lp-hero, :root[data-theme="dark"] .lp-end { box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .07); }
 .lp-in { position: relative; max-width: 1180px; margin: 0 auto; }
@@ -1358,7 +1361,7 @@ details.tbl-acc[open] > .tbl-wrap { margin-top: 12px; }
 .lp-step { display: grid; gap: 18px; padding: 18px; border-radius: 26px; background: var(--c-surface); border: 1px solid var(--c-line); position: relative; overflow: hidden; }
 .lp-art-w { position: relative; border-radius: 18px; background: var(--c-surface-2); min-height: 170px; display: grid; place-items: center; padding: 18px; overflow: hidden; }
 .lp-step-tx { position: relative; display: grid; grid-template-columns: auto 1fr; column-gap: 14px; align-items: center; }
-.lp-step-tx h3 { font-size: 22px; margin: 0; letter-spacing: -0.01em; }
+.lp-step-tx h3 { font-size: 22px; margin: 0; }
 .lp-step-tx p { grid-column: 1 / -1; margin: 10px 0 0; color: var(--c-ink-2); font-size: var(--fs-m); }
 .lp-num { width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center; font: 600 19px/1 var(--font); color: var(--c-on-ink); background: var(--c-ink); }
 .art-photo { position: relative; width: 230px; padding: 22px 20px; }
@@ -1383,7 +1386,7 @@ details.tbl-acc[open] > .tbl-wrap { margin-top: 12px; }
 /* бенто */
 .lp-bento { display: grid; gap: 16px; grid-template-columns: minmax(0, 1fr); }
 .lp-cell { position: relative; overflow: hidden; border-radius: 26px; padding: 22px; background: var(--c-surface); border: 1px solid var(--c-line); display: grid; gap: 18px; align-content: start; }
-.lp-cell h3 { font-size: 22px; margin: 0 0 6px; letter-spacing: -0.01em; }
+.lp-cell h3 { font-size: 22px; margin: 0 0 8px; }
 .lp-cell-tx p { margin: 0; color: var(--c-ink-2); }
 .lp-due { --lw: 104px; display: grid; grid-template-columns: var(--lw) minmax(0, 1fr); column-gap: 12px; row-gap: 10px; align-items: center; position: relative; }
 .lpd-l { display: flex; align-items: center; gap: 8px; min-width: 0; }
@@ -3125,6 +3128,7 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
       nm_h_sub: "Тариф той самий ({p} грн/Гкал) — змінюється лише те, як визначають кількість тепла:",
       nm_h_l: "Повірка з демонтажем — за середньодобовим споживанням минулого опалювального періоду (Методика розподілу, наказ Мінрегіону №315, розд. I п. 5).|Поломка, заміна, прострочена повірка — показання не приймають до наступного розрахункового місяця після встановлення; рахують як квартирі без лічильника: частка тепла будинку за опалюваною площею.|Абонплата й частка ЗБП — як завжди.",
       nm_area: "Опалювана площа квартири",
+      area_htm: "У рахунку ХТМ опалювана площа — {a} м².", area_htm_diff: "ХТМ рахує за {a} м² — так в рахунку. Від площі залежать частка ЗБП і ціна за м².", area_htm_btn: "Взяти {a} м²", area_htm_ok: "Площа: {a} м²",
       nm_area_h: "З платіжки ХТМ. Потрібна, щоб показати ціну за м², коли рахують за площею.",
       nm_w_t: "Коли водомір знято",
       nm_w_sub: "Тариф той самий — змінюється лише те, як визначають кількість води:",
@@ -4255,6 +4259,7 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
       nm_h_sub: "Тариф тот же ({p} грн/Гкал) — меняется только то, как определяют количество тепла:",
       nm_h_l: "Поверка с демонтажем — по среднесуточному потреблению прошлого отопительного периода (Методика распределения, приказ Минрегиона №315, разд. I п. 5).|Поломка, замена, просроченная поверка — показания не принимают до следующего расчётного месяца после установки; считают как квартире без счётчика: доля тепла дома по отапливаемой площади.|Абонплата и доля МОП — как всегда.",
       nm_area: "Отапливаемая площадь квартиры",
+      area_htm: "В счёте ХТМ отапливаемая площадь — {a} м².", area_htm_diff: "ХТМ считает по {a} м² — так в счёте. От площади зависят доля ЗБП и цена за м².", area_htm_btn: "Взять {a} м²", area_htm_ok: "Площадь: {a} м²",
       nm_area_h: "Из платёжки ХТМ. Нужна, чтобы показать цену за м², когда считают по площади.",
       nm_w_t: "Когда водомер снят",
       nm_w_sub: "Тариф тот же — меняется только то, как определяют количество воды:",
@@ -9733,7 +9738,7 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
     HSPR.busy = true;
     window.TeploSync.api('GET', '/htm/spr').then(function (j) {
       HSPR.busy = false; HSPR.at = Date.now(); var had = HSPR.places ? JSON.stringify(HSPR.places) : ''; HSPR.places = (j && j.places) || [];
-      if (JSON.stringify(HSPR.places) !== had && /^(history|stats|rec-|heat|home|$)/.test(routeName())) safeRender();
+      if (JSON.stringify(HSPR.places) !== had && /^(history|stats|rec-|heat|home|place-|prefs|$)/.test(routeName())) safeRender();
     }, function () { HSPR.busy = false; HSPR.at = Date.now(); HSPR.places = HSPR.places || []; });
   }
   function hspr() { var x = (HSPR.places || []).filter(function (p) { return p.place === S.placeId; })[0]; return (x && x.rows) || []; }
@@ -10310,6 +10315,25 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
   // Архіву рахунків у кабінеті немає (лише останній), а ця довідка — помісячно з 2021 р.: Гкал, нараховано (з абонплатою), пільга, перерахунок, надходження, сальдо.
   function hnarAll() { var x = (HSPR.places || []).filter(function (p) { return p.place === S.placeId; })[0]; return (x && x.nar && x.nar.rows) || []; }
   function hnarHeat(ym) { var n = hnarAll().filter(function (r) { return r.ym === ym; })[0]; return n && n.heat ? n.heat : null; }
+  /** Опалювана площа, за якою рахує ХТМ (84-а; у владельца в застосунку 59, у рахунку 54,30): останній місяць «Довідки щодо нарахувань» з площею,
+   *  інакше «Довідка по теплу». → число | null */
+  function htmArea() {
+    var best = null; hnarAll().forEach(function (r) { if (r.heat && r.heat.area > 0 && r.heat.area < 10000 && (!best || r.ym > best.ym)) best = { ym: r.ym, a: r.heat.area }; });
+    if (best) return best.a;
+    var x = hspr().filter(function (r) { return r.sFlat > 0 && r.sFlat < 10000; }).slice(-1)[0]; return x ? x.sFlat : null;
+  }
+  /** Під полем площі: ХТМ знає іншу (чи площі ще немає) — показати й дати взяти одним дотиком. */
+  function areaHint() {
+    if (!heatHtm()) return ''; hsprLoad();
+    var a = htmArea(), my = R.num((place() || {}).area); if (!a || (my && Math.abs(my - a) < 0.05)) return '';
+    return '<div class="area-htm" data-key="area-htm"><p class="small muted">' + esc(t(my ? 'area_htm_diff' : 'area_htm', { a: fmtN(a, 2) })) + '</p>' +
+      '<button type="button" class="btn sec" data-act="area-htm" data-a="' + a + '">' + esc(t('area_htm_btn', { a: fmtN(a, 2) })) + '</button></div>';
+  }
+  document.addEventListener('click', function (e) {
+    var b = e.target.closest && e.target.closest('[data-act="area-htm"]'); if (!b) return;
+    ensurePlaces(); var a = R.num(b.getAttribute('data-a')), p = place(); if (!p || !(a > 0 && a < 10000)) return;
+    p.area = a; p.updatedAt = Date.now(); save(); toast(t('area_htm_ok', { a: fmtN(a, 2) })); safeRender();
+  });
   /** ХТМ за місяць: Гкал і гроші — з «Довідки по теплу» (поточний сезон, докладно) або з нарахувань (усі місяці). → {g, money, x, n, area} | null */
   function htmMonth(ym) {
     var x = hspr().filter(function (r) { return r.ym === ym && !(r.flat === null || r.flat === undefined); })[0] || null, n = hnarHeat(ym);
@@ -11331,7 +11355,7 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
     // свои рахунки
     var money = '';
     if (hasHeat()) money += '<h3>' + esc(t('pv_m_heat')) + '</h3><div class="grid2">' +
-      '<div class="field"><label for="p-area">' + esc(t('nm_area')) + ' <span class="muted small">(' + esc(t('b_opt')) + ')</span></label><div class="ctl"><input id="p-area" class="num" inputmode="decimal" autocomplete="off" value="' + esc(p.area ? String(p.area).replace('.', ',') : '') + '"><span class="unit">м²</span></div></div>' +
+      '<div class="field"><label for="p-area">' + esc(t('nm_area')) + ' <span class="muted small">(' + esc(t('b_opt')) + ')</span></label><div class="ctl"><input id="p-area" class="num" inputmode="decimal" autocomplete="off" value="' + esc(p.area ? String(p.area).replace('.', ',') : '') + '"><span class="unit">м²</span></div>' + areaHint() + '</div>' +
       '<div class="field"><label for="p-abon">' + esc(t('p_abon_l')) + '</label><div class="ctl"><input id="p-abon" class="num" inputmode="decimal" value="' + esc(bill().abon.toFixed(2).replace('.', ',')) + '"></div></div>' +
       mzkField() + '</div>';
     if (ms.length) money += '<h3>' + esc(t('pv_m_water')) + '</h3>' + waccForm() +
@@ -11588,7 +11612,7 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
     var p = place() || {};
     return '<div class="panel" id="nometer-h" tabindex="-1" data-key="prefs-nometer-h"><h2>' + esc(t('nm_h_t')) + '</h2><p class="small muted">' + esc(t('nm_h_sub', { p: money(tariff()) })) + '</p>' +
       '<ul class="plain small nm-rules">' + t('nm_h_l').split('|').map(function (x) { return '<li>' + esc(x) + '</li>'; }).join('') + '</ul>' +
-      '<div class="field" style="max-width:260px"><label for="p-area">' + esc(t('nm_area')) + ' <span class="muted small">(' + esc(t('b_opt')) + ')</span></label><div class="ctl"><input id="p-area" class="num" inputmode="decimal" autocomplete="off" value="' + esc(p.area ? String(p.area).replace('.', ',') : '') + '"><span class="unit">м²</span></div><div class="small muted">' + esc(t('nm_area_h')) + '</div></div></div>';
+      '<div class="field" style="max-width:260px"><label for="p-area">' + esc(t('nm_area')) + ' <span class="muted small">(' + esc(t('b_opt')) + ')</span></label><div class="ctl"><input id="p-area" class="num" inputmode="decimal" autocomplete="off" value="' + esc(p.area ? String(p.area).replace('.', ',') : '') + '"><span class="unit">м²</span></div><div class="small muted">' + esc(t('nm_area_h')) + '</div>' + areaHint() + '</div></div>';
   }
   function nometerWaterPanel() {
     var c = wcfg(), nr = Wt.normOf(c), f = function (v) { return String(v).replace('.', ','); };
