@@ -200,10 +200,11 @@ final class HtmSvc {
   /** «Перевірити» без кнопки: владелец неделю не нажимал (06.11 17:26 — последний раз, а окно дат, плашки и журнал нужны до первого живого внесения).
    *  Раз на LOOK_V (сайт не ответил — ещё до 3 раз, через 10 мин) сервер сам читает кабинеты ХТМ УЧЁТОК АДМИНА (config.php → admins), как VkStatus::recheck
    *  у Водоканала: только чтение, ничего не вносит; рахунок — первый из кабинета. Итог — /api/health → htmcab.seen (by: cron) и htmcab.look. → итоги или null. */
-  const LOOK_V = 7;   // 2: осмотр кабинета — где квитанция (explore), 07.11.2026; 3: + «Довідки щодо нарахувань» (spravka, sprvds) — есть ли прошлые рахунки; 4: + структура «Довідки по теплу» (08.11);
+  const LOOK_V = 8;   // 2: осмотр кабинета — где квитанция (explore), 07.11.2026; 3: + «Довідки щодо нарахувань» (spravka, sprvds) — есть ли прошлые рахунки; 4: + структура «Довідки по теплу» (08.11);
                       // 5: + журнал квартирного лічильника (viewall) к довідке — формула «витрати по квартирі» (08.11, 59-я сессия)
                       // 6: + архив рахунків — адрес рахунку за прошлый месяц и строки «Довідок щодо нарахувань» масками (09.11, 82-я)
                       // 7: довідка — <pre> с таблицей внутри (на 6 вышла одной строкой): строки по br/tr; до 90 строк по 160 знаков
+                      // 8: довідка — таблиця з фіксованою шириною: пробіли зберігаємо (колонки), шапка таблиці (рядки з «|») — слова як є (не особисті), цифри → #
   /** LOOK_V 6: есть ли в кабинете прошлые рахунки (HtmCab::archive) — отдельным входом, только чтение. В журнал — без цифр и людей:
    *  строки довідок — HtmSpr::gw (цифры → #, не общие слова → Ж), сколько строк похожи на месяцы и сколько со словами нарахування/оплати/перерахунку. */
   private static function archiveLook(int $uid, string $want): string {
@@ -218,12 +219,19 @@ final class HtmSvc {
         foreach (['борг' => '/борг/iu', 'нарах' => '/нарах/iu', 'донарах' => '/донарах/iu', 'перерах' => '/перерах|скорег|коригув/iu', 'оплач' => '/оплач|сплач|надійш|надход/iu', 'гкал' => '/гкал/iu', 'серед' => '/середн/iu', 'тепл' => '/тепл/iu', 'гаряч' => '/гаряч|гвп/iu'] as $w => $re)
           $kw[$w] = count(array_filter($ls, fn($l) => preg_match($re, $l)));
         $d = ['n' => count($ls), 'months' => count(array_filter($ls, fn($l) => HtmCab::monthOf($l) !== null || preg_match('/(?<!\d)\d{2}\.20\d\d(?!\d)/', $l))), 'kw' => $kw,
-          'lines' => array_map(fn($l) => HtmSpr::gw($l, 160), array_slice($ls, 0, 90))] + array_diff_key($d, ['lines' => 1]);
+          'lines' => array_map(fn($l) => self::maskKeep($l), array_slice($ls, 0, 100))] + array_diff_key($d, ['lines' => 1]);
       }
       $docs[$k] = $d;
     }
     self::diag(['op' => 'archive', 'user' => $uid, 'result' => 'ok', 'archive' => ['base' => $a['base'], 'page' => $a['page'], 'probe' => $a['probe'], 'docs' => $docs], 'steps' => $cab->w->steps]);
     return 'ok';
+  }
+  /** Рядок довідки для журналу зі збереженими пробілами (таблиця з фіксованою шириною — видно колонки): цифри → #; у шапці таблиці (є «|») слова як є —
+   *  це підписи колонок; в інших рядках слово не з загальних (прізвище, вулиця) → Ж тієї ж довжини. До 240 знаків. */
+  public static function maskKeep(string $l): string {
+    $l = preg_replace('/\d/u', '#', rtrim($l));
+    if (!str_contains($l, '|')) $l = preg_replace_callback('/\p{L}[\p{L}\'’.-]*/u', function ($m) { $w = rtrim($m[0], '.'); return HtmSpr::gw($w, 80) === $w ? $m[0] : str_repeat('Ж', mb_strlen($m[0])); }, $l);
+    return mb_substr((string)$l, 0, 240);
   }
   public static function lookFile(): string { return Cfg::data() . '/cache/htm_look.json'; }
   public static function lookState(): array { $j = json_decode((string)@file_get_contents(self::lookFile()), true); return is_array($j) ? $j : []; }
