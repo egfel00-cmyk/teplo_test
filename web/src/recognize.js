@@ -59,6 +59,30 @@
       }).then(function () { return out; }, function (e) { if (signal && signal.aborted) throw fail('cancelled'); throw e; });
     },
 
+    /**
+     * Де на фото табло з показаннями (владелец 09.11: превью фото — нижче й «по табло з показаннями»): результат рушія {lines, drums, w, h} →
+     * {x, y, w, h} — частки фото (0…1): центр і розмір. Барабан водоміра/світла/газу — вікно роликів з найбільшою кількістю цифр і впевненістю
+     * (кілька лічильників у кадрі — рамка навколо всіх прочитаних); ЖК-екран — найвищий рядок із ≥ 3 цифрами. Нічого — null (тоді центр фото).
+     */
+    focusOf: function (res) {
+      if (!res || !(res.w > 0) || !(res.h > 0)) return null;
+      var dg = function (s) { return String(s || '').replace(/[^0-9]/g, '').length; }, box = null;
+      var add = function (b) { if (!box) box = { x0: b.x, y0: b.y, x1: b.x + b.w, y1: b.y + b.h }; else { box.x0 = Math.min(box.x0, b.x); box.y0 = Math.min(box.y0, b.y); box.x1 = Math.max(box.x1, b.x + b.w); box.y1 = Math.max(box.y1, b.y + b.h); } };
+      var ds = (res.drums || []).filter(function (d) { return d && d.w > 0 && d.h > 0 && dg(d.text) >= 3; });
+      // вікна, знайдені впевнено за кольором (sure); інші — підписи з цифрами (№ лічильника, «150») — лише якщо впевнених немає, і тоді одне найкраще
+      var sure = ds.filter(function (d) { return d.sure; });
+      ds = sure.length ? sure : ds.sort(function (a, b) { return (b.score || 0) - (a.score || 0); }).slice(0, 1);
+      // вікно повернуте (лічильник набік): w/h — уздовж роликів, рамка на фото — по осях
+      if (ds.length) ds.forEach(function (d) { var a = +d.angle || 0, cx = d.x + d.w / 2, cy = d.y + d.h / 2, ew = Math.abs(d.w * Math.cos(a)) + Math.abs(d.h * Math.sin(a)), eh = Math.abs(d.w * Math.sin(a)) + Math.abs(d.h * Math.cos(a)); add({ x: cx - ew / 2, y: cy - eh / 2, w: ew, h: eh }); });
+      else {
+        var best = null;
+        (res.lines || []).forEach(function (l) { var n = dg(l && l.text); if (!l || n < 3 || !(l.h > 0) || !(l.w > 0)) return; var sc = l.h * (l.score || 0.5) * Math.min(n, 8); if (!best || sc > best.sc) best = { sc: sc, l: l }; });
+        if (best) add(best.l);
+      }
+      if (!box) return null;
+      var c = function (v) { return Math.round(Math.max(0, Math.min(1, v)) * 1000) / 1000; };
+      return { x: c((box.x0 + box.x1) / 2 / res.w), y: c((box.y0 + box.y1) / 2 / res.h), w: c((box.x1 - box.x0) / res.w), h: c((box.y1 - box.y0) / res.h) };
+    },
     /** Подгрузить движок (web/ocr/engine.js + модели ~30 МБ, один раз — дальше из кэша браузера). */
     _engine: function (onPct) {
       var base = String(root.TEPLO_API).replace(/\/api\/?$/, '') + '/web/ocr/';
@@ -85,6 +109,7 @@
         var chain = Promise.resolve();
         files.forEach(function (f, i) {
           chain = chain.then(function () { cancelled(); if (onProgress) onProgress(i + 1, files.length, 'photo'); return root.TeploOCR.read(f, { all: true }); }).then(function (res) {
+            try { f._focus = self.focusOf(res); } catch (e0) { /* без табло — центр фото */ }
             var r = P.photo(res, ctx, i);
             r.photo.time = f.lastModified || 0;   // время съёмки — порядок экранов для разбора пачки
             out.photos.push(r.photo); results.push({ photo: Object.assign({}, r.photo), meter: r.meter, ms: res.ms, ocr: res.lines.slice(0, 80).map(function (l) { return { t: l.text.slice(0, 80), a: l.alts ? l.alts.map(function (x) { return x.slice(0, 40); }) : undefined, s: l.score, h: l.h }; }) });

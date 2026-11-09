@@ -1593,10 +1593,10 @@
     ms.forEach(function (m) { h += gapBanner(m.id); });
     // табло кожного водоміра — як екран тепла: останні показання, дата, повірка
     var left = ms.map(function (m, i0) {
-      var r = wprevFor(m.id), days = m.verifiedUntil ? R.daysBetween(today(), m.verifiedUntil) : null, sc = null, cap;
+      var r = wprevFor(m.id), sc = null, cap;
       if (r && r.gap) cap = t('wm_cap_gap', { d: fmtDate(r.date, true) });
       else { sc = sentCap(wrecs().filter(function (x) { return hasVal(x, m.id); }), function (x) { return x.base ? baseSent(x) : wsentVk(x) && (kind === 'cold' || wsentHtm(x)); }); r = sc.rec; cap = sc.cap; }
-      var ver = days === null ? '' : days < 0 ? '<span class="pill warn">' + esc(t('wm_ver_exp')) + '</span>' : days <= 60 ? '<span class="pill warn">' + esc(t('mv_soon', { n: days })) + '</span>' : esc(t('pl_ver', { d: R.toHtmDate(m.verifiedUntil) }));
+      var ver = verWarn(m.verifiedUntil);
       return mbox({ key: 'wmeter-' + m.id, id: m.id, kind: kind, icon: 'drop', cls: kind === 'hot' ? 'c-hot' : 'c-cold', name: ms.length > 1 ? wname(m) : title,
         display: wdrum(r ? r.vals[m.id] : null, kind, 'hero'), cap: cap, copy: r && r.vals && r.vals[m.id] !== undefined && r.vals[m.id] !== '' ? Wt.whole(r.vals[m.id]) : '', body: sc && sc.note ? '<p class="small muted mb-newer">' + esc(sc.note) + '</p>' : '',
         meta: [ver, m.vkId ? esc(t('mb_vkid', { v: m.vkId })) : ''].filter(Boolean),
@@ -1654,7 +1654,10 @@
         if (it.url) HP.urls[id] = it.url; else { try { HP.urls[id] = URL.createObjectURL(f); } catch (e) { /* нет */ } }
         Promise.resolve(VIS().prepare ? VIS().prepare(f) : f).then(function (b) { return HIST.put(id, b || f); }).then(function () { histFlush(); });
       }
-      return it.meter ? { id: id, meter: it.meter } : { id: id };
+      // де на фото табло (рушій знайшов при розпізнаванні) — превью кадрується по ньому
+      var fc = f._focus, ref = it.meter ? { id: id, meter: it.meter } : { id: id };
+      if (fc && fc.w > 0) ref.f = [fc.x, fc.y, fc.w, fc.h];
+      return ref;
     });
     if (keep.length) photoKeep(keep.map(function (id) { return { id: id }; }), true);
     return refs;
@@ -1707,13 +1710,13 @@
     list = (list || []).filter(function (p) { return p && p.id; }); if (!list.length && !ref) return '';
     var h = '<section class="hphotos" data-key="rec-photos"><h2 class="section-title">' + ico('camera', 18) + ' ' + esc(t(list.length ? 'hp_title' : 'rp_title')) + '</h2>' +
       (ref ? '<input type="file" id="rp-input" class="sr" tabindex="-1" accept="image/*" multiple data-ref="' + esc(ref) + '" aria-label="' + esc(t('rp_add')) + '">' : '');
-    h += '<div class="phd' + (list.length ? ' has' : '') + (list.length > 1 ? ' many' : '') + '" data-key="rec-phd">';
+    h += '<div class="phd' + (list.length ? ' has fit' : '') + (list.length > 1 ? ' many' : '') + '" data-key="rec-phd">';
     if (!list.length) h += '<label for="rp-input" class="phd-empty" tabindex="0" data-key="rec-photo-add">' + ico('image', 52, 'phd-ico') +
       '<span class="phd-t">' + esc(t('phd_add')) + '</span><span class="phd-pill">' + ico('images', 22) + '<span>' + esc(t('phd_pick')) + '</span></span></label>';
     else h += '<div class="phd-strip">' + list.map(function (p, i) {
       var u = hpUrl(p.id), m = p.meter ? wmeters().filter(function (x) { return x.id === p.meter; })[0] : null;
       var gone = HP.missing[p.id] || (!u && !/^l:/.test(p.id));
-      return '<div class="phd-slide' + (gone ? ' gone' : '') + '"><img data-gal="' + esc(gal) + '" data-i="' + i + '" data-hph="' + esc(p.id) + '"' + (u ? ' src="' + esc(u) + '"' : '') + ' alt="' + esc(t('ph_from', { n: i + 1 })) + '" loading="lazy">' +
+      return '<div class="phd-slide' + (gone ? ' gone' : '') + '"><img data-gal="' + esc(gal) + '" data-i="' + i + '" data-hph="' + esc(p.id) + '"' + (u ? ' src="' + esc(u) + '"' : '') + phFocusAttr(p, gal) + ' alt="' + esc(t('ph_from', { n: i + 1 })) + '" loading="lazy">' +
         '<span class="gone-t">' + esc(t('hp_gone')) + '</span>' + (list.length > 1 ? '<span class="phd-n">' + (i + 1) + ' / ' + list.length + '</span>' : '') +
         (ref ? '<button type="button" class="phd-x" data-act="rp-rm" data-ref="' + esc(ref) + '" data-id="' + esc(p.id) + '" aria-label="' + esc(t('ph_remove')) + '">' + ico('close', 22) + '</button>' : '') +
         (m ? '<span class="wn-tags"><i class="' + (m.kind === 'hot' ? 'n-hot' : 'n-cold') + '">' + esc(m.name || t('kv_' + m.kind)) + '</i></span>' : '') + '</div>';
@@ -1744,6 +1747,49 @@
       });
     });
   }
+  /** Превью фото — нижче й по табло з показаннями (власник 09.11): p.f = [x, y, w, h] — де на фото табло, частки (рушій при розпізнаванні, VIS().focusOf).
+   *  Фото без f (старі, додані в картці запису) у водоміра, світла, газу — вікно барабана шукає швидкий пошук рушія (TeploOCR._drums: за кольором, без моделей;
+   *  скрипт ~90 КБ), береться лише впевнене. Тепло (ЖК) без розпізнавання — центр фото. */
+  var FOC = { done: {}, busy: false, js: null };
+  function phFocusAttr(p, gal) {
+    var f = p.f || (FOC.done[p.id] || null);
+    if (f && f.length === 4 && f[2] > 0) return ' data-f="' + f.join(',') + '"';
+    return /^[wm]/.test(gal || '') && FOC.done[p.id] === undefined ? ' data-fq="1"' : '';
+  }
+  /** Кадр превью: табло — у центрі, не ширше половини картки й не вище 55 % (видно й лічильник довкола); не дрібніше, ніж «на всю картку», і не більше ×2,2. */
+  function phFocus(im) {
+    var f = String(im.getAttribute('data-f') || '').split(',').map(Number), box = im.parentNode; if (f.length !== 4 || !(f[2] > 0) || !box) return;
+    var W = box.clientWidth, H = box.clientHeight, iw = im.naturalWidth, ih = im.naturalHeight; if (!W || !H || !iw || !ih) return;
+    var s0 = Math.max(W / iw, H / ih), s = Math.max(s0, Math.min(0.5 * W / (f[2] * iw), 0.55 * H / Math.max(1e-6, f[3] * ih), s0 * 2.2));
+    var sw = iw * s, sh = ih * s, l = Math.min(0, Math.max(W - sw, W / 2 - f[0] * sw)), tp = Math.min(0, Math.max(H - sh, H / 2 - f[1] * sh));
+    im.style.cssText = 'position:absolute;max-width:none;width:' + sw.toFixed(1) + 'px;height:' + sh.toFixed(1) + 'px;left:' + l.toFixed(1) + 'px;top:' + tp.toFixed(1) + 'px;object-fit:fill';
+    im.classList.add('fx');
+  }
+  function phFocusAll() {
+    Array.prototype.forEach.call(document.querySelectorAll('img[data-f]'), function (im) { if (im.complete && im.naturalWidth) phFocus(im); });
+    phFocusFind();
+  }
+  /** Старі фото водоміра/світла/газу: де вікно барабана — по одному, у фоні; знайдене — у запис (p.f, без updatedAt: це лише підказка показу). */
+  function phFocusFind() {
+    if (FOC.busy) return;
+    var im = Array.prototype.filter.call(document.querySelectorAll('img[data-fq]'), function (x) { return x.complete && x.naturalWidth && FOC.done[x.getAttribute('data-hph')] === undefined; })[0];
+    if (!im || !window.TEPLO_API) return;
+    var id = im.getAttribute('data-hph'); FOC.busy = true;
+    var js = window.TeploOCR ? Promise.resolve() : (FOC.js = FOC.js || new Promise(function (ok, bad) {
+      var sc = document.createElement('script'); sc.src = String(window.TEPLO_API).replace(/\/api\/?$/, '') + '/web/ocr/engine.js?v=16'; sc.onload = ok; sc.onerror = bad; document.head.appendChild(sc);
+    }));
+    js.then(function () { return window.TeploOCR._drums(im); }).then(function (cs) {
+      var c = (cs || [])[0], iw = im.naturalWidth, ih = im.naturalHeight, k = Math.min(1, 2400 / Math.max(iw, ih)), r3 = function (v) { return Math.round(Math.max(0, Math.min(1, v)) * 1000) / 1000; };
+      var f = c && c.sure && c.score >= 0.9 && c.w > 0 ? [r3(c.cx / (iw * k)), r3(c.cy / (ih * k)), r3(c.w / (iw * k)), r3(c.h / (ih * k))] : null;
+      FOC.done[id] = f || 0;
+      if (f) {
+        allRecs().forEach(function (r) { (r.photos || []).forEach(function (p) { if (p && p.id === id && !p.f) p.f = f; }); }); persist();
+        Array.prototype.forEach.call(document.querySelectorAll('img[data-fq]'), function (x) { if (x.getAttribute('data-hph') === id) { x.removeAttribute('data-fq'); x.setAttribute('data-f', f.join(',')); phFocus(x); } });
+      } else Array.prototype.forEach.call(document.querySelectorAll('img[data-fq]'), function (x) { if (x.getAttribute('data-hph') === id) x.removeAttribute('data-fq'); });
+    }).catch(function () { FOC.done[id] = 0; }).then(function () { FOC.busy = false; phFocusFind(); });
+  }
+  document.addEventListener('load', function (e) { var im = e.target; if (!im || im.tagName !== 'IMG') return; if (im.hasAttribute('data-f')) phFocus(im); else if (im.hasAttribute('data-fq')) phFocusFind(); }, true);
+  var FOC_T = 0; window.addEventListener('resize', function () { clearTimeout(FOC_T); FOC_T = setTimeout(phFocusAll, 150); });
   document.addEventListener('error', function (e) { var im = e.target; if (im && im.tagName === 'IMG' && im.hasAttribute('data-hph')) { HP.missing[im.getAttribute('data-hph')] = 1; if (im.parentNode) im.parentNode.classList.add('gone'); } }, true);
   document.addEventListener('click', function (e) {
     var im = e.target.closest && e.target.closest('img[data-gal]'); if (!im || !im.getAttribute('src')) return;
@@ -2258,11 +2304,12 @@
   var PHD_C = 125.66;   // довжина кола кільця (r = 20)
   function phCard(o) {
     var p = o.p, ph = o.photos || [], st = o.busy ? (o.stage || 'read') : '';
-    var h = '<div class="phd' + (ph.length ? ' has' : '') + (ph.length > 1 ? ' many' : '') + '" id="' + p + '-phd" data-stage="' + st + '" data-key="' + p + '-phd">';
+    var h = '<div class="phd' + (ph.length ? ' has' : '') + (ph.length > 1 ? ' many' : '') + (ph.length && !o.busy ? ' fit' : '') + '" id="' + p + '-phd" data-stage="' + st + '" data-key="' + p + '-phd">';
     if (!ph.length) h += '<label for="' + p + '-files" class="phd-empty" tabindex="0" data-key="' + p + '-photo-pick">' + ico('image', 52, 'phd-ico') +
       '<span class="phd-t">' + esc(t('phd_add')) + '</span><span class="phd-pill">' + ico('images', 22) + '<span>' + esc(t('phd_pick')) + '</span></span></label>';
     else h += '<div class="phd-strip">' + ph.map(function (x, i) {
-      return '<div class="phd-slide"><img data-gal="' + p + '" data-i="' + i + '" src="' + x.url + '" alt="' + esc(t('ph_from', { n: i + 1 })) + '">' +
+      var fc = !o.busy && x.file && x.file._focus;
+      return '<div class="phd-slide"><img data-gal="' + p + '" data-i="' + i + '" src="' + x.url + '"' + (fc && fc.w > 0 ? ' data-f="' + [fc.x, fc.y, fc.w, fc.h].join(',') + '"' : '') + ' alt="' + esc(t('ph_from', { n: i + 1 })) + '">' +
         (ph.length > 1 ? '<span class="phd-n">' + (i + 1) + ' / ' + ph.length + '</span>' : '') +
         (o.busy ? '' : '<button type="button" class="phd-x" data-act="' + o.rm + '" data-i="' + i + '" aria-label="' + esc(t('ph_remove')) + '">' + ico('close', 22) + '</button>') +
         (o.tags ? o.tags(i) : '') + '</div>';
@@ -3462,7 +3509,7 @@
       cap: bs ? t('h_last_d', { d: fmtDate(bs.date, true) }) : t('h_last_none'),
       body: (newer ? '<p class="small muted mb-newer">' + esc(t(newer.own ? 'mb_newer_own' : 'mb_newer_heat', { d: fmtDate(newer.htm.date, true), s: t('status_' + newer.status).toLowerCase() })) + '</p>' : '') +
         (bs ? '' : '<p class="small muted">' + esc(t('h_last_none_sub')) + '</p><p><a class="btn sec" href="#baseline" data-key="home-add-base">' + esc(t('h_add_base')) + '</a></p>'),
-      meta: S.meter && S.meter.verifiedUntil ? [esc(t('pl_ver', { d: R.toHtmDate(S.meter.verifiedUntil) }))] : [],
+      meta: [verWarn(S.meter && S.meter.verifiedUntil)].filter(Boolean),
       set: heatMeterFields(m) + priceBlock('heat') + gapSetLink('heat') , setTitle: t('mb_set_read') });
     var right = '';
     var n = steps().length;
@@ -3867,12 +3914,13 @@
     if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { var os = Array.prototype.slice.call(m.querySelectorAll('.st-opt')), i = os.indexOf(document.activeElement); i = (i + (e.key === 'ArrowDown' ? 1 : -1) + os.length) % os.length; os[i].focus(); e.preventDefault(); }
   });
   function heatMixed(limit) {
-    var arr = RD().map(function (r) { return { d: (r.htm && r.htm.date) || '', r: r }; }).concat(gaps('heat').map(function (g) { return { d: g.from, g: g }; }), RDB().map(function (r) { return { d: (r.htm && r.htm.date) || r.ym + '-28', b: r }; }));
+    var arr = RD().map(function (r) { return { d: (r.htm && r.htm.date) || '', r: r }; }).concat(gaps('heat').map(function (g) { return { d: g.from, g: g }; }), RDB().map(function (r) { return { d: (r.htm && r.htm.date) || r.ym + '-28', b: r }; }),
+      hnarMissing().map(function (n) { return { d: n.ym + '-28', n: n }; }));
     arr.sort(function (a, b) { return a.d < b.d ? 1 : a.d > b.d ? -1 : a.g ? -1 : 1; });
     return limit ? arr.slice(0, limit) : arr;
   }
   function readingList(arr) {
-    return '<ul class="list" data-key="reading-list">' + arr.map(function (x) { return x.g ? gapItem(x.g) : x.b ? hbillItem(x.b) : readingItem(x.r || x); }).join('') + '</ul>';
+    return '<ul class="list" data-key="reading-list">' + arr.map(function (x) { return x.g ? gapItem(x.g) : x.b ? hbillItem(x.b) : x.n ? hnarItem(x.n) : readingItem(x.r || x); }).join('') + '</ul>';
   }
   /** Сума «до сплати» з квитанції ХТМ (сервер узяв зі сторінки рахунку), якщо є. */
   function hbillPay(r) { var b = ((r && r.bills) || []).filter(function (x) { return x && x.auto === 'htm' && R.num(x.pay) !== null; })[0]; return b ? R.num(b.pay) : null; }
@@ -3889,12 +3937,14 @@
   function readingItem(r) {
     return [r].map(function (r) {
       var cls = { accepted: 'ok', rejected: 'bad', handed: 'info', checked: 'neutral', intermediate: 'neutral' }[r.status] || 'neutral';
-      var iv = interval(r), ok = iv && iv.dE >= 0, hx = r.own ? null : hsprFor(r);
+      var iv = interval(r), ok = iv && iv.dE >= 0, hx = r.own ? null : hsprFor(r), hm = !hx && !r.own && r.htm && r.htm.date ? htmMonth(r.htm.date.slice(0, 7)) : null, mv = r.own ? null : hspMovedTo(r);
+      if (hm && hm.money === null) hm = null;
       // вся строка — в карточку показаний (там же правка, удаление, статус); главное — расход и деньги; є нарахування ХТМ за місяць — його сума
-      return histRow({ cls: 'hli-heat', key: 'reading-' + r.id, href: '#rec-' + r.id, q: ok ? '+' + fmtN(iv.dE, 3) : null, unit: 'Гкал', money: hx && hx.cost !== null ? hsprSum(hx) : ok ? iv.cost : null, moneyExact: !!(hx && hx.cost !== null),
+      // нарахування ХТМ за місяць: з довідки по теплу (hx) чи з «Довідки щодо нарахувань» (hm, усі місяці)
+      return histRow({ cls: 'hli-heat', key: 'reading-' + r.id, href: '#rec-' + r.id, q: ok ? '+' + fmtN(iv.dE, 3) : null, unit: 'Гкал', money: hx && hx.cost !== null ? hsprSum(hx) : hm ? hm.money : ok ? iv.cost : null, moneyExact: !!(hx && hx.cost !== null) || !!hm,
         none: iv ? t('hi_less', { de: Math.abs(iv.dE).toFixed(3) }) : t(gaps('heat').some(function (g) { return g.from < r.htm.date; }) ? 'hr_nogap' : 'hr_first'),
         date: fmtDate(r.htm.date, true), sub: [t('hr_on_meter', { v: R.formatForHtm('energy', r.htm.energy), u: 'Гкал' }), iv ? iv.days + '\u00a0' + t('days_short') + (iv.overGap ? ' ' + t('hr_over_gap') : '') : '',
-          hx && hx.flat !== null ? t('hsp_row', { g: fmtN(hx.flat, 3) }) : '', hbillPayTxt(r)],
+          hx && hx.flat !== null ? t('hsp_row', { g: fmtN(hx.flat, 3) }) : hm && hm.g > 0 ? t('hsp_row', { g: fmtN(hm.g, 3) }) : '', mv ? t('hsw_row_moved', { m: monthLabel(mv) }) : '', hbillPayTxt(r)],
         right: wxChip(wxFor(r)) + billMark(r.bills),
         st: stChip('h', r, 'heat', r.own ? 'own' : /^(handed|accepted|rejected)$/.test(r.status) ? r.status : 'not', r.own ? '' : '<span class="pill ' + cls + '">' + esc(t('status_' + r.status)) + '</span>') });
     })[0];
@@ -4135,21 +4185,100 @@
     return { screen: 'S08', route: 'status', html: head + body };
   };
 
+  // ---- нарахування ХТМ по всіх місяцях (82-а): «Довідка щодо нарахувань та оплати» кабінету — сервер кладе в nar (GET /api/htm/spr) ----
+  // Архіву рахунків у кабінеті немає (лише останній), а ця довідка — помісячно з 2021 р.: Гкал, нараховано (з абонплатою), пільга, перерахунок, надходження, сальдо.
+  function hnarAll() { var x = (HSPR.places || []).filter(function (p) { return p.place === S.placeId; })[0]; return (x && x.nar && x.nar.rows) || []; }
+  function hnarHeat(ym) { var n = hnarAll().filter(function (r) { return r.ym === ym; })[0]; return n && n.heat ? n.heat : null; }
+  /** ХТМ за місяць: Гкал і гроші — з «Довідки по теплу» (поточний сезон, докладно) або з нарахувань (усі місяці). → {g, money, x, n, area} | null */
+  function htmMonth(ym) {
+    var x = hspr().filter(function (r) { return r.ym === ym && !(r.flat === null || r.flat === undefined); })[0] || null, n = hnarHeat(ym);
+    var g = x ? x.flat : n && typeof n.gcal === 'number' ? n.gcal : n && typeof n.cost === 'number' ? 0 : null;
+    var mo = x && x.cost !== null && x.cost !== undefined ? hsprSum(x) : n && typeof n.cost === 'number' ? n.cost - (n.lgota > 0 ? n.lgota : 0) : null;
+    if (g === null && mo === null) return null;
+    return { g: g, money: mo, x: x, n: n, area: (n && n.area) || (x && x.sFlat) || R.num((place() || {}).area) };
+  }
+  /** Своє тепло по місяцях за записами застосунку (місяць — за датою зняття): {ym: {e, recs}}. */
+  var OBM = { key: null, v: null };
+  function ownByMonth() {
+    var key = S.placeId + '|' + (S.readings || []).length + '|' + (S.updatedAt || 0); if (OBM.key === key) return OBM.v;
+    var o = {}; RD().forEach(function (r) { var iv = interval(r); if (!r.htm || !r.htm.date || !iv || !(iv.dE >= 0)) return; var m = r.htm.date.slice(0, 7); o[m] = o[m] || { e: 0, recs: [] }; o[m].e += iv.dE; o[m].recs.push(r); });
+    OBM.key = key; OBM.v = o; return o;
+  }
+  /** Чому ХТМ нарахував за місяць інакше, ніж показав ваш лічильник (власник 09.11, березень 2026: наш 2,127 + ЗБП, ХТМ 2,437).
+   *  zbp — збігається (лічильник + частка ЗБП); tail — ХТМ додав тепло з показань наступного місяця, за який сам не нараховує (кінець сезону);
+   *  head — те саме з попереднього (початок сезону); avg — показань цього місяця в журналі ХТМ немає (за середнім); more/less — інше (наперед, перенесення).
+   *  → {k, g, own, zbp, d, add?, recs?, ym2?, rej?} | null */
+  function hspWhy(ym) {
+    var h = htmMonth(ym); if (!h || !(h.g > 0)) return null;
+    var om = ownByMonth(), o = om[ym]; if (!o) return null;
+    var zbp = h.area > 0 && h.area < 1000 ? R.C.ZBP_M2 * h.area : 0, d = h.g - o.e, tol = Math.max(0.012, 0.02 * h.g), tol2 = Math.max(0.015, 0.03 * h.g);
+    var base = { g: h.g, own: o.e, zbp: zbp, d: d };
+    if (Math.abs(d - zbp) <= tol) return Object.assign({ k: 'zbp' }, base);
+    var side = [[1, 'tail'], [-1, 'head']], jl = hsprOwnList(), je = jl.length >= 2 ? hsprOwnEnds(jl, 'same') : {};
+    // показань сусіднього місяця в застосунку немає — з журналу ХТМ (прийняті): тепло між кінцями місяців
+    var jm = function (m2) { var a = side0(m2); return a; }, side0 = function (m2) {
+      var pm = ymAdd(m2, -1); if (je[m2] === undefined || je[pm] === undefined || !(je[m2] >= je[pm])) return null;
+      var last = jl.filter(function (x) { return x.date && x.date.slice(0, 7) === m2 && x.status !== 'rejected'; }).slice(-1)[0];
+      return { e: je[m2] - je[pm], recs: [], date: last ? last.date : null };
+    };
+    for (var i = 0; i < side.length; i++) {
+      var m2 = ymAdd(ym, side[i][0]), h2 = htmMonth(m2), o2 = om[m2] || jm(m2);
+      if (o2 && o2.e > 0.001 && !(h2 && h2.g > 0.001) && Math.abs(d - o2.e - zbp) <= tol2) return Object.assign({ k: side[i][1], add: o2.e, recs: o2.recs, ym2: m2, date: o2.date || null }, base);
+    }
+    var ol = hsprOwnList(), inM = ol.filter(function (x) { return x.date && x.date.slice(0, 7) === ym; });
+    if (ol.length >= 2 && !inM.some(function (x) { return x.status !== 'rejected'; })) return Object.assign({ k: 'avg', rej: inM.filter(function (x) { return x.status === 'rejected'; })[0] }, base);
+    return Object.assign({ k: d > zbp ? 'more' : 'less' }, base);
+  }
+  /** Запис, тепло якого ХТМ поклав у сусідній місяць (кінець/початок сезону): → місяць ХТМ | null. */
+  function hspMovedTo(r) {
+    if (!r || !r.htm || !r.htm.date) return null; var ym = r.htm.date.slice(0, 7);
+    for (var k = -1; k <= 1; k += 2) { var w = hspWhy(ymAdd(ym, k)); if (w && (w.k === 'tail' || w.k === 'head') && w.recs.indexOf(r) >= 0) return ymAdd(ym, k); }
+    return null;
+  }
+  /** Пояснення різниці — блок у картці місяця (і на екрані нарахування без показань). */
+  function hspWhyHtml(ym, iv) {
+    var w = hspWhy(ym); if (!w) return '';
+    var f3 = function (v) { return fmtN(v, 3); }, ml = monthLabel(ym), d0 = w.recs && w.recs.length ? fmtDate(w.recs[w.recs.length - 1].htm.date, true) : w.date ? fmtDate(w.date, true) : monthLabel(w.ym2 || ym);
+    var txt = w.k === 'zbp' ? t('hsw_zbp', { o: f3(w.own), z: f3(w.zbp), g: f3(w.g) })
+      : w.k === 'tail' || w.k === 'head' ? t('hsw_' + w.k, { m: ml, a: f3(w.add), d: d0, o: f3(w.own), z: f3(w.zbp), g: f3(w.g) })
+      : w.k === 'avg' ? t('hsp_avg') + (w.rej ? ' ' + t('hsp_avg_rej', { d: fmtDate(w.rej.date), v: fmtN(w.rej.energy, 3) }) : '')
+      : t('hsw_' + w.k, { x: f3(Math.abs(w.d - w.zbp)), s: money(Math.abs(w.d - w.zbp) * tariff()), o: f3(w.own) });
+    var nx = hnarHeat(ymAdd(ym, 1)), rc = nx && nx.recalc ? t('hsw_rc', { m: monthLabel(ymAdd(ym, 1)), s: (nx.recalc > 0 ? '+' : '−') + money(Math.abs(nx.recalc)) }) : '';
+    return '<div class="hsw hsw-' + w.k + '" data-key="hsp-why" data-why="' + w.k + '"><b>' + esc(t(w.k === 'zbp' ? 'hsw_t_ok' : 'hsw_t')) + '</b><p>' + esc(txt) + '</p>' + (rc && w.k !== 'zbp' ? '<p class="small">' + esc(rc) + '</p>' : '') + '</div>';
+  }
   /** Картка показань: як нарахував ХТМ за цей місяць (довідка кабінету) — різниця показань, частка втрат будинку, тариф, абонплата, пільга, разом; і наш розрахунок поруч. */
   var HSP_OPEN = {};
   document.addEventListener('toggle', function (e) { var d = e.target; if (d && d.classList && d.classList.contains('hacc')) HSP_OPEN[d.id.slice(5)] = d.open; }, true);
-  function hsprPanel(r, iv) {
-    hsprLoad(); var x = r.own ? null : hsprFor(r); if (!x) return '';
+  function hsprPanel(r, iv, ymArg) {
+    hsprLoad(); var ym = ymArg || (r && r.htm && r.htm.date ? r.htm.date.slice(0, 7) : null), x = ymArg ? null : (r.own ? null : hsprFor(r)), n = ym ? hnarHeat(ym) : null;
+    if (x) ym = x.ym, n = hnarHeat(ym);
+    var moved = !ymArg && !x ? hspMovedTo(r) : null;
+    if (!x && !n && !moved) return '';
     var li = function (k, v, b) { return '<li><div class="grow small' + (b ? '' : ' muted') + '">' + esc(k) + '</div>' + (b ? '<b class="num">' + esc(v) + '</b>' : '<span class="num">' + esc(v) + '</span>') + '</li>'; };
+    var sg = function (v) { return (v > 0 ? '+' : v < 0 ? '−' : '') + money(Math.abs(v)); };
+    var hm = htmMonth(ym), why = hspWhy(ym);
+    if (!x) {   // лише нарахування (усі місяці): Гкал, нараховано, перерахунок, оплати, сальдо
+      var nl = n ? (typeof n.gcal === 'number' ? li(t('hsp_n_gcal'), fmtN(n.gcal, 3) + ' Гкал', true) : '') + (typeof n.cost === 'number' ? li(t('hsp_n_cost'), money(n.cost) + ' грн', true) : '') +
+        (n.lgota ? li(t('hsp_lgota'), '−' + money(Math.abs(n.lgota)) + ' грн') : '') + (n.recalc ? li(t('hsp_n_recalc'), sg(n.recalc) + ' грн') : '') + (typeof n.paid === 'number' ? li(t('hsp_n_paid'), money(n.paid) + ' грн') : '') +
+        (typeof n.saldo === 'number' ? li(t(n.saldo < 0 ? 'hsp_n_over' : 'hsp_n_debt'), money(Math.abs(n.saldo)) + ' грн') : '') : '';
+      var brief0 = hm ? (hm.g > 0 ? fmtN(hm.g, 3) + ' Гкал · ' : '') + (hm.money !== null ? money(hm.money) + ' грн' : '') : '';
+      return '<details class="panel hacc" id="hacc-' + esc(r ? r.id : 'n' + ym) + '" data-key="rec-htm"' + (HSP_OPEN[r ? r.id : 'n' + ym] || ymArg ? ' open' : '') + '><summary data-key="rec-htm-sum"><h2><span class="grow">' + esc(t('hsp_title', { m: monthLabel(ym) })) +
+        '<span class="hacc-brief small muted">' + esc(brief0) + (moved ? ' · ' + esc(t('hsw_b_moved', { m: monthLabel(moved) })) : why && why.k !== 'zbp' ? ' · ' + esc(t('hsw_b_' + why.k)) : '') + '</span></span>' + ico('chev', 20, 'pacc-chev') + '</h2></summary><div class="hacc-b">' +
+        (moved ? '<div class="hsw hsw-moved" data-key="hsp-moved"><p>' + esc(t('hsw_moved', { m: monthLabel(moved) })) + '</p></div>' : hspWhyHtml(ym, iv)) +
+        (nl ? '<ul class="list">' + nl + '</ul>' : '') + (iv && iv.dE >= 0 && !ymArg ? '<p class="small muted">' + esc(t('hsp_ours', { s: money(iv.cost) })) + '</p>' : '') + '<p class="small muted">' + esc(t('hsp_n_src')) + '</p></div></details>';
+    }
     var tar = x.flat > 0 && x.cost !== null ? x.cost / x.flat : null, bld = hsprBld(x), sh = !bld && x.flat !== null && x.diff !== null ? x.flat - x.diff : null;
     var of = bld ? hsprOwnFit() : null, oe = of && of.e[x.ym] > 0 && x.flat >= of.e[x.ym] ? of.e[x.ym] : null;
-    // місяць за середнім: у журналі ХТМ немає прийнятих показань свого лічильника за цей місяць, або ХТМ нарахував помітно більше за «своє + ЗБП»
+    // місяць за середнім: у журналі ХТМ немає прийнятих показань свого лічильника за цей місяць, або ХТМ нарахував помітно більше за «своє + ЗБП»;
+    // 82-а: якщо різницю пояснено (показання наступного місяця в кінці сезону тощо) — не «за середнім»
     var ol = bld ? hsprOwnList() : [], inM = function (st) { return ol.filter(function (o) { return o.date && o.date.slice(0, 7) === x.ym && (st ? o.status === st : o.status !== 'rejected'); }); };
     var rej = inM('rejected')[0], avg = bld && ol.length >= 2 && x.flat > 0 && (!inM().length || (oe !== null && x.flat - oe > Math.max(0.03, R.C.ZBP_MAX_M2 * (x.sFlat || 60))));
+    if (why && why.k !== 'avg') avg = false;
     // акордеон (власник 09.11): багато рядків заважали — згорнуто лише підсумок «Гкал · грн», розгорнуто — розрахунок; стоїть перед платіжкою
     var brief = (x.flat !== null ? fmtN(x.flat, 3) + ' Гкал · ' : '') + money(hsprSum(x)) + ' грн';
     return '<details class="panel hacc" id="hacc-' + esc(r.id) + '" data-key="rec-htm"' + (HSP_OPEN[r.id] ? ' open' : '') + '><summary data-key="rec-htm-sum"><h2><span class="grow">' + esc(t('hsp_title', { m: monthLabel(x.ym) })) +
-      '<span class="hacc-brief small muted">' + esc(brief) + (avg ? ' · ' + esc(t('hsp_avg_b')) : '') + '</span></span>' + ico('chev', 20, 'pacc-chev') + '</h2></summary><div class="hacc-b"><ul class="list">' +
+      '<span class="hacc-brief small muted">' + esc(brief) + (avg ? ' · ' + esc(t('hsp_avg_b')) : why && why.k !== 'zbp' && why.k !== 'avg' ? ' · ' + esc(t('hsw_b_' + why.k)) : '') + '</span></span>' + ico('chev', 20, 'pacc-chev') + '</h2></summary><div class="hacc-b">' +
+      (why && !avg ? hspWhyHtml(x.ym, iv) : '') + '<ul class="list">' +
       // у довідці показання будинкового лічильника (живий кабінет 08.11: різниця в десятки разів більша за витрату квартири) — показуємо будинок окремо, без «частки»
       (bld ? li(t('hsp_bdiff'), fmtN(x.diff, 3) + ' Гкал') + (x.loss !== null ? li(t('hsp_loss'), fmtN(x.loss, 3) + ' Гкал') : '') + (x.house !== null && x.house !== undefined ? li(t('hsp_house'), fmtN(x.house, 3) + ' Гкал') : '')
         + (x.sFlat && x.sHouse ? li(t('hsp_area'), fmtN(x.sFlat, 1) + ' / ' + fmtN(x.sHouse, 1) + ' м²') + (x.sHouse < 3 * x.sFlat ? '<li class="small muted" data-key="hsp-area-odd">' + esc(t('hsp_area_odd')) + '</li>' : '') : '') : '') +
@@ -4161,8 +4290,29 @@
       (tar !== null ? li(t('hsp_tariff'), money(tar) + ' грн/Гкал') : '') +
       (x.cost !== null ? li(t('hsp_cost'), money(x.cost) + ' грн') : '') + (x.abon !== null ? li(t('hsp_abon'), money(x.abon) + ' грн') : '') +
       (x.lgota > 0 ? li(t('hsp_lgota'), '−' + money(x.lgota) + ' грн') : '') + li(t('hsp_total'), money(hsprSum(x)) + ' грн', true) +
+      (n && n.recalc ? li(t('hsp_n_recalc'), sg(n.recalc) + ' грн') : '') + (n && typeof n.paid === 'number' ? li(t('hsp_n_paid'), money(n.paid) + ' грн') : '') +
+      (n && typeof n.saldo === 'number' ? li(t(n.saldo < 0 ? 'hsp_n_over' : 'hsp_n_debt'), money(Math.abs(n.saldo)) + ' грн') : '') +
       (avg ? '<li class="small muted" data-key="hsp-avg">' + esc(t('hsp_avg') + (rej ? ' ' + t('hsp_avg_rej', { d: fmtDate(rej.date), v: fmtN(rej.energy, 3) }) : '')) + '</li>' : '') + '</ul>' +
       (iv && iv.dE >= 0 ? '<p class="small muted">' + esc(t('hsp_ours', { s: money(iv.cost) })) + '</p>' : '') + '<p class="small muted">' + esc(t('hsp_src')) + '</p></div></details>';
+  }
+  /** Нарахування ХТМ за місяць без показань у застосунку (з «Довідки щодо нарахувань»): екран #hnar-рррр-мм. */
+  function hnarView(ym) {
+    hsprLoad(); var h = htmMonth(ym);
+    return { screen: 'S09', route: 'history', html: '<p><a href="#history">← ' + esc(t('hi_title')) + '</a></p><h1>' + esc(t('hn_title')) + ' · ' + esc(monthLabel(ym)) + '</h1>' +
+      '<p class="small muted" data-key="hn-sub">' + esc(t('hn_sub')) + '</p>' + (h && h.money !== null ? '<p data-key="hn-sum"><b class="num big">' + esc(money(h.money)) + '</b> <span class="small muted">грн' + (h.g > 0 ? ' · ' + esc(fmtN(h.g, 3)) + ' Гкал' : '') + '</span></p>' : '') +
+      hsprPanel(null, null, ym) };
+  }
+  /** Місяці з нарахуванням ХТМ (тепло чи перерахунок), але без показань і без «Платіжки ХТМ» у застосунку — рядками в історії тепла. */
+  function hnarMissing() {
+    var have = {}; RD().forEach(function (r) { if (r.htm && r.htm.date) have[r.htm.date.slice(0, 7)] = 1; }); RDB().forEach(function (r) { have[r.ym] = 1; });
+    // місяці до перших показань у застосунку теж показуємо — це і є «усі місяці» з кабінету
+    return hnarAll().filter(function (r) { var h = r.heat || {}; return !have[r.ym] && (h.gcal > 0 || (h.recalc && Math.abs(h.recalc) >= 0.01)); });
+  }
+  function hnarItem(n) {
+    var h = n.heat || {}, mo = typeof h.cost === 'number' ? h.cost - (h.lgota > 0 ? h.lgota : 0) : null;
+    return histRow({ cls: 'hli-heat hli-bill hli-nar', key: 'hnar-' + n.ym, href: '#hnar-' + n.ym, lead: '<span class="hr-bill">' + ico('bill', 16) + esc(t('hn_title')) + '</span>',
+      q: h.gcal > 0 ? fmtN(h.gcal, 3) : null, unit: 'Гкал', money: mo, moneyExact: true, none: t('hn_none'), date: monthLabel(n.ym),
+      sub: [h.recalc ? t('hn_recalc', { s: (h.recalc > 0 ? '+' : '−') + money(Math.abs(h.recalc)) }) : '', t('hn_row_sub')] });
   }
   /** Вкладки без единого счётчика в квартире — пусто и «Додати лічильник». */
   function noMeters(route, title) {
@@ -4186,7 +4336,7 @@
     var of = {}, info = {}; ss.forEach(function (s) { info[s.season] = s; s.ids.forEach(function (id) { of[id] = s.season; }); });
     var groups = {};
     arr.forEach(function (x) {
-      var k = x.g ? TS.seasonOf(x.g.from) : x.b ? TS.seasonOf(x.d) : of[x.r.id] !== undefined ? of[x.r.id] : TS.seasonOf(x.r.htm.date);
+      var k = x.g ? TS.seasonOf(x.g.from) : x.b || x.n ? TS.seasonOf(x.d) : of[x.r.id] !== undefined ? of[x.r.id] : TS.seasonOf(x.r.htm.date);
       (groups[k] = groups[k] || []).push(x);
     });
     var keys = Object.keys(groups).map(Number).sort(function (a, b) { return b - a; }), td = today(), run = +td.slice(5, 7) >= 10 || +td.slice(5, 7) <= 4;
@@ -4201,7 +4351,7 @@
           if (e && e.heatDays) { o.heatDays += e.heatDays; if (!o.from || x.g.from < o.from) o.from = x.g.from; if (x.g.to && (!o.to || x.g.to > o.to)) o.to = x.g.to; }
           return;
         }
-        if (x.b) return;   // «Платіжка ХТМ» — не показання
+        if (x.b || x.n) return;   // «Платіжка ХТМ» і нарахування ХТМ без показань — не показання
         var r = x.r || x, iv = interval(r); if (!iv || iv.dE < 0) return;
         o.gcal += iv.dE; o.cost += iv.cost; o.n++;
         if (iv.dE / iv.days >= 0.003) { o.heatDays += iv.days; if (!o.from || iv.from < o.from) o.from = iv.from; if (!o.to || r.htm.date > o.to) o.to = r.htm.date; }
@@ -4524,19 +4674,36 @@
     list = (list || []).filter(function (b) { return b && b.id; });
     var busy = BILLS.busy === ref;
     h += '<p class="small muted">' + esc(t('bl_sub')) + '</p>';
-    if (list.length) h += '<ul class="docs">' + list.map(function (b, i) {
-      var url = window.TEPLO_API + '/docs/file?id=' + b.id, page = b.mime === 'text/html', img = b.mime !== 'application/pdf' && !page;
-      var th = img ? '<span class="doc-th"><img src="' + esc(url) + '" data-gal="b' + esc(ref) + '" alt="' + esc(t('bl_img', { n: i + 1 })) + '" loading="lazy"></span>'
-        : '<a class="doc-th" href="' + esc(url) + '" target="_blank" rel="noopener" data-act="bill-open" data-id="' + esc(b.id) + '" aria-label="' + esc(t('mv_open') + ': ' + (b.name || 'PDF')) + '"><span class="pdf">' + (page ? 'ХТМ' : 'PDF') + '</span></a>';
-      return '<li>' + th + '<div class="grow"><b class="bill-name">' + esc(b.name || (img ? t('bl_photo') : 'PDF')) + '</b><div class="small muted">' + esc((b.auto === 'vk' ? t('bl_auto_vk') + ' · ' : b.auto === 'htm' ? t('bl_auto_htm') + ' · ' : '') + (R.num(b.pay) !== null ? t('hb_pay', { s: money(R.num(b.pay)) }) + ' · ' : '') + (R.num(b.pre) > 0 ? t('hb_pre', { s: money(R.num(b.pre)) }) + ' · ' : '') + (b.at ? fmtDate(String(b.at).slice(0, 10), true) + ' · ' : '')) + Math.max(1, Math.round((b.bytes || 0) / 1024)) + ' КБ</div></div>' +
-        '<button type="button" class="linkbtn" data-act="bill-del" data-ref="' + esc(ref) + '" data-id="' + esc(b.id) + '"' + (busy ? ' disabled' : '') + '>' + esc(t('rec_del')) + '</button></li>';
-    }).join('') + '</ul>';
+    if (list.length) h += '<ul class="docs bcards">' + list.map(function (b, i) { return billCard(ref, b, i, busy); }).join('') + '</ul>';
     // квитанція ХТМ (з 11.2025): тепло наперед до кінця місяця і зняте за попередній — чому «до сплати» не дорівнює теплу за показаннями
     var hp = list.filter(function (b) { return b.auto === 'htm' && R.num(b.pre) > 0; })[0];
     if (hp) h += '<p class="small muted" data-key="hb-pre-why">' + esc(t('hb_pre_why', { p: money(R.num(hp.pre)), u: money(Math.abs(R.num(hp.unpre) || 0)) })) + '</p>';
     return h + '<input type="file" id="bill-input" class="sr" tabindex="-1" multiple aria-label="' + esc(t('bl_add')) + '" accept="image/jpeg,image/png,image/webp,image/heic,application/pdf">' +
       '<button type="button" class="btn sec" data-act="bill-add" data-ref="' + esc(ref) + '" data-key="bill-add"' + (busy ? ' disabled' : '') + '>' + ico('plus', 18) + '<span>' + esc(t(list.length ? 'bl_add_more' : 'bl_add')) + '</span></button>' +
       (busy ? '<p class="small muted" role="status">' + SPIN + ' ' + esc(t('mv_uploading')) + '</p>' : '') + '</section>';
+  }
+  /** Превью платіжки (власник 09.11: «оформи красиво, найважливіше — одразу на превью»). Квитанція з кабінету (ХТМ, Водоканал): «До сплати» великим,
+   *  під ним — з чого складається (тепло й гаряча вода за місяць, тепло наперед, зняте за попередній), відкрити — вся квитанція. Фото — аркуш-мініатюра
+   *  (торкнутися — на весь екран), PDF — аркуш із загнутим кутом; підпис — місяць, звідки, дата, розмір. */
+  function billCard(ref, b, i, busy) {
+    var url = window.TEPLO_API + '/docs/file?id=' + b.id, page = b.mime === 'text/html', img = b.mime !== 'application/pdf' && !page, n = function (k) { return R.num(b[k]); };
+    var src = b.auto === 'vk' ? t('bl_auto_vk') : b.auto === 'htm' ? t('bl_auto_htm') : '', when = b.at ? fmtDate(String(b.at).slice(0, 10), true) : '';
+    var del = '<button type="button" class="linkbtn bc-del" data-act="bill-del" data-ref="' + esc(ref) + '" data-id="' + esc(b.id) + '"' + (busy ? ' disabled' : '') + '>' + esc(t('rec_del')) + '</button>';
+    var open = function (cls, inner, lbl) { return '<a class="' + cls + '" href="' + esc(url) + '" target="_blank" rel="noopener" data-act="bill-open" data-id="' + esc(b.id) + '" aria-label="' + esc(t('mv_open') + ': ' + lbl) + '">' + inner + '</a>'; };
+    var title = b.auto && b.ym ? t(b.auto === 'vk' ? 'bc_vk' : 'bc_htm') : img ? t('bl_photo') : (b.name || 'PDF'), sub = [b.auto && b.ym ? monthLabel(b.ym) : '', src].filter(Boolean).join(' · ');
+    var pay = n('pay');
+    if (b.auto && (pay !== null || page)) {
+      var rows = [['heatM', 'bc_heat'], ['hotM', 'bc_hot'], ['pre', 'bc_pre'], ['unpre', 'bc_unpre']].filter(function (x) { return n(x[0]) !== null && Math.abs(n(x[0])) >= 0.005; })
+        .map(function (x) { return '<div class="bc-row"><span>' + esc(t(x[1])) + '</span><b class="num">' + (x[0] === 'unpre' ? '−' : '') + esc(money(x[0] === 'unpre' ? Math.abs(n(x[0])) : n(x[0]))) + '</b></div>'; }).join('');
+      return '<li class="bcard bc-auto" data-key="bill-' + esc(b.id) + '">' + open('bc-head', '<span class="bc-badge' + (b.auto === 'vk' ? ' vk' : '') + '" aria-hidden="true">' + (b.auto === 'vk' ? 'ВК' : 'ХТМ') + '</span><span class="bc-t"><b class="bill-name">' + esc(title) + '</b><span class="small muted">' + esc(sub) + '</span></span>' + ico('chev', 20, 'bc-go'), title) +
+        (pay !== null ? '<div class="bc-pay"><span class="small">' + esc(t('bc_pay')) + '</span><b class="num">' + esc(money(pay)) + ' <small>грн</small></b></div>' : '') +
+        (rows ? '<div class="bc-rows">' + rows + '</div>' : '') + '<div class="bc-foot small muted"><span>' + esc(when) + '</span>' + del + '</div></li>';
+    }
+    var th = img ? '<span class="bc-paper"><img src="' + esc(url) + '" data-gal="b' + esc(ref) + '" alt="' + esc(t('bl_img', { n: i + 1 })) + '" loading="lazy"></span>'
+      : open('bc-paper pdf', '<span class="bc-fold" aria-hidden="true"></span><span class="bc-lines" aria-hidden="true"><i></i><i></i><i></i><i></i></span><span class="pdf">' + (page ? 'ХТМ' : 'PDF') + '</span>', b.name || 'PDF');
+    return '<li class="bcard" data-key="bill-' + esc(b.id) + '">' + th + '<div class="grow bc-meta"><b class="bill-name">' + esc(title) + '</b>' + (sub ? '<span class="small muted">' + esc(sub) + '</span>' : '') +
+      (pay !== null ? '<span class="bc-pay-s">' + esc(t('hb_pay', { s: money(pay) })) + '</span>' : '') +
+      '<span class="small muted">' + esc([when, Math.max(1, Math.round((b.bytes || 0) / 1024)) + ' КБ'].filter(Boolean).join(' · ')) + '</span>' + del + '</div></li>';
   }
   /** Перерисовать только блок платёжек (в форме периода — чтобы не терять несохранённые поля). */
   function billsRefresh(ref) {
@@ -4701,6 +4868,11 @@
       (o.set ? '<details class="mbox-set mrow-set" id="mbs-' + esc(o.what) + '"' + (MB_OPEN[o.what] ? ' open' : '') + ' data-key="pv-set-' + esc(o.what) + '"><summary>' + ico('prefs', 18, 'bt-ico') + '<span>' + esc(t('mb_set')) + '</span>' + ico('chev', 18, 'pacc-chev') + '</summary><div class="mbox-set-b">' + o.set + '</div></details>' : '') + '</li>';
   }
   function verTxt(v) { return v ? t('pl_ver', { d: R.toHtmDate(v) }) : ''; }
+  /** Під табло лічильника — без дати повірки (владелец 09.11: «убери даты поверки из карточек»), лише попередження: прострочена або ≤ 60 днів. Дата — у налаштуваннях. */
+  function verWarn(v) {
+    var days = v ? R.daysBetween(today(), v) : null; if (days === null || days > 60) return '';
+    return '<span class="pill warn" data-key="mb-ver-warn">' + esc(days < 0 ? t('wm_ver_exp') : t('mb_ver_soon', { n: days })) + '</span>';
+  }
   // ---------- адреса квартири: населений пункт з підказкою + вулиця, будинок, квартира (61-а сесія, владелец 08.11) ----------
   // p.city = {n, h, r, c, hromada, district, oblast} — обраний зі списку пункт (КАТОТТГ: Харківщина, Київщина, Київ, Одещина, Львівщина);
   // p.street — «вул. Сумська, 10, кв. 61»; p.address — разом, як і було («м. Харків, вул. Сумська, 10, кв. 61»): графік відключень, довідник,
@@ -5877,6 +6049,7 @@
     else if (gn) view = gapView(null, gn[1]);
     else if (gm) view = gapView(gm[1]);
     else if (rm) view = recView(rm[1], !!rm[2]);
+    else if (/^hnar-20\d\d-(0[1-9]|1[0-2])$/.test(r)) view = hnarView(r.slice(5));
     else if (wm) view = wrecView(wm[1]);
     else if (/^step-\d+$/.test(r)) view = (S.meter ? V.step(+r.split('-')[1]) : V.meter());
     else view = (V[r] || V.home)();
@@ -6023,7 +6196,7 @@
     if (LIVE.t0 && Date.now() - LIVE.t0 < LIVE_MS) liveDigits(document.getElementById('main'), Date.now() - LIVE.t0);
     Array.prototype.forEach.call(document.querySelectorAll(ACC_SEL), accFoot);
     Array.prototype.forEach.call(document.querySelectorAll('details.tips-box > summary'), function (sm) { if (!sm.querySelector('.pacc-chev')) sm.insertAdjacentHTML('beforeend', ico('chev', 18, 'pacc-chev')); });
-    enhanceDates(); photoFill(); toastKeep(); fabWatch(); if (Y().account) histFlush();
+    enhanceDates(); photoFill(); phFocusAll(); toastKeep(); fabWatch(); if (Y().account) histFlush();
     // отклик: ушёл дальше привітання/головної — «клацав» (этап 1)
     if (typeof r === 'string' && r && !/^(welcome|home|places)$/.test(r) && VSTAGE < 1) { VSTAGE = 1; visitBump(); }
     if (SCROLL_TO) { var st0 = document.getElementById(SCROLL_TO); SCROLL_TO = null; if (st0) { var pg0 = st0.closest && st0.closest('details.pgroup'); if (pg0 && !pg0.open) { pg0.open = true; PREF_OPEN[pg0.id.slice(3)] = true; } var wa0 = st0.closest && st0.closest('details.wacc'); if (wa0 && !wa0.open) { wa0.open = true; waccStore(wa0)[wa0.id.slice(5)] = true; } st0.scrollIntoView({ block: 'start' }); try { st0.focus({ preventScroll: true }); } catch (e0) { /* старый браузер */ } st0.classList.add('flash'); setTimeout(function () { st0.classList.remove('flash'); }, 1600); } }
@@ -6483,7 +6656,8 @@
   function ocrRead(file, opts) {
     var t0 = Date.now();
     return window.TeploOCR.read(file, opts).then(function (res) {
-      var r = res || {}; track('ocr', { ok: (r.lines && r.lines.length) || (r.drums && r.drums.length) ? 1 : 0, lines: (r.lines || []).length, drums: (r.drums || []).length, ms: Date.now() - t0, w: (file && file.size) ? Math.round(file.size / 1024) : undefined });
+      var r = res || {};
+      try { if (file && VIS().focusOf) file._focus = VIS().focusOf(r); } catch (e0) { /* без табло — центр фото */ } track('ocr', { ok: (r.lines && r.lines.length) || (r.drums && r.drums.length) ? 1 : 0, lines: (r.lines || []).length, drums: (r.drums || []).length, ms: Date.now() - t0, w: (file && file.size) ? Math.round(file.size / 1024) : undefined });
       return res;
     }, function (e) { track('ocr', { ok: 0, ms: Date.now() - t0, err: String((e && e.message) || e).slice(0, 100) }); throw e; });
   }

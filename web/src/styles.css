@@ -357,6 +357,37 @@ label.btn { cursor: pointer; }
 .bills .docs .grow { min-width: 0; }
 .bills .bill-name { display: block; overflow-wrap: anywhere; }
 .bills .doc-th img { cursor: zoom-in; }
+/* превью платіжки (09.11): квитанція з кабінету — «До сплати» великим і з чого складається; фото й PDF — аркуш-мініатюра */
+.bcards { gap: 10px; }
+.bcards li.bcard { display: flex; align-items: flex-start; gap: 14px; background: var(--c-surface); border: 1px solid var(--c-line); border-radius: 16px; padding: 12px; }
+.bcard .bc-meta { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.bcard .bc-del { align-self: flex-start; margin-top: 2px; }
+.hsw { margin: 4px 0 12px; padding: 12px 14px; border-radius: 12px; background: var(--c-surface-2); border-left: 4px solid var(--c-info, #2b6cb0); }
+.hsw p { margin: 6px 0 0; } .hsw b { display: block; }
+.hsw.hsw-zbp { border-left-color: var(--c-ok, #2f855a); } .hsw.hsw-avg, .hsw.hsw-more { border-left-color: var(--c-warn, #b7791f); }
+.bc-paper { position: relative; flex: none; width: 76px; height: 100px; border-radius: 6px; overflow: hidden; background: #fff; border: 1px solid var(--c-line);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, .08), 0 4px 10px rgba(0, 0, 0, .06); display: block; }
+.bc-paper img { width: 100%; height: 100%; object-fit: cover; object-position: top center; display: block; cursor: zoom-in; }
+.bc-paper.pdf { display: flex; flex-direction: column; justify-content: flex-end; align-items: center; padding-bottom: 10px; text-decoration: none; }
+.bc-paper .bc-fold { position: absolute; top: 0; right: 0; width: 18px; height: 18px; background: linear-gradient(225deg, var(--c-surface-2) 50%, #e3e6e4 50%); border-bottom-left-radius: 4px; }
+.bc-paper .bc-lines { position: absolute; left: 10px; right: 14px; top: 16px; display: grid; gap: 7px; }
+.bc-paper .bc-lines i { display: block; height: 4px; border-radius: 2px; background: #dfe3e1; } .bc-paper .bc-lines i:nth-child(2) { width: 70%; } .bc-paper .bc-lines i:nth-child(4) { width: 55%; }
+.bc-paper .pdf { position: relative; font: 700 12px var(--mono); color: #fff; background: var(--c-bad); border-radius: 4px; padding: 2px 6px; }
+.bc-pay-s { font-weight: 600; }
+.bcards li.bc-auto { display: block; padding: 0; overflow: hidden; }
+.bc-head { display: flex; align-items: center; gap: 12px; padding: 12px 12px 4px; color: inherit; text-decoration: none; min-height: 56px; }
+.bc-head:hover .bill-name { text-decoration: underline; text-underline-offset: 3px; }
+.bc-badge { flex: none; width: 48px; height: 48px; border-radius: 12px; display: grid; place-items: center; font: 800 13px var(--mono); letter-spacing: .02em; color: #fff; background: #b4232a; }
+.bc-badge.vk { background: #1f5fae; }
+.bc-t { display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 0; }
+.bc-go { color: var(--c-ink-2); flex: none; }
+.bc-pay { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 2px 12px; margin: 8px 12px 0; padding: 12px 14px; border-radius: 12px; background: var(--c-surface-2); }
+.bc-pay b { font-size: 26px; line-height: 1.1; font-weight: 700; white-space: nowrap; } .bc-pay b small { font-size: 15px; font-weight: 600; color: var(--c-ink-2); }
+.bc-rows { margin: 6px 12px 0; }
+.bc-row { display: flex; justify-content: space-between; gap: 12px; padding: 8px 2px; border-bottom: 1px dashed var(--c-line); font-size: 15px; }
+.bc-row:last-child { border-bottom: 0; } .bc-row span { color: var(--c-ink-2); }
+.bc-foot { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 6px 14px 10px; }
+@media (prefers-color-scheme: dark) { .bc-paper { background: #f4f5f4; } }
 /* узкий экран: в строке истории — текст на всю ширину, погода и статус строкой ниже */
 @media (max-width: 480px) {
   [data-key="reading-list"] .rowlink { flex-wrap: wrap; row-gap: 6px; }
@@ -1674,6 +1705,11 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
 .phd-slide { position: relative; flex: 0 0 100%; scroll-snap-align: center; height: 230px; }
 .phd.many .phd-slide { flex-basis: 88%; } .phd.many .phd-slide + .phd-slide { margin-left: 6px; }
 .phd-slide img { width: 100%; height: 100%; object-fit: cover; display: block; cursor: zoom-in; }
+/* превью нижче й по табло (власник 09.11): фото кадрується так, щоб табло з показаннями було в центрі (phFocus) */
+.phd-slide { overflow: hidden; }
+.phd.fit .phd-slide { height: 176px; }
+.phd.fit { min-height: 0; }
+.phd-slide img.fx { transition: none; }
 .phd-x { position: absolute; top: 12px; right: 12px; width: 44px; height: 44px; border-radius: 50%; border: 0; background: rgba(0, 0, 0, .55); color: #fff; display: flex; align-items: center; justify-content: center; cursor: pointer; backdrop-filter: blur(6px); }
 .phd-x:hover { background: rgba(0, 0, 0, .7); }
 .phd-n { position: absolute; top: 14px; left: 14px; background: rgba(0, 0, 0, .55); color: #fff; font-size: 13px; font-weight: 600; border-radius: 999px; padding: 3px 10px; }
