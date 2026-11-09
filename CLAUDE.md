@@ -45,6 +45,8 @@
   /admin → «Настройки» (файл SITE_DATA/uploads/settings/settings.json, 0600, главнее config.php; список — Cfg::RUNTIME).
   Остальное — сказать владельцу, что дописать в /srv/sites/teplo_test_data/config.php.
 - cron.php в корне (если есть) запускается раз в минуту от пользователя сайта (SITE_DATA доступна).
+- Почта (81-я): `app/mail.php` — свой SMTP по 587 + STARTTLS (Hetzner закрывает исходящие 25 и 465); ящик и ключ владелец вставляет в /admin → «Настройки» → «Пошта»
+  (сохраняется только после тестового письма). Сводка владельцу, нагадування на e-mail (отписка `/api/mail/off`), дальше — подача показаний e-mail.
 - Снаружи закрыто (404): всё с точкой (.git, .env, .claude), *.md, *.sql, *.sh, *.log, *.ini, копии (*.bak, ~), tests/,
   cases/, vendor/, node_modules/, tools_*, cron.php. Тесты и инструменты класть туда — их не видно.
 - multipart/form-data отвергается (415) до PHP, file_uploads выключен (защита от PHP2Shell). Файлы загружать из браузера
