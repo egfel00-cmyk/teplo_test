@@ -42,8 +42,13 @@ $h = HtmSvc::summary(); ok('/api/health → htmcab.form: имена полей �
 // «Перевірити» без кнопки (cron): учётка админа, только чтение, раз на LOOK_V; «человек» в /api/health не сдвигается
 $lu0 = HtmSvc::summary()['lastUser']; $jobs0 = (int)Db::one('SELECT COUNT(*) AS c FROM cab_jobs')['c']; sleep(1);
 $lk = HtmSvc::lookAdmins(); $hs = HtmSvc::summary();
-ok('cron look: кабинет админа прочитан, seen.by cron, ничего не внесено', $lk === ['ok'] && ($hs['seen']['by'] ?? '') === 'cron' && $hs['seen']['open'] === true && $hs['lastUser'] === $lu0
-  && (int)Db::one('SELECT COUNT(*) AS c FROM cab_jobs')['c'] === $jobs0 && ($hs['look']['res'] ?? null) === ['ok'] && ($hs['n']->{'look ok'} ?? 0) === 1, [$lk, $hs['seen'] ?? null, $hs['look'] ?? null]);
+ok('cron look: кабинет админа прочитан, seen.by cron, ничего не внесено', $lk === ['ok', 'arch ok'] && ($hs['seen']['by'] ?? '') === 'cron' && $hs['seen']['open'] === true && $hs['lastUser'] === $lu0
+  && (int)Db::one('SELECT COUNT(*) AS c FROM cab_jobs')['c'] === $jobs0 && ($hs['look']['res'] ?? null) === ['ok', 'arch ok'] && ($hs['n']->{'look ok'} ?? 0) === 1, [$lk, $hs['seen'] ?? null, $hs['look'] ?? null]);
+$ar = $hs['archive'] ?? []; $arj = json_encode($ar, JSON_UNESCAPED_UNICODE); $sp0 = $ar['docs']['spravka'] ?? [];
+ok('…архив рахунків (LOOK_V 6): нынешний — вересень 2026, адрес за березень — 8 вариантов (на стенде 404), довідка — строки без цифр и прізвища, месяцы и «нараховано/оплачено» посчитаны',
+  ($ar['result'] ?? '') === 'ok' && ($ar['base'] ?? '') === '2026-09' && count($ar['probe'] ?? []) === 8 && ($ar['probe'][0][1] ?? 0) === 404 && ($sp0['code'] ?? 0) === 200 && ($sp0['pre'] ?? 0) === 1
+  && ($sp0['n'] ?? 0) === 14 && ($sp0['months'] ?? 0) === 4 && ($sp0['kw']['нарах'] ?? 0) === 4 && ($sp0['kw']['оплач'] ?? 0) === 3 && !preg_match('/\d|тестовий|1000000061/iu', implode("\n", $sp0['lines'] ?? []))
+  && isset($ar['docs']['sprvds']['n']) && ($ar['page']['sel'] ?? -1) === 0, $ar);
 $shp = HtmSpr::summary()['shape'] ?? [];
 ok('…и структура «Довідки по теплу»: 14 заголовков, 1 строка шапки, строки — 14 ячеек масками без цифр (/api/health → htmSpr.shape)', count($shp['heads'] ?? []) === 14 && ($shp['thRows'] ?? 0) === 1
   && count($shp['rows'] ?? []) === 6 && str_starts_with($shp['rows'][0] ?? '', '14: ##.#### | Гкал') && !preg_match('/\d/', preg_replace('/^\d+: /m', '', implode("\n", $shp['rows'] ?? []))) && ($shp['map']['flat'] ?? 0) === 9, $shp);
@@ -228,7 +233,7 @@ ok('…и журнал свого лічильника («Всі записи»)
 $sf = glob(HtmSpr::dir() . '/' . $uid . '_*.json'); $fj = json_decode(file_get_contents($sf[0]), true); unset($fj['own']); file_put_contents($sf[0], json_encode($fj));
 $lf = json_decode(file_get_contents(HtmSvc::lookFile()), true); $lf['v'] = HtmSvc::LOOK_V - 1; file_put_contents(HtmSvc::lookFile(), json_encode($lf));
 $lk2 = HtmSvc::lookAdmins(); $sm2 = HtmSpr::mine($uid);
-ok('…осмотр кабинета админа (новая LOOK_V) — журнал свого лічильника к его довідке, квартира та же, файлов не прибавилось', $lk2 === ['ok'] && count($sm2) === 1 && $sm2[0]['place'] === 'p1'
+ok('…осмотр кабинета админа (новая LOOK_V) — журнал свого лічильника к его довідке, квартира та же, файлов не прибавилось', $lk2 === ['ok', 'arch ok'] && count($sm2) === 1 && $sm2[0]['place'] === 'p1'
   && count($sm2[0]['own'] ?? []) === count($ow) && count(glob(HtmSpr::dir() . '/' . $uid . '_*.json')) === 1, [$lk2, $sm2]);
 $c2 = HtmBills::cron($tB + 60); $hb = HtmBills::summary(); $hj = json_encode($hb, JSON_UNESCAPED_UNICODE);
 ok('…через минуту — квартиру уже смотрели (раз в 20 ч): пауза, /api/health → htmBills: месяц рахунку, вид, без рахунку и людей', $c2 === [] && ($hb['last']['res'] ?? '') === 'got' && ($hb['last']['ym'] ?? '') === '2026-09' && ($hb['last']['kind'] ?? '') === 'html'

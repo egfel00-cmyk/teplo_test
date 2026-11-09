@@ -35,6 +35,8 @@ if (str_starts_with($path, '/cabinet')) {
   if ($path === "/cabinet/spr-teplo/$ACC/$SUR") { page_spr(); return; }
   // рахунок — как на живом кабинете (осмотр 07.11.2026): «Сформувати рахунок» → HTML «Рахунок за <місяць> <рік> року» с «Друкувати»/«Назад»; PDF нет
   if ($path === "/cabinet/bill/print/$ACC/$SUR") { page_bill(isset($_GET['hint'])); return; }
+  // «Довідка щодо нарахувань та оплати» — на живом сплошной текст «БОРГ НА …» (осмотр 07.11); вид строк не снят — синтетика стенда (82-я)
+  if ($path === "/cabinet/spravka/$ACC/$SUR" || $path === "/cabinet/sprvds/$ACC/$SUR") { page_spravka(str_contains($path, 'sprvds')); return; }
   if ($path === "/cabinet/payments/print/$ACC/$SUR/2026-10") { log_req('bill_pdf'); header('Content-Type: application/pdf'); header('Content-Disposition: inline; filename="kvit_' . $ACC . '_2026-10.pdf"'); echo "%PDF-1.4\n% stand kvytantsiia HTM 2026-10\n%%EOF\n"; return; }
 }
 page('404', '<p>Немає такої сторінки на стенді: ' . h($path) . '</p>', 404, logged_in());
@@ -118,6 +120,15 @@ function page_spr(): void {
 function page_payments(): void {   // как живой «Архів платежів» (07.11): дата и сумма, ссылки на довідки — квитанций здесь нет
   page('Кабінет | Архів платежів', '<h1>Архів платежів</h1><p><a href="' . h(acc_url('/cabinet/spravka')) . '">Довідка щодо нарахувань та оплати за послугу</a></p><table class="stand-tbl"><tr><th>Дата</th><th>Сума, грн.</th></tr>'
     . '<tr><th colspan="2">Поточні платежі (з 01.11.2026):</th></tr><tr><td>03.11.2026</td><td>245.30</td></tr><tr><th colspan="2">Платежі в розрахунковому місяці:</th></tr></table>', 200, true);
+}
+
+function page_spravka(bool $vds): void {
+  $c = st()['credentials']; $svc = $vds ? 'постачання гарячої води' : 'постачання теплової енергії';
+  $t = "ДОВІДКА щодо нарахувань та оплати за послугу з $svc\nОсобовий рахунок " . $c['account'] . ' ' . $c['surname'] . "\n---------------------------------------\n";
+  foreach ([['01.02.2026', '1200.00', '3270.15', '1200.00'], ['01.03.2026', '3270.15', '3781.20', '3270.15'], ['01.04.2026', '3781.20', '29.40', '3781.20']] as [$d, $b, $n, $o])
+    $t .= "БОРГ НА $d  $b\n  НАРАХОВАНО  $n\n  ОПЛАЧЕНО  $o\n";
+  $t .= "---------------------------------------\nБОРГ НА 01.05.2026  29.40\n";
+  page('Кабінет | Довідка щодо нарахувань та оплати за послуги', '<h1>Довідка</h1><a href="' . h(acc_url('/cabinet/payments')) . '">Архів платежів</a><pre>' . h($t) . '</pre>', 200, true);
 }
 
 /** Рахунок (синтетика по виду живого 07.11): своя страница без меню стенда, windows-1251, стиль и картинка — с сайта, кнопки на JS.

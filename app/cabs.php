@@ -748,6 +748,54 @@ final class HtmCab {
     }
     return ['rows' => array_slice($rows, -36), 'cols' => array_keys($map), 'fmt' => $fmt, 'shape' => $shape];
   }
+  /** Есть ли в кабинете прошлые рахунки (82-я сессия, 09.11.2026; владелец: «квитанции за все месяцы — сами»). Только GET, ничего не меняем.
+   *  base — нынешний рахунок «Сформувати рахунок» (месяц из заголовка); probe — варианты адреса рахунку за месяц $ym (путь /Y/m, /Ym, /m.Y,
+   *  параметры month/year, period, date, ym, m/y): код ответа, месяц из заголовка, тот же ли текст, что у нынешнего; на странице рахунку — select/option.
+   *  docs — «Довідка щодо нарахувань та оплати» (spravka, sprvds): строки текста (pre/br/tr) — вызывающий маскирует; таблиц, форм, select.
+   *  → ['base' => ?ym, 'page' => {sel, opt, forms, js}, 'probe' => [[v, code, ym, same, bytes]], 'docs' => [k => {code, lines (сырые!), tables, forms, sel}]] */
+  public function archive(string $acc, string $sur, ?string $ym = null): array {
+    $u0 = self::url($acc, $sur, 'bill/print'); $out = ['base' => null, 'page' => null, 'probe' => [], 'docs' => []];
+    $txt = function (string $html): string { $x = CabWeb::dom($html); return CabWeb::sp(implode(' ', array_map(fn($t) => $t->nodeValue, iterator_to_array($x->query('//body//text()[not(ancestor::script) and not(ancestor::style)]'))))); };
+    $title = fn(string $html) => CabWeb::sp((string)(CabWeb::dom($html)->query('//title')->item(0)?->textContent ?? ''));
+    $b0 = $this->get($u0); $t0 = $b0['code'] === 200 ? $txt($b0['body']) : '';
+    if ($t0 !== '') {
+      $x = CabWeb::dom($b0['body']); $out['base'] = self::monthOf($title($b0['body'])) ?? self::monthOf(mb_substr($t0, 0, 400));
+      $js = []; foreach ($x->query('//script[not(@src)]') as $s) if (preg_match_all('/[^;{}\n]{0,40}(?:month|period|місяц|период|year|date)[^;{}\n]{0,40}/iu', (string)$s->textContent, $m)) foreach ($m[0] as $sn) if (count($js) < 4) $js[] = CabWeb::mask($sn, 90);
+      $out['page'] = ['sel' => $x->query('//select')->length, 'opt' => $x->query('//option')->length, 'forms' => $x->query('//form')->length, 'js' => $js,
+        'src' => array_slice(array_map(fn($s) => CabWeb::mask((string)parse_url((string)$s->getAttribute('src'), PHP_URL_PATH), 60), iterator_to_array($x->query('//script[@src]'))), 0, 6)];
+    }
+    $ym = $ym ?? ($out['base'] ? date('Y-m', strtotime($out['base'] . '-01 -6 month')) : date('Y-m', strtotime('first day of -7 month')));
+    [$Y, $m] = [substr($ym, 0, 4), substr($ym, 5, 2)];
+    $vs = ['/Y/m' => $u0 . '/' . $Y . '/' . $m, '/Ym' => $u0 . '/' . $Y . $m, '/m.Y' => $u0 . '/' . $m . '.' . $Y, '?month&year' => $u0 . '?month=' . (int)$m . '&year=' . $Y,
+      '?period' => $u0 . '?period=' . $Y . $m, '?date' => $u0 . '?date=01.' . $m . '.' . $Y, '?ym' => $u0 . '?ym=' . $Y . '-' . $m, '?m&y' => $u0 . '?m=' . $m . '&y=' . $Y];
+    foreach ($vs as $v => $u) {
+      if ($this->w->left() < 9) { $out['probe'][] = [$v, 'time']; continue; }
+      try { $r = $this->get($u); } catch (CabErr $e) { $out['probe'][] = [$v, $e->err]; if ($e->err === 'captcha') throw $e; continue; }
+      $t = $r['code'] === 200 ? $txt($r['body']) : '';
+      $out['probe'][] = [$v, (int)$r['code'], $t !== '' ? (self::monthOf($title($r['body'])) ?? self::monthOf(mb_substr($t, 0, 400))) : null, $t !== '' && $t === $t0, strlen((string)$r['body'])];
+    }
+    foreach (['spravka', 'sprvds'] as $k) {
+      if ($this->w->left() < 7) { $out['docs'][$k] = ['err' => 'time']; continue; }
+      try { $r = $this->get(self::url($acc, $sur, $k)); } catch (CabErr $e) { $out['docs'][$k] = ['err' => $e->err]; if ($e->err === 'captcha') throw $e; continue; }
+      $out['docs'][$k] = ['code' => (int)$r['code']] + self::textDoc((string)$r['body']);
+    }
+    return $out;
+  }
+  /** Текст страницы-довідки по строкам: pre — как есть, иначе br/p/div/tr/li — перенос; скрипты и меню (nav, a) — без них. Строки — сырые (личные). */
+  public static function textDoc(string $html): array {
+    $x = CabWeb::dom($html); $pre = $x->query('//pre');
+    if ($pre->length) { $raw = ''; foreach ($pre as $p) $raw .= (string)$p->textContent . "\n"; }
+    else {
+      $b = preg_replace('~<(script|style|nav|head)\b.*?</\1>~is', '', $html);
+      $b = preg_replace('~<a\b[^>]*>.*?</a>~is', '', (string)$b);
+      $b = preg_replace('~<br\s*/?>|</(p|div|tr|li|h\d|table|caption)>~i', "\n", (string)$b);
+      $b = preg_replace('~</t[dh]>~i', ' | ', (string)$b);
+      $raw = html_entity_decode(strip_tags((string)$b), ENT_QUOTES | ENT_HTML5, 'UTF-8');
+    }
+    $lines = [];
+    foreach (preg_split('/\R/u', (string)$raw) as $l) { $l = rtrim(str_replace("\u{a0}", ' ', $l)); if (trim($l, " |\t") === '') continue; $lines[] = $l; if (count($lines) >= 200) break; }
+    return ['lines' => $lines, 'pre' => $pre->length, 'tables' => $x->query('//table')->length, 'forms' => $x->query('//form')->length, 'sel' => $x->query('//select')->length];
+  }
   public function billPage(string $acc, string $sur): ?array {
     $u = null;
     if (!empty($this->home['body'])) foreach (CabWeb::dom((string)$this->home['body'])->query('//a[@href]') as $a) {

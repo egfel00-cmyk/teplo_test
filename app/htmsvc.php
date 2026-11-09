@@ -200,8 +200,30 @@ final class HtmSvc {
   /** «Перевірити» без кнопки: владелец неделю не нажимал (06.11 17:26 — последний раз, а окно дат, плашки и журнал нужны до первого живого внесения).
    *  Раз на LOOK_V (сайт не ответил — ещё до 3 раз, через 10 мин) сервер сам читает кабинеты ХТМ УЧЁТОК АДМИНА (config.php → admins), как VkStatus::recheck
    *  у Водоканала: только чтение, ничего не вносит; рахунок — первый из кабинета. Итог — /api/health → htmcab.seen (by: cron) и htmcab.look. → итоги или null. */
-  const LOOK_V = 5;   // 2: осмотр кабинета — где квитанция (explore), 07.11.2026; 3: + «Довідки щодо нарахувань» (spravka, sprvds) — есть ли прошлые рахунки; 4: + структура «Довідки по теплу» (08.11);
+  const LOOK_V = 6;   // 2: осмотр кабинета — где квитанция (explore), 07.11.2026; 3: + «Довідки щодо нарахувань» (spravka, sprvds) — есть ли прошлые рахунки; 4: + структура «Довідки по теплу» (08.11);
                       // 5: + журнал квартирного лічильника (viewall) к довідке — формула «витрати по квартирі» (08.11, 59-я сессия)
+                      // 6: + архив рахунків — адрес рахунку за прошлый месяц и строки «Довідок щодо нарахувань» масками (09.11, 82-я)
+  /** LOOK_V 6: есть ли в кабинете прошлые рахунки (HtmCab::archive) — отдельным входом, только чтение. В журнал — без цифр и людей:
+   *  строки довідок — HtmSpr::gw (цифры → #, не общие слова → Ж), сколько строк похожи на месяцы и сколько со словами нарахування/оплати/перерахунку. */
+  private static function archiveLook(int $uid, string $want): string {
+    [$cab, $acc] = self::enter($uid, $want, 'archive');
+    try { $a = $cab->archive($acc['acc'], $acc['sur']); }
+    catch (CabErr $e) { self::diag(['op' => 'archive', 'user' => $uid, 'result' => $e->err, 'steps' => $cab->w->steps]); return $e->err; }
+    finally { $cab->logout(); }
+    $docs = [];
+    foreach ($a['docs'] as $k => $d) {
+      if (isset($d['lines'])) {
+        $ls = (array)$d['lines']; $kw = [];
+        foreach (['борг' => '/борг/iu', 'нарах' => '/нарах/iu', 'донарах' => '/донарах/iu', 'перерах' => '/перерах|скорег|коригув/iu', 'оплач' => '/оплач|сплач|надійш|надход/iu', 'гкал' => '/гкал/iu', 'серед' => '/середн/iu', 'тепл' => '/тепл/iu', 'гаряч' => '/гаряч|гвп/iu'] as $w => $re)
+          $kw[$w] = count(array_filter($ls, fn($l) => preg_match($re, $l)));
+        $d = ['n' => count($ls), 'months' => count(array_filter($ls, fn($l) => HtmCab::monthOf($l) !== null || preg_match('/(?<!\d)\d{2}\.20\d\d(?!\d)/', $l))), 'kw' => $kw,
+          'lines' => array_map(fn($l) => HtmSpr::gw($l, 140), array_slice($ls, 0, 70))] + array_diff_key($d, ['lines' => 1]);
+      }
+      $docs[$k] = $d;
+    }
+    self::diag(['op' => 'archive', 'user' => $uid, 'result' => 'ok', 'archive' => ['base' => $a['base'], 'page' => $a['page'], 'probe' => $a['probe'], 'docs' => $docs], 'steps' => $cab->w->steps]);
+    return 'ok';
+  }
   public static function lookFile(): string { return Cfg::data() . '/cache/htm_look.json'; }
   public static function lookState(): array { $j = json_decode((string)@file_get_contents(self::lookFile()), true); return is_array($j) ? $j : []; }
   public static function lookAdmins(?int $now = null): ?array {
@@ -216,6 +238,8 @@ final class HtmSvc {
       if (!Admin::is(['id' => (int)$c['user_id'], 'email' => $c['email']])) continue;
       $acc = (string)(self::js($c['info'])['accounts'][0]['acc'] ?? '');
       try { self::look((int)$c['user_id'], $acc, 'look'); $res[] = 'ok'; } catch (HttpError $e) { $res[] = $e->err; }
+      // 6: есть ли прошлые рахунки и что в «Довідках щодо нарахувань» — отдельным входом (свой бюджет 25 с)
+      if (end($res) === 'ok') { try { $res[] = 'arch ' . self::archiveLook((int)$c['user_id'], $acc); } catch (HttpError $e) { $res[] = 'arch ' . $e->err; } }
     }
     $same = (int)($j['v'] ?? 0) === self::LOOK_V;
     $j = ['v' => self::LOOK_V, 'at' => $now, 'res' => $res, 'tries' => ($same ? (int)($j['tries'] ?? 0) : 0) + 1];
@@ -521,8 +545,10 @@ final class HtmSvc {
   }
   /** /api/health → htmcab: «операция итог» по журналу, последняя операция человека, последняя увиденная форма (имена и типы полей) и внесения по статусам. */
   public static function summary(): array {
-    $n = []; $last = null; $form = null; $seen = null; $lastSend = null; $lastErr = null; $explore = null;
+    $n = []; $last = null; $form = null; $seen = null; $lastSend = null; $lastErr = null; $explore = null; $archive = null;
     foreach (self::log() as $e) {
+      // архив рахунків (LOOK_V 6): варианты адреса рахунку за прошлый месяц и строки довідок масками
+      if (($e['op'] ?? '') === 'archive') $archive = ['at' => gmdate('c', (int)$e['at']), 'result' => $e['result'] ?? null] + (array)($e['archive'] ?? []) + (($e['result'] ?? '') !== 'ok' ? ['steps' => array_slice((array)($e['steps'] ?? []), -6)] : []);
       // осмотр кабинета: страницы (пути без рахунку, ссылки, рамки, заголовки таблиц), похожая на квитанцию ссылка и что по ней пришло — без цифр и прізвищ
       if (!empty($e['explore'])) $explore = ['at' => gmdate('c', (int)$e['at']), 'by' => ($e['op'] ?? '') === 'look' ? 'cron' : 'user'] + (array)$e['explore'];
       // что робот прочитал со страницы тепла при последней проверке — без значений: нашёл ли прибор, какие «последние принятые», окно, статусы журнала
@@ -536,7 +562,7 @@ final class HtmSvc {
         'flash' => ($e['flash'] ?? '') !== '', 'site' => ($e['site'] ?? '') !== '', 'banners' => $e['banners'] ?? null] + (array)($e['page'] ?? []);   // сами слова — только в /admin: /api/health открыт всем
       $k = preg_replace('/[^a-z]/', '', (string)($e['op'] ?? '?')) . ' ' . preg_replace('/[^a-z_,]/', '', (string)($e['result'] ?? '?'));
       $n[$k] = ($n[$k] ?? 0) + 1;
-      if (!in_array($e['op'] ?? '', ['recheck', 'look', 'autobill'], true)) $last = max((int)$last, (int)($e['at'] ?? 0));   // cron — не человек
+      if (!in_array($e['op'] ?? '', ['recheck', 'look', 'autobill', 'archive'], true)) $last = max((int)$last, (int)($e['at'] ?? 0));   // cron — не человек
       if (!empty($e['form']['open'])) $form = ['at' => gmdate('c', (int)$e['at']), 'match' => $e['form']['match'], 'missing' => $e['form']['missing'], 'unknown' => $e['form']['unknown'],
         'fields' => array_map(fn($f) => trim(($f['n'] ?? '') . ':' . ($f['t'] ?? '') . (isset($f['r']) ? '→' . $f['r'] : '')), $e['form']['fields'] ?? []),
         // подсказки сайта к полям (обязательное, длина, шаблон, placeholder) — чтобы сверить формат телефона и чисел
@@ -546,7 +572,7 @@ final class HtmSvc {
     try { foreach (Db::q('SELECT status, COUNT(*) AS c FROM cab_jobs WHERE prov = ? GROUP BY status', [self::PROV])->fetchAll() as $x) $jobs[$x['status']] = (int)$x['c']; } catch (Throwable $e) {}
     $cr = 0; try { $cr = (int)(Db::one('SELECT COUNT(*) AS c FROM cab_creds WHERE prov = ?', [self::PROV])['c'] ?? 0); } catch (Throwable $e) {}
     $lk = self::lookState(); $look = $lk ? ['v' => (int)($lk['v'] ?? 0), 'at' => gmdate('c', (int)($lk['at'] ?? 0)), 'res' => (array)($lk['res'] ?? []), 'tries' => (int)($lk['tries'] ?? 0)] : null;
-    return ['n' => (object)$n, 'lastUser' => $last ? gmdate('c', $last) : null, 'connected' => $cr, 'jobs' => (object)$jobs, 'form' => $form, 'seen' => $seen, 'lastSend' => $lastSend, 'lastErr' => $lastErr, 'look' => $look, 'explore' => $explore];
+    return ['n' => (object)$n, 'lastUser' => $last ? gmdate('c', $last) : null, 'connected' => $cr, 'jobs' => (object)$jobs, 'form' => $form, 'seen' => $seen, 'lastSend' => $lastSend, 'lastErr' => $lastErr, 'look' => $look, 'explore' => $explore, 'archive' => $archive];
   }
 }
 
