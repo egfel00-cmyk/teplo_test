@@ -1427,6 +1427,15 @@ ok('довідник: усі громади й пункти є в КАТОТТГ
   ok('79-та: Болград — 40,98 / 37,10, звірити, абонвідділ і диспетчер',
     ($bg['place']['hromada'] ?? '') === 'Болградська' && $bg['kinds']['water']['supply'] === 40.98 && $bg['kinds']['water']['drain'] === 37.1 && !empty($bg['kinds']['water']['check'])
     && count($bg['kinds']['water']['phones'] ?? []) === 3 && str_contains($bg['kinds']['water']['src'] ?? '', '01.03.2026'), $bg['kinds']['water'] ?? $bg);
+  // 80-та: Львівщина — усі 73 громади в довіднику (4 останні — без тарифу, src — де шукали); Одещина — Лиманська (Лиман) і Чорноморська (Чорноморське)
+  $trs = $v('Тростянець, Стрийський район, вул. Зелена 1'); $zbl = $v('Заболотці, вул. Шевченка 1'); $bsk = $v('Бісковичі, вул. Мудрого 1'); $chs = $v('Чорноморське, вул. Курортна 5');
+  $lvAll = json_decode(file_get_contents(__DIR__ . '/../app/data/prov_lv.json'), true)['hromadas']; $lvK = json_decode(file_get_contents(__DIR__ . '/../app/data/lv_katottg.json'), true)['hromadas'];
+  $lvMiss = array_values(array_filter(array_map(fn($x) => $x['k'] ?? $x['n'], $lvK), fn($n) => !isset($lvAll[$n])));
+  ok('80-та: Львівщина — усі громади КАТОТТГ є в довіднику; Тростянець, Заболотці, Бісковичі — без тарифу, «з платіжки», src з датою; Чорноморське — селищна громада (не Чорноморськ), ЖКГ селища в note',
+    $lvMiss === [] && ($trs['place']['hromada'] ?? '') === 'Тростянецька' && $trs['kinds']['water']['supply'] === null && str_contains($trs['kinds']['water']['note'] ?? '', 'платіжки')
+    && str_contains($zbl['kinds']['water']['src'] ?? '', '09.11.2026') && ($bsk['place']['hromada'] ?? '') === 'Бісковицька' && !empty($bsk['kinds']['water']['src'])
+    && ($chs['place']['r'] ?? '') === 'od' && ($chs['place']['h'] ?? '') === 'UA51100390000087217' && str_contains($chs['kinds']['water']['note'] ?? '', 'Курортна') && $chs['kinds']['water']['supply'] === null,
+    [$lvMiss, $trs['kinds']['water'] ?? $trs, $chs['place'] ?? $chs]);
   // 65-та сесія: Львівщина — сайти громад (gromada.org.ua: /sitemap/, рішення на rada.info)
   $pus = $v('Пустомити, вул. Шевченка 1'); $mur = $v('Сороки-Львівські, вул. Польова 1'); $kul = $v('Куликов, ул. Шевченко 1'); $skl = $v('Сокільники, вул. Стрийська 1');
   $prs = $v('Поршна, Солонківська громада'); $sln = $v('Солонка, вул. Шевченка 1'); $shc = $v('Щирець, вул. Шевченка 1');
