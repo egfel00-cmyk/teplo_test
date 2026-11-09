@@ -189,6 +189,8 @@ final class HtmSvc {
       // «Довідка по теплу» — структура таблицы (заголовки, маски ячеек) в _last; LOOK_V 5: + весь журнал квартирного лічильника (viewall) к уже сохранённой довідке
       // этой учётки (свои данные админа, как у bill) — сервер сверяет «витрату по квартирі» со своим лічильником (HtmSpr::check → own)
       try { $sp = $cab->sprTeplo($acc['acc'], $acc['sur']); if ($sp) { HtmSpr::saveShape($sp); HtmSpr::refresh($uid, $sp, $cab->ownJournal($h, $acc['acc'], $acc['sur'])); } } catch (Throwable $e) {}
+      // LOOK_V 9: нарахування по всіх місяцях («Довідка щодо нарахувань») — до файлів цієї учётки, будова й звірка — в /api/health → htmSpr.nar
+      try { $nar = $cab->spravka($acc['acc'], $acc['sur']); if ($nar) HtmSpr::refreshNar($uid, $nar); } catch (Throwable $e) {}
     }
     catch (CabErr $e) { self::diag(['op' => $op, 'user' => $uid, 'result' => $e->err, 'steps' => $cab->w->steps]); throw self::cabErr($e); }
     finally { $cab->logout(); }
@@ -200,10 +202,11 @@ final class HtmSvc {
   /** «Перевірити» без кнопки: владелец неделю не нажимал (06.11 17:26 — последний раз, а окно дат, плашки и журнал нужны до первого живого внесения).
    *  Раз на LOOK_V (сайт не ответил — ещё до 3 раз, через 10 мин) сервер сам читает кабинеты ХТМ УЧЁТОК АДМИНА (config.php → admins), как VkStatus::recheck
    *  у Водоканала: только чтение, ничего не вносит; рахунок — первый из кабинета. Итог — /api/health → htmcab.seen (by: cron) и htmcab.look. → итоги или null. */
-  const LOOK_V = 8;   // 2: осмотр кабинета — где квитанция (explore), 07.11.2026; 3: + «Довідки щодо нарахувань» (spravka, sprvds) — есть ли прошлые рахунки; 4: + структура «Довідки по теплу» (08.11);
+  const LOOK_V = 9;   // 2: осмотр кабинета — где квитанция (explore), 07.11.2026; 3: + «Довідки щодо нарахувань» (spravka, sprvds) — есть ли прошлые рахунки; 4: + структура «Довідки по теплу» (08.11);
                       // 5: + журнал квартирного лічильника (viewall) к довідке — формула «витрати по квартирі» (08.11, 59-я сессия)
                       // 6: + архив рахунків — адрес рахунку за прошлый месяц и строки «Довідок щодо нарахувань» масками (09.11, 82-я)
                       // 7: довідка — <pre> с таблицей внутри (на 6 вышла одной строкой): строки по br/tr; до 90 строк по 160 знаков
+                      // 9: нарахування ХТМ по всіх місяцях (HtmCab::spravka) — до довідки учётки адміна (09.11, 82-а)
                       // 8: довідка — таблиця з фіксованою шириною: пробіли зберігаємо (колонки), шапка таблиці (рядки з «|») — слова як є (не особисті), цифри → #
   /** LOOK_V 6: есть ли в кабинете прошлые рахунки (HtmCab::archive) — отдельным входом, только чтение. В журнал — без цифр и людей:
    *  строки довідок — HtmSpr::gw (цифры → #, не общие слова → Ж), сколько строк похожи на месяцы и сколько со словами нарахування/оплати/перерахунку. */
@@ -283,6 +286,8 @@ final class HtmSvc {
           HtmSpr::save($uid, $place, $sp);
         }
       } catch (CabErr $e) { if ($e->err === 'captcha') throw $e; }
+      // «Довідка щодо нарахувань та оплати» — нарахування ХТМ по всіх місяцях з 2021 р. (архіву рахунків у кабінеті немає — 82-а): той самий вхід, лише читання
+      try { $nar = $cab->spravka($acc['acc'], $acc['sur']); if ($nar) HtmSpr::saveNar($uid, $place, $nar); } catch (CabErr $e) { if ($e->err === 'captcha') throw $e; }
     }
     catch (CabErr $e) { self::diag(['op' => 'autobill', 'user' => $uid, 'result' => $e->err, 'steps' => $cab->w->steps]); throw self::cabErr($e); }
     finally { $cab->logout(); }
@@ -738,12 +743,52 @@ final class HtmSpr {
     // довідка в кабінеті — лише останній сезон: місяці копимо (свіжий рядок місяця — поверх старого), щоб звірка формули росла з кожним сезоном; до 36 місяців
     $by = []; foreach (array_merge((array)($old['rows'] ?? []), (array)$sp['rows']) as $r) if (isset($r['ym'])) $by[(string)$r['ym']] = $r;
     ksort($by); $rows = array_slice(array_values($by), -36);
-    @file_put_contents($f, json_encode(['at' => time(), 'place' => $place, 'rows' => $rows] + ($own !== null ? ['own' => $own] : []), JSON_UNESCAPED_UNICODE), LOCK_EX);
-    $rs = $sp['rows']; @file_put_contents(self::dir() . '/_last.json', json_encode(['at' => time(), 'rows' => count($rs), 'cols' => $sp['cols'], 'fmt' => $sp['fmt'],
+    $nar = isset($sp['nar']) && is_array($sp['nar']) ? self::mergeNar((array)($old['nar'] ?? []), $sp['nar']) : ($old['nar'] ?? null);
+    @file_put_contents($f, json_encode(['at' => time(), 'place' => $place, 'rows' => $rows] + ($own !== null ? ['own' => $own] : []) + ($nar ? ['nar' => $nar] : []), JSON_UNESCAPED_UNICODE), LOCK_EX);
+    $rs = $sp['rows']; $l0 = json_decode((string)@file_get_contents(self::dir() . '/_last.json'), true);
+    @file_put_contents(self::dir() . '/_last.json', json_encode(['at' => time(), 'rows' => count($rs), 'cols' => $sp['cols'], 'fmt' => $sp['fmt'],
       'from' => $rs ? $rs[0]['ym'] : null, 'to' => $rs ? $rs[count($rs) - 1]['ym'] : null,
       // какие поля в строках заполнены (сколько строк с числом) — проверить разбор на живом без самих чисел
       'filled' => (object)array_map(fn($k) => count(array_filter($rs, fn($r) => isset($r[$k]) && $r[$k] !== null)), array_combine($sp['cols'], $sp['cols'])),
-      'shape' => $sp['shape'] ?? null], JSON_UNESCAPED_UNICODE), LOCK_EX);
+      'shape' => $sp['shape'] ?? null] + (is_array($l0) && isset($l0['nar']) ? ['nar' => $l0['nar']] : []), JSON_UNESCAPED_UNICODE), LOCK_EX);
+  }
+  /** «Довідка щодо нарахувань та оплати» (HtmCab::parseSpravka) — помісячно з 2021 р.: свіжий рядок місяця поверх старого, до 72 місяців.
+   *  → {from, start, rows: [{ym, heat: {area, gcal, cost, lgota, recalc, paid, corr, saldo}, hot: {…}}], at} */
+  public static function mergeNar(array $old, array $new): array {
+    $by = []; foreach (array_merge((array)($old['rows'] ?? []), (array)($new['rows'] ?? [])) as $r) if (isset($r['ym'])) $by[(string)$r['ym']] = $r;
+    ksort($by);
+    return ['from' => $new['from'] ?? ($old['from'] ?? null), 'start' => $new['start'] ?? ($old['start'] ?? []), 'rows' => array_slice(array_values($by), -72), 'at' => time()];
+  }
+  /** Нарахування по місяцях — у файл квартири (без довідки по теплу файл не створюємо: квартиру знає bill). Для /api/health — лише будова й звірка з довідкою. */
+  public static function saveNar(int $uid, string $place, array $nar): void {
+    @mkdir(self::dir(), 0700, true); $f = self::file($uid, $place); $old = json_decode((string)@file_get_contents($f), true) ?: [];
+    $old['at'] = $old['at'] ?? time(); $old['place'] = $place; $old['rows'] = $old['rows'] ?? []; $old['nar'] = self::mergeNar((array)($old['nar'] ?? []), $nar);
+    @file_put_contents($f, json_encode($old, JSON_UNESCAPED_UNICODE), LOCK_EX);
+    self::narShape($nar, (array)$old['rows']);
+  }
+  /** Осмотр кабинета админа: нарахування — в уже сохранённые файлы этой учётки. */
+  public static function refreshNar(int $uid, array $nar): void {
+    $any = false;
+    foreach ((glob(self::dir() . '/' . $uid . '_*.json') ?: []) as $f) { $j = json_decode((string)@file_get_contents($f), true); if (!is_array($j) || !isset($j['place'])) continue; self::saveNar($uid, (string)$j['place'], $nar); $any = true; }
+    if (!$any) self::narShape($nar, []);
+  }
+  /** /api/health → htmSpr.nar: скільки місяців, з якого по який, які колонки й скільки заповнено; звірка з «Довідкою по теплу» тих самих місяців —
+   *  скільки місяців Гкал = витрата по квартирі, нараховано = нараховано + абонплата (лише лічильники збігів, без сум). */
+  public static function narShape(array $nar, array $spr): void {
+    $rs = (array)($nar['rows'] ?? []); $fill = [];
+    foreach ($rs as $r) foreach (['heat', 'hot'] as $g) foreach ((array)($r[$g] ?? []) as $k => $v) if ($v !== null) $fill[$g . '.' . $k] = ($fill[$g . '.' . $k] ?? 0) + 1;
+    $by = []; foreach ($spr as $r) if (isset($r['ym'])) $by[(string)$r['ym']] = $r;
+    $ck = ['both' => 0, 'gcal' => 0, 'cost' => 0, 'costNoAbon' => 0, 'withGcal' => 0, 'recalc' => 0];
+    foreach ($rs as $r) {
+      $h = (array)($r['heat'] ?? []); if (isset($h['gcal']) && $h['gcal'] > 0) $ck['withGcal']++; if (!empty($h['recalc'])) $ck['recalc']++;
+      $x = $by[(string)$r['ym']] ?? null; if (!$x) continue; $ck['both']++;
+      if (isset($h['gcal'], $x['flat']) && abs($h['gcal'] - (float)$x['flat']) < 0.0015) $ck['gcal']++;
+      if (isset($h['cost'], $x['cost']) && abs($h['cost'] - (float)$x['cost'] - (float)($x['abon'] ?? 0)) < 0.02) $ck['cost']++;
+      if (isset($h['cost'], $x['cost']) && abs($h['cost'] - (float)$x['cost']) < 0.02) $ck['costNoAbon']++;
+    }
+    $j = json_decode((string)@file_get_contents(self::dir() . '/_last.json'), true); $j = is_array($j) ? $j : ['at' => time()];
+    $j['nar'] = ['at' => gmdate('c'), 'n' => count($rs), 'from' => $rs ? $rs[0]['ym'] : null, 'to' => $rs ? $rs[count($rs) - 1]['ym'] : null, 'filled' => (object)$fill, 'check' => $ck];
+    @mkdir(self::dir(), 0700, true); @file_put_contents(self::dir() . '/_last.json', json_encode($j, JSON_UNESCAPED_UNICODE), LOCK_EX);
   }
   /** Только структура таблицы (осмотр кабинета админа, HtmSvc::look): в _last.json → shape, строки людей не трогаем. */
   public static function saveShape(array $sp): void {
@@ -761,7 +806,7 @@ final class HtmSpr {
   /** Свої дані: [{place, at, rows, own}] — own: журнал свого лічильника з кабінету [{date, energy, status}] */
   public static function mine(int $uid): array {
     $out = [];
-    foreach ((glob(self::dir() . '/' . $uid . '_*.json') ?: []) as $f) { $j = json_decode((string)@file_get_contents($f), true); if (is_array($j) && !empty($j['rows'])) $out[] = ['place' => (string)$j['place'], 'at' => gmdate('c', (int)$j['at']), 'rows' => $j['rows'], 'own' => $j['own'] ?? []]; }
+    foreach ((glob(self::dir() . '/' . $uid . '_*.json') ?: []) as $f) { $j = json_decode((string)@file_get_contents($f), true); if (is_array($j) && (!empty($j['rows']) || !empty($j['nar']['rows']))) $out[] = ['place' => (string)$j['place'], 'at' => gmdate('c', (int)$j['at']), 'rows' => $j['rows'], 'own' => $j['own'] ?? []] + (isset($j['nar']) ? ['nar' => $j['nar']] : []); }
     return $out;
   }
   public static function summary(): ?array {

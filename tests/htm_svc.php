@@ -47,8 +47,12 @@ ok('cron look: кабинет админа прочитан, seen.by cron, ни�
 $ar = $hs['archive'] ?? []; $arj = json_encode($ar, JSON_UNESCAPED_UNICODE); $sp0 = $ar['docs']['spravka'] ?? [];
 ok('…архив рахунків (LOOK_V 6): нынешний — вересень 2026, адрес за березень — 8 вариантов (на стенде 404), довідка — строки без цифр и прізвища, месяцы и «нараховано/оплачено» посчитаны',
   ($ar['result'] ?? '') === 'ok' && ($ar['base'] ?? '') === '2026-09' && count($ar['probe'] ?? []) === 8 && ($ar['probe'][0][1] ?? 0) === 404 && ($sp0['code'] ?? 0) === 200 && ($sp0['pre'] ?? 0) === 1
-  && ($sp0['n'] ?? 0) === 14 && ($sp0['months'] ?? 0) === 4 && ($sp0['kw']['нарах'] ?? 0) === 4 && ($sp0['kw']['оплач'] ?? 0) === 3 && !preg_match('/\d|тестовий|1000000061/iu', implode("\n", $sp0['lines'] ?? []))
-  && isset($ar['docs']['sprvds']['n']) && ($ar['page']['sel'] ?? -1) === 0, $ar);
+  && ($sp0['n'] ?? 0) === 19 && ($sp0['pre'] ?? 0) === 1 && str_contains(implode("\n", $sp0['lines'] ?? []), '|М|Р |___') && !preg_match('/\d|тестов|100000006/iu', implode("\n", $sp0['lines'] ?? []))
+  && ($ar['docs']['sprvds']['code'] ?? 0) === 404 && ($ar['page']['sel'] ?? -1) === 0, $ar);
+$nsh = HtmSpr::summary()['nar'] ?? [];
+ok('…нарахування по всіх місяцях («Довідка щодо нарахувань»): 6 місяців 2025-10…2026-05, колонки опалення, без сум (/api/health → htmSpr.nar)',
+  ($nsh['n'] ?? 0) === 6 && ($nsh['from'] ?? '') === '2025-10' && ($nsh['to'] ?? '') === '2026-05' && (((array)($nsh['filled'] ?? []))['heat.gcal'] ?? 0) === 3 && (((array)($nsh['filled'] ?? []))['heat.recalc'] ?? 0) === 2
+  && ($nsh['check']['withGcal'] ?? 0) === 3 && !preg_match('/2437|3781|1190/', json_encode($nsh)), $nsh);
 $shp = HtmSpr::summary()['shape'] ?? [];
 ok('…и структура «Довідки по теплу»: 14 заголовков, 1 строка шапки, строки — 14 ячеек масками без цифр (/api/health → htmSpr.shape)', count($shp['heads'] ?? []) === 14 && ($shp['thRows'] ?? 0) === 1
   && count($shp['rows'] ?? []) === 6 && str_starts_with($shp['rows'][0] ?? '', '14: ##.#### | Гкал') && !preg_match('/\d/', preg_replace('/^\d+: /m', '', implode("\n", $shp['rows'] ?? []))) && ($shp['map']['flat'] ?? 0) === 9, $shp);
@@ -213,6 +217,10 @@ ok('…копия рахунку: без скриптов, кнопок «Дру
 ok('…прошлая версия — в историю (htmbill); «человек» в журнале кабинета не сдвинулся', (Db::one('SELECT reason FROM user_state_hist WHERE user_id = ? ORDER BY id DESC LIMIT 1', [$uid])['reason'] ?? '') === 'htmbill'
   && HtmSvc::summary()['lastUser'] === $lu0 && (HtmSvc::summary()['n']->{'autobill bill'} ?? 0) === 1);
 $spm = HtmSpr::mine($uid); $sps = HtmSpr::summary(); $spj = json_encode($sps, JSON_UNESCAPED_UNICODE);
+$nr = []; foreach ((array)($spm[0]['nar']['rows'] ?? []) as $r) $nr[$r['ym']] = $r;
+ok('…тим самим входом — нарахування по місяцях у дані квартири (GET /api/htm/spr → nar): березень 2,437 Гкал, 3781,20 грн; квітень — перерахунок −1190,31; сальдо на початок',
+  ($nr['2026-03']['heat']['gcal'] ?? null) === 2.437 && ($nr['2026-03']['heat']['cost'] ?? null) === 3781.2 && ($nr['2026-04']['heat']['recalc'] ?? null) === -1190.31 && ($spm[0]['nar']['from'] ?? '') === '01.10.2021'
+  && isset($spm[0]['nar']['start']['heat']) && $spm[0]['nar']['start']['heat'] == 0 && ($nr['2026-02']['heat']['paid'] ?? null) == 3000, $spm[0]['nar'] ?? null);
 ok('…тем же входом — «Довідка по теплу»: 6 місяців нарахувань ХТМ сохранены для этого человека и квартиры; /api/health → htmSpr — сколько и какие колонки, без чисел и людей',
   count($spm) === 1 && count($spm[0]['rows']) === 6 && ($spm[0]['rows'][5]['ym'] ?? '') === '2026-03' && ($sps['rows'] ?? 0) === 6 && count($sps['cols'] ?? []) === 14 && ($sps['from'] ?? '') === '2025-10'
   && ($sps['filled']->flat ?? $sps['filled']['flat'] ?? 0) === 6 && !preg_match('/1000000061|ТЕСТОВИЙ|7902|12\.91|1 ?500/u', $spj) && HtmSpr::mine($uid + 999) === [], [$spm, $sps]);

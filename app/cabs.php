@@ -796,6 +796,67 @@ final class HtmCab {
     foreach (preg_split('/\R/u', (string)$raw) as $l) { $l = rtrim(str_replace("\u{a0}", ' ', $l), " |\t"); if (trim($l, " |\t-") === '' && !preg_match('/-{5,}/', $l)) continue; $lines[] = $l; if (count($lines) >= 240) break; }
     return ['lines' => $lines, 'pre' => $pre->length, 'tables' => $x->query('//table')->length, 'trs' => $x->query('//tr')->length, 'forms' => $x->query('//form')->length, 'sel' => $x->query('//select')->length];
   }
+  /** «Довідка щодо нарахувань та оплати» (/cabinet/spravka/{acc}/{sur}) — помісячна таблиця з 2021 р. (живий кабінет 09.11, 82-а): у <pre> текст фіксованої ширини,
+   *  шапка «|М|Р |ОПАЛ ПЛОЩА|ВИТР ГКАЛ|НАРАХОВАНО|ПІЛЬГА|ПЕРЕРАХУНОК|НАДХОДЖЕННЯ|КОР.РІШ.|САЛЬДО НА КІН. МІСЯЦЯ|» для опалення і так само для гарячої води
+   *  (ОСІБ, ДН ПВ, ВИТР М.К.), рядки «3.26  54.30  2.437  3781.20 …» — місяць.рік і числа під колонками. Тільки читання. → parseSpravka | null */
+  public function spravka(string $acc, string $sur): ?array {
+    $r = $this->get(self::url($acc, $sur, 'spravka'));
+    return $r['code'] === 200 && $r['body'] !== '' ? self::parseSpravka((string)$r['body']) : null;
+  }
+  const NAR = ['area' => '/площ/u', 'gcal' => '/гкал/u', 'm3' => '/м\.?\s*к|куб/u', 'cost' => '/нара/u', 'lgota' => '/пільг|субс/u', 'recalc' => '/перера/u', 'paid' => '/надход|оплач/u',
+    'corr' => '/кор\.?\s*ріш|рішен/u', 'saldo' => '/сальдо/u', 'persons' => '/^о\s*с\s*і\s*б|осіб/u', 'days' => '/^дн/u'];
+  /** Колонки — за шапкою (позиції «|» у рядку з «НАРА»; підписи колонок — з усіх рядків шапки), числа рядка — у колонку, де їх середина.
+   *  → ['from' => 'дд.мм.рррр' (БОРГ НА), 'start' => {heat, hot} (сальдо на початок), 'rows' => [{ym, heat: {area, gcal, cost, lgota, recalc, paid, corr, saldo}, hot: {persons, days, m3, …}}],
+   *     'cols' => ['heat.area', …], 'n' => рядків-місяців] | null (таблиці не знайшли) */
+  public static function parseSpravka(string $html): ?array {
+    $lines = self::textDoc($html)['lines']; $chars = fn(string $l) => mb_str_split($l);
+    $head = null; foreach ($lines as $i => $l) if (substr_count($l, '|') >= 8 && preg_match('/нара/iu', $l) && ($head === null || substr_count($l, '|') > substr_count($lines[$head], '|'))) $head = $i;
+    if ($head === null) return null;
+    $hc = $chars($lines[$head]); $ps = []; foreach ($hc as $k => $c) if ($c === '|') $ps[] = $k;
+    if (count($ps) < 8) return null;
+    $spans = []; for ($k = 0; $k < count($ps); $k++) $spans[] = [$ps[$k], $ps[$k + 1] ?? $ps[$k] + 40];
+    // підписи колонок: усі рядки шапки (з «|», крім рядка груп «___ОПАЛЕННЯ___»), шматки між тими ж позиціями
+    $lab = array_fill(0, count($spans), '');
+    foreach ($lines as $i => $l) {
+      if (abs($i - $head) > 4 || substr_count($l, '|') < 6 || str_contains($l, '___')) continue;
+      $c = $chars($l); foreach ($spans as $k => [$a, $b]) $lab[$k] .= ' ' . implode('', array_slice($c, $a + 1, max(0, $b - $a - 1)));
+    }
+    $norm = fn(string $s) => mb_strtolower(str_replace(['I', 'i'], ['І', 'і'], preg_replace('/\s+/u', ' ', trim($s))));
+    // перша колонка-дві — місяць і рік (М|Р); далі — опалення до першого «сальдо», потім гаряча вода
+    $map = []; $grp = 'heat'; $cols = [];
+    foreach ($spans as $k => $sp) {
+      $t = $norm($lab[$k]); $key = null;
+      foreach (self::NAR as $kk => $re) if (preg_match($re, $t)) { $key = $kk; break; }
+      if ($key === null && $k <= 1) $key = 'ym';
+      if ($key === null) continue;
+      if ($key !== 'ym' && isset($map[$grp . '.' . $key])) $grp = 'hot';
+      if (in_array($key, ['persons', 'days'], true)) $grp = 'hot';
+      $map[$key === 'ym' ? 'ym' . $k : $grp . '.' . $key] = $k;
+    }
+    $byK = []; foreach ($map as $name => $k) $byK[$k] = $name;
+    $num = fn(string $s) => is_numeric($s = str_replace(',', '.', $s)) ? (float)$s : null;
+    $out = ['from' => null, 'start' => [], 'rows' => [], 'cols' => array_values(array_filter(array_keys($map), fn($x) => !str_starts_with($x, 'ym')))];
+    $place = function (string $l) use ($spans, $byK, $num): array {   // число → колонка за серединою (дані без «|», вирівняні під шапку)
+      $o = []; if (!preg_match_all('/-?\d+(?:[.,]\d+)?/u', $l, $m, PREG_OFFSET_CAPTURE)) return $o;
+      foreach ($m[0] as [$tok, $off]) {
+        $a = mb_strlen(substr($l, 0, $off)); $mid = $a + (mb_strlen($tok) - 1) / 2; $best = null;
+        foreach ($spans as $k => [$x, $y]) { $d = $mid < $x ? $x - $mid : ($mid > $y ? $mid - $y : 0); if ($best === null || $d < $best[1]) $best = [$k, $d]; }
+        if ($best && $best[1] <= 2 && isset($byK[$best[0]]) && !str_starts_with($byK[$best[0]], 'ym')) { [$g, $f] = explode('.', $byK[$best[0]]); $v = $num($tok); if ($v !== null && !isset($o[$g][$f])) $o[$g][$f] = $v; }
+      }
+      return $o;
+    };
+    foreach ($lines as $i => $l) {
+      if ($i <= $head) continue;
+      if (preg_match('/^\s*борг\s+на\s+(\d{2}\.\d{2}\.\d{4})/iu', $l, $m)) { $out['from'] = $m[1]; $o = $place((string)preg_replace_callback('/^\s*борг\s+на\s+\d{2}\.\d{2}\.\d{4}/iu', fn($x) => str_repeat(' ', mb_strlen($x[0])), $l)); foreach ($o as $g => $v) if (isset($v['saldo'])) $out['start'][$g] = $v['saldo']; continue; }
+      if (!preg_match('/^\s*(\d{1,2})\.(\d{2})(?!\d)/u', $l, $m) || (int)$m[1] < 1 || (int)$m[1] > 12) continue;
+      $ym = '20' . $m[2] . '-' . str_pad($m[1], 2, '0', STR_PAD_LEFT);
+      $rest = preg_replace('/^\s*\d{1,2}\.\d{2}/u', str_repeat(' ', mb_strlen($m[0])), $l);
+      $out['rows'][] = ['ym' => $ym] + $place($rest);
+    }
+    usort($out['rows'], fn($a, $b) => strcmp($a['ym'], $b['ym']));
+    $out['n'] = count($out['rows']);
+    return $out['n'] ? $out : null;
+  }
   public function billPage(string $acc, string $sur): ?array {
     $u = null;
     if (!empty($this->home['body'])) foreach (CabWeb::dom((string)$this->home['body'])->query('//a[@href]') as $a) {
