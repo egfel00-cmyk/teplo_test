@@ -1701,3 +1701,10 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
 @keyframes phd-shine { from { transform: translateX(-100%); } to { transform: translateX(100%); } }
 @keyframes phd-drop { 0%, 100% { transform: translateY(-3px); } 50% { transform: translateY(3px); } }
 @media (prefers-reduced-motion: reduce) { .phd-beam { animation-duration: 6s; } .phd-scan b, .phd-load .ico, .phd-bar i::after { animation: none; } }
+
+/* фото збереженого запису — та сама картка; фото немає на цьому пристрої */
+.hphotos .phd { margin-top: var(--sp-2); }
+.phd-slide .gone-t { display: none; }
+.phd-slide.gone { background: var(--c-surface-2); } .phd-slide.gone img { display: none; }
+.phd-slide.gone .gone-t { display: grid; place-items: center; height: 100%; padding: 16px; text-align: center; color: var(--c-ink-2); }
+.phd-undo { margin: 8px 0 0; }

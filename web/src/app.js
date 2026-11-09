@@ -1699,18 +1699,40 @@
     rec.photos = (rec.photos || []).concat(photoRefs(fs.map(function (f) { return rec.meter ? { file: f, meter: rec.meter } : { file: f }; })));
     rec.updatedAt = Date.now(); save(); toast(t('rp_added')); render(true);
   });
-  /** Миниатюры фото записи; нажатие — просмотр на весь экран. gal — имя набора для листания; ref — можно добавить фото. */
+  /** Фото записи — тим самим блоком, що й на введенні (09.11): порожній — «Додайте фото лічильника» + «Зняти чи вибрати фото»; є фото — на всю картку,
+   *  кілька — гортати («1 / 2»), × прибирає фото із запису (з «Повернути»); нажатие — просмотр на весь экран. gal — имя набора для листания; ref — можно добавить/прибрать.
+   *  Без capture: телефон показує своє меню — камера, галерея, файли. */
+  var RPU = null;   // останнє прибране фото: { ref, p, i } — «Повернути»
   function photoStrip(list, gal, ref) {
     list = (list || []).filter(function (p) { return p && p.id; }); if (!list.length && !ref) return '';
-    var add = ref ? '<input type="file" id="rp-input" class="sr" tabindex="-1" accept="image/*" multiple data-ref="' + esc(ref) + '" aria-label="' + esc(t('rp_add')) + '">' +
-      '<p><label for="rp-input" class="btn sec" tabindex="0" data-key="rec-photo-add">' + ico('camera', 18) + '<span>' + esc(t('rp_add')) + '</span></label></p>' : '';
-    if (!list.length) return '<section class="hphotos" data-key="rec-photos"><h2 class="section-title">' + ico('camera', 18) + ' ' + esc(t('rp_title')) + '</h2>' + add + '</section>';
-    return '<section class="hphotos" data-key="rec-photos"><h2 class="section-title">' + ico('camera', 18) + ' ' + esc(t('hp_title')) + '</h2><ul class="thumbs">' + list.map(function (p, i) {
+    var h = '<section class="hphotos" data-key="rec-photos"><h2 class="section-title">' + ico('camera', 18) + ' ' + esc(t(list.length ? 'hp_title' : 'rp_title')) + '</h2>' +
+      (ref ? '<input type="file" id="rp-input" class="sr" tabindex="-1" accept="image/*" multiple data-ref="' + esc(ref) + '" aria-label="' + esc(t('rp_add')) + '">' : '');
+    h += '<div class="phd' + (list.length ? ' has' : '') + (list.length > 1 ? ' many' : '') + '" data-key="rec-phd">';
+    if (!list.length) h += '<label for="rp-input" class="phd-empty" tabindex="0" data-key="rec-photo-add">' + ico('image', 52, 'phd-ico') +
+      '<span class="phd-t">' + esc(t('phd_add')) + '</span><span class="phd-pill">' + ico('images', 22) + '<span>' + esc(t('phd_pick')) + '</span></span></label>';
+    else h += '<div class="phd-strip">' + list.map(function (p, i) {
       var u = hpUrl(p.id), m = p.meter ? wmeters().filter(function (x) { return x.id === p.meter; })[0] : null;
       var gone = HP.missing[p.id] || (!u && !/^l:/.test(p.id));
-      return '<li' + (gone ? ' class="gone"' : '') + '><img data-gal="' + esc(gal) + '" data-i="' + i + '" data-hph="' + esc(p.id) + '"' + (u ? ' src="' + esc(u) + '"' : '') + ' alt="' + esc(t('ph_from', { n: i + 1 })) + '" loading="lazy">' +
-        (m ? '<span class="n ' + (m.kind === 'hot' ? 'n-hot' : 'n-cold') + '">' + esc(m.name || t('kv_' + m.kind)) + '</span>' : '') + '<span class="gone-t">' + esc(t('hp_gone')) + '</span></li>';
-    }).join('') + '</ul>' + add + '</section>';
+      return '<div class="phd-slide' + (gone ? ' gone' : '') + '"><img data-gal="' + esc(gal) + '" data-i="' + i + '" data-hph="' + esc(p.id) + '"' + (u ? ' src="' + esc(u) + '"' : '') + ' alt="' + esc(t('ph_from', { n: i + 1 })) + '" loading="lazy">' +
+        '<span class="gone-t">' + esc(t('hp_gone')) + '</span>' + (list.length > 1 ? '<span class="phd-n">' + (i + 1) + ' / ' + list.length + '</span>' : '') +
+        (ref ? '<button type="button" class="phd-x" data-act="rp-rm" data-ref="' + esc(ref) + '" data-id="' + esc(p.id) + '" aria-label="' + esc(t('ph_remove')) + '">' + ico('close', 22) + '</button>' : '') +
+        (m ? '<span class="wn-tags"><i class="' + (m.kind === 'hot' ? 'n-hot' : 'n-cold') + '">' + esc(m.name || t('kv_' + m.kind)) + '</i></span>' : '') + '</div>';
+    }).join('') + '</div>';
+    h += '</div>';
+    if (ref && RPU && RPU.ref === ref) h += '<p class="small phd-undo" role="status" data-key="rec-photo-undo">' + esc(t('rp_removed')) + ' <button type="button" class="linkbtn" data-act="rp-undo" data-key="rec-photo-undo-btn">' + esc(t('rp_undo')) + '</button></p>';
+    if (ref && list.length) h += '<label for="rp-input" class="phd-more" tabindex="0" data-key="rec-photo-add">' + ico('plus', 18) + '<span>' + esc(t('enp_more')) + '</span></label>';
+    return h + '</section>';
+  }
+  /** Запис за ref (h:/w:/m: + id). */
+  function recByRef(ref) { var k = ref.slice(0, 1), id = ref.slice(2); return ((k === 'h' ? S.readings : k === 'w' ? S.water : S.mrecs) || []).filter(function (x) { return x && !x.deleted && x.id === id; })[0] || null; }
+  function rpRemove(ref, pid) {
+    var rec = recByRef(ref); if (!rec) return; var i = (rec.photos || []).map(function (p) { return p && p.id; }).indexOf(pid); if (i < 0) return;
+    RPU = { ref: ref, p: rec.photos[i], i: i }; rec.photos.splice(i, 1); rec.updatedAt = Date.now(); save(); render(true);
+    var mine = RPU; setTimeout(function () { if (RPU === mine) { RPU = null; safeRender(); } }, 15000);
+  }
+  function rpUndo() {
+    if (!RPU) return; var rec = recByRef(RPU.ref); if (rec) { rec.photos = rec.photos || []; rec.photos.splice(Math.min(RPU.i, rec.photos.length), 0, RPU.p); rec.updatedAt = Date.now(); save(); }
+    RPU = null; render(true);
   }
   /** После отрисовки: подставить фото из IndexedDB; нет на этом устройстве / удалено — подпись вместо картинки. */
   function photoFill() {
@@ -2402,7 +2424,7 @@
   /** Камера у поля «Показання зараз» при настройке нового счётчика (первый вход, новая квартира): фото → цифры в поле. */
   function startCam(target, label) {
     if (!VIS().local) return '';
-    return '<label class="wcam" title="' + esc(t('wn_photo')) + '" data-key="cam-' + target + '"><input type="file" accept="image/*" capture="environment" class="sr" data-sphoto="' + target + '" aria-label="' + esc(t('wn_photo') + (label ? ': ' + label : '')) + '">' + ico('camera', 20) + '</label>';
+    return '<label class="wcam" title="' + esc(t('wn_photo')) + '" data-key="cam-' + target + '"><input type="file" accept="image/*" class="sr" data-sphoto="' + target + '" aria-label="' + esc(t('wn_photo') + (label ? ': ' + label : '')) + '">' + ico('camera', 20) + '</label>';
   }
   /** Строка «что прочитали с фото» внутри поля (под подсказкой). */
   function phHelp(field, id) { return VIS().local ? field.replace(/<\/div>$/, '<div class="help sp-help" id="' + id + '-ph" aria-live="polite"></div></div>') : field; }
@@ -2599,7 +2621,7 @@
         var p = prev[m.id];
         return '<div class="field wfield" id="wf-' + m.id + '"><label for="wn-' + m.id + '">' + ico('drop', 16, m.kind === 'hot' ? 'c-hot' : 'c-cold') + ' ' + esc(wname(m)) + '</label>' +
           '<div class="ctl"><input id="wn-' + m.id + '" class="num" inputmode="decimal" autocomplete="off" data-wn="' + m.id + '" value="' + esc(WN.vals[m.id] || '') + '" placeholder="' + (p ? esc(wfmt(p.vals[m.id])) : '') + '" aria-describedby="wh-' + m.id + '"><span class="unit">м³</span>' +
-          wnSrcThumb(m.id) + '<label class="wcam" title="' + esc(t('wn_photo')) + '"><input type="file" accept="image/*" capture="environment" class="sr" data-wphoto="' + m.id + '" aria-label="' + esc(t('wn_photo') + ': ' + wname(m)) + '">' + ico('camera', 20) + '</label></div>' +
+          wnSrcThumb(m.id) + '<label class="wcam" title="' + esc(t('wn_photo')) + '"><input type="file" accept="image/*" class="sr" data-wphoto="' + m.id + '" aria-label="' + esc(t('wn_photo') + ': ' + wname(m)) + '">' + ico('camera', 20) + '</label></div>' +
           '<div class="help" id="wh-' + m.id + '">' + esc(wnSrcText(m.id)) + (p ? esc(t('wn_prev', { v: Wt.whole(p.vals[m.id]), d: fmtDate(p.date) })) : esc(t('wn_first'))) + '</div></div>';
       }).join('') +
       '<p class="small muted">' + esc(t('wn_digits')) + '</p>' +
@@ -6252,6 +6274,8 @@
       case 'auth-mode': authMode = authMode === 'login' ? 'register' : 'login'; render(true); break;
       case 'logout': ADMIN = null; busy(el); Y().logout().then(function () { S = defaults(); S.lang = browserLang(); ensurePlaces(); lastSig = window.TeploSync.sig(window.TeploSync.payload(S)); persist(); toast(t('logged_out')); go('welcome'); }); break;
       case 'dismiss-sync': S.syncPromptDismissed = true; persist(); render(true); break;
+      case 'rp-rm': rpRemove(el.getAttribute('data-ref') || '', el.getAttribute('data-id') || ''); break;
+      case 'rp-undo': rpUndo(); break;
       case 'bot-start': botStartGo(); break;
       case 'bot-start-later': S.botStartLater = Date.now(); persist(); render(true); break;
       case 'wipe-no': document.getElementById('wipe-confirm').innerHTML = ''; break;
