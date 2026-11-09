@@ -1,0 +1,9 @@
+[
+{"id": "e_nik", "face": "nik", "v": "003498", "red": "2", "truth": "003498", "elec": true, "seed": 21},
+{"id": "e_nik_nbr", "face": "nik", "v": "003498", "red": "2", "truth": "003498", "elec": true, "nbr": 0.22, "seed": 22},
+{"id": "e_nik_ticks", "face": "nik", "v": "003498", "red": "2", "truth": "003498", "elec": true, "ticks": 1, "seed": 23},
+{"id": "e_nik_both", "face": "nik", "v": "003498", "red": "2", "truth": "003498", "elec": true, "nbr": 0.22, "ticks": 1, "seed": 24},
+{"id": "e_nik_both_rot", "face": "nik", "v": "003498", "red": "2", "truth": "003498", "elec": true, "nbr": 0.25, "ticks": 1, "rot": -6, "seed": 25},
+{"id": "e_nik_both_up", "face": "nik", "v": "003498", "red": "2", "truth": "003498", "elec": true, "nbr": 0.22, "ticks": 1, "rot": 178, "seed": 26},
+{"id": "e_nik_big_nbr", "face": "nik", "v": "012875", "red": "6", "truth": "012875", "elec": true, "nbr": 0.32, "ticks": 1, "seed": 27, "bg": "tile"}
+]

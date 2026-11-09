@@ -1,0 +1,9 @@
+[
+{"id": "e3_glare", "face": "nik", "v": "003498", "red": "2", "truth": "003498", "elec": true, "nbr": 0.3, "shift": 0.18, "tickIn": 1, "glare": -40, "seed": 41},
+{"id": "e3_glare_r", "face": "nik", "v": "003498", "red": "2", "truth": "003498", "elec": true, "nbr": 0.3, "shift": 0.18, "tickIn": 1, "glare": 60, "seed": 42},
+{"id": "e3_blur", "face": "nik", "v": "003498", "red": "2", "truth": "003498", "elec": true, "nbr": 0.35, "shift": 0.22, "tickIn": 1, "blur": 2.6, "seed": 43},
+{"id": "e3_far", "face": "nik", "v": "003498", "red": "2", "truth": "003498", "elec": true, "nbr": 0.3, "shift": 0.18, "tickIn": 1, "s": 0.55, "seed": 44},
+{"id": "e3_dim", "face": "nik", "v": "003498", "red": "2", "truth": "003498", "elec": true, "nbr": 0.3, "shift": 0.2, "tickIn": 1, "br": 0.6, "warm": 0.5, "seed": 45},
+{"id": "e3_persp", "face": "nik", "v": "003498", "red": "2", "truth": "003498", "elec": true, "nbr": 0.3, "shift": 0.2, "tickIn": 1, "rx": 30, "ry": 22, "blur": 1.2, "seed": 46},
+{"id": "e3_far_blur", "face": "nik", "v": "003498", "red": "2", "truth": "003498", "elec": true, "nbr": 0.32, "shift": 0.2, "tickIn": 1, "s": 0.6, "blur": 1.8, "rot": 4, "seed": 47}
+]

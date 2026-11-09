@@ -777,12 +777,17 @@
     });
   }
   /** Прочитать найденное окно: чёрные ролики (три обработки, голосование) и красные. Ориентация не ясна — читаем в обе стороны. */
-  function readDrum(src, d) {
+  function readDrum(src, d, up) {
     var tries = [d.angle, d.angle + Math.PI], res = [];   // и в обратную сторону: красная рамка или текст у края путают ориентацию
+    // Надписи рядом с окном прочитаны уверенно (буквы, score ≥ 0,85) — кадр стоит прямо: чтение роликов вверх ногами относительно текста — со штрафом.
+    // НІК 2102-02.М2 владельца (09.11.2026): в обе стороны прямые обработки читали вразнобой, а вверх ногами дважды «0201» — побеждало.
+    // Электросчётчик: обратную сторону не читаем вовсе — там только мусор (надпись «кВт·год» вверх ногами → «00187», у владельца «0201»).
+    var upBad = function (ang) { return up !== null && up !== undefined && Math.cos(ang - up) < -0.5; };
     var chain = Promise.resolve();
     // цифры из прочитанного: «O» и «U» (у нуля срезан верх — блик, тонкий шрифт) — это 0
     var dig = function (r) { return r.text.replace(/[OoU]/g, '0').replace(/[^0-9]/g, ''); };
     var pick = function (outs, ang, hc) {
+      if (upBad(ang)) return null;
       var tally = {};
       // буквы в прочитанном («L0SOO») — цифры вверх ногами: «5» → «S», «9» → «6»; такое чтение весит меньше
       outs.forEach(function (r) { var dg = dig(r); if (dg.length < 3) return; var t2 = tally[dg] = tally[dg] || { n: 0, s: 0, j: 0 }; t2.n++; t2.s = Math.max(t2.s, r.score); if (/[^0-9OoU\s.,:;'"`·\-]/.test(r.text)) t2.j++; });
@@ -896,10 +901,22 @@
         // «окно» поверх надписи с буквами, и прочитаны те же цифры, что в надписи («ДСТУ EN 62052-1» под красным светодиодом
         // электросчётчика → «06205»), — это надпись, не ролики. Перевёрнутый барабан текст читает буквами («EELOO»), но цифры другие.
         var share4 = function (a1, b1) { for (var i4 = 0; i4 + 4 <= a1.length; i4++) if (b1.indexOf(a1.substr(i4, 4)) >= 0) return true; return false; };
+        // «Окно» на подписи без цифр («кВт·год», «KBT·rO» уверенно прочитано буквами) — тоже надпись: ролики так не читаются (81-я, НІК 2102).
         var onText = function (r) { var a = r.w * r.h, rd = String(r.text || '').replace(/\D/g, ''); return a > 0 && lines.some(function (l) {
-          var ld = String(l.text || '').replace(/\D/g, ''); if (!/[A-Za-zА-Яа-яІіЇїЄє]{2}/.test(l.text) || ld.length < 4 || !share4(ld, rd)) return false;
+          var ld = String(l.text || '').replace(/\D/g, ''), lbl = l.score >= 0.75 && /[A-Za-zА-Яа-яІіЇїЄє]{2}/.test(l.text) && ld.length < 2;
+          if (!lbl && (!/[A-Za-zА-Яа-яІіЇїЄє]{2}/.test(l.text) || ld.length < 4 || !share4(ld, rd))) return false;
           var ix = Math.max(0, Math.min(l.x + l.w, r.x + r.w) - Math.max(l.x, r.x)), iy = Math.max(0, Math.min(l.y + l.h, r.y + r.h) - Math.max(l.y, r.y)); return ix * iy >= 0.5 * a; }); };
-        cands.forEach(function (d) { ch = ch.then(function () { if (all ? drums.filter(goodDrum).length >= 4 : drums.some(goodDrum)) return null; return readDrum(src, d).then(function (r) { if (r.text && !onText(r)) drums.push(r); }); }); });
+        // как стоит кадр у окна: уверенно прочитанные надписи с буквами рядом (в пределах 2,5 ширины окна) — их наклон; нет таких — null (читаем в обе стороны)
+        var upNear = function (d) { var R = Math.max(d.w, d.h) * 2.5, a = [];
+          lines.forEach(function (l) { if (l.score < 0.85 || !/[A-Za-zА-Яа-яІіЇїЄє]{2}/.test(l.text) || l.lcd) return; var lx = l.x + l.w / 2, ly = l.y + l.h / 2;
+            if (Math.abs(lx - d.cx) <= R && Math.abs(ly - d.cy) <= R) a.push(l.angle || 0); });
+          var strong = lines.some(function (l) { return l.score >= 0.85 && /[A-Za-zА-Яа-яІіЇїЄє]{3}/.test(l.text); });
+          // только электросчётчик (рядом «кВт·год» / kWh / «імп»): у водомеров блик даёт уверенное, но неверное прямое чтение («00001» вместо «00064»),
+          // и прежний выбор из двух сторон там надёжнее (лаборатория: w_glare)
+          var kwh = lines.some(function (l) { var lx = l.x + l.w / 2, ly = l.y + l.h / 2; return Math.abs(lx - d.cx) <= R && Math.abs(ly - d.cy) <= R && /[кk][вb][тt]|kwh|[іi1]м[пn]|imp/i.test(l.text); });
+          if (!kwh || (a.length < 2 && !(a.length === 1 && strong))) return null;
+          a.sort(function (x, y) { return x - y; }); return a[a.length >> 1]; };
+        cands.forEach(function (d) { ch = ch.then(function () { if (all ? drums.filter(goodDrum).length >= 4 : drums.some(goodDrum)) return null; return readDrum(src, d, upNear(d)).then(function (r) { if (r.text && !onText(r)) drums.push(r); }); }); });
         return ch;
       }).then(function () {
         if (drums.some(goodDrum)) return null;   // водомер прочитан — приближать нечего

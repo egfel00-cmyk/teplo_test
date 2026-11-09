@@ -39,6 +39,12 @@ const types = { js: 'text/javascript', mjs: 'text/javascript', wasm: 'applicatio
       return { r, w: TeploWater.fromOcr(r, prev) };
     }, [img, c.prev ?? null]);
     all[c.id] = res.r;
+    if (c.elec) {   // электросчётчик с барабаном (81-я): чёрные ролики целиком (с ведущими нулями) и красный — как прочёл движок, ориентация
+      const d0 = (res.r.drums || [])[0] || {}, got = String(d0.text || '').replace(/\D/g, ''), okk = got === c.truth && (!c.red || String(d0.red || '').startsWith(c.red));
+      if (okk) good++;
+      console.log((okk ? ' OK ' : 'FAIL') + ' ' + c.id.padEnd(16) + ' truth=' + c.truth + ',' + (c.red || '') + ' got=' + got + ',' + (d0.red || '') + '  angle=' + d0.angle + (d0.flipped ? ' ПЕРЕВЁРНУТ' : '') + ' sure=' + d0.sure + '  ' + res.r.ms + 'ms  drums: ' + (res.r.drums || []).map(d => d.text + (d.red ? ',' + d.red : '') + '(' + (d.score || 0).toFixed(2) + ')').join(' '));
+      continue;
+    }
     const truth = [].concat(c.truth), got = res.w && res.w.value, okk = truth.includes(got);
     // литры: что ушло бы в поле (frac) — должно быть началом настоящих красных (c.red), иначе ошибка
     if (res.w && res.w.frac) { const fr = String(c.red || ''); all['_frac_' + c.id] = res.w.frac; if (fr.indexOf(res.w.frac) !== 0 && !c.halfs && !(c.half)) console.log('  ЛИТРЫ мимо: ' + c.id + ' frac=' + res.w.frac + ' red=' + fr); }

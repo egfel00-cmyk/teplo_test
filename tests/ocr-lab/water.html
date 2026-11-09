@@ -27,15 +27,18 @@ function drawBg(c) {
 }
 function digitCell(g, x, y, w, h, ch, next, frac, bgc, fg, font, curve) {
   if (curve) return digitCellCurved(g, x, y, w, h, ch, next, frac, bgc, fg, font, curve);
-  g.save(); g.beginPath(); g.rect(x, y, w, h); g.clip();
-  const gr = g.createLinearGradient(0, y, 0, y + h); gr.addColorStop(0, shade(bgc, -0.35)); gr.addColorStop(0.5, bgc); gr.addColorStop(1, shade(bgc, -0.35));
-  g.fillStyle = gr; g.fillRect(x, y, w, h);
+  const ey = NBR * h;   // электросчётчик: окно выше ролика на NBR·h сверху и снизу — видны края соседних цифр
+  g.save(); g.beginPath(); g.rect(x, y - ey, w, h + 2 * ey); g.clip();
+  const gr = g.createLinearGradient(0, y - ey, 0, y + h + ey); gr.addColorStop(0, shade(bgc, -0.35)); gr.addColorStop(0.5, bgc); gr.addColorStop(1, shade(bgc, -0.35));
+  g.fillStyle = gr; g.fillRect(x, y - ey, w, h + 2 * ey);
   g.fillStyle = fg; g.font = font; g.textAlign = 'center'; g.textBaseline = 'middle';
   const dy = -frac * h * 1.15;
   g.fillText(ch, x + w / 2, y + h / 2 + dy + h * 0.04);
-  if (frac) g.fillText(next, x + w / 2, y + h / 2 + dy + h * 1.15 + h * 0.04);
+  if (frac || NBR) g.fillText(next, x + w / 2, y + h / 2 + dy + h * 1.15 + h * 0.04);
+  if (NBR) g.fillText(String((+ch + 9) % 10), x + w / 2, y + h / 2 + dy - h * 1.15 + h * 0.04);   // электросчётчик: в окне видны края соседних цифр ролика
   g.restore();
 }
+let NBR = 0;
 // Ролик — цилиндр: в окне видна дуга ±curve·90°, цифры у краёв окна сжаты по высоте (как на настоящем счётчике).
 // Рисуем развёртку (дуга = высота) и переносим строки: экранная y = R·sin(s/R).
 function digitCellCurved(g, x, y, w, h, ch, next, frac, bgc, fg, font, curve) {
@@ -47,6 +50,7 @@ function digitCellCurved(g, x, y, w, h, ch, next, frac, bgc, fg, font, curve) {
 }
 function shade(hex, k) { const n = parseInt(hex.slice(1), 16), r = n >> 16, gg = (n >> 8) & 255, b = n & 255, f = v => Math.max(0, Math.min(255, Math.round(v + (k < 0 ? v * k : (255 - v) * k)))); return 'rgb(' + f(r) + ',' + f(gg) + ',' + f(b) + ')'; }
 function drawMeter(c, cv) {
+  if (c.face === 'nik') return drawNik(c, cv);
   const g = (cv || m).getContext('2d'), S = 900, cx = 450, cy = 450, R = 420; g.clearRect(0, 0, S, S);
   // корпус (латунь) и кольцо
   let gr = g.createRadialGradient(cx - 120, cy - 120, 50, cx, cy, R); gr.addColorStop(0, '#e9d48a'); gr.addColorStop(0.7, '#b8973e'); gr.addColorStop(1, '#6e5a22');
@@ -95,6 +99,36 @@ function drawMeter(c, cv) {
   g.fillText('№ ' + (c.serial || '1234567'), cx, 730); g.font = '26px "DejaVu Sans"'; g.fillText((c.year || '2021') + '   1 MPa   ДСТУ', cx, 770);
   // блик
   if (c.glare) { gr = g.createRadialGradient(cx + c.glare, wy + ch / 2, 10, cx + c.glare, wy + ch / 2, 160); gr.addColorStop(0, 'rgba(255,255,255,0.85)'); gr.addColorStop(1, 'rgba(255,255,255,0)'); g.fillStyle = gr; g.beginPath(); g.arc(cx, cy, R * 0.8, 0, 7); g.fill(); }
+}
+// Электросчётчик с барабаном (81-я, как НІК 2102-02.М2 владельца: 003498 + красная 2): серая панель, надписи, окно — чёрные ролики с белыми цифрами
+// и красный дробный; в окне видны края соседних цифр сверху и снизу (nbr: доля высоты), под каждым роликом — белая черта (ticks).
+function drawNik(c, cv) {
+  const g = (cv || m).getContext('2d'), S = 900; g.clearRect(0, 0, S, S);
+  let gr = g.createLinearGradient(0, 80, 0, 820); gr.addColorStop(0, '#e9eaec'); gr.addColorStop(1, '#c9cbcf'); g.fillStyle = gr; g.fillRect(60, 80, 780, 740);
+  g.strokeStyle = '#9a9da2'; g.lineWidth = 6; g.strokeRect(60, 80, 780, 740);
+  g.fillStyle = c.brandc || '#1f2a44'; g.textAlign = 'center'; g.textBaseline = 'alphabetic';
+  g.font = 'bold 50px "DejaVu Sans"'; g.fillText(c.brand || 'НІК', 450, 170);
+  g.fillStyle = '#222'; g.font = 'bold 30px "DejaVu Sans"'; g.fillText(c.model || 'НІК 2102-02.М2', 450, 214);
+  g.font = '24px "DejaVu Sans"'; g.fillText('5(60) А   220 В   50 Гц   6400 імп/(кВт·год)', 450, 252);
+  const nb = c.v.length, nr = (c.red || '').length, cw = c.cw || 52, ch = cw * 1.45, gap = c.gap ?? 4, tw = (nb + nr) * cw + (nb + nr - 1) * gap;
+  const wx = 450 - tw / 2, wy = 330, wh = ch * (1 + 2 * (c.nbr || 0));   // окно выше ролика — видно соседей
+  g.fillStyle = c.frame || '#2a2c2f'; g.fillRect(wx - 10, wy - 10 - ch * (c.nbr || 0), tw + 20, wh + 20);
+  const font = 'bold ' + Math.round(ch * 0.74) + 'px ' + (c.font || '"DejaVu Sans Condensed", "DejaVu Sans"');
+  NBR = c.nbr || 0;
+  for (let i = 0; i < nb; i++) { g.save();
+    digitCell(g, wx + i * (cw + gap), wy, cw, ch, c.v[i], String((+c.v[i] + 1) % 10), c.shift || 0, c.black || '#141517', c.ink || '#f2f2f2', font, 0);
+    if (c.tickIn) { g.fillStyle = c.ink || '#f2f2f2'; g.fillRect(wx + i * (cw + gap) + cw * 0.18, wy + ch * (0.5 + 0.36 - (c.shift || 0) * 1.15), cw * 0.64, Math.max(3, ch * 0.05)); }   // черта под цифрой на ролике
+    g.restore(); }
+  for (let j = 0; j < nr; j++) { const x = wx + (nb + j) * (cw + gap); g.save();
+    digitCell(g, x, wy, cw, ch, c.red[j], String((+c.red[j] + 1) % 10), c.shift || 0, c.redbg || '#c8151d', c.redink || '#fbeaea', font, 0); g.restore(); }
+  NBR = 0;
+  // белые черты под роликами (на панели) — на настоящем счётчике под каждой цифрой
+  if (c.ticks) { g.fillStyle = '#ffffff'; for (let i = 0; i < nb + nr; i++) g.fillRect(wx + i * (cw + gap) + cw * 0.15, wy + ch + ch * (c.nbr || 0) + 16, cw * 0.7, 6); }
+  g.fillStyle = '#222'; g.font = 'bold 34px "DejaVu Sans"'; g.textAlign = 'left'; g.fillText('кВт·год', wx + tw + 26, wy + ch * 0.68);
+  g.font = '28px "DejaVu Sans"'; g.textAlign = 'center'; g.fillText('№ ' + (c.serial || '0123456'), 450, 640); g.fillText((c.year || '2014') + '   кл. 1', 450, 690);
+  // окошко диска/светодиода и красная метка
+  g.fillStyle = '#c4202a'; g.beginPath(); g.arc(250, 560, 14, 0, 7); g.fill();
+  if (c.glare) { gr = g.createRadialGradient(450 + c.glare, wy + ch / 2, 10, 450 + c.glare, wy + ch / 2, 160); gr.addColorStop(0, 'rgba(255,255,255,0.85)'); gr.addColorStop(1, 'rgba(255,255,255,0)'); g.fillStyle = gr; g.fillRect(60, 80, 780, 740); }
 }
 const place = (cv, c) => { const s = c.s || 1; cv.style.transform = `translate(${150 + (c.x || 0)}px, ${350 + (c.y || 0)}px) perspective(1400px) rotateX(${c.rx || 0}deg) rotateY(${c.ry || 0}deg) rotate(${c.rot || 0}deg) scale(${s})`; };
 window.setCase = (c) => {

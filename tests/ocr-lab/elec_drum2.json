@@ -1,0 +1,8 @@
+[
+{"id": "e2_shift", "face": "nik", "v": "003498", "red": "2", "truth": "003498", "elec": true, "nbr": 0.3, "shift": 0.18, "seed": 31},
+{"id": "e2_shift_tick", "face": "nik", "v": "003498", "red": "2", "truth": "003498", "elec": true, "nbr": 0.3, "shift": 0.18, "tickIn": 1, "seed": 32},
+{"id": "e2_white", "face": "nik", "v": "003498", "red": "2", "truth": "003498", "elec": true, "nbr": 0.3, "shift": 0.15, "black": "#ececea", "ink": "#151515", "frame": "#3a3c40", "seed": 33},
+{"id": "e2_white_tick", "face": "nik", "v": "003498", "red": "2", "truth": "003498", "elec": true, "nbr": 0.3, "shift": 0.15, "tickIn": 1, "black": "#ececea", "ink": "#151515", "frame": "#3a3c40", "seed": 34},
+{"id": "e2_redtxt", "face": "nik", "v": "003498", "red": "2", "truth": "003498", "elec": true, "nbr": 0.3, "shift": 0.15, "tickIn": 1, "black": "#ececea", "ink": "#151515", "redbg": "#ececea", "redink": "#d0161e", "frame": "#3a3c40", "seed": 35},
+{"id": "e2_blur_persp", "face": "nik", "v": "003498", "red": "2", "truth": "003498", "elec": true, "nbr": 0.3, "shift": 0.18, "tickIn": 1, "rx": 20, "ry": -12, "blur": 1.6, "seed": 36}
+]
