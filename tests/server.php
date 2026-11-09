@@ -1431,7 +1431,9 @@ ok('довідник: усі громади й пункти є в КАТОТТГ
   $trs = $v('Тростянець, Стрийський район, вул. Зелена 1'); $zbl = $v('Заболотці, вул. Шевченка 1'); $bsk = $v('Бісковичі, вул. Мудрого 1'); $chs = $v('Чорноморське, вул. Курортна 5');
   $lvAll = json_decode(file_get_contents(__DIR__ . '/../app/data/prov_lv.json'), true)['hromadas']; $lvK = json_decode(file_get_contents(__DIR__ . '/../app/data/lv_katottg.json'), true)['hromadas'];
   $lvMiss = array_values(array_filter(array_map(fn($x) => $x['k'] ?? $x['n'], $lvK), fn($n) => !isset($lvAll[$n])));
-  ok('80-та: Львівщина — усі громади КАТОТТГ є в довіднику; Тростянець, Заболотці, Бісковичі — без тарифу, «з платіжки», src з датою; Чорноморське — селищна громада (не Чорноморськ), ЖКГ селища в note',
+  $odAll = json_decode(file_get_contents(__DIR__ . '/../app/data/prov_od.json'), true)['hromadas']; $odK = json_decode(file_get_contents(__DIR__ . '/../app/data/od_katottg.json'), true)['hromadas'];
+  $lvMiss = array_merge($lvMiss, array_values(array_filter(array_map(fn($x) => $x['k'] ?? $x['n'], $odK), fn($n) => !isset($odAll[$n]))));   // і Одещина — усі 91
+  ok('80-та: Львівщина й Одещина — усі громади КАТОТТГ є в довіднику; Тростянець, Заболотці, Бісковичі — без тарифу, «з платіжки», src з датою; Чорноморське — селищна громада (не Чорноморськ), ЖКГ селища в note',
     $lvMiss === [] && ($trs['place']['hromada'] ?? '') === 'Тростянецька' && $trs['kinds']['water']['supply'] === null && str_contains($trs['kinds']['water']['note'] ?? '', 'платіжки')
     && str_contains($zbl['kinds']['water']['src'] ?? '', '09.11.2026') && ($bsk['place']['hromada'] ?? '') === 'Бісковицька' && !empty($bsk['kinds']['water']['src'])
     && ($chs['place']['r'] ?? '') === 'od' && ($chs['place']['h'] ?? '') === 'UA51100390000087217' && str_contains($chs['kinds']['water']['note'] ?? '', 'Курортна') && $chs['kinds']['water']['supply'] === null,
