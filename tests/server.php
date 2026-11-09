@@ -1516,6 +1516,11 @@ ok('довідник: усі громади й пункти є в КАТОТТГ
     && $bg87['kinds']['water']['drain'] === 85.5 && $kg87['kinds']['water']['supply'] === 42.72 && $kg87['kinds']['water']['from'] === '2024-10-01' && $yg87['kinds']['water']['drain'] === 48.7
     && $mr87['kinds']['water']['supply'] === null && str_contains($mr87['kinds']['water']['note'] ?? '', '99,13') && str_contains($zg87['kinds']['water']['note'] ?? '', '91,66') && str_contains($uz87['kinds']['water']['note'] ?? '', '85,01'),
     [$uk87['place'] ?? $uk87, $bz87['place'] ?? $bz87, $bg87['place'] ?? $bg87, $kg87['place'] ?? $kg87, $yg87['place'] ?? $yg87, $mr87['place'] ?? $mr87, $zg87['place'] ?? $zg87, $uz87['place'] ?? $uz87]);
+  $yu87 = $v('Южное, Одесская обл., ул. Строителей 1'); $ar87 = $v('Арциз, вул. Соборна 1'); $pl87 = $v('Подільськ, вул. Соборна 1');
+  ok('Одещина 87-ї: Південне 32,664 / 44,616 з 01.01.2026 (без дотації), Арциз 52,81 / 46,38 з 01.09.2025, Подільськ 59,86 / 37,07 з 01.07.2024',
+    ($yu87['place']['r'] ?? '') === 'od' && $yu87['kinds']['water']['supply'] === 32.664 && $yu87['kinds']['water']['drain'] === 44.616 && $yu87['kinds']['water']['from'] === '2026-01-01'
+    && $ar87['kinds']['water']['from'] === '2025-09-01' && $pl87['kinds']['water']['from'] === '2024-07-01' && str_starts_with($pl87['kinds']['water']['site'] ?? '', 'https://'),
+    [$yu87['kinds']['water'] ?? $yu87, $ar87['place'] ?? $ar87, $pl87['place'] ?? $pl87]);
   // однакові назви громад в одній області — ключ «Назва (центр)» / «Назва (район р-н)»
   $keys = array_map(fn($id) => Providers::hkey((string)$id), array_keys(array_filter(Providers::kat()['hromadas'], fn($h) => in_array($h['r'] ?? '', ['kv', 'od'], true))));
   ok('ключі громад унікальні в області: Чорноморська (Чорноморськ) і (Чорноморське), Калинівська (Броварський р-н)', count($keys) === count(array_unique($keys)) && in_array('Чорноморська (Чорноморськ)', $keys, true) && in_array('Калинівська (Броварський р-н)', $keys, true));
