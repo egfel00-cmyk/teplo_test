@@ -6,6 +6,7 @@
 //  POST /api/auth/login             {email, password}
 //  POST /api/auth/telegram/webapp   {initData}           — вход внутри бота (Mini App)
 //  POST /api/auth/telegram/widget   {id, ..., hash}      — кнопка «Увійти через Telegram» на сайте
+//  POST /api/bot/write-ok            → {user} — Mini App нынешнего бота: человек разрешил боту писать (снимает user.botStart)
 //  POST /api/auth/link-bot          → {url} t.me/<бот>?start=link_<token> — привязать Telegram через бота (15 мин)
 //  POST /api/auth/link-telegram     {widget data}        — привязать Telegram к аккаунту с паролем
 //  POST /api/auth/password          {email, password}    — задать email+пароль аккаунту из Telegram
@@ -165,6 +166,7 @@ final class Api {
           try { $tg = Telegram::verifyWebApp((string)($in['initData'] ?? ''), (string)Cfg::get('bot_token')); }
           catch (HttpError $e) { $prev = (string)Cfg::get('bot_token_prev'); if ($e->err !== 'telegram_bad_signature' || $prev === '') throw $e; $tg = Telegram::verifyWebApp((string)($in['initData'] ?? ''), $prev); }
         } else $tg = Telegram::verifyWidget($in, (string)Cfg::get('bot_token'));
+        $tgBot = $p !== '/api/auth/telegram/webapp' ? '' : (isset($prev) && $prev !== '' ? 'prev' : 'cur');   // Mini App нынешнего бота или прежнего (из его меню)
         $idn = Db::one("SELECT * FROM user_identities WHERE type = 'telegram' AND external_id = ?", [$tg['id']]);
         if ($idn) { $u = self::userById((int)$idn['user_id']); Db::q("UPDATE user_identities SET username = ? WHERE id = ?", [$tg['username'], $idn['id']]); }
         else {
@@ -177,9 +179,16 @@ final class Api {
           }
           $u = self::userById($uid);
         }
+        if ($tgBot === 'cur' && !empty($tg['write'])) Telegram::markBotOk((string)$tg['id']);   // открыл Mini App нынешнего бота и разрешил ему писать
         $tok = self::startSession($res, $u, $r, $ip); self::audit($u['id'], 'login_telegram', $ip);
         // Mini App: токен сесії й у відповіді — вікно Telegram на Mac інколи не зберігає cookie; тоді застосунок шле його заголовком X-Session
-        return ['user' => self::publicUser($u)] + ($p === '/api/auth/telegram/webapp' ? ['session' => $tok] : []);
+        return ['user' => self::publicUser($u)] + ($p === '/api/auth/telegram/webapp' ? ['session' => $tok, 'tgBot' => $tgBot] : []);
+      }
+      case 'POST /api/bot/write-ok': {   // Mini App нынешнего бота: человек разрешил боту писать (requestWriteAccess) — плашка «натисніть Старт» уходит
+        if (!$user) throw new HttpError(401, 'unauthorized');
+        $tgi = Db::one("SELECT external_id FROM user_identities WHERE user_id = ? AND type = 'telegram'", [$user['id']]);
+        if ($tgi) Telegram::markBotOk((string)$tgi['external_id']);
+        return ['user' => self::publicUser(self::userById((int)$user['id']))];
       }
       case 'POST /api/auth/link-bot': {   // ссылка на бота для привязки Telegram без виджета (работает при любом CSP)
         if (!$user) throw new HttpError(401, 'unauthorized');
@@ -400,7 +409,8 @@ final class Api {
   private static function publicUser(array $u): array {
     $tg = Db::one("SELECT external_id, username FROM user_identities WHERE user_id = ? AND type = 'telegram'", [$u['id']]);
     return ['id' => (int)$u['id'], 'email' => $u['email'], 'name' => $u['name'], 'hasPassword' => !empty($u['password_hash']),
-      'telegram' => $tg ? ['id' => $tg['external_id'], 'username' => $tg['username']] : null];
+      'telegram' => $tg ? ['id' => $tg['external_id'], 'username' => $tg['username']] : null,
+      'botStart' => $tg ? Telegram::needStart((int)$u['id']) : null];
   }
   private static function sessionUser(Req $r): ?array {
     $t = (string)($r->cookies['ts_sid'] ?? ''); if ($t === '') $t = substr($r->header('X-Session'), 0, 128); if ($t === '') return null;

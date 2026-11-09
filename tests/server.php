@@ -1700,5 +1700,35 @@ ok('relay: сценарий — ключ в заголовке, белый сп�
 Db::q('INSERT INTO reminders_sent (user_id, kind, ym, sent_at, status) VALUES (?, ?, ?, ?, ?)', [424242, 'elec2', '2026-10', '2026-11-02T16:17:01+00:00', 'error: Bad Request: chat 777001 is deactivated']);
 $re = json_decode(json_encode((new Browser())->req('GET', '/api/health')->body['remindErr'] ?? []), true);
 ok('/api/health → remindErr: вид, месяц, ответ Telegram, цифры замаскированы', ($re[0]['kind'] ?? '') === 'elec2' && str_contains($re[0]['status'], 'chat ###### is deactivated') && !str_contains(json_encode($re), '777001'), $re);
+echo "\nПлашка «натисніть Старт» (новий бот, 80-та):\n";
+Cfg::saveRuntime(['bot_username' => 'TeploTestBot']);   // после смены бота выше имя сброшено
+$sent = []; Telegram::$send = function ($m, $p, $tok = null) use (&$sent) { $sent[] = [$m, $p]; return ['ok' => true]; };
+$bs = new Browser('10.0.14.1'); $r = $bs->req('POST', '/api/auth/telegram/webapp', ['initData' => initData($TOKEN, ['id' => 9301, 'first_name' => 'Старт'])]);
+$bsId = (int)($r->body['user']['id'] ?? 0);
+ok('вход из Mini App нынешнего бота — tgBot cur, рассылок ещё не было — плашки нет', $r->status === 200 && ($r->body['tgBot'] ?? '') === 'cur' && array_key_exists('botStart', $r->body['user'] ?? []) && $r->body['user']['botStart'] === null, $r->body);
+Db::q('INSERT INTO reminders_sent (user_id, kind, ym, sent_at, status) VALUES (?, ?, ?, ?, ?)', [$bsId, 'gpv-09', '2026-11', gmdate('c', time() - 3600), 'no_chat']);
+$me = $bs->req('GET', '/api/me')->body['user']['botStart'] ?? null;
+ok('последняя рассылка — «chat not found» → user.botStart {bot, why no_chat}', ($me['bot'] ?? '') === 'TeploTestBot' && ($me['why'] ?? '') === 'no_chat', $me);
+Telegram::handleUpdate(['message' => ['message_id' => 1, 'chat' => ['id' => 9301, 'type' => 'private'], 'from' => ['id' => 9301, 'language_code' => 'uk'], 'text' => '/start remind']]);
+ok('нажал «Старт» у бота → плашки нет', array_key_exists('botStart', $bs->req('GET', '/api/me')->body['user'] ?? ['botStart' => 1]) && ($bs->req('GET', '/api/me')->body['user']['botStart'] ?? null) === null);
+Db::q("UPDATE user_identities SET bot_ok = ? WHERE external_id = '9301'", [gmdate('c', time() - 2400)]);   // «Старт» был раньше…
+Db::q('INSERT INTO reminders_sent (user_id, kind, ym, sent_at, status) VALUES (?, ?, ?, ?, ?)', [$bsId, 'gpv-10', '2026-11', gmdate('c', time() - 1200), 'blocked']);
+$me = $bs->req('GET', '/api/me')->body['user']['botStart'] ?? null;
+ok('позже снова не дошло (403) → плашка опять, why blocked', ($me['why'] ?? '') === 'blocked', $me);
+$hn = (new Browser('10.0.14.3'))->req('GET', '/api/health')->body['bot']['needStart'] ?? null;
+ok('/api/health → bot.needStart — число (без людей)', is_int($hn) && $hn >= 1, $hn);
+$wo = $bs->req('POST', '/api/bot/write-ok', [], ['HTTP_X_SESSION' => (string)($r->body['session'] ?? '')]);
+ok('разрешил боту писать в Mini App (POST /api/bot/write-ok) → плашки нет', $wo->status === 200 && array_key_exists('botStart', $wo->body['user'] ?? []) && $wo->body['user']['botStart'] === null, $wo->body);
+Db::q('INSERT INTO reminders_sent (user_id, kind, ym, sent_at, status) VALUES (?, ?, ?, ?, ?)', [$bsId, 'gpv-11', '2026-11', gmdate('c', time() - 600), 'ok']);
+ok('последняя рассылка дошла — плашки нет', array_key_exists('botStart', $bs->req('GET', '/api/me')->body['user'] ?? ['botStart' => 1]) && ($bs->req('GET', '/api/me')->body['user']['botStart'] ?? null) === null);
+$bs2 = new Browser('10.0.14.2'); $r2 = $bs2->req('POST', '/api/auth/telegram/webapp', ['initData' => initData($TOKEN, ['id' => 9302, 'first_name' => 'Дозвіл'])]);
+Db::q('INSERT INTO reminders_sent (user_id, kind, ym, sent_at, status) VALUES (?, ?, ?, ?, ?)', [(int)$r2->body['user']['id'], 'gpv-09', '2026-11', gmdate('c', time() - 60), 'no_chat']);
+$a1 = $bs2->req('GET', '/api/me')->body['user']['botStart'] ?? null;
+$r3 = $bs2->req('POST', '/api/auth/telegram/webapp', ['initData' => initData($TOKEN, ['id' => 9302, 'first_name' => 'Дозвіл', 'allows_write_to_bot' => true])]);
+ok('Mini App нынешнего бота с allows_write_to_bot → плашка снимается при входе', ($a1['bot'] ?? '') === 'TeploTestBot' && $r3->status === 200 && array_key_exists('botStart', $r3->body['user'] ?? []) && $r3->body['user']['botStart'] === null, [$a1, $r3->body['user'] ?? null]);
+$wx = (new Browser('10.0.14.4'))->req('POST', '/api/bot/write-ok', []);
+ok('write-ok без входа — 401', $wx->status === 401, $wx->status);
+Telegram::$send = null;
+
 echo "\nИтог: $pass OK, $fail FAIL\n";
 exit($fail ? 1 : 0);

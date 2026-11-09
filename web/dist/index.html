@@ -2649,6 +2649,10 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
       acct_tg_linked_noname: "підключено",
       save_prompt: "Збережіть показання в акаунті, щоб бачити їх на телефоні й комп'ютері.",
       save_prompt_later: "Пізніше",
+      bs_title: "Нагадування не доходять у Telegram",
+      bs_sub: "Бот сервісу змінився — тепер це @{b}. Відкрийте його й натисніть «Старт», щоб знову отримувати нагадування й графіки відключень.",
+      bs_go: "Відкрити @{b}",
+      bs_done: "Готово: нагадування знову приходитимуть",
       ph_entry: "Розпізнати з фото",
       ph_title: "Розпізнати з фото",
       ph_tips_t: 'Як фотографувати, щоб розпізналося',
@@ -3759,6 +3763,10 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
       acct_tg_linked_noname: "подключён",
       save_prompt: "Сохраните показания в аккаунте, чтобы видеть их на телефоне и компьютере.",
       save_prompt_later: "Позже",
+      bs_title: "Напоминания не доходят в Telegram",
+      bs_sub: "Бот сервиса сменился — теперь это @{b}. Откройте его и нажмите «Старт», чтобы снова получать напоминания и графики отключений.",
+      bs_go: "Открыть @{b}",
+      bs_done: "Готово: напоминания снова будут приходить",
       ph_entry: "Распознать по фото",
       ph_title: "Распознать по фото",
       ph_tips_t: 'Как фотографировать, чтобы распозналось',
@@ -4550,6 +4558,8 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
         throw e;
       });
     },
+    /** Mini App нынешнего бота: человек разрешил боту писать — сервер снимает плашку «натисніть Старт». */
+    botOk: function () { var self = this; return api('POST', '/bot/write-ok').then(function (j) { if (j._status === 200 && j.user) { self.account = j.user; self._onChange(); } return j; }); },
     retryTg: function () { var self = this; return this.tgLogin().then(function () { self._set('server', self.status === 'ok' ? 'ok' : 'idle'); }, function () { self._set('local', 'offline'); }); },
     refreshMe: function () {
       var self = this;
@@ -4584,7 +4594,7 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
     _after: function (j) { if (j._status === 200 && j.user) { this.account = j.user; return this.pull(true).then(function () { return j; }); } return Promise.resolve(j); },
     login: function (email, password) { var self = this; return api('POST', '/auth/login', { email: email, password: password }).then(function (j) { return self._after(j); }); },
     register: function (email, password) { var self = this; return api('POST', '/auth/register', { email: email, password: password }).then(function (j) { return self._after(j); }); },
-    loginTelegramWebApp: function (initData) { var self = this; return api('POST', '/auth/telegram/webapp', { initData: initData }).then(function (j) { self.serverReachable = true; if (j._status === 200 && j.session) setSess(j.session); delete j.session; return self._after(j); }); },
+    loginTelegramWebApp: function (initData) { var self = this; return api('POST', '/auth/telegram/webapp', { initData: initData }).then(function (j) { self.serverReachable = true; if (j._status === 200 && j.session) setSess(j.session); if (j._status === 200) self.tgBot = j.tgBot || ''; delete j.session; return self._after(j); }); },
     loginTelegramWidget: function (data) { var self = this; return api('POST', '/auth/telegram/widget', data).then(function (j) { return self._after(j); }); },
     linkTelegram: function (data) { var self = this; return api('POST', '/auth/link-telegram', data).then(function (j) { if (j._status === 200) self.account = j.user; self._onChange(); return j; }); },
     setPassword: function (email, password) { var self = this; return api('POST', '/auth/password', { email: email, password: password }).then(function (j) { if (j._status === 200) self.account = j.user; self._onChange(); return j; }); },
@@ -6994,11 +7004,35 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
   document.addEventListener('submit', function (e) {
     var f = e.target; if (!f || !f.getAttribute || !f.getAttribute('data-hp-form')) return; e.preventDefault(); hpSave(f.getAttribute('data-hp-form'));
   });
+  /** Бот сменился (07.11.2026), а новый ещё не может писать человеку (Telegram: «chat not found» / 403) — нагадування й графіки не доходять.
+   *  Сервер решает (user.botStart), «Пізніше» прячет на 3 дня. В Mini App нынешнего бота — одна кнопка «Дозволити» (requestWriteAccess),
+   *  иначе — ссылка на бота, там «Старт». */
+  function botStartBanner() {
+    var a = Y().account, b = a && a.botStart; if (!b || !b.bot) return '';
+    if (S.botStartLater && Date.now() - S.botStartLater < 3 * 86400000) return '';
+    return '<div class="banner warn" role="status" data-key="home-bot-start" data-why="' + esc(b.why || '') + '">' + ico('bell', 22) + '<div><p><b>' + esc(t('bs_title')) + '</b></p><p>' + esc(t('bs_sub', { b: b.bot })) + '</p>' +
+      '<div class="row-actions" style="margin-top:8px"><button class="btn" data-act="bot-start" data-key="home-bot-start-go">' + esc(t('bs_go', { b: b.bot })) + '</button>' +
+      '<button type="button" class="linkbtn" data-act="bot-start-later" data-key="home-bot-start-later">' + esc(t('save_prompt_later')) + '</button></div></div></div>';
+  }
+  function botStartGo() {
+    var y = Y(), b = y.account && y.account.botStart; if (!b) return;
+    var url = 'https://t.me/' + encodeURIComponent(b.bot) + '?start=remind', tw = window.Telegram && window.Telegram.WebApp;
+    if (tw && tw.initData && y.tgBot === 'cur' && tw.requestWriteAccess && tw.isVersionAtLeast && tw.isVersionAtLeast('6.9')) {
+      try { tw.requestWriteAccess(function (ok) { if (ok) y.botOk().then(function () { toast(t('bs_done')); render(true); }); }); return; } catch (e) { /* старый клиент — ссылкой */ }
+    }
+    if (tw && tw.initData && tw.openTelegramLink) tw.openTelegramLink(url); else window.open(url, '_blank', 'noopener');
+  }
+  // вернулся из бота после «Старт» — проверить, ушла ли плашка
+  document.addEventListener('visibilitychange', function () {
+    var y = Y(); if (document.visibilityState !== 'visible' || !y.account || !y.account.botStart) return;
+    y.refreshMe().then(function () { if (/^(home)?$/.test(routeName())) safeRender(); }, function () { /* сеть — потом */ });
+  });
   V.home = function () {
     var html = '<h1 class="sr">' + esc(t('nav_home')) + (place() && place().name ? ' — ' + esc(place().name) : '') + '</h1>';
     if (Y().mode === 'server' && !Y().account && (RD().length || wrecs().length) && !S.syncPromptDismissed) {
       html += '<div class="banner" data-key="home-save-prompt">' + ico('info', 22) + '<div><p><b>' + esc(t('save_prompt')) + '</b></p><p><a href="#login">' + esc(t('login')) + '</a> &nbsp; <button class="linkbtn" data-act="dismiss-sync">' + esc(t('save_prompt_later')) + '</button></p></div></div>';
     }
+    html += botStartBanner();
     loadInbox();
     if (INBOX.items && INBOX.items.length) html += '<div class="banner" data-key="home-inbox">' + ico('camera', 22) + '<div><p><b>' + esc(t('ib_title', { n: INBOX.items.length })) + '</b></p><p>' + esc(t('ib_sub')) + '</p><p><button class="btn" data-act="inbox-run" data-key="home-inbox-run">' + esc(t('ib_run')) + '</button></p></div></div>';
     var draft = S.draft && (Object.keys(S.draft.values || {}).length || S.draft.step > 0);
@@ -12191,6 +12225,8 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
       case 'auth-mode': authMode = authMode === 'login' ? 'register' : 'login'; render(true); break;
       case 'logout': ADMIN = null; busy(el); Y().logout().then(function () { S = defaults(); S.lang = browserLang(); ensurePlaces(); lastSig = window.TeploSync.sig(window.TeploSync.payload(S)); persist(); toast(t('logged_out')); go('welcome'); }); break;
       case 'dismiss-sync': S.syncPromptDismissed = true; persist(); render(true); break;
+      case 'bot-start': botStartGo(); break;
+      case 'bot-start-later': S.botStartLater = Date.now(); persist(); render(true); break;
       case 'wipe-no': document.getElementById('wipe-confirm').innerHTML = ''; break;
       case 'wipe-yes': { if (hcOn() && HC.st && HC.st.connected) { Y().api('POST', '/cab/forget', { prov: 'htm' }).catch(function () {}); HC.st = null; HC.at = 0; }   // «стерти все» — і пароль кабінету ХТМ
         var now = Date.now(); S = defaults(); S.lang = browserLang(); S.wipedAt = now; ensurePlaces(); phReset(); FB.open = false; save(); toast(t('p_wiped')); go('welcome'); break; }

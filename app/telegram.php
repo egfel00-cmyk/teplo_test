@@ -21,7 +21,24 @@ final class Telegram {
     if (Http::now() - (int)($p['auth_date'] ?? 0) > self::MAX_AGE) throw new HttpError(401, 'telegram_expired');
     $u = json_decode((string)($p['user'] ?? ''), true);
     if (!is_array($u) || empty($u['id'])) throw new HttpError(401, 'telegram_no_user');
-    return ['id' => (string)$u['id'], 'username' => $u['username'] ?? null, 'name' => trim(($u['first_name'] ?? '') . ' ' . ($u['last_name'] ?? ''))];
+    return ['id' => (string)$u['id'], 'username' => $u['username'] ?? null, 'name' => trim(($u['first_name'] ?? '') . ' ' . ($u['last_name'] ?? '')), 'write' => !empty($u['allows_write_to_bot'])];
+  }
+
+  /** Бот точно может писать этому человеку (он написал боту, нажал «Старт» или разрешил в Mini App) — снимает плашку «натисніть Старт». */
+  public static function markBotOk(string $tgId): void {
+    if ($tgId === '') return;
+    try { Db::q("UPDATE user_identities SET bot_ok = ? WHERE type = 'telegram' AND external_id = ?", [Http::iso(), $tgId]); } catch (Throwable $e) { /* не головне */ }
+  }
+
+  /** Нужна ли человеку плашка «Бот змінився — натисніть «Старт»»: последний итог рассылки ему — no_chat/blocked и после него
+   *  он боту не писал. → ['bot' => имя бота] или null. */
+  public static function needStart(int $uid): ?array {
+    $bot = (string)Cfg::get('bot_username'); if ($bot === '') return null;
+    $i = Db::one("SELECT bot_ok FROM user_identities WHERE user_id = ? AND type = 'telegram'", [$uid]); if (!$i) return null;
+    $s = Db::one('SELECT status, sent_at FROM reminders_sent WHERE user_id = ? AND status IS NOT NULL ORDER BY sent_at DESC LIMIT 1', [$uid]);
+    if (!$s || !in_array($s['status'], ['no_chat', 'blocked'], true)) return null;
+    if ((string)($i['bot_ok'] ?? '') !== '' && strcmp((string)$i['bot_ok'], (string)$s['sent_at']) >= 0) return null;
+    return ['bot' => $bot, 'why' => (string)$s['status']];
   }
 
   /** Login Widget на сайте: поля id, first_name, last_name, username, photo_url, auth_date, hash. */
@@ -302,11 +319,22 @@ final class Telegram {
     $adm = null; try { $adm = Admin::hasTg(); } catch (Throwable $e) {}
     return ['username' => (string)Cfg::get('bot_username') ?: null, 'prev' => (string)Cfg::get('bot_token_prev') !== '', 'adminTg' => $adm,
       'moved' => is_array($mv) ? ['at' => gmdate('c', (int)($mv['at'] ?? 0)), 'from' => (string)($mv['from'] ?? ''), 'to' => (string)($mv['to'] ?? ''), 'copied' => array_values((array)($mv['copied'] ?? [])), 'errors' => count((array)($mv['errors'] ?? []))] : null,
-      'chat' => is_array($ch) ? ['at' => gmdate('c', (int)($ch['at'] ?? 0)), 'res' => (string)($ch['res'] ?? '')] : null];
+      'chat' => is_array($ch) ? ['at' => gmdate('c', (int)($ch['at'] ?? 0)), 'res' => (string)($ch['res'] ?? '')] : null,
+      'needStart' => self::needStartCount()];
+  }
+  /** Скольким людям сейчас показывается плашка «натисніть Старт» (последний итог рассылки no_chat/blocked, после него боту не писали) — только число. */
+  public static function needStartCount(): ?int {
+    try {
+      $last = [];
+      foreach (Db::q("SELECT r.user_id, r.status, r.sent_at, i.bot_ok FROM reminders_sent r JOIN user_identities i ON i.user_id = r.user_id AND i.type = 'telegram' WHERE r.status IS NOT NULL ORDER BY r.sent_at")->fetchAll() as $x) $last[(int)$x['user_id']] = $x;
+      return count(array_filter($last, fn($x) => in_array($x['status'], ['no_chat', 'blocked'], true) && strcmp((string)($x['bot_ok'] ?? ''), (string)$x['sent_at']) < 0));
+    } catch (Throwable $e) { return null; }
   }
 
   public static function handleUpdate(array $u): ?array {
     $msg = $u['message'] ?? null; if (!$msg || empty($msg['chat']['id'])) return null;
+    // человек написал боту в личку — бот теперь может ему писать (плашка «натисніть Старт» уходит)
+    if (($msg['chat']['type'] ?? '') === 'private' && !empty($msg['from']['id'])) self::markBotOk((string)$msg['from']['id']);
     $lang = str_starts_with((string)($msg['from']['language_code'] ?? ''), 'ru') ? 'ru' : 'uk';
     if (($tk = self::tokenIn($msg)) !== null) return self::botFromChat($msg, $tk, $lang);
     if (($src = self::fwdSrc($msg)) !== null) return self::vkReply($msg, $lang, $src);

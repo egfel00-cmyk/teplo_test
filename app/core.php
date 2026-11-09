@@ -212,6 +212,8 @@ final class Db {
     self::addColumn('photos', 'kept', 'TINYINT NOT NULL DEFAULT 0');
     // итог отправки напоминания: ok / blocked / no_chat / error: …
     self::addColumn('reminders_sent', 'status', 'VARCHAR(80) NULL');
+    // когда бот последний раз точно мог писать человеку (написал боту / «Старт» / разрешил в Mini App) — после смены бота (07.11.2026) плашка «натисніть Старт»
+    self::addColumn('user_identities', 'bot_ok', 'VARCHAR(25) NULL');
     // что делал браузер за день (и без входа): stage 0 открыл · 1 клацал по экранам · 2 добавил счётчик · 3 внёс показания; сколько счётчиков/показаний
     self::addColumn('visits', 'stage', 'TINYINT NOT NULL DEFAULT 0');
     self::addColumn('visits', 'meters', 'INT NOT NULL DEFAULT 0');

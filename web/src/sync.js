@@ -207,6 +207,8 @@
         throw e;
       });
     },
+    /** Mini App нынешнего бота: человек разрешил боту писать — сервер снимает плашку «натисніть Старт». */
+    botOk: function () { var self = this; return api('POST', '/bot/write-ok').then(function (j) { if (j._status === 200 && j.user) { self.account = j.user; self._onChange(); } return j; }); },
     retryTg: function () { var self = this; return this.tgLogin().then(function () { self._set('server', self.status === 'ok' ? 'ok' : 'idle'); }, function () { self._set('local', 'offline'); }); },
     refreshMe: function () {
       var self = this;
@@ -241,7 +243,7 @@
     _after: function (j) { if (j._status === 200 && j.user) { this.account = j.user; return this.pull(true).then(function () { return j; }); } return Promise.resolve(j); },
     login: function (email, password) { var self = this; return api('POST', '/auth/login', { email: email, password: password }).then(function (j) { return self._after(j); }); },
     register: function (email, password) { var self = this; return api('POST', '/auth/register', { email: email, password: password }).then(function (j) { return self._after(j); }); },
-    loginTelegramWebApp: function (initData) { var self = this; return api('POST', '/auth/telegram/webapp', { initData: initData }).then(function (j) { self.serverReachable = true; if (j._status === 200 && j.session) setSess(j.session); delete j.session; return self._after(j); }); },
+    loginTelegramWebApp: function (initData) { var self = this; return api('POST', '/auth/telegram/webapp', { initData: initData }).then(function (j) { self.serverReachable = true; if (j._status === 200 && j.session) setSess(j.session); if (j._status === 200) self.tgBot = j.tgBot || ''; delete j.session; return self._after(j); }); },
     loginTelegramWidget: function (data) { var self = this; return api('POST', '/auth/telegram/widget', data).then(function (j) { return self._after(j); }); },
     linkTelegram: function (data) { var self = this; return api('POST', '/auth/link-telegram', data).then(function (j) { if (j._status === 200) self.account = j.user; self._onChange(); return j; }); },
     setPassword: function (email, password) { var self = this; return api('POST', '/auth/password', { email: email, password: password }).then(function (j) { if (j._status === 200) self.account = j.user; self._onChange(); return j; }); },

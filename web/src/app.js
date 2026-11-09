@@ -1003,11 +1003,35 @@
   document.addEventListener('submit', function (e) {
     var f = e.target; if (!f || !f.getAttribute || !f.getAttribute('data-hp-form')) return; e.preventDefault(); hpSave(f.getAttribute('data-hp-form'));
   });
+  /** Бот сменился (07.11.2026), а новый ещё не может писать человеку (Telegram: «chat not found» / 403) — нагадування й графіки не доходять.
+   *  Сервер решает (user.botStart), «Пізніше» прячет на 3 дня. В Mini App нынешнего бота — одна кнопка «Дозволити» (requestWriteAccess),
+   *  иначе — ссылка на бота, там «Старт». */
+  function botStartBanner() {
+    var a = Y().account, b = a && a.botStart; if (!b || !b.bot) return '';
+    if (S.botStartLater && Date.now() - S.botStartLater < 3 * 86400000) return '';
+    return '<div class="banner warn" role="status" data-key="home-bot-start" data-why="' + esc(b.why || '') + '">' + ico('bell', 22) + '<div><p><b>' + esc(t('bs_title')) + '</b></p><p>' + esc(t('bs_sub', { b: b.bot })) + '</p>' +
+      '<div class="row-actions" style="margin-top:8px"><button class="btn" data-act="bot-start" data-key="home-bot-start-go">' + esc(t('bs_go', { b: b.bot })) + '</button>' +
+      '<button type="button" class="linkbtn" data-act="bot-start-later" data-key="home-bot-start-later">' + esc(t('save_prompt_later')) + '</button></div></div></div>';
+  }
+  function botStartGo() {
+    var y = Y(), b = y.account && y.account.botStart; if (!b) return;
+    var url = 'https://t.me/' + encodeURIComponent(b.bot) + '?start=remind', tw = window.Telegram && window.Telegram.WebApp;
+    if (tw && tw.initData && y.tgBot === 'cur' && tw.requestWriteAccess && tw.isVersionAtLeast && tw.isVersionAtLeast('6.9')) {
+      try { tw.requestWriteAccess(function (ok) { if (ok) y.botOk().then(function () { toast(t('bs_done')); render(true); }); }); return; } catch (e) { /* старый клиент — ссылкой */ }
+    }
+    if (tw && tw.initData && tw.openTelegramLink) tw.openTelegramLink(url); else window.open(url, '_blank', 'noopener');
+  }
+  // вернулся из бота после «Старт» — проверить, ушла ли плашка
+  document.addEventListener('visibilitychange', function () {
+    var y = Y(); if (document.visibilityState !== 'visible' || !y.account || !y.account.botStart) return;
+    y.refreshMe().then(function () { if (/^(home)?$/.test(routeName())) safeRender(); }, function () { /* сеть — потом */ });
+  });
   V.home = function () {
     var html = '<h1 class="sr">' + esc(t('nav_home')) + (place() && place().name ? ' — ' + esc(place().name) : '') + '</h1>';
     if (Y().mode === 'server' && !Y().account && (RD().length || wrecs().length) && !S.syncPromptDismissed) {
       html += '<div class="banner" data-key="home-save-prompt">' + ico('info', 22) + '<div><p><b>' + esc(t('save_prompt')) + '</b></p><p><a href="#login">' + esc(t('login')) + '</a> &nbsp; <button class="linkbtn" data-act="dismiss-sync">' + esc(t('save_prompt_later')) + '</button></p></div></div>';
     }
+    html += botStartBanner();
     loadInbox();
     if (INBOX.items && INBOX.items.length) html += '<div class="banner" data-key="home-inbox">' + ico('camera', 22) + '<div><p><b>' + esc(t('ib_title', { n: INBOX.items.length })) + '</b></p><p>' + esc(t('ib_sub')) + '</p><p><button class="btn" data-act="inbox-run" data-key="home-inbox-run">' + esc(t('ib_run')) + '</button></p></div></div>';
     var draft = S.draft && (Object.keys(S.draft.values || {}).length || S.draft.step > 0);
@@ -6200,6 +6224,8 @@
       case 'auth-mode': authMode = authMode === 'login' ? 'register' : 'login'; render(true); break;
       case 'logout': ADMIN = null; busy(el); Y().logout().then(function () { S = defaults(); S.lang = browserLang(); ensurePlaces(); lastSig = window.TeploSync.sig(window.TeploSync.payload(S)); persist(); toast(t('logged_out')); go('welcome'); }); break;
       case 'dismiss-sync': S.syncPromptDismissed = true; persist(); render(true); break;
+      case 'bot-start': botStartGo(); break;
+      case 'bot-start-later': S.botStartLater = Date.now(); persist(); render(true); break;
       case 'wipe-no': document.getElementById('wipe-confirm').innerHTML = ''; break;
       case 'wipe-yes': { if (hcOn() && HC.st && HC.st.connected) { Y().api('POST', '/cab/forget', { prov: 'htm' }).catch(function () {}); HC.st = null; HC.at = 0; }   // «стерти все» — і пароль кабінету ХТМ
         var now = Date.now(); S = defaults(); S.lang = browserLang(); S.wipedAt = now; ensurePlaces(); phReset(); FB.open = false; save(); toast(t('p_wiped')); go('welcome'); break; }
