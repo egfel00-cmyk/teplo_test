@@ -1410,6 +1410,18 @@ ok('довідник: усі громади й пункти є в КАТОТТГ
     && str_contains($ptp['kinds']['water']['org'] ?? '', 'Петропавлівський') && $ptp['kinds']['water']['supply'] === null && str_contains($dvz['kinds']['water']['org'] ?? '', 'Господарочка')
     && ($plh['kinds']['water']['org'] ?? null) === null && $plh['kinds']['water']['supply'] === null && str_contains($shr['kinds']['water']['org'] ?? '', 'Ширяївське') && ($znm['kinds']['water']['org'] ?? null) === null,
     [$rn2['kinds']['water'] ?? $rn2, $lmn['place'] ?? $lmn, $klv['place'] ?? $klv, $srg['place'] ?? $srg, $kbj['place'] ?? $kbj, $orh['place'] ?? $orh, $chg['place'] ?? $chg, $zlg['place'] ?? $zlg, $slb['place'] ?? $slb, $ptp['place'] ?? $ptp, $plh['place'] ?? $plh, $shr['place'] ?? $shr, $znm['place'] ?? $znm]);
+  // 77-ма: громади Одещини без води — Березівський (Великий Буялик, Курісове, Новокальчеве), Болградський (Василівка — без водогону, Павлівка, Теплиця/Мирнопілля), Степанівка
+  $vbj = $v('Великий Буялик, вул. Миру 1'); $krs = $v('Курісове, вул. Шевченка 1'); $nkl = $v('Новокальчеве, вул. Паркова 1'); $klc = $v('Калчева, Василівська громада');
+  $pvl = $v('Павлівка, Болградський р-н'); $tpl = $v('Теплиця, вул. Центральна 1'); $mrn = $v('Мирнопілля, Теплицька громада'); $rsh = $v('Роща, Теплицька громада'); $stp = $v('Степанівка, Роздільнянський р-н');
+  ok('77-ма: Великий Буялик — «Водограй»/«Благодар» з платіжки; Курісове — «Сількомунгосп» без ціни; Новокальчеве — «Ранок» 13,00 (№ 192-VIII); Калчева — без водогону; Павлівка — «Водограй»; Теплиця й Роща — «Акватік», Мирнопілля — «Кришталь»; Степанівка — «Степанівське»',
+    ($vbj['place']['hromada'] ?? '') === 'Великобуялицька' && ($vbj['kinds']['water']['org'] ?? null) === null && str_contains($vbj['kinds']['water']['note'] ?? '', 'Водограй')
+    && str_contains($krs['kinds']['water']['org'] ?? '', 'Сількомунгосп') && $krs['kinds']['water']['supply'] === null
+    && $nkl['kinds']['water']['supply'] === 13.0 && str_contains($nkl['kinds']['water']['src'] ?? '', '№ 192-VIII')
+    && ($klc['place']['hromada'] ?? '') === 'Василівська' && ($klc['kinds']['water']['org'] ?? null) === null && str_contains($klc['kinds']['water']['note'] ?? '', 'бювети')
+    && ($pvl['place']['hromada'] ?? '') === 'Павлівська' && str_contains($pvl['kinds']['water']['org'] ?? '', 'Водограй')
+    && str_contains($tpl['kinds']['water']['org'] ?? '', 'Акватік') && str_contains($mrn['kinds']['water']['org'] ?? '', 'Кришталь') && str_contains($rsh['kinds']['water']['org'] ?? '', 'Акватік')
+    && ($stp['place']['hromada'] ?? '') === 'Степанівська' && str_contains($stp['kinds']['water']['org'] ?? '', 'Степанівське') && $stp['kinds']['water']['supply'] === null,
+    [$vbj['place'] ?? $vbj, $krs['place'] ?? $krs, $nkl['kinds']['water'] ?? $nkl, $klc['place'] ?? $klc, $pvl['place'] ?? $pvl, $tpl['place'] ?? $tpl, $mrn['place'] ?? $mrn, $rsh['place'] ?? $rsh, $stp['place'] ?? $stp]);
   // 65-та сесія: Львівщина — сайти громад (gromada.org.ua: /sitemap/, рішення на rada.info)
   $pus = $v('Пустомити, вул. Шевченка 1'); $mur = $v('Сороки-Львівські, вул. Польова 1'); $kul = $v('Куликов, ул. Шевченко 1'); $skl = $v('Сокільники, вул. Стрийська 1');
   $prs = $v('Поршна, Солонківська громада'); $sln = $v('Солонка, вул. Шевченка 1'); $shc = $v('Щирець, вул. Шевченка 1');
