@@ -507,8 +507,10 @@
   // «лише для себе» (r.own): показання для статистики — нікуди не передаються; оплата — між переданими показаннями.
   // Стартові (r.base) води/світла/газу вважаємо переданими (так найчастіше), поки людина не зніме позначку (sent.no).
   function baseSent(r) { return !!(r && r.base && !(r.sent && r.sent.no)); }
-  function ownPill() { return '<span class="pill own" data-key="own-pill">' + esc(t('own_pill')) + '</span>'; }
-  function basePill(r) { return baseSent(r) ? '<span class="pill ok">' + esc(t('wh_sent')) + '</span>' : ''; }
+  /** Перша літера велика — окремі пілюлі й мітки (sentence case); ті самі слова всередині речення лишаються з малої. */
+  function ucf(x) { x = String(x || ''); return x.charAt(0).toUpperCase() + x.slice(1); }
+  function ownPill() { return '<span class="pill own" data-key="own-pill">' + esc(ucf(t('own_pill'))) + '</span>'; }
+  function basePill(r) { return baseSent(r) ? '<span class="pill ok">' + esc(ucf(t('wh_sent'))) + '</span>' : ''; }
   /** Переданий запис після «для себе»: від якої передачі рахується оплата. list — записи за датою, has(r) — є значення. */
   function paidFrom(list, r, has) {
     var prev = null, own = 0;
@@ -3089,16 +3091,11 @@
     e.preventDefault(); window.TeploSync.retryTg(); safeRender();
   });
   // ---------- привітання-лендинг ----------
-  /** Темна «сцена» з чотирма сяйвами (тепло, вода, світло, газ — кольори видів), телефон зі спрощеною головною і справжні табло
-   *  на різній глибині. Паралакс — CSS scroll-timeline (де нема — JS нижче), нахил за курсором — лише миша; prefers-reduced-motion —
-   *  усе статично. Графіка — декор (aria-hidden), зміст — у тексті. par: сяйва рухаються з прокруткою (лише в першому екрані). */
-  function lpAuras(par) {
-    return '<div class="lp-bg" aria-hidden="true"><span class="lp-grid"></span>' + [['heat', .3], ['water', .18], ['elec', .4], ['gas', .24]].map(function (a) {
-      return '<span class="lp-ap' + (par ? ' lp-par' : '') + '" style="--k:' + a[1] + '"><span class="lp-aura a-' + a[0] + '"></span></span>'; }).join('') + '</div>';
-  }
+  /** Темна «сцена»: телефон зі спрощеною головною і справжні табло (тепло, вода, світло, газ)
+   *  поруч (83-я, unslop: без сяйв, сітки, паралаксу, нахилу й «дихання» — нерухома сцена). Графіка — декор (aria-hidden), зміст — у тексті. */
   function lpTiles() {
     var tile = function (k, html, cap, kp) {
-      return '<div class="lp-tile t-' + k + ' lp-par" style="--k:' + kp + '"><div class="lp-bob"><figure class="whero-c lp-fig">' + html +
+      return '<div class="lp-tile t-' + k + '"><div><figure class="whero-c lp-fig">' + html +
         '<figcaption>' + ico(KINDS[k].icon, 16, KINDS[k].cls) + '<span>' + esc(cap) + '</span></figcaption></figure></div></div>';
     };
     return tile('heat', lcd([{ text: '13.245', tag: 'Gcal' }], 'boot'), t('kd_heat'), -.16) + tile('hot', wdrum('175.921', 'hot'), t('st_water'), -.08) +
@@ -3109,7 +3106,7 @@
       return '<div class="lpp-card"><div class="lpp-h">' + ico(KINDS[k].icon, 13, KINDS[k].cls) + '<b>' + esc(name) + '</b></div>' + disp +
         '<span class="lpp-pill ' + tone + '">' + ico(tone === 'ok' ? 'check' : 'clock', 11) + '<span>' + esc(pill) + '</span></span></div>';
     };
-    return '<div class="lp-phone lp-par" style="--k:-.04"><div class="lpp-screen"><span class="lpp-island"></span>' +
+    return '<div class="lp-phone"><div class="lpp-screen"><span class="lpp-island"></span>' +
       '<div class="lpp-top"><span class="lpp-logo">' + logo() + '</span><span class="lpp-pl"><b>' + esc(t('pl_mine')) + '</b><i>' + esc(t('lp_ph_addr')) + '</i></span></div>' +
       card('heat', t('kd_heat'), '<div class="lpp-lcd"><span>13.245</span><i>Gcal</i></div>', t('lp_ph_due'), 'warn') +
       card('hot', t('kd_hot'), '<div class="lpp-drum"><span>00175</span><span class="r">921</span><i>м³</i></div>', t('lp_ph_sent'), 'ok') +
@@ -3117,8 +3114,8 @@
       '<div class="lpp-nav">' + ['home', 'history', 'chart', 'prefs'].map(function (n, i) { return '<span' + (i ? '' : ' class="on"') + '>' + ico(n, 15) + '</span>'; }).join('') + '</div></div></div>';
   }
   function lpHero(o) {
-    return '<section class="lp-hero" data-key="lp-hero">' + lpAuras(true) + '<div class="lp-in"><div class="lp-copy">' +
-      (o.badge ? '<p class="lp-badge"><span class="lp-dot" aria-hidden="true"></span>' + esc(o.badge) + '</p>' : '') +
+    return '<section class="lp-hero" data-key="lp-hero"><div class="lp-in"><div class="lp-copy">' +
+      (o.badge ? '<p class="lp-badge">' + esc(o.badge) + '</p>' : '') +
       '<h1 class="lp-h1">' + o.h1 + '</h1><p class="lp-lead">' + esc(o.lead) + '</p><div class="lp-ctas">' + o.cta + '</div>' + (o.after || '') + '</div>' +
       // сцену принимают за кнопку (журнал 06.11: 5 нажатий подряд) — ведёт туда же, куда «Почати»; с клавиатуры — только сама кнопка
       '<a class="lp-stage" href="#start" tabindex="-1" aria-hidden="true" data-key="welcome-hero">' + lpPhone() + lpTiles() + '</a></div></section>';
@@ -3135,10 +3132,10 @@
       col(t('lf_contact'), ['<li><button class="linkbtn" data-act="fb-open" data-key="lpf-fb">' + esc(t('lf_write')) + '</button></li>'].concat(bot ? ['<li><a href="https://t.me/' + esc(bot) + '" target="_blank" rel="noopener" data-key="lpf-bot">' + esc(t('lf_bot')) + '</a></li>'] : [])) +
       '</div><div class="lpf-bot"><span>© ' + new Date().getFullYear() + ' ' + esc(t('brand')) + '</span><span>' + esc(t('lf_indep')) + '</span></div></footer>';
   }
-  function lpCta(key, label) { return '<a class="lp-btn" href="#start" data-key="' + key + '"><span>' + esc(label) + '</span>' + ico('arrow', 22) + '</a>'; }
+  function lpCta(key, label) { return '<a class="lp-btn" href="#start" data-key="' + key + '"><span>' + esc(label) + '</span></a>'; }
   function lpDest() {
     var ds = [['heat', 'ХТМ'], ['cold', t('lp_d_vk')], ['elec', t('lp_d_obl')], ['gas', t('lp_d_grm')], ['gas', t('lp_d_naf')]];
-    return '<section class="lp-sec lp-dest lp-rv" data-key="lp-dest"><p class="lp-dest-t">' + esc(t('lp_dest_t')) + '</p><ul class="lp-chips">' +
+    return '<section class="lp-sec lp-dest" data-key="lp-dest"><p class="lp-dest-t">' + esc(t('lp_dest_t')) + '</p><ul class="lp-chips">' +
       ds.map(function (d) { return '<li>' + ico(KINDS[d[0]].icon, 16, KINDS[d[0]].cls) + '<span>' + esc(d[1]) + '</span></li>'; }).join('') + '</ul></section>';
   }
   function lpSteps() {
@@ -3149,8 +3146,8 @@
       '<div class="lp-art art-send"><div class="lpa-dest">' + ico('send', 18) + '<span><b>' + esc(t('lp_s3_dest')) + '</b><i>' + esc(t('lp_s3_sub')) + '</i></span>' + ico('ext', 16) + '</div>' +
         '<div class="lpa-chip">' + ico('copy', 14) + '<span>' + esc(t('lp_s3_copied')) + '</span></div><div class="lpa-chip ok">' + ico('check', 14) + '<span>' + esc(t('lp_s3_done')) + '</span></div></div>'
     ];
-    return '<section class="lp-sec" data-key="lp-steps"><h2 class="lp-h2 lp-rv">' + esc(t('lp_steps_t')) + '</h2><ol class="lp-steps">' + [1, 2, 3].map(function (n) {
-      return '<li class="lp-step lp-rv" data-key="lp-step-' + n + '"><div class="lp-art-w" aria-hidden="true">' + arts[n - 1] + '</div><div class="lp-step-tx"><span class="lp-num" aria-hidden="true">' + n + '</span>' +
+    return '<section class="lp-sec" data-key="lp-steps"><h2 class="lp-h2">' + esc(t('lp_steps_t')) + '</h2><ol class="lp-steps">' + [1, 2, 3].map(function (n) {
+      return '<li class="lp-step" data-key="lp-step-' + n + '"><div class="lp-art-w" aria-hidden="true">' + arts[n - 1] + '</div><div class="lp-step-tx"><span class="lp-num" aria-hidden="true">' + n + '</span>' +
         '<h3>' + esc(t('lp_s' + n + '_t')) + '</h3><p>' + esc(t('lp_s' + n)) + '</p></div></li>';
     }).join('') + '</ol></section>';
   }
@@ -3186,8 +3183,8 @@
       '<div class="lpg-ax"><i>00</i><i>06</i><i>12</i><i>18</i><i>24</i></div><div class="lpg-leg"><span class="on"></span>' + esc(t('lp_gpv_on')) + '<span class="off"></span>' + esc(t('lp_gpv_off')) + '</div></div>';
   }
   function lpBento() {
-    var cell = function (key, art) { return '<article class="lp-cell c-' + key + ' lp-rv" data-key="lp-' + key + '"><div class="lp-cell-tx"><h3>' + esc(t('lp_' + key + '_t')) + '</h3><p>' + esc(t('lp_' + key)) + '</p></div>' + art + '</article>'; };
-    return '<section class="lp-sec" data-key="lp-bento"><h2 class="lp-h2 lp-rv">' + esc(t('lp_bento_t')) + '</h2><div class="lp-bento">' +
+    var cell = function (key, art) { return '<article class="lp-cell c-' + key + '" data-key="lp-' + key + '"><div class="lp-cell-tx"><h3>' + esc(t('lp_' + key + '_t')) + '</h3><p>' + esc(t('lp_' + key)) + '</p></div>' + art + '</article>'; };
+    return '<section class="lp-sec" data-key="lp-bento"><h2 class="lp-h2">' + esc(t('lp_bento_t')) + '</h2><div class="lp-bento">' +
       cell('due', lpDue()) + cell('tg', lpTg()) + cell('pl', lpPlaces()) + cell('cost', lpCost()) + cell('gpv', lpGpv()) + '</div></section>';
   }
   V.welcome = function () {
@@ -3195,36 +3192,18 @@
     if (acc) {   // уже вошёл, но лічильник ещё не выбран (новый аккаунт или стёрли данные) — без рекламы, сразу к делу
       var who = acc.email || (acc.telegram && (acc.telegram.username ? '@' + acc.telegram.username : acc.telegram.name)) || '';
       return { screen: 'S00', bare: true, wide: true, html: '<div class="welcome lp">' + lpHero({ h1: esc(t('wl_title')), lead: t('wl_lead'),
-        cta: '<a class="lp-btn" href="#start" data-key="welcome-start"><span>' + esc(t('wl_cta')) + '</span>' + ico('arrow', 22) + '</a>',
+        cta: lpCta('welcome-start', t('wl_cta')),
         after: '<p class="lp-who">' + esc(t('wl_fine', { who: who })) + ' <button class="linkbtn" data-act="logout">' + esc(t('wl_other')) + '</button></p>' }) + lpFoot(false) + '</div>' };
     }
     var login = Y().mode === 'server' && !Y().account, fine = Y().mode === 'claude' ? t('sync_claude') : Y().mode === 'server' ? t('w_fine_site') : t('w_fine');
     return { screen: 'S00', bare: true, wide: true, html: tgFailBox() + '<div class="welcome lp">' +
-      lpHero({ badge: t('lp_badge'), h1: esc(t('lp_h1a')) + ' <span class="lp-grad">' + esc(t('lp_h1b')) + '</span>', lead: t('lp_lead'),
+      lpHero({ badge: t('lp_badge'), h1: esc(t('lp_h1a')) + ' ' + esc(t('lp_h1b')), lead: t('lp_lead'),
         cta: lpCta('welcome-start', t('lp_cta')) + (login ? '<a class="lp-link" href="#login" data-key="welcome-login">' + esc(t('w_login')) + '</a>' : ''),
         after: '<ul class="lp-trust">' + ['lp_tr1', 'lp_tr2', 'lp_tr3'].map(function (k) { return '<li>' + ico('check', 16) + '<span>' + esc(t(k)) + '</span></li>'; }).join('') + '</ul>' }) +
       lpDest() + lpSteps() + lpBento() +
-      '<section class="lp-end lp-rv" data-key="lp-end">' + lpAuras(false) + '<h2>' + esc(t('lp_end_t')) + '</h2><p>' + esc(t('lp_end')) + '</p><div class="lp-ctas">' + lpCta('welcome-start-end', t('lp_cta')) + '</div></section>' +
+      '<section class="lp-end" data-key="lp-end"><h2>' + esc(t('lp_end_t')) + '</h2><p>' + esc(t('lp_end')) + '</p><div class="lp-ctas">' + lpCta('welcome-start-end', t('lp_cta')) + '</div></section>' +
       '<p class="lp-fine small muted">' + esc(fine) + '</p>' + lpFoot(login) + '</div>' };
   };
-  // паралакс там, де нема CSS scroll-timeline (Firefox, старі Safari), і нахил сцени за курсором (лише миша); reduced-motion — нічого
-  (function () {
-    var mq = window.matchMedia ? function (q) { return window.matchMedia(q).matches; } : function () { return false; };
-    var css = window.CSS && CSS.supports && CSS.supports('animation-timeline: scroll()'), tick = false;
-    function frame() {
-      tick = false; if (mq('(prefers-reduced-motion: reduce)')) return;
-      var els = document.querySelectorAll('.lp-hero .lp-par'); if (!els.length) return;
-      var y = Math.min(window.pageYOffset || 0, 700);
-      for (var i = 0; i < els.length; i++) els[i].style.translate = '0 ' + (y * (parseFloat(els[i].style.getPropertyValue('--k')) || 0)).toFixed(1) + 'px';
-    }
-    if (!css) window.addEventListener('scroll', function () { if (!tick) { tick = true; requestAnimationFrame(frame); } }, { passive: true });
-    if (mq('(hover: hover) and (pointer: fine)')) document.addEventListener('pointermove', function (e) {
-      var h = e.target && e.target.closest && e.target.closest('.lp-hero'), st = h && h.querySelector('.lp-stage'); if (!st || mq('(prefers-reduced-motion: reduce)')) return;
-      var r = h.getBoundingClientRect(), x = (e.clientX - r.left) / r.width - .5, y = (e.clientY - r.top) / r.height - .5;
-      st.style.setProperty('--rx', (x * 10).toFixed(2) + 'deg'); st.style.setProperty('--ry', (-y * 7).toFixed(2) + 'deg');
-    }, { passive: true });
-  })();
-
   /** «Куди передати» для тепла: лише кабінет ХТМ, 5–25 числа; є перевірені показання — до покрокової передачі. */
   function heatWhere() {
     // тепло квартири постачає не ХТМ (інша громада) — контакти її постачальника з довідника
@@ -3839,7 +3818,7 @@
    *  (у тепла — «Прийнято», «На перевірці»…). Стартовые — только «передано / не передавали». */
   function stChip(src, r, k, cur, label) {
     var cls = cur === 'own' ? 'own' : cur === 'sent' ? 'ok' : 'neutral';
-    var txt = label || '<span class="pill ' + cls + '">' + esc(cur === 'own' ? t('own_pill') : cur === 'sent' ? t('wh_sent') : r.base ? t('bs_unsent') : t('wh_notsent')) + '</span>';
+    var txt = label || '<span class="pill ' + cls + '">' + esc(ucf(cur === 'own' ? t('own_pill') : cur === 'sent' ? t('wh_sent') : r.base ? t('bs_unsent') : t('wh_notsent'))) + '</span>';
     return '<button type="button" class="st-chip" data-act="st-open" data-src="' + src + '" data-id="' + esc(r.id) + '" data-k="' + k + '" data-cur="' + cur + '"' + (r.base ? ' data-base="1"' : '') +
       ' aria-haspopup="true" aria-expanded="false" aria-label="' + esc(t('st_aria', { s: String(txt).replace(/<[^>]+>/g, '') })) + '" data-key="st-' + esc(r.id) + '">' + String(txt).replace(/<\/span>$/, ico('chev', 14, 'st-dd') + '</span>') + '</button>';
   }

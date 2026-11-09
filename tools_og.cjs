@@ -1,4 +1,4 @@
-// Картинка для превью ссылки в мессенджерах и соцсетях (1200×630): web/og-uk-4.jpg и web/og-ru-4.jpg.
+// Картинка для превью ссылки в мессенджерах и соцсетях (1200×630): web/og-uk-5.jpg и web/og-ru-5.jpg.
 // Снимает настоящий первый экран лендинга (телефон + четыре табло: тепло, вода, світло, газ), подставляет короткий текст и адрес сайта.
 // Локальный сервер должен быть запущен: SITE_BASE= SITE_DATA=/tmp/teplo_data php -S 127.0.0.1:8013 index.php
 // Запуск: NODE_PATH=$(npm root -g) node tools_og.cjs [http://127.0.0.1:8013/] [peredai.com.ua]
@@ -7,8 +7,8 @@ const path = require('path');
 const BASE = process.argv[2] || 'http://127.0.0.1:8013/';
 const DOMAIN = process.argv[3] || 'peredai.com.ua';
 const TXT = {
-  uk: { locale: 'uk-UA', lead: 'Тепло, вода, світло й газ: сфотографуйте — цифри розпізнаються самі. Підкажемо, куди й до якого числа передати.', badge: 'Харків і область · безкоштовно' },
-  ru: { locale: 'ru-RU', lead: 'Тепло, вода, свет и газ: сфотографируйте — цифры распознаются сами. Подскажем, куда и до какого числа передать.', badge: 'Харьков и область · бесплатно' },
+  uk: { locale: 'uk-UA', lead: 'Тепло, вода, світло й газ: сфотографуйте — цифри розпізнаються самі. Підкажемо, куди й до якого числа передати.', badge: 'Безкоштовно — Харківщина, Київщина, Одещина, Львівщина' },
+  ru: { locale: 'ru-RU', lead: 'Тепло, вода, свет и газ: сфотографируйте — цифры распознаются сами. Подскажем, куда и до какого числа передать.', badge: 'Бесплатно — Харьковщина, Киевщина, Одесщина, Львовщина' },
 };
 (async () => {
   const br = await chromium.launch();
@@ -33,7 +33,7 @@ const TXT = {
     }, { x, domain: DOMAIN });
     await p.waitForTimeout(600);
     const box = await (await p.$('.lp-hero')).boundingBox();
-    const out = path.join(__dirname, `web/og-${lang}-4.jpg`);
+    const out = path.join(__dirname, `web/og-${lang}-5.jpg`);
     await p.screenshot({ path: out, type: 'jpeg', quality: 86, clip: { x: box.x, y: box.y, width: 1200, height: 630 } });
     console.log(out, Math.round(box.width) + '×' + Math.round(box.height));
     await ctx.close();

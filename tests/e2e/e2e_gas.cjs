@@ -41,7 +41,7 @@ let pass = 0, fail = 0; const ok = (n, c, i) => { console.log((c ? '  OK  ' : ' 
   await click('[data-key=esend-done]', 300); s = await st();
   ok('«Я передав(ла)» → sent.grm', s.mrecs.find(r => r.id === r1.id).sent.grm === '2026-11-02');
   await go('history'); await click('[data-key=kind-gas]', 300);
-  ok('історія: +15 м³ ≈ 119 грн, «передано»', /\+15/.test(await p.textContent('[data-key=gas-history]')) && /119/.test(await p.textContent('[data-key=gas-history]')) && /передано/.test(await p.textContent('[data-key=gas-history]')));
+  ok('історія: +15 м³ ≈ 119 грн, «передано»', /\+15/.test(await p.textContent('[data-key=gas-history]')) && /119/.test(await p.textContent('[data-key=gas-history]')) && /передано/i.test(await p.textContent('[data-key=gas-history]')));
   // своя ціна — у «Постачальники й тарифи» квартири (UI — e2e_prov); тут — що історія перераховується
   s = await st(); s.places[0].gasPrice = 9.99; await p.evaluate(v => localStorage.setItem('teplo.v1', JSON.stringify(v)), s); await p.reload(); await p.waitForTimeout(400); await go('gas'); s = await st();
   ok('своя ціна газу — у квартири, історія перерахувалась (15 × 9,99 ≈ 150)', s.places[0].gasPrice === 9.99 && /150/.test(await p.textContent('[data-key=gas-history]')));

@@ -77,12 +77,12 @@ const U = 'http://127.0.0.1:8013/';
   await p.goto(U + '#start'); await p.waitForTimeout(300);
   ok('#start після налаштування → головна', (await hash()) === '#home' || /home/.test(await p.getAttribute('main', 'data-screen') || '') || !(await p.$('.aw-kinds')));
 
-  // 3. лише газ: один екран, після нього — головна і «Готово!»
+  // 3. лише газ: один екран, після нього — головна і «Лічильники налаштовано»
   await fresh(); await p.goto(U + '#start'); await p.waitForTimeout(300);
   await p.click('[data-key=aw-gas-inc]'); await p.click('[data-key=aw-create]'); await p.waitForTimeout(400);
   ok('лише газ → #gadd «1 з 1»', (await hash()) === '#gadd' && /1\sз\s1/.test(await p.textContent('[data-key=aw-queue]')));
   await p.fill('#ea-v-all', '1225,4'); await p.click('[data-key=ea-save]'); await p.waitForTimeout(500); s = await st();
-  ok('газ додано → головна з карткою газу, тост «Готово!»', (await hash()) === '#home' && !!(await p.$('[data-key=card-gas]')) && /Готово/.test(await p.textContent('#toast-host')), await p.textContent('#toast-host'));
+  ok('газ додано → головна з карткою газу, тост «Лічильники налаштовано»', (await hash()) === '#home' && !!(await p.$('[data-key=card-gas]')) && /Лічильники налаштовано/.test(await p.textContent('#toast-host')), await p.textContent('#toast-host'));
 
   // 4. «Налаштую пізніше» на першому ж водомірі — теж вважається налаштуванням
   await fresh(); await p.goto(U + '#start'); await p.waitForTimeout(300);
@@ -107,7 +107,7 @@ const U = 'http://127.0.0.1:8013/';
   const qel = (s.places[0].meters || []).find(m => m.kind === 'elec');
   ok('«пізніше» у світла: лічильник з 1 зоною без рахунку → газ «3 з 3» (теж згорнуто)', qel && qel.zones === 1 && !qel.account && (await ph()) === '#gadd' && /3\sз\s3/.test(await pq.textContent('[data-key=aw-queue]')) && !!(await pq.$('details.ea-more:not([open]) #ea-grm')), qel);
   await pq.click('[data-key=aw-q-later]'); await pq.waitForTimeout(500); s = await pst();
-  ok('«пізніше» у газу → головна з 3 картками, «Готово!»', (await ph()) === '#home' && !!(await pq.$('[data-key=card-gas]')) && !!(await pq.$('[data-key=card-elec]')) && !!(await pq.$('[data-key=card-cold]')) && /Готово/.test(await pq.textContent('#toast-host')) && s.onboarded === true);
+  ok('«пізніше» у газу → головна з 3 картками, «Лічильники налаштовано»', (await ph()) === '#home' && !!(await pq.$('[data-key=card-gas]')) && !!(await pq.$('[data-key=card-elec]')) && !!(await pq.$('[data-key=card-cold]')) && /Лічильники налаштовано/.test(await pq.textContent('#toast-host')) && s.onboarded === true);
   await pq.goto(U + '#place-main'); await pq.waitForTimeout(400); await pq.click('[data-key=pv-add-meter]'); await pq.waitForTimeout(300); await pq.click('[data-key=am-elec]'); await pq.waitForTimeout(300);
   ok('світло не з черги: поля відкрито, без «пізніше»', (await ph()) === '#eadd' && !(await pq.$('details.ea-more')) && !!(await pq.$('#ea-acc')) && !(await pq.$('[data-key=aw-q-later]')));
 

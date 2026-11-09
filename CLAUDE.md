@@ -58,6 +58,10 @@
 - Владелец правит сам в /admin → «Справочник» (правки поверх репозитория). `/api/health → prov.edits` > 0 — в начале сессии перенести
   их в `app/data/prov_<r>.json` / `providers.json` (GET /api/admin/prov/edits), cron сам уберёт перенесённые.
 
+## Дизайн
+- Направление, правила по проходам и признаки шаблонности — `skills/ui-unslop/SKILL.md` (по мотивам unslop © heydamir, CC BY 4.0, + брендбук `design/`).
+  Новый экран — скрины `tests/design/shots.cjs` (390/1280, светлая/тёмная) и `python3 tests/design_lint.py` перед пушем.
+
 ## Распознавание фото
 - По умолчанию — в браузере человека, бесплатно: web/ocr/engine.js (PaddleOCR PP-OCRv4 + onnxruntime-web WASM, ~30 МБ, грузится
   при первом «з фото»), разбор текста в поля — web/src/ocrparse.js (подписи Gcal/m³/HT/CT/ON/EH, «тени» сегментов,
