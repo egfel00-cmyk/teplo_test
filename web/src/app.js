@@ -4267,7 +4267,7 @@
         (moved ? '<div class="hsw hsw-moved" data-key="hsp-moved"><p>' + esc(t('hsw_moved', { m: monthLabel(moved) })) + '</p></div>' : hspWhyHtml(ym, iv)) +
         (nl ? '<ul class="list">' + nl + '</ul>' : '') + (iv && iv.dE >= 0 && !ymArg ? '<p class="small muted">' + esc(t('hsp_ours', { s: money(iv.cost) })) + '</p>' : '') + '<p class="small muted">' + esc(t('hsp_n_src')) + '</p></div></details>';
     }
-    var tar = x.flat > 0 && x.cost !== null ? x.cost / x.flat : null, bld = hsprBld(x), sh = !bld && x.flat !== null && x.diff !== null ? x.flat - x.diff : null;
+    var tar = x.flat > 0 && x.cost != null ? x.cost / x.flat : null, bld = hsprBld(x), sh = !bld && x.flat != null && x.diff != null ? x.flat - x.diff : null;
     var of = bld ? hsprOwnFit() : null, oe = of && of.e[x.ym] > 0 && x.flat >= of.e[x.ym] ? of.e[x.ym] : null;
     // місяць за середнім: у журналі ХТМ немає прийнятих показань свого лічильника за цей місяць, або ХТМ нарахував помітно більше за «своє + ЗБП»;
     // 82-а: якщо різницю пояснено (показання наступного місяця в кінці сезону тощо) — не «за середнім»
@@ -4275,21 +4275,24 @@
     var rej = inM('rejected')[0], avg = bld && ol.length >= 2 && x.flat > 0 && (!inM().length || (oe !== null && x.flat - oe > Math.max(0.03, R.C.ZBP_MAX_M2 * (x.sFlat || 60))));
     if (why && why.k !== 'avg') avg = false;
     // акордеон (власник 09.11): багато рядків заважали — згорнуто лише підсумок «Гкал · грн», розгорнуто — розрахунок; стоїть перед платіжкою
-    var brief = (x.flat !== null ? fmtN(x.flat, 3) + ' Гкал · ' : '') + money(hsprSum(x)) + ' грн';
+    var brief = (x.flat != null ? fmtN(x.flat, 3) + ' Гкал · ' : '') + money(hsprSum(x)) + ' грн';
     return '<details class="panel hacc" id="hacc-' + esc(r.id) + '" data-key="rec-htm"' + (HSP_OPEN[r.id] ? ' open' : '') + '><summary data-key="rec-htm-sum"><h2><span class="grow">' + esc(t('hsp_title', { m: monthLabel(x.ym) })) +
       '<span class="hacc-brief small muted">' + esc(brief) + (avg ? ' · ' + esc(t('hsp_avg_b')) : why && why.k !== 'zbp' && why.k !== 'avg' ? ' · ' + esc(t('hsw_b_' + why.k)) : '') + '</span></span>' + ico('chev', 20, 'pacc-chev') + '</h2></summary><div class="hacc-b">' +
       (why && !avg ? hspWhyHtml(x.ym, iv) : '') + '<ul class="list">' +
       // у довідці показання будинкового лічильника (живий кабінет 08.11: різниця в десятки разів більша за витрату квартири) — показуємо будинок окремо, без «частки»
-      (bld ? li(t('hsp_bdiff'), fmtN(x.diff, 3) + ' Гкал') + (x.loss !== null ? li(t('hsp_loss'), fmtN(x.loss, 3) + ' Гкал') : '') + (x.house !== null && x.house !== undefined ? li(t('hsp_house'), fmtN(x.house, 3) + ' Гкал') : '')
+      (bld ? li(t('hsp_bdiff'), fmtN(x.diff, 3) + ' Гкал') + (x.loss != null ? li(t('hsp_loss'), fmtN(x.loss, 3) + ' Гкал') : '') + (x.house != null ? li(t('hsp_house'), fmtN(x.house, 3) + ' Гкал') : '')
         + (x.sFlat && x.sHouse ? li(t('hsp_area'), fmtN(x.sFlat, 1) + ' / ' + fmtN(x.sHouse, 1) + ' м²') + (x.sHouse < 3 * x.sFlat ? '<li class="small muted" data-key="hsp-area-odd">' + esc(t('hsp_area_odd')) + '</li>' : '') : '') : '') +
-      (!bld && x.diff !== null ? li(t('hsp_diff'), fmtN(x.diff, 3) + ' Гкал') : '') +
-      (sh !== null ? li(t('hsp_share') + (x.loss !== null && x.sFlat && x.sHouse ? ' (' + fmtN(x.loss, 1) + ' × ' + fmtN(x.sFlat, 1) + ' / ' + fmtN(x.sHouse, 1) + ' м²)' : ''), fmtN(sh, 3) + ' Гкал') : '') +
+      (!bld && x.diff != null ? li(t('hsp_diff'), fmtN(x.diff, 3) + ' Гкал') : '') +
+      (sh !== null ? li(t('hsp_share') + (x.loss != null && x.sFlat && x.sHouse ? ' (' + fmtN(x.loss, 1) + ' × ' + fmtN(x.sFlat, 1) + ' / ' + fmtN(x.sHouse, 1) + ' м²)' : ''), fmtN(sh, 3) + ' Гкал') : '') +
       // свій лічильник за місяць (журнал ХТМ) і частка будинку понад нього — як ХТМ рахує квартиру з лічильником (Методика № 315)
       (oe !== null ? li(t('hsp_own'), fmtN(oe, 3) + ' Гкал') + li(t('hsp_over'), fmtN(x.flat - oe, 3) + ' Гкал') : '') +
-      (x.flat !== null ? li(t('hsp_flat'), fmtN(x.flat, 3) + ' Гкал', true) : '') +
+      (x.flat != null ? li(t('hsp_flat'), fmtN(x.flat, 3) + ' Гкал', true) : '') +
       (tar !== null ? li(t('hsp_tariff'), money(tar) + ' грн/Гкал') : '') +
-      (x.cost !== null ? li(t('hsp_cost'), money(x.cost) + ' грн') : '') + (x.abon !== null ? li(t('hsp_abon'), money(x.abon) + ' грн') : '') +
+      (x.cost != null ? li(t('hsp_cost'), money(x.cost) + ' грн') : '') + (x.abon != null ? li(t('hsp_abon'), money(x.abon) + ' грн') : '') +
       (x.lgota > 0 ? li(t('hsp_lgota'), '−' + money(x.lgota) + ' грн') : '') + li(t('hsp_total'), money(hsprSum(x)) + ' грн', true) +
+      // у рахунку того місяця (з «Довідки щодо нарахувань») — як нарахували тоді: з теплом наперед до кінця місяця; довідка по теплу — уже уточнене (бій 09.11: −7…+65 %)
+      (n && typeof n.gcal === 'number' && x.flat > 0 && Math.abs(n.gcal - x.flat) > Math.max(0.002, x.flat * 0.005) ? li(t('hsp_n_bill'), fmtN(n.gcal, 3) + ' Гкал · ' + money(n.cost) + ' грн') +
+        '<li class="small muted" data-key="hsp-billdiff">' + esc(t('hsp_n_billdiff')) + '</li>' : '') +
       (n && n.recalc ? li(t('hsp_n_recalc'), sg(n.recalc) + ' грн') : '') + (n && typeof n.paid === 'number' ? li(t('hsp_n_paid'), money(n.paid) + ' грн') : '') +
       (n && typeof n.saldo === 'number' ? li(t(n.saldo < 0 ? 'hsp_n_over' : 'hsp_n_debt'), money(Math.abs(n.saldo)) + ' грн') : '') +
       (avg ? '<li class="small muted" data-key="hsp-avg">' + esc(t('hsp_avg') + (rej ? ' ' + t('hsp_avg_rej', { d: fmtDate(rej.date), v: fmtN(rej.energy, 3) }) : '')) + '</li>' : '') + '</ul>' +

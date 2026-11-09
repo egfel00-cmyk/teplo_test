@@ -21,9 +21,12 @@ const U = 'http://127.0.0.1:8013/', DATA = process.env.SITE_DATA || '/tmp/teplo_
     { ym: '2025-11', heat: { area: 54.3, gcal: 1.065, cost: 1669.3, paid: 29.4, saldo: 1669.3 } },
     { ym: '2026-01', heat: { area: 54.3, gcal: 2.4, cost: 3724.2, paid: 3000, saldo: 2393.5 } },
     { ym: '2026-02', heat: { area: 54.3, gcal: 2.095, cost: 3254.6, recalc: -174.58, paid: 3000, saldo: 2473.52 } },
-    { ym: '2026-03', heat: { area: 54.3, gcal: 2.437, cost: 3781.2, paid: 3254.6, saldo: 3000.12 } },
+    { ym: '2026-03', heat: { area: 54.3, gcal: 2.274, cost: 3530.24, paid: 3254.6, saldo: 3000.12 } },
     { ym: '2026-04', heat: { area: 54.3, cost: 29.4, recalc: -1190.31, paid: 3781.2, saldo: -1941.99 } }] };
-  execFileSync('php', ['-r', `define('TEPLO',1); require 'app/core.php'; require 'app/htmsvc.php'; HtmSpr::saveNar(${uid}, 'main', json_decode('${JSON.stringify(nar)}', true));`],
+  // і «Довідка по теплу» за березень (уточнене): 2,437 Гкал, 3751,80 + абонплата 29,40 — у рахунку того місяця інше (2,274: наперед і зняте)
+  const spr = [{ ym: '2026-03', flat: 2.437, cost: 3751.8, abon: 29.4, lgota: 0, sFlat: 54.3 }];
+  execFileSync('php', ['-r', `define('TEPLO',1); require 'app/core.php'; require 'app/htmsvc.php'; HtmSpr::saveNar(${uid}, 'main', json_decode('${JSON.stringify(nar)}', true));
+    HtmSpr::save(${uid}, 'main', ['rows' => json_decode('${JSON.stringify(spr)}', true), 'cols' => ['ym', 'flat', 'cost'], 'fmt' => ['ym' => '##.####', 'num' => '#.###']]);`],
     { env: Object.assign({}, process.env, { SITE_DATA: DATA, SITE_BASE: '' }), cwd: path.join(__dirname, '../..') });
   ok('GET /api/htm/spr — нарахування квартири (nar) — 5 місяців', await p.evaluate(() => window.TeploSync.api('GET', '/htm/spr').then(j => j.places.length === 1 && j.places[0].nar.rows.length === 5)));
   await p.goto(U + '#history'); await wait(500); await p.reload(); await wait(2500);
@@ -39,6 +42,7 @@ const U = 'http://127.0.0.1:8013/', DATA = process.env.SITE_DATA || '/tmp/teplo_
   ok('картка березня: «Нараховано ХТМ за березень 2026 · 2,437 Гкал · 3 781,20 грн · з показаннями наступного місяця»', /березень 2026/.test(br) && /2,437 Гкал/.test(br) && /3\s?781,20/.test(br) && /з показаннями наступного місяця/.test(br), br);
   ok('…чому: tail — ХТМ додав 0,305 Гкал з показань 3 квітня 2026; 2,127 + 0,305 + ЗБП 0,014 ≈ 2,437', why && why[0] === 'tail' && /0,305 Гкал/.test(why[1]) && /3 квітня 2026/.test(why[1]) && /2,127 \+ 0,305 \+ ЗБП 0,014 ≈ 2,437/.test(why[1]), why);
   ok('…і рядки нарахування: оплати 3 254,60, борг на кінець 3 000,12; рахунок за квітень — перерахунок −1 190,31', /Надійшло оплат/.test(pan) && /3\s?254,60/.test(pan) && /Борг на кінець місяця/.test(pan) && /3\s?000,12/.test(pan) && /перерахунок −1\s?190,31/.test(pan), pan);
+  ok('…«У рахунку за цей місяць 2,274 Гкал · 3 530,24 грн» і чому рахунок інший, ніж довідка', /У рахунку за цей місяць/.test(pan) && /2,274 Гкал · 3\s?530,24 грн/.test(pan) && /тепло[мю]? наперед/.test(await tx('hsp-billdiff')), pan);
   await p.locator('[data-key=rec-htm]').screenshot({ path: '/tmp/shot_hnar_m1.png' }).catch(() => {});
   await p.goto(U + '#rec-f1'); await wait(1200); await p.click('[data-key=rec-htm-sum]').catch(() => {}); await wait(300);
   const wf = await p.$eval('[data-key=hsp-why]', e => [e.getAttribute('data-why'), e.textContent]).catch(() => null);
