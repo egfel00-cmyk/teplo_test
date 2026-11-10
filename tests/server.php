@@ -2037,6 +2037,8 @@ CabWeb::$http = function ($m, $url, $body, $cookie, $h) use (&$lbSite, $lbP1, $l
   if ($m === 'POST' && $p === '/indications/save') { $lbSite['posted'] = $body; return ['code' => 200, 'body' => '<div class="alert alert-success">Показники збережено. Дякуємо!</div>']; }
   return ['code' => 404, 'body' => 'nf'];
 };
+ok('mtve вимкнено на бою (код абонента перевіряє скрипт сайту) — ready false', !LocalBot::ready('mtve'));
+LocalBot::$forceOn = true;   // далі — шлях форми на синтетиці
 $lbu = new Browser('10.8.8.1'); $lbu->req('POST', '/api/auth/register', ['email' => 'kamianets@gmail.com', 'password' => 'Kamianets-2026!']);
 $st = $lbu->req('GET', '/api/lb', null, ['QUERY_STRING' => 'bot=mtve&place=pl1']);
 ok('GET /api/lb: бот mtve — форма, потрібен рахунок, підказка 74-108-61, ще не підключено', $st->status === 200 && ($st->body['bot']['t'] ?? '') === 'form' && ($st->body['bot']['hint'] ?? '') === '74-108-61' && $st->body['conn'] === null, $st->body);
@@ -2110,6 +2112,7 @@ ok('loe: лист на pokaz@loe.lviv.ua, тема й текст — лише «
   && (str_contains($ml[2], base64_encode('0000011111 2222')) || str_contains($ml[2], "\r\n\r\n0000011111 2222")), [$ml[1] ?? null, substr((string)($ml[2] ?? ''), 0, 600)]);
 $pr = LocalBot::probe(); $pr2 = LocalBot::probe(); $hp = (new Browser('10.8.8.10'))->req('GET', '/api/health')->body['lbot']['mtve']['probe'] ?? [];
 ok('проба mtve: вигаданий рахунок 0-0-0 → «не знайдено» (шлях форми працює), раз на версію; /api/health → lbot.mtve.probe', $pr === ['mtve', 'notfound'] && $pr2 === null && ($hp['res'] ?? '') === 'notfound', [$pr, $pr2, $hp]);
+LocalBot::$forceOn = false;
 CabWeb::$http = null;
 Mail::$send = null; Cfg::saveRuntime(array_fill_keys(Mail::KEYS, null));
 

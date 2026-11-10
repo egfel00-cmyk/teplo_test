@@ -20,7 +20,10 @@ final class LocalBot {
     // абонента → «Передати поточні покази водолічильника» → поля лічильників (1–5) → «Зберегти»; показання перевіряє оператор КП (на сайті — пізніше).
     'mtve' => ['t' => 'form', 'kinds' => ['water'], 'org' => 'КП «Міськтепловоденергія»', 'site' => 'mtve.kp.km.ua',
       'start' => 'https://mtve.kp.km.ua/', 'host' => '~(^|\.)mtve\.kp\.km\.ua$~i', 'need' => ['acc'], 'acc' => ['fields' => ['p1', 'p2', 'p3'], 'hint' => '74-108-61'],
-      'win' => [1, 28], 'later' => true],
+      'win' => [1, 28], 'later' => true,
+      // 10.11.2026 (102-а): на живому сайті код абонента перевіряє скрипт сторінки (AJAX, під полями — «Помилковий код абонента»), звичайний GET ?p1&p2&p3
+      // повертає головну без сторінки абонента (проба v2: page/no_form). Ендпоінт скрипта не розбираємо — бота вимкнено, доки не з’явиться звичайний шлях.
+      'off' => 'script'],
     // Чорноморськ: показання холодної води з 25 числа до кінця місяця — у т.ч. на e-mail водоканалу (сайт cvk.od.ua, 10.11.2026)
     // Львівщина, світло: Львівобленерго приймає показники на pokaz@loe.lviv.ua — лист «10-значний код пробіл показник» (приклад «0000011111 2222»;
     // golossokal.com.ua 03.2026, zaxid.net). Вікно — з 28 числа до 3-го наступного. Лише однозонний: формату для зон не знайшли.
@@ -32,8 +35,11 @@ final class LocalBot {
   const NEED = ['acc', 'name', 'addr', 'phone', 'login', 'pass'];
   public static function get(string $id): ?array { return isset(self::BOTS[$id]) ? self::BOTS[$id] + ['id' => $id] : null; }
   public static function prov(string $id): string { return 'L' . $id; }
+  /** Тести: вимкнені (`off`) боти — увімкнути (на стенді вмикає й `lb_base_<бот>` у config.php). */
+  public static bool $forceOn = false;
   public static function ready(string $id): bool {
     $b = self::get($id); if (!$b || Cfg::get('lb_off_' . $id) === true) return false;
+    if (!empty($b['off']) && !self::$forceOn && !Cfg::get('lb_base_' . $id)) return false;
     return $b['t'] === 'mail' ? Mail::on() : class_exists('DOMDocument');
   }
   /** Що бачить застосунок про бота (без секретів). */
@@ -345,7 +351,7 @@ final class LocalBot {
       foreach (Db::q("SELECT prov, COUNT(*) AS c FROM cab_creds WHERE prov LIKE 'L%' GROUP BY prov")->fetchAll() as $x) $conn[substr($x['prov'], 1)] = (int)$x['c'];
     } catch (Throwable $e) {}
     $last = json_decode((string)@file_get_contents(self::lastFile()), true);
-    $bots = []; foreach (self::BOTS as $id => $b) $bots[$id] = ['t' => $b['t'], 'ready' => self::ready($id), 'conn' => $conn[$id] ?? 0, 'jobs' => (object)($jobs[$id] ?? [])] + (is_array($last) && isset($last[$id]) ? ['last' => array_diff_key($last[$id], ['skel' => 1, 'probe' => 1])] + (isset($last[$id]['probe']) ? ['probe' => $last[$id]['probe']] : []) : []);
+    $bots = []; foreach (self::BOTS as $id => $b) $bots[$id] = ['t' => $b['t'], 'ready' => self::ready($id)] + (!empty($b['off']) ? ['off' => $b['off']] : []) + [ 'conn' => $conn[$id] ?? 0, 'jobs' => (object)($jobs[$id] ?? [])] + (is_array($last) && isset($last[$id]) ? ['last' => array_diff_key($last[$id], ['skel' => 1, 'probe' => 1])] + (isset($last[$id]['probe']) ? ['probe' => $last[$id]['probe']] : []) : []);
     return $bots;
   }
 }
