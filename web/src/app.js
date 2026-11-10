@@ -4701,7 +4701,10 @@
     if (!Y().account) return h + '<p class="small muted">' + esc(t('bl_login')) + ' <a href="#login">' + esc(t('bl_login_a')) + '</a></p></section>';
     list = (list || []).filter(function (b) { return b && b.id; });
     var busy = BILLS.busy === ref;
-    h += '<p class="small muted">' + esc(t('bl_sub')) + '</p>';
+    // опис — про свій вид (владелец 10.11: у газу було «тепло й вода окремо»)
+    var bk = ref.charAt(0) === 'h' ? 'heat' : ref.charAt(0) === 'w' ? 'water' : '', bm = ref.charAt(0) === 'm' ? ((S.mrecs || []).filter(function (x) { return x && x.id === ref.slice(2); })[0] || {}).meter : null;
+    if (bm) bk = (smeterById(bm) || {}).kind || '';
+    h += '<p class="small muted" data-key="bl-sub">' + esc(t('bl_sub', { k: bk === 'heat' || bk === 'water' || bk === 'elec' || bk === 'gas' ? t('bl_for_' + bk) : '' })) + '</p>';
     if (list.length) h += '<ul class="docs bcards">' + list.map(function (b, i) { return billCard(ref, b, i, busy); }).join('') + '</ul>';
     // квитанція ХТМ (з 11.2025): тепло наперед до кінця місяця і зняте за попередній — чому «до сплати» не дорівнює теплу за показаннями
     var hp = list.filter(function (b) { return b.auto === 'htm' && R.num(b.pre) > 0; })[0];
@@ -6093,6 +6096,17 @@
 
   // ---------------- маршрутизация ----------------
   // Telegram открывает Mini App с «#tgWebAppData=…» — это не экран, а данные входа: считаем главной (иначе журнал писал «tgWebAppDataquery_id…»)
+  // iOS 26 Safari: після клавіатури visualViewport.offsetTop не скидається — нижні вкладки й «Відгук» «пливуть» угору посеред екрана (WebKit 297779,
+  // Apple forums 800154; владелец 10.11). Поправка: клавіатура закрита, без масштабу, низ видимої області нижче низу макета на > 40 px — зсуваємо їх униз (--nav-shift).
+  (function () {
+    var vv = window.visualViewport; if (!vv) return;
+    var fix = function () {
+      var a = document.activeElement, kb = a && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName), gap = vv.offsetTop + vv.height - window.innerHeight;
+      document.documentElement.style.setProperty('--nav-shift', !kb && vv.scale < 1.01 && Math.abs(gap) > 40 ? Math.round(gap) + 'px' : '0px');
+    };
+    vv.addEventListener('resize', fix); vv.addEventListener('scroll', fix); window.addEventListener('scroll', fix, { passive: true });
+    document.addEventListener('focusout', function () { setTimeout(fix, 400); });
+  })();
   function routeName() { var h = (location.hash || '').replace(/^#/, ''); return /^tgWebApp/.test(h) ? '' : h; }
   function render(keepScroll) {
     if (JRS && JRS.scr !== (routeName() || 'home')) { JRS.scr = routeName() || 'home'; track('screen'); }

@@ -1777,3 +1777,5 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
 .mdocs { margin-top: var(--sp-3); padding-top: var(--sp-3); border-top: 1px solid var(--c-line); }
 .mdocs .docs { margin: 8px 0 0; }
 .mdocs-act { margin-top: 8px; }
+/* iOS 26: поправка положення нижніх вкладок і «Відгук» після клавіатури (--nav-shift з visualViewport) */
+.nav, .fab { translate: 0 var(--nav-shift, 0px); }
