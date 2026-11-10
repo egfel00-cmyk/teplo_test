@@ -6119,9 +6119,14 @@
   // Apple forums 800154; владелец 10.11). Поправка: клавіатура закрита, без масштабу, низ видимої області нижче низу макета на > 40 px — зсуваємо їх униз (--nav-shift).
   (function () {
     var vv = window.visualViewport; if (!vv) return;
+    var last = 0;
     var fix = function () {
       var a = document.activeElement, kb = a && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName), gap = vv.offsetTop + vv.height - window.innerHeight;
-      document.documentElement.style.setProperty('--nav-shift', !kb && vv.scale < 1.01 && Math.abs(gap) > 40 ? Math.round(gap) + 'px' : '0px');
+      var sh = !kb && vv.scale < 1.01 && Math.abs(gap) > 40 ? Math.round(gap) : 0;
+      document.documentElement.style.setProperty('--nav-shift', sh + 'px');
+      // у журнал (/api/health → errs.navShift): чи спрацьовує поправка на справжніх iPhone і з якими висотами — перевірка без телефона власника (89-а)
+      if (sh && sh !== last) try { track('nav_shift', { g: sh, ih: Math.round(window.innerHeight), vh: Math.round(vv.height), ot: Math.round(vv.offsetTop) }); } catch (e) { /* журнал ще не готовий */ }
+      last = sh;
     };
     vv.addEventListener('resize', fix); vv.addEventListener('scroll', fix); window.addEventListener('scroll', fix, { passive: true });
     document.addEventListener('focusout', function () { setTimeout(fix, 400); });

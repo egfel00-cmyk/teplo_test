@@ -151,7 +151,14 @@ final class Journal {
     $dev = array_map('count', $dev); arsort($dev);
     $people = 0; foreach (Db::q('SELECT DISTINCT vid FROM visits WHERE day >= ?', [$from])->fetchAll() as $v) if (!isset($int[(string)$v['vid']])) $people++;
     $withEv = (int)(Db::one("SELECT COUNT(DISTINCT vid) AS n FROM events WHERE day >= ?$ex", [$from])['n'] ?? 0);
-    return ['from' => $from, 'people' => $people, 'journal' => $withEv, 'withErr' => count(array_diff_key($errVids, $int)), 'js' => $js, 'api' => $api, 'toasts' => $toasts, 'dev' => (object)$dev];
+    // iOS 26: поправка нижніх вкладок після клавіатури спрацювала (nav_shift) — скільки разів, у скількох, зсув і висоти, без людей (89-а)
+    $ns = ['n' => 0, 'vids' => 0, 'last' => null, 'g' => []]; $nv = [];
+    foreach (Db::q("SELECT vid, props, at FROM events WHERE day >= ? AND name = 'nav_shift'$ex ORDER BY id", [$from])->fetchAll() as $e) {
+      $p = $pv($e['props']); $ns['n']++; $nv[(string)$e['vid']] = 1; $ns['last'] = (string)$e['at'];
+      if (count($ns['g']) < 8) $ns['g'][] = ['g' => (int)($p['g'] ?? 0), 'ih' => (int)($p['ih'] ?? 0), 'vh' => (int)($p['vh'] ?? 0), 'ot' => (int)($p['ot'] ?? 0)];
+    }
+    $ns['vids'] = count($nv);
+    return ['from' => $from, 'people' => $people, 'journal' => $withEv, 'withErr' => count(array_diff_key($errVids, $int)), 'js' => $js, 'api' => $api, 'toasts' => $toasts, 'dev' => (object)$dev, 'navShift' => $ns];
   }
   public static function cleanup(?int $now = null): int {
     $d = Visits::day(($now ?? time()) - self::KEEP_DAYS * 86400);

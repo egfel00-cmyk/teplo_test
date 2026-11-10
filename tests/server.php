@@ -1626,6 +1626,9 @@ ok('довідник: усі громади й пункти є в КАТОТТГ
   ok('ошибки за дни одной сводкой: JS — текст, место, 3 браузера; API — /state 409; тост «Не вдалося зберегти» (3 браузера) есть, личный (1 браузер) — нет',
     ($j0['m'] ?? '') === "Cannot read properties of undefined (reading 'vals')" && ($j0['at'] ?? '') === 'site.html:12:3456' && ($j0['vids'] ?? 0) === 3 && ($j0['scr'][0] ?? '') === 'water'
     && array_filter($es['api'], fn($a) => $a['p'] === '/state' && $a['c'] === 409) && str_contains($tj, 'Не вдалося зберегти') && !str_contains($tj, 'Мамина') && $es['withErr'] >= 3, $es);
+  $ins('navvidIOS01', 'nav_shift', 'place-main', ['g' => 312, 'ih' => 532, 'vh' => 844, 'ot' => 0]); $ins('navvidIOS01', 'nav_shift', 'home', ['g' => 290, 'ih' => 554, 'vh' => 844, 'ot' => 0]);
+  $nsh = Journal::errSummary(1)['navShift'] ?? [];
+  ok('/api/health → errs.navShift: поправка вкладок iOS спрацювала 2 рази в 1 браузері, зсув і висоти — без людей', ($nsh['n'] ?? 0) === 2 && $nsh['vids'] === 1 && $nsh['g'][0] === ['g' => 312, 'ih' => 532, 'vh' => 844, 'ot' => 0], $nsh);
   Db::q("DELETE FROM events WHERE sid = 'errsum1'"); }
 echo "\nВыход:\n";
 $phone->req('POST', '/api/auth/logout');
