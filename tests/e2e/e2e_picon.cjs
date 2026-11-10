@@ -51,7 +51,12 @@ const U = 'http://127.0.0.1:8013/';
         return { gap: Math.round(Math.max(de.scrollHeight, innerHeight) - rb), keys: [...f.querySelectorAll('a,button')].map(x => x.dataset.key), inMain: !!f.closest('main'), note: (f.querySelector('.af-note') || {}).textContent || '' }; });
       ok(vw + ': ' + r + ' — подвал притиснутий до низу сторінки: політика, умови, cookie, рік і «не є офіційним»', fp && fp.gap <= 1 && !fp.inMain && fp.keys.join() === 'lpf-privacy,lpf-terms,lpf-cookie' && /© 20\d\d Лічильники/.test(fp.note) && /не є офіційним/.test(fp.note), fp);
     }
-    if (vw >= 960) { await p.goto(U + '#help'); await p.waitForTimeout(400); await p.screenshot({ path: '/tmp/shots/foot_help_1280.png' }); await p.goto(U + '#home'); await p.waitForTimeout(400); }
+    if (vw >= 960) { await p.goto(U + '#help'); await p.waitForTimeout(400); await p.screenshot({ path: '/tmp/shots/foot_help_1280.png' });
+      // 93-я (власник): на широкому рядок «© … · Незалежний сервіс…» — одним рядком; «Відгук» не налазить на подвал
+      const fn = await p.evaluate(() => { const f = document.querySelector('[data-key=app-foot]'), n = f.querySelector('.af-note'), fab = document.querySelector('.fab'), cs = getComputedStyle(f);
+        return { lines: Math.round(n.getBoundingClientRect().height / parseFloat(getComputedStyle(n).lineHeight)), gap: fab ? Math.round(fab.getBoundingClientRect().left - (f.getBoundingClientRect().right - parseFloat(cs.paddingRight))) : 99 }; });
+      ok(vw + ': подвал — «не є офіційним» одним рядком, «Відгук» праворуч не налазить', fn.lines === 1 && fn.gap >= 16, fn);
+      await p.goto(U + '#home'); await p.waitForTimeout(400); }
     // «Нараховано ХТМ»: стрілка праворуч, висота шапки не змінюється при відкритті
     await p.goto(U + '#rec-r1'); await p.waitForTimeout(800);
     const hz = await p.evaluate(async () => { const d = document.querySelector('details.hacc'); if (!d) return null; const s = d.querySelector('summary'), ch = s.querySelector('.pacc-chev');
@@ -61,6 +66,11 @@ const U = 'http://127.0.0.1:8013/';
     // лендинг: коротка клітинка «Ціни вашої громади» з громадами довідника по областях
     const lp = await (await p.context().browser().newContext({ viewport: { width: vw, height: 900 }, locale: 'uk-UA' })).newPage();
     await lp.goto(U); await lp.waitForTimeout(900);
+    // 93-я: на телефоні плашки героя всередині картки й закривають край телефона (≤ 40 px) — його головну з 4 лічильниками видно
+    const tl = await lp.evaluate(() => { const h = document.querySelector('.lp-hero').getBoundingClientRect(), s = document.querySelector('.lpp-screen').getBoundingClientRect();
+      return [...document.querySelectorAll('.lp-tile')].map(t => { const r = t.getBoundingClientRect(), left = t.classList.contains('t-heat') || t.classList.contains('t-elec');
+        return { inHero: r.left >= h.left && r.right <= h.right, cover: Math.round(left ? r.right - s.left : s.right - r.left) }; }); });
+    ok(vw + ': лендинг — 4 плашки героя в картці' + (vw < 600 ? ', на телефоні закривають ≤ 40 px екрана' : ''), tl.length === 4 && tl.every(x => x.inHero && (vw >= 600 || x.cover <= 40)), tl);
     const pr = await lp.evaluate(() => { const c = document.querySelector('[data-key=lp-pr]'); return c ? { rows: c.querySelectorAll('.lpv-r').length, tot: (c.querySelector('.lpv-tot') || {}).textContent || '', h: c.querySelector('h3').textContent } : null; });
     ok(vw + ': лендинг — клітинка «Ціни вашої громади»: 4 області з числами громад і підсумок', pr && pr.h === 'Ціни вашої громади' && pr.rows === 4 && /\d+ громад у довіднику/.test(pr.tot), pr);
     // 91-а (власник): у нижній панелі — цілі прилади, що перетікають один в один (корпус анімується SMIL), підписи 4 видів; в автотестах стоїть теплолічильник

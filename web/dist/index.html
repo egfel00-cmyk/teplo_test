@@ -1394,6 +1394,18 @@ details.tbl-acc[open] > .tbl-wrap { margin-top: 12px; }
 .lp-tile .elcd .el-hd { font-size: 10px; margin-bottom: 2px; } .lp-tile .el-led { width: 7px; height: 7px; } .lp-tile .el-u { font-size: 11px; }
 .lp-tile .wdrum, .lp-tile .gdrum { padding: 6px 7px; gap: 5px; border-width: 3px; }
 .lp-tile .wd-win { gap: 1px; padding: 3px; } .lp-tile .wd-c { font-size: clamp(9px, 6.6cqw, 18px); } .lp-tile .wd-u { font-size: 11px; }
+/* 93-я: на телефоні плашки менші й висять за краями телефона — не закривають його головну (4 картки, власник 92-а: «інтерфейс ближче до справжнього») */
+@media (max-width: 599px) {
+  .lp-tile { width: 104px; }
+  .t-heat { left: -7px; top: 40px; } .t-hot { right: -7px; top: 150px; } .t-elec { left: -8px; top: 262px; } .t-gas { right: -7px; top: 352px; }
+  .lp-fig { padding: 6px 6px 5px; border-radius: 13px; }
+  .lp-fig figcaption { font-size: 12px; }
+  .lp-tile .lcd { padding: 5px 7px 4px; border-width: 3px; border-radius: 8px; }
+  .lp-tile .lcd svg.seg { height: 19px; }
+  .lp-tile .lcd .tag, .lp-tile .el-u, .lp-tile .wd-u { font-size: 10px; } .lp-tile .elcd .el-hd { font-size: 9px; }
+  .lp-tile .wdrum, .lp-tile .gdrum { padding: 4px 5px; gap: 4px; border-width: 2px; }
+  .lp-tile .gd-side { display: none; }   /* G4 і полум'я — у підписі й на телефоні; інакше ролики налазять один на одний */
+}
 
 /* секції під сценою */
 .lp-sec { max-width: 1180px; margin: 0 auto; padding: 56px 20px 0; }
@@ -1598,11 +1610,12 @@ details.tbl-acc[open] > .tbl-wrap { margin-top: 12px; }
 @media (min-width: 960px) {
   .app { grid-template-rows: auto 1fr auto; }
   .app-foot { display: flex; flex-wrap: wrap; align-items: center; gap: 4px var(--sp-5); grid-column: 2 / -1; max-width: calc(1040px - 2 * var(--sp-6)); margin: var(--sp-5) var(--sp-6) 0; padding: var(--sp-3) 0 var(--sp-4);
-    padding-right: 180px; /* «Відгук» праворуч унизу не закриває посилань */ border-top: 1px solid var(--c-line); font-size: 15px; color: var(--c-ink-2); }
-  .app.bare-app:not(.with-side) .app-foot { grid-column: 1 / -1; }
+    /* «Відгук» (fixed, праворуч унизу, ~103 px + 24 px від краю) не закриває посилань: поле справа — лише коли кнопка заходить на подвал (93-я, власник: на широкому — в один рядок) */
+    padding-right: clamp(0px, calc(1400px - 100vw), 128px); border-top: 1px solid var(--c-line); font-size: 15px; color: var(--c-ink-2); }
+  .app.bare-app:not(.with-side) .app-foot { grid-column: 1 / -1; padding-right: clamp(0px, calc(1176px - 100vw), 128px); }
   .app-foot a, .app-foot .linkbtn { display: inline-flex; align-items: center; min-height: 40px; color: var(--c-ink-2); text-decoration: none; font: inherit; }
   .app-foot a:hover, .app-foot .linkbtn:hover { color: var(--c-ink); text-decoration: underline; }
-  .af-note { flex: 1 0 100%; margin: 2px 0 0; font-size: 14px; line-height: 1.45; color: var(--c-ink-2); text-wrap: pretty; }
+  .af-note { flex: 1 0 100%; max-width: none; margin: 2px 0 0; font-size: 14px; line-height: 1.45; color: var(--c-ink-2); text-wrap: pretty; }
   .af-note span:first-child { margin-right: var(--sp-4); white-space: nowrap; }
 }
 @media (max-width: 380px) { .lpf-in { grid-template-columns: 1fr; } }
@@ -7635,7 +7648,7 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
   }
   // ---------- бот Водоканалу: відповіді, переслані нашому боту (/api/vk/replies) ----------
   var VKR = { list: null, at: 0, busy: false }, VKERR = {};
-  function ourBot() { return (Y()._cfg && Y()._cfg.botUsername) || 'heatcount_bot'; }
+  function ourBot() { return (Y()._cfg && Y()._cfg.botUsername) || 'peredai_com_ua_bot'; }   // 07.11 бот переїхав; на бою — з /api/config
   function vkWhen(sec) { var d = new Date(sec * 1000); return fmtDate(d.toISOString().slice(0, 10)) + ', ' + String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0'); }
   /** Відповідь бота після натискання «Відправити» цього запису (або та, що підтвердила). */
   function vkReplyFor(rec) {

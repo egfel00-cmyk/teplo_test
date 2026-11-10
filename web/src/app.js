@@ -1237,7 +1237,7 @@
   }
   // ---------- бот Водоканалу: відповіді, переслані нашому боту (/api/vk/replies) ----------
   var VKR = { list: null, at: 0, busy: false }, VKERR = {};
-  function ourBot() { return (Y()._cfg && Y()._cfg.botUsername) || 'heatcount_bot'; }
+  function ourBot() { return (Y()._cfg && Y()._cfg.botUsername) || 'peredai_com_ua_bot'; }   // 07.11 бот переїхав; на бою — з /api/config
   function vkWhen(sec) { var d = new Date(sec * 1000); return fmtDate(d.toISOString().slice(0, 10)) + ', ' + String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0'); }
   /** Відповідь бота після натискання «Відправити» цього запису (або та, що підтвердила). */
   function vkReplyFor(rec) {
