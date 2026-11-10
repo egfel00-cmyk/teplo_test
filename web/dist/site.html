@@ -1820,6 +1820,34 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
 .rh-copy { display: flex; flex-wrap: wrap; gap: 4px 18px; margin: 2px 0 0; }
 .rh-copy span { display: inline-flex; align-items: center; gap: 6px; color: var(--c-ink-2); }
 .rh-copy b { color: var(--c-ink); }
+/* 89-а (власник 10.11: «зроби презентабельніше»): герой і фінальний заклик — лицьова панель квартирного приладу. Литий графітово-зелений пластик
+   одним тоном (світліше вгорі — як під лампою в коридорі), дрібна фактура литва, шов кришки по периметру й чотири гвинти. Це матеріал корпусу
+   (як ролики й ЖК — у списку MATERIAL лінтера), не прикраса: без сяйв і переливів між кольорами. */
+.lp .lp-plate { --plate-r: 28px; --seam: 8px; border-radius: var(--plate-r); background-color: #18221E;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 .05 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"),
+    radial-gradient(120% 70% at 28% 0%, rgba(255, 255, 255, .07) 0%, rgba(255, 255, 255, 0) 62%), linear-gradient(180deg, #283832 0%, #1A2621 48%, #101814 100%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .10), inset 0 -2px 0 rgba(0, 0, 0, .45), 0 1px 2px rgba(23, 33, 30, .18); }
+.lp .lp-plate::before { content: ''; position: absolute; inset: var(--seam); border-radius: calc(var(--plate-r) - var(--seam)); pointer-events: none; z-index: 0;
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .55), 0 0 0 1px rgba(255, 255, 255, .06); }
+.lp-plate .lp-in, .lp-plate > h2, .lp-plate > p, .lp-plate > .lp-ctas { position: relative; z-index: 1; }
+.lp-hero.lp-plate { padding-top: 48px; }
+.lp-screw { position: absolute; z-index: 0; width: 16px; height: 16px; border-radius: 50%; pointer-events: none;
+  background: radial-gradient(circle at 34% 30%, #B3BEB8 0%, #76817C 52%, #4A5450 100%);
+  box-shadow: inset 0 -1px 1px rgba(0, 0, 0, .45), 0 0 0 2px rgba(0, 0, 0, .38), 0 1px 0 2px rgba(255, 255, 255, .05); }
+.lp-screw::before, .lp-screw::after { content: ''; position: absolute; left: 50%; top: 50%; width: 9px; height: 2px; margin: -1px 0 0 -4.5px; border-radius: 1px; background: #29312E;
+  box-shadow: 0 1px 0 rgba(255, 255, 255, .22); transform: rotate(var(--sr, 20deg)); }
+.lp-screw::after { transform: rotate(calc(var(--sr, 20deg) + 90deg)); }
+.lp-screw.s1 { top: 18px; left: 18px; --sr: 17deg; } .lp-screw.s2 { top: 18px; right: 18px; --sr: -34deg; }
+.lp-screw.s3 { bottom: 18px; left: 18px; --sr: 62deg; } .lp-screw.s4 { bottom: 18px; right: 18px; --sr: 4deg; }
+:root[data-theme="dark"] .lp .lp-plate { box-shadow: inset 0 1px 0 rgba(255, 255, 255, .10), inset 0 -2px 0 rgba(0, 0, 0, .45), inset 0 0 0 1px rgba(255, 255, 255, .07); }
+@media (min-width: 600px) { .lp .lp-plate { --plate-r: 34px; --seam: 10px; } .lp-hero.lp-plate { padding-top: 56px; } .lp-screw.s1, .lp-screw.s2 { top: 22px; } .lp-screw.s3, .lp-screw.s4 { bottom: 22px; } .lp-screw.s1, .lp-screw.s3 { left: 22px; } .lp-screw.s2, .lp-screw.s4 { right: 22px; } }
+@media (min-width: 960px) { .lp .lp-plate { --plate-r: 40px; --seam: 12px; } .lp-hero.lp-plate { padding-top: 72px; } .lp-screw { width: 18px; height: 18px; } .lp-screw.s1, .lp-screw.s2 { top: 26px; } .lp-screw.s3, .lp-screw.s4 { bottom: 26px; } .lp-screw.s1, .lp-screw.s3 { left: 26px; } .lp-screw.s2, .lp-screw.s4 { right: 26px; } }
+/* кроки: віконце з ілюстрацією — той самий корпус, світлий (сірo-зелений пластик лічильника), зі швом кришки */
+.lp-plate-l, .lp-art-w { background-color: #E1E8E4;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 .05 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"),
+    linear-gradient(180deg, #E9EFEC 0%, #DCE4E0 100%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .8), inset 0 -1px 0 rgba(23, 33, 30, .10), inset 0 0 0 1px rgba(23, 33, 30, .08); }
+:root[data-theme="dark"] .lp-art-w { background-color: #1C2622; background-image: linear-gradient(180deg, #212D28 0%, #18211D 100%); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .06), inset 0 0 0 1px rgba(255, 255, 255, .05); }
 
 </style>
 <style>.top { padding-top: max(12px, env(safe-area-inset-top)); }</style>
@@ -9363,8 +9391,10 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
       card('elec', t('kd_elec'), '<div class="lpp-el"><span>10420</span><i>kWh</i></div>', t('lp_ph_soon'), 'info') +
       '<div class="lpp-nav">' + ['home', 'history', 'chart', 'prefs'].map(function (n, i) { return '<span' + (i ? '' : ' class="on"') + '>' + ico(n, 15) + '</span>'; }).join('') + '</div></div></div>';
   }
+  /** Лицьова панель приладу (89-а): чотири гвинти по кутах — декор, читачам екрана не видно. */
+  function lpScrews() { return '<span class="lp-screw s1" aria-hidden="true"></span><span class="lp-screw s2" aria-hidden="true"></span><span class="lp-screw s3" aria-hidden="true"></span><span class="lp-screw s4" aria-hidden="true"></span>'; }
   function lpHero(o) {
-    return '<section class="lp-hero" data-key="lp-hero"><div class="lp-in"><div class="lp-copy">' +
+    return '<section class="lp-hero lp-plate" data-key="lp-hero">' + lpScrews() + '<div class="lp-in"><div class="lp-copy">' +
       (o.badge ? '<p class="lp-badge">' + esc(o.badge) + '</p>' : '') +
       '<h1 class="lp-h1">' + o.h1 + '</h1><p class="lp-lead">' + esc(o.lead) + '</p><div class="lp-ctas">' + o.cta + '</div>' + (o.after || '') + '</div>' +
       // сцену принимают за кнопку (журнал 06.11: 5 нажатий подряд) — ведёт туда же, куда «Почати»; с клавиатуры — только сама кнопка
@@ -9460,7 +9490,7 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
         cta: lpCta('welcome-start', t('lp_cta')) + (login ? '<a class="lp-link" href="#login" data-key="welcome-login">' + esc(t('w_login')) + '</a>' : ''),
         after: '<ul class="lp-trust">' + ['lp_tr1', 'lp_tr2', 'lp_tr3'].map(function (k) { return '<li>' + ico('check', 16) + '<span>' + esc(t(k)) + '</span></li>'; }).join('') + '</ul>' }) +
       lpDest() + lpSteps() + lpBento() +
-      '<section class="lp-end" data-key="lp-end"><h2>' + esc(t('lp_end_t')) + '</h2><p>' + esc(t('lp_end')) + '</p><div class="lp-ctas">' + lpCta('welcome-start-end', t('lp_cta')) + '</div></section>' +
+      '<section class="lp-end lp-plate" data-key="lp-end">' + lpScrews() + '<h2>' + esc(t('lp_end_t')) + '</h2><p>' + esc(t('lp_end')) + '</p><div class="lp-ctas">' + lpCta('welcome-start-end', t('lp_cta')) + '</div></section>' +
       '<p class="lp-fine small muted">' + esc(fine) + '</p>' + lpFoot(login) + '</div>' };
   };
   /** «Куди передати» для тепла: лише кабінет ХТМ, 5–25 числа; є перевірені показання — до покрокової передачі. */
@@ -12534,7 +12564,8 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
     paccAnim(d, !paccWant(d));   // посеред руху — у протилежний бік від поточного наміру
   });
   function afterRender(r) {
-    if (r !== LIVE.r) { LIVE.r = r; LIVE.t0 = /^(heat|water-hot|water-cold|elec|gas)$/.test(r) ? Date.now() : 0; }
+    // табло докручуються при вході: сторінки лічильників і сцена лендинга (89-а — один рух на лендингу, при reduced-motion — ні)
+    if (r !== LIVE.r) { LIVE.r = r; LIVE.t0 = /^(heat|water-hot|water-cold|elec|gas|welcome)$/.test(r) ? Date.now() : 0; }
     if (LIVE.t0 && Date.now() - LIVE.t0 < LIVE_MS) liveDigits(document.getElementById('main'), Date.now() - LIVE.t0);
     Array.prototype.forEach.call(document.querySelectorAll(ACC_SEL), accFoot);
     Array.prototype.forEach.call(document.querySelectorAll('details.tips-box > summary'), function (sm) { if (!sm.querySelector('.pacc-chev')) sm.insertAdjacentHTML('beforeend', ico('chev', 18, 'pacc-chev')); });

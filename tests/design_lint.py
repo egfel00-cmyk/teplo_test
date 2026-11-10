@@ -14,8 +14,8 @@ bad = []
 # правила без вложенности: селектор { тело }
 rules = re.findall(r'([^{}]+)\{([^{}]*)\}', css)
 
-# табло и макеты приборов — «материал» (ролики, ЖК, жёлтая панель газа): там градиенты, мелкий текст и трекинг — часть предмета
-MATERIAL = re.compile(r'\.(lcd|elcd|el-|wd-|wdrum|gdrum|gd-|drum|lpp-|kprev|whero|lp-tile|lp-fig|bc-paper|bc-fold|pv-bar|phd-over|ph-fields|gpv-|lpg-|seg\b|kind-ill|phd-beam|phd-scan)')
+# табло и макеты приборов — «материал» (ролики, ЖК, жёлтая панель газа; 89-я — лицьова панель приладу на лендингу: lp-plate, lp-screw): там градиенты, мелкий текст и трекинг — часть предмета
+MATERIAL = re.compile(r'\.(lcd|elcd|el-|wd-|wdrum|gdrum|gd-|drum|lpp-|kprev|whero|lp-tile|lp-fig|bc-paper|bc-fold|pv-bar|phd-over|ph-fields|gpv-|lpg-|seg\b|kind-ill|phd-beam|phd-scan|lp-plate|lp-screw|lp-art-w)')
 # живые состояния: идёт распознавание/загрузка, мигает светодиод счётчика, крутится индикатор занятости
 # + lpMarq — стрічка постачальників на лендингу (решение владельца 10.11: «пусть плывут»)
 LIVE_ANIM = re.compile(r'\b(spin|elblink|phd-shine|phd-pulse|phd-beam|phd-drop|wdRoll|lpMarq)\b')
