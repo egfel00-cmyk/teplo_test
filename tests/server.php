@@ -922,6 +922,28 @@ $states = Db::q('SELECT data FROM user_state')->fetchAll(); $nonEmpty = count(ar
 ok('«сохранили данные» — только с счётчиками или показаниями (пустое состояние — не данные)', $ovm['withData'] === $nonEmpty && $ovm['withData'] === $ovm['tracking']['withData'] && array_sum(Admin::stateSummary('{"v":1,"lang":"uk","places":[]}')['recs']) === 0, [$ovm['withData'], $nonEmpty, count($states)]);
 // «входили за 7 дней»: вход давно, но открывал сайт вошедшим (visits) — активен
 Db::q("UPDATE users SET last_login_at = ? WHERE email = 'many@example.ua'", [gmdate('c', time() - 30 * 86400)]);
+// «Звідки й скільки» (89-а): пункт, постачальник, розхід за місяць, ціна й сума — без e-mail і адрес
+GeoStats::$today = '2026-11-10';
+$geo = $boss->req('GET', '/api/admin/geo', null, ['QUERY_STRING' => 'all=1']);
+$gj = json_encode($geo->body, JSON_UNESCAPED_UNICODE);
+ok('гео: без e-mail, імен і адрес (лише пункт)', $geo->status === 200 && !str_contains($gj, '@example') && !str_contains($gj, 'Сумська') && !str_contains($gj, 'Мамина'), mb_substr($gj, 0, 300));
+$gp = array_values(array_filter($geo->body['people'], fn($x) => count($x['places']) === 2))[0] ?? null;
+$gm = $gp['places'][0] ?? []; $g2 = $gp['places'][1] ?? [];
+ok('гео: квартира з адресою «вул. Сумська» — Харків (Харківська), без адреси — where null', ($gm['where']['n'] ?? '') === 'Харків' && ($gm['where']['oblast'] ?? '') === 'Харківська' && $g2['where'] === null, [$gm['where'] ?? null, $g2['where'] ?? null]);
+ok('гео: тепло — 0,5 Гкал за 30 днів → ≈0,507 на місяць, ціна ХТМ загальна', abs(($gm['kinds']['heat']['use'] ?? 0) - 0.507) < 0.001 && $gm['kinds']['heat']['src'] === 'def' && $gm['kinds']['heat']['recs'] === 2, $gm['kinds']['heat'] ?? null);
+ok('гео: холодна вода — 5 м³ за 75 днів (зі стартовими) ≈2,03 на місяць × (49,446 + 20,82)', abs(($gm['kinds']['cold']['use'] ?? 0) - 2.027) < 0.001 && abs($gm['kinds']['cold']['price'] - 70.266) < 0.001 && $gm['kinds']['cold']['recs'] === 1, $gm['kinds']['cold'] ?? null);
+ok('гео: прибрана гаряча й видалений газ — не рахуються; світло з одним показанням — без розходу', !isset($gm['kinds']['hot']) && !isset($gm['kinds']['gas']) && $gm['kinds']['elec']['use'] === null && $gm['kinds']['elec']['recs'] === 1, array_keys($gm['kinds'] ?? []));
+ok('гео: газ у квартирі без адреси — 2,5 м³ за 31 день, 7,96 → сума ≈19,5 грн', abs(($g2['kinds']['gas']['use'] ?? 0) - 2.452) < 0.001 && abs($g2['kinds']['gas']['sum'] - 19.52) < 0.01, $g2['kinds']['gas'] ?? null);
+$gk = $geo->body['regions'][0] ?? []; $gpv = array_values(array_filter($geo->body['providers'], fn($x) => $x['kind'] === 'heat' && $x['org']))[0] ?? [];
+ok('гео: зведення — область → громада → пункт, постачальник тепла (ХТМ) і середні', ($gk['r'] ?? '') === 'kh' && ($gk['hromadas'][0]['settlements'][0]['n'] ?? '') === 'Харків'
+  && str_contains((string)($gpv['org'] ?? ''), 'теплов') && $gpv['n'] >= 1 && $gpv['avgSum'] > 0 && $geo->body['totals']['noAddr'] >= 1, [$gk['name'] ?? null, $gpv]);
+$geo0 = $boss->req('GET', '/api/admin/geo')->body;
+$gin = GeoStats::internalUsers();
+ok('гео: без all — свої (адмін) не рахуються', count($gin) >= 1 && !array_filter($geo0['people'], fn($x) => isset($gin[$x['id']])) && count($geo0['people']) <= count($geo->body['people']), [$geo0['totals'], array_keys($gin)]);
+ok('гео: не адмін — 403', $mv->req('GET', '/api/admin/geo')->status === 403);
+ok('гео: ціна громади не з Харкова невідома — none, своя з платіжки — own', GeoStats::prices([], ['prov' => ['water' => ['supply' => 30, 'drain' => 20]]], ['water' => ['org' => 'КП', 'supply' => null]])['cold'] === [50.0, 'own']
+  && GeoStats::prices([], [], ['water' => ['org' => 'КП', 'supply' => null], 'heat' => ['org' => null]])['cold'][1] === 'none' && GeoStats::prices([], [], ['water' => ['org' => 'КП', 'supply' => 40.5, 'drain' => 20]])['cold'] === [60.5, 'dir']);
+GeoStats::$today = null;
 $a0 = $boss->req('GET', '/api/admin/overview')->body['activeWeek'];
 Db::q("UPDATE users SET last_login_at = ? WHERE email = 'many@example.ua'", [gmdate('c', time() - 30 * 86400)]); Db::q("DELETE FROM visits WHERE user_id = (SELECT id FROM users WHERE email = 'many@example.ua')");
 $a1 = $boss->req('GET', '/api/admin/overview')->body['activeWeek'];

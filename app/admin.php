@@ -232,6 +232,7 @@ final class Admin {
       // почта (81-я): проверить тестовым письмом и только потом сохранить; clear — удалить
       case 'POST /api/admin/settings/mail': return Mail::adminSave($in) + ['settings' => self::settings()];
       case 'GET /api/admin/devices': return Visits::summary((int)($q['days'] ?? 30), !empty($q['all']));
+      case 'GET /api/admin/geo': return GeoStats::report(!empty($q['all']));   // звідки люди, постачальники, розхід і суми (без e-mail і адрес)
       case 'GET /api/admin/journal': return Journal::sessions((int)($q['days'] ?? 7), !empty($q['all']));
       case 'GET /api/admin/journal/session': return Journal::session((string)($q['vid'] ?? ''), (string)($q['sid'] ?? ''));
       case 'POST /api/admin/journal/tag': Journal::tag((string)($in['vid'] ?? ''), (string)($in['tag'] ?? '')); return ['ok' => true];
@@ -567,5 +568,208 @@ final class Weather {
     if (!$out) throw new HttpError(502, 'weather_unavailable', ['human' => 'Сервис погоды не ответил.']);
     @file_put_contents($f, json_encode($out));
     return ['days' => $out, 'cached' => false];
+  }
+}
+
+/** «Звідки й скільки» (89-а, власник 10.11): хто з якого пункту, громади й області (пункт квартири p.city / p.settle → КАТОТТГ), з якими постачальниками
+ *  (Providers::kinds пункту), скільки показань, який розхід за місяць і яка виходить ціна й сума — сводно й по людині. Без e-mail, імен і адрес: лише пункт.
+ *  Ціна за одиницю — як у застосунку: своя у квартири (p.prov, p.gasPrice) → довідник громади → загальна (Харків: ХТМ, Харківводоканал; світло 4,32; газ 7,96).
+ *  GET /api/admin/geo[?all=1] — без своїх і тестових акаунтів (адміни, браузери з позначкою «я/тест»), all=1 — усі. */
+final class GeoStats {
+  const KINDS = ['heat', 'hot', 'cold', 'elec', 'gas'];
+  const UNIT = ['heat' => 'Гкал', 'hot' => 'м³', 'cold' => 'м³', 'elec' => 'кВт·год', 'gas' => 'м³'];
+  // загальні ціни застосунку: rules.js C.TARIFF (ХТМ), water.js HOT і TARIFFS (Харківводоканал), elec.js (світло 4,32, газ 7,96)
+  const DEF = ['heat' => 1539.50, 'hot' => 86.32, 'elec' => 4.32, 'gas' => 7.96];
+  const WATER = [['2000-01-01', 16.032, 8.484], ['2026-10-01', 49.446, 20.820], ['2027-01-01', 57.504, 27.992]];
+  public static ?string $today = null;
+
+  private static function num($v): ?float {
+    if ($v === null || $v === '' || is_bool($v) || is_array($v)) return null;
+    $s = str_replace([',', ' '], ['.', ''], (string)$v); return is_numeric($s) ? (float)$s : null;
+  }
+  private static function today(): string { return self::$today ?? gmdate('Y-m-d'); }
+  /** Розхід за місяць: [[дата, значення]] за останній рік від останньої точки; менше 20 днів чи лічильник «назад» — null. */
+  public static function rate(array $pts): ?float {
+    $pts = array_values(array_filter($pts, fn($x) => preg_match('/^\d{4}-\d\d-\d\d/', (string)$x[0]) && $x[1] !== null));
+    if (count($pts) < 2) return null;
+    usort($pts, fn($a, $b) => strcmp($a[0], $b[0]));
+    $last = $pts[count($pts) - 1]; $from = gmdate('Y-m-d', strtotime(substr($last[0], 0, 10) . ' -365 days'));
+    $pts = array_values(array_filter($pts, fn($x) => $x[0] >= $from)); $first = $pts[0];
+    $days = (strtotime(substr($last[0], 0, 10)) - strtotime(substr($first[0], 0, 10))) / 86400; $d = $last[1] - $first[1];
+    if ($days < 20 || $d < 0) return null;
+    return $d / $days * 30.4;
+  }
+  /** Пункт квартири: обраний зі списку (p.city), підтверджений (p.settle) чи знайдений за рядком адреси. null — адреси немає. */
+  private static array $mc = [];
+  public static function where(array $p): ?array {
+    $addr = trim((string)($p['address'] ?? '')); $n = $h = null; $how = null;
+    $c = is_array($p['city'] ?? null) ? $p['city'] : null; $st = is_array($p['settle'] ?? null) ? $p['settle'] : null;
+    if ($c && !empty($c['n']) && !empty($c['h'])) { $n = (string)$c['n']; $h = (string)$c['h']; $how = 'city'; }
+    elseif ($st && !empty($st['n']) && !empty($st['h']) && trim((string)($st['a'] ?? '')) === $addr) { $n = (string)$st['n']; $h = (string)$st['h']; $how = 'settle'; }
+    if ($n === null && $addr === '') return null;
+    $key = $addr . '|' . $n . '|' . $h;
+    $m = self::$mc[$key] ?? (self::$mc[$key] = Providers::match($addr !== '' ? $addr : (string)$n, $n, $h) ?? []);
+    if (!isset($m['p'])) return ['how' => $m ? 'ambiguous' : 'unknown'];
+    $pp = $m['p']; $r = (string)($pp['r'] ?? 'kh');
+    return ['n' => $pp['n'], 'h' => $pp['h'], 'r' => $r, 'c' => $pp['c'], 'hromada' => $pp['hromada'], 'district' => $r === 'ky' ? '' : $pp['district'],
+      'oblast' => Providers::REGIONS[$r] ?? '', 'how' => $how ?? (string)$m['how'], 'p' => $pp];
+  }
+  /** Ціна за одиницю по видах для квартири: [вид => [ціна|null, own|dir|def|none]]. */
+  public static function prices(array $s, array $p, ?array $kinds): array {
+    $pv = (array)($p['prov'] ?? []); $out = []; $outside = $kinds !== null;   // пункт відомий: невідома ціна громади — не підставляємо харківську
+    // тепло
+    $own = self::num($pv['heat']['price'] ?? null); $d = $kinds['heat'] ?? null; $dhtm = $d && ($d['via'] ?? '') === 'htm';
+    if ($own > 0) $out['heat'] = [$own, 'own'];
+    elseif ($d && !$dhtm && self::num($d['price'] ?? null) > 0) $out['heat'] = [self::num($d['price']), 'dir'];
+    elseif (self::num($s['tariff'] ?? null) > 0) $out['heat'] = [self::num($s['tariff']), 'own'];
+    elseif (!$outside || $dhtm) $out['heat'] = [self::DEF['heat'], 'def'];
+    else $out['heat'] = [null, 'none'];
+    // вода: холодна = водопостачання + водовідведення, гаряча = гаряча + водовідведення
+    $t = self::WATER[0]; foreach (self::WATER as $x) if (self::today() >= $x[0]) $t = $x;
+    $sup = $t[1]; $dr = $t[2]; $hot = self::DEF['hot']; $src = 'def'; $hsrc = 'def';
+    $d = $kinds['water'] ?? null; $dhvk = $d && ($d['via'] ?? '') === 'hvk';
+    $wt = is_array($s['wtariff'] ?? null) ? $s['wtariff'] : [];
+    if (self::num($wt['supply'] ?? null) > 0) { $sup = self::num($wt['supply']); if (self::num($wt['drain'] ?? null) > 0) $dr = self::num($wt['drain']); $src = 'own'; }
+    if (self::num($wt['hot'] ?? null) > 0) { $hot = self::num($wt['hot']); $hsrc = 'own'; }
+    if ($d && !$dhvk && self::num($d['supply'] ?? null) > 0) { $sup = self::num($d['supply']); $dr = self::num($d['drain'] ?? null) > 0 ? self::num($d['drain']) : (($d['drain'] ?? null) === 0 ? 0.0 : $dr); $src = 'dir'; }
+    elseif ($outside && !$dhvk && $src === 'def') $src = 'none';
+    if ($d && !$dhvk && self::num($d['hot'] ?? null) > 0) { $hot = self::num($d['hot']); $hsrc = 'dir'; }
+    $w = (array)($pv['water'] ?? []);
+    if (self::num($w['supply'] ?? null) > 0) { $sup = self::num($w['supply']); $dr = self::num($w['drain'] ?? null) > 0 ? self::num($w['drain']) : 0.0; $src = 'own'; }
+    if (self::num($w['hot'] ?? null) > 0) { $hot = self::num($w['hot']); $hsrc = 'own'; }
+    $out['cold'] = $src === 'none' ? [null, 'none'] : [round($sup + $dr, 3), $src];
+    $out['hot'] = $src === 'none' && $hsrc === 'def' ? [null, 'none'] : [round($hot + ($src === 'none' ? 0 : $dr), 3), $hsrc === 'def' ? $src : $hsrc];
+    // світло й газ — загальнодержавні ціни, якщо своєї немає
+    $e = self::num($pv['elec']['price'] ?? null); $out['elec'] = $e > 0 ? [$e, 'own'] : [self::DEF['elec'], 'def'];
+    $g = self::num($p['gasPrice'] ?? null); $out['gas'] = $g > 0 ? [$g, 'own'] : [self::DEF['gas'], 'def'];
+    return $out;
+  }
+  /** Квартири людини з видами: постачальник, лічильники, показання, останнє, розхід за місяць, ціна, сума. */
+  public static function person(?string $json): array {
+    $s = $json ? json_decode($json, true) : null; if (!is_array($s)) return [];
+    $live = fn($x) => is_array($x) && empty($x['deleted']);
+    $alive = fn($m) => is_array($m) && empty($m['deleted']) && empty($m['removed']);
+    $places = array_values(array_filter((array)($s['places'] ?? []), $live));
+    if (!$places && !empty($s['meter'])) $places = [['id' => '', 'meter' => $s['meter']]];
+    $first = (string)($places[0]['id'] ?? '');
+    $rd = array_values(array_filter((array)($s['readings'] ?? []), fn($x) => $live($x) && empty($x['billOnly'])));
+    $wr = array_values(array_filter((array)($s['water'] ?? []), fn($x) => $live($x) && empty($x['billOnly'])));
+    $mr = array_values(array_filter((array)($s['mrecs'] ?? []), $live));
+    $pl = fn($x) => (string)($x['place'] ?? '') !== '' ? (string)$x['place'] : $first;
+    $out = [];
+    foreach ($places as $p) {
+      $pid = (string)($p['id'] ?? ''); $w = self::where($p); $kinds = $w && isset($w['p']) ? Providers::kinds($w['p']) : null;
+      $pr = self::prices($s, $p, $kinds); $ks = [];
+      $add = function (string $k, int $meters, array $recs, ?float $use) use (&$ks, $pr, $kinds) {
+        if (!$meters && !$recs) return;
+        $pk = in_array($k, ['hot', 'cold'], true) ? 'water' : $k; $d = $kinds[$pk] ?? null;
+        // гаряча вода — від теплопостачальника (ХТМ, Київтеплоенерго), якщо він відомий
+        $org = $k === 'hot' && !empty($kinds['heat']['org']) ? $kinds['heat']['org'] : ($d['org'] ?? null);
+        $real = array_values(array_filter($recs, fn($x) => empty($x['base'])));
+        $last = null; foreach ($real as $x) { $dt = (string)($x['date'] ?? ($x['htm']['date'] ?? '')); if ($dt > (string)$last) $last = $dt; }
+        [$price, $src] = $pr[$k];
+        $ks[$k] = ['org' => $org, 'meters' => $meters, 'recs' => count($real), 'last' => $last, 'use' => $use !== null ? round($use, 3) : null, 'unit' => self::UNIT[$k],
+          'price' => $price, 'src' => $src, 'sum' => $use !== null && $price !== null ? round($use * $price, 2) : null];
+      };
+      // тепло
+      $hm = $alive($p['meter'] ?? null) ? 1 : 0; $hr = array_values(array_filter($rd, fn($x) => $pl($x) === $pid));
+      $pts = array_map(fn($x) => [(string)($x['htm']['date'] ?? ''), self::num($x['htm']['energy'] ?? null)], $hr);
+      $b = $p['baseline'] ?? ($pid === $first ? ($s['baseline'] ?? null) : null); if (is_array($b)) $pts[] = [(string)($b['date'] ?? ''), self::num($b['energy'] ?? null)];
+      $add('heat', $hm, array_map(fn($x) => ['date' => (string)($x['htm']['date'] ?? '')], $hr), $hm || $hr ? self::rate($pts) : null);
+      // вода: по кожному лічильнику свого виду, розхід — сума лічильників
+      $wm = array_values(array_filter((array)($p['water']['meters'] ?? []), $alive)); $pw = array_values(array_filter($wr, fn($x) => $pl($x) === $pid));
+      foreach (['hot', 'cold'] as $k) {
+        $ms = array_values(array_filter($wm, fn($m) => ($m['kind'] ?? '') === $k)); $use = null; $recs = [];
+        foreach ($ms as $m) {
+          $id = (string)($m['id'] ?? ''); $pts = [];
+          foreach ($pw as $x) if (isset($x['vals'][$id])) { $pts[] = [(string)($x['date'] ?? ''), self::num($x['vals'][$id])]; $recs[$x['id'] ?? count($recs)] = $x; }
+          $u = self::rate($pts); if ($u !== null) $use = ($use ?? 0) + $u;
+        }
+        $add($k, count($ms), array_values($recs), $use);
+      }
+      // світло й газ: сума зон
+      $mm = array_values(array_filter((array)($p['meters'] ?? []), $alive)); $pm = array_values(array_filter($mr, fn($x) => $pl($x) === $pid));
+      foreach (['elec', 'gas'] as $k) {
+        $ms = array_values(array_filter($mm, fn($m) => ($m['kind'] ?? '') === $k)); $use = null; $recs = [];
+        foreach ($ms as $m) {
+          $id = (string)($m['id'] ?? ''); $pts = [];
+          foreach ($pm as $x) if (($x['meter'] ?? '') === $id) { $z = array_map([self::class, 'num'], (array)($x['z'] ?? [])); $pts[] = [(string)($x['date'] ?? ''), in_array(null, $z, true) || !$z ? null : array_sum($z)]; $recs[] = $x; }
+          $u = self::rate($pts); if ($u !== null) $use = ($use ?? 0) + $u;
+        }
+        $add($k, count($ms), $recs, $use);
+      }
+      if (!$ks) continue;
+      unset($w['p']);
+      $out[] = ['where' => $w, 'kinds' => $ks];
+    }
+    return $out;
+  }
+  /** Свої й тестові акаунти: адміни і ті, хто входив з браузерів, позначених «я/тест» (Journal::internal). */
+  public static function internalUsers(): array {
+    $ids = array_fill_keys(Journal::adminIds(), 1); $vids = array_keys(Journal::internal());
+    foreach (array_chunk($vids, 200) as $ch) {
+      $in = implode(',', array_fill(0, count($ch), '?'));
+      foreach (Db::q("SELECT DISTINCT user_id FROM visits WHERE user_id IS NOT NULL AND vid IN ($in)", $ch)->fetchAll() as $x) $ids[(int)$x['user_id']] = 1;
+    }
+    return $ids;
+  }
+  public static function report(bool $all = false): array {
+    $skip = $all ? [] : self::internalUsers();
+    $rows = Db::q('SELECT u.id, u.created_at, s.data FROM users u JOIN user_state s ON s.user_id = u.id ORDER BY u.id')->fetchAll();
+    $people = []; $reg = []; $prov = []; $kind = []; $tot = ['people' => 0, 'places' => 0, 'located' => 0, 'noAddr' => 0, 'unclear' => 0, 'skipped' => 0];
+    $avg = fn(array $a) => $a ? round(array_sum($a) / count($a), 3) : null;
+    foreach ($rows as $u) {
+      $uid = (int)$u['id']; if (isset($skip[$uid])) { $tot['skipped']++; continue; }
+      $ps = self::person($u['data']); if (!$ps) continue;
+      $tot['people']++; $seenR = []; $seenH = []; $seenS = []; $seenP = [];
+      foreach ($ps as $pl) {
+        $tot['places']++; $w = $pl['where'];
+        if (!$w) $tot['noAddr']++; elseif (!isset($w['n'])) $tot['unclear']++; else $tot['located']++;
+        if ($w && isset($w['n'])) {
+          $r = $w['r']; $reg[$r] = $reg[$r] ?? ['r' => $r, 'name' => $w['oblast'], 'people' => 0, 'places' => 0, 'hromadas' => []];
+          $reg[$r]['places']++; if (!isset($seenR[$r])) { $reg[$r]['people']++; $seenR[$r] = 1; }
+          $hk = $w['h']; $H = &$reg[$r]['hromadas'];
+          $H[$hk] = $H[$hk] ?? ['h' => $hk, 'name' => $w['hromada'], 'district' => $w['district'], 'people' => 0, 'places' => 0, 'settlements' => []];
+          $H[$hk]['places']++; if (!isset($seenH[$hk])) { $H[$hk]['people']++; $seenH[$hk] = 1; }
+          $sk = $w['n']; $S = &$H[$hk]['settlements'];
+          $S[$sk] = $S[$sk] ?? ['n' => $sk, 'c' => $w['c'], 'people' => 0, 'places' => 0]; $S[$sk]['places']++;
+          if (!isset($seenS[$hk . '|' . $sk])) { $S[$sk]['people']++; $seenS[$hk . '|' . $sk] = 1; }
+          unset($H, $S);
+        }
+        foreach ($pl['kinds'] as $k => $x) {
+          $org = $x['org'] ?? ($w && isset($w['n']) ? '' : null); $pk = $k . '|' . (string)$org;
+          $prov[$pk] = $prov[$pk] ?? ['kind' => $k, 'org' => $org, 'people' => 0, 'places' => 0, 'meters' => 0, 'recs' => 0, 'use' => [], 'price' => [], 'sum' => [], 'src' => [], 'regions' => []];
+          $P = &$prov[$pk]; $P['places']++; $P['meters'] += $x['meters']; $P['recs'] += $x['recs'];
+          if (!isset($seenP[$pk])) { $P['people']++; $seenP[$pk] = 1; }
+          if ($x['use'] !== null) $P['use'][] = $x['use']; if ($x['price'] !== null) $P['price'][] = $x['price']; if ($x['sum'] !== null) $P['sum'][] = $x['sum'];
+          $P['src'][$x['src']] = ($P['src'][$x['src']] ?? 0) + 1; if ($w && isset($w['r'])) $P['regions'][$w['oblast']] = 1;
+          unset($P);
+          $kind[$k] = $kind[$k] ?? ['kind' => $k, 'unit' => self::UNIT[$k], 'people' => [], 'places' => 0, 'meters' => 0, 'recs' => 0, 'use' => [], 'price' => [], 'sum' => []];
+          $K = &$kind[$k]; $K['places']++; $K['people'][$uid] = 1; $K['meters'] += $x['meters']; $K['recs'] += $x['recs'];
+          if ($x['use'] !== null) $K['use'][] = $x['use']; if ($x['price'] !== null) $K['price'][] = $x['price']; if ($x['sum'] !== null) $K['sum'][] = $x['sum'];
+          unset($K);
+        }
+      }
+      $people[] = ['id' => $uid, 'since' => substr((string)$u['created_at'], 0, 7), 'places' => $ps];
+    }
+    // зведення: середні, мін–макс суми, сортування за кількістю людей
+    $fin = function (array $x) use ($avg) {
+      $x['n'] = count($x['use']); $x['avgUse'] = $avg($x['use']); $x['avgPrice'] = $avg($x['price']); $x['avgSum'] = $x['sum'] ? round(array_sum($x['sum']) / count($x['sum']), 2) : null;
+      $x['minSum'] = $x['sum'] ? min($x['sum']) : null; $x['maxSum'] = $x['sum'] ? max($x['sum']) : null; unset($x['use'], $x['price'], $x['sum']); return $x;
+    };
+    $prov = array_map(function ($x) use ($fin) { $x = $fin($x); $x['regions'] = array_keys($x['regions']); return $x; }, array_values($prov));
+    $ko = array_flip(self::KINDS);
+    usort($prov, fn($a, $b) => [$ko[$a['kind']], -$a['people'], (string)$a['org']] <=> [$ko[$b['kind']], -$b['people'], (string)$b['org']]);
+    $kind = array_map(function ($x) use ($fin) { $x['people'] = count($x['people']); return $fin($x); }, $kind);
+    uksort($kind, fn($a, $b) => $ko[$a] <=> $ko[$b]);
+    $ro = array_flip(array_keys(Providers::REGIONS));
+    $reg = array_values($reg); usort($reg, fn($a, $b) => [-$a['people'], $ro[$a['r']] ?? 9] <=> [-$b['people'], $ro[$b['r']] ?? 9]);
+    foreach ($reg as &$r) {
+      $r['hromadas'] = array_values($r['hromadas']); usort($r['hromadas'], fn($a, $b) => [-$a['people'], $a['name']] <=> [-$b['people'], $b['name']]);
+      foreach ($r['hromadas'] as &$h) { $h['settlements'] = array_values($h['settlements']); usort($h['settlements'], fn($a, $b) => [-$a['people'], $a['n']] <=> [-$b['people'], $b['n']]); }
+      unset($h);
+    }
+    unset($r);
+    return ['totals' => $tot, 'regions' => $reg, 'providers' => $prov, 'kinds' => (object)$kind, 'people' => array_reverse($people), 'all' => $all, 'today' => self::today()];
   }
 }

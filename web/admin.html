@@ -51,6 +51,8 @@ input[type=search] { font: 400 15px var(--font); padding: 9px 12px; border: 1.5p
 .center { max-width: 520px; margin: 12vh auto; background: var(--surface); padding: 24px; border-radius: 16px; }
 .zoom { position: fixed; inset: 0; background: rgba(0,0,0,.85); display: grid; place-items: center; z-index: 9; cursor: zoom-out; }
 .zoom img { max-width: 96vw; max-height: 96vh; }
+.geo-r { border-top: 1px solid var(--line); padding: 10px 0; } .geo-r summary { cursor: pointer; padding: 4px 0; } .geo-r[open] summary { margin-bottom: 8px; }
+.geo-k { padding: 4px 0; } .geo-k + .geo-k { border-top: 1px dashed var(--line); }
 .okmsg { color: var(--ok); font-weight: 600; } #hist summary { cursor: pointer; } #hist[open] summary { margin-bottom: 10px; }
 pre.state { font: 12px/1.4 var(--mono); background: #F4F7F5; padding: 10px; border-radius: 8px; max-height: 360px; overflow: auto; }
 @media (max-width: 640px) { main { padding: 0 10px 40px; } th, td { padding: 6px; }
@@ -95,7 +97,7 @@ pre.state { font: 12px/1.4 var(--mono); background: #F4F7F5; padding: 10px; bord
 
   function shell(body) {
     var o = DATA.overview || {};
-    var tabs = [['overview', 'Сводка'], ['users', 'Пользователи', 0], ['feedback', 'Сообщения', o.feedbackNew], ['photos', 'Фото', 0], ['reports', 'Ошибки распознавания', o.reportsBad], ['journal', 'Журнал', 0], ['reminders', 'Напоминания', o.cronAgo == null || o.cronAgo > 600 ? '!' : 0], ['prov', 'Справочник', 0], ['settings', 'Настройки', !o.telegram ? '!' : 0]];
+    var tabs = [['overview', 'Сводка'], ['users', 'Пользователи', 0], ['geo', 'Откуда и сколько', 0], ['feedback', 'Сообщения', o.feedbackNew], ['photos', 'Фото', 0], ['reports', 'Ошибки распознавания', o.reportsBad], ['journal', 'Журнал', 0], ['reminders', 'Напоминания', o.cronAgo == null || o.cronAgo > 600 ? '!' : 0], ['prov', 'Справочник', 0], ['settings', 'Настройки', !o.telegram ? '!' : 0]];
     app.innerHTML = '<header><b>Счётчики · аналитика</b><span class="muted small">' + esc(o.me || '') + '</span><span style="flex:1"></span><a class="btn" href="' + esc(SITE) + '">На сайт</a></header>' +
       '<nav>' + tabs.map(function (t) { return '<button data-tab="' + t[0] + '"' + (TAB === t[0] || (TAB === 'jsession' && t[0] === 'journal') || (/^prov/.test(TAB) && t[0] === 'prov') ? ' aria-current="true"' : '') + '>' + t[1] + (t[2] ? '<span class="n">' + t[2] + '</span>' : '') + '</button>'; }).join('') + '</nav><main>' + body + '</main>';
   }
@@ -280,6 +282,59 @@ pre.state { font: 12px/1.4 var(--mono); background: #F4F7F5; padding: 10px; bord
   }
 
   /** Показаний по видам: «тепло 4 (3 перед.) · вода 7 · свет 3 · газ 2 · для себя 1». */
+  // «Откуда и сколько» (89-я): пункт квартиры → громада → область, поставщики, расход за месяц, цена и сумма; люди — без e-mail и адресов
+  var GA = { all: false };
+  var GSRC = { own: 'своя', dir: 'справочник', def: 'общая', none: 'неизвестна' }, GUNIT = { heat: 'Гкал', hot: 'м³', cold: 'м³', elec: 'кВт·год', gas: 'м³' };
+  function nf(v, d) { return v == null ? '—' : Number(v).toLocaleString('ru-RU', { minimumFractionDigits: d, maximumFractionDigits: d }); }
+  function srcLine(o) { return Object.keys(o || {}).map(function (k) { return esc(GSRC[k] || k) + ' ' + o[k]; }).join(' · '); }
+  function useCell(x) { var u = x.unit || GUNIT[x.kind]; return x.avgUse == null ? '<span class="muted">—</span>' : '<span class="mono">' + nf(x.avgUse, u === 'Гкал' ? 3 : 1) + '</span> <span class="muted small">' + esc(u) + '</span>'; }
+  function sumCell(x) {
+    if (x.avgSum == null) return '<span class="muted">—</span>';
+    return '<b class="mono">' + nf(x.avgSum, 0) + '</b> <span class="muted small">грн' + (x.n > 1 && x.minSum !== x.maxSum ? ' · ' + nf(x.minSum, 0) + '–' + nf(x.maxSum, 0) : '') + '</span>';
+  }
+  VIEW.geo = function () {
+    var g = DATA.geo || {}, t = g.totals || {}, rs = g.regions || [], ks = g.kinds || {}, ps = g.providers || [], pp = g.people || [];
+    var c = function (v, k) { return '<div class="card"><div class="v">' + esc(v) + '</div><div class="k">' + k + '</div></div>'; };
+    var hrom = rs.reduce(function (n, r) { return n + r.hromadas.length; }, 0);
+    var head = '<div class="filters"><button class="btn' + (GA.all ? '' : ' on') + '" data-gall="0">Без моих</button><button class="btn' + (GA.all ? ' on' : '') + '" data-gall="1">Вместе с моими</button>' +
+      '<span class="muted small">' + (GA.all ? 'Все аккаунты.' : 'Свои и тестовые аккаунты скрыты' + (t.skipped ? ' (' + t.skipped + ')' : '') + '.') + ' Без e-mail, имён и адресов — только населённый пункт.</span></div>';
+    var cards = '<div class="cards">' + c(t.people || 0, 'людей со счётчиками') + c(t.places || 0, 'квартир') + c(t.located || 0, 'пункт известен') + c(t.noAddr || 0, 'без адреса') +
+      (t.unclear ? c(t.unclear, 'адрес неясен') : '') + c(rs.length, 'областей') + c(hrom, 'громад') + '</div>';
+    var reg = '<div class="panel"><h2>По областям и громадам</h2>' + (rs.length ? rs.map(function (r) {
+      return '<details class="geo-r"' + (rs.length === 1 ? ' open' : '') + '><summary><b>' + esc(r.name) + (r.r === 'ky' ? '' : ' обл.') + '</b> <span class="muted small">' + r.people + ' чел. · ' + r.places + ' кв. · громад: ' + r.hromadas.length + '</span></summary>' +
+        '<table><thead><tr><th>Громада</th><th>Людей</th><th>Квартир</th><th>Пункты</th></tr></thead><tbody>' + r.hromadas.map(function (h) {
+          return '<tr><td>' + esc(h.name) + (h.district ? ' <span class="muted small">' + esc(h.district) + ' р-н</span>' : '') + '</td><td class="mono">' + h.people + '</td><td class="mono">' + h.places + '</td><td>' +
+            h.settlements.map(function (x) { return esc((x.c === 'M' ? 'м. ' : x.c === 'X' ? 'смт ' : x.c === 'C' ? 'с. ' : '') + x.n) + (x.people > 1 || x.places > 1 ? ' <span class="muted small">' + x.people + '/' + x.places + '</span>' : ''); }).join(', ') + '</td></tr>';
+        }).join('') + '</tbody></table></details>';
+    }).join('') : '<p class="muted">Ни у кого не указан адрес квартиры.</p>') + '</div>';
+    var korder = ['heat', 'hot', 'cold', 'elec', 'gas'];
+    var kin = '<div class="panel"><h2>По видам</h2><table><thead><tr><th>Вид</th><th>Людей</th><th>Квартир</th><th>Счётчиков</th><th>Показаний</th><th>Расход в месяц</th><th>Цена за единицу</th><th>Сумма в месяц</th></tr></thead><tbody>' +
+      korder.filter(function (k) { return ks[k]; }).map(function (k) { var x = ks[k];
+        return '<tr><td>' + esc(KN[k]) + '</td><td class="mono">' + x.people + '</td><td class="mono">' + x.places + '</td><td class="mono">' + x.meters + '</td><td class="mono">' + x.recs + '</td><td>' + useCell(x) +
+          (x.n ? ' <span class="muted small">по ' + x.n + ' кв.</span>' : '') + '</td><td class="mono">' + nf(x.avgPrice, 2) + '</td><td>' + sumCell(x) + '</td></tr>'; }).join('') + '</tbody></table>' +
+      '<p class="muted small">Расход — между первым и последним показанием за последний год, в пересчёте на 30,4 дня (у тепла за год с летом выходит ниже, чем зимой). Сумма — расход × цена, без абонплаты и доставки газа. ' +
+      'Цена: своя из квартиры (платёжка) → справочник громады → общая (Харьков: ХТМ 1 539,50 за Гкал, Харьковводоканал; свет 4,32; газ 7,96).</p></div>';
+    var prv = '<div class="panel"><h2>По поставщикам</h2><table><thead><tr><th>Вид</th><th>Поставщик</th><th>Людей</th><th>Квартир</th><th>Показаний</th><th>Расход в месяц</th><th>Цена</th><th>Сумма в месяц</th><th>Цена откуда</th></tr></thead><tbody>' +
+      ps.map(function (x) {
+        var org = x.org ? esc(x.org) : x.org === '' ? '<span class="muted">не известен в справочнике</span>' : '<span class="muted">адрес не указан</span>';
+        return '<tr><td>' + esc(KN[x.kind]) + '</td><td>' + org + (x.regions && x.regions.length ? '<br><span class="muted small">' + esc(x.regions.join(', ')) + '</span>' : '') + '</td><td class="mono">' + x.people + '</td><td class="mono">' + x.places + '</td><td class="mono">' + x.recs +
+          '</td><td>' + useCell(x) + '</td><td class="mono">' + nf(x.avgPrice, 2) + '</td><td>' + sumCell(x) + '</td><td class="small">' + srcLine(x.src) + '</td></tr>';
+      }).join('') + '</tbody></table></div>';
+    var kl = function (k, x) {
+      var u = x.use == null ? (x.recs ? 'расход пока не посчитать' : 'показаний нет') : nf(x.use, x.unit === 'Гкал' ? 3 : 1) + ' ' + x.unit + '/мес';
+      return '<div class="geo-k"><b>' + esc(KN[k]) + '</b> — ' + (x.org ? esc(x.org) : '<span class="muted">поставщик неизвестен</span>') + '<br><span class="small">' +
+        x.recs + ' пок.' + (x.last ? ', последнее ' + dday(x.last) : '') + ' · ' + esc(u) + (x.price != null ? ' × ' + nf(x.price, 2) + ' грн <span class="muted">(' + esc(GSRC[x.src] || x.src) + ')</span>' : ' · <span class="muted">цена неизвестна</span>') +
+        (x.sum != null ? ' = <b>' + nf(x.sum, 0) + ' грн/мес</b>' : '') + '</span></div>';
+    };
+    var ppl = '<div class="panel"><h2>По людям (' + pp.length + ')</h2>' + (pp.length ? '<table class="geo-p"><thead><tr><th>№</th><th>Где</th><th>Счётчики, расход и сумма</th></tr></thead><tbody>' + pp.map(function (u) {
+      return u.places.map(function (pl, i) { var w = pl.where;
+        var where = !w ? '<span class="muted">адрес не указан</span>' : !w.n ? '<span class="muted">адрес неясен</span>' : esc((w.c === 'M' ? 'м. ' : w.c === 'X' ? 'смт ' : w.c === 'C' ? 'с. ' : '') + w.n) + '<br><span class="muted small">' + esc((w.r === 'ky' ? 'Київ' : w.hromada + ' громада' + (w.district ? ', ' + w.district + ' р-н' : '') + ', ' + w.oblast + ' обл.')) + '</span>';
+        return '<tr>' + (i === 0 ? '<td class="mono" rowspan="' + u.places.length + '">#' + u.id + '<br><span class="muted small">с ' + esc(u.since.split('-').reverse().join('.')) + '</span></td>' : '') +
+          '<td>' + (u.places.length > 1 ? '<span class="muted small">кв. ' + (i + 1) + '</span><br>' : '') + where + '</td><td>' + korder.filter(function (k) { return pl.kinds[k]; }).map(function (k) { return kl(k, pl.kinds[k]); }).join('') + '</td></tr>';
+      }).join('');
+    }).join('') + '</tbody></table>' : '<p class="muted">Пока никого.</p>') + '</div>';
+    return head + cards + reg + kin + prv + ppl;
+  };
   function recsLine(s) {
     var r = s.recs || { heat: s.readings || 0 }, a = [];
     if (r.heat) a.push('тепло ' + r.heat + (s.handed ? ' <span class="muted">(' + s.handed + ' перед.)</span>' : ''));
@@ -746,6 +801,7 @@ pre.state { font: 12px/1.4 var(--mono); background: #F4F7F5; padding: 10px; bord
     settings: function () { return get('/admin/settings').then(function (j) { DATA.settings = j; }); },
     overview: function () { return get('/admin/devices?days=' + DDAYS).then(function (j) { DATA.devices = j; }); },
     users: function () { return get('/admin/users?q=' + encodeURIComponent(Q)).then(function (j) { DATA.users = j.users; }); },
+    geo: function () { return get('/admin/geo' + (GA.all ? '?all=1' : '')).then(function (j) { DATA.geo = j; }); },
     feedback: function () { return get('/admin/feedback').then(function (j) { DATA.feedback = j.feedback; }); },
     photos: function () { return get('/admin/photos' + (PF === 'problems' ? '?filter=problems' : '')).then(function (j) { DATA.photos = j.photos; }); },
     reports: function () { return get('/admin/reports').then(function (j) { DATA.reports = j.reports; }); },
@@ -795,6 +851,7 @@ pre.state { font: 12px/1.4 var(--mono); background: #F4F7F5; padding: 10px; bord
       var done = function (ok) { if (msg) msg.textContent = ok ? 'Скопировано' : 'Не вышло — выделите текст выше и скопируйте вручную'; };
       if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(txt).then(function () { done(true); }, function () { done(false); }); else done(false);
       return; }
+    var ga = e.target.closest('[data-gall]'); if (ga) { e.preventDefault(); GA.all = ga.getAttribute('data-gall') === '1'; show('geo'); return; }
     var el = e.target.closest('[data-tab],[data-user],[data-pf],[data-fb],[data-zoom],[data-ddays],.zoom'); if (!el) return;
     if (el.hasAttribute('data-ddays')) { e.preventDefault(); DDAYS = +el.getAttribute('data-ddays'); show('overview'); return; }
     if (el.classList.contains('zoom')) { el.remove(); return; }
