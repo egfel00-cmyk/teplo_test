@@ -1510,7 +1510,7 @@
   // на сервер ідуть лише разом із надсиланням. «Підключити» = вписати їх і перевірити на сайті; там же — згода на автовідправку.
   var VCE = { edit: false };
   V.vkcab = function () {
-    var back = wmeters('cold').length ? 'water-cold' : wmeters('hot').length ? 'water-hot' : 'home';
+    var back = backTo(wmeters('cold').length ? 'water-cold' : wmeters('hot').length ? 'water-hot' : 'home');
     var h = '<div class="wiz-top"><a class="btn ghost" href="#' + back + '">' + ico('back', 20) + '<span>' + esc(t('back')) + '</span></a></div><h1>' + esc(t('vc_title')) + '</h1>' + wherePlaceLine();
     var out = function (x) { return { screen: 'S30v', route: 'vkcab', bare: true, closeTo: back, html: h + x }; };
     if (!hcOn()) return out('<p>' + esc(t('vc_pitch')) + '</p><p>' + esc(t('vkc_login')) + '</p><a class="btn" href="#login" data-key="vc-login">' + esc(t('login')) + '</a>');
@@ -1836,7 +1836,7 @@
   /** «Платіжка Водоканалу» без показань: квитанція (PDF з сайту Водоканалу); прибрати запис. */
   function vbillView(r) {
     var m = monthLabel(r.ym);
-    return { screen: 'S09', route: 'history', html: '<p><a href="#history">← ' + esc(t('hi_title')) + '</a></p><h1>' + esc(t('vb_title')) + ' · ' + esc(m) + '</h1>' +
+    return { screen: 'S09', route: 'history', html: recBack() + '<h1>' + esc(t('vb_title')) + ' · ' + esc(m) + '</h1>' +
       '<p class="small muted" data-key="vb-sub">' + esc(t('vb_view_sub')) + '</p>' + billsBox('w:' + r.id, r.bills, t('bl_title', { m: m })) +
       '<div class="row-actions"><button class="btn danger" data-act="wdel" data-id="' + r.id + '" data-key="wrec-del">' + esc(t('rec_del')) + '</button></div>' };
   }
@@ -1908,7 +1908,7 @@
   /** Карточка записи воды: показания всех водомеров, сколько набежало и почём, передача, фото; правка и удаление. */
   function wrecView(id) {
     var vb = WRB().filter(function (x) { return x.id === id; })[0]; if (vb) return vbillView(vb);
-    var r = wrecs().filter(function (x) { return x.id === id; })[0], back = '<p><a href="#history">← ' + esc(t('hi_title')) + '</a></p>';
+    var r = wrecs().filter(function (x) { return x.id === id; })[0], back = recBack();
     if (!r) return { screen: 'S09', route: 'history', html: back + '<p class="muted">' + esc(t('rec_gone')) + '</p>' };
     var x = Wt.series(wrecs(), wmeters(null, true), gaps()).filter(function (s0) { return s0.rec.id === id; })[0] || { by: {}, hot: null, cold: null };
     var ms = wmeters(null, true).filter(function (m) { return hasVal(r, m.id); }), h = back + '<h1>' + esc(fmtDate(r.date, true)) + '</h1>';
@@ -2424,7 +2424,7 @@
   function sNew(k) {
     var ms = smeters(k), md = SK[k].mod, u = SK[k].unit(); if (!ms.length) { AM_BACK = 'home'; return V['add-meter'](); }
     if (EN.k !== k) EN = enFresh(k);
-    var date = EN.date || today(), back = EN.back || SK[k].page, w = md.win(date);
+    var date = EN.date || today(), back = EN.back || backTo(SK[k].page), w = md.win(date);
     var h = '<h1>' + esc(tk(k, 'en_title')) + '</h1><p class="small muted">' + esc(tk(k, w.open ? 'en_lead_open' : 'en_lead_closed', { a: fmtDate(w.open ? w.from : w.next), b: fmtDate(w.to) })) + '</p>' +
       enPhotoBox(k) + '<div class="field f-date"><label for="en-date">' + esc(t('wn_date')) + '</label><div class="ctl"><input id="en-date" type="date" value="' + esc(date) + '" max="' + today() + '"></div></div>' + '<form id="en-form" novalidate><div class="rd-box" data-key="en-box">';
     ms.forEach(function (m) {
@@ -2542,7 +2542,7 @@
   });
   function sAdd(k) {
     if (EA.kind !== k) EA = { kind: k, back: EA.back, zones: 1, vals: {}, f: {} };
-    var same = smeters(k), z = k === 'gas' ? 1 : EA.zones || 1, back = EA.back || 'home', opt = ' <span class="muted small">(' + esc(t('b_opt')) + ')</span>', u = SK[k].unit();
+    var same = smeters(k), z = k === 'gas' ? 1 : EA.zones || 1, back = EA.back || backTo('home'), opt = ' <span class="muted small">(' + esc(t('b_opt')) + ')</span>', u = SK[k].unit();
     var fv = function (id) { return EA.f && EA.f[id] ? ' value="' + esc(EA.f[id]) + '"' : ''; };
     var fld = function (id, lbl, attrs, unit, help, optional, after) { return '<div class="field"><label for="' + id + '">' + esc(lbl) + (optional ? opt : '') + '</label><div class="ctl"><input id="' + id + '" ' + attrs + (/^ea-v-/.test(id) ? '' : fv(id)) + '>' + (unit ? '<span class="unit">' + unit + '</span>' : '') + (after || '') + '</div>' + (help ? '<div class="help">' + esc(help) + '</div>' : '') + '</div>'; };
     var mz = { kind: k, zones: z }, md = SK[k].mod, inQ = !!(PQ && PQ.place === S.placeId);
@@ -2597,7 +2597,7 @@
 
   // ---------- картка запису, історія, статистика, економія ----------
   function erecView(id) {
-    var r = mrecs().filter(function (x) { return x.id === id; })[0], back = '<p><a href="#history">← ' + esc(t('hi_title')) + '</a></p>';
+    var r = mrecs().filter(function (x) { return x.id === id; })[0], back = recBack();
     var m = r && pmeters(null, true).filter(function (x) { return x.id === r.meter; })[0];
     if (!r || !m) return { screen: 'S09', route: 'history', html: back + '<p class="muted">' + esc(t('rec_gone')) + '</p>' };
     var k = m.kind === 'gas' ? 'gas' : 'elec', md = SK[k].mod, u = SK[k].unit();
@@ -2679,7 +2679,7 @@
   V.wnew = function () {
     var ms = wmeters(); if (!ms.length) return V.wsetup();
     var order = ms.slice().sort(function (a, b) { return (a.kind === WN.kind ? 0 : 1) - (b.kind === WN.kind ? 0 : 1); });
-    var date = WN.date || today(), back = WN.back || 'water-' + WN.kind;
+    var date = WN.date || today(), back = WN.back || backTo('water-' + WN.kind);
     var prev = {}; ms.forEach(function (m) { var r = wprevFor(m.id, date); if (r) prev[m.id] = r; });
     var h = '<h1>' + esc(t('wn_title')) + '</h1>' + (WN.autoWhy ? '<div class="banner warn" data-key="wn-auto-why" data-why="' + esc(WN.autoWhy) + '">' + ico('info', 22) + '<div><p><b>' + esc(t('wa_why_t')) + '</b></p><p>' + esc(t('wa_why_' + WN.autoWhy)) + '</p></div></div>' : '') +
       wnPhotoBox() +
@@ -3388,10 +3388,10 @@
       (form.open ? '<p class="small ' + (form.match ? '' : 'warn-ink') + '" data-key="hc-form" data-match="' + (form.match ? 1 : 0) + '">' + ico(form.match ? 'check' : 'alert', 16) + ' ' + esc(t(form.match ? 'hc_form_ok' : 'hc_form_bad')) + '</p>' : '') + '</div>';
   }
   V.htmcab = function () {
-    var h = '<div class="wiz-top"><a class="btn ghost" href="#heat">' + ico('back', 20) + '<span>' + esc(t('back')) + '</span></a></div><h1>' + esc(t('hc_title')) + '</h1>';
-    if (!hcOn()) return { screen: 'S07c', route: 'htmcab', bare: true, closeTo: 'heat', html: h + '<p>' + esc(t('hc_pitch')) + '</p><p>' + esc(t('hc_need_login')) + '</p><a class="btn" href="#login">' + esc(t('login')) + '</a>' };
+    var h = '<div class="wiz-top"><a class="btn ghost" href="#' + backTo('heat') + '">' + ico('back', 20) + '<span>' + esc(t('back')) + '</span></a></div><h1>' + esc(t('hc_title')) + '</h1>';
+    if (!hcOn()) return { screen: 'S07c', route: 'htmcab', bare: true, closeTo: backTo('heat'), html: h + '<p>' + esc(t('hc_pitch')) + '</p><p>' + esc(t('hc_need_login')) + '</p><a class="btn" href="#login">' + esc(t('login')) + '</a>' };
     hcLoad();
-    if (!HC.st) return { screen: 'S07c', route: 'htmcab', bare: true, closeTo: 'heat', html: h + '<p class="muted">' + SPIN + ' ' + esc(t('hc_loading')) + '</p>' };
+    if (!HC.st) return { screen: 'S07c', route: 'htmcab', bare: true, closeTo: backTo('heat'), html: h + '<p class="muted">' + SPIN + ' ' + esc(t('hc_loading')) + '</p>' };
     if (!hcConn()) {
       var c = S.contacts || {}, fm = HC.form || {};
       h += (HC.st.state === 'bad_login' ? '<div class="banner warn">' + ico('alert', 22) + '<div><p>' + esc(t('hc_relogin')) + '</p></div></div>' : '') +
@@ -3404,7 +3404,7 @@
         '<label class="hc-consent"><input type="checkbox" id="hc-consent"' + (fm.consent ? ' checked' : '') + '> <span>' + esc(t('hc_consent')) + '</span></label>' +
         '<p class="small muted">' + esc(t('hc_indep')) + ' <a href="#privacy">' + esc(t('hc_privacy')) + '</a></p>' + hcErrBox(HC.err) +
         '<div class="row-actions"><button type="submit" class="btn big" data-key="hc-connect-go"' + (HC.busy ? ' disabled' : '') + '>' + (HC.busy === 'connect' ? SPIN + '<span>' + esc(t('hc_connecting')) + '</span>' : esc(t('hc_connect_go'))) + '</button></div></form>';
-      return { screen: 'S07c', route: 'htmcab', bare: true, closeTo: 'heat', html: h };
+      return { screen: 'S07c', route: 'htmcab', bare: true, closeTo: backTo('heat'), html: h };
     }
     var st = HC.st, accs = st.accounts || [], acc = hcAcc();
     h += '<div class="verdict ok" data-key="hc-connected">' + levelIco('ok', 28) + '<span>' + esc(t('hc_on')) + '</span></div>' +
@@ -3419,7 +3419,7 @@
     h += '<div class="panel" style="margin-top:24px" data-key="hc-forget-box"><p class="small">' + esc(t('hc_forget_sub')) + '</p>' +
       (HC.forget ? '<div class="banner warn">' + ico('alert', 22) + '<div><p>' + esc(t('hc_forget_q')) + '</p><div class="row-actions" style="margin-top:8px"><button class="btn sec" data-act="hc-forget-no">' + esc(t('cancel')) + '</button><button class="btn danger solid" data-act="hc-forget-yes" data-key="hc-forget-yes"' + (HC.busy ? ' disabled' : '') + '>' + esc(t('hc_forget')) + '</button></div></div></div>'
         : '<button class="btn danger" data-act="hc-forget" data-key="hc-forget">' + esc(t('hc_forget')) + '</button>') + '</div>';
-    return { screen: 'S07c', route: 'htmcab', bare: true, closeTo: 'heat', html: h };
+    return { screen: 'S07c', route: 'htmcab', bare: true, closeTo: backTo('heat'), html: h };
   };
   function hcCall(kind, path, body, ok) {
     HC.busy = kind; HC.err = null; safeRender();
@@ -4040,7 +4040,7 @@
     var isLast = i === n - 1;
     var actions = '<div class="wiz-actions">' + (i > 0 ? '<a class="btn sec" href="#step-' + (i - 1) + '" data-act="step-back" data-i="' + (i - 1) + '" data-key="step-back">' + ico('back', 20) + '<span>' + esc(t('back')) + '</span></a>' : '') +
       '<button class="btn" data-act="step-next" data-i="' + i + '" data-key="step-next">' + esc(isLast ? t('s_to_check') : t('next')) + '</button></div>' + cancelLink('heat');
-    return { screen: 'S05', route: 'step', bare: true, closeTo: 'home', html: head + '<div class="wiz"><div>' + left + '</div><div><form id="step-form" novalidate>' + right + actions + '</form></div></div>' };
+    return { screen: 'S05', route: 'step', bare: true, closeTo: backTo('home'), html: head + '<div class="wiz"><div>' + left + '</div><div><form id="step-form" novalidate>' + right + actions + '</form></div></div>' };
   };
   function lcdText(k, v) { if (k === 'errCode') return R.normCode(v).replace(/-/g, '-'); var x = String(v).replace(',', '.'); return x; }
   function numField(k, prev) {
@@ -4097,7 +4097,7 @@
       '<button class="btn' + (cab ? ' sec' : '') + '" data-act="to-handover" data-key="check-send"' + (canSend ? '' : ' disabled') + '>' + esc(cab ? t('cab_self') : res.verdict === 'warn' ? t('c_send_anyway') : t('c_send')) + '</button>' +
       (cab ? '<button class="btn dest-bg" data-act="chk-bg" data-key="check-bg"' + (HC.busy ? ' disabled' : '') + '>' + ico('send', 18) + '<span>' + esc(t('cab_bg')) + '</span></button>' : '') + '</div>' +
       (cab ? '<p class="small dest-note" data-key="check-bg-note">' + esc(t('cab_bg_note', { what: t('cab_bg_heat', { d: R.formatForHtm('date', r.date), e: R.formatForHtm('energy', r.energy), a: hcAcc() ? t('cab_bg_acc', { a: hcAcc().acc }) : '' }) })) + '</p>' : '');
-    return { screen: 'S06', route: 'check', bare: true, closeTo: 'home', html:
+    return { screen: 'S06', route: 'check', bare: true, closeTo: backTo('home'), html:
       '<div class="wiz-top"><a class="btn ghost" href="#step-' + (steps().length - 1) + '">' + ico('back', 20) + '<span>' + esc(t('back')) + '</span></a></div>' +
       '<h1>' + esc(t('c_title')) + '</h1>' +
       '<div class="verdict ' + res.verdict + '" data-key="check-verdict" data-verdict="' + res.verdict + '" role="status">' + levelIco(res.verdict, 28) + '<span>' + esc(vText) + '</span></div>' +
@@ -4117,7 +4117,7 @@
     if (c.phone) rows.push('<li><div><div class="k">' + esc(t('ho_phone')) + '</div><div class="v">' + esc(c.phone) + '</div></div><span></span><button class="btn sec" data-act="copy" data-text="' + esc(c.phone) + '">' + ico('copy', 18) + '<span>' + esc(t('copy')) + '</span></button></li>');
     if (c.email) rows.push('<li><div><div class="k">' + esc(t('ho_email')) + '</div><div class="v" style="font-size:16px">' + esc(c.email) + '</div></div><span></span><button class="btn sec" data-act="copy" data-text="' + esc(c.email) + '">' + ico('copy', 18) + '<span>' + esc(t('copy')) + '</span></button></li>');
     var all = R.FIELDS.map(function (f) { return fieldLabel(f.key) + ': ' + R.formatForHtm(f.key, h[f.key]); }).join('\n') + (c.phone ? '\n' + t('ho_phone') + ': ' + c.phone : '') + (c.email ? '\n' + t('ho_email') + ': ' + c.email : '');
-    return { screen: 'S07', route: 'handover', bare: true, closeTo: 'home', html:
+    return { screen: 'S07', route: 'handover', bare: true, closeTo: backTo('home'), html:
       '<div class="wiz-top"><a class="btn ghost" href="#check">' + ico('back', 20) + '<span>' + esc(t('back')) + '</span></a></div>' +
       '<h1>' + esc(t('ho_title')) + '</h1><p>' + esc(t('ho_lead')) + '</p>' +
       '<div class="cols"><div class="ho-values"><ul class="copy-list" data-key="handover-values">' + rows.join('') + '</ul>' +
@@ -4326,7 +4326,7 @@
   /** Нарахування ХТМ за місяць без показань у застосунку (з «Довідки щодо нарахувань»): екран #hnar-рррр-мм. */
   function hnarView(ym) {
     hsprLoad(); var h = htmMonth(ym);
-    return { screen: 'S09', route: 'history', html: '<p><a href="#history">← ' + esc(t('hi_title')) + '</a></p><h1>' + esc(t('hn_title')) + ' · ' + esc(monthLabel(ym)) + '</h1>' +
+    return { screen: 'S09', route: 'history', html: recBack() + '<h1>' + esc(t('hn_title')) + ' · ' + esc(monthLabel(ym)) + '</h1>' +
       '<p class="small muted" data-key="hn-sub">' + esc(t('hn_sub')) + '</p>' + (h && h.money !== null ? '<p data-key="hn-sum"><b class="num big">' + esc(money(h.money)) + '</b> <span class="small muted">грн' + (h.g > 0 ? ' · ' + esc(fmtN(h.g, 3)) + ' Гкал' : '') + '</span></p>' : '') +
       hsprPanel(null, null, ym) };
   }
@@ -4403,7 +4403,7 @@
     if (!r) { var hb = RDB().filter(function (x) { return x.id === id; })[0]; if (hb) return hbillView(hb); }
     if (!r) return { screen: 'S09', route: 'history', html: '<h1>' + esc(t('hi_title')) + '</h1><p class="muted">' + esc(t('rec_gone')) + '</p><a class="btn" href="#history">' + esc(t('back')) + '</a>' };
     var h = r.htm || {}, iv = interval(r), cls = { accepted: 'ok', rejected: 'bad', handed: 'info' }[r.status] || 'neutral';
-    var head = '<p><a href="#history">← ' + esc(t('hi_title')) + '</a></p><h1>' + esc(fmtDate(h.date, true)) + '</h1>' +
+    var head = recBack() + '<h1>' + esc(fmtDate(h.date, true)) + '</h1>' +
       '<p><span class="pill ' + cls + '">' + esc(t('status_' + r.status)) + '</span> <span class="small muted">' + esc(r.source === 'photo' ? t('rec_src_photo') : t('rec_src_manual')) + (r.editedAt ? ' · ' + t('rec_edited') : '') + '</span></p>';
     if (edit) {
       return { screen: 'S09', route: 'history', html: head + '<form id="rec-form" data-id="' + r.id + '" novalidate><div class="panel">' +
@@ -4439,7 +4439,7 @@
   /** «Платіжка ХТМ» без показань: квитанція (копія сторінки рахунку з кабінету ХТМ), сума до сплати; прибрати запис. */
   function hbillView(r) {
     var pay = hbillPay(r), m = monthLabel(r.ym);
-    return { screen: 'S09', route: 'history', html: '<p><a href="#history">← ' + esc(t('hi_title')) + '</a></p><h1>' + esc(t('hb_title')) + ' · ' + esc(m) + '</h1>' +
+    return { screen: 'S09', route: 'history', html: recBack() + '<h1>' + esc(t('hb_title')) + ' · ' + esc(m) + '</h1>' +
       '<p class="small muted" data-key="hb-sub">' + esc(t('hb_view_sub')) + '</p>' + (pay !== null ? '<p data-key="hb-pay"><b class="num big">' + esc(money(pay)) + '</b> <span class="small muted">грн · ' + esc(t('hb_pay_lbl')) + '</span></p>' : '') +
       billsBox('h:' + r.id, r.bills, t('bl_title', { m: m })) +
       '<div class="row-actions"><button class="btn danger" data-act="rec-del-ask" data-key="rec-del">' + esc(t('rec_del')) + '</button></div><div id="rec-del-confirm"></div>' };
@@ -5433,7 +5433,7 @@
   /** Новый водомер одной страницей: где стоит, показания сейчас, № и повірка; рахунок Водоканалу — если ещё не указан. */
   var WA = { kind: 'cold', back: '' };
   V.wadd = function () {
-    var k = WA.kind, same = wmeters(k), c = wcfg(), back = WA.back || 'home', opt = ' <span class="muted small">(' + esc(t('b_opt')) + ')</span>';
+    var k = WA.kind, same = wmeters(k), c = wcfg(), back = WA.back || backTo('home'), opt = ' <span class="muted small">(' + esc(t('b_opt')) + ')</span>';
     var fld = function (id, lbl, attrs, unit, help, optional, after) { return '<div class="field"><label for="' + id + '">' + esc(lbl) + (optional ? opt : '') + '</label><div class="ctl"><input id="' + id + '" ' + attrs + '>' + (unit ? '<span class="unit">' + unit + '</span>' : '') + (after || '') + '</div>' + (help ? '<div class="help">' + esc(help) + '</div>' : '') + '</div>'; };
     var inQ = !!(PQ && PQ.place === S.placeId);
     var h = pqBanner() + '<h1>' + ico('drop', 26, KINDS[k].cls) + ' ' + esc(t('wa_title', { k: wkindTitle(k).toLowerCase() })) + '</h1><p class="muted">' + esc(t('wa_lead')) + '</p><form id="wa-form" novalidate><div class="panel">' +
@@ -5744,7 +5744,7 @@
     }).join('') + '</ul>';
   }
   V.photo = function () {
-    var model_ = PH.mode === 'model', base_ = PH.mode === 'baseline', back = model_ ? 'meter' : base_ ? 'baseline' : (S.onboarded ? 'home' : 'welcome');
+    var model_ = PH.mode === 'model', base_ = PH.mode === 'baseline', back = model_ ? 'meter' : base_ ? 'baseline' : (S.onboarded ? backTo('home') : 'welcome');
     var head = '<h1>' + esc(model_ ? t('ph_model_title') : base_ ? t('ph_base_title') : t('ph_title')) + '</h1>';
     var shell_ = function (html) { return { screen: 'S12', route: 'photo', bare: true, closeTo: back, html: head + html + (PH.mode === 'reading' ? cancelLink('heat') : '') }; };
     if (!VIS().available) return shell_('<div class="banner warn">' + ico('info', 22) + '<div><p>' + esc(t('ph_unavail')) + '</p></div></div><a class="btn" href="#' + back + '">' + esc(t('back')) + '</a>');
@@ -6108,6 +6108,27 @@
     document.addEventListener('focusout', function () { setTimeout(fix, 400); });
   })();
   function routeName() { var h = (location.hash || '').replace(/^#/, ''); return /^tgWebApp/.test(h) ? '' : h; }
+  // «✕» і «Назад» — туди, звідки прийшли (89-а, власник 10.11: відкрив ввод показань з екрана квартири — закриття веде на квартиру, а не на сторінку виду).
+  // Потік — введення, майстри, кабінети, записи історії; NAV.from — останній звичайний екран (з вкладками) перед потоком; вийшли з потоку — скидається.
+  // Явне «куди» (WN.back, EN.back — правка запису, «з фото») — головніше.
+  var NAV = { cur: '', from: '' }, FLOW_RE = /^(wnew|enew|gnew|wadd|eadd|gadd|wsetup|add-meter|add-place|step-\d+|check|handover|photo|vkcab|htmcab|rec-|wrec-|erec-|hnar-|gap-)/;
+  function navNote(r) {
+    var prev = NAV.cur; NAV.cur = r; if (!prev || prev === r) return;
+    if (FLOW_RE.test(r)) { if (!FLOW_RE.test(prev)) NAV.from = prev; } else NAV.from = '';
+  }
+  /** «← Історія показань» над записом; відкрили запис з іншого екрана (сторінка виду, квартира) — «← Назад» туди. */
+  function recBack() { var b = backTo('history'); return '<p><a href="#' + b + '" data-key="rec-back">← ' + esc(b === 'history' ? t('hi_title') : t('back')) + '</a></p>'; }
+  /** Кнопка «Назад» у шапці Telegram (Mini App 6.1+): веде туди ж, куди «✕» чи «← Назад» на екрані; на головній — схована. */
+  var TGB = { to: '', on: false };
+  function tgBack(to) {
+    var tb = window.Telegram && window.Telegram.WebApp, bb = tb && tb.initData && tb.BackButton; if (!bb) return;
+    try {
+      if (tb.isVersionAtLeast && !tb.isVersionAtLeast('6.1')) return;
+      if (!TGB.on) { TGB.on = true; bb.onClick(function () { if (TGB.to) go(TGB.to); }); }
+      TGB.to = to; if (to) bb.show(); else bb.hide();
+    } catch (e) { /* старий Telegram */ }
+  }
+  function backTo(dflt) { return NAV.from && NAV.from !== NAV.cur && !FLOW_RE.test(NAV.from) ? NAV.from : dflt; }
   function render(keepScroll) {
     if (JRS && JRS.scr !== (routeName() || 'home')) { JRS.scr = routeName() || 'home'; track('screen'); }
     lastHash = location.hash;
@@ -6122,6 +6143,7 @@
     if (!S.onboarded && tgPending() && ['help', 'privacy', 'terms', 'login'].indexOf(r) < 0) r = 'tgwait';
     else if (!S.onboarded && ['welcome', 'start', 'wsetup', 'wadd', 'eadd', 'gadd', 'meter', 'baseline', 'help', 'login', 'photo', 'privacy', 'terms'].indexOf(r) < 0) r = S.meter ? 'baseline' : 'welcome';
     if (S.onboarded && (!r || r === 'welcome' || r === 'start')) r = homeRoute();
+    if (S.onboarded) navNote(r);
     var view;
     var rm = r.match(/^rec-([\w-]+?)(-edit)?$/), wm = r.match(/^wrec-([\w-]+)$/), gn = r.match(/^gap-new-([\w-]+)$/), gm = !gn && r.match(/^gap-([\w-]+)$/), pm = r.match(/^place-([\w-]+)$/), em = r.match(/^erec-([\w-]+)$/);
     if (!gn) GAP_PRESET = null;
@@ -6136,6 +6158,7 @@
     else if (/^step-\d+$/.test(r)) view = (S.meter ? V.step(+r.split('-')[1]) : V.meter());
     else view = (V[r] || V.home)();
     if (!view.route) view.route = r;
+    tgBack(S.onboarded ? (view.bare ? view.closeTo : FLOW_RE.test(r) ? backTo('history') : r !== homeRoute() ? backTo(homeRoute()) : '') || '' : '');
     if (FB.open) { var ft = document.getElementById('fb-text'), fc = document.getElementById('fb-contact'); if (ft) FB.text = ft.value; if (fc) FB.contact = fc.value; }
     document.getElementById('root').innerHTML = shell(view);
     document.documentElement.lang = S.lang;
