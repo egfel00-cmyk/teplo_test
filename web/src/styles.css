@@ -1463,6 +1463,16 @@ details.tbl-acc[open] > .tbl-wrap { margin-top: 12px; }
 .lp-end h2 { font-size: clamp(28px, 7.4vw, 46px); line-height: 1.1; letter-spacing: -0.025em; margin: 0 auto 14px; max-width: 16ch; color: var(--lp-fg); text-wrap: balance; }
 .lp-end p { margin: 0 auto 26px; color: var(--lp-fg2); font-size: 18px; max-width: 40ch; }
 .lp-end .lp-ctas { justify-content: center; }
+/* 91-а (власник): поруч із закликом — цілі прилади, що плавно перетікають один в один (lpMeters, SMIL); телефон — над текстом, комп'ютер — праворуч */
+.lpe-in { position: relative; z-index: 1; display: flex; flex-direction: column; align-items: center; }
+.lpe-art { order: -1; width: min(250px, 72%); margin: -8px auto 20px; }
+.lpe-art svg { display: block; width: 100%; height: auto; overflow: visible; }
+@media (min-width: 960px) {
+  .lpe-in { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 360px); gap: 48px; align-items: center; max-width: 980px; margin: 0 auto; text-align: left; }
+  .lpe-copy h2, .lpe-copy p { margin-left: 0; margin-right: 0; }
+  .lpe-copy .lp-ctas { justify-content: flex-start; }
+  .lpe-art { order: 0; width: 100%; margin: 0; }
+}
 .lp-fine { max-width: 60ch; margin: 18px auto 0; padding: 0 20px; text-align: center; }
 
 @media (min-width: 600px) {
@@ -1515,7 +1525,15 @@ details.tbl-acc[open] > .tbl-wrap { margin-top: 12px; }
 @media (max-width: 760px) { .lpf-in { grid-template-columns: 1fr 1fr; } .lpf-brand { grid-column: 1 / -1; } }
 /* подвал на всех экранах приложения — только на компьютере (власник 10.11); на телефоне внизу меню, подвал — на лендинге */
 .app-foot { display: none; }
-@media (min-width: 960px) { .app-foot { display: block; margin: 56px 0 0; padding: 28px 0 8px; } .app-foot .lpf-in { grid-template-columns: 1.4fr 1fr 1fr 1fr; } }
+/* 91-а (власник): на комп'ютері — рядок сітки під main, тож завжди внизу сторінки (коротка — внизу вікна); лише три посилання */
+@media (min-width: 960px) {
+  .app { grid-template-rows: auto 1fr auto; }
+  .app-foot { display: flex; flex-wrap: wrap; align-items: center; gap: 4px var(--sp-5); grid-column: 2 / -1; max-width: calc(1040px - 2 * var(--sp-6)); margin: var(--sp-5) var(--sp-6) 0; padding: var(--sp-3) 0 var(--sp-4);
+    padding-right: 180px; /* «Відгук» праворуч унизу не закриває посилань */ border-top: 1px solid var(--c-line); font-size: 15px; color: var(--c-ink-2); }
+  .app.bare-app:not(.with-side) .app-foot { grid-column: 1 / -1; }
+  .app-foot a, .app-foot .linkbtn { display: inline-flex; align-items: center; min-height: 40px; color: var(--c-ink-2); text-decoration: none; font: inherit; }
+  .app-foot a:hover, .app-foot .linkbtn:hover { color: var(--c-ink); text-decoration: underline; }
+}
 @media (max-width: 380px) { .lpf-in { grid-template-columns: 1fr; } }
 
 /* ---- сторінка лічильника (07.11): «Куди передати» — кнопка в рамці на місці «Розпізнати з фото»; відкрита — та сама рамка навколо вмісту ---- */

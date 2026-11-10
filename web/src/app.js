@@ -506,7 +506,7 @@
       : '';
     return '<div class="app' + (bare ? ' bare-app' : '') + (side ? ' with-side' : '') + '">' +
       '<header class="top' + (right ? ' has-close' : '') + '"><a class="brand" href="#' + homeRoute() + '" data-key="brand">' + logo() + '<span>' + esc(t('brand')) + '</span><span class="beta-tag" data-key="beta">' + esc(t('beta_tag')) + '</span></a>' + '<span class="spacer"></span>' + right + '</header>' +
-      nav + '<main class="main' + (bare ? ' bare' : '') + (view.wide ? ' wide' : '') + enterCls(route) + '" id="main" data-screen="' + view.screen + '" tabindex="-1">' + (/^(history|stats|save)$/.test(route) ? placeSwitch() : /^(heat|water-hot|water-cold|elec|gas)$/.test(route) ? placeBar() : /^(wnew|wadd|enew|eadd|gnew|gadd|add-meter|step|step-\d+|check|handover|baseline|meter|photo)$/.test(route) ? placeBar(true) : '') + view.html + (S.onboarded && view.screen !== 'S00' && (!bare || side) ? lpFoot(false, true) : '') + '</main></div>' +
+      nav + '<main class="main' + (bare ? ' bare' : '') + (view.wide ? ' wide' : '') + enterCls(route) + '" id="main" data-screen="' + view.screen + '" tabindex="-1">' + (/^(history|stats|save)$/.test(route) ? placeSwitch() : /^(heat|water-hot|water-cold|elec|gas)$/.test(route) ? placeBar() : /^(wnew|wadd|enew|eadd|gnew|gadd|add-meter|step|step-\d+|check|handover|baseline|meter|photo)$/.test(route) ? placeBar(true) : '') + view.html + '</main>' + (S.onboarded && view.screen !== 'S00' && (!bare || side) ? appFoot() : '') + '</div>' +
       (window.TEPLO_API && !ccAsk() ? '<button class="fab' + (bare ? ' fab-bare' : '') + '" data-act="fb-open" data-key="feedback" aria-haspopup="dialog">' + ico('chat', 20) + '<span>' + esc(t('fb_btn')) + '</span></button>' + fbDialog() : '') +
       (bare ? ccBanner().replace('class="cc"', 'class="cc cc-bare"') : ccBanner()) +
       '<div id="toast-host" aria-live="polite"></div>';
@@ -3233,6 +3233,80 @@
       card('elec', t('kd_elec'), '<div class="lpp-el"><span>10420</span><i>kWh</i></div>', t('lp_ph_soon'), 'info') +
       '<div class="lpp-nav">' + ['home', 'history', 'chart', 'prefs'].map(function (n, i) { return '<span' + (i ? '' : ' class="on"') + '>' + ico(n, 15) + '</span>'; }).join('') + '</div></div></div>';
   }
+  /** 91-а (власник 10.11): у нижній панелі лендинга — цілі прилади, що плавно перетікають один в один: корпус міняє форму й колір
+   *  (теплолічильник → водомір → електролічильник → газовий), труби, кабелі, табло й підпис змінюються разом. SMIL — бо форму (rx, розмір)
+   *  CSS у Safari не анімує; «Зменшити рух» і автотести — стоїть теплолічильник (afterRender → pauseAnimations). Малюнок декоративний. */
+  function lpMeters() {
+    var D = 16, HOLD = 2.9, N = 4, E = '.22 1 .36 1', L = '0 0 1 1';
+    var kt = function (s) { return +(s / D).toFixed(4); };
+    var anim = function (attr, vals, times, spl) { return '<animate attributeName="' + attr + '" dur="' + D + 's" repeatCount="indefinite" calcMode="spline" keyTimes="' + times.join(';') + '" keySplines="' + spl.join(';') + '" values="' + vals.join(';') + '"/>'; };
+    // корпус кожного приладу: x, y, ширина, висота, радіус кута, колір пластику / металу / кільця водоміра
+    var B = [[70, 40, 180, 150, 26, '#ECEFEA'], [78, 46, 164, 164, 82, '#3A73B2'], [86, 18, 148, 252, 16, '#E2E6E2'], [62, 74, 196, 176, 14, '#C3C8C3']];
+    var morph = function (attr, a) { var v = [], tm = [], sp = []; for (var j = 0; j < N; j++) { v.push(a[j], a[j]); tm.push(kt(4 * j), kt(4 * j + HOLD)); sp.push(L, E); } v.push(a[0]); tm.push(1); return anim(attr, v, tm, sp); };
+    var body = function (attr, i) { return morph(attr, B.map(function (b) { return b[i]; })); };
+    // шар видно в станах vis: старі деталі гаснуть на початку перетікання, нові проявляються в кінці; спільні (труба тепла й води) — лишаються
+    var layer = function (vis, html) {
+      var v = [], tm = [], sp = [], on = function (j) { return vis.indexOf(j % N) >= 0 ? 1 : 0; };
+      for (var j = 0; j < N; j++) { var both = on(j) && on(j + 1) ? 1 : 0; v.push(on(j), on(j), both, both); tm.push(kt(4 * j), kt(4 * j + HOLD), kt(4 * j + HOLD + .35), kt(4 * j + HOLD + .5)); sp.push(L, E, L, E); }
+      v.push(on(0)); tm.push(1);
+      return '<g opacity="' + on(0) + '">' + anim('opacity', v, tm, sp) + html + '</g>';
+    };
+    var seg = function (str, x, y, h, fill) {
+      var k = h / 40, cx = 0, out = '';
+      String(str).split('').forEach(function (ch) {
+        if (ch === '.') { out += '<circle cx="' + (cx - 3) + '" cy="36.5" r="2.6"/>'; cx += 4; return; }
+        var map = SEG[ch] || '';
+        'abcdefg'.split('').forEach(function (q) { out += '<polygon points="' + POLY[q] + '"' + (map.indexOf(q) >= 0 ? '' : ' opacity=".09"') + ' transform="translate(' + cx + ',0)"/>'; });
+        cx += 28;
+      });
+      return '<g fill="' + fill + '" transform="translate(' + x + ',' + y + ') scale(' + k + ') skewX(-6)">' + out + '</g>';
+    };
+    var drums = function (blk, red, x, y, cw, ch, fs) {
+      var out = '', n = blk.length + red.length, w = n * cw + (n - 1) + 4;
+      out += '<rect x="' + x + '" y="' + y + '" width="' + w + '" height="' + (ch + 4) + '" rx="4" fill="#151B19"/>';
+      (blk + red).split('').forEach(function (d, i) {
+        var cx = x + 2 + i * (cw + 1), r = i >= blk.length;
+        out += '<rect x="' + cx + '" y="' + (y + 2) + '" width="' + cw + '" height="' + ch + '" rx="1.5" fill="' + (r ? '#B5161F' : '#2C3330') + '"/>' +
+          '<text x="' + (cx + cw / 2) + '" y="' + (y + 2 + ch * .74) + '" text-anchor="middle" font-family="IBM Plex Mono, ui-monospace, monospace" font-size="' + fs + '" font-weight="600" fill="#F4F5F2">' + d + '</text>';
+      });
+      return out;
+    };
+    var txt = function (s, x, y, size, fill, anchor) { return '<text x="' + x + '" y="' + y + '" font-size="' + size + '" fill="' + fill + '"' + (anchor ? ' text-anchor="' + anchor + '"' : '') + '>' + esc(s) + '</text>'; };
+    var back =
+      // труба з гайками — під теплолічильником і водоміром
+      layer([0, 1], '<rect x="14" y="188" width="292" height="30" rx="4" fill="#B08A4D"/><rect x="14" y="192" width="292" height="6" fill="#D2AD6B" opacity=".75"/><rect x="14" y="210" width="292" height="6" fill="#86683A"/>' +
+        '<rect x="38" y="178" width="28" height="50" rx="4" fill="#C39A56" stroke="#86683A" stroke-width="2"/><rect x="254" y="178" width="28" height="50" rx="4" fill="#C39A56" stroke="#86683A" stroke-width="2"/>') +
+      // тепло: витратомір на трубі й датчики подачі (червоний) та обратки (синій)
+      layer([0], '<rect x="116" y="182" width="88" height="42" rx="7" fill="#A6814A"/><path d="M74 140C40 140 24 154 24 176" fill="none" stroke="#C2462A" stroke-width="5" stroke-linecap="round"/>' +
+        '<path d="M246 140C280 140 296 154 296 176" fill="none" stroke="#3A72B5" stroke-width="5" stroke-linecap="round"/><rect x="16" y="174" width="16" height="16" rx="3" fill="#3B4340"/><rect x="288" y="174" width="16" height="16" rx="3" fill="#3B4340"/>') +
+      // світло: дроти знизу
+      layer([2], '<path d="M128 262V286M160 262V286M192 262V286" stroke="#2B3330" stroke-width="7" stroke-linecap="round"/>') +
+      // газ: жовті труби згори з гайками
+      layer([3], '<rect x="92" y="0" width="20" height="84" fill="#D7AC2E"/><rect x="208" y="0" width="20" height="84" fill="#D7AC2E"/><rect x="96" y="0" width="4" height="58" fill="#F0CC5B" opacity=".8"/><rect x="212" y="0" width="4" height="58" fill="#F0CC5B" opacity=".8"/>' +
+        '<rect x="86" y="56" width="32" height="22" rx="3" fill="#BF951F"/><rect x="202" y="56" width="32" height="22" rx="3" fill="#BF951F"/>');
+    var shell = '<rect x="' + B[0][0] + '" y="' + B[0][1] + '" width="' + B[0][2] + '" height="' + B[0][3] + '" rx="' + B[0][4] + '" fill="' + B[0][5] + '" stroke="#0E1412" stroke-opacity=".28" stroke-width="1.5">' +
+      body('x', 0) + body('y', 1) + body('width', 2) + body('height', 3) + body('rx', 4) + body('ry', 4) + body('fill', 5) + '</rect>';
+    var front =
+      layer([0], '<rect x="90" y="60" width="140" height="64" rx="12" fill="#26302C"/><rect x="97" y="67" width="126" height="50" rx="7" fill="#B5C3A2"/>' + seg('13.245', 104, 74, 26, '#1F2A22') +
+        txt('Gcal', 216, 112, 10, '#2E3A31', 'end') + '<circle cx="160" cy="152" r="13" fill="#DDE2DC" stroke="#C3CAC3" stroke-width="2"/><circle cx="160" cy="152" r="4" fill="#C3CAC3"/>' +
+        '<rect x="96" y="174" width="40" height="5" rx="2.5" fill="#D6DCD5"/><rect x="184" y="174" width="40" height="5" rx="2.5" fill="#D6DCD5"/>') +
+      layer([1], '<circle cx="160" cy="128" r="68" fill="#F3F4F0"/><circle cx="160" cy="128" r="62" fill="none" stroke="#DADDD7" stroke-width="1.5"/>' + drums('00437', '921', 106, 100, 12, 22, 15) +
+        txt('m³', 160, 144, 11, '#5A625E', 'middle') + [[124, 163, 40], [145, 172, 160], [175, 172, 250], [196, 163, 310]].map(function (c) {
+          var a = c[2] * Math.PI / 180;
+          return '<circle cx="' + c[0] + '" cy="' + c[1] + '" r="8" fill="#FFFFFF" stroke="#C9CEC8" stroke-width="1.5"/><path d="M' + c[0] + ' ' + c[1] + 'l' + (6 * Math.sin(a)).toFixed(1) + ' ' + (-6 * Math.cos(a)).toFixed(1) + '" stroke="#C21F26" stroke-width="2" stroke-linecap="round"/>';
+        }).join('') + '<circle cx="160" cy="188" r="5" fill="#26302C"/>') +
+      layer([2], '<rect x="102" y="44" width="116" height="58" rx="10" fill="#26302C"/><rect x="108" y="50" width="104" height="46" rx="6" fill="#C2CEBF"/>' + seg('10420', 113, 56, 24, '#1F2A22') +
+        txt('kWh', 206, 91, 10, '#2E3A31', 'end') + '<circle cx="118" cy="124" r="5" fill="#D3402F"><animate attributeName="opacity" values="1;.2;1" dur="1.6s" repeatCount="indefinite"/></circle>' +
+        txt('imp', 128, 128, 10, '#66706B') + '<rect x="176" y="117" width="30" height="14" rx="7" fill="#CDD3CE" stroke="#B7BFB9"/>' +
+        '<rect x="104" y="148" width="112" height="5" rx="2.5" fill="#CDD3CE"/><rect x="104" y="160" width="76" height="5" rx="2.5" fill="#CDD3CE"/><rect x="86" y="192" width="148" height="2" fill="#C4CBC5"/>' +
+        '<rect x="96" y="202" width="128" height="56" rx="10" fill="#D2D8D3" stroke="#BCC4BE" stroke-width="1.5"/><circle cx="112" cy="230" r="5" fill="#AEB6B0"/><circle cx="208" cy="230" r="5" fill="#AEB6B0"/>') +
+      layer([3], '<rect x="74" y="86" width="172" height="14" rx="7" fill="#B3B8B2"/><path d="M142 93h36m-7-5l7 5-7 5" fill="none" stroke="#7F8680" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>' +
+        '<rect x="82" y="112" width="156" height="62" rx="8" fill="#E3BC3F" stroke="#B88F1C" stroke-width="2"/>' + drums('07633', '512', 92, 124, 15, 26, 17) + txt('m³', 160, 168, 11, '#2E2508', 'middle') +
+        '<rect x="96" y="188" width="128" height="44" rx="6" fill="#B9BEB8"/><rect x="106" y="198" width="80" height="4" rx="2" fill="#A3A9A3"/><rect x="106" y="208" width="108" height="4" rx="2" fill="#A3A9A3"/><rect x="106" y="218" width="60" height="4" rx="2" fill="#A3A9A3"/>') +
+      ['lp_m_heat', 'lp_m_water', 'lp_m_elec', 'lp_m_gas'].map(function (k, j) { return layer([j], txt(t(k), 160, 318, 20, 'rgba(243, 248, 245, .82)', 'middle')); }).join('');
+    return '<div class="lpe-art" aria-hidden="true"><svg class="lpm" viewBox="0 0 320 328" focusable="false" font-family="IBM Plex Sans, system-ui, sans-serif">' +
+      '<ellipse cx="160" cy="238" rx="136" ry="8" fill="#000" opacity=".28">' + morph('cy', [238, 238, 282, 262]) + morph('rx', [136, 136, 88, 112]) + '</ellipse>' + back + shell + front + '</svg></div>';
+  }
   /** Лицьова панель приладу (89-а): чотири гвинти по кутах — декор, читачам екрана не видно. */
   function lpScrews() { return '<span class="lp-screw s1" aria-hidden="true"></span><span class="lp-screw s2" aria-hidden="true"></span><span class="lp-screw s3" aria-hidden="true"></span><span class="lp-screw s4" aria-hidden="true"></span>'; }
   function lpHero(o) {
@@ -3243,17 +3317,22 @@
       '<a class="lp-stage" href="#start" tabindex="-1" aria-hidden="true" data-key="welcome-hero">' + lpPhone() + lpTiles() + '</a></div></section>';
   }
   /** Футер лендинга: о сервисе, документы (политика, соглашение), связь; «независимый сервис». */
-  function lpFoot(login, app) {
+  function lpFoot(login) {
     var col = function (h, items) { return '<div class="lpf-col"><h3>' + esc(h) + '</h3><ul>' + items.join('') + '</ul></div>'; };
     var a = function (href, txt, key) { return '<li><a href="' + href + '" data-key="' + key + '">' + esc(txt) + '</a></li>'; };
     var bot = (Y()._cfg && Y()._cfg.botUsername) || '';
-    return '<footer class="lp-foot' + (app ? ' app-foot' : '') + '" data-key="' + (app ? 'app-foot' : 'lp-foot') + '"><div class="lpf-in">' +
+    return '<footer class="lp-foot" data-key="lp-foot"><div class="lpf-in">' +
       '<div class="lpf-brand"><div class="lpf-logo">' + logo() + '<b>' + esc(t('brand')) + '</b></div><p>' + esc(t('lf_about')) + '</p></div>' +
-      col(t('lf_service'), app ? [a('#' + homeRoute(), t('nav_home'), 'lpf-home'), a('#help', t('nav_help'), 'lpf-help'), a('#prefs', t('nav_prefs'), 'lpf-prefs')]
-        : [a('#start', t('lp_cta'), 'lpf-start')].concat(login ? [a('#login', t('lf_login'), 'lpf-login')] : []).concat([a('#help', t('nav_help'), 'lpf-help')])) +
+      col(t('lf_service'), [a('#start', t('lp_cta'), 'lpf-start')].concat(login ? [a('#login', t('lf_login'), 'lpf-login')] : []).concat([a('#help', t('nav_help'), 'lpf-help')])) +
       col(t('lf_docs'), [a('#privacy', t('lg_privacy'), 'lpf-privacy'), a('#terms', t('lg_terms'), 'lpf-terms')].concat(window.TEPLO_API ? ['<li><button type="button" class="linkbtn" data-act="cc-open" data-key="lpf-cookie">' + esc(t('cc_link')) + '</button></li>'] : [])) +
       col(t('lf_contact'), ['<li><button class="linkbtn" data-act="fb-open" data-key="lpf-fb">' + esc(t('lf_write')) + '</button></li>'].concat(bot ? ['<li><a href="https://t.me/' + esc(bot) + '" target="_blank" rel="noopener" data-key="lpf-bot">' + esc(t('lf_bot')) + '</a></li>'] : [])) +
       '</div><div class="lpf-bot"><span>© ' + new Date().getFullYear() + ' ' + esc(t('brand')) + '</span><span>' + esc(t('lf_indep')) + '</span></div></footer>';
+  }
+  /** Подвал застосунку — лише на комп'ютері (≥ 960), притиснутий до низу сторінки (рядок сітки .app після main; коротка сторінка — внизу вікна).
+   *  91-а (власник): у ньому тільки «Політика конфіденційності», «Умови використання» й «Налаштування cookie». */
+  function appFoot() {
+    return '<footer class="app-foot" data-key="app-foot"><a href="#privacy" data-key="lpf-privacy">' + esc(t('lg_privacy')) + '</a><a href="#terms" data-key="lpf-terms">' + esc(t('lg_terms')) + '</a>' +
+      (window.TEPLO_API ? '<button type="button" class="linkbtn" data-act="cc-open" data-key="lpf-cookie">' + esc(t('cc_link')) + '</button>' : '') + '</footer>';
   }
   function lpCta(key, label) { return '<a class="lp-btn" href="#start" data-key="' + key + '"><span>' + esc(label) + '</span></a>'; }
   /** «Куди передати»: основні постачальники всіх областей довідника — дві стрічки, пливуть справа наліво (владелец 10.11);
@@ -3341,7 +3420,7 @@
         cta: lpCta('welcome-start', t('lp_cta')) + (login ? '<a class="lp-link" href="#login" data-key="welcome-login">' + esc(t('w_login')) + '</a>' : ''),
         after: '<ul class="lp-trust">' + ['lp_tr1', 'lp_tr2', 'lp_tr3'].map(function (k) { return '<li>' + ico('check', 16) + '<span>' + esc(t(k)) + '</span></li>'; }).join('') + '</ul>' }) +
       lpDest() + lpSteps() + lpBento() +
-      '<section class="lp-end lp-plate" data-key="lp-end">' + lpScrews() + '<h2>' + esc(t('lp_end_t')) + '</h2><p>' + esc(t('lp_end')) + '</p><div class="lp-ctas">' + lpCta('welcome-start-end', t('lp_cta')) + '</div></section>' +
+      '<section class="lp-end lp-plate" data-key="lp-end">' + lpScrews() + '<div class="lpe-in"><div class="lpe-copy"><h2>' + esc(t('lp_end_t')) + '</h2><p>' + esc(t('lp_end')) + '</p><div class="lp-ctas">' + lpCta('welcome-start-end', t('lp_cta')) + '</div></div>' + lpMeters() + '</div></section>' +
       '<p class="lp-fine small muted">' + esc(fine) + '</p>' + lpFoot(login) + '</div>' };
   };
   /** «Куди передати» для тепла: лише кабінет ХТМ, 5–25 числа; є перевірені показання — до покрокової передачі. */
@@ -6428,6 +6507,8 @@
     Array.prototype.forEach.call(document.querySelectorAll(ACC_SEL), accFoot);
     Array.prototype.forEach.call(document.querySelectorAll('details.tips-box > summary'), function (sm) { if (!sm.querySelector('.pacc-chev')) sm.insertAdjacentHTML('beforeend', ico('chev', 18, 'pacc-chev')); });
     enhanceDates(); photoFill(); phFocusAll(); toastKeep(); fabWatch(); if (Y().account) histFlush();
+    // прилади в нижній панелі лендинга перетікають по колу — при «Зменшити рух» і в автотестах стоїть перший (теплолічильник)
+    if (calmMotion() || navigator.webdriver) Array.prototype.forEach.call(document.querySelectorAll('svg.lpm'), function (s) { if (s.pauseAnimations) { s.pauseAnimations(); s.setCurrentTime(0); } });
     // отклик: ушёл дальше привітання/головної — «клацав» (этап 1)
     if (typeof r === 'string' && r && !/^(welcome|home|places)$/.test(r) && VSTAGE < 1) { VSTAGE = 1; visitBump(); }
     if (SCROLL_TO) { var st0 = document.getElementById(SCROLL_TO); SCROLL_TO = null; if (st0) { var pg0 = st0.closest && st0.closest('details.pgroup'); if (pg0 && !pg0.open) { pg0.open = true; PREF_OPEN[pg0.id.slice(3)] = true; } var wa0 = st0.closest && st0.closest('details.wacc'); if (wa0 && !wa0.open) { wa0.open = true; waccStore(wa0)[wa0.id.slice(5)] = true; } st0.scrollIntoView({ block: 'start' }); try { st0.focus({ preventScroll: true }); } catch (e0) { /* старый браузер */ } st0.classList.add('flash'); setTimeout(function () { st0.classList.remove('flash'); }, 1600); } }

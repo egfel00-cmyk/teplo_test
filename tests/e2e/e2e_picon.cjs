@@ -44,6 +44,14 @@ const U = 'http://127.0.0.1:8013/';
     // подвал на всіх екранах — лише на комп'ютері
     const ft = await p.evaluate(() => { const f = document.querySelector('[data-key=app-foot]'); return f ? getComputedStyle(f).display : 'none'; });
     ok(vw + ': головна — подвал ' + (vw >= 960 ? 'є' : 'сховано'), vw >= 960 ? ft !== 'none' : ft === 'none', ft);
+    // 91-а (власник): на комп'ютері подвал завжди внизу сторінки (коротка сторінка — внизу вікна) і в ньому лише три посилання
+    if (vw >= 960) for (const r of ['#help', '#rec-r1', '#home']) {
+      await p.goto(U + r); await p.waitForTimeout(500);
+      const fp = await p.evaluate(() => { const f = document.querySelector('[data-key=app-foot]'); if (!f) return null; const de = document.documentElement, rb = f.getBoundingClientRect().bottom + scrollY;
+        return { gap: Math.round(Math.max(de.scrollHeight, innerHeight) - rb), keys: [...f.querySelectorAll('a,button')].map(x => x.dataset.key), inMain: !!f.closest('main') }; });
+      ok(vw + ': ' + r + ' — подвал притиснутий до низу сторінки, лише політика, умови, cookie', fp && fp.gap <= 1 && !fp.inMain && fp.keys.join() === 'lpf-privacy,lpf-terms,lpf-cookie', fp);
+    }
+    if (vw >= 960) { await p.goto(U + '#help'); await p.waitForTimeout(400); await p.screenshot({ path: '/tmp/shots/foot_help_1280.png' }); await p.goto(U + '#home'); await p.waitForTimeout(400); }
     // «Нараховано ХТМ»: стрілка праворуч, висота шапки не змінюється при відкритті
     await p.goto(U + '#rec-r1'); await p.waitForTimeout(800);
     const hz = await p.evaluate(async () => { const d = document.querySelector('details.hacc'); if (!d) return null; const s = d.querySelector('summary'), ch = s.querySelector('.pacc-chev');
@@ -55,6 +63,10 @@ const U = 'http://127.0.0.1:8013/';
     await lp.goto(U); await lp.waitForTimeout(900);
     const pr = await lp.evaluate(() => { const c = document.querySelector('[data-key=lp-pr]'); return c ? { rows: c.querySelectorAll('.lpv-r').length, tot: (c.querySelector('.lpv-tot') || {}).textContent || '', h: c.querySelector('h3').textContent } : null; });
     ok(vw + ': лендинг — клітинка «Ціни вашої громади»: 4 області з числами громад і підсумок', pr && pr.h === 'Ціни вашої громади' && pr.rows === 4 && /\d+ громад у довіднику/.test(pr.tot), pr);
+    // 91-а (власник): у нижній панелі — цілі прилади, що перетікають один в один (корпус анімується SMIL), підписи 4 видів; в автотестах стоїть теплолічильник
+    const mt = await lp.evaluate(() => { const s = document.querySelector('[data-key=lp-end] svg.lpm'); if (!s) return null;
+      return { anim: s.querySelectorAll('rect > animate[attributeName=rx], rect > animate[attributeName=width]').length, caps: [...s.querySelectorAll('text')].map(x => x.textContent).filter(x => /лічильник|Водомір/.test(x)), paused: s.animationsPaused(), t: s.getCurrentTime() }; });
+    ok(vw + ': лендинг — нижня панель: прилади перетікають (корпус rx/ширина), 4 підписи, в автотесті на паузі', mt && mt.anim === 2 && mt.caps.length === 4 && mt.paused && mt.t === 0, mt);
     await lp.context().close();
     ok(vw + ': без помилок JS', !errs.length, errs);
     await p.context().close();
