@@ -1792,6 +1792,15 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
 .mdocs-act { margin-top: 8px; }
 /* iOS 26: поправка положення нижніх вкладок і «Відгук» після клавіатури (--nav-shift з visualViewport) */
 .nav, .fab { translate: 0 var(--nav-shift, 0px); }
+/* запис історії (89-а, власник 10.11): показання — табло свого виду, як на сторінці лічильника; фото — у тій самій картці під табло, табло на фото — по центру */
+.rec-hero { display: grid; gap: var(--sp-3); margin: 0 0 var(--sp-4); }
+.rec-hero .mbox { margin: 0; }
+.rec-hero .hphotos { margin: var(--sp-3) 0 0; padding-top: var(--sp-3); border-top: 1px solid var(--c-line); }
+.rec-hero .hphotos .section-title { font-size: var(--fs-s); color: var(--c-ink-2); margin: 0; }
+.rec-hero .phd.fit .phd-slide { height: 200px; }
+.rh-copy { display: flex; flex-wrap: wrap; gap: 4px 18px; margin: 2px 0 0; }
+.rh-copy span { display: inline-flex; align-items: center; gap: 6px; color: var(--c-ink-2); }
+.rh-copy b { color: var(--c-ink); }
 
 </style>
 <style>.top { padding-top: max(12px, env(safe-area-inset-top)); }</style>
@@ -7956,12 +7965,18 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
     if (f && f.length === 4 && f[2] > 0) return ' data-f="' + f.join(',') + '"';
     return /^[wm]/.test(gal || '') && FOC.done[p.id] === undefined ? ' data-fq="1"' : '';
   }
-  /** Кадр превью: табло — у центрі, не ширше половини картки й не вище 55 % (видно й лічильник довкола); не дрібніше, ніж «на всю картку», і не більше ×2,2. */
+  /** Кадр превью: табло — рівно в центрі картки (власник 10.11: «чітко по центру табло»). Масштаб — табло на ~60 % ширини й не вище половини картки,
+   *  не дрібніше, ніж «на всю картку», і не більше ×3; якщо табло біля краю фото — збільшуємо, щоб і по центру, і без порожнечі (до 90 % ширини, ×3,5),
+   *  а коли й так не виходить — по центру з темним полем збоку (фон картки), а не зсунуте до краю. */
   function phFocus(im) {
     var f = String(im.getAttribute('data-f') || '').split(',').map(Number), box = im.parentNode; if (f.length !== 4 || !(f[2] > 0) || !box) return;
     var W = box.clientWidth, H = box.clientHeight, iw = im.naturalWidth, ih = im.naturalHeight; if (!W || !H || !iw || !ih) return;
-    var s0 = Math.max(W / iw, H / ih), s = Math.max(s0, Math.min(0.5 * W / (f[2] * iw), 0.55 * H / Math.max(1e-6, f[3] * ih), s0 * 2.2));
-    var sw = iw * s, sh = ih * s, l = Math.min(0, Math.max(W - sw, W / 2 - f[0] * sw)), tp = Math.min(0, Math.max(H - sh, H / 2 - f[1] * sh));
+    var fx = Math.max(0, Math.min(1, f[0])), fy = Math.max(0, Math.min(1, f[1])), fw = f[2] * iw, fh = Math.max(1e-6, f[3] * ih);
+    var s0 = Math.max(W / iw, H / ih), s = Math.max(s0, Math.min(0.6 * W / fw, 0.5 * H / fh, s0 * 3));
+    // без порожнечі по краях: половина картки має вміститися з кожного боку від центру табло
+    var sc = Math.max(W / (2 * Math.max(1e-3, Math.min(fx, 1 - fx)) * iw), H / (2 * Math.max(1e-3, Math.min(fy, 1 - fy)) * ih));
+    if (sc > s && sc <= Math.min(0.9 * W / fw, 0.8 * H / fh, s0 * 3.5)) s = sc;
+    var sw = iw * s, sh = ih * s, l = W / 2 - fx * sw, tp = H / 2 - fy * sh;
     im.style.cssText = 'position:absolute;max-width:none;width:' + sw.toFixed(1) + 'px;height:' + sh.toFixed(1) + 'px;left:' + l.toFixed(1) + 'px;top:' + tp.toFixed(1) + 'px;object-fit:fill';
     im.classList.add('fx');
   }
@@ -8104,10 +8119,13 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
     var x = Wt.series(wrecs(), wmeters(null, true), gaps()).filter(function (s0) { return s0.rec.id === id; })[0] || { by: {}, hot: null, cold: null };
     var ms = wmeters(null, true).filter(function (m) { return hasVal(r, m.id); }), h = back + '<h1>' + esc(fmtDate(r.date, true)) + '</h1>';
     if (r.base) h += '<p class="small muted">' + esc(t('wh_base')) + '</p>';
-    h += '<ul class="list" data-key="wrec-values">' + ms.map(function (m) {
-      var d = x.by[m.id];
-      return '<li><div class="grow">' + ico('drop', 16, m.kind === 'hot' ? 'c-hot' : 'c-cold') + ' ' + esc(wname(m)) + (d !== undefined ? '<div class="small muted">+' + d + ' м³</div>' : '') + '</div><b class="num">' + esc(wfmt(r.vals[m.id])) + '</b> <span class="small muted">м³</span>' + copyIco(Wt.whole(r.vals[m.id]), 'wrec-copy-' + m.id) + '</li>';
-    }).join('') + '</ul>' + photoStrip(r.photos, 'w' + r.id, 'w:' + r.id) + (r.base ? '' : billsBox('w:' + r.id, r.bills, t('bl_title', { m: monthLabel(String(r.date).slice(0, 7)) })));
+    // показання — табло свого виду, як на сторінці лічильника (власник 10.11: «більше акценту на блок із показаннями — барабан замість цифр»); фото — одразу під табло
+    var wps = photoStrip(r.photos, 'w' + r.id, 'w:' + r.id), wone = ms.length === 1;
+    h += '<div class="rec-hero" data-key="wrec-values">' + ms.map(function (m) {
+      var d = x.by[m.id], v = r.vals[m.id], days = m.kind === 'hot' ? x.daysHot : x.daysCold;
+      return mbox({ kind: m.kind, key: 'wrec-m-' + m.id, icon: 'drop', cls: m.kind === 'hot' ? 'c-hot' : 'c-cold', name: wname(m), display: wdrum(v, m.kind, 'hero'),
+        cap: (d !== undefined ? '+' + d + ' м³' + (days ? ' ' + t('er_for_days', { d: days }) : '') : wfmt(v) + ' м³'), fix: copyIco(Wt.whole(v), 'wrec-copy-' + m.id), body: wone ? wps : '' });
+    }).join('') + '</div>' + (wone ? '' : wps) + (r.base ? '' : billsBox('w:' + r.id, r.bills, t('bl_title', { m: monthLabel(String(r.date).slice(0, 7)) })));
     if (x.hot !== null || x.cold !== null) {
       var c = Wt.cost(x.cold || 0, x.hot || 0, r.date, wtar());
       h += '<div class="panel" style="margin-top:16px" data-key="wrec-used"><h2>' + esc(t('rec_used_title')) + '</h2><div class="cards2">' +
@@ -8794,9 +8812,12 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
     var k = m.kind === 'gas' ? 'gas' : 'elec', md = SK[k].mod, u = SK[k].unit();
     var x = md.series(mrecs(m.id), m).filter(function (s0) { return s0.rec.id === id; })[0] || {};
     var h = back + '<h1>' + esc(fmtDate(r.date, true)) + '</h1>' + (r.base ? '<p class="small muted">' + esc(t('eh_base')) + '</p>' : '<p class="small muted">' + esc(t('er_for', { m: monthLabel(md.forMonth(r.date)) })) + '</p>');
-    h += '<ul class="list" data-key="erec-values">' + md.keys(m).map(function (q) {
-      return '<li><div class="grow">' + ico(SK[k].icon, 16, SK[k].cls) + ' ' + esc(ename(m) + (md.zones(m) > 1 ? ' · ' + ezl(m, q) : '')) + (x.dz ? '<div class="small muted">+' + x.dz[q] + ' ' + u + '</div>' : '') + '</div><b class="num">' + md.whole(r.z[q]) + '</b> <span class="small muted">' + u + '</span>' + copyIco(md.whole(r.z[q]), 'erec-copy-' + q) + '</li>';
-    }).join('') + '</ul>';
+    // показання — табло свого виду (газ — жовта панель з роликами, світло — електронний екран по зонах), фото — під ним (власник 10.11)
+    var eps = photoStrip(r.photos, 'm' + r.id, 'm:' + r.id);
+    h += '<div class="rec-hero" data-key="erec-values">' + mbox({ kind: k, key: 'erec-m-' + m.id, icon: SK[k].icon, cls: SK[k].cls, name: ename(m), display: edisplay(m, r, 'hero'),
+      cap: x.dz ? md.keys(m).map(function (q) { return (md.zones(m) > 1 ? ezl(m, q).toLowerCase() + ' ' : '') + '+' + x.dz[q] + ' ' + u; }).join(' · ') : evals(m, r) + ' ' + u,
+      fix: md.zones(m) === 1 ? copyIco(md.whole(r.z.all), 'erec-copy-all') : '',
+      body: (md.zones(m) > 1 ? '<p class="rh-copy">' + md.keys(m).map(function (q) { var v = md.whole(r.z[q]); return '<span>' + esc(ezl(m, q)) + ' <b class="num">' + esc(v === null ? '—' : v) + '</b>' + copyIco(v, 'erec-copy-' + q) + '</span>'; }).join('') + '</p>' : '') + eps }) + '</div>';
     if (x.dz) {
       var c = md.cost(m, x.dz, r.date, sopts(k));
       h += '<div class="panel" style="margin-top:16px" data-key="erec-used"><h2>' + esc(t('rec_used_title')) + '</h2><div class="cards2"><div><div class="num big ' + SK[k].cls + '">' + x.kwh + ' <small>' + u + '</small></div><div class="small muted">' + esc(t('er_for_days', { d: x.days })) + '</div></div>' +
@@ -8810,7 +8831,7 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
       if (w.open && r.date >= w.from && r.date <= w.to) h += whereAcc(ssendPanel(k, smeters(k).map(function (mm) { return mm.id === m.id ? r : einWin(mm.id, w); })), r.id);
       else h += '<p>' + (ssent(k, r) ? '<span class="pill ok">' + ico('check', 14) + ' ' + esc(tk(k, 'ed_org')) + '</span>' : '<span class="pill neutral">' + esc(tk(k, 'ed_org')) + ': ' + esc(t('wh_notsent')) + '</span>') + '</p>';
     }
-    h += photoStrip(r.photos, 'm' + r.id, 'm:' + r.id) + (r.base ? '' : billsBox('m:' + r.id, r.bills, t('bl_title', { m: monthLabel(md.forMonth(r.date)) })));
+    h += (r.base ? '' : billsBox('m:' + r.id, r.bills, t('bl_title', { m: monthLabel(md.forMonth(r.date)) })));
     h += '<div class="row-actions">' + (r.base ? '' : '<button class="btn sec" data-act="eedit" data-id="' + r.id + '" data-key="erec-edit">' + esc(t('rec_edit')) + '</button>') + '<button class="btn danger" data-act="edel" data-id="' + r.id + '" data-key="erec-del">' + esc(t('rec_del')) + '</button></div>';
     if (!r.base) h += ownBox('m', r);
     return { screen: 'S09', route: 'history', html: h };
@@ -10622,7 +10643,12 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
         '<div><div class="num mid">' + esc(degTxt(wx.min)) + ' … ' + esc(degTxt(wx.max)) + '</div><div class="small muted">' + esc(t('wx_t_range')) + '</div></div>' +
         '<div><div class="num mid">' + wx.frost + ' / ' + wx.ser.length + '</div><div class="small muted">' + esc(t('wx_t_frost')) + '</div></div>' : '') +
       (wx.day !== null ? '<div><div class="num mid">' + esc(degTxt(wx.day)) + '</div><div class="small muted">' + esc(t('wx_t_day')) + '</div></div>' : '') + '</div>' + wxSpark(wx.ser) + '</div>' : '';
-    return { screen: 'S09', route: 'history', html: head + used + wxp + '<ul class="list" data-key="rec-values">' + rows + '</ul>' + photoStrip(r.photos, 'h' + r.id, 'h:' + r.id) + hsprPanel(r, iv) + billsBox('h:' + r.id, r.bills, t('bl_title', { m: monthLabel(String(h.date || '').slice(0, 7)) })) +
+    // головне показання — ЖК-табло тепла, як на сторінці лічильника (власник 10.11), фото — під ним; решта полів — списком нижче
+    var en = R.num(h.energy) !== null ? R.formatForHtm('energy', h.energy) : null;
+    var hero = '<div class="rec-hero" data-key="rec-hero">' + mbox({ kind: 'heat', key: 'rec-m-heat', icon: 'thermo', cls: 'c-heat', name: t('uc_heat'), sub: [modelName(model())],
+      display: lcd([{ text: en || '------', tag: 'Gcal', label: en ? en + ' Гкал' : '—' }], 'hero'),
+      cap: iv && iv.dE >= 0 ? '+' + iv.dE.toFixed(3) + ' Гкал ' + t('er_for_days', { d: iv.days }) : (en ? en + ' Гкал' : '—'), fix: copyIco(en, 'rec-copy-energy'), body: photoStrip(r.photos, 'h' + r.id, 'h:' + r.id) }) + '</div>';
+    return { screen: 'S09', route: 'history', html: head + hero + used + wxp + '<ul class="list" data-key="rec-values">' + rows + '</ul>' + hsprPanel(r, iv) + billsBox('h:' + r.id, r.bills, t('bl_title', { m: monthLabel(String(h.date || '').slice(0, 7)) })) +
       '<div class="row-actions">' + st + '<a class="btn sec" href="#rec-' + r.id + '-edit" data-key="rec-edit">' + esc(t('rec_edit')) + '</a>' +
       '<button class="btn danger" data-act="rec-del-ask" data-key="rec-del">' + esc(t('rec_del')) + '</button></div><div id="rec-del-confirm"></div>' + ownBox('h', r) };
   }

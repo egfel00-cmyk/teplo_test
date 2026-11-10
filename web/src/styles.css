@@ -1779,3 +1779,12 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
 .mdocs-act { margin-top: 8px; }
 /* iOS 26: поправка положення нижніх вкладок і «Відгук» після клавіатури (--nav-shift з visualViewport) */
 .nav, .fab { translate: 0 var(--nav-shift, 0px); }
+/* запис історії (89-а, власник 10.11): показання — табло свого виду, як на сторінці лічильника; фото — у тій самій картці під табло, табло на фото — по центру */
+.rec-hero { display: grid; gap: var(--sp-3); margin: 0 0 var(--sp-4); }
+.rec-hero .mbox { margin: 0; }
+.rec-hero .hphotos { margin: var(--sp-3) 0 0; padding-top: var(--sp-3); border-top: 1px solid var(--c-line); }
+.rec-hero .hphotos .section-title { font-size: var(--fs-s); color: var(--c-ink-2); margin: 0; }
+.rec-hero .phd.fit .phd-slide { height: 200px; }
+.rh-copy { display: flex; flex-wrap: wrap; gap: 4px 18px; margin: 2px 0 0; }
+.rh-copy span { display: inline-flex; align-items: center; gap: 6px; color: var(--c-ink-2); }
+.rh-copy b { color: var(--c-ink); }
