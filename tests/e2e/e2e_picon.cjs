@@ -48,8 +48,8 @@ const U = 'http://127.0.0.1:8013/';
     if (vw >= 960) for (const r of ['#help', '#rec-r1', '#home']) {
       await p.goto(U + r); await p.waitForTimeout(500);
       const fp = await p.evaluate(() => { const f = document.querySelector('[data-key=app-foot]'); if (!f) return null; const de = document.documentElement, rb = f.getBoundingClientRect().bottom + scrollY;
-        return { gap: Math.round(Math.max(de.scrollHeight, innerHeight) - rb), keys: [...f.querySelectorAll('a,button')].map(x => x.dataset.key), inMain: !!f.closest('main') }; });
-      ok(vw + ': ' + r + ' — подвал притиснутий до низу сторінки, лише політика, умови, cookie', fp && fp.gap <= 1 && !fp.inMain && fp.keys.join() === 'lpf-privacy,lpf-terms,lpf-cookie', fp);
+        return { gap: Math.round(Math.max(de.scrollHeight, innerHeight) - rb), keys: [...f.querySelectorAll('a,button')].map(x => x.dataset.key), inMain: !!f.closest('main'), note: (f.querySelector('.af-note') || {}).textContent || '' }; });
+      ok(vw + ': ' + r + ' — подвал притиснутий до низу сторінки: політика, умови, cookie, рік і «не є офіційним»', fp && fp.gap <= 1 && !fp.inMain && fp.keys.join() === 'lpf-privacy,lpf-terms,lpf-cookie' && /© 20\d\d Лічильники/.test(fp.note) && /не є офіційним/.test(fp.note), fp);
     }
     if (vw >= 960) { await p.goto(U + '#help'); await p.waitForTimeout(400); await p.screenshot({ path: '/tmp/shots/foot_help_1280.png' }); await p.goto(U + '#home'); await p.waitForTimeout(400); }
     // «Нараховано ХТМ»: стрілка праворуч, висота шапки не змінюється при відкритті
@@ -66,7 +66,7 @@ const U = 'http://127.0.0.1:8013/';
     // 91-а (власник): у нижній панелі — цілі прилади, що перетікають один в один (корпус анімується SMIL), підписи 4 видів; в автотестах стоїть теплолічильник
     const mt = await lp.evaluate(() => { const s = document.querySelector('[data-key=lp-end] svg.lpm'); if (!s) return null;
       return { anim: s.querySelectorAll('rect > animate[attributeName=rx], rect > animate[attributeName=width]').length, caps: [...s.querySelectorAll('text')].map(x => x.textContent).filter(x => /лічильник|Водомір/.test(x)), paused: s.animationsPaused(), t: s.getCurrentTime() }; });
-    ok(vw + ': лендинг — нижня панель: прилади перетікають (корпус rx/ширина), 4 підписи, в автотесті на паузі', mt && mt.anim === 2 && mt.caps.length === 4 && mt.paused && mt.t === 0, mt);
+    ok(vw + ': лендинг — нижня панель: прилади перетікають (корпус, тінь, блик, фаска — rx/ширина), 4 підписи, в автотесті на паузі', mt && mt.anim === 10 && mt.caps.length === 4 && mt.paused && mt.t === 0, mt);
     await lp.context().close();
     ok(vw + ': без помилок JS', !errs.length, errs);
     await p.context().close();

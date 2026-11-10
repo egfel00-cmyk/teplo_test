@@ -3221,17 +3221,31 @@
     return tile('heat', lcd([{ text: '13.245', tag: 'Gcal' }], 'boot'), t('kd_heat'), -.16) + tile('hot', wdrum('175.921', 'hot'), t('st_water'), -.08) +
       tile('elec', elcd([{ text: '10420' }]), t('kd_elec'), -.22) + tile('gas', wdrum('1225.4', 'gas'), t('kd_gas'), -.12);
   }
+  /** Телефон на сцені лендинга (92-а, власник: «місце під ще один лічильник, інтерфейс детальніше й ближче до справжнього»):
+   *  справжня головна в мініатюрі — екран 375 px (як у iPhone), зменшений під макет (--k у CSS): статус-бар, шапка «Лічильники · бета»,
+   *  «Моя квартира», чотири картки .ucard з тими самими табло (ЖК тепла, ролики води, екран світла, жовта панель газу), круглі «+»
+   *  (термінове — темне, як у застосунку), нижня панель шести розділів. Нічого не натискається: div/span замість посилань і кнопок. */
   function lpPhone() {
-    var card = function (k, name, disp, pill, tone) {
-      return '<div class="lpp-card"><div class="lpp-h">' + ico(KINDS[k].icon, 13, KINDS[k].cls) + '<b>' + esc(name) + '</b></div>' + disp +
-        '<span class="lpp-pill ' + tone + '">' + ico(tone === 'ok' ? 'check' : 'clock', 11) + '<span>' + esc(pill) + '</span></span></div>';
+    var card = function (k, icon, title, disp, st, tone) {
+      return '<div class="ucard ucard-' + k + '"><div class="ucard-main"><span class="ucard-top">' + ico(icon, 20, KINDS[k].cls) + '<span class="ucard-title">' + esc(title) + '</span></span>' +
+        '<div class="ucard-disp">' + disp + '</div><span class="ucard-status ' + tone + '">' + esc(st) + '</span></div><span class="ucard-add' + (tone === 'warn' ? ' hot' : '') + '">' + ico('plus', 26) + '</span></div>';
     };
-    return '<div class="lp-phone"><div class="lpp-screen"><span class="lpp-island"></span>' +
-      '<div class="lpp-top"><span class="lpp-logo">' + logo() + '</span><span class="lpp-pl"><b>' + esc(t('pl_mine')) + '</b><i>' + esc(t('lp_ph_addr')) + '</i></span></div>' +
-      card('heat', t('kd_heat'), '<div class="lpp-lcd"><span>13.245</span><i>Gcal</i></div>', t('lp_ph_due'), 'warn') +
-      card('hot', t('kd_hot'), '<div class="lpp-drum"><span>00175</span><span class="r">921</span><i>м³</i></div>', t('lp_ph_sent'), 'ok') +
-      card('elec', t('kd_elec'), '<div class="lpp-el"><span>10420</span><i>kWh</i></div>', t('lp_ph_soon'), 'info') +
-      '<div class="lpp-nav">' + ['home', 'history', 'chart', 'prefs'].map(function (n, i) { return '<span' + (i ? '' : ' class="on"') + '>' + ico(n, 15) + '</span>'; }).join('') + '</div></div></div>';
+    var sb = '<svg class="lpp-sbi" viewBox="0 0 70 14" aria-hidden="true" focusable="false"><g fill="currentColor"><rect x="0" y="9" width="3.4" height="4" rx="1"/><rect x="5" y="6.5" width="3.4" height="6.5" rx="1"/>' +
+      '<rect x="10" y="4" width="3.4" height="9" rx="1"/><rect x="15" y="1.5" width="3.4" height="11.5" rx="1"/>' +
+      '<path d="M31 13.2l2.6-3a3.6 3.6 0 0 0-5.2 0zM26.6 8.2a6.3 6.3 0 0 1 8.8 0l1.5-1.7a8.6 8.6 0 0 0-11.8 0zM23.8 5a10.3 10.3 0 0 1 14.4 0l1.5-1.7a12.6 12.6 0 0 0-17.4 0z"/>' +
+      '<rect x="44.5" y=".8" width="22" height="12" rx="3.6" fill="none" stroke="currentColor" stroke-opacity=".4" stroke-width="1.2"/><rect x="46.6" y="2.9" width="15" height="7.8" rx="2"/><path d="M67.8 4.8v4a2 2 0 0 0 0-4z" opacity=".45"/></g></svg>';
+    var tabs = [['home', 'nav_home'], ['history', 'nav_history'], ['chart', 'nav_stats'], ['leaf', 'nav_save'], ['help', 'nav_help'], ['prefs', 'nav_prefs']];
+    return '<div class="lp-phone"><div class="lpp-screen"><div class="lpp-vp">' +
+      '<div class="lpp-sb"><b>9:41</b><span class="lpp-island"></span>' + sb + '</div>' +
+      '<div class="lpp-app"><div class="lpp-bar">' + logo() + '<b>' + esc(t('brand')) + '</b><span class="lpp-beta">' + esc(t('beta_tag')) + '</span></div>' +
+      '<div class="lpp-hp">' + ico('home', 24) + '<span><b>' + esc(t('pl_mine')) + '</b><i>' + esc(t('lp_ph_addr')) + '</i></span></div>' +
+      '<div class="ucards">' +
+      card('heat', 'thermo', t('uc_heat'), lcd([{ text: '13.245', tag: 'Gcal' }], 'card'), t('lp_ph_due'), 'warn') +
+      card('hot', 'drop', t('kd_hot'), wdrum('175.921', 'hot', 'card'), t('lp_ph_sent'), 'ok') +
+      card('elec', KINDS.elec.icon, t('kd_elec'), elcd([{ text: '10420' }], 'card'), t('lp_ph_soon'), 'due') +
+      card('gas', KINDS.gas.icon, t('kd_gas'), wdrum('1225.4', 'gas', 'card'), t('lp_ph_gas'), 'due') + '</div></div>' +
+      '<div class="lpp-tab">' + tabs.map(function (n, i) { return '<span' + (i ? '' : ' class="on"') + '>' + ico(n[0], 22) + '<i>' + esc(t(n[1])) + '</i></span>'; }).join('') + '<span class="lpp-hi"></span></div>' +
+      '</div></div></div>';
   }
   /** 91-а (власник 10.11): у нижній панелі лендинга — цілі прилади, що плавно перетікають один в один: корпус міняє форму й колір
    *  (теплолічильник → водомір → електролічильник → газовий), труби, кабелі, табло й підпис змінюються разом. SMIL — бо форму (rx, розмір)
@@ -3243,7 +3257,13 @@
     // корпус кожного приладу: x, y, ширина, висота, радіус кута, колір пластику / металу / кільця водоміра
     var B = [[70, 40, 180, 150, 26, '#ECEFEA'], [78, 46, 164, 164, 82, '#3A73B2'], [86, 18, 148, 252, 16, '#E2E6E2'], [62, 74, 196, 176, 14, '#C3C8C3']];
     var morph = function (attr, a) { var v = [], tm = [], sp = []; for (var j = 0; j < N; j++) { v.push(a[j], a[j]); tm.push(kt(4 * j), kt(4 * j + HOLD)); sp.push(L, E); } v.push(a[0]); tm.push(1); return anim(attr, v, tm, sp); };
-    var body = function (attr, i) { return morph(attr, B.map(function (b) { return b[i]; })); };
+    // 92-а (власник: «більше деталей і об'єму, світлотінь»): корпус + тінь, блик, фаска — прямокутники з тим самим перетіканням, зсунуті на d
+    var shape = function (d, attrs) {
+      var g = function (i, dv) { return B.map(function (b) { return Math.max(0, b[i] + dv); }); };
+      var X = g(0, d[0]), Y = g(1, d[1]), W = g(2, d[2]), H = g(3, d[3]), R = g(4, d[4]);
+      return '<rect x="' + X[0] + '" y="' + Y[0] + '" width="' + W[0] + '" height="' + H[0] + '" rx="' + R[0] + '" ' + attrs + '>' +
+        morph('x', X) + morph('y', Y) + morph('width', W) + morph('height', H) + morph('rx', R) + morph('ry', R) + (/fill="#/.test(attrs) ? '' : '') + '</rect>';
+    };
     // шар видно в станах vis: старі деталі гаснуть на початку перетікання, нові проявляються в кінці; спільні (труба тепла й води) — лишаються
     var layer = function (vis, html) {
       var v = [], tm = [], sp = [], on = function (j) { return vis.indexOf(j % N) >= 0 ? 1 : 0; };
@@ -3261,51 +3281,137 @@
       });
       return '<g fill="' + fill + '" transform="translate(' + x + ',' + y + ') scale(' + k + ') skewX(-6)">' + out + '</g>';
     };
+    var r = function (x, y, w, h, rx, a) { return '<rect x="' + x + '" y="' + y + '" width="' + w + '" height="' + h + '"' + (rx ? ' rx="' + rx + '"' : '') + ' ' + a + '/>'; };
+    // ролики: рамка вікна, комірки, поверх — барабан (темніє догори й донизу) і відблиск скла
     var drums = function (blk, red, x, y, cw, ch, fs) {
-      var out = '', n = blk.length + red.length, w = n * cw + (n - 1) + 4;
-      out += '<rect x="' + x + '" y="' + y + '" width="' + w + '" height="' + (ch + 4) + '" rx="4" fill="#151B19"/>';
+      var n = blk.length + red.length, w = n * cw + (n - 1) + 4, out = r(x - 1.5, y - 1.5, w + 3, ch + 7, 5.5, 'fill="#0B0F0E"') + r(x, y, w, ch + 4, 4, 'fill="#151B19"');
       (blk + red).split('').forEach(function (d, i) {
-        var cx = x + 2 + i * (cw + 1), r = i >= blk.length;
-        out += '<rect x="' + cx + '" y="' + (y + 2) + '" width="' + cw + '" height="' + ch + '" rx="1.5" fill="' + (r ? '#B5161F' : '#2C3330') + '"/>' +
+        var cx = x + 2 + i * (cw + 1), rd = i >= blk.length;
+        out += r(cx, y + 2, cw, ch, 1.5, 'fill="' + (rd ? '#B5161F' : '#2C3330') + '"') +
           '<text x="' + (cx + cw / 2) + '" y="' + (y + 2 + ch * .74) + '" text-anchor="middle" font-family="IBM Plex Mono, ui-monospace, monospace" font-size="' + fs + '" font-weight="600" fill="#F4F5F2">' + d + '</text>';
       });
-      return out;
+      return out + r(x + 2, y + 2, w - 4, ch, 1.5, 'fill="url(#lpmDrum)"') + r(x + 1, y + 1, w - 2, ch * .42, 3, 'fill="#fff" opacity=".09"') + r(x, y, w, ch + 4, 4, 'fill="none" stroke="url(#lpmInset)" stroke-width="1.6"');
     };
-    var txt = function (s, x, y, size, fill, anchor) { return '<text x="' + x + '" y="' + y + '" font-size="' + size + '" fill="' + fill + '"' + (anchor ? ' text-anchor="' + anchor + '"' : '') + '>' + esc(s) + '</text>'; };
+    var txt = function (s, x, y, size, fill, anchor, wt) { return '<text x="' + x + '" y="' + y + '" font-size="' + size + '" fill="' + fill + '"' + (anchor ? ' text-anchor="' + anchor + '"' : '') + (wt ? ' font-weight="' + wt + '"' : '') + '>' + esc(s) + '</text>'; };
+    // гвинт зі шліцом, гайка з гранями, тінь під дрібною деталлю
+    var screw = function (x, y, rr, a) { return '<circle cx="' + (x + .6) + '" cy="' + (y + 1) + '" r="' + (rr + .6) + '" fill="#000" opacity=".22"/><circle cx="' + x + '" cy="' + y + '" r="' + rr + '" fill="url(#lpmScrew)"/>' +
+      '<path d="M' + (x - rr * .62 * Math.cos(a)).toFixed(2) + ' ' + (y - rr * .62 * Math.sin(a)).toFixed(2) + 'L' + (x + rr * .62 * Math.cos(a)).toFixed(2) + ' ' + (y + rr * .62 * Math.sin(a)).toFixed(2) + '" stroke="#4E5651" stroke-width="' + (rr * .32).toFixed(2) + '" stroke-linecap="round"/>'; };
+    var nut = function (x, y, w, h, grad, dark) { return r(x, y, w, h, 3, 'fill="url(#' + grad + ')" stroke="' + dark + '" stroke-width="1.2"') + r(x + 1, y + 1, w - 2, 2.5, 1, 'fill="#fff" opacity=".35"') + r(x + 1, y + h - 3.5, w - 2, 2.5, 1, 'fill="#000" opacity=".22"'); };
+    var lcdGlass = function (clip, x, y, w, h) { return r(x, y, w, h, 0, 'fill="url(#lpmLcdIn)" clip-path="url(#' + clip + ')"') + '<g clip-path="url(#' + clip + ')" fill="#fff"><path d="M' + x + ' ' + y + 'h' + (w * .5) + 'l-' + (w * .3) + ' ' + h + 'H' + x + 'z" opacity=".13"/><path d="M' + (x + w * .62) + ' ' + y + 'h' + (w * .1) + 'l-' + (w * .3) + ' ' + h + 'h-' + (w * .1) + 'z" opacity=".07"/></g>'; };
+    var bars = function (x, y, h) { var o = '', cx = x; [1, 2, 1, 1, 3, 1, 2, 1, 1, 2, 3, 1, 1, 2, 1, 1, 3, 1, 2, 1].forEach(function (w, i) { if (i % 2 === 0) o += r(cx, y, w * .7, h, 0, 'fill="#3B4340"'); cx += w * .7 + .7; }); return o; };
+    var qr = function (x, y, c) {
+      var bits = '1011001110100101101100101011011001010111001011010110', o = r(x - 1.5, y - 1.5, 9 * c + 3, 9 * c + 3, 1, 'fill="#F7F8F6"'), k = 0;
+      for (var i = 0; i < 9; i++) for (var j = 0; j < 9; j++) {
+        var fnd = (i < 3 && j < 3) || (i < 3 && j > 5) || (i > 5 && j < 3);
+        var on = fnd ? !(i % 6 === 1 && j % 6 === 1) || true : bits[k++ % bits.length] === '1';
+        if (fnd && ((i % 6 === 1 && j % 6 === 1) === false) && ((i % 6) === 1 || (j % 6) === 1) && !((i % 6 === 1) && (j % 6 === 1))) on = false;
+        if (on) o += r(x + j * c, y + i * c, c, c, 0, 'fill="#26302C"');
+      }
+      return o;
+    };
+    var defs = '<defs>' +
+      '<linearGradient id="lpmShade" x1="0" y1="0" x2=".35" y2="1"><stop offset="0" stop-color="#fff" stop-opacity=".42"/><stop offset=".38" stop-color="#fff" stop-opacity="0"/><stop offset=".62" stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity=".28"/></linearGradient>' +
+      '<radialGradient id="lpmSpec" cx=".26" cy=".14" r=".7"><stop offset="0" stop-color="#fff" stop-opacity=".4"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></radialGradient>' +
+      '<linearGradient id="lpmRim" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff" stop-opacity=".9"/><stop offset=".35" stop-color="#fff" stop-opacity="0"/><stop offset=".7" stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity=".38"/></linearGradient>' +
+      '<linearGradient id="lpmInset" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#000" stop-opacity=".45"/><stop offset=".35" stop-color="#000" stop-opacity="0"/><stop offset=".7" stop-color="#fff" stop-opacity="0"/><stop offset="1" stop-color="#fff" stop-opacity=".5"/></linearGradient>' +
+      '<linearGradient id="lpmLcdIn" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#000" stop-opacity=".26"/><stop offset=".22" stop-color="#000" stop-opacity="0"/><stop offset=".85" stop-color="#fff" stop-opacity="0"/><stop offset="1" stop-color="#fff" stop-opacity=".14"/></linearGradient>' +
+      '<linearGradient id="lpmBrass" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#5E4522"/><stop offset=".12" stop-color="#B8904E"/><stop offset=".3" stop-color="#F2D89C"/><stop offset=".5" stop-color="#C9A15C"/><stop offset=".8" stop-color="#9E7A40"/><stop offset="1" stop-color="#5A4220"/></linearGradient>' +
+      '<linearGradient id="lpmNut" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#7A5C2E"/><stop offset=".22" stop-color="#8E6C38"/><stop offset=".22" stop-color="#EBCD8F"/><stop offset=".5" stop-color="#CFA862"/><stop offset=".78" stop-color="#A9843F"/><stop offset=".78" stop-color="#6E5229"/><stop offset="1" stop-color="#5E4522"/></linearGradient>' +
+      '<linearGradient id="lpmYel" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#8C6A0E"/><stop offset=".22" stop-color="#D9AE2E"/><stop offset=".38" stop-color="#FBE39A"/><stop offset=".56" stop-color="#E2B635"/><stop offset=".86" stop-color="#A9820F"/><stop offset="1" stop-color="#7A5C08"/></linearGradient>' +
+      '<linearGradient id="lpmYelNut" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#8C6A0E"/><stop offset=".22" stop-color="#A57E12"/><stop offset=".22" stop-color="#F6D671"/><stop offset=".5" stop-color="#DDB136"/><stop offset=".78" stop-color="#B98F17"/><stop offset=".78" stop-color="#86650C"/><stop offset="1" stop-color="#6E5208"/></linearGradient>' +
+      '<linearGradient id="lpmDrum" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#000" stop-opacity=".62"/><stop offset=".3" stop-color="#000" stop-opacity="0"/><stop offset=".5" stop-color="#fff" stop-opacity=".12"/><stop offset=".7" stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity=".62"/></linearGradient>' +
+      '<radialGradient id="lpmKnob" cx=".38" cy=".3" r=".8"><stop offset="0" stop-color="#FFFFFF"/><stop offset=".45" stop-color="#E2E6E1"/><stop offset="1" stop-color="#A2AAA4"/></radialGradient>' +
+      '<radialGradient id="lpmScrew" cx=".35" cy=".3" r=".85"><stop offset="0" stop-color="#F6F7F5"/><stop offset=".55" stop-color="#B7BEB8"/><stop offset="1" stop-color="#737B75"/></radialGradient>' +
+      '<radialGradient id="lpmFace" cx=".42" cy=".32" r=".8"><stop offset="0" stop-color="#FFFFFF"/><stop offset=".6" stop-color="#F0F1ED"/><stop offset="1" stop-color="#D3D7D0"/></radialGradient>' +
+      '<radialGradient id="lpmLed" cx=".38" cy=".34" r=".7"><stop offset="0" stop-color="#FF9C8C"/><stop offset=".5" stop-color="#D3402F"/><stop offset="1" stop-color="#7E170E"/></radialGradient>' +
+      '<linearGradient id="lpmDome" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff" stop-opacity=".55"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></linearGradient>' +
+      '<linearGradient id="lpmPlate" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#F6D35E"/><stop offset=".55" stop-color="#E3BC3F"/><stop offset="1" stop-color="#C99D22"/></linearGradient>' +
+      '<linearGradient id="lpmCover" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#E6EAE6"/><stop offset="1" stop-color="#C6CDC8"/></linearGradient>' +
+      '<linearGradient id="lpmTag" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#D1D5CF"/><stop offset="1" stop-color="#B3B9B3"/></linearGradient>' +
+      '<filter id="lpmBlur" x="-40%" y="-40%" width="180%" height="180%"><feGaussianBlur stdDeviation="7"/></filter>' +
+      '<filter id="lpmBlur2" x="-30%" y="-200%" width="160%" height="500%"><feGaussianBlur stdDeviation="4"/></filter>' +
+      '<filter id="lpmSoft" x="-40%" y="-40%" width="180%" height="180%"><feGaussianBlur stdDeviation="1.4"/></filter>' +
+      '<clipPath id="lpmClH"><rect x="97" y="67" width="126" height="50" rx="7"/></clipPath><clipPath id="lpmClE"><rect x="108" y="50" width="104" height="46" rx="6"/></clipPath>' +
+      '<clipPath id="lpmClF"><circle cx="160" cy="128" r="68"/></clipPath><clipPath id="lpmClC"><rect x="86" y="18" width="148" height="174" rx="16"/></clipPath>' +
+      '</defs>';
+    var brassShade = function (x, y, w, h, rx) { return r(x, y, w, h, rx, 'fill="url(#lpmShade)"'); };
+    var cable = function (d, col, hi) { return '<path d="' + d + '" fill="none" stroke="#000" stroke-opacity=".25" stroke-width="6" stroke-linecap="round" transform="translate(1 2)" filter="url(#lpmSoft)"/>' +
+      '<path d="' + d + '" fill="none" stroke="' + col + '" stroke-width="5" stroke-linecap="round"/><path d="' + d + '" fill="none" stroke="' + hi + '" stroke-width="1.5" stroke-linecap="round" opacity=".75" transform="translate(-.6 -1.3)"/>'; };
     var back =
-      // труба з гайками — під теплолічильником і водоміром
-      layer([0, 1], '<rect x="14" y="188" width="292" height="30" rx="4" fill="#B08A4D"/><rect x="14" y="192" width="292" height="6" fill="#D2AD6B" opacity=".75"/><rect x="14" y="210" width="292" height="6" fill="#86683A"/>' +
-        '<rect x="38" y="178" width="28" height="50" rx="4" fill="#C39A56" stroke="#86683A" stroke-width="2"/><rect x="254" y="178" width="28" height="50" rx="4" fill="#C39A56" stroke="#86683A" stroke-width="2"/>') +
-      // тепло: витратомір на трубі й датчики подачі (червоний) та обратки (синій)
-      layer([0], '<rect x="116" y="182" width="88" height="42" rx="7" fill="#A6814A"/><path d="M74 140C40 140 24 154 24 176" fill="none" stroke="#C2462A" stroke-width="5" stroke-linecap="round"/>' +
-        '<path d="M246 140C280 140 296 154 296 176" fill="none" stroke="#3A72B5" stroke-width="5" stroke-linecap="round"/><rect x="16" y="174" width="16" height="16" rx="3" fill="#3B4340"/><rect x="288" y="174" width="16" height="16" rx="3" fill="#3B4340"/>') +
-      // світло: дроти знизу
-      layer([2], '<path d="M128 262V286M160 262V286M192 262V286" stroke="#2B3330" stroke-width="7" stroke-linecap="round"/>') +
+      // труба з гайками — під теплолічильником і водоміром: латунний циліндр, торці, грані гайок
+      layer([0, 1], r(14, 188, 292, 30, 4, 'fill="url(#lpmBrass)"') + '<ellipse cx="15" cy="203" rx="2.6" ry="14" fill="#6E532B"/><ellipse cx="305" cy="203" rx="2.6" ry="14" fill="#4E3A1C"/>' +
+        [70, 74, 78, 242, 246, 250].map(function (x) { return r(x, 189, 1.2, 28, 0, 'fill="#5E4522" opacity=".35"'); }).join('') +
+        nut(38, 178, 28, 50, 'lpmNut', '#6E5229') + nut(254, 178, 28, 50, 'lpmNut', '#6E5229')) +
+      // тепло: витратомір на трубі (литво, стрілка напрямку) й датчики подачі (червоний) та обратки (синій)
+      layer([0], r(116, 182, 88, 42, 7, 'fill="#A6814A"') + brassShade(116, 182, 88, 42, 7) + r(116.5, 182.5, 87, 41, 6.5, 'fill="none" stroke="url(#lpmRim)" stroke-width="1.2"') +
+        '<path d="M140 213h40m-6-4l6 4-6 4" fill="none" stroke="#E2C389" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" transform="translate(0 1)"/><path d="M140 213h40m-6-4l6 4-6 4" fill="none" stroke="#5E4522" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>' +
+        cable('M72 140C40 140 24 152 24 168', '#C2462A', '#F08A6C') + cable('M248 140C280 140 296 152 296 168', '#3A72B5', '#8FB8EC') +
+        r(20, 158, 8, 4, 1, 'fill="#8E2A16"') + r(292, 158, 8, 4, 1, 'fill="#1F4A80"') +
+        nut(16, 168, 16, 22, 'lpmNut', '#6E5229') + '<circle cx="24" cy="169" r="5" fill="#3B4340"/><circle cx="22.8" cy="167.6" r="1.6" fill="#fff" opacity=".35"/>' +
+        nut(288, 168, 16, 22, 'lpmNut', '#6E5229') + '<circle cx="296" cy="169" r="5" fill="#3B4340"/><circle cx="294.8" cy="167.6" r="1.6" fill="#fff" opacity=".35"/>') +
+      // вода: латунний корпус під кільцем
+      layer([1], r(100, 176, 120, 48, 8, 'fill="#B08A4D"') + brassShade(100, 176, 120, 48, 8) + r(100.5, 176.5, 119, 47, 7.5, 'fill="none" stroke="url(#lpmRim)" stroke-width="1.2"') +
+        '<path d="M144 217h32m-5-3.5l5 3.5-5 3.5" fill="none" stroke="#5E4522" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>') +
+      // світло: вушко кріплення згори, дроти знизу
+      layer([2], r(146, 4, 28, 22, 6, 'fill="#D5DAD5"') + r(146, 4, 28, 22, 6, 'fill="url(#lpmShade)"') + '<circle cx="160" cy="12" r="3.6" fill="#2B3330"/><circle cx="160" cy="12.8" r="3.6" fill="none" stroke="#fff" stroke-opacity=".45" stroke-width=".8"/>' +
+        [[128, '#5B4636', '#9C8270'], [160, '#2E5E9E', '#7FA6DA'], [192, '#5B4636', '#9C8270']].map(function (w) { return cable('M' + w[0] + ' 262V290', w[1], w[2]); }).join('')) +
       // газ: жовті труби згори з гайками
-      layer([3], '<rect x="92" y="0" width="20" height="84" fill="#D7AC2E"/><rect x="208" y="0" width="20" height="84" fill="#D7AC2E"/><rect x="96" y="0" width="4" height="58" fill="#F0CC5B" opacity=".8"/><rect x="212" y="0" width="4" height="58" fill="#F0CC5B" opacity=".8"/>' +
-        '<rect x="86" y="56" width="32" height="22" rx="3" fill="#BF951F"/><rect x="202" y="56" width="32" height="22" rx="3" fill="#BF951F"/>');
-    var shell = '<rect x="' + B[0][0] + '" y="' + B[0][1] + '" width="' + B[0][2] + '" height="' + B[0][3] + '" rx="' + B[0][4] + '" fill="' + B[0][5] + '" stroke="#0E1412" stroke-opacity=".28" stroke-width="1.5">' +
-      body('x', 0) + body('y', 1) + body('width', 2) + body('height', 3) + body('rx', 4) + body('ry', 4) + body('fill', 5) + '</rect>';
+      layer([3], r(92, 0, 20, 84, 0, 'fill="url(#lpmYel)"') + r(208, 0, 20, 84, 0, 'fill="url(#lpmYel)"') +
+        [30, 34, 38].map(function (y) { return r(92, y, 20, 1.2, 0, 'fill="#6E5208" opacity=".35"') + r(208, y, 20, 1.2, 0, 'fill="#6E5208" opacity=".35"'); }).join('') +
+        nut(86, 52, 32, 26, 'lpmYelNut', '#7A5C08') + nut(202, 52, 32, 26, 'lpmYelNut', '#7A5C08'));
+    var shell = shape([5, 11, 0, 0, 0], 'fill="#000" opacity=".5" filter="url(#lpmBlur)"') +
+      '<rect x="' + B[0][0] + '" y="' + B[0][1] + '" width="' + B[0][2] + '" height="' + B[0][3] + '" rx="' + B[0][4] + '" fill="' + B[0][5] + '" stroke="#0E1412" stroke-opacity=".3" stroke-width="1.5">' +
+        morph('x', B.map(function (b) { return b[0]; })) + morph('y', B.map(function (b) { return b[1]; })) + morph('width', B.map(function (b) { return b[2]; })) + morph('height', B.map(function (b) { return b[3]; })) +
+        morph('rx', B.map(function (b) { return b[4]; })) + morph('ry', B.map(function (b) { return b[4]; })) + morph('fill', B.map(function (b) { return b[5]; })) + '</rect>' +
+      shape([0, 0, 0, 0, 0], 'fill="url(#lpmShade)"') + shape([0, 0, 0, 0, 0], 'fill="url(#lpmSpec)"') + shape([1.6, 1.6, -3.2, -3.2, -1.6], 'fill="none" stroke="url(#lpmRim)" stroke-width="2"');
+    var dial = function (c) {
+      var a = c[2] * Math.PI / 180, s = Math.sin(a), co = Math.cos(a), tip = [c[0] + 6.4 * s, c[1] - 6.4 * co], bl = [c[0] - 1.7 * co - 1.6 * s, c[1] - 1.7 * s + 1.6 * co], br = [c[0] + 1.7 * co - 1.6 * s, c[1] + 1.7 * s + 1.6 * co];
+      return '<circle cx="' + (c[0] + .7) + '" cy="' + (c[1] + 1.3) + '" r="8.6" fill="#000" opacity=".16"/><circle cx="' + c[0] + '" cy="' + c[1] + '" r="8" fill="url(#lpmFace)" stroke="#BFC5BE" stroke-width="1.2"/>' +
+        '<circle cx="' + c[0] + '" cy="' + c[1] + '" r="8" fill="none" stroke="url(#lpmInset)" stroke-width="1.2"/>' +
+        '<path d="M' + tip.map(function (v) { return v.toFixed(2); }).join(' ') + 'L' + bl.map(function (v) { return v.toFixed(2); }).join(' ') + 'L' + br.map(function (v) { return v.toFixed(2); }).join(' ') + 'z" fill="#C21F26"/>' +
+        '<circle cx="' + c[0] + '" cy="' + c[1] + '" r="1.7" fill="#7E170E"/>';
+    };
+    var star = function (x, y) { var p = []; for (var i = 0; i < 12; i++) { var a = i * Math.PI / 6, rr = i % 2 ? 2.6 : 6.6; p.push((x + rr * Math.sin(a)).toFixed(2) + ',' + (y - rr * Math.cos(a)).toFixed(2)); } return '<polygon points="' + p.join(' ') + '" fill="#26302C"/><circle cx="' + x + '" cy="' + y + '" r="1.4" fill="#F3F4F0"/>'; };
+    var knurl = ''; for (var q = 0; q < 60; q++) { var qa = q * Math.PI / 30; knurl += 'M' + (160 + 74 * Math.cos(qa)).toFixed(1) + ' ' + (128 + 74 * Math.sin(qa)).toFixed(1) + 'L' + (160 + 79.5 * Math.cos(qa)).toFixed(1) + ' ' + (128 + 79.5 * Math.sin(qa)).toFixed(1); }
     var front =
-      layer([0], '<rect x="90" y="60" width="140" height="64" rx="12" fill="#26302C"/><rect x="97" y="67" width="126" height="50" rx="7" fill="#B5C3A2"/>' + seg('13.245', 104, 74, 26, '#1F2A22') +
-        txt('Gcal', 216, 112, 10, '#2E3A31', 'end') + '<circle cx="160" cy="152" r="13" fill="#DDE2DC" stroke="#C3CAC3" stroke-width="2"/><circle cx="160" cy="152" r="4" fill="#C3CAC3"/>' +
-        '<rect x="96" y="174" width="40" height="5" rx="2.5" fill="#D6DCD5"/><rect x="184" y="174" width="40" height="5" rx="2.5" fill="#D6DCD5"/>') +
-      layer([1], '<circle cx="160" cy="128" r="68" fill="#F3F4F0"/><circle cx="160" cy="128" r="62" fill="none" stroke="#DADDD7" stroke-width="1.5"/>' + drums('00437', '921', 106, 100, 12, 22, 15) +
-        txt('m³', 160, 144, 11, '#5A625E', 'middle') + [[124, 163, 40], [145, 172, 160], [175, 172, 250], [196, 163, 310]].map(function (c) {
-          var a = c[2] * Math.PI / 180;
-          return '<circle cx="' + c[0] + '" cy="' + c[1] + '" r="8" fill="#FFFFFF" stroke="#C9CEC8" stroke-width="1.5"/><path d="M' + c[0] + ' ' + c[1] + 'l' + (6 * Math.sin(a)).toFixed(1) + ' ' + (-6 * Math.cos(a)).toFixed(1) + '" stroke="#C21F26" stroke-width="2" stroke-linecap="round"/>';
-        }).join('') + '<circle cx="160" cy="188" r="5" fill="#26302C"/>') +
-      layer([2], '<rect x="102" y="44" width="116" height="58" rx="10" fill="#26302C"/><rect x="108" y="50" width="104" height="46" rx="6" fill="#C2CEBF"/>' + seg('10420', 113, 56, 24, '#1F2A22') +
-        txt('kWh', 206, 91, 10, '#2E3A31', 'end') + '<circle cx="118" cy="124" r="5" fill="#D3402F"><animate attributeName="opacity" values="1;.2;1" dur="1.6s" repeatCount="indefinite"/></circle>' +
-        txt('imp', 128, 128, 10, '#66706B') + '<rect x="176" y="117" width="30" height="14" rx="7" fill="#CDD3CE" stroke="#B7BFB9"/>' +
-        '<rect x="104" y="148" width="112" height="5" rx="2.5" fill="#CDD3CE"/><rect x="104" y="160" width="76" height="5" rx="2.5" fill="#CDD3CE"/><rect x="86" y="192" width="148" height="2" fill="#C4CBC5"/>' +
-        '<rect x="96" y="202" width="128" height="56" rx="10" fill="#D2D8D3" stroke="#BCC4BE" stroke-width="1.5"/><circle cx="112" cy="230" r="5" fill="#AEB6B0"/><circle cx="208" cy="230" r="5" fill="#AEB6B0"/>') +
-      layer([3], '<rect x="74" y="86" width="172" height="14" rx="7" fill="#B3B8B2"/><path d="M142 93h36m-7-5l7 5-7 5" fill="none" stroke="#7F8680" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>' +
-        '<rect x="82" y="112" width="156" height="62" rx="8" fill="#E3BC3F" stroke="#B88F1C" stroke-width="2"/>' + drums('07633', '512', 92, 124, 15, 26, 17) + txt('m³', 160, 168, 11, '#2E2508', 'middle') +
-        '<rect x="96" y="188" width="128" height="44" rx="6" fill="#B9BEB8"/><rect x="106" y="198" width="80" height="4" rx="2" fill="#A3A9A3"/><rect x="106" y="208" width="108" height="4" rx="2" fill="#A3A9A3"/><rect x="106" y="218" width="60" height="4" rx="2" fill="#A3A9A3"/>') +
+      layer([0], r(88, 58, 144, 68, 13, 'fill="#000" opacity=".16" filter="url(#lpmSoft)" transform="translate(0 1.5)"') + r(90, 60, 140, 64, 12, 'fill="#26302C"') + r(90.6, 60.6, 138.8, 62.8, 11.4, 'fill="none" stroke="url(#lpmRim)" stroke-width="1.2" opacity=".6"') +
+        r(97, 67, 126, 50, 7, 'fill="#B5C3A2"') + seg('13.245', 104, 74, 26, '#1F2A22') + txt('Gcal', 216, 112, 10, '#2E3A31', 'end') +
+        r(101, 70.5, 9, 4.5, 1, 'fill="none" stroke="#1F2A22" stroke-width=".9" opacity=".75"') + r(102.2, 71.7, 5, 2.1, 0, 'fill="#1F2A22" opacity=".75"') + r(110, 71.6, 1, 2.3, 0, 'fill="#1F2A22" opacity=".75"') +
+        lcdGlass('lpmClH', 97, 67, 126, 50) +
+        '<circle cx="160.8" cy="153.6" r="15" fill="#000" opacity=".14" filter="url(#lpmSoft)"/><circle cx="160" cy="152" r="14" fill="#CDD3CC"/><circle cx="160" cy="152" r="12" fill="url(#lpmKnob)"/><path d="M157.5 148.5l5 3.5-5 3.5z" fill="#7C857F"/>' +
+        txt('Qp 1,5 m³/h', 86, 148, 7, '#6E7872') + txt('PN16  DN15', 86, 158, 7, '#6E7872') + txt('№ 21047093', 234, 148, 7, '#6E7872', 'end') + bars(197, 151.5, 7) +
+        screw(84, 176, 3.6, .7) + screw(236, 176, 3.6, -.4) + r(64, 134, 9, 12, 2.5, 'fill="#3B4340"') + r(247, 134, 9, 12, 2.5, 'fill="#3B4340"') +
+        '<path d="M236 176c7 4 9 9 10 16" fill="none" stroke="#8A918C" stroke-width="1"/><circle cx="246.5" cy="195" r="4.2" fill="url(#lpmScrew)"/>') +
+      layer([1], '<path d="' + knurl + '" stroke="#fff" stroke-opacity=".22" stroke-width="1.1"/>' + '<circle cx="160" cy="128" r="69.5" fill="#1D3E66" opacity=".55"/>' +
+        '<circle cx="160" cy="128" r="68" fill="url(#lpmFace)"/><circle cx="160" cy="128" r="66.6" fill="none" stroke="url(#lpmInset)" stroke-width="3"/><circle cx="160" cy="128" r="61" fill="none" stroke="#DADDD7" stroke-width="1.2"/>' +
+        txt('Q3 2,5 m³/h', 160, 90, 7, '#6E7872', 'middle') + drums('00437', '921', 106, 100, 12, 22, 15) + txt('m³', 160, 144, 11, '#5A625E', 'middle') +
+        txt('R160', 122, 148, 6.5, '#8A938D', 'middle') + txt('C', 198, 148, 7, '#8A938D', 'middle', 600) +
+        [[124, 163, 40], [145, 172, 160], [175, 172, 250], [196, 163, 310]].map(dial).join('') + star(160, 188) +
+        '<g clip-path="url(#lpmClF)"><ellipse cx="128" cy="84" rx="74" ry="32" transform="rotate(-28 128 84)" fill="url(#lpmDome)" opacity=".7"/>' +
+        '<path d="M206 166a64 64 0 0 1-30 25" fill="none" stroke="#fff" stroke-opacity=".55" stroke-width="2.4" stroke-linecap="round"/></g>' +
+        '<ellipse cx="121" cy="80" rx="11" ry="4.6" transform="rotate(-38 121 80)" fill="#fff" opacity=".6"/>') +
+      layer([2], '<g clip-path="url(#lpmClC)"><path d="M86 18h70L86 132z" fill="#fff" opacity=".12"/><path d="M178 18h14L100 190H86z" fill="#fff" opacity=".07"/></g>' +
+        r(100, 42, 120, 62, 11, 'fill="#000" opacity=".14" filter="url(#lpmSoft)" transform="translate(0 1.5)"') + r(102, 44, 116, 58, 10, 'fill="#26302C"') + r(102.6, 44.6, 114.8, 56.8, 9.4, 'fill="none" stroke="url(#lpmRim)" stroke-width="1.2" opacity=".6"') +
+        r(108, 50, 104, 46, 6, 'fill="#C2CEBF"') + seg('10420', 113, 56, 24, '#1F2A22') + txt('kWh', 206, 91, 10, '#2E3A31', 'end') + txt('T1', 113, 91, 8, '#2E3A31', '', 600) + lcdGlass('lpmClE', 108, 50, 104, 46) +
+        '<circle cx="118" cy="124" r="5.6" fill="#8C9590"/><circle cx="118" cy="124" r="5" fill="url(#lpmLed)"><animate attributeName="opacity" values="1;.25;1" dur="1.6s" repeatCount="indefinite"/></circle><circle cx="116.6" cy="122.5" r="1.3" fill="#fff" opacity=".8"/>' +
+        txt('imp', 128, 128, 10, '#66706B') + r(176.6, 118.4, 30, 14, 7, 'fill="#000" opacity=".18" filter="url(#lpmSoft)"') + r(176, 117, 30, 14, 7, 'fill="url(#lpmKnob)" stroke="#AEB6B0"') +
+        txt('220 V  50 Hz', 104, 152, 7.5, '#59625D') + txt('5(60) A   кл. 1', 104, 163, 7.5, '#59625D') + txt('1000 imp/kWh', 104, 174, 7.5, '#59625D') + qr(192, 147, 2.4) +
+        r(86, 190.5, 148, 1.6, 0, 'fill="#8E978F"') + r(86, 192.4, 148, 1, 0, 'fill="#fff" opacity=".7"') +
+        r(95, 203, 130, 58, 10, 'fill="#000" opacity=".18" filter="url(#lpmSoft)" transform="translate(1 2)"') + r(96, 202, 128, 56, 10, 'fill="url(#lpmCover)" stroke="#AEB6B0" stroke-width="1.2"') + r(97, 203, 126, 54, 9, 'fill="none" stroke="url(#lpmRim)" stroke-width="1.4"') +
+        screw(112, 230, 5, .8) + screw(208, 230, 5, -.5) + '<path d="M112 230C126 251 194 251 208 230" fill="none" stroke="#7F8781" stroke-width="1"/><circle cx="160.6" cy="247" r="5.4" fill="#000" opacity=".2"/><circle cx="160" cy="246" r="5" fill="url(#lpmScrew)"/>' +
+        '<path d="M157.5 246h5" stroke="#6E7670" stroke-width=".9"/>') +
+      layer([3], r(74, 86, 172, 14, 7, 'fill="#ADB3AD"') + r(74, 86, 172, 14, 7, 'fill="none" stroke="url(#lpmInset)" stroke-width="1.4"') +
+        '<path d="M142 94h36m-7-5l7 5-7 5" fill="none" stroke="#fff" stroke-opacity=".55" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M142 93h36m-7-5l7 5-7 5" fill="none" stroke="#6F766F" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>' +
+        r(80, 111, 160, 66, 9, 'fill="#000" opacity=".2" filter="url(#lpmSoft)" transform="translate(1 2)"') + r(82, 112, 156, 62, 8, 'fill="url(#lpmPlate)" stroke="#B88F1C" stroke-width="2"') + r(83.5, 113.5, 153, 59, 7, 'fill="none" stroke="url(#lpmRim)" stroke-width="1.4"') +
+        drums('07633', '512', 92, 124, 15, 26, 17) + txt('m³', 160, 168, 11, '#2E2508', 'middle') + screw(89, 167, 2.4, .5) + screw(231, 167, 2.4, -.6) +
+        r(62, 178, 196, 7, 0, 'fill="#A9AFA9"') + r(62, 178, 196, 1.4, 0, 'fill="#fff" opacity=".55"') + r(62, 185, 196, 1.4, 0, 'fill="#000" opacity=".22"') +
+        [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14].map(function (i) { return '<circle cx="' + (70 + i * 12.9).toFixed(1) + '" cy="181.5" r="1.3" fill="#80877F"/>'; }).join('') +
+        r(96, 192, 128, 46, 6, 'fill="url(#lpmTag)"') + r(96, 192, 128, 46, 6, 'fill="none" stroke="url(#lpmInset)" stroke-width="1.4"') +
+        txt('G4', 106, 220, 16, '#3B4340', '', 700) + txt('Qmax 6 m³/h', 138, 207, 7, '#4E5651') + txt('Pmax 50 kPa', 138, 217, 7, '#4E5651') + txt('V 1,2 dm³', 138, 227, 7, '#4E5651') +
+        screw(101, 197, 1.8, 0) + screw(219, 197, 1.8, 0) + screw(101, 233, 1.8, 0) + screw(219, 233, 1.8, 0)) +
       ['lp_m_heat', 'lp_m_water', 'lp_m_elec', 'lp_m_gas'].map(function (k, j) { return layer([j], txt(t(k), 160, 318, 20, 'rgba(243, 248, 245, .82)', 'middle')); }).join('');
-    return '<div class="lpe-art" aria-hidden="true"><svg class="lpm" viewBox="0 0 320 328" focusable="false" font-family="IBM Plex Sans, system-ui, sans-serif">' +
-      '<ellipse cx="160" cy="238" rx="136" ry="8" fill="#000" opacity=".28">' + morph('cy', [238, 238, 282, 262]) + morph('rx', [136, 136, 88, 112]) + '</ellipse>' + back + shell + front + '</svg></div>';
+    return '<div class="lpe-art" aria-hidden="true"><svg class="lpm" viewBox="0 0 320 328" focusable="false" font-family="IBM Plex Sans, system-ui, sans-serif">' + defs +
+      '<ellipse cx="160" cy="240" rx="136" ry="9" fill="#000" opacity=".42" filter="url(#lpmBlur2)">' + morph('cy', [240, 240, 286, 266]) + morph('rx', [136, 136, 84, 110]) + '</ellipse>' + back + shell + front + '</svg></div>';
   }
   /** Лицьова панель приладу (89-а): чотири гвинти по кутах — декор, читачам екрана не видно. */
   function lpScrews() { return '<span class="lp-screw s1" aria-hidden="true"></span><span class="lp-screw s2" aria-hidden="true"></span><span class="lp-screw s3" aria-hidden="true"></span><span class="lp-screw s4" aria-hidden="true"></span>'; }
@@ -3329,10 +3435,12 @@
       '</div><div class="lpf-bot"><span>© ' + new Date().getFullYear() + ' ' + esc(t('brand')) + '</span><span>' + esc(t('lf_indep')) + '</span></div></footer>';
   }
   /** Подвал застосунку — лише на комп'ютері (≥ 960), притиснутий до низу сторінки (рядок сітки .app після main; коротка сторінка — внизу вікна).
-   *  91-а (власник): у ньому тільки «Політика конфіденційності», «Умови використання» й «Налаштування cookie». */
+   *  91-а (власник): посилання — тільки «Політика конфіденційності», «Умови використання» й «Налаштування cookie»;
+   *  92-а (власник): під ними — рік і «Незалежний сервіс — не є офіційним…», як на лендингу. */
   function appFoot() {
     return '<footer class="app-foot" data-key="app-foot"><a href="#privacy" data-key="lpf-privacy">' + esc(t('lg_privacy')) + '</a><a href="#terms" data-key="lpf-terms">' + esc(t('lg_terms')) + '</a>' +
-      (window.TEPLO_API ? '<button type="button" class="linkbtn" data-act="cc-open" data-key="lpf-cookie">' + esc(t('cc_link')) + '</button>' : '') + '</footer>';
+      (window.TEPLO_API ? '<button type="button" class="linkbtn" data-act="cc-open" data-key="lpf-cookie">' + esc(t('cc_link')) + '</button>' : '') +
+      '<p class="af-note" data-key="app-foot-note"><span>© ' + new Date().getFullYear() + ' ' + esc(t('brand')) + '</span><span>' + esc(t('lf_indep')) + '</span></p></footer>';
   }
   function lpCta(key, label) { return '<a class="lp-btn" href="#start" data-key="' + key + '"><span>' + esc(label) + '</span></a>'; }
   /** «Куди передати»: основні постачальники всіх областей довідника — дві стрічки, пливуть справа наліво (владелец 10.11);
@@ -3352,6 +3460,7 @@
   /** «Ціни саме вашої громади» (власник 10.11): скільки громад у довіднику по областях і в скількох знайдено ціну води; як підтягуються постачальники й ціни громади —
    *  з рішень рад і виконкомів, постанов НКРЕКП і сайтів постачальників, з датою й джерелом; немає документа — «впишіть з платіжки». Числа — під час збирання (web/build.py). */
   var LP_PROV = null/*LP_PROV*/;
+  var LP_PHOTO = ''/*LP_PHOTO*/;
   function lpPrices() {
     var regs = (LP_PROV || []).filter(function (x) { return x && x.h > 1; }), all = (LP_PROV || []).reduce(function (a, x) { return a + (x.h || 0); }, 0);
     return '<div class="lp-prv" aria-hidden="true">' + regs.map(function (x) { return '<span class="lpv-r"><i>' + esc(t('lp_pr_o_' + x.r)) + '</i><b>' + x.h + '</b></span>'; }).join('') +
@@ -3359,7 +3468,12 @@
   }
   function lpSteps() {
     var arts = [
-      '<div class="lp-art art-photo"><span class="vf tl"></span><span class="vf tr"></span><span class="vf bl"></span><span class="vf br"></span>' + lcd([{ text: '13.245', tag: 'Gcal' }]) + '<span class="scan"></span></div>',
+      // 92-а (власник): справжнє фото табло з сервера → лінія сканує → рамка навколо цифр і «17,913 Gcal» → шторка зліва направо
+      // перетворює фото на табло з тими самими цифрами → пауза → знову фото (CSS lpPh*, 9 с; «Зменшити рух» — фото з рамкою й підписом)
+      '<div class="lp-art art-photo"><div class="aph"><img class="aph-img" src="' + LP_PHOTO + '" alt="" width="720" height="411" decoding="async">' +
+        '<span class="aph-box b1"></span><span class="aph-box b2"></span><span class="aph-chip">17,913 Gcal</span><span class="scan"></span>' +
+        '<div class="aph-lcd">' + lcd([{ text: '17.913', tag: 'Gcal' }]) + '</div><span class="aph-cap">Heat meter</span><span class="aph-wipe"></span></div>' +
+        '<span class="vf tl"></span><span class="vf tr"></span><span class="vf bl"></span><span class="vf br"></span></div>',
       '<div class="lp-art art-check"><div class="lpa-field"><span class="lpa-v">13,245</span><span class="lpa-u">Гкал</span><span class="lpa-ok-i">' + ico('check', 18) + '</span></div>' +
         '<p class="lpa-l ok">' + ico('check', 16) + '<span>' + esc(t('lp_s2_ok')) + '</span></p><p class="lpa-l warn">' + ico('alert', 16) + '<span>' + esc(t('lp_s2_warn')) + '</span></p></div>',
       '<div class="lp-art art-send"><div class="lpa-dest">' + ico('send', 18) + '<span><b>' + esc(t('lp_s3_dest')) + '</b><i>' + esc(t('lp_s3_sub')) + '</i></span>' + ico('ext', 16) + '</div>' +

@@ -1363,23 +1363,41 @@ details.tbl-acc[open] > .tbl-wrap { margin-top: 12px; }
 
 /* сцена: телефон + табло на різній глибині */
 .lp-stage { display: block; color: inherit; text-decoration: none; cursor: pointer; -webkit-tap-highlight-color: transparent; position: relative; height: 440px; margin: 30px -6px 0; }
-.lp-phone { position: absolute; left: 50%; top: 18px; width: 206px; height: 440px; margin-left: -103px; border-radius: 42px; background: #040706; padding: 9px; z-index: 1;
+.lp-phone { position: absolute; left: 50%; top: 18px; width: 206px; height: 440px; margin-left: -103px; border-radius: 42px; background: #040706; padding: 9px; z-index: 1; --k: .5013;
   box-shadow: 0 0 0 1.5px rgba(255, 255, 255, .16), 0 0 0 5px rgba(255, 255, 255, .03), 0 40px 70px -12px rgba(0, 0, 0, .7); }
-.lpp-screen { position: relative; height: 100%; border-radius: 34px; overflow: hidden; background: #E9EEEB; color: #17211E; padding: 38px 10px 10px; display: grid; gap: 7px; align-content: start; font-size: 11px; line-height: 1.3; }
-.lpp-island { position: absolute; top: 9px; left: 50%; width: 70px; height: 20px; margin-left: -35px; border-radius: 12px; background: #040706; }
-.lpp-top { display: flex; align-items: center; gap: 8px; padding: 0 4px 3px; }
-.lpp-logo svg { width: 20px; height: 20px; display: block; }
-.lpp-pl { display: grid; } .lpp-pl b { font-size: 12.5px; } .lpp-pl i { font-style: normal; color: #4A5652; font-size: 10px; }
-.lpp-card { background: #fff; border-radius: 13px; padding: 9px 10px 10px; display: grid; gap: 6px; box-shadow: 0 1px 2px rgba(23, 33, 30, .08); }
-.lpp-h { display: flex; align-items: center; gap: 5px; } .lpp-h b { font-size: 11.5px; }
-.lpp-lcd { display: flex; align-items: baseline; justify-content: space-between; background: #BCC8A2; color: #1C2618; border: 3px solid #DCE2DE; outline: 1px solid #8E9A94; border-radius: 7px; padding: 3px 7px; font: 600 19px/1.15 var(--mono); letter-spacing: .04em; }
-.lpp-lcd i, .lpp-drum i, .lpp-el i { font: 600 9px var(--font); font-style: normal; letter-spacing: 0; }
-.lpp-drum { display: flex; align-items: center; gap: 4px; font: 600 15px/1 var(--mono); }
-.lpp-drum span { background: #1B2220; color: #F5F7F6; border-radius: 4px; padding: 4px 4px; letter-spacing: .22em; } .lpp-drum span.r { background: #B3262E; }
-.lpp-el { display: flex; align-items: baseline; justify-content: space-between; background: #142027; color: #D9F2FF; border-radius: 7px; padding: 4px 8px; font: 600 18px/1.15 var(--mono); letter-spacing: .06em; box-shadow: inset 0 0 0 2px #2A3A44; }
-.lpp-pill { justify-self: start; display: inline-flex; align-items: center; gap: 4px; padding: 3px 8px; border-radius: 999px; font-size: 10px; font-weight: 600; }
-.lpp-pill.warn { background: #FBEFD5; color: #5C3700; } .lpp-pill.ok { background: #DFF1E7; color: #134D30; } .lpp-pill.info { background: #E2ECF8; color: #173A61; }
-.lpp-nav { display: flex; justify-content: space-around; margin-top: 4px; padding: 8px 0 2px; border-top: 1px solid #CFD7D3; color: #4A5652; } .lpp-nav .on { color: #17211E; }
+/* 92-а: справжня головна в мініатюрі — «екран» 375 px, зменшений під макет (--k = ширина екрана / 375); кольори й табло — ті самі, що в застосунку (тема — людини) */
+.lpp-screen { position: relative; height: 100%; border-radius: 34px; overflow: hidden; background: var(--c-housing); }
+.lpp-vp { position: absolute; left: 0; top: 0; width: 375px; height: calc(100% / var(--k)); transform: scale(var(--k)); transform-origin: 0 0;
+  display: flex; flex-direction: column; background: var(--c-housing); color: var(--c-ink); font: 400 16px/1.35 var(--font); text-align: left; pointer-events: none; }
+.lpp-sb { position: relative; flex: none; height: 48px; display: flex; align-items: center; justify-content: space-between; padding: 4px 30px 0 40px; }
+.lpp-sb b { font-size: 16px; font-weight: 600; letter-spacing: -.01em; }
+.lpp-sbi { width: 70px; height: 14px; display: block; }
+.lpp-island { position: absolute; top: 9px; left: 50%; width: 118px; height: 33px; margin-left: -59px; border-radius: 18px; background: #040706; }
+.lpp-app { flex: 1; min-height: 0; overflow: hidden; padding: 0 12px; }
+.lpp-bar { display: flex; align-items: center; gap: 10px; height: 40px; padding: 0 4px; font-size: 17px; }
+.lpp-bar svg { width: 26px; height: 26px; flex: none; }
+.lpp-beta { display: inline-flex; align-items: center; height: 20px; padding: 0 7px; border-radius: 999px; border: 1px solid var(--c-line); font-size: 12px; font-weight: 500; color: var(--c-ink-2); }
+.lpp-hp { display: flex; align-items: center; gap: 10px; padding: 2px 4px 8px; }
+.lpp-hp .ico { color: var(--c-ink-2); flex: none; }
+.lpp-hp span { display: grid; } .lpp-hp b { font-size: 20px; font-weight: 600; line-height: 1.2; } .lpp-hp i { font-style: normal; font-size: 14px; color: var(--c-ink-2); }
+.lpp-vp .ucards { gap: 8px; grid-template-columns: minmax(0, 1fr); }
+.lpp-vp .ucard-main { padding: 6px 12px 9px; min-height: 0; gap: 0; }
+.lpp-vp .ucard-main:hover { background: none; }
+.lpp-vp .ucard-top { min-height: 38px; padding-right: 48px; }
+.lpp-vp .ucard-disp { margin: 0 0 5px; }
+.lpp-vp .lcd.card { padding: 6px 10px 5px; }
+.lpp-vp .lcd.card svg.seg { height: 34px; }
+.lpp-vp .elcd .el-hd { margin-bottom: 0; }
+.lpp-vp .wdrum.card, .lpp-vp .gdrum.card { padding: 7px 10px; }
+.lpp-vp .wd-c { aspect-ratio: .78; }
+.lpp-vp .ucard-status { margin-top: 0; font-size: 14px; }
+.lpp-vp .ucard-add { width: 40px; height: 40px; top: 6px; right: 8px; }
+.lpp-vp .ucard-add svg { width: 22px; height: 22px; }
+.lpp-tab { position: relative; flex: none; display: flex; justify-content: space-between; padding: 6px 12px 24px; background: var(--c-surface); border-top: 1px solid var(--c-line); color: var(--c-ink-2); }
+.lpp-tab span { flex: none; display: flex; flex-direction: column; align-items: center; gap: 3px; }
+.lpp-tab i { font-style: normal; font-size: 10px; white-space: nowrap; letter-spacing: -.01em; }
+.lpp-tab .on { color: var(--c-ink); font-weight: 600; }
+.lpp-hi { position: absolute; left: 50%; bottom: 7px; width: 134px; height: 5px; margin-left: -67px; border-radius: 3px; background: var(--c-ink); }
 .lp-tile { position: absolute; z-index: 2; width: 136px; transform: rotate(var(--rot, 0deg)); }
 .lp-fig { margin: 0; padding: 8px 8px 7px; border-radius: 16px; background: rgba(12, 20, 18, .62); border: 1px solid var(--lp-edge); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px);
   box-shadow: 0 22px 44px -14px rgba(0, 0, 0, .65); }
@@ -1417,12 +1435,53 @@ details.tbl-acc[open] > .tbl-wrap { margin-top: 12px; }
 .lp-step-tx h3 { font-size: 22px; margin: 0; }
 .lp-step-tx p { grid-column: 1 / -1; margin: 10px 0 0; color: var(--c-ink-2); font-size: var(--fs-m); }
 .lp-num { width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center; font: 600 19px/1 var(--font); color: var(--c-on-ink); background: var(--c-ink); }
-.art-photo { position: relative; width: 230px; padding: 22px 20px; }
-.art-photo .lcd svg.seg { height: 40px; }
+/* 92-а: крок 1 — справжнє фото табло (кроп фото власника) у видошукачі; лінія сканує, рамки навколо цифр і «17,913 Gcal»,
+   шторка зліва направо перетворює фото на табло з тими самими цифрами, пауза, знову фото. Координати рамок — у % кадру 720×411. */
+.art-photo { position: relative; width: 100%; max-width: 340px; padding: 14px; }
+.aph { position: relative; container-type: inline-size; aspect-ratio: 720 / 411; border-radius: 10px; overflow: hidden; background: #E4E8E5;
+  box-shadow: 0 10px 24px -12px rgba(0, 0, 0, .5), 0 0 0 1px rgba(23, 33, 30, .14); }
+.aph-img { position: absolute; inset: 0; width: 100%; height: 100%; display: block; object-fit: cover; transform-origin: 54% 44%; }
+.aph-box { position: absolute; border: 2px solid #FFFFFF; border-radius: 5px; box-shadow: 0 0 0 1px rgba(0, 0, 0, .35), inset 0 0 0 1px rgba(0, 0, 0, .25); opacity: 0; }
+.aph-box.b1 { left: 40%; top: 18%; width: 37%; height: 35%; }
+.aph-box.b2 { left: 76.5%; top: 50%; width: 18.5%; height: 14%; }
+.aph-chip { position: absolute; left: 40%; top: 3%; padding: .5em .6em; border-radius: 5px; background: #17211E; color: #FFFFFF; font: 600 3.9cqw/1 var(--mono); white-space: nowrap; opacity: 0; }
+.art-photo .scan { position: absolute; left: 0; right: 0; top: 50%; height: 2px; border-radius: 0; background: #FFFFFF; opacity: 0; box-shadow: 0 0 0 1px rgba(47, 104, 176, .5); }
+.art-photo .scan::before { content: ''; position: absolute; left: 0; right: 0; bottom: 2px; height: 26cqw; background: linear-gradient(180deg, rgba(255, 255, 255, 0), rgba(255, 255, 255, .22)); }
+.aph-lcd { position: absolute; left: 9.6%; top: 12.6%; width: 88.8%; height: 65.4%; clip-path: inset(0 0 0 0); transform-origin: 50% 50%; }
+.aph-cap { position: absolute; left: 13%; top: 79.5%; font: 500 4.6cqw/1 var(--font); color: #3B4340; letter-spacing: -.01em; opacity: 0; }
+.aph-lcd .lcd { height: 100%; margin: 0; padding: 0 5cqw; border-width: 1.6cqw; border-radius: 1.8cqw; display: flex; align-items: center; }
+.aph-lcd .lcd .line { width: 100%; justify-content: space-between; gap: 2cqw; }
+.aph-lcd .lcd svg.seg { height: 17cqw; } .aph-lcd .lcd .tag { font-size: 4.4cqw; padding-bottom: 1.4cqw; }
+.aph-wipe { position: absolute; top: 9%; bottom: 18%; left: 9.6%; width: 2px; margin-left: -1px; background: #FFFFFF; box-shadow: 0 0 0 1px rgba(0, 0, 0, .3); opacity: 0; }
 .art-photo .vf { position: absolute; width: 22px; height: 22px; border: 3px solid var(--c-ink); }
 .art-photo .vf.tl { top: 0; left: 0; border-right: 0; border-bottom: 0; border-radius: 8px 0 0 0; } .art-photo .vf.tr { top: 0; right: 0; border-left: 0; border-bottom: 0; border-radius: 0 8px 0 0; }
 .art-photo .vf.bl { bottom: 0; left: 0; border-right: 0; border-top: 0; border-radius: 0 0 0 8px; } .art-photo .vf.br { bottom: 0; right: 0; border-left: 0; border-top: 0; border-radius: 0 0 8px 0; }
-.art-photo .scan { position: absolute; left: 8px; right: 8px; top: 48%; height: 3px; border-radius: 3px; background: var(--c-return); opacity: .8; }
+/* «Зменшити рух» і без анімацій: фото з рамками й підписом — видно, що цифри знайдено */
+.aph-box, .aph-chip { opacity: 1; }
+@media (prefers-reduced-motion: no-preference) {
+  .aph-box, .aph-chip { opacity: 0; }
+  .aph-img { animation: lpPhImg 9s var(--ease) infinite; }
+  .art-photo .scan { animation: lpPhScan 9s linear infinite; }
+  .aph-box { animation: lpPhBox 9s var(--ease) infinite; } .aph-box.b2 { animation-delay: .12s; }
+  .aph-chip { animation: lpPhChip 9s var(--ease) infinite; }
+  .aph-lcd { animation: lpPhLcd 9s linear infinite; }
+  .aph-wipe { animation: lpPhWipe 9s linear infinite; }
+  .art-photo .vf { animation: lpPhVf 9s var(--ease) infinite; }
+}
+@media (prefers-reduced-motion: no-preference) { .aph-cap { animation: lpPhCap 9s var(--ease) infinite; } }
+@media (prefers-reduced-motion: reduce) { .aph-lcd { display: none; } }
+@keyframes lpPhImg { 0%, 42% { opacity: 1; transform: scale(1); filter: none; } 58% { opacity: 1; transform: scale(1.02); filter: grayscale(1) brightness(.55); }
+  66% { opacity: 0; transform: scale(1.02); filter: grayscale(1) brightness(.55); } 91% { opacity: 0; transform: scale(1.07); filter: blur(4px); } 100% { opacity: 1; transform: scale(1); filter: none; } }
+@keyframes lpPhScan { 0%, 5% { top: 4%; opacity: 0; } 7% { top: 4%; opacity: 1; } 33% { top: 96%; opacity: 1; } 36%, 100% { top: 96%; opacity: 0; } }
+@keyframes lpPhBox { 0%, 19% { opacity: 0; transform: scale(1.18); } 25% { opacity: 1; transform: scale(1); } 54% { opacity: 1; transform: scale(1); } 60%, 100% { opacity: 0; transform: scale(1); } }
+@keyframes lpPhChip { 0%, 26% { opacity: 0; transform: translateY(6px); } 31% { opacity: 1; transform: translateY(0); } 56% { opacity: 1; transform: translateY(0); } 62%, 100% { opacity: 0; transform: translateY(-4px); } }
+/* табло спершу лягає точно на ЖК фото (той самий нахил), потім вирівнюється — фото стає «чистим» приладом */
+@keyframes lpPhLcd { 0%, 42% { clip-path: inset(0 100% 0 0); opacity: 1; transform: rotate(-2.3deg) skewX(-1.5deg) scale(.985, .93); }
+  58% { clip-path: inset(0 0 0 0); opacity: 1; transform: rotate(-2.3deg) skewX(-1.5deg) scale(.985, .93); } 68% { transform: none; } 86% { clip-path: inset(0 0 0 0); opacity: 1; transform: none; }
+  91%, 100% { clip-path: inset(0 0 0 0); opacity: 0; transform: none; } }
+@keyframes lpPhCap { 0%, 60% { opacity: 0; } 68%, 86% { opacity: 1; } 91%, 100% { opacity: 0; } }
+@keyframes lpPhWipe { 0%, 41% { left: 9.6%; opacity: 0; } 42% { left: 9.6%; opacity: 1; } 58% { left: 98.4%; opacity: 1; } 60%, 100% { left: 98.4%; opacity: 0; } }
+@keyframes lpPhVf { 0%, 4% { transform: scale(1.04); } 9%, 58% { transform: scale(1); } 63% { transform: scale(.985); } 68%, 100% { transform: scale(1); } }
 .art-check { width: 100%; max-width: 280px; display: grid; gap: 10px; }
 .lpa-field { display: flex; align-items: center; gap: 8px; min-height: 58px; padding: 0 14px; border-radius: 12px; background: var(--c-field-bg); border: 2px solid var(--c-ok); }
 .lpa-v { font: 600 26px/1 var(--mono); letter-spacing: .02em; } .lpa-u { color: var(--c-ink-2); font-weight: 600; }
@@ -1523,8 +1582,8 @@ details.tbl-acc[open] > .tbl-wrap { margin-top: 12px; }
   .lp-hero { margin: 0 24px; padding: 72px 56px 64px; border-radius: 40px; }
   .lp-in { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 540px); gap: 40px; align-items: center; }
   .lp-stage { height: 560px; margin: 0; max-width: none; }
-  .lp-phone { width: 260px; height: 530px; margin-left: -130px; top: 14px; border-radius: 48px; }
-  .lpp-screen { border-radius: 40px; padding: 44px 12px 12px; gap: 9px; font-size: 12px; }
+  .lp-phone { width: 260px; height: 540px; margin-left: -130px; top: 10px; border-radius: 48px; --k: .6453; }
+  .lpp-screen { border-radius: 40px; }
   .lp-tile { width: 196px; }
   .t-heat { left: -2%; top: 40px; } .t-hot { right: -4%; top: 140px; } .t-elec { left: -6%; top: 318px; } .t-gas { right: -2%; top: 404px; }
   .lp-bento { grid-template-columns: repeat(3, minmax(0, 1fr)); }
@@ -1535,10 +1594,7 @@ details.tbl-acc[open] > .tbl-wrap { margin-top: 12px; }
 @media (min-width: 1200px) { .lp-end { margin-left: auto; margin-right: auto; } }
 
 /* рух лендинга (83-я, unslop): без дрейфу, «дихання», пульсу, відблиску, паралаксу й появи секцій; лінія сканування проходить двічі й зупиняється */
-@media (prefers-reduced-motion: no-preference) {
-  .art-photo .scan { animation: lp-scan 3s var(--ease) 2; }
-}
-@keyframes lp-scan { 0%, 100% { top: 14%; } 50% { top: 84%; } }
+
 /* «Налаштування лічильника» — на екрані квартири, під рядком лічильника */
 .mrow-set { margin: 0 14px 8px; }
 .mrow-set > summary { min-height: 44px; font-size: var(--fs-s); }
@@ -1557,7 +1613,7 @@ details.tbl-acc[open] > .tbl-wrap { margin-top: 12px; }
 @media (max-width: 760px) { .lpf-in { grid-template-columns: 1fr 1fr; } .lpf-brand { grid-column: 1 / -1; } }
 /* подвал на всех экранах приложения — только на компьютере (власник 10.11); на телефоне внизу меню, подвал — на лендинге */
 .app-foot { display: none; }
-/* 91-а (власник): на комп'ютері — рядок сітки під main, тож завжди внизу сторінки (коротка — внизу вікна); лише три посилання */
+/* 91-а (власник): на комп'ютері — рядок сітки під main, тож завжди внизу сторінки (коротка — внизу вікна); три посилання; 92-а — під ними рік і «незалежний сервіс» */
 @media (min-width: 960px) {
   .app { grid-template-rows: auto 1fr auto; }
   .app-foot { display: flex; flex-wrap: wrap; align-items: center; gap: 4px var(--sp-5); grid-column: 2 / -1; max-width: calc(1040px - 2 * var(--sp-6)); margin: var(--sp-5) var(--sp-6) 0; padding: var(--sp-3) 0 var(--sp-4);
@@ -1565,6 +1621,8 @@ details.tbl-acc[open] > .tbl-wrap { margin-top: 12px; }
   .app.bare-app:not(.with-side) .app-foot { grid-column: 1 / -1; }
   .app-foot a, .app-foot .linkbtn { display: inline-flex; align-items: center; min-height: 40px; color: var(--c-ink-2); text-decoration: none; font: inherit; }
   .app-foot a:hover, .app-foot .linkbtn:hover { color: var(--c-ink); text-decoration: underline; }
+  .af-note { flex: 1 0 100%; margin: 2px 0 0; font-size: 14px; line-height: 1.45; color: var(--c-ink-2); text-wrap: pretty; }
+  .af-note span:first-child { margin-right: var(--sp-4); white-space: nowrap; }
 }
 @media (max-width: 380px) { .lpf-in { grid-template-columns: 1fr; } }
 
@@ -2391,14 +2449,14 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
   var T = {
     uk: {
       brand: 'Лічильники',
-      nav_home: 'Головна', nav_history: 'Історія', nav_help: 'Довідка', nav_prefs: 'Налаштування',
+      nav_home: 'Квартири', nav_history: 'Історія', nav_help: 'Довідка', nav_prefs: 'Налаштування',
       close: 'Закрити', back: 'Назад', next: 'Далі', save: 'Зберегти', skip: 'Пропустити', change: 'Змінити', copy: 'Копіювати', copied: 'Скопійовано', done: 'Готово', cancel: 'Скасувати',
 
       // ---- привітання-лендинг (#welcome)
       lp_badge: 'Безкоштовно — Харківщина, Київщина, Одещина, Львівщина', lp_h1a: 'Показання лічильників —', lp_h1b: 'за хвилину',
       lp_lead: 'Опалення, гаряча й холодна вода, світло й газ — в одному місці. Сфотографуйте лічильник: цифри розпізнаються самі, а ми підкажемо, куди й до якого числа їх передати.',
-      lp_cta: 'Почати безкоштовно', lp_tr1: 'Без реєстрації', lp_tr2: 'Розпізнає прямо в телефоні', lp_tr3: 'Нагадає в Telegram',
-      lp_ph_addr: 'вул. Сумська, 10', lp_ph_due: 'Передати до 25-го', lp_ph_sent: 'Передано', lp_ph_soon: 'Передати 1–3-го',
+      lp_cta: 'Передати показання', lp_tr1: 'Без реєстрації', lp_tr2: 'Розпізнає прямо в телефоні', lp_tr3: 'Нагадає в Telegram',
+      lp_ph_addr: 'вул. Сумська, 10', lp_ph_due: 'Передати до 25-го', lp_ph_sent: 'Передано', lp_ph_soon: 'Передати 1–3-го', lp_ph_gas: 'Передати 1–5-го',
       lp_pr_t: 'Ціни вашої громади', lp_pr: 'Вводите адресу — підставляються постачальники вашої громади й ціни з рішень рад і НКРЕКП. Немає в документах — впишете з платіжки.',
       lp_pr_o_kh: 'Харківщина', lp_pr_o_kv: 'Київщина', lp_pr_o_od: 'Одещина', lp_pr_o_lv: 'Львівщина', lp_pr_o_ky: 'Київ', lp_pr_tot: '{h} громад у довіднику',
       lp_dest_t: 'Підкажемо, куди передати, — з готовим текстом:', lp_d_vk: 'Харківводоканал', lp_d_obl: 'Харківобленерго', lp_d_grm: 'Газмережі', lp_d_naf: 'Нафтогаз', lp_d_vk_s: 'Водоканал', lp_d_obl_s: 'Обленерго',
@@ -3532,14 +3590,14 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
     },
     ru: {
       brand: 'Счётчики',
-      nav_home: 'Главная', nav_history: 'История', nav_help: 'Справка', nav_prefs: 'Настройки',
+      nav_home: 'Квартиры', nav_history: 'История', nav_help: 'Справка', nav_prefs: 'Настройки',
       close: 'Закрыть', back: 'Назад', next: 'Далее', save: 'Сохранить', skip: 'Пропустить', change: 'Изменить', copy: 'Копировать', copied: 'Скопировано', done: 'Готово', cancel: 'Отмена',
 
       // ---- приветствие-лендинг (#welcome)
       lp_badge: 'Бесплатно — Харьковщина, Киевщина, Одесщина, Львовщина', lp_h1a: 'Показания счётчиков —', lp_h1b: 'за минуту',
       lp_lead: 'Отопление, горячая и холодная вода, свет и газ — в одном месте. Сфотографируйте счётчик: цифры распознаются сами, а мы подскажем, куда и до какого числа их передать.',
-      lp_cta: 'Начать бесплатно', lp_tr1: 'Без регистрации', lp_tr2: 'Распознаёт прямо в телефоне', lp_tr3: 'Напомнит в Telegram',
-      lp_ph_addr: 'ул. Сумская, 10', lp_ph_due: 'Передать до 25-го', lp_ph_sent: 'Передано', lp_ph_soon: 'Передать 1–3-го',
+      lp_cta: 'Передать показания', lp_tr1: 'Без регистрации', lp_tr2: 'Распознаёт прямо в телефоне', lp_tr3: 'Напомнит в Telegram',
+      lp_ph_addr: 'ул. Сумская, 10', lp_ph_due: 'Передать до 25-го', lp_ph_sent: 'Передано', lp_ph_soon: 'Передать 1–3-го', lp_ph_gas: 'Передать 1–5-го',
       lp_pr_t: 'Цены вашей громады', lp_pr: 'Вводите адрес — подставляются поставщики вашей громады и цены из решений советов и НКРЭКУ. Нет в документах — впишете из платёжки.',
       lp_pr_o_kh: 'Харьковщина', lp_pr_o_kv: 'Киевщина', lp_pr_o_od: 'Одесщина', lp_pr_o_lv: 'Львовщина', lp_pr_o_ky: 'Киев', lp_pr_tot: '{h} громад в справочнике',
       lp_dest_t: 'Подскажем, куда передать, — с готовым текстом:', lp_d_vk: 'Харьковводоканал', lp_d_obl: 'Харьковоблэнерго', lp_d_grm: 'Газсети', lp_d_naf: 'Нафтогаз', lp_d_vk_s: 'Водоканал', lp_d_obl_s: 'Облэнерго',
@@ -9581,17 +9639,31 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
     return tile('heat', lcd([{ text: '13.245', tag: 'Gcal' }], 'boot'), t('kd_heat'), -.16) + tile('hot', wdrum('175.921', 'hot'), t('st_water'), -.08) +
       tile('elec', elcd([{ text: '10420' }]), t('kd_elec'), -.22) + tile('gas', wdrum('1225.4', 'gas'), t('kd_gas'), -.12);
   }
+  /** Телефон на сцені лендинга (92-а, власник: «місце під ще один лічильник, інтерфейс детальніше й ближче до справжнього»):
+   *  справжня головна в мініатюрі — екран 375 px (як у iPhone), зменшений під макет (--k у CSS): статус-бар, шапка «Лічильники · бета»,
+   *  «Моя квартира», чотири картки .ucard з тими самими табло (ЖК тепла, ролики води, екран світла, жовта панель газу), круглі «+»
+   *  (термінове — темне, як у застосунку), нижня панель шести розділів. Нічого не натискається: div/span замість посилань і кнопок. */
   function lpPhone() {
-    var card = function (k, name, disp, pill, tone) {
-      return '<div class="lpp-card"><div class="lpp-h">' + ico(KINDS[k].icon, 13, KINDS[k].cls) + '<b>' + esc(name) + '</b></div>' + disp +
-        '<span class="lpp-pill ' + tone + '">' + ico(tone === 'ok' ? 'check' : 'clock', 11) + '<span>' + esc(pill) + '</span></span></div>';
+    var card = function (k, icon, title, disp, st, tone) {
+      return '<div class="ucard ucard-' + k + '"><div class="ucard-main"><span class="ucard-top">' + ico(icon, 20, KINDS[k].cls) + '<span class="ucard-title">' + esc(title) + '</span></span>' +
+        '<div class="ucard-disp">' + disp + '</div><span class="ucard-status ' + tone + '">' + esc(st) + '</span></div><span class="ucard-add' + (tone === 'warn' ? ' hot' : '') + '">' + ico('plus', 26) + '</span></div>';
     };
-    return '<div class="lp-phone"><div class="lpp-screen"><span class="lpp-island"></span>' +
-      '<div class="lpp-top"><span class="lpp-logo">' + logo() + '</span><span class="lpp-pl"><b>' + esc(t('pl_mine')) + '</b><i>' + esc(t('lp_ph_addr')) + '</i></span></div>' +
-      card('heat', t('kd_heat'), '<div class="lpp-lcd"><span>13.245</span><i>Gcal</i></div>', t('lp_ph_due'), 'warn') +
-      card('hot', t('kd_hot'), '<div class="lpp-drum"><span>00175</span><span class="r">921</span><i>м³</i></div>', t('lp_ph_sent'), 'ok') +
-      card('elec', t('kd_elec'), '<div class="lpp-el"><span>10420</span><i>kWh</i></div>', t('lp_ph_soon'), 'info') +
-      '<div class="lpp-nav">' + ['home', 'history', 'chart', 'prefs'].map(function (n, i) { return '<span' + (i ? '' : ' class="on"') + '>' + ico(n, 15) + '</span>'; }).join('') + '</div></div></div>';
+    var sb = '<svg class="lpp-sbi" viewBox="0 0 70 14" aria-hidden="true" focusable="false"><g fill="currentColor"><rect x="0" y="9" width="3.4" height="4" rx="1"/><rect x="5" y="6.5" width="3.4" height="6.5" rx="1"/>' +
+      '<rect x="10" y="4" width="3.4" height="9" rx="1"/><rect x="15" y="1.5" width="3.4" height="11.5" rx="1"/>' +
+      '<path d="M31 13.2l2.6-3a3.6 3.6 0 0 0-5.2 0zM26.6 8.2a6.3 6.3 0 0 1 8.8 0l1.5-1.7a8.6 8.6 0 0 0-11.8 0zM23.8 5a10.3 10.3 0 0 1 14.4 0l1.5-1.7a12.6 12.6 0 0 0-17.4 0z"/>' +
+      '<rect x="44.5" y=".8" width="22" height="12" rx="3.6" fill="none" stroke="currentColor" stroke-opacity=".4" stroke-width="1.2"/><rect x="46.6" y="2.9" width="15" height="7.8" rx="2"/><path d="M67.8 4.8v4a2 2 0 0 0 0-4z" opacity=".45"/></g></svg>';
+    var tabs = [['home', 'nav_home'], ['history', 'nav_history'], ['chart', 'nav_stats'], ['leaf', 'nav_save'], ['help', 'nav_help'], ['prefs', 'nav_prefs']];
+    return '<div class="lp-phone"><div class="lpp-screen"><div class="lpp-vp">' +
+      '<div class="lpp-sb"><b>9:41</b><span class="lpp-island"></span>' + sb + '</div>' +
+      '<div class="lpp-app"><div class="lpp-bar">' + logo() + '<b>' + esc(t('brand')) + '</b><span class="lpp-beta">' + esc(t('beta_tag')) + '</span></div>' +
+      '<div class="lpp-hp">' + ico('home', 24) + '<span><b>' + esc(t('pl_mine')) + '</b><i>' + esc(t('lp_ph_addr')) + '</i></span></div>' +
+      '<div class="ucards">' +
+      card('heat', 'thermo', t('uc_heat'), lcd([{ text: '13.245', tag: 'Gcal' }], 'card'), t('lp_ph_due'), 'warn') +
+      card('hot', 'drop', t('kd_hot'), wdrum('175.921', 'hot', 'card'), t('lp_ph_sent'), 'ok') +
+      card('elec', KINDS.elec.icon, t('kd_elec'), elcd([{ text: '10420' }], 'card'), t('lp_ph_soon'), 'due') +
+      card('gas', KINDS.gas.icon, t('kd_gas'), wdrum('1225.4', 'gas', 'card'), t('lp_ph_gas'), 'due') + '</div></div>' +
+      '<div class="lpp-tab">' + tabs.map(function (n, i) { return '<span' + (i ? '' : ' class="on"') + '>' + ico(n[0], 22) + '<i>' + esc(t(n[1])) + '</i></span>'; }).join('') + '<span class="lpp-hi"></span></div>' +
+      '</div></div></div>';
   }
   /** 91-а (власник 10.11): у нижній панелі лендинга — цілі прилади, що плавно перетікають один в один: корпус міняє форму й колір
    *  (теплолічильник → водомір → електролічильник → газовий), труби, кабелі, табло й підпис змінюються разом. SMIL — бо форму (rx, розмір)
@@ -9603,7 +9675,13 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
     // корпус кожного приладу: x, y, ширина, висота, радіус кута, колір пластику / металу / кільця водоміра
     var B = [[70, 40, 180, 150, 26, '#ECEFEA'], [78, 46, 164, 164, 82, '#3A73B2'], [86, 18, 148, 252, 16, '#E2E6E2'], [62, 74, 196, 176, 14, '#C3C8C3']];
     var morph = function (attr, a) { var v = [], tm = [], sp = []; for (var j = 0; j < N; j++) { v.push(a[j], a[j]); tm.push(kt(4 * j), kt(4 * j + HOLD)); sp.push(L, E); } v.push(a[0]); tm.push(1); return anim(attr, v, tm, sp); };
-    var body = function (attr, i) { return morph(attr, B.map(function (b) { return b[i]; })); };
+    // 92-а (власник: «більше деталей і об'єму, світлотінь»): корпус + тінь, блик, фаска — прямокутники з тим самим перетіканням, зсунуті на d
+    var shape = function (d, attrs) {
+      var g = function (i, dv) { return B.map(function (b) { return Math.max(0, b[i] + dv); }); };
+      var X = g(0, d[0]), Y = g(1, d[1]), W = g(2, d[2]), H = g(3, d[3]), R = g(4, d[4]);
+      return '<rect x="' + X[0] + '" y="' + Y[0] + '" width="' + W[0] + '" height="' + H[0] + '" rx="' + R[0] + '" ' + attrs + '>' +
+        morph('x', X) + morph('y', Y) + morph('width', W) + morph('height', H) + morph('rx', R) + morph('ry', R) + (/fill="#/.test(attrs) ? '' : '') + '</rect>';
+    };
     // шар видно в станах vis: старі деталі гаснуть на початку перетікання, нові проявляються в кінці; спільні (труба тепла й води) — лишаються
     var layer = function (vis, html) {
       var v = [], tm = [], sp = [], on = function (j) { return vis.indexOf(j % N) >= 0 ? 1 : 0; };
@@ -9621,51 +9699,137 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
       });
       return '<g fill="' + fill + '" transform="translate(' + x + ',' + y + ') scale(' + k + ') skewX(-6)">' + out + '</g>';
     };
+    var r = function (x, y, w, h, rx, a) { return '<rect x="' + x + '" y="' + y + '" width="' + w + '" height="' + h + '"' + (rx ? ' rx="' + rx + '"' : '') + ' ' + a + '/>'; };
+    // ролики: рамка вікна, комірки, поверх — барабан (темніє догори й донизу) і відблиск скла
     var drums = function (blk, red, x, y, cw, ch, fs) {
-      var out = '', n = blk.length + red.length, w = n * cw + (n - 1) + 4;
-      out += '<rect x="' + x + '" y="' + y + '" width="' + w + '" height="' + (ch + 4) + '" rx="4" fill="#151B19"/>';
+      var n = blk.length + red.length, w = n * cw + (n - 1) + 4, out = r(x - 1.5, y - 1.5, w + 3, ch + 7, 5.5, 'fill="#0B0F0E"') + r(x, y, w, ch + 4, 4, 'fill="#151B19"');
       (blk + red).split('').forEach(function (d, i) {
-        var cx = x + 2 + i * (cw + 1), r = i >= blk.length;
-        out += '<rect x="' + cx + '" y="' + (y + 2) + '" width="' + cw + '" height="' + ch + '" rx="1.5" fill="' + (r ? '#B5161F' : '#2C3330') + '"/>' +
+        var cx = x + 2 + i * (cw + 1), rd = i >= blk.length;
+        out += r(cx, y + 2, cw, ch, 1.5, 'fill="' + (rd ? '#B5161F' : '#2C3330') + '"') +
           '<text x="' + (cx + cw / 2) + '" y="' + (y + 2 + ch * .74) + '" text-anchor="middle" font-family="IBM Plex Mono, ui-monospace, monospace" font-size="' + fs + '" font-weight="600" fill="#F4F5F2">' + d + '</text>';
       });
-      return out;
+      return out + r(x + 2, y + 2, w - 4, ch, 1.5, 'fill="url(#lpmDrum)"') + r(x + 1, y + 1, w - 2, ch * .42, 3, 'fill="#fff" opacity=".09"') + r(x, y, w, ch + 4, 4, 'fill="none" stroke="url(#lpmInset)" stroke-width="1.6"');
     };
-    var txt = function (s, x, y, size, fill, anchor) { return '<text x="' + x + '" y="' + y + '" font-size="' + size + '" fill="' + fill + '"' + (anchor ? ' text-anchor="' + anchor + '"' : '') + '>' + esc(s) + '</text>'; };
+    var txt = function (s, x, y, size, fill, anchor, wt) { return '<text x="' + x + '" y="' + y + '" font-size="' + size + '" fill="' + fill + '"' + (anchor ? ' text-anchor="' + anchor + '"' : '') + (wt ? ' font-weight="' + wt + '"' : '') + '>' + esc(s) + '</text>'; };
+    // гвинт зі шліцом, гайка з гранями, тінь під дрібною деталлю
+    var screw = function (x, y, rr, a) { return '<circle cx="' + (x + .6) + '" cy="' + (y + 1) + '" r="' + (rr + .6) + '" fill="#000" opacity=".22"/><circle cx="' + x + '" cy="' + y + '" r="' + rr + '" fill="url(#lpmScrew)"/>' +
+      '<path d="M' + (x - rr * .62 * Math.cos(a)).toFixed(2) + ' ' + (y - rr * .62 * Math.sin(a)).toFixed(2) + 'L' + (x + rr * .62 * Math.cos(a)).toFixed(2) + ' ' + (y + rr * .62 * Math.sin(a)).toFixed(2) + '" stroke="#4E5651" stroke-width="' + (rr * .32).toFixed(2) + '" stroke-linecap="round"/>'; };
+    var nut = function (x, y, w, h, grad, dark) { return r(x, y, w, h, 3, 'fill="url(#' + grad + ')" stroke="' + dark + '" stroke-width="1.2"') + r(x + 1, y + 1, w - 2, 2.5, 1, 'fill="#fff" opacity=".35"') + r(x + 1, y + h - 3.5, w - 2, 2.5, 1, 'fill="#000" opacity=".22"'); };
+    var lcdGlass = function (clip, x, y, w, h) { return r(x, y, w, h, 0, 'fill="url(#lpmLcdIn)" clip-path="url(#' + clip + ')"') + '<g clip-path="url(#' + clip + ')" fill="#fff"><path d="M' + x + ' ' + y + 'h' + (w * .5) + 'l-' + (w * .3) + ' ' + h + 'H' + x + 'z" opacity=".13"/><path d="M' + (x + w * .62) + ' ' + y + 'h' + (w * .1) + 'l-' + (w * .3) + ' ' + h + 'h-' + (w * .1) + 'z" opacity=".07"/></g>'; };
+    var bars = function (x, y, h) { var o = '', cx = x; [1, 2, 1, 1, 3, 1, 2, 1, 1, 2, 3, 1, 1, 2, 1, 1, 3, 1, 2, 1].forEach(function (w, i) { if (i % 2 === 0) o += r(cx, y, w * .7, h, 0, 'fill="#3B4340"'); cx += w * .7 + .7; }); return o; };
+    var qr = function (x, y, c) {
+      var bits = '1011001110100101101100101011011001010111001011010110', o = r(x - 1.5, y - 1.5, 9 * c + 3, 9 * c + 3, 1, 'fill="#F7F8F6"'), k = 0;
+      for (var i = 0; i < 9; i++) for (var j = 0; j < 9; j++) {
+        var fnd = (i < 3 && j < 3) || (i < 3 && j > 5) || (i > 5 && j < 3);
+        var on = fnd ? !(i % 6 === 1 && j % 6 === 1) || true : bits[k++ % bits.length] === '1';
+        if (fnd && ((i % 6 === 1 && j % 6 === 1) === false) && ((i % 6) === 1 || (j % 6) === 1) && !((i % 6 === 1) && (j % 6 === 1))) on = false;
+        if (on) o += r(x + j * c, y + i * c, c, c, 0, 'fill="#26302C"');
+      }
+      return o;
+    };
+    var defs = '<defs>' +
+      '<linearGradient id="lpmShade" x1="0" y1="0" x2=".35" y2="1"><stop offset="0" stop-color="#fff" stop-opacity=".42"/><stop offset=".38" stop-color="#fff" stop-opacity="0"/><stop offset=".62" stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity=".28"/></linearGradient>' +
+      '<radialGradient id="lpmSpec" cx=".26" cy=".14" r=".7"><stop offset="0" stop-color="#fff" stop-opacity=".4"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></radialGradient>' +
+      '<linearGradient id="lpmRim" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff" stop-opacity=".9"/><stop offset=".35" stop-color="#fff" stop-opacity="0"/><stop offset=".7" stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity=".38"/></linearGradient>' +
+      '<linearGradient id="lpmInset" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#000" stop-opacity=".45"/><stop offset=".35" stop-color="#000" stop-opacity="0"/><stop offset=".7" stop-color="#fff" stop-opacity="0"/><stop offset="1" stop-color="#fff" stop-opacity=".5"/></linearGradient>' +
+      '<linearGradient id="lpmLcdIn" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#000" stop-opacity=".26"/><stop offset=".22" stop-color="#000" stop-opacity="0"/><stop offset=".85" stop-color="#fff" stop-opacity="0"/><stop offset="1" stop-color="#fff" stop-opacity=".14"/></linearGradient>' +
+      '<linearGradient id="lpmBrass" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#5E4522"/><stop offset=".12" stop-color="#B8904E"/><stop offset=".3" stop-color="#F2D89C"/><stop offset=".5" stop-color="#C9A15C"/><stop offset=".8" stop-color="#9E7A40"/><stop offset="1" stop-color="#5A4220"/></linearGradient>' +
+      '<linearGradient id="lpmNut" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#7A5C2E"/><stop offset=".22" stop-color="#8E6C38"/><stop offset=".22" stop-color="#EBCD8F"/><stop offset=".5" stop-color="#CFA862"/><stop offset=".78" stop-color="#A9843F"/><stop offset=".78" stop-color="#6E5229"/><stop offset="1" stop-color="#5E4522"/></linearGradient>' +
+      '<linearGradient id="lpmYel" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#8C6A0E"/><stop offset=".22" stop-color="#D9AE2E"/><stop offset=".38" stop-color="#FBE39A"/><stop offset=".56" stop-color="#E2B635"/><stop offset=".86" stop-color="#A9820F"/><stop offset="1" stop-color="#7A5C08"/></linearGradient>' +
+      '<linearGradient id="lpmYelNut" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#8C6A0E"/><stop offset=".22" stop-color="#A57E12"/><stop offset=".22" stop-color="#F6D671"/><stop offset=".5" stop-color="#DDB136"/><stop offset=".78" stop-color="#B98F17"/><stop offset=".78" stop-color="#86650C"/><stop offset="1" stop-color="#6E5208"/></linearGradient>' +
+      '<linearGradient id="lpmDrum" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#000" stop-opacity=".62"/><stop offset=".3" stop-color="#000" stop-opacity="0"/><stop offset=".5" stop-color="#fff" stop-opacity=".12"/><stop offset=".7" stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity=".62"/></linearGradient>' +
+      '<radialGradient id="lpmKnob" cx=".38" cy=".3" r=".8"><stop offset="0" stop-color="#FFFFFF"/><stop offset=".45" stop-color="#E2E6E1"/><stop offset="1" stop-color="#A2AAA4"/></radialGradient>' +
+      '<radialGradient id="lpmScrew" cx=".35" cy=".3" r=".85"><stop offset="0" stop-color="#F6F7F5"/><stop offset=".55" stop-color="#B7BEB8"/><stop offset="1" stop-color="#737B75"/></radialGradient>' +
+      '<radialGradient id="lpmFace" cx=".42" cy=".32" r=".8"><stop offset="0" stop-color="#FFFFFF"/><stop offset=".6" stop-color="#F0F1ED"/><stop offset="1" stop-color="#D3D7D0"/></radialGradient>' +
+      '<radialGradient id="lpmLed" cx=".38" cy=".34" r=".7"><stop offset="0" stop-color="#FF9C8C"/><stop offset=".5" stop-color="#D3402F"/><stop offset="1" stop-color="#7E170E"/></radialGradient>' +
+      '<linearGradient id="lpmDome" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff" stop-opacity=".55"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></linearGradient>' +
+      '<linearGradient id="lpmPlate" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#F6D35E"/><stop offset=".55" stop-color="#E3BC3F"/><stop offset="1" stop-color="#C99D22"/></linearGradient>' +
+      '<linearGradient id="lpmCover" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#E6EAE6"/><stop offset="1" stop-color="#C6CDC8"/></linearGradient>' +
+      '<linearGradient id="lpmTag" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#D1D5CF"/><stop offset="1" stop-color="#B3B9B3"/></linearGradient>' +
+      '<filter id="lpmBlur" x="-40%" y="-40%" width="180%" height="180%"><feGaussianBlur stdDeviation="7"/></filter>' +
+      '<filter id="lpmBlur2" x="-30%" y="-200%" width="160%" height="500%"><feGaussianBlur stdDeviation="4"/></filter>' +
+      '<filter id="lpmSoft" x="-40%" y="-40%" width="180%" height="180%"><feGaussianBlur stdDeviation="1.4"/></filter>' +
+      '<clipPath id="lpmClH"><rect x="97" y="67" width="126" height="50" rx="7"/></clipPath><clipPath id="lpmClE"><rect x="108" y="50" width="104" height="46" rx="6"/></clipPath>' +
+      '<clipPath id="lpmClF"><circle cx="160" cy="128" r="68"/></clipPath><clipPath id="lpmClC"><rect x="86" y="18" width="148" height="174" rx="16"/></clipPath>' +
+      '</defs>';
+    var brassShade = function (x, y, w, h, rx) { return r(x, y, w, h, rx, 'fill="url(#lpmShade)"'); };
+    var cable = function (d, col, hi) { return '<path d="' + d + '" fill="none" stroke="#000" stroke-opacity=".25" stroke-width="6" stroke-linecap="round" transform="translate(1 2)" filter="url(#lpmSoft)"/>' +
+      '<path d="' + d + '" fill="none" stroke="' + col + '" stroke-width="5" stroke-linecap="round"/><path d="' + d + '" fill="none" stroke="' + hi + '" stroke-width="1.5" stroke-linecap="round" opacity=".75" transform="translate(-.6 -1.3)"/>'; };
     var back =
-      // труба з гайками — під теплолічильником і водоміром
-      layer([0, 1], '<rect x="14" y="188" width="292" height="30" rx="4" fill="#B08A4D"/><rect x="14" y="192" width="292" height="6" fill="#D2AD6B" opacity=".75"/><rect x="14" y="210" width="292" height="6" fill="#86683A"/>' +
-        '<rect x="38" y="178" width="28" height="50" rx="4" fill="#C39A56" stroke="#86683A" stroke-width="2"/><rect x="254" y="178" width="28" height="50" rx="4" fill="#C39A56" stroke="#86683A" stroke-width="2"/>') +
-      // тепло: витратомір на трубі й датчики подачі (червоний) та обратки (синій)
-      layer([0], '<rect x="116" y="182" width="88" height="42" rx="7" fill="#A6814A"/><path d="M74 140C40 140 24 154 24 176" fill="none" stroke="#C2462A" stroke-width="5" stroke-linecap="round"/>' +
-        '<path d="M246 140C280 140 296 154 296 176" fill="none" stroke="#3A72B5" stroke-width="5" stroke-linecap="round"/><rect x="16" y="174" width="16" height="16" rx="3" fill="#3B4340"/><rect x="288" y="174" width="16" height="16" rx="3" fill="#3B4340"/>') +
-      // світло: дроти знизу
-      layer([2], '<path d="M128 262V286M160 262V286M192 262V286" stroke="#2B3330" stroke-width="7" stroke-linecap="round"/>') +
+      // труба з гайками — під теплолічильником і водоміром: латунний циліндр, торці, грані гайок
+      layer([0, 1], r(14, 188, 292, 30, 4, 'fill="url(#lpmBrass)"') + '<ellipse cx="15" cy="203" rx="2.6" ry="14" fill="#6E532B"/><ellipse cx="305" cy="203" rx="2.6" ry="14" fill="#4E3A1C"/>' +
+        [70, 74, 78, 242, 246, 250].map(function (x) { return r(x, 189, 1.2, 28, 0, 'fill="#5E4522" opacity=".35"'); }).join('') +
+        nut(38, 178, 28, 50, 'lpmNut', '#6E5229') + nut(254, 178, 28, 50, 'lpmNut', '#6E5229')) +
+      // тепло: витратомір на трубі (литво, стрілка напрямку) й датчики подачі (червоний) та обратки (синій)
+      layer([0], r(116, 182, 88, 42, 7, 'fill="#A6814A"') + brassShade(116, 182, 88, 42, 7) + r(116.5, 182.5, 87, 41, 6.5, 'fill="none" stroke="url(#lpmRim)" stroke-width="1.2"') +
+        '<path d="M140 213h40m-6-4l6 4-6 4" fill="none" stroke="#E2C389" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" transform="translate(0 1)"/><path d="M140 213h40m-6-4l6 4-6 4" fill="none" stroke="#5E4522" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>' +
+        cable('M72 140C40 140 24 152 24 168', '#C2462A', '#F08A6C') + cable('M248 140C280 140 296 152 296 168', '#3A72B5', '#8FB8EC') +
+        r(20, 158, 8, 4, 1, 'fill="#8E2A16"') + r(292, 158, 8, 4, 1, 'fill="#1F4A80"') +
+        nut(16, 168, 16, 22, 'lpmNut', '#6E5229') + '<circle cx="24" cy="169" r="5" fill="#3B4340"/><circle cx="22.8" cy="167.6" r="1.6" fill="#fff" opacity=".35"/>' +
+        nut(288, 168, 16, 22, 'lpmNut', '#6E5229') + '<circle cx="296" cy="169" r="5" fill="#3B4340"/><circle cx="294.8" cy="167.6" r="1.6" fill="#fff" opacity=".35"/>') +
+      // вода: латунний корпус під кільцем
+      layer([1], r(100, 176, 120, 48, 8, 'fill="#B08A4D"') + brassShade(100, 176, 120, 48, 8) + r(100.5, 176.5, 119, 47, 7.5, 'fill="none" stroke="url(#lpmRim)" stroke-width="1.2"') +
+        '<path d="M144 217h32m-5-3.5l5 3.5-5 3.5" fill="none" stroke="#5E4522" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>') +
+      // світло: вушко кріплення згори, дроти знизу
+      layer([2], r(146, 4, 28, 22, 6, 'fill="#D5DAD5"') + r(146, 4, 28, 22, 6, 'fill="url(#lpmShade)"') + '<circle cx="160" cy="12" r="3.6" fill="#2B3330"/><circle cx="160" cy="12.8" r="3.6" fill="none" stroke="#fff" stroke-opacity=".45" stroke-width=".8"/>' +
+        [[128, '#5B4636', '#9C8270'], [160, '#2E5E9E', '#7FA6DA'], [192, '#5B4636', '#9C8270']].map(function (w) { return cable('M' + w[0] + ' 262V290', w[1], w[2]); }).join('')) +
       // газ: жовті труби згори з гайками
-      layer([3], '<rect x="92" y="0" width="20" height="84" fill="#D7AC2E"/><rect x="208" y="0" width="20" height="84" fill="#D7AC2E"/><rect x="96" y="0" width="4" height="58" fill="#F0CC5B" opacity=".8"/><rect x="212" y="0" width="4" height="58" fill="#F0CC5B" opacity=".8"/>' +
-        '<rect x="86" y="56" width="32" height="22" rx="3" fill="#BF951F"/><rect x="202" y="56" width="32" height="22" rx="3" fill="#BF951F"/>');
-    var shell = '<rect x="' + B[0][0] + '" y="' + B[0][1] + '" width="' + B[0][2] + '" height="' + B[0][3] + '" rx="' + B[0][4] + '" fill="' + B[0][5] + '" stroke="#0E1412" stroke-opacity=".28" stroke-width="1.5">' +
-      body('x', 0) + body('y', 1) + body('width', 2) + body('height', 3) + body('rx', 4) + body('ry', 4) + body('fill', 5) + '</rect>';
+      layer([3], r(92, 0, 20, 84, 0, 'fill="url(#lpmYel)"') + r(208, 0, 20, 84, 0, 'fill="url(#lpmYel)"') +
+        [30, 34, 38].map(function (y) { return r(92, y, 20, 1.2, 0, 'fill="#6E5208" opacity=".35"') + r(208, y, 20, 1.2, 0, 'fill="#6E5208" opacity=".35"'); }).join('') +
+        nut(86, 52, 32, 26, 'lpmYelNut', '#7A5C08') + nut(202, 52, 32, 26, 'lpmYelNut', '#7A5C08'));
+    var shell = shape([5, 11, 0, 0, 0], 'fill="#000" opacity=".5" filter="url(#lpmBlur)"') +
+      '<rect x="' + B[0][0] + '" y="' + B[0][1] + '" width="' + B[0][2] + '" height="' + B[0][3] + '" rx="' + B[0][4] + '" fill="' + B[0][5] + '" stroke="#0E1412" stroke-opacity=".3" stroke-width="1.5">' +
+        morph('x', B.map(function (b) { return b[0]; })) + morph('y', B.map(function (b) { return b[1]; })) + morph('width', B.map(function (b) { return b[2]; })) + morph('height', B.map(function (b) { return b[3]; })) +
+        morph('rx', B.map(function (b) { return b[4]; })) + morph('ry', B.map(function (b) { return b[4]; })) + morph('fill', B.map(function (b) { return b[5]; })) + '</rect>' +
+      shape([0, 0, 0, 0, 0], 'fill="url(#lpmShade)"') + shape([0, 0, 0, 0, 0], 'fill="url(#lpmSpec)"') + shape([1.6, 1.6, -3.2, -3.2, -1.6], 'fill="none" stroke="url(#lpmRim)" stroke-width="2"');
+    var dial = function (c) {
+      var a = c[2] * Math.PI / 180, s = Math.sin(a), co = Math.cos(a), tip = [c[0] + 6.4 * s, c[1] - 6.4 * co], bl = [c[0] - 1.7 * co - 1.6 * s, c[1] - 1.7 * s + 1.6 * co], br = [c[0] + 1.7 * co - 1.6 * s, c[1] + 1.7 * s + 1.6 * co];
+      return '<circle cx="' + (c[0] + .7) + '" cy="' + (c[1] + 1.3) + '" r="8.6" fill="#000" opacity=".16"/><circle cx="' + c[0] + '" cy="' + c[1] + '" r="8" fill="url(#lpmFace)" stroke="#BFC5BE" stroke-width="1.2"/>' +
+        '<circle cx="' + c[0] + '" cy="' + c[1] + '" r="8" fill="none" stroke="url(#lpmInset)" stroke-width="1.2"/>' +
+        '<path d="M' + tip.map(function (v) { return v.toFixed(2); }).join(' ') + 'L' + bl.map(function (v) { return v.toFixed(2); }).join(' ') + 'L' + br.map(function (v) { return v.toFixed(2); }).join(' ') + 'z" fill="#C21F26"/>' +
+        '<circle cx="' + c[0] + '" cy="' + c[1] + '" r="1.7" fill="#7E170E"/>';
+    };
+    var star = function (x, y) { var p = []; for (var i = 0; i < 12; i++) { var a = i * Math.PI / 6, rr = i % 2 ? 2.6 : 6.6; p.push((x + rr * Math.sin(a)).toFixed(2) + ',' + (y - rr * Math.cos(a)).toFixed(2)); } return '<polygon points="' + p.join(' ') + '" fill="#26302C"/><circle cx="' + x + '" cy="' + y + '" r="1.4" fill="#F3F4F0"/>'; };
+    var knurl = ''; for (var q = 0; q < 60; q++) { var qa = q * Math.PI / 30; knurl += 'M' + (160 + 74 * Math.cos(qa)).toFixed(1) + ' ' + (128 + 74 * Math.sin(qa)).toFixed(1) + 'L' + (160 + 79.5 * Math.cos(qa)).toFixed(1) + ' ' + (128 + 79.5 * Math.sin(qa)).toFixed(1); }
     var front =
-      layer([0], '<rect x="90" y="60" width="140" height="64" rx="12" fill="#26302C"/><rect x="97" y="67" width="126" height="50" rx="7" fill="#B5C3A2"/>' + seg('13.245', 104, 74, 26, '#1F2A22') +
-        txt('Gcal', 216, 112, 10, '#2E3A31', 'end') + '<circle cx="160" cy="152" r="13" fill="#DDE2DC" stroke="#C3CAC3" stroke-width="2"/><circle cx="160" cy="152" r="4" fill="#C3CAC3"/>' +
-        '<rect x="96" y="174" width="40" height="5" rx="2.5" fill="#D6DCD5"/><rect x="184" y="174" width="40" height="5" rx="2.5" fill="#D6DCD5"/>') +
-      layer([1], '<circle cx="160" cy="128" r="68" fill="#F3F4F0"/><circle cx="160" cy="128" r="62" fill="none" stroke="#DADDD7" stroke-width="1.5"/>' + drums('00437', '921', 106, 100, 12, 22, 15) +
-        txt('m³', 160, 144, 11, '#5A625E', 'middle') + [[124, 163, 40], [145, 172, 160], [175, 172, 250], [196, 163, 310]].map(function (c) {
-          var a = c[2] * Math.PI / 180;
-          return '<circle cx="' + c[0] + '" cy="' + c[1] + '" r="8" fill="#FFFFFF" stroke="#C9CEC8" stroke-width="1.5"/><path d="M' + c[0] + ' ' + c[1] + 'l' + (6 * Math.sin(a)).toFixed(1) + ' ' + (-6 * Math.cos(a)).toFixed(1) + '" stroke="#C21F26" stroke-width="2" stroke-linecap="round"/>';
-        }).join('') + '<circle cx="160" cy="188" r="5" fill="#26302C"/>') +
-      layer([2], '<rect x="102" y="44" width="116" height="58" rx="10" fill="#26302C"/><rect x="108" y="50" width="104" height="46" rx="6" fill="#C2CEBF"/>' + seg('10420', 113, 56, 24, '#1F2A22') +
-        txt('kWh', 206, 91, 10, '#2E3A31', 'end') + '<circle cx="118" cy="124" r="5" fill="#D3402F"><animate attributeName="opacity" values="1;.2;1" dur="1.6s" repeatCount="indefinite"/></circle>' +
-        txt('imp', 128, 128, 10, '#66706B') + '<rect x="176" y="117" width="30" height="14" rx="7" fill="#CDD3CE" stroke="#B7BFB9"/>' +
-        '<rect x="104" y="148" width="112" height="5" rx="2.5" fill="#CDD3CE"/><rect x="104" y="160" width="76" height="5" rx="2.5" fill="#CDD3CE"/><rect x="86" y="192" width="148" height="2" fill="#C4CBC5"/>' +
-        '<rect x="96" y="202" width="128" height="56" rx="10" fill="#D2D8D3" stroke="#BCC4BE" stroke-width="1.5"/><circle cx="112" cy="230" r="5" fill="#AEB6B0"/><circle cx="208" cy="230" r="5" fill="#AEB6B0"/>') +
-      layer([3], '<rect x="74" y="86" width="172" height="14" rx="7" fill="#B3B8B2"/><path d="M142 93h36m-7-5l7 5-7 5" fill="none" stroke="#7F8680" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>' +
-        '<rect x="82" y="112" width="156" height="62" rx="8" fill="#E3BC3F" stroke="#B88F1C" stroke-width="2"/>' + drums('07633', '512', 92, 124, 15, 26, 17) + txt('m³', 160, 168, 11, '#2E2508', 'middle') +
-        '<rect x="96" y="188" width="128" height="44" rx="6" fill="#B9BEB8"/><rect x="106" y="198" width="80" height="4" rx="2" fill="#A3A9A3"/><rect x="106" y="208" width="108" height="4" rx="2" fill="#A3A9A3"/><rect x="106" y="218" width="60" height="4" rx="2" fill="#A3A9A3"/>') +
+      layer([0], r(88, 58, 144, 68, 13, 'fill="#000" opacity=".16" filter="url(#lpmSoft)" transform="translate(0 1.5)"') + r(90, 60, 140, 64, 12, 'fill="#26302C"') + r(90.6, 60.6, 138.8, 62.8, 11.4, 'fill="none" stroke="url(#lpmRim)" stroke-width="1.2" opacity=".6"') +
+        r(97, 67, 126, 50, 7, 'fill="#B5C3A2"') + seg('13.245', 104, 74, 26, '#1F2A22') + txt('Gcal', 216, 112, 10, '#2E3A31', 'end') +
+        r(101, 70.5, 9, 4.5, 1, 'fill="none" stroke="#1F2A22" stroke-width=".9" opacity=".75"') + r(102.2, 71.7, 5, 2.1, 0, 'fill="#1F2A22" opacity=".75"') + r(110, 71.6, 1, 2.3, 0, 'fill="#1F2A22" opacity=".75"') +
+        lcdGlass('lpmClH', 97, 67, 126, 50) +
+        '<circle cx="160.8" cy="153.6" r="15" fill="#000" opacity=".14" filter="url(#lpmSoft)"/><circle cx="160" cy="152" r="14" fill="#CDD3CC"/><circle cx="160" cy="152" r="12" fill="url(#lpmKnob)"/><path d="M157.5 148.5l5 3.5-5 3.5z" fill="#7C857F"/>' +
+        txt('Qp 1,5 m³/h', 86, 148, 7, '#6E7872') + txt('PN16  DN15', 86, 158, 7, '#6E7872') + txt('№ 21047093', 234, 148, 7, '#6E7872', 'end') + bars(197, 151.5, 7) +
+        screw(84, 176, 3.6, .7) + screw(236, 176, 3.6, -.4) + r(64, 134, 9, 12, 2.5, 'fill="#3B4340"') + r(247, 134, 9, 12, 2.5, 'fill="#3B4340"') +
+        '<path d="M236 176c7 4 9 9 10 16" fill="none" stroke="#8A918C" stroke-width="1"/><circle cx="246.5" cy="195" r="4.2" fill="url(#lpmScrew)"/>') +
+      layer([1], '<path d="' + knurl + '" stroke="#fff" stroke-opacity=".22" stroke-width="1.1"/>' + '<circle cx="160" cy="128" r="69.5" fill="#1D3E66" opacity=".55"/>' +
+        '<circle cx="160" cy="128" r="68" fill="url(#lpmFace)"/><circle cx="160" cy="128" r="66.6" fill="none" stroke="url(#lpmInset)" stroke-width="3"/><circle cx="160" cy="128" r="61" fill="none" stroke="#DADDD7" stroke-width="1.2"/>' +
+        txt('Q3 2,5 m³/h', 160, 90, 7, '#6E7872', 'middle') + drums('00437', '921', 106, 100, 12, 22, 15) + txt('m³', 160, 144, 11, '#5A625E', 'middle') +
+        txt('R160', 122, 148, 6.5, '#8A938D', 'middle') + txt('C', 198, 148, 7, '#8A938D', 'middle', 600) +
+        [[124, 163, 40], [145, 172, 160], [175, 172, 250], [196, 163, 310]].map(dial).join('') + star(160, 188) +
+        '<g clip-path="url(#lpmClF)"><ellipse cx="128" cy="84" rx="74" ry="32" transform="rotate(-28 128 84)" fill="url(#lpmDome)" opacity=".7"/>' +
+        '<path d="M206 166a64 64 0 0 1-30 25" fill="none" stroke="#fff" stroke-opacity=".55" stroke-width="2.4" stroke-linecap="round"/></g>' +
+        '<ellipse cx="121" cy="80" rx="11" ry="4.6" transform="rotate(-38 121 80)" fill="#fff" opacity=".6"/>') +
+      layer([2], '<g clip-path="url(#lpmClC)"><path d="M86 18h70L86 132z" fill="#fff" opacity=".12"/><path d="M178 18h14L100 190H86z" fill="#fff" opacity=".07"/></g>' +
+        r(100, 42, 120, 62, 11, 'fill="#000" opacity=".14" filter="url(#lpmSoft)" transform="translate(0 1.5)"') + r(102, 44, 116, 58, 10, 'fill="#26302C"') + r(102.6, 44.6, 114.8, 56.8, 9.4, 'fill="none" stroke="url(#lpmRim)" stroke-width="1.2" opacity=".6"') +
+        r(108, 50, 104, 46, 6, 'fill="#C2CEBF"') + seg('10420', 113, 56, 24, '#1F2A22') + txt('kWh', 206, 91, 10, '#2E3A31', 'end') + txt('T1', 113, 91, 8, '#2E3A31', '', 600) + lcdGlass('lpmClE', 108, 50, 104, 46) +
+        '<circle cx="118" cy="124" r="5.6" fill="#8C9590"/><circle cx="118" cy="124" r="5" fill="url(#lpmLed)"><animate attributeName="opacity" values="1;.25;1" dur="1.6s" repeatCount="indefinite"/></circle><circle cx="116.6" cy="122.5" r="1.3" fill="#fff" opacity=".8"/>' +
+        txt('imp', 128, 128, 10, '#66706B') + r(176.6, 118.4, 30, 14, 7, 'fill="#000" opacity=".18" filter="url(#lpmSoft)"') + r(176, 117, 30, 14, 7, 'fill="url(#lpmKnob)" stroke="#AEB6B0"') +
+        txt('220 V  50 Hz', 104, 152, 7.5, '#59625D') + txt('5(60) A   кл. 1', 104, 163, 7.5, '#59625D') + txt('1000 imp/kWh', 104, 174, 7.5, '#59625D') + qr(192, 147, 2.4) +
+        r(86, 190.5, 148, 1.6, 0, 'fill="#8E978F"') + r(86, 192.4, 148, 1, 0, 'fill="#fff" opacity=".7"') +
+        r(95, 203, 130, 58, 10, 'fill="#000" opacity=".18" filter="url(#lpmSoft)" transform="translate(1 2)"') + r(96, 202, 128, 56, 10, 'fill="url(#lpmCover)" stroke="#AEB6B0" stroke-width="1.2"') + r(97, 203, 126, 54, 9, 'fill="none" stroke="url(#lpmRim)" stroke-width="1.4"') +
+        screw(112, 230, 5, .8) + screw(208, 230, 5, -.5) + '<path d="M112 230C126 251 194 251 208 230" fill="none" stroke="#7F8781" stroke-width="1"/><circle cx="160.6" cy="247" r="5.4" fill="#000" opacity=".2"/><circle cx="160" cy="246" r="5" fill="url(#lpmScrew)"/>' +
+        '<path d="M157.5 246h5" stroke="#6E7670" stroke-width=".9"/>') +
+      layer([3], r(74, 86, 172, 14, 7, 'fill="#ADB3AD"') + r(74, 86, 172, 14, 7, 'fill="none" stroke="url(#lpmInset)" stroke-width="1.4"') +
+        '<path d="M142 94h36m-7-5l7 5-7 5" fill="none" stroke="#fff" stroke-opacity=".55" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M142 93h36m-7-5l7 5-7 5" fill="none" stroke="#6F766F" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>' +
+        r(80, 111, 160, 66, 9, 'fill="#000" opacity=".2" filter="url(#lpmSoft)" transform="translate(1 2)"') + r(82, 112, 156, 62, 8, 'fill="url(#lpmPlate)" stroke="#B88F1C" stroke-width="2"') + r(83.5, 113.5, 153, 59, 7, 'fill="none" stroke="url(#lpmRim)" stroke-width="1.4"') +
+        drums('07633', '512', 92, 124, 15, 26, 17) + txt('m³', 160, 168, 11, '#2E2508', 'middle') + screw(89, 167, 2.4, .5) + screw(231, 167, 2.4, -.6) +
+        r(62, 178, 196, 7, 0, 'fill="#A9AFA9"') + r(62, 178, 196, 1.4, 0, 'fill="#fff" opacity=".55"') + r(62, 185, 196, 1.4, 0, 'fill="#000" opacity=".22"') +
+        [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14].map(function (i) { return '<circle cx="' + (70 + i * 12.9).toFixed(1) + '" cy="181.5" r="1.3" fill="#80877F"/>'; }).join('') +
+        r(96, 192, 128, 46, 6, 'fill="url(#lpmTag)"') + r(96, 192, 128, 46, 6, 'fill="none" stroke="url(#lpmInset)" stroke-width="1.4"') +
+        txt('G4', 106, 220, 16, '#3B4340', '', 700) + txt('Qmax 6 m³/h', 138, 207, 7, '#4E5651') + txt('Pmax 50 kPa', 138, 217, 7, '#4E5651') + txt('V 1,2 dm³', 138, 227, 7, '#4E5651') +
+        screw(101, 197, 1.8, 0) + screw(219, 197, 1.8, 0) + screw(101, 233, 1.8, 0) + screw(219, 233, 1.8, 0)) +
       ['lp_m_heat', 'lp_m_water', 'lp_m_elec', 'lp_m_gas'].map(function (k, j) { return layer([j], txt(t(k), 160, 318, 20, 'rgba(243, 248, 245, .82)', 'middle')); }).join('');
-    return '<div class="lpe-art" aria-hidden="true"><svg class="lpm" viewBox="0 0 320 328" focusable="false" font-family="IBM Plex Sans, system-ui, sans-serif">' +
-      '<ellipse cx="160" cy="238" rx="136" ry="8" fill="#000" opacity=".28">' + morph('cy', [238, 238, 282, 262]) + morph('rx', [136, 136, 88, 112]) + '</ellipse>' + back + shell + front + '</svg></div>';
+    return '<div class="lpe-art" aria-hidden="true"><svg class="lpm" viewBox="0 0 320 328" focusable="false" font-family="IBM Plex Sans, system-ui, sans-serif">' + defs +
+      '<ellipse cx="160" cy="240" rx="136" ry="9" fill="#000" opacity=".42" filter="url(#lpmBlur2)">' + morph('cy', [240, 240, 286, 266]) + morph('rx', [136, 136, 84, 110]) + '</ellipse>' + back + shell + front + '</svg></div>';
   }
   /** Лицьова панель приладу (89-а): чотири гвинти по кутах — декор, читачам екрана не видно. */
   function lpScrews() { return '<span class="lp-screw s1" aria-hidden="true"></span><span class="lp-screw s2" aria-hidden="true"></span><span class="lp-screw s3" aria-hidden="true"></span><span class="lp-screw s4" aria-hidden="true"></span>'; }
@@ -9689,10 +9853,12 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
       '</div><div class="lpf-bot"><span>© ' + new Date().getFullYear() + ' ' + esc(t('brand')) + '</span><span>' + esc(t('lf_indep')) + '</span></div></footer>';
   }
   /** Подвал застосунку — лише на комп'ютері (≥ 960), притиснутий до низу сторінки (рядок сітки .app після main; коротка сторінка — внизу вікна).
-   *  91-а (власник): у ньому тільки «Політика конфіденційності», «Умови використання» й «Налаштування cookie». */
+   *  91-а (власник): посилання — тільки «Політика конфіденційності», «Умови використання» й «Налаштування cookie»;
+   *  92-а (власник): під ними — рік і «Незалежний сервіс — не є офіційним…», як на лендингу. */
   function appFoot() {
     return '<footer class="app-foot" data-key="app-foot"><a href="#privacy" data-key="lpf-privacy">' + esc(t('lg_privacy')) + '</a><a href="#terms" data-key="lpf-terms">' + esc(t('lg_terms')) + '</a>' +
-      (window.TEPLO_API ? '<button type="button" class="linkbtn" data-act="cc-open" data-key="lpf-cookie">' + esc(t('cc_link')) + '</button>' : '') + '</footer>';
+      (window.TEPLO_API ? '<button type="button" class="linkbtn" data-act="cc-open" data-key="lpf-cookie">' + esc(t('cc_link')) + '</button>' : '') +
+      '<p class="af-note" data-key="app-foot-note"><span>© ' + new Date().getFullYear() + ' ' + esc(t('brand')) + '</span><span>' + esc(t('lf_indep')) + '</span></p></footer>';
   }
   function lpCta(key, label) { return '<a class="lp-btn" href="#start" data-key="' + key + '"><span>' + esc(label) + '</span></a>'; }
   /** «Куди передати»: основні постачальники всіх областей довідника — дві стрічки, пливуть справа наліво (владелец 10.11);
@@ -9712,6 +9878,7 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
   /** «Ціни саме вашої громади» (власник 10.11): скільки громад у довіднику по областях і в скількох знайдено ціну води; як підтягуються постачальники й ціни громади —
    *  з рішень рад і виконкомів, постанов НКРЕКП і сайтів постачальників, з датою й джерелом; немає документа — «впишіть з платіжки». Числа — під час збирання (web/build.py). */
   var LP_PROV = [{"r":"kh","h":56,"w":45,"wt":20,"heat":16},{"r":"kv","h":69,"w":50,"wt":37,"heat":2},{"r":"ky","h":1,"w":1,"wt":1,"heat":1},{"r":"od","h":91,"w":66,"wt":51,"heat":2},{"r":"lv","h":73,"w":60,"wt":46,"heat":3}];
+  var LP_PHOTO = 'data:image/webp;base64,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';
   function lpPrices() {
     var regs = (LP_PROV || []).filter(function (x) { return x && x.h > 1; }), all = (LP_PROV || []).reduce(function (a, x) { return a + (x.h || 0); }, 0);
     return '<div class="lp-prv" aria-hidden="true">' + regs.map(function (x) { return '<span class="lpv-r"><i>' + esc(t('lp_pr_o_' + x.r)) + '</i><b>' + x.h + '</b></span>'; }).join('') +
@@ -9719,7 +9886,12 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
   }
   function lpSteps() {
     var arts = [
-      '<div class="lp-art art-photo"><span class="vf tl"></span><span class="vf tr"></span><span class="vf bl"></span><span class="vf br"></span>' + lcd([{ text: '13.245', tag: 'Gcal' }]) + '<span class="scan"></span></div>',
+      // 92-а (власник): справжнє фото табло з сервера → лінія сканує → рамка навколо цифр і «17,913 Gcal» → шторка зліва направо
+      // перетворює фото на табло з тими самими цифрами → пауза → знову фото (CSS lpPh*, 9 с; «Зменшити рух» — фото з рамкою й підписом)
+      '<div class="lp-art art-photo"><div class="aph"><img class="aph-img" src="' + LP_PHOTO + '" alt="" width="720" height="411" decoding="async">' +
+        '<span class="aph-box b1"></span><span class="aph-box b2"></span><span class="aph-chip">17,913 Gcal</span><span class="scan"></span>' +
+        '<div class="aph-lcd">' + lcd([{ text: '17.913', tag: 'Gcal' }]) + '</div><span class="aph-cap">Heat meter</span><span class="aph-wipe"></span></div>' +
+        '<span class="vf tl"></span><span class="vf tr"></span><span class="vf bl"></span><span class="vf br"></span></div>',
       '<div class="lp-art art-check"><div class="lpa-field"><span class="lpa-v">13,245</span><span class="lpa-u">Гкал</span><span class="lpa-ok-i">' + ico('check', 18) + '</span></div>' +
         '<p class="lpa-l ok">' + ico('check', 16) + '<span>' + esc(t('lp_s2_ok')) + '</span></p><p class="lpa-l warn">' + ico('alert', 16) + '<span>' + esc(t('lp_s2_warn')) + '</span></p></div>',
       '<div class="lp-art art-send"><div class="lpa-dest">' + ico('send', 18) + '<span><b>' + esc(t('lp_s3_dest')) + '</b><i>' + esc(t('lp_s3_sub')) + '</i></span>' + ico('ext', 16) + '</div>' +

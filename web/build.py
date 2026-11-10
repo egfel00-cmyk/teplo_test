@@ -5,7 +5,7 @@
                         (вход через Telegram или email, синхронизация, Telegram Mini App, распознавание фото).
 Запуск: python3 web/build.py
 """
-import pathlib, re, subprocess
+import base64, pathlib, re, subprocess
 
 ROOT = pathlib.Path(__file__).resolve().parent
 SRC = ROOT / "src"
@@ -49,6 +49,8 @@ def build(server: bool) -> str:
         js = (SRC / m.group(1)).read_text(encoding="utf-8")
         if "null/*LP_PROV*/" in js:   # лендинг: громади довідника по областях (tools_prov_counts.php); без php — блок без чисел
             js = js.replace("null/*LP_PROV*/", prov_counts())
+        if "''/*LP_PHOTO*/" in js:   # 92-а: лендинг, крок 1 — кроп табло з фото власника (web/img/lp-heat.webp, без номера квартири й заводського) — у сторінку, 9 КБ
+            js = js.replace("''/*LP_PHOTO*/", "'data:image/webp;base64," + base64.b64encode((ROOT / "img" / "lp-heat.webp").read_bytes()).decode() + "'")
         return "<script>\n" + js.replace("</script", "<\\/script") + "\n</script>"
 
     return re.sub(r'<script src="([a-z0-9]+\.js)"></script>', inline, html)
