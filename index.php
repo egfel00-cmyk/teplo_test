@@ -111,8 +111,8 @@ if ($path === '/' || $path === '/index.php') {
     '<meta name="twitter:card" content="summary_large_image"><meta name="twitter:title" content="' . $e($og[4]) . '"><meta name="twitter:description" content="' . $e($og[5]) . '"><meta name="twitter:image" content="' . $e($img) . '">' .
     '<script type="application/ld+json">' . json_encode($ld, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG) . '</script>';
   // роботы превью (Telegram, Facebook/Instagram, WhatsApp, Viber, Slack…) получают крошечную страницу только с превью — быстро и наверняка
-  if (preg_match('~TelegramBot|facebookexternalhit|Facebot|meta-externalagent|Instagram|Twitterbot|WhatsApp|Viber|Slackbot|Discordbot|LinkedInBot|SkypeUriPreview|Pinterest|vkShare|redditbot|Snapchat|Embedly|Iframely~i', (string)($_SERVER['HTTP_USER_AGENT'] ?? ''))) {
-    header('Content-Type: text/html; charset=utf-8'); header('Cache-Control: public, max-age=600');
+  if (previewBot((string)($_SERVER['HTTP_USER_AGENT'] ?? ''))) {
+    header('Content-Type: text/html; charset=utf-8'); header('Cache-Control: public, max-age=600'); header('Vary: User-Agent');
     echo '<!DOCTYPE html><html lang="' . ($ru ? 'ru' : 'uk') . '"><head><meta charset="utf-8"><title>' . $e($og[4]) . '</title>' . $meta . '</head><body><h1>' . $e($og[4]) . '</h1><p>' . $e($og[5]) . '</p><p><img src="' . $e($img) . '" width="1200" height="630" alt=""></p></body></html>';
     exit;
   }
@@ -142,6 +142,14 @@ if ($path === '/robots.txt' || $path === '/sitemap.xml') {
   header('Content-Type: application/xml; charset=utf-8');
   echo '<?xml version="1.0" encoding="UTF-8"?>' . "\n" . '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"><url><loc>' . htmlspecialchars($site) . '</loc><lastmod>' . date('Y-m-d', (int)filemtime(__DIR__ . '/web/dist/site.html')) . '</lastmod><changefreq>weekly</changefreq><priority>1.0</priority></url></urlset>' . "\n";
   exit;
+}
+
+/** Робот превью ссылки (а не человек). 95-я: встроенный браузер Instagram («… AppleWebKit … Instagram 3xx …») получал страницу-превью
+ *  вместо сайта — ссылка из сторис открывала заголовок и картинку. Названия сервисов (Instagram, WhatsApp, Viber, Pinterest, Snapchat)
+ *  считаем роботом, только если это не браузерный движок; явные роботы (facebookexternalhit, TelegramBot…) — всегда. */
+function previewBot(string $ua): bool {
+  if (preg_match('~TelegramBot|facebookexternalhit|Facebot|meta-externalagent|Twitterbot|Slackbot|Discordbot|LinkedInBot|SkypeUriPreview|Pinterestbot|vkShare|redditbot|Snap URL Preview|Embedly|Iframely~i', $ua)) return true;
+  return (bool)preg_match('~Instagram|WhatsApp|Viber|Pinterest|Snapchat~i', $ua) && !preg_match('~AppleWebKit|Gecko/|Chrome/~', $ua);
 }
 
 /** Текст лендинга без JavaScript (поисковики, читалки). Строки берём из web/src/i18n.js — те же, что видит человек. */
