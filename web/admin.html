@@ -250,7 +250,7 @@ pre.state { font: 12px/1.4 var(--mono); background: #F4F7F5; padding: 10px; bord
     var days = Object.keys(d.act).sort().reverse().slice(0, 30), s = d.actSum || {}, td = days[0] && d.act[days[0]];
     var pct = function (n, of) { return of ? ' <span class="muted small">' + Math.round(n * 100 / of) + '%</span>' : ''; };
     var sel = [7, 30, 90].map(function (n) { return '<button class="btn' + (DDAYS === n ? ' on' : '') + '" data-ddays="' + n + '">' + n + ' дн.</button>'; }).join(' ');
-    var c = function (n, l) { return '<div class="card"><b class="num">' + n + '</b><span>' + l + '</span></div>'; };
+    var c = function (n, l) { return '<div class="card"><div class="v">' + esc(n) + '</div><div class="k">' + l + '</div></div>'; };   // как у сводки: число над подписью
     return '<div class="panel" id="act"><h2>Отклик — все, кто открывал сайт <span class="muted small">(и без входа)</span></h2>' +
       '<p>' + sel + '</p>' +
       '<div class="cards">' + c(s.v || 0, 'открыли за ' + d.days + ' дн.') + c(s.new || 0, 'впервые') + c(s.s1 || 0, 'клацали по экранам') + c(s.s2 || 0, 'добавили счётчик') +

@@ -73,7 +73,9 @@
       var sure = ds.filter(function (d) { return d.sure; });
       ds = sure.length ? sure : ds.sort(function (a, b) { return (b.score || 0) - (a.score || 0); }).slice(0, 1);
       // вікно повернуте (лічильник набік): w/h — уздовж роликів, рамка на фото — по осях
-      if (ds.length) ds.forEach(function (d) { var a = +d.angle || 0, cx = d.x + d.w / 2, cy = d.y + d.h / 2, ew = Math.abs(d.w * Math.cos(a)) + Math.abs(d.h * Math.sin(a)), eh = Math.abs(d.w * Math.sin(a)) + Math.abs(d.h * Math.cos(a)); add({ x: cx - ew / 2, y: cy - eh / 2, w: ew, h: eh }); });
+      // вікно — чорні ролики разом із червоними (дроби, d.rb): інакше превью центрується по чорних, а червоні з'їжджають за край (газ 7633, 90-а)
+      var rot = function (b, a) { var cx = b.x + b.w / 2, cy = b.y + b.h / 2, ew = Math.abs(b.w * Math.cos(a)) + Math.abs(b.h * Math.sin(a)), eh = Math.abs(b.w * Math.sin(a)) + Math.abs(b.h * Math.cos(a)); add({ x: cx - ew / 2, y: cy - eh / 2, w: ew, h: eh }); };
+      if (ds.length) ds.forEach(function (d) { var a = +d.angle || 0; rot(d, a); if (d.rb && d.rb.w > 0 && d.rb.h > 0) rot(d.rb, a); });
       else {
         var best = null;
         (res.lines || []).forEach(function (l) { var n = dg(l && l.text); if (!l || n < 3 || !(l.h > 0) || !(l.w > 0)) return; var sc = l.h * (l.score || 0.5) * Math.min(n, 8); if (!best || sc > best.sc) best = { sc: sc, l: l }; });
@@ -81,13 +83,13 @@
       }
       if (!box) return null;
       var c = function (v) { return Math.round(Math.max(0, Math.min(1, v)) * 1000) / 1000; };
-      return { x: c((box.x0 + box.x1) / 2 / res.w), y: c((box.y0 + box.y1) / 2 / res.h), w: c((box.x1 - box.x0) / res.w), h: c((box.y1 - box.y0) / res.h) };
+      return { x: c((box.x0 + box.x1) / 2 / res.w), y: c((box.y0 + box.y1) / 2 / res.h), w: c((box.x1 - box.x0) / res.w), h: c((box.y1 - box.y0) / res.h), v: 2 };
     },
     /** Подгрузить движок (web/ocr/engine.js + модели ~30 МБ, один раз — дальше из кэша браузера). */
     _engine: function (onPct) {
       var base = String(root.TEPLO_API).replace(/\/api\/?$/, '') + '/web/ocr/';
       var script = root.TeploOCR ? Promise.resolve() : (this._script = this._script || new Promise(function (ok, bad) {
-        var s = document.createElement('script'); s.src = base + 'engine.js?v=16'; s.onload = ok; s.onerror = function () { bad(fail('engine_failed')); }; document.head.appendChild(s);
+        var s = document.createElement('script'); s.src = base + 'engine.js?v=17'; s.onload = ok; s.onerror = function () { bad(fail('engine_failed')); }; document.head.appendChild(s);
       }));
       return script.then(function () { return root.TeploOCR.load(base, onPct); }).catch(function (e) { if (e && e.code) throw e; throw fail('engine_failed'); });
     },

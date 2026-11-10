@@ -1665,7 +1665,7 @@
       }
       // де на фото табло (рушій знайшов при розпізнаванні) — превью кадрується по ньому
       var fc = f._focus, ref = it.meter ? { id: id, meter: it.meter } : { id: id };
-      if (fc && fc.w > 0) ref.f = [fc.x, fc.y, fc.w, fc.h];
+      if (fc && fc.w > 0) ref.f = [fc.x, fc.y, fc.w, fc.h].concat(fc.v ? [fc.v] : []);   // 5-й елемент — рамка вже з червоними роликами
       return ref;
     });
     if (keep.length) photoKeep(keep.map(function (id) { return { id: id }; }), true);
@@ -1760,16 +1760,27 @@
    *  Фото без f (старі, додані в картці запису) у водоміра, світла, газу — вікно барабана шукає швидкий пошук рушія (TeploOCR._drums: за кольором, без моделей;
    *  скрипт ~90 КБ), береться лише впевнене. Тепло (ЖК) без розпізнавання — центр фото. */
   var FOC = { done: {}, busy: false, js: null };
+  /** p.f = [x, y, w, h(, v)] — v (90-а): рамку перевірено разом із червоними роликами. Старі [x, y, w, h] у водоміра/світла/газу — лише чорні ролики
+   *  (червоні дроби з'їжджали за край превью, газ 7633): показуємо як є й у фоні шукаємо вікно заново (data-fq); не знайшлося — лишаємо старе з позначкою. */
   function phFocusAttr(p, gal) {
-    var f = p.f || (FOC.done[p.id] || null);
-    if (f && f.length === 4 && f[2] > 0) return ' data-f="' + f.join(',') + '"';
-    return /^[wm]/.test(gal || '') && FOC.done[p.id] === undefined ? ' data-fq="1"' : '';
+    var f = p.f || (FOC.done[p.id] || null), drum = /^[wm]/.test(gal || '') && FOC.done[p.id] === undefined;
+    if (f && f.length >= 4 && f[2] > 0) return ' data-f="' + f.slice(0, 4).join(',') + '"' + (drum && f.length < 5 ? ' data-fq="1"' : '');
+    return drum ? ' data-fq="1"' : '';
+  }
+  /** Вікно барабана з TeploOCR._drums (c — чорні ролики, c.redBox — червоні) → рамка навколо обох, частки фото. */
+  function drumFocus(c, iw, ih) {
+    var x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9, a = +c.angle || 0;
+    [c, c.redBox].forEach(function (b) { if (!b || !(b.w > 0)) return;
+      var ew = Math.abs(b.w * Math.cos(a)) + Math.abs(b.h * Math.sin(a)), eh = Math.abs(b.w * Math.sin(a)) + Math.abs(b.h * Math.cos(a));
+      x0 = Math.min(x0, b.cx - ew / 2); x1 = Math.max(x1, b.cx + ew / 2); y0 = Math.min(y0, b.cy - eh / 2); y1 = Math.max(y1, b.cy + eh / 2); });
+    var r3 = function (v) { return Math.round(Math.max(0, Math.min(1, v)) * 1000) / 1000; };
+    return [r3((x0 + x1) / 2 / iw), r3((y0 + y1) / 2 / ih), r3((x1 - x0) / iw), r3((y1 - y0) / ih), 2];
   }
   /** Кадр превью: табло — рівно в центрі картки (власник 10.11: «чітко по центру табло»). Масштаб — табло на ~60 % ширини й не вище половини картки,
    *  не дрібніше, ніж «на всю картку», і не більше ×3; якщо табло біля краю фото — збільшуємо, щоб і по центру, і без порожнечі (до 90 % ширини, ×3,5),
    *  а коли й так не виходить — по центру з темним полем збоку (фон картки), а не зсунуте до краю. */
   function phFocus(im) {
-    var f = String(im.getAttribute('data-f') || '').split(',').map(Number), box = im.parentNode; if (f.length !== 4 || !(f[2] > 0) || !box) return;
+    var f = String(im.getAttribute('data-f') || '').split(',').map(Number), box = im.parentNode; if (f.length < 4 || !(f[2] > 0) || !box) return;
     var W = box.clientWidth, H = box.clientHeight, iw = im.naturalWidth, ih = im.naturalHeight; if (!W || !H || !iw || !ih) return;
     var fx = Math.max(0, Math.min(1, f[0])), fy = Math.max(0, Math.min(1, f[1])), fw = f[2] * iw, fh = Math.max(1e-6, f[3] * ih);
     var s0 = Math.max(W / iw, H / ih), s = Math.max(s0, Math.min(0.6 * W / fw, 0.5 * H / fh, s0 * 3));
@@ -1791,19 +1802,22 @@
     if (!im || !window.TEPLO_API) return;
     var id = im.getAttribute('data-hph'); FOC.busy = true;
     var js = window.TeploOCR ? Promise.resolve() : (FOC.js = FOC.js || new Promise(function (ok, bad) {
-      var sc = document.createElement('script'); sc.src = String(window.TEPLO_API).replace(/\/api\/?$/, '') + '/web/ocr/engine.js?v=16'; sc.onload = ok; sc.onerror = bad; document.head.appendChild(sc);
+      var sc = document.createElement('script'); sc.src = String(window.TEPLO_API).replace(/\/api\/?$/, '') + '/web/ocr/engine.js?v=17'; sc.onload = ok; sc.onerror = bad; document.head.appendChild(sc);
     }));
     js.then(function () { return window.TeploOCR._drums(im); }).then(function (cs) {
-      var c = (cs || [])[0], iw = im.naturalWidth, ih = im.naturalHeight, k = Math.min(1, 2400 / Math.max(iw, ih)), r3 = function (v) { return Math.round(Math.max(0, Math.min(1, v)) * 1000) / 1000; };
-      var f = c && c.sure && c.score >= 0.9 && c.w > 0 ? [r3(c.cx / (iw * k)), r3(c.cy / (ih * k)), r3(c.w / (iw * k)), r3(c.h / (ih * k))] : null;
+      var c = (cs || [])[0], iw = im.naturalWidth, ih = im.naturalHeight, k = Math.min(1, 2400 / Math.max(iw, ih));
+      var f = c && c.sure && c.score >= 0.9 && c.w > 0 ? drumFocus(c, iw * k, ih * k) : null;
       FOC.done[id] = f || 0;
-      if (f) {
-        allRecs().forEach(function (r) { (r.photos || []).forEach(function (p) { if (p && p.id === id && !p.f) p.f = f; }); }); persist();
-        Array.prototype.forEach.call(document.querySelectorAll('img[data-fq]'), function (x) { if (x.getAttribute('data-hph') === id) { x.removeAttribute('data-fq'); x.setAttribute('data-f', f.join(',')); phFocus(x); } });
-      } else Array.prototype.forEach.call(document.querySelectorAll('img[data-fq]'), function (x) { if (x.getAttribute('data-hph') === id) x.removeAttribute('data-fq'); });
+      // знайдене — у запис (і замість старої рамки лише по чорних); не знайшлося, а стара є — позначити перевіреною, щоб не шукати щоразу
+      var upd = false;
+      allRecs().forEach(function (r) { (r.photos || []).forEach(function (p) { if (!p || p.id !== id) return;
+        if (f && (!p.f || p.f.length < 5)) { p.f = f; upd = true; } else if (!f && p.f && p.f.length === 4) { p.f = p.f.concat([1]); upd = true; } }); });
+      if (upd) persist();
+      Array.prototype.forEach.call(document.querySelectorAll('img[data-fq]'), function (x) { if (x.getAttribute('data-hph') !== id) return; x.removeAttribute('data-fq');
+        if (f) { x.setAttribute('data-f', f.slice(0, 4).join(',')); phFocus(x); } });
     }).catch(function () { FOC.done[id] = 0; }).then(function () { FOC.busy = false; phFocusFind(); });
   }
-  document.addEventListener('load', function (e) { var im = e.target; if (!im || im.tagName !== 'IMG') return; if (im.hasAttribute('data-f')) phFocus(im); else if (im.hasAttribute('data-fq')) phFocusFind(); }, true);
+  document.addEventListener('load', function (e) { var im = e.target; if (!im || im.tagName !== 'IMG') return; if (im.hasAttribute('data-f')) phFocus(im); if (im.hasAttribute('data-fq')) phFocusFind(); }, true);
   var FOC_T = 0; window.addEventListener('resize', function () { clearTimeout(FOC_T); FOC_T = setTimeout(phFocusAll, 150); });
   document.addEventListener('error', function (e) { var im = e.target; if (im && im.tagName === 'IMG' && im.hasAttribute('data-hph')) { HP.missing[im.getAttribute('data-hph')] = 1; if (im.parentNode) im.parentNode.classList.add('gone'); } }, true);
   document.addEventListener('click', function (e) {

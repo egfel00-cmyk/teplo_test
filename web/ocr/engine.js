@@ -6,7 +6,7 @@
  *   all: true — читать все найденные окна барабанов (на фото может быть несколько водомеров), иначе — до первого уверенного.
  *   lines: [{ text, score, x, y, w, h, angle, lcd? }] — координаты в пикселях исходного фото (после поворота по EXIF);
  *          lcd: 1 — найдено проходом по ЖК (приближение экрана: прочерки «E-------», значки «m³», «m³/h», «kW»).
- *   drums: [{ text, red, score, votes, alts, x, y, w, h, angle, flipped, tint }] — окно барабана водомера, найденное по цвету:
+ *   drums: [{ text, red, score, votes, alts, x, y, w, h, angle, flipped, tint, rb }] (rb — окно красных роликов {x, y, w, h}, если нашлось) — окно барабана водомера, найденное по цвету:
  *          text — цифры чёрных роликов (м³), red — красных (дроби), redSure — красные, совпавшие в 2 из 3 обработок (литры
  *          в показание), tint — цвет кольца ('red' горячая / 'blue' холодная),
  *          lead — сколько ведущих роликов не видно (блик стекла; text без них — обычно это нули),
@@ -890,6 +890,7 @@
       var bestR = rd ? rd.d : ''; while (redSure && bestR.indexOf(redSure) !== 0) redSure = redSure.slice(0, -1);
       return { text: half ? half.text : b0 ? b0.d : '', red: rd ? rd.d : '', redSure: redSure || undefined, half: half && half.half.length ? half.half : undefined, shifted: shifted.length ? shifted : undefined, score: b0 ? +b0.s.toFixed(3) : 0, votes: b0 ? Math.max(b0.n, half ? half.votes : 0) : 0, alts: win.alts,
         x: Math.round(d.cx - d.w / 2), y: Math.round(d.cy - d.h / 2), w: Math.round(d.w), h: Math.round(d.h), angle: +win.ang.toFixed(3),
+        rb: d.redBox ? { x: Math.round(d.redBox.cx - d.redBox.w / 2), y: Math.round(d.redBox.cy - d.redBox.h / 2), w: Math.round(d.redBox.w), h: Math.round(d.redBox.h) } : undefined,   // красные ролики (дроби) рядом с чёрными — для кадра превью (90-я)
         flipped: Math.cos(win.ang) < -0.5, sure: d.sure, tint: d.tint, find: d.score, cells: Math.max(3, Math.round((d.w + (win.ext || 0)) / d.h / 0.68)), lead: lead || undefined, _res: root.TEPLO_DRUM_LOG ? res : undefined };
     });
   }

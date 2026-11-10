@@ -563,6 +563,9 @@ input[type=text]:not(.dmy-native):not(.pl-in), input[type=email], input[type=pas
 .copy-ico:hover { background: var(--c-ghost-hover); color: var(--c-ink); } .copy-ico:focus-visible { outline: 3px solid var(--c-info); outline-offset: 2px; }
 .copy-ico.done { color: var(--c-ok); border-color: var(--c-ok); }
 .lcd-cap .copy-ico { width: 36px; height: 36px; margin-left: auto; }
+/* копіювання — біля правого краю табло над ним (90-а: на широкому екрані висіло посередині — p { max-width: 68ch }); барабани води й газу — 470 px */
+.mbox .lcd-cap.meta-row { max-width: none; }
+.mbox-cold .lcd-cap.meta-row, .mbox-hot .lcd-cap.meta-row, .mbox-gas .lcd-cap.meta-row { max-width: 470px; }
 .wz-opts { display: grid; gap: 10px; margin: 8px 0 12px; }
 .wz-opt { display: flex; align-items: center; gap: 12px; padding: 14px 16px; border: 1.5px solid var(--c-field-line); border-radius: 14px; background: var(--c-surface); cursor: pointer; color: inherit; text-decoration: none; font: inherit; text-align: left; width: 100%; }
 .wz-opt > span { flex: 1; display: flex; flex-direction: column; gap: 2px; }
