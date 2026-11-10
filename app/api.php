@@ -30,6 +30,7 @@
 //  GET  /api/cab/htm · POST /api/cab/htm/connect {email, password, phone?, consent} · POST /api/cab/forget {prov}
 //  POST /api/cab/htm/check {acc?} · POST /api/cab/htm/send {acc?, rid, place, vals, delay?}   кабинет ХТМ по паролю человека (HtmSvc, app/htmsvc.php)
 //  POST /api/cab/htm/auto {on} · POST /api/cab/htm/cancel {job} · POST /api/cab/htm/now {job}   автоподача: очередь внесений после фото в бот
+//  GET /api/lb?bot=&place= · POST /api/lb/connect|forget|queue|cancel|now — автоподача місцевим КП (LocalBot, app/localbot.php)
 //  GET /api/vk/jobs · POST /api/vk/queue {acc, fam, rid, place, items, auto?} · POST /api/vk/auto {on, consent} · POST /api/vk/job/cancel|now {job}
 //                                   вода → сайт Водоканалу «у фоні» и автоподача після фото в бот (VkSvc, app/vksvc.php)
 //  GET  /api/relay/next?v=           ретранслятор NAS (X-Relay-Key): «idle N» или шаг задания текстом (Relay)
@@ -125,7 +126,7 @@ final class Api {
           'gpv' => ['at' => $g['at'] ?? null, 'update' => $g['update'] ?? null, 'days' => array_keys((array)($g['days'] ?? [])), 'err' => $g['err'] ?? null],
           'vkcab' => VkCab::summary(), 'cabs' => (object)CabProbe::read(), 'prov' => ProvAdmin::health(),
           // кабинет ХТМ: итоги операций, сколько подключено, внесения по статусам и последняя увиденная форма (имена/типы полей, без значений)
-          'htmcab' => HtmSvc::summary(), 'vksvc' => VkSvc::summary(), 'vkBills' => VkBills::summary(), 'htmBills' => HtmBills::summary(), 'htmSpr' => HtmSpr::summary(),
+          'htmcab' => HtmSvc::summary(), 'vksvc' => VkSvc::summary(), 'lbot' => LocalBot::summary(), 'vkBills' => VkBills::summary(), 'htmBills' => HtmBills::summary(), 'htmSpr' => HtmSpr::summary(),
           // проба обленерго с украинского адреса (NAS владельца → POST /api/relay/probe): код, Cloudflare, капча, формы — решает, быть ли ретранслятору
           'uaProbe' => (object)RelayProbe::summary(), 'uaCheck' => (object)UaCheck::summary(),
           // ретранслятор на NAS: включён ли, на связи ли (сек. назад, версия сценария, страна), пауза, задания по состояниям
@@ -346,6 +347,12 @@ final class Api {
       case 'POST /api/cab/htm/cancel': if (!$user) throw new HttpError(401, 'unauthorized'); return HtmSvc::cancel((int)$user['id'], $in);
       case 'POST /api/cab/htm/now': if (!$user) throw new HttpError(401, 'unauthorized'); return HtmSvc::now((int)$user['id'], $in);
       case 'POST /api/cab/forget': if (!$user) throw new HttpError(401, 'unauthorized'); return ($in['prov'] ?? '') === 'vk' ? VkSvc::forget((int)$user['id']) : HtmSvc::forget((int)$user['id'], $in);
+      case 'GET /api/lb': if (!$user) throw new HttpError(401, 'unauthorized'); return LocalBot::status((int)$user['id'], $r->query());
+      case 'POST /api/lb/connect': if (!$user) throw new HttpError(401, 'unauthorized'); return LocalBot::connect((int)$user['id'], $in);
+      case 'POST /api/lb/forget': if (!$user) throw new HttpError(401, 'unauthorized'); return LocalBot::forget((int)$user['id'], $in);
+      case 'POST /api/lb/queue': if (!$user) throw new HttpError(401, 'unauthorized'); return LocalBot::queue((int)$user['id'], $in);
+      case 'POST /api/lb/cancel': if (!$user) throw new HttpError(401, 'unauthorized'); return LocalBot::cancel((int)$user['id'], $in);
+      case 'POST /api/lb/now': if (!$user) throw new HttpError(401, 'unauthorized'); return LocalBot::now((int)$user['id'], $in);
       case 'GET /api/vk/jobs': if (!$user) throw new HttpError(401, 'unauthorized'); return VkSvc::status((int)$user['id']);
       case 'POST /api/vk/queue': if (!$user) throw new HttpError(401, 'unauthorized'); return VkSvc::queue((int)$user['id'], $in);
       case 'POST /api/vk/auto': if (!$user) throw new HttpError(401, 'unauthorized'); return VkSvc::auto((int)$user['id'], $in);

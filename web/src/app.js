@@ -1176,7 +1176,7 @@
     // квартира не в Харкові (за довідником — інший постачальник води): контакти її водоканалу, без бота й кабінету Харківводоканалу
     var ld = prvOf('water');
     if (ld && ld.via !== 'hvk') return '<section class="panel where" data-key="where-water"><h2>' + ico('send', 18, 'bt-ico') + '<span>' + esc(t('wd_title')) + '</span></h2>' + wherePlaceLine() +
-      localDest('water', ld, rec ? valList(ms) : '', rec ? mark('vk', wsentVk(rec)) : '', rec && wsentVk(rec)) + '</section>';
+      localDest('water', ld, rec ? valList(ms) : '', rec ? mark('vk', wsentVk(rec)) : '', rec && wsentVk(rec), lbBox(ld, [rec], rec ? lbItems(rec) : [])) + '</section>';
     // Водоканал: холодна (вода + відведення) і гаряча (лише відведення) — одна команда для бота на всі водоміри
     var vkBody = '', vkChans = [[Wt.VK_BOT, t('wd_bot', { b: '@hvk_user_bot' }), 'send', 'bot'], [Wt.VK_CABINET, t('wd_cab_vk'), 'ext', 'cab']];
     if (rec) {
@@ -2258,7 +2258,8 @@
     var loc = prvLocal(k);
     if (loc) return '<section class="panel where" data-key="where-' + k + '"><h2>' + ico('send', 18, 'bt-ico') + '<span>' + esc(t('wd_title')) + '</span></h2>' + wherePlaceLine() +
       localDest(k, loc, body + acc, have ? '<p class="dest-mark">' + (allSent ? '<button class="linkbtn" data-act="esent" data-k="' + k + '" data-v="0" data-ids="' + ids + '">' + esc(t('ws_unmark')) + '</button>'
-        : '<button class="btn sec" data-act="esent" data-k="' + k + '" data-v="1" data-ids="' + ids + '" data-key="esend-done">' + ico('check', 18) + '<span>' + esc(t('ws_mark')) + '</span></button>') + '</p>' : '', allSent) + '</section>';
+        : '<button class="btn sec" data-act="esent" data-k="' + k + '" data-v="1" data-ids="' + ids + '" data-key="esend-done">' + ico('check', 18) + '<span>' + esc(t('ws_mark')) + '</span></button>') + '</p>' : '', allSent,
+        lbBox(loc, have || [], lbItemsS(k, ms, have), ms.length === 1 && dgt(ms[0].account) ? { acc: dgt(ms[0].account) } : null)) + '</section>';
     return '<section class="panel where" data-key="where-' + k + '"><h2>' + ico('send', 18, 'bt-ico') + '<span>' + esc(t('wd_title')) + '</span></h2>' +
       (places().length > 1 ? '<p class="dest-place" style="--pc:var(--pc-' + placeColor(place()) + ')" data-key="where-place"><b>' + esc(t('wd_for', { p: placeLabel(place()) })) + '</b>' + (placeSub(place()) ? '<span class="small muted"> · ' + esc(placeSub(place())) + '</span>' : '') + '</p>' : '') +
       destBox({ key: k === 'gas' ? 'grm' : 'obl', id: 'esend', org: tk(k, 'ed_org'), what: '', due: due, dueTone: w.open && w.daysLeft <= 1 ? 'warn' : 'neutral', sent: allSent, body: body + acc, chans: chans, note: have ? sbBox(k, have) : '', more: more, mark: mark }) + '</section>';   // цифри → рахунок → кнопки → «Як це в боті» / відповідь бота
@@ -5408,7 +5409,115 @@
   }
   /** «Куди передати» для води чи тепла поза Харковом: хто (з довідника чи з платіжки людини), як і коли, сайт/бот/кабінет, телефони, куди платити.
    *  Постачальника не знайшли — чесно: «впишіть з платіжки» з переходом у «Постачальники й тарифи». */
-  function localDest(k, d, vals, mark, sent) {
+  // ---------- автоподача місцевим КП (LocalBot, 102-а): форма на сайті без входу, кабінет із паролем, e-mail ----------
+  // У довіднику постачальник має via = id бота (mtve, cvk…); сервер каже, чи працює бот і що потрібно від людини (GET /api/lb).
+  var LB = { st: {}, at: {}, busy: '', err: null, open: {}, draft: {}, items: {} };   // draft — введене у формі підключення (перемальовка після помилки не стирає)
+  function lbKey(bot, pl) { return bot + '@' + (pl || ''); }
+  function lbLoad(bot, pl, force) {
+    var k = lbKey(bot, pl); if (!hcOn() || LB.at[k] === -1 || (!force && LB.at[k] && Date.now() - LB.at[k] < 30000)) return;
+    LB.at[k] = -1;
+    Y().api('GET', '/lb?bot=' + encodeURIComponent(bot) + '&place=' + encodeURIComponent(pl || '')).then(function (j) {
+      LB.at[k] = Date.now(); if (j._status !== 200) { LB.st[k] = { none: true }; return; }
+      var before = JSON.stringify(LB.st[k]); LB.st[k] = j; var ch = lbApply(j);
+      if (ch) save(); if (ch || before !== JSON.stringify(j)) safeRender();
+    }, function () { LB.at[k] = Date.now(); });
+  }
+  /** Записи (вода й світло/газ) за id — одне надсилання може нести кілька записів (кілька лічильників світла). */
+  function lbRecs(ids) { return (S.water || []).concat(S.mrecs || []).filter(function (w) { return w && !w.deleted && ids.indexOf(w.id) >= 0; }); }
+  function lbSentKey(w) { return w.meter ? (SK[w.kind === 'gas' ? 'gas' : 'elec'] || {}).sk || 'obl' : 'vk'; }
+  /** Підсумки черги → записи: «прийнято» / «лист надіслано» — передано (вода — sent.vk, світло — sent.obl, газ — sent.grm). */
+  function lbApply(st) {
+    var ch = false, all = (S.water || []).concat(S.mrecs || []);
+    ((st && st.jobs) || []).forEach(function (j) {
+      all.filter(function (w) { return w && !w.deleted && w.lbJob && w.lbJob.job === j.id; }).forEach(function (w) {
+        var c = { job: j.id, bot: j.bot, at: j.at, status: j.status, nextAt: j.nextAt || null, text: String(j.text || '').slice(0, 300), human: j.human ? String(j.human).slice(0, 300) : null };
+        if (JSON.stringify(c) !== JSON.stringify(w.lbJob)) { w.lbJob = c; w.updatedAt = Date.now(); ch = true; }
+        var sk = lbSentKey(w);
+        if ((j.status === 'ok' || j.status === 'sent') && !(w.sent && w.sent[sk])) { w.sent = Object.assign({}, w.sent || {}); w.sent[sk] = today(); w.updatedAt = Date.now(); ch = true; toast(t('lb_t_ok')); }
+      });
+    });
+    return ch;
+  }
+  function lbWhen(sec) { var d = new Date(sec * 1000), n = new Date(); return (d.toDateString() === n.toDateString() ? '' : fmtDate(d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2)) + ', ') + hcHM(sec); }
+  function lbCall(path, body, ok) {
+    LB.busy = path; LB.err = null; safeRender();
+    Y().api('POST', path, Object.assign({ lang: S.lang }, body)).then(function (j) { LB.busy = ''; if (j._status === 200) ok(j); else LB.err = { error: j.error, human: j.human || t('lb_fail') }; render(true); },
+      function () { LB.busy = ''; LB.err = { error: 'net', human: t('lb_fail') }; render(true); });
+  }
+  /** Блок у «Куди передати» місцевого постачальника: підключити (поля + згода) → «Відправити у фоні» → статус черги. */
+  function lbBox(d, recs, items, pre) {
+    recs = (recs || []).filter(Boolean); var rec = recs[0] || null;
+    var bot = d && d.via; if (!bot || bot === 'hvk' || bot === 'htm') return '';
+    var org = d.org || '';
+    if (!hcOn()) return '<p class="small" data-key="lb-login">' + esc(t('lb_login', { org: org })) + ' <a href="#login">' + esc(t('login')) + '</a></p>';
+    var pl = (place() || {}).id || S.placeId || '', k = lbKey(bot, pl), st = LB.st[k];
+    lbLoad(bot, pl, !!(rec && rec.lbJob && /^(queued|sending)$/.test(rec.lbJob.status) && Date.now() - (LB.at[k] || 0) > 5000));
+    if (!st || st.none || !st.bot || !st.bot.ready) return '';
+    var b = st.bot, c = st.conn, busy = !!LB.busy, err = LB.err ? '<div class="banner bad" role="alert" data-key="lb-err">' + ico('alert', 22) + '<div><p>' + esc(LB.err.human) + '</p></div></div>' : '';
+    var win = b.win ? '<p class="small muted" data-key="lb-win">' + esc(t('lb_win', { a: b.win[0], b: b.win[1] })) + '</p>' : '';
+    if (!c) {
+      var lead = '<p data-key="lb-lead">' + esc(t('lb_lead_' + b.t + (b.t === 'mail' && b.need.length === 1 ? '1' : ''), { org: org })) + '</p>';
+      if (!LB.open[k]) return '<div class="lb" data-key="lb">' + lead + err + '<div class="dest-ch"><button class="btn sec" data-act="lb-open" data-k="' + esc(k) + '" data-key="lb-open">' + ico('plus', 18) + '<span>' + esc(t('lb_conn_btn')) + '</span></button></div></div>';
+      var dr = LB.draft[k] || pre || {};
+      var fld = function (f) {
+        var type = f === 'pass' ? 'password' : f === 'phone' ? 'tel' : f === 'login' ? 'email' : 'text', ac = { name: 'name', addr: 'street-address', phone: 'tel', login: 'username', pass: 'current-password' }[f] || 'off';
+        return '<div class="field"><label for="lb-' + f + '">' + esc(t(f === 'acc' && b.fmt === 'code' ? 'lb_f_code' : 'lb_f_' + f)) + '</label><div class="ctl"><input id="lb-' + f + '" type="' + type + '" name="lb-' + f + '" autocomplete="' + ac + '"' + (f === 'acc' ? ' class="num"' : '') +
+          (f === 'acc' && b.hint ? ' placeholder="' + esc(b.hint) + '"' : '') + (dr[f] ? ' value="' + esc(dr[f]) + '"' : '') + ' data-key="lb-f-' + f + '"></div>' + (f === 'acc' && b.hint ? '<p class="small muted">' + esc(t('lb_hint', { h: b.hint })) + '</p>' : '') + '</div>';
+      };
+      return '<form class="lb lb-form" data-act="lb-conn" data-bot="' + esc(bot) + '" data-pl="' + esc(pl) + '" data-key="lb-form">' + lead + b.need.map(fld).join('') + win +
+        '<label class="hc-consent"><input type="checkbox" name="lb-consent" data-key="lb-consent"' + (dr.consent ? ' checked' : '') + '> <span>' + esc(t('lb_consent', { org: org })) + '</span></label>' + err +
+        '<div class="row-actions"><button class="btn" type="submit" data-key="lb-save"' + (busy ? ' disabled' : '') + '>' + (LB.busy === '/lb/connect' ? SPIN : ico('check', 18)) + '<span>' + esc(t('lb_save')) + '</span></button></div></form>';
+    }
+    var chk = c.chk || {}, head = '<p class="small ok-ink" data-key="lb-on">' + ico('check', 16) + ' ' + esc(t('lb_on')) + (c.acc ? ' · ' + esc(t('lb_on_acc', { a: '' })) + '<span class="num" style="white-space:nowrap">' + esc(c.acc) + '</span>' : '') + '</p>' +
+      (chk.ok === false ? '<p class="small muted" data-key="lb-chk-warn">' + esc(t('lb_chk_warn')) + '</p>' : chk.meters ? '<p class="small muted" data-key="lb-chk">' + esc(t('lb_on_meters', { n: chk.meters })) + '</p>' : '');
+    var off = '<p class="small"><button class="linkbtn" data-act="lb-off" data-bot="' + esc(bot) + '" data-pl="' + esc(pl) + '" data-key="lb-off"' + (busy ? ' disabled' : '') + '>' + esc(t('lb_off')) + '</button></p>';
+    if (!rec) return '<div class="lb" data-key="lb">' + head + '<p class="small" data-key="lb-need-rec">' + esc(t('lb_need_rec')) + '</p>' + win + off + '</div>';
+    items = items || []; LB.items[rec.id] = { ids: recs.map(function (x) { return x.id; }), items: items };
+    var list = items.map(function (x) { return (x.name || '') + ' — ' + x.value; }).join('; '), j = rec.lbJob && rec.lbJob.bot === bot ? rec.lbJob : null, h = '';
+    if (j && (j.status === 'queued' || j.status === 'sending')) return '<div class="lb" data-key="lb">' + head + '<div class="banner" data-key="lb-q">' + ico('clock', 22) + '<div><p><b>' + esc(j.status === 'queued' && j.nextAt ? t('lb_q_at', { at: lbWhen(j.nextAt) }) : t('lb_q')) + '</b></p><p class="small">' + esc(list) + '</p>' +
+      (j.status === 'queued' ? '<div class="row-actions" style="margin-top:8px"><button class="btn sec" data-act="lb-cancel" data-id="' + j.job + '" data-key="lb-cancel"' + (busy ? ' disabled' : '') + '>' + esc(t('lb_cancel')) + '</button></div>' : '') + '</div></div>' + err + '</div>';
+    if (j && (j.status === 'ok' || j.status === 'sent')) h += '<div class="banner ok" data-key="lb-done">' + ico('check', 22) + '<div><p><b>' + esc(j.status === 'sent' ? t('lb_sent', { to: b.to || '' }) : t('lb_ok')) + '</b></p>' + (j.status === 'ok' && b.later ? '<p class="small">' + esc(t('lb_later')) + '</p>' : '') + '</div></div>';
+    if (j && /^(failed|rejected|unknown)$/.test(j.status)) h += '<div class="banner ' + (j.status === 'unknown' ? 'warn' : 'bad') + '" role="alert" data-key="lb-' + j.status + '">' + ico('alert', 22) + '<div><p><b>' + esc(t(j.status === 'failed' ? 'lb_failed' : j.status === 'rejected' ? 'lb_rej' : 'lb_unk')) + '</b></p>' + (j.human || j.text ? '<p class="small">' + esc(j.human || j.text) + '</p>' : '') + '</div></div>';
+    var done = j && (j.status === 'ok' || j.status === 'sent');
+    return '<div class="lb" data-key="lb">' + head + h + err + '<div class="dest-ch"><button class="btn' + (done ? ' sec' : '') + ' dest-bg" data-act="lb-bg" data-bot="' + esc(bot) + '" data-pl="' + esc(pl) + '" data-id="' + esc(rec.id) + '" data-key="lb-bg"' + (busy ? ' disabled' : '') + '>' +
+      (LB.busy === '/lb/queue' ? SPIN : ico('send', 18)) + '<span>' + esc(t('cab_bg')) + '</span></button></div><p class="small dest-note" data-key="lb-bg-note">' + esc(t('cab_bg_note', { what: list })) + '</p>' + win + off + '</div>';
+  }
+  /** Світло/газ: по числу на кожну зону кожного лічильника (двозонний — два числа; бот «лише однозонний» тоді відмовить зрозуміло). */
+  function lbItemsS(k, ms, have) {
+    var md = SK[k].mod, out = [];
+    ms.forEach(function (m) { var r = (have || []).filter(function (x) { return x && x.meter === m.id; })[0]; if (!r || !r.z) return;
+      md.keys(m).forEach(function (z) { var v = md.whole(r.z[z]); if (v !== null && v !== undefined && v !== '') out.push({ value: String(v), serial: m.serial || null, kind: k, name: (m.name || ename(m)) + (md.keys(m).length > 1 ? ' · ' + ezl(m, z) : '') }); }); });
+    return out;
+  }
+  function lbItems(rec) { return wmeters().filter(function (m) { return hasVal(rec, m.id); }).map(function (m) { return { value: String(Wt.whole(rec.vals[m.id])), serial: m.serial || null, kind: m.kind, name: wname(m) }; }); }
+  function lbSet(bot, pl, j) { var k = lbKey(bot, pl); LB.st[k] = j; LB.at[k] = Date.now(); if (lbApply(j)) save(); }
+  ['input', 'change'].forEach(function (ev) { document.addEventListener(ev, function (e) {
+    var el = e.target, f = el && el.form; if (!f || f.getAttribute('data-act') !== 'lb-conn' || !/^lb-/.test(el.name || '')) return;
+    var k = lbKey(f.getAttribute('data-bot'), f.getAttribute('data-pl')), d = LB.draft[k] = LB.draft[k] || {}; d[el.name.slice(3)] = el.type === 'checkbox' ? el.checked : el.value;
+  }); });
+  document.addEventListener('submit', function (e) {
+    var f = e.target; if (!f || f.getAttribute('data-act') !== 'lb-conn') return; e.preventDefault();
+    var bot = f.getAttribute('data-bot'), pl = f.getAttribute('data-pl'), body = { bot: bot, place: pl, consent: !!(f.elements['lb-consent'] && f.elements['lb-consent'].checked) };
+    ['acc', 'name', 'addr', 'phone', 'login', 'pass'].forEach(function (x) { if (f.elements['lb-' + x]) body[x] = f.elements['lb-' + x].value; });
+    lbCall('/lb/connect', body, function (j) { lbSet(bot, pl, j); delete LB.open[lbKey(bot, pl)]; delete LB.draft[lbKey(bot, pl)]; toast(t('lb_t_on')); });
+  });
+  document.addEventListener('click', function (e) {
+    var el = e.target.closest && e.target.closest('[data-act^="lb-"]'); if (!el || el.tagName === 'FORM') return;
+    var a = el.getAttribute('data-act'), bot = el.getAttribute('data-bot'), pl = el.getAttribute('data-pl');
+    if (a === 'lb-open') { e.preventDefault(); LB.open[el.getAttribute('data-k')] = true; LB.err = null; render(true); return; }
+    if (a === 'lb-off') { e.preventDefault(); lbCall('/lb/forget', { bot: bot, place: pl }, function (j) { lbSet(bot, pl, j); toast(t('lb_t_off')); }); return; }
+    if (a === 'lb-bg') {
+      e.preventDefault(); var pk = LB.items[el.getAttribute('data-id')], items = pk ? pk.items : []; if (!items.length) return;
+      lbCall('/lb/queue', { bot: bot, place: pl, rid: el.getAttribute('data-id'), items: items }, function (j) {
+        var jb = j.job; if (!jb) return; lbRecs(pk.ids).forEach(function (r) { r.lbJob = { job: jb.id, bot: jb.bot, at: jb.at, status: jb.status, nextAt: jb.nextAt || null }; r.updatedAt = Date.now(); }); save(); toast(t('lb_t_q'));
+        var k = lbKey(bot, pl); if (LB.st[k]) LB.st[k].jobs = [jb].concat((LB.st[k].jobs || []).filter(function (x) { return x.id !== jb.id; })); LB.at[k] = 0;
+      }); return;
+    }
+    if (a === 'lb-cancel') { e.preventDefault(); lbCall('/lb/cancel', { job: +el.getAttribute('data-id') }, function (j) { var jb = j.job; if (jb) { (S.water || []).concat(S.mrecs || []).forEach(function (w) { if (w && w.lbJob && w.lbJob.job === jb.id) { w.lbJob.status = jb.status; w.updatedAt = Date.now(); } }); save(); } toast(t('lb_t_cancel')); }); }
+  });
+  function lbPending() { return (S.water || []).concat(S.mrecs || []).some(function (w) { return w && !w.deleted && w.lbJob && /^(queued|sending)$/.test(w.lbJob.status); }); }
+  setInterval(function () { if (document.visibilityState === 'visible' && lbPending()) safeRender(); }, 30000);
+  function localDest(k, d, vals, mark, sent, extra) {
     var p = place() || {}, own = (p.prov || {})[k] || {}, org = own.name || d.org || '', pl = d._place || {};
     var how = ploc(d, 'how'), pay = ploc(d, 'pay'), phones = (d.phones || []).slice();
     if (own.phone) phones.unshift([String(own.phone).replace(/[^\d+]/g, ''), own.phone, t('ld_own_phone')]);
@@ -5421,6 +5530,7 @@
     var body = vals || '';
     if (!org) body += '<p data-key="ld-unk">' + esc(t('ld_unk_' + k, { c: pl.name || '' })) + '</p><p><a class="btn sec" href="#place-' + esc(p.id || '') + '" data-act="prv-go" data-key="ld-fill">' + ico('edit', 18) + '<span>' + esc(t('prv_fill')) + '</span></a></p>';
     else body += '<p class="small" data-key="ld-how">' + esc(how || t('ld_how_unk')) + '</p>';
+    if (extra) body += extra;   // автовідправка (LocalBot) — після «як передати», перед кнопками каналів
     var more = (phones.length ? '<p class="dm-t">' + esc(t('ld_call')) + '</p><ul class="dm-ph">' + phones.map(function (x) { return '<li>' + telLink(x[0], x[1]) + (x[2] ? '<span class="muted">' + esc(x[2]) + '</span>' : '') + '</li>'; }).join('') + '</ul>' : '') +
       (pay ? '<p class="dm-t">' + esc(t('ld_pay_t')) + '</p><p>' + esc(pay) + '</p>' : '');
     return destBox({ key: 'loc-' + k, org: org || t('ld_org_' + k), what: t('ld_what_' + k), sent: sent, body: body, chans: chans, more: more, mark: org ? mark : '' });

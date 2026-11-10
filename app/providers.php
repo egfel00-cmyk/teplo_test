@@ -337,7 +337,7 @@ final class ProvEdit {
     foreach (self::STR as $f) if (isset($v[$f]) && is_scalar($v[$f]) && trim((string)$v[$f]) !== '') $o[$f] = mb_substr(trim((string)$v[$f]), 0, $f === 'note' || $f === 'note_ru' || str_starts_with($f, 'src') || str_starts_with($f, 'how') ? 1200 : 300);
     foreach (self::URLS as $f) if (isset($o[$f]) && !preg_match('~^https://[^\s"<>]+$~', $o[$f])) unset($o[$f]);
     if (isset($o['robot']) && !in_array($o['robot'], self::ROBOT, true)) unset($o['robot']);
-    if (isset($o['via']) && !in_array($o['via'], ['hvk', 'htm'], true)) unset($o['via']);
+    if (isset($o['via']) && !in_array($o['via'], ['hvk', 'htm'], true) && !(class_exists('LocalBot') && LocalBot::get((string)$o['via']))) unset($o['via']);   // + боти автоподачі (LocalBot::BOTS)
     foreach (['from', 'distFrom'] as $f) if (isset($o[$f]) && !preg_match('/^\d{4}-\d\d-\d\d$/', $o[$f])) unset($o[$f]);
     foreach (self::NUM as $f) if (array_key_exists($f, $v)) {
       $x = is_string($v[$f]) ? str_replace([' ', ','], ['', '.'], trim($v[$f])) : $v[$f];

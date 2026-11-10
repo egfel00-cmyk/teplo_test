@@ -36,6 +36,7 @@ require __DIR__ . '/app/mail.php';
   require __DIR__ . '/app/cabs.php';
   require __DIR__ . '/app/htmsvc.php';
   require __DIR__ . '/app/vksvc.php';
+  require __DIR__ . '/app/localbot.php';
   require __DIR__ . '/app/gpv.php';
   require __DIR__ . '/app/providers.php';
   require __DIR__ . '/app/visits.php';

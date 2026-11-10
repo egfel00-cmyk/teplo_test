@@ -12,6 +12,7 @@ require __DIR__ . '/../app/vkcab.php';
 require __DIR__ . '/../app/cabs.php';
 require __DIR__ . '/../app/htmsvc.php';
 require __DIR__ . '/../app/vksvc.php';
+require __DIR__ . '/../app/localbot.php';
 require __DIR__ . '/../app/gpv.php';
 require __DIR__ . '/../app/providers.php';
 require __DIR__ . '/../app/visits.php';
@@ -2018,6 +2019,96 @@ Db::q("DELETE FROM reminders_sent WHERE user_id = ? AND kind = 'water16.m'", [$m
 ok('відписаному — більше не шлемо', !array_filter(Reminders::runMail($kyiv('2026-11-16 14:17')), fn($x) => $x[0] === $muid));
 $mb = Reminders::mailBody(Reminders::text('water16', 'uk', Reminders::placesDue($wst, 'water16', '2026-11')), 'uk', $muid);
 ok('лист: тема — перше речення, кнопка — посилання, без «Вимкнути — у Налаштуваннях»', str_starts_with($mb['subject'], '💧 До 20-го') && !str_contains($mb['text'], 'Налаштуваннях») сервісу') && str_contains($mb['html'], '?go=wnew'), $mb['subject']);
+// ---------- 102-а: автоподача місцевим КП (LocalBot) — форма без входу, e-mail, вікно подачі, стоп на капчі й неоднозначних полях ----------
+echo "\nАвтоподача місцевим КП (102-а):\n";
+$lbSite = ['captcha' => false, 'posted' => null, 'gets' => []];
+$lbP1 = '<html><body><form class="js-ind-form"><input type="text" name="p1"><input type="text" name="p2"><input type="text" name="p3"><button type="submit">Далі</button></form></body></html>';
+$lbAb = '<html><body><h2>Абонент 74-108-61</h2><p>Борг: 0,00</p><a href="/indications/?id=7">Передати поточні покази водолічильника</a></body></html>';
+$lbF = '<html><body><form method="post" action="/indications/save"><input type="hidden" name="id" value="7"><table>'
+  . '<tr><td>Лічильник № 1234567 (холодна вода)</td><td><input type="text" name="ind[1]"></td></tr>'
+  . '<tr><td>Лічильник № 7654321 (гаряча вода)</td><td><input type="text" name="ind[2]"></td></tr></table><button type="submit" name="save" value="1">Зберегти</button></form></body></html>';
+CabWeb::$http = function ($m, $url, $body, $cookie, $h) use (&$lbSite, $lbP1, $lbAb, $lbF) {
+  $p = (string)parse_url($url, PHP_URL_PATH); $q = (string)parse_url($url, PHP_URL_QUERY);
+  if ($m === 'GET') $lbSite['gets'][] = $p . ($q !== '' ? '?' . $q : '');
+  if ($lbSite['captcha']) return ['code' => 200, 'body' => '<form><div class="g-recaptcha" data-sitekey="x"></div><input name="p1"><input name="p2"><input name="p3"></form>'];
+  if ($m === 'GET' && $p === '/' && $q === '') return ['code' => 200, 'body' => $lbP1];
+  if ($m === 'GET' && $p === '/') { parse_str($q, $a); return ['code' => 200, 'body' => ($a['p1'] ?? '') . '-' . ($a['p2'] ?? '') . '-' . ($a['p3'] ?? '') === '74-108-61' ? $lbAb : '<p>Абонента не знайдено</p>' . $lbP1]; }
+  if ($m === 'GET' && $p === '/indications/') return ['code' => 200, 'body' => $lbF];
+  if ($m === 'POST' && $p === '/indications/save') { $lbSite['posted'] = $body; return ['code' => 200, 'body' => '<div class="alert alert-success">Показники збережено. Дякуємо!</div>']; }
+  return ['code' => 404, 'body' => 'nf'];
+};
+$lbu = new Browser('10.8.8.1'); $lbu->req('POST', '/api/auth/register', ['email' => 'kamianets@gmail.com', 'password' => 'Kamianets-2026!']);
+$st = $lbu->req('GET', '/api/lb', null, ['QUERY_STRING' => 'bot=mtve&place=pl1']);
+ok('GET /api/lb: бот mtve — форма, потрібен рахунок, підказка 74-108-61, ще не підключено', $st->status === 200 && ($st->body['bot']['t'] ?? '') === 'form' && ($st->body['bot']['hint'] ?? '') === '74-108-61' && $st->body['conn'] === null, $st->body);
+ok('невідомий бот — 404', $lbu->req('GET', '/api/lb', null, ['QUERY_STRING' => 'bot=zzz'])->status === 404);
+$r = $lbu->req('POST', '/api/lb/connect', ['bot' => 'mtve', 'place' => 'pl1', 'acc' => '74-108-61']);
+ok('без згоди — 422 lb_consent', $r->status === 422 && ($r->body['error'] ?? '') === 'lb_consent');
+$r = $lbu->req('POST', '/api/lb/connect', ['bot' => 'mtve', 'place' => 'pl1', 'acc' => '7410861', 'consent' => true]);
+ok('рахунок без розділювачів (три поля) — 422 з підказкою', $r->status === 422 && str_contains((string)($r->body['human'] ?? ''), '74-108-61'), $r->body);
+$r = $lbu->req('POST', '/api/lb/connect', ['bot' => 'mtve', 'place' => 'pl1', 'acc' => '74-108-62', 'consent' => true]);
+ok('чужий рахунок — сайт «не знайдено» → 422 lb_notfound, не збережено', $r->status === 422 && ($r->body['error'] ?? '') === 'lb_notfound' && !Db::one("SELECT id FROM cab_creds WHERE prov = 'Lmtve'"), $r->body);
+$lbSite['gets'] = []; $lbSite['posted'] = null;
+$r = $lbu->req('POST', '/api/lb/connect', ['bot' => 'mtve', 'place' => 'pl1', 'acc' => '74-108-61', 'consent' => true]);
+ok('підключення: рахунок у p1–p3 (GET), посилання «Передати поточні покази» → форма з 2 лічильниками; нічого не надіслано', $r->status === 200 && ($r->body['conn']['chk']['ok'] ?? false) === true
+  && ($r->body['conn']['chk']['meters'] ?? 0) === 2 && in_array('/?p1=74&p2=108&p3=61', $lbSite['gets'], true) && $lbSite['posted'] === null, [$r->body, $lbSite['gets']]);
+$lbuid = (int)Db::one("SELECT id FROM users WHERE email = 'kamianets@gmail.com'")['id'];
+$cr = Db::one("SELECT * FROM cab_creds WHERE prov = 'Lmtve' AND user_id = ?", [$lbuid]);
+ok('cab_creds: рахунок у extra, решта — зашифровано', $cr && str_contains((string)$cr['extra'], '74-108-61') && str_starts_with((string)$cr['secret'], 'g1:'));
+// вікно 1–28: 29-го — на 1-ше наступного місяця о 9:00 за Києвом; 10-го — зараз
+$kts = fn(string $s) => (new DateTimeImmutable($s, new DateTimeZone('Europe/Kyiv')))->getTimestamp();
+ok('вікно подачі: 10.11 — зараз; 29.11 — 01.12 09:00; вікно 25–31: 10.11 — 25.11 09:00; 30.11 — зараз', LocalBot::openAt([1, 28], $kts('2026-11-10 12:00')) === $kts('2026-11-10 12:00')
+  && LocalBot::openAt([1, 28], $kts('2026-11-29 12:00')) === $kts('2026-12-01 09:00') && LocalBot::openAt([25, 31], $kts('2026-11-10 12:00')) === $kts('2026-11-25 09:00')
+  && LocalBot::openAt([25, 31], $kts('2026-11-30 22:00')) === $kts('2026-11-30 22:00'));
+$items = [['value' => '123', 'serial' => '7654321', 'kind' => 'hot', 'name' => 'Гаряча'], ['value' => '456', 'serial' => '1234567', 'kind' => 'cold', 'name' => 'Холодна']];
+$q = $lbu->req('POST', '/api/lb/queue', ['bot' => 'mtve', 'place' => 'pl1', 'rid' => 'w1', 'items' => $items]);
+$jid = (int)($q->body['job']['id'] ?? 0);
+ok('«Відправити у фоні» → у черзі', $q->status === 200 && ($q->body['job']['status'] ?? '') === 'queued', $q->body);
+ok('те саме ще раз — не дублюємо', ($lbu->req('POST', '/api/lb/queue', ['bot' => 'mtve', 'place' => 'pl1', 'rid' => 'w1', 'items' => $items])->body['dup'] ?? false) === true);
+Db::q('UPDATE cab_jobs SET next_at = ? WHERE id = ?', [time() - 1, $jid]);
+$cr2 = LocalBot::cron();
+parse_str((string)$lbSite['posted'], $pp);
+ok('cron надіслав: лічильники за номером у рядку (холодна 456 → ind[1], гаряча 123 → ind[2]), hidden і кнопка збережені → ok', $cr2 === [[$jid, 'ok']] && ($pp['ind'][1] ?? '') === '456' && ($pp['ind'][2] ?? '') === '123'
+  && ($pp['id'] ?? '') === '7' && ($pp['save'] ?? '') === '1', [$cr2, $pp]);
+$hb = (new Browser('10.8.8.9'))->req('GET', '/api/health')->body['lbot'] ?? [];
+ok('/api/health → lbot: mtve — 1 підключення, ok 1, без рахунків', (($hb['mtve']['conn'] ?? 0) === 1) && (int)((array)($hb['mtve']['jobs'] ?? []))['ok'] === 1 && !str_contains(json_encode($hb), '74-108'), $hb);
+// без номерів лічильників і двоє полів — не вгадуємо: стоп, нічого не надіслано
+$lbSite['posted'] = null;
+$q = $lbu->req('POST', '/api/lb/queue', ['bot' => 'mtve', 'place' => 'pl1', 'rid' => 'w2', 'items' => [['value' => '500', 'kind' => 'cold'], ['value' => '501', 'kind' => 'cold']]]);
+Db::q('UPDATE cab_jobs SET next_at = ? WHERE id = ?', [time() - 1, (int)$q->body['job']['id']]); LocalBot::cron();
+$jb = LocalBot::pubJob(Db::one('SELECT * FROM cab_jobs WHERE id = ?', [(int)$q->body['job']['id']]));
+ok('два холодні без номерів — неоднозначно: failed lb_fields, POST не було, каркас сторінки — у lbot_last', $jb['status'] === 'failed' && $jb['why'] === 'fields' && $lbSite['posted'] === null, $jb);
+// капча — стоп
+$lbSite['captcha'] = true;
+$r = $lbu->req('POST', '/api/lb/connect', ['bot' => 'mtve', 'place' => 'pl2', 'acc' => '74-108-61', 'consent' => true]);
+ok('капча на сайті — 409 lb_captcha, нічого не вводимо', $r->status === 409 && ($r->body['error'] ?? '') === 'lb_captcha', $r->body);
+$lbSite['captcha'] = false;
+$r = $lbu->req('POST', '/api/lb/forget', ['bot' => 'mtve', 'place' => 'pl1']);
+ok('«Вимкнути» — дані й згоду забуто', $r->status === 200 && $r->body['conn'] === null && !Db::one("SELECT id FROM cab_creds WHERE prov = 'Lmtve' AND user_id = ?", [$lbuid]));
+// e-mail (Чорноморськ): пошта налаштована вище
+$r = $lbu->req('POST', '/api/lb/connect', ['bot' => 'cvk', 'place' => 'pl3', 'acc' => '12345', 'name' => 'Шевченко Олена Петрівна', 'addr' => 'вул. Паркова, 1, кв. 2', 'phone' => '+380 67 123 45 67', 'consent' => true]);
+ok('e-mail-бот: підключення (без заходу на сайт)', $r->status === 200 && ($r->body['conn']['acc'] ?? '') === '12345' && ($r->body['conn']['phone'] ?? '') === '+380 67 123 45 67', $r->body);
+$q = $lbu->req('POST', '/api/lb/queue', ['bot' => 'cvk', 'place' => 'pl3', 'rid' => 'w9', 'items' => [['value' => '87', 'name' => 'Холодна']]]);
+Db::q('UPDATE cab_jobs SET next_at = ? WHERE id = ?', [time() - 1, (int)$q->body['job']['id']]);
+$n0 = count($sent); LocalBot::cron(); $ml = end($sent);
+$jb = LocalBot::pubJob(Db::one('SELECT * FROM cab_jobs WHERE id = ?', [(int)$q->body['job']['id']]));
+ok('лист у водоканал: на chornomorskvodokanal@gmail.com, Reply-To — e-mail людини; статус sent', count($sent) === $n0 + 1 && $ml[1] === ['chornomorskvodokanal@gmail.com'] && str_contains($ml[2], 'Reply-To: kamianets@gmail.com') && $jb['status'] === 'sent', [$jb, $ml[1] ?? null]);
+ok('довідник: via mtve дозволено в правках /admin', (ProvEdit::clean(['org' => 'X', 'via' => 'mtve'])['via'] ?? null) === 'mtve' && !isset(ProvEdit::clean(['org' => 'X', 'via' => 'zzz'])['via']));
+// Львівобленерго — лист «код показник», лише однозонний, вікно 28–3
+$r = $lbu->req('POST', '/api/lb/connect', ['bot' => 'loe', 'place' => 'lv1', 'acc' => '12345', 'consent' => true]);
+ok('loe: код не 10 цифр — 422 з прикладом 0000011111', $r->status === 422 && str_contains((string)($r->body['human'] ?? ''), '0000011111'), $r->body);
+$r = $lbu->req('POST', '/api/lb/connect', ['bot' => 'loe', 'place' => 'lv1', 'acc' => '0000011111', 'consent' => true]);
+ok('loe: підключено кодом', $r->status === 200 && ($r->body['conn']['acc'] ?? '') === '0000011111' && ($r->body['bot']['fmt'] ?? '') === 'code', $r->body);
+$r = $lbu->req('POST', '/api/lb/queue', ['bot' => 'loe', 'place' => 'lv1', 'rid' => 'e1', 'items' => [['value' => '2222', 'name' => 'день'], ['value' => '1111', 'name' => 'ніч']]]);
+ok('loe: двозонний (два числа) — 422 lb_one', $r->status === 422 && ($r->body['error'] ?? '') === 'lb_one', $r->body);
+$r = $lbu->req('POST', '/api/lb/queue', ['bot' => 'loe', 'place' => 'lv1', 'rid' => 'e1', 'items' => [['value' => '2222', 'kind' => 'elec']]]);
+$lj = (int)($r->body['job']['id'] ?? 0);
+ok('loe: вікно 28–3 — 28.11 зранку (поза вікном ставимо на 28-ше), 1.12 — зараз', LocalBot::openAt([28, 3], $kts('2026-11-10 12:00')) === $kts('2026-11-28 09:00')
+  && LocalBot::openAt([28, 3], $kts('2026-12-01 12:00')) === $kts('2026-12-01 12:00') && LocalBot::openAt([28, 3], $kts('2026-11-29 08:00')) === $kts('2026-11-29 08:00') && $lj > 0);
+Db::q('UPDATE cab_jobs SET next_at = ? WHERE id = ?', [time() - 1, $lj]);
+$n0 = count($sent); LocalBot::cron(); $ml = end($sent);
+ok('loe: лист на pokaz@loe.lviv.ua, тема й текст — лише «0000011111 2222»', count($sent) === $n0 + 1 && $ml[1] === ['pokaz@loe.lviv.ua'] && str_contains($ml[2], 'Subject: 0000011111 2222')
+  && (str_contains($ml[2], base64_encode('0000011111 2222')) || str_contains($ml[2], "\r\n\r\n0000011111 2222")), [$ml[1] ?? null, substr((string)($ml[2] ?? ''), 0, 600)]);
+CabWeb::$http = null;
 Mail::$send = null; Cfg::saveRuntime(array_fill_keys(Mail::KEYS, null));
 
 echo "\nИтог: $pass OK, $fail FAIL\n";
