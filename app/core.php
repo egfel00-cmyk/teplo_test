@@ -227,6 +227,8 @@ final class Db {
     self::addColumn('docs', 'src', 'VARCHAR(8) NULL');
     self::addColumn('docs', 'ym', 'CHAR(7) NULL');
     self::addColumn('docs', 'sha', 'CHAR(40) NULL');
+    // документ — до якого лічильника квартири (10.11: фото паспорта й повірки в налаштуваннях кожного лічильника); старі — без лічильника = теплолічильник
+    self::addColumn('docs', 'meter', 'VARCHAR(40) NULL');
   }
   /** ALTER … ADD COLUMN IF NOT EXISTS (в SQLite такого нет — смотрим список колонок). */
   private static function addColumn(string $t, string $c, string $def): void {

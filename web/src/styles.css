@@ -1770,3 +1770,9 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
 @media (min-width: 600px) { .lp-bento.no-gpv .c-cost { grid-column: 1 / -1; } }
 @media (min-width: 960px) { .lp-bento.no-gpv .c-cost { grid-column: span 2; } }
 .hg3 > .hg-side > :first-child { margin-top: 0; }
+/* картка лічильника на екрані квартири — тон його виду (владелец 10.11); документи лічильника */
+.mrow.mk-heat, .mrow.mk-hot { --kc: var(--c-supply); } .mrow.mk-cold { --kc: var(--c-return); } .mrow.mk-elec { --kc: var(--c-elec); } .mrow.mk-gas { --kc: var(--c-gas); }
+.mrow[class*="mk-"] { background: color-mix(in srgb, var(--kc) 9%, var(--c-surface)); border-color: color-mix(in srgb, var(--kc) 34%, var(--c-line)); }
+.mdocs { margin-top: var(--sp-3); padding-top: var(--sp-3); border-top: 1px solid var(--c-line); }
+.mdocs .docs { margin: 8px 0 0; }
+.mdocs-act { margin-top: 8px; }

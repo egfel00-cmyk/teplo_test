@@ -68,6 +68,14 @@ const attach = async (p, files) => { const [fc] = await Promise.all([p.waitForEv
   await A.goto(BASE + '#wrec-w20261015'); await A.waitForTimeout(800); await A.click('[data-act=wdel]'); await A.waitForTimeout(1200);
   const after = await A.evaluate(async () => (await (await fetch('api/docs')).json()).docs.length);
   check(after === before - 1, 'удалили запись воды — её платёжка удалена с сервера (' + before + '→' + after + ')');
+  // 10.11: фото паспорта / повірки — у налаштуваннях кожного лічильника на екрані квартири, документ знає свій лічильник
+  await A.goto(BASE + '#place-main'); await A.waitForTimeout(900);
+  await A.evaluate(() => { document.querySelector('#pg-pv-meters').open = true; }); await A.waitForTimeout(200);
+  await A.evaluate(() => { document.querySelector('#mbs-c1').open = true; }); await A.waitForTimeout(300);
+  { const [fc] = await Promise.all([A.waitForEvent('filechooser'), A.click('[data-key=mdoc-ver-c1]')]); await fc.setFiles(img); }
+  await A.waitForFunction(() => !document.querySelector('.mdocs [role=status]'), null, { timeout: 30000 }); await A.waitForTimeout(1200);
+  const md = await A.evaluate(async () => (await (await fetch('api/docs')).json()).docs.filter(d => d.meter === 'c1'));
+  check(md.length === 1 && md[0].kind === 'verification' && !!(await A.$('[data-key=mdocs-c1] .docs li')) && !(await A.$('[data-key=mdocs-h1] .docs li')), 'фото повірки — до холодного водоміра, у його налаштуваннях (' + md.length + ')');
   await A.goto(BASE + '#prefs'); await A.waitForTimeout(800);
   console.log(ok.map(m => 'OK   ' + m).concat(bad.map(m => 'FAIL ' + m)).join('\n'));
   console.log(ok.length + '/' + (ok.length + bad.length), errs.length ? 'ERR ' + errs.join('; ') : '');

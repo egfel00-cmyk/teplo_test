@@ -1802,6 +1802,12 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
 @media (min-width: 600px) { .lp-bento.no-gpv .c-cost { grid-column: 1 / -1; } }
 @media (min-width: 960px) { .lp-bento.no-gpv .c-cost { grid-column: span 2; } }
 .hg3 > .hg-side > :first-child { margin-top: 0; }
+/* картка лічильника на екрані квартири — тон його виду (владелец 10.11); документи лічильника */
+.mrow.mk-heat, .mrow.mk-hot { --kc: var(--c-supply); } .mrow.mk-cold { --kc: var(--c-return); } .mrow.mk-elec { --kc: var(--c-elec); } .mrow.mk-gas { --kc: var(--c-gas); }
+.mrow[class*="mk-"] { background: color-mix(in srgb, var(--kc) 9%, var(--c-surface)); border-color: color-mix(in srgb, var(--kc) 34%, var(--c-line)); }
+.mdocs { margin-top: var(--sp-3); padding-top: var(--sp-3); border-top: 1px solid var(--c-line); }
+.mdocs .docs { margin: 8px 0 0; }
+.mdocs-act { margin-top: 8px; }
 
 </style>
 <style>.top { padding-top: max(12px, env(safe-area-inset-top)); }</style>
@@ -8483,7 +8489,8 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
     return '<div class="grid2">' +
       '<div class="field"><label for="emn-' + m.id + '">' + esc(t('em_name')) + '</label><div class="ctl"><input id="emn-' + m.id + '" maxlength="40" data-em="' + m.id + '" data-ef="name" value="' + esc(m.name || '') + '" placeholder="' + esc(tk(k, 'em_name_ph')) + '"></div></div>' +
       (onlyMeter ? '' : sprovFields(k, m)) +
-      '<div class="field"><label for="ems-' + m.id + '">' + esc(t('wm_serial')) + '</label><div class="ctl"><input id="ems-' + m.id + '" class="num" autocomplete="off" data-em="' + m.id + '" data-ef="serial" value="' + esc(m.serial || '') + '">' + ctlCopy('ems-' + m.id) + '</div></div></div>' +
+      '<div class="field"><label for="ems-' + m.id + '">' + esc(t('wm_serial')) + '</label><div class="ctl"><input id="ems-' + m.id + '" class="num" autocomplete="off" data-em="' + m.id + '" data-ef="serial" value="' + esc(m.serial || '') + '">' + ctlCopy('ems-' + m.id) + '</div></div>' +
+      '<div class="field"><label for="emv-' + m.id + '">' + esc(t('mv_date')) + '</label><div class="ctl"><input id="emv-' + m.id + '" type="date" data-em="' + m.id + '" data-ef="verifiedUntil" value="' + esc(m.verifiedUntil || '') + '"></div></div></div>' +
       (zfree ? '<fieldset class="field"><legend class="lbl">' + esc(t('ea_zones')) + '</legend><div class="wz-opts" role="radiogroup">' + [1, 2, 3].map(function (n) {
         return '<label class="wz-opt"><input type="radio" name="emz-' + m.id + '" value="' + n + '"' + (El.zones(m) === n ? ' checked' : '') + ' data-em="' + m.id + '" data-ef="zones" data-key="em-z' + n + '"><span><b>' + esc(t('ez_n' + n)) + '</b><span class="small muted">' + esc(t('ea_z' + n + '_s')) + '</span></span></label>';
       }).join('') + '</div></fieldset>' : k === 'elec' ? '<p class="small muted">' + esc(t('em_zones_fix')) + '</p>' : '');
@@ -8502,6 +8509,7 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
       var sc = sentCap(mrecs(m.id), function (x) { return x.base ? baseSent(x) : ssent(k, x); }), r = sc.rec, cap = sc.cap;
       return mbox({ key: 'emeter-' + m.id, id: m.id, kind: k, icon: SK[k].icon, cls: SK[k].cls, name: ms.length > 1 ? ename(m) : t(KINDS[k].t), sub: [ezonesTxt(m)],
         display: edisplay(m, r, 'hero'), cap: cap, copy: r && r.z && SK[k].mod.zones(m) <= 1 && SK[k].mod.whole(r.z.all) !== null ? SK[k].mod.whole(r.z.all) : '', body: sc.note ? '<p class="small muted mb-newer">' + esc(sc.note) + '</p>' : '',
+        meta: [verWarn(m.verifiedUntil)].filter(Boolean),
         set: smeterFields(k, m) + (i === 0 ? priceBlock(k) + sheatRow(k) : '') , setTitle: t('mb_set_read') });
     }).join('');
     if (k === 'elec') left += gpvBox(p, 'elec');
@@ -11006,7 +11014,30 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
     if (!window.TEPLO_API || !Y().account || DOCS.loading || (DOCS.list && !force)) return;
     DOCS.loading = true;
     fetch(window.TEPLO_API + '/docs', { credentials: 'same-origin', headers: { Accept: 'application/json' } }).then(function (r) { return r.json(); })
-      .then(function (j) { DOCS.loading = false; DOCS.list = (j && j.docs) || []; if (routeName() === 'prefs') safeRender(); }, function () { DOCS.loading = false; });
+      .then(function (j) { DOCS.loading = false; DOCS.list = (j && j.docs) || []; if (routeName() === 'prefs' || /^place-/.test(routeName())) safeRender(); }, function () { DOCS.loading = false; });
+  }
+  /** Документи квартири до лічильника mid (heat | id водоміра, світла, газу); старі — без лічильника — до теплолічильника. */
+  function docsOf(mid) {
+    return (DOCS.list || []).filter(function (d) { return d.kind !== 'bill' && (d.meter ? d.meter === mid : mid === 'heat'); })
+      .filter(function (d) { return d.place === S.placeId || (!place(d.place) && S.placeId === (places()[0] || {}).id); });
+  }
+  /** «Фото документів» у налаштуваннях лічильника на екрані квартири (владелец 10.11: «доки можно было прикреплять»): паспорт, повірка — до кожного лічильника. */
+  function mdocs(mid) {
+    if (!window.TEPLO_API) return '';
+    var h = '<div class="mdocs" data-key="mdocs-' + esc(mid) + '"><h4 class="mp-h">' + esc(t('mv_docs')) + ' <span class="muted small">(' + esc(t('b_opt')) + ')</span></h4>';
+    if (!Y().account) return h + '<p class="small muted">' + esc(t('mv_docs_login')) + '</p></div>';
+    loadDocs();
+    var mine = docsOf(mid);
+    h += '<p class="small muted">' + esc(t('mv_docs_sub')) + '</p>' + (mine.length ? '<ul class="docs">' + mine.map(function (d) {
+      var url = window.TEPLO_API + '/docs/file?id=' + d.id, img = d.mime !== 'application/pdf';
+      return '<li><a href="' + esc(url) + '" target="_blank" rel="noopener" class="doc-th" aria-label="' + esc(t('mv_open') + ': ' + t('mv_kind_' + d.kind)) + '">' + (img ? '<img src="' + esc(url) + '" alt="" loading="lazy">' : '<span class="pdf">PDF</span>') + '</a>' +
+        '<div class="grow"><b>' + esc(t('mv_kind_' + d.kind)) + '</b><div class="small muted">' + esc(R.toHtmDate(String(d.createdAt).slice(0, 10))) + '</div></div>' +
+        '<button class="linkbtn" data-act="doc-del" data-id="' + esc(d.id) + '">' + esc(t('rec_del')) + '</button></li>';
+    }).join('') + '</ul>' : '');
+    var busyHere = DOCS.busy && DOCS.meter === mid;
+    return h + '<div class="row-actions mdocs-act"><button class="btn sec sm" data-act="doc-add" data-kind="passport" data-meter="' + esc(mid) + '"' + (DOCS.busy ? ' disabled' : '') + ' data-key="mdoc-pass-' + esc(mid) + '">' + ico('camera', 18) + '<span>' + esc(t('mv_add_passport')) + '</span></button>' +
+      '<button class="btn sec sm" data-act="doc-add" data-kind="verification" data-meter="' + esc(mid) + '"' + (DOCS.busy ? ' disabled' : '') + ' data-key="mdoc-ver-' + esc(mid) + '">' + ico('camera', 18) + '<span>' + esc(t('mv_add_ver')) + '</span></button></div>' +
+      (busyHere ? '<p class="small muted" role="status">' + SPIN + ' ' + esc(t('mv_uploading')) + '</p>' : '') + '</div>';
   }
   function meterPanel() {
     if (!hasHeat()) return '';
@@ -11019,7 +11050,7 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
     if (!window.TEPLO_API) return h + '</div>';
     if (!Y().account) return h + '<p class="small muted">' + esc(t('mv_docs_login')) + '</p></div>';
     loadDocs();
-    var mine = (DOCS.list || []).filter(function (d) { return d.kind !== 'bill'; }).filter(function (d) { return d.place === S.placeId || (!place(d.place) && S.placeId === (places()[0] || {}).id); });
+    var mine = docsOf('heat');
     h += '<h3>' + esc(t('mv_docs')) + ' <span class="muted small">(' + esc(t('b_opt')) + ')</span></h3><p class="small muted">' + esc(t('mv_docs_sub')) + '</p>';
     h += mine.length ? '<ul class="docs">' + mine.map(function (d) {
       var url = window.TEPLO_API + '/docs/file?id=' + d.id, img = d.mime !== 'application/pdf';
@@ -11028,8 +11059,8 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
         '<button class="linkbtn" data-act="doc-del" data-id="' + esc(d.id) + '">' + esc(t('rec_del')) + '</button></li>';
     }).join('') + '</ul>' : (DOCS.list ? '<p class="small muted">' + esc(t('mv_docs_none')) + '</p>' : '');
     h += '<input type="file" id="doc-input" class="sr" aria-label="' + esc(t('mv_docs')) + '" tabindex="-1" accept="image/jpeg,image/png,image/webp,application/pdf">' +
-      '<div class="row-actions" style="margin-top:8px"><button class="btn sec" data-act="doc-add" data-kind="passport"' + (DOCS.busy ? ' disabled' : '') + '>' + ico('camera', 18) + '<span>' + esc(t('mv_add_passport')) + '</span></button>' +
-      '<button class="btn sec" data-act="doc-add" data-kind="verification"' + (DOCS.busy ? ' disabled' : '') + '>' + ico('camera', 18) + '<span>' + esc(t('mv_add_ver')) + '</span></button></div>' +
+      '<div class="row-actions" style="margin-top:8px"><button class="btn sec" data-act="doc-add" data-kind="passport" data-meter="heat"' + (DOCS.busy ? ' disabled' : '') + '>' + ico('camera', 18) + '<span>' + esc(t('mv_add_passport')) + '</span></button>' +
+      '<button class="btn sec" data-act="doc-add" data-kind="verification" data-meter="heat"' + (DOCS.busy ? ' disabled' : '') + '>' + ico('camera', 18) + '<span>' + esc(t('mv_add_ver')) + '</span></button></div>' +
       (DOCS.busy ? '<p class="small muted" role="status">' + SPIN + ' ' + esc(t('mv_uploading')) + '</p>' : DOCS.loading && !DOCS.list ? '<p class="small muted" role="status">' + SPIN + '</p>' : '');
     return h + '</div>';
   }
@@ -11092,7 +11123,7 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
   /** Картка лічильника на екрані квартири (владелец 10.11: «заменить и удалить яснее»): шапка — відкрити лічильник; «Налаштування лічильника» —
    *  лише сам лічильник (назва, №, повірка, модель, зони); внизу дві рівні кнопки з рамкою: «Замінити» і «Прибрати» (червона). */
   function mrow(o) {
-    return '<li class="mrow" data-key="pv-m-' + esc(o.what) + '"><a class="mrow-main" href="#' + o.href + '">' + ico(KINDS[o.kind].icon, 22, KINDS[o.kind].cls) + '<span class="grow"><b>' + esc(o.title) + '</b>' + (o.sub ? '<span class="small muted">' + esc(o.sub) + '</span>' : '') + '</span>' + ico('chev', 20) + '</a>' +
+    return '<li class="mrow mk-' + o.kind + '" data-key="pv-m-' + esc(o.what) + '"><a class="mrow-main" href="#' + o.href + '">' + ico(KINDS[o.kind].icon, 22, KINDS[o.kind].cls) + '<span class="grow"><b>' + esc(o.title) + '</b>' + (o.sub ? '<span class="small muted">' + esc(o.sub) + '</span>' : '') + '</span>' + ico('chev', 20) + '</a>' +
       (o.set ? '<details class="mbox-set mrow-set" id="mbs-' + esc(o.what) + '"' + (MB_OPEN[o.what] ? ' open' : '') + ' data-key="pv-set-' + esc(o.what) + '"><summary>' + ico('prefs', 18, 'bt-ico') + '<span>' + esc(t('mb_set')) + '</span>' + ico('chev', 18, 'pacc-chev') + '</summary><div class="mbox-set-b">' + o.set + '</div></details>' : '') +
       '<div class="mrow-act' + (o.noReplace ? ' one' : '') + '">' + (o.noReplace ? '' : '<button type="button" class="btn sec sm" data-act="m-replace" data-what="' + esc(o.what) + '" data-key="pv-replace-' + esc(o.what) + '">' + ico('swap', 18) + '<span>' + esc(t('mr_replace')) + '</span></button>') +
       '<button type="button" class="btn danger sm" data-act="m-remove" data-what="' + esc(o.what) + '" data-key="pv-remove-' + esc(o.what) + '">' + ico('trash', 18) + '<span>' + esc(t('mr_remove')) + '</span></button></div></li>';
@@ -11421,9 +11452,9 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
     if (fresh) h += '<div class="banner" data-key="pv-new">' + ico('info', 22) + '<div><p><b>' + esc(t('pv_new_t')) + '</b></p><p>' + esc(t('pv_new')) + '</p></div></div>';
     // три розкривашки (владелец 10.11): про квартиру · лічильники · постачальники, тарифи й рахунки; у налаштуваннях лічильника — лише сам лічильник
     var rows = [];
-    if (hasHeat()) rows.push(mrow({ what: 'heat', kind: 'heat', title: t('kd_heat'), href: 'heat', sub: [modelName(model()), verTxt(S.meter.verifiedUntil)].filter(Boolean).join(' · '), set: heatMeterFields(model(), true) + gapSetLink('heat') }));
-    ms.forEach(function (m) { rows.push(mrow({ what: m.id, kind: m.kind, title: wkindTitle(m.kind) + (m.name ? ' · ' + m.name : ''), href: 'water-' + m.kind, sub: verTxt(m.verifiedUntil), set: wmeterFields(m, false, true) + gapSetLink(m.id) })); });
-    ['elec', 'gas'].forEach(function (k) { smeters(k).forEach(function (m) { rows.push(mrow({ what: m.id, kind: k, title: ename(m), href: SK[k].page, noReplace: true, sub: ezonesTxt(m), set: smeterFields(k, m, true) })); }); });
+    if (hasHeat()) rows.push(mrow({ what: 'heat', kind: 'heat', title: t('kd_heat'), href: 'heat', sub: [modelName(model()), verTxt(S.meter.verifiedUntil)].filter(Boolean).join(' · '), set: heatMeterFields(model(), true) + mdocs('heat') + gapSetLink('heat') }));
+    ms.forEach(function (m) { rows.push(mrow({ what: m.id, kind: m.kind, title: wkindTitle(m.kind) + (m.name ? ' · ' + m.name : ''), href: 'water-' + m.kind, sub: verTxt(m.verifiedUntil), set: wmeterFields(m, false, true) + mdocs(m.id) + gapSetLink(m.id) })); });
+    ['elec', 'gas'].forEach(function (k) { smeters(k).forEach(function (m) { rows.push(mrow({ what: m.id, kind: k, title: ename(m), href: SK[k].page, noReplace: true, sub: [ezonesTxt(m), verTxt(m.verifiedUntil)].filter(Boolean).join(' · '), set: smeterFields(k, m, true) + mdocs(m.id) })); }); });
     var meters = (rows.length ? '<ul class="mlist">' + rows.join('') + '</ul>' : '<p class="muted">' + esc(t('pv_none')) + '</p>') +
       '<p class="pv-add"><button class="btn' + (rows.length ? ' sec' : '') + '" data-act="add-meter" data-back="place-' + esc(p.id) + '" data-key="pv-add-meter">' + ico('plus', 20) + '<span>' + esc(t('am_tile')) + '</span></button></p>';
     var rm = removedMeters();
@@ -11453,6 +11484,7 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
       '<h3 class="pv-addr-t">' + esc(t('pl_addr')) + ' <span class="muted small">(' + esc(t('b_opt')) + ')</span></h3>' + addrFieldsFor('pv', p, true) +
       '<fieldset class="field"><legend class="lbl">' + esc(t('pv_color')) + '</legend><div class="swatches">' + sw + '</div><div class="small muted">' + esc(t('pv_color_h')) + '</div></fieldset></div>';
     // порядок (владелец 10.11): про квартиру · лічильники · постачальники, тарифи й рахунки
+    if (window.TEPLO_API && Y().account) h += '<input type="file" id="doc-input" class="sr" aria-label="' + esc(t('mv_docs')) + '" tabindex="-1" accept="image/jpeg,image/png,image/webp,application/pdf">';
     h += '<div class="pgroups pv-groups">' +
       prefGroup('pv-about', 'home', t('pv_about'), sub || t('pv_about_s'), about, fresh) +
       prefGroup('pv-meters', 'clock', t('pv_meters'), rows.length ? placeKinds(p) : t('pv_none_short'), meters, fresh) +
@@ -11663,7 +11695,7 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
     var el = e.target; if (!el || !el.getAttribute) return;
     var mid = el.getAttribute('data-em');
     if (mid) { var f = el.getAttribute('data-ef'), v = el.value.trim().slice(0, 40), moved = false; if (f === 'zones') v = Math.min(3, Math.max(1, +v || 1)); if (f === 'eic') v = eicNorm(v);
-      setPMeters(function (list) { list.forEach(function (m) { if (m.id === mid) { m[f] = v; if (f === 'account') moved = gasMove(m); } }); }); toast(moved ? t('gm_moved') : t('b_saved')); if (f === 'zones') { MB_OPEN[mid] = true; render(true); } else if (f === 'account' || f === 'name' || f === 'grm' || f === 'eic') { MB_OPEN[mid] = true; safeRender(); } return; }
+      setPMeters(function (list) { list.forEach(function (m) { if (m.id === mid) { m[f] = v; if (f === 'account') moved = gasMove(m); } }); }); toast(moved ? t('gm_moved') : t('b_saved')); if (f === 'zones') { MB_OPEN[mid] = true; render(true); } else if (f === 'account' || f === 'name' || f === 'grm' || f === 'eic' || f === 'verifiedUntil') { MB_OPEN[mid] = true; safeRender(); } return; }
     var hk = el.getAttribute('data-heat');
     // ціна й пільга змінюють вартість у історії — перемалювати сторінку
     if (hk === 'elecHeat' || hk === 'gasHeat') { ensurePlaces(); var pp = place(); if (el.checked) pp[hk] = true; else delete pp[hk]; pp.updatedAt = Date.now(); save(); toast(t('b_saved')); render(true); return; }
@@ -12606,7 +12638,7 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
           }, function () { doneL(); if (w0) w0.close(); toast(t('err_network')); });
         break;
       }
-      case 'doc-add': { var fi = document.getElementById('doc-input'); if (fi) { fi.setAttribute('data-kind', el.getAttribute('data-kind')); fi.value = ''; fi.click(); } break; }
+      case 'doc-add': { var fi = document.getElementById('doc-input'); if (fi) { fi.setAttribute('data-kind', el.getAttribute('data-kind')); fi.setAttribute('data-meter', el.getAttribute('data-meter') || ''); fi.value = ''; fi.click(); } break; }
       case 'doc-del': {
         if (!confirm(t('mv_del_q'))) break;
         busy(el);
@@ -12711,11 +12743,11 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
     if (hmf && S.meter) { var hv = String(e.target.value || '').trim().slice(0, 40), hp = {}; hp[hmf] = hv; S.meter = Object.assign({}, S.meter, hp); save(); toast(t('b_saved')); safeRender(); return; }
     if (e.target && e.target.id === 'p-ver' && S.meter) { S.meter = Object.assign({}, S.meter, { verifiedUntil: e.target.value || '' }); save(); render(true); return; }
     if (e.target && e.target.id === 'doc-input' && e.target.files && e.target.files[0]) {
-      var f = e.target.files[0], kind = e.target.getAttribute('data-kind') || 'other';
+      var f = e.target.files[0], kind = e.target.getAttribute('data-kind') || 'other', dm = e.target.getAttribute('data-meter') || '';
       var prep = /^image\//.test(f.type) && window.TeploVision ? window.TeploVision.prepare(f) : Promise.resolve(f);
-      DOCS.busy = kind; render(true);
+      DOCS.busy = kind; DOCS.meter = dm; if (dm) MB_OPEN[dm] = true; render(true);
       prep.then(function (b) {
-        return fetch(window.TEPLO_API + '/docs/upload?place=' + encodeURIComponent(S.placeId) + '&kind=' + kind, { method: 'POST', credentials: 'same-origin', body: b,
+        return fetch(window.TEPLO_API + '/docs/upload?place=' + encodeURIComponent(S.placeId) + '&kind=' + kind + (dm ? '&meter=' + encodeURIComponent(dm) : ''), { method: 'POST', credentials: 'same-origin', body: b,
           headers: { 'Content-Type': b.type || f.type || 'application/octet-stream', 'X-CSRF': (document.cookie.match(/(?:^|; )ts_csrf=([^;]*)/) || [])[1] || '', Accept: 'application/json' } });
       }).then(function (r) { DOCS.busy = ''; if (!r.ok) toast(r.status === 415 ? t('mv_bad_file') : r.status === 413 ? t('mv_too_big') : t('err_network')); else toast(t('mv_saved')); loadDocs(true); render(true); },
         function () { DOCS.busy = ''; toast(t('err_network')); render(true); });

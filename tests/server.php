@@ -321,6 +321,9 @@ ok('фото паспорта и PDF поверки сохраняются', $d1
 ok('не PDF под видом PDF → 415', $du($lb, '<?php 1;', 'application/pdf', 'kind=other')->status === 415);
 $dl = $lb->req('GET', '/api/docs');
 ok('список своих документов', count($dl->body['docs']) === 2 && $dl->body['docs'][0]['place'] === 'p1');
+$d3 = $du($lb, $png, 'image/png', 'place=p1&kind=verification&meter=c9'); $d4 = $du($lb, $png, 'image/png', 'place=p1&kind=passport&meter=../x');
+ok('документ к счётчику квартиры: meter сохраняется, кривой id — без счётчика', $d3->body['doc']['meter'] === 'c9' && $d4->status === 200 && $d4->body['doc']['meter'] === null && $d1->body['doc']['meter'] === null, [$d3->body, $d4->body]);
+$lb->req('POST', '/api/docs/delete', ['id' => $d3->body['doc']['id']]); $lb->req('POST', '/api/docs/delete', ['id' => $d4->body['doc']['id']]);
 ok('чужой не видит и не скачивает', count($rb->req('GET', '/api/docs')->body['docs']) === 0 && $rb->req('GET', '/api/docs/file', null, ['QUERY_STRING' => 'id=' . $d1->body['doc']['id']])->status === 404);
 ok('свой файл отдаётся через PHP', $lb->req('GET', '/api/docs/file', null, ['QUERY_STRING' => 'id=' . $d1->body['doc']['id']])->file['mime'] === 'image/png');
 ok('удаление', $lb->req('POST', '/api/docs/delete', ['id' => $d2->body['doc']['id']])->status === 200 && count($lb->req('GET', '/api/docs')->body['docs']) === 1);
