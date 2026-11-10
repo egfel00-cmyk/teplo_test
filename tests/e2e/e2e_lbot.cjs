@@ -57,6 +57,20 @@ const U = 'http://127.0.0.1:8013/', M = 'http://127.0.0.1:8096', DATA = process.
   await p.check('[data-key=lb-consent]'); await p.click('[data-key=lb-save]'); await wait(1200);
   ok('підключено (без заходу на сайт — це e-mail)', /0000011111/.test(await txt('[data-key=lb-on]')), [await txt('[data-key=lb-on]'), await txt('[data-key=lb-err]')]);
   if (process.env.SHOT) await (await p.$('[data-key=where-elec]')).screenshot({ path: '/tmp/lb_elec.png' });
+  // Львів, вода (103-я): Львівводоканал — лист у відділ збуту району (бот lvk): вибір району, рахунок, адреса; номери водомірів — з налаштувань
+  await where();
+  ok('вода Львова: «…на e-mail відділу збуту вашого району»', /відділу збуту|отдела сбыта/.test(await txt('[data-key=lb-lead]')) && !!(await p.$('[data-key=lb-open]')), await txt('[data-key=where-water]'));
+  await p.click('[data-key=lb-open]'); await wait(300);
+  ok('форма: вибір району (7 відділів збуту + «Оберіть район»), рахунок, адреса', (await p.$$eval('#lb-dist option', o => o.length)) === 8 && !!(await p.$('#lb-acc')) && !!(await p.$('#lb-addr')) && !(await p.$('#lb-phone')));
+  await p.fill('#lb-acc', '1234567'); await p.fill('#lb-addr', 'вул. Городоцька, 1, кв. 3'); await p.check('[data-key=lb-consent]'); await p.click('[data-key=lb-save]'); await wait(1000);
+  ok('без району — «Оберіть район», введене не стерлося', /район/i.test(await txt('[data-key=lb-err]')) && await p.inputValue('#lb-acc') === '1234567', await txt('[data-key=lb-err]'));
+  await p.selectOption('#lb-dist', 'gal'); await p.click('[data-key=lb-save]'); await wait(1200);
+  ok('підключено: рахунок 1234567; «Відправити у фоні» — обидва водоміри з номерами', /1234567/.test(await txt('[data-key=lb-on]')) && !!(await p.$('[data-key=lb-bg]:not([disabled])')) && /441/.test(await txt('[data-key=lb-bg-note]')),
+    [await txt('[data-key=lb-on]'), await txt('[data-key=lb-err]'), await txt('[data-key=lb]')]);
+  if (process.env.SHOT) await (await p.$('[data-key=where-water]')).screenshot({ path: '/tmp/lb_lvk.png' });
+  await p.evaluate(() => { const s = JSON.parse(localStorage.getItem('teplo.v1')); s.places[0].water.meters[0].serial = ''; s.updatedAt = Date.now(); localStorage.setItem('teplo.v1', JSON.stringify(s)); });
+  await p.reload(); await wait(1500); await where();
+  ok('водомір без номера — «Впишіть номер кожного лічильника…», кнопка неактивна', /номер/.test(await txt('[data-key=lb-serial]')) && !!(await p.$('[data-key=lb-bg][disabled]')), await txt('[data-key=lb]'));
   ok('без помилок JS', !errs.length, errs);
   await b.close(); console.log('\nИтог: ' + pass + ' OK, ' + fail + ' FAIL'); process.exit(fail ? 1 : 0);
 })();

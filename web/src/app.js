@@ -5456,10 +5456,12 @@
     var b = st.bot, c = st.conn, busy = !!LB.busy, err = LB.err ? '<div class="banner bad" role="alert" data-key="lb-err">' + ico('alert', 22) + '<div><p>' + esc(LB.err.human) + '</p></div></div>' : '';
     var win = b.win ? '<p class="small muted" data-key="lb-win">' + esc(t('lb_win', { a: b.win[0], b: b.win[1] })) + '</p>' : '';
     if (!c) {
-      var lead = '<p data-key="lb-lead">' + esc(t('lb_lead_' + b.t + (b.t === 'mail' && b.need.length === 1 ? '1' : ''), { org: org })) + '</p>';
+      var lead = '<p data-key="lb-lead">' + esc(t('lb_lead_' + b.t + (b.t === 'mail' && b.need.indexOf('dist') >= 0 ? '2' : b.t === 'mail' && b.need.length === 1 ? '1' : ''), { org: org })) + '</p>';
       if (!LB.open[k]) return '<div class="lb" data-key="lb">' + lead + err + '<div class="dest-ch"><button class="btn sec" data-act="lb-open" data-k="' + esc(k) + '" data-key="lb-open">' + ico('plus', 18) + '<span>' + esc(t('lb_conn_btn')) + '</span></button></div></div>';
       var dr = LB.draft[k] || pre || {};
       var fld = function (f) {
+        if (f === 'dist') return '<div class="field"><label for="lb-dist">' + esc(t('lb_f_dist')) + '</label><div class="ctl"><select id="lb-dist" name="lb-dist" data-key="lb-f-dist"><option value="">' + esc(t('lb_f_dist0')) + '</option>' +
+          (b.dists || []).map(function (o) { return '<option value="' + esc(o[0]) + '"' + (dr.dist === o[0] ? ' selected' : '') + '>' + esc(S.lang === 'ru' ? o[2] : o[1]) + '</option>'; }).join('') + '</select></div></div>';
         var type = f === 'pass' ? 'password' : f === 'phone' ? 'tel' : f === 'login' ? 'email' : 'text', ac = { name: 'name', addr: 'street-address', phone: 'tel', login: 'username', pass: 'current-password' }[f] || 'off';
         return '<div class="field"><label for="lb-' + f + '">' + esc(t(f === 'acc' && b.fmt === 'code' ? 'lb_f_code' : 'lb_f_' + f)) + '</label><div class="ctl"><input id="lb-' + f + '" type="' + type + '" name="lb-' + f + '" autocomplete="' + ac + '"' + (f === 'acc' ? ' class="num"' : '') +
           (f === 'acc' && b.hint ? ' placeholder="' + esc(b.hint) + '"' : '') + (dr[f] ? ' value="' + esc(dr[f]) + '"' : '') + ' data-key="lb-f-' + f + '"></div>' + (f === 'acc' && b.hint ? '<p class="small muted">' + esc(t('lb_hint', { h: b.hint })) + '</p>' : '') + '</div>';
@@ -5478,8 +5480,9 @@
       (j.status === 'queued' ? '<div class="row-actions" style="margin-top:8px"><button class="btn sec" data-act="lb-cancel" data-id="' + j.job + '" data-key="lb-cancel"' + (busy ? ' disabled' : '') + '>' + esc(t('lb_cancel')) + '</button></div>' : '') + '</div></div>' + err + '</div>';
     if (j && (j.status === 'ok' || j.status === 'sent')) h += '<div class="banner ok" data-key="lb-done">' + ico('check', 22) + '<div><p><b>' + esc(j.status === 'sent' ? t('lb_sent', { to: b.to || '' }) : t('lb_ok')) + '</b></p>' + (j.status === 'ok' && b.later ? '<p class="small">' + esc(t('lb_later')) + '</p>' : '') + '</div></div>';
     if (j && /^(failed|rejected|unknown)$/.test(j.status)) h += '<div class="banner ' + (j.status === 'unknown' ? 'warn' : 'bad') + '" role="alert" data-key="lb-' + j.status + '">' + ico('alert', 22) + '<div><p><b>' + esc(t(j.status === 'failed' ? 'lb_failed' : j.status === 'rejected' ? 'lb_rej' : 'lb_unk')) + '</b></p>' + (j.human || j.text ? '<p class="small">' + esc(j.human || j.text) + '</p>' : '') + '</div></div>';
-    var done = j && (j.status === 'ok' || j.status === 'sent');
-    return '<div class="lb" data-key="lb">' + head + h + err + '<div class="dest-ch"><button class="btn' + (done ? ' sec' : '') + ' dest-bg" data-act="lb-bg" data-bot="' + esc(bot) + '" data-pl="' + esc(pl) + '" data-id="' + esc(rec.id) + '" data-key="lb-bg"' + (busy ? ' disabled' : '') + '>' +
+    var done = j && (j.status === 'ok' || j.status === 'sent'), noSer = b.serial && items.some(function (x) { return !x.serial; });
+    if (noSer) h += '<p class="small" data-key="lb-serial">' + esc(t('lb_serial', { org: org })) + '</p>';
+    return '<div class="lb" data-key="lb">' + head + h + err + '<div class="dest-ch"><button class="btn' + (done ? ' sec' : '') + ' dest-bg" data-act="lb-bg" data-bot="' + esc(bot) + '" data-pl="' + esc(pl) + '" data-id="' + esc(rec.id) + '" data-key="lb-bg"' + (busy || noSer ? ' disabled' : '') + '>' +
       (LB.busy === '/lb/queue' ? SPIN : ico('send', 18)) + '<span>' + esc(t('cab_bg')) + '</span></button></div><p class="small dest-note" data-key="lb-bg-note">' + esc(t('cab_bg_note', { what: list })) + '</p>' + win + off + '</div>';
   }
   /** Світло/газ: по числу на кожну зону кожного лічильника (двозонний — два числа; бот «лише однозонний» тоді відмовить зрозуміло). */
@@ -5498,7 +5501,7 @@
   document.addEventListener('submit', function (e) {
     var f = e.target; if (!f || f.getAttribute('data-act') !== 'lb-conn') return; e.preventDefault();
     var bot = f.getAttribute('data-bot'), pl = f.getAttribute('data-pl'), body = { bot: bot, place: pl, consent: !!(f.elements['lb-consent'] && f.elements['lb-consent'].checked) };
-    ['acc', 'name', 'addr', 'phone', 'login', 'pass'].forEach(function (x) { if (f.elements['lb-' + x]) body[x] = f.elements['lb-' + x].value; });
+    ['dist', 'acc', 'name', 'addr', 'phone', 'login', 'pass'].forEach(function (x) { if (f.elements['lb-' + x]) body[x] = f.elements['lb-' + x].value; });
     lbCall('/lb/connect', body, function (j) { lbSet(bot, pl, j); delete LB.open[lbKey(bot, pl)]; delete LB.draft[lbKey(bot, pl)]; toast(t('lb_t_on')); });
   });
   document.addEventListener('click', function (e) {

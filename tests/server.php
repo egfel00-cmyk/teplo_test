@@ -2110,6 +2110,26 @@ Db::q('UPDATE cab_jobs SET next_at = ? WHERE id = ?', [time() - 1, $lj]);
 $n0 = count($sent); LocalBot::cron(); $ml = end($sent);
 ok('loe: лист на pokaz@loe.lviv.ua, тема й текст — лише «0000011111 2222»', count($sent) === $n0 + 1 && $ml[1] === ['pokaz@loe.lviv.ua'] && str_contains($ml[2], 'Subject: 0000011111 2222')
   && (str_contains($ml[2], base64_encode('0000011111 2222')) || str_contains($ml[2], "\r\n\r\n0000011111 2222")), [$ml[1] ?? null, substr((string)($ml[2] ?? ''), 0, 600)]);
+// Львівводоканал (103-я): e-mail відділу збуту району людини, рядок «рахунок, адреса, № лічильника-показник», без номера лічильника — не надсилаємо
+$r = $lbu->req('POST', '/api/lb/connect', ['bot' => 'lvk', 'place' => 'lv2', 'acc' => '1234567', 'addr' => 'вул. Зелена, 1, кв. 2', 'consent' => true]);
+ok('lvk: без району — 422 lb_dist', $r->status === 422 && ($r->body['error'] ?? '') === 'lb_dist', $r->body);
+$r = $lbu->req('POST', '/api/lb/connect', ['bot' => 'lvk', 'place' => 'lv2', 'dist' => 'xx', 'acc' => '1234567', 'addr' => 'вул. Зелена, 1, кв. 2', 'consent' => true]);
+ok('lvk: чужий район — 422 lb_dist', $r->status === 422 && ($r->body['error'] ?? '') === 'lb_dist', $r->body);
+$r = $lbu->req('POST', '/api/lb/connect', ['bot' => 'lvk', 'place' => 'lv2', 'dist' => 'sih', 'acc' => '1234567', 'addr' => 'вул. Зелена, 1, кв. 2', 'consent' => true]);
+ok('lvk: підключено — район sih, адреса листа sih_r@lvk.lviv.ua, 7 районів у виборі', $r->status === 200 && ($r->body['conn']['dist'] ?? '') === 'sih' && ($r->body['bot']['to'] ?? '') === 'sih_r@lvk.lviv.ua'
+  && count($r->body['bot']['dists'] ?? []) === 7 && ($r->body['bot']['serial'] ?? false) === true && LocalBot::pub('lvk')['to'] === null, $r->body);
+$r = $lbu->req('POST', '/api/lb/queue', ['bot' => 'lvk', 'place' => 'lv2', 'rid' => 'w7', 'items' => [['value' => '87', 'name' => 'Холодна', 'kind' => 'cold']]]);
+ok('lvk: лічильник без номера — 422 lb_serial з поясненням', $r->status === 422 && ($r->body['error'] ?? '') === 'lb_serial' && str_contains((string)($r->body['human'] ?? ''), 'Львівводоканал'), $r->body);
+$r = $lbu->req('POST', '/api/lb/queue', ['bot' => 'lvk', 'place' => 'lv2', 'rid' => 'w7', 'items' => [['value' => '87.345', 'serial' => 'A123', 'name' => 'Холодна', 'kind' => 'cold'], ['value' => '41', 'serial' => 'B77', 'name' => 'Гаряча', 'kind' => 'hot']]]);
+$lj = (int)($r->body['job']['id'] ?? 0);
+Db::q('UPDATE cab_jobs SET next_at = ? WHERE id = ?', [time() - 1, $lj]);
+$n0 = count($sent); LocalBot::cron(); $ml = end($sent);
+$mb = preg_match('/base64\r\n\r\n([A-Za-z0-9+\/=\r\n]+?)\r\n(?:--|$)/', (string)($ml[2] ?? ''), $mm) ? base64_decode(preg_replace('/\s+/', '', $mm[1])) : '';
+$jb = LocalBot::pubJob(Db::one('SELECT * FROM cab_jobs WHERE id = ?', [$lj]));
+ok('lvk: лист на sih_r@lvk.lviv.ua — по рядку на лічильник «1234567, вул. Зелена, 1, кв. 2, A123-87»; статус sent', count($sent) === $n0 + 1 && $ml[1] === ['sih_r@lvk.lviv.ua']
+  && str_contains($mb, "1234567, вул. Зелена, 1, кв. 2, A123-87\r\n1234567, вул. Зелена, 1, кв. 2, B77-41") && $jb['status'] === 'sent' && $jb['text'] === 'e-mail → sih_r@lvk.lviv.ua', [$jb, $ml[1] ?? null, $mb]);
+$lvw = Providers::lookup('Львів, вул. Зелена, 1')['kinds']['water'] ?? [];
+ok('довідник: Львів — вода via lvk, robot server', ($lvw['via'] ?? '') === 'lvk' && ($lvw['robot'] ?? '') === 'server', $lvw);
 $pr = LocalBot::probe(); $pr2 = LocalBot::probe(); $hp = (new Browser('10.8.8.10'))->req('GET', '/api/health')->body['lbot']['mtve']['probe'] ?? [];
 ok('проба mtve: вигаданий рахунок 0-0-0 → «не знайдено» (шлях форми працює), раз на версію; /api/health → lbot.mtve.probe', $pr === ['mtve', 'notfound'] && $pr2 === null && ($hp['res'] ?? '') === 'notfound', [$pr, $pr2, $hp]);
 LocalBot::$forceOn = false;

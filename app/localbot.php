@@ -31,8 +31,20 @@ final class LocalBot {
       'need' => ['acc'], 'acc' => ['digits' => 10, 'hint' => '0000011111'], 'win' => [28, 3], 'one' => true],
     'cvk' => ['t' => 'mail', 'kinds' => ['water'], 'org' => 'КП «Чорноморськводоканал»', 'site' => 'cvk.od.ua',
       'to' => 'chornomorskvodokanal@gmail.com', 'need' => ['acc', 'name', 'addr', 'phone'], 'win' => [25, 31]],
+    // Львів, вода (103-я): ЛМКП «Львівводоканал» приймає показання холодної (і гарячої — для водовідведення) води на e-mail відділу збуту свого району
+    // (zaxid.net 27.04.2020 і 28.10.2021 — адреси всіх районів; sykhiv.media 2025 — sih_r@ діє). Лист «номер особового рахунку, адреса, номер лічильника-кінцевий показник»
+    // — без номера лічильника не надсилаємо (`serial`). Строк — з 10 числа до передостаннього робочого дня місяця; беремо до 25-го (у лютому передостанній робочий буває 25-го).
+    'lvk' => ['t' => 'mail', 'kinds' => ['water'], 'org' => 'ЛМКП «Львівводоканал»', 'site' => 'lvk.lviv.ua', 'fmt' => 'line', 'serial' => true,
+      'need' => ['dist', 'acc', 'addr'], 'win' => [10, 25],
+      'to' => ['gal' => 'gal_r@lvk.lviv.ua', 'fra' => 'fra_r@lvk.lviv.ua', 'lych' => 'lych_r@lvk.lviv.ua', 'sih' => 'sih_r@lvk.lviv.ua',
+        'zal' => 'zal_r@lvk.lviv.ua', 'she' => 'she_r@lvk.lviv.ua', 'pozam' => 'pozam_r@lvk.lviv.ua'],
+      'dists' => ['gal' => ['Галицький', 'Галицкий'], 'fra' => ['Франківський', 'Франковский'], 'lych' => ['Личаківський', 'Лычаковский'],
+        'sih' => ['Сихівський', 'Сиховский'], 'zal' => ['Залізничний', 'Железнодорожный'], 'she' => ['Шевченківський', 'Шевченковский'],
+        'pozam' => ['Поза містом: Винники, Брюховичі, Рудне, села громади', 'За городом: Винники, Брюховичи, Рудно, сёла громады']]],
   ];
-  const NEED = ['acc', 'name', 'addr', 'phone', 'login', 'pass'];
+  const NEED = ['dist', 'acc', 'name', 'addr', 'phone', 'login', 'pass'];
+  /** Адреса листа: одна на бота або за районом людини (`dist`). */
+  public static function to(array $b, array $c = []): string { $t = $b['to'] ?? ''; return is_array($t) ? (string)($t[$c['dist'] ?? ''] ?? '') : (string)$t; }
   public static function get(string $id): ?array { return isset(self::BOTS[$id]) ? self::BOTS[$id] + ['id' => $id] : null; }
   public static function prov(string $id): string { return 'L' . $id; }
   /** Тести: вимкнені (`off`) боти — увімкнути (на стенді вмикає й `lb_base_<бот>` у config.php). */
@@ -46,7 +58,8 @@ final class LocalBot {
   public static function pub(string $id): array {
     $b = self::get($id);
     return ['id' => $id, 't' => $b['t'], 'org' => $b['org'], 'site' => $b['site'] ?? null, 'kinds' => $b['kinds'], 'need' => $b['need'], 'hint' => $b['acc']['hint'] ?? null,
-      'win' => $b['win'] ?? null, 'later' => !empty($b['later']), 'to' => $b['to'] ?? null, 'fmt' => $b['fmt'] ?? null, 'one' => !empty($b['one']), 'ready' => self::ready($id)];
+      'win' => $b['win'] ?? null, 'later' => !empty($b['later']), 'to' => is_string($b['to'] ?? null) ? $b['to'] : null, 'fmt' => $b['fmt'] ?? null, 'one' => !empty($b['one']),
+      'serial' => !empty($b['serial']), 'ready' => self::ready($id)] + (isset($b['dists']) ? ['dists' => array_map(fn($k, $v) => [$k, $v[0], $v[1]], array_keys($b['dists']), $b['dists'])] : []);
   }
 
   // ---------- вікно подачі: поза ним «Відправити у фоні» ставить у чергу на відкриття (9:00 за Києвом) ----------
@@ -113,6 +126,8 @@ final class LocalBot {
       'fields' => $ru ? 'Не поняли, в какое поле какой счётчик, — ничего не отправили. Впишите номера счётчиков в их настройках или отправьте сами.' : 'Не зрозуміли, у яке поле який лічильник, — нічого не надіслали. Впишіть номери лічильників у їхніх налаштуваннях або надішліть самі.',
       'mail' => $ru ? 'Почта сервиса сейчас не работает.' : 'Пошта сервісу зараз не працює.',
       'one' => $ru ? 'Так можно передать только однозонный счётчик (одно число). Двухзонный передайте сами — кнопки ниже.' : 'Так можна передати лише однозонний лічильник (одне число). Двозонний передайте самі — кнопки нижче.',
+      'dist' => $ru ? 'Выберите район — письмо уйдёт в отдел сбыта вашего района.' : 'Оберіть район — лист піде у відділ збуту вашого району.',
+      'serial' => $ru ? 'Впишите номер счётчика в его настройках — {org} принимает показания только с номером счётчика.' : 'Впишіть номер лічильника в його налаштуваннях — {org} приймає показання лише з номером лічильника.',
     ][$k];
     foreach ($v as $a => $b) $s = str_replace('{' . $a . '}', (string)$b, $s);
     return $s;
@@ -132,6 +147,7 @@ final class LocalBot {
     foreach ($b['need'] as $f) {
       $v = trim(preg_replace('/\s+/u', ' ', (string)($in[$f] ?? '')));
       $ok = match ($f) {
+        'dist' => isset($b['dists'][$v]),
         'acc' => self::accParts($b, $v) !== null,
         'name' => mb_strlen($v) >= 3 && mb_strlen($v) <= 80 && (bool)preg_match("/^[\p{L}'’ʼ.\- ]+$/u", $v),
         'addr' => mb_strlen($v) >= 5 && mb_strlen($v) <= 160,
@@ -141,7 +157,7 @@ final class LocalBot {
         default => false,
       };
       if (!$ok) throw self::err($f === 'acc' && !empty($b['acc']['hint']) ? 'acc' : ($f === 'acc' ? 'acc0' : $f), 422, ['hint' => $b['acc']['hint'] ?? '']);
-      if ($f === 'acc') $pub['acc'] = $v; else $sec[$f] = $v;
+      if ($f === 'acc' || $f === 'dist') $pub[$f] = $v; else $sec[$f] = $v;
     }
     return [$pub, $sec];
   }
@@ -150,10 +166,11 @@ final class LocalBot {
   /** GET /api/lb?bot=&place= — бот, підключення цього місця (свої дані — для заповнення форми; пароль — ніколи), черга. */
   public static function status(int $uid, array $q): array {
     [$id] = self::botOr404($q); $place = self::placeId($q); $c = self::creds($uid, $id, $place);
-    $conn = $c ? array_filter(['acc' => $c['acc'] ?? null, 'name' => $c['name'] ?? null, 'addr' => $c['addr'] ?? null, 'phone' => $c['phone'] ?? null, 'login' => $c['login'] ?? null,
+    $conn = $c ? array_filter(['dist' => $c['dist'] ?? null, 'acc' => $c['acc'] ?? null, 'name' => $c['name'] ?? null, 'addr' => $c['addr'] ?? null, 'phone' => $c['phone'] ?? null, 'login' => $c['login'] ?? null,
       'pass' => isset($c['pass']) ? true : null, 'at' => $c['consentAt'] ?? null, 'chk' => $c['chk'] ?? null], fn($v) => $v !== null) : null;
     $jobs = Db::q('SELECT * FROM cab_jobs WHERE user_id = ? AND prov = ? ORDER BY id DESC LIMIT 12', [$uid, self::prov($id)])->fetchAll();
-    return ['bot' => self::pub($id), 'conn' => $conn, 'jobs' => array_values(array_filter(array_map([self::class, 'pubJob'], $jobs), fn($j) => ($j['place'] ?? '') === $place))];
+    $pb = self::pub($id); if ($c && $pb['to'] === null && self::to(self::get($id), $c) !== '') $pb['to'] = self::to(self::get($id), $c);   // адреса району
+    return ['bot' => $pb, 'conn' => $conn, 'jobs' => array_values(array_filter(array_map([self::class, 'pubJob'], $jobs), fn($j) => ($j['place'] ?? '') === $place))];
   }
   /** POST /api/lb/connect {bot, place, consent, acc?, name?, addr?, phone?, login?, pass?, lang} — зберегти й перевірити (дійти до форми, нічого не надіслати). */
   public static function connect(int $uid, array $in): array {
@@ -205,6 +222,7 @@ final class LocalBot {
     $c = self::creds($uid, $id, $place); if (!$c) throw self::err('conn', 409);
     $items = self::items((array)($in['items'] ?? [])); if (!$items) throw self::err('items');
     if (!empty($b['one']) && count($items) !== 1) throw self::err('one');
+    if (!empty($b['serial'])) foreach ($items as $x) if (($x['serial'] ?? null) === null) throw self::err('serial', 422, ['org' => $b['org']]);
     $rid = substr(preg_replace('/[^\w\-]/', '', (string)($in['rid'] ?? '')), 0, 40);
     $sig = fn(array $l) => implode('|', array_map(fn($x) => ($x['serial'] ?? '') . '=' . $x['value'], $l));
     foreach (Db::q("SELECT * FROM cab_jobs WHERE user_id = ? AND prov = ? AND status IN ('queued', 'sending', 'ok', 'sent') ORDER BY id DESC LIMIT 12", [$uid, self::prov($id)])->fetchAll() as $j) {
@@ -281,18 +299,27 @@ final class LocalBot {
   /** Лист постачальнику: хто, рахунок, адреса, показання; Reply-To — e-mail людини (якщо є), щоб абонвідділ відповідав їй. */
   private static function mail(int $uid, array $b, array $c, array $items): array {
     $u = Db::one('SELECT email FROM users WHERE id = ?', [$uid]); $email = (string)($u['email'] ?? '');
+    $to = self::to($b, $c); if ($to === '') throw self::err('dist');
     if (($b['fmt'] ?? '') === 'code') {   // лист читає програма постачальника: лише «код показник», без зайвого тексту
       $code = (string)(self::accParts($b, (string)($c['acc'] ?? ''))[0] ?? ''); $v = (string)preg_replace('/\..*$/', '', (string)$items[0]['value']);
-      Mail::send(['to' => $b['to'], 'subject' => $code . ' ' . $v, 'text' => $code . ' ' . $v, 'replyTo' => Mail::deliverable($email) ? $email : '', 'kind' => 'submit', 'user' => $uid]);
-      return ['text' => 'e-mail → ' . $b['to']];
+      Mail::send(['to' => $to, 'subject' => $code . ' ' . $v, 'text' => $code . ' ' . $v, 'replyTo' => Mail::deliverable($email) ? $email : '', 'kind' => 'submit', 'user' => $uid]);
+      return ['text' => 'e-mail → ' . $to];
     }
     $d = self::kyiv(time())->format('d.m.Y');
+    if (($b['fmt'] ?? '') === 'line') {   // взірець постачальника: «номер особового рахунку, адреса, номер лічильника-кінцевий показник» — рядок на лічильник
+      $acc = trim((string)($c['acc'] ?? '')); $addr = trim((string)($c['addr'] ?? ''));
+      $rows = implode("\n", array_map(fn($x) => $acc . ', ' . $addr . ', ' . $x['serial'] . '-' . preg_replace('/\..*$/', '', (string)$x['value']), $items));
+      $text = "Доброго дня!\n\nПоказання лічильників води станом на $d:\n\n" . $rows .
+        "\n\nЛист надіслано на прохання абонента сервісом «Лічильники» (" . Cfg::appUrl() . ")." . (Mail::deliverable($email) ? " Відповідь — на адресу абонента: $email." : '');
+      Mail::send(['to' => $to, 'subject' => 'Показання лічильників води — о/р ' . $acc, 'text' => $text, 'replyTo' => Mail::deliverable($email) ? $email : '', 'kind' => 'submit', 'user' => $uid]);
+      return ['text' => 'e-mail → ' . $to];
+    }
     $lines = implode("\n", array_map(fn($x) => '— ' . ($x['name'] ?: 'лічильник') . ($x['serial'] ? ' № ' . $x['serial'] : '') . ': ' . $x['value'] . ' м³', $items));
     $text = "Доброго дня!\n\nПередаю показання лічильників води станом на $d.\n\nОсобовий рахунок: " . ($c['acc'] ?? '') . "\nАбонент: " . ($c['name'] ?? '') .
       "\nАдреса: " . ($c['addr'] ?? '') . "\nТелефон: " . ($c['phone'] ?? '') . "\n\n" . $lines .
       "\n\nЛист надіслано на прохання абонента сервісом «Лічильники» (" . Cfg::appUrl() . ")." . (Mail::deliverable($email) ? " Відповідь — на адресу абонента: $email." : ' Питання — за телефоном абонента.');
-    Mail::send(['to' => $b['to'], 'subject' => 'Показання лічильників води — о/р ' . ($c['acc'] ?? ''), 'text' => $text, 'replyTo' => Mail::deliverable($email) ? $email : '', 'kind' => 'submit', 'user' => $uid]);
-    return ['text' => 'e-mail → ' . $b['to']];
+    Mail::send(['to' => $to, 'subject' => 'Показання лічильників води — о/р ' . ($c['acc'] ?? ''), 'text' => $text, 'replyTo' => Mail::deliverable($email) ? $email : '', 'kind' => 'submit', 'user' => $uid]);
+    return ['text' => 'e-mail → ' . $to];
   }
   /** cron: строк черги настав — надсилаємо (не більше 2 за хвилину: кожне — свій захід на сайт). */
   public static function cron(?int $now = null): array {
@@ -313,7 +340,7 @@ final class LocalBot {
         $txt = ($ru ? "📝 Показания поставлены в очередь — $org примет их с начала срока подачи. Отправим $when:\n" : "📝 Показання в черзі — $org приймає їх із початку строку подачі. Надішлемо $when:\n") . $lines .
           ($ru ? "\n\nПередумали — «Отменить» в «Счётчиках»." : "\n\nПередумали — «Скасувати» в «Лічильниках»."); break;
       case 'ok': $txt = ($ru ? "✅ $org — сайт принял показания:\n" : "✅ $org — сайт прийняв показання:\n") . $lines . $tail . (!empty($b['later']) ? ($ru ? "\n\nИх проверит оператор — на сайте появятся позже." : "\n\nЇх перевірить оператор — на сайті з’являться пізніше.") : ''); break;
-      case 'sent': $txt = ($ru ? "📨 Отправили показания письмом в $org ({$b['to']}):\n" : "📨 Надіслали показання листом у $org ({$b['to']}):\n") . $lines . ($ru ? "\n\nПодтверждения по e-mail поставщик обычно не присылает — сверяйте с квитанцией." : "\n\nПідтвердження на e-mail постачальник зазвичай не надсилає — звіряйте з квитанцією."); break;
+      case 'sent': $to = preg_replace('/^e-mail → /u', '', (string)$job['text']); $txt = ($ru ? "📨 Отправили показания письмом в $org ($to):\n" : "📨 Надіслали показання листом у $org ($to):\n") . $lines . ($ru ? "\n\nПодтверждения по e-mail поставщик обычно не присылает — сверяйте с квитанцией." : "\n\nПідтвердження на e-mail постачальник зазвичай не надсилає — звіряйте з квитанцією."); break;
       case 'rejected': $txt = ($ru ? "❌ $org — сайт не принял показания:\n" : "❌ $org — сайт не прийняв показання:\n") . $lines . $tail . ($ru ? "\n\nОткройте «Счётчики» — исправьте и отправьте снова." : "\n\nВідкрийте «Лічильники» — виправте й надішліть знову."); break;
       case 'unknown': $txt = ($ru ? "⏳ Отправили в $org, но сайт не сказал, принял ли:\n" : "⏳ Надіслали в $org, але сайт не сказав, чи прийняв:\n") . $lines . $tail; break;
       case 'failed': $txt = ($ru ? "⚠️ Не отправили показания в $org.\n" : "⚠️ Не надіслали показання в $org.\n") . ($job['human'] ?: '') . ($ru ? "\n\nОткройте «Счётчики» — там все способы отправить самому." : "\n\nВідкрийте «Лічильники» — там усі способи надіслати самому."); break;
