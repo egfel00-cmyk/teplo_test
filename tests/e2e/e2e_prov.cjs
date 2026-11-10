@@ -63,9 +63,9 @@ let pass = 0, fail = 0; const ok = (n, c, x) => { if (c) { pass++; console.log('
   ok('вибір → p.settle {a, n, h}, «Для «Миколаївка» (… громада, … район)», «Обрати інший пункт»', sv.places[0].settle && sv.places[0].settle.a === 'Миколаївка, вул. Миру 5' && /^UA63/.test(sv.places[0].settle.h) && /Для «Миколаївка» \(/.test(await txt('prov-lead')) && !!(await p.$('[data-key=prov-unsettle]')), sv.places[0].settle);
   await p.click('[data-key=prov-unsettle]'); await p.waitForTimeout(900);
   ok('«Обрати інший пункт» → знову список', (await p.$$('.prv-pick')).length >= 12);
-  // Берестин: тариф КП «Берестин-Водоканал» (71,88 + 107,74) у «Ціні» й у розрахунку; «Куди передати» — його блок, не Харківводоканал
+  // Берестин: тариф населення КП «Берестин-Водоканал» (53,98 + 96,02; повні 71,88 + 107,74 — юрособам, 97-а) у «Ціні» й у розрахунку; «Куди передати» — його блок, не Харківводоканал
   await p.evaluate(() => { const s = JSON.parse(localStorage.getItem('teplo.v1')); s.places[0].address = 'м. Красноград, вул. Полтавська 10'; delete s.places[0].prov; localStorage.setItem('teplo.v1', JSON.stringify(s)); }); await p.reload(); await p.waitForTimeout(900);
-  ok('Красноград (стара назва) → Берестин, вода «КП «Берестин-Водоканал»» 71,88 і 107,74 з 01.06.2026', /Берестин/.test(await txt('prov-lead')) && /Берестин-Водоканал/.test(await txt('prov-water')) && /71,88.*107,74/.test(await txt('prov-water')), await txt('prov-water'));
+  ok('Красноград (стара назва) → Берестин, вода «КП «Берестин-Водоканал»» 53,98 і 96,02 (населення; 97-а)', /Берестин/.test(await txt('prov-lead')) && /Берестин-Водоканал/.test(await txt('prov-water')) && /53,98.*96,02/.test(await txt('prov-water')), await txt('prov-water'));
   await p.goto(U + '#water-cold'); await p.waitForTimeout(900);
   const wd = await txt('where-water');
   ok('«Куди передати» воду в Берестині — КП «Берестин-Водоканал», без бота @hvk_user_bot і без кабінету Харківводоканалу', /Берестин-Водоканал/.test(wd) && !/hvk_user_bot|Харківводоканал/.test(wd), wd.slice(0, 200));
