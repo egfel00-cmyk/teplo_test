@@ -102,6 +102,9 @@ description: «Лічильники» (peredai.com.ua): добавить обл�
   порядок денний засідання виконкому» в новостях (есть ли пункт про тариф) и «повідомлення про намір» на странице КП.
 - **WordPress-сайты рад (usativska-rada.gov.ua)** — `/wp-json/wp/v2/search?search=тариф&per_page=100`, текст поста — `/wp-json/wp/v2/posts?slug=…` (`content.rendered`), список
   за период — `/wp-json/wp/v2/posts?after=2025-06-01T00:00:00&per_page=100&_fields=date,title,link`. Сканы решений — PDF в wp-content, читать `computer zoom`.
+- **.doc/.docx с rada.info в Chrome владельца быстрее всего (93-я)** — Google-просмотрщик: `https://docs.google.com/viewer?url=<urlencoded ссылка rada.info>&embedded=true`
+  → страницы картинками, скрин/zoom (Малинівка СВА № 496, Біляївка — структура тарифу). Скачивать не нужно. На dosvit.org.ua поиск документов — `/documents?q=<слово>`
+  (не `search=`); PDF-вложения `/storage/documents/…pdf` открываются во вкладке. Выдача Google — `get_page_text` (JS-вывод режется ~1000 знаков, ссылки с `?` блокируются).
 - **Старый .doc с rada.info** (не zip, `D0 CF 11 E0`): `new TextDecoder('utf-16le').decode(buf)` и искать «ВИРІШИЛА»/«Тариф» — текст кусками, но пункты решения читаются целиком (Визирка).
 - **КП на gkh.in.ua** (velykyi-dalnyk.gkh.in.ua, gostomel…): `/uk/tarif/` — текст бывает устаревшим, а свежее решение — картинкой `/assets/media/<N>.jpeg` (открыть напрямую);
   `/uk/peredacha-pokazan/` — окно сроков, кабинет gkh.in.ua, бот @GKH_IN_UA_BOT, Viber, телефон — в `how/cab/bot/phones`.
