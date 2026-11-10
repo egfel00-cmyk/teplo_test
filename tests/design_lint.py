@@ -17,7 +17,8 @@ rules = re.findall(r'([^{}]+)\{([^{}]*)\}', css)
 # табло и макеты приборов — «материал» (ролики, ЖК, жёлтая панель газа): там градиенты, мелкий текст и трекинг — часть предмета
 MATERIAL = re.compile(r'\.(lcd|elcd|el-|wd-|wdrum|gdrum|gd-|drum|lpp-|kprev|whero|lp-tile|lp-fig|bc-paper|bc-fold|pv-bar|phd-over|ph-fields|gpv-|lpg-|seg\b|kind-ill|phd-beam|phd-scan)')
 # живые состояния: идёт распознавание/загрузка, мигает светодиод счётчика, крутится индикатор занятости
-LIVE_ANIM = re.compile(r'\b(spin|elblink|phd-shine|phd-pulse|phd-beam|phd-drop|wdRoll)\b')
+# + lpMarq — стрічка постачальників на лендингу (решение владельца 10.11: «пусть плывут»)
+LIVE_ANIM = re.compile(r'\b(spin|elblink|phd-shine|phd-pulse|phd-beam|phd-drop|wdRoll|lpMarq)\b')
 
 for sel, body in rules:
     sel = sel.strip().split('\n')[-1]

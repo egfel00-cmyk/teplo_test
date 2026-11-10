@@ -859,8 +859,9 @@ a.mrow-main:hover { background: var(--c-ghost-hover); }
 .mrow-main .grow { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
 .mrow-main .grow b { overflow-wrap: anywhere; }
 .mrow-main > .ico { flex: none; } .mrow-main > .ico:last-child { color: var(--c-ink-2); }
-.mrow-act { display: flex; flex-wrap: wrap; gap: 4px 8px; padding: 0 10px 8px 40px; margin-top: -4px; }
-.mrow-act .btn { min-height: 40px; padding: 0 10px; flex: none; }
+/* «Замінити» і «Прибрати» — внизу картки, дві рівні кнопки з рамкою (владелец 10.11: «яснее») */
+.mrow-act { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; padding: 4px 14px 14px; }
+.mrow-act .btn { min-height: 48px; padding: 0 10px; }
 .mlist.removed .mrow { background: transparent; border-style: dashed; }
 .mlist.removed .mrow-main .btn { flex: none; min-height: 44px; padding: 0 14px; }
 .chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
@@ -1445,7 +1446,7 @@ details.tbl-acc[open] > .tbl-wrap { margin-top: 12px; }
 }
 @keyframes lp-scan { 0%, 100% { top: 14%; } 50% { top: 84%; } }
 /* «Налаштування лічильника» — на екрані квартири, під рядком лічильника */
-.mrow-set { margin: 0 14px 10px; }
+.mrow-set { margin: 0 14px 8px; }
 .mrow-set > summary { min-height: 44px; font-size: var(--fs-s); }
 
 /* футер лендинга (06.11.2026): о сервисе, документы, связь */
@@ -1653,10 +1654,11 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
 
 /* ---------- Блок фото на введенні показань (09.11.2026): порожній / з фото / сканер / завантаження модуля ---------- */
 .phd { position: relative; border-radius: 28px; background: var(--c-surface-2); border: 1px solid var(--c-line); overflow: hidden; min-height: 210px; }
-.phd-empty { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; min-height: 210px; padding: 28px 16px; cursor: pointer; text-align: center; }
+.phd:not(.has) { min-height: 0; }   /* порожня плашка нижча (владелец 10.11) */
+.phd-empty { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; min-height: 156px; padding: 20px 16px; cursor: pointer; text-align: center; }
 .phd-empty:focus-visible { outline: 3px solid var(--c-focus-ring); outline-offset: -3px; border-radius: 28px; }
 .phd-ico { color: var(--c-ink-2); opacity: .75; }
-.phd-t { font-size: 18px; font-weight: 600; color: var(--c-ink-2); }
+.phd-t { font-size: var(--fs-m); font-weight: 600; color: var(--c-ink-2); max-width: 26ch; text-wrap: balance; }
 .phd-pill { display: inline-flex; align-items: center; gap: 10px; min-height: 48px; padding: 0 22px; border-radius: 999px; background: var(--c-warn-soft); color: var(--c-warn); font-size: 17px; font-weight: 600; margin-top: 6px; transition: transform .15s var(--ease), filter .15s var(--ease); }
 .phd-empty:hover .phd-pill { filter: brightness(1.06); } .phd-empty:active .phd-pill { transform: scale(.97); }
 .phd.has { border-color: transparent; background: #0b0f0e; }
@@ -1675,8 +1677,12 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
 .phd-n { position: absolute; top: 14px; left: 14px; background: rgba(0, 0, 0, .55); color: #fff; font-size: 13px; font-weight: 600; border-radius: 999px; padding: 3px 10px; }
 .phd-slide .wn-tags { left: 12px; right: 12px; bottom: 12px; } .phd-slide .wn-tags i { font-size: 13px; padding: 2px 8px; }
 .phd-more { display: inline-flex; align-items: center; gap: 6px; margin: 10px 0 0; font-weight: 600; color: var(--c-ink); cursor: pointer; text-decoration: underline; text-underline-offset: 3px; min-height: 44px; }
-.phd-hint { margin: 10px 0 0; }
-.phd-tips { margin: 6px 0 0; } .phd-tips summary { cursor: pointer; font-weight: 600; min-height: 44px; display: flex; align-items: center; }
+/* «Як фотографувати» — розкривашка: заголовок над текстом, текст — по дотику (владелец 10.11) */
+.phd-tips { margin: 6px 0 0; } .phd-tips > summary { list-style: none; cursor: pointer; font-weight: 600; min-height: 48px; display: flex; align-items: center; gap: 8px; }
+.phd-tips > summary::-webkit-details-marker { display: none; }
+.phd-tips > summary .pacc-chev { flex: none; color: var(--c-ink-2); transform: rotate(90deg); transition: transform .15s var(--ease); }
+.phd-tips[open] > summary .pacc-chev { transform: rotate(-90deg); }
+.phd-hint { margin: 0 0 6px; color: var(--c-ink-2); }
 .phd-tips ul { margin: 0 0 4px; padding-left: 20px; } .phd-tips li { margin: 4px 0; }
 /* розпізнавання й завантаження — поверх фото */
 .phd-over { position: absolute; inset: 0; display: flex; flex-direction: column; justify-content: flex-end; color: #fff;
@@ -1715,3 +1721,52 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
 .phd-slide.gone { background: var(--c-surface-2); } .phd-slide.gone img { display: none; }
 .phd-slide.gone .gone-t { display: grid; place-items: center; height: 100%; padding: 16px; text-align: center; color: var(--c-ink-2); }
 .phd-undo { margin: 8px 0 0; }
+
+/* ---------- 10.11: екран лічильника, введення показань, екран квартири (владелец) ---------- */
+/* «Внести показання» — над табло; на широкому — праворуч угорі, табло ліворуч на всю висоту */
+.hg3 > .hg-side:empty { display: none; }
+@media (min-width: 960px) {
+  .hero-grid.hg3 { grid-template-areas: "m a" "m s"; grid-template-rows: auto 1fr; }
+  .hg3 > .hg-act { grid-area: a; } .hg3 > .wm-col { grid-area: m; } .hg3 > .hg-side { grid-area: s; }
+}
+/* «Коли знімали»: на телефоні — на всю ширину */
+.f-date { max-width: 280px; }
+@media (max-width: 599px) { .f-date { max-width: none; } }
+/* поля показань — виділений блок; підказка про цифри — в ньому, під полями, а не біля кнопки */
+.rd-box { background: var(--c-surface); border: 1.5px solid var(--c-line); border-radius: 16px; padding: var(--sp-4) var(--sp-4) var(--sp-3); }
+.rd-box .wfield > label, .rd-box .efield > legend { font-size: var(--fs-m); font-weight: 600; }
+.rd-box .wfield > label .ico, .rd-box .efield > legend .ico { vertical-align: -2px; }
+.rd-box .field .ctl { border-width: 2px; border-color: var(--c-ink-2); }
+.rd-box .field .ctl:focus-within { border-color: var(--c-ink); }
+.rd-box .field.is-warn .ctl { border-color: var(--c-warn-line); } .rd-box .field.is-block .ctl { border-color: var(--c-bad); }
+.rd-box .field input.num { min-height: 60px; font-size: var(--fs-xl); }
+.rd-box .efield { border: 0; padding: 0; margin: 0; background: none; }
+.rd-box .efield + .efield { margin-top: var(--sp-4); }
+.rd-box .efield > legend { padding: 0; margin-bottom: 6px; }
+.rd-hint { margin: 0; padding-top: var(--sp-3); border-top: 1px solid var(--c-line); color: var(--c-ink-2); }
+.rd-box + .wiz-actions { margin-top: var(--sp-5); }
+/* екран квартири: три розкривашки */
+.pv-groups { margin: var(--sp-4) 0 var(--sp-5); }
+.pv-groups .pg-body > :last-child { margin-bottom: 0; }
+.pv-add { margin: 12px 0 0; }
+.prov-bills { margin-top: 10px; padding-top: 12px; border-top: 1px dashed var(--c-line); }
+.prov-bills-t { font-size: var(--fs-s); font-weight: 600; color: var(--c-ink-2); margin: 0 0 8px !important; }
+.pv-mname { margin: 8px 0 4px !important; }
+/* лендинг: стрічка постачальників — пливе справа наліво (владелец 10.11), на наведенні — пауза; краї тануть */
+.lp-marq { display: grid; gap: 10px; overflow: hidden; margin: 0 calc(var(--sp-4) * -1); -webkit-mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent); mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent); }
+.lpm-row { display: flex; width: max-content; animation: lpMarq 70s linear infinite; }
+.lpm-row.r2 { animation-duration: 85s; animation-delay: -30s; }
+.lpm-track { flex-wrap: nowrap; padding-right: 10px; }
+.lpm-track li { white-space: nowrap; }
+.lp-marq:hover .lpm-row { animation-play-state: paused; }
+@keyframes lpMarq { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+@media (prefers-reduced-motion: reduce) {
+  .lp-marq { -webkit-mask-image: none; mask-image: none; margin: 0; }
+  .lpm-row { animation: none; width: auto; justify-content: center; }
+  .lpm-track { flex-wrap: wrap; justify-content: center; padding-right: 0; }
+  .lpm-track[aria-hidden] { display: none; }
+}
+/* без картки «Графік відключень» (10.11): «Скільки це коштує» займає вільне місце ряду */
+@media (min-width: 600px) { .lp-bento.no-gpv .c-cost { grid-column: 1 / -1; } }
+@media (min-width: 960px) { .lp-bento.no-gpv .c-cost { grid-column: span 2; } }
+.hg3 > .hg-side > :first-child { margin-top: 0; }

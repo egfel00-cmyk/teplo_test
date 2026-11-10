@@ -5,7 +5,7 @@ const { chromium } = require('playwright'); const demo = require('./demo.cjs');
 let pass = 0, fail = 0; const ok = (n, c, x) => { if (c) { pass++; console.log('  OK  ' + n); } else { fail++; console.log(' FAIL ' + n + (x !== undefined ? ' → ' + JSON.stringify(x) : '')); } };
 const U = 'http://127.0.0.1:8013/';
 (async () => {
-  const b = await chromium.launch(); const ctx = await b.newContext({ viewport: { width: 390, height: 844 }, locale: 'uk-UA' });
+  const b = await chromium.launch(); const ctx = await require('./pvopen.cjs').ctx(b, { viewport: { width: 390, height: 844 }, locale: 'uk-UA' });
   await ctx.grantPermissions(['clipboard-read', 'clipboard-write'], { origin: U.slice(0, -1) });
   const p = await ctx.newPage(); const errs = []; p.on('pageerror', e => errs.push(e.message));
   const st = async () => JSON.parse(await p.evaluate(() => localStorage.getItem('teplo.v1')));
@@ -33,7 +33,7 @@ const U = 'http://127.0.0.1:8013/';
   ok('плитка «Налаштування квартири» → #place-main, «Додати лічильник» на головній немає', (await p.getAttribute('[data-key=card-place-set]', 'href')) === '#place-main' && !(await p.$('[data-key=card-add-meter]')) && /прибрати лічильник/.test(await txt('[data-key=card-place-set]')));
   await p.click('[data-key=card-place-set]'); await p.waitForTimeout(400);
   ok('екран квартири: «Додати лічильник», «Прибрати», назад — «Головна»', !!(await p.$('[data-key=pv-add-meter]')) && !!(await p.$('[data-key=pv-remove-h1]')) && (await p.getAttribute('[data-key=pv-back]', 'href')) === '#home');
-  ok('екран квартири: у рядках водомірів без №', !/№/.test(await txt('[data-key=pv-meters]')), await txt('[data-key=pv-meters]'));
+  ok('екран квартири: у рядках водомірів без №', !/№/.test(await txt('#pg-pv-meters')), await txt('#pg-pv-meters'));
 
   // ---- 3. сторінка лічильника — без рахунків під назвою, без «Змінити» і без налаштувань (владелец 05.11 20:45–20:46): усе — на екрані квартири
   await go('water-hot');
@@ -81,7 +81,7 @@ const U = 'http://127.0.0.1:8013/';
   ok('ввід світла: «Лише для себе» — під «Зберегти»', await after('#own-chk', '[data-key=en-save]'));
 
   // ---- 6. ru и 320 px
-  const ru = await b.newContext({ viewport: { width: 320, height: 700 }, locale: 'ru-RU' }); const q = await ru.newPage();
+  const ru = await require('./pvopen.cjs').ctx(b, { viewport: { width: 320, height: 700 }, locale: 'ru-RU' }); const q = await ru.newPage();
   await q.goto(U); await q.evaluate(x => localStorage.setItem('teplo.v1', JSON.stringify(x)), demo({ elec: true, gas: true, second: true })); await q.goto(U + '#home'); await q.reload(); await q.waitForTimeout(500);
   ok('ru: плитка «Настройки квартиры», 320 px без переполнения', /Настройки квартиры/.test(await q.textContent('[data-key=card-place-set]')) && await q.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1));
   await q.goto(U + '#elec'); await q.waitForTimeout(400);

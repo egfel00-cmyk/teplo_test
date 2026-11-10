@@ -312,6 +312,8 @@
     bill: '<path d="M6 3h12v18l-2.5-1.6L13 21l-2-1.6L9 21l-3-1.8z"/><path d="M9 8h6M9 11.5h6M9 15h3.5"/>',
     edit: '<path d="M4 20h4L18.5 9.5a2.1 2.1 0 0 0-4-4L4 16v4z"/><path d="M13.5 6.5l4 4"/>',
     wrench: '<path d="M14.5 5.5a4 4 0 0 0 4.9 4.9l-8.9 8.9a2 2 0 0 1-2.8-2.8l8.9-8.9a4 4 0 0 0-2.1-2.1z"/><path d="M14.5 5.5L17 3l2.5 2.5"/>',
+    trash: '<path d="M4 7h16"/><path d="M18 7v12a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V7"/><path d="M9 7V5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2"/><path d="M10 11v6"/><path d="M14 11v6"/>',
+    swap: '<path d="M16 3l4 4-4 4"/><path d="M20 7H5"/><path d="M8 21l-4-4 4-4"/><path d="M4 17h15"/>',
     phone: '<path d="M5 4h4l1.5 4.5-2.5 1.5a11 11 0 0 0 6 6l1.5-2.5L20 15v4a1 1 0 0 1-1 1A16 16 0 0 1 4 5a1 1 0 0 1 1-1z"/>',
     send: '<path d="M21 3L3 10.5l7 2.5 2.5 7z"/><path d="M10 13l11-10"/>',
     bolt: '<path d="M13 3L5.5 13.5H11L10 21l7.5-10.5H12z"/>'
@@ -772,7 +774,7 @@
     return '<form class="hp-edit" data-hp-form="' + id + '" novalidate data-key="hp-edit-form"><div class="hp-name">' +
       '<div class="field"><label for="hpn-' + id + '">' + esc(t('hp_name')) + '</label><div class="ctl"><input id="hpn-' + id + '" maxlength="40" autocomplete="off" value="' + esc(p.name || '') + '" placeholder="' + esc(idx <= 0 ? t('pl_mine') : t('pl_unnamed', { n: idx + 1 })) + '"></div>' +
         '<div class="pv-chips">' + t('pv_chips').split('|').map(function (c) { return '<button type="button" class="chip" data-act="hp-chip" data-id="' + id + '" data-v="' + esc(c) + '">' + esc(c) + '</button>'; }).join('') + '</div></div>' +
-      '</div>' + addrFieldsFor('hpa-' + id, p, false) + (afKh(p) ? '<p class="small muted hp-addr-gpv">' + esc(t('hp_addr_gpv')) + '</p>' : '') +
+      '</div>' + addrFieldsFor('hpa-' + id, p, false) + (GPV_ON && afKh(p) ? '<p class="small muted hp-addr-gpv">' + esc(t('hp_addr_gpv')) + '</p>' : '') +
       '<div class="row-actions"><button type="button" class="btn sec" data-act="hp-cancel">' + esc(t('cancel')) + '</button><button type="submit" class="btn" data-key="hp-save">' + esc(t('save')) + '</button></div></form>';
   }
   /** Шапка квартири в списку: рядок на кожен вид лічильників — значок, назва, що робити й до коли (спершу термінове).
@@ -844,11 +846,14 @@
   // Сервер раз на 10 хв забирає графік: GET /api/gpv → days[дата][черга] = {off, may} — проміжки в хвилинах від півночі за Києвом.
   // Черга квартири — p.gpv ('3.1'): людина обирає сама (поруч — офіційний пошук черги за адресою). Без адреси блоку немає.
   // Зранку бот надсилає графік на сьогодні (p.gpvTg !== false, потрібен Telegram) — app/gpv.php.
+  // Графіки відключень на сайті вимкнено (владелец 10.11: «закоммить, чтобы их не было на фронте»): блоки, підказка під адресою й картка лендингу
+  // не показуються, /api/gpv не запитується. Сервер і ранкові повідомлення бота — без змін. Увімкнути — GPV_ON = true.
+  var GPV_ON = false;
   var GPV = { data: null, at: 0, busy: false, err: false, pick: {}, addr: {} };
   var GPV_Q = ['1.1', '1.2', '2.1', '2.2', '3.1', '3.2', '4.1', '4.2', '5.1', '5.2', '6.1', '6.2'];
   var GPV_LOOKUP = 'https://oblenergo.kharkiv.ua/uk/gaoinfo', GPV_CHANNEL = 'https://t.me/kharkivenergy';
   function gpvLoad() {
-    if (!window.TEPLO_API || GPV.busy || Date.now() - GPV.at < 600000) return; GPV.busy = true; GPV.at = Date.now();
+    if (!GPV_ON || !window.TEPLO_API || GPV.busy || Date.now() - GPV.at < 600000) return; GPV.busy = true; GPV.at = Date.now();
     fetch(window.TEPLO_API + '/gpv', { credentials: 'same-origin', headers: { Accept: 'application/json' } }).then(function (r) { return r.json(); }).then(function (j) {
       GPV.busy = false; var ok = !!(j && j.days), was = JSON.stringify([GPV.data, GPV.err]);
       GPV.err = !ok; if (ok) GPV.data = j; if (was !== JSON.stringify([GPV.data, GPV.err])) safeRender();
@@ -868,7 +873,7 @@
   }
   /** Графік Харківобленерго — лише для Харківщини: пункт не обрано (стара адреса рядком) чи обрано на Харківщині й є вулиця. */
   function afKh(p) { return !(p && p.city && p.city.n) || p.city.r === 'kh'; }
-  function gpvHas(p) { return !!(p && String(p.address || '').trim() && afKh(p) && (!(p.city && p.city.n) || String(p.street || '').trim())); }
+  function gpvHas(p) { return !!(GPV_ON && p && String(p.address || '').trim() && afKh(p) && (!(p.city && p.city.n) || String(p.street || '').trim())); }
   /** Черга за адресою квартири (сервер шукає в переліку Харківобленерго): знайшли — підставляємо самі (p.gpvAuto), ні — варіанти. */
   function gpvAddr(p) {
     var a = String(p.address || '').trim(), c = GPV.addr[a]; if (!a || !window.TEPLO_API) return null;
@@ -1077,6 +1082,8 @@
     return '<section class="panel mhist" data-key="' + k + '-hist"><h2 class="mhist-h">' + ico('history', 18, 'bt-ico') + '<span>' + esc(t('wh_title')) + '</span>' + (total > 3 ? '<span class="mhist-n">' + total + '</span>' : '') + '</h2>' +
       rows + (total > 3 ? '<div class="mhist-all">' + allBtn + '</div>' : '') + '</section>';
   }
+  /** Екран лічильника: «Внести показання» — над табло (владелец 10.11); на широкому — праворуч угорі, табло ліворуч на всю висоту. */
+  function heroGrid(meter, act, side) { return '<div class="hero-grid hg3"><div class="hg-act">' + act + '</div><div class="wm-col">' + meter + '</div><div class="hg-side">' + side + '</div></div>'; }
   function mbox(o) {
     return '<section class="panel mbox mbox-' + o.kind + '" data-key="' + o.key + '">' +
       '<header class="mbox-h">' + ico(o.icon, 24, o.cls) + '<span class="mbox-t"><b>' + esc(o.name) + '</b>' + (o.sub && subSpans(o.sub) ? '<span class="small muted mbox-sub">' + subSpans(o.sub) + '</span>' : '') + '</span></header>' +
@@ -1606,14 +1613,14 @@
         set: wmeterFields(m, i0 === 0) + (i0 === 0 ? priceBlock(kind) : '') + gapSetLink(m.id) , setTitle: t('mb_set_read') });
     }).join('');
     // «Розпізнати з фото» — лише на введенні показань (владелец 07.11); тут на її місці — «Куди передати» в рамці
-    var right = '<button class="btn big block" data-act="wnew" data-kind="' + kind + '" data-key="water-add">' + ico('plus', 22) + '<span>' + esc(t('wn_title')) + '</span></button>';
+    var act = '<button class="btn big block" data-act="wnew" data-kind="' + kind + '" data-key="water-add">' + ico('plus', 22) + '<span>' + esc(t('wn_title')) + '</span></button>';
     // куди передати: є показання цього місяця — з готовими цифрами, інакше — куди й до якого числа
-    right += whereAcc(wsendPanel(last && thisMonth(last.date) ? last : null, kind));
+    var right = whereAcc(wsendPanel(last && thisMonth(last.date) ? last : null, kind));
     // історія: останні три (разом із періодами без лічильника), решта — у вкладці «Історія»
     var wr = wrows(kind, 3);
     if (wr.total) right += histPanel(wr.html, wr.total, '<button class="btn sec block" data-act="view-go" data-v="' + kind + '" data-to="history" data-key="water-all">' + esc(t('wh_all', { n: wr.total })) + '</button>', 'water');
     // «Як знімати й куди передавати» на екрані лічильника прибрано (владелец 07.11) — це є в «Довідці» й у «Куди передати»
-    h += '<div class="hero-grid"><div class="wm-col">' + left + '</div><div>' + right + '</div></div>';
+    h += heroGrid(left, act, right);
     return { screen: 'S30', route: 'water-' + kind, html: h };
   }
   V['water-hot'] = function () { return wwater('hot'); };
@@ -2202,21 +2209,24 @@
   function eheatRow() { return sheatRow('elec'); }
   /** Поля лічильника світла/газу (назва, рахунок, №); зони — поки немає жодного показання (новий лічильник квартири). */
   /** Налаштування водоміра в блоці на його сторінці — як у світла/газу: назва, №, повірка, код у боті (ті ж data-wm, що в Налаштуваннях). */
-  function wmeterFields(m, withAcc) {
+  function wmeterFields(m, withAcc, onlyMeter) {
     return (withAcc ? waccFields('mw', wcfg()) : '') + '<div class="grid2">' +
       '<div class="field"><label for="mbn-' + m.id + '">' + esc(t('wm_name')) + '</label><div class="ctl"><input id="mbn-' + m.id + '" data-wm="' + m.id + '" data-wf="name" maxlength="40" value="' + esc(m.name || '') + '" placeholder="' + esc(t('wm_name_ph')) + '"></div></div>' +
       '<div class="field"><label for="mbsn-' + m.id + '">' + esc(t('wm_serial')) + '</label><div class="ctl"><input id="mbsn-' + m.id + '" class="num" autocomplete="off" data-wm="' + m.id + '" data-wf="serial" value="' + esc(m.serial || '') + '">' + ctlCopy('mbsn-' + m.id) + '</div></div>' +
       '<div class="field"><label for="mbv-' + m.id + '">' + esc(t('mv_date')) + '</label><div class="ctl"><input id="mbv-' + m.id + '" type="date" data-wm="' + m.id + '" data-wf="verifiedUntil" value="' + esc(m.verifiedUntil || '') + '"></div></div>' +
-      '<div class="field"><label for="mbi-' + m.id + '">' + esc(t('wm_vkid')) + '</label><div class="ctl"><input id="mbi-' + m.id + '" class="num" inputmode="numeric" autocomplete="off" data-wm="' + m.id + '" data-wf="vkId" value="' + esc(m.vkId || '') + '">' + ctlCopy('mbi-' + m.id) + '</div></div></div>';
+      (onlyMeter ? '' : wvkField(m, t('wm_vkid'))) + '</div>';
   }
+  /** Код водоміра в боті Водоканалу — номер у постачальника (на екрані квартири — у «Постачальники, тарифи й рахунки»). */
+  function wvkField(m, lbl) { return '<div class="field"><label for="mbi-' + m.id + '">' + esc(lbl) + '</label><div class="ctl"><input id="mbi-' + m.id + '" class="num" inputmode="numeric" autocomplete="off" data-wm="' + m.id + '" data-wf="vkId" value="' + esc(m.vkId || '') + '">' + ctlCopy('mbi-' + m.id) + '</div></div>'; }
   /** Налаштування теплолічильника в блоці: модель (змінити — вибір моделі), повірка. */
-  function heatMeterFields(m) {
+  function heatMeterFields(m, onlyMeter) {
     var hm = S.meter || {};
-    return '<div class="grid2"><div class="field"><label for="p-hacc">' + esc(t('hm_acc')) + '</label><div class="ctl"><input id="p-hacc" class="num" inputmode="numeric" autocomplete="off" data-hm="account" value="' + esc(hm.account || '') + '">' + ctlCopy('p-hacc') + '</div><div class="help">' + esc(t('hm_acc_h')) + '</div></div>' +
+    return '<div class="grid2">' + (onlyMeter ? '' : hmAccField()) +
       '<div class="field"><span class="lbl">' + esc(t('p_meter')) + '</span><p style="margin:0"><b>' + esc(modelName(m)) + '</b> · <a href="#meter" data-key="mb-heat-model">' + esc(t('change')) + '</a></p></div>' +
       '<div class="field"><label for="p-hser">' + esc(t('wm_serial')) + '</label><div class="ctl"><input id="p-hser" class="num" autocomplete="off" data-hm="serial" value="' + esc(hm.serial || '') + '">' + ctlCopy('p-hser') + '</div></div>' +
       '<div class="field"><label for="p-ver">' + esc(t('mv_date')) + '</label><div class="ctl"><input id="p-ver" type="date" value="' + esc(hm.verifiedUntil || '') + '"></div></div></div>';
   }
+  function hmAccField() { var hm = S.meter || {}; return '<div class="field"><label for="p-hacc">' + esc(t('hm_acc')) + '</label><div class="ctl"><input id="p-hacc" class="num" inputmode="numeric" autocomplete="off" data-hm="account" value="' + esc(hm.account || '') + '">' + ctlCopy('p-hacc') + '</div><div class="help">' + esc(t('hm_acc_h')) + '</div></div>'; }
   /** «Ціна» в налаштуваннях кожного лічильника: відома — вже вписана (з довідника за адресою чи з платіжки), невідома — порожнє
    *  поле і прохання вписати з платіжки. k: heat | hot | cold | elec | gas. Пишемо в квартиру: p.prov[heat|water|elec].price…, p.gasPrice, p.bill.abon. */
   function priceBlock(k) {
@@ -2266,17 +2276,22 @@
     return '<div class="field"><label for="' + id + '">' + esc(lbl) + '</label><div class="ctl"><input id="' + id + '" class="num" autocomplete="off" ' + attrs + ' data-em="' + m.id + '" data-ef="' + f + '" value="' + esc(m[f] || '') + '">' + ctlCopy(id) + '</div>' +
       (warn ? '<div class="help warn" data-key="' + id + '-warn">' + esc(warn) + '</div>' : '') + (help ? '<div class="help">' + esc(help) + '</div>' : '') + '</div>';
   }
-  function smeterFields(k, m) {
+  function smeterFields(k, m, onlyMeter) {
     var zfree = k === 'elec' && !mrecs(m.id).length;
     return '<div class="grid2">' +
       '<div class="field"><label for="emn-' + m.id + '">' + esc(t('em_name')) + '</label><div class="ctl"><input id="emn-' + m.id + '" maxlength="40" data-em="' + m.id + '" data-ef="name" value="' + esc(m.name || '') + '" placeholder="' + esc(tk(k, 'em_name_ph')) + '"></div></div>' +
-      (k === 'gas' ? sfld(m, 'grm', 'emg-', t('gm_grm'), 'inputmode="numeric"', t('gm_grm_h'), m.grm && dgt(m.grm).length !== 10 ? t('gm_e_grm', { n: dgt(m.grm).length }) : '') : '') +
-      sfld(m, 'account', 'ema-', tk(k, 'em_acc'), 'inputmode="numeric"', tk(k, 'em_acc_h'), k === 'gas' && m.account && dgt(m.account).length !== 9 ? t('gm_e_acc', { n: dgt(m.account).length }) : '') +
-      (k === 'gas' ? sfld(m, 'eic', 'eme-', t('gm_eic'), 'autocapitalize="characters" spellcheck="false" maxlength="20"', t('gm_eic_h'), !m.eic ? '' : m.eic.length !== 16 ? t('gm_e_eic', { n: m.eic.length }) : !/^56/.test(m.eic) ? t('gm_e_eic56') : '') : '') +
+      (onlyMeter ? '' : sprovFields(k, m)) +
       '<div class="field"><label for="ems-' + m.id + '">' + esc(t('wm_serial')) + '</label><div class="ctl"><input id="ems-' + m.id + '" class="num" autocomplete="off" data-em="' + m.id + '" data-ef="serial" value="' + esc(m.serial || '') + '">' + ctlCopy('ems-' + m.id) + '</div></div></div>' +
       (zfree ? '<fieldset class="field"><legend class="lbl">' + esc(t('ea_zones')) + '</legend><div class="wz-opts" role="radiogroup">' + [1, 2, 3].map(function (n) {
         return '<label class="wz-opt"><input type="radio" name="emz-' + m.id + '" value="' + n + '"' + (El.zones(m) === n ? ' checked' : '') + ' data-em="' + m.id + '" data-ef="zones" data-key="em-z' + n + '"><span><b>' + esc(t('ez_n' + n)) + '</b><span class="small muted">' + esc(t('ea_z' + n + '_s')) + '</span></span></label>';
       }).join('') + '</div></fieldset>' : k === 'elec' ? '<p class="small muted">' + esc(t('em_zones_fix')) + '</p>' : '');
+  }
+  /** Номери лічильника в постачальника: ГРМ (газ), особовий рахунок, EIC (газ). На екрані квартири — у «Постачальники, тарифи й рахунки». */
+  function sprovFields(k, m) {
+    return '' +
+      (k === 'gas' ? sfld(m, 'grm', 'emg-', t('gm_grm'), 'inputmode="numeric"', t('gm_grm_h'), m.grm && dgt(m.grm).length !== 10 ? t('gm_e_grm', { n: dgt(m.grm).length }) : '') : '') +
+      sfld(m, 'account', 'ema-', tk(k, 'em_acc'), 'inputmode="numeric"', tk(k, 'em_acc_h'), k === 'gas' && m.account && dgt(m.account).length !== 9 ? t('gm_e_acc', { n: dgt(m.account).length }) : '') +
+      (k === 'gas' ? sfld(m, 'eic', 'eme-', t('gm_eic'), 'autocapitalize="characters" spellcheck="false" maxlength="20"', t('gm_eic_h'), !m.eic ? '' : m.eic.length !== 16 ? t('gm_e_eic', { n: m.eic.length }) : !/^56/.test(m.eic) ? t('gm_e_eic56') : '') : '');
   }
   /** Сторінка виду: табло кожного лічильника, «Внести», «Куди передати», історія, налаштування лічильника. */
   function sPage(k) {
@@ -2289,11 +2304,11 @@
     }).join('');
     if (k === 'elec') left += gpvBox(p, 'elec');
     var w = SK[k].mod.win(today()), cur = w.open ? ms.map(function (m) { return einWin(m.id, w); }) : null;
-    var right = '<button class="btn big block" data-act="' + SK[k].nw + '" data-key="' + k + '-add">' + ico('plus', 22) + '<span>' + esc(tk(k, 'en_title')) + '</span></button>' + whereAcc(ssendPanel(k, cur));
+    var act = '<button class="btn big block" data-act="' + SK[k].nw + '" data-key="' + k + '-add">' + ico('plus', 22) + '<span>' + esc(tk(k, 'en_title')) + '</span></button>', right = whereAcc(ssendPanel(k, cur));
     var er = srows(k, 3);
     if (er.total) right += histPanel(er.html, er.total, '<button class="btn sec block" data-act="view-go" data-v="' + k + '" data-to="history" data-key="' + k + '-all">' + esc(t('wh_all', { n: er.total })) + '</button>', k);
     // «Як знімати й куди передавати» прибрано (владелец 07.11)
-    h += '<div class="hero-grid"><div class="wm-col">' + left + '</div><div>' + right + '</div></div>';
+    h += heroGrid(left, act, right);
     return { screen: k === 'gas' ? 'S55' : 'S50', route: k, html: h };
   }
   V.elec = function () { return sPage('elec'); };
@@ -2307,8 +2322,8 @@
   function phCard(o) {
     var p = o.p, ph = o.photos || [], st = o.busy ? (o.stage || 'read') : '';
     var h = '<div class="phd' + (ph.length ? ' has' : '') + (ph.length > 1 ? ' many' : '') + (ph.length && !o.busy ? ' fit' : '') + '" id="' + p + '-phd" data-stage="' + st + '" data-key="' + p + '-phd">';
-    if (!ph.length) h += '<label for="' + p + '-files" class="phd-empty" tabindex="0" data-key="' + p + '-photo-pick">' + ico('image', 52, 'phd-ico') +
-      '<span class="phd-t">' + esc(t('phd_add')) + '</span><span class="phd-pill">' + ico('images', 22) + '<span>' + esc(t('phd_pick')) + '</span></span></label>';
+    if (!ph.length) h += '<label for="' + p + '-files" class="phd-empty" tabindex="0" data-key="' + p + '-photo-pick">' + ico('image', 40, 'phd-ico') +
+      '<span class="phd-t">' + esc(o.title || t('phd_add')) + '</span><span class="phd-pill">' + ico('images', 22) + '<span>' + esc(t('phd_pick')) + '</span></span></label>';
     else h += '<div class="phd-strip">' + ph.map(function (x, i) {
       var fc = !o.busy && x.file && x.file._focus;
       return '<div class="phd-slide"><img data-gal="' + p + '" data-i="' + i + '" src="' + x.url + '"' + (fc && fc.w > 0 ? ' data-f="' + [fc.x, fc.y, fc.w, fc.h].join(',') + '"' : '') + ' alt="' + esc(t('ph_from', { n: i + 1 })) + '">' +
@@ -2324,8 +2339,9 @@
       '<button type="button" class="phd-stop" data-act="' + o.stop + '" data-key="' + o.stop + '">' + ico('close', 16) + '<span>' + esc(t('ph_stop')) + '</span></button></div></div>';
     h += '</div>';
     if (ph.length && !o.busy) h += '<label for="' + p + '-files" class="phd-more" tabindex="0" data-key="' + p + '-photo-pick">' + ico('plus', 18) + '<span>' + esc(o.more) + '</span></label>';
-    if (!ph.length) h += '<p class="small muted phd-hint">' + esc(o.hint) + '</p>' +
-      '<details class="phd-tips" data-key="' + p + '-tips"><summary>' + esc(t('ph_tips_t')) + '</summary><ul>' + t('phd_tips').split('|').map(function (x) { return '<li>' + esc(x) + '</li>'; }).join('') + '</ul></details>';
+    // «Як фотографувати» — заголовок-розкривашка над текстом, порада не висить постійно (владелец 10.11)
+    if (!ph.length) h += '<details class="phd-tips" data-key="' + p + '-tips"><summary>' + esc(t('ph_tips_t')) + ico('chev', 18, 'pacc-chev') + '</summary>' +
+      '<p class="small phd-hint">' + esc(o.hint) + '</p><ul>' + t('phd_tips').split('|').map(function (x) { return '<li>' + esc(x) + '</li>'; }).join('') + '</ul></details>';
     return h;
   }
   /** Етап і кільце модуля — без перемальовування (прогрес ллється часто). */
@@ -2339,7 +2355,7 @@
   function enPhotoBox(k) {
     if (!VIS().local) return '';
     var ph = EN.photos || [], ms = smeters(k), h = '<div class="panel wn-photo" data-key="en-photo"><input type="file" id="en-files" accept="image/*" multiple class="sr">';
-    h += phCard({ p: 'en', photos: ph, busy: EN.busy, stage: EN.stage, q: EN.q, pct: EN.pct, prog: EN.prog || t('enp_reading'), stop: 'en-stop', rm: 'en-ph-rm', hint: t('enp_hint'), more: t('enp_more') });
+    h += phCard({ p: 'en', photos: ph, busy: EN.busy, stage: EN.stage, q: EN.q, pct: EN.pct, prog: EN.prog || t('enp_reading'), stop: 'en-stop', rm: 'en-ph-rm', title: t('phd_add_ocr'), hint: t('enp_hint'), more: t('enp_more') });
     if (EN.busy) return h + '</div>';
     if (EN.err) h += '<p class="help warn">' + esc(EN.err) + '</p>';
     if (!ph.length) return h + '</div>';
@@ -2408,7 +2424,7 @@
     if (EN.k !== k) EN = enFresh(k);
     var date = EN.date || today(), back = EN.back || SK[k].page, w = md.win(date);
     var h = '<h1>' + esc(tk(k, 'en_title')) + '</h1><p class="small muted">' + esc(tk(k, w.open ? 'en_lead_open' : 'en_lead_closed', { a: fmtDate(w.open ? w.from : w.next), b: fmtDate(w.to) })) + '</p>' +
-      '<div class="field" style="max-width:280px"><label for="en-date">' + esc(t('wn_date')) + '</label><div class="ctl"><input id="en-date" type="date" value="' + esc(date) + '" max="' + today() + '"></div></div>' + enPhotoBox(k) + '<form id="en-form" novalidate>';
+      enPhotoBox(k) + '<div class="field f-date"><label for="en-date">' + esc(t('wn_date')) + '</label><div class="ctl"><input id="en-date" type="date" value="' + esc(date) + '" max="' + today() + '"></div></div>' + '<form id="en-form" novalidate><div class="rd-box" data-key="en-box">';
     ms.forEach(function (m) {
       var p = eprev(m.id, date, EN.skip), vs = EN.vals[m.id] || {};
       h += '<fieldset class="efield" data-key="en-' + m.id + '"><legend>' + ico(SK[k].icon, 18, SK[k].cls) + ' ' + esc(ename(m)) + (m.serial ? ' <span class="small muted">№ ' + esc(m.serial) + '</span>' : '') + '</legend>' +
@@ -2419,7 +2435,7 @@
             '<div class="help" id="eh-' + id + '">' + esc(pv !== null ? tk(k, 'en_prev', { v: pv, d: fmtDate(p.date) }) : t('wn_first')) + '</div></div>';
         }).join('') + '</fieldset>';
     });
-    h += '<p class="small muted">' + esc(tk(k, 'en_digits')) + '</p><div class="wiz-actions"><button class="btn" type="submit" data-key="en-save">' + esc(t('wn_save')) + '</button></div></form>' + cancelLink(k) + ownField();
+    h += '<p class="small rd-hint">' + esc(tk(k, 'en_digits')) + '</p></div><div class="wiz-actions"><button class="btn" type="submit" data-key="en-save">' + esc(t('wn_save')) + '</button></div></form>' + cancelLink(k) + ownField();
     return { screen: k === 'gas' ? 'S56' : 'S51', route: SK[k].nw, bare: true, closeTo: back, html: h };
   }
   V.enew = function () { return sNew('elec'); };
@@ -2664,16 +2680,16 @@
     var date = WN.date || today(), back = WN.back || 'water-' + WN.kind;
     var prev = {}; ms.forEach(function (m) { var r = wprevFor(m.id, date); if (r) prev[m.id] = r; });
     var h = '<h1>' + esc(t('wn_title')) + '</h1>' + (WN.autoWhy ? '<div class="banner warn" data-key="wn-auto-why" data-why="' + esc(WN.autoWhy) + '">' + ico('info', 22) + '<div><p><b>' + esc(t('wa_why_t')) + '</b></p><p>' + esc(t('wa_why_' + WN.autoWhy)) + '</p></div></div>' : '') +
-      '<p class="small muted">' + esc(t(VIS().local ? 'wnp_lead' : 'wn_lead')) + '</p>' + wnPhotoBox() +
-      '<div class="field" style="max-width:280px"><label for="wn-date">' + esc(t('wn_date')) + '</label><div class="ctl"><input id="wn-date" type="date" value="' + esc(date) + '" max="' + today() + '"></div></div>' +
-      '<form id="wn-form" novalidate>' + order.map(function (m) {
+      wnPhotoBox() +
+      '<div class="field f-date"><label for="wn-date">' + esc(t('wn_date')) + '</label><div class="ctl"><input id="wn-date" type="date" value="' + esc(date) + '" max="' + today() + '"></div></div>' +
+      '<form id="wn-form" novalidate><div class="rd-box" data-key="wn-box">' + order.map(function (m) {
         var p = prev[m.id];
         return '<div class="field wfield" id="wf-' + m.id + '"><label for="wn-' + m.id + '">' + ico('drop', 16, m.kind === 'hot' ? 'c-hot' : 'c-cold') + ' ' + esc(wname(m)) + '</label>' +
           '<div class="ctl"><input id="wn-' + m.id + '" class="num" inputmode="decimal" autocomplete="off" data-wn="' + m.id + '" value="' + esc(WN.vals[m.id] || '') + '" placeholder="' + (p ? esc(wfmt(p.vals[m.id])) : '') + '" aria-describedby="wh-' + m.id + '"><span class="unit">м³</span>' +
-          wnSrcThumb(m.id) + '<label class="wcam" title="' + esc(t('wn_photo')) + '"><input type="file" accept="image/*" class="sr" data-wphoto="' + m.id + '" aria-label="' + esc(t('wn_photo') + ': ' + wname(m)) + '">' + ico('camera', 20) + '</label></div>' +
+          wnSrcThumb(m.id) + '</div>' +
           '<div class="help" id="wh-' + m.id + '">' + esc(wnSrcText(m.id)) + (p ? esc(t('wn_prev', { v: Wt.whole(p.vals[m.id]), d: fmtDate(p.date) })) : esc(t('wn_first'))) + '</div></div>';
       }).join('') +
-      '<p class="small muted">' + esc(t('wn_digits')) + '</p>' +
+      '<p class="small rd-hint">' + esc(t('wn_digits')) + '</p></div>' +
       '<div class="wiz-actions"><button class="btn" type="submit" data-key="wn-save">' + esc(t('wn_save')) + '</button></div></form>' + cancelLink('water') + ownField();
     return { screen: 'S31', route: 'wnew', bare: true, closeTo: back, html: h };
   };
@@ -2968,7 +2984,7 @@
       var mine = ms.filter(function (m) { return (ph[i].meters || []).indexOf(m.id) >= 0; });
       return mine.length ? '<span class="wn-tags">' + mine.map(function (m) { return '<i class="' + (m.kind === 'hot' ? 'n-hot' : 'n-cold') + '">' + esc(m.name || t('kv_' + m.kind)) + '</i>'; }).join('') + '</span>' : '';
     };
-    h += phCard({ p: 'wn', photos: ph, busy: WN.busy, stage: WN.stage, q: WN.q, pct: WN.pct, prog: WN.prog || t('wn_reading'), stop: 'wn-stop', rm: 'wn-ph-rm', tags: wtags, hint: t('wnp_hint'), more: t('wnp_more') });
+    h += phCard({ p: 'wn', photos: ph, busy: WN.busy, stage: WN.stage, q: WN.q, pct: WN.pct, prog: WN.prog || t('wn_reading'), stop: 'wn-stop', rm: 'wn-ph-rm', tags: wtags, title: t('phd_add_ocr'), hint: t('wnp_hint'), more: t('wnp_more') });
     if (WN.err) h += '<p class="help warn">' + esc(WN.err) + '</p>';
     if (ph.length) {
       if (!WN.busy) {
@@ -3133,10 +3149,19 @@
       '</div><div class="lpf-bot"><span>© ' + new Date().getFullYear() + ' ' + esc(t('brand')) + '</span><span>' + esc(t('lf_indep')) + '</span></div></footer>';
   }
   function lpCta(key, label) { return '<a class="lp-btn" href="#start" data-key="' + key + '"><span>' + esc(label) + '</span></a>'; }
+  /** «Куди передати»: основні постачальники всіх областей довідника — дві стрічки, пливуть справа наліво (владелец 10.11);
+   *  друга копія кожного ряду — для безшовного кола, читачам екрана — один список; prefers-reduced-motion — стоять. */
+  var LP_ORGS = [
+    [['heat', 'ХТМ'], ['cold', 'Київводоканал'], ['elec', 'YASNO'], ['gas', 'Газмережі'], ['heat', 'Львівтеплоенерго'], ['cold', 'Інфоксводоканал'],
+      ['elec', 'Харківенергозбут'], ['gas', 'Київгаз'], ['heat', 'Теплопостачання міста Одеси'], ['elec', 'Львівобленерго'], ['gas', 'Нафтогаз']],
+    [['cold', 'Харківводоканал'], ['heat', 'Київтеплоенерго'], ['elec', 'ДТЕК Київські електромережі'], ['gas', 'Одесагаз'], ['cold', 'Львівводоканал'],
+      ['elec', 'Харківобленерго'], ['heat', 'Броваритепловодоенергія'], ['elec', 'ДТЕК Одеські електромережі'], ['cold', 'Білоцерківвода'], ['elec', 'Львівенергозбут']]
+  ];
   function lpDest() {
-    var ds = [['heat', 'ХТМ'], ['cold', t('lp_d_vk')], ['elec', t('lp_d_obl')], ['gas', t('lp_d_grm')], ['gas', t('lp_d_naf')]];
-    return '<section class="lp-sec lp-dest" data-key="lp-dest"><p class="lp-dest-t">' + esc(t('lp_dest_t')) + '</p><ul class="lp-chips">' +
-      ds.map(function (d) { return '<li>' + ico(KINDS[d[0]].icon, 16, KINDS[d[0]].cls) + '<span>' + esc(d[1]) + '</span></li>'; }).join('') + '</ul></section>';
+    var chip = function (d) { return '<li>' + ico(KINDS[d[0]].icon, 16, KINDS[d[0]].cls) + '<span>' + esc(d[1]) + '</span></li>'; };
+    return '<section class="lp-sec lp-dest" data-key="lp-dest"><p class="lp-dest-t">' + esc(t('lp_dest_t')) + '</p><div class="lp-marq" data-key="lp-marq">' +
+      LP_ORGS.map(function (row, i) { var li = row.map(chip).join(''); return '<div class="lpm-row' + (i ? ' r2' : '') + '"><ul class="lp-chips lpm-track">' + li + '</ul><ul class="lp-chips lpm-track" aria-hidden="true">' + li + '</ul></div>'; }).join('') +
+      '</div></section>';
   }
   function lpSteps() {
     var arts = [
@@ -3184,8 +3209,8 @@
   }
   function lpBento() {
     var cell = function (key, art) { return '<article class="lp-cell c-' + key + '" data-key="lp-' + key + '"><div class="lp-cell-tx"><h3>' + esc(t('lp_' + key + '_t')) + '</h3><p>' + esc(t('lp_' + key)) + '</p></div>' + art + '</article>'; };
-    return '<section class="lp-sec" data-key="lp-bento"><h2 class="lp-h2">' + esc(t('lp_bento_t')) + '</h2><div class="lp-bento">' +
-      cell('due', lpDue()) + cell('tg', lpTg()) + cell('pl', lpPlaces()) + cell('cost', lpCost()) + cell('gpv', lpGpv()) + '</div></section>';
+    return '<section class="lp-sec" data-key="lp-bento"><h2 class="lp-h2">' + esc(t('lp_bento_t')) + '</h2><div class="lp-bento' + (GPV_ON ? '' : ' no-gpv') + '">' +
+      cell('due', lpDue()) + cell('tg', lpTg()) + cell('pl', lpPlaces()) + cell('cost', lpCost()) + (GPV_ON ? cell('gpv', lpGpv()) : '') + '</div></section>';
   }
   V.welcome = function () {
     var acc = Y().mode === 'server' && Y().account;
@@ -3490,13 +3515,13 @@
         (bs ? '' : '<p class="small muted">' + esc(t('h_last_none_sub')) + '</p><p><a class="btn sec" href="#baseline" data-key="home-add-base">' + esc(t('h_add_base')) + '</a></p>'),
       meta: [verWarn(S.meter && S.meter.verifiedUntil)].filter(Boolean),
       set: heatMeterFields(m) + priceBlock('heat') + gapSetLink('heat') , setTitle: t('mb_set_read') });
-    var right = '';
+    var act = '', right = '';
     var n = steps().length;
     if (S.draft && (Object.keys(S.draft.values || {}).length || S.draft.step > 0)) {
-      right += '<a class="btn big block" href="#step-' + (S.draft.step || 0) + '" data-key="home-continue">' + esc(t('h_continue', { i: (S.draft.step || 0) + 1, n: n })) + '</a>' +
+      act += '<a class="btn big block" href="#step-' + (S.draft.step || 0) + '" data-key="home-continue">' + esc(t('h_continue', { i: (S.draft.step || 0) + 1, n: n })) + '</a>' +
         '<button class="linkbtn" style="margin-top:8px" data-act="restart" data-key="home-restart">' + esc(t('h_read')) + ' — ' + (S.lang === 'ru' ? 'заново' : 'спочатку') + '</button>';
     } else {
-      right += '<button class="btn big block" data-act="read" data-key="home-read">' + esc(t('h_read')) + '</button>';   // фото — на кроках введення («з фото»)
+      act += '<button class="btn big block" data-act="read" data-key="home-read">' + esc(t('h_read')) + '</button>';   // фото — на кроках введення («з фото»)
     }
     right += whereAcc(heatWhere());
     var recent = heatMixed(3);
@@ -3504,7 +3529,7 @@
     if (Y().mode === 'server' && !Y().account && RD().length && !S.syncPromptDismissed) {
       html = '<div class="banner" data-key="home-save-prompt">' + ico('info', 22) + '<div><p><b>' + esc(t('save_prompt')) + '</b></p><p><a href="#login">' + esc(t('login')) + '</a> &nbsp; <button class="linkbtn" data-act="dismiss-sync">' + esc(t('save_prompt_later')) + '</button></p></div></div>' + html;
     }
-    html += '<div class="hero-grid"><div>' + left + '</div><div>' + right + '</div></div>';
+    html += heroGrid(left, act, right);
     return { screen: 'S01h', route: 'heat', html: html };
   };
 
@@ -4862,11 +4887,13 @@
   /** Старый адрес «Усі квартири» — теперь это главная (аккордеон квартир). */
   V.places = function () { return V.home(); };
   /** Строка счётчика на экране квартиры: открыть · замінити · прибрати. */
+  /** Картка лічильника на екрані квартири (владелец 10.11: «заменить и удалить яснее»): шапка — відкрити лічильник; «Налаштування лічильника» —
+   *  лише сам лічильник (назва, №, повірка, модель, зони); внизу дві рівні кнопки з рамкою: «Замінити» і «Прибрати» (червона). */
   function mrow(o) {
     return '<li class="mrow" data-key="pv-m-' + esc(o.what) + '"><a class="mrow-main" href="#' + o.href + '">' + ico(KINDS[o.kind].icon, 22, KINDS[o.kind].cls) + '<span class="grow"><b>' + esc(o.title) + '</b>' + (o.sub ? '<span class="small muted">' + esc(o.sub) + '</span>' : '') + '</span>' + ico('chev', 20) + '</a>' +
-      '<div class="mrow-act">' + (o.noReplace ? '' : '<button type="button" class="btn ter sm" data-act="m-replace" data-what="' + esc(o.what) + '" data-key="pv-replace-' + esc(o.what) + '">' + ico('wrench', 18) + '<span>' + esc(t('mr_replace')) + '</span></button>') +
-      '<button type="button" class="btn ter sm quiet-bad" data-act="m-remove" data-what="' + esc(o.what) + '" data-key="pv-remove-' + esc(o.what) + '">' + ico('close', 18) + '<span>' + esc(t('mr_remove')) + '</span></button></div>' +
-      (o.set ? '<details class="mbox-set mrow-set" id="mbs-' + esc(o.what) + '"' + (MB_OPEN[o.what] ? ' open' : '') + ' data-key="pv-set-' + esc(o.what) + '"><summary>' + ico('prefs', 18, 'bt-ico') + '<span>' + esc(t('mb_set')) + '</span>' + ico('chev', 18, 'pacc-chev') + '</summary><div class="mbox-set-b">' + o.set + '</div></details>' : '') + '</li>';
+      (o.set ? '<details class="mbox-set mrow-set" id="mbs-' + esc(o.what) + '"' + (MB_OPEN[o.what] ? ' open' : '') + ' data-key="pv-set-' + esc(o.what) + '"><summary>' + ico('prefs', 18, 'bt-ico') + '<span>' + esc(t('mb_set')) + '</span>' + ico('chev', 18, 'pacc-chev') + '</summary><div class="mbox-set-b">' + o.set + '</div></details>' : '') +
+      '<div class="mrow-act' + (o.noReplace ? ' one' : '') + '">' + (o.noReplace ? '' : '<button type="button" class="btn sec sm" data-act="m-replace" data-what="' + esc(o.what) + '" data-key="pv-replace-' + esc(o.what) + '">' + ico('swap', 18) + '<span>' + esc(t('mr_replace')) + '</span></button>') +
+      '<button type="button" class="btn danger sm" data-act="m-remove" data-what="' + esc(o.what) + '" data-key="pv-remove-' + esc(o.what) + '">' + ico('trash', 18) + '<span>' + esc(t('mr_remove')) + '</span></button></div></li>';
   }
   function verTxt(v) { return v ? t('pl_ver', { d: R.toHtmDate(v) }) : ''; }
   /** Під табло лічильника — без дати повірки (владелец 09.11: «убери даты поверки из карточек»), лише попередження: прострочена або ≤ 60 днів. Дата — у налаштуваннях. */
@@ -5073,7 +5100,7 @@
   }
   function prvKinds() { var k = []; if (hasHeat()) k.push('heat'); if (wmeters().length) k.push('water'); if (emeters().length) k.push('elec'); if (smeters('gas').length) k.push('gas'); return k; }
   var PRV_ICO = { elec: ['bolt', 'c-elec'], gas: ['flame', 'c-gas'], water: ['drop', 'c-cold'], heat: ['thermo', 'c-hot'] };
-  function prvRow(p, k, d, nat) {
+  function prvRow(p, k, d, nat, extra) {
     var my = (p.prov || {})[k] || {}, own = !!(my.name || my.supply || my.price), ed = PRV.edit[k], org = my.name || (d && d.org) || '';
     var lines = [], price = '';
     if (k === 'heat') {
@@ -5123,15 +5150,19 @@
     } else {
       h += '<p class="prov-act"><button type="button" class="btn ' + (need ? 'sec' : 'ter') + ' sm" data-act="prv-other" data-k="' + k + '" data-key="prov-other-' + k + '">' + ico('edit', 18) + '<span>' + esc(t(need ? 'prv_fill' : 'prv_change')) + '</span></button></p>';
     }
-    return h + '</div></div>';
+    return h + (extra || '') + '</div></div>';
   }
   /** Блок «Постачальники й тарифи» на екрані квартири — лише для видів, що є в квартирі. */
-  function provPanel(p) {
+  /** «Постачальники, тарифи й рахунки» на екрані квартири (владелец 10.11: «счета совмести с поставщиками и тарифами»): для кожного виду, що є
+   *  в квартирі, — постачальник і ціна, під ними ex(k) — номери й дані з платіжки (особовий рахунок, код Водоканалу, EIC, площа, абонплата…). */
+  function provPanel(p, ex) {
+    ex = ex || function () { return ''; };
     var ks = prvKinds(); if (!ks.length) return '';
-    var a = String(p.address || '').trim(), h = '<section class="panel prov" id="prov" data-key="pv-prov"><h2>' + esc(t('prv_title')) + '</h2>';
-    if (!a) return h + '<p class="small muted" data-key="prov-noaddr">' + esc(t('prv_noaddr')) + '</p></section>';
+    var a = String(p.address || '').trim(), h = '<div class="prov" id="prov" data-key="pv-prov">';
+    var bare = function (msg, key) { return h + '<p class="small muted" data-key="' + key + '">' + esc(msg) + '</p>' + ks.map(function (k) { return prvBare(k, ex(k)); }).join('') + '</div>'; };
+    if (!a) return bare(t('prv_noaddr'), 'prov-noaddr');
     var j = prvLoad(p);
-    if (!j || j.busy) return h + '<p class="small muted" data-key="prov-loading">' + esc(t('prv_loading')) + '</p></section>';
+    if (!j || j.busy) return bare(t('prv_loading'), 'prov-loading');
     var nat = (j && j.national) || {}, pl = j.found ? j.place : null;
     var pick = function (x) { return '<li><button type="button" class="prv-pick" data-act="prv-settle" data-k="place" data-n="' + esc(x.n) + '" data-h="' + esc(x.h) + '" data-key="prov-pick-' + esc(x.h) + '">' +
       '<b>' + esc(x.name) + '</b><span class="small muted">' + esc(placeWhere(x)) + '</span></button></li>'; };
@@ -5139,7 +5170,7 @@
       // кілька пунктів з такою назвою (чи схожих) — людина обирає свій: крупні рядки, без випадного списку
       h += '<p data-key="prov-lead"><b>' + esc(t(j.reason === 'typo' ? 'prv_ask_typo' : 'prv_ask', { a: a })) + '</b></p><ul class="prv-picks" data-key="prov-picks">' + j.candidates.map(pick).join('') + '</ul>' +
         '<p class="small muted">' + esc(t('prv_ask_none')) + '</p>';
-      return h + ks.map(function (k) { return prvRow(p, k, null, nat); }).join('') + '</section>';
+      return h + ks.map(function (k) { return prvRow(p, k, null, nat, ex(k)); }).join('') + '</div>';
     }
     var lead = pl ? (pl.r && pl.r !== 'kh' ? t('prv_lead2', { c: pl.name, w: placeWhere(pl) }) : t('prv_lead', { c: pl.name, h: pl.hromada, d: pl.district })) + (j.how === 'default' ? ' ' + t('prv_kh_default') : '') : j.err ? t('prv_err') : t('prv_nf', { a: a });
     if (pl && j.how === 'typo') lead = t('prv_typo', { c: pl.name, w: placeWhere(pl) });
@@ -5147,7 +5178,11 @@
     // уточнений пункт — можна змінити; знайшли місто, а є й села з такою назвою — «Не той?»
     if (pl && j.how === 'settled') h += '<p class="small"><button type="button" class="linkbtn" data-act="prv-unsettle" data-k="place" data-key="prov-unsettle">' + esc(t('prv_unsettle')) + '</button></p>';
     else if (pl && j.alts && j.alts.length) h += '<details class="prov-alts tips-box" data-key="prov-alts"><summary>' + esc(t('prv_alts', { c: pl.name })) + '</summary><ul class="prv-picks">' + j.alts.map(pick).join('') + '</ul></details>';
-    return h + ks.map(function (k) { return prvRow(p, k, j.found ? j.kinds[k] : null, nat); }).join('') + '</section>';
+    return h + ks.map(function (k) { return prvRow(p, k, j.found ? j.kinds[k] : null, nat, ex(k)); }).join('') + '</div>';
+  }
+  /** Вид без довідника (немає адреси, вантажиться) — лише назва виду й дані з платіжки. */
+  function prvBare(k, extra) {
+    return '<div class="prov-row" data-key="prov-bare-' + k + '"><span class="pst-ico ' + PRV_ICO[k][1] + '">' + ico(PRV_ICO[k][0], 20) + '</span><div class="prov-b"><p class="prov-k"><b>' + esc(t('prv_k_' + k)) + '</b></p>' + extra + '</div></div>';
   }
   document.addEventListener('click', function (e) {
     var b = e.target.closest && e.target.closest('[data-act^="prv-"]'); if (!b) return;
@@ -5182,40 +5217,46 @@
     var h = '<p><a href="#' + (many ? 'places' : 'home') + '" data-key="pv-back">← ' + esc(t(many ? 'pv_back_all' : 'nav_home')) + '</a></p>' +
       '<h1 class="pv-h" style="--pc:var(--pc-' + placeColor(p) + ')"><span class="pv-dot" aria-hidden="true"></span><span>' + esc(placeLabel(p)) + (sub ? '<span class="small muted pv-sub">' + esc(sub) + '</span>' : '') + '</span></h1>';
     if (fresh) h += '<div class="banner" data-key="pv-new">' + ico('info', 22) + '<div><p><b>' + esc(t('pv_new_t')) + '</b></p><p>' + esc(t('pv_new')) + '</p></div></div>';
-    // лічильники
+    // три розкривашки (владелец 10.11): про квартиру · лічильники · постачальники, тарифи й рахунки; у налаштуваннях лічильника — лише сам лічильник
     var rows = [];
-    if (hasHeat()) rows.push(mrow({ what: 'heat', kind: 'heat', title: t('kd_heat'), href: 'heat', sub: [modelName(model()), verTxt(S.meter.verifiedUntil)].filter(Boolean).join(' · '), set: heatMeterFields(model()) + gapSetLink('heat') }));
-    ms.forEach(function (m) { rows.push(mrow({ what: m.id, kind: m.kind, title: wkindTitle(m.kind) + (m.name ? ' · ' + m.name : ''), href: 'water-' + m.kind, sub: verTxt(m.verifiedUntil), set: wmeterFields(m, false) + gapSetLink(m.id) })); });
-    ['elec', 'gas'].forEach(function (k) { smeters(k).forEach(function (m) { rows.push(mrow({ what: m.id, kind: k, title: ename(m), href: SK[k].page, noReplace: true, sub: ezonesTxt(m), set: smeterFields(k, m) })); }); });
-    h += '<section class="panel" data-key="pv-meters"><h2>' + esc(t('pv_meters')) + '</h2>' + (rows.length ? '<ul class="mlist">' + rows.join('') + '</ul>' : '<p class="muted">' + esc(t('pv_none')) + '</p>') +
-      '<p style="margin:12px 0 0"><button class="btn' + (rows.length ? ' sec' : '') + '" data-act="add-meter" data-back="place-' + esc(p.id) + '" data-key="pv-add-meter">' + ico('plus', 20) + '<span>' + esc(t('am_tile')) + '</span></button></p>';
+    if (hasHeat()) rows.push(mrow({ what: 'heat', kind: 'heat', title: t('kd_heat'), href: 'heat', sub: [modelName(model()), verTxt(S.meter.verifiedUntil)].filter(Boolean).join(' · '), set: heatMeterFields(model(), true) + gapSetLink('heat') }));
+    ms.forEach(function (m) { rows.push(mrow({ what: m.id, kind: m.kind, title: wkindTitle(m.kind) + (m.name ? ' · ' + m.name : ''), href: 'water-' + m.kind, sub: verTxt(m.verifiedUntil), set: wmeterFields(m, false, true) + gapSetLink(m.id) })); });
+    ['elec', 'gas'].forEach(function (k) { smeters(k).forEach(function (m) { rows.push(mrow({ what: m.id, kind: k, title: ename(m), href: SK[k].page, noReplace: true, sub: ezonesTxt(m), set: smeterFields(k, m, true) })); }); });
+    var meters = (rows.length ? '<ul class="mlist">' + rows.join('') + '</ul>' : '<p class="muted">' + esc(t('pv_none')) + '</p>') +
+      '<p class="pv-add"><button class="btn' + (rows.length ? ' sec' : '') + '" data-act="add-meter" data-back="place-' + esc(p.id) + '" data-key="pv-add-meter">' + ico('plus', 20) + '<span>' + esc(t('am_tile')) + '</span></button></p>';
     var rm = removedMeters();
-    if (rm.length) h += '<h3 style="margin-top:20px">' + esc(t('am_restore_t')) + '</h3><ul class="mlist removed">' + rm.map(function (x) {
+    if (rm.length) meters += '<h3 style="margin-top:20px">' + esc(t('am_restore_t')) + '</h3><ul class="mlist removed">' + rm.map(function (x) {
       return '<li class="mrow" data-key="pv-rm-' + esc(x.what) + '"><div class="mrow-main">' + ico(KINDS[x.kind].icon, 22, KINDS[x.kind].cls) + '<span class="grow"><b>' + esc(x.title) + '</b><span class="small muted">' + esc(t('am_removed_on', { d: fmtDate(x.at, true) })) + '</span></span>' +
         '<button type="button" class="btn sec" data-act="m-restore" data-what="' + esc(x.what) + '" data-key="pv-restore-' + esc(x.what) + '">' + esc(t('am_restore')) + '</button></div></li>';
     }).join('') + '</ul>';
-    h += '</section>';
-    h += provPanel(p);
+    // дані з платіжки кожного виду — під його постачальником
+    var fld = function (id, lbl, attrs, val, unit, help) { return '<div class="field"><label for="' + id + '">' + lbl + '</label><div class="ctl"><input id="' + id + '" class="num" autocomplete="off" ' + attrs + ' value="' + esc(val) + '">' + (unit ? '<span class="unit">' + unit + '</span>' : '') + '</div>' + (help || '') + '</div>'; };
+    var optl = function (x) { return esc(x) + ' <span class="muted small">(' + esc(t('b_opt')) + ')</span>'; };
+    var bills = function (k) {
+      var b = '';
+      if (k === 'heat') b = '<div class="grid2">' + hmAccField() +
+        fld('p-area', optl(t('nm_area')), 'inputmode="decimal"', p.area ? String(p.area).replace('.', ',') : '', 'м²', areaHint()) +
+        fld('p-abon', esc(t('p_abon_l')), 'inputmode="decimal"', bill().abon.toFixed(2).replace('.', ','), '', '') + mzkField() + '</div>';
+      if (k === 'water') b = waccForm() + '<div class="grid2">' + ms.map(function (m) { return wvkField(m, ms.length > 1 ? t('wm_vkid_for', { m: wname(m) }) : t('wm_vkid')); }).join('') +
+        '<div class="field"><label for="p-persons">' + optl(t('nm_persons')) + '</label><div class="ctl"><input id="p-persons" class="num" inputmode="numeric" autocomplete="off" data-nm="persons" value="' + esc(wcfg().persons || '') + '"></div><div class="small muted">' + esc(t('pv_persons_h')) + '</div></div></div>';
+      if (k === 'elec' || k === 'gas') { var sm = smeters(k); b = sm.map(function (m) { return (sm.length > 1 ? '<p class="small muted pv-mname">' + esc(ename(m)) + '</p>' : '') + '<div class="grid2">' + sprovFields(k, m) + '</div>'; }).join('') + sheatRow(k); }
+      return b ? '<div class="prov-bills" data-key="pv-bills-' + k + '"><p class="prov-bills-t">' + esc(t('pv_bills_t')) + '</p>' + b + '</div>' : '';
+    };
+    var prov = provPanel(p, bills) || '<p class="muted">' + esc(t('pv_money_none')) + '</p>';
     // про квартиру
     var chips = t('pv_chips').split('|').map(function (c) { return '<button type="button" class="chip" data-act="pv-chip" data-v="' + esc(c) + '" aria-pressed="' + (p.name === c) + '">' + esc(c) + '</button>'; }).join('');
     var sw = PCOLORS.map(function (c) { return '<label class="swatch" style="--pc:var(--pc-' + c + ')"><input type="radio" name="pv-color" value="' + c + '"' + (placeColor(p) === c ? ' checked' : '') + '><span class="sw-dot" aria-hidden="true">' + ico('check', 20) + '</span><span class="sr">' + esc(t('pc_' + c)) + '</span></label>'; }).join('');
-    h += '<section class="panel" data-key="pv-about"><h2>' + esc(t('pv_about')) + '</h2>' +
+    var about = '<div data-key="pv-about">' +
       '<div class="field"><label for="pv-name">' + esc(t('pv_name')) + '</label><div class="ctl"><input id="pv-name" data-plf="name" maxlength="40" autocomplete="off" value="' + esc(p.name || '') + '" placeholder="' + esc(t('pv_name_ph')) + '"></div><div class="chips" role="group" aria-label="' + esc(t('pv_name')) + '">' + chips + '</div></div>' +
       '<h3 class="pv-addr-t">' + esc(t('pl_addr')) + ' <span class="muted small">(' + esc(t('b_opt')) + ')</span></h3>' + addrFieldsFor('pv', p, true) +
-      '<fieldset class="field"><legend class="lbl">' + esc(t('pv_color')) + '</legend><div class="swatches">' + sw + '</div><div class="small muted">' + esc(t('pv_color_h')) + '</div></fieldset></section>';
+      '<fieldset class="field"><legend class="lbl">' + esc(t('pv_color')) + '</legend><div class="swatches">' + sw + '</div><div class="small muted">' + esc(t('pv_color_h')) + '</div></fieldset></div>';
+    // порядок (владелец 10.11): про квартиру · лічильники · постачальники, тарифи й рахунки
+    h += '<div class="pgroups pv-groups">' +
+      prefGroup('pv-about', 'home', t('pv_about'), sub || t('pv_about_s'), about, fresh) +
+      prefGroup('pv-meters', 'clock', t('pv_meters'), rows.length ? placeKinds(p) : t('pv_none_short'), meters, fresh) +
+      prefGroup('pv-prov', 'bill', t('pv_prov_t'), t('pv_prov_s'), prov) + '</div>';
     // графік відключень — на сторінці світла; у квартири без електролічильника — тут
     if (!emeters().length) h += gpvBox(p, 'place');
-    // свои рахунки
-    var money = '';
-    if (hasHeat()) money += '<h3>' + esc(t('pv_m_heat')) + '</h3><div class="grid2">' +
-      '<div class="field"><label for="p-area">' + esc(t('nm_area')) + ' <span class="muted small">(' + esc(t('b_opt')) + ')</span></label><div class="ctl"><input id="p-area" class="num" inputmode="decimal" autocomplete="off" value="' + esc(p.area ? String(p.area).replace('.', ',') : '') + '"><span class="unit">м²</span></div>' + areaHint() + '</div>' +
-      '<div class="field"><label for="p-abon">' + esc(t('p_abon_l')) + '</label><div class="ctl"><input id="p-abon" class="num" inputmode="decimal" value="' + esc(bill().abon.toFixed(2).replace('.', ',')) + '"></div></div>' +
-      mzkField() + '</div>';
-    if (ms.length) money += '<h3>' + esc(t('pv_m_water')) + '</h3>' + waccForm() +
-      '<div class="field" style="max-width:260px"><label for="p-persons">' + esc(t('nm_persons')) + ' <span class="muted small">(' + esc(t('b_opt')) + ')</span></label><div class="ctl"><input id="p-persons" class="num" inputmode="numeric" autocomplete="off" data-nm="persons" value="' + esc(wcfg().persons || '') + '"></div><div class="small muted">' + esc(t('pv_persons_h')) + '</div></div>';
-    if (emeters().length) money += '<h3>' + esc(t('pv_m_elec')) + '</h3>' + eheatRow();
-    if (smeters('gas').length) money += '<h3>' + esc(t('pv_m_gas')) + '</h3>' + sheatRow('gas');
-    h += '<section class="panel" data-key="pv-money"><h2>' + esc(t('pv_money')) + '</h2><p class="small muted">' + esc(t('pv_money_s')) + '</p>' + (money || '<p class="muted">' + esc(t('pv_money_none')) + '</p>') + '</section>';
     if (many && window.TEPLO_API) h += '<section class="panel" data-key="pv-remind"><h2>' + esc(t('pv_remind')) + '</h2>' +
       '<label class="check-row"><input type="checkbox" id="pv-remind"' + (p.remindOff ? '' : ' checked') + (S.remind && S.remind.off ? ' disabled' : '') + '><span>' + esc(t('pv_remind_l')) + '</span></label>' +
       '<p class="small muted" style="margin-top:8px">' + esc(t(S.remind && S.remind.off ? 'pv_remind_all_off' : 'pv_remind_h')) + '</p></section>';
@@ -5448,8 +5489,8 @@
   });
   /** Настройки — группы-аккордеоны по смыслу; открытые запоминаются (перерисовка их не сворачивает). */
   var PREF_OPEN = {};
-  function prefGroup(id, icon, title, sub, html) {
-    return '<details class="pgroup" id="pg-' + id + '" data-key="pg-' + id + '"' + (PREF_OPEN[id] ? ' open' : '') + '><summary>' + ico(icon, 22) + '<span class="pg-t"><b>' + esc(title) + '</b>' + (sub ? '<span class="small muted">' + esc(sub) + '</span>' : '') + '</span>' + ico('chev', 20, 'pacc-chev') + '</summary><div class="pg-body">' + html + '</div></details>';
+  function prefGroup(id, icon, title, sub, html, dflt) {
+    return '<details class="pgroup" id="pg-' + id + '" data-key="pg-' + id + '"' + ((PREF_OPEN[id] !== undefined ? PREF_OPEN[id] : dflt) ? ' open' : '') + '><summary>' + ico(icon, 22) + '<span class="pg-t"><b>' + esc(title) + '</b>' + (sub ? '<span class="small muted">' + esc(sub) + '</span>' : '') + '</span>' + ico('chev', 20, 'pacc-chev') + '</summary><div class="pg-body">' + html + '</div></details>';
   }
   document.addEventListener('toggle', function (e) { var d = e.target; if (d && d.classList && d.classList.contains('pgroup')) PREF_OPEN[d.id.slice(3)] = d.open; }, true);
   /** Тарифы воды: свои цифры поверх тарифов Харкова; как считается цена. */

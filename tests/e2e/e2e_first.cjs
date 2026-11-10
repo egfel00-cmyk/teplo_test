@@ -7,7 +7,7 @@ const fs = require('fs');
 let pass = 0, fail = 0; const ok = (n, c, x) => { if (c) { pass++; console.log('  OK  ' + n); } else { fail++; console.log(' FAIL ' + n + (x !== undefined ? ' → ' + JSON.stringify(x) : '')); } };
 const U = 'http://127.0.0.1:8013/';
 (async () => {
-  const b = await chromium.launch(); const ctx = await b.newContext({ viewport: { width: 360, height: 800 }, locale: 'uk-UA' }); const p = await ctx.newPage();
+  const b = await chromium.launch(); const ctx = await require('./pvopen.cjs').ctx(b, { viewport: { width: 360, height: 800 }, locale: 'uk-UA' }); const p = await ctx.newPage();
   const errs = []; p.on('pageerror', e => errs.push(e.message));
   const st = async () => JSON.parse(await p.evaluate(() => localStorage.getItem('teplo.v1')) || '{}');
   const hash = () => p.evaluate(() => location.hash);
@@ -91,7 +91,7 @@ const U = 'http://127.0.0.1:8013/';
   ok('холодна «пізніше» → головна, а не привітання', s.onboarded === true && (await hash()) === '#home' && !!(await p.$('[data-key=card-cold]')));
 
   // 4б. как у гостей 14EK/1EII (iPhone 440 px, ушли на #eadd): світло/газ в очереди — «Налаштую пізніше», рахунки/№ свёрнуты, кнопка без прокрутки
-  const pq = await (await b.newContext({ viewport: { width: 440, height: 956 }, locale: 'uk-UA' })).newPage(); pq.on('pageerror', e => errs.push(e.message));
+  const pq = await (await require('./pvopen.cjs').ctx(b, { viewport: { width: 440, height: 956 }, locale: 'uk-UA' })).newPage(); pq.on('pageerror', e => errs.push(e.message));
   const pst = async () => JSON.parse(await pq.evaluate(() => localStorage.getItem('teplo.v1')) || '{}'), ph = () => pq.evaluate(() => location.hash);
   await pq.goto(U); await pq.evaluate(() => localStorage.clear()); await pq.goto(U + '#start'); await pq.waitForTimeout(500);
   await pq.click('[data-key=aw-elec-inc]'); await pq.click('[data-key=aw-gas-inc]'); await pq.click('[data-key=aw-cold-inc]');
@@ -112,14 +112,14 @@ const U = 'http://127.0.0.1:8013/';
   ok('світло не з черги: поля відкрито, без «пізніше»', (await ph()) === '#eadd' && !(await pq.$('details.ea-more')) && !!(await pq.$('#ea-acc')) && !(await pq.$('[data-key=aw-q-later]')));
 
   // 5. рос. мова
-  const pr = await (await b.newContext({ viewport: { width: 360, height: 800 }, locale: 'ru-RU' })).newPage();
+  const pr = await (await require('./pvopen.cjs').ctx(b, { viewport: { width: 360, height: 800 }, locale: 'ru-RU' })).newPage();
   await pr.goto(U); await pr.evaluate(() => localStorage.clear()); await pr.reload(); await pr.waitForTimeout(500);
   ok('ru: «Показания счётчиков — за минуту»', /Показания счётчиков — за минуту/.test(await pr.textContent('h1')));
   await pr.goto(U + '#start'); await pr.waitForTimeout(300);
   ok('ru: «Какие счётчики есть в вашей квартире?»', /Какие счётчики есть/.test(await pr.textContent('h1')));
 
   // 6. вхід: новий акаунт без лічильників → «Ви увійшли — налаштуймо…» → вибір (раніше вів на модель теплолічильника)
-  const pl = await (await b.newContext({ viewport: { width: 360, height: 800 }, locale: 'uk-UA' })).newPage();
+  const pl = await (await require('./pvopen.cjs').ctx(b, { viewport: { width: 360, height: 800 }, locale: 'uk-UA' })).newPage();
   const email = 'first' + Date.now() + '@example.ua', pwd = 'first test 123';
   await pl.goto(U); await pl.evaluate(() => localStorage.clear()); await pl.reload(); await pl.waitForTimeout(500);
   await pl.click('[data-key=welcome-login]'); await pl.waitForTimeout(300);

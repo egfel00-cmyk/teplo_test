@@ -6,7 +6,7 @@ const { chromium } = require('playwright'); const demo = require('./demo.cjs');
 const U = 'http://127.0.0.1:8013/';
 let pass = 0, fail = 0; const ok = (n, c, x) => { if (c) { pass++; console.log('  OK  ' + n); } else { fail++; console.log(' FAIL ' + n + (x !== undefined ? ' → ' + JSON.stringify(x) : '')); } };
 (async () => {
-  const b = await chromium.launch(); const p = await (await b.newContext({ viewport: { width: 360, height: 800 }, locale: 'uk-UA' })).newPage();
+  const b = await chromium.launch(); const p = await (await require('./pvopen.cjs').ctx(b, { viewport: { width: 360, height: 800 }, locale: 'uk-UA' })).newPage();
   const errs = []; p.on('pageerror', e => errs.push(e.message));
   const s = demo({ second: true, elec: 1, today: '2026-11-05' });
   s.places[0].address = 'пр. Перемоги 86А, кв. 61';

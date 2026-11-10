@@ -13,7 +13,7 @@ const day2 = JSON.parse(JSON.stringify(none)); day2['1.1'] = { off: [[0, 120]], 
 const cache = (days) => { fs.mkdirSync(DATA + '/cache', { recursive: true }); fs.writeFileSync(DATA + '/cache/gpv.json', JSON.stringify({ at: Math.floor(Date.now() / 1000), update: '04.11.2026 07:05', days, err: null })); };
 (async () => {
   cache({ [today]: day1, [tomorrow]: day2 });
-  const b = await chromium.launch(); const p = await (await b.newContext({ viewport: { width: 360, height: 800 } })).newPage();
+  const b = await chromium.launch(); const p = await (await require('./pvopen.cjs').ctx(b, { viewport: { width: 360, height: 800 } })).newPage();
   const errs = []; p.on('pageerror', e => errs.push(e.message));
   // пошук черги за адресою — як відповідає сервер (довідник з переліку Харківобленерго тут не потрібен)
   await p.route('**/api/gpv/addr*', r => { const q = new URL(r.request().url()).searchParams.get('q') || '';
@@ -29,6 +29,18 @@ const cache = (days) => { fs.mkdirSync(DATA + '/cache', { recursive: true }); fs
   const fits = (k) => p.evaluate((k) => { const e = document.querySelector('[data-key=' + k + ']'); return !!e && e.scrollWidth <= e.clientWidth + 1 && document.documentElement.scrollWidth <= innerWidth + 1; }, k);
   const base = demo({ elec: 1, today }); base.demoMin = 400;   // 06:40 — у черги 1.1 зараз відключення до 09:00
   await seed(base);
+  // 10.11: графіки на сайті вимкнено (GPV_ON = false в app.js) — перевіряємо, що їх немає ніде; повний тест — GPV=1 після GPV_ON = true
+  if (process.env.GPV !== '1') {
+    const sv = await st(); sv.places[0].address = 'м. Харків, вул. Сумська, 10, кв. 61'; sv.places[0].street = 'вул. Сумська, 10, кв. 61'; sv.places[0].gpv = '1.1';
+    await seed(sv);
+    let none = true; for (const r of ['home', 'elec', 'place-main']) { await p.goto(U + '#' + r); await p.waitForTimeout(500); if (await p.$('.gpv, [data-gpv], .hp-addr-gpv')) none = false; }
+    ok('графіків відключень на сайті немає: головна, світло, квартира — навіть з адресою й чергою', none);
+    await p.evaluate(() => localStorage.removeItem('teplo.v1')); await p.goto(U + '#welcome'); await p.reload(); await p.waitForTimeout(600);
+    ok('лендинг — без картки «Графік відключень»', !(await p.$('[data-key=lp-gpv]')) && !!(await p.$('[data-key=lp-cost]')));
+    ok('без помилок JS', !errs.length, errs);
+    fs.unlinkSync(DATA + '/cache/gpv.json');
+    console.log('\nИтог: ' + pass + ' OK, ' + fail + ' FAIL'); await b.close(); process.exit(fail ? 1 : 0);
+  }
   ok('без адреси — графіка немає ні на головній, ні на сторінці світла', !(await p.$('.gpv')));
   await p.goto(U + '#elec'); await p.waitForTimeout(400); ok('…сторінка світла теж без графіка', !(await p.$('[data-key=gpv-elec]')));
   await p.goto(U + '#home'); await p.waitForTimeout(300);
@@ -108,7 +120,7 @@ const cache = (days) => { fs.mkdirSync(DATA + '/cache', { recursive: true }); fs
   await p.click('[data-key=gpv-elec] [data-key=gpv-sum]'); await p.waitForTimeout(200);
   ok('…розгорнуто: «Харківобленерго його не публікувало», завтра — показуємо (і погодинно)', /не публікувало/.test(await p.textContent('[data-key=gpv-today-none]')) && !!(await p.$('[data-key=gpv-day-tomorrow]')) && (await p.$$('[data-key=gpv-wide] .gpv-hrs')).length === 1);
   // російська
-  { cache({ [today]: day1 }); const sv = await st(); sv.lang = 'ru'; const r = await (await b.newContext({ viewport: { width: 320, height: 700 }, locale: 'ru-RU' })).newPage(); r.on('pageerror', e => errs.push(e.message));
+  { cache({ [today]: day1 }); const sv = await st(); sv.lang = 'ru'; const r = await (await require('./pvopen.cjs').ctx(b, { viewport: { width: 320, height: 700 }, locale: 'ru-RU' })).newPage(); r.on('pageerror', e => errs.push(e.message));
     await r.goto(U); await r.evaluate(s => localStorage.setItem('teplo.v1', JSON.stringify(s)), sv); await r.goto(U + '?go=gpv&place=main'); await r.waitForTimeout(700);
     ok('ru, 320 px: «Сегодня без света: 06:00–09:00, …», развёрнут, не шире экрана', /^Сегодня без света: 06:00–09:00/.test((await r.textContent('[data-key=gpv-elec] [data-key=gpv-brief]')).trim()) && /По часам/.test(await r.textContent('[data-key=gpv-wide]'))
       && await r.evaluate(() => document.documentElement.scrollWidth <= 321));

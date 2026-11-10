@@ -3,7 +3,7 @@
 const { chromium } = require('playwright'); const demo = require('./demo.cjs');
 let pass = 0, fail = 0; const ok = (n, c, i) => { console.log((c ? '  OK  ' : ' FAIL ') + n + (!c && i !== undefined ? '  → ' + JSON.stringify(i) : '')); c ? pass++ : fail++; };
 (async () => {
-  const b = await chromium.launch(); const ctx = await b.newContext({ viewport: { width: 390, height: 844 } }); const p = await ctx.newPage(); const errs = [];
+  const b = await chromium.launch(); const ctx = await b.newContext({ viewport: { width: 390, height: 844 } }); await require('./pvopen.cjs')(ctx); const p = await ctx.newPage(); const errs = [];
   p.on('pageerror', e => errs.push(e.message)); p.on('dialog', d => d.accept());
   const st = () => p.evaluate(() => JSON.parse(localStorage.getItem('teplo.v1')));
   // на главной при ≥ 2 квартирах — секции-аккордеон: ищем внутри секции текущей квартиры
@@ -87,6 +87,14 @@ let pass = 0, fail = 0; const ok = (n, c, i) => { console.log((c ? '  OK  ' : ' 
   ok('«Усі квартири» → главная с двумя секциями', (await p.$$('details.pacc')).length === 2 && (await p.evaluate(() => location.hash)) === '#home');
   await p.click('[data-key=home-pl-sum-main]'); await p.waitForTimeout(200); await p.click('[data-key=home-pl-main] [data-key=card-heat] .ucard-main'); await p.waitForTimeout(300);
   ok('карточка в секции первой → её тепло: шапка с адресом', (await st()).placeId === 'main' && (await p.$$('[data-key=home-last]')).length === 1 && /Сумська 10/.test(await p.textContent('[data-key=place-bar]')));
+  // 10.11: экран квартиры — три раскрывашки, по умолчанию закрыты; в настройках счётчика — только сам счётчик; номера и платіжка — под постачальником
+  await p.evaluate(() => localStorage.setItem('e2e.pvClosed', '1')); await go('place-main'); await p.reload(); await p.waitForTimeout(400);
+  const grp = await p.$$eval('details.pgroup[id^="pg-pv-"]', ds => ds.map(d => d.id + ':' + d.open));
+  ok('квартира: три раскрывашки — про квартиру, лічильники, постачальники й рахунки; закрыты', grp.join(',') === 'pg-pv-about:false,pg-pv-meters:false,pg-pv-prov:false', grp);
+  await p.evaluate(() => localStorage.removeItem('e2e.pvClosed')); await p.reload(); await p.waitForTimeout(400);
+  ok('налаштування лічильника — без рахунку ХТМ і коду Водоканалу; вони — в «Постачальники, тарифи й рахунки»', !(await p.$('#mbs-heat #p-hacc')) && !(await p.$('[id^=mbs-] [data-wf=vkId]')) &&
+    !!(await p.$('#pg-pv-prov [data-key=pv-bills-heat] #p-hacc')) && !!(await p.$('#pg-pv-prov [data-key=pv-bills-water] [data-wf=vkId]')) && !!(await p.$('#pg-pv-prov [data-key=pv-bills-heat] #p-abon')));
+  ok('картка лічильника: шапка → налаштування → «Замінити» і «Прибрати» внизу', await p.evaluate(() => [...document.querySelector('[data-key=pv-m-heat]').children].map(x => x.className.split(' ')[0]).join(',') === 'mrow-main,mbox-set,mrow-act'));
   // рахунки — свои: в первой квартире правим абонплату, у второй — своя по умолчанию
   await go('place-main'); await p.fill('#p-abon', '45,5'); await p.waitForTimeout(150);
   s = await st();

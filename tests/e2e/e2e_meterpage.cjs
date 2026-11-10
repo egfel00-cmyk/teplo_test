@@ -5,7 +5,7 @@ const { chromium } = require('playwright'); const demo = require('./demo.cjs');
 let pass = 0, fail = 0; const ok = (n, c, x) => { if (c) { pass++; console.log('  OK  ' + n); } else { fail++; console.log(' FAIL ' + n + (x !== undefined ? ' → ' + JSON.stringify(x) : '')); } };
 const U = 'http://127.0.0.1:8013/';
 (async () => {
-  const b = await chromium.launch(); const p = await (await b.newContext({ viewport: { width: 390, height: 844 }, locale: 'uk-UA' })).newPage();
+  const b = await chromium.launch(); const p = await (await require('./pvopen.cjs').ctx(b, { viewport: { width: 390, height: 844 }, locale: 'uk-UA' })).newPage();
   const errs = []; p.on('pageerror', e => errs.push(e.message));
   await p.goto(U); await p.evaluate(s => localStorage.setItem('teplo.v1', JSON.stringify(s)), demo({ elec: true, gas: true }));
   const open = async (r) => { await p.goto(U + '#' + r); await p.reload(); await p.waitForTimeout(500); };
@@ -21,7 +21,7 @@ const U = 'http://127.0.0.1:8013/';
   ok('у всіх 5 лічильників на сторінці — згорнуті «Налаштування показань» (рахунки, №, ціна); без посилання на квартиру',
     Object.values(all).every(x => x.set && !x.setOpen && x.price && /Налаштування показань/.test(x.setTitle) && !x.place && !x.toPrefs), all);
   await open('place-main');
-  ok('екран квартири: у кожного з 5 лічильників — свої «Налаштування лічильника»', (await p.$$('[data-key=pv-meters] details.mrow-set')).length === 5);
+  ok('екран квартири: у кожного з 5 лічильників — свої «Налаштування лічильника»', (await p.$$('#pg-pv-meters details.mrow-set')).length === 5);
   ok('«Куди передати» — акордеон, закритий', Object.values(all).every(x => x.wacc === 'closed'), Object.fromEntries(Object.entries(all).map(([k, v]) => [k, v.wacc])));
   ok('тепло: без «Інструкція перевірена» і «Звірити в кабінеті ХТМ»', !/Інструкція перевірена|Звірити в кабінеті/.test(all.heat.box), all.heat.box.slice(0, 200));
   ok('тепло: останні прийняті — найпізніше «прийнято» з історії (10 квітня 2026), а не «Останні прийняті» з кабінету (10 грудня 2025)', /10 квітня 2026/.test(all.heat.cap), all.heat.cap);

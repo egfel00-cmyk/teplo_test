@@ -4,7 +4,7 @@ const { chromium } = require('playwright');
 const U = 'http://127.0.0.1:8013/';
 let pass = 0, fail = 0; const ok = (n, c, x) => { if (c) { pass++; console.log('  OK  ' + n); } else { fail++; console.log(' FAIL ' + n + (x !== undefined ? ' → ' + JSON.stringify(x) : '')); } };
 (async () => {
-  const b = await chromium.launch(); const ctx = await b.newContext({ viewport: { width: 390, height: 860 }, locale: 'ru-RU' }); const p = await ctx.newPage();
+  const b = await chromium.launch(); const ctx = await require('./pvopen.cjs').ctx(b, { viewport: { width: 390, height: 860 }, locale: 'ru-RU' }); const p = await ctx.newPage();
   const errs = []; p.on('pageerror', e => errs.push(e.message));
   await p.goto(U);
   const api = (m, path, body) => p.evaluate(async ([m, path, body]) => { const c = (document.cookie.match(/ts_csrf=([^;]+)/) || [])[1] || ''; const r = await fetch('/api' + path, { method: m, credentials: 'same-origin', headers: { 'Content-Type': 'application/json', 'X-CSRF': decodeURIComponent(c) }, body: body ? JSON.stringify(body) : undefined }); return { s: r.status, j: await r.json().catch(() => ({})) }; }, [m, path, body]);

@@ -5,7 +5,7 @@ const { chromium } = require('playwright'); const demo = require('./demo.cjs');
 const U = 'http://127.0.0.1:8013/';
 let pass = 0, fail = 0; const ok = (n, c, x) => { if (c) { pass++; console.log('  OK  ' + n); } else { fail++; console.log(' FAIL ' + n + (x !== undefined ? ' → ' + JSON.stringify(x) : '')); } };
 (async () => {
-  const b = await chromium.launch(); const ctx = await b.newContext({ viewport: { width: 360, height: 800 }, locale: 'uk-UA' }); const p = await ctx.newPage();
+  const b = await chromium.launch(); const ctx = await require('./pvopen.cjs').ctx(b, { viewport: { width: 360, height: 800 }, locale: 'uk-UA' }); const p = await ctx.newPage();
   const errs = []; p.on('pageerror', e => errs.push(e.message));
   const s = demo({ second: true, elec: 1, today: '2026-11-05' });
   s.places[0].address = 'пр. Перемоги 86А, кв. 61';
@@ -42,7 +42,7 @@ let pass = 0, fail = 0; const ok = (n, c, x) => { if (c) { pass++; console.log('
   await p.fill('#pv-city', ''); await p.type('#pv-city', 'Харьков', { delay: 30 }); await p.waitForTimeout(700);
   ok('«Харьков» (рос.) → першим «м. Харків»', /м\. Харків/.test((await p.$$eval('#pv-cl [role=option]', els => els.map(e => e.textContent)))[0] || ''));
   await p.keyboard.press('Enter'); await p.waitForTimeout(800); q = await pl('p2');
-  ok('Харків → є графік відключень (вулиця вказана)', q.city.r === 'kh' && !!(await p.$('[data-gpv=p2]')), q.city);
+  ok('Харків → пункт обрано; графіка відключень на сайті немає (вимкнено 10.11)', q.city.r === 'kh' && !(await p.$('[data-gpv=p2]')), q.city);
   await p.fill('#pv-city', ''); await p.type('#pv-city', 'Ыхфыва', { delay: 20 }); await p.waitForTimeout(800);
   ok('незнайома назва → «Такого населеного пункту не знайшли»', /не знайшли/.test(await p.textContent('#pv-where')), await p.textContent('#pv-where'));
   await p.fill('#pv-city', ''); await p.type('#pv-city', 'Харків', { delay: 20 }); await p.waitForTimeout(700); await p.keyboard.press('Enter'); await p.waitForTimeout(600);
@@ -70,7 +70,7 @@ let pass = 0, fail = 0; const ok = (n, c, x) => { if (c) { pass++; console.log('
   sv = await st(); np = sv.places[sv.places.length - 1];
   ok('створено: Київ (ky), вулиця, точний пункт', np.city && np.city.r === 'ky' && np.address === 'м. Київ, вул. Хрещатик, 1, кв. 1' && np.settle && np.settle.n === 'Київ', np);
   // рос. інтерфейс
-  const pr = await (await b.newContext({ viewport: { width: 320, height: 700 }, locale: 'ru-RU' })).newPage();
+  const pr = await (await require('./pvopen.cjs').ctx(b, { viewport: { width: 320, height: 700 }, locale: 'ru-RU' })).newPage();
   await pr.goto(U); await pr.evaluate(s => localStorage.setItem('teplo.v1', JSON.stringify(Object.assign(s, { lang: 'ru' }))), s); await pr.goto(U + '#place-p2'); await pr.reload(); await pr.waitForTimeout(900);
   ok('ru: «Населённый пункт», «Улица, дом, квартира»', /Населённый пункт/.test(await pr.textContent('label[for=pv-city]')) && /Улица, дом, квартира/.test(await pr.textContent('label[for=pv-street]')));
   await pr.fill('#pv-city', ''); await pr.type('#pv-city', 'Чугуев', { delay: 30 }); await pr.waitForTimeout(700);

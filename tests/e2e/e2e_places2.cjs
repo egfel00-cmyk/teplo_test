@@ -4,7 +4,7 @@
 const { chromium } = require('playwright'); const demo = require('./demo.cjs');
 let pass = 0, fail = 0; const ok = (n, c, i) => { console.log((c ? '  OK  ' : ' FAIL ') + n + (!c && i !== undefined ? '  → ' + JSON.stringify(i) : '')); c ? pass++ : fail++; };
 (async () => {
-  const b = await chromium.launch(); const ctx = await b.newContext({ viewport: { width: 390, height: 844 } }); const p = await ctx.newPage(); const errs = [];
+  const b = await chromium.launch(); const ctx = await require('./pvopen.cjs').ctx(b, { viewport: { width: 390, height: 844 } }); const p = await ctx.newPage(); const errs = [];
   p.on('pageerror', e => errs.push(e.message)); p.on('dialog', d => d.accept());
   const st = () => p.evaluate(() => JSON.parse(localStorage.getItem('teplo.v1')));
   const hash = () => p.evaluate(() => location.hash);
@@ -128,11 +128,11 @@ let pass = 0, fail = 0; const ok = (n, c, i) => { console.log((c ? '  OK  ' : ' 
   const ord = ['heat', 'hot', 'cold', 'elec', 'gas'], sorted = a => a.every((x, i) => !i || ord.indexOf(a[i - 1]) <= ord.indexOf(x));
   ok('головна «Здаю»: опалення, гаряча, холодна, світло, газ — як в інших квартирах', JSON.stringify(zk) === JSON.stringify(ord), zk);
   await go('place-pz'); await p.waitForTimeout(900);
-  const zm = await p.$$eval('[data-key=pv-meters] .mrow-main b', es => es.map(e => e.textContent));
+  const zm = await p.$$eval('#pg-pv-meters .mrow-main b', es => es.map(e => e.textContent));
   ok('екран квартири: лічильники в тому ж порядку', /Опалення/.test(zm[0]) && /Гаряча/.test(zm[1]) && /Холодна/.test(zm[2]) && /Світло/.test(zm[3]) && /Газ/.test(zm[4]), zm);
   const zp = await p.$$eval('.prov-row', es => es.map(e => e.getAttribute('data-key').replace('prov-', '')));
   ok('«Постачальники й тарифи»: опалення, вода, світло, газ', JSON.stringify(zp) === JSON.stringify(['heat', 'water', 'elec', 'gas']), zp);
-  ok('рахунки: опалення, вода, світло, газ', JSON.stringify(await p.$$eval('[data-key=pv-money] h3', es => es.map(e => e.textContent.split(' ')[0]))) === JSON.stringify(['Опалення', 'Вода', 'Світло', 'Газ']));
+  ok('дані з платіжки — під своїм постачальником: опалення, вода, світло, газ', JSON.stringify(await p.$$eval('#pg-pv-prov [data-key^=pv-bills-]', es => es.map(e => e.getAttribute('data-key').slice(9)))) === JSON.stringify(['heat', 'water', 'elec', 'gas']));
   await go('history'); await p.click('[data-act=place-view][data-id=pz]').catch(() => {}); await p.waitForTimeout(300);
   const zs = await p.$$eval('[data-key=kind-switch] button', es => es.map(e => e.getAttribute('data-v')));
   ok('історія: перемикач видів у тому ж порядку', sorted(zs) && zs.length >= 2, zs);

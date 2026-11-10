@@ -2,7 +2,7 @@
 const { chromium } = require('playwright'); const demo = require('./demo.cjs');
 const ok = [], bad = []; const check = (c, m) => (c ? ok : bad).push(m);
 (async () => {
-  const b = await chromium.launch(); const ctx = await b.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true }); const p = await ctx.newPage(); const errs = [];
+  const b = await chromium.launch(); const ctx = await require('./pvopen.cjs').ctx(b, { viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true }); const p = await ctx.newPage(); const errs = [];
   p.on('pageerror', e => errs.push(e.message)); p.on('dialog', d => d.accept());
   await p.goto('http://127.0.0.1:8013/'); await p.evaluate(s => localStorage.setItem('teplo.v1', JSON.stringify(s)), demo({}));
   const st = () => p.evaluate(() => JSON.parse(localStorage.getItem('teplo.v1')));
@@ -57,7 +57,7 @@ const ok = [], bad = []; const check = (c, m) => (c ? ok : bad).push(m);
   check(await p.evaluate(() => document.documentElement.scrollWidth) <= 360, 'форма с оценкой влезает в 360 px');
   await p.screenshot({ path: '/tmp/gapcost_c1.png', fullPage: true });
   // русский — язык берётся из браузера
-  const ctxR = await b.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, locale: 'ru-RU' }); const pr = await ctxR.newPage(); pr.on('pageerror', e => errs.push(e.message));
+  const ctxR = await require('./pvopen.cjs').ctx(b, { viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, locale: 'ru-RU' }); const pr = await ctxR.newPage(); pr.on('pageerror', e => errs.push(e.message));
   await pr.goto('http://127.0.0.1:8013/'); await pr.evaluate(s => localStorage.setItem('teplo.v1', JSON.stringify(s)), Object.assign(await st(), { lang: 'ru' }));
   await pr.reload(); await pr.waitForTimeout(300);
   await pr.goto('http://127.0.0.1:8013/#gap-new-heat'); await pr.waitForTimeout(300); await pr.check('input[name=gp-reason][value=verify]');
