@@ -28,15 +28,30 @@ final class Recognize {
   }
   public static function path(array $p): string { return self::root() . '/' . (int)$p['user_id'] . '/' . basename((string)$p['file']); }
 
-  public static function upload(int $uid, string $body, string $ctype): array {
+  /** Чьё фото: вошёл — [id, null]; без входа — [0, vid] по заголовку X-Vid (id браузера из аналитики: есть лишь при согласии на неё), иначе 401.
+   *  Лимиты: вошедшим — recog_upload на пользователя; без входа — recog_guest на браузер и recog_guest_ip на IP. */
+  public static function who(?array $user, Req $r): array {
+    if ($user) { RateLimit::hit('recog_upload', (string)$user['id']); return [(int)$user['id'], null]; }
+    $vid = substr(preg_replace('/[^A-Za-z0-9]/', '', $r->header('X-Vid')), 0, 24);
+    if (strlen($vid) < 8) throw new HttpError(401, 'unauthorized');
+    RateLimit::hit('recog_guest_ip', Http::ip($r->server)); RateLimit::hit('recog_guest', $vid);
+    return [0, $vid];
+  }
+  /** Фото этого человека: вошёл — по user_id, без входа — по vid браузера. */
+  private static function mine(string $id, int $uid, ?string $vid): ?array {
+    return $uid > 0 ? Db::one('SELECT id FROM photos WHERE id = ? AND user_id = ?', [$id, $uid])
+      : ($vid ? Db::one('SELECT id FROM photos WHERE id = ? AND user_id = 0 AND vid = ?', [$id, $vid]) : null);
+  }
+
+  public static function upload(int $uid, string $body, string $ctype, ?string $vid = null): array {
     $ctype = strtolower(trim(explode(';', $ctype)[0]));
     if (!isset(self::TYPES[$ctype]) || $body === '') throw new HttpError(415, 'bad_image');
     $info = @getimagesizefromstring($body);          // проверяем содержимое, а не только заголовок
     if (!$info || !isset(self::TYPES[$info['mime'] ?? ''])) throw new HttpError(415, 'bad_image');
     $id = bin2hex(random_bytes(12)); $file = $id . '.' . self::TYPES[$info['mime']];
     if (file_put_contents(self::dir($uid) . '/' . $file, $body) === false) throw new HttpError(500, 'storage');
-    Db::q('INSERT INTO photos (id, user_id, file, mime, bytes, w, h, status, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
-      [$id, $uid, $file, $info['mime'], strlen($body), (int)$info[0], (int)$info[1], 'uploaded', Http::iso()]);
+    Db::q('INSERT INTO photos (id, user_id, vid, file, mime, bytes, w, h, status, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      [$id, $uid, $uid > 0 ? null : $vid, $file, $info['mime'], strlen($body), (int)$info[0], (int)$info[1], 'uploaded', Http::iso()]);
     return ['id' => $id];
   }
 
@@ -114,13 +129,13 @@ final class Recognize {
 
   const OTHER_RU = ['water' => 'воды', 'electric' => 'электроэнергии', 'gas' => 'газа'];
   /** Результат распознавания в браузере (свой движок PaddleOCR, без нейросети): записать в фото для аналитики. */
-  public static function local(int $uid, array $in): array {
+  public static function local(int $uid, array $in, ?string $vid = null): array {
     $res = array_values(array_filter((array)($in['results'] ?? []), 'is_array'));
     $ids = array_values(array_filter((array)($in['ids'] ?? []), fn($x) => is_string($x) && preg_match('/^[a-f0-9]{24}$/', $x)));
     if (!$ids || count($ids) > 20) throw new HttpError(422, 'bad_ids');
     $n = 0;
     foreach ($ids as $k => $id) {
-      $p = Db::one('SELECT id FROM photos WHERE id = ? AND user_id = ?', [$id, $uid]); if (!$p) continue;
+      $p = self::mine($id, $uid, $vid); if (!$p) continue;
       $r = $res[$k] ?? null; $ph = is_array($r['photo'] ?? null) ? $r['photo'] : null; $problems = [];
       if (!$ph) $problems[] = 'распознаватель ничего не вернул по этому фото';
       elseif (($ph['kind'] ?? '') === 'water') {   // водомеры («Вода з фото»): итог по каждому водомеру на снимке
@@ -166,7 +181,7 @@ final class Recognize {
   }
 
   /** Итог распознавания с экрана «Розпізнати з фото»: что не нашлось, что неуверенно, что человек исправил. */
-  public static function report(int $uid, array $in): array {
+  public static function report(int $uid, array $in, ?string $vid = null): array {
     $ids = array_values(array_filter((array)($in['ids'] ?? []), fn($x) => is_string($x) && preg_match('/^[a-f0-9]{24}$/', $x)));
     $f = fn($k) => self::FIELD_RU[$k] ?? preg_replace('/[^a-zA-Z]/', '', (string)$k);
     $parts = [];
@@ -182,8 +197,8 @@ final class Recognize {
     if ($fix) $parts[] = 'исправлено вручную — ' . implode('; ', $fix);
     $ok = !$parts;
     $text = $ok ? 'Распознано без замечаний: все поля найдены, человек ничего не исправлял.' : ucfirst(implode('. ', $parts)) . '.';
-    Db::q('INSERT INTO recog_reports (user_id, photo_ids, kind, ok, text, data, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
-      [$uid, implode(',', $ids), 'summary', $ok ? 1 : 0, $text, json_encode(['missing' => $missing, 'conflicts' => $conf, 'corrections' => $in['corrections'] ?? [], 'model' => $in['model'] ?? null], JSON_UNESCAPED_UNICODE), Http::iso()]);
+    Db::q('INSERT INTO recog_reports (user_id, vid, photo_ids, kind, ok, text, data, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+      [$uid, $uid > 0 ? null : $vid, implode(',', $ids), 'summary', $ok ? 1 : 0, $text, json_encode(['missing' => $missing, 'conflicts' => $conf, 'corrections' => $in['corrections'] ?? [], 'model' => $in['model'] ?? null], JSON_UNESCAPED_UNICODE), Http::iso()]);
     return ['ok' => true];
   }
 

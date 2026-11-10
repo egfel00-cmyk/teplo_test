@@ -91,7 +91,7 @@ pre.state { font: 12px/1.4 var(--mono); background: #F4F7F5; padding: 10px; bord
   function get(path) { return fetch(API + path, { credentials: 'same-origin', headers: { Accept: 'application/json' } }).then(function (r) { return r.json().catch(function () { return {}; }).then(function (j) { j._status = r.status; return j; }); }); }
   function post(path, body) { return fetch(API + path, { method: 'POST', credentials: 'same-origin', body: JSON.stringify(body), headers: { 'Content-Type': 'application/json', 'X-CSRF': cookie('ts_csrf'), Accept: 'application/json' } }).then(function (r) { return r.json(); }); }
   function when(iso) { if (!iso) return '—'; var d = new Date(iso); if (isNaN(d)) return esc(iso); return d.toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' }); }
-  function who(x) { var a = []; if (x.email) a.push(esc(x.email)); if (x.tg_username) a.push('@' + esc(x.tg_username)); else if (x.tg_id) a.push('tg ' + esc(x.tg_id)); return a.join('<br>') || ('#' + esc(x.user_id || x.id)); }
+  function who(x) { if (x.guest) return esc(x.guest) + ' <span class="muted">(без входа)</span>'; var a = []; if (x.email) a.push(esc(x.email)); if (x.tg_username) a.push('@' + esc(x.tg_username)); else if (x.tg_id) a.push('tg ' + esc(x.tg_id)); return a.join('<br>') || ('#' + esc(x.user_id || x.id)); }
   function ua(s) { s = s || ''; return /iPhone|iPad/.test(s) ? 'iPhone/iPad' : /Android/.test(s) ? 'Android' : /Telegram/.test(s) ? 'Telegram' : /Mac/.test(s) ? 'Mac' : /Windows/.test(s) ? 'Windows' : s ? 'другое' : '—'; }
   function pill(cls, t) { return '<span class="pill p-' + cls + '">' + esc(t) + '</span>'; }
 
@@ -391,7 +391,7 @@ pre.state { font: 12px/1.4 var(--mono); background: #F4F7F5; padding: 10px; bord
       '<div class="panel"><table><thead><tr><th>Когда</th><th>Кто</th><th>Что</th><th>Описание</th><th>Фото</th></tr></thead><tbody>' +
       rs.map(function (r) {
         var ids = (r.photo_ids || '').split(',').filter(Boolean);
-        return '<tr><td>' + when(r.created_at) + '</td><td><a href="#" data-user="' + r.user_id + '">' + who(r) + '</a></td><td>' + (r.kind === 'run_error' ? pill('bad', 'ошибка') : +r.ok ? pill('ok', 'без замечаний') : pill('warn', 'замечания')) + '</td>' +
+        return '<tr><td>' + when(r.created_at) + '</td><td>' + (r.guest ? who(r) : '<a href="#" data-user="' + r.user_id + '">' + who(r) + '</a>') + '</td><td>' + (r.kind === 'run_error' ? pill('bad', 'ошибка') : +r.ok ? pill('ok', 'без замечаний') : pill('warn', 'замечания')) + '</td>' +
           '<td class="msg">' + esc(r.text) + '</td><td>' + ids.map(function (id) { return '<img src="' + esc(API + '/admin/photo?id=' + id) + '" alt="" data-zoom style="width:44px;height:44px;object-fit:cover;border-radius:6px;margin:2px;cursor:zoom-in" onerror="this.remove()">'; }).join('') + '</td></tr>';
       }).join('') + '</tbody></table>' + (rs.length ? '' : '<p class="muted">Пока пусто.</p>') + '</div>';
   };

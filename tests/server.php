@@ -163,6 +163,19 @@ ok('вода з фото → в аналитике: водомер, окно б�
   && json_decode($pl5['result'], true)['drums'][0]['text'] === '00502' && str_contains((string)$pl5['problem'], 'наугад') && !str_contains((string)$pl5['problem'], 'не тепла'));
 ok('…ролик между цифрами не узнан — «0023?», человек допишет', str_contains((string)$pl6['problem'], 'холодная вода: ролик между цифрами не узнан («0023?»)'));
 ok('чужие фото так не перезаписать', (new Browser('10.0.4.9'))->req('POST', '/api/recognize/local', ['ids' => [$r3l->body['id']], 'results' => []])->status === 401);
+// 101-а: «Гость 1KYW» — фото без входа не доходили до /admin. Теперь с id браузера из аналитики (X-Vid, лише за згодою) — копія й підсумок під «Гость XXXX»
+$gb = new Browser('10.0.4.11'); $gv = 'guestvid1kyw0001'; $gx = ['HTTP_CONTENT_TYPE' => 'image/png', 'HTTP_X_VID' => $gv];
+$g1 = $gb->req('POST', '/api/recognize/upload', null, $gx, true, $png);
+$gl = $gb->req('POST', '/api/recognize/local', ['ids' => [$g1->body['id'] ?? ''], 'results' => [['photo' => ['index' => 0, 'kind' => 'screen', 'readings' => [], 'quality' => 'blur', 'meterType' => 'heat'], 'ms' => 700]]], ['HTTP_X_VID' => $gv]);
+$gp = Db::one('SELECT * FROM photos WHERE id = ?', [$g1->body['id'] ?? '']);
+$gs = $gb->req('POST', '/api/recognize/local', ['ids' => [$g1->body['id'] ?? ''], 'results' => []], ['HTTP_X_VID' => 'otherguest0002']);
+$gr = $gb->req('POST', '/api/recognize/report', ['ids' => [$g1->body['id'] ?? ''], 'missing' => ['energy']], ['HTTP_X_VID' => $gv]);
+ok('101-а: без входа, але з id браузера (згода на аналітику) — копія фото й підсумок у /admin; чужий браузер не перепише; підсумок — у recog_reports з vid',
+  $g1->status === 200 && $gp && (int)$gp['user_id'] === 0 && $gp['vid'] === $gv && is_file(Recognize::path($gp)) && $gl->status === 200 && ($gl->body['saved'] ?? 0) === 1
+  && str_contains((string)Db::one('SELECT problem FROM photos WHERE id = ?', [$gp['id']])['problem'], 'показаний не найдено') && ($gs->body['saved'] ?? -1) === 0
+  && $gr->status === 200 && Db::one('SELECT vid FROM recog_reports ORDER BY id DESC')['vid'] === $gv
+  && $up(new Browser('10.0.4.12'), $png, 'image/png')->status === 401 && $gb->req('POST', '/api/recognize/upload', null, ['HTTP_CONTENT_TYPE' => 'image/png', 'HTTP_X_VID' => 'short'], true, $png)->status === 401,
+  [$g1->status, $g1->body, $gp, $gl->body, $gs->body, $gr->status]);
 Recognize::$call = function () { throw new HttpError(504, 'timeout', ['human' => 'Нейросеть не ответила за 26 с']); };
 ok('таймаут нейросети → 504 клиенту', $rb->req('POST', '/api/recognize/run', ['ids' => [$r1->body['id']]])->status === 504);
 ok('…и причина в журнале человеческим языком', str_contains(Db::one("SELECT text FROM recog_reports WHERE kind = 'run_error' ORDER BY id DESC")['text'], 'не ответила'));
@@ -172,7 +185,7 @@ ok('без ключа: фото принимается (тестовый реж�
 $rr = $rb->req('POST', '/api/recognize/run', ['ids' => [$r3->body['id']]]);
 ok('без ключа: 503 recognition_off, причина записана в фото', $rr->status === 503 && str_contains((string)Db::one('SELECT problem FROM photos WHERE id = ?', [$r3->body['id']])['problem'], 'не задан ключ API'));
 $rr = $rb->req('POST', '/api/recognize/report', ['ids' => [$r1->body['id']], 'missing' => ['flow'], 'corrections' => [['field' => 'energy', 'recognized' => '14.100', 'final' => '14.160']]]);
-ok('итог распознавания — по-русски: что не найдено и что исправил человек', $rr->status === 200 && str_contains($t = Db::one("SELECT text FROM recog_reports WHERE kind = 'summary'")['text'], 'расход') && str_contains($t, '14.160'));
+ok('итог распознавания — по-русски: что не найдено и что исправил человек', $rr->status === 200 && str_contains($t = Db::one("SELECT text FROM recog_reports WHERE kind = 'summary' ORDER BY id DESC")['text'], 'расход') && str_contains($t, '14.160'));
 ok('больше 3 фото за запрос → 422', $rb->req('POST', '/api/recognize/run', ['ids' => array_fill(0, 4, str_repeat('a', 24))])->status === 422);
 
 echo "\nОтзывы и аналитика:\n";
@@ -247,6 +260,10 @@ $bu = $boss->req('GET', '/api/admin/user', null, ['QUERY_STRING' => 'id=' . $bid
 ok('карточка человека: его устройства', $bu->status === 200 && count($bu->body['devices']) === 1 && $bu->body['devices'][0]['device'] === 'desktop', $bu->body['devices'] ?? null);
 $ph = $boss->req('GET', '/api/admin/photos', null, ['QUERY_STRING' => 'filter=problems']);
 ok('админ: фото с проблемами', $ph->status === 200 && count($ph->body['photos']) >= 2);
+$gph = array_values(array_filter($ph->body['photos'] ?? [], fn($x) => ($x['vid'] ?? '') === 'guestvid1kyw0001'));
+$grp = array_values(array_filter($boss->req('GET', '/api/admin/reports')->body['reports'] ?? [], fn($x) => ($x['vid'] ?? '') === 'guestvid1kyw0001'));
+ok('101-а: фото й підсумок без входу — в /admin з підписом «Гость XXXX», як у журналі', count($gph) === 1 && $gph[0]['guest'] === Journal::label('guestvid1kyw0001') && $gph[0]['exists']
+  && count($grp) === 1 && $grp[0]['guest'] === Journal::label('guestvid1kyw0001'), [$gph, $grp]);
 $pf = $boss->req('GET', '/api/admin/photo', null, ['QUERY_STRING' => 'id=' . $r1->body['id']]);
 ok('админ: байты фото отдаются через PHP', $pf->status === 200 && $pf->file['mime'] === 'image/png' && is_file($pf->file['path']));
 ok('чужому — фото не отдаётся', $rb->req('GET', '/api/admin/photo', null, ['QUERY_STRING' => 'id=' . $r1->body['id']])->status === 403);
@@ -1150,16 +1167,28 @@ $kp0 = $pv('Каменец-Подольский, ул. Соборная 1')['kin
 $sl0 = $pv('Славута, ул. Соборности 1')['kinds'] ?? []; $sk0 = $pv('Староконстантинов, ул. Острожского 1')['kinds'] ?? []; $pl0 = $pv('м. Полонне, вул. Лесі Українки 1')['kinds'] ?? [];
 $kr0 = $pv('Красилов, ул. Грушевского 1')['kinds'] ?? []; $vl0 = $pv('Волочиськ, вул. Незалежності 1')['kinds'] ?? [];
 $wv = fn($k) => [$k['water']['supply'] ?? null, $k['water']['drain'] ?? null, $k['water']['from'] ?? null];
-ok('100-а: Кам’янець 29,03 / 26,18 з 01.08.2026 (№ 638, № 646), тепло 1 597,73 · Шепетівка 61,21 / 54,72 (№ 389), тепло 2 293,76 · Нетішин 51,43 / 51,38, з 2027 — 60,91 / 60,82, тепло 302,66 · Славута 51,83 / 50,34 (№ 292) · Старокостянтинів 26,89 / 24,62 (на 24.02.2022) · Полонне — з платіжки, тепло 1 985,25 · Красилів 34,16 / 23,34 (№ 2964) · Волочиськ 59,65 / 38,95 (№ 414)',
+ok('100-а: Кам’янець 29,03 / 26,18 з 01.08.2026 (№ 638, № 646), тепло 1 597,73 · Шепетівка 61,21 / 54,72 (№ 389), тепло 2 293,76 · Нетішин 51,43 / 51,38, з 2027 — 60,91 / 60,82, тепло 302,66 · Славута 51,83 / 50,34 (№ 292) · Старокостянтинів 26,89 / 24,62 (на 24.02.2022) · Полонне 35,62 / 39,61 (101-а: № 36), тепло 1 985,25 · Красилів 34,16 / 23,34 (№ 2964) · Волочиськ 59,65 / 38,95 (№ 414)',
   $wv($kp0) === [29.03, 26.18, '2026-08-01'] && str_contains($kp0['water']['src'] ?? '', '№ 646') && str_contains($kp0['water']['how'] ?? '', 'до 28 числа') && ($kp0['heat']['price'] ?? null) === 1597.73
   && $wv($sp0) === [61.21, 54.72, '2026-10-01'] && str_contains($sp0['water']['src'] ?? '', '№ 389') && ($sp0['heat']['price'] ?? null) === 2293.76 && ($sp0['gas']['grm'] ?? '') === 'ПАТ «Шепетівкагаз»'
   && $wv($nt0) === [51.43, 51.38, '2026-01-01'] && ($nt0['water']['next']['supply'] ?? null) === 60.91 && ($nt0['heat']['price'] ?? null) === 302.66
   && $wv($sl0) === [51.83, 50.34, '2026-10-01'] && str_contains($sl0['water']['note'] ?? '', '23,24') && ($sl0['heat']['price'] ?? null) === 2215.33
   && [$sk0['water']['supply'] ?? null, $sk0['water']['drain'] ?? null] === [26.89, 24.62] && str_contains($sk0['water']['how'] ?? '', 'з 10 числа по 3') && ($sk0['heat']['price'] ?? null) === 1747.57
-  && ($pl0['water']['org'] ?? '') === 'КП «Полонне тепловодопостачання»' && ($pl0['water']['supply'] ?? null) === null && ($pl0['heat']['price'] ?? null) === 1985.25
+  && ($pl0['water']['org'] ?? '') === 'КП «Полонне тепловодопостачання»' && $wv($pl0) === [35.62, 39.61, '2025-02-01'] && str_contains($pl0['water']['src'] ?? '', '№ 36') && ($pl0['heat']['price'] ?? null) === 1985.25
   && $wv($kr0) === [34.16, 23.34, '2026-08-01'] && str_contains($kr0['water']['src'] ?? '', '№ 2964') && ($kr0['heat']['price'] ?? null) === 1315.32
   && $wv($vl0) === [59.65, 38.95, '2026-09-01'] && str_contains($vl0['water']['how'] ?? '', 'з 25 числа') && empty($vl0['heat']['price']) && str_contains($vl0['heat']['org'] ?? '', 'Тепловик'),
   [$wv($kp0), $wv($sp0), $wv($nt0), $wv($sl0), $wv($sk0), $pl0['water']['org'] ?? null, $wv($kr0), $wv($vl0)]);
+// 101-а: Хмельниччина — ще громади: Ізяслав, Городок, Деражня, Дунаївці, Віньківці, Теофіполь (+ Летичів, Білогір'я — «з платіжки»; Ярмолинці, Чемерівці, Нова Ушиця — за таблицею 2025)
+$iz1 = $pv('Изяслав, ул. Шевченко 1')['kinds'] ?? []; $gr1 = $pv('Городок, Хмельницкая обл., ул. Грушевского 1')['kinds'] ?? []; $dr1 = $pv('м. Деражня, вул. Миру 1')['kinds'] ?? [];
+$dn1 = $pv('Дунаевцы, ул. Шевченко 1')['kinds'] ?? []; $vn1 = $pv('смт Віньківці, вул. Соборна 1')['kinds'] ?? []; $tf1 = $pv('смт Теофіполь, вул. Шевченка 1')['kinds'] ?? [];
+$lt1 = $pv('смт Летичів, вул. Соборна 1')['kinds'] ?? []; $ya1 = $pv('смт Ярмолинці, вул. Шевченка 1')['kinds'] ?? [];
+ok('101-а: Ізяслав 54,25 / 49,61 з 01.11.2026 (check), тепло 1 674,55 (№ 270) · Городок 20,44 / 9,25 · Деражня 32,09 / 48,57 (№ 93) · Дунаївці 44,88 / 58,30 (№ 159), тепло — лише бюджетним · Віньківці 35,85 / 43,85 (№ 177) · Теофіполь 43,80 / 27,20 · Летичів — з платіжки · Ярмолинці 24,90 / 39,20',
+  $wv($iz1) === [54.25, 49.61, '2026-11-01'] && !empty($iz1['water']['check']) && ($iz1['heat']['price'] ?? null) === 1674.55 && str_contains($iz1['heat']['src'] ?? '', '№ 270')
+  && $wv($gr1) === [20.44, 9.25, '2020-06-01'] && str_contains($gr1['water']['org'] ?? '', 'Городоккомунсервіс')
+  && $wv($dr1) === [32.09, 48.57, '2026-07-01'] && str_contains($dr1['water']['src'] ?? '', '№ 93') && str_contains($dr1['water']['how'] ?? '', '(068) 910-26-27')
+  && $wv($dn1) === [44.88, 58.3, '2026-06-01'] && str_contains($dn1['water']['src'] ?? '', '№ 159') && empty($dn1['heat']['org']) && str_contains($dn1['heat']['note'] ?? '', 'бюджетним')
+  && $wv($vn1) === [35.85, 43.85, '2026-07-01'] && str_contains($vn1['water']['note'] ?? '', '22,40') && $wv($tf1) === [43.8, 27.2, '2026-04-02']
+  && ($lt1['water']['org'] ?? '') === 'КГП «Злагода»' && empty($lt1['water']['supply']) && [$ya1['water']['supply'] ?? null, $ya1['water']['drain'] ?? null] === [24.9, 39.2],
+  [$wv($iz1), $wv($gr1), $wv($dr1), $wv($dn1), $wv($vn1), $wv($tf1), $lt1['water']['org'] ?? null, $wv($ya1), $gr1 ? null : $pv('Городок, Хмельницкая обл., ул. Грушевского 1')]);
 // 99-а: «повний ≠ населення» — Немішаєве 56,55 (пільгові 40,80 закінчились, вікно 25–31), Українка 53,06 для всіх, Арциз № 155
 $nm9 = $pv('с. Немішаєве, вул. Шевченка 1')['kinds']['water'] ?? []; $uk9 = $pv('м. Українка, вул. Юності 1')['kinds']['water'] ?? []; $ar9 = $pv('м. Арциз, вул. Миру 1')['kinds']['water'] ?? [];
 ok('99-а: Немішаєве 56,55 / 68,65, пільгові 40,80 / 47,88 — в note, показання з 25 по 31; Українка 53,06 — і населенню, абонплата 10,01; Арциз — № 155',

@@ -269,10 +269,9 @@ final class Api {
         return ['version' => $cur + 1];
       }
 
-      case 'POST /api/recognize/upload': {
-        if (!$user) throw new HttpError(401, 'unauthorized');
-        RateLimit::hit('recog_upload', (string)$user['id']);
-        return Recognize::upload((int)$user['id'], $r->body, $r->header('Content-Type') ?: (string)($r->server['CONTENT_TYPE'] ?? ''));
+      case 'POST /api/recognize/upload': {   // копия фото для /admin; без входа — по id браузера из аналитики (101-а)
+        [$uid, $vid] = Recognize::who($user, $r);
+        return Recognize::upload($uid, $r->body, $r->header('Content-Type') ?: (string)($r->server['CONTENT_TYPE'] ?? ''), $vid);
       }
       case 'POST /api/recognize/run': {
         if (!$user) throw new HttpError(401, 'unauthorized');
@@ -280,14 +279,12 @@ final class Api {
         return Recognize::run((int)$user['id'], $in);   // без ключа — 503 recognition_off, но фото и причина остаются в аналитике
       }
       case 'POST /api/recognize/local': {
-        if (!$user) throw new HttpError(401, 'unauthorized');
-        RateLimit::hit('recog_upload', (string)$user['id']);
-        return Recognize::local((int)$user['id'], $in);
+        [$uid, $vid] = Recognize::who($user, $r);
+        return Recognize::local($uid, $in, $vid);
       }
       case 'POST /api/recognize/report': {
-        if (!$user) throw new HttpError(401, 'unauthorized');
-        RateLimit::hit('recog_upload', (string)$user['id']);
-        return Recognize::report((int)$user['id'], $in);
+        [$uid, $vid] = Recognize::who($user, $r);
+        return Recognize::report($uid, $in, $vid);
       }
       case 'GET /api/photo': {   // фото к записи истории (тепло/вода) — только хозяину
         if (!$user) throw new HttpError(401, 'unauthorized');

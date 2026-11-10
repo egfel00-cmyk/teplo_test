@@ -22,6 +22,14 @@
      *  распознаёт, если в config.php есть ключ (cfg.recognition); загрузка — только после входа. */
     /** Вошёл ли человек — спрашиваем синхронизацию каждый раз (флаг из initServer мог устареть: /me отвечает позже /config). */
     isIn: function () { return !!(this.loggedIn || (root.TeploSync && root.TeploSync.account)); },
+    /** Без входа — id браузера из аналитики (teplo.vid; есть лишь при согласии на аналитику): копия фото й итог ідуть у /admin як «Гость XXXX» (101-а). */
+    guestVid: function () { if (this.isIn()) return ''; try { return root.localStorage.getItem('teplo.vid') || ''; } catch (e) { return ''; } },
+    /** Чи слати копію фото й підсумок у /admin: увійшли — так; без входу — лише зі згодою на аналітику. */
+    copyOn: function () { return !!(this.server && root.TEPLO_API && (this.isIn() || this.guestVid())); },
+    /** Заголовки запиту копії: без входу — X-Vid. */
+    hdr: function (type) { var h = { 'Content-Type': type, 'X-CSRF': cookie('ts_csrf'), 'Accept': 'application/json' }, v = this.guestVid(); if (v) h['X-Vid'] = v; return h; },
+    /** Копія без входу — у f._gsrv, а не f._srv: f._srv запис історії бере як фото на сервері, а гостю сервер його не віддасть. */
+    srvKey: function () { return this.isIn() ? '_srv' : '_gsrv'; },
     initServer: function (cfg, loggedIn) {
       this.server = !!root.TEPLO_API; this.loggedIn = !!loggedIn; this.engine = !!(cfg && cfg.recognition);
       // свой распознаватель в браузере (бесплатно, без ключа и без входа); нейросеть на сервере — только если владелец вставил ключ
@@ -98,13 +106,14 @@
       var self = this, api = root.TEPLO_API, P = root.TeploOCRParse, ids = [], results = [];
       var out = { meter: null, photos: [], ids: ids, engine: 'local' };
       var post = function (path, body, type) {
-        var go = function () { return fetch(api + path, { method: 'POST', body: body, credentials: 'same-origin', headers: { 'Content-Type': type, 'X-CSRF': cookie('ts_csrf'), 'Accept': 'application/json' } }).then(function (r) { return r.json().catch(function () { return {}; }).then(function (j) { if (!r.ok) throw fail(httpCode(r.status)); return j; }); }); };
+        var go = function () { return fetch(api + path, { method: 'POST', body: body, credentials: 'same-origin', headers: self.hdr(type) }).then(function (r) { return r.json().catch(function () { return {}; }).then(function (j) { if (!r.ok) throw fail(httpCode(r.status)); return j; }); }); };
         return cookie('ts_csrf') ? go() : fetch(api + '/config', { credentials: 'same-origin' }).then(go);
       };
+      var sk = self.srvKey(), copy = self.copyOn();
       // копия фото — в аналитику (параллельно с загрузкой движка); ошибки загрузки не мешают распознаванию
       var uploads = Promise.resolve();
       // фото из бота уже лежат на сервере (f._srv) — второй раз не загружаем
-      if (self.isIn()) files.forEach(function (f) { uploads = uploads.then(function () { if (f._srv) { ids.push(f._srv); return; } return self.prepare(f).then(function (b) { return post('/recognize/upload', b, b.type || 'image/jpeg'); }).then(function (j) { ids.push(j.id); f._srv = j.id; }, function () { /* без копии */ }); }); });
+      if (copy) files.forEach(function (f) { uploads = uploads.then(function () { if (f[sk]) { ids.push(f[sk]); return; } return self.prepare(f).then(function (b) { return post('/recognize/upload', b, b.type || 'image/jpeg'); }).then(function (j) { ids.push(j.id); f[sk] = j.id; }, function () { /* без копии */ }); }); });
       self.pendingUploads = uploads;   // фото к записи истории берут эти же копии (не грузить второй раз)
       var cancelled = function () { if (signal && signal.aborted) throw fail('cancelled'); };
       return this._engine(function (p) { if (onProgress) onProgress(Math.round(p * 100), 100, 'load'); }).then(function () {
@@ -124,31 +133,32 @@
       }).then(function () {
         cancelled();
         if (P.batch) P.batch(out.photos, ctx);
-        if (self.isIn()) uploads.then(function () { if (ids.length) post('/recognize/local', JSON.stringify({ ids: ids, results: results }), 'application/json').catch(function () {}); });
+        if (copy) uploads.then(function () { if (ids.length) post('/recognize/local', JSON.stringify({ ids: ids, results: results }), 'application/json').catch(function () {}); });
         return out;
       }, function (e) { if (signal && signal.aborted) throw fail('cancelled'); throw e; });
     },
 
     /**
-     * Вода «з фото»: копия фото и итог по водомерам — в /admin, как у тепла (только вошедшим; ошибки молча).
+     * Вода «з фото»: копия фото и итог по водомерам — в /admin, как у тепла (вошедшим и без входа со згодою на аналітику — 101-а; ошибки молча).
      * items: [{ file, photo: {index, kind:'water', meterType:'water', readings:[{field, meter, value, partial, half, guess, lead, why}]}, ms, res }].
      * Копия загружается один раз (file._srv) — потом её же берёт запись истории; итог можно слать повторно (перезапишется).
      */
     waterReport: function (items) {
       var self = this, api = root.TEPLO_API;
-      if (!this.local || !api || !this.isIn() || !items || !items.length) return Promise.resolve();
+      if (!this.local || !api || !this.copyOn() || !items || !items.length) return Promise.resolve();
+      var sk = self.srvKey(), uk = sk === '_srv' ? '_up' : '_gup';
       var post = function (path, body, type) {
-        var go = function () { return fetch(api + path, { method: 'POST', body: body, credentials: 'same-origin', headers: { 'Content-Type': type, 'X-CSRF': cookie('ts_csrf'), 'Accept': 'application/json' } }).then(function (r) { return r.json().catch(function () { return {}; }).then(function (j) { if (!r.ok) throw fail(httpCode(r.status)); return j; }); }); };
+        var go = function () { return fetch(api + path, { method: 'POST', body: body, credentials: 'same-origin', headers: self.hdr(type) }).then(function (r) { return r.json().catch(function () { return {}; }).then(function (j) { if (!r.ok) throw fail(httpCode(r.status)); return j; }); }); };
         return cookie('ts_csrf') ? go() : fetch(api + '/config', { credentials: 'same-origin' }).then(go);
       };
       var ids = [], results = [], chain = Promise.resolve();
       items.slice(0, 20).forEach(function (it) {
         chain = chain.then(function () {
-          if (it.file._srv) return it.file._srv;
+          if (it.file[sk]) return it.file[sk];
           // загрузка уже идёт (второй отчёт подряд) — ждём её, а не грузим то же фото ещё раз
-          if (!it.file._up) it.file._up = self.prepare(it.file).then(function (b) { return post('/recognize/upload', b, b.type || 'image/jpeg'); })
-            .then(function (j) { it.file._srv = j.id; return j.id; }, function (e) { it.file._up = null; throw e; });
-          return it.file._up;
+          if (!it.file[uk]) it.file[uk] = self.prepare(it.file).then(function (b) { return post('/recognize/upload', b, b.type || 'image/jpeg'); })
+            .then(function (j) { it.file[sk] = j.id; return j.id; }, function (e) { it.file[uk] = null; throw e; });
+          return it.file[uk];
         }).then(function (id) {
           var res = it.res || {};
           ids.push(id);
@@ -162,10 +172,9 @@
 
     /** Итог для аналитики: что не нашлось, где разные цифры, что человек исправил. Ошибки молча игнорируем. */
     report: function (data) {
-      if (!this.server || !this.isIn() || !root.TEPLO_API) return;
+      if (!this.copyOn()) return;
       try {
-        fetch(root.TEPLO_API + '/recognize/report', { method: 'POST', credentials: 'same-origin', body: JSON.stringify(data),
-          headers: { 'Content-Type': 'application/json', 'X-CSRF': cookie('ts_csrf'), 'Accept': 'application/json' } }).catch(function () {});
+        fetch(root.TEPLO_API + '/recognize/report', { method: 'POST', credentials: 'same-origin', body: JSON.stringify(data), headers: this.hdr('application/json') }).catch(function () {});
       } catch (e) { /* нет */ }
     },
 

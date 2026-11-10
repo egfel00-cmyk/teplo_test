@@ -119,10 +119,11 @@ final class Admin {
   }
 
   private static function photos(string $where = '', array $p = [], int $limit = 300): array {
-    $rows = Db::q("SELECT ph.id, ph.user_id, ph.file, ph.mime, ph.bytes, ph.w, ph.h, ph.status, ph.result, ph.problem, ph.created_at, u.email, i.username AS tg_username
+    $rows = Db::q("SELECT ph.id, ph.user_id, ph.vid, ph.file, ph.mime, ph.bytes, ph.w, ph.h, ph.status, ph.result, ph.problem, ph.created_at, u.email, i.username AS tg_username
       FROM photos ph LEFT JOIN users u ON u.id = ph.user_id LEFT JOIN user_identities i ON i.user_id = ph.user_id AND i.type = 'telegram'
       $where ORDER BY ph.created_at DESC LIMIT $limit", $p)->fetchAll();
-    foreach ($rows as &$r) { $j = $r['result'] ? json_decode($r['result'], true) : null; $r['result'] = $j; $r['exists'] = is_file(Recognize::path($r)); unset($r['file']); }
+    foreach ($rows as &$r) { $j = $r['result'] ? json_decode($r['result'], true) : null; $r['result'] = $j; $r['exists'] = is_file(Recognize::path($r)); unset($r['file']);
+      $r['guest'] = !(int)$r['user_id'] && $r['vid'] ? Journal::label((string)$r['vid']) : null; }   // без входа — «Гость 1KYW», как в журнале
     return $rows;
   }
 
@@ -251,8 +252,9 @@ final class Admin {
       case 'GET /api/admin/state/version': return ['state' => StateHist::get((int)($q['user'] ?? 0), (int)($q['id'] ?? 0))];
       case 'POST /api/admin/state/restore': return StateHist::restore((int)($in['user'] ?? 0), (int)($in['id'] ?? 0), $me);
       case 'GET /api/admin/reports':
-        return ['reports' => Db::q("SELECT r.*, u.email, i.username AS tg_username FROM recog_reports r LEFT JOIN users u ON u.id = r.user_id
-          LEFT JOIN user_identities i ON i.user_id = r.user_id AND i.type = 'telegram' ORDER BY r.id DESC LIMIT 500")->fetchAll()];
+        return ['reports' => array_map(fn($x) => $x + ['guest' => !(int)$x['user_id'] && !empty($x['vid']) ? Journal::label((string)$x['vid']) : null],
+          Db::q("SELECT r.*, u.email, i.username AS tg_username FROM recog_reports r LEFT JOIN users u ON u.id = r.user_id
+          LEFT JOIN user_identities i ON i.user_id = r.user_id AND i.type = 'telegram' ORDER BY r.id DESC LIMIT 500")->fetchAll())];
     }
     throw new HttpError(404, 'not_found');
   }
