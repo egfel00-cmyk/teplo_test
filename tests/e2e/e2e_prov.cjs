@@ -23,7 +23,7 @@ let pass = 0, fail = 0; const ok = (n, c, x) => { if (c) { pass++; console.log('
   const gs = await txt('prov-gas');
   ok('газ: Нафтогаз 7,96 «Фіксований» до 30.04.2027, доставка — Газмережі, Харківська філія, 2,388', /Нафтогаз/.test(gs) && /7,96 грн за м³, тариф «Фіксований» до 30 квітня 2027/.test(gs) && /Газмережі, Харківська філія, 2,388/.test(gs), gs);
   const wt = await txt('prov-water');
-  ok('вода: КП «Малоданилівський комунальник», «Тариф невідомий, впишіть з платіжки», кнопка «Вписати з платіжки»', /Малоданилівський комунальник/.test(wt) && /Тариф невідомий/.test(wt) && /Вписати з платіжки/.test(wt), wt);
+  ok('вода: КП «Малоданилівський комунальник» 10,11 грн за м³ (91-а), «Звідки ці дані», «Так, у мене так» / «У мене інакше»', /Малоданилівський комунальник/.test(wt) && /10,11 грн за м³/.test(wt) && /Звідки ці дані/.test(wt) && /У мене інакше/.test(wt), wt);
   ok('«Звідки ці дані» — джерело тарифу світла згорнуте', !!(await p.$('[data-key=prov-elec] details.prov-src')) && !(await p.$eval('[data-key=prov-elec] details.prov-src', d => d.open)));
   await p.click('[data-key=prov-yes-elec]'); await p.waitForTimeout(300); let sv = await st();
   ok('«Так, у мене так» → світло звірено (p.prov.elec.ok), позначка «звірено», кнопки підтвердження зникли', sv.places[1].prov && sv.places[1].prov.elec.ok === 1 && /звірено/.test(await txt('prov-elec')) && !(await p.$('[data-key=prov-yes-elec]')));
