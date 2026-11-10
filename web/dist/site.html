@@ -1096,7 +1096,8 @@ fieldset.field { border: 0; padding: 0; min-width: 0; }
 .season > .list { border-radius: 0; background: transparent; }
 .ss-head { list-style: none; cursor: pointer; display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: 12px; row-gap: 3px; padding: 14px 16px; border-radius: 11px; }
 .season[open] > .ss-head { border-bottom-left-radius: 0; border-bottom-right-radius: 0; }
-.season[open] > .ss-head { border-bottom: 1px solid var(--c-line); }
+.ss-head { border-bottom: 1px solid transparent; }   /* рамка під шапкою — завжди 1 px, лише колір: шапка не «скаче» (владелец 10.11) */
+.season[open] > .ss-head { border-bottom-color: var(--c-line); }
 .ss-head::-webkit-details-marker { display: none; }
 .ss-head:hover { background: var(--c-ghost-hover); }
 .ss-head:focus-visible { outline: 2px solid var(--c-info); outline-offset: -2px; }
@@ -1104,8 +1105,8 @@ fieldset.field { border: 0; padding: 0; min-width: 0; }
 .ss-top { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
 .ss-t { font-size: 17px; font-weight: 600; }
 .ss-tag { font-size: 13px; color: var(--c-ink-2); } .ss-tag.on { color: var(--c-info); }
-.ss-dd { grid-column: 2; grid-row: 1 / span 3; align-self: center; transform: rotate(90deg); transition: transform .15s var(--ease); color: var(--c-ink-2); }
-.season[open] .ss-dd { transform: rotate(-90deg); }
+.ss-dd { grid-column: 2; grid-row: 1 / span 3; align-self: center; }   /* стрілка — спільна кругла «ручка» .pacc-chev, як в усіх розкривашках */
+.season[open] > .ss-head .pacc-chev { transform: rotate(-90deg); }
 .ss-sum { display: flex; flex-wrap: wrap; gap: 0 8px; align-items: baseline; font-size: 15px; color: var(--c-ink-2); font-variant-numeric: tabular-nums; }
 .ss-sum b { font-weight: 600; color: var(--c-ink); } .ss-dot { color: var(--c-line); }
 .ss-none { font-size: 15px; color: var(--c-ink-2); }
@@ -10601,7 +10602,7 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
       var sub = s.from ? [t('hs_period', { a: fmtDate(s.from, true), b: fmtDate(s.to, true) }), s.perMonth ? t('hs_month', { q: fmtN(s.perMonth, 2), m: money0(costOf(s.perMonth, 30).total) }) : ''] : null;
       return '<details class="season" data-key="season-' + k + '"' + (i === 0 || cur ? ' open' : '') + '><summary class="ss-head">' +
         '<span class="ss-top"><span class="ss-t">' + esc(t('hs_title', { s: lbl })) + '</span>' + (cur ? '<span class="ss-tag' + (run ? ' on' : '') + '">' + esc(t(run ? 'hs_run' : 'hs_cur')) + '</span>' : '') + '</span>' +
-        '<span class="ss-sum">' + q + '</span>' + (sub ? '<span class="ss-sub">' + subSpans(sub) + '</span>' : '') + ico('chev', 18, 'ss-dd') + '</summary>' + readingList(groups[k]) + '</details>';
+        '<span class="ss-sum">' + q + '</span>' + (sub ? '<span class="ss-sub">' + subSpans(sub) + '</span>' : '') + ico('chev', 18, 'pacc-chev ss-dd') + '</summary>' + readingList(groups[k]) + '</details>';
     }).join('') + '<p class="small muted" data-key="hs-hint">' + esc(t('hs_hint')) + '</p>';
   }
 
