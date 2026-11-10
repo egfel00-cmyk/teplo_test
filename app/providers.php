@@ -10,9 +10,9 @@ declare(strict_types=1);
  *  GET /api/providers?q=адреса[&n=назва пункту&h=код громади]. Адресу не зберігаємо. Як додати область — skills/oblast-providers/SKILL.md. */
 final class Providers {
   /** Регіони довідника: код → назва (як у КАТОТТГ). Порядок — порядок у списку «Уточніть» серед однакових назв. */
-  const REGIONS = ['kh' => 'Харківська', 'kv' => 'Київська', 'ky' => 'Київ', 'od' => 'Одеська', 'lv' => 'Львівська'];
-  /** Область в адресі (укр./рос.): «Київська обл.», «Киевская область», «Одеська обл», «Львовская обл.». */
-  const OBL_RE = ['kh' => '/харк[іи]вськ|харьковск/u', 'kv' => '/ки[їи]вськ|киевск/u', 'od' => '/одеськ|одесск/u', 'lv' => '/льв[іо]вськ|львовск/u'];
+  const REGIONS = ['kh' => 'Харківська', 'kv' => 'Київська', 'ky' => 'Київ', 'od' => 'Одеська', 'lv' => 'Львівська', 'km' => 'Хмельницька'];
+  /** Область в адресі (укр./рос.): «Київська обл.», «Киевская область», «Одеська обл», «Львовская обл.», «Хмельницкая обл.». */
+  const OBL_RE = ['kh' => '/харк[іи]вськ|харьковск/u', 'kv' => '/ки[їи]вськ|киевск/u', 'od' => '/одеськ|одесск/u', 'lv' => '/льв[іо]вськ|львовск/u', 'km' => '/хмельн[иі]цьк|хмельницк/u'];
   public static function file(): string { return (string)Cfg::get('providers_file', __DIR__ . '/data/providers.json'); }
   public static function katFile(string $r = 'kh'): string { return $r === 'kh' ? (string)Cfg::get('katottg_file', __DIR__ . '/data/kh_katottg.json') : __DIR__ . '/data/' . $r . '_katottg.json'; }
   public static function provFile(string $r): string { return $r === 'kh' ? self::file() : (string)Cfg::get('prov_dir', __DIR__ . '/data') . '/prov_' . $r . '.json'; }
