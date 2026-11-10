@@ -17,6 +17,7 @@ require __DIR__ . '/app/cabs.php';
 require __DIR__ . '/app/htmsvc.php';
 require __DIR__ . '/app/vksvc.php';
 require __DIR__ . '/app/localbot.php';
+require __DIR__ . '/app/relay.php';   // RelayForm — розбір форм для LocalBot (102-а: без нього проба падала «class not found»)
 require __DIR__ . '/app/docs.php';
 require __DIR__ . '/app/gpv.php';
 require __DIR__ . '/app/providers.php';

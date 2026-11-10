@@ -320,7 +320,7 @@ final class LocalBot {
   // ---------- проба «не знайдено» (як у Водоканалу): вигаданий рахунок, лише читання — чи веде нас живий сайт тим шляхом, що й стенд ----------
   // Раз на PROBE_V для кожного form-бота (cron, хвилина % 10 === 9). Підсумок — /api/health → lbot.<бот>.probe: notfound — шлях працює
   // (сайт прийняв рахунок формою й відповів «не знайдено»); page/acc_again — форму веде скрипт сторінки, треба дивитися (каркас — без тексту й цифр).
-  const PROBE_V = 1, PROBE_ACC = ['mtve' => '0-0-0'];
+  const PROBE_V = 2, PROBE_ACC = ['mtve' => '0-0-0'];
   public static function probe(): ?array {
     $j = json_decode((string)@file_get_contents(self::lastFile()), true); $j = is_array($j) ? $j : [];
     foreach (self::BOTS as $id => $b) {
@@ -328,7 +328,7 @@ final class LocalBot {
       $res = ['v' => self::PROBE_V, 'at' => time()];
       try { $r = LbWalk::run(self::get($id), ['acc' => self::PROBE_ACC[$id]], [], false); $res['res'] = 'form'; $res['meters'] = $r['meters'] ?? null; }
       catch (HttpError $e) { $res['res'] = preg_replace('/^lb_/', '', $e->err); if (isset($e->extra['why'])) $res['why'] = $e->extra['why']; if (isset($e->extra['skel'])) $res['skel'] = mb_substr((string)$e->extra['skel'], 0, 3000); }
-      catch (Throwable $e) { $res['res'] = 'error'; }
+      catch (Throwable $e) { $res['res'] = 'error'; $res['err'] = mb_substr(get_class($e) . ': ' . preg_replace('/\d/', '#', $e->getMessage()), 0, 160); }
       $j = json_decode((string)@file_get_contents(self::lastFile()), true); $j = is_array($j) ? $j : [];
       $j[$id] = array_merge((array)($j[$id] ?? []), ['probe' => $res]); @file_put_contents(self::lastFile(), json_encode($j, JSON_UNESCAPED_UNICODE), LOCK_EX);
       return [$id, $res['res']];
