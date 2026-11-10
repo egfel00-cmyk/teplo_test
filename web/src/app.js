@@ -518,28 +518,34 @@
   function enterCls(route) { var was = ENTER_LAST; ENTER_LAST = route; return route !== was && /^(home|places)$/.test(route) && !navigator.webdriver && !calmMotion() ? ' enter' : ''; }
 
   // ---------------- отзыв (плавающая кнопка) ----------------
-  var FB = { open: false, sending: false, text: '', contact: '', err: '' };
+  var FB = { open: false, sending: false, text: '', contact: '', name: null, email: null, tg: null, err: '' };   // 90-а: ім'я, e-mail, Telegram — щоб відповісти (необов'язково)
   function fbDialog() {
     if (!FB.open) return '';
     var acc = Y().account;
     return '<div class="fb-back" data-act="fb-close"></div><div class="fb" role="dialog" aria-modal="true" aria-labelledby="fb-h" data-key="feedback-dialog">' +
       '<h2 id="fb-h">' + esc(t('fb_title')) + '</h2><p class="small muted">' + esc(t('fb_sub')) + '</p>' +
       '<label class="lbl" for="fb-text">' + esc(t('fb_text')) + '</label><textarea id="fb-text" rows="5" maxlength="4000">' + esc(FB.text) + '</textarea>' +
-      (acc ? '' : '<label class="lbl" for="fb-contact">' + esc(t('fb_contact')) + '</label><input id="fb-contact" type="text" maxlength="190" autocomplete="email" value="' + esc(FB.contact) + '">') +
+      // як відповісти (власник 10.11): ім'я, e-mail, Telegram — необов'язково; у вошедших підставляємо з акаунта
+      (function () { var tg = acc && acc.telegram, v = function (k, d) { return FB[k] !== null ? FB[k] : (d || ''); };
+        var f = function (id, k, lbl, type, ac, ph, d, max) { return '<div class="fb-f"><label class="lbl" for="' + id + '">' + esc(t(lbl)) + '</label><input id="' + id + '" type="' + type + '" maxlength="' + max + '" autocomplete="' + ac + '"' + (ph ? ' placeholder="' + esc(ph) + '"' : '') + ' value="' + esc(v(k, d)) + '"></div>'; };
+        return '<fieldset class="fb-back-to"><legend class="lbl">' + esc(t('fb_reply')) + ' <span class="muted small">(' + esc(t('b_opt')) + ')</span></legend><div class="fb-fs">' +
+          f('fb-name', 'name', 'fb_name', 'text', 'name', '', (acc && acc.name) || (tg && tg.name) || '', 60) +
+          f('fb-tg', 'tg', 'fb_tg', 'text', 'off', '@username', tg && tg.username ? '@' + tg.username : '', 40) +
+          f('fb-email', 'email', 'fb_email', 'email', 'email', 'name@example.com', (acc && acc.email) || '', 90) + '</div></fieldset>'; })() +
       (FB.err ? '<p class="help bad" role="alert">' + esc(FB.err) + '</p>' : '') +
       '<div class="row-actions"><button class="btn sec" data-act="fb-close">' + esc(t('cancel')) + '</button><button class="btn" data-act="fb-send" data-key="feedback-send"' + (FB.sending ? ' disabled aria-busy="true"' : '') + '>' + esc(t('fb_send')) + '</button></div></div>';
   }
   function fbSend() {
-    var te = document.getElementById('fb-text'), ce = document.getElementById('fb-contact');
-    FB.text = te ? te.value : FB.text; FB.contact = ce ? ce.value : '';
+    var te = document.getElementById('fb-text'), gv = function (id) { var e = document.getElementById(id); return e ? e.value.trim() : ''; };
+    FB.text = te ? te.value : FB.text; FB.name = gv('fb-name'); FB.email = gv('fb-email'); FB.tg = gv('fb-tg');
     if (FB.text.trim().length < 2) { FB.err = t('fb_empty'); render(true); return; }
     var main = document.getElementById('main');
-    var body = { text: FB.text, contact: FB.contact, page: '#' + (routeName() || 'home'), screen: main ? main.getAttribute('data-screen') : '', lang: S.lang };
+    var body = { text: FB.text, name: FB.name, email: FB.email, tg: FB.tg, page: '#' + (routeName() || 'home'), screen: main ? main.getAttribute('data-screen') : '', lang: S.lang };
     var api = window.TeploSync && window.TeploSync.api;
     FB.sending = true; FB.err = ''; render(true);
     (api ? api('POST', '/feedback', body) : Promise.reject()).then(function (j) {
       FB.sending = false;
-      if (j && j._status === 200) { FB.open = false; FB.text = ''; FB.contact = ''; render(true); toast(t('fb_ok')); return; }
+      if (j && j._status === 200) { FB.open = false; FB.text = ''; FB.name = FB.email = FB.tg = null; render(true); toast(t('fb_ok')); return; }
       FB.err = j && j._status === 429 ? t('fb_rate') : t('fb_fail'); render(true);
     }, function () { FB.sending = false; FB.err = t('fb_fail'); render(true); });
   }
@@ -6278,7 +6284,7 @@
     else view = (V[r] || V.home)();
     if (!view.route) view.route = r;
     tgBack(S.onboarded ? (view.bare ? view.closeTo : FLOW_RE.test(r) ? backTo('history') : r !== homeRoute() ? backTo(homeRoute()) : '') || '' : '');
-    if (FB.open) { var ft = document.getElementById('fb-text'), fc = document.getElementById('fb-contact'); if (ft) FB.text = ft.value; if (fc) FB.contact = fc.value; }
+    if (FB.open) { var ft = document.getElementById('fb-text'); if (ft) FB.text = ft.value; ['name', 'email', 'tg'].forEach(function (k) { var e = document.getElementById('fb-' + k); if (e) FB[k] = e.value; }); }
     document.getElementById('root').innerHTML = shell(view);
     document.documentElement.lang = S.lang;
     document.title = view.html.indexOf('lp-hero') >= 0 && SEO_TITLE ? SEO_TITLE : t('brand');   // на лендинге — заголовок для поиска (его ставит index.php)

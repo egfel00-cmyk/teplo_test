@@ -180,7 +180,10 @@ $anon = new Browser('10.0.5.1');
 ok('отзыв без входа принимается со страницей', $anon->req('POST', '/api/feedback', ['text' => 'Не понял шаг 3', 'page' => '#step-3', 'screen' => 'S05', 'contact' => '@someone'])->status === 200
   && Db::one('SELECT page, screen FROM feedback ORDER BY id DESC')['page'] === '#step-3');
 ok('пустой отзыв → 422', $anon->req('POST', '/api/feedback', ['text' => ' '])->status === 422);
-$anon->req('POST', '/api/feedback', ['text' => 'два']); $anon->req('POST', '/api/feedback', ['text' => 'три']);
+// 90-та: як відповісти — ім'я, e-mail, Telegram (t.me/… → @…) складаються в contact
+$anon->req('POST', '/api/feedback', ['text' => 'два', 'name' => 'Олена', 'email' => 'olena@example.ua', 'tg' => 'https://t.me/olena_k']);
+ok('90-та: відгук з ім\'ям, e-mail і Telegram → contact «Олена · olena@example.ua · @olena_k»', Db::one('SELECT contact FROM feedback ORDER BY id DESC')['contact'] === 'Олена · olena@example.ua · @olena_k', Db::one('SELECT contact FROM feedback ORDER BY id DESC'));
+$anon->req('POST', '/api/feedback', ['text' => 'три']);
 ok('лимит отзывов с одного IP → 429', $anon->req('POST', '/api/feedback', ['text' => 'четыре'])->status === 429);
 ok('аналитика без входа → 401', $anon->req('GET', '/api/admin/overview')->status === 401);
 ok('аналитика обычному пользователю → 403', $rb->req('GET', '/api/admin/users')->status === 403 && $rb->req('GET', '/api/admin/me')->body['admin'] === false);

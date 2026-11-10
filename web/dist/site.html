@@ -329,6 +329,13 @@ label.btn { cursor: pointer; }
   background: var(--c-surface); border-radius: 16px; padding: var(--sp-5); box-shadow: 0 20px 50px var(--c-shadow-strong); }
 .fb textarea, .fb input { width: 100%; box-sizing: border-box; font: 400 var(--fs-m)/1.4 var(--font); padding: 10px 12px; background: var(--c-field-bg); color: var(--c-ink); border: 1.5px solid var(--c-field-line); border-radius: var(--r-field); margin-bottom: var(--sp-3); background: #fff; color: var(--c-ink); }
 .fb .lbl { display: block; font-weight: 600; margin: var(--sp-2) 0 6px; }
+/* «Як вам відповісти» у відгуку (90-а): ім'я й Telegram — рядком, e-mail — на всю ширину; на вузькому — стовпчиком */
+.fb-back-to { border: 0; margin: 0; padding: 0; min-width: 0; }
+.fb-back-to > legend { padding: 0; margin-bottom: 6px; }
+.fb-fs { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); column-gap: 12px; }
+.fb-fs .fb-f:nth-child(3) { grid-column: 1 / -1; }
+.fb-f .lbl { font-size: var(--fs-s); }
+@media (max-width: 420px) { .fb-fs { grid-template-columns: minmax(0, 1fr); } }
 @media (max-width: 600px) { .fb { top: auto; bottom: 0; transform: translateX(-50%); border-radius: 16px 16px 0 0; width: 100vw; padding-bottom: calc(var(--sp-5) + env(safe-area-inset-bottom)); } }
 .test-reset { margin-top: var(--sp-6); border: 1.5px dashed var(--c-line); background: transparent; }
 
@@ -2968,7 +2975,7 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
       ph_privacy: "Тестова версія: фото зберігаються до 90 днів, їх бачить лише команда сервісу, щоб покращувати розпізнавання. Далі — тільки цифри.",
       beta: "Тест", beta_sub: "Тестова версія — передавайте показання в ХТМ самі, ми лише допомагаємо підготувати цифри.",
       fb_btn: "Відгук", fb_title: "Напишіть нам", fb_sub: "Що незрозуміло, що зламалося, чого бракує — читаємо все. Сторінку, з якої ви пишете, ми побачимо самі.",
-      fb_text: "Повідомлення", fb_contact: "Як з вами зв'язатися (необов'язково): e-mail, телефон або @telegram", fb_send: "Надіслати",
+      fb_text: "Повідомлення", fb_contact: "Як з вами зв'язатися (необов'язково): e-mail, телефон або @telegram", fb_send: "Надіслати", fb_reply: "Як вам відповісти", fb_name: "Ім'я", fb_email: "E-mail", fb_tg: "Telegram",
       fb_ok: "Дякуємо, повідомлення отримали", fb_empty: "Напишіть хоч кілька слів.", fb_rate: "Забагато повідомлень — спробуйте пізніше.", fb_fail: "Не вдалося надіслати — перевірте інтернет і спробуйте ще раз.",
       ph_loading: "Завантажую розпізнавач — лише перший раз, ~30 МБ: {p}%",
       ph_reading: "Читаю фото {i} з {n}…",
@@ -4108,7 +4115,7 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
       ph_privacy: "Тестовая версия: фото хранятся до 90 дней, их видит только команда сервиса, чтобы улучшать распознавание. Дальше — только цифры.",
       beta: "Тест", beta_sub: "Тестовая версия — передавайте показания в ХТМ сами, мы только помогаем подготовить цифры.",
       fb_btn: "Отзыв", fb_title: "Напишите нам", fb_sub: "Что непонятно, что сломалось, чего не хватает — читаем всё. Страницу, с которой вы пишете, мы увидим сами.",
-      fb_text: "Сообщение", fb_contact: "Как с вами связаться (необязательно): e-mail, телефон или @telegram", fb_send: "Отправить",
+      fb_text: "Сообщение", fb_contact: "Как с вами связаться (необязательно): e-mail, телефон или @telegram", fb_send: "Отправить", fb_reply: "Как вам ответить", fb_name: "Имя", fb_email: "E-mail", fb_tg: "Telegram",
       fb_ok: "Спасибо, сообщение получили", fb_empty: "Напишите хоть пару слов.", fb_rate: "Слишком много сообщений — попробуйте позже.", fb_fail: "Не удалось отправить — проверьте интернет и попробуйте ещё раз.",
       ph_loading: "Загружаю распознаватель — только первый раз, ~30 МБ: {p}%",
       ph_reading: "Читаю фото {i} из {n}…",
@@ -6851,28 +6858,34 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
   function enterCls(route) { var was = ENTER_LAST; ENTER_LAST = route; return route !== was && /^(home|places)$/.test(route) && !navigator.webdriver && !calmMotion() ? ' enter' : ''; }
 
   // ---------------- отзыв (плавающая кнопка) ----------------
-  var FB = { open: false, sending: false, text: '', contact: '', err: '' };
+  var FB = { open: false, sending: false, text: '', contact: '', name: null, email: null, tg: null, err: '' };   // 90-а: ім'я, e-mail, Telegram — щоб відповісти (необов'язково)
   function fbDialog() {
     if (!FB.open) return '';
     var acc = Y().account;
     return '<div class="fb-back" data-act="fb-close"></div><div class="fb" role="dialog" aria-modal="true" aria-labelledby="fb-h" data-key="feedback-dialog">' +
       '<h2 id="fb-h">' + esc(t('fb_title')) + '</h2><p class="small muted">' + esc(t('fb_sub')) + '</p>' +
       '<label class="lbl" for="fb-text">' + esc(t('fb_text')) + '</label><textarea id="fb-text" rows="5" maxlength="4000">' + esc(FB.text) + '</textarea>' +
-      (acc ? '' : '<label class="lbl" for="fb-contact">' + esc(t('fb_contact')) + '</label><input id="fb-contact" type="text" maxlength="190" autocomplete="email" value="' + esc(FB.contact) + '">') +
+      // як відповісти (власник 10.11): ім'я, e-mail, Telegram — необов'язково; у вошедших підставляємо з акаунта
+      (function () { var tg = acc && acc.telegram, v = function (k, d) { return FB[k] !== null ? FB[k] : (d || ''); };
+        var f = function (id, k, lbl, type, ac, ph, d, max) { return '<div class="fb-f"><label class="lbl" for="' + id + '">' + esc(t(lbl)) + '</label><input id="' + id + '" type="' + type + '" maxlength="' + max + '" autocomplete="' + ac + '"' + (ph ? ' placeholder="' + esc(ph) + '"' : '') + ' value="' + esc(v(k, d)) + '"></div>'; };
+        return '<fieldset class="fb-back-to"><legend class="lbl">' + esc(t('fb_reply')) + ' <span class="muted small">(' + esc(t('b_opt')) + ')</span></legend><div class="fb-fs">' +
+          f('fb-name', 'name', 'fb_name', 'text', 'name', '', (acc && acc.name) || (tg && tg.name) || '', 60) +
+          f('fb-tg', 'tg', 'fb_tg', 'text', 'off', '@username', tg && tg.username ? '@' + tg.username : '', 40) +
+          f('fb-email', 'email', 'fb_email', 'email', 'email', 'name@example.com', (acc && acc.email) || '', 90) + '</div></fieldset>'; })() +
       (FB.err ? '<p class="help bad" role="alert">' + esc(FB.err) + '</p>' : '') +
       '<div class="row-actions"><button class="btn sec" data-act="fb-close">' + esc(t('cancel')) + '</button><button class="btn" data-act="fb-send" data-key="feedback-send"' + (FB.sending ? ' disabled aria-busy="true"' : '') + '>' + esc(t('fb_send')) + '</button></div></div>';
   }
   function fbSend() {
-    var te = document.getElementById('fb-text'), ce = document.getElementById('fb-contact');
-    FB.text = te ? te.value : FB.text; FB.contact = ce ? ce.value : '';
+    var te = document.getElementById('fb-text'), gv = function (id) { var e = document.getElementById(id); return e ? e.value.trim() : ''; };
+    FB.text = te ? te.value : FB.text; FB.name = gv('fb-name'); FB.email = gv('fb-email'); FB.tg = gv('fb-tg');
     if (FB.text.trim().length < 2) { FB.err = t('fb_empty'); render(true); return; }
     var main = document.getElementById('main');
-    var body = { text: FB.text, contact: FB.contact, page: '#' + (routeName() || 'home'), screen: main ? main.getAttribute('data-screen') : '', lang: S.lang };
+    var body = { text: FB.text, name: FB.name, email: FB.email, tg: FB.tg, page: '#' + (routeName() || 'home'), screen: main ? main.getAttribute('data-screen') : '', lang: S.lang };
     var api = window.TeploSync && window.TeploSync.api;
     FB.sending = true; FB.err = ''; render(true);
     (api ? api('POST', '/feedback', body) : Promise.reject()).then(function (j) {
       FB.sending = false;
-      if (j && j._status === 200) { FB.open = false; FB.text = ''; FB.contact = ''; render(true); toast(t('fb_ok')); return; }
+      if (j && j._status === 200) { FB.open = false; FB.text = ''; FB.name = FB.email = FB.tg = null; render(true); toast(t('fb_ok')); return; }
       FB.err = j && j._status === 429 ? t('fb_rate') : t('fb_fail'); render(true);
     }, function () { FB.sending = false; FB.err = t('fb_fail'); render(true); });
   }
@@ -12611,7 +12624,7 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
     else view = (V[r] || V.home)();
     if (!view.route) view.route = r;
     tgBack(S.onboarded ? (view.bare ? view.closeTo : FLOW_RE.test(r) ? backTo('history') : r !== homeRoute() ? backTo(homeRoute()) : '') || '' : '');
-    if (FB.open) { var ft = document.getElementById('fb-text'), fc = document.getElementById('fb-contact'); if (ft) FB.text = ft.value; if (fc) FB.contact = fc.value; }
+    if (FB.open) { var ft = document.getElementById('fb-text'); if (ft) FB.text = ft.value; ['name', 'email', 'tg'].forEach(function (k) { var e = document.getElementById('fb-' + k); if (e) FB[k] = e.value; }); }
     document.getElementById('root').innerHTML = shell(view);
     document.documentElement.lang = S.lang;
     document.title = view.html.indexOf('lp-hero') >= 0 && SEO_TITLE ? SEO_TITLE : t('brand');   // на лендинге — заголовок для поиска (его ставит index.php)

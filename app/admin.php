@@ -11,8 +11,12 @@ final class Feedback {
     if (mb_strlen($text) < 2) throw new HttpError(422, 'empty');
     RateLimit::hit('feedback_ip', $ip);
     $cut = fn($v, $n) => ($v = trim((string)$v)) === '' ? null : mb_substr($v, 0, $n);
+    // як відповісти (90-а): ім'я, e-mail, Telegram — необов'язково, складаємо в contact «Олена · olena@… · @olena»; старе поле contact теж приймаємо
+    $tg = preg_replace('~^(?:https?://)?(?:t\.me/|telegram\.me/)?@?~i', '', trim((string)($in['tg'] ?? '')));
+    $parts = array_values(array_filter([$cut($in['name'] ?? '', 60), $cut($in['email'] ?? '', 90), $tg !== '' ? '@' . mb_substr($tg, 0, 40) : null, $cut($in['contact'] ?? '', 190)]));
+    $contact = $parts ? mb_substr(implode(' · ', $parts), 0, 190) : null;
     Db::q('INSERT INTO feedback (user_id, text, contact, page, screen, lang, ua, ip, status, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', [
-      $user ? (int)$user['id'] : null, mb_substr($text, 0, 4000), $cut($in['contact'] ?? '', 190), $cut($in['page'] ?? '', 120), $cut($in['screen'] ?? '', 16),
+      $user ? (int)$user['id'] : null, mb_substr($text, 0, 4000), $contact, $cut($in['page'] ?? '', 120), $cut($in['screen'] ?? '', 16),
       $cut($in['lang'] ?? '', 5), mb_substr($r->header('User-Agent'), 0, 200), $ip, 'new', Http::iso()]);
     return ['ok' => true];
   }
