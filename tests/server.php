@@ -2108,6 +2108,8 @@ Db::q('UPDATE cab_jobs SET next_at = ? WHERE id = ?', [time() - 1, $lj]);
 $n0 = count($sent); LocalBot::cron(); $ml = end($sent);
 ok('loe: лист на pokaz@loe.lviv.ua, тема й текст — лише «0000011111 2222»', count($sent) === $n0 + 1 && $ml[1] === ['pokaz@loe.lviv.ua'] && str_contains($ml[2], 'Subject: 0000011111 2222')
   && (str_contains($ml[2], base64_encode('0000011111 2222')) || str_contains($ml[2], "\r\n\r\n0000011111 2222")), [$ml[1] ?? null, substr((string)($ml[2] ?? ''), 0, 600)]);
+$pr = LocalBot::probe(); $pr2 = LocalBot::probe(); $hp = (new Browser('10.8.8.10'))->req('GET', '/api/health')->body['lbot']['mtve']['probe'] ?? [];
+ok('проба mtve: вигаданий рахунок 0-0-0 → «не знайдено» (шлях форми працює), раз на версію; /api/health → lbot.mtve.probe', $pr === ['mtve', 'notfound'] && $pr2 === null && ($hp['res'] ?? '') === 'notfound', [$pr, $pr2, $hp]);
 CabWeb::$http = null;
 Mail::$send = null; Cfg::saveRuntime(array_fill_keys(Mail::KEYS, null));
 

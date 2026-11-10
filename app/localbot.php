@@ -317,9 +317,27 @@ final class LocalBot {
     if (Cfg::appUrlKnown()) $p['reply_markup'] = ['inline_keyboard' => [[['text' => $ru ? 'Открыть «Счётчики»' : 'Відкрити «Лічильники»', 'web_app' => ['url' => Cfg::appUrl() . '?go=' . (in_array('elec', (array)($b['kinds'] ?? []), true) ? 'elec' : 'water-cold') . ($job['place'] ? '&place=' . rawurlencode((string)$job['place']) : '')]]]]];
     try { Telegram::call('sendMessage', $p); } catch (Throwable $e) { /* не дійшло — статус видно в застосунку */ }
   }
+  // ---------- проба «не знайдено» (як у Водоканалу): вигаданий рахунок, лише читання — чи веде нас живий сайт тим шляхом, що й стенд ----------
+  // Раз на PROBE_V для кожного form-бота (cron, хвилина % 10 === 9). Підсумок — /api/health → lbot.<бот>.probe: notfound — шлях працює
+  // (сайт прийняв рахунок формою й відповів «не знайдено»); page/acc_again — форму веде скрипт сторінки, треба дивитися (каркас — без тексту й цифр).
+  const PROBE_V = 1, PROBE_ACC = ['mtve' => '0-0-0'];
+  public static function probe(): ?array {
+    $j = json_decode((string)@file_get_contents(self::lastFile()), true); $j = is_array($j) ? $j : [];
+    foreach (self::BOTS as $id => $b) {
+      if ($b['t'] !== 'form' || !isset(self::PROBE_ACC[$id]) || (int)($j[$id]['probe']['v'] ?? 0) === self::PROBE_V) continue;
+      $res = ['v' => self::PROBE_V, 'at' => time()];
+      try { $r = LbWalk::run(self::get($id), ['acc' => self::PROBE_ACC[$id]], [], false); $res['res'] = 'form'; $res['meters'] = $r['meters'] ?? null; }
+      catch (HttpError $e) { $res['res'] = preg_replace('/^lb_/', '', $e->err); if (isset($e->extra['why'])) $res['why'] = $e->extra['why']; if (isset($e->extra['skel'])) $res['skel'] = mb_substr((string)$e->extra['skel'], 0, 3000); }
+      catch (Throwable $e) { $res['res'] = 'error'; }
+      $j = json_decode((string)@file_get_contents(self::lastFile()), true); $j = is_array($j) ? $j : [];
+      $j[$id] = array_merge((array)($j[$id] ?? []), ['probe' => $res]); @file_put_contents(self::lastFile(), json_encode($j, JSON_UNESCAPED_UNICODE), LOCK_EX);
+      return [$id, $res['res']];
+    }
+    return null;
+  }
   // ---------- для /admin і /api/health: останні заходи роботів (без рахунків і цифр) ----------
   public static function lastFile(): string { return Cfg::data() . '/cache/lbot_last.json'; }
-  public static function last(string $id, array $x): void { $j = json_decode((string)@file_get_contents(self::lastFile()), true); $j = is_array($j) ? $j : []; $j[$id] = $x; @file_put_contents(self::lastFile(), json_encode($j, JSON_UNESCAPED_UNICODE), LOCK_EX); }
+  public static function last(string $id, array $x): void { $j = json_decode((string)@file_get_contents(self::lastFile()), true); $j = is_array($j) ? $j : []; $j[$id] = $x + (isset($j[$id]['probe']) ? ['probe' => $j[$id]['probe']] : []); @file_put_contents(self::lastFile(), json_encode($j, JSON_UNESCAPED_UNICODE), LOCK_EX); }
   public static function summary(): array {
     $jobs = []; $conn = [];
     try {
@@ -327,7 +345,7 @@ final class LocalBot {
       foreach (Db::q("SELECT prov, COUNT(*) AS c FROM cab_creds WHERE prov LIKE 'L%' GROUP BY prov")->fetchAll() as $x) $conn[substr($x['prov'], 1)] = (int)$x['c'];
     } catch (Throwable $e) {}
     $last = json_decode((string)@file_get_contents(self::lastFile()), true);
-    $bots = []; foreach (self::BOTS as $id => $b) $bots[$id] = ['t' => $b['t'], 'ready' => self::ready($id), 'conn' => $conn[$id] ?? 0, 'jobs' => (object)($jobs[$id] ?? [])] + (is_array($last) && isset($last[$id]) ? ['last' => array_diff_key($last[$id], ['skel' => 1])] : []);
+    $bots = []; foreach (self::BOTS as $id => $b) $bots[$id] = ['t' => $b['t'], 'ready' => self::ready($id), 'conn' => $conn[$id] ?? 0, 'jobs' => (object)($jobs[$id] ?? [])] + (is_array($last) && isset($last[$id]) ? ['last' => array_diff_key($last[$id], ['skel' => 1, 'probe' => 1])] + (isset($last[$id]['probe']) ? ['probe' => $last[$id]['probe']] : []) : []);
     return $bots;
   }
 }
