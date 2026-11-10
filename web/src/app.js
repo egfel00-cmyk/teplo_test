@@ -44,20 +44,66 @@
   // цвет-метка квартиры (вдобавок к названию, не вместо него): ключ в place.color, по умолчанию — по порядку
   var PCOLORS = ['teal', 'violet', 'amber', 'green', 'rose', 'slate'];
   function placeColor(p) { return p && PCOLORS.indexOf(p.color) >= 0 ? p.color : PCOLORS[Math.max(0, places().indexOf(p)) % PCOLORS.length]; }
+  /* Phosphor Icons — MIT License
+     
+     Copyright (c) 2023 Phosphor Icons
+     
+     Permission is hereby granted, free of charge, to any person obtaining a copy
+     of this software and associated documentation files (the "Software"), to deal
+     in the Software without restriction, including without limitation the rights
+     to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+     copies of the Software, and to permit persons to whom the Software is
+     furnished to do so, subject to the following conditions:
+     
+     The above copyright notice and this permission notice shall be included in all
+     copies or substantial portions of the Software.
+     
+     THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+     IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+     FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+     AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+     LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+     OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+     SOFTWARE. */
+  /** Значки квартир (власник 10.11: «залиті, щоб розрізняти й за значком»; необов'язково) — Phosphor Icons, Fill, MIT © 2023 Phosphor Icons (phosphoricons.com); viewBox 0 0 256 256. */
+  var PICONS = {
+    'house': '<path d="M224,120v96a8,8,0,0,1-8,8H160a8,8,0,0,1-8-8V164a4,4,0,0,0-4-4H108a4,4,0,0,0-4,4v52a8,8,0,0,1-8,8H40a8,8,0,0,1-8-8V120a16,16,0,0,1,4.69-11.31l80-80a16,16,0,0,1,22.62,0l80,80A16,16,0,0,1,224,120Z"/>',
+    'building-apartment': '<path d="M240,208h-8V72a8,8,0,0,0-8-8H184V40a8,8,0,0,0-8-8H80a8,8,0,0,0-8,8V96H32a8,8,0,0,0-8,8V208H16a8,8,0,0,0,0,16H240a8,8,0,0,0,0-16ZM80,176H64a8,8,0,0,1,0-16H80a8,8,0,0,1,0,16Zm0-32H64a8,8,0,0,1,0-16H80a8,8,0,0,1,0,16Zm64,64H112V168h32Zm-8-64H120a8,8,0,0,1,0-16h16a8,8,0,0,1,0,16Zm0-32H120a8,8,0,0,1,0-16h16a8,8,0,0,1,0,16Zm0-32H120a8,8,0,0,1,0-16h16a8,8,0,0,1,0,16Zm56,96H176a8,8,0,0,1,0-16h16a8,8,0,0,1,0,16Zm0-32H176a8,8,0,0,1,0-16h16a8,8,0,0,1,0,16Zm0-32H176a8,8,0,0,1,0-16h16a8,8,0,0,1,0,16Z"/>',
+    'buildings': '<path d="M239.73,208H224V96a16,16,0,0,0-16-16H164a4,4,0,0,0-4,4V208H144V32.41a16.43,16.43,0,0,0-6.16-13,16,16,0,0,0-18.72-.69L39.12,72A16,16,0,0,0,32,85.34V208H16.27A8.18,8.18,0,0,0,8,215.47,8,8,0,0,0,16,224H240a8,8,0,0,0,8-8.53A8.18,8.18,0,0,0,239.73,208ZM76,184a8,8,0,0,1-8.53,8A8.18,8.18,0,0,1,60,183.72V168.27A8.19,8.19,0,0,1,67.47,160,8,8,0,0,1,76,168Zm0-56a8,8,0,0,1-8.53,8A8.19,8.19,0,0,1,60,127.72V112.27A8.19,8.19,0,0,1,67.47,104,8,8,0,0,1,76,112Zm40,56a8,8,0,0,1-8.53,8,8.18,8.18,0,0,1-7.47-8.26V168.27a8.19,8.19,0,0,1,7.47-8.26,8,8,0,0,1,8.53,8Zm0-56a8,8,0,0,1-8.53,8,8.19,8.19,0,0,1-7.47-8.26V112.27a8.19,8.19,0,0,1,7.47-8.26,8,8,0,0,1,8.53,8Z"/>',
+    'barn': '<path d="M240,192h-8V130.57l1.49,2.08a8,8,0,1,0,13-9.3l-40-56a8,8,0,0,0-2-1.94L137,18.77l-.1-.07a16,16,0,0,0-17.76,0l-.1.07L51.45,65.42a8,8,0,0,0-2,1.94l-40,56a8,8,0,1,0,13,9.3L24,130.57V192H16a8,8,0,0,0,0,16H240a8,8,0,0,0,0-16ZM112,80h32a8,8,0,1,1,0,16H112a8,8,0,1,1,0-16Zm52.64,40L128,146.17,91.36,120ZM72,125.83,114.24,156,72,186.17ZM91.36,192,128,165.83,164.64,192ZM184,186.17,141.76,156,184,125.83Z"/>',
+    'tree-evergreen': '<path d="M231.19,195.51A8,8,0,0,1,224,200H136v40a8,8,0,0,1-16,0V200H32a8,8,0,0,1-6.31-12.91l46-59.09H48a8,8,0,0,1-6.34-12.88l80-104a8,8,0,0,1,12.68,0l80,104A8,8,0,0,1,208,128H184.36l45.95,59.09A8,8,0,0,1,231.19,195.51Z"/>',
+    'flower-tulip': '<path d="M208,48a87.48,87.48,0,0,0-35.36,7.43c-15.1-25.37-39.92-38-41.06-38.59a8,8,0,0,0-7.16,0c-1.14.58-26,13.22-41.06,38.59A87.48,87.48,0,0,0,48,48a8,8,0,0,0-8,8V96a88.11,88.11,0,0,0,80,87.63v35.43L83.58,200.84a8,8,0,1,0-7.16,14.32l48,24a8,8,0,0,0,7.16,0l48-24a8,8,0,0,0-7.16-14.32L136,219.06V183.63A88.11,88.11,0,0,0,216,96V56A8,8,0,0,0,208,48ZM56,96V64.44A72.1,72.1,0,0,1,120,136v31.56A72.1,72.1,0,0,1,56,96Zm144,0a72.1,72.1,0,0,1-64,71.56V136a72.1,72.1,0,0,1,64-71.56Z"/>',
+    'plant': '<path d="M205.41,159.07a60.9,60.9,0,0,1-31.83,8.86,71.71,71.71,0,0,1-27.36-5.66A55.55,55.55,0,0,0,136,194.51V224a8,8,0,0,1-8.53,8,8.18,8.18,0,0,1-7.47-8.25V211.31L81.38,172.69A52.5,52.5,0,0,1,63.44,176a45.82,45.82,0,0,1-23.92-6.67C17.73,156.09,6,125.62,8.27,87.79a8,8,0,0,1,7.52-7.52c37.83-2.23,68.3,9.46,81.5,31.25A46,46,0,0,1,103.74,140a4,4,0,0,1-6.89,2.43l-19.2-20.1a8,8,0,0,0-11.31,11.31l53.88,55.25c.06-.78.13-1.56.21-2.33a68.56,68.56,0,0,1,18.64-39.46l50.59-53.46a8,8,0,0,0-11.31-11.32l-49,51.82a4,4,0,0,1-6.78-1.74c-4.74-17.48-2.65-34.88,6.4-49.82,17.86-29.48,59.42-45.26,111.18-42.22a8,8,0,0,1,7.52,7.52C250.67,99.65,234.89,141.21,205.41,159.07Z"/>',
+    'heart': '<path d="M240,102c0,70-103.79,126.66-108.21,129a8,8,0,0,1-7.58,0C119.79,228.66,16,172,16,102A62.07,62.07,0,0,1,78,40c20.65,0,38.73,8.88,50,23.89C139.27,48.88,157.35,40,178,40A62.07,62.07,0,0,1,240,102Z"/>',
+    'star': '<path d="M234.29,114.85l-45,38.83L203,211.75a16.4,16.4,0,0,1-24.5,17.82L128,198.49,77.47,229.57A16.4,16.4,0,0,1,53,211.75l13.76-58.07-45-38.83A16.46,16.46,0,0,1,31.08,86l59-4.76,22.76-55.08a16.36,16.36,0,0,1,30.27,0l22.75,55.08,59,4.76a16.46,16.46,0,0,1,9.37,28.86Z"/>',
+    'sun': '<path d="M120,40V16a8,8,0,0,1,16,0V40a8,8,0,0,1-16,0Zm8,24a64,64,0,1,0,64,64A64.07,64.07,0,0,0,128,64ZM58.34,69.66A8,8,0,0,0,69.66,58.34l-16-16A8,8,0,0,0,42.34,53.66Zm0,116.68-16,16a8,8,0,0,0,11.32,11.32l16-16a8,8,0,0,0-11.32-11.32ZM192,72a8,8,0,0,0,5.66-2.34l16-16a8,8,0,0,0-11.32-11.32l-16,16A8,8,0,0,0,192,72Zm5.66,114.34a8,8,0,0,0-11.32,11.32l16,16a8,8,0,0,0,11.32-11.32ZM48,128a8,8,0,0,0-8-8H16a8,8,0,0,0,0,16H40A8,8,0,0,0,48,128Zm80,80a8,8,0,0,0-8,8v24a8,8,0,0,0,16,0V216A8,8,0,0,0,128,208Zm112-88H216a8,8,0,0,0,0,16h24a8,8,0,0,0,0-16Z"/>',
+    'moon': '<path d="M235.54,150.21a104.84,104.84,0,0,1-37,52.91A104,104,0,0,1,32,120,103.09,103.09,0,0,1,52.88,57.48a104.84,104.84,0,0,1,52.91-37,8,8,0,0,1,10,10,88.08,88.08,0,0,0,109.8,109.8,8,8,0,0,1,10,10Z"/>',
+    'mountains': '<path d="M254.88,195.92l-54.56-92.08A15.87,15.87,0,0,0,186.55,96h0a15.85,15.85,0,0,0-13.76,7.84l-15.64,26.39a4,4,0,0,0,0,4.07l26.8,45.47a8.13,8.13,0,0,1-1.89,10.55,8,8,0,0,1-11.8-2.26L101.79,71.88a16,16,0,0,0-27.58,0L1.11,195.94a8,8,0,0,0,1,9.52A8.23,8.23,0,0,0,8.23,208H247.77a8.29,8.29,0,0,0,6.09-2.55A8,8,0,0,0,254.88,195.92ZM64.43,120,88,80l23.57,40ZM140,52a24,24,0,1,1,24,24A24,24,0,0,1,140,52Z"/>',
+    'sailboat': '<path d="M160,140V72.85a4,4,0,0,1,7-2.69l55,60.46a8,8,0,0,1,.43,10.26,8.24,8.24,0,0,1-6.58,3.12H164A4,4,0,0,1,160,140Zm87.21,32.53A8,8,0,0,0,240,168H144V8a8,8,0,0,0-14.21-5l-104,128A8,8,0,0,0,32,144h96v24H16a8,8,0,0,0-6.25,13l29.6,37a15.93,15.93,0,0,0,12.49,6H204.16a15.93,15.93,0,0,0,12.49-6l29.6-37A8,8,0,0,0,247.21,172.53Z"/>',
+    'key': '<path d="M216.57,39.43A80,80,0,0,0,83.91,120.78L28.69,176A15.86,15.86,0,0,0,24,187.31V216a16,16,0,0,0,16,16H72a8,8,0,0,0,8-8V208H96a8,8,0,0,0,8-8V184h16a8,8,0,0,0,5.66-2.34l9.56-9.57A79.73,79.73,0,0,0,160,176h.1A80,80,0,0,0,216.57,39.43ZM180,92a16,16,0,1,1,16-16A16,16,0,0,1,180,92Z"/>',
+    'briefcase': '<path d="M152,112a8,8,0,0,1-8,8H112a8,8,0,0,1,0-16h32A8,8,0,0,1,152,112Zm80-40V200a16,16,0,0,1-16,16H40a16,16,0,0,1-16-16V72A16,16,0,0,1,40,56H80V48a24,24,0,0,1,24-24h48a24,24,0,0,1,24,24v8h40A16,16,0,0,1,232,72ZM96,56h64V48a8,8,0,0,0-8-8H104a8,8,0,0,0-8,8Zm120,57.61V72H40v41.61A184,184,0,0,0,128,136,184,184,0,0,0,216,113.61Z"/>',
+    'dog': '<path d="M239.71,125l-16.42-88a16,16,0,0,0-19.61-12.58l-.31.09L150.85,40h-45.7L52.63,24.56l-.31-.09A16,16,0,0,0,32.71,37.05L16.29,125a15.77,15.77,0,0,0,9.12,17.52A16.26,16.26,0,0,0,32.12,144,15.48,15.48,0,0,0,40,141.84V184a40,40,0,0,0,40,40h96a40,40,0,0,0,40-40V141.85a15.5,15.5,0,0,0,7.87,2.16,16.31,16.31,0,0,0,6.72-1.47A15.77,15.77,0,0,0,239.71,125ZM176,208H136V195.31l13.66-13.65a8,8,0,0,0-11.32-11.32L128,180.69l-10.34-10.35a8,8,0,0,0-11.32,11.32L120,195.31V208H80a24,24,0,0,1-24-24V123.11L107.93,56h40.14L200,123.11V184A24,24,0,0,1,176,208Zm-72-68a12,12,0,1,1-12-12A12,12,0,0,1,104,140Zm72,0a12,12,0,1,1-12-12A12,12,0,0,1,176,140Z"/>',
+    'cat': '<path d="M222.83,33.54a16,16,0,0,0-18.14,3.15c-.14.14-.26.27-.38.41L187.05,57A111.28,111.28,0,0,0,69,57L51.69,37.1c-.12-.14-.24-.27-.38-.41a16,16,0,0,0-18.14-3.15A16.4,16.4,0,0,0,24,48.46V136c0,49,40.06,89.63,91.56,95.32a4,4,0,0,0,4.44-4v-32l-13.42-13.43a8.22,8.22,0,0,1-.41-11.37,8,8,0,0,1,11.49-.18L128,180.68l10.34-10.35a8,8,0,0,1,11.49.18,8.22,8.22,0,0,1-.41,11.37L136,195.31v32a4,4,0,0,0,4.44,4C191.94,225.62,232,185,232,136V48.46A16.4,16.4,0,0,0,222.83,33.54ZM84,152a12,12,0,1,1,12-12A12,12,0,0,1,84,152Zm20-64a8,8,0,1,1-16,0V69a8,8,0,0,1,16,0Zm32,0a8,8,0,1,1-16,0V64a8,8,0,0,1,16,0Zm16,0V69a8,8,0,0,1,16,0V88a8,8,0,1,1-16,0Zm20,64a12,12,0,1,1,12-12A12,12,0,0,1,172,152Z"/>',
+    'graduation-cap': '<path d="M176,207.24a119,119,0,0,0,16-7.73V240a8,8,0,0,1-16,0Zm11.76-88.43-56-29.87a8,8,0,0,0-7.52,14.12L171,128l17-9.06Zm64-29.87-120-64a8,8,0,0,0-7.52,0l-120,64a8,8,0,0,0,0,14.12L32,117.87v48.42a15.91,15.91,0,0,0,4.06,10.65C49.16,191.53,78.51,216,128,216a130,130,0,0,0,48-8.76V130.67L171,128l-43,22.93L43.83,106l0,0L25,96,128,41.07,231,96l-18.78,10-.06,0L188,118.94a8,8,0,0,1,4,6.93v73.64a115.63,115.63,0,0,0,27.94-22.57A15.91,15.91,0,0,0,224,166.29V117.87l27.76-14.81a8,8,0,0,0,0-14.12Z"/>'
+  };
+  function picon(p, size, cls) { var k = p && p.icon; if (!k || !PICONS[k]) return ''; return '<svg class="picon' + (cls ? ' ' + cls : '') + '" viewBox="0 0 256 256" width="' + size + '" height="' + size + '" fill="currentColor" aria-hidden="true" focusable="false">' + PICONS[k] + '</svg>'; }
+  /** Мітка квартири: значок (якщо обрано) або кольорова крапка. */
+  function pmark(p, size, dotCls) { return picon(p, size) || '<span class="' + (dotCls || 'pdot') + '" aria-hidden="true"></span>'; }
   function nextColor() { var used = places().map(placeColor); return PCOLORS.filter(function (c) { return used.indexOf(c) < 0; })[0] || PCOLORS[places().length % PCOLORS.length]; }
   /** Где я: шапка квартиры (имя + адрес + цветная полоса) — когда квартир больше одной. compact — на экранах ввода, без перехода. */
   function placeBar(compact) {
     var ps = places(), p = place(); if (ps.length < 2 || !p) return '';
     var sub = placeSub(p);
-    if (compact) return '<div class="place-bar compact" style="--pc:var(--pc-' + placeColor(p) + ')" data-key="place-bar"><span class="small muted">' + esc(t('pb_where')) + '</span><b>' + esc(placeLabel(p)) + '</b>' + (sub ? '<span class="small muted pb-sub">' + esc(sub) + '</span>' : '') + '</div>';
-    return '<div class="place-bar" style="--pc:var(--pc-' + placeColor(p) + ')" data-key="place-bar"><a class="pb-name" href="#home" data-key="place-bar-name" title="' + esc(t('pv_back_all')) + '"><b>' + esc(placeLabel(p)) + '</b>' + (sub ? '<span class="small muted">' + esc(sub) + '</span>' : '') + '</a>' +
+    var ic = picon(p, compact ? 20 : 28, 'pb-ic');
+    if (compact) return '<div class="place-bar compact' + (ic ? ' has-ic' : '') + '" style="--pc:var(--pc-' + placeColor(p) + ')" data-key="place-bar"><span class="small muted">' + esc(t('pb_where')) + '</span><b>' + ic + esc(placeLabel(p)) + '</b>' + (sub ? '<span class="small muted pb-sub">' + esc(sub) + '</span>' : '') + '</div>';
+    return '<div class="place-bar' + (ic ? ' has-ic' : '') + '" style="--pc:var(--pc-' + placeColor(p) + ')" data-key="place-bar"><a class="pb-name" href="#home" data-key="place-bar-name" title="' + esc(t('pv_back_all')) + '"><b>' + ic + esc(placeLabel(p)) + '</b>' + (sub ? '<span class="small muted">' + esc(sub) + '</span>' : '') + '</a>' +
       '<a class="btn sec pb-all" href="#home" data-key="place-bar-all">' + ico('back', 18) + '<span>' + esc(t('pv_back_all')) + '</span></a></div>';
   }
   /** История, статистика, экономия при ≥ 2 квартирах: чья — видно сразу и меняется тут же (кнопки с названием и цветом, не список). */
   function placeSwitch() {
     var ps = places(), cur = place(); if (ps.length < 2 || !cur) return '';
     return '<div class="place-sw" role="group" aria-label="' + esc(t('pb_where')) + '" data-key="place-switch"><span class="small muted ps-lbl">' + esc(t('pb_where')) + '</span><div class="ps-btns">' + ps.map(function (p) {
-      return '<button type="button" data-act="place-view" data-id="' + esc(p.id) + '" aria-pressed="' + (p.id === cur.id) + '" style="--pc:var(--pc-' + placeColor(p) + ')" data-key="place-sw-' + esc(p.id) + '"><span class="pdot" aria-hidden="true"></span><span>' + esc(placeLabel(p)) + '</span></button>';
+      return '<button type="button" data-act="place-view" data-id="' + esc(p.id) + '" aria-pressed="' + (p.id === cur.id) + '" style="--pc:var(--pc-' + placeColor(p) + ')" data-key="place-sw-' + esc(p.id) + '">' + pmark(p, 18) + '<span>' + esc(placeLabel(p)) + '</span></button>';
     }).join('') + '</div></div>';
   }
   function switchPlace(id) {
@@ -316,7 +362,9 @@
     swap: '<path d="M16 3l4 4-4 4"/><path d="M20 7H5"/><path d="M8 21l-4-4 4-4"/><path d="M4 17h15"/>',
     phone: '<path d="M5 4h4l1.5 4.5-2.5 1.5a11 11 0 0 0 6 6l1.5-2.5L20 15v4a1 1 0 0 1-1 1A16 16 0 0 1 4 5a1 1 0 0 1 1-1z"/>',
     send: '<path d="M21 3L3 10.5l7 2.5 2.5 7z"/><path d="M10 13l11-10"/>',
-    bolt: '<path d="M13 3L5.5 13.5H11L10 21l7.5-10.5H12z"/>'
+    bolt: '<path d="M13 3L5.5 13.5H11L10 21l7.5-10.5H12z"/>',
+    pin: '<path d="M12 21s-6.5-5.6-6.5-11a6.5 6.5 0 0 1 13 0c0 5.4-6.5 11-6.5 11z"/><circle cx="12" cy="10" r="2.4"/>',
+    doc: '<path d="M7 3h7l4 4v14H7z"/><path d="M14 3v4h4M9.5 12h5M9.5 15.5h5"/>'
   };
   function ico(name, size, cls) {
     return '<svg class="ico ' + (cls || '') + '" width="' + (size || 24) + '" height="' + (size || 24) + '" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + ICONS[name] + '</svg>';
@@ -447,16 +495,18 @@
   // ---------------- оболочка ----------------
   function shell(view) {
     var route = view.route, bare = view.bare;
+    // 90-а (власник): на комп'ютері й на екранах вводу (майстри, ввід показань, кабінети) — бічне меню розділів; на телефоні їх там немає, як і було
+    var side = bare && S.onboarded && !!view.closeTo && route !== 'start';
     var navItems = [[homeRoute(), 'home', 'nav_home'], ['history', 'history', 'nav_history'], ['stats', 'chart', 'nav_stats']].concat([['save', 'leaf', 'nav_save'], ['help', 'help', 'nav_help'], ['prefs', 'prefs', 'nav_prefs']]);
-    var nav = bare ? '' : '<nav class="nav" style="--nav-n:' + navItems.length + '" aria-label="' + esc(t('brand')) + '">' + navItems.map(function (n) {
+    var nav = bare && !side ? '' : '<nav class="nav' + (side ? ' nav-side' : '') + '" style="--nav-n:' + navItems.length + '" aria-label="' + esc(t('brand')) + '">' + navItems.map(function (n) {
       return '<a href="#' + n[0] + '"' + (route === n[0] || (n[2] === 'nav_home' && /^(home|heat|water-|elec$|gas$|places|place$)/.test(route)) ? ' aria-current="page"' : '') + ' data-key="nav-' + (n[2] === 'nav_home' ? 'home' : n[0]) + '">' + ico(n[1], 22) + '<span>' + esc(t(n[2])) + '</span></a>';
     }).join('') + '</nav>';
     var right = bare && view.closeTo
       ? '<a class="btn ghost" href="#' + view.closeTo + '" data-key="wiz-close" aria-label="' + esc(t('close')) + '">' + ico('close', 22) + '<span class="cl-txt">' + esc(t('close')) + '</span></a>'
       : '';
-    return '<div class="app' + (bare ? ' bare-app' : '') + '">' +
+    return '<div class="app' + (bare ? ' bare-app' : '') + (side ? ' with-side' : '') + '">' +
       '<header class="top' + (right ? ' has-close' : '') + '"><a class="brand" href="#' + homeRoute() + '" data-key="brand">' + logo() + '<span>' + esc(t('brand')) + '</span><span class="beta-tag" data-key="beta">' + esc(t('beta_tag')) + '</span></a>' + '<span class="spacer"></span>' + right + '</header>' +
-      nav + '<main class="main' + (bare ? ' bare' : '') + (view.wide ? ' wide' : '') + enterCls(route) + '" id="main" data-screen="' + view.screen + '" tabindex="-1">' + (/^(history|stats|save)$/.test(route) ? placeSwitch() : /^(heat|water-hot|water-cold|elec|gas)$/.test(route) ? placeBar() : /^(wnew|wadd|enew|eadd|gnew|gadd|add-meter|step|step-\d+|check|handover|baseline|meter|photo)$/.test(route) ? placeBar(true) : '') + view.html + '</main></div>' +
+      nav + '<main class="main' + (bare ? ' bare' : '') + (view.wide ? ' wide' : '') + enterCls(route) + '" id="main" data-screen="' + view.screen + '" tabindex="-1">' + (/^(history|stats|save)$/.test(route) ? placeSwitch() : /^(heat|water-hot|water-cold|elec|gas)$/.test(route) ? placeBar() : /^(wnew|wadd|enew|eadd|gnew|gadd|add-meter|step|step-\d+|check|handover|baseline|meter|photo)$/.test(route) ? placeBar(true) : '') + view.html + (S.onboarded && view.screen !== 'S00' && (!bare || side) ? lpFoot(false, true) : '') + '</main></div>' +
       (window.TEPLO_API && !ccAsk() ? '<button class="fab' + (bare ? ' fab-bare' : '') + '" data-act="fb-open" data-key="feedback" aria-haspopup="dialog">' + ico('chat', 20) + '<span>' + esc(t('fb_btn')) + '</span></button>' + fbDialog() : '') +
       (bare ? ccBanner().replace('class="cc"', 'class="cc cc-bare"') : ccBanner()) +
       '<div id="toast-host" aria-live="polite"></div>';
@@ -814,7 +864,7 @@
       return withPlace(p.id, function () {
         var cards = homeCards();
         return '<details class="hp pacc" id="hp-' + esc(p.id) + '" data-pl="' + esc(p.id) + '" style="--pc:var(--pc-' + placeColor(p) + ')" data-key="home-pl-' + esc(p.id) + '"' + (open ? ' open' : '') + '>' +
-          '<summary data-key="home-pl-sum-' + esc(p.id) + '"><span class="pacc-t"><b><i class="pdot" aria-hidden="true"></i>' + esc(placeLabel(p)) + '</b>' + (p.address ? '<span class="pacc-addr">' + esc(p.address) + '</span>' : '') + '</span>' +
+          '<summary data-key="home-pl-sum-' + esc(p.id) + '"' + (p.icon && PICONS[p.icon] ? ' class="has-ic"><span class="pacc-ic">' + picon(p, 40) + '</span>' : '>') + '<span class="pacc-t"><b>' + (p.icon && PICONS[p.icon] ? '' : '<i class="pdot" aria-hidden="true"></i>') + esc(placeLabel(p)) + '</b>' + (p.address ? '<span class="pacc-addr">' + esc(p.address) + '</span>' : '') + '</span>' +
             ico('chev', 22, 'pacc-chev') + due + '</summary><div class="pacc-body">' +
           (HP_EDIT === p.id ? hpEditForm(p) : '') +
           // назва, адреса, рахунки, постачальники, додати й прибрати лічильник — усе на екрані квартири; тут лише вхід туди, під лічильниками
@@ -1933,21 +1983,23 @@
     var x = Wt.series(wrecs(), wmeters(null, true), gaps()).filter(function (s0) { return s0.rec.id === id; })[0] || { by: {}, hot: null, cold: null };
     var ms = wmeters(null, true).filter(function (m) { return hasVal(r, m.id); }), h = back + '<h1>' + esc(fmtDate(r.date, true)) + '</h1>';
     if (r.base) h += '<p class="small muted">' + esc(t('wh_base')) + '</p>';
-    // показання — табло свого виду, як на сторінці лічильника (власник 10.11: «більше акценту на блок із показаннями — барабан замість цифр»); фото — одразу під табло
-    var wps = photoStrip(r.photos, 'w' + r.id, 'w:' + r.id), wone = ms.length === 1;
-    h += '<div class="rec-hero" data-key="wrec-values">' + ms.map(function (m) {
-      var d = x.by[m.id], v = r.vals[m.id], days = m.kind === 'hot' ? x.daysHot : x.daysCold;
-      return mbox({ kind: m.kind, key: 'wrec-m-' + m.id, icon: 'drop', cls: m.kind === 'hot' ? 'c-hot' : 'c-cold', name: wname(m), display: wdrum(v, m.kind, 'hero'),
-        cap: (d !== undefined ? '+' + d + ' м³' + (days ? ' ' + t('er_for_days', { d: days }) : '') : wfmt(v) + ' м³'), fix: copyIco(Wt.whole(v), 'wrec-copy-' + m.id), body: wone ? wps : '' });
-    }).join('') + '</div>' + (wone ? '' : wps) + (r.base ? '' : billsBox('w:' + r.id, r.bills, t('bl_title', { m: monthLabel(String(r.date).slice(0, 7)) })));
+    // 1) скільки набігло за місяць (місяць — за датою зняття, як у Водоканалу) і скільки коштувало; 2) фото; 3) показання водомірів списком (без барабанів — власник 10.11)
     if (x.hot !== null || x.cold !== null) {
-      var c = Wt.cost(x.cold || 0, x.hot || 0, r.date, wtar());
-      h += '<div class="panel" style="margin-top:16px" data-key="wrec-used"><h2>' + esc(t('rec_used_title')) + '</h2><div class="cards2">' +
-        (x.hot !== null ? '<div><div class="num big c-hot">' + x.hot + ' <small>м³</small></div><div class="small muted">' + esc(t('wr_hot_for', { d: x.daysHot })) + '</div></div>' : '') +
-        (x.cold !== null ? '<div><div class="num big c-cold">' + x.cold + ' <small>м³</small></div><div class="small muted">' + esc(t('wr_cold_for', { d: x.daysCold })) + '</div></div>' : '') +
-        '<div><div class="num big">≈ ' + esc(money(c.total)) + '</div><div class="small muted">' + esc(t('wr_uah')) + '</div></div></div>' +
-        '<p class="small muted">' + esc(t('wr_parts', { vk: money(c.vk), htm: money(c.htm) })) + '</p></div>';
-    }
+      var ym = String(r.date).slice(0, 7), wser = Wt.series(wrecs(), wmeters(null, true), gaps());
+      var bm = function (kd) { return Wt.monthly(wser, kd, wtar()).filter(function (b0) { return b0.ym === ym; })[0] || null; }, hb = x.hot !== null ? bm('hot') : null, cb = x.cold !== null ? bm('cold') : null;
+      var qh = hb ? hb.m3 : x.hot, qc = cb ? cb.m3 : x.cold, c = Wt.cost(qc || 0, qh || 0, r.date, wtar()), tr = Wt.tariffAt(r.date, wtar());
+      var from = [hb && hb.from, cb && cb.from, x.fromHot, x.fromCold].filter(Boolean).sort()[0], days = Math.max(hb ? hb.days : 0, cb ? cb.days : 0, x.daysHot || 0, x.daysCold || 0), both = qh !== null && qc !== null;
+      var self = (qh !== null && qh !== x.hot) || (qc !== null && qc !== x.cold);
+      h += usedBox({ kind: both ? 'water' : qh !== null ? 'hot' : 'cold', key: 'wrec-used', title: t('ru_title', { m: monthLabel(ym) }), per: from ? t('ru_per', { a: fmtDate(from), b: fmtDate(r.date), d: days }) : '',
+        qs: [qh !== null ? { v: '+' + qh, u: 'м³', l: both ? t('ru_hot') : '', k: 'hot' } : null, qc !== null ? { v: '+' + qc, u: 'м³', l: both ? t('ru_cold') : '', k: 'cold' } : null].filter(Boolean), money: c.total,
+        lines: [qc !== null ? t('ru_w_c', { q: qc, a: money(tr.supply), b: money(tr.drain), s: money(c.coldSupply + c.coldDrain) }) : '', qh !== null ? t('ru_w_h', { q: qh, a: money(tr.hot), b: money(tr.drain), s: money(c.hot + c.hotDrain) }) : '',
+          self ? t('ru_this', { q: (x.hot || 0) + (x.cold || 0), u: 'м³', d: x.days || days }) : ''],
+        proj: usedProj((qh || 0) + (qc || 0), days, c.total, 'м³'), note: both || qh !== null ? t('wr_parts', { vk: money(c.vk), htm: money(c.htm) }) : '' });
+    } else if (r.base) h += usedBase('wrec-used');
+    h += recPhotos(r.photos, 'w' + r.id, 'w:' + r.id);
+    h += '<ul class="list rec-vals" data-key="wrec-values">' + ms.map(function (m) { var v = r.vals[m.id], d = x.by[m.id];
+      return '<li data-k="' + m.kind + '"><div class="grow"><b>' + esc(wname(m)) + '</b>' + (d !== undefined ? ' <span class="muted">· +' + d + ' м³</span>' : '') + '</div><b class="num rv-v">' + esc(wfmt(v)) + '</b> <span class="small muted">м³</span>' + copyIco(Wt.whole(v), 'wrec-copy-' + m.id) + '</li>'; }).join('') + '</ul>' +
+      (r.base ? '' : billsBox('w:' + r.id, r.bills, t('bl_title', { m: monthLabel(String(r.date).slice(0, 7)) })));
     if (r.base) h += ownBox('w', r);
     if (!r.base && !r.own) {
       if (thisMonth(r.date)) h += whereAcc(wsendPanel(r), r.id);
@@ -2619,6 +2671,23 @@
   }
 
   // ---------- картка запису, історія, статистика, економія ----------
+  /** Запис історії (власник 10.11): першим — «Набігло за місяць» і скільки це коштувало, під ним фото, далі показання списком (без табло) і решта.
+   *  o: {kind, key, title, per, qs: [{v, u, l}], money, lines: [], proj, note}. */
+  function usedBox(o) {
+    return '<section class="panel ru ru-' + o.kind + '" data-key="' + o.key + '"><h2 class="ru-t">' + esc(o.title) + '</h2>' + (o.per ? '<p class="ru-per">' + esc(o.per) + '</p>' : '') +
+      '<div class="ru-big">' + o.qs.map(function (q) { return '<div class="ru-q"' + (q.k ? ' data-k="' + q.k + '"' : '') + '>' + (q.l ? '<i>' + esc(ucf(q.l)) + '</i>' : '') + '<b class="num">' + esc(q.v) + '</b><span>' + esc(q.u) + '</span></div>'; }).join('') +
+      (o.money !== null && o.money !== undefined ? '<div class="ru-m">' + (o.qs.some(function (q) { return q.l; }) ? '<i>' + esc(ucf(t('ru_sum'))) + '</i>' : '') + '<b class="num">≈ ' + esc(money(o.money)) + '</b><span>грн</span></div>' : '') + '</div>' +
+      ((o.lines || []).filter(Boolean).length ? '<div class="ru-ls">' + o.lines.filter(Boolean).map(function (l) { return '<p>' + esc(l) + '</p>'; }).join('') + '</div>' : '') +
+      (o.proj ? '<p class="ru-proj">' + esc(o.proj) + '</p>' : '') + (o.note ? '<p class="ru-note">' + esc(o.note) + '</p>' : '') + '</section>';
+  }
+  function usedBase(key) { return '<section class="panel ru ru-base" data-key="' + key + '"><p class="ru-per">' + esc(t('ru_base')) + '</p></section>'; }
+  /** Місяць ще не весь (до 25 днів) — «якщо так і далі»: розхід і гроші в перерахунку на 30,4 дня за тією ж ціною. */
+  function usedProj(q, days, cost, u, dec) {
+    if (!(days > 0) || days >= 25 || !(q > 0)) return '';
+    var k = MONTH_DAYS / days; return t('ru_proj', { q: fmtN(q * k, dec || 0), u: u, s: money0(cost * k) });
+  }
+  /** Фото запису — окремим блоком під «Набігло». */
+  function recPhotos(list, gal, ref) { var ps = photoStrip(list, gal, ref); return ps ? '<div class="panel rec-ph">' + ps + '</div>' : ''; }
   function erecView(id) {
     var r = mrecs().filter(function (x) { return x.id === id; })[0], back = recBack();
     var m = r && pmeters(null, true).filter(function (x) { return x.id === r.meter; })[0];
@@ -2626,19 +2695,20 @@
     var k = m.kind === 'gas' ? 'gas' : 'elec', md = SK[k].mod, u = SK[k].unit();
     var x = md.series(mrecs(m.id), m).filter(function (s0) { return s0.rec.id === id; })[0] || {};
     var h = back + '<h1>' + esc(fmtDate(r.date, true)) + '</h1>' + (r.base ? '<p class="small muted">' + esc(t('eh_base')) + '</p>' : '<p class="small muted">' + esc(t('er_for', { m: monthLabel(md.forMonth(r.date)) })) + '</p>');
-    // показання — табло свого виду (газ — жовта панель з роликами, світло — електронний екран по зонах), фото — під ним (власник 10.11)
-    var eps = photoStrip(r.photos, 'm' + r.id, 'm:' + r.id);
-    h += '<div class="rec-hero" data-key="erec-values">' + mbox({ kind: k, key: 'erec-m-' + m.id, icon: SK[k].icon, cls: SK[k].cls, name: ename(m), display: edisplay(m, r, 'hero'),
-      cap: x.dz ? md.keys(m).map(function (q) { return (md.zones(m) > 1 ? ezl(m, q).toLowerCase() + ' ' : '') + '+' + x.dz[q] + ' ' + u; }).join(' · ') : evals(m, r) + ' ' + u,
-      fix: md.zones(m) === 1 ? copyIco(md.whole(r.z.all), 'erec-copy-all') : '',
-      body: (md.zones(m) > 1 ? '<p class="rh-copy">' + md.keys(m).map(function (q) { var v = md.whole(r.z[q]); return '<span>' + esc(ezl(m, q)) + ' <b class="num">' + esc(v === null ? '—' : v) + '</b>' + copyIco(v, 'erec-copy-' + q) + '</span>'; }).join('') + '</p>' : '') + eps }) + '</div>';
+    // 1) скільки набігло за місяць, на який зараховується, і скільки це коштувало; 2) фото; 3) показання списком (без табло — власник 10.11)
     if (x.dz) {
-      var c = md.cost(m, x.dz, r.date, sopts(k));
-      h += '<div class="panel" style="margin-top:16px" data-key="erec-used"><h2>' + esc(t('rec_used_title')) + '</h2><div class="cards2"><div><div class="num big ' + SK[k].cls + '">' + x.kwh + ' <small>' + u + '</small></div><div class="small muted">' + esc(t('er_for_days', { d: x.days })) + '</div></div>' +
-        '<div><div class="num big">≈ ' + esc(money(c.total)) + '</div><div class="small muted">' + esc(tk(k, 'er_price', { p: money(c.price) })) + '</div></div></div>' +
-        (md.zones(m) > 1 ? '<p class="small muted">' + esc(md.keys(m).map(function (q) { return ezl(m, q) + ': ' + x.dz[q] + ' × ' + money(c.price * md.coef(m, q)) + ' = ' + money(c.parts[q]) + ' грн'; }).join(' · ')) + '</p>' : '') +
-        (k === 'gas' ? '<p class="small muted">' + esc(t('gst_tariff', { p: money(c.price) })) + '</p>' : '') + '</div>';
-    }
+      var ym = md.forMonth(r.date), b = md.monthly(md.series(mrecs(m.id), m), m, sopts(k)).filter(function (b0) { return b0.ym === ym; })[0] || { kwh: x.kwh, dz: x.dz, days: x.days, from: null, to: r.date };
+      var c = md.cost(m, b.dz, b.to, sopts(k)), one = md.zones(m) === 1, cur = md.whole(r.z.all);
+      h += usedBox({ kind: k, key: 'erec-used', title: t('ru_title', { m: monthLabel(ym) }), per: b.from ? t('ru_per', { a: fmtDate(b.from), b: fmtDate(b.to), d: b.days }) : '',
+        qs: [{ v: '+' + b.kwh, u: u }], money: c.total,
+        lines: (one ? [t('ru_calc', { q: b.kwh, u: u, p: money(c.price), s: money(c.total) })] : md.keys(m).map(function (q) { return t('ru_zone', { z: ezl(m, q), q: b.dz[q], p: money(c.price * md.coef(m, q)), s: money(c.parts[q]) }); }))
+          .concat([b.kwh !== x.kwh ? t('ru_this', { q: x.kwh, u: u, d: x.days }) : '', one && cur !== null ? t('ru_meter', { a: cur - x.dz.all, b: cur, u: u }) : '']),
+        proj: usedProj(b.kwh, b.days, c.total, u), note: k === 'gas' ? t('gst_tariff', { p: money(c.price) }) : '' });
+    } else if (r.base) h += usedBase('erec-used');
+    h += recPhotos(r.photos, 'm' + r.id, 'm:' + r.id);
+    h += '<ul class="list rec-vals" data-key="erec-values">' + md.keys(m).map(function (q) { var v = md.whole(r.z[q]);
+      return '<li><div class="grow"><b>' + esc(ename(m)) + '</b>' + (md.zones(m) > 1 ? ' <span class="muted">· ' + esc(ezl(m, q)) + '</span>' : '') + '</div><b class="num rv-v">' + esc(v === null ? '—' : v) + '</b> <span class="small muted">' + esc(u) + '</span>' +
+        copyIco(v, md.zones(m) > 1 ? 'erec-copy-' + q : 'erec-copy-all') + '</li>'; }).join('') + '</ul>';
     if (r.base) h += ownBox('m', r);
     if (!r.base && !r.own) {
       var w = md.win(today());
@@ -3167,13 +3237,14 @@
       '<a class="lp-stage" href="#start" tabindex="-1" aria-hidden="true" data-key="welcome-hero">' + lpPhone() + lpTiles() + '</a></div></section>';
   }
   /** Футер лендинга: о сервисе, документы (политика, соглашение), связь; «независимый сервис». */
-  function lpFoot(login) {
+  function lpFoot(login, app) {
     var col = function (h, items) { return '<div class="lpf-col"><h3>' + esc(h) + '</h3><ul>' + items.join('') + '</ul></div>'; };
     var a = function (href, txt, key) { return '<li><a href="' + href + '" data-key="' + key + '">' + esc(txt) + '</a></li>'; };
     var bot = (Y()._cfg && Y()._cfg.botUsername) || '';
-    return '<footer class="lp-foot" data-key="lp-foot"><div class="lpf-in">' +
+    return '<footer class="lp-foot' + (app ? ' app-foot' : '') + '" data-key="' + (app ? 'app-foot' : 'lp-foot') + '"><div class="lpf-in">' +
       '<div class="lpf-brand"><div class="lpf-logo">' + logo() + '<b>' + esc(t('brand')) + '</b></div><p>' + esc(t('lf_about')) + '</p></div>' +
-      col(t('lf_service'), [a('#start', t('lp_cta'), 'lpf-start')].concat(login ? [a('#login', t('lf_login'), 'lpf-login')] : []).concat([a('#help', t('nav_help'), 'lpf-help')])) +
+      col(t('lf_service'), app ? [a('#' + homeRoute(), t('nav_home'), 'lpf-home'), a('#help', t('nav_help'), 'lpf-help'), a('#prefs', t('nav_prefs'), 'lpf-prefs')]
+        : [a('#start', t('lp_cta'), 'lpf-start')].concat(login ? [a('#login', t('lf_login'), 'lpf-login')] : []).concat([a('#help', t('nav_help'), 'lpf-help')])) +
       col(t('lf_docs'), [a('#privacy', t('lg_privacy'), 'lpf-privacy'), a('#terms', t('lg_terms'), 'lpf-terms')].concat(window.TEPLO_API ? ['<li><button type="button" class="linkbtn" data-act="cc-open" data-key="lpf-cookie">' + esc(t('cc_link')) + '</button></li>'] : [])) +
       col(t('lf_contact'), ['<li><button class="linkbtn" data-act="fb-open" data-key="lpf-fb">' + esc(t('lf_write')) + '</button></li>'].concat(bot ? ['<li><a href="https://t.me/' + esc(bot) + '" target="_blank" rel="noopener" data-key="lpf-bot">' + esc(t('lf_bot')) + '</a></li>'] : [])) +
       '</div><div class="lpf-bot"><span>© ' + new Date().getFullYear() + ' ' + esc(t('brand')) + '</span><span>' + esc(t('lf_indep')) + '</span></div></footer>';
@@ -3192,6 +3263,14 @@
     return '<section class="lp-sec lp-dest" data-key="lp-dest"><p class="lp-dest-t">' + esc(t('lp_dest_t')) + '</p><div class="lp-marq" data-key="lp-marq">' +
       LP_ORGS.map(function (row, i) { var li = row.map(chip).join(''); return '<div class="lpm-row' + (i ? ' r2' : '') + '"><ul class="lp-chips lpm-track">' + li + '</ul><ul class="lp-chips lpm-track" aria-hidden="true">' + li + '</ul></div>'; }).join('') +
       '</div></section>';
+  }
+  /** «Ціни саме вашої громади» (власник 10.11): скільки громад у довіднику по областях і в скількох знайдено ціну води; як підтягуються постачальники й ціни громади —
+   *  з рішень рад і виконкомів, постанов НКРЕКП і сайтів постачальників, з датою й джерелом; немає документа — «впишіть з платіжки». Числа — під час збирання (web/build.py). */
+  var LP_PROV = null/*LP_PROV*/;
+  function lpPrices() {
+    var regs = (LP_PROV || []).filter(function (x) { return x && x.h > 1; }), all = (LP_PROV || []).reduce(function (a, x) { return a + (x.h || 0); }, 0);
+    return '<div class="lp-prv" aria-hidden="true">' + regs.map(function (x) { return '<span class="lpv-r"><i>' + esc(t('lp_pr_o_' + x.r)) + '</i><b>' + x.h + '</b></span>'; }).join('') +
+      (all ? '<span class="lpv-tot">' + esc(t('lp_pr_tot', { h: all })) + '</span>' : '') + '</div>';
   }
   function lpSteps() {
     var arts = [
@@ -3239,8 +3318,8 @@
   }
   function lpBento() {
     var cell = function (key, art) { return '<article class="lp-cell c-' + key + '" data-key="lp-' + key + '"><div class="lp-cell-tx"><h3>' + esc(t('lp_' + key + '_t')) + '</h3><p>' + esc(t('lp_' + key)) + '</p></div>' + art + '</article>'; };
-    return '<section class="lp-sec" data-key="lp-bento"><h2 class="lp-h2">' + esc(t('lp_bento_t')) + '</h2><div class="lp-bento' + (GPV_ON ? '' : ' no-gpv') + '">' +
-      cell('due', lpDue()) + cell('tg', lpTg()) + cell('pl', lpPlaces()) + cell('cost', lpCost()) + (GPV_ON ? cell('gpv', lpGpv()) : '') + '</div></section>';
+    return '<section class="lp-sec" data-key="lp-bento"><h2 class="lp-h2">' + esc(t('lp_bento_t')) + '</h2><div class="lp-bento' + (GPV_ON ? ' with-gpv' : '') + '">' +
+      cell('due', lpDue()) + cell('tg', lpTg()) + cell('pl', lpPlaces()) + cell('cost', lpCost()) + cell('pr', lpPrices()) + (GPV_ON ? cell('gpv', lpGpv()) : '') + '</div></section>';
   }
   V.welcome = function () {
     var acc = Y().mode === 'server' && Y().account;
@@ -4444,27 +4523,24 @@
     }
     var rows = R.FIELDS.filter(function (f) { return f.key !== 'date'; }).map(function (f) {
       var v = f.key === 'errCode' ? (h.errCode || '—') : (R.num(h[f.key]) === null ? '—' : R.formatForHtm(f.key, h[f.key]));
-      return '<li><div class="grow small muted">' + esc(fieldLabel(f.key)) + '</div><b class="num">' + esc(v) + '</b>' + (f.unit && v !== '—' ? ' <span class="small muted">' + esc(f.key === 'energy' ? 'Гкал' : fieldUnit(f.key)) + '</span>' : '') + '</li>';
+      return '<li><div class="grow small muted">' + esc(fieldLabel(f.key)) + '</div><b class="num">' + esc(v) + '</b>' + (f.unit && v !== '—' ? ' <span class="small muted">' + esc(f.key === 'energy' ? 'Гкал' : fieldUnit(f.key)) + '</span>' : '') +
+        (f.key === 'energy' && v !== '—' ? copyIco(v, 'rec-copy-energy') : '') + '</li>';
     }).join('');
     if (window.TeploStats) loadWeather();
     var wx = wxFor(r);
-    var used = iv ? '<div class="panel" data-key="rec-used"><h2>' + esc(t('rec_used_title')) + '</h2>' + (iv.dE < 0 ? '<p class="small">' + esc(intervalText(iv)) + '</p>' :
-      '<div class="cards2"><div><div class="num big">' + esc(iv.dE.toFixed(3)) + '</div><div class="small muted">' + esc(t('rec_gcal_for', { days: iv.days, from: fmtDate(iv.from, true) })) + '</div></div>' +
-      '<div><div class="num big">≈ ' + esc(money(iv.cost)) + '</div><div class="small muted">' + esc(t('rec_uah', { tariff: money(tariff()) })) + '</div></div></div>' +
-      '<p class="small muted">' + esc(t('rec_parts', { heat: money(iv.parts.heat), mzk: money(iv.parts.mzk), abon: money(iv.parts.abon) })) + '</p>' +
-      (iv.days > 0 ? '<p class="small muted">' + esc(t('rec_per_month', { de: (iv.dE / iv.days * MONTH_DAYS).toFixed(3), cost: money(costOf(iv.dE / iv.days * MONTH_DAYS, MONTH_DAYS).total) })) + '</p>' : '')) + '</div>' : '';
+    // 1) скільки набігло з минулого показання і скільки коштувало (власник 10.11 — першим блоком); 2) фото; 3) поля показань списком (без ЖК-табло)
+    var used = iv ? (iv.dE < 0 ? '<section class="panel ru ru-heat" data-key="rec-used"><h2 class="ru-t">' + esc(t('rec_used_title')) + '</h2><p class="ru-per">' + esc(intervalText(iv)) + '</p></section>' :
+      usedBox({ kind: 'heat', key: 'rec-used', title: t('rec_used_title'), per: t('ru_per', { a: fmtDate(iv.from, String(iv.from).slice(0, 4) !== String(h.date).slice(0, 4)), b: fmtDate(h.date, true), d: iv.days }),
+        qs: [{ v: '+' + fmtN(iv.dE, 3), u: 'Гкал' }], money: iv.cost,
+        lines: [t('ru_h_calc', { q: fmtN(iv.dE, 3), p: money(tariff()), s: money(iv.parts.heat) }), [iv.parts.mzk > 0.004 ? t('ru_h_mzk', { s: money(iv.parts.mzk) }) : '', iv.parts.abon > 0.004 ? t('ru_h_abon', { s: money(iv.parts.abon) }) : ''].filter(Boolean).reduce(function (a0, x0, i0, all) { return i0 === all.length - 1 ? t('ru_h_plus', { x: all.join(t('ru_and')) }) : a0; }, '')],
+        proj: iv.days >= 25 && iv.days <= 37 ? '' : t('rec_per_month', { de: fmtN(iv.dE / iv.days * MONTH_DAYS, 3), cost: money(costOf(iv.dE / iv.days * MONTH_DAYS, MONTH_DAYS).total) }) })) : '';
     var st = (r.status === 'handed' || r.status === 'rejected' || r.status === 'accepted') ? '<a class="btn sec" href="#status" data-act="focus" data-id="' + r.id + '">' + esc(t('rec_status')) + '</a>' : '';
     var wxp = wx ? '<div class="panel wx-panel" data-key="rec-weather"><h2>' + ico('thermo', 20) + ' ' + esc(t('wx_title')) + '</h2><div class="wx-tiles">' +
       (wx.avg !== null ? '<div><div class="num big wx-t-' + wxTone(wx.avg) + '">' + esc(degTxt(wx.avg)) + '</div><div class="small muted">' + esc(t('wx_t_avg')) + '</div></div>' +
         '<div><div class="num mid">' + esc(degTxt(wx.min)) + ' … ' + esc(degTxt(wx.max)) + '</div><div class="small muted">' + esc(t('wx_t_range')) + '</div></div>' +
         '<div><div class="num mid">' + wx.frost + ' / ' + wx.ser.length + '</div><div class="small muted">' + esc(t('wx_t_frost')) + '</div></div>' : '') +
       (wx.day !== null ? '<div><div class="num mid">' + esc(degTxt(wx.day)) + '</div><div class="small muted">' + esc(t('wx_t_day')) + '</div></div>' : '') + '</div>' + wxSpark(wx.ser) + '</div>' : '';
-    // головне показання — ЖК-табло тепла, як на сторінці лічильника (власник 10.11), фото — під ним; решта полів — списком нижче
-    var en = R.num(h.energy) !== null ? R.formatForHtm('energy', h.energy) : null;
-    var hero = '<div class="rec-hero" data-key="rec-hero">' + mbox({ kind: 'heat', key: 'rec-m-heat', icon: 'thermo', cls: 'c-heat', name: t('uc_heat'), sub: [modelName(model())],
-      display: lcd([{ text: en || '------', tag: 'Gcal', label: en ? en + ' Гкал' : '—' }], 'hero'),
-      cap: iv && iv.dE >= 0 ? '+' + iv.dE.toFixed(3) + ' Гкал ' + t('er_for_days', { d: iv.days }) : (en ? en + ' Гкал' : '—'), fix: copyIco(en, 'rec-copy-energy'), body: photoStrip(r.photos, 'h' + r.id, 'h:' + r.id) }) + '</div>';
-    return { screen: 'S09', route: 'history', html: head + hero + used + wxp + '<ul class="list" data-key="rec-values">' + rows + '</ul>' + hsprPanel(r, iv) + billsBox('h:' + r.id, r.bills, t('bl_title', { m: monthLabel(String(h.date || '').slice(0, 7)) })) +
+    return { screen: 'S09', route: 'history', html: head + used + recPhotos(r.photos, 'h' + r.id, 'h:' + r.id) + '<ul class="list rec-vals" data-key="rec-values">' + rows + '</ul>' + wxp + hsprPanel(r, iv) + billsBox('h:' + r.id, r.bills, t('bl_title', { m: monthLabel(String(h.date || '').slice(0, 7)) })) +
       '<div class="row-actions">' + st + '<a class="btn sec" href="#rec-' + r.id + '-edit" data-key="rec-edit">' + esc(t('rec_edit')) + '</a>' +
       '<button class="btn danger" data-act="rec-del-ask" data-key="rec-del">' + esc(t('rec_del')) + '</button></div><div id="rec-del-confirm"></div>' + ownBox('h', r) };
   }
@@ -5276,7 +5352,7 @@
     var many = places().length > 1, ms = wmeters(), sub = placeSub(p), fresh = !p.name && !String((p.city && p.city.n ? p.street : p.address) || '').trim() && !hasHeat() && !ms.length && !pmeters().length;
     // сюда приходят с главной (плитка «Налаштування квартири») — туда и назад
     var h = '<p><a href="#' + (many ? 'places' : 'home') + '" data-key="pv-back">← ' + esc(t(many ? 'pv_back_all' : 'nav_home')) + '</a></p>' +
-      '<h1 class="pv-h" style="--pc:var(--pc-' + placeColor(p) + ')"><span class="pv-dot" aria-hidden="true"></span><span>' + esc(placeLabel(p)) + (sub ? '<span class="small muted pv-sub">' + esc(sub) + '</span>' : '') + '</span></h1>';
+      '<h1 class="pv-h" style="--pc:var(--pc-' + placeColor(p) + ')">' + pmark(p, 30, 'pv-dot') + '<span>' + esc(placeLabel(p)) + (sub ? '<span class="small muted pv-sub">' + esc(sub) + '</span>' : '') + '</span></h1>';
     if (fresh) h += '<div class="banner" data-key="pv-new">' + ico('info', 22) + '<div><p><b>' + esc(t('pv_new_t')) + '</b></p><p>' + esc(t('pv_new')) + '</p></div></div>';
     // три розкривашки (владелец 10.11): про квартиру · лічильники · постачальники, тарифи й рахунки; у налаштуваннях лічильника — лише сам лічильник
     var rows = [];
@@ -5310,7 +5386,12 @@
     var about = '<div data-key="pv-about">' +
       '<div class="field"><label for="pv-name">' + esc(t('pv_name')) + '</label><div class="ctl"><input id="pv-name" data-plf="name" maxlength="40" autocomplete="off" value="' + esc(p.name || '') + '" placeholder="' + esc(t('pv_name_ph')) + '"></div><div class="chips" role="group" aria-label="' + esc(t('pv_name')) + '">' + chips + '</div></div>' +
       '<h3 class="pv-addr-t">' + esc(t('pl_addr')) + ' <span class="muted small">(' + esc(t('b_opt')) + ')</span></h3>' + addrFieldsFor('pv', p, true) +
-      '<fieldset class="field"><legend class="lbl">' + esc(t('pv_color')) + '</legend><div class="swatches">' + sw + '</div><div class="small muted">' + esc(t('pv_color_h')) + '</div></fieldset></div>';
+      '<fieldset class="field"><legend class="lbl">' + esc(t('pv_color')) + '</legend><div class="swatches">' + sw + '</div><div class="small muted">' + esc(t('pv_color_h')) + '</div></fieldset>' +
+      // значок — необов'язково (власник 10.11): залиті, кольором квартири; «Без значка» — як було, крапка кольору
+      '<fieldset class="field pv-icons" style="--pc:var(--pc-' + placeColor(p) + ')" data-key="pv-icons"><legend class="lbl">' + esc(t('pv_icon')) + ' <span class="muted small">(' + esc(t('b_opt')) + ')</span></legend><div class="picks">' +
+        [''].concat(Object.keys(PICONS)).map(function (k) { var on = (p.icon && PICONS[p.icon] ? p.icon : '') === k;
+          return '<label class="pick" title="' + esc(k ? t('pi_' + k.replace(/-/g, '_')) : t('pv_icon_none')) + '"><input type="radio" name="pv-icon" value="' + k + '"' + (on ? ' checked' : '') + '><span class="pk-b" aria-hidden="true">' + (k ? picon({ icon: k }, 28) : '<span class="pdot"></span>') + '</span><span class="sr">' + esc(k ? t('pi_' + k.replace(/-/g, '_')) : t('pv_icon_none')) + '</span></label>'; }).join('') +
+      '</div><div class="small muted">' + esc(t('pv_icon_h')) + '</div></fieldset></div>';
     // порядок (владелец 10.11): про квартиру · лічильники · постачальники, тарифи й рахунки
     if (window.TEPLO_API && Y().account) h += '<input type="file" id="doc-input" class="sr" aria-label="' + esc(t('mv_docs')) + '" tabindex="-1" accept="image/jpeg,image/png,image/webp,application/pdf">';
     h += '<div class="pgroups pv-groups">' +
@@ -6237,7 +6318,7 @@
 
   /** Довгі акордеони (налаштування лічильника, «Куди передати», графік, групи налаштувань, квартира на головній):
    *  унизу розгорнутого — «Згорнути», щоб не шукати шапку вгорі. Додаємо при відкритті — працює й після часткових перемальовувань. */
-  var ACC_SEL = 'details.mbox-set, details.wacc, details.gacc, details.pgroup, details.pacc';
+  var ACC_SEL = 'details.mbox-set, details.wacc, details.gacc, details.pgroup, details.pacc, details.hacc, details.season';   // 90-а: і «Нараховано ХТМ», і сезони — за шаблоном
   function accFoot(d) {
     if (!d || !d.matches || !d.matches(ACC_SEL) || !d.open) return;
     var last = d.lastElementChild; if (last && last.classList.contains('acc-foot')) return;
@@ -6622,6 +6703,7 @@
       return;
     }
   });
+  document.addEventListener('change', function (e) { if (e.target && e.target.name === 'pv-icon') { ensurePlaces(); var pi = place(), v = e.target.value; if (v && PICONS[v]) pi.icon = v; else delete pi.icon; pi.updatedAt = Date.now(); save(); render(true); var y = document.querySelector('input[name=pv-icon]:checked'); if (y) y.focus(); } });
   document.addEventListener('change', function (e) { if (e.target && e.target.name === 'pv-color') { ensurePlaces(); var pc = place(); pc.color = e.target.value; pc.updatedAt = Date.now(); save(); render(true); var x = document.querySelector('input[name=pv-color]:checked'); if (x) x.focus(); } });
   document.addEventListener('change', function (e) { if (e.target && e.target.id === 'p-normrow') { var v = e.target.value; wsetCfg(function (c) { c.normRow = v; delete c.normCold; delete c.normHot; }); render(true); var x = document.getElementById('p-normrow'); if (x) x.focus(); } });
   document.addEventListener('input', function (e) {

@@ -1,5 +1,5 @@
-// Запис історії з фото (89-а, власник 10.11): показання — табло свого виду (газ — жовта панель з роликами, вода — барабан, тепло — ЖК), фото — у тій самій
-// картці під табло, вікно табло на превʼю — рівно по центру (навіть коли на фото воно низько). Фото з сервера підміняється синтетикою (/tmp/gas_low.jpg).
+// Запис історії з фото (90-а, власник 10.11): першим — «Набігло за місяць» і скільки коштувало, під ним фото, далі показання списком з копіюванням — без табло й барабанів;
+// вікно табло на превʼю — рівно по центру (навіть коли на фото воно низько). Фото з сервера підміняється синтетикою (/tmp/gas_low.jpg).
 // 90-а: стара рамка лише по чорних роликах (газ 7633 — червоні з'їжджали за край) перераховується у фоні разом із червоними: синтетичний водомір
 // tests/ocr-lab/out/w_novator.jpg (чорні 5 + червоні 3; немає — малюється water.cjs).
 // node e2e_recphoto.cjs  (локальний сервер 127.0.0.1:8013)
@@ -26,19 +26,27 @@ if (!fs.existsSync(NOV)) { const j = path.join(LAB, 'rp.local.json'); fs.writeFi
       const bi = im.getBoundingClientRect(), bb = box.getBoundingClientRect(), f = im.getAttribute('data-f').split(',').map(Number);
       return { dx: Math.round(bi.left + f[0] * bi.width - (bb.left + bb.width / 2)), dy: Math.round(bi.top + f[1] * bi.height - (bb.top + bb.height / 2)), w: Math.round(f[2] * bi.width), bw: Math.round(bb.width), fx: im.classList.contains('fx') };
     });
+    // порядок блоків: «Набігло» → фото → показання; табло/барабанів у записі немає
+    const order = (u, ph, v) => p.evaluate(([u, ph, v]) => { const a = document.querySelector('[data-key=' + u + ']'), b = document.querySelector('[data-key=rec-photos]'), c = document.querySelector('[data-key=' + v + ']');
+      const before = (x, y) => !!(x && y && (x.compareDocumentPosition(y) & 4)); return { used: !!a, ok: (!a || before(a, b || c)) && (!ph || before(b, c)), drum: !!document.querySelector('.main .gdrum, .main .wdrum, .main .lcd, .main .elcd') }; }, [u, ph, v]);
     const g1 = await geo();
     ok(vw + ': газ — вікно роликів на превʼю рівно по центру (±2 px), не ширше картки', g1 && g1.fx && Math.abs(g1.dx) <= 2 && Math.abs(g1.dy) <= 2 && g1.w <= g1.bw, g1);
-    ok(vw + ': газ — табло (жовта панель з роликами) і фото в одній картці, «← Назад» на сторінку газу', await p.evaluate(() => { const h = document.querySelector('[data-key=erec-values]'); return !!(h && h.querySelector('.gdrum.hero') && h.querySelector('[data-key=rec-photos]')); })
-      && (await p.getAttribute('[data-key=rec-back]', 'href')) === '#gas');
+    const o1 = await order('erec-used', true, 'erec-values'), u1 = (await p.textContent('[data-key=erec-used]').catch(() => '')).replace(/\s+/g, ' ');
+    ok(vw + ': газ — «Набігло за …» першим (м³, ≈ грн, розрахунок), під ним фото, далі показання; без табло; «← Назад» на сторінку газу', o1.used && o1.ok && !o1.drum && /Набігло за/.test(u1) && /м³/.test(u1) && /≈ [\d  ]+,\d\d\s*грн/.test(u1) && / × /.test(u1)
+      && (await p.getAttribute('[data-key=rec-back]', 'href')) === '#gas', [o1, u1]);
     await p.screenshot({ path: '/tmp/shots/rec_gas_' + vw + '.png', fullPage: vw === 390 });
     await p.goto(U + '#wrec-w20261015'); await p.waitForTimeout(1200);
-    ok(vw + ': вода з двома водомірами — два барабани, копіювання 175 і 437, фото — після обох', await p.evaluate(() => document.querySelectorAll('[data-key=wrec-values] .wdrum.hero').length === 2 && !document.querySelector('[data-key=wrec-values] [data-key=rec-photos]'))
-      && (await p.getAttribute('[data-key=wrec-copy-h1]', 'data-text')) === '175' && (await p.getAttribute('[data-key=wrec-copy-c1]', 'data-text')) === '437');
+    const o2 = await order('wrec-used', true, 'wrec-values'), u2 = (await p.textContent('[data-key=wrec-used]').catch(() => '')).replace(/\s+/g, ' ');
+    ok(vw + ': вода з двома водомірами — «Набігло» (гаряча й холодна, разом ≈ грн) → фото → два рядки показань з копіюванням 175 і 437, без барабанів', o2.used && o2.ok && !o2.drum && /Гаряча/.test(u2) && /Холодна/.test(u2) && /Разом/.test(u2)
+      && await p.evaluate(() => document.querySelectorAll('[data-key=wrec-values] > li').length === 2)
+      && (await p.getAttribute('[data-key=wrec-copy-h1]', 'data-text')) === '175' && (await p.getAttribute('[data-key=wrec-copy-c1]', 'data-text')) === '437', [o2, u2]);
     const g2 = await geo(); ok(vw + ': вода — фото теж по центру', g2 && Math.abs(g2.dx) <= 2 && Math.abs(g2.dy) <= 2, g2);
     await p.goto(U + '#erec-' + st.mrecs.filter(x => x.kind === 'elec' && !x.base).slice(-1)[0].id); await p.waitForTimeout(600);
-    ok(vw + ': світло — електронне табло й копіювання по зонах', await p.evaluate(() => !!document.querySelector('[data-key=erec-values] .elcd.hero')) && !!(await p.$('[data-key=erec-copy-day], [data-key=erec-copy-all]')));
+    const o3 = await order('erec-used', false, 'erec-values');
+    ok(vw + ': світло — «Набігло» над показаннями, без табло, копіювання по зонах', o3.ok && !o3.drum && !!(await p.$('[data-key=erec-copy-day], [data-key=erec-copy-all]')), o3);
     await p.goto(U + '#rec-r3'); await p.waitForTimeout(600);
-    ok(vw + ': тепло — ЖК-табло з Гкал над списком полів', await p.evaluate(() => { const h = document.querySelector('[data-key=rec-hero] .lcd.hero'), l = document.querySelector('[data-key=rec-values]'); return !!(h && l && (h.compareDocumentPosition(l) & 4)); }));
+    const o4 = await order('rec-used', false, 'rec-values');
+    ok(vw + ': тепло — «Набігло» над списком полів, без ЖК-табло, Гкал копіюється', o4.used && o4.ok && !o4.drum && !!(await p.$('[data-key=rec-values] [data-key=rec-copy-energy]')), o4);
     if (vw === 390) await p.screenshot({ path: '/tmp/shots/rec_heat_390.png', fullPage: true });
     // стара рамка (лише чорні ролики) → у фоні знайдено вікно разом із червоними, центр — посередині обох, у запис — 5 чисел
     const gid = await p.evaluate(() => { const s = JSON.parse(localStorage.getItem('teplo.v1')); const r = s.mrecs.find(x => (x.photos || []).some(f => f.id === 'srv-old-1')); return r && r.id; });

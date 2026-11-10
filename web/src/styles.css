@@ -65,6 +65,7 @@ a { color: var(--c-return); text-underline-offset: 3px; }
 .top .spacer { flex: 1; }
 .main { flex: 1; width: 100%; max-width: 720px; margin: 0 auto; padding: var(--sp-2) var(--sp-4) calc(var(--tap) + 48px); }
 .main.bare { padding-bottom: var(--sp-7); }
+.nav.nav-side { display: none; }   /* телефон: на екранах вводу нижнього меню немає (місце клавіатурі й кнопкам); на ≥ 960 — бічне меню */
 .nav { position: fixed; left: 0; right: 0; bottom: 0; display: grid; grid-template-columns: repeat(var(--nav-n, 5), auto); padding-left: 4px; padding-right: 4px; background: var(--c-surface);
   border-top: 1px solid var(--c-line); box-shadow: 0 -6px 18px var(--c-ghost-hover); padding-bottom: env(safe-area-inset-bottom); z-index: 5; }
 .nav a { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; min-height: 58px; font-size: 13px; color: var(--c-ink-2); text-decoration: none; }
@@ -78,6 +79,8 @@ a { color: var(--c-return); text-underline-offset: 3px; }
   .nav a[aria-current="page"] { background: var(--c-surface); }
   .main { max-width: 1040px; margin: 0; padding: var(--sp-2) var(--sp-6) var(--sp-7); }
   .app.bare-app { grid-template-columns: 1fr; }
+  .app.bare-app.with-side { grid-template-columns: 232px 1fr; }
+  .nav.nav-side { display: grid; }
 }
 
 /* ---------- кнопки ---------- */
@@ -660,15 +663,20 @@ input[type=text]:not(.dmy-native):not(.pl-in), input[type=email], input[type=pas
 .where > h2 { display: flex; align-items: center; gap: 8px; }
 /* «Куди передати» на сторінці лічильника — акордеон */
 /* «Нараховано ХТМ за …» у записі тепла — акордеон (09.11): згорнуто — підсумок «Гкал · грн» */
-details.hacc > summary { list-style: none; cursor: pointer; min-height: 44px; margin: -4px 0; }
+/* «Нараховано ХТМ» — розкривашка за шаблоном сезонів (власник 10.11): шапка 14/16, стрілка-«ручка» праворуч, підсумок під назвою і відкритою (не скаче),
+   лінія під шапкою — завжди 1 px, змінюється лише колір */
+details.hacc.panel { padding: 0; }
+details.hacc > summary { list-style: none; cursor: pointer; display: flex; align-items: center; min-height: 64px; padding: 14px 16px; border-radius: 14px; border-bottom: 1px solid transparent; }
+details.hacc[open] > summary { border-bottom-color: var(--c-line); border-bottom-left-radius: 0; border-bottom-right-radius: 0; }
+.hacc > summary:hover { background: var(--c-ghost-hover); }
+.hacc > summary:focus-visible { outline: 2px solid var(--c-info); outline-offset: -2px; }
 .hacc > summary::-webkit-details-marker { display: none; }
-.hacc > summary h2 { display: flex; align-items: center; gap: 8px; margin: 0; }
-.hacc > summary h2 .grow { display: flex; flex-direction: column; gap: 2px; }
-.hacc-brief { font-weight: 400; font-family: inherit; }
-.hacc[open] .hacc-brief { display: none; }
+.hacc > summary h2 { display: flex; align-items: center; gap: 12px; margin: 0; flex: 1 1 auto; min-width: 0; font-size: 17px; line-height: 1.3; }
+.hacc > summary h2 .grow { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.hacc-brief { font-weight: 400; font-family: inherit; font-size: var(--fs-s); color: var(--c-ink-2); font-variant-numeric: tabular-nums; }
 .hacc > summary .pacc-chev { transform: rotate(90deg); transition: transform .15s var(--ease); color: var(--c-ink-2); flex: none; }
 .hacc[open] > summary .pacc-chev { transform: rotate(-90deg); }
-.hacc[open] > .hacc-b { margin-top: 12px; }
+.hacc > .hacc-b { padding: 12px 16px 16px; }
 @media (prefers-reduced-motion: reduce) { .hacc > summary .pacc-chev { transition: none; } }
 details.wacc > summary { list-style: none; cursor: pointer; display: flex; align-items: center; gap: 8px; margin: -4px 0; min-height: 44px; color: inherit; text-decoration: none; }   /* details.where (подсказка «где модель») красит summary ссылкой — тут не надо */
 .wacc > summary::-webkit-details-marker { display: none; }
@@ -1162,6 +1170,11 @@ details.gacc > summary { list-style: none; cursor: pointer; display: grid; grid-
 summary:hover .pacc-chev { background: var(--c-surface); border-color: var(--c-field-line); }
 .acc-foot { display: flex; justify-content: center; margin: var(--sp-3) 0 0; padding-top: var(--sp-2); border-top: 1px dashed var(--c-line); }
 .acc-foot .acc-up { transform: rotate(-90deg); }
+/* «Згорнути» — на всю ширину розкривашки (власник 10.11): рамкою, як кнопка, 48 px */
+.acc-foot .btn { flex: 1 1 auto; width: 100%; min-height: 48px; justify-content: center; border: 1.5px solid var(--c-line); border-radius: 12px; }
+.acc-foot .btn:hover { border-color: var(--c-field-line); }
+.hacc > .acc-foot { margin: 0; padding: 0 16px 16px; border-top: 0; }
+.season > .acc-foot { margin: 0; padding: 12px 16px 16px; border-top: 1px solid var(--c-line); }
 .pacc > .acc-foot { margin: 0; padding: 6px 12px 10px; background: var(--c-surface-2); border-top: 0; }
 .pgroup > .acc-foot { margin: 0 16px; padding-bottom: 8px; }
 /* настройки счётчика: открытое содержимое — в подложке, видно, где кончается */
@@ -1212,6 +1225,28 @@ summary:focus-visible { outline: 3px solid var(--c-info); outline-offset: 2px; b
 
 /* колір квартири — крапка біля назви (без смуги збоку) */
 .place-bar b::before, .pdot { content: ''; display: inline-block; flex: none; width: 10px; height: 10px; border-radius: 50%; background: var(--pc); margin-right: 8px; vertical-align: 1px; }
+/* значок квартири (необов'язково, власник 10.11) — залитий, кольором квартири; замість крапки */
+.picon { flex: none; color: var(--pc); display: inline-block; vertical-align: middle; }
+.place-bar.has-ic b::before { display: none; }
+.place-bar .pb-ic { margin: -3px 8px 0 0; }
+.place-sw button .picon { margin-right: 8px; }
+.pv-h .picon { margin-top: 3px; }
+/* шапка квартири на головній: значок на висоту двох рядків (назва + адреса), ліворуч */
+.pacc > summary.has-ic { grid-template-columns: 48px minmax(0, 1fr) auto; }
+.pacc > summary.has-ic > .pacc-ic { grid-column: 1; grid-row: 1; align-self: center; display: grid; place-items: center; width: 48px; height: 48px; }
+.pacc > summary.has-ic > .pacc-t { grid-column: 2; grid-row: 1; }
+.pacc > summary.has-ic .pacc-chev { grid-column: 3; }
+.pacc > summary.has-ic > .pst, .pacc > summary.has-ic > .pst-none, .pacc > summary.has-ic > .pnote { grid-column: 1 / -1; }
+/* вибір значка: плитки 52 px, обрана — рамкою кольору тексту, як кольори */
+fieldset.pv-icons { min-width: 0; max-width: 100%; }   /* fieldset тягнеться під min-content сітки — на 320–360 px розпирало розкривашку */
+.picks { display: flex; flex-wrap: wrap; gap: 8px; margin: 6px 0 8px; }   /* не сітка auto-fill: її min-content рахувався від max-width і розпирав розкривашку на 320–360 px */
+.pick { position: relative; cursor: pointer; }
+.pick input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+.pk-b { display: grid; place-items: center; width: 52px; height: 52px; border-radius: 12px; border: 1.5px solid var(--c-line); background: var(--c-field-bg); }
+.pk-b .pdot { margin: 0; }
+.pick:hover .pk-b { border-color: var(--c-field-line); }
+.pick input:checked + .pk-b { border-color: var(--c-ink); box-shadow: inset 0 0 0 1.5px var(--c-ink); }
+.pick input:focus-visible + .pk-b { outline: 3px solid var(--c-info); outline-offset: 2px; }
 .pdot { width: 12px; height: 12px; margin-right: 10px; vertical-align: 2px; }
 
 /* «Ще способи передати»: заголовок, номери стовпчиком, посилання кнопками — замість абзацу з вкрапленнями */
@@ -1326,6 +1361,12 @@ details.tbl-acc[open] > .tbl-wrap { margin-top: 12px; }
 .lp-sec { max-width: 1180px; margin: 0 auto; padding: 56px 20px 0; }
 .lp-h2 { font-size: clamp(28px, 7.4vw, 44px); line-height: 1.1; letter-spacing: -0.025em; margin: 0 0 26px; max-width: 18ch; text-wrap: balance; }
 .lp-dest { padding-top: 34px; text-align: center; }
+/* «Ціни вашої громади» (90-а, власник: «коротко, як інші фічі») — громади довідника по областях рядками й підсумок */
+.lp-prv { display: grid; gap: 6px; margin-top: 16px; padding: 14px 16px; border-radius: 14px; background: var(--c-surface-2); border: 1px solid var(--c-line); }
+.lpv-r { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; font-size: var(--fs-s); padding-bottom: 6px; border-bottom: 1px dashed var(--c-line); }
+.lpv-r i { font-style: normal; color: var(--c-ink-2); }
+.lpv-r b { font-size: var(--fs-m); font-weight: 600; font-variant-numeric: tabular-nums; }
+.lpv-tot { font-size: 13px; color: var(--c-ink-2); padding-top: 2px; }
 .lp-dest-t { margin: 0 auto 14px; color: var(--c-ink-2); font-size: var(--fs-m); }
 .lp-chips { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; }
 .lp-chips li { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 16px; border-radius: var(--r-pill); background: var(--c-surface); border: 1px solid var(--c-line); font-weight: 600; font-size: 16px; }
@@ -1465,6 +1506,9 @@ details.tbl-acc[open] > .tbl-wrap { margin-top: 12px; }
 .lpf-col li a:hover, .lpf-col li .linkbtn:hover { text-decoration: underline; }
 .lpf-bot { max-width: 1120px; margin: 24px auto 0; padding-top: 16px; border-top: 1px solid var(--c-line); display: flex; flex-wrap: wrap; gap: 6px 24px; justify-content: space-between; font-size: 13px; }
 @media (max-width: 760px) { .lpf-in { grid-template-columns: 1fr 1fr; } .lpf-brand { grid-column: 1 / -1; } }
+/* подвал на всех экранах приложения — только на компьютере (власник 10.11); на телефоне внизу меню, подвал — на лендинге */
+.app-foot { display: none; }
+@media (min-width: 960px) { .app-foot { display: block; margin: 56px 0 0; padding: 28px 0 8px; } .app-foot .lpf-in { grid-template-columns: 1.4fr 1fr 1fr 1fr; } }
 @media (max-width: 380px) { .lpf-in { grid-template-columns: 1fr; } }
 
 /* ---- сторінка лічильника (07.11): «Куди передати» — кнопка в рамці на місці «Розпізнати з фото»; відкрита — та сама рамка навколо вмісту ---- */
@@ -1596,9 +1640,10 @@ details.bot-how[open] > ol { margin-top: 4px; }
 details.wacc.wacc-btn { background: var(--bt-bg); border: 1px solid var(--bt-line); }
 details.wacc.wacc-btn:hover, .tips-box.bt-help > summary:hover { border-color: var(--bt-acc); }
 details.wacc.wacc-btn[open] > summary { border-bottom-color: var(--bt-line); }
-.ico.bt-ico { flex: none; box-sizing: content-box; padding: 7px; border-radius: 10px; background: var(--bt-acc, var(--c-ink-2)); color: var(--c-on-ink); }
+/* значки блоків («Історія», «Налаштування показань», «Куди передати»…) — контуром у квадратній рамці кольором тексту: білим у темній темі, чорним у світлій, без заливки (власник 10.11) */
+.ico.bt-ico { flex: none; box-sizing: content-box; padding: 5.5px; border-radius: 10px; background: transparent; border: 1.5px solid var(--c-ink); color: var(--c-ink); }
 .where > h2 .bt-ico, .wacc > summary h2 .bt-ico { margin: -4px 2px -4px 0; }
-.mhist-h .ico.bt-ico { color: var(--c-on-ink); }
+.mhist-h .ico.bt-ico { color: var(--c-ink); }
 .mhist .list { border: 1px solid var(--bt-line); }
 .mhist-n { background: var(--c-surface); border: 1px solid var(--bt-line); color: var(--bt-acc); }
 .tips-box.bt-help { padding: 10px 14px 10px 12px; }
@@ -1606,7 +1651,7 @@ details.wacc.wacc-btn[open] > summary { border-bottom-color: var(--bt-line); }
 .tips-box.bt-help > summary > span { flex: 1 1 auto; min-width: 0; }
 .tips-box.bt-help[open] > ul { margin-left: 2px; }
 .mbox-set > summary { gap: 10px; }
-.mbox-set > summary > .bt-ico { padding: 6px; border-radius: 9px; }
+.mbox-set > summary > .bt-ico { padding: 5.5px; border-radius: 10px; }
 /* «Налаштування квартири» на главной — тот же серый тон «налаштувань», что и у «Налаштування показань» */
 .ucard-pset .am-plus { background: var(--bt-set); border-color: var(--bt-set); color: var(--c-on-ink); border-radius: 12px; }
 
@@ -1634,7 +1679,7 @@ details.wacc.wacc-btn > summary h2 { flex: 1 1 auto; justify-content: flex-start
 details.wacc.wacc-btn > summary .pacc-chev { position: static; margin: 0 0 0 auto; }
 .where > h2 .bt-ico, .wacc > summary h2 .bt-ico { margin: 0; }
 .mhist-h { gap: 10px; }
-.mbox-set > summary > .bt-ico { padding: 7px; border-radius: 10px; }
+.mbox-set > summary > .bt-ico { padding: 5.5px; border-radius: 10px; }
 /* шапки аккордеонов внутри блоков (владелец 07.11): высота при открытии не меняется, значок, заголовок и шеврон — по центру полосы, тап ≥ 48 px */
 .mbox-set > summary, .mbox > .mbox-set > summary, .mbox > .mbox-set[open] > summary, .mbox-set[open] > summary { padding: 8px 0; min-height: 56px; margin: 0; }
 .mbox-set[open] > .mbox-set-b { margin-top: 4px; }
@@ -1771,8 +1816,8 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
   .lpm-track[aria-hidden] { display: none; }
 }
 /* без картки «Графік відключень» (10.11): «Скільки це коштує» займає вільне місце ряду */
-@media (min-width: 600px) { .lp-bento.no-gpv .c-cost { grid-column: 1 / -1; } }
-@media (min-width: 960px) { .lp-bento.no-gpv .c-cost { grid-column: span 2; } }
+/* 90-а: п'ять клітинок (з «Цінами громади») — «Скільки коштує» в один стовпчик; з графіками (with-gpv) — шоста, на всю ширину */
+@media (min-width: 600px) { .lp-bento.with-gpv .c-gpv { grid-column: 1 / -1; } }
 .hg3 > .hg-side > :first-child { margin-top: 0; }
 /* картка лічильника на екрані квартири — тон його виду (владелец 10.11); документи лічильника */
 .mrow.mk-heat, .mrow.mk-hot { --kc: var(--c-supply); } .mrow.mk-cold { --kc: var(--c-return); } .mrow.mk-elec { --kc: var(--c-elec); } .mrow.mk-gas { --kc: var(--c-gas); }
@@ -1783,14 +1828,31 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
 /* iOS 26: поправка положення нижніх вкладок і «Відгук» після клавіатури (--nav-shift з visualViewport) */
 .nav, .fab { translate: 0 var(--nav-shift, 0px); }
 /* запис історії (89-а, власник 10.11): показання — табло свого виду, як на сторінці лічильника; фото — у тій самій картці під табло, табло на фото — по центру */
-.rec-hero { display: grid; gap: var(--sp-3); margin: 0 0 var(--sp-4); }
-.rec-hero .mbox { margin: 0; }
-.rec-hero .hphotos { margin: var(--sp-3) 0 0; padding-top: var(--sp-3); border-top: 1px solid var(--c-line); }
-.rec-hero .hphotos .section-title { font-size: var(--fs-s); color: var(--c-ink-2); margin: 0; }
-.rec-hero .phd.fit .phd-slide { height: 200px; }
-.rh-copy { display: flex; flex-wrap: wrap; gap: 4px 18px; margin: 2px 0 0; }
-.rh-copy span { display: inline-flex; align-items: center; gap: 6px; color: var(--c-ink-2); }
-.rh-copy b { color: var(--c-ink); }
+.rec-ph .hphotos { margin: 0; }
+.rec-ph .hphotos .section-title { font-size: var(--fs-s); color: var(--c-ink-2); margin: 0; }
+.rec-ph .phd.fit .phd-slide { height: 200px; }
+/* «Набігло» — перший блок запису (власник 10.11): місяць, період, розхід кольором виду і гроші великим, розрахунок словами під тонкою лінією */
+.ru { --kc: var(--c-ink); }
+.ru-heat, .ru-hot { --kc: var(--c-supply); } .ru-cold { --kc: var(--c-return); } .ru-elec { --kc: var(--c-elec); } .ru-gas { --kc: var(--c-gas); }
+.ru-t { margin: 0; font-size: var(--fs-l); line-height: 1.25; }
+.ru-per { margin: 4px 0 0; color: var(--c-ink-2); font-size: var(--fs-s); font-variant-numeric: tabular-nums; }
+.ru-big { display: flex; flex-wrap: wrap; align-items: flex-end; gap: var(--sp-3) var(--sp-6); margin: var(--sp-4) 0 0; }
+.ru-q, .ru-m { display: grid; grid-template-columns: auto auto; align-items: baseline; column-gap: 6px; }
+.ru-q i, .ru-m i { grid-column: 1 / -1; font-style: normal; font-size: 13px; color: var(--c-ink-2); margin-bottom: 2px; }
+.ru-q b, .ru-m b { font-family: var(--font); font-size: var(--fs-xxl); line-height: 1.05; font-weight: 600; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }   /* гроші й розхід — Plex Sans (Mono — лише те, що копіюють у кабінет) */
+.ru-q b { color: var(--kc); }
+.ru-q[data-k=hot] b { color: var(--c-supply); } .ru-q[data-k=cold] b { color: var(--c-return); }
+.ru-q span, .ru-m span { font-size: var(--fs-m); color: var(--c-ink-2); }
+.ru-ls { margin: var(--sp-4) 0 0; padding-top: var(--sp-3); border-top: 1px solid var(--c-line); display: grid; gap: 4px; }
+.ru-ls p { margin: 0; font-size: var(--fs-s); line-height: 1.45; font-variant-numeric: tabular-nums; }
+.ru-ls p + p { color: var(--c-ink-2); }
+.ru-proj { margin: var(--sp-3) 0 0; padding: 10px 12px; border-radius: 10px; background: var(--c-surface-2); font-size: var(--fs-s); line-height: 1.45; }
+.ru-note { margin: var(--sp-2) 0 0; font-size: 13px; color: var(--c-ink-2); line-height: 1.4; }
+.ru-base .ru-per { margin: 0; }
+/* показання запису — список з копіюванням (без табло) */
+.rec-vals { margin: 0 0 var(--sp-4); }
+.rec-vals .rv-v { font-size: var(--fs-m); }
+.rec-vals .copy-ico { margin-left: 8px; }
 /* 89-а (власник 10.11: «зроби презентабельніше»): герой і фінальний заклик — лицьова панель квартирного приладу. Литий графітово-зелений пластик
    одним тоном (світліше вгорі — як під лампою в коридорі), дрібна фактура литва, шов кришки по периметру й чотири гвинти. Це матеріал корпусу
    (як ролики й ЖК — у списку MATERIAL лінтера), не прикраса: без сяйв і переливів між кольорами. */

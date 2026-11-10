@@ -5,7 +5,7 @@
                         (вход через Telegram или email, синхронизация, Telegram Mini App, распознавание фото).
 Запуск: python3 web/build.py
 """
-import pathlib, re
+import pathlib, re, subprocess
 
 ROOT = pathlib.Path(__file__).resolve().parent
 SRC = ROOT / "src"
@@ -24,6 +24,20 @@ def own_fonts() -> str:
     return pre + "<style>\n" + css.strip() + "\n</style>"
 
 
+_PROV = None
+
+
+def prov_counts() -> str:
+    global _PROV
+    if _PROV is None:
+        try:
+            r = subprocess.run(["php", str(ROOT.parent / "tools_prov_counts.php")], capture_output=True, text=True, timeout=60)
+            _PROV = r.stdout.strip() if r.returncode == 0 and r.stdout.strip().startswith("[") else "null"
+        except Exception:
+            _PROV = "null"
+    return _PROV
+
+
 def build(server: bool) -> str:
     html = (SRC / "index.html").read_text(encoding="utf-8")
     css = (SRC / "styles.css").read_text(encoding="utf-8")
@@ -33,6 +47,8 @@ def build(server: bool) -> str:
 
     def inline(m: re.Match) -> str:
         js = (SRC / m.group(1)).read_text(encoding="utf-8")
+        if "null/*LP_PROV*/" in js:   # лендинг: громади довідника по областях (tools_prov_counts.php); без php — блок без чисел
+            js = js.replace("null/*LP_PROV*/", prov_counts())
         return "<script>\n" + js.replace("</script", "<\\/script") + "\n</script>"
 
     return re.sub(r'<script src="([a-z0-9]+\.js)"></script>', inline, html)

@@ -20,7 +20,7 @@ const U = 'http://127.0.0.1:8013/';
 
   // 1. привітання
   await fresh();
-  ok('привітання-лендинг: 4 табло на сцені, 3 кроки, 4 картки можливостей (графіки відключень вимкнено), панель приладу з гвинтами, заклик угорі й унизу', (await p.$$('[data-key=welcome-hero] figure')).length === 4 && !!(await p.$('[data-key=welcome-hero] .lcd:not(.elcd)')) && !!(await p.$('[data-key=welcome-hero] .wdrum')) && !!(await p.$('[data-key=welcome-hero] .elcd')) && !!(await p.$('[data-key=welcome-hero] .gdrum')) && (await p.$$('.lp-step')).length === 3 && (await p.$$('.lp-cell')).length === 4 && (await p.$$('[data-key=lp-hero] .lp-screw')).length === 4 && (await p.$$('[data-key=welcome-start], [data-key=welcome-start-end]')).length === 2);
+  ok('привітання-лендинг: 4 табло на сцені, 3 кроки, 5 карток можливостей (графіки вимкнено, «Ціни вашої громади» — 90-а), панель приладу з гвинтами, заклик угорі й унизу', (await p.$$('[data-key=welcome-hero] figure')).length === 4 && !!(await p.$('[data-key=welcome-hero] .lcd:not(.elcd)')) && !!(await p.$('[data-key=welcome-hero] .wdrum')) && !!(await p.$('[data-key=welcome-hero] .elcd')) && !!(await p.$('[data-key=welcome-hero] .gdrum')) && (await p.$$('.lp-step')).length === 3 && (await p.$$('.lp-cell')).length === 5 && (await p.$$('[data-key=lp-hero] .lp-screw')).length === 4 && (await p.$$('[data-key=welcome-start], [data-key=welcome-start-end]')).length === 2);
   ok('сцена-картинка — ссылка на #start, не в порядке Tab', await p.$eval('[data-key=welcome-hero]', a => a.tagName === 'A' && a.getAttribute('href') === '#start' && a.tabIndex === -1));
   await p.click('[data-key=welcome-hero] .lp-phone', { force: true }); await p.waitForTimeout(400);
   ok('нажатие на картинку → #start', (await hash()) === '#start');
