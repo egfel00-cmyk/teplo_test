@@ -1707,6 +1707,12 @@ ok('довідник: усі громади й пункти є в КАТОТТГ
   $pl = (array)($phone->req('GET', '/api/health')->body['prov']['list'] ?? []); $pk = $pl['my.vodokanal.kiev.ua/'] ?? [];
   ok('/api/health → prov.list: по адресу — вердикт, поля, скрипт капчи, где в справочнике', ($pk['v'] ?? '') === 'login' && ($pk['fields'] ?? '') === 'login,password' && ($pk['cap'] ?? '') === 'script'
     && in_array('ky:Київ.water.cab', array_map(fn($x) => preg_replace('/=.*/', '', $x), (array)($pk['in'] ?? [])), true), $pk);
+  $fs = ProvProbe::forms('<form method="post" action="/auth.php?x=1"><input name="_token" type="hidden"><input name="auth_no_os"><input name="auth_password" type="password"><button>Увійти</button></form>'
+    . '<form action="https://ex.ua/meter"><input name="meter_no_os"><input name="meter_val[1]" type="number"><input type="submit"></form>');
+  ProvProbe::store('https://my.vodokanal.kiev.ua/', ['code' => 200, 'at' => gmdate('c'), 'pass' => true, 'forms' => 2, 'fset' => $fs, 'verdict' => 'login', 'pv' => ProvProbe::PV]);
+  $pk = (array)(((array)($phone->req('GET', '/api/health')->body['prov']['list'] ?? []))['my.vodokanal.kiev.ua/'] ?? []);
+  ok('ProvProbe PV 2: будова кожної форми — метод, шлях дії, поля «ім’я:тип» (токен — token) → /api/health prov.list.fset', $fs === ['post /auth.php?… [_token:token,auth_no_os:text,auth_password:password,:button]', 'get /meter [meter_no_os:text,meter_val[1]:number,:submit]']
+    && str_contains($pk['fset'] ?? '', 'meter_no_os:text') && ProvProbe::PV === 2, [$fs, $pk]);
   // правка, що збігається з репозиторієм (сесія вже перенесла), прибирається сама; інші лишаються
   $same = Providers::raw('ky')['hromadas']['Київ']['heat'];
   $boss->req('POST', '/api/admin/prov/save', ['r' => 'ky', 'scope' => 'hromadas', 'key' => 'Київ', 'kind' => 'heat', 'value' => $same]);

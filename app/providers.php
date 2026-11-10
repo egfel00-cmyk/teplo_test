@@ -453,7 +453,7 @@ final class ProvEdit {
  *  verdict: login — форма з паролем, без капчі (робот з сервера можливий, потрібен пароль людини); form — форма без пароля (рахунок/прізвище);
  *  captcha — капча; cf — Cloudflare не пускає закордонний сервер (лише з України — ретранслятор); down — не відповідає; page — сторінка без форми. */
 final class ProvProbe {
-  const DAYS = 7;
+  const DAYS = 7, PV = 2;   // PV 2 (103-я): у пробі — будова кожної форми (fset); старіші проби — перепробувати
   public static function file(): string { return Cfg::data() . '/cache/prov_probe.json'; }
   public static function read(): array { $j = json_decode((string)@file_get_contents(self::file()), true); return is_array($j) ? $j : []; }
   /** Усі адреси кабінетів і сайтів довідника: url → [[r, рівень, ключ, вид, поле], …]. */
@@ -470,7 +470,7 @@ final class ProvProbe {
   }
   public static function run(?int $now = null): ?string {
     $now = $now ?? time(); $have = self::read(); $old = null;
-    foreach (array_keys(self::urls()) as $url) { $at = strtotime((string)($have[$url]['at'] ?? '')) ?: 0; if ($now - $at > self::DAYS * 86400 && ($old === null || $at < $old[1])) $old = [$url, $at]; }
+    foreach (array_keys(self::urls()) as $url) { $at = (int)($have[$url]['pv'] ?? 1) < self::PV ? 0 : (strtotime((string)($have[$url]['at'] ?? '')) ?: 0); if ($now - $at > self::DAYS * 86400 && ($old === null || $at < $old[1])) $old = [$url, $at]; }
     if (!$old) return null;
     self::store($old[0], self::one($old[0]));
     return $old[0];
@@ -496,9 +496,27 @@ final class ProvProbe {
       preg_match_all('/<input[^>]+name=["\']([^"\']{1,40})["\']/i', $b, $m);
       $o['fields'] = array_values(array_slice(array_unique(array_filter($m[1], fn($x) => !preg_match('/^(_token|_csrf|csrf|__|utf8|authenticity)/i', $x))), 0, 12));
       $o['spa'] = !$o['forms'] && (bool)preg_match('/<div id=["\'](app|root|__next|__nuxt)["\']|ng-version|data-page=/i', $b);
+      if ($o['forms']) $o['fset'] = self::forms($b);
     }
-    $o['verdict'] = self::verdict($o);
+    $o['verdict'] = self::verdict($o); $o['pv'] = self::PV;
     return $o;
+  }
+  /** Будова форм сторінки (для рішення «форма без входу / кабінет» без браузера): метод, адреса дії (шлях), поля «ім’я:тип» (до 6 форм × 16 полів). */
+  public static function forms(string $html): array {
+    $out = []; $x = CabWeb::dom($html);
+    foreach ($x->query('//form') as $f) {
+      if (!$f instanceof DOMElement || count($out) >= 6) continue;
+      $fl = [];
+      foreach ($x->query('.//input|.//select|.//textarea|.//button', $f) as $e) {
+        if (!$e instanceof DOMElement || count($fl) >= 16) continue; $n = trim($e->getAttribute('name')); $t = strtolower($e->tagName === 'input' ? ($e->getAttribute('type') ?: 'text') : $e->tagName);
+        if ($n === '' && $t !== 'submit' && $e->tagName !== 'button') continue;
+        if (preg_match('/^(_token|_csrf|csrf|__|utf8|authenticity)/i', $n)) $t = 'token';
+        $fl[] = mb_substr($n, 0, 40) . ':' . $t;
+      }
+      $a = trim($f->getAttribute('action')); $a = $a === '' ? '' : (string)(parse_url($a, PHP_URL_PATH) ?? '') . (parse_url($a, PHP_URL_QUERY) ? '?…' : '');
+      $out[] = strtolower($f->getAttribute('method') ?: 'get') . ' ' . mb_substr($a, 0, 60) . ' [' . implode(',', $fl) . ']';
+    }
+    return $out;
   }
   public static function verdict(array $o): string {
     if (!empty($o['cf']) || isset($o['cfKind'])) return 'cf';
@@ -522,6 +540,7 @@ final class ProvProbe {
       $o[mb_substr(preg_replace('~^https://~', '', (string)$url), 0, 90)] = array_filter(['v' => $x['verdict'] ?? null, 'code' => $x['code'] ?? null, 'ms' => $x['ms'] ?? null, 'err' => $x['err'] ?? null,
         'pass' => !empty($x['pass']) ?: null, 'forms' => $x['forms'] ?? null, 'fields' => !empty($x['fields']) ? implode(',', (array)$x['fields']) : null,
         'cap' => !empty($x['widget']) ? 'widget' : (!empty($x['script']) ? 'script' : null), 'cf' => $x['cfKind'] ?? (!empty($x['cf']) ? 'cf' : null), 'spa' => !empty($x['spa']) ?: null,
+        'fset' => !empty($x['fset']) ? mb_substr(implode(' | ', (array)$x['fset']), 0, 900) : null,
         'at' => isset($x['at']) ? substr((string)$x['at'], 0, 16) : null, 'in' => $w ?: null], fn($v) => $v !== null && $v !== 0 && $v !== '');
     }
     ksort($o); return $o;
