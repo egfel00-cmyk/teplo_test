@@ -67,6 +67,13 @@ final class LocalBot {
     // Трускавець: персональний кабінет abonents.vodokanaltr.com.ua (Drupal: e-mail + пароль, без капчі — на відміну від Шептицького), з 15 до 27 числа
     'tvk' => ['t' => 'cab', 'kinds' => ['water'], 'org' => 'ТОВ «Трускавецький водоканал»', 'site' => 'abonents.vodokanaltr.com.ua',
       'start' => 'https://abonents.vodokanaltr.com.ua/user/login', 'host' => '~^abonents\.vodokanaltr\.com\.ua$~i', 'need' => ['login', 'pass'], 'win' => [15, 27]],
+    // Бровари (105-а): «Кабінет споживача» КП «Броваритепловодоенергія» debt.crewingcrm.com/brovk — ASP.NET WebForms без входу й капчі: населений пункт → вулиця
+    // → будинок → квартира (списки; вибір — postback) → особовий рахунок → «Пошук» (Chrome 11.11.2026: вигаданий рахунок — «Особовий рахунок не знайдено!»).
+    // Далі — показники: так ту саму платформу описував Біляївський водоканал («населений пункт, вулицю, номер, особовий рахунок і далі показники»; нині він,
+    // як і Ізмаїл, перейшов на JS-кабінет communal.in.ua). Що саме на сторінці показань, не бачили — перше підключення людини дійде до неї (нічого не надіславши)
+    // або покладе каркас у /admin (/api/health → lbot.brovk.last). Адресу (як у квитанції) зіставляємо зі списками сайту — LbAddr. Строк — з 15 до 25 числа.
+    'brovk' => ['t' => 'form', 'flow' => 'aspx', 'kinds' => ['water'], 'org' => 'КП «Броваритепловодоенергія»', 'site' => 'debt.crewingcrm.com',
+      'start' => 'https://debt.crewingcrm.com/brovk/', 'host' => '~^debt\.crewingcrm\.com$~i', 'need' => ['addr', 'acc'], 'win' => [15, 25]],
     // Стрий: e-mail відділу збуту zbut_voda@ukr.net — «обов’язково вкажіть особовий рахунок або адресу» (stryivodokanal.com.ua, «Порядок передачі показників», 27.10.2026); з 1 до 5 числа
     'svk' => ['t' => 'mail', 'kinds' => ['water'], 'org' => 'КП «Стрийводоканал»', 'site' => 'stryivodokanal.com.ua', 'to' => 'zbut_voda@ukr.net',
       'need' => ['acc', 'addr'], 'win' => [1, 5]],
@@ -91,7 +98,7 @@ final class LocalBot {
     $b = self::get($id);
     return ['id' => $id, 't' => $b['t'], 'org' => $b['org'], 'site' => $b['site'] ?? null, 'kinds' => $b['kinds'], 'need' => $b['need'], 'hint' => $b['acc']['hint'] ?? null,
       'win' => $b['win'] ?? null, 'later' => !empty($b['later']), 'to' => is_string($b['to'] ?? null) ? $b['to'] : null, 'fmt' => $b['fmt'] ?? null, 'one' => !empty($b['one']),
-      'serial' => !empty($b['serial']), 'lk' => $b['lk'] ?? null, 'ready' => self::ready($id)] + (isset($b['dists']) ? ['dists' => array_map(fn($k, $v) => [$k, $v[0], $v[1]], array_keys($b['dists']), $b['dists'])] : []);
+      'serial' => !empty($b['serial']), 'lk' => $b['lk'] ?? null, 'flow' => $b['flow'] ?? null, 'ready' => self::ready($id)] + (isset($b['dists']) ? ['dists' => array_map(fn($k, $v) => [$k, $v[0], $v[1]], array_keys($b['dists']), $b['dists'])] : []);
   }
 
   // ---------- вікно подачі: поза ним «Відправити у фоні» ставить у чергу на відкриття (9:00 за Києвом) ----------
@@ -161,6 +168,16 @@ final class LocalBot {
       'one' => $ru ? 'Так можно передать только однозонный счётчик (одно число). Двухзонный передайте сами — кнопки ниже.' : 'Так можна передати лише однозонний лічильник (одне число). Двозонний передайте самі — кнопки нижче.',
       'dist' => $ru ? 'Выберите район — письмо уйдёт в отдел сбыта вашего района.' : 'Оберіть район — лист піде у відділ збуту вашого району.',
       'serial' => $ru ? 'Впишите номер счётчика в его настройках — {org} принимает показания только с номером счётчика.' : 'Впишіть номер лічильника в його налаштуваннях — {org} приймає показання лише з номером лічильника.',
+      // адреса зі списками сайту (flow aspx, 105-а)
+      'addr_settle' => $ru ? 'Сайт ищет счёт по адресу. Допишите в начале адреса населённый пункт — на сайте есть: {list}.' : 'Сайт шукає рахунок за адресою. Допишіть на початку адреси населений пункт — на сайті є: {list}.',
+      'addr_street' => $ru ? 'Не нашли улицу «{s}» в списке сайта. Напишите её, как в квитанции (по-украински).' : 'Не знайшли вулицю «{s}» у списку сайту. Напишіть її, як у квитанції.',
+      'addr_street_s' => $ru ? 'Не нашли улицу «{s}» в списке сайта. Похожие там: {list} — напишите, как в квитанции.' : 'Не знайшли вулицю «{s}» у списку сайту. Схожі там: {list} — напишіть, як у квитанції.',
+      'addr_street0' => $ru ? 'Впишите улицу, дом и квартиру — сайт ищет счёт по адресу.' : 'Впишіть вулицю, будинок і квартиру — сайт шукає рахунок за адресою.',
+      'addr_street2' => $ru ? 'Улиц с таким названием на сайте несколько: {list}. Напишите полностью, как в квитанции.' : 'Вулиць із такою назвою на сайті кілька: {list}. Напишіть повністю, як у квитанції.',
+      'addr_house0' => $ru ? 'Допишите номер дома.' : 'Допишіть номер будинку.',
+      'addr_house' => $ru ? 'На сайте нет дома «{h}» на улице {s}. Проверьте номер — как в квитанции (11-А, 16/2).' : 'На сайті немає будинку «{h}» на вулиці {s}. Перевірте номер — як у квитанції (11-А, 16/2).',
+      'addr_flat0' => $ru ? 'Допишите номер квартиры (кв. 12).' : 'Допишіть номер квартири (кв. 12).',
+      'addr_flat' => $ru ? 'На сайте нет квартиры «{f}» в этом доме. Проверьте номер.' : 'На сайті немає квартири «{f}» у цьому будинку. Перевірте номер.',
     ][$k];
     foreach ($v as $a => $b) $s = str_replace('{' . $a . '}', (string)$b, $s);
     return $s;
@@ -220,7 +237,7 @@ final class LocalBot {
       try { $r = LbWalk::run($b, $pub + $sec, [], false); $chk += ['meters' => $r['meters'] ?? null]; }
       catch (HttpError $e) {
         $why = preg_replace('/^lb_/', '', $e->err);
-        if (in_array($why, ['notfound', 'login_bad', 'captcha'], true)) { Db::q('INSERT INTO audit_log (user_id, action, ip, created_at) VALUES (?, ?, ?, ?)', [$uid, 'lb_conn_' . $id . '_' . $why, null, Http::iso()]); throw $e; }
+        if (in_array($why, ['notfound', 'login_bad', 'captcha'], true) || str_starts_with($why, 'addr_')) { Db::q('INSERT INTO audit_log (user_id, action, ip, created_at) VALUES (?, ?, ?, ?)', [$uid, 'lb_conn_' . $id . '_' . $why, null, Http::iso()]); throw $e; }
         $chk = ['at' => time(), 'ok' => false, 'why' => $why];   // сайт не відповів або незнайома сторінка — підключення зберігаємо, спробуємо при надсиланні
       }
     }
@@ -430,6 +447,7 @@ final class LbWalk {
     $w = new CabWeb($b['host'], 25.0);
     $r = self::get($w, $b['start']);
     if ($b['t'] === 'cab') $r = self::login($w, $b, $c, $r);
+    elseif (($b['flow'] ?? '') === 'aspx') $r = self::aspx($w, $b, $c, $r);
     else $r = self::account($w, $b, $c, $r);
     for ($hop = 0; $hop < 3; $hop++) {
       $f = self::readForm($r['body']);
@@ -441,7 +459,7 @@ final class LbWalk {
     if (empty($f)) throw self::page('no_form', $r['body']);
     [$form, $fields, $read] = $f;
     if (!$send) return ['result' => 'ready', 'meters' => count($read)];
-    $pairs = self::fill($fields, $read, $items, $r['body']);
+    $pairs = self::submit(self::fill($fields, $read, $items, $r['body']), $fields, $r['body']);
     $act = trim((string)$form->getAttribute('action')); $action = CabWeb::abs($act !== '' ? $act : $r['url'], $r['url']);
     if (!$w->sameSite($action)) throw self::page('offsite', $r['body']);
     $post = strtolower($form->getAttribute('method') ?: 'get') === 'post';
@@ -497,6 +515,113 @@ final class LbWalk {
     if ($again && !self::readForm($s['body']) && !self::link($s['body'], $s['url'], $w)) throw self::page('acc_again', $s['body']);
     return $s;
   }
+  /** ASP.NET WebForms без входу (debt.crewingcrm.com, 105-а): списки «населений пункт → вулиця → будинок» (вибір — postback через __EVENTTARGET),
+   *  квартира, особовий рахунок → «Пошук». Адресу людини зіставляємо зі списками (LbAddr): не знайшли — зрозуміла помилка, нічого не надіслано.
+   *  Сайт сам звіряє рахунок з адресою, тож помилка в адресі дає «не знайдено», а не чужу квартиру. */
+  private static function aspx(CabWeb $w, array $b, array $c, array $r): array {
+    $acc = (string)(LocalBot::accParts($b, (string)($c['acc'] ?? ''))[0] ?? '');
+    if ($acc === '') throw new HttpError(422, 'lb_acc0', ['human' => self::hum('notfound')]);
+    $A = LbAddr::parse((string)($c['addr'] ?? '')); $used = []; $set = []; $street = '';
+    foreach (['settle', 'street', 'house', 'flat'] as $role) {
+      $st = self::aspxForm($r['body']); if (!$st) throw self::page('no_acc_form', $r['body']);
+      $sel = $st['sel'][$role] ?? null; if (!$sel) continue;
+      $opts = array_values(array_filter($sel['opts'], fn($o) => trim((string)$o[0]) !== '' && trim((string)$o[1]) !== ''));
+      $v = match ($role) { 'settle' => LbAddr::settle($A, $opts, $used), 'street' => LbAddr::street($A, $opts, $used), 'house' => LbAddr::house($A, $opts, $used, $street), 'flat' => LbAddr::flat($A, $opts, $used) };
+      if (is_array($v)) { $street = $v[1]; $v = $v[0]; }
+      if ($v === null) continue;
+      $set[$sel['n']] = $v;
+      if ($sel['auto'] && (string)$sel['v'] !== (string)$v) $r = self::aspxPost($w, $r, $st, $set, $sel['n'], null);
+    }
+    $st = self::aspxForm($r['body']); if (!$st || !$st['acc']) throw self::page('no_acc_form', $r['body']);
+    $set[$st['acc']] = $acc;
+    $s = self::aspxPost($w, $r, $st, $set, null, $st['btn']);
+    if (self::readForm($s['body'])) return $s;
+    if (self::notFound($s['body'])) throw new HttpError(422, 'lb_notfound', ['human' => self::hum('notfound')]);
+    // «Передати показання» — кнопка чи посилання-postback (LinkButton) на тій самій формі
+    $hop = self::aspxHop($s['body']); $st2 = $hop ? self::aspxForm($s['body']) : null;
+    if ($hop && $st2) return self::aspxPost($w, $s, $st2, [], $hop[0], $hop[1]);
+    if (self::link($s['body'], $s['url'], $w)) return $s;
+    $again = self::aspxForm($s['body']);
+    if ($again && $again['acc'] && !empty($again['sel'])) throw self::page('acc_again', $s['body']);
+    return $s;
+  }
+  /** Форма ASP.NET: поля, списки за роллю (пункт, вулиця, будинок, квартира; автопостбек), поле рахунку, кнопка пошуку. */
+  private static function aspxForm(string $html): ?array {
+    if (!preg_match('/<form\b/i', $html)) return null;
+    $x = CabWeb::dom($html); $form = null;
+    foreach ($x->query('//form') as $f) if ($f instanceof DOMElement && ($form === null || $x->query(".//input[@name='__VIEWSTATE']", $f)->length)) { $form = $f; if ($x->query(".//input[@name='__VIEWSTATE']", $f)->length) break; }
+    if (!$form) return null;
+    $fields = RelayForm::fields($x, $form); $sel = []; $rest = [];
+    $re = ['settle' => '/RAYON|RAION|NASP|PUNKT|CITY|TOWN|SETTL|MISTO|NASEL/i', 'street' => '/ULIC|ULITS|STREET|VULY|VUL$/i', 'house' => '/DOM$|DOMA?\b|BUD|HOUSE|BUILD/i', 'flat' => '/KVART|FLAT|APART|KV$/i'];
+    foreach ($x->query('.//select', $form) as $e) {
+      if (!$e instanceof DOMElement || $e->hasAttribute('disabled')) continue;
+      $n = (string)$e->getAttribute('name'); if ($n === '') continue;
+      $o = array_values(array_filter($fields, fn($q) => $q['n'] === $n))[0] ?? null; if (!$o) continue;
+      $s = ['n' => $n, 'v' => $o['v'], 'opts' => $o['opts'] ?? [], 'auto' => (bool)preg_match('/__doPostBack/', (string)$e->getAttribute('onchange'))];
+      $k = preg_replace('/^.*[\$:_]/', '', $n); $role = null;
+      foreach ($re as $rr => $rx) if (!isset($sel[$rr]) && preg_match($rx, $k)) { $role = $rr; break; }
+      if ($role) $sel[$role] = $s; else $rest[] = $s;
+    }
+    foreach (['settle', 'street', 'house', 'flat'] as $rr) if (!isset($sel[$rr]) && $rest) $sel[$rr] = array_shift($rest);   // за порядком на сторінці
+    $acc = null; $btn = null; $subs = [];
+    foreach ($fields as $o) {
+      if ($acc === null && in_array($o['type'], ['text', 'number', 'tel'], true) && ($o['role'] === 'acc' || preg_match('/(?:^|[\$_])(?:TextBox)?(?:LS|ACC|RAHUN|OSOB)\w*$/i', $o['n']))) $acc = $o['n'];
+      if (($o['type'] === 'submit' || $o['type'] === 'submit:submit') && $o['n'] !== '') $subs[] = [$o['n'], $o['v']];
+    }
+    foreach ($subs as $s2) if (preg_match('/пошук|знайти|шукати|search|далі|продовж|^ок$|^ok$|увійти/iu', $s2[1])) { $btn = $s2; break; }
+    $btn = $btn ?? ($subs[0] ?? null);
+    return ['form' => $form, 'fields' => $fields, 'sel' => $sel, 'acc' => $acc, 'btn' => $btn];
+  }
+  /** Postback: усі поля форми як є (+ обране у списках), __EVENTTARGET — список, що змінили, або кнопка (name=value). */
+  private static function aspxPost(CabWeb $w, array $r, array $st, array $set, ?string $target, ?array $btn): array {
+    $pairs = []; $et = false;
+    foreach ($st['fields'] as $o) {
+      $n = $o['n']; $t = $o['type']; if ($n === '') continue;
+      if (str_starts_with($t, 'submit') || in_array($t, ['button', 'reset', 'image'], true)) continue;
+      if (in_array($t, ['checkbox', 'radio'], true)) { if (!empty($o['checked'])) $pairs[] = [$n, $o['v'] !== '' ? $o['v'] : 'on']; continue; }
+      if ($n === '__EVENTTARGET') { $pairs[] = [$n, (string)$target]; $et = true; continue; }
+      if ($n === '__EVENTARGUMENT') { $pairs[] = [$n, '']; continue; }
+      $pairs[] = [$n, array_key_exists($n, $set) ? (string)$set[$n] : $o['v']];
+    }
+    if ($target !== null && !$et) { array_unshift($pairs, ['__EVENTARGUMENT', '']); array_unshift($pairs, ['__EVENTTARGET', $target]); }
+    if ($btn) $pairs[] = $btn;
+    $act = trim((string)$st['form']->getAttribute('action')); $action = CabWeb::abs($act !== '' ? $act : $r['url'], $r['url']);
+    if (!$w->sameSite($action)) throw self::page('offsite', $r['body']);
+    $s = $w->req('POST', $action, $w->encode($pairs), ['Content-Type: application/x-www-form-urlencoded', 'Referer: ' . $r['url']]);
+    if ((int)$s['code'] === 0 || (int)$s['code'] >= 500) throw new HttpError(502, 'lb_down');
+    self::guard($s);
+    return $s;
+  }
+  /** Кнопка або посилання-postback «Передати показання» → [__EVENTTARGET|null, [кнопка]|null]. */
+  private static function aspxHop(string $html): ?array {
+    $x = CabWeb::dom($html);
+    foreach ($x->query('//a[@href]') as $a) {
+      if (!$a instanceof DOMElement || !preg_match("/__doPostBack\\(\\s*'([^']+)'/", (string)$a->getAttribute('href'), $m)) continue;
+      if (preg_match(self::LINK_RE, mb_strtolower(CabWeb::sp($a->textContent)))) return [$m[1], null];
+    }
+    foreach ($x->query('//form//input[@type="submit"]|//form//button') as $e)
+      if ($e instanceof DOMElement && $e->getAttribute('name') !== '' && preg_match(self::LINK_RE, mb_strtolower(CabWeb::sp($e->getAttribute('value') . ' ' . $e->textContent)))) return [null, [(string)$e->getAttribute('name'), (string)$e->getAttribute('value')]];
+    return null;
+  }
+  /** Кнопка надсилання показань: браузер шле ім’я натиснутої кнопки. <input type=submit> (fill() її не бере) — за написом «Зберегти / Передати…», не «Пошук»;
+   *  ASP.NET LinkButton (javascript:__doPostBack) — через __EVENTTARGET. Іменована <button> уже є в парах — нічого не міняємо. */
+  public static function submit(array $pairs, array $fields, string $html): array {
+    $names = array_column($pairs, 0);
+    foreach ($fields as $o) if ($o['type'] === 'submit:submit' && $o['n'] !== '' && in_array($o['n'], $names, true)) return $pairs;
+    $save = '/зберег|збереж|передат|надісл|надіс|відправ|внест|внесит|подат|сохран|отправ|передать|подтверд|підтверд|save|submit|send/iu';
+    $not = '/пошук|знайти|шукати|search|вихід|вийти|назад|скасув|очист|отмен|выход|logout/iu';
+    $subs = array_values(array_filter($fields, fn($o) => $o['type'] === 'submit' && $o['n'] !== '' && !preg_match($not, $o['v'])));
+    $pick = array_values(array_filter($subs, fn($o) => (bool)preg_match($save, $o['v'])));
+    $s = $pick[0] ?? (count($subs) === 1 ? $subs[0] : null);
+    if ($s) { $pairs[] = [$s['n'], $s['v']]; return $pairs; }
+    $et = array_search('__EVENTTARGET', $names, true);
+    if ($et !== false) {
+      $x = CabWeb::dom($html);
+      foreach ($x->query('//a[@href]') as $a)
+        if ($a instanceof DOMElement && preg_match("/__doPostBack\\(\\s*'([^']+)'/", (string)$a->getAttribute('href'), $m) && preg_match($save, CabWeb::sp($a->textContent)) && !preg_match($not, CabWeb::sp($a->textContent))) { $pairs[$et][1] = $m[1]; break; }
+    }
+    return $pairs;
+  }
   /** Звичайна HTML-форма входу (логін + пароль) → увійти. */
   private static function login(CabWeb $w, array $b, array $c, array $r): array {
     if (!empty($b['login'])) $r = self::get($w, $b['login']);
@@ -548,7 +673,7 @@ final class LbWalk {
       if (in_array('password', array_column($fs, 'type'), true)) continue;
       // поле без підпису в рядку таблиці («Лічильник № … | [  ]») — роль за текстом рядка
       foreach ($fs as $i => $o) if ($o['role'] === null && $o['n'] !== '' && in_array($o['type'], ['text', 'number', 'tel'], true)) {
-        $rr = RelayForm::role($o['n'], mb_strtolower(self::around($html, $o['n']))); if (in_array($rr, ['all', 'day', 'night', 'peak', 'half'], true)) $fs[$i]['role'] = $rr;
+        $rr = RelayForm::role($o['n'], mb_strtolower(self::around($html, $o['n'], true))); if (in_array($rr, ['all', 'day', 'night', 'peak', 'half'], true)) $fs[$i]['role'] = $rr;
       }
       $read = array_values(array_filter($fs, fn($o) => in_array($o['role'], ['all', 'day', 'night', 'peak', 'half'], true) && in_array($o['type'], ['text', 'number', 'tel'], true) && $o['n'] !== ''));
       if ($read && (!$best || count($read) > count($best[2]))) $best = [$f, $fs, $read];
@@ -565,15 +690,25 @@ final class LbWalk {
     }
     return null;
   }
-  /** Текст навколо поля (підпис, рядок таблиці) — щоб знайти номер лічильника. */
-  public static function around(string $html, string $name): string {
+  /** Текст навколо поля (підпис, рядок таблиці) — щоб знайти номер лічильника. $head — ще й заголовок стовпця таблиці («Поточні показники»: ASP.NET GridView, 105-а) —
+   *  лише для ролі поля, не для пошуку номера (у заголовку бувають дати). */
+  public static function around(string $html, string $name, bool $head = false): string {
     $x = CabWeb::dom($html);
     foreach ($x->query("//*[@name='" . str_replace("'", '', $name) . "']") as $e) {
-      $t = ''; $id = $e instanceof DOMElement ? (string)$e->getAttribute('id') : '';
+      $t = ''; $id = $e instanceof DOMElement ? (string)$e->getAttribute('id') : ''; $cell = null;
       if ($id !== '') foreach ($x->query("//label[@for='" . str_replace("'", '', $id) . "']") as $l) $t .= ' ' . $l->textContent;
       for ($p = $e->parentNode, $i = 0; $p instanceof DOMElement && $i < 4; $p = $p->parentNode, $i++) {
+        if ($cell === null && in_array(strtolower($p->nodeName), ['td', 'th'], true)) $cell = $p;
         $s = CabWeb::sp($p->textContent); if (mb_strlen($s) > 300) break; $t .= ' ' . $s;
         if (in_array(strtolower($p->nodeName), ['tr', 'li', 'fieldset'], true)) break;
+      }
+      if ($head && $cell instanceof DOMElement && $cell->parentNode instanceof DOMElement) {
+        $col = 0; for ($q = $cell->previousSibling; $q; $q = $q->previousSibling) if ($q instanceof DOMElement && in_array(strtolower($q->nodeName), ['td', 'th'], true)) $col += max(1, (int)$q->getAttribute('colspan'));
+        for ($tb = $cell->parentNode->parentNode; $tb instanceof DOMElement && strtolower($tb->nodeName) !== 'table'; $tb = $tb->parentNode);
+        if ($tb instanceof DOMElement) foreach ($x->query('.//tr[th]', $tb) as $hr) {
+          $k = 0; foreach ($hr->childNodes as $hc) if ($hc instanceof DOMElement && in_array(strtolower($hc->nodeName), ['td', 'th'], true)) { if ($k === $col) { $t .= ' ' . CabWeb::sp($hc->textContent); break; } $k += max(1, (int)$hc->getAttribute('colspan')); }
+          break;
+        }
       }
       return $t . ' ' . $name;
     }
@@ -610,5 +745,111 @@ final class LbWalk {
       $pairs[] = [$n, $o['v']];
     }
     return $pairs;
+  }
+}
+
+/** Адреса людини ↔ списки сайту (населений пункт, вулиця, будинок, квартира) — для форм, де рахунок шукають за адресою (flow aspx, 105-а).
+ *  Порівнюємо слова без типів («вул.», «просп.») і в будь-якому порядку («Степана Бандери» = «БАНДЕРИ СТЕПАНА»); латинські двійники й апострофи — як на сайті.
+ *  Не знайшли або кілька однаково схожих — зрозуміла помилка з варіантами сайту; вгадувати не беремося. */
+final class LbAddr {
+  const TYPE = ['ВУЛ', 'ВУЛИЦЯ', 'ВУЛИЦА', 'УЛ', 'УЛИЦА', 'ПРОСП', 'ПРОСПЕКТ', 'ПР', 'ПРТ', 'БУЛЬВ', 'БУЛЬВАР', 'БУЛ', 'ПЛ', 'ПЛОЩА', 'ПЛОЩАДЬ', 'ШОСЕ', 'ШОССЕ', 'ТУП', 'ТУПИК',
+    'ПРОЇЗД', 'ПРОЕЗД', 'УЗВІЗ', 'НАБ', 'НАБЕРЕЖНА', 'М', 'МІСТО', 'Г', 'ГОРОД', 'С', 'СЕЛО', 'СМТ', 'СЕЛИЩЕ', 'ПОС', 'ОБЛ', 'ОБЛАСТЬ', 'Р', 'РН', 'РАЙОН', 'МКР', 'МІКРОРАЙОН', 'УКРАЇНА', 'УКРАИНА'];
+  const LANE = ['ПРОВ', 'ПРОВУЛОК', 'ПЕРЕУЛОК', 'ПЕР'];
+  const HOUSE = ['БУД', 'БУДИНОК', 'Д', 'ДОМ'];
+  const FLAT = ['КВ', 'КВАРТИРА', 'КВАРТ'];
+  /** Великі літери; латинські двійники → кирилиця (на сайті «АВIАЦIЙНА» з латинською I); без апострофів. */
+  public static function up(string $s): string {
+    return strtr(mb_strtoupper($s), ['I' => 'І', 'A' => 'А', 'O' => 'О', 'E' => 'Е', 'C' => 'С', 'P' => 'Р', 'H' => 'Н', 'K' => 'К', 'M' => 'М', 'T' => 'Т', 'X' => 'Х', 'B' => 'В',
+      'Ё' => 'Е', '’' => '', "'" => '', 'ʼ' => '', '`' => '', '‘' => '']);
+  }
+  /** Слова назви: без типів вулиць і номерних позначок; «пров.» → маркер #L (провулок і вулиця з тією ж назвою — різні). */
+  public static function words(string $s): array {
+    $out = [];
+    foreach (preg_split('/\s+/u', trim((string)preg_replace('/[.,;:()«»"№#\-\/]+/u', ' ', self::up($s))), -1, PREG_SPLIT_NO_EMPTY) as $t) {
+      if (in_array($t, self::LANE, true)) { $out[] = '#L'; continue; }
+      if (!in_array($t, self::TYPE, true) && !in_array($t, self::HOUSE, true) && !in_array($t, self::FLAT, true)) $out[] = $t;
+    }
+    return $out;
+  }
+  /** Токени адреси з номерами як є («11-А», «16/2»); «кв12», «буд.6» → «КВ 12», «БУД 6». */
+  public static function toks(string $s): array {
+    $s = (string)preg_replace('/[.,;:()«»"№#]+/u', ' ', self::up($s));
+    $s = (string)preg_replace('/(\d)\s*-\s*(КВ|КВАРТИРА)(?!\p{L})/u', '$1 $2', $s);   // «6-кв.4»
+    $s = (string)preg_replace('/(?<!\p{L})(КВ|КВАРТИРА|БУД|Д)(?=\d)/u', '$1 ', $s);
+    return preg_split('/\s+/u', trim($s), -1, PREG_SPLIT_NO_EMPTY);
+  }
+  public static function parse(string $addr): array { return ['w' => self::words($addr), 'tok' => self::toks($addr)]; }
+  public static function title(string $s): string { return mb_convert_case(mb_strtolower(trim($s)), MB_CASE_TITLE); }
+  private static function err(string $k, array $v = []): HttpError { return new HttpError(422, 'lb_' . $k, ['human' => LocalBot::h($k, $v)]); }
+  /** Слова адреси без уже використаних (кожне — один раз). */
+  private static function minus(array $w, array $used): array { foreach ($used as $u) { $i = array_search($u, $w, true); if ($i !== false) unset($w[$i]); } return array_values($w); }
+  private static function isNum(string $x): bool { return (bool)preg_match('/^\d/u', $x); }
+  /** Населений пункт: назва зі списку є серед слів адреси; один у списку — він. */
+  public static function settle(array $A, array $opts, array &$used): ?string {
+    if (!$opts) return null;
+    $best = null; $bw = [];
+    foreach ($opts as [$v, $t]) { $ow = self::words((string)$t); if ($ow && !array_diff($ow, $A['w']) && count($ow) > count($bw)) { $best = (string)$v; $bw = $ow; } }
+    if ($best === null && count($opts) === 1) return (string)$opts[0][0];
+    if ($best === null) throw self::err('addr_settle', ['list' => implode(', ', array_map(fn($o) => self::title((string)$o[1]), array_slice($opts, 0, 12)))]);
+    $used = array_merge($used, $bw); return $best;
+  }
+  /** Вулиця → [значення, назва на сайті]. Спершу всі слова назви сайту є в адресі (найдовша), потім — лише перше слово (прізвище); провулок — лише з «пров.». */
+  public static function street(array $A, array $opts, array &$used): array {
+    $aw = self::minus($A['w'], $used); $named = array_values(array_filter($aw, fn($x) => $x !== '#L' && !self::isNum($x)));
+    if (!$named) throw self::err('addr_street0');
+    $lane = in_array('#L', $aw, true); $full = []; $part = [];
+    foreach ($opts as [$v, $t]) {
+      $ow = self::words((string)$t); $core = array_values(array_filter($ow, fn($x) => $x !== '#L'));
+      if (!array_filter($core, fn($x) => !self::isNum($x))) continue;   // «ВУЛ 999,» — службовий рядок
+      $o = [(string)$v, (string)$t, count($core), in_array('#L', $ow, true), $core];
+      if (!array_diff($core, $aw)) $full[] = $o;
+      elseif (!self::isNum($core[0]) && in_array($core[0], $aw, true)) { $o[2] = 1; $o[4] = [$core[0]]; $part[] = $o; }
+    }
+    foreach ([$full, $part] as $set) {
+      if (!$set) continue;
+      $pref = array_values(array_filter($set, fn($o) => $o[3] === $lane)); if ($pref) $set = $pref;
+      usort($set, fn($a, $b) => $b[2] <=> $a[2]);
+      $top = array_values(array_filter($set, fn($o) => $o[2] === $set[0][2]));
+      if (count($top) > 1) throw self::err('addr_street2', ['list' => implode(', ', array_map(fn($o) => self::title($o[1]), array_slice($top, 0, 5)))]);
+      $used = array_merge($used, $top[0][4]); return [$top[0][0], $top[0][1]];
+    }
+    $sug = [];
+    foreach ($opts as [, $t]) foreach (self::words((string)$t) as $x) foreach ($named as $y)
+      if (mb_strlen($x) >= 4 && mb_strlen($y) >= 4 && mb_substr($x, 0, 4) === mb_substr($y, 0, 4)) { $sug[(string)$t] = self::title((string)$t); continue 3; }
+    $s = self::title(implode(' ', $named));
+    throw $sug ? self::err('addr_street_s', ['s' => $s, 'list' => implode(', ', array_slice(array_values($sug), 0, 4))]) : self::err('addr_street', ['s' => $s]);
+  }
+  /** «11-А» = «11А» = «11 а»: без пробілів і дефісів. */
+  public static function hn(string $s): string { return (string)preg_replace('/[\s\-]+/u', '', self::up($s)); }
+  /** Номери будинку й квартири: за позначками «буд.», «кв.» або перші два числа після назв пункту й вулиці. → [будинок|null, квартира|null] */
+  public static function nums(array $A, array $used): array {
+    $tok = $A['tok']; $u = $used; $h = null; $f = null; $free = [];
+    $take = function (int $i) use ($tok): array { $n = $tok[$i] ?? null; if ($n !== null && isset($tok[$i + 1]) && preg_match('/^\p{L}$/u', $tok[$i + 1]) && !in_array($tok[$i + 1], array_merge(self::FLAT, self::HOUSE, self::TYPE), true)) return [$n . $tok[$i + 1], 2]; return [$n, 1]; };
+    for ($i = 0, $n = count($tok); $i < $n; $i++) {
+      $t = $tok[$i];
+      if (in_array($t, self::FLAT, true)) { [$f, $k] = $take($i + 1); $i += $k; continue; }
+      if (in_array($t, self::HOUSE, true)) { [$h, $k] = $take($i + 1); $i += $k; continue; }
+      $parts = array_values(array_filter(preg_split('/[\-\/]/u', $t), fn($p) => $p !== ''));
+      $left = $u; $all = (bool)$parts;
+      foreach ($parts as $p) { $j = array_search($p, $left, true); if ($j === false) { $all = false; break; } unset($left[$j]); }
+      if ($all) { $u = $left; continue; }   // слово пункту чи вулиці (і «136» з «136 БАТАЛЬЙОНУ»)
+      if (self::isNum($t)) { [$x, $k] = $take($i); $free[] = $x; $i += $k - 1; }
+    }
+    if ($h === null) $h = array_shift($free);
+    if ($f === null) $f = $free[0] ?? null;
+    return [$h, $f];
+  }
+  public static function house(array $A, array $opts, array $used, string $street): ?string {
+    if (!$opts) return null;
+    [$h] = self::nums($A, $used); if ($h === null) throw self::err('addr_house0');
+    foreach ($opts as [$v, $t]) if (self::hn((string)$t) === self::hn($h)) return (string)$v;
+    throw self::err('addr_house', ['h' => $h, 's' => self::title($street)]);
+  }
+  /** Квартира: у будинку без квартир (приватний) список порожній — пропускаємо. */
+  public static function flat(array $A, array $opts, array $used): ?string {
+    if (!$opts) return null;
+    [, $f] = self::nums($A, $used); if ($f === null) throw self::err('addr_flat0');
+    foreach ($opts as [$v, $t]) if (self::hn((string)$t) === self::hn($f)) return (string)$v;
+    throw self::err('addr_flat', ['f' => $f]);
   }
 }

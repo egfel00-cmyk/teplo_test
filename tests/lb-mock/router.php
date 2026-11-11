@@ -12,6 +12,12 @@ if ($p === '/__reset') { @unlink($f); exit('ok'); }
 if ($p === '/__captcha') { $st['captcha'] = true; file_put_contents($f, json_encode($st)); exit('ok'); }
 if ($p === '/__last') { header('Content-Type: application/json'); exit(json_encode($st['last'] ?? null)); }
 if (!empty($st['captcha'])) exit('<form><div class="g-recaptcha" data-sitekey="x"></div>' . $acc . '</form>');
+// ASP.NET-кабінет без входу (LocalBot flow aspx, 105-а) — як debt.crewingcrm.com/brovk; сайт: config.php 'lb_base_brovk' => 'http://127.0.0.1:8096/aspx/'
+if (str_starts_with((string)$p, '/aspx')) {
+  require __DIR__ . '/aspx.php';
+  [$code, $html] = lb_aspx($_SERVER['REQUEST_METHOD'], $_POST, $st); file_put_contents($f, json_encode($st));
+  http_response_code($code); exit($html);
+}
 // Кабінет із входом (LocalBot t:cab, 104-а) — як voda-berezan.telsys.net.ua: на головній вхід особовим рахунком + паролем, поруч реєстрація (теж із паролем)
 // і форма «Передати показник» без входу (її веде скрипт — бот не чіпає); після входу — меню «Показники» → форма з лічильником → «Зберегти».
 // Сайт: config.php 'lb_base_brz' => 'http://127.0.0.1:8096/cab/'. Логін 1234567, пароль Berezan-2026.

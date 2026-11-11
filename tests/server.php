@@ -2203,6 +2203,51 @@ ok('довідник 104-ї: Дрогобич dvk, Стрий svk, Труска�
   ($dr['via'] ?? '') === 'dvk' && ($st2['via'] ?? '') === 'svk' && ($tr['via'] ?? '') === 'tvk' && ($mo['via'] ?? '') === 'abinf' && ($bo['via'] ?? '') === 'abinf' && ($ir['via'] ?? '') === 'ivk' && ($vy['via'] ?? '') === 'umg'
   && ($sp['robot'] ?? '') === 'captcha' && ($bh['price'] ?? null) === 1823.59 && ($bh['from'] ?? '') === '2026-10-20' && empty($bh['check']),
   [$dr['via'] ?? null, $st2['via'] ?? null, $tr['via'] ?? null, $mo['via'] ?? null, $bo['via'] ?? null, $ir['via'] ?? null, $vy['via'] ?? null, $sp['robot'] ?? null, $bh['price'] ?? null]);
+// 105-а: Бровари — ASP.NET-кабінет без входу (flow aspx): адреса → списки сайту з postback, рахунок → таблиця показань → «Зберегти показники»
+echo "\nАвтоподача — ASP.NET-форма за адресою (105-а):\n";
+require_once __DIR__ . '/lb-mock/aspx.php';
+$axSt = ['hop' => false, 'last' => null, 'posts' => 0];
+$lbu = new Browser('10.8.8.21'); $lbu->req('POST', '/api/auth/register', ['email' => 'brovary@gmail.com', 'password' => 'Brovary-2026!']);   // свій ліміт lb_user (20/год)
+CabWeb::$http = function ($m, $url, $body, $cookie, $h) use (&$axSt) {
+  if (!preg_match('~^https://debt\.crewingcrm\.com/brovk/~', $url)) return ['code' => 404, 'body' => 'nf'];
+  $P = []; if ($m === 'POST') { parse_str((string)$body, $P); $axSt['posts']++; }
+  [$code, $html] = lb_aspx($m, $P, $axSt); return ['code' => $code, 'body' => $html];
+};
+$st = $lbu->req('GET', '/api/lb', null, ['QUERY_STRING' => 'bot=brovk&place=br1']);
+ok('brovk: форма на сайті КП (flow aspx), потрібні адреса й особовий рахунок, вікно 15–25', ($st->body['bot']['t'] ?? '') === 'form' && ($st->body['bot']['flow'] ?? '') === 'aspx'
+  && ($st->body['bot']['need'] ?? []) === ['addr', 'acc'] && ($st->body['bot']['win'] ?? null) === [15, 25] && ($st->body['bot']['ready'] ?? false) === true, $st->body);
+$ax = fn(string $addr, string $acc = '1234567', string $pl = 'br1') => $lbu->req('POST', '/api/lb/connect', ['bot' => 'brovk', 'place' => $pl, 'addr' => $addr, 'acc' => $acc, 'consent' => true]);
+$r = $ax('вул. Київська, 11-А, кв. 12');
+ok('без населеного пункту — 422 «Допишіть … населений пункт — на сайті є: Бровари, Квітневе», не збережено', $r->status === 422 && ($r->body['error'] ?? '') === 'lb_addr_settle'
+  && str_contains((string)($r->body['human'] ?? ''), 'Бровари, Квітневе') && !Db::one("SELECT id FROM cab_creds WHERE prov = 'Lbrovk'"), $r->body);
+$r = $ax('м. Бровари, вул. Киевская, 11а, кв. 12');
+ok('вулиці немає в списку — 422 lb_addr_street «Не знайшли вулицю «Киевская»»', $r->status === 422 && ($r->body['error'] ?? '') === 'lb_addr_street' && str_contains((string)($r->body['human'] ?? ''), 'Киевская'), $r->body);
+$r = $ax('м. Бровари, вул. Київська, 11а');
+ok('будинок із квартирами, а квартири немає — 422 «Допишіть номер квартири»', $r->status === 422 && ($r->body['error'] ?? '') === 'lb_addr_flat0', $r->body);
+$r = $ax('м. Бровари, вул. Київська, 13, кв. 12');
+ok('будинку немає — 422 «На сайті немає будинку «13» на вулиці Київська»', $r->status === 422 && ($r->body['error'] ?? '') === 'lb_addr_house' && str_contains((string)($r->body['human'] ?? ''), '«13»') && str_contains((string)($r->body['human'] ?? ''), 'Київська'), $r->body);
+$r = $ax('м. Бровари, вул. Київська, 11а, кв. 12', '7654321');
+ok('адреса є, рахунок чужий — сайт «Особовий рахунок не знайдено!» → 422 lb_notfound', $r->status === 422 && ($r->body['error'] ?? '') === 'lb_notfound', $r->body);
+$p0 = $axSt['posts']; $r = $ax('м. Бровари, вул. Київська, 11а, кв. 12');
+ok('підключено: пункт → вулиця → будинок (3 postback) + пошук → таблиця з 2 лічильниками (роль поля — із заголовка «Поточні показники»); нічого не надіслано',
+  $r->status === 200 && ($r->body['conn']['chk']['ok'] ?? false) === true && ($r->body['conn']['chk']['meters'] ?? 0) === 2 && $axSt['posts'] - $p0 === 4 && $axSt['last'] === null
+  && ($r->body['conn']['addr'] ?? '') === 'м. Бровари, вул. Київська, 11а, кв. 12', [$r->body, $axSt['posts'] - $p0]);
+$q = $lbu->req('POST', '/api/lb/queue', ['bot' => 'brovk', 'place' => 'br1', 'rid' => 'b1', 'items' => [['value' => '41', 'serial' => '7654321', 'kind' => 'hot', 'name' => 'Гаряча'], ['value' => '412', 'serial' => '1234567', 'kind' => 'cold', 'name' => 'Холодна']]]);
+Db::q('UPDATE cab_jobs SET next_at = ? WHERE id = ?', [time() - 1, (int)($q->body['job']['id'] ?? 0)]); LocalBot::cron();
+$jb = LocalBot::pubJob(Db::one('SELECT * FROM cab_jobs WHERE id = ?', [(int)($q->body['job']['id'] ?? 0)])); $la = $axSt['last'] ?? [];
+ok('cron: холодна 412 → рядок № 1234567, гаряча 41 → № 7654321; кнопка «Зберегти показники» без «Пошук», адреса й рахунок збережені → ok', $jb['status'] === 'ok'
+  && ($la['ctl00$MainContent$GridViewPOK$ctl02$TextBoxPOK'] ?? '') === '412' && ($la['ctl00$MainContent$GridViewPOK$ctl03$TextBoxPOK'] ?? '') === '41' && ($la['ls'] ?? '') === '1234567' && ($la['k'] ?? '') === '5012', [$jb, $la]);
+$axSt['hop'] = true; $r = $ax('Бровари, Київська 11-А кв.12', '1234567', 'br2');
+ok('сторінка абонента з посиланням-postback «Передати показники» (LinkButton) → таблиця показань', $r->status === 200 && ($r->body['conn']['chk']['meters'] ?? 0) === 2, $r->body);
+$A = fn(string $a, array $o) => (function () use ($a, $o) { $u = ['БРОВАРИ']; try { return LbAddr::street(LbAddr::parse($a), $o, $u)[0]; } catch (HttpError $e) { return $e->err; } })();
+$so = [['33', 'БАНДЕРИ СТЕПАНА'], ['157', 'ПРОВ.ВІДРОДЖЕННЯ'], ['124', 'ВІДРОДЖЕННЯ'], ['4', 'АВIАЦIЙНА'], ['89', '136 БАТАЛЬЙОНУ'], ['208', 'ВУЛ 999,'], ['109', 'СУШКА РОМАНА'], ['110', 'ПРОВ.СУШКА РОМАНА']];
+ok('LbAddr: «Степана Бандери» = «БАНДЕРИ СТЕПАНА», «Бандери» — теж; провулок і вулиця Відродження — різні; латинська I на сайті; «Київ» — схожі; «999» — не вулиця',
+  $A('Бровари, вул. Степана Бандери 1', $so) === '33' && $A('Бровари, Бандери 1', $so) === '33' && $A('Бровари, пров. Відродження, 6', $so) === '157' && $A('Бровари, вул. Відродження 6', $so) === '124'
+  && $A('Бровари, вул. Авіаційна, 6', $so) === '4' && $A('Бровари, вул. 136 Батальйону, 136', $so) === '89' && $A('Бровари, Сушка 2', $so) === '109' && $A('Бровари, вул. Небесної 999', $so) === 'lb_addr_street'
+  && LbAddr::nums(LbAddr::parse('Бровари, вул. 136 Батальйону, 136, 5'), ['БРОВАРИ', '136', 'БАТАЛЬЙОНУ']) === ['136', '5'] && LbAddr::nums(LbAddr::parse('Бровари, Чорновола 6-кв.4'), ['БРОВАРИ', 'ЧОРНОВОЛА']) === ['6', '4']
+  && LbAddr::nums(LbAddr::parse('Бровари, Сушка, буд. 11 а, кв 3'), ['БРОВАРИ', 'СУШКА']) === ['11А', '3'], [$A('Бровари, Сушка 2', $so), $A('Бровари, вул. Небесної 999', $so)]);
+$bw = Providers::lookup('Бровари, вул. Київська, 1')['kinds']['water'] ?? [];
+ok('довідник: Бровари — вода via brovk, robot server', ($bw['via'] ?? '') === 'brovk' && ($bw['robot'] ?? '') === 'server', [$bw['via'] ?? null, $bw['robot'] ?? null]);
 LocalBot::$forceOn = false;
 CabWeb::$http = null;
 Mail::$send = null; Cfg::saveRuntime(array_fill_keys(Mail::KEYS, null));

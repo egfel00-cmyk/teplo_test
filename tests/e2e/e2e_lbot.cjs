@@ -94,6 +94,33 @@ const U = 'http://127.0.0.1:8013/', M = 'http://127.0.0.1:8096', DATA = process.
   await p.reload(); await wait(2500); await where();
   ok('«Сайт прийняв показання», запис позначено переданим', /прийняв|принял/.test(await txt('[data-key=lb-done]')) && ((await st()).water.find(w => w.id === 'w20261111').sent || {}).vk, await txt('[data-key=lb]'));
   if (process.env.SHOT) await (await p.$('[data-key=where-water]')).screenshot({ path: '/tmp/lb_brz.png' });
+  // Бровари (105-а): ASP.NET-кабінет без входу — рахунок шукають за адресою зі списків сайту (бот brovk, стенд /aspx/: config.php 'lb_base_brovk' => 'http://127.0.0.1:8096/aspx/')
+  await fetch(M + '/__reset');
+  const wm = demo({ today: '2026-11-12' }).places[0].water.meters.map(m => Object.assign({}, m, { serial: m.kind === 'cold' ? '1234567' : '7654321' }));
+  await p.evaluate(wm => { const s = JSON.parse(localStorage.getItem('teplo.v1')); s.places[0].address = 'м. Бровари, вул. Київська, 11-А, кв. 12'; s.places[0].water.meters = wm;
+    s.water.push({ id: 'w20261112', place: 'main', date: '2026-11-12', vals: { h1: '181', c1: '447' }, createdAt: '2026-11-12T10:00:00Z', updatedAt: Date.now(), sent: {} });
+    s.updatedAt = Date.now(); localStorage.setItem('teplo.v1', JSON.stringify(s)); }, wm);
+  await p.reload(); await wait(1500); await where();
+  ok('вода Броварів: «…на сайт КП «Броваритепловодоенергія» самі — потрібні адреса й особовий рахунок»', /Броваритепловодоенергія/.test(await txt('[data-key=lb-lead]')) && /адрес/.test(await txt('[data-key=lb-lead]')) && !!(await p.$('[data-key=lb-open]')), await txt('[data-key=where-water]'));
+  await p.click('[data-key=lb-open]'); await wait(300);
+  ok('форма: «Адреса: населений пункт, вулиця…» — уже з адресою квартири, підказка «як у квитанції»; рахунок', /населений пункт|населённый пункт/.test(await txt('label[for=lb-addr]'))
+    && await p.inputValue('#lb-addr') === 'м. Бровари, вул. Київська, 11-А, кв. 12' && /квитанц/.test(await txt('[data-key=lb-addr-hint]')) && !!(await p.$('#lb-acc')));
+  if (process.env.SHOT) await (await p.$('[data-key=where-water]')).screenshot({ path: '/tmp/lb_brovk_form.png' });
+  await p.fill('#lb-addr', 'вул. Київська, 11-А, кв. 12'); await p.fill('#lb-acc', '1234567'); await p.check('[data-key=lb-consent]'); await p.click('[data-key=lb-save]'); await wait(1800);
+  ok('без населеного пункту — «…на сайті є: Бровари, Квітневе», введене не стерлося', /Бровари, Квітневе/.test(await txt('[data-key=lb-err]')) && await p.inputValue('#lb-acc') === '1234567', await txt('[data-key=lb-err]'));
+  await p.fill('#lb-addr', 'м. Бровари, вул. Київська, 11-А, кв. 12'); await p.click('[data-key=lb-save]'); await wait(2500);
+  ok('підключено: рахунок 1234567, у таблиці сайту 2 лічильники; на стенд нічого не надіслано', /1234567/.test(await txt('[data-key=lb-on]')) && /2/.test(await txt('[data-key=lb-chk]'))
+    && (await (await fetch(M + '/__last')).json()) === null, [await txt('[data-key=lb-on]'), await txt('[data-key=lb-chk]'), await txt('[data-key=lb-err]')]);
+  await p.click('[data-key=lb-bg]'); await wait(1200);
+  ok('поза строком (15–25) — «Надішлемо …» і «Скасувати»', /Надішлемо|Отправим/.test(await txt('[data-key=lb-q]')), await txt('[data-key=lb-q]'));
+  require('child_process').execFileSync('php', ['-r', "$d = new PDO('sqlite:" + DATA + "/dev.sqlite'); $d->exec(\"UPDATE cab_jobs SET next_at = 1 WHERE prov = 'Lbrovk' AND status = 'queued'\");"]);   // строк настав
+  execSync('php ' + path.join(__dirname, '../lb-mock/cron1.php'), { env: Object.assign({}, process.env, { SITE_DATA: DATA }) });
+  const lastB = await (await fetch(M + '/__last')).json();
+  ok('cron: пункт → вулиця → будинок (postback) → кв. 12 → рахунок → холодна 447 і гаряча 181 у свої рядки, «Зберегти показники»', lastB && lastB['ctl00$MainContent$GridViewPOK$ctl02$TextBoxPOK'] === '447'
+    && lastB['ctl00$MainContent$GridViewPOK$ctl03$TextBoxPOK'] === '181' && lastB.k === '5012', lastB);
+  await p.reload(); await wait(2500); await where();
+  ok('«Сайт прийняв показання», запис позначено переданим', /прийняв|принял/.test(await txt('[data-key=lb-done]')) && ((await st()).water.find(w => w.id === 'w20261112').sent || {}).vk, await txt('[data-key=lb]'));
+  if (process.env.SHOT) await (await p.$('[data-key=where-water]')).screenshot({ path: '/tmp/lb_brovk.png' });
   ok('без помилок JS', !errs.length, errs);
   await b.close(); console.log('\nИтог: ' + pass + ' OK, ' + fail + ' FAIL'); process.exit(fail ? 1 : 0);
 })();
