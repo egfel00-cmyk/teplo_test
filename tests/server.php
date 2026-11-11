@@ -2295,6 +2295,28 @@ ok('svod: «номер лічильника» замість пароля — «
   $r0->status === 422 && ($r0->body['error'] ?? '') === 'lb_pass_serial' && str_contains((string)($r0->body['human'] ?? ''), 'номер будь-якого')
   && $r->status === 200 && ($r->body['conn']['chk']['meters'] ?? 0) === 1 && ($sv['post']['ls'] ?? '') === '1110010010' && ($sv['post']['pas'] ?? '') === 'AB123456'
   && !str_contains(json_encode($r->body), 'AB123456') && LocalBot::pub('svod')['pk'] === 'serial', [$r0->body, $r->body, $sv['post']]);
+// 107-а: на бою сайт відповів на вигаданий рахунок сторінкою «Помилка входу» без форми (auth-error) — проба v2 дала page/no_form
+$svErr = fn(string $p) => '<html><head><title>Помилка входу</title></head><body><div class="auth-error"><h1>Помилка входу</h1><p>' . $p . '</p><a href="kabinet.html">Повернутися назад</a></div></body></html>';
+$sv['err'] = 'Невірний особовий рахунок або номер лічильника.';
+CabWeb::$http = function ($m, $url, $body, $cookie, $h) use (&$sv, $svForm, $svErr) {
+  $p = (string)parse_url($url, PHP_URL_PATH);
+  if ($m === 'GET' && $p === '/kab/kabinet.html') return ['code' => 200, 'body' => $svForm];
+  if ($m === 'POST' && $p === '/kab/auth.php') { parse_str((string)$body, $a); $sv['post'] = $a; return ['code' => 200, 'body' => $svErr($sv['err'])]; }
+  return ['code' => 404, 'body' => 'nf'];
+};
+$e1 = $lbu->req('POST', '/api/lb/connect', ['bot' => 'svod', 'place' => 'sl1', 'acc' => '1110010099', 'pass' => 'ZZ000000', 'consent' => true]);
+$sv['err'] = 'Ви ввели не всю інформацію. Будь ласка, поверніться назад та заповніть усі поля.';
+$e2 = $lbu->req('POST', '/api/lb/connect', ['bot' => 'svod', 'place' => 'sl1', 'acc' => '1110010099', 'pass' => 'ZZ000000', 'consent' => true]);
+$lj = json_decode((string)@file_get_contents(LocalBot::lastFile()), true) ?: []; foreach (['mtve', 'brovk'] as $k) $lj[$k]['probe'] = ['v' => LocalBot::PROBE_V]; unset($lj['svod']); file_put_contents(LocalBot::lastFile(), json_encode($lj));
+$pv = LocalBot::probe(); $pvh = (new Browser('10.8.8.10'))->req('GET', '/api/health')->body['lbot']['svod']['probe'] ?? [];
+ok('svod: «Помилка входу» без форми — «невірний особовий рахунок» → lb_notfound «перевірте обидва»; «не всю інформацію» → підключено з перевіркою page (наша помилка, без тексту); проба — page acc_empty + txt (лише в пробі)',
+  $e1->status === 422 && ($e1->body['error'] ?? '') === 'lb_notfound' && str_contains((string)($e1->body['human'] ?? ''), 'номер лічильника')
+  && $e2->status === 200 && ($e2->body['conn']['chk']['why'] ?? '') === 'page' && $pv === ['svod', 'page'] && ($pvh['why'] ?? '') === 'acc_empty'
+  && str_contains((string)($pvh['txt'] ?? ''), 'Ви ввели не всю інформацію') && !str_contains(json_encode($e2->body, JSON_UNESCAPED_UNICODE), 'не всю') && ($sv['post']['ls'] ?? '') === '9990000000' && ($sv['post']['pas'] ?? '') === '0000000', [$e1->body, $e2->body, $pv, $pvh]);
+$nfx = (new ReflectionMethod('LbWalk', 'notFound')); $nfx->setAccessible(true);
+ok('notFound: «Невірний особовий рахунок», «рахунок введено невірно», «неправильний номер лічильника», «Абонент не існує» — так; сторінка кабінету з «номер лічильника можливо переглянути» — ні',
+  $nfx->invoke(null, '<p>Невірний особовий рахунок</p>') && $nfx->invoke(null, '<p>Особовий рахунок введено невірно</p>') && $nfx->invoke(null, '<p>Неправильний номер лічильника</p>')
+  && $nfx->invoke(null, '<p>Абонент не існує</p>') && !$nfx->invoke(null, $svForm . '<p>Номер лічильника можливо переглянути у квитанції</p>'));
 CabWeb::$http = null;
 $L = fn(string $a, string $k = 'water') => Providers::lookup($a)['kinds'][$k] ?? [];
 $vi = []; foreach (['Фастів, вул. Шевченка, 1' => 'fvk', 'Вишгород, вул. Шолуденка, 1' => 'vyvk', 'Славутич, Київський квартал, 1' => 'svod', 'Золочів, Львівська обл., вул. Шевченка, 1' => 'zvk',

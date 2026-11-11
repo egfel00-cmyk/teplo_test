@@ -198,6 +198,7 @@ final class LocalBot {
       'down' => $ru ? 'Сайт не отвечал несколько раз подряд.' : 'Сайт не відповідав кілька разів поспіль.',
       'captcha' => $ru ? 'Сайт показал проверку «я не робот» — её мы не проходим. Отправьте сами.' : 'Сайт показав перевірку «я не робот» — її ми не проходимо. Надішліть самі.',
       'notfound' => $ru ? 'Сайт не нашёл такой лицевой счёт — проверьте цифры.' : 'Сайт не знайшов такий особовий рахунок — перевірте цифри.',
+      'notfound_serial' => $ru ? 'Сайт не принял лицевой счёт и номер счётчика — проверьте оба по квитанции.' : 'Сайт не прийняв особовий рахунок і номер лічильника — перевірте обидва за квитанцією.',
       'login_bad' => $ru ? 'Кабинет не пустил с этим логином и паролем.' : 'Кабінет не пустив із цим логіном і паролем.',
       'page' => $ru ? 'Страница сайта не такая, как мы ждали, — ничего не отправили. Отправьте сами; мы разберёмся.' : 'Сторінка сайту не така, як ми чекали, — нічого не надіслали. Надішліть самі; ми розберемося.',
       'fields' => $ru ? 'Не поняли, в какое поле какой счётчик, — ничего не отправили. Впишите номера счётчиков в их настройках или отправьте сами.' : 'Не зрозуміли, у яке поле який лічильник, — нічого не надіслали. Впишіть номери лічильників у їхніх налаштуваннях або надішліть самі.',
@@ -443,16 +444,19 @@ final class LocalBot {
   // (сайт прийняв рахунок формою й відповів «не знайдено»); page/acc_again — форму веде скрипт сторінки, треба дивитися (каркас — без тексту й цифр).
   // Бровари (105-а): вигаданий рахунок на справжній адресі без квартир (вул. Київська, 6 — у Chrome 11.11.2026 сайт відповів «Особовий рахунок не знайдено!») —
   // так перевіряємо весь шлях postback (пункт → вулиця → будинок → пошук) з нашого сервера, не чекаючи першої людини.
-  // svod (106-а): вигаданий рахунок 9990000000 (кварталу 999 немає) і номер 0000000 — що сайт відповідає з нашого сервера на «не той рахунок»
-  const PROBE_V = 2, PROBE_ACC = ['mtve' => '0-0-0', 'brovk' => ['acc' => '899999999', 'addr' => 'м. Бровари, вул. Київська, 6'], 'svod' => ['acc' => '9990000000', 'pass' => '0000000']];
+  // svod (106-а): вигаданий рахунок 9990000000 (кварталу 999 немає) і номер 0000000 — що сайт відповідає з нашого сервера на «не той рахунок».
+  // v3 (107-а): v2 дала page/no_form — сторінка «Помилка входу» (auth-error) без форми; тепер це notfound, а проба зберігає й текст (txt, цифри — #).
+  const PROBE_V = 3, PROBE_ACC = ['mtve' => '0-0-0', 'brovk' => ['acc' => '899999999', 'addr' => 'м. Бровари, вул. Київська, 6'], 'svod' => ['acc' => '9990000000', 'pass' => '0000000']];
   public static function probe(): ?array {
     $j = json_decode((string)@file_get_contents(self::lastFile()), true); $j = is_array($j) ? $j : [];
     foreach (self::BOTS as $id => $b) {
       if ($b['t'] !== 'form' || !isset(self::PROBE_ACC[$id]) || (int)($j[$id]['probe']['v'] ?? 0) === self::PROBE_V) continue;
       $res = ['v' => self::PROBE_V, 'at' => time()];
+      LbWalk::$probe = true;
       try { $r = LbWalk::run(self::get($id), is_array(self::PROBE_ACC[$id]) ? self::PROBE_ACC[$id] : ['acc' => self::PROBE_ACC[$id]], [], false); $res['res'] = 'form'; $res['meters'] = $r['meters'] ?? null; }
-      catch (HttpError $e) { $res['res'] = preg_replace('/^lb_/', '', $e->err); if (isset($e->extra['why'])) $res['why'] = $e->extra['why']; if (isset($e->extra['skel'])) $res['skel'] = mb_substr((string)$e->extra['skel'], 0, 3000); }
+      catch (HttpError $e) { $res['res'] = preg_replace('/^lb_/', '', $e->err); foreach (['why', 'txt'] as $k) if (isset($e->extra[$k])) $res[$k] = $e->extra[$k]; if (isset($e->extra['skel'])) $res['skel'] = mb_substr((string)$e->extra['skel'], 0, 3000); }
       catch (Throwable $e) { $res['res'] = 'error'; $res['err'] = mb_substr(get_class($e) . ': ' . preg_replace('/\d/', '#', $e->getMessage()), 0, 160); }
+      finally { LbWalk::$probe = false; }
       $j = json_decode((string)@file_get_contents(self::lastFile()), true); $j = is_array($j) ? $j : [];
       $j[$id] = array_merge((array)($j[$id] ?? []), ['probe' => $res]); @file_put_contents(self::lastFile(), json_encode($j, JSON_UNESCAPED_UNICODE), LOCK_EX);
       return [$id, $res['res']];
@@ -523,8 +527,11 @@ final class LbWalk {
   }
   private static function hum(string $k): string { return LocalBot::h($k); }
   /** Незнайома сторінка: каркас без тексту й цифр — у /admin (LocalBot::last). */
+  /** Проба (лише вигадані дані): у каркас ще й текст сторінки, цифри — # (107-а: каркас Славутича без тексту не відрізняв «не той рахунок» від «не всі поля»). */
+  public static bool $probe = false;
   private static function page(string $why, string $html, array $plan = []): HttpError {
-    return new HttpError(422, 'lb_page', ['human' => self::hum('page'), 'why' => $why, 'skel' => RelayForm::skel($html), 'plan' => $plan ?: null]);
+    return new HttpError(422, 'lb_page', ['human' => self::hum('page'), 'why' => $why, 'skel' => RelayForm::skel($html), 'plan' => $plan ?: null]
+      + (self::$probe ? ['txt' => mb_substr(preg_replace('/\d/u', '#', CabWeb::sp(html_entity_decode(preg_replace('~<[^>]*>~', ' ', preg_replace('~<(script|style|title)\b.*?</\1>~is', ' ', $html)), ENT_QUOTES | ENT_HTML5, 'UTF-8'))), 0, 300)] : []));
   }
   /** Форма з полями рахунку (за назвами з налаштувань бота) → надіслати рахунок. */
   private static function account(CabWeb $w, array $b, array $c, array $r): array {
@@ -549,7 +556,14 @@ final class LbWalk {
     $s = $post ? $w->req('POST', $action, $w->encode($pairs), ['Content-Type: application/x-www-form-urlencoded', 'Referer: ' . $r['url']]) : $w->req('GET', $base . '?' . $w->encode($pairs));
     if ((int)$s['code'] === 0 || (int)$s['code'] >= 500) throw new HttpError(502, 'lb_down');
     self::guard($s);
-    if (self::notFound($s['body']) && !self::readForm($s['body'])) throw new HttpError(422, 'lb_notfound', ['human' => self::hum('notfound')]);
+    $nf = self::hum(!empty($b['acc']['pass']) ? 'notfound_serial' : 'notfound');
+    if (self::notFound($s['body']) && !self::readForm($s['body'])) throw new HttpError(422, 'lb_notfound', ['human' => $nf]);
+    // сторінка «Помилка входу» без жодної форми (Славутич, 107-а: <div class="auth-error"><h1>…</h1><p>…</p><a href="kabinet.html">) — сайт не прийняв рахунок;
+    // «ви ввели не всю інформацію» — наша помилка (не те поле), не «не знайдено»
+    if (!preg_match('/<form\b/i', (string)$s['body']) && ($le = self::loginErr((string)$s['body'])) !== '') {
+      if ($le === 'empty') throw self::page('acc_empty', $s['body']);
+      throw new HttpError(422, 'lb_notfound', ['human' => $nf]);
+    }
     // та сама форма рахунку знову і нічого більше — сайт рахунок не прийняв (або форму веде скрипт сторінки)
     $x2 = CabWeb::dom($s['body']); $again = false;
     foreach ($x2->query('//form') as $f) if ($f instanceof DOMElement && !array_diff($names, array_column(RelayForm::fields($x2, $f), 'n'))) $again = true;
@@ -707,8 +721,19 @@ final class LbWalk {
     return (bool)preg_match('/невірн\S*\s+(?:логін|пароль|e-?mail|дан)|неправильн\S*\s+(?:логін|пароль|e-?mail|дан)|неверн\S*\s+(?:логин|пароль|e-?mail|дан)|incorrect\s+(?:username|email|password)|invalid\s+(?:login|password|credentials)/u', $t);
   }
   private static function notFound(string $html): bool {
-    $t = mb_strtolower(CabWeb::sp(strip_tags(preg_replace('~<(script|style)\b.*?</\1>~is', ' ', $html))));
-    return (bool)preg_match('/не\s+знайден|не\s+знайдено|не\s+найден|невірн\S*\s+(?:код|рахун|номер)|неверн\S*\s+(?:код|сч[её]т|номер)|абонент\S*\s+не\s+(?:існу|знайд)|немає\s+такого/u', $t);
+    $t = self::text($html);
+    // «Невірний особовий рахунок», «рахунок введено невірно», «неправильний номер лічильника» (107-а: між «невірний» і «рахунок» буває «особовий»)
+    return (bool)preg_match('/не\s+знайден|не\s+знайдено|не\s+найден|(?:невірн|неправильн|не\s+вірн|неверн|неправильн)\S*\s+(?:(?:особов|лицев|абонентськ|абонентск)\S*\s+)?(?:код|рахун|сч[её]т|номер)'
+      . '|(?:рахун|сч[её]т|номер)\S*(?:\s+\S+){0,3}?\s+(?:введен\S*\s+)?(?:невірн|неправильн|неверн|не\s+вірн)|абонент\S*\s+не\s+(?:існу|знайд|найд|сущест)|немає\s+такого|нет\s+такого/u', $t);
+  }
+  private static function text(string $html): string { return mb_strtolower(CabWeb::sp(strip_tags(preg_replace('~<(script|style)\b.*?</\1>~is', ' ', $html)))); }
+  /** Сторінка помилки входу після форми рахунку: '' — не вона; 'empty' — сайт каже «заповніть усі поля» (ми не те надіслали); 'bad' — дані не прийняв. */
+  private static function loginErr(string $html): string {
+    $head = ''; if (preg_match('~<title\b[^>]*>(.*?)</title>~is', $html, $m)) $head .= ' ' . $m[1]; if (preg_match('~<h[12]\b[^>]*>(.*?)</h[12]>~is', $html, $m)) $head .= ' ' . $m[1];
+    $isErr = preg_match('/помилк\S*\s+(?:входу|авторизац)|ошибк\S*\s+(?:входа|авторизац)|доступ\s+заборонено|доступ\s+запрещ/u', mb_strtolower(strip_tags($head)))
+      || preg_match('~class=["\'][^"\']*\b(?:auth|login)[-_]error\b~i', $html);
+    if (!$isErr) return '';
+    return preg_match('/не\s+всю\s+інформац|не\s+всю\s+информац|заповніть\s+(?:усі|всі)\s+поля|заполните\s+все\s+поля|порожн\S*\s+пол|пуст\S*\s+пол/u', self::text($html)) ? 'empty' : 'bad';
   }
   /** Форма з полями показань → [DOMElement форма, поля, поля показань]. Форма входу (пароль) — не наша. */
   public static function readForm(string $html): ?array {
