@@ -30,10 +30,25 @@ const U = 'http://127.0.0.1:8013/';
   await p.click('[data-act=view][data-v=elec]'); await p.waitForTimeout(400);
   r31 = await row('m20261031'); r01 = await row('m20261001');
   ok('«для себе» 01.10 — розхід від попереднього (+210), передане 31.10 — від 31.08 (+415)', /\+210/.test(r01) && /\+415/.test(r31) && /проміжних показань: 1/.test(r31), [r01, r31]);
-  // картка запису: «За це платите: +415 кВт·год · 1 792,80 грн від передачі 31.08»
+  // картка запису (власник 11.11, вдруге): головне — «Набігло з передачі 31 серпня»: +415 кВт·год ≈ 1 792,80 грн, проміжні — рядком
   await p.goto(U + '#erec-m20261031'); await p.waitForTimeout(500);
   const card = await p.textContent('[data-key=erec-used]').catch(() => '');
-  ok('картка 31.10: «За це платите: +415 кВт·год · 1 792,80 грн від передачі 31.08»', /За це платите: \+415 кВт·год · 1\s?792,80 грн від передачі 31 серпня/.test(card), card);
+  ok('картка 31.10: «Набігло з передачі 31 серпня» +415 ≈ 1 792,80 грн', /Набігло з передачі 31 серпня/.test(card) && /\+415\s*кВт·год/.test(card) && /1\s?792,80/.test(card), card);
+  ok('картка 31.10: цей запис +205 · проміжних показань: 1', /Цей запис: \+205 кВт·год за 30 дн\. · проміжних показань: 1/.test(card), card);
+  // непереданий 01.10 («для себе») — теж від останньої передачі 31.08: +210
+  await p.goto(U + '#erec-m20261001'); await p.waitForTimeout(500);
+  const c01 = await p.textContent('[data-key=erec-used]').catch(() => '');
+  ok('картка «для себе» 01.10 — «Набігло з передачі 31 серпня» +210', /Набігло з передачі 31 серпня/.test(c01) && /\+210/.test(c01), c01);
+  // статистика: місяці — між переданими (31.08 → 31.10 = +415 у жовтні), а не між усіма записами (210 + 205)
+  await p.goto(U + '#stats'); await p.waitForTimeout(400); await p.click('[data-act=view][data-v=elec]'); await p.waitForTimeout(400);
+  const tbl = await p.textContent('[data-key=stt-table]').catch(() => '');
+  ok('статистика: жовтень +415 між переданими, без вересня 210', /415/.test(tbl) && !/\b210\b/.test(tbl), tbl);
+  // останній запис не передано — у статистиці «Після передачі 31 серпня: +415 кВт·год ≈ 1 793 грн»
+  s0.mrecs.find(r => r.id === 'm20261031').sent = {};
+  await p.evaluate(s => localStorage.setItem('teplo.v1', JSON.stringify(s)), s0); await p.reload(); await p.waitForTimeout(500);
+  await p.click('[data-act=view][data-v=elec]').catch(() => {}); await p.waitForTimeout(400);
+  const kp = await p.textContent('[data-key=estats-kpi]').catch(() => '');
+  ok('статистика: «Після передачі 31 серпня: +415 кВт·год ≈ 1 793 грн»', /Після передачі 31 серпня: \+415 кВт·год ≈ 1\s?793 грн/.test(kp), kp);
   ok('без помилок JS', !errs.length, errs);
   console.log('\nИтог: ' + pass + ' OK, ' + fail + ' FAIL'); await b.close(); process.exit(fail ? 1 : 0);
 })();

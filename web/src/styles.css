@@ -432,6 +432,9 @@ label.btn { cursor: pointer; }
 @keyframes spin { to { transform: rotate(360deg); } }
 .spin { display: inline-block; flex: none; width: 20px; height: 20px; border: 2.5px solid currentColor; border-right-color: transparent; border-radius: 50%; animation: spin .8s linear infinite; vertical-align: -4px; }
 .banner > .spin { width: 22px; height: 22px; margin-top: 2px; }
+/* «Завантажую…» під кнопкою (платіжка, фото документів; власник 11.11: спінер прилипав до кнопки) — відступ зверху й знизу, спінер у рядку з текстом */
+.up-busy { display: flex; align-items: center; gap: 10px; margin: var(--sp-3) 0 var(--sp-2); min-height: 24px; }
+.up-busy .spin { vertical-align: 0; }
 /* вхід у вікні Telegram — спокійний екран замість привітання «як новому» */
 .tgwait { min-height: 60vh; display: grid; place-items: center; text-align: center; }
 .tgw-b { max-width: 420px; padding: 24px; }
