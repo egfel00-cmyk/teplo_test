@@ -408,6 +408,10 @@ my.vodokanal-irpen) — капча; Drupal abonents.* — у Шептицько�
   (КПП «Теплоенергопостач» — в справочнике `heat`, `robot: captcha`: вход на этом billingsoft другой — `LoginForm[lickar]` рахунок + `[pib]` + `[verifyCode]` капча; billingsoft бывает и с капчей — смотреть `prov.list.fields`), Миргород cabinet.mirtvs.pl.ua (не наша область).
   info-gkh без поставки воды/тепла (не трогать): chgks (Шептицький — сміття, управитель), kgep4, kzhrep1, ukvmr; vdn-voda — Верхньодніпровськ (Дніпропетровщина).
 
+- **109-я**: billingsoft ещё и у Яготина (my.vodayagotin.com.ua → бот `yagv`) — нашёлся через Facebook-страницу КП в выдаче Google («особистий кабінет» + название города + водоканал).
+  Страницы КП на сайтах громад (`<громада>.gov.ua/kp-…`, «Комунальні підприємства») часто дают только телефоны — `robot: phone`, телефоны с подписью «показання»/«SMS»/«Viber» — в `phones`.
+  Общий e-mail КП (kp-vodokanal@ukr.net, …@gmail.com) без слов «показання» — не канал подачи: `robot: none`, e-mail — в `how` как контакт. Google на «Балта …» подставляет Полтаву — брать название КП в кавычках.
+
 ## Правки владельца → репозиторий (в начале сессии)
 1. `/api/health → prov.edits.edits` > 0 → открыть /admin (Chrome владельца) → `GET /api/admin/prov/edits` (JSON правок и журнал).
 2. Перенести каждую правку в `prov_<r>.json` / `providers.json` как есть (src/src_ru владельца — тоже), прогнать тесты, пуш.
