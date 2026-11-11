@@ -5456,21 +5456,22 @@
     var b = st.bot, c = st.conn, busy = !!LB.busy, err = LB.err ? '<div class="banner bad" role="alert" data-key="lb-err">' + ico('alert', 22) + '<div><p>' + esc(LB.err.human) + '</p></div></div>' : '';
     var win = b.win ? '<p class="small muted" data-key="lb-win">' + esc(t('lb_win', { a: b.win[0], b: b.win[1] })) + '</p>' : '';
     if (!c) {
-      var lead = '<p data-key="lb-lead">' + esc(t('lb_lead_' + b.t + (b.t === 'mail' && b.need.indexOf('dist') >= 0 ? '2' : b.t === 'mail' && b.need.length === 1 ? '1' : ''), { org: org })) + '</p>';
+      var lead = '<p data-key="lb-lead">' + esc(t('lb_lead_' + b.t + (b.t === 'mail' && b.need.indexOf('dist') >= 0 ? '2' : b.t === 'mail' && b.need.length === 1 ? '1' : b.t === 'cab' && b.lk === 'acc' ? '1' : ''), { org: org })) + '</p>';
       if (!LB.open[k]) return '<div class="lb" data-key="lb">' + lead + err + '<div class="dest-ch"><button class="btn sec" data-act="lb-open" data-k="' + esc(k) + '" data-key="lb-open">' + ico('plus', 18) + '<span>' + esc(t('lb_conn_btn')) + '</span></button></div></div>';
       var dr = LB.draft[k] || pre || {};
       var fld = function (f) {
         if (f === 'dist') return '<div class="field"><label for="lb-dist">' + esc(t('lb_f_dist')) + '</label><div class="ctl"><select id="lb-dist" name="lb-dist" data-key="lb-f-dist"><option value="">' + esc(t('lb_f_dist0')) + '</option>' +
           (b.dists || []).map(function (o) { return '<option value="' + esc(o[0]) + '"' + (dr.dist === o[0] ? ' selected' : '') + '>' + esc(S.lang === 'ru' ? o[2] : o[1]) + '</option>'; }).join('') + '</select></div></div>';
-        var type = f === 'pass' ? 'password' : f === 'phone' ? 'tel' : f === 'login' ? 'email' : 'text', ac = { name: 'name', addr: 'street-address', phone: 'tel', login: 'username', pass: 'current-password' }[f] || 'off';
-        return '<div class="field"><label for="lb-' + f + '">' + esc(t(f === 'acc' && b.fmt === 'code' ? 'lb_f_code' : 'lb_f_' + f)) + '</label><div class="ctl"><input id="lb-' + f + '" type="' + type + '" name="lb-' + f + '" autocomplete="' + ac + '"' + (f === 'acc' ? ' class="num"' : '') +
+        var lka = f === 'login' && b.lk === 'acc';   // логін кабінету — особовий рахунок (Березань)
+        var type = f === 'pass' ? 'password' : f === 'phone' ? 'tel' : f === 'login' && !lka ? 'email' : 'text', ac = { name: 'name', addr: 'street-address', phone: 'tel', login: 'username', pass: 'current-password' }[f] || 'off';
+        return '<div class="field"><label for="lb-' + f + '">' + esc(t(f === 'acc' && b.fmt === 'code' ? 'lb_f_code' : lka ? 'lb_f_login_acc' : 'lb_f_' + f)) + '</label><div class="ctl"><input id="lb-' + f + '" type="' + type + '" name="lb-' + f + '" autocomplete="' + ac + '"' + (f === 'acc' || lka ? ' class="num" inputmode="numeric"' : '') +
           (f === 'acc' && b.hint ? ' placeholder="' + esc(b.hint) + '"' : '') + (dr[f] ? ' value="' + esc(dr[f]) + '"' : '') + ' data-key="lb-f-' + f + '"></div>' + (f === 'acc' && b.hint ? '<p class="small muted">' + esc(t('lb_hint', { h: b.hint })) + '</p>' : '') + '</div>';
       };
       return '<form class="lb lb-form" data-act="lb-conn" data-bot="' + esc(bot) + '" data-pl="' + esc(pl) + '" data-key="lb-form">' + lead + b.need.map(fld).join('') + win +
         '<label class="hc-consent"><input type="checkbox" name="lb-consent" data-key="lb-consent"' + (dr.consent ? ' checked' : '') + '> <span>' + esc(t('lb_consent', { org: org })) + '</span></label>' + err +
         '<div class="row-actions"><button class="btn" type="submit" data-key="lb-save"' + (busy ? ' disabled' : '') + '>' + (LB.busy === '/lb/connect' ? SPIN : ico('check', 18)) + '<span>' + esc(t('lb_save')) + '</span></button></div></form>';
     }
-    var chk = c.chk || {}, head = '<p class="small ok-ink" data-key="lb-on">' + ico('check', 16) + ' ' + esc(t('lb_on')) + (c.acc ? ' · ' + esc(t('lb_on_acc', { a: '' })) + '<span class="num" style="white-space:nowrap">' + esc(c.acc) + '</span>' : '') + '</p>' +
+    var chk = c.chk || {}, head = '<p class="small ok-ink" data-key="lb-on">' + ico('check', 16) + ' ' + esc(t('lb_on')) + (c.acc || (b.lk === 'acc' && c.login) ? ' · ' + esc(t('lb_on_acc', { a: '' })) + '<span class="num" style="white-space:nowrap">' + esc(c.acc || c.login) + '</span>' : '') + '</p>' +
       (chk.ok === false ? '<p class="small muted" data-key="lb-chk-warn">' + esc(t('lb_chk_warn')) + '</p>' : chk.meters ? '<p class="small muted" data-key="lb-chk">' + esc(t('lb_on_meters', { n: chk.meters })) + '</p>' : '');
     var off = '<p class="small"><button class="linkbtn" data-act="lb-off" data-bot="' + esc(bot) + '" data-pl="' + esc(pl) + '" data-key="lb-off"' + (busy ? ' disabled' : '') + '>' + esc(t('lb_off')) + '</button></p>';
     if (!rec) return '<div class="lb" data-key="lb">' + head + '<p class="small" data-key="lb-need-rec">' + esc(t('lb_need_rec')) + '</p>' + win + off + '</div>';

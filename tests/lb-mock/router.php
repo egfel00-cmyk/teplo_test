@@ -12,6 +12,27 @@ if ($p === '/__reset') { @unlink($f); exit('ok'); }
 if ($p === '/__captcha') { $st['captcha'] = true; file_put_contents($f, json_encode($st)); exit('ok'); }
 if ($p === '/__last') { header('Content-Type: application/json'); exit(json_encode($st['last'] ?? null)); }
 if (!empty($st['captcha'])) exit('<form><div class="g-recaptcha" data-sitekey="x"></div>' . $acc . '</form>');
+// Кабінет із входом (LocalBot t:cab, 104-а) — як voda-berezan.telsys.net.ua: на головній вхід особовим рахунком + паролем, поруч реєстрація (теж із паролем)
+// і форма «Передати показник» без входу (її веде скрипт — бот не чіпає); після входу — меню «Показники» → форма з лічильником → «Зберегти».
+// Сайт: config.php 'lb_base_brz' => 'http://127.0.0.1:8096/cab/'. Логін 1234567, пароль Berezan-2026.
+if (str_starts_with((string)$p, '/cab')) {
+  $in = ($_COOKIE['sid'] ?? '') === 'ok';
+  $home = '<html><body><h1>КП «Міськводоканал»</h1><form name="auth" action="functions.php" method="post"><input type="text" name="auth_no_os" placeholder="Особовий рахунок">'
+    . '<input type="password" name="auth_password" required><input type="submit" name="auth_submit" value="Увійти"></form>'
+    . '<form method="post"><input type="hidden" name="registration" value="1"><input type="text" name="reg_no_os"><input type="password" name="reg_password"><button type="button" name="reg_submit">Реєстрація</button></form>'
+    . '<form name="send_meter"><input type="number" name="meter_no_os" placeholder="Особовий рахунок"><button type="button" onclick="return CheckNoOsMeter()">Продовжити</button></form></body></html>';
+  if ($p === '/cab/' || $p === '/cab') exit($in ? '<html><body><nav><a href="/cab/news">Новини</a> <a href="/cab/pokaz">Показники</a> <a href="/cab/exit">Вихід</a></nav><p>Особовий рахунок 1234567</p></body></html>' : $home);
+  if ($p === '/cab/functions.php' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+    if (($_POST['auth_no_os'] ?? '') === '1234567' && ($_POST['auth_password'] ?? '') === 'Berezan-2026') { setcookie('sid', 'ok', 0, '/'); header('Location: /cab/', true, 302); exit; }
+    exit(str_replace('<h1>', '<p class="error">Невірний особовий рахунок або пароль</p><h1>', $home));
+  }
+  if (!$in) { header('Location: /cab/', true, 302); exit; }
+  if ($p === '/cab/pokaz' && $_SERVER['REQUEST_METHOD'] === 'GET') exit('<html><body><form method="post" action="/cab/pokaz"><input type="hidden" name="no_os" value="1234567">'
+    . '<table><tr><td>Лічильник № 1234567 (холодна вода)</td><td>попередній 400</td><td><input type="number" name="pokaz[1]"></td></tr></table><button type="submit" name="save" value="1">Зберегти</button></form></body></html>');
+  if ($p === '/cab/pokaz') { $st['last'] = $_POST; file_put_contents($f, json_encode($st)); exit('<div class="alert alert-success">Показники прийнято. Дякуємо!</div>'); }
+  http_response_code(404); exit('nf');
+}
+
 if ($p === '/' && !isset($_GET['p1'])) exit($acc);
 if ($p === '/') {
   if (($_GET['p1'] ?? '') . '-' . ($_GET['p2'] ?? '') . '-' . ($_GET['p3'] ?? '') !== '74-108-61') exit('<p class="error">Абонента не знайдено</p>' . $acc);

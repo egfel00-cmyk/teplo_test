@@ -1649,7 +1649,7 @@ ok('довідник: усі громади й пункти є в КАТОТТГ
   $yg87 = $v('Яготин, вул. Незалежності 1'); $mr87 = $v('Миронівка, вул. Соборності 48'); $zg87 = $v('Згурівка, вул. Миру 1'); $uz87 = $v('Узин, вул. Йосипа Шамрая 1');
   ok('громади 87-ї: Українка 53,06 / 64,22 з 01.05.2026 і бот gkh.in.ua, Березань 39,12 / 60,84, Богуслав 39 / 85,50, Кагарлик 42,72 / 44,85, Яготин 32,15 / 48,70; Миронівка, Згурівка, Узин — сума в note',
     ($uk87['place']['r'] ?? '') === 'kv' && $uk87['kinds']['water']['supply'] === 53.06 && $uk87['kinds']['water']['drain'] === 64.22 && $uk87['kinds']['water']['from'] === '2026-05-01' && str_contains($uk87['kinds']['water']['bot'] ?? '', 'GKH_IN_UA_BOT')
-    && $bz87['kinds']['water']['supply'] === 39.12 && $bz87['kinds']['water']['drain'] === 60.84 && !empty($bz87['kinds']['water']['check'])
+    && $bz87['kinds']['water']['supply'] === 39.12 && $bz87['kinds']['water']['drain'] === 60.84 && empty($bz87['kinds']['water']['check']) && str_contains($bz87['kinds']['water']['src'] ?? '', '№ 253')   // 104-а: рішення № 253 від 19.12.2025 знайдено
     && $bg87['kinds']['water']['drain'] === 85.5 && $kg87['kinds']['water']['supply'] === 42.72 && $kg87['kinds']['water']['from'] === '2024-10-01' && $yg87['kinds']['water']['drain'] === 48.7
     && $mr87['kinds']['water']['supply'] === null && str_contains($mr87['kinds']['water']['note'] ?? '', '99,13') && str_contains($zg87['kinds']['water']['note'] ?? '', '91,66') && str_contains($uz87['kinds']['water']['note'] ?? '', '85,01'),
     [$uk87['place'] ?? $uk87, $bz87['place'] ?? $bz87, $bg87['place'] ?? $bg87, $kg87['place'] ?? $kg87, $yg87['place'] ?? $yg87, $mr87['place'] ?? $mr87, $zg87['place'] ?? $zg87, $uz87['place'] ?? $uz87]);
@@ -2138,6 +2138,50 @@ $lvw = Providers::lookup('Львів, вул. Зелена, 1')['kinds']['water'
 ok('довідник: Львів — вода via lvk, robot server', ($lvw['via'] ?? '') === 'lvk' && ($lvw['robot'] ?? '') === 'server', $lvw);
 $pr = LocalBot::probe(); $pr2 = LocalBot::probe(); $hp = (new Browser('10.8.8.10'))->req('GET', '/api/health')->body['lbot']['mtve']['probe'] ?? [];
 ok('проба mtve: вигаданий рахунок 0-0-0 → «не знайдено» (шлях форми працює), раз на версію; /api/health → lbot.mtve.probe', $pr === ['mtve', 'notfound'] && $pr2 === null && ($hp['res'] ?? '') === 'notfound', [$pr, $pr2, $hp]);
+// Кабінети з входом (104-а): Васильків my.kpkkp.info (Yii: _csrf у cookie й формі), Березань (вхід особовим рахунком), Буча — шлях t:cab
+$cbSite = ['posted' => null, 'logins' => 0];
+$cbLogin = fn(string $err = '') => '<html><body>' . $err . '<form id="login-form" action="/user/login" method="post"><input type="hidden" name="_csrf" value="tok123">'
+  . '<input type="text" name="LoginForm[email]"><input type="password" name="LoginForm[password]"><input type="hidden" name="LoginForm[rememberMe]" value="0"><input type="checkbox" name="LoginForm[rememberMe]" value="1">'
+  . '<button type="submit" name="login-button">Увійти</button></form><a href="/user/registr">Реєстрація за платежем</a></body></html>';
+CabWeb::$http = function ($m, $url, $body, $cookie, $h) use (&$cbSite, $cbLogin) {
+  $p = (string)parse_url($url, PHP_URL_PATH); $in = str_contains($cookie, 'sess=ok');
+  if ($m === 'GET' && $p === '/user/login') return ['code' => 200, 'body' => $cbLogin(), 'cookies' => ['_csrf=c1; path=/; HttpOnly']];
+  if ($m === 'POST' && $p === '/user/login') {
+    parse_str((string)$body, $a); $cbSite['logins']++;
+    if (!str_contains($cookie, '_csrf=c1') || ($a['_csrf'] ?? '') !== 'tok123') return ['code' => 400, 'body' => 'Bad Request (#400): csrf'];
+    if (($a['LoginForm']['email'] ?? '') !== 'vasyl@gmail.com' || ($a['LoginForm']['password'] ?? '') !== 'Vasyl-2026') return ['code' => 200, 'body' => $cbLogin('<div class="help-block">Невірний e-mail або пароль.</div>')];
+    return ['code' => 302, 'body' => '', 'location' => '/site/index', 'cookies' => ['sess=ok; path=/']];
+  }
+  if (!$in) return ['code' => 302, 'body' => '', 'location' => '/user/login'];
+  // після входу — меню і форма зміни пароля (інша форма з паролем — не ознака «не пустило»)
+  if ($p === '/site/index') return ['code' => 200, 'body' => '<html><body><nav><a href="/site/index">Головна</a> <a href="/meter/index">Мої лічильники</a></nav>'
+    . '<form action="/user/pass" method="post"><input type="password" name="old_password"><input type="password" name="new_password"><button type="submit">Змінити</button></form></body></html>'];
+  if ($m === 'GET' && $p === '/meter/index') return ['code' => 200, 'body' => '<html><body><form method="post" action="/meter/save"><input type="hidden" name="_csrf" value="tok456"><table>'
+    . '<tr><td>Водомір № 00451122 (холодна)</td><td><input type="text" name="Meter[11][value]"></td></tr><tr><td>Водомір № 00451133 (гаряча)</td><td><input type="text" name="Meter[12][value]"></td></tr></table>'
+    . '<button type="submit">Зберегти показники</button></form></body></html>'];
+  if ($m === 'POST' && $p === '/meter/save') { $cbSite['posted'] = $body; return ['code' => 200, 'body' => '<div class="alert alert-success">Показники збережено</div>']; }
+  return ['code' => 404, 'body' => 'nf'];
+};
+$st = $lbu->req('GET', '/api/lb', null, ['QUERY_STRING' => 'bot=vkkp&place=kv1']);
+ok('cab vkkp: кабінет, потрібні логін і пароль; brz — логін = особовий рахунок (lk acc); bucha — є', ($st->body['bot']['t'] ?? '') === 'cab' && ($st->body['bot']['need'] ?? []) === ['login', 'pass']
+  && LocalBot::pub('brz')['lk'] === 'acc' && LocalBot::pub('vkkp')['lk'] === null && LocalBot::get('bucha') !== null, $st->body);
+$r = $lbu->req('POST', '/api/lb/connect', ['bot' => 'brz', 'place' => 'kv2', 'login' => 'abc', 'pass' => 'x', 'consent' => true]);
+ok('brz: логін не схожий на особовий рахунок — 422 «Впишіть особовий рахунок — він же логін кабінету»', $r->status === 422 && ($r->body['error'] ?? '') === 'lb_login_acc' && str_contains((string)($r->body['human'] ?? ''), 'особовий рахунок'), $r->body);
+$r = $lbu->req('POST', '/api/lb/connect', ['bot' => 'vkkp', 'place' => 'kv1', 'login' => 'vasyl@gmail.com', 'pass' => 'wrong', 'consent' => true]);
+ok('vkkp: невірний пароль — та сама форма входу → 422 lb_login_bad, не збережено', $r->status === 422 && ($r->body['error'] ?? '') === 'lb_login_bad' && !Db::one("SELECT id FROM cab_creds WHERE prov = 'Lvkkp'"), $r->body);
+$r = $lbu->req('POST', '/api/lb/connect', ['bot' => 'vkkp', 'place' => 'kv1', 'login' => 'vasyl@gmail.com', 'pass' => 'Vasyl-2026', 'consent' => true]);
+$cr = Db::one("SELECT * FROM cab_creds WHERE prov = 'Lvkkp'");
+ok('vkkp: вхід (_csrf з форми й cookie) → «Мої лічильники» → форма з 2 водомірами; нічого не надіслано; пароль — лише зашифрований, назовні pass: true', $r->status === 200 && ($r->body['conn']['chk']['ok'] ?? false) === true
+  && ($r->body['conn']['chk']['meters'] ?? 0) === 2 && $cbSite['posted'] === null && ($r->body['conn']['pass'] ?? null) === true && !str_contains(json_encode($r->body), 'Vasyl-2026')
+  && $cr && !str_contains((string)$cr['extra'] . $cr['secret'], 'Vasyl-2026'), $r->body);
+$q = $lbu->req('POST', '/api/lb/queue', ['bot' => 'vkkp', 'place' => 'kv1', 'rid' => 'k1', 'items' => [['value' => '41', 'serial' => '00451133', 'kind' => 'hot', 'name' => 'Гаряча'], ['value' => '412', 'serial' => '00451122', 'kind' => 'cold', 'name' => 'Холодна']]]);
+Db::q('UPDATE cab_jobs SET next_at = ? WHERE id = ?', [time() - 1, (int)($q->body['job']['id'] ?? 0)]); LocalBot::cron();
+parse_str((string)$cbSite['posted'], $pp); $jb = LocalBot::pubJob(Db::one('SELECT * FROM cab_jobs WHERE id = ?', [(int)($q->body['job']['id'] ?? 0)]));
+ok('vkkp: cron — новий вхід, показання за номером водоміра (холодна 412 → Meter[11], гаряча 41 → Meter[12]), _csrf форми збережено → ok', $jb['status'] === 'ok'
+  && ($pp['Meter'][11]['value'] ?? '') === '412' && ($pp['Meter'][12]['value'] ?? '') === '41' && ($pp['_csrf'] ?? '') === 'tok456', [$jb, $pp]);
+$k = Providers::lookup('Буча, вул. Енергетиків, 1')['kinds']['water'] ?? []; $v = Providers::lookup('Васильків, вул. Гоголя, 1')['kinds']['water'] ?? []; $z = Providers::lookup('Березань, вул. Шевченка, 1')['kinds']['water'] ?? [];
+ok('довідник: Буча via bucha, Васильків via vkkp, Березань via brz — robot server', ($k['via'] ?? '') === 'bucha' && ($v['via'] ?? '') === 'vkkp' && ($z['via'] ?? '') === 'brz'
+  && ($k['robot'] ?? '') === 'server' && ($v['robot'] ?? '') === 'server' && ($z['robot'] ?? '') === 'server', [$k['via'] ?? null, $v['via'] ?? null, $z['via'] ?? null]);
 LocalBot::$forceOn = false;
 CabWeb::$http = null;
 Mail::$send = null; Cfg::saveRuntime(array_fill_keys(Mail::KEYS, null));

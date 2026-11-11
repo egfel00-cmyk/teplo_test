@@ -41,6 +41,18 @@ final class LocalBot {
       'dists' => ['gal' => ['Галицький', 'Галицкий'], 'fra' => ['Франківський', 'Франковский'], 'lych' => ['Личаківський', 'Лычаковский'],
         'sih' => ['Сихівський', 'Сиховский'], 'zal' => ['Залізничний', 'Железнодорожный'], 'she' => ['Шевченківський', 'Шевченковский'],
         'pozam' => ['Поза містом: Винники, Брюховичі, Рудне, села громади', 'За городом: Винники, Брюховичи, Рудно, сёла громады']]],
+    // Київщина (104-а): кабінети водоканалів зі звичайною HTML-формою входу без капчі (проба PV 2 — /api/health → prov.list.fset; Chrome 11.11.2026).
+    // Що всередині після входу, не бачили: перше підключення людини дійде до форми показань (нічого не надсилаючи) або покладе каркас сторінки
+    // без цифр у /admin (/api/health → lbot.<бот>.last) — наступна сесія доналаштує. Пробу «вигаданий вхід» не робимо: чужий рахунок могли б заблокувати.
+    // Березань: вхід особовим рахунком + паролем (functions.php); «Передати показник» без входу веде скрипт сторінки (CheckNoOsMeter) — не розбираємо.
+    'brz' => ['t' => 'cab', 'kinds' => ['water'], 'org' => 'КП «Міськводоканал» (Березань)', 'site' => 'voda-berezan.telsys.net.ua',
+      'start' => 'https://voda-berezan.telsys.net.ua/', 'host' => '~^voda-berezan\.telsys\.net\.ua$~i', 'need' => ['login', 'pass'], 'lk' => 'acc'],
+    // Васильків: КП «ККП м. Василькова», кабінет my.kpkkp.info (Yii: _csrf + LoginForm[email] + LoginForm[password])
+    'vkkp' => ['t' => 'cab', 'kinds' => ['water'], 'org' => 'КП «ККП м. Василькова»', 'site' => 'my.kpkkp.info',
+      'start' => 'https://my.kpkkp.info/user/login', 'host' => '~^my\.kpkkp\.info$~i', 'need' => ['login', 'pass']],
+    // Буча: КП «Бучасервіс», кабінет абонента voda.buchaservice.com/cabinet (e-mail + пароль, POST /cabinet/login)
+    'bucha' => ['t' => 'cab', 'kinds' => ['water'], 'org' => 'КП «Бучасервіс»', 'site' => 'voda.buchaservice.com',
+      'start' => 'https://voda.buchaservice.com/cabinet', 'host' => '~^voda\.buchaservice\.com$~i', 'need' => ['login', 'pass']],
   ];
   const NEED = ['dist', 'acc', 'name', 'addr', 'phone', 'login', 'pass'];
   /** Адреса листа: одна на бота або за районом людини (`dist`). */
@@ -59,7 +71,7 @@ final class LocalBot {
     $b = self::get($id);
     return ['id' => $id, 't' => $b['t'], 'org' => $b['org'], 'site' => $b['site'] ?? null, 'kinds' => $b['kinds'], 'need' => $b['need'], 'hint' => $b['acc']['hint'] ?? null,
       'win' => $b['win'] ?? null, 'later' => !empty($b['later']), 'to' => is_string($b['to'] ?? null) ? $b['to'] : null, 'fmt' => $b['fmt'] ?? null, 'one' => !empty($b['one']),
-      'serial' => !empty($b['serial']), 'ready' => self::ready($id)] + (isset($b['dists']) ? ['dists' => array_map(fn($k, $v) => [$k, $v[0], $v[1]], array_keys($b['dists']), $b['dists'])] : []);
+      'serial' => !empty($b['serial']), 'lk' => $b['lk'] ?? null, 'ready' => self::ready($id)] + (isset($b['dists']) ? ['dists' => array_map(fn($k, $v) => [$k, $v[0], $v[1]], array_keys($b['dists']), $b['dists'])] : []);
   }
 
   // ---------- вікно подачі: поза ним «Відправити у фоні» ставить у чергу на відкриття (9:00 за Києвом) ----------
@@ -113,6 +125,7 @@ final class LocalBot {
       'addr' => $ru ? 'Впишите адрес: улица, дом, квартира.' : 'Впишіть адресу: вулиця, будинок, квартира.',
       'phone' => $ru ? 'Впишите телефон — по нему с вами свяжется абонотдел, если что-то не так.' : 'Впишіть телефон — за ним з вами зв’яжеться абонвідділ, якщо щось не так.',
       'login' => $ru ? 'Впишите логин (e-mail) от кабинета.' : 'Впишіть логін (e-mail) від кабінету.',
+      'login_acc' => $ru ? 'Впишите лицевой счёт — он же логин кабинета.' : 'Впишіть особовий рахунок — він же логін кабінету.',
       'pass' => $ru ? 'Впишите пароль от кабинета.' : 'Впишіть пароль від кабінету.',
       'off' => $ru ? 'Сейчас этот способ не работает — отправьте сами (кнопки ниже).' : 'Зараз цей спосіб не працює — надішліть самі (кнопки нижче).',
       'conn' => $ru ? 'Сначала подключите автоотправку.' : 'Спершу підключіть автовідправку.',
@@ -152,11 +165,11 @@ final class LocalBot {
         'name' => mb_strlen($v) >= 3 && mb_strlen($v) <= 80 && (bool)preg_match("/^[\p{L}'’ʼ.\- ]+$/u", $v),
         'addr' => mb_strlen($v) >= 5 && mb_strlen($v) <= 160,
         'phone' => (bool)preg_match('/^\+?[\d\s()\-]{9,18}$/', $v) && strlen(preg_replace('/\D/', '', $v)) >= 9,
-        'login' => mb_strlen($v) >= 3 && mb_strlen($v) <= 120,
+        'login' => ($b['lk'] ?? '') === 'acc' ? (bool)preg_match('/^[\d\-\/ ]{3,32}$/', $v) : mb_strlen($v) >= 3 && mb_strlen($v) <= 120,
         'pass' => ($v = (string)($in[$f] ?? '')) !== '' && strlen($v) <= 120,
         default => false,
       };
-      if (!$ok) throw self::err($f === 'acc' && !empty($b['acc']['hint']) ? 'acc' : ($f === 'acc' ? 'acc0' : $f), 422, ['hint' => $b['acc']['hint'] ?? '']);
+      if (!$ok) throw self::err($f === 'acc' && !empty($b['acc']['hint']) ? 'acc' : ($f === 'acc' ? 'acc0' : ($f === 'login' && ($b['lk'] ?? '') === 'acc' ? 'login_acc' : $f)), 422, ['hint' => $b['acc']['hint'] ?? '']);
       if ($f === 'acc' || $f === 'dist') $pub[$f] = $v; else $sec[$f] = $v;
     }
     return [$pub, $sec];
@@ -385,7 +398,9 @@ final class LocalBot {
 
 /** Прохід сайту: [вхід або рахунок] → [посилання «передати показання»] → форма показань → (надіслати). Розбір полів — RelayForm (роль за назвою й підписом). */
 final class LbWalk {
-  const LINK_RE = '/передат\S*\s+(?:поточн\S*\s+)?показ|внести\s+показ|подат\S*\s+показ|передать\s+показ|показ\S*\s+(?:водо)?лічильн|показания\s+счетчик/u';
+  const LINK_RE = '/передат\S*\s+(?:поточн\S*\s+)?показ|внести\s+показ|подат\S*\s+показ|передать\s+показ|показ\S*\s+(?:водо)?лічильн|показания\s+счетчик'
+    // пункт меню кабінету одним словом («Показники», «Мої лічильники», «Счётчики») — лише весь текст посилання (104-а)
+    . '|^(?:мої\s+|мои\s+)?(?:показ\S*|(?:водо)?лічильник\S*|сч[её]тчик\S*)(?:\s+(?:води|воды|лічильників|счетчиков|сч[её]тчиков))?$/u';
   /** → ['result' => ready|ok|err|unknown, 'meters' => n, 'text'?]. $send=false — лише дійти до форми показань. Не вийшло — HttpError lb_* (нічого не надіслано). */
   public static function run(array $b, array $c, array $items, bool $send): array {
     // локальний стенд (tests/lb-mock): config.php 'lb_base_<бот>' => 'http://127.0.0.1:8096/'
@@ -480,8 +495,22 @@ final class LbWalk {
     $s = $w->req('POST', $action, $w->encode($pairs), ['Content-Type: application/x-www-form-urlencoded', 'Referer: ' . $r['url']]);
     if ((int)$s['code'] === 0 || (int)$s['code'] >= 500) throw new HttpError(502, 'lb_down');
     self::guard($s);
-    if (preg_match('/type=["\']?password/i', $s['body']) && !self::readForm($s['body'])) throw new HttpError(422, 'lb_login_bad', ['human' => self::hum('login_bad')]);
+    // не пустило: та сама форма входу (ті ж імена логіна й пароля) або «невірний пароль»; інші форми з паролем на сторінці (реєстрація) — не ознака
+    if (!self::readForm($s['body']) && (self::sameLogin($s['body'], array_column($pairs, 0)) || self::badPass($s['body']))) throw new HttpError(422, 'lb_login_bad', ['human' => self::hum('login_bad')]);
     return $s;
+  }
+  private static function sameLogin(string $html, array $names): bool {
+    $x = CabWeb::dom($html);
+    foreach ($x->query('//form') as $f) {
+      if (!$f instanceof DOMElement) continue; $fs = RelayForm::fields($x, $f);
+      $pw = array_column(array_filter($fs, fn($o) => $o['type'] === 'password'), 'n');
+      if (count($pw) === 1 && in_array($pw[0], $names, true) && count(array_intersect(array_column($fs, 'n'), $names)) >= 2) return true;
+    }
+    return false;
+  }
+  private static function badPass(string $html): bool {
+    $t = mb_strtolower(CabWeb::sp(strip_tags(preg_replace('~<(script|style)\b.*?</\1>~is', ' ', $html))));
+    return (bool)preg_match('/невірн\S*\s+(?:логін|пароль|e-?mail|дан)|неправильн\S*\s+(?:логін|пароль|e-?mail|дан)|неверн\S*\s+(?:логин|пароль|e-?mail|дан)|incorrect\s+(?:username|email|password)|invalid\s+(?:login|password|credentials)/u', $t);
   }
   private static function notFound(string $html): bool {
     $t = mb_strtolower(CabWeb::sp(strip_tags(preg_replace('~<(script|style)\b.*?</\1>~is', ' ', $html))));

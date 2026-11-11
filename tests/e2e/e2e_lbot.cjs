@@ -1,7 +1,7 @@
 // Автоподача місцевим КП (LocalBot, 102-а): квартира в Кам’янці-Подільському → «Куди передати» воду → «Підключити автовідправку»
 // (особовий рахунок 74-108-61, згода) → сервер доходить до форми показань на стенді (нічого не надсилає) → «Відправити у фоні» → черга →
 // прогін cron → стенд отримав холодну й гарячу в свої поля → «Сайт прийняв показання», запис позначено переданим.
-// Потрібні: сайт 127.0.0.1:8013 (config.php: 'lb_base_mtve' => 'http://127.0.0.1:8096/'), стенд: php -S 127.0.0.1:8096 tests/lb-mock/router.php
+// Потрібні: сайт 127.0.0.1:8013 (config.php: 'lb_base_mtve' => 'http://127.0.0.1:8096/', 'lb_base_brz' => 'http://127.0.0.1:8096/cab/'), стенд: php -S 127.0.0.1:8096 tests/lb-mock/router.php
 const { chromium } = require('playwright'); const demo = require('./demo.cjs'); const { execSync } = require('child_process'); const path = require('path');
 let pass = 0, fail = 0; const ok = (n, c, x) => { if (c) { pass++; console.log('  OK  ' + n); } else { fail++; console.log(' FAIL ' + n + (x !== undefined ? ' → ' + JSON.stringify(x) : '')); } };
 const U = 'http://127.0.0.1:8013/', M = 'http://127.0.0.1:8096', DATA = process.env.SITE_DATA || '/tmp/teplo_data';
@@ -71,6 +71,29 @@ const U = 'http://127.0.0.1:8013/', M = 'http://127.0.0.1:8096', DATA = process.
   await p.evaluate(() => { const s = JSON.parse(localStorage.getItem('teplo.v1')); s.places[0].water.meters[0].serial = ''; s.updatedAt = Date.now(); localStorage.setItem('teplo.v1', JSON.stringify(s)); });
   await p.reload(); await wait(1500); await where();
   ok('водомір без номера — «Впишіть номер кожного лічильника…», кнопка неактивна', /номер/.test(await txt('[data-key=lb-serial]')) && !!(await p.$('[data-key=lb-bg][disabled]')), await txt('[data-key=lb]'));
+  // Березань (104-а): кабінет водоканалу з входом — логін = особовий рахунок (бот brz, стенд /cab/: config.php 'lb_base_brz' => 'http://127.0.0.1:8096/cab/')
+  await fetch(M + '/__reset');
+  await p.evaluate(() => { const s = JSON.parse(localStorage.getItem('teplo.v1')); s.places[0].address = 'м. Березань, вул. Шевченка 1, кв. 3';
+    s.places[0].water.meters = s.places[0].water.meters.filter(m => m.kind === 'cold').slice(0, 1); s.places[0].water.meters[0].serial = '1234567';
+    s.water = s.water.filter(w => w.id !== 'w20261110'); s.water.push({ id: 'w20261111', place: 'main', date: '2026-11-11', vals: { [s.places[0].water.meters[0].id]: '452' }, createdAt: '2026-11-11T10:00:00Z', updatedAt: Date.now(), sent: {} });
+    s.updatedAt = Date.now(); localStorage.setItem('teplo.v1', JSON.stringify(s)); });
+  await p.reload(); await wait(1500); await where();
+  ok('вода Березані: «…кабінет … потрібні особовий рахунок і пароль»', /особовий рахунок і пароль|лицевой счёт и пароль/.test(await txt('[data-key=lb-lead]')) && !!(await p.$('[data-key=lb-open]')), await txt('[data-key=where-water]'));
+  await p.click('[data-key=lb-open]'); await wait(300);
+  ok('форма: «Особовий рахунок (логін кабінету)» (текст, цифрова клавіатура), пароль, згода', /Особовий рахунок \(логін|Лицевой счёт \(логин/.test(await txt('label[for=lb-login]'))
+    && (await p.getAttribute('#lb-login', 'type')) === 'text' && (await p.getAttribute('#lb-login', 'inputmode')) === 'numeric' && (await p.getAttribute('#lb-pass', 'type')) === 'password');
+  await p.fill('#lb-login', '1234567'); await p.fill('#lb-pass', 'wrong'); await p.check('[data-key=lb-consent]'); await p.click('[data-key=lb-save]'); await wait(1500);
+  ok('невірний пароль — «Кабінет не пустив…», не підключено', /не пустив|не пустил/.test(await txt('[data-key=lb-err]')) && !(await p.$('[data-key=lb-on]')), await txt('[data-key=lb-err]'));
+  await p.fill('#lb-pass', 'Berezan-2026'); await p.click('[data-key=lb-save]'); await wait(1800);
+  ok('підключено: «Рахунок 1234567», у формі кабінету 1 лічильник; на стенд нічого не надіслано', /1234567/.test(await txt('[data-key=lb-on]')) && /1/.test(await txt('[data-key=lb-chk]'))
+    && (await (await fetch(M + '/__last')).json()) === null, [await txt('[data-key=lb-on]'), await txt('[data-key=lb-chk]'), await txt('[data-key=lb-err]')]);
+  await p.click('[data-key=lb-bg]'); await wait(1200);
+  execSync('php ' + path.join(__dirname, '../lb-mock/cron1.php'), { env: Object.assign({}, process.env, { SITE_DATA: DATA }) });
+  const lastC = await (await fetch(M + '/__last')).json();
+  ok('cron: вхід у кабінет → «Показники» → стенд отримав 452 у pokaz[1], рахунок із прихованого поля', lastC && lastC.pokaz && lastC.pokaz['1'] === '452' && lastC.no_os === '1234567', lastC);
+  await p.reload(); await wait(2500); await where();
+  ok('«Сайт прийняв показання», запис позначено переданим', /прийняв|принял/.test(await txt('[data-key=lb-done]')) && ((await st()).water.find(w => w.id === 'w20261111').sent || {}).vk, await txt('[data-key=lb]'));
+  if (process.env.SHOT) await (await p.$('[data-key=where-water]')).screenshot({ path: '/tmp/lb_brz.png' });
   ok('без помилок JS', !errs.length, errs);
   await b.close(); console.log('\nИтог: ' + pass + ' OK, ' + fail + ' FAIL'); process.exit(fail ? 1 : 0);
 })();
