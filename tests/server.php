@@ -704,6 +704,9 @@ ok('довідник 116-ї: Балаклія — 33,23 / 53,34, абонпла�
 $rw = Providers::lookup('Берестин, вул. Історична, 1')['kinds']['waste'] ?? [];
 ok('довідник 116-ї: Берестин — Берестинський ККП без суми з людини (тариф за м³), check, 2 телефони, куди платити', str_contains((string)($rw['org'] ?? ''), 'Берестинський') && array_key_exists('price', $rw) && $rw['price'] === null
   && !empty($rw['check']) && count((array)($rw['phones'] ?? [])) === 2 && !empty($rw['pay_ru']), $rw);
+$rb = Providers::lookup('Богодухів, вул. Ярослава Мудрого, 1')['kinds']['waste'] ?? [];
+ok('довідник 117-ї: Богодухів — КП «Господар», суми з людини немає (тариф за м³), check, з 01.09.2026, куди платити', str_contains((string)($rb['org'] ?? ''), 'Господар') && array_key_exists('price', $rb) && $rb['price'] === null
+  && !empty($rb['check']) && !empty($rb['pay']) && str_contains((string)($rb['src'] ?? ''), '№ 445'), $rb);
 $d10 = Reminders::kindOn(new DateTimeImmutable('2026-12-10 12:00', new DateTimeZone('Europe/Kyiv')));
 ok('10.12 — waste10 за листопад; «найближче» його пропускає (лише показання)', $d10 === ['waste10', '2026-11'] && (Reminders::next(strtotime('2026-12-06 12:00:00 Europe/Kyiv'))['kind'] ?? '') === 'water16', $d10);
 $wsS = ['places' => [['id' => 'main', 'address' => 'м. Харків, вул. Сумська, 10', 'waste' => ['on' => true, 'persons' => 3]], ['id' => 'p2', 'name' => 'Мамина', 'address' => 'смт Мала Данилівка, вул. Академічна, 1', 'water' => ['persons' => 2], 'waste' => ['on' => true, 'remindOff' => true]], ['id' => 'p3', 'name' => 'Дача']]];
