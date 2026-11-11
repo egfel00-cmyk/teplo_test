@@ -126,6 +126,9 @@ final class LocalBot {
     // звичайну форму входу (проба prov.list: LoginForm[email] + пароль, без капчі); робот ходить саме з сервера.
     'stav' => ['t' => 'cab', 'kinds' => ['water'], 'org' => 'Ставищенське ЖКП', 'site' => 'my.stavjkp.kyiv.ua',
       'start' => 'https://my.stavjkp.kyiv.ua/user/login', 'host' => '~^my\.stavjkp\.kyiv\.ua$~i', 'need' => ['login', 'pass']],
+    // 109-а: Яготин — КП «Яготинське ВУ ВКГ», той самий billingsoft (my.vodayagotin.com.ua: LoginForm[email] + пароль, без капчі; Chrome з України 11.11.2026)
+    'yagv' => ['t' => 'cab', 'kinds' => ['water'], 'org' => 'КП «Яготинське ВУ ВКГ»', 'site' => 'my.vodayagotin.com.ua',
+      'start' => 'https://my.vodayagotin.com.ua/user/login', 'host' => '~^my\.vodayagotin\.com\.ua$~i', 'need' => ['login', 'pass']],
     // Харківщина: КП «Водоканал» Мереф’янської МР — показання з 20 по 27 число, зокрема на e-mail vodokanal_merefa@ukr.net (merefaotg.gov.ua «Про підприємство», 11.11.2026)
     'mvk' => ['t' => 'mail', 'kinds' => ['water'], 'org' => 'КП «Водоканал» Мереф’янської МР', 'site' => 'merefaotg.gov.ua', 'to' => 'vodokanal_merefa@ukr.net',
       'need' => ['acc', 'name', 'addr', 'phone'], 'win' => [20, 27]],

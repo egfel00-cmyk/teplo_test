@@ -2341,6 +2341,16 @@ ok('довідник 108-ї: Ставище — via stav, robot server, у «я�
   && ($ir8['org'] ?? '') === 'КПП «Теплоенергопостач» ІМР' && ($ir8['cab'] ?? '') === 'https://my.tep-irpin.org.ua/' && array_key_exists('price', $ir8) && $ir8['price'] === null && !empty($ir8['check']) && empty($ir8['via']) && ($ir8['robot'] ?? '') === 'captcha',
   [$st8['via'] ?? null, $st8['robot'] ?? null, $ir8['org'] ?? null, $ir8['cab'] ?? null]);
 
+// 109-а: Яготин — billingsoft my.vodayagotin.com.ua → робот yagv; Арциз, Кілія, Чугуїв — лише телефони (phone); Миронівка — Telegram-бот (bot); Берестин, Теплодар — загальний e-mail (none)
+$y9 = $L('Яготин, вул. Незалежності, 1');
+ok('довідник 109-ї: Яготин — via yagv, robot server, у «як» — my.vodayagotin.com.ua і бот; Арциз/Кілія/Чугуїв — phone, Миронівка — bot, Берестин/Теплодар — none',
+  ($y9['via'] ?? '') === 'yagv' && ($y9['robot'] ?? '') === 'server' && str_contains((string)($y9['how'] ?? ''), LocalBot::BOTS['yagv']['site']) && ($y9['bot'] ?? '') === 'https://t.me/vodayagotin_bot'
+  && LocalBot::pub('yagv')['t'] === 'cab' && LocalBot::pub('yagv')['lk'] === null
+  && ($L('Арциз, вул. Соборна, 1')['robot'] ?? '') === 'phone' && ($L('Кілія, вул. Героїв України, 1')['robot'] ?? '') === 'phone' && ($L('Чугуїв, вул. Харківська, 1')['robot'] ?? '') === 'phone'
+  && ($L('Чугуїв, вул. Харківська, 1', 'heat')['robot'] ?? '') === 'phone' && ($L('Миронівка, вул. Соборна, 1')['robot'] ?? '') === 'bot'
+  && ($L('Берестин, вул. Шиндлера, 1')['robot'] ?? '') === 'none' && ($L('Теплодар, вул. Польова, 1')['robot'] ?? '') === 'none',
+  [$y9['via'] ?? null, $y9['robot'] ?? null]);
+
 // 106-а: лендинг «Передати у фоні» — стрічка LP_AUTO (app.js) знає всіх ботів LocalBot + htm, vk; /api/config → auto — лише готові (e-mail — без пошти ні)
 preg_match('~var LP_AUTO = \[(.*?)\n  \];~s', (string)file_get_contents(__DIR__ . '/../web/src/app.js'), $lm);
 preg_match_all("~'(\w+)'(?:, 1)?\]~", $lm[1] ?? '', $li); $lpIds = array_unique($li[1] ?? []);
