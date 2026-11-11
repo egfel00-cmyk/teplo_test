@@ -2138,7 +2138,7 @@ ok('lvk: лист на sih_r@lvk.lviv.ua — по рядку на лічильн
 $lvw = Providers::lookup('Львів, вул. Зелена, 1')['kinds']['water'] ?? [];
 ok('довідник: Львів — вода via lvk, robot server', ($lvw['via'] ?? '') === 'lvk' && ($lvw['robot'] ?? '') === 'server', $lvw);
 $pr = LocalBot::probe(); $pr2 = LocalBot::probe(); $hp = (new Browser('10.8.8.10'))->req('GET', '/api/health')->body['lbot']['mtve']['probe'] ?? [];
-ok('проба mtve: вигаданий рахунок 0-0-0 → «не знайдено» (шлях форми працює), раз на версію; /api/health → lbot.mtve.probe', $pr === ['mtve', 'notfound'] && $pr2 === null && ($hp['res'] ?? '') === 'notfound', [$pr, $pr2, $hp]);
+ok('проба mtve: вигаданий рахунок 0-0-0 → «не знайдено» (шлях форми працює), раз на версію; /api/health → lbot.mtve.probe', $pr === ['mtve', 'notfound'] && ($pr2[0] ?? '') !== 'mtve' && ($hp['res'] ?? '') === 'notfound', [$pr, $pr2, $hp]);
 // Кабінети з входом (104-а): Васильків my.kpkkp.info (Yii: _csrf у cookie й формі), Березань (вхід особовим рахунком), Буча — шлях t:cab
 $cbSite = ['posted' => null, 'logins' => 0];
 $cbLogin = fn(string $err = '') => '<html><body>' . $err . '<form id="login-form" action="/user/login" method="post"><input type="hidden" name="_csrf" value="tok123">'
@@ -2246,6 +2246,10 @@ ok('LbAddr: «Степана Бандери» = «БАНДЕРИ СТЕПАНА�
   && $A('Бровари, вул. Авіаційна, 6', $so) === '4' && $A('Бровари, вул. 136 Батальйону, 136', $so) === '89' && $A('Бровари, Сушка 2', $so) === '109' && $A('Бровари, вул. Небесної 999', $so) === 'lb_addr_street'
   && LbAddr::nums(LbAddr::parse('Бровари, вул. 136 Батальйону, 136, 5'), ['БРОВАРИ', '136', 'БАТАЛЬЙОНУ']) === ['136', '5'] && LbAddr::nums(LbAddr::parse('Бровари, Чорновола 6-кв.4'), ['БРОВАРИ', 'ЧОРНОВОЛА']) === ['6', '4']
   && LbAddr::nums(LbAddr::parse('Бровари, Сушка, буд. 11 а, кв 3'), ['БРОВАРИ', 'СУШКА']) === ['11А', '3'], [$A('Бровари, Сушка 2', $so), $A('Бровари, вул. Небесної 999', $so)]);
+$lj = json_decode((string)@file_get_contents(LocalBot::lastFile()), true) ?: []; unset($lj['brovk']); file_put_contents(LocalBot::lastFile(), json_encode($lj));
+$p0 = $axSt['posts']; $pr = LocalBot::probe(); $pr2 = LocalBot::probe(); $hp = (new Browser('10.8.8.10'))->req('GET', '/api/health')->body['lbot']['brovk']['probe'] ?? [];
+ok('проба brovk: вул. Київська, 6 (без квартир) + вигаданий рахунок → пункт, вулиця, будинок, пошук (4 POST) → «не знайдено»; раз на версію', $pr === ['brovk', 'notfound'] && $pr2 === null
+  && $axSt['posts'] - $p0 === 4 && ($hp['res'] ?? '') === 'notfound', [$pr, $pr2, $hp, $axSt['posts'] - $p0]);
 $bw = Providers::lookup('Бровари, вул. Київська, 1')['kinds']['water'] ?? [];
 ok('довідник: Бровари — вода via brovk, robot server', ($bw['via'] ?? '') === 'brovk' && ($bw['robot'] ?? '') === 'server', [$bw['via'] ?? null, $bw['robot'] ?? null]);
 LocalBot::$forceOn = false;

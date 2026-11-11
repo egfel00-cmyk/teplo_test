@@ -404,13 +404,15 @@ final class LocalBot {
   // ---------- проба «не знайдено» (як у Водоканалу): вигаданий рахунок, лише читання — чи веде нас живий сайт тим шляхом, що й стенд ----------
   // Раз на PROBE_V для кожного form-бота (cron, хвилина % 10 === 9). Підсумок — /api/health → lbot.<бот>.probe: notfound — шлях працює
   // (сайт прийняв рахунок формою й відповів «не знайдено»); page/acc_again — форму веде скрипт сторінки, треба дивитися (каркас — без тексту й цифр).
-  const PROBE_V = 2, PROBE_ACC = ['mtve' => '0-0-0'];
+  // Бровари (105-а): вигаданий рахунок на справжній адресі без квартир (вул. Київська, 6 — у Chrome 11.11.2026 сайт відповів «Особовий рахунок не знайдено!») —
+  // так перевіряємо весь шлях postback (пункт → вулиця → будинок → пошук) з нашого сервера, не чекаючи першої людини.
+  const PROBE_V = 2, PROBE_ACC = ['mtve' => '0-0-0', 'brovk' => ['acc' => '899999999', 'addr' => 'м. Бровари, вул. Київська, 6']];
   public static function probe(): ?array {
     $j = json_decode((string)@file_get_contents(self::lastFile()), true); $j = is_array($j) ? $j : [];
     foreach (self::BOTS as $id => $b) {
       if ($b['t'] !== 'form' || !isset(self::PROBE_ACC[$id]) || (int)($j[$id]['probe']['v'] ?? 0) === self::PROBE_V) continue;
       $res = ['v' => self::PROBE_V, 'at' => time()];
-      try { $r = LbWalk::run(self::get($id), ['acc' => self::PROBE_ACC[$id]], [], false); $res['res'] = 'form'; $res['meters'] = $r['meters'] ?? null; }
+      try { $r = LbWalk::run(self::get($id), is_array(self::PROBE_ACC[$id]) ? self::PROBE_ACC[$id] : ['acc' => self::PROBE_ACC[$id]], [], false); $res['res'] = 'form'; $res['meters'] = $r['meters'] ?? null; }
       catch (HttpError $e) { $res['res'] = preg_replace('/^lb_/', '', $e->err); if (isset($e->extra['why'])) $res['why'] = $e->extra['why']; if (isset($e->extra['skel'])) $res['skel'] = mb_substr((string)$e->extra['skel'], 0, 3000); }
       catch (Throwable $e) { $res['res'] = 'error'; $res['err'] = mb_substr(get_class($e) . ': ' . preg_replace('/\d/', '#', $e->getMessage()), 0, 160); }
       $j = json_decode((string)@file_get_contents(self::lastFile()), true); $j = is_array($j) ? $j : [];
