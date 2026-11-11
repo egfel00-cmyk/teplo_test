@@ -106,6 +106,22 @@ final class LocalBot {
       'start' => 'https://svodokanal.info-gkh.com.ua/cabinet/login', 'host' => '~^svodokanal\.info-gkh\.com\.ua$~i', 'need' => ['login', 'pass'], 'lk' => 'acc'],
     'mizh' => ['t' => 'cab', 'kinds' => ['water'], 'org' => 'КП «Міжлиманське»', 'site' => 'kp-mizhlimanske.info-gkh.com.ua',
       'start' => 'https://kp-mizhlimanske.info-gkh.com.ua/cabinet/login', 'host' => '~^kp-mizhlimanske\.info-gkh\.com\.ua$~i', 'need' => ['login', 'pass'], 'lk' => 'acc'],
+    // 107-а. Ще info-gkh: Вороньків (Київщина, ЖКК «Вороньків» — вода, показники з 24 до останнього дня; voronkiv.info-gkh.com.ua), Дачне (Одещина, КП «Дачненський
+    // сількомунгосп»), Любашівка (Одещина, КП «Джерело-Комунсервіс», dzerelo.info-gkh.com.ua).
+    'vork' => ['t' => 'cab', 'kinds' => ['water'], 'org' => 'ЖКК «Вороньків»', 'site' => 'voronkiv.info-gkh.com.ua',
+      'start' => 'https://voronkiv.info-gkh.com.ua/cabinet/login', 'host' => '~^voronkiv\.info-gkh\.com\.ua$~i', 'need' => ['login', 'pass'], 'lk' => 'acc', 'win' => [24, 31]],
+    'dach' => ['t' => 'cab', 'kinds' => ['water'], 'org' => 'КП «Дачненський сількомунгосп»', 'site' => 'kp-dachne.info-gkh.com.ua',
+      'start' => 'https://kp-dachne.info-gkh.com.ua/cabinet/login', 'host' => '~^kp-dachne\.info-gkh\.com\.ua$~i', 'need' => ['login', 'pass'], 'lk' => 'acc'],
+    'lubk' => ['t' => 'cab', 'kinds' => ['water'], 'org' => 'КП «Джерело-Комунсервіс»', 'site' => 'dzerelo.info-gkh.com.ua',
+      'start' => 'https://dzerelo.info-gkh.com.ua/cabinet/login', 'host' => '~^dzerelo\.info-gkh\.com\.ua$~i', 'need' => ['login', 'pass'], 'lk' => 'acc'],
+    // 107-а. Ще Yii «Особистий кабінет абонента» (billingsoft): Богуслав (my.boguslavvodokanal.biz.ua), Рені (my.renivodokanal.od.ua; показники з 1 по 5 число),
+    // Петрівська громада (Нові Петрівці, novopetrovskiy.billingsoft.com.ua; до останнього числа). Ставище (my.stavjkp.kyiv.ua) 11.11.2026 не відповідав — не підключали.
+    'bgsv' => ['t' => 'cab', 'kinds' => ['water'], 'org' => 'КП БМР «Богуславське ЖКП»', 'site' => 'my.boguslavvodokanal.biz.ua',
+      'start' => 'https://my.boguslavvodokanal.biz.ua/user/login', 'host' => '~^my\.boguslavvodokanal\.biz\.ua$~i', 'need' => ['login', 'pass']],
+    'renv' => ['t' => 'cab', 'kinds' => ['water'], 'org' => 'КП «Водоканал» Ренійської МР', 'site' => 'my.renivodokanal.od.ua',
+      'start' => 'https://my.renivodokanal.od.ua/user/login', 'host' => '~^my\.renivodokanal\.od\.ua$~i', 'need' => ['login', 'pass'], 'win' => [1, 5]],
+    'ptkp' => ['t' => 'cab', 'kinds' => ['water'], 'org' => 'КП «Петрівський ККП»', 'site' => 'novopetrovskiy.billingsoft.com.ua',
+      'start' => 'https://novopetrovskiy.billingsoft.com.ua/user/login', 'host' => '~^novopetrovskiy\.billingsoft\.com\.ua$~i', 'need' => ['login', 'pass']],
     // Харківщина: КП «Водоканал» Мереф’янської МР — показання з 20 по 27 число, зокрема на e-mail vodokanal_merefa@ukr.net (merefaotg.gov.ua «Про підприємство», 11.11.2026)
     'mvk' => ['t' => 'mail', 'kinds' => ['water'], 'org' => 'КП «Водоканал» Мереф’янської МР', 'site' => 'merefaotg.gov.ua', 'to' => 'vodokanal_merefa@ukr.net',
       'need' => ['acc', 'name', 'addr', 'phone'], 'win' => [20, 27]],
