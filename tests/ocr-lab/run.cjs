@@ -40,7 +40,7 @@ const types = { js: 'text/javascript', mjs: 'text/javascript', wasm: 'applicatio
     }, [img, c.prev ?? null]);
     all[c.id] = res.r;
     if (c.elec) {   // электросчётчик с барабаном (81-я): чёрные ролики целиком (с ведущими нулями) и красный — как прочёл движок, ориентация
-      const d0 = (res.r.drums || [])[0] || {}, got = String(d0.text || '').replace(/\D/g, ''), okk = got === c.truth && (!c.red || String(d0.red || '').startsWith(c.red));
+      const d0 = (res.r.drums || [])[0] || {}, got = String(d0.text || '').replace(/\D/g, ''), okk = [].concat(c.truth).includes(got) && (!c.red || String(d0.red || '').startsWith(c.red));
       if (okk) good++;
       console.log((okk ? ' OK ' : 'FAIL') + ' ' + c.id.padEnd(16) + ' truth=' + c.truth + ',' + (c.red || '') + ' got=' + got + ',' + (d0.red || '') + '  angle=' + d0.angle + (d0.flipped ? ' ПЕРЕВЁРНУТ' : '') + ' sure=' + d0.sure + '  ' + res.r.ms + 'ms  drums: ' + (res.r.drums || []).map(d => d.text + (d.red ? ',' + d.red : '') + '(' + (d.score || 0).toFixed(2) + ')').join(' '));
       continue;

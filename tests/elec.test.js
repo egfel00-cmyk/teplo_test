@@ -141,4 +141,13 @@ ok('фото: за 60 днів до 6000 кВт·год — ще можливо'
   q = E.fromPhotos([{ lines: [Lx('010420.5', 10, 100, 400, 60, 0.95), Lx('12', 500, 100, 80, 60, 0.9)] }], [M1], {});
   ok('табло: ціле «010420.5» сильніше за склейку з сусіднім «12»', q.e1.all && q.e1.all.v === 10420, q); }
 
+// НІК 2102 (кадр власника 11.11, барабан після 110-ї): вікно рівно по ряду (нахил — за надписами щитка), рушій дає «03529» + червоний «4»
+{ const res = { lines: [{ text: 'HIK2102-02.M2', x: 340, y: 900, w: 500, h: 76, score: 0.97 }, { text: 'kW·h', x: 880, y: 1000, w: 120, h: 85, score: 0.85 }],
+    drums: [{ text: '03529', red: '4', redSure: '4', score: 0.988, votes: 2, alts: ['03529.', '03529'], x: 371, y: 987, w: 411, h: 89, sure: true, tint: 'red', cells: 7 }] };
+  const dr = E.drumPick(res.drums, res.lines), sh = { lines: res.lines, drum: { value: dr.value, digits: dr.digits, frac: dr.frac, sure: !!dr.sure, edge: !!dr.edge, alts: dr.alts || [] } };
+  let q = E.fromPhotos([sh], [M1], { e1: { all: '3498' } }, { days: { e1: 8 } });
+  ok('НІК: барабан «03529»,4 при прошлих 3498 → 3529,4', q.e1.all && q.e1.all.v === 3529 && q.e1.all.frac === '4' && !q.e1.all.guess, q);
+  q = E.fromPhotos([sh], [M1], {});
+  ok('НІК: без прошлих — теж 3529,4 (на перевірку людині)', q.e1.all && q.e1.all.v === 3529 && q.e1.all.frac === '4', q);
+}
 console.log('\nИтог: ' + pass + ' OK, ' + fail + ' FAIL'); process.exit(fail ? 1 : 0);

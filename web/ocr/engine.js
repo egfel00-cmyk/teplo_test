@@ -282,7 +282,8 @@
    * Окно счётного механизма: тёмные ролики с белыми цифрами (м³) и рядом красные (дроби — литры).
    * Ищем по цвету, а не по тексту: тёмные «ячейки» одной высоты в ряд (или слитая полоса) + красное у одного из концов.
    * Красное всегда справа — так узнаём и границу «м³ | дроби», и что фото перевёрнуто. */
-  function findDrums(src) {
+  function findDrums(src, hintA) {
+    if (hintA === undefined) hintA = null;
     var A = 1280, k = Math.min(1, A / Math.max(src.width, src.height)), W = Math.max(8, Math.round(src.width * k)), H = Math.max(8, Math.round(src.height * k));
     var c = document.createElement('canvas'); c.width = W; c.height = H; c.getContext('2d').drawImage(src, 0, 0, W, H);
     var px = c.getContext('2d').getImageData(0, 0, W, H).data; free(c);
@@ -372,6 +373,22 @@
       };
       var walk = function (dir) { var t = dir * sd.U / 2, last = t, gap = 0, lim = sd.U / 2 + 14 * V; while (Math.abs(t) < lim) { t += dir; if (good(t)) { last = t; gap = 0; } else if (++gap > V * 0.9) break; } return last; };
       var t1 = walk(1), t0 = walk(-1), U = t1 - t0;
+      // Зерно из одной-двух ячеек: наклон ряда взят с одного ролика, а его тёмный фон рвут цифры и блики — ось перекошена.
+      // НІК 2102 владельца (11.11.2026): ролик «9» у красного дал −5°, проход ушёл с ряда через три ролика — «003» не попали,
+      // «2» на переходе прочиталось «14» → «5149» вместо 003529. Ряд роликов всегда параллелен надписям на щитке: наклон
+      // уверенно прочитанных надписей (hint) пробуем вместо наклона ячейки: проход по нему не короче — берём его (короче — это окно
+      // не по ряду: водомер w_glare с бликом на чёрных роликах — тогда ровное окно легло бы на одни красные «512»).
+      if (hintA !== null && sd.n <= 2) {
+        var a00 = a, dh = Math.atan2(Math.sin(2 * (hintA - a00)), Math.cos(2 * (hintA - a00))) / 2;   // разница по модулю π
+        if (Math.abs(dh) > 0.02 && Math.abs(dh) < 0.3) {
+          a = a00 + dh; ux = Math.cos(a); uy = Math.sin(a); vx = -uy; vy = ux;
+          var p1 = walk(1), p0 = walk(-1), nRed = 0;
+          // и в окне есть красные ролики (полролика и больше) — без них ровное окно ложится и на надписи («NOVATOR» → «00001»)
+          for (var tr = p0; tr <= p1; tr += 1) { var nr1 = 0, nn1 = 0; for (var vr = -hv; vr <= hv; vr += 1) { var qr = at(tr, vr); if (qr < 0) continue; nn1++; if (red[qr]) nr1++; } if (nn1 && nr1 / nn1 >= 0.5) nRed++; }
+          if (p1 - p0 >= U && nRed >= 0.4 * V) { t0 = p0; t1 = p1; U = p1 - p0; if (dbg) dbg.rej.push(['tilt', rad, sd.cx, sd.cy, U, V, +dh.toFixed(3)]); }
+          else { a = a00; ux = Math.cos(a); uy = Math.sin(a); vx = -uy; vy = ux; }
+        }
+      }
       if (U / V < 2.1 || U / V > 14) { if (dbg) dbg.rej.push(['ar', rad, sd.cx, sd.cy, U, V, sd.n]); return; }
       var cx = sd.cx + ux * (t0 + t1) / 2, cy = sd.cy + uy * (t0 + t1) / 2;
       if (out.some(function (o) { return Math.abs((o.cxa - cx) * vx + (o.cya - cy) * vy) < V * 0.5 && Math.abs((o.cxa - cx) * ux + (o.cya - cy) * uy) < (o.U + U) / 2; })) return;
@@ -895,13 +912,21 @@
     });
   }
 
+  /** Наклон кадра по уверенно прочитанным надписям с буквами (по модулю π: среднее удвоенных углов); меньше двух надписей — null. */
+  function textAngle(lines) {
+    var sx = 0, sy = 0, n = 0;
+    lines.forEach(function (l) { if (l.score < 0.85 || l.lcd || !/[A-Za-zА-Яа-яІіЇїЄє]{2}/.test(l.text) || l.w < l.h * 1.5) return; var a = l.angle || 0; sx += Math.cos(2 * a); sy += Math.sin(2 * a); n++; });
+    if (n < 2 || Math.hypot(sx, sy) < 0.8 * n) return null;   // надписи вразнобой — не подсказка
+    return Math.atan2(sy, sx) / 2;
+  }
+
   function read(file, opts) {
     var t0 = Date.now(), src, lines = [], all = !!(opts && opts.all);
     var drums = [];
     return toCanvas(file).then(function (c) { src = c; return detect(c); }).then(function (boxes) {
       return readBoxes(src, boxes, 0, 0, 1, lines).then(function () {
         // окно барабана водомера (по цвету) — до пяти кандидатов, пока не прочитаем 4+ цифры
-        var cands = []; try { cands = findDrums(src); } catch (e) { cands = []; }
+        var cands = []; try { cands = findDrums(src, textAngle(lines)); } catch (e) { cands = []; }
         var ch = Promise.resolve();
         // «окно» поверх надписи с буквами, и прочитаны те же цифры, что в надписи («ДСТУ EN 62052-1» под красным светодиодом
         // электросчётчика → «06205»), — это надпись, не ролики. Перевёрнутый барабан текст читает буквами («EELOO»), но цифры другие.
@@ -958,5 +983,5 @@
     return ch.then(function () { return out.join(' | '); }); }); }
   function _rec(file, b) { return toCanvas(file).then(function (c) { return Promise.all([recognize(c, b, 0), recognize(c, b, 0.3), recognize(c, b, 0.55)]); }).then(function (r) { return r.map(function (x) { return x.text + '(' + x.score.toFixed(2) + ')'; }).join(' | '); }); }
   function _readDrums(file) { var src, out = []; return toCanvas(file).then(function (c) { src = c; var ch = Promise.resolve(); findDrums(c).slice(0, 2).forEach(function (d) { ch = ch.then(function () { return readDrum(src, d); }).then(function (r) { out.push(r); }); }); return ch; }).then(function () { free(src); return out; }); }
-  root.TeploOCR = { _recBox: function (file, blk, m) { var src; return toCanvas(file).then(function (c) { src = c; return recTensor(drumTensor(src, blk, m)); }).then(function (r) { free(src); return r; }); }, _det: _det, _rec: _rec, _readDrums: _readDrums, _drums: function (file) { return toCanvas(file).then(function (c) { var r = findDrums(c); free(c); return r; }); }, load: load, read: read, ready: function () { return !!REC; } };
+  root.TeploOCR = { _recBox: function (file, blk, m) { var src; return toCanvas(file).then(function (c) { src = c; return recTensor(drumTensor(src, blk, m)); }).then(function (r) { free(src); return r; }); }, _det: _det, _rec: _rec, _readDrums: _readDrums, _drums: function (file, hint) { return toCanvas(file).then(function (c) { var r = findDrums(c, hint); free(c); return r; }); }, load: load, read: read, ready: function () { return !!REC; } };
 })(typeof window !== 'undefined' ? window : this);
