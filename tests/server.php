@@ -2256,6 +2256,54 @@ LocalBot::$forceOn = false;
 CabWeb::$http = null;
 Mail::$send = null; Cfg::saveRuntime(array_fill_keys(Mail::KEYS, null));
 
+// 106-а: платформа info-gkh.com.ua (Богодухів, Сахновщина, Подільськ, Міжлиманське) — у формі входу першим іде текстове поле cmd=login: його не чіпаємо, рахунок — у account
+$ig = ['post' => null, 'saved' => null];
+$igForm = '<html><body><form id="login_form" method="post" action="https://bogodukhivvoda.info-gkh.com.ua/cabinet/login"><input type="text" name="cmd" value="login" style="display:none">'
+  . '<input type="text" name="account" placeholder="Особовий рахунок"><input type="password" name="password"><button type="submit">Увійти</button></form>'
+  . '<form method="post" action="https://bogodukhivvoda.info-gkh.com.ua/cabinet/login"><input type="text" name="cmd" value="register"><input type="text" name="account"><input type="text" name="flat"><input type="text" name="password"><input type="text" name="email"><button type="submit">Зареєструватись</button></form></body></html>';
+CabWeb::$http = function ($m, $url, $body, $cookie, $h) use (&$ig, $igForm) {
+  $p = (string)parse_url($url, PHP_URL_PATH);
+  if ($m === 'GET' && $p === '/cabinet/login') return ['code' => 200, 'body' => $igForm];
+  if ($m === 'POST' && $p === '/cabinet/login') { parse_str((string)$body, $a); $ig['post'] = $a;
+    return ($a['cmd'] ?? '') === 'login' && ($a['account'] ?? '') === '2041175' && ($a['password'] ?? '') === 'Bgd-2026' ? ['code' => 302, 'body' => '', 'location' => '/cabinet', 'cookies' => ['ig=ok; path=/']] : ['code' => 200, 'body' => $igForm]; }
+  if (!str_contains($cookie, 'ig=ok')) return ['code' => 302, 'body' => '', 'location' => '/cabinet/login'];
+  if ($m === 'GET' && $p === '/cabinet') return ['code' => 200, 'body' => '<html><body><a href="/cabinet/counters">Показники лічильників</a></body></html>'];
+  if ($m === 'GET' && $p === '/cabinet/counters') return ['code' => 200, 'body' => '<html><body><form method="post" action="/cabinet/counters"><table><tr><td>Лічильник № 778899 (холодна вода)</td><td><input type="text" name="value[55]"></td></tr></table>'
+    . '<button type="submit">Передати показники</button></form></body></html>'];
+  if ($m === 'POST' && $p === '/cabinet/counters') { $ig['saved'] = $body; return ['code' => 200, 'body' => 'Показники прийнято']; }
+  return ['code' => 404, 'body' => 'nf'];
+};
+$r = $lbu->req('POST', '/api/lb/connect', ['bot' => 'bgdv', 'place' => 'bg1', 'login' => '2041175', 'pass' => 'Bgd-2026', 'consent' => true]);
+ok('info-gkh (bgdv): вхід — cmd=login лишається, рахунок у account, пароль у password → «Показники лічильників» → форма з 1 лічильником; нічого не надіслано',
+  $r->status === 200 && ($r->body['conn']['chk']['ok'] ?? false) === true && ($r->body['conn']['chk']['meters'] ?? 0) === 1 && ($ig['post']['cmd'] ?? '') === 'login'
+  && ($ig['post']['account'] ?? '') === '2041175' && $ig['saved'] === null && LocalBot::pub('bgdv')['lk'] === 'acc', [$r->body, $ig['post']]);
+// Славутич (svod): форма POST auth.php — особовий рахунок ls (10 цифр) і номер лічильника pas замість пароля; номер зберігається як секрет
+$sv = ['post' => null];
+$svForm = '<html><body><form action="auth.php" method="post"><h1>ВВЕДИТЬ АДРЕСУ:</h1><select id="kvart"><option value="111">ТАЛЛIНСЬКИЙ</option></select><input type="text" id="dom"><input type="text" id="kv">'
+  . '<h1>АБО ВВЕДИТЬ ОСОБИСТИЙ РАХУНОК:</h1><input type="text" id="ls" name="ls" maxlength="10"><h1>ВВЕДІТЬ ОДИН З НОМЕРІВ ВАШОГО ЛІЧИЛЬНИКА:</h1><input type="text" id="pas" name="pas"><input type="submit" class="kn" value="УВІЙТИ"></form></body></html>';
+CabWeb::$http = function ($m, $url, $body, $cookie, $h) use (&$sv, $svForm) {
+  $p = (string)parse_url($url, PHP_URL_PATH);
+  if ($m === 'GET' && $p === '/kab/kabinet.html') return ['code' => 200, 'body' => $svForm];
+  if ($m === 'POST' && $p === '/kab/auth.php') { parse_str((string)$body, $a); $sv['post'] = $a;
+    if (($a['ls'] ?? '') !== '1110010010' || ($a['pas'] ?? '') !== 'AB123456') return ['code' => 200, 'body' => '<p>Абонента не знайдено</p>' . $svForm];
+    return ['code' => 200, 'body' => '<html><body><form method="post" action="save.php"><table><tr><td>Лічильник № AB123456</td><td><input type="text" name="pok1"></td></tr></table><input type="submit" value="Зберегти показники"></form></body></html>']; }
+  return ['code' => 404, 'body' => 'nf'];
+};
+$r0 = $lbu->req('POST', '/api/lb/connect', ['bot' => 'svod', 'place' => 'sl1', 'acc' => '1110010010', 'pass' => '?', 'consent' => true]);
+$r = $lbu->req('POST', '/api/lb/connect', ['bot' => 'svod', 'place' => 'sl1', 'acc' => '1110010010', 'pass' => 'AB123456', 'consent' => true]);
+ok('svod: «номер лічильника» замість пароля — «?» → 422 lb_pass_serial; ls + pas → форма з 1 лічильником, номер не віддаємо назовні; подводка form3',
+  $r0->status === 422 && ($r0->body['error'] ?? '') === 'lb_pass_serial' && str_contains((string)($r0->body['human'] ?? ''), 'номер будь-якого')
+  && $r->status === 200 && ($r->body['conn']['chk']['meters'] ?? 0) === 1 && ($sv['post']['ls'] ?? '') === '1110010010' && ($sv['post']['pas'] ?? '') === 'AB123456'
+  && !str_contains(json_encode($r->body), 'AB123456') && LocalBot::pub('svod')['pk'] === 'serial', [$r0->body, $r->body, $sv['post']]);
+CabWeb::$http = null;
+$L = fn(string $a, string $k = 'water') => Providers::lookup($a)['kinds'][$k] ?? [];
+$vi = []; foreach (['Фастів, вул. Шевченка, 1' => 'fvk', 'Вишгород, вул. Шолуденка, 1' => 'vyvk', 'Славутич, Київський квартал, 1' => 'svod', 'Золочів, Львівська обл., вул. Шевченка, 1' => 'zvk',
+  'Подільськ, вул. Соборна, 1' => 'podv', 'Богодухів, вул. Шевченка, 1' => 'bgdv', 'Сахновщина, вул. Шевченка, 1' => 'sahv', 'Мерефа, вул. Дніпровська, 1' => 'mvk'] as $a => $want) { $x = $L($a); $vi[$a] = [$x['via'] ?? null, $x['robot'] ?? null]; }
+ok('довідник 106-ї: Фастів, Вишгород, Славутич, Золочів (Львівщина), Подільськ, Богодухів, Сахновщина, Мерефа — via свій бот, robot server; Переяслав — captcha',
+  $vi === ['Фастів, вул. Шевченка, 1' => ['fvk', 'server'], 'Вишгород, вул. Шолуденка, 1' => ['vyvk', 'server'], 'Славутич, Київський квартал, 1' => ['svod', 'server'], 'Золочів, Львівська обл., вул. Шевченка, 1' => ['zvk', 'server'],
+    'Подільськ, вул. Соборна, 1' => ['podv', 'server'], 'Богодухів, вул. Шевченка, 1' => ['bgdv', 'server'], 'Сахновщина, вул. Шевченка, 1' => ['sahv', 'server'], 'Мерефа, вул. Дніпровська, 1' => ['mvk', 'server']]
+  && ($L('Переяслав, вул. Шевченка, 1')['robot'] ?? '') === 'captcha', $vi);
+
 // 106-а: лендинг «Передати у фоні» — стрічка LP_AUTO (app.js) знає всіх ботів LocalBot + htm, vk; /api/config → auto — лише готові (e-mail — без пошти ні)
 preg_match('~var LP_AUTO = \[(.*?)\n  \];~s', (string)file_get_contents(__DIR__ . '/../web/src/app.js'), $lm);
 preg_match_all("~'(\w+)'(?:, 1)?\]~", $lm[1] ?? '', $li); $lpIds = array_unique($li[1] ?? []);

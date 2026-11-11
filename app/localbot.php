@@ -80,6 +80,35 @@ final class LocalBot {
     // Ірпінь: e-mail абонентського відділу irpenvodok.abonviddil@gmail.com (vodokanal-irpen.com.ua, «Подати показники лічильника»); з 20 до 25 числа
     'ivk' => ['t' => 'mail', 'kinds' => ['water'], 'org' => 'КП «Ірпіньводоканал»', 'site' => 'vodokanal-irpen.com.ua', 'to' => 'irpenvodok.abonviddil@gmail.com',
       'need' => ['acc', 'name', 'addr', 'phone'], 'win' => [20, 25]],
+    // 106-а (Chrome 11.11.2026). Київщина: та сама платформа «Особистий кабінет абонента», що й у Василькова (Yii: _csrf + LoginForm[email] + LoginForm[password],
+    // без капчі; реєстрація «за платежем» чи «за кодом активації»). Фастів — показання з 25 числа до останнього робочого дня (fastiv-rada.gov.ua);
+    // Вишгород — з 25 числа до передостаннього робочого дня (vyshhorodvodokanal.com.ua «Надати показники лічильників»).
+    'fvk' => ['t' => 'cab', 'kinds' => ['water'], 'org' => 'КП ФМР «Фастівводоканал»', 'site' => 'my.fastivvoda.com.ua',
+      'start' => 'https://my.fastivvoda.com.ua/user/login', 'host' => '~^my\.fastivvoda\.com\.ua$~i', 'need' => ['login', 'pass'], 'win' => [25, 28]],
+    'vyvk' => ['t' => 'cab', 'kinds' => ['water'], 'org' => 'Вишгородське МКП «Водоканал»', 'site' => 'my.vyshhorodvodokanal.com.ua',
+      'start' => 'https://my.vyshhorodvodokanal.com.ua/user/login', 'host' => '~^my\.vyshhorodvodokanal\.com\.ua$~i', 'need' => ['login', 'pass'], 'win' => [25, 27]],
+    // Славутич: «Особистий кабінет» vodaslav.com.ua/kab — звичайна форма POST auth.php без капчі й токенів: особовий рахунок (ls, 10 цифр; сайт складає його й з адреси
+    // «квартал + будинок + квартира + 0») і «один з номерів вашого лічильника» (pas) замість пароля. Номер лічильника зберігаємо як пароль (`pk: serial`).
+    'svod' => ['t' => 'form', 'kinds' => ['water'], 'org' => 'КП «Славутич-Водоканал»', 'site' => 'vodaslav.com.ua',
+      'start' => 'https://vodaslav.com.ua/kab/kabinet.html', 'host' => '~^(www\.)?vodaslav\.com\.ua$~i', 'need' => ['acc', 'pass'], 'pk' => 'serial',
+      'acc' => ['fields' => ['ls'], 'digits' => 10, 'hint' => '1110010010', 'pass' => 'pas']],
+    // Львівщина: МКП «Золочівводоканал» — «Персональний кабінет користувача» zlvoda.com.ua/rk (e-mail + пароль, POST login.php без капчі); показання — до кінця місяця,
+    // з 20 числа (zolochivvodokanal.wordpress.com)
+    'zvk' => ['t' => 'cab', 'kinds' => ['water'], 'org' => 'МКП «Золочівводоканал»', 'site' => 'zlvoda.com.ua',
+      'start' => 'https://zlvoda.com.ua/rk/login.php', 'host' => '~^(www\.)?zlvoda\.com\.ua$~i', 'need' => ['login', 'pass'], 'win' => [20, 31]],
+    // Платформа info-gkh.com.ua («Електронний кабінет споживача», <код>.info-gkh.com.ua/cabinet): POST /cabinet/login — cmd=login, account (особовий рахунок), password; без капчі.
+    // У наших областях — Подільськ, Богодухів, Сахновщина, Усатове (КП «Міжлиманське»).
+    'podv' => ['t' => 'cab', 'kinds' => ['water'], 'org' => 'КВЕП «Подільськводоканал»', 'site' => 'podilskvoda.info-gkh.com.ua',
+      'start' => 'https://podilskvoda.info-gkh.com.ua/cabinet/login', 'host' => '~^podilskvoda\.info-gkh\.com\.ua$~i', 'need' => ['login', 'pass'], 'lk' => 'acc'],
+    'bgdv' => ['t' => 'cab', 'kinds' => ['water'], 'org' => 'КП «Богодухіввода»', 'site' => 'bogodukhivvoda.info-gkh.com.ua',
+      'start' => 'https://bogodukhivvoda.info-gkh.com.ua/cabinet/login', 'host' => '~^bogodukhivvoda\.info-gkh\.com\.ua$~i', 'need' => ['login', 'pass'], 'lk' => 'acc'],
+    'sahv' => ['t' => 'cab', 'kinds' => ['water'], 'org' => 'Сахновщинське КВКП', 'site' => 'svodokanal.info-gkh.com.ua',
+      'start' => 'https://svodokanal.info-gkh.com.ua/cabinet/login', 'host' => '~^svodokanal\.info-gkh\.com\.ua$~i', 'need' => ['login', 'pass'], 'lk' => 'acc'],
+    'mizh' => ['t' => 'cab', 'kinds' => ['water'], 'org' => 'КП «Міжлиманське»', 'site' => 'kp-mizhlimanske.info-gkh.com.ua',
+      'start' => 'https://kp-mizhlimanske.info-gkh.com.ua/cabinet/login', 'host' => '~^kp-mizhlimanske\.info-gkh\.com\.ua$~i', 'need' => ['login', 'pass'], 'lk' => 'acc'],
+    // Харківщина: КП «Водоканал» Мереф’янської МР — показання з 20 по 27 число, зокрема на e-mail vodokanal_merefa@ukr.net (merefaotg.gov.ua «Про підприємство», 11.11.2026)
+    'mvk' => ['t' => 'mail', 'kinds' => ['water'], 'org' => 'КП «Водоканал» Мереф’янської МР', 'site' => 'merefaotg.gov.ua', 'to' => 'vodokanal_merefa@ukr.net',
+      'need' => ['acc', 'name', 'addr', 'phone'], 'win' => [20, 27]],
   ];
   const NEED = ['dist', 'acc', 'name', 'addr', 'phone', 'login', 'pass'];
   /** Адреса листа: одна на бота або за районом людини (`dist`). */
@@ -105,7 +134,7 @@ final class LocalBot {
     $b = self::get($id);
     return ['id' => $id, 't' => $b['t'], 'org' => $b['org'], 'site' => $b['site'] ?? null, 'kinds' => $b['kinds'], 'need' => $b['need'], 'hint' => $b['acc']['hint'] ?? null,
       'win' => $b['win'] ?? null, 'later' => !empty($b['later']), 'to' => is_string($b['to'] ?? null) ? $b['to'] : null, 'fmt' => $b['fmt'] ?? null, 'one' => !empty($b['one']),
-      'serial' => !empty($b['serial']), 'lk' => $b['lk'] ?? null, 'flow' => $b['flow'] ?? null, 'ready' => self::ready($id)] + (isset($b['dists']) ? ['dists' => array_map(fn($k, $v) => [$k, $v[0], $v[1]], array_keys($b['dists']), $b['dists'])] : []);
+      'serial' => !empty($b['serial']), 'lk' => $b['lk'] ?? null, 'pk' => $b['pk'] ?? null, 'flow' => $b['flow'] ?? null, 'ready' => self::ready($id)] + (isset($b['dists']) ? ['dists' => array_map(fn($k, $v) => [$k, $v[0], $v[1]], array_keys($b['dists']), $b['dists'])] : []);
   }
 
   // ---------- вікно подачі: поза ним «Відправити у фоні» ставить у чергу на відкриття (9:00 за Києвом) ----------
@@ -161,6 +190,7 @@ final class LocalBot {
       'login' => $ru ? 'Впишите логин (e-mail) от кабинета.' : 'Впишіть логін (e-mail) від кабінету.',
       'login_acc' => $ru ? 'Впишите лицевой счёт — он же логин кабинета.' : 'Впишіть особовий рахунок — він же логін кабінету.',
       'pass' => $ru ? 'Впишите пароль от кабинета.' : 'Впишіть пароль від кабінету.',
+      'pass_serial' => $ru ? 'Впишите номер любого вашего счётчика — он есть в квитанции.' : 'Впишіть номер будь-якого вашого лічильника — він є у квитанції.',
       'off' => $ru ? 'Сейчас этот способ не работает — отправьте сами (кнопки ниже).' : 'Зараз цей спосіб не працює — надішліть самі (кнопки нижче).',
       'conn' => $ru ? 'Сначала подключите автоотправку.' : 'Спершу підключіть автовідправку.',
       'items' => $ru ? 'Нечего отправлять: нет показаний.' : 'Нічого надсилати: немає показань.',
@@ -210,10 +240,10 @@ final class LocalBot {
         'addr' => mb_strlen($v) >= 5 && mb_strlen($v) <= 160,
         'phone' => (bool)preg_match('/^\+?[\d\s()\-]{9,18}$/', $v) && strlen(preg_replace('/\D/', '', $v)) >= 9,
         'login' => ($b['lk'] ?? '') === 'acc' ? (bool)preg_match('/^[\d\-\/ ]{3,32}$/', $v) : mb_strlen($v) >= 3 && mb_strlen($v) <= 120,
-        'pass' => ($v = (string)($in[$f] ?? '')) !== '' && strlen($v) <= 120,
+        'pass' => ($b['pk'] ?? '') === 'serial' ? (bool)preg_match('/^[\p{L}\d\-\/ ]{3,20}$/u', $v) : ($v = (string)($in[$f] ?? '')) !== '' && strlen($v) <= 120,
         default => false,
       };
-      if (!$ok) throw self::err($f === 'acc' && !empty($b['acc']['hint']) ? 'acc' : ($f === 'acc' ? 'acc0' : ($f === 'login' && ($b['lk'] ?? '') === 'acc' ? 'login_acc' : $f)), 422, ['hint' => $b['acc']['hint'] ?? '']);
+      if (!$ok) throw self::err($f === 'acc' && !empty($b['acc']['hint']) ? 'acc' : ($f === 'acc' ? 'acc0' : ($f === 'login' && ($b['lk'] ?? '') === 'acc' ? 'login_acc' : ($f === 'pass' && ($b['pk'] ?? '') === 'serial' ? 'pass_serial' : $f))), 422, ['hint' => $b['acc']['hint'] ?? '']);
       if ($f === 'acc' || $f === 'dist') $pub[$f] = $v; else $sec[$f] = $v;
     }
     return [$pub, $sec];
@@ -503,6 +533,7 @@ final class LbWalk {
     foreach ($x->query('//form') as $f) { if (!$f instanceof DOMElement) continue; $have = array_column(RelayForm::fields($x, $f), 'n'); if (!array_diff($names, $have)) { $form = $f; break; } }
     if (!$form) throw self::page('no_acc_form', $r['body']);
     $pairs = []; $vals = array_combine($names, $parts);
+    if (!empty($b['acc']['pass'])) $vals[(string)$b['acc']['pass']] = (string)($c['pass'] ?? '');   // Славутич: «номер лічильника» замість пароля (106-а)
     foreach (RelayForm::fields($x, $form) as $o) {
       if ($o['n'] === '') continue;
       if (isset($vals[$o['n']])) { $pairs[] = [$o['n'], $vals[$o['n']]]; continue; }
@@ -639,11 +670,16 @@ final class LbWalk {
     if (!$form) throw self::page('no_login', $r['body']);
     // поле капчі у формі входу (Drupal captcha_response, «символи з малюнка») — стоп, не обходимо
     foreach (RelayForm::fields($x, $form) as $o) if (preg_match('/captcha|xcap|kcaptcha/i', $o['n'])) throw new HttpError(409, 'lb_captcha', ['human' => self::hum('captcha')]);
-    $pairs = []; $userSet = false;
-    foreach (RelayForm::fields($x, $form) as $o) {
+    $pairs = []; $fs = RelayForm::fields($x, $form);
+    // поле логіна (106-а): info-gkh.com.ua має першим текстове поле cmd=login — беремо за назвою (login, email, account…), далі перше порожнє текстове, далі перше текстове
+    $txt = array_values(array_filter($fs, fn($o) => $o['n'] !== '' && in_array($o['type'], ['text', 'email', 'tel'], true)));
+    $byName = array_values(array_filter($txt, fn($o) => (bool)preg_match('/login|user|mail|account|acc|ident|phone|^ls$|rah|osob|LoginForm/i', $o['n']) && (string)$o['v'] === ''));
+    $empty = array_values(array_filter($txt, fn($o) => (string)$o['v'] === ''));
+    $user = ($byName[0] ?? $empty[0] ?? $txt[0] ?? ['n' => ''])['n'];
+    foreach ($fs as $o) {
       if ($o['n'] === '') continue; $t = $o['type'];
       if ($t === 'password') { $pairs[] = [$o['n'], (string)($c['pass'] ?? '')]; continue; }
-      if (!$userSet && in_array($t, ['text', 'email', 'tel'], true)) { $pairs[] = [$o['n'], (string)($c['login'] ?? '')]; $userSet = true; continue; }
+      if ($o['n'] === $user) { $pairs[] = [$o['n'], (string)($c['login'] ?? '')]; continue; }
       if (str_starts_with($t, 'submit')) { if ($t === 'submit:submit') $pairs[] = [$o['n'], $o['v']]; continue; }
       if (in_array($t, ['checkbox', 'radio'], true)) { if (!empty($o['checked'])) $pairs[] = [$o['n'], $o['v'] !== '' ? $o['v'] : 'on']; continue; }
       $pairs[] = [$o['n'], $o['v']];

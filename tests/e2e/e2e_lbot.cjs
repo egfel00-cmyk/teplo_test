@@ -121,6 +121,13 @@ const U = 'http://127.0.0.1:8013/', M = 'http://127.0.0.1:8096', DATA = process.
   await p.reload(); await wait(2500); await where();
   ok('«Сайт прийняв показання», запис позначено переданим', /прийняв|принял/.test(await txt('[data-key=lb-done]')) && ((await st()).water.find(w => w.id === 'w20261112').sent || {}).vk, await txt('[data-key=lb]'));
   if (process.env.SHOT) await (await p.$('[data-key=where-water]')).screenshot({ path: '/tmp/lb_brovk.png' });
+  // Славутич (106-а): замість пароля — номер будь-якого лічильника (бот svod, pk serial); номер з налаштувань водоміра підставлено, поле — звичайне текстове
+  await p.evaluate(() => { const s = JSON.parse(localStorage.getItem('teplo.v1')); s.places[0].address = 'м. Славутич, Київський квартал, 10, кв. 5'; s.updatedAt = Date.now(); localStorage.setItem('teplo.v1', JSON.stringify(s)); });
+  await p.reload(); await wait(1500); await where();
+  ok('вода Славутича: «…потрібні особовий рахунок і номер будь-якого вашого лічильника з квитанції»', /Славутич-Водоканал/.test(await txt('[data-key=lb-lead]')) && /номер будь-якого|номер любого/.test(await txt('[data-key=lb-lead]')), await txt('[data-key=lb-lead]'));
+  await p.click('[data-key=lb-open]'); await wait(300);
+  ok('форма Славутича: «Номер лічильника (будь-якого, з квитанції)», текстове поле, підставлено номер водоміра з налаштувань (будь-який — гарячий 7654321 перший за порядком видів)', /Номер лічильника|Номер счётчика/.test(await txt('label[for=lb-pass]'))
+    && await p.getAttribute('#lb-pass', 'type') === 'text' && ['1234567', '7654321'].includes(await p.inputValue('#lb-pass')), [await txt('label[for=lb-pass]'), await p.inputValue('#lb-pass').catch(() => '')]);
   ok('без помилок JS', !errs.length, errs);
   await b.close(); console.log('\nИтог: ' + pass + ' OK, ' + fail + ' FAIL'); process.exit(fail ? 1 : 0);
 })();

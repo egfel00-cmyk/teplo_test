@@ -3527,6 +3527,11 @@
     ['cold', 'Вишнівськводоканал', 'Вишневе', 'Вишнёвое', 'umg'], ['cold', 'Міськводоканал', 'Березань', 'Березань', 'brz'],
     ['cold', 'Дрогобичводоканал', 'Дрогобич', 'Дрогобыч', 'dvk'], ['cold', 'Трускавецький водоканал', 'Трускавець', 'Трускавец', 'tvk'],
     ['cold', 'ПЖКГ Моршина', 'Моршин', 'Моршин', 'abinf'],
+    ['cold', 'Фастівводоканал', 'Фастів', 'Фастов', 'fvk'], ['cold', 'Вишгородський водоканал', 'Вишгород', 'Вышгород', 'vyvk'],
+    ['cold', 'Славутич-Водоканал', 'Славутич', 'Славутич', 'svod'], ['cold', 'Золочівводоканал', 'Золочів', 'Золочев', 'zvk'],
+    ['cold', 'Подільськводоканал', 'Подільськ', 'Подольск', 'podv'], ['cold', 'Богодухіввода', 'Богодухів', 'Богодухов', 'bgdv'],
+    ['cold', 'Сахновщинське КВКП', 'Сахновщина', 'Сахновщина', 'sahv'], ['cold', 'КП «Міжлиманське»', 'Усатове', 'Усатово', 'mizh'],
+    ['cold', 'Водоканал Мерефи', 'Мерефа', 'Мерефа', 'mvk', 1],
     ['elec', 'Львівобленерго', 'Львівщина', 'Львовщина', 'loe', 1], ['cold', 'Львівводоканал', 'Львів', 'Львов', 'lvk', 1],
     ['cold', 'Чорноморськводоканал', 'Чорноморськ', 'Черноморск', 'cvk', 1], ['cold', 'Стрийводоканал', 'Стрий', 'Стрый', 'svk', 1],
     ['cold', 'Ірпіньводоканал', 'Ірпінь', 'Ирпень', 'ivk', 1],
@@ -5490,17 +5495,20 @@
     var b = st.bot, c = st.conn, busy = !!LB.busy, err = LB.err ? '<div class="banner bad" role="alert" data-key="lb-err">' + ico('alert', 22) + '<div><p>' + esc(LB.err.human) + '</p></div></div>' : '';
     var win = b.win ? '<p class="small muted" data-key="lb-win">' + esc(t('lb_win', { a: b.win[0], b: b.win[1] })) + '</p>' : '';
     if (!c) {
-      var lead = '<p data-key="lb-lead">' + esc(t('lb_lead_' + b.t + (b.flow === 'aspx' ? '2' : b.t === 'mail' && b.need.indexOf('dist') >= 0 ? '2' : b.t === 'mail' && b.need.length === 1 ? '1' : b.t === 'mail' && b.need.join() === 'acc,addr' ? '3' : b.t === 'cab' && b.lk === 'acc' ? '1' : ''), { org: org })) + '</p>';
+      var lead = '<p data-key="lb-lead">' + esc(t('lb_lead_' + b.t + (b.flow === 'aspx' ? '2' : b.t === 'mail' && b.need.indexOf('dist') >= 0 ? '2' : b.t === 'mail' && b.need.length === 1 ? '1' : b.t === 'mail' && b.need.join() === 'acc,addr' ? '3' : b.t === 'cab' && b.lk === 'acc' ? '1' : b.pk === 'serial' ? '3' : ''), { org: org })) + '</p>';
       if (!LB.open[k]) return '<div class="lb" data-key="lb">' + lead + err + '<div class="dest-ch"><button class="btn sec" data-act="lb-open" data-k="' + esc(k) + '" data-key="lb-open">' + ico('plus', 18) + '<span>' + esc(t('lb_conn_btn')) + '</span></button></div></div>';
       // адреса квартири вже є — підставляємо (поштові боти й форма за адресою, 105-а); людина може виправити «як у квитанції»
       var pa = String((place() || {}).address || '').trim(), dr = LB.draft[k] || Object.assign(b.need.indexOf('addr') >= 0 && pa ? { addr: pa } : {}, pre || {});
+      // Славутич (106-а): замість пароля — номер будь-якого лічильника; є в налаштуваннях водоміра — підставляємо
+      if (b.pk === 'serial' && !dr.pass) { var ms = wmeters().filter(function (m) { return m.serial; })[0]; if (ms) dr = Object.assign({}, dr, { pass: ms.serial }); }
       var fld = function (f) {
         if (f === 'dist') return '<div class="field"><label for="lb-dist">' + esc(t('lb_f_dist')) + '</label><div class="ctl"><select id="lb-dist" name="lb-dist" data-key="lb-f-dist"><option value="">' + esc(t('lb_f_dist0')) + '</option>' +
           (b.dists || []).map(function (o) { return '<option value="' + esc(o[0]) + '"' + (dr.dist === o[0] ? ' selected' : '') + '>' + esc(S.lang === 'ru' ? o[2] : o[1]) + '</option>'; }).join('') + '</select></div></div>';
         var lka = f === 'login' && b.lk === 'acc';   // логін кабінету — особовий рахунок (Березань)
-        var type = f === 'pass' ? 'password' : f === 'phone' ? 'tel' : f === 'login' && !lka ? 'email' : 'text', ac = { name: 'name', addr: 'street-address', phone: 'tel', login: 'username', pass: 'current-password' }[f] || 'off';
+        var pser = f === 'pass' && b.pk === 'serial';   // «пароль» — номер лічильника (Славутич)
+        var type = f === 'pass' && !pser ? 'password' : f === 'phone' ? 'tel' : f === 'login' && !lka ? 'email' : 'text', ac = pser ? 'off' : { name: 'name', addr: 'street-address', phone: 'tel', login: 'username', pass: 'current-password' }[f] || 'off';
         var ax = f === 'addr' && b.flow === 'aspx';   // сайт шукає рахунок за адресою зі своїх списків
-        return '<div class="field"><label for="lb-' + f + '">' + esc(t(f === 'acc' && b.fmt === 'code' ? 'lb_f_code' : lka ? 'lb_f_login_acc' : ax ? 'lb_f_addr2' : 'lb_f_' + f)) + '</label><div class="ctl"><input id="lb-' + f + '" type="' + type + '" name="lb-' + f + '" autocomplete="' + ac + '"' + (f === 'acc' || lka ? ' class="num" inputmode="numeric"' : '') +
+        return '<div class="field"><label for="lb-' + f + '">' + esc(t(f === 'acc' && b.fmt === 'code' ? 'lb_f_code' : lka ? 'lb_f_login_acc' : ax ? 'lb_f_addr2' : pser ? 'lb_f_mser' : 'lb_f_' + f)) + '</label><div class="ctl"><input id="lb-' + f + '" type="' + type + '" name="lb-' + f + '" autocomplete="' + ac + '"' + (f === 'acc' || lka ? ' class="num" inputmode="numeric"' : '') +
           (f === 'acc' && b.hint ? ' placeholder="' + esc(b.hint) + '"' : '') + (dr[f] ? ' value="' + esc(dr[f]) + '"' : '') + ' data-key="lb-f-' + f + '"></div>' + (f === 'acc' && b.hint ? '<p class="small muted">' + esc(t('lb_hint', { h: b.hint })) + '</p>' : '') + (ax ? '<p class="small muted" data-key="lb-addr-hint">' + esc(t('lb_addr_hint')) + '</p>' : '') + '</div>';
       };
       return '<form class="lb lb-form" data-act="lb-conn" data-bot="' + esc(bot) + '" data-pl="' + esc(pl) + '" data-key="lb-form">' + lead + b.need.map(fld).join('') + win +

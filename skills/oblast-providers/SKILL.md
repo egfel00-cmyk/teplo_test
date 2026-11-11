@@ -384,6 +384,16 @@ my.vodokanal-irpen) — капча; Drupal abonents.* — у Шептицько�
 Роль поля без підпису — з заголовка стовпця таблиці (`around(..., true)`); `<input type=submit>` — `LbWalk::submit` (за написом «Зберегти/Передати», не «Пошук»), LinkButton — через `__EVENTTARGET`.
 Стенд `tests/lb-mock/aspx.php` (`/aspx/`, `lb_base_brovk`). Ізмаїл і Біляївка з debt.crewingcrm.com переїхали на communal.in.ua (JS) — не наш шлях.
 Почта сервиса (`Mail::on()`) — у владельца не настроена: пока её нет, `mail`-боты в приложении не показываются.
+**106-я — платформы и приёмы**:
+- **info-gkh.com.ua** («Електронний кабінет споживача», `<код>.info-gkh.com.ua/cabinet`): POST /cabinet/login — `cmd=login` (текстовое поле, спрятано CSS), `account`, `password`, без капчи → `t: cab, lk: acc`.
+  У нас: Подільськ `podv`, Богодухів `bgdv`, Сахновщина `sahv`, Усатове (КП «Міжлиманське») `mizh`. Найти другие: Google `site:info-gkh.com.ua кабінет`. Поле логина `LbWalk::login` выбирает по имени
+  (login/mail/account/ident…, пустое), потом первое пустое текстовое — `cmd` не трогаем.
+- **Платформа Yii «Особистий кабінет абонента»** (`my.<сайт>/user/login`, `LoginForm[email]` + пароль, «Реєстрація за платежем / кодом активації»): Васильків `vkkp`, Фастів `fvk`, Вишгород `vyvk`.
+- **Пароль = номер лічильника** (`pk: serial`, Славутич `svod`: vodaslav.com.ua/kab, POST auth.php `ls` 10 цифр + `pas`): `t: form`, `acc.pass` — имя поля; в приложении поле «Номер лічильника» (текст, подставляется serial водомера).
+- E-mail: Мерефа `mvk` (vodokanal_merefa@ukr.net, 20–27). Кабинет e-mail+пароль: Золочів (Львівщина) `zvk` (zlvoda.com.ua/rk — сайт в iframe, кабинет `rk/login.php`).
+- Не наш путь: Переяслав — «Інтерсофт» с капчей; Сокаль — антиспам-вопрос; Новояворівськ, Південне — gkh.in.ua; Броди, Жовква, Яворів — abon.com.ua; Роздільна — communal.in.ua;
+  Хмельницьктеплокомуненерго (teplo.km.ua) — Cloudflare 403 нашему серверу (`robot: relay`); pa.shkpvkg.com.ua (Шепетівка) — неполная цепочка SSL (проба `down`).
+- Новый бот → строка в `LP_AUTO` (лендинг) и тест `server.php` (фейк `CabWeb::$http`), форма в приложении — e2e_lbot.
 
 ## Правки владельца → репозиторий (в начале сессии)
 1. `/api/health → prov.edits.edits` > 0 → открыть /admin (Chrome владельца) → `GET /api/admin/prov/edits` (JSON правок и журнал).
