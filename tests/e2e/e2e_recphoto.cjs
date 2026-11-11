@@ -33,7 +33,7 @@ if (!fs.existsSync(NOV)) { const j = path.join(LAB, 'rp.local.json'); fs.writeFi
     const g1 = await geo();
     ok(vw + ': газ — вікно роликів на превʼю рівно по центру (±2 px), не ширше картки', g1 && g1.fx && Math.abs(g1.dx) <= 2 && Math.abs(g1.dy) <= 2 && g1.w <= g1.bw, g1);
     const o1 = await order('erec-used', true, 'erec-values'), u1 = (await p.textContent('[data-key=erec-used]').catch(() => '')).replace(/\s+/g, ' ');
-    ok(vw + ': газ — «Набігло за …» першим (м³, ≈ грн, розрахунок), під ним фото, далі показання; без табло; «← Назад» на сторінку газу', o1.used && o1.ok && !o1.drum && /Набігло за/.test(u1) && /м³/.test(u1) && /≈ [\d  ]+,\d\d\s*грн/.test(u1) && / × /.test(u1)
+    ok(vw + ': газ — «Набігло з передачі …» (112-а; було «за місяць») першим (м³, ≈ грн, розрахунок), під ним фото, далі показання; без табло; «← Назад» на сторінку газу', o1.used && o1.ok && !o1.drum && /Набігло (за|з передачі)/.test(u1) && /м³/.test(u1) && /≈ [\d  ]+,\d\d\s*грн/.test(u1) && / × /.test(u1)
       && (await p.getAttribute('[data-key=rec-back]', 'href')) === '#gas', [o1, u1]);
     await p.screenshot({ path: '/tmp/shots/rec_gas_' + vw + '.png', fullPage: vw === 390 });
     await p.goto(U + '#wrec-w20261015'); await p.waitForTimeout(1200);

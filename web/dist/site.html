@@ -11417,7 +11417,8 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
     var r = RD().filter(function (x) { return x.id === id; })[0];
     if (!r) { var hb = RDB().filter(function (x) { return x.id === id; })[0]; if (hb) return hbillView(hb); }
     if (!r) return { screen: 'S09', route: 'history', html: '<h1>' + esc(t('hi_title')) + '</h1><p class="muted">' + esc(t('rec_gone')) + '</p><a class="btn" href="#history">' + esc(t('back')) + '</a>' };
-    var h = r.htm || {}, iv = interval(r), cls = { accepted: 'ok', rejected: 'bad', handed: 'info' }[r.status] || 'neutral';
+    // від останнього «передано/прийнято» (власник 11.11: набігло — з минулої оплати), проміжні — рядком; «для себе» — від попереднього
+    var h = r.htm || {}, iv = interval(r, true), cls = { accepted: 'ok', rejected: 'bad', handed: 'info' }[r.status] || 'neutral';
     var head = recBack() + '<h1>' + esc(fmtDate(h.date, true)) + '</h1>' +
       '<p><span class="pill ' + cls + '">' + esc(t('status_' + r.status)) + '</span> <span class="small muted">' + esc(r.source === 'photo' ? t('rec_src_photo') : t('rec_src_manual')) + (r.editedAt ? ' · ' + t('rec_edited') : '') + '</span></p>';
     if (edit) {
@@ -11437,9 +11438,9 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
     var wx = wxFor(r);
     // 1) скільки набігло з минулого показання і скільки коштувало (власник 10.11 — першим блоком); 2) фото; 3) поля показань списком (без ЖК-табло)
     var used = iv ? (iv.dE < 0 ? '<section class="panel ru ru-heat" data-key="rec-used"><h2 class="ru-t">' + esc(t('rec_used_title')) + '</h2><p class="ru-per">' + esc(intervalText(iv)) + '</p>' + vals + '</section>' :
-      usedBox({ kind: 'heat', key: 'rec-used', title: t('rec_used_title'), per: t('ru_per', { a: fmtDate(iv.from, String(iv.from).slice(0, 4) !== String(h.date).slice(0, 4)), b: fmtDate(h.date, true), d: iv.days }),
+      usedBox({ kind: 'heat', key: 'rec-used', title: iv.skip ? t('ru_title_paid', { d: fmtDate(iv.from) }) : t('rec_used_title'), per: t('ru_per', { a: fmtDate(iv.from, String(iv.from).slice(0, 4) !== String(h.date).slice(0, 4)), b: fmtDate(h.date, true), d: iv.days }),
         qs: [{ v: '+' + fmtN(iv.dE, 3), u: 'Гкал' }], money: iv.cost, vals: vals,
-        lines: [t('ru_h_calc', { q: fmtN(iv.dE, 3), p: money(tariff()), s: money(iv.parts.heat) }), [iv.parts.mzk > 0.004 ? t('ru_h_mzk', { s: money(iv.parts.mzk) }) : '', iv.parts.abon > 0.004 ? t('ru_h_abon', { s: money(iv.parts.abon) }) : ''].filter(Boolean).reduce(function (a0, x0, i0, all) { return i0 === all.length - 1 ? t('ru_h_plus', { x: all.join(t('ru_and')) }) : a0; }, '')],
+        lines: [t('ru_h_calc', { q: fmtN(iv.dE, 3), p: money(tariff()), s: money(iv.parts.heat) }), [iv.parts.mzk > 0.004 ? t('ru_h_mzk', { s: money(iv.parts.mzk) }) : '', iv.parts.abon > 0.004 ? t('ru_h_abon', { s: money(iv.parts.abon) }) : ''].filter(Boolean).reduce(function (a0, x0, i0, all) { return i0 === all.length - 1 ? t('ru_h_plus', { x: all.join(t('ru_and')) }) : a0; }, ''), iv.skip ? t('paid_skip', { n: iv.skip }) : ''],
         proj: iv.days >= 25 && iv.days <= 37 ? '' : t('rec_per_month', { de: fmtN(iv.dE / iv.days * MONTH_DAYS, 3), cost: money(costOf(iv.dE / iv.days * MONTH_DAYS, MONTH_DAYS).total) }) })) : usedOnly('heat', 'rec-used', vals);
     var st = (r.status === 'handed' || r.status === 'rejected' || r.status === 'accepted') ? '<a class="btn sec" href="#status" data-act="focus" data-id="' + r.id + '">' + esc(t('rec_status')) + '</a>' : '';
     var wxp = wx ? '<div class="panel wx-panel" data-key="rec-weather"><h2>' + ico('thermo', 20) + ' ' + esc(t('wx_title')) + '</h2><div class="wx-tiles">' +
