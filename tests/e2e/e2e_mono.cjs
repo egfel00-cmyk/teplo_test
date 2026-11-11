@@ -75,8 +75,16 @@ const TOK = 'uMonoSyntheticToken_0123456789abcdefABCDEF-xyz', BAD = 'uRevokedSyn
   await p.waitForSelector('[data-key=mono-list]', { timeout: 15000 });
   const rows2 = await p.$$eval('.mono-g', es => es.map(e => ({ t: e.textContent, on: !!e.querySelector('input[data-mf=on]:checked') })));
   ok('повторно: вписане — «уже вписано», не позначено; Нафтогаз — позначено', rows2.filter(r => /уже вписано/.test(r.t)).length === 5 && rows2.filter(r => r.on).length === 1 && rows2.find(r => r.on && /987654321/.test(r.t)), rows2.map(r => [r.on, r.t.slice(0, 50)]));
+  // 116-а (власник 11.11): «Заповнити з monobank» — і в «Налаштуваннях показань» кожного лічильника; «Закрити» — назад до лічильника
+  const setLink = async (r, key) => { await go(r); await p.evaluate(() => document.querySelectorAll('details.mbox-set').forEach(d => { d.open = true; })); return p.$$('[data-key=' + key + ']'); };
+  const sl = { heat: (await setLink('heat', 'mono-open-heat-set')).length, cold: (await setLink('water-cold', 'mono-open-cold-set')).length, hot: (await setLink('water-hot', 'mono-open-hot-set')).length,
+    elec: (await setLink('elec', 'mono-open-elec-set')).length, gas: (await setLink('gas', 'mono-open-gas-set')).length };
+  ok('«Налаштування показань»: «Заповнити з monobank» у тепла, холодної, гарячої, світла й газу', Object.values(sl).every(n => n === 1), sl);
+  await setLink('heat', 'mono-open-heat-set'); await click('[data-key=mono-open-heat-set]', 400);
+  const atMono = (await hash()) === '#mono'; await click('[data-key=wiz-close]', 400);
+  ok('з налаштувань тепла → #mono → «Закрити» → знову тепло', atMono && (await hash()) === '#heat', await hash());
   // рос. мова — за мовою браузера
-  const pr = await (await require('./pvopen.cjs').ctx(b, { viewport: { width: 360, height: 800 }, locale: 'ru-RU' })).newPage();
+  const pr =await (await require('./pvopen.cjs').ctx(b, { viewport: { width: 360, height: 800 }, locale: 'ru-RU' })).newPage();
   await pr.goto('http://127.0.0.1:8013/'); await pr.evaluate(s => localStorage.setItem('teplo.v1', JSON.stringify(Object.assign(s, { lang: 'ru' }))), s0); await pr.reload(); await pr.goto('http://127.0.0.1:8013/#mono'); await pr.waitForTimeout(400);
   ok('ru: «Счета из monobank», «Найти счета»', /Счета из monobank/.test(await pr.textContent('h1')) && /Найти счета/.test(await pr.textContent('[data-key=mono-go]')));
   ok('без JS-помилок', errs.length === 0, errs);

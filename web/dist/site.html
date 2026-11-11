@@ -8616,8 +8616,9 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
       return mbox({ key: 'wmeter-' + m.id, id: m.id, kind: kind, icon: 'drop', cls: kind === 'hot' ? 'c-hot' : 'c-cold', name: ms.length > 1 ? wname(m) : title,
         display: wdrum(r ? r.vals[m.id] : null, kind, 'hero'), cap: cap, copy: r && r.vals && r.vals[m.id] !== undefined && r.vals[m.id] !== '' ? Wt.whole(r.vals[m.id]) : '', body: sc && sc.note ? '<p class="small muted mb-newer">' + esc(sc.note) + '</p>' : '',
         meta: [ver, m.vkId ? esc(t('mb_vkid', { v: m.vkId })) : ''].filter(Boolean),
-        // «Налаштування показань» — акордеон: рахунок, №, ціна (владелец 05.11 21:35–21:40: «верни аккордеон… переназови»)
-        set: wmeterFields(m, i0 === 0) + (i0 === 0 ? priceBlock(kind) : '') + gapSetLink(m.id) , setTitle: t('mb_set_read') });
+        // «Налаштування показань» — акордеон: рахунок, №, ціна (владелец 05.11 21:35–21:40: «верни аккордеон… переназови»);
+        // «Заповнити з monobank» — у налаштуваннях показань кожного лічильника (116-а, власник 11.11)
+        set: wmeterFields(m, i0 === 0) + (i0 === 0 ? monoLink(kind + '-set') + priceBlock(kind) : '') + gapSetLink(m.id) , setTitle: t('mb_set_read') });
     }).join('');
     // «Розпізнати з фото» — лише на введенні показань (владелец 07.11); тут на її місці — «Куди передати» в рамці
     var act = '<button class="btn big block" data-act="wnew" data-kind="' + kind + '" data-key="water-add">' + ico('plus', 22) + '<span>' + esc(t('wn_title')) + '</span></button>';
@@ -9389,7 +9390,7 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
       return mbox({ key: 'emeter-' + m.id, id: m.id, kind: k, icon: SK[k].icon, cls: SK[k].cls, name: ms.length > 1 ? ename(m) : t(KINDS[k].t), sub: [ezonesTxt(m)],
         display: edisplay(m, r, 'hero'), cap: cap, copy: r && r.z && SK[k].mod.zones(m) <= 1 && SK[k].mod.whole(r.z.all) !== null ? SK[k].mod.whole(r.z.all) : '', body: sc.note ? '<p class="small muted mb-newer">' + esc(sc.note) + '</p>' : '',
         meta: [verWarn(m.verifiedUntil)].filter(Boolean),
-        set: smeterFields(k, m) + (i === 0 ? priceBlock(k) + sheatRow(k) : '') , setTitle: t('mb_set_read') });
+        set: smeterFields(k, m) + monoLink(k + '-set') + (i === 0 ? priceBlock(k) + sheatRow(k) : '') , setTitle: t('mb_set_read') });
     }).join('');
     if (k === 'elec') left += gpvBox(p, 'elec');
     var w = SK[k].mod.win(today()), cur = w.open ? ms.map(function (m) { return einWin(m.id, w); }) : null;
@@ -10911,7 +10912,7 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
       body: (newer ? '<p class="small muted mb-newer">' + esc(t(newer.own ? 'mb_newer_own' : 'mb_newer_heat', { d: fmtDate(newer.htm.date, true), s: t('status_' + newer.status).toLowerCase() })) + '</p>' : '') +
         (bs ? '' : '<p class="small muted">' + esc(t('h_last_none_sub')) + '</p><p><a class="btn sec" href="#baseline" data-key="home-add-base">' + esc(t('h_add_base')) + '</a></p>'),
       meta: [verWarn(S.meter && S.meter.verifiedUntil)].filter(Boolean),
-      set: heatMeterFields(m) + priceBlock('heat') + gapSetLink('heat') , setTitle: t('mb_set_read') });
+      set: heatMeterFields(m) + monoLink('heat-set') + priceBlock('heat') + gapSetLink('heat') , setTitle: t('mb_set_read') });
     var act = '', right = '';
     var n = steps().length;
     if (S.draft && (Object.keys(S.draft.values || {}).length || S.draft.step > 0)) {
