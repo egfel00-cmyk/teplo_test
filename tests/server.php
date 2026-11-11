@@ -2389,5 +2389,10 @@ ok('лендинг: LP_AUTO = усі LocalBot::BOTS + htm, vk; config.auto — h
   && is_array($cfgAuto) && in_array('htm', $cfgAuto, true) && in_array('brovk', $cfgAuto, true) && !in_array('loe', $cfgAuto, true) && !in_array('mtve', $cfgAuto, true),
   [array_values($lpIds), $cfgAuto]);
 
+// 114-а: «Рахунки з monobank» — браузер ходить у api.monobank.ua напряму (токен і виписка — не через наш сервер); CSP сторінки пускає лише його
+$ix = file_get_contents(dirname(__DIR__) . '/index.php');
+ok('CSP сторінки: connect-src — self і лише https://api.monobank.ua', preg_match_all("~connect-src ([^;]+);~", $ix, $cm) && in_array("'self' https://api.monobank.ua", $cm[1], true)
+  && !array_filter($cm[1], fn($x) => trim(str_replace(["'self'", 'https://api.monobank.ua'], '', $x)) !== ''), $cm[1] ?? null);
+
 echo "\nИтог: $pass OK, $fail FAIL\n";
 exit($fail ? 1 : 0);

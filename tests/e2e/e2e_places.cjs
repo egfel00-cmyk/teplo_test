@@ -35,10 +35,10 @@ let pass = 0, fail = 0; const ok = (n, c, i) => { console.log((c ? '  OK  ' : ' 
   ok('выбор: світло и газ — можно (этап 3), «скоро» больше нет', (await p.$$('.am-soon')).length === 0 && !!(await p.$('[data-key=am-elec][data-act=am-pick]')) && !!(await p.$('[data-key=am-gas][data-act=am-pick]')));
   ok('на выборе — компактная шапка «Квартира: Батьків»', (await p.textContent('[data-key=place-bar]')).includes('Батьків'));
   await p.click('[data-key=am-cold]'); await p.waitForTimeout(300);
-  ok('форма водомера: рахунку ще немає — поля рахунку', !!(await p.$('#wa-form #w-acc')));
+  ok('форма водомера: рахунку немає (114-а — просимо перед передачею), № і повірка згорнуто', !(await p.$('#wa-form #w-acc')) && !!(await p.$('details.wa-more:not([open]) #wa-serial')));
   await p.fill('#wa-val', '215,5x'); await p.click('[data-key=wa-save]'); await p.waitForTimeout(200);
   ok('кривые цифры — ошибка, не сохраняем', (await p.textContent('#wa-err')).length > 5 && (await st()).places.find(x => x.id === p2.id).water.meters.length === 0);
-  await p.fill('#wa-val', '215,5'); await p.fill('#wa-serial', '1100220'); await p.click('[data-key=wa-save]'); await p.waitForTimeout(400);
+  await p.fill('#wa-val', '215,5'); await p.click('[data-key=wa-more] summary'); await p.fill('#wa-serial', '1100220'); await p.click('[data-key=wa-save]'); await p.waitForTimeout(400);
   s = await st(); let q = s.places.find(x => x.id === p2.id), cm = q.water.meters[0];
   ok('водомір додано + стартові показання 215.5', cm && cm.kind === 'cold' && cm.serial === '1100220' && s.water.some(r => r.place === p2.id && r.base && r.vals[cm.id] === '215.5'), { cm, w: s.water.filter(r => r.place === p2.id) });
   ok('назад — на экран квартиры', (await p.evaluate(() => location.hash)) === '#place-' + p2.id);

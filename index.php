@@ -126,7 +126,7 @@ if ($path === '/' || $path === '/index.php') {
   // CSRF-cookie — уже со страницей (08.11): иначе первые запросы приложения (баннер cookie → согласие, журнал, /visit) параллельно просили её у
   // сервера, каждый ответ выдавал свою — и заголовок X-CSRF расходился с cookie (403 csrf у 207 из 255 посетителей за 3 дня)
   if (empty($_COOKIE['ts_csrf'])) setcookie('ts_csrf', bin2hex(random_bytes(16)), ['expires' => time() + 86400 * 365, 'path' => ($base ?: '') . '/', 'secure' => $scheme === 'https', 'httponly' => false, 'samesite' => 'Lax']);
-  header("Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' https://telegram.org; frame-src https://oauth.telegram.org; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: blob: https://t.me https://telegram.org; connect-src 'self'; base-uri 'none'; form-action 'self'");
+  header("Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' https://telegram.org; frame-src https://oauth.telegram.org; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: blob: https://t.me https://telegram.org; connect-src 'self' https://api.monobank.ua; base-uri 'none'; form-action 'self'");
   echo $html;
   exit;
 }

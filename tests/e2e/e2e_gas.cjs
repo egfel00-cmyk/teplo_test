@@ -16,10 +16,10 @@ let pass = 0, fail = 0; const ok = (n, c, i) => { console.log((c ? '  OK  ' : ' 
   let s;
   await click('[data-key=card-place-set]'); await click('[data-key=pv-add-meter]'); await click('[data-key=am-gas]');
   ok('форма газу: без вибору зон, одне поле м³', (await hash()) === '#gadd' && !(await p.$('input[name=ea-z]')) && (await p.$$('[data-ea]')).length === 1);
-  ok('форма газу: рахунок Газмереж, Нафтогазу, EIC', !!(await p.$('#ea-grm')) && !!(await p.$('#ea-eic')) && /Нафтогазу/.test(await p.textContent('label[for=ea-acc]')));
-  await p.fill('#ea-v-all', '1180,5'); await p.fill('#ea-acc', '123456789'); await click('[data-key=ea-save]', 400);
+  ok('форма газу: рахунків немає (114-а — їх просимо перед передачею), «№ лічильника, котел» згорнуто', !(await p.$('#ea-grm')) && !(await p.$('#ea-acc')) && !(await p.$('#ea-eic')) && !!(await p.$('details.ea-more:not([open])')));
+  await p.fill('#ea-v-all', '1180,5'); await click('[data-key=ea-save]', 400);
   s = await st(); const m = s.places[0].meters.find(x => x.kind === 'gas');
-  ok('лічильник газу + стартові 1180.5', m && m.account === '123456789' && s.mrecs.some(r => r.base && r.meter === m.id && r.z.all === '1180.5'), { m, r: s.mrecs });
+  ok('лічильник газу без рахунків + стартові 1180.5', m && !m.account && !m.grm && s.mrecs.some(r => r.base && r.meter === m.id && r.z.all === '1180.5'), { m, r: s.mrecs });
   ok('після — налаштування квартири', (await hash()) === '#place-main');
   await go('gas');
   ok('сторінка газу з барабаном', !!(await p.$('[data-key=emeter-' + m.id + '] .gdrum')));
@@ -34,6 +34,10 @@ let pass = 0, fail = 0; const ok = (n, c, i) => { console.log((c ? '  OK  ' : ' 
   await click('[data-key=en-save]', 400);
   s = await st(); const r1 = s.mrecs.find(r => !r.base && r.kind === 'gas');
   ok('збережено 1195.327', r1 && r1.z.all === '1195.327', r1);
+  ok('«Куди передати»: рахунків немає — поля Газмереж і Нафтогазу, «Знайти рахунок» і «Заповнити з monobank»', !!(await p.$('[data-key=gas-acc-ask] #esg-' + m.id)) && !!(await p.$('[data-key=gas-acc-ask] #esa-' + m.id))
+    && !!(await p.$('[data-key=gas-acc-ask] [data-key=gd-find]')) && !!(await p.$('[data-key=mono-open-gas]')) && !(await p.$('[data-key=dest-grm-sms]')));
+  await p.fill('#esa-' + m.id, '123456789'); await p.press('#esa-' + m.id, 'Tab'); await p.waitForTimeout(400);
+  ok('вписали рахунок Нафтогазу — у лічильнику; поле Газмереж лишилось', (await st()).places[0].meters.find(x => x.id === m.id).account === '123456789' && !(await p.$('#esa-' + m.id)) && !!(await p.$('#esg-' + m.id)));
   const wp = await p.textContent('[data-key=where-gas]');
   // 07.11: готовий текст SMS — у самій кнопці (окремим рядком — дубль); «Куб» і кабінет — у згорнутих «Інші способи»
   ok('«Куди передати»: кнопка SMS з готовим текстом «123456789 01195», кабінет Газмереж — в «Інші способи»', /123456789%2001195|123456789 01195/.test(await p.getAttribute('[data-key=dest-grm-sms]', 'href')) && !!(await p.$('details.dest-more [data-key=dest-grm-cab]')), wp);
@@ -51,7 +55,7 @@ let pass = 0, fail = 0; const ok = (n, c, i) => { console.log((c ? '  OK  ' : ' 
   await go('save'); await click('[data-key=kind-gas]', 300); ok('економія газу: поради', !!(await p.$('[data-key=gsave-tips]')) && /на газі/.test(await p.textContent('h1')));
   // без рахунку — підказка замість SMS
   await go('place-main'); await p.fill('#ema-' + m.id, ''); await p.press('#ema-' + m.id, 'Tab'); await p.waitForTimeout(300); await go('gas');
-  ok('без рахунку — «потрібен рахунок Нафтогазу» + gas.ua за EIC, без кнопки SMS', /потрібен рахунок Нафтогазу — 9 цифр/.test(await p.textContent('[data-key=where-gas]')) && !(await p.$('[data-key=dest-grm-sms]'))
+  ok('без рахунку — поле рахунку Нафтогазу перед передачею + gas.ua за EIC, без кнопки SMS', !!(await p.$('[data-key=gas-acc-ask] #esa-' + m.id)) && !(await p.$('[data-key=dest-grm-sms]'))
     && (await p.getAttribute('[data-key=gd-find]', 'href')) === 'https://gas.ua/uk/home/find-account');
   // два рахунки й EIC: 10 цифр у рахунку Нафтогазу — це Газмережі (переносимо), EIC — великими без пробілів
   const setF = async (sel, v) => { await go('place-main'); await p.fill(sel, v); await p.press(sel, 'Tab'); await p.waitForTimeout(350); };

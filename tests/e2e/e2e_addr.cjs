@@ -64,9 +64,9 @@ let pass = 0, fail = 0; const ok = (n, c, x) => { if (c) { pass++; console.log('
   await p.fill('#aw-street', 'вул. Хрещатик, 1, кв. 1'); await p.click('[data-act=aw-chip] >> nth=1'); await p.waitForTimeout(300);
   ok('кнопка назви перемальовує — пункт і вулиця лишаються', await p.inputValue('#aw-city') === 'Київ' && await p.inputValue('#aw-street') === 'вул. Хрещатик, 1, кв. 1');
   await p.click('[data-key=aw-next]'); await p.waitForTimeout(300);
-  await p.click('[data-key=aw-cold-inc]'); await p.click('[data-key=aw-next]'); await p.waitForTimeout(300);
+  await p.click('[data-key=aw-cold-inc]'); await p.waitForTimeout(300);   // 114-а: кроку рахунку немає — «Перевірте» на кроці вибору
   ok('«Перевірте» — «м. Київ, вул. Хрещатик, 1, кв. 1»', /м\. Київ, вул\. Хрещатик, 1, кв\. 1/.test(await p.textContent('[data-key=aw-sum]')), await p.textContent('[data-key=aw-sum]').catch(() => ''));
-  await p.click('[data-key=aw-skip]'); await p.waitForTimeout(600);
+  await p.click('[data-key=aw-create]'); await p.waitForTimeout(600);
   sv = await st(); np = sv.places[sv.places.length - 1];
   ok('створено: Київ (ky), вулиця, точний пункт', np.city && np.city.r === 'ky' && np.address === 'м. Київ, вул. Хрещатик, 1, кв. 1' && np.settle && np.settle.n === 'Київ', np);
   // рос. інтерфейс

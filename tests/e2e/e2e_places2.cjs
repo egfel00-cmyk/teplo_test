@@ -25,23 +25,21 @@ let pass = 0, fail = 0; const ok = (n, c, i) => { console.log((c ? '  OK  ' : ' 
   ok('крок 2 (без води) — останній: «Перевірте» і «Створити»', !!(await p.$('[data-key=aw-sum]')) && !!(await p.$('[data-key=aw-create]')));
   ok('«−» вимкнено на нулі', await p.$eval('[data-key=aw-hot-dec]', e => e.disabled));
   await click('[data-key=aw-cold-inc]', 200); await click('[data-key=aw-cold-inc]', 200); await click('[data-key=aw-hot-inc]', 200);
-  ok('стало 3 кроки, лічильники в «Перевірте» — ні, бо не останній', /3/.test(await p.textContent('.wiz-top .count')) && !(await p.$('[data-key=aw-sum]')));
+  // 114-а (власник 11.11): рахунку Водоканалу в мастері немає — і з водою лише 2 кроки; «Перевірте» — на кроці вибору
+  ok('з водою — так само 2 кроки, «Перевірте» з лічильниками й «Створити»', /2/.test(await p.textContent('.wiz-top .count')) && !(await p.$('.wiz-top .count').then(e => e.textContent()).then(x => /3/.test(x))) && !!(await p.$('[data-key=aw-sum]')) && !(await p.$('#aw-acc')) && !(await p.$('[data-key=aw-skip]')));
   ok('кількість на екрані: гаряча 1, холодна 2', (await p.textContent('[data-key=aw-hot-n]')).trim() === '1' && (await p.textContent('[data-key=aw-cold-n]')).trim() === '2');
   await click('[data-key=aw-heat-inc]', 200);
   ok('опалення: максимум 1 — «+» вимкнено', await p.$eval('[data-key=aw-heat-inc]', e => e.disabled));
   await click('[data-key=aw-back]', 200);
   ok('назад на крок 1 — назва й адреса на місці', (await p.inputValue('#aw-name')) === 'Батьків' && (await p.inputValue('#aw-street')) === 'Пушкінська 5, кв. 2');
-  await click('[data-key=aw-next]', 200); await click('[data-key=aw-next]');
-  ok('крок 3 з 3: рахунок Водоканалу і «Перевірте»', /3/.test(await p.textContent('.wiz-top .count')) && !!(await p.$('#aw-acc')) && !!(await p.$('[data-key=aw-skip]')));
+  await click('[data-key=aw-next]', 200);
   const sum = await p.textContent('[data-key=aw-sum]');
-  ok('«Перевірте» повторює суть: назва, адреса, лічильники', /Батьків/.test(sum) && /Пушкінська/.test(sum) && /Опалення/.test(sum) && /Холодна вода ×2/.test(sum), sum);
-  await p.fill('#aw-acc', '7654321'); await p.fill('#aw-sn', 'Петренко'); await p.waitForTimeout(100);
-  ok('рахунок одразу видно в «Перевірте»', (await p.textContent('#aw-sum-acc')).includes('7654321'));
+  ok('«Перевірте» повторює суть: назва, адреса, лічильники; рядка рахунку немає', /Батьків/.test(sum) && /Пушкінська/.test(sum) && /Опалення/.test(sum) && /Холодна вода ×2/.test(sum) && !/рахунок/i.test(sum), sum);
   await click('[data-key=aw-create]', 400);
   s = await st(); const np = s.places.find(x => x.name === 'Батьків');
-  ok('квартиру створено: назва, адреса, рахунок, відкрита саме вона', np && /(^|, )Пушкінська 5, кв\. 2$/.test(np.address) && np.water.account === '7654321' && np.water.surname === 'Петренко' && s.placeId === np.id, np);
+  ok('квартиру створено: назва, адреса, без рахунку, відкрита саме вона', np && /(^|, )Пушкінська 5, кв\. 2$/.test(np.address) && !np.water.account && s.placeId === np.id, np);
   ok('далі — водомір 1 з 4 (гаряча), плашка з назвою квартири', (await hash()) === '#wadd' && /1\sз\s4/.test(await p.textContent('[data-key=aw-queue]')) && /Батьків/.test(await p.textContent('[data-key=aw-queue]')) && /гаряч/i.test(await p.textContent('h1')));
-  ok('рахунок не питаємо вдруге', !(await p.$('#wa-form #w-acc')));
+  ok('рахунок у водомірі не питаємо (114-а — перед передачею)', !(await p.$('#wa-form #w-acc')));
   await p.fill('#wa-val', '12'); await click('[data-key=wa-save]', 400);
   ok('→ водомір 2 з 4 (холодна)', (await hash()) === '#wadd' && /2\sз\s4/.test(await p.textContent('[data-key=aw-queue]')) && /холодн/i.test(await p.textContent('h1')));
   await click('[data-key=aw-q-later]', 400);
@@ -131,7 +129,7 @@ let pass = 0, fail = 0; const ok = (n, c, i) => { console.log((c ? '  OK  ' : ' 
   const zm = await p.$$eval('#pg-pv-meters .mrow-main b', es => es.map(e => e.textContent));
   ok('екран квартири: лічильники в тому ж порядку', /Опалення/.test(zm[0]) && /Гаряча/.test(zm[1]) && /Холодна/.test(zm[2]) && /Світло/.test(zm[3]) && /Газ/.test(zm[4]), zm);
   const zp = await p.$$eval('.prov-row', es => es.map(e => e.getAttribute('data-key').replace('prov-', '')));
-  ok('«Постачальники й тарифи»: опалення, вода, світло, газ', JSON.stringify(zp) === JSON.stringify(['heat', 'water', 'elec', 'gas']), zp);
+  ok('«Постачальники й тарифи»: опалення, вода, світло, газ (і тихий «Вивіз сміття» — 112-а)', JSON.stringify(zp.filter(x => x !== 'waste-add')) === JSON.stringify(['heat', 'water', 'elec', 'gas']), zp);
   ok('дані з платіжки — під своїм постачальником: опалення, вода, світло, газ', JSON.stringify(await p.$$eval('#pg-pv-prov [data-key^=pv-bills-]', es => es.map(e => e.getAttribute('data-key').slice(9)))) === JSON.stringify(['heat', 'water', 'elec', 'gas']));
   await go('history'); await p.click('[data-act=place-view][data-id=pz]').catch(() => {}); await p.waitForTimeout(300);
   const zs = await p.$$eval('[data-key=kind-switch] button', es => es.map(e => e.getAttribute('data-v')));

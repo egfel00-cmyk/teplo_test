@@ -2034,3 +2034,27 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
     linear-gradient(180deg, #E9EFEC 0%, #DCE4E0 100%);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, .8), inset 0 -1px 0 rgba(23, 33, 30, .10), inset 0 0 0 1px rgba(23, 33, 30, .08); }
 :root[data-theme="dark"] .lp-art-w { background-color: #1C2622; background-image: linear-gradient(180deg, #212D28 0%, #18211D 100%); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .06), inset 0 0 0 1px rgba(255, 255, 255, .05); }
+/* 114-а: рахунок — перед передачею (а не при налаштуванні); «Рахунки з monobank» */
+.acc-ask { margin: var(--sp-3, 12px) 0 0; padding: var(--sp-3, 12px) 0 0; border-top: 1px solid var(--c-line); }
+.acc-ask > p { margin: 0 0 8px; }
+.acc-ask .acc-ask-m { margin: 8px 0 4px; }
+.mono-link { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin: 12px 0 0; }
+.mono-link .small { flex: 1 1 180px; }
+.mono-list { display: grid; gap: 10px; margin: 0 0 var(--sp-4); }
+.mono-g { background: var(--c-surface); border-radius: 14px; padding: 12px var(--sp-4) 14px; }
+.mono-g.off { background: var(--c-surface-2); }
+.mono-g .check-row { align-items: flex-start; font-weight: 400; }
+.mono-g .check-row input { margin-top: 3px; }
+.mono-g .check-row b { display: block; font-weight: 600; }
+.mono-g p { margin: 4px 0 0 34px; }
+.mono-g .mono-sel { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0 0 34px; }
+.mono-g .mono-sel select { flex: 1 1 140px; min-height: var(--tap); border: 1.5px solid var(--c-field-line); border-radius: 10px; background: var(--c-field-bg); padding: 0 12px; font: 500 16px var(--font); }
+.mono-g .mono-chg { margin: 6px 0 0 34px; }
+.mono-g .mono-chg .mono-sel { margin-left: 0; }
+.mono-g .mono-chg summary { cursor: pointer; color: var(--c-ink-2); min-height: 32px; display: flex; align-items: center; }
+.mono-acc { display: block; margin-top: 2px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.mono-guess { display: block; margin-top: 2px; }
+.mono-sn { margin: 0 0 var(--sp-4); font-weight: 400; align-items: flex-start; }
+.mono-priv { display: flex; gap: 8px; align-items: flex-start; margin: 12px 0 0; }
+.mono-priv .ico { flex: none; margin-top: 2px; }
+.mono-run p { margin: 0 0 6px; }

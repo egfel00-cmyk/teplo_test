@@ -23,20 +23,22 @@ let pass = 0, fail = 0; const ok = (n, c, i) => { console.log((c ? '  OK  ' : ' 
   ok('у виборі «Світло» і «Газ» активні (не «скоро»)', !!(await p.$('[data-key=am-elec][data-act=am-pick]')) && !!(await p.$('[data-key=am-gas][data-act=am-pick]')) && !(await p.$('.am-soon')));
   await click('[data-key=am-elec]');
   ok('форма: 3 варіанти зон, однозонний — одне поле', (await hash()) === '#eadd' && (await p.$$('input[name=ea-z]')).length === 3 && (await p.$$('[data-ea]')).length === 1);
-  await p.fill('#ea-v-all', '777'); await p.fill('#ea-acc', '9876543'); await p.fill('#ea-serial', 'NIK-55');
+  // 114-а: рахунку у формі немає (його просимо перед передачею), № і електроопалення — у згорнутому «Більше»
+  ok('форма: рахунку немає, «№ лічильника, електроопалення» згорнуто', !(await p.$('#ea-acc')) && !!(await p.$('details.ea-more:not([open])')));
+  await p.fill('#ea-v-all', '777'); await click('[data-key=ea-more] summary', 200); await p.fill('#ea-serial', 'NIK-55');
   // журнал 05.11: гість відмітив «Електроопалення» (тост «Збережено» ще до лічильника, форма перемальовувалась) — і пішов
   await p.evaluate(() => { window.__toasts = []; new MutationObserver(() => { const el = document.querySelector('.toast'); if (el && el.textContent) window.__toasts.push(el.textContent); }).observe(document.body, { subtree: true, childList: true, characterData: true }); });
   await click('[data-key=elec-heat]', 300);
-  ok('«Електроопалення» у формі: без «Збережено», квартира ще не змінена, рахунок і № на місці', !(await p.evaluate(() => window.__toasts.join('|'))).includes('Збережено') && !(await st()).places[0].elecHeat
-    && (await p.inputValue('#ea-acc')) === '9876543' && (await p.inputValue('#ea-serial')) === 'NIK-55' && await p.isChecked('[data-key=elec-heat]'));
+  ok('«Електроопалення» у формі: без «Збережено», квартира ще не змінена, № на місці', !(await p.evaluate(() => window.__toasts.join('|'))).includes('Збережено') && !(await st()).places[0].elecHeat
+    && (await p.inputValue('#ea-serial')) === 'NIK-55' && await p.isChecked('[data-key=elec-heat]'));
   await click('[data-key=ea-z2]');
-  ok('двозонний — поля «день» і «ніч»; рахунок, № і галочка не губляться при перемиканні', (await p.$$('[data-ea]')).length === 2 && !!(await p.$('#ea-v-day'))
-    && (await p.inputValue('#ea-acc')) === '9876543' && (await p.inputValue('#ea-serial')) === 'NIK-55' && await p.isChecked('[data-key=elec-heat]'));
+  ok('двозонний — поля «день» і «ніч»; № і галочка не губляться при перемиканні', (await p.$$('[data-ea]')).length === 2 && !!(await p.$('#ea-v-day'))
+    && (await p.inputValue('#ea-serial')) === 'NIK-55' && await p.isChecked('[data-key=elec-heat]'));
   await p.fill('#ea-v-day', '10000'); await click('[data-key=ea-save]', 200);
   ok('лише одна зона — помилка «усі зони або жодної»', /усі зони/i.test(await p.textContent('#ea-err')));
   await p.fill('#ea-v-night', '5000'); await click('[data-key=ea-save]', 400);
   s = await st(); const m = (s.places[0].meters || [])[0];
-  ok('лічильник у квартирі: 2 зони, рахунок, №; стартові 10000/5000; електроопалення — разом із лічильником', m && m.kind === 'elec' && m.zones === 2 && m.account === '9876543' && m.serial === 'NIK-55' && s.places[0].elecHeat === true && (s.mrecs || []).some(r => r.base && r.meter === m.id && r.z.day === '10000' && r.z.night === '5000'), { m, r: s.mrecs, h: s.places[0].elecHeat });
+  ok('лічильник у квартирі: 2 зони, без рахунку, №; стартові 10000/5000; електроопалення — разом із лічильником', m && m.kind === 'elec' && m.zones === 2 && !m.account && m.serial === 'NIK-55' && s.places[0].elecHeat === true && (s.mrecs || []).some(r => r.base && r.meter === m.id && r.z.day === '10000' && r.z.night === '5000'), { m, r: s.mrecs, h: s.places[0].elecHeat });
   s.places[0].elecHeat = false; delete s.places[0].elecHeat; await p.evaluate(v => localStorage.setItem('teplo.v1', JSON.stringify(v)), s); await p.reload(); await p.waitForTimeout(400); await go('place-main');
   ok('після — назад у налаштування квартири, світло в списку', (await hash()) === '#place-main' && !!(await p.$('[data-key=pv-m-' + m.id + ']')));
   await go('elec');
@@ -55,6 +57,10 @@ let pass = 0, fail = 0; const ok = (n, c, i) => { console.log((c ? '  OK  ' : ' 
   await p.fill(di, '10130'); await p.fill(ni, '5060,7'); await click('[data-key=en-save]', 400);
   s = await st(); const r1 = s.mrecs.find(r => !r.base);
   ok('збережено: день 10130, ніч 5060.7 (ціле — 5060)', r1 && r1.z.day === '10130' && r1.z.night === '5060.7' && r1.meter === m.id, r1);
+  // 114-а: перед передачею — поле особового рахунку й «Заповнити з monobank»; вписали — зберігається одразу, поле зникає, рахунок — для копіювання
+  ok('«Куди передати»: рахунку немає — поле «Особовий рахунок — для передачі» і «Заповнити з monobank»', !!(await p.$('[data-key=elec-acc-ask] #esa-' + m.id)) && !!(await p.$('[data-key=elec-acc-ask] [data-key=mono-open-elec]')));
+  await p.fill('#esa-' + m.id, '9876543'); await p.press('#esa-' + m.id, 'Tab'); await p.waitForTimeout(400);
+  ok('вписали рахунок — у лічильнику, поле зникло', ((await st()).places[0].meters || [])[0].account === '9876543' && !(await p.$('[data-key=elec-acc-ask]')));
   ok('після — сторінка світла, «Куди передати»: Харківобленерго, цифри по зонах, рахунок', (await hash()) === '#elec' && /Харківобленерго/.test(await p.textContent('[data-key=where-elec]')) && /10130/.test(await p.textContent('[data-key=esend-vals]')) && /5060/.test(await p.textContent('[data-key=esend-vals]')) && /9876543/.test(await p.textContent('[data-key=where-elec]')));
   ok('офіційні канали: бот @Kooz2bot і онлайн-форма', /t\.me\/Kooz2bot/.test(await p.getAttribute('[data-key=dest-obl-bot]', 'href')) && !!(await p.$('[data-key=dest-obl-form]')));
   ok('запасні: застосунок «Харенерго» і кол-центр', /apps\.apple\.com/.test(await p.innerHTML('[data-key=where-elec]')) && /342-44-13/.test(await p.textContent('[data-key=where-elec]')));
@@ -94,7 +100,7 @@ let pass = 0, fail = 0; const ok = (n, c, i) => { console.log((c ? '  OK  ' : ' 
   // ---- мастер нової квартири: світло в черзі після води
   await go('add-place'); await p.fill('#aw-name', 'Дача'); await click('[data-key=aw-next]');
   ok('мастер: «Світло» активне', !(await p.$('[data-key=aw-elec].am-soon')) && !!(await p.$('[data-key=aw-elec-inc]')));
-  await click('[data-key=aw-cold-inc]', 200); await click('[data-key=aw-elec-inc]', 200); await click('[data-key=aw-next]'); await click('[data-key=aw-create]', 400);
+  await click('[data-key=aw-cold-inc]', 200); await click('[data-key=aw-elec-inc]', 200); await click('[data-key=aw-create]', 400);
   ok('черга: холодна 1 з 2 → …', (await hash()) === '#wadd' && /1\sз\s2/.test(await p.textContent('[data-key=aw-queue]')));
   await click('[data-key=wa-save]', 400);
   ok('… → світло 2 з 2 (вибір зон)', (await hash()) === '#eadd' && /2\sз\s2/.test(await p.textContent('[data-key=aw-queue]')));

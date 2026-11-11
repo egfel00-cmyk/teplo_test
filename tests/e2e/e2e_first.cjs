@@ -51,20 +51,17 @@ const U = 'http://127.0.0.1:8013/';
   // 2. вибір: тепло, гаряча ×1, холодна ×1, світло
   for (const k of ['heat', 'hot', 'cold', 'elec']) { await p.click('[data-key=aw-' + k + '-inc]'); await p.waitForTimeout(120); }
   ok('попередження зникло, тепла більше 1 не буває', !(await p.$('[data-key=aw-err]')) && await p.$eval('[data-key=aw-heat-inc]', e => e.disabled));
-  ok('з водою — «Крок 1 з 2» і «Далі»', /Крок 1\sз\s2/.test(await p.textContent('.wiz-top')) && !!(await p.$('[data-key=aw-next]')));
-  await p.click('[data-key=aw-next]'); await p.waitForTimeout(300);
-  ok('крок 2: рахунок Водоканалу і «Перевірте» з «Моя квартира» та лічильниками', !!(await p.$('#aw-acc')) && /Моя квартира/.test(await p.textContent('[data-key=aw-sum]')) && /Опалення · Гаряча вода · Холодна вода · Світло/.test(await p.textContent('[data-key=aw-sum]')));
-  await p.fill('#aw-acc', '1234567'); await p.fill('#aw-sn', 'Іваненко');
+  // 114-а (власник 11.11): при першому вході рахунків не питаємо — вибрав лічильники й одразу вносить показання; рахунок — перед передачею
+  ok('з водою — теж один крок: без «Крок 1 з …», «Почати налаштування», поля рахунку Водоканалу немає', !(await p.$('.wiz-top')) && !(await p.$('[data-key=aw-next]')) && !(await p.$('#aw-acc')) && /Почати налаштування/.test(await p.textContent('[data-key=aw-create]')));
   await p.click('[data-key=aw-create]'); await p.waitForTimeout(400);
   let s = await st();
-  ok('рахунок — у першій квартирі, нової квартири не з’явилось', s.places.length === 1 && s.places[0].water.account === '1234567' && s.places[0].water.surname === 'Іваненко', s.places);
+  ok('квартира одна, рахунок Водоканалу порожній', s.places.length === 1 && !((s.places[0].water || {}).account), s.places);
   ok('черга: #wadd гарячої, «Налаштування: лічильник 1 з 4», камера у «Показання зараз»', (await hash()) === '#wadd' && /лічильник 1\sз\s4/.test(await p.textContent('[data-key=aw-queue]')) && !!(await p.$('[data-key=cam-wa-val]')));
+  ok('водомір: рахунку немає, № і повірка — згорнуто', !(await p.$('#w-acc')) && await p.$eval('[data-key=wa-more]', d => d.tagName === 'DETAILS' && !d.open));
   // «Скасувати», поки нічого не збережено, — назад до вибору, вибір цілий
   await p.click('#wa-form a.btn.sec'); await p.waitForTimeout(300);
-  ok('«Скасувати» → назад до «Перевірте», вибір і рахунок цілі', (await hash()) === '#start' && /Опалення · Гаряча вода · Холодна вода · Світло/.test(await p.textContent('[data-key=aw-sum]')) && (await p.inputValue('#aw-acc')) === '1234567');
-  await p.click('[data-key=aw-back]'); await p.waitForTimeout(200);
-  ok('«Назад» → вибір, позначене на місці', /1/.test(await p.textContent('[data-key=aw-hot-n]')) && /1/.test(await p.textContent('[data-key=aw-heat-n]')));
-  await p.click('[data-key=aw-next]'); await p.waitForTimeout(200); await p.click('[data-key=aw-create]'); await p.waitForTimeout(400);
+  ok('«Скасувати» → назад до вибору, позначене на місці', (await hash()) === '#start' && /1/.test(await p.textContent('[data-key=aw-hot-n]')) && /1/.test(await p.textContent('[data-key=aw-heat-n]')));
+  await p.click('[data-key=aw-create]'); await p.waitForTimeout(400);
   // з фото: водомір 175
   await p.setInputFiles('[data-sphoto=wa-val]', '/tmp/fsph/w.png');
   await p.waitForFunction(() => { const h = document.getElementById('wa-val-ph'); return h && !h.querySelector('.spin') && h.textContent.trim(); }, null, { timeout: 180000 });
@@ -101,7 +98,7 @@ const U = 'http://127.0.0.1:8013/';
 
   // 4. «Налаштую пізніше» на першому ж водомірі — теж вважається налаштуванням
   await fresh(); await p.goto(U + '#start'); await p.waitForTimeout(300);
-  await p.click('[data-key=aw-cold-inc]'); await p.click('[data-key=aw-next]'); await p.waitForTimeout(200); await p.click('[data-key=aw-skip]'); await p.waitForTimeout(400);
+  await p.click('[data-key=aw-cold-inc]'); await p.click('[data-key=aw-create]'); await p.waitForTimeout(400);
   await p.click('[data-key=aw-q-later]'); await p.waitForTimeout(500); s = await st();
   ok('холодна «пізніше» → головна, а не привітання', s.onboarded === true && (await hash()) === '#home' && !!(await p.$('[data-key=card-cold]')));
 
@@ -110,21 +107,21 @@ const U = 'http://127.0.0.1:8013/';
   const pst = async () => JSON.parse(await pq.evaluate(() => localStorage.getItem('teplo.v1')) || '{}'), ph = () => pq.evaluate(() => location.hash);
   await pq.goto(U); await pq.evaluate(() => localStorage.clear()); await pq.goto(U + '#start'); await pq.waitForTimeout(500);
   await pq.click('[data-key=aw-elec-inc]'); await pq.click('[data-key=aw-gas-inc]'); await pq.click('[data-key=aw-cold-inc]');
-  await pq.click('[data-key=aw-next]'); await pq.waitForTimeout(200); await pq.click('[data-key=aw-skip]'); await pq.waitForTimeout(400);
+  await pq.click('[data-key=aw-create]'); await pq.waitForTimeout(400);
   ok('водомір у черзі: № і повірка згорнуті', (await ph()) === '#wadd' && !!(await pq.$('details.wa-more:not([open]) #wa-serial')));
   await pq.click('[data-key=wa-save]'); await pq.waitForTimeout(400);
-  ok('світло в черзі: «Налаштую пізніше», рахунок/№ згорнуті, «Додати» видно без прокрутки', (await ph()) === '#eadd' && !!(await pq.$('[data-key=aw-q-later]')) && !!(await pq.$('details.ea-more:not([open]) #ea-acc')) &&
+  ok('світло в черзі: «Налаштую пізніше», № згорнуто, рахунку немає (114-а — перед передачею), «Додати» видно без прокрутки', (await ph()) === '#eadd' && !!(await pq.$('[data-key=aw-q-later]')) && !!(await pq.$('details.ea-more:not([open]) #ea-serial')) && !(await pq.$('#ea-acc')) &&
     await pq.evaluate(() => document.querySelector('[data-key=ea-save]').getBoundingClientRect().bottom <= innerHeight));
   ok('«Відгук» сховано, поки кнопки форми на екрані', await pq.evaluate(() => getComputedStyle(document.querySelector('[data-key=feedback]')).visibility === 'hidden'));
-  await pq.click('[data-key=ea-more] summary'); await pq.fill('#ea-acc', '123456789012'); await pq.click('[data-key=ea-z2]'); await pq.waitForTimeout(300);
-  ok('зміна зон: розгорнуте лишається, рахунок на місці', !!(await pq.$('details.ea-more[open]')) && (await pq.inputValue('#ea-acc')) === '123456789012');
+  await pq.click('[data-key=ea-more] summary'); await pq.fill('#ea-serial', 'НІК-77'); await pq.click('[data-key=ea-z2]'); await pq.waitForTimeout(300);
+  ok('зміна зон: розгорнуте лишається, № на місці', !!(await pq.$('details.ea-more[open]')) && (await pq.inputValue('#ea-serial')) === 'НІК-77');
   await pq.click('[data-key=aw-q-later]'); await pq.waitForTimeout(400); s = await pst();
   const qel = (s.places[0].meters || []).find(m => m.kind === 'elec');
-  ok('«пізніше» у світла: лічильник з 1 зоною без рахунку → газ «3 з 3» (теж згорнуто)', qel && qel.zones === 1 && !qel.account && (await ph()) === '#gadd' && /3\sз\s3/.test(await pq.textContent('[data-key=aw-queue]')) && !!(await pq.$('details.ea-more:not([open]) #ea-grm')), qel);
+  ok('«пізніше» у світла: лічильник з 1 зоною без рахунку → газ «3 з 3» (теж згорнуто)', qel && qel.zones === 1 && !qel.account && (await ph()) === '#gadd' && /3\sз\s3/.test(await pq.textContent('[data-key=aw-queue]')) && !!(await pq.$('details.ea-more:not([open]) #ea-serial')) && !(await pq.$('#ea-grm')), qel);
   await pq.click('[data-key=aw-q-later]'); await pq.waitForTimeout(500); s = await pst();
   ok('«пізніше» у газу → головна з 3 картками, «Лічильники налаштовано»', (await ph()) === '#home' && !!(await pq.$('[data-key=card-gas]')) && !!(await pq.$('[data-key=card-elec]')) && !!(await pq.$('[data-key=card-cold]')) && /Лічильники налаштовано/.test(await pq.textContent('#toast-host')) && s.onboarded === true);
   await pq.goto(U + '#place-main'); await pq.waitForTimeout(400); await pq.click('[data-key=pv-add-meter]'); await pq.waitForTimeout(300); await pq.click('[data-key=am-elec]'); await pq.waitForTimeout(300);
-  ok('світло не з черги: поля відкрито, без «пізніше»', (await ph()) === '#eadd' && !(await pq.$('details.ea-more')) && !!(await pq.$('#ea-acc')) && !(await pq.$('[data-key=aw-q-later]')));
+  ok('світло не з черги: теж лише показання, № — згорнуто, рахунку немає, без «пізніше»', (await ph()) === '#eadd' && !!(await pq.$('details.ea-more:not([open])')) && !(await pq.$('#ea-acc')) && !(await pq.$('[data-key=aw-q-later]')));
 
   // 5. рос. мова
   const pr = await (await require('./pvopen.cjs').ctx(b, { viewport: { width: 360, height: 800 }, locale: 'ru-RU' })).newPage();
