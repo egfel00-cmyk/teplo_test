@@ -2329,9 +2329,17 @@ ok('довідник 106-ї: Фастів, Вишгород, Славутич, �
 // 107-а: ще info-gkh (Вороньків, Дачне, Любашівка) і Yii billingsoft (Богуслав, Рені, Петрівське); Ставище — кабінет не відповідав (none)
 $v7 = []; foreach (['Вороньків, вул. Шевченка, 1' => 'vork', 'Богуслав, вул. Шевченка, 1' => 'bgsv', 'Нові Петрівці, вул. Ново-Київська, 1' => 'ptkp', 'Рені, вул. Соборна, 1' => 'renv',
   'Дачне, Одеська обл., вул. Клубна, 1' => 'dach', 'Любашівка, вул. Володимира Князя, 1' => 'lubk'] as $a => $want) { $x = $L($a); $v7[$a] = ($x['via'] ?? null) === $want && ($x['robot'] ?? '') === 'server' && isset(LocalBot::BOTS[$want]) && str_contains((string)($x['how'] ?? ''), LocalBot::BOTS[$want]['site']); }
-ok('довідник 107-ї: Вороньків, Богуслав, Нові Петрівці, Рені (1–5), Дачне, Любашівка — via свій бот, robot server, у «як» — адреса кабінету; Ставище — none',
+ok('довідник 107-ї: Вороньків, Богуслав, Нові Петрівці, Рені (1–5), Дачне, Любашівка — via свій бот, robot server, у «як» — адреса кабінету; Ставище — stav (108-а)',
   !in_array(false, $v7, true) && LocalBot::pub('renv')['win'] === [1, 5] && LocalBot::pub('vork')['lk'] === 'acc' && LocalBot::pub('bgsv')['lk'] === null
-  && ($L('Ставище, вул. Шевченка, 1')['robot'] ?? '') === 'none', $v7);
+  && ($L('Ставище, вул. Шевченка, 1')['via'] ?? '') === 'stav', $v7);
+
+// 108-а: Ставище — billingsoft з нашого сервера відповідає (з браузера в Україні — відхилено) → робот stav; Ірпінь — тепло КПП «Теплоенергопостач» (кабінет billingsoft, без бота)
+$st8 = $L('Ставище, вул. Шевченка, 1'); $ir8 = $L('Ірпінь, вул. Соборна, 1', 'heat');
+ok('довідник 108-ї: Ставище — via stav, robot server, у «як» — my.stavjkp.kyiv.ua; Ірпінь — тепло КПП «Теплоенергопостач», кабінет my.tep-irpin.org.ua, ціна з платіжки',
+  ($st8['via'] ?? '') === 'stav' && ($st8['robot'] ?? '') === 'server' && str_contains((string)($st8['how'] ?? ''), LocalBot::BOTS['stav']['site'])
+  && LocalBot::pub('stav')['t'] === 'cab' && LocalBot::pub('stav')['lk'] === null
+  && ($ir8['org'] ?? '') === 'КПП «Теплоенергопостач» ІМР' && ($ir8['cab'] ?? '') === 'https://my.tep-irpin.org.ua/' && array_key_exists('price', $ir8) && $ir8['price'] === null && !empty($ir8['check']) && empty($ir8['via']),
+  [$st8['via'] ?? null, $st8['robot'] ?? null, $ir8['org'] ?? null, $ir8['cab'] ?? null]);
 
 // 106-а: лендинг «Передати у фоні» — стрічка LP_AUTO (app.js) знає всіх ботів LocalBot + htm, vk; /api/config → auto — лише готові (e-mail — без пошти ні)
 preg_match('~var LP_AUTO = \[(.*?)\n  \];~s', (string)file_get_contents(__DIR__ . '/../web/src/app.js'), $lm);
