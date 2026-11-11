@@ -2248,7 +2248,7 @@ ok('LbAddr: «Степана Бандери» = «БАНДЕРИ СТЕПАНА�
   && LbAddr::nums(LbAddr::parse('Бровари, Сушка, буд. 11 а, кв 3'), ['БРОВАРИ', 'СУШКА']) === ['11А', '3'], [$A('Бровари, Сушка 2', $so), $A('Бровари, вул. Небесної 999', $so)]);
 $lj = json_decode((string)@file_get_contents(LocalBot::lastFile()), true) ?: []; unset($lj['brovk']); file_put_contents(LocalBot::lastFile(), json_encode($lj));
 $p0 = $axSt['posts']; $pr = LocalBot::probe(); $pr2 = LocalBot::probe(); $hp = (new Browser('10.8.8.10'))->req('GET', '/api/health')->body['lbot']['brovk']['probe'] ?? [];
-ok('проба brovk: вул. Київська, 6 (без квартир) + вигаданий рахунок → пункт, вулиця, будинок, пошук (4 POST) → «не знайдено»; раз на версію', $pr === ['brovk', 'notfound'] && $pr2 === null
+ok('проба brovk: вул. Київська, 6 (без квартир) + вигаданий рахунок → пункт, вулиця, будинок, пошук (4 POST) → «не знайдено»; раз на версію (далі — svod)', $pr === ['brovk', 'notfound'] && ($pr2[0] ?? null) !== 'brovk'
   && $axSt['posts'] - $p0 === 4 && ($hp['res'] ?? '') === 'notfound', [$pr, $pr2, $hp, $axSt['posts'] - $p0]);
 $bw = Providers::lookup('Бровари, вул. Київська, 1')['kinds']['water'] ?? [];
 ok('довідник: Бровари — вода via brovk, robot server', ($bw['via'] ?? '') === 'brovk' && ($bw['robot'] ?? '') === 'server', [$bw['via'] ?? null, $bw['robot'] ?? null]);
