@@ -2256,5 +2256,14 @@ LocalBot::$forceOn = false;
 CabWeb::$http = null;
 Mail::$send = null; Cfg::saveRuntime(array_fill_keys(Mail::KEYS, null));
 
+// 106-а: лендинг «Передати у фоні» — стрічка LP_AUTO (app.js) знає всіх ботів LocalBot + htm, vk; /api/config → auto — лише готові (e-mail — без пошти ні)
+preg_match('~var LP_AUTO = \[(.*?)\n  \];~s', (string)file_get_contents(__DIR__ . '/../web/src/app.js'), $lm);
+preg_match_all("~'(\w+)'(?:, 1)?\]~", $lm[1] ?? '', $li); $lpIds = array_unique($li[1] ?? []);
+$cfgAuto = (new Browser('10.8.8.11'))->req('GET', '/api/config')->body['auto'] ?? null;
+ok('лендинг: LP_AUTO = усі LocalBot::BOTS + htm, vk; config.auto — htm і готові боти, без e-mail (пошти нема) і без вимкненого mtve',
+  !array_diff(array_merge(['htm', 'vk'], array_keys(LocalBot::BOTS)), $lpIds) && !array_diff($lpIds, array_merge(['htm', 'vk'], array_keys(LocalBot::BOTS)))
+  && is_array($cfgAuto) && in_array('htm', $cfgAuto, true) && in_array('brovk', $cfgAuto, true) && !in_array('loe', $cfgAuto, true) && !in_array('mtve', $cfgAuto, true),
+  [array_values($lpIds), $cfgAuto]);
+
 echo "\nИтог: $pass OK, $fail FAIL\n";
 exit($fail ? 1 : 0);

@@ -93,6 +93,13 @@ final class LocalBot {
     if (!empty($b['off']) && !self::$forceOn && !Cfg::get('lb_base_' . $id)) return false;
     return $b['t'] === 'mail' ? Mail::on() : class_exists('DOMDocument');
   }
+  /** Лендинг (106-а, власник 11.11): у кого зараз працює «Відправити у фоні» — кабінет ХТМ (htm), Харківводоканал (vk) і готові боти.
+   *  /api/config → auto; лендинг показує стрічку лише цих (e-mail-боти — щойно власник налаштує пошту). */
+  public static function autoIds(): array {
+    $a = ['htm']; if (class_exists('VkCab') && VkCab::ready()) $a[] = 'vk';
+    foreach (array_keys(self::BOTS) as $id) if (self::ready($id)) $a[] = $id;
+    return $a;
+  }
   /** Що бачить застосунок про бота (без секретів). */
   public static function pub(string $id): array {
     $b = self::get($id);

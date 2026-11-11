@@ -1911,6 +1911,36 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
   .lpm-track { flex-wrap: wrap; justify-content: center; padding-right: 0; }
   .lpm-track[aria-hidden] { display: none; }
 }
+/* «Передати у фоні — одним дотиком» (власник 11.11, 106-а): клітинка на всю ширину сітки. Телефон: текст → кнопка → стрічка; комп'ютер — текст ліворуч,
+   кнопка з «Куди передати» праворуч, стрічка — нижнім рядом на всю ширину картки. Демо — тон «Куди передати» (--bt-send*), як у застосунку. Стрічка — одна, тихіша й повільніша за верхню, краї тануть. */
+.lp-cell.c-bg { grid-template-areas: "tx" "demo" "list"; }
+.c-bg > .lp-cell-tx { grid-area: tx; } .c-bg > .lpb-demo { grid-area: demo; } .c-bg > .lpb-list { grid-area: list; }
+.lpb-demo { display: grid; gap: 12px; align-content: start; padding: 16px; border-radius: 16px; background: var(--bt-send-bg); border: 1px solid var(--bt-send-line); }
+.lpb-h { display: flex; align-items: center; gap: 10px; } .lpb-h > span { display: grid; line-height: 1.25; } .lpb-h b { font-size: 16px; } .lpb-h i { font-style: normal; font-size: 13px; color: var(--c-ink-2); }
+.lpb-btn { display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 48px; padding: 8px 16px; border-radius: var(--r-btn); background: var(--c-ink); color: var(--c-on-ink);
+  font-weight: 600; font-size: 16px; box-shadow: 0 0 0 4px var(--c-focus-ring); }
+.lpb-note { margin: 0; font-size: 14px; line-height: 1.4; color: var(--c-ink-2); }
+.lpb-demo .lpa-chip { justify-self: start; }
+.lpb-list { display: grid; gap: 10px; min-width: 0; }
+.lpb-on { margin: 0; font-size: 15px; font-weight: 600; }
+.lpb-rest { margin: 0; font-size: 14px; color: var(--c-ink-2); }
+.lpb-marq { overflow: hidden; margin: 0 -22px; -webkit-mask-image: linear-gradient(90deg, transparent, #000 10%, #000 90%, transparent); mask-image: linear-gradient(90deg, transparent, #000 10%, #000 90%, transparent); }
+.lpb-marq .lpm-row { animation-duration: 90s; }
+.lpb-marq:hover .lpm-row { animation-play-state: paused; }
+.lpb-chips li { min-height: 40px; padding: 0 14px; gap: 8px; font-size: 15px; font-weight: 500; background: var(--c-surface-2); }
+.lpb-chips li i { font-style: normal; font-size: 13px; color: var(--c-ink-2); }
+@media (min-width: 600px) { .lp-bento .c-bg { grid-column: 1 / -1; } }
+@media (min-width: 960px) {
+  .lp-cell.c-bg { grid-template-columns: minmax(0, 1fr) minmax(0, 380px); grid-template-areas: "tx demo" "list list"; column-gap: 40px; row-gap: 24px; }
+  .c-bg > .lp-cell-tx { align-self: center; max-width: 52ch; }
+  .lpb-marq { margin: 0 -28px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .lpb-marq { -webkit-mask-image: none; mask-image: none; margin: 0; }
+  .lpb-marq .lpm-row { display: block; }
+  .lpb-chips { justify-content: flex-start; gap: 8px; }
+  .lpb-chips li { white-space: normal; max-width: 100%; }
+}
 /* без картки «Графік відключень» (10.11): «Скільки це коштує» займає вільне місце ряду */
 /* 90-а: п'ять клітинок (з «Цінами громади») — «Скільки коштує» в один стовпчик; з графіками (with-gpv) — шоста, на всю ширину */
 @media (min-width: 600px) { .lp-bento.with-gpv .c-gpv { grid-column: 1 / -1; } }

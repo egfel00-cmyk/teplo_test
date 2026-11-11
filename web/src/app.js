@@ -3516,10 +3516,44 @@
     return '<div class="lp-gpv" aria-hidden="true"><div class="lpg-top"><span class="lpg-q">' + ico('bolt', 14) + esc(t('lp_gpv_q')) + '</span><span class="muted">' + esc(t('lp_gpv_day')) + '</span></div><div class="lpg-bar">' + h + '</div>' +
       '<div class="lpg-ax"><i>00</i><i>06</i><i>12</i><i>18</i><i>24</i></div><div class="lpg-leg"><span class="on"></span>' + esc(t('lp_gpv_on')) + '<span class="off"></span>' + esc(t('lp_gpv_off')) + '</div></div>';
   }
+  /** «Передати у фоні — одним дотиком» (власник 11.11, 106-а): у кого з постачальників уже працює «Відправити у фоні» — ще одна клітинка «Що ще вміють»,
+   *  не окремий блок. Стрічка тиха (одна, повільна, як «Куди передати»); показуємо лише тих, кого сервер зараз підтримує (/api/config → auto:
+   *  кабінет ХТМ, Харківводоканал, готові боти LocalBot; e-mail-боти — коли налаштована пошта). Без сервера — усі, крім e-mail.
+   *  [вид, постачальник, місто uk, місто ru, id, e-mail?]. Новий бот у LocalBot::BOTS — додати сюди (тест server.php звіряє). */
+  var LP_AUTO = [
+    ['heat', 'Харківські теплові мережі', 'Харків', 'Харьков', 'htm'], ['cold', 'Харківводоканал', 'Харків', 'Харьков', 'vk'],
+    ['cold', 'Броваритепловодоенергія', 'Бровари', 'Бровары', 'brovk'], ['cold', 'Бориспільводоканал', 'Бориспіль', 'Борисполь', 'abinf'],
+    ['cold', 'Бучасервіс', 'Буча', 'Буча', 'bucha'], ['cold', 'ККП Василькова', 'Васильків', 'Васильков', 'vkkp'],
+    ['cold', 'Вишнівськводоканал', 'Вишневе', 'Вишнёвое', 'umg'], ['cold', 'Міськводоканал', 'Березань', 'Березань', 'brz'],
+    ['cold', 'Дрогобичводоканал', 'Дрогобич', 'Дрогобыч', 'dvk'], ['cold', 'Трускавецький водоканал', 'Трускавець', 'Трускавец', 'tvk'],
+    ['cold', 'ПЖКГ Моршина', 'Моршин', 'Моршин', 'abinf'],
+    ['elec', 'Львівобленерго', 'Львівщина', 'Львовщина', 'loe', 1], ['cold', 'Львівводоканал', 'Львів', 'Львов', 'lvk', 1],
+    ['cold', 'Чорноморськводоканал', 'Чорноморськ', 'Черноморск', 'cvk', 1], ['cold', 'Стрийводоканал', 'Стрий', 'Стрый', 'svk', 1],
+    ['cold', 'Ірпіньводоканал', 'Ірпінь', 'Ирпень', 'ivk', 1],
+    ['cold', 'Міськтепловоденергія', 'Кам’янець-Подільський', 'Каменец-Подольский', 'mtve']
+  ];
+  function lpAutoList() {
+    var on = Y()._cfg && Y()._cfg.auto;
+    return LP_AUTO.filter(function (x) { return on ? on.indexOf(x[4]) >= 0 : !x[5] && x[4] !== 'mtve'; });
+  }
+  function lpAuto() {
+    var list = lpAutoList(), ru = S.lang === 'ru';
+    var chip = function (d) { return '<li>' + ico(KINDS[d[0]].icon, 16, KINDS[d[0]].cls) + '<span>' + esc(d[1]) + '</span><i>' + esc(ru ? d[3] : d[2]) + '</i></li>'; };
+    var li = list.map(chip).join('');
+    // справжній вигляд «Куди передати» в застосунку: постачальник, строк, виділена «Відправити у фоні», що саме піде, і відповідь сайту постачальника
+    var demo = '<div class="lpb-demo" aria-hidden="true"><div class="lpb-h">' + ico('drop', 18, KINDS.cold.cls) + '<span><b>' + esc(t('lp_d_vk')) + '</b><i>' + esc(t('lp_bg_due')) + '</i></span></div>' +
+      '<div class="lpb-btn">' + ico('send', 18) + '<span>' + esc(t('cab_bg')) + '</span></div>' +
+      '<p class="lpb-note">' + esc(t('cab_bg_note', { what: t('lp_bg_what', { d: fmtDate(today()) }) })) + '</p>' +
+      '<div class="lpa-chip ok">' + ico('check', 14) + '<span>' + esc(t('lb_ok')) + '</span></div></div>';
+    return '<article class="lp-cell c-bg" data-key="lp-bg"><div class="lp-cell-tx"><h3>' + esc(t('lp_bg_t')) + '</h3><p>' + esc(t('lp_bg')) + '</p></div>' + demo +
+      (list.length ? '<div class="lpb-list"><p class="lpb-on">' + esc(t('lp_bg_on', { n: list.length })) + '</p>' +
+        '<div class="lpb-marq" data-key="lp-bg-marq"><div class="lpm-row"><ul class="lp-chips lpm-track lpb-chips">' + li + '</ul><ul class="lp-chips lpm-track lpb-chips" aria-hidden="true">' + li + '</ul></div></div>' +
+        '<p class="lpb-rest">' + esc(t('lp_bg_rest')) + '</p></div>' : '') + '</article>';
+  }
   function lpBento() {
     var cell = function (key, art) { return '<article class="lp-cell c-' + key + '" data-key="lp-' + key + '"><div class="lp-cell-tx"><h3>' + esc(t('lp_' + key + '_t')) + '</h3><p>' + esc(t('lp_' + key)) + '</p></div>' + art + '</article>'; };
     return '<section class="lp-sec" data-key="lp-bento"><h2 class="lp-h2">' + esc(t('lp_bento_t')) + '</h2><div class="lp-bento' + (GPV_ON ? ' with-gpv' : '') + '">' +
-      cell('due', lpDue()) + cell('tg', lpTg()) + cell('pl', lpPlaces()) + cell('cost', lpCost()) + cell('pr', lpPrices()) + (GPV_ON ? cell('gpv', lpGpv()) : '') + '</div></section>';
+      cell('due', lpDue()) + cell('tg', lpTg()) + cell('pl', lpPlaces()) + cell('cost', lpCost()) + cell('pr', lpPrices()) + lpAuto() + (GPV_ON ? cell('gpv', lpGpv()) : '') + '</div></section>';
   }
   V.welcome = function () {
     var acc = Y().mode === 'server' && Y().account;
@@ -6535,7 +6569,8 @@
       var sh = !kb && vv.scale < 1.01 && Math.abs(gap) > 40 ? Math.round(gap) : 0;
       document.documentElement.style.setProperty('--nav-shift', sh + 'px');
       // у журнал (/api/health → errs.navShift): чи спрацьовує поправка на справжніх iPhone і з якими висотами — перевірка без телефона власника (89-а)
-      if (sh && sh !== last) try { track('nav_shift', { g: sh, ih: Math.round(window.innerHeight), vh: Math.round(vv.height), ot: Math.round(vv.offsetTop) }); } catch (e) { /* журнал ще не готовий */ }
+      // 106-а: видно < 40 % сторінки без зсуву — людина згортає чи закриває застосунок (журнал 11.11: 461 → 50 → 0 px за секунду) — не пишемо
+      if (sh && sh !== last && !(vv.height < window.innerHeight * .4 && vv.offsetTop < 1)) try { track('nav_shift', { g: sh, ih: Math.round(window.innerHeight), vh: Math.round(vv.height), ot: Math.round(vv.offsetTop) }); } catch (e) { /* журнал ще не готовий */ }
       last = sh;
     };
     vv.addEventListener('resize', fix); vv.addEventListener('scroll', fix); window.addEventListener('scroll', fix, { passive: true });
