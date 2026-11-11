@@ -185,10 +185,12 @@
   }
   /**
    * shots: [{lines, drum: {value, frac, sure} | null} | null] — по фото; ms — лічильники; prevBy: {id: {zone: показання}}.
+   * opt: {days: {id: днів від прошлого}, heating} — скільки могло набігти: без днів — до 3 «місячних норм з опаленням», з днями —
+   * дві місячні норми на ці дні (не менше п'ятої частини норми). НІК 2102 владельця 11.11: з прошлими ≈3500 за кілька днів підставили 5149.
    * → {id: {zone: {v, frac, photo, why: 'tag'|'prev'|'drum'|'', guess}}}. Одне число — одній зоні; сума (T0) — лише однозонному.
    */
-  function fromPhotos(shots, ms, prevBy) {
-    var pool = [], used = {}, by = {}, lim = (JUMP_HEAT || JUMP) * 3;
+  function fromPhotos(shots, ms, prevBy, opt) {
+    var pool = [], used = {}, by = {}, lim0 = (JUMP_HEAT || JUMP) * 3;
     (shots || []).forEach(function (sh, i) {
       if (!sh) return;
       ocrCands(sh).forEach(function (c) { c.photo = i; pool.push(c); });
@@ -198,7 +200,8 @@
       });
     });
     (ms || []).forEach(function (m) {
-      var ks = keys(m), prev = (prevBy && prevBy[m.id]) || {}, res = by[m.id] = {}, opts = [];
+      var ks = keys(m), prev = (prevBy && prevBy[m.id]) || {}, res = by[m.id] = {}, opts = [], dd = opt && opt.days ? Number(opt.days[m.id]) : NaN, per = opt && opt.heating ? (JUMP_HEAT || JUMP) : JUMP;
+      var lim = dd > 0 ? Math.max(per / 5, per * dd / 30 * 2) : lim0;
       ks.forEach(function (z) {
         var pv = num(prev[z]);
         pool.forEach(function (c, ci) {
