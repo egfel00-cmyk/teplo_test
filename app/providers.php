@@ -263,25 +263,28 @@ final class Providers {
     unset($o['next']); $later = [];
     foreach ($steps as $s) {
       if (!is_array($s) || empty($s['from'])) continue;
-      if ((string)$s['from'] <= $today) { foreach (['supply', 'drain', 'price', 'abon', 'from'] as $f) if (array_key_exists($f, $s)) $o[$f] = $s[$f]; }
+      if ((string)$s['from'] <= $today) { foreach (['supply', 'drain', 'price', 'abon', 'priv', 'from'] as $f) if (array_key_exists($f, $s)) $o[$f] = $s[$f]; }
       else $later[] = $s;
     }
     if ($later) $o['next'] = $later[0];
     return $o;
   }
-  /** Довідник по видах для пункту: oblast ← громада ← пункт. Вода й тепло громади заміняють обласне «невідомо» цілком. */
+  /** Довідник по видах для пункту: oblast ← громада ← пункт. Вода, тепло й вивіз сміття громади заміняють обласне «невідомо» цілком.
+   *  waste (112-а, власник 11.11: «так, і нагадувати про оплату») — вивіз побутових відходів: org, price — грн з людини на місяць
+   *  (багатоквартирні), priv — приватний сектор, якщо інша; from, src, pay, phones, site — як у інших видів. */
+  const LOCAL = ['water', 'heat', 'waste'];
   public static function kinds(array $p): array {
     $d = self::rdata((string)($p['r'] ?? self::hreg((string)$p['h']))); $hk = self::hkey((string)$p['h']);
     $ob = (array)($d['oblast'] ?? []); $hr = (array)($d['hromadas'][$hk] ?? []);
     $st = (array)($d['settlements'][$hk . '/' . $p['n']] ?? []); $out = [];
-    foreach (['elec', 'gas', 'water', 'heat'] as $kd) {
+    foreach (['elec', 'gas', 'water', 'heat', 'waste'] as $kd) {
       $o = (array)($ob[$kd] ?? []);
-      if (in_array($kd, ['water', 'heat'], true) && (isset($hr[$kd]) || isset($st[$kd]))) $o = [];
+      if (in_array($kd, self::LOCAL, true) && (isset($hr[$kd]) || isset($st[$kd]))) $o = [];
       $hk = (array)($hr[$kd] ?? []); $sk = (array)($st[$kd] ?? []);
       // у пункті інший постачальник (Буди, Феськи, Есхар…) — від громади нічого не беремо: ні дати, ні «куди платити», ні телефонів
-      if (in_array($kd, ['water', 'heat'], true) && array_key_exists('org', $sk) && ($sk['org'] ?? null) !== ($hk['org'] ?? null)) $hk = [];
+      if (in_array($kd, self::LOCAL, true) && array_key_exists('org', $sk) && ($sk['org'] ?? null) !== ($hk['org'] ?? null)) $hk = [];
       $o = array_merge($o, $hk, $sk);
-      if (in_array($kd, ['water', 'heat'], true) && !array_key_exists('org', $o)) $o['org'] = null;
+      if (in_array($kd, self::LOCAL, true) && !array_key_exists('org', $o)) $o['org'] = null;
       $out[$kd] = self::dated($o);
     }
     return $out;
@@ -311,9 +314,9 @@ final class Providers {
  *  Сесія на старті забирає правки в репозиторій: /admin → «Справочник» → «Скачать правки» (GET /api/admin/prov/edits), /api/health → prov.edits. */
 final class ProvEdit {
   const SCOPES = ['oblast', 'hromadas', 'settlements'];
-  const KINDS = ['elec', 'gas', 'water', 'heat'];
+  const KINDS = ['elec', 'gas', 'water', 'heat', 'waste'];
   const STR = ['org', 'net', 'grm', 'note', 'note_ru', 'src', 'src_ru', 'how', 'how_ru', 'pay', 'pay_ru', 'cab', 'bot', 'site', 'app', 'viber', 'sms', 'from', 'distFrom', 'distSrc', 'distSrc_ru', 'robot', 'robot_note', 'via'];
-  const NUM = ['supply', 'drain', 'hot', 'price', 'abon', 'dist'];
+  const NUM = ['supply', 'drain', 'hot', 'price', 'abon', 'dist', 'priv'];
   const URLS = ['cab', 'bot', 'site', 'app', 'viber'];
   /** Чи можна подавати без людини: server — робот з нашого сервера; relay — лише з України (Cloudflare, ретранслятор); captcha — капча, вручну;
    *  bot — лише бот у Telegram/Viber; phone — лише телефон/SMS; none — ні кабінету, ні форми; '' — ще не перевіряли. */
@@ -358,7 +361,7 @@ final class ProvEdit {
     $nx = [];
     foreach ((isset($v['next']['from']) ? [$v['next']] : (array)($v['next'] ?? [])) as $n) {
       if (!is_array($n) || !preg_match('/^\d{4}-\d\d-\d\d$/', (string)($n['from'] ?? ''))) continue;
-      $s = ['from' => (string)$n['from']]; foreach (['supply', 'drain', 'price', 'abon', 'hot'] as $f) if (isset($n[$f]) && is_numeric(str_replace(',', '.', (string)$n[$f]))) $s[$f] = round((float)str_replace(',', '.', (string)$n[$f]), 4);
+      $s = ['from' => (string)$n['from']]; foreach (['supply', 'drain', 'price', 'abon', 'hot', 'priv'] as $f) if (isset($n[$f]) && is_numeric(str_replace(',', '.', (string)$n[$f]))) $s[$f] = round((float)str_replace(',', '.', (string)$n[$f]), 4);
       if (count($s) > 1) $nx[] = $s;
     }
     if ($nx) $o['next'] = count($nx) === 1 ? $nx[0] : $nx;

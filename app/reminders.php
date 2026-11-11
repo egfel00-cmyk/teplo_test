@@ -4,6 +4,7 @@
 //  тепло — 5-го (открылось окно ХТМ) и 22-го, если нет показаний, снятых в окне 5–25;
 //  свет — в предпоследний день месяца (окно Харківобленерго открылось) и 2-го (завтра последний день), если нет показаний в окне;
 //  газ — 1-го (приём 1–5) и 4-го (завтра последний день), если нет показаний с 28-го по 5-е.
+//  вивіз сміття (112-а, власник 11.11) — 10-го: сума за минулий місяць (люди × ціна з людини) і куди платити, квартирам з увімкненим place.waste.
 // Регион (80-я): тексты про ХТМ / Харківводоканал / Харківобленерго — только квартирам, где это так по адресу (довідник, как «Куди передати»);
 // остальным — без харьковских названий и сроков, с поставщиком из довідника; тепло вне ХТМ не напоминаем (окно неизвестно). Без адреса — как раньше (Харків).
 // Кому: аккаунты с Telegram и состоянием на сервере; выключатель — state.remind.off (Настройки, все квартиры) и place.remindOff
@@ -26,6 +27,8 @@ final class Reminders {
     if ($j === $L - 1) return ['elec1', $d->format('Y-m')];
     // газ: 1-го (приймання 1–5); ym — місяць, за який показання
     if ($j === 1) return ['gas1', $d->modify('first day of previous month')->format('Y-m')];
+    // вивіз сміття: 10-го — оплата за минулий місяць (зазвичай до 20-го)
+    if ($j === 10) return ['waste10', $d->modify('first day of previous month')->format('Y-m')];
     $k = self::DAYS[$j] ?? null;
     return $k ? [$k, $d->format('Y-m')] : null;
   }
@@ -54,16 +57,17 @@ final class Reminders {
   public static function placeProv(array $p): array {
     $kh = ['r' => 'kh', 'htm' => true, 'hvk' => true, 'water' => null, 'elec' => null];
     $a = trim((string)($p['address'] ?? '')); $c = is_array($p['city'] ?? null) ? $p['city'] : []; $st = is_array($p['settle'] ?? null) ? $p['settle'] : [];
-    if ($a === '' || !class_exists('Providers')) return $kh;
+    if ($a === '' || !class_exists('Providers')) return $kh + ['waste' => null];
     $n = null; $h = null;
     if (($st['a'] ?? null) === $a && !empty($st['n']) && !empty($st['h'])) { $n = (string)$st['n']; $h = (string)$st['h']; }
     elseif (!empty($c['n']) && !empty($c['h'])) { $n = (string)$c['n']; $h = (string)$c['h']; }
     $tr = ProvEdit::$track; ProvEdit::$track = false;   // рассылка — не «что ищут люди» в /admin
     try { $L = Providers::lookup($a, $n, $h); } catch (Throwable $e) { $L = []; } finally { ProvEdit::$track = $tr; }
-    if (empty($L['found'])) { $r = (string)($c['r'] ?? 'kh'); return $r === 'kh' ? $kh : ['r' => $r, 'htm' => false, 'hvk' => false, 'water' => null, 'elec' => null]; }
-    $k = (array)($L['kinds'] ?? []);
+    if (empty($L['found'])) { $r = (string)($c['r'] ?? 'kh'); return ($r === 'kh' ? $kh : ['r' => $r, 'htm' => false, 'hvk' => false, 'water' => null, 'elec' => null]) + ['waste' => null]; }
+    $k = (array)($L['kinds'] ?? []); $ws = (array)($k['waste'] ?? []);
     return ['r' => (string)($L['place']['r'] ?? 'kh'), 'htm' => ($k['heat']['via'] ?? '') === 'htm', 'hvk' => ($k['water']['via'] ?? '') === 'hvk',
-      'water' => ($k['water']['org'] ?? null) ?: null, 'elec' => ($k['elec']['org'] ?? null) ?: null];
+      'water' => ($k['water']['org'] ?? null) ?: null, 'elec' => ($k['elec']['org'] ?? null) ?: null,
+      'waste' => $ws ? ['org' => ($ws['org'] ?? null) ?: null, 'price' => isset($ws['price']) ? (float)$ws['price'] : null, 'priv' => isset($ws['priv']) ? (float)$ws['priv'] : null, 'pay' => (string)($ws['pay'] ?? ''), 'pay_ru' => (string)($ws['pay_ru'] ?? '')] : null];
   }
 
   /** Какие квартиры ждут это напоминание: [['id' => 'p2', 'label' => 'Мамина', 'all' => 2], …] (all — сколько квартир всего).
@@ -85,6 +89,17 @@ final class Reminders {
       // как в приложении: без названия первая — «Моя квартира», остальные — «Квартира N»
       $label = trim((string)($p['name'] ?? '')) ?: ($i === 0 ? 'Моя квартира' : 'Квартира ' . ($i + 1));
       $need = false;
+      if (str_starts_with($kind, 'waste')) {
+        // вивіз сміття: увімкнено в квартирі й не вимкнено нагадування; сума — люди × ціна (своя з платіжки або з довідника)
+        $w = is_array($p['waste'] ?? null) ? $p['waste'] : [];
+        if (empty($w['on']) || !empty($w['remindOff'])) continue;
+        $pv = self::placeProv($p); $d = (array)($pv['waste'] ?? []);
+        $n = (int)round((float)($w['persons'] ?? 0)) ?: (int)round((float)($p['water']['persons'] ?? 0));
+        $pr = (float)($w['price'] ?? 0) > 0 ? (float)$w['price'] : (!empty($w['priv']) && (float)($d['priv'] ?? 0) > 0 ? (float)$d['priv'] : (float)($d['price'] ?? 0));
+        $out[] = ['id' => (string)$p['id'], 'label' => mb_substr($label, 0, 40), 'all' => $all, 'org' => trim((string)($w['org'] ?? '')) ?: ($d['org'] ?? null),
+          'n' => $n ?: null, 'price' => $pr > 0 ? $pr : null, 'sum' => $n > 0 && $pr > 0 ? round($n * $pr, 2) : null, 'pay' => (string)($d['pay'] ?? ''), 'pay_ru' => (string)($d['pay_ru'] ?? '')];
+        continue;
+      }
       if (str_starts_with($kind, 'elec') || str_starts_with($kind, 'gas')) {
         // світло / газ: у кожного діючого лічильника цього виду є показання (не стартові) у вікні приймання
         $mk = str_starts_with($kind, 'gas') ? 'gas' : 'elec';
@@ -131,6 +146,7 @@ final class Reminders {
     $ru = $lang === 'ru';
     $today = $today ?? (new DateTimeImmutable('now', new DateTimeZone(self::TZ)))->format('Y-m-d');
     $gasSms = $today <= self::GAS_SMS_UNTIL;
+    if (str_starts_with($kind, 'waste')) return self::wasteText($lang, $places, $today);
     $t = [
       'water16' => $ru ? "💧 До 20-го — 4 дня, чтобы передать показания воды в Водоканал. В этом месяце ещё не вносили.\n\nСфотографируйте водомеры — цифры впишутся сами, готовое сообщение для бота Водоканала будет под рукой."
                        : "💧 До 20-го — 4 дні, щоб передати показання води у Водоканал. Цього місяця ще не вносили.\n\nСфотографуйте водоміри — цифри впишуться самі, готове повідомлення для бота Водоканалу буде під рукою.",
@@ -174,11 +190,35 @@ final class Reminders {
     return ['text' => $t . "\n\n" . $off, 'button' => $btns[0][0], 'url' => $btns[0][1], 'buttons' => $btns];
   }
 
+  const MONTHS = ['uk' => ['січень', 'лютий', 'березень', 'квітень', 'травень', 'червень', 'липень', 'серпень', 'вересень', 'жовтень', 'листопад', 'грудень'],
+    'ru' => ['январь', 'февраль', 'март', 'апрель', 'май', 'июнь', 'июль', 'август', 'сентябрь', 'октябрь', 'ноябрь', 'декабрь']];
+  private static function money(float $v): string { return str_replace('.', ',', number_format($v, 2, '.', "\u{00a0}")); }
+  /** Нагадування про вивіз сміття (10-го, за минулий місяць): по квартирі — сума «люди × ціна» й куди платити; невідома сума — просто нагадати. */
+  public static function wasteText(string $lang, array $places, string $today): array {
+    $ru = $lang === 'ru'; $m = (int)substr((new DateTimeImmutable($today))->modify('first day of previous month')->format('m'), 0, 2);
+    $mon = self::MONTHS[$ru ? 'ru' : 'uk'][$m - 1] ?? '';
+    $many = $places && ($places[0]['all'] ?? 1) > 1;
+    $line = function (array $p) use ($ru, $many): string {
+      $who = !empty($p['org']) ? ' — ' . $p['org'] : '';
+      $s = $p['sum'] !== null ? '≈ ' . self::money((float)$p['sum']) . ' грн (' . $p['n'] . ' × ' . self::money((float)$p['price']) . ' грн)' : ($ru ? 'сумма — в платёжке' : 'сума — у платіжці');
+      return ($many ? '«' . $p['label'] . '»: ' : '') . $s . $who;
+    };
+    $t = ($ru ? "🗑 Вывоз мусора за $mon — пора оплатить. Обычно платят до 20-го.\n\n" : "🗑 Вивіз сміття за $mon — час оплатити. Зазвичай платять до 20-го.\n\n") . implode("\n", array_map($line, $places));
+    $pays = array_values(array_unique(array_filter(array_map(fn($p) => (string)(($ru ? ($p['pay_ru'] ?? '') : '') ?: ($p['pay'] ?? '')), $places))));
+    if (count($pays) === 1) $t .= "\n\n" . ($ru ? 'Куда платить: ' : 'Куди платити: ') . $pays[0];
+    $off = $ru ? 'Выключить — на странице квартиры, в блоке «Вывоз мусора».' : 'Вимкнути — на сторінці квартири, у блоці «Вивіз сміття».';
+    $btn = $ru ? 'Вывоз мусора' : 'Вивіз сміття'; $go = Cfg::appUrl() . '?go=waste';
+    $btns = array_map(fn($p) => [$btn . ($many ? ' — ' . $p['label'] : ''), $go . '&place=' . rawurlencode($p['id'])], array_slice($places, 0, 6));
+    if (!$btns) $btns = [[$btn, $go]];
+    return ['text' => $t . "\n\n" . $off, 'button' => $btns[0][0], 'url' => $btns[0][1], 'buttons' => $btns];
+  }
+
   /** Ближайший день напоминания, начиная с сегодня (если окно 10–20 ещё не закрылось): ['date', 'kind', 'ym']. */
   public static function next(int $now): array {
     $d = (new DateTimeImmutable('@' . $now))->setTimezone(new DateTimeZone(self::TZ));
     for ($i = 0; $i < 40; $i++) {
       $x = $d->modify("+$i day"); $k = self::kindOn($x);
+      if ($k && str_starts_with($k[0], 'waste')) continue;   // вивіз сміття — лише тим, хто увімкнув у квартирі; «найближче» — про показання
       if ($k && ($i > 0 || (int)$d->format('G') < 20)) return ['date' => $x->format('Y-m-d'), 'kind' => $k[0], 'ym' => $k[1]];
     }
     return [];

@@ -1227,6 +1227,12 @@ summary:focus-visible { outline: 3px solid var(--c-info); outline-offset: 2px; b
 .prov-price.none { color: var(--c-warn); font-weight: 500; }
 .prov-note { color: var(--c-ink-2); background: var(--c-surface-2); border-radius: 10px; padding: 8px 12px; margin: 6px 0 4px !important; }
 .prov-src { margin: 2px 0 4px; }
+/* вивіз сміття (112-а) — під постачальниками квартири, тим самим рядком; сума на місяць — помітно */
+.prov + .prov.waste .prov-row, p + .prov.waste .prov-row { border-top: 1px solid var(--c-line); }
+.c-waste { color: var(--c-ink-2); }
+.prov.waste .ws-f { margin-top: 10px; }
+.prov.waste .check-row { margin-top: 4px; }
+.ws-sum { font-weight: 600; font-size: var(--fs-m, 17px); margin: 10px 0 6px !important; font-variant-numeric: tabular-nums; }
 .prov-src > summary { cursor: pointer; font-size: var(--fs-s); color: var(--c-return); text-decoration: underline; text-underline-offset: 3px; min-height: 32px; display: inline-flex; align-items: center; }
 .prov-src[open] > summary { margin-bottom: 2px; }
 .prov-act { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0 0 !important; }

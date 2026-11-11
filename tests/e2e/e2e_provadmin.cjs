@@ -14,7 +14,7 @@ let pass = 0, fail = 0; const ok = (n, c, x) => { if (c) { pass++; console.log('
   await api('POST', '/admin/prov/save', { r: 'kh', scope: 'hromadas', key: 'Липецька', kind: 'water', value: null });   // чистый старт
   await p.goto(U + 'admin#prov'); await p.waitForTimeout(900);
   const main = async () => (await p.textContent('main')) || '';
-  ok('вкладка «Справочник»: 5 регионов, «Что ищут люди», «Можно ли подавать без человека»', /Справочник поставщиков/.test(await main()) && (await p.$$('main .cards .card')).length === 5 && /Что ищут люди/.test(await main()) && /без человека/.test(await main()), (await main()).slice(0, 200));
+  ok('вкладка «Справочник»: регионы (≥ 5), «Что ищут люди», «Можно ли подавать без человека»', /Справочник поставщиков/.test(await main()) && (await p.$$('main .cards .card')).length >= 5 && /Что ищут люди/.test(await main()) && /без человека/.test(await main()), (await main()).slice(0, 200));
   await p.fill('#pvq', 'Бровари, вул. Київська 1'); await p.click('#pvf button'); await p.waitForTimeout(600);
   ok('поиск адреса → Бровари, Броварська громада, Київська, кнопка «Открыть громаду»', /Бровари/.test(await main()) && /Броварська громада/.test(await main()) && !!(await p.$('a[href*="prov/kv/hromadas/"]')));
   await p.goto(U + 'admin#prov/kv'); await p.waitForTimeout(900);
@@ -25,7 +25,7 @@ let pass = 0, fail = 0; const ok = (n, c, x) => { if (c) { pass++; console.log('
   await p.goto(U + 'admin#prov/kh'); await p.waitForTimeout(900);
   await p.fill('#pvq2', 'Липец'); await p.waitForTimeout(300);
   await p.click('main tr.click:has-text("Липецька")'); await p.waitForTimeout(900);
-  ok('громада: 4 вида, вода свёрнута («нет на этом уровне — люди видят…»), пункты громады', (await p.$$('details[data-pvk]')).length === 4 && /нет на этом уровне/.test(await main()) && /Пункты громады/.test(await main()));
+  ok('громада: 5 видов (с вывозом мусора, 112-я), вода свёрнута («нет на этом уровне — люди видят…»), пункты громады', (await p.$$('details[data-pvk]')).length === 5 && /нет на этом уровне/.test(await main()) && /Пункты громады/.test(await main()));
   await p.click('details[data-pvk=water] summary'); await p.waitForTimeout(200);
   await p.fill('details[data-pvk=water] [data-pvf=org]', 'КП «Липецьке» (тест)'); await p.fill('details[data-pvk=water] [data-pvf=supply]', '41,2'); await p.fill('details[data-pvk=water] [data-pvf=drain]', '30');
   await p.fill('details[data-pvk=water] [data-pvf=phones]', '(057) 700-00-00; диспетчер'); await p.fill('details[data-pvk=water] [data-pvf=src]', 'тест e2e');

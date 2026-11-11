@@ -681,6 +681,22 @@ ok('Харків за адресою — як було: «До 20-го», Вод
 $mix = ['places' => [$khs['places'][0], ['id' => 'p2', 'name' => 'Львів'] + $lvp]];
 $mt = Reminders::text('water16', 'uk', Reminders::placesDue($mix, 'water16', '2026-11'))['text'];
 ok('Харків + Львів в одному повідомленні — загальний текст без «до 20-го», постачальника не називаємо (різні)', !str_contains($mt, '20-го') && !str_contains($mt, 'постачальник') && str_contains($mt, '«Львів»'), $mt);
+// 112-а: вивіз сміття — довідник (Харків: КВПВ 23,47 з людини), нагадування 10-го за минулий місяць лише тим, хто увімкнув у квартирі
+$kl = Providers::lookup('м. Харків, вул. Сумська, 10');
+ok('довідник: Харків — вивіз сміття КП «Комплекс з вивозу побутових відходів», 23,47 грн з людини, check', ($kl['kinds']['waste']['price'] ?? null) == 23.47 && str_contains((string)($kl['kinds']['waste']['org'] ?? ''), 'Комплекс') && !empty($kl['kinds']['waste']['check']), $kl['kinds']['waste'] ?? null);
+$ml = Providers::lookup('смт Мала Данилівка, вул. Академічна, 1');
+ok('довідник: Мала Данилівка — КП «Малоданилівський комунальник», 32 грн з людини (намір 04.11.2025), телефон', ($ml['kinds']['waste']['price'] ?? null) == 32 && str_contains((string)($ml['kinds']['waste']['org'] ?? ''), 'Малоданилівський') && !empty($ml['kinds']['waste']['phones']), $ml['kinds']['waste'] ?? null);
+$d10 = Reminders::kindOn(new DateTimeImmutable('2026-12-10 12:00', new DateTimeZone('Europe/Kyiv')));
+ok('10.12 — waste10 за листопад; «найближче» його пропускає (лише показання)', $d10 === ['waste10', '2026-11'] && (Reminders::next(strtotime('2026-12-06 12:00:00 Europe/Kyiv'))['kind'] ?? '') === 'water16', $d10);
+$wsS = ['places' => [['id' => 'main', 'address' => 'м. Харків, вул. Сумська, 10', 'waste' => ['on' => true, 'persons' => 3]], ['id' => 'p2', 'name' => 'Мамина', 'address' => 'смт Мала Данилівка, вул. Академічна, 1', 'water' => ['persons' => 2], 'waste' => ['on' => true, 'remindOff' => true]], ['id' => 'p3', 'name' => 'Дача']]];
+$wsd = Reminders::placesDue($wsS, 'waste10', '2026-11');
+ok('сміття: лише увімкнені й не вимкнені квартири; сума 3 × 23,47 = 70,41', array_column($wsd, 'id') === ['main'] && $wsd[0]['sum'] == 70.41 && $wsd[0]['n'] === 3, $wsd);
+$wsS['places'][1]['waste']['remindOff'] = false; $wsS['places'][1]['waste']['price'] = 35;
+$wsd2 = Reminders::placesDue($wsS, 'waste10', '2026-11'); $wst2 = Reminders::text('waste10', 'uk', $wsd2, '2026-12-10');
+ok('сміття: друга квартира — люди з води (2), своя ціна 35 → 70,00; текст «за листопад», обидві з кнопками ?go=waste&place=', ($wsd2[1]['sum'] ?? null) == 70.0 && str_contains($wst2['text'], 'Вивіз сміття за листопад') && str_contains($wst2['text'], '«Мамина»: ≈ 70,00 грн (2 × 35,00 грн)')
+  && count($wst2['buttons']) === 2 && str_ends_with($wst2['buttons'][1][1], '?go=waste&place=p2'), [$wsd2, $wst2]);
+$wst3 = Reminders::text('waste10', 'ru', [['id' => 'main', 'label' => 'Моя квартира', 'all' => 1, 'org' => null, 'n' => null, 'price' => null, 'sum' => null, 'pay' => '', 'pay_ru' => '']], '2026-12-10');
+ok('сміття: суми не знаємо — «сумма — в платёжке», одна квартира без назви', str_contains($wst3['text'], 'Вывоз мусора за ноябрь') && str_contains($wst3['text'], 'сумма — в платёжке') && !str_contains($wst3['text'], '«Моя'), $wst3);
 // несколько квартир (этап 2): одно сообщение со списком квартир, кнопка в каждую; выключатель у квартиры
 $wm = $wst; $wm['places'][] = ['id' => 'p2', 'name' => 'Мамина', 'water' => ['meters' => [['id' => 'c9', 'kind' => 'cold']]]];
 $pd = Reminders::placesDue($wm, 'water16', '2026-11');

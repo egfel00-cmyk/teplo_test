@@ -1259,6 +1259,12 @@ summary:focus-visible { outline: 3px solid var(--c-info); outline-offset: 2px; b
 .prov-price.none { color: var(--c-warn); font-weight: 500; }
 .prov-note { color: var(--c-ink-2); background: var(--c-surface-2); border-radius: 10px; padding: 8px 12px; margin: 6px 0 4px !important; }
 .prov-src { margin: 2px 0 4px; }
+/* вивіз сміття (112-а) — під постачальниками квартири, тим самим рядком; сума на місяць — помітно */
+.prov + .prov.waste .prov-row, p + .prov.waste .prov-row { border-top: 1px solid var(--c-line); }
+.c-waste { color: var(--c-ink-2); }
+.prov.waste .ws-f { margin-top: 10px; }
+.prov.waste .check-row { margin-top: 4px; }
+.ws-sum { font-weight: 600; font-size: var(--fs-m, 17px); margin: 10px 0 6px !important; font-variant-numeric: tabular-nums; }
 .prov-src > summary { cursor: pointer; font-size: var(--fs-s); color: var(--c-return); text-decoration: underline; text-underline-offset: 3px; min-height: 32px; display: inline-flex; align-items: center; }
 .prov-src[open] > summary { margin-bottom: 2px; }
 .prov-act { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0 0 !important; }
@@ -2953,7 +2959,7 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
       rec_gone: 'Цих показань уже немає (видалені).',
       rec_src_photo: 'з фото', rec_src_manual: 'введено вручну', rec_edited: 'виправлено',
       rec_used_title: 'Скільки набігло',
-      ru_title: 'Набігло за {m}', ru_title_h: 'Набігло з {d}', ru_title_paid: 'Набігло з передачі {d}', ru_w_from: 'Гаряча — від передачі {h}, холодна — від {c}', kpi_since: 'Після передачі {d}: +{v} {u} ≈ {uah} грн', ru_per: 'з {a} до {b} · {d} дн.', ru_calc: '{q} {u} × {p} грн = {s} грн', ru_zone: '{z}: {q} × {p} грн = {s} грн',
+      ws_k: 'Вивіз сміття', ws_nometer: 'без лічильника', ws_add: 'Додати вивіз сміття', ws_add_h: 'Платите з людини, без лічильника. Порахуємо суму на місяць і нагадаємо про оплату.', ws_add_dir: 'Тут вивозить {org}: {p} грн з людини на місяць. Порахуємо суму й нагадаємо про оплату.', ws_org_none: 'Хто вивозить — впишіть з платіжки', ws_price: '{p} грн з людини на місяць', ws_price_none: 'Ціну з людини впишіть з платіжки', ws_persons: 'Скільки людей у квартирі', ws_persons_h: 'Як у платіжці: зареєстровані чи ті, хто живе.', ws_price_l: 'Своя ціна з платіжки, з людини', ws_org_l: 'Хто вивозить', ws_priv: 'Приватний будинок — {p} грн з людини', ws_sum: '≈ {s} грн на місяць ({n} × {p} грн)', ws_sum_np: 'Впишіть, скільки людей, — порахуємо суму на місяць.', ws_sum_none: 'Впишіть ціну з платіжки й кількість людей — порахуємо суму на місяць.', ws_site: 'Сайт вивізника', ws_remind: 'Нагадувати в Telegram про оплату', ws_remind_h: '10-го числа: скільки за місяць і куди платити. Зазвичай платять до 20-го.', ws_off: 'Прибрати вивіз сміття', ru_title: 'Набігло за {m}', ru_title_h: 'Набігло з {d}', ru_title_paid: 'Набігло з передачі {d}', ru_w_from: 'Гаряча — від передачі {h}, холодна — від {c}', kpi_since: 'Після передачі {d}: +{v} {u} ≈ {uah} грн', ru_per: 'з {a} до {b} · {d} дн.', ru_calc: '{q} {u} × {p} грн = {s} грн', ru_zone: '{z}: {q} × {p} грн = {s} грн',
       ru_this: 'Цей запис: +{q} {u} за {d} дн.', ru_meter: 'На лічильнику: з {a} до {b} {u}', ru_proj: 'Якщо так і далі — за місяць ≈ {q} {u}, це ≈ {s} грн',
       ru_base: 'Перші показання — скільки набігло, порахуємо з наступних.', ru_vals: 'Показання', ru_sum: 'разом', ru_hot: 'гаряча', ru_cold: 'холодна',
       ru_w_c: 'Холодна: {q} м³ × ({a} + {b} водовідведення) грн = {s} грн', ru_w_h: 'Гаряча: {q} м³ × ({a} + {b} водовідведення) грн = {s} грн',
@@ -4120,7 +4126,7 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
       rec_gone: 'Этих показаний уже нет (удалены).',
       rec_src_photo: 'с фото', rec_src_manual: 'введено вручную', rec_edited: 'исправлено',
       rec_used_title: 'Сколько набежало',
-      ru_title: 'Набежало за {m}', ru_title_h: 'Набежало с {d}', ru_title_paid: 'Набежало с передачи {d}', ru_w_from: 'Горячая — от передачи {h}, холодная — от {c}', kpi_since: 'После передачи {d}: +{v} {u} ≈ {uah} грн', ru_per: 'с {a} по {b} · {d} дн.', ru_calc: '{q} {u} × {p} грн = {s} грн', ru_zone: '{z}: {q} × {p} грн = {s} грн',
+      ws_k: 'Вывоз мусора', ws_nometer: 'без счётчика', ws_add: 'Добавить вывоз мусора', ws_add_h: 'Платите с человека, без счётчика. Посчитаем сумму в месяц и напомним об оплате.', ws_add_dir: 'Здесь вывозит {org}: {p} грн с человека в месяц. Посчитаем сумму и напомним об оплате.', ws_org_none: 'Кто вывозит — впишите с платёжки', ws_price: '{p} грн с человека в месяц', ws_price_none: 'Цену с человека впишите с платёжки', ws_persons: 'Сколько человек в квартире', ws_persons_h: 'Как в платёжке: зарегистрированные или те, кто живёт.', ws_price_l: 'Своя цена с платёжки, с человека', ws_org_l: 'Кто вывозит', ws_priv: 'Частный дом — {p} грн с человека', ws_sum: '≈ {s} грн в месяц ({n} × {p} грн)', ws_sum_np: 'Впишите, сколько человек, — посчитаем сумму в месяц.', ws_sum_none: 'Впишите цену с платёжки и количество человек — посчитаем сумму в месяц.', ws_site: 'Сайт вывозчика', ws_remind: 'Напоминать в Telegram об оплате', ws_remind_h: '10-го числа: сколько за месяц и куда платить. Обычно платят до 20-го.', ws_off: 'Убрать вывоз мусора', ru_title: 'Набежало за {m}', ru_title_h: 'Набежало с {d}', ru_title_paid: 'Набежало с передачи {d}', ru_w_from: 'Горячая — от передачи {h}, холодная — от {c}', kpi_since: 'После передачи {d}: +{v} {u} ≈ {uah} грн', ru_per: 'с {a} по {b} · {d} дн.', ru_calc: '{q} {u} × {p} грн = {s} грн', ru_zone: '{z}: {q} × {p} грн = {s} грн',
       ru_this: 'Эта запись: +{q} {u} за {d} дн.', ru_meter: 'На счётчике: с {a} до {b} {u}', ru_proj: 'Если так и дальше — за месяц ≈ {q} {u}, это ≈ {s} грн',
       ru_base: 'Первые показания — сколько набежало, посчитаем со следующих.', ru_vals: 'Показания', ru_sum: 'всего', ru_hot: 'горячая', ru_cold: 'холодная',
       ru_w_c: 'Холодная: {q} м³ × ({a} + {b} водоотведение) грн = {s} грн', ru_w_h: 'Горячая: {q} м³ × ({a} + {b} водоотведение) грн = {s} грн',
@@ -12363,6 +12369,61 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
     } else return;
     SCROLL_TO = 'prov'; render(true);
   });
+  // ---------- вивіз сміття (112-а, власник 11.11: «так, і нагадувати про оплату») — без лічильника: ціна з людини × скільки людей ----------
+  /** Довідник вивозу сміття для квартири (громада за адресою) або null. */
+  function wasteDir(p) { var j = p && String(p.address || '').trim() ? prvLoad(p) : null; return j && j.found && j.kinds && j.kinds.waste && (j.kinds.waste.org || j.kinds.waste.price != null) ? j.kinds.waste : null; }
+  function wastePersons(p) { var w = (p && p.waste) || {}; return R.num(w.persons) > 0 ? Math.round(R.num(w.persons)) : (p && p.water && R.num(p.water.persons) > 0 ? Math.round(R.num(p.water.persons)) : null); }
+  /** Ціна з людини: своя з платіжки → довідник (приватний сектор — priv, якщо є). → {p, own} або null. */
+  function wastePrice(p, d) { var w = (p && p.waste) || {}; if (R.num(w.price) > 0) return { p: R.num(w.price), own: true }; if (!d) return null; var v = w.priv && R.num(d.priv) > 0 ? R.num(d.priv) : R.num(d.price); return v > 0 ? { p: v, own: false } : null; }
+  function wasteSum(p, d) { var n = wastePersons(p), pr = wastePrice(p, d); return n && pr ? Math.round(n * pr.p * 100) / 100 : null; }
+  function wastePriceTxt(p, d) { var pr = wastePrice(p, d); return pr ? t('ws_price', { p: money(pr.p) }) + (pr.own ? ' ' + t('prv_from_bill') : d && d.from ? ' ' + t('prv_since', { d: fmtDate(d.from, true) }) : '') : t('ws_price_none'); }
+  function wasteSumTxt(p, d) { var n = wastePersons(p), pr = wastePrice(p, d); return n && pr ? t('ws_sum', { s: money(n * pr.p), n: n, p: money(pr.p) }) : t(pr ? 'ws_sum_np' : 'ws_sum_none'); }
+  function wasteBox(p) {
+    var w = p.waste || {}, d = wasteDir(p);
+    var head = '<span class="pst-ico c-waste">' + ico('trash', 20) + '</span>';
+    if (!w.on) return '<div class="prov waste" id="waste" data-key="pv-waste"><div class="prov-row" data-key="prov-waste-add">' + head + '<div class="prov-b"><p class="prov-k"><b>' + esc(t('ws_k')) + '</b></p>' +
+      '<p class="small muted">' + esc(d && d.org && R.num(d.price) > 0 ? t('ws_add_dir', { org: ploc(d, 'org'), p: money(R.num(d.price)) }) : t('ws_add_h')) + '</p>' +
+      '<p class="prov-act"><button type="button" class="btn sec sm" data-act="ws-on" data-key="ws-on">' + ico('plus', 18) + '<span>' + esc(t('ws_add')) + '</span></button></p></div></div></div>';
+    var pr = wastePrice(p, d), org = w.org || (d && d.org) || '', phones = (d && d.phones) || [], n = wastePersons(p);
+    var h = '<div class="prov waste" id="waste" data-key="pv-waste"><div class="prov-row' + (pr && org ? '' : ' need') + '" data-key="prov-waste">' + head + '<div class="prov-b">' +
+      '<p class="prov-k"><b>' + esc(t('ws_k')) + '</b> <span class="muted small">' + esc(t('ws_nometer')) + '</span></p>' +
+      '<p class="prov-org">' + (org ? esc(org) : '<span class="muted">' + esc(t('ws_org_none')) + '</span>') + '</p>' +
+      '<p class="prov-price' + (pr ? '' : ' none') + '" id="ws-price-t">' + esc(wastePriceTxt(p, d)) + '</p>' +
+      (d && d.check && !(pr && pr.own) && ploc(d, 'note') ? '<p class="small prov-note">' + esc(ploc(d, 'note')) + '</p>' : '') +
+      (d && ploc(d, 'src') && !(pr && pr.own) ? '<details class="prov-src"><summary>' + esc(t('prv_src')) + '</summary><p class="small muted">' + esc(ploc(d, 'src')) + '</p></details>' : '') +
+      '<div class="grid2 ws-f">' +
+        '<div class="field"><label for="ws-persons">' + esc(t('ws_persons')) + '</label><div class="ctl"><input id="ws-persons" class="num" inputmode="numeric" autocomplete="off" data-wsf="persons" maxlength="2" value="' + esc(n || '') + '"></div><div class="small muted">' + esc(t('ws_persons_h')) + '</div></div>' +
+        '<div class="field"><label for="ws-price">' + esc(t('ws_price_l')) + ' <span class="muted small">(' + esc(t('b_opt')) + ')</span></label><div class="ctl"><input id="ws-price" class="num" inputmode="decimal" autocomplete="off" data-wsf="price" value="' + esc(R.num(w.price) > 0 ? money(R.num(w.price)) : '') + '" placeholder="' + esc(d && R.num(d.price) > 0 ? money(w.priv && R.num(d.priv) > 0 ? R.num(d.priv) : R.num(d.price)) : '') + '"><span class="unit">грн</span></div></div>' +
+        (!(d && d.org) ? '<div class="field"><label for="ws-org">' + esc(t('ws_org_l')) + ' <span class="muted small">(' + esc(t('b_opt')) + ')</span></label><div class="ctl"><input id="ws-org" autocomplete="off" maxlength="80" data-wsf="org" value="' + esc(w.org || '') + '"></div></div>' : '') +
+      '</div>' +
+      (d && R.num(d.priv) > 0 && R.num(d.priv) !== R.num(d.price) ? '<label class="check-row"><input type="checkbox" data-wsf="priv" data-key="ws-priv"' + (w.priv ? ' checked' : '') + '><span>' + esc(t('ws_priv', { p: money(R.num(d.priv)) })) + '</span></label>' : '') +
+      '<p class="ws-sum" id="ws-sum" data-key="ws-sum">' + esc(wasteSumTxt(p, d)) + '</p>' +
+      (d && ploc(d, 'pay') ? '<p class="small prov-pay"><b>' + esc(t('ld_pay_t')) + '</b> ' + esc(ploc(d, 'pay')) + '</p>' : '') +
+      (phones.length ? '<p class="small ws-ph">' + phones.map(function (x) { return telLink(x[0], x[1]) + (x[2] && x[2] !== org ? ' <span class="muted">' + esc(x[2]) + '</span>' : ''); }).join(' · ') + '</p>' : '') +
+      (d && d.site ? '<p class="small"><a href="' + esc(d.site) + '" target="_blank" rel="noopener">' + esc(t('ws_site')) + '</a></p>' : '') +
+      (window.TEPLO_API ? '<label class="check-row" style="margin-top:8px"><input type="checkbox" data-wsf="remind" data-key="ws-remind"' + (w.remindOff ? '' : ' checked') + (S.remind && S.remind.off ? ' disabled' : '') + '><span>' + esc(t('ws_remind')) + '</span></label>' +
+        '<p class="small muted" style="margin:4px 0 0">' + esc(t(S.remind && S.remind.off ? 'pv_remind_all_off' : 'ws_remind_h')) + '</p>' : '') +
+      '<p class="prov-act"><button type="button" class="btn ter sm" data-act="ws-off" data-key="ws-off">' + esc(t('ws_off')) + '</button></p>';
+    return h + '</div></div></div>';
+  }
+  function wasteSet(fn) { ensurePlaces(); var p = place(); if (!p) return null; p.waste = JSON.parse(JSON.stringify(p.waste || {})); fn(p.waste); p.updatedAt = Date.now(); save(); return p; }
+  document.addEventListener('click', function (e) {
+    var b = e.target.closest && e.target.closest('[data-act="ws-on"],[data-act="ws-off"]'); if (!b) return;
+    var on = b.getAttribute('data-act') === 'ws-on';
+    wasteSet(function (w) { if (on) { w.on = true; w.at = w.at || today(); } else delete w.on; });
+    track('waste', { on: on ? 1 : 0 }); SCROLL_TO = 'waste'; render(true);
+  });
+  ['input', 'change'].forEach(function (ev) { document.addEventListener(ev, function (e) {
+    var el = e.target, f = el && el.getAttribute && el.getAttribute('data-wsf'); if (!f) return;
+    if (el.type === 'checkbox') { if (ev !== 'change') return; wasteSet(function (w) { if (f === 'remind') { if (el.checked) delete w.remindOff; else w.remindOff = true; } else if (el.checked) w[f] = true; else delete w[f]; }); }
+    else if (f === 'org') wasteSet(function (w) { var v = el.value.trim().slice(0, 80); if (v) w.org = v; else delete w.org; });
+    else { var v = el.value.trim() === '' ? null : R.num(el.value.replace(/\s/g, '').replace(',', '.')); if (v !== null && !(v > 0 && v < (f === 'persons' ? 50 : 1000))) return;
+      wasteSet(function (w) { if (v === null) delete w[f]; else w[f] = f === 'persons' ? Math.round(v) : v; }); }
+    // сума й ціна — на місці, без перемальовування (фокус у полі лишається)
+    var p = place(), d = p && wasteDir(p), s = document.getElementById('ws-sum'), pt = document.getElementById('ws-price-t');
+    if (p && s) s.textContent = wasteSumTxt(p, d);
+    if (p && pt) { pt.textContent = wastePriceTxt(p, d); pt.classList.toggle('none', !wastePrice(p, d)); }
+  }); });
   /** Экран квартиры: её счётчики, название/адрес/цвет, свои рахунки; удалить. Открыть экран = перейти в эту квартиру. */
   function placeView(id) {
     var p = place(id);
@@ -12398,7 +12459,7 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
       if (k === 'elec' || k === 'gas') { var sm = smeters(k); b = sm.map(function (m) { return (sm.length > 1 ? '<p class="small muted pv-mname">' + esc(ename(m)) + '</p>' : '') + '<div class="grid2">' + sprovFields(k, m) + '</div>'; }).join('') + sheatRow(k); }
       return b ? '<div class="prov-bills" data-key="pv-bills-' + k + '"><p class="prov-bills-t">' + esc(t('pv_bills_t')) + '</p>' + b + '</div>' : '';
     };
-    var prov = provPanel(p, bills) || '<p class="muted">' + esc(t('pv_money_none')) + '</p>';
+    var prov = (provPanel(p, bills) || '<p class="muted">' + esc(t('pv_money_none')) + '</p>') + wasteBox(p);   // вивіз сміття — тихим рядком під постачальниками
     // про квартиру
     var chips = t('pv_chips').split('|').map(function (c) { return '<button type="button" class="chip" data-act="pv-chip" data-v="' + esc(c) + '" aria-pressed="' + (p.name === c) + '">' + esc(c) + '</button>'; }).join('');
     var sw = PCOLORS.map(function (c) { return '<label class="swatch" style="--pc:var(--pc-' + c + ')"><input type="radio" name="pv-color" value="' + c + '"' + (placeColor(p) === c ? ' checked' : '') + '><span class="sw-dot" aria-hidden="true">' + ico('check', 20) + '</span><span class="sr">' + esc(t('pc_' + c)) + '</span></label>'; }).join('');
@@ -14002,13 +14063,15 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
     // графік відключень з ранкового повідомлення: сторінка світла квартири з розгорнутим блоком (без електролічильника — екран квартири)
     if (g === 'gpv') { var gpl = (pid && place(pid)) || places().filter(function (x) { return gpvHas(x) && x.gpv; })[0] || place(); g = 'home';
       if (gpl) { if (gpl.id !== S.placeId) { switchPlace(gpl.id); WX.key = ''; } GPV_OPEN[gpl.id] = true; SCROLL_TO = 'gpv-' + gpl.id; g = smeters('elec').length ? 'elec' : 'place-' + gpl.id; } }
+    // вивіз сміття (нагадування 10-го): екран квартири, блок «Вивіз сміття»
+    if (g === 'waste') { var wpl = (pid && place(pid)) || place(); g = wpl ? 'place-' + wpl.id : 'home'; SCROLL_TO = 'waste'; }
     try { history.replaceState(null, '', location.pathname + q + '#' + g); } catch (e) { location.hash = g; }
     if (g === 'wnew') WN = wnFresh(wmeters('hot').length ? 'hot' : 'cold');
     if (g === 'enew' || g === 'gnew') EN = enFresh(g === 'gnew' ? 'gas' : 'elec');
   }
   var DEEP = null, TGS = '';
   (function () {
-    var g = (location.search.match(/[?&]go=(wnew|heat|enew|elec|gnew|gas|home|places|water-cold|water-hot|gpv)(?=&|$)/) || [])[1]; if (!g) return;
+    var g = (location.search.match(/[?&]go=(wnew|heat|enew|elec|gnew|gas|home|places|water-cold|water-hot|gpv|waste)(?=&|$)/) || [])[1]; if (!g) return;
     var pid = (location.search.match(/[?&]place=([\w-]+)(?=&|$)/) || [])[1];
     var q = location.search.replace(/([?&])(go|place)=[\w-]+(?=&|$)/g, '$1').replace(/&{2,}/g, '&').replace(/\?&/, '?').replace(/[?&]$/, '');
     deepLink(g, pid, q);
