@@ -95,6 +95,14 @@ const U = 'http://127.0.0.1:8013/';
   const rmd = p.locator('[data-key=ws-remind]');
   if (await rmd.count()) { await p.evaluate(() => document.querySelector('[data-key=ws-remind]').click()); await p.waitForTimeout(200); w = await st(); ok('нагадування вимкнули — remindOff', w.remindOff === true, w); }
   else ok('галочка нагадування (лише з сервером) — є', false);
+  // 9. 116-а: абонплата за особовий рахунок (Балаклія: 33,23 з людини + 10,01) — у сумі один раз, видно в табло й налаштуваннях
+  await p.evaluate(() => { const s = JSON.parse(localStorage.getItem('teplo.v1')); const q = s.places[0]; q.address = 'м. Балаклія, вул. Жовтнева, 1'; delete q.city; delete q.settle;
+    q.waste.persons = 2; delete q.waste.price; delete q.waste.org; localStorage.setItem('teplo.v1', JSON.stringify(s)); });
+  await p.goto(U + '#waste'); await p.reload(); await p.waitForTimeout(1200);
+  await p.evaluate(() => { const d = document.querySelector('[data-key=wbox-set]'); if (d) d.open = true; });
+  const bp = await txt('[data-key=wplate-hero]'), bs = await txt('[data-key=ws-sum]'), bpr = await txt('[data-wsl=price]');
+  ok('Балаклія: табло 76,47 «2 × 33,23 грн + 10,01 абонплата»; сума й ціна — з абонплатою за рахунок', /76,47/.test(bp) && /2 × 33,23 грн \+ 10,01 абонплата/.test(bp)
+    && /≈ 76,47 грн на місяць \(2 × 33,23 грн \+ 10,01 грн абонплата\)/.test(bs) && /\+ 10,01 грн абонплата за рахунок/.test(bpr), [bp, bs, bpr]);
   ok('без помилок JS', !errs.length, errs);
   console.log('\nИтог: ' + pass + ' OK, ' + fail + ' FAIL'); await b.close(); process.exit(fail ? 1 : 0);
 })();

@@ -2983,7 +2983,7 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
       rec_used_title: 'Скільки набігло',
       // вивіз сміття на рівні лічильників (115-а)
       kd_waste: 'Вивіз сміття', kd_waste_s: 'Без лічильника — платять з людини', kv_waste: 'Сміття', ws_acc: 'Особовий рахунок у вивізника',
-      wp_month: 'на місяць', wp_calc: '{n} × {p} грн з людини', wp_need: 'Впишіть людей і ціну з платіжки', wp_need_n: 'Впишіть, скільки людей',
+      wp_month: 'на місяць', wp_calc: '{n} × {p} грн з людини', wp_calc_a: '{n} × {p} грн + {a} абонплата', ws_sum_a: '≈ {s} грн на місяць ({n} × {p} грн + {a} грн абонплата)', ws_abon: '+ {a} грн абонплата за рахунок', wp_need: 'Впишіть людей і ціну з платіжки', wp_need_n: 'Впишіть, скільки людей',
       wsc_paid: 'Сплачено за {m}', wsc_paid_d: 'Сплачено за {m} — {d}', wsc_due: 'Сплатити за {m} до {d}', wsc_late: 'за {m} оплату не записано', wsc_setup: 'впишіть людей і ціну — порахуємо суму',
       wsc_last: 'сплачено {d}: {s} грн', wsc_none: 'оплат ще не записано',
       wst_strip: 'Останні місяці', wsx_ok: 'сплачено', wsx_not: 'не сплачено', wsx_cur: 'поточний місяць', wsx_due: 'до {d}',
@@ -4190,7 +4190,7 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
       rec_used_title: 'Сколько набежало',
       // вывоз мусора на уровне счётчиков (115-я)
       kd_waste: 'Вывоз мусора', kd_waste_s: 'Без счётчика — платят с человека', kv_waste: 'Мусор', ws_acc: 'Лицевой счёт у вывозчика',
-      wp_month: 'в месяц', wp_calc: '{n} × {p} грн с человека', wp_need: 'Впишите людей и цену с платёжки', wp_need_n: 'Впишите, сколько человек',
+      wp_month: 'в месяц', wp_calc: '{n} × {p} грн с человека', wp_calc_a: '{n} × {p} грн + {a} абонплата', ws_sum_a: '≈ {s} грн в месяц ({n} × {p} грн + {a} грн абонплата)', ws_abon: '+ {a} грн абонплата за счёт', wp_need: 'Впишите людей и цену с платёжки', wp_need_n: 'Впишите, сколько человек',
       wsc_paid: 'Оплачено за {m}', wsc_paid_d: 'Оплачено за {m} — {d}', wsc_due: 'Оплатить за {m} до {d}', wsc_late: 'за {m} оплата не записана', wsc_setup: 'впишите людей и цену — посчитаем сумму',
       wsc_last: 'оплачено {d}: {s} грн', wsc_none: 'оплат ещё не записано',
       wst_strip: 'Последние месяцы', wsx_ok: 'оплачено', wsx_not: 'не оплачено', wsx_cur: 'текущий месяц', wsx_due: 'до {d}',
@@ -12747,9 +12747,14 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
   function wastePersons(p) { var w = (p && p.waste) || {}; return R.num(w.persons) > 0 ? Math.round(R.num(w.persons)) : (p && p.water && R.num(p.water.persons) > 0 ? Math.round(R.num(p.water.persons)) : null); }
   /** Ціна з людини: своя з платіжки → довідник (приватний сектор — priv, якщо є). → {p, own} або null. */
   function wastePrice(p, d) { var w = (p && p.waste) || {}; if (R.num(w.price) > 0) return { p: R.num(w.price), own: true }; if (!d) return null; var v = w.priv && R.num(d.priv) > 0 ? R.num(d.priv) : R.num(d.price); return v > 0 ? { p: v, own: false } : null; }
-  function wasteSum(p, d) { var n = wastePersons(p), pr = wastePrice(p, d); return n && pr ? Math.round(n * pr.p * 100) / 100 : null; }
-  function wastePriceTxt(p, d) { var pr = wastePrice(p, d); return pr ? t('ws_price', { p: money(pr.p) }) + (pr.own ? ' ' + t('prv_from_bill') : d && d.from ? ' ' + t('prv_since', { d: fmtDate(d.from, true) }) : '') : t('ws_price_none'); }
-  function wasteSumTxt(p, d) { var n = wastePersons(p), pr = wastePrice(p, d); return n && pr ? t('ws_sum', { s: money(n * pr.p), n: n, p: money(pr.p) }) : t(pr ? 'ws_sum_np' : 'ws_sum_none'); }
+  /** Абонплата за особовий рахунок на місяць (116-а: Балаклія — 10,01 грн окремо від «з людини»); з довідника, до суми додається один раз. */
+  function wasteAbon(p, d) { return d && R.num(d.abon) > 0 ? R.num(d.abon) : 0; }
+  function wasteSum(p, d) { var n = wastePersons(p), pr = wastePrice(p, d); return n && pr ? Math.round((n * pr.p + wasteAbon(p, d)) * 100) / 100 : null; }
+  /** «3 × 23,47 грн з людини» або «1 × 33,23 грн + 10,01 абонплата». */
+  function wasteCalcTxt(p, d) { var n = wastePersons(p), pr = wastePrice(p, d), a = wasteAbon(p, d); return a ? t('wp_calc_a', { n: n, p: money(pr.p), a: money(a) }) : t('wp_calc', { n: n, p: money(pr.p) }); }
+  function wastePriceTxt(p, d) { var a = wasteAbon(p, d); return wastePriceTxt0(p, d) + (a && wastePrice(p, d) ? ' ' + t('ws_abon', { a: money(a) }) : ''); }
+  function wastePriceTxt0(p, d) { var pr = wastePrice(p, d); return pr ? t('ws_price', { p: money(pr.p) }) + (pr.own ? ' ' + t('prv_from_bill') : d && d.from ? ' ' + t('prv_since', { d: fmtDate(d.from, true) }) : '') : t('ws_price_none'); }
+  function wasteSumTxt(p, d) { var n = wastePersons(p), pr = wastePrice(p, d), a = wasteAbon(p, d); return n && pr ? t(a ? 'ws_sum_a' : 'ws_sum', { s: money(wasteSum(p, d)), n: n, p: money(pr.p), a: money(a) }) : t(pr ? 'ws_sum_np' : 'ws_sum_none'); }
   function wasteOrg(p, d) { return wcur(p).org || (d && ploc(d, 'org')) || ''; }
   /** «жовтень» (цей рік) / «грудень 2025». */
   function wsMon(ym) { var s = monthLabel(ym); return ym.slice(0, 4) === today().slice(0, 4) ? s.replace(/\s*\d{4}\s*$/, '') : s; }
@@ -12764,11 +12769,11 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
   }
   /** Замість табло: сума на місяць крупно, під нею «3 × 23,47 грн з людини»; не знаємо людей чи ціну — «—» і що вписати. */
   function wplate(p, d, cls) {
-    var n = wastePersons(p), pr = wastePrice(p, d), s = n && pr ? n * pr.p : null;
+    var pr = wastePrice(p, d), s = wasteSum(p, d);
     return '<div class="wplate' + (cls ? ' ' + cls : '') + (s === null ? ' empty' : '') + '" data-key="wplate' + (cls ? '-' + cls.split(' ')[0] : '') + '">' +
       '<span class="wp-l">' + esc(t('wp_month')) + '</span>' +
       '<span class="wp-v"><b class="wp-sum" data-wsl="sum">' + (s === null ? '—' : esc(money(s))) + '</b><span class="wp-u">грн</span></span>' +
-      '<span class="wp-calc" data-wsl="calc">' + esc(s === null ? t(pr ? 'wp_need_n' : 'wp_need') : t('wp_calc', { n: n, p: money(pr.p) })) + '</span></div>';
+      '<span class="wp-calc" data-wsl="calc">' + esc(s === null ? t(pr ? 'wp_need_n' : 'wp_need') : wasteCalcTxt(p, d)) + '</span></div>';
   }
   /** Смужка останніх місяців (старіші ліворуч): ✓ сплачено, ! не сплачено, · поточний. Колір — разом зі значком і словом у підказці. */
   function wstrip(ms) {
@@ -12861,7 +12866,7 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
     chColors();
     var p = place(), d = wasteDir(p), w = wcur(p), sum = wasteSum(p, d), y = Ws.year(w, today()), st = Ws.status(w, today(), sum), head = '<h1>' + esc(t('stt_title')) + '</h1>' + kindSwitch();
     var ms = Ws.months(w, today(), sum, 12).filter(function (m) { return m.st !== 'ahead' || m.pay; }).reverse();
-    var tiles = kpi({ key: 'wst-kpi', tone: 'waste', q: sum ? money(sum) : '—', unit: t('wst_unit'), cap: sum ? t('wst_cap', { n: wastePersons(p), p: money(wastePrice(p, d).p) }) : t('ws_sum_none'),
+    var tiles = kpi({ key: 'wst-kpi', tone: 'waste', q: sum ? money(sum) : '—', unit: t('wst_unit'), cap: sum ? wasteCalcTxt(p, d) : t('ws_sum_none'),
       chips: [chip(y.n ? t('wst_year', { s: money(y.total), n: y.n }) : t('wst_year0'), 'clock')].concat(st.debt ? [chip(st.debtSum ? t('wsp_debt_s', { n: st.debt, s: money(st.debtSum) }) : t('wsp_debt', { n: st.debt }), 'alert')] : []) });
     var c = ms.length > 1 ? barChart(ms.map(function (m) { var v = m.paid || 0; return { x: ymLabel(m.ym), v: Math.round(v), top: v ? String(Math.round(v)) : '', color: CH.barSoft, tip: [monthLabel(m.ym), v ? t('wst_tip_paid', { s: money(v) }) : t('wsx_' + (m.st === 'cur' ? 'cur' : 'not')), sum ? t('wst_tip_acc', { s: money(sum) }) : ''] }; }), { title: t('wst_paid_t'), dec: 0, ref: sum ? { v: sum, label: t('wst_ref') } : null }) : '';
     var table = '<details class="panel wacc tbl-acc" data-key="wst-table"><summary><h2>' + esc(t('stt_table')) + '</h2>' + ico('chev', 20, 'pacc-chev') + '</summary><div class="tbl-wrap where-b"><table class="tbl"><thead><tr><th>' + esc(t('wst_th_month')) + '</th><th>' + esc(t('wst_th_acc')) + '</th><th>' + esc(t('wst_th_paid')) + '</th></tr></thead><tbody>' +
@@ -12941,11 +12946,11 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
     else { var v = el.value.trim() === '' ? null : R.num(el.value.replace(/\s/g, '').replace(',', '.')); if (v !== null && !(v > 0 && v < (f === 'persons' ? 50 : 1000))) return;
       wasteSet(function (w) { if (v === null) delete w[f]; else w[f] = f === 'persons' ? Math.round(v) : v; }); }
     // сума, ціна й «табло» — на місці, без перемальовування (фокус у полі лишається)
-    var p = place(), d = p && wasteDir(p), n = p && wastePersons(p), pr = p && wastePrice(p, d), s = n && pr ? n * pr.p : null;
+    var p = place(), d = p && wasteDir(p), pr = p && wastePrice(p, d), s = p ? wasteSum(p, d) : null;
     var set = function (k, txt) { Array.prototype.forEach.call(document.querySelectorAll('[data-wsl="' + k + '"]'), function (x) { x.textContent = txt; }); };
     if (!p) return;
     set('sumtxt', wasteSumTxt(p, d)); set('price', wastePriceTxt(p, d)); set('sum', s === null ? '—' : money(s));
-    set('calc', s === null ? t(pr ? 'wp_need_n' : 'wp_need') : t('wp_calc', { n: n, p: money(pr.p) }));
+    set('calc', s === null ? t(pr ? 'wp_need_n' : 'wp_need') : wasteCalcTxt(p, d));
     Array.prototype.forEach.call(document.querySelectorAll('.wplate'), function (x) { x.classList.toggle('empty', s === null); });
   }); });
   /** Экран квартиры: её счётчики, название/адрес/цвет, свои рахунки; удалить. Открыть экран = перейти в эту квартиру. */
@@ -12965,7 +12970,7 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
     ['elec', 'gas'].forEach(function (k) { smeters(k).forEach(function (m) { rows.push(mrow({ what: m.id, kind: k, title: ename(m), href: SK[k].page, noReplace: true, sub: [ezonesTxt(m), verTxt(m.verifiedUntil)].filter(Boolean).join(' · '), set: smeterFields(k, m, true) + mdocs(m.id) })); }); });
     // вивіз сміття — рядком серед лічильників (115-а): відкрити, налаштування (люди, ціна, рахунок), прибрати
     if (wasteOn(p)) { var wd = wasteDir(p), wn = wastePersons(p), wpr = wastePrice(p, wd);
-      rows.push(mrow({ what: 'waste', kind: 'waste', title: t('kd_waste'), href: 'waste', noReplace: true, setTitle: t('wsp_set'), sub: wn && wpr ? t('wp_calc', { n: wn, p: money(wpr.p) }) : t('ws_nometer'), set: wasteFields(p, wd) })); }
+      rows.push(mrow({ what: 'waste', kind: 'waste', title: t('kd_waste'), href: 'waste', noReplace: true, setTitle: t('wsp_set'), sub: wn && wpr ? wasteCalcTxt(p, wd) : t('ws_nometer'), set: wasteFields(p, wd) })); }
     var meters = (rows.length ? '<ul class="mlist">' + rows.join('') + '</ul>' : '<p class="muted">' + esc(t('pv_none')) + '</p>') +
       '<p class="pv-add"><button class="btn' + (rows.length ? ' sec' : '') + '" data-act="add-meter" data-back="place-' + esc(p.id) + '" data-key="pv-add-meter">' + ico('plus', 20) + '<span>' + esc(t('am_tile')) + '</span></button></p>';
     var rm = removedMeters();

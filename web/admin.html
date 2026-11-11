@@ -677,7 +677,7 @@ pre.state { font: 12px/1.4 var(--mono); background: #F4F7F5; padding: 10px; bord
     var t = x.org ? esc(x.org) : '<span class="muted">не знаем</span>', p = [];
     if (kd === 'water' && x.supply != null) p.push(money(x.supply) + (x.drain != null ? ' / ' + money(x.drain) : ''));
     if (kd === 'heat' && x.price != null) p.push(money(x.price) + ' за Гкал');
-    if (kd === 'waste' && x.price != null) p.push(money(x.price) + ' с человека' + (x.priv != null ? ', частный ' + money(x.priv) : ''));
+    if (kd === 'waste' && x.price != null) p.push(money(x.price) + ' с человека' + (x.priv != null ? ', частный ' + money(x.priv) : '') + (x.abon != null ? ', абонплата ' + money(x.abon) : ''));
     if (kd === 'gas' && x.grm) t = esc(x.grm) + (x.dist != null ? ' · ' + money(x.dist) : '');
     if (x.ch) p.push(x.ch.join(', '));
     return t + (p.length ? '<div class="muted small">' + esc(p.join(' · ')) + '</div>' : '') + (x.check ? ' ' + pill('warn', 'сверить') : '') + (x.robot ? ' ' + pill(x.robot === 'server' ? 'ok' : 'info', ROBOT[x.robot] || x.robot) : '');
@@ -736,7 +736,7 @@ pre.state { font: 12px/1.4 var(--mono); background: #F4F7F5; padding: 10px; bord
     var h = pvFld('org', kd === 'gas' ? 'Поставщик газа' : 'Организация', c.org, kd === 'water' || kd === 'heat' || kd === 'waste' ? 'пусто — «не знаем, впишите с платёжки»' : '');
     if (kd === 'water') h += '<div class="cards">' + pvFld('supply', 'Вода, грн/м³', money(c.supply), 'пусто — неизвестно') + pvFld('drain', 'Водоотведение, грн/м³', money(c.drain)) + pvFld('hot', 'Горячая вода, грн/м³', money(c.hot)) + pvFld('from', 'С даты', c.from, 'ГГГГ-ММ-ДД') + '</div>';
     if (kd === 'heat') h += '<div class="cards">' + pvFld('price', 'Тепло, грн/Гкал', money(c.price), 'пусто — неизвестно') + pvFld('abon', 'Абонплата, грн/мес', money(c.abon)) + pvFld('from', 'С даты', c.from, 'ГГГГ-ММ-ДД') + '</div>';
-    if (kd === 'waste') h += '<div class="cards">' + pvFld('price', 'С человека в месяц, грн', money(c.price), 'многоквартирные; пусто — неизвестно') + pvFld('priv', 'Частный сектор, грн', money(c.priv), 'если другая') + pvFld('from', 'С даты', c.from, 'ГГГГ-ММ-ДД') + '</div>';
+    if (kd === 'waste') h += '<div class="cards">' + pvFld('price', 'С человека в месяц, грн', money(c.price), 'многоквартирные; пусто — неизвестно') + pvFld('priv', 'Частный сектор, грн', money(c.priv), 'если другая') + pvFld('abon', 'Абонплата за счёт, грн/мес', money(c.abon), 'если отдельно от «с человека»') + pvFld('from', 'С даты', c.from, 'ГГГГ-ММ-ДД') + '</div>';
     if (kd === 'elec') h += pvFld('net', 'Оператор сети (ОСР)', c.net);
     if (kd === 'gas') h += '<div class="cards">' + pvFld('grm', 'Оператор сети (кому показания)', c.grm) + pvFld('dist', 'Доставка, грн/м³', money(c.dist)) + pvFld('distFrom', 'С даты', c.distFrom) + '</div>' + pvFld('distSrc', 'Откуда тариф доставки', c.distSrc, '', 1);
     h += pvFld('how', 'Как и когда передавать показания', c.how, 'людям — простыми словами, сроки', 2) +
@@ -759,7 +759,7 @@ pre.state { font: 12px/1.4 var(--mono); background: #F4F7F5; padding: 10px; bord
     h += ['water', 'heat', 'elec', 'gas', 'waste'].map(function (kd) {
       var k = (o.kinds || {})[kd] || {}, c = k.cur, msg = PV.msg[kd] || '', sh = o.show && o.show[kd];
       var open = !!c || PV.open === kd;
-      return '<details class="panel" data-pvk="' + kd + '"' + (open ? ' open' : '') + '><summary><b>' + PK[kd] + '</b> ' + (c ? kshort({ org: c.org, supply: c.supply, drain: c.drain, price: c.price, priv: c.priv, grm: c.grm, dist: c.dist, check: c.check, robot: c.robot }, kd) : '<span class="muted">нет на этом уровне' + (sh && (sh.org || sh.grm) ? ' — люди видят: ' + esc(sh.grm || sh.org) : '') + '</span>') +
+      return '<details class="panel" data-pvk="' + kd + '"' + (open ? ' open' : '') + '><summary><b>' + PK[kd] + '</b> ' + (c ? kshort({ org: c.org, supply: c.supply, drain: c.drain, price: c.price, priv: c.priv, abon: c.abon, grm: c.grm, dist: c.dist, check: c.check, robot: c.robot }, kd) : '<span class="muted">нет на этом уровне' + (sh && (sh.org || sh.grm) ? ' — люди видят: ' + esc(sh.grm || sh.org) : '') + '</span>') +
         (k.edited ? ' ' + pill('info', 'правка') : '') + '</summary>' + pvForm(kd, c) +
         (k.probe ? '<p>Проба: ' + Object.keys(k.probe).map(function (f) { return esc(f) + ' ' + verd(k.probe[f]); }).join('<br>') + '</p>' : '') +
         '<p class="filters"><button class="btn" data-pvsave="form" style="background:var(--ink);color:#fff">Сохранить</button>' +

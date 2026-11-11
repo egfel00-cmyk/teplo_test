@@ -67,7 +67,7 @@ final class Reminders {
     $k = (array)($L['kinds'] ?? []); $ws = (array)($k['waste'] ?? []);
     return ['r' => (string)($L['place']['r'] ?? 'kh'), 'htm' => ($k['heat']['via'] ?? '') === 'htm', 'hvk' => ($k['water']['via'] ?? '') === 'hvk',
       'water' => ($k['water']['org'] ?? null) ?: null, 'elec' => ($k['elec']['org'] ?? null) ?: null,
-      'waste' => $ws ? ['org' => ($ws['org'] ?? null) ?: null, 'price' => isset($ws['price']) ? (float)$ws['price'] : null, 'priv' => isset($ws['priv']) ? (float)$ws['priv'] : null, 'pay' => (string)($ws['pay'] ?? ''), 'pay_ru' => (string)($ws['pay_ru'] ?? '')] : null];
+      'waste' => $ws ? ['org' => ($ws['org'] ?? null) ?: null, 'price' => isset($ws['price']) ? (float)$ws['price'] : null, 'priv' => isset($ws['priv']) ? (float)$ws['priv'] : null, 'abon' => isset($ws['abon']) ? (float)$ws['abon'] : null, 'pay' => (string)($ws['pay'] ?? ''), 'pay_ru' => (string)($ws['pay_ru'] ?? '')] : null];
   }
 
   /** Какие квартиры ждут это напоминание: [['id' => 'p2', 'label' => 'Мамина', 'all' => 2], …] (all — сколько квартир всего).
@@ -97,8 +97,9 @@ final class Reminders {
         $pv = self::placeProv($p); $d = (array)($pv['waste'] ?? []);
         $n = (int)round((float)($w['persons'] ?? 0)) ?: (int)round((float)($p['water']['persons'] ?? 0));
         $pr = (float)($w['price'] ?? 0) > 0 ? (float)$w['price'] : (!empty($w['priv']) && (float)($d['priv'] ?? 0) > 0 ? (float)$d['priv'] : (float)($d['price'] ?? 0));
+        $ab = max(0.0, (float)($d['abon'] ?? 0));   // 116-а: абонплата за особовий рахунок (Балаклія) — до суми один раз
         $out[] = ['id' => (string)$p['id'], 'label' => mb_substr($label, 0, 40), 'all' => $all, 'org' => trim((string)($w['org'] ?? '')) ?: ($d['org'] ?? null),
-          'n' => $n ?: null, 'price' => $pr > 0 ? $pr : null, 'sum' => $n > 0 && $pr > 0 ? round($n * $pr, 2) : null, 'pay' => (string)($d['pay'] ?? ''), 'pay_ru' => (string)($d['pay_ru'] ?? '')];
+          'n' => $n ?: null, 'price' => $pr > 0 ? $pr : null, 'abon' => $ab > 0 ? $ab : null, 'sum' => $n > 0 && $pr > 0 ? round($n * $pr + $ab, 2) : null, 'pay' => (string)($d['pay'] ?? ''), 'pay_ru' => (string)($d['pay_ru'] ?? '')];
         continue;
       }
       if (str_starts_with($kind, 'elec') || str_starts_with($kind, 'gas')) {
@@ -212,7 +213,8 @@ final class Reminders {
     $many = $places && ($places[0]['all'] ?? 1) > 1;
     $line = function (array $p) use ($ru, $many): string {
       $who = !empty($p['org']) ? ' — ' . $p['org'] : '';
-      $s = $p['sum'] !== null ? '≈ ' . self::money((float)$p['sum']) . ' грн (' . $p['n'] . ' × ' . self::money((float)$p['price']) . ' грн)' : ($ru ? 'сумма — в платёжке' : 'сума — у платіжці');
+      $ab = !empty($p['abon']) ? ' + ' . self::money((float)$p['abon']) . ' грн абонплата' : '';
+      $s = $p['sum'] !== null ? '≈ ' . self::money((float)$p['sum']) . ' грн (' . $p['n'] . ' × ' . self::money((float)$p['price']) . ' грн' . $ab . ')' : ($ru ? 'сумма — в платёжке' : 'сума — у платіжці');
       return ($many ? '«' . $p['label'] . '»: ' : '') . $s . $who;
     };
     $t = ($ru ? "🗑 Вывоз мусора за $mon — пора оплатить. Обычно платят до 20-го.\n\n" : "🗑 Вивіз сміття за $mon — час оплатити. Зазвичай платять до 20-го.\n\n") . implode("\n", array_map($line, $places));
