@@ -51,6 +51,11 @@ const wg = M.groups([{ id: 'w1', time: T('2026-10-14'), description: 'КП Ек�
 ok('сміття: один рядок, рахунок, два платежі (новіший першим)', wg.length === 1 && wg[0].kind === 'waste' && wg[0].acc === '55667788' && wg[0].pays.length === 2 && wg[0].pays[0].amount === 42, wg);
 ok('payOf: дата за Києвом, сума, за минулий місяць', JSON.stringify(M.payOf({ time: T('2026-10-14'), amount: 42 })) === JSON.stringify({ date: '2026-10-14', ym: '2026-09', amount: 42 })
   && M.payOf({ time: Math.floor(Date.parse('2026-01-31T23:30:00Z') / 1000), amount: 1 }).date === '2026-02-01' && M.payOf({ time: T('2026-01-10'), amount: 1 }).ym === '2025-12');
+// 117-а: ключ із вставленого — з підписом, пробілами, переносом, адресою сторінки; телефон і слово — ні
+const KEY = 'uSynthKey_0123456789abcdefABCDEF-xyz012345';
+ok('tokenFrom: чистий ключ, «Токен: …», переноси, з адресою; ні — порожньо', M.tokenFrom(KEY) === KEY && M.tokenFrom('Токен: ' + KEY + '\n') === KEY && M.tokenFrom('  ' + KEY + '  ') === KEY
+  && M.tokenFrom('https://api.monobank.ua/index.html#/tokens/personal ' + KEY) === KEY && M.tokenFrom('380501234567') === '' && M.tokenFrom('Шевченко') === '' && M.tokenFrom('') === ''
+  && M.tokenFrom('aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa') === '');
 (async () => {
   let seen = null;
   const f = (url, o) => { seen = { url, o }; return Promise.resolve({ status: 403, text: () => Promise.resolve('{"errorDescription":"Unknown \'X-Token\'"}') }); };

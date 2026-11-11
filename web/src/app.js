@@ -6229,7 +6229,7 @@
   // ---------- «Рахунки з monobank» (114-а, власник 11.11): усе для передачі, крім показань, — з платежів за комуналку ----------
   // Токен і виписка — лише в пам’яті цієї сторінки (не в S, не в localStorage, не на сервер); журнал бачить тільки «поле заповнене».
   var Mn = window.TeploMono, MO = monoFresh();
-  function monoFresh(back) { return { tok: '', st: '', err: '', q: [], i: 0, items: [], name: '', next: 0, timer: null, groups: [], sel: {}, sn: true, back: back || '' }; }
+  function monoFresh(back) { return { tok: '', st: '', err: '', q: [], i: 0, items: [], name: '', next: 0, timer: null, groups: [], sel: {}, sn: true, back: back || '', opened: false, bg: false }; }
   function monoLink(k) {
     if (!Mn) return '';
     return '<p class="mono-link"><a class="btn sec" href="#mono" data-act="mono-open" data-key="mono-open' + (k ? '-' + k : '') + '">' + ico('download', 18) + '<span>' + esc(t('mono_link')) + '</span></a>' +
@@ -6257,38 +6257,76 @@
     var el = document.getElementById('mono-wait'); if (!el) return;
     var s = Math.max(0, Math.ceil((MO.next - Date.now()) / 1000)); el.textContent = s > 0 ? t('mono_wait', { s: s }) : '';
   }
-  function monoStart() {
-    var inp = document.getElementById('mono-tok'), tok = inp ? String(inp.value || '').trim() : MO.tok;
-    if (!Mn.tokenOk(tok)) { MO.err = 'mono_e_tok'; render(true); var i2 = document.getElementById('mono-tok'); if (i2) i2.focus(); return; }
-    MO = Object.assign(monoFresh(MO.back), { tok: tok, st: 'run' }); render(true);
+  /** Що позначити самим: є куди вписати, поле порожнє, рахунок із підписом (не «звірте»); вивіз — нові оплати чи рахунок. */
+  function monoSelDef(g) {
+    var tg = monoTarget(g, g.kind, S.placeId);
+    return { on: !!(tg.ok && (tg.waste ? tg.n > 0 || tg.accNew : tg.cur !== dgt(g.acc) && !tg.cur && !g.guess)), kind: g.kind, place: S.placeId };
+  }
+  /** Ключ вставили (117-а: без кнопки «Знайти» — пошук іде сам, щойно в полі чи буфері є щось схоже на ключ). */
+  function monoStart(tok) {
+    if (tok === undefined) { var inp = document.getElementById('mono-tok'); tok = Mn.tokenFrom(inp ? inp.value : ''); }
+    if (!Mn.tokenOk(tok)) { MO.err = 'mono_e_tok'; MO.opened = true; render(true); var i2 = document.getElementById('mono-tok'); if (i2) i2.focus(); return; }
+    if (MO.tok === tok && (MO.st === 'run' || MO.bg)) return;   // input і paste приходять разом
+    clearTimeout(MO.timer);
+    MO = Object.assign(monoFresh(MO.back), { tok: tok, st: 'run', opened: true }); render(true);
     Mn.clientInfo(tok).then(function (r) {
       if (MO.tok !== tok) return;
-      if (!r.ok) { MO = Object.assign(monoFresh(MO.back), { err: monoErr(r) }); render(true); return; }
+      if (!r.ok) { MO = Object.assign(monoFresh(MO.back), { err: monoErr(r), opened: true }); render(true); return; }
       var accs = Mn.cards(r.data);
-      if (!accs.length) { MO = Object.assign(monoFresh(MO.back), { err: 'mono_e_nocard' }); render(true); return; }
+      if (!accs.length) { MO = Object.assign(monoFresh(MO.back), { err: 'mono_e_nocard', opened: true }); render(true); return; }
       MO.name = String((r.data && r.data.name) || ''); MO.q = Mn.plan(accs, Math.floor(Date.now() / 1000), Mn.MONTHS); MO.i = 0; monoStep();
     });
   }
+  /** Виписка — по вікну на хвилину (правило monobank). Перше вікно (головна картка, останні 31 доба) — і одразу показуємо знайдене;
+   *  старші місяці й інші картки дочитуємо фоном, нове додається в список (117-а: раніше людина чекала до 9 хвилин). */
   function monoStep() {
-    if (MO.st !== 'run') return;
-    if (MO.i >= MO.q.length) { monoDone(); return; }
+    if (!MO.tok) return;
+    if (MO.i >= MO.q.length) { monoFinish(); return; }
     var tok = MO.tok;
     Mn.statement(tok, MO.q[MO.i]).then(function (r) {
-      if (MO.tok !== tok || MO.st !== 'run') return;
+      if (MO.tok !== tok) return;
       if (r.ok) { MO.items = MO.items.concat(Array.isArray(r.data) ? r.data : []); MO.i++; }
-      else if (r.error !== 'rate') { if (MO.items.length) { monoDone(); return; } MO = Object.assign(monoFresh(MO.back), { err: monoErr(r) }); render(true); return; }
-      if (MO.i >= MO.q.length) { monoDone(); return; }
-      MO.next = Date.now() + Mn.GAP; if (routeName() === 'mono') render(true);
+      else if (r.error !== 'rate') { if (MO.st === 'done' || MO.items.length) { monoFinish(); return; } MO = Object.assign(monoFresh(MO.back), { err: monoErr(r), opened: true }); render(true); return; }
+      if (MO.i >= MO.q.length) { monoFinish(); return; }
+      if (r.ok && MO.st === 'run') monoShow(); else if (MO.bg) monoMore();
+      MO.next = Date.now() + Mn.GAP; if (MO.st === 'run' && routeName() === 'mono') render(true);
       MO.timer = setTimeout(monoStep, Mn.GAP);
     });
   }
-  /** Виписку прочитали (чи людина сказала «досить»): токен забуваємо, платежі — у групи, позначаємо те, що є куди вписати. */
-  function monoDone() {
-    clearTimeout(MO.timer); MO.tok = ''; MO.st = 'done'; MO.groups = Mn.groups(MO.items); MO.items = []; MO.sel = {};
-    MO.groups.forEach(function (g) { var tg = monoTarget(g, g.kind, S.placeId); MO.sel[g.key] = { on: !!(tg.ok && (tg.waste ? tg.n > 0 || tg.accNew : tg.cur !== dgt(g.acc) && !tg.cur && !g.guess)), kind: g.kind, place: S.placeId }; });
+  function monoShow() {
+    MO.st = 'done'; MO.bg = true; MO.groups = Mn.groups(MO.items); MO.sel = {};
+    MO.groups.forEach(function (g) { MO.sel[g.key] = monoSelDef(g); });
     if (routeName() === 'mono') render(true);
   }
+  /** Фоном знайшли ще — нові рядки з тими ж правилами позначення; вибір людини в старих рядках не чіпаємо. */
+  function monoMore() {
+    var n0 = MO.groups.length; MO.groups = Mn.groups(MO.items);
+    MO.groups.forEach(function (g) { if (!MO.sel[g.key]) MO.sel[g.key] = monoSelDef(g); });
+    if (MO.groups.length !== n0 && routeName() === 'mono') render(true);
+  }
+  /** Прочитали все (чи людина сказала «досить»): ключ забуваємо, платежі — у групи. */
+  function monoFinish() {
+    clearTimeout(MO.timer); MO.tok = '';
+    var n0 = MO.groups.length, first = MO.st !== 'done';
+    MO.groups = Mn.groups(MO.items); MO.items = []; MO.bg = false; MO.st = 'done';
+    if (first) MO.sel = {};
+    MO.groups.forEach(function (g) { if (!MO.sel[g.key]) MO.sel[g.key] = monoSelDef(g); });
+    if (routeName() !== 'mono') return;
+    if (first || MO.groups.length !== n0) { render(true); return; }
+    var bl = document.getElementById('mono-bg'); if (bl) bl.remove();
+  }
+  /** «Вставити ключ»: буфер обміну → ключ → пошук. Не дали прочитати буфер (Telegram, старий Safari) — фокус у поле, підказка. */
+  function monoPaste() {
+    var cb = navigator.clipboard;
+    if (!cb || !cb.readText) { monoPasteNo(); return; }
+    cb.readText().then(function (txt) {
+      var tok = Mn.tokenFrom(txt);
+      if (tok) monoStart(tok); else { MO.err = 'mono_e_clip'; MO.opened = true; render(true); }
+    }, monoPasteNo);
+  }
+  function monoPasteNo() { MO.err = 'mono_e_clipno'; MO.opened = true; render(true); var i = document.getElementById('mono-tok'); if (i) i.focus(); }
   function monoApply() {
+    clearTimeout(MO.timer); MO.tok = ''; MO.bg = false;
     var n = 0, sn = MO.sn && MO.name ? String(MO.name).trim().split(/\s+/)[0] : '';
     MO.groups.forEach(function (g) {
       var s = MO.sel[g.key]; if (!s || !s.on) return;
@@ -6312,16 +6350,16 @@
     if (!Mn) return { screen: 'S45', route: 'mono', bare: true, closeTo: back, html: h };
     var kinds = ['heat', 'water', 'elec', 'gas', 'waste', 'house', 'other'];
     if (MO.st === 'run') {
-      var nf = Mn.groups(MO.items).length;
-      h += '<div class="panel mono-run" role="status" aria-live="polite" data-key="mono-run"><p><span class="spin" aria-hidden="true"></span> <b>' + esc(t('mono_run', { i: Math.min(MO.i + 1, MO.q.length || 1), n: MO.q.length || 1 })) + '</b></p>' +
-        '<p class="small muted" id="mono-wait"></p>' + (nf ? '<p class="small">' + esc(t('mono_found', { n: nf })) + '</p>' : '') + '</div>' +
-        '<div class="wiz-actions"><a class="btn sec" href="#' + esc(back) + '" data-act="mono-cancel">' + esc(t('cancel')) + '</a>' + (MO.i ? '<button type="button" class="btn" data-act="mono-stop" data-key="mono-stop">' + esc(t('mono_stop')) + '</button>' : '') + '</div>';
+      h += '<div class="panel mono-run" role="status" aria-live="polite" data-key="mono-run"><p><span class="spin" aria-hidden="true"></span> <b>' + esc(t('mono_run')) + '</b></p>' +
+        '<p class="small muted" id="mono-wait"></p></div>' +
+        '<div class="wiz-actions"><a class="btn sec" href="#' + esc(back) + '" data-act="mono-cancel">' + esc(t('cancel')) + '</a></div>';
       return { screen: 'S45', route: 'mono', bare: true, closeTo: back, html: h };
     }
     if (MO.st === 'done') {
-      if (!MO.groups.length) return { screen: 'S45', route: 'mono', bare: true, closeTo: back, html: h + '<div class="panel" data-key="mono-none"><p>' + esc(t('mono_none')) + '</p></div><div class="wiz-actions"><a class="btn" href="#' + esc(back) + '">' + esc(t('back')) + '</a></div>' };
-      var many = places().length > 1, anyWater = false;
-      h += '<p class="muted">' + esc(t('mono_pick')) + '</p><div class="mono-list" data-key="mono-list">' + MO.groups.map(function (g, gi) {
+      var bgLine = MO.bg ? '<p class="small muted mono-bg" id="mono-bg" role="status" data-key="mono-bg"><span class="spin" aria-hidden="true"></span> ' + esc(t('mono_bg')) + '</p>' : '';
+      if (!MO.groups.length) return { screen: 'S45', route: 'mono', bare: true, closeTo: back, html: h + bgLine + (MO.bg ? '' : '<div class="panel" data-key="mono-none"><p>' + esc(t('mono_none')) + '</p></div>') + '<div class="wiz-actions"><a class="btn" href="#' + esc(back) + '" data-act="mono-cancel">' + esc(t('back')) + '</a></div>' };
+      var many = places().length > 1, anyWater = false, main = [], rest = [];
+      MO.groups.forEach(function (g, gi) {
         var s = MO.sel[g.key] || { kind: g.kind, place: S.placeId }, tg = monoTarget(g, s.kind, s.place), d = dgt(g.acc), same = tg.ok && (tg.waste ? !tg.n && (!d || tg.cur === d) : tg.cur === d);
         if (s.on && s.kind === 'water') anyWater = true;
         var can = tg.ok && !same, id = 'mono-' + gi;
@@ -6334,25 +6372,40 @@
         // вид і квартира: відомий вид — у згорнутому «Не те?», невідомий (ОСББ, «інше») — одразу
         var sel = !d && !tg.waste && g.kind !== 'waste' ? '' : known && !many ? '<details class="mono-chg" data-key="mono-chg-' + gi + '"><summary class="small">' + esc(t('mono_chg')) + '</summary><div class="mono-sel">' + selK + '</div></details>'
           : '<div class="mono-sel">' + selK + selP + '</div>';
-        return '<div class="mono-g' + (can ? '' : ' off') + '" data-key="mono-g-' + gi + '">' +
+        (can ? main : rest).push('<div class="mono-g' + (can ? '' : ' off') + '" data-key="mono-g-' + gi + '">' +
           '<label class="check-row"><input type="checkbox" id="' + id + '" data-mono="' + gi + '" data-mf="on"' + (s.on && can ? ' checked' : '') + (can ? '' : ' disabled') + '><span><b>' + esc(g.name || t('mono_k_other')) + '</b>' +
           (d ? '<span class="mono-acc">' + esc(t('mono_acc', { a: d })) + '</span>' + (g.guess ? '<span class="small warn-ink mono-guess">' + esc(t('mono_guess')) + '</span>' : '') : '') + '</span></label>' +
           '<p class="small mono-to">' + esc(to) + '</p>' +
-          '<p class="small muted">' + esc(t('mono_pays', { n: g.n, d: last, s: money(g.lastAmt) })) + '</p>' + sel + '</div>';
-      }).join('') + '</div>';
+          '<p class="small muted">' + esc(t('mono_pays', { n: g.n, d: last, s: money(g.lastAmt) })) + '</p>' + sel + '</div>');
+      });
+      // 117-а: на виду — лише те, що можна вписати; решта (уже вписане, без рахунку, ОСББ) — згорнуто
+      h += '<p class="muted">' + esc(t(main.length ? 'mono_pick' : 'mono_nonew')) + '</p>' + bgLine + '<div class="mono-list" data-key="mono-list">' + main.join('') +
+        (rest.length ? '<details class="mono-more" data-key="mono-more"' + (main.length ? '' : ' open') + '><summary>' + esc(t('mono_more', { n: rest.length })) + '</summary>' + rest.join('') + '</details>' : '') + '</div>';
       var sn = MO.name ? String(MO.name).trim().split(/\s+/)[0] : '';
       if (sn && anyWater) h += '<label class="check-row mono-sn" data-key="mono-sn"><input type="checkbox" id="mono-sn" data-mono="sn" data-mf="sn"' + (MO.sn ? ' checked' : '') + '><span>' + esc(t('mono_sn', { s: sn })) + '<span class="small muted"> · ' + esc(t('mono_sn_h')) + '</span></span></label>';
-      h += '<div class="wiz-actions"><button type="button" class="btn sec" data-act="mono-again" data-key="mono-again">' + esc(t('mono_again')) + '</button><button type="button" class="btn" data-act="mono-apply" data-key="mono-apply">' + ico('check', 20) + '<span>' + esc(t('mono_apply')) + '</span></button></div>';
+      h += '<div class="wiz-actions"><a class="btn sec" href="#' + esc(back) + '" data-act="mono-cancel">' + esc(t(main.length ? 'cancel' : 'back')) + '</a>' +
+        (main.length ? '<button type="button" class="btn" data-act="mono-apply" data-key="mono-apply">' + ico('check', 20) + '<span>' + esc(t('mono_apply')) + '</span></button>' : '') + '</div>' +
+        '<p class="mono-again"><button type="button" class="linkbtn small" data-act="mono-again" data-key="mono-again">' + esc(t('mono_again')) + '</button></p>';
       return { screen: 'S45', route: 'mono', bare: true, closeTo: back, html: h };
     }
-    h += '<p class="muted">' + esc(t('mono_l')) + '</p><div class="panel" data-key="mono-intro"><ol class="wsteps"><li>' + esc(t('mono_s1')) + '<p><a href="' + Mn.TOKEN_URL + '" target="_blank" rel="noopener noreferrer" data-key="mono-api">' + esc(t('mono_open')) + ' ' + ico('ext', 14) + '</a></p></li><li>' + esc(t('mono_s2')) + '</li></ol>' +
-      '<div class="field"><label for="mono-tok">' + esc(t('mono_tok')) + '</label><div class="ctl"><input id="mono-tok" type="password" autocomplete="off" autocapitalize="off" spellcheck="false" data-key="mono-tok"></div><div class="help">' + esc(t('mono_tok_h')) + '</div></div>' +
-      (MO.err ? '<div class="help bad" role="alert" data-key="mono-err">' + esc(t(MO.err)) + '</div>' : '') +
-      '<p class="small muted mono-priv" data-key="mono-priv">' + ico('shield', 16) + ' ' + esc(t('mono_priv')) + '</p></div>' +
-      '<div class="wiz-actions"><a class="btn sec" href="#' + esc(back) + '">' + esc(t('cancel')) + '</a><button type="button" class="btn" data-act="mono-go" data-key="mono-go">' + esc(t('mono_go')) + '</button></div>';
+    // 117-а (власник: «люди не зрозуміють, що це й навіщо — щоб в одну кнопку»): дві дії — «Відкрити monobank» і «Вставити ключ».
+    // Справжньої «однієї кнопки» (згода в застосунку без ключа) monobank дає лише сервісам відкритого банкінгу за вимогами НБУ.
+    var phone = !!((window.matchMedia && window.matchMedia('(pointer: coarse)').matches) || /Android|iPhone|iPad|Mobile/i.test(navigator.userAgent || '')), op = !!MO.opened;
+    var err = MO.err ? '<div class="help bad" role="alert" data-key="mono-err">' + esc(t(MO.err)) + '</div>' : '';
+    h += '<p class="muted mono-lead">' + esc(t('mono_l')) + '</p><ol class="mono-steps" data-key="mono-intro">' +
+      '<li class="' + (op ? 'done' : 'now') + '"><b>' + esc(t('mono_s1')) + '</b><p class="small muted">' + esc(t(phone ? 'mono_s1p' : 'mono_s1d')) + '</p>' +
+        '<a class="btn' + (op ? ' sec' : '') + '" href="' + Mn.TOKEN_URL + '" target="_blank" rel="noopener noreferrer" data-act="mono-ext" data-key="mono-api">' + ico('ext', 18) + '<span>' + esc(t('mono_open')) + '</span></a></li>' +
+      '<li class="' + (op ? 'now' : '') + '"><b>' + esc(t('mono_s2')) + '</b><p class="small muted">' + esc(t('mono_s2h')) + '</p>' +
+        '<button type="button" class="btn' + (op ? '' : ' sec') + '" data-act="mono-paste" data-key="mono-paste">' + ico('copy', 18) + '<span>' + esc(t('mono_paste')) + '</span></button>' +
+        '<div class="field mono-tokf"><label for="mono-tok" class="small">' + esc(t('mono_tok')) + '</label><div class="ctl"><input id="mono-tok" type="password" autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="go" data-key="mono-tok"></div></div>' + err + '</li></ol>' +
+      '<div class="small muted mono-priv" data-key="mono-priv"><p>' + ico('shield', 16) + ' ' + esc(t('mono_priv_s')) + '</p><details><summary>' + esc(t('mono_priv_more')) + '</summary><p>' + esc(t('mono_priv')) + '</p></details></div>' +
+      '<div class="wiz-actions"><a class="btn sec" href="#' + esc(back) + '" data-act="mono-cancel">' + esc(t('cancel')) + '</a></div>';
     return { screen: 'S45', route: 'mono', bare: true, closeTo: back, html: h };
   };
   setInterval(function () { if (MO.st === 'run') monoTick(); }, 1000);
+  // ключ у полі: щойно схоже на ключ — шукаємо (без кнопки); Enter — те саме, з підказкою, якщо не схоже
+  document.addEventListener('input', function (e) { if (Mn && e.target && e.target.id === 'mono-tok') { var tk = Mn.tokenFrom(e.target.value); if (tk) monoStart(tk); } });
+  document.addEventListener('keydown', function (e) { if (Mn && e.key === 'Enter' && e.target && e.target.id === 'mono-tok') { e.preventDefault(); monoStart(); } });
   // вибір у списку: галочка, вид, квартира — без перемальовки всієї сторінки, крім виду/квартири (міняють «Впишемо: …»)
   document.addEventListener('change', function (e) {
     var el = e.target, gi = el && el.getAttribute && el.getAttribute('data-mono'); if (gi === null || gi === undefined || gi === '') return;
@@ -7455,9 +7508,11 @@
       case 'aw-create': pwCreate(); break;
       case 'mono-open': MO = monoFresh(routeName() || backTo('home')); break;
       case 'mono-go': monoStart(); break;
-      case 'mono-stop': monoDone(); break;
+      case 'mono-paste': monoPaste(); break;
+      case 'mono-ext': MO.opened = true; MO.err = ''; setTimeout(function () { if (routeName() === 'mono' && !MO.st) render(true); }, 300); break;
+      case 'mono-stop': monoFinish(); break;
       case 'mono-cancel': clearTimeout(MO.timer); MO = monoFresh(); break;
-      case 'mono-again': MO = monoFresh(MO.back); render(true); break;
+      case 'mono-again': clearTimeout(MO.timer); MO = Object.assign(monoFresh(MO.back), { opened: true }); render(true); break;
       case 'mono-apply': monoApply(); break;
       case 'pq-later': {   // водомір є, а № і цифри — пізніше: додаємо без деталей
         if (PQ && PQ.place === S.placeId && PQ.i < PQ.list.length && SK[PQ.list[PQ.i]]) {   // світло/газ: одна зона, рахунок і № — потім у налаштуваннях

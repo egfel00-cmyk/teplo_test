@@ -120,8 +120,17 @@
   function statement(token, q, f) { return req('/personal/statement/' + encodeURIComponent(q.acc) + '/' + Math.floor(q.from) + '/' + Math.floor(q.to), token, f); }
   /** Схожий на токен monobank: 40–50 символів base64url. Порожнє й явно не те — відсіяти до запиту. */
   function tokenOk(s) { return /^[A-Za-z0-9_\-]{30,64}$/.test(String(s || '').trim()); }
+  /** Ключ із того, що людина вставила (117-а): буфер може принести «Токен: u…», пробіли, переноси, адресу сторінки — беремо найдовший
+   *  шматок, схожий на токен (40–64 символи base64url, з літерами й цифрами). Нічого схожого — ''. */
+  function tokenFrom(s) {
+    s = String(s || '').trim(); var mix = function (x) { return /[A-Za-z]/.test(x) && /\d/.test(x); };
+    if (tokenOk(s) && mix(s)) return s;
+    var c = (s.match(/[A-Za-z0-9_\-]{40,64}/g) || []).filter(mix);
+    c.sort(function (a, b) { return b.length - a.length; });
+    return c[0] || '';
+  }
 
   var api = { API: API, TOKEN_URL: TOKEN_URL, WIN: WIN, GAP: GAP, MONTHS: MONTHS, kindOf: kindOf, accOf: accOf, eicOf: eicOf, isUtility: isUtility, groups: groups, gasField: gasField, payOf: payOf,
-    cards: cards, plan: plan, clientInfo: clientInfo, statement: statement, tokenOk: tokenOk };
+    cards: cards, plan: plan, clientInfo: clientInfo, statement: statement, tokenOk: tokenOk, tokenFrom: tokenFrom };
   if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.TeploMono = api;
 })(typeof window !== 'undefined' ? window : this);

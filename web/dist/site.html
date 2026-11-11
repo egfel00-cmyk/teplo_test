@@ -2105,9 +2105,30 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
 .mono-acc { display: block; margin-top: 2px; font-weight: 600; font-variant-numeric: tabular-nums; }
 .mono-guess { display: block; margin-top: 2px; }
 .mono-sn { margin: 0 0 var(--sp-4); font-weight: 400; align-items: flex-start; }
-.mono-priv { display: flex; gap: 8px; align-items: flex-start; margin: 12px 0 0; }
+.mono-priv { margin: 12px 0 var(--sp-4); }
+.mono-priv > p { display: flex; gap: 8px; align-items: flex-start; margin: 0; }
 .mono-priv .ico { flex: none; margin-top: 2px; }
+.mono-priv details { margin: 4px 0 0 24px; }
+.mono-priv summary { cursor: pointer; min-height: 32px; display: flex; align-items: center; color: var(--c-ink-2); }
+.mono-priv details p { margin: 4px 0 0; }
 .mono-run p { margin: 0 0 6px; }
+/* 117-а: дві дії — «Відкрити monobank» і «Вставити ключ»; поточна — основна кнопка, номер темний */
+.mono-steps { list-style: none; counter-reset: ms; padding: 0; margin: 0; display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; }
+.mono-steps > li { counter-increment: ms; position: relative; background: var(--c-surface); border-radius: 14px; padding: 14px var(--sp-4) 16px 56px; }
+.mono-steps > li::before { content: counter(ms); position: absolute; left: 16px; top: 13px; width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center;
+  font: 600 15px/1 var(--font); background: var(--c-surface-2); color: var(--c-ink-2); }
+.mono-steps > li.now::before { background: var(--c-ink); color: var(--c-on-ink); }
+.mono-steps > li > b { display: block; font-size: var(--fs-m); line-height: 1.3; }
+.mono-steps > li > p { margin: 4px 0 12px; }
+.mono-steps .btn { width: 100%; justify-content: center; }
+.mono-steps .mono-tokf { margin: 12px 0 0; }
+.mono-steps .mono-tokf input { width: 100%; min-width: 0; }
+@media (max-width: 360px) { .mono-steps > li { padding-left: 48px; } .mono-steps > li::before { left: 12px; } }
+.mono-steps .help.bad { margin-top: 8px; }
+.mono-bg { display: flex; gap: 8px; align-items: center; margin: 0 0 10px; }
+.mono-more { display: grid; gap: 10px; }
+.mono-more > summary { cursor: pointer; min-height: var(--tap); display: flex; align-items: center; color: var(--c-ink-2); }
+.mono-again { margin: 4px 0 0; text-align: center; }
 
 </style>
 <style>.top { padding-top: max(12px, env(safe-area-inset-top)); }</style>
@@ -3021,7 +3042,7 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
       wst_year: 'За 12 міс. сплачено {s} грн ({n} опл.)', wst_year0: 'За 12 міс. оплат не записано', wst_paid_t: 'Сплачено по місяцях', wst_paid_s: 'Пунктир — нараховано на місяць.', wst_ref: 'нараховано',
       wst_tip_paid: 'сплачено {s} грн', wst_tip_acc: 'нараховано ≈ {s} грн', wst_th_acc: 'Нараховано', wst_th_paid: 'Сплачено',
       pn_pay: '{k}: сплатити за {m} {w}', pn_pay_late: '{k}: не сплачено за {m}',
-      mono_pg_h: 'Оплати вивозу сміття з виписки теж запишемо в його історію. Токен лише читає виписку й не йде на наш сервер.', mono_f_waste: 'вивіз сміття', mono_to_waste: 'Впишемо у «Вивіз сміття»: нових оплат — {n}', mono_to_wacc: 'і особовий рахунок',
+      mono_pg_h: 'Оплати вивозу сміття з виписки теж запишемо в його історію. Ключ лише читає оплати й не йде на наш сервер.', mono_f_waste: 'вивіз сміття', mono_to_waste: 'Впишемо у «Вивіз сміття»: нових оплат — {n}', mono_to_wacc: 'і особовий рахунок',
       ws_k: 'Вивіз сміття', ws_nometer: 'без лічильника', ws_add: 'Додати вивіз сміття', ws_add_h: 'Платите з людини, без лічильника. Порахуємо суму на місяць і нагадаємо про оплату.', ws_add_dir: 'Тут вивозить {org}: {p} грн з людини на місяць. Порахуємо суму й нагадаємо про оплату.', ws_org_none: 'Хто вивозить — впишіть з платіжки', ws_price: '{p} грн з людини на місяць', ws_price_none: 'Ціну з людини впишіть з платіжки', ws_persons: 'Скільки людей у квартирі', ws_persons_h: 'Як у платіжці: зареєстровані чи ті, хто живе.', ws_price_l: 'Своя ціна з платіжки, з людини', ws_org_l: 'Хто вивозить', ws_priv: 'Приватний будинок — {p} грн з людини', ws_sum: '≈ {s} грн на місяць ({n} × {p} грн)', ws_sum_np: 'Впишіть, скільки людей, — порахуємо суму на місяць.', ws_sum_none: 'Впишіть ціну з платіжки й кількість людей — порахуємо суму на місяць.', ws_site: 'Сайт вивізника', ws_remind: 'Нагадувати в Telegram про оплату', ws_remind_h: '10-го числа: скільки за місяць і куди платити. Зазвичай платять до 20-го.', ws_off: 'Прибрати вивіз сміття', ru_title: 'Набігло за {m}', ru_title_h: 'Набігло з {d}', ru_title_paid: 'Набігло з передачі {d}', ru_w_from: 'Гаряча — від передачі {h}, холодна — від {c}', kpi_since: 'Після передачі {d}: +{v} {u} ≈ {uah} грн', ru_per: 'з {a} до {b} · {d} дн.', ru_calc: '{q} {u} × {p} грн = {s} грн', ru_zone: '{z}: {q} × {p} грн = {s} грн',
       ru_this: 'Цей запис: +{q} {u} за {d} дн.', ru_meter: 'На лічильнику: з {a} до {b} {u}', ru_proj: 'Якщо так і далі — за місяць ≈ {q} {u}, це ≈ {s} грн',
       ru_base: 'Перші показання — скільки набігло, порахуємо з наступних.', ru_vals: 'Показання', ru_sum: 'разом', ru_hot: 'гаряча', ru_cold: 'холодна',
@@ -3668,20 +3689,24 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
       eacc_ask_t: 'Особовий рахунок — для передачі.', eacc_ask_s: 'Впишіть один раз із платіжки — далі він тут, щоб скопіювати.',
       gacc_ask_t: 'Рахунки — для передачі.', gacc_ask_s: 'Впишіть один раз із платіжок — далі вони тут, щоб скопіювати.',
       mono_link: 'Заповнити з monobank', mono_link_s: 'рахунки — з ваших платежів за комуналку',
-      mono_t: 'Рахунки з monobank', mono_l: 'Знайдемо у виписці ваші платежі за комуналку й візьмемо з них особові рахунки — усе, що потрібно для передачі, крім самих показань.',
-      mono_s1: 'Відкрийте api.monobank.ua і увійдіть — відскануйте QR-код у застосунку monobank.', mono_s2: 'Скопіюйте токен зі сторінки й вставте сюди.', mono_open: 'Відкрити api.monobank.ua',
-      mono_tok: 'Токен monobank', mono_tok_h: 'Лише читання: з ним не можна нічого сплатити чи переказати.',
-      mono_priv: 'Виписку читає ваш браузер напряму в monobank. Токен і виписка не потрапляють на наш сервер і ніде не зберігаються — закрили сторінку, і їх немає. Відкликати токен можна там само, на api.monobank.ua.',
-      mono_go: 'Знайти рахунки', mono_e_tok: 'Це не схоже на токен monobank — скопіюйте його зі сторінки api.monobank.ua повністю.',
-      mono_e_403: 'monobank не прийняв токен. Можливо, його відкликали — отримайте новий на api.monobank.ua.', mono_e_rate: 'monobank просить зачекати хвилину між запитами. Спробуйте ще раз за хвилину.',
+      mono_t: 'Рахунки з monobank', mono_l: 'Особові рахунки є у ваших оплатах комуналки в monobank — візьмемо їх звідти, щоб не шукати в платіжках. Показання вносите ви, як і раніше.',
+      mono_s1: 'Відкрийте monobank', mono_s1p: 'На сторінці monobank натисніть QR-код і підтвердьте в застосунку. Сторінка покаже ключ — скопіюйте його й поверніться сюди.',
+      mono_s1d: 'Відскануйте QR-код камерою телефона й підтвердьте в застосунку monobank. Сторінка покаже ключ — скопіюйте його.',
+      mono_s2: 'Вставте ключ', mono_s2h: 'Ключ — довгий рядок літер і цифр. Шукати почнемо одразу, щойно вставите.', mono_paste: 'Вставити ключ', mono_open: 'Відкрити monobank',
+      mono_tok: 'або вставте сюди', mono_tok_h: 'Лише читання: з ним не можна нічого сплатити чи переказати.',
+      mono_priv: 'Виписку читає ваш браузер напряму в monobank. Ключ і виписка не потрапляють на наш сервер і ніде не зберігаються — закрили сторінку, і їх немає. Відкликати ключ можна там само, на api.monobank.ua.',
+      mono_priv_s: 'Лише перегляд оплат — без доступу до грошей. Ключ ніде не зберігаємо.', mono_priv_more: 'Докладніше',
+      mono_go: 'Знайти рахунки', mono_e_tok: 'Це не схоже на ключ monobank — скопіюйте його на сторінці monobank повністю.',
+      mono_e_clip: 'У скопійованому немає ключа monobank. Скопіюйте ключ на сторінці monobank і натисніть ще раз.', mono_e_clipno: 'Вставити самим не вийшло — утримайте поле нижче й виберіть «Вставити».',
+      mono_e_403: 'monobank не прийняв ключ. Можливо, його відкликали — отримайте новий: «Відкрити monobank».', mono_e_rate: 'monobank просить зачекати хвилину між запитами. Спробуйте ще раз за хвилину.',
       mono_e_net: 'Не вдалося зв’язатися з monobank. Перевірте інтернет і спробуйте ще раз.', mono_e_nocard: 'У цьому акаунті monobank немає гривневої картки.',
-      mono_run: 'Читаю виписку: частина {i} з {n}', mono_wait: 'Наступна — за {s} с: monobank дозволяє запит раз на хвилину.', mono_found: 'Платежів за комуналку знайдено: {n}', mono_stop: 'Досить — показати знайдене',
+      mono_run: 'Шукаю ваші оплати комуналки…', mono_wait: 'monobank просить хвилину між запитами — ще {s} с.', mono_bg: 'Ще переглядаю старіші оплати й інші картки — знайдене додасться сюди.', mono_found: 'Платежів за комуналку знайдено: {n}', mono_stop: 'Досить — показати знайдене',
       mono_none: 'За останні місяці платежів за комуналку з карток monobank не знайшли. Особовий рахунок є в платіжці — впишіть його в «Куди передати».',
-      mono_pick: 'Позначте, що вписати', mono_acc: 'Рахунок {a}', mono_guess: 'без підпису в призначенні — звірте з платіжкою', mono_noacc: 'рахунку в призначенні платежу немає',
+      mono_pick: 'Знайшли у ваших оплатах. Позначене впишемо:', mono_nonew: 'Нового, що можна вписати, не знайшли.', mono_more: 'Інші оплати — вписувати нічого ({n})', mono_acc: 'Рахунок {a}', mono_guess: 'без підпису в призначенні — звірте з платіжкою', mono_noacc: 'рахунку в призначенні платежу немає',
       mono_pays: 'Платежів: {n} · останній {d} — {s} грн', mono_to: 'Впишемо: {f}', mono_to_set: 'зараз вписано {a} — замінимо', mono_same: 'уже вписано',
       mono_no_meter: 'лічильника цього виду в квартирі немає — додайте його, тоді й впишемо', mono_no_kind: 'для довідки: цей вид у сервісі не передають',
       mono_kind: 'Що це', mono_chg: 'Не те? Змінити вид', mono_place: 'Квартира', mono_sn: 'Прізвище для Водоканалу: {s}', mono_sn_h: 'з monobank — як у власника картки; у квитанції може бути інше',
-      mono_apply: 'Вписати вибране', mono_done: 'Вписано: {n}', mono_nothing: 'Нічого не позначено', mono_again: 'Почати спочатку',
+      mono_apply: 'Вписати', mono_done: 'Вписано: {n}', mono_nothing: 'Нічого не позначено', mono_again: 'Почати спочатку',
       mono_f_water: 'особовий рахунок Водоканалу', mono_f_heat: 'особовий рахунок за тепло', mono_f_elec: 'особовий рахунок за світло', mono_f_grm: 'рахунок Газмереж (доставка газу)', mono_f_account: 'рахунок постачальника газу', mono_f_eic: 'EIC-код',
       mono_k_heat: 'Тепло', mono_k_water: 'Вода', mono_k_elec: 'Світло', mono_k_gas: 'Газ', mono_k_waste: 'Вивіз сміття', mono_k_house: 'Будинок, ОСББ', mono_k_other: 'Інше',
       gd_org: 'Нафтогаз / Газмережі', gd_what: 'Показання газу · газ — Нафтогаз, доставка — Газмережі', gd_lead: 'Показання газу приймають з 1 по 5 число — станом на 1-ше. SMS на 4647 — уже з 28-го.',
@@ -4228,7 +4253,7 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
       wst_year: 'За 12 мес. оплачено {s} грн ({n} опл.)', wst_year0: 'За 12 мес. оплат не записано', wst_paid_t: 'Оплачено по месяцам', wst_paid_s: 'Пунктир — начислено в месяц.', wst_ref: 'начислено',
       wst_tip_paid: 'оплачено {s} грн', wst_tip_acc: 'начислено ≈ {s} грн', wst_th_acc: 'Начислено', wst_th_paid: 'Оплачено',
       pn_pay: '{k}: оплатить за {m} {w}', pn_pay_late: '{k}: не оплачено за {m}',
-      mono_pg_h: 'Оплаты вывоза мусора из выписки тоже запишем в его историю. Токен только читает выписку и не уходит на наш сервер.', mono_f_waste: 'вывоз мусора', mono_to_waste: 'Впишем в «Вывоз мусора»: новых оплат — {n}', mono_to_wacc: 'и лицевой счёт',
+      mono_pg_h: 'Оплаты вывоза мусора из выписки тоже запишем в его историю. Ключ только читает оплаты и не уходит на наш сервер.', mono_f_waste: 'вывоз мусора', mono_to_waste: 'Впишем в «Вывоз мусора»: новых оплат — {n}', mono_to_wacc: 'и лицевой счёт',
       ws_k: 'Вывоз мусора', ws_nometer: 'без счётчика', ws_add: 'Добавить вывоз мусора', ws_add_h: 'Платите с человека, без счётчика. Посчитаем сумму в месяц и напомним об оплате.', ws_add_dir: 'Здесь вывозит {org}: {p} грн с человека в месяц. Посчитаем сумму и напомним об оплате.', ws_org_none: 'Кто вывозит — впишите с платёжки', ws_price: '{p} грн с человека в месяц', ws_price_none: 'Цену с человека впишите с платёжки', ws_persons: 'Сколько человек в квартире', ws_persons_h: 'Как в платёжке: зарегистрированные или те, кто живёт.', ws_price_l: 'Своя цена с платёжки, с человека', ws_org_l: 'Кто вывозит', ws_priv: 'Частный дом — {p} грн с человека', ws_sum: '≈ {s} грн в месяц ({n} × {p} грн)', ws_sum_np: 'Впишите, сколько человек, — посчитаем сумму в месяц.', ws_sum_none: 'Впишите цену с платёжки и количество человек — посчитаем сумму в месяц.', ws_site: 'Сайт вывозчика', ws_remind: 'Напоминать в Telegram об оплате', ws_remind_h: '10-го числа: сколько за месяц и куда платить. Обычно платят до 20-го.', ws_off: 'Убрать вывоз мусора', ru_title: 'Набежало за {m}', ru_title_h: 'Набежало с {d}', ru_title_paid: 'Набежало с передачи {d}', ru_w_from: 'Горячая — от передачи {h}, холодная — от {c}', kpi_since: 'После передачи {d}: +{v} {u} ≈ {uah} грн', ru_per: 'с {a} по {b} · {d} дн.', ru_calc: '{q} {u} × {p} грн = {s} грн', ru_zone: '{z}: {q} × {p} грн = {s} грн',
       ru_this: 'Эта запись: +{q} {u} за {d} дн.', ru_meter: 'На счётчике: с {a} до {b} {u}', ru_proj: 'Если так и дальше — за месяц ≈ {q} {u}, это ≈ {s} грн',
       ru_base: 'Первые показания — сколько набежало, посчитаем со следующих.', ru_vals: 'Показания', ru_sum: 'всего', ru_hot: 'горячая', ru_cold: 'холодная',
@@ -4875,20 +4900,24 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
       eacc_ask_t: 'Лицевой счёт — для передачи.', eacc_ask_s: 'Впишите один раз из платёжки — дальше он здесь, чтобы скопировать.',
       gacc_ask_t: 'Счета — для передачи.', gacc_ask_s: 'Впишите один раз из платёжек — дальше они здесь, чтобы скопировать.',
       mono_link: 'Заполнить из monobank', mono_link_s: 'счета — из ваших платежей за коммуналку',
-      mono_t: 'Счета из monobank', mono_l: 'Найдём в выписке ваши платежи за коммуналку и возьмём из них лицевые счета — всё, что нужно для передачи, кроме самих показаний.',
-      mono_s1: 'Откройте api.monobank.ua и войдите — отсканируйте QR-код в приложении monobank.', mono_s2: 'Скопируйте токен со страницы и вставьте сюда.', mono_open: 'Открыть api.monobank.ua',
-      mono_tok: 'Токен monobank', mono_tok_h: 'Только чтение: с ним нельзя ничего оплатить или перевести.',
-      mono_priv: 'Выписку читает ваш браузер напрямую в monobank. Токен и выписка не попадают на наш сервер и нигде не хранятся — закрыли страницу, и их нет. Отозвать токен можно там же, на api.monobank.ua.',
-      mono_go: 'Найти счета', mono_e_tok: 'Это не похоже на токен monobank — скопируйте его со страницы api.monobank.ua целиком.',
-      mono_e_403: 'monobank не принял токен. Возможно, его отозвали — получите новый на api.monobank.ua.', mono_e_rate: 'monobank просит подождать минуту между запросами. Попробуйте ещё раз через минуту.',
+      mono_t: 'Счета из monobank', mono_l: 'Лицевые счета есть в ваших оплатах коммуналки в monobank — возьмём их оттуда, чтобы не искать в платёжках. Показания вносите вы, как и раньше.',
+      mono_s1: 'Откройте monobank', mono_s1p: 'На странице monobank нажмите QR-код и подтвердите в приложении. Страница покажет ключ — скопируйте его и вернитесь сюда.',
+      mono_s1d: 'Отсканируйте QR-код камерой телефона и подтвердите в приложении monobank. Страница покажет ключ — скопируйте его.',
+      mono_s2: 'Вставьте ключ', mono_s2h: 'Ключ — длинная строка букв и цифр. Искать начнём сразу, как вставите.', mono_paste: 'Вставить ключ', mono_open: 'Открыть monobank',
+      mono_tok: 'или вставьте сюда', mono_tok_h: 'Только чтение: с ним нельзя ничего оплатить или перевести.',
+      mono_priv: 'Выписку читает ваш браузер напрямую в monobank. Ключ и выписка не попадают на наш сервер и нигде не хранятся — закрыли страницу, и их нет. Отозвать ключ можно там же, на api.monobank.ua.',
+      mono_priv_s: 'Только просмотр оплат — без доступа к деньгам. Ключ нигде не храним.', mono_priv_more: 'Подробнее',
+      mono_go: 'Найти счета', mono_e_tok: 'Это не похоже на ключ monobank — скопируйте его на странице monobank целиком.',
+      mono_e_clip: 'В скопированном нет ключа monobank. Скопируйте ключ на странице monobank и нажмите ещё раз.', mono_e_clipno: 'Вставить самим не вышло — удерживайте поле ниже и выберите «Вставить».',
+      mono_e_403: 'monobank не принял ключ. Возможно, его отозвали — получите новый: «Открыть monobank».', mono_e_rate: 'monobank просит подождать минуту между запросами. Попробуйте ещё раз через минуту.',
       mono_e_net: 'Не удалось связаться с monobank. Проверьте интернет и попробуйте ещё раз.', mono_e_nocard: 'В этом аккаунте monobank нет гривневой карты.',
-      mono_run: 'Читаю выписку: часть {i} из {n}', mono_wait: 'Следующая — через {s} с: monobank разрешает запрос раз в минуту.', mono_found: 'Платежей за коммуналку найдено: {n}', mono_stop: 'Хватит — показать найденное',
+      mono_run: 'Ищу ваши оплаты коммуналки…', mono_wait: 'monobank просит минуту между запросами — ещё {s} с.', mono_bg: 'Ещё просматриваю старые оплаты и другие карты — найденное добавится сюда.', mono_found: 'Платежей за коммуналку найдено: {n}', mono_stop: 'Хватит — показать найденное',
       mono_none: 'За последние месяцы платежей за коммуналку с карт monobank не нашли. Лицевой счёт есть в платёжке — впишите его в «Куда передать».',
-      mono_pick: 'Отметьте, что вписать', mono_acc: 'Счёт {a}', mono_guess: 'без подписи в назначении — сверьте с платёжкой', mono_noacc: 'счёта в назначении платежа нет',
+      mono_pick: 'Нашли в ваших оплатах. Отмеченное впишем:', mono_nonew: 'Нового, что можно вписать, не нашли.', mono_more: 'Другие оплаты — вписывать нечего ({n})', mono_acc: 'Счёт {a}', mono_guess: 'без подписи в назначении — сверьте с платёжкой', mono_noacc: 'счёта в назначении платежа нет',
       mono_pays: 'Платежей: {n} · последний {d} — {s} грн', mono_to: 'Впишем: {f}', mono_to_set: 'сейчас вписан {a} — заменим', mono_same: 'уже вписан',
       mono_no_meter: 'счётчика этого вида в квартире нет — добавьте его, тогда и впишем', mono_no_kind: 'для справки: этот вид в сервисе не передают',
       mono_kind: 'Что это', mono_chg: 'Не то? Изменить вид', mono_place: 'Квартира', mono_sn: 'Фамилия для Водоканала: {s}', mono_sn_h: 'из monobank — как у владельца карты; в квитанции может быть другая',
-      mono_apply: 'Вписать выбранное', mono_done: 'Вписано: {n}', mono_nothing: 'Ничего не отмечено', mono_again: 'Начать сначала',
+      mono_apply: 'Вписать', mono_done: 'Вписано: {n}', mono_nothing: 'Ничего не отмечено', mono_again: 'Начать сначала',
       mono_f_water: 'лицевой счёт Водоканала', mono_f_heat: 'лицевой счёт за тепло', mono_f_elec: 'лицевой счёт за свет', mono_f_grm: 'счёт Газсетей (доставка газа)', mono_f_account: 'счёт поставщика газа', mono_f_eic: 'EIC-код',
       mono_k_heat: 'Тепло', mono_k_water: 'Вода', mono_k_elec: 'Свет', mono_k_gas: 'Газ', mono_k_waste: 'Вывоз мусора', mono_k_house: 'Дом, ОСМД', mono_k_other: 'Другое',
       gd_org: 'Нафтогаз / Газсети', gd_what: 'Показания газа · газ — Нафтогаз, доставка — Газсети', gd_lead: 'Показания газа принимают с 1 по 5 число — на 1-е. SMS на 4647 — уже с 28-го.',
@@ -6816,9 +6845,18 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
   function statement(token, q, f) { return req('/personal/statement/' + encodeURIComponent(q.acc) + '/' + Math.floor(q.from) + '/' + Math.floor(q.to), token, f); }
   /** Схожий на токен monobank: 40–50 символів base64url. Порожнє й явно не те — відсіяти до запиту. */
   function tokenOk(s) { return /^[A-Za-z0-9_\-]{30,64}$/.test(String(s || '').trim()); }
+  /** Ключ із того, що людина вставила (117-а): буфер може принести «Токен: u…», пробіли, переноси, адресу сторінки — беремо найдовший
+   *  шматок, схожий на токен (40–64 символи base64url, з літерами й цифрами). Нічого схожого — ''. */
+  function tokenFrom(s) {
+    s = String(s || '').trim(); var mix = function (x) { return /[A-Za-z]/.test(x) && /\d/.test(x); };
+    if (tokenOk(s) && mix(s)) return s;
+    var c = (s.match(/[A-Za-z0-9_\-]{40,64}/g) || []).filter(mix);
+    c.sort(function (a, b) { return b.length - a.length; });
+    return c[0] || '';
+  }
 
   var api = { API: API, TOKEN_URL: TOKEN_URL, WIN: WIN, GAP: GAP, MONTHS: MONTHS, kindOf: kindOf, accOf: accOf, eicOf: eicOf, isUtility: isUtility, groups: groups, gasField: gasField, payOf: payOf,
-    cards: cards, plan: plan, clientInfo: clientInfo, statement: statement, tokenOk: tokenOk };
+    cards: cards, plan: plan, clientInfo: clientInfo, statement: statement, tokenOk: tokenOk, tokenFrom: tokenFrom };
   if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.TeploMono = api;
 })(typeof window !== 'undefined' ? window : this);
 
@@ -13158,7 +13196,7 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
   // ---------- «Рахунки з monobank» (114-а, власник 11.11): усе для передачі, крім показань, — з платежів за комуналку ----------
   // Токен і виписка — лише в пам’яті цієї сторінки (не в S, не в localStorage, не на сервер); журнал бачить тільки «поле заповнене».
   var Mn = window.TeploMono, MO = monoFresh();
-  function monoFresh(back) { return { tok: '', st: '', err: '', q: [], i: 0, items: [], name: '', next: 0, timer: null, groups: [], sel: {}, sn: true, back: back || '' }; }
+  function monoFresh(back) { return { tok: '', st: '', err: '', q: [], i: 0, items: [], name: '', next: 0, timer: null, groups: [], sel: {}, sn: true, back: back || '', opened: false, bg: false }; }
   function monoLink(k) {
     if (!Mn) return '';
     return '<p class="mono-link"><a class="btn sec" href="#mono" data-act="mono-open" data-key="mono-open' + (k ? '-' + k : '') + '">' + ico('download', 18) + '<span>' + esc(t('mono_link')) + '</span></a>' +
@@ -13186,38 +13224,76 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
     var el = document.getElementById('mono-wait'); if (!el) return;
     var s = Math.max(0, Math.ceil((MO.next - Date.now()) / 1000)); el.textContent = s > 0 ? t('mono_wait', { s: s }) : '';
   }
-  function monoStart() {
-    var inp = document.getElementById('mono-tok'), tok = inp ? String(inp.value || '').trim() : MO.tok;
-    if (!Mn.tokenOk(tok)) { MO.err = 'mono_e_tok'; render(true); var i2 = document.getElementById('mono-tok'); if (i2) i2.focus(); return; }
-    MO = Object.assign(monoFresh(MO.back), { tok: tok, st: 'run' }); render(true);
+  /** Що позначити самим: є куди вписати, поле порожнє, рахунок із підписом (не «звірте»); вивіз — нові оплати чи рахунок. */
+  function monoSelDef(g) {
+    var tg = monoTarget(g, g.kind, S.placeId);
+    return { on: !!(tg.ok && (tg.waste ? tg.n > 0 || tg.accNew : tg.cur !== dgt(g.acc) && !tg.cur && !g.guess)), kind: g.kind, place: S.placeId };
+  }
+  /** Ключ вставили (117-а: без кнопки «Знайти» — пошук іде сам, щойно в полі чи буфері є щось схоже на ключ). */
+  function monoStart(tok) {
+    if (tok === undefined) { var inp = document.getElementById('mono-tok'); tok = Mn.tokenFrom(inp ? inp.value : ''); }
+    if (!Mn.tokenOk(tok)) { MO.err = 'mono_e_tok'; MO.opened = true; render(true); var i2 = document.getElementById('mono-tok'); if (i2) i2.focus(); return; }
+    if (MO.tok === tok && (MO.st === 'run' || MO.bg)) return;   // input і paste приходять разом
+    clearTimeout(MO.timer);
+    MO = Object.assign(monoFresh(MO.back), { tok: tok, st: 'run', opened: true }); render(true);
     Mn.clientInfo(tok).then(function (r) {
       if (MO.tok !== tok) return;
-      if (!r.ok) { MO = Object.assign(monoFresh(MO.back), { err: monoErr(r) }); render(true); return; }
+      if (!r.ok) { MO = Object.assign(monoFresh(MO.back), { err: monoErr(r), opened: true }); render(true); return; }
       var accs = Mn.cards(r.data);
-      if (!accs.length) { MO = Object.assign(monoFresh(MO.back), { err: 'mono_e_nocard' }); render(true); return; }
+      if (!accs.length) { MO = Object.assign(monoFresh(MO.back), { err: 'mono_e_nocard', opened: true }); render(true); return; }
       MO.name = String((r.data && r.data.name) || ''); MO.q = Mn.plan(accs, Math.floor(Date.now() / 1000), Mn.MONTHS); MO.i = 0; monoStep();
     });
   }
+  /** Виписка — по вікну на хвилину (правило monobank). Перше вікно (головна картка, останні 31 доба) — і одразу показуємо знайдене;
+   *  старші місяці й інші картки дочитуємо фоном, нове додається в список (117-а: раніше людина чекала до 9 хвилин). */
   function monoStep() {
-    if (MO.st !== 'run') return;
-    if (MO.i >= MO.q.length) { monoDone(); return; }
+    if (!MO.tok) return;
+    if (MO.i >= MO.q.length) { monoFinish(); return; }
     var tok = MO.tok;
     Mn.statement(tok, MO.q[MO.i]).then(function (r) {
-      if (MO.tok !== tok || MO.st !== 'run') return;
+      if (MO.tok !== tok) return;
       if (r.ok) { MO.items = MO.items.concat(Array.isArray(r.data) ? r.data : []); MO.i++; }
-      else if (r.error !== 'rate') { if (MO.items.length) { monoDone(); return; } MO = Object.assign(monoFresh(MO.back), { err: monoErr(r) }); render(true); return; }
-      if (MO.i >= MO.q.length) { monoDone(); return; }
-      MO.next = Date.now() + Mn.GAP; if (routeName() === 'mono') render(true);
+      else if (r.error !== 'rate') { if (MO.st === 'done' || MO.items.length) { monoFinish(); return; } MO = Object.assign(monoFresh(MO.back), { err: monoErr(r), opened: true }); render(true); return; }
+      if (MO.i >= MO.q.length) { monoFinish(); return; }
+      if (r.ok && MO.st === 'run') monoShow(); else if (MO.bg) monoMore();
+      MO.next = Date.now() + Mn.GAP; if (MO.st === 'run' && routeName() === 'mono') render(true);
       MO.timer = setTimeout(monoStep, Mn.GAP);
     });
   }
-  /** Виписку прочитали (чи людина сказала «досить»): токен забуваємо, платежі — у групи, позначаємо те, що є куди вписати. */
-  function monoDone() {
-    clearTimeout(MO.timer); MO.tok = ''; MO.st = 'done'; MO.groups = Mn.groups(MO.items); MO.items = []; MO.sel = {};
-    MO.groups.forEach(function (g) { var tg = monoTarget(g, g.kind, S.placeId); MO.sel[g.key] = { on: !!(tg.ok && (tg.waste ? tg.n > 0 || tg.accNew : tg.cur !== dgt(g.acc) && !tg.cur && !g.guess)), kind: g.kind, place: S.placeId }; });
+  function monoShow() {
+    MO.st = 'done'; MO.bg = true; MO.groups = Mn.groups(MO.items); MO.sel = {};
+    MO.groups.forEach(function (g) { MO.sel[g.key] = monoSelDef(g); });
     if (routeName() === 'mono') render(true);
   }
+  /** Фоном знайшли ще — нові рядки з тими ж правилами позначення; вибір людини в старих рядках не чіпаємо. */
+  function monoMore() {
+    var n0 = MO.groups.length; MO.groups = Mn.groups(MO.items);
+    MO.groups.forEach(function (g) { if (!MO.sel[g.key]) MO.sel[g.key] = monoSelDef(g); });
+    if (MO.groups.length !== n0 && routeName() === 'mono') render(true);
+  }
+  /** Прочитали все (чи людина сказала «досить»): ключ забуваємо, платежі — у групи. */
+  function monoFinish() {
+    clearTimeout(MO.timer); MO.tok = '';
+    var n0 = MO.groups.length, first = MO.st !== 'done';
+    MO.groups = Mn.groups(MO.items); MO.items = []; MO.bg = false; MO.st = 'done';
+    if (first) MO.sel = {};
+    MO.groups.forEach(function (g) { if (!MO.sel[g.key]) MO.sel[g.key] = monoSelDef(g); });
+    if (routeName() !== 'mono') return;
+    if (first || MO.groups.length !== n0) { render(true); return; }
+    var bl = document.getElementById('mono-bg'); if (bl) bl.remove();
+  }
+  /** «Вставити ключ»: буфер обміну → ключ → пошук. Не дали прочитати буфер (Telegram, старий Safari) — фокус у поле, підказка. */
+  function monoPaste() {
+    var cb = navigator.clipboard;
+    if (!cb || !cb.readText) { monoPasteNo(); return; }
+    cb.readText().then(function (txt) {
+      var tok = Mn.tokenFrom(txt);
+      if (tok) monoStart(tok); else { MO.err = 'mono_e_clip'; MO.opened = true; render(true); }
+    }, monoPasteNo);
+  }
+  function monoPasteNo() { MO.err = 'mono_e_clipno'; MO.opened = true; render(true); var i = document.getElementById('mono-tok'); if (i) i.focus(); }
   function monoApply() {
+    clearTimeout(MO.timer); MO.tok = ''; MO.bg = false;
     var n = 0, sn = MO.sn && MO.name ? String(MO.name).trim().split(/\s+/)[0] : '';
     MO.groups.forEach(function (g) {
       var s = MO.sel[g.key]; if (!s || !s.on) return;
@@ -13241,16 +13317,16 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
     if (!Mn) return { screen: 'S45', route: 'mono', bare: true, closeTo: back, html: h };
     var kinds = ['heat', 'water', 'elec', 'gas', 'waste', 'house', 'other'];
     if (MO.st === 'run') {
-      var nf = Mn.groups(MO.items).length;
-      h += '<div class="panel mono-run" role="status" aria-live="polite" data-key="mono-run"><p><span class="spin" aria-hidden="true"></span> <b>' + esc(t('mono_run', { i: Math.min(MO.i + 1, MO.q.length || 1), n: MO.q.length || 1 })) + '</b></p>' +
-        '<p class="small muted" id="mono-wait"></p>' + (nf ? '<p class="small">' + esc(t('mono_found', { n: nf })) + '</p>' : '') + '</div>' +
-        '<div class="wiz-actions"><a class="btn sec" href="#' + esc(back) + '" data-act="mono-cancel">' + esc(t('cancel')) + '</a>' + (MO.i ? '<button type="button" class="btn" data-act="mono-stop" data-key="mono-stop">' + esc(t('mono_stop')) + '</button>' : '') + '</div>';
+      h += '<div class="panel mono-run" role="status" aria-live="polite" data-key="mono-run"><p><span class="spin" aria-hidden="true"></span> <b>' + esc(t('mono_run')) + '</b></p>' +
+        '<p class="small muted" id="mono-wait"></p></div>' +
+        '<div class="wiz-actions"><a class="btn sec" href="#' + esc(back) + '" data-act="mono-cancel">' + esc(t('cancel')) + '</a></div>';
       return { screen: 'S45', route: 'mono', bare: true, closeTo: back, html: h };
     }
     if (MO.st === 'done') {
-      if (!MO.groups.length) return { screen: 'S45', route: 'mono', bare: true, closeTo: back, html: h + '<div class="panel" data-key="mono-none"><p>' + esc(t('mono_none')) + '</p></div><div class="wiz-actions"><a class="btn" href="#' + esc(back) + '">' + esc(t('back')) + '</a></div>' };
-      var many = places().length > 1, anyWater = false;
-      h += '<p class="muted">' + esc(t('mono_pick')) + '</p><div class="mono-list" data-key="mono-list">' + MO.groups.map(function (g, gi) {
+      var bgLine = MO.bg ? '<p class="small muted mono-bg" id="mono-bg" role="status" data-key="mono-bg"><span class="spin" aria-hidden="true"></span> ' + esc(t('mono_bg')) + '</p>' : '';
+      if (!MO.groups.length) return { screen: 'S45', route: 'mono', bare: true, closeTo: back, html: h + bgLine + (MO.bg ? '' : '<div class="panel" data-key="mono-none"><p>' + esc(t('mono_none')) + '</p></div>') + '<div class="wiz-actions"><a class="btn" href="#' + esc(back) + '" data-act="mono-cancel">' + esc(t('back')) + '</a></div>' };
+      var many = places().length > 1, anyWater = false, main = [], rest = [];
+      MO.groups.forEach(function (g, gi) {
         var s = MO.sel[g.key] || { kind: g.kind, place: S.placeId }, tg = monoTarget(g, s.kind, s.place), d = dgt(g.acc), same = tg.ok && (tg.waste ? !tg.n && (!d || tg.cur === d) : tg.cur === d);
         if (s.on && s.kind === 'water') anyWater = true;
         var can = tg.ok && !same, id = 'mono-' + gi;
@@ -13263,25 +13339,40 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
         // вид і квартира: відомий вид — у згорнутому «Не те?», невідомий (ОСББ, «інше») — одразу
         var sel = !d && !tg.waste && g.kind !== 'waste' ? '' : known && !many ? '<details class="mono-chg" data-key="mono-chg-' + gi + '"><summary class="small">' + esc(t('mono_chg')) + '</summary><div class="mono-sel">' + selK + '</div></details>'
           : '<div class="mono-sel">' + selK + selP + '</div>';
-        return '<div class="mono-g' + (can ? '' : ' off') + '" data-key="mono-g-' + gi + '">' +
+        (can ? main : rest).push('<div class="mono-g' + (can ? '' : ' off') + '" data-key="mono-g-' + gi + '">' +
           '<label class="check-row"><input type="checkbox" id="' + id + '" data-mono="' + gi + '" data-mf="on"' + (s.on && can ? ' checked' : '') + (can ? '' : ' disabled') + '><span><b>' + esc(g.name || t('mono_k_other')) + '</b>' +
           (d ? '<span class="mono-acc">' + esc(t('mono_acc', { a: d })) + '</span>' + (g.guess ? '<span class="small warn-ink mono-guess">' + esc(t('mono_guess')) + '</span>' : '') : '') + '</span></label>' +
           '<p class="small mono-to">' + esc(to) + '</p>' +
-          '<p class="small muted">' + esc(t('mono_pays', { n: g.n, d: last, s: money(g.lastAmt) })) + '</p>' + sel + '</div>';
-      }).join('') + '</div>';
+          '<p class="small muted">' + esc(t('mono_pays', { n: g.n, d: last, s: money(g.lastAmt) })) + '</p>' + sel + '</div>');
+      });
+      // 117-а: на виду — лише те, що можна вписати; решта (уже вписане, без рахунку, ОСББ) — згорнуто
+      h += '<p class="muted">' + esc(t(main.length ? 'mono_pick' : 'mono_nonew')) + '</p>' + bgLine + '<div class="mono-list" data-key="mono-list">' + main.join('') +
+        (rest.length ? '<details class="mono-more" data-key="mono-more"' + (main.length ? '' : ' open') + '><summary>' + esc(t('mono_more', { n: rest.length })) + '</summary>' + rest.join('') + '</details>' : '') + '</div>';
       var sn = MO.name ? String(MO.name).trim().split(/\s+/)[0] : '';
       if (sn && anyWater) h += '<label class="check-row mono-sn" data-key="mono-sn"><input type="checkbox" id="mono-sn" data-mono="sn" data-mf="sn"' + (MO.sn ? ' checked' : '') + '><span>' + esc(t('mono_sn', { s: sn })) + '<span class="small muted"> · ' + esc(t('mono_sn_h')) + '</span></span></label>';
-      h += '<div class="wiz-actions"><button type="button" class="btn sec" data-act="mono-again" data-key="mono-again">' + esc(t('mono_again')) + '</button><button type="button" class="btn" data-act="mono-apply" data-key="mono-apply">' + ico('check', 20) + '<span>' + esc(t('mono_apply')) + '</span></button></div>';
+      h += '<div class="wiz-actions"><a class="btn sec" href="#' + esc(back) + '" data-act="mono-cancel">' + esc(t(main.length ? 'cancel' : 'back')) + '</a>' +
+        (main.length ? '<button type="button" class="btn" data-act="mono-apply" data-key="mono-apply">' + ico('check', 20) + '<span>' + esc(t('mono_apply')) + '</span></button>' : '') + '</div>' +
+        '<p class="mono-again"><button type="button" class="linkbtn small" data-act="mono-again" data-key="mono-again">' + esc(t('mono_again')) + '</button></p>';
       return { screen: 'S45', route: 'mono', bare: true, closeTo: back, html: h };
     }
-    h += '<p class="muted">' + esc(t('mono_l')) + '</p><div class="panel" data-key="mono-intro"><ol class="wsteps"><li>' + esc(t('mono_s1')) + '<p><a href="' + Mn.TOKEN_URL + '" target="_blank" rel="noopener noreferrer" data-key="mono-api">' + esc(t('mono_open')) + ' ' + ico('ext', 14) + '</a></p></li><li>' + esc(t('mono_s2')) + '</li></ol>' +
-      '<div class="field"><label for="mono-tok">' + esc(t('mono_tok')) + '</label><div class="ctl"><input id="mono-tok" type="password" autocomplete="off" autocapitalize="off" spellcheck="false" data-key="mono-tok"></div><div class="help">' + esc(t('mono_tok_h')) + '</div></div>' +
-      (MO.err ? '<div class="help bad" role="alert" data-key="mono-err">' + esc(t(MO.err)) + '</div>' : '') +
-      '<p class="small muted mono-priv" data-key="mono-priv">' + ico('shield', 16) + ' ' + esc(t('mono_priv')) + '</p></div>' +
-      '<div class="wiz-actions"><a class="btn sec" href="#' + esc(back) + '">' + esc(t('cancel')) + '</a><button type="button" class="btn" data-act="mono-go" data-key="mono-go">' + esc(t('mono_go')) + '</button></div>';
+    // 117-а (власник: «люди не зрозуміють, що це й навіщо — щоб в одну кнопку»): дві дії — «Відкрити monobank» і «Вставити ключ».
+    // Справжньої «однієї кнопки» (згода в застосунку без ключа) monobank дає лише сервісам відкритого банкінгу за вимогами НБУ.
+    var phone = !!((window.matchMedia && window.matchMedia('(pointer: coarse)').matches) || /Android|iPhone|iPad|Mobile/i.test(navigator.userAgent || '')), op = !!MO.opened;
+    var err = MO.err ? '<div class="help bad" role="alert" data-key="mono-err">' + esc(t(MO.err)) + '</div>' : '';
+    h += '<p class="muted mono-lead">' + esc(t('mono_l')) + '</p><ol class="mono-steps" data-key="mono-intro">' +
+      '<li class="' + (op ? 'done' : 'now') + '"><b>' + esc(t('mono_s1')) + '</b><p class="small muted">' + esc(t(phone ? 'mono_s1p' : 'mono_s1d')) + '</p>' +
+        '<a class="btn' + (op ? ' sec' : '') + '" href="' + Mn.TOKEN_URL + '" target="_blank" rel="noopener noreferrer" data-act="mono-ext" data-key="mono-api">' + ico('ext', 18) + '<span>' + esc(t('mono_open')) + '</span></a></li>' +
+      '<li class="' + (op ? 'now' : '') + '"><b>' + esc(t('mono_s2')) + '</b><p class="small muted">' + esc(t('mono_s2h')) + '</p>' +
+        '<button type="button" class="btn' + (op ? '' : ' sec') + '" data-act="mono-paste" data-key="mono-paste">' + ico('copy', 18) + '<span>' + esc(t('mono_paste')) + '</span></button>' +
+        '<div class="field mono-tokf"><label for="mono-tok" class="small">' + esc(t('mono_tok')) + '</label><div class="ctl"><input id="mono-tok" type="password" autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="go" data-key="mono-tok"></div></div>' + err + '</li></ol>' +
+      '<div class="small muted mono-priv" data-key="mono-priv"><p>' + ico('shield', 16) + ' ' + esc(t('mono_priv_s')) + '</p><details><summary>' + esc(t('mono_priv_more')) + '</summary><p>' + esc(t('mono_priv')) + '</p></details></div>' +
+      '<div class="wiz-actions"><a class="btn sec" href="#' + esc(back) + '" data-act="mono-cancel">' + esc(t('cancel')) + '</a></div>';
     return { screen: 'S45', route: 'mono', bare: true, closeTo: back, html: h };
   };
   setInterval(function () { if (MO.st === 'run') monoTick(); }, 1000);
+  // ключ у полі: щойно схоже на ключ — шукаємо (без кнопки); Enter — те саме, з підказкою, якщо не схоже
+  document.addEventListener('input', function (e) { if (Mn && e.target && e.target.id === 'mono-tok') { var tk = Mn.tokenFrom(e.target.value); if (tk) monoStart(tk); } });
+  document.addEventListener('keydown', function (e) { if (Mn && e.key === 'Enter' && e.target && e.target.id === 'mono-tok') { e.preventDefault(); monoStart(); } });
   // вибір у списку: галочка, вид, квартира — без перемальовки всієї сторінки, крім виду/квартири (міняють «Впишемо: …»)
   document.addEventListener('change', function (e) {
     var el = e.target, gi = el && el.getAttribute && el.getAttribute('data-mono'); if (gi === null || gi === undefined || gi === '') return;
@@ -14384,9 +14475,11 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
       case 'aw-create': pwCreate(); break;
       case 'mono-open': MO = monoFresh(routeName() || backTo('home')); break;
       case 'mono-go': monoStart(); break;
-      case 'mono-stop': monoDone(); break;
+      case 'mono-paste': monoPaste(); break;
+      case 'mono-ext': MO.opened = true; MO.err = ''; setTimeout(function () { if (routeName() === 'mono' && !MO.st) render(true); }, 300); break;
+      case 'mono-stop': monoFinish(); break;
       case 'mono-cancel': clearTimeout(MO.timer); MO = monoFresh(); break;
-      case 'mono-again': MO = monoFresh(MO.back); render(true); break;
+      case 'mono-again': clearTimeout(MO.timer); MO = Object.assign(monoFresh(MO.back), { opened: true }); render(true); break;
       case 'mono-apply': monoApply(); break;
       case 'pq-later': {   // водомір є, а № і цифри — пізніше: додаємо без деталей
         if (PQ && PQ.place === S.placeId && PQ.i < PQ.list.length && SK[PQ.list[PQ.i]]) {   // світло/газ: одна зона, рахунок і № — потім у налаштуваннях

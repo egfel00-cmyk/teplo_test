@@ -2073,6 +2073,27 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
 .mono-acc { display: block; margin-top: 2px; font-weight: 600; font-variant-numeric: tabular-nums; }
 .mono-guess { display: block; margin-top: 2px; }
 .mono-sn { margin: 0 0 var(--sp-4); font-weight: 400; align-items: flex-start; }
-.mono-priv { display: flex; gap: 8px; align-items: flex-start; margin: 12px 0 0; }
+.mono-priv { margin: 12px 0 var(--sp-4); }
+.mono-priv > p { display: flex; gap: 8px; align-items: flex-start; margin: 0; }
 .mono-priv .ico { flex: none; margin-top: 2px; }
+.mono-priv details { margin: 4px 0 0 24px; }
+.mono-priv summary { cursor: pointer; min-height: 32px; display: flex; align-items: center; color: var(--c-ink-2); }
+.mono-priv details p { margin: 4px 0 0; }
 .mono-run p { margin: 0 0 6px; }
+/* 117-а: дві дії — «Відкрити monobank» і «Вставити ключ»; поточна — основна кнопка, номер темний */
+.mono-steps { list-style: none; counter-reset: ms; padding: 0; margin: 0; display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; }
+.mono-steps > li { counter-increment: ms; position: relative; background: var(--c-surface); border-radius: 14px; padding: 14px var(--sp-4) 16px 56px; }
+.mono-steps > li::before { content: counter(ms); position: absolute; left: 16px; top: 13px; width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center;
+  font: 600 15px/1 var(--font); background: var(--c-surface-2); color: var(--c-ink-2); }
+.mono-steps > li.now::before { background: var(--c-ink); color: var(--c-on-ink); }
+.mono-steps > li > b { display: block; font-size: var(--fs-m); line-height: 1.3; }
+.mono-steps > li > p { margin: 4px 0 12px; }
+.mono-steps .btn { width: 100%; justify-content: center; }
+.mono-steps .mono-tokf { margin: 12px 0 0; }
+.mono-steps .mono-tokf input { width: 100%; min-width: 0; }
+@media (max-width: 360px) { .mono-steps > li { padding-left: 48px; } .mono-steps > li::before { left: 12px; } }
+.mono-steps .help.bad { margin-top: 8px; }
+.mono-bg { display: flex; gap: 8px; align-items: center; margin: 0 0 10px; }
+.mono-more { display: grid; gap: 10px; }
+.mono-more > summary { cursor: pointer; min-height: var(--tap); display: flex; align-items: center; color: var(--c-ink-2); }
+.mono-again { margin: 4px 0 0; text-align: center; }
