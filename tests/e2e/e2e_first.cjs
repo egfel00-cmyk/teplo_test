@@ -43,7 +43,7 @@ const U = 'http://127.0.0.1:8013/';
   const wtxt = await p.textContent('.welcome');
   ok('у тексті — світло й газ, «з фото», кілька квартир, «лише для себе»', /світло й газ/.test(wtxt) && /З фото/.test(wtxt) && /Кілька квартир/.test(wtxt) && /лише для себе/.test(wtxt));
   await p.click('[data-key=welcome-start]'); await p.waitForTimeout(400);
-  ok('«Почати» → #start: 5 видів з образцями табло', (await hash()) === '#start' && (await p.$$('.aw-kind .kprev')).length === 5 && /Які лічильники є у вашій квартирі/.test(await p.textContent('h1')));
+  ok('«Почати» → #start: 5 видів з образцями табло + вивіз сміття (115-а)', (await hash()) === '#start' && (await p.$$('.aw-kind .kprev')).length === 6 && /Які лічильники є у вашій квартирі/.test(await p.textContent('h1')));
   ok('підказка про інші квартири («+ Квартира»)', /\+ Квартира/.test(await p.textContent('[data-key=fs-more]')));
   ok('без води — один крок, без «Крок 1 з …»', !(await p.$('.wiz-top')) && /Почати налаштування/.test(await p.textContent('[data-key=aw-create]')));
   await p.click('[data-key=aw-create]'); await p.waitForTimeout(300);

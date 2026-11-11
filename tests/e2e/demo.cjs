@@ -26,6 +26,9 @@ module.exports = function demo(opts) {
     water: water.concat(opts.second ? [['2026-09-14', 210, true], ['2026-10-14', 214], ['2026-11-01', 215]].map(([d, c, base]) => Object.assign({ id: 'q' + d.replace(/-/g, ''), place: 'p2', date: d, vals: { c9: String(c) }, createdAt: d + 'T10:00:00Z', updatedAt: 1, sent: base ? {} : { vk: d } }, base ? { base: true } : {})) : []) };
   if (opts.second && opts.at2) out.placeId = 'p2';
   // світло: двозонний (elec: 1 — однозонний) у першій квартирі; 31.10 внесено, ще не передано (вікно 30.10–3.11 відкрите)
+  // вивіз сміття (115-а): 2 людини × 30 грн, оплати за липень і серпень–вересень, жовтень ще не сплачено (до 20.11)
+  if (opts.waste) out.places[0].waste = { on: true, at: '2026-08-05', persons: 2, price: 30, account: '700123', pays: [
+    { id: 'wp1', ym: '2026-07', n: 1, date: '2026-08-12', amount: 60, updatedAt: 1 }, { id: 'wp2', ym: '2026-08', n: 2, date: '2026-09-15', amount: 120, updatedAt: 1 }] };
   if (opts.elec) {
     out.places[0].meters = [{ id: 'e1', kind: 'elec', name: '', zones: opts.elec === 1 ? 1 : 2, serial: '0123456', account: '9876543' }];
     const z = (a, b) => opts.elec === 1 ? { all: String(a + b) } : { day: String(a), night: String(b) };

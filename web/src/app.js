@@ -624,11 +624,13 @@
     hot: { icon: 'drop', cls: 'c-hot', t: 'kd_hot', s: 'kd_hot_s', max: 4 },
     cold: { icon: 'drop', cls: 'c-cold', t: 'kd_cold', s: 'kd_cold_s', max: 4 },
     gas: { icon: 'flame', cls: 'c-gas', t: 'kd_gas', s: 'kd_gas_s', max: 2 },
-    elec: { icon: 'bolt', cls: 'c-elec', t: 'kd_elec', s: 'kd_elec_s', max: 2 }
+    elec: { icon: 'bolt', cls: 'c-elec', t: 'kd_elec', s: 'kd_elec_s', max: 2 },
+    // вивіз сміття (115-а, власник 11.11): на рівні лічильників, але без табло — платять з людини; місце табло — сума на місяць
+    waste: { icon: 'trash', cls: 'c-waste', t: 'kd_waste', s: 'kd_waste_s', max: 1, nometer: true }
   };
-  // Один порядок видов везде и во всех квартирах (владелец 05.11): опалення, гаряча, холодна, світло, газ —
+  // Один порядок видов везде и во всех квартирах (владелец 05.11): опалення, гаряча, холодна, світло, газ, вивіз сміття —
   // главная, экран квартиры (счётчики, «Постачальники й тарифи», рахунки, прибрані), вкладки, мастера.
-  var KIND_ORDER = ['heat', 'hot', 'cold', 'elec', 'gas'];
+  var KIND_ORDER = ['heat', 'hot', 'cold', 'elec', 'gas', 'waste'];
   function kindRank(k) { var i = KIND_ORDER.indexOf(k === 'water' ? 'hot' : k); return i < 0 ? 99 : i; }
   /** Счётчики по порядку видов; внутри вида — как добавляли (сортируем копию, хранение не трогаем). */
   function byKind(a) { return a.map(function (m, i) { return [m, i]; }).sort(function (x, y) { return kindRank(x[0].kind) - kindRank(y[0].kind) || x[1] - y[1]; }).map(function (x) { return x[0]; }); }
@@ -636,13 +638,14 @@
   /** Есть ли хоть один счётчик в любой квартире (вход на новом устройстве: уже настроен — сразу на главную). */
   function anyMeters() {
     var live = function (m) { return m && !m.deleted && !m.removed; };
-    return hasHeat() || places().some(function (p) { return live(p.meter) || ((p.water || {}).meters || []).some(live) || (p.meters || []).some(live); });
+    return hasHeat() || places().some(function (p) { return live(p.meter) || ((p.water || {}).meters || []).some(live) || (p.meters || []).some(live) || !!(p.waste && p.waste.on); });
   }
-  function kindCount(k) { return k === 'heat' ? (hasHeat() ? 1 : 0) : KINDS[k].soon ? 0 : k === 'elec' || k === 'gas' ? pmeters(k).length : wmeters(k).length; }
-  function meterTitle(what) { if (what === 'heat') return t('kd_heat'); var pm = pmeters(null, true).filter(function (x) { return x.id === what; })[0]; if (pm) return ename(pm); var m = wmeters(null, true).filter(function (x) { return x.id === what; })[0]; return m ? wname(m) : ''; }
+  function kindCount(k) { return k === 'heat' ? (hasHeat() ? 1 : 0) : k === 'waste' ? (wasteOn() ? 1 : 0) : KINDS[k].soon ? 0 : k === 'elec' || k === 'gas' ? pmeters(k).length : wmeters(k).length; }
+  function meterTitle(what) { if (what === 'heat') return t('kd_heat'); if (what === 'waste') return t('kd_waste'); var pm = pmeters(null, true).filter(function (x) { return x.id === what; })[0]; if (pm) return ename(pm); var m = wmeters(null, true).filter(function (x) { return x.id === what; })[0]; return m ? wname(m) : ''; }
   /** Есть ли у счётчика записи (тогда «прибрати» — в архив, иначе — удалить совсем). */
   function meterHasData(what) {
     if (what === 'heat') return RD().length > 0 || gaps('heat').length > 0;
+    if (what === 'waste') return Ws.pays(wcur()).length > 0;
     if (pmeters(null, true).some(function (x) { return x.id === what; })) return mrecs(what).length > 0;
     return wrecs().some(function (r) { return hasVal(r, what); }) || gaps(what).length > 0;
   }
@@ -653,11 +656,14 @@
       if (keep) S.meter = Object.assign({}, S.meter, { removed: d }); else S.meter = null;
       S.draft = null; save(); return;
     }
+    // вивіз сміття: дані (люди, ціна, оплати) лишаються — «Повернути» віддає все як було
+    if (what === 'waste') { wasteSet(function (w) { delete w.on; if (keep) w.removed = d; else delete w.removed; }); return; }
     if (pmeters(null, true).some(function (x) { return x.id === what; })) { setPMeters(function (list) { list.forEach(function (m) { if (m.id === what) { if (keep) m.removed = d; else m.deleted = true; } }); }); return; }
     wsetCfg(function (c) { (c.meters || []).forEach(function (m) { if (m.id === what) { if (keep) m.removed = d; else m.deleted = true; } }); });
   }
   function meterRestore(what) {
     if (what === 'heat') { if (S.meter) { S.meter = Object.assign({}, S.meter); delete S.meter.removed; save(); } return; }
+    if (what === 'waste') { wasteSet(function (w) { w.on = true; w.at = w.at || today(); delete w.removed; }); return; }
     if (pmeters(null, true).some(function (x) { return x.id === what; })) { setPMeters(function (list) { list.forEach(function (m) { if (m.id === what) delete m.removed; }); }); return; }
     wsetCfg(function (c) { (c.meters || []).forEach(function (m) { if (m.id === what) delete m.removed; }); });
   }
@@ -666,6 +672,7 @@
     var a = []; if (S.meter && S.meter.removed) a.push({ what: 'heat', kind: 'heat', title: t('kd_heat'), at: S.meter.removed });
     wmeters(null, true).filter(function (m) { return m.removed; }).forEach(function (m) { a.push({ what: m.id, kind: m.kind, title: wname(m), at: m.removed }); });
     pmeters(null, true).filter(function (m) { return m.removed; }).forEach(function (m) { a.push({ what: m.id, kind: m.kind, title: ename(m), at: m.removed }); });
+    var ww = wcur(); if (!ww.on && ww.removed) a.push({ what: 'waste', kind: 'waste', title: t('kd_waste'), at: ww.removed });
     return byKind(a);
   }
 
@@ -834,7 +841,8 @@
   // в каждой секции — счётчики этой квартиры и «Додати лічильник». Кнопки внутри секции работают в её квартире (data-pl).
   var HP_EDIT = '';   // у какой квартиры открыта форма «Назва й адреса»
   function homeCards() {
-    return (hasHeat() ? [heatCard()] : []).concat(['hot', 'cold'].filter(function (k) { return wmeters(k).length; }).map(waterCard)).concat(emeters().length ? [elecCard()] : []).concat(smeters('gas').length ? [sCard('gas')] : []);
+    return (hasHeat() ? [heatCard()] : []).concat(['hot', 'cold'].filter(function (k) { return wmeters(k).length; }).map(waterCard)).concat(emeters().length ? [elecCard()] : []).concat(smeters('gas').length ? [sCard('gas')] : [])
+      .concat(wasteOn() ? [wasteCard()] : []);
   }
   function hpEditForm(p) {
     var id = esc(p.id), idx = places().indexOf(p);
@@ -856,7 +864,9 @@
     // тихо, одним-двома рядками під адресою: що й до коли — без переліку всіх лічильників
     return '<span class="pnote" data-key="pst-' + esc(p.id) + '">' + soon.map(function (r) {
       var n = R.daysBetween(td, r.due), when = n <= 0 ? t('pn_today') : n === 1 ? t('pn_tmr') : t('pn_until', { d: fmtDate(r.due), n: n });
-      return '<span class="pn-row k-' + r.kind + (n <= 1 ? ' hot' : '') + '" data-key="pst-' + esc(p.id) + '-' + r.kind + '">' + ico(KINDS[r.kind].icon, 16, KINDS[r.kind].cls) + '<span>' + esc(t(r.ready ? 'pn_ready' : 'pn_send', { k: r.title, w: when })) + '</span></span>';
+      // вивіз сміття — «сплатити за жовтень», строк минув — «не сплачено за жовтень»
+      var txt = r.pay ? (n < 0 ? t('pn_pay_late', { k: r.title, m: monthLabel(r.ym) }) : t('pn_pay', { k: r.title, m: monthLabel(r.ym), w: when })) : t(r.ready ? 'pn_ready' : 'pn_send', { k: r.title, w: when });
+      return '<span class="pn-row k-' + r.kind + (n <= 1 ? ' hot' : '') + '" data-key="pst-' + esc(p.id) + '-' + r.kind + '">' + ico(KINDS[r.kind].icon, 16, KINDS[r.kind].cls) + '<span>' + esc(txt) + '</span></span>';
     }).join('') + '</span>';
   }
   function hpOpen(p) { var o = S.homeOpen || {}; return o[p.id] !== undefined ? !!o[p.id] : p.id === S.placeId; }
@@ -1901,6 +1911,8 @@
     var k = []; if (hasHeat() || (S.meter && RD().length)) k.push('heat');
     ['hot', 'cold'].forEach(function (x) { if (wmeters(x).length || wmeters(x, true).some(function (m) { return meterHasData(m.id); })) k.push(x); });
     ['elec', 'gas'].forEach(function (x) { if (smeters(x).length || smeters(x, true).some(function (m) { return meterHasData(m.id); })) k.push(x); });
+    // вивіз сміття — в «Історії» й «Статистиці» (оплати по місяцях); «Економія» — про розхід лічильників, вивозу там немає
+    if ((wasteOn() || meterHasData('waste')) && routeName() !== 'save') k.push('waste');
     return k;
   }
   /** Что смотрим во вкладках (S.view); выбранного вида нет — первый, что есть. */
@@ -3074,6 +3086,7 @@
       case 'add-meter': e.preventDefault(); AM_BACK = el.getAttribute('data-back') || (/^(place-.+|water-hot|water-cold|heat)$/.test(routeName()) ? routeName() : 'home'); go('add-meter'); return true;
       case 'am-pick': { var ak = el.getAttribute('data-kind');
         if (ak === 'heat') { delete S._pickModel; go('meter'); return true; }
+        if (ak === 'waste') { wasteAdd(); MB_OPEN.waste = true; toast(t('wsp_added')); go('waste'); return true; }
         if (SK[ak]) { EA = { kind: ak, back: AM_BACK, zones: 1, vals: {}, f: {} }; go(SK[ak].add); return true; }
         WA = { kind: ak, back: AM_BACK }; go('wadd'); return true; }
       case 'm-remove': { var mw = el.getAttribute('data-what'), mn = meterTitle(mw), mh = meterHasData(mw);
@@ -4802,8 +4815,8 @@
   function noMeters(route, title) {
     return { screen: 'S09', route: route, html: '<h1>' + esc(t(title)) + '</h1><div class="panel" data-key="no-meters"><p class="muted">' + esc(t('hi_nometers')) + '</p><button class="btn" data-act="add-meter" data-key="no-meters-add">' + ico('plus', 20) + '<span>' + esc(t('am_tile')) + '</span></button></div>' };
   }
-  V.history = function () { if (!kinds().length) return noMeters('history', 'hi_title'); var k = curView(); return k === 'heat' ? heatHistory() : SK[k] ? shistory(k) : whistory(k); };
-  V.stats = function () { if (!kinds().length) return noMeters('stats', 'stt_title'); var k = curView(); return k === 'heat' ? heatStats() : SK[k] ? sstats(k) : wstats(k); };
+  V.history = function () { if (!kinds().length) return noMeters('history', 'hi_title'); var k = curView(); return k === 'heat' ? heatHistory() : k === 'waste' ? wasteHistory() : SK[k] ? shistory(k) : whistory(k); };
+  V.stats = function () { if (!kinds().length) return noMeters('stats', 'stt_title'); var k = curView(); return k === 'heat' ? heatStats() : k === 'waste' ? wasteStats() : SK[k] ? sstats(k) : wstats(k); };
   V.save = function () { if (!kinds().length) return noMeters('save', 'wsv_title'); var k = curView(); return k === 'heat' ? heatSave() : SK[k] ? ssave(k) : wsave(k); };
   function heatHistory() {
     if (window.TeploStats) loadWeather(); hsprLoad();
@@ -5325,6 +5338,7 @@
     ['hot', 'cold'].forEach(function (k) { var n = wm.filter(function (m) { return m.kind === k; }).length; if (n) ks.push(t('kv_' + k) + (n > 1 ? ' ×' + n : '')); });
     if (em.length) ks.push(t('kv_elec') + (em.length > 1 ? ' ×' + em.length : ''));
     if (gm.length) ks.push(t('kv_gas') + (gm.length > 1 ? ' ×' + gm.length : ''));
+    if (p.waste && p.waste.on) ks.push(t('kv_waste'));
     return ks.length ? ks.join(' · ') : t('pv_none_short');
   }
   /** Список квартир. mode 'go' — нажал → эта квартира и главная (плюс «Налаштувати»); 'prefs' — нажал → экран квартиры. */
@@ -5349,6 +5363,7 @@
       if (hasHeat()) { var hs = heatStatus(); rows.push(Object.assign({ kind: 'heat', title: t('kd_heat') }, hs)); }
       ['hot', 'cold'].forEach(function (k) { var n = wmeters(k).length; if (n) rows.push(Object.assign({ kind: k, title: t(KINDS[k].t) + (n > 1 ? ' ×' + n : '') }, waterStatus(k))); });
       ['elec', 'gas'].forEach(function (k) { var n = smeters(k).length; if (n) rows.push(Object.assign({ kind: k, title: t(KINDS[k].t) + (n > 1 ? ' ×' + n : '') }, sStatus(k))); });
+      if (wasteOn()) rows.push(Object.assign({ kind: 'waste', title: t('kd_waste'), pay: true }, wasteStatus()));
       var due = rows.filter(function (r) { return r.due && (r.tone === 'due' || r.tone === 'warn'); }).map(function (r) { return r.due; }).sort()[0] || null;
       return { rows: rows, due: due, allOk: rows.length > 0 && rows.every(function (r) { return r.tone === 'ok' || r.off; }) };
     }) || { rows: [], due: null, allOk: false };
@@ -5377,7 +5392,7 @@
    *  лише сам лічильник (назва, №, повірка, модель, зони); внизу дві рівні кнопки з рамкою: «Замінити» і «Прибрати» (червона). */
   function mrow(o) {
     return '<li class="mrow mk-' + o.kind + '" data-key="pv-m-' + esc(o.what) + '"><a class="mrow-main" href="#' + o.href + '">' + ico(KINDS[o.kind].icon, 22, KINDS[o.kind].cls) + '<span class="grow"><b>' + esc(o.title) + '</b>' + (o.sub ? '<span class="small muted">' + esc(o.sub) + '</span>' : '') + '</span>' + ico('chev', 20) + '</a>' +
-      (o.set ? '<details class="mbox-set mrow-set" id="mbs-' + esc(o.what) + '"' + (MB_OPEN[o.what] ? ' open' : '') + ' data-key="pv-set-' + esc(o.what) + '"><summary>' + ico('prefs', 18, 'bt-ico') + '<span>' + esc(t('mb_set')) + '</span>' + ico('chev', 18, 'pacc-chev') + '</summary><div class="mbox-set-b">' + o.set + '</div></details>' : '') +
+      (o.set ? '<details class="mbox-set mrow-set" id="mbs-' + esc(o.what) + '"' + (MB_OPEN[o.what] ? ' open' : '') + ' data-key="pv-set-' + esc(o.what) + '"><summary>' + ico('prefs', 18, 'bt-ico') + '<span>' + esc(o.setTitle || t('mb_set')) + '</span>' + ico('chev', 18, 'pacc-chev') + '</summary><div class="mbox-set-b">' + o.set + '</div></details>' : '') +
       '<div class="mrow-act' + (o.noReplace ? ' one' : '') + '">' + (o.noReplace ? '' : '<button type="button" class="btn sec sm" data-act="m-replace" data-what="' + esc(o.what) + '" data-key="pv-replace-' + esc(o.what) + '">' + ico('swap', 18) + '<span>' + esc(t('mr_replace')) + '</span></button>') +
       '<button type="button" class="btn danger sm" data-act="m-remove" data-what="' + esc(o.what) + '" data-key="pv-remove-' + esc(o.what) + '">' + ico('trash', 18) + '<span>' + esc(t('mr_remove')) + '</span></button></div></li>';
   }
@@ -5811,7 +5826,12 @@
     } else return;
     SCROLL_TO = 'prov'; render(true);
   });
-  // ---------- вивіз сміття (112-а, власник 11.11: «так, і нагадувати про оплату») — без лічильника: ціна з людини × скільки людей ----------
+  // ---------- вивіз сміття (112-а; 115-а, власник 11.11: «на рівні лічильників, свої налаштування, замість табло — інше, своя історія») ----------
+  // Без лічильника: ціна з людини × скільки людей. Картка на головній (місце табло — сума на місяць), своя сторінка #waste (налаштування,
+  // «Куди платити», оплати), «+» — записати оплату (#wpay), історія й статистика — місяці: нараховано / сплачено. Логіка — web/src/waste.js.
+  var Ws = window.TeploWaste;
+  function wcur(p) { p = p === undefined ? place() : p; return (p && p.waste) || {}; }
+  function wasteOn(p) { return !!wcur(p).on; }
   /** Довідник вивозу сміття для квартири (громада за адресою) або null. */
   function wasteDir(p) { var j = p && String(p.address || '').trim() ? prvLoad(p) : null; return j && j.found && j.kinds && j.kinds.waste && (j.kinds.waste.org || j.kinds.waste.price != null) ? j.kinds.waste : null; }
   function wastePersons(p) { var w = (p && p.waste) || {}; return R.num(w.persons) > 0 ? Math.round(R.num(w.persons)) : (p && p.water && R.num(p.water.persons) > 0 ? Math.round(R.num(p.water.persons)) : null); }
@@ -5820,51 +5840,203 @@
   function wasteSum(p, d) { var n = wastePersons(p), pr = wastePrice(p, d); return n && pr ? Math.round(n * pr.p * 100) / 100 : null; }
   function wastePriceTxt(p, d) { var pr = wastePrice(p, d); return pr ? t('ws_price', { p: money(pr.p) }) + (pr.own ? ' ' + t('prv_from_bill') : d && d.from ? ' ' + t('prv_since', { d: fmtDate(d.from, true) }) : '') : t('ws_price_none'); }
   function wasteSumTxt(p, d) { var n = wastePersons(p), pr = wastePrice(p, d); return n && pr ? t('ws_sum', { s: money(n * pr.p), n: n, p: money(pr.p) }) : t(pr ? 'ws_sum_np' : 'ws_sum_none'); }
-  function wasteBox(p) {
-    var w = p.waste || {}, d = wasteDir(p);
-    var head = '<span class="pst-ico c-waste">' + ico('trash', 20) + '</span>';
-    if (!w.on) return '<div class="prov waste" id="waste" data-key="pv-waste"><div class="prov-row" data-key="prov-waste-add">' + head + '<div class="prov-b"><p class="prov-k"><b>' + esc(t('ws_k')) + '</b></p>' +
-      '<p class="small muted">' + esc(d && d.org && R.num(d.price) > 0 ? t('ws_add_dir', { org: ploc(d, 'org'), p: money(R.num(d.price)) }) : t('ws_add_h')) + '</p>' +
-      '<p class="prov-act"><button type="button" class="btn sec sm" data-act="ws-on" data-key="ws-on">' + ico('plus', 18) + '<span>' + esc(t('ws_add')) + '</span></button></p></div></div></div>';
-    var pr = wastePrice(p, d), org = w.org || (d && d.org) || '', phones = (d && d.phones) || [], n = wastePersons(p);
-    var h = '<div class="prov waste" id="waste" data-key="pv-waste"><div class="prov-row' + (pr && org ? '' : ' need') + '" data-key="prov-waste">' + head + '<div class="prov-b">' +
-      '<p class="prov-k"><b>' + esc(t('ws_k')) + '</b> <span class="muted small">' + esc(t('ws_nometer')) + '</span></p>' +
-      '<p class="prov-org">' + (org ? esc(org) : '<span class="muted">' + esc(t('ws_org_none')) + '</span>') + '</p>' +
-      '<p class="prov-price' + (pr ? '' : ' none') + '" id="ws-price-t">' + esc(wastePriceTxt(p, d)) + '</p>' +
-      (d && d.check && !(pr && pr.own) && ploc(d, 'note') ? '<p class="small prov-note">' + esc(ploc(d, 'note')) + '</p>' : '') +
-      (d && ploc(d, 'src') && !(pr && pr.own) ? '<details class="prov-src"><summary>' + esc(t('prv_src')) + '</summary><p class="small muted">' + esc(ploc(d, 'src')) + '</p></details>' : '') +
+  function wasteOrg(p, d) { return wcur(p).org || (d && ploc(d, 'org')) || ''; }
+  /** «жовтень» (цей рік) / «грудень 2025». */
+  function wsMon(ym) { var s = monthLabel(ym); return ym.slice(0, 4) === today().slice(0, 4) ? s.replace(/\s*\d{4}\s*$/, '') : s; }
+  function wsPays(p) { return Ws.pays(wcur(p)).sort(function (a, b) { return a.date < b.date ? 1 : a.date > b.date ? -1 : 0; }); }
+  /** Статус для картки й квартири (як heatStatus): за минулий місяць сплачено / до 20-го / строк минув (тихо, без строку — не нагадує щодня). */
+  function wasteStatus() {
+    var p = place(), d = wasteDir(p), s = Ws.status(wcur(p), today(), wasteSum(p, d));
+    if (s.st === 'paid') return { st: t('wsc_paid', { m: wsMon(s.ym) }), tone: 'ok', ym: s.ym, pay: s.pay, debt: s.debt };
+    if (s.st === 'due') return { st: t('wsc_due', { m: wsMon(s.ym), d: fmtDate(s.due) }), tone: 'due', due: s.due, ym: s.ym, debt: s.debt };
+    if (s.st === 'late') return { st: t('wsc_late', { m: wsMon(s.ym) }), tone: '', late: true, ym: s.ym, debt: s.debt };
+    return { st: '', tone: '' };
+  }
+  /** Замість табло: сума на місяць крупно, під нею «3 × 23,47 грн з людини»; не знаємо людей чи ціну — «—» і що вписати. */
+  function wplate(p, d, cls) {
+    var n = wastePersons(p), pr = wastePrice(p, d), s = n && pr ? n * pr.p : null;
+    return '<div class="wplate' + (cls ? ' ' + cls : '') + (s === null ? ' empty' : '') + '" data-key="wplate' + (cls ? '-' + cls.split(' ')[0] : '') + '">' +
+      '<span class="wp-l">' + esc(t('wp_month')) + '</span>' +
+      '<span class="wp-v"><b class="wp-sum" data-wsl="sum">' + (s === null ? '—' : esc(money(s))) + '</b><span class="wp-u">грн</span></span>' +
+      '<span class="wp-calc" data-wsl="calc">' + esc(s === null ? t(pr ? 'wp_need_n' : 'wp_need') : t('wp_calc', { n: n, p: money(pr.p) })) + '</span></div>';
+  }
+  /** Смужка останніх місяців (старіші ліворуч): ✓ сплачено, ! не сплачено, · поточний. Колір — разом зі значком і словом у підказці. */
+  function wstrip(ms) {
+    var a = ms.slice(0, 6).reverse(); if (a.length < 2) return '';
+    return '<ul class="wstrip" data-key="wstrip" aria-label="' + esc(t('wst_strip')) + '">' + a.map(function (m) {
+      var k = m.st === 'paid' ? 'ok' : m.st === 'late' || m.st === 'due' ? 'not' : 'cur', lbl = t('wsx_' + k);
+      return '<li class="ws-m ' + k + '" title="' + esc(monthLabel(m.ym) + ' — ' + lbl) + '"><span class="ws-mn">' + esc(I.MONTHS_SHORT[S.lang][+m.ym.slice(5) - 1]) + '</span>' +
+        ico(k === 'ok' ? 'check' : k === 'not' ? 'alert' : 'clock', 16) + '<span class="sr">' + esc(lbl) + '</span></li>';
+    }).join('') + '</ul>';
+  }
+  function wasteCard() {
+    var p = place(), d = wasteDir(p), ws = wasteStatus(), st = cardSt(ws), last = wsPays(p)[0], sum = wasteSum(p, d);
+    var o = { sub: !sum ? t('wsc_setup') : last ? t('wsc_last', { d: fmtDate(last.date), s: money(last.amount) }) : t('wsc_none'), status: st, tone: st ? ws.tone : '' };
+    if (ws.tone === 'ok' && last && thisMonth(last.date)) { o.sub = ''; o.status = t('wsc_paid_d', { m: wsMon(ws.ym), d: fmtDate(last.date) }); }
+    else if (ws.late && sum) o.sub = t('wsc_late', { m: wsMon(ws.ym) });
+    return ucard({ kind: 'waste', href: 'waste', icon: 'trash', title: t('kd_waste'), display: wplate(p, d, 'card'), sub: o.sub, status: o.status, tone: o.tone, addAct: 'ws-pay', addLabel: t('wsp_add') });
+  }
+  /** Поля налаштувань вивозу (сторінка вивозу й екран квартири): скільки людей, своя ціна, приватний будинок, хто вивозить, особовий рахунок, нагадування. */
+  function wasteFields(p, d) {
+    var w = wcur(p), n = wastePersons(p), opt = ' <span class="muted small">(' + esc(t('b_opt')) + ')</span>';
+    return '<p class="prov-price small' + (wastePrice(p, d) ? '' : ' none') + '" data-wsl="price">' + esc(wastePriceTxt(p, d)) + '</p>' +
+      (d && d.check && !(R.num(w.price) > 0) && ploc(d, 'note') ? '<p class="small prov-note">' + esc(ploc(d, 'note')) + '</p>' : '') +
       '<div class="grid2 ws-f">' +
         '<div class="field"><label for="ws-persons">' + esc(t('ws_persons')) + '</label><div class="ctl"><input id="ws-persons" class="num" inputmode="numeric" autocomplete="off" data-wsf="persons" maxlength="2" value="' + esc(n || '') + '"></div><div class="small muted">' + esc(t('ws_persons_h')) + '</div></div>' +
-        '<div class="field"><label for="ws-price">' + esc(t('ws_price_l')) + ' <span class="muted small">(' + esc(t('b_opt')) + ')</span></label><div class="ctl"><input id="ws-price" class="num" inputmode="decimal" autocomplete="off" data-wsf="price" value="' + esc(R.num(w.price) > 0 ? money(R.num(w.price)) : '') + '" placeholder="' + esc(d && R.num(d.price) > 0 ? money(w.priv && R.num(d.priv) > 0 ? R.num(d.priv) : R.num(d.price)) : '') + '"><span class="unit">грн</span></div></div>' +
-        (!(d && d.org) ? '<div class="field"><label for="ws-org">' + esc(t('ws_org_l')) + ' <span class="muted small">(' + esc(t('b_opt')) + ')</span></label><div class="ctl"><input id="ws-org" autocomplete="off" maxlength="80" data-wsf="org" value="' + esc(w.org || '') + '"></div></div>' : '') +
+        '<div class="field"><label for="ws-price">' + esc(t('ws_price_l')) + opt + '</label><div class="ctl"><input id="ws-price" class="num" inputmode="decimal" autocomplete="off" data-wsf="price" value="' + esc(R.num(w.price) > 0 ? money(R.num(w.price)) : '') + '" placeholder="' + esc(d && R.num(d.price) > 0 ? money(w.priv && R.num(d.priv) > 0 ? R.num(d.priv) : R.num(d.price)) : '') + '"><span class="unit">грн</span></div></div>' +
+        '<div class="field"><label for="ws-org">' + esc(t('ws_org_l')) + opt + '</label><div class="ctl"><input id="ws-org" autocomplete="off" maxlength="80" data-wsf="org" value="' + esc(w.org || '') + '" placeholder="' + esc(d ? ploc(d, 'org') : '') + '"></div></div>' +
+        '<div class="field"><label for="ws-acc">' + esc(t('ws_acc')) + opt + '</label><div class="ctl"><input id="ws-acc" class="num" inputmode="numeric" autocomplete="off" maxlength="20" data-wsf="account" value="' + esc(w.account || '') + '">' + ctlCopy('ws-acc') + '</div></div>' +
       '</div>' +
       (d && R.num(d.priv) > 0 && R.num(d.priv) !== R.num(d.price) ? '<label class="check-row"><input type="checkbox" data-wsf="priv" data-key="ws-priv"' + (w.priv ? ' checked' : '') + '><span>' + esc(t('ws_priv', { p: money(R.num(d.priv)) })) + '</span></label>' : '') +
-      '<p class="ws-sum" id="ws-sum" data-key="ws-sum">' + esc(wasteSumTxt(p, d)) + '</p>' +
-      (d && ploc(d, 'pay') ? '<p class="small prov-pay"><b>' + esc(t('ld_pay_t')) + '</b> ' + esc(ploc(d, 'pay')) + '</p>' : '') +
+      '<p class="ws-sum" id="ws-sum" data-key="ws-sum" data-wsl="sumtxt">' + esc(wasteSumTxt(p, d)) + '</p>' +
+      (window.TEPLO_API ? '<label class="check-row" style="margin-top:8px"><input type="checkbox" data-wsf="remind" data-key="ws-remind"' + (w.remindOff ? '' : ' checked') + (S.remind && S.remind.off ? ' disabled' : '') + '><span>' + esc(t('ws_remind')) + '</span></label>' +
+        '<p class="small muted" style="margin:4px 0 0">' + esc(t(S.remind && S.remind.off ? 'pv_remind_all_off' : 'ws_remind_h')) + '</p>' : '');
+  }
+  /** «Куди платити»: хто вивозить, особовий рахунок (копіювати), куди й до коли, телефони, сайт; «Заповнити з monobank» — рахунок і оплати з виписки. */
+  function wherePay(p, d) {
+    var w = wcur(p), org = wasteOrg(p, d), phones = (d && d.phones) || [], acc = String(w.account || '').trim();
+    var b = (org ? '<p><b>' + esc(org) + '</b></p>' : '<p class="muted">' + esc(t('ws_org_none')) + '</p>') +
+      (acc ? '<p class="small">' + esc(t('ws_acc')) + ': <span class="num">' + esc(acc) + '</span> ' + copyIco(acc, 'ws-acc-copy') + '</p>' : '') +
+      (d && ploc(d, 'pay') ? '<p class="small prov-pay">' + esc(ploc(d, 'pay')) + '</p>' : '<p class="small muted">' + esc(t('wsp_pay_gen')) + '</p>') +
       (phones.length ? '<p class="small ws-ph">' + phones.map(function (x) { return telLink(x[0], x[1]) + (x[2] && x[2] !== org ? ' <span class="muted">' + esc(x[2]) + '</span>' : ''); }).join(' · ') + '</p>' : '') +
       (d && d.site ? '<p class="small"><a href="' + esc(d.site) + '" target="_blank" rel="noopener">' + esc(t('ws_site')) + '</a></p>' : '') +
-      (window.TEPLO_API ? '<label class="check-row" style="margin-top:8px"><input type="checkbox" data-wsf="remind" data-key="ws-remind"' + (w.remindOff ? '' : ' checked') + (S.remind && S.remind.off ? ' disabled' : '') + '><span>' + esc(t('ws_remind')) + '</span></label>' +
-        '<p class="small muted" style="margin:4px 0 0">' + esc(t(S.remind && S.remind.off ? 'pv_remind_all_off' : 'ws_remind_h')) + '</p>' : '') +
-      '<p class="prov-act"><button type="button" class="btn ter sm" data-act="ws-off" data-key="ws-off">' + esc(t('ws_off')) + '</button></p>';
-    return h + '</div></div></div>';
+      (d && ploc(d, 'src') && !(R.num(w.price) > 0) ? '<details class="prov-src"><summary>' + esc(t('prv_src')) + '</summary><p class="small muted">' + esc(ploc(d, 'src')) + '</p></details>' : '') +
+      monoLink('waste');
+    return '<section class="panel where" data-key="wpay-where"><h2>' + ico('bill', 20) + '<span>' + esc(t('wsp_where')) + '</span></h2>' + b + '</section>';
   }
-  function wasteSet(fn) { ensurePlaces(); var p = place(); if (!p) return null; p.waste = JSON.parse(JSON.stringify(p.waste || {})); fn(p.waste); p.updatedAt = Date.now(); save(); return p; }
-  document.addEventListener('click', function (e) {
-    var b = e.target.closest && e.target.closest('[data-act="ws-on"],[data-act="ws-off"]'); if (!b) return;
-    var on = b.getAttribute('data-act') === 'ws-on';
-    wasteSet(function (w) { if (on) { w.on = true; w.at = w.at || today(); } else delete w.on; });
-    track('waste', { on: on ? 1 : 0 }); SCROLL_TO = 'waste'; render(true);
+  /** У «Постачальники, тарифи й рахунки»: хто вивозить і почому — як інші постачальники; налаштування й оплати — на сторінці вивозу. */
+  function wasteProv(p) {
+    if (!wasteOn(p)) return '';
+    var d = wasteDir(p), org = wasteOrg(p, d), pr = wastePrice(p, d), phones = (d && d.phones) || [];
+    return '<div class="prov waste" id="waste" data-key="pv-waste"><div class="prov-row' + (pr && org ? '' : ' need') + '" data-key="prov-waste"><span class="pst-ico c-waste">' + ico('trash', 20) + '</span><div class="prov-b">' +
+      '<p class="prov-k"><b>' + esc(t('ws_k')) + '</b> <span class="muted small">' + esc(t('ws_nometer')) + '</span></p>' +
+      '<p class="prov-org">' + (org ? esc(org) : '<span class="muted">' + esc(t('ws_org_none')) + '</span>') + '</p>' +
+      '<p class="prov-price' + (pr ? '' : ' none') + '">' + esc(wastePriceTxt(p, d)) + '</p>' +
+      (d && ploc(d, 'pay') ? '<p class="small prov-pay"><b>' + esc(t('ld_pay_t')) + '</b> ' + esc(ploc(d, 'pay')) + '</p>' : '') +
+      (phones.length ? '<p class="small ws-ph">' + phones.map(function (x) { return telLink(x[0], x[1]); }).join(' · ') + '</p>' : '') +
+      '<p class="prov-act">' + mlink('#waste', 'prefs', t('wsp_open'), ' data-key="pv-waste-open"') + '</p></div></div></div>';
+  }
+  /** Місяці в історії (новіші зверху): сплачено — сума й дата; ні — нараховано «≈ люди × ціна»; праворуч — статус. Тап — оплата (нова за цей місяць чи правка). */
+  function wrowsW(limit) {
+    var p = place(), d = wasteDir(p), sum = wasteSum(p, d), all = Ws.months(wcur(p), today(), sum), rows = limit ? all.slice(0, limit) : all;
+    if (!all.length) return { total: 0, html: '' };
+    return { total: all.length, html: '<ul class="list wh" data-key="waste-history">' + rows.map(function (m) {
+      var pd = m.pay, multi = pd && Ws.span(pd) > 1;
+      var pill = m.st === 'paid' ? ['ok', t('wsx_ok')] : m.st === 'late' ? ['warn', t('wsx_not')] : m.st === 'due' ? [R.daysBetween(today(), m.due) <= DUE_SOON ? 'warn' : 'neutral', t('wsx_due', { d: fmtDate(m.due) })] : ['neutral', t('wsx_cur')];
+      return histRow({ key: 'wsm-' + m.ym, href: pd ? '#wpay-' + pd.id : '#wpay-' + m.ym, q: pd ? money(m.paid) : sum ? '≈ ' + money(sum) : null, unit: 'грн', none: t('wsh_none'), date: ucf(monthLabel(m.ym)),
+        sub: [pd ? t('wsh_paid', { d: fmtDate(pd.date, true) }) : sum ? t('wsh_acc') : '', multi ? t('wsh_multi', { s: money(pd.amount), n: Ws.span(pd) }) : '', pd && pd.src === 'mono' ? t('wsh_mono') : ''],
+        st: '<span class="st-chip st-static" data-key="wsm-st-' + m.ym + '"><span class="pill ' + pill[0] + '">' + esc(ucf(pill[1])) + '</span></span>' });
+    }).join('') + '</ul>' };
+  }
+  V.waste = function () {
+    var p = place() || {}, d = wasteDir(p), w = wcur(p), sum = wasteSum(p, d), st = Ws.status(w, today(), sum), ms = Ws.months(w, today(), sum, 6), org = wasteOrg(p, d);
+    var h = '<h1 class="sr">' + esc(t('kd_waste')) + (p.name ? ' — ' + esc(p.name) : '') + '</h1>';
+    var cap = st.st === 'paid' ? t('wsp_cap_paid', { m: wsMon(st.ym), d: fmtDate(st.pay.date, true) }) : st.ym ? t('wsp_cap_not', { m: wsMon(st.ym) }) : t('wsc_none');
+    var debt = st.debt > 1 ? '<p class="small warn-text" data-key="wsp-debt">' + esc(st.debtSum ? t('wsp_debt_s', { n: st.debt, s: money(st.debtSum) }) : t('wsp_debt', { n: st.debt })) + '</p>' : '';
+    if (!w.on) debt += '<p class="small muted">' + esc(t('wsp_removed', { d: fmtDate(w.removed || today(), true) })) + '</p>';
+    var left = mbox({ key: 'wbox', id: 'waste', kind: 'waste', icon: 'trash', cls: 'c-waste', name: t('kd_waste'), sub: [org || t('ws_nometer')],
+      display: wplate(p, d, 'hero') + wstrip(ms), cap: cap, body: debt, set: wasteFields(p, d), setTitle: t('wsp_set'), links: [mbPlaceLink('wsp-place')] });
+    var act = '<button class="btn big block" data-act="ws-pay" data-key="waste-pay">' + ico('plus', 22) + '<span>' + esc(t('wsp_add')) + '</span></button>';
+    var right = whereAcc(wherePay(p, d)), wr = wrowsW(3);
+    if (wr.total) right += histPanel(wr.html, wr.total, '<button class="btn sec block" data-act="view-go" data-v="waste" data-to="history" data-key="waste-all">' + esc(t('wh_all', { n: wr.total })) + '</button>', 'waste');
+    h += heroGrid(left, act, right);
+    return { screen: 'S60', route: 'waste', html: h };
+  };
+  function wasteHistory() {
+    var r = wrowsW(), head = '<h1>' + esc(t('hi_title')) + '</h1>' + kindSwitch();
+    var add = '<p><button class="btn" data-act="ws-pay" data-key="wh-pay">' + ico('plus', 20) + '<span>' + esc(t('wsp_add')) + '</span></button></p>';
+    return { screen: 'S09', route: 'history', html: head + (r.total ? r.html : '<div class="panel"><p class="muted">' + esc(t('wsh_empty')) + '</p></div>') + add + '<p class="small muted">' + esc(t('wsh_hint')) + '</p>' };
+  }
+  function wasteStats() {
+    chColors();
+    var p = place(), d = wasteDir(p), w = wcur(p), sum = wasteSum(p, d), y = Ws.year(w, today()), st = Ws.status(w, today(), sum), head = '<h1>' + esc(t('stt_title')) + '</h1>' + kindSwitch();
+    var ms = Ws.months(w, today(), sum, 12).filter(function (m) { return m.st !== 'ahead' || m.pay; }).reverse();
+    var tiles = kpi({ key: 'wst-kpi', tone: 'waste', q: sum ? money(sum) : '—', unit: t('wst_unit'), cap: sum ? t('wst_cap', { n: wastePersons(p), p: money(wastePrice(p, d).p) }) : t('ws_sum_none'),
+      chips: [chip(y.n ? t('wst_year', { s: money(y.total), n: y.n }) : t('wst_year0'), 'clock')].concat(st.debt ? [chip(st.debtSum ? t('wsp_debt_s', { n: st.debt, s: money(st.debtSum) }) : t('wsp_debt', { n: st.debt }), 'alert')] : []) });
+    var c = ms.length > 1 ? barChart(ms.map(function (m) { var v = m.paid || 0; return { x: ymLabel(m.ym), v: Math.round(v), top: v ? String(Math.round(v)) : '', color: CH.barSoft, tip: [monthLabel(m.ym), v ? t('wst_tip_paid', { s: money(v) }) : t('wsx_' + (m.st === 'cur' ? 'cur' : 'not')), sum ? t('wst_tip_acc', { s: money(sum) }) : ''] }; }), { title: t('wst_paid_t'), dec: 0, ref: sum ? { v: sum, label: t('wst_ref') } : null }) : '';
+    var table = '<details class="panel wacc tbl-acc" data-key="wst-table"><summary><h2>' + esc(t('stt_table')) + '</h2>' + ico('chev', 20, 'pacc-chev') + '</summary><div class="tbl-wrap where-b"><table class="tbl"><thead><tr><th>' + esc(t('wst_th_month')) + '</th><th>' + esc(t('wst_th_acc')) + '</th><th>' + esc(t('wst_th_paid')) + '</th></tr></thead><tbody>' +
+      ms.slice().reverse().map(function (m) { return '<tr><td>' + esc(ymLabel(m.ym)) + '</td><td class="num">' + (sum ? money(sum) : '—') + '</td><td class="num">' + (m.paid ? money(m.paid) : '<span class="muted">—</span>') + '</td></tr>'; }).join('') + '</tbody></table></div></details>';
+    return { screen: 'S15', route: 'stats', html: head + '<p class="muted">' + esc(t('wsst_lead')) + '</p>' + tiles + (c ? '<section class="panel chart-panel"><h2>' + esc(t('wst_paid_t')) + '</h2><p class="small muted">' + esc(t('wst_paid_s')) + '</p>' + c + '</section>' : '') + table };
+  }
+
+  // ---- «Записати оплату»: за який місяць, скільки місяців, сума, коли сплатили; правка й видалення ----
+  var WP = { id: '', ym: '', n: 1, amount: '', date: '', err: '' };
+  function wpFresh(ym) { var p = place(), d = wasteDir(p), sum = wasteSum(p, d), y = ym || Ws.nextYm(wcur(p), today()); WP = { id: '', ym: y, n: 1, amount: sum ? money(sum) : '', date: today(), err: '', auto: !!sum }; }
+  function wpView(arg) {
+    var p = place(), d = wasteDir(p), sum = wasteSum(p, d), edit = null, back = backTo('waste');
+    if (arg && !/^\d{4}-\d{2}$/.test(arg)) { edit = wsPays(p).filter(function (x) { return x.id === arg; })[0] || null; if (!edit) return { screen: 'S61', route: 'wpay', bare: true, closeTo: back, html: '<h1>' + esc(t('wsp_add')) + '</h1><p class="muted">' + esc(t('rec_gone')) + '</p><a class="btn" href="#' + back + '">' + esc(t('back')) + '</a>' }; }
+    if (edit && WP.id !== edit.id) WP = { id: edit.id, ym: edit.ym, n: Ws.span(edit), amount: money(edit.amount), date: edit.date, err: '' };
+    else if (!edit && (WP.id || !WP.ym || (arg && WP.ym !== arg))) wpFresh(arg);
+    // місяці у виборі: від 24 місяців тому до 6 наперед; уже сплачені — з позначкою
+    var cur = today().slice(0, 7), opts = [], paid = {};
+    Ws.pays(wcur(p)).forEach(function (x) { if (x.id === WP.id) return; for (var i = 0; i < Ws.span(x); i++) paid[Ws.addYm(x.ym, i)] = 1; });
+    for (var ym = Ws.addYm(cur, 6); ym >= Ws.addYm(cur, -24); ym = Ws.addYm(ym, -1)) opts.push(ym);
+    if (opts.indexOf(WP.ym) < 0) opts.push(WP.ym);
+    var opt = ' <span class="muted small">(' + esc(t('b_opt')) + ')</span>';
+    var h = '<h1>' + ico('trash', 26, 'c-waste') + ' ' + esc(t(edit ? 'wsp_edit_t' : 'wsp_add')) + '</h1>' + (wasteOrg(p, d) ? '<p class="muted">' + esc(wasteOrg(p, d)) + (places().length > 1 ? ' · ' + esc(placeLabel(p)) : '') + '</p>' : '') +
+      '<form id="wp-form" novalidate data-key="wp-form"><div class="panel">' +
+      '<div class="field"><label for="wp-ym">' + esc(t('wsp_ym')) + '</label><div class="ctl"><select id="wp-ym" data-key="wp-ym">' + opts.map(function (y) { return '<option value="' + y + '"' + (y === WP.ym ? ' selected' : '') + '>' + esc(ucf(monthLabel(y))) + (paid[y] ? ' — ' + esc(t('wsx_ok').toLowerCase()) : '') + '</option>'; }).join('') + '</select></div></div>' +
+      '<div class="field"><span class="lbl" id="wp-n-l">' + esc(t('wsp_n')) + '</span><span class="stepper" role="group" aria-labelledby="wp-n-l"><button type="button" class="btn sec step-b" data-act="wp-n" data-d="-1" data-key="wp-n-dec" aria-label="' + esc(t('wsp_n_dec')) + '"' + (WP.n > 1 ? '' : ' disabled') + '>−</button>' +
+        '<output class="step-n num" id="wp-n" aria-live="polite" data-key="wp-n">' + WP.n + '</output><button type="button" class="btn sec step-b" data-act="wp-n" data-d="1" data-key="wp-n-inc" aria-label="' + esc(t('wsp_n_inc')) + '"' + (WP.n < 12 ? '' : ' disabled') + '>+</button></span>' +
+        '<div class="small muted" id="wp-n-h">' + esc(WP.n > 1 ? t('wsp_n_span', { a: ucf(monthLabel(WP.ym)), b: monthLabel(Ws.addYm(WP.ym, WP.n - 1)) }) : t('wsp_n_h')) + '</div></div>' +
+      '<div class="field"><label for="wp-amount">' + esc(t('wsp_amount')) + '</label><div class="ctl"><input id="wp-amount" class="num" inputmode="decimal" autocomplete="off" value="' + esc(WP.amount) + '" data-key="wp-amount"><span class="unit">грн</span></div>' +
+        '<div class="small muted">' + esc(sum ? t('wsp_amount_h', { s: money(sum * WP.n), n: WP.n }) : t('wsp_amount_h0')) + '</div></div>' +
+      '<div class="field"><label for="wp-date">' + esc(t('wsp_date')) + '</label><div class="ctl"><input id="wp-date" type="date" max="' + today() + '" value="' + esc(WP.date) + '" data-key="wp-date"></div></div>' +
+      (WP.err ? '<div class="help bad" role="alert" data-key="wp-err">' + esc(t('wsp_e_' + WP.err)) + '</div>' : '') + '</div>' +
+      '<div class="wiz-actions"><a class="btn sec" href="#' + esc(back) + '" data-key="wp-cancel">' + esc(t('cancel')) + '</a><button type="submit" class="btn" data-key="wp-save">' + ico('check', 20) + '<span>' + esc(t(edit ? 'save' : 'wsp_save')) + '</span></button></div>' +
+      (edit ? '<p style="margin-top:24px"><button type="button" class="btn danger" data-act="wp-del" data-key="wp-del">' + ico('trash', 18) + '<span>' + esc(t('wsp_del')) + '</span></button></p>' : '') + '</form>';
+    return { screen: 'S61', route: 'wpay', bare: true, closeTo: back, html: h };
+  }
+  V.wpay = function () { return wpView(''); };
+  function wpRead() { var g = function (id) { var el = document.getElementById(id); return el ? String(el.value || '') : null; }; var y = g('wp-ym'), a = g('wp-amount'), dt = g('wp-date'); if (y !== null) WP.ym = y; if (a !== null) WP.amount = a; if (dt !== null) WP.date = dt; }
+  function wpSave() {
+    wpRead(); var r = Ws.make({ ym: WP.ym, n: WP.n, amount: WP.amount, date: WP.date }, today());
+    if (!r.ok) { WP.err = r.err; render(true); var f = document.getElementById(r.err === 'ym' ? 'wp-ym' : r.err === 'amount' ? 'wp-amount' : 'wp-date'); if (f) f.focus(); return; }
+    var id = WP.id || 'wp' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5);
+    wasteSet(function (w) { w.pays = (w.pays || []).filter(function (x) { return x && x.id !== id; }); w.pays.push(Object.assign({ id: id, updatedAt: Date.now() }, r.pay)); });
+    track('waste_pay', { n: r.pay.n, edit: WP.id ? 1 : 0 }); toast(t(WP.id ? 'wsp_saved_e' : 'wsp_saved', { m: wsMon(r.pay.ym) }));
+    var back = backTo('waste'); WP = { id: '', ym: '', n: 1, amount: '', date: '', err: '' }; go(back);
+  }
+  document.addEventListener('submit', function (e) { if (e.target && e.target.id === 'wp-form') { e.preventDefault(); wpSave(); } });
+  document.addEventListener('change', function (e) {
+    var el = e.target; if (!el || el.id !== 'wp-ym') return;
+    wpRead(); render(true);
   });
+  document.addEventListener('input', function (e) { if (e.target && e.target.id === 'wp-amount') WP.auto = false; });
+  document.addEventListener('click', function (e) {
+    var b = e.target.closest && e.target.closest('[data-act="ws-pay"],[data-act="wp-n"],[data-act="wp-del"]'); if (!b) return;
+    var a = b.getAttribute('data-act');
+    if (a === 'ws-pay') { e.preventDefault(); WP = { id: '', ym: '', n: 1 }; go('wpay'); return; }
+    if (a === 'wp-n') {
+      wpRead(); var p = place(), sum = wasteSum(p, wasteDir(p)), was = WP.n; WP.n = Math.max(1, Math.min(12, WP.n + Number(b.getAttribute('data-d'))));
+      // сума підлаштовується, доки людина її не правила
+      var a0 = R.num(String(WP.amount).replace(/\s/g, '').replace(',', '.'));
+      if (sum && (WP.auto || a0 === null || Math.abs(a0 - sum * was) < 0.01)) { WP.amount = money(sum * WP.n); WP.auto = true; }
+      render(true); return;
+    }
+    if (a === 'wp-del') {
+      if (!confirm(t('wsp_del_q'))) return;
+      var id = WP.id; wasteSet(function (w) { (w.pays || []).forEach(function (x) { if (x && x.id === id) { x.deleted = true; x.updatedAt = Date.now(); } }); });
+      toast(t('wsp_deleted')); WP = { id: '', ym: '', n: 1 }; go(backTo('waste'));
+    }
+  });
+  function wasteSet(fn) { ensurePlaces(); var p = place(); if (!p) return null; p.waste = JSON.parse(JSON.stringify(p.waste || {})); fn(p.waste); p.updatedAt = Date.now(); save(); return p; }
+  /** Увімкнути вивіз сміття в поточній квартирі (з «Додати лічильник» чи майстра): дані, що були, лишаються. */
+  function wasteAdd() { wasteSet(function (w) { w.on = true; w.at = w.at || today(); delete w.removed; }); track('waste', { on: 1 }); }
   ['input', 'change'].forEach(function (ev) { document.addEventListener(ev, function (e) {
     var el = e.target, f = el && el.getAttribute && el.getAttribute('data-wsf'); if (!f) return;
     if (el.type === 'checkbox') { if (ev !== 'change') return; wasteSet(function (w) { if (f === 'remind') { if (el.checked) delete w.remindOff; else w.remindOff = true; } else if (el.checked) w[f] = true; else delete w[f]; }); }
     else if (f === 'org') wasteSet(function (w) { var v = el.value.trim().slice(0, 80); if (v) w.org = v; else delete w.org; });
+    else if (f === 'account') wasteSet(function (w) { var v = el.value.replace(/[^\d\-\/]/g, '').slice(0, 20); if (v) w.account = v; else delete w.account; });
     else { var v = el.value.trim() === '' ? null : R.num(el.value.replace(/\s/g, '').replace(',', '.')); if (v !== null && !(v > 0 && v < (f === 'persons' ? 50 : 1000))) return;
       wasteSet(function (w) { if (v === null) delete w[f]; else w[f] = f === 'persons' ? Math.round(v) : v; }); }
-    // сума й ціна — на місці, без перемальовування (фокус у полі лишається)
-    var p = place(), d = p && wasteDir(p), s = document.getElementById('ws-sum'), pt = document.getElementById('ws-price-t');
-    if (p && s) s.textContent = wasteSumTxt(p, d);
-    if (p && pt) { pt.textContent = wastePriceTxt(p, d); pt.classList.toggle('none', !wastePrice(p, d)); }
+    // сума, ціна й «табло» — на місці, без перемальовування (фокус у полі лишається)
+    var p = place(), d = p && wasteDir(p), n = p && wastePersons(p), pr = p && wastePrice(p, d), s = n && pr ? n * pr.p : null;
+    var set = function (k, txt) { Array.prototype.forEach.call(document.querySelectorAll('[data-wsl="' + k + '"]'), function (x) { x.textContent = txt; }); };
+    if (!p) return;
+    set('sumtxt', wasteSumTxt(p, d)); set('price', wastePriceTxt(p, d)); set('sum', s === null ? '—' : money(s));
+    set('calc', s === null ? t(pr ? 'wp_need_n' : 'wp_need') : t('wp_calc', { n: n, p: money(pr.p) }));
+    Array.prototype.forEach.call(document.querySelectorAll('.wplate'), function (x) { x.classList.toggle('empty', s === null); });
   }); });
   /** Экран квартиры: её счётчики, название/адрес/цвет, свои рахунки; удалить. Открыть экран = перейти в эту квартиру. */
   function placeView(id) {
@@ -5881,6 +6053,9 @@
     if (hasHeat()) rows.push(mrow({ what: 'heat', kind: 'heat', title: t('kd_heat'), href: 'heat', sub: [modelName(model()), verTxt(S.meter.verifiedUntil)].filter(Boolean).join(' · '), set: heatMeterFields(model(), true) + mdocs('heat') + gapSetLink('heat') }));
     ms.forEach(function (m) { rows.push(mrow({ what: m.id, kind: m.kind, title: wkindTitle(m.kind) + (m.name ? ' · ' + m.name : ''), href: 'water-' + m.kind, sub: verTxt(m.verifiedUntil), set: wmeterFields(m, false, true) + mdocs(m.id) + gapSetLink(m.id) })); });
     ['elec', 'gas'].forEach(function (k) { smeters(k).forEach(function (m) { rows.push(mrow({ what: m.id, kind: k, title: ename(m), href: SK[k].page, noReplace: true, sub: [ezonesTxt(m), verTxt(m.verifiedUntil)].filter(Boolean).join(' · '), set: smeterFields(k, m, true) + mdocs(m.id) })); }); });
+    // вивіз сміття — рядком серед лічильників (115-а): відкрити, налаштування (люди, ціна, рахунок), прибрати
+    if (wasteOn(p)) { var wd = wasteDir(p), wn = wastePersons(p), wpr = wastePrice(p, wd);
+      rows.push(mrow({ what: 'waste', kind: 'waste', title: t('kd_waste'), href: 'waste', noReplace: true, setTitle: t('wsp_set'), sub: wn && wpr ? t('wp_calc', { n: wn, p: money(wpr.p) }) : t('ws_nometer'), set: wasteFields(p, wd) })); }
     var meters = (rows.length ? '<ul class="mlist">' + rows.join('') + '</ul>' : '<p class="muted">' + esc(t('pv_none')) + '</p>') +
       '<p class="pv-add"><button class="btn' + (rows.length ? ' sec' : '') + '" data-act="add-meter" data-back="place-' + esc(p.id) + '" data-key="pv-add-meter">' + ico('plus', 20) + '<span>' + esc(t('am_tile')) + '</span></button></p>';
     var rm = removedMeters();
@@ -5901,7 +6076,8 @@
       if (k === 'elec' || k === 'gas') { var sm = smeters(k); b = sm.map(function (m) { return (sm.length > 1 ? '<p class="small muted pv-mname">' + esc(ename(m)) + '</p>' : '') + '<div class="grid2">' + sprovFields(k, m) + '</div>'; }).join('') + sheatRow(k); }
       return b ? '<div class="prov-bills" data-key="pv-bills-' + k + '"><p class="prov-bills-t">' + esc(t('pv_bills_t')) + '</p>' + b + '</div>' : '';
     };
-    var prov = (provPanel(p, bills) || '<p class="muted">' + esc(t('pv_money_none')) + '</p>') + wasteBox(p);   // вивіз сміття — тихим рядком під постачальниками
+    // monobank — на виду (власник 11.11: «не побачив, де monobank»): усі рахунки квартири з платежів одним заходом
+    var prov = monoLink('place') + (provPanel(p, bills) || '<p class="muted">' + esc(t('pv_money_none')) + '</p>') + wasteProv(p);   // вивіз сміття — постачальник (налаштування — серед лічильників)
     // про квартиру
     var chips = t('pv_chips').split('|').map(function (c) { return '<button type="button" class="chip" data-act="pv-chip" data-v="' + esc(c) + '" aria-pressed="' + (p.name === c) + '">' + esc(c) + '</button>'; }).join('');
     var sw = PCOLORS.map(function (c) { return '<label class="swatch" style="--pc:var(--pc-' + c + ')"><input type="radio" name="pv-color" value="' + c + '"' + (placeColor(p) === c ? ' checked' : '') + '><span class="sw-dot" aria-hidden="true">' + ico('check', 20) + '</span><span class="sr">' + esc(t('pc_' + c)) + '</span></label>'; }).join('');
@@ -5935,7 +6111,7 @@
   // Первый вход (#start, PW.first) — тот же мастер для первой квартиры «Моя квартира», без шага названия: один шаг — які лічильники є
   // (табло-образцы, +/−); назва й адреса — потом на главной. Рахунки (Водоканал, світло, газ) при настройке не спрашиваем (власник 11.11, 114-я):
   // выбрал счётчик — вносит показания; рахунок просим перед передачей («Куди передати»).
-  function pwFresh(back, first) { return { step: 0, first: !!first, name: '', city: undefined, cityTyped: '', street: '', n: { heat: 0, hot: 0, cold: 0, elec: 0, gas: 0 }, account: '', surname: '', back: back || 'places', err: '' }; }
+  function pwFresh(back, first) { return { step: 0, first: !!first, name: '', city: undefined, cityTyped: '', street: '', n: { heat: 0, hot: 0, cold: 0, elec: 0, gas: 0, waste: 0 }, account: '', surname: '', back: back || 'places', err: '' }; }
   var PW = pwFresh(), PQ = null;
   function pwSteps() { return PW.first ? 1 : 2; }
   function pwKind(i) { return (PW.first ? ['kinds'] : ['name', 'kinds'])[i]; }
@@ -5961,6 +6137,7 @@
   function kindPreview(k) {
     if (k === 'heat') return lcd([{ text: '12.910', tag: 'Gcal' }]);
     if (k === 'elec') return elcd([{ text: '10420' }]);
+    if (k === 'waste') return '<span class="wplate kp-w"><span class="wp-v"><b class="wp-sum">70,41</b><span class="wp-u">грн</span></span></span>';   // без табло — сума на місяць
     return wdrum(k === 'gas' ? '1225.4' : k === 'hot' ? '175' : '437', k);
   }
   /** Строки «какие счётчики есть»: образец табло, название, кому передавать, +/−. «+» тёмный, пока счётчика нет. */
@@ -6019,6 +6196,7 @@
       addrApply(np, { city: PW.city || null, typed: PW.cityTyped || '', street: PW.street || '' });
       S.places.push(np); switchPlace(np.id); WX.key = ''; save();
     }
+    if (PW.n.waste) wasteAdd();   // вивіз сміття — без налаштування в черзі: люди й ціна — на його сторінці
     PQ = list.length || PW.n.heat ? { place: S.placeId, list: list, i: 0, heat: !!PW.n.heat, total: list.length + (PW.n.heat ? 1 : 0), first: first } : null;
     if (!first) { toast(t('aw_created', { p: placeLabel(place()) })); PW = pwFresh(); }   // первый вход: выбор держим — «Скасувати» вернёт к нему
     pqNext();
@@ -6049,11 +6227,14 @@
   function monoLink(k) {
     if (!Mn) return '';
     return '<p class="mono-link"><a class="btn sec" href="#mono" data-act="mono-open" data-key="mono-open' + (k ? '-' + k : '') + '">' + ico('download', 18) + '<span>' + esc(t('mono_link')) + '</span></a>' +
-      '<span class="small muted">' + esc(t('mono_link_s')) + '</span></p>';
+      (k === 'prefs' ? '' : '<span class="small muted">' + esc(t('mono_link_s')) + '</span>') + '</p>';
   }
   /** Куди вписати рахунок групи: {f: поле для підпису, cur: що вписано зараз, ok: є куди} — вода/тепло на квартиру, світло/газ — у лічильник. */
   function monoTarget(g, kind, pid) {
     var p = place(pid) || {}, d = dgt(g.acc);
+    // вивіз сміття (115-а): особовий рахунок і оплати — в історію вивозу (рахунку в призначенні може й не бути)
+    if (kind === 'waste') { var ww = p.waste || {}, np = (g.pays || []).filter(function (x) { var o = Mn.payOf(x); return !Ws.dup(ww, o.date, o.amount); }).length;
+      return { ok: true, f: 'mono_f_waste', cur: dgt(ww.account), waste: true, n: np, accNew: !!d && !dgt(ww.account) }; }
     if (!d) return { ok: false };
     if (kind === 'water') return { ok: true, f: 'mono_f_water', cur: dgt((p.water || {}).account) };
     if (kind === 'heat') { var hm = pid === S.placeId ? S.meter : p.meter; return hm ? { ok: true, f: 'mono_f_heat', cur: dgt(hm.account) } : { ok: false, why: 'mono_no_meter' }; }
@@ -6098,7 +6279,7 @@
   /** Виписку прочитали (чи людина сказала «досить»): токен забуваємо, платежі — у групи, позначаємо те, що є куди вписати. */
   function monoDone() {
     clearTimeout(MO.timer); MO.tok = ''; MO.st = 'done'; MO.groups = Mn.groups(MO.items); MO.items = []; MO.sel = {};
-    MO.groups.forEach(function (g) { var tg = monoTarget(g, g.kind, S.placeId); MO.sel[g.key] = { on: !!(tg.ok && tg.cur !== dgt(g.acc) && !tg.cur && !g.guess), kind: g.kind, place: S.placeId }; });
+    MO.groups.forEach(function (g) { var tg = monoTarget(g, g.kind, S.placeId); MO.sel[g.key] = { on: !!(tg.ok && (tg.waste ? tg.n > 0 || tg.accNew : tg.cur !== dgt(g.acc) && !tg.cur && !g.guess)), kind: g.kind, place: S.placeId }; });
     if (routeName() === 'mono') render(true);
   }
   function monoApply() {
@@ -6107,6 +6288,12 @@
       var s = MO.sel[g.key]; if (!s || !s.on) return;
       var tg = monoTarget(g, s.kind, s.place), p = place(s.place), d = dgt(g.acc); if (!tg.ok || !p) return;
       if (s.kind === 'water') { p.water = JSON.parse(JSON.stringify(p.water || { account: '', surname: '', meters: [] })); p.water.account = d; if (sn && !String(p.water.surname || '').trim()) p.water.surname = sn; }
+      else if (s.kind === 'waste') {
+        p.waste = JSON.parse(JSON.stringify(p.waste || {})); var w = p.waste; w.on = true; w.at = w.at || today(); delete w.removed; w.pays = w.pays || [];
+        if (d && !dgt(w.account) && !g.guess) w.account = d;
+        if (!w.org && g.name) w.org = String(g.name).slice(0, 80);
+        (g.pays || []).forEach(function (x, i) { var o = Mn.payOf(x); if (Ws.dup(w, o.date, o.amount)) return; w.pays.push({ id: 'wm' + x.time.toString(36) + i, ym: o.ym, n: 1, date: o.date, amount: o.amount, src: 'mono', updatedAt: Date.now() }); });
+      }
       else if (s.kind === 'heat') { if (s.place === S.placeId && S.meter) { S.meter = Object.assign({}, S.meter, { account: d }); syncPlace(); } else if (p.meter) p.meter = Object.assign({}, p.meter, { account: d }); }
       else { p.meters = JSON.parse(JSON.stringify(p.meters || [])); p.meters.forEach(function (m) { if (m.id === tg.meter) { m[tg.fld] = d; if (s.kind === 'gas' && g.eic && !m.eic) m.eic = g.eic; } }); }
       p.updatedAt = Date.now(); n++;
@@ -6129,17 +6316,17 @@
       if (!MO.groups.length) return { screen: 'S45', route: 'mono', bare: true, closeTo: back, html: h + '<div class="panel" data-key="mono-none"><p>' + esc(t('mono_none')) + '</p></div><div class="wiz-actions"><a class="btn" href="#' + esc(back) + '">' + esc(t('back')) + '</a></div>' };
       var many = places().length > 1, anyWater = false;
       h += '<p class="muted">' + esc(t('mono_pick')) + '</p><div class="mono-list" data-key="mono-list">' + MO.groups.map(function (g, gi) {
-        var s = MO.sel[g.key] || { kind: g.kind, place: S.placeId }, tg = monoTarget(g, s.kind, s.place), d = dgt(g.acc), same = tg.ok && tg.cur === d;
+        var s = MO.sel[g.key] || { kind: g.kind, place: S.placeId }, tg = monoTarget(g, s.kind, s.place), d = dgt(g.acc), same = tg.ok && (tg.waste ? !tg.n && (!d || tg.cur === d) : tg.cur === d);
         if (s.on && s.kind === 'water') anyWater = true;
         var can = tg.ok && !same, id = 'mono-' + gi;
-        var to = !d ? t('mono_noacc') : same ? t('mono_same') : tg.ok ? t('mono_to', { f: t(tg.f) }) + (tg.cur ? ' · ' + t('mono_to_set', { a: tg.cur }) : '') : t(tg.why || 'mono_no_kind');
+        var to = tg.waste ? (same ? t('mono_same') : t('mono_to_waste', { n: tg.n }) + (tg.accNew && !g.guess ? ' · ' + t('mono_to_wacc') : '')) : !d ? t('mono_noacc') : same ? t('mono_same') : tg.ok ? t('mono_to', { f: t(tg.f) }) + (tg.cur ? ' · ' + t('mono_to_set', { a: tg.cur }) : '') : t(tg.why || 'mono_no_kind');
         var last = g.last ? fmtDate(new Date(g.last * 1000).toISOString().slice(0, 10)) : '';
-        var known = /^(heat|water|elec|gas)$/.test(g.kind), selK = '<select id="' + id + '-k" data-mono="' + gi + '" data-mf="kind" aria-label="' + esc(t('mono_kind')) + '">' +
+        var known = /^(heat|water|elec|gas|waste)$/.test(g.kind), selK = '<select id="' + id + '-k" data-mono="' + gi + '" data-mf="kind" aria-label="' + esc(t('mono_kind')) + '">' +
           kinds.map(function (k) { return '<option value="' + k + '"' + (s.kind === k ? ' selected' : '') + '>' + esc(t('mono_k_' + k)) + '</option>'; }).join('') + '</select>';
         var selP = many ? '<select id="' + id + '-p" data-mono="' + gi + '" data-mf="place" aria-label="' + esc(t('mono_place')) + '">' +
           places().map(function (pp) { return '<option value="' + esc(pp.id) + '"' + (s.place === pp.id ? ' selected' : '') + '>' + esc(placeLabel(pp)) + '</option>'; }).join('') + '</select>' : '';
         // вид і квартира: відомий вид — у згорнутому «Не те?», невідомий (ОСББ, «інше») — одразу
-        var sel = !d ? '' : known && !many ? '<details class="mono-chg" data-key="mono-chg-' + gi + '"><summary class="small">' + esc(t('mono_chg')) + '</summary><div class="mono-sel">' + selK + '</div></details>'
+        var sel = !d && !tg.waste && g.kind !== 'waste' ? '' : known && !many ? '<details class="mono-chg" data-key="mono-chg-' + gi + '"><summary class="small">' + esc(t('mono_chg')) + '</summary><div class="mono-sel">' + selK + '</div></details>'
           : '<div class="mono-sel">' + selK + selP + '</div>';
         return '<div class="mono-g' + (can ? '' : ' off') + '" data-key="mono-g-' + gi + '">' +
           '<label class="check-row"><input type="checkbox" id="' + id + '" data-mono="' + gi + '" data-mf="on"' + (s.on && can ? ' checked' : '') + (can ? '' : ' disabled') + '><span><b>' + esc(g.name || t('mono_k_other')) + '</b>' +
@@ -6175,8 +6362,10 @@
     var rows = KIND_ORDER.map(function (k) {
       var K = KINDS[k], n = kindCount(k), icon = ico(K.icon, 26, K.cls);
       if (K.soon) return '<div class="wz-opt am-opt am-soon" aria-disabled="true" data-key="am-' + k + '">' + icon + '<span><b>' + esc(t(K.t)) + '</b><span class="small muted">' + esc(t(K.s)) + '</span></span><span class="pill">' + esc(t('kd_soon')) + '</span></div>';
-      if (n >= K.max) return '<a class="wz-opt am-opt am-have" href="#' + (k === 'heat' ? 'heat' : SK[k] ? SK[k].page : 'water-' + k) + '" data-key="am-' + k + '">' + icon + '<span><b>' + esc(t(K.t)) + '</b><span class="small muted">' + esc(t('kd_have_all')) + '</span></span><span class="pill ok">' + esc(t('kd_have')) + '</span></a>';
-      return '<button type="button" class="wz-opt am-opt" data-act="am-pick" data-kind="' + k + '" data-key="am-' + k + '">' + icon + '<span><b>' + esc(t(K.t)) + '</b><span class="small muted">' + esc(n ? t('kd_have_n', { n: n }) : t(K.s)) + '</span></span>' + ico('chev', 20) + '</button>';
+      if (n >= K.max) return '<a class="wz-opt am-opt am-have" href="#' + (k === 'heat' ? 'heat' : k === 'waste' ? 'waste' : SK[k] ? SK[k].page : 'water-' + k) + '" data-key="am-' + k + '">' + icon + '<span><b>' + esc(t(K.t)) + '</b><span class="small muted">' + esc(t('kd_have_all')) + '</span></span><span class="pill ok">' + esc(t('kd_have')) + '</span></a>';
+      // вивіз сміття: за адресою вже знаємо, хто вивозить і почому — одразу в підписі
+      var ks = k === 'waste' && wasteDir(place()) && wasteDir(place()).org && R.num(wasteDir(place()).price) > 0 ? t('ws_add_dir', { org: ploc(wasteDir(place()), 'org'), p: money(R.num(wasteDir(place()).price)) }) : t(K.s);
+      return '<button type="button" class="wz-opt am-opt" data-act="am-pick" data-kind="' + k + '" data-key="am-' + k + '">' + icon + '<span><b>' + esc(t(K.t)) + '</b><span class="small muted">' + esc(n ? t('kd_have_n', { n: n }) : ks) + '</span></span>' + ico('chev', 20) + '</button>';
     }).join('');
     var rm = removedMeters(), back = AM_BACK || 'home';
     var restore = rm.length ? '<h2 class="section-title">' + esc(t('am_restore_t')) + '</h2><div class="wz-opts">' + rm.map(function (x) {
@@ -6303,6 +6492,8 @@
     var groups = [
       prefGroup('acc', 'shield', t('pg_acc'), t('pg_acc_s'), syncPanel()),
       prefGroup('places', 'home', t('pg_places'), t('pg_places_s'), placesPanel()),
+      // monobank — окремим пунктом (власник 11.11: «не побачив, де monobank»): рахунки всіх квартир і оплати вивозу сміття з виписки
+      Mn ? prefGroup('mono', 'download', t('mono_t'), t('mono_link_s'), '<div class="panel" data-key="prefs-mono"><p>' + esc(t('mono_l')) + '</p><p class="small muted">' + esc(t('mono_pg_h')) + '</p>' + monoLink('prefs') + '</div>') : '',
       prefGroup('heat', 'thermo', t('pg_heat'), hasHeat() ? modelName(m) : t('pg_heat_none'), meterPanel() + '<div class="panel" data-key="prefs-bill"><h2>' + esc(t('p_tariff')) + (places().length > 1 ? ' <span class="muted small">· ' + esc(placeLabel(place())) + '</span>' : '') + '</h2><p class="small muted">' + esc(t('p_tariff_sub')) + '</p>' +
         '<div class="grid2"><div class="field"><label for="p-tariff">' + esc(t('p_tariff_l')) + '</label><div class="ctl"><input id="p-tariff" class="num" inputmode="decimal" data-key="prefs-tariff" value="' + esc(tariff().toFixed(2).replace('.', ',')) + '"></div></div>' +
         '<div class="field"><label for="p-abon">' + esc(t('p_abon_l')) + '</label><div class="ctl"><input id="p-abon" class="num" inputmode="decimal" value="' + esc(bill().abon.toFixed(2).replace('.', ',')) + '"></div></div>' +
@@ -6868,7 +7059,7 @@
   // «✕» і «Назад» — туди, звідки прийшли (89-а, власник 10.11: відкрив ввод показань з екрана квартири — закриття веде на квартиру, а не на сторінку виду).
   // Потік — введення, майстри, кабінети, записи історії; NAV.from — останній звичайний екран (з вкладками) перед потоком; вийшли з потоку — скидається.
   // Явне «куди» (WN.back, EN.back — правка запису, «з фото») — головніше.
-  var NAV = { cur: '', from: '' }, FLOW_RE = /^(wnew|enew|gnew|wadd|eadd|gadd|wsetup|add-meter|add-place|step-\d+|check|handover|photo|vkcab|htmcab|rec-|wrec-|erec-|hnar-|gap-)/;
+  var NAV = { cur: '', from: '' }, FLOW_RE = /^(wnew|enew|gnew|wadd|eadd|gadd|wsetup|add-meter|add-place|step-\d+|check|handover|photo|vkcab|htmcab|rec-|wrec-|erec-|hnar-|gap-|wpay)/;
   function navNote(r) {
     var prev = NAV.cur; NAV.cur = r; if (!prev || prev === r) return;
     if (FLOW_RE.test(r)) { if (!FLOW_RE.test(prev)) NAV.from = prev; } else NAV.from = '';
@@ -6895,6 +7086,8 @@
     if (S.onboarded && !S.meter && r === 'baseline') r = 'meter';
     // світла в квартирі немає (або прибрали) — сторінка світла веде на головну
     if (S.onboarded && SK[r] && !smeters(r).length) { r = 'home'; try { history.replaceState(null, '', '#home'); } catch (e1) { /* старий браузер */ } }
+    // вивозу сміття в квартирі немає й оплат не було — його сторінка веде на головну
+    if (S.onboarded && /^(waste|wpay)/.test(r) && !wasteOn() && !meterHasData('waste')) { r = 'home'; try { history.replaceState(null, '', '#home'); } catch (e2) { /* старий браузер */ } }
     pendingRender = false;
     // вікно Telegram: даних тут ще немає, а вхід за підписом Telegram іде — не показуємо привітання «як новому» (воно лякає: «мої дані зникли»)
     if (!S.onboarded && tgPending() && ['help', 'privacy', 'terms', 'login'].indexOf(r) < 0) r = 'tgwait';
@@ -6912,6 +7105,7 @@
     else if (rm) view = recView(rm[1], !!rm[2]);
     else if (/^hnar-20\d\d-(0[1-9]|1[0-2])$/.test(r)) view = hnarView(r.slice(5));
     else if (wm) view = wrecView(wm[1]);
+    else if (/^wpay-[\w-]+$/.test(r)) view = wpView(r.slice(5));
     else if (/^step-\d+$/.test(r)) view = (S.meter ? V.step(+r.split('-')[1]) : V.meter());
     else view = (V[r] || V.home)();
     if (!view.route) view.route = r;
@@ -7624,8 +7818,8 @@
     // графік відключень з ранкового повідомлення: сторінка світла квартири з розгорнутим блоком (без електролічильника — екран квартири)
     if (g === 'gpv') { var gpl = (pid && place(pid)) || places().filter(function (x) { return gpvHas(x) && x.gpv; })[0] || place(); g = 'home';
       if (gpl) { if (gpl.id !== S.placeId) { switchPlace(gpl.id); WX.key = ''; } GPV_OPEN[gpl.id] = true; SCROLL_TO = 'gpv-' + gpl.id; g = smeters('elec').length ? 'elec' : 'place-' + gpl.id; } }
-    // вивіз сміття (нагадування 10-го): екран квартири, блок «Вивіз сміття»
-    if (g === 'waste') { var wpl = (pid && place(pid)) || place(); g = wpl ? 'place-' + wpl.id : 'home'; SCROLL_TO = 'waste'; }
+    // вивіз сміття (нагадування 10-го): сторінка вивозу квартири (115-а; вимкнений — екран квартири)
+    if (g === 'waste') { var wpl = (pid && place(pid)) || place(); if (wpl && wpl.id !== S.placeId) { switchPlace(wpl.id); WX.key = ''; } g = wpl && wpl.waste && wpl.waste.on ? 'waste' : wpl ? 'place-' + wpl.id : 'home'; }
     try { history.replaceState(null, '', location.pathname + q + '#' + g); } catch (e) { location.hash = g; }
     if (g === 'wnew') WN = wnFresh(wmeters('hot').length ? 'hot' : 'cold');
     if (g === 'enew' || g === 'gnew') EN = enFresh(g === 'gnew' ? 'gas' : 'elec');

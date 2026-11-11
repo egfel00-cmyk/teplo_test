@@ -24,7 +24,8 @@
     var live = function (x) { return x && !x.deleted; };
     if ((st.readings || []).some(live) || (st.water || []).some(live) || (st.mrecs || []).some(live)) return true;
     if (st.meter && !st.meter.removed) return true;
-    return (st.places || []).some(function (p) { return live(p) && ((p.meter && !p.meter.removed) || ((p.water || {}).meters || []).some(live) || (p.meters || []).some(live)); });
+    // вивіз сміття (115-а) — теж дані: увімкнений або є оплати
+    return (st.places || []).some(function (p) { return live(p) && ((p.meter && !p.meter.removed) || ((p.water || {}).meters || []).some(live) || (p.meters || []).some(live) || !!(p.waste && (p.waste.on || (p.waste.pays || []).some(live)))); });
   }
   function merge(a, b) {
     a = a || {}; b = b || {};

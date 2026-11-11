@@ -64,7 +64,8 @@
       var s = text(it), name = String(it.counterName || it.description || '').trim(), k = kindOf(s), a = accOf([it.description, it.comment].filter(Boolean).join(' · '), (it.amount || 0) / 100);
       var key = (digits(it.counterEdrpou) || name.toLowerCase().replace(/\s+/g, ' ')) + '|' + (a ? a.acc : '');
       var g = by[key];
-      if (!g) { g = by[key] = { key: key, kind: k || 'other', name: name, edrpou: digits(it.counterEdrpou), iban: String(it.counterIban || ''), acc: a ? a.acc : '', guess: !!(a && a.guess), eic: eicOf(s), n: 0, total: 0, last: 0, lastAmt: 0, months: {} }; out.push(g); }
+      if (!g) { g = by[key] = { key: key, kind: k || 'other', name: name, edrpou: digits(it.counterEdrpou), iban: String(it.counterIban || ''), acc: a ? a.acc : '', guess: !!(a && a.guess), eic: eicOf(s), n: 0, total: 0, last: 0, lastAmt: 0, months: {}, pays: [] }; out.push(g); }
+      g.pays.push({ time: it.time, amount: -it.amount / 100 });   // окремі платежі — для історії вивозу сміття (115-а): дата й сума
       if (a && !a.guess && g.guess) { g.acc = a.acc; g.guess = false; }
       if (!g.eic) g.eic = eicOf(s);
       g.n++; g.total += -it.amount / 100;
@@ -75,9 +76,9 @@
     var withAcc = {}; out.forEach(function (g) { if (g.acc) withAcc[g.key.split('|')[0]] = g; });
     out = out.filter(function (g) {
       var w = !g.acc && withAcc[g.key.split('|')[0]]; if (!w) return true;
-      w.n += g.n; w.total += g.total; Object.keys(g.months).forEach(function (m) { w.months[m] = 1; }); if (g.last > w.last) { w.last = g.last; w.lastAmt = g.lastAmt; } return false;
+      w.n += g.n; w.total += g.total; w.pays = w.pays.concat(g.pays); Object.keys(g.months).forEach(function (m) { w.months[m] = 1; }); if (g.last > w.last) { w.last = g.last; w.lastAmt = g.lastAmt; } return false;
     });
-    out.forEach(function (g) { g.total = Math.round(g.total * 100) / 100; g.nMonths = Object.keys(g.months).length; delete g.months; });
+    out.forEach(function (g) { g.total = Math.round(g.total * 100) / 100; g.nMonths = Object.keys(g.months).length; delete g.months; g.pays.sort(function (a, b) { return b.time - a.time; }); g.pays = g.pays.slice(0, 24); });
     var ord = { heat: 1, water: 2, elec: 3, gas: 4, waste: 5, house: 6, other: 7 };
     return out.sort(function (a, b) { return (ord[a.kind] - ord[b.kind]) || (b.acc ? 1 : 0) - (a.acc ? 1 : 0) || b.last - a.last; });
   }
@@ -86,6 +87,12 @@
     var d = digits(g.acc), nm = String(g.name || '');
     if (re('газмереж|газорозпод|грм{E}|газ\\s*мереж').test(nm) || (d.length === 10 && /^1/.test(d))) return 'grm';
     return 'account';
+  }
+  /** Платіж → оплата вивозу сміття: дата (за Києвом), сума; за який місяць — за минулий (так платять: 10–20 числа за попередній). */
+  function payOf(x) {
+    var d = new Date((x.time + 3 * 3600) * 1000), ymd = d.getUTCFullYear() + '-' + String(d.getUTCMonth() + 1).padStart(2, '0') + '-' + String(d.getUTCDate()).padStart(2, '0');
+    var pm = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() - 1, 1)), ym = pm.getUTCFullYear() + '-' + String(pm.getUTCMonth() + 1).padStart(2, '0');
+    return { date: ymd, ym: ym, amount: Math.round(x.amount * 100) / 100 };
   }
   /** Картки, з яких читати виписку: гривневі, не більше MAX_ACC, чорна першою. */
   function cards(info) {
@@ -114,7 +121,7 @@
   /** Схожий на токен monobank: 40–50 символів base64url. Порожнє й явно не те — відсіяти до запиту. */
   function tokenOk(s) { return /^[A-Za-z0-9_\-]{30,64}$/.test(String(s || '').trim()); }
 
-  var api = { API: API, TOKEN_URL: TOKEN_URL, WIN: WIN, GAP: GAP, MONTHS: MONTHS, kindOf: kindOf, accOf: accOf, eicOf: eicOf, isUtility: isUtility, groups: groups, gasField: gasField,
+  var api = { API: API, TOKEN_URL: TOKEN_URL, WIN: WIN, GAP: GAP, MONTHS: MONTHS, kindOf: kindOf, accOf: accOf, eicOf: eicOf, isUtility: isUtility, groups: groups, gasField: gasField, payOf: payOf,
     cards: cards, plan: plan, clientInfo: clientInfo, statement: statement, tokenOk: tokenOk };
   if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.TeploMono = api;
 })(typeof window !== 'undefined' ? window : this);

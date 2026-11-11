@@ -45,6 +45,12 @@ ok('картки: гривневі, без банок, чорна першою',
 const now = T('2026-11-11'), q = M.plan(accs, now, 3);
 ok('план: 3 місяці × 2 картки, спершу останні 31 доба кожної, вікно ≤ 31 доби', q.length === 6 && q[0].acc === 'b' && q[1].acc === 'w' && q[0].to === now && q.every(x => x.to - x.from <= M.WIN) && q[2].to === now - M.WIN);
 ok('токен: base64url 30–64 — так; порожнє, з пробілом, коротке — ні', M.tokenOk('uAbcdEFGhijkLMNopqRSTuvwXYZ0123456789_-abcd') && !M.tokenOk('') && !M.tokenOk('abc def') && !M.tokenOk('short'));
+console.log('Вивіз сміття (115-а): окремі платежі для історії:');
+const wg = M.groups([{ id: 'w1', time: T('2026-10-14'), description: 'КП Еко-Сан вивіз ТПВ', comment: 'о/р 55667788', mcc: 4900, amount: -4200, counterEdrpou: '11223344', counterName: 'КП «Еко-Сан»' },
+  { id: 'w2', time: T('2026-09-12'), description: 'КП Еко-Сан вивіз ТПВ', mcc: 4900, amount: -4200, counterEdrpou: '11223344', counterName: 'КП «Еко-Сан»' }]);
+ok('сміття: один рядок, рахунок, два платежі (новіший першим)', wg.length === 1 && wg[0].kind === 'waste' && wg[0].acc === '55667788' && wg[0].pays.length === 2 && wg[0].pays[0].amount === 42, wg);
+ok('payOf: дата за Києвом, сума, за минулий місяць', JSON.stringify(M.payOf({ time: T('2026-10-14'), amount: 42 })) === JSON.stringify({ date: '2026-10-14', ym: '2026-09', amount: 42 })
+  && M.payOf({ time: Math.floor(Date.parse('2026-01-31T23:30:00Z') / 1000), amount: 1 }).date === '2026-02-01' && M.payOf({ time: T('2026-01-10'), amount: 1 }).ym === '2025-12');
 (async () => {
   let seen = null;
   const f = (url, o) => { seen = { url, o }; return Promise.resolve({ status: 403, text: () => Promise.resolve('{"errorDescription":"Unknown \'X-Token\'"}') }); };

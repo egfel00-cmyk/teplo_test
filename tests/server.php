@@ -705,6 +705,11 @@ ok('сміття: друга квартира — люди з води (2), св
   && count($wst2['buttons']) === 2 && str_ends_with($wst2['buttons'][1][1], '?go=waste&place=p2'), [$wsd2, $wst2]);
 $wst3 = Reminders::text('waste10', 'ru', [['id' => 'main', 'label' => 'Моя квартира', 'all' => 1, 'org' => null, 'n' => null, 'price' => null, 'sum' => null, 'pay' => '', 'pay_ru' => '']], '2026-12-10');
 ok('сміття: суми не знаємо — «сумма — в платёжке», одна квартира без назви', str_contains($wst3['text'], 'Вывоз мусора за ноябрь') && str_contains($wst3['text'], 'сумма — в платёжке') && !str_contains($wst3['text'], '«Моя'), $wst3);
+// 115-а: оплату за листопад уже записали (за кілька місяців наперед, з жовтня) — 10.12 не нагадуємо; видалена оплата не рахується
+$wsP = $wsS; $wsP['places'][0]['waste']['pays'] = [['id' => 'a', 'ym' => '2026-10', 'n' => 2, 'date' => '2026-11-12', 'amount' => 140.82], ['id' => 'b', 'ym' => '2026-11', 'date' => '2026-12-01', 'amount' => 70, 'deleted' => true]];
+$wsP['places'][1]['waste']['pays'] = [['id' => 'c', 'ym' => '2026-11', 'date' => '2026-12-02', 'amount' => 70, 'deleted' => true]];
+ok('сміття: листопад сплачено наперед (жовтень–листопад) — «Моя» без нагадування, «Мамина» (оплату видалили) — з ним', array_column(Reminders::placesDue($wsP, 'waste10', '2026-11'), 'id') === ['p2']
+  && Reminders::wastePaid(['pays' => [['ym' => '2026-11', 'n' => 3]]], '2027-01') && !Reminders::wastePaid(['pays' => [['ym' => '2026-11', 'n' => 3]]], '2027-02'), Reminders::placesDue($wsP, 'waste10', '2026-11'));
 // несколько квартир (этап 2): одно сообщение со списком квартир, кнопка в каждую; выключатель у квартиры
 $wm = $wst; $wm['places'][] = ['id' => 'p2', 'name' => 'Мамина', 'water' => ['meters' => [['id' => 'c9', 'kind' => 'cold']]]];
 $pd = Reminders::placesDue($wm, 'water16', '2026-11');

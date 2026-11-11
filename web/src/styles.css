@@ -1230,6 +1230,24 @@ summary:focus-visible { outline: 3px solid var(--c-info); outline-offset: 2px; b
 /* вивіз сміття (112-а) — під постачальниками квартири, тим самим рядком; сума на місяць — помітно */
 .prov + .prov.waste .prov-row, p + .prov.waste .prov-row { border-top: 1px solid var(--c-line); }
 .c-waste { color: var(--c-ink-2); }
+/* ---- вивіз сміття на рівні лічильників (115-а): табло немає — на його місці тиха «сума на місяць» (не прилад: без матеріалу й кольору) ---- */
+.wplate { display: grid; gap: 2px; padding: 10px 14px 12px; border: 1px solid var(--c-line); border-radius: 12px; background: var(--c-surface-2); min-width: 0; }
+.wp-l { font-size: 13px; color: var(--c-ink-2); }
+.wp-v { display: flex; align-items: baseline; gap: 6px; flex-wrap: wrap; }
+.wp-sum { font-size: 32px; line-height: 1.1; font-weight: 600; font-variant-numeric: tabular-nums; letter-spacing: -.01em; }
+.wp-u { font-size: 17px; font-weight: 600; color: var(--c-ink-2); }
+.wp-calc { font-size: 14px; color: var(--c-ink-2); }
+.wplate.empty .wp-sum { color: var(--c-ink-2); }
+.wplate.hero { padding: 14px 18px 16px; } .wplate.hero .wp-sum { font-size: 40px; }
+.ucard-waste .ucard-top .ico, .mrow.mk-waste .ico.c-waste { color: var(--c-ink-2); }
+.mbox-waste { --kc: var(--c-ink-2); }
+.kprev .wplate.kp-w { padding: 5px 9px; border-radius: 8px; } .kprev .kp-w .wp-sum { font-size: 18px; } .kprev .kp-w .wp-u { font-size: 12px; }
+/* смужка останніх місяців: значок + слово в підказці; колір — лише разом зі значком */
+.wstrip { list-style: none; display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 6px; margin: 10px 0 0; padding: 0; }
+.ws-m { display: grid; justify-items: center; gap: 2px; padding: 6px 2px; border-radius: 10px; background: var(--c-surface-2); border: 1px solid var(--c-line); font-size: 13px; color: var(--c-ink-2); }
+.ws-m.ok { color: var(--c-ok); background: var(--c-ok-soft); border-color: transparent; }
+.ws-m.not { color: var(--c-warn); background: var(--c-warn-soft); border-color: transparent; }
+.ws-m .ws-mn { color: var(--c-ink); }
 .prov.waste .ws-f { margin-top: 10px; }
 .prov.waste .check-row { margin-top: 4px; }
 .ws-sum { font-weight: 600; font-size: var(--fs-m, 17px); margin: 10px 0 6px !important; font-variant-numeric: tabular-nums; }
@@ -1957,7 +1975,7 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
 @media (min-width: 600px) { .lp-bento.with-gpv .c-gpv { grid-column: 1 / -1; } }
 .hg3 > .hg-side > :first-child { margin-top: 0; }
 /* картка лічильника на екрані квартири — тон його виду (владелец 10.11); документи лічильника */
-.mrow.mk-heat, .mrow.mk-hot { --kc: var(--c-supply); } .mrow.mk-cold { --kc: var(--c-return); } .mrow.mk-elec { --kc: var(--c-elec); } .mrow.mk-gas { --kc: var(--c-gas); }
+.mrow.mk-heat, .mrow.mk-hot { --kc: var(--c-supply); } .mrow.mk-cold { --kc: var(--c-return); } .mrow.mk-elec { --kc: var(--c-elec); } .mrow.mk-gas { --kc: var(--c-gas); } .mrow.mk-waste { --kc: var(--c-ink-2); }
 .mrow[class*="mk-"] { background: color-mix(in srgb, var(--kc) 9%, var(--c-surface)); border-color: color-mix(in srgb, var(--kc) 34%, var(--c-line)); }
 .mdocs { margin-top: var(--sp-3); padding-top: var(--sp-3); border-top: 1px solid var(--c-line); }
 .mdocs .docs { margin: 8px 0 0; }

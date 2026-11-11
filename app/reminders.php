@@ -93,6 +93,7 @@ final class Reminders {
         // вивіз сміття: увімкнено в квартирі й не вимкнено нагадування; сума — люди × ціна (своя з платіжки або з довідника)
         $w = is_array($p['waste'] ?? null) ? $p['waste'] : [];
         if (empty($w['on']) || !empty($w['remindOff'])) continue;
+        if (self::wastePaid($w, $ym)) continue;   // 115-а: оплату за цей місяць уже записали (зокрема наперед чи з monobank) — не нагадуємо
         $pv = self::placeProv($p); $d = (array)($pv['waste'] ?? []);
         $n = (int)round((float)($w['persons'] ?? 0)) ?: (int)round((float)($p['water']['persons'] ?? 0));
         $pr = (float)($w['price'] ?? 0) > 0 ? (float)$w['price'] : (!empty($w['priv']) && (float)($d['priv'] ?? 0) > 0 ? (float)$d['priv'] : (float)($d['price'] ?? 0));
@@ -134,6 +135,17 @@ final class Reminders {
       $out[] = ['id' => (string)$p['id'], 'label' => mb_substr($label, 0, 40), 'all' => $all, 'kh' => $kh, 'org' => $what === 'water' || $what === 'elec' ? $pv[$what] : null];
     }
     return $out;
+  }
+
+  /** Вивіз сміття: чи записана оплата, що покриває місяць $ym (pays: ym — з якого місяця, n — скільки місяців, deleted). */
+  public static function wastePaid(array $w, string $ym): bool {
+    foreach ((array)($w['pays'] ?? []) as $p) {
+      if (!is_array($p) || !empty($p['deleted']) || !preg_match('/^\d{4}-\d{2}$/', (string)($p['ym'] ?? ''))) continue;
+      $n = max(1, min(12, (int)round((float)($p['n'] ?? 1))));
+      $last = (new DateTimeImmutable($p['ym'] . '-01'))->modify('+' . ($n - 1) . ' month')->format('Y-m');
+      if ($ym >= $p['ym'] && $ym <= $last) return true;
+    }
+    return false;
   }
 
   /** Нужно ли это напоминание человеку с таким состоянием (данные — как их хранит сайт: places, water, readings). */

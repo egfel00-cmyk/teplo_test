@@ -23,6 +23,7 @@ const TOK = 'uMonoSyntheticToken_0123456789abcdefABCDEF-xyz', BAD = 'uRevokedSyn
     it(5, 'ТОВ «Харківенергозбут»', 'о/р 123456789012', 61800, 'ТОВ «Харківенергозбут»', '42206328'),
     it(6, 'АТ «Газмережі»', 'о/р 1320012345', 9000, 'АТ «Газмережі»', '03359500'),
     it(7, 'ТОВ «Нафтогаз України»', 'рахунок 987654321', 23900, 'ТОВ «Газопостачальна компанія «Нафтогаз України»', '40121452'),
+    it(8, 'Вивіз ТПВ', 'о/р 700123', 7041, 'КП «Комплекс з вивозу побутових відходів»', '03358222'),   // 115-а: вивіз сміття — рахунок і оплата в історію
     { id: 'cafe', time: now - 2 * 86400, description: 'Кав’ярня', mcc: 5814, amount: -6000, currencyCode: 980 }];
   await ctx.route('https://api.monobank.ua/**', async (route) => {
     const r = route.request(), tok = r.headers()['x-token'], u = r.url(); calls.push(u.replace('https://api.monobank.ua', ''));
@@ -53,7 +54,7 @@ const TOK = 'uMonoSyntheticToken_0123456789abcdefABCDEF-xyz', BAD = 'uRevokedSyn
   const st1 = calls.filter(c => /statement\/acc1\//.test(c)).length;
   ok('client-info + 3 вікна виписки лише гривневої картки', calls.filter(c => /client-info/.test(c)).length === 2 && st1 === 3 && !calls.some(c => /statement\/usd/.test(c)), calls);
   const rows = await p.$$eval('.mono-g', es => es.map(e => ({ t: e.textContent, on: !!e.querySelector('input[data-mf=on]:checked'), dis: !!e.querySelector('input[data-mf=on][disabled]') })));
-  ok('5 постачальників (кав’ярні немає), усі позначені', rows.length === 5 && rows.every(r => r.on) && !rows.some(r => /Кав/.test(r.t)), rows.map(r => r.t.slice(0, 60)));
+  ok('6 постачальників (кав’ярні немає), усі позначені', rows.length === 6 && rows.every(r => r.on) && !rows.some(r => /Кав/.test(r.t)), rows.map(r => r.t.slice(0, 60)));
   ok('рядок тепла: рахунок 1234567, «Впишемо: особовий рахунок за тепло», платіж 412,50', /1234567/.test(rows[0].t) && /особовий рахунок за тепло/.test(rows[0].t) && /412,50/.test(rows[0].t));
   ok('газ: 10 цифр з 1… — «рахунок Газмереж», 9 цифр — «рахунок постачальника газу»', rows.some(r => /1320012345/.test(r.t) && /Газмереж \(доставка/.test(r.t)) && rows.some(r => /987654321/.test(r.t) && /постачальника газу/.test(r.t)));
   ok('прізвище для Водоканалу — «Шевченко» з monobank', /Шевченко/.test(await p.textContent('[data-key=mono-sn]')) && await p.isChecked('#mono-sn'));
@@ -63,7 +64,9 @@ const TOK = 'uMonoSyntheticToken_0123456789abcdefABCDEF-xyz', BAD = 'uRevokedSyn
   const s = await st(), pl = s.places[0], e1 = pl.meters.find(m => m.id === 'e1'), g1 = pl.meters.find(m => m.id === 'g1');
   ok('вписано: тепло, Водоканал + прізвище, світло, Газмережі; Нафтогаз — ні (зняли)', (pl.meter || {}).account === '1234567' && pl.water.account === '7654321' && pl.water.surname === 'Шевченко'
     && e1.account === '123456789012' && g1.grm === '1320012345' && !g1.account, { meter: pl.meter, water: pl.water, e1, g1 });
-  ok('назад — на газ, тост «Вписано: 4»', (await hash()) === '#gas' && /Вписано: 4/.test(await p.textContent('#toast-host')));
+  const ws = pl.waste || {};
+  ok('вивіз сміття: увімкнено, вивізник, рахунок 700123, оплата 70,41 «з monobank» за минулий місяць', ws.on === true && /Комплекс/.test(ws.org || '') && ws.account === '700123' && (ws.pays || []).length === 1 && ws.pays[0].amount === 70.41 && ws.pays[0].src === 'mono' && /^\d{4}-\d{2}$/.test(ws.pays[0].ym), ws);
+  ok('назад — на газ, тост «Вписано: 5»', (await hash()) === '#gas' && /Вписано: 5/.test(await p.textContent('#toast-host')));
   ok('газ: поле Газмереж зникло, рахунок Газмереж — для копіювання; Нафтогазу — ще просимо', !(await p.$('#esg-g1')) && !!(await p.$('#esa-g1')) && /1320012345/.test(await p.textContent('[data-key=where-gas]')));
   const ls = await p.evaluate(() => JSON.stringify(localStorage));
   ok('токена й виписки немає ні в localStorage, ні в запитах до нашого сервера', !ls.includes(TOK) && !ls.includes('Кав’ярня') && !ours.some(x => x.includes(TOK) || x.includes('monobank')), ours.filter(x => x.includes(TOK)));
@@ -71,7 +74,7 @@ const TOK = 'uMonoSyntheticToken_0123456789abcdefABCDEF-xyz', BAD = 'uRevokedSyn
   await go('mono'); await p.evaluate(() => { window.TeploMono.GAP = 250; }); await p.fill('#mono-tok', TOK); await click('[data-key=mono-go]', 150);
   await p.waitForSelector('[data-key=mono-list]', { timeout: 15000 });
   const rows2 = await p.$$eval('.mono-g', es => es.map(e => ({ t: e.textContent, on: !!e.querySelector('input[data-mf=on]:checked') })));
-  ok('повторно: вписане — «уже вписано», не позначено; Нафтогаз — позначено', rows2.filter(r => /уже вписано/.test(r.t)).length === 4 && rows2.filter(r => r.on).length === 1 && rows2.find(r => r.on && /987654321/.test(r.t)), rows2.map(r => [r.on, r.t.slice(0, 50)]));
+  ok('повторно: вписане — «уже вписано», не позначено; Нафтогаз — позначено', rows2.filter(r => /уже вписано/.test(r.t)).length === 5 && rows2.filter(r => r.on).length === 1 && rows2.find(r => r.on && /987654321/.test(r.t)), rows2.map(r => [r.on, r.t.slice(0, 50)]));
   // рос. мова — за мовою браузера
   const pr = await (await require('./pvopen.cjs').ctx(b, { viewport: { width: 360, height: 800 }, locale: 'ru-RU' })).newPage();
   await pr.goto('http://127.0.0.1:8013/'); await pr.evaluate(s => localStorage.setItem('teplo.v1', JSON.stringify(Object.assign(s, { lang: 'ru' }))), s0); await pr.reload(); await pr.goto('http://127.0.0.1:8013/#mono'); await pr.waitForTimeout(400);
