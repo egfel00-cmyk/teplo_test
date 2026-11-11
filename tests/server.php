@@ -716,6 +716,15 @@ ok('довідник 118-ї: Златопіль 30,59 / 33,46 з 01.02.2026 · �
   && ($vw['price'] ?? null) == 64.7 && ($vw['priv'] ?? null) == 67.94 && count((array)($vw['phones'] ?? [])) === 2 && !empty($vw['src_ru'])
   && ($zs['place']['r'] ?? '') === 'kh' && ($zs['kinds']['waste']['price'] ?? null) == 33.0 && !empty($zs['kinds']['waste']['check'])
   && ($zl['place']['r'] ?? '') === 'lv' && in_array('kh', array_column((array)($zl['alts'] ?? []), 'r'), true), [$zw, $vw, $zs['place'] ?? $zs, $zl['place'] ?? $zl]);
+// 119-а: Пісочин (№ 08/9-26, з 01.05.2026; новий тариф оголошено 01.10 — check), Дергачі (повідомлення КП, вересень 2026 — check),
+// Сахновщина (виконком 08.05.2026, з 01.06.2026), Солоницівка (тариф 2021 скасовано 18.06.2026, нового немає — price null, check)
+$pw9 = Providers::lookup('Песочин, ул. Транспортная 2')['kinds']['waste'] ?? []; $dw9 = Providers::lookup('м. Дергачі, вул. Сумський шлях, 1')['kinds']['waste'] ?? [];
+$sw9 = Providers::lookup('смт Сахновщина, вул. Шевченка, 1')['kinds']['waste'] ?? []; $lw9 = Providers::lookup('Солоницівка, вул. Сумський шлях, 3')['kinds']['waste'] ?? [];
+ok('довідник 119-ї: Пісочин 48,60 / 50,38 з 01.05.2026, check · Дергачі 33 / 30, check · Сахновщина 30 з 01.06.2026 · Солоницівка — без суми, check, куди платити',
+  ($pw9['price'] ?? null) == 48.6 && ($pw9['priv'] ?? null) == 50.38 && ($pw9['from'] ?? '') === '2026-05-01' && !empty($pw9['check']) && str_contains((string)($pw9['src'] ?? ''), '№ 08/9-26') && (($pw9['phones'][0][1] ?? '') === '(075) 112-78-80')
+  && ($dw9['price'] ?? null) == 33.0 && ($dw9['priv'] ?? null) == 30.0 && !empty($dw9['check']) && str_contains((string)($dw9['org'] ?? ''), 'Дергачіекоресурс')
+  && ($sw9['price'] ?? null) == 30.0 && !isset($sw9['priv']) && ($sw9['from'] ?? '') === '2026-06-01' && empty($sw9['check'])
+  && str_contains((string)($lw9['org'] ?? ''), 'Солоницівське ЖЕГ') && array_key_exists('price', $lw9) && $lw9['price'] === null && !empty($lw9['check']) && !empty($lw9['pay_ru']), [$pw9, $dw9, $sw9, $lw9]);
 $d10 = Reminders::kindOn(new DateTimeImmutable('2026-12-10 12:00', new DateTimeZone('Europe/Kyiv')));
 ok('10.12 — waste10 за листопад; «найближче» його пропускає (лише показання)', $d10 === ['waste10', '2026-11'] && (Reminders::next(strtotime('2026-12-06 12:00:00 Europe/Kyiv'))['kind'] ?? '') === 'water16', $d10);
 $wsS = ['places' => [['id' => 'main', 'address' => 'м. Харків, вул. Сумська, 10', 'waste' => ['on' => true, 'persons' => 3]], ['id' => 'p2', 'name' => 'Мамина', 'address' => 'смт Мала Данилівка, вул. Академічна, 1', 'water' => ['persons' => 2], 'waste' => ['on' => true, 'remindOff' => true]], ['id' => 'p3', 'name' => 'Дача']]];
