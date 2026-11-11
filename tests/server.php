@@ -707,6 +707,15 @@ ok('довідник 116-ї: Берестин — Берестинський К�
 $rb = Providers::lookup('Богодухів, вул. Ярослава Мудрого, 1')['kinds']['waste'] ?? [];
 ok('довідник 117-ї: Богодухів — КП «Господар», суми з людини немає (тариф за м³), check, з 01.09.2026, куди платити', str_contains((string)($rb['org'] ?? ''), 'Господар') && array_key_exists('price', $rb) && $rb['price'] === null
   && !empty($rb['check']) && !empty($rb['pay']) && str_contains((string)($rb['src'] ?? ''), '№ 445'), $rb);
+// 118-а: Златопіль (і стара назва Первомайський) — № 19 від 28.01.2026; Валки — № 175 від 15.06.2026; Золочів — намір КП, check;
+// «селище Золочів» — Харківщина, а не місто Золочів на Львівщині (просто «Золочів» — як і було, місто, Харківщина — у «Не той?»)
+$zw = Providers::lookup('Первомайський, вул. Соборна, 1')['kinds']['waste'] ?? []; $vw = Providers::lookup('м. Валки, вул. Харківська, 1')['kinds']['waste'] ?? [];
+$zs = Providers::lookup('селище Золочів, вул. Сумська, 1'); $zl = Providers::lookup('Золочів, вул. Сумська, 1');
+ok('довідник 118-ї: Златопіль 30,59 / 33,46 з 01.02.2026 · Валки 64,70 / 67,94, 2 телефони · «смт Золочів» → Харківщина, 33,00, check · «Золочів» → Львівщина, Харківщина в «Не той?»',
+  ($zw['price'] ?? null) == 30.59 && ($zw['priv'] ?? null) == 33.46 && ($zw['from'] ?? '') === '2026-02-01' && empty($zw['check']) && str_contains((string)($zw['src'] ?? ''), '№ 19')
+  && ($vw['price'] ?? null) == 64.7 && ($vw['priv'] ?? null) == 67.94 && count((array)($vw['phones'] ?? [])) === 2 && !empty($vw['src_ru'])
+  && ($zs['place']['r'] ?? '') === 'kh' && ($zs['kinds']['waste']['price'] ?? null) == 33.0 && !empty($zs['kinds']['waste']['check'])
+  && ($zl['place']['r'] ?? '') === 'lv' && in_array('kh', array_column((array)($zl['alts'] ?? []), 'r'), true), [$zw, $vw, $zs['place'] ?? $zs, $zl['place'] ?? $zl]);
 $d10 = Reminders::kindOn(new DateTimeImmutable('2026-12-10 12:00', new DateTimeZone('Europe/Kyiv')));
 ok('10.12 — waste10 за листопад; «найближче» його пропускає (лише показання)', $d10 === ['waste10', '2026-11'] && (Reminders::next(strtotime('2026-12-06 12:00:00 Europe/Kyiv'))['kind'] ?? '') === 'water16', $d10);
 $wsS = ['places' => [['id' => 'main', 'address' => 'м. Харків, вул. Сумська, 10', 'waste' => ['on' => true, 'persons' => 3]], ['id' => 'p2', 'name' => 'Мамина', 'address' => 'смт Мала Данилівка, вул. Академічна, 1', 'water' => ['persons' => 2], 'waste' => ['on' => true, 'remindOff' => true]], ['id' => 'p3', 'name' => 'Дача']]];
