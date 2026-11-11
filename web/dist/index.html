@@ -6388,9 +6388,11 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
   }
   /** Кандидати-числа з рядків одного фото: [{digits, frac, sep, zone, unit, y, score}]. */
   function ocrCands(shot) {
-    var out = [], tags = [];
+    var out = [], tags = [], frags = [];
     ((shot && shot.lines) || []).forEach(function (l, i) {
       var y = l.y != null ? l.y : (l.box ? l.box[1] : i * 40), h = l.h || 30;
+      // шматок числа (лише цифри, можна з десятими) — для склейки ряду нижче
+      var fm = ocrTxt(l.text).replace(/\s+/g, '').match(/^(\d{1,7})(?:[.,](\d{1,3}))?$/); if (fm && l.x != null && l.w) frags.push({ d: fm[1], f: fm[2] || '', x: l.x, w: l.w, y: y, h: h, s: l.score || 1 });
       [l.text].concat(l.alts || []).some(function (raw, ai) {
         var s = ocrTxt(raw), z = zoneOf(s), unit = URE.test(s); URE.lastIndex = 0;
         var rest = s.replace(/(?:^|[^0-9A-Za-zА-Яа-я])[TТ]\s?[0-4](?![0-9])/g, ' ').replace(/(?:15|1)\s?[.,]\s?8\s?[.,]\s?[0-4](?![0-9])/g, ' ').replace(URE, ' ');
@@ -6402,6 +6404,19 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
         out.push({ digits: m[1], frac: m[2] || '', sep: !!m[2], zone: z, unit: unit, y: y, h: h, score: h * (l.score || 1) * (m[2] ? 1.3 : 1) * (unit ? 1.5 : 1) * (m[1].charAt(0) === '0' ? 1.2 : 1) * (ai ? 0.8 : 1) });
         return true;
       });
+    });
+    // барабан НІК 2102, прочитаний шматками (власник 11.11: «352» і «9.4» / «94» в одному ряду, а показання — 3529,4): склеюємо сусідні
+    // числа ряду зліва направо в одного кандидата (слабшого за цілий рядок — з прошлими його відбере правдоподібність, без прошлих — ні)
+    frags.sort(function (a, b) { return a.x - b.x; });
+    frags.forEach(function (a, i) {
+      if (a.f) return; var dg = a.d, fr = '', sep = false, last = a, n = 1, sc = a.s * a.h, top = a.y, bot = a.y + a.h;
+      for (var j = i + 1; j < frags.length && !sep; j++) {
+        var b = frags[j], hh = Math.max(last.h, b.h), cy = (b.y + b.h / 2) - (last.y + last.h / 2);
+        if (Math.abs(cy) > hh * 0.6 || b.x < last.x + last.w * 0.5 || b.x > last.x + last.w + hh * 1.5) continue;
+        dg += b.d; if (b.f) { fr = b.f; sep = true; } last = b; n++; sc = Math.min(sc, b.s * b.h); top = Math.min(top, b.y); bot = Math.max(bot, b.y + b.h);
+      }
+      if (n < 2 || dg.length < 4 || dg.length > 8) return;
+      out.push({ digits: dg, frac: fr, sep: sep, zone: null, unit: false, y: top, h: bot - top, score: sc * 0.6, merged: true });
     });
     // мітка зони окремим рядком — числу в тому ж ряду (або трохи нижче)
     out.forEach(function (c) { if (c.zone !== null) return; var best = null; tags.forEach(function (tg) { var dy = Math.abs(tg.y - c.y); if (dy < Math.max(tg.h, c.h) * 1.6 && (!best || dy < best.dy)) best = { dy: dy, z: tg.z }; }); if (best) c.zone = best.z; });
@@ -6415,7 +6430,7 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
   /**
    * shots: [{lines, drum: {value, frac, sure} | null} | null] — по фото; ms — лічильники; prevBy: {id: {zone: показання}}.
    * opt: {days: {id: днів від прошлого}, heating} — скільки могло набігти: без днів — до 3 «місячних норм з опаленням», з днями —
-   * дві місячні норми на ці дні (не менше п'ятої частини норми). НІК 2102 владельця 11.11: з прошлими ≈3500 за кілька днів підставили 5149.
+   * три місячні норми на ці дні (не менше половини норми). НІК 2102 владельця 11.11: з прошлими ≈3500 за кілька днів підставили 5149.
    * → {id: {zone: {v, frac, photo, why: 'tag'|'prev'|'drum'|'', guess}}}. Одне число — одній зоні; сума (T0) — лише однозонному.
    */
   function fromPhotos(shots, ms, prevBy, opt) {
@@ -6430,7 +6445,7 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
     });
     (ms || []).forEach(function (m) {
       var ks = keys(m), prev = (prevBy && prevBy[m.id]) || {}, res = by[m.id] = {}, opts = [], dd = opt && opt.days ? Number(opt.days[m.id]) : NaN, per = opt && opt.heating ? (JUMP_HEAT || JUMP) : JUMP;
-      var lim = dd > 0 ? Math.max(per / 5, per * dd / 30 * 2) : lim0;
+      var lim = dd > 0 ? Math.max(per / 2, per * dd / 30 * 3) : lim0;
       ks.forEach(function (z) {
         var pv = num(prev[z]);
         pool.forEach(function (c, ci) {
