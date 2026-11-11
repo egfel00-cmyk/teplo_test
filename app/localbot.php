@@ -53,6 +53,26 @@ final class LocalBot {
     // Буча: КП «Бучасервіс», кабінет абонента voda.buchaservice.com/cabinet (e-mail + пароль, POST /cabinet/login)
     'bucha' => ['t' => 'cab', 'kinds' => ['water'], 'org' => 'КП «Бучасервіс»', 'site' => 'voda.buchaservice.com',
       'start' => 'https://voda.buchaservice.com/cabinet', 'host' => '~^voda\.buchaservice\.com$~i', 'need' => ['login', 'pass']],
+    // Вишневе (104-а): КП «УМГ» — центр розрахунків «Вишнівськводоканалу», кабінет umg.in.ua/account (особовий рахунок + пароль, без капчі); показники — з 28 до 1 числа
+    'umg' => ['t' => 'cab', 'kinds' => ['water'], 'org' => 'КП «УМГ» (Вишневе)', 'site' => 'umg.in.ua',
+      'start' => 'https://umg.in.ua/account/', 'host' => '~^umg\.in\.ua$~i', 'need' => ['login', 'pass'], 'lk' => 'acc', 'win' => [28, 1]],
+    // Платформа AbonentInfo.com (104-а): один кабінет для кількох КП — у наших областях КП ВКГ «Бориспільводоканал» (my.borispol-voda.com.ua веде сюди) і ПЖКГ Моршина;
+    // вхід e-mail + пароль (identity, password), без капчі; «занесення поточних показників»
+    'abinf' => ['t' => 'cab', 'kinds' => ['water'], 'org' => 'AbonentInfo.com', 'site' => 'abonentinfo.com',
+      'start' => 'https://www.abonentinfo.com/', 'host' => '~^(www\.)?abonentinfo\.com$~i', 'need' => ['login', 'pass']],
+    // Львівщина (104-а). Дрогобич: «Комірка споживача» drohobych-vodokanal.com (Django: особовий рахунок + пароль, без капчі), показники з 10 до кінця місяця;
+    // є й e-mail pokazvodu@meta.ua «рахунок номер_лічильника показник» (з 10 до 28) — кабінет обрали, бо він відповідає «прийнято».
+    'dvk' => ['t' => 'cab', 'kinds' => ['water'], 'org' => 'КП «Дрогобичводоканал»', 'site' => 'drohobych-vodokanal.com',
+      'start' => 'https://drohobych-vodokanal.com/authorization', 'host' => '~^(www\.)?drohobych-vodokanal\.com$~i', 'need' => ['login', 'pass'], 'lk' => 'acc', 'win' => [10, 31]],
+    // Трускавець: персональний кабінет abonents.vodokanaltr.com.ua (Drupal: e-mail + пароль, без капчі — на відміну від Шептицького), з 15 до 27 числа
+    'tvk' => ['t' => 'cab', 'kinds' => ['water'], 'org' => 'ТОВ «Трускавецький водоканал»', 'site' => 'abonents.vodokanaltr.com.ua',
+      'start' => 'https://abonents.vodokanaltr.com.ua/user/login', 'host' => '~^abonents\.vodokanaltr\.com\.ua$~i', 'need' => ['login', 'pass'], 'win' => [15, 27]],
+    // Стрий: e-mail відділу збуту zbut_voda@ukr.net — «обов’язково вкажіть особовий рахунок або адресу» (stryivodokanal.com.ua, «Порядок передачі показників», 27.10.2026); з 1 до 5 числа
+    'svk' => ['t' => 'mail', 'kinds' => ['water'], 'org' => 'КП «Стрийводоканал»', 'site' => 'stryivodokanal.com.ua', 'to' => 'zbut_voda@ukr.net',
+      'need' => ['acc', 'addr'], 'win' => [1, 5]],
+    // Ірпінь: e-mail абонентського відділу irpenvodok.abonviddil@gmail.com (vodokanal-irpen.com.ua, «Подати показники лічильника»); з 20 до 25 числа
+    'ivk' => ['t' => 'mail', 'kinds' => ['water'], 'org' => 'КП «Ірпіньводоканал»', 'site' => 'vodokanal-irpen.com.ua', 'to' => 'irpenvodok.abonviddil@gmail.com',
+      'need' => ['acc', 'name', 'addr', 'phone'], 'win' => [20, 25]],
   ];
   const NEED = ['dist', 'acc', 'name', 'addr', 'phone', 'login', 'pass'];
   /** Адреса листа: одна на бота або за районом людини (`dist`). */
@@ -328,8 +348,9 @@ final class LocalBot {
       return ['text' => 'e-mail → ' . $to];
     }
     $lines = implode("\n", array_map(fn($x) => '— ' . ($x['name'] ?: 'лічильник') . ($x['serial'] ? ' № ' . $x['serial'] : '') . ': ' . $x['value'] . ' м³', $items));
-    $text = "Доброго дня!\n\nПередаю показання лічильників води станом на $d.\n\nОсобовий рахунок: " . ($c['acc'] ?? '') . "\nАбонент: " . ($c['name'] ?? '') .
-      "\nАдреса: " . ($c['addr'] ?? '') . "\nТелефон: " . ($c['phone'] ?? '') . "\n\n" . $lines .
+    $who = []; foreach (['Особовий рахунок' => 'acc', 'Абонент' => 'name', 'Адреса' => 'addr', 'Телефон' => 'phone'] as $l => $k) if (trim((string)($c[$k] ?? '')) !== '') $who[] = $l . ': ' . trim((string)$c[$k]);   // лише те, що просить постачальник
+    $who = implode("\n", $who);
+    $text = "Доброго дня!\n\nПередаю показання лічильників води станом на $d.\n\n" . $who . "\n\n" . $lines .
       "\n\nЛист надіслано на прохання абонента сервісом «Лічильники» (" . Cfg::appUrl() . ")." . (Mail::deliverable($email) ? " Відповідь — на адресу абонента: $email." : ' Питання — за телефоном абонента.');
     Mail::send(['to' => $to, 'subject' => 'Показання лічильників води — о/р ' . ($c['acc'] ?? ''), 'text' => $text, 'replyTo' => Mail::deliverable($email) ? $email : '', 'kind' => 'submit', 'user' => $uid]);
     return ['text' => 'e-mail → ' . $to];
@@ -482,6 +503,8 @@ final class LbWalk {
     $x = CabWeb::dom($r['body']); $form = null;
     foreach ($x->query('//form') as $f) if ($f instanceof DOMElement && in_array('password', array_column(RelayForm::fields($x, $f), 'type'), true)) { $form = $f; break; }
     if (!$form) throw self::page('no_login', $r['body']);
+    // поле капчі у формі входу (Drupal captcha_response, «символи з малюнка») — стоп, не обходимо
+    foreach (RelayForm::fields($x, $form) as $o) if (preg_match('/captcha|xcap|kcaptcha/i', $o['n'])) throw new HttpError(409, 'lb_captcha', ['human' => self::hum('captcha')]);
     $pairs = []; $userSet = false;
     foreach (RelayForm::fields($x, $form) as $o) {
       if ($o['n'] === '') continue; $t = $o['type'];

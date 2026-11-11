@@ -5456,7 +5456,7 @@
     var b = st.bot, c = st.conn, busy = !!LB.busy, err = LB.err ? '<div class="banner bad" role="alert" data-key="lb-err">' + ico('alert', 22) + '<div><p>' + esc(LB.err.human) + '</p></div></div>' : '';
     var win = b.win ? '<p class="small muted" data-key="lb-win">' + esc(t('lb_win', { a: b.win[0], b: b.win[1] })) + '</p>' : '';
     if (!c) {
-      var lead = '<p data-key="lb-lead">' + esc(t('lb_lead_' + b.t + (b.t === 'mail' && b.need.indexOf('dist') >= 0 ? '2' : b.t === 'mail' && b.need.length === 1 ? '1' : b.t === 'cab' && b.lk === 'acc' ? '1' : ''), { org: org })) + '</p>';
+      var lead = '<p data-key="lb-lead">' + esc(t('lb_lead_' + b.t + (b.t === 'mail' && b.need.indexOf('dist') >= 0 ? '2' : b.t === 'mail' && b.need.length === 1 ? '1' : b.t === 'mail' && b.need.join() === 'acc,addr' ? '3' : b.t === 'cab' && b.lk === 'acc' ? '1' : ''), { org: org })) + '</p>';
       if (!LB.open[k]) return '<div class="lb" data-key="lb">' + lead + err + '<div class="dest-ch"><button class="btn sec" data-act="lb-open" data-k="' + esc(k) + '" data-key="lb-open">' + ico('plus', 18) + '<span>' + esc(t('lb_conn_btn')) + '</span></button></div></div>';
       var dr = LB.draft[k] || pre || {};
       var fld = function (f) {

@@ -2182,6 +2182,26 @@ ok('vkkp: cron — новий вхід, показання за номером �
 $k = Providers::lookup('Буча, вул. Енергетиків, 1')['kinds']['water'] ?? []; $v = Providers::lookup('Васильків, вул. Гоголя, 1')['kinds']['water'] ?? []; $z = Providers::lookup('Березань, вул. Шевченка, 1')['kinds']['water'] ?? [];
 ok('довідник: Буча via bucha, Васильків via vkkp, Березань via brz — robot server', ($k['via'] ?? '') === 'bucha' && ($v['via'] ?? '') === 'vkkp' && ($z['via'] ?? '') === 'brz'
   && ($k['robot'] ?? '') === 'server' && ($v['robot'] ?? '') === 'server' && ($z['robot'] ?? '') === 'server', [$k['via'] ?? null, $v['via'] ?? null, $z['via'] ?? null]);
+// 104-а: поле капчі у формі входу (Drupal captcha_response) — стоп, нічого не вводимо
+CabWeb::$http = fn($m, $url, $body, $cookie, $h) => ['code' => 200, 'body' => '<form action="/user/login" method="post"><input name="name"><input type="password" name="pass"><input type="hidden" name="captcha_sid" value="1">'
+  . '<input type="text" name="captcha_response"><input type="submit" name="op" value="Увійти"></form>'];
+$r = $lbu->req('POST', '/api/lb/connect', ['bot' => 'tvk', 'place' => 'lv5', 'login' => 'trusk@gmail.com', 'pass' => 'x-2026', 'consent' => true]);
+ok('tvk: у формі входу поле капчі (captcha_response) — 409 lb_captcha, не підключено', $r->status === 409 && ($r->body['error'] ?? '') === 'lb_captcha' && !Db::one("SELECT id FROM cab_creds WHERE prov = 'Ltvk'"), $r->body);
+// Стрий: лист на zbut_voda@ukr.net — лише рахунок і адреса (без порожніх «Абонент:», «Телефон:»)
+$r = $lbu->req('POST', '/api/lb/connect', ['bot' => 'svk', 'place' => 'lv6', 'acc' => '45678', 'addr' => 'вул. Шевченка, 5, кв. 7', 'consent' => true]);
+$q = $lbu->req('POST', '/api/lb/queue', ['bot' => 'svk', 'place' => 'lv6', 'rid' => 's1', 'items' => [['value' => '312', 'name' => 'Холодна', 'kind' => 'cold']]]);
+Db::q('UPDATE cab_jobs SET next_at = ? WHERE id = ?', [time() - 1, (int)($q->body['job']['id'] ?? 0)]);
+$n0 = count($sent); LocalBot::cron(); $ml = end($sent);
+$mb = preg_match('/base64\r\n\r\n([A-Za-z0-9+\/=\r\n]+?)\r\n(?:--|$)/', (string)($ml[2] ?? ''), $mm) ? base64_decode(preg_replace('/\s+/', '', $mm[1])) : (string)($ml[2] ?? '');
+ok('svk: лист на zbut_voda@ukr.net — «Особовий рахунок: 45678», «Адреса: …», без порожніх «Абонент:» і «Телефон:»', $r->status === 200 && count($sent) === $n0 + 1 && $ml[1] === ['zbut_voda@ukr.net']
+  && str_contains($mb, 'Особовий рахунок: 45678') && str_contains($mb, 'Адреса: вул. Шевченка, 5, кв. 7') && !str_contains($mb, 'Абонент:') && !str_contains($mb, 'Телефон:'), [$r->body, $ml[1] ?? null, $mb]);
+$L = fn(string $a, string $k = 'water') => Providers::lookup($a)['kinds'][$k] ?? [];
+$dr = $L('Дрогобич, вул. Шевченка, 1'); $st2 = $L('Стрий, вул. Шевченка, 1'); $tr = $L('Трускавець, вул. Шевченка, 1'); $mo = $L('Моршин, вул. Шевченка, 1');
+$bo = $L('Бориспіль, вул. Київський Шлях, 1'); $ir = $L('Ірпінь, вул. Соборна, 1'); $vy = $L('Вишневе, вул. Святошинська, 1'); $sp = $L('Шептицький, вул. Шевченка, 1'); $bh = $L('Бровари, вул. Київська, 1', 'heat');
+ok('довідник 104-ї: Дрогобич dvk, Стрий svk, Трускавець tvk, Моршин і Бориспіль abinf, Ірпінь ivk, Вишневе umg; Шептицький — captcha; Бровари тепло 1 823,59 з 20.10.2026',
+  ($dr['via'] ?? '') === 'dvk' && ($st2['via'] ?? '') === 'svk' && ($tr['via'] ?? '') === 'tvk' && ($mo['via'] ?? '') === 'abinf' && ($bo['via'] ?? '') === 'abinf' && ($ir['via'] ?? '') === 'ivk' && ($vy['via'] ?? '') === 'umg'
+  && ($sp['robot'] ?? '') === 'captcha' && ($bh['price'] ?? null) === 1823.59 && ($bh['from'] ?? '') === '2026-10-20' && empty($bh['check']),
+  [$dr['via'] ?? null, $st2['via'] ?? null, $tr['via'] ?? null, $mo['via'] ?? null, $bo['via'] ?? null, $ir['via'] ?? null, $vy['via'] ?? null, $sp['robot'] ?? null, $bh['price'] ?? null]);
 LocalBot::$forceOn = false;
 CabWeb::$http = null;
 Mail::$send = null; Cfg::saveRuntime(array_fill_keys(Mail::KEYS, null));

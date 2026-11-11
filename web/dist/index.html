@@ -2694,6 +2694,7 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
       lb_lead_mail: '{org} приймає показання на e-mail. Можемо надсилати листом від вашого імені — потрібні рахунок, ПІБ, адреса й телефон.',
       lb_lead_cab: 'Можемо вносити показання в кабінет {org} самі — потрібні логін і пароль від кабінету.',
       lb_lead_cab1: 'Можемо вносити показання в кабінет {org} самі — потрібні особовий рахунок і пароль від кабінету на сайті.',
+      lb_lead_mail3: '{org} приймає показання на e-mail. Можемо надсилати листом від вашого імені — потрібні особовий рахунок і адреса.',
       lb_lead_mail1: '{org} приймає показники на e-mail. Можемо надсилати листом від вашого імені — потрібен лише код абонента з платіжки.', lb_f_code: 'Код абонента (з платіжки)',
       lb_lead_mail2: '{org} приймає показання на e-mail відділу збуту вашого району. Можемо надсилати листом від вашого імені — потрібні район, особовий рахунок і адреса; номери лічильників — з їхніх налаштувань.',
       lb_f_dist: 'Район (відділ збуту)', lb_f_dist0: 'Оберіть район', lb_serial: 'Впишіть номер кожного лічильника в його налаштуваннях — {org} приймає показання лише з номером лічильника.',
@@ -3855,6 +3856,7 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
       lb_lead_mail: '{org} принимает показания по e-mail. Можем отправлять письмом от вашего имени — нужны счёт, ФИО, адрес и телефон.',
       lb_lead_cab: 'Можем вносить показания в кабинет {org} сами — нужны логин и пароль от кабинета.',
       lb_lead_cab1: 'Можем вносить показания в кабинет {org} сами — нужны лицевой счёт и пароль от кабинета на сайте.',
+      lb_lead_mail3: '{org} принимает показания по e-mail. Можем отправлять письмом от вашего имени — нужны лицевой счёт и адрес.',
       lb_lead_mail1: '{org} принимает показания по e-mail. Можем отправлять письмом от вашего имени — нужен только код абонента с квитанции.', lb_f_code: 'Код абонента (с квитанции)',
       lb_lead_mail2: '{org} принимает показания на e-mail отдела сбыта вашего района. Можем отправлять письмом от вашего имени — нужны район, лицевой счёт и адрес; номера счётчиков — из их настроек.',
       lb_f_dist: 'Район (отдел сбыта)', lb_f_dist0: 'Выберите район', lb_serial: 'Впишите номер каждого счётчика в его настройках — {org} принимает показания только с номером счётчика.',
@@ -11916,7 +11918,7 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
     var b = st.bot, c = st.conn, busy = !!LB.busy, err = LB.err ? '<div class="banner bad" role="alert" data-key="lb-err">' + ico('alert', 22) + '<div><p>' + esc(LB.err.human) + '</p></div></div>' : '';
     var win = b.win ? '<p class="small muted" data-key="lb-win">' + esc(t('lb_win', { a: b.win[0], b: b.win[1] })) + '</p>' : '';
     if (!c) {
-      var lead = '<p data-key="lb-lead">' + esc(t('lb_lead_' + b.t + (b.t === 'mail' && b.need.indexOf('dist') >= 0 ? '2' : b.t === 'mail' && b.need.length === 1 ? '1' : b.t === 'cab' && b.lk === 'acc' ? '1' : ''), { org: org })) + '</p>';
+      var lead = '<p data-key="lb-lead">' + esc(t('lb_lead_' + b.t + (b.t === 'mail' && b.need.indexOf('dist') >= 0 ? '2' : b.t === 'mail' && b.need.length === 1 ? '1' : b.t === 'mail' && b.need.join() === 'acc,addr' ? '3' : b.t === 'cab' && b.lk === 'acc' ? '1' : ''), { org: org })) + '</p>';
       if (!LB.open[k]) return '<div class="lb" data-key="lb">' + lead + err + '<div class="dest-ch"><button class="btn sec" data-act="lb-open" data-k="' + esc(k) + '" data-key="lb-open">' + ico('plus', 18) + '<span>' + esc(t('lb_conn_btn')) + '</span></button></div></div>';
       var dr = LB.draft[k] || pre || {};
       var fld = function (f) {
