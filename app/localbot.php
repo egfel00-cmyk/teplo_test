@@ -431,7 +431,7 @@ final class LocalBot {
       foreach (Db::q("SELECT prov, COUNT(*) AS c FROM cab_creds WHERE prov LIKE 'L%' GROUP BY prov")->fetchAll() as $x) $conn[substr($x['prov'], 1)] = (int)$x['c'];
     } catch (Throwable $e) {}
     $last = json_decode((string)@file_get_contents(self::lastFile()), true);
-    $bots = []; foreach (self::BOTS as $id => $b) $bots[$id] = ['t' => $b['t'], 'ready' => self::ready($id)] + (!empty($b['off']) ? ['off' => $b['off']] : []) + [ 'conn' => $conn[$id] ?? 0, 'jobs' => (object)($jobs[$id] ?? [])] + (is_array($last) && isset($last[$id]) ? ['last' => array_diff_key($last[$id], ['skel' => 1, 'probe' => 1])] + (isset($last[$id]['probe']) ? ['probe' => $last[$id]['probe']] : []) : []);
+    $bots = []; foreach (self::BOTS as $id => $b) $bots[$id] = ['t' => $b['t'], 'ready' => self::ready($id)] + (!empty($b['off']) ? ['off' => $b['off']] : []) + [ 'conn' => $conn[$id] ?? 0, 'jobs' => (object)($jobs[$id] ?? [])] + (is_array($last) && isset($last[$id]) ? (array_diff_key($last[$id], ['skel' => 1, 'probe' => 1]) ? ['last' => array_diff_key($last[$id], ['skel' => 1, 'probe' => 1])] : []) + (isset($last[$id]['probe']) ? ['probe' => $last[$id]['probe']] : []) : []);   // лише проба — без порожнього last
     return $bots;
   }
 }
