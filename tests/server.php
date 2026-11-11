@@ -2333,12 +2333,12 @@ ok('довідник 107-ї: Вороньків, Богуслав, Нові Пе
   !in_array(false, $v7, true) && LocalBot::pub('renv')['win'] === [1, 5] && LocalBot::pub('vork')['lk'] === 'acc' && LocalBot::pub('bgsv')['lk'] === null
   && ($L('Ставище, вул. Шевченка, 1')['via'] ?? '') === 'stav', $v7);
 
-// 108-а: Ставище — billingsoft з нашого сервера відповідає (з браузера в Україні — відхилено) → робот stav; Ірпінь — тепло КПП «Теплоенергопостач» (кабінет billingsoft, без бота)
+// 108-а: Ставище — billingsoft з нашого сервера відповідає (з браузера в Україні — відхилено) → робот stav; Ірпінь — тепло КПП «Теплоенергопостач» (кабінет billingsoft з капчею — без бота)
 $st8 = $L('Ставище, вул. Шевченка, 1'); $ir8 = $L('Ірпінь, вул. Соборна, 1', 'heat');
-ok('довідник 108-ї: Ставище — via stav, robot server, у «як» — my.stavjkp.kyiv.ua; Ірпінь — тепло КПП «Теплоенергопостач», кабінет my.tep-irpin.org.ua, ціна з платіжки',
+ok('довідник 108-ї: Ставище — via stav, robot server, у «як» — my.stavjkp.kyiv.ua; Ірпінь — тепло КПП «Теплоенергопостач», кабінет my.tep-irpin.org.ua (капча), ціна з платіжки',
   ($st8['via'] ?? '') === 'stav' && ($st8['robot'] ?? '') === 'server' && str_contains((string)($st8['how'] ?? ''), LocalBot::BOTS['stav']['site'])
   && LocalBot::pub('stav')['t'] === 'cab' && LocalBot::pub('stav')['lk'] === null
-  && ($ir8['org'] ?? '') === 'КПП «Теплоенергопостач» ІМР' && ($ir8['cab'] ?? '') === 'https://my.tep-irpin.org.ua/' && array_key_exists('price', $ir8) && $ir8['price'] === null && !empty($ir8['check']) && empty($ir8['via']),
+  && ($ir8['org'] ?? '') === 'КПП «Теплоенергопостач» ІМР' && ($ir8['cab'] ?? '') === 'https://my.tep-irpin.org.ua/' && array_key_exists('price', $ir8) && $ir8['price'] === null && !empty($ir8['check']) && empty($ir8['via']) && ($ir8['robot'] ?? '') === 'captcha',
   [$st8['via'] ?? null, $st8['robot'] ?? null, $ir8['org'] ?? null, $ir8['cab'] ?? null]);
 
 // 106-а: лендинг «Передати у фоні» — стрічка LP_AUTO (app.js) знає всіх ботів LocalBot + htm, vk; /api/config → auto — лише готові (e-mail — без пошти ні)
