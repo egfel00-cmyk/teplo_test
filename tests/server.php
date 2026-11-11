@@ -2018,11 +2018,16 @@ $r = $boss->req('POST', '/api/admin/settings/mail', ['host' => 'smtp-relay.brevo
 ok('порт 465 — «Hetzner не випускає, вкажіть 587», нічого не збережено', $r->status === 422 && ($r->body['error'] ?? '') === 'port_blocked' && !Mail::on());
 $r = $boss->req('POST', '/api/admin/settings/mail', ['host' => 'smtp-relay.brevo.com', 'port' => 587, 'user' => 'x@smtp-brevo.com', 'pass' => 'bad', 'from' => 'noreply@peredai.com.ua', 'admin' => 'boss@gmail.com']);
 ok('ключ не підійшов — «Проверка не прошла, ничего не сохранено»', $r->status === 422 && str_contains((string)($r->body['human'] ?? ''), 'ничего не сохранено') && !Mail::on(), $r->body);
+$mv = Mail::adminView();
+ok('113-я: поля без ключа — черновиком (Mail::on() ні, ключа в черновику нема); /admin з іншого пристрою бачить їх заповненими', !Mail::on() && $mv['draft'] === true && $mv['host'] === 'smtp-relay.brevo.com' && $mv['user'] === 'x@smtp-brevo.com' && $mv['admin'] === 'boss@gmail.com' && $mv['pass'] === '' && !str_contains((string)Cfg::get('mail_draft'), 'bad'), $mv);
+$r = $boss->req('POST', '/api/admin/settings/mail', ['digest' => 'week']);
+ok('113-я: без ключа — «Вставьте ключ SMTP… остальные поля сохранены», пошта не ввімкнулась, поля з чернетки', $r->status === 422 && ($r->body['error'] ?? '') === 'no_key' && !Mail::on() && (Mail::draft()['digest'] ?? '') === 'week' && (Mail::draft()['host'] ?? '') === 'smtp-relay.brevo.com', $r->body);
 $r = $boss->req('POST', '/api/admin/settings/mail', ['host' => 'smtp-relay.brevo.com', 'port' => 587, 'user' => 'x@smtp-brevo.com', 'pass' => 'xsmtpsib-secret-key-123456', 'from' => 'noreply@peredai.com.ua', 'admin' => 'boss@gmail.com']);
 $mv = $r->body['settings']['mail'] ?? [];
 ok('ключ підійшов: тестовий лист на пошту аналітики, збережено; ключ назовні — маскою', $r->status === 200 && Mail::on() && ($r->body['sent'] ?? '') === 'boss@gmail.com' && ($sent[count($sent) - 1][1] ?? []) === ['boss@gmail.com']
   && ($mv['pass'] ?? '') !== 'xsmtpsib-secret-key-123456' && !str_contains(json_encode($r->body), 'secret-key') && ($mv['from'] ?? '') === 'noreply@peredai.com.ua', $mv);
 $r = $boss->req('POST', '/api/admin/settings/mail', ['digest' => 'week']);
+ok('113-я: ключ підійшов — чернетку прибрано', Cfg::get('mail_draft') === null && Mail::draft() === null);
 ok('змінити частоту без повторного ключа', $r->status === 200 && Mail::conf()['digest'] === 'week' && Mail::conf()['pass'] === 'xsmtpsib-secret-key-123456');
 ok('не адмін — відмова, налаштування не стерто', in_array((new Browser('10.9.9.9'))->req('POST', '/api/admin/settings/mail', ['clear' => 1])->status, [401, 403], true) && Mail::on());
 $hm = (new Browser('10.9.9.10'))->req('GET', '/api/health')->body['mail'] ?? [];

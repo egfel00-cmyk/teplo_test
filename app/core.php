@@ -10,7 +10,7 @@ final class Cfg {
   /** Ключи, которые владелец может задать из /admin → «Настройки» (лежат в SITE_DATA/uploads/settings/settings.json, не в git).
    *  Непустое значение оттуда главнее config.php — чтобы включать/менять без доступа к серверу. */
   const RUNTIME = ['anthropic_api_key', 'anthropic_model', 'bot_token', 'bot_username', 'webhook_secret', 'bot_token_prev',
-    'smtp_host', 'smtp_port', 'smtp_user', 'smtp_pass', 'smtp_from', 'smtp_from_name', 'mail_admin_to', 'mail_digest'];   // почта (81-я, app/mail.php)   // bot_token_prev — прежний бот после смены: вход в Mini App из его меню ещё работает
+    'smtp_host', 'smtp_port', 'smtp_user', 'smtp_pass', 'smtp_from', 'smtp_from_name', 'mail_admin_to', 'mail_digest', 'mail_draft'];   // почта (81-я, app/mail.php; mail_draft — 113-я: поля без ключа)   // bot_token_prev — прежний бот после смены: вход в Mini App из его меню ещё работает
 
   /** Значения по умолчанию; секреты и база — только из SITE_DATA/config.php (не из git). */
   private static function defaults(): array {

@@ -11,12 +11,17 @@ final class Mail {
   /** Тесты: перехват вместо сети — callable(array $conf, string $from, array $rcpt, string $data): ?string (null — ушло, строка — ошибка). */
   public static $send = null;
   const DAY_MAX = 250;    // за 24 ч всего (Brevo free — 300/сутки; запас на ручные проверки)
-  const KEYS = ['smtp_host', 'smtp_port', 'smtp_user', 'smtp_pass', 'smtp_from', 'smtp_from_name', 'mail_admin_to', 'mail_digest'];
+  const KEYS = ['smtp_host', 'smtp_port', 'smtp_user', 'smtp_pass', 'smtp_from', 'smtp_from_name', 'mail_admin_to', 'mail_digest', 'mail_draft'];
 
   public static function conf(): array {
     return ['host' => trim((string)Cfg::get('smtp_host')), 'port' => (int)(Cfg::get('smtp_port') ?: 587), 'user' => (string)Cfg::get('smtp_user'),
       'pass' => (string)Cfg::get('smtp_pass'), 'from' => trim((string)Cfg::get('smtp_from')), 'name' => (string)(Cfg::get('smtp_from_name') ?: 'Лічильники'),
       'admin' => trim((string)Cfg::get('mail_admin_to')), 'digest' => (string)(Cfg::get('mail_digest') ?: 'day')];
+  }
+  /** Черновик /admin «Пошта» (113-я): host, port, user, from, name, admin, digest — без ключа; null — нет. */
+  public static function draft(): ?array {
+    $d = json_decode((string)Cfg::get('mail_draft'), true); if (!is_array($d) || empty($d['host'])) return null;
+    return array_intersect_key($d, array_flip(['host', 'port', 'user', 'from', 'name', 'admin', 'digest']));
   }
   public static function on(): bool { $c = self::conf(); return $c['host'] !== '' && self::valid($c['from']); }
   public static function valid(string $a): bool { return strlen($a) <= 190 && (bool)filter_var($a, FILTER_VALIDATE_EMAIL) && !preg_match('/[\r\n<>,;"]/', $a); }
@@ -200,14 +205,15 @@ final class Mail {
   // ---------- /admin → «Настройки» → «Пошта» ----------
   public static function adminView(): array {
     $c = self::conf(); $mask = fn(string $v) => $v === '' ? '' : (strlen($v) > 14 ? substr($v, 0, 4) . '…' . substr($v, -4) : '••••');
-    return ['on' => self::on(), 'host' => $c['host'], 'port' => $c['port'], 'user' => $c['user'], 'pass' => $mask($c['pass']), 'from' => $c['from'], 'name' => $c['name'],
+    $d = self::on() ? null : self::draft(); if ($d) $c = array_replace($c, $d);   // 113-я: поля без ключа — с любого устройства останется вставить ключ
+    return ['on' => self::on(), 'draft' => (bool)$d, 'host' => $c['host'], 'port' => $c['port'], 'user' => $c['user'], 'pass' => $mask($c['pass']), 'from' => $c['from'], 'name' => $c['name'],
       'admin' => $c['admin'], 'digest' => $c['digest'], 'source' => Cfg::source('smtp_host'), 'day' => self::on() ? self::count24() : 0, 'dayMax' => self::DAY_MAX,
       'recent' => self::on() ? self::recent(15) : []];
   }
   /** Проверить (тестовое письмо на mail_admin_to, иначе на адрес отправителя) и только потом сохранить. clear — удалить все настройки почты. */
   public static function adminSave(array $in): array {
     if (!empty($in['clear'])) { Cfg::saveRuntime(array_fill_keys(self::KEYS, null)); return ['ok' => true]; }
-    $cur = self::conf();
+    $cur = self::conf(); if (!self::on() && ($d = self::draft())) $cur = array_replace($cur, $d);
     $host = strtolower(trim((string)($in['host'] ?? $cur['host']))); $port = (int)($in['port'] ?? $cur['port'] ?: 587);
     $user = trim((string)($in['user'] ?? $cur['user'])); $pass = (string)($in['pass'] ?? ''); if ($pass === '') $pass = $cur['pass'];
     $from = trim((string)($in['from'] ?? $cur['from'])); $name = trim((string)($in['name'] ?? $cur['name']));
@@ -221,14 +227,17 @@ final class Mail {
     if (!in_array($digest, ['day', 'week', 'off'], true)) $digest = 'day';
     if (mb_strlen($name) > 60) $name = mb_substr($name, 0, 60);
     $c = ['host' => $host, 'port' => $port, 'user' => $user, 'pass' => $pass, 'from' => $from, 'name' => $name ?: 'Лічильники', 'admin' => $admin, 'digest' => $digest];
+    // 113-я: почта ещё не работает — поля без ключа сохраняем черновиком (Mail::on() от него не включается; ключ в черновик не попадает)
+    if (!self::on()) Cfg::saveRuntime(['mail_draft' => json_encode(array_diff_key($c, ['pass' => 1]), JSON_UNESCAPED_UNICODE)]);
+    if ($pass === '') throw self::fail('no_key', 'Вставьте ключ SMTP (Brevo → SMTP & API → «Generate SMTP key») и нажмите ещё раз. Остальные поля сохранены — с любого устройства останется только ключ.');
     $to = $admin !== '' ? $admin : $from;
     try {
       $r = self::send(['to' => $to, 'kind' => 'test', 'subject' => 'Лічильники: пошта працює',
         'text' => "Це тестовий лист із сервісу «Лічильники» (" . Cfg::appUrl() . ").\n\nЯкщо ви його бачите — відправка листів налаштована: щоденна зведення, нагадування людям без Telegram і подача показань e-mail.\n\nСервер: $host:$port, відправник: $from.",
       ], $c);
-    } catch (HttpError $e) { throw self::fail('mail_check_failed', 'Проверка не прошла, ничего не сохранено. ' . ($e->extra['human'] ?? $e->err)); }
+    } catch (HttpError $e) { throw self::fail('mail_check_failed', 'Проверка не прошла, ничего не сохранено' . (self::on() ? '' : ' (кроме полей без ключа)') . '. ' . ($e->extra['human'] ?? $e->err)); }
     Cfg::saveRuntime(['smtp_host' => $host, 'smtp_port' => (string)$port, 'smtp_user' => $user, 'smtp_pass' => $pass, 'smtp_from' => $from,
-      'smtp_from_name' => $name, 'mail_admin_to' => $admin, 'mail_digest' => $digest]);
+      'smtp_from_name' => $name, 'mail_admin_to' => $admin, 'mail_digest' => $digest, 'mail_draft' => null]);
     return ['ok' => true, 'sent' => $to, 'id' => $r['id']];
   }
 
