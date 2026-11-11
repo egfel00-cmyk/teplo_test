@@ -28,7 +28,8 @@ if (!fs.existsSync(NOV)) { const j = path.join(LAB, 'rp.local.json'); fs.writeFi
     });
     // порядок блоків: «Набігло» → фото → показання; табло/барабанів у записі немає
     const order = (u, ph, v) => p.evaluate(([u, ph, v]) => { const a = document.querySelector('[data-key=' + u + ']'), b = document.querySelector('[data-key=rec-photos]'), c = document.querySelector('[data-key=' + v + ']');
-      const before = (x, y) => !!(x && y && (x.compareDocumentPosition(y) & 4)); return { used: !!a, ok: (!a || before(a, b || c)) && (!ph || before(b, c)), drum: !!document.querySelector('.main .gdrum, .main .wdrum, .main .lcd, .main .elcd') }; }, [u, ph, v]);
+      // 11.11: показання з копіюванням — усередині «Набігло» (один шаблон для всіх лічильників), фото — під блоком
+      const before = (x, y) => !!(x && y && (x.compareDocumentPosition(y) & 4)); return { used: !!a, ok: !!(a && c && a.contains(c)) && (!ph || before(a, b)), drum: !!document.querySelector('.main .gdrum, .main .wdrum, .main .lcd, .main .elcd') }; }, [u, ph, v]);
     const g1 = await geo();
     ok(vw + ': газ — вікно роликів на превʼю рівно по центру (±2 px), не ширше картки', g1 && g1.fx && Math.abs(g1.dx) <= 2 && Math.abs(g1.dy) <= 2 && g1.w <= g1.bw, g1);
     const o1 = await order('erec-used', true, 'erec-values'), u1 = (await p.textContent('[data-key=erec-used]').catch(() => '')).replace(/\s+/g, ' ');

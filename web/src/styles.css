@@ -1976,6 +1976,22 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
 .ru-note { margin: var(--sp-2) 0 0; font-size: 13px; color: var(--c-ink-2); line-height: 1.4; }
 .ru-base .ru-per { margin: 0; }
 /* показання запису — список з копіюванням (без табло) */
+/* показання запису з копіюванням — у блоці «Набігло» (власник 11.11: один шаблон для всіх лічильників) */
+.ru-vals { list-style: none; margin: var(--sp-4) 0 0; padding: var(--sp-1) 0 0; border-top: 1px solid var(--c-line); }
+.ru-vals li { display: flex; align-items: center; gap: 6px; min-height: 52px; }
+.ru-vals li + li { border-top: 1px solid var(--c-line); }
+.ru-vals .grow { flex: 1; min-width: 0; font-size: var(--fs-m); font-weight: 600; line-height: 1.3; }
+.ru-vals .grow .muted { font-weight: 400; }
+.ru-vals b { font-size: var(--fs-l); font-weight: 600; white-space: nowrap; }
+.ru-vals li[data-k=energy] b { color: var(--kc); }
+.ru-vals .u { font-size: var(--fs-s); color: var(--c-ink-2); white-space: nowrap; }
+.ru-vals .copy-ico { margin-left: 8px; }
+.ru-vals .copy-sp { flex: none; width: 48px; }
+.ru-vals li.minor { min-height: 40px; }
+.ru-vals li.minor .grow { font-size: var(--fs-s); font-weight: 400; color: var(--c-ink-2); }
+.ru-vals li.minor b { font-size: var(--fs-m); font-weight: 500; }
+.ru-only .ru-vals, .ru-base .ru-vals { margin-top: var(--sp-3); }
+.ru-only .ru-t + .ru-vals { border-top: 0; }
 .rec-vals { margin: 0 0 var(--sp-4); }
 .rec-vals .rv-v { font-size: var(--fs-m); }
 .rec-vals .copy-ico { margin-left: 8px; }

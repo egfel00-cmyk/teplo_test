@@ -2008,6 +2008,22 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
 .ru-note { margin: var(--sp-2) 0 0; font-size: 13px; color: var(--c-ink-2); line-height: 1.4; }
 .ru-base .ru-per { margin: 0; }
 /* показання запису — список з копіюванням (без табло) */
+/* показання запису з копіюванням — у блоці «Набігло» (власник 11.11: один шаблон для всіх лічильників) */
+.ru-vals { list-style: none; margin: var(--sp-4) 0 0; padding: var(--sp-1) 0 0; border-top: 1px solid var(--c-line); }
+.ru-vals li { display: flex; align-items: center; gap: 6px; min-height: 52px; }
+.ru-vals li + li { border-top: 1px solid var(--c-line); }
+.ru-vals .grow { flex: 1; min-width: 0; font-size: var(--fs-m); font-weight: 600; line-height: 1.3; }
+.ru-vals .grow .muted { font-weight: 400; }
+.ru-vals b { font-size: var(--fs-l); font-weight: 600; white-space: nowrap; }
+.ru-vals li[data-k=energy] b { color: var(--kc); }
+.ru-vals .u { font-size: var(--fs-s); color: var(--c-ink-2); white-space: nowrap; }
+.ru-vals .copy-ico { margin-left: 8px; }
+.ru-vals .copy-sp { flex: none; width: 48px; }
+.ru-vals li.minor { min-height: 40px; }
+.ru-vals li.minor .grow { font-size: var(--fs-s); font-weight: 400; color: var(--c-ink-2); }
+.ru-vals li.minor b { font-size: var(--fs-m); font-weight: 500; }
+.ru-only .ru-vals, .ru-base .ru-vals { margin-top: var(--sp-3); }
+.ru-only .ru-t + .ru-vals { border-top: 0; }
 .rec-vals { margin: 0 0 var(--sp-4); }
 .rec-vals .rv-v { font-size: var(--fs-m); }
 .rec-vals .copy-ico { margin-left: 8px; }
@@ -8533,6 +8549,7 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
     var ms = wmeters(null, true).filter(function (m) { return hasVal(r, m.id); }), h = back + '<h1>' + esc(fmtDate(r.date, true)) + '</h1>';
     if (r.base) h += '<p class="small muted">' + esc(t('wh_base')) + '</p>';
     // 1) скільки набігло за місяць (місяць — за датою зняття, як у Водоканалу) і скільки коштувало; 2) фото; 3) показання водомірів списком (без барабанів — власник 10.11)
+    var vals = usedVals('wrec-values', ms.map(function (m) { var v = r.vals[m.id], d = x.by[m.id]; return { n: wname(m), sub: d !== undefined ? '+' + d + ' м³' : '', v: wfmt(v), u: 'м³', copy: Wt.whole(v), ck: 'wrec-copy-' + m.id, k: m.kind }; }));
     if (x.hot !== null || x.cold !== null) {
       var ym = String(r.date).slice(0, 7), wser = Wt.series(wrecs(), wmeters(null, true), gaps());
       var bm = function (kd) { return Wt.monthly(wser, kd, wtar()).filter(function (b0) { return b0.ym === ym; })[0] || null; }, hb = x.hot !== null ? bm('hot') : null, cb = x.cold !== null ? bm('cold') : null;
@@ -8540,15 +8557,14 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
       var from = [hb && hb.from, cb && cb.from, x.fromHot, x.fromCold].filter(Boolean).sort()[0], days = Math.max(hb ? hb.days : 0, cb ? cb.days : 0, x.daysHot || 0, x.daysCold || 0), both = qh !== null && qc !== null;
       var self = (qh !== null && qh !== x.hot) || (qc !== null && qc !== x.cold);
       h += usedBox({ kind: both ? 'water' : qh !== null ? 'hot' : 'cold', key: 'wrec-used', title: t('ru_title', { m: monthLabel(ym) }), per: from ? t('ru_per', { a: fmtDate(from), b: fmtDate(r.date), d: days }) : '',
-        qs: [qh !== null ? { v: '+' + qh, u: 'м³', l: both ? t('ru_hot') : '', k: 'hot' } : null, qc !== null ? { v: '+' + qc, u: 'м³', l: both ? t('ru_cold') : '', k: 'cold' } : null].filter(Boolean), money: c.total,
+        qs: [qh !== null ? { v: '+' + qh, u: 'м³', l: both ? t('ru_hot') : '', k: 'hot' } : null, qc !== null ? { v: '+' + qc, u: 'м³', l: both ? t('ru_cold') : '', k: 'cold' } : null].filter(Boolean), money: c.total, vals: vals,
         lines: [qc !== null ? t('ru_w_c', { q: qc, a: money(tr.supply), b: money(tr.drain), s: money(c.coldSupply + c.coldDrain) }) : '', qh !== null ? t('ru_w_h', { q: qh, a: money(tr.hot), b: money(tr.drain), s: money(c.hot + c.hotDrain) }) : '',
           self ? t('ru_this', { q: (x.hot || 0) + (x.cold || 0), u: 'м³', d: x.days || days }) : '', wrecPaid(r)],
         proj: usedProj((qh || 0) + (qc || 0), days, c.total, 'м³'), note: both || qh !== null ? t('wr_parts', { vk: money(c.vk), htm: money(c.htm) }) : '' });
-    } else if (r.base) h += usedBase('wrec-used');
+    } else if (r.base) h += usedBase('wrec-used', vals, ms.length === 1 ? ms[0].kind : 'water');
+    else h += usedOnly(ms.length === 1 ? ms[0].kind : 'water', 'wrec-used', vals);
     h += recPhotos(r.photos, 'w' + r.id, 'w:' + r.id);
-    h += '<ul class="list rec-vals" data-key="wrec-values">' + ms.map(function (m) { var v = r.vals[m.id], d = x.by[m.id];
-      return '<li data-k="' + m.kind + '"><div class="grow"><b>' + esc(wname(m)) + '</b>' + (d !== undefined ? ' <span class="muted">· +' + d + ' м³</span>' : '') + '</div><b class="num rv-v">' + esc(wfmt(v)) + '</b> <span class="small muted">м³</span>' + copyIco(Wt.whole(v), 'wrec-copy-' + m.id) + '</li>'; }).join('') + '</ul>' +
-      (r.base ? '' : billsBox('w:' + r.id, r.bills, t('bl_title', { m: monthLabel(String(r.date).slice(0, 7)) })));
+    h += (r.base ? '' : billsBox('w:' + r.id, r.bills, t('bl_title', { m: monthLabel(String(r.date).slice(0, 7)) })));
     if (r.base) h += ownBox('w', r);
     if (!r.base && !r.own) {
       if (thisMonth(r.date)) h += whereAcc(wsendPanel(r), r.id);
@@ -9228,10 +9244,22 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
     return '<section class="panel ru ru-' + o.kind + '" data-key="' + o.key + '"><h2 class="ru-t">' + esc(o.title) + '</h2>' + (o.per ? '<p class="ru-per">' + esc(o.per) + '</p>' : '') +
       '<div class="ru-big">' + o.qs.map(function (q) { return '<div class="ru-q"' + (q.k ? ' data-k="' + q.k + '"' : '') + '>' + (q.l ? '<i>' + esc(ucf(q.l)) + '</i>' : '') + '<b class="num">' + esc(q.v) + '</b><span>' + esc(q.u) + '</span></div>'; }).join('') +
       (o.money !== null && o.money !== undefined ? '<div class="ru-m">' + (o.qs.some(function (q) { return q.l; }) ? '<i>' + esc(ucf(t('ru_sum'))) + '</i>' : '') + '<b class="num">≈ ' + esc(money(o.money)) + '</b><span>грн</span></div>' : '') + '</div>' +
+      (o.vals || '') +
       ((o.lines || []).filter(Boolean).length ? '<div class="ru-ls">' + o.lines.filter(Boolean).map(function (l) { return '<p>' + esc(l) + '</p>'; }).join('') + '</div>' : '') +
       (o.proj ? '<p class="ru-proj">' + esc(o.proj) + '</p>' : '') + (o.note ? '<p class="ru-note">' + esc(o.note) + '</p>' : '') + '</section>';
   }
-  function usedBase(key) { return '<section class="panel ru ru-base" data-key="' + key + '"><p class="ru-per">' + esc(t('ru_base')) + '</p></section>'; }
+  function usedBase(key, vals, kind) { return '<section class="panel ru ru-base' + (kind ? ' ru-' + kind : '') + '" data-key="' + key + '"><p class="ru-per">' + esc(t('ru_base')) + '</p>' + (vals || '') + '</section>'; }
+  /** Показання запису з копіюванням — у тому ж блоці, що й «Набігло» та гроші (власник 11.11: «один шаблон для всіх лічильників»).
+   *  key — data-key списку; rows: [{n, sub, v, u, copy, ck, k}] (copy — що копіювати; немає — без кнопки). */
+  function usedVals(key, rows) {
+    rows = (rows || []).filter(Boolean); if (!rows.length) return '';
+    return '<ul class="ru-vals" data-key="' + key + '">' + rows.map(function (x) {
+      var cp = copyIco(x.copy, x.ck);
+      return '<li' + (x.k ? ' data-k="' + x.k + '"' : '') + (x.minor ? ' class="minor"' : '') + '><span class="grow">' + esc(x.n) + (x.sub ? ' <span class="muted">· ' + esc(x.sub) + '</span>' : '') + '</span><b class="num">' + esc(x.v) + '</b>' + (x.u ? '<span class="u">' + esc(x.u) + '</span>' : '') + (cp || '<span class="copy-sp" aria-hidden="true"></span>') + '</li>';
+    }).join('') + '</ul>';
+  }
+  /** Запис без «Набігло» (перший, розхід не порахувати) — той самий блок, лише показання. */
+  function usedOnly(kind, key, vals, per) { return vals ? '<section class="panel ru ru-only ru-' + kind + '" data-key="' + key + '"><h2 class="ru-t">' + esc(t('ru_vals')) + '</h2>' + (per ? '<p class="ru-per">' + esc(per) + '</p>' : '') + vals + '</section>' : ''; }
   /** Місяць ще не весь (до 25 днів) — «якщо так і далі»: розхід і гроші в перерахунку на 30,4 дня за тією ж ціною. */
   function usedProj(q, days, cost, u, dec) {
     if (!(days > 0) || days >= 25 || !(q > 0)) return '';
@@ -9253,19 +9281,18 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
     var x = md.series(mrecs(m.id), m).filter(function (s0) { return s0.rec.id === id; })[0] || {};
     var h = back + '<h1>' + esc(fmtDate(r.date, true)) + '</h1>' + (r.base ? '<p class="small muted">' + esc(t('eh_base')) + '</p>' : '<p class="small muted">' + esc(t('er_for', { m: monthLabel(md.forMonth(r.date)) })) + '</p>');
     // 1) скільки набігло за місяць, на який зараховується, і скільки це коштувало; 2) фото; 3) показання списком (без табло — власник 10.11)
+    var vals = usedVals('erec-values', md.keys(m).map(function (q) { var v = md.whole(r.z[q]); return { n: ename(m), sub: md.zones(m) > 1 ? ezl(m, q) : '', v: v === null ? '—' : v, u: u, copy: v, ck: md.zones(m) > 1 ? 'erec-copy-' + q : 'erec-copy-all' }; }));
     if (x.dz) {
       var ym = md.forMonth(r.date), b = md.monthly(md.series(mrecs(m.id), m), m, sopts(k)).filter(function (b0) { return b0.ym === ym; })[0] || { kwh: x.kwh, dz: x.dz, days: x.days, from: null, to: r.date };
       var c = md.cost(m, b.dz, b.to, sopts(k)), one = md.zones(m) === 1, cur = md.whole(r.z.all);
       h += usedBox({ kind: k, key: 'erec-used', title: t('ru_title', { m: monthLabel(ym) }), per: b.from ? t('ru_per', { a: fmtDate(b.from), b: fmtDate(b.to), d: b.days }) : '',
-        qs: [{ v: '+' + b.kwh, u: u }], money: c.total,
+        qs: [{ v: '+' + b.kwh, u: u }], money: c.total, vals: vals,
         lines: (one ? [t('ru_calc', { q: b.kwh, u: u, p: money(c.price), s: money(c.total) })] : md.keys(m).map(function (q) { return t('ru_zone', { z: ezl(m, q), q: b.dz[q], p: money(c.price * md.coef(m, q)), s: money(c.parts[q]) }); }))
           .concat([b.kwh !== x.kwh ? t('ru_this', { q: x.kwh, u: u, d: x.days }) : '', one && cur !== null ? t('ru_meter', { a: cur - x.dz.all, b: cur, u: u }) : '', erecPaid(k, m, r)]),
         proj: usedProj(b.kwh, b.days, c.total, u), note: k === 'gas' ? t('gst_tariff', { p: money(c.price) }) : '' });
-    } else if (r.base) h += usedBase('erec-used');
+    } else if (r.base) h += usedBase('erec-used', vals, k);
+    else h += usedOnly(k, 'erec-used', vals);
     h += recPhotos(r.photos, 'm' + r.id, 'm:' + r.id);
-    h += '<ul class="list rec-vals" data-key="erec-values">' + md.keys(m).map(function (q) { var v = md.whole(r.z[q]);
-      return '<li><div class="grow"><b>' + esc(ename(m)) + '</b>' + (md.zones(m) > 1 ? ' <span class="muted">· ' + esc(ezl(m, q)) + '</span>' : '') + '</div><b class="num rv-v">' + esc(v === null ? '—' : v) + '</b> <span class="small muted">' + esc(u) + '</span>' +
-        copyIco(v, md.zones(m) > 1 ? 'erec-copy-' + q : 'erec-copy-all') + '</li>'; }).join('') + '</ul>';
     if (r.base) h += ownBox('m', r);
     if (!r.base && !r.own) {
       var w = md.win(today());
@@ -11317,26 +11344,25 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
         }).join('') + '<div class="help block" id="re-err"></div></div>' +
         '<div class="row-actions"><a class="btn sec" href="#rec-' + r.id + '">' + esc(t('cancel')) + '</a><button class="btn" type="submit" data-key="rec-save">' + esc(t('save')) + '</button></div></form>' };
     }
-    var rows = R.FIELDS.filter(function (f) { return f.key !== 'date'; }).map(function (f) {
+    var vals = usedVals('rec-values', R.FIELDS.filter(function (f) { return f.key !== 'date'; }).map(function (f) {
       var v = f.key === 'errCode' ? (h.errCode || '—') : (R.num(h[f.key]) === null ? '—' : R.formatForHtm(f.key, h[f.key]));
-      return '<li><div class="grow small muted">' + esc(fieldLabel(f.key)) + '</div><b class="num">' + esc(v) + '</b>' + (f.unit && v !== '—' ? ' <span class="small muted">' + esc(f.key === 'energy' ? 'Гкал' : fieldUnit(f.key)) + '</span>' : '') +
-        (f.key === 'energy' && v !== '—' ? copyIco(v, 'rec-copy-energy') : '') + '</li>';
-    }).join('');
+      return { n: fieldLabel(f.key), v: v, u: f.unit && v !== '—' ? (f.key === 'energy' ? 'Гкал' : fieldUnit(f.key)) : '', copy: f.key === 'energy' && v !== '—' ? v : null, ck: 'rec-copy-energy', k: f.key === 'energy' ? 'energy' : '', minor: f.key !== 'energy' };
+    }));
     if (window.TeploStats) loadWeather();
     var wx = wxFor(r);
     // 1) скільки набігло з минулого показання і скільки коштувало (власник 10.11 — першим блоком); 2) фото; 3) поля показань списком (без ЖК-табло)
-    var used = iv ? (iv.dE < 0 ? '<section class="panel ru ru-heat" data-key="rec-used"><h2 class="ru-t">' + esc(t('rec_used_title')) + '</h2><p class="ru-per">' + esc(intervalText(iv)) + '</p></section>' :
+    var used = iv ? (iv.dE < 0 ? '<section class="panel ru ru-heat" data-key="rec-used"><h2 class="ru-t">' + esc(t('rec_used_title')) + '</h2><p class="ru-per">' + esc(intervalText(iv)) + '</p>' + vals + '</section>' :
       usedBox({ kind: 'heat', key: 'rec-used', title: t('rec_used_title'), per: t('ru_per', { a: fmtDate(iv.from, String(iv.from).slice(0, 4) !== String(h.date).slice(0, 4)), b: fmtDate(h.date, true), d: iv.days }),
-        qs: [{ v: '+' + fmtN(iv.dE, 3), u: 'Гкал' }], money: iv.cost,
+        qs: [{ v: '+' + fmtN(iv.dE, 3), u: 'Гкал' }], money: iv.cost, vals: vals,
         lines: [t('ru_h_calc', { q: fmtN(iv.dE, 3), p: money(tariff()), s: money(iv.parts.heat) }), [iv.parts.mzk > 0.004 ? t('ru_h_mzk', { s: money(iv.parts.mzk) }) : '', iv.parts.abon > 0.004 ? t('ru_h_abon', { s: money(iv.parts.abon) }) : ''].filter(Boolean).reduce(function (a0, x0, i0, all) { return i0 === all.length - 1 ? t('ru_h_plus', { x: all.join(t('ru_and')) }) : a0; }, '')],
-        proj: iv.days >= 25 && iv.days <= 37 ? '' : t('rec_per_month', { de: fmtN(iv.dE / iv.days * MONTH_DAYS, 3), cost: money(costOf(iv.dE / iv.days * MONTH_DAYS, MONTH_DAYS).total) }) })) : '';
+        proj: iv.days >= 25 && iv.days <= 37 ? '' : t('rec_per_month', { de: fmtN(iv.dE / iv.days * MONTH_DAYS, 3), cost: money(costOf(iv.dE / iv.days * MONTH_DAYS, MONTH_DAYS).total) }) })) : usedOnly('heat', 'rec-used', vals);
     var st = (r.status === 'handed' || r.status === 'rejected' || r.status === 'accepted') ? '<a class="btn sec" href="#status" data-act="focus" data-id="' + r.id + '">' + esc(t('rec_status')) + '</a>' : '';
     var wxp = wx ? '<div class="panel wx-panel" data-key="rec-weather"><h2>' + ico('thermo', 20) + ' ' + esc(t('wx_title')) + '</h2><div class="wx-tiles">' +
       (wx.avg !== null ? '<div><div class="num big wx-t-' + wxTone(wx.avg) + '">' + esc(degTxt(wx.avg)) + '</div><div class="small muted">' + esc(t('wx_t_avg')) + '</div></div>' +
         '<div><div class="num mid">' + esc(degTxt(wx.min)) + ' … ' + esc(degTxt(wx.max)) + '</div><div class="small muted">' + esc(t('wx_t_range')) + '</div></div>' +
         '<div><div class="num mid">' + wx.frost + ' / ' + wx.ser.length + '</div><div class="small muted">' + esc(t('wx_t_frost')) + '</div></div>' : '') +
       (wx.day !== null ? '<div><div class="num mid">' + esc(degTxt(wx.day)) + '</div><div class="small muted">' + esc(t('wx_t_day')) + '</div></div>' : '') + '</div>' + wxSpark(wx.ser) + '</div>' : '';
-    return { screen: 'S09', route: 'history', html: head + used + recPhotos(r.photos, 'h' + r.id, 'h:' + r.id) + '<ul class="list rec-vals" data-key="rec-values">' + rows + '</ul>' + wxp + hsprPanel(r, iv) + billsBox('h:' + r.id, r.bills, t('bl_title', { m: monthLabel(String(h.date || '').slice(0, 7)) })) +
+    return { screen: 'S09', route: 'history', html: head + used + recPhotos(r.photos, 'h' + r.id, 'h:' + r.id) + wxp + hsprPanel(r, iv) + billsBox('h:' + r.id, r.bills, t('bl_title', { m: monthLabel(String(h.date || '').slice(0, 7)) })) +
       '<div class="row-actions">' + st + '<a class="btn sec" href="#rec-' + r.id + '-edit" data-key="rec-edit">' + esc(t('rec_edit')) + '</a>' +
       '<button class="btn danger" data-act="rec-del-ask" data-key="rec-del">' + esc(t('rec_del')) + '</button></div><div id="rec-del-confirm"></div>' + ownBox('h', r) };
   }
