@@ -6530,7 +6530,8 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
       dg = String(dg || ''); red = String(red || '').replace(/\D/g, '').slice(0, 1);
       if (dg.length < 4 || dg.length > 7) return;
       if (dg.length === 7 && /^0/.test(dg) && !red) { red = dg.slice(6); dg = dg.slice(0, 6); }
-      if (dg.length === 7) { for (var i = 1; i < 7; i++) if (dg[i] === '1') add(dg.slice(0, i) + dg.slice(i + 1), red, w * 0.8, src + '-1'); return; }
+      // зайва «1» — кромка рамки спереди (НІК 4.11: «1003491» → 003491) або перемичка між роликами всередині ряду
+      if (dg.length === 7) { for (var i = 0; i < 7; i++) if (dg[i] === '1') add(dg.slice(0, i) + dg.slice(i + 1), red, w * (i === 0 ? 0.9 : 0.8), src + '-1'); return; }
       c.push({ dg: dg, v: Number(dg), red: red, w: w + (/^0/.test(dg) ? 1 : 0) + (dg.length >= 5 ? 0.3 : 0) + (red ? 0.4 : 0), src: src });
     };
     (drums || []).forEach(function (d) { if (d && d.text) add(String(d.text).replace(/\D/g, ''), d.red, 1 + (d.find || d.score || 0) + (d.sure ? 0.3 : 0), 'drum'); });

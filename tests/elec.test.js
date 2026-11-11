@@ -150,4 +150,10 @@ ok('фото: за 60 днів до 6000 кВт·год — ще можливо'
   q = E.fromPhotos([sh], [M1], {});
   ok('НІК: без прошлих — теж 3529,4 (на перевірку людині)', q.e1.all && q.e1.all.v === 3529 && q.e1.all.frac === '4', q);
 }
+// НІК 4.11: рушій прочитав «1003491»,8 — спереди кромка рамки; не «100349», а 3491
+{ const dr = E.drumPick([{ text: '1003491', red: '8', score: 0.781, votes: 2, sure: true, tint: 'red', cells: 8 }], [{ text: 'kW·h', score: 0.85 }]);
+  ok('НІК: «1003491»,8 → 3491,8 (зайва «1» — кромка рамки)', dr && dr.value === 3491 && dr.digits === '003491' && dr.frac === '8', dr);
+  const q = E.fromPhotos([{ lines: [], drum: { value: dr.value, digits: dr.digits, frac: dr.frac, sure: !!dr.sure, edge: !!dr.edge, alts: dr.alts || [] } }], [M1], { e1: { all: '3484' } }, { days: { e1: 1 } });
+  ok('НІК: 3491 при прошлих 3484 день тому — підставляється', q.e1.all && q.e1.all.v === 3491, q);
+}
 console.log('\nИтог: ' + pass + ' OK, ' + fail + ' FAIL'); process.exit(fail ? 1 : 0);
