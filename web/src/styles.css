@@ -1397,7 +1397,9 @@ details.tbl-acc[open] > .tbl-wrap { margin-top: 12px; }
 /* секції під сценою */
 .lp-sec { max-width: 1180px; margin: 0 auto; padding: 56px 20px 0; }
 .lp-h2 { font-size: clamp(28px, 7.4vw, 44px); line-height: 1.1; letter-spacing: -0.025em; margin: 0 0 26px; max-width: 18ch; text-wrap: balance; }
-.lp-dest { padding-top: 34px; text-align: center; }
+.lp-dest { padding-top: 34px; text-align: center; position: relative; }
+/* 111-а: картки й стрічка лендинга — уся площа веде до «Почати» (їх приймали за кнопки); над анімаціями, без власного вигляду */
+.lp-go { position: absolute; inset: 0; z-index: 2; border-radius: inherit; -webkit-tap-highlight-color: transparent; }
 /* «Ціни вашої громади» (90-а, власник: «коротко, як інші фічі») — громади довідника по областях рядками й підсумок */
 .lp-prv { display: grid; gap: 6px; margin-top: 16px; padding: 14px 16px; border-radius: 14px; background: var(--c-surface-2); border: 1px solid var(--c-line); }
 .lpv-r { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; font-size: var(--fs-s); padding-bottom: 6px; border-bottom: 1px dashed var(--c-line); }

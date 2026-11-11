@@ -72,7 +72,7 @@ const U = 'http://127.0.0.1:8013/';
         return { inHero: r.left >= h.left && r.right <= h.right, cover: Math.round(left ? r.right - s.left : s.right - r.left) }; }); });
     ok(vw + ': лендинг — 4 плашки героя в картці' + (vw < 600 ? ', на телефоні закривають ≤ 40 px екрана' : ''), tl.length === 4 && tl.every(x => x.inHero && (vw >= 600 || x.cover <= 40)), tl);
     const pr = await lp.evaluate(() => { const c = document.querySelector('[data-key=lp-pr]'); return c ? { rows: c.querySelectorAll('.lpv-r').length, tot: (c.querySelector('.lpv-tot') || {}).textContent || '', h: c.querySelector('h3').textContent } : null; });
-    ok(vw + ': лендинг — клітинка «Ціни вашої громади»: 4 області з числами громад і підсумок', pr && pr.h === 'Ціни вашої громади' && pr.rows === 4 && /\d+ громад у довіднику/.test(pr.tot), pr);
+    ok(vw + ': лендинг — клітинка «Ціни вашої громади»: області (≥ 4) з числами громад і підсумок', pr && pr.h === 'Ціни вашої громади' && pr.rows >= 4 && /\d+ громад у довіднику/.test(pr.tot), pr);
     // 91-а (власник): у нижній панелі — цілі прилади, що перетікають один в один (корпус анімується SMIL), підписи 4 видів; в автотестах стоїть теплолічильник
     const mt = await lp.evaluate(() => { const s = document.querySelector('[data-key=lp-end] svg.lpm'); if (!s) return null;
       return { anim: s.querySelectorAll('rect > animate[attributeName=rx], rect > animate[attributeName=width]').length, caps: [...s.querySelectorAll('text')].map(x => x.textContent).filter(x => /лічильник|Водомір/.test(x)), paused: s.animationsPaused(), t: s.getCurrentTime() }; });

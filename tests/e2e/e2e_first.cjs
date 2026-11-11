@@ -30,6 +30,16 @@ const U = 'http://127.0.0.1:8013/';
   await p.click('[data-key=welcome-hero] .lp-phone', { force: true }); await p.waitForTimeout(400);
   ok('нажатие на картинку → #start', (await hash()) === '#start');
   await fresh();
+  // 111-а: картки й стрічку постачальників приймали за кнопки — уся площа веде на «Почати», «Нагадування в Telegram» — у бота; не в порядку Tab
+  const go = await p.$$eval('.lp-go', a => a.map(x => [x.getAttribute('data-key'), x.getAttribute('href'), x.tabIndex, x.getAttribute('aria-hidden')]));
+  ok('лендинг: «.lp-go» на 6 картках і стрічці, «Нагадування в Telegram» → t.me/…?start=remind, решта → #start, tabindex -1', go.length === 7 && go.every(g => g[2] === -1 && g[3] === 'true') &&
+    go.find(g => g[0] === 'lp-tg-go')[1].startsWith('https://t.me/') && go.filter(g => g[0] !== 'lp-tg-go').every(g => g[1] === '#start'), go);
+  await p.click('[data-key=lp-dest] .lp-chips li', { force: true }); await p.waitForTimeout(400);
+  ok('натискання на стрічку постачальників → #start', (await hash()) === '#start');
+  await fresh();
+  await p.click('[data-key=lp-due] .lp-due', { force: true }); await p.waitForTimeout(400);
+  ok('натискання на картку «Строки» → #start', (await hash()) === '#start');
+  await fresh();
   const wtxt = await p.textContent('.welcome');
   ok('у тексті — світло й газ, «з фото», кілька квартир, «лише для себе»', /світло й газ/.test(wtxt) && /З фото/.test(wtxt) && /Кілька квартир/.test(wtxt) && /лише для себе/.test(wtxt));
   await p.click('[data-key=welcome-start]'); await p.waitForTimeout(400);

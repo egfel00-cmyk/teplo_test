@@ -1410,7 +1410,9 @@ details.tbl-acc[open] > .tbl-wrap { margin-top: 12px; }
 /* секції під сценою */
 .lp-sec { max-width: 1180px; margin: 0 auto; padding: 56px 20px 0; }
 .lp-h2 { font-size: clamp(28px, 7.4vw, 44px); line-height: 1.1; letter-spacing: -0.025em; margin: 0 0 26px; max-width: 18ch; text-wrap: balance; }
-.lp-dest { padding-top: 34px; text-align: center; }
+.lp-dest { padding-top: 34px; text-align: center; position: relative; }
+/* 111-а: картки й стрічка лендинга — уся площа веде до «Почати» (їх приймали за кнопки); над анімаціями, без власного вигляду */
+.lp-go { position: absolute; inset: 0; z-index: 2; border-radius: inherit; -webkit-tap-highlight-color: transparent; }
 /* «Ціни вашої громади» (90-а, власник: «коротко, як інші фічі») — громади довідника по областях рядками й підсумок */
 .lp-prv { display: grid; gap: 6px; margin-top: 16px; padding: 14px 16px; border-radius: 14px; background: var(--c-surface-2); border: 1px solid var(--c-line); }
 .lpv-r { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; font-size: var(--fs-s); padding-bottom: 6px; border-bottom: 1px dashed var(--c-line); }
@@ -10017,6 +10019,12 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
       '<p class="af-note" data-key="app-foot-note"><span>© ' + new Date().getFullYear() + ' ' + esc(t('brand')) + '</span><span>' + esc(t('lf_indep')) + '</span></p></footer>';
   }
   function lpCta(key, label) { return '<a class="lp-btn" href="#start" data-key="' + key + '"><span>' + esc(label) + '</span></a>'; }
+  /** Картинки лендинга приймають за кнопки (журнал 11.11, 111-а: «Нагадування в Telegram» — 6 натискань, з них 4 повтори; стрічка постачальників — 5, 4 повтори) —
+   *  уся картка веде туди ж, куди «Почати»; «Нагадування в Telegram» — у бота (у самому Telegram — «Почати»). З клавіатури й читачам екрана — лише справжні кнопки. */
+  function lpGo(key) {
+    var tw = window.Telegram && window.Telegram.WebApp, bot = key === 'tg' && !(tw && tw.initData);
+    return '<a class="lp-go" href="' + (bot ? 'https://t.me/' + esc(ourBot()) + '?start=remind" target="_blank" rel="noopener' : '#start') + '" tabindex="-1" aria-hidden="true" data-key="lp-' + key + '-go"></a>';
+  }
   /** «Куди передати»: основні постачальники всіх областей довідника — дві стрічки, пливуть справа наліво (владелец 10.11);
    *  друга копія кожного ряду — для безшовного кола, читачам екрана — один список; prefers-reduced-motion — стоять. */
   var LP_ORGS = [
@@ -10029,7 +10037,7 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
     var chip = function (d) { return '<li>' + ico(KINDS[d[0]].icon, 16, KINDS[d[0]].cls) + '<span>' + esc(d[1]) + '</span></li>'; };
     return '<section class="lp-sec lp-dest" data-key="lp-dest"><p class="lp-dest-t">' + esc(t('lp_dest_t')) + '</p><div class="lp-marq" data-key="lp-marq">' +
       LP_ORGS.map(function (row, i) { var li = row.map(chip).join(''); return '<div class="lpm-row' + (i ? ' r2' : '') + '"><ul class="lp-chips lpm-track">' + li + '</ul><ul class="lp-chips lpm-track" aria-hidden="true">' + li + '</ul></div>'; }).join('') +
-      '</div></section>';
+      '</div>' + lpGo('dest') + '</section>';
   }
   /** «Ціни саме вашої громади» (власник 10.11): скільки громад у довіднику по областях і в скількох знайдено ціну води; як підтягуються постачальники й ціни громади —
    *  з рішень рад і виконкомів, постанов НКРЕКП і сайтів постачальників, з датою й джерелом; немає документа — «впишіть з платіжки». Числа — під час збирання (web/build.py). */
@@ -10130,10 +10138,10 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
     return '<article class="lp-cell c-bg" data-key="lp-bg"><div class="lp-cell-tx"><h3>' + esc(t('lp_bg_t')) + '</h3><p>' + esc(t('lp_bg')) + '</p></div>' + demo +
       (list.length ? '<div class="lpb-list"><p class="lpb-on">' + esc(t('lp_bg_on', { n: list.length })) + '</p>' +
         '<div class="lpb-marq" data-key="lp-bg-marq"><div class="lpm-row"><ul class="lp-chips lpm-track lpb-chips">' + li + '</ul><ul class="lp-chips lpm-track lpb-chips" aria-hidden="true">' + li + '</ul></div></div>' +
-        '<p class="lpb-rest">' + esc(t('lp_bg_rest')) + '</p></div>' : '') + '</article>';
+        '<p class="lpb-rest">' + esc(t('lp_bg_rest')) + '</p></div>' : '') + lpGo('bg') + '</article>';
   }
   function lpBento() {
-    var cell = function (key, art) { return '<article class="lp-cell c-' + key + '" data-key="lp-' + key + '"><div class="lp-cell-tx"><h3>' + esc(t('lp_' + key + '_t')) + '</h3><p>' + esc(t('lp_' + key)) + '</p></div>' + art + '</article>'; };
+    var cell = function (key, art) { return '<article class="lp-cell c-' + key + '" data-key="lp-' + key + '"><div class="lp-cell-tx"><h3>' + esc(t('lp_' + key + '_t')) + '</h3><p>' + esc(t('lp_' + key)) + '</p></div>' + art + lpGo(key) + '</article>'; };
     return '<section class="lp-sec" data-key="lp-bento"><h2 class="lp-h2">' + esc(t('lp_bento_t')) + '</h2><div class="lp-bento' + (GPV_ON ? ' with-gpv' : '') + '">' +
       cell('due', lpDue()) + cell('tg', lpTg()) + cell('pl', lpPlaces()) + cell('cost', lpCost()) + cell('pr', lpPrices()) + lpAuto() + (GPV_ON ? cell('gpv', lpGpv()) : '') + '</div></section>';
   }
@@ -13150,14 +13158,16 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
   // Apple forums 800154; владелец 10.11). Поправка: клавіатура закрита, без масштабу, низ видимої області нижче низу макета на > 40 px — зсуваємо їх униз (--nav-shift).
   (function () {
     var vv = window.visualViewport; if (!vv) return;
-    var last = 0;
+    var last = 0, logged = 0;
     var fix = function () {
       var a = document.activeElement, kb = a && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName), gap = vv.offsetTop + vv.height - window.innerHeight;
       var sh = !kb && vv.scale < 1.01 && Math.abs(gap) > 40 ? Math.round(gap) : 0;
       document.documentElement.style.setProperty('--nav-shift', sh + 'px');
       // у журнал (/api/health → errs.navShift): чи спрацьовує поправка на справжніх iPhone і з якими висотами — перевірка без телефона власника (89-а)
       // 106-а: видно < 40 % сторінки без зсуву — людина згортає чи закриває застосунок (журнал 11.11: 461 → 50 → 0 px за секунду) — не пишемо
-      if (sh && sh !== last && !(vv.height < window.innerHeight * .4 && vv.offsetTop < 1)) try { track('nav_shift', { g: sh, ih: Math.round(window.innerHeight), vh: Math.round(vv.height), ot: Math.round(vv.offsetTop) }); } catch (e) { /* журнал ще не готовий */ }
+      // 111-а: у журналі сеанс на 346 nav_shift за хвилину (лендинг, iPhone, ot росте з прокруткою до 6000) — пишемо не більше 8 за завантаження,
+      // з прокруткою сторінки (sy) і висотою документа (dh): ot ≈ прокрутка при sy ≈ 0 — шар фіксованих справді «застряг» угорі, поправка вірна
+      if (sh && sh !== last && logged < 8 && !(vv.height < window.innerHeight * .4 && vv.offsetTop < 1)) try { logged++; track('nav_shift', { g: sh, ih: Math.round(window.innerHeight), vh: Math.round(vv.height), ot: Math.round(vv.offsetTop), sy: Math.round(window.scrollY || 0), dh: Math.round(document.documentElement.scrollHeight || 0) }); } catch (e) { /* журнал ще не готовий */ }
       last = sh;
     };
     vv.addEventListener('resize', fix); vv.addEventListener('scroll', fix); window.addEventListener('scroll', fix, { passive: true });
@@ -13886,7 +13896,8 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
       var oa = Y0.api;
       Y0.api = function (m, path, body) {
         return oa(m, path, body).then(function (j) { if (j && j._status >= 400 && path !== '/events') track('api_error', { p: String(path || '').split('?')[0].slice(0, 50), c: j._status, e: String(j.error || '').slice(0, 40) || undefined }); return j; },
-          function (err) { track('api_error', { p: String(path || '').split('?')[0].slice(0, 50), c: 0, e: 'network' }); throw err; });
+          // 111-а: «/visit network» — фонова позначка візиту обірвалась (iPhone перезавантажив сторінку чи згорнули застосунок; журнал 11.11, 5 з 5) — людина нічого не бачила, не помилка
+          function (err) { if (path !== '/visit') track('api_error', { p: String(path || '').split('?')[0].slice(0, 50), c: 0, e: 'network' }); throw err; });
       };
       Y0.api._jr = 1;
     }

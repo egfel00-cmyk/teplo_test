@@ -152,10 +152,14 @@ final class Journal {
     $people = 0; foreach (Db::q('SELECT DISTINCT vid FROM visits WHERE day >= ?', [$from])->fetchAll() as $v) if (!isset($int[(string)$v['vid']])) $people++;
     $withEv = (int)(Db::one("SELECT COUNT(DISTINCT vid) AS n FROM events WHERE day >= ?$ex", [$from])['n'] ?? 0);
     // iOS 26: поправка нижніх вкладок після клавіатури спрацювала (nav_shift) — скільки разів, у скількох, зсув і висоти, без людей (89-а)
-    $ns = ['n' => 0, 'vids' => 0, 'last' => null, 'g' => []]; $nv = [];
+    // 111-а: останні 8 (не перші) і з прокруткою sy / висотою документа dh; big — зсув більший за висоту вікна (ot росте з прокруткою — лендинг на iPhone 11.11)
+    $ns = ['n' => 0, 'vids' => 0, 'last' => null, 'big' => 0, 'g' => []]; $nv = [];
     foreach (Db::q("SELECT vid, props, at FROM events WHERE day >= ? AND name = 'nav_shift'$ex ORDER BY id", [$from])->fetchAll() as $e) {
       $p = $pv($e['props']); $ns['n']++; $nv[(string)$e['vid']] = 1; $ns['last'] = (string)$e['at'];
-      if (count($ns['g']) < 8) $ns['g'][] = ['g' => (int)($p['g'] ?? 0), 'ih' => (int)($p['ih'] ?? 0), 'vh' => (int)($p['vh'] ?? 0), 'ot' => (int)($p['ot'] ?? 0)];
+      $g = ['g' => (int)($p['g'] ?? 0), 'ih' => (int)($p['ih'] ?? 0), 'vh' => (int)($p['vh'] ?? 0), 'ot' => (int)($p['ot'] ?? 0)];
+      if (isset($p['sy'])) { $g['sy'] = (int)$p['sy']; $g['dh'] = (int)($p['dh'] ?? 0); }
+      if ($g['ih'] > 0 && abs($g['g']) > $g['ih']) $ns['big']++;
+      $ns['g'][] = $g; if (count($ns['g']) > 8) array_shift($ns['g']);
     }
     $ns['vids'] = count($nv);
     return ['from' => $from, 'people' => $people, 'journal' => $withEv, 'withErr' => count(array_diff_key($errVids, $int)), 'js' => $js, 'api' => $api, 'toasts' => $toasts, 'dev' => (object)$dev, 'navShift' => $ns];
