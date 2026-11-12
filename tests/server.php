@@ -1878,6 +1878,11 @@ ok('довідник: усі громади й пункти є в КАТОТТГ
   ok('/api/health → errs.cam: 3 рази в 2 браузерах, 3 знімки (1 авто), denied 1, розпізнавач не догрузився 1; за пристроями (без візиту — «?») — середній кадр 400 мс, найдовший 900',
     ($cm['n'] ?? 0) === 3 && $cm['vids'] === 2 && $cm['shots'] === 3 && $cm['auto'] === 1 && ($cm['err']['denied'] ?? 0) === 1 && $cm['eng'] === 1
     && array_filter($cm['dev'], fn($d) => $d['n'] === 3 && $d['vids'] === 2 && $d['ms'] === 400 && $d['mx'] === 900), $cm);
+  // 128-а: monobank (подія «mono») — лише числа; номерів (5+ цифр) немає, лишні поля відкинуто
+  $ins('monovidAND1', 'mono', 'mono', ['how' => 'done', 'w' => 7, 'of' => 7, 'pg' => 1, 'c' => 1, 'n' => 812, 'gov' => 1, 'ut' => 2, 'g' => 'heat+ water-', 's' => 410, 'acc' => '1234567']);
+  $mo = json_decode(json_encode(Journal::errSummary(1)['mono'] ?? []), true); $ml = $mo['last'][0] ?? [];
+  ok('/api/health → errs.mono: 1 пошук — вікон 7, сторінка 1, операцій 812, штраф відсіяно, групи «heat+ water-»; без номерів',
+    ($mo['n'] ?? 0) === 1 && $mo['vids'] === 1 && $ml['how'] === 'done' && $ml['pg'] === 1 && $ml['n'] === 812 && $ml['gov'] === 1 && $ml['g'] === 'heat+ water-' && !isset($ml['acc']), $mo);
   Db::q("DELETE FROM events WHERE sid = 'errsum1'"); }
 echo "\nВыход:\n";
 $phone->req('POST', '/api/auth/logout');

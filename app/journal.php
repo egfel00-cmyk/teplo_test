@@ -188,7 +188,17 @@ final class Journal {
       $cam['vids'] = count(array_diff_key($cv, $int)); arsort($cam['err']);
     }
     $cam['err'] = (object)$cam['err']; $cam['dev'] = (object)$cam['dev'];
-    return ['from' => $from, 'people' => $people, 'journal' => $withEv, 'withErr' => count(array_diff_key($errVids, $int)), 'js' => $js, 'api' => $api, 'toasts' => $toasts, 'dev' => (object)$dev, 'navShift' => $ns, 'cam' => $cam];
+    // 128-а: «Рахунки з monobank» — чим закінчився пошук (подія «mono», лише числа: вікон/сторінок/операцій, відсіяних держплатежів, групи «вид+рахунок»);
+    // разом зі своїми (власник перевіряє сам) — у них own: 1
+    $mono = ['n' => 0, 'vids' => 0, 'last' => []]; $mv = [];
+    foreach (Db::q("SELECT vid, props, at FROM events WHERE day >= ? AND name = 'mono' ORDER BY id", [$from])->fetchAll() as $e) {
+      $p = $pv($e['props']); $mono['n']++; $mv[(string)$e['vid']] = 1;
+      $row = ['at' => (string)$e['at']] + array_map(fn($v) => is_string($v) ? mb_substr($mask($v), 0, 120) : $v, array_intersect_key($p, array_flip(['how', 'e', 'w', 'of', 'pg', 'c', 'n', 'gov', 'ut', 'g', 'r429', 's'])));
+      if (isset($int[(string)$e['vid']])) $row['own'] = 1;
+      $mono['last'][] = $row; if (count($mono['last']) > 8) array_shift($mono['last']);
+    }
+    $mono['vids'] = count($mv);
+    return ['from' => $from, 'people' => $people, 'journal' => $withEv, 'withErr' => count(array_diff_key($errVids, $int)), 'js' => $js, 'api' => $api, 'toasts' => $toasts, 'dev' => (object)$dev, 'navShift' => $ns, 'cam' => $cam, 'mono' => $mono];
   }
   public static function cleanup(?int $now = null): int {
     $d = Visits::day(($now ?? time()) - self::KEEP_DAYS * 86400);

@@ -2,12 +2,14 @@
  * «Заповнити з monobank» (114-а, власник 11.11): постачальники й особові рахунки з виписки monobank — у браузері людини.
  * Токен (api.monobank.ua, лише читання) і виписка НЕ йдуть на наш сервер і не зберігаються: так за правилами monobank особистий
  * токен можна використовувати без корпоративного API («дані клієнта не проходять через вузли розробника»).
- * Обмеження API: виписка — не більше 31 доби + 1 год за запит, не частіше 1 разу на 60 с (і client-info — так само).
+ * Обмеження API: виписка — не більше 31 доби + 1 год за запит, не частіше 1 разу на 60 с (і client-info — так само);
+ * за запит — не більше 500 операцій з кінця вікна (128-а: далі — ще запит, to = час найстарішої з відповіді; без цього в активних картках
+ * оплати комуналки на початку місяця губились, а знаходився штраф, сплачений на днях).
  * Без DOM: план запитів, розбір платежів за комуналку, рахунок із призначення. Тести — tests/mono.test.js (синтетика).
  */
 (function (root) {
   'use strict';
-  var API = 'https://api.monobank.ua', TOKEN_URL = 'https://api.monobank.ua/', WIN = 31 * 86400, GAP = 61000, MONTHS = 3, MAX_ACC = 3;
+  var API = 'https://api.monobank.ua', TOKEN_URL = 'https://api.monobank.ua/', WIN = 31 * 86400, GAP = 61000, MONTHS = 3, DEEP = 6, MAX_ACC = 3, LIMIT = 500, TIMEOUT = 25000;
   // \w і \b у JS без прапорця u — лише латиниця: для кирилиці — свої класи (L — літера, E — «далі не літера»)
   var L = '[а-яёіїєґa-z]', E = '(?![а-яёіїєґa-z])';
   function re(src, fl) { return new RegExp(src.replace(/\{L\}/g, L).replace(/\{E\}/g, E), fl || 'i'); }
@@ -25,6 +27,12 @@
   var EIC_RE = /\b(56[0-9A-Z]{14})\b/;
   // типи карток monobank, з яких платять (без банок і кредитних ліній)
   var CARD = { black: 1, white: 2, platinum: 3, iron: 4, yellow: 5, fop: 6, eAid: 7, madeInUkraine: 8 };
+  // 128-а: штрафи, податки, збори — не комуналка, навіть із «благоустрій»/«енерго» в описі: MCC держплатежів, рахунок Казначейства (МФО 899998), слова
+  var GOV_MCC = { 9211: 1, 9222: 1, 9223: 1, 9311: 1, 9399: 1, 9402: 1, 9405: 1 };
+  var FINE_RE = re('штраф|гунп{E}|патрульн|поліці|полици|паркуван|парковк|даі{E}|гаі{E}|судов{L}*\\s+збір|виконавч{L}*\\s+збір|податок|податк|налог|єсв{E}|есв{E}|пдфо{E}|ндфл{E}|військов{L}*\\s+збір|постанов{L}*\\s+(?:сер|№)');
+  // назви, які самі кажуть «комунальник» (не «Тепленко» в переказі людині): платіж через каталог «Платежі» без IBAN і не MCC 4900 — теж наш
+  var STRONG_RE = re('тепломереж|теплов{L}*\\s+мереж|теплоенерго|теплоэнерго|теплопостач|теплокомуненерго|водоканал|водопостач|водоснаб|водовідвед|енергозбут|энергосбыт|обленерго|облэнерго|енергопостач|yasno|ясно{E}|дтек|газмереж|газопостач|газзбут|нафтогаз|газорозпод|еко-?сан|вивіз|вывоз|тпв{E}|осбб|осмд');
+  var PAY_MCC = { 4900: 1, 4829: 1, 6012: 1, 6540: 1 };
 
   function digits(x) { return String(x || '').replace(/\D/g, ''); }
   function text(it) { return [it.counterName, it.description, it.comment].filter(Boolean).join(' · '); }
@@ -51,16 +59,25 @@
 
   /** Платіж за комуналку: вихідний (amount < 0) і або MCC 4900 (комунальні послуги), або переказ за реквізитами (IBAN / ЄДРПОУ отримувача)
    *  з назвою постачальника. Покупки в магазинах з «енерго» в назві (без IBAN, інший MCC) — ні. */
+  /** Держплатіж: штраф, податок, збір (128-а). Рахунок Казначейства — так, якщо в назві не прямо комунальник (село платить воду сільраді). */
+  function isGov(it) {
+    var s = text(it);
+    if (FINE_RE.test(s)) return true;
+    if (GOV_MCC[it.mcc] || GOV_MCC[it.originalMcc]) return !STRONG_RE.test(s);
+    return /^UA\d{2}899998/i.test(String(it.counterIban || '').replace(/\s+/g, '')) && !STRONG_RE.test(s);
+  }
   function isUtility(it) {
-    if (!it || !(it.amount < 0) || it.hold) return false;
-    var k = kindOf(text(it));
+    if (!it || !(it.amount < 0)) return false;   // 128-а: свіжий платіж ще «hold» (1–3 дні) — для рахунку теж годиться
+    if (isGov(it)) return false;
+    var s = text(it), k = kindOf(s);
     if (it.mcc === 4900 || it.originalMcc === 4900) return true;
-    return !!k && !!(it.counterIban || it.counterEdrpou);
+    if (k && (it.counterIban || it.counterEdrpou)) return true;
+    return !!k && STRONG_RE.test(s) && !!(PAY_MCC[it.mcc] || PAY_MCC[it.originalMcc]);
   }
   /** Згрупувати платежі: один постачальник + рахунок → рядок. Вид — за назвою, MCC 4900 без назви — «інше». */
   function groups(items) {
-    var by = {}, out = [];
-    (items || []).filter(isUtility).forEach(function (it) {
+    var by = {}, out = [], ids = {};
+    (items || []).filter(function (it) { if (!isUtility(it)) return false; if (it.id) { if (ids[it.id]) return false; ids[it.id] = 1; } return true; }).forEach(function (it) {
       var s = text(it), name = String(it.counterName || it.description || '').trim(), k = kindOf(s), a = accOf([it.description, it.comment].filter(Boolean).join(' · '), (it.amount || 0) / 100);
       var key = (digits(it.counterEdrpou) || name.toLowerCase().replace(/\s+/g, ' ')) + '|' + (a ? a.acc : '');
       var g = by[key];
@@ -99,25 +116,40 @@
     return ((info && info.accounts) || []).filter(function (a) { return a && a.currencyCode === 980 && CARD[a.type]; })
       .sort(function (a, b) { return CARD[a.type] - CARD[b.type]; }).slice(0, MAX_ACC);
   }
-  /** План запитів: спершу останні 31 добу кожної картки, потім глибше (до MONTHS місяців). now — у секундах. */
-  function plan(accs, now, months) {
-    var n = Math.max(1, Math.min(6, months || MONTHS)), out = [];
-    for (var w = 0; w < n; w++) accs.forEach(function (a) { var to = now - w * WIN; out.push({ acc: a.id, type: a.type, from: to - WIN + 60, to: to }); });
+  /** План запитів: спершу останні 31 добу кожної картки, потім глибше (до MONTHS місяців); головна картка — до deep місяців
+   *  (128-а: тепло платять у сезон, навесні — останній раз). now — у секундах. */
+  function plan(accs, now, months, deep) {
+    var n = Math.max(1, Math.min(6, months || MONTHS)), d = Math.max(n, Math.min(12, deep || n)), out = [];
+    var win = function (a, w) { var to = now - w * WIN; return { acc: a.id, type: a.type, from: to - WIN + 60, to: to, w: w }; };
+    for (var w = 0; w < n; w++) accs.forEach(function (a) { out.push(win(a, w)); });
+    if (accs.length) for (var w2 = n; w2 < d; w2++) out.push(win(accs[0], w2));
     return out;
   }
+  /** У відповіді рівно LIMIT операцій — у вікні є ще старші: той самий рахунок і from, to — час найстарішої (її повтор відсіє groups за id). */
+  function next(q, data) {
+    if (!q || !Array.isArray(data) || data.length < LIMIT) return null;
+    var min = Infinity; data.forEach(function (it) { if (it && it.time < min) min = it.time; });
+    if (!(min > q.from && min < q.to)) return null;
+    return { acc: q.acc, type: q.type, from: q.from, to: min, w: q.w, page: (q.page || 0) + 1 };
+  }
   /** Запит до API з токеном (у браузері — напряму, CORS у monobank відкритий). Повертає {ok, status, data, error}. */
-  function req(path, token, fetchFn) {
+  function req(path, token, fetchFn, ms) {
     var f = fetchFn || (typeof fetch === 'function' ? fetch : null);
     if (!f) return Promise.resolve({ ok: false, status: 0, error: 'no_fetch' });
-    return f(API + path, { headers: { 'X-Token': token }, credentials: 'omit', referrerPolicy: 'no-referrer', cache: 'no-store' }).then(function (r) {
+    // 128-а: запит не відповідає (мобільний інтернет, WebView Telegram) — не «шукаю…» без кінця: за TIMEOUT — помилка timeout, повторить monoStep
+    var ac = typeof AbortController === 'function' ? new AbortController() : null, done = false, tm = null;
+    var o = { headers: { 'X-Token': token }, credentials: 'omit', referrerPolicy: 'no-referrer', cache: 'no-store' }; if (ac) o.signal = ac.signal;
+    var main = f(API + path, o).then(function (r) {
       return r.text().then(function (txt) { var j = null; try { j = JSON.parse(txt); } catch (e) { /* не JSON */ }
         if (r.status === 200) return { ok: true, status: 200, data: j };
         return { ok: false, status: r.status, error: r.status === 403 || r.status === 401 ? 'token' : r.status === 429 ? 'rate' : 'http', text: j && j.errorDescription ? String(j.errorDescription).slice(0, 80) : '' };
       });
-    }, function () { return { ok: false, status: 0, error: 'network' }; });
+    }, function () { return { ok: false, status: 0, error: done ? 'timeout' : 'network' }; });
+    var lim = new Promise(function (res) { tm = setTimeout(function () { done = true; if (ac) try { ac.abort(); } catch (e) { /* старий браузер */ } res({ ok: false, status: 0, error: 'timeout' }); }, ms || api.TIMEOUT); });
+    return Promise.race([main, lim]).then(function (r) { done = true; clearTimeout(tm); return r; });
   }
-  function clientInfo(token, f) { return req('/personal/client-info', token, f); }
-  function statement(token, q, f) { return req('/personal/statement/' + encodeURIComponent(q.acc) + '/' + Math.floor(q.from) + '/' + Math.floor(q.to), token, f); }
+  function clientInfo(token, f, ms) { return req('/personal/client-info', token, f, ms); }
+  function statement(token, q, f, ms) { return req('/personal/statement/' + encodeURIComponent(q.acc) + '/' + Math.floor(q.from) + '/' + Math.floor(q.to), token, f, ms); }
   /** Схожий на токен monobank: 40–50 символів base64url. Порожнє й явно не те — відсіяти до запиту. */
   function tokenOk(s) { return /^[A-Za-z0-9_\-]{30,64}$/.test(String(s || '').trim()); }
   /** Ключ із того, що людина вставила (117-а): буфер може принести «Токен: u…», пробіли, переноси, адресу сторінки — беремо найдовший
@@ -130,7 +162,15 @@
     return c[0] || '';
   }
 
-  var api = { API: API, TOKEN_URL: TOKEN_URL, WIN: WIN, GAP: GAP, MONTHS: MONTHS, kindOf: kindOf, accOf: accOf, eicOf: eicOf, isUtility: isUtility, groups: groups, gasField: gasField, payOf: payOf,
-    cards: cards, plan: plan, clientInfo: clientInfo, statement: statement, tokenOk: tokenOk, tokenFrom: tokenFrom };
+  /** Для журналу (128-а): лише числа — скільки операцій, скільки відсіяли як держплатежі, групи «вид+є рахунок». Без назв, сум і номерів. */
+  function stats(items) {
+    var ids = {}, n = 0, gov = 0, ut = 0;
+    (items || []).forEach(function (it) { if (!it || (it.id && ids[it.id])) return; if (it.id) ids[it.id] = 1; n++; if (it.amount < 0 && isGov(it)) gov++; else if (isUtility(it)) ut++; });
+    var g = groups(items).map(function (x) { return x.kind + (x.acc ? (x.guess ? '?' : '+') : '-'); });
+    return { n: n, gov: gov, ut: ut, g: g.join(' ').slice(0, 120) };
+  }
+
+  var api = { API: API, TOKEN_URL: TOKEN_URL, WIN: WIN, GAP: GAP, MONTHS: MONTHS, DEEP: DEEP, LIMIT: LIMIT, TIMEOUT: TIMEOUT, kindOf: kindOf, accOf: accOf, eicOf: eicOf, isGov: isGov, isUtility: isUtility, groups: groups, gasField: gasField, payOf: payOf,
+    cards: cards, plan: plan, next: next, stats: stats, clientInfo: clientInfo, statement: statement, tokenOk: tokenOk, tokenFrom: tokenFrom };
   if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.TeploMono = api;
 })(typeof window !== 'undefined' ? window : this);

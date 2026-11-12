@@ -64,7 +64,7 @@ const TOK = 'uMonoSyntheticToken_0123456789abcdefABCDEF-xyz', BAD = 'uRevokedSyn
   ok('«Вставити ключ» з «Токен: …» у буфері: список — після першого вікна (1 запит виписки), фоном читаємо далі', st0 === 1 && rows0 === 5 && bg0, { st0, rows0, bg0, calls });
   await p.waitForSelector('[data-key=mono-bg]', { state: 'detached', timeout: 15000 });
   const st1 = calls.filter(c => /statement\/acc1\//.test(c)).length;
-  ok('client-info + 3 вікна виписки лише гривневої картки', calls.filter(c => /client-info/.test(c)).length === 2 && st1 === 3 && !calls.some(c => /statement\/usd/.test(c)), calls);
+  ok('client-info + 6 вікон виписки лише гривневої картки (128-а: головна — до 6 місяців)', calls.filter(c => /client-info/.test(c)).length === 2 && st1 === 6 && !calls.some(c => /statement\/usd/.test(c)), calls);
   const rows = await p.$$eval('.mono-g', es => es.map(e => ({ t: e.textContent, on: !!e.querySelector('input[data-mf=on]:checked'), dis: !!e.querySelector('input[data-mf=on][disabled]') })));
   ok('фоном додався Нафтогаз (40 днів тому): 6 постачальників (кав’ярні немає), усі позначені', rows.length === 6 && rows.every(r => r.on) && !rows.some(r => /Кав/.test(r.t)), rows.map(r => r.t.slice(0, 60)));
   ok('рядок тепла: рахунок 1234567, «Впишемо: особовий рахунок за тепло», платіж 412,50', /1234567/.test(rows[0].t) && /особовий рахунок за тепло/.test(rows[0].t) && /412,50/.test(rows[0].t));
@@ -98,6 +98,33 @@ const TOK = 'uMonoSyntheticToken_0123456789abcdefABCDEF-xyz', BAD = 'uRevokedSyn
   await setLink('heat', 'mono-open-heat-set'); await click('[data-key=mono-open-heat-set]', 400);
   const atMono = (await hash()) === '#mono'; await click('[data-key=wiz-close]', 400);
   ok('з налаштувань тепла → #mono → «Закрити» → знову тепло', atMono && (await hash()) === '#heat', await hash());
+  // 128-а (власник: «шукало, зависло й підтягнуло лише сплачений штраф замість особових»): активна картка — понад 500 операцій за місяць;
+  // monobank віддає 500 найновіших, оплата ХТМ — у «хвості» вікна, а свіжий штраф (благоустрій, Казначейство) — у перших 500
+  const TOK2 = 'uMonoHeavyCardToken_0123456789abcdefABCDEF-xyz', hv = [], hcalls = [];
+  for (let k = 0; k < 700; k++) hv.push({ id: 'h' + k, time: now - 3600 - k * 2400, description: 'АТБ', mcc: 5411, amount: -4500, currencyCode: 980 });
+  hv.push({ id: 'fine', time: now - 7200, description: 'ГУК у Харківській обл/тг м.Харків', comment: '*;101;3012345678;Штраф за порушення правил благоустрою, постанова № 778899', mcc: 4829, amount: -34000, counterIban: 'UA358999980314000544000020001', counterEdrpou: '37874947', counterName: 'ГУК у Харківській обл/тг м.Харків' });
+  hv.push(it(25, 'КП «Харківські теплові мережі»', 'о/р 2223334', 25000, 'КП «Харківські теплові мережі»', '31557119'));
+  hv.sort((x, y) => y.time - x.time);
+  const ph = await ctx.newPage(); ph.on('pageerror', e => errs.push(e.message));
+  await ph.route('https://api.monobank.ua/**', async (route) => {
+    const u = route.request().url(); hcalls.push(u.replace('https://api.monobank.ua', ''));
+    const j = (status, body) => route.fulfill({ status, contentType: 'application/json', headers: { 'Access-Control-Allow-Origin': '*' }, body: JSON.stringify(body) });
+    if (route.request().headers()['x-token'] !== TOK2) return j(403, {});
+    if (/client-info/.test(u)) return j(200, { clientId: 'h', name: 'Коваль Ольга', accounts: [{ id: 'heavy', type: 'black', currencyCode: 980 }] });
+    const m = u.match(/statement\/([^/]+)\/(\d+)\/(\d+)/); return j(200, hv.filter(x => x.time >= +m[2] && x.time <= +m[3]).slice(0, 500));
+  });
+  await ph.goto('http://127.0.0.1:8013/'); await ph.evaluate(s => localStorage.setItem('teplo.v1', JSON.stringify(s)), s0); await ph.goto('http://127.0.0.1:8013/#mono'); await ph.waitForTimeout(400);
+  await ph.evaluate(() => { window.TeploMono.GAP = 1500; }); await ph.fill('#mono-tok', TOK2);
+  await ph.waitForSelector('[data-key=mono-g-0]', { timeout: 15000 });
+  const hs = hcalls.filter(c => /statement\//.test(c)), w0 = (hs[0] || '').split('/'), w1 = (hs[1] || '').split('/');
+  ok('500 операцій у вікні — друга сторінка того ж вікна одразу наступним запитом (from той самий, to — найстаріша)', hs.length >= 2 && w1[4] === w0[4] && +w1[5] < +w0[5] && +w1[5] === hv[499].time, hs);
+  const hrows = await ph.$$eval('.mono-g', es => es.map(e => e.textContent));
+  ok('знайшлась оплата ХТМ з «хвоста» (о/р 2223334); штрафу в списку немає', hrows.some(t => /2223334/.test(t) && /тепло/.test(t)) && !hrows.some(t => /ГУК|Штраф|благоустр/.test(t)), hrows.map(t => t.slice(0, 60)));
+  const bgT = await ph.textContent('[data-key=mono-bg]').catch(() => '');
+  ok('«Ще переглядаю» — з якої дати дочитали, скільки хвилин, кнопка «Досить шукати»', /Переглянули оплати з .+ ще приблизно \d+ хв/.test(bgT) && /Досить шукати/.test(bgT), bgT);
+  const nBefore = hcalls.length; await ph.click('[data-key=mono-stop]'); await ph.waitForTimeout(2500);
+  ok('«Досить шукати»: рядок пропав, запитів більше немає, список і «Вписати» лишились', !(await ph.$('[data-key=mono-bg]')) && hcalls.length === nBefore && !!(await ph.$('[data-key=mono-apply]')), { n: hcalls.length - nBefore });
+  await ph.close();
   // рос. мова — за мовою браузера
   const pr =await (await require('./pvopen.cjs').ctx(b, { viewport: { width: 360, height: 800 }, locale: 'ru-RU' })).newPage();
   await pr.goto('http://127.0.0.1:8013/'); await pr.evaluate(s => localStorage.setItem('teplo.v1', JSON.stringify(Object.assign(s, { lang: 'ru' }))), s0); await pr.reload(); await pr.goto('http://127.0.0.1:8013/#mono'); await pr.waitForTimeout(400);

@@ -2160,7 +2160,9 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
 .mono-steps .mono-tokf input { width: 100%; min-width: 0; }
 @media (max-width: 360px) { .mono-steps > li { padding-left: 48px; } .mono-steps > li::before { left: 12px; } }
 .mono-steps .help.bad { margin-top: 8px; }
-.mono-bg { display: flex; gap: 8px; align-items: center; margin: 0 0 10px; }
+.mono-bg { display: grid; grid-template-columns: auto 1fr; gap: 2px 10px; align-items: start; margin: 0 0 10px; }
+.mono-bg .spin { margin-top: 1px; }
+.mono-bg .linkbtn { grid-column: 2; justify-self: start; min-height: 32px; }
 .mono-more { display: grid; gap: 10px; }
 .mono-more > summary { cursor: pointer; min-height: var(--tap); display: flex; align-items: center; color: var(--c-ink-2); }
 .mono-again { margin: 4px 0 0; text-align: center; }
@@ -4186,7 +4188,9 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
       mono_e_clip: 'У скопійованому немає ключа monobank. Скопіюйте ключ на сторінці monobank і натисніть ще раз.', mono_e_clipno: 'Вставити самим не вийшло — утримайте поле нижче й виберіть «Вставити».',
       mono_e_403: 'monobank не прийняв ключ. Можливо, його відкликали — отримайте новий: «Відкрити monobank».', mono_e_rate: 'monobank просить зачекати хвилину між запитами. Спробуйте ще раз за хвилину.',
       mono_e_net: 'Не вдалося зв’язатися з monobank. Перевірте інтернет і спробуйте ще раз.', mono_e_nocard: 'У цьому акаунті monobank немає гривневої картки.',
-      mono_run: 'Шукаю ваші оплати комуналки…', mono_wait: 'monobank просить хвилину між запитами — ще {s} с.', mono_bg: 'Ще переглядаю старіші оплати й інші картки — знайдене додасться сюди.', mono_found: 'Платежів за комуналку знайдено: {n}', mono_stop: 'Досить — показати знайдене',
+      mono_run: 'Шукаю ваші оплати комуналки…', mono_wait: 'monobank просить хвилину між запитами — ще {s} с.', mono_bg: 'Ще переглядаю старіші оплати й інші картки — знайдене додасться сюди.', mono_found: 'Платежів за комуналку знайдено: {n}', mono_stop: 'Досить шукати', mono_run_s: 'monobank віддає виписку частинами — раз на хвилину. Знайдене з’явиться тут, щойно прийде перша частина.',
+      mono_bg2: 'Переглянули оплати з {d}. Дочитую старіші — ще приблизно {m} хв, знайдене додасться сюди.',
+      mono_none2: 'Переглянули оплати з {d} (операцій: {n}) — платежів за комуналку не знайшли. Можливо, ви платите з іншої картки чи банку або через застосунок постачальника. Особовий рахунок є в платіжці — впишіть його в «Куди передати».',
       mono_none: 'За останні місяці платежів за комуналку з карток monobank не знайшли. Особовий рахунок є в платіжці — впишіть його в «Куди передати».',
       mono_pick: 'Знайшли у ваших оплатах. Позначене впишемо:', mono_nonew: 'Нового, що можна вписати, не знайшли.', mono_more: 'Інші оплати — вписувати нічого ({n})', mono_acc: 'Рахунок {a}', mono_guess: 'без підпису в призначенні — звірте з платіжкою', mono_noacc: 'рахунку в призначенні платежу немає',
       mono_pays: 'Платежів: {n} · останній {d} — {s} грн', mono_to: 'Впишемо: {f}', mono_to_set: 'зараз вписано {a} — замінимо', mono_same: 'уже вписано',
@@ -5449,7 +5453,9 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
       mono_e_clip: 'В скопированном нет ключа monobank. Скопируйте ключ на странице monobank и нажмите ещё раз.', mono_e_clipno: 'Вставить самим не вышло — удерживайте поле ниже и выберите «Вставить».',
       mono_e_403: 'monobank не принял ключ. Возможно, его отозвали — получите новый: «Открыть monobank».', mono_e_rate: 'monobank просит подождать минуту между запросами. Попробуйте ещё раз через минуту.',
       mono_e_net: 'Не удалось связаться с monobank. Проверьте интернет и попробуйте ещё раз.', mono_e_nocard: 'В этом аккаунте monobank нет гривневой карты.',
-      mono_run: 'Ищу ваши оплаты коммуналки…', mono_wait: 'monobank просит минуту между запросами — ещё {s} с.', mono_bg: 'Ещё просматриваю старые оплаты и другие карты — найденное добавится сюда.', mono_found: 'Платежей за коммуналку найдено: {n}', mono_stop: 'Хватит — показать найденное',
+      mono_run: 'Ищу ваши оплаты коммуналки…', mono_wait: 'monobank просит минуту между запросами — ещё {s} с.', mono_bg: 'Ещё просматриваю старые оплаты и другие карты — найденное добавится сюда.', mono_found: 'Платежей за коммуналку найдено: {n}', mono_stop: 'Хватит искать', mono_run_s: 'monobank отдаёт выписку частями — раз в минуту. Найденное появится здесь, как только придёт первая часть.',
+      mono_bg2: 'Просмотрели оплаты с {d}. Дочитываю более старые — ещё примерно {m} мин, найденное добавится сюда.',
+      mono_none2: 'Просмотрели оплаты с {d} (операций: {n}) — платежей за коммуналку не нашли. Возможно, вы платите с другой карты или банка или через приложение поставщика. Лицевой счёт есть в платёжке — впишите его в «Куда передать».',
       mono_none: 'За последние месяцы платежей за коммуналку с карт monobank не нашли. Лицевой счёт есть в платёжке — впишите его в «Куда передать».',
       mono_pick: 'Нашли в ваших оплатах. Отмеченное впишем:', mono_nonew: 'Нового, что можно вписать, не нашли.', mono_more: 'Другие оплаты — вписывать нечего ({n})', mono_acc: 'Счёт {a}', mono_guess: 'без подписи в назначении — сверьте с платёжкой', mono_noacc: 'счёта в назначении платежа нет',
       mono_pays: 'Платежей: {n} · последний {d} — {s} грн', mono_to: 'Впишем: {f}', mono_to_set: 'сейчас вписан {a} — заменим', mono_same: 'уже вписан',
@@ -7314,12 +7320,14 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
  * «Заповнити з monobank» (114-а, власник 11.11): постачальники й особові рахунки з виписки monobank — у браузері людини.
  * Токен (api.monobank.ua, лише читання) і виписка НЕ йдуть на наш сервер і не зберігаються: так за правилами monobank особистий
  * токен можна використовувати без корпоративного API («дані клієнта не проходять через вузли розробника»).
- * Обмеження API: виписка — не більше 31 доби + 1 год за запит, не частіше 1 разу на 60 с (і client-info — так само).
+ * Обмеження API: виписка — не більше 31 доби + 1 год за запит, не частіше 1 разу на 60 с (і client-info — так само);
+ * за запит — не більше 500 операцій з кінця вікна (128-а: далі — ще запит, to = час найстарішої з відповіді; без цього в активних картках
+ * оплати комуналки на початку місяця губились, а знаходився штраф, сплачений на днях).
  * Без DOM: план запитів, розбір платежів за комуналку, рахунок із призначення. Тести — tests/mono.test.js (синтетика).
  */
 (function (root) {
   'use strict';
-  var API = 'https://api.monobank.ua', TOKEN_URL = 'https://api.monobank.ua/', WIN = 31 * 86400, GAP = 61000, MONTHS = 3, MAX_ACC = 3;
+  var API = 'https://api.monobank.ua', TOKEN_URL = 'https://api.monobank.ua/', WIN = 31 * 86400, GAP = 61000, MONTHS = 3, DEEP = 6, MAX_ACC = 3, LIMIT = 500, TIMEOUT = 25000;
   // \w і \b у JS без прапорця u — лише латиниця: для кирилиці — свої класи (L — літера, E — «далі не літера»)
   var L = '[а-яёіїєґa-z]', E = '(?![а-яёіїєґa-z])';
   function re(src, fl) { return new RegExp(src.replace(/\{L\}/g, L).replace(/\{E\}/g, E), fl || 'i'); }
@@ -7337,6 +7345,12 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
   var EIC_RE = /\b(56[0-9A-Z]{14})\b/;
   // типи карток monobank, з яких платять (без банок і кредитних ліній)
   var CARD = { black: 1, white: 2, platinum: 3, iron: 4, yellow: 5, fop: 6, eAid: 7, madeInUkraine: 8 };
+  // 128-а: штрафи, податки, збори — не комуналка, навіть із «благоустрій»/«енерго» в описі: MCC держплатежів, рахунок Казначейства (МФО 899998), слова
+  var GOV_MCC = { 9211: 1, 9222: 1, 9223: 1, 9311: 1, 9399: 1, 9402: 1, 9405: 1 };
+  var FINE_RE = re('штраф|гунп{E}|патрульн|поліці|полици|паркуван|парковк|даі{E}|гаі{E}|судов{L}*\\s+збір|виконавч{L}*\\s+збір|податок|податк|налог|єсв{E}|есв{E}|пдфо{E}|ндфл{E}|військов{L}*\\s+збір|постанов{L}*\\s+(?:сер|№)');
+  // назви, які самі кажуть «комунальник» (не «Тепленко» в переказі людині): платіж через каталог «Платежі» без IBAN і не MCC 4900 — теж наш
+  var STRONG_RE = re('тепломереж|теплов{L}*\\s+мереж|теплоенерго|теплоэнерго|теплопостач|теплокомуненерго|водоканал|водопостач|водоснаб|водовідвед|енергозбут|энергосбыт|обленерго|облэнерго|енергопостач|yasno|ясно{E}|дтек|газмереж|газопостач|газзбут|нафтогаз|газорозпод|еко-?сан|вивіз|вывоз|тпв{E}|осбб|осмд');
+  var PAY_MCC = { 4900: 1, 4829: 1, 6012: 1, 6540: 1 };
 
   function digits(x) { return String(x || '').replace(/\D/g, ''); }
   function text(it) { return [it.counterName, it.description, it.comment].filter(Boolean).join(' · '); }
@@ -7363,16 +7377,25 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
 
   /** Платіж за комуналку: вихідний (amount < 0) і або MCC 4900 (комунальні послуги), або переказ за реквізитами (IBAN / ЄДРПОУ отримувача)
    *  з назвою постачальника. Покупки в магазинах з «енерго» в назві (без IBAN, інший MCC) — ні. */
+  /** Держплатіж: штраф, податок, збір (128-а). Рахунок Казначейства — так, якщо в назві не прямо комунальник (село платить воду сільраді). */
+  function isGov(it) {
+    var s = text(it);
+    if (FINE_RE.test(s)) return true;
+    if (GOV_MCC[it.mcc] || GOV_MCC[it.originalMcc]) return !STRONG_RE.test(s);
+    return /^UA\d{2}899998/i.test(String(it.counterIban || '').replace(/\s+/g, '')) && !STRONG_RE.test(s);
+  }
   function isUtility(it) {
-    if (!it || !(it.amount < 0) || it.hold) return false;
-    var k = kindOf(text(it));
+    if (!it || !(it.amount < 0)) return false;   // 128-а: свіжий платіж ще «hold» (1–3 дні) — для рахунку теж годиться
+    if (isGov(it)) return false;
+    var s = text(it), k = kindOf(s);
     if (it.mcc === 4900 || it.originalMcc === 4900) return true;
-    return !!k && !!(it.counterIban || it.counterEdrpou);
+    if (k && (it.counterIban || it.counterEdrpou)) return true;
+    return !!k && STRONG_RE.test(s) && !!(PAY_MCC[it.mcc] || PAY_MCC[it.originalMcc]);
   }
   /** Згрупувати платежі: один постачальник + рахунок → рядок. Вид — за назвою, MCC 4900 без назви — «інше». */
   function groups(items) {
-    var by = {}, out = [];
-    (items || []).filter(isUtility).forEach(function (it) {
+    var by = {}, out = [], ids = {};
+    (items || []).filter(function (it) { if (!isUtility(it)) return false; if (it.id) { if (ids[it.id]) return false; ids[it.id] = 1; } return true; }).forEach(function (it) {
       var s = text(it), name = String(it.counterName || it.description || '').trim(), k = kindOf(s), a = accOf([it.description, it.comment].filter(Boolean).join(' · '), (it.amount || 0) / 100);
       var key = (digits(it.counterEdrpou) || name.toLowerCase().replace(/\s+/g, ' ')) + '|' + (a ? a.acc : '');
       var g = by[key];
@@ -7411,25 +7434,40 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
     return ((info && info.accounts) || []).filter(function (a) { return a && a.currencyCode === 980 && CARD[a.type]; })
       .sort(function (a, b) { return CARD[a.type] - CARD[b.type]; }).slice(0, MAX_ACC);
   }
-  /** План запитів: спершу останні 31 добу кожної картки, потім глибше (до MONTHS місяців). now — у секундах. */
-  function plan(accs, now, months) {
-    var n = Math.max(1, Math.min(6, months || MONTHS)), out = [];
-    for (var w = 0; w < n; w++) accs.forEach(function (a) { var to = now - w * WIN; out.push({ acc: a.id, type: a.type, from: to - WIN + 60, to: to }); });
+  /** План запитів: спершу останні 31 добу кожної картки, потім глибше (до MONTHS місяців); головна картка — до deep місяців
+   *  (128-а: тепло платять у сезон, навесні — останній раз). now — у секундах. */
+  function plan(accs, now, months, deep) {
+    var n = Math.max(1, Math.min(6, months || MONTHS)), d = Math.max(n, Math.min(12, deep || n)), out = [];
+    var win = function (a, w) { var to = now - w * WIN; return { acc: a.id, type: a.type, from: to - WIN + 60, to: to, w: w }; };
+    for (var w = 0; w < n; w++) accs.forEach(function (a) { out.push(win(a, w)); });
+    if (accs.length) for (var w2 = n; w2 < d; w2++) out.push(win(accs[0], w2));
     return out;
   }
+  /** У відповіді рівно LIMIT операцій — у вікні є ще старші: той самий рахунок і from, to — час найстарішої (її повтор відсіє groups за id). */
+  function next(q, data) {
+    if (!q || !Array.isArray(data) || data.length < LIMIT) return null;
+    var min = Infinity; data.forEach(function (it) { if (it && it.time < min) min = it.time; });
+    if (!(min > q.from && min < q.to)) return null;
+    return { acc: q.acc, type: q.type, from: q.from, to: min, w: q.w, page: (q.page || 0) + 1 };
+  }
   /** Запит до API з токеном (у браузері — напряму, CORS у monobank відкритий). Повертає {ok, status, data, error}. */
-  function req(path, token, fetchFn) {
+  function req(path, token, fetchFn, ms) {
     var f = fetchFn || (typeof fetch === 'function' ? fetch : null);
     if (!f) return Promise.resolve({ ok: false, status: 0, error: 'no_fetch' });
-    return f(API + path, { headers: { 'X-Token': token }, credentials: 'omit', referrerPolicy: 'no-referrer', cache: 'no-store' }).then(function (r) {
+    // 128-а: запит не відповідає (мобільний інтернет, WebView Telegram) — не «шукаю…» без кінця: за TIMEOUT — помилка timeout, повторить monoStep
+    var ac = typeof AbortController === 'function' ? new AbortController() : null, done = false, tm = null;
+    var o = { headers: { 'X-Token': token }, credentials: 'omit', referrerPolicy: 'no-referrer', cache: 'no-store' }; if (ac) o.signal = ac.signal;
+    var main = f(API + path, o).then(function (r) {
       return r.text().then(function (txt) { var j = null; try { j = JSON.parse(txt); } catch (e) { /* не JSON */ }
         if (r.status === 200) return { ok: true, status: 200, data: j };
         return { ok: false, status: r.status, error: r.status === 403 || r.status === 401 ? 'token' : r.status === 429 ? 'rate' : 'http', text: j && j.errorDescription ? String(j.errorDescription).slice(0, 80) : '' };
       });
-    }, function () { return { ok: false, status: 0, error: 'network' }; });
+    }, function () { return { ok: false, status: 0, error: done ? 'timeout' : 'network' }; });
+    var lim = new Promise(function (res) { tm = setTimeout(function () { done = true; if (ac) try { ac.abort(); } catch (e) { /* старий браузер */ } res({ ok: false, status: 0, error: 'timeout' }); }, ms || api.TIMEOUT); });
+    return Promise.race([main, lim]).then(function (r) { done = true; clearTimeout(tm); return r; });
   }
-  function clientInfo(token, f) { return req('/personal/client-info', token, f); }
-  function statement(token, q, f) { return req('/personal/statement/' + encodeURIComponent(q.acc) + '/' + Math.floor(q.from) + '/' + Math.floor(q.to), token, f); }
+  function clientInfo(token, f, ms) { return req('/personal/client-info', token, f, ms); }
+  function statement(token, q, f, ms) { return req('/personal/statement/' + encodeURIComponent(q.acc) + '/' + Math.floor(q.from) + '/' + Math.floor(q.to), token, f, ms); }
   /** Схожий на токен monobank: 40–50 символів base64url. Порожнє й явно не те — відсіяти до запиту. */
   function tokenOk(s) { return /^[A-Za-z0-9_\-]{30,64}$/.test(String(s || '').trim()); }
   /** Ключ із того, що людина вставила (117-а): буфер може принести «Токен: u…», пробіли, переноси, адресу сторінки — беремо найдовший
@@ -7442,8 +7480,16 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
     return c[0] || '';
   }
 
-  var api = { API: API, TOKEN_URL: TOKEN_URL, WIN: WIN, GAP: GAP, MONTHS: MONTHS, kindOf: kindOf, accOf: accOf, eicOf: eicOf, isUtility: isUtility, groups: groups, gasField: gasField, payOf: payOf,
-    cards: cards, plan: plan, clientInfo: clientInfo, statement: statement, tokenOk: tokenOk, tokenFrom: tokenFrom };
+  /** Для журналу (128-а): лише числа — скільки операцій, скільки відсіяли як держплатежі, групи «вид+є рахунок». Без назв, сум і номерів. */
+  function stats(items) {
+    var ids = {}, n = 0, gov = 0, ut = 0;
+    (items || []).forEach(function (it) { if (!it || (it.id && ids[it.id])) return; if (it.id) ids[it.id] = 1; n++; if (it.amount < 0 && isGov(it)) gov++; else if (isUtility(it)) ut++; });
+    var g = groups(items).map(function (x) { return x.kind + (x.acc ? (x.guess ? '?' : '+') : '-'); });
+    return { n: n, gov: gov, ut: ut, g: g.join(' ').slice(0, 120) };
+  }
+
+  var api = { API: API, TOKEN_URL: TOKEN_URL, WIN: WIN, GAP: GAP, MONTHS: MONTHS, DEEP: DEEP, LIMIT: LIMIT, TIMEOUT: TIMEOUT, kindOf: kindOf, accOf: accOf, eicOf: eicOf, isGov: isGov, isUtility: isUtility, groups: groups, gasField: gasField, payOf: payOf,
+    cards: cards, plan: plan, next: next, stats: stats, clientInfo: clientInfo, statement: statement, tokenOk: tokenOk, tokenFrom: tokenFrom };
   if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.TeploMono = api;
 })(typeof window !== 'undefined' ? window : this);
 
@@ -14426,7 +14472,19 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
   // ---------- «Рахунки з monobank» (114-а, власник 11.11): усе для передачі, крім показань, — з платежів за комуналку ----------
   // Токен і виписка — лише в пам’яті цієї сторінки (не в S, не в localStorage, не на сервер); журнал бачить тільки «поле заповнене».
   var Mn = window.TeploMono, MO = monoFresh();
-  function monoFresh(back) { return { tok: '', st: '', err: '', q: [], i: 0, items: [], name: '', next: 0, timer: null, groups: [], sel: {}, sn: true, back: back || '', opened: false, bg: false }; }
+  function monoFresh(back) { return { tok: '', st: '', err: '', q: [], i: 0, items: [], name: '', next: 0, timer: null, groups: [], sel: {}, sn: true, back: back || '', opened: false, bg: false,
+    t0: 0, rate: 0, fails: 0, pg: 0, read: 0, from: 0, cards: 0, logged: false, scanned: null }; }
+  /** Журнал (128-а): чим закінчився пошук — лише числа (вікон, сторінок, операцій, відсіяних штрафів/податків, групи «вид+рахунок»), без назв, сум і номерів. */
+  function monoLog(how, err) {
+    if (MO.logged || !MO.t0) return; MO.logged = true;
+    var x = Mn.stats(MO.items.length ? MO.items : []);
+    track('mono', { how: how, e: err || undefined, w: MO.read, of: MO.q.length, pg: MO.pg || undefined, c: MO.cards, n: x.n, gov: x.gov || undefined, ut: x.ut, g: x.g || (MO.groups.length ? MO.groups.map(function (g) { return g.kind + (g.acc ? '+' : '-'); }).join(' ') : ''), r429: MO.rate || undefined, s: Math.round((Date.now() - MO.t0) / 1000) });
+  }
+  /** Що вже переглянули: з якої дати (найстаріше прочитане вікно) і скільки ще хвилин (запит — раз на хвилину). */
+  function monoProg() {
+    var left = Math.max(0, MO.q.length - MO.i), d = MO.from ? fmtDate(new Date((MO.from + 3 * 3600) * 1000).toISOString().slice(0, 10)) : '';
+    return { d: d, m: Math.max(1, Math.ceil(left * Mn.GAP / 60000)), left: left };
+  }
   function monoLink(k) {
     if (!Mn) return '';
     return '<p class="mono-link"><a class="btn sec" href="#mono" data-act="mono-open" data-key="mono-open' + (k ? '-' + k : '') + '">' + ico('download', 18) + '<span>' + esc(t('mono_link')) + '</span></a>' +
@@ -14465,30 +14523,45 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
     if (!Mn.tokenOk(tok)) { MO.err = 'mono_e_tok'; MO.opened = true; render(true); var i2 = document.getElementById('mono-tok'); if (i2) i2.focus(); return; }
     if (MO.tok === tok && (MO.st === 'run' || MO.bg)) return;   // input і paste приходять разом
     clearTimeout(MO.timer);
-    MO = Object.assign(monoFresh(MO.back), { tok: tok, st: 'run', opened: true }); render(true);
+    MO = Object.assign(monoFresh(MO.back), { tok: tok, st: 'run', opened: true, t0: Date.now() }); render(true);
     Mn.clientInfo(tok).then(function (r) {
       if (MO.tok !== tok) return;
-      if (!r.ok) { MO = Object.assign(monoFresh(MO.back), { err: monoErr(r), opened: true }); render(true); return; }
+      if (!r.ok) { monoLog('err', 'ci_' + r.error); MO = Object.assign(monoFresh(MO.back), { err: monoErr(r), opened: true }); render(true); return; }
       var accs = Mn.cards(r.data);
-      if (!accs.length) { MO = Object.assign(monoFresh(MO.back), { err: 'mono_e_nocard', opened: true }); render(true); return; }
-      MO.name = String((r.data && r.data.name) || ''); MO.q = Mn.plan(accs, Math.floor(Date.now() / 1000), Mn.MONTHS); MO.i = 0; monoStep();
+      if (!accs.length) { monoLog('err', 'nocard'); MO = Object.assign(monoFresh(MO.back), { err: 'mono_e_nocard', opened: true }); render(true); return; }
+      MO.name = String((r.data && r.data.name) || ''); MO.cards = accs.length; MO.q = Mn.plan(accs, Math.floor(Date.now() / 1000), Mn.MONTHS, Mn.DEEP); MO.i = 0; monoStep();
     });
   }
   /** Виписка — по вікну на хвилину (правило monobank). Перше вікно (головна картка, останні 31 доба) — і одразу показуємо знайдене;
    *  старші місяці й інші картки дочитуємо фоном, нове додається в список (117-а: раніше людина чекала до 9 хвилин). */
+  /** 128-а: у вікні рівно 500 операцій — наступна сторінка того ж вікна йде одразу наступним запитом (не в кінець черги);
+   *  «зачекайте хвилину» (429) — не більше 4 разів поспіль, обрив чи тайм-аут — ще 2 спроби; далі — показуємо, що знайшли. */
   function monoStep() {
     if (!MO.tok) return;
     if (MO.i >= MO.q.length) { monoFinish(); return; }
-    var tok = MO.tok;
-    Mn.statement(tok, MO.q[MO.i]).then(function (r) {
+    var tok = MO.tok, q = MO.q[MO.i];
+    Mn.statement(tok, q).then(function (r) {
       if (MO.tok !== tok) return;
-      if (r.ok) { MO.items = MO.items.concat(Array.isArray(r.data) ? r.data : []); MO.i++; }
-      else if (r.error !== 'rate') { if (MO.st === 'done' || MO.items.length) { monoFinish(); return; } MO = Object.assign(monoFresh(MO.back), { err: monoErr(r), opened: true }); render(true); return; }
+      var wait = Mn.GAP;
+      if (r.ok) {
+        var data = Array.isArray(r.data) ? r.data : [], nx = Mn.next(q, data);
+        MO.items = MO.items.concat(data); MO.i++; MO.read++; MO.rate = 0; MO.fails = 0;
+        if (nx) { MO.q.splice(MO.i, 0, nx); MO.pg++; }
+        if (MO.q[0] && q.acc === MO.q[0].acc && !nx && (!MO.from || q.from < MO.from)) MO.from = q.from;   // головна картка: до якої дати дочитали
+      } else if (r.error === 'rate') {
+        if (++MO.rate > 4) { if (MO.items.length || MO.st === 'done') { monoFinish('rate'); return; } monoLog('err', 'rate'); MO = Object.assign(monoFresh(MO.back), { err: 'mono_e_rate', opened: true }); render(true); return; }
+      } else if ((r.error === 'network' || r.error === 'timeout') && ++MO.fails <= 2) { wait = 5000; }
+      else { if (MO.st === 'done' || MO.items.length) { monoFinish(r.error); return; } monoLog('err', r.error); MO = Object.assign(monoFresh(MO.back), { err: monoErr(r), opened: true }); render(true); return; }
       if (MO.i >= MO.q.length) { monoFinish(); return; }
       if (r.ok && MO.st === 'run') monoShow(); else if (MO.bg) monoMore();
-      MO.next = Date.now() + Mn.GAP; if (MO.st === 'run' && routeName() === 'mono') render(true);
-      MO.timer = setTimeout(monoStep, Mn.GAP);
+      MO.next = Date.now() + wait; if (routeName() === 'mono') { if (MO.st === 'run') render(true); else monoBgText(); }
+      MO.timer = setTimeout(monoStep, wait);
     });
+  }
+  /** Рядок «Ще переглядаю…» — оновити дату й хвилини без перемальовки списку (галочки людини не скидаємо). */
+  function monoBgText() {
+    var el = document.getElementById('mono-bg-t'); if (!el) return; var pr = monoProg();
+    el.textContent = pr.d ? t('mono_bg2', { d: pr.d, m: pr.m }) : t('mono_bg');
   }
   function monoShow() {
     MO.st = 'done'; MO.bg = true; MO.groups = Mn.groups(MO.items); MO.sel = {};
@@ -14502,10 +14575,10 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
     if (MO.groups.length !== n0 && routeName() === 'mono') render(true);
   }
   /** Прочитали все (чи людина сказала «досить»): ключ забуваємо, платежі — у групи. */
-  function monoFinish() {
+  function monoFinish(why) {
     clearTimeout(MO.timer); MO.tok = '';
     var n0 = MO.groups.length, first = MO.st !== 'done';
-    MO.groups = Mn.groups(MO.items); MO.items = []; MO.bg = false; MO.st = 'done';
+    MO.groups = Mn.groups(MO.items); monoLog(why || 'done'); MO.scanned = { n: Mn.stats(MO.items).n, d: monoProg().d }; MO.items = []; MO.bg = false; MO.st = 'done';
     if (first) MO.sel = {};
     MO.groups.forEach(function (g) { if (!MO.sel[g.key]) MO.sel[g.key] = monoSelDef(g); });
     if (routeName() !== 'mono') return;
@@ -14523,6 +14596,7 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
   }
   function monoPasteNo() { MO.err = 'mono_e_clipno'; MO.opened = true; render(true); var i = document.getElementById('mono-tok'); if (i) i.focus(); }
   function monoApply() {
+    if (MO.bg) monoLog('apply');
     clearTimeout(MO.timer); MO.tok = ''; MO.bg = false;
     var n = 0, sn = MO.sn && MO.name ? String(MO.name).trim().split(/\s+/)[0] : '';
     MO.groups.forEach(function (g) {
@@ -14548,13 +14622,16 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
     var kinds = ['heat', 'water', 'elec', 'gas', 'waste', 'house', 'other'];
     if (MO.st === 'run') {
       h += '<div class="panel mono-run" role="status" aria-live="polite" data-key="mono-run"><p><span class="spin" aria-hidden="true"></span> <b>' + esc(t('mono_run')) + '</b></p>' +
-        '<p class="small muted" id="mono-wait"></p></div>' +
+        '<p class="small muted">' + esc(t('mono_run_s')) + '</p><p class="small muted" id="mono-wait"></p></div>' +
         '<div class="wiz-actions"><a class="btn sec" href="#' + esc(back) + '" data-act="mono-cancel">' + esc(t('cancel')) + '</a></div>';
       return { screen: 'S45', route: 'mono', bare: true, closeTo: back, html: h };
     }
     if (MO.st === 'done') {
-      var bgLine = MO.bg ? '<p class="small muted mono-bg" id="mono-bg" role="status" data-key="mono-bg"><span class="spin" aria-hidden="true"></span> ' + esc(t('mono_bg')) + '</p>' : '';
-      if (!MO.groups.length) return { screen: 'S45', route: 'mono', bare: true, closeTo: back, html: h + bgLine + (MO.bg ? '' : '<div class="panel" data-key="mono-none"><p>' + esc(t('mono_none')) + '</p></div>') + '<div class="wiz-actions"><a class="btn" href="#' + esc(back) + '" data-act="mono-cancel">' + esc(t('back')) + '</a></div>' };
+      // 128-а: «Ще переглядаю» — з якої дати вже дочитали й скільки хвилин лишилось, і «Досить шукати» (власник: «шукало, зависло»)
+      var pr = monoProg(), bgLine = MO.bg ? '<div class="small muted mono-bg" id="mono-bg" role="status" data-key="mono-bg"><span class="spin" aria-hidden="true"></span><span id="mono-bg-t">' +
+        esc(pr.d ? t('mono_bg2', { d: pr.d, m: pr.m }) : t('mono_bg')) + '</span><button type="button" class="linkbtn small" data-act="mono-stop" data-key="mono-stop">' + esc(t('mono_stop')) + '</button></div>' : '';
+      var sc = MO.scanned, none = sc && sc.n ? t('mono_none2', { d: sc.d || '…', n: sc.n }) : t('mono_none');
+      if (!MO.groups.length) return { screen: 'S45', route: 'mono', bare: true, closeTo: back, html: h + bgLine + (MO.bg ? '' : '<div class="panel" data-key="mono-none"><p>' + esc(none) + '</p></div>') + '<div class="wiz-actions"><a class="btn" href="#' + esc(back) + '" data-act="mono-cancel">' + esc(t('back')) + '</a></div>' };
       var many = places().length > 1, anyWater = false, main = [], rest = [];
       MO.groups.forEach(function (g, gi) {
         var s = MO.sel[g.key] || { kind: g.kind, place: S.placeId }, tg = monoTarget(g, s.kind, s.place), d = dgt(g.acc), same = tg.ok && (tg.waste ? !tg.n && (!d || tg.cur === d) : tg.cur === d);
@@ -15778,8 +15855,9 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
       case 'mono-paste': monoPaste(); break;
       case 'mono-ext': MO.opened = true; MO.err = ''; setTimeout(function () { if (routeName() === 'mono' && !MO.st) render(true); }, 300); break;
       case 'mono-stop': monoFinish(); break;
-      case 'mono-cancel': clearTimeout(MO.timer); MO = monoFresh(); break;
-      case 'mono-again': clearTimeout(MO.timer); MO = Object.assign(monoFresh(MO.back), { opened: true }); render(true); break;
+      case 'mono-cancel': if (MO.tok) monoLog('cancel'); clearTimeout(MO.timer); MO = monoFresh(); break;
+      case 'mono-again': if (MO.tok) monoLog('again'); clearTimeout(MO.timer); MO = Object.assign(monoFresh(MO.back), { opened: true }); render(true); break;
+      case 'mono-stop': monoFinish('stop'); if (routeName() === 'mono') render(true); break;
       case 'mono-apply': monoApply(); break;
       case 'pq-later': {   // водомір є, а № і цифри — пізніше: додаємо без деталей
         if (PQ && PQ.place === S.placeId && PQ.i < PQ.list.length && SK[PQ.list[PQ.i]]) {   // світло/газ: одна зона, рахунок і № — потім у налаштуваннях

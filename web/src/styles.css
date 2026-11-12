@@ -2143,7 +2143,9 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
 .mono-steps .mono-tokf input { width: 100%; min-width: 0; }
 @media (max-width: 360px) { .mono-steps > li { padding-left: 48px; } .mono-steps > li::before { left: 12px; } }
 .mono-steps .help.bad { margin-top: 8px; }
-.mono-bg { display: flex; gap: 8px; align-items: center; margin: 0 0 10px; }
+.mono-bg { display: grid; grid-template-columns: auto 1fr; gap: 2px 10px; align-items: start; margin: 0 0 10px; }
+.mono-bg .spin { margin-top: 1px; }
+.mono-bg .linkbtn { grid-column: 2; justify-self: start; min-height: 32px; }
 .mono-more { display: grid; gap: 10px; }
 .mono-more > summary { cursor: pointer; min-height: var(--tap); display: flex; align-items: center; color: var(--c-ink-2); }
 .mono-again { margin: 4px 0 0; text-align: center; }

@@ -37,7 +37,7 @@ const heat = g[0];
 ok('тепло: два платежі злиті в рядок з рахунком (у вересневому призначення немає)', heat.acc === '1234567' && heat.n === 2 && heat.nMonths === 2 && heat.lastAmt === 412.5 && !heat.guess, heat);
 ok('вода: рахунок з коментаря, ЄДРПОУ', g[1].acc === '7654321' && g[1].edrpou === '03361715');
 ok('газ: 10 цифр з 1… — рахунок Газмереж', M.gasField(g[2]) === 'grm' && M.gasField({ acc: '123456789', name: 'Нафтогаз' }) === 'account');
-ok('isUtility: надходження й холд — ні', !M.isUtility({ amount: 100, mcc: 4900 }) && !M.isUtility({ amount: -100, mcc: 4900, hold: true }));
+ok('isUtility: надходження — ні', !M.isUtility({ amount: 100, mcc: 4900 }));
 
 console.log('План запитів і токен:');
 const accs = M.cards({ accounts: [{ id: 'w', type: 'white', currencyCode: 980 }, { id: 'u', type: 'black', currencyCode: 840 }, { id: 'b', type: 'black', currencyCode: 980 }, { id: 'j', type: 'jar', currencyCode: 980 }] });
@@ -56,7 +56,28 @@ const KEY = 'uSynthKey_0123456789abcdefABCDEF-xyz012345';
 ok('tokenFrom: чистий ключ, «Токен: …», переноси, з адресою; ні — порожньо', M.tokenFrom(KEY) === KEY && M.tokenFrom('Токен: ' + KEY + '\n') === KEY && M.tokenFrom('  ' + KEY + '  ') === KEY
   && M.tokenFrom('https://api.monobank.ua/index.html#/tokens/personal ' + KEY) === KEY && M.tokenFrom('380501234567') === '' && M.tokenFrom('Шевченко') === '' && M.tokenFrom('') === ''
   && M.tokenFrom('aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa') === '');
+console.log('128-а: штрафи й податки, каталог без IBAN, 500 операцій, план глибше:');
+const fine = { id: 'f1', time: T('2026-11-10'), description: 'ГУК Харків/м.Харків/21081100', comment: '*;101;3012345678;Штраф за порушення правил благоустрою, постанова № 123456', mcc: 4829, amount: -34000, counterIban: 'UA358999980314000544000020001', counterEdrpou: '37874947', counterName: 'ГУК у Харківській обл/тг м.Харків' };
+const fine2 = { id: 'f2', time: T('2026-11-09'), description: 'Штрафи ПДР', mcc: 9222, amount: -51000 };
+const tax = { id: 't1', time: T('2026-11-08'), description: 'Податок на нерухомість', comment: 'енергоефективність', mcc: 9311, amount: -120000, counterIban: 'UA078999980334139811000020001' };
+const village = { id: 'v1', time: T('2026-10-20'), description: 'Малоданилівська селищна рада', comment: 'Оплата за водопостачання о/р 4512', mcc: 4829, amount: -21000, counterIban: 'UA128999980334199871000020545', counterEdrpou: '04396844', counterName: 'Малоданилівська селищна рада' };
+ok('штраф (благоустрій, Казначейство), штраф ПДР (9222), податок — не комуналка', !M.isUtility(fine) && !M.isUtility(fine2) && !M.isUtility(tax) && M.isGov(fine) && M.isGov(fine2) && M.isGov(tax));
+ok('вода сільраді на рахунок Казначейства — комуналка (назва прямо каже «водопостачання»)', M.isUtility(village) && M.groups([village])[0].kind === 'water' && M.groups([village])[0].acc === '4512', M.groups([village]));
+const cat = { id: 'c1', time: T('2026-10-11'), description: 'Харківводоканал', mcc: 4829, amount: -15600 }, pers = { id: 'p1', time: T('2026-10-11'), description: 'Тепленко Іван', mcc: 4829, amount: -50000 };
+ok('каталог «Платежі» без IBAN (MCC 4829, «Харківводоканал») — так; переказ «Тепленко» — ні', M.isUtility(cat) && !M.isUtility(pers));
+ok('свіжий платіж ще hold — теж (для рахунку годиться)', M.isUtility({ amount: -100, mcc: 4900, hold: true, description: 'КП Харківводоканал' }));
+ok('той самий платіж двічі (сторінки 500 перекриваються) — один', M.groups([items[0], items[0], items[1]])[0].n === 2);
+const page = Array.from({ length: 500 }, (_, i) => ({ id: 'n' + i, time: T('2026-11-10') - i * 60, amount: -100, mcc: 5411 }));
+const q0 = { acc: 'b', from: T('2026-10-10'), to: T('2026-11-11'), w: 0 }, nx = M.next(q0, page);
+ok('500 операцій — ще сторінка того ж вікна: to = найстаріша, from той самий', nx && nx.acc === 'b' && nx.from === q0.from && nx.to === T('2026-11-10') - 499 * 60 && nx.page === 1, nx);
+ok('499 — усе прочитано; найстаріша на межі from — без петлі', M.next(q0, page.slice(1)) === null && M.next({ acc: 'b', from: page[499].time, to: q0.to }, page) === null);
+const qd = M.plan(accs, now, 3, 6);
+ok('план: 3 місяці кожної картки + головна до 6 місяців', qd.length === 9 && qd.slice(6).every(x => x.acc === 'b') && qd[8].w === 5 && qd[8].to === now - 5 * M.WIN, qd.map(x => x.acc + x.w));
+const st = M.stats([fine, fine2, items[0], items[0], items[2], items[6]]);
+ok('stats: лише числа — операцій, держплатежів, комуналки, групи «вид+рахунок»', st.n === 5 && st.gov === 2 && st.ut === 2 && st.g === 'heat+ water+', st);
 (async () => {
+  const rt = await M.statement('tok', { acc: 'b', from: 1, to: 2 }, () => new Promise(() => {}), 50);
+  ok('запит завис — за тайм-аутом «timeout», а не «шукаю…» без кінця', rt.error === 'timeout', rt);
   let seen = null;
   const f = (url, o) => { seen = { url, o }; return Promise.resolve({ status: 403, text: () => Promise.resolve('{"errorDescription":"Unknown \'X-Token\'"}') }); };
   const r = await M.clientInfo('tok', f);

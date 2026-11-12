@@ -6607,7 +6607,19 @@
   // ---------- «Рахунки з monobank» (114-а, власник 11.11): усе для передачі, крім показань, — з платежів за комуналку ----------
   // Токен і виписка — лише в пам’яті цієї сторінки (не в S, не в localStorage, не на сервер); журнал бачить тільки «поле заповнене».
   var Mn = window.TeploMono, MO = monoFresh();
-  function monoFresh(back) { return { tok: '', st: '', err: '', q: [], i: 0, items: [], name: '', next: 0, timer: null, groups: [], sel: {}, sn: true, back: back || '', opened: false, bg: false }; }
+  function monoFresh(back) { return { tok: '', st: '', err: '', q: [], i: 0, items: [], name: '', next: 0, timer: null, groups: [], sel: {}, sn: true, back: back || '', opened: false, bg: false,
+    t0: 0, rate: 0, fails: 0, pg: 0, read: 0, from: 0, cards: 0, logged: false, scanned: null }; }
+  /** Журнал (128-а): чим закінчився пошук — лише числа (вікон, сторінок, операцій, відсіяних штрафів/податків, групи «вид+рахунок»), без назв, сум і номерів. */
+  function monoLog(how, err) {
+    if (MO.logged || !MO.t0) return; MO.logged = true;
+    var x = Mn.stats(MO.items.length ? MO.items : []);
+    track('mono', { how: how, e: err || undefined, w: MO.read, of: MO.q.length, pg: MO.pg || undefined, c: MO.cards, n: x.n, gov: x.gov || undefined, ut: x.ut, g: x.g || (MO.groups.length ? MO.groups.map(function (g) { return g.kind + (g.acc ? '+' : '-'); }).join(' ') : ''), r429: MO.rate || undefined, s: Math.round((Date.now() - MO.t0) / 1000) });
+  }
+  /** Що вже переглянули: з якої дати (найстаріше прочитане вікно) і скільки ще хвилин (запит — раз на хвилину). */
+  function monoProg() {
+    var left = Math.max(0, MO.q.length - MO.i), d = MO.from ? fmtDate(new Date((MO.from + 3 * 3600) * 1000).toISOString().slice(0, 10)) : '';
+    return { d: d, m: Math.max(1, Math.ceil(left * Mn.GAP / 60000)), left: left };
+  }
   function monoLink(k) {
     if (!Mn) return '';
     return '<p class="mono-link"><a class="btn sec" href="#mono" data-act="mono-open" data-key="mono-open' + (k ? '-' + k : '') + '">' + ico('download', 18) + '<span>' + esc(t('mono_link')) + '</span></a>' +
@@ -6646,30 +6658,45 @@
     if (!Mn.tokenOk(tok)) { MO.err = 'mono_e_tok'; MO.opened = true; render(true); var i2 = document.getElementById('mono-tok'); if (i2) i2.focus(); return; }
     if (MO.tok === tok && (MO.st === 'run' || MO.bg)) return;   // input і paste приходять разом
     clearTimeout(MO.timer);
-    MO = Object.assign(monoFresh(MO.back), { tok: tok, st: 'run', opened: true }); render(true);
+    MO = Object.assign(monoFresh(MO.back), { tok: tok, st: 'run', opened: true, t0: Date.now() }); render(true);
     Mn.clientInfo(tok).then(function (r) {
       if (MO.tok !== tok) return;
-      if (!r.ok) { MO = Object.assign(monoFresh(MO.back), { err: monoErr(r), opened: true }); render(true); return; }
+      if (!r.ok) { monoLog('err', 'ci_' + r.error); MO = Object.assign(monoFresh(MO.back), { err: monoErr(r), opened: true }); render(true); return; }
       var accs = Mn.cards(r.data);
-      if (!accs.length) { MO = Object.assign(monoFresh(MO.back), { err: 'mono_e_nocard', opened: true }); render(true); return; }
-      MO.name = String((r.data && r.data.name) || ''); MO.q = Mn.plan(accs, Math.floor(Date.now() / 1000), Mn.MONTHS); MO.i = 0; monoStep();
+      if (!accs.length) { monoLog('err', 'nocard'); MO = Object.assign(monoFresh(MO.back), { err: 'mono_e_nocard', opened: true }); render(true); return; }
+      MO.name = String((r.data && r.data.name) || ''); MO.cards = accs.length; MO.q = Mn.plan(accs, Math.floor(Date.now() / 1000), Mn.MONTHS, Mn.DEEP); MO.i = 0; monoStep();
     });
   }
   /** Виписка — по вікну на хвилину (правило monobank). Перше вікно (головна картка, останні 31 доба) — і одразу показуємо знайдене;
    *  старші місяці й інші картки дочитуємо фоном, нове додається в список (117-а: раніше людина чекала до 9 хвилин). */
+  /** 128-а: у вікні рівно 500 операцій — наступна сторінка того ж вікна йде одразу наступним запитом (не в кінець черги);
+   *  «зачекайте хвилину» (429) — не більше 4 разів поспіль, обрив чи тайм-аут — ще 2 спроби; далі — показуємо, що знайшли. */
   function monoStep() {
     if (!MO.tok) return;
     if (MO.i >= MO.q.length) { monoFinish(); return; }
-    var tok = MO.tok;
-    Mn.statement(tok, MO.q[MO.i]).then(function (r) {
+    var tok = MO.tok, q = MO.q[MO.i];
+    Mn.statement(tok, q).then(function (r) {
       if (MO.tok !== tok) return;
-      if (r.ok) { MO.items = MO.items.concat(Array.isArray(r.data) ? r.data : []); MO.i++; }
-      else if (r.error !== 'rate') { if (MO.st === 'done' || MO.items.length) { monoFinish(); return; } MO = Object.assign(monoFresh(MO.back), { err: monoErr(r), opened: true }); render(true); return; }
+      var wait = Mn.GAP;
+      if (r.ok) {
+        var data = Array.isArray(r.data) ? r.data : [], nx = Mn.next(q, data);
+        MO.items = MO.items.concat(data); MO.i++; MO.read++; MO.rate = 0; MO.fails = 0;
+        if (nx) { MO.q.splice(MO.i, 0, nx); MO.pg++; }
+        if (MO.q[0] && q.acc === MO.q[0].acc && !nx && (!MO.from || q.from < MO.from)) MO.from = q.from;   // головна картка: до якої дати дочитали
+      } else if (r.error === 'rate') {
+        if (++MO.rate > 4) { if (MO.items.length || MO.st === 'done') { monoFinish('rate'); return; } monoLog('err', 'rate'); MO = Object.assign(monoFresh(MO.back), { err: 'mono_e_rate', opened: true }); render(true); return; }
+      } else if ((r.error === 'network' || r.error === 'timeout') && ++MO.fails <= 2) { wait = 5000; }
+      else { if (MO.st === 'done' || MO.items.length) { monoFinish(r.error); return; } monoLog('err', r.error); MO = Object.assign(monoFresh(MO.back), { err: monoErr(r), opened: true }); render(true); return; }
       if (MO.i >= MO.q.length) { monoFinish(); return; }
       if (r.ok && MO.st === 'run') monoShow(); else if (MO.bg) monoMore();
-      MO.next = Date.now() + Mn.GAP; if (MO.st === 'run' && routeName() === 'mono') render(true);
-      MO.timer = setTimeout(monoStep, Mn.GAP);
+      MO.next = Date.now() + wait; if (routeName() === 'mono') { if (MO.st === 'run') render(true); else monoBgText(); }
+      MO.timer = setTimeout(monoStep, wait);
     });
+  }
+  /** Рядок «Ще переглядаю…» — оновити дату й хвилини без перемальовки списку (галочки людини не скидаємо). */
+  function monoBgText() {
+    var el = document.getElementById('mono-bg-t'); if (!el) return; var pr = monoProg();
+    el.textContent = pr.d ? t('mono_bg2', { d: pr.d, m: pr.m }) : t('mono_bg');
   }
   function monoShow() {
     MO.st = 'done'; MO.bg = true; MO.groups = Mn.groups(MO.items); MO.sel = {};
@@ -6683,10 +6710,10 @@
     if (MO.groups.length !== n0 && routeName() === 'mono') render(true);
   }
   /** Прочитали все (чи людина сказала «досить»): ключ забуваємо, платежі — у групи. */
-  function monoFinish() {
+  function monoFinish(why) {
     clearTimeout(MO.timer); MO.tok = '';
     var n0 = MO.groups.length, first = MO.st !== 'done';
-    MO.groups = Mn.groups(MO.items); MO.items = []; MO.bg = false; MO.st = 'done';
+    MO.groups = Mn.groups(MO.items); monoLog(why || 'done'); MO.scanned = { n: Mn.stats(MO.items).n, d: monoProg().d }; MO.items = []; MO.bg = false; MO.st = 'done';
     if (first) MO.sel = {};
     MO.groups.forEach(function (g) { if (!MO.sel[g.key]) MO.sel[g.key] = monoSelDef(g); });
     if (routeName() !== 'mono') return;
@@ -6704,6 +6731,7 @@
   }
   function monoPasteNo() { MO.err = 'mono_e_clipno'; MO.opened = true; render(true); var i = document.getElementById('mono-tok'); if (i) i.focus(); }
   function monoApply() {
+    if (MO.bg) monoLog('apply');
     clearTimeout(MO.timer); MO.tok = ''; MO.bg = false;
     var n = 0, sn = MO.sn && MO.name ? String(MO.name).trim().split(/\s+/)[0] : '';
     MO.groups.forEach(function (g) {
@@ -6729,13 +6757,16 @@
     var kinds = ['heat', 'water', 'elec', 'gas', 'waste', 'house', 'other'];
     if (MO.st === 'run') {
       h += '<div class="panel mono-run" role="status" aria-live="polite" data-key="mono-run"><p><span class="spin" aria-hidden="true"></span> <b>' + esc(t('mono_run')) + '</b></p>' +
-        '<p class="small muted" id="mono-wait"></p></div>' +
+        '<p class="small muted">' + esc(t('mono_run_s')) + '</p><p class="small muted" id="mono-wait"></p></div>' +
         '<div class="wiz-actions"><a class="btn sec" href="#' + esc(back) + '" data-act="mono-cancel">' + esc(t('cancel')) + '</a></div>';
       return { screen: 'S45', route: 'mono', bare: true, closeTo: back, html: h };
     }
     if (MO.st === 'done') {
-      var bgLine = MO.bg ? '<p class="small muted mono-bg" id="mono-bg" role="status" data-key="mono-bg"><span class="spin" aria-hidden="true"></span> ' + esc(t('mono_bg')) + '</p>' : '';
-      if (!MO.groups.length) return { screen: 'S45', route: 'mono', bare: true, closeTo: back, html: h + bgLine + (MO.bg ? '' : '<div class="panel" data-key="mono-none"><p>' + esc(t('mono_none')) + '</p></div>') + '<div class="wiz-actions"><a class="btn" href="#' + esc(back) + '" data-act="mono-cancel">' + esc(t('back')) + '</a></div>' };
+      // 128-а: «Ще переглядаю» — з якої дати вже дочитали й скільки хвилин лишилось, і «Досить шукати» (власник: «шукало, зависло»)
+      var pr = monoProg(), bgLine = MO.bg ? '<div class="small muted mono-bg" id="mono-bg" role="status" data-key="mono-bg"><span class="spin" aria-hidden="true"></span><span id="mono-bg-t">' +
+        esc(pr.d ? t('mono_bg2', { d: pr.d, m: pr.m }) : t('mono_bg')) + '</span><button type="button" class="linkbtn small" data-act="mono-stop" data-key="mono-stop">' + esc(t('mono_stop')) + '</button></div>' : '';
+      var sc = MO.scanned, none = sc && sc.n ? t('mono_none2', { d: sc.d || '…', n: sc.n }) : t('mono_none');
+      if (!MO.groups.length) return { screen: 'S45', route: 'mono', bare: true, closeTo: back, html: h + bgLine + (MO.bg ? '' : '<div class="panel" data-key="mono-none"><p>' + esc(none) + '</p></div>') + '<div class="wiz-actions"><a class="btn" href="#' + esc(back) + '" data-act="mono-cancel">' + esc(t('back')) + '</a></div>' };
       var many = places().length > 1, anyWater = false, main = [], rest = [];
       MO.groups.forEach(function (g, gi) {
         var s = MO.sel[g.key] || { kind: g.kind, place: S.placeId }, tg = monoTarget(g, s.kind, s.place), d = dgt(g.acc), same = tg.ok && (tg.waste ? !tg.n && (!d || tg.cur === d) : tg.cur === d);
@@ -7959,8 +7990,9 @@
       case 'mono-paste': monoPaste(); break;
       case 'mono-ext': MO.opened = true; MO.err = ''; setTimeout(function () { if (routeName() === 'mono' && !MO.st) render(true); }, 300); break;
       case 'mono-stop': monoFinish(); break;
-      case 'mono-cancel': clearTimeout(MO.timer); MO = monoFresh(); break;
-      case 'mono-again': clearTimeout(MO.timer); MO = Object.assign(monoFresh(MO.back), { opened: true }); render(true); break;
+      case 'mono-cancel': if (MO.tok) monoLog('cancel'); clearTimeout(MO.timer); MO = monoFresh(); break;
+      case 'mono-again': if (MO.tok) monoLog('again'); clearTimeout(MO.timer); MO = Object.assign(monoFresh(MO.back), { opened: true }); render(true); break;
+      case 'mono-stop': monoFinish('stop'); if (routeName() === 'mono') render(true); break;
       case 'mono-apply': monoApply(); break;
       case 'pq-later': {   // водомір є, а № і цифри — пізніше: додаємо без деталей
         if (PQ && PQ.place === S.placeId && PQ.i < PQ.list.length && SK[PQ.list[PQ.i]]) {   // світло/газ: одна зона, рахунок і № — потім у налаштуваннях
