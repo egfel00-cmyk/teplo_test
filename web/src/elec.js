@@ -127,7 +127,8 @@
     });
     return out;
   }
-  /** По місяцях (місяць — за який зараховується показання: 1–3 число — попередній). → [{ym, kwh, dz, cost, days, from, to}] */
+  /** По місяцях (місяць — за який зараховується показання: 1–3 число — попередній). → [{ym, kwh, dz, cost, days, from, to}]
+   *  opts.fee — фіксована плата на місяць (газ: доставка/розподіл, 123-я): додається до cost кожного місяця, окремо — b.fee. */
   function monthly(ser, m, opts) {
     var by = {};
     ser.forEach(function (x) {
@@ -137,7 +138,8 @@
       var from = new Date(Date.parse(x.rec.date) - x.days * 864e5).toISOString().slice(0, 10); if (!b.from || from < b.from) b.from = from;
       keys(m).forEach(function (k) { b.dz[k] = (b.dz[k] || 0) + x.dz[k]; });
     });
-    return Object.keys(by).sort().map(function (k) { var b = by[k]; b.cost = cost(m, b.dz, b.to, opts).total; b.perMonth = b.days ? b.kwh / b.days * 30 : b.kwh; return b; });
+    var fee = opts && opts.fee > 0 ? opts.fee : 0;
+    return Object.keys(by).sort().map(function (k) { var b = by[k]; b.cost = cost(m, b.dz, b.to, opts).total + fee; if (fee) b.fee = fee; b.perMonth = b.days ? b.kwh / b.days * 30 : b.kwh; return b; });
   }
   function summary(mo) {
     if (!mo.length) return null;
@@ -300,6 +302,26 @@
     var mk = function (b) { var e = /^[7890]$/.test(b.red); return { value: b.v, digits: b.dg, frac: b.red, sure: b.n >= 2 && !e, edge: e, votes: b.n }; };
     var out = mk(top); out.alts = all.slice(1, 3).map(mk); return out;
   };
+  // ---- доставка (розподіл) газу (123-я, власник 12.11: «у платіжці ще за транспортування — що це, звідки, одна ціна чи ні, додати в облік») ----
+  // Окрема плата оператору газорозподільної мережі (Газмережі — філія області; Київгаз, Одесагаз, Шепетівкагаз…), не постачальнику газу.
+  // Щомісяця однаково, від показань не залежить: річна замовлена потужність (м³ — спожите за попередній газовий рік 1.10–30.09) ÷ 12 × тариф
+  // оператора (грн за м³, з ПДВ). Перераховують з 1 січня. Мінімум для побуту — 39 м³ на рік (лише плита; з колонкою 126, з котлом 314).
+  // Тарифи для населення не змінюються до кінця воєнного стану й різні в операторів: Харків-місто 0,516, Харківська обл. 2,388 — у довіднику (gas.dist).
+  gas.DIST_MIN = 39;
+  /** Плата за доставку на місяць: cap м³ на рік, tariff грн за м³ → грн (до копійки) або null. */
+  gas.distMonth = function (cap, tariff) { var c = gas.num(cap), p = gas.num(tariff); if (!(c > 0) || !(p > 0)) return null; return Math.round(c / 12 * p * 100) / 100; };
+  /** Газовий рік, за який рахують потужність на календарний рік year: 1.10 (year−2) – 30.09 (year−1). */
+  gas.gasYear = function (year) { return { from: (year - 2) + '-10-01', to: (year - 1) + '-09-30' }; };
+  /** Оцінка річної потужності за показаннями: є записи біля обох меж газового року (±20 днів) — спожите, приведене до 365 днів, не менше 39.
+   *  recs — записи одного лічильника ({date, z: {all}}); → {m3, from, to, raw} або null. */
+  gas.capFromRecs = function (recs, year) {
+    var gy = gas.gasYear(year), list = (recs || []).filter(function (r) { return r && !r.deleted && r.z && gas.whole(r.z.all) !== null; }).sort(function (a, b) { return a.date < b.date ? -1 : a.date > b.date ? 1 : 0; });
+    var near = function (d) { var best = null; list.forEach(function (r) { var x = Math.abs(daysBetween(d, r.date)); if (x <= 20 && (!best || x < best.x)) best = { r: r, x: x }; }); return best && best.r; };
+    var a = near(gy.from), b = near(gy.to); if (!a || !b || a === b) return null;
+    var q = gas.whole(b.z.all) - gas.whole(a.z.all), days = daysBetween(a.date, b.date); if (q < 0 || days < 300) return null;
+    return { m3: Math.max(gas.DIST_MIN, Math.round(q * 365 / days)), raw: q, from: a.date, to: b.date };
+  };
+  function daysBetween(a, b) { return Math.round((Date.parse(b) - Date.parse(a)) / 864e5); }
   elec.make = make; elec.gas = gas;
   if (typeof module !== 'undefined' && module.exports) module.exports = elec; else { root.TeploElec = elec; root.TeploGas = gas; }
 })(typeof window !== 'undefined' ? window : this);

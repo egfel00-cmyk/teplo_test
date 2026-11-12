@@ -21,6 +21,7 @@
   var DET_MAX = 1280;           // длинная сторона для поиска текста: мелкие подписи «Gcal», «m³» на экране остаются видны
   // второй проход: приближаем до ~2600 px, но ищем текст кусками ≤1408 px — иначе iPhone упирается в память WASM
   // и перезагружает вкладку (одна сетка 2600×2600 съедала ~1 ГБ)
+  var FAST_PX = 1600, FAST_DET = 960;   // кадр камери: довга сторона холста й пошуку тексту
   var ZOOM_PX = 2600, TILE = 1408; var DET_THRESH = 0.3, BOX_THRESH = 0.55, UNCLIP = 1.6, REC_H = 48;
 
   function fetchBuf(url, onBytes) {
@@ -61,12 +62,12 @@
   /** Отдать память холста сразу (iOS считает общий лимит памяти холстов и не ждёт сборщика мусора). */
   function free(c) { if (c) { c.width = 0; c.height = 0; } }
 
-  function toCanvas(file) {
+  function toCanvas(file, mx) {
     var p = typeof createImageBitmap === 'function'
       ? createImageBitmap(file, { imageOrientation: 'from-image' }).catch(function () { return createImageBitmap(file); })
       : new Promise(function (ok, bad) { var i = new Image(); i.onload = function () { ok(i); }; i.onerror = bad; i.src = URL.createObjectURL(file); });
     return p.then(function (img) {
-      var k = Math.min(1, 2400 / Math.max(img.width, img.height));
+      var k = Math.min(1, (mx || 2400) / Math.max(img.width, img.height));
       var c = document.createElement('canvas'); c.width = Math.round(img.width * k); c.height = Math.round(img.height * k);
       c.getContext('2d').drawImage(img, 0, 0, c.width, c.height); if (img.close) img.close(); else if (img.src) URL.revokeObjectURL(img.src); return c;
     });
@@ -167,13 +168,15 @@
   }
 
   /** Прочитать рамки на холсте; координаты пересчитать в исходное фото (map: x → ox + x / sc). */
-  function readBoxes(cv, boxes, ox, oy, sc, lines, allAlts) {
+  /** Віддати потік сторінці (камера: відео й дотики не стоять, поки читаємо кадр). */
+  function nap() { return new Promise(function (ok) { setTimeout(ok, 0); }); }
+  function readBoxes(cv, boxes, ox, oy, sc, lines, allAlts, gap) {
     boxes.sort(function (a, b) { return a.cy - b.cy || a.cx - b.cx; });
     var chain = Promise.resolve();
     boxes.forEach(function (b) {
       if (b.h > b.w * 1.5) return;
       var line;
-      chain = chain.then(function () { return recognize(cv, b, 0); }).then(function (r) {
+      chain = chain.then(gap ? nap : null).then(function () { return recognize(cv, b, 0); }).then(function (r) {
         line = { text: r.text, score: +r.score.toFixed(3), x: Math.round(ox + (b.cx - b.w / 2) / sc), y: Math.round(oy + (b.cy - b.h / 2) / sc), w: Math.round(b.w / sc), h: Math.round(b.h / sc), angle: +b.angle.toFixed(3) };
         // строки с цифрами (ЖК-экран) — ещё дважды с подавлением «теней» непогашенных сегментов: 1 не превращается в 8
         if (!allAlts && !/[0-9]|^E/.test(r.text)) return null;   // allAlts — мелкие подписи ЖК («m³» → «ni», «m)»): все варианты
@@ -920,11 +923,16 @@
     return Math.atan2(sy, sx) / 2;
   }
 
+  /**
+   * opts.all — усі водоміри кадру; opts.fast — кадр камери (123-я): менший холст і пошук тексту, до двох вікон барабана (drums: false — жодного), без приближення
+   * й проходу для сірого ЖК, з паузами між рядками — на iPhone повний прохід займав секунди й морозив сторінку (журнал 12.11: 2 кадри за 21 с,
+   * дотики приходили пачкою). Знімки з камери потім розпізнаються повним проходом.
+   */
   function read(file, opts) {
-    var t0 = Date.now(), src, lines = [], all = !!(opts && opts.all);
+    var t0 = Date.now(), src, lines = [], all = !!(opts && opts.all), fast = !!(opts && opts.fast);
     var drums = [];
-    return toCanvas(file).then(function (c) { src = c; return detect(c); }).then(function (boxes) {
-      return readBoxes(src, boxes, 0, 0, 1, lines).then(function () {
+    return toCanvas(file, fast ? FAST_PX : 0).then(function (c) { src = c; return (fast ? nap() : null); }).then(function () { return detect(src, fast ? { max: FAST_DET } : undefined); }).then(function (boxes) {
+      return readBoxes(src, boxes, 0, 0, 1, lines, false, fast).then(function () {
         // окно барабана водомера (по цвету) — до пяти кандидатов, пока не прочитаем 4+ цифры
         var cands = []; try { cands = findDrums(src, textAngle(lines)); } catch (e) { cands = []; }
         var ch = Promise.resolve();
@@ -946,10 +954,11 @@
           var kwh = lines.some(function (l) { var lx = l.x + l.w / 2, ly = l.y + l.h / 2; return Math.abs(lx - d.cx) <= R && Math.abs(ly - d.cy) <= R && /[кk][вb][тt]|kwh|[іi1]м[пn]|imp/i.test(l.text); });
           if (!kwh || (a.length < 2 && !(a.length === 1 && strong))) return null;
           a.sort(function (x, y) { return x - y; }); return a[a.length >> 1]; };
-        cands.forEach(function (d) { ch = ch.then(function () { if (all ? drums.filter(goodDrum).length >= 4 : drums.some(goodDrum)) return null; return readDrum(src, d, upNear(d)).then(function (r) { if (r.text && !onText(r)) drums.push(r); }); }); });
+        if (fast) cands = opts.drums === false ? [] : cands.slice(0, 2);   // тепло з камери: вікна барабана на ЖК — секунди марно (вода/світло/газ — до двох)
+        cands.forEach(function (d) { ch = ch.then(fast ? nap : null).then(function () { if (all ? drums.filter(goodDrum).length >= 4 : drums.some(goodDrum)) return null; return readDrum(src, d, upNear(d)).then(function (r) { if (r.text && !onText(r)) drums.push(r); }); }); });
         return ch;
       }).then(function () {
-        if (drums.some(goodDrum)) return null;   // водомер прочитан — приближать нечего
+        if (fast || drums.some(goodDrum)) return null;   // водомер прочитан — приближать нечего
         // Нет крупной строки цифр? Цифры экрана мелкие в кадре (снято издалека, серый ЖК без подсветки) —
         // приближаем область, где нашёлся текст счётчика, примерно до 1800 px и ищем ещё раз.
         var big = lines.some(function (l) { return digits(l.text) >= 4 && l.h >= src.height * 0.03 && !/[A-Za-zА-Яа-я]{3}/.test(l.text); });
@@ -972,7 +981,7 @@
           return readBoxes(cv, fresh, x0, y0, sc, lines).then(function () { free(cv); });
         });
       }).then(function () {
-        if (drums.some(goodDrum)) return null;
+        if (fast || drums.some(goodDrum)) return null;
         return lcdPass(src, lines).catch(function () { return null; });   // не вышло — остаётся первый проход
       });
     }).then(function () { var w = src.width, h = src.height; free(src); return { lines: lines, drums: drums, w: w, h: h, ms: Date.now() - t0 }; });

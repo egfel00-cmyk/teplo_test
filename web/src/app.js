@@ -2174,7 +2174,32 @@
   /** Останнє показання лічильника до дати (не включно; стартове того ж дня — так). */
   function eprev(mid, date, skipId) { var a = mrecs(mid).filter(function (r) { return r.id !== skipId && (!date || r.date < date || (r.base && r.date === date)); }); return a.length ? a[a.length - 1] : null; }
   function elastOf(mid) { var a = mrecs(mid); return a.length ? a[a.length - 1] : null; }
-  function sopts(k) { var p = place() || {}; return { heating: !!p[SK[k].heat], price: k === 'gas' ? R.num(p.gasPrice) : R.num(((p.prov || {}).elec || {}).price) }; }
+  function sopts(k) { var p = place() || {}, o = { heating: !!p[SK[k].heat], price: k === 'gas' ? R.num(p.gasPrice) : R.num(((p.prov || {}).elec || {}).price) };
+    if (k === 'gas') { var g = gdist(p); if (g.month) o.fee = g.month; }
+    return o; }
+  /**
+   * Доставка (розподіл) газу поточної квартири (123-я, власник 12.11: «у платіжці ще за транспортування»): окрема щомісячна плата оператору ГРМ
+   * (Газмережі, Київгаз…), однакова щомісяця = річна замовлена потужність ÷ 12 × тариф. Потужність — своя з платіжки (p.gasCap) або оцінка за
+   * показаннями газового року (Gs.capFromRecs); тариф — свій (p.gasDist) або з довідника за адресою (gas.dist).
+   * → {cap, capSrc: 'own'|'est'|null, est, tariff, trSrc: 'own'|'dir'|null, org, month (грн або null)}
+   */
+  function gdist(p) {
+    p = p || place() || {}; var d = null; try { var j = prvKinds0(p); d = j && j.kinds && j.kinds.gas; } catch (e) { d = null; }
+    var own = R.num(p.gasDist), dir = d ? R.num(d.dist) : null, tr = own > 0 ? own : dir > 0 ? dir : null;
+    var cap = R.num(p.gasCap), est = null, ms = p === place() ? pmeters('gas', true) : [];
+    if (!(cap > 0)) for (var i = 0; i < ms.length && !est; i++) est = Gs.capFromRecs(mrecs(ms[i].id), +today().slice(0, 4));
+    var c = cap > 0 ? cap : est ? est.m3 : null;
+    return { cap: c, capSrc: cap > 0 ? 'own' : est ? 'est' : null, est: est, tariff: tr, trSrc: own > 0 ? 'own' : dir > 0 ? 'dir' : null,
+      org: (d && d.grm) || '', month: Gs.distMonth(c, tr) };
+  }
+  /** Скільки місяців нарахування між двома датами показань (місяць, за який зараховується), не менше 1. */
+  function feeMonths(md, a, b) { var x = md.forMonth(a), y = md.forMonth(b); return Math.max(1, (+y.slice(0, 4) * 12 + +y.slice(5, 7)) - (+x.slice(0, 4) * 12 + +x.slice(5, 7))); }
+  /** Примітка під сумою газу: ціна газу і як рахується доставка (або що вписати, щоб рахувалась). */
+  function gasNote(price) {
+    var g = gdist(), o = g.org || t('gd_org_def');
+    if (g.month) return t('gst_tariff_fee', { p: money(price), c: fmtN(g.cap, 0), t: String(g.tariff).replace('.', ','), f: money(g.month), o: o }) + (g.capSrc === 'est' ? ' ' + t('gd_est_s') : '');
+    return t('gst_tariff', { p: money(price) }) + ' ' + t(g.tariff ? 'gd_need_cap_s' : 'gd_need_tar_s');
+  }
   function eopts() { return sopts('elec'); }
   function ename(m) { return t((m && m.kind) === 'gas' ? 'kd_gas' : 'kd_elec') + (m && m.name ? ' · ' + m.name : ''); }
   /** Назва зони: «День», «Ніч», «Пік», «Напівпік»; одна зона — «Показання». */
@@ -2396,7 +2421,7 @@
     var p = place() || {}, a = String(p.address || '').trim(), j = a ? prvLoad(p) : null, reg = j && j.found && j.kinds ? j.kinds : null;
     var pk = k === 'hot' || k === 'cold' ? 'water' : k, my = (p.prov || {})[pk] || {}, d = reg && reg[pk], f = function (v) { return v === null || v === undefined || v === '' ? '' : money(v); };
     var fld = function (id, lbl, val, unit, ph) { return '<div class="field"><label for="' + id + '">' + esc(lbl) + '</label><div class="ctl"><input id="' + id + '" class="num" inputmode="decimal" autocomplete="off" data-mp="' + id + '" value="' + esc(val) + '"' + (ph ? ' placeholder="' + esc(ph) + '"' : '') + '><span class="unit">' + esc(unit) + '</span></div></div>'; };
-    var h = '', own = false, unknown = false, src = '';
+    var h = '', own = false, unknown = false, src = '', gfee = '';
     if (k === 'heat') {
       own = R.num(my.price) > 0; unknown = !own && reg && d !== undefined && !(d && R.num(d.price) > 0) && !(R.num(S.tariff) > 0);
       h = fld('mp-heat', t('prv_heatp'), unknown ? '' : f(tariff()), 'грн') + fld('mp-abon', t('p_abon_l'), f(bill().abon), 'грн');
@@ -2414,10 +2439,17 @@
     } else if (k === 'gas') {
       own = R.num(p.gasPrice) > 0; h = fld('g-price', t('gh_price'), f(own ? R.num(p.gasPrice) : Gs.priceAt(today())), 'грн');
       src = (reg && reg.gas && reg.gas.grm) ? t('mp_gas_grm', { g: reg.gas.grm, p: String(reg.gas.dist).replace('.', ',') }) : '';
+      // доставка (розподіл, 123-я): річна потужність з платіжки Газмереж і тариф (довідник або свій)
+      var gd = gdist(p);
+      h += fld('mp-gcap', t('gd_cap'), R.num(p.gasCap) > 0 ? fmtN(R.num(p.gasCap), 0) : '', 'м³', gd.est ? t('gd_cap_ph', { n: gd.est.m3 }) : '') +
+        fld('mp-gdist', t('gd_tar'), gd.tariff ? String(gd.tariff).replace('.', ',') : '', 'грн');
+      gfee = gd.month ? t('gd_fee', { c: fmtN(gd.cap, 0), p: String(gd.tariff).replace('.', ','), f: money(gd.month) }) + (gd.capSrc === 'est' ? ' ' + t('gd_est', { a: R.toHtmDate(gd.est.from), b: R.toHtmDate(gd.est.to) }) : '')
+        : gd.tariff ? t('gd_need_cap') : t('gd_need_tar');
     }
     var note = own ? t('mp_own') : unknown ? t('mp_unknown', { c: (j.place && j.place.name) || a }) : !a ? t('mp_noaddr') : src ? t('mp_from', { s: src }) : '';
     return '<div class="mp" data-key="mp-' + k + '"><h4 class="mp-h">' + esc(t('mp_title')) + '</h4><div class="grid2">' + h + '</div>' +
-      (note ? '<p class="small ' + (unknown ? 'warn-text' : 'muted') + '" data-key="mp-note-' + k + '">' + esc(note) + '</p>' : '') + '</div>';
+      (note ? '<p class="small ' + (unknown ? 'warn-text' : 'muted') + '" data-key="mp-note-' + k + '">' + esc(note) + '</p>' : '') +
+      (gfee ? '<p class="small muted" data-key="mp-gfee">' + esc(gfee) + '</p>' : '') + '</div>';
   }
   document.addEventListener('change', function (e) {
     var el = e.target, id = el && el.getAttribute && el.getAttribute('data-mp'); if (!id || id === 'g-price') return;
@@ -2429,6 +2461,8 @@
     else if (id === 'mp-wd') { put('water', 'drain', 1000); if (v === 0) p.prov.water.drain = 0; }
     else if (id === 'mp-wh') put('water', 'hot', 1000);
     else if (id === 'mp-ep') put('elec', 'price', 100);
+    else if (id === 'mp-gcap') { if (v > 0 && v < 100000) p.gasCap = Math.round(v); else delete p.gasCap; }   // річна замовлена потужність, м³
+    else if (id === 'mp-gdist') { var gd0 = gdist(p); if (v > 0 && v < 100 && !(gd0.trSrc === 'dir' && Math.abs(v - gd0.tariff) < 0.0005 && !(R.num(p.gasDist) > 0))) p.gasDist = v; else if (!(v > 0)) delete p.gasDist; }
     p.updatedAt = Date.now(); WX.key = ''; save(); toast(t('b_saved')); render(true);
   });
   /** Одна й та сама ссилка в усіх лічильників: квартира — її лічильники (додати, замінити, прибрати) і рахунки. */
@@ -2691,7 +2725,7 @@
     var tg = window.Telegram && Telegram.WebApp && Telegram.WebApp.initData;
     TeploCam.open({ t: t, ico: ico, kind: kind, tg: !!tg, max: kind === 'heat' ? 12 : 8, track: track,
       engine: function (onPct) { return VIS()._engine(onPct); },
-      read: function (blob) { return window.TeploOCR.read(blob); },
+      read: function (blob) { return window.TeploOCR.read(blob, { fast: true, drums: kind !== 'heat' }); },
       parse: camParse(kind),
       pick: function () { var el = document.getElementById(id); if (el) el.click(); },
       done: function (files) {
@@ -2993,19 +3027,22 @@
     var pa = r.base ? null : paidAnchor(mrecs(m.id), r, function () { return true; }, function (y) { return y.base ? baseSent(y) : ssent(k, y); }), px = pa ? md.series([pa.rec, r], m)[1] : null;
     if (px && px.dz) {
       var pc = md.cost(m, px.dz, r.date, sopts(k)), p1 = md.zones(m) === 1, pcur = md.whole(r.z.all), pa0 = md.whole(pa.rec.z && pa.rec.z.all);
+      // газ: доставка (розподіл) — за кожен місяць від «Передано» до цього запису (123-я)
+      var pfee = k === 'gas' ? sopts(k).fee || 0 : 0, pfn = pfee ? feeMonths(md, pa.date, r.date) : 0;
       h += usedBox({ kind: k, key: 'erec-used', title: t(pa.sent ? 'ru_title_paid' : 'ru_title_h', { d: fmtDate(pa.date) }), per: t('ru_per', { a: fmtDate(pa.date), b: fmtDate(r.date), d: px.days }),
-        qs: [{ v: '+' + px.kwh, u: u }], money: pc.total, vals: vals,
+        qs: [{ v: '+' + px.kwh, u: u }], money: pc.total + pfee * pfn, vals: vals,
         lines: (p1 ? [t('ru_calc', { q: px.kwh, u: u, p: money(pc.price), s: money(pc.total) })] : md.keys(m).map(function (q) { return t('ru_zone', { z: ezl(m, q), q: px.dz[q], p: money(pc.price * md.coef(m, q)), s: money(pc.parts[q]) }); }))
-          .concat([pa.n && x.dz ? t('ru_this', { q: x.kwh, u: u, d: x.days }) + ' · ' + t('paid_skip', { n: pa.n }) : '', p1 && pcur !== null && pa0 !== null ? t('ru_meter', { a: pa0, b: pcur, u: u }) : '']),
-        proj: usedProj(px.kwh, px.days, pc.total, u), note: k === 'gas' ? t('gst_tariff', { p: money(pc.price) }) : '' });
+          .concat([pfee ? (pfn > 1 ? t('ru_fee_n', { n: pfn, f: money(pfee), s: money(pfee * pfn) }) : t('ru_fee1', { f: money(pfee) })) : '',
+            pa.n && x.dz ? t('ru_this', { q: x.kwh, u: u, d: x.days }) + ' · ' + t('paid_skip', { n: pa.n }) : '', p1 && pcur !== null && pa0 !== null ? t('ru_meter', { a: pa0, b: pcur, u: u }) : '']),
+        proj: usedProj(px.kwh, px.days, pc.total, u), note: k === 'gas' ? gasNote(pc.price) : '' });
     } else if (x.dz) {
       var ym = md.forMonth(r.date), b = md.monthly(md.series(mrecs(m.id), m), m, sopts(k)).filter(function (b0) { return b0.ym === ym; })[0] || { kwh: x.kwh, dz: x.dz, days: x.days, from: null, to: r.date };
-      var c = md.cost(m, b.dz, b.to, sopts(k)), one = md.zones(m) === 1, cur = md.whole(r.z.all);
+      var c = md.cost(m, b.dz, b.to, sopts(k)), one = md.zones(m) === 1, cur = md.whole(r.z.all), mfee = k === 'gas' ? sopts(k).fee || 0 : 0;
       h += usedBox({ kind: k, key: 'erec-used', title: t('ru_title', { m: monthLabel(ym) }), per: b.from ? t('ru_per', { a: fmtDate(b.from), b: fmtDate(b.to), d: b.days }) : '',
-        qs: [{ v: '+' + b.kwh, u: u }], money: c.total, vals: vals,
+        qs: [{ v: '+' + b.kwh, u: u }], money: c.total + mfee, vals: vals,
         lines: (one ? [t('ru_calc', { q: b.kwh, u: u, p: money(c.price), s: money(c.total) })] : md.keys(m).map(function (q) { return t('ru_zone', { z: ezl(m, q), q: b.dz[q], p: money(c.price * md.coef(m, q)), s: money(c.parts[q]) }); }))
-          .concat([b.kwh !== x.kwh ? t('ru_this', { q: x.kwh, u: u, d: x.days }) : '', one && cur !== null ? t('ru_meter', { a: cur - x.dz.all, b: cur, u: u }) : '', erecPaid(k, m, r)]),
-        proj: usedProj(b.kwh, b.days, c.total, u), note: k === 'gas' ? t('gst_tariff', { p: money(c.price) }) : '' });
+          .concat([mfee ? t('ru_fee1', { f: money(mfee) }) : '', b.kwh !== x.kwh ? t('ru_this', { q: x.kwh, u: u, d: x.days }) : '', one && cur !== null ? t('ru_meter', { a: cur - x.dz.all, b: cur, u: u }) : '', erecPaid(k, m, r)]),
+        proj: usedProj(b.kwh, b.days, c.total, u), note: k === 'gas' ? gasNote(c.price) : '' });
     } else if (r.base) h += usedBase('erec-used', vals, k);
     else h += usedOnly(k, 'erec-used', vals);
     h += recPhotos(r.photos, 'm' + r.id, 'm:' + r.id);
@@ -3027,21 +3064,23 @@
   }
   function smonthly(k) {
     // кілька лічильників — складаємо по місяцях
-    var by = {}, md = SK[k].mod;
-    smeters(k, true).forEach(function (m) { md.monthly(md.series(paidOnly(mrecs(m.id), function (y) { return ssent(k, y); }), m), m, sopts(k)).forEach(function (b) {
-      var o = by[b.ym] || (by[b.ym] = { ym: b.ym, kwh: 0, cost: 0, days: 0, night: 0, from: b.from, to: b.to });
+    // газ: доставка — раз на місяць на квартиру, не на кожен лічильник (123-я)
+    var by = {}, md = SK[k].mod, so = sopts(k), fee = so.fee || 0, so0 = Object.assign({}, so, { fee: 0 });
+    smeters(k, true).forEach(function (m) { md.monthly(md.series(paidOnly(mrecs(m.id), function (y) { return ssent(k, y); }), m), m, so0).forEach(function (b) {
+      var o = by[b.ym] || (by[b.ym] = { ym: b.ym, kwh: 0, cost: fee, fee: fee, days: 0, night: 0, from: b.from, to: b.to });
       o.kwh += b.kwh; o.cost += b.cost; o.days = Math.max(o.days, b.days); o.night += b.dz.night || 0; if (b.from < o.from) o.from = b.from; if (b.to > o.to) o.to = b.to;
     }); });
     return Object.keys(by).sort().map(function (q) { var b = by[q]; b.perMonth = b.days ? b.kwh / b.days * 30 : b.kwh; return b; });
   }
   /** Набігло після останнього «Передано» й ще не передане (останній запис — проміжний чи «для себе»): {q, cost, d} по всіх лічильниках виду або null. */
   function ssince(k) {
-    var md = SK[k].mod, q = 0, c = 0, d = null, sentS = function (y) { return y.base ? baseSent(y) : ssent(k, y); };
+    var md = SK[k].mod, q = 0, c = 0, d = null, to = null, sentS = function (y) { return y.base ? baseSent(y) : ssent(k, y); };
     smeters(k).forEach(function (m) {
       var all = mrecs(m.id), last = all[all.length - 1]; if (!last || last.base || (!last.own && ssent(k, last))) return;
       var pa = paidAnchor(all, last, function () { return true; }, sentS), px = pa && pa.sent ? md.series([pa.rec, last], m)[1] : null; if (!px || !px.dz) return;
-      q += px.kwh; c += md.cost(m, px.dz, last.date, sopts(k)).total; if (!d || pa.date < d) d = pa.date;
+      q += px.kwh; c += md.cost(m, px.dz, last.date, sopts(k)).total; if (!d || pa.date < d) d = pa.date; if (!to || last.date > to) to = last.date;
     });
+    var fee = d && k === 'gas' ? sopts(k).fee || 0 : 0; if (fee) c += fee * feeMonths(md, d, to);   // газ: доставка за місяці від «Передано» (123-я)
     return d ? { q: q, cost: c, d: d } : null;
   }
   function sstats(k) {
@@ -3059,8 +3098,8 @@
     var table = '<details class="panel wacc tbl-acc" data-key="stt-table"><summary><h2>' + esc(t('stt_table')) + '</h2>' + ico('chev', 20, 'pacc-chev') + '</summary><div class="tbl-wrap where-b"><table class="tbl"><thead><tr><th>' + esc(t('wst_th_month')) + '</th><th>' + esc(t('stt_th_period')) + '</th><th>' + u + '</th><th>грн</th></tr></thead><tbody>' +
       mo.slice().reverse().map(function (b) { return '<tr><td>' + esc(ymLabel(b.ym)) + '</td><td>' + esc(R.toHtmDate(b.from) + ' – ' + R.toHtmDate(b.to)) + '</td><td class="num">' + b.kwh + '</td><td class="num">' + money(b.cost) + '</td></tr>'; }).join('') + '</tbody></table></div></details>';
     var panel = function (title, sub, chart) { return '<section class="panel chart-panel"><h2>' + esc(title) + '</h2><p class="small muted">' + esc(sub) + '</p>' + chart + '</section>'; };
-    var price = k === 'gas' ? (sopts('gas').price || Gs.priceAt(today())) : El.priceAt(today());
-    return { screen: 'S15', route: 'stats', html: head + '<p class="muted">' + esc(tk(k, 'est_lead')) + '</p>' + tiles + panel(tk(k, 'est_kwh'), t('est_kwh_sub'), c1) + panel(t('wst_uah'), tk(k, 'est_tariff', { p: money(price) }), c2) + table + '<p class="small muted">' + esc(tk(k, 'est_method')) + '</p>' };
+    var price = k === 'gas' ? (sopts('gas').price || Gs.priceAt(today())) : El.priceAt(today()), gfee = k === 'gas' && !!sopts('gas').fee;
+    return { screen: 'S15', route: 'stats', html: head + '<p class="muted">' + esc(tk(k, 'est_lead')) + '</p>' + tiles + panel(tk(k, 'est_kwh'), t('est_kwh_sub'), c1) + panel(t('wst_uah'), k === 'gas' ? gasNote(price) : tk(k, 'est_tariff', { p: money(price) }), c2) + table + '<p class="small muted">' + esc(gfee ? t('gst_method_fee') : tk(k, 'est_method')) + '</p>' };
   }
   function ssave(k) {
     var md = SK[k].mod, u = SK[k].unit(), mo = smonthly(k), sm = md.summary(mo), list = tk(k, 'esv_tips').split('||').map(function (x) { var a = x.split('|'); return [a[0], a[1]]; });
@@ -7309,7 +7348,10 @@
     var last = 0, logged = 0;
     var fix = function () {
       var a = document.activeElement, kb = a && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName), gap = vv.offsetTop + vv.height - window.innerHeight;
-      var sh = !kb && vv.scale < 1.01 && Math.abs(gap) > 40 ? Math.round(gap) : 0;
+      // 123-я: потягнув сторінку вниз (оновити) — прокрутка вище за верх, offsetTop іде за нею (журнал 12.11, iPhone власника: sy = ot = −70…−189) —
+      // це не застряглий шар, вкладки не чіпаємо
+      var over = (window.scrollY || 0) < 0;
+      var sh = !kb && !over && vv.scale < 1.01 && Math.abs(gap) > 40 ? Math.round(gap) : 0;
       document.documentElement.style.setProperty('--nav-shift', sh + 'px');
       // у журнал (/api/health → errs.navShift): чи спрацьовує поправка на справжніх iPhone і з якими висотами — перевірка без телефона власника (89-а)
       // 106-а: видно < 40 % сторінки без зсуву — людина згортає чи закриває застосунок (журнал 11.11: 461 → 50 → 0 px за секунду) — не пишемо

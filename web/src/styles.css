@@ -1909,6 +1909,7 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
 .cam-top { position: absolute; left: 12px; right: 12px; top: calc(12px + env(safe-area-inset-top, 0px)); display: flex; justify-content: space-between; gap: 12px; }
 .cam-b { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-width: 52px; min-height: 52px; padding: 0 14px; border-radius: var(--r-pill); border: 0;
   background: rgba(0, 0, 0, .55); color: #fff; font: 600 var(--fs-m)/1.2 var(--font); cursor: pointer; }
+.cam-b[hidden] { display: none; }   /* display: inline-flex вище перебивав hidden — «Ліхтарик» був і там, де його нема (123-я) */
 .cam-b:hover { background: rgba(0, 0, 0, .7); } .cam-b[aria-pressed="true"] { background: #fff; color: #17211E; }
 .cam-b:focus-visible, .cam-shot:focus-visible, .cam-done:focus-visible { outline: 3px solid #fff; outline-offset: 3px; }
 .cam-bot { position: absolute; left: 0; right: 0; bottom: 0; padding: 16px 16px calc(18px + env(safe-area-inset-bottom, 0px)); background: rgba(8, 12, 11, .88); }

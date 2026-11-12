@@ -74,7 +74,7 @@
   function open(o) {
     var doc = document, t = o.t, max = o.max || 8, kind = o.kind || 'heat';
     var st = { shots: [], keys: {}, last: '', seen: null, seenAt: 0, ocr: null, eng: 0, pct: 0, busy: false, closed: false, prev: null,
-      code: '', pend: '', pendN: 0, frames: 0, auto: 0, t0: Date.now(), torch: false, torchOn: false, msg: '', msgUntil: 0, stream: null, track: null, err: '' };
+      code: '', pend: '', pendN: 0, frames: 0, auto: 0, t0: Date.now(), torch: false, torchOn: false, msg: '', msgUntil: 0, stream: null, track: null, err: '', rms: 0, rmax: 0 };
     var prevFocus = doc.activeElement, ov = doc.createElement('div');
     ov.className = 'cam'; ov.setAttribute('role', 'dialog'); ov.setAttribute('aria-modal', 'true'); ov.setAttribute('aria-label', t('cam_btn'));
     ov.innerHTML = '<video class="cam-v" playsinline muted autoplay></video>' +
@@ -164,10 +164,11 @@
       var s = st.stat, wait = st.eng !== 1 || st.busy || !ready() || !s || s.lum < 25 || (s.move !== null && s.move > TH.move);
       if (wait) { tm = setTimeout(read, 400); return; }
       st.busy = true;
+      var r0 = Date.now();
       grab(0.9).then(function (blob) {
         return o.read(blob).then(function (res) {
           if (st.closed) return;
-          st.frames++;
+          st.frames++; var dt = Date.now() - r0; st.rms += dt; if (dt > st.rmax) st.rmax = dt;
           var p = null; try { p = o.parse(res || {}); } catch (e) { p = null; }
           st.ocr = { at: Date.now(), lines: ((res && res.lines) || []).length, digitH: digitH(res), found: !!(p && (p.key || p.other)) };
           if (p && (p.key || p.other)) { st.seen = p; st.seenAt = Date.now(); }
@@ -175,7 +176,10 @@
           st.last = (p && p.key) || '';
           show();
         });
-      }).catch(function () { /* кадр не прочитався — наступний */ }).then(function () { st.busy = false; if (!st.closed) tm = setTimeout(read, 500); });
+      }).catch(function () { /* кадр не прочитався — наступний */ }).then(function () {
+        // повільний телефон: читаємо не більше половини часу — відео й кнопки лишаються живими (123-я)
+        st.busy = false; if (!st.closed) tm = setTimeout(read, Math.min(4000, Math.max(500, Date.now() - r0)));
+      });
     }
 
     function shoot() {
@@ -192,14 +196,16 @@
       if (thUrl) URL.revokeObjectURL(thUrl);
       if (ov.parentNode) ov.parentNode.removeChild(ov);
       html.style.overflow = ovf;
-      if (o.track) o.track('cam', { k: kind, n: st.shots.length, auto: st.auto, fr: st.frames, s: Math.round((Date.now() - st.t0) / 1000), e: st.err || undefined });
+      if (o.track) o.track('cam', { k: kind, n: st.shots.length, auto: st.auto, fr: st.frames, s: Math.round((Date.now() - st.t0) / 1000), e: st.err || undefined,
+        ms: st.frames ? Math.round(st.rms / st.frames) : undefined, mx: st.rmax || undefined, eng: st.eng === 1 ? undefined : st.eng < 0 ? 'err' : st.pct + '%', tf: st.torchFail || undefined });
       if (deliver && st.shots.length) o.done(st.shots.slice());
       else if (prevFocus && prevFocus.focus) try { prevFocus.focus(); } catch (e) { /* зник */ }
     }
     function fail(e) {
       var nm = (e && e.name) || '', code = /NotAllowed|Security|Permission/.test(nm) ? 'denied' : /NotFound|Overconstrained|DevicesNotFound/.test(nm) ? 'none' : /NotReadable|TrackStart|Abort/.test(nm) ? 'busy' : 'other';
       st.err = code; clearInterval(tick); clearTimeout(tm); stop();
-      var msg = o.tg && (code === 'denied' || code === 'other') ? t('cam_err_tg') : t(code === 'other' ? 'cam_err' : 'cam_err_' + code);
+      var nv = root.navigator || {}, ios = /iP(hone|ad|od)/.test(nv.userAgent || '') || (/Mac/.test(nv.platform || '') && nv.maxTouchPoints > 1);
+      var msg = o.tg && (code === 'denied' || code === 'other') ? t('cam_err_tg') : code === 'denied' && ios ? t('cam_err_denied_ios') : t(code === 'other' ? 'cam_err' : 'cam_err_' + code);
       ov.classList.add('err');
       ov.querySelector('.cam-bot').innerHTML = '<p class="cam-hint" role="alert">' + msg + '</p><div class="cam-acts">' +
         '<button type="button" class="cam-done" data-cam="pick">' + t('cam_pick') + '</button>' +
@@ -225,7 +231,13 @@
       else if (a === 'pick') { finish(false); if (o.pick) o.pick(); }
       else if (a === 'torch' && st.track) {
         var on = !st.torchOn;
-        st.track.applyConstraints({ advanced: [{ torch: on }] }).then(function () { st.torchOn = on; torchEl.setAttribute('aria-pressed', on ? 'true' : 'false'); look(); }, function () { /* не вийшло */ });
+        // Safari і камери ноутбуків кажуть «є ліхтарик», а ввімкнути не дають — тоді прибрати кнопку й сказати (журнал 12.11: 7 дотиків без толку)
+        var no = function () { st.torch = false; st.torchOn = false; st.torchFail = 1; torchEl.hidden = true; say('cam_torch_no', {}, 4000); };
+        st.track.applyConstraints({ advanced: [{ torch: on }] }).then(function () {
+          var got = null; try { var cs = st.track.getSettings ? st.track.getSettings() : null; if (cs && 'torch' in cs) got = !!cs.torch; } catch (e) { /* без налаштувань */ }
+          if (got !== null && got !== on) { no(); return; }
+          st.torchOn = on; torchEl.setAttribute('aria-pressed', on ? 'true' : 'false'); look();
+        }, no);
       }
     });
 

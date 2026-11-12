@@ -29,6 +29,7 @@ const live = p => p.evaluate(() => { const v = document.querySelector('.cam-v');
   await p.waitForFunction(() => { const v = document.querySelector('.cam-v'); return v && v.videoWidth > 0; }, null, { timeout: 15000 });
   ok('видошукач: відео з камери грає, рамка й кнопка «Зняти» на місці', await live(p) && !!(await p.$('.cam-fr')) && !!(await p.$('.cam-shot')));
   ok('«Готово» неактивне, поки нічого не знято', await p.$eval('.cam-done', b => b.disabled));
+  ok('«Ліхтарик» не видно — у камери його нема (123-я: display перебивав hidden)', await p.$eval('.cam-torch', el => el.hidden && getComputedStyle(el).display === 'none'));
   const h0 = await p.textContent('.cam-hint');
   ok('підказка великим текстом є одразу (вмикаю / завантажую / наведіть / перевіряю)', /камер|Завантажую|Наведіть|перевіряю/.test(h0), h0);
   await p.waitForFunction(() => /15,482/.test(document.querySelector('.cam-seen').textContent), null, { timeout: 240000 });

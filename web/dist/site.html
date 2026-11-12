@@ -1941,6 +1941,7 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
 .cam-top { position: absolute; left: 12px; right: 12px; top: calc(12px + env(safe-area-inset-top, 0px)); display: flex; justify-content: space-between; gap: 12px; }
 .cam-b { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-width: 52px; min-height: 52px; padding: 0 14px; border-radius: var(--r-pill); border: 0;
   background: rgba(0, 0, 0, .55); color: #fff; font: 600 var(--fs-m)/1.2 var(--font); cursor: pointer; }
+.cam-b[hidden] { display: none; }   /* display: inline-flex вище перебивав hidden — «Ліхтарик» був і там, де його нема (123-я) */
 .cam-b:hover { background: rgba(0, 0, 0, .7); } .cam-b[aria-pressed="true"] { background: #fff; color: #17211E; }
 .cam-b:focus-visible, .cam-shot:focus-visible, .cam-done:focus-visible { outline: 3px solid #fff; outline-offset: 3px; }
 .cam-bot { position: absolute; left: 0; right: 0; bottom: 0; padding: 16px 16px calc(18px + env(safe-area-inset-bottom, 0px)); background: rgba(8, 12, 11, .88); }
@@ -3491,7 +3492,7 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
       cam_k_heat: 'теплолічильник', cam_k_water: 'водомір', cam_k_electric: 'електролічильник', cam_k_gas: 'газовий лічильник',
       cam_got_heat: 'Знято. Перемкніть екран лічильника — зніму наступний, або натисніть «Готово»', cam_got_water: 'Знято. Наведіть на інший водомір або натисніть «Готово»', cam_got: 'Знято. Натисніть «Готово» або зніміть ще',
       cam_same_heat: 'Цей екран уже знято — перемкніть на наступний', cam_same: 'Це вже знято — натисніть «Готово»', cam_max: 'Більше {n} фото за раз не можна — натисніть «Готово»',
-      cam_err_denied: 'Немає дозволу на камеру. Дозвольте камеру для цього сайту в налаштуваннях браузера або оберіть фото.', cam_err_none: 'Камеру не знайдено. Оберіть фото або відкрийте сайт на телефоні.',
+      cam_err_denied: 'Немає дозволу на камеру. Дозвольте камеру для цього сайту в налаштуваннях браузера або оберіть фото.', cam_err_denied_ios: 'Немає дозволу на камеру. У Safari: меню сторінки (aA або •••) → «Параметри вебсайту» → «Камера» → «Дозволити», потім знову «Камера з підказками». Або оберіть фото.', cam_torch_no: 'Ліхтарик на цьому пристрої з браузера не вмикається — увімкніть світло в кімнаті або підсвітіть іншим телефоном.', cam_err_none: 'Камеру не знайдено. Оберіть фото або відкрийте сайт на телефоні.',
       cam_err_busy: 'Камера зайнята іншою програмою. Закрийте її або оберіть фото.', cam_err: 'Камера тут не вмикається. Оберіть фото — телефон запропонує зняти.',
       cam_err_tg: 'У Telegram на цьому телефоні камера всередині сторінки не працює. Оберіть фото — Telegram запропонує зняти.', cam_pick: 'Обрати фото',
       phd_add: 'Додайте фото лічильника', phd_add_ocr: 'Додайте фото — показання розпізнаються самі', rp_removed: 'Фото прибрано із запису.', rp_undo: 'Повернути', phd_load: 'Завантажую модуль розпізнавання — лише перший раз, ~30 МБ', phd_pick: 'Зняти чи вибрати фото',
@@ -3786,7 +3787,15 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
       gi_bad: 'Лише цифри, наприклад 1234 або 1234,567.', gi_fraction: 'Передається без літрів: {w}.', gi_less: 'Менше, ніж минулого разу ({prev}) — перевірте цифри.', gi_jump: '≈{n} м³ на місяць — багато для квартири без газового котла. Перевірте цифри.',
       ga_title: 'Новий газовий лічильник', ga_lead: 'Цифри можна вписати пізніше — головне, щоб лічильник був у квартирі.', ga_e_val: 'Лише цифри, наприклад 1234,567.', ga_added: 'Газовий лічильник додано',
       gr_price: 'ціна {p} грн за м³', gst_lead: 'Скільки газу за місяць і скільки це коштує. Місяць — той, за який зараховано показання.', gst_kwh: 'м³ за місяць',
-      gst_tariff: 'За ціною {p} грн/м³; доставка (розподіл) — окремо, у платіжці Газмереж.', gst_method: 'Вартість — лише сам газ за ціною постачальника, без доставки, пільг і субсидій.',
+      gst_tariff: 'За ціною {p} грн/м³; доставка (розподіл) — окремо, у платіжці Газмереж.',
+      gst_tariff_fee: 'Газ — за ціною {p} грн/м³; доставка (розподіл) — {c} м³ на рік ÷ 12 × {t} грн = {f} грн щомісяця, окремою платіжкою ({o}).', gst_method_fee: 'Вартість — газ за ціною постачальника і доставка (розподіл) за річною потужністю, без пільг і субсидій.',
+      gd_cap: 'Річна замовлена потужність', gd_cap_ph: 'оцінка {n}', gd_tar: 'Доставка (розподіл) за м³', gd_org_def: 'оператор газорозподільної мережі',
+      gd_fee: 'Доставка: {c} м³ на рік ÷ 12 × {p} грн = {f} грн щомісяця — однаково влітку й узимку, від показань не залежить. Річну потужність перераховують з 1 січня: скільки спожили з 1.10 по 30.09 минулого року.',
+      gd_est: 'Потужність — оцінка за вашими показаннями ({a} – {b}); точне число — у платіжці за доставку.', gd_est_s: 'Річна потужність — оцінка за вашими показаннями.',
+      gd_need_cap: 'Доставку (розподіл) газу платять окремо щомісяця: впишіть «Річну замовлену потужність» з платіжки за доставку — додамо її до сум.',
+      gd_need_tar: 'Доставку (розподіл) газу платять окремо щомісяця: впишіть з платіжки за доставку річну замовлену потужність і тариф за м³ — додамо до сум.',
+      gd_need_cap_s: 'Щоб додати доставку до сум, впишіть річну замовлену потужність з платіжки в «Ціна» на сторінці газу.', gd_need_tar_s: 'Щоб додати доставку до сум, впишіть річну потужність і тариф доставки з платіжки в «Ціна» на сторінці газу.',
+      ru_fee1: 'Доставка (розподіл) за місяць: {f} грн', ru_fee_n: 'Доставка (розподіл) за {n} міс.: {f} × {n} = {s} грн', gst_method: 'Вартість — лише сам газ за ціною постачальника, без доставки, пільг і субсидій.',
       kpi_g_last: '{m}: {v} м³ ≈ {uah} грн', kpi_g_ten: 'Мінус 10 % — це ≈ {k} м³ і {uah} на місяць, {y} грн за рік.',
       gsv_title: 'Як заощадити на газі', gsv_lead: 'Як платити менше за газ — по-простому.', gsv_no_data: 'Внесіть показання двічі — тут з’явиться, скільки ви витрачаєте і що можна заощадити.',
       gsv_g1: 'Кухня', gsv_g2: 'Гаряча вода', gsv_g3: 'Котел і опалення',
@@ -4720,7 +4729,7 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
       cam_k_heat: 'теплосчётчик', cam_k_water: 'водомер', cam_k_electric: 'электросчётчик', cam_k_gas: 'газовый счётчик',
       cam_got_heat: 'Снято. Переключите экран счётчика — сниму следующий, или нажмите «Готово»', cam_got_water: 'Снято. Наведите на другой водомер или нажмите «Готово»', cam_got: 'Снято. Нажмите «Готово» или снимите ещё',
       cam_same_heat: 'Этот экран уже снят — переключите на следующий', cam_same: 'Это уже снято — нажмите «Готово»', cam_max: 'Больше {n} фото за раз нельзя — нажмите «Готово»',
-      cam_err_denied: 'Нет разрешения на камеру. Разрешите камеру для этого сайта в настройках браузера или выберите фото.', cam_err_none: 'Камера не найдена. Выберите фото или откройте сайт на телефоне.',
+      cam_err_denied: 'Нет разрешения на камеру. Разрешите камеру для этого сайта в настройках браузера или выберите фото.', cam_err_denied_ios: 'Нет разрешения на камеру. В Safari: меню страницы (aA или •••) → «Настройки веб-сайта» → «Камера» → «Разрешить», затем снова «Камера с подсказками». Или выберите фото.', cam_torch_no: 'Фонарик на этом устройстве из браузера не включается — включите свет в комнате или подсветите другим телефоном.', cam_err_none: 'Камера не найдена. Выберите фото или откройте сайт на телефоне.',
       cam_err_busy: 'Камера занята другой программой. Закройте её или выберите фото.', cam_err: 'Камера здесь не включается. Выберите фото — телефон предложит снять.',
       cam_err_tg: 'В Telegram на этом телефоне камера внутри страницы не работает. Выберите фото — Telegram предложит снять.', cam_pick: 'Выбрать фото',
       phd_add: 'Добавьте фото счётчика', phd_add_ocr: 'Добавьте фото — показания распознаются сами', rp_removed: 'Фото убрано из записи.', rp_undo: 'Вернуть', phd_load: 'Загружаю модуль распознавания — только первый раз, ~30 МБ', phd_pick: 'Снять или выбрать фото',
@@ -5015,7 +5024,15 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
       gi_bad: 'Только цифры, например 1234 или 1234,567.', gi_fraction: 'Передаётся без литров: {w}.', gi_less: 'Меньше, чем в прошлый раз ({prev}) — проверьте цифры.', gi_jump: '≈{n} м³ в месяц — много для квартиры без газового котла. Проверьте цифры.',
       ga_title: 'Новый газовый счётчик', ga_lead: 'Цифры можно вписать позже — главное, чтобы счётчик был в квартире.', ga_e_val: 'Только цифры, например 1234,567.', ga_added: 'Газовый счётчик добавлен',
       gr_price: 'цена {p} грн за м³', gst_lead: 'Сколько газа за месяц и сколько это стоит. Месяц — тот, за который засчитаны показания.', gst_kwh: 'м³ за месяц',
-      gst_tariff: 'По цене {p} грн/м³; доставка (распределение) — отдельно, в платёжке Газсетей.', gst_method: 'Стоимость — только сам газ по цене поставщика, без доставки, льгот и субсидий.',
+      gst_tariff: 'По цене {p} грн/м³; доставка (распределение) — отдельно, в платёжке Газсетей.',
+      gst_tariff_fee: 'Газ — по цене {p} грн/м³; доставка (распределение) — {c} м³ в год ÷ 12 × {t} грн = {f} грн ежемесячно, отдельной платёжкой ({o}).', gst_method_fee: 'Стоимость — газ по цене поставщика и доставка (распределение) по годовой мощности, без льгот и субсидий.',
+      gd_cap: 'Годовая заказанная мощность', gd_cap_ph: 'оценка {n}', gd_tar: 'Доставка (распределение) за м³', gd_org_def: 'оператор газораспределительной сети',
+      gd_fee: 'Доставка: {c} м³ в год ÷ 12 × {p} грн = {f} грн ежемесячно — одинаково летом и зимой, от показаний не зависит. Годовую мощность пересчитывают с 1 января: сколько потребили с 1.10 по 30.09 прошлого года.',
+      gd_est: 'Мощность — оценка по вашим показаниям ({a} – {b}); точное число — в платёжке за доставку.', gd_est_s: 'Годовая мощность — оценка по вашим показаниям.',
+      gd_need_cap: 'Доставку (распределение) газа платят отдельно каждый месяц: впишите «Годовую заказанную мощность» из платёжки за доставку — добавим её к суммам.',
+      gd_need_tar: 'Доставку (распределение) газа платят отдельно каждый месяц: впишите из платёжки за доставку годовую заказанную мощность и тариф за м³ — добавим к суммам.',
+      gd_need_cap_s: 'Чтобы добавить доставку к суммам, впишите годовую заказанную мощность из платёжки в «Цена» на странице газа.', gd_need_tar_s: 'Чтобы добавить доставку к суммам, впишите годовую мощность и тариф доставки из платёжки в «Цена» на странице газа.',
+      ru_fee1: 'Доставка (распределение) за месяц: {f} грн', ru_fee_n: 'Доставка (распределение) за {n} мес.: {f} × {n} = {s} грн', gst_method: 'Стоимость — только сам газ по цене поставщика, без доставки, льгот и субсидий.',
       kpi_g_last: '{m}: {v} м³ ≈ {uah} грн', kpi_g_ten: 'Минус 10 % — это ≈ {k} м³ и {uah} в месяц, {y} грн в год.',
       gsv_title: 'Как сэкономить на газе', gsv_lead: 'Как платить меньше за газ — по-простому.', gsv_no_data: 'Внесите показания дважды — здесь появится, сколько вы тратите и что можно сэкономить.',
       gsv_g1: 'Кухня', gsv_g2: 'Горячая вода', gsv_g3: 'Котёл и отопление',
@@ -6622,7 +6639,8 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
     });
     return out;
   }
-  /** По місяцях (місяць — за який зараховується показання: 1–3 число — попередній). → [{ym, kwh, dz, cost, days, from, to}] */
+  /** По місяцях (місяць — за який зараховується показання: 1–3 число — попередній). → [{ym, kwh, dz, cost, days, from, to}]
+   *  opts.fee — фіксована плата на місяць (газ: доставка/розподіл, 123-я): додається до cost кожного місяця, окремо — b.fee. */
   function monthly(ser, m, opts) {
     var by = {};
     ser.forEach(function (x) {
@@ -6632,7 +6650,8 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
       var from = new Date(Date.parse(x.rec.date) - x.days * 864e5).toISOString().slice(0, 10); if (!b.from || from < b.from) b.from = from;
       keys(m).forEach(function (k) { b.dz[k] = (b.dz[k] || 0) + x.dz[k]; });
     });
-    return Object.keys(by).sort().map(function (k) { var b = by[k]; b.cost = cost(m, b.dz, b.to, opts).total; b.perMonth = b.days ? b.kwh / b.days * 30 : b.kwh; return b; });
+    var fee = opts && opts.fee > 0 ? opts.fee : 0;
+    return Object.keys(by).sort().map(function (k) { var b = by[k]; b.cost = cost(m, b.dz, b.to, opts).total + fee; if (fee) b.fee = fee; b.perMonth = b.days ? b.kwh / b.days * 30 : b.kwh; return b; });
   }
   function summary(mo) {
     if (!mo.length) return null;
@@ -6795,6 +6814,26 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
     var mk = function (b) { var e = /^[7890]$/.test(b.red); return { value: b.v, digits: b.dg, frac: b.red, sure: b.n >= 2 && !e, edge: e, votes: b.n }; };
     var out = mk(top); out.alts = all.slice(1, 3).map(mk); return out;
   };
+  // ---- доставка (розподіл) газу (123-я, власник 12.11: «у платіжці ще за транспортування — що це, звідки, одна ціна чи ні, додати в облік») ----
+  // Окрема плата оператору газорозподільної мережі (Газмережі — філія області; Київгаз, Одесагаз, Шепетівкагаз…), не постачальнику газу.
+  // Щомісяця однаково, від показань не залежить: річна замовлена потужність (м³ — спожите за попередній газовий рік 1.10–30.09) ÷ 12 × тариф
+  // оператора (грн за м³, з ПДВ). Перераховують з 1 січня. Мінімум для побуту — 39 м³ на рік (лише плита; з колонкою 126, з котлом 314).
+  // Тарифи для населення не змінюються до кінця воєнного стану й різні в операторів: Харків-місто 0,516, Харківська обл. 2,388 — у довіднику (gas.dist).
+  gas.DIST_MIN = 39;
+  /** Плата за доставку на місяць: cap м³ на рік, tariff грн за м³ → грн (до копійки) або null. */
+  gas.distMonth = function (cap, tariff) { var c = gas.num(cap), p = gas.num(tariff); if (!(c > 0) || !(p > 0)) return null; return Math.round(c / 12 * p * 100) / 100; };
+  /** Газовий рік, за який рахують потужність на календарний рік year: 1.10 (year−2) – 30.09 (year−1). */
+  gas.gasYear = function (year) { return { from: (year - 2) + '-10-01', to: (year - 1) + '-09-30' }; };
+  /** Оцінка річної потужності за показаннями: є записи біля обох меж газового року (±20 днів) — спожите, приведене до 365 днів, не менше 39.
+   *  recs — записи одного лічильника ({date, z: {all}}); → {m3, from, to, raw} або null. */
+  gas.capFromRecs = function (recs, year) {
+    var gy = gas.gasYear(year), list = (recs || []).filter(function (r) { return r && !r.deleted && r.z && gas.whole(r.z.all) !== null; }).sort(function (a, b) { return a.date < b.date ? -1 : a.date > b.date ? 1 : 0; });
+    var near = function (d) { var best = null; list.forEach(function (r) { var x = Math.abs(daysBetween(d, r.date)); if (x <= 20 && (!best || x < best.x)) best = { r: r, x: x }; }); return best && best.r; };
+    var a = near(gy.from), b = near(gy.to); if (!a || !b || a === b) return null;
+    var q = gas.whole(b.z.all) - gas.whole(a.z.all), days = daysBetween(a.date, b.date); if (q < 0 || days < 300) return null;
+    return { m3: Math.max(gas.DIST_MIN, Math.round(q * 365 / days)), raw: q, from: a.date, to: b.date };
+  };
+  function daysBetween(a, b) { return Math.round((Date.parse(b) - Date.parse(a)) / 864e5); }
   elec.make = make; elec.gas = gas;
   if (typeof module !== 'undefined' && module.exports) module.exports = elec; else { root.TeploElec = elec; root.TeploGas = gas; }
 })(typeof window !== 'undefined' ? window : this);
@@ -7119,7 +7158,7 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
   function open(o) {
     var doc = document, t = o.t, max = o.max || 8, kind = o.kind || 'heat';
     var st = { shots: [], keys: {}, last: '', seen: null, seenAt: 0, ocr: null, eng: 0, pct: 0, busy: false, closed: false, prev: null,
-      code: '', pend: '', pendN: 0, frames: 0, auto: 0, t0: Date.now(), torch: false, torchOn: false, msg: '', msgUntil: 0, stream: null, track: null, err: '' };
+      code: '', pend: '', pendN: 0, frames: 0, auto: 0, t0: Date.now(), torch: false, torchOn: false, msg: '', msgUntil: 0, stream: null, track: null, err: '', rms: 0, rmax: 0 };
     var prevFocus = doc.activeElement, ov = doc.createElement('div');
     ov.className = 'cam'; ov.setAttribute('role', 'dialog'); ov.setAttribute('aria-modal', 'true'); ov.setAttribute('aria-label', t('cam_btn'));
     ov.innerHTML = '<video class="cam-v" playsinline muted autoplay></video>' +
@@ -7209,10 +7248,11 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
       var s = st.stat, wait = st.eng !== 1 || st.busy || !ready() || !s || s.lum < 25 || (s.move !== null && s.move > TH.move);
       if (wait) { tm = setTimeout(read, 400); return; }
       st.busy = true;
+      var r0 = Date.now();
       grab(0.9).then(function (blob) {
         return o.read(blob).then(function (res) {
           if (st.closed) return;
-          st.frames++;
+          st.frames++; var dt = Date.now() - r0; st.rms += dt; if (dt > st.rmax) st.rmax = dt;
           var p = null; try { p = o.parse(res || {}); } catch (e) { p = null; }
           st.ocr = { at: Date.now(), lines: ((res && res.lines) || []).length, digitH: digitH(res), found: !!(p && (p.key || p.other)) };
           if (p && (p.key || p.other)) { st.seen = p; st.seenAt = Date.now(); }
@@ -7220,7 +7260,10 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
           st.last = (p && p.key) || '';
           show();
         });
-      }).catch(function () { /* кадр не прочитався — наступний */ }).then(function () { st.busy = false; if (!st.closed) tm = setTimeout(read, 500); });
+      }).catch(function () { /* кадр не прочитався — наступний */ }).then(function () {
+        // повільний телефон: читаємо не більше половини часу — відео й кнопки лишаються живими (123-я)
+        st.busy = false; if (!st.closed) tm = setTimeout(read, Math.min(4000, Math.max(500, Date.now() - r0)));
+      });
     }
 
     function shoot() {
@@ -7237,14 +7280,16 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
       if (thUrl) URL.revokeObjectURL(thUrl);
       if (ov.parentNode) ov.parentNode.removeChild(ov);
       html.style.overflow = ovf;
-      if (o.track) o.track('cam', { k: kind, n: st.shots.length, auto: st.auto, fr: st.frames, s: Math.round((Date.now() - st.t0) / 1000), e: st.err || undefined });
+      if (o.track) o.track('cam', { k: kind, n: st.shots.length, auto: st.auto, fr: st.frames, s: Math.round((Date.now() - st.t0) / 1000), e: st.err || undefined,
+        ms: st.frames ? Math.round(st.rms / st.frames) : undefined, mx: st.rmax || undefined, eng: st.eng === 1 ? undefined : st.eng < 0 ? 'err' : st.pct + '%', tf: st.torchFail || undefined });
       if (deliver && st.shots.length) o.done(st.shots.slice());
       else if (prevFocus && prevFocus.focus) try { prevFocus.focus(); } catch (e) { /* зник */ }
     }
     function fail(e) {
       var nm = (e && e.name) || '', code = /NotAllowed|Security|Permission/.test(nm) ? 'denied' : /NotFound|Overconstrained|DevicesNotFound/.test(nm) ? 'none' : /NotReadable|TrackStart|Abort/.test(nm) ? 'busy' : 'other';
       st.err = code; clearInterval(tick); clearTimeout(tm); stop();
-      var msg = o.tg && (code === 'denied' || code === 'other') ? t('cam_err_tg') : t(code === 'other' ? 'cam_err' : 'cam_err_' + code);
+      var nv = root.navigator || {}, ios = /iP(hone|ad|od)/.test(nv.userAgent || '') || (/Mac/.test(nv.platform || '') && nv.maxTouchPoints > 1);
+      var msg = o.tg && (code === 'denied' || code === 'other') ? t('cam_err_tg') : code === 'denied' && ios ? t('cam_err_denied_ios') : t(code === 'other' ? 'cam_err' : 'cam_err_' + code);
       ov.classList.add('err');
       ov.querySelector('.cam-bot').innerHTML = '<p class="cam-hint" role="alert">' + msg + '</p><div class="cam-acts">' +
         '<button type="button" class="cam-done" data-cam="pick">' + t('cam_pick') + '</button>' +
@@ -7270,7 +7315,13 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
       else if (a === 'pick') { finish(false); if (o.pick) o.pick(); }
       else if (a === 'torch' && st.track) {
         var on = !st.torchOn;
-        st.track.applyConstraints({ advanced: [{ torch: on }] }).then(function () { st.torchOn = on; torchEl.setAttribute('aria-pressed', on ? 'true' : 'false'); look(); }, function () { /* не вийшло */ });
+        // Safari і камери ноутбуків кажуть «є ліхтарик», а ввімкнути не дають — тоді прибрати кнопку й сказати (журнал 12.11: 7 дотиків без толку)
+        var no = function () { st.torch = false; st.torchOn = false; st.torchFail = 1; torchEl.hidden = true; say('cam_torch_no', {}, 4000); };
+        st.track.applyConstraints({ advanced: [{ torch: on }] }).then(function () {
+          var got = null; try { var cs = st.track.getSettings ? st.track.getSettings() : null; if (cs && 'torch' in cs) got = !!cs.torch; } catch (e) { /* без налаштувань */ }
+          if (got !== null && got !== on) { no(); return; }
+          st.torchOn = on; torchEl.setAttribute('aria-pressed', on ? 'true' : 'false'); look();
+        }, no);
       }
     });
 
@@ -9472,7 +9523,32 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
   /** Останнє показання лічильника до дати (не включно; стартове того ж дня — так). */
   function eprev(mid, date, skipId) { var a = mrecs(mid).filter(function (r) { return r.id !== skipId && (!date || r.date < date || (r.base && r.date === date)); }); return a.length ? a[a.length - 1] : null; }
   function elastOf(mid) { var a = mrecs(mid); return a.length ? a[a.length - 1] : null; }
-  function sopts(k) { var p = place() || {}; return { heating: !!p[SK[k].heat], price: k === 'gas' ? R.num(p.gasPrice) : R.num(((p.prov || {}).elec || {}).price) }; }
+  function sopts(k) { var p = place() || {}, o = { heating: !!p[SK[k].heat], price: k === 'gas' ? R.num(p.gasPrice) : R.num(((p.prov || {}).elec || {}).price) };
+    if (k === 'gas') { var g = gdist(p); if (g.month) o.fee = g.month; }
+    return o; }
+  /**
+   * Доставка (розподіл) газу поточної квартири (123-я, власник 12.11: «у платіжці ще за транспортування»): окрема щомісячна плата оператору ГРМ
+   * (Газмережі, Київгаз…), однакова щомісяця = річна замовлена потужність ÷ 12 × тариф. Потужність — своя з платіжки (p.gasCap) або оцінка за
+   * показаннями газового року (Gs.capFromRecs); тариф — свій (p.gasDist) або з довідника за адресою (gas.dist).
+   * → {cap, capSrc: 'own'|'est'|null, est, tariff, trSrc: 'own'|'dir'|null, org, month (грн або null)}
+   */
+  function gdist(p) {
+    p = p || place() || {}; var d = null; try { var j = prvKinds0(p); d = j && j.kinds && j.kinds.gas; } catch (e) { d = null; }
+    var own = R.num(p.gasDist), dir = d ? R.num(d.dist) : null, tr = own > 0 ? own : dir > 0 ? dir : null;
+    var cap = R.num(p.gasCap), est = null, ms = p === place() ? pmeters('gas', true) : [];
+    if (!(cap > 0)) for (var i = 0; i < ms.length && !est; i++) est = Gs.capFromRecs(mrecs(ms[i].id), +today().slice(0, 4));
+    var c = cap > 0 ? cap : est ? est.m3 : null;
+    return { cap: c, capSrc: cap > 0 ? 'own' : est ? 'est' : null, est: est, tariff: tr, trSrc: own > 0 ? 'own' : dir > 0 ? 'dir' : null,
+      org: (d && d.grm) || '', month: Gs.distMonth(c, tr) };
+  }
+  /** Скільки місяців нарахування між двома датами показань (місяць, за який зараховується), не менше 1. */
+  function feeMonths(md, a, b) { var x = md.forMonth(a), y = md.forMonth(b); return Math.max(1, (+y.slice(0, 4) * 12 + +y.slice(5, 7)) - (+x.slice(0, 4) * 12 + +x.slice(5, 7))); }
+  /** Примітка під сумою газу: ціна газу і як рахується доставка (або що вписати, щоб рахувалась). */
+  function gasNote(price) {
+    var g = gdist(), o = g.org || t('gd_org_def');
+    if (g.month) return t('gst_tariff_fee', { p: money(price), c: fmtN(g.cap, 0), t: String(g.tariff).replace('.', ','), f: money(g.month), o: o }) + (g.capSrc === 'est' ? ' ' + t('gd_est_s') : '');
+    return t('gst_tariff', { p: money(price) }) + ' ' + t(g.tariff ? 'gd_need_cap_s' : 'gd_need_tar_s');
+  }
   function eopts() { return sopts('elec'); }
   function ename(m) { return t((m && m.kind) === 'gas' ? 'kd_gas' : 'kd_elec') + (m && m.name ? ' · ' + m.name : ''); }
   /** Назва зони: «День», «Ніч», «Пік», «Напівпік»; одна зона — «Показання». */
@@ -9694,7 +9770,7 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
     var p = place() || {}, a = String(p.address || '').trim(), j = a ? prvLoad(p) : null, reg = j && j.found && j.kinds ? j.kinds : null;
     var pk = k === 'hot' || k === 'cold' ? 'water' : k, my = (p.prov || {})[pk] || {}, d = reg && reg[pk], f = function (v) { return v === null || v === undefined || v === '' ? '' : money(v); };
     var fld = function (id, lbl, val, unit, ph) { return '<div class="field"><label for="' + id + '">' + esc(lbl) + '</label><div class="ctl"><input id="' + id + '" class="num" inputmode="decimal" autocomplete="off" data-mp="' + id + '" value="' + esc(val) + '"' + (ph ? ' placeholder="' + esc(ph) + '"' : '') + '><span class="unit">' + esc(unit) + '</span></div></div>'; };
-    var h = '', own = false, unknown = false, src = '';
+    var h = '', own = false, unknown = false, src = '', gfee = '';
     if (k === 'heat') {
       own = R.num(my.price) > 0; unknown = !own && reg && d !== undefined && !(d && R.num(d.price) > 0) && !(R.num(S.tariff) > 0);
       h = fld('mp-heat', t('prv_heatp'), unknown ? '' : f(tariff()), 'грн') + fld('mp-abon', t('p_abon_l'), f(bill().abon), 'грн');
@@ -9712,10 +9788,17 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
     } else if (k === 'gas') {
       own = R.num(p.gasPrice) > 0; h = fld('g-price', t('gh_price'), f(own ? R.num(p.gasPrice) : Gs.priceAt(today())), 'грн');
       src = (reg && reg.gas && reg.gas.grm) ? t('mp_gas_grm', { g: reg.gas.grm, p: String(reg.gas.dist).replace('.', ',') }) : '';
+      // доставка (розподіл, 123-я): річна потужність з платіжки Газмереж і тариф (довідник або свій)
+      var gd = gdist(p);
+      h += fld('mp-gcap', t('gd_cap'), R.num(p.gasCap) > 0 ? fmtN(R.num(p.gasCap), 0) : '', 'м³', gd.est ? t('gd_cap_ph', { n: gd.est.m3 }) : '') +
+        fld('mp-gdist', t('gd_tar'), gd.tariff ? String(gd.tariff).replace('.', ',') : '', 'грн');
+      gfee = gd.month ? t('gd_fee', { c: fmtN(gd.cap, 0), p: String(gd.tariff).replace('.', ','), f: money(gd.month) }) + (gd.capSrc === 'est' ? ' ' + t('gd_est', { a: R.toHtmDate(gd.est.from), b: R.toHtmDate(gd.est.to) }) : '')
+        : gd.tariff ? t('gd_need_cap') : t('gd_need_tar');
     }
     var note = own ? t('mp_own') : unknown ? t('mp_unknown', { c: (j.place && j.place.name) || a }) : !a ? t('mp_noaddr') : src ? t('mp_from', { s: src }) : '';
     return '<div class="mp" data-key="mp-' + k + '"><h4 class="mp-h">' + esc(t('mp_title')) + '</h4><div class="grid2">' + h + '</div>' +
-      (note ? '<p class="small ' + (unknown ? 'warn-text' : 'muted') + '" data-key="mp-note-' + k + '">' + esc(note) + '</p>' : '') + '</div>';
+      (note ? '<p class="small ' + (unknown ? 'warn-text' : 'muted') + '" data-key="mp-note-' + k + '">' + esc(note) + '</p>' : '') +
+      (gfee ? '<p class="small muted" data-key="mp-gfee">' + esc(gfee) + '</p>' : '') + '</div>';
   }
   document.addEventListener('change', function (e) {
     var el = e.target, id = el && el.getAttribute && el.getAttribute('data-mp'); if (!id || id === 'g-price') return;
@@ -9727,6 +9810,8 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
     else if (id === 'mp-wd') { put('water', 'drain', 1000); if (v === 0) p.prov.water.drain = 0; }
     else if (id === 'mp-wh') put('water', 'hot', 1000);
     else if (id === 'mp-ep') put('elec', 'price', 100);
+    else if (id === 'mp-gcap') { if (v > 0 && v < 100000) p.gasCap = Math.round(v); else delete p.gasCap; }   // річна замовлена потужність, м³
+    else if (id === 'mp-gdist') { var gd0 = gdist(p); if (v > 0 && v < 100 && !(gd0.trSrc === 'dir' && Math.abs(v - gd0.tariff) < 0.0005 && !(R.num(p.gasDist) > 0))) p.gasDist = v; else if (!(v > 0)) delete p.gasDist; }
     p.updatedAt = Date.now(); WX.key = ''; save(); toast(t('b_saved')); render(true);
   });
   /** Одна й та сама ссилка в усіх лічильників: квартира — її лічильники (додати, замінити, прибрати) і рахунки. */
@@ -9989,7 +10074,7 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
     var tg = window.Telegram && Telegram.WebApp && Telegram.WebApp.initData;
     TeploCam.open({ t: t, ico: ico, kind: kind, tg: !!tg, max: kind === 'heat' ? 12 : 8, track: track,
       engine: function (onPct) { return VIS()._engine(onPct); },
-      read: function (blob) { return window.TeploOCR.read(blob); },
+      read: function (blob) { return window.TeploOCR.read(blob, { fast: true, drums: kind !== 'heat' }); },
       parse: camParse(kind),
       pick: function () { var el = document.getElementById(id); if (el) el.click(); },
       done: function (files) {
@@ -10291,19 +10376,22 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
     var pa = r.base ? null : paidAnchor(mrecs(m.id), r, function () { return true; }, function (y) { return y.base ? baseSent(y) : ssent(k, y); }), px = pa ? md.series([pa.rec, r], m)[1] : null;
     if (px && px.dz) {
       var pc = md.cost(m, px.dz, r.date, sopts(k)), p1 = md.zones(m) === 1, pcur = md.whole(r.z.all), pa0 = md.whole(pa.rec.z && pa.rec.z.all);
+      // газ: доставка (розподіл) — за кожен місяць від «Передано» до цього запису (123-я)
+      var pfee = k === 'gas' ? sopts(k).fee || 0 : 0, pfn = pfee ? feeMonths(md, pa.date, r.date) : 0;
       h += usedBox({ kind: k, key: 'erec-used', title: t(pa.sent ? 'ru_title_paid' : 'ru_title_h', { d: fmtDate(pa.date) }), per: t('ru_per', { a: fmtDate(pa.date), b: fmtDate(r.date), d: px.days }),
-        qs: [{ v: '+' + px.kwh, u: u }], money: pc.total, vals: vals,
+        qs: [{ v: '+' + px.kwh, u: u }], money: pc.total + pfee * pfn, vals: vals,
         lines: (p1 ? [t('ru_calc', { q: px.kwh, u: u, p: money(pc.price), s: money(pc.total) })] : md.keys(m).map(function (q) { return t('ru_zone', { z: ezl(m, q), q: px.dz[q], p: money(pc.price * md.coef(m, q)), s: money(pc.parts[q]) }); }))
-          .concat([pa.n && x.dz ? t('ru_this', { q: x.kwh, u: u, d: x.days }) + ' · ' + t('paid_skip', { n: pa.n }) : '', p1 && pcur !== null && pa0 !== null ? t('ru_meter', { a: pa0, b: pcur, u: u }) : '']),
-        proj: usedProj(px.kwh, px.days, pc.total, u), note: k === 'gas' ? t('gst_tariff', { p: money(pc.price) }) : '' });
+          .concat([pfee ? (pfn > 1 ? t('ru_fee_n', { n: pfn, f: money(pfee), s: money(pfee * pfn) }) : t('ru_fee1', { f: money(pfee) })) : '',
+            pa.n && x.dz ? t('ru_this', { q: x.kwh, u: u, d: x.days }) + ' · ' + t('paid_skip', { n: pa.n }) : '', p1 && pcur !== null && pa0 !== null ? t('ru_meter', { a: pa0, b: pcur, u: u }) : '']),
+        proj: usedProj(px.kwh, px.days, pc.total, u), note: k === 'gas' ? gasNote(pc.price) : '' });
     } else if (x.dz) {
       var ym = md.forMonth(r.date), b = md.monthly(md.series(mrecs(m.id), m), m, sopts(k)).filter(function (b0) { return b0.ym === ym; })[0] || { kwh: x.kwh, dz: x.dz, days: x.days, from: null, to: r.date };
-      var c = md.cost(m, b.dz, b.to, sopts(k)), one = md.zones(m) === 1, cur = md.whole(r.z.all);
+      var c = md.cost(m, b.dz, b.to, sopts(k)), one = md.zones(m) === 1, cur = md.whole(r.z.all), mfee = k === 'gas' ? sopts(k).fee || 0 : 0;
       h += usedBox({ kind: k, key: 'erec-used', title: t('ru_title', { m: monthLabel(ym) }), per: b.from ? t('ru_per', { a: fmtDate(b.from), b: fmtDate(b.to), d: b.days }) : '',
-        qs: [{ v: '+' + b.kwh, u: u }], money: c.total, vals: vals,
+        qs: [{ v: '+' + b.kwh, u: u }], money: c.total + mfee, vals: vals,
         lines: (one ? [t('ru_calc', { q: b.kwh, u: u, p: money(c.price), s: money(c.total) })] : md.keys(m).map(function (q) { return t('ru_zone', { z: ezl(m, q), q: b.dz[q], p: money(c.price * md.coef(m, q)), s: money(c.parts[q]) }); }))
-          .concat([b.kwh !== x.kwh ? t('ru_this', { q: x.kwh, u: u, d: x.days }) : '', one && cur !== null ? t('ru_meter', { a: cur - x.dz.all, b: cur, u: u }) : '', erecPaid(k, m, r)]),
-        proj: usedProj(b.kwh, b.days, c.total, u), note: k === 'gas' ? t('gst_tariff', { p: money(c.price) }) : '' });
+          .concat([mfee ? t('ru_fee1', { f: money(mfee) }) : '', b.kwh !== x.kwh ? t('ru_this', { q: x.kwh, u: u, d: x.days }) : '', one && cur !== null ? t('ru_meter', { a: cur - x.dz.all, b: cur, u: u }) : '', erecPaid(k, m, r)]),
+        proj: usedProj(b.kwh, b.days, c.total, u), note: k === 'gas' ? gasNote(c.price) : '' });
     } else if (r.base) h += usedBase('erec-used', vals, k);
     else h += usedOnly(k, 'erec-used', vals);
     h += recPhotos(r.photos, 'm' + r.id, 'm:' + r.id);
@@ -10325,21 +10413,23 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
   }
   function smonthly(k) {
     // кілька лічильників — складаємо по місяцях
-    var by = {}, md = SK[k].mod;
-    smeters(k, true).forEach(function (m) { md.monthly(md.series(paidOnly(mrecs(m.id), function (y) { return ssent(k, y); }), m), m, sopts(k)).forEach(function (b) {
-      var o = by[b.ym] || (by[b.ym] = { ym: b.ym, kwh: 0, cost: 0, days: 0, night: 0, from: b.from, to: b.to });
+    // газ: доставка — раз на місяць на квартиру, не на кожен лічильник (123-я)
+    var by = {}, md = SK[k].mod, so = sopts(k), fee = so.fee || 0, so0 = Object.assign({}, so, { fee: 0 });
+    smeters(k, true).forEach(function (m) { md.monthly(md.series(paidOnly(mrecs(m.id), function (y) { return ssent(k, y); }), m), m, so0).forEach(function (b) {
+      var o = by[b.ym] || (by[b.ym] = { ym: b.ym, kwh: 0, cost: fee, fee: fee, days: 0, night: 0, from: b.from, to: b.to });
       o.kwh += b.kwh; o.cost += b.cost; o.days = Math.max(o.days, b.days); o.night += b.dz.night || 0; if (b.from < o.from) o.from = b.from; if (b.to > o.to) o.to = b.to;
     }); });
     return Object.keys(by).sort().map(function (q) { var b = by[q]; b.perMonth = b.days ? b.kwh / b.days * 30 : b.kwh; return b; });
   }
   /** Набігло після останнього «Передано» й ще не передане (останній запис — проміжний чи «для себе»): {q, cost, d} по всіх лічильниках виду або null. */
   function ssince(k) {
-    var md = SK[k].mod, q = 0, c = 0, d = null, sentS = function (y) { return y.base ? baseSent(y) : ssent(k, y); };
+    var md = SK[k].mod, q = 0, c = 0, d = null, to = null, sentS = function (y) { return y.base ? baseSent(y) : ssent(k, y); };
     smeters(k).forEach(function (m) {
       var all = mrecs(m.id), last = all[all.length - 1]; if (!last || last.base || (!last.own && ssent(k, last))) return;
       var pa = paidAnchor(all, last, function () { return true; }, sentS), px = pa && pa.sent ? md.series([pa.rec, last], m)[1] : null; if (!px || !px.dz) return;
-      q += px.kwh; c += md.cost(m, px.dz, last.date, sopts(k)).total; if (!d || pa.date < d) d = pa.date;
+      q += px.kwh; c += md.cost(m, px.dz, last.date, sopts(k)).total; if (!d || pa.date < d) d = pa.date; if (!to || last.date > to) to = last.date;
     });
+    var fee = d && k === 'gas' ? sopts(k).fee || 0 : 0; if (fee) c += fee * feeMonths(md, d, to);   // газ: доставка за місяці від «Передано» (123-я)
     return d ? { q: q, cost: c, d: d } : null;
   }
   function sstats(k) {
@@ -10357,8 +10447,8 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
     var table = '<details class="panel wacc tbl-acc" data-key="stt-table"><summary><h2>' + esc(t('stt_table')) + '</h2>' + ico('chev', 20, 'pacc-chev') + '</summary><div class="tbl-wrap where-b"><table class="tbl"><thead><tr><th>' + esc(t('wst_th_month')) + '</th><th>' + esc(t('stt_th_period')) + '</th><th>' + u + '</th><th>грн</th></tr></thead><tbody>' +
       mo.slice().reverse().map(function (b) { return '<tr><td>' + esc(ymLabel(b.ym)) + '</td><td>' + esc(R.toHtmDate(b.from) + ' – ' + R.toHtmDate(b.to)) + '</td><td class="num">' + b.kwh + '</td><td class="num">' + money(b.cost) + '</td></tr>'; }).join('') + '</tbody></table></div></details>';
     var panel = function (title, sub, chart) { return '<section class="panel chart-panel"><h2>' + esc(title) + '</h2><p class="small muted">' + esc(sub) + '</p>' + chart + '</section>'; };
-    var price = k === 'gas' ? (sopts('gas').price || Gs.priceAt(today())) : El.priceAt(today());
-    return { screen: 'S15', route: 'stats', html: head + '<p class="muted">' + esc(tk(k, 'est_lead')) + '</p>' + tiles + panel(tk(k, 'est_kwh'), t('est_kwh_sub'), c1) + panel(t('wst_uah'), tk(k, 'est_tariff', { p: money(price) }), c2) + table + '<p class="small muted">' + esc(tk(k, 'est_method')) + '</p>' };
+    var price = k === 'gas' ? (sopts('gas').price || Gs.priceAt(today())) : El.priceAt(today()), gfee = k === 'gas' && !!sopts('gas').fee;
+    return { screen: 'S15', route: 'stats', html: head + '<p class="muted">' + esc(tk(k, 'est_lead')) + '</p>' + tiles + panel(tk(k, 'est_kwh'), t('est_kwh_sub'), c1) + panel(t('wst_uah'), k === 'gas' ? gasNote(price) : tk(k, 'est_tariff', { p: money(price) }), c2) + table + '<p class="small muted">' + esc(gfee ? t('gst_method_fee') : tk(k, 'est_method')) + '</p>' };
   }
   function ssave(k) {
     var md = SK[k].mod, u = SK[k].unit(), mo = smonthly(k), sm = md.summary(mo), list = tk(k, 'esv_tips').split('||').map(function (x) { var a = x.split('|'); return [a[0], a[1]]; });
@@ -11070,7 +11160,7 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
   }
   /** «Ціни саме вашої громади» (власник 10.11): скільки громад у довіднику по областях і в скількох знайдено ціну води; як підтягуються постачальники й ціни громади —
    *  з рішень рад і виконкомів, постанов НКРЕКП і сайтів постачальників, з датою й джерелом; немає документа — «впишіть з платіжки». Числа — під час збирання (web/build.py). */
-  var LP_PROV = [{"r":"kh","h":56,"w":45,"wt":38,"heat":16},{"r":"kv","h":69,"w":51,"wt":37,"heat":3},{"r":"ky","h":1,"w":1,"wt":1,"heat":1},{"r":"od","h":91,"w":66,"wt":51,"heat":2},{"r":"lv","h":73,"w":60,"wt":46,"heat":3},{"r":"km","h":60,"w":32,"wt":31,"heat":10}];
+  var LP_PROV = [{"r":"kh","h":56,"w":45,"wt":38,"heat":16},{"r":"kv","h":69,"w":51,"wt":37,"heat":3},{"r":"ky","h":1,"w":1,"wt":1,"heat":1},{"r":"od","h":91,"w":66,"wt":51,"heat":2},{"r":"lv","h":73,"w":60,"wt":46,"heat":3},{"r":"km","h":60,"w":33,"wt":32,"heat":10}];
   var LP_PHOTO = 'data:image/webp;base64,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';
   function lpPrices() {
     var regs = (LP_PROV || []).filter(function (x) { return x && x.h > 1; }), all = (LP_PROV || []).reduce(function (a, x) { return a + (x.h || 0); }, 0);
@@ -14607,7 +14697,10 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
     var last = 0, logged = 0;
     var fix = function () {
       var a = document.activeElement, kb = a && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName), gap = vv.offsetTop + vv.height - window.innerHeight;
-      var sh = !kb && vv.scale < 1.01 && Math.abs(gap) > 40 ? Math.round(gap) : 0;
+      // 123-я: потягнув сторінку вниз (оновити) — прокрутка вище за верх, offsetTop іде за нею (журнал 12.11, iPhone власника: sy = ot = −70…−189) —
+      // це не застряглий шар, вкладки не чіпаємо
+      var over = (window.scrollY || 0) < 0;
+      var sh = !kb && !over && vv.scale < 1.01 && Math.abs(gap) > 40 ? Math.round(gap) : 0;
       document.documentElement.style.setProperty('--nav-shift', sh + 'px');
       // у журнал (/api/health → errs.navShift): чи спрацьовує поправка на справжніх iPhone і з якими висотами — перевірка без телефона власника (89-а)
       // 106-а: видно < 40 % сторінки без зсуву — людина згортає чи закриває застосунок (журнал 11.11: 461 → 50 → 0 px за секунду) — не пишемо
