@@ -335,6 +335,8 @@
     help: '<circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .9-1 1.6V14"/><circle cx="12" cy="17.2" r=".6" fill="currentColor"/>',
     prefs: '<path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/>',
     back: '<path d="M15 5l-7 7 7 7"/>', close: '<path d="M6 6l12 12M18 6L6 18"/>',
+    torch: '<path d="M8 3h8v4l-2 3v11h-4V10L8 7z"/><path d="M8 7h8M12 13v2"/>',
+    viewfinder: '<path d="M4 9V5h4M16 5h4v4M20 15v4h-4M8 19H4v-4"/><path d="M8.5 10h1.5l1-1.5h2l1 1.5h1.5v5h-7z"/>',
     check: '<path d="M5 12.5l4.5 4.5L19 7.5"/>', cross: '<path d="M7 7l10 10M17 7L7 17"/>',
     alert: '<path d="M12 4l9 16H3z"/><path d="M12 10v4"/><circle cx="12" cy="17" r=".6" fill="currentColor"/>',
     info: '<circle cx="12" cy="12" r="9"/><path d="M12 11v6"/><circle cx="12" cy="7.8" r=".6" fill="currentColor"/>',
@@ -2498,12 +2500,88 @@
       '<div class="phd-st"><p class="phd-msg" id="' + p + '-prog">' + esc(o.prog || '') + '</p>' +
       '<div class="phd-bar" aria-hidden="true"><i id="' + p + '-pbar" style="width:' + (o.pct || 2) + '%"></i></div>' +
       '<button type="button" class="phd-stop" data-act="' + o.stop + '" data-key="' + o.stop + '">' + ico('close', 16) + '<span>' + esc(t('ph_stop')) + '</span></button></div></div>';
+    // камера з підказками (121-а) — у тій самій плашці, під «Зняти чи вибрати фото»
+    if (!ph.length && o.cam) h += '<div class="phd-camrow">' + camBtn(o.cam, 'phd-cam') + '</div>';
     h += '</div>';
-    if (ph.length && !o.busy) h += '<label for="' + p + '-files" class="phd-more" tabindex="0" data-key="' + p + '-photo-pick">' + ico('plus', 18) + '<span>' + esc(o.more) + '</span></label>';
+    if (ph.length && !o.busy) h += '<div class="phd-acts"><label for="' + p + '-files" class="phd-more" tabindex="0" data-key="' + p + '-photo-pick">' + ico('plus', 18) + '<span>' + esc(o.more) + '</span></label>' + (o.cam ? camBtn(o.cam, 'phd-cam sm') : '') + '</div>';
     // «Як фотографувати» — заголовок-розкривашка над текстом, порада не висить постійно (владелец 10.11)
     if (!ph.length) h += '<details class="phd-tips" data-key="' + p + '-tips"><summary>' + esc(t('ph_tips_t')) + ico('chev', 18, 'pacc-chev') + '</summary>' +
       '<p class="small phd-hint">' + esc(o.hint) + '</p><ul>' + t('phd_tips').split('|').map(function (x) { return '<li>' + esc(x) + '</li>'; }).join('') + '</ul></details>';
     return h;
+  }
+  /* ---------- Камера з підказками (121-а, власник 12.11): web/src/camera.js; тут — що читати на кадрі й куди віддати знімки ---------- */
+  function camOk() { return !!(window.TeploCam && TeploCam.supported() && VIS().local); }
+  /** Кнопка «Камера з підказками» поруч із «Обрати фото»: c = {in: id поля з фото, kind: heat|water|elec|gas}. Камери сторінці не дають — кнопки нема. */
+  function camBtn(c, cls) {
+    if (!c || !camOk()) return '';
+    return '<button type="button" class="' + (cls || 'btn sec') + '" data-act="cam" data-in="' + esc(c.in) + '" data-kind="' + esc(c.kind) + '" data-key="cam-' + esc(c.kind) + '">' + ico('viewfinder', 22) + '<span>' + esc(t('cam_btn')) + '</span></button>';
+  }
+  function camCap(x) { x = String(x || ''); return x.charAt(0).toUpperCase() + x.slice(1); }
+  function camNum(v) { return String(v).replace('.', ','); }
+  /** Що видно на кадрі → {key — однакове в двох кадрах поспіль = знімаю, seen — «енергія 15,482 Гкал», meter, other — інший лічильник} або null. */
+  function camParse(kind) {
+    var P = window.TeploOCRParse, txt = function (res) { return (res.lines || []).map(function (l) { return [l.text].concat(l.alts || []).join(' '); }).join('\n'); };
+    if (kind === 'heat') {
+      var m = model(), ctx = { modelId: m ? m.id : '', models: M.MODELS, steps: m && m.status === 'verified' ? m.steps : null, expectedModel: m && m.id !== 'other' ? modelName(m) : '', prev: S.baseline ? { energy: S.baseline.energy, volume: S.baseline.volume, hours: S.baseline.hours } : null, lang: S.lang };
+      var ord = R.FIELDS.map(function (f) { return f.key; });
+      return function (res) {
+        var r = P.photo(res, ctx, 0), ph = r.photo || {};
+        if (ph.meterType && ph.meterType !== 'heat') return { other: ph.meterType };
+        var rd = (ph.readings || []).filter(function (x) { return x && x.value !== null && x.value !== undefined && String(x.value) !== '' && ord.indexOf(x.field) >= 0; });
+        if (!rd.length) return !ph.meterType && (res.drums || []).some(Wt.goodDrum) ? { other: 'water' } : null;
+        rd.sort(function (a, b) { return ord.indexOf(a.field) - ord.indexOf(b.field); });
+        var top = rd[0], mm = r.meter && r.meter.modelId ? M.byId(r.meter.modelId) : null, u = fieldUnit(top.field);
+        return { key: rd.map(function (x) { return x.field + '=' + x.value; }).join('|'), seen: fieldLabel(top.field).toLowerCase() + ' ' + camNum(top.value) + (u ? ' ' + u : ''), meter: mm && mm.id !== 'other' ? modelName(mm) : camCap(t('cam_k_heat')) };
+      };
+    }
+    if (kind === 'water') return function (res) {
+      var pk = photoKind(res); if (pk) return { other: pk === 'elec' ? 'electric' : 'gas' };
+      if (P.meterType(txt(res)) === 'heat') return { other: 'heat' };
+      var w = Wt.fromOcr(res, null); if (!w || w.value === null || w.value === undefined) return null;
+      return { key: 'w' + w.value, seen: camNum(Wt.withFrac(w.value, w.frac)) + ' м³', meter: camCap(t('cam_k_water')) };
+    };
+    var k = kind === 'gas' ? 'gas' : 'elec';
+    return function (res) {
+      var mt = P.meterType(txt(res)), pk = photoKind(res);
+      if (mt === 'heat') return { other: 'heat' };
+      if (pk && pk !== k) return { other: pk === 'elec' ? 'electric' : 'gas' };
+      if (!pk && mt === 'water') return { other: 'water' };
+      var md = SK[k].mod, ms = smeters(k), date = today(), prevBy = {}, days = {}, got = [];
+      if (!ms.length) return null;
+      ms.forEach(function (m) { var pr = eprev(m.id, date); prevBy[m.id] = pr ? pr.z : {}; if (pr && pr.date) days[m.id] = Math.max(1, R.daysBetween(pr.date, date)); });
+      var one = ms.length === 1 && md.keys(ms[0]).length === 1 ? ms[0] : null;
+      var dr = k === 'elec' ? El.drumPick(res.drums, res.lines) : (res.drums || []).length ? Wt.fromOcr({ lines: [], drums: res.drums }, one ? (prevBy[one.id] || {}).all : null) : null;
+      var shot = { lines: res.lines || [], drum: dr && dr.value !== null && dr.value !== undefined ? { value: dr.value, digits: dr.digits || '', frac: dr.frac || '', sure: !!dr.sure, edge: !!dr.edge, alts: dr.alts || [] } : null };
+      var by = md.fromPhotos([shot], ms, prevBy, { days: days, heating: !!sopts(k).heating });
+      ms.forEach(function (m) { md.keys(m).forEach(function (z) { var x = by[m.id] && by[m.id][z]; if (x) got.push({ m: m, z: z, v: k === 'gas' ? Wt.withFrac(x.v, x.frac) : String(x.v) }); }); });
+      if (!got.length) return null;
+      var g = got[0], multi = md.keys(g.m).length > 1 || ms.length > 1;
+      return { key: got.map(function (x) { return x.m.id + '|' + x.z + '=' + x.v; }).join(';'), seen: (multi ? ezl(g.m, g.z).toLowerCase() + ' ' : '') + camNum(g.v) + ' ' + SK[k].unit(), meter: camCap(t(k === 'gas' ? 'cam_k_gas' : 'cam_k_electric')) };
+    };
+  }
+  /** Знімки камери → у те саме поле, що й «Обрати фото» (DataTransfer; без нього — властивість files на час події): далі звичний шлях. */
+  function camDeliver(id, files) {
+    var el = document.getElementById(id); if (!el || !files.length) return false;
+    var ok = false, own = false;
+    try { var dt = new DataTransfer(); files.forEach(function (f) { dt.items.add(f); }); el.files = dt.files; ok = !!(el.files && el.files.length === files.length); } catch (e) { ok = false; }
+    if (!ok) try { Object.defineProperty(el, 'files', { value: files, configurable: true }); own = true; } catch (e) { return false; }
+    el.dispatchEvent(new Event('change', { bubbles: true }));
+    if (own) try { delete el.files; } catch (e) { /* лишиться до перемальовування */ }
+    return true;
+  }
+  function camOpen(id, kind) {
+    if (!window.TeploCam) return;
+    var tg = window.Telegram && Telegram.WebApp && Telegram.WebApp.initData;
+    TeploCam.open({ t: t, ico: ico, kind: kind, tg: !!tg, max: kind === 'heat' ? 12 : 8, track: track,
+      engine: function (onPct) { return VIS()._engine(onPct); },
+      read: function (blob) { return window.TeploOCR.read(blob); },
+      parse: camParse(kind),
+      pick: function () { var el = document.getElementById(id); if (el) el.click(); },
+      done: function (files) {
+        if (!camDeliver(id, files)) return;
+        // тепло: знімки вже прочитані на кадрі — одразу розпізнати пачку, без ще одного натискання
+        if (id === 'ph-input' && PH.files.length && PH.status !== 'working') phRun();
+      } });
   }
   /** Етап і кільце модуля — без перемальовування (прогрес ллється часто). */
   function phdStage(p, stage, q) {
@@ -2516,7 +2594,7 @@
   function enPhotoBox(k) {
     if (!VIS().local) return '';
     var ph = EN.photos || [], ms = smeters(k), h = '<div class="panel wn-photo" data-key="en-photo"><input type="file" id="en-files" accept="image/*" multiple class="sr">';
-    h += phCard({ p: 'en', photos: ph, busy: EN.busy, stage: EN.stage, q: EN.q, pct: EN.pct, prog: EN.prog || t('enp_reading'), stop: 'en-stop', rm: 'en-ph-rm', title: t('phd_add_ocr'), hint: t('enp_hint'), more: t('enp_more') });
+    h += phCard({ p: 'en', photos: ph, busy: EN.busy, stage: EN.stage, q: EN.q, pct: EN.pct, prog: EN.prog || t('enp_reading'), stop: 'en-stop', rm: 'en-ph-rm', title: t('phd_add_ocr'), hint: t('enp_hint'), more: t('enp_more'), cam: { in: 'en-files', kind: k } });
     if (EN.busy) return h + '</div>';
     if (EN.err) h += '<p class="help warn">' + esc(EN.err) + '</p>';
     if (!ph.length) return h + '</div>';
@@ -3200,7 +3278,7 @@
       var mine = ms.filter(function (m) { return (ph[i].meters || []).indexOf(m.id) >= 0; });
       return mine.length ? '<span class="wn-tags">' + mine.map(function (m) { return '<i class="' + (m.kind === 'hot' ? 'n-hot' : 'n-cold') + '">' + esc(m.name || t('kv_' + m.kind)) + '</i>'; }).join('') + '</span>' : '';
     };
-    h += phCard({ p: 'wn', photos: ph, busy: WN.busy, stage: WN.stage, q: WN.q, pct: WN.pct, prog: WN.prog || t('wn_reading'), stop: 'wn-stop', rm: 'wn-ph-rm', tags: wtags, title: t('phd_add_ocr'), hint: t('wnp_hint'), more: t('wnp_more') });
+    h += phCard({ p: 'wn', photos: ph, busy: WN.busy, stage: WN.stage, q: WN.q, pct: WN.pct, prog: WN.prog || t('wn_reading'), stop: 'wn-stop', rm: 'wn-ph-rm', tags: wtags, title: t('phd_add_ocr'), hint: t('wnp_hint'), more: t('wnp_more'), cam: { in: 'wn-files', kind: 'water' } });
     if (WN.err) h += '<p class="help warn">' + esc(WN.err) + '</p>';
     if (ph.length) {
       if (!WN.busy) {
@@ -6756,7 +6834,7 @@
     var date = model_ ? '' : '<div class="field" style="max-width:280px"><label for="ph-date">' + esc(t('ph_date')) + '</label><div class="ctl"><input id="ph-date" type="date" value="' + esc(PH.date || today()) + '" max="' + today() + '"></div></div>';
     var pick = '<label for="ph-input" class="btn ' + (PH.files.length ? 'sec' : 'big') + '" tabindex="0" data-key="photo-pick">' + ico('camera', 22) + '<span>' + esc(PH.files.length ? t('ph_add') : t('ph_pick')) + '</span></label>';
     var go_ = PH.files.length ? '<button class="btn big" data-act="ph-run" data-key="photo-run">' + esc(t('ph_go', { n: PH.files.length })) + '</button>' : '';
-    return shell_(lead + err + input + (PH.files.length ? thumbs(true) : '') + date + '<div class="row-actions">' + pick + go_ + '</div>' + '<p class="small muted" style="margin-top:16px">' + esc(t('ph_privacy')) + '</p>');
+    return shell_(lead + err + input + (PH.files.length ? thumbs(true) : '') + date + '<div class="row-actions">' + pick + camBtn({ in: 'ph-input', kind: 'heat' }, 'btn sec' + (PH.files.length ? '' : ' big')) + go_ + '</div>' + '<p class="small muted" style="margin-top:16px">' + esc(t('ph_privacy')) + '</p>');
   }
   function photoResult() {
     if (hcOn() && PH.mode === 'reading') hcLoad();
@@ -7438,6 +7516,7 @@
     if (billAct(act, el, e)) return;
     switch (act) {
       case 'start': break;
+      case 'cam': camOpen(el.getAttribute('data-in'), el.getAttribute('data-kind')); break;
       case 'read': newDraft(); go('step-0'); break;
       case 'restart': newDraft(); go('step-0'); break;
       case 'pick-model': S._pickModel = el.value; render(true); break;

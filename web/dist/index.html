@@ -1902,6 +1902,48 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
 @keyframes phd-drop { 0%, 100% { transform: translateY(-3px); } 50% { transform: translateY(3px); } }
 @media (prefers-reduced-motion: reduce) { .phd-beam { animation-duration: 6s; } .phd-scan b, .phd-load .ico, .phd-bar i::after { animation: none; } }
 
+/* ---------- Камера з підказками (121-а): кнопка біля «Обрати фото» і екран камери (завжди темний — це видошукач) ---------- */
+.phd-camrow { display: flex; justify-content: center; padding: 0 16px 20px; margin-top: -8px; }
+.phd-cam { display: inline-flex; align-items: center; gap: 8px; min-height: 48px; padding: 0 20px; border-radius: var(--r-pill); border: 1px solid var(--c-field-line);
+  background: var(--c-surface); color: var(--c-ink); font: 600 var(--fs-m)/1.2 var(--font); cursor: pointer; transition: background-color .15s var(--ease), transform .15s var(--ease); }
+.phd-cam:hover { background: var(--c-ghost-hover); } .phd-cam:active { transform: scale(.97); }
+.phd-cam .ico { color: var(--c-ink-2); }
+.phd-cam.sm { min-height: 44px; padding: 0 16px; font-size: var(--fs-s); }
+.phd-acts { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 16px; margin-top: 10px; } .phd-acts .phd-more { margin: 0; }
+.cam { position: fixed; inset: 0; z-index: 1000; background: #000; color: #fff; overflow: hidden; overscroll-behavior: contain; touch-action: none; font-family: var(--font); }
+.cam-v { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; background: #000; }
+.cam-fr { position: absolute; left: max(8%, calc(50% - 320px)); right: max(8%, calc(50% - 320px)); top: 22%; height: 30%; pointer-events: none; }
+.cam-fr b { position: absolute; width: 34px; height: 34px; border: 4px solid #fff; transition: border-color .2s var(--ease); }
+.cam-fr .k1 { left: 0; top: 0; border-right: 0; border-bottom: 0; border-top-left-radius: 14px; } .cam-fr .k2 { right: 0; top: 0; border-left: 0; border-bottom: 0; border-top-right-radius: 14px; }
+.cam-fr .k3 { left: 0; bottom: 0; border-right: 0; border-top: 0; border-bottom-left-radius: 14px; } .cam-fr .k4 { right: 0; bottom: 0; border-left: 0; border-top: 0; border-bottom-right-radius: 14px; }
+.cam-fr.ok b { border-color: #7fe0b0; }
+.cam-flash { position: absolute; inset: 0; background: #fff; opacity: 0; pointer-events: none; transition: opacity .35s var(--ease); }
+.cam-flash.on { opacity: .75; transition: none; }
+.cam-top { position: absolute; left: 12px; right: 12px; top: calc(12px + env(safe-area-inset-top, 0px)); display: flex; justify-content: space-between; gap: 12px; }
+.cam-b { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-width: 52px; min-height: 52px; padding: 0 14px; border-radius: var(--r-pill); border: 0;
+  background: rgba(0, 0, 0, .55); color: #fff; font: 600 var(--fs-m)/1.2 var(--font); cursor: pointer; }
+.cam-b:hover { background: rgba(0, 0, 0, .7); } .cam-b[aria-pressed="true"] { background: #fff; color: #17211E; }
+.cam-b:focus-visible, .cam-shot:focus-visible, .cam-done:focus-visible { outline: 3px solid #fff; outline-offset: 3px; }
+.cam-bot { position: absolute; left: 0; right: 0; bottom: 0; padding: 16px 16px calc(18px + env(safe-area-inset-bottom, 0px)); background: rgba(8, 12, 11, .88); }
+.cam-bot > * { max-width: 640px; margin-left: auto; margin-right: auto; }
+.cam-seen { margin: 0 auto 4px; min-height: 1.5em; font-size: var(--fs-m); color: #b9eccf; font-variant-numeric: tabular-nums; }
+.cam-hint { margin: 0 auto; min-height: 2.5em; font-size: var(--fs-l); font-weight: 600; line-height: 1.25; text-wrap: balance; }
+.cam-row { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 12px; margin-top: 14px; }
+.cam-th { justify-self: start; position: relative; width: 56px; height: 56px; border-radius: 12px; border: 2px solid rgba(255, 255, 255, .85); background: center / cover no-repeat #222; visibility: hidden; }
+.cam-th.on { visibility: visible; }
+.cam-th b { position: absolute; right: -8px; top: -8px; min-width: 24px; height: 24px; padding: 0 6px; border-radius: var(--r-pill); background: #fff; color: #17211E; font-size: 14px; font-weight: 600; display: grid; place-items: center; }
+.cam-shot { width: 80px; height: 80px; padding: 0; border-radius: 50%; border: 4px solid #fff; background: transparent; cursor: pointer; transition: transform .15s var(--ease); }
+.cam-shot i { display: block; margin: 5px; height: calc(100% - 10px); border-radius: 50%; background: #fff; }
+.cam-shot:active { transform: scale(.94); }
+.cam-done { justify-self: end; min-height: 52px; padding: 0 20px; border-radius: var(--r-pill); border: 0; background: #fff; color: #17211E; font: 600 var(--fs-m)/1.2 var(--font); cursor: pointer; }
+.cam-done[disabled] { background: rgba(255, 255, 255, .25); color: rgba(255, 255, 255, .8); cursor: default; }
+.cam.err .cam-v, .cam.err .cam-fr { display: none; }
+.cam.err .cam-bot { top: 0; display: flex; flex-direction: column; justify-content: center; background: #0e1412; }
+.cam.err .cam-hint { font-weight: 500; max-width: 34ch; text-align: center; }
+.cam-acts { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; margin-top: 20px; } .cam-acts .cam-done { justify-self: auto; }
+.cam-acts .cam-b { border: 1px solid rgba(255, 255, 255, .5); }
+@media (prefers-reduced-motion: reduce) { .cam-flash, .cam-flash.on { transition: none; } .cam-flash.on { opacity: .4; } }
+
 /* фото збереженого запису — та сама картка; фото немає на цьому пристрої */
 .hphotos .phd { margin-top: var(--sp-2); }
 .phd-slide .gone-t { display: none; }
@@ -3414,6 +3456,19 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
       wsv_g1: 'Витоки', wsv_g2: 'Кран і душ', wsv_g3: 'Техніка', wsv_g4: 'Контроль витрат',
       wnp_lead: 'Сфотографуйте водоміри — цифри впишуться самі, перевірте й збережіть. Або впишіть чорні цифри барабана вручну.',
       wnp_pick: 'Розпізнати з фото', wnp_more: 'Додати ще фото',
+      // камера з підказками (121-а)
+      cam_btn: 'Камера з підказками', cam_close: 'Закрити камеру', cam_torch: 'Ліхтарик', cam_shot: 'Зняти', cam_done: 'Готово', cam_done_n: 'Готово · {n}', cam_n: 'Знято: {n}',
+      cam_start: 'Вмикаю камеру…', cam_load: 'Завантажую розпізнавання — {p} %. Знімати кнопкою можна вже зараз', cam_noocr: 'Розпізнавання не завантажилось — знімайте кнопкою, цифри розберу після',
+      cam_aim_heat: 'Наведіть рамку на екран теплолічильника', cam_aim_water: 'Наведіть рамку на цифри водоміра', cam_aim_elec: 'Наведіть рамку на цифри електролічильника', cam_aim_gas: 'Наведіть рамку на цифри газового лічильника',
+      cam_aim: 'Цифр не бачу — наведіть рамку на табло', cam_dark: 'Темно — додайте світла', cam_dark_t: 'Темно — увімкніть ліхтарик угорі', cam_glare: 'Відблиск на табло — нахиліть телефон трохи вбік',
+      cam_move: 'Тримайте телефон нерухомо', cam_blur: 'Нечітко — відсуньте телефон трохи далі, камера наведе різкість', cam_far: 'Підійдіть ближче — цифри замалі',
+      cam_hold: 'Тримайте так — перевіряю цифри', cam_seen: 'бачу {v}', cam_other: 'Схоже, це {x}',
+      cam_k_heat: 'теплолічильник', cam_k_water: 'водомір', cam_k_electric: 'електролічильник', cam_k_gas: 'газовий лічильник',
+      cam_got_heat: 'Знято. Перемкніть екран лічильника — зніму наступний, або натисніть «Готово»', cam_got_water: 'Знято. Наведіть на інший водомір або натисніть «Готово»', cam_got: 'Знято. Натисніть «Готово» або зніміть ще',
+      cam_same_heat: 'Цей екран уже знято — перемкніть на наступний', cam_same: 'Це вже знято — натисніть «Готово»', cam_max: 'Більше {n} фото за раз не можна — натисніть «Готово»',
+      cam_err_denied: 'Немає дозволу на камеру. Дозвольте камеру для цього сайту в налаштуваннях браузера або оберіть фото.', cam_err_none: 'Камеру не знайдено. Оберіть фото або відкрийте сайт на телефоні.',
+      cam_err_busy: 'Камера зайнята іншою програмою. Закрийте її або оберіть фото.', cam_err: 'Камера тут не вмикається. Оберіть фото — телефон запропонує зняти.',
+      cam_err_tg: 'У Telegram на цьому телефоні камера всередині сторінки не працює. Оберіть фото — Telegram запропонує зняти.', cam_pick: 'Обрати фото',
       phd_add: 'Додайте фото лічильника', phd_add_ocr: 'Додайте фото — показання розпізнаються самі', rp_removed: 'Фото прибрано із запису.', rp_undo: 'Повернути', phd_load: 'Завантажую модуль розпізнавання — лише перший раз, ~30 МБ', phd_pick: 'Зняти чи вибрати фото',
       phd_tips: 'Зблизька: табло — на третину кадру або більше, цифри різкі (торкніться екрана телефона для фокусу)|Прямо, не під кутом: рядок цифр — горизонтально|Без відблисків: спалах вимкніть, ліхтарик — збоку, не в лоб|У кадрі всі цифри — і чорні, і червоні|Кілька лічильників — одним кадром або кожен окремо; двозонний лічильник світла — кожну зону окремим фото',
       wnp_hint: 'Один кадр з обома водомірами або по кадру на кожен. Барабан — прямо й близько, без відблиску спалаху.',
@@ -4625,6 +4680,19 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
       wsv_g1: 'Утечки', wsv_g2: 'Кран и душ', wsv_g3: 'Техника', wsv_g4: 'Контроль расходов',
       wnp_lead: 'Сфотографируйте водомеры — цифры впишутся сами, проверьте и сохраните. Или впишите чёрные цифры барабана вручную.',
       wnp_pick: 'Распознать с фото', wnp_more: 'Добавить ещё фото',
+      // камера с подсказками (121-я)
+      cam_btn: 'Камера с подсказками', cam_close: 'Закрыть камеру', cam_torch: 'Фонарик', cam_shot: 'Снять', cam_done: 'Готово', cam_done_n: 'Готово · {n}', cam_n: 'Снято: {n}',
+      cam_start: 'Включаю камеру…', cam_load: 'Загружаю распознавание — {p} %. Снимать кнопкой можно уже сейчас', cam_noocr: 'Распознавание не загрузилось — снимайте кнопкой, цифры разберу потом',
+      cam_aim_heat: 'Наведите рамку на экран теплосчётчика', cam_aim_water: 'Наведите рамку на цифры водомера', cam_aim_elec: 'Наведите рамку на цифры электросчётчика', cam_aim_gas: 'Наведите рамку на цифры газового счётчика',
+      cam_aim: 'Цифр не вижу — наведите рамку на табло', cam_dark: 'Темно — добавьте света', cam_dark_t: 'Темно — включите фонарик вверху', cam_glare: 'Блик на табло — наклоните телефон немного в сторону',
+      cam_move: 'Держите телефон неподвижно', cam_blur: 'Нечётко — отодвиньте телефон чуть дальше, камера наведёт резкость', cam_far: 'Подойдите ближе — цифры слишком мелкие',
+      cam_hold: 'Держите так — проверяю цифры', cam_seen: 'вижу {v}', cam_other: 'Похоже, это {x}',
+      cam_k_heat: 'теплосчётчик', cam_k_water: 'водомер', cam_k_electric: 'электросчётчик', cam_k_gas: 'газовый счётчик',
+      cam_got_heat: 'Снято. Переключите экран счётчика — сниму следующий, или нажмите «Готово»', cam_got_water: 'Снято. Наведите на другой водомер или нажмите «Готово»', cam_got: 'Снято. Нажмите «Готово» или снимите ещё',
+      cam_same_heat: 'Этот экран уже снят — переключите на следующий', cam_same: 'Это уже снято — нажмите «Готово»', cam_max: 'Больше {n} фото за раз нельзя — нажмите «Готово»',
+      cam_err_denied: 'Нет разрешения на камеру. Разрешите камеру для этого сайта в настройках браузера или выберите фото.', cam_err_none: 'Камера не найдена. Выберите фото или откройте сайт на телефоне.',
+      cam_err_busy: 'Камера занята другой программой. Закройте её или выберите фото.', cam_err: 'Камера здесь не включается. Выберите фото — телефон предложит снять.',
+      cam_err_tg: 'В Telegram на этом телефоне камера внутри страницы не работает. Выберите фото — Telegram предложит снять.', cam_pick: 'Выбрать фото',
       phd_add: 'Добавьте фото счётчика', phd_add_ocr: 'Добавьте фото — показания распознаются сами', rp_removed: 'Фото убрано из записи.', rp_undo: 'Вернуть', phd_load: 'Загружаю модуль распознавания — только первый раз, ~30 МБ', phd_pick: 'Снять или выбрать фото',
       phd_tips: 'Вблизи: табло — на треть кадра или больше, цифры резкие (коснитесь экрана телефона для фокуса)|Прямо, не под углом: строка цифр — горизонтально|Без бликов: вспышку выключите, фонарик — сбоку, не в лоб|В кадре все цифры — и чёрные, и красные|Несколько счётчиков — одним кадром или каждый отдельно; двухзонный счётчик света — каждую зону отдельным фото',
       wnp_hint: 'Один кадр с обоими водомерами или по кадру на каждый. Барабан — прямо и близко, без блика вспышки.',
@@ -6945,6 +7013,259 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
 
 </script>
 <script>
+/* Камера з підказками (121-а, просьба власника 12.11.2026).
+ * Живий кадр з задньої камери, рамка, підказки великим текстом (темно, відблиск, рухається, нечітко, далеко) — по зменшеному кадру
+ * рамки кожні 300 мс; той самий рушій, що й для фото (web/ocr/engine.js), читає кадр щойно звільниться: «Теплолічильник · бачу 15,482 Гкал».
+ * Одне й те саме в двох кадрах поспіль — цей кадр і знято (вже прочитаний); кнопка «Зняти» — завжди. «Готово» — знімки йдуть у той самий
+ * <input type=file>, що й «Обрати фото»: далі весь звичний шлях (копія в /admin, розбір, раскладка по лічильниках).
+ * Чисті функції (mapRect, stats, hint, digitH) — без DOM, тест tests/camera.test.js; open() — інтерфейс (e2e tests/e2e/e2e_camera.cjs). */
+(function (root) {
+  'use strict';
+  var A_W = 240;   // ширина кадру рамки для підказок (вирізаємо рамку з повного кадру — так розмиття ще видно)
+  // blur — різкість відносно контрасту (дисперсія лапласіана / дисперсія яскравості): різке табло ≥ 0,13, сильно розмите < 0,05
+  var TH = { dark: 48, glareLum: 250, glare: 0.03, move: 12, blur: 0.05, flat: 14, far: 0.025 };
+  // рамка на екрані — у частках видимої картинки (див. .cam-fr у styles.css: 8 % з боків, 24 % згори, висота 32 %, ширина до 640 px)
+
+  /** Прямокутник на екрані (r, px відносно елемента ew×eh з object-fit: cover) → пікселі кадру камери vw×vh. Без r — уся видима частина. */
+  function mapRect(vw, vh, ew, eh, r) {
+    if (!(vw > 0 && vh > 0 && ew > 0 && eh > 0)) return { x: 0, y: 0, w: vw || 0, h: vh || 0 };
+    var s = Math.max(ew / vw, eh / vh), ox = (vw * s - ew) / 2, oy = (vh * s - eh) / 2;
+    r = r || { x: 0, y: 0, w: ew, h: eh };
+    var x = Math.max(0, (r.x + ox) / s), y = Math.max(0, (r.y + oy) / s);
+    var w = Math.min(vw - x, r.w / s), h = Math.min(vh - y, r.h / s);
+    return { x: Math.round(x), y: Math.round(y), w: Math.max(1, Math.round(w)), h: Math.max(1, Math.round(h)) };
+  }
+
+  /** Кадр рамки (RGBA w×h) → {lum: середня яскравість 0–255, glare: частка пересвіту, sharp: дисперсія лапласіана (різкість),
+   *  flat: розкид яскравості (є що фокусувати), move: середня зміна від prev (сірий попереднього кадру) або null, gray}. */
+  function stats(px, w, h, prev) {
+    var n = w * h, g = new Uint8Array(n), i;
+    for (i = 0; i < n; i++) g[i] = (px[i * 4] * 77 + px[i * 4 + 1] * 150 + px[i * 4 + 2] * 29) >> 8;
+    var s = 0, s2 = 0, hi = 0, l1 = 0, l2 = 0, c = 0;
+    for (i = 0; i < n; i++) { var v = g[i]; s += v; s2 += v * v; if (v >= TH.glareLum) hi++; }
+    for (var y = 1; y < h - 1; y++) for (var x = 1; x < w - 1; x++) {
+      var q = y * w + x, lap = 4 * g[q] - g[q - 1] - g[q + 1] - g[q - w] - g[q + w]; l1 += lap; l2 += lap * lap; c++;
+    }
+    var mean = n ? s / n : 0, lm = c ? l1 / c : 0, mv = null;
+    if (prev && prev.length === n) { var d = 0; for (i = 0; i < n; i += 2) d += Math.abs(g[i] - prev[i]); mv = d / Math.ceil(n / 2); }
+    return { lum: mean, glare: n ? hi / n : 0, sharp: c ? l2 / c - lm * lm : 0, flat: Math.sqrt(Math.max(0, (n ? s2 / n : 0) - mean * mean)), move: mv, gray: g };
+  }
+
+  /** Висота найбільшого рядка з цифрами (від 3) у частках меншої сторони кадру; рядків з цифрами нема — 0. */
+  function digitH(res) {
+    var m = 0, side = Math.min((res && res.w) || 0, (res && res.h) || 0);
+    if (!side) return 0;
+    ((res && res.lines) || []).forEach(function (l) { if (String(l.text || '').replace(/\D/g, '').length >= 3 && l.h > m) m = l.h; });
+    return m / side;
+  }
+
+  /** Яку підказку показати: st — stats(); o: {torch: є ліхтарик, torchOn, ocr: {lines, digitH, found, age (мс)}} → код ('' — усе гаразд). */
+  function hint(st, o) {
+    o = o || {};
+    if (!st) return '';
+    if (st.lum < TH.dark) return o.torch && !o.torchOn ? 'dark_t' : 'dark';
+    if (st.move !== null && st.move !== undefined && st.move > TH.move) return 'move';
+    if (st.glare > TH.glare) return 'glare';
+    var oc = o.ocr, fresh = !!(oc && oc.found && oc.age < 4000);
+    if (!fresh && st.flat > TH.flat && st.sharp / (st.flat * st.flat) < TH.blur) return 'blur';
+    if (oc && !fresh && oc.age < 6000) {
+      if (oc.digitH > 0 && oc.digitH < TH.far) return 'far';
+      if (!oc.lines) return 'aim';
+    }
+    return '';
+  }
+
+  function supported() {
+    var nav = root.navigator, md = nav && nav.mediaDevices;
+    return !!(md && typeof md.getUserMedia === 'function' && root.isSecureContext !== false);
+  }
+
+  /**
+   * Відкрити камеру поверх сторінки. o: {
+   *   t(key, vars) — текст, ico(name, size) — значок, kind: 'heat'|'water'|'elec'|'gas', max — скільки знімків,
+   *   engine(onPct) → Promise — рушій розпізнавання, read(blob) → Promise<res>, parse(res) → {key, seen, meter, other} | null,
+   *   done(files) — знімки (File[]), pick() — «Обрати фото» замість камери, track(name, props) — журнал, tg — відкрито в Telegram }.
+   */
+  function open(o) {
+    var doc = document, t = o.t, max = o.max || 8, kind = o.kind || 'heat';
+    var st = { shots: [], keys: {}, last: '', seen: null, seenAt: 0, ocr: null, eng: 0, pct: 0, busy: false, closed: false, prev: null,
+      code: '', pend: '', pendN: 0, frames: 0, auto: 0, t0: Date.now(), torch: false, torchOn: false, msg: '', msgUntil: 0, stream: null, track: null, err: '' };
+    var prevFocus = doc.activeElement, ov = doc.createElement('div');
+    ov.className = 'cam'; ov.setAttribute('role', 'dialog'); ov.setAttribute('aria-modal', 'true'); ov.setAttribute('aria-label', t('cam_btn'));
+    ov.innerHTML = '<video class="cam-v" playsinline muted autoplay></video>' +
+      '<div class="cam-fr" aria-hidden="true"><b class="k1"></b><b class="k2"></b><b class="k3"></b><b class="k4"></b></div>' +
+      '<div class="cam-flash" aria-hidden="true"></div>' +
+      '<div class="cam-top"><button type="button" class="cam-b" data-cam="close" aria-label="' + t('cam_close') + '">' + o.ico('close', 24) + '</button>' +
+      '<button type="button" class="cam-b cam-torch" data-cam="torch" aria-pressed="false" hidden>' + o.ico('torch', 22) + '<span>' + t('cam_torch') + '</span></button></div>' +
+      '<div class="cam-bot"><p class="cam-seen" aria-live="polite"></p><p class="cam-hint" role="status" aria-live="polite">' + t('cam_start') + '</p>' +
+      '<div class="cam-row"><span class="cam-th" aria-hidden="true"></span>' +
+      '<button type="button" class="cam-shot" data-cam="shot" aria-label="' + t('cam_shot') + '"><i></i></button>' +
+      '<button type="button" class="cam-done" data-cam="done" disabled>' + t('cam_done') + '</button></div></div>';
+    doc.body.appendChild(ov);
+    var html = doc.documentElement, ovf = html.style.overflow; html.style.overflow = 'hidden';
+    var v = ov.querySelector('video'), fr = ov.querySelector('.cam-fr'), hintEl = ov.querySelector('.cam-hint'), seenEl = ov.querySelector('.cam-seen');
+    var thEl = ov.querySelector('.cam-th'), doneEl = ov.querySelector('.cam-done'), torchEl = ov.querySelector('.cam-torch'), flashEl = ov.querySelector('.cam-flash');
+    var ac = doc.createElement('canvas'), ag = ac.getContext('2d', { willReadFrequently: true }), tick = null, tm = null, thUrl = '';
+    ov.querySelector('.cam-shot').focus();
+
+    var ready = function () { return !st.closed && v.readyState >= 2 && v.videoWidth > 0; };
+    var setText = function (el, s) { if (el.textContent !== s) el.textContent = s; };
+    var say = function (key, vars, ms) { st.msg = t(key, vars); st.msgUntil = Date.now() + (ms || 3500); show(); };
+    var frameRect = function () {
+      var e = v.getBoundingClientRect(), f = fr.getBoundingClientRect();
+      return mapRect(v.videoWidth, v.videoHeight, e.width, e.height, { x: f.left - e.left, y: f.top - e.top, w: f.width, h: f.height });
+    };
+    // видима частина кадру (що людина бачить) у повній роздільності → JPEG; її ж читаємо і її ж зберігаємо
+    var grab = function (q) {
+      var e = v.getBoundingClientRect(), b = mapRect(v.videoWidth, v.videoHeight, e.width, e.height), k = Math.min(1, 2400 / Math.max(b.w, b.h));
+      var c = doc.createElement('canvas'); c.width = Math.round(b.w * k); c.height = Math.round(b.h * k);
+      c.getContext('2d').drawImage(v, b.x, b.y, b.w, b.h, 0, 0, c.width, c.height);
+      return new Promise(function (ok, bad) {
+        var fin = function (bl) { c.width = 0; c.height = 0; if (bl) ok(bl); else bad(new Error('blob')); };
+        if (c.toBlob) c.toBlob(fin, 'image/jpeg', q);
+        else { try { var u = c.toDataURL('image/jpeg', q), bin = atob(u.split(',')[1]), a = new Uint8Array(bin.length); for (var i = 0; i < bin.length; i++) a[i] = bin.charCodeAt(i); fin(new Blob([a], { type: 'image/jpeg' })); } catch (x) { fin(null); } }
+      });
+    };
+
+    function show() {
+      if (st.closed) return;
+      var now = Date.now(), s;
+      if (st.msg && now < st.msgUntil) s = st.msg;
+      else if (st.code) s = t('cam_' + st.code);
+      else if (st.eng === 0 && ready()) s = t('cam_load', { p: st.pct });
+      else if (st.eng < 0) s = t('cam_noocr');
+      else if (st.seen && st.seen.key && now - st.seenAt < 4000) s = st.keys[st.seen.key] ? t(kind === 'heat' ? 'cam_same_heat' : 'cam_same') : t('cam_hold');
+      else s = ready() ? t('cam_aim_' + kind) : t('cam_start');
+      setText(hintEl, s);
+      var sn = '', fresh = st.seen && now - st.seenAt < 5000;
+      if (fresh && st.seen.other) sn = t('cam_other', { x: t('cam_k_' + st.seen.other) });
+      else if (fresh && st.seen.seen) { var w = t('cam_seen', { v: st.seen.seen }); sn = st.seen.meter ? st.seen.meter + ' · ' + w : w.charAt(0).toUpperCase() + w.slice(1); }
+      setText(seenEl, sn);
+      fr.classList.toggle('ok', !!(fresh && st.seen.key));
+    }
+
+    function look() {
+      if (!ready()) { show(); return; }
+      try {
+        var r = frameRect(), aw = Math.max(16, Math.min(A_W, r.w)), ah = Math.max(16, Math.round(r.h * aw / r.w));
+        if (ac.width !== aw || ac.height !== ah) { ac.width = aw; ac.height = ah; st.prev = null; }
+        ag.drawImage(v, r.x, r.y, r.w, r.h, 0, 0, aw, ah);
+        var s = stats(ag.getImageData(0, 0, aw, ah).data, aw, ah, st.prev); st.prev = s.gray; st.stat = s;
+        var code = hint(s, { torch: st.torch, torchOn: st.torchOn, ocr: st.ocr ? { lines: st.ocr.lines, digitH: st.ocr.digitH, found: st.ocr.found, age: Date.now() - st.ocr.at } : null });
+        // нова підказка — з другого такту поспіль (не блимати)
+        if (code === st.code) st.pendN = 0;
+        else if (code === st.pend) { if (++st.pendN >= 2) { st.code = code; st.pendN = 0; } }
+        else { st.pend = code; st.pendN = 1; }
+      } catch (e) { /* кадр ще не готовий */ }
+      show();
+    }
+
+    function add(blob, p, auto) {
+      if (st.shots.length >= max) { say('cam_max', { n: max }); return; }
+      var n = st.shots.length + 1, name = 'camera-' + new Date().toISOString().replace(/\D/g, '').slice(0, 14) + '-' + n + '.jpg', f;
+      try { f = new File([blob], name, { type: 'image/jpeg', lastModified: Date.now() }); } catch (e) { f = blob; try { f.name = name; f.lastModified = Date.now(); } catch (e2) { /* без імені */ } }
+      st.shots.push(f); if (auto) st.auto++;
+      if (p && p.key) st.keys[p.key] = 1;
+      if (thUrl) URL.revokeObjectURL(thUrl); thUrl = URL.createObjectURL(blob);
+      thEl.style.backgroundImage = 'url("' + thUrl + '")'; thEl.innerHTML = '<b>' + st.shots.length + '</b>'; thEl.classList.add('on');
+      doneEl.disabled = false; doneEl.textContent = t('cam_done_n', { n: st.shots.length }); doneEl.setAttribute('aria-label', t('cam_done') + '. ' + t('cam_n', { n: st.shots.length }));
+      flashEl.classList.add('on'); setTimeout(function () { flashEl.classList.remove('on'); }, 60);
+      try { if (navigator.vibrate) navigator.vibrate(30); } catch (e) { /* без вібро */ }
+      say(st.shots.length >= max ? 'cam_max' : kind === 'heat' ? 'cam_got_heat' : kind === 'water' ? 'cam_got_water' : 'cam_got', { n: max }, 4000);
+    }
+
+    function read() {
+      if (st.closed) return;
+      var s = st.stat, wait = st.eng !== 1 || st.busy || !ready() || !s || s.lum < 25 || (s.move !== null && s.move > TH.move);
+      if (wait) { tm = setTimeout(read, 400); return; }
+      st.busy = true;
+      grab(0.9).then(function (blob) {
+        return o.read(blob).then(function (res) {
+          if (st.closed) return;
+          st.frames++;
+          var p = null; try { p = o.parse(res || {}); } catch (e) { p = null; }
+          st.ocr = { at: Date.now(), lines: ((res && res.lines) || []).length, digitH: digitH(res), found: !!(p && (p.key || p.other)) };
+          if (p && (p.key || p.other)) { st.seen = p; st.seenAt = Date.now(); }
+          if (p && p.key && p.key === st.last && !st.keys[p.key]) add(blob, p, true);
+          st.last = (p && p.key) || '';
+          show();
+        });
+      }).catch(function () { /* кадр не прочитався — наступний */ }).then(function () { st.busy = false; if (!st.closed) tm = setTimeout(read, 500); });
+    }
+
+    function shoot() {
+      if (!ready()) return;
+      var p = st.seen && Date.now() - st.seenAt < 2500 && st.seen.key ? st.seen : null;
+      grab(0.92).then(function (b) { if (!st.closed) add(b, p, false); }, function () { /* не вийшло — ще раз */ });
+    }
+
+    function stop() { if (st.stream) st.stream.getTracks().forEach(function (k) { try { k.stop(); } catch (e) { /* уже */ } }); st.stream = null; }
+    function finish(deliver) {
+      if (st.closed) return; st.closed = true;
+      clearInterval(tick); clearTimeout(tm); stop();
+      doc.removeEventListener('keydown', onKey, true); root.removeEventListener('popstate', onPop); doc.removeEventListener('visibilitychange', onVis);
+      if (thUrl) URL.revokeObjectURL(thUrl);
+      if (ov.parentNode) ov.parentNode.removeChild(ov);
+      html.style.overflow = ovf;
+      if (o.track) o.track('cam', { k: kind, n: st.shots.length, auto: st.auto, fr: st.frames, s: Math.round((Date.now() - st.t0) / 1000), e: st.err || undefined });
+      if (deliver && st.shots.length) o.done(st.shots.slice());
+      else if (prevFocus && prevFocus.focus) try { prevFocus.focus(); } catch (e) { /* зник */ }
+    }
+    function fail(e) {
+      var nm = (e && e.name) || '', code = /NotAllowed|Security|Permission/.test(nm) ? 'denied' : /NotFound|Overconstrained|DevicesNotFound/.test(nm) ? 'none' : /NotReadable|TrackStart|Abort/.test(nm) ? 'busy' : 'other';
+      st.err = code; clearInterval(tick); clearTimeout(tm); stop();
+      var msg = o.tg && (code === 'denied' || code === 'other') ? t('cam_err_tg') : t(code === 'other' ? 'cam_err' : 'cam_err_' + code);
+      ov.classList.add('err');
+      ov.querySelector('.cam-bot').innerHTML = '<p class="cam-hint" role="alert">' + msg + '</p><div class="cam-acts">' +
+        '<button type="button" class="cam-done" data-cam="pick">' + t('cam_pick') + '</button>' +
+        '<button type="button" class="cam-b" data-cam="close">' + t('close') + '</button></div>';
+      var pk = ov.querySelector('[data-cam="pick"]'); if (pk) pk.focus();
+    }
+
+    var onKey = function (e) {
+      if (e.key === 'Escape') { e.preventDefault(); finish(true); return; }
+      if (e.key === 'Tab') {   // фокус — лише всередині камери
+        var bs = Array.prototype.filter.call(ov.querySelectorAll('button'), function (b) { return !b.hidden && !b.disabled; }); if (!bs.length) return;
+        var i = bs.indexOf(doc.activeElement); if (e.shiftKey ? i <= 0 : i === bs.length - 1) { e.preventDefault(); bs[e.shiftKey ? bs.length - 1 : 0].focus(); }
+      }
+    };
+    var onPop = function () { finish(true); };
+    var onVis = function () { if (doc.visibilityState === 'hidden') finish(true); };
+    doc.addEventListener('keydown', onKey, true); root.addEventListener('popstate', onPop); doc.addEventListener('visibilitychange', onVis);
+    ov.addEventListener('click', function (e) {
+      var b = e.target.closest && e.target.closest('[data-cam]'); if (!b) return;
+      var a = b.getAttribute('data-cam');
+      if (a === 'close' || a === 'done') finish(true);
+      else if (a === 'shot') shoot();
+      else if (a === 'pick') { finish(false); if (o.pick) o.pick(); }
+      else if (a === 'torch' && st.track) {
+        var on = !st.torchOn;
+        st.track.applyConstraints({ advanced: [{ torch: on }] }).then(function () { st.torchOn = on; torchEl.setAttribute('aria-pressed', on ? 'true' : 'false'); look(); }, function () { /* не вийшло */ });
+      }
+    });
+
+    if (!supported()) { setTimeout(function () { fail({ name: 'NotSupported' }); }, 0); return { close: finish }; }
+    navigator.mediaDevices.getUserMedia({ audio: false, video: { facingMode: { ideal: 'environment' }, width: { ideal: 1920 }, height: { ideal: 1080 } } }).then(function (s) {
+      if (st.closed) { s.getTracks().forEach(function (k) { k.stop(); }); return; }
+      st.stream = s; st.track = s.getVideoTracks()[0] || null;
+      v.srcObject = s; var pl = v.play(); if (pl && pl.catch) pl.catch(function () { /* autoplay — muted, має грати */ });
+      try {
+        var cp = st.track && st.track.getCapabilities ? st.track.getCapabilities() : {};
+        if (cp.torch) { st.torch = true; torchEl.hidden = false; }
+        if (cp.focusMode && cp.focusMode.indexOf('continuous') >= 0) st.track.applyConstraints({ advanced: [{ focusMode: 'continuous' }] }).catch(function () {});
+      } catch (e) { /* без можливостей */ }
+      tick = setInterval(look, 300); read();
+      o.engine(function (q) { st.pct = Math.round(Math.max(0, Math.min(1, q)) * 100); }).then(function () { st.eng = 1; show(); }, function () { st.eng = -1; show(); });
+    }, fail);
+    return { close: finish };
+  }
+
+  var api = { mapRect: mapRect, stats: stats, hint: hint, digitH: digitH, supported: supported, open: open, TH: TH };
+  if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.TeploCam = api;
+})(typeof window !== 'undefined' ? window : this);
+
+</script>
+<script>
 /*
  * Теплосервис — веб-приложение (бесплатная часть). Vanilla JS, без сборки и зависимостей.
  * Данные — в localStorage этого браузера (с запасным хранением в памяти).
@@ -7282,6 +7603,8 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
     help: '<circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .9-1 1.6V14"/><circle cx="12" cy="17.2" r=".6" fill="currentColor"/>',
     prefs: '<path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/>',
     back: '<path d="M15 5l-7 7 7 7"/>', close: '<path d="M6 6l12 12M18 6L6 18"/>',
+    torch: '<path d="M8 3h8v4l-2 3v11h-4V10L8 7z"/><path d="M8 7h8M12 13v2"/>',
+    viewfinder: '<path d="M4 9V5h4M16 5h4v4M20 15v4h-4M8 19H4v-4"/><path d="M8.5 10h1.5l1-1.5h2l1 1.5h1.5v5h-7z"/>',
     check: '<path d="M5 12.5l4.5 4.5L19 7.5"/>', cross: '<path d="M7 7l10 10M17 7L7 17"/>',
     alert: '<path d="M12 4l9 16H3z"/><path d="M12 10v4"/><circle cx="12" cy="17" r=".6" fill="currentColor"/>',
     info: '<circle cx="12" cy="12" r="9"/><path d="M12 11v6"/><circle cx="12" cy="7.8" r=".6" fill="currentColor"/>',
@@ -9445,12 +9768,88 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
       '<div class="phd-st"><p class="phd-msg" id="' + p + '-prog">' + esc(o.prog || '') + '</p>' +
       '<div class="phd-bar" aria-hidden="true"><i id="' + p + '-pbar" style="width:' + (o.pct || 2) + '%"></i></div>' +
       '<button type="button" class="phd-stop" data-act="' + o.stop + '" data-key="' + o.stop + '">' + ico('close', 16) + '<span>' + esc(t('ph_stop')) + '</span></button></div></div>';
+    // камера з підказками (121-а) — у тій самій плашці, під «Зняти чи вибрати фото»
+    if (!ph.length && o.cam) h += '<div class="phd-camrow">' + camBtn(o.cam, 'phd-cam') + '</div>';
     h += '</div>';
-    if (ph.length && !o.busy) h += '<label for="' + p + '-files" class="phd-more" tabindex="0" data-key="' + p + '-photo-pick">' + ico('plus', 18) + '<span>' + esc(o.more) + '</span></label>';
+    if (ph.length && !o.busy) h += '<div class="phd-acts"><label for="' + p + '-files" class="phd-more" tabindex="0" data-key="' + p + '-photo-pick">' + ico('plus', 18) + '<span>' + esc(o.more) + '</span></label>' + (o.cam ? camBtn(o.cam, 'phd-cam sm') : '') + '</div>';
     // «Як фотографувати» — заголовок-розкривашка над текстом, порада не висить постійно (владелец 10.11)
     if (!ph.length) h += '<details class="phd-tips" data-key="' + p + '-tips"><summary>' + esc(t('ph_tips_t')) + ico('chev', 18, 'pacc-chev') + '</summary>' +
       '<p class="small phd-hint">' + esc(o.hint) + '</p><ul>' + t('phd_tips').split('|').map(function (x) { return '<li>' + esc(x) + '</li>'; }).join('') + '</ul></details>';
     return h;
+  }
+  /* ---------- Камера з підказками (121-а, власник 12.11): web/src/camera.js; тут — що читати на кадрі й куди віддати знімки ---------- */
+  function camOk() { return !!(window.TeploCam && TeploCam.supported() && VIS().local); }
+  /** Кнопка «Камера з підказками» поруч із «Обрати фото»: c = {in: id поля з фото, kind: heat|water|elec|gas}. Камери сторінці не дають — кнопки нема. */
+  function camBtn(c, cls) {
+    if (!c || !camOk()) return '';
+    return '<button type="button" class="' + (cls || 'btn sec') + '" data-act="cam" data-in="' + esc(c.in) + '" data-kind="' + esc(c.kind) + '" data-key="cam-' + esc(c.kind) + '">' + ico('viewfinder', 22) + '<span>' + esc(t('cam_btn')) + '</span></button>';
+  }
+  function camCap(x) { x = String(x || ''); return x.charAt(0).toUpperCase() + x.slice(1); }
+  function camNum(v) { return String(v).replace('.', ','); }
+  /** Що видно на кадрі → {key — однакове в двох кадрах поспіль = знімаю, seen — «енергія 15,482 Гкал», meter, other — інший лічильник} або null. */
+  function camParse(kind) {
+    var P = window.TeploOCRParse, txt = function (res) { return (res.lines || []).map(function (l) { return [l.text].concat(l.alts || []).join(' '); }).join('\n'); };
+    if (kind === 'heat') {
+      var m = model(), ctx = { modelId: m ? m.id : '', models: M.MODELS, steps: m && m.status === 'verified' ? m.steps : null, expectedModel: m && m.id !== 'other' ? modelName(m) : '', prev: S.baseline ? { energy: S.baseline.energy, volume: S.baseline.volume, hours: S.baseline.hours } : null, lang: S.lang };
+      var ord = R.FIELDS.map(function (f) { return f.key; });
+      return function (res) {
+        var r = P.photo(res, ctx, 0), ph = r.photo || {};
+        if (ph.meterType && ph.meterType !== 'heat') return { other: ph.meterType };
+        var rd = (ph.readings || []).filter(function (x) { return x && x.value !== null && x.value !== undefined && String(x.value) !== '' && ord.indexOf(x.field) >= 0; });
+        if (!rd.length) return !ph.meterType && (res.drums || []).some(Wt.goodDrum) ? { other: 'water' } : null;
+        rd.sort(function (a, b) { return ord.indexOf(a.field) - ord.indexOf(b.field); });
+        var top = rd[0], mm = r.meter && r.meter.modelId ? M.byId(r.meter.modelId) : null, u = fieldUnit(top.field);
+        return { key: rd.map(function (x) { return x.field + '=' + x.value; }).join('|'), seen: fieldLabel(top.field).toLowerCase() + ' ' + camNum(top.value) + (u ? ' ' + u : ''), meter: mm && mm.id !== 'other' ? modelName(mm) : camCap(t('cam_k_heat')) };
+      };
+    }
+    if (kind === 'water') return function (res) {
+      var pk = photoKind(res); if (pk) return { other: pk === 'elec' ? 'electric' : 'gas' };
+      if (P.meterType(txt(res)) === 'heat') return { other: 'heat' };
+      var w = Wt.fromOcr(res, null); if (!w || w.value === null || w.value === undefined) return null;
+      return { key: 'w' + w.value, seen: camNum(Wt.withFrac(w.value, w.frac)) + ' м³', meter: camCap(t('cam_k_water')) };
+    };
+    var k = kind === 'gas' ? 'gas' : 'elec';
+    return function (res) {
+      var mt = P.meterType(txt(res)), pk = photoKind(res);
+      if (mt === 'heat') return { other: 'heat' };
+      if (pk && pk !== k) return { other: pk === 'elec' ? 'electric' : 'gas' };
+      if (!pk && mt === 'water') return { other: 'water' };
+      var md = SK[k].mod, ms = smeters(k), date = today(), prevBy = {}, days = {}, got = [];
+      if (!ms.length) return null;
+      ms.forEach(function (m) { var pr = eprev(m.id, date); prevBy[m.id] = pr ? pr.z : {}; if (pr && pr.date) days[m.id] = Math.max(1, R.daysBetween(pr.date, date)); });
+      var one = ms.length === 1 && md.keys(ms[0]).length === 1 ? ms[0] : null;
+      var dr = k === 'elec' ? El.drumPick(res.drums, res.lines) : (res.drums || []).length ? Wt.fromOcr({ lines: [], drums: res.drums }, one ? (prevBy[one.id] || {}).all : null) : null;
+      var shot = { lines: res.lines || [], drum: dr && dr.value !== null && dr.value !== undefined ? { value: dr.value, digits: dr.digits || '', frac: dr.frac || '', sure: !!dr.sure, edge: !!dr.edge, alts: dr.alts || [] } : null };
+      var by = md.fromPhotos([shot], ms, prevBy, { days: days, heating: !!sopts(k).heating });
+      ms.forEach(function (m) { md.keys(m).forEach(function (z) { var x = by[m.id] && by[m.id][z]; if (x) got.push({ m: m, z: z, v: k === 'gas' ? Wt.withFrac(x.v, x.frac) : String(x.v) }); }); });
+      if (!got.length) return null;
+      var g = got[0], multi = md.keys(g.m).length > 1 || ms.length > 1;
+      return { key: got.map(function (x) { return x.m.id + '|' + x.z + '=' + x.v; }).join(';'), seen: (multi ? ezl(g.m, g.z).toLowerCase() + ' ' : '') + camNum(g.v) + ' ' + SK[k].unit(), meter: camCap(t(k === 'gas' ? 'cam_k_gas' : 'cam_k_electric')) };
+    };
+  }
+  /** Знімки камери → у те саме поле, що й «Обрати фото» (DataTransfer; без нього — властивість files на час події): далі звичний шлях. */
+  function camDeliver(id, files) {
+    var el = document.getElementById(id); if (!el || !files.length) return false;
+    var ok = false, own = false;
+    try { var dt = new DataTransfer(); files.forEach(function (f) { dt.items.add(f); }); el.files = dt.files; ok = !!(el.files && el.files.length === files.length); } catch (e) { ok = false; }
+    if (!ok) try { Object.defineProperty(el, 'files', { value: files, configurable: true }); own = true; } catch (e) { return false; }
+    el.dispatchEvent(new Event('change', { bubbles: true }));
+    if (own) try { delete el.files; } catch (e) { /* лишиться до перемальовування */ }
+    return true;
+  }
+  function camOpen(id, kind) {
+    if (!window.TeploCam) return;
+    var tg = window.Telegram && Telegram.WebApp && Telegram.WebApp.initData;
+    TeploCam.open({ t: t, ico: ico, kind: kind, tg: !!tg, max: kind === 'heat' ? 12 : 8, track: track,
+      engine: function (onPct) { return VIS()._engine(onPct); },
+      read: function (blob) { return window.TeploOCR.read(blob); },
+      parse: camParse(kind),
+      pick: function () { var el = document.getElementById(id); if (el) el.click(); },
+      done: function (files) {
+        if (!camDeliver(id, files)) return;
+        // тепло: знімки вже прочитані на кадрі — одразу розпізнати пачку, без ще одного натискання
+        if (id === 'ph-input' && PH.files.length && PH.status !== 'working') phRun();
+      } });
   }
   /** Етап і кільце модуля — без перемальовування (прогрес ллється часто). */
   function phdStage(p, stage, q) {
@@ -9463,7 +9862,7 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
   function enPhotoBox(k) {
     if (!VIS().local) return '';
     var ph = EN.photos || [], ms = smeters(k), h = '<div class="panel wn-photo" data-key="en-photo"><input type="file" id="en-files" accept="image/*" multiple class="sr">';
-    h += phCard({ p: 'en', photos: ph, busy: EN.busy, stage: EN.stage, q: EN.q, pct: EN.pct, prog: EN.prog || t('enp_reading'), stop: 'en-stop', rm: 'en-ph-rm', title: t('phd_add_ocr'), hint: t('enp_hint'), more: t('enp_more') });
+    h += phCard({ p: 'en', photos: ph, busy: EN.busy, stage: EN.stage, q: EN.q, pct: EN.pct, prog: EN.prog || t('enp_reading'), stop: 'en-stop', rm: 'en-ph-rm', title: t('phd_add_ocr'), hint: t('enp_hint'), more: t('enp_more'), cam: { in: 'en-files', kind: k } });
     if (EN.busy) return h + '</div>';
     if (EN.err) h += '<p class="help warn">' + esc(EN.err) + '</p>';
     if (!ph.length) return h + '</div>';
@@ -10147,7 +10546,7 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
       var mine = ms.filter(function (m) { return (ph[i].meters || []).indexOf(m.id) >= 0; });
       return mine.length ? '<span class="wn-tags">' + mine.map(function (m) { return '<i class="' + (m.kind === 'hot' ? 'n-hot' : 'n-cold') + '">' + esc(m.name || t('kv_' + m.kind)) + '</i>'; }).join('') + '</span>' : '';
     };
-    h += phCard({ p: 'wn', photos: ph, busy: WN.busy, stage: WN.stage, q: WN.q, pct: WN.pct, prog: WN.prog || t('wn_reading'), stop: 'wn-stop', rm: 'wn-ph-rm', tags: wtags, title: t('phd_add_ocr'), hint: t('wnp_hint'), more: t('wnp_more') });
+    h += phCard({ p: 'wn', photos: ph, busy: WN.busy, stage: WN.stage, q: WN.q, pct: WN.pct, prog: WN.prog || t('wn_reading'), stop: 'wn-stop', rm: 'wn-ph-rm', tags: wtags, title: t('phd_add_ocr'), hint: t('wnp_hint'), more: t('wnp_more'), cam: { in: 'wn-files', kind: 'water' } });
     if (WN.err) h += '<p class="help warn">' + esc(WN.err) + '</p>';
     if (ph.length) {
       if (!WN.busy) {
@@ -13703,7 +14102,7 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
     var date = model_ ? '' : '<div class="field" style="max-width:280px"><label for="ph-date">' + esc(t('ph_date')) + '</label><div class="ctl"><input id="ph-date" type="date" value="' + esc(PH.date || today()) + '" max="' + today() + '"></div></div>';
     var pick = '<label for="ph-input" class="btn ' + (PH.files.length ? 'sec' : 'big') + '" tabindex="0" data-key="photo-pick">' + ico('camera', 22) + '<span>' + esc(PH.files.length ? t('ph_add') : t('ph_pick')) + '</span></label>';
     var go_ = PH.files.length ? '<button class="btn big" data-act="ph-run" data-key="photo-run">' + esc(t('ph_go', { n: PH.files.length })) + '</button>' : '';
-    return shell_(lead + err + input + (PH.files.length ? thumbs(true) : '') + date + '<div class="row-actions">' + pick + go_ + '</div>' + '<p class="small muted" style="margin-top:16px">' + esc(t('ph_privacy')) + '</p>');
+    return shell_(lead + err + input + (PH.files.length ? thumbs(true) : '') + date + '<div class="row-actions">' + pick + camBtn({ in: 'ph-input', kind: 'heat' }, 'btn sec' + (PH.files.length ? '' : ' big')) + go_ + '</div>' + '<p class="small muted" style="margin-top:16px">' + esc(t('ph_privacy')) + '</p>');
   }
   function photoResult() {
     if (hcOn() && PH.mode === 'reading') hcLoad();
@@ -14385,6 +14784,7 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
     if (billAct(act, el, e)) return;
     switch (act) {
       case 'start': break;
+      case 'cam': camOpen(el.getAttribute('data-in'), el.getAttribute('data-kind')); break;
       case 'read': newDraft(); go('step-0'); break;
       case 'restart': newDraft(); go('step-0'); break;
       case 'pick-model': S._pickModel = el.value; render(true); break;
