@@ -942,7 +942,8 @@
     return toCanvas(file, fast ? FAST_PX : 0).then(function (c) { src = c; return (fast ? nap() : null); }).then(function () { return detect(src, fast ? { max: FAST_DET } : undefined); }).then(function (boxes) {
       return readBoxes(src, boxes, 0, 0, 1, lines, false, fast).then(function () {
         // окно барабана водомера (по цвету) — до пяти кандидатов, пока не прочитаем 4+ цифры
-        var cands = []; try { cands = findDrums(src, textAngle(lines)); } catch (e) { cands = []; }
+        // тепло з камери: пошук вікон барабана (пікселі в основному потоці, на Mac власника ~0,7 с) — не запускаємо зовсім
+        var cands = []; if (!(fast && opts.drums === false)) try { cands = findDrums(src, textAngle(lines)); } catch (e) { cands = []; }
         var ch = Promise.resolve();
         // «окно» поверх надписи с буквами, и прочитаны те же цифры, что в надписи («ДСТУ EN 62052-1» под красным светодиодом
         // электросчётчика → «06205»), — это надпись, не ролики. Перевёрнутый барабан текст читает буквами («EELOO»), но цифры другие.
