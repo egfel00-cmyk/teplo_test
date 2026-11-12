@@ -15,6 +15,8 @@ console.log('\nДругие модели и единицы:');
 let x = read('t330_mwh', {}); ok('ULTRAHEAT T330: 12.345 MWh, модель t330', x.v.energy === '12.345' && x.r.meter.modelId === 't330' && x.r.meter.energyUnit === 'MWh', x);
 { const L = JSON.parse(JSON.stringify(F['mc_gj'])); L.lines[0].text = 'MULTICAL403'; L.lines[0].alts = ['MULTICAL403', 'MULTICAL 403'];
   const r = P.photo(L, {}, 0); ok('MULTICAL 403 (127-а): надпис «MULTICAL 403» → модель multical403, не 302', r.meter.modelId === 'multical403', r.meter); }
+{ const L = JSON.parse(JSON.stringify(F['mc_gj'])); L.lines[0].text = 'CF ECHO II'; L.lines[0].alts = ['CF ECHO II', 'CFECHO II'];
+  const r = P.photo(L, {}, 0); ok('CF Echo II (128-а): надпис «CF ECHO II» → модель cfecho2', r.meter.modelId === 'cfecho2', r.meter); }
 x = read('mc_gj', {}); ok('MULTICAL 302: 64.582 GJ', x.v.energy === '64.582' && x.r.meter.modelId === 'multical302' && x.r.meter.energyUnit === 'GJ', x.v);
 x = read('plate'); ok('наклейка: модель, серийный номер, энергия', x.r.meter.modelId === 'sharky774' && x.r.meter.serial === '64123987' && x.v.energy === '15.482', x.r.meter);
 x = read('nounit_energy', Object.assign({ prev: { energy: '15.482', volume: '2724.494' } }, sharky));

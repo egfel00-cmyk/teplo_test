@@ -32,6 +32,9 @@ for (const id of ['t330', 't230']) {   // 125-а, юзертестинг T330: �
   ok(id + ': температури — один екран, значення чергуються (swap)', st.find(s => s.fields.includes('tSupply')).lcd.swap === true);
 }
 ok('SensoStar: витрата — на рівні 2, понад 4 с', (s => s.press === 'long' && s.hold === 4)(M.byId('sensostar').steps.find(s => s.fields.includes('flow'))));
+ok('CF Echo II (128-а, брошура Itron): Loop 1 — енергія, обсяг; Loop 2 — витрата, потужність, температури, години; без вигаданих секунд у підписі',
+  (function () { var st = M.byId('cfecho2').steps, f = st.map(s => s.fields.join('+')).join(' '), l2 = st.find(s => s.loop);
+    return f === 'energy volume+errCode flow power tSupply+tReturn hours errHours' && /доки не зміниться/.test(l2.say.uk) && l2.fields[0] === 'flow'; })());
 ok('MULTICAL 403/603 (127-а): години з помилкою — друга кнопка на екрані годин, порядок USER: енергія → обсяг → години → T → витрата → потужність → INFO',
   (function () { var st = M.byId('multical403').steps, f = st.map(s => s.fields.join('+')).join(' '); var eh = st.find(s => s.fields.includes('errHours'));
     return f === 'energy volume hours errHours tSupply+tReturn flow power errCode' && /Друга кнопка/.test(eh.say.uk) && !eh.loop && M.byId('multical403').units[0] === 'GJ'; })());

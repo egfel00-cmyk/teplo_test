@@ -2616,6 +2616,11 @@ ok('довідник тепла 127-ї: Львів till 31, relay, бот і Vib
   ($lv['till'] ?? 0) === 31 && ($lv['robot'] ?? '') === 'relay' && str_starts_with($lv['bot'] ?? '', 'https://t.me/') && str_starts_with($lv['viber'] ?? '', 'https://')
   && ($km['till'] ?? 0) === 30 && ($bv['till'] ?? 0) === 25 && ($bv['price'] ?? null) === 1823.59
   && ($od['cab'] ?? '') === 'https://cabinet.teplo.od.ua/' && ($od['abon'] ?? null) === 21.17 && !isset($od['till']), [$lv['till'] ?? null, $km['till'] ?? null, $bv['till'] ?? null, $od]);
+// 128-а: тепло ще 6 громад — постачальник з prozorro/ЄДР, «одне число», ціна з платіжки (мораторій)
+$h128 = ['Біла Церква, вул. Ярослава Мудрого, 1' => 'Білоцерківтепломережа', 'Бориспіль, вул. Київський Шлях, 1' => 'Бориспільтепломережа', 'Фастів, вул. Соборна, 1' => 'Фастівтепломережа',
+  'Ізмаїл, просп. Миру, 1' => 'Ізмаїлтеплокомуненерго', 'Дрогобич, вул. Шевченка, 1' => 'Дрогобичтеплоенерго', 'Стрий, вул. Шевченка, 1' => 'Стрийтеплоенерго'];
+$bad128 = []; foreach ($h128 as $ad => $org) { $x = $H($ad); if (!str_contains($x['org'] ?? '', $org) || !str_contains($x['how'] ?? '', 'одне число') || ($x['price'] ?? null) !== null || empty($x['src_ru'])) $bad128[$ad] = $x['org'] ?? null; }
+ok('довідник тепла 128-ї: Біла Церква, Бориспіль, Фастів, Ізмаїл, Дрогобич, Стрий — постачальник, «одне число», ціна з платіжки, джерело', !$bad128 && str_contains(json_encode($H('Ізмаїл, просп. Миру, 1')['phones'] ?? []), '04841'), $bad128);
 $root = dirname(__DIR__); $mf = json_decode((string)@file_get_contents("$root/web/icon/manifest.json"), true);
 $si = (string)file_get_contents("$root/web/src/index.html");
 ok('логотип: favicon.ico і apple-touch-icon у корені, manifest з іконками, що існують, посилання в <head>, пак ZIP',
