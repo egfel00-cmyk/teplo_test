@@ -2602,5 +2602,19 @@ $ix = file_get_contents(dirname(__DIR__) . '/index.php');
 ok('CSP сторінки: connect-src — self і лише https://api.monobank.ua', preg_match_all("~connect-src ([^;]+);~", $ix, $cm) && in_array("'self' https://api.monobank.ua", $cm[1], true)
   && !array_filter($cm[1], fn($x) => trim(str_replace(["'self'", 'https://api.monobank.ua'], '', $x)) !== ''), $cm[1] ?? null);
 
+// 127-а: тепло не від ХТМ — строки й канали з сайтів постачальників; логотип «Барабан» — фавікон, manifest, пак
+$H = fn(string $a) => Providers::lookup($a)['kinds']['heat'] ?? [];
+$lv = $H('Львів, вул. Городоцька, 1'); $km = $H('Хмельницький, вул. Проскурівська, 1'); $bv = $H('Бровари, вул. Київська, 1'); $od = $H('Одеса, вул. Дерибасівська, 1');
+ok('довідник тепла 127-ї: Львів till 31, relay, бот і Viber; Хмельницький till 30; Бровари till 25; Одеса — кабінет, абонплата 21,17, без till',
+  ($lv['till'] ?? 0) === 31 && ($lv['robot'] ?? '') === 'relay' && str_starts_with($lv['bot'] ?? '', 'https://t.me/') && str_starts_with($lv['viber'] ?? '', 'https://')
+  && ($km['till'] ?? 0) === 30 && ($bv['till'] ?? 0) === 25 && ($bv['price'] ?? null) === 1823.59
+  && ($od['cab'] ?? '') === 'https://cabinet.teplo.od.ua/' && ($od['abon'] ?? null) === 21.17 && !isset($od['till']), [$lv['till'] ?? null, $km['till'] ?? null, $bv['till'] ?? null, $od]);
+$root = dirname(__DIR__); $mf = json_decode((string)@file_get_contents("$root/web/icon/manifest.json"), true);
+$si = (string)file_get_contents("$root/web/src/index.html");
+ok('логотип: favicon.ico і apple-touch-icon у корені, manifest з іконками, що існують, посилання в <head>, пак ZIP',
+  is_file("$root/favicon.ico") && is_file("$root/apple-touch-icon.png") && is_array($mf) && count($mf['icons'] ?? []) >= 3
+  && !array_filter($mf['icons'], fn($i) => !is_file("$root/web/icon/" . $i['src'])) && str_contains($si, 'rel="manifest" href="web/icon/manifest.json"')
+  && str_contains($si, 'rel="icon" href="web/icon/favicon.svg"') && filesize("$root/web/icon/peredai-icons.zip") > 100000, $mf);
+
 echo "\nИтог: $pass OK, $fail FAIL\n";
 exit($fail ? 1 : 0);

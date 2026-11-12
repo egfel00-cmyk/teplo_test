@@ -121,6 +121,12 @@
   `zelsius_c5` (ошибки и часы — уровень 3), `sensonic2` (часы = дни × 24), `t550` (UH50, две кнопки). На фото: UH50 → `t550` (не T230).
 - «Останні прийняті» с энергией ≥ 10 × текущей (dev.voronin: 5892 Гкал) — `W_PREV_ENERGY_BAD`, не сравниваем. `/api/health → errs.cam` — камера числами.
 
+## Логотип «Барабан» (127-я)
+- Владелец выбрал вариант 2 из 6 (полотно claude.ai «Логотип peredai.com.ua — варіанти»): окошко счётного механизма, барабаны «0 4 2» и красный «7» (литры), жидкое стекло.
+- Всё собирает `tools_logo.py` (текст — в кривые, шрифт Unbounded качается в /tmp): `python3 -I tools_logo.py` → `web/icon/` (favicon.svg/.ico, apple-touch-icon,
+  icon-192/512, maskable, manifest.json) + `favicon.ico` и `apple-touch-icon.png` в корне + пак `web/icon/peredai-icons.zip` (iOS AppIcon + слои Icon Composer, Android adaptive
+  + monochrome + mipmap, Telegram 640). Скачать — /admin → «Настройки» → «Логотип и иконки». `logo()` в app.js — маленький плоский знак «4 2 7» без id (`--inline`).
+
 ## Газ: доставка (розподіл) (123-я)
 - Отдельная ежемесячная плата оператору ГРМ: годовая заказанная мощность ÷ 12 × тариф (`Gs.distMonth`), одинаково каждый месяц, пересчёт с 1 января
   (газовый год 1.10–30.09). Мощность — `place.gasCap` (с платёжки) или оценка по показаниям (`Gs.capFromRecs`, мин. 39 м³); тариф — `place.gasDist` или

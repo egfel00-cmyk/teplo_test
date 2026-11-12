@@ -5,6 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#E9EEEB">
 <meta name="color-scheme" content="light dark">
+<link rel="icon" href="favicon.ico" sizes="48x48">
+<link rel="icon" href="web/icon/favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="web/icon/apple-touch-icon.png">
+<link rel="manifest" href="web/icon/manifest.json">
 <script>/* тема до первой отрисовки — без вспышки светлого */try{var _t=(JSON.parse(localStorage.getItem('teplo.v1')||'{}').theme)||'auto';if(_t==='auto')_t=matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';document.documentElement.setAttribute('data-theme',_t);}catch(e){}</script>
 <title>Лічильники — тепло й вода</title>
 <link rel="preload" href="web/fonts/plex-sans-cyr.woff2" as="font" type="font/woff2" crossorigin>
@@ -1567,7 +1571,7 @@ details.tbl-acc[open] > .tbl-wrap { margin-top: 12px; }
 .lp-tg { border-radius: 18px; padding: 14px; background: #DCE8F4; display: grid; gap: 10px; color: #17211E; }
 :root[data-theme="dark"] .lp-tg { background: #18263A; color: #E3EBE7; }
 .lpt-head { display: flex; align-items: center; gap: 10px; } .lpt-head > span:last-child { display: grid; line-height: 1.2; } .lpt-head b { font-size: 15px; } .lpt-head i { font-style: normal; font-size: 12px; opacity: .7; }
-.lpt-av { width: 36px; height: 36px; border-radius: 50%; display: grid; place-items: center; background: #fff; box-shadow: 0 1px 3px rgba(0, 0, 0, .15); } .lpt-av svg { width: 22px; height: 22px; }
+.lpt-av { width: 36px; height: 36px; border-radius: 50%; overflow: hidden; display: grid; place-items: center; background: #3A6BFF; box-shadow: 0 1px 3px rgba(0, 0, 0, .15); } .lpt-av svg { width: 36px; height: 36px; }
 .lpt-msg { position: relative; display: grid; grid-template-columns: auto 1fr; gap: 8px; padding: 12px 12px 20px; border-radius: 16px 16px 16px 4px; background: #fff; color: #17211E; box-shadow: 0 1px 2px rgba(0, 0, 0, .1); font-size: 15px; line-height: 1.4; }
 :root[data-theme="dark"] .lpt-msg { background: #22303A; color: #E3EBE7; }
 .lpt-msg .ico { color: #C98A1E; margin-top: 2px; } .lpt-msg p { margin: 0; }
@@ -8226,10 +8230,10 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
     return '<svg class="ico ' + (cls || '') + '" width="' + (size || 24) + '" height="' + (size || 24) + '" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + ICONS[name] + '</svg>';
   }
   function logo() {
-    // крапля: ліва половина — гаряче (тепло, гаряча вода), права — холодне; стрілка — лічильник
-    return '<svg width="28" height="28" viewBox="0 0 28 28" aria-hidden="true" fill="none" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">' +
-      '<path d="M14 3C11 7.5 6.5 12.5 6.5 17.5A7.5 7.5 0 0 0 14 25" style="stroke:var(--c-supply)"/><path d="M14 3c3 4.5 7.5 9.5 7.5 14.5A7.5 7.5 0 0 1 14 25" style="stroke:var(--c-return)"/>' +
-      '<path d="M14 18l3.6-3.6" stroke="currentColor" stroke-width="2.2"/><circle cx="14" cy="18" r="1.6" fill="currentColor" stroke="none"/></svg>';
+    // «Барабан» (127-а, власник обрав з 6 варіантів): віконце лічильного механізму — 4, 2 і червоний 7 (літри). Плоскі кольори без id —
+    // можна вставляти на сторінку скільки завгодно разів. Повна скляна іконка й пак — tools_logo.py → web/icon/
+    return '<svg class="logo" width="28" height="28" viewBox="0 0 1024 1024" aria-hidden="true">' +
+      '<rect width="1024" height="1024" rx="232" fill="#3A6BFF"/><rect x="102" y="304" width="820" height="416" rx="76" fill="#fff" fill-opacity=".22" stroke="#fff" stroke-opacity=".9" stroke-width="18"/><rect x="142" y="344" width="232" height="336" rx="40" fill="#F4F6FB"/><path d="M212.46 -225.0V0.0H150.9V-197.7H169.79999999999998L52.85999999999999 -68.52L52.5 -88.02H248.33999999999997V-42.0H7.26V-85.8L133.79999999999998 -225.0Z" fill="#0E1630" transform="translate(130.2 624.5)"/><rect x="396" y="344" width="232" height="336" rx="40" fill="#F4F6FB"/><path d="M10.08 -144.0Q12.06 -170.51999999999998 27.66 -189.81Q43.26 -209.1 69.21 -219.51Q95.16 -229.92 127.8 -229.92Q158.93999999999997 -229.92 182.21999999999997 -220.46999999999997Q205.5 -211.01999999999998 218.45999999999998 -194.19Q231.42 -177.36 231.42 -155.16Q231.42 -137.94 222.12 -123.12Q212.82 -108.3 192.95999999999998 -94.02Q173.1 -79.74 140.94 -64.14L79.2 -33.18L76.8 -49.199999999999996H237.6V0.0H14.879999999999999V-43.199999999999996L111.48 -97.61999999999999Q134.16 -110.39999999999999 146.64 -119.22Q159.11999999999998 -128.04 164.25 -135.51Q169.38 -142.98 169.38 -151.56Q169.38 -160.73999999999998 164.43 -167.51999999999998Q159.48 -174.29999999999998 149.7 -178.17Q139.92 -182.04 125.51999999999998 -182.04Q107.52 -182.04 96.09 -176.88Q84.66 -171.72 78.96 -163.07999999999998Q73.25999999999999 -154.43999999999997 72.11999999999999 -144.0Z" fill="#0E1630" transform="translate(388.2 627.0)"/><rect x="650" y="344" width="232" height="336" rx="40" fill="#FF3B3B"/><path d="M37.02 0.0 160.79999999999998 -193.08 160.68 -175.79999999999998H3.9599999999999995V-225.0H217.56V-175.43999999999997L108.11999999999999 0.0Z" fill="#fff" transform="translate(655.2 624.5)"/></svg>';
   }
   function levelIco(level, size) {
     return level === 'ok' ? ico('check', size, 'c-ok') : level === 'warn' ? ico('alert', size, 'c-warn') : level === 'block' ? ico('cross', size, 'c-bad') : ico('info', size, 'c-info');

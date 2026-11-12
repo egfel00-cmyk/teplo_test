@@ -1535,7 +1535,7 @@ details.tbl-acc[open] > .tbl-wrap { margin-top: 12px; }
 .lp-tg { border-radius: 18px; padding: 14px; background: #DCE8F4; display: grid; gap: 10px; color: #17211E; }
 :root[data-theme="dark"] .lp-tg { background: #18263A; color: #E3EBE7; }
 .lpt-head { display: flex; align-items: center; gap: 10px; } .lpt-head > span:last-child { display: grid; line-height: 1.2; } .lpt-head b { font-size: 15px; } .lpt-head i { font-style: normal; font-size: 12px; opacity: .7; }
-.lpt-av { width: 36px; height: 36px; border-radius: 50%; display: grid; place-items: center; background: #fff; box-shadow: 0 1px 3px rgba(0, 0, 0, .15); } .lpt-av svg { width: 22px; height: 22px; }
+.lpt-av { width: 36px; height: 36px; border-radius: 50%; overflow: hidden; display: grid; place-items: center; background: #3A6BFF; box-shadow: 0 1px 3px rgba(0, 0, 0, .15); } .lpt-av svg { width: 36px; height: 36px; }
 .lpt-msg { position: relative; display: grid; grid-template-columns: auto 1fr; gap: 8px; padding: 12px 12px 20px; border-radius: 16px 16px 16px 4px; background: #fff; color: #17211E; box-shadow: 0 1px 2px rgba(0, 0, 0, .1); font-size: 15px; line-height: 1.4; }
 :root[data-theme="dark"] .lpt-msg { background: #22303A; color: #E3EBE7; }
 .lpt-msg .ico { color: #C98A1E; margin-top: 2px; } .lpt-msg p { margin: 0; }

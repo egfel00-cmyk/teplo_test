@@ -19,6 +19,9 @@ if (PHP_SAPI === 'cli-server' && preg_match('~^/web/ocr/[\w.-]+\.(js|mjs|wasm|on
 if (PHP_SAPI === 'cli-server' && preg_match('~^/web/fonts/[\w.-]+\.(woff2|css|txt)$~', $path, $fm) && is_file(__DIR__ . $path)) {   // свои шрифты (IBM Plex)
   header('Content-Type: ' . ['woff2' => 'font/woff2', 'css' => 'text/css; charset=utf-8', 'txt' => 'text/plain; charset=utf-8'][$fm[1]]); readfile(__DIR__ . $path); exit;
 }
+if (PHP_SAPI === 'cli-server' && preg_match('~^/(web/icon/[\w.-]+\.(png|svg|ico|json|zip)|favicon\.ico|apple-touch-icon\.png)$~', $path, $im) && is_file(__DIR__ . $path)) {   // логотип і іконки (127-а)
+  header('Content-Type: ' . ['png' => 'image/png', 'svg' => 'image/svg+xml', 'ico' => 'image/x-icon', 'json' => 'application/manifest+json', 'zip' => 'application/zip'][pathinfo($path, PATHINFO_EXTENSION)]); readfile(__DIR__ . $path); exit;
+}
 if (PHP_SAPI === 'cli-server' && $path !== '/' && preg_match('~^/web/[\w.-]+\.(png|jpg|svg)$~', $path) && is_file(__DIR__ . $path)) {
   header('Content-Type: ' . (str_ends_with($path, '.svg') ? 'image/svg+xml' : 'image/' . (str_ends_with($path, '-2.jpg') ? 'png' : 'jpeg'))); readfile(__DIR__ . $path); exit;
 }

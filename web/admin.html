@@ -674,9 +674,23 @@ pre.state { font: 12px/1.4 var(--mono); background: #F4F7F5; padding: 10px; bord
       '<li>Проверка: откройте бота, нажмите «Старт» — придёт кнопка «Відкрити «Лічильники»», сервис откроется уже с входом.</li></ol>' +
       '<form id="ft"><p><label>Токен бота<br><input id="tk" type="password" autocomplete="off" placeholder="' + (t.token ? 'оставьте пустым, чтобы переподключить текущего' : '1234567890:AA…') + '" ' + INP + '></label></p>' +
       note('t') + '<p><button class="btn" type="submit">' + (t.token ? 'Сохранить и переподключить' : 'Подключить') + '</button>' + (t.source === 'admin' ? ' <button class="btn" type="button" id="tc">Отключить бота</button>' : '') + '</p></form></div>' +
-      mailPanel(d.mail || {}, note) +
+      mailPanel(d.mail || {}, note) + brandPanel() +
       '<p class="muted small">Значения, заданные здесь, главнее config.php. Адрес сайта для бота: <span class="mono">' + esc(d.appUrl || '') + '</span></p>';
   };
+  // логотип «Барабан» (127-я): пак иконок лежит на сайте (web/icon), собирает tools_logo.py
+  function brandPanel() {
+    var r = API.replace(/api$/, '') + 'web/icon/';
+    return '<div class="panel"><h2>Логотип и иконки</h2>' +
+      '<div style="display:flex;gap:16px;align-items:center;flex-wrap:wrap"><img src="' + r + 'icon-192.png" width="96" height="96" alt="Иконка «Барабан»">' +
+      '<img src="' + r + 'favicon.svg" width="32" height="32" alt="Фавикон"><img src="' + r + 'favicon.svg" width="16" height="16" alt="Фавикон 16 px"></div>' +
+      '<p><a class="btn" href="' + r + 'peredai-icons.zip" download>Скачать пак иконок (ZIP, 1,6 МБ)</a></p>' +
+      '<ul class="small" style="padding-left:20px;line-height:1.6">' +
+      '<li><b>iOS</b> — AppIcon.appiconset для Xcode (светлая, тёмная, тонированная 1024), слои для Icon Composer («жидкое стекло» iOS 26), PNG всех размеров.</li>' +
+      '<li><b>Android</b> — адаптивная иконка (передний слой, фон, монохром для тематических иконок), mipmap для старых Android, 512 для Google Play.</li>' +
+      '<li><b>Сайт</b> — фавикон, apple-touch-icon, manifest — уже подключены.</li>' +
+      '<li><b>Telegram</b> — аватар бота 640×640: <a href="https://t.me/BotFather" target="_blank" rel="noopener">@BotFather</a> → <code>/setuserpic</code> → бот → отправить <code>telegram/bot-avatar-640.png</code>.</li>' +
+      '<li><b>Векторы</b> — иконка и горизонтальный логотип светлый/тёмный (SVG). Что где — в README.txt внутри.</li></ul></div>';
+  }
   // почта (81-я): SMTP внешнего сервиса по 587 — сводка владельцу, нагадування людям без Telegram, подача e-mail
   var DIG = { day: 'каждый день (8:00)', week: 'по понедельникам', off: 'не присылать' };
   function mailPanel(m0, note) {
