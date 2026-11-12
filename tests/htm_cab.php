@@ -170,4 +170,13 @@ $acc = (new HtmCab())->accounts(['body' => '<a href="/cabinet/heat/1000000061/%D
 ok('/cabinet/list не ответил, рахунок есть на главной — берём его', ($acc[0]['acc'] ?? '') === '1000000061' && ($acc[0]['sur'] ?? '') === 'ТЕСТОВИЙ', $acc);
 try { (new HtmCab())->accounts(['body' => '<html>без рахунків</html>']); ok('…на главной рахунків нет — честно «сайт не відповідає»', false); } catch (CabErr $e) { ok('…на главной рахунків нет — честно «сайт не відповідає»', $e->err === 'down', $e->err); }
 CabWeb::$http = null;
+// 124-а: форма ХТМ в ГДж (скрин власника 12.11.2026) — робот не вносить Гкал у ГДж, навіть якщо імена полів ті самі
+{ $flds = array_map(fn($n) => ['name' => $n, 'type' => 'text'], array_values(HtmCab::F));
+  $vals = ['date' => '12.11.2026', 'energy' => '50.883', 'volume' => '7704.980', 'flow' => '0.582', 'power' => '3.5', 'tSupply' => '47.7', 'tReturn' => '42.5', 'hours' => '52738', 'errHours' => '3343', 'errCode' => 'E---'];
+  foreach (['ГДж' => true, 'ГКал' => false] as $u => $refuse) {
+    try { (new HtmCab())->save('1', 'X', $vals, [], ['open' => true, 'closed' => null, 'fields' => $flds, 'eunit' => $u, 'action' => 'http://127.0.0.1:9/none', 'url' => 'http://127.0.0.1:9/none']); $got = 'sent'; }
+    catch (CabErr $e) { $got = $e->err . ' ' . $e->site; } catch (Throwable $e) { $got = 'net'; }
+    ok('форма «Накопичена енергія, ' . $u . '» → ' . ($refuse ? 'не вносимо (form_changed)' : 'вносимо як раніше'), $refuse ? str_starts_with($got, 'form_changed energy unit') : !str_starts_with($got, 'form_changed'), $got);
+  }
+  ok('стенд: одиниця з заголовка — ГКал', ($p['eunit'] ?? '') === 'ГКал', $p['eunit'] ?? null); }
 echo "\nИтог: $pass OK, $fail FAIL\n"; exit($fail ? 1 : 0);

@@ -157,7 +157,7 @@ final class HtmSvc {
     $pl = HtmCab::plan($h['fields']);
     return ['open' => true, 'action' => (string)parse_url((string)($h['action'] ?? ''), PHP_URL_PATH), 'match' => $pl['match'], 'missing' => $pl['missing'], 'unknown' => $pl['unknown'],
       'fields' => array_slice(array_map(fn($f) => array_filter(['n' => $f['name'], 't' => $f['type'], 'r' => $pl['roles'][$f['name']] ?? null, 'ph' => CabWeb::mask((string)($f['ph'] ?? ''), 40) ?: null, 'max' => $f['max'] ?? null, 'pat' => ($f['pattern'] ?? '') ?: null, 'req' => !empty($f['req']) ?: null], fn($v) => $v !== null), $h['fields']), 0, 40),
-      'minMax' => $h['min'] !== null && $h['max'] !== null, 'win' => $h['win'] ?? null];
+      'minMax' => $h['min'] !== null && $h['max'] !== null, 'win' => $h['win'] ?? null, 'eunit' => $h['eunit'] ?? null];
   }
   /** Как страница тепла задаёт окно дат и сколько на ней плашек — без значений и личных данных (то же, что пишет «Перевірити»):
    *  пишется и при внесении, чтобы первое живое внесение само показало окно, не дожидаясь «Перевірити». */

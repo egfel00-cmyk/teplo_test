@@ -87,7 +87,7 @@ console.log('\nПередати на свій ризик:');
   t('порожній час простою → block без ризику (форма ХТМ не прийме)', res.verdict === 'block' && !res.risky && blocks(res).includes('F_MISSING'), JSON.stringify(blocks(res)));
   res = R.validate({ reading: Object.assign({}, base, { energy: 14.0, volume: 2800 }), prev, meter: Object.assign({}, meter, { verifiedUntil: '2026-01-01' }), today: '2026-11-20' });
   t('мінус енергії + минула повірка → без ризику', res.verdict === 'block' && !res.risky, JSON.stringify(blocks(res)));
-  t('PREV_BASED — лише відомі коди', R.PREV_BASED.length === 12 && R.PREV_BASED.indexOf('F_MISSING') < 0); }
+  t('PREV_BASED — лише відомі коди', R.PREV_BASED.length === 13 && R.PREV_BASED.indexOf('F_MISSING') < 0); }
 
 console.log('\nИтог: ' + pass + ' OK, ' + fail + ' FAIL');
 process.exit(fail ? 1 : 0);

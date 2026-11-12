@@ -532,6 +532,8 @@ final class HtmCab {
       if (preg_match('/ПУ\s+([^,№]{2,40}?),?\s*№\s*([\w\-\/\.]{2,30})\s*$/u', CabWeb::sp($hn->textContent), $m)) { $o['meter'] = ['model' => trim($m[1]), 'serial' => trim($m[2])]; break; }
     }
     foreach (self::F as $k => $id) { $n = $x->query("//*[@id='head_$id']")->item(0); if ($n) $o['base'][$k] = CabWeb::sp($n->textContent); }
+    // одиниця енергії форми — із заголовка колонки «Накопичена енергія, ГКал|ГДж|…» (форма залежить від приладу: скрин власника 12.11.2026 — ГДж і Bd/Fd/Pd)
+    $o['eunit'] = preg_match('/Накопичена\s+енергія\s*,\s*(Г\s?[КK]ал|ГДж|МВт\S*|кВт\S*|GJ|MWh|kWh)/iu', $txt, $m) ? $m[1] : null;
     // окно дат формы: «min_date = '05.11.2026'» (снятие 01.11); на живом 06.11 так не нашлось — терпимо к кавычкам, minDate:, startDate: (bootstrap-datepicker),
     // «2026-11-05»; и атрибуты самого поля даты (min/max, data-min-date, data-date-start-date). Не нашли — окно считает HtmSvc по календарю (1-е число … сегодня).
     $D = '["\']?(\d{1,4}[.\/-]\d{1,2}[.\/-]\d{2,4})';
@@ -978,6 +980,8 @@ final class HtmCab {
     foreach (self::F as $k => $name) { if (!array_key_exists($k, $vals)) throw new CabErr('bad_value', $k); $want[$k] = self::fmt($k, $vals[$k]); }
     $pl = self::plan($h['fields']);
     if (!$pl['match']) { $this->log['fields'] = array_column($h['fields'], 'name'); throw new CabErr('form_changed', 'missing: ' . implode(',', $pl['missing']) . ' unknown: ' . implode(',', $pl['unknown'])); }
+    // застосунок рахує енергію в Гкал: форму в ГДж/МВт·год робот не заповнює (людина вносить сама, у своїй одиниці)
+    if (!empty($h['eunit']) && !preg_match('/^Г\s?[КK]ал$/iu', (string)$h['eunit'])) throw new CabErr('form_changed', 'energy unit ' . $h['eunit']);
     $pairs = [];
     foreach ($h['fields'] as $f) {
       $role = $pl['roles'][$f['name']] ?? '#skip';

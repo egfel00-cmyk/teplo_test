@@ -314,8 +314,30 @@
   var UNIT_LBL = { Gcal: { uk: 'Гкал', ru: 'Гкал' }, MWh: { uk: 'МВт·год', ru: 'МВт·ч' }, kWh: { uk: 'кВт·год', ru: 'кВт·ч' }, GJ: { uk: 'ГДж', ru: 'ГДж' } };
   function unitLbl(u) { return L(UNIT_LBL[u] || UNIT_LBL.Gcal); }
   function energyUnit() { return (S.meter && S.meter.unit) || 'Gcal'; }
-  function field(key) { return R.FIELDS.filter(function (f) { return f.key === key; })[0]; }
-  function fieldLabel(key) { var f = field(key); return f ? (S.lang === 'ru' ? f.ru : f.uk) : key; }
+  function field(key) { return R.FIELDS.filter(function (f) { return f.key === key; })[0] || (key === 'flowHours' ? R.FIELD_PD : undefined); }
+  function fieldLabel(key) { if (times3() && (key === 'hours' || key === 'errHours')) return t(key === 'hours' ? 'f_bd' : 'f_fd'); var f = field(key); return f ? (S.lang === 'ru' ? f.ru : f.uk) : key; }
+  // Форма ХТМ залежить від приладу (скрини власника 12.11.2026): енергія в ГКал або ГДж, часу — 2 колонки або 3 (Bd, Fd, Pd).
+  // Усередині застосунку енергія — в Гкал (правила, статистика); назовні (перевірка, «Як передати», «Останні прийняті») — в одиниці кабінету.
+  function htmUnit() { var m = S.meter || {}; return m.htmUnit || (energyUnit() === 'GJ' ? 'GJ' : 'Gcal'); }
+  function htmAsk() { return energyUnit() !== 'Gcal' && !(S.meter && S.meter.htmUnit); }   // одиницю кабінету не підтверджено — спитати
+  function times3() { return !!(S.meter && S.meter.htmTimes === 3); }
+  function htmRobotOk() { return htmUnit() === 'Gcal' && !times3(); }
+  function htmFields() { var f = R.FIELDS.slice(); if (times3()) f.splice(f.map(function (x) { return x.key; }).indexOf('errHours') + 1, 0, R.FIELD_PD); return f; }
+  /** Значення для кабінету ХТМ: енергія — в одиниці кабінету (з табло без перерахунку, якщо одиниці збігаються), решта — як formatForHtm. */
+  function htmVal(key, h, raw) {
+    if (key !== 'energy') return R.formatForHtm(key, h[key]);
+    var rn = raw ? R.num(raw.energy) : null; if (rn !== null && htmUnit() === energyUnit()) return rn.toFixed(3);
+    var n = R.num(h.energy); return n === null ? '' : (n / (M.TO_GCAL[htmUnit()] || 1)).toFixed(3);
+  }
+  /** Блок «Як у вашому кабінеті ХТМ»: одиниця енергії й колонки часу (open — розгорнутий, коли одиницю ще не підтверджено). */
+  function htmFormBox(open) {
+    var u = htmUnit(), us = ['Gcal', 'GJ', 'MWh', 'kWh'];
+    return '<details class="where htm-form" data-key="htm-form"' + (open ? ' open' : '') + '><summary>' + esc(t('hf_title')) + '</summary>' +
+      '<p class="small muted">' + esc(t('hf_lead')) + '</p><p><b>' + esc(t('hf_unit')) + '</b></p><div class="choice">' +
+      us.map(function (x) { return '<label><input type="radio" name="hf-unit" data-act="hf-unit" value="' + x + '"' + (u === x && !htmAsk() ? ' checked' : '') + '>' + esc(unitLbl(x)) + '</label>'; }).join('') + '</div>' +
+      '<p><b>' + esc(t('hf_times')) + '</b></p><div class="choice">' +
+      [2, 3].map(function (n) { return '<label><input type="radio" name="hf-times" data-act="hf-times" value="' + n + '"' + ((times3() ? 3 : 2) === n ? ' checked' : '') + '>' + esc(t('hf_t' + n)) + '</label>'; }).join('') + '</div></details>';
+  }
   function fieldUnit(key) {
     if (key === 'energy') return unitLbl(energyUnit());
     var u = (field(key) || {}).unit || '';
@@ -450,7 +472,12 @@
   function windowClosed() { var s = R.windowState(today()).state; return s === 'closed_before' || s === 'closed_after'; }
 
   // ---------------- мастер: шаги ----------------
-  function steps() { var m = model(); return [{ kind: 'date' }].concat(m ? m.steps : []); }
+  function steps() {
+    var m = model(), st = m ? m.steps : [];
+    // кабінет з Bd/Fd/Pd — третій час додаємо до кроку годин (у T330 це «час з витратою» з LOOP 1)
+    if (times3() && !st.some(function (s) { return s.fields.indexOf('flowHours') >= 0; })) st = st.map(function (s) { return s.fields.indexOf('errHours') >= 0 ? Object.assign({}, s, { fields: s.fields.concat('flowHours') }) : s; });
+    return [{ kind: 'date' }].concat(st);
+  }
   /** Підпис дії на кроці (екранований): своя (say) → «Затисніть кнопку й тримайте понад N с, потім коротко ×K» → «Натисніть ×K» → «Шукайте екран». */
   function pressText(s) {
     if (s.say) return esc(L(s.say));
@@ -481,7 +508,7 @@
   }
   function meterInfo() {
     var m = model() || {};
-    return { hoursOnlyWithFlow: !!m.hoursOnlyWithFlow, transitionalFlow: S.meter && R.num(S.meter.transitionalFlow), verifiedUntil: S.meter && S.meter.verifiedUntil || null };
+    return { hoursOnlyWithFlow: !!m.hoursOnlyWithFlow, transitionalFlow: S.meter && R.num(S.meter.transitionalFlow), verifiedUntil: S.meter && S.meter.verifiedUntil || null, times3: times3() };
   }
   function runCheck(d) {
     var res = R.validate({ reading: draftReadingGcal(d), prev: S.baseline, meter: meterInfo(), today: today() });
@@ -4721,11 +4748,13 @@
 
   V.baseline = function () {
     var b = Object.assign({}, S.baseline || {}, S._baseFill || {}), mt = S.meter || {};
-    var keys = ['energy', 'volume', 'flow', 'power', 'tSupply', 'tReturn', 'hours', 'errHours'];
+    var keys = ['energy', 'volume', 'flow', 'power', 'tSupply', 'tReturn', 'hours', 'errHours'].concat(times3() ? ['flowHours'] : []);
+    // «Останні прийняті» — як у кабінеті ХТМ: енергія в одиниці кабінету (усередині — Гкал)
+    if (R.num(b.energy) !== null && htmUnit() !== 'Gcal') b.energy = htmVal('energy', b, null);
     var fields = '<div class="field"><label for="b-date">' + esc(fieldLabel('date')) + '</label><div class="ctl"><input id="b-date" type="date" data-b="date" value="' + esc(b.date || '') + '"></div></div>' +
       '<div class="grid2">' + keys.map(function (k) {
         var cls = k === 'tSupply' ? ' supply' : k === 'tReturn' ? ' return' : '';
-        return '<div class="field"><label for="b-' + k + '">' + esc(fieldLabel(k)) + '</label><div class="ctl' + cls + '"><input id="b-' + k + '" class="num" inputmode="decimal" autocomplete="off" data-b="' + k + '" value="' + esc(b[k] == null ? '' : b[k]) + '"><span class="unit">' + esc(k === 'energy' ? 'Гкал' : fieldUnit(k)) + '</span></div></div>';
+        return '<div class="field"><label for="b-' + k + '">' + esc(fieldLabel(k)) + '</label><div class="ctl' + cls + '"><input id="b-' + k + '" class="num" inputmode="decimal" autocomplete="off" data-b="' + k + '" value="' + esc(b[k] == null ? '' : b[k]) + '"><span class="unit">' + esc(k === 'energy' ? unitLbl(htmUnit()) : fieldUnit(k)) + '</span></div></div>';
       }).join('') +
       '<div class="field"><label for="b-errCode">' + esc(fieldLabel('errCode')) + '</label><div class="ctl"><input id="b-errCode" class="num" autocomplete="off" data-b="errCode" value="' + esc(b.errCode || '') + '" placeholder="E---"></div></div></div>';
     var meterData = '<h2 class="section-title">' + esc(t('b_meter')) + '</h2><div class="grid2">' +
@@ -4736,6 +4765,7 @@
       '<div class="banner" data-key="baseline-where">' + ico('info', 22) + '<div><p>' + esc(t('b_where')) + '</p><p><a href="' + HTM_URL + '" target="_blank" rel="noopener" data-key="baseline-cab">' + esc(t('h_cab_link')) + ' ' + ico('ext', 14) + '</a></p></div></div>' +
       (VIS().available ? '<p><button type="button" class="btn sec" data-act="photo" data-mode="baseline" data-key="baseline-photo">' + ico('camera', 20) + '<span>' + esc(t('ph_base_entry')) + '</span></button></p>' : '') +
       (S._baseFill ? '<div class="banner" data-key="baseline-filled">' + ico('check', 22) + '<div><p>' + esc(t('ph_base_filled')) + '</p></div></div>' : '') +
+      htmFormBox(htmAsk()) +
       '<form id="baseline-form" data-key="baseline-form" novalidate><div class="panel">' + fields + '</div>' + meterData +
       '<p><button type="button" class="linkbtn" data-act="sample" data-key="baseline-sample">' + esc(t('b_sample')) + '</button></p>' +
       '<div class="row-actions"><button type="button" class="btn sec" data-act="skip-base" data-key="baseline-skip">' + esc(t('skip')) + '</button>' +
@@ -4819,16 +4849,17 @@
         (it.fix ? '<div class="fix">' + esc(L(it.fix)) + '</div>' : '') + fixLink +
         (it.code === 'I_NO_PREV' ? '<div class="fix"><a href="' + HTM_URL + '" target="_blank" rel="noopener" data-key="check-cab">' + esc(t('h_cab_link')) + ' ' + ico('ext', 14) + '</a> · <a href="#baseline">' + esc(t('h_add_base')) + '</a></div>' : '') + '</li>';
     }).join('') + '</ul>' : '';
-    var rows = R.FIELDS.map(function (f) {
-      var lvl = byField[f.key]; var val = R.formatForHtm(f.key, r[f.key]);
-      return '<tr class="' + (lvl === 'block' ? 'is-block' : lvl === 'warn' ? 'is-warn' : '') + '"><th scope="row">' + esc(fieldLabel(f.key)) + (f.key === 'energy' ? ', Гкал' : '') + '</th><td>' + esc(val || '—') + '</td></tr>';
+    var rows = htmFields().map(function (f) {
+      var lvl = byField[f.key]; var val = htmVal(f.key, r, S.draft.values);
+      return '<tr class="' + (lvl === 'block' ? 'is-block' : lvl === 'warn' ? 'is-warn' : '') + '"><th scope="row">' + esc(fieldLabel(f.key)) + (f.key === 'energy' ? ', ' + esc(unitLbl(htmUnit())) : '') + '</th><td>' + esc(val || '—') + '</td></tr>';
     }).join('');
     var d = res.derived, period = '';
     if (res.verdict !== 'block' && d && d.dE != null && d.dE >= 0 && S.baseline && R.daysBetween(S.baseline.date, r.date) > 0) {
       period = '<p class="small muted" data-key="check-period">' + esc(t('c_period', { de: d.dE.toFixed(3), days: R.daysBetween(S.baseline.date, r.date), cost: money(d.cost || 0) })) + '</p>';
     }
     // «не прийме» лише за порівнянням з попередніми — людина може передати сама, на свій ризик (робот у фоні — ні)
-    var risk = res.verdict === 'block' && res.risky, canSend = res.verdict !== 'block' || risk, cab = res.verdict !== 'block' && hcOn() && hcConn();
+    // робот у фоні знає лише форму «ГКал + 2 часи» (поля LastValuePok … ErrorTime) — інші форми людина вносить сама
+    var risk = res.verdict === 'block' && res.risky, canSend = res.verdict !== 'block' || risk, cab = res.verdict !== 'block' && hcOn() && hcConn() && htmRobotOk();
     var actions = '<div class="row-actions">' +
       '<button class="btn sec" data-act="save-inter" data-key="check-save-inter">' + esc(t('c_save_inter')) + '</button>' +
       '<button class="btn' + (cab ? ' sec' : '') + '" data-act="to-handover" data-key="check-send"' + (canSend ? '' : ' disabled') + '>' + esc(cab ? t('cab_self') : risk ? t('c_send_risk') : res.verdict === 'warn' ? t('c_send_anyway') : t('c_send')) + '</button>' +
@@ -4840,32 +4871,33 @@
       '<div class="verdict ' + res.verdict + '" data-key="check-verdict" data-verdict="' + res.verdict + '" role="status">' + levelIco(res.verdict, 28) + '<span>' + esc(vText) + '</span></div>' +
       // зауваження — лише наша перевірка всередині сервісу (власник 12.11.2026): ввічливо, без «ви помилились»
       (res.verdict !== 'ok' ? '<p class="small muted" data-key="check-disclaimer">' + esc(t(risk ? 'c_disclaimer_risk' : 'c_disclaimer')) + '</p>' : '') +
-      '<div class="cols"><div>' + issues + period + '</div><div><h2 class="section-title" style="margin-top:0">' + esc(t('c_values')) + '</h2><table class="vals" data-key="check-values">' + rows + '</table></div></div>' + actions + cancelLink('heat') };
+      '<div class="cols"><div>' + issues + period + '</div><div><h2 class="section-title" style="margin-top:0">' + esc(t('c_values')) + '</h2><table class="vals" data-key="check-values">' + rows + '</table>' + htmFormBox(htmAsk()) + '</div></div>' + actions + cancelLink('heat') };
   };
 
   V.handover = function () {
     var r = RD().filter(function (x) { return x.id === S.focusId; })[0] || RD().filter(function (x) { return x.status === 'checked'; }).slice(-1)[0];
     if (!r) return V.home();
     var h = r.htm;
-    var rows = R.FIELDS.map(function (f) {
-      var val = R.formatForHtm(f.key, h[f.key]);
-      return '<li><div><div class="k">' + esc(fieldLabel(f.key)) + (f.key === 'energy' ? ', Гкал' : '') + '</div><div class="v">' + esc(val) + '</div></div><span></span>' +
+    var rows = htmFields().map(function (f) {
+      var val = htmVal(f.key, h, r.raw);
+      return '<li><div><div class="k">' + esc(fieldLabel(f.key)) + (f.key === 'energy' ? ', ' + esc(unitLbl(htmUnit())) : '') + '</div><div class="v">' + esc(val) + '</div></div><span></span>' +
         '<button class="btn sec" data-act="copy" data-text="' + esc(val) + '" data-key="copy-' + f.key + '">' + ico('copy', 18) + '<span>' + esc(t('copy')) + '</span></button></li>';
     });
     var c = S.contacts || {};
     if (c.phone) rows.push('<li><div><div class="k">' + esc(t('ho_phone')) + '</div><div class="v">' + esc(c.phone) + '</div></div><span></span><button class="btn sec" data-act="copy" data-text="' + esc(c.phone) + '">' + ico('copy', 18) + '<span>' + esc(t('copy')) + '</span></button></li>');
     if (c.email) rows.push('<li><div><div class="k">' + esc(t('ho_email')) + '</div><div class="v" style="font-size:16px">' + esc(c.email) + '</div></div><span></span><button class="btn sec" data-act="copy" data-text="' + esc(c.email) + '">' + ico('copy', 18) + '<span>' + esc(t('copy')) + '</span></button></li>');
-    var all = R.FIELDS.map(function (f) { return fieldLabel(f.key) + ': ' + R.formatForHtm(f.key, h[f.key]); }).join('\n') + (c.phone ? '\n' + t('ho_phone') + ': ' + c.phone : '') + (c.email ? '\n' + t('ho_email') + ': ' + c.email : '');
+    var all = htmFields().map(function (f) { return fieldLabel(f.key) + (f.key === 'energy' ? ', ' + unitLbl(htmUnit()) : '') + ': ' + htmVal(f.key, h, r.raw); }).join('\n') + (c.phone ? '\n' + t('ho_phone') + ': ' + c.phone : '') + (c.email ? '\n' + t('ho_email') + ': ' + c.email : '');
     return { screen: 'S07', route: 'handover', bare: true, closeTo: backTo('home'), html:
       '<div class="wiz-top"><a class="btn ghost" href="#check">' + ico('back', 20) + '<span>' + esc(t('back')) + '</span></a></div>' +
       '<h1>' + esc(t('ho_title')) + '</h1><p>' + esc(t('ho_lead')) + '</p>' +
       '<div class="cols"><div class="ho-values"><ul class="copy-list" data-key="handover-values">' + rows.join('') + '</ul>' +
       '<div class="row-actions"><button class="btn sec" data-act="copy" data-text="' + esc(all) + '" data-key="copy-all">' + ico('copy', 20) + '<span>' + esc(t('ho_copy_all')) + '</span></button></div>' +
+      htmFormBox(htmAsk()) +
       (c.phone && c.email ? '' : '<div class="banner warn" style="margin-top:16px">' + ico('alert', 22) + '<div><p>' + esc(t('ho_contacts_none')) + ' <a href="#prefs">' + esc(t('nav_prefs')) + '</a></p></div></div>') + '</div>' +
       // кабінет підключено — робот вносить сам, це головний шлях; вручну — нижче, запасний
-      '<div class="ho-steps">' + (hcConn() ? hcPanel(r) : '') + '<div class="panel"><h2>' + esc(t(hcConn() ? 'ho_steps_self' : 'ho_steps_title')) + '</h2><ol class="steps"><li>' + esc(t('ho_s1')) + '</li><li>' + esc(t('ho_s2')) + '</li><li>' + esc(t('ho_s3')) + '</li><li>' + esc(t('ho_s4')) + '</li></ol>' +
+      '<div class="ho-steps">' + (hcConn() && htmRobotOk() ? hcPanel(r) : '') + '<div class="panel"><h2>' + esc(t(hcConn() ? 'ho_steps_self' : 'ho_steps_title')) + '</h2><ol class="steps"><li>' + esc(t('ho_s1')) + '</li><li>' + esc(t('ho_s2')) + '</li><li>' + esc(t('ho_s3')) + '</li><li>' + esc(t('ho_s4')) + '</li></ol>' +
       '<a class="btn sec block" href="' + HTM_URL + '" target="_blank" rel="noopener" data-key="handover-open">' + ico('ext', 20) + '<span>' + esc(t('ho_open')) + '</span></a></div>' +
-      (hcConn() ? '' : hcPanel(r)) + '</div></div>' +
+      (hcConn() || !htmRobotOk() ? '' : hcPanel(r)) + '</div></div>' +
       hoStatus(r) };
   };
   /** Що з показаннями в кабінеті: «На перевірці» / «Прийнято» — вибір тут же, людина лишається на сторінці передачі (владелец 07.11).
@@ -7755,6 +7787,9 @@
       case 'read': newDraft(); go('step-0'); break;
       case 'restart': newDraft(); go('step-0'); break;
       case 'pick-model': S._pickModel = el.value; render(true); break;
+      // як у кабінеті ХТМ: одиниця енергії й колонки часу (124-а) — у налаштуваннях лічильника цієї квартири
+      case 'hf-unit': if (S.meter) { S.meter = Object.assign({}, S.meter, { htmUnit: el.value }); save(); render(true); toast(t('hf_saved')); } break;
+      case 'hf-times': if (S.meter) { S.meter = Object.assign({}, S.meter, { htmTimes: +el.value === 3 ? 3 : 2 }); save(); render(true); toast(t('hf_saved')); } break;
       case 'save-meter': {
         var id = S._pickModel || (S.meter && S.meter.modelId); var pm = M.byId(id); if (!pm) return;
         var u = document.querySelector('input[name="unit"]:checked');
@@ -8023,7 +8058,9 @@
     if (f.id === 'baseline-form') {
       var b = {}; Array.prototype.forEach.call(f.querySelectorAll('[data-b]'), function (el) { b[el.getAttribute('data-b')] = el.value.trim(); });
       var hasAny = Object.keys(b).some(function (k) { return k !== 'errCode' && b[k]; });
-      if (hasAny) { b.errCode = R.normCode(b.errCode); ['energy', 'volume', 'flow', 'power', 'tSupply', 'tReturn', 'hours', 'errHours'].forEach(function (k) { var n = R.num(b[k]); b[k] = n === null ? '' : n; }); S.baseline = b; }
+      if (hasAny) { b.errCode = R.normCode(b.errCode); ['energy', 'volume', 'flow', 'power', 'tSupply', 'tReturn', 'hours', 'errHours', 'flowHours'].forEach(function (k) { var n = R.num(b[k]); b[k] = n === null ? '' : n; });
+        if (b.energy !== '' && htmUnit() !== 'Gcal') b.energy = +(b.energy * (M.TO_GCAL[htmUnit()] || 1)).toFixed(6);   // з одиниці кабінету — в Гкал
+        S.baseline = b; }
       S.meter = S.meter || {};
       Array.prototype.forEach.call(f.querySelectorAll('[data-m]'), function (el) { S.meter[el.getAttribute('data-m')] = el.value.trim(); });
       S.onboarded = true; delete S._baseFill; save(); toast(t('b_saved')); go('home');

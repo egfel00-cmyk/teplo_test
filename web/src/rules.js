@@ -60,8 +60,11 @@
   function toHtmDate(s) { var t = parseDate(s); if (t === null) return ''; var d = new Date(t); return ('0' + d.getUTCDate()).slice(-2) + '.' + ('0' + (d.getUTCMonth() + 1)).slice(-2) + '.' + d.getUTCFullYear(); }
 
   /** Формат «как в форме ХТМ»: точка, фиксированное число знаков. */
+  // Третій час — лише в кабінетах ХТМ з колонками Bd/Fd/Pd (прилади Landis+Gyr тощо; скрин власника 12.11.2026, 11 колонок):
+  // «Час напрацювання (Bd)» = hours, «Час простою (Fd)» = errHours, «Час роботи з витратою (Pd)» = flowHours. Назва поля форми ще невідома.
+  var FIELD_PD = { key: 'flowHours', htm: null, uk: 'Час роботи з витратою (Pd)', ru: 'Время работы с расходом (Pd)', unit: 'год', dec: 0 };
   function formatForHtm(key, v) {
-    var f = FIELDS.filter(function (x) { return x.key === key; })[0];
+    var f = FIELDS.filter(function (x) { return x.key === key; })[0] || (key === 'flowHours' ? FIELD_PD : null);
     if (!f) return String(v == null ? '' : v);
     if (key === 'date') return toHtmDate(v);
     if (key === 'errCode') return normCode(v);
@@ -134,7 +137,7 @@
    * @param {object} p  { reading, prev, meter, today }
    *   reading/prev: { date:'YYYY-MM-DD', energy, volume, flow, power, tSupply, tReturn, hours, errHours, errCode }
    *   prev — последнее ПРИНЯТОЕ ХТМ показание (строка журнала), может быть null.
-   *   meter: { hoursOnlyWithFlow:bool, transitionalFlow:number|null, verifiedUntil:'YYYY-MM-DD'|null }
+   *   meter: { hoursOnlyWithFlow:bool, transitionalFlow:number|null, verifiedUntil:'YYYY-MM-DD'|null, times3:bool (кабінет з Bd/Fd/Pd — є flowHours) }
    *   today: 'YYYY-MM-DD' (по умолчанию — сегодня)
    * @returns {{verdict:string, items:Array, derived:object}}
    */
@@ -144,6 +147,7 @@
     var items = [], d = {};
     var v = {}; FIELDS.forEach(function (f) { if (f.key !== 'date' && f.key !== 'errCode') v[f.key] = num(r[f.key]); });
     var pv = {}; if (prev) FIELDS.forEach(function (f) { if (f.key !== 'date' && f.key !== 'errCode') pv[f.key] = num(prev[f.key]); });
+    if (meter.times3) { v.flowHours = num(r.flowHours); pv.flowHours = prev ? num(prev.flowHours) : null; }
 
     // --- A. Заполнено ли всё (форма ХТМ требует все 10 значений)
     var missing = FIELDS.filter(function (f) {
@@ -151,6 +155,7 @@
       if (f.key === 'errCode') return false; // пусто = E--- (нет ошибки)
       return v[f.key] === null;
     });
+    if (meter.times3 && v.flowHours === null) missing.push(FIELD_PD);
     missing.forEach(function (f) {
       items.push(item('F_MISSING', 'block', f.key,
         'Не заповнено: ' + f.uk + '.', 'Не заполнено: ' + f.ru + '.',
@@ -211,12 +216,12 @@
         'Немає попередніх прийнятих показань — перевіримо лише формат і фізику.', 'Нет предыдущих принятых показаний — проверим только формат и физику.',
         'Внесіть «останні прийняті» з кабінету ХТМ, щоб перевіряти як робот.', 'Внесите «последние принятые» из кабинета ХТМ, чтобы проверять как робот.'));
     } else {
-      var mono = [['energy', 'R_MONO_ENERGY'], ['volume', 'R_MONO_VOLUME'], ['hours', 'R_MONO_HOURS'], ['errHours', 'R_MONO_ERRHOURS']];
+      var mono = [['energy', 'R_MONO_ENERGY'], ['volume', 'R_MONO_VOLUME'], ['hours', 'R_MONO_HOURS'], ['errHours', 'R_MONO_ERRHOURS']].concat(meter.times3 ? [['flowHours', 'R_MONO_FLOWHOURS']] : []);
       mono.forEach(function (m) {
         var k = m[0], a = v[k], b = pv[k]; if (a === null || b === null) return;
         var bad = k === 'errHours' ? a < b : a < b;
         if (bad) {
-          var f = FIELDS.filter(function (x) { return x.key === k; })[0];
+          var f = FIELDS.filter(function (x) { return x.key === k; })[0] || FIELD_PD;
           items.push(item(m[1], 'block', k,
             f.uk + ' ' + a + ' менше за попередні ' + b + '.', f.ru + ' ' + a + ' меньше предыдущих ' + b + '.',
             'Зніміть показання ще раз — накопичувальні значення не зменшуються. Часто це пропущена цифра або крапка.',
@@ -343,9 +348,9 @@
   }
 
   /** Правила «не прийме», що спираються лише на попередні показання (не на форму ХТМ чи фізику самого запису). */
-  var PREV_BASED = ['F_DATE_BEFORE_PREV', 'R_MONO_ENERGY', 'R_MONO_VOLUME', 'R_MONO_HOURS', 'R_MONO_ERRHOURS', 'R_ENERGY_JUMP', 'R_ENERGY_WITHOUT_VOLUME',
+  var PREV_BASED = ['F_DATE_BEFORE_PREV', 'R_MONO_ENERGY', 'R_MONO_VOLUME', 'R_MONO_HOURS', 'R_MONO_ERRHOURS', 'R_MONO_FLOWHOURS', 'R_ENERGY_JUMP', 'R_ENERGY_WITHOUT_VOLUME',
     'R_DT_MIN', 'R_DT_MAX', 'R_DT_NO_FLOW', 'R_HOURS_CALENDAR', 'R_FLOW_MIN'];
-  var api = { C: C, FIELDS: FIELDS, PREV_BASED: PREV_BASED, num: num, validate: validate, checkField: checkField, decodeRobot: decodeRobot,
+  var api = { C: C, FIELDS: FIELDS, FIELD_PD: FIELD_PD, PREV_BASED: PREV_BASED, num: num, validate: validate, checkField: checkField, decodeRobot: decodeRobot,
     windowState: windowState, formatForHtm: formatForHtm, toHtmDate: toHtmDate, daysBetween: daysBetween, normCode: normCode, ERR_CODES: ERR_CODES, ymd: ymd };
   if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.TeploRules = api;
 })(typeof window !== 'undefined' ? window : this);

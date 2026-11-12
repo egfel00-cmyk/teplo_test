@@ -3,7 +3,7 @@
 // Запуск: стенд на 127.0.0.1:8099 (скопировать tests/htm-mock во /tmp, php -S 127.0.0.1:8099 -t public public/router.php), затем php tests/htm_svc.php
 declare(strict_types=1);
 define('TEPLO', 1);
-foreach (['core', 'telegram', 'reminders', 'recognize', 'admin', 'vkcab', 'cabs', 'htmsvc', 'vksvc', 'gpv', 'providers', 'visits', 'journal', 'docs', 'api'] as $f) require __DIR__ . "/../app/$f.php";
+foreach (['core', 'telegram', 'reminders', 'recognize', 'admin', 'vkcab', 'cabs', 'htmsvc', 'vksvc', 'gpv', 'providers', 'visits', 'journal', 'docs', 'localbot', 'widget', 'mail', 'relay', 'indexnow', 'api'] as $f) require_once __DIR__ . "/../app/$f.php";
 $TMP = sys_get_temp_dir() . '/teplo_htmsvc_' . getmypid(); putenv('SITE_DATA=' . $TMP);
 $BASE = getenv('HTM_BASE') ?: 'http://127.0.0.1:8099';
 Cfg::set(['app_url' => 'https://teplo.example/', 'bot_token' => '1:TEST', 'htm_cab_base' => $BASE, 'cookie_secure' => false, 'admins' => ['emails' => ['u1@example.com'], 'telegram' => []]]);
