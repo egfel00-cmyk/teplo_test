@@ -317,7 +317,7 @@ final class ProvEdit {
   const SCOPES = ['oblast', 'hromadas', 'settlements'];
   const KINDS = ['elec', 'gas', 'water', 'heat', 'waste'];
   const STR = ['org', 'net', 'grm', 'note', 'note_ru', 'src', 'src_ru', 'how', 'how_ru', 'pay', 'pay_ru', 'cab', 'bot', 'site', 'app', 'viber', 'sms', 'from', 'distFrom', 'distSrc', 'distSrc_ru', 'robot', 'robot_note', 'via'];
-  const NUM = ['supply', 'drain', 'hot', 'price', 'abon', 'dist', 'priv'];
+  const NUM = ['supply', 'drain', 'hot', 'price', 'abon', 'dist', 'priv', 'till'];   // till — до якого числа місяця передавати (31 — до кінця місяця; 126-а)
   const URLS = ['cab', 'bot', 'site', 'app', 'viber'];
   /** Чи можна подавати без людини: server — робот з нашого сервера; relay — лише з України (Cloudflare, ретранслятор); captcha — капча, вручну;
    *  bot — лише бот у Telegram/Viber; phone — лише телефон/SMS; none — ні кабінету, ні форми; '' — ще не перевіряли. */

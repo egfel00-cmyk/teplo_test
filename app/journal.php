@@ -165,7 +165,27 @@ final class Journal {
       $ns['g'][] = $g; if (count($ns['g']) > 8) array_shift($ns['g']);
     }
     $ns['vids'] = count($nv);
-    return ['from' => $from, 'people' => $people, 'journal' => $withEv, 'withErr' => count(array_diff_key($errVids, $int)), 'js' => $js, 'api' => $api, 'toasts' => $toasts, 'dev' => (object)$dev, 'navShift' => $ns];
+    // 126-а: камера з підказками (подія «cam» при закритті) числами — щоб звіряти без /admin: скільки разів, знімки, помилки доступу, розпізнавач
+    // не догрузився (eng), ліхтарик (tf); за пристроями — середній (ms) і найдовший (mx) час читання кадру, мс
+    $cam = ['n' => 0, 'vids' => 0, 'shots' => 0, 'auto' => 0, 'err' => [], 'eng' => 0, 'tf' => 0, 'dev' => []]; $cv = [];
+    foreach (Db::q("SELECT vid, props FROM events WHERE day >= ? AND name = 'cam'$ex ORDER BY id", [$from])->fetchAll() as $e) {
+      $p = $pv($e['props']); $cam['n']++; $cam['shots'] += (int)($p['n'] ?? 0); $cam['auto'] += (int)($p['auto'] ?? 0);
+      if (!empty($p['e'])) { $ek = mb_substr((string)$p['e'], 0, 20); $cam['err'][$ek] = ($cam['err'][$ek] ?? 0) + 1; }
+      if (!empty($p['eng'])) $cam['eng']++; if (!empty($p['tf'])) $cam['tf']++;
+      $cv[(string)$e['vid']][] = $p;
+    }
+    if ($cv) {
+      $vd = []; foreach (Db::q('SELECT vid, device, os, tg FROM visits WHERE day >= ?', [$from])->fetchAll() as $v) $vd[(string)$v['vid']] = $v['device'] . ' ' . $v['os'] . ((int)$v['tg'] ? ' tg' : '');
+      foreach ($cv as $vid => $ps) if (!isset($int[$vid])) {
+        $k = $vd[$vid] ?? '?'; $d = &$cam['dev'][$k]; $d = $d ?? ['n' => 0, 'vids' => 0, 'ms' => 0, 'mx' => 0, '_s' => 0, '_c' => 0]; $d['vids']++;
+        foreach ($ps as $p) { $d['n']++; if (isset($p['ms'])) { $d['_s'] += (int)$p['ms']; $d['_c']++; } $d['mx'] = max($d['mx'], (int)($p['mx'] ?? 0)); }
+        unset($d);
+      }
+      foreach ($cam['dev'] as &$d) { $d['ms'] = $d['_c'] ? (int)round($d['_s'] / $d['_c']) : null; unset($d['_s'], $d['_c']); } unset($d);
+      $cam['vids'] = count(array_diff_key($cv, $int)); arsort($cam['err']);
+    }
+    $cam['err'] = (object)$cam['err']; $cam['dev'] = (object)$cam['dev'];
+    return ['from' => $from, 'people' => $people, 'journal' => $withEv, 'withErr' => count(array_diff_key($errVids, $int)), 'js' => $js, 'api' => $api, 'toasts' => $toasts, 'dev' => (object)$dev, 'navShift' => $ns, 'cam' => $cam];
   }
   public static function cleanup(?int $now = null): int {
     $d = Visits::day(($now ?? time()) - self::KEEP_DAYS * 86400);

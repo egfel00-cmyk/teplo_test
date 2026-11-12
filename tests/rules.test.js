@@ -100,5 +100,31 @@ console.log('\nПередати на свій ризик:');
   t('мінус енергії + минула повірка → без ризику', res.verdict === 'block' && !res.risky, JSON.stringify(blocks(res)));
   t('PREV_BASED — лише відомі коди', R.PREV_BASED.length === 13 && R.PREV_BASED.indexOf('F_MISSING') < 0); }
 
+// 126-а: тепло не від ХТМ (Київтеплоенерго…) — постачальнику одне число, енергія; правил і форми ХТМ немає
+console.log('\nПостачальник не ХТМ (lite):');
+{ const ml = { lite: true, cab: { k: 0.859845, uk: 'МВт·год', ru: 'МВт·ч' }, screen: { k: 0.859845 } }, pv = { date: '2026-10-20', energy: 10 };
+  let res = R.validate({ reading: { date: '2026-11-20', energy: 10.8 }, prev: pv, meter: ml, today: '2026-11-20' });
+  t('лише дата й енергія → ok, без «10 значень» і «ХТМ»', res.verdict === 'ok' && !JSON.stringify(res.items).includes('ХТМ'), JSON.stringify(res.items));
+  res = R.validate({ reading: { date: '2026-11-20' }, prev: pv, meter: ml, today: '2026-11-20' });
+  t('без енергії → F_MISSING лише енергії, текст про постачальника', blocks(res).join() === 'F_MISSING' && /Постачальнику/.test(res.items[0].fix.uk), JSON.stringify(res.items));
+  res = R.validate({ reading: { date: '2026-11-20', energy: 9.5 }, prev: pv, meter: ml, today: '2026-11-20' });
+  t('енергія менша за попередню — як і було, на свій ризик', res.verdict === 'block' && res.risky && blocks(res).includes('R_MONO_ENERGY'));
+  res = R.validate({ reading: { date: '2026-11-20', energy: 40 }, prev: pv, meter: ml, today: '2026-11-20' });
+  t('+30 Гкал — лише попередження про крапку (межі робота ХТМ немає)', res.verdict === 'warn' && res.items.some(i => i.code === 'R_ENERGY_JUMP' && i.level === 'warn'), JSON.stringify(res.items));
+  res = R.validate({ reading: { date: '2026-11-20', energy: 10.8, hours: 99, errCode: 'F4' }, prev: null, meter: ml, today: '2026-11-20' });
+  t('без попередніх — підказка без «кабінету ХТМ»; години й код помилки не перевіряються', res.verdict === 'ok' && res.items.length === 1 && res.items[0].code === 'I_NO_PREV' && !/ХТМ/.test(res.items[0].msg.uk), JSON.stringify(res.items));
+  res = R.validate({ reading: { date: '2026-11-20', energy: 10.8 }, prev: pv, meter: Object.assign({}, ml, { verifiedUntil: '2026-01-01' }), today: '2026-11-20' });
+  t('повірка минула — block, без телефону ХТМ', blocks(res).join() === 'R_VERIFICATION' && !/ХТМ/.test(JSON.stringify(res.items))); }
+
+// 126-а, dev.voronin: «Останні прийняті» 5892,2555 Гкал, на табло 213,037 ГДж (≈ 50,88 Гкал) — не «менше за попередні», а підказка виправити
+console.log('\nОстанні прийняті з помилкою (енергія):');
+{ const pb = { date: '2026-11-10', energy: 5892.2555, volume: 7681.051, hours: 52700, errHours: 330 };
+  const rd = { date: '2026-11-12', energy: 50.883, volume: 7704.98, flow: 0.582, power: 3.5, tSupply: 47.7, tReturn: 42.5, hours: 52748, errHours: 330, errCode: 'E---' };
+  const res = R.validate({ reading: rd, prev: pb, meter: { hoursOnlyWithFlow: false }, today: '2026-11-12' });
+  const w = res.items.find(i => i.code === 'W_PREV_ENERGY_BAD');
+  t('енергія в 116 разів менша за «Останні прийняті» → W_PREV_ENERGY_BAD, без R_MONO_ENERGY і R_ENERGY_WITHOUT_VOLUME', !!w && w.level === 'warn' && /116 разів/.test(w.msg.uk) && /кабінету ХТМ/.test(w.fix.uk) && !codes(res).includes('R_MONO_ENERGY'), JSON.stringify(res.items.map(i => i.code)));
+  const r2 = R.validate({ reading: Object.assign({}, rd, { energy: 580 }), prev: pb, meter: { hoursOnlyWithFlow: false }, today: '2026-11-12' });
+  t('у 10 разів менше — теж; у 2 рази — звичайне «менше за попередні»', codes(r2).includes('W_PREV_ENERGY_BAD') && codes(R.validate({ reading: Object.assign({}, rd, { energy: 3000 }), prev: pb, meter: {}, today: '2026-11-12' })).includes('R_MONO_ENERGY')); }
+
 console.log('\nИтог: ' + pass + ' OK, ' + fail + ' FAIL');
 process.exit(fail ? 1 : 0);

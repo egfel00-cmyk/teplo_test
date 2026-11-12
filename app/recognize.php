@@ -11,7 +11,8 @@ final class Recognize {
   const TYPES = ['image/jpeg' => 'jpg', 'image/png' => 'png', 'image/webp' => 'webp'];
   const MODELS = ['sharky774' => 'Diehl SHARKY 774', 'sharky775' => 'Diehl SHARKY 775 / Danfoss SONOMETER 1100', 't330' => 'Landis+Gyr ULTRAHEAT T330 (UH30)',
     't230' => 'Landis+Gyr ULTRAHEAT T230', 'multical302' => 'Kamstrup MULTICAL 302', 'elf' => 'Apator ELF / LQM-III ELF', 'sensostar' => 'Engelmann SensoStar',
-    'nik7071' => 'НІК 7071', 'trust' => 'TRUST', 'other' => 'other heat meter'];
+    'nik7071' => 'НІК 7071', 'qalcosonic_e3' => 'Axioma QALCOSONIC E3', 'sonometer30' => 'Danfoss SonoMeter 30', 'zelsius_c5' => 'ZENNER zelsius C5',
+    'sensonic2' => 'ista sensonic II', 't550' => 'Landis+Gyr ULTRAHEAT T550 (UH50)', 'trust' => 'TRUST', 'other' => 'other heat meter'];
   const ORDER = ['sharky774' => '1) energy [Gcal] 2) volume [m³ in the top right corner] 3) flow [m³/h] 4) power [kW] 5) tSupply + tReturn [alternating ht/ct] 6) hours + errHours [alternating On/Eh] 7) errCode'];
   const FIELD_RU = ['energy' => 'энергия', 'volume' => 'объём', 'flow' => 'расход', 'power' => 'мощность', 'tSupply' => 'подача', 'tReturn' => 'обратка',
     'hours' => 'часы работы', 'errHours' => 'часы с ошибкой', 'errCode' => 'код ошибки', 'water_hot' => 'горячая вода', 'water_cold' => 'холодная вода',

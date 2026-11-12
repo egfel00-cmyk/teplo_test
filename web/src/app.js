@@ -318,10 +318,14 @@
   function fieldLabel(key) { if (times3() && (key === 'hours' || key === 'errHours')) return t(key === 'hours' ? 'f_bd' : 'f_fd'); var f = field(key); return f ? (S.lang === 'ru' ? f.ru : f.uk) : key; }
   // Форма ХТМ залежить від приладу (скрини власника 12.11.2026): енергія в ГКал або ГДж, часу — 2 колонки або 3 (Bd, Fd, Pd).
   // Усередині застосунку енергія — в Гкал (правила, статистика); назовні (перевірка, «Як передати», «Останні прийняті») — в одиниці кабінету.
-  function htmUnit() { var m = S.meter || {}; return m.htmUnit || (energyUnit() === 'GJ' ? 'GJ' : 'Gcal'); }
-  function htmAsk() { return energyUnit() !== 'Gcal' && !(S.meter && S.meter.htmUnit); }   // одиницю кабінету не підтверджено — спитати
-  function times3() { return !!(S.meter && S.meter.htmTimes === 3); }
-  function htmFields() { var f = R.FIELDS.slice(); if (times3()) f.splice(f.map(function (x) { return x.key; }).indexOf('errHours') + 1, 0, R.FIELD_PD); return f; }
+  // 126-а: тепло не від ХТМ (Київтеплоенерго, Львівтеплоенерго, Одеса…) — постачальнику потрібне одне число: енергія, як на екрані лічильника
+  function htmUnit() { var m = S.meter || {}; if (heatLite()) return energyUnit(); return m.htmUnit || (energyUnit() === 'GJ' ? 'GJ' : 'Gcal'); }
+  function htmAsk() { return !heatLite() && energyUnit() !== 'Gcal' && !(S.meter && S.meter.htmUnit); }   // одиницю кабінету не підтверджено — спитати
+  function times3() { return !!(S.meter && S.meter.htmTimes === 3) && !heatLite(); }
+  function htmFields() {
+    if (heatLite()) return R.FIELDS.filter(function (x) { return x.key === 'date' || x.key === 'energy'; });
+    var f = R.FIELDS.slice(); if (times3()) f.splice(f.map(function (x) { return x.key; }).indexOf('errHours') + 1, 0, R.FIELD_PD); return f;
+  }
   /** Значення для кабінету ХТМ: енергія — в одиниці кабінету (з табло без перерахунку, якщо одиниці збігаються), решта — як formatForHtm. */
   function htmVal(key, h, raw) {
     if (key !== 'energy') return R.formatForHtm(key, h[key]);
@@ -476,6 +480,7 @@
 
   // ---------------- окно приёма ----------------
   function windowBanner() {
+    if (heatLite()) return '';   // вікно 5–25 — правило ХТМ
     var w = R.windowState(today()), td = today();
     var opens = w.state === 'closed_before' ? dayOfMonth(td, 5) : nextMonthDay(td, 5);
     var last = fmtDate(dayOfMonth(td, 25)), rec = fmtDate(dayOfMonth(td, 23));
@@ -489,11 +494,16 @@
     }[w.state];
     return '<div class="banner ' + map[0] + '" data-key="window-banner" data-state="' + w.state + '" role="status">' + ico(map[1], 22) + '<div><p><b>' + esc(map[2]) + '</b></p><p>' + esc(map[3]) + '</p></div></div>';
   }
-  function windowClosed() { var s = R.windowState(today()).state; return s === 'closed_before' || s === 'closed_after'; }
+  function windowClosed() { if (heatLite()) return false; var s = R.windowState(today()).state; return s === 'closed_before' || s === 'closed_after'; }
 
   // ---------------- мастер: шаги ----------------
   function steps() {
     var m = model(), st = m ? m.steps : [];
+    // постачальник не ХТМ — лише крок енергії (решту екранів лічильника не гортаємо)
+    if (heatLite()) {
+      var es = st.filter(function (s) { return s.fields.indexOf('energy') >= 0; })[0] || { press: null, count: 0, fields: ['energy'], lcd: { digits: '00000.000', tag: 'Gcal' }, hint: { uk: '', ru: '' } };
+      return [{ kind: 'date' }, Object.assign({}, es, { fields: ['energy'], lite: true })];
+    }
     // крок «Pd» (L+G: окремий екран «час з витратою») — лише коли в кабінеті ХТМ є третя колонка часу
     st = st.filter(function (s) { return !s.only3 || times3(); });
     // кабінет з Bd/Fd/Pd — третій час додаємо до кроку годин (у моделей без окремого екрана Pd)
@@ -533,7 +543,7 @@
   function meterInfo() {
     var m = model() || {};
     var cu = htmUnit(), ul = UNIT_LBL[cu] || UNIT_LBL.Gcal;
-    return { hoursOnlyWithFlow: !!m.hoursOnlyWithFlow, transitionalFlow: S.meter && R.num(S.meter.transitionalFlow), verifiedUntil: S.meter && S.meter.verifiedUntil || null, times3: times3(),
+    return { hoursOnlyWithFlow: !!m.hoursOnlyWithFlow, transitionalFlow: S.meter && R.num(S.meter.transitionalFlow), verifiedUntil: S.meter && S.meter.verifiedUntil || null, times3: times3(), lite: heatLite(),
       cab: { k: M.TO_GCAL[cu] || 1, uk: ul.uk, ru: ul.ru }, screen: { k: M.TO_GCAL[energyUnit()] || 1 } };
   }
   function runCheck(d) {
@@ -826,7 +836,12 @@
   function heatStatus() {
     var last = RD().filter(function (r) { return r.htm && r.htm.date; }).slice(-1)[0], w = R.windowState(today()), gap = openGap('heat'), d25 = dayOfMonth(today(), 25);
     if (gap) return { st: t('gp_card_off', { d: fmtDate(gap.from) }), tone: 'warn', off: true };
-    if (last && thisMonth(last.htm.date) && (last.status === 'handed' || last.status === 'accepted')) return { st: last.status === 'accepted' ? t('uc_heat_ok') : t('uc_heat_handed'), tone: 'ok' };
+    if (last && thisMonth(last.htm.date) && (last.status === 'handed' || last.status === 'accepted')) return { st: heatLite() ? t('uc_heat_sent_l') : last.status === 'accepted' ? t('uc_heat_ok') : t('uc_heat_handed'), tone: 'ok' };
+    if (heatLite()) {   // строк — лише якщо відомий з довідника громади (till — число місяця; 31 — до кінця місяця), інакше без нагадування
+      var tl = R.num((prvOf('heat') || {}).till); if (!(tl > 0)) return { st: '', tone: '' };
+      var dl = dayOfMonth(today(), Math.min(tl, +addDays(nextMonthDay(today(), 1), -1).slice(8)));
+      return dl >= today() ? { st: t('uc_heat_due', { d: fmtDate(dl) }), tone: 'due', due: dl } : { st: '', tone: '' };
+    }
     if (w.state === 'open' || w.state === 'soon_recommended') return { st: t('uc_heat_due', { d: fmtDate(d25) }), tone: 'due', due: d25 };
     if (w.state === 'late' || w.state === 'last_day') return { st: t('uc_heat_late', { d: fmtDate(d25) }), tone: 'warn', due: d25 };
     var hn = w.state === 'closed_before' ? dayOfMonth(today(), 5) : nextMonthDay(today(), 5); return { st: t('uc_heat_closed', { d: fmtDate(hn) }), tone: '', from: hn };
@@ -869,8 +884,9 @@
     var src = last && (!base || last.htm.date >= base.date) ? { date: last.htm.date, energy: last.htm.energy, own: true, status: last.status } : base ? { date: base.date, energy: base.energy } : null;
     var hs = heatStatus(), st = cardSt(hs), tone = st ? hs.tone : '';
     var val = src && R.num(src.energy) !== null ? R.formatForHtm('energy', src.energy) : '';
-    var o = { sub: src ? (src.own ? t('uc_from_you', { d: fmtDate(src.date) }) : t('uc_from_htm', { d: fmtDate(src.date) })) : t('h_last_none'), status: st, tone: tone, off: hs.off };
-    if (src && src.own && (src.status === 'handed' || src.status === 'accepted')) cardSent(o, src.date, src.status === 'accepted' ? 'uc_heat_ok_d' : 'uc_sent_d');
+    var lite = heatLite();   // 126-а: не ХТМ — «передано», без «прийняті ХТМ»
+    var o = { sub: src ? (src.own ? t('uc_from_you', { d: fmtDate(src.date) }) : t(lite ? 'uc_sent_d_s' : 'uc_from_htm', { d: fmtDate(src.date) })) : t('h_last_none'), status: st, tone: tone, off: hs.off };
+    if (src && src.own && (src.status === 'handed' || src.status === 'accepted')) cardSent(o, src.date, src.status === 'accepted' && !lite ? 'uc_heat_ok_d' : 'uc_sent_d');
     return ucard({ kind: 'heat', href: 'heat', icon: 'thermo', title: t('uc_heat'),
       display: lcd([{ text: val || '------', tag: 'Gcal', label: val ? val + ' Гкал' : '—' }], 'card'),
       sub: o.sub, status: o.status, tone: o.tone, addAct: 'read', addLabel: t('uc_add_heat') });
@@ -2638,6 +2654,7 @@
   /** Тепло, збережене після виправлення: «перевірено» без зауважень і кабінет ХТМ готовий — план для робота; ні — чому (передати в застосунку). */
   function cardHeatRow(rd) {
     var row = { k: 'heat', t: t('bc_heat'), v: rd.htm && rd.htm.energy ? camNum(rd.htm.energy) + ' ' + unitLbl(energyUnit()) : '', w: 'ХТМ', ok: 1 };
+    if (heatLite()) return Object.assign(row, { w: (prvOf('heat') || {}).org || '', m: t('bc_manual') });   // не ХТМ — робота немає, передає людина
     var acc = hcAcc(rd), c = S.contacts || {}, phone = c.phone || (HC.st && HC.st.phone) || '', p = place(rd.place) || place(), m = p && p.id === S.placeId ? S.meter : p && p.meter;
     var heatPl = places().filter(function (x) { var mm = x.id === S.placeId ? S.meter : x.meter; return mm && !mm.removed; });
     var why = rd.status !== 'checked' || rd.verdict === 'block' ? 'bc_saved' :   // зауваження людина бачила й зберегла «перевірено» — як «Передати однаково» windowClosed() ? 'ha_why_closed' : !hcConn() ? 'bc_why_cab' :
@@ -4526,6 +4543,8 @@
   }
   /** Тепло від ХТМ: адреси немає (Харків за замовчуванням) або постачальник тепла в довіднику — ХТМ. */
   function heatHtm() { var d = prvOf('heat'); return !d || d.via === 'htm'; }
+  /** 126-а: квартира з адресою, тепло — не від ХТМ: показання — лише енергія, без форми й правил ХТМ. */
+  function heatLite() { return !heatHtm(); }
   /** Частка ЗБП за замовчуванням, Гкал/міс: тепло ХТМ і площа квартири відома — R.C.ZBP_M2 × площа, інакше 0. */
   function zbpDefault() { var a = R.num((place() || {}).area); return heatHtm() && a > 0 && a < 1000 ? R.C.ZBP_M2 * a : 0; }
   /** Скільки з m місяців проміжку, що закінчується датою to, — опалювальні (жовтень–квітень): ЗБП ХТМ нараховує лише в них. */
@@ -4762,6 +4781,8 @@
     var note = pm && pm.id !== 'other' ? '<p class="small muted">' + esc(L(pm.note)) + '</p>' : '';
     return { screen: 'S02', route: 'meter', bare: !S.onboarded, closeTo: S.onboarded ? 'home' : 'start', html: pqBanner(true) +
       '<h1>' + esc(t('m_title')) + '</h1><p class="muted">' + esc(t('m_lead')) + '</p>' +
+      // 126-а: тепло не від ХТМ — постачальнику лише енергія; «допустимі» — будь-який повірений лічильник, узятий на облік
+      (heatLite() ? '<p class="small" data-key="meter-lite">' + esc(t('m_lite', { o: (prvOf('heat') || {}).org || t('ld_org_heat') })) + '</p>' : '') +
       '<details class="where" data-key="meter-where"><summary>' + esc(t('m_where')) + '</summary><p>' + esc(t('m_where_text')) + '</p></details>' +
       (VIS().available ? '<p><button class="btn sec" data-act="photo" data-mode="model" data-key="meter-photo">' + ico('camera', 20) + '<span>' + esc(t('ph_model_entry')) + '</span></button></p>' : '') +
       '<ul class="list models" data-key="meter-list">' + list + '</ul>' + (pm ? '<div style="margin-top:16px">' + note + unitBlock + '</div>' : '') +
@@ -4775,7 +4796,7 @@
 
   V.baseline = function () {
     var b = Object.assign({}, S.baseline || {}, S._baseFill || {}), mt = S.meter || {};
-    var keys = ['energy', 'volume', 'flow', 'power', 'tSupply', 'tReturn', 'hours', 'errHours'].concat(times3() ? ['flowHours'] : []);
+    var keys = heatLite() ? ['energy'] : ['energy', 'volume', 'flow', 'power', 'tSupply', 'tReturn', 'hours', 'errHours'].concat(times3() ? ['flowHours'] : []);   // не ХТМ — лише енергія (126-а)
     // «Останні прийняті» — як у кабінеті ХТМ: енергія в одиниці кабінету (усередині — Гкал)
     if (R.num(b.energy) !== null && htmUnit() !== 'Gcal') b.energy = htmVal('energy', b, null);
     var fields = '<div class="field"><label for="b-date">' + esc(fieldLabel('date')) + '</label><div class="ctl"><input id="b-date" type="date" data-b="date" value="' + esc(b.date || '') + '"></div></div>' +
@@ -4823,7 +4844,7 @@
       });
       // swap — значення чергуються на одному екрані (температури, On/Eh): так і показуємо, а не двома рядками одночасно (125-а)
       left = press + lcd(lines, 'step-lcd' + (s.lcd.swap && lines.length === 2 ? ' swap' : '')) + '<p class="lcd-cap" id="lcd-cap">' + esc(Object.keys(S.draft.values).some(function (k) { return s.fields.indexOf(k) >= 0 && S.draft.values[k]; }) ? t('s_on_screen') : t('s_example')) + '</p>' +
-        '<p class="hint">' + esc(L(s.hint)) + '</p>' +
+        '<p class="hint">' + esc(L(s.hint)) + '</p>' + (s.lite ? '<p class="hint" data-key="step-lite">' + esc(t('s_lite')) + '</p>' : '') +
         (m && m.sleepMin ? '<p class="sleep">' + ico('moon', 18) + '<span>' + esc(t('s_sleep', { m: m.sleepMin })) + '</span></p>' : '') +
         // петлі (LOOP 0/1, групи, рівні): людина не знаходить екран, бо він в іншій петлі — скарги 12.11.2026 (124-а)
         '<details class="where loop-tip" data-key="step-loops"><summary>' + esc(t('s_loops')) + '</summary><p>' + esc(L(loopsOf(m).tip)) + '</p></details>';
@@ -4843,7 +4864,8 @@
     var help = '';
     if (prev && (prev._bad || []).indexOf(k) >= 0) help = t('s_prev_bad');
     if (prev && prev[k] != null && prev[k] !== '') {
-      help = t('s_prev', { v: (k === 'energy' ? String(prev[k]) : prev[k]) + ' ' + fieldUnit(k) });
+      // енергія з Гкал в одиницю табло — до 3 знаків (було «15.014334 МВт·год», 126-а)
+      help = t('s_prev', { v: (k === 'energy' ? String(+(+prev[k]).toFixed(3)) : prev[k]) + ' ' + fieldUnit(k) });
       var plain = help;
       if (k === 'hours' && !(model() || {}).hoursOnlyWithFlow && S.draft.date && prev.date) {
         var exp = R.num(prev.hours) + R.daysBetween(prev.date, S.draft.date) * 24;
@@ -4880,7 +4902,7 @@
       var fixLink = it.field && it.code !== 'W_WINDOW' ? '<div><button class="linkbtn" data-act="fix" data-field="' + it.field + '" data-key="fix-' + it.code + '">' + esc(t('c_fix')) + ': ' + esc(fieldLabel(it.field).toLowerCase()) + '</button></div>' : '';
       return '<li data-code="' + it.code + '" data-level="' + it.level + '"><span class="ic">' + levelIco(it.level, 22) + '</span><div class="msg">' + esc(L(it.msg)) + '</div>' +
         (it.fix ? '<div class="fix">' + esc(L(it.fix)) + '</div>' : '') + fixLink +
-        (it.code === 'I_NO_PREV' ? '<div class="fix"><a href="' + HTM_URL + '" target="_blank" rel="noopener" data-key="check-cab">' + esc(t('h_cab_link')) + ' ' + ico('ext', 14) + '</a> · <a href="#baseline">' + esc(t('h_add_base')) + '</a></div>' : '') + '</li>';
+        (it.code === 'I_NO_PREV' && !heatLite() ? '<div class="fix"><a href="' + HTM_URL + '" target="_blank" rel="noopener" data-key="check-cab">' + esc(t('h_cab_link')) + ' ' + ico('ext', 14) + '</a> · <a href="#baseline">' + esc(t('h_add_base')) + '</a></div>' : '') + '</li>';
     }).join('') + '</ul>' : '';
     var rows = htmFields().map(function (f) {
       var lvl = byField[f.key]; var val = htmVal(f.key, r, S.draft.values);
@@ -4892,10 +4914,10 @@
     }
     // «не прийме» лише за порівнянням з попередніми — людина може передати сама, на свій ризик (робот у фоні — ні)
     // робот у фоні знає лише форму «ГКал + 2 часи» (поля LastValuePok … ErrorTime) — інші форми людина вносить сама
-    var risk = res.verdict === 'block' && res.risky, canSend = res.verdict !== 'block' || risk, cab = res.verdict !== 'block' && hcOn() && hcConn();
+    var risk = res.verdict === 'block' && res.risky, canSend = res.verdict !== 'block' || risk, cab = res.verdict !== 'block' && hcOn() && hcConn() && !heatLite();
     var actions = '<div class="row-actions">' +
       '<button class="btn sec" data-act="save-inter" data-key="check-save-inter">' + esc(t('c_save_inter')) + '</button>' +
-      '<button class="btn' + (cab ? ' sec' : '') + '" data-act="to-handover" data-key="check-send"' + (canSend ? '' : ' disabled') + '>' + esc(cab ? t('cab_self') : risk ? t('c_send_risk') : res.verdict === 'warn' ? t('c_send_anyway') : t('c_send')) + '</button>' +
+      '<button class="btn' + (cab ? ' sec' : '') + '" data-act="to-handover" data-key="check-send"' + (canSend ? '' : ' disabled') + '>' + esc(cab ? t('cab_self') : risk ? t('c_send_risk') : heatLite() ? t('c_send_l') : res.verdict === 'warn' ? t('c_send_anyway') : t('c_send')) + '</button>' +
       (cab ? '<button class="btn dest-bg" data-act="chk-bg" data-key="check-bg"' + (HC.busy ? ' disabled' : '') + '>' + ico('send', 18) + '<span>' + esc(t('cab_bg')) + '</span></button>' : '') + '</div>' +
       (cab ? '<p class="small dest-note" data-key="check-bg-note">' + esc(t('cab_bg_note', { what: t('cab_bg_heat', { d: R.formatForHtm('date', r.date), e: R.formatForHtm('energy', r.energy), a: hcAcc() ? t('cab_bg_acc', { a: hcAcc().acc }) : '' }) })) + '</p>' : '');
     return { screen: 'S06', route: 'check', bare: true, closeTo: backTo('home'), html:
@@ -4904,12 +4926,13 @@
       '<div class="verdict ' + res.verdict + '" data-key="check-verdict" data-verdict="' + res.verdict + '" role="status">' + levelIco(res.verdict, 28) + '<span>' + esc(vText) + '</span></div>' +
       // зауваження — лише наша перевірка всередині сервісу (власник 12.11.2026): ввічливо, без «ви помилились»
       (res.verdict !== 'ok' ? '<p class="small muted" data-key="check-disclaimer">' + esc(t(risk ? 'c_disclaimer_risk' : 'c_disclaimer')) + '</p>' : '') +
-      '<div class="cols"><div>' + issues + period + '</div><div><h2 class="section-title" style="margin-top:0">' + esc(t('c_values')) + '</h2><table class="vals" data-key="check-values">' + rows + '</table>' + htmFormBox(htmAsk()) + '</div></div>' + actions + cancelLink('heat') };
+      '<div class="cols"><div>' + issues + period + '</div><div><h2 class="section-title" style="margin-top:0">' + esc(t('c_values')) + '</h2><table class="vals" data-key="check-values">' + rows + '</table>' + (heatLite() ? '' : htmFormBox(htmAsk())) + '</div></div>' + actions + cancelLink('heat') };
   };
 
   V.handover = function () {
     var r = RD().filter(function (x) { return x.id === S.focusId; })[0] || RD().filter(function (x) { return x.status === 'checked'; }).slice(-1)[0];
     if (!r) return V.home();
+    if (heatLite()) return handoverLite(r);
     var h = r.htm;
     var rows = htmFields().map(function (f) {
       var val = htmVal(f.key, h, r.raw);
@@ -4936,6 +4959,22 @@
   /** Що з показаннями в кабінеті: «На перевірці» / «Прийнято» — вибір тут же, людина лишається на сторінці передачі (владелец 07.11).
    *  «Не прийнято» з поясненням причини — окремим посиланням на екран статусу. */
   var HO_POP = '';
+  /** 126-а: передача постачальнику тепла не ХТМ — одне число (енергія як на екрані; не Гкал — ще й у Гкал), куди передати — з довідника громади, «Передано». */
+  function handoverLite(r) {
+    var h = r.htm || {}, eu = energyUnit(), ev = htmVal('energy', h, r.raw), g = R.num(h.energy), ld = prvOf('heat') || {};
+    var row = function (k, v, key) { return '<li><div><div class="k">' + esc(k) + '</div><div class="v">' + esc(v) + '</div></div><span></span><button class="btn sec" data-act="copy" data-text="' + esc(v) + '" data-key="copy-' + key + '">' + ico('copy', 18) + '<span>' + esc(t('copy')) + '</span></button></li>'; };
+    var rows = row(fieldLabel('energy') + ', ' + unitLbl(eu), ev, 'energy') + (eu !== 'Gcal' && g !== null ? row(t('hl_gcal'), g.toFixed(3), 'gcal') : '');
+    var sent = r.status === 'handed' || r.status === 'accepted';
+    var st = '<section class="panel ho-st" data-key="ho-status"><h2>' + esc(t('hl_st_t')) + '</h2>' +
+      (sent ? '<div class="banner ok" data-key="hl-sent" role="status">' + levelIco('ok', 22) + '<div><p><b>' + esc(t('hl_sent', { d: fmtDate(h.date) })) + '</b></p><p>' + esc(t('hl_sent_sub')) + '</p></div></div>'
+        : '<p class="small muted">' + esc(t('hl_st_sub')) + '</p><button class="btn" data-act="ho-st" data-v="accepted" data-id="' + esc(r.id) + '" data-key="hl-done">' + ico('check', 20) + '<span>' + esc(t('hl_done')) + '</span></button>') + '</section>';
+    return { screen: 'S07', route: 'handover', bare: true, closeTo: backTo('home'), html:
+      '<div class="wiz-top"><a class="btn ghost" href="#check">' + ico('back', 20) + '<span>' + esc(t('back')) + '</span></a></div>' +
+      '<h1>' + esc(t('hl_title')) + '</h1><p>' + esc(t('hl_lead')) + '</p>' +
+      '<div class="cols"><div class="ho-values"><ul class="copy-list" data-key="handover-values">' + rows + '</ul></div>' +
+      '<div class="ho-steps"><div class="panel"><h2>' + esc(t('ho_steps_title')) + '</h2><ol class="steps"><li>' + esc(t('hl_s1')) + '</li><li>' + esc(t('hl_s2')) + '</li><li>' + esc(t('hl_s3')) + '</li></ol></div></div></div>' +
+      '<section class="panel where" data-key="where-heat-lite">' + localDest('heat', ld, '', '', sent) + '</section>' + st };
+  }
   function hoStatus(r) {
     var cur = /^(handed|accepted|rejected)$/.test(r.status) && !r.own ? r.status : '';
     var pop = HO_POP; HO_POP = '';
@@ -6042,7 +6081,7 @@
     if (d.viber) chans.push([d.viber, 'Viber', 'send', 'viber']);
     var body = vals || '';
     if (!org) body += '<p data-key="ld-unk">' + esc(t('ld_unk_' + k, { c: pl.name || '' })) + '</p><p><a class="btn sec" href="#place-' + esc(p.id || '') + '" data-act="prv-go" data-key="ld-fill">' + ico('edit', 18) + '<span>' + esc(t('prv_fill')) + '</span></a></p>';
-    else body += '<p class="small" data-key="ld-how">' + esc(how || t('ld_how_unk')) + '</p>';
+    else body += '<p class="small" data-key="ld-how">' + esc(how || t(k === 'heat' ? 'ld_how_heat' : 'ld_how_unk')) + '</p>';
     if (extra) body += extra;   // автовідправка (LocalBot) — після «як передати», перед кнопками каналів
     var more = (phones.length ? '<p class="dm-t">' + esc(t('ld_call')) + '</p><ul class="dm-ph">' + phones.map(function (x) { return '<li>' + telLink(x[0], x[1]) + (x[2] ? '<span class="muted">' + esc(x[2]) + '</span>' : '') + '</li>'; }).join('') + '</ul>' : '') +
       (pay ? '<p class="dm-t">' + esc(t('ld_pay_t')) + '</p><p>' + esc(pay) + '</p>' : '');
@@ -7935,7 +7974,7 @@
       }
       case 'ho-st': {   // «Передача в кабінет ХТМ»: На перевірці / Прийнято — лишаємось на цій сторінці
         var hr = RD().filter(function (x) { return x.id === el.getAttribute('data-id'); })[0], hv = el.getAttribute('data-v');
-        if (hr && (hr.status !== hv || hr.own)) { heatSetStatus(hr, hv); S.focusId = hr.id; HO_POP = hv; save(); toast(t('st_done', { s: t(hv === 'accepted' ? 'st_acc' : 'st_rev').toLowerCase() })); }
+        if (hr && (hr.status !== hv || hr.own)) { heatSetStatus(hr, hv); S.focusId = hr.id; HO_POP = hv; save(); toast(t('st_done', { s: t(heatLite() ? 'hl_done' : hv === 'accepted' ? 'st_acc' : 'st_rev').toLowerCase() })); }
         render(true); { var hf = document.querySelector('[data-key=ho-st-' + hv + ']'); if (hf) hf.focus(); } break;
       }
       case 'show-reject': { var f = document.getElementById('reject-form'); if (f) { f.style.display = ''; document.getElementById('rej-text').focus(); } break; }

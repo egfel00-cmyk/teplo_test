@@ -1869,6 +1869,13 @@ ok('довідник: усі громади й пункти є в КАТОТТГ
   $ins('navvidIOS01', 'nav_shift', 'place-main', ['g' => 312, 'ih' => 532, 'vh' => 844, 'ot' => 0]); $ins('navvidIOS01', 'nav_shift', 'home', ['g' => 290, 'ih' => 554, 'vh' => 844, 'ot' => 0]);
   $nsh = Journal::errSummary(1)['navShift'] ?? [];
   ok('/api/health → errs.navShift: поправка вкладок iOS спрацювала 2 рази в 1 браузері, зсув і висоти — без людей', ($nsh['n'] ?? 0) === 2 && $nsh['vids'] === 1 && $nsh['g'][0] === ['g' => 312, 'ih' => 532, 'vh' => 844, 'ot' => 0], $nsh);
+  // 126-а: камера (подія «cam») числами — разів, знімки, помилка доступу, розпізнавач не догрузився; за пристроями — середній і найдовший кадр
+  $ins('camvidIOS01', 'cam', 'heat', ['k' => 'heat', 'n' => 2, 'auto' => 1, 'fr' => 9, 's' => 20, 'ms' => 300, 'mx' => 700]); $ins('camvidIOS01', 'cam', 'heat', ['k' => 'heat', 'n' => 1, 'fr' => 4, 'ms' => 500, 'mx' => 900, 'eng' => '40%']);
+  $ins('camvidAND01', 'cam', 'water', ['k' => 'water', 'n' => 0, 'e' => 'denied']);
+  $cm = json_decode(json_encode(Journal::errSummary(1)['cam'] ?? []), true);
+  ok('/api/health → errs.cam: 3 рази в 2 браузерах, 3 знімки (1 авто), denied 1, розпізнавач не догрузився 1; за пристроями (без візиту — «?») — середній кадр 400 мс, найдовший 900',
+    ($cm['n'] ?? 0) === 3 && $cm['vids'] === 2 && $cm['shots'] === 3 && $cm['auto'] === 1 && ($cm['err']['denied'] ?? 0) === 1 && $cm['eng'] === 1
+    && array_filter($cm['dev'], fn($d) => $d['n'] === 3 && $d['vids'] === 2 && $d['ms'] === 400 && $d['mx'] === 900), $cm);
   Db::q("DELETE FROM events WHERE sid = 'errsum1'"); }
 echo "\nВыход:\n";
 $phone->req('POST', '/api/auth/logout');

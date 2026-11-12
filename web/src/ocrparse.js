@@ -10,8 +10,10 @@
   'use strict';
 
   var MODELS = [
-    ['sharky774', /SHARKY\s*7\s*7\s*4|SHARKY774/i], ['sharky775', /SHARKY\s*7\s*7\s*5|SONOMETER/i],
-    ['t330', /T\s?3\s?3\s?0|UH\s?30|ULTRAHEAT\s*T?3/i], ['t230', /T\s?2\s?3\s?0|UH\s?50/i], ['t330', /ULTRAHEAT/i],
+    ['sharky774', /SHARKY\s*7\s*7\s*4|SHARKY774/i], ['sonometer30', /SONO\s*METER\s*3\s*0\b/i], ['sharky775', /SHARKY\s*7\s*7\s*5|SONOMETER/i],
+    // 126-а: UH50 — це T550 (технічний опис L+G), не T230
+    ['t330', /T\s?3\s?3\s?0|UH\s?30|ULTRAHEAT\s*T?3/i], ['t550', /T\s?5\s?5\s?0|UH\s?50/i], ['t230', /T\s?2\s?3\s?0/i], ['t330', /ULTRAHEAT/i],
+    ['qalcosonic_e3', /QALCO\s*SONIC|QALCOSINIC/i], ['zelsius_c5', /ZELSIUS|\bC5[-\s]?(?:ISF|IUF|CMF)\b/i], ['sensonic2', /SENSONIC/i],
     ['multical302', /MULTICAL|KAMSTRUP/i], ['elf', /\bELF\b|LQM/i], ['sensostar', /SENSO\s*STAR/i],
     ['nik7071', /7\s?0\s?7\s?1|НІК|HIK\s*7/i], ['trust', /\bTRUST\b/i], ['sharky774', /SHARKY/i]
   ];
