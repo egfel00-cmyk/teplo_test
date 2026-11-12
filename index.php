@@ -30,6 +30,7 @@ if (str_starts_with($path, '/api/')) {
   require __DIR__ . '/app/telegram.php';
 require __DIR__ . '/app/mail.php';
   require __DIR__ . '/app/reminders.php';
+  require __DIR__ . '/app/widget.php';
   require __DIR__ . '/app/recognize.php';
   require __DIR__ . '/app/admin.php';
   require __DIR__ . '/app/vkcab.php';

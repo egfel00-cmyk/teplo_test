@@ -285,6 +285,7 @@ final class Reminders {
   public static function run(int $now): array {
     if (!Cfg::get('bot_token')) return [];
     $due = self::due($now); if (!$due) return [];
+    $today = (new DateTimeImmutable('@' . $now))->setTimezone(new DateTimeZone(self::TZ))->format('Y-m-d');
     $out = [];
     foreach (self::people() as $row) {
       $uid = (int)$row['user_id'];
@@ -292,20 +293,54 @@ final class Reminders {
       $st = json_decode((string)$row['data'], true);
       $ps = is_array($st) ? self::placesDue($st, $due['kind'], $due['ym']) : [];
       if (!$ps) continue;
-      $m = self::text($due['kind'], (string)($st['remind']['lang'] ?? 'uk'), $ps);
+      $m = self::text($due['kind'], (string)($st['remind']['lang'] ?? 'uk'), $ps, $today);
       // сначала отметка (второй запуск cron не пошлёт дубль), потом отправка и её итог
       Db::q('INSERT INTO reminders_sent (user_id, kind, ym, sent_at) VALUES (?, ?, ?, ?)', [$uid, $due['kind'], $due['ym'], Http::iso()]);
       try {
         // адреса сайта не узнали (нет app_url и вебхука) — шлём без кнопки: текст дойдёт, а кнопка на localhost Telegram отвергает
-        $msg = ['chat_id' => $row['external_id'], 'text' => $m['text']];
-        if (Cfg::appUrlKnown()) $msg['reply_markup'] = ['inline_keyboard' => array_map(fn($b) => [['text' => $b[0], 'web_app' => ['url' => $b[1]]]], $m['buttons'])];
-        $r = Telegram::call('sendMessage', $msg);
+        $kb = Cfg::appUrlKnown() ? ['inline_keyboard' => array_map(fn($b) => [['text' => $b[0], 'web_app' => ['url' => $b[1]]]], $m['buttons'])] : null;
+        $r = self::sendCard((string)$row['external_id'], $due['kind'], $due['ym'], (string)($st['remind']['lang'] ?? 'uk'), $ps, $m, $kb, $today);
       } catch (Throwable $e) { error_log('teplo remind: ' . $e->getMessage()); $r = []; }
       $s = self::status($r);
       if ($s === null) Db::q('DELETE FROM reminders_sent WHERE user_id = ? AND kind = ? AND ym = ?', [$uid, $due['kind'], $due['ym']]);   // сбой связи — через час ещё раз
       else Db::q('UPDATE reminders_sent SET status = ? WHERE user_id = ? AND kind = ? AND ym = ?', [$s, $uid, $due['kind'], $due['ym']]);
       $out[] = [$uid, $due['kind'], $s ?? 'retry'];
       if (!Telegram::$send) usleep(50000);   // Telegram: не больше ~30 сообщений в секунду
+    }
+    return $out;
+  }
+
+  /** Відправка нагадування: спершу карткою-віджетом (app/widget.php, Bot API 10.4), Telegram відмовив чи вимкнено — звичайним повідомленням. */
+  public static function sendCard(string $chat, string $kind, string $ym, string $lang, array $ps, array $m, ?array $kb, string $today): array {
+    if (Cfg::get('bot_widgets') && class_exists('BotWidget') && !BotWidget::$off) {
+      $d = BotWidget::data($kind, $ym, $lang, $ps, $today);
+      if ($d) {
+        try { $r = BotWidget::send($chat, $m, $d, $kb); } catch (Throwable $e) { $r = []; }
+        if ($r) { if (isset($r['result']['message_id'])) BotWidget::remember($chat, $r['result']['message_id'], $d); return $r; }
+      }
+    }
+    $msg = ['chat_id' => $chat, 'text' => $m['text']];
+    if ($kb) $msg['reply_markup'] = $kb;
+    return Telegram::call('sendMessage', $msg);
+  }
+
+  /** «Нагадати завтра» з картки: о 10:00 дня at — ще раз, якщо досі не внесли / не оплатили. → [[user_id, kind, status], …] */
+  public static function runSnooze(int $now): array {
+    if (!Cfg::get('bot_token')) return [];
+    $d = (new DateTimeImmutable('@' . $now))->setTimezone(new DateTimeZone(self::TZ));
+    if ((int)$d->format('G') < 10 || (int)$d->format('G') >= 20) return [];
+    $out = [];
+    foreach (Db::q('SELECT * FROM reminder_snooze WHERE at <= ?', [$d->format('Y-m-d')])->fetchAll() as $z) {
+      Db::q('DELETE FROM reminder_snooze WHERE user_id = ? AND kind = ? AND ym = ?', [$z['user_id'], $z['kind'], $z['ym']]);
+      $row = Db::one('SELECT data FROM user_state WHERE user_id = ?', [(int)$z['user_id']]);
+      $st = $row ? json_decode((string)$row['data'], true) : null; if (!is_array($st)) continue;
+      $ps = self::placesDue($st, (string)$z['kind'], (string)$z['ym'], $d->format('Y-m-d'));
+      if (!$ps) { $out[] = [(int)$z['user_id'], $z['kind'], 'done']; continue; }
+      $lang = (string)($st['remind']['lang'] ?? 'uk');
+      $m = self::text((string)$z['kind'], $lang, $ps, $d->format('Y-m-d'));
+      $kb = Cfg::appUrlKnown() ? ['inline_keyboard' => array_map(fn($b) => [['text' => $b[0], 'web_app' => ['url' => $b[1]]]], $m['buttons'])] : null;
+      try { $r = self::sendCard((string)$z['chat_id'], (string)$z['kind'], (string)$z['ym'], $lang, $ps, $m, $kb, $d->format('Y-m-d')); } catch (Throwable $e) { $r = []; }
+      $out[] = [(int)$z['user_id'], $z['kind'], self::status($r) ?? 'retry'];
     }
     return $out;
   }

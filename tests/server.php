@@ -6,6 +6,8 @@ require __DIR__ . '/../app/core.php';
 require __DIR__ . '/../app/telegram.php';
 require __DIR__ . '/../app/mail.php';
 require __DIR__ . '/../app/reminders.php';
+require __DIR__ . '/../app/widget.php';
+BotWidget::$off = true;   // старі перевірки нагадувань — звичайним повідомленням; картки — окремо (120-а)
 require __DIR__ . '/../app/recognize.php';
 require __DIR__ . '/../app/admin.php';
 require __DIR__ . '/../app/vkcab.php';
@@ -834,6 +836,49 @@ Telegram::$send = fn() => ['ok' => false, 'error_code' => 403, 'description' => 
 Reminders::run($kyiv('2026-12-21 11:17'));
 $bl = Db::q("SELECT status FROM reminders_sent WHERE kind = 'heat21' AND ym = '2026-12'")->fetchAll(PDO::FETCH_COLUMN);
 ok('не нажимал «Старт» — blocked, больше не пробуем', $bl && !array_diff($bl, ['blocked']), $bl);
+// 120-а: нагадування — карткою-віджетом (Bot API 10.4): «Оплатив» пише оплату в історію, «Нагадати завтра», свіжий стан при показі
+BotWidget::$off = false;
+ok('картка: код ≤ 4096 байт після zlib 9, без зовнішніх адрес', BotWidget::packed() < 4096 && !preg_match('~https?://~', BotWidget::HTML), BotWidget::packed());
+$x_wg = new Browser('10.0.13.21'); $x_wg->req('POST', '/api/auth/telegram/webapp', ['initData' => initData($TOKEN, ['id' => 7799, 'first_name' => 'Картка'])]);
+$x_wgS = ['places' => [['id' => 'main', 'address' => 'м. Харків, вул. Сумська, 10', 'waste' => ['on' => true, 'persons' => 3]]], 'readings' => [], 'remind' => ['lang' => 'uk']];
+$x_wg->req('PUT', '/api/state', ['state' => $x_wgS, 'baseVersion' => 0]);
+$sent = []; $x_mid = 500; Telegram::$send = function ($m, $p, $tok = null) use (&$sent, &$x_mid) { $sent[] = [$m, $p, ++$x_mid]; return ['ok' => true, 'result' => ['message_id' => $x_mid]]; };
+Reminders::run($kyiv('2026-12-10 10:17'));
+$x_wc = array_values(array_filter($sent, fn($x) => (string)($x[1]['chat_id'] ?? '') === '7799'));
+$x_wcd = json_decode((string)($x_wc[0][1]['chat_data'] ?? ''), true);
+ok('10.12: вивіз сміття — sendWidget: код, chat_data (листопад, ≈ 70,41 грн), підпис і кнопка застосунку під карткою', count($x_wc) === 1 && $x_wc[0][0] === 'sendWidget' && !empty($x_wc[0][1]['allow_queries'])
+  && ($x_wcd['k'] ?? '') === 'waste10' && ($x_wcd['ym'] ?? '') === '2026-11' && ($x_wcd['p'][0]['v'] ?? '') === '≈ 70,41 грн' && ($x_wcd['e'] ?? '') === '2026-12-20'
+  && str_contains((string)$x_wc[0][1]['caption'], 'Вивіз сміття за листопад') && str_contains((string)($x_wc[0][1]['reply_markup']['inline_keyboard'][0][0]['web_app']['url'] ?? ''), '?go=waste'), $x_wc);
+BotWidget::$now = $kyiv('2026-12-10 11:20');
+$x_wq = function (string $data, int $msg) { return Api::handle(new Req('POST', '/api/bot/webhook', ['REMOTE_ADDR' => '149.154.167.1', 'HTTP_X_TELEGRAM_BOT_API_SECRET_TOKEN' => 'hook-secret'], [],
+  json_encode(['update_id' => 9, 'widget_query' => ['id' => 'q' . $data, 'from' => ['id' => 7799, 'first_name' => 'Картка'], 'chat' => ['id' => 7799, 'type' => 'private'], 'message_id' => $msg, 'data' => $data]]))); };
+$sent = []; $x_wq('paid:0', $x_wc[0][2]);
+$x_wa = array_values(array_filter($sent, fn($x) => $x[0] === 'answerWidgetQuery')); $x_wad = json_decode((string)($x_wa[0][1]['data'] ?? ''), true);
+$x_wst = json_decode((string)Db::one("SELECT s.data FROM user_state s JOIN user_identities i ON i.user_id = s.user_id WHERE i.external_id = '7799'")['data'], true);
+$x_wpay = $x_wst['places'][0]['waste']['pays'][0] ?? [];
+ok('«Оплатив» — оплата за листопад 70,41 у стані (src bot), картка «✓ Оплачено», стан збережено в повідомленні', ($x_wad['p'][0]['d'] ?? 0) === 1 && str_starts_with((string)($x_wad['p'][0]['x'] ?? ''), 'Оплачено')
+  && ($x_wpay['ym'] ?? '') === '2026-11' && ($x_wpay['amount'] ?? null) == 70.41 && ($x_wpay['src'] ?? '') === 'bot' && count(array_filter($sent, fn($x) => $x[0] === 'editMessageWidgetData')) === 1, [$sent, $x_wpay]);
+$sent = []; $x_wq('paid:0', $x_wc[0][2]);
+ok('другий дотик «Оплатив» — без другої оплати', count($x_wst['places'][0]['waste']['pays']) === 1 && count(json_decode((string)Db::one("SELECT s.data FROM user_state s JOIN user_identities i ON i.user_id = s.user_id WHERE i.external_id = '7799'")['data'], true)['places'][0]['waste']['pays']) === 1);
+// нагадати завтра: ще не оплатили (друга людина) → завтра о 10:17 картка ще раз; оплатили — мовчимо
+$x_wg2 = new Browser('10.0.13.22'); $x_wg2->req('POST', '/api/auth/telegram/webapp', ['initData' => initData($TOKEN, ['id' => 7800, 'first_name' => 'Завтра'])]);
+$x_wg2->req('PUT', '/api/state', ['state' => $x_wgS, 'baseVersion' => 0]);
+Db::q("DELETE FROM reminders_sent WHERE kind = 'waste10'"); $sent = []; Reminders::run($kyiv('2026-12-10 11:17'));
+$x_w2 = array_values(array_filter($sent, fn($x) => (string)($x[1]['chat_id'] ?? '') === '7800'));
+$sent = []; Api::handle(new Req('POST', '/api/bot/webhook', ['REMOTE_ADDR' => '149.154.167.1', 'HTTP_X_TELEGRAM_BOT_API_SECRET_TOKEN' => 'hook-secret'], [],
+  json_encode(['update_id' => 10, 'widget_query' => ['id' => 'qz', 'from' => ['id' => 7800], 'chat' => ['id' => 7800, 'type' => 'private'], 'message_id' => $x_w2[0][2] ?? 0, 'data' => 'later']])));
+$x_wzd = json_decode((string)(array_values(array_filter($sent, fn($x) => $x[0] === 'answerWidgetQuery'))[0][1]['data'] ?? ''), true);
+$sent = []; $x_sz0 = Reminders::runSnooze($kyiv('2026-12-10 18:17')); $x_sz1 = Reminders::runSnooze($kyiv('2026-12-11 10:17'));
+ok('«Нагадати завтра» — «Нагадаю 11.12 о 10:00»; того ж дня — ні, 11.12 о 10:17 — картка ще раз, потім запис прибрано',
+  str_starts_with((string)($x_wzd['z'] ?? ''), '11.12') && $x_sz0 === [] && count($x_sz1) === 1 && ($x_sz1[0][2] ?? '') === 'ok' && ($sent[0][0] ?? '') === 'sendWidget' && Db::one('SELECT COUNT(*) n FROM reminder_snooze')['n'] == 0, [$x_wzd, $x_sz1, $sent]);
+// Telegram відмовив у картці — звичайне повідомлення
+Db::q("DELETE FROM reminders_sent WHERE kind = 'waste10'"); $sent = [];
+Telegram::$send = function ($m, $p, $tok = null) use (&$sent) { $sent[] = [$m, $p]; return $m === 'sendWidget' ? ['ok' => false, 'description' => 'Bad Request: method not found'] : ['ok' => true, 'result' => ['message_id' => 1]]; };
+Reminders::run($kyiv('2026-12-10 12:17'));
+$x_wf = array_values(array_filter($sent, fn($x) => (string)($x[1]['chat_id'] ?? '') === '7800'));
+ok('sendWidget не пройшов — те саме нагадування звичайним повідомленням', count($x_wf) === 2 && $x_wf[1][0] === 'sendMessage' && str_contains((string)$x_wf[1][1]['text'], 'Вивіз сміття'), $x_wf);
+ok('вебхук приймає widget_query (перелік оновлень, HOOK_V)', in_array('widget_query', Telegram::UPDATES, true) && Telegram::HOOK_V >= 2);
+BotWidget::$off = true; BotWidget::$now = null;
 Telegram::$send = null;
 Cfg::set(['app_url' => 'https://teplo.example/', 'bot_token' => $TOKEN, 'webhook_secret' => 'hook-secret', 'admins' => ['emails' => ['boss@example.ua']]]);
 $boss = new Browser('10.0.13.9'); $boss->req('POST', '/api/auth/login', ['email' => 'boss@example.ua', 'password' => 'boss pass 123']);

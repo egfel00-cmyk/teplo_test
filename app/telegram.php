@@ -67,7 +67,7 @@ final class Telegram {
   /** Подключить бота к сайту: вебхук, кнопка меню (открывает Mini App), команда /start. */
   public static function setup(): array {
     $url = Cfg::appUrl(); $out = [];
-    $out['setWebhook'] = self::call('setWebhook', ['url' => $url . 'api/bot/webhook', 'secret_token' => (string)Cfg::get('webhook_secret'), 'allowed_updates' => ['message'], 'drop_pending_updates' => true]);
+    $out['setWebhook'] = self::call('setWebhook', ['url' => $url . 'api/bot/webhook', 'secret_token' => (string)Cfg::get('webhook_secret'), 'allowed_updates' => self::UPDATES, 'drop_pending_updates' => true]);
     $out += self::menuSetup();
     $errs = []; foreach ($out as $k => $x) if (empty($x['ok'])) $errs[] = $k . ': ' . ($x['description'] ?? 'нет ответа');
     return ['ok' => !$errs, 'appUrl' => $url, 'telegram' => array_map(fn($x) => !empty($x['ok']), $out), 'errors' => $errs];
@@ -77,6 +77,13 @@ final class Telegram {
    *  російськомовним ставимо «Открыть» у їхньому чаті (handleUpdate). cron викликає раз на MENU_V (Cron: botMenuV).
    *  MENU_V 3 (84-я): ще й опис бота і «Про бота» — about(). */
   const MENU_V = 3;
+  /** Які оновлення приймає вебхук. HOOK_V — версія цього переліку: cron перевстановлює вебхук раз на версію (без drop_pending). */
+  const UPDATES = ['message', 'widget_query'];
+  const HOOK_V = 2;
+  public static function hookUpdate(): array {
+    $url = Cfg::appUrl() . 'api/bot/webhook';
+    return self::call('setWebhook', ['url' => $url, 'secret_token' => (string)Cfg::get('webhook_secret'), 'allowed_updates' => self::UPDATES]);
+  }
   public static function menuText(string $lang): string { return $lang === 'ru' ? 'Открыть' : 'Відкрити'; }
 
   /** Опис бота (порожній чат — «Що вміє цей бот?», до 512 знаків) і «Про бота» в профілі (до 120). Раніше стояв текст старого бота
@@ -372,6 +379,7 @@ final class Telegram {
   }
 
   public static function handleUpdate(array $u): ?array {
+    if (isset($u['widget_query']) && is_array($u['widget_query'])) return class_exists('BotWidget') ? BotWidget::query($u['widget_query']) : null;
     $msg = $u['message'] ?? null; if (!$msg || empty($msg['chat']['id'])) return null;
     // человек написал боту в личку — бот теперь может ему писать (плашка «натисніть Старт» уходит)
     if (($msg['chat']['type'] ?? '') === 'private' && !empty($msg['from']['id'])) self::markBotOk((string)$msg['from']['id']);

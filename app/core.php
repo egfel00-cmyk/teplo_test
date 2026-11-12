@@ -18,6 +18,7 @@ final class Cfg {
       'db' => null,               // ['host','name','user','pass'] или ['dsn' => 'sqlite:…'] для локального запуска
       'app_url' => null,          // по умолчанию — https://<хост><SITE_BASE>/
       'bot_token' => '', 'bot_username' => '', 'webhook_secret' => '',
+      'bot_widgets' => true,      // нагадування в особистому чаті — інтерактивною карткою (Bot API 10.4, app/widget.php); false — звичайним повідомленням
       'anthropic_api_key' => '', 'anthropic_model' => 'claude-sonnet-5-5',
       // почта (app/mail.php): SMTP внешнего сервиса по 587 — Hetzner закрывает 25 и 465; задаётся в /admin → «Настройки» → «Пошта»
       'smtp_host' => '', 'smtp_port' => '587', 'smtp_user' => '', 'smtp_pass' => '', 'smtp_from' => '', 'smtp_from_name' => '', 'mail_admin_to' => '', 'mail_digest' => '',
@@ -186,6 +187,8 @@ final class Db {
       "CREATE TABLE IF NOT EXISTS bot_inbox (photo_id CHAR(24) PRIMARY KEY, user_id INT NOT NULL, taken_at INT NOT NULL, done TINYINT NOT NULL DEFAULT 0, created_at VARCHAR(25) NOT NULL)$tail",
       // напоминания ботом: какое уже отправлено в этом месяце (не чаще раза)
       "CREATE TABLE IF NOT EXISTS reminders_sent (user_id INT NOT NULL, kind VARCHAR(16) NOT NULL, ym CHAR(7) NOT NULL, sent_at VARCHAR(25) NOT NULL, PRIMARY KEY (user_id, kind, ym))$tail",
+      "CREATE TABLE IF NOT EXISTS reminder_snooze (user_id INT NOT NULL, kind VARCHAR(16) NOT NULL, ym CHAR(7) NOT NULL, at CHAR(10) NOT NULL, chat_id VARCHAR(32) NOT NULL, PRIMARY KEY (user_id, kind, ym))$tail",
+      "CREATE TABLE IF NOT EXISTS widget_msgs (chat_id VARCHAR(32) NOT NULL, message_id BIGINT NOT NULL, data TEXT NOT NULL, at VARCHAR(25) NOT NULL, PRIMARY KEY (chat_id, message_id))$tail",
       // с чего работают: телефон / планшет / компьютер (одна строка на браузер в сутки, app/visits.php)
       "CREATE TABLE IF NOT EXISTS visits (day CHAR(10) NOT NULL, vid VARCHAR(24) NOT NULL, user_id INT NULL, device VARCHAR(8) NOT NULL, os VARCHAR(10) NOT NULL, tg TINYINT NOT NULL DEFAULT 0, pwa TINYINT NOT NULL DEFAULT 0, sw SMALLINT NULL, hits INT NOT NULL DEFAULT 1, first_at VARCHAR(25) NOT NULL, last_at VARCHAR(25) NOT NULL, PRIMARY KEY (day, vid))$tail",
       "CREATE TABLE IF NOT EXISTS recog_reports (id $ai, user_id INT NOT NULL, photo_ids TEXT NULL, kind VARCHAR(16) NOT NULL, ok TINYINT NOT NULL DEFAULT 0, text TEXT NOT NULL, data TEXT NULL, created_at VARCHAR(25) NOT NULL)$tail",

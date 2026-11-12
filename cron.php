@@ -9,6 +9,7 @@ require __DIR__ . '/app/core.php';
 require __DIR__ . '/app/telegram.php';
 require __DIR__ . '/app/mail.php';
 require __DIR__ . '/app/reminders.php';
+require __DIR__ . '/app/widget.php';
 require __DIR__ . '/app/recognize.php';
 require __DIR__ . '/app/api.php';
 require __DIR__ . '/app/admin.php';
@@ -74,6 +75,10 @@ if ((int)gmdate('i') % 10 === 5) {
 if (Cfg::get('bot_token') && Cfg::appUrlKnown() && (int)($beat['botMenuV'] ?? 0) !== Telegram::MENU_V) {
   try { $mo = Telegram::menuSetup(); if (!empty($mo['setChatMenuButton']['ok'])) $beat['botMenuV'] = Telegram::MENU_V; } catch (Throwable $e) { error_log('teplo bot menu: ' . $e->getMessage()); }
 }
+// вебхук — раз на версію переліку оновлень (Telegram::HOOK_V): з 10.4 ще й widget_query (дотики в картках-нагадуваннях)
+if (Cfg::get('bot_token') && Cfg::appUrlKnown() && (string)Cfg::get('webhook_secret') !== '' && (int)($beat['hookV'] ?? 0) !== Telegram::HOOK_V) {
+  try { $hk = Telegram::hookUpdate(); if (!empty($hk['ok'])) $beat['hookV'] = Telegram::HOOK_V; } catch (Throwable $e) { error_log('teplo bot hook: ' . $e->getMessage()); }
+}
 if ((int)gmdate('i') !== 17) { Cron::write($beat); exit; }
 // app — какой адрес сайта cron (CLI, без HTTP_HOST) подставит в кнопки Telegram: проверка из /api/health, что не localhost (elec2 02.11.2026)
 $h = ['at' => gmdate('c'), 'app' => (string)parse_url(Cfg::appUrl(), PHP_URL_HOST)];
@@ -93,6 +98,9 @@ try {
     echo gmdate('c') . ' напоминаний: ' . count($s) . "\n";
   }
 } catch (Throwable $e) { $h['remindError'] = mb_substr($e->getMessage(), 0, 200); error_log('teplo remind: ' . $e->getMessage()); }
+// «Нагадати завтра» з картки-нагадування (app/widget.php)
+try { $sz = Reminders::runSnooze(time()); if ($sz) $h['snooze'] = array_count_values(array_map(fn($x) => $x[1] . ' ' . (str_starts_with($x[2], 'error') ? 'error' : $x[2]), $sz)); }
+catch (Throwable $e) { error_log('teplo snooze: ' . $e->getMessage()); }
 // почта (81-я): нагадування на e-mail — тем, у кого нет Telegram или Telegram не дошёл; сводка владельцу — в 8-м часу по Киеву (app/mail.php)
 try {
   $sm = Reminders::runMail(time());
