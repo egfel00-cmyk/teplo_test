@@ -2519,6 +2519,28 @@ $a = $wq('p:n'); $ad = json_decode((string)($a['data'] ?? ''), true);
 ok('опитування «усе зрозуміло?» — відповідь у картці й у /admin (recog_reports card_poll)', ($ad['p'] ?? '') === 'n' && Db::one("SELECT ok FROM recog_reports WHERE kind = 'card_poll' AND user_id = ?", [$cu])['ok'] === 0 || (int)(Db::one("SELECT ok FROM recog_reports WHERE kind = 'card_poll' AND user_id = ?", [$cu])['ok'] ?? 1) === 0, $ad);
 $sent = []; $hook($cpm(time() - 5)); $cw2 = array_values(array_filter($sent, fn($x) => $x[0] === 'sendWidget'));
 ok('нове фото після відправленої картки — нова картка', count($cw2) === 1, $sent);
+// 122-а: «перевірте» → людина виправила й зберегла в застосунку → картка: збережене й «Відправити»; місцевий КП (LocalBot) — у плані картки; лист КП — «Лист надіслано»
+$cid2 = (int)(Db::one("SELECT id FROM bot_cards WHERE chat_id = '9101' ORDER BY id DESC LIMIT 1")['id'] ?? 0);
+$r = $cb->req('POST', '/api/bot/card', ['card' => $cid2, 'items' => [['k' => 'water', 't' => 'Вода', 'v' => '', 'w' => 'КП', 'ok' => 0, 'm' => 'Деякі цифри треба перевірити']]]);
+ok('не прочитано — картка «перевірте», «Відправити» нема', $r->status === 200 && ($r->body['stage'] ?? '') === 'fix' && empty(json_decode(BotCard::get($cid2)['data'], true)['r'][0]['a']), $r->body);
+(new ReflectionMethod('LocalBot', 'save'))->invoke(null, $cu, 'mtve', 'pl9', ['acc' => '74-108-61'], []);
+LocalBot::$forceOn = true;
+$lbi = [['value' => '456', 'serial' => '1234567', 'kind' => 'cold', 'name' => 'Холодна']];
+$r = $cb->req('POST', '/api/bot/card', ['card' => $cid2, 'items' => [['k' => 'water', 't' => 'Вода', 'v' => '456 м³', 'w' => 'КП «Водоканал»', 'ok' => 1, 'plan' => ['svc' => 'lb', 'in' => ['bot' => 'mtve', 'place' => 'pl9', 'rid' => 'wc9', 'items' => $lbi]]]]]);
+$c2 = BotCard::get($cid2); $c2d = json_decode($c2['data'], true);
+ok('зберіг у застосунку після «перевірте» — картка «готово»: збережені цифри, «Відправити» (місцевий КП)', $r->status === 200 && $c2['stage'] === 'ready' && ($c2d['r'][0]['a'] ?? 0) === 1 && ($c2d['r'][0]['v'] ?? '') === '456 м³', $c2d);
+$cmid2 = (int)$c2['message_id'];
+$wq2 = fn($data) => BotWidget::query(['id' => 'q' . mt_rand(), 'data' => $data, 'from' => ['id' => 9101], 'chat' => ['id' => 9101], 'message_id' => $cmid2]);
+$sent = []; $a = $wq2('send'); $ad = json_decode((string)($a['data'] ?? ''), true);
+$lj = Db::one("SELECT * FROM cab_jobs WHERE prov = 'Lmtve' AND user_id = ? ORDER BY id DESC LIMIT 1", [$cu]); $ljp = json_decode((string)($lj['payload'] ?? ''), true);
+ok('«Відправити» → бот місцевого КП у черзі з карткою (застосунок зв’яже запис); окремого «надішлемо о…» нема', ($ad['s'] ?? '') === 'sent' && ($ad['r'][0]['s'] ?? '') === 'q' && $lj && ($ljp['card'] ?? 0) === $cid2 && ($ljp['rid'] ?? '') === 'wc9'
+  && !array_filter($sent, fn($x) => $x[0] === 'sendMessage') && (LocalBot::pubJob($lj)['card'] ?? null) === $cid2, [$ad, $lj, $sent]);
+Db::q("UPDATE cab_jobs SET status = 'sent', result = ? WHERE id = ?", [json_encode(['text' => 'Лист надіслано', 'doneAt' => time()]), $lj['id']]);
+$sent = []; $cc2 = BotCard::cron(); $a = $wq2('st'); $ad = json_decode((string)($a['data'] ?? ''), true);
+ok('лист КП надіслано — cron: у картці «Лист надіслано» (кінець), «у фоні» не пропонуємо', in_array($cid2, $cc2, true) && ($ad['r'][0]['s'] ?? '') === 'ms' && ($ad['o'] ?? null) === '', [$cc2, $ad]);
+LocalBot::$forceOn = false;
+$hs = BotCard::summary();
+ok('/api/health → botCards: картки за 30 днів по стадіях, позначки рядків, опитування — лише числа', ($hs['n30'] ?? 0) >= 2 && ($hs['stage']->sent ?? 0) >= 2 && isset($hs['marks']->ms) && ($hs['poll']->n ?? 0) >= 1 && !str_contains(json_encode($hs), '9101'), $hs);
 // відповідь на відгук (121-а): власник відповідає в /admin → людині картка в Telegram; «Ще питання» — відгук знову «новий»
 ok('картка відповіді: код ≤ 4096 байт після zlib 9, без зовнішніх адрес', Feedback::packed() < 4096 && !preg_match('~https?://~', Feedback::HTML), Feedback::packed());
 $cb->req('POST', '/api/feedback', ['text' => 'Не зрозумів, куди натиснути, щоб відправити воду', 'lang' => 'uk', 'page' => '#water-cold']);

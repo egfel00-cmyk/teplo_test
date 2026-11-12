@@ -1631,14 +1631,13 @@
   }, true);
   function cabsSub() { var n = (hcOn() && hcConn() ? 1 : 0) + (vjAutoOn() ? 1 : 0); return n ? t('pc_sub_on', { n: n }) : t('pg_cabs_s'); }
   /** Фото водомірів із бота при автовідправці: чому НЕ надсилаємо самі — або null. Лише холодна, усе прочитано впевнено, без зауважень перевірки. */
-  function wnAutoWhy() {
-    var g = vkcGate(); if (g !== 'ok') return g === '' ? 'site' : 'acc';
-    if (!Wt.vkWindow(today()).open) return 'closed';
+  function wnAutoWhy(loc) {
+    if (!loc) { var g = vkcGate(); if (g !== 'ok') return g === '' ? 'site' : 'acc'; if (!Wt.vkWindow(today()).open) return 'closed'; }   // loc — місцевий КП (LocalBot): своє вікно, свої водоміри
     if ((WN.unused || []).length) return 'unused';
     var mids = Object.keys(WN.src).filter(function (k) { return WN.src[k] && WN.src[k].value !== null && WN.src[k].value !== undefined; });
     if (!mids.length) return 'none';
     var byId = {}; wmeters().forEach(function (m) { byId[m.id] = m; });
-    if (mids.some(function (k) { return !byId[k] || byId[k].kind !== 'cold'; })) return 'hot';
+    if (mids.some(function (k) { return !byId[k] || (!loc && byId[k].kind !== 'cold'); })) return 'hot';
     if (Object.keys(WN.src).some(function (k) { var x = WN.src[k]; return !x.sure || x.half || x.guess || x.lead || x.partial || x.value === null; })) return 'unsure';
     var iss = wnCheck(false);
     if (mids.some(function (k) { return (iss[k] || []).some(function (x) { return x.level === 'block' || x.level === 'warn'; }); })) return 'check';
@@ -2529,7 +2528,38 @@
     Y().api('POST', '/bot/card', { card: +CARD.id, items: [Object.assign({ ok: 1, job: { svc: svc, id: job.id } }, row)], lang: S.lang }).catch(function () {});
   }
   /** Не все прочитано чи перевірка з зауваженнями — картці: «перевірте в застосунку»; людина вже тут. */
-  function cardFix(msg, row) { cardPost([Object.assign({ k: 'photo', t: t('bc_photo'), v: '', w: '', ok: 0 }, row || {}, { m: msg || t('bc_none') })], false); }
+  function cardFix(msg, row) { if (!CARD.posted) CARD.fix = 1; cardPost([Object.assign({ k: 'photo', t: t('bc_photo'), v: '', w: '', ok: 0 }, row || {}, { m: msg || t('bc_none') })], false); }
+  /** Після «перевірте» людина виправила й зберегла тут, не відправляючи (122-а): картка в чаті — збережені цифри й, якщо можна, «Відправити». */
+  function cardSaved(k, rec) {
+    if (!CARD.id || !CARD.fix || CARD.job || !rec || !window.TEPLO_API) return;
+    CARD.fix = 0; rec.card = +CARD.id;
+    var it = k === 'heat' ? cardHeatRow(rec) : cardWaterRow(rec);
+    Y().api('POST', '/bot/card', { card: +CARD.id, items: [it], lang: S.lang }).catch(function () { CARD.fix = 1; });
+  }
+  /** Тепло, збережене після виправлення: «перевірено» без зауважень і кабінет ХТМ готовий — план для робота; ні — чому (передати в застосунку). */
+  function cardHeatRow(rd) {
+    var row = { k: 'heat', t: t('bc_heat'), v: rd.htm && rd.htm.energy ? camNum(rd.htm.energy) + ' ' + unitLbl(energyUnit()) : '', w: 'ХТМ', ok: 1 };
+    var acc = hcAcc(rd), c = S.contacts || {}, phone = c.phone || (HC.st && HC.st.phone) || '', p = place(rd.place) || place(), m = p && p.id === S.placeId ? S.meter : p && p.meter;
+    var heatPl = places().filter(function (x) { var mm = x.id === S.placeId ? S.meter : x.meter; return mm && !mm.removed; });
+    var why = rd.status !== 'checked' || rd.verdict === 'block' ? 'bc_saved' :   // зауваження людина бачила й зберегла «перевірено» — як «Передати однаково» windowClosed() ? 'ha_why_closed' : !hcConn() ? 'bc_why_cab' :
+      !acc || (heatPl.length > 1 && acc.acc !== String((m && m.account) || '').replace(/\D/g, '')) ? 'bc_why_acc' : !phone ? 'bc_why_phone' : '';
+    if (why) return Object.assign(row, { m: t(why) });
+    var vals = {}; R.FIELDS.forEach(function (f) { vals[f.key] = R.formatForHtm(f.key, rd.htm[f.key]); });
+    return Object.assign(row, { m: '', plan: { svc: 'htm', in: { acc: acc.acc, rid: rd.id, place: rd.place || S.placeId, vals: vals, phone: phone, email: c.email || '' } } });
+  }
+  /** Вода, збережена після виправлення: Харківводоканал (холодна, рахунок, вікно) чи місцевий КП з ботом — план; ні — чому. */
+  function cardWaterRow(rec) {
+    var ms = wmeters().filter(function (m) { return hasVal(rec, m.id); }), lb = cardLb();
+    var row = { k: 'water', t: t('bc_water'), w: lb ? lb.d.org || '' : t('bc_vk'), ok: 1, m: '',
+      v: ms.map(function (m) { return (ms.length > 1 ? wname(m).toLowerCase() + ' ' : '') + camNum(Wt.whole(rec.vals[m.id])); }).join(' · ') + (ms.length ? ' м³' : '') };
+    if (!ms.length) return Object.assign(row, { ok: 0, m: t('bc_none') });
+    if (lb) { var lp = cardLbPlan(lb, rec); return Object.assign(row, { m: lp.m || '', plan: lp.plan || null }); }
+    var g = vkcGate();
+    if (g !== 'ok') return Object.assign(row, { m: t(g === '' ? 'bc_why_w_site' : 'bc_why_w_acc') });
+    if (!Wt.vkWindow(today()).open || ms.some(function (m) { return m.kind !== 'cold'; })) return Object.assign(row, { m: t('bc_manual') });
+    var c = wcfg();
+    return Object.assign(row, { plan: { svc: 'vk', in: { acc: c.account || '', fam: c.surname || '', rid: rec.id, place: rec.place || S.placeId, items: vjItems(rec) } } });
+  }
   function cardHeatSoon(n) {
     if (HC.loading && n < 25) { setTimeout(function () { cardHeatSoon(n + 1); }, 200); return; }
     if (!cardHeat()) { PHS.save(false); render(true); }
@@ -2553,22 +2583,40 @@
       plan: soft ? null : { svc: 'htm', in: { acc: acc ? acc.acc : '', rid: rd.id, place: rd.place || S.placeId, vals: vals, phone: c.phone || (HC.st && HC.st.phone) || '', email: c.email || '' } } })], true);
     go('home'); return true;
   }
+  /** Вода квартири не в Харкові — місцевий КП з ботом (LocalBot, via у довіднику): {d, bot, pl, st} або null. */
+  function cardLb() {
+    var ld = prvOf('water'); if (!ld || !ld.via || ld.via === 'hvk' || ld.via === 'htm') return null;
+    var pl = (place() || {}).id || S.placeId || '';
+    return { d: ld, bot: ld.via, pl: pl, st: LB.st[lbKey(ld.via, pl)] };
+  }
+  /** План картки для місцевого КП: підключено й бот готовий → {plan}; ні — {m: що зробити в застосунку}. */
+  function cardLbPlan(lb, rec) {
+    var st = lb.st, org = lb.d.org || '', items = lbItems(rec);
+    if (!hcOn() || !st || st.none || !st.bot || !st.bot.ready) return { m: t('bc_manual') };
+    if (!st.conn) return { m: t('bc_why_lb', { org: org }) };
+    if ((st.bot.serial && items.some(function (x) { return !x.serial; })) || (st.bot.one && items.length !== 1)) return { m: t('bc_manual') };
+    return { plan: { svc: 'lb', in: { bot: lb.bot, place: lb.pl, rid: rec.id, items: items } } };
+  }
   function cardWaterSoon(w, n) {
     if (WN !== w || CARD.posted) return;
-    if ((!VJ.st || !VKS.data) && n < 25) { vjLoad(); vksLoad(); setTimeout(function () { cardWaterSoon(w, n + 1); }, 200); return; }
-    cardWater();
+    var p = place(), pj = p && String(p.address || '').trim() ? prvLoad(p) : null, lb = pj && !pj.busy ? cardLb() : null;
+    if (lb && hcOn()) lbLoad(lb.bot, lb.pl);
+    var wait = (pj && pj.busy) || (lb ? hcOn() && !lb.st : !VJ.st || !VKS.data);
+    if (wait && n < 25) { if (!lb) { vjLoad(); vksLoad(); } setTimeout(function () { cardWaterSoon(w, n + 1); }, 200); return; }
+    cardWater(lb);
   }
   /** Вода: прочитано впевнено й без зауважень — запис + план для робота Водоканалу (холодна, як автовідправка); ні — «перевірте». */
-  function cardWater() {
+  function cardWater(lb) {
     var byId = {}; wmeters().forEach(function (m) { byId[m.id] = m; });
     var mids = Object.keys(WN.src).filter(function (k) { return byId[k] && WN.src[k] && WN.src[k].value !== null && WN.src[k].value !== undefined; });
-    var row = { k: 'water', t: t('bc_water'), w: t('bc_vk'), v: mids.map(function (k) { return (mids.length > 1 ? wname(byId[k]).toLowerCase() + ' ' : '') + camNum(WN.vals[k] || ''); }).join(' · ') + (mids.length ? ' м³' : '') };
+    var row = { k: 'water', t: t('bc_water'), w: lb ? lb.d.org || '' : t('bc_vk'), v: mids.map(function (k) { return (mids.length > 1 ? wname(byId[k]).toLowerCase() + ' ' : '') + camNum(WN.vals[k] || ''); }).join(' · ') + (mids.length ? ' м³' : '') };
     if (!mids.length) { cardFix(t('bc_none'), row); return; }
-    var why = wnAutoWhy(), soft = why === 'site' || why === 'acc';
+    var why = wnAutoWhy(!!lb), soft = why === 'site' || why === 'acc';
     if (why && !soft) { cardFix(t('bc_fix'), row); return; }
     var vals = {}; mids.forEach(function (k) { var x = Wt.norm(WN.vals[k]); if (x !== null) vals[k] = x; });
     WN.kind = 'cold'; WN.back = 'home'; var rec = wnStore(vals, false); if (!rec) return;
     rec.card = +CARD.id; save();
+    if (lb) { var lp = cardLbPlan(lb, rec); cardPost([Object.assign(row, { ok: 1, m: lp.m || '', plan: lp.plan || null })], true); return; }   // місцевий КП (122-а)
     var c = wcfg();
     cardPost([Object.assign(row, { ok: 1, m: soft ? t('bc_why_w_' + why) : '', plan: soft ? null : { svc: 'vk', in: { acc: c.account || '', fam: c.surname || '', rid: rec.id, place: rec.place || S.placeId, items: vjItems(rec) } } })], true);
   }
@@ -3097,7 +3145,7 @@
     var rec = same;
     if (same) { same.vals = Object.assign({}, same.vals, vals); if (refs.length) same.photos = (same.photos || []).concat(refs); if (own) same.own = true; same.updatedAt = Date.now(); }
     else S.water.push(rec = Object.assign({ id: Wt.uid(), place: S.placeId, date: date, vals: vals, createdAt: now, updatedAt: Date.now(), sent: {} }, refs.length ? { photos: refs } : {}, own ? { own: true } : {}));
-    wbillAdopt(rec);
+    wbillAdopt(rec); cardSaved('water', rec);   // після «перевірте» з картки в чаті (122-а)
     if (!S.onboarded) S.onboarded = true;
     if (WN.inbox && WN.inbox.length && window.TEPLO_API) { var ib = WN.inbox; INBOX.items = (INBOX.items || []).filter(function (x) { return ib.indexOf(x.id) < 0; }); api0('/inbox/done', { method: 'POST', body: JSON.stringify({ ids: ib }) }).catch(function () {}); }
     var k = WN.kind, back = WN.back; WN = wnFresh(k);
@@ -5751,6 +5799,7 @@
   function lbApply(st) {
     var ch = false, all = (S.water || []).concat(S.mrecs || []);
     ((st && st.jobs) || []).forEach(function (j) {
+      if (j.card) all.forEach(function (w) { if (w && !w.deleted && !w.lbJob && w.card === j.card && w.id === j.rid) { w.lbJob = { job: j.id }; ch = true; } });   // «Відправити» в картці чату (122-а)
       all.filter(function (w) { return w && !w.deleted && w.lbJob && w.lbJob.job === j.id; }).forEach(function (w) {
         var c = { job: j.id, bot: j.bot, at: j.at, status: j.status, nextAt: j.nextAt || null, text: String(j.text || '').slice(0, 300), human: j.human ? String(j.human).slice(0, 300) : null };
         if (JSON.stringify(c) !== JSON.stringify(w.lbJob)) { w.lbJob = c; w.updatedAt = Date.now(); ch = true; }
@@ -7585,8 +7634,9 @@
       verdict: res.verdict, codes: res.items.map(function (x) { return x.code; }),
       derived: Object.assign({}, res.derived, S.baseline ? { days: R.daysBetween(S.baseline.date, htm.date) } : {}) };
     if (S.draft.photos && S.draft.photos.length) rd.photos = S.draft.photos.slice();
-    S.readings.push(rd); hbillAdopt(rd); S.draft = null; S.focusId = rd.id; save();
-    return rd;
+    S.readings.push(rd); hbillAdopt(rd); S.draft = null; S.focusId = rd.id;
+    cardSaved('heat', rd);   // відкрито з картки в чаті й там «перевірте» — картці збережене (122-а)
+    save(); return rd;
   }
 
   document.addEventListener('click', function (e) {

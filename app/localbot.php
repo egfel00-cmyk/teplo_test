@@ -335,6 +335,7 @@ final class LocalBot {
     if (!empty($b['one']) && count($items) !== 1) throw self::err('one');
     if (!empty($b['serial'])) foreach ($items as $x) if (($x['serial'] ?? null) === null) throw self::err('serial', 422, ['org' => $b['org']]);
     $rid = substr(preg_replace('/[^\w\-]/', '', (string)($in['rid'] ?? '')), 0, 40);
+    $card = max(0, (int)($in['card'] ?? 0));   // «Відправити» в картці фото в чаті (122-а): статус — у картці, окремого «надішлемо о…» нема
     $sig = fn(array $l) => implode('|', array_map(fn($x) => ($x['serial'] ?? '') . '=' . $x['value'], $l));
     foreach (Db::q("SELECT * FROM cab_jobs WHERE user_id = ? AND prov = ? AND status IN ('queued', 'sending', 'ok', 'sent') ORDER BY id DESC LIMIT 12", [$uid, self::prov($id)])->fetchAll() as $j) {
       $p = self::js($j['payload']); if (($p['place'] ?? '') === $place && $sig((array)($p['items'] ?? [])) === $sig($items)) return ['ok' => true, 'dup' => true, 'job' => self::pubJob($j)];
@@ -344,10 +345,10 @@ final class LocalBot {
     foreach (Db::q("SELECT * FROM cab_jobs WHERE user_id = ? AND prov = ? AND status = 'queued'", [$uid, self::prov($id)])->fetchAll() as $j) if ((self::js($j['payload'])['place'] ?? '') === $place) self::finish((int)$j['id'], 'cancelled', ['why' => 'replaced']);
     $at = self::openAt($b['win'] ?? null, time());
     Db::q("INSERT INTO cab_jobs (user_id, prov, acc, payload, status, result, tries, next_at, created_at, updated_at) VALUES (?, ?, ?, ?, 'queued', NULL, 0, ?, ?, ?)",
-      [$uid, self::prov($id), mb_substr((string)($c['acc'] ?? ''), 0, 40), json_encode(['rid' => $rid, 'place' => $place, 'items' => $items, 'lang' => self::$lang], JSON_UNESCAPED_UNICODE), $at, Http::iso(), Http::iso()]);
+      [$uid, self::prov($id), mb_substr((string)($c['acc'] ?? ''), 0, 40), json_encode(['rid' => $rid, 'place' => $place, 'items' => $items, 'lang' => self::$lang] + ($card ? ['card' => $card] : []), JSON_UNESCAPED_UNICODE), $at, Http::iso(), Http::iso()]);
     $job = self::pubJob(Db::one('SELECT * FROM cab_jobs WHERE id = ?', [Db::id()]));
     Db::q('INSERT INTO audit_log (user_id, action, ip, created_at) VALUES (?, ?, ?, ?)', [$uid, 'lb_queue_' . $id, null, Http::iso()]);
-    if ($at > time() + 120) self::notify($uid, $id, $job);   // «надішлемо 25-го о 9:00»
+    if ($at > time() + 120 && !$card) self::notify($uid, $id, $job);   // «надішлемо 25-го о 9:00»
     return ['ok' => true, 'job' => $job];
   }
   private static function mine(int $uid, array $in): array {
@@ -372,7 +373,7 @@ final class LocalBot {
     $p = self::js($j['payload']); $r = self::js($j['result']);
     return ['id' => (int)$j['id'], 'bot' => substr((string)$j['prov'], 1), 'rid' => $p['rid'] ?? null, 'place' => $p['place'] ?? null,
       'items' => array_map(fn($x) => ['name' => $x['name'], 'value' => $x['value'], 'kind' => $x['kind'] ?? null], (array)($p['items'] ?? [])),
-      'status' => $j['status'], 'text' => $r['text'] ?? '', 'why' => $r['why'] ?? null, 'human' => $r['human'] ?? null,
+      'status' => $j['status'], 'text' => $r['text'] ?? '', 'why' => $r['why'] ?? null, 'human' => $r['human'] ?? null, 'card' => (int)($p['card'] ?? 0) ?: null,
       'at' => strtotime((string)$j['created_at']) ?: null, 'doneAt' => $r['doneAt'] ?? null, 'nextAt' => in_array($j['status'], ['queued', 'sending'], true) ? (int)$j['next_at'] : null];
   }
   private static function finish(int $id, string $st, array $res): void {

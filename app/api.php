@@ -137,6 +137,8 @@ final class Api {
           'vkcab' => VkCab::summary(), 'cabs' => (object)CabProbe::read(), 'prov' => ProvAdmin::health(),
           // фото на розпізнавання (лише числа): найновіше й скільки за 7 днів з проблемою — є що розбирати в tests/ocr-lab (120-а)
           'recog' => self::recogHealth(),
+          // картки фото в чаті бота (122-а): стадії, позначки рядків, опитування, остання, крок cron — лише числа
+          'botCards' => BotCard::summary(),
           // кабинет ХТМ: итоги операций, сколько подключено, внесения по статусам и последняя увиденная форма (имена/типы полей, без значений)
           'htmcab' => HtmSvc::summary(), 'vksvc' => VkSvc::summary(), 'lbot' => LocalBot::summary(), 'vkBills' => VkBills::summary(), 'htmBills' => HtmBills::summary(), 'htmSpr' => HtmSpr::summary(),
           // проба обленерго с украинского адреса (NAS владельца → POST /api/relay/probe): код, Cloudflare, капча, формы — решает, быть ли ретранслятору

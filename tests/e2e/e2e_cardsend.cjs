@@ -11,8 +11,10 @@ const sql = (q, args) => JSON.parse(execFileSync('php', ['-r', '$p = new PDO("sq
 const php = (...a) => JSON.parse(execFileSync('php', [path.join(__dirname, 'card_php.php'), ...a.map(String)], { env: Object.assign({}, process.env, { SITE_DATA: SD }) }).toString());
 const TAKEN = Math.floor(Date.parse('2026-11-16T10:00:00Z') / 1000);
 const V = { energy: '14.445', volume: '2332.676', flow: '0.063', power: '1.445', tSupply: '50.12', tReturn: '30.4', hours: '35246', errHours: '153', errCode: 'E---' };
-const fake = vals => ({ meter: { modelId: 'sharky774', energyUnit: 'Gcal', confidence: 0.9 }, engine: 'local',
-  photos: [{ index: 0, kind: 'screen', meterType: 'heat', quality: 'ok', readings: Object.keys(vals).map(k => ({ field: k, value: vals[k], unit: k === 'energy' ? 'Gcal' : '', confidence: 0.95 })) }] });
+const fake = (vals, cf) => ({ meter: { modelId: 'sharky774', energyUnit: 'Gcal', confidence: 0.9 }, engine: 'local',
+  photos: [{ index: 0, kind: 'screen', meterType: 'heat', quality: 'ok', readings: Object.keys(vals).map(k => ({ field: k, value: vals[k], unit: k === 'energy' ? 'Gcal' : '', confidence: k === 'energy' && cf ? cf : 0.95 })) }] });
+const TAKEN2 = Math.floor(Date.parse('2026-11-18T10:00:00Z') / 1000);
+const V2 = { energy: '14.645', volume: '2340.676', flow: '0.063', power: '1.445', tSupply: '50.12', tReturn: '30.4', hours: '35246', errHours: '153', errCode: 'E---' };
 (async () => {
   await stand('act=reset'); await stand('act=set&scenario=ok&today=2026-11-16&robot_delay=99999');
   sql('DELETE FROM rate_limits');
@@ -58,6 +60,29 @@ const fake = vals => ({ meter: { modelId: 'sharky774', energyUnit: 'Gcal', confi
   await p.goto(U + '#home'); await p.reload(); await p.waitForTimeout(3500);
   s = await st(); rd = (s.readings || []).find(x => x.id === plan[0].in.rid) || {};
   ok('застосунок пов\'язав запис із задачею з картки: «передано»', ['handed', 'accepted'].includes(rd.status) && rd.cab && rd.cab.job > 0, [rd.status, rd.cab]);
+  // 122-а: енергію прочитано невпевнено → картка «перевірте» → людина перевірила й зберегла в застосунку (не відправляючи) →
+  // картка в чаті: збережені цифри й «Відправити» (план для робота ХТМ) → дотик → черга
+  const pid2 = await p.evaluate(async () => {
+    const c = (document.cookie.match(/ts_csrf=([^;]*)/) || [])[1]; const cv = document.createElement('canvas'); cv.width = 40; cv.height = 30; const bl = await new Promise(ok => cv.toBlob(ok, 'image/jpeg'));
+    return (await (await fetch('/api/recognize/upload', { method: 'POST', headers: { 'Content-Type': 'image/jpeg', 'X-CSRF': c }, body: bl })).json()).id;
+  });
+  sql('INSERT INTO bot_inbox (photo_id, user_id, taken_at, created_at) VALUES (?, ?, ?, ?)', [pid2, uid, TAKEN2, new Date().toISOString()]);
+  const now2 = new Date().toISOString();
+  sql("INSERT INTO bot_cards (user_id, chat_id, message_id, lang, photos, plan, data, stage, created_at, updated_at) VALUES (?, 'e2e', 78, 'uk', ?, NULL, ?, 'new', ?, ?)", [uid, JSON.stringify([pid2]), JSON.stringify({ v: 1, k: 'rd', l: 'uk', s: 'new', n: 1, r: [] }), now2, now2]);
+  const cid2 = sql('SELECT MAX(id) id FROM bot_cards')[0].id;
+  await p.goto(U + '?inbox=1&card=' + cid2 + '#home'); await p.evaluate(r => { window.__FAKE = r; }, fake(V2, 0.6));
+  for (let i = 0; i < 40; i++) { c = sql('SELECT * FROM bot_cards WHERE id = ?', [cid2])[0]; if (c.stage !== 'new') break; await p.waitForTimeout(500); }
+  let d3 = JSON.parse(c.data);
+  ok('енергія невпевнено — картка «перевірте» без «Відправити», застосунок лишився на результаті', c.stage === 'fix' && !(d3.r || []).some(x => x.a) && (await p.$('[data-key="photo-check"]')) !== null, [c.stage, d3, p.url()]);
+  await p.click('[data-key="photo-check"]'); await p.waitForTimeout(900);
+  await p.click('[data-act="to-handover"]'); await p.waitForTimeout(300);
+  for (let i = 0; i < 30; i++) { c = sql('SELECT * FROM bot_cards WHERE id = ?', [cid2])[0]; if (c.stage !== 'fix') break; await p.waitForTimeout(300); }
+  d3 = JSON.parse(c.data); const plan3 = JSON.parse(c.plan || '[]'), q3 = (d3.r || [])[0] || {};
+  ok('зберіг тут (не відправляючи) — картка: збережені 14,645 Гкал → ХТМ, «Відправити» доступне', c.stage === 'ready' && q3.v === '14,645 Гкал' && q3.a === 1 && plan3[0] && plan3[0].svc === 'htm' && plan3[0].in.vals.energy === '14.645', [c.stage, d3, plan3]);
+  s = await st(); rd = (s.readings || []).find(x => x.id === (plan3[0] || { in: {} }).in.rid) || {};
+  ok('запис тепла з карткою (застосунок потім пов\'яже задачу)', rd.card === cid2 && rd.status === 'checked', [rd.status, rd.card]);
+  r = php('query', cid2, uid, 'send');
+  ok('«Відправити» → задача ХТМ у черзі з цією карткою', r.data && r.data.s === 'sent' && r.data.r[0].s === 'q' && sql("SELECT payload FROM cab_jobs WHERE user_id = ? AND prov = 'htm' ORDER BY id DESC LIMIT 1", [uid]).some(x => JSON.parse(x.payload).card === cid2), r);
   ok('без помилок', !errs.length, errs);
   await b.close(); console.log(`\ne2e_cardsend: ${pass} ok, ${fail} fail`); process.exit(fail ? 1 : 0);
 })().catch(e => { console.log('ERROR', e); process.exit(1); });

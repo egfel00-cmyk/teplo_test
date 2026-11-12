@@ -213,19 +213,19 @@ button.g{background:var(--tg-theme-secondary-bg-color);color:var(--tg-theme-link
 <div class="w" id="w"></div>
 <script>
 var W=window.TelegramWidget,L={
-uk:{h:'Фото лічильника',n:'фото',nw:'Розпізнає ваш телефон, безкоштовно — натисніть «Розпізнати» під карткою.',fx:'Деякі цифри треба перевірити — «Перевірити в застосунку» під карткою.',snd:'Відправити',q:'В черзі',go:'Відправляю',sd:'Відправлено',ok:'Прийнято',no:'Не прийнято',f:'Не вдалося',oh:'Надалі вносити тепло в кабінет ХТМ самим, без натискань?',ov:'Надалі надсилати воду у фоні самим, без натискань?',oy:'Так, у фоні',on:'Увімкнено — далі без натискань',pq:'Усе було зрозуміло?',py:'Так',pn:'Не зовсім',pt:'Дякуємо',pt2:'Дякуємо — напишіть, що заплутало, кнопкою «Відгук» у застосунку',err:'Не вийшло — спробуйте ще раз'},
-ru:{h:'Фото счётчика',n:'фото',nw:'Распознает ваш телефон, бесплатно — нажмите «Распознать» под карточкой.',fx:'Некоторые цифры нужно проверить — «Проверить в приложении» под карточкой.',snd:'Отправить',q:'В очереди',go:'Отправляю',sd:'Отправлено',ok:'Принято',no:'Не принято',f:'Не получилось',oh:'Дальше вносить тепло в кабинет ХТМ самим, без нажатий?',ov:'Дальше отправлять воду в фоне самим, без нажатий?',oy:'Да, в фоне',on:'Включено — дальше без нажатий',pq:'Всё было понятно?',py:'Да',pn:'Не совсем',pt:'Спасибо',pt2:'Спасибо — напишите, что запутало, кнопкой «Отзыв» в приложении',err:'Не получилось — попробуйте ещё раз'}},
+uk:{h:'Фото лічильника',n:'фото',nw:'Розпізнає ваш телефон, безкоштовно — натисніть «Розпізнати» під карткою.',fx:'Деякі цифри треба перевірити — «Перевірити в застосунку» під карткою.',snd:'Відправити',q:'В черзі',go:'Відправляю',sd:'Відправлено',ok:'Прийнято',ms:'Лист надіслано',no:'Не прийнято',f:'Не вдалося',oh:'Надалі вносити тепло в кабінет ХТМ самим, без натискань?',ov:'Надалі надсилати воду у фоні самим, без натискань?',oy:'Так, у фоні',on:'Увімкнено — далі без натискань',pq:'Усе було зрозуміло?',py:'Так',pn:'Не зовсім',pt:'Дякуємо',pt2:'Дякуємо — напишіть, що заплутало, кнопкою «Відгук» у застосунку',err:'Не вийшло — спробуйте ще раз'},
+ru:{h:'Фото счётчика',n:'фото',nw:'Распознает ваш телефон, бесплатно — нажмите «Распознать» под карточкой.',fx:'Некоторые цифры нужно проверить — «Проверить в приложении» под карточкой.',snd:'Отправить',q:'В очереди',go:'Отправляю',sd:'Отправлено',ok:'Принято',ms:'Письмо отправлено',no:'Не принято',f:'Не получилось',oh:'Дальше вносить тепло в кабинет ХТМ самим, без нажатий?',ov:'Дальше отправлять воду в фоне самим, без нажатий?',oy:'Да, в фоне',on:'Включено — дальше без нажатий',pq:'Всё было понятно?',py:'Да',pn:'Не совсем',pt:'Спасибо',pt2:'Спасибо — напишите, что запутало, кнопкой «Отзыв» в приложении',err:'Не получилось — попробуйте ещё раз'}},
 d={},er='',busy=0;
 function rd(){try{d=JSON.parse(W.chatData||'{}')||{}}catch(e){d={}}}
 function x(s){return String(s==null?'':s).replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})}
 function draw(){var t=L[d.l]||L.uk,r=d.r||[],h='<h1>'+t.h+'</h1>';if(d.n)h+='<div class="s">'+t.n+': '+d.n+'</div>';
 if(d.s=='new')h+='<div class="m" style="margin-top:8px">'+t.nw+'</div>';
-r.forEach(function(q){var c=q.s?'<span class="c'+(q.s=='ok'?' ok':q.s=='no'||q.s=='f'?' no':'')+'">'+(q.s=='ok'?'✓ ':'')+t[q.s]+'</span>':'';
+r.forEach(function(q){var c=q.s?'<span class="c'+(/^(ok|ms)$/.test(q.s)?' ok':q.s=='no'||q.s=='f'?' no':'')+'">'+(/^(ok|ms)$/.test(q.s)?'✓ ':'')+t[q.s]+'</span>':'';
 h+='<div class="r"><div><div class="m">'+x(q.t)+(q.w?' → '+x(q.w):'')+'</div><div class="v">'+x(q.v||'—')+'</div>'+(q.m?'<div class="m">'+x(q.m)+'</div>':'')+'</div>'+c+'</div>'});
 var can=d.s=='ready'&&r.some(function(q){return q.a&&!q.s});
 if(can)h+='<div class="f"><button class="b" data-q="send">'+t.snd+'</button></div>';
 if(d.s=='fix')h+='<div class="m" style="margin-top:10px">'+t.fx+'</div>';
-var fin=d.s=='sent'&&r.some(function(q){return q.s=='ok'})&&r.every(function(q){return !q.a||/^(ok|no|f)$/.test(q.s)});
+var fin=d.s=='sent'&&r.some(function(q){return /^(ok|ms)$/.test(q.s)})&&r.every(function(q){return !q.a||/^(ok|ms|no|f)$/.test(q.s)});
 if(fin&&d.o&&d.o!='on')h+='<div class="r"><div class="m">'+(d.o=='vk'?t.ov:t.oh)+'</div><button data-q="auto">'+t.oy+'</button></div>';
 if(fin&&d.o=='on')h+='<div class="f"><span class="c ok">✓ '+t.on+'</span></div>';
 if(fin&&!d.p)h+='<div class="f"><span class="m">'+t.pq+'</span><button class="g" data-q="p:y">'+t.py+'</button><button class="g" data-q="p:n">'+t.pn+'</button></div>';
@@ -300,10 +300,10 @@ HTML;
       $svc = (string)($x['plan']['svc'] ?? ''); $ok = !empty($x['ok']); if (!$ok) $bad = true;
       // застосунок уже поставив у чергу сам (людина виправила й натиснула там) — картка стежить за тією задачею
       $js = (string)($x['job']['svc'] ?? ''); $jid = (int)($x['job']['id'] ?? 0);
-      $jr = $jid && in_array($js, ['htm', 'vk'], true) ? Db::one('SELECT * FROM cab_jobs WHERE id = ? AND user_id = ? AND prov = ?', [$jid, $uid, $js]) : null;
-      if ($jr) { [$mk] = self::mark($js, $jr); $items[] = ['t' => self::cut((string)($x['t'] ?? ''), 24), 'v' => self::cut((string)($x['v'] ?? ''), 40), 'w' => self::cut((string)($x['w'] ?? ''), 24), 'a' => 1, 's' => $mk, 'm' => '']; $plan[] = ['svc' => $js, 'in' => null, 'job' => $jid]; $sent = true; continue; }
-      $can = $ok && in_array($svc, ['htm', 'vk'], true) && is_array($x['plan']['in'] ?? null);
-      $items[] = ['t' => self::cut((string)($x['t'] ?? ''), 24), 'v' => self::cut((string)($x['v'] ?? ''), 40), 'w' => self::cut((string)($x['w'] ?? ''), 24), 'a' => $can ? 1 : 0, 's' => '', 'm' => self::cut((string)($x['m'] ?? ''), 110)];
+      $jr = $jid && in_array($js, ['htm', 'vk', 'lb'], true) ? Db::one('SELECT * FROM cab_jobs WHERE id = ? AND user_id = ? AND ' . ($js === 'lb' ? "prov LIKE 'L%'" : 'prov = ?'), $js === 'lb' ? [$jid, $uid] : [$jid, $uid, $js]) : null;
+      if ($jr) { [$mk] = self::mark($js, $jr); $items[] = ['t' => self::cut((string)($x['t'] ?? ''), 24), 'v' => self::cut((string)($x['v'] ?? ''), 40), 'w' => self::cut((string)($x['w'] ?? ''), 32), 'a' => 1, 's' => $mk, 'm' => '']; $plan[] = ['svc' => $js, 'in' => null, 'job' => $jid]; $sent = true; continue; }
+      $can = $ok && in_array($svc, ['htm', 'vk', 'lb'], true) && is_array($x['plan']['in'] ?? null);
+      $items[] = ['t' => self::cut((string)($x['t'] ?? ''), 24), 'v' => self::cut((string)($x['v'] ?? ''), 40), 'w' => self::cut((string)($x['w'] ?? ''), 32), 'a' => $can ? 1 : 0, 's' => '', 'm' => self::cut((string)($x['m'] ?? ''), 110)];
       $plan[] = $can ? ['svc' => $svc, 'in' => $x['plan']['in'], 'job' => null] : null;
     }
     if (!$items) throw new HttpError(422, 'card_no_items');
@@ -315,10 +315,15 @@ HTML;
     return ['ok' => true, 'stage' => $d['s']];
   }
 
+  /** «25.11 о 09:00» за Києвом. */
+  private static function when(int $ts, string $lang): string {
+    $d = (new DateTime('@' . $ts))->setTimezone(new DateTimeZone('Europe/Kyiv'));
+    return $d->format('d.m') . ($lang === 'ru' ? ' в ' : ' о ') . $d->format('H:i');
+  }
   /** Статус задачі робота → позначка картки. */
   public static function mark(string $svc, array $j): array {
     $st = (string)$j['status']; $r = self::js($j['result']);
-    $m = ['queued' => 'q', 'sending' => 'go', 'pending' => 'sd', 'unknown' => 'sd', 'ok' => 'ok', 'rejected' => 'no', 'failed' => 'f', 'cancelled' => 'f'][$st] ?? 'q';
+    $m = ['queued' => 'q', 'sending' => 'go', 'pending' => 'sd', 'unknown' => 'sd', 'ok' => 'ok', 'sent' => 'ms', 'rejected' => 'no', 'failed' => 'f', 'cancelled' => 'f'][$st] ?? 'q';
     $why = $m === 'no' ? (string)($r['reason'] ?? $r['text'] ?? '') : ($m === 'f' ? (string)($r['human'] ?? '') : '');
     return [$m, $why];
   }
@@ -340,7 +345,7 @@ HTML;
   public static function settle(array &$d, array $plan, int $uid): bool {
     if (array_key_exists('o', $d)) return false;
     $r = $d['r'] ?? []; $okp = [];
-    foreach ($r as $i => $q) { if (!empty($q['a']) && !in_array($q['s'] ?? '', ['ok', 'no', 'f'], true)) return false; if (($q['s'] ?? '') === 'ok' && !empty($plan[$i])) $okp[] = $plan[$i]; }
+    foreach ($r as $i => $q) { if (!empty($q['a']) && !in_array($q['s'] ?? '', ['ok', 'ms', 'no', 'f'], true)) return false; if (in_array($q['s'] ?? '', ['ok', 'ms'], true) && !empty($plan[$i])) $okp[] = $plan[$i]; }
     if (!$okp) return false;
     $d['o'] = self::offer($uid, $okp); return true;
   }
@@ -359,13 +364,15 @@ HTML;
     $d = self::js($c['data']); $plan = self::js($c['plan']);
     if (!$uid || (int)$c['user_id'] !== $uid) return $ans($d ?: null);
     $lang = (string)$c['lang']; $changed = false;
-    if ($q === 'send' && $c['stage'] === 'ready') {
+    if ($q === 'send' && $c['stage'] === 'ready' && array_filter($plan, fn($p) => $p && empty($p['job']))) {   // нічого відправляти — стадію не чіпаємо (застосунок ще може відправити сам)
       foreach ($plan as $i => &$p) {
         if (!$p || !empty($p['job'])) continue;
         $in = (array)$p['in'] + ['lang' => $lang, 'card' => (int)$c['id']];
         try {
-          $r = $p['svc'] === 'htm' ? HtmSvc::cardQueue($uid, $in) : VkSvc::queue($uid, ['auto' => false] + $in);
+          $r = $p['svc'] === 'htm' ? HtmSvc::cardQueue($uid, $in) : ($p['svc'] === 'lb' ? LocalBot::queue($uid, $in) : VkSvc::queue($uid, ['auto' => false] + $in));
           $p['job'] = (int)($r['job']['id'] ?? 0); $d['r'][$i]['s'] = 'q';
+          // місцевий КП приймає лише у вікні подачі — у картці «надішлемо 25.11 о 09:00» (окремого повідомлення нема)
+          $na = (int)($r['job']['nextAt'] ?? 0); if ($p['svc'] === 'lb' && $na > time() + 120) $d['r'][$i]['m'] = self::cut(($lang === 'ru' ? 'Отправим ' : 'Надішлемо ') . self::when($na, $lang), 110);
         } catch (Throwable $e) {
           $d['r'][$i]['s'] = 'f'; $d['r'][$i]['m'] = self::cut($e instanceof HttpError ? (string)($e->extra['human'] ?? $e->err) : ($lang === 'ru' ? 'Сервис недоступен' : 'Сервіс недоступний'), 110);
         }
@@ -388,6 +395,20 @@ HTML;
     if (self::settle($d, $plan, $uid)) $changed = true;
     if ($changed) $d = self::put($c, $d);
     return $ans($d);
+  }
+
+  /** /api/health → botCards (122-а): скільки карток фото за 30 днів по стадіях, позначки рядків (ok/no/f/…), опитування, остання — лише числа, без людей. */
+  public static function summary(): array {
+    try {
+      $since = gmdate('Y-m-d\TH:i:s', time() - 30 * 86400); $st = []; $marks = []; $poll = []; $last = null;
+      foreach (Db::q('SELECT stage, data, created_at FROM bot_cards WHERE created_at >= ? ORDER BY id DESC LIMIT 500', [$since])->fetchAll() as $c) {
+        $st[$c['stage']] = ($st[$c['stage']] ?? 0) + 1; $last = $last ?? $c['created_at']; $d = self::js($c['data']);
+        foreach ((array)($d['r'] ?? []) as $q) { $m = (string)($q['s'] ?? '') ?: (!empty($q['a']) ? 'can' : 'info'); $marks[$m] = ($marks[$m] ?? 0) + 1; }
+        if (!empty($d['p'])) $poll[$d['p']] = ($poll[$d['p']] ?? 0) + 1;
+      }
+      $b = Cron::read()['botCards'] ?? null;
+      return ['n30' => array_sum($st), 'stage' => (object)$st, 'marks' => (object)$marks, 'poll' => (object)$poll, 'last' => $last, 'cron' => $b];
+    } catch (Throwable $e) { return ['error' => 'db']; }
   }
 
   /** Cron: картки з відправленим — свіжі статуси роботів у ту саму картку (3 доби). */
