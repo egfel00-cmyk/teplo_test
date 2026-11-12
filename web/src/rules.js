@@ -13,6 +13,7 @@
     DT_WARN: 3.0,              // близко к порогу
     TEMP_MIN: 5, TEMP_MAX: 95,
     HOURS_TOL: 24,             // |Δчасов − календарь| ≤ 24
+    HOURS_MAX: 263000,         // понад 30 років роботи (125-а: «минулого разу 70751193 год» — заводський номер L+G потрапив у години)
     ENERGY_JUMP: 15,           // Гкал за период
     FLOW_K: 0.3,               // средний расход ≥ 0.3 × переходного
     POWER_TOL: 0.10, POWER_ABS: 0.3,
@@ -63,6 +64,10 @@
   // Третій час — лише в кабінетах ХТМ з колонками Bd/Fd/Pd (прилади Landis+Gyr тощо; скрин власника 12.11.2026, 11 колонок):
   // «Час напрацювання (Bd)» = hours, «Час простою (Fd)» = errHours, «Час роботи з витратою (Pd)» = flowHours. Назва поля форми ще невідома.
   var FIELD_PD = { key: 'flowHours', htm: null, uk: 'Час роботи з витратою (Pd)', ru: 'Время работы с расходом (Pd)', unit: 'год', dec: 0 };
+  var HOUR_KEYS = ['hours', 'errHours', 'flowHours'];
+  /** Години лічильника, які бувають: ціле, не більше ~30 років роботи. */
+  function saneHours(n) { n = num(n); return n === null || (n >= 0 && n <= C.HOURS_MAX); }
+  function fieldOf(key) { return FIELDS.filter(function (x) { return x.key === key; })[0] || (key === 'flowHours' ? FIELD_PD : { uk: key, ru: key }); }
   function formatForHtm(key, v) {
     var f = FIELDS.filter(function (x) { return x.key === key; })[0] || (key === 'flowHours' ? FIELD_PD : null);
     if (!f) return String(v == null ? '' : v);
@@ -149,6 +154,13 @@
     var v = {}; FIELDS.forEach(function (f) { if (f.key !== 'date' && f.key !== 'errCode') v[f.key] = num(r[f.key]); });
     var pv = {}; if (prev) FIELDS.forEach(function (f) { if (f.key !== 'date' && f.key !== 'errCode') pv[f.key] = num(prev[f.key]); });
     if (meter.times3) { v.flowHours = num(r.flowHours); pv.flowHours = prev ? num(prev.flowHours) : null; }
+    // минулі години, яких не буває (> 30 років): з ними не порівнюємо — підказуємо виправити «Останні прийняті»
+    var badPrev = HOUR_KEYS.filter(function (k) { return pv[k] != null && !saneHours(pv[k]); });
+    HOUR_KEYS.forEach(function (k) {
+      if (v[k] != null && !saneHours(v[k])) items.push(item('F_HOURS_HUGE', 'block', k, fieldOf(k).uk + ' ' + v[k] + ' — стільки годин не буває (понад 30 років).', fieldOf(k).ru + ' ' + v[k] + ' — столько часов не бывает (больше 30 лет).',
+        'Схоже, це заводський номер. Години — на екрані з «h» (у Landis+Gyr — з підписом Bd, Fd або Pd).', 'Похоже, это заводской номер. Часы — на экране с «h» (у Landis+Gyr — с подписью Bd, Fd или Pd).'));
+    });
+    badPrev.forEach(function (k) { pv[k] = null; });
 
     // --- A. Заполнено ли всё (форма ХТМ требует все 10 значений)
     var missing = FIELDS.filter(function (f) {
@@ -163,6 +175,13 @@
         'Кабінет ХТМ приймає лише всі 10 значень.', 'Кабинет ХТМ принимает только все 10 значений.'));
     });
 
+    badPrev.forEach(function (k) {
+      var f = fieldOf(k), x = String(num(prev[k]));
+      items.push(item('W_PREV_HOURS_BAD', 'warn', k,
+        'Минулого разу записано «' + f.uk + '» ' + x + ' год — так не буває (понад 30 років). Схоже, туди потрапив заводський номер лічильника.',
+        'В прошлый раз записано «' + f.ru + '» ' + x + ' ч — так не бывает (больше 30 лет). Похоже, туда попал заводской номер счётчика.',
+        'Перевірте «Останні прийняті» (головна → налаштування тепла) — з цим числом не порівнюємо.', 'Проверьте «Последние принятые» (главная → настройки тепла) — с этим числом не сравниваем.'));
+    });
     // --- Дата
     if (parseDate(r.date)) {
       var dToday = daysBetween(r.date, today);
@@ -316,8 +335,9 @@
     }
     var n = num(value);
     if (key !== 'errCode' && key !== 'date' && String(value || '').trim() !== '' && n === null) return { level: 'warn', msg: { uk: 'Лише цифри та крапка.', ru: 'Только цифры и точка.' } };
+    if (HOUR_KEYS.indexOf(key) >= 0 && n !== null && !saneHours(n)) return { level: 'block', msg: { uk: 'Стільки годин не буває (понад 30 років) — схоже на заводський номер. Години — на екрані з «h».', ru: 'Столько часов не бывает (больше 30 лет) — похоже на заводской номер. Часы — на экране с «h».' } };
     if (n === null || !prev) return null;
-    var b = num(prev[key]);
+    var b = num(prev[key]); if (HOUR_KEYS.indexOf(key) >= 0 && !saneHours(b)) b = null;   // минулі години, яких не буває, — не порівнюємо
     if (['energy', 'volume', 'hours', 'errHours'].indexOf(key) >= 0 && b !== null && n < b) return { level: 'block', msg: { uk: 'Менше за попередні (' + b + ').', ru: 'Меньше предыдущих (' + b + ').' } };
     if (key === 'energy' && b !== null && n - b >= C.ENERGY_JUMP) return { level: 'block', msg: { uk: 'Завеликий приріст — перевірте крапку.', ru: 'Слишком большой прирост — проверьте точку.' } };
     if ((key === 'tSupply' || key === 'tReturn') && (n === 0 || n < C.TEMP_MIN || n > C.TEMP_MAX)) return { level: 'block', msg: { uk: 'Від 5 до 95 °C.', ru: 'От 5 до 95 °C.' } };
@@ -355,6 +375,6 @@
   var PREV_BASED = ['F_DATE_BEFORE_PREV', 'R_MONO_ENERGY', 'R_MONO_VOLUME', 'R_MONO_HOURS', 'R_MONO_ERRHOURS', 'R_MONO_FLOWHOURS', 'R_ENERGY_JUMP', 'R_ENERGY_WITHOUT_VOLUME',
     'R_DT_MIN', 'R_DT_MAX', 'R_DT_NO_FLOW', 'R_HOURS_CALENDAR', 'R_FLOW_MIN'];
   var api = { C: C, FIELDS: FIELDS, FIELD_PD: FIELD_PD, PREV_BASED: PREV_BASED, num: num, validate: validate, checkField: checkField, decodeRobot: decodeRobot,
-    windowState: windowState, formatForHtm: formatForHtm, toHtmDate: toHtmDate, daysBetween: daysBetween, normCode: normCode, ERR_CODES: ERR_CODES, ymd: ymd };
+    windowState: windowState, formatForHtm: formatForHtm, saneHours: saneHours, toHtmDate: toHtmDate, daysBetween: daysBetween, normCode: normCode, ERR_CODES: ERR_CODES, ymd: ymd };
   if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.TeploRules = api;
 })(typeof window !== 'undefined' ? window : this);

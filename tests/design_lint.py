@@ -19,7 +19,7 @@ MATERIAL = re.compile(r'\.(lcd|elcd|el-|wd-|wdrum|gdrum|gd-|drum|lpp-|kprev|wher
 # живые состояния: идёт распознавание/загрузка, мигает светодиод счётчика, крутится индикатор занятости
 # + lpMarq — стрічка постачальників на лендингу (решение владельца 10.11: «пусть плывут»)
 # + lpPh* — лендинг, крок 1: фото табло сканується й перетікає в табло (власник 10.11, 92-а: «красиво показати перехід з фото в показання»)
-LIVE_ANIM = re.compile(r'\b(spin|elblink|phd-shine|phd-pulse|phd-beam|phd-drop|wdRoll|lpMarq|lpPh\w+)\b')
+LIVE_ANIM = re.compile(r'\b(spin|elblink|lcd-swap|phd-shine|phd-pulse|phd-beam|phd-drop|wdRoll|lpMarq|lpPh\w+)\b')   # lcd-swap — табло тепла чергує 2 значення, як справжній екран (125-а)
 
 for sel, body in rules:
     sel = sel.strip().split('\n')[-1]

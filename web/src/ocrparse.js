@@ -244,7 +244,8 @@
         }
         out.cand = out.cand || { digits: bv.digits, dot: bv.dot, score: l.score };   // для разбора всей пачки по порядку экранов
         if (!field) {
-          if (val === null && bv.digits.length >= 4 && /[1-9]/.test(bv.digits)) { field = 'hours'; how = 'guess'; }
+          // 125-а: 7–8 цифр без підпису — не години (понад 30 років не буває), а заводський номер (L+G «70751193» потрапив у «Час роботи»)
+          if (val === null && bv.digits.length >= 4 && /[1-9]/.test(bv.digits) && bv.digits.replace(/^0+/, '').length <= 6) { field = 'hours'; how = 'guess'; }
           else if (val && (val.split('.')[1] || '').length === 3) { field = 'energy'; how = 'guess'; }
           else if (val && (val.split('.')[1] || '').length === 2 && parseFloat(val) < 150) { field = null; }
         }
@@ -252,6 +253,7 @@
         if (!field && /^0\d{2}$/.test(bv.digits)) { out.kind = 'screen'; out.note = 'dt_screen'; out.anchor = 4.5; delete out.cand; return; }
         if (!field) { out.note = out.note || 'unlabeled'; return; }
       }
+      if (DEC[field] === 0 && bv.digits.replace(/^0+/, '').length > 6) { out.note = out.note || 'serial_like'; return; }   // «годин» понад 999999 не буває
       if (DEC[field] === 0) val = bv.digits;   // часы — целые: «точка» на них — это тень сегмента
       if (val === null) { var inf = inferDot(bv.digits, field, ctx); val = inf.v; if ((inf.how === 'none' || inf.how === 'dec') && DEC[field]) { conf *= inf.how === 'dec' ? 0.75 : 0.6; out.note = out.note || 'no_dot'; } else if (inf.how !== 'int') conf *= 0.9; }
       if (how === 'prev') conf *= 0.8; if (how === 'guess') conf *= 0.5; if (how === 'model') conf *= 0.7;
@@ -275,7 +277,7 @@
     if (field === 'energy' || field === 'volume') return n >= 4 && (dot === null || dot === 3);
     if (field === 'flow' || field === 'power') return n >= 4 && n <= 5 && (dot === null || dot === 3);
     if (field === 'tSupply' || field === 'tReturn') { v = parseFloat(placeDot(d, 2)); return n >= 3 && n <= 4 && (dot === null || dot === 2) && v >= 5 && v < 150; }
-    if (field === 'hours' || field === 'errHours' || field === 'flowHours') return dot === null && /[1-9]/.test(d);
+    if (field === 'hours' || field === 'errHours' || field === 'flowHours') return dot === null && /[1-9]/.test(d) && d.replace(/^0+/, '').length <= 6;
     return false;
   }
   function batch(photos, ctx) {

@@ -494,7 +494,9 @@
   // ---------------- мастер: шаги ----------------
   function steps() {
     var m = model(), st = m ? m.steps : [];
-    // кабінет з Bd/Fd/Pd — третій час додаємо до кроку годин (у T330 це «час з витратою» з LOOP 1)
+    // крок «Pd» (L+G: окремий екран «час з витратою») — лише коли в кабінеті ХТМ є третя колонка часу
+    st = st.filter(function (s) { return !s.only3 || times3(); });
+    // кабінет з Bd/Fd/Pd — третій час додаємо до кроку годин (у моделей без окремого екрана Pd)
     if (times3() && !st.some(function (s) { return s.fields.indexOf('flowHours') >= 0; })) st = st.map(function (s) { return s.fields.indexOf('errHours') >= 0 ? Object.assign({}, s, { fields: s.fields.concat('flowHours') }) : s; });
     return [{ kind: 'date' }].concat(st);
   }
@@ -518,6 +520,8 @@
     var la = lastAccepted(); if (!la) return null;
     var p = Object.assign({}, la), k = M.TO_GCAL[energyUnit()] || 1, e = R.num(p.energy); delete p.src; delete p.id;
     if (e !== null) p.energy = +(e / k).toFixed(6);
+    // 125-а: минулі години, яких не буває (заводський номер L+G «70751193» у «Час роботи»), — не підказка й не «менше за попередні»
+    ['hours', 'errHours', 'flowHours'].forEach(function (h) { if (p[h] != null && p[h] !== '' && !R.saneHours(p[h])) { p._bad = (p._bad || []).concat(h); delete p[h]; } });
     return p;
   }
   function draftReadingGcal(d) {
@@ -4815,9 +4819,10 @@
         var sampleText = idx === 0 ? s.lcd.digits : (s.lcd.alt ? s.lcd.alt.digits : s.lcd.digits);
         var tag = idx === 0 ? s.lcd.tag : (s.lcd.alt ? s.lcd.alt.tag : s.lcd.tag);
         if (k === 'energy' && energyUnit() !== 'Gcal') tag = energyUnit();
-        return { id: 'lcd-' + k, text: typed ? lcdText(k, typed) : sampleText, tag: tag, corner: !!s.lcd.corner, sample: !typed };
+        return { id: 'lcd-' + k, text: stepLcdText(s, k, typed ? lcdText(k, typed) : sampleText), tag: tag, corner: !!s.lcd.corner, sample: !typed };
       });
-      left = press + lcd(lines, 'step-lcd') + '<p class="lcd-cap" id="lcd-cap">' + esc(Object.keys(S.draft.values).some(function (k) { return s.fields.indexOf(k) >= 0 && S.draft.values[k]; }) ? t('s_on_screen') : t('s_example')) + '</p>' +
+      // swap — значення чергуються на одному екрані (температури, On/Eh): так і показуємо, а не двома рядками одночасно (125-а)
+      left = press + lcd(lines, 'step-lcd' + (s.lcd.swap && lines.length === 2 ? ' swap' : '')) + '<p class="lcd-cap" id="lcd-cap">' + esc(Object.keys(S.draft.values).some(function (k) { return s.fields.indexOf(k) >= 0 && S.draft.values[k]; }) ? t('s_on_screen') : t('s_example')) + '</p>' +
         '<p class="hint">' + esc(L(s.hint)) + '</p>' +
         (m && m.sleepMin ? '<p class="sleep">' + ico('moon', 18) + '<span>' + esc(t('s_sleep', { m: m.sleepMin })) + '</span></p>' : '') +
         // петлі (LOOP 0/1, групи, рівні): людина не знаходить екран, бо він в іншій петлі — скарги 12.11.2026 (124-а)
@@ -4829,11 +4834,14 @@
       '<button class="btn" data-act="step-next" data-i="' + i + '" data-key="step-next">' + esc(isLast ? t('s_to_check') : t('next')) + '</button></div>' + cancelLink('heat');
     return { screen: 'S05', route: 'step', bare: true, closeTo: backTo('home'), html: head + '<div class="wiz"><div>' + left + '</div><div><form id="step-form" novalidate>' + right + actions + '</form></div></div>' };
   };
+  /** Текст табло кроку: у L+G перед годинами — підпис екрана (Bd, Fd, Pd). */
+  function stepLcdText(st, k, txt) { return st && st.lcd && st.lcd.lead && st.fields[0] === k ? st.lcd.lead + ' ' + txt : txt; }
   function lcdText(k, v) { if (k === 'errCode') return R.normCode(v).replace(/-/g, '-'); var x = String(v).replace(',', '.'); return x; }
   function numField(k, prev) {
     var v = S.draft.values[k] == null ? '' : S.draft.values[k];
     var cls = k === 'tSupply' ? ' supply' : k === 'tReturn' ? ' return' : '';
     var help = '';
+    if (prev && (prev._bad || []).indexOf(k) >= 0) help = t('s_prev_bad');
     if (prev && prev[k] != null && prev[k] !== '') {
       help = t('s_prev', { v: (k === 'energy' ? String(prev[k]) : prev[k]) + ' ' + fieldUnit(k) });
       var plain = help;
@@ -4847,7 +4855,9 @@
     // data-plain лишаємо як є (лише «минулого разу N»): з нього при вводі береться число після першої цифри
     if (k === 'errHours') help = t('s_err_hours') + (help ? ' ' + help + '.' : '');
     return '<div class="field" id="fw-' + k + '"><label for="f-' + k + '"' + (S._single ? ' class="sr"' : '') + '>' + esc(fieldLabel(k)) + '</label><div class="ctl' + cls + '"><input id="f-' + k + '" class="num" inputmode="decimal" autocomplete="off" enterkeyhint="next" data-field="' + k + '" value="' + esc(v) + '" aria-describedby="h-' + k + '"><span class="unit">' + esc(fieldUnit(k)) + '</span></div>' +
-      '<div class="help" id="h-' + k + '" data-base="' + esc(help) + '" data-plain="' + esc(plain) + '">' + esc(help) + '</div></div>';
+      '<div class="help" id="h-' + k + '" data-base="' + esc(help) + '" data-plain="' + esc(plain) + '">' + esc(help) + '</div>' +
+      // 125-а (юзертестинг T330): «час простою» не знайшли на екрані — тричі «Далі» з порожнім полем і кинули; одним дотиком — 0
+      (k === 'errHours' && (v === '' || v == null) ? '<button type="button" class="linkbtn" data-act="fill-zero" data-k="errHours" data-key="step-errhours-zero">' + esc(t('s_err_zero')) + '</button>' : '') + '</div>';
   }
   function errCodeField() {
     var v = S.draft.values.errCode || '', none = !v || R.normCode(v) === 'E---';
@@ -5203,9 +5213,13 @@
     if (edit) {
       return { screen: 'S09', route: 'history', html: head + '<form id="rec-form" data-id="' + r.id + '" novalidate><div class="panel">' +
         '<div class="field" style="max-width:280px"><label for="re-date">' + esc(fieldLabel('date')) + '</label><div class="ctl"><input id="re-date" type="date" value="' + esc(h.date || '') + '" max="' + today() + '" required></div></div>' +
-        R.FIELDS.filter(function (f) { return f.key !== 'date'; }).map(function (f) {
-          var v = f.key === 'errCode' ? (h.errCode || '') : (R.num(h[f.key]) === null ? '' : R.formatForHtm(f.key, h[f.key]));
-          return '<div class="field"><label for="re-' + f.key + '">' + esc(fieldLabel(f.key)) + (f.unit ? ', ' + esc(f.key === 'energy' ? 'Гкал' : fieldUnit(f.key)) : '') + '</label><div class="ctl"><input id="re-' + f.key + '" class="num" data-re="' + f.key + '" inputmode="' + (f.key === 'errCode' ? 'text' : 'decimal') + '" value="' + esc(v) + '"></div></div>';
+        // 125-а (журнал dev.voronin): лічильник у ГДж, а правка просила «Гкал» — людина вписала ГДж (211,592) у поле Гкал. Енергія — в одиниці табло запису
+        // (як на екрані, з raw без перерахунку), при збереженні — назад у Гкал; третій час (Pd) — якщо він є в записі чи кабінеті
+        (function () { var fs = R.FIELDS.filter(function (f) { return f.key !== 'date'; }); if (times3() || R.num(h.flowHours) !== null) fs.splice(fs.map(function (f) { return f.key; }).indexOf('errHours') + 1, 0, R.FIELD_PD); return fs; })().map(function (f) {
+          var ru = r.unit && M.TO_GCAL[r.unit] ? r.unit : 'Gcal', rv = r.raw && R.num(r.raw.energy);
+          var v = f.key === 'errCode' ? (h.errCode || '') : f.key === 'energy' ? (R.num(h.energy) === null ? '' : ru === 'Gcal' ? R.formatForHtm('energy', h.energy) : (rv !== null && Math.abs(rv * M.TO_GCAL[ru] - R.num(h.energy)) < 0.001 ? rv.toFixed(3) : (R.num(h.energy) / M.TO_GCAL[ru]).toFixed(3)))
+            : (R.num(h[f.key]) === null ? '' : R.formatForHtm(f.key, h[f.key]));
+          return '<div class="field"><label for="re-' + f.key + '">' + esc(fieldLabel(f.key)) + (f.unit ? ', ' + esc(f.key === 'energy' ? unitLbl(ru) : fieldUnit(f.key)) : '') + '</label><div class="ctl"><input id="re-' + f.key + '" class="num" data-re="' + f.key + '"' + (f.key === 'energy' ? ' data-unit="' + ru + '"' : '') + ' inputmode="' + (f.key === 'errCode' ? 'text' : 'decimal') + '" value="' + esc(v) + '"></div></div>';
         }).join('') + '<div class="help block" id="re-err"></div></div>' +
         '<div class="row-actions"><a class="btn sec" href="#rec-' + r.id + '">' + esc(t('cancel')) + '</a><button class="btn" type="submit" data-key="rec-save">' + esc(t('save')) + '</button></div></form>' };
     }
@@ -7464,7 +7478,12 @@
       // 123-я: потягнув сторінку вниз (оновити) — прокрутка вище за верх, offsetTop іде за нею (журнал 12.11, iPhone власника: sy = ot = −70…−189) —
       // це не застряглий шар, вкладки не чіпаємо
       var over = (window.scrollY || 0) < 0;
-      var sh = !kb && !over && vv.scale < 1.01 && Math.abs(gap) > 40 ? Math.round(gap) : 0;
+      // 125-а (юзертестинг iPhone, журнал dev.voronin 12.11): поправка спрацьовувала й тоді, коли застрягання немає — «Відгук» стрибав посеред полів:
+      // 1) сторінку тягнуть за НИЖНІЙ край (sy 73…100 при висоті 786 і вікні 754 — прокрутка за межею, offsetTop іде слідом);
+      // 2) клавіатура відкрита, а фокус на мить не в полі (vh 410 із 714, g −216…−304) — зсув «угору» не буває поправкою взагалі.
+      var maxY = Math.max(0, document.documentElement.scrollHeight - window.innerHeight), sy = window.scrollY || 0;
+      if (sy > maxY + 2) over = true;
+      var sh = !kb && !over && vv.scale < 1.01 && gap > 40 && vv.height >= window.innerHeight * 0.85 ? Math.round(gap) : 0;
       document.documentElement.style.setProperty('--nav-shift', sh + 'px');
       // у журнал (/api/health → errs.navShift): чи спрацьовує поправка на справжніх iPhone і з якими висотами — перевірка без телефона власника (89-а)
       // 106-а: видно < 40 % сторінки без зсуву — людина згортає чи закриває застосунок (журнал 11.11: 461 → 50 → 0 px за секунду) — не пишемо
@@ -7740,29 +7759,40 @@
     var f = document.querySelector('[data-field]:not([type=radio])');
     if (f && f.type !== 'date') { f.focus({ preventScroll: true }); fitStep(); }
   }
-  /** Клавиатура открыта: прокрутить так, чтобы кнопки «Назад/Далі» стояли прямо над ней — сверху остаётся видна подсказка и пример экрана. */
+  /** Клавиатура открыта: прокрутить так, чтобы кнопки «Назад/Далі» стояли прямо над ней — сверху остаётся видна подсказка и пример экрана.
+   *  125-а (видео юзертестинга, iPhone, iOS 26): вызывалось на каждое изменение высоты видимой области — а в iOS 26 нижняя адресная строка
+   *  прячется и появляется при прокрутке, высота меняется, мы снова крутили, строка снова переключалась — страница «дрожала» каждые ~0,4 с
+   *  и не давала самому долистать подсказку. Теперь: только при фокусе поля и когда клавиатура именно открылась; человек сам листает — не тянем
+   *  назад; поле всегда остаётся видно с запасом (иначе iOS докручивает к нему сам — и снова петля). */
+  var FIT = { kb: false, touch: 0 };
+  function kbOpen() {
+    var vv = window.visualViewport, full = document.documentElement.clientHeight || window.screen.height, f = document.activeElement;
+    return !!(vv && f && f.matches && f.matches('[data-field]') && f.type !== 'date' && vv.height < full * 0.8);   // iOS: при клавиатуре innerHeight тоже меньше — сравниваем с макетом
+  }
   function fitStep() {
     var vv = window.visualViewport; if (!vv || !/^step-/.test(routeName())) return;
+    var t0 = Date.now(), done = false;
     var run = function () {
-      // iOS: при клавиатуре innerHeight тоже уменьшается — сравниваем с высотой макета (она не меняется)
-      var full = document.documentElement.clientHeight || window.screen.height;
-      var f = document.activeElement, typing = f && f.matches && f.matches('[data-field]') && f.type !== 'date';
-      var kb = typing && vv.height < full * 0.8; document.documentElement.classList.toggle('kb-open', kb);
+      if (done || FIT.touch > t0) return;
+      var kb = kbOpen(); FIT.kb = kb; document.documentElement.classList.toggle('kb-open', kb);
       if (!kb) return;
-      var top = document.querySelector('.wiz-top'), a = document.querySelector('.wiz-actions'); if (!top || !a) return;
-      var visTop = vv.offsetTop, visBot = vv.offsetTop + vv.height;
+      var top = document.querySelector('.wiz-top'), a = document.querySelector('.wiz-actions'), f = document.activeElement; if (!top || !a) return;
+      var visTop = vv.offsetTop, visBot = vv.offsetTop + vv.height, fr = f.getBoundingClientRect();
       // сначала — шаг и «что нажать» у верхнего края; если кнопки не влезли — подвинуть так, чтобы влезли (поле при этом остаётся видно)
       var d = top.getBoundingClientRect().top - visTop - 4, over = a.getBoundingClientRect().bottom - d + 8 - visBot;
-      if (over > 0) d += Math.min(over, f.getBoundingClientRect().top - d - visTop - 8);
-      if (Math.abs(d) > 3) window.scrollBy(0, d);
+      if (over > 0) d += Math.min(over, fr.top - d - visTop - 8);
+      if (fr.bottom - d > visBot - 16) d = fr.bottom - visBot + 16;
+      if (Math.abs(d) > 3) window.scrollBy(0, d); else done = true;
     };
     requestAnimationFrame(run); setTimeout(run, 150); setTimeout(run, 450); setTimeout(run, 800);
   }
   if (window.visualViewport) window.visualViewport.addEventListener('resize', function () {
-    var vv = window.visualViewport, full = document.documentElement.clientHeight || window.screen.height;
-    if (vv.height >= full * 0.9 && document.documentElement.classList.contains('kb-open')) { document.documentElement.classList.remove('kb-open'); window.scrollTo(window.scrollX, window.scrollY); }
-    fitStep();
+    var kb = kbOpen();
+    if (!kb && document.documentElement.classList.contains('kb-open')) { document.documentElement.classList.remove('kb-open'); window.scrollTo(window.scrollX, window.scrollY); }
+    if (kb && !FIT.kb) fitStep();   // клавиатура только что открылась; адресная строка iOS 26 (±50 px) — не повод крутить страницу
+    FIT.kb = kb;
   });
+  document.addEventListener('touchmove', function () { FIT.touch = Date.now(); }, { passive: true });
   document.addEventListener('focusin', function (e) { if (e.target && e.target.matches && e.target.matches('[data-field]') && /^step-/.test(routeName())) fitStep(); });
   // на компьютере: нажатие «Далі» не уводит фокус из поля (на телефоне фокус ставит goStep)
   document.addEventListener('mousedown', function (e) { if (e.target.closest && e.target.closest('[data-act="step-next"],[data-act="step-back"]') && document.activeElement && document.activeElement.matches && document.activeElement.matches('[data-field]')) e.preventDefault(); });
@@ -7771,7 +7801,7 @@
     if (k === 'date') { S.draft.date = v; save(); return; }
     S.draft.values[k] = v.trim(); save();
     var line = document.getElementById('lcd-' + k);
-    if (line) { line.classList.toggle('sample', !v); var svg = line.querySelector('svg'); var tmp = document.createElement('div'); var st = steps()[S.draft.step] || {}; tmp.innerHTML = segSvg(v ? lcdText(k, v) : (st.lcd ? (st.fields[0] === k ? st.lcd.digits : (st.lcd.alt || st.lcd).digits) : '')); svg.parentNode.replaceChild(tmp.firstChild, svg); }
+    if (line) { line.classList.toggle('sample', !v); var svg = line.querySelector('svg'); var tmp = document.createElement('div'); var st = steps()[S.draft.step] || {}; tmp.innerHTML = segSvg(stepLcdText(st, k, v ? lcdText(k, v) : (st.lcd ? (st.fields[0] === k ? st.lcd.digits : (st.lcd.alt || st.lcd).digits) : ''))); svg.parentNode.replaceChild(tmp.firstChild, svg); }
     var cap = document.getElementById('lcd-cap'); if (cap && v) cap.textContent = t('s_on_screen');
     var h = document.getElementById('h-' + k), w = document.getElementById('fw-' + k); if (!h) return;
     var res = R.checkField(k, v, prevForEntry());
@@ -7916,6 +7946,7 @@
         break;
       }
       case 'to-meter': { e.preventDefault(); SCROLL_TO = 'meter-block'; go('prefs'); break; }
+      case 'fill-zero': { var zi = document.getElementById('f-' + el.getAttribute('data-k')); if (zi) { zi.value = '0'; zi.dispatchEvent(new Event('input', { bubbles: true })); el.remove(); } break; }
       case 'scroll': { var tg = document.getElementById(el.getAttribute('data-target')); if (tg) tg.scrollIntoView({ behavior: 'smooth', block: 'start' }); break; }
       case 'export': copyText(JSON.stringify(S), el); break;
       case 'wipe-ask': document.getElementById('wipe-confirm').innerHTML = '<div class="confirm"><p>' + esc(t(el.getAttribute('data-test') || (Y().mode === 'server' && Y().account) ? 'tr_confirm' : 'p_wipe_confirm')) + '</p><div class="row-actions" style="margin-top:8px"><button class="btn sec" data-act="wipe-no">' + esc(t('cancel')) + '</button><button class="btn danger solid" data-act="wipe-yes" data-key="prefs-wipe-yes">' + esc(t('p_wipe_yes')) + '</button></div></div>'; break;
@@ -8073,6 +8104,8 @@
       if (bad) { er.textContent = bad; return; }
       var nh = Object.assign({}, rf.htm, { date: dt });
       Object.keys(vals).forEach(function (k) { nh[k] = k === 'errCode' ? R.normCode(vals[k]) : (vals[k] === '' ? null : R.num(vals[k])); });
+      var reu = (document.getElementById('re-energy') || {}).getAttribute ? document.getElementById('re-energy').getAttribute('data-unit') : null;
+      if (reu && reu !== 'Gcal' && nh.energy !== null) { rf.raw = Object.assign({}, rf.raw, { energy: vals.energy }); nh.energy = +(nh.energy * (M.TO_GCAL[reu] || 1)).toFixed(6); }   // з одиниці табло — у Гкал
       rf.htm = nh; rf.editedAt = new Date().toISOString(); rf.updatedAt = Date.now(); delete rf.derived;
       save(); toast(t('b_saved')); go('rec-' + rf.id); return;
     }
@@ -8081,6 +8114,9 @@
     if (f.id === 'baseline-form') {
       var b = {}; Array.prototype.forEach.call(f.querySelectorAll('[data-b]'), function (el) { b[el.getAttribute('data-b')] = el.value.trim(); });
       var hasAny = Object.keys(b).some(function (k) { return k !== 'errCode' && b[k]; });
+      // 125-а: «70751193» у годинах (заводський номер) — не зберігаємо, показуємо, де помилка
+      var huge = ['hours', 'errHours', 'flowHours'].filter(function (k) { return b[k] && !R.saneHours(b[k]); })[0];
+      if (huge) { var hw = document.getElementById('b-' + huge); if (hw) { hw.focus(); hw.setCustomValidity && hw.setCustomValidity(''); } toast(t('b_hours_huge', { f: fieldLabel(huge).toLowerCase() })); return; }
       if (hasAny) { b.errCode = R.normCode(b.errCode); ['energy', 'volume', 'flow', 'power', 'tSupply', 'tReturn', 'hours', 'errHours', 'flowHours'].forEach(function (k) { var n = R.num(b[k]); b[k] = n === null ? '' : n; });
         if (b.energy !== '' && htmUnit() !== 'Gcal') b.energy = +(b.energy * (M.TO_GCAL[htmUnit()] || 1)).toFixed(6);   // з одиниці кабінету — в Гкал
         S.baseline = b; }

@@ -155,6 +155,13 @@ a { color: var(--c-return); text-underline-offset: 3px; }
 .lcd .line { display: flex; align-items: flex-end; gap: 12px; }
 .lcd .line + .line { margin-top: 10px; padding-top: 10px; border-top: 1px dashed rgba(28, 38, 24, .25); }
 .lcd .line .tag { padding-bottom: 6px; }
+/* два значення, що чергуються на ОДНОМУ екрані лічильника (температури, On/Eh): по черзі в тому ж місці, без зсуву макета (125-а) */
+@media (prefers-reduced-motion: no-preference) {
+  .lcd.swap { display: grid; }
+  .lcd.swap .line { grid-area: 1 / 1; animation: lcd-swap 4s linear infinite; }
+  .lcd.swap .line + .line { margin-top: 0; padding-top: 0; border-top: 0; animation-delay: -2s; }
+  @keyframes lcd-swap { 0%, 49.9% { opacity: 1; } 50%, 100% { opacity: 0; } }
+}
 .lcd.hero svg.seg { height: 64px; }
 .lcd.small svg.seg { height: 30px; }
 .lcd.small { padding: 8px 10px; border-width: 4px; }
@@ -2226,6 +2233,7 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
     DT_WARN: 3.0,              // близко к порогу
     TEMP_MIN: 5, TEMP_MAX: 95,
     HOURS_TOL: 24,             // |Δчасов − календарь| ≤ 24
+    HOURS_MAX: 263000,         // понад 30 років роботи (125-а: «минулого разу 70751193 год» — заводський номер L+G потрапив у години)
     ENERGY_JUMP: 15,           // Гкал за период
     FLOW_K: 0.3,               // средний расход ≥ 0.3 × переходного
     POWER_TOL: 0.10, POWER_ABS: 0.3,
@@ -2276,6 +2284,10 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
   // Третій час — лише в кабінетах ХТМ з колонками Bd/Fd/Pd (прилади Landis+Gyr тощо; скрин власника 12.11.2026, 11 колонок):
   // «Час напрацювання (Bd)» = hours, «Час простою (Fd)» = errHours, «Час роботи з витратою (Pd)» = flowHours. Назва поля форми ще невідома.
   var FIELD_PD = { key: 'flowHours', htm: null, uk: 'Час роботи з витратою (Pd)', ru: 'Время работы с расходом (Pd)', unit: 'год', dec: 0 };
+  var HOUR_KEYS = ['hours', 'errHours', 'flowHours'];
+  /** Години лічильника, які бувають: ціле, не більше ~30 років роботи. */
+  function saneHours(n) { n = num(n); return n === null || (n >= 0 && n <= C.HOURS_MAX); }
+  function fieldOf(key) { return FIELDS.filter(function (x) { return x.key === key; })[0] || (key === 'flowHours' ? FIELD_PD : { uk: key, ru: key }); }
   function formatForHtm(key, v) {
     var f = FIELDS.filter(function (x) { return x.key === key; })[0] || (key === 'flowHours' ? FIELD_PD : null);
     if (!f) return String(v == null ? '' : v);
@@ -2362,6 +2374,13 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
     var v = {}; FIELDS.forEach(function (f) { if (f.key !== 'date' && f.key !== 'errCode') v[f.key] = num(r[f.key]); });
     var pv = {}; if (prev) FIELDS.forEach(function (f) { if (f.key !== 'date' && f.key !== 'errCode') pv[f.key] = num(prev[f.key]); });
     if (meter.times3) { v.flowHours = num(r.flowHours); pv.flowHours = prev ? num(prev.flowHours) : null; }
+    // минулі години, яких не буває (> 30 років): з ними не порівнюємо — підказуємо виправити «Останні прийняті»
+    var badPrev = HOUR_KEYS.filter(function (k) { return pv[k] != null && !saneHours(pv[k]); });
+    HOUR_KEYS.forEach(function (k) {
+      if (v[k] != null && !saneHours(v[k])) items.push(item('F_HOURS_HUGE', 'block', k, fieldOf(k).uk + ' ' + v[k] + ' — стільки годин не буває (понад 30 років).', fieldOf(k).ru + ' ' + v[k] + ' — столько часов не бывает (больше 30 лет).',
+        'Схоже, це заводський номер. Години — на екрані з «h» (у Landis+Gyr — з підписом Bd, Fd або Pd).', 'Похоже, это заводской номер. Часы — на экране с «h» (у Landis+Gyr — с подписью Bd, Fd или Pd).'));
+    });
+    badPrev.forEach(function (k) { pv[k] = null; });
 
     // --- A. Заполнено ли всё (форма ХТМ требует все 10 значений)
     var missing = FIELDS.filter(function (f) {
@@ -2376,6 +2395,13 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
         'Кабінет ХТМ приймає лише всі 10 значень.', 'Кабинет ХТМ принимает только все 10 значений.'));
     });
 
+    badPrev.forEach(function (k) {
+      var f = fieldOf(k), x = String(num(prev[k]));
+      items.push(item('W_PREV_HOURS_BAD', 'warn', k,
+        'Минулого разу записано «' + f.uk + '» ' + x + ' год — так не буває (понад 30 років). Схоже, туди потрапив заводський номер лічильника.',
+        'В прошлый раз записано «' + f.ru + '» ' + x + ' ч — так не бывает (больше 30 лет). Похоже, туда попал заводской номер счётчика.',
+        'Перевірте «Останні прийняті» (головна → налаштування тепла) — з цим числом не порівнюємо.', 'Проверьте «Последние принятые» (главная → настройки тепла) — с этим числом не сравниваем.'));
+    });
     // --- Дата
     if (parseDate(r.date)) {
       var dToday = daysBetween(r.date, today);
@@ -2529,8 +2555,9 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
     }
     var n = num(value);
     if (key !== 'errCode' && key !== 'date' && String(value || '').trim() !== '' && n === null) return { level: 'warn', msg: { uk: 'Лише цифри та крапка.', ru: 'Только цифры и точка.' } };
+    if (HOUR_KEYS.indexOf(key) >= 0 && n !== null && !saneHours(n)) return { level: 'block', msg: { uk: 'Стільки годин не буває (понад 30 років) — схоже на заводський номер. Години — на екрані з «h».', ru: 'Столько часов не бывает (больше 30 лет) — похоже на заводской номер. Часы — на экране с «h».' } };
     if (n === null || !prev) return null;
-    var b = num(prev[key]);
+    var b = num(prev[key]); if (HOUR_KEYS.indexOf(key) >= 0 && !saneHours(b)) b = null;   // минулі години, яких не буває, — не порівнюємо
     if (['energy', 'volume', 'hours', 'errHours'].indexOf(key) >= 0 && b !== null && n < b) return { level: 'block', msg: { uk: 'Менше за попередні (' + b + ').', ru: 'Меньше предыдущих (' + b + ').' } };
     if (key === 'energy' && b !== null && n - b >= C.ENERGY_JUMP) return { level: 'block', msg: { uk: 'Завеликий приріст — перевірте крапку.', ru: 'Слишком большой прирост — проверьте точку.' } };
     if ((key === 'tSupply' || key === 'tReturn') && (n === 0 || n < C.TEMP_MIN || n > C.TEMP_MAX)) return { level: 'block', msg: { uk: 'Від 5 до 95 °C.', ru: 'От 5 до 95 °C.' } };
@@ -2568,7 +2595,7 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
   var PREV_BASED = ['F_DATE_BEFORE_PREV', 'R_MONO_ENERGY', 'R_MONO_VOLUME', 'R_MONO_HOURS', 'R_MONO_ERRHOURS', 'R_MONO_FLOWHOURS', 'R_ENERGY_JUMP', 'R_ENERGY_WITHOUT_VOLUME',
     'R_DT_MIN', 'R_DT_MAX', 'R_DT_NO_FLOW', 'R_HOURS_CALENDAR', 'R_FLOW_MIN'];
   var api = { C: C, FIELDS: FIELDS, FIELD_PD: FIELD_PD, PREV_BASED: PREV_BASED, num: num, validate: validate, checkField: checkField, decodeRobot: decodeRobot,
-    windowState: windowState, formatForHtm: formatForHtm, toHtmDate: toHtmDate, daysBetween: daysBetween, normCode: normCode, ERR_CODES: ERR_CODES, ymd: ymd };
+    windowState: windowState, formatForHtm: formatForHtm, saneHours: saneHours, toHtmDate: toHtmDate, daysBetween: daysBetween, normCode: normCode, ERR_CODES: ERR_CODES, ymd: ymd };
   if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.TeploRules = api;
 })(typeof window !== 'undefined' ? window : this);
 
@@ -2595,9 +2622,9 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
       hint: L('Миттєва витрата, м³/год.', 'Мгновенный расход, м³/ч.') },
     { press: 'short', count: 1, fields: ['power'], lcd: { digits: '6.790', tag: 'kW' },
       hint: L('Миттєва потужність, кВт.', 'Мгновенная мощность, кВт.') },
-    { press: 'short', count: 1, fields: ['tSupply', 'tReturn'], lcd: { digits: '56.57', tag: 'ht', alt: { digits: '51.11', tag: 'ct' } },
+    { press: 'short', count: 1, fields: ['tSupply', 'tReturn'], lcd: { digits: '56.57', tag: 'ht', alt: { digits: '51.11', tag: 'ct' }, swap: true },
       hint: L('Екран сам чергує «ht» (подача) і «ct» (обратка) — дочекайтеся обох.', 'Экран сам чередует «ht» (подача) и «ct» (обратка) — дождитесь обоих.') },
-    { press: 'short', count: 2, fields: ['hours', 'errHours'], lcd: { digits: '35611', tag: 'On', alt: { digits: '153', tag: 'Eh' } },
+    { press: 'short', count: 2, fields: ['hours', 'errHours'], lcd: { digits: '35611', tag: 'On', alt: { digits: '153', tag: 'Eh' }, swap: true },
       hint: L('Ще 2 натискання. Чергуються «On» (години роботи) і «Eh» (години з помилкою — час простою). Впишіть обидва, «Eh» буває 0.', 'Ещё 2 нажатия. Чередуются «On» (часы работы) и «Eh» (часы с ошибкой — время простоя). Впишите оба, «Eh» бывает 0.') },
     { press: 'short', count: 1, fields: ['errCode'], lcd: { digits: 'E-------', tag: '' },
       hint: L('«E» і лише прочерки («E-------») — помилок немає. Цифра чи буква після «E-» («E-9», «C-1») — код помилки; «Err» біля значень — теж є помилка.', '«E» и только прочерки («E-------») — ошибок нет. Цифра или буква после «E-» («E-9», «C-1») — код ошибки; «Err» рядом со значениями — тоже есть ошибка.') }
@@ -2622,12 +2649,24 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
         hint: L('Та сама петля LOOP 0: натискайте коротко (менше 2 с) до екрана з «m³». Горять усі сегменти — це тест екрана, натисніть ще раз.', 'Та же петля LOOP 0: нажимайте коротко (меньше 2 с) до экрана с «m³». Горят все сегменты — это тест экрана, нажмите ещё раз.') },
       { press: 'long', hold: 3, count: 1, loop: true, fields: ['flow'], lcd: { digits: '0.123', tag: 'm³/h' },
         hint: L('Витрати в LOOP 0 немає — вона в петлі LOOP 1. Затисніть кнопку й тримайте понад 3 секунди, доки на екрані не з’явиться «LOOP 1». Відпустіть і натисніть коротко — це витрата, m³/h.', 'Расхода в LOOP 0 нет — он в петле LOOP 1. Зажмите кнопку и держите больше 3 секунд, пока на экране не появится «LOOP 1». Отпустите и нажмите коротко — это расход, m³/h.') },
-      { press: 'short', count: null, fields: ['power'], lcd: { digits: '1.234', tag: 'kW' },
-        hint: L('Далі в LOOP 1 — коротко до «kW» (потужність).', 'Дальше в LOOP 1 — коротко до «kW» (мощность).') },
-      { press: 'short', count: null, fields: ['tSupply', 'tReturn'], lcd: { digits: '56.5', tag: '°C', alt: { digits: '51.1', tag: '°C' } },
-        hint: L('Далі — температури: подача й обратка змінюють одна одну кожні 2 секунди, дочекайтеся обох.', 'Дальше — температуры: подача и обратка сменяют друг друга каждые 2 секунды, дождитесь обеих.') },
-      { press: 'short', count: null, fields: ['hours', 'errHours'], lcd: { digits: '35611', tag: 'h', alt: { digits: '0', tag: 'h' } },
-        hint: L('Далі в LOOP 1 — години: «час роботи» — це години роботи; «час відсутності вимірювань» (missing time) — це час простою, години з помилкою: впишіть і його (буває 0). «Час з витратою» — для колонки «Час роботи з витратою (Pd)», якщо вона є у вашому кабінеті ХТМ; там же години роботи звуться «Час напрацювання (Bd)», простій — «Час простою (Fd)».', 'Дальше в LOOP 1 — часы: «время работы» — это часы работы; «время отсутствия измерений» (missing time) — это время простоя, часы с ошибкой: впишите и его (бывает 0). «Время с расходом» — для колонки «Час роботи з витратою (Pd)», если она есть в вашем кабинете ХТМ; там же часы работы называются «Час напрацювання (Bd)», простой — «Час простою (Fd)».') },
+      // 125-а (юзертестинг T330, 12.11.2026, і руководство L+G T330): LOOP 1 по порядку — витрата → різниця температур (K) → потужність → час роботи →
+      // температури (подача й обратка чергуються на одному екрані кожні 2 с) → missing time (час простою) → час з витратою. Кроки — в тому ж порядку,
+      // що й екрани лічильника; години — три окремі екрани (у кабінеті ХТМ: Bd, Fd, Pd), Pd — лише для кабінету з трьома колонками часу.
+      { press: 'short', count: 2, fields: ['power'], lcd: { digits: '1.234', tag: 'kW' },
+        hint: L('Далі в LOOP 1 коротко 2 рази: перший екран — різниця температур (з «K»), другий — потужність з «kW».',
+          'Дальше в LOOP 1 коротко 2 раза: первый экран — разница температур (с «K»), второй — мощность с «kW».') },
+      { press: 'short', count: 1, fields: ['hours'], lcd: { digits: '35611', tag: 'h' },
+        hint: L('Ще раз коротко — години роботи з «h» (у кабінеті ХТМ — «Час роботи» або «Час напрацювання (Bd)»). Температури — на наступному екрані.',
+          'Ещё раз коротко — часы работы с «h» (в кабинете ХТМ — «Час роботи» или «Час напрацювання (Bd)»). Температуры — на следующем экране.') },
+      { press: 'short', count: 1, fields: ['tSupply', 'tReturn'], lcd: { digits: '56.5', tag: '°C', alt: { digits: '51.1', tag: '°C' }, swap: true },
+        hint: L('Ще раз коротко — температури. Це один екран: подача й обратка змінюють одна одну кожні 2 секунди (вища — подача). Дочекайтеся обох.',
+          'Ещё раз коротко — температуры. Это один экран: подача и обратка сменяют друг друга каждые 2 секунды (выше — подача). Дождитесь обеих.') },
+      { press: 'short', count: 1, fields: ['errHours'], lcd: { digits: '0', tag: 'h' },
+        hint: L('Ще раз коротко — час простою (missing time) з «h»: години, коли лічильник не міряв через помилку (у кабінеті ХТМ — «Час роботи з помилкою» або «Час простою (Fd)»). Буває 0 — так і впишіть.',
+          'Ещё раз коротко — время простоя (missing time) с «h»: часы, когда счётчик не мерил из-за ошибки (в кабинете ХТМ — «Час роботи з помилкою» или «Час простою (Fd)»). Бывает 0 — так и впишите.') },
+      { press: 'short', count: 1, only3: true, fields: ['flowHours'], lcd: { digits: '34210', tag: 'h' },
+        hint: L('Ще раз коротко — час роботи з витратою з «h»: години, коли через лічильник ішла вода; не більший за години роботи. Це колонка «Час роботи з витратою (Pd)» у кабінеті ХТМ.',
+          'Ещё раз коротко — время работы с расходом с «h»: часы, когда через счётчик шла вода; не больше часов работы. Это колонка «Час роботи з витратою (Pd)» в кабинете ХТМ.') },
       { press: null, say: L('Петля LOOP 0, одразу після енергії', 'Петля LOOP 0, сразу после энергии'), count: 0, fields: ['errCode'], lcd: { digits: 'F0', tag: '' },
         hint: L('Код помилки лічильник показує в LOOP 0 після енергії — лише коли помилка є («F» з цифрою, «FL nEG», «DIFF nEG»). Не бачили — помилок немає. Повернутися в LOOP 0: затискайте кнопку понад 3 с, доки знову не з’явиться енергія.', 'Код ошибки счётчик показывает в LOOP 0 после энергии — только когда ошибка есть («F» с цифрой, «FL nEG», «DIFF nEG»). Не видели — ошибок нет. Вернуться в LOOP 0: зажимайте кнопку больше 3 с, пока снова не появится энергия.') }
     ];
@@ -2643,9 +2682,9 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
       hint: L('Витрата, m³/h. Якщо замість неї ще одна енергія (лічильник з обліком холоду) — натисніть ще раз.', 'Расход, m³/h. Если вместо него ещё одна энергия (счётчик с учётом холода) — нажмите ещё раз.') },
     { press: 'short', count: 1, fields: ['power'], lcd: { digits: '6.790', tag: 'kW' },
       hint: L('Потужність, кВт.', 'Мощность, кВт.') },
-    { press: 'short', count: 1, fields: ['tSupply', 'tReturn'], lcd: { digits: '56.57', tag: '°C', alt: { digits: '51.11', tag: '°C' } },
+    { press: 'short', count: 1, fields: ['tSupply', 'tReturn'], lcd: { digits: '56.57', tag: '°C', alt: { digits: '51.11', tag: '°C' }, swap: true },
       hint: L('Температури подачі й обратки змінюють одна одну самі — дочекайтеся обох.', 'Температуры подачи и обратки сменяют друг друга сами — дождитесь обеих.') },
-    { press: 'short', count: 2, fields: ['hours', 'errHours'], lcd: { digits: '35611', tag: 'h', alt: { digits: '153', tag: 'h' } },
+    { press: 'short', count: 2, fields: ['hours', 'errHours'], lcd: { digits: '35611', tag: 'h', alt: { digits: '153', tag: 'h' }, swap: true },
       hint: L('Ще 2 натискання (перше — різниця температур). Чергуються час роботи (On) і час з помилкою — час простою (Eh). Впишіть обидва.', 'Ещё 2 нажатия (первое — разница температур). Чередуются время работы (On) и время с ошибкой — время простоя (Eh). Впишите оба.') },
     { press: 'short', count: 1, fields: ['errCode'], lcd: { digits: 'E-------', tag: '' },
       hint: L('«E» і лише прочерки — помилок немає. «C-1» або «E» з цифрою чи буквою — код помилки.', '«E» и только прочерки — ошибок нет. «C-1» или «E» с цифрой или буквой — код ошибки.') }
@@ -2911,7 +2950,10 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
       s_hold: 'Затисніть кнопку й тримайте понад {s} с', s_hold_then: 'потім коротко ×{n}',
       s_loops: 'Екран не той або не знайшли?',
       s_first: 'Екран за замовчуванням',
+      s_prev_bad: "Минулого разу тут записано число, якого не буває (понад 30 років годин) — схоже на заводський номер. Порівнювати не будемо; виправте «Останні прийняті».",
+      b_hours_huge: 'У полі «{f}» — більше, ніж буває годин (понад 30 років). Схоже на заводський номер: години — на екрані з «h».',
       s_prev: 'Минулого разу {v}',
+      s_err_zero: 'Немає на екрані — вписати 0',
       s_need: 'Заповніть поле, щоб перейти далі.',
       s_sleep: 'Лічильник засинає через ~{m} хв. Згас — натисніть кнопку й долистайте до цього екрана.',
       s_err_none: 'Помилок немає (E-------)',
@@ -4171,7 +4213,10 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
       s_hold: 'Зажмите кнопку и держите больше {s} с', s_hold_then: 'потом коротко ×{n}',
       s_loops: 'Экран не тот или не нашли?',
       s_first: 'Экран по умолчанию',
+      s_prev_bad: "В прошлый раз здесь записано число, которого не бывает (больше 30 лет часов) — похоже на заводской номер. Сравнивать не будем; исправьте «Последние принятые».",
+      b_hours_huge: 'В поле «{f}» — больше, чем бывает часов (больше 30 лет). Похоже на заводской номер: часы — на экране с «h».',
       s_prev: 'В прошлый раз {v}',
+      s_err_zero: 'Нет на экране — вписать 0',
       s_need: 'Заполните поле, чтобы перейти дальше.',
       s_sleep: 'Счётчик засыпает через ~{m} мин. Погас — нажмите кнопку и долистайте до этого экрана.',
       s_err_none: 'Ошибок нет (E-------)',
@@ -6013,7 +6058,8 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
         }
         out.cand = out.cand || { digits: bv.digits, dot: bv.dot, score: l.score };   // для разбора всей пачки по порядку экранов
         if (!field) {
-          if (val === null && bv.digits.length >= 4 && /[1-9]/.test(bv.digits)) { field = 'hours'; how = 'guess'; }
+          // 125-а: 7–8 цифр без підпису — не години (понад 30 років не буває), а заводський номер (L+G «70751193» потрапив у «Час роботи»)
+          if (val === null && bv.digits.length >= 4 && /[1-9]/.test(bv.digits) && bv.digits.replace(/^0+/, '').length <= 6) { field = 'hours'; how = 'guess'; }
           else if (val && (val.split('.')[1] || '').length === 3) { field = 'energy'; how = 'guess'; }
           else if (val && (val.split('.')[1] || '').length === 2 && parseFloat(val) < 150) { field = null; }
         }
@@ -6021,6 +6067,7 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
         if (!field && /^0\d{2}$/.test(bv.digits)) { out.kind = 'screen'; out.note = 'dt_screen'; out.anchor = 4.5; delete out.cand; return; }
         if (!field) { out.note = out.note || 'unlabeled'; return; }
       }
+      if (DEC[field] === 0 && bv.digits.replace(/^0+/, '').length > 6) { out.note = out.note || 'serial_like'; return; }   // «годин» понад 999999 не буває
       if (DEC[field] === 0) val = bv.digits;   // часы — целые: «точка» на них — это тень сегмента
       if (val === null) { var inf = inferDot(bv.digits, field, ctx); val = inf.v; if ((inf.how === 'none' || inf.how === 'dec') && DEC[field]) { conf *= inf.how === 'dec' ? 0.75 : 0.6; out.note = out.note || 'no_dot'; } else if (inf.how !== 'int') conf *= 0.9; }
       if (how === 'prev') conf *= 0.8; if (how === 'guess') conf *= 0.5; if (how === 'model') conf *= 0.7;
@@ -6044,7 +6091,7 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
     if (field === 'energy' || field === 'volume') return n >= 4 && (dot === null || dot === 3);
     if (field === 'flow' || field === 'power') return n >= 4 && n <= 5 && (dot === null || dot === 3);
     if (field === 'tSupply' || field === 'tReturn') { v = parseFloat(placeDot(d, 2)); return n >= 3 && n <= 4 && (dot === null || dot === 2) && v >= 5 && v < 150; }
-    if (field === 'hours' || field === 'errHours' || field === 'flowHours') return dot === null && /[1-9]/.test(d);
+    if (field === 'hours' || field === 'errHours' || field === 'flowHours') return dot === null && /[1-9]/.test(d) && d.replace(/^0+/, '').length <= 6;
     return false;
   }
   function batch(photos, ctx) {
@@ -8088,7 +8135,9 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
   // ---------------- мастер: шаги ----------------
   function steps() {
     var m = model(), st = m ? m.steps : [];
-    // кабінет з Bd/Fd/Pd — третій час додаємо до кроку годин (у T330 це «час з витратою» з LOOP 1)
+    // крок «Pd» (L+G: окремий екран «час з витратою») — лише коли в кабінеті ХТМ є третя колонка часу
+    st = st.filter(function (s) { return !s.only3 || times3(); });
+    // кабінет з Bd/Fd/Pd — третій час додаємо до кроку годин (у моделей без окремого екрана Pd)
     if (times3() && !st.some(function (s) { return s.fields.indexOf('flowHours') >= 0; })) st = st.map(function (s) { return s.fields.indexOf('errHours') >= 0 ? Object.assign({}, s, { fields: s.fields.concat('flowHours') }) : s; });
     return [{ kind: 'date' }].concat(st);
   }
@@ -8112,6 +8161,8 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
     var la = lastAccepted(); if (!la) return null;
     var p = Object.assign({}, la), k = M.TO_GCAL[energyUnit()] || 1, e = R.num(p.energy); delete p.src; delete p.id;
     if (e !== null) p.energy = +(e / k).toFixed(6);
+    // 125-а: минулі години, яких не буває (заводський номер L+G «70751193» у «Час роботи»), — не підказка й не «менше за попередні»
+    ['hours', 'errHours', 'flowHours'].forEach(function (h) { if (p[h] != null && p[h] !== '' && !R.saneHours(p[h])) { p._bad = (p._bad || []).concat(h); delete p[h]; } });
     return p;
   }
   function draftReadingGcal(d) {
@@ -12409,9 +12460,10 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
         var sampleText = idx === 0 ? s.lcd.digits : (s.lcd.alt ? s.lcd.alt.digits : s.lcd.digits);
         var tag = idx === 0 ? s.lcd.tag : (s.lcd.alt ? s.lcd.alt.tag : s.lcd.tag);
         if (k === 'energy' && energyUnit() !== 'Gcal') tag = energyUnit();
-        return { id: 'lcd-' + k, text: typed ? lcdText(k, typed) : sampleText, tag: tag, corner: !!s.lcd.corner, sample: !typed };
+        return { id: 'lcd-' + k, text: stepLcdText(s, k, typed ? lcdText(k, typed) : sampleText), tag: tag, corner: !!s.lcd.corner, sample: !typed };
       });
-      left = press + lcd(lines, 'step-lcd') + '<p class="lcd-cap" id="lcd-cap">' + esc(Object.keys(S.draft.values).some(function (k) { return s.fields.indexOf(k) >= 0 && S.draft.values[k]; }) ? t('s_on_screen') : t('s_example')) + '</p>' +
+      // swap — значення чергуються на одному екрані (температури, On/Eh): так і показуємо, а не двома рядками одночасно (125-а)
+      left = press + lcd(lines, 'step-lcd' + (s.lcd.swap && lines.length === 2 ? ' swap' : '')) + '<p class="lcd-cap" id="lcd-cap">' + esc(Object.keys(S.draft.values).some(function (k) { return s.fields.indexOf(k) >= 0 && S.draft.values[k]; }) ? t('s_on_screen') : t('s_example')) + '</p>' +
         '<p class="hint">' + esc(L(s.hint)) + '</p>' +
         (m && m.sleepMin ? '<p class="sleep">' + ico('moon', 18) + '<span>' + esc(t('s_sleep', { m: m.sleepMin })) + '</span></p>' : '') +
         // петлі (LOOP 0/1, групи, рівні): людина не знаходить екран, бо він в іншій петлі — скарги 12.11.2026 (124-а)
@@ -12423,11 +12475,14 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
       '<button class="btn" data-act="step-next" data-i="' + i + '" data-key="step-next">' + esc(isLast ? t('s_to_check') : t('next')) + '</button></div>' + cancelLink('heat');
     return { screen: 'S05', route: 'step', bare: true, closeTo: backTo('home'), html: head + '<div class="wiz"><div>' + left + '</div><div><form id="step-form" novalidate>' + right + actions + '</form></div></div>' };
   };
+  /** Текст табло кроку: у L+G перед годинами — підпис екрана (Bd, Fd, Pd). */
+  function stepLcdText(st, k, txt) { return st && st.lcd && st.lcd.lead && st.fields[0] === k ? st.lcd.lead + ' ' + txt : txt; }
   function lcdText(k, v) { if (k === 'errCode') return R.normCode(v).replace(/-/g, '-'); var x = String(v).replace(',', '.'); return x; }
   function numField(k, prev) {
     var v = S.draft.values[k] == null ? '' : S.draft.values[k];
     var cls = k === 'tSupply' ? ' supply' : k === 'tReturn' ? ' return' : '';
     var help = '';
+    if (prev && (prev._bad || []).indexOf(k) >= 0) help = t('s_prev_bad');
     if (prev && prev[k] != null && prev[k] !== '') {
       help = t('s_prev', { v: (k === 'energy' ? String(prev[k]) : prev[k]) + ' ' + fieldUnit(k) });
       var plain = help;
@@ -12441,7 +12496,9 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
     // data-plain лишаємо як є (лише «минулого разу N»): з нього при вводі береться число після першої цифри
     if (k === 'errHours') help = t('s_err_hours') + (help ? ' ' + help + '.' : '');
     return '<div class="field" id="fw-' + k + '"><label for="f-' + k + '"' + (S._single ? ' class="sr"' : '') + '>' + esc(fieldLabel(k)) + '</label><div class="ctl' + cls + '"><input id="f-' + k + '" class="num" inputmode="decimal" autocomplete="off" enterkeyhint="next" data-field="' + k + '" value="' + esc(v) + '" aria-describedby="h-' + k + '"><span class="unit">' + esc(fieldUnit(k)) + '</span></div>' +
-      '<div class="help" id="h-' + k + '" data-base="' + esc(help) + '" data-plain="' + esc(plain) + '">' + esc(help) + '</div></div>';
+      '<div class="help" id="h-' + k + '" data-base="' + esc(help) + '" data-plain="' + esc(plain) + '">' + esc(help) + '</div>' +
+      // 125-а (юзертестинг T330): «час простою» не знайшли на екрані — тричі «Далі» з порожнім полем і кинули; одним дотиком — 0
+      (k === 'errHours' && (v === '' || v == null) ? '<button type="button" class="linkbtn" data-act="fill-zero" data-k="errHours" data-key="step-errhours-zero">' + esc(t('s_err_zero')) + '</button>' : '') + '</div>';
   }
   function errCodeField() {
     var v = S.draft.values.errCode || '', none = !v || R.normCode(v) === 'E---';
@@ -12797,9 +12854,13 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
     if (edit) {
       return { screen: 'S09', route: 'history', html: head + '<form id="rec-form" data-id="' + r.id + '" novalidate><div class="panel">' +
         '<div class="field" style="max-width:280px"><label for="re-date">' + esc(fieldLabel('date')) + '</label><div class="ctl"><input id="re-date" type="date" value="' + esc(h.date || '') + '" max="' + today() + '" required></div></div>' +
-        R.FIELDS.filter(function (f) { return f.key !== 'date'; }).map(function (f) {
-          var v = f.key === 'errCode' ? (h.errCode || '') : (R.num(h[f.key]) === null ? '' : R.formatForHtm(f.key, h[f.key]));
-          return '<div class="field"><label for="re-' + f.key + '">' + esc(fieldLabel(f.key)) + (f.unit ? ', ' + esc(f.key === 'energy' ? 'Гкал' : fieldUnit(f.key)) : '') + '</label><div class="ctl"><input id="re-' + f.key + '" class="num" data-re="' + f.key + '" inputmode="' + (f.key === 'errCode' ? 'text' : 'decimal') + '" value="' + esc(v) + '"></div></div>';
+        // 125-а (журнал dev.voronin): лічильник у ГДж, а правка просила «Гкал» — людина вписала ГДж (211,592) у поле Гкал. Енергія — в одиниці табло запису
+        // (як на екрані, з raw без перерахунку), при збереженні — назад у Гкал; третій час (Pd) — якщо він є в записі чи кабінеті
+        (function () { var fs = R.FIELDS.filter(function (f) { return f.key !== 'date'; }); if (times3() || R.num(h.flowHours) !== null) fs.splice(fs.map(function (f) { return f.key; }).indexOf('errHours') + 1, 0, R.FIELD_PD); return fs; })().map(function (f) {
+          var ru = r.unit && M.TO_GCAL[r.unit] ? r.unit : 'Gcal', rv = r.raw && R.num(r.raw.energy);
+          var v = f.key === 'errCode' ? (h.errCode || '') : f.key === 'energy' ? (R.num(h.energy) === null ? '' : ru === 'Gcal' ? R.formatForHtm('energy', h.energy) : (rv !== null && Math.abs(rv * M.TO_GCAL[ru] - R.num(h.energy)) < 0.001 ? rv.toFixed(3) : (R.num(h.energy) / M.TO_GCAL[ru]).toFixed(3)))
+            : (R.num(h[f.key]) === null ? '' : R.formatForHtm(f.key, h[f.key]));
+          return '<div class="field"><label for="re-' + f.key + '">' + esc(fieldLabel(f.key)) + (f.unit ? ', ' + esc(f.key === 'energy' ? unitLbl(ru) : fieldUnit(f.key)) : '') + '</label><div class="ctl"><input id="re-' + f.key + '" class="num" data-re="' + f.key + '"' + (f.key === 'energy' ? ' data-unit="' + ru + '"' : '') + ' inputmode="' + (f.key === 'errCode' ? 'text' : 'decimal') + '" value="' + esc(v) + '"></div></div>';
         }).join('') + '<div class="help block" id="re-err"></div></div>' +
         '<div class="row-actions"><a class="btn sec" href="#rec-' + r.id + '">' + esc(t('cancel')) + '</a><button class="btn" type="submit" data-key="rec-save">' + esc(t('save')) + '</button></div></form>' };
     }
@@ -15058,7 +15119,12 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
       // 123-я: потягнув сторінку вниз (оновити) — прокрутка вище за верх, offsetTop іде за нею (журнал 12.11, iPhone власника: sy = ot = −70…−189) —
       // це не застряглий шар, вкладки не чіпаємо
       var over = (window.scrollY || 0) < 0;
-      var sh = !kb && !over && vv.scale < 1.01 && Math.abs(gap) > 40 ? Math.round(gap) : 0;
+      // 125-а (юзертестинг iPhone, журнал dev.voronin 12.11): поправка спрацьовувала й тоді, коли застрягання немає — «Відгук» стрибав посеред полів:
+      // 1) сторінку тягнуть за НИЖНІЙ край (sy 73…100 при висоті 786 і вікні 754 — прокрутка за межею, offsetTop іде слідом);
+      // 2) клавіатура відкрита, а фокус на мить не в полі (vh 410 із 714, g −216…−304) — зсув «угору» не буває поправкою взагалі.
+      var maxY = Math.max(0, document.documentElement.scrollHeight - window.innerHeight), sy = window.scrollY || 0;
+      if (sy > maxY + 2) over = true;
+      var sh = !kb && !over && vv.scale < 1.01 && gap > 40 && vv.height >= window.innerHeight * 0.85 ? Math.round(gap) : 0;
       document.documentElement.style.setProperty('--nav-shift', sh + 'px');
       // у журнал (/api/health → errs.navShift): чи спрацьовує поправка на справжніх iPhone і з якими висотами — перевірка без телефона власника (89-а)
       // 106-а: видно < 40 % сторінки без зсуву — людина згортає чи закриває застосунок (журнал 11.11: 461 → 50 → 0 px за секунду) — не пишемо
@@ -15334,29 +15400,40 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
     var f = document.querySelector('[data-field]:not([type=radio])');
     if (f && f.type !== 'date') { f.focus({ preventScroll: true }); fitStep(); }
   }
-  /** Клавиатура открыта: прокрутить так, чтобы кнопки «Назад/Далі» стояли прямо над ней — сверху остаётся видна подсказка и пример экрана. */
+  /** Клавиатура открыта: прокрутить так, чтобы кнопки «Назад/Далі» стояли прямо над ней — сверху остаётся видна подсказка и пример экрана.
+   *  125-а (видео юзертестинга, iPhone, iOS 26): вызывалось на каждое изменение высоты видимой области — а в iOS 26 нижняя адресная строка
+   *  прячется и появляется при прокрутке, высота меняется, мы снова крутили, строка снова переключалась — страница «дрожала» каждые ~0,4 с
+   *  и не давала самому долистать подсказку. Теперь: только при фокусе поля и когда клавиатура именно открылась; человек сам листает — не тянем
+   *  назад; поле всегда остаётся видно с запасом (иначе iOS докручивает к нему сам — и снова петля). */
+  var FIT = { kb: false, touch: 0 };
+  function kbOpen() {
+    var vv = window.visualViewport, full = document.documentElement.clientHeight || window.screen.height, f = document.activeElement;
+    return !!(vv && f && f.matches && f.matches('[data-field]') && f.type !== 'date' && vv.height < full * 0.8);   // iOS: при клавиатуре innerHeight тоже меньше — сравниваем с макетом
+  }
   function fitStep() {
     var vv = window.visualViewport; if (!vv || !/^step-/.test(routeName())) return;
+    var t0 = Date.now(), done = false;
     var run = function () {
-      // iOS: при клавиатуре innerHeight тоже уменьшается — сравниваем с высотой макета (она не меняется)
-      var full = document.documentElement.clientHeight || window.screen.height;
-      var f = document.activeElement, typing = f && f.matches && f.matches('[data-field]') && f.type !== 'date';
-      var kb = typing && vv.height < full * 0.8; document.documentElement.classList.toggle('kb-open', kb);
+      if (done || FIT.touch > t0) return;
+      var kb = kbOpen(); FIT.kb = kb; document.documentElement.classList.toggle('kb-open', kb);
       if (!kb) return;
-      var top = document.querySelector('.wiz-top'), a = document.querySelector('.wiz-actions'); if (!top || !a) return;
-      var visTop = vv.offsetTop, visBot = vv.offsetTop + vv.height;
+      var top = document.querySelector('.wiz-top'), a = document.querySelector('.wiz-actions'), f = document.activeElement; if (!top || !a) return;
+      var visTop = vv.offsetTop, visBot = vv.offsetTop + vv.height, fr = f.getBoundingClientRect();
       // сначала — шаг и «что нажать» у верхнего края; если кнопки не влезли — подвинуть так, чтобы влезли (поле при этом остаётся видно)
       var d = top.getBoundingClientRect().top - visTop - 4, over = a.getBoundingClientRect().bottom - d + 8 - visBot;
-      if (over > 0) d += Math.min(over, f.getBoundingClientRect().top - d - visTop - 8);
-      if (Math.abs(d) > 3) window.scrollBy(0, d);
+      if (over > 0) d += Math.min(over, fr.top - d - visTop - 8);
+      if (fr.bottom - d > visBot - 16) d = fr.bottom - visBot + 16;
+      if (Math.abs(d) > 3) window.scrollBy(0, d); else done = true;
     };
     requestAnimationFrame(run); setTimeout(run, 150); setTimeout(run, 450); setTimeout(run, 800);
   }
   if (window.visualViewport) window.visualViewport.addEventListener('resize', function () {
-    var vv = window.visualViewport, full = document.documentElement.clientHeight || window.screen.height;
-    if (vv.height >= full * 0.9 && document.documentElement.classList.contains('kb-open')) { document.documentElement.classList.remove('kb-open'); window.scrollTo(window.scrollX, window.scrollY); }
-    fitStep();
+    var kb = kbOpen();
+    if (!kb && document.documentElement.classList.contains('kb-open')) { document.documentElement.classList.remove('kb-open'); window.scrollTo(window.scrollX, window.scrollY); }
+    if (kb && !FIT.kb) fitStep();   // клавиатура только что открылась; адресная строка iOS 26 (±50 px) — не повод крутить страницу
+    FIT.kb = kb;
   });
+  document.addEventListener('touchmove', function () { FIT.touch = Date.now(); }, { passive: true });
   document.addEventListener('focusin', function (e) { if (e.target && e.target.matches && e.target.matches('[data-field]') && /^step-/.test(routeName())) fitStep(); });
   // на компьютере: нажатие «Далі» не уводит фокус из поля (на телефоне фокус ставит goStep)
   document.addEventListener('mousedown', function (e) { if (e.target.closest && e.target.closest('[data-act="step-next"],[data-act="step-back"]') && document.activeElement && document.activeElement.matches && document.activeElement.matches('[data-field]')) e.preventDefault(); });
@@ -15365,7 +15442,7 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
     if (k === 'date') { S.draft.date = v; save(); return; }
     S.draft.values[k] = v.trim(); save();
     var line = document.getElementById('lcd-' + k);
-    if (line) { line.classList.toggle('sample', !v); var svg = line.querySelector('svg'); var tmp = document.createElement('div'); var st = steps()[S.draft.step] || {}; tmp.innerHTML = segSvg(v ? lcdText(k, v) : (st.lcd ? (st.fields[0] === k ? st.lcd.digits : (st.lcd.alt || st.lcd).digits) : '')); svg.parentNode.replaceChild(tmp.firstChild, svg); }
+    if (line) { line.classList.toggle('sample', !v); var svg = line.querySelector('svg'); var tmp = document.createElement('div'); var st = steps()[S.draft.step] || {}; tmp.innerHTML = segSvg(stepLcdText(st, k, v ? lcdText(k, v) : (st.lcd ? (st.fields[0] === k ? st.lcd.digits : (st.lcd.alt || st.lcd).digits) : ''))); svg.parentNode.replaceChild(tmp.firstChild, svg); }
     var cap = document.getElementById('lcd-cap'); if (cap && v) cap.textContent = t('s_on_screen');
     var h = document.getElementById('h-' + k), w = document.getElementById('fw-' + k); if (!h) return;
     var res = R.checkField(k, v, prevForEntry());
@@ -15510,6 +15587,7 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
         break;
       }
       case 'to-meter': { e.preventDefault(); SCROLL_TO = 'meter-block'; go('prefs'); break; }
+      case 'fill-zero': { var zi = document.getElementById('f-' + el.getAttribute('data-k')); if (zi) { zi.value = '0'; zi.dispatchEvent(new Event('input', { bubbles: true })); el.remove(); } break; }
       case 'scroll': { var tg = document.getElementById(el.getAttribute('data-target')); if (tg) tg.scrollIntoView({ behavior: 'smooth', block: 'start' }); break; }
       case 'export': copyText(JSON.stringify(S), el); break;
       case 'wipe-ask': document.getElementById('wipe-confirm').innerHTML = '<div class="confirm"><p>' + esc(t(el.getAttribute('data-test') || (Y().mode === 'server' && Y().account) ? 'tr_confirm' : 'p_wipe_confirm')) + '</p><div class="row-actions" style="margin-top:8px"><button class="btn sec" data-act="wipe-no">' + esc(t('cancel')) + '</button><button class="btn danger solid" data-act="wipe-yes" data-key="prefs-wipe-yes">' + esc(t('p_wipe_yes')) + '</button></div></div>'; break;
@@ -15667,6 +15745,8 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
       if (bad) { er.textContent = bad; return; }
       var nh = Object.assign({}, rf.htm, { date: dt });
       Object.keys(vals).forEach(function (k) { nh[k] = k === 'errCode' ? R.normCode(vals[k]) : (vals[k] === '' ? null : R.num(vals[k])); });
+      var reu = (document.getElementById('re-energy') || {}).getAttribute ? document.getElementById('re-energy').getAttribute('data-unit') : null;
+      if (reu && reu !== 'Gcal' && nh.energy !== null) { rf.raw = Object.assign({}, rf.raw, { energy: vals.energy }); nh.energy = +(nh.energy * (M.TO_GCAL[reu] || 1)).toFixed(6); }   // з одиниці табло — у Гкал
       rf.htm = nh; rf.editedAt = new Date().toISOString(); rf.updatedAt = Date.now(); delete rf.derived;
       save(); toast(t('b_saved')); go('rec-' + rf.id); return;
     }
@@ -15675,6 +15755,9 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
     if (f.id === 'baseline-form') {
       var b = {}; Array.prototype.forEach.call(f.querySelectorAll('[data-b]'), function (el) { b[el.getAttribute('data-b')] = el.value.trim(); });
       var hasAny = Object.keys(b).some(function (k) { return k !== 'errCode' && b[k]; });
+      // 125-а: «70751193» у годинах (заводський номер) — не зберігаємо, показуємо, де помилка
+      var huge = ['hours', 'errHours', 'flowHours'].filter(function (k) { return b[k] && !R.saneHours(b[k]); })[0];
+      if (huge) { var hw = document.getElementById('b-' + huge); if (hw) { hw.focus(); hw.setCustomValidity && hw.setCustomValidity(''); } toast(t('b_hours_huge', { f: fieldLabel(huge).toLowerCase() })); return; }
       if (hasAny) { b.errCode = R.normCode(b.errCode); ['energy', 'volume', 'flow', 'power', 'tSupply', 'tReturn', 'hours', 'errHours', 'flowHours'].forEach(function (k) { var n = R.num(b[k]); b[k] = n === null ? '' : n; });
         if (b.energy !== '' && htmUnit() !== 'Gcal') b.energy = +(b.energy * (M.TO_GCAL[htmUnit()] || 1)).toFixed(6);   // з одиниці кабінету — в Гкал
         S.baseline = b; }

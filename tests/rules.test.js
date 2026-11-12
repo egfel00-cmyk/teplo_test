@@ -39,6 +39,13 @@ const prev = J[6], base = Object.assign({}, J[6], { date: '2025-11-23', hours: 3
 const ok = R.validate({ reading: base, prev, meter, today: '2025-11-23' });
 t('база для опечаток проходит', ok.verdict !== 'block', blocks(ok).join(','));
 t('пропущена точка 134.0 → R_ENERGY_JUMP', blocks(R.validate({ reading: Object.assign({}, base, { energy: 134.0 }), prev, meter, today: '2025-11-23' })).includes('R_ENERGY_JUMP'));
+// 125-а (юзертестинг T330): «минулого разу 70751193 год» — не порівнюємо, попереджаємо; самі 70751193 — не години
+{ const bad = Object.assign({}, prev, { hours: 70751193 });
+  const r1 = R.validate({ reading: Object.assign({}, base, { hours: 17059 }), prev: bad, meter, today: '2025-11-23' });
+  t('минулі години 70751193: без «менше за попередні» і календаря, є W_PREV_HOURS_BAD', !blocks(r1).includes('R_MONO_HOURS') && !blocks(r1).includes('R_HOURS_CALENDAR') && r1.items.some(x => x.code === 'W_PREV_HOURS_BAD'), JSON.stringify(r1.items.map(x => x.code)));
+  t('…під полем: не «менше за попередні»', (c => !c || c.level !== 'block')(R.checkField('hours', '17059', bad)));
+  const r2 = R.validate({ reading: Object.assign({}, base, { hours: 70751241 }), prev, meter, today: '2025-11-23' });
+  t('введені години 70751241 — F_HOURS_HUGE («схоже на заводський номер»)', blocks(r2).includes('F_HOURS_HUGE') && R.checkField('hours', '70751241', prev).level === 'block'); }
 // 125-а: кабінет і табло в ГДж — приріст і межа в ГДж, «на екрані» — в ГДж
 { const gm = Object.assign({}, meter, { cab: { k: 0.238846, uk: 'ГДж', ru: 'ГДж' }, screen: { k: 0.238846 } });
   const it = R.validate({ reading: Object.assign({}, base, { energy: 134.0 }), prev, meter: gm, today: '2025-11-23' }).items.filter(x => x.code === 'R_ENERGY_JUMP')[0];

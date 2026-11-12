@@ -9,7 +9,7 @@ const NEED = ['energy', 'volume', 'flow', 'power', 'tSupply', 'tReturn', 'hours'
 const both = (o) => !!(o && o.uk && o.ru);
 
 for (const m of M.MODELS) {
-  const f = [].concat(...m.steps.map(s => s.fields));
+  const f = [].concat(...m.steps.filter(s => !s.only3).map(s => s.fields));   // крок Pd (only3) — лише для кабінету з трьома колонками часу
   ok(m.id + ': усі 9 полів (і дата окремо) — кожне рівно раз', NEED.every(k => f.filter(x => x === k).length === 1) && f.length === NEED.length, f);
   ok(m.id + ': дія на кожному кроці зрозуміла (коротко ×N / шукати / затиснути N с / свій підпис)',
     m.steps.every(s => s.say ? both(s.say) : s.press === null || s.press === 'short' || (s.press === 'long' && s.hold > 0)), m.steps.map(s => s.press));
@@ -22,6 +22,14 @@ ok('загальна підказка «затисніть на 3–5 с» є', 
 for (const id of ['t330', 't230']) {
   const fl = M.byId(id).steps.find(s => s.fields.includes('flow'));
   ok(id + ': витрата — у LOOP 1, через довге натискання понад 3 с', fl.press === 'long' && fl.hold === 3 && /LOOP 1/.test(fl.hint.uk), fl);
+}
+for (const id of ['t330', 't230']) {   // 125-а, юзертестинг T330: години — три окремі екрани Bd/Fd/Pd, температури чергуються на одному
+  const st = M.byId(id).steps, h = st.find(s => s.fields.includes('hours')), e = st.find(s => s.fields.includes('errHours')), p = st.find(s => s.fields.includes('flowHours'));
+  ok(id + ': години Bd, простій Fd, з витратою Pd — окремі кроки; Pd — лише для кабінету з трьома колонками',
+    h.fields.length === 1 && e.fields.length === 1 && !!p && p.only3 && /Bd/.test(h.hint.uk) && /Fd/.test(e.hint.uk) && /Pd/.test(p.hint.uk), [h, e, p]);
+  // порядок — як екрани LOOP 1 (руководство L+G): витрата → (різниця температур) → потужність → години роботи → температури → простій → з витратою
+  ok(id + ': кроки LOOP 1 — у порядку екранів лічильника', st.map(s => s.fields[0]).join(',') === 'energy,volume,flow,power,hours,tSupply,errHours,flowHours,errCode', st.map(s => s.fields[0]));
+  ok(id + ': температури — один екран, значення чергуються (swap)', st.find(s => s.fields.includes('tSupply')).lcd.swap === true);
 }
 ok('SensoStar: витрата — на рівні 2, понад 4 с', (s => s.press === 'long' && s.hold === 4)(M.byId('sensostar').steps.find(s => s.fields.includes('flow'))));
 ok('MULTICAL 302: години з помилкою — у петлі TECH', /TECH/.test(M.byId('multical302').steps.find(s => s.fields.includes('errHours')).hint.uk));
