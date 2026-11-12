@@ -239,6 +239,8 @@ final class Db {
     self::addColumn('docs', 'sha', 'CHAR(40) NULL');
     // документ — до якого лічильника квартири (10.11: фото паспорта й повірки в налаштуваннях кожного лічильника); старі — без лічильника = теплолічильник
     self::addColumn('docs', 'meter', 'VARCHAR(40) NULL');
+    // звідки заходять (120-а): країна, регіон і місто з заголовків Cloudflare (CF-IPCountry; місто й регіон — «Add visitor location headers»), без IP
+    self::addColumn('visits', 'cc', 'CHAR(2) NULL'); self::addColumn('visits', 'region', 'VARCHAR(64) NULL'); self::addColumn('visits', 'city', 'VARCHAR(80) NULL');
   }
   /** ALTER … ADD COLUMN IF NOT EXISTS (в SQLite такого нет — смотрим список колонок). */
   private static function addColumn(string $t, string $c, string $def): void {

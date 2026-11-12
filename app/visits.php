@@ -45,6 +45,36 @@ final class Visits {
 
   public static function day(?int $t = null): string { return (new DateTime('@' . ($t ?? time())))->setTimezone(new DateTimeZone('Europe/Kyiv'))->format('Y-m-d'); }
 
+  /** Країна, регіон, місто відвідувача з заголовків Cloudflare (IP не зберігаємо). → [cc|null, region|null, city|null] */
+  public static function geo(Req $r): array {
+    $cc = strtoupper(substr(preg_replace('/[^A-Za-z]/', '', $r->header('CF-IPCountry')), 0, 2));
+    if (strlen($cc) !== 2 || in_array($cc, ['XX', 'T1'], true)) $cc = null;
+    $t = function (string $v, int $n): ?string { $v = trim(rawurldecode($v)); $v = preg_replace('/[\x00-\x1F<>"]/u', '', $v) ?? ''; return $v === '' || !mb_check_encoding($v, 'UTF-8') ? null : mb_substr($v, 0, $n); };
+    return [$cc, $t($r->header('CF-Region'), 64), $t($r->header('CF-IPCity'), 80)];
+  }
+
+  /** Звідки заходять (без своїх і тесту, якщо не all): по країнах, по містах (з регіоном), по днях. Лише браузери, що погодились на аналітику. */
+  public static function geoReport(int $days, bool $all): array {
+    $days = max(1, min(90, $days)); $from = self::day(time() - ($days - 1) * 86400);
+    $int = $all ? [] : Journal::internal();
+    $rows = Db::q('SELECT day, vid, cc, region, city FROM visits WHERE day >= ? ORDER BY day DESC', [$from])->fetchAll();
+    $ctry = []; $city = []; $byDay = []; $hidden = 0; $withCity = 0; $n = 0;
+    foreach ($rows as $x) {
+      if (isset($int[(string)$x['vid']])) { $hidden++; continue; }
+      $n++; $cc = $x['cc'] ?: '??'; $ck = $cc . '|' . ($x['region'] ?? '') . '|' . ($x['city'] ?? '');
+      if ($x['city']) $withCity++;
+      $ctry[$cc] = ($ctry[$cc] ?? 0) + 1;
+      if (!isset($city[$ck])) $city[$ck] = ['cc' => $cc, 'region' => $x['region'], 'city' => $x['city'], 'n' => 0];
+      $city[$ck]['n']++;
+      $d = (string)$x['day']; if (!isset($byDay[$d])) $byDay[$d] = ['day' => $d, 'n' => 0, 'places' => []];
+      $byDay[$d]['n']++; $byDay[$d]['places'][$ck] = ($byDay[$d]['places'][$ck] ?? 0) + 1;
+    }
+    arsort($ctry); usort($city, fn($a, $b) => $b['n'] <=> $a['n']);
+    $days_ = array_values(array_map(function ($d) { arsort($d['places']); $d['places'] = array_map(fn($k, $v) => array_combine(['cc', 'region', 'city'], explode('|', $k)) + ['n' => $v], array_keys($d['places']), $d['places']); return $d; }, $byDay));
+    return ['days' => $days, 'visitors' => $n, 'hidden' => $hidden, 'withCity' => $withCity,
+      'countries' => array_map(fn($k, $v) => ['cc' => $k, 'n' => $v], array_keys($ctry), $ctry), 'cities' => array_slice($city, 0, 60), 'byDay' => $days_];
+  }
+
   public static function hit(?array $user, array $in, Req $r, string $ip): array {
     RateLimit::hit('visit_ip', $ip);
     $vid = substr(preg_replace('/[^A-Za-z0-9]/', '', (string)($in['vid'] ?? '')), 0, 24);
@@ -59,15 +89,18 @@ final class Visits {
     $stage = max(0, min(3, (int)($in['stage'] ?? 0))); $meters = max(0, min(99, (int)($in['meters'] ?? 0))); $recs = max(0, min(9999, (int)($in['recs'] ?? 0)));
     $hit = empty($in['act']) ? 1 : 0;
     $row = Db::one('SELECT stage, meters, recs FROM visits WHERE day = ? AND vid = ?', [$day, $vid]);
-    $upd = function (?array $old) use ($now, $uid, $dev, $os, $tg, $pwa, $sw, $day, $vid, $stage, $meters, $recs, $hit) {
-      Db::q('UPDATE visits SET hits = hits + ?, last_at = ?, user_id = COALESCE(?, user_id), device = ?, os = ?, tg = ?, pwa = ?, sw = COALESCE(?, sw), stage = ?, meters = ?, recs = ? WHERE day = ? AND vid = ?',
-        [$hit, $now, $uid, $dev, $os, $tg, $pwa, $sw, max($stage, (int)($old['stage'] ?? 0)), max($meters, (int)($old['meters'] ?? 0)), max($recs, (int)($old['recs'] ?? 0)), $day, $vid]);
+    [$cc, $reg, $city] = self::geo($r);
+    $upd = function (?array $old) use ($now, $uid, $dev, $os, $tg, $pwa, $sw, $day, $vid, $stage, $meters, $recs, $hit, $cc, $reg, $city) {
+      Db::q('UPDATE visits SET hits = hits + ?, last_at = ?, user_id = COALESCE(?, user_id), device = ?, os = ?, tg = ?, pwa = ?, sw = COALESCE(?, sw), stage = ?, meters = ?, recs = ?,
+        cc = COALESCE(?, cc), region = COALESCE(?, region), city = COALESCE(?, city) WHERE day = ? AND vid = ?',
+        [$hit, $now, $uid, $dev, $os, $tg, $pwa, $sw, max($stage, (int)($old['stage'] ?? 0)), max($meters, (int)($old['meters'] ?? 0)), max($recs, (int)($old['recs'] ?? 0)), $cc, $reg, $city, $day, $vid]);
     };
     if ($row) $upd($row);
     else {
       try { Db::q('INSERT INTO visits (day, vid, user_id, device, os, tg, pwa, sw, hits, first_at, last_at, stage, meters, recs) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?, ?, ?)', [$day, $vid, $uid, $dev, $os, $tg, $pwa, $sw, $now, $now, $stage, $meters, $recs]); }
       catch (PDOException $e) { $upd(Db::one('SELECT stage, meters, recs FROM visits WHERE day = ? AND vid = ?', [$day, $vid])); }   // два запроса одновременно — второй дописывает
     }
+    if (!$row && ($cc !== null || $city !== null)) Db::q('UPDATE visits SET cc = COALESCE(?, cc), region = COALESCE(?, region), city = COALESCE(?, city) WHERE day = ? AND vid = ?', [$cc, $reg, $city, $day, $vid]);
     return ['ok' => true];
   }
 

@@ -26,17 +26,19 @@ let pass = 0, fail = 0; const ok = (n, c, x) => { if (c) { pass++; console.log('
       : /journal\/session/.test(u) ? { vid: 'abc12345phone', sid: 'sessA1', label: 'Гость B681', tag: null, events: [
           { at: '2026-11-05T06:00:00+00:00', n: 'open', s: 'home', p: { tg: 1, w: 390, li: 0, places: 1, meters: 0, recs: 0 } }, { at: '2026-11-05T06:00:05+00:00', n: 'tap', s: 'home', p: { a: 'wadd', x: 'Додати лічильник' } },
           { at: '2026-11-05T06:00:09+00:00', n: 'field', s: 'wnew', p: { f: 'wn-c1', v: 1, ok: 0 } }, { at: '2026-11-05T06:00:12+00:00', n: 'saved', s: 'wnew', p: { m: 1, li: 0 } },
-          { at: '2026-11-05T06:00:20+00:00', n: 'ocr', s: 'wnew', p: { ok: 0, ms: 2100 } }, { at: '2026-11-05T06:00:25+00:00', n: 'api_error', s: 'wnew', p: { p: '/vk/cab/check', c: 422, e: 'bad_acc' } }] }
-      : /journal/.test(u) ? { days: 7, hidden: 2, funnel: { opened: 3, tapped: 3, meter: 2, reading: 1, photo: 1, photoFail: 1, errors: 1, login: 0 }, sessions: [{ vid: 'abc12345phone', sid: 'sessA1', label: 'Гость B681', tag: null, from: '2026-11-05T06:00:00+00:00', to: '2026-11-05T06:03:00+00:00', n: 6, errs: 1, toasts: 0, saves: 1, user: null, dev: { device: 'mobile', os: 'iOS', tgapp: 1 }, path: ['home', 'wnew'] }] }
+          { at: '2026-11-05T06:00:20+00:00', n: 'ocr', s: 'wnew', p: { ok: 0, ms: 2100 } }, { at: '2026-11-05T06:00:25+00:00', n: 'api_error', s: 'wnew', p: { p: '/vk/cab/check', c: 422, e: 'bad_acc' } },
+          { at: '2026-11-05T06:00:30+00:00', n: 'api_error', s: 'wnew', p: { p: '/vk/jobs', c: 0, e: 'network' } }, { at: '2026-11-05T06:00:40+00:00', n: 'leave', s: 'wnew', p: { p: 1, m: 1, r: 0, li: 0, tg: 0, em: 0, st: 'idle' } }] }
+      : /journal/.test(u) ? { days: 7, hidden: 2, funnel: { opened: 3, tapped: 3, meter: 2, reading: 1, photo: 1, photoFail: 1, errors: 1, login: 0 }, sessions: [{ vid: 'abc12345phone', sid: 'sessA1', label: 'Гость B681', tag: null, end: { p: 1, m: 1, r: 0, li: 0, tg: 0 }, from: '2026-11-05T06:00:00+00:00', to: '2026-11-05T06:03:00+00:00', n: 6, errs: 1, toasts: 0, saves: 1, user: null, dev: { device: 'mobile', os: 'iOS', tgapp: 1 }, path: ['home', 'wnew'] }] }
       : {};
     r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(j) }); });
   await a.goto(U + 'admin#journal'); await a.waitForTimeout(700);
   const jt = await a.textContent('main').catch(() => '');
-  ok('/admin «Журнал»: шаги (добавили счётчик 2, фото не распознано 1), сеанс «Гость B681», «свои и тестовые скрыты — 2»', /Журнал действий/.test(jt) && /Гость B681/.test(jt) && /скрыты — 2/.test(jt) && /Добавили счётчик\s*2/.test(jt) && /ошибок 1/.test(jt), jt.slice(0, 400));
+  ok('/admin «Журнал»: шаги (добавили счётчик 2, фото не распознано 1), сеанс «Гость B681» — «только на устройстве», «без Telegram», «свои и тестовые скрыты — 2»', /только на устройстве/.test(jt) && /без Telegram/.test(jt) && /Журнал действий/.test(jt) && /Гость B681/.test(jt) && /скрыты — 2/.test(jt) && /Добавили счётчик\s*2/.test(jt) && /ошибок 1/.test(jt), jt.slice(0, 400));
   await a.click('tr[data-js]', { timeout: 5000 }).catch(() => {}); await a.waitForTimeout(600);
   const st = await a.textContent('main').catch(() => '');
-  ok('лента сеанса словами: «Нажал «Додати лічильник»», «Поле wn-c1: заполнено — НЕВЕРНО», «Сохранено: +1 счётч. (без входа…)», «Фото: цифр не нашли», «Ошибка сервера 422»',
-    /Нажал «Додати лічильник»/.test(st) && /Поле wn-c1: заполнено — НЕВЕРНО/.test(st) && /Сохранено: \+1 счётч\. \(без входа/.test(st) && /Фото: цифр не нашли/.test(st) && /Ошибка сервера 422 «bad_acc»/.test(st) && /Это я/.test(st), st.slice(0, 500));
+  ok('лента сеанса словами: «Нажал «Додати лічильник»», «Поле wn-c1: … ошибка в значении», «Сохранено: добавил 1 счётчик — только на этом устройстве», «Фото: цифр не нашли», ошибка сервера 422, «не дошёл запрос», «Ушёл с сайта… только на этом устройстве»',
+    /Нажал «Додати лічильник»/.test(st) && /Поле wn-c1: заполнил — ошибка в значении/.test(st) && /Сохранено: добавил 1 счётчик — только на этом устройстве/.test(st) && /Фото: цифр не нашли/.test(st)
+    && /Сервер ответил ошибкой 422 \(«bad_acc»\)/.test(st) && /Не дошёл запрос «статус отправок в Водоканал»/.test(st) && /Ушёл с сайта.*только на этом устройстве, Telegram не подключён.*Итог: 1 квартира, 1 счётчик, 0 показаний/.test(st) && /Это я/.test(st), st.slice(0, 500));
   ok('без ошибок JS', !errs.length, errs);
   console.log('\nИтог: ' + pass + ' OK, ' + fail + ' FAIL'); await b.close(); process.exit(fail ? 1 : 0);
 })();

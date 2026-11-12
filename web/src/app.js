@@ -7777,8 +7777,19 @@
   function jrSaved() {
     if (!JRS) return; var c = jrCounts(), o = JRS.prev, d = {}, any = false; JRS.prev = c; if (!o) return;
     ['p', 'm', 'r'].forEach(function (k) { if (c[k] !== o[k]) { d[k] = c[k] - o[k]; any = true; } });
-    if (any) { d.li = window.TeploSync && window.TeploSync.mode === 'server' ? 1 : 0; track('saved', d); }
+    // li — дані підуть у акаунт (увійшов); без входу TeploSync теж буває 'server' (сервер доступний), але нічого не надсилає — це «лише на пристрої»
+    if (any) { d.li = jrAcc() ? 1 : 0; track('saved', d); }
   }
+  function jrAcc() { var y = window.TeploSync; return y && y.mode === 'server' && y.account ? y.account : null; }
+  /** Пішов із сайту (сховав вкладку, закрив, згорнув Telegram): що в нього лишилось — для журналу «словами» в /admin (120-а). */
+  function jrLeave() {
+    if (!JRS || JRS.left) return; JRS.left = true;
+    var c = jrCounts(), a = jrAcc(), y = window.TeploSync || {};
+    track('leave', { p: c.p, m: c.m, r: c.r, li: a ? 1 : 0, tg: a && a.telegram ? 1 : 0, em: a && a.email ? 1 : 0, st: String(y.status || '') });
+    clearTimeout(JRS.tm); jrFlush();
+  }
+  document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'hidden') jrLeave(); else if (JRS) JRS.left = false; });
+  window.addEventListener('pagehide', jrLeave);
   /** Розпізнавання фото з записом у журнал: скільки рядків/барабанів знайшов рушій, час, помилка. */
   function ocrRead(file, opts) {
     var t0 = Date.now();

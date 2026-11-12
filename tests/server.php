@@ -219,6 +219,16 @@ $anon->req('POST', '/api/visit', ['vid' => 'junk12345', 'device' => 'фигня'
 ok('разбор User-Agent: Android без Mobile — планшет, Android Mobile — телефон, iPhone — телефон iOS', Visits::guess('Mozilla/5.0 (Linux; Android 13; SM-X200) Safari/537.36') === ['device' => 'tablet', 'os' => 'Android']
   && Visits::guess('Mozilla/5.0 (Linux; Android 14; Pixel 8) Mobile Safari/537.36')['device'] === 'mobile' && Visits::guess('Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X)') === ['device' => 'mobile', 'os' => 'iOS']);
 ok('отметка без vid → 400', $anon->req('POST', '/api/visit', ['vid' => '1'])->status === 400);
+// 120-а: звідки заходять — країна/регіон/місто з заголовків Cloudflare, по днях; без IP
+$gk = new Browser('10.0.5.21'); $gk->req('POST', '/api/visit', ['vid' => 'geokh123', 'device' => 'mobile', 'os' => 'Android'], ['HTTP_CF_IPCOUNTRY' => 'UA', 'HTTP_CF_REGION' => 'Kharkivska oblast', 'HTTP_CF_IPCITY' => 'Kharkiv']);
+$gp = new Browser('10.0.5.22'); $gp->req('POST', '/api/visit', ['vid' => 'geopl123', 'device' => 'desktop', 'os' => 'Windows'], ['HTTP_CF_IPCOUNTRY' => 'PL']);
+$gx = new Browser('10.0.5.23'); $gx->req('POST', '/api/visit', ['vid' => 'geoxx123', 'device' => 'desktop', 'os' => 'Windows'], ['HTTP_CF_IPCOUNTRY' => 'T1', 'HTTP_CF_IPCITY' => '<script>']);
+$vg = $boss->req('GET', '/api/admin/visitgeo', null, ['QUERY_STRING' => 'days=7&all=1'])->body;
+$vgc = array_column($vg['countries'] ?? [], 'n', 'cc'); $vkh = array_values(array_filter($vg['cities'] ?? [], fn($x) => ($x['city'] ?? '') === 'Kharkiv'));
+ok('звідки заходять: UA — Харків (Kharkivska oblast), PL — без міста, Tor (T1) — «невідомо», місто без <script>; по днях; IP не зберігаємо',
+  ($vgc['UA'] ?? 0) >= 1 && ($vgc['PL'] ?? 0) >= 1 && ($vgc['??'] ?? 0) >= 1 && ($vkh[0]['region'] ?? '') === 'Kharkivska oblast' && $vg['withCity'] >= 1 && !empty($vg['byDay'][0]['places'])
+  && !str_contains(json_encode($vg), '<script') && !str_contains(json_encode($vg), '10.0.5.2'), $vg);
+Db::q("DELETE FROM visits WHERE vid IN ('geokh123', 'geopl123', 'geoxx123')");   // дальше — свої перевірки пристроїв без цих трьох
 $dv = $boss->req('GET', '/api/admin/devices', null, ['QUERY_STRING' => 'days=30&all=1']);
 ok('устройства: телефон 1 браузер / 2 открытия, компьютер вошедший, неизвестное → по UA (Android без Mobile = планшет)', $dv->status === 200
   && $dv->body['device']['mobile']['v'] === 1 && $dv->body['device']['mobile']['h'] === 2 && $dv->body['device']['desktop']['u'] === 1

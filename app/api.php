@@ -100,6 +100,15 @@ final class Api {
   public static function bodyLimit(string $path): int {
     return (int)Cfg::get(in_array($path, ['/api/recognize/upload', '/api/docs/upload'], true) ? 'max_photo_bytes' : (in_array($path, ['/api/relay/probe', '/api/relay/done'], true) ? 'max_probe_bytes' : 'max_body_bytes'));
   }
+  private static function recogHealth(): array {
+    try {
+      $since = gmdate('c', time() - 7 * 86400);
+      $r = Db::one("SELECT MAX(created_at) AS last, SUM(CASE WHEN created_at >= ? THEN 1 ELSE 0 END) AS n7,
+        SUM(CASE WHEN created_at >= ? AND (status <> 'recognized' OR (problem IS NOT NULL AND problem <> '')) THEN 1 ELSE 0 END) AS bad7 FROM photos", [$since, $since]) ?? [];
+      return ['last' => $r['last'] ?? null, 'n7' => (int)($r['n7'] ?? 0), 'bad7' => (int)($r['bad7'] ?? 0)];
+    } catch (Throwable $e) { return ['error' => 'db']; }
+  }
+
   public static function rev(): string {
     $root = dirname(__DIR__); $h = '';
     foreach (array_merge([$root . '/index.php', $root . '/cron.php'], glob(__DIR__ . '/*.php') ?: []) as $f) $h .= basename($f) . ':' . (string)@md5_file($f) . ';';
@@ -125,6 +134,8 @@ final class Api {
           'gpvSent' => (object)($cr['gpvSent'] ?? []), 'gpvReady' => $cr['gpvReady'] ?? null,
           'gpv' => ['at' => $g['at'] ?? null, 'update' => $g['update'] ?? null, 'days' => array_keys((array)($g['days'] ?? [])), 'err' => $g['err'] ?? null],
           'vkcab' => VkCab::summary(), 'cabs' => (object)CabProbe::read(), 'prov' => ProvAdmin::health(),
+          // фото на розпізнавання (лише числа): найновіше й скільки за 7 днів з проблемою — є що розбирати в tests/ocr-lab (120-а)
+          'recog' => self::recogHealth(),
           // кабинет ХТМ: итоги операций, сколько подключено, внесения по статусам и последняя увиденная форма (имена/типы полей, без значений)
           'htmcab' => HtmSvc::summary(), 'vksvc' => VkSvc::summary(), 'lbot' => LocalBot::summary(), 'vkBills' => VkBills::summary(), 'htmBills' => HtmBills::summary(), 'htmSpr' => HtmSpr::summary(),
           // проба обленерго с украинского адреса (NAS владельца → POST /api/relay/probe): код, Cloudflare, капча, формы — решает, быть ли ретранслятору

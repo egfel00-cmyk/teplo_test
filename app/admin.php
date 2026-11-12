@@ -238,6 +238,7 @@ final class Admin {
       case 'POST /api/admin/settings/mail': return Mail::adminSave($in) + ['settings' => self::settings()];
       case 'GET /api/admin/devices': return Visits::summary((int)($q['days'] ?? 30), !empty($q['all']));
       case 'GET /api/admin/geo': return GeoStats::report(!empty($q['all']));   // звідки люди, постачальники, розхід і суми (без e-mail і адрес)
+      case 'GET /api/admin/visitgeo': return Visits::geoReport((int)($q['days'] ?? 30), !empty($q['all']));   // звідки заходять: країни, міста, по днях (120-а)
       case 'GET /api/admin/journal': return Journal::sessions((int)($q['days'] ?? 7), !empty($q['all']));
       case 'GET /api/admin/journal/session': return Journal::session((string)($q['vid'] ?? ''), (string)($q['sid'] ?? ''));
       case 'POST /api/admin/journal/tag': Journal::tag((string)($in['vid'] ?? ''), (string)($in['tag'] ?? '')); return ['ok' => true];

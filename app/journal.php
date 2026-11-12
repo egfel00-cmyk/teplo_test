@@ -103,7 +103,10 @@ final class Journal {
       $u = $x['uid'] ? ($users[(int)$x['uid']] ?? null) : null;
       // путь по экранам: первые экраны сеанса (подряд одинаковые — один раз)
       $path = []; foreach (Db::q('SELECT screen FROM events WHERE vid = ? AND sid = ? AND name = \'screen\' ORDER BY id LIMIT 40', [$x['vid'], $x['sid']])->fetchAll() as $s) if (end($path) !== $s['screen']) $path[] = $s['screen'];
-      $out[] = ['vid' => $x['vid'], 'sid' => $x['sid'], 'label' => self::label((string)$x['vid']), 'tag' => $tag, 'from' => $x['a0'], 'to' => $x['a1'], 'n' => (int)$x['n'],
+      // чим скінчилось (120-а): остання подія «пішов із сайту» — лишилось на пристрої чи в акаунті, Telegram
+      $lv = Db::one("SELECT props, user_id FROM events WHERE vid = ? AND sid = ? AND name = 'leave' ORDER BY id DESC LIMIT 1", [$x['vid'], $x['sid']]);
+      $end = $lv ? (json_decode((string)$lv['props'], true) ?: []) : null;
+      $out[] = ['vid' => $x['vid'], 'sid' => $x['sid'], 'label' => self::label((string)$x['vid']), 'tag' => $tag, 'from' => $x['a0'], 'to' => $x['a1'], 'n' => (int)$x['n'], 'end' => $end,
         'errs' => (int)$x['errs'], 'toasts' => (int)$x['toasts'], 'saves' => (int)$x['saves'], 'user' => $u ? ['id' => (int)$x['uid']] + $u : null, 'dev' => $dev[(string)$x['vid']] ?? null, 'path' => array_slice($path, 0, 12)];
     }
     // итог по шагам у людей (свои и тест не считаем): сколько браузеров дошло до шага

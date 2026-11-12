@@ -59,6 +59,10 @@ pre.state { font: 12px/1.4 var(--mono); background: #F4F7F5; padding: 10px; bord
   /* история версий на телефоне — карточками, без горизонтальной прокрутки */
   #hist thead { display: none; } #hist table, #hist tbody, #hist tr, #hist td { display: block; } #hist tr { padding: 10px 0; border-bottom: 1px solid var(--line); }
   #hist td { border: 0; padding: 2px 6px; white-space: normal !important; } #hist td[data-l]::before { content: attr(data-l) ': '; color: var(--ink2); font-size: 13px; } #hist td.ha { padding-top: 8px; } }
+.vbars{display:grid;gap:6px}.vb{display:grid;grid-template-columns:minmax(140px,38%) 1fr 40px;gap:8px;align-items:center}.vb-l{font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.vb-t{height:12px;background:#EEF1F4;border-radius:6px;overflow:hidden}.vb-t i{display:block;height:100%;background:#2F6FDE;border-radius:6px}.vb-n{text-align:right;font-variant-numeric:tabular-nums}
+.vdays{display:flex;gap:3px;align-items:flex-end;height:110px;overflow-x:auto;margin:6px 0 12px;padding-bottom:18px}.vd{flex:0 0 22px;height:100%;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;border:0;background:none;padding:0;cursor:pointer;position:relative}
+.vd i{display:block;width:16px;background:#9DB9EE;border-radius:3px 3px 0 0}.vd.on i,.vd:hover i{background:#2F6FDE}.vd span{position:absolute;bottom:-17px;font-size:10px;color:#777;white-space:nowrap}
 </style>
 </head>
 <body>
@@ -97,7 +101,7 @@ pre.state { font: 12px/1.4 var(--mono); background: #F4F7F5; padding: 10px; bord
 
   function shell(body) {
     var o = DATA.overview || {};
-    var tabs = [['overview', 'Сводка'], ['users', 'Пользователи', 0], ['geo', 'Откуда и сколько', 0], ['feedback', 'Сообщения', o.feedbackNew], ['photos', 'Фото', 0], ['reports', 'Ошибки распознавания', o.reportsBad], ['journal', 'Журнал', 0], ['reminders', 'Напоминания', o.cronAgo == null || o.cronAgo > 600 ? '!' : 0], ['prov', 'Справочник', 0], ['settings', 'Настройки', !o.telegram ? '!' : 0]];
+    var tabs = [['overview', 'Сводка'], ['users', 'Пользователи', 0], ['geo', 'Откуда и сколько', 0], ['visitors', 'Откуда заходят', 0], ['feedback', 'Сообщения', o.feedbackNew], ['photos', 'Фото', 0], ['reports', 'Ошибки распознавания', o.reportsBad], ['journal', 'Журнал', 0], ['reminders', 'Напоминания', o.cronAgo == null || o.cronAgo > 600 ? '!' : 0], ['prov', 'Справочник', 0], ['settings', 'Настройки', !o.telegram ? '!' : 0]];
     app.innerHTML = '<header><b>Счётчики · аналитика</b><span class="muted small">' + esc(o.me || '') + '</span><span style="flex:1"></span><a class="btn" href="' + esc(SITE) + '">На сайт</a></header>' +
       '<nav>' + tabs.map(function (t) { return '<button data-tab="' + t[0] + '"' + (TAB === t[0] || (TAB === 'jsession' && t[0] === 'journal') || (/^prov/.test(TAB) && t[0] === 'prov') ? ' aria-current="true"' : '') + '>' + t[1] + (t[2] ? '<span class="n">' + t[2] + '</span>' : '') + '</button>'; }).join('') + '</nav><main>' + body + '</main>';
   }
@@ -292,6 +296,35 @@ pre.state { font: 12px/1.4 var(--mono); background: #F4F7F5; padding: 10px; bord
     if (x.avgSum == null) return '<span class="muted">—</span>';
     return '<b class="mono">' + nf(x.avgSum, 0) + '</b> <span class="muted small">грн' + (x.n > 1 && x.minSum !== x.maxSum ? ' · ' + nf(x.minSum, 0) + '–' + nf(x.maxSum, 0) : '') + '</span>';
   }
+  // ---------- Откуда заходят (120-а): страна / область / город по Cloudflare, по дням ----------
+  var VG = { days: 30, all: false, day: '' };
+  var CCN = (function () { try { return new Intl.DisplayNames(['ru'], { type: 'region' }); } catch (e) { return null; } })();
+  function ccName(cc) { if (!cc || cc === '??') return 'Страна неизвестна'; try { return (CCN && CCN.of(cc)) || cc; } catch (e) { return cc; } }
+  function flag(cc) { return cc && /^[A-Z]{2}$/.test(cc) ? String.fromCodePoint.apply(null, cc.split('').map(function (c) { return 127397 + c.charCodeAt(0); })) : '🌐'; }
+  function placeName(x) { return x.city ? x.city + (x.region && x.region !== x.city ? ', ' + x.region : '') + (x.cc && x.cc !== 'UA' ? ' · ' + ccName(x.cc) : '') : (x.region ? x.region + (x.cc !== 'UA' ? ' · ' + ccName(x.cc) : '') : ccName(x.cc) + ' (город неизвестен)'); }
+  function bars(list, label, max) {
+    max = max || list.reduce(function (m, x) { return Math.max(m, x.n); }, 1);
+    return '<div class="vbars">' + list.map(function (x) { return '<div class="vb"><div class="vb-l">' + label(x) + '</div><div class="vb-t"><i style="width:' + Math.max(2, Math.round(x.n / max * 100)) + '%"></i></div><div class="vb-n">' + x.n + '</div></div>'; }).join('') + '</div>';
+  }
+  VIEW.visitors = function () {
+    var g = DATA.visitors || {}, cs = g.countries || [], ci = g.cities || [], bd = g.byDay || [];
+    var head = '<h2>Откуда заходят</h2><p class="muted small">По каждому браузеру — один раз в день; только те, кто согласился на аналитику. Страна, область и город — по данным Cloudflare, IP не храним.</p>' +
+      '<div class="filters">' + [1, 7, 30, 90].map(function (d) { return '<button class="btn' + (VG.days === d ? ' on' : '') + '" data-vgdays="' + d + '">' + (d === 1 ? 'Сегодня' : d + ' дней') + '</button>'; }).join('') +
+      '<button class="btn' + (VG.all ? ' on' : '') + '" data-vgall="1">' + (VG.all ? 'Вместе с моими' : 'Без моих') + '</button>' + (g.hidden ? '<span class="muted small">скрыто своих и тестовых: ' + g.hidden + '</span>' : '') + '</div>';
+    if (!g.visitors) return head + '<div class="panel muted">За этот период посещений нет.</div>';
+    var c = function (v, k) { return '<div class="card"><div class="v">' + esc(v) + '</div><div class="k">' + k + '</div></div>'; };
+    var cities = ci.filter(function (x) { return x.city || x.region; });
+    var note = g.withCity ? '' : '<div class="panel" style="border-left:4px solid #C98A00"><p>Пока известна только страна. Чтобы видеть область и город, в Cloudflare для peredai.com.ua включите «Add visitor location headers» (Rules → Transform Rules → Managed Transforms) — дальше города появятся сами.</p></div>';
+    var dmax = bd.reduce(function (m, d) { return Math.max(m, d.n); }, 1);
+    var days = '<div class="vdays">' + bd.slice().reverse().map(function (d) { return '<button class="vd' + (VG.day === d.day ? ' on' : '') + '" data-vgday="' + d.day + '" title="' + d.day + ': ' + d.n + '"><i style="height:' + Math.max(4, Math.round(d.n / dmax * 100)) + '%"></i><span>' + d.day.slice(8, 10) + '.' + d.day.slice(5, 7) + '</span></button>'; }).join('') + '</div>';
+    var sel = VG.day ? bd.filter(function (d) { return d.day === VG.day; }) : bd;
+    var dayList = '<table><thead><tr><th>День</th><th>Посетителей</th><th>Откуда</th></tr></thead><tbody>' + sel.map(function (d) {
+      return '<tr><td class="nowrap">' + esc(d.day.slice(8, 10) + '.' + d.day.slice(5, 7) + '.' + d.day.slice(0, 4)) + '</td><td>' + d.n + '</td><td class="small">' + d.places.map(function (x) { return flag(x.cc) + ' ' + esc(placeName(x)) + (x.n > 1 ? ' — ' + x.n : ''); }).join('<br>') + '</td></tr>'; }).join('') + '</tbody></table>';
+    return head + note + '<div class="cards">' + c(g.visitors, 'посещений (браузер × день)') + c(cs.length, 'стран') + c(cities.length, 'городов и областей') + '</div>' +
+      '<div class="panel"><h3>По странам</h3>' + bars(cs, function (x) { return flag(x.cc) + ' ' + esc(ccName(x.cc)); }) + '</div>' +
+      (cities.length ? '<div class="panel"><h3>По городам и областям</h3>' + bars(cities.slice(0, 25), function (x) { return flag(x.cc) + ' ' + esc(placeName(x)); }) + '</div>' : '') +
+      '<div class="panel"><h3>По дням</h3><p class="muted small">Нажмите на день — покажу только его' + (VG.day ? ' · <a href="#" data-vgday="">все дни</a>' : '') + '.</p>' + days + dayList + '</div>';
+  };
   VIEW.geo = function () {
     var g = DATA.geo || {}, t = g.totals || {}, rs = g.regions || [], ks = g.kinds || {}, ps = g.providers || [], pp = g.people || [];
     var c = function (v, k) { return '<div class="card"><div class="v">' + esc(v) + '</div><div class="k">' + k + '</div></div>'; };
@@ -487,26 +520,50 @@ pre.state { font: 12px/1.4 var(--mono); background: #F4F7F5; padding: 10px; bord
   function dur(a, b) { var s = Math.max(0, Math.round((new Date(b) - new Date(a)) / 1000)); return s < 60 ? s + ' с' : s < 3600 ? Math.round(s / 60) + ' мин' : (s / 3600).toFixed(1) + ' ч'; }
   function devLine(d) { if (!d) return ''; return esc(({ mobile: 'телефон', tablet: 'планшет', desktop: 'компьютер' })[d.device] || d.device || '') + (d.os ? ' · ' + esc(d.os) : '') + (d.tgapp ? ' · Telegram' : ''); }
   function whoS(x) { return x.user ? esc(x.user.email || (x.user.tg ? '@' + x.user.tg : '#' + x.user.id)) : '<span class="muted">без входа</span>'; }
+  /** Экраны приложения — по-человечески (route → название). */
+  var SCRN = { home: 'Главная', start: 'Первая настройка: выбор счётчиков', wadd: 'Добавление воды', eadd: 'Добавление света', gadd: 'Добавление газа',
+    'add-meter': 'Добавить счётчик', heat: 'Тепло', photo: 'Фото счётчика тепла', check: 'Проверка показаний тепла', step: 'Ввод показаний тепла по шагам', baseline: 'Стартовые показания тепла',
+    meter: 'Счётчик тепла', history: 'История', stats: 'Статистика', prefs: 'Настройки', place: 'Квартира', places: 'Квартиры', login: 'Вход', tgwait: 'Вход через Telegram',
+    save: 'Сохранение (вход)', status: 'Статус', help: 'Помощь', privacy: 'Политика конфиденциальности', terms: 'Условия', handover: 'Передача показаний', htmcab: 'Кабинет ХТМ',
+    vkcab: 'Кабинет Водоканала', mono: 'Заполнение из monobank', waste: 'Вывоз мусора', wnew: 'Ввод показаний воды', wpay: 'Оплата воды', wsetup: 'Настройка воды', welcome: 'Приветствие' };
+  function scrName(r) { r = String(r || 'home'); return SCRN[r] || (r.indexOf('water-') === 0 ? 'Водомер' : r.indexOf('place-') === 0 ? 'Квартира' : r); }
+  /** Куда не дошёл запрос — словами. */
+  var APIN = { '/visit': 'отметка посещения', '/events': 'журнал', '/state': 'сохранение данных', '/vk/jobs': 'статус отправок в Водоканал', '/cab/htm': 'кабинет ХТМ',
+    '/recognize/upload': 'копия фото', '/recognize/local': 'итог распознавания', '/me': 'проверка входа', '/config': 'настройки сайта', '/providers': 'поставщики по адресу' };
+  function n2(n, a) { n = Math.abs(n); var x = n % 10, y = n % 100; return n + ' ' + a[x === 1 && y !== 11 ? 0 : x >= 2 && x <= 4 && (y < 12 || y > 14) ? 1 : 2]; }
+  var NW = { p: ['квартира', 'квартиры', 'квартир'], m: ['счётчик', 'счётчика', 'счётчиков'], r: ['показание', 'показания', 'показаний'] };
+  function cnt3(p) { return [n2(+p.p || 0, NW.p), n2(+p.m || 0, NW.m), n2(+p.r || 0, NW.r)].join(', '); }
+  /** Итог сеанса (последнее «ушёл с сайта») — коротко, для таблицы сеансов. */
+  function endLine(e) {
+    if (!e) return '';
+    var keep = +e.li ? pill('ok', 'сохранено в аккаунте') : ((+e.m || +e.r) ? pill('warn', 'только на устройстве') : pill('info', 'ничего не добавил'));
+    return keep + ' ' + (+e.tg ? pill('ok', 'Telegram ✓') : pill('info', 'без Telegram'));
+  }
   /** Событие журнала — словами. → [текст, класс строки] */
   function evText(e) {
     var p = e.p || {}, n = e.n;
-    if (n === 'open') return ['Открыл сервис' + (p.tg ? ' в Telegram' : '') + (p.w ? ', экран ' + p.w + ' px' : '') + (p.lang ? ', язык ' + p.lang : '') + (p.li ? ', вошёл' : ', без входа') + ' · квартир ' + (p.places || 0) + ', счётчиков ' + (p.meters || 0) + ', показаний ' + (p.recs || 0), ''];
-    if (n === 'screen') return ['Экран #' + (e.s || 'home'), 'muted'];
-    if (n === 'tap') return ['Нажал ' + (p.x ? '«' + p.x + '»' : '') + (p.a ? ' [' + p.a + ']' : '') + (p.k && !p.a ? ' [' + p.k + ']' : '') + (p.h ? ' → ' + p.h : ''), ''];
-    if (n === 'field') return ['Поле ' + (p.f || p.t || '') + ': ' + (p.files != null ? 'выбрано файлов ' + p.files : p.v ? 'заполнено' : 'пусто') + (p.ok === 0 ? ' — НЕВЕРНО' : ''), p.ok === 0 ? 'problem' : ''];
-    if (n === 'toast') return ['Сообщение: «' + (p.m || '') + '»', 'warn'];
-    if (n === 'alert') return ['На экране: «' + (p.m || '') + '»', 'warn'];
-    if (n === 'saved') { var a = []; if (p.p) a.push((p.p > 0 ? '+' : '') + p.p + ' кв.'); if (p.m) a.push((p.m > 0 ? '+' : '') + p.m + ' счётч.'); if (p.r) a.push((p.r > 0 ? '+' : '') + p.r + ' показ.'); return ['Сохранено: ' + a.join(', ') + (p.li ? '' : ' (без входа — только на этом устройстве)'), 'ok']; }
+    if (n === 'open') return ['Открыл сайт ' + (p.tg ? 'в Telegram' : 'в браузере') + (p.li ? ', уже вошёл в аккаунт' : ', без входа') + '. На устройстве: ' + cnt3({ p: p.places, m: p.meters, r: p.recs }) + (p.lang ? ' · язык ' + p.lang : ''), ''];
+    if (n === 'screen') return ['Перешёл: ' + scrName(e.s), 'muted'];
+    if (n === 'tap') return ['Нажал ' + (p.x ? '«' + String(p.x).slice(0, 60) + '»' : 'кнопку') + (p.h ? ' → ' + scrName(String(p.h).replace(/^#/, '')) : ''), ''];
+    if (n === 'field') return ['Поле ' + (p.f || p.t || '') + ': ' + (p.files != null ? 'выбрал файлов — ' + p.files : p.v ? 'заполнил' : 'оставил пустым') + (p.ok === 0 ? ' — ошибка в значении' : ''), p.ok === 0 ? 'problem' : ''];
+    if (n === 'toast') return ['Сайт показал сообщение: «' + (p.m || '') + '»', 'warn'];
+    if (n === 'alert') return ['Предупреждение на экране: «' + (p.m || '') + '»', 'warn'];
+    if (n === 'saved') {
+      var a = []; if (p.p) a.push((p.p > 0 ? 'добавил ' : 'удалил ') + n2(p.p, NW.p)); if (p.m) a.push((p.m > 0 ? 'добавил ' : 'удалил ') + n2(p.m, NW.m)); if (p.r) a.push((p.r > 0 ? 'внёс ' : 'удалил ') + n2(p.r, NW.r));
+      var acc = !!e.u;   // вошёл — у события есть пользователь (li до 12.11 значило «сервер доступен», а не «вошёл»)
+      return ['Сохранено: ' + (a.join(', ') || 'изменения') + (acc ? ' — в аккаунте (будет на любом устройстве)' : ' — только на этом устройстве (не входил, на сервер не ушло)'), acc ? 'ok' : 'warn'];
+    }
+    if (n === 'leave') return ['Ушёл с сайта (закрыл или свернул). ' + (+p.li ? 'Данные сохранены в аккаунте' + (+p.tg ? ', Telegram подключён' : ', Telegram не подключён') + '.'
+        : ((+p.m || +p.r) ? 'Не входил — данные остались только на этом устройстве, Telegram не подключён.' : 'Ничего не добавил, не входил.')) + ' Итог: ' + cnt3(p) + (p.st === 'error' ? ' · последнее сохранение на сервер не прошло' : ''),
+      +p.li ? 'ok' : ((+p.m || +p.r) ? 'warn' : 'muted')];
     if (n === 'ocr') return [p.err ? 'Фото: ошибка распознавания — ' + p.err : p.ok ? 'Фото: распознано (строк ' + (p.lines || 0) + (p.drums ? ', барабанов ' + p.drums : '') + ', ' + ((p.ms || 0) / 1000).toFixed(1) + ' с)' : 'Фото: цифр не нашли (' + ((p.ms || 0) / 1000).toFixed(1) + ' с)', p.ok ? 'ok' : 'problem'];
-    // iPhone (iOS 26): поправка нижних вкладок после клавиатуры (app.js, --nav-shift). g — на сколько сдвинули (минус — вверх), ih — высота страницы,
-    // vh — сколько её видно, ot — насколько видимая часть съехала вниз. Видно < 40 % без сдвига — человек сворачивал/закрывал приложение (106-а: так больше не пишем)
-    if (n === 'nav_shift') { var g = +p.g || 0, ih = +p.ih || 0, vh = +p.vh || 0, ot = +p.ot || 0;
-      return [ih && vh < ih * .4 && !ot ? 'Свернул или закрыл приложение (видно ' + vh + ' из ' + ih + ' px экрана) — нижние вкладки шли за краем, это не ошибка'
-        : 'iPhone: нижние вкладки «уплыли» после клавиатуры — вернули их ' + (g > 0 ? 'вниз' : 'вверх') + ' на ' + Math.abs(g) + ' px (видно ' + vh + ' из ' + ih + ' px' + (ot ? ', экран съехал на ' + ot + ' px' : '') + ')', 'muted']; }
-    if (n === 'tg_login') return ['Вход через Telegram: ' + (+p.ok ? 'получилось' : 'не получился' + (p.c ? ' (код ' + p.c + ')' : '') + (p.e ? ' «' + p.e + '»' : '')) + (p.ms ? ', ' + (p.ms / 1000).toFixed(1) + ' с' : '') +
-      (p.pf ? ', ' + p.pf + (p.v ? ' ' + p.v : '') : ''), +p.ok ? 'ok' : 'problem'];
-    if (n === 'js_error') return ['Ошибка в приложении: ' + (p.m || '') + (p.at ? ' (' + p.at + ')' : ''), 'problem'];
-    if (n === 'api_error') return ['Ошибка сервера ' + (p.c || '') + (p.e ? ' «' + p.e + '»' : '') + ' — ' + (p.p || ''), 'problem'];
+    // iPhone (iOS 26): поправка нижних вкладок после клавиатуры (app.js, --nav-shift). Видно < 40 % экрана — свернул/закрыл (106-а)
+    if (n === 'nav_shift') { var ih = +p.ih || 0, vh = +p.vh || 0, ot = +p.ot || 0;
+      return [ih && vh < ih * .4 && !ot ? 'Свернул или закрыл приложение' : 'Телефон: после клавиатуры поправили нижнее меню (это не ошибка)', 'muted']; }
+    if (n === 'tg_login') return ['Вход через Telegram: ' + (+p.ok ? 'получилось' : 'не получился' + (p.e ? ' («' + p.e + '»)' : '')) + (p.ms ? ', ' + (p.ms / 1000).toFixed(1) + ' с' : ''), +p.ok ? 'ok' : 'problem'];
+    if (n === 'js_error') return ['Сбой в приложении: ' + (p.m || '') + (p.at ? ' (' + p.at + ')' : ''), 'problem'];
+    if (n === 'api_error') { var what = APIN[p.p] || p.p || 'запрос';
+      return [+p.c === 0 ? 'Не дошёл запрос «' + what + '» — нет связи или страницу закрыли' : 'Сервер ответил ошибкой ' + p.c + (p.e ? ' («' + p.e + '»)' : '') + ' на «' + what + '»', +p.c === 0 ? 'warn' : 'problem']; }
     return [n + (e.p ? ' ' + JSON.stringify(e.p) : ''), ''];
   }
   VIEW.journal = function () {
@@ -520,8 +577,8 @@ pre.state { font: 12px/1.4 var(--mono); background: #F4F7F5; padding: 10px; bord
       (l.length ? '<table><thead><tr><th>Когда</th><th>Кто</th><th>Устройство</th><th>Длилось</th><th>Событий</th><th>Итог</th><th>Путь</th></tr></thead><tbody>' + l.map(function (x) {
         return '<tr data-js="' + esc(x.vid) + '|' + esc(x.sid) + '" style="cursor:pointer"><td data-l="Когда" class="nowrap">' + when(x.to) + '</td><td data-l="Кто"><b>' + esc(x.label) + '</b>' + (x.tag ? ' ' + pill(x.tag === 'me' ? 'info' : 'warn', TAGN[x.tag] || x.tag) : '') + '<div class="small">' + whoS(x) + '</div></td>' +
           '<td data-l="Устройство" class="small">' + devLine(x.dev) + '</td><td data-l="Длилось">' + dur(x.from, x.to) + '</td><td data-l="Событий">' + x.n + '</td>' +
-          '<td data-l="Итог">' + (x.saves ? pill('ok', 'сохранял ' + x.saves) + ' ' : '') + (x.errs ? pill('bad', 'ошибок ' + x.errs) + ' ' : '') + (x.toasts ? pill('warn', 'сообщений ' + x.toasts) : '') + '</td>' +
-          '<td data-l="Путь" class="small muted">' + esc((x.path || []).join(' → ')) + '</td></tr>';
+          '<td data-l="Итог">' + endLine(x.end) + ' ' + (x.saves ? pill('ok', 'сохранял ' + x.saves) + ' ' : '') + (x.errs ? pill('bad', 'ошибок ' + x.errs) + ' ' : '') + (x.toasts ? pill('warn', 'сообщений ' + x.toasts) : '') + '</td>' +
+          '<td data-l="Путь" class="small muted">' + esc((x.path || []).map(scrName).join(' → ')) + '</td></tr>';
       }).join('') + '</tbody></table>' : '<div class="panel muted">Сеансов за период нет' + (JD.all ? '' : ' (свои и тестовые скрыты)') + '.</div>');
   };
   VIEW.jsession = function () {
@@ -811,6 +868,7 @@ pre.state { font: 12px/1.4 var(--mono); background: #F4F7F5; padding: 10px; bord
     overview: function () { return get('/admin/devices?days=' + DDAYS).then(function (j) { DATA.devices = j; }); },
     users: function () { return get('/admin/users?q=' + encodeURIComponent(Q)).then(function (j) { DATA.users = j.users; }); },
     geo: function () { return get('/admin/geo' + (GA.all ? '?all=1' : '')).then(function (j) { DATA.geo = j; }); },
+    visitors: function () { return get('/admin/visitgeo?days=' + VG.days + (VG.all ? '&all=1' : '')).then(function (j) { DATA.visitors = j; }); },
     feedback: function () { return get('/admin/feedback').then(function (j) { DATA.feedback = j.feedback; }); },
     photos: function () { return get('/admin/photos' + (PF === 'problems' ? '?filter=problems' : '')).then(function (j) { DATA.photos = j.photos; }); },
     reports: function () { return get('/admin/reports').then(function (j) { DATA.reports = j.reports; }); },
@@ -860,6 +918,8 @@ pre.state { font: 12px/1.4 var(--mono); background: #F4F7F5; padding: 10px; bord
       var done = function (ok) { if (msg) msg.textContent = ok ? 'Скопировано' : 'Не вышло — выделите текст выше и скопируйте вручную'; };
       if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(txt).then(function () { done(true); }, function () { done(false); }); else done(false);
       return; }
+    var vg = e.target.closest('[data-vgdays],[data-vgall],[data-vgday]');
+    if (vg) { e.preventDefault(); if (vg.hasAttribute('data-vgdays')) { VG.days = +vg.getAttribute('data-vgdays'); VG.day = ''; } else if (vg.hasAttribute('data-vgall')) VG.all = !VG.all; else VG.day = vg.getAttribute('data-vgday') || ''; show('visitors'); return; }
     var ga = e.target.closest('[data-gall]'); if (ga) { e.preventDefault(); GA.all = ga.getAttribute('data-gall') === '1'; show('geo'); return; }
     var el = e.target.closest('[data-tab],[data-user],[data-pf],[data-fb],[data-zoom],[data-ddays],.zoom'); if (!el) return;
     if (el.hasAttribute('data-ddays')) { e.preventDefault(); DDAYS = +el.getAttribute('data-ddays'); show('overview'); return; }
