@@ -4,6 +4,8 @@
 //  GET  /api/me                     → {user} | 401
 //  POST /api/auth/register          {email, password}
 //  POST /api/auth/login             {email, password}
+//  POST /api/auth/forgot            {email, lang}        — лист із посиланням #reset-<token> (година, один раз); відповідь однакова
+//  POST /api/auth/reset             {token, password}    — новий пароль, інші входи завершено, вхід тут
 //  POST /api/auth/telegram/webapp   {initData}           — вход внутри бота (Mini App)
 //  POST /api/auth/telegram/widget   {id, ..., hash}      — кнопка «Увійти через Telegram» на сайте
 //  POST /api/bot/write-ok            → {user} — Mini App нынешнего бота: человек разрешил боту писать (снимает user.botStart)
@@ -244,6 +246,42 @@ final class Api {
         Db::q('DELETE FROM sessions WHERE user_id = ? AND token_hash <> ?', [$user['id'], hash('sha256', (string)($r->cookies['ts_sid'] ?? ''))]);
         self::audit($user['id'], 'set_password', $ip);
         return ['user' => self::publicUser(self::userById((int)$user['id']))];
+      }
+      // «Забули пароль?» (123-я, власник 12.11): лист із посиланням на новий пароль. Чи є такий акаунт — не кажемо (відповідь однакова).
+      case 'POST /api/auth/forgot': {
+        RateLimit::hit('forgot_ip', $ip);
+        $email = mb_strtolower(trim((string)($in['email'] ?? '')));
+        if (!filter_var($email, FILTER_VALIDATE_EMAIL) || strlen($email) > 190) throw new HttpError(422, 'bad_email');
+        if (!Mail::on()) throw new HttpError(503, 'mail_off');
+        RateLimit::hit('forgot_acc', $email);
+        $u = Db::one('SELECT * FROM users WHERE email = ?', [$email]);
+        if ($u && $u['password_hash'] && Mail::deliverable($email)) {
+          $tok = bin2hex(random_bytes(24)); $now = Http::now();
+          Db::q('DELETE FROM pw_resets WHERE user_id = ? OR expires_at < ?', [$u['id'], $now]);
+          Db::q('INSERT INTO pw_resets (token_hash, user_id, expires_at, created_at) VALUES (?, ?, ?, ?)', [hash('sha256', $tok), $u['id'], $now + 3600, $now]);
+          $ru = ($in['lang'] ?? '') === 'ru'; $url = Cfg::appUrl() . '#reset-' . $tok;
+          $text = $ru
+            ? "Здравствуйте.\n\nКто-то (надеемся, вы) попросил новый пароль для «Счётчиков» — $email.\n\nЗадать новый пароль: $url\n\nСсылка действует час и только один раз. Если вы не просили — ничего не делайте: старый пароль остаётся.\n\n— peredai.com.ua"
+            : "Вітаємо.\n\nХтось (сподіваємось, ви) попросив новий пароль для «Лічильників» — $email.\n\nЗадати новий пароль: $url\n\nПосилання діє годину й лише раз. Якщо ви не просили — нічого не робіть: старий пароль лишається.\n\n— peredai.com.ua";
+          try { Mail::send(['to' => [$email], 'kind' => 'reset', 'user' => (int)$u['id'], 'subject' => $ru ? 'Новый пароль — «Счётчики»' : 'Новий пароль — «Лічильники»', 'text' => $text]); }
+          catch (HttpError $e) { self::audit($u['id'], 'reset_mail_fail', $ip); throw new HttpError(503, 'mail_failed'); }
+          self::audit($u['id'], 'reset_request', $ip);
+        }
+        return ['ok' => true];
+      }
+      case 'POST /api/auth/reset': {
+        RateLimit::hit('login_ip', $ip);
+        $tok = (string)($in['token'] ?? ''); $pass = (string)($in['password'] ?? '');
+        if (!preg_match('/^[a-f0-9]{48}$/', $tok)) throw new HttpError(410, 'reset_expired');
+        if (mb_strlen($pass) < 8 || strlen($pass) > 200) throw new HttpError(422, 'weak_password');
+        $h = hash('sha256', $tok); $row = Db::one('SELECT * FROM pw_resets WHERE token_hash = ?', [$h]);
+        if (!$row || $row['used_at'] !== null || (int)$row['expires_at'] < Http::now()) throw new HttpError(410, 'reset_expired');
+        // разом два запити з тим самим посиланням — пройде лише перший
+        if (Db::q('UPDATE pw_resets SET used_at = ? WHERE token_hash = ? AND used_at IS NULL', [Http::now(), $h])->rowCount() !== 1) throw new HttpError(410, 'reset_expired');
+        Db::q('UPDATE users SET password_hash = ? WHERE id = ?', [password_hash($pass, PASSWORD_DEFAULT), $row['user_id']]);
+        Db::q('DELETE FROM sessions WHERE user_id = ?', [$row['user_id']]);   // новий пароль — інші входи завершено
+        $u = self::userById((int)$row['user_id']); self::startSession($res, $u, $r, $ip); self::audit($u['id'], 'reset_password', $ip);
+        return ['user' => self::publicUser($u)];
       }
       case 'POST /api/auth/logout': {
         if (!empty($r->cookies['ts_sid'])) Db::q('DELETE FROM sessions WHERE token_hash = ?', [hash('sha256', (string)$r->cookies['ts_sid'])]);

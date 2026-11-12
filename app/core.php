@@ -31,6 +31,7 @@ final class Cfg {
       'limits' => [
         'ip_all' => [120, 60], 'login_ip' => [10, 300], 'login_fail_acc' => [5, 900], 'register_ip' => [5, 3600],
         'telegram_ip' => [30, 300], 'state_user' => [60, 60],
+        'forgot_ip' => [10, 3600], 'forgot_acc' => [3, 3600],   // «Забули пароль?»: листів з одного IP і на одну адресу в годину
         'recog_upload' => [120, 3600],   // фото на распознавание: в час на пользователя
         'recog_run' => [40, 86400],      // запросов к нейросети: в сутки на пользователя (пачки по 3 фото)
         'recog_guest' => [60, 3600],     // копии фото и итог без входа (101-а): в час на браузер (vid аналитики)
@@ -183,6 +184,8 @@ final class Db {
       "CREATE TABLE IF NOT EXISTS docs (id CHAR(24) PRIMARY KEY, user_id INT NOT NULL, place VARCHAR(40) NOT NULL, kind VARCHAR(16) NOT NULL, file VARCHAR(80) NOT NULL, mime VARCHAR(40) NOT NULL, bytes INT NOT NULL, name VARCHAR(120) NULL, created_at VARCHAR(25) NOT NULL)$tail",
       // одноразовые ссылки «привязать Telegram через бота» (t.me/<бот>?start=link_<token>)
       "CREATE TABLE IF NOT EXISTS link_tokens (token CHAR(32) PRIMARY KEY, user_id INT NOT NULL, expires_at INT NOT NULL)$tail",
+      // «Забули пароль?» (123-я): одноразове посилання з листа — у базі лише хеш токена, діє годину
+      "CREATE TABLE IF NOT EXISTS pw_resets (token_hash CHAR(64) PRIMARY KEY, user_id INT NOT NULL, expires_at INT NOT NULL, used_at INT NULL, created_at INT NOT NULL)$tail",
       // фото, присланные боту в Telegram: ждут, пока человек откроет сервис — там их распознаёт браузер (бесплатно)
       "CREATE TABLE IF NOT EXISTS bot_inbox (photo_id CHAR(24) PRIMARY KEY, user_id INT NOT NULL, taken_at INT NOT NULL, done TINYINT NOT NULL DEFAULT 0, created_at VARCHAR(25) NOT NULL)$tail",
       // напоминания ботом: какое уже отправлено в этом месяце (не чаще раза)

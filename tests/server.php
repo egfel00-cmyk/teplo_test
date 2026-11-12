@@ -2129,6 +2129,30 @@ ok('зведення: о 7-й ранку — ні, о 8:17 — так, удру�
   && Mail::digestDue($kyiv('2026-11-10 09:17'), '2026-11-10') === null);
 $n0 = count($sent); $dk = Mail::digest($kyiv('2026-11-10 08:17'), null); $dg = end($sent);
 ok('зведення пішло на пошту аналітики: тема з відвідувачами, текст з посиланням на /admin', $dk === '2026-11-10' && count($sent) === $n0 + 1 && $dg[1] === ['boss@gmail.com'] && str_contains(base64_decode(preg_replace('/\s+/', '', substr($dg[2], strpos($dg[2], "\r\n\r\n") + 4))), 'admin'));
+// «Забули пароль?» (123-я): лист із посиланням, однакова відповідь, одноразове посилання, нові входи
+$pw = new Browser('10.7.7.20'); $pw->req('POST', '/api/auth/register', ['email' => 'petro@gmail.com', 'password' => 'Old-password-1']);
+$pw2 = new Browser('10.7.7.21'); $pw2->req('POST', '/api/auth/login', ['email' => 'petro@gmail.com', 'password' => 'Old-password-1']);
+$n0 = count($sent); $fa = new Browser('10.7.7.22');
+$r1 = $fa->req('POST', '/api/auth/forgot', ['email' => 'Petro@Gmail.com', 'lang' => 'uk']); $ml = end($sent);
+$body = base64_decode(preg_replace('/\s+/', '', (string)(preg_match('/Content-Transfer-Encoding: base64\r?\n\r?\n([A-Za-z0-9+\/=\r\n]+)/', (string)$ml[2], $mm) ? $mm[1] : '')));
+preg_match('/#reset-([a-f0-9]{48})/', $body, $tm); $tok = $tm[1] ?? '';
+ok('забули пароль: лист на petro@gmail.com з посиланням #reset-… (діє годину)', $r1->status === 200 && count($sent) === $n0 + 1 && $ml[1] === ['petro@gmail.com'] && $tok !== '' && str_contains($body, 'годину'), [$r1->status, $body]);
+ok('у базі — лише хеш токена', !Db::one('SELECT 1 AS x FROM pw_resets WHERE token_hash = ?', [$tok]) && (bool)Db::one('SELECT 1 AS x FROM pw_resets WHERE token_hash = ?', [hash('sha256', $tok)]));
+$r2 = $fa->req('POST', '/api/auth/forgot', ['email' => 'nobody-here@gmail.com']);
+ok('невідомий email — та сама відповідь, листа нема', $r2->status === 200 && ($r2->body['ok'] ?? false) === true && count($sent) === $n0 + 1);
+ok('кривий email — 422', $fa->req('POST', '/api/auth/forgot', ['email' => 'petro'])->status === 422);
+ok('слабкий пароль — 422, посилання ще діє', $fa->req('POST', '/api/auth/reset', ['token' => $tok, 'password' => 'short'])->status === 422);
+$r3 = $fa->req('POST', '/api/auth/reset', ['token' => $tok, 'password' => 'New-password-2']);
+ok('новий пароль: одразу вхід (cookie сесії), той самий акаунт', $r3->status === 200 && ($r3->body['user']['email'] ?? '') === 'petro@gmail.com' && $fa->req('GET', '/api/me')->status === 200, $r3->body);
+ok('старі входи завершено (інший пристрій — 401)', $pw2->req('GET', '/api/me')->status === 401 && $pw->req('GET', '/api/me')->status === 401);
+ok('старий пароль не підходить, новий — так', (new Browser('10.7.7.23'))->req('POST', '/api/auth/login', ['email' => 'petro@gmail.com', 'password' => 'Old-password-1'])->status === 401
+  && (new Browser('10.7.7.24'))->req('POST', '/api/auth/login', ['email' => 'petro@gmail.com', 'password' => 'New-password-2'])->status === 200);
+ok('посилання вдруге — 410 «застаріло»', ($x = (new Browser('10.7.7.25'))->req('POST', '/api/auth/reset', ['token' => $tok, 'password' => 'Third-password-3']))->status === 410 && ($x->body['error'] ?? '') === 'reset_expired');
+Db::q('INSERT INTO pw_resets (token_hash, user_id, expires_at, created_at) VALUES (?, ?, ?, ?)', [hash('sha256', str_repeat('ab', 24)), (int)Db::one("SELECT id FROM users WHERE email = 'petro@gmail.com'")['id'], Http::now() - 1, Http::now() - 3601]);
+ok('посилання старше години — 410', (new Browser('10.7.7.26'))->req('POST', '/api/auth/reset', ['token' => str_repeat('ab', 24), 'password' => 'Third-password-3'])->status === 410);
+$fb = new Browser('10.7.7.27'); $codes = []; for ($i = 0; $i < 4; $i++) $codes[] = $fb->req('POST', '/api/auth/forgot', ['email' => 'petro@gmail.com'])->status;
+ok('на одну адресу — не більше 3 листів на годину (далі 429)', $codes === [200, 200, 200, 429] || ($codes[0] === 200 && in_array(429, $codes, true)), $codes);
+
 // нагадування на e-mail: є пошта, немає Telegram
 $mu = new Browser('10.7.7.7'); $mr = $mu->req('POST', '/api/auth/register', ['email' => 'olena@gmail.com', 'password' => 'Lichylnyky-2026!']);
 $muid = (int)(Db::one("SELECT id FROM users WHERE email = 'olena@gmail.com'")['id'] ?? 0);

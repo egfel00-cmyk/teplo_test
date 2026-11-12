@@ -243,6 +243,8 @@
     },
     _after: function (j) { if (j._status === 200 && j.user) { this.account = j.user; return this.pull(true).then(function () { return j; }); } return Promise.resolve(j); },
     login: function (email, password) { var self = this; return api('POST', '/auth/login', { email: email, password: password }).then(function (j) { return self._after(j); }); },
+    forgot: function (email, lang) { return api('POST', '/auth/forgot', { email: email, lang: lang }); },
+    resetPassword: function (token, password) { var self = this; return api('POST', '/auth/reset', { token: token, password: password }).then(function (j) { return self._after(j); }); },
     register: function (email, password) { var self = this; return api('POST', '/auth/register', { email: email, password: password }).then(function (j) { return self._after(j); }); },
     loginTelegramWebApp: function (initData) { var self = this; return api('POST', '/auth/telegram/webapp', { initData: initData }).then(function (j) { self.serverReachable = true; if (j._status === 200 && j.session) setSess(j.session); if (j._status === 200) self.tgBot = j.tgBot || ''; delete j.session; return self._after(j); }); },
     loginTelegramWidget: function (data) { var self = this; return api('POST', '/auth/telegram/widget', data).then(function (j) { return self._after(j); }); },

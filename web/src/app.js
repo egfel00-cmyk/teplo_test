@@ -325,6 +325,9 @@
 
   // ---------------- иконки ----------------
   var ICONS = {
+    eye: '<path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>',
+    eyeoff: '<path d="M9.9 5.2A10.4 10.4 0 0 1 12 5c6.4 0 10 7 10 7a17.6 17.6 0 0 1-2.7 3.6"/><path d="M6.6 6.6C3.9 8.3 2 12 2 12s3.6 7 10 7a9.9 9.9 0 0 0 5.4-1.6"/><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2"/><path d="M3 3l18 18"/>',
+    mail: '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/>',
     bell: '<path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/>', arrow: '<path d="M5 12h14"/><path d="m12 5 7 7-7 7"/>',
     home: '<path d="M4 11l8-7 8 7"/><path d="M6 10v10h12V10"/>',
     chev: '<path d="M9 6l6 6-6 6"/>',
@@ -6847,25 +6850,57 @@
     else h += '<p>' + esc(t('sync_local')) + '</p><p class="small muted">' + esc(t('sync_local_sub_noserver')) + '</p>';
     return h + '</div>';
   }
-  function authFields(passAuto) {
-    return '<div class="field"><label for="a-email">' + esc(t('login_email')) + '</label><div class="ctl"><input id="a-email" type="email" autocomplete="email" required></div></div>' +
-      '<div class="field"><label for="a-pass">' + esc(t('login_pass')) + '</label><div class="ctl"><input id="a-pass" type="password" autocomplete="' + passAuto + '" minlength="8" required></div><div class="help">' + esc(t('login_pass_hint')) + '</div></div>';
+  /** Поле пароля з кнопкою «Показати» (людям 45+ легше перевірити, що ввели); підказка про 8 символів — лише для нового пароля. */
+  function passField(id, lbl, auto) {
+    return '<div class="field"><label for="' + id + '">' + esc(lbl) + '</label><div class="ctl"><input id="' + id + '" type="password" autocomplete="' + auto + '" minlength="8" required' + (auto === 'new-password' ? ' aria-describedby="' + id + '-h"' : '') + '>' +
+      '<button type="button" class="ctl-copy ctl-eye" data-act="pass-eye" data-for="' + id + '" aria-pressed="false" aria-label="' + esc(t('pass_show')) + '" title="' + esc(t('pass_show')) + '" data-key="' + id + '-eye">' + ico('eye', 20) + '</button></div>' +
+      (auto === 'new-password' ? '<div class="help" id="' + id + '-h">' + esc(t('login_pass_hint')) + '</div>' : '') + '</div>';
   }
-  var authMode = 'login';
+  function emailField(val) {
+    return '<div class="field"><label for="a-email">' + esc(t('login_email')) + '</label><div class="ctl"><input id="a-email" type="email" inputmode="email" autocomplete="email" autocapitalize="none" spellcheck="false" required' + (val ? ' value="' + esc(val) + '"' : '') + '></div></div>';
+  }
+  function authFields(passAuto) { return emailField('') + passField('a-pass', t('login_pass'), passAuto); }
+  // Вхід (123-я, власник 12.11: «красиво, понятно и удобно»): одна колонка — Telegram першим (без пароля), «або поштою», одна форма з перемикачем
+  // «Увійти / Створити акаунт», «Показати» пароль, «Забули пароль?» → лист із посиланням (#reset-…). authMode: login | register | forgot | sent.
+  // RESET_TOK може бути вже взятий з адреси (routeName кличуть під час запуску, раніше за цей рядок) — не затирати
+  var authMode = 'login', FG_EMAIL = '', RESET_TOK = RESET_TOK || '', RS_EXPIRED = RS_EXPIRED || false;
   V.login = function () {
-    var y = Y();
-    if (y.account) return { screen: 'S13', route: 'login', bare: !S.onboarded, closeTo: S.onboarded ? 'home' : 'welcome', html: '<h1>' + esc(t('login_title')) + '</h1><p>' + esc(t('sync_server')) + '</p><a class="btn" href="#' + (S.meter ? 'home' : 'meter') + '">' + esc(t('next')) + '</a>' };
-    if (y.mode !== 'server') return { screen: 'S13', route: 'login', bare: !S.onboarded, closeTo: S.onboarded ? 'home' : 'welcome', html: '<h1>' + esc(t('login_title')) + '</h1>' + syncPanel() };
-    var reg = authMode === 'register';
-    return { screen: 'S13', route: 'login', bare: !S.onboarded, closeTo: S.onboarded ? 'home' : 'welcome', html:
-      '<h1>' + esc(t('login_title')) + '</h1><p>' + esc(t('login_lead')) + '</p>' +
-      '<div class="cols"><div>' +
-      (y._cfg && y._cfg.botUsername ? '<div class="panel" data-key="login-telegram"><h2>' + esc(t('login_tg')) + '</h2><p class="small muted">' + esc(t('login_tg_sub')) + '</p><div id="tg-widget" data-onauth="TeploTgAuth"></div>' +
-        '<p style="margin-top:12px"><a class="btn sec" href="https://t.me/' + esc(y._cfg.botUsername) + '" target="_blank" rel="noopener">' + esc(t('login_tg_open', { bot: y._cfg.botUsername })) + '</a></p><p class="small muted">' + esc(t('login_tg_open_sub')) + '</p><p class="small muted">' + esc(t('login_tg_same')) + '</p></div>' : '') +
-      '</div><div><form id="login-form" class="panel" data-mode="' + authMode + '" novalidate data-key="login-form"><h2>' + esc(reg ? t('register_btn') : t('login_email_title')) + '</h2>' + authFields(reg ? 'new-password' : 'current-password') +
+    var y = Y(), base = { screen: 'S13', route: 'login', bare: !S.onboarded, closeTo: S.onboarded ? 'home' : 'welcome' };
+    if (y.account) return Object.assign(base, { html: '<h1>' + esc(t('login_title')) + '</h1><p>' + esc(t('sync_server')) + '</p><a class="btn" href="#' + (S.meter ? 'home' : 'meter') + '">' + esc(t('next')) + '</a>' });
+    if (y.mode !== 'server') return Object.assign(base, { html: '<h1>' + esc(t('login_title')) + '</h1>' + syncPanel() });
+    var m = authMode, reg = m === 'register', bot = y._cfg && y._cfg.botUsername, skip = '<p class="auth-skip"><a href="#' + (S.onboarded ? 'home' : 'welcome') + '" data-key="login-skip">' + esc(t('login_skip')) + '</a></p>';
+    if (m === 'sent') return Object.assign(base, { html: '<h1>' + esc(t('login_title')) + '</h1><div class="auth"><section class="panel auth-sent" data-key="login-sent" role="status">' +
+      '<h2 class="auth-h">' + ico('mail', 22) + esc(t('fg_sent_t')) + '</h2><p>' + esc(t('fg_sent', { e: FG_EMAIL })) + '</p><p class="small muted">' + esc(t('fg_spam')) + '</p>' +
+      '<div class="auth-acts"><button type="button" class="btn sec block" data-act="auth-mode" data-m="forgot" data-key="login-again">' + esc(t('fg_again')) + '</button>' +
+      '<button type="button" class="linkbtn" data-act="auth-mode" data-m="login" data-key="login-back">' + esc(t('fg_back')) + '</button></div></section></div>' });
+    if (m === 'forgot') return Object.assign(base, { html: '<h1>' + esc(t('login_title')) + '</h1><div class="auth">' +
+      '<form id="forgot-form" class="panel" novalidate data-key="forgot-form"><h2 class="auth-h">' + ico('mail', 22) + esc(t('fg_title')) + '</h2><p class="small muted">' + esc(t('fg_lead')) + '</p>' + emailField(FG_EMAIL) +
+      '<div class="help block" id="forgot-err" role="alert"></div><button class="btn block" type="submit" data-key="forgot-submit">' + esc(t('fg_btn')) + '</button>' +
+      '<div class="auth-acts"><button type="button" class="linkbtn" data-act="auth-mode" data-m="login" data-key="login-back">' + esc(t('fg_back')) + '</button></div>' +
+      (bot ? '<p class="small muted auth-note">' + esc(t('fg_tg')) + '</p>' : '') + '</form></div>' });
+    var tg = bot ? '<section class="panel auth-tg" data-key="login-telegram"><h2 class="auth-h">' + ico('send', 22) + esc(t('login_tg')) + '</h2><p class="small muted">' + esc(t('login_tg_sub2', { bot: bot })) + '</p>' +
+      '<div id="tg-widget" class="auth-widget" data-onauth="TeploTgAuth"></div>' +
+      '<a class="btn sec block" href="https://t.me/' + esc(bot) + '" target="_blank" rel="noopener" data-key="login-tg-open">' + ico('send', 20) + '<span>' + esc(t('login_tg_btn', { bot: bot })) + '</span></a>' +
+      '<details class="auth-more"><summary>' + esc(t('login_tg_more')) + ico('chev', 16, 'auth-chev') + '</summary><p class="small muted">' + esc(t('login_tg_same')) + '</p></details></section>' +
+      '<p class="auth-or" aria-hidden="true"><span>' + esc(t('login_or')) + '</span></p>' : '';
+    return Object.assign(base, { html: '<h1>' + esc(t('login_title')) + '</h1><p class="auth-lead">' + esc(t('login_lead2')) + '</p><div class="auth">' + tg +
+      '<form id="login-form" class="panel" data-mode="' + m + '" novalidate data-key="login-form">' +
+      '<div class="kind-sw auth-sw" role="group" aria-label="' + esc(t('login_sw')) + '">' +
+      '<button type="button" data-act="auth-mode" data-m="login" aria-pressed="' + !reg + '" data-key="login-mode-in">' + esc(t('login_btn')) + '</button>' +
+      '<button type="button" data-act="auth-mode" data-m="register" aria-pressed="' + reg + '" data-key="login-toggle">' + esc(t('register_btn')) + '</button></div>' +
+      authFields(reg ? 'new-password' : 'current-password') +
       '<div class="help block" id="login-err" role="alert"></div><button class="btn block" type="submit" data-key="login-submit">' + esc(reg ? t('register_btn') : t('login_btn')) + '</button>' +
-      '<p style="margin-top:12px"><button type="button" class="linkbtn" data-act="auth-mode" data-key="login-toggle">' + esc(reg ? t('login_have') : t('login_need')) + '</button></p></form></div></div>' +
-      '<p><a href="#' + (S.onboarded ? 'home' : 'welcome') + '" data-key="login-skip">' + esc(t('login_skip')) + '</a></p>' };
+      (reg ? '<p class="small muted auth-note">' + esc(t('login_reg_note')) + '</p>' : '<div class="auth-acts"><button type="button" class="linkbtn" data-act="auth-mode" data-m="forgot" data-key="login-forgot">' + esc(t('login_forgot')) + '</button></div>') +
+      '</form>' + skip + '</div>' });
+  };
+  /** Новий пароль за посиланням із листа: токен уже прибрано з адреси (routeName), щоб не потрапив у журнал. */
+  V.reset = function () {
+    var base = { screen: 'S13r', route: 'reset', bare: !S.onboarded, closeTo: S.onboarded ? 'home' : 'welcome' };
+    if (RS_EXPIRED || !RESET_TOK) return Object.assign(base, { html: '<h1>' + esc(t('rs_title')) + '</h1><div class="auth"><section class="panel" data-key="reset-expired" role="alert"><p>' + esc(t('err_reset_expired')) + '</p>' +
+      '<div class="auth-acts"><a class="btn block" href="#login" data-act="auth-mode" data-m="forgot" data-key="reset-new">' + esc(t('rs_new')) + '</a></div></section></div>' });
+    // режим синхронізації на свіжому завантаженні ще не відомий — форма не чекає на нього (сервер недоступний — скаже помилка запиту)
+    return Object.assign(base, { html: '<h1>' + esc(t('rs_title')) + '</h1><div class="auth"><form id="reset-form" class="panel" novalidate data-key="reset-form"><p class="small muted">' + esc(t('rs_lead')) + '</p>' +
+      passField('r-pass', t('rs_pass'), 'new-password') + '<div class="help block" id="reset-err" role="alert"></div><button class="btn block" type="submit" data-key="reset-submit">' + esc(t('rs_btn')) + '</button></form></div>' });
   };
   function authError(j) {
     if (!j || !j._status) return t('err_network');
@@ -7363,7 +7398,12 @@
     vv.addEventListener('resize', fix); vv.addEventListener('scroll', fix); window.addEventListener('scroll', fix, { passive: true });
     document.addEventListener('focusout', function () { setTimeout(fix, 400); });
   })();
-  function routeName() { var h = (location.hash || '').replace(/^#/, ''); return /^tgWebApp/.test(h) ? '' : h; }
+  function routeName() {
+    var h = (location.hash || '').replace(/^#/, ''), rt = h.match(/^reset-([a-f0-9]{48})$/);
+    // посилання з листа «новий пароль» (123-я): токен — у змінну, з адреси геть (інакше потрапив би в журнал, історію й скріни)
+    if (rt) { RESET_TOK = rt[1]; RS_EXPIRED = false; try { history.replaceState(null, '', location.pathname + location.search + '#reset'); } catch (e) { /* старий браузер */ } return 'reset'; }
+    return /^tgWebApp/.test(h) ? '' : h;
+  }
   // «✕» і «Назад» — туди, звідки прийшли (89-а, власник 10.11: відкрив ввод показань з екрана квартири — закриття веде на квартиру, а не на сторінку виду).
   // Потік — введення, майстри, кабінети, записи історії; NAV.from — останній звичайний екран (з вкладками) перед потоком; вийшли з потоку — скидається.
   // Явне «куди» (WN.back, EN.back — правка запису, «з фото») — головніше.
@@ -7398,8 +7438,8 @@
     if (S.onboarded && /^(waste|wpay)/.test(r) && !wasteOn() && !meterHasData('waste')) { r = 'home'; try { history.replaceState(null, '', '#home'); } catch (e2) { /* старий браузер */ } }
     pendingRender = false;
     // вікно Telegram: даних тут ще немає, а вхід за підписом Telegram іде — не показуємо привітання «як новому» (воно лякає: «мої дані зникли»)
-    if (!S.onboarded && tgPending() && ['help', 'privacy', 'terms', 'login'].indexOf(r) < 0) r = 'tgwait';
-    else if (!S.onboarded && ['welcome', 'start', 'wsetup', 'wadd', 'eadd', 'gadd', 'meter', 'baseline', 'help', 'login', 'photo', 'privacy', 'terms'].indexOf(r) < 0) r = S.meter ? 'baseline' : 'welcome';
+    if (!S.onboarded && tgPending() && ['help', 'privacy', 'terms', 'login', 'reset'].indexOf(r) < 0) r = 'tgwait';
+    else if (!S.onboarded && ['welcome', 'start', 'wsetup', 'wadd', 'eadd', 'gadd', 'meter', 'baseline', 'help', 'login', 'reset', 'photo', 'privacy', 'terms'].indexOf(r) < 0) r = S.meter ? 'baseline' : 'welcome';
     if (S.onboarded && (!r || r === 'welcome' || r === 'start')) r = homeRoute();
     if (S.onboarded) navNote(r);
     var view;
@@ -7826,7 +7866,17 @@
       case 'ph-apply': phApply(); break;
       case 'ph-bg': if (!HC.busy) phApply(true); break;
       case 'ph-use-model': { var um = M.byId(el.getAttribute('data-id')); S.meter = Object.assign({}, S.meter || {}, { modelId: um.id, unit: el.getAttribute('data-unit') || um.unit }); save(); toast(t('b_saved')); PH.picked = VIS().pick(PH.result, M.TO_GCAL, energyUnit()); render(true); break; }
-      case 'auth-mode': authMode = authMode === 'login' ? 'register' : 'login'; render(true); break;
+      case 'auth-mode': {
+        var am = el.getAttribute('data-m') || (authMode === 'login' ? 'register' : 'login'), aem = document.getElementById('a-email');
+        if (aem && aem.value.trim()) FG_EMAIL = aem.value.trim();   // email не губиться між «Увійти», «Створити» і «Забули пароль?»
+        authMode = am; RS_EXPIRED = false; if (routeName() !== 'login') { go('login'); break; }
+        render(true); var fe = document.getElementById('a-email'); if (fe && FG_EMAIL && !fe.value) fe.value = FG_EMAIL; if (fe && am !== 'sent') try { fe.focus({ preventScroll: true }); } catch (e3) { /* старий браузер */ }
+        break; }
+      case 'pass-eye': {
+        var pin = document.getElementById(el.getAttribute('data-for')); if (!pin) break;
+        var shown = pin.type === 'password'; pin.type = shown ? 'text' : 'password';
+        el.setAttribute('aria-pressed', String(shown)); el.setAttribute('aria-label', t(shown ? 'pass_hide' : 'pass_show')); el.setAttribute('title', t(shown ? 'pass_hide' : 'pass_show'));
+        el.innerHTML = ico(shown ? 'eyeoff' : 'eye', 20); break; }
       case 'logout': ADMIN = null; busy(el); Y().logout().then(function () { S = defaults(); S.lang = browserLang(); ensurePlaces(); lastSig = window.TeploSync.sig(window.TeploSync.payload(S)); persist(); toast(t('logged_out')); go('welcome'); }); break;
       case 'dismiss-sync': S.syncPromptDismissed = true; persist(); render(true); break;
       case 'rp-rm': rpRemove(el.getAttribute('data-ref') || '', el.getAttribute('data-id') || ''); break;
@@ -7966,6 +8016,21 @@
       er.textContent = '';
       var done = busy(f.querySelector('[type=submit]'));
       (f.getAttribute('data-mode') === 'register' ? Y().register(em, pw) : Y().login(em, pw)).then(function (j) { done(); afterLogin(j, er); }, function () { done(); er.textContent = t('err_network'); });
+    } else if (f.id === 'forgot-form') {
+      var fem = document.getElementById('a-email').value.trim(), fer = document.getElementById('forgot-err'); fer.textContent = '';
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(fem)) { fer.textContent = t('err_bad_email'); return; }
+      var fdone = busy(f.querySelector('[type=submit]'));
+      Y().forgot(fem, S.lang).then(function (j) { fdone(); if (j && j._status === 200) { FG_EMAIL = fem; authMode = 'sent'; render(true); } else fer.textContent = authError(j); }, function () { fdone(); fer.textContent = t('err_network'); });
+    } else if (f.id === 'reset-form') {
+      var rpw = document.getElementById('r-pass').value, rer = document.getElementById('reset-err'); rer.textContent = '';
+      if (rpw.length < 8) { rer.textContent = t('err_weak_password'); return; }
+      var rdone = busy(f.querySelector('[type=submit]'));
+      Y().resetPassword(RESET_TOK, rpw).then(function (j) {
+        rdone();
+        if (j && j._status === 200) { RESET_TOK = ''; authMode = 'login'; toast(t('rs_ok')); S.onboarded = S.onboarded || anyMeters(); save(); go(S.onboarded ? 'home' : 'start'); return; }
+        if (j && j.error === 'reset_expired') { RS_EXPIRED = true; render(true); return; }
+        rer.textContent = authError(j);
+      }, function () { rdone(); rer.textContent = t('err_network'); });
     } else if (f.id === 'setpass-form') {
       var em2 = document.getElementById('a-email').value.trim(), pw2 = document.getElementById('a-pass').value, er2 = document.getElementById('setpass-err');
       var done2 = busy(f.querySelector('[type=submit]'));

@@ -2140,3 +2140,32 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
 .mono-more { display: grid; gap: 10px; }
 .mono-more > summary { cursor: pointer; min-height: var(--tap); display: flex; align-items: center; color: var(--c-ink-2); }
 .mono-again { margin: 4px 0 0; text-align: center; }
+
+/* Вхід (123-я): одна спокійна колонка — Telegram першим, «або поштою», одна форма з перемикачем; поле пароля з «Показати» */
+.auth { max-width: 520px; }
+.auth-lead { max-width: 520px; }
+.auth .panel { padding: var(--sp-5) var(--sp-4); }
+.auth-h { display: flex; align-items: center; gap: var(--sp-2); }
+.auth-h .ico { flex: none; color: var(--c-ink-2); }
+.auth-widget { margin: var(--sp-3) 0; } .auth-widget:empty { display: none; }
+.auth-tg .btn { margin-top: var(--sp-3); }
+.auth-more { margin-top: var(--sp-3); }
+.auth-more > summary { list-style: none; display: inline-flex; align-items: center; gap: var(--sp-1); min-height: 44px; cursor: pointer; color: var(--c-ink-2); font-size: 15px; }
+.auth-more > summary::-webkit-details-marker { display: none; }
+.auth-more > summary:hover { color: var(--c-ink); }
+.auth-more > summary:focus-visible { outline: 3px solid var(--c-info); outline-offset: 2px; border-radius: 4px; }
+.auth-more .auth-chev { transition: transform 160ms var(--ease); }
+.auth-more[open] .auth-chev { transform: rotate(90deg); }
+.auth-more > p { margin: var(--sp-1) 0 0; }
+.auth-or { display: flex; align-items: center; gap: var(--sp-3); margin: var(--sp-1) 0 var(--sp-4); color: var(--c-ink-2); font-size: 15px; }
+.auth-or::before, .auth-or::after { content: ''; flex: 1; height: 1px; background: var(--c-line); }
+.auth-sw { margin-bottom: var(--sp-5); max-width: none; }
+.auth-acts { display: flex; flex-direction: column; align-items: center; gap: var(--sp-2); margin-top: var(--sp-3); }
+.auth-acts .linkbtn { min-height: 44px; text-align: center; }
+.auth-note { margin: var(--sp-3) 0 0; text-align: center; }
+.auth-skip { text-align: center; margin: var(--sp-5) 0 0; }
+.auth-skip a { display: inline-flex; align-items: center; min-height: 44px; color: var(--c-ink-2); }
+.auth-sent .auth-h .ico { color: var(--c-ok); }
+.ctl-eye[aria-pressed="true"] { color: var(--c-ink); }
+@media (prefers-reduced-motion: reduce) { .auth-more .auth-chev { transition: none; } }
+
