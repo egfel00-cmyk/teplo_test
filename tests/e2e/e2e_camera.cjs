@@ -36,6 +36,7 @@ const live = p => p.evaluate(() => { const v = document.querySelector('.cam-v');
   const seen = await p.textContent('.cam-seen');
   ok('на кадрі: «… · бачу енергія 15,482 Гкал»', /бачу .*15,482 Гкал/.test(seen) && /·/.test(seen), seen);
   await p.waitForFunction(() => document.querySelector('.cam-th.on'), null, { timeout: 120000 });
+  ok('розпізнавач рахує у фоновому потоці (worker) — сторінка не стоїть (123-я)', await p.evaluate(() => !!(window.TeploOCR && TeploOCR.worker && TeploOCR.worker())));
   ok('знято само (два однакові кадри поспіль): мініатюра з лічильником 1, «Готово · 1»', (await p.textContent('.cam-th b')) === '1' && /Готово · 1/.test(await p.textContent('.cam-done')));
   ok('рамка зелена, коли цифри видно', await p.$eval('.cam-fr', el => el.classList.contains('ok')));
   const h1 = await p.textContent('.cam-hint');

@@ -17,7 +17,7 @@
  */
 (function (root) {
   'use strict';
-  var ORT = null, DET = null, REC = null, KEYS = null, loading = null;
+  var ORT = null, DET = null, REC = null, KEYS = null, loading = null, PROXY = false;
   var DET_MAX = 1280;           // длинная сторона для поиска текста: мелкие подписи «Gcal», «m³» на экране остаются видны
   // второй проход: приближаем до ~2600 px, но ищем текст кусками ≤1408 px — иначе iPhone упирается в память WASM
   // и перезагружает вкладку (одна сетка 2600×2600 съедала ~1 ГБ)
@@ -44,16 +44,24 @@
     base = base.replace(/\/?$/, '/');
     var total = 4.75e6 + 10.83e6 + 14.85e6, got = 0;
     var tick = function (n) { got += n; if (onProgress) onProgress(Math.min(1, got / total)); };
+    // 123-я (власник: «убери подвисания»): нейромережа рахує у фоновому потоці (ORT proxy — модульний worker того ж ort.wasm.min.mjs),
+    // сторінка й відео камери не стоять. Воркер не завівся (старий Safari, заборона) — той самий рушій без воркера, свіжим екземпляром модуля.
+    var useProxy = typeof Worker !== 'undefined' && !root.TEPLO_OCR_NOPROXY;
+    var setup = function (ort, px) { ORT = ort.default && ort.default.InferenceSession ? ort.default : ort; ORT.env.wasm.wasmPaths = base; ORT.env.wasm.numThreads = 1; ORT.env.wasm.proxy = px; PROXY = px; };
     loading = import(base + 'ort.wasm.min.mjs').then(function (ort) {
-      ORT = ort.default && ort.default.InferenceSession ? ort.default : ort;
-      ORT.env.wasm.wasmPaths = base; ORT.env.wasm.numThreads = 1; ORT.env.wasm.proxy = false;
+      setup(ort, useProxy);
       // wasm считаем в прогрессе отдельным запросом (браузер потом возьмёт его из кэша)
       return Promise.all([fetchBuf(base + 'ch_PP-OCRv4_det_infer.onnx', tick), fetchBuf(base + 'ch_PP-OCRv4_rec_infer.onnx', tick),
         fetch(base + 'ppocr_keys_v1.txt').then(function (r) { return r.text(); }), fetchBuf(base + 'ort-wasm-simd-threaded.wasm', tick)]);
     }).then(function (x) {
       KEYS = x[2].replace(/\r/g, '').split('\n'); if (KEYS[KEYS.length - 1] === '') KEYS.pop(); KEYS.push(' ');
       var opt = { executionProviders: ['wasm'], graphOptimizationLevel: 'all' };
-      return Promise.all([ORT.InferenceSession.create(x[0], opt), ORT.InferenceSession.create(x[1], opt)]);
+      // у воркер — копії (буфер можуть передати й відчепити), оригінали — на запасний шлях
+      var mk = function (cp) { return Promise.all([ORT.InferenceSession.create(cp ? new Uint8Array(x[0].slice(0)) : x[0], opt), ORT.InferenceSession.create(cp ? new Uint8Array(x[1].slice(0)) : x[1], opt)]); };
+      var direct = function () { return import(base + 'ort.wasm.min.mjs?np=1').then(function (o2) { setup(o2, false); return mk(false); }); };
+      if (!useProxy) return mk(false);
+      var to = new Promise(function (ok, bad) { setTimeout(function () { bad(new Error('proxy timeout')); }, 30000); });
+      return Promise.race([mk(true), to]).catch(function () { return direct(); });
     }).then(function (s) { DET = s[0]; REC = s[1]; if (onProgress) onProgress(1); return true; },
       function (e) { loading = null; throw e; });
     return loading;
@@ -992,5 +1000,5 @@
     return ch.then(function () { return out.join(' | '); }); }); }
   function _rec(file, b) { return toCanvas(file).then(function (c) { return Promise.all([recognize(c, b, 0), recognize(c, b, 0.3), recognize(c, b, 0.55)]); }).then(function (r) { return r.map(function (x) { return x.text + '(' + x.score.toFixed(2) + ')'; }).join(' | '); }); }
   function _readDrums(file) { var src, out = []; return toCanvas(file).then(function (c) { src = c; var ch = Promise.resolve(); findDrums(c).slice(0, 2).forEach(function (d) { ch = ch.then(function () { return readDrum(src, d); }).then(function (r) { out.push(r); }); }); return ch; }).then(function () { free(src); return out; }); }
-  root.TeploOCR = { _recBox: function (file, blk, m) { var src; return toCanvas(file).then(function (c) { src = c; return recTensor(drumTensor(src, blk, m)); }).then(function (r) { free(src); return r; }); }, _det: _det, _rec: _rec, _readDrums: _readDrums, _drums: function (file, hint) { return toCanvas(file).then(function (c) { var r = findDrums(c, hint); free(c); return r; }); }, load: load, read: read, ready: function () { return !!REC; } };
+  root.TeploOCR = { _recBox: function (file, blk, m) { var src; return toCanvas(file).then(function (c) { src = c; return recTensor(drumTensor(src, blk, m)); }).then(function (r) { free(src); return r; }); }, _det: _det, _rec: _rec, _readDrums: _readDrums, _drums: function (file, hint) { return toCanvas(file).then(function (c) { var r = findDrums(c, hint); free(c); return r; }); }, load: load, read: read, ready: function () { return !!REC; }, worker: function () { return !!REC && PROXY; } };
 })(typeof window !== 'undefined' ? window : this);
