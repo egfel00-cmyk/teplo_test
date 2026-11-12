@@ -44,6 +44,7 @@ final class HtmSvc {
       'no_accs' => $ru ? 'В кабинете ХТМ не нашли ни одного лицевого счёта.' : 'У кабінеті ХТМ не знайшли жодного особового рахунку.',
       'bad_value' => $ru ? 'Проверьте «{f}»: {why}' : 'Перевірте «{f}»: {why}',
       'need_phone' => $ru ? 'Форма ХТМ требует телефон — впишите его.' : 'Форма ХТМ вимагає телефон — впишіть його.',
+      'need_pd' => $ru ? 'В вашем кабинете ХТМ есть «Время работы с расходом (Pd)» — впишите его со счётчика, тогда отправим.' : 'У вашому кабінеті ХТМ є «Час роботи з витратою (Pd)» — впишіть його з лічильника, тоді відправимо.',
       'form_error' => $ru ? 'Сайт ХТМ не сохранил показания.' : 'Сайт ХТМ не зберіг показання.',
       'busy' => $ru ? 'Слишком много попыток. Подождите немного и попробуйте снова.' : 'Забагато спроб. Зачекайте трохи й спробуйте знову.',
       'auto_off' => $ru ? 'Автоподача выключена — внесите кнопкой «Внести в кабинет ХТМ».' : 'Автоподачу вимкнено — внесіть кнопкою «Внести в кабінет ХТМ».',
@@ -84,11 +85,26 @@ final class HtmSvc {
     $c = self::creds($uid); $info = $c ? self::js($c['info']) : []; $ex = $c ? self::js($c['extra']) : [];
     $jobs = Db::q('SELECT * FROM cab_jobs WHERE user_id = ? AND prov = ? ORDER BY id DESC LIMIT 12', [$uid, self::PROV])->fetchAll();
     return ['connected' => (bool)$c, 'login' => $c['login'] ?? null, 'state' => $c['state'] ?? null, 'accounts' => self::pubAccs((array)($info['accounts'] ?? [])),
-      'phone' => $ex['phone'] ?? '', 'auto' => !empty($ex['auto']), 'autoDelay' => self::autoDelay(), 'since' => $c['created_at'] ?? null, 'checkedAt' => $c['checked_at'] ?? null, 'jobs' => array_map([self::class, 'pubJob'], $jobs)];
+      'phone' => $ex['phone'] ?? '', 'auto' => !empty($ex['auto']), 'autoDelay' => self::autoDelay(), 'since' => $c['created_at'] ?? null, 'checkedAt' => $c['checked_at'] ?? null, 'jobs' => array_map([self::class, 'pubJob'], $jobs),
+      'forms' => (object)($info['forms'] ?? [])];
+  }
+  /** Яка форма в кабінеті по рахунку (125-а): одиниця енергії й чи є третій час (Pd) — застосунок сам ставить «Як у вашому кабінеті ХТМ». */
+  private static function formOf(array $h, ?array $pl = null): ?array {
+    $u = HtmCab::unitCode($h['eunit'] ?? null);
+    // третій час: колонка Pd у заголовках — так; форма відкрита — за її полями; закрита — за заголовками (є, а Pd немає — ні); нічого — не знаємо
+    $t3 = !empty($h['pd']) ? true : (!empty($h['open']) && $pl ? (bool)$pl['times3'] : (($h['ths'] ?? []) ? false : null));
+    return $u === null && $t3 === null ? null : array_filter(['u' => $u, 't3' => $t3], fn($x) => $x !== null);
+  }
+  private static function formMemo(int $uid, string $acc, array $h, ?array $pl = null): void {
+    $f = self::formOf($h, $pl); if (!$f) return;
+    $c = self::creds($uid); if (!$c) return; $info = self::js($c['info']);
+    if (($info['forms'][$acc] ?? null) === $f) return;
+    $info['forms'][$acc] = $f;
+    Db::q('UPDATE cab_creds SET info = ? WHERE user_id = ? AND prov = ?', [json_encode($info, JSON_UNESCAPED_UNICODE), $uid, self::PROV]);
   }
   public static function pubJob(array $j): array {
     $p = self::js($j['payload']); $r = self::js($j['result']);
-    return ['id' => (int)$j['id'], 'acc' => $j['acc'], 'rid' => $p['rid'] ?? null, 'place' => $p['place'] ?? null, 'date' => $p['vals']['date'] ?? null, 'energy' => $p['vals']['energy'] ?? null,
+    return ['id' => (int)$j['id'], 'acc' => $j['acc'], 'rid' => $p['rid'] ?? null, 'place' => $p['place'] ?? null, 'date' => $p['vals']['date'] ?? null, 'energy' => $p['vals']['energy'] ?? null, 'unit' => $p['vals']['eunit'] ?? 'Gcal',
       'status' => $j['status'], 'text' => $r['text'] ?? '', 'reason' => $r['reason'] ?? null, 'why' => $r['why'] ?? null, 'at' => strtotime((string)$j['created_at']) ?: null,
       'checkedAt' => $r['checkedAt'] ?? null, 'nextAt' => in_array($j['status'], ['pending', 'queued'], true) ? (int)$j['next_at'] : null, 'auto' => !empty($p['auto']), 'human' => $r['human'] ?? null, 'card' => (int)($p['card'] ?? 0)];
   }
@@ -102,12 +118,16 @@ final class HtmSvc {
     if (($in['consent'] ?? false) !== true) throw self::fail(422, 'consent');
     $phone = self::phone($in['phone'] ?? '');
     self::limit($uid);
-    $cab = new HtmCab(25.0);
-    try { $home = $cab->login($email, $pass); $accs = $cab->accounts($home); }
+    $cab = new HtmCab(25.0); $forms = [];
+    try {
+      $home = $cab->login($email, $pass); $accs = $cab->accounts($home);
+      // 125-а: яка форма в кабінеті (ГКал/ГДж, чи є Pd) — одразу, щоб перше ж внесення пішло в потрібній одиниці; не відкрилось — дізнаємось при «Перевірити»
+      foreach (array_slice($accs, 0, 3) as $a) { try { $h = $cab->heat($a['acc'], $a['sur']); if ($f = self::formOf($h, $h['open'] ? HtmCab::plan($h['fields']) : null)) $forms[$a['acc']] = $f; } catch (CabErr $e) { if ($e->err === 'captcha') throw $e; break; } }
+    }
     catch (CabErr $e) { self::diag(['op' => 'connect', 'user' => $uid, 'result' => $e->err, 'site' => CabWeb::mask($e->site), 'steps' => $cab->w->steps]); throw self::cabErr($e); }
     finally { $cab->logout(); }
-    $info = json_encode(['accounts' => $accs, 'at' => time()], JSON_UNESCAPED_UNICODE);
-    $old = self::creds($uid); if ($phone === '' && $old) $phone = (string)(self::js($old['extra'])['phone'] ?? '');   // подключили заново без телефона — прежний остаётся
+    $old = self::creds($uid);
+    $info = json_encode(['accounts' => $accs, 'at' => time()] + ($forms ? ['forms' => $forms] : ($old ? array_intersect_key(self::js($old['info']), ['forms' => 1]) : [])), JSON_UNESCAPED_UNICODE); if ($phone === '' && $old) $phone = (string)(self::js($old['extra'])['phone'] ?? '');   // подключили заново без телефона — прежний остаётся
     $extra = ['phone' => $phone, 'consentAt' => gmdate('c'), 'lang' => self::$lang]; if ($old && !empty(self::js($old['extra'])['auto'])) $extra['auto'] = true;   // подключили заново — автоподача как была
     $extra = json_encode($extra, JSON_UNESCAPED_UNICODE);
     $sec = CabVault::enc($pass);
@@ -143,7 +163,7 @@ final class HtmSvc {
       throw self::cabErr($e);
     }
     if (!$accs) { self::diag(['op' => $op, 'user' => $uid, 'result' => 'no_accs', 'steps' => $cab->w->steps]); throw self::fail(409, 'no_accs'); }
-    Db::q("UPDATE cab_creds SET info = ?, state = 'ok', checked_at = ? WHERE user_id = ? AND prov = ?", [json_encode(['accounts' => $accs, 'at' => time()], JSON_UNESCAPED_UNICODE), Http::iso(), $uid, self::PROV]);
+    Db::q("UPDATE cab_creds SET info = ?, state = 'ok', checked_at = ? WHERE user_id = ? AND prov = ?", [json_encode(['accounts' => $accs, 'at' => time()] + array_intersect_key(self::js($c['info']), ['forms' => 1]), JSON_UNESCAPED_UNICODE), Http::iso(), $uid, self::PROV]);
     $want = preg_replace('/\D/', '', $want);
     if ($want === '') { if (count($accs) > 1) throw self::fail(409, 'pick_acc', [], ['accounts' => self::pubAccs($accs)]); $acc = $accs[0]; }
     else { $acc = null; foreach ($accs as $a) if ($a['acc'] === $want) $acc = $a; if (!$acc) throw self::fail(409, 'no_acc', ['a' => $want], ['accounts' => self::pubAccs($accs)]); }
@@ -157,7 +177,8 @@ final class HtmSvc {
     $pl = HtmCab::plan($h['fields']);
     return ['open' => true, 'action' => (string)parse_url((string)($h['action'] ?? ''), PHP_URL_PATH), 'match' => $pl['match'], 'missing' => $pl['missing'], 'unknown' => $pl['unknown'],
       'fields' => array_slice(array_map(fn($f) => array_filter(['n' => $f['name'], 't' => $f['type'], 'r' => $pl['roles'][$f['name']] ?? null, 'ph' => CabWeb::mask((string)($f['ph'] ?? ''), 40) ?: null, 'max' => $f['max'] ?? null, 'pat' => ($f['pattern'] ?? '') ?: null, 'req' => !empty($f['req']) ?: null], fn($v) => $v !== null), $h['fields']), 0, 40),
-      'minMax' => $h['min'] !== null && $h['max'] !== null, 'win' => $h['win'] ?? null, 'eunit' => $h['eunit'] ?? null];
+      'minMax' => $h['min'] !== null && $h['max'] !== null, 'win' => $h['win'] ?? null, 'eunit' => $h['eunit'] ?? null, 'times3' => $pl['times3'], 'pd' => $h['pd'] ?? null,
+      'lbl' => array_slice(array_map(fn($f) => mb_substr((string)($f['lbl'] ?? ''), 0, 40), $h['fields']), 0, 16), 'ths' => $h['ths'] ?? []];
   }
   /** Как страница тепла задаёт окно дат и сколько на ней плашек — без значений и личных данных (то же, что пишет «Перевірити»):
    *  пишется и при внесении, чтобы первое живое внесение само показало окно, не дожидаясь «Перевірити». */
@@ -174,7 +195,8 @@ final class HtmSvc {
     [$acc, $h, $fi] = self::look($uid, (string)($in['acc'] ?? ''), 'check');
     [$lo, $hi] = self::window($h);
     return ['ok' => true, 'acc' => $acc['acc'], 'meter' => $h['meter'], 'base' => (object)$h['base'], 'open' => $h['open'], 'closed' => $h['closed'], 'min' => $lo, 'max' => $hi, 'winSrc' => $h['min'] !== null && $h['max'] !== null ? 'page' : 'calendar',
-      'journal' => self::pubJournal($h['journal']), 'form' => ['open' => $h['open'], 'match' => $fi['match'] ?? null, 'phone' => in_array('phone', array_column($fi['fields'] ?? [], 'r'), true)]];
+      'journal' => self::pubJournal($h['journal']), 'form' => ['open' => $h['open'], 'match' => $fi['match'] ?? null, 'phone' => in_array('phone', array_column($fi['fields'] ?? [], 'r'), true),
+        'unit' => HtmCab::unitCode($h['eunit'] ?? null), 'times3' => !empty($fi['times3']) || !empty($h['pd'])], 'forms' => (object)(self::js((string)(self::creds($uid)['info'] ?? ''))['forms'] ?? [])];
   }
 
   /** Войти и прочитать страницу тепла — ничего не вносит. op: check (кнопка человека) | look (cron, учётки админа). → [рахунок, страница, форма без значений]. */
@@ -195,6 +217,7 @@ final class HtmSvc {
     catch (CabErr $e) { self::diag(['op' => $op, 'user' => $uid, 'result' => $e->err, 'steps' => $cab->w->steps]); throw self::cabErr($e); }
     finally { $cab->logout(); }
     $fi = self::formInfo($h);
+    self::formMemo($uid, $acc['acc'], $h, $h['open'] ? HtmCab::plan($h['fields']) : null);
     self::diag(['op' => $op, 'user' => $uid, 'result' => 'ok', 'meter' => (bool)$h['meter'], 'base' => array_keys($h['base']), 'form' => $fi, 'win' => [$h['min'] !== null, $h['max'] !== null, $h['win'] ?? null], 'dateJs' => $h['dateJs'] ?? [], 'alerts' => $h['alerts'] ?? null, 'journal' => array_map(fn($r) => $r['status'], $h['journal']), 'closed' => $h['closed'] ? CabWeb::mask($h['closed'], 160) : null,
       'explore' => $ex ? array_diff_key($ex, ['billBody' => 1, 'billRaw' => 1]) : null, 'steps' => $cab->w->steps]);
     return [$acc, $h, $fi, $ex];
@@ -341,7 +364,17 @@ final class HtmSvc {
       if ($n === '' || !is_numeric($n) || (float)$n < 0 || (float)$n > 1e8) throw self::bad($k, 'лише цифри й крапка.', 'только цифры и точка.');
       $out[$k] = HtmCab::fmt($k, $n);
     }
+    // 125-а: форма іншого приладу — енергія в одиниці застосунку (eunit; кабінет у ГДж — робот перерахує, якщо треба) і третій час (Pd)
+    if (isset($v['eunit']) && isset(HtmCab::UNITS[$v['eunit']])) $out['eunit'] = (string)$v['eunit'];
+    $pd = str_replace([',', ' '], ['.', ''], trim((string)($v['flowHours'] ?? '')));
+    if ($pd !== '') { if (!is_numeric($pd) || (float)$pd < 0 || (float)$pd > 1e7) throw self::bad('flowHours', 'лише цифри.', 'только цифры.'); $out['flowHours'] = HtmCab::fmt('flowHours', $pd); }
     return $out;
+  }
+  /** Те саме показання вже в задачі (дата + енергія; енергію порівнюємо і до перерахунку в одиницю кабінету). */
+  private static function same(array $p, array $vals): bool {
+    if (($p['vals']['date'] ?? '') !== $vals['date']) return false;
+    foreach ([$p['vals']['e0'] ?? null, $p['vals']['energy'] ?? null] as $e) if ($e !== null && abs((float)$e - (float)$vals['energy']) < 0.0005) return true;
+    return false;
   }
   /** Главные правила робота ХТМ против «последних принятых» из кабинета (полные — в приложении, web/src/rules.js). */
   private static function rules(array $v, array $h): void {
@@ -353,10 +386,13 @@ final class HtmSvc {
     if ($d > self::dt($hi)) throw self::bad('date', 'кабінет приймає дати до ' . $hi . '.', 'кабинет принимает даты до ' . $hi . '.');
     if (!empty($b['date']) && ($bd = self::dt((string)$b['date'])) && $d <= $bd) throw self::bad('date', 'має бути пізніше останніх прийнятих (' . $b['date'] . ').', 'должна быть позже последних принятых (' . $b['date'] . ').');
     $num = fn($s) => is_numeric(str_replace([',', ' '], ['.', ''], (string)$s)) ? (float)str_replace([',', ' '], ['.', ''], (string)$s) : null;
-    foreach (['energy', 'volume', 'hours', 'errHours'] as $k) {
+    foreach (['energy', 'volume', 'hours', 'errHours', 'flowHours'] as $k) {
+      if (!isset($v[$k])) continue;
       $p = $num($b[$k] ?? null); if ($p !== null && (float)$v[$k] < $p) throw self::bad($k, 'менше за останні прийняті (' . $b[$k] . ').', 'меньше последних принятых (' . $b[$k] . ').');
     }
-    $pe = $num($b['energy'] ?? null); if ($pe !== null && (float)$v['energy'] - $pe >= 15) throw self::bad('energy', 'завеликий приріст — перевірте крапку.', 'слишком большой прирост — проверьте точку.');
+    // приріст < 15 Гкал (правило робота ХТМ) — в одиниці кабінету (у ГДж це ≈ 62,8)
+    $lim = 15 / (HtmCab::UNITS[$v['eunit'] ?? 'Gcal'] ?? 1.0);
+    $pe = $num($b['energy'] ?? null); if ($pe !== null && (float)$v['energy'] - $pe >= $lim) throw self::bad('energy', 'завеликий приріст — перевірте крапку.', 'слишком большой прирост — проверьте точку.');
     foreach (['tSupply', 'tReturn'] as $k) { $t = (float)$v[$k]; if ($t < 5 || $t > 95) throw self::bad($k, 'від 5 до 95 °C.', 'от 5 до 95 °C.'); }
   }
 
@@ -385,7 +421,7 @@ final class HtmSvc {
     foreach (Db::q("SELECT * FROM cab_jobs WHERE user_id = ? AND prov = ? AND status IN ('queued', 'pending', 'ok') ORDER BY id DESC LIMIT 12", [$uid, self::PROV])->fetchAll() as $j) {
       $p = self::js($j['payload']);
       // то же показание (дата + энергия) уже внесено и не отклонено — второй раз не вносим (двойное нажатие, второе устройство)
-      if (($p['vals']['date'] ?? '') === $vals['date'] && abs((float)($p['vals']['energy'] ?? -1) - (float)$vals['energy']) < 0.0005) return ['ok' => true, 'dup' => true, 'job' => self::pubJob($j)];
+      if (self::same($p, $vals)) return ['ok' => true, 'dup' => true, 'job' => self::pubJob($j)];
     }
     $acc = preg_replace('/\D/', '', (string)($in['acc'] ?? ''));
     $phone = self::phone($in['phone'] ?? ''); $email = filter_var(trim((string)($in['email'] ?? '')), FILTER_VALIDATE_EMAIL) ?: '';
@@ -404,7 +440,8 @@ final class HtmSvc {
       return ['ok' => true, 'job' => self::pubJob($job)];
     }
     self::limit($uid);
-    [$a, $r] = self::submit($uid, $acc, $vals, $phone, $email, 'send');
+    [$a, $r, $sent] = self::submit($uid, $acc, $vals, $phone, $email, 'send');
+    $payload['vals'] = $sent;   // що внесено насправді (енергія в одиниці кабінету) — по ній cron шукає рядок журналу
     return ['ok' => true, 'job' => self::record($uid, $a, $payload, $r)];
   }
   /** Картка фото в чаті (121-а): людина натиснула «Відправити» — у чергу одразу (окремої згоди на автоподачу не треба), cron внесе за хвилину.
@@ -417,7 +454,7 @@ final class HtmSvc {
     if ($c['state'] === 'bad_login') throw self::fail(401, 'relogin');
     foreach (Db::q("SELECT * FROM cab_jobs WHERE user_id = ? AND prov = ? AND status IN ('queued', 'sending', 'pending', 'ok') ORDER BY id DESC LIMIT 12", [$uid, self::PROV])->fetchAll() as $j) {
       $p = self::js($j['payload']);
-      if (($p['vals']['date'] ?? '') === $vals['date'] && abs((float)($p['vals']['energy'] ?? -1) - (float)$vals['energy']) < 0.0005) return ['ok' => true, 'dup' => true, 'job' => self::pubJob($j)];
+      if (self::same($p, $vals)) return ['ok' => true, 'dup' => true, 'job' => self::pubJob($j)];
     }
     self::limit($uid);
     $acc = preg_replace('/\D/', '', (string)($in['acc'] ?? ''));
@@ -439,6 +476,9 @@ final class HtmSvc {
       if (!$h['open']) { self::diag(['op' => $op, 'user' => $uid, 'result' => 'closed', 'closed' => $h['closed'] ? CabWeb::mask($h['closed'], 160) : null, 'page' => $pg, 'steps' => $cab->w->steps]); throw self::fail(409, 'closed', [], $h['closed'] ? ['site' => mb_substr($h['closed'], 0, 300)] : []); }
       $fi = self::formInfo($h);
       if (!$fi['match']) { self::diag(['op' => $op, 'user' => $uid, 'result' => 'form_changed', 'form' => $fi, 'page' => $pg, 'steps' => $cab->w->steps]); throw self::fail(409, 'form_changed'); }
+      self::formMemo($uid, $acc['acc'], $h, $pl = HtmCab::plan($h['fields']));
+      $vals = HtmCab::adapt($vals, $h);   // енергія — в одиниці форми (ГДж-кабінет)
+      if ($pl['times3'] && !isset($vals['flowHours'])) { self::diag(['op' => $op, 'user' => $uid, 'result' => 'need_pd', 'page' => $pg, 'steps' => $cab->w->steps]); throw self::fail(422, 'need_pd'); }
       try { self::rules($vals, $h); }
       catch (HttpError $e) { self::diag(['op' => $op, 'user' => $uid, 'result' => preg_replace('/^cab_/', '', $e->err), 'field' => $e->extra['field'] ?? null, 'page' => $pg, 'steps' => $cab->w->steps]); throw $e; }
       $phone = $phone ?: (string)($ex['phone'] ?? '');
@@ -450,15 +490,15 @@ final class HtmSvc {
       throw self::cabErr($e);
     } finally { $cab->logout(); }
     if ($phone !== '' && $phone !== ($ex['phone'] ?? '')) Db::q('UPDATE cab_creds SET extra = ? WHERE user_id = ? AND prov = ?', [json_encode(['phone' => $phone] + $ex, JSON_UNESCAPED_UNICODE), $uid, self::PROV]);
-    self::diag(['op' => $op, 'user' => $uid, 'result' => in_array($r['status'], ['ok', 'rejected'], true) ? $r['status'] : (!empty($r['unseen']) ? 'unseen' : 'pending'), 'flash' => CabWeb::mask((string)$r['flash'], 160), 'banners' => $cab->log['banners'] ?? null, 'page' => $pg, 'steps' => $cab->w->steps]);
-    return [$acc['acc'], $r];
+    self::diag(['op' => $op, 'user' => $uid, 'result' => in_array($r['status'], ['ok', 'rejected'], true) ? $r['status'] : (!empty($r['unseen']) ? 'unseen' : 'pending'), 'flash' => CabWeb::mask((string)$r['flash'], 160), 'banners' => $cab->log['banners'] ?? null, 'conv' => $cab->log['conv'] ?? null, 'pd' => isset($vals['flowHours']) ?: null, 'page' => $pg, 'steps' => $cab->w->steps]);
+    return [$acc['acc'], $r, $vals];
   }
   /** Итог внесения → строка cab_jobs (новая или из очереди). Сразу «прийнято/не прийнято» — Telegram сразу, иначе ждём робота ХТМ. */
   private static function record(int $uid, string $acc, array $payload, array $r, ?int $jobId = null): array {
     $st = in_array($r['status'], ['ok', 'rejected'], true) ? $r['status'] : 'pending';
     $res = ['text' => mb_substr((string)$r['text'], 0, 400), 'reason' => $r['reason'] ? mb_substr((string)$r['reason'], 0, 400) : null, 'flash' => mb_substr((string)$r['flash'], 0, 300), 'checkedAt' => time()];
     $next = $st === 'pending' ? time() + self::AFTER[0] * 60 : 0;
-    if ($jobId) Db::q('UPDATE cab_jobs SET acc = ?, status = ?, result = ?, tries = 0, next_at = ?, created_at = ?, updated_at = ? WHERE id = ?', [$acc, $st, json_encode($res, JSON_UNESCAPED_UNICODE), $next, Http::iso(), Http::iso(), $jobId]);
+    if ($jobId) Db::q('UPDATE cab_jobs SET acc = ?, payload = ?, status = ?, result = ?, tries = 0, next_at = ?, created_at = ?, updated_at = ? WHERE id = ?', [$acc, json_encode($payload, JSON_UNESCAPED_UNICODE), $st, json_encode($res, JSON_UNESCAPED_UNICODE), $next, Http::iso(), Http::iso(), $jobId]);
     else Db::q('INSERT INTO cab_jobs (user_id, prov, acc, payload, status, result, tries, next_at, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, 0, ?, ?, ?)',
       [$uid, self::PROV, $acc, json_encode($payload, JSON_UNESCAPED_UNICODE), $st, json_encode($res, JSON_UNESCAPED_UNICODE), $next, Http::iso(), Http::iso()]);
     $job = Db::one('SELECT * FROM cab_jobs WHERE id = ?', [$jobId ?: Db::id()]);
@@ -472,7 +512,8 @@ final class HtmSvc {
     // захватываем строку: второй cron или «Внести зараз» в ту же секунду не внесёт дважды
     if (Db::q("UPDATE cab_jobs SET status = 'sending', updated_at = ? WHERE id = ? AND status = 'queued'", [Http::iso(), $j['id']])->rowCount() !== 1) return self::pubJob(Db::one('SELECT * FROM cab_jobs WHERE id = ?', [$j['id']]));
     try {
-      [$a, $r] = self::submit($uid, (string)$j['acc'], (array)$p['vals'], (string)($p['phone'] ?? ''), (string)($p['email'] ?? ''), 'autosend');
+      [$a, $r, $sent] = self::submit($uid, (string)$j['acc'], (array)$p['vals'], (string)($p['phone'] ?? ''), (string)($p['email'] ?? ''), 'autosend');
+      $p['vals'] = $sent;
       return self::record($uid, $a, $p, $r, (int)$j['id']);
     } catch (Throwable $e) {
       $why = $e instanceof HttpError ? preg_replace('/^cab_/', '', $e->err) : 'down';
@@ -552,7 +593,8 @@ final class HtmSvc {
     $tg = Db::one("SELECT external_id FROM user_identities WHERE user_id = ? AND type = 'telegram'", [$uid]); if (!$tg || !Cfg::get('bot_token')) return;
     $jr = Db::one('SELECT payload FROM cab_jobs WHERE id = ?', [$job['id']]); $ru = (self::js($jr['payload'] ?? '')['lang'] ?? 'uk') === 'ru';
     if (!empty(self::js($jr['payload'] ?? '')['card'])) return;   // з картки фото — статус показує сама картка (121-а)
-    $what = ($ru ? 'от ' : 'від ') . $job['date'] . ' (' . $job['energy'] . ' Гкал' . ($job['acc'] ? ($ru ? ', счёт ' : ', рахунок ') . $job['acc'] : '') . ')';
+    $ul = ['Gcal' => 'Гкал', 'GJ' => 'ГДж', 'MWh' => $ru ? 'МВт·ч' : 'МВт·год', 'kWh' => $ru ? 'кВт·ч' : 'кВт·год'][$job['unit'] ?? 'Gcal'] ?? 'Гкал';
+    $what = ($ru ? 'от ' : 'від ') . $job['date'] . ' (' . $job['energy'] . ' ' . $ul . ($job['acc'] ? ($ru ? ', счёт ' : ', рахунок ') . $job['acc'] : '') . ')';
     if ($job['status'] === 'cancelled') return;
     if ($job['status'] === 'queued') {
       $hm = (new DateTimeImmutable('@' . (int)$job['nextAt']))->setTimezone(new DateTimeZone('Europe/Kyiv'))->format('H:i');

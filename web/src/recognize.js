@@ -5,7 +5,7 @@
  */
 (function (root) {
   'use strict';
-  var FIELDS = ['energy', 'volume', 'flow', 'power', 'tSupply', 'tReturn', 'hours', 'errHours', 'errCode'];
+  var FIELDS = ['energy', 'volume', 'flow', 'power', 'tSupply', 'tReturn', 'hours', 'errHours', 'flowHours', 'errCode'];   // flowHours — «Час роботи з витратою (Pd)» (125-а)
 
   /** WebAssembly разрешён? (браузер умеет и политика безопасности страницы — CSP — не запрещает). */
   function canWasm() {

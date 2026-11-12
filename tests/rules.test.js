@@ -39,6 +39,10 @@ const prev = J[6], base = Object.assign({}, J[6], { date: '2025-11-23', hours: 3
 const ok = R.validate({ reading: base, prev, meter, today: '2025-11-23' });
 t('база для опечаток проходит', ok.verdict !== 'block', blocks(ok).join(','));
 t('пропущена точка 134.0 → R_ENERGY_JUMP', blocks(R.validate({ reading: Object.assign({}, base, { energy: 134.0 }), prev, meter, today: '2025-11-23' })).includes('R_ENERGY_JUMP'));
+// 125-а: кабінет і табло в ГДж — приріст і межа в ГДж, «на екрані» — в ГДж
+{ const gm = Object.assign({}, meter, { cab: { k: 0.238846, uk: 'ГДж', ru: 'ГДж' }, screen: { k: 0.238846 } });
+  const it = R.validate({ reading: Object.assign({}, base, { energy: 134.0 }), prev, meter: gm, today: '2025-11-23' }).items.filter(x => x.code === 'R_ENERGY_JUMP')[0];
+  t('ГДж-кабінет: «Приріст … ГДж — робот приймає менше 62.802 ГДж (15 Гкал)», на екрані ймовірно 56.103', !!it && /ГДж — робот приймає менше 62\.802 ГДж \(15 Гкал\)/.test(it.msg.uk) && /ймовірно, 56\.103 або/.test(it.fix.uk), it && [it.msg.uk, it.fix.uk]); }
 t('энергия меньше прошлой → R_MONO_ENERGY', blocks(R.validate({ reading: Object.assign({}, base, { energy: 13.1 }), prev, meter, today: '2025-11-23' })).includes('R_MONO_ENERGY'));
 t('объём не изменился → R_ENERGY_WITHOUT_VOLUME', blocks(R.validate({ reading: Object.assign({}, base, { volume: prev.volume }), prev, meter, today: '2025-11-23' })).includes('R_ENERGY_WITHOUT_VOLUME'));
 t('подача/обратка перепутаны → P_SUPPLY_LT_RETURN', codes(R.validate({ reading: Object.assign({}, base, { tSupply: 27.71, tReturn: 50.76 }), prev, meter, today: '2025-11-23' })).includes('P_SUPPLY_LT_RETURN'));

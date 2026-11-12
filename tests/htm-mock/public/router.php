@@ -148,24 +148,27 @@ function page_bill(bool $hint): void {
   echo mb_convert_encoding($html, 'Windows-1251', 'UTF-8');
 }
 function row_cells(array $r, string $cls = '', bool $head = false): string {
-  $keys = ['date', 'energy', 'volume', 'flow', 'power', 'tSupply', 'tReturn', 'hours', 'errHours', 'errCode'];
-  $ids = ['date' => 'LastDtPok', 'energy' => 'LastValuePok', 'volume' => 'LastRashPok', 'flow' => 'HeatRash', 'power' => 'HeatPower', 'tSupply' => 'TempPod', 'tReturn' => 'TempO', 'hours' => 'LastTimePok', 'errHours' => 'ErrorTime', 'errCode' => 'ErrorKod'];
+  $keys = ['date', 'energy', 'volume', 'flow', 'power', 'tSupply', 'tReturn', 'hours', 'errHours'];
+  $keys = array_merge($keys, gj() ? ['flowHours', 'errCode'] : ['errCode']);
+  $ids = ['date' => 'LastDtPok', 'energy' => 'LastValuePok', 'volume' => 'LastRashPok', 'flow' => 'HeatRash', 'power' => 'HeatPower', 'tSupply' => 'TempPod', 'tReturn' => 'TempO', 'hours' => 'LastTimePok', 'errHours' => 'ErrorTime', 'errCode' => 'ErrorKod', 'flowHours' => F('flowHours')];
   $dec = ['energy' => 3, 'volume' => 3, 'flow' => 3, 'power' => 3, 'tSupply' => 2, 'tReturn' => 2];
   $out = '';
   foreach ($keys as $k) {
-    $v = $k === 'date' ? ua_date($r['date']) : (isset($dec[$k]) ? number_format((float)$r[$k], $dec[$k], '.', '') : (string)$r[$k]);
+    $x = $k === 'energy' && gj() ? (float)$r[$k] * GJ : ($k === 'flowHours' ? ($r['flowHours'] ?? max(0, (int)$r['hours'] - 200)) : $r[$k]);
+    $v = $k === 'date' ? ua_date($r['date']) : (isset($dec[$k]) ? number_format((float)$x, $dec[$k], '.', '') : (string)$x);
     $out .= '<td' . ($cls ? ' class="' . $cls . '"' : '') . ($head ? ' id="head_' . $ids[$k] . '"' : '') . '>' . h($v) . '</td>';
   }
   return $out;
 }
 function journal_table(array $recs): string {
-  $hdr = ['Дата зняття показань', 'Накопичена енергія, ГКал', 'Обсяг теплоносія, M3', 'Миттєва витрата, М3/Год', 'Миттєва потужність, кВт', 'Температура подачі, Градуси', 'Температура повернення, Градуси', 'Час роботи, Годинами по зрост.', 'Час роботи з помилкою, Годинами по зрост.', 'Код помилки'];
+  $hdr = gj() ? ['Дата зняття показань', 'Накопичена енергія, ГДж', 'Обсяг теплоносія, M3', 'Миттєва витрата, М3/Год', 'Миттєва потужність, кВт', 'Температура подачі, Градуси', 'Температура повернення, Градуси', 'Час напрацювання (Bd)', 'Час простою (Fd)', 'Час роботи з витратою (Pd)', 'Код помилки']
+    : ['Дата зняття показань', 'Накопичена енергія, ГКал', 'Обсяг теплоносія, M3', 'Миттєва витрата, М3/Год', 'Миттєва потужність, кВт', 'Температура подачі, Градуси', 'Температура повернення, Градуси', 'Час роботи, Годинами по зрост.', 'Час роботи з помилкою, Годинами по зрост.', 'Код помилки'];
   $h = '<table class="table table-bordered table-condensed table-header-rotated stand-tbl"><tr>' . implode('', array_map(fn($x) => '<th>' . h($x) . '</th>', $hdr)) . '</tr>';
   foreach ($recs as $r) {
     $cls = $r['status'] === 'accepted' ? 'bg-success' : ($r['status'] === 'rejected' ? 'bg-danger' : '');
     $h .= '<tr data-marker="stand-journal-row">' . row_cells($r, $cls) . '</tr>'
-      . '<tr><td colspan="10">Примітки: ' . h($r['note'] !== '' ? $r['note'] : 'Немає') . '</td></tr>'
-      . '<tr><td colspan="10" data-marker="stand-journal-status">' . h($r['status_text']) . '</td></tr>';
+      . '<tr><td colspan="' . count($hdr) . '">Примітки: ' . h($r['note'] !== '' ? $r['note'] : 'Немає') . '</td></tr>'
+      . '<tr><td colspan="' . count($hdr) . '" data-marker="stand-journal-status">' . h($r['status_text']) . '</td></tr>';
   }
   return $h . '</table>';
 }
@@ -201,6 +204,7 @@ function page_heat(string $flash = '', string $flashCls = '', array $bad = [], a
 function heat_form(array $bad, array $old): string {
   $changed = scenario() === 'markup_changed';
   $lbl = ['date' => 'Дата зняття показань', 'energy' => 'Накопичена енергія, ГКал', 'volume' => 'Обсяг теплоносія, M3', 'flow' => 'Миттєва витрата, М3/Год', 'power' => 'Миттєва потужність, кВт', 'tSupply' => 'Температура подачі', 'tReturn' => 'Температура повернення', 'hours' => 'Час роботи', 'errHours' => 'Час роботи з помилкою', 'errCode' => 'Код помилки', 'phone' => 'Контактний телефон', 'email' => 'Email', 'note' => 'Примітки'];
+  if (gj()) { $lbl = array_slice($lbl, 0, 9, true) + ['flowHours' => 'Час роботи з витратою (Pd)'] + array_slice($lbl, 9, null, true); $lbl['energy'] = 'Накопичена енергія, ГДж'; $lbl['hours'] = 'Час напрацювання (Bd)'; $lbl['errHours'] = 'Час простою (Fd)'; }
   $h = '<form action="' . h(acc_url('/cabinet/heat')) . '" method="post" enctype="application/x-www-form-urlencoded" class="stand-card" id="heat-form">' . ($changed ? '<p data-marker="stand-markup-changed">Розмітку змінено (сценарій markup_changed).</p>' : '');
   foreach ($lbl as $k => $label) {
     $name = F($k) . ($changed && $k === 'energy' ? '_v2' : '');
@@ -214,13 +218,14 @@ function heat_form(array $bad, array $old): string {
 function do_save(): void {
   if (!window_open()) { page_heat(); return; }
   $keys = ['date', 'energy', 'volume', 'flow', 'power', 'tSupply', 'tReturn', 'hours', 'errHours', 'errCode', 'phone', 'email', 'note'];
+  if (gj()) $keys[] = 'flowHours';
   $in = []; foreach ($keys as $k) $in[$k] = trim((string)post(F($k)));
   log_req('save_attempt', ['fields' => array_keys($_POST), 'values' => array_diff_key($in, ['phone' => 1, 'email' => 1])]);
   $bad = []; $msgs = [];
   $ymd = ymd_from_ua($in['date']);
   if (!$ymd) { $bad[] = 'date'; $msgs[] = 'Дата має бути у форматі дд.мм.рррр.'; }
   elseif (substr($ymd, 0, 7) !== substr(today(), 0, 7) || $ymd > today()) { $bad[] = 'date'; $msgs[] = 'Можна передавати показання тільки поточного місяця і не пізніше сьогодні.'; }
-  foreach (['energy', 'volume', 'flow', 'power', 'tSupply', 'tReturn', 'hours', 'errHours'] as $k) {
+  foreach (array_merge(['energy', 'volume', 'flow', 'power', 'tSupply', 'tReturn', 'hours', 'errHours'], gj() ? ['flowHours'] : []) as $k) {
     if ($in[$k] === '') { $bad[] = $k; $msgs[] = 'Заповніть усі поля.'; continue; }
     if (str_contains($in[$k], ',')) { $bad[] = $k; $msgs[] = 'Роздільник дробових — крапка.'; continue; }
     if (!is_numeric($in[$k])) { $bad[] = $k; $msgs[] = 'Невірний формат числа.'; }
@@ -235,9 +240,9 @@ function do_save(): void {
     if ($idx !== null && $idx !== count($s['journal']) - 1) { $bad[] = 'date'; $msgs[] = 'На цю дату показання вже передані. Редагувати можна лише останній запис.'; }
   }
   if ($bad) { page_heat(h(implode(' ', array_unique($msgs))), 'alert-danger', $bad, $in); return; }
-  $rec = ['date' => $ymd, 'energy' => (float)$in['energy'], 'volume' => (float)$in['volume'], 'flow' => (float)$in['flow'], 'power' => (float)$in['power'],
+  $rec = ['date' => $ymd, 'energy' => gj() ? (float)$in['energy'] / GJ : (float)$in['energy'], 'volume' => (float)$in['volume'], 'flow' => (float)$in['flow'], 'power' => (float)$in['power'],
     'tSupply' => (float)$in['tSupply'], 'tReturn' => (float)$in['tReturn'], 'hours' => (int)$in['hours'], 'errHours' => (int)$in['errHours'],
-    'errCode' => $in['errCode'] === '' ? 'E---' : $in['errCode'], 'note' => $in['note'], 'status' => 'pending', 'status_text' => TX('status_pending'), 'saved_ts' => time()];
+    'errCode' => $in['errCode'] === '' ? 'E---' : $in['errCode'], 'note' => $in['note'], 'status' => 'pending', 'status_text' => TX('status_pending'), 'saved_ts' => time()] + (gj() ? ['flowHours' => (int)$in['flowHours']] : []);
   $last = count($s['journal']) - 1;
   if ($last >= 0 && $s['journal'][$last]['date'] === $ymd) $s['journal'][$last] = $rec; else $s['journal'][] = $rec;
   st_save($s);

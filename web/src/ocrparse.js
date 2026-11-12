@@ -44,10 +44,12 @@
     { re: /^(CT|T2|T\s?2|c[tE]|C[t])$/, field: 'tReturn', unit: '°C', w: 4 }, { re: /^(CT|T2)$/i, field: 'tReturn', unit: '°C', w: 4 },
     { re: /^(dt|dE|de|BE|dT|d七)$/, field: 'dT', unit: '°C', w: 5 },
     { re: /^(ON|0N|On\s?h|0n|Dn|On)$/i, field: 'hours', unit: 'h', w: 4 }, { re: /^(EH|E\s?h|Err\s?h|ERR\s?H)$/i, field: 'errHours', unit: 'h', w: 4 },
+    // 125-а: форма ХТМ іншого приладу — «Час напрацювання (Bd)», «Час простою (Fd)», «Час роботи з витратою (Pd)»; такі підписи на табло — лише з великої літери
+    { re: /^B\s?d$/, field: 'hours', unit: 'h', w: 4 }, { re: /^F\s?d$/, field: 'errHours', unit: 'h', w: 4 }, { re: /^P\s?d$/, field: 'flowHours', unit: 'h', w: 4 },
     { re: /^(m\s?[)'’iIl|]?|n[iIl)'’])$/, field: 'm', unit: 'm³', w: 2 },
     { re: /^(°\s?C|℃|C|°)$/i, field: 'temp', unit: '°C', w: 1 }, { re: /^h$/i, field: 'hours', unit: 'h', w: 1 }
   ];
-  var DEC = { energy: 3, volume: 3, flow: 3, power: 3, tSupply: 2, tReturn: 2, hours: 0, errHours: 0 };
+  var DEC = { energy: 3, volume: 3, flow: 3, power: 3, tSupply: 2, tReturn: 2, hours: 0, errHours: 0, flowHours: 0 };
 
   function digitsOf(s) { return String(s || '').replace(/[^0-9]/g, ''); }
 
@@ -267,13 +269,13 @@
    * на ЖК часто не читаются) получает поле по месту фото между уверенно распознанными экранами и по формату числа.
    * Такие значения помечаются how:'order' — человек сверяет их с фото.
    */
-  var STEP = { energy: 0, volume: 1, flow: 2, power: 3, tSupply: 4, tReturn: 4.1, hours: 5, errHours: 5.1, errCode: 6 };
+  var STEP = { energy: 0, volume: 1, flow: 2, power: 3, tSupply: 4, tReturn: 4.1, hours: 5, errHours: 5.1, flowHours: 5.2, errCode: 6 };
   function fits(field, d, dot) {
     var n = d.length, v;
     if (field === 'energy' || field === 'volume') return n >= 4 && (dot === null || dot === 3);
     if (field === 'flow' || field === 'power') return n >= 4 && n <= 5 && (dot === null || dot === 3);
     if (field === 'tSupply' || field === 'tReturn') { v = parseFloat(placeDot(d, 2)); return n >= 3 && n <= 4 && (dot === null || dot === 2) && v >= 5 && v < 150; }
-    if (field === 'hours' || field === 'errHours') return dot === null && /[1-9]/.test(d);
+    if (field === 'hours' || field === 'errHours' || field === 'flowHours') return dot === null && /[1-9]/.test(d);
     return false;
   }
   function batch(photos, ctx) {
@@ -297,7 +299,7 @@
       }
       var val = DEC[f] ? placeDot(d, dot !== null ? dot : DEC[f]) : d;
       p.readings = (p.readings || []).filter(sure);
-      p.readings.push({ field: f, value: stripZeros(val), unit: { energy: unitE, volume: 'm³', flow: 'm³/h', power: 'kW', tSupply: '°C', tReturn: '°C', hours: 'h', errHours: 'h' }[f], label: '', confidence: +(0.55 * (p.cand.score || 1)).toFixed(2), how: 'order' });
+      p.readings.push({ field: f, value: stripZeros(val), unit: { energy: unitE, volume: 'm³', flow: 'm³/h', power: 'kW', tSupply: '°C', tReturn: '°C', hours: 'h', errHours: 'h', flowHours: 'h' }[f], label: '', confidence: +(0.55 * (p.cand.score || 1)).toFixed(2), how: 'order' });
       p.kind = 'screen'; p.note = 'by_order'; have[f] = 1; it.a = STEP[f];
     });
     return photos;

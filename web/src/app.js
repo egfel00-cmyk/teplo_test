@@ -321,13 +321,33 @@
   function htmUnit() { var m = S.meter || {}; return m.htmUnit || (energyUnit() === 'GJ' ? 'GJ' : 'Gcal'); }
   function htmAsk() { return energyUnit() !== 'Gcal' && !(S.meter && S.meter.htmUnit); }   // одиницю кабінету не підтверджено — спитати
   function times3() { return !!(S.meter && S.meter.htmTimes === 3); }
-  function htmRobotOk() { return htmUnit() === 'Gcal' && !times3(); }
   function htmFields() { var f = R.FIELDS.slice(); if (times3()) f.splice(f.map(function (x) { return x.key; }).indexOf('errHours') + 1, 0, R.FIELD_PD); return f; }
   /** Значення для кабінету ХТМ: енергія — в одиниці кабінету (з табло без перерахунку, якщо одиниці збігаються), решта — як formatForHtm. */
   function htmVal(key, h, raw) {
     if (key !== 'energy') return R.formatForHtm(key, h[key]);
     var rn = raw ? R.num(raw.energy) : null; if (rn !== null && htmUnit() === energyUnit()) return rn.toFixed(3);
     var n = R.num(h.energy); return n === null ? '' : (n / (M.TO_GCAL[htmUnit()] || 1)).toFixed(3);
+  }
+  /** Значення для робота ХТМ (125-а): усі колонки форми кабінету (третій час — якщо він є), енергія — в одиниці кабінету + eunit (сервер перерахує, якщо кабінет в іншій). */
+  function htmRobotVals(r) {
+    var vals = {}; htmFields().forEach(function (f) { vals[f.key] = htmVal(f.key, r.htm || {}, r.raw); });
+    vals.eunit = htmUnit(); return vals;
+  }
+  /** Форма кабінету ХТМ за рахунком (125-а: сервер бачить заголовки сторінки — GET /api/cab/htm → forms) → «Як у вашому кабінеті ХТМ» лічильника: одиниця й третій час. */
+  function hcForms() {
+    var fm = (HC.st && HC.st.forms) || {}, accs = Object.keys(fm), ch = false; if (!accs.length) return false;
+    var heatPl = places().filter(function (x) { var mm = x.id === S.placeId ? S.meter : x.meter; return mm && !mm.removed; });
+    heatPl.forEach(function (p) {
+      var cur = p.id === S.placeId, m = cur ? S.meter : p.meter, acc = String(m.account || '').replace(/\D/g, '');
+      if (!acc && accs.length === 1 && heatPl.length === 1) acc = accs[0];
+      var f = fm[acc]; if (!f) return;
+      var upd = {};
+      if (f.u && M.TO_GCAL[f.u] && m.htmUnit !== f.u) upd.htmUnit = f.u;
+      if (typeof f.t3 === 'boolean' && (m.htmTimes === 3) !== f.t3) upd.htmTimes = f.t3 ? 3 : 2;
+      if (!Object.keys(upd).length) return;
+      Object.assign(m, upd); if (!cur) p.updatedAt = Date.now(); ch = true;
+    });
+    return ch;
   }
   /** Блок «Як у вашому кабінеті ХТМ»: одиниця енергії й колонки часу (open — розгорнутий, коли одиницю ще не підтверджено). */
   function htmFormBox(open) {
@@ -508,7 +528,9 @@
   }
   function meterInfo() {
     var m = model() || {};
-    return { hoursOnlyWithFlow: !!m.hoursOnlyWithFlow, transitionalFlow: S.meter && R.num(S.meter.transitionalFlow), verifiedUntil: S.meter && S.meter.verifiedUntil || null, times3: times3() };
+    var cu = htmUnit(), ul = UNIT_LBL[cu] || UNIT_LBL.Gcal;
+    return { hoursOnlyWithFlow: !!m.hoursOnlyWithFlow, transitionalFlow: S.meter && R.num(S.meter.transitionalFlow), verifiedUntil: S.meter && S.meter.verifiedUntil || null, times3: times3(),
+      cab: { k: M.TO_GCAL[cu] || 1, uk: ul.uk, ru: ul.ru }, screen: { k: M.TO_GCAL[energyUnit()] || 1 } };
   }
   function runCheck(d) {
     var res = R.validate({ reading: draftReadingGcal(d), prev: S.baseline, meter: meterInfo(), today: today() });
@@ -2617,7 +2639,7 @@
     var why = rd.status !== 'checked' || rd.verdict === 'block' ? 'bc_saved' :   // зауваження людина бачила й зберегла «перевірено» — як «Передати однаково» windowClosed() ? 'ha_why_closed' : !hcConn() ? 'bc_why_cab' :
       !acc || (heatPl.length > 1 && acc.acc !== String((m && m.account) || '').replace(/\D/g, '')) ? 'bc_why_acc' : !phone ? 'bc_why_phone' : '';
     if (why) return Object.assign(row, { m: t(why) });
-    var vals = {}; R.FIELDS.forEach(function (f) { vals[f.key] = R.formatForHtm(f.key, rd.htm[f.key]); });
+    var vals = htmRobotVals(rd);
     return Object.assign(row, { m: '', plan: { svc: 'htm', in: { acc: acc.acc, rid: rd.id, place: rd.place || S.placeId, vals: vals, phone: phone, email: c.email || '' } } });
   }
   /** Вода, збережена після виправлення: Харківводоканал (холодна, рахунок, вікно) чи місцевий КП з ботом — план; ні — чому. */
@@ -2650,8 +2672,7 @@
     PH.inbox = inbox; inboxDone(); phReset('reading');
     Promise.race([VIS().pendingUploads || Promise.resolve(), new Promise(function (ok) { setTimeout(ok, 5000); })]).then(function () { rd.photos = photoRefs(files.map(function (f) { return { file: f }; })); rd.updatedAt = Date.now(); save(); });
     S.focusId = rd.id; save();
-    var acc = hcAcc(rd), c = S.contacts || {}, vals = {};
-    R.FIELDS.forEach(function (f) { vals[f.key] = R.formatForHtm(f.key, rd.htm[f.key]); });
+    var acc = hcAcc(rd), c = S.contacts || {}, vals = htmRobotVals(rd);
     cardPost([Object.assign(row, { ok: 1, m: soft ? t('bc_why_' + why.k) : '',
       plan: soft ? null : { svc: 'htm', in: { acc: acc ? acc.acc : '', rid: rd.id, place: rd.place || S.placeId, vals: vals, phone: c.phone || (HC.st && HC.st.phone) || '', email: c.email || '' } } })], true);
     go('home'); return true;
@@ -4027,7 +4048,7 @@
   function hcRec(id) { return (S.readings || []).filter(function (x) { return x && !x.deleted && x.id === id; })[0] || null; }
   /** Підсумки внесень → записи історії: прийнято / не прийнято (з порадою, як у ручному «вставте статус»). Позначене людиною вручну не чіпаємо. */
   function hcApply() {
-    var ch = false;
+    var ch = hcForms();
     ((HC.st && HC.st.jobs) || []).forEach(function (j) {
       var r = j.rid && hcRec(j.rid); if (!r) return;
       if (!r.cab && j.card && r.card === j.card && r.status === 'checked') { r.cab = { job: j.id }; r.status = 'handed'; r.handedAt = new Date((j.at || Date.now() / 1000) * 1000).toISOString(); ch = true; }   // «Відправити» в картці чату (121-а)
@@ -4058,7 +4079,7 @@
   function hcHM(sec) { var d = new Date(sec * 1000); return ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2); }
   /** Автоподача: поставити перевірений запис у чергу сервера (робот внесе сам через autoDelay, можна скасувати). */
   function hcQueue(r, acc) {
-    var vals = {}; R.FIELDS.forEach(function (f) { vals[f.key] = R.formatForHtm(f.key, r.htm[f.key]); });
+    var vals = htmRobotVals(r);
     var c = S.contacts || {};
     hcCall('send', '/cab/htm/send', { acc: acc ? acc.acc : '', rid: r.id, place: r.place || S.placeId, vals: vals, phone: c.phone || '', email: c.email || '', delay: true }, function (j) {
       var jb = j.job; if (HC.st) HC.st.jobs = [jb].concat((HC.st.jobs || []).filter(function (x) { return x.id !== jb.id; }));
@@ -4101,7 +4122,7 @@
     if (HC.confirm === r.id) {
       h += '<div class="vkc-sum" data-key="hc-confirm" role="group" aria-label="' + esc(t('hc_check_t')) + '"><p class="small"><b>' + esc(t('hc_check_t')) + '</b></p><ul class="small">' +
         '<li>' + esc(t('hc_c_place', { p: placeLabel(place(r.place) || place()) })) + '</li><li>' + esc(t('hc_c_acc', { a: acc.acc, s: acc.sur })) + '</li>' +
-        '<li>' + esc(t('hc_c_vals', { d: R.formatForHtm('date', r.htm.date), e: R.formatForHtm('energy', r.htm.energy) })) + '</li>' +
+        '<li>' + esc(t('hc_c_vals', { d: R.formatForHtm('date', r.htm.date), e: htmVal('energy', r.htm, r.raw), u: unitLbl(htmUnit()) })) + '</li>' +
         '<li>' + esc(t('hc_c_contact', { p: c.phone || (HC.st.phone || '—'), m: c.email || HC.st.login })) + '</li></ul>' + hcErrBox(HC.err) +
         '<div class="row-actions"><button class="btn" data-act="hc-send" data-id="' + esc(r.id) + '" data-key="hc-send"' + (HC.busy ? ' disabled' : '') + '>' +
         (HC.busy === 'send' ? SPIN + '<span>' + esc(t('hc_sending')) + '</span>' : ico('send', 18) + '<span>' + esc(t('hc_send_yes')) + '</span>') + '</button>' +
@@ -4191,9 +4212,11 @@
     if (!hcAcc(r)) { S.focusId = id; save(); go('handover'); return; }
     hcSend(id);
   }
+  /** «Перевірити» відповів: що бачить кабінет + яка там форма (одиниця, третій час) — одразу в налаштування лічильника. */
+  function hcChecked(c) { HC.check = c; if (c && c.forms && HC.st) { HC.st.forms = c.forms; if (hcForms()) save(); } }
   function hcSend(id) {
     var r = hcRec(id), acc = r && hcAcc(r); if (!r || !acc || HC.busy) return;
-    var vals = {}; R.FIELDS.forEach(function (f) { vals[f.key] = R.formatForHtm(f.key, r.htm[f.key]); });
+    var vals = htmRobotVals(r);
     var c = S.contacts || {};
     hcCall('send', '/cab/htm/send', { acc: acc.acc, rid: r.id, place: r.place || S.placeId, vals: vals, phone: c.phone || '', email: c.email || '' }, function (j) {
       HC.confirm = null; var jb = j.job;
@@ -4225,10 +4248,10 @@
     if (!cons || !cons.checked) { HC.err = { error: 'cab_consent', human: t('hc_e_consent') }; render(true); return; }
     if (phone && !(S.contacts || {}).phone) { S.contacts = Object.assign({}, S.contacts || {}, { phone: phone }); save(); }
     hcCall('connect', '/cab/htm/connect', { email: email, password: pass, phone: phone, consent: true }, function (j) {
-      HC.st = j; HC.at = Date.now(); HC.showPass = false; HC.check = null; HC.form = null; toast(t('hc_on'));
+      HC.st = j; HC.at = Date.now(); HC.showPass = false; HC.check = null; HC.form = null; if (hcForms()) save(); toast(t('hc_on'));   // форма кабінету (ГДж, Pd) — одразу в лічильник
       // з екрана «Передайте» прийшли — туди й повертаємось
       if (S.focusId && hcRec(S.focusId) && hcRec(S.focusId).status === 'checked') { go('handover'); return; }
-      hcCall('check', '/cab/htm/check', { acc: (hcAcc() || {}).acc || '' }, function (c) { HC.check = c; });
+      hcCall('check', '/cab/htm/check', { acc: (hcAcc() || {}).acc || '' }, hcChecked);
     });
   });
   document.addEventListener('click', function (e) {
@@ -4244,7 +4267,7 @@
     else if (a === 'hc-bg') hcBg(el.getAttribute('data-id'));
     else if (a === 'hc-pref-off') { if (confirm(t('pc_off_q'))) hcCall('forget', '/cab/forget', { prov: 'htm' }, function (j) { HC.st = j; HC.check = null; hcApply(); save(); toast(t('hc_forgot')); }); }
     else if (a === 'hc-refresh') { hcLoad(true); render(true); }
-    else if (a === 'hc-check') hcCall('check', '/cab/htm/check', { acc: (hcAcc() || {}).acc || '' }, function (c) { HC.check = c; hcLoad(true); });
+    else if (a === 'hc-check') hcCall('check', '/cab/htm/check', { acc: (hcAcc() || {}).acc || '' }, function (c) { hcChecked(c); hcLoad(true); });
     else if (a === 'hc-forget') { HC.forget = true; render(true); }
     else if (a === 'hc-now' || a === 'hc-unqueue') hcCall(a === 'hc-now' ? 'now' : 'unqueue', a === 'hc-now' ? '/cab/htm/now' : '/cab/htm/cancel', { job: +el.getAttribute('data-id') }, function (j) {
       var jb = j.job; if (HC.st) HC.st.jobs = [jb].concat((HC.st.jobs || []).filter(function (x) { return x.id !== jb.id; }));
@@ -4274,7 +4297,7 @@
       body: (newer ? '<p class="small muted mb-newer">' + esc(t(newer.own ? 'mb_newer_own' : 'mb_newer_heat', { d: fmtDate(newer.htm.date, true), s: t('status_' + newer.status).toLowerCase() })) + '</p>' : '') +
         (bs ? '' : '<p class="small muted">' + esc(t('h_last_none_sub')) + '</p><p><a class="btn sec" href="#baseline" data-key="home-add-base">' + esc(t('h_add_base')) + '</a></p>'),
       meta: [verWarn(S.meter && S.meter.verifiedUntil)].filter(Boolean),
-      set: heatMeterFields(m) + monoLink('heat-set') + priceBlock('heat') + gapSetLink('heat') , setTitle: t('mb_set_read') });
+      set: heatMeterFields(m) + htmFormBox(htmAsk()) + monoLink('heat-set') + priceBlock('heat') + gapSetLink('heat') , setTitle: t('mb_set_read') });
     var act = '', right = '';
     var n = steps().length;
     if (S.draft && (Object.keys(S.draft.values || {}).length || S.draft.step > 0)) {
@@ -4859,7 +4882,7 @@
     }
     // «не прийме» лише за порівнянням з попередніми — людина може передати сама, на свій ризик (робот у фоні — ні)
     // робот у фоні знає лише форму «ГКал + 2 часи» (поля LastValuePok … ErrorTime) — інші форми людина вносить сама
-    var risk = res.verdict === 'block' && res.risky, canSend = res.verdict !== 'block' || risk, cab = res.verdict !== 'block' && hcOn() && hcConn() && htmRobotOk();
+    var risk = res.verdict === 'block' && res.risky, canSend = res.verdict !== 'block' || risk, cab = res.verdict !== 'block' && hcOn() && hcConn();
     var actions = '<div class="row-actions">' +
       '<button class="btn sec" data-act="save-inter" data-key="check-save-inter">' + esc(t('c_save_inter')) + '</button>' +
       '<button class="btn' + (cab ? ' sec' : '') + '" data-act="to-handover" data-key="check-send"' + (canSend ? '' : ' disabled') + '>' + esc(cab ? t('cab_self') : risk ? t('c_send_risk') : res.verdict === 'warn' ? t('c_send_anyway') : t('c_send')) + '</button>' +
@@ -4895,9 +4918,9 @@
       htmFormBox(htmAsk()) +
       (c.phone && c.email ? '' : '<div class="banner warn" style="margin-top:16px">' + ico('alert', 22) + '<div><p>' + esc(t('ho_contacts_none')) + ' <a href="#prefs">' + esc(t('nav_prefs')) + '</a></p></div></div>') + '</div>' +
       // кабінет підключено — робот вносить сам, це головний шлях; вручну — нижче, запасний
-      '<div class="ho-steps">' + (hcConn() && htmRobotOk() ? hcPanel(r) : '') + '<div class="panel"><h2>' + esc(t(hcConn() ? 'ho_steps_self' : 'ho_steps_title')) + '</h2><ol class="steps"><li>' + esc(t('ho_s1')) + '</li><li>' + esc(t('ho_s2')) + '</li><li>' + esc(t('ho_s3')) + '</li><li>' + esc(t('ho_s4')) + '</li></ol>' +
+      '<div class="ho-steps">' + (hcConn() ? hcPanel(r) : '') + '<div class="panel"><h2>' + esc(t(hcConn() ? 'ho_steps_self' : 'ho_steps_title')) + '</h2><ol class="steps"><li>' + esc(t('ho_s1')) + '</li><li>' + esc(t('ho_s2')) + '</li><li>' + esc(t('ho_s3')) + '</li><li>' + esc(t('ho_s4')) + '</li></ol>' +
       '<a class="btn sec block" href="' + HTM_URL + '" target="_blank" rel="noopener" data-key="handover-open">' + ico('ext', 20) + '<span>' + esc(t('ho_open')) + '</span></a></div>' +
-      (hcConn() || !htmRobotOk() ? '' : hcPanel(r)) + '</div></div>' +
+      (hcConn() ? '' : hcPanel(r)) + '</div></div>' +
       hoStatus(r) };
   };
   /** Що з показаннями в кабінеті: «На перевірці» / «Прийнято» — вибір тут же, людина лишається на сторінці передачі (владелец 07.11).
@@ -7290,7 +7313,7 @@
   /** Автоподача (фото з бота, увімкнено на екрані кабінету ХТМ): чому НЕ вносимо самі — або null, якщо все гаразд.
    *  Вносимо лише те, що прочитано впевнено, повністю й без жодного зауваження перевірки — інакше звичайна перевірка людиною. */
   function phAutoWhy() {
-    var p = PH.picked || {}, keys = R.FIELDS.filter(function (f) { return f.key !== 'date'; }).map(function (f) { return f.key; });
+    var p = PH.picked || {}, keys = htmFields().filter(function (f) { return f.key !== 'date'; }).map(function (f) { return f.key; });   // кабінет з Pd — і третій час
     if (PH.waterIdx && PH.waterIdx.length) return { k: 'mixed' };
     if (!S.meter || !model()) return { k: 'meter' };
     if (!S.baseline || !S.baseline.date) return { k: 'base' };
@@ -7311,7 +7334,7 @@
   }
   function phAutoDraft() {
     var p = PH.picked || {}, vals = {}, conf = {};
-    R.FIELDS.forEach(function (f) { if (f.key !== 'date' && p[f.key]) { vals[f.key] = String(p[f.key].value); conf[f.key] = p[f.key].confidence; } });
+    htmFields().forEach(function (f) { if (f.key !== 'date' && p[f.key]) { vals[f.key] = String(p[f.key].value); conf[f.key] = p[f.key].confidence; } });
     var d = PH.inboxAt ? R.ymd(new Date(PH.inboxAt * 1000)) : today(); if (d > today()) d = today();
     return { date: d, values: vals, step: steps().length - 1, source: 'photo', photoConf: conf, auto: true, startedAt: new Date().toISOString() };
   }

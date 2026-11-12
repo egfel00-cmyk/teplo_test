@@ -279,5 +279,23 @@ ok('…внесение на проверке → unknown (forgot)', ($jf['statu
 ok('…очередь автоподачи → cancelled', Db::one('SELECT status FROM cab_jobs WHERE id = ?', [$c7])['status'] === 'cancelled');
 $r = $b->req('POST', '/api/cab/htm/send', ['rid' => 'r7', 'vals' => $V]); ok('без кабинета — cab_off', $r->status === 409 && $r->body['error'] === 'cab_off', $r->body);
 $b2 = new B(); $r = $b2->req('GET', '/api/cab/htm'); ok('без входа в сервис — 401', $r->status === 401);
+// 125-а: кабінет іншого приладу (ГДж, Bd/Fd/Pd) — «Перевірити» каже застосунку одиницю й третій час; без Pd не вносимо; Гкал застосунку → ГДж
+stand('act=reset'); stand('act=set&scenario=gj_pd&today=2026-11-21&robot_delay=99999'); Db::q('DELETE FROM rate_limits');
+$r = $b->req('POST', '/api/cab/htm/connect', ['email' => 'test@stand.local', 'password' => 'stand-pass-123', 'phone' => '050 111 22 33', 'consent' => true, 'lang' => 'uk']); ok('ГДж-кабінет: підключено заново', $r->status === 200 && $r->body['connected'], $r->body);
+$r = $b->req('POST', '/api/cab/htm/check', ['lang' => 'uk']);
+ok('ГДж-кабінет: check → form.unit GJ, times3, forms[рахунок] = {u: GJ, t3: true}', $r->status === 200 && ($r->body['form']['unit'] ?? '') === 'GJ' && ($r->body['form']['times3'] ?? null) === true
+  && (array)($r->body['forms']->{'1000000061'} ?? []) === ['u' => 'GJ', 't3' => true], $r->body['form'] ?? $r->body);
+$r = $b->req('GET', '/api/cab/htm'); ok('…і в статусі (застосунок ставить «Як у вашому кабінеті» сам)', (array)($r->body['forms']->{'1000000061'} ?? []) === ['u' => 'GJ', 't3' => true], $r->body['forms'] ?? null);
+$vg = ['date' => '21.11.2026', 'hours' => '35366'] + $V;
+$r = $b->req('POST', '/api/cab/htm/send', ['rid' => 'g1', 'vals' => $vg, 'lang' => 'uk']);
+ok('…без Pd — 422 need_pd «впишіть його з лічильника»', $r->status === 422 && ($r->body['error'] ?? '') === 'cab_need_pd' && str_contains((string)($r->body['human'] ?? ''), 'Pd'), $r->body);
+Db::q('DELETE FROM rate_limits');
+$r = $b->req('POST', '/api/cab/htm/send', ['rid' => 'g1', 'vals' => $vg + ['flowHours' => '35100', 'eunit' => 'Gcal'], 'lang' => 'uk']);
+ok('…з Pd: внесено в ГДж (60.478), задача — в одиниці кабінету', $r->status === 200 && ($r->body['job']['energy'] ?? '') === '60.478' && ($r->body['job']['unit'] ?? '') === 'GJ', $r->body);
+Db::q('DELETE FROM rate_limits');
+$r = $b->req('POST', '/api/cab/htm/send', ['rid' => 'g1', 'vals' => $vg + ['flowHours' => '35100', 'eunit' => 'Gcal'], 'lang' => 'uk']);
+ok('…повтор того ж (у Гкал) — та сама задача, не вносимо вдруге', $r->status === 200 && !empty($r->body['dup']), $r->body);
+$r = $b->req('POST', '/api/cab/htm/send', ['rid' => 'g2', 'vals' => ['date' => '21.11.2026', 'energy' => '120.000', 'eunit' => 'GJ', 'hours' => '35366', 'flowHours' => '35100'] + $V, 'lang' => 'uk']);
+ok('…приріст у ГДж: 64,5 ГДж (> 15 Гкал) — «перевірте крапку»', $r->status === 422 && ($r->body['field'] ?? '') === 'energy', $r->body);
 stand('act=reset'); stand('act=set&scenario=ok');
 echo "\nИтог: $pass OK, $fail FAIL\n"; exit($fail ? 1 : 0);

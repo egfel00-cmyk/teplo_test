@@ -137,7 +137,8 @@
    * @param {object} p  { reading, prev, meter, today }
    *   reading/prev: { date:'YYYY-MM-DD', energy, volume, flow, power, tSupply, tReturn, hours, errHours, errCode }
    *   prev — последнее ПРИНЯТОЕ ХТМ показание (строка журнала), может быть null.
-   *   meter: { hoursOnlyWithFlow:bool, transitionalFlow:number|null, verifiedUntil:'YYYY-MM-DD'|null, times3:bool (кабінет з Bd/Fd/Pd — є flowHours) }
+   *   meter: { hoursOnlyWithFlow:bool, transitionalFlow:number|null, verifiedUntil:'YYYY-MM-DD'|null, times3:bool (кабінет з Bd/Fd/Pd — є flowHours),
+   *            cab: {k, uk, ru} — одиниця енергії кабінету (k — у Гкал) для підказок, screen: {k} — одиниця табло }
    *   today: 'YYYY-MM-DD' (по умолчанию — сегодня)
    * @returns {{verdict:string, items:Array, derived:object}}
    */
@@ -233,9 +234,12 @@
       var dH = (v.hours !== null && pv.hours !== null) ? v.hours - pv.hours : null;
       d.dE = dE; d.dV = dV; d.dH = dH;
 
+      // 125-а: приріст і межа — в одиниці кабінету (meter.cab: {k — у Гкал, uk/ru — підпис}), «на екрані» — в одиниці табло (meter.screen)
+      var cb = meter.cab || { k: 1, uk: 'Гкал', ru: 'Гкал' }, sc = meter.screen || { k: 1 };
+      var lim = function (lg) { return cb.k === 1 ? '15 ' + cb[lg] : f3(15 / cb.k) + ' ' + cb[lg] + ' (15 Гкал)'; };
       if (dE !== null && dE >= C.ENERGY_JUMP) items.push(item('R_ENERGY_JUMP', 'block', 'energy',
-        'Приріст ' + f3(dE) + ' Гкал — робот приймає менше 15 Гкал за період.', 'Прирост ' + f3(dE) + ' Гкал — робот принимает меньше 15 Гкал за период.',
-        'Схоже, пропущена крапка: на екрані, ймовірно, ' + f3(v.energy / 10) + ' або ' + f3(v.energy / 1000) + '.', 'Похоже, пропущена точка: на экране, вероятно, ' + f3(v.energy / 10) + ' или ' + f3(v.energy / 1000) + '.'));
+        'Приріст ' + f3(dE / cb.k) + ' ' + cb.uk + ' — робот приймає менше ' + lim('uk') + ' за період.', 'Прирост ' + f3(dE / cb.k) + ' ' + cb.ru + ' — робот принимает меньше ' + lim('ru') + ' за период.',
+        'Схоже, пропущена крапка: на екрані, ймовірно, ' + f3(v.energy / sc.k / 10) + ' або ' + f3(v.energy / sc.k / 1000) + '.', 'Похоже, пропущена точка: на экране, вероятно, ' + f3(v.energy / sc.k / 10) + ' или ' + f3(v.energy / sc.k / 1000) + '.'));
 
       if (dE !== null && dV !== null && dE > 0 && dV === 0) items.push(item('R_ENERGY_WITHOUT_VOLUME', 'block', 'volume',
         'Енергія зросла, а обсяг теплоносія не змінився.', 'Энергия выросла, а объём теплоносителя не изменился.',

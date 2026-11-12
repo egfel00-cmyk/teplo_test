@@ -475,10 +475,19 @@ final class HtmCab {
   const F = ['date' => 'LastDtPok', 'energy' => 'LastValuePok', 'volume' => 'LastRashPok', 'flow' => 'HeatRash', 'power' => 'HeatPower',
     'tSupply' => 'TempPod', 'tReturn' => 'TempO', 'hours' => 'LastTimePok', 'errHours' => 'ErrorTime', 'errCode' => 'ErrorKod'];
   const DEC = ['energy' => 3, 'volume' => 3, 'flow' => 3, 'power' => 3, 'tSupply' => 2, 'tReturn' => 2];
+  /** Форма залежить від приладу (скрини власника 12.11.2026): енергія в ГКал або ГДж, часу 2 колонки або 3 — «Час напрацювання (Bd)», «Час простою (Fd)»,
+   *  «Час роботи з витратою (Pd)». Ім'я поля Pd на живому ще не бачили — поле, якого немає в F, впізнаємо за заголовком його колонки (LBL), а не за ім'ям. */
+  const LBL = ['date' => '/^Дата\s+зняття/u', 'energy' => '/Накопичен\S*\s+енерг/u', 'volume' => '/^Обсяг/u', 'flow' => '/^Миттєв\S*\s+витрат/u', 'power' => '/потужн/u',
+    'tSupply' => '/подач/u', 'tReturn' => '/поверн/u', 'hours' => '/напрацюв|^Час\s+роботи(?!\s+з)/u', 'errHours' => '/^Час.*(помилк|прост)|\(Fd\)/u', 'errCode' => '/^Код\s+помилк/u',
+    'flowHours' => '/^Час.*з\s+витрат|\(Pd\)/u'];
+  /** Одиниця енергії → Гкал (як M.TO_GCAL у застосунку). */
+  const UNITS = ['Gcal' => 1.0, 'GJ' => 0.2388458966, 'MWh' => 0.8598452279, 'kWh' => 0.0008598452279];
   public CabWeb $w;
   public array $log = [];
   /** главная кабинета после входа (url, body) — для осмотра (explore) */
   public ?array $home = null;
+  /** що внесено останнім save(): енергія в одиниці кабінету, eunit, e0 — до перерахунку */
+  public array $sent = [];
   public static function base(): string { return rtrim((string)Cfg::get('htm_cab_base', self::BASE), '/'); }
   public function __construct(float $budget = 25.0) {
     $host = preg_quote((string)parse_url(self::base(), PHP_URL_HOST), '/');
@@ -532,6 +541,15 @@ final class HtmCab {
       if (preg_match('/ПУ\s+([^,№]{2,40}?),?\s*№\s*([\w\-\/\.]{2,30})\s*$/u', CabWeb::sp($hn->textContent), $m)) { $o['meter'] = ['model' => trim($m[1]), 'serial' => trim($m[2])]; break; }
     }
     foreach (self::F as $k => $id) { $n = $x->query("//*[@id='head_$id']")->item(0); if ($n) $o['base'][$k] = CabWeb::sp($n->textContent); }
+    // колонки сторінки (125-а): «останні прийняті» — комірки head_<поле> по порядку, заголовки — рядок <th> журналу (є й коли форма закрита).
+    // Збіглась кількість — знаємо підпис кожного поля: так знаходимо поле Pd і його «останнє прийняте», не знаючи імені.
+    $heads = []; foreach ($x->query("//*[starts-with(@id,'head_')]") as $n) $heads[] = substr((string)$n->getAttribute('id'), 5);
+    $ths = [];
+    foreach ($x->query('//tr[th]') as $tr) { $t = []; foreach ($x->query('./th', $tr) as $th) $t[] = CabWeb::sp($th->textContent); if (count($t) >= 10 && preg_match('/^Дата\s+зняття/u', $t[0])) { $ths = $t; break; } }
+    $o['cols'] = []; if ($heads && count($heads) === count($ths)) foreach ($heads as $i => $id) $o['cols'][$id] = $ths[$i];
+    $o['ths'] = array_map(fn($t) => mb_substr($t, 0, 60), $ths);   // заголовки — для звірки (не особисті)
+    $o['pd'] = null;
+    foreach ($o['cols'] as $id => $lb) if (!in_array($id, self::F, true) && self::roleOf($lb) === 'flowHours') { $o['pd'] = $id; $n = $x->query("//*[@id='head_$id']")->item(0); if ($n) $o['base']['flowHours'] = CabWeb::sp($n->textContent); }
     // одиниця енергії форми — із заголовка колонки «Накопичена енергія, ГКал|ГДж|…» (форма залежить від приладу: скрин власника 12.11.2026 — ГДж і Bd/Fd/Pd)
     $o['eunit'] = preg_match('/Накопичена\s+енергія\s*,\s*(Г\s?[КK]ал|ГДж|МВт\S*|кВт\S*|GJ|MWh|kWh)/iu', $txt, $m) ? $m[1] : null;
     // окно дат формы: «min_date = '05.11.2026'» (снятие 01.11); на живом 06.11 так не нашлось — терпимо к кавычкам, minDate:, startDate: (bootstrap-datepicker),
@@ -553,7 +571,7 @@ final class HtmCab {
       foreach ($x->query('.//input|.//select|.//textarea|.//button', $form) as $i) {
         $nm = (string)$i->getAttribute('name'); if ($nm === '') continue;
         // подсказки сайта к полю (маска телефона, длина) — для сверки формы; значения в журнал не пишем
-        $o['fields'][] = ['name' => $nm, 'type' => strtolower($i->nodeName === 'input' ? ($i->getAttribute('type') ?: 'text') : $i->nodeName), 'value' => (string)$i->getAttribute('value'),
+        $o['fields'][] = ['name' => $nm, 'type' => strtolower($i->nodeName === 'input' ? ($i->getAttribute('type') ?: 'text') : $i->nodeName), 'value' => (string)$i->getAttribute('value'), 'lbl' => self::label($x, $i, $o['cols']),
           'ph' => mb_substr((string)$i->getAttribute('placeholder'), 0, 40), 'max' => (int)$i->getAttribute('maxlength') ?: null, 'pattern' => mb_substr((string)$i->getAttribute('pattern'), 0, 60), 'req' => $i->hasAttribute('required')];
       }
     } elseif (preg_match('/[^.]*тимчасово\s+зупинен[^.]*\.[^.]*\./u', $txt, $m)) $o['closed'] = trim($m[0]);
@@ -952,6 +970,48 @@ final class HtmCab {
     if (!is_numeric($v)) throw new CabErr('bad_value', $k);
     return isset(self::DEC[$k]) ? number_format((float)$v, self::DEC[$k], '.', '') : (string)(int)round((float)$v);
   }
+  /** Підпис поля форми: заголовок його колонки (cols), <label for>, обгортка <label> або <th> тієї ж колонки таблиці. */
+  private static function label(DOMXPath $x, DOMElement $i, array $cols): string {
+    $nm = (string)$i->getAttribute('name'); if (isset($cols[$nm])) return $cols[$nm];
+    $id = (string)$i->getAttribute('id');
+    if ($id !== '' && preg_match('/^[\w\-]+$/', $id) && ($l = $x->query("//label[@for='$id']")->item(0))) return mb_substr(CabWeb::sp($l->textContent), 0, 80);
+    for ($p = $i->parentNode; $p instanceof DOMElement; $p = $p->parentNode) {
+      if ($p->nodeName === 'label') return mb_substr(CabWeb::sp($p->textContent), 0, 80);
+      if ($p->nodeName === 'td' || $p->nodeName === 'th') {
+        $idx = $x->query('preceding-sibling::td|preceding-sibling::th', $p)->length; $tbl = $x->query('ancestor::table[1]', $p)->item(0);
+        if ($tbl) foreach ($x->query('.//tr[th]', $tbl) as $tr) { $th = $x->query('./th', $tr); if ($th->length > $idx) return mb_substr(CabWeb::sp($th->item($idx)->textContent), 0, 80); }
+        break;
+      }
+      if ($p->nodeName === 'form' || $p->nodeName === 'body') break;
+    }
+    return '';
+  }
+  /** Роль за підписом колонки: рівно один збіг з LBL — роль, інакше null. */
+  public static function roleOf(string $lbl): ?string {
+    $hit = array_keys(array_filter(self::LBL, fn($re) => preg_match($re, $lbl)));
+    return count($hit) === 1 ? $hit[0] : null;
+  }
+  /** «Накопичена енергія, ГДж» → GJ; ГКал → Gcal; МВт·год → MWh; кВт·год → kWh; не впізнали — null. */
+  public static function unitCode(?string $u): ?string {
+    $u = (string)$u;
+    if (preg_match('/^Г\s?[КK]ал$/iu', $u)) return 'Gcal';
+    if (preg_match('/^(ГДж|GJ)$/iu', $u)) return 'GJ';
+    if (preg_match('/^(МВт|MWh)/iu', $u)) return 'MWh';
+    if (preg_match('/^(кВт|kWh)/iu', $u)) return 'kWh';
+    return null;
+  }
+  /** Значення застосунку → в одиниці форми кабінету: енергія з eunit застосунку (за замовчуванням Гкал) у одиницю заголовка сторінки.
+   *  Одиниці збігаються — без перерахунку (як на табло). → vals з eunit сторінки; e0 — енергія до перерахунку (для повторів). */
+  public static function adapt(array $vals, array $h): array {
+    $from = isset($vals['eunit']) && isset(self::UNITS[$vals['eunit']]) ? $vals['eunit'] : 'Gcal';
+    $to = self::unitCode($h['eunit'] ?? null) ?? $from;
+    if ($from !== $to && isset($vals['energy']) && is_numeric(str_replace([',', ' '], ['.', ''], (string)$vals['energy']))) {
+      $vals['e0'] = $vals['e0'] ?? (string)$vals['energy'];
+      $vals['energy'] = number_format((float)str_replace([',', ' '], ['.', ''], (string)$vals['energy']) * self::UNITS[$from] / self::UNITS[$to], 3, '.', '');
+    }
+    $vals['eunit'] = $to;
+    return $vals;
+  }
   /** Как робот понимает поля открытой формы (без значений): у каждого поля роль — наше значение (date…errCode), hidden/кнопка как есть,
    *  контакт (phone, email, note), галочка (не трогаем) или «незнакомое». → ['roles' => [имя => роль], 'missing' => [наши, которых нет], 'unknown' => [имена], 'match' => bool]. */
   public static function plan(array $fields): array {
@@ -966,22 +1026,27 @@ final class HtmCab {
       if (preg_match('/e-?mail/i', $nm)) { $roles[$nm] = 'email'; continue; }
       if (preg_match('/note|prim|comment|koment/i', $nm)) { $roles[$nm] = 'note'; continue; }
       if (in_array($f['type'], ['checkbox', 'radio'], true)) { $roles[$nm] = '#skip'; continue; }
+      // незнайоме ім'я — лише третій час (Pd) за підписом колонки; перейменоване наше поле — ні (форма змінилась, нічого не шлемо)
+      if (self::roleOf((string)($f['lbl'] ?? '')) === 'flowHours' && !isset($seen['flowHours']) && $f['type'] === 'text') { $roles[$nm] = 'flowHours'; $seen['flowHours'] = 1; continue; }
       $roles[$nm] = '?'; $unknown[] = $nm;
     }
     $missing = array_values(array_diff(array_keys(self::F), array_keys($seen)));
-    return ['roles' => $roles, 'missing' => $missing, 'unknown' => $unknown, 'match' => !$missing && !$unknown];
+    return ['roles' => $roles, 'missing' => $missing, 'unknown' => $unknown, 'match' => !$missing && !$unknown, 'times3' => isset($seen['flowHours'])];
   }
   /** Сохранить показания. vals: date (dd.mm.yyyy) + energy … errCode; contact: phone, email, note; h — уже открытая страница heat() (не открывать второй раз).
    *  → ['status' => 'pending'|'ok'|'rejected', 'text', 'flash'] или CabErr (closed, form_changed, form_error, …). Ничего не шлём, если форма не та. */
   public function save(string $acc, string $sur, array $vals, array $contact, ?array $h = null): array {
     $h = $h ?? $this->heat($acc, $sur);
     if (!$h['open']) throw new CabErr('closed', (string)$h['closed']);
-    $want = [];
-    foreach (self::F as $k => $name) { if (!array_key_exists($k, $vals)) throw new CabErr('bad_value', $k); $want[$k] = self::fmt($k, $vals[$k]); }
     $pl = self::plan($h['fields']);
     if (!$pl['match']) { $this->log['fields'] = array_column($h['fields'], 'name'); throw new CabErr('form_changed', 'missing: ' . implode(',', $pl['missing']) . ' unknown: ' . implode(',', $pl['unknown'])); }
-    // застосунок рахує енергію в Гкал: форму в ГДж/МВт·год робот не заповнює (людина вносить сама, у своїй одиниці)
-    if (!empty($h['eunit']) && !preg_match('/^Г\s?[КK]ал$/iu', (string)$h['eunit'])) throw new CabErr('form_changed', 'energy unit ' . $h['eunit']);
+    // енергія — в одиниці форми (125-а: ГДж-кабінет), перерахунок лише коли застосунок прислав іншу одиницю
+    $u0 = (string)($vals['eunit'] ?? 'Gcal'); $vals = self::adapt($vals, $h); if (isset($vals['e0'])) $this->log['conv'] = $u0 . '→' . $vals['eunit'];
+    $want = [];
+    foreach (self::F as $k => $name) { if (!array_key_exists($k, $vals)) throw new CabErr('bad_value', $k); $want[$k] = self::fmt($k, $vals[$k]); }
+    // форма з третім часом (Pd) — без нього не вносимо
+    if ($pl['times3']) { if (trim((string)($vals['flowHours'] ?? '')) === '') throw new CabErr('bad_value', 'flowHours'); $want['flowHours'] = self::fmt('flowHours', $vals['flowHours']); }
+    $this->sent = ['energy' => $want['energy'], 'eunit' => $vals['eunit']] + (isset($vals['e0']) ? ['e0' => $vals['e0']] : []);
     $pairs = [];
     foreach ($h['fields'] as $f) {
       $role = $pl['roles'][$f['name']] ?? '#skip';

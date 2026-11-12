@@ -5,10 +5,13 @@ declare(strict_types=1);
 
 const ROOT = __DIR__ . '/..';
 const SCENARIOS = ['ok', 'bad_credentials', 'account_login_closed', 'window_open', 'period_closed', 'robot_reject', 'captcha',
-  'session_expired', 'server_500', 'maintenance', 'markup_changed', 'slow', 'nominmax', 'banners', 'heat_down'];
+  'session_expired', 'server_500', 'maintenance', 'markup_changed', 'slow', 'nominmax', 'banners', 'heat_down', 'gj_pd'];
 
 function cfg(): array { static $c; return $c ??= json_decode((string)file_get_contents(ROOT . '/config/stand.json'), true); }
 function F(string $k): string { return cfg()['form'][$k]; }
+/** Сценарий gj_pd (125-я): форма другого прибора — энергия в ГДж и три времени Bd/Fd/Pd (скрины владельца 12.11.2026). Состояние — в Гкал, показ и ввод — в ГДж. */
+function gj(): bool { return scenario() === 'gj_pd'; }
+const GJ = 4.1868;
 function TX(string $k, array $v = []): string { $s = cfg()['texts'][$k]; foreach ($v as $a => $b) $s = str_replace('{' . $a . '}', $b, $s); return $s; }
 
 function st_path(): string { return ROOT . '/storage/state.json'; }

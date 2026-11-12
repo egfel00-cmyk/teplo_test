@@ -170,13 +170,33 @@ $acc = (new HtmCab())->accounts(['body' => '<a href="/cabinet/heat/1000000061/%D
 ok('/cabinet/list не ответил, рахунок есть на главной — берём его', ($acc[0]['acc'] ?? '') === '1000000061' && ($acc[0]['sur'] ?? '') === 'ТЕСТОВИЙ', $acc);
 try { (new HtmCab())->accounts(['body' => '<html>без рахунків</html>']); ok('…на главной рахунків нет — честно «сайт не відповідає»', false); } catch (CabErr $e) { ok('…на главной рахунків нет — честно «сайт не відповідає»', $e->err === 'down', $e->err); }
 CabWeb::$http = null;
-// 124-а: форма ХТМ в ГДж (скрин власника 12.11.2026) — робот не вносить Гкал у ГДж, навіть якщо імена полів ті самі
+// 124-а → 125-а: форма ХТМ в ГДж (скрин власника 12.11.2026) — Гкал застосунку робот перераховує в ГДж; ГДж застосунку — як є
 { $flds = array_map(fn($n) => ['name' => $n, 'type' => 'text'], array_values(HtmCab::F));
   $vals = ['date' => '12.11.2026', 'energy' => '50.883', 'volume' => '7704.980', 'flow' => '0.582', 'power' => '3.5', 'tSupply' => '47.7', 'tReturn' => '42.5', 'hours' => '52738', 'errHours' => '3343', 'errCode' => 'E---'];
-  foreach (['ГДж' => true, 'ГКал' => false] as $u => $refuse) {
-    try { (new HtmCab())->save('1', 'X', $vals, [], ['open' => true, 'closed' => null, 'fields' => $flds, 'eunit' => $u, 'action' => 'http://127.0.0.1:9/none', 'url' => 'http://127.0.0.1:9/none']); $got = 'sent'; }
-    catch (CabErr $e) { $got = $e->err . ' ' . $e->site; } catch (Throwable $e) { $got = 'net'; }
-    ok('форма «Накопичена енергія, ' . $u . '» → ' . ($refuse ? 'не вносимо (form_changed)' : 'вносимо як раніше'), $refuse ? str_starts_with($got, 'form_changed energy unit') : !str_starts_with($got, 'form_changed'), $got);
+  foreach (['ГДж' => '213.037', 'ГКал' => '50.883'] as $u => $e) {
+    $cab = new HtmCab();
+    try { $cab->save('1', 'X', $vals, [], ['open' => true, 'closed' => null, 'fields' => $flds, 'eunit' => $u, 'action' => 'http://127.0.0.1:9/none', 'url' => 'http://127.0.0.1:9/none']); $got = 'sent'; }
+    catch (CabErr $e2) { $got = $e2->err . ' ' . $e2->site; } catch (Throwable $e2) { $got = 'net'; }
+    ok('форма «Накопичена енергія, ' . $u . '» → вносимо ' . $e . ' (не form_changed)', !str_starts_with($got, 'form_changed') && ($cab->sent['energy'] ?? '') === $e, [$got, $cab->sent]);
   }
+  $a = HtmCab::adapt(['energy' => '213.040', 'eunit' => 'GJ'] + $vals, ['eunit' => 'ГДж']);
+  ok('застосунок прислав ГДж, кабінет у ГДж — як на табло, без перерахунку', $a['energy'] === '213.040' && $a['eunit'] === 'GJ' && !isset($a['e0']), $a);
+  $a = HtmCab::adapt(['energy' => '213.040', 'eunit' => 'GJ'] + $vals, ['eunit' => 'ГКал']);
+  ok('застосунок у ГДж, кабінет у ГКал — перерахунок 50.884, e0 = 213.040', $a['energy'] === '50.884' && $a['eunit'] === 'Gcal' && $a['e0'] === '213.040', $a);
+  ok('одиниці заголовка: ГКал/ГДж/МВт·год/кВт·год', HtmCab::unitCode('ГКал') === 'Gcal' && HtmCab::unitCode('ГДж') === 'GJ' && HtmCab::unitCode('МВт*год') === 'MWh' && HtmCab::unitCode('кВт·год') === 'kWh' && HtmCab::unitCode('') === null);
   ok('стенд: одиниця з заголовка — ГКал', ($p['eunit'] ?? '') === 'ГКал', $p['eunit'] ?? null); }
+// 125-а: інший прилад — 11 колонок (ГДж, Bd/Fd/Pd). Ім'я поля Pd невідоме — робот бере його за заголовком колонки
+stand('act=reset'); stand('act=set&scenario=gj_pd&today=2026-11-10&robot_delay=0');
+{ $h = new HtmCab(); $h->login('test@stand.local', 'stand-pass-123'); $g = $h->heat('1000000061', 'Тестовий'); $pl = HtmCab::plan($g['fields']);
+  ok('ГДж-кабінет: одиниця ГДж, колонка Pd знайдена за заголовком, «останнє прийняте» Pd', HtmCab::unitCode($g['eunit']) === 'GJ' && $g['pd'] === 'TimePd' && ($g['base']['flowHours'] ?? '') === '34398' && ($g['base']['energy'] ?? '') === '55.454', [$g['eunit'], $g['pd'], $g['base']]);
+  ok('…форма: усе наше + Pd (times3), незнайомих немає', $pl['match'] && $pl['times3'] && ($pl['roles']['TimePd'] ?? '') === 'flowHours', $pl);
+  $vg = ['energy' => '14.445', 'eunit' => 'Gcal', 'flowHours' => '35000'] + $V;
+  try { $h->save('1000000061', 'Тестовий', array_diff_key($vg, ['flowHours' => 1]), $C, $g); ok('без Pd — не вносимо (bad_value flowHours)', false); }
+  catch (CabErr $e) { ok('без Pd — не вносимо (bad_value flowHours)', $e->err === 'bad_value' && $e->site === 'flowHours', [$e->err, $e->site]); }
+  $r = $h->save('1000000061', 'Тестовий', $vg, $C, $g);
+  ok('з Pd і Гкал застосунку — внесено в ГДж (60.478), у журналі рядок', in_array($r['status'], ['pending', 'ok'], true) && ($h->sent['energy'] ?? '') === '60.478' && ($h->sent['e0'] ?? '') === '14.445', [$r, $h->sent]);
+  $h2 = new HtmCab(); $h2->login('test@stand.local', 'stand-pass-123'); stand('act=robot');
+  $row = HtmCab::find($h2->heat('1000000061', 'Тестовий')['journal'], '10.11.2026', '60.478');
+  ok('робот стенда прийняв ГДж-показання', ($row['status'] ?? '') === 'ok', $row); }
+stand('act=reset'); stand('act=set&scenario=ok&today=2026-11-10&robot_delay=0');
 echo "\nИтог: $pass OK, $fail FAIL\n"; exit($fail ? 1 : 0);
