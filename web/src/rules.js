@@ -290,7 +290,11 @@
 
     var verdict = items.some(function (i) { return i.level === 'block'; }) ? 'block'
       : items.some(function (i) { return i.level === 'warn'; }) ? 'warn' : 'ok';
-    return { verdict: verdict, items: items, derived: d };
+    // risky — усі «не прийме» лише з порівняння з попередніми показаннями (наші дані можуть бути застарілі, лічильник замінили…):
+    // людина може передати на свій ризик (власник 12.11.2026). Порожні поля, дата, температура поза 5–95, повірка — ні.
+    var blocks = items.filter(function (i) { return i.level === 'block'; });
+    var risky = blocks.length > 0 && blocks.every(function (i) { return PREV_BASED.indexOf(i.code) >= 0; });
+    return { verdict: verdict, items: items, derived: d, risky: risky };
   }
 
   /** Быстрая проверка одного поля на лету (для подсказки под полем). */
@@ -338,7 +342,10 @@
     return { code: 'UNKNOWN' };
   }
 
-  var api = { C: C, FIELDS: FIELDS, num: num, validate: validate, checkField: checkField, decodeRobot: decodeRobot,
+  /** Правила «не прийме», що спираються лише на попередні показання (не на форму ХТМ чи фізику самого запису). */
+  var PREV_BASED = ['F_DATE_BEFORE_PREV', 'R_MONO_ENERGY', 'R_MONO_VOLUME', 'R_MONO_HOURS', 'R_MONO_ERRHOURS', 'R_ENERGY_JUMP', 'R_ENERGY_WITHOUT_VOLUME',
+    'R_DT_MIN', 'R_DT_MAX', 'R_DT_NO_FLOW', 'R_HOURS_CALENDAR', 'R_FLOW_MIN'];
+  var api = { C: C, FIELDS: FIELDS, PREV_BASED: PREV_BASED, num: num, validate: validate, checkField: checkField, decodeRobot: decodeRobot,
     windowState: windowState, formatForHtm: formatForHtm, toHtmDate: toHtmDate, daysBetween: daysBetween, normCode: normCode, ERR_CODES: ERR_CODES, ymd: ymd };
   if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.TeploRules = api;
 })(typeof window !== 'undefined' ? window : this);

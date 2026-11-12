@@ -103,4 +103,15 @@ ok('пустое фото → «знято здалеку/розмите», бе
   const sc = P.meterScores(all); ok('НІК 2102, «ДСТУ» прочитано як «CT/» → electric, не тепло', P.meterType(all) === 'electric' && !sc.heat && sc.electric >= 5, sc);
   ok('табло тепла з «HT»/«CT» без примет світла — тепло, як і було', P.meterType('HT 75.2\nCT 44.1\n°C') === 'heat' && P.meterScores('HT 75.2').heat === true); }
 
+// 124-а (скарги 12.11.2026): заголовок петлі чи групи і архів Diehl — не показання; людина бачить, що зробити далі
+console.log('\nЗаголовки петель і архівні екрани:');
+{ const F2 = (lines) => P.photo({ w: 1512, h: 2016, lines: lines.map(([text, alts, h]) => L(text, alts || null, 500, 760, 320, h || 80)) }, { models: M.MODELS }, 0);
+  const cases = [['T330 «LOOP 1»', [['LOOP 1', ['L00P 1', 'LOOP1']]], 'loop_screen'], ['«L00P 2» (нулі замість O)', [['L00P 2', ['L00P2']]], 'loop_screen'],
+    ['ELF «---- 01»', [['---- 01', ['----01']]], 'loop_screen'], ['Kamstrup «2-TECH»', [['2-tECH', ['2-TECH']]], 'loop_screen'], ['НІК «MENU»', [['MENU', ['MEnU']]], 'loop_screen'],
+    ['Sharky «Accd 1» + енергія розрахункового дня', [['Accd 1', null, 40], ['00012.004', ['00012.004'], 80], ['Gcal', null, 30]], 'archive_screen'],
+    ['Sharky місячний журнал «LO6»', [['LO6', null, 40], ['00011.517', null, 80]], 'archive_screen']];
+  for (const [n, ls, want] of cases) { const r = F2(ls); ok(n + ' → ' + want + ', без показань', r.photo.note === want && !r.photo.readings.length, r.photo); }
+  const e = F2([['00015.482', ['00015.482'], 80], ['Gcal', null, 30]]); ok('звичайний екран енергії — як і було (не петля)', !e.photo.note || !/loop|archive/.test(e.photo.note), e.photo);
+  ok('нуль із тире помилки «E-------» — не група ELF', !/loop/.test(F2([['E-------', ['E- - - - - - -']]]).photo.note || '')); }
+
 console.log(`\nИтог: ${pass} OK, ${fail} FAIL`); process.exit(fail ? 1 : 0);

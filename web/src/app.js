@@ -451,6 +451,15 @@
 
   // ---------------- мастер: шаги ----------------
   function steps() { var m = model(); return [{ kind: 'date' }].concat(m ? m.steps : []); }
+  /** Підпис дії на кроці (екранований): своя (say) → «Затисніть кнопку й тримайте понад N с, потім коротко ×K» → «Натисніть ×K» → «Шукайте екран». */
+  function pressText(s) {
+    if (s.say) return esc(L(s.say));
+    if (s.press === 'long') return esc(t('s_hold', { s: s.hold || 3 })) + (s.count ? ' <span class="times">' + esc(t('s_hold_then', { n: s.count })) + '</span>' : '');
+    if (s.press === null) return esc(t('s_first'));
+    return s.count ? esc(t('s_press')) + ' <span class="times">' + esc(t('s_press_n', { n: s.count })) + '</span>' : esc(t('s_press_find'));
+  }
+  /** Петлі моделі (LOOP 0/1, групи, рівні) — {tip, short}; немає — загальна підказка «затисніть на 3–5 с». */
+  function loopsOf(m) { return (m && m.loops) || { tip: M.LOOP_ANY }; }
   /** Останні прийняті ХТМ: найпізніші серед «Останніх прийнятих» (S.baseline, з кабінету) і показань зі статусом «прийнято» в історії.
    *  Раніше бралось лише S.baseline — табло й перевірка «як робот ХТМ» відставали від історії (у власника: 20.11.2025 при прийнятих 23.03.2026). */
   function lastAccepted() {
@@ -2856,9 +2865,17 @@
     });
     return all;
   }
+  /** «Менше, ніж минулого разу» — лише наша перевірка за попередніми записами (власник 12.11.2026): друге «Зберегти» з тими ж
+   *  цифрами зберігає на ризик людини. Інші блоки (порожньо, не цифри) — ні. st — EN або WN, iss — {meterId: [зауваження]}. */
+  function riskSecond(st, iss) {
+    var only = Object.keys(iss).every(function (x) { return (iss[x] || []).every(function (i) { return i.level !== 'block' || i.code === 'less'; }); });
+    var sig = JSON.stringify(st.vals || {});
+    if (only && st.risk === sig) { delete st.risk; return true; }
+    st.risk = only ? sig : null; return false;
+  }
   function enSave() {
     enRead(); var iss = enCheck('submit'), k = EN.k, md = SK[k].mod;
-    if (Object.keys(iss).some(function (x) { return md.blocked(iss[x]); })) { var f = document.querySelector('.wfield.is-block input'); if (f) f.focus(); return; }
+    if (Object.keys(iss).some(function (x) { return md.blocked(iss[x]); }) && !riskSecond(EN, iss)) { var f = document.querySelector('.wfield.is-block input'); if (f) f.focus(); return; }
     var date = EN.date || today(), now = new Date().toISOString(), own = ownChecked(); S.mrecs = S.mrecs || [];
     var ms0 = smeters(k), refs = photoRefs((EN.photos || []).map(function (p, i) {
       var mid = ms0.filter(function (m) { return md.keys(m).some(function (z) { var x = EN.src[m.id + '|' + z]; return x && x.photo === i; }); })[0];
@@ -3172,7 +3189,7 @@
   }
   function wnSave() {
     wnRead(); var iss = wnCheck('submit');
-    if (Wt.blocked(iss)) { var f = document.querySelector('.wfield.is-block input'); if (f) f.focus(); return; }
+    if (Wt.blocked(iss) && !riskSecond(WN, iss)) { var f = document.querySelector('.wfield.is-block input'); if (f) f.focus(); return; }
     var vals = {}; wmeters().forEach(function (m) { var v = Wt.norm(WN.vals[m.id]); if (v !== null) vals[m.id] = v; });
     wnStore(vals, ownChecked());
   }
@@ -4737,9 +4754,7 @@
         (VIS().available ? '<p><button class="linkbtn" data-act="photo" data-mode="reading" data-key="step-photo">' + esc(t('ph_step_hint')) + '</button></p>' : '');
       right = '<div class="field"><label for="f-date">' + esc(t('s_date')) + '</label><div class="ctl"><input id="f-date" type="date" data-field="date" value="' + esc(S.draft.date || today()) + '" max="' + today() + '"></div><div class="help" id="h-date"></div></div>';
     } else {
-      var press = s.press === null ? '<p class="press">' + ico('press', 26) + esc(t('s_first')) + '</p>'
-        : s.count ? '<p class="press">' + ico('press', 26) + esc(t('s_press')) + ' <span class="times">' + esc(t('s_press_n', { n: s.count })) + '</span></p>'
-        : '<p class="press">' + ico('press', 26) + esc(t('s_press_find')) + '</p>';
+      var press = '<p class="press' + (s.press === 'long' ? ' hold' : '') + '">' + ico('press', 26) + pressText(s) + '</p>';
       var title = s.fields.length === 1 ? fieldLabel(s.fields[0]) : s.fields.indexOf('tSupply') >= 0 ? (S.lang === 'ru' ? 'Температуры подачи и обратки' : 'Температури подачі й обратки') : s.fields.indexOf('hours') >= 0 ? (S.lang === 'ru' ? 'Часы работы' : 'Години роботи') : s.fields.map(fieldLabel).join(', ');
       S._single = s.fields.length === 1;
       var lines = s.fields.map(function (k, idx) {
@@ -4751,7 +4766,9 @@
       });
       left = press + lcd(lines, 'step-lcd') + '<p class="lcd-cap" id="lcd-cap">' + esc(Object.keys(S.draft.values).some(function (k) { return s.fields.indexOf(k) >= 0 && S.draft.values[k]; }) ? t('s_on_screen') : t('s_example')) + '</p>' +
         '<p class="hint">' + esc(L(s.hint)) + '</p>' +
-        (m && m.sleepMin ? '<p class="sleep">' + ico('moon', 18) + '<span>' + esc(t('s_sleep', { m: m.sleepMin })) + '</span></p>' : '');
+        (m && m.sleepMin ? '<p class="sleep">' + ico('moon', 18) + '<span>' + esc(t('s_sleep', { m: m.sleepMin })) + '</span></p>' : '') +
+        // петлі (LOOP 0/1, групи, рівні): людина не знаходить екран, бо він в іншій петлі — скарги 12.11.2026 (124-а)
+        '<details class="where loop-tip" data-key="step-loops"><summary>' + esc(t('s_loops')) + '</summary><p>' + esc(L(loopsOf(m).tip)) + '</p></details>';
       right = '<h1>' + esc(title) + '</h1>' + s.fields.map(function (k) { return k === 'errCode' ? errCodeField() : numField(k, prev); }).join('');
     }
     var isLast = i === n - 1;
@@ -4773,7 +4790,9 @@
       } else if (['energy', 'volume', 'errHours'].indexOf(k) >= 0) help += S.lang === 'ru' ? ', должно быть не меньше' : ', має бути не менше';
     }
     if (typeof plain === 'undefined') var plain = help;
-    if (k === 'errHours' && !help) help = S.lang === 'ru' ? 'Нет часов с ошибкой — впишите 0.' : 'Немає годин з помилкою — впишіть 0.';
+    // час простою (124-а, власник: «у лічильників є час простою — його теж треба вводити»): пояснюємо завжди, не лише без минулих
+    // data-plain лишаємо як є (лише «минулого разу N»): з нього при вводі береться число після першої цифри
+    if (k === 'errHours') help = t('s_err_hours') + (help ? ' ' + help + '.' : '');
     return '<div class="field" id="fw-' + k + '"><label for="f-' + k + '"' + (S._single ? ' class="sr"' : '') + '>' + esc(fieldLabel(k)) + '</label><div class="ctl' + cls + '"><input id="f-' + k + '" class="num" inputmode="decimal" autocomplete="off" enterkeyhint="next" data-field="' + k + '" value="' + esc(v) + '" aria-describedby="h-' + k + '"><span class="unit">' + esc(fieldUnit(k)) + '</span></div>' +
       '<div class="help" id="h-' + k + '" data-base="' + esc(help) + '" data-plain="' + esc(plain) + '">' + esc(help) + '</div></div>';
   }
@@ -4808,16 +4827,19 @@
     if (res.verdict !== 'block' && d && d.dE != null && d.dE >= 0 && S.baseline && R.daysBetween(S.baseline.date, r.date) > 0) {
       period = '<p class="small muted" data-key="check-period">' + esc(t('c_period', { de: d.dE.toFixed(3), days: R.daysBetween(S.baseline.date, r.date), cost: money(d.cost || 0) })) + '</p>';
     }
-    var canSend = res.verdict !== 'block', cab = canSend && hcOn() && hcConn();
+    // «не прийме» лише за порівнянням з попередніми — людина може передати сама, на свій ризик (робот у фоні — ні)
+    var risk = res.verdict === 'block' && res.risky, canSend = res.verdict !== 'block' || risk, cab = res.verdict !== 'block' && hcOn() && hcConn();
     var actions = '<div class="row-actions">' +
       '<button class="btn sec" data-act="save-inter" data-key="check-save-inter">' + esc(t('c_save_inter')) + '</button>' +
-      '<button class="btn' + (cab ? ' sec' : '') + '" data-act="to-handover" data-key="check-send"' + (canSend ? '' : ' disabled') + '>' + esc(cab ? t('cab_self') : res.verdict === 'warn' ? t('c_send_anyway') : t('c_send')) + '</button>' +
+      '<button class="btn' + (cab ? ' sec' : '') + '" data-act="to-handover" data-key="check-send"' + (canSend ? '' : ' disabled') + '>' + esc(cab ? t('cab_self') : risk ? t('c_send_risk') : res.verdict === 'warn' ? t('c_send_anyway') : t('c_send')) + '</button>' +
       (cab ? '<button class="btn dest-bg" data-act="chk-bg" data-key="check-bg"' + (HC.busy ? ' disabled' : '') + '>' + ico('send', 18) + '<span>' + esc(t('cab_bg')) + '</span></button>' : '') + '</div>' +
       (cab ? '<p class="small dest-note" data-key="check-bg-note">' + esc(t('cab_bg_note', { what: t('cab_bg_heat', { d: R.formatForHtm('date', r.date), e: R.formatForHtm('energy', r.energy), a: hcAcc() ? t('cab_bg_acc', { a: hcAcc().acc }) : '' }) })) + '</p>' : '');
     return { screen: 'S06', route: 'check', bare: true, closeTo: backTo('home'), html:
       '<div class="wiz-top"><a class="btn ghost" href="#step-' + (steps().length - 1) + '">' + ico('back', 20) + '<span>' + esc(t('back')) + '</span></a></div>' +
       '<h1>' + esc(t('c_title')) + '</h1>' +
       '<div class="verdict ' + res.verdict + '" data-key="check-verdict" data-verdict="' + res.verdict + '" role="status">' + levelIco(res.verdict, 28) + '<span>' + esc(vText) + '</span></div>' +
+      // зауваження — лише наша перевірка всередині сервісу (власник 12.11.2026): ввічливо, без «ви помилились»
+      (res.verdict !== 'ok' ? '<p class="small muted" data-key="check-disclaimer">' + esc(t(risk ? 'c_disclaimer_risk' : 'c_disclaimer')) + '</p>' : '') +
       '<div class="cols"><div>' + issues + period + '</div><div><h2 class="section-title" style="margin-top:0">' + esc(t('c_values')) + '</h2><table class="vals" data-key="check-values">' + rows + '</table></div></div>' + actions + cancelLink('heat') };
   };
 
@@ -7044,12 +7066,14 @@
     var mm = mt.modelId ? M.byId(mt.modelId) : null;
     if (mm && (!S.meter || S.meter.modelId !== mm.id)) h += '<div class="banner" data-key="photo-meter">' + ico('info', 22) + '<div><p><b>' + esc(t('ph_meter_found', { m: modelName(mm) })) + '</b></p><p><button class="linkbtn" data-act="ph-use-model" data-id="' + mm.id + '" data-unit="' + esc(mt.energyUnit || '') + '">' + esc(t('ph_meter_use')) + '</button></p></div></div>';
     var noteTxt = function (x) { return x.note ? (t('pn_' + x.note) !== 'pn_' + x.note && t('pn_' + x.note) ? t('pn_' + x.note) : x.note) : ''; };
-    var INFO = { test_screen: 1, dt_screen: 1 };   // служебные экраны — не ошибка, просто пояснение
+    var INFO = { test_screen: 1, dt_screen: 1, loop_screen: 1, archive_screen: 1 };   // служебные экраны — не ошибка, просто пояснение
     var info = (res.photos || []).filter(function (x) { return INFO[x.note] && !(x.readings || []).length; });
     var bad = (res.photos || []).filter(function (x) { return !(PH.waterIdx && PH.waterIdx.indexOf(x.index) >= 0 && wmeters().length) && !INFO[x.note] && ((x.quality && x.quality !== 'ok') || (x.meterType && x.meterType !== 'heat') || (res.engine === 'local' && x.note)); });
     if (PH.waterIdx && PH.waterIdx.length && wmeters().length) h += '<div class="banner" data-key="photo-water">' + ico('drop', 22, 'c-cold') + '<div><p><b>' + esc(t('wnp_mixed', { list: PH.waterIdx.map(function (i) { return i + 1; }).join(', ') })) + '</b></p><p><button class="btn sec" data-act="ph-water" data-key="photo-water-go">' + esc(t('wnp_mixed_go')) + '</button></p></div></div>';
-    var miss = R.FIELDS.filter(function (f) { return f.key !== 'date' && f.key !== 'errHours' && f.key !== 'tReturn' && !p[f.key]; }).map(function (f) { return fieldLabel(f.key).toLowerCase(); });
-    if (miss.length) h += '<div class="banner">' + ico('info', 22) + '<div><p>' + esc(t('ph_missing_screens', { list: miss.join(', ') })) + '</p></div></div>';
+    var miss = R.FIELDS.filter(function (f) { return f.key !== 'date' && f.key !== 'tReturn' && !p[f.key]; }).map(function (f) { return fieldLabel(f.key).toLowerCase(); });
+    // екрани в іншій петлі (T330 — LOOP 1, ELF — група 1, Kamstrup — TECH…): одразу кажемо, як туди потрапити
+    var lsh = miss.length ? L((loopsOf(mm || model()).short) || null) : '';
+    if (miss.length) h += '<div class="banner">' + ico('info', 22) + '<div><p>' + esc(t('ph_missing_screens', { list: miss.join(', ') })) + '</p><p>' + esc(lsh ? t('ph_missing_loop', { tip: lsh }) : t('ph_missing_any')) + '</p></div></div>';
     if (info.length) h += '<p class="small muted">' + info.map(function (x) { return esc(t('ph_from', { n: x.index + 1 })) + ' — ' + esc(noteTxt(x)); }).join('<br>') + '</p>';
     if (bad.length) h += '<div class="banner warn">' + ico('alert', 22) + '<div>' + bad.map(function (x) {
       if (x.meterType && x.meterType !== 'heat') return '<p>' + esc(t('ph_from', { n: x.index + 1 })) + ': ' + esc(t('ph_not_heat_short_' + x.meterType)) + '</p>';
@@ -7316,9 +7340,8 @@
   function helpHtml() {
     var ru = S.lang === 'ru', m = model(), gSms = today() <= Gs.SMS_UNTIL;
     var how = m && m.steps ? '<ol>' + m.steps.map(function (s) {
-      var press = s.press === null ? (ru ? 'Экран по умолчанию' : 'Екран за замовчуванням') : s.count ? (ru ? 'Нажмите ×' : 'Натисніть ×') + s.count : (ru ? 'Ищите экран' : 'Шукайте екран');
-      return '<li><b>' + esc(press) + '</b> — ' + esc(s.fields.map(fieldLabel).join(', ')) + '. ' + esc(L(s.hint)) + '</li>';
-    }).join('') + '</ol>' : '';
+      return '<li><b>' + pressText(s) + '</b> — ' + esc(s.fields.map(fieldLabel).join(', ')) + '. ' + esc(L(s.hint)) + '</li>';
+    }).join('') + '</ol><p><b>' + esc(t('s_loops')) + '</b> ' + esc(L(loopsOf(m).tip)) + '</p>' : '';
     var secs = [
       ['h-window', ru ? 'Когда передавать' : 'Коли передавати', ru
         ? '<p>На сайте ХТМ показания тепла принимают <b>с 5 по 25 число</b>, рекомендуют — <b>до 23-го</b>. С 26-го до 5-го форма закрыта на начисления.</p><p>Не успели — снимите <b>новые</b> показания в следующем месяце: ХТМ принимает показания только текущего месяца. Пропущенный месяц начислят по домовому счётчику, после следующих принятых показаний будет перерасчёт.</p>'

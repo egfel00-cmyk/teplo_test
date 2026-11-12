@@ -25,6 +25,10 @@
   var HEAT = /G\s?cal|G\s?kal|Гкал|\bGJ\b|MWh|SHARKY|ULTRAHEAT|MULTICAL|SENSOSTAR|\bELF\b|TRUST|SONOMETER|тепл|ТЕПЛ|\bHT\b|\bCT\b/i;
   // «HT»/«CT» (подача/обратка на табло) — слабая примета: «ДСТУ» на корпусе электросчётчика движок читает «CT/», «CTY»
   var HEAT_STRONG = /G\s?cal|G\s?kal|Гкал|\bGJ\b|MWh|SHARKY|ULTRAHEAT|MULTICAL|SENSOSTAR|\bELF\b|TRUST|SONOMETER|тепл|ТЕПЛ/i;
+  // заголовки петель/груп/меню (не показання): «LOOP 1» (L+G; ЖК читається й «L00P»), «---- 01» (Apator ELF), «2-TECH» (Kamstrup), «MENU» (НІК 7071)
+  var LOOP_RE = [/\bL[O0o]{2}P\s*[0-9]\b/i, /^[-_—–一=\s]{3,}0?[1-6]$/, /\b[1-4]\s*-\s*(?:USER|TECH|SETUP|TEST)\b/i, /^ME[NП]U$/i];
+  // архів і службові екрани Diehl (Sharky 774/775): розрахунковий день «Accd», місячний журнал «LOG» (читається й «LO6»), адреси M-Bus
+  var ARCH_RE = [/\bAccd\b/i, /\b(?:SEC|PRI)[_\s]?Adr\b/i, /^L[O0][G6]$/i];
   /** Теплосчётчик на фото: сильные приметы — всегда; одни «HT»/«CT» — только если примет света меньше трёх. */
   function isHeat(all) { if (HEAT_STRONG.test(all)) return true; if (!HEAT.test(all)) return false; return OTHER.electric.filter(function (re) { return re.test(all); }).length < 3; }
 
@@ -151,6 +155,13 @@
     var kv = all.match(/(?:кв|kv)\.?\s*([0-9]{1,4})\b/i); if (kv && meter) meter.apartment = kv[1];
 
     if (out.meterType && out.meterType !== 'heat') { out.kind = 'other'; return { photo: out, meter: null }; }
+
+    // заголовок петлі чи групи (T330 «LOOP 1», ELF «---- 01», Kamstrup «2-TECH», НІК «MENU») і архів/службові Diehl («Accd», «LOG», «SEC_Adr»):
+    // цифра в них — номер петлі чи минулий місяць, не показання (124-а: люди не знаходили екрани в LOOP 1 і знімали заголовок)
+    var txts = []; lines.forEach(function (l) { [l.text].concat(l.alts || []).forEach(function (x) { if (x) txts.push(String(x).trim()); }); });
+    var isLoop = txts.some(function (x) { return LOOP_RE.some(function (re) { return re.test(x); }); });
+    var isArch = !isLoop && txts.some(function (x) { return ARCH_RE.some(function (re) { return re.test(x); }); });
+    if (isLoop || isArch) { out.note = isLoop ? 'loop_screen' : 'archive_screen'; out.anchor = -1; return { photo: out, meter: meter }; }
 
     // главное число экрана — самая высокая строка из цифр (код ошибки «E- - -» — тоже)
     // знаки поверки на корпусе («M23», «M 17») — не показания

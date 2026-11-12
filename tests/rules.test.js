@@ -78,5 +78,16 @@ t('E-7 — предупреждение с расшифровкой (повіт�
 t('подсказка под полем: «E-------» — помилок немає, «E-9» — батарея', R.checkField('errCode', 'E-------').level === 'ok' && /батарея/.test(R.checkField('errCode', 'Е-9').msg.uk));
 t('в форму ХТМ: «Е - 3» → E-3', R.formatForHtm('errCode', 'Е - 3') === 'E-3');
 
+// 124-а: «не прийме» лише за порівнянням з попередніми — можна передати на свій ризик; порожні поля чи повірка — ні
+console.log('\nПередати на свій ризик:');
+{ const prev = J[J.length - 1], base = Object.assign({}, prev, { date: '2026-11-20', hours: prev.hours + 270 * 24 });
+  let res = R.validate({ reading: Object.assign({}, base, { energy: 14.0, volume: 2800 }), prev, meter, today: '2026-11-20' });
+  t('енергія менша за попередню → block і risky', res.verdict === 'block' && res.risky === true && blocks(res).includes('R_MONO_ENERGY'), JSON.stringify(blocks(res)));
+  res = R.validate({ reading: Object.assign({}, base, { energy: 16, volume: 2800, errHours: null }), prev, meter, today: '2026-11-20' });
+  t('порожній час простою → block без ризику (форма ХТМ не прийме)', res.verdict === 'block' && !res.risky && blocks(res).includes('F_MISSING'), JSON.stringify(blocks(res)));
+  res = R.validate({ reading: Object.assign({}, base, { energy: 14.0, volume: 2800 }), prev, meter: Object.assign({}, meter, { verifiedUntil: '2026-01-01' }), today: '2026-11-20' });
+  t('мінус енергії + минула повірка → без ризику', res.verdict === 'block' && !res.risky, JSON.stringify(blocks(res)));
+  t('PREV_BASED — лише відомі коди', R.PREV_BASED.length === 12 && R.PREV_BASED.indexOf('F_MISSING') < 0); }
+
 console.log('\nИтог: ' + pass + ' OK, ' + fail + ' FAIL');
 process.exit(fail ? 1 : 0);
