@@ -2471,6 +2471,56 @@ ok('довідник 109-ї: Яготин — via yagv, robot server, у «як�
   && ($L('Берестин, вул. Шиндлера, 1')['robot'] ?? '') === 'none' && ($L('Теплодар, вул. Польова, 1')['robot'] ?? '') === 'none',
   [$y9['via'] ?? null, $y9['robot'] ?? null]);
 
+// 121-а: фото лічильника в чат → картка: «Розпізнати» під карткою, альбом — та сама картка; застосунок віддає цифри й план;
+// «Відправити» — робот Водоканалу в черзі одразу, тепло без кабінету — зрозуміла причина; статус — у тій самій картці (cron); «у фоні» й опитування
+echo "\nКартка фото в чаті:\n";
+BotWidget::$off = false;
+ok('картка фото: код ≤ 4096 байт після zlib 9, без зовнішніх адрес', BotCard::packed() < 4096 && !preg_match('~https?://~', BotCard::HTML), BotCard::packed());
+$sent = []; $x_mid = 900; Telegram::$send = function ($m, $p, $tok = null) use (&$sent, &$x_mid) { $sent[] = [$m, $p]; return ['ok' => true, 'result' => ['message_id' => ++$x_mid]]; };
+Telegram::$fetch = fn($id) => $id === 'BIG' ? $png : null;
+$cpm = fn($date) => ['chat' => ['id' => 9101], 'date' => $date, 'from' => ['id' => 9101, 'first_name' => 'Картка', 'language_code' => 'uk'], 'photo' => [['file_id' => 'SMALL'], ['file_id' => 'BIG']]];
+$hook($cpm(time() - 30));
+$cw = array_values(array_filter($sent, fn($x) => $x[0] === 'sendWidget'));
+$cd = json_decode((string)($cw[0][1]['chat_data'] ?? ''), true); $cid = (int)(Db::one("SELECT id FROM bot_cards WHERE chat_id = '9101'")['id'] ?? 0);
+ok('фото → одна картка: sendWidget, «нове», 1 фото; під карткою «Розпізнати» → ?inbox=1&card=ID', count($cw) === 1 && ($cd['k'] ?? '') === 'rd' && ($cd['s'] ?? '') === 'new' && ($cd['n'] ?? 0) === 1
+  && ($cw[0][1]['reply_markup']['inline_keyboard'][0][0]['text'] ?? '') === 'Розпізнати' && ($cw[0][1]['reply_markup']['inline_keyboard'][0][0]['web_app']['url'] ?? '') === 'https://teplo.example/?inbox=1&card=' . $cid
+  && !array_filter($sent, fn($x) => $x[0] === 'sendMessage'), $sent);
+$sent = []; $hook($cpm(time() - 20));
+$ce = $sent[0] ?? null; $ced = json_decode((string)($ce[1]['chat_data'] ?? ''), true);
+ok('друге фото (альбом) — та сама картка: editMessageWidgetData, 2 фото, нової картки нема', count($sent) === 1 && $ce[0] === 'editMessageWidgetData' && ($ced['n'] ?? 0) === 2, $sent);
+$cb = new Browser('10.0.13.31'); $cb->req('POST', '/api/auth/telegram/webapp', ['initData' => initData($TOKEN, ['id' => 9101, 'first_name' => 'Картка'])]);
+$ci = [['k' => 'water', 't' => 'Холодна вода', 'v' => '437 м³', 'w' => 'Водоканал', 'ok' => 1, 'plan' => ['svc' => 'vk', 'in' => ['acc' => '1234567', 'fam' => 'Петренко', 'rid' => 'wr1', 'place' => 'main', 'items' => [['key' => null, 'value' => '437', 'serial' => '0012345', 'name' => 'Холодна', 'kind' => 'cold']]]]],
+  ['k' => 'heat', 't' => 'Тепло', 'v' => '15,482 Гкал', 'w' => 'ХТМ', 'ok' => 1, 'plan' => ['svc' => 'htm', 'in' => ['acc' => '', 'rid' => 'r9', 'place' => 'main', 'vals' => ['date' => '12.11.2026', 'energy' => '15.482']]]]];
+ok('чужий не може віддати цифри картці — 404', $x_wg->req('POST', '/api/bot/card', ['card' => $cid, 'items' => $ci])->status === 404);
+$sent = []; $r = $cb->req('POST', '/api/bot/card', ['card' => $cid, 'items' => $ci]);
+$cr = array_values(array_filter($sent, fn($x) => $x[0] === 'editMessageWidgetData')); $crd = json_decode((string)($cr[0][1]['chat_data'] ?? ''), true);
+$ck = array_values(array_filter($sent, fn($x) => $x[0] === 'editMessageReplyMarkup'));
+ok('застосунок віддав цифри → картка «готово»: 2 рядки з куди, «Відправити» доступне; під карткою — «Перевірити в застосунку»', $r->status === 200 && ($crd['s'] ?? '') === 'ready' && count($crd['r'] ?? []) === 2
+  && ($crd['r'][0]['v'] ?? '') === '437 м³' && ($crd['r'][0]['w'] ?? '') === 'Водоканал' && ($crd['r'][0]['a'] ?? 0) === 1
+  && ($ck[0][1]['reply_markup']['inline_keyboard'][0][0]['text'] ?? '') === 'Перевірити в застосунку', [$r->body, $crd, $ck]);
+$cmid = (int)Db::one('SELECT message_id FROM bot_cards WHERE id = ?', [$cid])['message_id'];
+$wq = fn($data, $tg = 9101) => BotWidget::query(['id' => 'q' . mt_rand(), 'data' => $data, 'from' => ['id' => $tg], 'chat' => ['id' => 9101], 'message_id' => $cmid]);
+$sent = []; $a = $wq('send'); $ad = json_decode((string)($a['data'] ?? ''), true);
+$cj = Db::one("SELECT * FROM cab_jobs WHERE prov = 'vk' AND acc = '1234567' ORDER BY id DESC LIMIT 1"); $cjp = json_decode((string)($cj['payload'] ?? ''), true);
+ok('«Відправити»: вода — у черзі Водоканалу одразу (з карткою, не автоподача), позначка «в черзі»', ($ad['s'] ?? '') === 'sent' && ($ad['r'][0]['s'] ?? '') === 'q'
+  && $cj && $cj['status'] === 'queued' && (int)$cj['next_at'] <= time() + 1 && ($cjp['card'] ?? 0) === $cid && empty($cjp['auto']), [$ad, $cj]);
+ok('тепло без підключеного кабінету — «не вдалося» з поясненням, а не тиша', ($ad['r'][1]['s'] ?? '') === 'f' && ($ad['r'][1]['m'] ?? '') !== '', $ad['r'][1] ?? null);
+ok('окремих повідомлень «надішлемо о…» нема — статус у картці', !array_filter($sent, fn($x) => $x[0] === 'sendMessage'), $sent);
+ok('чужий дотик нічого не відправляє', ($wq('send', 777)['data'] ?? '') !== '' && (int)Db::one("SELECT COUNT(*) n FROM cab_jobs WHERE prov = 'vk' AND acc = '1234567'")['n'] === 1);
+Db::q("UPDATE cab_jobs SET status = 'ok', result = ? WHERE id = ?", [json_encode(['text' => 'Показання прийнято', 'doneAt' => time()]), $cj['id']]);
+$sent = []; $cc = BotCard::cron(); $ccd = json_decode((string)($sent[0][1]['chat_data'] ?? ''), true);
+ok('робот відправив — cron оновив ту саму картку: «прийнято»', $cc === [$cid] && ($sent[0][0] ?? '') === 'editMessageWidgetData' && (int)$sent[0][1]['message_id'] === $cmid && ($ccd['r'][0]['s'] ?? '') === 'ok', [$cc, $sent]);
+$sent = []; ok('далі cron мовчить (нічого не змінилось)', BotCard::cron() === [] && !$sent);
+$a = $wq('st'); $ad = json_decode((string)($a['data'] ?? ''), true);
+ok('після «прийнято» — пропозиція «надалі у фоні» (вода)', ($ad['o'] ?? '') === 'vk', $ad);
+$a = $wq('auto'); $ad = json_decode((string)($a['data'] ?? ''), true); $cu = (int)Db::one("SELECT user_id FROM bot_cards WHERE id = ?", [$cid])['user_id'];
+ok('«Так, у фоні» — автовідправку води ввімкнено одним дотиком', ($ad['o'] ?? '') === 'on' && VkSvc::autoOn($cu), $ad);
+$a = $wq('p:n'); $ad = json_decode((string)($a['data'] ?? ''), true);
+ok('опитування «усе зрозуміло?» — відповідь у картці й у /admin (recog_reports card_poll)', ($ad['p'] ?? '') === 'n' && Db::one("SELECT ok FROM recog_reports WHERE kind = 'card_poll' AND user_id = ?", [$cu])['ok'] === 0 || (int)(Db::one("SELECT ok FROM recog_reports WHERE kind = 'card_poll' AND user_id = ?", [$cu])['ok'] ?? 1) === 0, $ad);
+$sent = []; $hook($cpm(time() - 5)); $cw2 = array_values(array_filter($sent, fn($x) => $x[0] === 'sendWidget'));
+ok('нове фото після відправленої картки — нова картка', count($cw2) === 1, $sent);
+BotWidget::$off = true;
+
 // 106-а: лендинг «Передати у фоні» — стрічка LP_AUTO (app.js) знає всіх ботів LocalBot + htm, vk; /api/config → auto — лише готові (e-mail — без пошти ні)
 preg_match('~var LP_AUTO = \[(.*?)\n  \];~s', (string)file_get_contents(__DIR__ . '/../web/src/app.js'), $lm);
 preg_match_all("~'(\w+)'(?:, 1)?\]~", $lm[1] ?? '', $li); $lpIds = array_unique($li[1] ?? []);

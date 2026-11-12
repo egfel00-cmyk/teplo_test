@@ -50,6 +50,8 @@ try { $vq = VkSvc::cron(); if ($vq) $beat['vkQueue'] = ['at' => gmdate('c'), 'n'
 // автоподача місцевим КП (LocalBot: форма на сайті, кабінет, e-mail) — черга за строком, не більше 2 за хвилину
 if ((int)gmdate('i') % 10 === 9) { try { $lp = LocalBot::probe(); if ($lp) $beat['lbProbe'] = ['at' => gmdate('c'), 'bot' => $lp[0], 'res' => $lp[1]]; } catch (Throwable $e) { error_log('teplo lb probe: ' . $e->getMessage()); } }
 try { $lq = LocalBot::cron(); if ($lq) $beat['lbQueue'] = ['at' => gmdate('c'), 'n' => array_count_values(array_map(fn($x) => $x[1], $lq))]; } catch (Throwable $e) { error_log('teplo lb queue: ' . $e->getMessage()); }
+// картки фото в чаті (121-а): свіжі статуси роботів — у ту саму картку («в черзі → відправлено → прийнято ✓»)
+try { $bc = BotCard::cron(); if ($bc) $beat['botCards'] = ['at' => gmdate('c'), 'n' => count($bc)]; } catch (Throwable $e) { error_log('teplo bot cards: ' . $e->getMessage()); }
 // квитанции Водоканала в фоне, без человека: 1–25 число, 7–22 по Киеву, один вход за минуту (VkBills; /api/health → vkBills)
 try { $vb = VkBills::cron(); if ($vb) $beat['vkBills'] = ['at' => gmdate('c'), 'res' => $vb[0][1]]; } catch (Throwable $e) { error_log('teplo vk bills: ' . $e->getMessage()); }
 // квитанции ХТМ в фоне, без человека: у кого подключён кабинет ХТМ — каждый день 7–22 по Киеву, один вход за минуту, только чтение (HtmBills; /api/health → htmBills)

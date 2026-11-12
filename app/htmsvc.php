@@ -90,7 +90,7 @@ final class HtmSvc {
     $p = self::js($j['payload']); $r = self::js($j['result']);
     return ['id' => (int)$j['id'], 'acc' => $j['acc'], 'rid' => $p['rid'] ?? null, 'place' => $p['place'] ?? null, 'date' => $p['vals']['date'] ?? null, 'energy' => $p['vals']['energy'] ?? null,
       'status' => $j['status'], 'text' => $r['text'] ?? '', 'reason' => $r['reason'] ?? null, 'why' => $r['why'] ?? null, 'at' => strtotime((string)$j['created_at']) ?: null,
-      'checkedAt' => $r['checkedAt'] ?? null, 'nextAt' => in_array($j['status'], ['pending', 'queued'], true) ? (int)$j['next_at'] : null, 'auto' => !empty($p['auto']), 'human' => $r['human'] ?? null];
+      'checkedAt' => $r['checkedAt'] ?? null, 'nextAt' => in_array($j['status'], ['pending', 'queued'], true) ? (int)$j['next_at'] : null, 'auto' => !empty($p['auto']), 'human' => $r['human'] ?? null, 'card' => (int)($p['card'] ?? 0)];
   }
 
   /** POST /api/cab/htm/connect — пробный вход; не пустил — ничего не храним. */
@@ -407,6 +407,29 @@ final class HtmSvc {
     [$a, $r] = self::submit($uid, $acc, $vals, $phone, $email, 'send');
     return ['ok' => true, 'job' => self::record($uid, $a, $payload, $r)];
   }
+  /** Картка фото в чаті (121-а): людина натиснула «Відправити» — у чергу одразу (окремої згоди на автоподачу не треба), cron внесе за хвилину.
+   *  Статус бачить картка (BotCard::cron), окремих повідомлень не шлемо. */
+  public static function cardQueue(int $uid, array $in): array {
+    self::lang($in);
+    $rid = substr(preg_replace('/[^\w\-]/', '', (string)($in['rid'] ?? '')), 0, 40); $place = substr(preg_replace('/[^\w\-]/', '', (string)($in['place'] ?? '')), 0, 40);
+    $vals = self::vals((array)($in['vals'] ?? []));
+    $c = self::creds($uid); if (!$c) throw self::fail(409, 'off');
+    if ($c['state'] === 'bad_login') throw self::fail(401, 'relogin');
+    foreach (Db::q("SELECT * FROM cab_jobs WHERE user_id = ? AND prov = ? AND status IN ('queued', 'sending', 'pending', 'ok') ORDER BY id DESC LIMIT 12", [$uid, self::PROV])->fetchAll() as $j) {
+      $p = self::js($j['payload']);
+      if (($p['vals']['date'] ?? '') === $vals['date'] && abs((float)($p['vals']['energy'] ?? -1) - (float)$vals['energy']) < 0.0005) return ['ok' => true, 'dup' => true, 'job' => self::pubJob($j)];
+    }
+    self::limit($uid);
+    $acc = preg_replace('/\D/', '', (string)($in['acc'] ?? ''));
+    $phone = self::phone($in['phone'] ?? ''); $email = filter_var(trim((string)($in['email'] ?? '')), FILTER_VALIDATE_EMAIL) ?: '';
+    $payload = ['rid' => $rid, 'place' => $place, 'vals' => $vals, 'lang' => self::$lang, 'card' => (int)($in['card'] ?? 0), 'phone' => $phone, 'email' => $email];
+    Db::q("INSERT INTO cab_jobs (user_id, prov, acc, payload, status, result, tries, next_at, created_at, updated_at) VALUES (?, ?, ?, ?, 'queued', ?, 0, ?, ?, ?)",
+      [$uid, self::PROV, $acc, json_encode($payload, JSON_UNESCAPED_UNICODE), json_encode(['checkedAt' => time()]), time(), Http::iso(), Http::iso()]);
+    $job = Db::one('SELECT * FROM cab_jobs WHERE id = ?', [Db::id()]);
+    Db::q('INSERT INTO audit_log (user_id, action, ip, created_at) VALUES (?, ?, ?, ?)', [$uid, 'htm_cab_send_card', null, Http::iso()]);
+    self::diag(['op' => 'card', 'user' => $uid, 'result' => 'queued']);
+    return ['ok' => true, 'job' => self::pubJob($job)];
+  }
   /** Войти, проверить форму и правила против «последних принятых», внести. → [рахунок, итог HtmCab::save]. Ошибки — HttpError с человеческим текстом. */
   private static function submit(int $uid, string $want, array $vals, string $phone, string $email, string $op): array {
     [$cab, $acc, $c] = self::enter($uid, $want, $op);
@@ -528,6 +551,7 @@ final class HtmSvc {
   public static function notify(int $uid, array $job): void {
     $tg = Db::one("SELECT external_id FROM user_identities WHERE user_id = ? AND type = 'telegram'", [$uid]); if (!$tg || !Cfg::get('bot_token')) return;
     $jr = Db::one('SELECT payload FROM cab_jobs WHERE id = ?', [$job['id']]); $ru = (self::js($jr['payload'] ?? '')['lang'] ?? 'uk') === 'ru';
+    if (!empty(self::js($jr['payload'] ?? '')['card'])) return;   // з картки фото — статус показує сама картка (121-а)
     $what = ($ru ? 'от ' : 'від ') . $job['date'] . ' (' . $job['energy'] . ' Гкал' . ($job['acc'] ? ($ru ? ', счёт ' : ', рахунок ') . $job['acc'] : '') . ')';
     if ($job['status'] === 'cancelled') return;
     if ($job['status'] === 'queued') {

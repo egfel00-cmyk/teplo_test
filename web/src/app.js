@@ -1509,7 +1509,9 @@
   function vjApply() {
     var ch = false;
     ((VJ.st && VJ.st.jobs) || []).forEach(function (j) {
-      var w = j.rid && vjRec(j.rid); if (!w || !w.vkJob || w.vkJob.job !== j.id) return;
+      var w = j.rid && vjRec(j.rid); if (!w) return;
+      if (!w.vkJob && j.card && w.card === j.card) { w.vkJob = { job: j.id }; ch = true; }   // «Відправити» в картці чату (121-а)
+      if (!w.vkJob || w.vkJob.job !== j.id) return;
       var c = { job: j.id, at: j.at, status: j.status, nextAt: j.nextAt || null, auto: !!j.auto, text: String(j.text || '').slice(0, 300), human: j.human ? String(j.human).slice(0, 300) : null };
       if (JSON.stringify(c) !== JSON.stringify(w.vkJob)) { w.vkJob = c; w.updatedAt = Date.now(); ch = true; }
       if (j.status === 'ok' && !wsentVk(w)) { w.sent = Object.assign({}, w.sent || {}, { vk: today() }); w.vkConf = { id: 'job-' + j.id, at: j.doneAt || j.at, text: String(j.text || '').slice(0, 300), via: 'cab' }; delete w.vkAt; w.updatedAt = Date.now(); ch = true; toast(t('vkc_ok_toast')); }
@@ -1525,6 +1527,7 @@
       if (j._status === 200 && j.job) {
         var jb = j.job; if (VJ.st) VJ.st.jobs = [jb].concat((VJ.st.jobs || []).filter(function (x) { return x.id !== jb.id; }));
         rec.vkJob = { job: jb.id, at: jb.at, status: jb.status, nextAt: jb.nextAt || null, auto: !!jb.auto }; rec.updatedAt = Date.now(); vjApply(); save(); toast(t(auto ? 'vk_bg_q' : 'vk_bg_toast'));
+        cardJob('vk', jb, { k: 'water', t: t('bc_water'), w: t('bc_vk'), v: items.map(function (x) { return camNum(x.value); }).join(' · ') + ' м³' });
       } else VJ.err = { error: j.error, human: j.human || t('vkc_fail') };
       render(true);
     }, function () { VJ.busy = ''; VJ.err = { error: 'net', human: t('vkc_fail') }; render(true); });
@@ -2509,6 +2512,72 @@
       '<p class="small phd-hint">' + esc(o.hint) + '</p><ul>' + t('phd_tips').split('|').map(function (x) { return '<li>' + esc(x) + '</li>'; }).join('') + '</ul></details>';
     return h;
   }
+  /* ---------- Картка фото в чаті бота (121-а): ?inbox=1&card=ID — розпізнати фото з чату тут (безкоштовно, на телефоні) й віддати
+   *  картці цифри та план відправки; «Відправити» людина натискає в самій картці, статус — там же. Не все гаразд — лишаємось тут виправити. ---------- */
+  var CARD = { id: ((location.search.match(/[?&]card=(\d{1,10})(?:&|$)/) || [])[1]) || '', posted: false };
+  function cardPost(items, close) {
+    if (!CARD.id || CARD.posted || !window.TEPLO_API) return; CARD.posted = true;
+    Y().api('POST', '/bot/card', { card: +CARD.id, items: items, lang: S.lang }).then(function (j) {
+      if (!close || !j || j._status !== 200) return;
+      toast(t('bc_back'));
+      var tg = window.Telegram && Telegram.WebApp; if (tg && tg.initData && tg.close) setTimeout(function () { try { tg.close(); } catch (e) { /* лишаємось */ } }, 1200);
+    }, function () { CARD.posted = false; });
+  }
+  /** Людина виправила й поставила в чергу тут, у застосунку — картка в чаті показуватиме статус цієї задачі. */
+  function cardJob(svc, job, row) {
+    if (!CARD.id || !job || !job.id || CARD.job === job.id || !window.TEPLO_API) return; CARD.job = job.id; CARD.posted = true;
+    Y().api('POST', '/bot/card', { card: +CARD.id, items: [Object.assign({ ok: 1, job: { svc: svc, id: job.id } }, row)], lang: S.lang }).catch(function () {});
+  }
+  /** Не все прочитано чи перевірка з зауваженнями — картці: «перевірте в застосунку»; людина вже тут. */
+  function cardFix(msg, row) { cardPost([Object.assign({ k: 'photo', t: t('bc_photo'), v: '', w: '', ok: 0 }, row || {}, { m: msg || t('bc_none') })], false); }
+  function cardHeatSoon(n) {
+    if (HC.loading && n < 25) { setTimeout(function () { cardHeatSoon(n + 1); }, 200); return; }
+    if (!cardHeat()) { PHS.save(false); render(true); }
+  }
+  /** Тепло: усе прочитано й перевірено — запис «перевірено» (як автоподача) + план для робота ХТМ; внесе після «Відправити» в картці. */
+  function cardHeat() {
+    var p = PH.picked || {}, row = { k: 'heat', t: t('bc_heat'), v: p.energy ? camNum(p.energy.value) + ' ' + unitLbl(energyUnit()) : '', w: 'ХТМ' };
+    var why = phAutoWhy(), soft = !!(why && /^(cab|acc|phone)$/.test(why.k));
+    if (why && !soft) { PH.autoWhy = why; cardFix(t('ha_why_' + why.k, { list: why.list || '' }), row); return false; }
+    var d = phAutoDraft(), chk = runCheck(d);
+    if (chk.verdict !== 'ok') { cardFix(t('ha_why_check'), row); return false; }
+    var files = PH.files.slice(), inbox = PH.inbox;
+    S.draft = d; S._lastCheck = chk; phReport(d.values);
+    var rd = saveReading('checked'); rd.auto = true; rd.card = +CARD.id; delete S._lastCheck;
+    PH.inbox = inbox; inboxDone(); phReset('reading');
+    Promise.race([VIS().pendingUploads || Promise.resolve(), new Promise(function (ok) { setTimeout(ok, 5000); })]).then(function () { rd.photos = photoRefs(files.map(function (f) { return { file: f }; })); rd.updatedAt = Date.now(); save(); });
+    S.focusId = rd.id; save();
+    var acc = hcAcc(rd), c = S.contacts || {}, vals = {};
+    R.FIELDS.forEach(function (f) { vals[f.key] = R.formatForHtm(f.key, rd.htm[f.key]); });
+    cardPost([Object.assign(row, { ok: 1, m: soft ? t('bc_why_' + why.k) : '',
+      plan: soft ? null : { svc: 'htm', in: { acc: acc ? acc.acc : '', rid: rd.id, place: rd.place || S.placeId, vals: vals, phone: c.phone || (HC.st && HC.st.phone) || '', email: c.email || '' } } })], true);
+    go('home'); return true;
+  }
+  function cardWaterSoon(w, n) {
+    if (WN !== w || CARD.posted) return;
+    if ((!VJ.st || !VKS.data) && n < 25) { vjLoad(); vksLoad(); setTimeout(function () { cardWaterSoon(w, n + 1); }, 200); return; }
+    cardWater();
+  }
+  /** Вода: прочитано впевнено й без зауважень — запис + план для робота Водоканалу (холодна, як автовідправка); ні — «перевірте». */
+  function cardWater() {
+    var byId = {}; wmeters().forEach(function (m) { byId[m.id] = m; });
+    var mids = Object.keys(WN.src).filter(function (k) { return byId[k] && WN.src[k] && WN.src[k].value !== null && WN.src[k].value !== undefined; });
+    var row = { k: 'water', t: t('bc_water'), w: t('bc_vk'), v: mids.map(function (k) { return (mids.length > 1 ? wname(byId[k]).toLowerCase() + ' ' : '') + camNum(WN.vals[k] || ''); }).join(' · ') + (mids.length ? ' м³' : '') };
+    if (!mids.length) { cardFix(t('bc_none'), row); return; }
+    var why = wnAutoWhy(), soft = why === 'site' || why === 'acc';
+    if (why && !soft) { cardFix(t('bc_fix'), row); return; }
+    var vals = {}; mids.forEach(function (k) { var x = Wt.norm(WN.vals[k]); if (x !== null) vals[k] = x; });
+    WN.kind = 'cold'; WN.back = 'home'; var rec = wnStore(vals, false); if (!rec) return;
+    rec.card = +CARD.id; save();
+    var c = wcfg();
+    cardPost([Object.assign(row, { ok: 1, m: soft ? t('bc_why_w_' + why) : '', plan: soft ? null : { svc: 'vk', in: { acc: c.account || '', fam: c.surname || '', rid: rec.id, place: rec.place || S.placeId, items: vjItems(rec) } } })], true);
+  }
+  /** Світло/газ: робота немає (обленерго за перевіркою Cloudflare) — цифри в картку, передати тут. */
+  function cardSimple(k) {
+    var ms = smeters(k), got = [];
+    ms.forEach(function (m) { SK[k].mod.keys(m).forEach(function (z) { var x = EN.src[m.id + '|' + z]; if (x) got.push((ms.length > 1 || SK[k].mod.keys(m).length > 1 ? ezl(m, z).toLowerCase() + ' ' : '') + camNum(k === 'gas' ? Wt.withFrac(x.v, x.frac) : x.v)); }); });
+    cardPost([{ k: k, t: t(k === 'gas' ? 'kd_gas' : 'kd_elec'), v: got.length ? got.join(' · ') + ' ' + SK[k].unit() : '', w: '', ok: got.length ? 1 : 0, m: got.length ? t('bc_manual') : t('bc_none') }], false);
+  }
   /* ---------- Камера з підказками (121-а, власник 12.11): web/src/camera.js; тут — що читати на кадрі й куди віддати знімки ---------- */
   function camOk() { return !!(window.TeploCam && TeploCam.supported() && VIS().local); }
   /** Кнопка «Камера з підказками» поруч із «Обрати фото»: c = {in: id поля з фото, kind: heat|water|elec|gas}. Камери сторінці не дають — кнопки нема. */
@@ -2626,7 +2695,7 @@
           .then(function (res) { p.ms = Date.now() - (p.t0 || Date.now()); if (res) p.res = { lines: res.lines || [], drums: res.drums || [] }; }, function () { p.res = { lines: [], drums: [] }; });
       });
       return chain;
-    }).then(function () { if (!live()) return; EN.busy = false; enAssign(); render(true); enCheck(true); enReport(); },
+    }).then(function () { if (!live()) return; EN.busy = false; enAssign(); render(true); enCheck(true); enReport(); if (CARD.id && !CARD.posted) cardSimple(EN.k); },
       function () { if (!live()) return; EN.busy = false; EN.err = t('ph_err_engine'); render(true); });
   }
   /** Аналитика (/admin): копии фото світла/газу и что по ним разложилось по зонам — у вошедших, как у воды и тепла. */
@@ -3319,7 +3388,7 @@
           .then(function (res) { if (res) { p.res = { lines: res.lines, drums: res.drums }; p.ms = res.ms; } }, function () { p.res = { lines: [], drums: [] }; });
       });
       return chain;
-    }).then(function () { if (!live()) return; WN.busy = false; wnAssign(); render(true); wnCheck(true); wnReport(); },
+    }).then(function () { if (!live()) return; WN.busy = false; wnAssign(); render(true); wnCheck(true); wnReport(); if (CARD.id && WN.inbox && WN.inbox.length) cardWaterSoon(WN, 0); },
       function () { if (!live()) return; WN.busy = false; WN.err = t('ph_err_engine'); render(true); });
   }
   /** Аналитика (/admin): копии фото воды и что по ним разложилось — у вошедших, как у тепла. */
@@ -3826,7 +3895,9 @@
   function hcApply() {
     var ch = false;
     ((HC.st && HC.st.jobs) || []).forEach(function (j) {
-      var r = j.rid && hcRec(j.rid); if (!r || !r.cab || r.cab.job !== j.id) return;
+      var r = j.rid && hcRec(j.rid); if (!r) return;
+      if (!r.cab && j.card && r.card === j.card && r.status === 'checked') { r.cab = { job: j.id }; r.status = 'handed'; r.handedAt = new Date((j.at || Date.now() / 1000) * 1000).toISOString(); ch = true; }   // «Відправити» в картці чату (121-а)
+      if (!r.cab || r.cab.job !== j.id) return;
       var c = { job: j.id, at: j.at, status: j.status, nextAt: j.nextAt, why: j.why || null, text: String(j.text || '').slice(0, 400) };
       if (j.human) c.human = String(j.human).slice(0, 300);
       if (JSON.stringify(c) !== JSON.stringify(r.cab)) { r.cab = c; r.updatedAt = Date.now(); ch = true; }
@@ -3858,6 +3929,7 @@
     hcCall('send', '/cab/htm/send', { acc: acc ? acc.acc : '', rid: r.id, place: r.place || S.placeId, vals: vals, phone: c.phone || '', email: c.email || '', delay: true }, function (j) {
       var jb = j.job; if (HC.st) HC.st.jobs = [jb].concat((HC.st.jobs || []).filter(function (x) { return x.id !== jb.id; }));
       r.status = 'handed'; r.handedAt = new Date().toISOString(); r.cab = { job: jb.id, at: jb.at, status: jb.status, nextAt: jb.nextAt, auto: true }; r.updatedAt = Date.now();
+      cardJob('htm', jb, { k: 'heat', t: t('bc_heat'), v: r.htm && r.htm.energy ? camNum(r.htm.energy) + ' ' + unitLbl(energyUnit()) : '', w: 'ХТМ' });
       var p = place(r.place) || place(), m = p && p.id === S.placeId ? S.meter : p && p.meter; if (m && !m.account && acc) m.account = acc.acc;
       hcApply(); S.focusId = r.id; save(); toast(jb.status === 'queued' ? t('ha_toast', { at: hcHM(jb.nextAt) }) : t('hc_toast')); go('status');
     });
@@ -3994,6 +4066,7 @@
       if (HC.st) HC.st.jobs = [jb].concat((HC.st.jobs || []).filter(function (x) { return x.id !== jb.id; }));
       if (r.status !== 'handed' && r.status !== 'accepted') { r.status = 'handed'; r.handedAt = new Date().toISOString(); }
       r.cab = { job: jb.id, at: jb.at, status: 'pending' }; r.updatedAt = Date.now();
+      cardJob('htm', jb, { k: 'heat', t: t('bc_heat'), v: camNum(r.htm.energy || '') + ' ' + unitLbl(energyUnit()), w: 'ХТМ' });   // відкрито з картки в чаті — статус і там
       // рахунок, яким внесли, — у налаштування теплолічильника квартири (наступного разу без вибору)
       var p = place(r.place) || place(), m = p && p.id === S.placeId ? S.meter : p && p.meter; if (m && !m.account) m.account = acc.acc;
       hcApply(); S.focusId = r.id; save(); toast(t(jb.status === 'ok' ? 'hc_toast_ok' : 'hc_toast')); go('status');
@@ -4002,6 +4075,12 @@
   setInterval(function () {
     if (document.visibilityState === 'visible' && hcOn() && (S.readings || []).some(function (r) { return r && !r.deleted && r.status === 'handed' && r.cab && /^(pending|queued|sending)$/.test(r.cab.status); })) hcLoad(true);
   }, 60000);
+  // «Відправити» натиснули в картці чату (121-а): запис ще не знає своєї задачі — підтягнути стан роботів одразу після відкриття
+  setTimeout(function () {
+    if (!hcOn()) return; var fresh = function (x) { return x && !x.deleted && x.card && Date.now() - (x.updatedAt || 0) < 3 * 864e5; };
+    if ((S.readings || []).some(function (r) { return fresh(r) && !r.cab && r.status === 'checked'; })) hcLoad(true);
+    if ((S.water || []).some(function (w) { return fresh(w) && !w.vkJob; })) vjLoad(true);
+  }, 1500);
   document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'visible' && /^(heat|handover|status|htmcab|history)$/.test(routeName())) hcLoad(true); });
   document.addEventListener('submit', function (e) {
     if (!e.target || e.target.id !== 'hc-form') return; e.preventDefault(); if (HC.busy) return;
@@ -6950,7 +7029,7 @@
       var simple = ['elec', 'gas'].map(function (k) { return { k: k, idx: (res.photos || []).filter(function (x) { return phSimpleKind(x) === k; }).map(function (x) { return x.index; }) }; }).filter(function (s) { return s.idx.length; })[0];
       if (simple && PH.mode === 'reading' && !anyRead) {
         if (smeters(simple.k).length) { PH.status = 'idle'; phToSimple(simple.k, simple.idx); return; }
-        PH.status = 'idle'; PH.error = t('ph_add_' + simple.k); render(true); return;
+        PH.status = 'idle'; PH.error = t('ph_add_' + simple.k); cardFix(PH.error); render(true); return;
       }
       var others = (res.photos || []).filter(function (x) { return x.meterType && x.meterType !== 'heat'; });
       if (others.length && !anyRead && !(res.meter && res.meter.modelId)) { PH.status = 'idle'; PH.error = t('ph_not_heat_' + others[0].meterType) + (others[0].meterType === 'water' && !wmeters().length ? ' ' + t('wnp_setup_first') : ''); render(true); return; }
@@ -6963,8 +7042,9 @@
       }
       var unit = PH.mode === 'baseline' ? 'Gcal' : (res.meter && res.meter.energyUnit && !S.meter) ? res.meter.energyUnit : energyUnit();
       PH.picked = y.pick(res, M.TO_GCAL, unit);
-      if (!Object.keys(PH.picked).length) { PH.status = 'idle'; PH.error = phErr('nothing'); render(true); return; }
+      if (!Object.keys(PH.picked).length) { PH.status = 'idle'; PH.error = phErr('nothing'); cardFix(PH.error); render(true); return; }
       PH.status = 'done'; PH.vals = null; PH.autoWhy = null;
+      if (CARD.id && PH.inbox && PH.mode === 'reading' && !CARD.posted) { cardHeatSoon(0); return; }
       if (PH.inbox && PH.mode === 'reading' && hcAutoOn() && phAuto()) return;
       PHS.save(false); render(true);
     }, function (e) {
@@ -7014,7 +7094,7 @@
     inboxDone(); phReset('reading');
     var need = EN.photos.some(function (p) { return !p.res; });
     go(SK[k].nw);
-    if (need) enRun([]); else { enAssign(); render(true); enCheck(true); enReport(); }
+    if (need) enRun([]); else { enAssign(); render(true); enCheck(true); enReport(); if (CARD.id) cardSimple(k); }
   }
   /** Фото водомеров из пачки (или из бота) → ввод воды: окна барабанов уже прочитаны — раскладываем по водомерам. */
   function phToWater(all) {
@@ -7026,7 +7106,7 @@
     if (all) phReset('reading'); else WN.back = 'photo';
     var need = WN.photos.some(function (p) { return !p.res; }), auto = all && WN.inbox.length && hcOn();
     go('wnew');
-    if (need) wnRun([]); else { wnAssign(); render(true); wnCheck(true); if (auto) wnAutoSoon(WN, 0); }
+    if (need) wnRun([]); else { wnAssign(); render(true); wnCheck(true); if (CARD.id && all) cardWaterSoon(WN, 0); else if (auto) wnAutoSoon(WN, 0); }
   }
   /** Автоподача (фото з бота, увімкнено на екрані кабінету ХТМ): чому НЕ вносимо самі — або null, якщо все гаразд.
    *  Вносимо лише те, що прочитано впевнено, повністю й без жодного зауваження перевірки — інакше звичайна перевірка людиною. */

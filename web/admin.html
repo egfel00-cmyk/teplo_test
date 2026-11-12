@@ -424,7 +424,7 @@ pre.state { font: 12px/1.4 var(--mono); background: #F4F7F5; padding: 10px; bord
       '<div class="panel"><table><thead><tr><th>Когда</th><th>Кто</th><th>Что</th><th>Описание</th><th>Фото</th></tr></thead><tbody>' +
       rs.map(function (r) {
         var ids = (r.photo_ids || '').split(',').filter(Boolean);
-        return '<tr><td>' + when(r.created_at) + '</td><td>' + (r.guest ? who(r) : '<a href="#" data-user="' + r.user_id + '">' + who(r) + '</a>') + '</td><td>' + (r.kind === 'run_error' ? pill('bad', 'ошибка') : +r.ok ? pill('ok', 'без замечаний') : pill('warn', 'замечания')) + '</td>' +
+        return '<tr><td>' + when(r.created_at) + '</td><td>' + (r.guest ? who(r) : '<a href="#" data-user="' + r.user_id + '">' + who(r) + '</a>') + '</td><td>' + (r.kind === 'run_error' ? pill('bad', 'ошибка') : r.kind === 'card_poll' ? pill(+r.ok ? 'ok' : 'warn', +r.ok ? 'опрос: понятно' : 'опрос: не совсем') : +r.ok ? pill('ok', 'без замечаний') : pill('warn', 'замечания')) + '</td>' +
           '<td class="msg">' + esc(r.text) + '</td><td>' + ids.map(function (id) { return '<img src="' + esc(API + '/admin/photo?id=' + id) + '" alt="" data-zoom style="width:44px;height:44px;object-fit:cover;border-radius:6px;margin:2px;cursor:zoom-in" onerror="this.remove()">'; }).join('') + '</td></tr>';
       }).join('') + '</tbody></table>' + (rs.length ? '' : '<p class="muted">Пока пусто.</p>') + '</div>';
   };

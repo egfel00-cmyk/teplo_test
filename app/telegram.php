@@ -279,6 +279,9 @@ final class Telegram {
       $params = ['chat_id' => $chat, 'text' => $ru ? 'Не удалось сохранить фото. Пришлите его ещё раз (до 20 МБ, JPEG/PNG).' : 'Не вдалося зберегти фото. Надішліть його ще раз (до 20 МБ, JPEG/PNG).'];
       self::call('sendMessage', $params); return $params;
     }
+    // картка фото (121-а): цифри, «Відправити», статус — в одній картці; альбом — та сама картка. Не вийшло — як раніше, текстом
+    try { $card = class_exists('BotCard') && isset($uid, $p) ? BotCard::photo($uid, $chat, (string)$p['id'], $lang) : null; } catch (Throwable $e) { $card = null; }
+    if ($card) return ['saved' => true, 'card' => $card];
     // альбом приходит отдельными сообщениями — отвечаем один раз на альбом и не чаще раза в минуту на чат
     $dir = (Cfg::data() ?: sys_get_temp_dir() . '/teplo_data') . '/cache'; if (!is_dir($dir)) @mkdir($dir, 0700, true);
     $key = $dir . '/tgreply_' . preg_replace('/\D/', '', (string)$chat);

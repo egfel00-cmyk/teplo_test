@@ -37,7 +37,7 @@ final class VkSvc {
     $p = self::js($j['payload']); $r = self::js($j['result']);
     return ['id' => (int)$j['id'], 'acc' => $j['acc'], 'rid' => $p['rid'] ?? null, 'place' => $p['place'] ?? null, 'items' => array_map(fn($x) => ['name' => $x['name'], 'value' => $x['value'], 'kind' => $x['kind'] ?? null], (array)($p['items'] ?? [])),
       'status' => $j['status'], 'text' => $r['text'] ?? '', 'why' => $r['why'] ?? null, 'human' => $r['human'] ?? null, 'auto' => !empty($p['auto']),
-      'at' => strtotime((string)$j['created_at']) ?: null, 'doneAt' => $r['doneAt'] ?? null, 'nextAt' => in_array($j['status'], ['queued', 'sending'], true) ? (int)$j['next_at'] : null];
+      'at' => strtotime((string)$j['created_at']) ?: null, 'doneAt' => $r['doneAt'] ?? null, 'nextAt' => in_array($j['status'], ['queued', 'sending'], true) ? (int)$j['next_at'] : null, 'card' => (int)($p['card'] ?? 0)];
   }
   /** GET /api/vk/jobs */
   public static function status(int $uid): array {
@@ -88,6 +88,7 @@ final class VkSvc {
     VkCab::limit($uid);
     $at = time() + ($auto ? self::autoDelay() : 0);
     $payload = ['rid' => $rid, 'place' => $place, 'items' => $items, 'lang' => self::$lang, 'auto' => $auto, 'sec' => CabVault::enc(json_encode(['fam' => $fam], JSON_UNESCAPED_UNICODE))];
+    if (!empty($in['card'])) $payload['card'] = (int)$in['card'];   // картка фото в чаті (121-а): статус — у ній
     Db::q("INSERT INTO cab_jobs (user_id, prov, acc, payload, status, result, tries, next_at, created_at, updated_at) VALUES (?, ?, ?, ?, 'queued', ?, 0, ?, ?, ?)",
       [$uid, self::PROV, $acc, json_encode($payload, JSON_UNESCAPED_UNICODE), json_encode(['checkedAt' => time()]), $at, Http::iso(), Http::iso()]);
     $job = self::pubJob(Db::one('SELECT * FROM cab_jobs WHERE id = ?', [Db::id()]));
@@ -140,6 +141,7 @@ final class VkSvc {
   /** Telegram: «📝 надішлемо о HH:MM», «❌ не прийняв», «⚠️ не надіслали», «⏳ сайт не сказав». */
   public static function notify(int $uid, array $job): void {
     $tg = Db::one("SELECT external_id FROM user_identities WHERE user_id = ? AND type = 'telegram'", [$uid]); if (!$tg || !Cfg::get('bot_token')) return;
+    if (!empty($job['card'])) return;   // з картки фото — статус показує сама картка (121-а)
     $ru = self::$lang === 'ru'; $acc = $job['acc'];
     $lines = implode("\n", array_map(fn($x) => '• ' . ($x['name'] ?: ($ru ? 'счётчик' : 'лічильник')) . ' — ' . $x['value'], $job['items']));
     $tail = $job['text'] !== '' ? "\n\n" . ($ru ? 'Ответ сайта: ' : 'Відповідь сайту: ') . '«' . mb_substr($job['text'], 0, 300) . '»' : '';
