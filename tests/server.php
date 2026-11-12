@@ -2519,6 +2519,20 @@ $a = $wq('p:n'); $ad = json_decode((string)($a['data'] ?? ''), true);
 ok('опитування «усе зрозуміло?» — відповідь у картці й у /admin (recog_reports card_poll)', ($ad['p'] ?? '') === 'n' && Db::one("SELECT ok FROM recog_reports WHERE kind = 'card_poll' AND user_id = ?", [$cu])['ok'] === 0 || (int)(Db::one("SELECT ok FROM recog_reports WHERE kind = 'card_poll' AND user_id = ?", [$cu])['ok'] ?? 1) === 0, $ad);
 $sent = []; $hook($cpm(time() - 5)); $cw2 = array_values(array_filter($sent, fn($x) => $x[0] === 'sendWidget'));
 ok('нове фото після відправленої картки — нова картка', count($cw2) === 1, $sent);
+// відповідь на відгук (121-а): власник відповідає в /admin → людині картка в Telegram; «Ще питання» — відгук знову «новий»
+ok('картка відповіді: код ≤ 4096 байт після zlib 9, без зовнішніх адрес', Feedback::packed() < 4096 && !preg_match('~https?://~', Feedback::HTML), Feedback::packed());
+$cb->req('POST', '/api/feedback', ['text' => 'Не зрозумів, куди натиснути, щоб відправити воду', 'lang' => 'uk', 'page' => '#water-cold']);
+$fid = (int)Db::one('SELECT id FROM feedback ORDER BY id DESC LIMIT 1')['id'];
+$sent = []; $r = $boss->req('POST', '/api/admin/feedback/reply', ['id' => $fid, 'text' => 'Натисніть «Відправити у фоні» під цифрами — ми надішлемо самі.']);
+$fw = array_values(array_filter($sent, fn($x) => $x[0] === 'sendWidget')); $fwd = json_decode((string)($fw[0][1]['chat_data'] ?? ''), true);
+ok('відповідь на відгук → картка в Telegram: що писав, відповідь, «Написати ще» під карткою; відгук «оброблено»', $r->status === 200 && ($r->body['via'] ?? '') === 'tg' && count($fw) === 1
+  && (string)$fw[0][1]['chat_id'] === '9101' && ($fwd['k'] ?? '') === 'fb' && str_contains($fwd['q'] ?? '', 'куди натиснути') && str_contains($fwd['a'] ?? '', 'Відправити у фоні')
+  && str_contains($fw[0][1]['reply_markup']['inline_keyboard'][0][0]['web_app']['url'] ?? '', '?fb=1') && Db::one('SELECT status FROM feedback WHERE id = ?', [$fid])['status'] === 'done', [$r->body, $fw]);
+$fmid = (int)Db::one("SELECT message_id FROM widget_msgs WHERE chat_id = '9101' ORDER BY at DESC LIMIT 1")['message_id'];
+$a = BotWidget::query(['id' => 'fq1', 'data' => 'more', 'from' => ['id' => 9101], 'chat' => ['id' => 9101], 'message_id' => $fmid]); $ad = json_decode((string)($a['data'] ?? ''), true);
+$fr = Db::one('SELECT status, reply_ack FROM feedback WHERE id = ?', [$fid]);
+ok('«Ще питання» — у картці «напишіть ще», в /admin реакція і відгук знову «новий»', ($ad['r'] ?? '') === 'more' && $fr['reply_ack'] === 'more' && $fr['status'] === 'new', [$ad, $fr]);
+ok('відповісти не-адміну не можна', $cb->req('POST', '/api/admin/feedback/reply', ['id' => $fid, 'text' => 'х'])->status === 403 || $cb->req('POST', '/api/admin/feedback/reply', ['id' => $fid, 'text' => 'хх'])->status === 401);
 BotWidget::$off = true;
 
 // 106-а: лендинг «Передати у фоні» — стрічка LP_AUTO (app.js) знає всіх ботів LocalBot + htm, vk; /api/config → auto — лише готові (e-mail — без пошти ні)

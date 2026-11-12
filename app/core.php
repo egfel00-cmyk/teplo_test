@@ -242,6 +242,8 @@ final class Db {
     // документ — до якого лічильника квартири (10.11: фото паспорта й повірки в налаштуваннях кожного лічильника); старі — без лічильника = теплолічильник
     self::addColumn('docs', 'meter', 'VARCHAR(40) NULL');
     // звідки заходять (120-а): країна, регіон і місто з заголовків Cloudflare (CF-IPCountry; місто й регіон — «Add visitor location headers»), без IP
+    // відповідь на відгук (121-а): текст, коли, куди (tg / mail), реакція людини з картки (ok / more)
+    self::addColumn('feedback', 'reply', 'TEXT NULL'); self::addColumn('feedback', 'reply_at', 'VARCHAR(25) NULL'); self::addColumn('feedback', 'reply_via', 'VARCHAR(8) NULL'); self::addColumn('feedback', 'reply_ack', 'VARCHAR(8) NULL');
     self::addColumn('visits', 'cc', 'CHAR(2) NULL'); self::addColumn('visits', 'region', 'VARCHAR(64) NULL'); self::addColumn('visits', 'city', 'VARCHAR(80) NULL');
   }
   /** ALTER … ADD COLUMN IF NOT EXISTS (в SQLite такого нет — смотрим список колонок). */

@@ -121,6 +121,7 @@ HTML;
     $d = self::stored($chat, $mid);   // у запиті Telegram стану картки немає — беремо збережений при відправці
     $uid = $tg !== '' ? (int)(Db::one("SELECT user_id FROM user_identities WHERE type = 'telegram' AND external_id = ?", [$tg])['user_id'] ?? 0) : 0;
     $card = BotCard::byMsg($chat, $mid); if ($card) return BotCard::query($card, $uid, $data, $ans);   // картка фото лічильника (121-а)
+    if (is_array($d) && ($d['k'] ?? '') === 'fb' && class_exists('Feedback')) return Feedback::query($d, $uid, $data, $chat, $mid, $ans);   // відповідь на відгук (121-а)
     if (!is_array($d) || !$uid || !preg_match('/^(heat|water|elec|gas|waste)\d+$/', (string)($d['k'] ?? '')) || !preg_match('/^\d{4}-\d{2}$/', (string)($d['ym'] ?? ''))) return $ans(null);
     $today = (new DateTimeImmutable('@' . (self::$now ?? time())))->setTimezone(new DateTimeZone(Reminders::TZ))->format('Y-m-d');
     $changed = false;

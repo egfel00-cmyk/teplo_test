@@ -8057,6 +8057,7 @@
   }
   var DEEP = null, TGS = '';
   (function () {
+    if (/[?&]fb=1(?=&|$)/.test(location.search)) setTimeout(function () { FB.open = true; render(true); }, 300);   // «Написати ще» під карткою відповіді на відгук (121-а)
     var g = (location.search.match(/[?&]go=(wnew|heat|enew|elec|gnew|gas|home|places|water-cold|water-hot|gpv|waste)(?=&|$)/) || [])[1]; if (!g) return;
     var pid = (location.search.match(/[?&]place=([\w-]+)(?=&|$)/) || [])[1];
     var q = location.search.replace(/([?&])(go|place)=[\w-]+(?=&|$)/g, '$1').replace(/&{2,}/g, '&').replace(/\?&/, '?').replace(/[?&]$/, '');

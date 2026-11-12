@@ -413,8 +413,9 @@ pre.state { font: 12px/1.4 var(--mono); background: #F4F7F5; padding: 10px; bord
     return '<div class="panel"><table><thead><tr><th>Когда</th><th>Кто</th><th>Сообщение</th><th>Страница</th><th>Устройство</th><th></th></tr></thead><tbody>' +
       fs.map(function (f) {
         return '<tr' + (f.status === 'new' ? ' style="background:#FFFBEF"' : '') + '><td>' + when(f.created_at) + '</td><td>' + (f.user_id ? '<a href="#" data-user="' + f.user_id + '">' + who(f) + '</a>' : '<span class="muted">без входа</span>') + (f.contact ? '<div class="small">' + esc(f.contact) + '</div>' : '') + '</td>' +
-          '<td class="msg">' + esc(f.text) + '</td><td class="mono small">' + esc(f.page || '') + (f.screen ? '<div class="muted">' + esc(f.screen) + '</div>' : '') + '</td><td class="small">' + esc(ua(f.ua)) + ' · ' + esc(f.lang || '') + '</td>' +
-          '<td>' + (f.status === 'new' ? '<button class="btn" data-fb="' + f.id + '" data-st="done">Обработано</button>' : pill(f.status === 'spam' ? 'bad' : 'ok', f.status === 'spam' ? 'спам' : 'обработано') + ' <button class="btn" data-fb="' + f.id + '" data-st="new">↺</button>') + (f.status === 'new' ? ' <button class="btn" data-fb="' + f.id + '" data-st="spam">Спам</button>' : '') + '</td></tr>';
+          '<td class="msg">' + esc(f.text) + (f.reply ? '<div class="small" style="margin-top:6px;padding-left:8px;border-left:3px solid #9DB5D6"><b>Ответ</b> (' + ({ tg: 'Telegram', mail: 'e-mail' }[f.reply_via] || f.reply_via || '') + ', ' + when(f.reply_at) + '): ' + esc(f.reply) +
+            (f.reply_ack ? ' · ' + (f.reply_ack === 'ok' ? pill('ok', 'понятно') : pill('warn', 'ещё вопрос')) : '') + '</div>' : '') + '</td><td class="mono small">' + esc(f.page || '') + (f.screen ? '<div class="muted">' + esc(f.screen) + '</div>' : '') + '</td><td class="small">' + esc(ua(f.ua)) + ' · ' + esc(f.lang || '') + '</td>' +
+          '<td>' + (f.status === 'new' ? '<button class="btn" data-fb="' + f.id + '" data-st="done">Обработано</button>' : pill(f.status === 'spam' ? 'bad' : 'ok', f.status === 'spam' ? 'спам' : 'обработано') + ' <button class="btn" data-fb="' + f.id + '" data-st="new">↺</button>') + (f.status === 'new' ? ' <button class="btn" data-fb="' + f.id + '" data-st="spam">Спам</button>' : '') + (f.user_id || /@/.test(f.contact || '') ? ' <button class="btn" data-fbr="' + f.id + '">' + (f.reply ? 'Ответить ещё' : 'Ответить') + '</button>' : '') + '</td></tr>';
       }).join('') + '</tbody></table>' + (fs.length ? '' : '<p class="muted">Сообщений пока нет.</p>') + '</div>';
   };
 
@@ -923,7 +924,7 @@ pre.state { font: 12px/1.4 var(--mono); background: #F4F7F5; padding: 10px; bord
     var vg = e.target.closest('[data-vgdays],[data-vgall],[data-vgday]');
     if (vg) { e.preventDefault(); if (vg.hasAttribute('data-vgdays')) { VG.days = +vg.getAttribute('data-vgdays'); VG.day = ''; } else if (vg.hasAttribute('data-vgall')) VG.all = !VG.all; else VG.day = vg.getAttribute('data-vgday') || ''; show('visitors'); return; }
     var ga = e.target.closest('[data-gall]'); if (ga) { e.preventDefault(); GA.all = ga.getAttribute('data-gall') === '1'; show('geo'); return; }
-    var el = e.target.closest('[data-tab],[data-user],[data-pf],[data-fb],[data-zoom],[data-ddays],.zoom'); if (!el) return;
+    var el = e.target.closest('[data-tab],[data-user],[data-pf],[data-fb],[data-fbr],[data-zoom],[data-ddays],.zoom'); if (!el) return;
     if (el.hasAttribute('data-ddays')) { e.preventDefault(); DDAYS = +el.getAttribute('data-ddays'); show('overview'); return; }
     if (el.classList.contains('zoom')) { el.remove(); return; }
     if (el.hasAttribute('data-zoom')) { var z = document.createElement('div'); z.className = 'zoom'; z.innerHTML = '<img src="' + esc(el.src) + '" alt="">'; document.body.appendChild(z); return; }
@@ -931,6 +932,8 @@ pre.state { font: 12px/1.4 var(--mono); background: #F4F7F5; padding: 10px; bord
     if (el.hasAttribute('data-tab')) { location.hash = el.getAttribute('data-tab'); return; }
     if (el.hasAttribute('data-user')) { location.hash = 'user-' + el.getAttribute('data-user'); return; }
     if (el.hasAttribute('data-pf')) { PF = el.getAttribute('data-pf'); show('photos'); return; }
+    // ответ на отзыв (121-а): человеку — карточка в Telegram («Понятно» / «Ещё вопрос») или письмо
+    if (el.hasAttribute('data-fbr')) { var tx = prompt('Ответ человеку (уйдёт в Telegram карточкой, нет Telegram — на e-mail):'); if (tx && tx.trim()) post('/admin/feedback/reply', { id: +el.getAttribute('data-fbr'), text: tx.trim() }).then(function (j) { if (j && j.error) alert(j.human || j.error); show('feedback'); }); return; }
     if (el.hasAttribute('data-fb')) { post('/admin/feedback', { id: +el.getAttribute('data-fb'), status: el.getAttribute('data-st') }).then(function () { show('feedback'); }); }
   });
   var qt;

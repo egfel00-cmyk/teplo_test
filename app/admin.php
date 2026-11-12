@@ -20,6 +20,75 @@ final class Feedback {
       $cut($in['lang'] ?? '', 5), mb_substr($r->header('User-Agent'), 0, 200), $ip, 'new', Http::iso()]);
     return ['ok' => true];
   }
+
+  /** Картка «Відповідь на ваш відгук» у чаті з ботом (121-а): що писали (коротко), відповідь, «Зрозуміло» / «Ще питання». */
+  const HTML = <<<'HTML'
+<style>
+body{margin:0;font:15px/1.4 system-ui,sans-serif;color:var(--tg-theme-text-color)}
+.w{padding:12px 14px 10px}h1{font-size:16px;font-weight:600;margin:0}
+.q{color:var(--tg-theme-hint-color);font-size:13px;margin-top:6px;border-left:3px solid var(--tg-theme-section-separator-color);padding-left:8px}
+.a{margin-top:10px;white-space:pre-wrap}.m{color:var(--tg-theme-hint-color);font-size:13px}
+.f{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:12px}
+button{font:inherit;font-size:15px;font-weight:500;border:0;border-radius:10px;padding:9px 14px;background:var(--tg-theme-button-color);color:var(--tg-theme-button-text-color);white-space:nowrap}
+button.g{background:var(--tg-theme-secondary-bg-color);color:var(--tg-theme-link-color)}.ok{color:#2e9e5b;font-weight:500}
+.e{color:var(--tg-theme-destructive-text-color);font-size:13px;margin-top:6px}
+</style>
+<div class="w" id="w"></div>
+<script>
+var W=window.TelegramWidget,L={uk:{h:'Відповідь на ваш відгук',ok:'Зрозуміло, дякую',more:'Ще питання',tok:'Дякуємо, що написали',tmore:'Напишіть, що ще незрозуміло, — кнопка «Написати ще» під карткою',err:'Не вийшло — спробуйте ще раз'},
+ru:{h:'Ответ на ваш отзыв',ok:'Понятно, спасибо',more:'Ещё вопрос',tok:'Спасибо, что написали',tmore:'Напишите, что ещё непонятно, — кнопка «Написать ещё» под карточкой',err:'Не получилось — попробуйте ещё раз'}},d={},er='',busy=0;
+function rd(){try{d=JSON.parse(W.chatData||'{}')||{}}catch(e){d={}}}
+function x(s){return String(s==null?'':s).replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})}
+function draw(){var t=L[d.l]||L.uk,h='<h1>'+t.h+'</h1>';if(d.q)h+='<div class="q">'+x(d.q)+'</div>';h+='<div class="a">'+x(d.a)+'</div>';
+if(d.r=='ok')h+='<div class="f"><span class="ok">✓ '+t.tok+'</span></div>';else if(d.r=='more')h+='<div class="f"><span class="m">'+t.tmore+'</span></div>';
+else h+='<div class="f"><button data-q="ok">'+t.ok+'</button><button class="g" data-q="more">'+t.more+'</button></div>';
+if(er)h+='<div class="e">'+x(er)+'</div>';document.getElementById('w').innerHTML=h}
+function ask(q){if(busy)return;busy=1;W.request(q).then(function(a){busy=0;er='';if(a&&a.result){try{d=JSON.parse(a.result)}catch(e){}}W.HapticFeedback.notificationOccurred('success');draw()},function(){busy=0;er=(L[d.l]||L.uk).err;W.HapticFeedback.notificationOccurred('error');draw()})}
+document.getElementById('w').addEventListener('click',function(ev){var t=ev.target;while(t&&t.getAttribute&&!t.getAttribute('data-q'))t=t.parentNode;if(t&&t.getAttribute&&t.getAttribute('data-q'))ask(t.getAttribute('data-q'))});
+rd();draw();W.onEvent('chatDataChanged',function(){rd();draw()});
+</script>
+HTML;
+  public static function packed(): int { return strlen((string)gzcompress(self::HTML, 9)); }
+  private static function cut(string $s, int $n): string { $s = trim(preg_replace('/[ \t]+/u', ' ', $s)); return mb_strlen($s) > $n ? rtrim(mb_substr($s, 0, $n - 1)) . '…' : $s; }
+
+  /** POST /api/admin/feedback/reply {id, text} — відповісти людині: картка в Telegram (або лист, якщо Telegram нема). */
+  public static function reply(array $in): array {
+    $f = Db::one('SELECT * FROM feedback WHERE id = ?', [(int)($in['id'] ?? 0)]); if (!$f) throw new HttpError(404, 'not_found');
+    $text = trim((string)($in['text'] ?? '')); if (mb_strlen($text) < 2) throw new HttpError(422, 'empty');
+    $text = mb_substr($text, 0, 3000); $lang = ($f['lang'] ?? '') === 'ru' ? 'ru' : 'uk'; $ru = $lang === 'ru'; $via = '';
+    $tg = $f['user_id'] ? Db::one("SELECT external_id FROM user_identities WHERE user_id = ? AND type = 'telegram'", [(int)$f['user_id']]) : null;
+    if ($tg && Cfg::get('bot_token')) {
+      $d = ['v' => 1, 'k' => 'fb', 'f' => (int)$f['id'], 'l' => $lang, 'q' => self::cut((string)$f['text'], 90), 'a' => self::cut($text, 330)];
+      if (mb_strlen($text) > 330) { Telegram::call('sendMessage', ['chat_id' => $tg['external_id'], 'text' => ($ru ? "Ответ на ваш отзыв:\n\n" : "Відповідь на ваш відгук:\n\n") . $text]); $d['a'] = self::cut($text, 160); }
+      $kb = Cfg::appUrlKnown() ? ['inline_keyboard' => [[['text' => $ru ? 'Написать ещё' : 'Написати ще', 'web_app' => ['url' => Cfg::appUrl() . '?fb=1']]]]] : null;
+      $m = ['chat_id' => $tg['external_id'], 'html' => self::HTML, 'chat_data' => BotWidget::enc($d), 'allow_queries' => true, 'caption' => $ru ? 'Ответ на ваш отзыв' : 'Відповідь на ваш відгук'] + ($kb ? ['reply_markup' => $kb] : []);
+      $r = BotWidget::$off ? [] : Telegram::call('sendWidget', $m);
+      if (!empty($r['ok'])) { BotWidget::remember($tg['external_id'], (int)($r['result']['message_id'] ?? 0), $d); $via = 'tg'; }
+      else { $r = Telegram::call('sendMessage', ['chat_id' => $tg['external_id'], 'text' => ($ru ? "Ответ на ваш отзыв:\n\n" : "Відповідь на ваш відгук:\n\n") . $text] + ($kb ? ['reply_markup' => $kb] : [])); if (!empty($r['ok'])) $via = 'tg'; }
+    }
+    if ($via === '') {
+      $em = $f['user_id'] ? (string)(Db::one('SELECT email FROM users WHERE id = ?', [(int)$f['user_id']])['email'] ?? '') : '';
+      if (!filter_var($em, FILTER_VALIDATE_EMAIL) && preg_match('/[^\s·]+@[^\s·]+\.[^\s·]+/u', (string)$f['contact'], $mm)) $em = $mm[0];
+      if (filter_var($em, FILTER_VALIDATE_EMAIL) && class_exists('Mail')) {
+        try { Mail::send(['to' => [$em], 'subject' => $ru ? 'Ответ на ваш отзыв — «Счётчики»' : 'Відповідь на ваш відгук — «Лічильники»', 'text' => ($ru ? 'Вы писали: ' : 'Ви писали: ') . '«' . self::cut((string)$f['text'], 300) . "»\n\n" . $text . "\n\n— peredai.com.ua", 'kind' => 'feedback', 'user' => $f['user_id'] ? (int)$f['user_id'] : null]); $via = 'mail'; }
+        catch (Throwable $e) { $via = ''; }
+      }
+    }
+    if ($via === '') throw new HttpError(409, 'no_channel', ['human' => 'Ответить нечем: у человека нет Telegram с ботом и e-mail (или почта не настроена).']);
+    Db::q("UPDATE feedback SET reply = ?, reply_at = ?, reply_via = ?, reply_ack = NULL, status = 'done' WHERE id = ?", [$text, Http::iso(), $via, (int)$f['id']]);
+    return ['ok' => true, 'via' => $via];
+  }
+
+  /** Дотик картки відповіді: ok / more → реакція в /admin, картка показує подяку чи «напишіть ще». */
+  public static function query(array $d, int $uid, string $q, $chat, $mid, callable $ans): array {
+    $f = Db::one('SELECT user_id FROM feedback WHERE id = ?', [(int)($d['f'] ?? 0)]);
+    if (!$f || !$uid || (int)$f['user_id'] !== $uid || !in_array($q, ['ok', 'more'], true)) return $ans($d);
+    $d['r'] = $q; Db::q('UPDATE feedback SET reply_ack = ? WHERE id = ?', [$q, (int)$d['f']]);
+    if ($q === 'more') Db::q("UPDATE feedback SET status = 'new' WHERE id = ?", [(int)$d['f']]);   // ще питання — знову «нове» в /admin
+    try { Telegram::call('editMessageWidgetData', ['chat_id' => $chat, 'message_id' => $mid, 'chat_data' => BotWidget::enc($d)]); } catch (Throwable $e) { /* стан — у відповіді */ }
+    BotWidget::remember($chat, $mid, $d);
+    return $ans($d);
+  }
 }
 
 final class Admin {
@@ -202,6 +271,7 @@ final class Admin {
       case 'GET /api/admin/feedback':
         return ['feedback' => Db::q("SELECT f.*, u.email, i.username AS tg_username FROM feedback f LEFT JOIN users u ON u.id = f.user_id
           LEFT JOIN user_identities i ON i.user_id = f.user_id AND i.type = 'telegram' ORDER BY f.id DESC LIMIT 500")->fetchAll()];
+      case 'POST /api/admin/feedback/reply': return Feedback::reply($in);
       case 'POST /api/admin/feedback': {
         $st = (string)($in['status'] ?? '');
         if (!in_array($st, ['new', 'done', 'spam'], true)) throw new HttpError(422, 'bad_status');
