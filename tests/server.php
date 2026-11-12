@@ -261,6 +261,8 @@ ok('журнал в /admin: сеансы людей (свои и тест скр
   && $sa && $sa['n'] === 8 && $sa['errs'] === 1 && $sa['saves'] === 1 && str_starts_with($sa['label'], 'Гость ') && $js['funnel']['meter'] === 1 && $js['funnel']['photoFail'] === 1 && $js['funnel']['errors'] === 1 && $js['funnel']['opened'] === 1, $js);
 $jt = $boss->req('GET', '/api/admin/journal/session', null, ['QUERY_STRING' => 'vid=abc12345phone&sid=sessA1'])->body; $ev = $jt['events'] ?? [];
 ok('лента сеанса: по порядку, длинный текст обрезан (120), вложенные поля отброшены', count($ev) === 8 && $ev[0]['n'] === 'open' && $ev[3]['p']['m'] === 'Показання менше за попередні' && mb_strlen($ev[7]['p']['x']) === 120 && !isset($ev[7]['p']['nested']) && $ev[0]['at'] <= $ev[7]['at'], $ev[7] ?? $jt);
+$jb = $boss->req('GET', '/api/admin/journal/session', null, ['QUERY_STRING' => 'vid=boss1234desk&sid=sessB1'])->body;
+ok('лента сеансу (127-а): увійшов — у заголовку email, без входу — user null («Гость …»)', !empty($jb['user']['email']) && array_key_exists('user', $jt) && $jt['user'] === null && str_starts_with($jt['label'] ?? '', 'Гость '), [$jb['user'] ?? null, $jt['user'] ?? 'нема']);
 $boss->req('POST', '/api/admin/journal/tag', ['vid' => 'abc12345phone', 'tag' => 'test']);
 $jsx = $boss->req('GET', '/api/admin/journal', null, ['QUERY_STRING' => 'days=7'])->body;
 $boss->req('POST', '/api/admin/journal/tag', ['vid' => 'abc12345phone', 'tag' => '']);

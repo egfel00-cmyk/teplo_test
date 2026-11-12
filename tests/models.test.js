@@ -32,6 +32,9 @@ for (const id of ['t330', 't230']) {   // 125-а, юзертестинг T330: �
   ok(id + ': температури — один екран, значення чергуються (swap)', st.find(s => s.fields.includes('tSupply')).lcd.swap === true);
 }
 ok('SensoStar: витрата — на рівні 2, понад 4 с', (s => s.press === 'long' && s.hold === 4)(M.byId('sensostar').steps.find(s => s.fields.includes('flow'))));
+ok('MULTICAL 403/603 (127-а): години з помилкою — друга кнопка на екрані годин, порядок USER: енергія → обсяг → години → T → витрата → потужність → INFO',
+  (function () { var st = M.byId('multical403').steps, f = st.map(s => s.fields.join('+')).join(' '); var eh = st.find(s => s.fields.includes('errHours'));
+    return f === 'energy volume hours errHours tSupply+tReturn flow power errCode' && /Друга кнопка/.test(eh.say.uk) && !eh.loop && M.byId('multical403').units[0] === 'GJ'; })());
 ok('MULTICAL 302: години з помилкою — у петлі TECH', /TECH/.test(M.byId('multical302').steps.find(s => s.fields.includes('errHours')).hint.uk));
 ok('НІК 7071: години — в інформативному меню, не довше 3 с', /MENU/.test(M.byId('nik7071').steps.find(s => s.fields.includes('hours')).hint.uk) && /понад 3 с повертає/.test(M.byId('nik7071').steps.find(s => s.fields.includes('hours')).hint.uk));
 ok('ELF: група 1 — затиснути на 2 с', /---- 01/.test(M.byId('elf').loops.tip.uk) && /2 секунди/.test(M.byId('elf').loops.tip.uk));

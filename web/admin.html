@@ -580,7 +580,7 @@ pre.state { font: 12px/1.4 var(--mono); background: #F4F7F5; padding: 10px; bord
       '<div style="display:flex;gap:8px;flex-wrap:wrap">' + step('Открыли', f.opened) + step('Нажимали', f.tapped) + step('Добавили счётчик', f.meter) + step('Внесли показания', f.reading) +
       step('Пробовали фото', f.photo) + step('Фото не распознано', f.photoFail, 1) + step('Были ошибки', f.errors, 1) + step('Входили', f.login) + '</div>' +
       (l.length ? '<table><thead><tr><th>Когда</th><th>Кто</th><th>Устройство</th><th>Длилось</th><th>Событий</th><th>Итог</th><th>Путь</th></tr></thead><tbody>' + l.map(function (x) {
-        return '<tr data-js="' + esc(x.vid) + '|' + esc(x.sid) + '" style="cursor:pointer"><td data-l="Когда" class="nowrap">' + when(x.to) + '</td><td data-l="Кто"><b>' + esc(x.label) + '</b>' + (x.tag ? ' ' + pill(x.tag === 'me' ? 'info' : 'warn', TAGN[x.tag] || x.tag) : '') + '<div class="small">' + whoS(x) + '</div></td>' +
+        return '<tr data-js="' + esc(x.vid) + '|' + esc(x.sid) + '" style="cursor:pointer"><td data-l="Когда" class="nowrap">' + when(x.to) + '</td><td data-l="Кто"><b>' + (x.user ? whoS(x) : esc(x.label)) + '</b>' + (x.tag ? ' ' + pill(x.tag === 'me' ? 'info' : 'warn', TAGN[x.tag] || x.tag) : '') + '<div class="small">' + (x.user ? '<span class="muted">' + esc(x.label) + '</span>' : whoS(x)) + '</div></td>' +
           '<td data-l="Устройство" class="small">' + devLine(x.dev) + '</td><td data-l="Длилось">' + dur(x.from, x.to) + '</td><td data-l="Событий">' + x.n + '</td>' +
           '<td data-l="Итог">' + endLine(x.end) + ' ' + (x.saves ? pill('ok', 'сохранял ' + x.saves) + ' ' : '') + (x.errs ? pill('bad', 'ошибок ' + x.errs) + ' ' : '') + (x.toasts ? pill('warn', 'сообщений ' + x.toasts) : '') + '</td>' +
           '<td data-l="Путь" class="small muted">' + esc((x.path || []).map(scrName).join(' → ')) + '</td></tr>';
@@ -588,7 +588,7 @@ pre.state { font: 12px/1.4 var(--mono); background: #F4F7F5; padding: 10px; bord
   };
   VIEW.jsession = function () {
     var j = DATA.jsession || {}, ev = j.events || [];
-    return '<p><button class="btn" data-tab="journal">← Журнал</button></p><h2>' + esc(j.label || '') + (j.tag ? ' ' + pill(j.tag === 'me' ? 'info' : 'warn', TAGN[j.tag] || j.tag) : '') + '</h2>' +
+    return '<p><button class="btn" data-tab="journal">← Журнал</button></p><h2>' + (j.user ? esc(j.user.email || (j.user.tg ? '@' + j.user.tg : '#' + j.user.id)) + ' <span class="muted small">' + esc(j.label || '') + '</span>' : esc(j.label || '')) + (j.tag ? ' ' + pill(j.tag === 'me' ? 'info' : 'warn', TAGN[j.tag] || j.tag) : '') + '</h2>' +
       '<p class="muted small">Браузер ' + esc(j.vid || '') + ' · сеанс ' + esc(j.sid || '') + ' · событий ' + ev.length + (ev.length ? ' · ' + when(ev[0].at) + ' – ' + hms(ev[ev.length - 1].at) : '') + '</p>' +
       '<p>Пометить этот браузер: <button class="btn ghost" data-jtag="me">Это я</button> <button class="btn ghost" data-jtag="test">Тест</button> <button class="btn ghost" data-jtag="">Снять пометку</button></p>' +
       '<table><thead><tr><th>Время</th><th>Что произошло</th><th>Экран</th></tr></thead><tbody>' + ev.map(function (e) {

@@ -7494,11 +7494,18 @@
         : '<ul><li>Кол-центр: (057) 341-41-40</li><li>Повірка, розпломбування, огляд вузла обліку: 050-670-13-45</li><li>Прилад відсутній у базі: 067-370-87-75</li></ul>']
     ];
     var byId = {}; secs.forEach(function (x) { byId[x[0]] = { title: x[1], html: x[2] }; });
+    // 127-а: тепло не від ХТМ — строки й канали з довідника громади (how, till), без вікна ХТМ 5–25 і правил робота ХТМ
+    var lite = heatLite(), hp = lite ? (prvOf('heat') || {}) : null;
+    if (lite) {
+      var hw = (ru ? hp.how_ru : hp.how) || hp.how || t('ld_how_heat'), tl = R.num(hp.till);
+      byId['h-window'].html = '<p>' + esc(hw) + '</p>' + (tl > 0 ? '<p>' + (ru ? (tl >= 31 ? 'Напомним за 4 дня до конца месяца.' : 'Напомним за 4 дня до ' + tl + '-го числа.') : (tl >= 31 ? 'Нагадаємо за 4 дні до кінця місяця.' : 'Нагадаємо за 4 дні до ' + tl + '-го числа.')) + '</p>' : '');
+      byId['h-sameday'] = { title: t('hl_title'), html: '<p>' + esc(t('hl_lead')) + '</p>' };
+    }
     var photoTips = '<ul>' + t('ph_tips').split('|').map(function (x) { return '<li>' + esc(x) + '</li>'; }).join('') + '</ul>';
     var groups = [
       { id: 'hg-send', title: t('hg_send'), icon: 'calendar', items: [byId['h-window'], byId['h-sameday'], byId['h-how'], { title: t('ph_tips_t'), html: photoTips }] },
-      { id: 'hg-reject', title: t('hg_reject'), icon: 'alert', items: [byId['h-robot'], byId['h-special'], byId['h-off']] },
-      { id: 'hg-other', title: t('hg_other'), icon: 'info', items: [byId['h-places'], byId['h-elec'], byId['h-gas'], byId['h-hw'], byId['h-gap'], byId['h-phones']] }
+      { id: 'hg-reject', title: t('hg_reject'), icon: 'alert', items: lite ? [byId['h-off']] : [byId['h-robot'], byId['h-special'], byId['h-off']] },
+      { id: 'hg-other', title: t('hg_other'), icon: 'info', items: [byId['h-places'], byId['h-elec'], byId['h-gas'], byId['h-hw'], byId['h-gap']].concat(lite ? [] : [byId['h-phones']]) }
     ];
     groups[0].items[0].open = true;
     return '<div class="help-doc"><h1>' + esc(t('help_title')) + '</h1><nav class="toc" aria-label="' + esc(t('help_title')) + '">' + groups.map(function (g) { return '<button type="button" class="tocb" data-act="scroll" data-target="' + g.id + '">' + esc(g.title) + '</button>'; }).join('') + '</nav>' +

@@ -121,7 +121,10 @@ final class Journal {
     $vid = self::vid($vid); $sid = substr(preg_replace('/[^A-Za-z0-9]/', '', $sid), 0, 16);
     $ev = array_map(fn($e) => ['at' => $e['at'], 'n' => $e['name'], 's' => $e['screen'], 'p' => $e['props'] ? json_decode((string)$e['props'], true) : null, 'u' => $e['user_id'] ? (int)$e['user_id'] : null],
       Db::q('SELECT at, name, screen, props, user_id FROM events WHERE vid = ? AND sid = ? ORDER BY id LIMIT 1500', [$vid, $sid])->fetchAll());
-    return ['vid' => $vid, 'sid' => $sid, 'label' => self::label($vid), 'tag' => self::internal()[$vid] ?? null, 'events' => $ev];
+    // 127-а: вошёл в этом сеансе — в заголовке email (или @telegram), а не «Гость XXXX»
+    $uid = 0; foreach ($ev as $e) if ($e['u']) $uid = $e['u'];
+    $u = $uid ? Db::one('SELECT u.id, u.email, (SELECT username FROM user_identities i WHERE i.user_id = u.id AND i.type = \'telegram\' LIMIT 1) AS tg FROM users u WHERE u.id = ?', [$uid]) : null;
+    return ['vid' => $vid, 'sid' => $sid, 'label' => self::label($vid), 'tag' => self::internal()[$vid] ?? null, 'user' => $u ? ['id' => (int)$u['id'], 'email' => $u['email'], 'tg' => $u['tg']] : null, 'events' => $ev];
   }
   /** /api/health → errs: ошибки у людей за $days дней одной сводкой — без людей (разобрать без /admin, когда браузер владельца недоступен).
    *  JS-ошибки и ошибки API — по тексту/месту, сколько раз и у скольких браузеров, на каких экранах; тосты — только те, что видели ≥ 3 браузера

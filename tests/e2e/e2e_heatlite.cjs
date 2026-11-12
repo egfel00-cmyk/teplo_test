@@ -47,6 +47,10 @@ let pass = 0, fail = 0; const ok = (n, c, x) => { if (c) { pass++; console.log('
   await p.goto(U + '#check'); await p.reload(); await p.waitForTimeout(700);
   ok('28 грудня (поза 5–25 ХТМ): лише «менше за попередні» — на свій ризик, без «вікно закрите»', (await p.getAttribute('[data-key=check-verdict]', 'data-verdict')) === 'block' && !!(await p.$('[data-code=R_MONO_ENERGY]')) && !(await p.$('[data-code=W_WINDOW]'))
     && /ризик/.test(await p.textContent('[data-key=check-send]')), await p.$$eval('[data-code]', els => els.map(e => e.getAttribute('data-code'))));
+  // 127-а: довідка «Коли передавати» — з довідника громади (Київ: з 5 до кінця місяця), без вікна ХТМ 5–25, без «Чому робот ХТМ не приймає» і телефонів ХТМ
+  await p.goto(U + '#help'); await p.waitForTimeout(600);
+  const hl = await p.textContent('main');
+  ok('довідка (Київ): строк із довідника, без вікна ХТМ і робота ХТМ', /з 5 числа до кінця місяця/.test(hl) && /до кінця місяця/.test(hl) && !/з 5 по 25 число/.test(hl) && !/робот ХТМ/.test(hl) && !/Телефони ХТМ/.test(hl), hl.slice(0, 300));
   // Харків — повний майстер ХТМ
   await p.evaluate(() => { const s = JSON.parse(localStorage.getItem('teplo.v1')); s.places[0].address = 'пр. Перемоги 86А, кв. 61'; delete s.places[0].city; s.demoToday = '2026-11-20'; s.draft = null; localStorage.setItem('teplo.v1', JSON.stringify(s)); });
   await p.goto(U + '#meter'); await p.reload(); await p.waitForTimeout(1200);
