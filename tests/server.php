@@ -2260,6 +2260,9 @@ $n0 = count($sent); LocalBot::cron(); $ml = end($sent);
 $jb = LocalBot::pubJob(Db::one('SELECT * FROM cab_jobs WHERE id = ?', [(int)$q->body['job']['id']]));
 ok('лист у водоканал: на chornomorskvodokanal@gmail.com, Reply-To — e-mail людини; статус sent', count($sent) === $n0 + 1 && $ml[1] === ['chornomorskvodokanal@gmail.com'] && str_contains($ml[2], 'Reply-To: kamianets@gmail.com') && $jb['status'] === 'sent', [$jb, $ml[1] ?? null]);
 ok('довідник: via mtve дозволено в правках /admin', (ProvEdit::clean(['org' => 'X', 'via' => 'mtve'])['via'] ?? null) === 'mtve' && !isset(ProvEdit::clean(['org' => 'X', 'via' => 'zzz'])['via']));
+// 136-а: вікно прийому показань у правках /admin — «20–27», «28-3» або масив; поза 1–31 і сміття — не зберігаємо
+ok('довідник: win з форми й JSON', (ProvEdit::clean(['win' => '20–27'])['win'] ?? null) === [20, 27] && (ProvEdit::clean(['win' => '28 - 3'])['win'] ?? null) === [28, 3]
+  && (ProvEdit::clean(['win' => [15, 25]])['win'] ?? null) === [15, 25] && !isset(ProvEdit::clean(['win' => '0–40'])['win']) && !isset(ProvEdit::clean(['win' => 'до 25'])['win']));
 // Львівобленерго — лист «код показник», лише однозонний, вікно 28–3
 $r = $lbu->req('POST', '/api/lb/connect', ['bot' => 'loe', 'place' => 'lv1', 'acc' => '12345', 'consent' => true]);
 ok('loe: код не 10 цифр — 422 з прикладом 0000011111', $r->status === 422 && str_contains((string)($r->body['human'] ?? ''), '0000011111'), $r->body);

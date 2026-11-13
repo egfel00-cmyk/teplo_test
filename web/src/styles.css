@@ -566,6 +566,26 @@ input[type=text]:not(.dmy-native):not(.pl-in), input[type=email], input[type=pas
 .ucard-val small { font: 500 14px var(--font); color: var(--c-ink-2); }
 .ucard-disp { margin: 4px 0 6px; display: grid; gap: 8px; }
 .ucard-sub { font-size: 14px; color: var(--c-ink-2); }
+/* 136-а: місяць крапками — вікно прийому й «сьогодні» (власник 13.11: «полоской, ненавязчиво, графически»; перша версія — лінія з кружком — «как скроллбар»).
+   Крапка на день (як «Відстеження циклу» Apple Health): інші дні — дрібні нейтральні, дні прийому — більші кольором виду (відкрите вікно — повним, інакше блідим),
+   уже минулі — прозоріші, сьогодні — у кільці кольору тексту. Підпис чисел — колонка однакової ширини праворуч. */
+.prd { --pk: var(--c-ink-2); --prd-bg: var(--c-surface); display: grid; grid-template-columns: minmax(0, 1fr) 3.6em; align-items: center; gap: 12px; margin: 6px 0 8px; }
+.prd-heat, .ucard-hot .prd-water, .prd-water.hot { --pk: var(--c-supply); } .prd-water { --pk: var(--c-return); }
+.prd-elec { --pk: var(--c-elec); } .prd-gas { --pk: var(--c-gas); }
+.prd-d { display: grid; grid-template-columns: repeat(var(--n, 30), minmax(0, 1fr)); justify-items: center; align-items: center; height: 14px; }
+.prd-d i { width: 3px; height: 3px; border-radius: 50%; background: var(--c-line); }
+.prd-d i.w { width: 6px; height: 6px; background: color-mix(in srgb, var(--pk) 38%, var(--prd-bg)); }
+.prd.st-open .prd-d i.w { background: var(--pk); }
+.prd.warn .prd-d i.w { background: var(--c-warn); }
+.prd.done .prd-d i.w { background: color-mix(in srgb, var(--c-ok) 60%, var(--prd-bg)); }
+.prd-d i.p { opacity: .45; }
+.prd-d i.t { width: 14px; height: 14px; box-sizing: border-box; padding: 2px; border: 2px solid var(--c-ink); background-clip: content-box; opacity: 1; }
+.prd-d i.o.t, .panel.where .prd-d i.o.t { background-color: var(--c-ink-2); }
+.prd-l { font-size: 13px; line-height: 1; color: var(--c-ink-2); text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.prd.st-open:not(.done) .prd-l { color: var(--c-ink); font-weight: 500; }
+.prd.in-dest { --prd-bg: var(--bt-bg, var(--c-surface)); margin: 10px 0 4px; }
+.panel.where .prd-d i.o { background: var(--bt-line, var(--c-line)); }
+.prd.in-prov { margin: 8px 0 6px; max-width: 360px; }
 .ucard-status { font-size: 14px; font-weight: 600; margin-top: 4px; color: var(--c-ink-2); }
 .ucard-status.ok { color: var(--c-ok); } .ucard-status.due { color: var(--c-info); } .ucard-status.warn { color: var(--c-warn); }
 .ucard-add { position: absolute; right: 12px; top: 12px; width: 52px; height: 52px; border-radius: 50%; border: 1.5px solid var(--c-field-line); background: var(--c-surface-2); color: var(--c-ink); display: grid; place-items: center; cursor: pointer; }

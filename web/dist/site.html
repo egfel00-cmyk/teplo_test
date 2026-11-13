@@ -602,6 +602,26 @@ input[type=text]:not(.dmy-native):not(.pl-in), input[type=email], input[type=pas
 .ucard-val small { font: 500 14px var(--font); color: var(--c-ink-2); }
 .ucard-disp { margin: 4px 0 6px; display: grid; gap: 8px; }
 .ucard-sub { font-size: 14px; color: var(--c-ink-2); }
+/* 136-а: місяць крапками — вікно прийому й «сьогодні» (власник 13.11: «полоской, ненавязчиво, графически»; перша версія — лінія з кружком — «как скроллбар»).
+   Крапка на день (як «Відстеження циклу» Apple Health): інші дні — дрібні нейтральні, дні прийому — більші кольором виду (відкрите вікно — повним, інакше блідим),
+   уже минулі — прозоріші, сьогодні — у кільці кольору тексту. Підпис чисел — колонка однакової ширини праворуч. */
+.prd { --pk: var(--c-ink-2); --prd-bg: var(--c-surface); display: grid; grid-template-columns: minmax(0, 1fr) 3.6em; align-items: center; gap: 12px; margin: 6px 0 8px; }
+.prd-heat, .ucard-hot .prd-water, .prd-water.hot { --pk: var(--c-supply); } .prd-water { --pk: var(--c-return); }
+.prd-elec { --pk: var(--c-elec); } .prd-gas { --pk: var(--c-gas); }
+.prd-d { display: grid; grid-template-columns: repeat(var(--n, 30), minmax(0, 1fr)); justify-items: center; align-items: center; height: 14px; }
+.prd-d i { width: 3px; height: 3px; border-radius: 50%; background: var(--c-line); }
+.prd-d i.w { width: 6px; height: 6px; background: color-mix(in srgb, var(--pk) 38%, var(--prd-bg)); }
+.prd.st-open .prd-d i.w { background: var(--pk); }
+.prd.warn .prd-d i.w { background: var(--c-warn); }
+.prd.done .prd-d i.w { background: color-mix(in srgb, var(--c-ok) 60%, var(--prd-bg)); }
+.prd-d i.p { opacity: .45; }
+.prd-d i.t { width: 14px; height: 14px; box-sizing: border-box; padding: 2px; border: 2px solid var(--c-ink); background-clip: content-box; opacity: 1; }
+.prd-d i.o.t, .panel.where .prd-d i.o.t { background-color: var(--c-ink-2); }
+.prd-l { font-size: 13px; line-height: 1; color: var(--c-ink-2); text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.prd.st-open:not(.done) .prd-l { color: var(--c-ink); font-weight: 500; }
+.prd.in-dest { --prd-bg: var(--bt-bg, var(--c-surface)); margin: 10px 0 4px; }
+.panel.where .prd-d i.o { background: var(--bt-line, var(--c-line)); }
+.prd.in-prov { margin: 8px 0 6px; max-width: 360px; }
 .ucard-status { font-size: 14px; font-weight: 600; margin-top: 4px; color: var(--c-ink-2); }
 .ucard-status.ok { color: var(--c-ok); } .ucard-status.due { color: var(--c-info); } .ucard-status.warn { color: var(--c-warn); }
 .ucard-add { position: absolute; right: 12px; top: 12px; width: 52px; height: 52px; border-radius: 50%; border: 1.5px solid var(--c-field-line); background: var(--c-surface-2); color: var(--c-ink); display: grid; place-items: center; cursor: pointer; }
@@ -4393,6 +4413,7 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
       uc_heat_ok: "Прийнято ХТМ",
       uc_heat_handed: "Передано, чекаємо ХТМ",
       uc_heat_due: "Передати до {d}",
+      pd_tip: 'Показання приймають з {a} по {b} число', pd_tip_l: '(вікно почалося минулого місяця)', pd_tip_r: '(закінчується в наступному місяці)', pd_today: 'Сьогодні {d}', pd_done: 'Цього разу вже передано',
       uc_heat_late: "Передати до {d}",
       uc_heat_closed: "Приймання з {d}",
       uc_from_you: "ваші від {d}",
@@ -5681,6 +5702,7 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
       uc_heat_ok: "Принято ХТМ",
       uc_heat_handed: "Передано, ждём ХТМ",
       uc_heat_due: "Передать до {d}",
+      pd_tip: 'Показания принимают с {a} по {b} число', pd_tip_l: '(окно началось в прошлом месяце)', pd_tip_r: '(заканчивается в следующем месяце)', pd_today: 'Сегодня {d}', pd_done: 'В этот раз уже передано',
       uc_heat_late: "Передать до {d}",
       uc_heat_closed: "Приём с {d}",
       uc_from_you: "ваши от {d}",
@@ -9502,7 +9524,7 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
     return '<div class="ucard ucard-' + o.kind + '" data-key="card-' + o.kind + '">' +
       '<a class="ucard-main" href="#' + o.href + '">' +
         '<span class="ucard-top">' + ico(o.icon, 20) + '<span class="ucard-title">' + esc(o.title) + '</span></span>' +
-        (o.display ? '<div class="ucard-disp">' + o.display + '</div>' : '<span class="ucard-val num">' + o.value + '</span>') +
+        (o.display ? '<div class="ucard-disp">' + o.display + '</div>' : '<span class="ucard-val num">' + o.value + '</span>') + (o.per || '') +
         '<span class="ucard-sub">' + esc(o.sub || '') + '</span>' +
         (o.status ? '<span class="ucard-status ' + (o.tone || '') + '">' + esc(o.status) + '</span>' : '') +
       '</a>' +
@@ -9510,6 +9532,45 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
   }
   /** Рядок статусу на картці головної: передано / знято — завжди; строк — лише за 4 дні до кінця; «наступна передача» — ні. */
   function cardSt(o) { if (!o) return ''; if (o.off || o.tone === 'ok') return o.st; return dueSoon(o) !== null ? o.st : ''; }
+
+  // ---------------- 136-а: місяць крапками — вікно прийому показань і «сьогодні» (власник 13.11) ----------------
+  // Ряд днів місяця (крапка на день, як часова стрічка «Відстеження циклу» в Apple Health): дні прийому — більші й кольором виду,
+  // уже минулі — блідіші, сьогодні — у кільці («сьогодні носить кільце»). Суцільна лінія з кружком виглядала як смуга прокрутки (власник 13.11) — не робимо.
+  // Числа вікна — тихим підписом праворуч у колонці однакової ширини: на головній «сьогодні» всіх карток стоїть в одну вертикаль.
+  // Пояснення — підказкою (наведення) і для читача екрана. Текст строку — як і раніше, лише за 4 дні до кінця.
+  /** Вікно прийому постачальника виду k ('heat' | 'water' | 'elec' | 'gas') — [перше, останнє] число місяця або null, якщо невідоме.
+   *  Від'ємне перше — від кінця місяця (−2 — передостаннє); останнє < першого — вікно через кінець місяця; 31 — до кінця місяця.
+   *  Довідник громади: `win` ([20, 27]) головніший; тепло не від ХТМ — `till`; вода місцевого КП без `win` — null (не вигадуємо). */
+  function perWin(k, p) {
+    var j = prvKinds0(p), d = j ? (j.kinds[k] || {}) : null, w = d && d.win;
+    if (w && w.length === 2 && +w[1] > 0 && +w[0] !== 0) return [+w[0], +w[1]];
+    if (k === 'heat') { if (!d || d.via === 'htm') return [R.C.WINDOW_FROM, R.C.WINDOW_TO]; var tl = R.num(d.till); return tl > 0 ? [1, tl] : null; }
+    if (k === 'water') return !d || d.via === 'hvk' ? [1, Wt.VK_DEADLINE] : null;
+    if (k === 'elec') return [-2, 3];   // Харківобленерго: з передостаннього числа по 3-тє наступного (El.win)
+    if (k === 'gas') return [1, 5];
+    return null;
+  }
+  /** Геометрія смужки на сьогодні: { s, e — смуга (числа цього місяця), L, d — сьогодні, st: before|open|after, cut: '' | 'l' | 'r' — смуга йде за край місяця, a, b — підпис }. */
+  function perGeo(w, td) {
+    var y = +td.slice(0, 4), mo = +td.slice(5, 7), d = +td.slice(8, 10), L = new Date(Date.UTC(y, mo, 0)).getUTCDate(), pL = new Date(Date.UTC(y, mo - 1, 0)).getUTCDate();
+    var rel = function (x, LL) { return x < 0 ? LL + 1 + x : Math.min(x, LL); }, A = w[0], B = w[1], g;
+    if (A > 0 && B >= A) g = { s: Math.min(A, L), e: Math.min(B, L), cut: '', a: Math.min(A, L), b: Math.min(B, L) };
+    else if (d <= B) g = { s: 1, e: B, cut: 'l', a: rel(A, pL), b: B };          // хвіст вікна, що почалося минулого місяця
+    else g = { s: rel(A, L), e: L, cut: 'r', a: rel(A, L), b: B };              // вікно відкривається наприкінці місяця й іде в наступний
+    g.L = L; g.d = d; g.st = d < g.s ? 'before' : d > g.e ? 'after' : 'open';
+    return g;
+  }
+  /** Місяць крапками для виду k; so — статус (heatStatus/waterStatus/sStatus): tone ok — передано, warn — останні дні; off (лічильник знято) — нічого. */
+  function pstrip(k, so, cls, p) {
+    var w = perWin(k, p); if (!w || (so && so.off)) return '';
+    var g = perGeo(w, today()), dots = '';
+    var tone = so && so.tone === 'ok' ? 'done' : so && so.tone === 'warn' && g.st === 'open' ? 'warn' : '';
+    for (var i = 1; i <= g.L; i++) dots += '<i class="' + (i >= g.s && i <= g.e ? 'w' : 'o') + (i < g.d ? ' p' : '') + (i === g.d ? ' t' : '') + '"></i>';
+    var lab = g.a === g.b ? String(g.a) : g.a + '–' + g.b;
+    var tip = t('pd_tip', { a: g.a, b: g.b }) + (g.cut === 'l' ? ' ' + t('pd_tip_l') : g.cut === 'r' ? ' ' + t('pd_tip_r') : '') + '\n' + t('pd_today', { d: fmtDate(today()) }) + (tone === 'done' ? '\n' + t('pd_done') : '');
+    return '<div class="prd prd-' + k + ' st-' + g.st + (tone ? ' ' + tone : '') + (g.cut ? ' cut-' + g.cut : '') + (cls ? ' ' + cls : '') + '" role="img" aria-label="' + esc(tip.replace(/\n/g, ' ')) + '" data-tip="' + esc(tip) + '" data-key="prd-' + k + '">' +
+      '<span class="prd-d" style="--n:' + g.L + '" aria-hidden="true">' + dots + '</span><span class="prd-l num" aria-hidden="true">' + lab + '</span></div>';
+  }
   /** Останні показання передано (владелец 05.11: «если переданы — только надпись, что переданы, без «внесено»»).
    *  Цього місяця — одна зелена «Передано 15 листопада» замість «внесено …» + «Передано цього місяця»; раніше — «передано 15 жовтня»
    *  тихим рядком (поруч може стояти строк нової передачі). o: { sub, status, tone }, d — дата переданих, lbl — свій текст (тепло: «Прийнято ХТМ»). */
@@ -9530,7 +9591,7 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
     if (src && src.own && (src.status === 'handed' || src.status === 'accepted')) cardSent(o, src.date, src.status === 'accepted' && !lite ? 'uc_heat_ok_d' : 'uc_sent_d');
     return ucard({ kind: 'heat', href: 'heat', icon: 'thermo', title: t('uc_heat'),
       display: lcd([{ text: val || '------', tag: 'Gcal', label: val ? val + ' Гкал' : '—' }], 'card'),
-      sub: o.sub, status: o.status, tone: o.tone, addAct: 'read', addLabel: t('uc_add_heat') });
+      sub: o.sub, status: o.status, tone: o.tone, per: pstrip('heat', hs), addAct: 'read', addLabel: t('uc_add_heat') });
   }
   function waterCard(kind) {
     var ms = wmeters(kind), title = wkindTitle(kind);
@@ -9546,7 +9607,7 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
     // передано — лише коли останні показання кожного водоміра цього виду передані (гаряча — і Водоканалу, і ХТМ)
     var wsent = function (r) { return r && !r.base && !r.gap && !r.own && wsentVk(r) && (kind === 'cold' || wsentHtm(r)); };
     if (lastK && recs.every(function (r) { return !r || wsent(r); }) && wsent(lastK)) cardSent(o, lastK.date);
-    return ucard({ kind: kind, href: 'water-' + kind, icon: 'drop', title: title, display: display, sub: o.sub, status: o.status, tone: o.tone, addAct: 'wnew', addKind: kind, addLabel: t('uc_add_w', { k: title.toLowerCase() }) });
+    return ucard({ kind: kind, href: 'water-' + kind, icon: 'drop', title: title, display: display, sub: o.sub, status: o.status, tone: o.tone, per: pstrip('water', ws), addAct: 'wnew', addKind: kind, addLabel: t('uc_add_w', { k: title.toLowerCase() }) });
   }
   /** Плитка «Налаштування квартири» под счётчиками (владелец 05.11: вместо «Додати лічильник» — настройки квартиры, там же добавить
    *  и прибрать счётчик). Пустая квартира — по-прежнему крупное «Додати лічильник»: настраивать там ещё нечего. */
@@ -9905,6 +9966,8 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
   function destBox(o) {
     return '<div class="dest"' + (o.id ? ' id="' + o.id + '" tabindex="-1"' : '') + ' data-key="dest-' + o.key + '"><div class="dest-h"><div class="grow"><b>' + esc(o.org) + '</b>' + (o.what ? '<div class="small muted">' + esc(o.what) + '</div>' : '') + '</div>' +
       (o.sent ? '<span class="pill ok">' + ico('check', 14) + ' ' + esc(t('ws_sent')) + '</span>' : o.due ? '<span class="pill ' + (o.dueTone || 'neutral') + '">' + esc(o.due) + '</span>' : '') + '</div>' +
+      // 136-а: смужка вікна прийому цього постачальника (o.per — вид: heat | water | elec | gas)
+      (o.per ? pstrip(o.per, { tone: o.sent ? 'ok' : o.dueTone === 'warn' ? 'warn' : '' }, 'in-dest' + (o.perCls ? ' ' + o.perCls : '')) : '') +
       (o.body || '') +
       ((o.chans && o.chans.length) || o.chx ? '<div class="dest-ch">' + (o.chans || []).map(function (c) { return '<a class="btn sec" href="' + c[0] + '" target="_blank" rel="noopener" data-key="dest-' + o.key + '-' + c[3] + '"' + (c[4] || '') + '>' + ico(c[2], 18) + '<span>' + esc(c[1]) + '</span></a>'; }).join('') + (o.chx || '') + '</div>' : '') + (o.note || '') +
       // телефоны, приложения, запасные каналы — свёрнуто «Інші способи» (владелец 07.11: «много лишней и дублирующейся информации»)
@@ -9973,7 +10036,7 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
     var vg2 = vkcGate(), vkChx = '';
     if (vg2 === 'acc') vkChx = '<a class="btn sec" href="#vkcab" data-key="vk-connect">' + ico('plus', 18) + '<span>' + esc(t('vc_conn_btn')) + '</span></a>';
     else if (vg2 === 'ok' && !rec) vkChx = '<a class="btn sec" href="#vkcab" data-key="vk-conn-on">' + ico('check', 18) + '<span>' + esc(t('vc_conn_ok')) + '</span></a>';
-    h += destBox({ key: 'vk', id: 'wsend-vk', org: t('wd_vk_org'), what: kind === 'cold' ? '' : kind === 'hot' ? t('wd_vk_hot') : t('wd_vk_both'),
+    h += destBox({ key: 'vk', id: 'wsend-vk', per: 'water', perCls: kind === 'hot' ? 'hot' : '', org: t('wd_vk_org'), what: kind === 'cold' ? '' : kind === 'hot' ? t('wd_vk_hot') : t('wd_vk_both'),
       due: vkDue, dueTone: w.open && w.daysLeft <= 3 ? 'warn' : 'neutral', sent: rec && wsentVk(rec), body: vkBody, chans: vkChans, chx: vkChans.length || !rec ? vkChx : '',
       more: '<p class="dm-t">' + esc(t('wd_vk_call')) + '</p><ul class="dm-ph"><li>' + telLink('+380577075851', '(057) 707-58-51') + '<span class="muted">' + esc(t('wd_vk_24')) + '</span></li><li><b>(050) 355-12-12</b><span class="muted">Viber</span></li></ul>', mark: rec && rec.vkAt && !wsentVk(rec) ? '' : mark('vk', rec && wsentVk(rec)) });
     // ХТМ: сама гаряча вода — лише бот і кол-центр (у кабінеті ХТМ форми для гарячої води немає)
@@ -10962,7 +11025,7 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
     var sent = function (r) { return r && !r.base && !r.own && ssent(k, r); };
     if (last && lasts.every(function (r) { return !r || sent(r); }) && sent(last)) cardSent(o, last.date);
     return ucard({ kind: k, href: SK[k].page, icon: SK[k].icon, title: t(KINDS[k].t), display: display, sub: o.sub,
-      status: o.status, tone: o.tone, addAct: SK[k].nw, addLabel: tk(k, 'ue_add') });
+      status: o.status, tone: o.tone, per: pstrip(k, es), addAct: SK[k].nw, addLabel: tk(k, 'ue_add') });
   }
   function elecCard() { return sCard('elec'); }
 
@@ -11095,7 +11158,7 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
         lbBox(loc, have || [], lbItemsS(k, ms, have), ms.length === 1 && dgt(ms[0].account) ? { acc: dgt(ms[0].account) } : null)) + '</section>';
     return '<section class="panel where" data-key="where-' + k + '"><h2>' + ico('send', 18, 'bt-ico') + '<span>' + esc(t('wd_title')) + '</span></h2>' +
       (places().length > 1 ? '<p class="dest-place" style="--pc:var(--pc-' + placeColor(place()) + ')" data-key="where-place"><b>' + esc(t('wd_for', { p: placeLabel(place()) })) + '</b>' + (placeSub(place()) ? '<span class="small muted"> · ' + esc(placeSub(place())) + '</span>' : '') + '</p>' : '') +
-      destBox({ key: k === 'gas' ? 'grm' : 'obl', id: 'esend', org: tk(k, 'ed_org'), what: '', due: due, dueTone: w.open && w.daysLeft <= 1 ? 'warn' : 'neutral', sent: allSent, body: body + acc, chans: chans, note: have ? sbBox(k, have) : '', more: more, mark: mark }) + '</section>';   // цифри → рахунок → кнопки → «Як це в боті» / відповідь бота
+      destBox({ key: k === 'gas' ? 'grm' : 'obl', id: 'esend', per: k, org: tk(k, 'ed_org'), what: '', due: due, dueTone: w.open && w.daysLeft <= 1 ? 'warn' : 'neutral', sent: allSent, body: body + acc, chans: chans, note: have ? sbBox(k, have) : '', more: more, mark: mark }) + '</section>';   // цифри → рахунок → кнопки → «Як це в боті» / відповідь бота
   }
   /** Рядки історії (нові зверху): скільки набігло і почім, на лічильнику, передано. */
   function srows(k, limit) {
@@ -12686,7 +12749,7 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
     var body = ready && !on ? '<div class="row-actions" style="margin-top:8px"><a class="btn" href="#handover" data-act="focus" data-id="' + ready.id + '" data-key="where-heat-handover">' + ico('copy', 18) + '<span>' + esc(t('wd_heat_ready', { d: fmtDate(ready.htm.date) })) + '</span></a></div>' : '';
     var bg = cabBgHeat(ready, 'where');
     return '<section class="panel where" data-key="where-heat"><h2>' + ico('send', 18, 'bt-ico') + '<span>' + esc(t('wd_title')) + '</span></h2>' +
-      destBox({ key: 'htm-heat', org: t('wd_htm_org'), what: '', due: due, dueTone: w.state === 'late' || w.state === 'last_day' ? 'warn' : 'neutral', body: body,
+      destBox({ key: 'htm-heat', per: 'heat', org: t('wd_htm_org'), what: '', due: due, dueTone: w.state === 'late' || w.state === 'last_day' ? 'warn' : 'neutral', body: body,
         chans: [[HTM_URL, t('ho_open'), 'ext', 'cab']], chx: bg.btn, note: bg.note, more: '<p class="dm-t">' + esc(t('wd_heat_more')) + '</p><ul class="dm-ph"><li>' + telLink('+380573414140', '(057) 341-41-40') + '</li></ul>' }) + '</section>';
   }
   /** Кабінет ХТМ у ряду каналів «Куди передати» (і на екранах перевірки та фото): не підключено — «Підключити кабінет», рівноцінна кнопка;
@@ -14858,7 +14921,7 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
     if (extra) body += extra;   // автовідправка (LocalBot) — після «як передати», перед кнопками каналів
     var more = (phones.length ? '<p class="dm-t">' + esc(t('ld_call')) + '</p><ul class="dm-ph">' + phones.map(function (x) { return '<li>' + telLink(x[0], x[1]) + (x[2] ? '<span class="muted">' + esc(x[2]) + '</span>' : '') + '</li>'; }).join('') + '</ul>' : '') +
       (pay ? '<p class="dm-t">' + esc(t('ld_pay_t')) + '</p><p>' + esc(pay) + '</p>' : '');
-    return destBox({ key: 'loc-' + k, org: org || t('ld_org_' + k), what: t('ld_what_' + k), sent: sent, body: body, chans: chans, more: more, mark: org ? mark : '' });
+    return destBox({ key: 'loc-' + k, per: k, org: org || t('ld_org_' + k), what: t('ld_what_' + k), sent: sent, body: body, chans: chans, more: more, mark: org ? mark : '' });
   }
   /** Тариф води квартири: свій з платіжки (p.prov.water) — главніше за загальний (wtar()). */
   function wtar() {
@@ -14898,7 +14961,7 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
     var need = (d && d.check && !my.ok && !own) || !org || (k === 'water' && !price);
     var h = '<div class="prov-row' + (need ? ' need' : '') + '" data-key="prov-' + k + '"><span class="pst-ico ' + PRV_ICO[k][1] + '">' + ico(PRV_ICO[k][0], 20) + '</span><div class="prov-b">' +
       '<p class="prov-k"><b>' + esc(t('prv_k_' + k)) + '</b>' + (my.ok || own ? '<span class="prov-ok">' + ico('check', 16) + esc(t(own ? 'prv_own' : 'prv_ok')) + '</span>' : '') + '</p>' +
-      '<p class="prov-org">' + (org ? esc(org) : '<span class="muted">' + esc(t('prv_org_none')) + '</span>') + '</p>' +
+      '<p class="prov-org">' + (org ? esc(org) : '<span class="muted">' + esc(t('prv_org_none')) + '</span>') + '</p>' + (org ? pstrip(k, null, 'in-prov', p) : '') +
       lines.map(function (x) { return '<p class="small muted">' + esc(x) + '</p>'; }).join('') +
       '<p class="prov-price' + (price ? '' : ' none') + '">' + esc(price || t('prv_p_none')) + '</p>' +
       (nxt ? '<p class="small muted" data-key="prov-next-' + k + '">' + esc(nxt) + '</p>' : '') +
