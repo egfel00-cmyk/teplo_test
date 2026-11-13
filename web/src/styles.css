@@ -2195,6 +2195,10 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
 .ss-lbl { min-width: 5.5em; font-size: 13px; color: var(--c-ink-2); }
 .ss-htm { grid-column: 1; }
 .ss-rc { font-size: 13px; color: var(--c-ink-2); }
+/* 130-а: чому «Лічильник» і «ХТМ» не збігаються — короткі рядки під підсумками */
+.ss-why { grid-column: 1; display: flex; flex-direction: column; gap: 2px; font-size: 13px; line-height: 1.4; color: var(--c-ink-2); margin-top: 4px; }
+.ss-why-t { color: var(--c-ink); font-weight: 600; }
+.hs-unit { margin: 4px 0 12px; }
 .ss-dd { grid-row: 1 / span 4; }
 .ss-empty { padding: 0 16px 12px; }
 

@@ -154,6 +154,32 @@
     });
   }
 
-  var api = { graph: graph, points: points, intervals: intervals, coolant: coolant, range: range, gapHeat: gapHeat, seasons: seasons, seasonKey: seasonKey, seasonOf: seasonOf, OK_TOL: OK_TOL, LOW_TOL: LOW_TOL };
+  /*
+   * 130-а (власник 13.11: «чому по лічильнику й у ХТМ різні суми»): проміжок через літо (від останніх показань сезону до перших наступного) —
+   * тепло двох сезонів: кінець старого (після останніх показань — до відключення) і початок нового. ХТМ кінець сезону нараховує в березні–квітні
+   * (тепло до показань кінця сезону), тож у підсумку сезону «лічильника» цю частину кладемо в старий сезон, решту — в новий.
+   * iv: {from, to, dE, fromE}; o: {journal: [{date, energy}] — прийняті ХТМ показання між ними (точно), newFrom — з якої дати могло бути тепло
+   * нового сезону (за нарахуваннями ХТМ), weather — {дата: °C}}. → {old, nu, sa, sb, by: 'journal'|'days'} | null (один сезон / не поділити).
+   */
+  var CLIM = { 1: -4.5, 2: -3.8, 3: 1.2, 4: 9.4, 5: 15.8, 6: 19.7, 7: 21.6, 8: 20.6, 9: 14.8, 10: 8.3, 11: 1.9, 12: -2.5 };   // Харків, норма °C по місяцях
+  function splitSummer(iv, o) {
+    o = o || {}; if (!iv || !iv.from || !iv.to || !(iv.dE > 0)) return null;
+    var sa = seasonOf(iv.from), sb = seasonOf(iv.to); if (sa === sb) return null;
+    var res = function (old, by) { old = Math.max(0, Math.min(iv.dE, old)); return { old: +old.toFixed(3), nu: +(iv.dE - old).toFixed(3), sa: sa, sb: sb, by: by }; };
+    var fe = num(iv.fromE), jp = (o.journal || []).filter(function (p) { return p && p.date > iv.from && p.date < iv.to && seasonOf(p.date) === sa && num(p.energy) !== null; })
+      .sort(function (a, b) { return a.date < b.date ? -1 : 1; }).slice(-1)[0];
+    if (jp && fe !== null && num(jp.energy) >= fe) return res(num(jp.energy) - fe, 'journal');
+    var oldEnd = (sa + 1) + '-04-15', newFrom = o.newFrom && o.newFrom > sb + '-10-15' ? o.newFrom : sb + '-10-15';
+    // вага доби — градусо-доба: погода, якщо дали, інакше середня Харкова за місяць (стабільно, не стрибає після завантаження погоди)
+    var w = o.weather, wd = function (d) { var t = w && typeof w[d] === 'number' ? w[d] : CLIM[+d.slice(5, 7)]; return Math.max(0, HDD_BASE - t); };
+    var win = function (a, b) { var out = []; for (var d = addDay(a, 1); d <= b; d = addDay(d, 1)) out.push(d); return out; };
+    var dOld = win(iv.from, iv.to < oldEnd ? iv.to : oldEnd), dNew = newFrom <= iv.to ? win(addDay(newFrom, -1), iv.to) : [];
+    if (!dOld.length && !dNew.length) return null;
+    var sum = function (a) { return a.reduce(function (s, d) { return s + wd(d); }, 0); }, wo = sum(dOld), wn = sum(dNew);
+    if (!(wo + wn > 0)) return null;
+    return res(iv.dE * wo / (wo + wn), 'days');
+  }
+
+  var api = { graph: graph, points: points, intervals: intervals, coolant: coolant, range: range, gapHeat: gapHeat, seasons: seasons, seasonKey: seasonKey, seasonOf: seasonOf, splitSummer: splitSummer, OK_TOL: OK_TOL, LOW_TOL: LOW_TOL };
   if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.TeploStats = api;
 })(typeof window !== 'undefined' ? window : this);
