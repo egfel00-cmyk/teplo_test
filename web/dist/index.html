@@ -4952,7 +4952,7 @@ details.wacc.wacc-btn > .acc-foot { margin: 0; padding: 12px 16px 16px; border-t
       pg_look: "Вигляд",
       pg_data: "Дані",
       pg_data_s: "Експорт, імпорт, стерти все",
-      wtp_title: "Тарифи на воду",
+      wtp_title: "Тарифи на воду", wtp_local: "Для квартири «{p}» рахуємо за тарифами вашого постачальника — {o}:", wtp_local_none: "Для квартири «{p}» ціну води з довідника ще не знайшли — впишіть її з платіжки на сторінці квартири.", wtp_local_hot: "Гаряча вода — {h} грн за м³", wtp_local_btn: "Змінити на сторінці квартири",
       wtp_sub: "Порожні поля — тарифи Харкова на {d} (підказка в полі). Свої цифри — якщо у платіжці інші; діють для всієї історії.",
       wtp_supply: "Водопостачання (Водоканал)",
       wtp_drain: "Водовідведення (Водоканал)",
@@ -6242,7 +6242,7 @@ details.wacc.wacc-btn > .acc-foot { margin: 0; padding: 12px 16px 16px; border-t
       pg_look: "Вид",
       pg_data: "Данные",
       pg_data_s: "Экспорт, импорт, стереть всё",
-      wtp_title: "Тарифы на воду",
+      wtp_title: "Тарифы на воду", wtp_local: "Для квартиры «{p}» считаем по тарифам вашего поставщика — {o}:", wtp_local_none: "Для квартиры «{p}» цену воды в справочнике ещё не нашли — впишите её из платёжки на странице квартиры.", wtp_local_hot: "Горячая вода — {h} грн за м³", wtp_local_btn: "Изменить на странице квартиры",
       wtp_sub: "Пустые поля — тарифы Харькова на {d} (подсказка в поле). Свои цифры — если в платёжке другие; действуют для всей истории.",
       wtp_supply: "Водоснабжение (Водоканал)",
       wtp_drain: "Водоотведение (Водоканал)",
@@ -16207,6 +16207,17 @@ details.wacc.wacc-btn > .acc-foot { margin: 0; padding: 12px 16px 16px; border-t
   document.addEventListener('toggle', function (e) { var d = e.target; if (d && d.classList && d.classList.contains('pgroup')) PREF_OPEN[d.id.slice(3)] = d.open; }, true);
   /** Тарифы воды: свои цифры поверх тарифов Харкова; как считается цена. */
   function wtariffPanel() {
+    // 141-а: квартира не в Харкові (вода — не Харківводоканал) — харківські тарифи й пояснення тут ні до чого: ціни її постачальника з довідника
+    // (або з її платіжки) — і посилання на сторінку квартири, де їх змінюють (wtar() усе одно бере їх, а не ці поля)
+    var lw = prvOf('water');
+    if (lw && lw.via !== 'hvk') {
+      var tw = wtar() || {}, pn = placeLabel(place()), m2 = function (v) { return money(R.num(v)).replace(/\s*грн$/, ''); }, has = R.num(tw.supply) > 0;
+      return '<div class="panel" data-key="prefs-wtariff"><h2>' + esc(t('wtp_title')) + '</h2>' +
+        '<p class="small muted">' + esc(has ? t('wtp_local', { p: pn, o: lw.org || '' }) : t('wtp_local_none', { p: pn })) + '</p>' +
+        (has ? '<p data-key="prefs-wtariff-local">' + esc(R.num(tw.drain) > 0 ? t('prv_p_water', { s: m2(tw.supply), d: m2(tw.drain) }) : t('prv_p_water1', { s: m2(tw.supply) })) +
+          (R.num(tw.hot) > 0 ? '<br>' + esc(t('wtp_local_hot', { h: m2(tw.hot) })) : '') + '</p>' : '') +
+        '<p><a class="btn sec" href="#place-' + esc(S.placeId) + '" data-key="prefs-wtariff-place">' + esc(t('wtp_local_btn')) + '</a></p></div>';
+    }
     var c = S.wtariff || {}, d = Wt.tariffAt(today()), f = function (v) { return String(v).replace('.', ','); };
     var fld = function (k, lbl, def) { return '<div class="field"><label for="p-w' + k + '">' + esc(lbl) + '</label><div class="ctl"><input id="p-w' + k + '" class="num" inputmode="decimal" data-wt="' + k + '" placeholder="' + esc(f(def)) + '" value="' + esc(c[k] ? f(c[k]) : '') + '"><span class="unit">грн/м³</span></div></div>'; };
     return '<div class="panel" data-key="prefs-wtariff"><h2>' + esc(t('wtp_title')) + '</h2><p class="small muted">' + esc(t('wtp_sub', { d: fmtDate(today(), true) })) + '</p>' +

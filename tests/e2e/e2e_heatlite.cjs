@@ -62,6 +62,9 @@ let pass = 0, fail = 0; const ok = (n, c, x) => { if (c) { pass++; console.log('
   ok('Київ: тепло, історія, статистика, квартира — без «ХТМ» (форма кабінету ХТМ, «Прийнято ХТМ», «за тарифом ХТМ», «ХТМ радить»)', Object.values(noHtm).every(a => !a.length), noHtm);
   await p.goto(U + '#history'); await p.waitForTimeout(800);
   ok('Київ: історія — «1 Гкал = 1 654 грн за тарифом постачальника»', /1\s654 грн за тарифом постачальника/.test((await p.textContent('[data-key=hs-unit]')).replace(/\u00a0|\u202f/g, ' ')), await p.textContent('[data-key=hs-unit]').catch(() => ''));
+  await p.goto(U + '#prefs'); await p.waitForTimeout(900); await p.evaluate(() => document.querySelectorAll('details').forEach(d => d.open = true)); await p.waitForTimeout(250);
+  const wtp = (await p.textContent('[data-key=prefs-wtariff]').catch(() => '')).replace(/\u00a0|\u202f/g, ' ');
+  ok('Київ: Налаштування → «Тарифи на воду» — Київводоканал 36,85 і 26,94, гаряча 97,89, без «Тарифи Харкова»', /Київводоканал/.test(wtp) && /36,85/.test(wtp) && /26,94/.test(wtp) && /97,89/.test(wtp) && !/Харк/.test(wtp) && !!(await p.$('[data-key=prefs-wtariff-place]')), wtp.slice(0, 300));
   // Харків — повний майстер ХТМ
   await p.evaluate(() => { const s = JSON.parse(localStorage.getItem('teplo.v1')); s.places[0].address = 'пр. Перемоги 86А, кв. 61'; delete s.places[0].city; s.demoToday = '2026-11-20'; s.draft = null; localStorage.setItem('teplo.v1', JSON.stringify(s)); });
   await p.goto(U + '#meter'); await p.reload(); await p.waitForTimeout(1200);
@@ -69,6 +72,8 @@ let pass = 0, fail = 0; const ok = (n, c, x) => { if (c) { pass++; console.log('
   await p.goto(U + '#home'); await p.waitForTimeout(400); await p.evaluate(() => document.querySelector('[data-act=read]').click()); await p.waitForTimeout(400);
   await p.click('[data-act=step-next]'); await p.waitForTimeout(400);
   ok('Харків: крок 1 майстра — без «лише це число», далі є ще кроки (обсяг…)', !(await p.$('[data-key=step-lite]')) && /#step-1$/.test(p.url()));
+  await p.goto(U + '#prefs'); await p.waitForTimeout(900); await p.evaluate(() => document.querySelectorAll('details').forEach(d => d.open = true)); await p.waitForTimeout(250);
+  ok('Харків: «Тарифи на воду» — як було (поля й тарифи Харкова)', !!(await p.$('#p-wsupply')) && /Харкова/.test(await p.textContent('[data-key=prefs-wtariff]')));
   ok('без помилок JS', !errs.length, errs);
   console.log(`\n${pass} OK, ${fail} FAIL`); await b.close(); process.exit(fail ? 1 : 0);
 })();

@@ -7289,6 +7289,17 @@
   document.addEventListener('toggle', function (e) { var d = e.target; if (d && d.classList && d.classList.contains('pgroup')) PREF_OPEN[d.id.slice(3)] = d.open; }, true);
   /** Тарифы воды: свои цифры поверх тарифов Харкова; как считается цена. */
   function wtariffPanel() {
+    // 141-а: квартира не в Харкові (вода — не Харківводоканал) — харківські тарифи й пояснення тут ні до чого: ціни її постачальника з довідника
+    // (або з її платіжки) — і посилання на сторінку квартири, де їх змінюють (wtar() усе одно бере їх, а не ці поля)
+    var lw = prvOf('water');
+    if (lw && lw.via !== 'hvk') {
+      var tw = wtar() || {}, pn = placeLabel(place()), m2 = function (v) { return money(R.num(v)).replace(/\s*грн$/, ''); }, has = R.num(tw.supply) > 0;
+      return '<div class="panel" data-key="prefs-wtariff"><h2>' + esc(t('wtp_title')) + '</h2>' +
+        '<p class="small muted">' + esc(has ? t('wtp_local', { p: pn, o: lw.org || '' }) : t('wtp_local_none', { p: pn })) + '</p>' +
+        (has ? '<p data-key="prefs-wtariff-local">' + esc(R.num(tw.drain) > 0 ? t('prv_p_water', { s: m2(tw.supply), d: m2(tw.drain) }) : t('prv_p_water1', { s: m2(tw.supply) })) +
+          (R.num(tw.hot) > 0 ? '<br>' + esc(t('wtp_local_hot', { h: m2(tw.hot) })) : '') + '</p>' : '') +
+        '<p><a class="btn sec" href="#place-' + esc(S.placeId) + '" data-key="prefs-wtariff-place">' + esc(t('wtp_local_btn')) + '</a></p></div>';
+    }
     var c = S.wtariff || {}, d = Wt.tariffAt(today()), f = function (v) { return String(v).replace('.', ','); };
     var fld = function (k, lbl, def) { return '<div class="field"><label for="p-w' + k + '">' + esc(lbl) + '</label><div class="ctl"><input id="p-w' + k + '" class="num" inputmode="decimal" data-wt="' + k + '" placeholder="' + esc(f(def)) + '" value="' + esc(c[k] ? f(c[k]) : '') + '"><span class="unit">грн/м³</span></div></div>'; };
     return '<div class="panel" data-key="prefs-wtariff"><h2>' + esc(t('wtp_title')) + '</h2><p class="small muted">' + esc(t('wtp_sub', { d: fmtDate(today(), true) })) + '</p>' +
