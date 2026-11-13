@@ -4853,7 +4853,8 @@
       // 131-а: «уточнюється» — лише там, де відома частина (брошура, нечітка схема); кроки з посібника виробника цілком — «За посібником виробника»
       var tag = m.status === 'verified' ? '<span class="pill ok">' + esc(t('m_verified')) + '</span>' : m.status === 'draft' || m.status === 'manual' ? '<span class="pill">' + esc(t(m.status === 'manual' ? 'm_manual' : 'm_draft')) + '</span>' : '';
       var name = m.id === 'other' ? esc(t('m_other')) : esc(m.name);
-      var sub = m.id === 'other' ? esc(t('m_other_sub')) : esc(m.vendor !== '—' ? m.vendor : '');
+      // 133-я: назви з наклейки (TRUST, ULTRAMETER, ЛТЕ) — підпис, що справжня модель невідома
+      var sub = m.id === 'other' ? esc(t('m_other_sub')) : m.sub ? esc(L(m.sub)) : esc(m.vendor !== '—' ? m.vendor : '');
       return '<li><label><input type="radio" name="model" value="' + m.id + '"' + (sel === m.id ? ' checked' : '') + ' data-act="pick-model">' +
         meterGlyph() + '<span class="grow"><span class="name">' + name + '</span>' + (sub ? '<br><span class="vendor">' + sub + '</span>' : '') + (tag ? '<br>' + tag : '') + '</span></label></li>';
     }).join('');

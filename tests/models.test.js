@@ -119,4 +119,8 @@ ok('фото: MULTICAL 402, SENSOSTAR 2 / MSH, SensoStar E, PolluCom EX, ULTRAHE
   ['MULTICAL 402', 'Kamstrup MULTICAL 302', 'SENSOSTAR 2', 'SENSOSTAR®2+', 'MSH-SStar', 'SensoStar E', 'Sensus PolluCom EX', 'ULTRAHEAT 2WR6', 'ULTRAHEAT T350', 'ULTRAHEAT T330', 'Supercal 739', 'CF-UltraMaXX', 'Integral-MK UltraMaXX', 'ULTRAMETER UM-15'].map(mid));
 ok('фото: PolluCom з «Sensus» (виробник водомірів) — тепло, не вода', kind('Sensus PolluCom E 0012.345') === 'heat' && kind('Supercal 739 012345') === 'heat');
 
+ok('назви з наклейки (TRUST, ULTRAMETER, ЛТЕ): підпис у списку й «Інша модель» у «Екран не той?» — справжня модель невідома',
+  ['trust', 'ultrameter', 'lte1'].every(id => { const m = M.byId(id); return m.sticker && both(m.sub) && /невідом|не знайшли|немає/.test(m.sub.uk) && /Інша модель/.test(m.loops.tip.uk) && /Другая модель/.test(m.loops.tip.ru); }) &&
+    M.MODELS.filter(m => m.sticker).map(m => m.id).join() === 'trust,ultrameter,lte1');
+
 console.log(`\nИтог: ${pass} OK, ${fail} FAIL`); process.exit(fail ? 1 : 0);

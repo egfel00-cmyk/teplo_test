@@ -67,6 +67,9 @@ a { color: var(--c-return); text-underline-offset: 3px; }
 .top .spacer { flex: 1; }
 .main { flex: 1; width: 100%; max-width: 720px; margin: 0 auto; padding: var(--sp-2) var(--sp-4) calc(var(--tap) + 48px); }
 .main.bare { padding-bottom: var(--sp-7); }
+/* 133-я (скрин iPhone владельца): «Відгук» висить над меню (58 + 12 px) і закривав останній рядок сторінки — «Умови використання» в Налаштуваннях;
+   запас під ним: меню 58 + відступ 12 + кнопка 44 + 18, плюс безпечна зона */
+@media (max-width: 959px) { body:has(.fab) .main:not(.bare) { padding-bottom: calc(132px + env(safe-area-inset-bottom)); } }
 .nav.nav-side { display: none; }   /* телефон: на екранах вводу нижнього меню немає (місце клавіатурі й кнопкам); на ≥ 960 — бічне меню */
 .nav { position: fixed; left: 0; right: 0; bottom: 0; display: grid; grid-template-columns: repeat(var(--nav-n, 5), auto); padding-left: 4px; padding-right: 4px; background: var(--c-surface);
   border-top: 1px solid var(--c-line); box-shadow: 0 -6px 18px var(--c-ghost-hover); padding-bottom: env(safe-area-inset-bottom); z-index: 5; }
