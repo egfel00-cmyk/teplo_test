@@ -21,8 +21,8 @@ const U = 'http://127.0.0.1:8013/', DATA = process.env.SITE_DATA || '/tmp/teplo_
   ok('GET /api/htm/spr — лише свої: 2 місяці', await p.evaluate(() => window.TeploSync.api('GET', '/htm/spr').then(j => j.places.length === 1 && j.places[0].rows.length === 2)));
   await p.goto(U + '#history'); await wait(500); await p.reload(); await wait(2500);
   const h1 = await p.textContent('[data-key=reading-r1]').catch(() => ''), h2 = await p.textContent('[data-key=reading-r2]').catch(() => ''), h3 = await p.textContent('[data-key=reading-r3]').catch(() => '');
-  ok('історія: лютий — офіційно 4 657 грн (4625,73 + 31,20), без «≈», «ХТМ нарахував 2,796 Гкал»', /4\s?657/.test(h1) && !/≈/.test(h1) && /ХТМ нарахував 2,796 Гкал/.test(h1), h1);
-  ok('…березень — 3 334 грн (3403,12 + 31,20 − пільга 100)', /3\s?334/.test(h2) && /ХТМ нарахував 2,057 Гкал/.test(h2), h2);
+  ok('історія (129-а): лютий — лічильник +1,290 Гкал ≈ грн, окремо «ХТМ за лютий 2026: 2,796 Гкал · 4 656,93 грн» (4625,73 + 31,20)', /\+1,290 Гкал≈/.test(h1) && /ХТМ за лютий 2026:2,796 Гкал4\s?656,93/.test(h1), h1);
+  ok('…березень — 3 334 грн (3403,12 + 31,20 − пільга 100)', /ХТМ за березень 2026:2,057 Гкал3\s?334,32/.test(h2), h2);
   ok('…квітень (довідки ще немає) — наш розрахунок «≈»', /≈/.test(h3) && !/ХТМ нарахував/.test(h3), h3);
   await p.goto(U + '#rec-r1'); await wait(1500);
   const pan = await p.textContent('[data-key=rec-htm]').catch(() => '');

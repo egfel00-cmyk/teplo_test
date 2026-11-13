@@ -253,7 +253,9 @@
     uid: function () { return (C.idp || 'e') + Date.now().toString(36) + Math.random().toString(36).slice(2, 7); } };
   }
   // світло — Харківобленерго / Харківенергозбут
-  var elec = make({ price: [{ from: '2000-01-01', p: 4.32 }], heat: { p: 2.64, limit: 2000 }, jump: 1500, jumpHeat: 4000, decimals: 2, idp: 'e',
+  // 129-а (власник 13.11, платіжка за світло): показання 11 листопада (проміжок 11.10–11.11) — «за жовтень». Місяць — той, на який припадає більша частина
+  // місячного проміжку: показання до 15-го включно — за попередній місяць (раніше — лише 1–3 число)
+  var elec = make({ price: [{ from: '2000-01-01', p: 4.32 }], heat: { p: 2.64, limit: 2000 }, jump: 1500, jumpHeat: 4000, decimals: 2, idp: 'e', lateDays: 15,
     phones: PHONES, links: { ios: OBL_APP_IOS, android: OBL_APP_ANDROID, zbut: ZBUT_SITE } });
   elec.OBL_APP_IOS = OBL_APP_IOS; elec.OBL_APP_ANDROID = OBL_APP_ANDROID; elec.ZBUT_SITE = ZBUT_SITE;
   elec.OBL_BOT = OBL_BOT; elec.OBL_FORM = OBL_FORM; elec.SMS = ELEC_SMS;

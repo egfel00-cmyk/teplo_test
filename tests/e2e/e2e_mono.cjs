@@ -60,9 +60,9 @@ const TOK = 'uMonoSyntheticToken_0123456789abcdefABCDEF-xyz', BAD = 'uRevokedSyn
   await p.evaluate(() => { window.TeploMono.GAP = 600; });   // у житті — 61 с між запитами виписки
   await p.evaluate(t => navigator.clipboard.writeText('Токен: ' + t + '\n'), TOK); await click('[data-key=mono-paste]', 100);
   await p.waitForSelector('[data-key=mono-list]', { timeout: 15000 });
-  const st0 = calls.filter(c => /statement\//.test(c)).length, rows0 = await p.$$eval('.mono-g', es => es.length), bg0 = !!(await p.$('[data-key=mono-bg]'));
+  const st0 = calls.filter(c => /statement\//.test(c)).length, rows0 = await p.$$eval('.mono-g', es => es.length), bg0 = !!(await p.$('[data-key=mono-prog]'));
   ok('«Вставити ключ» з «Токен: …» у буфері: список — після першого вікна (1 запит виписки), фоном читаємо далі', st0 === 1 && rows0 === 5 && bg0, { st0, rows0, bg0, calls });
-  await p.waitForSelector('[data-key=mono-bg]', { state: 'detached', timeout: 15000 });
+  await p.waitForSelector('[data-key=mono-prog]', { state: 'detached', timeout: 15000 });
   const st1 = calls.filter(c => /statement\/acc1\//.test(c)).length;
   ok('client-info + 6 вікон виписки лише гривневої картки (128-а: головна — до 6 місяців)', calls.filter(c => /client-info/.test(c)).length === 2 && st1 === 6 && !calls.some(c => /statement\/usd/.test(c)), calls);
   const rows = await p.$$eval('.mono-g', es => es.map(e => ({ t: e.textContent, on: !!e.querySelector('input[data-mf=on]:checked'), dis: !!e.querySelector('input[data-mf=on][disabled]') })));
@@ -120,10 +120,11 @@ const TOK = 'uMonoSyntheticToken_0123456789abcdefABCDEF-xyz', BAD = 'uRevokedSyn
   ok('500 операцій у вікні — друга сторінка того ж вікна одразу наступним запитом (from той самий, to — найстаріша)', hs.length >= 2 && w1[4] === w0[4] && +w1[5] < +w0[5] && +w1[5] === hv[499].time, hs);
   const hrows = await ph.$$eval('.mono-g', es => es.map(e => e.textContent));
   ok('знайшлась оплата ХТМ з «хвоста» (о/р 2223334); штрафу в списку немає', hrows.some(t => /2223334/.test(t) && /тепло/.test(t)) && !hrows.some(t => /ГУК|Штраф|благоустр/.test(t)), hrows.map(t => t.slice(0, 60)));
-  const bgT = await ph.textContent('[data-key=mono-bg]').catch(() => '');
-  ok('«Ще переглядаю» — з якої дати дочитали, скільки хвилин, кнопка «Досить шукати»', /Переглянули оплати з .+ ще приблизно \d+ хв/.test(bgT) && /Досить шукати/.test(bgT), bgT);
+  const bgT = await ph.textContent('[data-key=mono-prog]').catch(() => '');
+  await ph.screenshot({ path: '/tmp/shot_mono_bg.png', fullPage: false }).catch(() => {});
+  ok('129-а: блок прогресу — «Дочитую старіші місяці», ≈ хвилин, від якої дати, кнопка «Досить — показати знайдене»', /Дочитую старіші місяці/.test(bgT) && /≈ \d+ хв/.test(bgT) && /від \d/.test(bgT) && /Досить/.test(bgT), bgT);
   const nBefore = hcalls.length; await ph.click('[data-key=mono-stop]'); await ph.waitForTimeout(2500);
-  ok('«Досить шукати»: рядок пропав, запитів більше немає, список і «Вписати» лишились', !(await ph.$('[data-key=mono-bg]')) && hcalls.length === nBefore && !!(await ph.$('[data-key=mono-apply]')), { n: hcalls.length - nBefore });
+  ok('«Досить шукати»: рядок пропав, запитів більше немає, список і «Вписати» лишились', !(await ph.$('[data-key=mono-prog]')) && hcalls.length === nBefore && !!(await ph.$('[data-key=mono-apply]')), { n: hcalls.length - nBefore });
   await ph.close();
   // рос. мова — за мовою браузера
   const pr =await (await require('./pvopen.cjs').ctx(b, { viewport: { width: 360, height: 800 }, locale: 'ru-RU' })).newPage();

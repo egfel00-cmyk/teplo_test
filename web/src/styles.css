@@ -2181,3 +2181,46 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
 .ctl-eye[aria-pressed="true"] { color: var(--c-ink); }
 @media (prefers-reduced-motion: reduce) { .auth-more .auth-chev { transition: none; } }
 
+
+/* 129-а (власник 13.11): історія тепла — один джерело на рядок; ХТМ окремим підписаним рядком, фільтр «Усе · Показання · ХТМ», два підсумки сезону */
+.hf-sw { display: flex; gap: 6px; margin: 4px 0 14px; flex-wrap: wrap; }
+.hf-sw button { min-height: 40px; padding: 8px 16px; border-radius: 999px; border: 1px solid var(--c-line); background: transparent; color: var(--c-ink); font: inherit; font-size: 15px; cursor: pointer; }
+.hf-sw button[aria-pressed="true"] { background: var(--c-ink); color: var(--c-on-ink); border-color: var(--c-ink); }
+.hf-sw button:focus-visible { outline: 2px solid var(--c-info); outline-offset: 2px; }
+.hrow .hr-htm { margin-top: 6px; display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 10px; font-size: 14px; color: var(--c-ink-2); font-variant-numeric: tabular-nums; }
+.hrow .hr-htm b { color: var(--c-ink); font-weight: 500; }
+.hr-htm-l { color: var(--c-ink-2); }
+.hr-htm-t, .hr-htm-d { font-size: 13px; color: var(--c-ink-2); }
+.hr-htm-t { color: var(--c-warn-ink, var(--c-ink-2)); }
+.ss-lbl { min-width: 5.5em; font-size: 13px; color: var(--c-ink-2); }
+.ss-htm { grid-column: 1; }
+.ss-rc { font-size: 13px; color: var(--c-ink-2); }
+.ss-dd { grid-row: 1 / span 4; }
+.ss-empty { padding: 0 16px 12px; }
+
+/* 129-а (власник 13.11): monobank — прогрес пошуку одним блоком: місяці клітинками, смуга, знайдене, «Досить шукати» кнопкою */
+.mono-prog { display: grid; gap: var(--sp-3); padding: var(--sp-4); }
+.mono-prog .mp-head, .mono-none .mp-head { display: flex; align-items: center; gap: var(--sp-2); font-size: var(--fs-m, 17px); }
+.mono-prog .mp-head b, .mono-none .mp-head b { font-weight: 600; }
+.mp-left { margin-left: auto; font-size: 15px; color: var(--c-ink-2); white-space: nowrap; }
+.mp-cal { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(48px, 1fr)); gap: var(--sp-1); }
+.mp-c { display: grid; justify-items: center; gap: 2px; padding: 8px 4px 6px; border-radius: 10px; background: var(--c-surface-2); color: var(--c-ink-2); font-size: 13px; }
+.mp-c .mp-m { font-size: 14px; font-weight: 500; }
+.mp-c .mp-i { height: 18px; display: grid; place-items: center; }
+.mp-c .mp-i .spin { width: 14px; height: 14px; border-width: 2px; }
+.mp-c.done { background: var(--c-ok-soft); color: var(--c-ok-ink); }
+.mp-c.now { background: var(--c-surface); color: var(--c-ink); box-shadow: inset 0 0 0 1.5px var(--c-ink); }
+.mono-prog .pbar { margin-top: 0; }
+.mp-meta { margin: -4px 0 0; color: var(--c-ink-2); font-variant-numeric: tabular-nums; }
+.mp-found { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2); }
+.mp-fl { font-size: 15px; font-weight: 500; } .mp-none { margin: 0; font-weight: 400; color: var(--c-ink-2); }
+.mp-why, #mono-wait { margin: 0; } #mono-wait:empty { display: none; }
+.mp-act .btn { width: 100%; justify-content: center; }
+.mono-prog.compact { gap: var(--sp-2); padding: var(--sp-3) var(--sp-4); margin-bottom: var(--sp-3); }
+.mono-prog.compact .mp-head { font-size: 15px; }
+.mono-prog.compact .mp-act .btn { min-height: 44px; }
+.mono-none { display: grid; gap: var(--sp-2); } .mono-none p { margin: 0; }
+@media (min-width: 720px) { .mp-act .btn { width: auto; } }
+/* 129-а: картка запису — «Було …» під назвою показання (замість окремого рядка «На лічильнику: з … до …») */
+.ru-vals .ru-n { display: block; }
+.ru-vals .ru-prev { display: block; margin-top: 2px; font-size: 14px; color: var(--c-ink-2); font-variant-numeric: tabular-nums; }
