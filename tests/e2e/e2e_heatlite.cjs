@@ -51,6 +51,17 @@ let pass = 0, fail = 0; const ok = (n, c, x) => { if (c) { pass++; console.log('
   await p.goto(U + '#help'); await p.waitForTimeout(600);
   const hl = await p.textContent('main');
   ok('довідка (Київ): строк із довідника, без вікна ХТМ і робота ХТМ', /з 5 числа до кінця місяця/.test(hl) && /до кінця місяця/.test(hl) && !/з 5 по 25 число/.test(hl) && !/робот ХТМ/.test(hl) && !/Телефони ХТМ/.test(hl), hl.slice(0, 300));
+  // 141-а: сторінки тепла, історія, статистика, налаштування квартири (Київ) — без «ХТМ»: «Передано …», «за тарифом постачальника», «Зазвичай радять > 3 °C»
+  const noHtm = {};
+  for (const r of ['heat', 'history', 'stats', 'place-main']) {
+    await p.goto(U + '#' + r); await p.waitForTimeout(900);
+    await p.evaluate(() => document.querySelectorAll('details').forEach(d => d.open = true)); await p.waitForTimeout(250);
+    const tx = await p.evaluate(() => document.getElementById('main').innerText);
+    noHtm[r] = (tx.match(/[^\n]*ХТМ[^\n]*/g) || []).filter(l => !/квитанції Водоканалу/.test(l)).slice(0, 3);
+  }
+  ok('Київ: тепло, історія, статистика, квартира — без «ХТМ» (форма кабінету ХТМ, «Прийнято ХТМ», «за тарифом ХТМ», «ХТМ радить»)', Object.values(noHtm).every(a => !a.length), noHtm);
+  await p.goto(U + '#history'); await p.waitForTimeout(800);
+  ok('Київ: історія — «1 Гкал = 1 654 грн за тарифом постачальника»', /1\s654 грн за тарифом постачальника/.test((await p.textContent('[data-key=hs-unit]')).replace(/\u00a0|\u202f/g, ' ')), await p.textContent('[data-key=hs-unit]').catch(() => ''));
   // Харків — повний майстер ХТМ
   await p.evaluate(() => { const s = JSON.parse(localStorage.getItem('teplo.v1')); s.places[0].address = 'пр. Перемоги 86А, кв. 61'; delete s.places[0].city; s.demoToday = '2026-11-20'; s.draft = null; localStorage.setItem('teplo.v1', JSON.stringify(s)); });
   await p.goto(U + '#meter'); await p.reload(); await p.waitForTimeout(1200);

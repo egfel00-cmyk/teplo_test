@@ -355,6 +355,7 @@
   }
   /** Блок «Як у вашому кабінеті ХТМ»: одиниця енергії й колонки часу (open — розгорнутий, коли одиницю ще не підтверджено). */
   function htmFormBox(open) {
+    if (heatLite()) return '';   // 141-а: тепло не ХТМ — постачальнику одне число, форми кабінету ХТМ немає
     var u = htmUnit(), us = ['Gcal', 'GJ', 'MWh', 'kWh'];
     return '<details class="where htm-form" data-key="htm-form"' + (open ? ' open' : '') + '><summary>' + esc(t('hf_title')) + '</summary>' +
       '<p class="small muted">' + esc(t('hf_lead')) + '</p><p><b>' + esc(t('hf_unit')) + '</b></p><div class="choice">' +
@@ -2651,7 +2652,7 @@
       '<div class="field"><label for="p-hser">' + esc(t('wm_serial')) + '</label><div class="ctl"><input id="p-hser" class="num" autocomplete="off" data-hm="serial" value="' + esc(hm.serial || '') + '">' + ctlCopy('p-hser') + '</div></div>' +
       '<div class="field"><label for="p-ver">' + esc(t('mv_date')) + '</label><div class="ctl"><input id="p-ver" type="date" value="' + esc(hm.verifiedUntil || '') + '"></div></div></div>';
   }
-  function hmAccField() { var hm = S.meter || {}; return '<div class="field"><label for="p-hacc">' + esc(t('hm_acc')) + '</label><div class="ctl"><input id="p-hacc" class="num" inputmode="numeric" autocomplete="off" data-hm="account" value="' + esc(hm.account || '') + '">' + ctlCopy('p-hacc') + '</div><div class="help">' + esc(t('hm_acc_h')) + '</div></div>'; }
+  function hmAccField() { var hm = S.meter || {}, L = heatLite() ? '_l' : ''; return '<div class="field"><label for="p-hacc">' + esc(t('hm_acc' + L)) + '</label><div class="ctl"><input id="p-hacc" class="num" inputmode="numeric" autocomplete="off" data-hm="account" value="' + esc(hm.account || '') + '">' + ctlCopy('p-hacc') + '</div><div class="help">' + esc(t('hm_acc_h' + L)) + '</div></div>'; }
   /** «Ціна» в налаштуваннях кожного лічильника: відома — вже вписана (з довідника за адресою чи з платіжки), невідома — порожнє
    *  поле і прохання вписати з платіжки. k: heat | hot | cold | elec | gas. Пишемо в квартиру: p.prov[heat|water|elec].price…, p.gasPrice, p.bill.abon. */
   function priceBlock(k) {
@@ -4487,7 +4488,7 @@
       sub: [modelName(m), energyUnit() !== 'Gcal' ? unitLbl(energyUnit()) : ''],
       display: lcd([{ text: bs ? R.formatForHtm('energy', bs.energy) : '------', tag: 'Gcal', label: bs ? R.formatForHtm('energy', bs.energy) + ' Гкал' : '—' }], 'hero'),
       copy: bs && R.num(bs.energy) !== null ? R.formatForHtm('energy', bs.energy) : '',
-      cap: bs ? t('h_last_d', { d: fmtDate(bs.date, true) }) : t('h_last_none'),
+      cap: bs ? t(heatLite() ? 'uc_sent_d' : 'h_last_d', { d: fmtDate(bs.date, true) }) : t('h_last_none'),   // 141-а: тепло не ХТМ — «Передано …», не «Прийнято ХТМ»
       body: (NOTE_NEWER && newer ? '<p class="small muted mb-newer">' + esc(t(newer.own ? 'mb_newer_own' : 'mb_newer_heat', { d: fmtDate(newer.htm.date, true), s: t('status_' + newer.status).toLowerCase() })) + '</p>' : '') +
         (bs ? '' : '<p class="small muted">' + esc(t('h_last_none_sub')) + '</p><p><a class="btn sec" href="#baseline" data-key="home-add-base">' + esc(t('h_add_base')) + '</a></p>'),
       meta: [verWarn(S.meter && S.meter.verifiedUntil)].filter(Boolean),
@@ -5427,7 +5428,7 @@
     if (HF.v === 'own') arr = arr.filter(function (x) { return !x.b && !x.n; });
     else if (HF.v === 'htm') arr = hms.map(function (m) { return { d: m.ym + '-28', n: { ym: m.ym, heat: null, m: m } }; });
     return { screen: 'S09', route: 'history', html: '<h1>' + esc(t('hi_title')) + '</h1>' + kindSwitch() + sw +
-      (arr.length ? '<p class="small muted hs-unit" data-key="hs-unit">' + esc(t('hs_unit', { p: money0(tariff()) })) + '</p>' + seasonList(arr) : '<div class="panel"><p class="muted">' + esc(t('hi_empty')) + '</p><button class="btn" data-act="read">' + esc(t('hi_empty_cta')) + '</button></div>') + (HF.v === 'htm' ? '' : gapAddLink('heat')) };
+      (arr.length ? '<p class="small muted hs-unit" data-key="hs-unit">' + esc(t(heatLite() ? 'hs_unit_l' : 'hs_unit', { p: money0(tariff()) })) + '</p>' + seasonList(arr) : '<div class="panel"><p class="muted">' + esc(t('hi_empty')) + '</p><button class="btn" data-act="read">' + esc(t('hi_empty_cta')) + '</button></div>') + (HF.v === 'htm' ? '' : gapAddLink('heat')) };
   }
   /** 130-а: прийняті ХТМ показання свого лічильника з кабінету (журнал «Довідки по теплу»), без запасного списку із застосунку. */
   function hsprJournal() { var x = (HSPR.places || []).filter(function (p) { return p.place === S.placeId; })[0], own = (x && x.own) || []; return own.filter(function (o) { return o && o.status !== 'rejected' && o.date && typeof o.energy === 'number'; }); }
@@ -5530,7 +5531,7 @@
         (why.length ? '<span class="ss-why" data-key="season-why-' + k + '"><span class="ss-why-t">' + esc(t('hs_why')) + '</span>' + why.map(function (w) { return '<span>' + esc(w) + '</span>'; }).join('') + '</span>' : '') +
         (sub && HF.v !== 'htm' ? '<span class="ss-sub">' + subSpans(sub) + '</span>' : '') + ico('chev', 18, 'pacc-chev ss-dd') + '</summary>' +
         (groups[k].length ? readingList(groups[k]) : '<p class="small muted ss-empty">' + esc(t('hs_only_htm')) + '</p>') + '</details>';
-    }).join('') + '<p class="small muted" data-key="hs-hint">' + esc(t(HF.v === 'htm' ? 'hs_hint_htm' : Object.keys(hz).length && HF.v === 'all' ? 'hs_hint_both' : 'hs_hint')) + '</p>';
+    }).join('') + '<p class="small muted" data-key="hs-hint">' + esc(t(HF.v === 'htm' ? 'hs_hint_htm' : Object.keys(hz).length && HF.v === 'all' ? 'hs_hint_both' : heatLite() ? 'hs_hint_l' : 'hs_hint')) + '</p>';
   }
 
   /** Карточка показаний из истории: все 10 значений, сколько набежало и почём; правка и удаление. */
@@ -5723,7 +5724,7 @@
       tip: [pc + '% ' + t('stt_share_tip'), period(it), t('stt_off_h', { h: Math.max(0, Math.round(it.days * 24 - it.dH)) })] }; }), { title: t('st3_title'), max: 100, dec: 0, ref: { v: 100, label: '100%' } }) : '';
     var withT = ivs.filter(function (it) { return it.dT != null && !summer(it); });
     var c4 = withT.length ? barChart(withT.map(function (it) { return { x: lbl(it), v: it.dT, top: fmtN(it.dT, 1) + '°', color: it.dT >= 3 ? CH.bar : CH.low,
-      tip: [fmtN(it.dT, 1) + ' °C ' + t('stt_dt_tip'), period(it), it.flow != null ? t('stt_avgflow', { v: fmtN(it.flow, 3) }) : ''] }; }), { title: t('st4_title'), dec: 0, ref: { v: 3, label: t('stt_dt_ref') } }) : '';
+      tip: [fmtN(it.dT, 1) + ' °C ' + t('stt_dt_tip'), period(it), it.flow != null ? t('stt_avgflow', { v: fmtN(it.flow, 3) }) : ''] }; }), { title: t('st4_title'), dec: 0, ref: { v: 3, label: t(heatLite() ? 'stt_dt_ref_l' : 'stt_dt_ref') } }) : '';
     var legend = '<div class="legend small"><span><i class="dot" style="background:' + CH.ink + '"></i>' + esc(t('stl_fact')) + '</span><span><i class="ring"></i>' + esc(t('stl_norm')) + '</span>' +
       ['ok', 'low', 'bad', 'none'].map(function (k) { return '<span><i class="dot" style="background:' + CH[k] + '"></i>' + ST_ICO[k] + ' ' + esc(t('stt_' + k)) + '</span>'; }).join('') + '</div>';
     var panel = function (title, sub, chart, extra) { return chart ? '<section class="panel chart-panel"><h2>' + esc(title) + '</h2><p class="small muted">' + esc(sub) + '</p>' + chart + (extra || '') + '</section>' : ''; };
@@ -5742,8 +5743,8 @@
       panel(t('stc_title'), t('stc_sub'), cl.length ? coolantChart(cl) : '', legend) +
       panel(t('stx_title'), t('stx_sub'), corrChart(cl)) +
       (c5 ? '<div data-key="stm-panel">' + panel(t('stm_title'), t('stm_sub'), c5, leg5) + '</div>' : '') +
-      panel(t('st1_title'), t('st1_sub'), c1) + panel(t('st3_title'), t('st3_sub'), c3) + panel(t('st2_title'), t('st2_sub'), c2) + panel(t('st4_title'), t('st4_sub'), c4) + table +
-      '<p class="small muted">' + esc(t('stt_method')) + '</p>' };
+      panel(t('st1_title'), t('st1_sub'), c1) + panel(t('st3_title'), t('st3_sub'), c3) + panel(t('st2_title'), t('st2_sub'), c2) + panel(t('st4_title'), t(heatLite() ? 'st4_sub_l' : 'st4_sub'), c4) + table +
+      '<p class="small muted">' + esc(t(heatLite() ? 'stt_method_l' : 'stt_method')) + '</p>' };
   }
   (function () {   // подсказки графиков: наведение и фокус; текст — через textContent
     var show = function (el, x, y) { var tp = document.getElementById('ctip');
@@ -6013,7 +6014,7 @@
     var h = '<div class="panel" id="meter-block" tabindex="-1" data-key="prefs-meter-ver"><h2>' + esc(t('mv_block')) + (places().length > 1 ? ' <span class="muted small">· ' + esc(placeLabel(place())) + '</span>' : '') + '</h2>' +
       '<ul class="list" style="background:var(--c-housing);margin-bottom:16px"><li><div class="grow"><div class="small muted">' + esc(t('p_meter')) + '</div><b>' + esc(modelName(model())) + '</b></div><a href="#meter">' + esc(t('change')) + '</a></li>' +
       '<li><div class="grow"><div class="small muted">' + esc(t('p_base')) + '</div><b>' + (S.baseline ? esc(fmtDate(S.baseline.date, true)) + ', <span class="num">' + esc(R.formatForHtm('energy', S.baseline.energy)) + '</span> Гкал' : '—') + '</b></div><a href="#baseline">' + esc(t('change')) + '</a></li></ul>' +
-      '<div class="field" style="max-width:280px"><label for="p-ver">' + esc(t('mv_date')) + '</label><div class="ctl"><input id="p-ver" type="date" value="' + esc(v) + '"></div><div class="help">' + st + ' ' + esc(t('mv_date_sub')) + '</div></div>';
+      '<div class="field" style="max-width:280px"><label for="p-ver">' + esc(t('mv_date')) + '</label><div class="ctl"><input id="p-ver" type="date" value="' + esc(v) + '"></div><div class="help">' + st + ' ' + esc(t(heatLite() ? 'mv_date_sub_l' : 'mv_date_sub')) + '</div></div>';
     if (!window.TEPLO_API) return h + '</div>';
     if (!Y().account) return h + '<p class="small muted">' + esc(t('mv_docs_login')) + '</p></div>';
     loadDocs();
@@ -7299,7 +7300,7 @@
     var p = place() || {};
     return '<div class="panel" id="nometer-h" tabindex="-1" data-key="prefs-nometer-h"><h2>' + esc(t('nm_h_t')) + '</h2><p class="small muted">' + esc(t('nm_h_sub', { p: money(tariff()) })) + '</p>' +
       '<ul class="plain small nm-rules">' + t('nm_h_l').split('|').map(function (x) { return '<li>' + esc(x) + '</li>'; }).join('') + '</ul>' +
-      '<div class="field" style="max-width:260px"><label for="p-area">' + esc(t('nm_area')) + ' <span class="muted small">(' + esc(t('b_opt')) + ')</span></label><div class="ctl"><input id="p-area" class="num" inputmode="decimal" autocomplete="off" value="' + esc(p.area ? String(p.area).replace('.', ',') : '') + '"><span class="unit">м²</span></div><div class="small muted">' + esc(t('nm_area_h')) + '</div>' + areaHint() + '</div></div>';
+      '<div class="field" style="max-width:260px"><label for="p-area">' + esc(t('nm_area')) + ' <span class="muted small">(' + esc(t('b_opt')) + ')</span></label><div class="ctl"><input id="p-area" class="num" inputmode="decimal" autocomplete="off" value="' + esc(p.area ? String(p.area).replace('.', ',') : '') + '"><span class="unit">м²</span></div><div class="small muted">' + esc(t(heatLite() ? 'nm_area_h_l' : 'nm_area_h')) + '</div>' + areaHint() + '</div></div>';
   }
   function nometerWaterPanel() {
     var c = wcfg(), nr = Wt.normOf(c), f = function (v) { return String(v).replace('.', ','); };
@@ -7320,11 +7321,11 @@
       prefGroup('places', 'home', t('pg_places'), t('pg_places_s'), placesPanel()),
       // monobank — окремим пунктом (власник 11.11: «не побачив, де monobank»): рахунки всіх квартир і оплати вивозу сміття з виписки
       Mn ? prefGroup('mono', 'download', t('mono_t'), t('mono_link_s'), '<div class="panel" data-key="prefs-mono"><p>' + esc(t('mono_l')) + '</p><p class="small muted">' + esc(t('mono_pg_h')) + '</p>' + monoLink('prefs') + '</div>') : '',
-      prefGroup('heat', 'thermo', t('pg_heat'), hasHeat() ? modelName(m) : t('pg_heat_none'), meterPanel() + '<div class="panel" data-key="prefs-bill"><h2>' + esc(t('p_tariff')) + (places().length > 1 ? ' <span class="muted small">· ' + esc(placeLabel(place())) + '</span>' : '') + '</h2><p class="small muted">' + esc(t('p_tariff_sub')) + '</p>' +
+      prefGroup('heat', 'thermo', t('pg_heat'), hasHeat() ? modelName(m) : t('pg_heat_none'), meterPanel() + '<div class="panel" data-key="prefs-bill"><h2>' + esc(t('p_tariff')) + (places().length > 1 ? ' <span class="muted small">· ' + esc(placeLabel(place())) + '</span>' : '') + '</h2><p class="small muted">' + esc(t(heatLite() ? 'p_tariff_sub_l' : 'p_tariff_sub')) + '</p>' +
         '<div class="grid2"><div class="field"><label for="p-tariff">' + esc(t('p_tariff_l')) + '</label><div class="ctl"><input id="p-tariff" class="num" inputmode="decimal" data-key="prefs-tariff" value="' + esc(tariff().toFixed(2).replace('.', ',')) + '"></div></div>' +
         '<div class="field"><label for="p-abon">' + esc(t('p_abon_l')) + '</label><div class="ctl"><input id="p-abon" class="num" inputmode="decimal" value="' + esc(bill().abon.toFixed(2).replace('.', ',')) + '"></div></div>' +
         mzkField() + '</div>' +
-        '<details class="tips-box" style="margin-top:12px"><summary>' + esc(t('p_bill_how_t')) + '</summary><p class="small">' + esc(t('p_bill_how')) + '</p></details></div>' +
+        (heatLite() ? '' : '<details class="tips-box" style="margin-top:12px"><summary>' + esc(t('p_bill_how_t')) + '</summary><p class="small">' + esc(t('p_bill_how')) + '</p></details>') + '</div>' +
       (hasHeat() ? nometerHeatPanel() : '')),
       prefGroup('water', 'drop', t('pg_water'), ms.length ? t('pg_water_n', { n: ms.length }) : t('pg_heat_none'), waterPanel() + wtariffPanel() + (ms.length ? nometerWaterPanel() : '')),
       prefGroup('cabs', 'send', t('pg_cabs'), cabsSub(), cabsPanel()),
