@@ -349,10 +349,14 @@ final class ProvEdit {
       if (is_numeric($x) && (float)$x >= 0 && (float)$x < 100000) $o[$f] = round((float)$x, 4);
     }
     // 136-а: вікно прийому показань — [перше, останнє] число місяця (останнє < першого — через кінець місяця, 31 — до кінця); з форми — «20–27»
+    // 137-а: останнє −1 / −2 — останній / передостанній РОБОЧИЙ день місяця (Львівводоканал, Вишгород, Фастів); з форми — «10–пр», «25–р»
     if (isset($v['win'])) {
-      $w = is_array($v['win']) ? array_values($v['win']) : preg_split('/\s*[-–—]\s*/u', trim((string)$v['win']));
-      if (count($w) === 2 && preg_match('/^\d{1,2}$/', trim((string)$w[0])) && preg_match('/^\d{1,2}$/', trim((string)$w[1]))) {
-        $a = (int)$w[0]; $b = (int)$w[1]; if ($a >= 1 && $a <= 31 && $b >= 1 && $b <= 31) $o['win'] = [$a, $b];
+      $W = ['р' => -1, 'ор' => -1, 'пр' => -2, '-1' => -1, '-2' => -2];
+      $w = is_array($v['win']) ? array_values($v['win']) : preg_split('/\s*[–—]\s*|\s*-\s*(?=\D|\d)/u', mb_strtolower(trim((string)$v['win'])), 2);
+      if (count($w) === 2 && preg_match('/^\d{1,2}$/', trim((string)$w[0]))) {
+        $a = (int)$w[0]; $bs = trim((string)$w[1]);
+        $b = preg_match('/^\d{1,2}$/', $bs) ? (int)$bs : ($W[$bs] ?? 0);
+        if ($a >= 1 && $a <= 31 && (($b >= 1 && $b <= 31) || ($b < 0 && $a <= 28))) $o['win'] = [$a, $b];
       }
     }
     if (!empty($v['check'])) $o['check'] = true;

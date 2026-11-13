@@ -912,10 +912,11 @@
   // Пояснення — підказкою (наведення) і для читача екрана. Текст строку — як і раніше, лише за 4 дні до кінця.
   /** Вікно прийому постачальника виду k ('heat' | 'water' | 'elec' | 'gas') — [перше, останнє] число місяця або null, якщо невідоме.
    *  Від'ємне перше — від кінця місяця (−2 — передостаннє); останнє < першого — вікно через кінець місяця; 31 — до кінця місяця.
+   *  137-а: від'ємне ОСТАННЄ — робочий день від кінця місяця (−1 — останній, −2 — передостанній: Львівводоканал «з 10 по передостанній робочий день»).
    *  Довідник громади: `win` ([20, 27]) головніший; тепло не від ХТМ — `till`; вода місцевого КП без `win` — null (не вигадуємо). */
   function perWin(k, p) {
     var j = prvKinds0(p), d = j ? (j.kinds[k] || {}) : null, w = d && d.win;
-    if (w && w.length === 2 && +w[1] > 0 && +w[0] !== 0) return [+w[0], +w[1]];
+    if (w && w.length === 2 && +w[0] !== 0 && (+w[1] > 0 || (+w[1] < 0 && +w[1] >= -3 && +w[0] > 0))) return [+w[0], +w[1]];
     if (k === 'heat') { if (!d || d.via === 'htm') return [R.C.WINDOW_FROM, R.C.WINDOW_TO]; var tl = R.num(d.till); return tl > 0 ? [1, tl] : null; }
     if (k === 'water') return !d || d.via === 'hvk' ? [1, Wt.VK_DEADLINE] : null;
     if (k === 'elec') return [-2, 3];   // Харківобленерго: з передостаннього числа по 3-тє наступного (El.win)
@@ -923,9 +924,15 @@
     return null;
   }
   /** Геометрія смужки на сьогодні: { s, e — смуга (числа цього місяця), L, d — сьогодні, st: before|open|after, cut: '' | 'l' | 'r' — смуга йде за край місяця, a, b — підпис }. */
+  /** n-й робочий день від кінця місяця (пн–пт; святкових вихідних під воєнним станом немає): n = 1 — останній. */
+  function workEnd(y, mo, n) {
+    var L = new Date(Date.UTC(y, mo, 0)).getUTCDate();
+    for (var x = L; x >= 1; x--) { var wd = new Date(Date.UTC(y, mo - 1, x)).getUTCDay(); if (wd !== 0 && wd !== 6 && --n === 0) return x; }
+    return L;
+  }
   function perGeo(w, td) {
     var y = +td.slice(0, 4), mo = +td.slice(5, 7), d = +td.slice(8, 10), L = new Date(Date.UTC(y, mo, 0)).getUTCDate(), pL = new Date(Date.UTC(y, mo - 1, 0)).getUTCDate();
-    var rel = function (x, LL) { return x < 0 ? LL + 1 + x : Math.min(x, LL); }, A = w[0], B = w[1], g;
+    var rel = function (x, LL) { return x < 0 ? LL + 1 + x : Math.min(x, LL); }, A = w[0], B = w[1] < 0 ? workEnd(y, mo, -w[1]) : w[1], g;
     if (A > 0 && B >= A) g = { s: Math.min(A, L), e: Math.min(B, L), cut: '', a: Math.min(A, L), b: Math.min(B, L) };
     else if (d <= B) g = { s: 1, e: B, cut: 'l', a: rel(A, pL), b: B };          // хвіст вікна, що почалося минулого місяця
     else g = { s: rel(A, L), e: L, cut: 'r', a: rel(A, L), b: B };              // вікно відкривається наприкінці місяця й іде в наступний
@@ -939,7 +946,7 @@
     var tone = so && so.tone === 'ok' ? 'done' : so && so.tone === 'warn' && g.st === 'open' ? 'warn' : '';
     for (var i = 1; i <= g.L; i++) dots += '<i class="' + (i >= g.s && i <= g.e ? 'w' : 'o') + (i < g.d ? ' p' : '') + (i === g.d ? ' t' : '') + '"></i>';
     var lab = g.a === g.b ? String(g.a) : g.a + '–' + g.b;
-    var tip = t('pd_tip', { a: g.a, b: g.b }) + (g.cut === 'l' ? ' ' + t('pd_tip_l') : g.cut === 'r' ? ' ' + t('pd_tip_r') : '') + '\n' + t('pd_today', { d: fmtDate(today()) }) + (tone === 'done' ? '\n' + t('pd_done') : '');
+    var tip = t('pd_tip', { a: g.a, b: g.b }) + (w[1] < 0 ? ' ' + t('pd_tip_w' + (-w[1])) : '') + (g.cut === 'l' ? ' ' + t('pd_tip_l') : g.cut === 'r' ? ' ' + t('pd_tip_r') : '') + '\n' + t('pd_today', { d: fmtDate(today()) }) + (tone === 'done' ? '\n' + t('pd_done') : '');
     return '<div class="prd prd-' + k + ' st-' + g.st + (tone ? ' ' + tone : '') + (g.cut ? ' cut-' + g.cut : '') + (cls ? ' ' + cls : '') + '" role="img" aria-label="' + esc(tip.replace(/\n/g, ' ')) + '" data-tip="' + esc(tip) + '" data-key="prd-' + k + '">' +
       '<span class="prd-d" style="--n:' + g.L + '" aria-hidden="true">' + dots + '</span><span class="prd-l num" aria-hidden="true">' + lab + '</span></div>';
   }

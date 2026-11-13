@@ -122,7 +122,11 @@
     "pay_ru": "По платёжке Киевтеплоэнерго: кабинет, komunalka.ua, банк.",
     "robot": "captcha",
     "robot_note": "Проба 08.11.2026: кабінет Київтеплоенерго — вхід логін + пароль, у формі CAPTCHA (captcha_sid) — робот не входить. Подає людина: кабінет або ЦКС komunalka.ua. 11.11.2026 (105-а, Chrome): гостьова форма без входу kte.kmda.gov.ua/my-cabinet/send_counters/guest_send_current_new (рахунок, будинок, квартира) — теж із капчею (captcha_response), не обходимо.",
-    "till": 31
+    "till": 31,
+    "win": [
+     5,
+     31
+    ]
    }
   }
  },

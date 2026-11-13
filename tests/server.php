@@ -2263,6 +2263,15 @@ ok('довідник: via mtve дозволено в правках /admin', (Pr
 // 136-а: вікно прийому показань у правках /admin — «20–27», «28-3» або масив; поза 1–31 і сміття — не зберігаємо
 ok('довідник: win з форми й JSON', (ProvEdit::clean(['win' => '20–27'])['win'] ?? null) === [20, 27] && (ProvEdit::clean(['win' => '28 - 3'])['win'] ?? null) === [28, 3]
   && (ProvEdit::clean(['win' => [15, 25]])['win'] ?? null) === [15, 25] && !isset(ProvEdit::clean(['win' => '0–40'])['win']) && !isset(ProvEdit::clean(['win' => 'до 25'])['win']));
+// 137-а: кінець вікна — робочий день від кінця місяця (−1 останній, −2 передостанній): «10–пр», «25–р»; інших від'ємних і «до 25» — немає
+ok('довідник: win до (перед)останнього робочого дня', (ProvEdit::clean(['win' => '10–пр'])['win'] ?? null) === [10, -2] && (ProvEdit::clean(['win' => '25 – Р'])['win'] ?? null) === [25, -1]
+  && (ProvEdit::clean(['win' => [10, -2]])['win'] ?? null) === [10, -2] && !isset(ProvEdit::clean(['win' => [10, -3]])['win']) && !isset(ProvEdit::clean(['win' => '10–хх'])['win']) && !isset(ProvEdit::clean(['win' => [29, -1]])['win']));
+// 137-а: вікна в довіднику — лише з явних «з A по B» (Лозова 20–25 з lkp.kh.ua, Львівводоканал 10 — передостанній робочий); кожне проходить clean без змін
+$wins = []; foreach (['kh', 'ky', 'kv', 'od', 'lv', 'km'] as $r) { $pd = $r === 'kh' ? json_decode(file_get_contents(__DIR__ . '/../app/data/providers.json'), true) : json_decode(file_get_contents(__DIR__ . "/../app/data/prov_$r.json"), true);
+  foreach (['hromadas', 'settlements'] as $lv) foreach ($pd[$lv] ?? [] as $hk => $hv) foreach ($hv as $kd => $kv) if (is_array($kv) && isset($kv['win'])) $wins["$r/$hk/$kd"] = $kv['win']; }
+$wbad = array_filter($wins, fn($w) => (ProvEdit::clean(['win' => $w])['win'] ?? null) !== $w);
+ok('довідник: усі win валідні, Лозова 20–25, Львів 10–пр, Київ тепло 5–31, вода Києва без вікна', !$wbad && count($wins) >= 37 && ($wins['kh/Лозівська/water'] ?? null) === [20, 25]
+  && ($wins['lv/Львівська/water'] ?? null) === [10, -2] && ($wins['ky/Київ/heat'] ?? null) === [5, 31] && !isset($wins['ky/Київ/water']), ['bad' => $wbad, 'n' => count($wins)]);
 // Львівобленерго — лист «код показник», лише однозонний, вікно 28–3
 $r = $lbu->req('POST', '/api/lb/connect', ['bot' => 'loe', 'place' => 'lv1', 'acc' => '12345', 'consent' => true]);
 ok('loe: код не 10 цифр — 422 з прикладом 0000011111', $r->status === 422 && str_contains((string)($r->body['human'] ?? ''), '0000011111'), $r->body);

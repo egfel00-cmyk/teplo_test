@@ -58,6 +58,21 @@ let pass = 0, fail = 0; const ok = (n, c, x) => { if (c) { pass++; console.log('
   await p.waitForTimeout(1200); await p.reload(); await p.waitForTimeout(900);
   ok('Київ: вікна водоканалу в довіднику немає — на картці води смужки немає', !(await strip('cold')) && !!(await p.$('[data-key=card-cold]')));
 
+  // 137-а: Львівводоканал — «з 10 числа по передостанній робочий день»: у листопаді 2026 останній робочий — пн 30, передостанній — пт 27
+  await load({ today: '2026-11-13' }, 'home', s => { s.places[0].address = 'м. Львів, вул. Городоцька, 1, кв. 1'; s.places[0].city = { n: 'Львів', r: 'lv' }; });
+  await p.waitForTimeout(1200); await p.reload(); await p.waitForTimeout(900);
+  const lw = await strip('cold');
+  ok('Львів: холодна — 10–27 (передостанній робочий день), відкрите, у підказці — «передостанній робочий»', lw && lw.lab === '10–27' && /st-open/.test(lw.cls) && eq(lw.win, [10, 27, 18]) && /передостанній робочий/.test(lw.tip), lw);
+  await load({ today: '2026-05-13' }, 'home', s => { s.places[0].address = 'м. Львів, вул. Городоцька, 1, кв. 1'; s.places[0].city = { n: 'Львів', r: 'lv' }; });
+  await p.waitForTimeout(1200); await p.reload(); await p.waitForTimeout(900);
+  const lw5 = await strip('cold');
+  ok('Львів, травень 2026 (31 — неділя, 29 — пт): 10–28', lw5 && lw5.lab === '10–28', lw5);
+  // Лозова: вікно 20–25 з lkp.kh.ua
+  await load({ today: '2026-11-13' }, 'home', s => { s.places[0].address = 'м. Лозова, вул. Ломоносова, 1'; s.places[0].city = { n: 'Лозова', r: 'kh' }; });
+  await p.waitForTimeout(1200); await p.reload(); await p.waitForTimeout(900);
+  const lz = await strip('cold');
+  ok('Лозова: холодна — 20–25, ще попереду', lz && lz.lab === '20–25' && /st-before/.test(lz.cls), lz);
+
   ok('без помилок JS', !errs.length, errs);
   console.log(`\n${pass} OK, ${fail} FAIL`); await b.close(); process.exit(fail ? 1 : 0);
 })();
