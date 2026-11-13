@@ -103,9 +103,9 @@ final class LocalBot {
     // Платформа info-gkh.com.ua («Електронний кабінет споживача», <код>.info-gkh.com.ua/cabinet): POST /cabinet/login — cmd=login, account (особовий рахунок), password; без капчі.
     // У наших областях — Подільськ, Богодухів, Сахновщина, Усатове (КП «Міжлиманське»).
     'podv' => ['t' => 'cab', 'kinds' => ['water'], 'org' => 'КВЕП «Подільськводоканал»', 'site' => 'podilskvoda.info-gkh.com.ua',
-      'start' => 'https://podilskvoda.info-gkh.com.ua/cabinet/login', 'host' => '~^podilskvoda\.info-gkh\.com\.ua$~i', 'need' => ['login', 'pass'], 'lk' => 'acc'],
+      'start' => 'https://podilskvoda.info-gkh.com.ua/cabinet/login', 'host' => '~^podilskvoda\.info-gkh\.com\.ua$~i', 'need' => ['login', 'pass'], 'lk' => 'acc', 'win' => [25, 1]],   // п. 22 договору КВЕП (139-а)
     'bgdv' => ['t' => 'cab', 'kinds' => ['water'], 'org' => 'КП «Богодухіввода»', 'site' => 'bogodukhivvoda.info-gkh.com.ua',
-      'start' => 'https://bogodukhivvoda.info-gkh.com.ua/cabinet/login', 'host' => '~^bogodukhivvoda\.info-gkh\.com\.ua$~i', 'need' => ['login', 'pass'], 'lk' => 'acc'],
+      'start' => 'https://bogodukhivvoda.info-gkh.com.ua/cabinet/login', 'host' => '~^bogodukhivvoda\.info-gkh\.com\.ua$~i', 'need' => ['login', 'pass'], 'lk' => 'acc', 'win' => [20, 25]],   // п. 22 договору КП (139-а)
     'sahv' => ['t' => 'cab', 'kinds' => ['water'], 'org' => 'Сахновщинське КВКП', 'site' => 'svodokanal.info-gkh.com.ua',
       'start' => 'https://svodokanal.info-gkh.com.ua/cabinet/login', 'host' => '~^svodokanal\.info-gkh\.com\.ua$~i', 'need' => ['login', 'pass'], 'lk' => 'acc'],
     'mizh' => ['t' => 'cab', 'kinds' => ['water'], 'org' => 'КП «Міжлиманське»', 'site' => 'kp-mizhlimanske.info-gkh.com.ua',
@@ -115,7 +115,7 @@ final class LocalBot {
     'vork' => ['t' => 'cab', 'kinds' => ['water'], 'org' => 'ЖКК «Вороньків»', 'site' => 'voronkiv.info-gkh.com.ua',
       'start' => 'https://voronkiv.info-gkh.com.ua/cabinet/login', 'host' => '~^voronkiv\.info-gkh\.com\.ua$~i', 'need' => ['login', 'pass'], 'lk' => 'acc', 'win' => [24, 31]],
     'dach' => ['t' => 'cab', 'kinds' => ['water'], 'org' => 'КП «Дачненський сількомунгосп»', 'site' => 'kp-dachne.info-gkh.com.ua',
-      'start' => 'https://kp-dachne.info-gkh.com.ua/cabinet/login', 'host' => '~^kp-dachne\.info-gkh\.com\.ua$~i', 'need' => ['login', 'pass'], 'lk' => 'acc'],
+      'start' => 'https://kp-dachne.info-gkh.com.ua/cabinet/login', 'host' => '~^kp-dachne\.info-gkh\.com\.ua$~i', 'need' => ['login', 'pass'], 'lk' => 'acc', 'win' => [1, 10]],   // п. 22 договору КП (139-а)
     'lubk' => ['t' => 'cab', 'kinds' => ['water'], 'org' => 'КП «Джерело-Комунсервіс»', 'site' => 'dzerelo.info-gkh.com.ua',
       'start' => 'https://dzerelo.info-gkh.com.ua/cabinet/login', 'host' => '~^dzerelo\.info-gkh\.com\.ua$~i', 'need' => ['login', 'pass'], 'lk' => 'acc'],
     // 107-а. Ще Yii «Особистий кабінет абонента» (billingsoft): Богуслав (my.boguslavvodokanal.biz.ua), Рені (my.renivodokanal.od.ua; показники з 1 по 5 число),

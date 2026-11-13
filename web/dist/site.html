@@ -629,6 +629,11 @@ input[type=text]:not(.dmy-native):not(.pl-in), input[type=email], input[type=pas
 .panel.where .prd-d i.o { background: var(--bt-line, var(--c-line)); }   /* лінія місяця на тлі блоку постачальника */
 .prd.in-prov { margin: 8px 0 6px; max-width: 360px; }
 .ucard-status { font-size: 14px; font-weight: 600; margin-top: 4px; color: var(--c-ink-2); }
+.ucard-foot { margin-top: auto; display: flex; flex-direction: column; gap: 4px; }   /* 139-а: смужка й статус — низом картки, в ряду на одній лінії */
+.ucard-foot > .prd { margin: 2px 0 4px; }
+.ucard-foot > .ucard-sub:empty { display: none; }
+.ucard-foot > .ucard-status { margin-top: 0; }
+.ucard-sub, .ucard-status { line-height: 20px; }
 .ucard-status.ok { color: var(--c-ok); } .ucard-status.due { color: var(--c-info); } .ucard-status.warn { color: var(--c-warn); }
 .ucard-add { position: absolute; right: 12px; top: 12px; width: 52px; height: 52px; border-radius: 50%; border: 1.5px solid var(--c-field-line); background: var(--c-surface-2); color: var(--c-ink); display: grid; place-items: center; cursor: pointer; }
 .ucard-add:hover { border-color: var(--c-ink); background: var(--c-surface); }
@@ -2340,6 +2345,124 @@ details.wacc.wacc-btn > .acc-foot { margin: 0; padding: 12px 16px 16px; border-t
 <script>window.TEPLO_API = '__TEPLO_API__'; window.TEPLO_BUILD = '__TEPLO_BUILD__';</script>
 <div id="root"></div>
 <noscript>Для роботи сервісу потрібен JavaScript.</noscript>
+<script>
+/* Розкривашки (<details>) розкриваються й згортаються плавно — на сайті й в /admin (139-а, власник 13.11: «анимации раскрывания и скрывания
+ * аккордеонов внеси везде в системе, но так, чтобы на мобильных не тормозило, особенно на старых Android»).
+ *
+ * Повний режим: висота — Web Animations лише на час руху (240 / 200 мс), вміст — прозорість і зсув CSS-анімацією (композитор).
+ * Легкий режим (висота стрибає одразу, вміст лише проявляється — без перерахунку сторінки на кожен кадр):
+ *   слабкий пристрій (пам'ять ≤ 2 ГБ, ядер ≤ 2, Android WebView / Chrome < 80, «Економія трафіку»), немає Web Animations,
+ *   дуже довгий вміст (> 3 екранів) або телефон уже двічі поспіль не встигав (середній кадр > 30 мс) — тоді запам'ятовуємо на пристрої.
+ * «Зменшити рух» у системі — без анімації. Розкривашка з data-noanim — як була (рідний <details>).
+ *
+ * Намір (відкрита / закрита) — одразу: стрілка повертається з першого дотику (клас shut), стан у застосунку записується на початку
+ * згортання (подія toggle з open = false), щоб перемальовка посеред руху не повернула стару. Дубль click без нового дотику (WebView) — пропускаємо.
+ * Хуки: TeploAcc.hooks.before(d) — до заміру висоти при відкритті (застосунок додає «Згорнути» внизу), .intent(d, open) — свій стан. */
+(function () {
+  'use strict';
+  var LS = 'teplo.fx', OPEN_MS = 240, CLOSE_MS = 200;
+  var hooks = { before: null, intent: null };
+  var css = '' +
+    'details.acc-anim{overflow:hidden}' +
+    'details.acc-measure>:not(summary){display:none!important}' +
+    'details.shut[open]>summary .pacc-chev{transform:rotate(90deg)!important;transition:none!important}' +
+    'details.acc-in>:not(summary){-webkit-animation:accIn .22s ease-out both;animation:accIn .22s ease-out both}' +
+    'details.acc-out>:not(summary){-webkit-animation:accOut .18s ease-in both;animation:accOut .18s ease-in both}' +
+    '@-webkit-keyframes accIn{from{opacity:0;-webkit-transform:translateY(-6px)}to{opacity:1;-webkit-transform:none}}' +
+    '@keyframes accIn{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:none}}' +
+    '@-webkit-keyframes accOut{from{opacity:1}to{opacity:0}}@keyframes accOut{from{opacity:1}to{opacity:0}}' +
+    '@media (prefers-reduced-motion: reduce){details.acc-in>:not(summary),details.acc-out>:not(summary){-webkit-animation:none;animation:none}}';
+  function addCss() { if (document.getElementById('acc-anim-css')) return; var s = document.createElement('style'); s.id = 'acc-anim-css'; s.textContent = css; (document.head || document.documentElement).appendChild(s); }
+  if (document.head) addCss(); else document.addEventListener('DOMContentLoaded', addCss);
+
+  function calm() { return !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches); }
+  function store(v) { try { if (v == null) localStorage.removeItem(LS); else localStorage.setItem(LS, v); } catch (e) { /* приватний режим */ } }
+  function stored() { try { return localStorage.getItem(LS) || ''; } catch (e) { return ''; } }
+  /** Слабкий пристрій — висоту не ведемо (кожен кадр — перерахунок сторінки). */
+  var WEAK = (function () {
+    var n = navigator, ua = n.userAgent || '', m = /Android/.test(ua) && ua.match(/Chrome\/(\d+)/);
+    return !!((n.deviceMemory && n.deviceMemory <= 2) || (n.hardwareConcurrency && n.hardwareConcurrency <= 2) || (m && +m[1] < 80) ||
+      (n.connection && n.connection.saveData));
+  })();
+  function lite() { var v = stored(); return v === 'full' ? !document.body.animate : WEAK || v === 'lite' || !document.body.animate; }   // 'full' — примусово (автотести на 2-ядерній машині)
+  var SLOW = 0;
+  /** Середній кадр під час руху: двічі поспіль > 30 мс — далі на цьому пристрої легкий режим; швидкий рух скидає лічильник. */
+  function watch(ms) {
+    if (!window.requestAnimationFrame) return;
+    var t0 = 0, last = 0, n = 0, sum = 0;
+    requestAnimationFrame(function f(ts) {
+      if (!t0) t0 = last = ts; else { sum += ts - last; last = ts; n++; }
+      if (ts - t0 < ms) { requestAnimationFrame(f); return; }
+      if (n < 3) return;
+      if (sum / n > 30) { if (++SLOW >= 2) store('lite'); } else SLOW = 0;
+    });
+  }
+
+  function sumOf(d) { var c = d.firstElementChild; for (; c; c = c.nextElementSibling) if (c.tagName === 'SUMMARY') return c; return null; }
+  function want(d) { return d._an ? d._dir === 'open' : d.open; }
+  /** Згортаємо: стан застосунку — одразу (toggle з open = false), сам <details> закривається в кінці руху (вміст видно під час руху). */
+  function intentClose(d) {
+    try { Object.defineProperty(d, 'open', { configurable: true, get: function () { return false; } }); d.dispatchEvent(new Event('toggle')); } catch (e) { /* старий браузер */ }
+    try { delete d.open; } catch (e2) { /* */ }
+  }
+  function cls(d, c, on) { if (d.classList) d.classList[on ? 'add' : 'remove'](c); }
+  function fadeIn(d) {
+    cls(d, 'acc-out', false); cls(d, 'acc-in', false); void d.offsetWidth; cls(d, 'acc-in', true);
+    clearTimeout(d._ft); d._ft = setTimeout(function () { cls(d, 'acc-in', false); }, 300);
+  }
+  function done(d) {
+    var an = d._an; if (!an) return; d._an = null; clearTimeout(d._tm);
+    if (d._dir === 'close') { d.open = false; cls(d, 'shut', false); cls(d, 'acc-out', false); }
+    cls(d, 'acc-anim', false);
+    try { an.cancel(); } catch (e) { /* fill forwards знято — висота знову своя */ }
+  }
+  /** Висота закритої: вміст ховаємо класом на мить заміру (без зміни open — без зайвих toggle). */
+  function closedH(d) { cls(d, 'acc-measure', true); var h = d.offsetHeight; cls(d, 'acc-measure', false); return h; }
+
+  function anim(d, open) {
+    if (hooks.intent) try { hooks.intent(d, open); } catch (e) { /* */ }
+    var h0 = d.getBoundingClientRect().height, was = d._an ? d._dir : '';
+    if (d._an) { var a0 = d._an; d._an = null; clearTimeout(d._tm); try { a0.cancel(); } catch (e1) { /* */ } }
+    cls(d, 'shut', !open);
+    if (calm()) { cls(d, 'shut', false); cls(d, 'acc-anim', false); d.open = open; if (open && hooks.before) hooks.before(d); return; }
+    if (open) { d.open = true; if (hooks.before) hooks.before(d); } else intentClose(d);
+    var h1 = open ? d.offsetHeight : closedH(d), big = Math.abs(h1 - h0) > 3 * (window.innerHeight || 700);   // дуже довгий вміст (таблиці /admin) — лише проявлення
+    if (lite() || big || Math.abs(h1 - h0) < 2) {
+      cls(d, 'shut', false); cls(d, 'acc-anim', false);
+      if (open) { if (was !== 'close') fadeIn(d); } else d.open = false;
+      return;
+    }
+    d._dir = open ? 'open' : 'close';
+    cls(d, 'acc-anim', true);
+    var ms = open ? OPEN_MS : CLOSE_MS;
+    var an = d._an = d.animate([{ height: h0 + 'px' }, { height: h1 + 'px' }], { duration: ms, easing: open ? 'cubic-bezier(.2,.7,.2,1)' : 'cubic-bezier(.4,0,.6,1)', fill: 'forwards' });
+    // вміст проявляється лише при відкритті з закритої (посеред згортання він і так видно — без блимання); при згортанні — тихо гасне
+    if (open) { if (was !== 'close') fadeIn(d); else cls(d, 'acc-out', false); } else { cls(d, 'acc-in', false); cls(d, 'acc-out', true); }
+    an.onfinish = function () { if (d._an === an) done(d); };
+    d._tm = setTimeout(function () { if (d._an === an) done(d); }, ms + 150);   // finish не прийшов (вкладку сховали)
+    watch(ms);
+  }
+
+  // дотик / натискання на шапку — справжня дія; click без нього впритул до попереднього — дубль (WebView)
+  document.addEventListener('pointerdown', function (e) {
+    var sm = e.target.closest && e.target.closest('summary'); if (sm && sm.parentElement && sm.parentElement.tagName === 'DETAILS') sm.parentElement._pd = Date.now();
+  }, true);
+  document.addEventListener('click', function (e) {
+    if (e.defaultPrevented) return;
+    var sm = e.target.closest && e.target.closest('summary'), d = sm && sm.parentElement;
+    if (!d || d.tagName !== 'DETAILS' || sumOf(d) !== sm || d.hasAttribute('data-noanim')) return;
+    var it = e.target.closest('a[href], button, input, select, textarea, label'); if (it && it !== sm && sm.contains(it)) return;
+    e.preventDefault();
+    var now = Date.now();
+    if (d._ck && now - d._ck < 350 && !(d._pd > d._ck)) return;   // дубль того ж тапу — не розвертаємо рух назад
+    d._ck = now;
+    anim(d, !want(d));   // посеред руху — у протилежний бік від поточного наміру
+  });
+
+  window.TeploAcc = { anim: anim, want: want, hooks: hooks, lite: lite, reset: function () { store(null); SLOW = 0; } };
+})();
+
+</script>
 <script>
 /*
  * Теплосервис — движок проверок показаний «как робот ХТМ».
@@ -9581,9 +9704,12 @@ details.wacc.wacc-btn > .acc-foot { margin: 0; padding: 12px 16px 16px; border-t
     return '<div class="ucard ucard-' + o.kind + '" data-key="card-' + o.kind + '">' +
       '<a class="ucard-main" href="#' + o.href + '">' +
         '<span class="ucard-top">' + ico(o.icon, 20) + '<span class="ucard-title">' + esc(o.title) + '</span></span>' +
-        (o.display ? '<div class="ucard-disp">' + o.display + '</div>' : '<span class="ucard-val num">' + o.value + '</span>') + (o.per || '') +
+        (o.display ? '<div class="ucard-disp">' + o.display + '</div>' : '<span class="ucard-val num">' + o.value + '</span>') +
+        // 139-а (власник 13.11, скрин: «внесено/передано — прибить к низу плашки на одном уровне», «линии окна — в одну линию»): смужка й рядки
+        // статусу — одним низом картки (margin-top: auto), тож у ряду карток з табло різної висоти вони стоять на одній лінії
+        '<span class="ucard-foot">' + (o.per || '') +
         '<span class="ucard-sub">' + esc(o.sub || '') + '</span>' +
-        (o.status ? '<span class="ucard-status ' + (o.tone || '') + '">' + esc(o.status) + '</span>' : '') +
+        (o.status ? '<span class="ucard-status ' + (o.tone || '') + '">' + esc(o.status) + '</span>' : '') + '</span>' +
       '</a>' +
       '<button type="button" class="ucard-add' + (o.tone === 'warn' ? ' hot' : '') + '" data-act="' + o.addAct + '"' + (o.addKind ? ' data-kind="' + o.addKind + '"' : '') + ' data-key="card-' + o.kind + '-add" aria-label="' + esc(o.addLabel) + '" title="' + esc(o.addLabel) + '">' + ico('plus', 26) + '</button></div>';
   }
@@ -16708,7 +16834,7 @@ details.wacc.wacc-btn > .acc-foot { margin: 0; padding: 12px 16px 16px; border-t
     var b = e.target.closest && e.target.closest('[data-act="acc-close"]'); if (!b) return;
     var d = b.closest('details'); if (!d) return; e.preventDefault(); e.stopPropagation();
     var sm = d.querySelector('summary'); if (sm) { var r = sm.getBoundingClientRect(); if (r.top < 0 || r.top > innerHeight - 60) sm.scrollIntoView({ block: 'start' }); try { sm.focus({ preventScroll: true }); } catch (e1) { /* старий браузер */ } }
-    if (d.matches('details.pacc')) paccAnim(d, false); else d.open = false;
+    if (window.TeploAcc) TeploAcc.anim(d, false); else d.open = false;
   }, true);
   /** «Відгук» (плаваюча кнопка) не закриває головну кнопку форми: коли ряд кнопок мастера/форми на екрані — ховаємо (стилі — лише на телефоні). */
   var FAB_IO = null;
@@ -16751,47 +16877,12 @@ details.wacc.wacc-btn > .acc-foot { margin: 0; padding: 12px 16px 16px; border-t
       requestAnimationFrame(step);
     });
   }
-  // ---- картки квартир (details.pacc) розкриваються й згортаються плавно: <details> сам не анімується — ведемо висоту (Web Animations).
-  // Владелец 07.11 (iPhone): «треба тапнути двічі, картка мелькає». Тому: намір (відкрита/закрита) — одразу в S.homeOpen і на стрілці
-  // (перемальовка посеред руху не повертає стару; тап видно миттєво); закриття — fill forwards і скасування після open=false (без кадру
-  // повної висоти в кінці, WebKit); запасний таймер, якщо finish не прийде; другий click без нового дотику за 350 мс — дубль, не розвертаємо.
-  function paccWant(d) { return d._an ? d._dir === 'open' : d.open; }
-  function paccDone(d) {
-    var an = d._an; if (!an) return; d._an = null; clearTimeout(d._tm);
-    if (d._dir === 'close') { d.open = false; d.classList.remove('shut'); }   // закрита — лише в кінці, щоб вміст було видно під час руху
-    try { an.cancel(); } catch (e) { /* */ }   // fill forwards знято — висота знову своя (уже закрита / вже відкрита)
+  // ---- розкривашки розкриваються й згортаються плавно — усі <details> (web/src/accanim.js, 139-а; раніше — лише картки квартир, 07.11).
+  // До заміру висоти — «Згорнути» внизу (інакше в кінці ривок на її висоту); картка квартири — намір одразу в S.homeOpen.
+  if (window.TeploAcc) {
+    TeploAcc.hooks.before = accFoot;
+    TeploAcc.hooks.intent = function (d, open) { var id = d.matches && d.matches('details.pacc') && d.getAttribute('data-pl'); if (id) { S.homeOpen = S.homeOpen || {}; S.homeOpen[id] = open; persist(); } };
   }
-  function paccAnim(d, open) {
-    var h0 = d.getBoundingClientRect().height;   // до скасування: натиснули ще раз посеред руху — їдемо від поточної висоти
-    var was = d._an ? d._dir : '';
-    if (d._an) { var a0 = d._an; d._an = null; clearTimeout(d._tm); try { a0.cancel(); } catch (e) { /* */ } }
-    var id = d.getAttribute('data-pl'); if (id) { S.homeOpen = S.homeOpen || {}; S.homeOpen[id] = open; persist(); }
-    d.classList.toggle('shut', !open);
-    if (!d.animate || calmMotion()) { d.classList.remove('shut'); d.open = open; return; }
-    var sum = d.querySelector(':scope > summary'); d._dir = open ? 'open' : 'close';
-    if (open) { d.open = true; accFoot(d); }   // «Згорнути» внизу — до заміру висоти (інакше в кінці ривок на її висоту)
-    var h1 = open ? d.offsetHeight : (sum ? sum.offsetHeight : 0) + (d.offsetHeight - d.clientHeight);
-    if (Math.abs(h1 - h0) < 2) { d.classList.remove('shut'); d.open = open; return; }
-    var body = d.querySelector(':scope > .pacc-body'), dur = open ? 280 : 220;
-    var an = d._an = d.animate([{ height: h0 + 'px' }, { height: h1 + 'px' }], { duration: dur, easing: open ? 'cubic-bezier(.2,.7,.2,1)' : 'cubic-bezier(.4,0,.6,1)', fill: 'forwards' });
-    // вміст проявляється лише при відкритті з закритої (посеред згортання він і так видно — без блимання)
-    if (body && open && was !== 'close') body.animate([{ opacity: 0, transform: 'translateY(-6px)' }, { opacity: 1, transform: 'none' }], { duration: 260, easing: 'ease-out' });
-    an.onfinish = function () { if (d._an === an) paccDone(d); };
-    d._tm = setTimeout(function () { if (d._an === an) paccDone(d); }, dur + 150);
-  }
-  // дотик/натискання на шапку — справжня дія; click без нього впритул до попереднього — дубль (WebView)
-  document.addEventListener('pointerdown', function (e) {
-    var sm = e.target.closest && e.target.closest('details.pacc > summary'); if (sm) sm.parentElement._pd = Date.now();
-  }, true);
-  document.addEventListener('click', function (e) {
-    var sm = e.target.closest && e.target.closest('summary'), d = sm && sm.parentElement;
-    if (!d || !d.matches || !d.matches('details.pacc') || sm !== d.querySelector(':scope > summary')) return;
-    e.preventDefault();
-    var now = Date.now();
-    if (d._ck && now - d._ck < 350 && !(d._pd > d._ck)) return;   // дубль того ж тапу — не розвертаємо анімацію назад
-    d._ck = now;
-    paccAnim(d, !paccWant(d));   // посеред руху — у протилежний бік від поточного наміру
-  });
   function afterRender(r) {
     // табло докручуються при вході: сторінки лічильників і сцена лендинга (89-а — один рух на лендингу, при reduced-motion — ні)
     if (r !== LIVE.r) { LIVE.r = r; LIVE.t0 = /^(heat|water-hot|water-cold|elec|gas|welcome)$/.test(r) ? Date.now() : 0; }

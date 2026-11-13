@@ -593,6 +593,11 @@ input[type=text]:not(.dmy-native):not(.pl-in), input[type=email], input[type=pas
 .panel.where .prd-d i.o { background: var(--bt-line, var(--c-line)); }   /* лінія місяця на тлі блоку постачальника */
 .prd.in-prov { margin: 8px 0 6px; max-width: 360px; }
 .ucard-status { font-size: 14px; font-weight: 600; margin-top: 4px; color: var(--c-ink-2); }
+.ucard-foot { margin-top: auto; display: flex; flex-direction: column; gap: 4px; }   /* 139-а: смужка й статус — низом картки, в ряду на одній лінії */
+.ucard-foot > .prd { margin: 2px 0 4px; }
+.ucard-foot > .ucard-sub:empty { display: none; }
+.ucard-foot > .ucard-status { margin-top: 0; }
+.ucard-sub, .ucard-status { line-height: 20px; }
 .ucard-status.ok { color: var(--c-ok); } .ucard-status.due { color: var(--c-info); } .ucard-status.warn { color: var(--c-warn); }
 .ucard-add { position: absolute; right: 12px; top: 12px; width: 52px; height: 52px; border-radius: 50%; border: 1.5px solid var(--c-field-line); background: var(--c-surface-2); color: var(--c-ink); display: grid; place-items: center; cursor: pointer; }
 .ucard-add:hover { border-color: var(--c-ink); background: var(--c-surface); }

@@ -83,7 +83,8 @@ if ($path === '/admin' || $path === '/admin/') {   // аналитика вла�
   header('X-Robots-Tag: noindex');
   header("Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: blob:; connect-src 'self'; base-uri 'none'; frame-ancestors 'none'");
   // шрифты — свои (web/fonts); путь от корня сайта, чтобы /admin/ со слешем тоже их находил
-  echo str_replace(["'__TEPLO_API__'", 'href="web/fonts/'], [json_encode($base . '/api'), 'href="' . $base . '/web/fonts/'], (string)file_get_contents(__DIR__ . '/web/admin.html'));
+  // 139-а: розкривашки в /admin — так само плавно, як на сайті (той самий web/src/accanim.js)
+  echo str_replace(["'__TEPLO_API__'", 'href="web/fonts/', '</head>'], [json_encode($base . '/api'), 'href="' . $base . '/web/fonts/', '<script>' . str_replace('</script', '<\\/script', (string)file_get_contents(__DIR__ . '/web/src/accanim.js')) . "</script>\n</head>"], (string)file_get_contents(__DIR__ . '/web/admin.html'));
   exit;
 }
 

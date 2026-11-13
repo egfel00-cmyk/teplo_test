@@ -2381,6 +2381,11 @@ $sl = Providers::lookup('Славута, вул. Козацька, 3')['kinds'][
 ok('slv: лист на otbanka@i.ua — рахунок, ПІБ, адреса; у довіднику Славута via slv, server, вікно 25–30', $r->status === 200 && count($sent) === $n0 + 1 && $ml[1] === ['otbanka@i.ua']
   && str_contains($mb, '10234') && str_contains($mb, 'Іваненко Олена') && str_contains($mb, 'вул. Козацька, 3, кв. 12') && ($sl['via'] ?? '') === 'slv' && ($sl['robot'] ?? '') === 'server'
   && ($sl['win'] ?? null) === [25, 30] && (LocalBot::BOTS['bucha']['win'] ?? null) === [25, 30], [$r->body, $ml[1] ?? null, $mb, $sl['via'] ?? null]);
+// 139-а: Подільськ — п. 22 типового індивідуального договору КВЕП «з 25 по 01 число»; робот podv чекає того ж вікна
+$pd = Providers::lookup('Подільськ, вул. Соборна, 1')['kinds']['water'] ?? []; $dc = Providers::lookup('Дачне, Одеський р-н, вул. Миру 1')['kinds']['water'] ?? []; $bg = Providers::lookup('Богодухів, вул. Шевченка, 1')['kinds']['water'] ?? [];
+ok('п. 22 договорів (139-а): Подільськ 25–1 (podv), Дачне 1–10 (dach), Богодухів 20–25 (bgdv) — у довіднику й у роботів', ($pd['via'] ?? '') === 'podv' && ($pd['win'] ?? null) === [25, 1] && (LocalBot::BOTS['podv']['win'] ?? null) === [25, 1]
+  && ($dc['win'] ?? null) === [1, 10] && ($dc['via'] ?? '') === 'dach' && (LocalBot::BOTS['dach']['win'] ?? null) === [1, 10] && str_contains($dc['how'] ?? '', 'з 1 по 10 число')
+  && ($bg['win'] ?? null) === [20, 25] && ($bg['via'] ?? '') === 'bgdv' && (LocalBot::BOTS['bgdv']['win'] ?? null) === [20, 25], [$pd['win'] ?? null, $dc['win'] ?? null, $bg['win'] ?? null]);
 $L = fn(string $a, string $k = 'water') => Providers::lookup($a)['kinds'][$k] ?? [];
 $dr = $L('Дрогобич, вул. Шевченка, 1'); $st2 = $L('Стрий, вул. Шевченка, 1'); $tr = $L('Трускавець, вул. Шевченка, 1'); $mo = $L('Моршин, вул. Шевченка, 1');
 $bo = $L('Бориспіль, вул. Київський Шлях, 1'); $ir = $L('Ірпінь, вул. Соборна, 1'); $vy = $L('Вишневе, вул. Святошинська, 1'); $sp = $L('Шептицький, вул. Шевченка, 1'); $bh = $L('Бровари, вул. Київська, 1', 'heat');

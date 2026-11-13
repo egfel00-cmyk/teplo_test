@@ -16,7 +16,7 @@ const ok = (name, c, extra) => { if (c) pass++; else fail++; console.log((c ? 'o
   const p = await ctx.newPage(); const errs = [];
   p.on('pageerror', e => errs.push('pageerror: ' + e.message));
   await p.goto('http://127.0.0.1:8013/');
-  await p.evaluate(s => { localStorage.setItem('teplo.v1', JSON.stringify(s)); localStorage.setItem('teplo.cc', JSON.stringify({ v: 1, a: 0, at: new Date().toISOString(), id: 'x' })); }, demo({ second: true }));
+  await p.evaluate(s => { localStorage.setItem('teplo.v1', JSON.stringify(s)); localStorage.setItem('teplo.cc', JSON.stringify({ v: 1, a: 0, at: new Date().toISOString(), id: 'x' })); localStorage.setItem('teplo.fx', 'full'); }, demo({ second: true }));
   await p.goto('http://127.0.0.1:8013/#home'); await p.reload(); await p.waitForTimeout(1200);
   await p.evaluate(() => { location.hash = '#history'; }); await p.waitForTimeout(500);
   ok('анимация входа включена (как на телефоне)', await p.evaluate(() => new Promise(r => { location.hash = '#home'; requestAnimationFrame(() => r(document.getElementById('main').classList.contains('enter'))); })));
