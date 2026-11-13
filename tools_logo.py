@@ -572,9 +572,30 @@ def build_pack(root):
     return zp
 
 
+def wordmark_inline(size=100):
+    """Слово «передай» (варіант 5) для сторінки: шляхи, дужка над «й», «.com.ua» — числа округлені, колір задає сторінка (currentColor)."""
+    import re
+    rnd = lambda d: re.sub(r'-?\d+\.\d+', lambda m: f'{float(m.group()):.1f}'.rstrip('0').rstrip('.'), d)
+    d, w, (x0, y0, x1, y1) = text_path('unb', 'передаи', 760, size, 0, 0, track=-10)
+    _, wi, (ix0, iy0, ix1, iy1) = text_path('unb', 'и', 760, size, 0, 0)
+    cx = w - wi + (ix0 + ix1) / 2
+    bw, t = (ix1 - ix0) * .64, size * .13
+    r, top = bw / 2, y0 - size * .25           # дужка трохи вище, ніж у великому логотипі: на 19 px інакше зливається з «и»
+    b = f'M{cx - r:.1f} {top:.1f}A{r:.1f} {r * .82:.1f} 0 0 0 {cx + r:.1f} {top:.1f}'
+    dx = w + size * .06
+    dd, dw, _ = text_path('unb', '.com.ua', 500, size * .42, dx, 0)
+    vt, vb_ = top - t / 2 - 1, y1 + 1
+    out = {'d': rnd(d), 'b': b, 'bw': round(t, 1), 'g': [round(cx - r - t, 1), round(cx + r + t, 1)], 'dom': rnd(dd),
+           'vb': f'{min(x0, 0) - 1:.1f} {vt:.1f} {w + 2:.1f} {vb_ - vt:.1f}', 'vbd': f'{min(x0, 0) - 1:.1f} {vt:.1f} {dx + dw + 2:.1f} {vb_ - vt:.1f}',
+           'xh': round(-y0 / (vb_ - vt), 3)}
+    return out
+
+
 if __name__ == '__main__':
     import sys
     if '--inline' in sys.argv:
         print(inner(mini_svg()))
+    elif '--wordmark' in sys.argv:
+        print(json.dumps(wordmark_inline(), ensure_ascii=False))
     else:
         print(build_pack(HERE))

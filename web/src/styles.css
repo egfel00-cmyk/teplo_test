@@ -62,6 +62,8 @@ a { color: var(--c-return); text-underline-offset: 3px; }
 .top { display: flex; align-items: center; gap: var(--sp-3); padding: var(--sp-3) var(--sp-4); }
 .brand { display: flex; align-items: center; gap: 10px; font-weight: 600; font-size: var(--fs-m); color: var(--c-ink); text-decoration: none; }
 .brand svg { flex: none; }
+/* «передай» (127-а): слово-логотип — висота так, щоб малі літери ≈ 11 px поруч зі знаком 28 px */
+.wm { display: block; height: 20px; width: auto; flex: none; overflow: visible; } .wm .wm-dom { fill-opacity: .5; }
 .top .spacer { flex: 1; }
 .main { flex: 1; width: 100%; max-width: 720px; margin: 0 auto; padding: var(--sp-2) var(--sp-4) calc(var(--tap) + 48px); }
 .main.bare { padding-bottom: var(--sp-7); }
@@ -1062,7 +1064,7 @@ fieldset.field { border: 0; padding: 0; min-width: 0; }
 .fs-more { display: flex; gap: 8px; align-items: flex-start; margin: 4px 0 12px; } .fs-more .ico { flex: none; margin-top: 1px; }
 .aw-kind .step-b.btn:not(.sec) { color: var(--c-on-ink); }
 /* шапка экрана с «✕» на телефоне: «Лічильники» не влезал рядом с «Test beta…» и обрезался в «Лі…» — оставляем логотип */
-@media (max-width: 480px) { .top.has-close .brand span { display: none; } }   /* с «Закрити» и плашкой beta имя не влезает даже на 440 px (iPhone Pro Max) — оставался обрезок «Л» */
+@media (max-width: 480px) { .top.has-close .brand span, .top.has-close .brand .wm { display: none; } }   /* с «Закрити» и плашкой beta имя не влезает даже на 440 px (iPhone Pro Max) — оставался обрезок «Л» */
 .fs-after { margin-top: 14px; }
 .field .sp-help:empty { display: none; }
 /* ---- история: дата и чипс статуса строкой над записью; чипс — кнопка, под ним меню «передано / не передано / для себе» ---- */
@@ -1377,7 +1379,7 @@ details.tbl-acc[open] > .tbl-wrap { margin-top: 12px; }
 .lpp-island { position: absolute; top: 9px; left: 50%; width: 118px; height: 33px; margin-left: -59px; border-radius: 18px; background: #040706; }
 .lpp-app { flex: 1; min-height: 0; overflow: hidden; padding: 0 12px; }
 .lpp-bar { display: flex; align-items: center; gap: 10px; height: 40px; padding: 0 4px; font-size: 17px; }
-.lpp-bar svg { width: 26px; height: 26px; flex: none; }
+.lpp-bar svg.logo { width: 26px; height: 26px; flex: none; } .lpp-bar .wm { height: 18px; }
 .lpp-beta { display: inline-flex; align-items: center; height: 20px; padding: 0 7px; border-radius: 999px; border: 1px solid var(--c-line); font-size: 12px; font-weight: 500; color: var(--c-ink-2); }
 .lpp-hp { display: flex; align-items: center; gap: 10px; padding: 2px 4px 8px; }
 .lpp-hp .ico { color: var(--c-ink-2); flex: none; }
@@ -1619,7 +1621,7 @@ details.tbl-acc[open] > .tbl-wrap { margin-top: 12px; }
 .lp-foot { margin: 40px 0 0; padding: 32px 20px calc(24px + env(safe-area-inset-bottom)); border-top: 1px solid var(--c-line); color: var(--c-ink-2); font-size: 15px; }
 .lpf-in { max-width: 1120px; margin: 0 auto; display: grid; grid-template-columns: 1.6fr 1fr 1fr 1fr; gap: 24px 32px; }
 .lpf-logo { display: flex; align-items: center; gap: 10px; color: var(--c-ink); font-size: 17px; }
-.lpf-logo svg { width: 28px; height: 28px; }
+.lpf-logo .wm { height: 30px; }
 .lpf-brand p { margin: 10px 0 0; max-width: 34ch; }
 .lpf-col h3 { margin: 0 0 8px; font-size: 15px; font-weight: 600; color: var(--c-ink-2); }
 .lpf-col ul { list-style: none; margin: 0; padding: 0; }
@@ -1640,6 +1642,7 @@ details.tbl-acc[open] > .tbl-wrap { margin-top: 12px; }
   .app-foot a:hover, .app-foot .linkbtn:hover { color: var(--c-ink); text-decoration: underline; }
   .af-note { flex: 1 0 100%; max-width: none; margin: 2px 0 0; font-size: 14px; line-height: 1.45; color: var(--c-ink-2); text-wrap: pretty; }
   .af-note span:first-child { margin-right: var(--sp-4); white-space: nowrap; }
+  .af-note .af-brand { display: inline-flex; align-items: center; gap: 6px; vertical-align: middle; } .af-note .wm { height: 15px; color: var(--c-ink); }
 }
 @media (max-width: 380px) { .lpf-in { grid-template-columns: 1fr; } }
 

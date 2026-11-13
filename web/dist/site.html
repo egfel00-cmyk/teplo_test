@@ -98,6 +98,8 @@ a { color: var(--c-return); text-underline-offset: 3px; }
 .top { display: flex; align-items: center; gap: var(--sp-3); padding: var(--sp-3) var(--sp-4); }
 .brand { display: flex; align-items: center; gap: 10px; font-weight: 600; font-size: var(--fs-m); color: var(--c-ink); text-decoration: none; }
 .brand svg { flex: none; }
+/* «передай» (127-а): слово-логотип — висота так, щоб малі літери ≈ 11 px поруч зі знаком 28 px */
+.wm { display: block; height: 20px; width: auto; flex: none; overflow: visible; } .wm .wm-dom { fill-opacity: .5; }
 .top .spacer { flex: 1; }
 .main { flex: 1; width: 100%; max-width: 720px; margin: 0 auto; padding: var(--sp-2) var(--sp-4) calc(var(--tap) + 48px); }
 .main.bare { padding-bottom: var(--sp-7); }
@@ -1098,7 +1100,7 @@ fieldset.field { border: 0; padding: 0; min-width: 0; }
 .fs-more { display: flex; gap: 8px; align-items: flex-start; margin: 4px 0 12px; } .fs-more .ico { flex: none; margin-top: 1px; }
 .aw-kind .step-b.btn:not(.sec) { color: var(--c-on-ink); }
 /* шапка экрана с «✕» на телефоне: «Лічильники» не влезал рядом с «Test beta…» и обрезался в «Лі…» — оставляем логотип */
-@media (max-width: 480px) { .top.has-close .brand span { display: none; } }   /* с «Закрити» и плашкой beta имя не влезает даже на 440 px (iPhone Pro Max) — оставался обрезок «Л» */
+@media (max-width: 480px) { .top.has-close .brand span, .top.has-close .brand .wm { display: none; } }   /* с «Закрити» и плашкой beta имя не влезает даже на 440 px (iPhone Pro Max) — оставался обрезок «Л» */
 .fs-after { margin-top: 14px; }
 .field .sp-help:empty { display: none; }
 /* ---- история: дата и чипс статуса строкой над записью; чипс — кнопка, под ним меню «передано / не передано / для себе» ---- */
@@ -1413,7 +1415,7 @@ details.tbl-acc[open] > .tbl-wrap { margin-top: 12px; }
 .lpp-island { position: absolute; top: 9px; left: 50%; width: 118px; height: 33px; margin-left: -59px; border-radius: 18px; background: #040706; }
 .lpp-app { flex: 1; min-height: 0; overflow: hidden; padding: 0 12px; }
 .lpp-bar { display: flex; align-items: center; gap: 10px; height: 40px; padding: 0 4px; font-size: 17px; }
-.lpp-bar svg { width: 26px; height: 26px; flex: none; }
+.lpp-bar svg.logo { width: 26px; height: 26px; flex: none; } .lpp-bar .wm { height: 18px; }
 .lpp-beta { display: inline-flex; align-items: center; height: 20px; padding: 0 7px; border-radius: 999px; border: 1px solid var(--c-line); font-size: 12px; font-weight: 500; color: var(--c-ink-2); }
 .lpp-hp { display: flex; align-items: center; gap: 10px; padding: 2px 4px 8px; }
 .lpp-hp .ico { color: var(--c-ink-2); flex: none; }
@@ -1655,7 +1657,7 @@ details.tbl-acc[open] > .tbl-wrap { margin-top: 12px; }
 .lp-foot { margin: 40px 0 0; padding: 32px 20px calc(24px + env(safe-area-inset-bottom)); border-top: 1px solid var(--c-line); color: var(--c-ink-2); font-size: 15px; }
 .lpf-in { max-width: 1120px; margin: 0 auto; display: grid; grid-template-columns: 1.6fr 1fr 1fr 1fr; gap: 24px 32px; }
 .lpf-logo { display: flex; align-items: center; gap: 10px; color: var(--c-ink); font-size: 17px; }
-.lpf-logo svg { width: 28px; height: 28px; }
+.lpf-logo .wm { height: 30px; }
 .lpf-brand p { margin: 10px 0 0; max-width: 34ch; }
 .lpf-col h3 { margin: 0 0 8px; font-size: 15px; font-weight: 600; color: var(--c-ink-2); }
 .lpf-col ul { list-style: none; margin: 0; padding: 0; }
@@ -1676,6 +1678,7 @@ details.tbl-acc[open] > .tbl-wrap { margin-top: 12px; }
   .app-foot a:hover, .app-foot .linkbtn:hover { color: var(--c-ink); text-decoration: underline; }
   .af-note { flex: 1 0 100%; max-width: none; margin: 2px 0 0; font-size: 14px; line-height: 1.45; color: var(--c-ink-2); text-wrap: pretty; }
   .af-note span:first-child { margin-right: var(--sp-4); white-space: nowrap; }
+  .af-note .af-brand { display: inline-flex; align-items: center; gap: 6px; vertical-align: middle; } .af-note .wm { height: 15px; color: var(--c-ink); }
 }
 @media (max-width: 380px) { .lpf-in { grid-template-columns: 1fr; } }
 
@@ -8339,6 +8342,17 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
     return '<svg class="logo" width="28" height="28" viewBox="0 0 1024 1024" aria-hidden="true">' +
       '<rect width="1024" height="1024" rx="232" fill="#3A6BFF"/><rect x="102" y="304" width="820" height="416" rx="76" fill="#fff" fill-opacity=".22" stroke="#fff" stroke-opacity=".9" stroke-width="18"/><rect x="142" y="344" width="232" height="336" rx="40" fill="#F4F6FB"/><path d="M212.46 -225.0V0.0H150.9V-197.7H169.79999999999998L52.85999999999999 -68.52L52.5 -88.02H248.33999999999997V-42.0H7.26V-85.8L133.79999999999998 -225.0Z" fill="#0E1630" transform="translate(130.2 624.5)"/><rect x="396" y="344" width="232" height="336" rx="40" fill="#F4F6FB"/><path d="M10.08 -144.0Q12.06 -170.51999999999998 27.66 -189.81Q43.26 -209.1 69.21 -219.51Q95.16 -229.92 127.8 -229.92Q158.93999999999997 -229.92 182.21999999999997 -220.46999999999997Q205.5 -211.01999999999998 218.45999999999998 -194.19Q231.42 -177.36 231.42 -155.16Q231.42 -137.94 222.12 -123.12Q212.82 -108.3 192.95999999999998 -94.02Q173.1 -79.74 140.94 -64.14L79.2 -33.18L76.8 -49.199999999999996H237.6V0.0H14.879999999999999V-43.199999999999996L111.48 -97.61999999999999Q134.16 -110.39999999999999 146.64 -119.22Q159.11999999999998 -128.04 164.25 -135.51Q169.38 -142.98 169.38 -151.56Q169.38 -160.73999999999998 164.43 -167.51999999999998Q159.48 -174.29999999999998 149.7 -178.17Q139.92 -182.04 125.51999999999998 -182.04Q107.52 -182.04 96.09 -176.88Q84.66 -171.72 78.96 -163.07999999999998Q73.25999999999999 -154.43999999999997 72.11999999999999 -144.0Z" fill="#0E1630" transform="translate(388.2 627.0)"/><rect x="650" y="344" width="232" height="336" rx="40" fill="#FF3B3B"/><path d="M37.02 0.0 160.79999999999998 -193.08 160.68 -175.79999999999998H3.9599999999999995V-225.0H217.56V-175.43999999999997L108.11999999999999 0.0Z" fill="#fff" transform="translate(655.2 624.5)"/></svg>';
   }
+  // «передай» (127-а, власник: «замість Лічильників, в обидві теми, у футер — без іконки»): слово з варіанта 5 (Unbounded у кривих), дужка над «й» —
+  // гаряче → холодне, «.com.ua» приглушено. Колір — currentColor (тема), id градієнта — свій на кожен виклик. Дані — tools_logo.py --wordmark.
+  var WM = {"d": "M74.1 -57.2V0H52.1V-51L62.2 -41H17.3L27.3 -51V0H5.4V-57.2ZM117.7 1.7Q107.2 1.7 99 -2.1Q90.8 -6 86 -12.8Q81.2 -19.7 81.2 -28.8Q81.2 -37.8 85.8 -44.6Q90.4 -51.4 98.4 -55.2Q106.3 -58.9 116.3 -58.9Q126.7 -58.9 134 -54.6Q141.4 -50.2 145.3 -42.3Q149.3 -34.3 149.3 -23.5H99.1V-34.7H136.8L130.1 -30.9Q129.6 -35.3 127.9 -38.3Q126.2 -41.3 123.3 -42.8Q120.4 -44.4 116.5 -44.4Q112.1 -44.4 109 -42.5Q105.9 -40.7 104.3 -37.4Q102.6 -34.1 102.6 -29.8Q102.6 -24.6 105 -21Q107.3 -17.4 112 -15.5Q116.6 -13.6 123.5 -13.6Q130 -13.6 136.3 -15.3Q142.6 -17.1 147.8 -20.3V-7.3Q141.8 -3 133.8 -0.6Q125.8 1.7 117.7 1.7ZM156.7 -57.2H178.6V-41.5L177.7 -38.9V-22.1L178.6 -17.1V16.5H156.7ZM171.8 -28.6Q173.1 -37.9 177.1 -44.7Q181.2 -51.5 187.6 -55.2Q194 -58.9 202.1 -58.9Q210.5 -58.9 216.9 -55.2Q223.2 -51.4 226.8 -44.5Q230.3 -37.7 230.3 -28.6Q230.3 -19.6 226.8 -12.7Q223.2 -5.9 216.9 -2.1Q210.5 1.7 202.1 1.7Q194 1.7 187.6 -2.1Q181.2 -5.9 177.2 -12.7Q173.1 -19.5 171.8 -28.6ZM208.2 -28.6Q208.2 -32.6 206.6 -35.7Q204.9 -38.7 202 -40.5Q199.1 -42.3 195.3 -42.3Q191.5 -42.3 187.9 -40.5Q184.4 -38.7 181.8 -35.7Q179.1 -32.6 177.8 -28.6Q179.1 -24.6 181.8 -21.6Q184.4 -18.5 187.9 -16.7Q191.5 -15 195.3 -15Q199.1 -15 202 -16.7Q204.9 -18.5 206.6 -21.6Q208.2 -24.6 208.2 -28.6ZM271.7 1.7Q261.2 1.7 253 -2.1Q244.8 -6 240 -12.8Q235.2 -19.7 235.2 -28.8Q235.2 -37.8 239.8 -44.6Q244.4 -51.4 252.4 -55.2Q260.3 -58.9 270.3 -58.9Q280.7 -58.9 288 -54.6Q295.4 -50.2 299.3 -42.3Q303.3 -34.3 303.3 -23.5H253.1V-34.7H290.8L284.1 -30.9Q283.6 -35.3 281.9 -38.3Q280.2 -41.3 277.3 -42.8Q274.4 -44.4 270.5 -44.4Q266.1 -44.4 263 -42.5Q259.9 -40.7 258.3 -37.4Q256.6 -34.1 256.6 -29.8Q256.6 -24.6 259 -21Q261.3 -17.4 266 -15.5Q270.6 -13.6 277.5 -13.6Q284 -13.6 290.3 -15.3Q296.6 -17.1 301.8 -20.3V-7.3Q295.8 -3 287.8 -0.6Q279.8 1.7 271.7 1.7ZM393.5 -16.3V13.6H374.6V0H326.1V13.6H307.2V-16.3H324.9L328.7 -15.9H370.2L373.7 -16.3ZM318.9 -57.2H383V-3.9H361.3V-51.4L371.3 -41.4H329.6L337.6 -49.5Q339.2 -45.4 339.5 -41.8Q339.8 -38.3 339.8 -35.4Q339.8 -21.7 335 -14.2Q330.1 -6.7 321.3 -6.7L312.4 -14.1Q320.1 -19.5 320.1 -39.7Q320.1 -43.7 319.8 -48.1Q319.5 -52.5 318.9 -57.2ZM450.8 0 448.1 -20.5 450.9 -28.6 448.1 -36.6 450.8 -57.2H473.5L469.8 -28.7L473.5 0ZM455.7 -28.6Q454.5 -19.5 450.4 -12.7Q446.3 -5.9 439.9 -2.1Q433.6 1.7 425.4 1.7Q417.1 1.7 410.7 -2.1Q404.3 -5.9 400.8 -12.7Q397.2 -19.6 397.2 -28.6Q397.2 -37.7 400.8 -44.5Q404.3 -51.4 410.7 -55.2Q417.1 -58.9 425.4 -58.9Q433.6 -58.9 439.9 -55.2Q446.3 -51.5 450.4 -44.7Q454.6 -37.9 455.7 -28.6ZM419.3 -28.6Q419.3 -24.6 421 -21.6Q422.6 -18.5 425.5 -16.7Q428.4 -15 432.2 -15Q436.1 -15 439.6 -16.7Q443.1 -18.5 445.8 -21.6Q448.5 -24.6 449.7 -28.6Q448.5 -32.6 445.8 -35.7Q443.1 -38.7 439.6 -40.5Q436.1 -42.3 432.2 -42.3Q428.4 -42.3 425.5 -40.5Q422.6 -38.7 421 -35.7Q419.3 -32.6 419.3 -28.6ZM481.9 0V-57.2H503.5V-12L499.1 -13.5L527.2 -57.2H555.3V0H533.7V-46.6L538.1 -45L509.2 0Z", "b": "M494.1 -83.9A23.5 19.3 0 0 0 541.1 -83.9", "bw": 13.0, "g": [481.1, 554.1], "dom": "M571.6 0.4Q570.4 0.4 569.5 -0.2Q568.5 -0.7 568 -1.7Q567.4 -2.6 567.4 -3.8Q567.4 -4.9 568 -5.9Q568.5 -6.8 569.5 -7.3Q570.4 -7.9 571.6 -7.9Q572.7 -7.9 573.7 -7.3Q574.6 -6.8 575.1 -5.9Q575.7 -4.9 575.7 -3.8Q575.7 -2.6 575.1 -1.7Q574.6 -0.7 573.7 -0.2Q572.7 0.4 571.6 0.4ZM607 -9.7Q606.6 -6.7 604.7 -4.3Q602.7 -2 599.7 -0.7Q596.6 0.6 592.8 0.6Q588.5 0.6 585.3 -0.9Q582 -2.5 580.2 -5.4Q578.4 -8.2 578.4 -11.9Q578.4 -15.7 580.2 -18.5Q582 -21.3 585.3 -22.9Q588.5 -24.5 592.8 -24.5Q596.6 -24.5 599.7 -23.2Q602.7 -21.9 604.7 -19.6Q606.6 -17.2 607 -14.1H600Q599.5 -16.5 597.5 -17.9Q595.6 -19.2 592.8 -19.2Q590.6 -19.2 588.9 -18.3Q587.3 -17.5 586.4 -15.9Q585.5 -14.2 585.5 -11.9Q585.5 -9.7 586.4 -8Q587.3 -6.4 588.9 -5.6Q590.6 -4.7 592.8 -4.7Q595.6 -4.7 597.5 -6.1Q599.5 -7.5 600 -9.7ZM624.5 0.6Q620 0.6 616.7 -0.9Q613.3 -2.5 611.4 -5.4Q609.6 -8.2 609.6 -11.9Q609.6 -15.7 611.4 -18.5Q613.3 -21.4 616.7 -22.9Q620 -24.5 624.5 -24.5Q629 -24.5 632.3 -22.9Q635.7 -21.4 637.5 -18.5Q639.4 -15.7 639.4 -11.9Q639.4 -8.2 637.5 -5.4Q635.7 -2.5 632.3 -0.9Q629 0.6 624.5 0.6ZM624.5 -4.7Q626.9 -4.7 628.7 -5.6Q630.4 -6.5 631.4 -8.1Q632.3 -9.7 632.3 -11.9Q632.3 -14.2 631.4 -15.8Q630.4 -17.4 628.7 -18.3Q626.9 -19.2 624.5 -19.2Q622.1 -19.2 620.3 -18.3Q618.6 -17.4 617.6 -15.8Q616.7 -14.2 616.7 -11.9Q616.7 -9.7 617.6 -8.1Q618.6 -6.5 620.3 -5.6Q622.1 -4.7 624.5 -4.7ZM642.3 -23.9H649.3L650.8 -14.8V0H643.8V-15.9ZM659.3 -24.5Q662.5 -24.5 664.8 -23.2Q667.1 -21.8 668.2 -19.3Q669.4 -16.8 669.4 -13.3V0H662.4V-12.2Q662.4 -15.4 661 -17.1Q659.6 -18.8 656.9 -18.8Q655 -18.8 653.7 -17.9Q652.3 -17 651.5 -15.4Q650.8 -13.8 650.8 -11.6L648.5 -12.8Q648.9 -16.6 650.4 -19.2Q651.9 -21.8 654.2 -23.1Q656.5 -24.5 659.3 -24.5ZM677.9 -24.5Q681.1 -24.5 683.4 -23.2Q685.7 -21.8 686.9 -19.3Q688.1 -16.8 688.1 -13.3V0H681.1V-12.2Q681.1 -15.4 679.7 -17.1Q678.3 -18.8 675.6 -18.8Q673.7 -18.8 672.3 -17.9Q670.9 -17 670.2 -15.4Q669.4 -13.8 669.4 -11.6L667.1 -12.8Q667.6 -16.6 669.1 -19.2Q670.6 -21.8 672.9 -23.1Q675.1 -24.5 677.9 -24.5ZM696.3 0.4Q695.1 0.4 694.2 -0.2Q693.2 -0.7 692.7 -1.7Q692.1 -2.6 692.1 -3.8Q692.1 -4.9 692.7 -5.9Q693.2 -6.8 694.2 -7.3Q695.1 -7.9 696.3 -7.9Q697.4 -7.9 698.4 -7.3Q699.3 -6.8 699.8 -5.9Q700.4 -4.9 700.4 -3.8Q700.4 -2.6 699.8 -1.7Q699.3 -0.7 698.4 -0.2Q697.4 0.4 696.3 0.4ZM714.4 0.6Q711.1 0.6 708.8 -0.7Q706.4 -2.1 705.2 -4.6Q704 -7.2 704 -10.6V-23.9H711V-11.6Q711 -8.5 712.5 -6.8Q714 -5.1 716.8 -5.1Q718.8 -5.1 720.3 -6Q721.7 -6.9 722.5 -8.5Q723.3 -10.1 723.3 -12.3L725.6 -11.1Q725.2 -7.4 723.6 -4.8Q722.1 -2.1 719.7 -0.7Q717.3 0.6 714.4 0.6ZM724.8 0 723.3 -9.1V-23.9H730.3V-8L731.8 0ZM757.8 0 756.8 -8.7 757.9 -11.9 756.8 -15.1 757.8 -23.9H765.1L763.7 -11.9L765.1 0ZM759.7 -11.9Q759 -8.2 757.2 -5.3Q755.4 -2.5 752.7 -0.9Q750 0.6 746.7 0.6Q743.2 0.6 740.5 -0.9Q737.8 -2.5 736.3 -5.4Q734.8 -8.2 734.8 -11.9Q734.8 -15.7 736.3 -18.5Q737.8 -21.4 740.5 -22.9Q743.2 -24.5 746.7 -24.5Q750 -24.5 752.7 -23Q755.4 -21.4 757.2 -18.6Q759 -15.8 759.7 -11.9ZM741.9 -11.9Q741.9 -9.8 742.7 -8.2Q743.6 -6.6 745.1 -5.7Q746.6 -4.8 748.6 -4.8Q750.6 -4.8 752.3 -5.7Q754.1 -6.6 755.4 -8.2Q756.8 -9.8 757.5 -11.9Q756.8 -14 755.4 -15.6Q754.1 -17.2 752.3 -18.2Q750.6 -19.1 748.6 -19.1Q746.6 -19.1 745.1 -18.2Q743.6 -17.2 742.7 -15.6Q741.9 -14 741.9 -11.9Z", "vb": "-1.0 -91.4 561.7 108.9", "vbd": "-1.0 -91.4 769.1 108.9"}, WMN = 0;
+  function wordmark(dom) {
+    var id = 'wmg' + (++WMN);
+    return '<svg class="wm" viewBox="' + (dom ? WM.vbd : WM.vb) + '" role="img" aria-label="' + (dom ? 'передай.com.ua' : 'передай') + '">' +
+      '<defs><linearGradient id="' + id + '" gradientUnits="userSpaceOnUse" x1="' + WM.g[0] + '" y1="0" x2="' + WM.g[1] + '" y2="0">' +
+      '<stop offset="0" stop-color="#FF6A1F"/><stop offset=".5" stop-color="#B44DFF"/><stop offset="1" stop-color="#2E86FF"/></linearGradient></defs>' +
+      '<path fill="currentColor" d="' + WM.d + '"/><path fill="none" stroke="url(#' + id + ')" stroke-width="' + WM.bw + '" stroke-linecap="round" d="' + WM.b + '"/>' +
+      (dom ? '<path class="wm-dom" fill="currentColor" d="' + WM.dom + '"/>' : '') + '</svg>';
+  }
   function levelIco(level, size) {
     return level === 'ok' ? ico('check', size, 'c-ok') : level === 'warn' ? ico('alert', size, 'c-warn') : level === 'block' ? ico('cross', size, 'c-bad') : ico('info', size, 'c-info');
   }
@@ -8495,7 +8509,7 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
       ? '<a class="btn ghost" href="#' + view.closeTo + '" data-key="wiz-close" aria-label="' + esc(t('close')) + '">' + ico('close', 22) + '<span class="cl-txt">' + esc(t('close')) + '</span></a>'
       : '';
     return '<div class="app' + (bare ? ' bare-app' : '') + (side ? ' with-side' : '') + '">' +
-      '<header class="top' + (right ? ' has-close' : '') + '"><a class="brand" href="#' + homeRoute() + '" data-key="brand">' + logo() + '<span>' + esc(t('brand')) + '</span><span class="beta-tag" data-key="beta">' + esc(t('beta_tag')) + '</span></a>' + '<span class="spacer"></span>' + right + '</header>' +
+      '<header class="top' + (right ? ' has-close' : '') + '"><a class="brand" href="#' + homeRoute() + '" data-key="brand" aria-label="' + esc(t('brand')) + ' — передай.com.ua">' + logo() + wordmark(true) + '<span class="beta-tag" data-key="beta">' + esc(t('beta_tag')) + '</span></a>' + '<span class="spacer"></span>' + right + '</header>' +
       nav + '<main class="main' + (bare ? ' bare' : '') + (view.wide ? ' wide' : '') + enterCls(route) + '" id="main" data-screen="' + view.screen + '" tabindex="-1">' + (/^(history|stats|save)$/.test(route) ? placeSwitch() : /^(heat|water-hot|water-cold|elec|gas)$/.test(route) ? placeBar() : /^(wnew|wadd|enew|eadd|gnew|gadd|add-meter|step|step-\d+|check|handover|baseline|meter|photo)$/.test(route) ? placeBar(true) : '') + view.html + '</main>' + (S.onboarded && view.screen !== 'S00' && (!bare || side) ? appFoot() : '') + '</div>' +
       (window.TEPLO_API && !ccAsk() ? '<button class="fab' + (bare ? ' fab-bare' : '') + '" data-act="fb-open" data-key="feedback" aria-haspopup="dialog">' + ico('chat', 20) + '<span>' + esc(t('fb_btn')) + '</span></button>' + fbDialog() : '') +
       (bare ? ccBanner().replace('class="cc"', 'class="cc cc-bare"') : ccBanner()) +
@@ -11585,7 +11599,7 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
     var tabs = [['home', 'nav_home'], ['history', 'nav_history'], ['chart', 'nav_stats'], ['leaf', 'nav_save'], ['help', 'nav_help'], ['prefs', 'nav_prefs']];
     return '<div class="lp-phone"><div class="lpp-screen"><div class="lpp-vp">' +
       '<div class="lpp-sb"><b>9:41</b><span class="lpp-island"></span>' + sb + '</div>' +
-      '<div class="lpp-app"><div class="lpp-bar">' + logo() + '<b>' + esc(t('brand')) + '</b><span class="lpp-beta">' + esc(t('beta_tag')) + '</span></div>' +
+      '<div class="lpp-app"><div class="lpp-bar">' + logo() + wordmark(true) + '<span class="lpp-beta">' + esc(t('beta_tag')) + '</span></div>' +
       '<div class="lpp-hp">' + ico('home', 24) + '<span><b>' + esc(t('pl_mine')) + '</b><i>' + esc(t('lp_ph_addr')) + '</i></span></div>' +
       '<div class="ucards">' +
       card('heat', 'thermo', t('uc_heat'), lcd([{ text: '13.245', tag: 'Gcal' }], 'card'), t('lp_ph_due'), 'warn') +
@@ -11776,11 +11790,11 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
     var a = function (href, txt, key) { return '<li><a href="' + href + '" data-key="' + key + '">' + esc(txt) + '</a></li>'; };
     var bot = (Y()._cfg && Y()._cfg.botUsername) || '';
     return '<footer class="lp-foot" data-key="lp-foot"><div class="lpf-in">' +
-      '<div class="lpf-brand"><div class="lpf-logo">' + logo() + '<b>' + esc(t('brand')) + '</b></div><p>' + esc(t('lf_about')) + '</p></div>' +
+      '<div class="lpf-brand"><div class="lpf-logo">' + wordmark(true) + '</div><p>' + esc(t('lf_about')) + '</p></div>' +
       col(t('lf_service'), [a('#start', t('lp_cta'), 'lpf-start')].concat(login ? [a('#login', t('lf_login'), 'lpf-login')] : []).concat([a('#help', t('nav_help'), 'lpf-help')])) +
       col(t('lf_docs'), [a('#privacy', t('lg_privacy'), 'lpf-privacy'), a('#terms', t('lg_terms'), 'lpf-terms')].concat(window.TEPLO_API ? ['<li><button type="button" class="linkbtn" data-act="cc-open" data-key="lpf-cookie">' + esc(t('cc_link')) + '</button></li>'] : [])) +
       col(t('lf_contact'), ['<li><button class="linkbtn" data-act="fb-open" data-key="lpf-fb">' + esc(t('lf_write')) + '</button></li>'].concat(bot ? ['<li><a href="https://t.me/' + esc(bot) + '" target="_blank" rel="noopener" data-key="lpf-bot">' + esc(t('lf_bot')) + '</a></li>'] : [])) +
-      '</div><div class="lpf-bot"><span>© ' + new Date().getFullYear() + ' ' + esc(t('brand')) + '</span><span>' + esc(t('lf_indep')) + '</span></div></footer>';
+      '</div><div class="lpf-bot"><span>© ' + new Date().getFullYear() + ' передай.com.ua</span><span>' + esc(t('lf_indep')) + '</span></div></footer>';
   }
   /** Подвал застосунку — лише на комп'ютері (≥ 960), притиснутий до низу сторінки (рядок сітки .app після main; коротка сторінка — внизу вікна).
    *  91-а (власник): посилання — тільки «Політика конфіденційності», «Умови використання» й «Налаштування cookie»;
@@ -11788,7 +11802,7 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
   function appFoot() {
     return '<footer class="app-foot" data-key="app-foot"><a href="#privacy" data-key="lpf-privacy">' + esc(t('lg_privacy')) + '</a><a href="#terms" data-key="lpf-terms">' + esc(t('lg_terms')) + '</a>' +
       (window.TEPLO_API ? '<button type="button" class="linkbtn" data-act="cc-open" data-key="lpf-cookie">' + esc(t('cc_link')) + '</button>' : '') +
-      '<p class="af-note" data-key="app-foot-note"><span>© ' + new Date().getFullYear() + ' ' + esc(t('brand')) + '</span><span>' + esc(t('lf_indep')) + '</span></p></footer>';
+      '<p class="af-note" data-key="app-foot-note"><span class="af-brand">© ' + new Date().getFullYear() + ' ' + wordmark(true) + '</span><span>' + esc(t('lf_indep')) + '</span></p></footer>';
   }
   function lpCta(key, label) { return '<a class="lp-btn" href="#start" data-key="' + key + '"><span>' + esc(label) + '</span></a>'; }
   /** Картинки лендинга приймають за кнопки (журнал 11.11, 111-а: «Нагадування в Telegram» — 6 натискань, з них 4 повтори; стрічка постачальників — 5, 4 повтори) —

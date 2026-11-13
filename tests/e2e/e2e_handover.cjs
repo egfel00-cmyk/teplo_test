@@ -17,7 +17,7 @@ const U = 'http://127.0.0.1:8013/';
 
   // шапка
   ok('в шапці немає перемикача теми', !(await p.$('[data-key=theme-toggle]')) && !(await p.$('.top .theme-btn')));
-  ok('біля «Лічильники» — «бета»', /^Лічильники\s*бета$/.test((await p.textContent('[data-key=brand]')).trim()) && await p.isVisible('[data-key=beta]'));
+  ok('шапка (127-а): знак + слово «передай.com.ua» замість «Лічильники», поруч «бета»', (await p.getAttribute('[data-key=brand] svg.wm', 'aria-label')) === 'передай.com.ua' && await p.isVisible('[data-key=brand] svg.logo') && /^бета$/.test((await p.textContent('[data-key=brand]')).trim()) && await p.isVisible('[data-key=beta]'));
   const th = await st();
   ok('примусова темна з шапки → один раз «як у телефоні» (auto), сторінка світла як телефон', th.theme === 'auto' && th.themeV === 2 && (await p.getAttribute('html', 'data-theme')) === 'light', [th.theme, th.themeV]);
   await p.goto(U + '#prefs'); await p.waitForTimeout(400);

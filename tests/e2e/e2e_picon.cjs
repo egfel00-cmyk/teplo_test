@@ -48,8 +48,8 @@ const U = 'http://127.0.0.1:8013/';
     if (vw >= 960) for (const r of ['#help', '#rec-r1', '#home']) {
       await p.goto(U + r); await p.waitForTimeout(500);
       const fp = await p.evaluate(() => { const f = document.querySelector('[data-key=app-foot]'); if (!f) return null; const de = document.documentElement, rb = f.getBoundingClientRect().bottom + scrollY;
-        return { gap: Math.round(Math.max(de.scrollHeight, innerHeight) - rb), keys: [...f.querySelectorAll('a,button')].map(x => x.dataset.key), inMain: !!f.closest('main'), note: (f.querySelector('.af-note') || {}).textContent || '' }; });
-      ok(vw + ': ' + r + ' — подвал притиснутий до низу сторінки: політика, умови, cookie, рік і «не є офіційним»', fp && fp.gap <= 1 && !fp.inMain && fp.keys.join() === 'lpf-privacy,lpf-terms,lpf-cookie' && /© 20\d\d Лічильники/.test(fp.note) && /не є офіційним/.test(fp.note), fp);
+        return { gap: Math.round(Math.max(de.scrollHeight, innerHeight) - rb), keys: [...f.querySelectorAll('a,button')].map(x => x.dataset.key), inMain: !!f.closest('main'), note: (f.querySelector('.af-note') || {}).textContent || '', wm: (f.querySelector('.af-note svg.wm') || { getAttribute: () => '' }).getAttribute('aria-label') }; });
+      ok(vw + ': ' + r + ' — подвал притиснутий до низу сторінки: політика, умови, cookie, рік, слово «передай.com.ua» (127-а) і «не є офіційним»', fp && fp.gap <= 1 && !fp.inMain && fp.keys.join() === 'lpf-privacy,lpf-terms,lpf-cookie' && /© 20\d\d/.test(fp.note) && fp.wm === 'передай.com.ua' && /не є офіційним/.test(fp.note), fp);
     }
     if (vw >= 960) { await p.goto(U + '#help'); await p.waitForTimeout(400); await p.screenshot({ path: '/tmp/shots/foot_help_1280.png' });
       // 93-я (власник): на широкому рядок «© … · Незалежний сервіс…» — одним рядком; «Відгук» не налазить на подвал
