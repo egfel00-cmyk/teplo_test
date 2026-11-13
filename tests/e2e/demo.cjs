@@ -12,7 +12,7 @@ module.exports = function demo(opts) {
   if (opts.seasons) [['2024-10-10', '2.000'], ['2024-11-12', '2.700'], ['2024-12-11', '3.900'], ['2025-01-13', '5.100'], ['2025-02-12', '6.200'], ['2025-03-12', '7.100'],
     ['2025-04-14', '7.700'], ['2025-05-12', '7.760'], ['2025-09-15', '7.760'], ['2025-10-14', '7.900'], ['2025-11-12', '8.400']].forEach(([d, e], i) => readings.unshift({ id: 's' + i, place: 'main',
     htm: { date: d, energy: e, volume: String(1500 + i * 30), hours: String(30000 + i * 700) }, status: 'accepted', createdAt: d + 'T10:00:00Z', updatedAt: 1, source: 'manual' }));
-  const meter = opts.noHeat ? null : { modelId: 'sharky774', unit: 'Gcal' };
+  const meter = opts.noHeat ? null : { modelId: opts.model || 'sharky774', unit: 'Gcal' };
   const baseline = opts.noHeat ? null : { date: '2025-12-10', energy: '9.001', volume: '2150', hours: '33300' };
   const out = { v: 1, lang: opts.lang || 'uk', onboarded: true, meter, baseline, contacts: { phone: '', email: '' }, readings: opts.noHeat ? [] : readings, draft: null,
     demoToday: opts.today || '2026-11-02', placeId: 'main', view: opts.view,

@@ -70,11 +70,25 @@ ok('SonoSafe 10: головна петля — енергія, обсяг, го�
   (st => order('sonosafe10') === 'energy,volume,hours,errCode,tSupply,power,flow,errHours' && st[4].press === 'long' && !st[4].hold && /доки не зміниться/.test(st[4].say.uk) && st[4].lcd.swap && /На екрані немає/.test(st[7].say.uk) && M.byId('sonosafe10').status === 'draft')(M.byId('sonosafe10').steps));
 ok('Techem compact V: рівень 2 — понад 3 с; годин на екрані немає; F-5/F-9 — міряє правильно, C-1 — несправний',
   (st => st[1].press === 'long' && st[1].hold === 3 && st[6].fields.join() === 'hours,errHours' && /На екрані немає/.test(st[6].say.uk) && /F-9/.test(st[5].hint.uk) && /C-1/.test(st[5].hint.uk) && M.byId('techem_cv').sleepMin === 2)(M.byId('techem_cv').steps));
-ok('статуси: перевірено — лише Sharky 774; «уточнюється» — CF Echo II, SonoSafe 10, TRUST; решта — за посібником виробника',
-  M.MODELS.filter(m => m.status === 'verified').map(m => m.id).join() === 'sharky774' && M.MODELS.filter(m => m.status === 'draft').map(m => m.id).join() === 'cfecho2,sonosafe10,trust' &&
+ok('статуси: перевірено — лише Sharky 774; «уточнюється» — CF Echo II, SonoSafe 10, TRUST, ULTRAMETER, LTE-1; решта — за посібником виробника',
+  M.MODELS.filter(m => m.status === 'verified').map(m => m.id).join() === 'sharky774' && M.MODELS.filter(m => m.status === 'draft').map(m => m.id).join() === 'cfecho2,sonosafe10,trust,ultrameter,lte1' &&
   M.MODELS.every(m => ['verified', 'manual', 'draft', 'universal'].includes(m.status)), M.MODELS.map(m => m.id + ':' + m.status));
 ok('фото наклейки: LQM-III і CQM-III-K → lqm3 (не ELF), ELF → elf, HYDROCAL-M3, SonoSafe/SonoSelect, techem compact V',
   mid('LQM-III') === 'lqm3' && mid('CQM-III-K') === 'lqm3' && mid('Apator ELF') === 'elf' && mid('HYDROCAL-M3') === 'hydrocal_m3' && mid('Danfoss SonoSafe 10') === 'sonosafe10' && mid('SonoSelect 10') === 'sonosafe10' && mid('techem compact V') === 'techem_cv',
   ['LQM-III', 'CQM-III-K', 'Apator ELF', 'HYDROCAL-M3', 'Danfoss SonoSafe 10', 'SonoSelect 10', 'techem compact V'].map(mid));
+
+// 132-а: харківські з пам’ятки ХТМ (години лише при витраті) — TRUST (інструкції установників), ULTRAMETER (паспорт: рівні А1–А4), LTE-1 / LTE-1U (лише перелік екранів)
+ok('TRUST: «HEAT/SUM Gcal» першим; потужність — після kWh і COOL/SUM (пропустити); обсяг → витрата → температури → «T» → години (h чи d × 24); простій — інша петля ~3 с',
+  (st => order('trust') === 'energy,power,volume,flow,tSupply,hours,errHours,errCode' && /HEAT\/SUM/.test(st[0].hint.uk) && /COOL\/SUM/.test(st[1].hint.uk) && st[1].count === null &&
+    st[5].count === 2 && /× 24|на 24/.test(st[5].hint.uk) && /3 секунди/.test(st[6].hint.uk) && M.byId('trust').hoursOnlyWithFlow)(M.byId('trust').steps), order('trust'));
+ok('ULTRAMETER: А1 коротко (< 2 с) — енергія, обсяг, температури, [різниця], витрата, потужність, години; простій — архів А2 (понад 2 с); сон за 10 хв',
+  (st => order('ultrameter') === 'energy,volume,tSupply,flow,power,hours,errHours,errCode' && st[3].count === 2 && st[6].press === 'long' && st[6].hold === 2 && /А2/.test(st[6].hint.uk) &&
+    /А4/.test(M.byId('ultrameter').loops.tip.uk) && M.byId('ultrameter').sleepMin === 10 && M.byId('ultrameter').units[0] === 'Gcal')(M.byId('ultrameter').steps), order('ultrameter'));
+ok('LTE-1 / LTE-1U: Гкал (ГДж — другим екраном), години лише при витраті, «уточнюється»', M.byId('lte1').units.join() === 'Gcal,GJ' && M.byId('lte1').hoursOnlyWithFlow && /ГДж/.test(M.byId('lte1').steps[0].hint.uk));
+const kind = (txt) => P.photo({ lines: [{ text: txt, score: 0.9, x: 0, y: 0, w: 100, h: 20 }] }, {}, 0).photo.meterType;
+ok('фото: TRUST і «HEAT/SUM» → trust, ULTRAMETER UM-15 / UltraMeter-M → ultrameter, LTE-1U і ЛТЕ-1 → lte1; електролічильник «Меридіан ЛТЕ-1.03» — не тепло',
+  mid('TRUST') === 'trust' && mid('HEAT/SUM 0001.234 Gcal') === 'trust' && mid('ULTRAMETER UM-15') === 'ultrameter' && mid('UltraMeter-M') === 'ultrameter' && mid('LTE-1U') === 'lte1' && mid('ЛТЕ-1 Ду-15') === 'lte1' &&
+    mid('Меридіан ЛТЕ-1.03/2Т') !== 'lte1' && kind('Меридіан ЛТЕ-1.03/2Т 220 V 50 Hz') === 'electric' && kind('ULTRAMETER 0001.234') === 'heat',
+  ['TRUST', 'HEAT/SUM 0001.234 Gcal', 'ULTRAMETER UM-15', 'UltraMeter-M', 'LTE-1U', 'ЛТЕ-1 Ду-15', 'Меридіан ЛТЕ-1.03/2Т'].map(mid).concat([kind('Меридіан ЛТЕ-1.03/2Т 220 V 50 Hz')]));
 
 console.log(`\nИтог: ${pass} OK, ${fail} FAIL`); process.exit(fail ? 1 : 0);
