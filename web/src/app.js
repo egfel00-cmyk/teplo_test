@@ -6697,7 +6697,7 @@
   function wpRead() { var g = function (id) { var el = document.getElementById(id); return el ? String(el.value || '') : null; }; var y = g('wp-ym'), a = g('wp-amount'), dt = g('wp-date'); if (y !== null) WP.ym = y; if (a !== null) WP.amount = a; if (dt !== null) WP.date = dt; }
   function wpSave() {
     wpRead(); var r = Ws.make({ ym: WP.ym, n: WP.n, amount: WP.amount, date: WP.date }, today());
-    if (!r.ok) { WP.err = r.err; render(true); var f = document.getElementById(r.err === 'ym' ? 'wp-ym' : r.err === 'amount' ? 'wp-amount' : 'wp-date'); if (f) f.focus(); return; }
+    if (!r.ok) { WP.err = r.err; render(true); var f = document.getElementById(r.err === 'ym' ? 'wp-ym' : r.err === 'amount' ? 'wp-amount' : 'wp-date-dmy') || document.getElementById('wp-date'); if (f) f.focus(); return; }
     var id = WP.id || 'wp' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5);
     wasteSet(function (w) { w.pays = (w.pays || []).filter(function (x) { return x && x.id !== id; }); w.pays.push(Object.assign({ id: id, updatedAt: Date.now() }, r.pay)); });
     track('waste_pay', { n: r.pay.n, edit: WP.id ? 1 : 0 }); toast(t(WP.id ? 'wsp_saved_e' : 'wsp_saved', { m: wsMon(r.pay.ym) }));
@@ -7992,33 +7992,54 @@
   function go(r) { if (routeName() === r) render(); else location.hash = r; }
 
   /** Даты — всегда «дд.мм.рррр», как в ХТМ, независимо от языка браузера. Настоящее поле type=date остаётся
-   *  (скрытым) и хранит ISO-значение — весь остальной код читает его как раньше; кнопка-календарь открывает его выбор. */
+   *  (скрытым) и хранит ISO-значение — весь остальной код читает его как раньше; кнопка-календарь открывает его выбор.
+   *  141-я (владелец 13.11): руками — в любом виде (web/src/dates.js: «1.3.26», «13/11/2026», «2026-11-13», «5 березня», «вчора»…).
+   *  Одними цифрами — точки ставим сами; дата с полным годом принимается сразу, остальное — при выходе из поля, Enter или нажатии
+   *  кнопки (тогда же текст приводится к «дд.мм.рррр»). Не поняли — поле красное и тост с примером, прежнее значение не трогаем. */
+  var DMY_EX = '05.03.2026';
+  function dmyCommit(txt, quiet) {
+    var nat = txt && txt._nat; if (!nat || !txt.isConnected) return;
+    var v = txt.value.trim();
+    if (!v) { txt.classList.remove('bad'); txt.removeAttribute('aria-invalid'); txt._push(''); return; }
+    var r = TeploDate.parse(v, { today: today(), max: nat.max || '' });
+    txt.classList.toggle('bad', !r); if (r) txt.removeAttribute('aria-invalid'); else txt.setAttribute('aria-invalid', 'true');
+    if (!r) { if (!quiet && txt._bad !== v) { txt._bad = v; toast(t('dmy_bad').replace('{v}', v.slice(0, 24)).replace('{ex}', DMY_EX)); } return; }
+    var d = TeploDate.dmy(r.iso); if (txt.value !== d) txt.value = d;
+    txt._push(r.iso);
+  }
   function enhanceDates(root) {
     Array.prototype.forEach.call((root || document).querySelectorAll('input[type=date]:not([data-dmy])'), function (nat) {
       nat.setAttribute('data-dmy', '1');
-      var txt = document.createElement('input'); txt.type = 'text'; txt.className = 'num dmy'; txt.inputMode = 'numeric'; txt.autocomplete = 'off';
-      txt.placeholder = S.lang === 'ru' ? 'дд.мм.гггг' : 'дд.мм.рррр'; txt.maxLength = 10;
+      var txt = document.createElement('input'); txt.type = 'text'; txt.className = 'num dmy'; txt.inputMode = 'decimal'; txt.autocomplete = 'off'; txt.spellcheck = false;
+      txt.placeholder = S.lang === 'ru' ? 'дд.мм.гггг' : 'дд.мм.рррр'; txt.maxLength = 40; txt.setAttribute('enterkeyhint', 'done');
       if (nat.id) { txt.id = nat.id + '-dmy'; var lb = document.querySelector('label[for="' + nat.id + '"]'); if (lb) lb.setAttribute('for', txt.id); }
-      var toDmy = function (iso) { var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso || ''); return m ? m[3] + '.' + m[2] + '.' + m[1] : ''; };
-      txt.value = toDmy(nat.value);
+      txt.value = TeploDate.dmy(nat.value); txt._nat = nat;
       var btn = document.createElement('button'); btn.type = 'button'; btn.className = 'dmy-cal'; btn.setAttribute('aria-label', S.lang === 'ru' ? 'Календарь' : 'Календар'); btn.innerHTML = ico('calendar', 20);
       nat.classList.add('dmy-native'); nat.tabIndex = -1; nat.setAttribute('aria-hidden', 'true');
       nat.parentNode.insertBefore(txt, nat); nat.parentNode.insertBefore(btn, nat.nextSibling); nat.parentNode.classList.add('has-dmy');
-      var push = function (iso) { if (nat.value === iso) return; nat.value = iso; nat.dispatchEvent(new Event('input', { bubbles: true })); nat.dispatchEvent(new Event('change', { bubbles: true })); };
+      txt._push = function (iso) { if (nat.value === iso) return; nat.value = iso; nat.dispatchEvent(new Event('input', { bubbles: true })); nat.dispatchEvent(new Event('change', { bubbles: true })); };
       txt.addEventListener('input', function () {
-        var d = txt.value.replace(/\D/g, '').slice(0, 8), out = d.slice(0, 2);
-        if (d.length > 2) out += '.' + d.slice(2, 4); if (d.length > 4) out += '.' + d.slice(4);
-        if (out !== txt.value) txt.value = out;
-        if (!d) { push(''); return; }
-        if (d.length === 8) {
-          var iso = d.slice(4) + '-' + d.slice(2, 4) + '-' + d.slice(0, 2), ok = !isNaN(Date.parse(iso + 'T00:00:00Z')) && new Date(iso + 'T00:00:00Z').toISOString().slice(0, 10) === iso;
-          txt.classList.toggle('bad', !ok); if (ok) push(iso);
-        } else txt.classList.remove('bad');
+        // «2026-…»: первые 4 цифры — год, а маска уже поставила точку («20.26») — убираем её, человек пишет год первым
+        if (txt._auto && /^(19|20)\.\d{2}[-\/]$/.test(txt.value)) txt.value = txt.value.replace('.', '');
+        var mk = TeploDate.mask(txt.value); if (mk !== null && mk !== txt.value) txt.value = mk;   // одни цифры — точки сами
+        txt._auto = mk !== null; txt._bad = ''; txt.removeAttribute('aria-invalid');
+        var v = txt.value.trim(); if (!v) { txt.classList.remove('bad'); return; }   // стёрли — пустое примем при выходе из поля (не перерисовывать на ходу)
+        var r = TeploDate.parse(v, { today: today(), max: nat.max || '' });
+        txt.classList.remove('bad');
+        if (r && r.full) txt._push(r.iso);   // полный год — сразу; «13.11», «1.3.26» — при выходе из поля (могут ещё дописывать)
+        else if (mk !== null && txt.value.replace(/\D/g, '').length === 8) txt.classList.add('bad');   // 8 цифр, а такой даты нет
       });
-      nat.addEventListener('change', function () { var v = toDmy(nat.value); if (v !== txt.value && document.activeElement !== txt) txt.value = v; });
+      txt.addEventListener('change', function () { dmyCommit(txt); });
+      txt.addEventListener('blur', function () { dmyCommit(txt); });
+      txt.addEventListener('keydown', function (e) { if (e.key === 'Enter') dmyCommit(txt); });
+      nat.addEventListener('change', function () { var v = TeploDate.dmy(nat.value); if (v !== txt.value && document.activeElement !== txt) { txt.value = v; txt.classList.remove('bad'); } });
       btn.addEventListener('click', function () { try { if (nat.showPicker) { nat.showPicker(); return; } } catch (e) { /* старый браузер */ } nat.focus(); nat.click(); });
     });
   }
+  // нажали кнопку, не уходя из поля даты (на iPhone поле может не потерять фокус) — сначала разбираем дату, потом сама кнопка
+  document.addEventListener('click', function (e) {
+    var a = document.activeElement; if (a && a.classList && a.classList.contains('dmy') && e.target !== a) dmyCommit(a, true);
+  }, true);
 
   /** Довгі акордеони (налаштування лічильника, «Куди передати», графік, групи налаштувань, квартира на головній):
    *  унизу розгорнутого — «Згорнути», щоб не шукати шапку вгорі. Додаємо при відкритті — працює й після часткових перемальовувань. */
