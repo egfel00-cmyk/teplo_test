@@ -126,6 +126,7 @@
 - Всё собирает `tools_logo.py` (текст — в кривые, шрифт Unbounded качается в /tmp): `python3 -I tools_logo.py` → `web/icon/` (favicon.svg/.ico, apple-touch-icon,
   icon-192/512, maskable, manifest.json) + `favicon.ico` и `apple-touch-icon.png` в корне + пак `web/icon/peredai-icons.zip` (iOS AppIcon + слои Icon Composer, Android adaptive
   + monochrome + mipmap, Telegram 640). Скачать — /admin → «Настройки» → «Логотип и иконки». `logo()` в app.js — маленький плоский знак «4 2 7» без id (`--inline`).
+- **Слово «передай.com.ua»** (13.11, владелец): `wordmark(dom)` — шапка (знак + слово), футеры — слово без знака; `currentColor`, данные — `--wordmark`.
 
 ## monobank: «Рахунки з monobank» (114-я, 128-я)
 - Токен и выписка — только в браузере человека (`web/src/mono.js`, `monoStep` в app.js), на наш сервер не идут. Выписка: окно ≤ 31 сутки, запрос раз в 61 с,
