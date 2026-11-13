@@ -33,9 +33,10 @@ for (const id of ['t330', 't230']) {   // 125-а, юзертестинг T330: �
 }
 ok('SensoStar (S3): рівень 2 — понад 4 с, перший екран — потужність; годин на екрані немає — дні × 24', (st => st.find(s => s.fields.includes('power')).press === 'long' && st.find(s => s.fields.includes('power')).hold === 4 &&
   /× 24/.test(st.find(s => s.fields.includes('hours')).hint.uk) && /H80/.test(st.find(s => s.fields.includes('errCode')).hint.uk))(M.byId('sensostar').steps));
-ok('CF Echo II (128-а, брошура Itron): Loop 1 — енергія, обсяг; Loop 2 — витрата, потужність, температури, години; без вигаданих секунд у підписі',
-  (function () { var st = M.byId('cfecho2').steps, f = st.map(s => s.fields.join('+')).join(' '), l2 = st.find(s => s.loop);
-    return f === 'energy volume+errCode flow power tSupply+tReturn hours errHours' && /доки не зміниться/.test(l2.say.uk) && l2.fields[0] === 'flow'; })());
+ok('CF Echo II (135-а, інструкція Itron): рівень 1 — енергія, обсяг; рівень 2 — затиснути на 2 с: витрата, потужність, температури, години, години збою, коди A0/A1; екран гасне за 4 хв',
+  (function () { var m = M.byId('cfecho2'), st = m.steps, f = st.map(s => s.fields.join('+')).join(' '), l2 = st.find(s => s.loop);
+    return f === 'energy volume flow power tSupply+tReturn hours errHours errCode' && l2.fields[0] === 'flow' && l2.press === 'long' && l2.hold === 2 && /2 с/.test(l2.say.uk) &&
+      /A0/.test(st[7].hint.uk) && /A1/.test(st[7].hint.ru) && m.status === 'manual' && m.sleepMin === 4 && /2 секунди/.test(m.loops.tip.uk); })());
 ok('MULTICAL 403/603 (127-а): години з помилкою — друга кнопка на екрані годин, порядок USER: енергія → обсяг → години → T → витрата → потужність → INFO',
   (function () { var st = M.byId('multical403').steps, f = st.map(s => s.fields.join('+')).join(' '); var eh = st.find(s => s.fields.includes('errHours'));
     return f === 'energy volume hours errHours tSupply+tReturn flow power errCode' && /Друга кнопка/.test(eh.say.uk) && !eh.loop && M.byId('multical403').units[0] === 'GJ'; })());
@@ -71,8 +72,8 @@ ok('SonoSafe 10: головна петля — енергія, обсяг, го�
   (st => order('sonosafe10') === 'energy,volume,hours,errCode,tSupply,power,flow,errHours' && st[4].press === 'long' && !st[4].hold && /доки не зміниться/.test(st[4].say.uk) && st[4].lcd.swap && /На екрані немає/.test(st[7].say.uk) && M.byId('sonosafe10').status === 'draft')(M.byId('sonosafe10').steps));
 ok('Techem compact V: рівень 2 — понад 3 с; годин на екрані немає; F-5/F-9 — міряє правильно, C-1 — несправний',
   (st => st[1].press === 'long' && st[1].hold === 3 && st[6].fields.join() === 'hours,errHours' && /На екрані немає/.test(st[6].say.uk) && /F-9/.test(st[5].hint.uk) && /C-1/.test(st[5].hint.uk) && M.byId('techem_cv').sleepMin === 2)(M.byId('techem_cv').steps));
-ok('статуси: перевірено — лише Sharky 774; «уточнюється» — CF Echo II, SonoSafe 10, TRUST, ULTRAMETER, LTE-1, Supercal; решта — за посібником виробника',
-  M.MODELS.filter(m => m.status === 'verified').map(m => m.id).join() === 'sharky774' && M.MODELS.filter(m => m.status === 'draft').map(m => m.id).join() === 'cfecho2,sonosafe10,trust,ultrameter,lte1,supercal,hydrosonis,maxx2,ultracal201,heat1u,uhm,eemc' &&
+ok('статуси: перевірено — лише Sharky 774; «уточнюється» — SonoSafe 10, TRUST, ULTRAMETER, LTE-1, Supercal; решта — за посібником виробника',
+  M.MODELS.filter(m => m.status === 'verified').map(m => m.id).join() === 'sharky774' && M.MODELS.filter(m => m.status === 'draft').map(m => m.id).join() === 'sonosafe10,trust,ultrameter,lte1,supercal,hydrosonis,maxx2,ultracal201,heat1u,uhm,eemc' &&
   M.MODELS.every(m => ['verified', 'manual', 'draft', 'universal'].includes(m.status)), M.MODELS.map(m => m.id + ':' + m.status));
 ok('фото наклейки: LQM-III і CQM-III-K → lqm3 (не ELF), ELF → elf, HYDROCAL-M3, SonoSafe/SonoSelect, techem compact V',
   mid('LQM-III') === 'lqm3' && mid('CQM-III-K') === 'lqm3' && mid('Apator ELF') === 'elf' && mid('HYDROCAL-M3') === 'hydrocal_m3' && mid('Danfoss SonoSafe 10') === 'sonosafe10' && mid('SonoSelect 10') === 'sonosafe10' && mid('techem compact V') === 'techem_cv',
