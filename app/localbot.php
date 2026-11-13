@@ -98,7 +98,7 @@ final class LocalBot {
     // «квартал + будинок + квартира + 0») і «один з номерів вашого лічильника» (pas) замість пароля. Номер лічильника зберігаємо як пароль (`pk: serial`).
     'svod' => ['t' => 'form', 'kinds' => ['water'], 'org' => 'КП «Славутич-Водоканал»', 'site' => 'vodaslav.com.ua',
       'start' => 'https://vodaslav.com.ua/kab/kabinet.html', 'host' => '~^(www\.)?vodaslav\.com\.ua$~i', 'need' => ['acc', 'pass'], 'pk' => 'serial',
-      'acc' => ['fields' => ['ls'], 'digits' => 10, 'hint' => '1110010010', 'pass' => 'pas']],
+      'acc' => ['fields' => ['ls'], 'digits' => 10, 'hint' => '1110010010', 'pass' => 'pas'], 'win' => [22, 28]],   // п. 22 договору КП зі змінами 2024 (140-а)
     // Львівщина: МКП «Золочівводоканал» — «Персональний кабінет користувача» zlvoda.com.ua/rk (e-mail + пароль, POST login.php без капчі); показання — до кінця місяця,
     // з 20 числа (zolochivvodokanal.wordpress.com)
     'zvk' => ['t' => 'cab', 'kinds' => ['water'], 'org' => 'МКП «Золочівводоканал»', 'site' => 'zlvoda.com.ua',

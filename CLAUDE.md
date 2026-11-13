@@ -172,7 +172,8 @@
   Окна — только явные «з A по B» (формат и правила — `skills/oblast-providers/SKILL.md`); 38 записей воды/тепла с `win`.
 - **138-я**: окно КП — из **п. 22 его типового индивидуального договора** (КМУ № 690: «щомісяця з A по B число»): Пісочин 20–27, Зміїв 25–31, Буча 25–30, Обухів 20–25,
   Славута 25–30 (там же e-mail → бот `slv`); **139-я**: Подільськ 25–1, Дачне 1–10, Богодухів 20–25 (и у роботов `podv`/`dach`/`bgdv`), Солоницівка 1–5,
-  Чабани 20–25 (e-mail chabanyvoda@ukr.net → бот `chab`) — 48 записей с `win`. Поиск по сайту КП в Chrome — `tests/kpscan.mjs` через jsDelivr (`import('https://cdn.jsdelivr.net/gh/egfel00-cmyk/teplo_test@<commit>/tests/kpscan.mjs')`, `scan()`);
+  Чабани 20–25 (e-mail chabanyvoda@ukr.net → бот `chab`); **140-я**: Славутич 22–28 (и у робота `svod`), Деражня 25–30; тепло — Старокостянтинів 25–28, Ізяслав 25–30,
+  Ірпінь 29–31, Бориспіль 28–30, Лозова 20–25 (у тепла с `win` — и `till` = конец окна) — 55 записей с `win`. Поиск по сайту КП в Chrome — `tests/kpscan.mjs` через jsDelivr (`import('https://cdn.jsdelivr.net/gh/egfel00-cmyk/teplo_test@<commit>/tests/kpscan.mjs')`, `scan()`);
   rada.info из Chrome открывается (fetch того же origin; .doc — UTF-16 текст), иногда «Could not verify safety category» — повторить позже.
   Как читать docx/Google Docs/PDF договоров в Chrome (PDF с текстом — pdf.js в странице) — `skills/oblast-providers/SKILL.md`.
 
