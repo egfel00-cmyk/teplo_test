@@ -2394,6 +2394,11 @@ ok('izt: тепло листом на iz_teplo@ukr.net — «Енергія …:
   && str_contains($mb, 'Особовий рахунок: 3021') && str_contains($mb, 'Петренко Іван') && !str_contains($mb, 'м³') && ($izh['via'] ?? '') === 'izt' && ($izh['robot'] ?? '') === 'server'
   && ($izh['win'] ?? null) === [25, 30] && ($izh['till'] ?? null) === 30 && !isset(LocalBot::items([['value' => '1', 'kind' => 'heat', 'unit' => 'MJ']])[0]['unit'])
   && (LocalBot::items([['value' => '1', 'kind' => 'heat', 'unit' => 'GJ']])[0]['unit'] ?? '') === 'GJ', [$r->body, $q->body, $ml[1] ?? null, $mb, $izh['via'] ?? null]);
+$bv = Providers::lookup('Бровари, вул. Київська, 6')['kinds']['heat'] ?? []; $sp = Providers::lookup('Шепетівка, вул. Героїв Небесної Сотні, 1')['kinds']['heat'] ?? [];
+ok('тепло листом (140-а, друга частина): Броварі brvt → tepl0@ukr.net (цифра 0), 20–25, till 25; Шепетівка shtm → shepetivka_ptm@ukr.net, без вікна (у договорі порожнє)',
+  ($bv['via'] ?? '') === 'brvt' && ($bv['win'] ?? null) === [20, 25] && ($bv['till'] ?? null) === 25 && (LocalBot::BOTS['brvt']['to'] ?? '') === 'tepl0@ukr.net'
+  && ($sp['via'] ?? '') === 'shtm' && !isset($sp['win']) && !isset(LocalBot::BOTS['shtm']['win']) && (LocalBot::BOTS['shtm']['to'] ?? '') === 'shepetivka_ptm@ukr.net'
+  && ($sp['robot'] ?? '') === 'server' && ($bv['robot'] ?? '') === 'server', [$bv['via'] ?? null, $bv['win'] ?? null, $sp['via'] ?? null]);
 $sk = Providers::lookup('Старокостянтинів, вул. Острозького, 1')['kinds']['heat'] ?? []; $ir = Providers::lookup('Ірпінь, вул. Соборна, 1')['kinds']['heat'] ?? [];
 ok('тепло листом (140-а): Старокостянтинів skt → info@teplovik.org, 25–28; Ірпінь itep → irpenteplopostach@ukr.net, 29–31 (з «Реквізитів виконавця» договорів); обидва heat, одне число',
   ($sk['via'] ?? '') === 'skt' && ($sk['robot'] ?? '') === 'server' && ($sk['win'] ?? null) === [25, 28] && (LocalBot::BOTS['skt']['to'] ?? '') === 'info@teplovik.org'

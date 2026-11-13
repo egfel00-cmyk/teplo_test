@@ -95,6 +95,13 @@ final class LocalBot {
       'need' => ['acc', 'name', 'addr'], 'win' => [25, 28], 'one' => true],
     'itep' => ['t' => 'mail', 'kinds' => ['heat'], 'org' => 'КПП «Теплоенергопостач» ІМР', 'site' => 'tep-irpin.org.ua', 'to' => 'irpenteplopostach@ukr.net',
       'need' => ['acc', 'name', 'addr'], 'win' => [29, 31], 'one' => true],
+    // 140-а (друга частина): Броварі — публічний договір про постачання теплової енергії, ред. 27.10.2021 (brovteplo.com.ua): «щомісяця з 20 по 25 число … на адресу
+    // електронної пошти», у реквізитах — «Електрона адреса для передачі показників лічильника тепла — tepl0@ukr.net (цифра «0»)»;
+    // Шепетівка — індивідуальний договір 2025 (shptm.com.ua, скан): «контакти для передачі показань вузлів обліку: … e-mail: shepetivka_ptm@ukr.net»; вікно в договорі порожнє.
+    'brvt' => ['t' => 'mail', 'kinds' => ['heat'], 'org' => 'КП «Броваритепловодоенергія»', 'site' => 'brovteplo.com.ua', 'to' => 'tepl0@ukr.net',
+      'need' => ['acc', 'name', 'addr'], 'win' => [20, 25], 'one' => true],
+    'shtm' => ['t' => 'mail', 'kinds' => ['heat'], 'org' => 'Шепетівське підприємство теплових мереж', 'site' => 'shptm.com.ua', 'to' => 'shepetivka_ptm@ukr.net',
+      'need' => ['acc', 'name', 'addr'], 'one' => true],
     // 139-а: Чабани — КП «Керуюча компанія Чабани», п. 22 типового договору: показання з 20 по 25 на chabanyvoda@ukr.net (там же телефони)
     'chab' => ['t' => 'mail', 'kinds' => ['water'], 'org' => 'КП «Керуюча компанія Чабани»', 'site' => 'chabany.kp.org.ua', 'to' => 'chabanyvoda@ukr.net',
       'need' => ['acc', 'name', 'addr'], 'win' => [20, 25]],
