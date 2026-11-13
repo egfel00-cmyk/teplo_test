@@ -58,6 +58,30 @@ let pass = 0, fail = 0; const ok = (n, c, x) => { if (c) { pass++; console.log('
   await p.setInputFiles('#wn-files', ['/tmp/elph/nik.png']);
   await p.waitForSelector('[data-key=wn-photo-sum]', { timeout: 180000 }).catch(() => {});
   ok('«Вода з фото» з лічильником світла → «це лічильник світла, не водомір — внести у «Світло»»', /лічильник світла, не водомір/.test(await p.textContent('[data-key=wn-photo-sum]').catch(() => '')) && (await p.getAttribute('[data-key=wn-other-0]', 'href')) === '#enew');
+  // 138-а: день — T2 (частина НІК / GAMA / MTX): навхрест до прошлих → день 10600, ніч 5350, рядок «день — T2», збереження запам'ятовує zswap;
+  // «Ні, день — T1» → zswap false і назад прямо
+  await shot(lcd('T1', '005350.2'), '/tmp/elph/s1.png'); await shot(lcd('T2', '010600.5'), '/tmp/elph/s2.png');
+  await p.goto('http://127.0.0.1:8013/'); await p.evaluate(s => localStorage.setItem('teplo.v1', JSON.stringify(s)), demo({ elec: 2 }));
+  await p.goto('http://127.0.0.1:8013/#elec'); await p.reload(); await p.waitForTimeout(500);
+  await p.click('[data-key=elec-add]'); await p.waitForSelector('#en-files', { state: 'attached' });
+  await p.setInputFiles('#en-files', ['/tmp/elph/s1.png', '/tmp/elph/s2.png']);
+  await p.waitForSelector('[data-key=en-photo-sum]', { timeout: 180000 });
+  const sd = await p.inputValue('#en-e1-day'), sn = await p.inputValue('#en-e1-night');
+  ok('день — T2: навхрест → день 10600, ніч 5350, рядок «день — T2» з кнопкою', sd === '10600' && sn === '5350' && !!(await p.$('[data-key=en-swap-e1] [data-key=en-noswap]')), { sd, sn });
+  await p.screenshot({ path: '/tmp/shot_enew_swap.png', fullPage: true });
+  await p.click('[data-key=en-noswap]'); await p.waitForTimeout(300);
+  let sw = await st(); const m1 = (sw.places || []).flatMap(x => x.meters || []).find(x => x.id === 'e1') || {};
+  // числа без мітки (цифри табло як барабан) далі розкладаються за близькістю до прошлих — це правильно; міняється лише трактування міток T1/T2
+  ok('«Ні, день — T1» → zswap false, рядка «день — T2» немає', m1.zswap === false && !(await p.$('[data-key=en-swap-e1]')), { z: m1.zswap });
+  await p.evaluate(() => { const s = JSON.parse(localStorage.getItem('teplo.v1')); (s.places || []).forEach(x => (x.meters || []).forEach(m => { if (m.id === 'e1') delete m.zswap; })); localStorage.setItem('teplo.v1', JSON.stringify(s)); });
+  await p.goto('http://127.0.0.1:8013/#elec'); await p.reload(); await p.waitForTimeout(500);
+  await p.click('[data-key=elec-add]'); await p.waitForSelector('#en-files', { state: 'attached' });
+  await p.setInputFiles('#en-files', ['/tmp/elph/s1.png', '/tmp/elph/s2.png']);
+  await p.waitForSelector('[data-key=en-photo-sum]', { timeout: 180000 });
+  await p.click('[data-key=en-save]'); await p.waitForTimeout(500);
+  sw = await st(); const m2 = (sw.places || []).flatMap(x => x.meters || []).find(x => x.id === 'e1') || {};
+  const r2 = sw.mrecs.filter(x => x.meter === 'e1' && !x.deleted).slice(-1)[0];
+  ok('збережено навхрест → запис день 10600 / ніч 5350, лічильник пам\'ятає zswap', m2.zswap === true && r2.z.day === '10600' && r2.z.night === '5350', { z: m2.zswap, rz: r2 && r2.z });
   ok('без помилок JS', !errs.length, errs);
   console.log('\nИтог: ' + pass + ' OK, ' + fail + ' FAIL'); await b.close(); process.exit(fail ? 1 : 0);
 })();

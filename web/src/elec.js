@@ -204,7 +204,8 @@
    * shots: [{lines, drum: {value, frac, sure} | null} | null] — по фото; ms — лічильники; prevBy: {id: {zone: показання}}.
    * opt: {days: {id: днів від прошлого}, heating} — скільки могло набігти: без днів — до 3 «місячних норм з опаленням», з днями —
    * три місячні норми на ці дні (не менше половини норми). НІК 2102 владельця 11.11: з прошлими ≈3500 за кілька днів підставили 5149.
-   * → {id: {zone: {v, frac, photo, why: 'tag'|'prev'|'drum'|'', guess}}}. Одне число — одній зоні; сума (T0) — лише однозонному.
+   * → {id: {zone: {v, frac, photo, why: 'tag'|'prev'|'drum'|'', guess, swap}}}. Одне число — одній зоні; сума (T0) — лише однозонному.
+   * swap — мітки T1/T2 розкладено навхрест (день — T2), бо прямо не лягали на прошлі; m.zswap: true — завжди навхрест, false — завжди прямо (людина сказала).
    */
   function fromPhotos(shots, ms, prevBy, opt) {
     var pool = [], used = {}, by = {}, lim0 = (JUMP_HEAT || JUMP) * 3;
@@ -219,11 +220,21 @@
     (ms || []).forEach(function (m) {
       var ks = keys(m), prev = (prevBy && prevBy[m.id]) || {}, res = by[m.id] = {}, opts = [], dd = opt && opt.days ? Number(opt.days[m.id]) : NaN, per = opt && opt.heating ? (JUMP_HEAT || JUMP) : JUMP;
       var lim = dd > 0 ? Math.max(per / 2, per * dd / 30 * 3) : lim0;
+      // 138-а: двозонний — зазвичай день T1 (1.8.1), але на частині НІК / GAMA / MTX навпаки (день — T2, 1.8.2, 15.8.2, Т22). Лічильник пам'ятає (m.zswap);
+      // не знає — дивимося на прошлі: усі мітки 1 і 2 лягають навхрест (день ≥ прошлого дня, ніч ≥ прошлої ночі), а прямо хоч одна — ні
+      // (зазвичай денне число менше прошлого дня) → міняємо й позначаємо swap. Обидва варіанти можливі — лишаємо прямо (як на більшості лічильників).
+      var sw = ks.length === 2 && m.zswap === true, auto = false;
+      if (ks.length === 2 && m.zswap === undefined && num(prev.day) !== null && num(prev.night) !== null) {
+        var fit = function (c, z) { var pz = num(prev[z]); return candVals(c, pz).some(function (v) { var dv = v - Math.floor(pz); return dv >= 0 && dv <= lim; }); }, n = 0, dir = 0, crs = 0;
+        pool.forEach(function (c) { if (c.zone !== 1 && c.zone !== 2) return; n++; if (fit(c, ks[c.zone - 1])) dir++; if (fit(c, ks[2 - c.zone])) crs++; });
+        if (n > 0 && crs === n && dir < n) sw = auto = true;
+      }
       ks.forEach(function (z) {
         var pv = num(prev[z]);
         pool.forEach(function (c, ci) {
           if (used[ci]) return;
-          var tz = c.zone === null ? null : typeof c.zone === 'number' ? (c.zone === 0 ? (ks.length === 1 ? z : '-') : ks.length > 1 ? (ks[c.zone - 1] || '-') : z) : ks.length > 1 && ks.indexOf(c.zone) >= 0 ? c.zone : z;
+          var zi = sw && (c.zone === 1 || c.zone === 2) ? 3 - c.zone : c.zone;
+          var tz = c.zone === null ? null : typeof c.zone === 'number' ? (zi === 0 ? (ks.length === 1 ? z : '-') : ks.length > 1 ? (ks[zi - 1] || '-') : z) : ks.length > 1 && ks.indexOf(c.zone) >= 0 ? c.zone : z;
           if (tz && tz !== z) return;
           var tagged = !!tz && ks.length > 1;
           if (pv !== null) candVals(c, pv).forEach(function (v) {
@@ -234,7 +245,7 @@
         });
       });
       opts.sort(function (a, b) { return a.cost - b.cost; });
-      opts.forEach(function (o) { if (res[o.z] || used[o.ci]) return; res[o.z] = { v: o.v, frac: String(o.frac || '').slice(0, 3), photo: o.photo, why: o.why, guess: !!o.guess, edge: !!(o.edge || (pool[o.ci] && pool[o.ci].edge)) }; used[o.ci] = true; });
+      opts.forEach(function (o) { if (res[o.z] || used[o.ci]) return; res[o.z] = { v: o.v, frac: String(o.frac || '').slice(0, 3), photo: o.photo, why: o.why, guess: !!o.guess, edge: !!(o.edge || (pool[o.ci] && pool[o.ci].edge)) }; if (auto && o.why === 'tag') res[o.z].swap = true; used[o.ci] = true; });
       // однозонний: на фото число менше прошлого (помилка в минулому записі чи інший лічильник) — не ховаємо «цифр не знайшли»,
       // а ставимо найкраще прочитане (від 5 цифр, як на барабані/табло, і саме менше — не «склеєне» з десятими) з позначкою:
       // перевірка скаже «менше, ніж минулого разу»

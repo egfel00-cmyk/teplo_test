@@ -2910,7 +2910,7 @@
     if (q === undefined || q === null) return; q = Math.max(0, Math.min(1, q));
     var r = document.getElementById(p + '-ring'), n = document.getElementById(p + '-lpct'); if (r) r.style.strokeDashoffset = (PHD_C * (1 - q)).toFixed(1); if (n) n.textContent = Math.round(q * 100) + '%';
   }
-  function enFresh(k) { return { k: k || 'elec', date: '', vals: {}, back: '', skip: '', photos: [], src: {}, auto: {}, busy: false }; }
+  function enFresh(k) { return { k: k || 'elec', date: '', vals: {}, back: '', skip: '', photos: [], src: {}, auto: {}, swap: {}, busy: false }; }
   /** «Розпізнати з фото» на введенні світла/газу: фото → движок у браузері → цифри по лічильниках і зонах (EN.src). */
   function enPhotoBox(k) {
     if (!VIS().local) return '';
@@ -2971,9 +2971,10 @@
       var dr = k === 'elec' ? El.drumPick(p.res.drums, p.res.lines) : (p.res.drums || []).length ? Wt.fromOcr({ lines: [], drums: p.res.drums }, one ? (prevBy[one.id] || {}).all : null) : null;
       return { lines: p.res.lines, drum: dr && dr.value !== null && dr.value !== undefined ? { value: dr.value, digits: dr.digits || '', frac: dr.frac || '', sure: !!dr.sure, edge: !!dr.edge, alts: dr.alts || [] } : null };
     });
-    var by = md.fromPhotos(shots, ms, prevBy, { days: days, heating: !!sopts(k).heating }); EN.src = {};
+    var by = md.fromPhotos(shots, ms, prevBy, { days: days, heating: !!sopts(k).heating }); EN.src = {}; EN.swap = {};
     ms.forEach(function (m) { md.keys(m).forEach(function (z) {
       var x = by[m.id] && by[m.id][z], key = m.id + '|' + z; if (!x) return;
+      if (x.swap) EN.swap[m.id] = true;   // 138-а: мітки T1/T2 розкладено навхрест (день — T2) — скажемо під лічильником і запам'ятаємо при збереженні
       EN.vals[m.id] = EN.vals[m.id] || {}; EN.src[key] = x;
       if (!EN.vals[m.id][z] || EN.auto[key]) { EN.vals[m.id][z] = k === 'gas' ? Wt.withFrac(x.v, x.frac) : String(x.v); EN.auto[key] = true; }
     }); });
@@ -2989,6 +2990,7 @@
       var p = eprev(m.id, date, EN.skip), vs = EN.vals[m.id] || {};
       h += '<fieldset class="efield" data-key="en-' + m.id + '"><legend>' + ico(SK[k].icon, 18, SK[k].cls) + ' ' + esc(ename(m)) + (m.serial ? ' <span class="small muted">№ ' + esc(m.serial) + '</span>' : '') + '</legend>' +
         (md.zones(m) > 1 ? '<p class="small muted">' + esc(t('en_zones_' + md.zones(m))) + '</p>' : '') +
+        (EN.swap && EN.swap[m.id] ? '<p class="small en-swap" role="status" data-key="en-swap-' + esc(m.id) + '">' + esc(t('en_swap')) + ' <button type="button" class="linkbtn" data-act="en-noswap" data-id="' + esc(m.id) + '" data-key="en-noswap">' + esc(t('en_noswap')) + '</button></p>' : '') +
         md.keys(m).map(function (z) {
           var id = m.id + '-' + z, pv = p ? md.whole(p.z && p.z[z]) : null;
           return '<div class="field wfield" id="ef-' + id + '"><label for="en-' + id + '">' + esc(ezl(m, z)) + '</label><div class="ctl"><input id="en-' + id + '" class="num" inputmode="decimal" autocomplete="off" data-en="' + m.id + '|' + z + '" value="' + esc(vs[z] || '') + '" placeholder="' + (pv !== null ? pv : '') + '" aria-describedby="eh-' + id + '"><span class="unit">' + u + '</span></div>' +
@@ -3047,6 +3049,9 @@
       if (same) { same.z = z; same.date = date; if (own) same.own = true; if (mine.length) same.photos = (same.photos || []).concat(mine); same.updatedAt = Date.now(); }
       else S.mrecs.push(Object.assign({ id: md.uid(), place: S.placeId, meter: m.id, kind: k, date: date, z: z, sent: {}, createdAt: now, updatedAt: Date.now() }, own ? { own: true } : {}, mine.length ? { photos: mine } : {}));
     });
+    // 138-а: розклали навхрест і людина зберегла — на цьому лічильнику день — T2; наступні фото одразу так (m.zswap), без здогадів по прошлих
+    var swIds = Object.keys(EN.swap || {}).filter(function (id) { return EN.swap[id] && smeters(k).some(function (m) { return m.id === id && m.zswap === undefined; }); });
+    if (swIds.length) setPMeters(function (list) { list.forEach(function (m) { if (swIds.indexOf(m.id) >= 0) m.zswap = true; }); });
     if (!S.onboarded) S.onboarded = true;
     var back = EN.back; EN = enFresh(k); save(); toast(t('wn_saved') + inPlace());
     if (back) go(back); else { SCROLL_TO = 'esend'; go(SK[k].page); }
@@ -3466,6 +3471,10 @@
         EN = enFresh(ee.kind === 'gas' ? 'gas' : 'elec'); EN.date = ee.date; EN.skip = ee.id; EN.vals[ee.meter] = {}; Object.keys(ee.z || {}).forEach(function (k) { EN.vals[ee.meter][k] = String(ee.z[k] || '').replace('.', ','); });
         mrecs().forEach(function (x) { if (x.date === ee.date && !x.base && x.meter !== ee.meter && x.kind === ee.kind) { EN.vals[x.meter] = {}; Object.keys(x.z || {}).forEach(function (k) { EN.vals[x.meter][k] = String(x.z[k] || '').replace('.', ','); }); } });
         EN.back = routeName(); go(SK[EN.k].nw); return true; }
+      case 'en-noswap': { enRead(); var nid = el.getAttribute('data-id'); setPMeters(function (list) { list.forEach(function (m) { if (m.id === nid) m.zswap = false; }); });
+        // підставлене з фото (не вписане людиною) — прибираємо й з полів: перемальовування читає поля назад у EN.vals
+        Object.keys(EN.auto || {}).forEach(function (key) { if (key.indexOf(nid + '|') !== 0) return; if (EN.vals[nid]) delete EN.vals[nid][key.split('|')[1]]; var inp = document.querySelector('[data-en="' + key + '"]'); if (inp) inp.value = ''; });
+        enAssign(); render(true); return true; }
       case 'ea-zones': eaRead(); EA.zones = Number(el.value) || 1; render(true); var ez = document.querySelector('[data-key=ea-z' + EA.zones + ']'); if (ez) ez.focus(); return true;
       case 'wnew': WN = wnFresh(el.getAttribute('data-kind') || 'hot'); go(wmeters().length ? 'wnew' : 'wsetup'); return true;
       case 'wsetup': WS = { step: 0, preset: (el.getAttribute('data-kind') === 'cold' ? 'hc' : 'hc'), vals: {}, kind: el.getAttribute('data-kind') || 'hot' }; go('wsetup'); return true;
