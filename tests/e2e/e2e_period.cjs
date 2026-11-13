@@ -73,6 +73,12 @@ let pass = 0, fail = 0; const ok = (n, c, x) => { if (c) { pass++; console.log('
   const lz = await strip('cold');
   ok('Лозова: холодна — 20–25, ще попереду', lz && lz.lab === '20–25' && /st-before/.test(lz.cls), lz);
 
+  // 141-а: плашка строку словами в «Куди передати» — лише за 4 дні до кінця (вікно й так видно смужкою)
+  await load({ today: '2026-11-13' }, 'heat'); await p.evaluate(() => document.querySelectorAll('details.wacc').forEach(d => d.open = true));
+  const pill13 = await p.$('[data-key=dest-htm-heat] .dest-h .pill');
+  await load({ today: '2026-11-22' }, 'heat'); await p.evaluate(() => document.querySelectorAll('details.wacc').forEach(d => d.open = true));
+  const pill22 = await p.$eval('[data-key=dest-htm-heat] .dest-h .pill', e => e.textContent).catch(() => null);
+  ok('«Куди передати» ХТМ: 13.11 — лише смужка, 22.11 — «до 25 листопада»', !pill13 && /25 листопада/.test(pill22 || '') && !!(await p.$('[data-key=dest-htm-heat] .prd')), { pill13: !!pill13, pill22 });
   ok('без помилок JS', !errs.length, errs);
   console.log(`\n${pass} OK, ${fail} FAIL`); await b.close(); process.exit(fail ? 1 : 0);
 })();

@@ -10279,7 +10279,7 @@ details.wacc.wacc-btn > .acc-foot { margin: 0; padding: 12px 16px 16px; border-t
    *  останні 3 записи, «Уся історія (N)» — лише коли записів більше. */
   function histPanel(rows, total, allBtn, k) {
     // 139-а (власник 13.11): один шаблон з «Куди передати» — шапка 56 px з лінією, тіло 12/16, низ — кнопка на всю ширину
-    return '<section class="panel mhist" data-key="' + k + '-hist"><h2 class="mhist-h">' + ico('history', 18, 'bt-ico') + '<span>' + esc(t('wh_title')) + '</span>' + (total > 3 ? '<span class="mhist-n">' + total + '</span>' : '') + '</h2>' +
+    return '<section class="panel mhist" data-key="' + k + '-hist"><h2 class="mhist-h">' + ico('history', 18, 'bt-ico') + '<span>' + esc(t('wh_title')) + '</span>' + (total > 0 ? '<span class="mhist-n">' + total + '</span>' : '') + '</h2>' +   // 141-а: число — завжди (як кружок «Куди передати»), кнопка — коли показано не все
       '<div class="mhist-b">' + rows + (total > 3 ? '<div class="mhist-all">' + allBtn + '</div>' : '') + '</div></section>';
   }
   /** Екран лічильника: «Внести показання» — над табло (владелец 10.11); на широкому — праворуч угорі, табло ліворуч на всю висоту. */
@@ -10300,7 +10300,15 @@ details.wacc.wacc-btn > .acc-foot { margin: 0; padding: 12px 16px 16px; border-t
 
   // ---------- экран вида воды: табло, «куди передати», история ----------
   /** Один адресат: кому, за що, строк; готові цифри (якщо є показання цього місяця); куди саме — кнопки; позначка «передано». */
+  /** 141-а: строк словами («до 25 листопада») поруч зі смужкою вікна — лише за 4 дні до кінця (власник: строки — тільки за 4 дні, ненав'язливо);
+   *  раніше смужка вже показує вікно й де ми зараз. Без смужки (вікно невідоме) — як було. */
+  function perSoon(k) {
+    var w = perWin(k); if (!w) return true;
+    var g = perGeo(w, today()); if (g.st !== 'open') return false;
+    return (g.cut === 'r' ? g.L - g.d + g.b : g.e - g.d) <= DUE_SOON;   // як рядок строку на картках (dueSoon)
+  }
   function destBox(o) {
+    if (o.per && o.due && !o.sent && o.dueTone !== 'warn' && !perSoon(o.per)) o = Object.assign({}, o, { due: '' });
     return '<div class="dest"' + (o.id ? ' id="' + o.id + '" tabindex="-1"' : '') + ' data-key="dest-' + o.key + '"><div class="dest-h"><div class="grow"><b>' + esc(o.org) + '</b>' + (o.what ? '<div class="small muted">' + esc(o.what) + '</div>' : '') + '</div>' +
       (o.sent ? '<span class="pill ok">' + ico('check', 14) + ' ' + esc(t('ws_sent')) + '</span>' : o.due ? '<span class="pill ' + (o.dueTone || 'neutral') + '">' + esc(o.due) + '</span>' : '') + '</div>' +
       // 136-а: смужка вікна прийому цього постачальника (o.per — вид: heat | water | elec | gas)

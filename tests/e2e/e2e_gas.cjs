@@ -92,7 +92,7 @@ let pass = 0, fail = 0; const ok = (n, c, i) => { console.log((c ? '  OK  ' : ' 
   const no4647 = async () => !/4647/.test(await p.evaluate(() => document.getElementById('main').textContent));
   const gPage = await no4647(); await go('place-main'); const gPlace = await no4647();
   s = await st(); s.mrecs = s.mrecs.filter(r => r.kind !== 'gas' || r.base); await p.evaluate(v => localStorage.setItem('teplo.v1', JSON.stringify(v)), s); await p.reload(); await p.waitForTimeout(400);
-  // 07.11: підказку «приймають з 1 по 5 число» з «Куди передати» прибрано — строк і так у плашці («1 грудня – 5 грудня»)
+  // 07.11: підказку «приймають з 1 по 5 число» з «Куди передати» прибрано — строк і так у плашці (1.12: «до 5 грудня» — за 4 дні до кінця; раніше — лише смужка, 141-а)
   await go('gas'); const gLead = await no4647() && /грудня/.test(await p.textContent('[data-key=where-gas] .dest-h .pill'));
   await go('help'); const hg = await p.evaluate(() => document.getElementById('main').textContent);
   ok('з 28.11 — «4647» ніде: сторінка газу, квартира, «Куди передати» без показань; довідка — «Куб», 0 800 303 104 і «SMS не приймають»', gPage && gPlace && gLead && !/Найпростіше — SMS/.test(hg) && /SMS на 4647 з 28 листопада 2026 не приймають/.test(hg) && /«Куб»/.test(hg) && /0 800 303 104/.test(hg), { gPage, gPlace, gLead });

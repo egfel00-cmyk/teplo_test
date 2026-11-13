@@ -2690,5 +2690,10 @@ ok('логотип: favicon.ico і apple-touch-icon у корені, manifest з
   && !array_filter($mf['icons'], fn($i) => !is_file("$root/web/icon/" . $i['src'])) && str_contains($si, 'rel="manifest" href="web/icon/manifest.json"')
   && str_contains($si, 'rel="icon" href="web/icon/favicon.svg"') && filesize("$root/web/icon/peredai-icons.zip") > 100000, $mf);
 
+// 141-а: дві функції з одним ім'ям на верхньому рівні app.js — друга тихо підміняє першу (так зламався рядок строку на картках: dueSoon)
+preg_match_all('/^  function\s+([A-Za-z_$][\w$]*)\s*\(/m', (string)file_get_contents("$root/web/src/app.js"), $mm);
+$dupFn = array_keys(array_filter(array_count_values($mm[1]), fn($c) => $c > 1));
+ok('app.js: немає двох функцій верхнього рівня з одним ім\'ям (' . count($mm[1]) . ')', !$dupFn && count($mm[1]) > 300, $dupFn);
+
 echo "\nИтог: $pass OK, $fail FAIL\n";
 exit($fail ? 1 : 0);
