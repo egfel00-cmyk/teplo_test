@@ -129,9 +129,15 @@
   vodomeri.com.ua / vs-group / teplo-i-voda.kh.ua: «HEAT/SUM Gcal» → kWh, COOL/SUM (пропустить) → kW → m³ → m³/h → T1, T2 → «T» → часы h или d×24 → номер), `ultrameter`
   (UM ультразвук / M механика, паспорт: уровни А1–А4, коротко < 2 с, долго > 2 с; А1 — энергия, объём, T1, T2, ΔT, расход, мощность, часы; простой — архив А2; сон 10 мин),
   `lte1` (LTE-1 / LTE-1U «ЛТЕ», Харьков — только перечень экранов продавца, `genericSteps`). Фото: «HEAT/SUM» → TRUST; «Меридіан ЛТЕ-1.03» — электросчётчик, не тепло.
-- **Какие типы принимает ХТМ** — бланки журналов `hts.kharkov.ua/public_blanks.php` (32 типа). Ещё без шагов: CF-UltraMaXX, Integral MaXX-2, EEM-C QII, Hydrosonis, MicroCLIMA,
-  Multical 402, Pollucom EX, QALCOSONIC HEAT, Qheat US, SensoStar 2 / E (S3), SKS-3, Supercal 539/739, Ultracal 201, Ultraheat 2WR6, HEAT+1U, UHM. PDF бланков WebFetch открывает
-  только с адресом из выдачи WebSearch (иначе `PROVENANCE_REQUIRED`) — колонки бланка = набор значений прибора и единицы (Pollucom EX — MWh, HEAT+1U — мощность в Гкал/год).
+- **Какие типы принимает ХТМ** — бланки журналов `hts.kharkov.ua/public_blanks.php` (32 типа). Ещё без шагов: Integral MaXX-2, EEM-C QII, Hydrosonis, MicroCLIMA,
+  QALCOSONIC HEAT, Qheat US, SKS-3, Ultracal 201, HEAT+1U, UHM. PDF бланков WebFetch открывает только с адресом из выдачи WebSearch или из сообщения владельца
+  (`…/docs/heat/journals/<Тип>_kvartirnij.pdf?ver=1.3`) — колонки бланка = набор значений прибора и единицы (Pollucom EX — MWh, HEAT+1U — мощность в Гкал/год,
+  Multical 402 — ГДж и расход л/год, SensoStar 2 — MWh и часы «днями», Ultrameter M — мощность Гкал/год, LTE-1U — есть «час роботи з помилкою»).
+- **133-я** (по руководствам): `multical402` (две кнопки: верхняя — по кругу, нижняя — архив; расход l/h ÷ 1000; простоя на экране нет), `sensostar2` (MSH: уровень 1 —
+  энергия, объём, мощность, расход, ошибка; уровень 2 > 4 с — температуры, дни × 24), `pollucom` (Sensus PolluCom E / EX: красная кнопка — меню L1; дни и часы сбоя — L4:
+  8 с → L4 → 2 с), `uh2wr6` (ULTRAHEAT 2WR6 / T350: сервисная петля — 10 с, Bh / Fh), `supercal` (Sontex 539 / 739, `draft`: меню «Сервис» > 2 с, порядок внутри — без чисел),
+  `ultramaxx` (CF-UltraMaXX / Integral-MK UltraMaXX: уровень 3 — 3.1…3.9, время работы в годах и днях). `sensostar` теперь — S3 (E, U, Q, C): мощность первой на уровне 2,
+  часов нет — дни × 24. Фото: «2WR6»/«T350» — раньше T330 (иначе `ULTRAHEAT T3…` уходил в T330); «Sensus PolluCom» — тепло (Sensus — и в признаках воды).
 
 ## Нижнее меню (131-я)
 - Владелец 13.11: «чтобы явно было видно, какой таб выбран». На телефоне под значком — скруглённая плашка 56×32 (у всех табов, прозрачная — без прыжков),
