@@ -939,12 +939,23 @@
     g.L = L; g.d = d; g.st = d < g.s ? 'before' : d > g.e ? 'after' : 'open';
     return g;
   }
+  /** День тижня коротко з великої: «Пт» (власник 13.11: під рискою «сьогодні» — день тижня). */
+  function wdShort(d) { var n = new Date(Date.UTC(+d.slice(0, 4), +d.slice(5, 7) - 1, +d.slice(8, 10))).getUTCDay(); return (S.lang === 'ru' ? ['Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'] : ['Нд', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'])[n]; }
   /** Місяць крапками для виду k; so — статус (heatStatus/waterStatus/sStatus): tone ok — передано, warn — останні дні; off (лічильник знято) — нічого. */
   function pstrip(k, so, cls, p) {
     var w = perWin(k, p); if (!w || (so && so.off)) return '';
-    var g = perGeo(w, today()), dots = '';
+    var td = today(), g = perGeo(w, td), dots = '';
     var tone = so && so.tone === 'ok' ? 'done' : so && so.tone === 'warn' && g.st === 'open' ? 'warn' : '';
-    for (var i = 1; i <= g.L; i++) dots += '<i class="' + (i >= g.s && i <= g.e ? 'w' : 'o') + (i < g.d ? ' p' : '') + (i === g.d ? ' t' : '') + '"></i>';
+    // 138-а (власник 13.11, варіант C «відрізок строку»): тонка лінія місяця, вікно — смугою, минула частина вікна щільніша, сьогодні — тонка риска
+    // з днем тижня під нею (без слова «сьогодні»); один тон для всіх видів і тем (відтінки --c-ink), колір — лише «останні дні» і «передано».
+    // Вікно через межу місяця — друга частина цього місяця тихою смугою (wx). Комірки днів лишаються (.prd-d i) — підказка й тести як були.
+    var y0 = +td.slice(0, 4), m0 = +td.slice(5, 7), A = w[0] < 0 ? g.L + 1 + w[0] : Math.min(w[0], g.L), B = w[1] < 0 ? workEnd(y0, m0, -w[1]) : Math.min(w[1], g.L);
+    var inW = function (i) { return i >= g.s && i <= g.e; }, inX = function (i) { return A > B && !inW(i) && (i <= B || i >= A); };
+    for (var i = 1; i <= g.L; i++) {
+      var cw = inW(i), cx = inX(i), k0 = cw ? inW : cx ? inX : null, c = cw ? 'w' : cx ? 'wx' : 'o';
+      if (k0) c += (i === 1 || !k0(i - 1) ? ' rs' : '') + (i === g.L || !k0(i + 1) ? ' re' : '');
+      dots += '<i class="' + c + (i < g.d ? ' p' : '') + (i === g.d ? ' t' + (i <= 2 ? ' tl' : i >= g.L - 1 ? ' tr' : '') : '') + '">' + (i === g.d ? '<b>' + esc(wdShort(td)) + '</b>' : '') + '</i>';
+    }
     var lab = g.a === g.b ? String(g.a) : g.a + '–' + g.b;
     var tip = t('pd_tip', { a: g.a, b: g.b }) + (w[1] < 0 ? ' ' + t('pd_tip_w' + (-w[1])) : '') + (g.cut === 'l' ? ' ' + t('pd_tip_l') : g.cut === 'r' ? ' ' + t('pd_tip_r') : '') + '\n' + t('pd_today', { d: fmtDate(today()) }) + (tone === 'done' ? '\n' + t('pd_done') : '');
     return '<div class="prd prd-' + k + ' st-' + g.st + (tone ? ' ' + tone : '') + (g.cut ? ' cut-' + g.cut : '') + (cls ? ' ' + cls : '') + '" role="img" aria-label="' + esc(tip.replace(/\n/g, ' ')) + '" data-tip="' + esc(tip) + '" data-key="prd-' + k + '">' +
@@ -5721,7 +5732,8 @@
       el.getAttribute('data-tip').split('\n').forEach(function (ln, i) { var d = document.createElement('div'); d.textContent = ln; if (i === 0) d.className = 'ctip-v'; tp.appendChild(d); });
       tp.hidden = false; var w = tp.offsetWidth, hh = tp.offsetHeight; tp.style.left = Math.max(8, Math.min(window.innerWidth - w - 8, x - w / 2)) + 'px'; tp.style.top = Math.max(8, y - hh - 14) + 'px'; };
     var hide = function () { var tp = document.getElementById('ctip'); if (tp) tp.hidden = true; };
-    document.addEventListener('pointermove', function (e) { var el = e.target.closest && e.target.closest('[data-tip]'); if (el) show(el, e.clientX, e.clientY); else hide(); });
+    // 138-а: лише мишею — на дотик iOS вважає зміну сторінки під час pointermove «наведенням» і з’їдає перший тап (власник: «раскрывашки квартир — 2 тапа»)
+    document.addEventListener('pointermove', function (e) { if (e.pointerType && e.pointerType !== 'mouse') return; var el = e.target.closest && e.target.closest('[data-tip]'); if (el) show(el, e.clientX, e.clientY); else hide(); });
     document.addEventListener('focusout', function () { setTimeout(function () { var f = document.activeElement; if (!(f && f.matches && f.matches('[data-field]')) && document.documentElement.classList.contains('kb-open')) kbOff(); }, 60); });
   document.addEventListener('focusin', function (e) { var el = e.target.closest && e.target.closest('[data-tip]'); if (el) { var b = el.getBoundingClientRect(); show(el, b.left + b.width / 2, b.top); } });
     document.addEventListener('focusout', hide);

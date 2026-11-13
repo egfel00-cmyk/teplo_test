@@ -572,8 +572,8 @@ input[type=text]:not(.dmy-native):not(.pl-in), input[type=email], input[type=pas
 /* ===== Главная: три карточки учёта (опалення, гаряча, холодна) ===== */
 .ucards { display: grid; gap: 12px; grid-template-columns: minmax(0, 1fr); margin-bottom: 8px; }
 @media (min-width: 720px) { .ucards { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
-.ucard { position: relative; background: var(--c-surface); border: 1px solid var(--c-line); border-radius: 16px; }
-.ucard-main { display: flex; flex-direction: column; gap: 4px; padding: 16px 18px; min-height: 124px; color: inherit; text-decoration: none; border-radius: 16px; }
+.ucard { position: relative; display: flex; flex-direction: column; background: var(--c-surface); border: 1px solid var(--c-line); border-radius: 16px; }   /* 138-а: наведення — на всю картку, і в нижчих картках ряду */
+.ucard-main { flex: 1 1 auto; display: flex; flex-direction: column; gap: 4px; padding: 16px 18px; min-height: 124px; color: inherit; text-decoration: none; border-radius: 16px; }
 .ucard-main:hover { background: var(--c-ghost-hover); }
 .ucard-main:focus-visible { outline: 3px solid var(--c-info); outline-offset: 2px; }
 .ucard-top { display: flex; align-items: center; gap: 8px; font-weight: 600; font-size: 16px; min-height: 48px; padding-right: 60px; }
@@ -586,22 +586,23 @@ input[type=text]:not(.dmy-native):not(.pl-in), input[type=email], input[type=pas
 /* 136-а: місяць крапками — вікно прийому й «сьогодні» (власник 13.11: «полоской, ненавязчиво, графически»; перша версія — лінія з кружком — «как скроллбар»).
    Крапка на день (як «Відстеження циклу» Apple Health): інші дні — дрібні нейтральні, дні прийому — більші кольором виду (відкрите вікно — повним, інакше блідим),
    уже минулі — прозоріші, сьогодні — у кільці кольору тексту. Підпис чисел — колонка однакової ширини праворуч. */
-.prd { --pk: var(--c-ink-2); --prd-bg: var(--c-surface); display: grid; grid-template-columns: minmax(0, 1fr) 3.6em; align-items: center; gap: 12px; margin: 6px 0 8px; }
-.prd-heat, .ucard-hot .prd-water, .prd-water.hot { --pk: var(--c-supply); } .prd-water { --pk: var(--c-return); }
-.prd-elec { --pk: var(--c-elec); } .prd-gas { --pk: var(--c-gas); }
-.prd-d { display: grid; grid-template-columns: repeat(var(--n, 30), minmax(0, 1fr)); justify-items: center; align-items: center; height: 14px; }
-.prd-d i { width: 3px; height: 3px; border-radius: 50%; background: var(--c-line); }
-.prd-d i.w { width: 6px; height: 6px; background: color-mix(in srgb, var(--pk) 38%, var(--prd-bg)); }
-.prd.st-open .prd-d i.w { background: var(--pk); }
-.prd.warn .prd-d i.w { background: var(--c-warn); }
-.prd.done .prd-d i.w { background: color-mix(in srgb, var(--c-ok) 60%, var(--prd-bg)); }
-.prd-d i.p { opacity: .45; }
-.prd-d i.t { width: 14px; height: 14px; box-sizing: border-box; padding: 2px; border: 2px solid var(--c-ink); background-clip: content-box; opacity: 1; }
-.prd-d i.o.t, .panel.where .prd-d i.o.t { background-color: var(--c-ink-2); }
-.prd-l { font-size: 13px; line-height: 1; color: var(--c-ink-2); text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.prd { --prd-bg: var(--c-surface); --prd-c: var(--c-ink); display: grid; grid-template-columns: minmax(0, 1fr) 3.6em; align-items: start; gap: 12px; margin: 6px 0 4px; }
+/* 138-а, варіант C: лінія місяця, вікно — смугою, минуле у вікні щільніше, сьогодні — риска з днем тижня; один тон для всіх видів (лише відтінки --c-ink) */
+.prd-d { display: grid; grid-template-columns: repeat(var(--n, 30), minmax(0, 1fr)); align-items: center; height: 14px; padding-bottom: 16px; }
+.prd-d i { position: relative; height: 2px; background: var(--c-line); }
+.prd-d i.w, .prd-d i.wx { height: 6px; background: color-mix(in srgb, var(--prd-c) 20%, var(--prd-bg)); }
+.prd-d i.wx { background: color-mix(in srgb, var(--prd-c) 10%, var(--prd-bg)); }
+.prd-d i.w.p, .prd-d i.w.t { background: color-mix(in srgb, var(--prd-c) 62%, var(--prd-bg)); }
+.prd-d i.rs { border-top-left-radius: 3px; border-bottom-left-radius: 3px; } .prd-d i.re { border-top-right-radius: 3px; border-bottom-right-radius: 3px; }
+.prd.warn { --prd-c: var(--c-warn); } .prd.done { --prd-c: var(--c-ok); }
+.prd.done .prd-d i.w { background: color-mix(in srgb, var(--prd-c) 62%, var(--prd-bg)); }
+.prd-d i.t::after { content: ''; position: absolute; left: 50%; top: 50%; width: 2px; height: 14px; transform: translate(-50%, -50%); border-radius: 1px; background: var(--c-ink); }
+.prd-d i.t b { position: absolute; left: 50%; top: 10px; transform: translateX(-50%); font-size: 11px; line-height: 1; font-weight: 500; color: var(--c-ink-2); white-space: nowrap; }
+.prd-d i.tl b { left: 0; transform: none; } .prd-d i.tr b { left: auto; right: 0; transform: none; }
+.prd-l { font-size: 13px; line-height: 14px; color: var(--c-ink-2); text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
 .prd.st-open:not(.done) .prd-l { color: var(--c-ink); font-weight: 500; }
 .prd.in-dest { --prd-bg: var(--bt-bg, var(--c-surface)); margin: 10px 0 4px; }
-.panel.where .prd-d i.o { background: var(--bt-line, var(--c-line)); }
+.panel.where .prd-d i.o { background: var(--bt-line, var(--c-line)); }   /* лінія місяця на тлі блоку постачальника */
 .prd.in-prov { margin: 8px 0 6px; max-width: 360px; }
 .ucard-status { font-size: 14px; font-weight: 600; margin-top: 4px; color: var(--c-ink-2); }
 .ucard-status.ok { color: var(--c-ok); } .ucard-status.due { color: var(--c-info); } .ucard-status.warn { color: var(--c-warn); }
@@ -2037,6 +2038,8 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
 .pv-add { margin: 12px 0 0; }
 .prov-bills { margin-top: 10px; padding-top: 12px; border-top: 1px dashed var(--c-line); }
 .prov-bills-t { font-size: var(--fs-s); font-weight: 600; color: var(--c-ink-2); margin: 0 0 8px !important; }
+/* 138-а (власник: «в разнобой»): поля платёжки в кілька колонок — підписи однакової висоти (2 рядки, текст знизу), поля вводу в один ряд; «необов’язково» — тихо в тому ж рядку */
+@media (min-width: 600px) { .prov-bills .grid2 > .field > label { min-height: calc(2 * 1.35em); display: flex; flex-wrap: wrap; align-items: flex-end; column-gap: .35em; line-height: 1.35; } }
 .pv-mname { margin: 8px 0 4px !important; }
 /* лендинг: стрічка постачальників — пливе справа наліво (владелец 10.11), на наведенні — пауза; краї тануть */
 .lp-marq { display: grid; gap: 10px; overflow: hidden; margin: 0 calc(var(--sp-4) * -1); -webkit-mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent); mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent); }
@@ -9579,12 +9582,23 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
     g.L = L; g.d = d; g.st = d < g.s ? 'before' : d > g.e ? 'after' : 'open';
     return g;
   }
+  /** День тижня коротко з великої: «Пт» (власник 13.11: під рискою «сьогодні» — день тижня). */
+  function wdShort(d) { var n = new Date(Date.UTC(+d.slice(0, 4), +d.slice(5, 7) - 1, +d.slice(8, 10))).getUTCDay(); return (S.lang === 'ru' ? ['Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'] : ['Нд', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'])[n]; }
   /** Місяць крапками для виду k; so — статус (heatStatus/waterStatus/sStatus): tone ok — передано, warn — останні дні; off (лічильник знято) — нічого. */
   function pstrip(k, so, cls, p) {
     var w = perWin(k, p); if (!w || (so && so.off)) return '';
-    var g = perGeo(w, today()), dots = '';
+    var td = today(), g = perGeo(w, td), dots = '';
     var tone = so && so.tone === 'ok' ? 'done' : so && so.tone === 'warn' && g.st === 'open' ? 'warn' : '';
-    for (var i = 1; i <= g.L; i++) dots += '<i class="' + (i >= g.s && i <= g.e ? 'w' : 'o') + (i < g.d ? ' p' : '') + (i === g.d ? ' t' : '') + '"></i>';
+    // 138-а (власник 13.11, варіант C «відрізок строку»): тонка лінія місяця, вікно — смугою, минула частина вікна щільніша, сьогодні — тонка риска
+    // з днем тижня під нею (без слова «сьогодні»); один тон для всіх видів і тем (відтінки --c-ink), колір — лише «останні дні» і «передано».
+    // Вікно через межу місяця — друга частина цього місяця тихою смугою (wx). Комірки днів лишаються (.prd-d i) — підказка й тести як були.
+    var y0 = +td.slice(0, 4), m0 = +td.slice(5, 7), A = w[0] < 0 ? g.L + 1 + w[0] : Math.min(w[0], g.L), B = w[1] < 0 ? workEnd(y0, m0, -w[1]) : Math.min(w[1], g.L);
+    var inW = function (i) { return i >= g.s && i <= g.e; }, inX = function (i) { return A > B && !inW(i) && (i <= B || i >= A); };
+    for (var i = 1; i <= g.L; i++) {
+      var cw = inW(i), cx = inX(i), k0 = cw ? inW : cx ? inX : null, c = cw ? 'w' : cx ? 'wx' : 'o';
+      if (k0) c += (i === 1 || !k0(i - 1) ? ' rs' : '') + (i === g.L || !k0(i + 1) ? ' re' : '');
+      dots += '<i class="' + c + (i < g.d ? ' p' : '') + (i === g.d ? ' t' + (i <= 2 ? ' tl' : i >= g.L - 1 ? ' tr' : '') : '') + '">' + (i === g.d ? '<b>' + esc(wdShort(td)) + '</b>' : '') + '</i>';
+    }
     var lab = g.a === g.b ? String(g.a) : g.a + '–' + g.b;
     var tip = t('pd_tip', { a: g.a, b: g.b }) + (w[1] < 0 ? ' ' + t('pd_tip_w' + (-w[1])) : '') + (g.cut === 'l' ? ' ' + t('pd_tip_l') : g.cut === 'r' ? ' ' + t('pd_tip_r') : '') + '\n' + t('pd_today', { d: fmtDate(today()) }) + (tone === 'done' ? '\n' + t('pd_done') : '');
     return '<div class="prd prd-' + k + ' st-' + g.st + (tone ? ' ' + tone : '') + (g.cut ? ' cut-' + g.cut : '') + (cls ? ' ' + cls : '') + '" role="img" aria-label="' + esc(tip.replace(/\n/g, ' ')) + '" data-tip="' + esc(tip) + '" data-key="prd-' + k + '">' +
@@ -14361,7 +14375,8 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
       el.getAttribute('data-tip').split('\n').forEach(function (ln, i) { var d = document.createElement('div'); d.textContent = ln; if (i === 0) d.className = 'ctip-v'; tp.appendChild(d); });
       tp.hidden = false; var w = tp.offsetWidth, hh = tp.offsetHeight; tp.style.left = Math.max(8, Math.min(window.innerWidth - w - 8, x - w / 2)) + 'px'; tp.style.top = Math.max(8, y - hh - 14) + 'px'; };
     var hide = function () { var tp = document.getElementById('ctip'); if (tp) tp.hidden = true; };
-    document.addEventListener('pointermove', function (e) { var el = e.target.closest && e.target.closest('[data-tip]'); if (el) show(el, e.clientX, e.clientY); else hide(); });
+    // 138-а: лише мишею — на дотик iOS вважає зміну сторінки під час pointermove «наведенням» і з’їдає перший тап (власник: «раскрывашки квартир — 2 тапа»)
+    document.addEventListener('pointermove', function (e) { if (e.pointerType && e.pointerType !== 'mouse') return; var el = e.target.closest && e.target.closest('[data-tip]'); if (el) show(el, e.clientX, e.clientY); else hide(); });
     document.addEventListener('focusout', function () { setTimeout(function () { var f = document.activeElement; if (!(f && f.matches && f.matches('[data-field]')) && document.documentElement.classList.contains('kb-open')) kbOff(); }, 60); });
   document.addEventListener('focusin', function (e) { var el = e.target.closest && e.target.closest('[data-tip]'); if (el) { var b = el.getBoundingClientRect(); show(el, b.left + b.width / 2, b.top); } });
     document.addEventListener('focusout', hide);
