@@ -4934,7 +4934,7 @@
         (m && m.sleepMin ? '<p class="sleep">' + ico('moon', 18) + '<span>' + esc(t('s_sleep', { m: m.sleepMin })) + '</span></p>' : '') +
         // петлі (LOOP 0/1, групи, рівні): людина не знаходить екран, бо він в іншій петлі — скарги 12.11.2026 (124-а)
         '<details class="where loop-tip" data-key="step-loops"><summary>' + esc(t('s_loops')) + '</summary><p>' + esc(L(loopsOf(m).tip)) + '</p></details>';
-      right = '<h1>' + esc(title) + '</h1>' + s.fields.map(function (k) { return k === 'errCode' ? errCodeField() : numField(k, prev); }).join('');
+      right = '<h1' + (s.fields.length > 1 ? ' class="multi"' : '') + '>' + esc(title) + '</h1>' + s.fields.map(function (k) { return k === 'errCode' ? errCodeField() : numField(k, prev); }).join('');
     }
     var isLast = i === n - 1;
     var actions = '<div class="wiz-actions">' + (i > 0 ? '<a class="btn sec" href="#step-' + (i - 1) + '" data-act="step-back" data-i="' + (i - 1) + '" data-key="step-back">' + ico('back', 20) + '<span>' + esc(t('back')) + '</span></a>' : '') +
@@ -5598,7 +5598,7 @@
       tp.hidden = false; var w = tp.offsetWidth, hh = tp.offsetHeight; tp.style.left = Math.max(8, Math.min(window.innerWidth - w - 8, x - w / 2)) + 'px'; tp.style.top = Math.max(8, y - hh - 14) + 'px'; };
     var hide = function () { var tp = document.getElementById('ctip'); if (tp) tp.hidden = true; };
     document.addEventListener('pointermove', function (e) { var el = e.target.closest && e.target.closest('[data-tip]'); if (el) show(el, e.clientX, e.clientY); else hide(); });
-    document.addEventListener('focusout', function () { setTimeout(function () { var f = document.activeElement; if (!(f && f.matches && f.matches('[data-field]'))) document.documentElement.classList.remove('kb-open'); }, 60); });
+    document.addEventListener('focusout', function () { setTimeout(function () { var f = document.activeElement; if (!(f && f.matches && f.matches('[data-field]')) && document.documentElement.classList.contains('kb-open')) kbOff(); }, 60); });
   document.addEventListener('focusin', function (e) { var el = e.target.closest && e.target.closest('[data-tip]'); if (el) { var b = el.getBoundingClientRect(); show(el, b.left + b.width / 2, b.top); } });
     document.addEventListener('focusout', hide);
     window.addEventListener('hashchange', hide); window.addEventListener('scroll', hide, { passive: true });
@@ -8027,41 +8027,65 @@
     try { history.pushState(null, '', '#step-' + n); } catch (e) { location.hash = 'step-' + n; return; }
     render(document.documentElement.classList.contains('kb-open'));   // клавиатура открыта — не дёргать прокрутку в начало
     var f = document.querySelector('[data-field]:not([type=radio])');
-    if (f && f.type !== 'date') { f.focus({ preventScroll: true }); fitStep(); }
+    // 134-я: подогнать сразу, до отрисовки (сжатие — классами, без прокрутки), и один раз проверить, когда iOS уляжется — без серии подкруток
+    if (f && f.type !== 'date') { f.focus({ preventScroll: true }); fitStep(); setTimeout(fitStep, 500); }
   }
   /** Клавиатура открыта: прокрутить так, чтобы кнопки «Назад/Далі» стояли прямо над ней — сверху остаётся видна подсказка и пример экрана.
    *  125-а (видео юзертестинга, iPhone, iOS 26): вызывалось на каждое изменение высоты видимой области — а в iOS 26 нижняя адресная строка
    *  прячется и появляется при прокрутке, высота меняется, мы снова крутили, строка снова переключалась — страница «дрожала» каждые ~0,4 с
    *  и не давала самому долистать подсказку. Теперь: только при фокусе поля и когда клавиатура именно открылась; человек сам листает — не тянем
    *  назад; поле всегда остаётся видно с запасом (иначе iOS докручивает к нему сам — и снова петля). */
-  var FIT = { kb: false, touch: 0 };
+  /*  134-я (видео владельца 13.11, iPhone 16 Pro Max, iOS 26): на «Далі»/«Назад» страница прыгала 2–3 раза за секунду. iOS ставил её
+   *  к верху (над шагом — плашка квартиры), наши подкрутки через 0/150/450/800 мс — ниже, iOS — обратно. Теперь: над шагом с клавиатурой
+   *  ничего нет (плашка, шапка спрятаны), не влезло — сжимаем ступенями kb-c1…3 (классы ставятся до отрисовки, без прокрутки);
+   *  прокручиваем, только если поле или кнопки правда закрыты, на минимально нужное расстояние и не больше одного раза на шаг —
+   *  если iOS потом поставит страницу по-своему, не спорим. */
+  var FIT = { kb: false, touch: 0, fixed: '', tmr: 0, h: 0 }, KB_LV = ['kb-c1', 'kb-c2', 'kb-c3'];
   function kbOpen() {
     var vv = window.visualViewport, full = document.documentElement.clientHeight || window.screen.height, f = document.activeElement;
     return !!(vv && f && f.matches && f.matches('[data-field]') && f.type !== 'date' && vv.height < full * 0.8);   // iOS: при клавиатуре innerHeight тоже меньше — сравниваем с макетом
   }
+  function kbOff() { var h = document.documentElement; h.classList.remove('kb-open'); KB_LV.forEach(function (c) { h.classList.remove(c); }); FIT.fixed = ''; }
   function fitStep() {
-    var vv = window.visualViewport; if (!vv || !/^step-/.test(routeName())) return;
-    var t0 = Date.now(), done = false;
-    var run = function () {
-      if (done || FIT.touch > t0) return;
-      var kb = kbOpen(); FIT.kb = kb; document.documentElement.classList.toggle('kb-open', kb);
-      if (!kb) return;
-      var top = document.querySelector('.wiz-top'), a = document.querySelector('.wiz-actions'), f = document.activeElement; if (!top || !a) return;
-      var visTop = vv.offsetTop, visBot = vv.offsetTop + vv.height, fr = f.getBoundingClientRect();
-      // сначала — шаг и «что нажать» у верхнего края; если кнопки не влезли — подвинуть так, чтобы влезли (поле при этом остаётся видно)
-      var d = top.getBoundingClientRect().top - visTop - 4, over = a.getBoundingClientRect().bottom - d + 8 - visBot;
-      if (over > 0) d += Math.min(over, fr.top - d - visTop - 8);
-      if (fr.bottom - d > visBot - 16) d = fr.bottom - visBot + 16;
-      if (Math.abs(d) > 3) window.scrollBy(0, d); else done = true;
-    };
-    requestAnimationFrame(run); setTimeout(run, 150); setTimeout(run, 450); setTimeout(run, 800);
+    var vv = window.visualViewport, h = document.documentElement; if (!vv || !/^step-/.test(routeName())) return;
+    var kb = kbOpen(); FIT.kb = kb; FIT.h = vv.height;
+    if (!kb) { if (h.classList.contains('kb-open')) kbOff(); return; }
+    h.classList.add('kb-open');
+    var top = document.querySelector('.wiz-top'), a = document.querySelector('.wiz-actions'), c = document.querySelector('.wiz-cancel') || a, f = document.activeElement;
+    if (!top || !a || !f) return;
+    // сжатие: шаг сверху, поле и все кнопки — в видимой над клавиатурой части (верх страницы — 8 px отступа)
+    var need = function () { return c.getBoundingClientRect().bottom - top.getBoundingClientRect().top; }, lv = 0;
+    KB_LV.forEach(function (cl) { h.classList.remove(cl); });
+    while (lv < KB_LV.length && need() > vv.height - 18) h.classList.add(KB_LV[lv++]);
+    if (FIT.touch > Date.now() - 800) return;   // человек сам листает — не тянем
+    var sig = routeName() + ':' + Math.round(vv.height / 40); if (FIT.fixed === sig) return;   // этот шаг уже поправляли — с iOS не спорим
+    var vt = vv.offsetTop + 4, vb = vv.offsetTop + vv.height - 6, fr = f.getBoundingClientRect();
+    var T = top.getBoundingClientRect().top, A = a.getBoundingClientRect().bottom, C = c.getBoundingClientRect().bottom;
+    // сдвиг d (вниз > 0): ноль, если всё уже видно; иначе — минимальный. Не влезло и сжатое — поле и «Назад/Далі» важнее шага сверху и «Скасувати»
+    var lo = Math.max(fr.bottom - vb, C - vb), hi = Math.min(fr.top - vt, T - vt);
+    if (lo > hi) { lo = Math.max(fr.bottom - vb, A - vb); hi = fr.top - vt; }
+    if (lo > hi) lo = hi;
+    var d = lo > 0 ? lo : hi < 0 ? Math.max(hi, -(window.scrollY || 0)) : 0;
+    if (Math.abs(d) > 3) { FIT.fixed = sig; window.scrollBy(0, d); }
   }
   if (window.visualViewport) window.visualViewport.addEventListener('resize', function () {
     var kb = kbOpen();
-    if (!kb && document.documentElement.classList.contains('kb-open')) { document.documentElement.classList.remove('kb-open'); window.scrollTo(window.scrollX, window.scrollY); }
-    if (kb && !FIT.kb) fitStep();   // клавиатура только что открылась; адресная строка iOS 26 (±50 px) — не повод крутить страницу
+    if (!kb && document.documentElement.classList.contains('kb-open')) { kbOff(); window.scrollTo(window.scrollX, window.scrollY); }
+    // клавиатура только что открылась — подогнать один раз, когда она встанет; адресная строка iOS 26 (±50 px) — не повод крутить страницу
+    // клавиатура сменила высоту по-настоящему (эмодзи, подсказки, > 80 px) — подогнать ещё раз; строка Safari ±50 px — нет
+    if (kb && (!FIT.kb || Math.abs(window.visualViewport.height - FIT.h) > 80)) { clearTimeout(FIT.tmr); FIT.tmr = setTimeout(fitStep, 120); }
     FIT.kb = kb;
   });
+  // любой экран (134-я): пока печатают — нижнее меню, «Відгук» и плашка cookies спрятаны (класс kbd), не прыгают над полями
+  (function () {
+    var vv = window.visualViewport; if (!vv) return;
+    var upd = function () {
+      var a = document.activeElement, full = document.documentElement.clientHeight || window.screen.height;
+      var typing = !!(a && (/^(TEXTAREA|SELECT)$/.test(a.tagName) || (a.tagName === 'INPUT' && !/^(checkbox|radio|button|submit|range|file|color|date)$/.test(a.type))));
+      document.documentElement.classList.toggle('kbd', typing && vv.height < full * 0.8);
+    };
+    vv.addEventListener('resize', upd); document.addEventListener('focusin', upd); document.addEventListener('focusout', function () { setTimeout(upd, 80); });
+  })();
   document.addEventListener('touchmove', function () { FIT.touch = Date.now(); }, { passive: true });
   document.addEventListener('focusin', function (e) { if (e.target && e.target.matches && e.target.matches('[data-field]') && /^step-/.test(routeName())) fitStep(); });
   // на компьютере: нажатие «Далі» не уводит фокус из поля (на телефоне фокус ставит goStep)

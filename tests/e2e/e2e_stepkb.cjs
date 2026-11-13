@@ -60,7 +60,12 @@ const U = 'http://127.0.0.1:8013/';
   await p.evaluate(() => { document.body.style.paddingBottom = '900px'; });   // есть куда листать, как на телефоне с клавиатурой
   await p.focus('#f-tSupply'); await p.evaluate(() => { window.__H = 430; window.visualViewport.dispatchEvent(new Event('resize')); }); await wait(1000);
   const s1 = await p.evaluate(() => [window.scrollY, window.__scrolls]);
-  ok('клавиатура открылась — страницу подвинули (кнопки над клавиатурой)', s1[1] >= 1, s1);
+  // 134-я: над шагом с клавиатурой ничего нет, не влезло — сжатие классами; прокрутка не нужна, если всё и так видно
+  const vis = () => p.evaluate(() => { const r = s => { const e = document.querySelector(s); if (!e || !e.offsetParent) return null; const b = e.getBoundingClientRect(); return [Math.round(b.top), Math.round(b.bottom)]; };
+    return { H: window.__H, top: r('.wiz-top'), f: r('[data-field]:not([type=radio])'), a: r('.wiz-actions'), c: r('.wiz-cancel'), sy: Math.round(scrollY), lv: ['kb-c1', 'kb-c2', 'kb-c3'].filter(c => document.documentElement.classList.contains(c)).join(' ') }; });
+  const inView = (v, noCancel) => [v.top, v.f, v.a].concat(noCancel ? [] : [v.c]).every(x => x && x[0] >= 0 && x[1] <= v.H);
+  const v6 = await vis();
+  ok('клавиатура открылась (430 px): шаг, оба поля температур, «Назад/Далі» и «Скасувати» — над клавиатурой', inView(v6), v6);
   // как iOS: строка переключилась и Safari сам сдвинул страницу к полю — старый код на каждый resize крутил обратно (петля)
   await p.evaluate(async () => { const y0 = window.scrollY; window.__y0 = y0; for (let i = 0; i < 12; i++) { window.__H = i % 2 ? 480 : 430; window.scrollTo(0, y0 + (i % 2 ? 60 : 0)); window.visualViewport.dispatchEvent(new Event('resize')); await new Promise(r => setTimeout(r, 170)); } window.scrollTo(0, y0); });
   await wait(900);
@@ -72,6 +77,34 @@ const U = 'http://127.0.0.1:8013/';
   const f = await p.evaluate(() => { const r = document.getElementById('f-tSupply').getBoundingClientRect(); return [r.top, r.bottom]; });
   await p.evaluate(() => { window.__H = 844; window.visualViewport.dispatchEvent(new Event('resize')); }); await wait(300);
   ok('клавиатура закрылась — kb-open снят', await p.evaluate(() => !document.documentElement.classList.contains('kb-open')));
+  // 134-я (видео владельца 13.11, iPhone): на «Далі»/«Назад» страница прыгала 2–3 раза за секунду — iOS ставил к верху (с плашкой квартиры), мы крутили ниже
+  await p.evaluate(s => { const m = { modelId: 't330', unit: 'GJ' }; s.meter = m; s.places[0].meter = m; s.draft = { date: '2026-11-12', values: {}, step: 1, source: 'manual', startedAt: new Date().toISOString() };
+    s.updatedAt = Date.now(); localStorage.setItem('teplo.v1', JSON.stringify(s)); }, demo({ today: '2026-11-12', second: true }));
+  await p.reload(); await wait(600); await p.goto(U + '#step-1'); await wait(500);
+  ok('две квартиры: над шагом — плашка квартиры', await p.isVisible('.place-bar'));
+  const kbd = async H => { await p.evaluate(H => { const vv = window.visualViewport; if (!window.__stub) { window.__stub = 1; window.__H = innerHeight; Object.defineProperty(vv, 'height', { configurable: true, get: () => window.__H });
+    window.__scrolls = 0; const o = window.scrollBy; window.scrollBy = function () { window.__scrolls++; return o.apply(window, arguments); }; document.body.style.paddingBottom = '900px'; }
+    window.__H = H; vv.dispatchEvent(new Event('resize')); }, H); await wait(400); };
+  await p.focus('#f-energy'); await kbd(480);
+  ok('клавиатура: плашка квартиры, шапка и «Відгук» спрятаны (над шагом ничего)', !(await p.isVisible('.place-bar')) && !(await p.isVisible('header.top')) && !(await p.isVisible('.fab')));
+  const v0 = await vis();
+  ok('…шаг, поле, «Назад/Далі» и «Скасувати» — над клавиатурой (480 px)', inView(v0), v0);
+  const next = async (sel) => { await p.evaluate(() => { window.__scrolls = 0; window.__ys = []; const t = setInterval(() => window.__ys.push(Math.round(scrollY)), 25); setTimeout(() => clearInterval(t), 1200);
+    setTimeout(() => scrollTo(0, 0), 30); setTimeout(() => scrollTo(0, 0), 370); }); await p.click(sel); await wait(1300); return p.evaluate(() => [window.__ys, window.__scrolls]); };
+  await p.fill('#f-energy', '213.1');
+  let [ys, sc] = await next('[data-key=step-next]');
+  ok('«Далі» с клавиатурой (iOS через 30 и 370 мс ставит страницу к верху): одно положение, без наших подкруток', new Set(ys).size === 1 && sc === 0, { ys: [...new Set(ys)], sc });
+  const v2 = await vis();
+  ok('…шаг 3 (объём): шаг, поле и все кнопки видны, фокус в поле', inView(v2) && await p.evaluate(() => document.activeElement && document.activeElement.id === 'f-volume'), v2);
+  [ys, sc] = await next('[data-key=step-back]');
+  ok('«Назад» — тоже одно положение', new Set(ys).size === 1 && sc === 0 && inView(await vis()), { ys: [...new Set(ys)], sc });
+  // маленький телефон (SE): видимая часть 330 px — сжимаем ступенями, поле и «Назад/Далі» всё равно видны
+  await kbd(330);
+  await p.click('[data-key=step-next]'); await wait(700);
+  const v3 = await vis();
+  ok('видно 330 px: включено сжатие, поле и «Назад/Далі» над клавиатурой', !!v3.lv && inView(v3, true), v3);
+  await kbd(844); await p.evaluate(() => document.activeElement && document.activeElement.blur()); await wait(200);
+  ok('клавиатура закрылась — сжатие снято, плашка квартиры снова видна', !(await vis()).lv && await p.isVisible('.place-bar'));
   // «Відгук» не стрибає: прокрутка за нижній край (iOS 26 — offsetTop іде за нею) і відкрита клавіатура — без зсуву
   const nav = async (o) => p.evaluate(o => { const vv = window.visualViewport; ['height', 'offsetTop'].forEach(k => Object.defineProperty(vv, k, { configurable: true, get: () => o[k] }));
     Object.defineProperty(window, 'scrollY', { configurable: true, get: () => o.sy }); vv.dispatchEvent(new Event('scroll'));

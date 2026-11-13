@@ -540,6 +540,17 @@ input[type=text]:not(.dmy-native):not(.pl-in), input[type=email], input[type=pas
 .kb-open .wiz { gap: 8px; }
 .kb-open .wiz h1 { font-size: 19px; margin-bottom: 6px; }
 .kb-open .wiz .field .help:empty { min-height: 0; margin: 0; }
+/* 134-я (видео владельца 13.11, iPhone): на «Далі»/«Назад» страница прыгала между двумя положениями — iOS ставил её к верху (с плашкой
+   квартиры), мы прокручивали ниже, и так 2–3 раза. Теперь над шагом ничего нет: верх страницы и есть нужное положение, крутить не надо.
+   Не влезло над клавиатурой — сжимаем по ступеням (kb-c1…3), а не прокручиваем. */
+.kb-open .place-bar { display: none !important; }
+.kb-c1 .wiz .hint { -webkit-line-clamp: 1; } .kb-c1 .step-lcd svg.seg { height: 24px; } .kb-c1 .wiz .press { font-size: 16px; margin-bottom: 4px; }
+.kb-c1 .wiz h1 { font-size: 17px; margin-bottom: 4px; } .kb-c1 .wiz-actions { margin-top: 6px; } .kb-c1 .wiz-cancel { margin-top: 6px; }
+.kb-c2 .wiz .hint, .kb-c2 .wiz .loop-tip { display: none !important; }
+.kb-c3 .wiz .step-lcd, .kb-c3 .wiz h1.multi { display: none !important; }   /* два поля — у каждого своя подпись, общий заголовок лишний */
+.kb-c3 .wiz-top { margin-bottom: 2px; } .kb-c3 .wiz .press { margin-bottom: 2px; } .kb-c3 .wiz .field .help { margin-top: 2px; font-size: 13px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+/* любой экран: пока открыта клавиатура, нижнее меню, «Відгук» и плашка cookies не висят над полями и не прыгают вместе с ней */
+@media (max-width: 959px) { .kbd .nav, .kbd .fab, .kbd .cc { display: none !important; } }
 
 /* ===== Главная: три карточки учёта (опалення, гаряча, холодна) ===== */
 .ucards { display: grid; gap: 12px; grid-template-columns: minmax(0, 1fr); margin-bottom: 8px; }
