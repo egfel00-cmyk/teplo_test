@@ -16084,10 +16084,9 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
       case 'mono-go': monoStart(); break;
       case 'mono-paste': monoPaste(); break;
       case 'mono-ext': MO.opened = true; MO.err = ''; setTimeout(function () { if (routeName() === 'mono' && !MO.st) render(true); }, 300); break;
-      case 'mono-stop': monoFinish(); break;
+      case 'mono-stop': monoFinish('stop'); break;   // 129-а: другий однаковий case нижче не спрацьовував — у журнал ішло done замість stop
       case 'mono-cancel': if (MO.tok) monoLog('cancel'); clearTimeout(MO.timer); MO = monoFresh(); break;
       case 'mono-again': if (MO.tok) monoLog('again'); clearTimeout(MO.timer); MO = Object.assign(monoFresh(MO.back), { opened: true }); render(true); break;
-      case 'mono-stop': monoFinish('stop'); if (routeName() === 'mono') render(true); break;
       case 'mono-apply': monoApply(); break;
       case 'pq-later': {   // водомір є, а № і цифри — пізніше: додаємо без деталей
         if (PQ && PQ.place === S.placeId && PQ.i < PQ.list.length && SK[PQ.list[PQ.i]]) {   // світло/газ: одна зона, рахунок і № — потім у налаштуваннях
