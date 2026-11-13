@@ -31,7 +31,8 @@ for (const id of ['t330', 't230']) {   // 125-а, юзертестинг T330: �
   ok(id + ': кроки LOOP 1 — у порядку екранів лічильника', st.map(s => s.fields[0]).join(',') === 'energy,volume,flow,power,hours,tSupply,errHours,flowHours,errCode', st.map(s => s.fields[0]));
   ok(id + ': температури — один екран, значення чергуються (swap)', st.find(s => s.fields.includes('tSupply')).lcd.swap === true);
 }
-ok('SensoStar: витрата — на рівні 2, понад 4 с', (s => s.press === 'long' && s.hold === 4)(M.byId('sensostar').steps.find(s => s.fields.includes('flow'))));
+ok('SensoStar (S3): рівень 2 — понад 4 с, перший екран — потужність; годин на екрані немає — дні × 24', (st => st.find(s => s.fields.includes('power')).press === 'long' && st.find(s => s.fields.includes('power')).hold === 4 &&
+  /× 24/.test(st.find(s => s.fields.includes('hours')).hint.uk) && /H80/.test(st.find(s => s.fields.includes('errCode')).hint.uk))(M.byId('sensostar').steps));
 ok('CF Echo II (128-а, брошура Itron): Loop 1 — енергія, обсяг; Loop 2 — витрата, потужність, температури, години; без вигаданих секунд у підписі',
   (function () { var st = M.byId('cfecho2').steps, f = st.map(s => s.fields.join('+')).join(' '), l2 = st.find(s => s.loop);
     return f === 'energy volume+errCode flow power tSupply+tReturn hours errHours' && /доки не зміниться/.test(l2.say.uk) && l2.fields[0] === 'flow'; })());
@@ -70,8 +71,8 @@ ok('SonoSafe 10: головна петля — енергія, обсяг, го�
   (st => order('sonosafe10') === 'energy,volume,hours,errCode,tSupply,power,flow,errHours' && st[4].press === 'long' && !st[4].hold && /доки не зміниться/.test(st[4].say.uk) && st[4].lcd.swap && /На екрані немає/.test(st[7].say.uk) && M.byId('sonosafe10').status === 'draft')(M.byId('sonosafe10').steps));
 ok('Techem compact V: рівень 2 — понад 3 с; годин на екрані немає; F-5/F-9 — міряє правильно, C-1 — несправний',
   (st => st[1].press === 'long' && st[1].hold === 3 && st[6].fields.join() === 'hours,errHours' && /На екрані немає/.test(st[6].say.uk) && /F-9/.test(st[5].hint.uk) && /C-1/.test(st[5].hint.uk) && M.byId('techem_cv').sleepMin === 2)(M.byId('techem_cv').steps));
-ok('статуси: перевірено — лише Sharky 774; «уточнюється» — CF Echo II, SonoSafe 10, TRUST, ULTRAMETER, LTE-1; решта — за посібником виробника',
-  M.MODELS.filter(m => m.status === 'verified').map(m => m.id).join() === 'sharky774' && M.MODELS.filter(m => m.status === 'draft').map(m => m.id).join() === 'cfecho2,sonosafe10,trust,ultrameter,lte1' &&
+ok('статуси: перевірено — лише Sharky 774; «уточнюється» — CF Echo II, SonoSafe 10, TRUST, ULTRAMETER, LTE-1, Supercal; решта — за посібником виробника',
+  M.MODELS.filter(m => m.status === 'verified').map(m => m.id).join() === 'sharky774' && M.MODELS.filter(m => m.status === 'draft').map(m => m.id).join() === 'cfecho2,sonosafe10,trust,ultrameter,lte1,supercal' &&
   M.MODELS.every(m => ['verified', 'manual', 'draft', 'universal'].includes(m.status)), M.MODELS.map(m => m.id + ':' + m.status));
 ok('фото наклейки: LQM-III і CQM-III-K → lqm3 (не ELF), ELF → elf, HYDROCAL-M3, SonoSafe/SonoSelect, techem compact V',
   mid('LQM-III') === 'lqm3' && mid('CQM-III-K') === 'lqm3' && mid('Apator ELF') === 'elf' && mid('HYDROCAL-M3') === 'hydrocal_m3' && mid('Danfoss SonoSafe 10') === 'sonosafe10' && mid('SonoSelect 10') === 'sonosafe10' && mid('techem compact V') === 'techem_cv',
@@ -90,5 +91,32 @@ ok('фото: TRUST і «HEAT/SUM» → trust, ULTRAMETER UM-15 / UltraMeter-M �
   mid('TRUST') === 'trust' && mid('HEAT/SUM 0001.234 Gcal') === 'trust' && mid('ULTRAMETER UM-15') === 'ultrameter' && mid('UltraMeter-M') === 'ultrameter' && mid('LTE-1U') === 'lte1' && mid('ЛТЕ-1 Ду-15') === 'lte1' &&
     mid('Меридіан ЛТЕ-1.03/2Т') !== 'lte1' && kind('Меридіан ЛТЕ-1.03/2Т 220 V 50 Hz') === 'electric' && kind('ULTRAMETER 0001.234') === 'heat',
   ['TRUST', 'HEAT/SUM 0001.234 Gcal', 'ULTRAMETER UM-15', 'UltraMeter-M', 'LTE-1U', 'ЛТЕ-1 Ду-15', 'Меридіан ЛТЕ-1.03/2Т'].map(mid).concat([kind('Меридіан ЛТЕ-1.03/2Т 220 V 50 Hz')]));
+
+// 133-я: зі списку ХТМ (бланки журналів) — за посібниками виробників
+ok('MULTICAL 402: верхня кнопка — енергія → обсяг → години → T → [різниця] → витрата (l/h ÷ 1000) → потужність → INFO; простою на екрані немає; ГДж',
+  (st => order('multical402') === 'energy,volume,hours,tSupply,flow,power,errCode,errHours' && st[4].count === 2 && /1000/.test(st[4].hint.uk) && /INFO/.test(st[6].hint.uk) &&
+    /Окремого/.test(st[7].say.uk) && M.byId('multical402').units[0] === 'GJ' && M.byId('multical402').buttons === 2)(M.byId('multical402').steps), order('multical402'));
+ok('SENSOSTAR 2: рівень 1 — енергія, [тест, розрах. день] обсяг, потужність, витрата, [дата] помилка; рівень 2 (понад 4 с) — [максимуми] температури, [різниця] дні × 24',
+  (st => order('sensostar2') === 'energy,volume,power,flow,errCode,tSupply,hours,errHours' && st[1].count === 3 && st[5].press === 'long' && st[5].hold === 4 && st[5].count === 2 &&
+    /× 24/.test(st[6].hint.uk) && M.byId('sensostar2').sleepMin === 1)(M.byId('sensostar2').steps), order('sensostar2'));
+ok('PolluCom E / EX: червона кнопка — меню користувача; «Err» — першим; дні роботи й години збою — меню L4 (8 с, потім 2 с)',
+  (st => order('pollucom') === 'energy,volume,flow,power,tSupply,errCode,hours,errHours' && st[6].press === 'long' && st[6].hold === 8 && /L4/.test(st[6].say.uk) && /× 24/.test(st[6].hint.uk) &&
+    /збою/.test(st[7].hint.uk) && /Err 1010/.test(st[5].hint.uk))(M.byId('pollucom').steps), order('pollucom'));
+ok('ULTRAHEAT 2WR6 (T350): петля користувача — енергія, обсяг, [тест] F; сервісна — 10 с: витрата, потужність, температури одним рядком, [дата] Bh, Fh',
+  (st => order('uh2wr6') === 'energy,volume,errCode,flow,power,tSupply,hours,errHours' && st[3].press === 'long' && st[3].hold === 10 && /Bh/.test(st[6].hint.uk) && /Fh/.test(st[7].hint.uk) &&
+    /3 с/.test(st[7].hint.uk))(M.byId('uh2wr6').steps), order('uh2wr6'));
+ok('Supercal 539 / 739: «Енергія» → «Обсяг»; «Err» першим; меню «Сервіс» (понад 2 с) — години, температури, витрата, потужність; простою немає; «уточнюється»',
+  (st => order('supercal') === 'energy,volume,errCode,hours,tSupply,flow,power,errHours' && st[3].press === 'long' && st[3].hold === 2 && /Сервіс/.test(st[3].say.uk) &&
+    /Err 1/.test(st[2].hint.uk) && M.byId('supercal').status === 'draft' && M.byId('supercal').sleepMin === 3)(M.byId('supercal').steps), order('supercal'));
+ok('CF-UltraMaXX: 1.1 енергія, 1.2 обсяг; рівень 3 (двічі понад 2 с) — 3.1 витрата … 3.6 час у помилці, 3.7 роки й дні → години, 3.9 код',
+  (st => order('ultramaxx') === 'energy,volume,flow,power,tSupply,errHours,hours,errCode' && st[2].press === 'long' && st[2].hold === 2 && /двічі/.test(st[2].say.uk) &&
+    /3\.6/.test(st[5].hint.uk) && /365/.test(st[6].hint.uk) && /35 592/.test(st[6].hint.uk) && /3\.9/.test(st[7].hint.uk))(M.byId('ultramaxx').steps), order('ultramaxx'));
+ok('арифметика підказок: 1484 дні × 24 = 35 616 год, (4 × 365 + 23) × 24 = 35 592 год', 1484 * 24 === 35616 && (4 * 365 + 23) * 24 === 35592);
+ok('фото: MULTICAL 402, SENSOSTAR 2 / MSH, SensoStar E, PolluCom EX, ULTRAHEAT 2WR6 / T350 (не T330), Supercal 739, CF-UltraMaXX / Integral-MK UltraMaXX',
+  mid('MULTICAL 402') === 'multical402' && mid('Kamstrup MULTICAL 302') === 'multical302' && mid('SENSOSTAR 2') === 'sensostar2' && mid('SENSOSTAR®2+') === 'sensostar2' && mid('MSH-SStar') === 'sensostar2' &&
+    mid('SensoStar E') === 'sensostar' && mid('Sensus PolluCom EX') === 'pollucom' && mid('ULTRAHEAT 2WR6') === 'uh2wr6' && mid('ULTRAHEAT T350') === 'uh2wr6' && mid('ULTRAHEAT T330') === 't330' &&
+    mid('Supercal 739') === 'supercal' && mid('CF-UltraMaXX') === 'ultramaxx' && mid('Integral-MK UltraMaXX') === 'ultramaxx' && mid('ULTRAMETER UM-15') === 'ultrameter',
+  ['MULTICAL 402', 'Kamstrup MULTICAL 302', 'SENSOSTAR 2', 'SENSOSTAR®2+', 'MSH-SStar', 'SensoStar E', 'Sensus PolluCom EX', 'ULTRAHEAT 2WR6', 'ULTRAHEAT T350', 'ULTRAHEAT T330', 'Supercal 739', 'CF-UltraMaXX', 'Integral-MK UltraMaXX', 'ULTRAMETER UM-15'].map(mid));
+ok('фото: PolluCom з «Sensus» (виробник водомірів) — тепло, не вода', kind('Sensus PolluCom E 0012.345') === 'heat' && kind('Supercal 739 012345') === 'heat');
 
 console.log(`\nИтог: ${pass} OK, ${fail} FAIL`); process.exit(fail ? 1 : 0);
