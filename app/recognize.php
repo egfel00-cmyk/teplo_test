@@ -10,7 +10,7 @@ if (!defined('TEPLO')) { http_response_code(404); exit; }
 final class Recognize {
   const TYPES = ['image/jpeg' => 'jpg', 'image/png' => 'png', 'image/webp' => 'webp'];
   const MODELS = ['sharky774' => 'Diehl SHARKY 774', 'sharky775' => 'Diehl SHARKY 775 / Danfoss SONOMETER 1100', 't330' => 'Landis+Gyr ULTRAHEAT T330 (UH30)',
-    't230' => 'Landis+Gyr ULTRAHEAT T230', 'multical302' => 'Kamstrup MULTICAL 302', 'multical403' => 'Kamstrup MULTICAL 403 / 603', 'elf' => 'Apator ELF / LQM-III ELF', 'sensostar' => 'Engelmann SensoStar',
+    't230' => 'Landis+Gyr ULTRAHEAT T230', 'multical302' => 'Kamstrup MULTICAL 302', 'multical403' => 'Kamstrup MULTICAL 403 / 603', 'elf' => 'Apator ELF', 'lqm3' => 'Apator LQM-III / CQM-III-K', 'hydrocal_m3' => 'B Meters HYDROCAL-M3', 'sonosafe10' => 'Danfoss SonoSafe 10 / SonoSelect 10', 'techem_cv' => 'Techem compact V', 'sensostar' => 'Engelmann SensoStar',
     'nik7071' => 'НІК 7071', 'qalcosonic_e3' => 'Axioma QALCOSONIC E3', 'sonometer30' => 'Danfoss SonoMeter 30', 'zelsius_c5' => 'ZENNER zelsius C5',
     'sensonic2' => 'ista sensonic II', 't550' => 'Landis+Gyr ULTRAHEAT T550 (UH50)', 'cfecho2' => 'Itron CF Echo II', 'trust' => 'TRUST', 'other' => 'other heat meter'];
   const ORDER = ['sharky774' => '1) energy [Gcal] 2) volume [m³ in the top right corner] 3) flow [m³/h] 4) power [kW] 5) tSupply + tReturn [alternating ht/ct] 6) hours + errHours [alternating On/Eh] 7) errCode'];

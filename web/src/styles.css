@@ -70,15 +70,21 @@ a { color: var(--c-return); text-underline-offset: 3px; }
 .nav.nav-side { display: none; }   /* телефон: на екранах вводу нижнього меню немає (місце клавіатурі й кнопкам); на ≥ 960 — бічне меню */
 .nav { position: fixed; left: 0; right: 0; bottom: 0; display: grid; grid-template-columns: repeat(var(--nav-n, 5), auto); padding-left: 4px; padding-right: 4px; background: var(--c-surface);
   border-top: 1px solid var(--c-line); box-shadow: 0 -6px 18px var(--c-ghost-hover); padding-bottom: env(safe-area-inset-bottom); z-index: 5; }
-.nav a { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; min-height: 58px; font-size: 13px; color: var(--c-ink-2); text-decoration: none; }
+.nav a { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; min-height: 58px; font-size: 13px; color: var(--c-ink-2); text-decoration: none; }
+/* 131-а (власник 13.11: «щоб явно було видно, який таб вибрано»): під значком — скруглена плашка; у вибраного вона темна, значок світлий (інверсія),
+   підпис — темний і жирніший. Плашка є в усіх табів (прозора) — нічого не стрибає при перемиканні. На ≥ 960 — бічне меню зі своїм виділенням. */
+.nav a svg { box-sizing: content-box; padding: 5px 17px; border-radius: 16px; transition: background-color .16s var(--ease), color .16s var(--ease); }
 .nav a[aria-current="page"] { color: var(--c-ink); font-weight: 600; }
-.nav a[aria-current="page"] svg { stroke: var(--c-ink); }
+.nav a[aria-current="page"] svg { background: var(--c-ink); color: var(--c-on-ink); }
+@media (hover: hover) { .nav a:not([aria-current="page"]):hover svg { background: var(--c-ghost-hover); } }
 @media (min-width: 960px) {
   .app { display: grid; grid-template-columns: 232px 1fr; grid-template-rows: auto 1fr; }
   .top { grid-column: 1 / -1; padding: var(--sp-4) var(--sp-5); }
   .nav { position: sticky; top: 0; align-self: start; grid-template-columns: 1fr; box-shadow: none; border: 0; background: transparent; padding: var(--sp-2) var(--sp-3); gap: 2px; }
   .nav a { flex-direction: row; justify-content: flex-start; gap: var(--sp-3); padding: 0 var(--sp-4); min-height: 48px; font-size: var(--fs-m); border-radius: var(--r-btn); }
   .nav a[aria-current="page"] { background: var(--c-surface); }
+  .nav a svg, .nav a[aria-current="page"] svg { padding: 0; background: none; }
+  .nav a[aria-current="page"] svg { color: var(--c-ink); }
   .main { max-width: 1040px; margin: 0; padding: var(--sp-2) var(--sp-6) var(--sp-7); }
   .app.bare-app { grid-template-columns: 1fr; }
   .app.bare-app.with-side { grid-template-columns: 232px 1fr; }
@@ -1401,6 +1407,7 @@ details.tbl-acc[open] > .tbl-wrap { margin-top: 12px; }
 .lpp-tab span { flex: none; display: flex; flex-direction: column; align-items: center; gap: 3px; }
 .lpp-tab i { font-style: normal; font-size: 10px; white-space: nowrap; letter-spacing: -.01em; }
 .lpp-tab .on { color: var(--c-ink); font-weight: 600; }
+.lpp-tab svg { box-sizing: content-box; padding: 4px 14px; border-radius: 14px; } .lpp-tab .on svg { background: var(--c-ink); color: var(--c-on-ink); }   /* як у нижньому меню (131-а) */
 .lpp-hi { position: absolute; left: 50%; bottom: 7px; width: 134px; height: 5px; margin-left: -67px; border-radius: 3px; background: var(--c-ink); }
 .lp-tile { position: absolute; z-index: 2; width: 136px; transform: rotate(var(--rot, 0deg)); }
 .lp-fig { margin: 0; padding: 8px 8px 7px; border-radius: 16px; background: rgba(12, 20, 18, .62); border: 1px solid var(--lp-edge); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px);

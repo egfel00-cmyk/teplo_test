@@ -60,4 +60,21 @@ ok('фото наклейки: QALCOSONIC E3, SonoMeter 30 (не 1100), UH50 →
   mid('QALCOSONIC E3') === 'qalcosonic_e3' && mid('SonoMeter 30') === 'sonometer30' && mid('SONOMETER 1100') === 'sharky775' && mid('ULTRAHEAT UH50') === 't550' && mid('zelsius C5-IUF') === 'zelsius_c5' && mid('ista sensonic II') === 'sensonic2' && mid('ULTRAHEAT T230') === 't230',
   ['QALCOSONIC E3', 'SonoMeter 30', 'SONOMETER 1100', 'ULTRAHEAT UH50', 'zelsius C5-IUF', 'ista sensonic II', 'ULTRAHEAT T230'].map(mid));
 
+// 131-а: LQM-III, HYDROCAL-M3, SonoSafe/SonoSelect 10, Techem compact V — за посібниками; LQM-III — не ELF (інше меню)
+ok('LQM-III: основний режим коротко; години — група FLo (~8 с), простій — FL2 з «A», години лише при витраті',
+  order('lqm3') === 'energy,volume,tSupply,flow,power,errCode,hours,errHours' && /FLo/.test(M.byId('lqm3').steps[6].say.uk) && M.byId('lqm3').steps[6].hold === 8 &&
+  /FL2/.test(M.byId('lqm3').steps[7].say.uk) && /«A»/.test(M.byId('lqm3').steps[7].hint.uk) && M.byId('lqm3').hoursOnlyWithFlow === true, order('lqm3'));
+ok('HYDROCAL-M3: дві кнопки — T1 рівні, T2 екрани; рівень 2, години — рівень 5 (5.1, не 5.2), простій і «Err» — рівень 6',
+  (st => M.byId('hydrocal_m3').buttons === 2 && order('hydrocal_m3') === 'energy,volume,power,flow,tSupply,hours,errHours,errCode' && /T1/.test(st[2].say.uk) && /5\.1/.test(st[5].hint.uk) && /5\.2/.test(st[5].hint.uk) && /рівень 6/.test(st[6].hint.uk))(M.byId('hydrocal_m3').steps));
+ok('SonoSafe 10: головна петля — енергія, обсяг, години; температури (чергуються), потужність, витрата — інша петля, без вигаданих секунд; простою на екрані немає',
+  (st => order('sonosafe10') === 'energy,volume,hours,errCode,tSupply,power,flow,errHours' && st[4].press === 'long' && !st[4].hold && /доки не зміниться/.test(st[4].say.uk) && st[4].lcd.swap && /На екрані немає/.test(st[7].say.uk) && M.byId('sonosafe10').status === 'draft')(M.byId('sonosafe10').steps));
+ok('Techem compact V: рівень 2 — понад 3 с; годин на екрані немає; F-5/F-9 — міряє правильно, C-1 — несправний',
+  (st => st[1].press === 'long' && st[1].hold === 3 && st[6].fields.join() === 'hours,errHours' && /На екрані немає/.test(st[6].say.uk) && /F-9/.test(st[5].hint.uk) && /C-1/.test(st[5].hint.uk) && M.byId('techem_cv').sleepMin === 2)(M.byId('techem_cv').steps));
+ok('статуси: перевірено — лише Sharky 774; «уточнюється» — CF Echo II, SonoSafe 10, TRUST; решта — за посібником виробника',
+  M.MODELS.filter(m => m.status === 'verified').map(m => m.id).join() === 'sharky774' && M.MODELS.filter(m => m.status === 'draft').map(m => m.id).join() === 'cfecho2,sonosafe10,trust' &&
+  M.MODELS.every(m => ['verified', 'manual', 'draft', 'universal'].includes(m.status)), M.MODELS.map(m => m.id + ':' + m.status));
+ok('фото наклейки: LQM-III і CQM-III-K → lqm3 (не ELF), ELF → elf, HYDROCAL-M3, SonoSafe/SonoSelect, techem compact V',
+  mid('LQM-III') === 'lqm3' && mid('CQM-III-K') === 'lqm3' && mid('Apator ELF') === 'elf' && mid('HYDROCAL-M3') === 'hydrocal_m3' && mid('Danfoss SonoSafe 10') === 'sonosafe10' && mid('SonoSelect 10') === 'sonosafe10' && mid('techem compact V') === 'techem_cv',
+  ['LQM-III', 'CQM-III-K', 'Apator ELF', 'HYDROCAL-M3', 'Danfoss SonoSafe 10', 'SonoSelect 10', 'techem compact V'].map(mid));
+
 console.log(`\nИтог: ${pass} OK, ${fail} FAIL`); process.exit(fail ? 1 : 0);

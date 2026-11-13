@@ -14,7 +14,7 @@
     // 126-а: UH50 — це T550 (технічний опис L+G), не T230
     ['t330', /T\s?3\s?3\s?0|UH\s?30|ULTRAHEAT\s*T?3/i], ['t550', /T\s?5\s?5\s?0|UH\s?50/i], ['cfecho2', /CF\s?-?\s?ECHO/i], ['t230', /T\s?2\s?3\s?0/i], ['t330', /ULTRAHEAT/i],
     ['qalcosonic_e3', /QALCO\s*SONIC|QALCOSINIC/i], ['zelsius_c5', /ZELSIUS|\bC5[-\s]?(?:ISF|IUF|CMF)\b/i], ['sensonic2', /SENSONIC/i],
-    ['multical403', /MULTICAL\s*(?:403|603)\b|MC\s?[46]03\b/i], ['multical302', /MULTICAL|KAMSTRUP/i], ['elf', /\bELF\b|LQM/i], ['sensostar', /SENSO\s*STAR/i],
+    ['multical403', /MULTICAL\s*(?:403|603)\b|MC\s?[46]03\b/i], ['multical302', /MULTICAL|KAMSTRUP/i], ['elf', /\bELF\b/i], ['lqm3', /LQM|CQM/i], ['hydrocal_m3', /HYDRO\s*CAL/i], ['sonosafe10', /SONO\s*(?:SAFE|SELECT)/i], ['techem_cv', /TECHEM|COMPACT\s*V\b/i], ['sensostar', /SENSO\s*STAR/i],
     ['nik7071', /7\s?0\s?7\s?1|НІК|HIK\s*7/i], ['trust', /\bTRUST\b/i], ['sharky774', /SHARKY/i]
   ];
   // не тепло: сильные признаки других счётчиков
