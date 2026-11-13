@@ -84,6 +84,10 @@ final class LocalBot {
     // e-mail otbanka@i.ua (телефон у договорі — той самий, що й на сайті). Формату листа договір не задає — рахунок, ПІБ і адреса.
     'slv' => ['t' => 'mail', 'kinds' => ['water'], 'org' => 'КП «Славутське УВКГ»', 'site' => 'sl-vodokanal.info', 'to' => 'otbanka@i.ua',
       'need' => ['acc', 'name', 'addr'], 'win' => [25, 30]],
+    // 140-а: перший робот для ТЕПЛА — Ізяслав, КП «Ізяславтепломережа»: індивідуальний договір (itm.kp.org.ua → rada.info) — «щомісяця з 25-го по 30-те число передає
+    // показання … на адресу електронної пошти, зазначену у розділі „Реквізити виконавця“» — iz_teplo@ukr.net. Одне число — енергія з головного екрана, в одиниці табло.
+    'izt' => ['t' => 'mail', 'kinds' => ['heat'], 'org' => 'КП «Ізяславтепломережа»', 'site' => 'itm.kp.org.ua', 'to' => 'iz_teplo@ukr.net',
+      'need' => ['acc', 'name', 'addr'], 'win' => [25, 30], 'one' => true],
     // 139-а: Чабани — КП «Керуюча компанія Чабани», п. 22 типового договору: показання з 20 по 25 на chabanyvoda@ukr.net (там же телефони)
     'chab' => ['t' => 'mail', 'kinds' => ['water'], 'org' => 'КП «Керуюча компанія Чабани»', 'site' => 'chabany.kp.org.ua', 'to' => 'chabanyvoda@ukr.net',
       'need' => ['acc', 'name', 'addr'], 'win' => [20, 25]],
@@ -328,7 +332,8 @@ final class LocalBot {
       if (!is_array($it)) continue; $v = str_replace(',', '.', trim((string)($it['value'] ?? '')));
       if (!preg_match('/^\d{1,7}(?:\.\d{1,3})?$/', $v)) continue;
       $out[] = ['value' => $v, 'serial' => isset($it['serial']) && trim((string)$it['serial']) !== '' ? mb_substr(trim((string)$it['serial']), 0, 30) : null, 'name' => mb_substr(trim((string)($it['name'] ?? '')), 0, 40),
-        'kind' => in_array($it['kind'] ?? null, ['cold', 'hot', 'elec', 'gas', 'heat'], true) ? $it['kind'] : null];
+        'kind' => in_array($it['kind'] ?? null, ['cold', 'hot', 'elec', 'gas', 'heat'], true) ? $it['kind'] : null]
+        + (in_array($it['unit'] ?? null, ['Gcal', 'MWh', 'GJ', 'kWh'], true) ? ['unit' => $it['unit']] : []);   // тепло (140-а): енергія в одиниці табло
     }
     return $out;
   }
@@ -433,6 +438,15 @@ final class LocalBot {
       Mail::send(['to' => $to, 'subject' => 'Показання лічильників води — о/р ' . $acc, 'text' => $text, 'replyTo' => Mail::deliverable($email) ? $email : '', 'kind' => 'submit', 'user' => $uid]);
       return ['text' => 'e-mail → ' . $to];
     }
+    if (in_array('heat', (array)($b['kinds'] ?? []), true)) {   // 140-а: тепло — одне число, енергія з головного екрана (як на лічильнику)
+      $x = $items[0]; $un = ['Gcal' => 'Гкал', 'MWh' => 'МВт·год', 'GJ' => 'ГДж', 'kWh' => 'кВт·год'][$x['unit'] ?? 'Gcal'] ?? 'Гкал';
+      $who = []; foreach (['Особовий рахунок' => 'acc', 'Абонент' => 'name', 'Адреса' => 'addr', 'Телефон' => 'phone'] as $l => $k) if (trim((string)($c[$k] ?? '')) !== '') $who[] = $l . ': ' . trim((string)$c[$k]);
+      $text = "Доброго дня!\n\nПередаю показання квартирного лічильника тепла станом на $d.\n\n" . implode("\n", $who) . "\n\nЕнергія (головний екран лічильника): " . $x['value'] . ' ' . $un .
+        ($x['serial'] ? "\nЗаводський номер лічильника: " . $x['serial'] : '') .
+        "\n\nЛист надіслано на прохання абонента сервісом «Лічильники» (" . Cfg::appUrl() . ")." . (Mail::deliverable($email) ? " Відповідь — на адресу абонента: $email." : '');
+      Mail::send(['to' => $to, 'subject' => 'Показання лічильника тепла — о/р ' . ($c['acc'] ?? ''), 'text' => $text, 'replyTo' => Mail::deliverable($email) ? $email : '', 'kind' => 'submit', 'user' => $uid]);
+      return ['text' => 'e-mail → ' . $to];
+    }
     $lines = implode("\n", array_map(fn($x) => '— ' . ($x['name'] ?: 'лічильник') . ($x['serial'] ? ' № ' . $x['serial'] : '') . ': ' . $x['value'] . ' м³', $items));
     $who = []; foreach (['Особовий рахунок' => 'acc', 'Абонент' => 'name', 'Адреса' => 'addr', 'Телефон' => 'phone'] as $l => $k) if (trim((string)($c[$k] ?? '')) !== '') $who[] = $l . ': ' . trim((string)$c[$k]);   // лише те, що просить постачальник
     $who = implode("\n", $who);
@@ -467,7 +481,7 @@ final class LocalBot {
       default: return;
     }
     $p = ['chat_id' => $tg['external_id'], 'text' => $txt];
-    if (Cfg::appUrlKnown()) $p['reply_markup'] = ['inline_keyboard' => [[['text' => $ru ? 'Открыть «Счётчики»' : 'Відкрити «Лічильники»', 'web_app' => ['url' => Cfg::appUrl() . '?go=' . (in_array('elec', (array)($b['kinds'] ?? []), true) ? 'elec' : 'water-cold') . ($job['place'] ? '&place=' . rawurlencode((string)$job['place']) : '')]]]]];
+    if (Cfg::appUrlKnown()) $p['reply_markup'] = ['inline_keyboard' => [[['text' => $ru ? 'Открыть «Счётчики»' : 'Відкрити «Лічильники»', 'web_app' => ['url' => Cfg::appUrl() . '?go=' . (in_array('elec', (array)($b['kinds'] ?? []), true) ? 'elec' : (in_array('heat', (array)($b['kinds'] ?? []), true) ? 'heat' : 'water-cold')) . ($job['place'] ? '&place=' . rawurlencode((string)$job['place']) : '')]]]]];
     try { Telegram::call('sendMessage', $p); } catch (Throwable $e) { /* не дійшло — статус видно в застосунку */ }
   }
   // ---------- проба «не знайдено» (як у Водоканалу): вигаданий рахунок, лише читання — чи веде нас живий сайт тим шляхом, що й стенд ----------

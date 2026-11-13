@@ -4141,6 +4141,7 @@
     ['elec', 'Львівобленерго', 'Львівщина', 'Львовщина', 'loe', 1], ['cold', 'Львівводоканал', 'Львів', 'Львов', 'lvk', 1],
     ['cold', 'Чорноморськводоканал', 'Чорноморськ', 'Черноморск', 'cvk', 1], ['cold', 'Стрийводоканал', 'Стрий', 'Стрый', 'svk', 1],
     ['cold', 'Ірпіньводоканал', 'Ірпінь', 'Ирпень', 'ivk', 1], ['cold', 'Славутське УВКГ', 'Славута', 'Славута', 'slv', 1], ['cold', 'КК «Чабани»', 'Чабани', 'Чабаны', 'chab', 1],
+    ['heat', 'Ізяславтепломережа', 'Ізяслав', 'Изяслав', 'izt', 1],
     ['cold', 'Міськтепловоденергія', 'Кам’янець-Подільський', 'Каменец-Подольский', 'mtve']
   ];
   function lpAutoList() {
@@ -5175,7 +5176,7 @@
       '<h1>' + esc(t('hl_title')) + '</h1><p>' + esc(t('hl_lead')) + '</p>' +
       '<div class="cols"><div class="ho-values"><ul class="copy-list" data-key="handover-values">' + rows + '</ul></div>' +
       '<div class="ho-steps"><div class="panel"><h2>' + esc(t('ho_steps_title')) + '</h2><ol class="steps"><li>' + esc(t('hl_s1')) + '</li><li>' + esc(t('hl_s2')) + '</li><li>' + esc(t('hl_s3')) + '</li></ol></div></div></div>' +
-      '<section class="panel where" data-key="where-heat-lite">' + localDest('heat', ld, '', '', sent) + '</section>' + st };
+      '<section class="panel where" data-key="where-heat-lite">' + localDest('heat', ld, '', '', sent, lbBox(ld, [r], lbItemsHeat(r))) + '</section>' + st };
   }
   function hoStatus(r) {
     var cur = /^(handed|accepted|rejected)$/.test(r.status) && !r.own ? r.status : '';
@@ -6277,16 +6278,18 @@
     }, function () { LB.at[k] = Date.now(); });
   }
   /** Записи (вода й світло/газ) за id — одне надсилання може нести кілька записів (кілька лічильників світла). */
-  function lbRecs(ids) { return (S.water || []).concat(S.mrecs || []).filter(function (w) { return w && !w.deleted && ids.indexOf(w.id) >= 0; }); }
+  function lbAll() { return (S.water || []).concat(S.mrecs || [], S.readings || []); }
+  function lbRecs(ids) { return lbAll().filter(function (w) { return w && !w.deleted && ids.indexOf(w.id) >= 0; }); }
   function lbSentKey(w) { return w.meter ? (SK[w.kind === 'gas' ? 'gas' : 'elec'] || {}).sk || 'obl' : 'vk'; }
   /** Підсумки черги → записи: «прийнято» / «лист надіслано» — передано (вода — sent.vk, світло — sent.obl, газ — sent.grm). */
   function lbApply(st) {
-    var ch = false, all = (S.water || []).concat(S.mrecs || []);
+    var ch = false, all = lbAll();
     ((st && st.jobs) || []).forEach(function (j) {
       if (j.card) all.forEach(function (w) { if (w && !w.deleted && !w.lbJob && w.card === j.card && w.id === j.rid) { w.lbJob = { job: j.id }; ch = true; } });   // «Відправити» в картці чату (122-а)
       all.filter(function (w) { return w && !w.deleted && w.lbJob && w.lbJob.job === j.id; }).forEach(function (w) {
         var c = { job: j.id, bot: j.bot, at: j.at, status: j.status, nextAt: j.nextAt || null, text: String(j.text || '').slice(0, 300), human: j.human ? String(j.human).slice(0, 300) : null };
         if (JSON.stringify(c) !== JSON.stringify(w.lbJob)) { w.lbJob = c; w.updatedAt = Date.now(); ch = true; }
+        if (w.htm) { if ((j.status === 'ok' || j.status === 'sent') && w.status !== 'accepted') { heatSetStatus(w, 'accepted'); ch = true; toast(t('lb_t_ok')); } return; }   // тепло (140-а): як «Передано»
         var sk = lbSentKey(w);
         if ((j.status === 'ok' || j.status === 'sent') && !(w.sent && w.sent[sk])) { w.sent = Object.assign({}, w.sent || {}); w.sent[sk] = today(); w.updatedAt = Date.now(); ch = true; toast(t('lb_t_ok')); }
       });
@@ -6353,6 +6356,8 @@
       md.keys(m).forEach(function (z) { var v = md.whole(r.z[z]); if (v !== null && v !== undefined && v !== '') out.push({ value: String(v), serial: m.serial || null, kind: k, name: (m.name || ename(m)) + (md.keys(m).length > 1 ? ' · ' + ezl(m, z) : '') }); }); });
     return out;
   }
+  /** Тепло не від ХТМ (140-а, робот izt): постачальнику — одне число, енергія з головного екрана в одиниці табло. */
+  function lbItemsHeat(r) { var v = r && r.htm ? htmVal('energy', r.htm, r.raw) : ''; return /^\d{1,7}(\.\d{1,3})?$/.test(v) ? [{ value: v, kind: 'heat', unit: energyUnit(), name: fieldLabel('energy') + ', ' + unitLbl(energyUnit()) }] : []; }
   function lbItems(rec) { return wmeters().filter(function (m) { return hasVal(rec, m.id); }).map(function (m) { return { value: String(Wt.whole(rec.vals[m.id])), serial: m.serial || null, kind: m.kind, name: wname(m) }; }); }
   function lbSet(bot, pl, j) { var k = lbKey(bot, pl); LB.st[k] = j; LB.at[k] = Date.now(); if (lbApply(j)) save(); }
   ['input', 'change'].forEach(function (ev) { document.addEventListener(ev, function (e) {
@@ -6377,9 +6382,9 @@
         var k = lbKey(bot, pl); if (LB.st[k]) LB.st[k].jobs = [jb].concat((LB.st[k].jobs || []).filter(function (x) { return x.id !== jb.id; })); LB.at[k] = 0;
       }); return;
     }
-    if (a === 'lb-cancel') { e.preventDefault(); lbCall('/lb/cancel', { job: +el.getAttribute('data-id') }, function (j) { var jb = j.job; if (jb) { (S.water || []).concat(S.mrecs || []).forEach(function (w) { if (w && w.lbJob && w.lbJob.job === jb.id) { w.lbJob.status = jb.status; w.updatedAt = Date.now(); } }); save(); } toast(t('lb_t_cancel')); }); }
+    if (a === 'lb-cancel') { e.preventDefault(); lbCall('/lb/cancel', { job: +el.getAttribute('data-id') }, function (j) { var jb = j.job; if (jb) { lbAll().forEach(function (w) { if (w && w.lbJob && w.lbJob.job === jb.id) { w.lbJob.status = jb.status; w.updatedAt = Date.now(); } }); save(); } toast(t('lb_t_cancel')); }); }
   });
-  function lbPending() { return (S.water || []).concat(S.mrecs || []).some(function (w) { return w && !w.deleted && w.lbJob && /^(queued|sending)$/.test(w.lbJob.status); }); }
+  function lbPending() { return lbAll().some(function (w) { return w && !w.deleted && w.lbJob && /^(queued|sending)$/.test(w.lbJob.status); }); }
   setInterval(function () { if (document.visibilityState === 'visible' && lbPending()) safeRender(); }, 30000);
   function localDest(k, d, vals, mark, sent, extra) {
     var p = place() || {}, own = (p.prov || {})[k] || {}, org = own.name || d.org || '', pl = d._place || {};

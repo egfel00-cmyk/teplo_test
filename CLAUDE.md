@@ -66,6 +66,10 @@
 - Общий робот — `app/localbot.php` (`LocalBot::BOTS`: `form` — форма без входа (рахунок → страница абонента → показания), `cab` — обычная HTML-форма
   входа без капчи, `mail` — e-mail поставщика со скриньки сервиса); в справочнике `via` = id бота. Подключение = проверка «дойти до формы, ничего не отправить».
   Стенд `tests/lb-mock` (+ `lb_base_<бот>` в config.php), e2e `tests/e2e/e2e_lbot.cjs`. Как добавить — `skills/oblast-providers/SKILL.md`, «Автоподача».
+- **Тепло (140-я)**: первый робот тепла — `izt` (Ізяслав, письмо на iz_teplo@ukr.net из договора КП): `kinds: ['heat']`, одно число — энергия в единице табло
+  (`items[].unit`: Gcal/MWh/GJ/kWh). Блок «Відправити у фоні» — на «Передача постачальнику тепла» (`handoverLite` → `lbBox(ld, [r], lbItemsHeat(r))`); записи тепла —
+  в `lbAll()` (вода, свет/газ, `S.readings`); отправлено → `heatSetStatus(r, 'accepted')`, как кнопка «Передано». e2e `tests/e2e/e2e_lbheat.cjs` (в config.php — `smtp_host`, `smtp_from`).
+  В договорах тепла (КМУ № 830, п. 23) часто e-mail из «Реквізити виконавця» — новые такие КП подключать так же.
 - Не обходим: капчу (в т.ч. невидимую reCAPTCHA), антиспам-токены форм, проверки Cloudflare → `robot: captcha`. Закрытые API из JS-бандлов SPA-кабинетов
   (gkh.in.ua, abon.com.ua и т.п.) не разбираем и демо-учётки из них не используем — только то, что сайт открыто даёт человеку (HTML-формы, e-mail).
 
@@ -173,7 +177,7 @@
 - **138-я**: окно КП — из **п. 22 его типового индивидуального договора** (КМУ № 690: «щомісяця з A по B число»): Пісочин 20–27, Зміїв 25–31, Буча 25–30, Обухів 20–25,
   Славута 25–30 (там же e-mail → бот `slv`); **139-я**: Подільськ 25–1, Дачне 1–10, Богодухів 20–25 (и у роботов `podv`/`dach`/`bgdv`), Солоницівка 1–5,
   Чабани 20–25 (e-mail chabanyvoda@ukr.net → бот `chab`); **140-я**: Славутич 22–28 (и у робота `svod`), Деражня 25–30; тепло — Старокостянтинів 25–28, Ізяслав 25–30,
-  Ірпінь 29–31, Бориспіль 28–30, Лозова 20–25 (у тепла с `win` — и `till` = конец окна) — 55 записей с `win`. Поиск по сайту КП в Chrome — `tests/kpscan.mjs` через jsDelivr (`import('https://cdn.jsdelivr.net/gh/egfel00-cmyk/teplo_test@<commit>/tests/kpscan.mjs')`, `scan()`);
+  Ірпінь 29–31, Бориспіль 28–30, Лозова 20–25 (у тепла с `win` — и `till` = конец окна) — 56 записей с `win`. Поиск по сайту КП в Chrome — `tests/kpscan.mjs` через jsDelivr (`import('https://cdn.jsdelivr.net/gh/egfel00-cmyk/teplo_test@<commit>/tests/kpscan.mjs')`, `scan()`);
   rada.info из Chrome открывается (fetch того же origin; .doc — UTF-16 текст), иногда «Could not verify safety category» — повторить позже.
   Как читать docx/Google Docs/PDF договоров в Chrome (PDF с текстом — pdf.js в странице) — `skills/oblast-providers/SKILL.md`.
 

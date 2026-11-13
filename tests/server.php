@@ -2381,6 +2381,19 @@ $sl = Providers::lookup('Славута, вул. Козацька, 3')['kinds'][
 ok('slv: лист на otbanka@i.ua — рахунок, ПІБ, адреса; у довіднику Славута via slv, server, вікно 25–30', $r->status === 200 && count($sent) === $n0 + 1 && $ml[1] === ['otbanka@i.ua']
   && str_contains($mb, '10234') && str_contains($mb, 'Іваненко Олена') && str_contains($mb, 'вул. Козацька, 3, кв. 12') && ($sl['via'] ?? '') === 'slv' && ($sl['robot'] ?? '') === 'server'
   && ($sl['win'] ?? null) === [25, 30] && (LocalBot::BOTS['bucha']['win'] ?? null) === [25, 30], [$r->body, $ml[1] ?? null, $mb, $sl['via'] ?? null]);
+// 140-а: перший робот для тепла — Ізяслав (izt): лист на iz_teplo@ukr.net — одне число, енергія в одиниці табло (МВт·год), рахунок, ПІБ, адреса; одиниця — лише з білого списку
+Db::q("DELETE FROM rate_limits WHERE k LIKE 'lb_%'");   // той самий тестовий користувач уже поставив кілька черг
+$r = $lbu->req('POST', '/api/lb/connect', ['bot' => 'izt', 'place' => 'iz1', 'acc' => '3021', 'name' => 'Петренко Іван', 'addr' => 'вул. Шевченка, 7, кв. 4', 'consent' => true]);
+$q = $lbu->req('POST', '/api/lb/queue', ['bot' => 'izt', 'place' => 'iz1', 'rid' => 'r1', 'items' => [['value' => '12.345', 'name' => 'Енергія, МВт·год', 'kind' => 'heat', 'unit' => 'MWh']]]);
+Db::q('UPDATE cab_jobs SET next_at = ? WHERE id = ?', [time() - 1, (int)($q->body['job']['id'] ?? 0)]);
+$n0 = count($sent); LocalBot::cron(); $ml = end($sent);
+$mb = preg_match('/base64\r\n\r\n([A-Za-z0-9+\/=\r\n]+?)\r\n(?:--|$)/', (string)($ml[2] ?? ''), $mm) ? base64_decode(preg_replace('/\s+/', '', $mm[1])) : (string)($ml[2] ?? '');
+$izh = Providers::lookup('Ізяслав, вул. Шевченка, 7')['kinds']['heat'] ?? [];
+ok('izt: тепло листом на iz_teplo@ukr.net — «Енергія …: 12.345 МВт·год», рахунок, ПІБ, адреса; у довіднику Ізяслав-тепло via izt, server, вікно 25–30, till 30; одиниця «MJ» — відкинута',
+  $r->status === 200 && count($sent) === $n0 + 1 && $ml[1] === ['iz_teplo@ukr.net'] && str_contains($mb, '12.345 МВт·год') && str_contains($mb, 'лічильника тепла')
+  && str_contains($mb, 'Особовий рахунок: 3021') && str_contains($mb, 'Петренко Іван') && !str_contains($mb, 'м³') && ($izh['via'] ?? '') === 'izt' && ($izh['robot'] ?? '') === 'server'
+  && ($izh['win'] ?? null) === [25, 30] && ($izh['till'] ?? null) === 30 && !isset(LocalBot::items([['value' => '1', 'kind' => 'heat', 'unit' => 'MJ']])[0]['unit'])
+  && (LocalBot::items([['value' => '1', 'kind' => 'heat', 'unit' => 'GJ']])[0]['unit'] ?? '') === 'GJ', [$r->body, $q->body, $ml[1] ?? null, $mb, $izh['via'] ?? null]);
 // 139-а: Чабани — e-mail chabanyvoda@ukr.net (п. 22 договору КП, з 20 по 25; лист — як у slv), Солоницівка — вікно 1–5
 $cb = Providers::lookup('Чабани, вул. Покровська, 2')['kinds']['water'] ?? []; $sn = Providers::lookup('Солоницівка, вул. Пушкіна, 1')['kinds']['water'] ?? [];
 ok('chab: робот mail на chabanyvoda@ukr.net (рахунок, ПІБ, адреса), вікно 20–25; Чабани via chab, server; Солоницівка 1–5', (LocalBot::BOTS['chab']['t'] ?? '') === 'mail'
