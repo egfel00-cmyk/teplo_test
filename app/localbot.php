@@ -50,9 +50,9 @@ final class LocalBot {
     // Васильків: КП «ККП м. Василькова», кабінет my.kpkkp.info (Yii: _csrf + LoginForm[email] + LoginForm[password])
     'vkkp' => ['t' => 'cab', 'kinds' => ['water'], 'org' => 'КП «ККП м. Василькова»', 'site' => 'my.kpkkp.info',
       'start' => 'https://my.kpkkp.info/user/login', 'host' => '~^my\.kpkkp\.info$~i', 'need' => ['login', 'pass']],
-    // Буча: КП «Бучасервіс», кабінет абонента voda.buchaservice.com/cabinet (e-mail + пароль, POST /cabinet/login)
+    // Буча: КП «Бучасервіс», кабінет абонента voda.buchaservice.com/cabinet (e-mail + пароль, POST /cabinet/login); з 25 по 30 число (оферта КП, 138-а)
     'bucha' => ['t' => 'cab', 'kinds' => ['water'], 'org' => 'КП «Бучасервіс»', 'site' => 'voda.buchaservice.com',
-      'start' => 'https://voda.buchaservice.com/cabinet', 'host' => '~^voda\.buchaservice\.com$~i', 'need' => ['login', 'pass']],
+      'start' => 'https://voda.buchaservice.com/cabinet', 'host' => '~^voda\.buchaservice\.com$~i', 'need' => ['login', 'pass'], 'win' => [25, 30]],
     // Вишневе (104-а): КП «УМГ» — центр розрахунків «Вишнівськводоканалу», кабінет umg.in.ua/account (особовий рахунок + пароль, без капчі); показники — з 28 до 1 числа
     'umg' => ['t' => 'cab', 'kinds' => ['water'], 'org' => 'КП «УМГ» (Вишневе)', 'site' => 'umg.in.ua',
       'start' => 'https://umg.in.ua/account/', 'host' => '~^umg\.in\.ua$~i', 'need' => ['login', 'pass'], 'lk' => 'acc', 'win' => [28, 1]],
@@ -80,6 +80,10 @@ final class LocalBot {
     // Ірпінь: e-mail абонентського відділу irpenvodok.abonviddil@gmail.com (vodokanal-irpen.com.ua, «Подати показники лічильника»); з 20 до 25 числа
     'ivk' => ['t' => 'mail', 'kinds' => ['water'], 'org' => 'КП «Ірпіньводоканал»', 'site' => 'vodokanal-irpen.com.ua', 'to' => 'irpenvodok.abonviddil@gmail.com',
       'need' => ['acc', 'name', 'addr', 'phone'], 'win' => [20, 25]],
+    // Славута (138-а): п. 22 договору КП «Славутське УВКГ» зі споживачами (10.11.2023, sl-vodokanal.info) — показання з 25 по 30 число, серед способів
+    // e-mail otbanka@i.ua (телефон у договорі — той самий, що й на сайті). Формату листа договір не задає — рахунок, ПІБ і адреса.
+    'slv' => ['t' => 'mail', 'kinds' => ['water'], 'org' => 'КП «Славутське УВКГ»', 'site' => 'sl-vodokanal.info', 'to' => 'otbanka@i.ua',
+      'need' => ['acc', 'name', 'addr'], 'win' => [25, 30]],
     // 106-а (Chrome 11.11.2026). Київщина: та сама платформа «Особистий кабінет абонента», що й у Василькова (Yii: _csrf + LoginForm[email] + LoginForm[password],
     // без капчі; реєстрація «за платежем» чи «за кодом активації»). Фастів — показання з 25 числа до останнього робочого дня (fastiv-rada.gov.ua);
     // Вишгород — з 25 числа до передостаннього робочого дня (vyshhorodvodokanal.com.ua «Надати показники лічильників»).

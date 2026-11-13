@@ -2272,6 +2272,11 @@ $wins = []; foreach (['kh', 'ky', 'kv', 'od', 'lv', 'km'] as $r) { $pd = $r === 
 $wbad = array_filter($wins, fn($w) => (ProvEdit::clean(['win' => $w])['win'] ?? null) !== $w);
 ok('довідник: усі win валідні, Лозова 20–25, Львів 10–пр, Київ тепло 5–31, вода Києва без вікна', !$wbad && count($wins) >= 37 && ($wins['kh/Лозівська/water'] ?? null) === [20, 25]
   && ($wins['lv/Львівська/water'] ?? null) === [10, -2] && ($wins['ky/Київ/heat'] ?? null) === [5, 31] && !isset($wins['ky/Київ/water']), ['bad' => $wbad, 'n' => count($wins)]);
+// 138-а: вікна з п. 22 типових договорів КП (КМУ № 690: «щомісяця з A по B число») — Пісочин 20–27, Зміїв 25–31, Буча 25–30, Обухів 20–25, Славута 25–30;
+// «не пізніше 28» / «останнього дня» (Кам’янець, Люботин) — без вікна
+ok('довідник 138-ї: вікна з договорів КП, Кам’янець і Люботин без вікна', count($wins) >= 43 && ($wins['kh/Пісочинська/water'] ?? null) === [20, 27]
+  && ($wins['kh/Зміївська/water'] ?? null) === [25, 31] && ($wins['kv/Бучанська/water'] ?? null) === [25, 30] && ($wins['kv/Обухівська/water'] ?? null) === [20, 25]
+  && ($wins['km/Славутська/water'] ?? null) === [25, 30] && !isset($wins['km/Кам’янець-Подільська/water']) && !isset($wins['kh/Люботинська/water']), ['n' => count($wins)]);
 // Львівобленерго — лист «код показник», лише однозонний, вікно 28–3
 $r = $lbu->req('POST', '/api/lb/connect', ['bot' => 'loe', 'place' => 'lv1', 'acc' => '12345', 'consent' => true]);
 ok('loe: код не 10 цифр — 422 з прикладом 0000011111', $r->status === 422 && str_contains((string)($r->body['human'] ?? ''), '0000011111'), $r->body);
@@ -2366,6 +2371,16 @@ $n0 = count($sent); LocalBot::cron(); $ml = end($sent);
 $mb = preg_match('/base64\r\n\r\n([A-Za-z0-9+\/=\r\n]+?)\r\n(?:--|$)/', (string)($ml[2] ?? ''), $mm) ? base64_decode(preg_replace('/\s+/', '', $mm[1])) : (string)($ml[2] ?? '');
 ok('svk: лист на zbut_voda@ukr.net — «Особовий рахунок: 45678», «Адреса: …», без порожніх «Абонент:» і «Телефон:»', $r->status === 200 && count($sent) === $n0 + 1 && $ml[1] === ['zbut_voda@ukr.net']
   && str_contains($mb, 'Особовий рахунок: 45678') && str_contains($mb, 'Адреса: вул. Шевченка, 5, кв. 7') && !str_contains($mb, 'Абонент:') && !str_contains($mb, 'Телефон:'), [$r->body, $ml[1] ?? null, $mb]);
+// 138-а: Славута — лист на otbanka@i.ua (п. 22 договору КП): рахунок, ПІБ, адреса; бот Бучі чекає вікна 25–30
+$r = $lbu->req('POST', '/api/lb/connect', ['bot' => 'slv', 'place' => 'km7', 'acc' => '10234', 'name' => 'Іваненко Олена', 'addr' => 'вул. Козацька, 3, кв. 12', 'consent' => true]);
+$q = $lbu->req('POST', '/api/lb/queue', ['bot' => 'slv', 'place' => 'km7', 'rid' => 'v1', 'items' => [['value' => '205', 'name' => 'Холодна', 'kind' => 'cold']]]);
+Db::q('UPDATE cab_jobs SET next_at = ? WHERE id = ?', [time() - 1, (int)($q->body['job']['id'] ?? 0)]);
+$n0 = count($sent); LocalBot::cron(); $ml = end($sent);
+$mb = preg_match('/base64\r\n\r\n([A-Za-z0-9+\/=\r\n]+?)\r\n(?:--|$)/', (string)($ml[2] ?? ''), $mm) ? base64_decode(preg_replace('/\s+/', '', $mm[1])) : (string)($ml[2] ?? '');
+$sl = Providers::lookup('Славута, вул. Козацька, 3')['kinds']['water'] ?? [];
+ok('slv: лист на otbanka@i.ua — рахунок, ПІБ, адреса; у довіднику Славута via slv, server, вікно 25–30', $r->status === 200 && count($sent) === $n0 + 1 && $ml[1] === ['otbanka@i.ua']
+  && str_contains($mb, '10234') && str_contains($mb, 'Іваненко Олена') && str_contains($mb, 'вул. Козацька, 3, кв. 12') && ($sl['via'] ?? '') === 'slv' && ($sl['robot'] ?? '') === 'server'
+  && ($sl['win'] ?? null) === [25, 30] && (LocalBot::BOTS['bucha']['win'] ?? null) === [25, 30], [$r->body, $ml[1] ?? null, $mb, $sl['via'] ?? null]);
 $L = fn(string $a, string $k = 'water') => Providers::lookup($a)['kinds'][$k] ?? [];
 $dr = $L('Дрогобич, вул. Шевченка, 1'); $st2 = $L('Стрий, вул. Шевченка, 1'); $tr = $L('Трускавець, вул. Шевченка, 1'); $mo = $L('Моршин, вул. Шевченка, 1');
 $bo = $L('Бориспіль, вул. Київський Шлях, 1'); $ir = $L('Ірпінь, вул. Соборна, 1'); $vy = $L('Вишневе, вул. Святошинська, 1'); $sp = $L('Шептицький, вул. Шевченка, 1'); $bh = $L('Бровари, вул. Київська, 1', 'heat');
