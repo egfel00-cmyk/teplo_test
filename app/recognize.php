@@ -13,7 +13,10 @@ final class Recognize {
     't230' => 'Landis+Gyr ULTRAHEAT T230', 'multical302' => 'Kamstrup MULTICAL 302', 'multical403' => 'Kamstrup MULTICAL 403 / 603', 'elf' => 'Apator ELF', 'lqm3' => 'Apator LQM-III / CQM-III-K', 'hydrocal_m3' => 'B Meters HYDROCAL-M3', 'sonosafe10' => 'Danfoss SonoSafe 10 / SonoSelect 10', 'techem_cv' => 'Techem compact V', 'sensostar' => 'Engelmann SensoStar (E, U, Q, C)', 'sensostar2' => 'Engelmann SENSOSTAR 2 / 2+', 'multical402' => 'Kamstrup MULTICAL 402',
     'nik7071' => 'НІК 7071', 'qalcosonic_e3' => 'Axioma QALCOSONIC E3', 'sonometer30' => 'Danfoss SonoMeter 30', 'zelsius_c5' => 'ZENNER zelsius C5',
     'sensonic2' => 'ista sensonic II', 't550' => 'Landis+Gyr ULTRAHEAT T550 (UH50)', 'cfecho2' => 'Itron CF Echo II', 'trust' => 'TRUST', 'ultrameter' => 'ULTRAMETER (UM, M)', 'lte1' => 'LTE-1 / LTE-1U',
-    'pollucom' => 'Sensus PolluCom E / EX', 'uh2wr6' => 'Landis+Gyr ULTRAHEAT 2WR6 (T350)', 'supercal' => 'Sontex Supercal 539 / 739', 'ultramaxx' => 'Itron CF-UltraMaXX / Integral-MK UltraMaXX', 'other' => 'other heat meter'];
+    'pollucom' => 'Sensus PolluCom E / EX', 'uh2wr6' => 'Landis+Gyr ULTRAHEAT 2WR6 (T350)', 'supercal' => 'Sontex Supercal 539 / 739', 'ultramaxx' => 'Itron CF-UltraMaXX / Integral-MK UltraMaXX',
+    'qalcosonic_heat' => 'Axioma (Axis Industries) QALCOSONIC HEAT 1 / SKS-3K / SKS-3', 'hydrosonis' => 'B Meters HYDROSONIS-UC', 'qheat55us' => 'QUNDIS Q heat 5.5 US',
+    'microclima' => 'Maddalena microCLIMA', 'maxx2' => 'Itron Integral-MK MaXX (Integral MaXX-2)', 'ultracal201' => 'Zimmerstec Ultracal 201', 'heat1u' => 'TLM HEAT+1U',
+    'uhm' => 'UHM (Ultrasonic Heat Meter)', 'eemc' => 'Danfoss EEM-C (Q II)', 'other' => 'other heat meter'];
   const ORDER = ['sharky774' => '1) energy [Gcal] 2) volume [m³ in the top right corner] 3) flow [m³/h] 4) power [kW] 5) tSupply + tReturn [alternating ht/ct] 6) hours + errHours [alternating On/Eh] 7) errCode'];
   const FIELD_RU = ['energy' => 'энергия', 'volume' => 'объём', 'flow' => 'расход', 'power' => 'мощность', 'tSupply' => 'подача', 'tReturn' => 'обратка',
     'hours' => 'часы работы', 'errHours' => 'часы с ошибкой', 'errCode' => 'код ошибки', 'water_hot' => 'горячая вода', 'water_cold' => 'холодная вода',

@@ -72,7 +72,7 @@ ok('SonoSafe 10: головна петля — енергія, обсяг, го�
 ok('Techem compact V: рівень 2 — понад 3 с; годин на екрані немає; F-5/F-9 — міряє правильно, C-1 — несправний',
   (st => st[1].press === 'long' && st[1].hold === 3 && st[6].fields.join() === 'hours,errHours' && /На екрані немає/.test(st[6].say.uk) && /F-9/.test(st[5].hint.uk) && /C-1/.test(st[5].hint.uk) && M.byId('techem_cv').sleepMin === 2)(M.byId('techem_cv').steps));
 ok('статуси: перевірено — лише Sharky 774; «уточнюється» — CF Echo II, SonoSafe 10, TRUST, ULTRAMETER, LTE-1, Supercal; решта — за посібником виробника',
-  M.MODELS.filter(m => m.status === 'verified').map(m => m.id).join() === 'sharky774' && M.MODELS.filter(m => m.status === 'draft').map(m => m.id).join() === 'cfecho2,sonosafe10,trust,ultrameter,lte1,supercal' &&
+  M.MODELS.filter(m => m.status === 'verified').map(m => m.id).join() === 'sharky774' && M.MODELS.filter(m => m.status === 'draft').map(m => m.id).join() === 'cfecho2,sonosafe10,trust,ultrameter,lte1,supercal,hydrosonis,maxx2,ultracal201,heat1u,uhm,eemc' &&
   M.MODELS.every(m => ['verified', 'manual', 'draft', 'universal'].includes(m.status)), M.MODELS.map(m => m.id + ':' + m.status));
 ok('фото наклейки: LQM-III і CQM-III-K → lqm3 (не ELF), ELF → elf, HYDROCAL-M3, SonoSafe/SonoSelect, techem compact V',
   mid('LQM-III') === 'lqm3' && mid('CQM-III-K') === 'lqm3' && mid('Apator ELF') === 'elf' && mid('HYDROCAL-M3') === 'hydrocal_m3' && mid('Danfoss SonoSafe 10') === 'sonosafe10' && mid('SonoSelect 10') === 'sonosafe10' && mid('techem compact V') === 'techem_cv',
@@ -121,6 +121,38 @@ ok('фото: PolluCom з «Sensus» (виробник водомірів) — �
 
 ok('назви з наклейки (TRUST, ULTRAMETER, ЛТЕ): підпис у списку й «Інша модель» у «Екран не той?» — справжня модель невідома',
   ['trust', 'ultrameter', 'lte1'].every(id => { const m = M.byId(id); return m.sticker && both(m.sub) && /невідом|не знайшли|немає/.test(m.sub.uk) && /Інша модель/.test(m.loops.tip.uk) && /Другая модель/.test(m.loops.tip.ru); }) &&
-    M.MODELS.filter(m => m.sticker).map(m => m.id).join() === 'trust,ultrameter,lte1');
+    M.MODELS.filter(m => m.sticker).map(m => m.id).join() === 'trust,ultrameter,lte1,uhm');
+
+// 134-я: остаток списка ХТМ (бланки журналів) — колонки бланка = набір значень і одиниці
+ok('QALCOSONIC HEAT 1 / SKS-3K: INT — помилка 1.1 перед енергією 1.2, обсяг 1.6, години без помилки 1.10; INF — 3.1 потужність … 3.22 час роботи батареї (простій = 3.22 − 3.21)',
+  (st => order('qalcosonic_heat') === 'energy,volume,errCode,power,flow,tSupply,hours' && st[6].fields.join() === 'hours,errHours' && /1\.2/.test(st[0].hint.uk) && /1\.6/.test(st[1].hint.uk) && /1\.1\b/.test(st[2].say.uk) &&
+    st[3].press === 'long' && /INF/.test(st[3].say.uk) && /3\.22/.test(st[6].hint.uk) && /3\.21/.test(st[6].hint.uk) && M.byId('qalcosonic_heat').units.join() === 'MWh,Gcal,GJ,kWh' &&
+    /SKS-3/.test(M.byId('qalcosonic_heat').note.uk))(M.byId('qalcosonic_heat').steps), order('qalcosonic_heat'));
+ok('HYDROSONIS-UC: схема QALCOSONIC E1 (бланк: 3.21 і 3.22), «уточнюється»; на екрані «LOOP» — це ULC: обрати T330',
+  order('hydrosonis') === order('qalcosonic_heat') && M.byId('hydrosonis').status === 'draft' && /T330/.test(M.byId('hydrosonis').loops.tip.uk) && /T330/.test(M.byId('hydrosonis').loops.tip.ru) && /3\.21/.test(M.byId('hydrosonis').note.uk));
+ok('Q heat 5.5 US: платформа L+G T330 — LOOP 0 і LOOP 1 (понад 3 с), Bd/Fd/Pd; kWh',
+  order('qheat55us') === order('t330') && M.byId('qheat55us').steps[2].press === 'long' && M.byId('qheat55us').steps[2].hold === 3 && M.byId('qheat55us').unit === 'kWh' && /kWh/.test(M.byId('qheat55us').steps[0].hint.uk));
+ok('microCLIMA: як SENSOSTAR 2 (рівень 2 — понад 4 с, дні × 24), обсяг — гортати до «m³», простій — про microCLIMA',
+  (st => order('microclima') === order('sensostar2') && st[1].count === null && st[5].hold === 4 && /× 24/.test(st[6].hint.uk) && /microCLIMA/.test(st[7].hint.uk) && !/SENSOSTAR/.test(st[7].hint.uk) &&
+    M.byId('microclima').sleepMin === 1)(M.byId('microclima').steps), order('microclima'));
+ok('Integral-MK MaXX: рівні UltraMaXX, витрата в l/h ÷ 1000, роки й дні → години',
+  (st => order('maxx2') === order('ultramaxx') && /l\/h/.test(st[2].lcd.tag) && /1000/.test(st[2].hint.uk) && /1000/.test(st[2].hint.ru) && /365/.test(st[6].hint.uk))(M.byId('maxx2').steps), order('maxx2'));
+ok('за бланком ХТМ: Ultracal 201 — Гкал, потужність → обсяг → витрата → T → години → Err; HEAT+1U — потужність у Гкал/год × 1163 = кВт, є години з помилкою; UHM — наклейка; EEM-C — ГДж, l/h ÷ 1000, «HRS»',
+  order('ultracal201') === 'energy,power,volume,flow,tSupply,hours,errCode,errHours' && M.byId('ultracal201').units[0] === 'Gcal' &&
+  order('heat1u') === 'energy,power,volume,flow,tSupply,hours,errHours,errCode' && /1163/.test(M.byId('heat1u').steps[1].hint.uk) && M.byId('heat1u').steps[1].lcd.tag === 'Gcal/h' && M.byId('eemc').steps[4].lcd.tag === 'l/h' && 0.002 * 1163 > 2.3 && 0.002 * 1163 < 2.35 &&
+  M.byId('heat1u').steps[6].press === 'short' && /колонка 9/.test(M.byId('heat1u').steps[6].hint.uk) &&
+  order('uhm') === 'energy,power,volume,flow,tSupply,hours,errCode,errHours' && /активної/.test(M.byId('uhm').steps[5].hint.uk) &&
+  order('eemc') === 'energy,volume,tSupply,power,flow,hours,errCode,errHours' && M.byId('eemc').unit === 'GJ' && /1000/.test(M.byId('eemc').steps[4].hint.uk) && /HRS/.test(M.byId('eemc').steps[5].hint.uk) &&
+  ['ultracal201', 'uhm', 'eemc'].every(id => /На екрані немає/.test(M.byId(id).steps[7].say.uk)), ['ultracal201', 'heat1u', 'uhm', 'eemc'].map(order));
+ok('усі 32 типи з бланків ХТМ мають свою модель (крім «Інша модель»)',
+  ['cfecho2', 'ultramaxx', 'maxx2', 'eemc', 'hydrocal_m3', 'hydrosonis', 'lqm3', 'lte1', 'microclima', 'multical402', 'pollucom', 'qalcosonic_heat', 'qheat55us', 'sensostar2', 'sensostar',
+    'sharky774', 'sharky775', 'supercal', 'trust', 'ultracal201', 'uh2wr6', 't230', 't330', 'ultrameter', 'zelsius_c5', 'heat1u', 'uhm'].every(id => !!M.byId(id)));
+ok('фото: QALCOSONIC HEAT 1 / SKS-3K / СКС-3 (не E3), HYDROSONIS (не HYDROCAL), Q heat 5.5 US, microCLIMA, Integral-MK MaXX (не UltraMaXX), Ultracal 201 / ZIMMERSTEC, Heat+1U, UHM, EEM-C',
+  mid('QALCOSONIC HEAT 1') === 'qalcosonic_heat' && mid('SKS-3K') === 'qalcosonic_heat' && mid('СКС-3') === 'qalcosonic_heat' && mid('QALCOSONIC E3') === 'qalcosonic_e3' &&
+    mid('HYDROSONIS UC') === 'hydrosonis' && mid('HYDROCAL-M3') === 'hydrocal_m3' && mid('QUNDIS Q heat 5.5 US') === 'qheat55us' && mid('microCLIMA') === 'microclima' &&
+    mid('Integral-MK MaXX') === 'maxx2' && mid('Integral-MK UltraMaXX') === 'ultramaxx' && mid('Ultracal 201') === 'ultracal201' && mid('ZIMMERSTEC') === 'ultracal201' && mid('Supercal 739') === 'supercal' &&
+    mid('Heat+1U') === 'heat1u' && mid('UHM DN15') === 'uhm' && mid('Ultrasonic Heat Meter') === 'uhm' && mid('Danfoss EEM-C') === 'eemc' && mid('ULTRAHEAT T330') === 't330' &&
+    ['QALCOSONIC HEAT 1 0001.234', 'microCLIMA 0012.345', 'Heat+1U 0001.234', 'UHM 0001.234', 'Q heat 5.5 US 012345'].every(x => kind(x) === 'heat'),
+  ['QALCOSONIC HEAT 1', 'SKS-3K', 'СКС-3', 'QALCOSONIC E3', 'HYDROSONIS UC', 'QUNDIS Q heat 5.5 US', 'microCLIMA', 'Integral-MK MaXX', 'Ultracal 201', 'ZIMMERSTEC', 'Heat+1U', 'UHM DN15', 'Ultrasonic Heat Meter', 'Danfoss EEM-C'].map(mid));
 
 console.log(`\nИтог: ${pass} OK, ${fail} FAIL`); process.exit(fail ? 1 : 0);

@@ -15,11 +15,17 @@
     ['uh2wr6', /2\s?WR\s?6|\bT\s?3\s?5\s?0\b|ULTRAHEAT\s*XS/i], ['pollucom', /POLLU\s*COM/i], ['supercal', /SUPER\s*CAL/i], ['ultramaxx', /ULTRA\s*MA\s*X\s*X/i],
     // 126-а: UH50 — це T550 (технічний опис L+G), не T230
     ['t330', /T\s?3\s?3\s?0|UH\s?30|ULTRAHEAT\s*T?3/i], ['t550', /T\s?5\s?5\s?0|UH\s?50/i], ['cfecho2', /CF\s?-?\s?ECHO/i], ['t230', /T\s?2\s?3\s?0/i], ['t330', /ULTRAHEAT/i],
+    // 134-я: QALCOSONIC HEAT 1 (стара назва SKS-3K / SKS-3) — раніше за E3; HYDROSONIS, Q heat 5.5 US, microCLIMA, Integral-MK MaXX, Ultracal 201, HEAT+1U, EEM-C
+    ['qalcosonic_heat', /QALCO\s*SONIC\s*HEAT|\bSKS\s*-?\s*3|СКС\s*-?\s*3/i], ['hydrosonis', /HYDRO\s*SONIS/i], ['qheat55us', /\bQ\s*-?\s*HEAT|QUNDIS/i],
+    ['microclima', /MICRO\s*-?\s*CLIMA/i], ['maxx2', /INTEGRAL\s*-?\s*(?:MK\s*-?\s*)?MA\s*X\s*X/i], ['ultracal201', /ULTRA\s*CAL|ZIMMERSTEC|ЦИММЕРСТЕК/i],
+    ['heat1u', /HEAT\s*\+\s*1\s*U|\bTLM\b/i], ['eemc', /\bEEM\s*-?\s*C\b/i],
     ['qalcosonic_e3', /QALCO\s*SONIC|QALCOSINIC/i], ['zelsius_c5', /ZELSIUS|\bC5[-\s]?(?:ISF|IUF|CMF)\b/i], ['sensonic2', /SENSONIC/i],
     ['multical403', /MULTICAL\s*(?:403|603)\b|MC\s?[46]03\b/i], ['multical402', /MULTICAL\s*402\b|MC\s?402\b/i], ['multical302', /MULTICAL|KAMSTRUP/i], ['elf', /\bELF\b/i], ['lqm3', /LQM|CQM/i], ['hydrocal_m3', /HYDRO\s*CAL/i], ['sonosafe10', /SONO\s*(?:SAFE|SELECT)/i], ['techem_cv', /TECHEM|COMPACT\s*V\b/i], ['sensostar2', /SENSO\s*STAR\s*®?\s*2(?![0-9])|\bMSH\s*-?\s*[SVMAIQ]?\s*STAR/i], ['sensostar', /SENSO\s*STAR/i],
     ['nik7071', /7\s?0\s?7\s?1|НІК|HIK\s*7/i], ['trust', /\bTRUST\b|HEAT\s*\/\s*SUM/i], ['sharky774', /SHARKY/i],
     // 132-а: харківські з пам’ятки ХТМ — ULTRAMETER (UM, M), LTE-1 / LTE-1U («ЛТЕ-1»)
-    ['ultrameter', /ULTRA\s*-?\s*M[EI]TER|ULTREMETER/i], ['lte1', /\bLTE\s*-?\s*1\s*U?\b(?![.,]\d)|ЛТЕ\s*-?\s*1(?![.,]\d)/i]
+    ['ultrameter', /ULTRA\s*-?\s*M[EI]TER|ULTREMETER/i], ['lte1', /\bLTE\s*-?\s*1\s*U?\b(?![.,]\d)|ЛТЕ\s*-?\s*1(?![.,]\d)/i],
+    // 134-я: «UHM» / «Ultrasonic Heat Meter» — назва з наклейки (виробник невідомий), останньою: такий напис буває й на інших
+    ['uhm', /\bUHM\b|ULTRASONIC\s*HEAT\s*METER/i]
   ];
   // не тепло: сильные признаки других счётчиков
   var OTHER = {
@@ -28,9 +34,9 @@
     water: [/[xх×]\s*0[.,]0{2,3}1/i, /\bMPa\b|МПа/i, /NOVATOR|НОВАТОР|ЛК-?\s?1|LK-?\s?1|SENSUS|ZENNER|APATOR\s*JS|POWOGAZ/i, /\bQ\s*[n3]\b|Q[n,]\s*\d/i, /\bR\s?(80|100|160)\b/],
     gas: [/\bG\s?(1[.,]6|2[.,]5|4|6|10)\b/, /Q\s*max|Q\s*min|P\s*max/i, /\bkPa\b|кПа/i, /BK-?\s?G|METRIX|ELSTER|GALLUS|САМГАЗ|SAMGAZ|ОКТАВА|OKTAVA|\bGAS\b|ГАЗ/i]
   };
-  var HEAT = /G\s?cal|G\s?kal|Гкал|\bGJ\b|MWh|SHARKY|ULTRAHEAT|MULTICAL|SENSOSTAR|\bELF\b|TRUST|SONOMETER|CF\s?ECHO|ULTRA\s*-?\s*METER|POLLU\s*COM|SUPER\s*CAL|ULTRA\s*MA\s*XX|2\s?WR\s?6|\bLTE\s*-?\s*1\s*U?\b(?![.,]\d)|тепл|ТЕПЛ|\bHT\b|\bCT\b/i;
+  var HEAT = /G\s?cal|G\s?kal|Гкал|\bGJ\b|MWh|SHARKY|ULTRAHEAT|MULTICAL|SENSOSTAR|\bELF\b|TRUST|SONOMETER|CF\s?ECHO|ULTRA\s*-?\s*METER|POLLU\s*COM|SUPER\s*CAL|ULTRA\s*MA\s*XX|2\s?WR\s?6|\bLTE\s*-?\s*1\s*U?\b(?![.,]\d)|QALCO|\bSKS\s*-?\s*3|HYDRO\s*SONIS|\bQ\s*-?\s*HEAT|MICRO\s*-?\s*CLIMA|INTEGRAL\s*-?\s*MK|ULTRA\s*CAL|ZIMMERSTEC|HEAT\s*\+\s*1\s*U|\bUHM\b|\bEEM\s*-?\s*C\b|тепл|ТЕПЛ|\bHT\b|\bCT\b/i;
   // «HT»/«CT» (подача/обратка на табло) — слабая примета: «ДСТУ» на корпусе электросчётчика движок читает «CT/», «CTY»
-  var HEAT_STRONG = /G\s?cal|G\s?kal|Гкал|\bGJ\b|MWh|SHARKY|ULTRAHEAT|MULTICAL|SENSOSTAR|\bELF\b|TRUST|SONOMETER|CF\s?ECHO|ULTRA\s*-?\s*METER|POLLU\s*COM|SUPER\s*CAL|ULTRA\s*MA\s*XX|2\s?WR\s?6|тепл|ТЕПЛ/i;
+  var HEAT_STRONG = /G\s?cal|G\s?kal|Гкал|\bGJ\b|MWh|SHARKY|ULTRAHEAT|MULTICAL|SENSOSTAR|\bELF\b|TRUST|SONOMETER|CF\s?ECHO|ULTRA\s*-?\s*METER|POLLU\s*COM|SUPER\s*CAL|ULTRA\s*MA\s*XX|2\s?WR\s?6|QALCO|\bSKS\s*-?\s*3|HYDRO\s*SONIS|\bQ\s*-?\s*HEAT|MICRO\s*-?\s*CLIMA|INTEGRAL\s*-?\s*MK|ULTRA\s*CAL|ZIMMERSTEC|HEAT\s*\+\s*1\s*U|\bUHM\b|\bEEM\s*-?\s*C\b|тепл|ТЕПЛ/i;
   // заголовки петель/груп/меню (не показання): «LOOP 1» (L+G; ЖК читається й «L00P»), «---- 01» (Apator ELF), «2-TECH» (Kamstrup), «MENU» (НІК 7071)
   var LOOP_RE = [/\bL[O0o]{2}P\s*[0-9]\b/i, /^[-_—–一=\s]{3,}0?[1-6]$/, /\b[1-4]\s*-\s*(?:USER|TECH|SETUP|TEST)\b/i, /^ME[NП]U$/i];
   // архів і службові екрани Diehl (Sharky 774/775): розрахунковий день «Accd», місячний журнал «LOG» (читається й «LO6»), адреси M-Bus
