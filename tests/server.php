@@ -2381,6 +2381,11 @@ $sl = Providers::lookup('Славута, вул. Козацька, 3')['kinds'][
 ok('slv: лист на otbanka@i.ua — рахунок, ПІБ, адреса; у довіднику Славута via slv, server, вікно 25–30', $r->status === 200 && count($sent) === $n0 + 1 && $ml[1] === ['otbanka@i.ua']
   && str_contains($mb, '10234') && str_contains($mb, 'Іваненко Олена') && str_contains($mb, 'вул. Козацька, 3, кв. 12') && ($sl['via'] ?? '') === 'slv' && ($sl['robot'] ?? '') === 'server'
   && ($sl['win'] ?? null) === [25, 30] && (LocalBot::BOTS['bucha']['win'] ?? null) === [25, 30], [$r->body, $ml[1] ?? null, $mb, $sl['via'] ?? null]);
+// 139-а: Чабани — e-mail chabanyvoda@ukr.net (п. 22 договору КП, з 20 по 25; лист — як у slv), Солоницівка — вікно 1–5
+$cb = Providers::lookup('Чабани, вул. Покровська, 2')['kinds']['water'] ?? []; $sn = Providers::lookup('Солоницівка, вул. Пушкіна, 1')['kinds']['water'] ?? [];
+ok('chab: робот mail на chabanyvoda@ukr.net (рахунок, ПІБ, адреса), вікно 20–25; Чабани via chab, server; Солоницівка 1–5', (LocalBot::BOTS['chab']['t'] ?? '') === 'mail'
+  && (LocalBot::BOTS['chab']['to'] ?? '') === 'chabanyvoda@ukr.net' && (LocalBot::BOTS['chab']['win'] ?? null) === [20, 25] && (LocalBot::BOTS['chab']['need'] ?? null) === ['acc', 'name', 'addr']
+  && ($cb['via'] ?? '') === 'chab' && ($cb['robot'] ?? '') === 'server' && ($cb['win'] ?? null) === [20, 25] && ($sn['win'] ?? null) === [1, 5], [$cb['via'] ?? null, $cb['win'] ?? null, $sn['win'] ?? null]);
 // 139-а: Подільськ — п. 22 типового індивідуального договору КВЕП «з 25 по 01 число»; робот podv чекає того ж вікна
 $pd = Providers::lookup('Подільськ, вул. Соборна, 1')['kinds']['water'] ?? []; $dc = Providers::lookup('Дачне, Одеський р-н, вул. Миру 1')['kinds']['water'] ?? []; $bg = Providers::lookup('Богодухів, вул. Шевченка, 1')['kinds']['water'] ?? [];
 ok('п. 22 договорів (139-а): Подільськ 25–1 (podv), Дачне 1–10 (dach), Богодухів 20–25 (bgdv) — у довіднику й у роботів', ($pd['via'] ?? '') === 'podv' && ($pd['win'] ?? null) === [25, 1] && (LocalBot::BOTS['podv']['win'] ?? null) === [25, 1]

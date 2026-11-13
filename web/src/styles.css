@@ -2181,7 +2181,13 @@ details.wacc.wacc-btn > .acc-foot { margin: 0; padding: 12px 16px 16px; border-t
 .acc-ask { margin: var(--sp-3, 12px) 0 0; padding: var(--sp-3, 12px) 0 0; border-top: 1px solid var(--c-line); }
 .acc-ask > p { margin: 0 0 8px; }
 .acc-ask .acc-ask-m { margin: 8px 0 4px; }
-.mono-link { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin: 12px 0 0; }
+.mono-link { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin: 0 0 16px; }
+/* 139-а: кнопка monobank — кольорами банку (чорна, біле слово), на всю ширину; у темній темі — тонка світла рамка, щоб не зливалась */
+.btn.mono-btn { flex: 1 1 100%; justify-content: center; min-height: 52px; background: #000; color: #fff; border: 1px solid #000; }
+.btn.mono-btn:hover { background: #1c1c1c; border-color: #1c1c1c; color: #fff; }
+.btn.mono-btn .ico { color: #fff; }
+.mono-w { font-weight: 600; letter-spacing: -0.01em; }
+:root[data-theme="dark"] .btn.mono-btn { border-color: rgba(255, 255, 255, .28); }
 .mono-link .small { flex: 1 1 180px; }
 .mono-list { display: grid; gap: 10px; margin: 0 0 var(--sp-4); }
 .mono-g { background: var(--c-surface); border-radius: 14px; padding: 12px var(--sp-4) 14px; }

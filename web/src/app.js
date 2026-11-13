@@ -1390,7 +1390,7 @@
     if (rec) {
       var cmd = Wt.vkCommand(wcfg().account, wcfg().surname, ms, rec.vals || {});
       // рахунку немає — тут, перед передачею, і просимо (при налаштуванні не питаємо, 114-а); «Заповнити з monobank» — під полями
-      if (cmd.noAccount) vkBody = (vkcOn() ? '<p class="small" data-key="vc-need">' + esc(t('vc_need')) + '</p>' : '<p>' + esc(t('ws_need_acc')) + '</p>' + waccForm()) + monoLink('water');
+      if (cmd.noAccount) vkBody = (vkcOn() ? '<p class="small" data-key="vc-need">' + esc(t('vc_need')) + '</p>' : '<p>' + esc(t('ws_need_acc')) + '</p>' + monoLink('water') + waccForm());
 
       // ID лічильників ще немає: бот покаже їх на /1= — відкриваємо його з готовою командою; переслана нам відповідь — номери кнопками
       else if (cmd.missing.length) vkBody = '<ol class="wsteps"><li>' + esc(t('vk_ids_1')) + '<div class="cmd"><code>' + esc(cmd.info) + '</code></div>' +
@@ -1878,7 +1878,7 @@
         meta: [ver, m.vkId ? esc(t('mb_vkid', { v: m.vkId })) : ''].filter(Boolean),
         // «Налаштування показань» — акордеон: рахунок, №, ціна (владелец 05.11 21:35–21:40: «верни аккордеон… переназови»);
         // «Заповнити з monobank» — у налаштуваннях показань кожного лічильника (116-а, власник 11.11)
-        set: wmeterFields(m, i0 === 0) + (i0 === 0 ? monoLink(kind + '-set') + priceBlock(kind) : '') + gapSetLink(m.id) , setTitle: t('mb_set_read') });
+        set: (i0 === 0 ? monoLink(kind + '-set') : '') + wmeterFields(m, i0 === 0) + (i0 === 0 ? priceBlock(kind) : '') + gapSetLink(m.id) , setTitle: t('mb_set_read') });
     }).join('');
     // «Розпізнати з фото» — лише на введенні показань (владелец 07.11); тут на її місці — «Куди передати» в рамці
     var act = '<button class="btn big block" data-act="wnew" data-kind="' + kind + '" data-key="water-add">' + ico('plus', 22) + '<span>' + esc(t('wn_title')) + '</span></button>';
@@ -2512,12 +2512,12 @@
   function saccAsk(k, ms) {
     var need = ms.filter(function (m) { return k === 'gas' ? !dgt(m.grm) || !dgt(m.account) : !dgt(m.account); });
     if (!need.length) return '';
-    return '<div class="acc-ask" data-key="' + k + '-acc-ask"><p class="small"><b>' + esc(tk(k, 'eacc_ask_t')) + '</b> <span class="muted">' + esc(tk(k, 'eacc_ask_s')) + '</span></p>' + need.map(function (m) {
+    return '<div class="acc-ask" data-key="' + k + '-acc-ask"><p class="small"><b>' + esc(tk(k, 'eacc_ask_t')) + '</b> <span class="muted">' + esc(tk(k, 'eacc_ask_s')) + '</span></p>' + monoLink(k) + need.map(function (m) {
       return (ms.length > 1 ? '<p class="small muted acc-ask-m">' + esc(ename(m)) + '</p>' : '') + '<div class="grid2">' +
         (k === 'gas' && !dgt(m.grm) ? sfld(m, 'grm', 'esg-', t('gm_grm'), 'inputmode="numeric"', t('gm_grm_h')) : '') +
         (!dgt(m.account) ? sfld(m, 'account', 'esa-', tk(k, 'em_acc'), 'inputmode="numeric"', tk(k, 'em_acc_h')) : '') + '</div>' +
         (k === 'gas' && !dgt(m.account) ? '<p class="small"><a href="' + Gs.LINKS.find + '" target="_blank" rel="noopener" data-key="gd-find">' + esc(t('gd_find')) + ' ' + ico('ext', 14) + '</a></p>' : '');
-    }).join('') + monoLink(k) + '</div>';
+    }).join('') + '</div>';
   }
   /** «Куди передати»: світло — Харківобленерго (застосунок, Viber-бот, кол-центр); газ — кабінет Газмереж, SMS 4647, «Куб», кол-центр. */
   function ssendPanel(k, recs) {
@@ -2728,7 +2728,7 @@
       return mbox({ key: 'emeter-' + m.id, id: m.id, kind: k, icon: SK[k].icon, cls: SK[k].cls, name: ms.length > 1 ? ename(m) : t(KINDS[k].t), sub: [ezonesTxt(m)],
         display: edisplay(m, r, 'hero'), cap: cap, copy: r && r.z && SK[k].mod.zones(m) <= 1 && SK[k].mod.whole(r.z.all) !== null ? SK[k].mod.whole(r.z.all) : '', body: sc.note ? '<p class="small muted mb-newer">' + esc(sc.note) + '</p>' : '',
         meta: [verWarn(m.verifiedUntil)].filter(Boolean),
-        set: smeterFields(k, m) + monoLink(k + '-set') + (i === 0 ? priceBlock(k) + sheatRow(k) : '') , setTitle: t('mb_set_read') });
+        set: monoLink(k + '-set') + smeterFields(k, m) + (i === 0 ? priceBlock(k) + sheatRow(k) : '') , setTitle: t('mb_set_read') });
     }).join('');
     if (k === 'elec') left += gpvBox(p, 'elec');
     var w = SK[k].mod.win(today()), cur = w.open ? ms.map(function (m) { return einWin(m.id, w); }) : null;
@@ -4140,7 +4140,7 @@
     ['cold', 'Водоканал Мерефи', 'Мерефа', 'Мерефа', 'mvk', 1],
     ['elec', 'Львівобленерго', 'Львівщина', 'Львовщина', 'loe', 1], ['cold', 'Львівводоканал', 'Львів', 'Львов', 'lvk', 1],
     ['cold', 'Чорноморськводоканал', 'Чорноморськ', 'Черноморск', 'cvk', 1], ['cold', 'Стрийводоканал', 'Стрий', 'Стрый', 'svk', 1],
-    ['cold', 'Ірпіньводоканал', 'Ірпінь', 'Ирпень', 'ivk', 1], ['cold', 'Славутське УВКГ', 'Славута', 'Славута', 'slv', 1],
+    ['cold', 'Ірпіньводоканал', 'Ірпінь', 'Ирпень', 'ivk', 1], ['cold', 'Славутське УВКГ', 'Славута', 'Славута', 'slv', 1], ['cold', 'КК «Чабани»', 'Чабани', 'Чабаны', 'chab', 1],
     ['cold', 'Міськтепловоденергія', 'Кам’янець-Подільський', 'Каменец-Подольский', 'mtve']
   ];
   function lpAutoList() {
@@ -4480,7 +4480,7 @@
       body: (NOTE_NEWER && newer ? '<p class="small muted mb-newer">' + esc(t(newer.own ? 'mb_newer_own' : 'mb_newer_heat', { d: fmtDate(newer.htm.date, true), s: t('status_' + newer.status).toLowerCase() })) + '</p>' : '') +
         (bs ? '' : '<p class="small muted">' + esc(t('h_last_none_sub')) + '</p><p><a class="btn sec" href="#baseline" data-key="home-add-base">' + esc(t('h_add_base')) + '</a></p>'),
       meta: [verWarn(S.meter && S.meter.verifiedUntil)].filter(Boolean),
-      set: heatMeterFields(m) + htmFormBox(htmAsk()) + monoLink('heat-set') + priceBlock('heat') + gapSetLink('heat') , setTitle: t('mb_set_read') });
+      set: monoLink('heat-set') + heatMeterFields(m) + htmFormBox(htmAsk()) + priceBlock('heat') + gapSetLink('heat') , setTitle: t('mb_set_read') });
     var act = '', right = '';
     var n = steps().length;
     if (S.draft && (Object.keys(S.draft.values || {}).length || S.draft.step > 0)) {
@@ -6937,7 +6937,9 @@
   }
   function monoLink(k) {
     if (!Mn) return '';
-    return '<p class="mono-link"><a class="btn sec" href="#mono" data-act="mono-open" data-key="mono-open' + (k ? '-' + k : '') + '">' + ico('download', 18) + '<span>' + esc(t('mono_link')) + '</span></a>' +
+    // 139-а (власник 13.11): «кнопку брендируй под монобанк и показывай первой сверху над всеми полями» — чорна кнопка зі словом monobank
+    // (кольори й назва банку; знак-кота не малюємо), у налаштуваннях передачі — першою, над полями
+    return '<p class="mono-link"><a class="btn mono-btn" href="#mono" data-act="mono-open" data-key="mono-open' + (k ? '-' + k : '') + '">' + ico('download', 18) + '<span>' + esc(t('mono_link')).replace('monobank', '<b class="mono-w">monobank</b>') + '</span></a>' +
       (k === 'prefs' ? '' : '<span class="small muted">' + esc(t('mono_link_s')) + '</span>') + '</p>';
   }
   /** Куди вписати рахунок групи: {f: поле для підпису, cur: що вписано зараз, ok: є куди} — вода/тепло на квартиру, світло/газ — у лічильник. */
