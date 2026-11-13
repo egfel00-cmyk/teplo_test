@@ -684,17 +684,42 @@ ok('друга квартира лише з холодною: вода — на�
 $lvp = ['id' => 'main', 'address' => 'м. Львів, вул. Городоцька, 10', 'city' => ['n' => 'Львів', 'h' => 'UA46060250000025047', 'r' => 'lv'], 'meter' => ['modelId' => 'sharky774'],
   'water' => ['meters' => [['id' => 'c1', 'kind' => 'cold']]], 'meters' => [['id' => 'e1', 'kind' => 'elec']]];
 $lvs = ['places' => [$lvp]];
-$lw = Reminders::placesDue($lvs, 'water16', '2026-11'); $lwt = Reminders::text('water16', 'uk', $lw)['text'];
-$le = Reminders::placesDue($lvs, 'elec1', '2026-11'); $let = Reminders::text('elec1', 'ru', $le)['text'];
-ok('Львів: вода — без «до 20-го» і бота Водоканалу, постачальник — Львівводоканал; світло — Львівенергозбут, без Харківобленерго; тепло (не ХТМ) — не нагадуємо',
-  ($lw[0]['kh'] ?? null) === false && str_contains($lwt, 'Львівводоканал') && !str_contains($lwt, '20-го') && !str_contains($lwt, 'бота Водоканалу')
-  && str_contains($let, 'Львівенергозбут') && !str_contains($let, 'Харьков') && !str_contains($let, 'Харэнерго') && !Reminders::needs($lvs, 'heat21', '2026-12'), [$lw, $lwt, $let]);
+// 142-а: у Львові в довіднику свої вікна — вода 10 – передостанній робочий, світло 28–3, тепло 25–31 → нагадування за 4 дні до ЇХ кінця, не 16-го/передостаннього
+ok('Львів: у фіксовані дні (вода 16-го, світло передостаннього) — не нагадуємо: у постачальників свої вікна; тепло (не ХТМ) 21-го — ні',
+  !Reminders::placesDue($lvs, 'water16', '2026-11') && !Reminders::placesDue($lvs, 'elec1', '2026-11') && !Reminders::needs($lvs, 'heat21', '2026-12'));
+$lsp = [Reminders::winSpan([10, -2], '2026-11'), Reminders::winSpan([28, 3], '2026-11'), Reminders::winSpan([25, 1], '2026-11'), Reminders::winSpan([1, 3], '2026-11'), Reminders::winSpan([-2, 3], '2026-02'), Reminders::winSpan([25, 31], '2026-11'), Reminders::winSpan([20, 27], '2026-12')];
+ok('вікна (як perWin у застосунку): 10–пр.роб. листопада → 27.11 (пт), нагадати 23.11; 28–3 → 03.12, 29.11; 25–1 → 01.12, 27.11; 1–3 → нагадати 1-го; −2…3 у лютому → 27.02–03.03; 25–31 → 30.11, 26.11',
+  $lsp[0] === ['b' => '2026-11-10', 'e' => '2026-11-27', 'r' => '2026-11-23'] && $lsp[1] === ['b' => '2026-11-28', 'e' => '2026-12-03', 'r' => '2026-11-29']
+  && $lsp[2] === ['b' => '2026-11-25', 'e' => '2026-12-01', 'r' => '2026-11-27'] && $lsp[3]['r'] === '2026-11-01' && $lsp[4] === ['b' => '2026-02-27', 'e' => '2026-03-03', 'r' => '2026-02-27']
+  && $lsp[5]['e'] === '2026-11-30' && $lsp[5]['r'] === '2026-11-26' && $lsp[6]['r'] === '2026-12-23', $lsp);
+$ld = fn(string $d) => array_column(Reminders::localDue($lvs, $d), 'kind');
+ok('Львів: 23.11 — waterL23, 26.11 — heatL26, 29.11 — elecL29; 16.11 і 22.11 — нічого', $ld('2026-11-23') === ['waterL23'] && $ld('2026-11-26') === ['heatL26'] && $ld('2026-11-29') === ['elecL29']
+  && $ld('2026-11-16') === [] && $ld('2026-11-22') === [], [$ld('2026-11-23'), $ld('2026-11-26'), $ld('2026-11-29')]);
+$lw = Reminders::placesDue($lvs, 'waterL23', '2026-11', '2026-11-23'); $lwt = Reminders::text('waterL23', 'uk', $lw, '2026-11-23')['text'];
+$le = Reminders::placesDue($lvs, 'elecL29', '2026-11', '2026-11-29'); $let = Reminders::text('elecL29', 'ru', $le, '2026-11-29')['text'];
+$lh = Reminders::placesDue($lvs, 'heatL26', '2026-11', '2026-11-26'); $lht = Reminders::text('heatL26', 'uk', $lh, '2026-11-26');
+ok('Львів: вода — «До 27 листопада — 4 дні», Львівводоканал, без «20-го» і бота Водоканалу; світло — «До 3 декабря — 4 дня», Львівенергозбут, без Харкова; тепло — «До 30 листопада», Львівтеплоенерго, одне число, кнопка тепла',
+  ($lw[0]['kh'] ?? null) === false && ($lw[0]['e'] ?? '') === '2026-11-27' && str_contains($lwt, 'До 27 листопада — 4 дні') && str_contains($lwt, 'Львівводоканал') && !str_contains($lwt, '20-го') && !str_contains($lwt, 'бота Водоканалу')
+  && str_contains($let, 'До 3 декабря — 4 дня') && str_contains($let, 'Львівенергозбут') && !str_contains($let, 'Харьков') && !str_contains($let, 'Харэнерго')
+  && str_contains($lht['text'], 'До 30 листопада — 4 дні') && str_contains($lht['text'], 'Львівтеплоенерго') && str_contains($lht['text'], 'одне число') && !str_contains($lht['text'], 'ХТМ') && str_ends_with($lht['url'], '?go=heat'), [$lw, $lwt, $let, $lht['text']]);
+$lv2 = $lvs; $lv2['water'] = [['id' => 'w1', 'place' => 'main', 'date' => '2026-11-12', 'vals' => ['c1' => '5']]];
+$lv3 = $lvs; $lv3['water'] = [['id' => 'w1', 'place' => 'main', 'date' => '2026-11-03', 'vals' => ['c1' => '5']]];
+ok('Львів: внесли у вікні (12.11) — мовчимо; до вікна (03.11, раніше за 05.11) — нагадуємо; «нагадати завтра» після кінця вікна (28.11) — ні',
+  !Reminders::placesDue($lv2, 'waterL23', '2026-11', '2026-11-23') && Reminders::placesDue($lv3, 'waterL23', '2026-11', '2026-11-23') && !Reminders::placesDue($lvs, 'waterL23', '2026-11', '2026-11-28')
+  && Reminders::placesDue($lvs, 'waterL23', '2026-11', '2026-11-24'));
 $khs = ['places' => [['id' => 'main', 'address' => 'м. Харків, вул. Сумська, 10', 'meter' => ['modelId' => 'sharky774'], 'water' => ['meters' => [['id' => 'c1', 'kind' => 'cold']]]]]];
 $kw = Reminders::placesDue($khs, 'water16', '2026-11');
-ok('Харків за адресою — як було: «До 20-го», Водоканал; тепло (ХТМ) — нагадуємо', ($kw[0]['kh'] ?? null) === true && str_contains(Reminders::text('water16', 'uk', $kw)['text'], 'До 20-го') && Reminders::needs($khs, 'heat21', '2026-12'), $kw);
-$mix = ['places' => [$khs['places'][0], ['id' => 'p2', 'name' => 'Львів'] + $lvp]];
+ok('Харків за адресою — як було: «До 20-го», Водоканал; тепло (ХТМ) — нагадуємо; місцевих вікон немає', ($kw[0]['kh'] ?? null) === true && str_contains(Reminders::text('water16', 'uk', $kw)['text'], 'До 20-го') && Reminders::needs($khs, 'heat21', '2026-12')
+  && Reminders::localDue($khs, '2026-11-23') === [] && Reminders::localDue($khs, '2026-11-26') === [], $kw);
+// вода без відомого вікна (Шептицький) — як раніше: 16-го загальним текстом
+$shp = ['id' => 'p2', 'name' => 'Шептицький', 'address' => 'м. Шептицький, вул. Шептицького, 1', 'water' => ['meters' => [['id' => 'c7', 'kind' => 'cold']]]];
+$mix = ['places' => [$khs['places'][0], $shp]];
 $mt = Reminders::text('water16', 'uk', Reminders::placesDue($mix, 'water16', '2026-11'))['text'];
-ok('Харків + Львів в одному повідомленні — загальний текст без «до 20-го», постачальника не називаємо (різні)', !str_contains($mt, '20-го') && !str_contains($mt, 'постачальник') && str_contains($mt, '«Львів»'), $mt);
+ok('Харків + Шептицький (вікно води невідоме) в одному повідомленні 16-го — загальний текст без «до 20-го», постачальника не називаємо (різні)', !str_contains($mt, '20-го') && !str_contains($mt, 'постачальник') && str_contains($mt, '«Шептицький»'), $mt);
+$bch = ['places' => [['id' => 'b1', 'name' => 'Буча', 'address' => 'м. Буча, вул. Енергетиків, 1', 'water' => ['meters' => [['id' => 'c8', 'kind' => 'cold']]]], ['id' => 'k1', 'name' => 'Київ', 'address' => 'м. Київ, вул. Хрещатик, 1', 'meter' => ['modelId' => 'sharky774']]]];
+$bd = Reminders::localDue($bch, '2026-11-26'); $bw = BotWidget::data('waterL26', '2026-11', 'uk', Reminders::placesDue($bch, 'waterL26', '2026-11', '2026-11-26'), '2026-11-26');
+ok('Буча 25–30 і Київтеплоенерго 5–31 — обидва 26.11: waterL26 і heatL26 окремо; картка: «Передати до 30.11 · КП «Бучасервіс»», смужка з 25.11', array_column($bd, 'kind') === ['waterL26', 'heatL26']
+  && ($bw['s'] ?? '') === 'Передати до 30.11 · КП «Бучасервіс»' && ($bw['b'] ?? '') === '2026-11-25' && ($bw['e'] ?? '') === '2026-11-30' && ($bw['t'] ?? '') === 'Показання води', [$bd, $bw]);
 // 112-а: вивіз сміття — довідник (Харків: КВПВ 23,47 з людини), нагадування 10-го за минулий місяць лише тим, хто увімкнув у квартирі
 $kl = Providers::lookup('м. Харків, вул. Сумська, 10');
 ok('довідник: Харків — вивіз сміття КП «Комплекс з вивозу побутових відходів», 23,47 грн з людини, check', ($kl['kinds']['waste']['price'] ?? null) == 23.47 && str_contains((string)($kl['kinds']['waste']['org'] ?? ''), 'Комплекс') && !empty($kl['kinds']['waste']['check']), $kl['kinds']['waste'] ?? null);
@@ -787,6 +812,16 @@ $kb = $two[0][1]['reply_markup']['inline_keyboard'] ?? [];
 ok('рассылка двум квартирам: одно сообщение, две кнопки — по одной на квартиру', count($two) === 1 && count($kb) === 2 && str_ends_with($kb[1][0]['web_app']['url'], '&place=p2') && str_contains($two[0][1]['text'], 'Мамина'), $two);
 $row = Db::one("SELECT status FROM reminders_sent WHERE user_id = (SELECT user_id FROM user_identities WHERE external_id = '7777') AND kind = 'water16'");
 ok('итог доставки записан: ok', ($row['status'] ?? '') === 'ok', $row);
+// 142-а: Буча (вода 25–30) — 26.11 о 10:17 своє нагадування waterL26 (разом із 16-м у Харкові не плутається), позначка kind+ym, через годину — не дублюємо
+$rmB = new Browser('10.0.13.3'); $rmB->req('POST', '/api/auth/telegram/webapp', ['initData' => initData($TOKEN, ['id' => 7791, 'first_name' => 'Буча'])]);
+$rmB->req('PUT', '/api/state', ['state' => ['readings' => [], 'water' => [], 'places' => [['id' => 'b1', 'address' => 'м. Буча, вул. Енергетиків, 1', 'water' => ['meters' => [['id' => 'c8', 'kind' => 'cold']]]]]], 'baseVersion' => 0]);
+$sent = []; $rB = Reminders::run($kyiv('2026-11-26 10:17')); $mB = array_values(array_filter($sent, fn($x) => (string)$x[1]['chat_id'] === '7791'));
+$n2 = count($sent); Reminders::run($kyiv('2026-11-26 11:17'));
+$sB = Db::one("SELECT kind, ym, status FROM reminders_sent WHERE user_id = (SELECT user_id FROM user_identities WHERE external_id = '7791')");
+ok('Буча: 26.11 — «До 30 листопада — 4 дні … (КП «Бучасервіс»)», кнопка воды; reminders_sent waterL26 2026-11 ok; через годину — не повторюємо; 16.11 Бучі — нічого',
+  count($mB) === 1 && str_contains($mB[0][1]['text'], 'До 30 листопада — 4 дні') && str_contains($mB[0][1]['text'], 'Бучасервіс') && ($sB['kind'] ?? '') === 'waterL26' && ($sB['ym'] ?? '') === '2026-11'
+  && ($sB['status'] ?? '') === 'ok' && count($sent) === $n2 && in_array([Db::one("SELECT user_id FROM user_identities WHERE external_id = '7791'")['user_id'], 'waterL26', 'ok', '2026-11'], array_map(fn($x) => [(string)$x[0], $x[1], $x[2], $x[3]], $rB), false)
+  && !array_filter($res, fn($x) => (string)$x[0] === (string)Db::one("SELECT user_id FROM user_identities WHERE external_id = '7791'")['user_id']), [$mB, $sB, $rB]);
 // cron (CLI) без app_url: HTTP_HOST нет — адрес из вебхука бота, а не https://localhost (02.11.2026 elec2 → error)
 $cfgKeep = ['app_url' => 'https://teplo.example/', 'bot_token' => $TOKEN, 'webhook_secret' => 'hook-secret'];
 $hostKeep = $_SERVER['HTTP_HOST'] ?? null; unset($_SERVER['HTTP_HOST']);

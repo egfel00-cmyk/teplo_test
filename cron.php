@@ -92,11 +92,10 @@ try {
   $s = Reminders::run(time());
   if ($s) {
     $h['reminders'] = array_count_values(array_map(fn($x) => $x[1] . ' ' . (str_starts_with($x[2], 'error') ? 'error' : $x[2]), $s));
-    // итог рассылки за месяц по видам (только числа) — виден в /api/health без входа
-    $due = Reminders::due(time()); $key = $due['kind'] . ' ' . $due['ym'];
-    $r = (array)($beat['remind'] ?? []); $c = (array)($r[$key]['n'] ?? []);
-    foreach ($s as $x) { $st = str_starts_with($x[2], 'error') ? 'error' : $x[2]; $c[$st] = ($c[$st] ?? 0) + 1; }
-    $r[$key] = ['at' => gmdate('c'), 'n' => $c]; $beat['remind'] = array_slice($r, -4, null, true);
+    // итог рассылки за месяц по видам (только числа) — виден в /api/health без входа; 142-я: видов за час может быть несколько (местные окна)
+    $r = (array)($beat['remind'] ?? []);
+    foreach ($s as $x) { $key = $x[1] . ' ' . ($x[3] ?? ''); $st = str_starts_with($x[2], 'error') ? 'error' : $x[2]; $c = (array)($r[$key]['n'] ?? []); $c[$st] = ($c[$st] ?? 0) + 1; $r[$key] = ['at' => gmdate('c'), 'n' => $c]; }
+    $beat['remind'] = array_slice($r, -6, null, true);
     echo gmdate('c') . ' напоминаний: ' . count($s) . "\n";
   }
 } catch (Throwable $e) { $h['remindError'] = mb_substr($e->getMessage(), 0, 200); error_log('teplo remind: ' . $e->getMessage()); }
@@ -107,9 +106,9 @@ catch (Throwable $e) { error_log('teplo snooze: ' . $e->getMessage()); }
 try {
   $sm = Reminders::runMail(time());
   if ($sm) { $h['remindMail'] = array_count_values(array_map(fn($x) => str_starts_with($x[2], 'error') ? 'error' : $x[2], $sm));
-    $due = Reminders::due(time()); $key = $due['kind'] . '.m ' . $due['ym']; $r = (array)($beat['remind'] ?? []); $c = (array)($r[$key]['n'] ?? []);
-    foreach ($sm as $x) { $st = str_starts_with($x[2], 'error') ? 'error' : $x[2]; $c[$st] = ($c[$st] ?? 0) + 1; }
-    $r[$key] = ['at' => gmdate('c'), 'n' => $c]; $beat['remind'] = array_slice($r, -4, null, true); }
+    $r = (array)($beat['remind'] ?? []);
+    foreach ($sm as $x) { $key = $x[1] . ' ' . ($x[3] ?? ''); $st = str_starts_with($x[2], 'error') ? 'error' : $x[2]; $c = (array)($r[$key]['n'] ?? []); $c[$st] = ($c[$st] ?? 0) + 1; $r[$key] = ['at' => gmdate('c'), 'n' => $c]; }
+    $beat['remind'] = array_slice($r, -6, null, true); }
 } catch (Throwable $e) { $h['remindMailError'] = mb_substr($e->getMessage(), 0, 200); error_log('teplo remind mail: ' . $e->getMessage()); }
 try { $dg = Mail::digest(time(), $beat['mailDigest'] ?? null); if ($dg) $beat['mailDigest'] = $dg; } catch (Throwable $e) { error_log('teplo mail digest: ' . $e->getMessage()); }
 $beat['hourly'] = $h; Cron::write($beat);

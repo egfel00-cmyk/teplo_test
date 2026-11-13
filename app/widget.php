@@ -85,12 +85,14 @@ HTML;
       'heat' => $ru ? 'Показания тепла' : 'Показання тепла', 'water' => $ru ? 'Показания воды' : 'Показання води',
       'elec' => $ru ? 'Показания света' : 'Показання світла', 'gas' => $ru ? 'Показания газа' : 'Показання газу',
       'waste' => ($ru ? 'Вывоз мусора за ' : 'Вивіз сміття за ') . $mon,
-    ][preg_replace('/\d+$/', '', $kind)] ?? '';
+    ][preg_replace('/L?\d+$/', '', $kind)] ?? '';
     [$b, $e] = self::window($kind, $ym, $today);
+    $loc = (bool)preg_match('/^(water|heat|elec)L\d+$/', $kind);   // 142-я: окно местного поставщика — начало и конец из placesDue
+    if ($loc && !empty($places[0]['e'])) { $es = array_column($places, 'e'); sort($es); [$b, $e] = [(string)($places[0]['b'] ?? $es[0]), $es[0]]; }
     $orgs = array_values(array_unique(array_filter(array_map(fn($p) => (string)($p['org'] ?? ''), $places))));
-    $s = str_starts_with($kind, 'heat') ? ($ru ? 'ХТМ принимает до ' : 'ХТМ приймає до ') . self::dm($e)
+    $s = str_starts_with($kind, 'heat') && !$loc ? ($ru ? 'ХТМ принимает до ' : 'ХТМ приймає до ') . self::dm($e)
       : (str_starts_with($kind, 'waste') ? ($ru ? 'Обычно платят до ' : 'Зазвичай платять до ') . self::dm($e) : ($ru ? 'Передать до ' : 'Передати до ') . self::dm($e));
-    if (count($orgs) === 1 && !str_starts_with($kind, 'heat')) $s .= ' · ' . self::short($orgs[0], 40);
+    if (count($orgs) === 1 && (!str_starts_with($kind, 'heat') || $loc)) $s .= ' · ' . self::short($orgs[0], 40);
     $p = [];
     foreach (array_slice($places, 0, 4) as $q) {
       $v = '';
@@ -122,7 +124,7 @@ HTML;
     $uid = $tg !== '' ? (int)(Db::one("SELECT user_id FROM user_identities WHERE type = 'telegram' AND external_id = ?", [$tg])['user_id'] ?? 0) : 0;
     $card = BotCard::byMsg($chat, $mid); if ($card) return BotCard::query($card, $uid, $data, $ans);   // картка фото лічильника (121-а)
     if (is_array($d) && ($d['k'] ?? '') === 'fb' && class_exists('Feedback')) return Feedback::query($d, $uid, $data, $chat, $mid, $ans);   // відповідь на відгук (121-а)
-    if (!is_array($d) || !$uid || !preg_match('/^(heat|water|elec|gas|waste)\d+$/', (string)($d['k'] ?? '')) || !preg_match('/^\d{4}-\d{2}$/', (string)($d['ym'] ?? ''))) return $ans(null);
+    if (!is_array($d) || !$uid || !preg_match('/^(heat|water|elec|gas|waste)L?\d+$/', (string)($d['k'] ?? '')) || !preg_match('/^\d{4}-\d{2}$/', (string)($d['ym'] ?? ''))) return $ans(null);
     $today = (new DateTimeImmutable('@' . (self::$now ?? time())))->setTimezone(new DateTimeZone(Reminders::TZ))->format('Y-m-d');
     $changed = false;
     if ($data === 'later') {
