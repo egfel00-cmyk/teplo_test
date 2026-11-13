@@ -4253,7 +4253,7 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
       cc_an: "Аналітика", cc_an_p: "Випадковий номер браузера (не ваше ім’я), які екрани відкривали й що натискали — без значень полів, показань і паролів, помилки, тип пристрою й ширина екрана, країна й місто за даними Cloudflare (саму IP-адресу не зберігаємо). Бачить лише команда сервісу; журнал зберігаємо 60 днів.",
       cc_save: "Зберегти вибір", cc_change: "Змінити вибір: Налаштування → внизу «Налаштування cookie». Докладно —",
       cc_ok_yes: "Аналітику ввімкнено", cc_ok_no: "Збережено: лише необхідні cookie", cc_now_yes: "Зараз: аналітику дозволено ({d})", cc_now_no: "Зараз: лише необхідні ({d})",
-      hs_title: "Сезон {s}", hs_cur: "поточний", hs_run: "триває", hs_period: "{a} – {b}", hs_month: "≈ {q} Гкал, ≈ {m} грн / міс",
+      yh_title: "{y} рік", yh_cur: "поточний", yh_paid: "Сплачено", hs_title: "Сезон {s}", hs_cur: "поточний", hs_run: "триває", hs_period: "{a} – {b}", hs_month: "≈ {q} Гкал, ≈ {m} грн / міс",
       hs_none: "ще немає двох показань — нема з чого рахувати", hs_noheat: "тепла не було",
       hf_label: "Що показати", hf_all: "Усе", hf_own: "Показання", hf_htm: "ХТМ",
       hh_lbl: "ХТМ за {m}:", hh_more: "на {d} Гкал більше за лічильник", hh_less: "на {d} Гкал менше за лічильник", hh_diff_tip: "Різниця між нарахуванням ХТМ і вашим лічильником за той самий місяць: частка ЗБП, тепло наперед до кінця місяця чи нарахування за середнім. Пояснення — у картці показань.",
@@ -5543,7 +5543,7 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
       cc_an: "Аналитика", cc_an_p: "Случайный номер браузера (не ваше имя), какие экраны открывали и что нажимали — без значений полей, показаний и паролей, ошибки, тип устройства и ширина экрана, страна и город по данным Cloudflare (сам IP-адрес не храним). Видит только команда сервиса; журнал храним 60 дней.",
       cc_save: "Сохранить выбор", cc_change: "Изменить выбор: Настройки → внизу «Настройки cookie». Подробно —",
       cc_ok_yes: "Аналитика включена", cc_ok_no: "Сохранено: только необходимые cookie", cc_now_yes: "Сейчас: аналитика разрешена ({d})", cc_now_no: "Сейчас: только необходимые ({d})",
-      hs_title: "Сезон {s}", hs_cur: "текущий", hs_run: "идёт", hs_period: "{a} – {b}", hs_month: "≈ {q} Гкал, ≈ {m} грн / мес",
+      yh_title: "{y} год", yh_cur: "текущий", yh_paid: "Оплачено", hs_title: "Сезон {s}", hs_cur: "текущий", hs_run: "идёт", hs_period: "{a} – {b}", hs_month: "≈ {q} Гкал, ≈ {m} грн / мес",
       hs_none: "ещё нет двух показаний — не из чего считать", hs_noheat: "тепла не было",
       hf_label: "Что показать", hf_all: "Всё", hf_own: "Показания", hf_htm: "ХТМ",
       hh_lbl: "ХТМ за {m}:", hh_more: "на {d} Гкал больше счётчика", hh_less: "на {d} Гкал меньше счётчика", hh_diff_tip: "Разница между начислением ХТМ и вашим счётчиком за тот же месяц: доля ЗБП, тепло наперёд до конца месяца или начисление по среднему. Пояснение — в карточке показаний.",
@@ -10748,7 +10748,17 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
     });
     return n;
   }
-  function wrows(kind, limit) {
+  /** Вода: скільки набігло за рік по виду — по черзі між записами (Wt.series), гроші — як у рядках. */
+  function wyearTot(kind) {
+    var ms = wmeters(kind, true), o = {};
+    Wt.series(wrecs(), wmeters(null, true), gaps()).forEach(function (x) {
+      if (x.rec.base || !ms.some(function (m) { return hasVal(x.rec, m.id); })) return;
+      var d = kind === 'hot' ? x.hot : x.cold; if (d === null || d === undefined || d < 0) return;
+      var y = x.rec.date.slice(0, 4), b = o[y] || (o[y] = { q: 0, money: 0 }); b.q += d; b.money += wcostOf(kind, d, x.rec.date) || 0;
+    });
+    return o;
+  }
+  function wrows(kind, limit, years) {
     var ms = wmeters(kind, true), ser = Wt.series(wrecs(), wmeters(null, true), gaps());
     // за це платите: від попередньої переданої (статус «передано»; власник 11.11); «для себе» — від попереднього будь-якого
     var sentW = function (r) { return r.base ? baseSent(r) : !!(wsentVk(r) && (kind === 'cold' || wsentHtm(r))); };
@@ -10763,7 +10773,10 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
     var total = rows.length;
     if (limit) rows = rows.slice(0, limit);
     if (!rows.length) return { total: 0, html: '' };
-    return { total: total, html: '<ul class="list wh" data-key="water-history-' + kind + '">' + rows.map(function (y) {
+    var lis = rows.map(function (y) { return { d: y.d, html: wrowHtml(y) }; });
+    if (years) return { total: total, html: yearGroups(lis, 'water-history-' + kind, wyearTot(kind), 'м³') };
+    return { total: total, html: '<ul class="list wh" data-key="water-history-' + kind + '">' + lis.map(function (it) { return it.html; }).join('') + '</ul>' };
+    function wrowHtml(y) {
       if (y.g) return gapItem(y.g, ms.length > 1);
       if (y.b) return vbillItem(y.b);
       var x = y.x, own = !!x.rec.own, pf = own || x.rec.base ? null : paidFrom(all, x.rec, hasK, sentW);
@@ -10777,10 +10790,10 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
         date: fmtDate(x.rec.date, true), sub: [t('hr_on_meter', { v: vs.replace(/<[^>]+>/g, ''), u: 'м³' }), has && days ? days + '\u00a0' + t('days_short') : '', pf ? t('own_paid', { d: fmtDate(pf.date) }) + ' · ' + t('paid_skip', { n: pf.n }) : ''],
         right: (np ? '<span class="ph-n" title="' + esc(t('hp_n', { n: np })) + '">' + ico('camera', 16) + '<span class="num">' + np + '</span></span>' : '') + billMark(x.rec.bills),
         st: stChip('w', x.rec, kind, x.rec.base ? (baseSent(x.rec) ? 'sent' : 'not') : own ? 'own' : sent ? 'sent' : 'not') });
-    }).join('') + '</ul>' };
+    }
   }
   function whistory(kind) {
-    var wr = wrows(kind), head = '<h1>' + esc(t('hi_title')) + '</h1>' + kindSwitch();
+    var wr = wrows(kind, 0, true), head = '<h1>' + esc(t('hi_title')) + '</h1>' + kindSwitch();
     if (!wr.total) return { screen: 'S09', route: 'history', html: head + '<div class="panel"><p class="muted">' + esc(t('wh_empty')) + '</p><button class="btn" data-act="wnew" data-kind="' + kind + '">' + esc(t('wn_title')) + '</button></div>' };
     return { screen: 'S09', route: 'history', html: head + wr.html + '<p class="small muted">' + esc(t('wh_hint')) + '</p>' + gapAddLink(kind) };
   }
@@ -11162,7 +11175,31 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
       destBox({ key: k === 'gas' ? 'grm' : 'obl', id: 'esend', per: k, org: tk(k, 'ed_org'), what: '', due: due, dueTone: w.open && w.daysLeft <= 1 ? 'warn' : 'neutral', sent: allSent, body: body + acc, chans: chans, note: have ? sbBox(k, have) : '', more: more, mark: mark }) + '</section>';   // цифри → рахунок → кнопки → «Як це в боті» / відповідь бота
   }
   /** Рядки історії (нові зверху): скільки набігло і почім, на лічильнику, передано. */
-  function srows(k, limit) {
+  /** 138-а (власник 13.11: «світло, газ, воду, вивіз сміття в історії теж ділити по роках, як опалення»): записи — блоками календарних років
+   *  у тих самих розгортках, що й сезони тепла (`.season`); поточний і найновіший рік відкриті. items: [{d: 'YYYY-MM-DD' | 'YYYY-MM', html: '<li…>'}] — нові зверху;
+   *  tot: {рік: {q, money}} — скільки набігло за рік (від попередніх показань до кожного запису цього року, по черзі) або {paid} — сплачено (вивіз). */
+  function yearGroups(items, key, tot, unit) {
+    var ys = [], by = {}, cy = today().slice(0, 4);
+    items.forEach(function (it) { var y = String(it.d || '').slice(0, 4); if (!/^\d{4}$/.test(y)) y = cy; if (!by[y]) { by[y] = []; ys.push(y); } by[y].push(it.html); });
+    ys.sort().reverse();
+    return '<div class="yh" data-key="' + key + '">' + ys.map(function (y, i) {
+      var o = (tot && tot[y]) || {}, cur = y === cy;
+      var sum = o.paid > 0 ? '<span class="ss-sum" data-key="' + key + '-sum-' + y + '"><span class="ss-q">' + esc(t('yh_paid')) + ' <b>' + esc(money0(o.paid)) + '</b> грн</span></span>'
+        : o.q > 0 ? '<span class="ss-sum" data-key="' + key + '-sum-' + y + '"><span class="ss-q"><b>+' + esc(fmtN(o.q, o.q < 100 ? 1 : 0)) + '</b> ' + esc(unit) + '</span>' + (o.money > 0 ? '<span class="ss-m">≈ <b>' + esc(money0(o.money)) + '</b> грн</span>' : '') + '</span>' : '';
+      return '<details class="season yr" data-key="' + key + '-y' + y + '"' + (i === 0 || cur ? ' open' : '') + '><summary class="ss-head"><span class="ss-top"><span class="ss-t">' + esc(t('yh_title', { y: y })) + '</span>' +
+        (cur ? '<span class="ss-tag">' + esc(t('yh_cur')) + '</span>' : '') + '</span>' + sum + ico('chev', 18, 'pacc-chev ss-dd') + '</summary><ul class="list wh">' + by[y].join('') + '</ul></details>';
+    }).join('') + '</div>';
+  }
+  /** Світло / газ: скільки набігло за кожен рік — по черзі від попередніх показань (як рядки тепла), без подвійного рахунку проміжних. */
+  function syearTot(k) {
+    var md = SK[k].mod, o = {};
+    smeters(k, true).forEach(function (m) { md.series(mrecs(m.id), m).forEach(function (x) {
+      if (x.rec.base || x.kwh === null || x.kwh < 0) return; var y = x.rec.date.slice(0, 4), b = o[y] || (o[y] = { q: 0, money: 0 });
+      b.q += x.kwh; b.money += md.cost(m, x.dz, x.rec.date, sopts(k)).total;
+    }); });
+    return o;
+  }
+  function srows(k, limit, years) {
     var ms = smeters(k, true), md = SK[k].mod, u = SK[k].unit(), rows = [];
     ms.forEach(function (m) {
       // за це платите: від попередньої переданої (статус «передано»; власник 11.11); «для себе» — від попереднього будь-якого
@@ -11172,13 +11209,15 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
     rows.sort(function (a, b) { return a.x.rec.date < b.x.rec.date ? 1 : a.x.rec.date > b.x.rec.date ? -1 : a.x.rec.base ? 1 : b.x.rec.base ? -1 : 0; });
     var total = rows.length; if (limit) rows = rows.slice(0, limit);
     if (!rows.length) return { total: 0, html: '' };
-    return { total: total, html: '<ul class="list wh" data-key="' + k + '-history">' + rows.map(function (y) {
+    var lis = rows.map(function (y) {
       var x = y.x, r = x.rec, has = !r.base && x.kwh !== null, c = has ? md.cost(y.m, x.dz, r.date, sopts(k)).total : null;
-      return histRow({ key: 'erec-' + r.id, href: '#erec-' + r.id, q: has ? '+' + x.kwh : null, unit: u, money: c, none: r.base ? t('eh_base') : t('hr_first'), date: fmtDate(r.date, true),
+      return { d: r.date, html: histRow({ key: 'erec-' + r.id, href: '#erec-' + r.id, q: has ? '+' + x.kwh : null, unit: u, money: c, none: r.base ? t('eh_base') : t('hr_first'), date: fmtDate(r.date, true),
         sub: [t('hr_on_meter', { v: (ms.length > 1 ? (y.m.name || '') + ' ' : '') + evals(y.m, r), u: u }), has && x.days ? x.days + ' ' + t('days_short') : '', y.pf ? t('own_paid', { d: fmtDate(y.pf.date) }) + ' · ' + t('paid_skip', { n: y.pf.n }) : ''],
         right: ((r.photos || []).length ? '<span class="ph-n">' + ico('camera', 16) + '<span class="num">' + r.photos.length + '</span></span>' : '') + billMark(r.bills),
-        st: stChip('m', r, k, r.base ? (baseSent(r) ? 'sent' : 'not') : r.own ? 'own' : ssent(k, r) ? 'sent' : 'not') });
-    }).join('') + '</ul>' };
+        st: stChip('m', r, k, r.base ? (baseSent(r) ? 'sent' : 'not') : r.own ? 'own' : ssent(k, r) ? 'sent' : 'not') }) };
+    });
+    if (years) return { total: total, html: yearGroups(lis, k + '-history', syearTot(k), u) };
+    return { total: total, html: '<ul class="list wh" data-key="' + k + '-history">' + lis.map(function (it) { return it.html; }).join('') + '</ul>' };
   }
   /** Галочка «опалення» (світло: пільгова ціна 2,64; газ: котел — великий розхід взимку — норма) і ціна газу — у квартири. */
   function sheatRow(k, form) {
@@ -11867,7 +11906,7 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
     return { screen: 'S09', route: 'history', html: h };
   }
   function shistory(k) {
-    var er = srows(k), head = '<h1>' + esc(t('hi_title')) + '</h1>' + kindSwitch();
+    var er = srows(k, 0, true), head = '<h1>' + esc(t('hi_title')) + '</h1>' + kindSwitch();
     if (!er.total) return { screen: 'S09', route: 'history', html: head + '<div class="panel"><p class="muted">' + esc(t('wh_empty')) + '</p><button class="btn" data-act="' + SK[k].nw + '">' + esc(tk(k, 'en_title')) + '</button></div>' };
     return { screen: 'S09', route: 'history', html: head + er.html + '<p class="small muted">' + esc(tk(k, 'eh_hint')) + '</p>' };
   }
@@ -15147,16 +15186,19 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
       '<p class="prov-act">' + mlink('#waste', 'prefs', t('wsp_open'), ' data-key="pv-waste-open"') + '</p></div></div></div>';
   }
   /** Місяці в історії (новіші зверху): сплачено — сума й дата; ні — нараховано «≈ люди × ціна»; праворуч — статус. Тап — оплата (нова за цей місяць чи правка). */
-  function wrowsW(limit) {
+  function wrowsW(limit, years) {
     var p = place(), d = wasteDir(p), sum = wasteSum(p, d), all = Ws.months(wcur(p), today(), sum), rows = limit ? all.slice(0, limit) : all;
     if (!all.length) return { total: 0, html: '' };
-    return { total: all.length, html: '<ul class="list wh" data-key="waste-history">' + rows.map(function (m) {
+    var lis = rows.map(function (m) { return { d: m.ym, html: wsRowHtml(m) }; });
+    if (years) { var tot = {}; rows.forEach(function (m) { if (m.paid > 0) { var y = m.ym.slice(0, 4); tot[y] = tot[y] || { paid: 0 }; tot[y].paid += m.paid; } }); return { total: all.length, html: yearGroups(lis, 'waste-history', tot, 'грн') }; }
+    return { total: all.length, html: '<ul class="list wh" data-key="waste-history">' + lis.map(function (it) { return it.html; }).join('') + '</ul>' };
+    function wsRowHtml(m) {
       var pd = m.pay, multi = pd && Ws.span(pd) > 1;
       var pill = m.st === 'paid' ? ['ok', t('wsx_ok')] : m.st === 'late' ? ['warn', t('wsx_not')] : m.st === 'due' ? [R.daysBetween(today(), m.due) <= DUE_SOON ? 'warn' : 'neutral', t('wsx_due', { d: fmtDate(m.due) })] : ['neutral', t('wsx_cur')];
       return histRow({ key: 'wsm-' + m.ym, href: pd ? '#wpay-' + pd.id : '#wpay-' + m.ym, q: pd ? money(m.paid) : sum ? '≈ ' + money(sum) : null, unit: 'грн', none: t('wsh_none'), date: ucf(monthLabel(m.ym)),
         sub: [pd ? t('wsh_paid', { d: fmtDate(pd.date, true) }) : sum ? t('wsh_acc') : '', multi ? t('wsh_multi', { s: money(pd.amount), n: Ws.span(pd) }) : '', pd && pd.src === 'mono' ? t('wsh_mono') : ''],
         st: '<span class="st-chip st-static" data-key="wsm-st-' + m.ym + '"><span class="pill ' + pill[0] + '">' + esc(ucf(pill[1])) + '</span></span>' });
-    }).join('') + '</ul>' };
+    }
   }
   V.waste = function () {
     var p = place() || {}, d = wasteDir(p), w = wcur(p), sum = wasteSum(p, d), st = Ws.status(w, today(), sum), ms = Ws.months(w, today(), sum, 6), org = wasteOrg(p, d);
@@ -15173,7 +15215,7 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
     return { screen: 'S60', route: 'waste', html: h };
   };
   function wasteHistory() {
-    var r = wrowsW(), head = '<h1>' + esc(t('hi_title')) + '</h1>' + kindSwitch();
+    var r = wrowsW(0, true), head = '<h1>' + esc(t('hi_title')) + '</h1>' + kindSwitch();
     var add = '<p><button class="btn" data-act="ws-pay" data-key="wh-pay">' + ico('plus', 20) + '<span>' + esc(t('wsp_add')) + '</span></button></p>';
     return { screen: 'S09', route: 'history', html: head + (r.total ? r.html : '<div class="panel"><p class="muted">' + esc(t('wsh_empty')) + '</p></div>') + add + '<p class="small muted">' + esc(t('wsh_hint')) + '</p>' };
   }
