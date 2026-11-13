@@ -58,7 +58,8 @@ for sel, body in rules:
             bad.append(f'пружина с перелётом: {sel}')
     # 7. переходы между оттенками (hue-to-hue) и цветные свечения — только в материалах табло
     if not mat:
-        for g in re.findall(r'(?:linear|radial|conic)-gradient\(([^;]*)', body):
+        # маска (mask-image) — прозорість, не колір: 139-а, затухання пройденого на смужці періоду (.prd-g)
+        for g in re.findall(r'(?:linear|radial|conic)-gradient\(([^;]*)', re.sub(r'(?:-webkit-)?mask(?:-image)?:[^;]*;?', '', body)):
             cols = re.findall(r'#[0-9a-fA-F]{3,8}\b|rgba?\([^)]*\)', g)
             if len(set(c.lower() for c in cols)) >= 2 and 'repeating' not in body:
                 bad.append(f'градиент цветов: {sel}')

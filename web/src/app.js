@@ -939,23 +939,28 @@
     g.L = L; g.d = d; g.st = d < g.s ? 'before' : d > g.e ? 'after' : 'open';
     return g;
   }
-  /** День тижня коротко з великої: «Пт» (власник 13.11: під рискою «сьогодні» — день тижня). */
-  function wdShort(d) { var n = new Date(Date.UTC(+d.slice(0, 4), +d.slice(5, 7) - 1, +d.slice(8, 10))).getUTCDay(); return (S.lang === 'ru' ? ['Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'] : ['Нд', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'])[n]; }
   /** Місяць крапками для виду k; so — статус (heatStatus/waterStatus/sStatus): tone ok — передано, warn — останні дні; off (лічильник знято) — нічого. */
   function pstrip(k, so, cls, p) {
     var w = perWin(k, p); if (!w || (so && so.off)) return '';
     var td = today(), g = perGeo(w, td), dots = '';
     var tone = so && so.tone === 'ok' ? 'done' : so && so.tone === 'warn' && g.st === 'open' ? 'warn' : '';
     // 138-а (власник 13.11, варіант C «відрізок строку»): тонка лінія місяця, вікно — смугою, минула частина вікна щільніша, сьогодні — тонка риска
-    // з днем тижня під нею (без слова «сьогодні»); один тон для всіх видів і тем (відтінки --c-ink), колір — лише «останні дні» і «передано».
-    // Вікно через межу місяця — друга частина цього місяця тихою смугою (wx). Комірки днів лишаються (.prd-d i) — підказка й тести як були.
+    // (139-а, власник 13.11: «убери день недели» і «даже палочку убери, поставь лёгкий градиент от яркого до затухания» — сьогодні без риски й підпису:
+    // пройдене до сьогодні — градієнт, найяскравіше — сьогодні); один тон для всіх видів і тем (відтінки --c-ink), колір — лише «останні дні» і «передано».
+    // Вікно через межу місяця — друга частина цього місяця тихою смугою (wn). Комірки днів лишаються (.prd-d i) — підказка й тести як були.
     var y0 = +td.slice(0, 4), m0 = +td.slice(5, 7), A = w[0] < 0 ? g.L + 1 + w[0] : Math.min(w[0], g.L), B = w[1] < 0 ? workEnd(y0, m0, -w[1]) : Math.min(w[1], g.L);
     var inW = function (i) { return i >= g.s && i <= g.e; }, inX = function (i) { return A > B && !inW(i) && (i <= B || i >= A); };
     for (var i = 1; i <= g.L; i++) {
-      var cw = inW(i), cx = inX(i), k0 = cw ? inW : cx ? inX : null, c = cw ? 'w' : cx ? 'wx' : 'o';
+      var cw = inW(i), cx = inX(i), k0 = cw ? inW : cx ? inX : null, c = cw ? 'w' : cx ? 'wn' : 'o';   // не 'wx' — так зветься плашка погоди (.wx з відступами), смуга роз'їжджалась (139-а)
       if (k0) c += (i === 1 || !k0(i - 1) ? ' rs' : '') + (i === g.L || !k0(i + 1) ? ' re' : '');
-      dots += '<i class="' + c + (i < g.d ? ' p' : '') + (i === g.d ? ' t' + (i <= 2 ? ' tl' : i >= g.L - 1 ? ' tr' : '') : '') + '">' + (i === g.d ? '<b>' + esc(wdShort(td)) + '</b>' : '') + '</i>';
+      dots += '<i class="' + c + (i < g.d ? ' p' : '') + (i === g.d ? ' t' : '') + '"></i>';
     }
+    // пройдене до сьогодні — одним шаром тим самим тоном під маскою-градієнтом: від прозорого на 1-му числі до яскравого сьогодні
+    // (сьогодні — там, де лінія найяскравіша; маска — без color-mix, легко й на старих Android): тонка лінія + частини вікна до сьогодні
+    var pc = function (x) { return (x / g.L * 100).toFixed(2) + '%'; }, seg = function (a, b) { b = Math.min(b, g.d); return a > b ? '' : '<b class="gw" style="left:' + pc(a - 1) + ';width:' + pc(b - a + 1) + '"></b>'; };
+    var gl = '<b class="gl" style="width:' + pc(g.d) + '"></b>' + seg(g.s, g.e);
+    if (A > B) gl += g.cut === 'r' ? seg(1, B) : seg(A, g.L);
+    dots += '<span class="prd-g" style="--t:' + pc(g.d) + '">' + gl + '</span>';
     var lab = g.a === g.b ? String(g.a) : g.a + '–' + g.b;
     var tip = t('pd_tip', { a: g.a, b: g.b }) + (w[1] < 0 ? ' ' + t('pd_tip_w' + (-w[1])) : '') + (g.cut === 'l' ? ' ' + t('pd_tip_l') : g.cut === 'r' ? ' ' + t('pd_tip_r') : '') + '\n' + t('pd_today', { d: fmtDate(today()) }) + (tone === 'done' ? '\n' + t('pd_done') : '');
     return '<div class="prd prd-' + k + ' st-' + g.st + (tone ? ' ' + tone : '') + (g.cut ? ' cut-' + g.cut : '') + (cls ? ' ' + cls : '') + '" role="img" aria-label="' + esc(tip.replace(/\n/g, ' ')) + '" data-tip="' + esc(tip) + '" data-key="prd-' + k + '">' +
@@ -1332,8 +1337,9 @@
   /** Історія на сторінці лічильника — окремим блоком (владелец 07.11: «показать более явно, обособленно»): заголовок з кількістю,
    *  останні 3 записи, «Уся історія (N)» — лише коли записів більше. */
   function histPanel(rows, total, allBtn, k) {
+    // 139-а (власник 13.11): один шаблон з «Куди передати» — шапка 56 px з лінією, тіло 12/16, низ — кнопка на всю ширину
     return '<section class="panel mhist" data-key="' + k + '-hist"><h2 class="mhist-h">' + ico('history', 18, 'bt-ico') + '<span>' + esc(t('wh_title')) + '</span>' + (total > 3 ? '<span class="mhist-n">' + total + '</span>' : '') + '</h2>' +
-      rows + (total > 3 ? '<div class="mhist-all">' + allBtn + '</div>' : '') + '</section>';
+      '<div class="mhist-b">' + rows + (total > 3 ? '<div class="mhist-all">' + allBtn + '</div>' : '') + '</div></section>';
   }
   /** Екран лічильника: «Внести показання» — над табло (владелец 10.11); на широкому — праворуч угорі, табло ліворуч на всю висоту. */
   function heroGrid(meter, act, side) { return '<div class="hero-grid hg3"><div class="hg-act">' + act + '</div><div class="wm-col">' + meter + '</div><div class="hg-side">' + side + '</div></div>'; }

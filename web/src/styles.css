@@ -571,17 +571,22 @@ input[type=text]:not(.dmy-native):not(.pl-in), input[type=email], input[type=pas
    уже минулі — прозоріші, сьогодні — у кільці кольору тексту. Підпис чисел — колонка однакової ширини праворуч. */
 .prd { --prd-bg: var(--c-surface); --prd-c: var(--c-ink); display: grid; grid-template-columns: minmax(0, 1fr) 3.6em; align-items: start; gap: 12px; margin: 6px 0 4px; }
 /* 138-а, варіант C: лінія місяця, вікно — смугою, минуле у вікні щільніше, сьогодні — риска з днем тижня; один тон для всіх видів (лише відтінки --c-ink) */
-.prd-d { display: grid; grid-template-columns: repeat(var(--n, 30), minmax(0, 1fr)); align-items: center; height: 14px; padding-bottom: 16px; }
+.prd-d { display: grid; grid-template-columns: repeat(var(--n, 30), minmax(0, 1fr)); align-items: center; height: 14px; }
 .prd-d i { position: relative; height: 2px; background: var(--c-line); }
-.prd-d i.w, .prd-d i.wx { height: 6px; background: color-mix(in srgb, var(--prd-c) 20%, var(--prd-bg)); }
-.prd-d i.wx { background: color-mix(in srgb, var(--prd-c) 10%, var(--prd-bg)); }
-.prd-d i.w.p, .prd-d i.w.t { background: color-mix(in srgb, var(--prd-c) 62%, var(--prd-bg)); }
+.prd-d i.w, .prd-d i.wn { height: 6px; background: color-mix(in srgb, var(--prd-c) 20%, var(--prd-bg)); }
+.prd-d i.wn { background: color-mix(in srgb, var(--prd-c) 10%, var(--prd-bg)); }
+@supports not (background: color-mix(in srgb, red 10%, white)) { .prd-d i.w, .prd-d i.wn, .prd.done .prd-d i.w { background: var(--c-line); } }   /* старі Android (WebView < 111): вікно — хоч сірою смугою */
 .prd-d i.rs { border-top-left-radius: 3px; border-bottom-left-radius: 3px; } .prd-d i.re { border-top-right-radius: 3px; border-bottom-right-radius: 3px; }
 .prd.warn { --prd-c: var(--c-warn); } .prd.done { --prd-c: var(--c-ok); }
 .prd.done .prd-d i.w { background: color-mix(in srgb, var(--prd-c) 62%, var(--prd-bg)); }
-.prd-d i.t::after { content: ''; position: absolute; left: 50%; top: 50%; width: 2px; height: 14px; transform: translate(-50%, -50%); border-radius: 1px; background: var(--c-ink); }
-.prd-d i.t b { position: absolute; left: 50%; top: 10px; transform: translateX(-50%); font-size: 11px; line-height: 1; font-weight: 500; color: var(--c-ink-2); white-space: nowrap; }
-.prd-d i.tl b { left: 0; transform: none; } .prd-d i.tr b { left: auto; right: 0; transform: none; }
+/* 139-а: сьогодні — без риски; пройдене (до сьогодні включно) — шар .prd-g тим самим тоном під маскою: від прозорого на 1-му числі
+   до яскравого сьогодні (mask-image, не color-mix — легко й на старих Android); вікно — товща смуга, лінія місяця — тонка */
+.prd-d { position: relative; }
+.prd-g { position: absolute; inset: 0; pointer-events: none;
+  -webkit-mask-image: linear-gradient(to right, transparent, rgba(0, 0, 0, .3) calc(var(--t) * .55), #000 var(--t));
+  mask-image: linear-gradient(to right, transparent, rgba(0, 0, 0, .3) calc(var(--t) * .55), #000 var(--t)); }
+.prd-g b { position: absolute; left: 0; top: 50%; height: 2px; margin-top: -1px; background: var(--prd-c); border-radius: 0 1px 1px 0; }
+.prd-g b.gw { height: 6px; margin-top: -3px; border-radius: 3px; }
 .prd-l { font-size: 13px; line-height: 14px; color: var(--c-ink-2); text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
 .prd.st-open:not(.done) .prd-l { color: var(--c-ink); font-weight: 500; }
 .prd.in-dest { --prd-bg: var(--bt-bg, var(--c-surface)); margin: 10px 0 4px; }
@@ -1862,6 +1867,23 @@ details.wacc.wacc-btn > summary .pacc-chev { position: static; margin: 0 0 0 aut
 .mbox-set[open] > .mbox-set-b { margin-top: 4px; }
 details.dest-more > summary, details.bot-how > summary { min-height: 48px; padding: 6px 0; gap: 10px; }
 details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { margin-left: auto; }
+
+/* ---- один шаблон плашок сторінки лічильника (139-а, власник 13.11: «Куди передати» й «Історія» — різні відступи, має бути один шаблон,
+   відрізняються лише відтінки). Рамка 1 px і радіус картки; шапка 56 px: значок 34 · заголовок · кружок 34 праворуч (стрілка чи кількість);
+   під відкритою шапкою — лінія; тіло — 12 px зверху, 16 з боків; низ — кнопка на всю ширину, 12 над нею й 16 під; між плашками — 16. ---- */
+.panel.where { --bt-edge: var(--bt-line); }
+.mhist { --bt-edge: transparent; }
+details.wacc.wacc-btn, .panel.mhist { border-radius: 14px; border: 1px solid var(--bt-edge); background: var(--bt-bg); padding: 0; margin: 0 0 var(--sp-4); }
+details.wacc.wacc-btn > summary, .panel.mhist > .mhist-h { box-sizing: border-box; display: flex; align-items: center; gap: 10px; min-height: 56px; padding: 8px 16px; margin: 0; }
+details.wacc.wacc-btn > summary h2, .panel.mhist > .mhist-h { font-size: var(--fs-l); font-weight: 600; line-height: 1.2; margin: 0; }
+details.wacc.wacc-btn[open] > summary, .panel.mhist > .mhist-h { border-bottom: 1px solid var(--bt-line); }
+details.wacc.wacc-btn[open] > .where-b, .panel.mhist > .mhist-b { margin: 0; padding: 12px 16px 0; }
+.panel.mhist > .mhist-b { padding-bottom: 16px; }
+details.wacc.wacc-btn > .acc-foot { margin: 0; padding: 12px 16px 16px; border-top: 0; }
+.mhist-all { margin-top: 12px; }
+.mhist-n { box-sizing: border-box; min-width: 34px; height: 34px; padding: 0 9px; border-radius: 17px; margin-left: auto; }
+.panel.mhist > .mhist-h .bt-ico, details.wacc.wacc-btn > summary h2 .bt-ico { margin: 0; }
+.hg-side > .panel.mhist, .hg-side > details.wacc.wacc-btn { margin-top: 0; }
 
 /* ---- адреса квартири: населений пункт з підказкою + вулиця (61-а сесія) ---- */
 .addr-f { display: grid; gap: 0 var(--sp-4); grid-template-columns: minmax(0, 1fr); align-items: start; }
