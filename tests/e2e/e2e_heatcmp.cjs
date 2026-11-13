@@ -44,6 +44,13 @@ let pass = 0, fail = 0; const ok = (n, c, x) => { if (c) { pass++; console.log('
   ok('картка 20.02: «з 10 грудня 2025 до 20 лютого 2026 · лічильник рахував 32 дн., ще 40 дн. його знімали (12 грудня – 21 січня)»', /з 10 грудня 2025 до 20 лютого 2026 · лічильник рахував 32 дн\., ще 40 дн\. його знімали \(12 грудня – 21 січня\)/.test(card), card.slice(0, 300));
   ok('картка: «Від передачі 20 листопада: +2,237 Гкал ≈ … — від цих показань рахує ХТМ (між ними показань: 1…)»', /Від передачі 20 листопада 2025: \+2,237 Гкал ≈ [\d\s]+,\d\d грн — від цих показань рахує ХТМ \(між ними показань: 1/.test(card), card.slice(-400));
   ok('без «введено вручну»', !/введено вручну/.test(await p.textContent('main')));
+  // 138-а: статистика — «Лічильник і ХТМ по місяцях» (два стовпці на місяць, останні 12 місяців з даними, легенда)
+  await p.goto(U + '#stats'); await p.reload(); await p.waitForTimeout(2500);
+  const stm = await p.$('[data-key=stm-panel]');
+  const nmk = stm ? await stm.$$eval('svg .mk', a => a.length) : 0, tips = stm ? await stm.$$eval('svg .mk', a => a.map(x => x.getAttribute('data-tip'))) : [];
+  ok('статистика: «Лічильник і ХТМ по місяцях» — до 12 місяців, легенда, у підказці обидва', !!stm && nmk >= 6 && nmk <= 12 && /ХТМ нарахував/.test(await stm.textContent())
+    && tips.some(t => /ХТМ: 2,4/.test(t) && /лічильник:/.test(t)), { nmk, t: tips.slice(0, 3) });
+  if (stm) await stm.screenshot({ path: '/tmp/shot_stm.png' });
   ok('без помилок JS', !errs.length, errs);
   console.log('\nИтог: ' + pass + ' OK, ' + fail + ' FAIL'); await b.close(); process.exit(fail ? 1 : 0);
 })();

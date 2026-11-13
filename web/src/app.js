@@ -5581,6 +5581,25 @@
   function niceMax(v) { if (!(v > 0)) return 1; var p = Math.pow(10, Math.floor(Math.log10(v))), n = v / p; return (n <= 1 ? 1 : n <= 2 ? 2 : n <= 2.5 ? 2.5 : n <= 5 ? 5 : 10) * p; }
   function fmtN(v, d) { return (d === 0 ? String(Math.round(v)) : v.toFixed(d)).replace('.', ','); }
   /** Столбики. items: [{x, v, tip[], soft, color, top}] */
+  /** 138-а: два стовпці на місяць — лічильник і ХТМ (власник: «статистика тепла: лічильник / ХТМ по місяцях — графіком»). items: [{x, a, b, tip}], a/b — null, якщо даних немає. */
+  function pairChart(items, o) {
+    var W = chartW(), H = 236, L = 46, R = 10, T = 16, B = 30, iw = W - L - R, ih = H - T - B;
+    var max = niceMax(Math.max.apply(null, items.map(function (x) { return Math.max(x.a || 0, x.b || 0); }).concat([0.001])) * 1.08);
+    var y = function (v) { return T + ih - Math.max(0, v) / max * ih; }, slot = iw / Math.max(1, items.length), bw = Math.min(18, slot * 0.34), gap = Math.min(3, slot * 0.05);
+    var g = '', nt = nTicks(max), stp = max / nt, dec = stp < 1 ? (stp < 0.1 ? 2 : 1) : 0;
+    for (var k = 0; k <= nt; k++) { var tv = max * k / nt, yy = y(tv); g += '<line x1="' + L + '" x2="' + (W - R) + '" y1="' + yy + '" y2="' + yy + '" stroke="' + CH.grid + '"/><text x="' + (L - 6) + '" y="' + (yy + 4) + '" text-anchor="end" class="ax">' + esc(fmtN(tv, dec)) + '</text>'; }
+    var bar = function (x0, v, col) {
+      if (!(v > 0)) return ''; var yt = y(v), yb = T + ih, h = Math.max(0, yb - yt), r = Math.min(3, h);
+      return '<path d="M' + x0 + ',' + yb + 'V' + (yt + r) + 'Q' + x0 + ',' + yt + ' ' + (x0 + r) + ',' + yt + 'H' + (x0 + bw - r) + 'Q' + (x0 + bw) + ',' + yt + ' ' + (x0 + bw) + ',' + (yt + r) + 'V' + yb + 'Z" fill="' + col + '"/>';
+    };
+    var bars = items.map(function (it, i) {
+      var cx = L + slot * (i + 0.5);
+      return '<g class="mk"' + tipAttr(it.tip) + '><rect x="' + (cx - slot / 2) + '" y="' + T + '" width="' + slot + '" height="' + (ih + B) + '" fill="transparent"/>' +
+        bar(cx - gap / 2 - bw, it.a, CH.bar) + bar(cx + gap / 2, it.b, CH.ink2) +
+        (i % Math.ceil(52 / slot) === 0 ? '<text x="' + cx + '" y="' + (T + ih + 17) + '" text-anchor="middle" class="ax">' + esc(it.x) + '</text>' : '') + '</g>';
+    }).join('');
+    return '<svg class="chart" viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="' + esc(o.title) + '">' + g + '<line x1="' + L + '" x2="' + (W - R) + '" y1="' + (T + ih) + '" y2="' + (T + ih) + '" stroke="' + CH.ink2 + '"/>' + bars + '</svg>';
+  }
   function barChart(items, o) {
     var W = chartW(), H = 236, L = 46, R = 10, T = 16, B = items.some(function (x) { return x.x2; }) ? 40 : 30, iw = W - L - R, ih = H - T - B;
     var max = o.max || niceMax(Math.max.apply(null, items.map(function (x) { return x.v || 0; }).concat([o.ref ? o.ref.v : 0])) * 1.08);
@@ -5677,12 +5696,21 @@
     var legend = '<div class="legend small"><span><i class="dot" style="background:' + CH.ink + '"></i>' + esc(t('stl_fact')) + '</span><span><i class="ring"></i>' + esc(t('stl_norm')) + '</span>' +
       ['ok', 'low', 'bad', 'none'].map(function (k) { return '<span><i class="dot" style="background:' + CH[k] + '"></i>' + ST_ICO[k] + ' ' + esc(t('stt_' + k)) + '</span>'; }).join('') + '</div>';
     var panel = function (title, sub, chart, extra) { return chart ? '<section class="panel chart-panel"><h2>' + esc(title) + '</h2><p class="small muted">' + esc(sub) + '</p>' + chart + (extra || '') + '</section>' : ''; };
+    // 138-а: лічильник / ХТМ по місяцях — останні 12 місяців, де є хоч одне з двох (лічильник розкладено по місяцях градусо-добами)
+    var own = St.monthly ? St.monthly(ivs, { weather: w }) : {}, hm = {}; htmMonths().forEach(function (x) { if (x.g !== null && x.g !== undefined) hm[x.ym] = x.g; });
+    var yms = Object.keys(own).concat(Object.keys(hm)).filter(function (ym, i, a) { return a.indexOf(ym) === i && ((own[ym] || 0) > 0.0005 || (hm[ym] || 0) > 0.0005); }).sort().slice(-12);
+    var c5 = yms.length > 1 && Object.keys(hm).length ? pairChart(yms.map(function (ym) {
+      var a = own[ym] || 0, b2 = hm[ym] === undefined ? null : hm[ym];
+      return { x: ymLabel(ym), a: a, b: b2, tip: [monthLabel(ym), t('stm_tip_own', { g: a > 0 ? '≈ ' + fmtN(a, 3) : '—' }), t('stm_tip_htm', { g: b2 !== null ? fmtN(b2, 3) : '—' })] };
+    }), { title: t('stm_title') }) : '';
+    var leg5 = '<p class="legend small" data-key="stm-legend"><span><i class="dot" style="background:' + CH.bar + '"></i>' + esc(t('stm_l_own')) + '</span><span><i class="dot" style="background:' + CH.ink2 + '"></i>' + esc(t('stm_l_htm')) + '</span></p>';
     var table = '<details class="panel wacc tbl-acc" data-key="stt-table"><summary><h2>' + esc(t('stt_table')) + '</h2>' + ico('chev', 20, 'pacc-chev') + '</summary><div class="tbl-wrap where-b"><table class="tbl"><thead><tr><th>' + esc(t('stt_th_period')) + '</th><th>Гкал</th><th>' + esc(t('stt_g30')) + '</th><th>грн</th><th>°C ' + esc(t('stt_th_out')) + '</th><th>' + esc(t('stt_th_hdd')) + '</th><th>ΔT</th><th>м³/год</th><th>' + esc(t('stt_th_share')) + '</th></tr></thead><tbody>' +
       ivs.map(function (it) { return '<tr><td>' + esc(R.toHtmDate(it.from) + ' – ' + R.toHtmDate(it.to)) + '</td><td class="num">' + fmtN(it.dE, 3) + '</td><td class="num">' + fmtN(it.month, 3) + '</td><td class="num">' + money(it.cost) + '</td><td class="num">' + (it.tOut !== undefined ? fmtN(it.tOut, 1) : '—') + '</td><td class="num">' + (it.perHdd != null ? fmtN(it.perHdd, 2) : '—') + '</td><td class="num">' + (it.dT != null ? fmtN(it.dT, 1) : '—') + '</td><td class="num">' + (it.flow != null ? fmtN(it.flow, 3) : '—') + '</td><td class="num">' + (it.share != null ? Math.round(it.share * 100) + '%' : '—') + '</td></tr>'; }).join('') +
       '</tbody></table></div></details>';
     return { screen: 'S15', route: 'stats', html: '<h1>' + esc(t('stt_title')) + '</h1>' + kindSwitch() + '<p class="muted">' + esc(t('stt_lead')) + '</p>' + wxNote + tiles + gapNote(gaps('heat')) +
       panel(t('stc_title'), t('stc_sub'), cl.length ? coolantChart(cl) : '', legend) +
       panel(t('stx_title'), t('stx_sub'), corrChart(cl)) +
+      (c5 ? '<div data-key="stm-panel">' + panel(t('stm_title'), t('stm_sub'), c5, leg5) + '</div>' : '') +
       panel(t('st1_title'), t('st1_sub'), c1) + panel(t('st3_title'), t('st3_sub'), c3) + panel(t('st2_title'), t('st2_sub'), c2) + panel(t('st4_title'), t('st4_sub'), c4) + table +
       '<p class="small muted">' + esc(t('stt_method')) + '</p>' };
   }

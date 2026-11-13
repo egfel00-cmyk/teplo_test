@@ -180,6 +180,24 @@
     return res(iv.dE * wo / (wo + wn), 'days');
   }
 
-  var api = { graph: graph, points: points, intervals: intervals, coolant: coolant, range: range, gapHeat: gapHeat, seasons: seasons, seasonKey: seasonKey, seasonOf: seasonOf, splitSummer: splitSummer, OK_TOL: OK_TOL, LOW_TOL: LOW_TOL };
+  /**
+   * 138-а: скільки Гкал набігло по лічильнику в кожному календарному місяці — щоб порівняти з нарахуваннями ХТМ по місяцях.
+   * Кожен проміжок між показаннями ділимо по добах (from, to] з вагою градусо-доби (погода, якщо дали, інакше норма Харкова за місяць):
+   * у холодні місяці тепла йде більше. Тепла немає взагалі (літо) — рівно по добах. ivs — intervals(…); o: {weather}. → {'2026-01': Гкал, …}.
+   */
+  function monthly(ivs, o) {
+    o = o || {}; var w = o.weather, out = {};
+    var wd = function (d) { var t = w && typeof w[d] === 'number' ? w[d] : CLIM[+d.slice(5, 7)]; return Math.max(0, HDD_BASE - t); };
+    (ivs || []).forEach(function (it) {
+      if (!it || !it.from || !it.to || !(it.dE > 0) || it.days > 400) return;
+      var ds = [], tot = 0; for (var d = addDay(it.from, 1); d <= it.to; d = addDay(d, 1)) { var x = wd(d); ds.push([d, x]); tot += x; }
+      if (!ds.length) return;
+      ds.forEach(function (p) { var ym = p[0].slice(0, 7); out[ym] = (out[ym] || 0) + it.dE * (tot > 0 ? p[1] / tot : 1 / ds.length); });
+    });
+    Object.keys(out).forEach(function (k) { out[k] = +out[k].toFixed(3); });
+    return out;
+  }
+
+  var api = { monthly: monthly, graph: graph, points: points, intervals: intervals, coolant: coolant, range: range, gapHeat: gapHeat, seasons: seasons, seasonKey: seasonKey, seasonOf: seasonOf, splitSummer: splitSummer, OK_TOL: OK_TOL, LOW_TOL: LOW_TOL };
   if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.TeploStats = api;
 })(typeof window !== 'undefined' ? window : this);

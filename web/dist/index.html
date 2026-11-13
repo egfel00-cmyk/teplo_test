@@ -4253,7 +4253,7 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
       cc_an: "Аналітика", cc_an_p: "Випадковий номер браузера (не ваше ім’я), які екрани відкривали й що натискали — без значень полів, показань і паролів, помилки, тип пристрою й ширина екрана, країна й місто за даними Cloudflare (саму IP-адресу не зберігаємо). Бачить лише команда сервісу; журнал зберігаємо 60 днів.",
       cc_save: "Зберегти вибір", cc_change: "Змінити вибір: Налаштування → внизу «Налаштування cookie». Докладно —",
       cc_ok_yes: "Аналітику ввімкнено", cc_ok_no: "Збережено: лише необхідні cookie", cc_now_yes: "Зараз: аналітику дозволено ({d})", cc_now_no: "Зараз: лише необхідні ({d})",
-      yh_title: "{y} рік", yh_cur: "поточний", yh_paid: "Сплачено", hs_title: "Сезон {s}", hs_cur: "поточний", hs_run: "триває", hs_period: "{a} – {b}", hs_month: "≈ {q} Гкал, ≈ {m} грн / міс",
+      stm_title: "Лічильник і ХТМ по місяцях", stm_sub: "Гкал за місяць: за вашими показаннями (розкладено по місяцях за погодою) і нараховано ХТМ. Різниця — привід глянути квитанцію.", stm_l_own: "Лічильник", stm_l_htm: "ХТМ нарахував", stm_tip_own: "лічильник: {g} Гкал", stm_tip_htm: "ХТМ: {g} Гкал", yh_title: "{y} рік", yh_cur: "поточний", yh_paid: "Сплачено", hs_title: "Сезон {s}", hs_cur: "поточний", hs_run: "триває", hs_period: "{a} – {b}", hs_month: "≈ {q} Гкал, ≈ {m} грн / міс",
       hs_none: "ще немає двох показань — нема з чого рахувати", hs_noheat: "тепла не було",
       hf_label: "Що показати", hf_all: "Усе", hf_own: "Показання", hf_htm: "ХТМ",
       hh_lbl: "ХТМ за {m}:", hh_more: "на {d} Гкал більше за лічильник", hh_less: "на {d} Гкал менше за лічильник", hh_diff_tip: "Різниця між нарахуванням ХТМ і вашим лічильником за той самий місяць: частка ЗБП, тепло наперед до кінця місяця чи нарахування за середнім. Пояснення — у картці показань.",
@@ -5543,7 +5543,7 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
       cc_an: "Аналитика", cc_an_p: "Случайный номер браузера (не ваше имя), какие экраны открывали и что нажимали — без значений полей, показаний и паролей, ошибки, тип устройства и ширина экрана, страна и город по данным Cloudflare (сам IP-адрес не храним). Видит только команда сервиса; журнал храним 60 дней.",
       cc_save: "Сохранить выбор", cc_change: "Изменить выбор: Настройки → внизу «Настройки cookie». Подробно —",
       cc_ok_yes: "Аналитика включена", cc_ok_no: "Сохранено: только необходимые cookie", cc_now_yes: "Сейчас: аналитика разрешена ({d})", cc_now_no: "Сейчас: только необходимые ({d})",
-      yh_title: "{y} год", yh_cur: "текущий", yh_paid: "Оплачено", hs_title: "Сезон {s}", hs_cur: "текущий", hs_run: "идёт", hs_period: "{a} – {b}", hs_month: "≈ {q} Гкал, ≈ {m} грн / мес",
+      stm_title: "Счётчик и ХТМ по месяцам", stm_sub: "Гкал за месяц: по вашим показаниям (разложено по месяцам по погоде) и начислено ХТМ. Разница — повод заглянуть в квитанцию.", stm_l_own: "Счётчик", stm_l_htm: "ХТМ начислил", stm_tip_own: "счётчик: {g} Гкал", stm_tip_htm: "ХТМ: {g} Гкал", yh_title: "{y} год", yh_cur: "текущий", yh_paid: "Оплачено", hs_title: "Сезон {s}", hs_cur: "текущий", hs_run: "идёт", hs_period: "{a} – {b}", hs_month: "≈ {q} Гкал, ≈ {m} грн / мес",
       hs_none: "ещё нет двух показаний — не из чего считать", hs_noheat: "тепла не было",
       hf_label: "Что показать", hf_all: "Всё", hf_own: "Показания", hf_htm: "ХТМ",
       hh_lbl: "ХТМ за {m}:", hh_more: "на {d} Гкал больше счётчика", hh_less: "на {d} Гкал меньше счётчика", hh_diff_tip: "Разница между начислением ХТМ и вашим счётчиком за тот же месяц: доля ЗБП, тепло наперёд до конца месяца или начисление по среднему. Пояснение — в карточке показаний.",
@@ -6722,7 +6722,25 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
     return res(iv.dE * wo / (wo + wn), 'days');
   }
 
-  var api = { graph: graph, points: points, intervals: intervals, coolant: coolant, range: range, gapHeat: gapHeat, seasons: seasons, seasonKey: seasonKey, seasonOf: seasonOf, splitSummer: splitSummer, OK_TOL: OK_TOL, LOW_TOL: LOW_TOL };
+  /**
+   * 138-а: скільки Гкал набігло по лічильнику в кожному календарному місяці — щоб порівняти з нарахуваннями ХТМ по місяцях.
+   * Кожен проміжок між показаннями ділимо по добах (from, to] з вагою градусо-доби (погода, якщо дали, інакше норма Харкова за місяць):
+   * у холодні місяці тепла йде більше. Тепла немає взагалі (літо) — рівно по добах. ivs — intervals(…); o: {weather}. → {'2026-01': Гкал, …}.
+   */
+  function monthly(ivs, o) {
+    o = o || {}; var w = o.weather, out = {};
+    var wd = function (d) { var t = w && typeof w[d] === 'number' ? w[d] : CLIM[+d.slice(5, 7)]; return Math.max(0, HDD_BASE - t); };
+    (ivs || []).forEach(function (it) {
+      if (!it || !it.from || !it.to || !(it.dE > 0) || it.days > 400) return;
+      var ds = [], tot = 0; for (var d = addDay(it.from, 1); d <= it.to; d = addDay(d, 1)) { var x = wd(d); ds.push([d, x]); tot += x; }
+      if (!ds.length) return;
+      ds.forEach(function (p) { var ym = p[0].slice(0, 7); out[ym] = (out[ym] || 0) + it.dE * (tot > 0 ? p[1] / tot : 1 / ds.length); });
+    });
+    Object.keys(out).forEach(function (k) { out[k] = +out[k].toFixed(3); });
+    return out;
+  }
+
+  var api = { monthly: monthly, graph: graph, points: points, intervals: intervals, coolant: coolant, range: range, gapHeat: gapHeat, seasons: seasons, seasonKey: seasonKey, seasonOf: seasonOf, splitSummer: splitSummer, OK_TOL: OK_TOL, LOW_TOL: LOW_TOL };
   if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.TeploStats = api;
 })(typeof window !== 'undefined' ? window : this);
 
@@ -14203,6 +14221,25 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
   function niceMax(v) { if (!(v > 0)) return 1; var p = Math.pow(10, Math.floor(Math.log10(v))), n = v / p; return (n <= 1 ? 1 : n <= 2 ? 2 : n <= 2.5 ? 2.5 : n <= 5 ? 5 : 10) * p; }
   function fmtN(v, d) { return (d === 0 ? String(Math.round(v)) : v.toFixed(d)).replace('.', ','); }
   /** Столбики. items: [{x, v, tip[], soft, color, top}] */
+  /** 138-а: два стовпці на місяць — лічильник і ХТМ (власник: «статистика тепла: лічильник / ХТМ по місяцях — графіком»). items: [{x, a, b, tip}], a/b — null, якщо даних немає. */
+  function pairChart(items, o) {
+    var W = chartW(), H = 236, L = 46, R = 10, T = 16, B = 30, iw = W - L - R, ih = H - T - B;
+    var max = niceMax(Math.max.apply(null, items.map(function (x) { return Math.max(x.a || 0, x.b || 0); }).concat([0.001])) * 1.08);
+    var y = function (v) { return T + ih - Math.max(0, v) / max * ih; }, slot = iw / Math.max(1, items.length), bw = Math.min(18, slot * 0.34), gap = Math.min(3, slot * 0.05);
+    var g = '', nt = nTicks(max), stp = max / nt, dec = stp < 1 ? (stp < 0.1 ? 2 : 1) : 0;
+    for (var k = 0; k <= nt; k++) { var tv = max * k / nt, yy = y(tv); g += '<line x1="' + L + '" x2="' + (W - R) + '" y1="' + yy + '" y2="' + yy + '" stroke="' + CH.grid + '"/><text x="' + (L - 6) + '" y="' + (yy + 4) + '" text-anchor="end" class="ax">' + esc(fmtN(tv, dec)) + '</text>'; }
+    var bar = function (x0, v, col) {
+      if (!(v > 0)) return ''; var yt = y(v), yb = T + ih, h = Math.max(0, yb - yt), r = Math.min(3, h);
+      return '<path d="M' + x0 + ',' + yb + 'V' + (yt + r) + 'Q' + x0 + ',' + yt + ' ' + (x0 + r) + ',' + yt + 'H' + (x0 + bw - r) + 'Q' + (x0 + bw) + ',' + yt + ' ' + (x0 + bw) + ',' + (yt + r) + 'V' + yb + 'Z" fill="' + col + '"/>';
+    };
+    var bars = items.map(function (it, i) {
+      var cx = L + slot * (i + 0.5);
+      return '<g class="mk"' + tipAttr(it.tip) + '><rect x="' + (cx - slot / 2) + '" y="' + T + '" width="' + slot + '" height="' + (ih + B) + '" fill="transparent"/>' +
+        bar(cx - gap / 2 - bw, it.a, CH.bar) + bar(cx + gap / 2, it.b, CH.ink2) +
+        (i % Math.ceil(52 / slot) === 0 ? '<text x="' + cx + '" y="' + (T + ih + 17) + '" text-anchor="middle" class="ax">' + esc(it.x) + '</text>' : '') + '</g>';
+    }).join('');
+    return '<svg class="chart" viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="' + esc(o.title) + '">' + g + '<line x1="' + L + '" x2="' + (W - R) + '" y1="' + (T + ih) + '" y2="' + (T + ih) + '" stroke="' + CH.ink2 + '"/>' + bars + '</svg>';
+  }
   function barChart(items, o) {
     var W = chartW(), H = 236, L = 46, R = 10, T = 16, B = items.some(function (x) { return x.x2; }) ? 40 : 30, iw = W - L - R, ih = H - T - B;
     var max = o.max || niceMax(Math.max.apply(null, items.map(function (x) { return x.v || 0; }).concat([o.ref ? o.ref.v : 0])) * 1.08);
@@ -14299,12 +14336,21 @@ details.dest-more > summary .pacc-chev, details.bot-how > summary .pacc-chev { m
     var legend = '<div class="legend small"><span><i class="dot" style="background:' + CH.ink + '"></i>' + esc(t('stl_fact')) + '</span><span><i class="ring"></i>' + esc(t('stl_norm')) + '</span>' +
       ['ok', 'low', 'bad', 'none'].map(function (k) { return '<span><i class="dot" style="background:' + CH[k] + '"></i>' + ST_ICO[k] + ' ' + esc(t('stt_' + k)) + '</span>'; }).join('') + '</div>';
     var panel = function (title, sub, chart, extra) { return chart ? '<section class="panel chart-panel"><h2>' + esc(title) + '</h2><p class="small muted">' + esc(sub) + '</p>' + chart + (extra || '') + '</section>' : ''; };
+    // 138-а: лічильник / ХТМ по місяцях — останні 12 місяців, де є хоч одне з двох (лічильник розкладено по місяцях градусо-добами)
+    var own = St.monthly ? St.monthly(ivs, { weather: w }) : {}, hm = {}; htmMonths().forEach(function (x) { if (x.g !== null && x.g !== undefined) hm[x.ym] = x.g; });
+    var yms = Object.keys(own).concat(Object.keys(hm)).filter(function (ym, i, a) { return a.indexOf(ym) === i && ((own[ym] || 0) > 0.0005 || (hm[ym] || 0) > 0.0005); }).sort().slice(-12);
+    var c5 = yms.length > 1 && Object.keys(hm).length ? pairChart(yms.map(function (ym) {
+      var a = own[ym] || 0, b2 = hm[ym] === undefined ? null : hm[ym];
+      return { x: ymLabel(ym), a: a, b: b2, tip: [monthLabel(ym), t('stm_tip_own', { g: a > 0 ? '≈ ' + fmtN(a, 3) : '—' }), t('stm_tip_htm', { g: b2 !== null ? fmtN(b2, 3) : '—' })] };
+    }), { title: t('stm_title') }) : '';
+    var leg5 = '<p class="legend small" data-key="stm-legend"><span><i class="dot" style="background:' + CH.bar + '"></i>' + esc(t('stm_l_own')) + '</span><span><i class="dot" style="background:' + CH.ink2 + '"></i>' + esc(t('stm_l_htm')) + '</span></p>';
     var table = '<details class="panel wacc tbl-acc" data-key="stt-table"><summary><h2>' + esc(t('stt_table')) + '</h2>' + ico('chev', 20, 'pacc-chev') + '</summary><div class="tbl-wrap where-b"><table class="tbl"><thead><tr><th>' + esc(t('stt_th_period')) + '</th><th>Гкал</th><th>' + esc(t('stt_g30')) + '</th><th>грн</th><th>°C ' + esc(t('stt_th_out')) + '</th><th>' + esc(t('stt_th_hdd')) + '</th><th>ΔT</th><th>м³/год</th><th>' + esc(t('stt_th_share')) + '</th></tr></thead><tbody>' +
       ivs.map(function (it) { return '<tr><td>' + esc(R.toHtmDate(it.from) + ' – ' + R.toHtmDate(it.to)) + '</td><td class="num">' + fmtN(it.dE, 3) + '</td><td class="num">' + fmtN(it.month, 3) + '</td><td class="num">' + money(it.cost) + '</td><td class="num">' + (it.tOut !== undefined ? fmtN(it.tOut, 1) : '—') + '</td><td class="num">' + (it.perHdd != null ? fmtN(it.perHdd, 2) : '—') + '</td><td class="num">' + (it.dT != null ? fmtN(it.dT, 1) : '—') + '</td><td class="num">' + (it.flow != null ? fmtN(it.flow, 3) : '—') + '</td><td class="num">' + (it.share != null ? Math.round(it.share * 100) + '%' : '—') + '</td></tr>'; }).join('') +
       '</tbody></table></div></details>';
     return { screen: 'S15', route: 'stats', html: '<h1>' + esc(t('stt_title')) + '</h1>' + kindSwitch() + '<p class="muted">' + esc(t('stt_lead')) + '</p>' + wxNote + tiles + gapNote(gaps('heat')) +
       panel(t('stc_title'), t('stc_sub'), cl.length ? coolantChart(cl) : '', legend) +
       panel(t('stx_title'), t('stx_sub'), corrChart(cl)) +
+      (c5 ? '<div data-key="stm-panel">' + panel(t('stm_title'), t('stm_sub'), c5, leg5) + '</div>' : '') +
       panel(t('st1_title'), t('st1_sub'), c1) + panel(t('st3_title'), t('st3_sub'), c3) + panel(t('st2_title'), t('st2_sub'), c2) + panel(t('st4_title'), t('st4_sub'), c4) + table +
       '<p class="small muted">' + esc(t('stt_method')) + '</p>' };
   }
