@@ -2394,6 +2394,11 @@ ok('izt: тепло листом на iz_teplo@ukr.net — «Енергія …:
   && str_contains($mb, 'Особовий рахунок: 3021') && str_contains($mb, 'Петренко Іван') && !str_contains($mb, 'м³') && ($izh['via'] ?? '') === 'izt' && ($izh['robot'] ?? '') === 'server'
   && ($izh['win'] ?? null) === [25, 30] && ($izh['till'] ?? null) === 30 && !isset(LocalBot::items([['value' => '1', 'kind' => 'heat', 'unit' => 'MJ']])[0]['unit'])
   && (LocalBot::items([['value' => '1', 'kind' => 'heat', 'unit' => 'GJ']])[0]['unit'] ?? '') === 'GJ', [$r->body, $q->body, $ml[1] ?? null, $mb, $izh['via'] ?? null]);
+$sk = Providers::lookup('Старокостянтинів, вул. Острозького, 1')['kinds']['heat'] ?? []; $ir = Providers::lookup('Ірпінь, вул. Соборна, 1')['kinds']['heat'] ?? [];
+ok('тепло листом (140-а): Старокостянтинів skt → info@teplovik.org, 25–28; Ірпінь itep → irpenteplopostach@ukr.net, 29–31 (з «Реквізитів виконавця» договорів); обидва heat, одне число',
+  ($sk['via'] ?? '') === 'skt' && ($sk['robot'] ?? '') === 'server' && ($sk['win'] ?? null) === [25, 28] && (LocalBot::BOTS['skt']['to'] ?? '') === 'info@teplovik.org'
+  && ($ir['via'] ?? '') === 'itep' && ($ir['robot'] ?? '') === 'server' && ($ir['win'] ?? null) === [29, 31] && (LocalBot::BOTS['itep']['to'] ?? '') === 'irpenteplopostach@ukr.net'
+  && LocalBot::BOTS['skt']['kinds'] === ['heat'] && LocalBot::BOTS['itep']['kinds'] === ['heat'] && !empty(LocalBot::BOTS['itep']['one']), [$sk['via'] ?? null, $ir['via'] ?? null]);
 // 139-а: Чабани — e-mail chabanyvoda@ukr.net (п. 22 договору КП, з 20 по 25; лист — як у slv), Солоницівка — вікно 1–5
 $cb = Providers::lookup('Чабани, вул. Покровська, 2')['kinds']['water'] ?? []; $sn = Providers::lookup('Солоницівка, вул. Пушкіна, 1')['kinds']['water'] ?? [];
 ok('chab: робот mail на chabanyvoda@ukr.net (рахунок, ПІБ, адреса), вікно 20–25; Чабани via chab, server; Солоницівка 1–5', (LocalBot::BOTS['chab']['t'] ?? '') === 'mail'
@@ -2543,10 +2548,10 @@ ok('довідник 107-ї: Вороньків, Богуслав, Нові Пе
 
 // 108-а: Ставище — billingsoft з нашого сервера відповідає (з браузера в Україні — відхилено) → робот stav; Ірпінь — тепло КПП «Теплоенергопостач» (кабінет billingsoft з капчею — без бота)
 $st8 = $L('Ставище, вул. Шевченка, 1'); $ir8 = $L('Ірпінь, вул. Соборна, 1', 'heat');
-ok('довідник 108-ї: Ставище — via stav, robot server, у «як» — my.stavjkp.kyiv.ua; Ірпінь — тепло КПП «Теплоенергопостач», кабінет my.tep-irpin.org.ua (капча), ціна з платіжки',
+ok('довідник 108-ї: Ставище — via stav, robot server, у «як» — my.stavjkp.kyiv.ua; Ірпінь — тепло КПП «Теплоенергопостач», кабінет my.tep-irpin.org.ua (капча; подає робот itep листом), ціна з платіжки',
   ($st8['via'] ?? '') === 'stav' && ($st8['robot'] ?? '') === 'server' && str_contains((string)($st8['how'] ?? ''), LocalBot::BOTS['stav']['site'])
   && LocalBot::pub('stav')['t'] === 'cab' && LocalBot::pub('stav')['lk'] === null
-  && ($ir8['org'] ?? '') === 'КПП «Теплоенергопостач» ІМР' && ($ir8['cab'] ?? '') === 'https://my.tep-irpin.org.ua/' && array_key_exists('price', $ir8) && $ir8['price'] === null && !empty($ir8['check']) && empty($ir8['via']) && ($ir8['robot'] ?? '') === 'captcha',
+  && ($ir8['org'] ?? '') === 'КПП «Теплоенергопостач» ІМР' && ($ir8['cab'] ?? '') === 'https://my.tep-irpin.org.ua/' && array_key_exists('price', $ir8) && $ir8['price'] === null && !empty($ir8['check']) && ($ir8['via'] ?? '') === 'itep' && ($ir8['robot'] ?? '') === 'server',   // 140-а: кабінет — з капчею, але e-mail з договору — робот itep
   [$st8['via'] ?? null, $st8['robot'] ?? null, $ir8['org'] ?? null, $ir8['cab'] ?? null]);
 
 // 109-а: Яготин — billingsoft my.vodayagotin.com.ua → робот yagv; Арциз, Кілія, Чугуїв — лише телефони (phone); Миронівка — Telegram-бот (bot); Берестин, Теплодар — загальний e-mail (none)

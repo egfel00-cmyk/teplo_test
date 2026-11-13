@@ -66,7 +66,7 @@
 - Общий робот — `app/localbot.php` (`LocalBot::BOTS`: `form` — форма без входа (рахунок → страница абонента → показания), `cab` — обычная HTML-форма
   входа без капчи, `mail` — e-mail поставщика со скриньки сервиса); в справочнике `via` = id бота. Подключение = проверка «дойти до формы, ничего не отправить».
   Стенд `tests/lb-mock` (+ `lb_base_<бот>` в config.php), e2e `tests/e2e/e2e_lbot.cjs`. Как добавить — `skills/oblast-providers/SKILL.md`, «Автоподача».
-- **Тепло (140-я)**: первый робот тепла — `izt` (Ізяслав, письмо на iz_teplo@ukr.net из договора КП): `kinds: ['heat']`, одно число — энергия в единице табло
+- **Тепло (140-я)**: роботы тепла — `izt` (Ізяслав, iz_teplo@ukr.net), `skt` (Старокостянтинів, info@teplovik.org), `itep` (Ірпінь, irpenteplopostach@ukr.net) — e-mail из договоров КП: `kinds: ['heat']`, одно число — энергия в единице табло
   (`items[].unit`: Gcal/MWh/GJ/kWh). Блок «Відправити у фоні» — на «Передача постачальнику тепла» (`handoverLite` → `lbBox(ld, [r], lbItemsHeat(r))`); записи тепла —
   в `lbAll()` (вода, свет/газ, `S.readings`); отправлено → `heatSetStatus(r, 'accepted')`, как кнопка «Передано». e2e `tests/e2e/e2e_lbheat.cjs` (в config.php — `smtp_host`, `smtp_from`).
   В договорах тепла (КМУ № 830, п. 23) часто e-mail из «Реквізити виконавця» — новые такие КП подключать так же.

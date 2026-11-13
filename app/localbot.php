@@ -88,6 +88,13 @@ final class LocalBot {
     // показання … на адресу електронної пошти, зазначену у розділі „Реквізити виконавця“» — iz_teplo@ukr.net. Одне число — енергія з головного екрана, в одиниці табло.
     'izt' => ['t' => 'mail', 'kinds' => ['heat'], 'org' => 'КП «Ізяславтепломережа»', 'site' => 'itm.kp.org.ua', 'to' => 'iz_teplo@ukr.net',
       'need' => ['acc', 'name', 'addr'], 'win' => [25, 30], 'one' => true],
+    // 140-а: те саме з договорів тепла (КМУ № 830, п. 23: «на адресу електронної пошти, зазначену у розділі „Реквізити виконавця“») —
+    // Старокостянтинів: типовий індивідуальний договір КП «Тепловик» (teplovik.org) — з 25 по 28, info@teplovik.org;
+    // Ірпінь: публічний договір КПП «Теплоенергопостач» ІМР (tep-irpin.org.ua, .docx) — з 29 по 31, irpenteplopostach@ukr.net (кабінет — з капчею, не обходимо)
+    'skt' => ['t' => 'mail', 'kinds' => ['heat'], 'org' => 'КП «Тепловик» (Старокостянтинів)', 'site' => 'teplovik.org', 'to' => 'info@teplovik.org',
+      'need' => ['acc', 'name', 'addr'], 'win' => [25, 28], 'one' => true],
+    'itep' => ['t' => 'mail', 'kinds' => ['heat'], 'org' => 'КПП «Теплоенергопостач» ІМР', 'site' => 'tep-irpin.org.ua', 'to' => 'irpenteplopostach@ukr.net',
+      'need' => ['acc', 'name', 'addr'], 'win' => [29, 31], 'one' => true],
     // 139-а: Чабани — КП «Керуюча компанія Чабани», п. 22 типового договору: показання з 20 по 25 на chabanyvoda@ukr.net (там же телефони)
     'chab' => ['t' => 'mail', 'kinds' => ['water'], 'org' => 'КП «Керуюча компанія Чабани»', 'site' => 'chabany.kp.org.ua', 'to' => 'chabanyvoda@ukr.net',
       'need' => ['acc', 'name', 'addr'], 'win' => [20, 25]],
