@@ -13,7 +13,7 @@ function hits(t, src, out) {
     const g = new RegExp(re.source, 'gi'); let m, n = 0;
     while ((m = g.exec(t)) && n < 4) {
       const ctx = clip(t, m.index, 160, 160);
-      if (/показ|лічильник|облік/i.test(ctx)) { out.push(src + ' → ' + clip(t, m.index, 60, 110)); n++; }
+      if (/показ|лічильник|облік/i.test(ctx)) { out.push(src.slice(0, 60) + ' → ' + clip(t, m.index, 25, 75)); n++; }
     }
   }
 }
@@ -65,5 +65,9 @@ export async function scan(o = {}) {
       if (out.length === n0) fl.push('без строку: ' + tx + ' ' + u.split('/').pop());
     } catch (e) { fl.push('ERR ' + u.split('/').pop() + ' ' + e.message); }
   }
-  return [base + ' — сторінок ' + seen.size + ', файлів ' + files.size, ...[...new Set(out)].slice(0, 12), ...fl.slice(0, 12)].join('\n');
+  // коротко (вивід javascript_tool обрізається ~1000 знаків): збіги без повторів одного джерела, далі — лише лічильники файлів без строку / сканів
+  const one = new Map(); out.forEach(x => { const k = x.split(' → ')[0]; if (!one.has(k)) one.set(k, x); });
+  const cnt = k => fl.filter(x => x.startsWith(k)).length;
+  return [location.host + ': стор. ' + seen.size + ', файлів ' + files.size + ' (без строку ' + cnt('без строку') + ', скан ' + cnt('СКАН') + ', doc ' + cnt('DOC/RTF') + ', чужих ' + cnt('[чужий]') + ')',
+    ...[...one.values()].slice(0, 5)].join('\n') + (o.files ? '\n' + fl.slice(0, 8).join('\n') : '');
 }
