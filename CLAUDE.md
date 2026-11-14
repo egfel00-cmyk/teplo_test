@@ -295,6 +295,15 @@
   Публично — `/r/<slug>` (CSP без скриптов, `X-Robots-Tag: noindex`); в /admin → «Отчёты» (`GET /api/admin/pages`, `/api/admin/page?id=` → рамка `sandbox`).
   `/api/admin/reports` — это «Ошибки распознавания», не путать. Разбор конкурентов: https://peredai.com.ua/r/konkurenty-542de334
 
+## Поиск: страницы моделей и громад (149-я)
+- Сервером, без скриптов (`app/seo.php`, CSP `default-src 'none'`), uk + ru с hreflang, в sitemap.xml парами (779 адресов): `/yak-znyaty-pokaznannya[/<модель>]`
+  (ru `/ru/kak-snyat-pokazaniya`) — 37 моделей из `app/data/seo/models.json`; **поменял models.js / rules.js / i18n.js — `node tools_seo.cjs`** (server.php сверяет `src`).
+  `/kudy-peredaty[/<громада>]` (ru `/ru/kuda-peredat`) — 350 громад живцем из справочника (`Providers::kinds`), адреса — `Seo::translit` (КМУ № 55), `Seo::hroms()`.
+- Тексты страниц — без указаний к кнопкам приложения (`Seo::clean` выкидывает «натисніть/впишіть…» из заметок справочника). Форма gas.ua без регистрации закрывается 28.11.2026 — робота не делаем.
+
+## Синхронизация: «Кому платите» не теряется (149-я)
+- `Sync.flushNow()` — на сворачивание/закрытие (keepalive < 60 КБ), после `poll` — `_flush()` сразу. Журнал: `prov` (сменили здесь), `provx` (данные извне, `Sync.via`) — в /admin словами.
+
 ## Логотип «Барабан» (127-я)
 - Владелец выбрал вариант 2 из 6 (полотно claude.ai «Логотип peredai.com.ua — варіанти»): окошко счётного механизма, барабаны «0 4 2» и красный «7» (литры), жидкое стекло.
 - Всё собирает `tools_logo.py` (текст — в кривые, шрифт Unbounded качается в /tmp): `python3 -I tools_logo.py` → `web/icon/` (favicon.svg/.ico, apple-touch-icon,
