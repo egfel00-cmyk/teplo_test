@@ -2804,8 +2804,15 @@ ok('seo: сторінка моделі — заголовок, кроки сло
   count($sj['models'] ?? []) === 37 && str_contains((string)$sp, '<h1>Як зняти показання SHARKY 774</h1>') && str_contains((string)$sp, 'Натисніть кнопку 2 рази')
   && str_contains((string)$sp, 'hreflang="ru" href="https://peredai.com.ua/ru/kak-snyat-pokazaniya/sharky774"') && str_contains((string)$sp, '"@type":"HowTo"')
   && preg_match_all('~<script~', (string)$sp) === 1 && str_contains((string)$sr, 'Зажмите кнопку и держите больше 3 с') && Seo::render('uk', 'nope', '', 'https://x/') === null
-  && substr_count((string)$si2, '<li><a href="/yak-znyaty-pokaznannya/') === 37 && Seo::match('/ru/kak-snyat-pokazaniya/t330') === ['ru', 't330'] && Seo::match('/yak-znyaty-pokaznannya/../x') === null);
-ok('seo: sitemap — головна + 2 × 38 адрес парами', count(Seo::pairs()) === 38);
+  && substr_count((string)$si2, '<li><a href="/yak-znyaty-pokaznannya/') === 37 && Seo::match('/ru/kak-snyat-pokazaniya/t330') === ['ru', 't330', 'm'] && Seo::match('/yak-znyaty-pokaznannya/../x') === null);
+$hs = Seo::hroms(); $hb = (string)Seo::render('uk', 'bucha', '', 'https://peredai.com.ua/', 'h'); $hk = (string)Seo::render('ru', 'kharkiv', '', 'https://peredai.com.ua/', 'h');
+$hi = (string)Seo::render('uk', '', '', 'https://peredai.com.ua/', 'h');
+ok('seo: громади — 350 адрес латиницею (КМУ № 55), Буча: Бучасервіс з тарифом, вікно «з 25 по 30», «відправить сам»; Харків ru: ХТМ «с 5 по 25», Водоканал «с 1 по 20»; список — 350; невідома — null',
+  count($hs) === 350 && isset($hs['bucha'], $hs['kharkiv'], $hs['bila-tserkva']) && Seo::translit('Згурівка') === 'zghurivka' && Seo::translit('Яготин') === 'yahotyn'
+  && str_contains($hb, 'КП «Бучасервіс»') && str_contains($hb, '20,47') && str_contains($hb, 'Показання: з 25 по 30 число') && str_contains($hb, 'передай відправить показання сам')
+  && str_contains($hk, 'Показания: с 5 по 25 число') && str_contains($hk, 'Показания: с 1 по 20 число') && !str_contains($hk, 'натисн') && substr_count($hi, '<li><a href="/kudy-peredaty/') === 350
+  && Seo::render('uk', 'nope', '', 'https://x/', 'h') === null && Seo::match('/ru/kuda-peredat/bucha') === ['ru', 'bucha', 'h'], [count($hs), mb_substr(strip_tags($hb), 0, 300)]);
+ok('seo: sitemap — головна + пари: 38 (моделі) + 351 (громади)', count(Seo::pairs()) === 38 + 351, count(Seo::pairs()));
 
 echo "\nИтог: $pass OK, $fail FAIL\n";
 exit($fail ? 1 : 0);
