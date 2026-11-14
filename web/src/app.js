@@ -1416,13 +1416,15 @@
   document.addEventListener('toggle', function (e) { var d = e.target; if (d && d.classList && d.classList.contains('wacc')) waccStore(d)[d.id.slice(5)] = d.open; }, true);
   /** Підпис табло на сторінці лічильника — як статуси в історії: останні передані (стартові — «стартові»), а новіший запис, ще не
    *  переданий чи «лише для себе», — окремим рядком. list — записи лічильника за датою, isSent(r) — «передано» з історії. */
-  function sentCap(list, isSent) {
-    var s = null, l = list.length ? list[list.length - 1] : null;
-    list.forEach(function (r) { if (!r.own && isSent(r)) s = r; });
-    var cap = s ? (s.base ? t('wm_cap_base', { d: fmtDate(s.date, true) }) : t('mb_cap_sent', { d: fmtDate(s.date, true) })) : l ? t('mb_cap_none') : t('uc_w_nolast');
-    // 129-а (власник 13.11): «з усіх лічильників прибери рядок „Внесено“» — новіший непереданий запис видно в історії й статусі картки
-    var note = '';
-    return { rec: s || l, cap: cap, note: note };
+  /** Табло лічильника й підпис під ним (148-а, власник 14.11, скрин «ГК Победа»: «ввёл новые показания — почему на табло старые с прошлого раза?
+   *  исправь везде»): на табло — ОСТАННІ внесені показання (що зараз на лічильнику), підпис — що з ними: передано / оплачено (свій постачальник) /
+   *  внесено, ще не передано / лише для себе / стартові. Раніше табло брало останні передані — новіші ховались до «Передано».
+   *  my — свій постачальник квартири: «Оплачено» / «ще не оплачено» замість «Передано». */
+  function sentCap(list, isSent, my) {
+    var l = list.length ? list[list.length - 1] : null, d = l ? fmtDate(l.date, true) : '';
+    var cap = !l ? t('uc_w_nolast') : l.base ? ucf(t('wm_cap_base', { d: d })) : l.own ? t('mb_newer_own', { d: d })
+      : isSent(l) ? t(my ? 'mb_cap_paid' : 'mb_cap_sent', { d: d }) : t(my ? 'mb_newer_my' : 'mb_newer', { d: d });
+    return { rec: l, cap: cap, note: '' };
   }
   /** Кнопка «Копіювати» прямо в полі (рахунок, прізвище, №, код у боті): вставити в бот чи кабінет. Береться те, що в полі зараз. */
   function ctlCopy(id) { return '<button type="button" class="ctl-copy" data-act="copy-in" data-for="' + id + '" data-key="copy-' + id + '" aria-label="' + esc(t('copy')) + '" title="' + esc(t('copy')) + '">' + ico('copy', 20) + '</button>'; }
@@ -1995,7 +1997,7 @@
     var left = ms.map(function (m, i0) {
       var r = wprevFor(m.id), sc = null, cap;
       if (r && r.gap) cap = t('wm_cap_gap', { d: fmtDate(r.date, true) });
-      else { sc = sentCap(wrecs().filter(function (x) { return hasVal(x, m.id); }), function (x) { return x.base ? baseSent(x) : wsentVk(x) && (kind === 'cold' || wsentHtm(x)); }); r = sc.rec; cap = sc.cap; }
+      else { sc = sentCap(wrecs().filter(function (x) { return hasVal(x, m.id); }), function (x) { return x.base ? baseSent(x) : wsentVk(x) && (kind === 'cold' || wsentHtm(x)); }, !!myProv(kind)); r = sc.rec; cap = sc.cap; }
       var ver = verWarn(m.verifiedUntil);
       return mbox({ key: 'wmeter-' + m.id, id: m.id, kind: kind, icon: 'drop', cls: kind === 'hot' ? 'c-hot' : 'c-cold', name: ms.length > 1 ? wname(m) : title,
         display: wdrum(r ? r.vals[m.id] : null, kind, 'hero'), cap: cap, copy: r && r.vals && r.vals[m.id] !== undefined && r.vals[m.id] !== '' ? Wt.whole(r.vals[m.id]) : '', body: sc && sc.note ? '<p class="small muted mb-newer">' + esc(sc.note) + '</p>' : '',
@@ -2903,7 +2905,7 @@
   function sPage(k) {
     var ms = smeters(k), p = place() || {}, h = '<h1 class="sr">' + esc(t(KINDS[k].t)) + (p.name ? ' — ' + esc(p.name) : '') + '</h1>';
     var left = ms.map(function (m, i) {
-      var sc = sentCap(mrecs(m.id), function (x) { return x.base ? baseSent(x) : ssent(k, x); }), r = sc.rec, cap = sc.cap;
+      var sc = sentCap(mrecs(m.id), function (x) { return x.base ? baseSent(x) : ssent(k, x); }, !!myProv(k)), r = sc.rec, cap = sc.cap;
       return mbox({ key: 'emeter-' + m.id, id: m.id, kind: k, icon: SK[k].icon, cls: SK[k].cls, name: ms.length > 1 ? ename(m) : t(KINDS[k].t), sub: [ezonesTxt(m)],
         display: edisplay(m, r, 'hero'), cap: cap, copy: r && r.z && SK[k].mod.zones(m) <= 1 && SK[k].mod.whole(r.z.all) !== null ? SK[k].mod.whole(r.z.all) : '', body: sc.note ? '<p class="small muted mb-newer">' + esc(sc.note) + '</p>' : '',
         meta: [verWarn(m.verifiedUntil)].filter(Boolean),
@@ -4712,14 +4714,21 @@
     if (INBOX.items && INBOX.items.length) html += '<div class="banner" data-key="home-inbox">' + ico('camera', 22) + '<div><p><b>' + esc(t('ib_title', { n: INBOX.items.length })) + '</b></p><p>' + esc(t('ib_sub')) + '</p><p><button class="btn" data-act="inbox-run" data-key="home-inbox-run">' + esc(t('ib_run')) + '</button></p></div></div>';
     // экран с последними принятыми — главный визуальный якорь
     var bs = lastAccepted(), newer = RD().filter(function (x) { return x.htm && x.htm.date && (!bs || x.htm.date > bs.date); }).sort(function (a, b) { return a.htm.date < b.htm.date ? -1 : 1; }).slice(-1)[0];
+    // 148-а (власник 14.11: «на табло — новые показания, везде»): табло — останні внесені (запис чи «Останні прийняті», що новіше), як на картці головної
+    var hlast = RD().filter(function (x) { return x.htm && x.htm.date; }).slice(-1)[0], hb = S.baseline && S.baseline.date ? S.baseline : null;
+    var hcur = hlast && (!hb || hlast.htm.date >= hb.date) ? { date: hlast.htm.date, energy: hlast.htm.energy, rec: hlast } : hb ? { date: hb.date, energy: hb.energy } : bs;
+    var hd = hcur ? fmtDate(hcur.date, true) : '', hr = hcur && hcur.rec, hmy = !!myProv('heat');
+    var hcap = !hcur ? t('h_last_none') : !hr ? t(heatLite() ? 'uc_sent_d' : 'h_last_d', { d: hd }) : hr.own ? t('mb_newer_own', { d: hd })
+      : hr.status === 'accepted' ? t(hmy ? 'mb_cap_paid' : heatLite() ? 'uc_sent_d' : 'h_last_d', { d: hd }) : hr.status === 'handed' ? t('h_cap_handed', { d: hd })
+      : hr.status === 'rejected' ? t('h_cap_rej', { d: hd }) : t(hmy ? 'mb_newer_my' : 'mb_newer', { d: hd });
     // під назвою виду — модель; рахунок і № — лише в налаштуваннях і в «Куди передати» (владелец 05.11 20:45: «з лічильників прибрати номери рахунків»)
-    var left = mbox({ key: bs ? 'home-last' : 'home-last-none', id: 'heat', kind: 'heat', icon: 'thermo', cls: 'c-heat', name: t('uc_heat'),
+    var left = mbox({ key: hcur ? 'home-last' : 'home-last-none', id: 'heat', kind: 'heat', icon: 'thermo', cls: 'c-heat', name: t('uc_heat'),
       sub: [modelName(m), energyUnit() !== 'Gcal' ? unitLbl(energyUnit()) : ''],
-      display: lcd([{ text: bs ? R.formatForHtm('energy', bs.energy) : '------', tag: 'Gcal', label: bs ? R.formatForHtm('energy', bs.energy) + ' Гкал' : '—' }], 'hero'),
-      copy: bs && R.num(bs.energy) !== null ? R.formatForHtm('energy', bs.energy) : '',
-      cap: bs ? t(heatLite() ? 'uc_sent_d' : 'h_last_d', { d: fmtDate(bs.date, true) }) : t('h_last_none'),   // 141-а: тепло не ХТМ — «Передано …», не «Прийнято ХТМ»
+      display: lcd([{ text: hcur ? R.formatForHtm('energy', hcur.energy) : '------', tag: 'Gcal', label: hcur ? R.formatForHtm('energy', hcur.energy) + ' Гкал' : '—' }], 'hero'),
+      copy: hcur && R.num(hcur.energy) !== null ? R.formatForHtm('energy', hcur.energy) : '',
+      cap: hcap,   // 141-а: тепло не ХТМ — «Передано …», не «Прийнято ХТМ»; 148-а — підпис до останніх внесених
       body: (NOTE_NEWER && newer ? '<p class="small muted mb-newer">' + esc(t(newer.own ? 'mb_newer_own' : 'mb_newer_heat', { d: fmtDate(newer.htm.date, true), s: t('status_' + newer.status).toLowerCase() })) + '</p>' : '') +
-        (bs ? '' : '<p class="small muted">' + esc(t('h_last_none_sub')) + '</p><p><a class="btn sec" href="#baseline" data-key="home-add-base">' + esc(t('h_add_base')) + '</a></p>'),
+        (hcur ? '' : '<p class="small muted">' + esc(t('h_last_none_sub')) + '</p><p><a class="btn sec" href="#baseline" data-key="home-add-base">' + esc(t('h_add_base')) + '</a></p>'),
       meta: [verWarn(S.meter && S.meter.verifiedUntil)].filter(Boolean),
       set: myPick('heat') + (myProv('heat') ? '' : monoLink('heat-set')) + heatMeterFields(m) + htmFormBox(htmAsk()) + priceBlock('heat') + gapSetLink('heat') , setTitle: t('mb_set_read') });
     var act = '', right = '';
