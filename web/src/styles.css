@@ -600,6 +600,7 @@ input[type=text]:not(.dmy-native):not(.pl-in), input[type=email], input[type=pas
 .prd-l { font-size: 13px; line-height: 14px; color: var(--c-ink-2); text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
 .prd.st-open:not(.done) .prd-l { color: var(--c-ink); font-weight: 500; }
 .prd.in-dest { --prd-bg: var(--bt-bg, var(--c-surface)); margin: 10px 0 4px; }
+.prd.in-entry { margin: 0 0 var(--sp-4); }
 .panel.where .prd-d i.o { background: var(--bt-line, var(--c-line)); }   /* лінія місяця на тлі блоку постачальника */
 .prd.in-prov { margin: 8px 0 6px; max-width: 360px; }
 .ucard-status { font-size: 14px; font-weight: 600; margin-top: 4px; color: var(--c-ink-2); }
@@ -910,6 +911,10 @@ details.wacc > summary { list-style: none; cursor: pointer; display: flex; align
 .place-sw button span:last-child { overflow-wrap: anywhere; }
 .place-sw button[aria-pressed="true"] { background: var(--c-surface); color: var(--c-ink); border-color: var(--c-ink); box-shadow: inset 0 0 0 1px var(--c-ink); }
 .place-bar.compact b { font-size: var(--fs-s); }
+.place-bar.pb-back { display: flex; align-items: center; gap: 10px; padding: 8px 14px 8px 6px; color: inherit; text-decoration: none; flex-wrap: nowrap; }
+.place-bar.pb-back .pb-chev { flex: none; transform: rotate(180deg); color: var(--c-ink-2); }
+.place-bar.pb-back b { font-size: var(--fs-m); display: inline-flex; align-items: center; gap: 6px; }
+.place-bar.pb-back:hover { background: var(--c-ghost-hover); }
 @media (max-width: 380px) { .place-bar .pb-all .ico { display: none; } .place-bar .pb-all { padding: 0 10px; } }
 .ucard-addm { grid-column: 1 / -1; display: flex; align-items: center; gap: 14px; width: 100%; padding: 12px 16px; min-height: 68px; border: 2px dashed var(--c-field-line); border-radius: 16px; background: transparent; color: var(--c-ink); font: inherit; text-align: left; cursor: pointer; }
 .ucard-addm:hover { background: var(--c-ghost-hover); border-color: var(--c-ink-2); }
@@ -1125,7 +1130,8 @@ fieldset.field { border: 0; padding: 0; min-width: 0; }
 .fs-more { display: flex; gap: 8px; align-items: flex-start; margin: 4px 0 12px; } .fs-more .ico { flex: none; margin-top: 1px; }
 .aw-kind .step-b.btn:not(.sec) { color: var(--c-on-ink); }
 /* шапка экрана с «✕» на телефоне: «Лічильники» не влезал рядом с «Test beta…» и обрезался в «Лі…» — оставляем логотип */
-@media (max-width: 480px) { .top.has-close .brand span, .top.has-close .brand .wm { display: none; } }   /* с «Закрити» и плашкой beta имя не влезает даже на 440 px (iPhone Pro Max) — оставался обрезок «Л» */
+/* 143-я (власник 14.11): «Закрити» — лише хрестик (без слова), тож назва «передай.com.ua» праворуч від знака влазить і на телефоні */
+.top .cl-txt { display: none; }   /* с «Закрити» и плашкой beta имя не влезает даже на 440 px (iPhone Pro Max) — оставался обрезок «Л» */
 .fs-after { margin-top: 14px; }
 .field .sp-help:empty { display: none; }
 /* ---- история: дата и чипс статуса строкой над записью; чипс — кнопка, под ним меню «передано / не передано / для себе» ---- */

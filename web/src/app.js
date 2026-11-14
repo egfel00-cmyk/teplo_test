@@ -40,7 +40,15 @@
   /** Имя квартиры: своё название («Моя», «Мамина»), иначе адрес, иначе «Квартира N». Адрес — второй строкой, если есть имя. */
   // без назви перша — «Моя квартира», інші — «Квартира N»; адреса — завжди окремим рядком
   function placeLabel(p) { var i = places().indexOf(p); return (p && p.name) || (i <= 0 ? t('pl_mine') : t('pl_unnamed', { n: i + 1 })); }
-  function placeSub(p) { return (p && p.address) || ''; }
+  function placeSub(p) { return addrShort((p && p.address) || ''); }
+  /** 143-я (власник 14.11): адреса для показу — загальноприйняті скорочення (смт, сел., с., м., вул., просп., пров., б-р, пл., буд., кв., р-н, обл.); збережена адреса не змінюється. */
+  var ADDR_SHORT = [[/(^|[\s,(])сели(?:ще|щі) міського типу(?=[\s,.]|$)/gi, '$1смт'], [/(^|[\s,(])посёлок городского типа(?=[\s,.]|$)/gi, '$1пгт'],
+    [/(^|[\s,(])селище(?=[\s,.]|$)/gi, '$1сел.'], [/(^|[\s,(])посёлок(?=[\s,.]|$)/gi, '$1пос.'], [/(^|[\s,(])село(?=[\s,.]|$)/gi, '$1с.'], [/(^|[\s,(])(?:місто|город)(?=[\s,.]|$)/gi, '$1м.'],
+    [/(^|[\s,(])(?:вулиця|улица)(?=[\s,.]|$)/gi, '$1вул.'], [/(^|[\s,(])проспект(?=[\s,.]|$)/gi, '$1просп.'], [/(^|[\s,(])(?:провулок|переулок)(?=[\s,.]|$)/gi, '$1пров.'],
+    [/(^|[\s,(])(?:бульвар)(?=[\s,.]|$)/gi, '$1б-р'], [/(^|[\s,(])(?:площа|площадь)(?=[\s,.]|$)/gi, '$1пл.'], [/(^|[\s,(])(?:будинок|дом)(?=[\s,.]|$)/gi, '$1буд.'],
+    [/(^|[\s,(])(?:квартира)(?=[\s,.]|$)/gi, '$1кв.'], [/(^|[\s,(])(?:район)(?=[\s,.]|$)/gi, '$1р-н'], [/(^|[\s,(])(?:область)(?=[\s,.]|$)/gi, '$1обл.'],
+    [/(^|[\s,(])(?:ул|вул)\.(?=\S)/gi, '$1вул. '], [/\.\./g, '.']];
+  function addrShort(a) { var s0 = String(a || ''); ADDR_SHORT.forEach(function (r) { s0 = s0.replace(r[0], r[1]); }); return s0.replace(/\s{2,}/g, ' ').trim(); }
   // цвет-метка квартиры (вдобавок к названию, не вместо него): ключ в place.color, по умолчанию — по порядку
   var PCOLORS = ['teal', 'violet', 'amber', 'green', 'rose', 'slate'];
   function placeColor(p) { return p && PCOLORS.indexOf(p.color) >= 0 ? p.color : PCOLORS[Math.max(0, places().indexOf(p)) % PCOLORS.length]; }
@@ -98,13 +106,18 @@
     var ps = places(), p = place(); if (ps.length < 2 || !p) return '';
     var sub = placeSub(p);
     var ic = picon(p, compact ? 20 : 28, 'pb-ic');
-    if (compact) return '<div class="place-bar compact' + (ic ? ' has-ic' : '') + '" style="--pc:var(--pc-' + placeColor(p) + ')" data-key="place-bar"><span class="small muted">' + esc(t('pb_where')) + '</span><b>' + ic + esc(placeLabel(p)) + '</b>' + (sub ? '<span class="small muted pb-sub">' + esc(sub) + '</span>' : '') + '</div>';
+    // 143-я (власник 14.11, скрин внесення світла): без слова «Квартира», ліворуч — великий шеврон на два рядки (назва й адреса), тап по плашці — назад; «Закрити» прибрано
+    if (compact) return '<a class="place-bar compact pb-back' + (ic ? ' has-ic' : '') + '" href="#' + esc(compact === true ? 'home' : compact) + '" style="--pc:var(--pc-' + placeColor(p) + ')" data-key="place-bar" aria-label="' + esc(t('back') + ': ' + placeLabel(p)) + '">' +
+      ico('chev', 28, 'pb-chev') + '<span class="pb-name"><b>' + ic + esc(placeLabel(p)) + '</b>' + (sub ? '<span class="small muted pb-sub">' + esc(sub) + '</span>' : '') + '</span></a>';
     return '<div class="place-bar' + (ic ? ' has-ic' : '') + '" style="--pc:var(--pc-' + placeColor(p) + ')" data-key="place-bar"><a class="pb-name" href="#home" data-key="place-bar-name" title="' + esc(t('pv_back_all')) + '"><b>' + ic + esc(placeLabel(p)) + '</b>' + (sub ? '<span class="small muted">' + esc(sub) + '</span>' : '') + '</a>' +
       '<a class="btn sec pb-all" href="#home" data-key="place-bar-all">' + ico('back', 18) + '<span>' + esc(t('pv_back_all')) + '</span></a></div>';
   }
   /** История, статистика, экономия при ≥ 2 квартирах: чья — видно сразу и меняется тут же (кнопки с названием и цветом, не список). */
   function placeSwitch() {
     var ps = places(), cur = place(); if (ps.length < 2 || !cur) return '';
+    // 143-я (власник 14.11, скрин «Квартира: Победа · Лозовеньки · Гараж»): квартиру без лічильника чи показань цього виду не показуємо — лише ті, де він є (поточна — завжди)
+    var cv = curView(), keep = S.placeId;
+    ps = ps.filter(function (p) { if (p.id === cur.id) return true; S.placeId = p.id; try { return kinds().indexOf(cv) >= 0; } catch (e) { return true; } finally { S.placeId = keep; } });
     return '<div class="place-sw" role="group" aria-label="' + esc(t('pb_where')) + '" data-key="place-switch"><span class="small muted ps-lbl">' + esc(t('pb_where')) + '</span><div class="ps-btns">' + ps.map(function (p) {
       return '<button type="button" data-act="place-view" data-id="' + esc(p.id) + '" aria-pressed="' + (p.id === cur.id) + '" style="--pc:var(--pc-' + placeColor(p) + ')" data-key="place-sw-' + esc(p.id) + '">' + pmark(p, 18) + '<span>' + esc(placeLabel(p)) + '</span></button>';
     }).join('') + '</div></div>';
@@ -598,7 +611,8 @@
     var nav = bare && !side ? '' : '<nav class="nav' + (side ? ' nav-side' : '') + '" style="--nav-n:' + navItems.length + '" aria-label="' + esc(t('brand')) + '">' + navItems.map(function (n) {
       return '<a href="#' + n[0] + '"' + (route === n[0] || (n[2] === 'nav_home' && /^(home|heat|water-|elec$|gas$|places|place$)/.test(route)) ? ' aria-current="page"' : '') + ' data-key="nav-' + (n[2] === 'nav_home' ? 'home' : n[0]) + '">' + ico(n[1], 22) + '<span>' + esc(t(n[2])) + '</span></a>';
     }).join('') + '</nav>';
-    var right = bare && view.closeTo
+    var cbar = /^(wnew|wadd|enew|eadd|gnew|gadd|add-meter|step|step-\d+|check|handover|baseline|meter|photo)$/.test(route) ? placeBar(view.closeTo || true) : '';
+    var right = bare && view.closeTo && !cbar
       ? '<a class="btn ghost" href="#' + view.closeTo + '" data-key="wiz-close" aria-label="' + esc(t('close')) + '">' + ico('close', 22) + '<span class="cl-txt">' + esc(t('close')) + '</span></a>'
       : '';
     // 143-я (власник 14.11, скрин запису історії): «стрілка назад і назва куди — скрізь над квартирами» — посилання «← Історія» / кнопка «Назад» на початку екрана
@@ -606,7 +620,7 @@
     var topBack = (function (h) { var m = /^(<p class="rec-back">[\s\S]*?<\/p>|<div class="wiz-top"><a class="btn ghost"[\s\S]*?<\/div>)/.exec(h || ''); return m ? { b: m[1], h: h.slice(m[1].length) } : { b: '', h: h }; })(view.html);
     return '<div class="app' + (bare ? ' bare-app' : '') + (side ? ' with-side' : '') + '">' +
       '<header class="top' + (right ? ' has-close' : '') + '"><a class="brand" href="#' + homeRoute() + '" data-key="brand" aria-label="' + esc(t('brand')) + ' — передай.com.ua">' + logo() + wordmark(true) + '<span class="beta-tag" data-key="beta">' + esc(t('beta_tag')) + '</span></a>' + '<span class="spacer"></span>' + right + '</header>' +
-      nav + '<main class="main' + (bare ? ' bare' : '') + (view.wide ? ' wide' : '') + enterCls(route) + '" id="main" data-screen="' + view.screen + '" tabindex="-1">' + topBack.b + (/^(history|stats|save)$/.test(route) ? placeSwitch() : /^(heat|water-hot|water-cold|elec|gas)$/.test(route) ? placeBar() : /^(wnew|wadd|enew|eadd|gnew|gadd|add-meter|step|step-\d+|check|handover|baseline|meter|photo)$/.test(route) ? placeBar(true) : '') + topBack.h + '</main>' + (S.onboarded && view.screen !== 'S00' && (!bare || side) ? appFoot() : '') + '</div>' +
+      nav + '<main class="main' + (bare ? ' bare' : '') + (view.wide ? ' wide' : '') + enterCls(route) + '" id="main" data-screen="' + view.screen + '" tabindex="-1">' + topBack.b + (/^(history|stats|save)$/.test(route) ? placeSwitch() : /^(heat|water-hot|water-cold|elec|gas)$/.test(route) ? placeBar() : /^(wnew|wadd|enew|eadd|gnew|gadd|add-meter|step|step-\d+|check|handover|baseline|meter|photo)$/.test(route) ? cbar : '') + topBack.h + '</main>' + (S.onboarded && view.screen !== 'S00' && (!bare || side) ? appFoot() : '') + '</div>' +
       (window.TEPLO_API && !ccAsk() ? '<button class="fab' + (bare ? ' fab-bare' : '') + '" data-act="fb-open" data-key="feedback" aria-haspopup="dialog">' + ico('chat', 20) + '<span>' + esc(t('fb_btn')) + '</span></button>' + fbDialog() : '') +
       (bare ? ccBanner().replace('class="cc"', 'class="cc cc-bare"') : ccBanner()) +
       '<div id="toast-host" aria-live="polite"></div>';
@@ -1121,7 +1135,7 @@
       return withPlace(p.id, function () {
         var cards = homeCards();
         return '<details class="hp pacc" id="hp-' + esc(p.id) + '" data-pl="' + esc(p.id) + '" style="--pc:var(--pc-' + placeColor(p) + ')" data-key="home-pl-' + esc(p.id) + '"' + (open ? ' open' : '') + '>' +
-          '<summary data-key="home-pl-sum-' + esc(p.id) + '"' + (p.icon && PICONS[p.icon] ? ' class="has-ic"><span class="pacc-ic">' + picon(p, 40) + '</span>' : '>') + '<span class="pacc-t"><b>' + (p.icon && PICONS[p.icon] ? '' : '<i class="pdot" aria-hidden="true"></i>') + esc(placeLabel(p)) + '</b>' + (p.address ? '<span class="pacc-addr">' + esc(p.address) + '</span>' : '') + '</span>' +
+          '<summary data-key="home-pl-sum-' + esc(p.id) + '"' + (p.icon && PICONS[p.icon] ? ' class="has-ic"><span class="pacc-ic">' + picon(p, 40) + '</span>' : '>') + '<span class="pacc-t"><b>' + (p.icon && PICONS[p.icon] ? '' : '<i class="pdot" aria-hidden="true"></i>') + esc(placeLabel(p)) + '</b>' + (p.address ? '<span class="pacc-addr">' + esc(addrShort(p.address)) + '</span>' : '') + '</span>' +
             ico('chev', 22, 'pacc-chev') + due + '</summary><div class="pacc-body">' +
           (HP_EDIT === p.id ? hpEditForm(p) : '') +
           // назва, адреса, рахунки, постачальники, додати й прибрати лічильник — усе на екрані квартири; тут лише вхід туди, під лічильниками
@@ -1365,7 +1379,10 @@
   function whereAcc(h, recId) {
     var m = /^<section class="panel where" data-key="([^"]+)"><h2>([\s\S]*?)<\/h2>([\s\S]*)<\/section>$/.exec(h); if (!m) return h;
     var id = recId ? 'wacr-' + recId + '--' + m[1] : 'wacc-' + m[1], open = (recId ? WR_OPEN : WH_OPEN)[id.slice(5)];
-    return '<details class="panel where wacc' + (recId ? '' : ' wacc-btn') + '" id="' + id + '" data-key="' + m[1] + '"' + (open ? ' open' : '') + '><summary data-key="' + m[1] + '-sum"><h2>' + m[2] + '</h2>' + ico('chev', 20, 'pacc-chev') + '</summary><div class="where-b">' + m[3] + '</div></details>';
+    // 143-я (власник 14.11, скрин): замість «Куди передати» — назва постачальника (кілька — через « · », гаряча: Водоканал · ХТМ); значок лишається
+    var orgs = [], om, ore = /class="dest-h"><div class="grow"><b>([^<]+)<\/b>/g; while ((om = ore.exec(m[3]))) if (orgs.indexOf(om[1]) < 0) orgs.push(om[1]);
+    var head = orgs.length ? m[2].replace(/<span>[^<]*<\/span>/, '<span>' + orgs.join(' · ') + '</span>') : m[2];
+    return '<details class="panel where wacc' + (recId ? '' : ' wacc-btn') + '" id="' + id + '" data-key="' + m[1] + '"' + (open ? ' open' : '') + ' aria-label="' + esc(t('wd_title')) + '"><summary data-key="' + m[1] + '-sum"><h2>' + head + '</h2>' + ico('chev', 20, 'pacc-chev') + '</summary><div class="where-b">' + m[3] + '</div></details>';
   }
   var WR_OPEN = {};   // «Куди передати» в картці запису історії: відкривали — лишається відкритим до перезавантаження
   function waccStore(d) { return d.id.indexOf('wacr-') === 0 ? WR_OPEN : WH_OPEN; }
@@ -3106,7 +3123,8 @@
     var ms = smeters(k), md = SK[k].mod, u = SK[k].unit(); if (!ms.length) { AM_BACK = 'home'; return V['add-meter'](); }
     if (EN.k !== k) EN = enFresh(k);
     var date = EN.date || today(), back = EN.back || backTo(SK[k].page), w = swin(k, date);
-    var h = '<h1>' + esc(tk(k, 'en_title')) + '</h1><p class="small muted">' + esc(tk(k, w.open ? 'en_lead_open' : 'en_lead_closed', { a: fmtDate(w.open ? w.from : w.next), b: fmtDate(w.to) })) + '</p>' +
+    // 143-я (власник 14.11): замість «Наступне приймання — … Внести можна й зараз» — смужка вікна, як на картках квартир (текст — для читача екрана)
+    var h = '<h1>' + esc(tk(k, 'en_title')) + '</h1>' + (pstrip(k, null, 'in-entry') || '') + '<p class="sr" data-key="en-lead">' + esc(tk(k, w.open ? 'en_lead_open' : 'en_lead_closed', { a: fmtDate(w.open ? w.from : w.next), b: fmtDate(w.to) })) + '</p>' +
       enPhotoBox(k) + '<div class="field f-date"><label for="en-date">' + esc(t('wn_date')) + '</label><div class="ctl"><input id="en-date" type="date" value="' + esc(date) + '" max="' + today() + '"></div></div>' + '<form id="en-form" novalidate><div class="rd-box" data-key="en-box">';
     ms.forEach(function (m) {
       var p = eprev(m.id, date, EN.skip), vs = EN.vals[m.id] || {};
@@ -3439,7 +3457,7 @@
     var order = ms.slice().sort(function (a, b) { return (a.kind === WN.kind ? 0 : 1) - (b.kind === WN.kind ? 0 : 1); });
     var date = WN.date || today(), back = WN.back || backTo('water-' + WN.kind);
     var prev = {}; ms.forEach(function (m) { var r = wprevFor(m.id, date); if (r) prev[m.id] = r; });
-    var h = '<h1>' + esc(t('wn_title')) + '</h1>' + (WN.autoWhy ? '<div class="banner warn" data-key="wn-auto-why" data-why="' + esc(WN.autoWhy) + '">' + ico('info', 22) + '<div><p><b>' + esc(t('wa_why_t')) + '</b></p><p>' + esc(t('wa_why_' + WN.autoWhy)) + '</p></div></div>' : '') +
+    var h = '<h1>' + esc(t('wn_title')) + '</h1>' + (pstrip('water', null, 'in-entry') || '') + (WN.autoWhy ? '<div class="banner warn" data-key="wn-auto-why" data-why="' + esc(WN.autoWhy) + '">' + ico('info', 22) + '<div><p><b>' + esc(t('wa_why_t')) + '</b></p><p>' + esc(t('wa_why_' + WN.autoWhy)) + '</p></div></div>' : '') +
       wnPhotoBox() +
       '<div class="field f-date"><label for="wn-date">' + esc(t('wn_date')) + '</label><div class="ctl"><input id="wn-date" type="date" value="' + esc(date) + '" max="' + today() + '"></div></div>' +
       '<form id="wn-form" novalidate><div class="rd-box" data-key="wn-box">' + order.map(function (m) {

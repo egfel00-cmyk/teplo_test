@@ -46,6 +46,14 @@ let pass = 0, fail = 0; const ok = (n, c, x) => { if (c) { pass++; console.log('
   await p.goto(U + '#elec'); await p.waitForTimeout(800);
   const mp = await txt('[data-key=mp-elec]');
   ok('ціна світла: без заголовка «Ціна» над полем і без «{d}»', !!mp && !/\{d\}/.test(mp) && !(await p.$('[data-key=mp-elec] .mp-h')), mp.slice(0, 200));
+  // перемикач квартир в «Історії»: лише квартири, де є лічильник цього виду (світло — лише в першій, холодна — в обох); «Куди передати» — назвою постачальника
+  await p.evaluate(() => { const s = JSON.parse(localStorage.getItem('teplo.v1')); s.view = 'elec'; localStorage.setItem('teplo.v1', JSON.stringify(s)); });
+  await p.goto(U + '#history'); await p.reload(); await p.waitForTimeout(1000);
+  ok('історія світла: у перемикачі лише квартира зі світлом', (await p.$$('[data-key=place-switch] button')).length === 1, (await p.$$('[data-key=place-switch] button')).length);
+  await p.click('[data-key=kind-cold]'); await p.waitForTimeout(600);
+  ok('історія холодної: обидві квартири', (await p.$$('[data-key=place-switch] button')).length === 2);
+  await p.goto(U + '#elec'); await p.waitForTimeout(800);
+  ok('«Куди передати» світла — назвою постачальника (Харківобленерго)', /Харківобленерго/.test(await txt('[data-key=where-elec-sum]')) && !/Куди передати/.test(await txt('[data-key=where-elec-sum]')), await txt('[data-key=where-elec-sum]'));
   ok('без помилок JS', !errs.length, errs);
   await b.close();
   console.log(pass + ' OK, ' + fail + ' FAIL'); process.exit(fail ? 1 : 0);
