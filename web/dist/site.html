@@ -5305,7 +5305,7 @@ details.wacc.wacc-btn > .acc-foot { margin: 0; padding: 12px 16px 16px; border-t
       my_abon: 'Щомісячна плата, грн', my_phone: 'Телефон', my_note: 'Примітка', my_note_ph: 'Напр., № гаража 47',
       my_on_t: 'Свій постачальник: {o}', my_on_t0: 'Свій постачальник — впишіть назву й реквізити', my_off_t: 'Повернули постачальника з довідника',
       my_link: 'Платите комусь іншому? Свій постачальник', my_sum: 'До сплати', my_sum_s: '{q} з {d}', my_norq: 'Реквізитів ще немає — допишіть у «Налаштуваннях показань».',
-      my_copy_all: 'Скопіювати реквізити', my_paid: 'Оплачено', my_notpaid: 'Не оплачено', my_paid_s: 'Сплатили — показання й гроші за них пішли постачальнику', my_acc_h: 'З договору чи квитанції постачальника — щоб скопіювати при оплаті.', my_paid_on: 'Оплачено {d}', my_unpaid: 'Скасувати',
+      my_copy_all: 'Скопіювати реквізити', my_paid: 'Оплачено', my_notpaid: 'Не оплачено', my_paid_s: 'Сплатили — показання й гроші за них пішли постачальнику', my_acc_h: 'З договору чи квитанції постачальника — щоб скопіювати при оплаті.', my_paid_on: 'Оплачено {d}', my_paid_d: 'Оплачено {d}', my_paid_d_s: 'оплачено {d}', my_unpaid: 'Скасувати',
       my_pill: 'свій', my_noname: 'Назву ще не вписали', my_set: 'Налаштувати', my_p_elec: '{p} грн за кВт·год', my_p_gas: '{p} грн за м³', my_p_abon: '{a} грн на місяць',
     },
     ru: {
@@ -6633,7 +6633,7 @@ details.wacc.wacc-btn > .acc-foot { margin: 0; padding: 12px 16px 16px; border-t
       my_abon: 'Ежемесячная плата, грн', my_phone: 'Телефон', my_note: 'Примечание', my_note_ph: 'Напр., № гаража 47',
       my_on_t: 'Свой поставщик: {o}', my_on_t0: 'Свой поставщик — впишите название и реквизиты', my_off_t: 'Вернули поставщика из справочника',
       my_link: 'Платите кому-то другому? Свой поставщик', my_sum: 'К оплате', my_sum_s: '{q} с {d}', my_norq: 'Реквизитов ещё нет — допишите в «Настройках показаний».',
-      my_copy_all: 'Скопировать реквизиты', my_paid: 'Оплачено', my_notpaid: 'Не оплачено', my_paid_s: 'Оплатили — показания и деньги за них ушли поставщику', my_acc_h: 'Из договора или квитанции поставщика — чтобы скопировать при оплате.', my_paid_on: 'Оплачено {d}', my_unpaid: 'Отменить',
+      my_copy_all: 'Скопировать реквизиты', my_paid: 'Оплачено', my_notpaid: 'Не оплачено', my_paid_s: 'Оплатили — показания и деньги за них ушли поставщику', my_acc_h: 'Из договора или квитанции поставщика — чтобы скопировать при оплате.', my_paid_on: 'Оплачено {d}', my_paid_d: 'Оплачено {d}', my_paid_d_s: 'оплачено {d}', my_unpaid: 'Отменить',
       my_pill: 'свой', my_noname: 'Название ещё не вписали', my_set: 'Настроить', my_p_elec: '{p} грн за кВт·ч', my_p_gas: '{p} грн за м³', my_p_abon: '{a} грн в месяц',
     }
   };
@@ -10220,7 +10220,7 @@ details.wacc.wacc-btn > .acc-foot { margin: 0; padding: 12px 16px 16px; border-t
     var o = { sub: lastK && !lastK.base ? t('uc_w_last', { d: fmtDate(lastK.date) }) : lastK ? t('uc_w_start', { d: fmtDate(lastK.date) }) : t('uc_w_nolast'), status: st, tone: tone, off: ws.off };
     // передано — лише коли останні показання кожного водоміра цього виду передані (гаряча — і Водоканалу, і ХТМ)
     var wsent = function (r) { return r && !r.base && !r.gap && !r.own && wsentVk(r) && (kind === 'cold' || wsentHtm(r)); };
-    if (lastK && recs.every(function (r) { return !r || wsent(r); }) && wsent(lastK)) cardSent(o, lastK.date);
+    if (lastK && recs.every(function (r) { return !r || wsent(r); }) && wsent(lastK)) cardSent(o, lastK.date, myProv('water') ? 'my_paid_d' : '');   // 144-а: свій — «Оплачено»
     return ucard({ kind: kind, href: 'water-' + kind, icon: 'drop', title: title, display: display, sub: o.sub, status: o.status, tone: o.tone, per: pstrip('water', ws), addAct: 'wnew', addKind: kind, addLabel: t('uc_add_w', { k: title.toLowerCase() }) });
   }
   /** Плитка «Налаштування квартири» под счётчиками (владелец 05.11: вместо «Додати лічильник» — настройки квартиры, там же добавить
@@ -11700,7 +11700,7 @@ details.wacc.wacc-btn > .acc-foot { margin: 0; padding: 12px 16px 16px; border-t
     var lasts = ms.map(function (m) { return elastOf(m.id); }), last = lasts.filter(Boolean).sort(function (a, b) { return a.date < b.date ? 1 : -1; })[0];
     var o = { sub: last ? (last.base ? t('uc_w_start', { d: fmtDate(last.date) }) : t('uc_w_last', { d: fmtDate(last.date) })) : t('uc_w_nolast'), status: cardSt(es), tone: cardSt(es) ? es.tone : '' };
     var sent = function (r) { return r && !r.base && !r.own && ssent(k, r); };
-    if (last && lasts.every(function (r) { return !r || sent(r); }) && sent(last)) cardSent(o, last.date);
+    if (last && lasts.every(function (r) { return !r || sent(r); }) && sent(last)) cardSent(o, last.date, myProv(k) ? 'my_paid_d' : '');
     return ucard({ kind: k, href: SK[k].page, icon: SK[k].icon, title: t(KINDS[k].t), display: display, sub: o.sub,
       status: o.status, tone: o.tone, per: pstrip(k, es), addAct: SK[k].nw, addLabel: tk(k, 'ue_add') });
   }

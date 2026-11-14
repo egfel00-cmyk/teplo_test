@@ -1082,7 +1082,7 @@
     var o = { sub: lastK && !lastK.base ? t('uc_w_last', { d: fmtDate(lastK.date) }) : lastK ? t('uc_w_start', { d: fmtDate(lastK.date) }) : t('uc_w_nolast'), status: st, tone: tone, off: ws.off };
     // передано — лише коли останні показання кожного водоміра цього виду передані (гаряча — і Водоканалу, і ХТМ)
     var wsent = function (r) { return r && !r.base && !r.gap && !r.own && wsentVk(r) && (kind === 'cold' || wsentHtm(r)); };
-    if (lastK && recs.every(function (r) { return !r || wsent(r); }) && wsent(lastK)) cardSent(o, lastK.date);
+    if (lastK && recs.every(function (r) { return !r || wsent(r); }) && wsent(lastK)) cardSent(o, lastK.date, myProv('water') ? 'my_paid_d' : '');   // 144-а: свій — «Оплачено»
     return ucard({ kind: kind, href: 'water-' + kind, icon: 'drop', title: title, display: display, sub: o.sub, status: o.status, tone: o.tone, per: pstrip('water', ws), addAct: 'wnew', addKind: kind, addLabel: t('uc_add_w', { k: title.toLowerCase() }) });
   }
   /** Плитка «Налаштування квартири» под счётчиками (владелец 05.11: вместо «Додати лічильник» — настройки квартиры, там же добавить
@@ -2562,7 +2562,7 @@
     var lasts = ms.map(function (m) { return elastOf(m.id); }), last = lasts.filter(Boolean).sort(function (a, b) { return a.date < b.date ? 1 : -1; })[0];
     var o = { sub: last ? (last.base ? t('uc_w_start', { d: fmtDate(last.date) }) : t('uc_w_last', { d: fmtDate(last.date) })) : t('uc_w_nolast'), status: cardSt(es), tone: cardSt(es) ? es.tone : '' };
     var sent = function (r) { return r && !r.base && !r.own && ssent(k, r); };
-    if (last && lasts.every(function (r) { return !r || sent(r); }) && sent(last)) cardSent(o, last.date);
+    if (last && lasts.every(function (r) { return !r || sent(r); }) && sent(last)) cardSent(o, last.date, myProv(k) ? 'my_paid_d' : '');
     return ucard({ kind: k, href: SK[k].page, icon: SK[k].icon, title: t(KINDS[k].t), display: display, sub: o.sub,
       status: o.status, tone: o.tone, per: pstrip(k, es), addAct: SK[k].nw, addLabel: tk(k, 'ue_add') });
   }
