@@ -775,6 +775,11 @@ $kS = ['places' => [['id' => 'k', 'address' => 'смт Краснокутськ,
 $kd = Reminders::placesDue($kS, 'waste10', '2026-11');
 ok('довідник 142-ї: сміття — Краснокутськ 30,00 / 29,70 + абонплата 20,00, Південне й Буди 55,43, Рогань і Докучаєвське 54,32 / 57,72, Слобожанське 38,79 / 45,87; у всіх src і from; нагадування Краснокутськ ≈ 80,00 грн',
   !$w142 && ($kd[0]['sum'] ?? null) == 80.0, [$w142, $kd]);
+// 143-я: Кегичівка — намір ККП «Кегичівка – Сервіс плюс» 28,90 / 35,10 з 01.06.2024 (check); Нова Водолага — від домоволодінь безкоштовно (Служба благоустрою), ціни немає
+$kw = Providers::lookup('смт Кегичівка, вул. Волошина, 1')['kinds']['waste'] ?? []; $nw = Providers::lookup('Нова Водолага, вул. Гагаріна, 1')['kinds']['waste'] ?? [];
+ok('довідник 143-ї: сміття — Кегичівка 28,90 / 35,10 (check), Нова Водолага — безкоштовно, без ціни, з поясненням',
+  ($kw['price'] ?? null) == 28.9 && ($kw['priv'] ?? null) == 35.1 && !empty($kw['check']) && str_contains((string)($kw['org'] ?? ''), 'Кегичівка') && !empty($kw['src_ru'])
+  && array_key_exists('price', $nw) && $nw['price'] === null && !empty($nw['check']) && str_contains((string)($nw['note'] ?? ''), 'безкоштовний') && str_contains((string)($nw['org'] ?? ''), 'Служба благоустрою'), [$kw, $nw]);
 $d10 = Reminders::kindOn(new DateTimeImmutable('2026-12-10 12:00', new DateTimeZone('Europe/Kyiv')));
 ok('10.12 — waste10 за листопад; «найближче» його пропускає (лише показання)', $d10 === ['waste10', '2026-11'] && (Reminders::next(strtotime('2026-12-06 12:00:00 Europe/Kyiv'))['kind'] ?? '') === 'water16', $d10);
 $wsS = ['places' => [['id' => 'main', 'address' => 'м. Харків, вул. Сумська, 10', 'waste' => ['on' => true, 'persons' => 3]], ['id' => 'p2', 'name' => 'Мамина', 'address' => 'смт Мала Данилівка, вул. Академічна, 1', 'water' => ['persons' => 2], 'waste' => ['on' => true, 'remindOff' => true]], ['id' => 'p3', 'name' => 'Дача']]];
