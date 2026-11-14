@@ -48,6 +48,7 @@
 //  POST /api/feedback               {text, contact?, page, screen, lang} — плавающая кнопка «Відгук», вход не нужен
 //  GET  /api/admin/*                аналитика владельца (только admins из config.php), см. app/admin.php
 //  GET  /api/admin/photo?id=…       байты фото (не JSON)
+//  GET  /api/admin/pages, /api/admin/page?id=…  отчёты владельца (app/reports.php; страница — sandbox, без скриптов)
 //  Пути здесь — без SITE_BASE: index.php отрезает его.
 declare(strict_types=1);
 if (!defined('TEPLO')) { http_response_code(404); exit; }
@@ -462,6 +463,8 @@ final class Api {
       if (!$user) throw new HttpError(401, 'unauthorized');
       if (!Admin::is($user)) throw new HttpError(403, 'not_admin');
       if ("$m $p" === 'GET /api/admin/photo') { $res->file = Admin::photoFile((string)($r->query()['id'] ?? '')); return []; }
+      if ("$m $p" === 'GET /api/admin/pages') return ['pages' => Reports::index()];   // отчёты владельца (app/reports.php); /admin/reports — это ошибки распознавания
+      if ("$m $p" === 'GET /api/admin/page') { $f = Reports::file((string)($r->query()['id'] ?? '')); if ($f === null) throw new HttpError(404, 'not_found'); $res->file = ['path' => $f, 'mime' => 'text/html']; return []; }
       return Admin::route("$m $p", $r->query(), $in, $user);
     }
     throw new HttpError(404, 'not_found');

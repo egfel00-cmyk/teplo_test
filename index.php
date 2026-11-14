@@ -48,6 +48,7 @@ require __DIR__ . '/app/mail.php';
   require __DIR__ . '/app/docs.php';
   require __DIR__ . '/app/indexnow.php';
   require __DIR__ . '/app/relay.php';
+  require __DIR__ . '/app/reports.php';
   require __DIR__ . '/app/api.php';
   header('Content-Type: application/json; charset=utf-8');
   header('Cache-Control: no-store');
@@ -74,6 +75,15 @@ require __DIR__ . '/app/mail.php';
   if ($res->status === 429 && isset($res->body['retryAfter'])) header('Retry-After: ' . (int)$res->body['retryAfter']);
   foreach ($res->cookies as [$n, $v, $o]) setcookie($n, $v, $o);
   echo json_encode($res->body, JSON_UNESCAPED_UNICODE);
+  exit;
+}
+
+// отчёты владельца по ссылке (148-я: разбор конкурентов) — статика без скриптов, noindex; список и файлы — app/reports.php
+if (preg_match('~^/r/([a-z0-9-]{4,64})/?$~', $path, $rm)) {
+  require __DIR__ . '/app/reports.php';
+  $rf = Reports::bySlug($rm[1]);
+  if ($rf === null) { http_response_code(404); header('Content-Type: text/plain; charset=utf-8'); header('X-Robots-Tag: noindex'); echo "Not found\n"; exit; }
+  Reports::send($rf, true);
   exit;
 }
 

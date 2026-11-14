@@ -101,7 +101,7 @@ pre.state { font: 12px/1.4 var(--mono); background: #F4F7F5; padding: 10px; bord
 
   function shell(body) {
     var o = DATA.overview || {};
-    var tabs = [['overview', 'Сводка'], ['users', 'Пользователи', 0], ['geo', 'Откуда и сколько', 0], ['visitors', 'Откуда заходят', 0], ['feedback', 'Сообщения', o.feedbackNew], ['photos', 'Фото', 0], ['reports', 'Ошибки распознавания', o.reportsBad], ['journal', 'Журнал', 0], ['reminders', 'Напоминания', o.cronAgo == null || o.cronAgo > 600 ? '!' : 0], ['prov', 'Справочник', 0], ['settings', 'Настройки', !o.telegram ? '!' : 0]];
+    var tabs = [['overview', 'Сводка'], ['users', 'Пользователи', 0], ['geo', 'Откуда и сколько', 0], ['visitors', 'Откуда заходят', 0], ['feedback', 'Сообщения', o.feedbackNew], ['photos', 'Фото', 0], ['reports', 'Ошибки распознавания', o.reportsBad], ['journal', 'Журнал', 0], ['reminders', 'Напоминания', o.cronAgo == null || o.cronAgo > 600 ? '!' : 0], ['prov', 'Справочник', 0], ['pages', 'Отчёты', 0], ['settings', 'Настройки', !o.telegram ? '!' : 0]];
     app.innerHTML = '<header><b>Счётчики · аналитика</b><span class="muted small">' + esc(o.me || '') + '</span><span style="flex:1"></span><a class="btn" href="' + esc(SITE) + '">На сайт</a></header>' +
       '<nav>' + tabs.map(function (t) { return '<button data-tab="' + t[0] + '"' + (TAB === t[0] || (TAB === 'jsession' && t[0] === 'journal') || (/^prov/.test(TAB) && t[0] === 'prov') ? ' aria-current="true"' : '') + '>' + t[1] + (t[2] ? '<span class="n">' + t[2] + '</span>' : '') + '</button>'; }).join('') + '</nav><main>' + body + '</main>';
   }
@@ -439,6 +439,24 @@ pre.state { font: 12px/1.4 var(--mono); background: #F4F7F5; padding: 10px; bord
     return KIND[k] || k;
   }
   function rstatus(s) { if (!s) return pill('warn', 'нет итога'); var x = RST[s]; return x ? pill(x[0], x[1]) : pill('bad', s); }
+  /** Отчёты владельца (148-я): готовые страницы с сервера (app/reports.php). Здесь — только для админов; публичная ссылка — у кого она есть
+   *  (noindex). Страница в рамке — без скриптов (sandbox), ссылки на источники открываются из «Открыть отдельно». */
+  VIEW.pages = function () {
+    var l = DATA.pages || [];
+    if (!l.length) return '<div class="panel">Отчётов пока нет.</div>';
+    var cur = l.filter(function (x) { return x.id === PG.id; })[0] || l[0];
+    var url = cur.slug ? SITE + 'r/' + cur.slug : '';
+    return '<div class="panel">' + l.map(function (x) {
+        return '<p style="margin:4px 0">' + (x.id === cur.id ? '<b>' + esc(x.title) + '</b>' : '<a href="#pages" data-page="' + esc(x.id) + '">' + esc(x.title) + '</a>') +
+          ' <span class="muted small">' + esc(x.date) + '</span>' + (x.ok ? '' : ' ' + pill('bad', 'файла нет')) + '</p>';
+      }).join('') +
+      (url ? '<p class="small" style="margin:10px 0 4px">Ссылка для всех, у кого она есть (в поиск не попадает): <a href="' + esc(url) + '" target="_blank" rel="noopener" data-key="page-url">' + esc(url) + '</a></p>' +
+        '<p style="margin:4px 0"><button class="btn" data-copy="page-url">Скопировать ссылку</button> <a class="btn" href="' + esc(url) + '" target="_blank" rel="noopener">Открыть отдельно</a> <span class="muted small" data-copied></span></p>'
+        : '<p class="muted small">Только здесь, публичной ссылки нет.</p>') + '</div>' +
+      (cur.ok ? '<iframe title="' + esc(cur.title) + '" src="' + esc(API + '/admin/page?id=' + encodeURIComponent(cur.id)) + '" sandbox="" loading="lazy" style="width:100%;height:80vh;border:1px solid var(--line);border-radius:12px"></iframe>' : '');
+  };
+  var PG = { id: '' };
+
   VIEW.reminders = function () {
     var d = DATA.reminders || {}, n = d.next || {}, c = d.cron || {}, pv = d.preview || [], lg = d.log || [];
     var h = c.hourly || {}, hr = h.reminders ? Object.keys(h.reminders).map(function (k) { return esc(k) + ': ' + h.reminders[k]; }).join(', ') : '';
@@ -898,6 +916,7 @@ pre.state { font: 12px/1.4 var(--mono); background: #F4F7F5; padding: 10px; bord
     photos: function () { return get('/admin/photos' + (PF === 'problems' ? '?filter=problems' : '')).then(function (j) { DATA.photos = j.photos; }); },
     reports: function () { return get('/admin/reports').then(function (j) { DATA.reports = j.reports; }); },
     reminders: function () { return get('/admin/reminders').then(function (j) { DATA.reminders = j; }); },
+    pages: function () { return get('/admin/pages').then(function (j) { DATA.pages = j.pages || []; }); },
     journal: function () { return get('/admin/journal?days=' + JD.days + (JD.all ? '&all=1' : '')).then(function (j) { DATA.journal = j; }); },
     jsession: function () { return get('/admin/journal/session?vid=' + encodeURIComponent(JD.vid) + '&sid=' + encodeURIComponent(JD.sid)).then(function (j) { DATA.jsession = j; }); }
   };
@@ -938,6 +957,8 @@ pre.state { font: 12px/1.4 var(--mono); background: #F4F7F5; padding: 10px; bord
       }, function () { say('Сервер недоступен'); });
       return;
     }
+    var pgl = e.target.closest('[data-page]');
+    if (pgl) { e.preventDefault(); PG.id = pgl.getAttribute('data-page'); show('pages'); return; }
     var cp = e.target.closest('[data-copy]');
     if (cp) { var src = document.querySelector('[data-key="' + cp.getAttribute('data-copy') + '"]'), msg = cp.parentNode.querySelector('[data-copied]') || document.querySelector('[data-key=ua-copied]'), txt = src ? src.textContent : '';
       var done = function (ok) { if (msg) msg.textContent = ok ? 'Скопировано' : 'Не вышло — выделите текст выше и скопируйте вручную'; };
