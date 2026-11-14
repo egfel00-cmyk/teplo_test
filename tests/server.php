@@ -2793,5 +2793,19 @@ $lvi = array_values(array_filter($ce['items'], fn($x) => str_contains($x['o'], '
 $pv = Reminders::placeProv(['address' => '', 'prov' => ['elec' => ['own' => 0, 'sel' => ['o' => $lvi['o'], 'n' => $lvi['n'], 'h' => $lvi['h']]], 'water' => ['own' => 0, 'sel' => ['o' => $bu['o'], 'n' => $bu['n'], 'h' => $bu['h']]]]]);
 ok('нагадування: обраний у довіднику постачальник — замість харківського (світло — Львівенергозбут, вода — Бучасервіс з вікном, не Харківводоканал)',
   str_contains((string)$pv['elec'], 'Львівенергозбут') && str_contains((string)$pv['water'], 'Бучасервіс') && $pv['hvk'] === false && !empty($pv['win']['water']), $pv);
+
+// 149-я: сторінки «Як зняти показання <модель>» (план конкурентів, п. 1) — дані не відстали від models.js, сторінки й sitemap
+require_once "$root/app/seo.php";
+$sj = json_decode((string)file_get_contents("$root/app/data/seo/models.json"), true);
+$srcNow = substr(md5(implode("\n", array_map(fn($f) => (string)file_get_contents("$root/$f"), ['web/src/models.js', 'web/src/rules.js', 'web/src/i18n.js']))), 0, 12);
+ok('seo: models.json зібраний з поточних models.js / rules.js / i18n.js (інакше — node tools_seo.cjs)', ($sj['src'] ?? '') === $srcNow, [$sj['src'] ?? null, $srcNow]);
+$sp = Seo::render('uk', 'sharky774', '', 'https://peredai.com.ua/'); $sr = Seo::render('ru', 't330', '', 'https://peredai.com.ua/'); $si2 = Seo::render('uk', '', '', 'https://peredai.com.ua/');
+ok('seo: сторінка моделі — заголовок, кроки словами, hreflang, HowTo, без <script> крім ld+json; ru — по-російськи; невідома — null; список — 37',
+  count($sj['models'] ?? []) === 37 && str_contains((string)$sp, '<h1>Як зняти показання SHARKY 774</h1>') && str_contains((string)$sp, 'Натисніть кнопку 2 рази')
+  && str_contains((string)$sp, 'hreflang="ru" href="https://peredai.com.ua/ru/kak-snyat-pokazaniya/sharky774"') && str_contains((string)$sp, '"@type":"HowTo"')
+  && preg_match_all('~<script~', (string)$sp) === 1 && str_contains((string)$sr, 'Зажмите кнопку и держите больше 3 с') && Seo::render('uk', 'nope', '', 'https://x/') === null
+  && substr_count((string)$si2, '<li><a href="/yak-znyaty-pokaznannya/') === 37 && Seo::match('/ru/kak-snyat-pokazaniya/t330') === ['ru', 't330'] && Seo::match('/yak-znyaty-pokaznannya/../x') === null);
+ok('seo: sitemap — головна + 2 × 38 адрес парами', count(Seo::pairs()) === 38);
+
 echo "\nИтог: $pass OK, $fail FAIL\n";
 exit($fail ? 1 : 0);

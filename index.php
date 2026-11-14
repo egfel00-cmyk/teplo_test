@@ -87,6 +87,16 @@ if (preg_match('~^/r/([a-z0-9-]{4,64})/?$~', $path, $rm)) {
   exit;
 }
 
+// 149-я: сторінки для пошуку «Як зняти показання <модель>» (uk + ru) — сервером, без скриптів (app/seo.php, дані — tools_seo.cjs)
+if (preg_match('~^/(ru/)?(yak-znyaty-pokaznannya|kak-snyat-pokazaniya)(/|$)~', $path)) {
+  require_once __DIR__ . '/app/seo.php';
+  $sm = Seo::match($path); $sh = preg_replace('/[^A-Za-z0-9.:-]/', '', (string)($_SERVER['HTTP_HOST'] ?? 'localhost'));
+  $html = $sm ? Seo::render($sm[0], $sm[1], $base, (preg_match('/^(localhost|127\.0\.0\.1)(:\d+)?$/', $sh) ? 'http' : 'https') . '://' . $sh . $base . '/') : null;
+  if ($html === null) { http_response_code(404); header('Content-Type: text/plain; charset=utf-8'); header('X-Robots-Tag: noindex'); echo "Not found\n"; exit; }
+  if (rtrim($path, '/') !== $path) { header('Location: ' . $base . rtrim($path, '/'), true, 301); exit; }
+  Seo::send($html); exit;
+}
+
 if ($path === '/admin' || $path === '/admin/') {   // аналитика владельца; данные отдаёт /api/admin/* только админам
   header('Content-Type: text/html; charset=utf-8');
   header('Cache-Control: no-cache');
@@ -156,7 +166,13 @@ if ($path === '/robots.txt' || $path === '/sitemap.xml') {
   header('Cache-Control: public, max-age=3600');
   if ($path === '/robots.txt') { header('Content-Type: text/plain; charset=utf-8'); echo "User-agent: *\nAllow: /\nDisallow: " . $base . "/admin\n\nSitemap: " . $site . "sitemap.xml\n"; exit; }
   header('Content-Type: application/xml; charset=utf-8');
-  echo '<?xml version="1.0" encoding="UTF-8"?>' . "\n" . '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"><url><loc>' . htmlspecialchars($site) . '</loc><lastmod>' . date('Y-m-d', (int)filemtime(__DIR__ . '/web/dist/site.html')) . '</lastmod><changefreq>weekly</changefreq><priority>1.0</priority></url></urlset>' . "\n";
+  // 149-я: + сторінки моделей (uk і ru — парами з hreflang)
+  require_once __DIR__ . '/app/seo.php';
+  $sd = date('Y-m-d', (int)@filemtime(__DIR__ . '/app/data/seo/models.json')); $su = rtrim($site, '/'); $x = fn($s) => htmlspecialchars($s, ENT_QUOTES | ENT_XML1);
+  $urls = '<url><loc>' . $x($site) . '</loc><lastmod>' . date('Y-m-d', (int)filemtime(__DIR__ . '/web/dist/site.html')) . '</lastmod><changefreq>weekly</changefreq><priority>1.0</priority></url>';
+  foreach (Seo::pairs() as $i => [$uk, $ru]) foreach ([$uk, $ru] as $u) $urls .= '<url><loc>' . $x($su . $u) . '</loc><lastmod>' . $sd . '</lastmod><priority>' . ($i ? '0.6' : '0.8') . '</priority>' .
+    '<xhtml:link rel="alternate" hreflang="uk" href="' . $x($su . $uk) . '"/><xhtml:link rel="alternate" hreflang="ru" href="' . $x($su . $ru) . '"/></url>';
+  echo '<?xml version="1.0" encoding="UTF-8"?>' . "\n" . '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">' . $urls . '</urlset>' . "\n";
   exit;
 }
 
@@ -184,6 +200,7 @@ function seoStatic(bool $ru, callable $e): string {
     '<h2>' . $e($t('lp_steps_t')) . '</h2><ol>' . $card('lp_s1_t', 'lp_s1') . $card('lp_s2_t', 'lp_s2') . $card('lp_s3_t', 'lp_s3') . '</ol>' .
     '<h2>' . $e($t('lp_bento_t')) . '</h2><ul>' . $card('lp_due_t', 'lp_due') . $card('lp_tg_t', 'lp_tg') . $card('lp_pl_t', 'lp_pl') . $card('lp_cost_t', 'lp_cost') . $card('lp_gpv_t', 'lp_gpv') . '</ul>' .
     '<h2>' . $e($t('lp_end_t')) . '</h2><p>' . $e($t('lp_end')) . '</p>' .
+    '<p><a href="' . ($ru ? 'ru/kak-snyat-pokazaniya' : 'yak-znyaty-pokaznannya') . '">' . ($ru ? 'Как снять показания теплосчётчика — 37 моделей по шагам' : 'Як зняти показання теплолічильника — 37 моделей покроково') . '</a></p>' .
     '<footer><p>' . $e($t('lf_about')) . '</p><p><a href="#privacy">' . $e($t('lg_privacy')) . '</a> · <a href="#terms">' . $e($t('lg_terms')) . '</a> · <a href="#help">' . $e($t('nav_help')) . '</a></p><p>' . $e($t('lf_indep')) . '</p></footer></main>';
 }
 

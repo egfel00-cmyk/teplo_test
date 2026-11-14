@@ -170,7 +170,7 @@
   var lastSig = '', pendingRender = false;
   /** Сохранить: локально всегда; если изменились синхронизируемые данные — отметить время и отправить на другие устройства. */
   function save() {
-    syncPlace(); visitBump(); jrSaved();
+    syncPlace(); visitBump(); jrSaved(); jrProv('');
     // язык напоминаний бота — как в интерфейсе (сервер шлёт на нём)
     if (!S.remind || S.remind.lang !== S.lang) S.remind = Object.assign({}, S.remind || {}, { lang: S.lang });
     var Y = window.TeploSync;
@@ -182,6 +182,7 @@
     var vkb0 = vkbIds(S);
     var keep = { lang: S.lang, demoToday: S.demoToday, focusId: S.focusId, _pickModel: S._pickModel, syncPromptDismissed: S.syncPromptDismissed, placeId: S.placeId, theme: S.theme, themeV: S.themeV, view: S.view, homeOpen: S.homeOpen };
     S = Object.assign(defaults(), m, keep);
+    jrProv((window.TeploSync && window.TeploSync.via) || 'remote');   // 149-а: дані з іншого пристрою змінили «Кому платите» — у журнал
     ensurePlaces(); var ap = place(); if (ap && (ap.meter || ap.baseline || S.places.length > 1)) { S.meter = ap.meter || null; S.baseline = ap.baseline || null; }
     lastSig = window.TeploSync.sig(window.TeploSync.payload(S)); persist();
     // кнопка з нагадування відкрилась до входу — тепер квартири є: у потрібну квартиру й лічильник
@@ -7214,8 +7215,10 @@
   });
   document.addEventListener('pointerdown', function (e) { if (MY_PEND && e.target !== MY_PEND.el) myFlush(); }, true);
   window.addEventListener('hashchange', myFlush, true);
-  window.addEventListener('pagehide', myFlush);
-  document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'hidden') myFlush(); });
+  // 149-а: і одразу на сервер (Sync чекав 1,2 с — згорнули Telegram раніше, і зміна лишалась тільки в цьому вікні)
+  function syncNow() { myFlush(); var Y = window.TeploSync; if (Y && Y.flushNow) Y.flushNow(); }
+  window.addEventListener('pagehide', syncNow);
+  document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'hidden') syncNow(); });
   /** Записати одне поле свого постачальника (без перемальовки): нормалізація як у формі. */
   function myField(pk, f, v) {
     mySet(pk, function (o) {
@@ -9447,6 +9450,28 @@
     // li — дані підуть у акаунт (увійшов); без входу TeploSync теж буває 'server' (сервер доступний), але нічого не надсилає — це «лише на пристрої»
     if (any) { d.li = jrAcc() ? 1 : 0; track('saved', d); }
   }
+  /** 149-а (власник 14.11: «в „Победе" третий раз ввожу Жилстрой — сбрасывается»): хто змінив «Кому платите». Коди без назв: own·xyz (свій,
+   *  xyz — 3 знаки відбитка назви), sel·xyz (з довідника пошуком), ok (підтвердив довідник), nm (уписав назву), dir (як за адресою), «-» — немає.
+   *  prov — зміна на цьому пристрої (s — екран), provx — прийшли дані з іншого пристрою чи сервера (v: poll | pull | login | conflict…) і поміняли. */
+  var PROV0 = null;
+  function nh3(x) { var h = 0, z = String(x || ''); for (var i = 0; i < z.length; i++) h = (h * 31 + z.charCodeAt(i)) >>> 0; return (h % 46656).toString(36); }
+  function provCodes(st) {
+    var o = {};
+    ((st && st.places) || []).forEach(function (p, i) {
+      if (!p || p.deleted || !p.prov || typeof p.prov !== 'object') return;
+      Object.keys(p.prov).forEach(function (k) { var x = p.prov[k]; if (!x || typeof x !== 'object') return;
+        o['p' + i + '.' + k] = x.own ? 'own·' + nh3(x.name) : x.sel && x.sel.o ? 'sel·' + nh3(x.sel.o) : x.ok ? 'ok' : x.name ? 'nm' : 'dir'; });
+    });
+    return o;
+  }
+  function jrProv(via) {
+    if (!JRS) return;
+    try {
+      var c = provCodes(S), o = PROV0, ch = []; PROV0 = c; if (!o) return;
+      Object.keys(Object.assign({}, o, c)).forEach(function (k) { if (o[k] !== c[k]) ch.push(k + ' ' + (o[k] || '-') + '>' + (c[k] || '-')); });
+      if (ch.length) track(via ? 'provx' : 'prov', { c: ch.slice(0, 4).join(', '), v: via || undefined, n: ch.length });
+    } catch (e) { /* журнал не має ламати застосунок */ }
+  }
   function jrAcc() { var y = window.TeploSync; return y && y.mode === 'server' && y.account ? y.account : null; }
   /** Пішов із сайту (сховав вкладку, закрив, згорнув Telegram): що в нього лишилось — для журналу «словами» в /admin (120-а). */
   function jrLeave() {
@@ -9485,7 +9510,7 @@
     try {
       var on0 = ccOn(), o = null; if (on0) try { o = JSON.parse(sessionStorage.getItem('teplo.sid') || 'null'); } catch (e) { o = null; }
       JRS = { vid: on0 ? jrVid() : '', sid: o && o.id && Date.now() - o.at < 1800000 ? o.id : jrId(), at: Date.now(), q: [], tm: null, scr: '', prev: null };
-      JRS.prev = jrCounts();
+      JRS.prev = jrCounts(); PROV0 = provCodes(S);
     } catch (e) { JRS = null; return; }
     var tg1 = window.Telegram && window.Telegram.WebApp;
     track('open', { tg: tg1 && tg1.initData ? 1 : 0, w: Math.round(window.innerWidth || 0), lang: S.lang, li: window.TeploSync && window.TeploSync.mode === 'server' ? 1 : 0, places: JRS.prev.p, meters: JRS.prev.m, recs: JRS.prev.r });

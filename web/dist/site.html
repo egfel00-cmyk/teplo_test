@@ -6783,14 +6783,17 @@ details.mypay[open] > summary .mypay-amt, details.mypay[open] > summary .mypay-s
     if (!CSRF_P) CSRF_P = fetch(root.TEPLO_API + '/config', { headers: { 'Accept': 'application/json' }, credentials: 'same-origin' }).then(function () {}, function () {}).then(function () { CSRF_P = null; });
     return CSRF_P;
   }
-  function api(method, path, body, again) {
+  function api(method, path, body, again, ka) {
     // перед первым изменяющим запросом — cookie ts_csrf; один раз: если cookie не зберігаються (вікно Telegram), повторювати безкінечно не можна;
     // вхід Mini App і запити з X-Session сервер пускає без неї
-    if (method !== 'GET' && !cookie('ts_csrf') && !SESS && !again && path !== '/auth/telegram/webapp') return csrfReady().then(function () { return api(method, path, body, true); });
+    if (method !== 'GET' && !cookie('ts_csrf') && !SESS && !again && path !== '/auth/telegram/webapp') return csrfReady().then(function () { return api(method, path, body, true, ka); });
     var h = { 'Accept': 'application/json' }, sent = '';
     if (method !== 'GET') { h['Content-Type'] = 'application/json'; sent = cookie('ts_csrf'); if (sent) h['X-CSRF'] = sent; }
     if (SESS) h['X-Session'] = SESS;
-    return fetch(root.TEPLO_API + path, { method: method, headers: h, credentials: 'same-origin', body: body ? JSON.stringify(body) : undefined })
+    // 149-а: ka — сторінку ховають/закривають (Telegram згорнули): keepalive, щоб запит пережив сторінку; у браузера межа 64 КБ на такі запити
+    var bs = body ? JSON.stringify(body) : undefined, o = { method: method, headers: h, credentials: 'same-origin', body: bs };
+    if (ka && bs && bs.length < 60000) o.keepalive = true;
+    return fetch(root.TEPLO_API + path, o)
       .then(function (res) { return res.json().catch(function () { return {}; }).then(function (j) { j._status = res.status; return j; }); })
       .then(function (j) {
         // cookie сменилась, пока запрос летел (соседний ответ выдал новую) — повторить один раз с той, что теперь в браузере
@@ -6835,18 +6838,24 @@ details.mypay[open] > summary .mypay-amt, details.mypay[open] > summary .mypay-s
     /** Сохранить изменения (вызывается после каждого save()). Пишем не чаще раза в 1,2 с и только при изменении. */
     push: function () {
       if (this.mode === 'local' || (this.mode === 'server' && !this.account)) return;
-      var self = this; clearTimeout(this._t); this._t = setTimeout(function () { self._flush(); }, 1200);
+      var self = this; clearTimeout(this._t); this._t = setTimeout(function () { self._t = null; self._flush(); }, 1200);
     },
-    _flush: function () {
+    /** 149-а (власник 14.11, «Победа»: «третий раз ввожу Жилстрой — сбрасывается»): зміна йшла на сервер через 1,2 с після save(). Згорнули Telegram
+     *  чи закрили вкладку раніше — таймер не спрацьовував, зміна лишалась тільки в цьому вікні (а вікно Telegram на Mac і localStorage губить);
+     *  наступний вхід брав копію з сервера без неї. Тепер при згортанні/закритті — одразу, keepalive. */
+    flushNow: function () { if (!this._t) return; clearTimeout(this._t); this._t = null; this._flush(true); },
+    /** Звідки прийшли чужі дані останнього _apply (для журналу: poll | pull | login | conflict | claude). */
+    via: '',
+    _flush: function (ka) {
       var p = payload(this._get()), s = sig(p);
       if (s === this._lastSig) return;
       if (this._writing) { this._again = true; return; }
       this._writing = true; this.status = 'syncing'; this._onChange();
       var self = this, done = function (ok) { self._writing = false; if (ok) self._lastSig = s; self.status = ok ? 'ok' : 'error'; self._onChange(); if (self._again) { self._again = false; self._flush(); } };
       if (this.mode === 'claude') this._ref.set({ state: p, updatedAt: p.updatedAt || Date.now() }).then(function () { done(true); }, function () { done(false); });
-      else if (this.mode === 'server') api('PUT', '/state', { state: p, baseVersion: this._version }).then(function (j) {
+      else if (this.mode === 'server') api('PUT', '/state', { state: p, baseVersion: this._version }, false, ka).then(function (j) {
         if (j._status === 200) { self._version = j.version; done(true); }
-        else if (j._status === 409 && j.state) { self._version = j.version; self._apply(merge(self._get(), j.state)); self._writing = false; self._flush(); }
+        else if (j._status === 409 && j.state) { self._version = j.version; self.via = 'conflict'; self._apply(merge(self._get(), j.state)); self._writing = false; self._flush(); }
         else if (j._status === 401) { self.account = null; done(false); }
         else done(false);
       }, function () { self.status = 'offline'; self._writing = false; self._onChange(); });
@@ -6867,7 +6876,7 @@ details.mypay[open] > summary .mypay-amt, details.mypay[open] > summary .mypay-s
             if (snap.metadata && snap.metadata.hasPendingWrites) return;
             if (first) { first = false; clearTimeout(timer); }
             var d = snap.exists ? snap.data() : null;
-            if (d && d.state) { var m = merge(self._get(), d.state); self._lastSig = sig(payload(d.state)); self._apply(m); }
+            if (d && d.state) { var m = merge(self._get(), d.state); self._lastSig = sig(payload(d.state)); self.via = 'claude'; self._apply(m); }
             self.status = 'ok'; self._onChange(); self._flush();
           }, function () { clearTimeout(timer); self._set('local', 'error'); });
         });
@@ -6920,7 +6929,8 @@ details.mypay[open] > summary .mypay-amt, details.mypay[open] > summary .mypay-s
         if (j.state) {
           self._lastSig = sig(j.state);
           // вход в аккаунт, где уже есть данные, с чужими/«без входа» данными в браузере — данные аккаунта главнее, локальные не вливаем
-          if (!same && hasData(j.state)) self._apply(j.state);
+          self.via = login ? (same ? 'login' : 'login-new') : 'pull';
+          if (!same && hasData(j.state)) { self.via = 'login-acct'; self._apply(j.state); }
           else self._apply(merge(self._get(), j.state));
         }
         if (acc) self._setOwner(acc);
@@ -6929,7 +6939,10 @@ details.mypay[open] > summary .mypay-amt, details.mypay[open] > summary .mypay-s
     },
     _startPolling: function () {
       var self = this;
-      var tick = function () { if (self.mode === 'server' && self.account && document.visibilityState === 'visible' && !self._writing) api('GET', '/state?since=' + self._version).then(function (j) { if (j._status === 200 && j.version !== self._version && j.state) { self._version = j.version; self._lastSig = sig(j.state); self._apply(merge(self._get(), j.state)); } }, function () { /* сеть пропала (iPhone после фона: «Load failed») — следующий раз */ }); };
+      var tick = function () { if (self.mode === 'server' && self.account && document.visibilityState === 'visible' && !self._writing) api('GET', '/state?since=' + self._version).then(function (j) { if (j._status === 200 && j.version !== self._version && j.state) { self._version = j.version; self._lastSig = sig(j.state); self.via = 'poll'; self._apply(merge(self._get(), j.state));
+        // 149-а: злиття могло лишити своє новіше (постачальник за ts, записи) — віддати на сервер одразу, а не чекати наступного save() (інакше
+        // сервер і пристрої без localStorage — вікно Telegram на Mac — так і бачили б стару копію)
+        self._flush(); } }, function () { /* сеть пропала (iPhone после фона: «Load failed») — следующий раз */ }); };
       document.addEventListener('visibilitychange', tick); setInterval(tick, 60000);
     },
     _after: function (j) { if (j._status === 200 && j.user) { this.account = j.user; return this.pull(true).then(function () { return j; }); } return Promise.resolve(j); },
@@ -9421,7 +9434,7 @@ details.mypay[open] > summary .mypay-amt, details.mypay[open] > summary .mypay-s
   var lastSig = '', pendingRender = false;
   /** Сохранить: локально всегда; если изменились синхронизируемые данные — отметить время и отправить на другие устройства. */
   function save() {
-    syncPlace(); visitBump(); jrSaved();
+    syncPlace(); visitBump(); jrSaved(); jrProv('');
     // язык напоминаний бота — как в интерфейсе (сервер шлёт на нём)
     if (!S.remind || S.remind.lang !== S.lang) S.remind = Object.assign({}, S.remind || {}, { lang: S.lang });
     var Y = window.TeploSync;
@@ -9433,6 +9446,7 @@ details.mypay[open] > summary .mypay-amt, details.mypay[open] > summary .mypay-s
     var vkb0 = vkbIds(S);
     var keep = { lang: S.lang, demoToday: S.demoToday, focusId: S.focusId, _pickModel: S._pickModel, syncPromptDismissed: S.syncPromptDismissed, placeId: S.placeId, theme: S.theme, themeV: S.themeV, view: S.view, homeOpen: S.homeOpen };
     S = Object.assign(defaults(), m, keep);
+    jrProv((window.TeploSync && window.TeploSync.via) || 'remote');   // 149-а: дані з іншого пристрою змінили «Кому платите» — у журнал
     ensurePlaces(); var ap = place(); if (ap && (ap.meter || ap.baseline || S.places.length > 1)) { S.meter = ap.meter || null; S.baseline = ap.baseline || null; }
     lastSig = window.TeploSync.sig(window.TeploSync.payload(S)); persist();
     // кнопка з нагадування відкрилась до входу — тепер квартири є: у потрібну квартиру й лічильник
@@ -16465,8 +16479,10 @@ details.mypay[open] > summary .mypay-amt, details.mypay[open] > summary .mypay-s
   });
   document.addEventListener('pointerdown', function (e) { if (MY_PEND && e.target !== MY_PEND.el) myFlush(); }, true);
   window.addEventListener('hashchange', myFlush, true);
-  window.addEventListener('pagehide', myFlush);
-  document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'hidden') myFlush(); });
+  // 149-а: і одразу на сервер (Sync чекав 1,2 с — згорнули Telegram раніше, і зміна лишалась тільки в цьому вікні)
+  function syncNow() { myFlush(); var Y = window.TeploSync; if (Y && Y.flushNow) Y.flushNow(); }
+  window.addEventListener('pagehide', syncNow);
+  document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'hidden') syncNow(); });
   /** Записати одне поле свого постачальника (без перемальовки): нормалізація як у формі. */
   function myField(pk, f, v) {
     mySet(pk, function (o) {
@@ -18698,6 +18714,28 @@ details.mypay[open] > summary .mypay-amt, details.mypay[open] > summary .mypay-s
     // li — дані підуть у акаунт (увійшов); без входу TeploSync теж буває 'server' (сервер доступний), але нічого не надсилає — це «лише на пристрої»
     if (any) { d.li = jrAcc() ? 1 : 0; track('saved', d); }
   }
+  /** 149-а (власник 14.11: «в „Победе" третий раз ввожу Жилстрой — сбрасывается»): хто змінив «Кому платите». Коди без назв: own·xyz (свій,
+   *  xyz — 3 знаки відбитка назви), sel·xyz (з довідника пошуком), ok (підтвердив довідник), nm (уписав назву), dir (як за адресою), «-» — немає.
+   *  prov — зміна на цьому пристрої (s — екран), provx — прийшли дані з іншого пристрою чи сервера (v: poll | pull | login | conflict…) і поміняли. */
+  var PROV0 = null;
+  function nh3(x) { var h = 0, z = String(x || ''); for (var i = 0; i < z.length; i++) h = (h * 31 + z.charCodeAt(i)) >>> 0; return (h % 46656).toString(36); }
+  function provCodes(st) {
+    var o = {};
+    ((st && st.places) || []).forEach(function (p, i) {
+      if (!p || p.deleted || !p.prov || typeof p.prov !== 'object') return;
+      Object.keys(p.prov).forEach(function (k) { var x = p.prov[k]; if (!x || typeof x !== 'object') return;
+        o['p' + i + '.' + k] = x.own ? 'own·' + nh3(x.name) : x.sel && x.sel.o ? 'sel·' + nh3(x.sel.o) : x.ok ? 'ok' : x.name ? 'nm' : 'dir'; });
+    });
+    return o;
+  }
+  function jrProv(via) {
+    if (!JRS) return;
+    try {
+      var c = provCodes(S), o = PROV0, ch = []; PROV0 = c; if (!o) return;
+      Object.keys(Object.assign({}, o, c)).forEach(function (k) { if (o[k] !== c[k]) ch.push(k + ' ' + (o[k] || '-') + '>' + (c[k] || '-')); });
+      if (ch.length) track(via ? 'provx' : 'prov', { c: ch.slice(0, 4).join(', '), v: via || undefined, n: ch.length });
+    } catch (e) { /* журнал не має ламати застосунок */ }
+  }
   function jrAcc() { var y = window.TeploSync; return y && y.mode === 'server' && y.account ? y.account : null; }
   /** Пішов із сайту (сховав вкладку, закрив, згорнув Telegram): що в нього лишилось — для журналу «словами» в /admin (120-а). */
   function jrLeave() {
@@ -18736,7 +18774,7 @@ details.mypay[open] > summary .mypay-amt, details.mypay[open] > summary .mypay-s
     try {
       var on0 = ccOn(), o = null; if (on0) try { o = JSON.parse(sessionStorage.getItem('teplo.sid') || 'null'); } catch (e) { o = null; }
       JRS = { vid: on0 ? jrVid() : '', sid: o && o.id && Date.now() - o.at < 1800000 ? o.id : jrId(), at: Date.now(), q: [], tm: null, scr: '', prev: null };
-      JRS.prev = jrCounts();
+      JRS.prev = jrCounts(); PROV0 = provCodes(S);
     } catch (e) { JRS = null; return; }
     var tg1 = window.Telegram && window.Telegram.WebApp;
     track('open', { tg: tg1 && tg1.initData ? 1 : 0, w: Math.round(window.innerWidth || 0), lang: S.lang, li: window.TeploSync && window.TeploSync.mode === 'server' ? 1 : 0, places: JRS.prev.p, meters: JRS.prev.m, recs: JRS.prev.r });

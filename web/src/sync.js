@@ -101,14 +101,17 @@
     if (!CSRF_P) CSRF_P = fetch(root.TEPLO_API + '/config', { headers: { 'Accept': 'application/json' }, credentials: 'same-origin' }).then(function () {}, function () {}).then(function () { CSRF_P = null; });
     return CSRF_P;
   }
-  function api(method, path, body, again) {
+  function api(method, path, body, again, ka) {
     // перед первым изменяющим запросом — cookie ts_csrf; один раз: если cookie не зберігаються (вікно Telegram), повторювати безкінечно не можна;
     // вхід Mini App і запити з X-Session сервер пускає без неї
-    if (method !== 'GET' && !cookie('ts_csrf') && !SESS && !again && path !== '/auth/telegram/webapp') return csrfReady().then(function () { return api(method, path, body, true); });
+    if (method !== 'GET' && !cookie('ts_csrf') && !SESS && !again && path !== '/auth/telegram/webapp') return csrfReady().then(function () { return api(method, path, body, true, ka); });
     var h = { 'Accept': 'application/json' }, sent = '';
     if (method !== 'GET') { h['Content-Type'] = 'application/json'; sent = cookie('ts_csrf'); if (sent) h['X-CSRF'] = sent; }
     if (SESS) h['X-Session'] = SESS;
-    return fetch(root.TEPLO_API + path, { method: method, headers: h, credentials: 'same-origin', body: body ? JSON.stringify(body) : undefined })
+    // 149-а: ka — сторінку ховають/закривають (Telegram згорнули): keepalive, щоб запит пережив сторінку; у браузера межа 64 КБ на такі запити
+    var bs = body ? JSON.stringify(body) : undefined, o = { method: method, headers: h, credentials: 'same-origin', body: bs };
+    if (ka && bs && bs.length < 60000) o.keepalive = true;
+    return fetch(root.TEPLO_API + path, o)
       .then(function (res) { return res.json().catch(function () { return {}; }).then(function (j) { j._status = res.status; return j; }); })
       .then(function (j) {
         // cookie сменилась, пока запрос летел (соседний ответ выдал новую) — повторить один раз с той, что теперь в браузере
@@ -153,18 +156,24 @@
     /** Сохранить изменения (вызывается после каждого save()). Пишем не чаще раза в 1,2 с и только при изменении. */
     push: function () {
       if (this.mode === 'local' || (this.mode === 'server' && !this.account)) return;
-      var self = this; clearTimeout(this._t); this._t = setTimeout(function () { self._flush(); }, 1200);
+      var self = this; clearTimeout(this._t); this._t = setTimeout(function () { self._t = null; self._flush(); }, 1200);
     },
-    _flush: function () {
+    /** 149-а (власник 14.11, «Победа»: «третий раз ввожу Жилстрой — сбрасывается»): зміна йшла на сервер через 1,2 с після save(). Згорнули Telegram
+     *  чи закрили вкладку раніше — таймер не спрацьовував, зміна лишалась тільки в цьому вікні (а вікно Telegram на Mac і localStorage губить);
+     *  наступний вхід брав копію з сервера без неї. Тепер при згортанні/закритті — одразу, keepalive. */
+    flushNow: function () { if (!this._t) return; clearTimeout(this._t); this._t = null; this._flush(true); },
+    /** Звідки прийшли чужі дані останнього _apply (для журналу: poll | pull | login | conflict | claude). */
+    via: '',
+    _flush: function (ka) {
       var p = payload(this._get()), s = sig(p);
       if (s === this._lastSig) return;
       if (this._writing) { this._again = true; return; }
       this._writing = true; this.status = 'syncing'; this._onChange();
       var self = this, done = function (ok) { self._writing = false; if (ok) self._lastSig = s; self.status = ok ? 'ok' : 'error'; self._onChange(); if (self._again) { self._again = false; self._flush(); } };
       if (this.mode === 'claude') this._ref.set({ state: p, updatedAt: p.updatedAt || Date.now() }).then(function () { done(true); }, function () { done(false); });
-      else if (this.mode === 'server') api('PUT', '/state', { state: p, baseVersion: this._version }).then(function (j) {
+      else if (this.mode === 'server') api('PUT', '/state', { state: p, baseVersion: this._version }, false, ka).then(function (j) {
         if (j._status === 200) { self._version = j.version; done(true); }
-        else if (j._status === 409 && j.state) { self._version = j.version; self._apply(merge(self._get(), j.state)); self._writing = false; self._flush(); }
+        else if (j._status === 409 && j.state) { self._version = j.version; self.via = 'conflict'; self._apply(merge(self._get(), j.state)); self._writing = false; self._flush(); }
         else if (j._status === 401) { self.account = null; done(false); }
         else done(false);
       }, function () { self.status = 'offline'; self._writing = false; self._onChange(); });
@@ -185,7 +194,7 @@
             if (snap.metadata && snap.metadata.hasPendingWrites) return;
             if (first) { first = false; clearTimeout(timer); }
             var d = snap.exists ? snap.data() : null;
-            if (d && d.state) { var m = merge(self._get(), d.state); self._lastSig = sig(payload(d.state)); self._apply(m); }
+            if (d && d.state) { var m = merge(self._get(), d.state); self._lastSig = sig(payload(d.state)); self.via = 'claude'; self._apply(m); }
             self.status = 'ok'; self._onChange(); self._flush();
           }, function () { clearTimeout(timer); self._set('local', 'error'); });
         });
@@ -238,7 +247,8 @@
         if (j.state) {
           self._lastSig = sig(j.state);
           // вход в аккаунт, где уже есть данные, с чужими/«без входа» данными в браузере — данные аккаунта главнее, локальные не вливаем
-          if (!same && hasData(j.state)) self._apply(j.state);
+          self.via = login ? (same ? 'login' : 'login-new') : 'pull';
+          if (!same && hasData(j.state)) { self.via = 'login-acct'; self._apply(j.state); }
           else self._apply(merge(self._get(), j.state));
         }
         if (acc) self._setOwner(acc);
@@ -247,7 +257,10 @@
     },
     _startPolling: function () {
       var self = this;
-      var tick = function () { if (self.mode === 'server' && self.account && document.visibilityState === 'visible' && !self._writing) api('GET', '/state?since=' + self._version).then(function (j) { if (j._status === 200 && j.version !== self._version && j.state) { self._version = j.version; self._lastSig = sig(j.state); self._apply(merge(self._get(), j.state)); } }, function () { /* сеть пропала (iPhone после фона: «Load failed») — следующий раз */ }); };
+      var tick = function () { if (self.mode === 'server' && self.account && document.visibilityState === 'visible' && !self._writing) api('GET', '/state?since=' + self._version).then(function (j) { if (j._status === 200 && j.version !== self._version && j.state) { self._version = j.version; self._lastSig = sig(j.state); self.via = 'poll'; self._apply(merge(self._get(), j.state));
+        // 149-а: злиття могло лишити своє новіше (постачальник за ts, записи) — віддати на сервер одразу, а не чекати наступного save() (інакше
+        // сервер і пристрої без localStorage — вікно Telegram на Mac — так і бачили б стару копію)
+        self._flush(); } }, function () { /* сеть пропала (iPhone после фона: «Load failed») — следующий раз */ }); };
       document.addEventListener('visibilitychange', tick); setInterval(tick, 60000);
     },
     _after: function (j) { if (j._status === 200 && j.user) { this.account = j.user; return this.pull(true).then(function () { return j; }); } return Promise.resolve(j); },

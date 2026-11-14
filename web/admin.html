@@ -588,6 +588,16 @@ pre.state { font: 12px/1.4 var(--mono); background: #F4F7F5; padding: 10px; bord
     // iPhone (iOS 26): поправка нижних вкладок после клавиатуры (app.js, --nav-shift). Видно < 40 % экрана — свернул/закрыл (106-а)
     if (n === 'nav_shift') { var ih = +p.ih || 0, vh = +p.vh || 0, ot = +p.ot || 0;
       return [ih && vh < ih * .4 && !ot ? 'Свернул или закрыл приложение' : 'Телефон: после клавиатуры поправили нижнее меню (это не ошибка)', 'muted']; }
+    // 149-а: «Кому платите» (place.prov) — хто змінив: людина тут (prov) чи дані з іншого пристрою/сервера (provx)
+    if (n === 'prov' || n === 'provx') {
+      var PK = { elec: 'свет', water: 'вода', gas: 'газ', heat: 'тепло', waste: 'вывоз' }, VW = { poll: 'опрос сервера', pull: 'загрузка с сервера', login: 'вход', 'login-new': 'вход в этом окне впервые',
+        'login-acct': 'вход: данные аккаунта вместо локальных', conflict: 'конфликт сохранения', claude: 'claude.ai', remote: 'другое устройство' };
+      var cw = function (c) { c = String(c || '-'); return c === '-' ? 'не задан' : c === 'dir' ? 'как по адресу' : c === 'ok' ? 'подтвердил справочник' : c === 'nm' ? 'вписал название' :
+        c.indexOf('own') === 0 ? 'свой (' + c.slice(4) + ')' : c.indexOf('sel') === 0 ? 'из справочника поиском (' + c.slice(4) + ')' : c; };
+      var parts = String(p.c || '').split(', ').filter(Boolean).map(function (x) { var m = x.match(/^p(\d+)\.(\w+) (\S+)>(\S+)$/); return m ? 'квартира ' + (+m[1] + 1) + ', ' + (PK[m[2]] || m[2]) + ': ' + cw(m[3]) + ' → ' + cw(m[4]) : x; });
+      return [(n === 'prov' ? 'Кому платите — сменил здесь: ' : '⚠ Кому платите — сменили данные извне (' + (VW[p.v] || p.v || '') + '): ') + parts.join('; ') + (+p.n > 4 ? ' и ещё ' + (p.n - 4) : ''),
+        n === 'provx' && /→ (как по адресу|не задан)/.test(parts.join(' ')) ? 'problem' : n === 'provx' ? 'warn' : ''];
+    }
     if (n === 'tg_login') return ['Вход через Telegram: ' + (+p.ok ? 'получилось' : 'не получился' + (p.e ? ' («' + p.e + '»)' : '')) + (p.ms ? ', ' + (p.ms / 1000).toFixed(1) + ' с' : ''), +p.ok ? 'ok' : 'problem'];
     if (n === 'js_error') return ['Сбой в приложении: ' + (p.m || '') + (p.at ? ' (' + p.at + ')' : ''), 'problem'];
     if (n === 'api_error') { var what = APIN[p.p] || p.p || 'запрос';
