@@ -1283,7 +1283,7 @@ $pv = fn($q) => Providers::lookup($q);
 $a1 = $pv('Малая Даниловка, ул.Академическая 10, кв.20'); $a2 = $pv('смт Мала Данилівка, вул. Академічна, 10, кв. 20'); $a3 = $pv('с-ще Мала Данилівка, Академічна 10');
 ok('постачальники: «Малая Даниловка, ул.Академическая 10» / «смт Мала Данилівка…» / «с-ще …» → Мала Данилівка (КАТОТТГ), громада, Газмережі Харківська філія 2,388, вода — КП «Малоданилівський комунальник» 10,11 (Мала Данилівка, № 38 від 27.01.2022), у Лісному — без тарифу',
   $a1['found'] && $a1['place']['name'] === 'Мала Данилівка' && $a2['place']['id'] === $a1['place']['id'] && $a3['place']['id'] === $a1['place']['id'] && $a1['how'] === 'name'
-  && $a1['place']['hromada'] === 'Малоданилівська' && $a1['place']['district'] === 'Харківський' && $a1['kinds']['gas']['dist'] === 2.388 && $a1['kinds']['water']['supply'] === 10.11 && str_contains($a1['kinds']['water']['org'], 'Малоданилівський') && $pv('с. Лісне, Харківський район, вул. Миру 1')['kinds']['water']['supply'] === null, $a1);
+  && $a1['place']['hromada'] === 'Малоданилівська' && $a1['place']['district'] === 'Харківський' && $a1['kinds']['gas']['dist'] === 2.388 && $a1['kinds']['water']['supply'] === 10.11 && str_contains($a1['kinds']['water']['org'], 'Малоданилівський') && ($pv('с. Лісне, Харківський район, вул. Миру 1')['kinds']['water']['supply'] ?? null) === null, $a1);
 // 93-я: вода громад Харківщини — Пісочин 41,43/56,37, Високий 52,00/38,56 (№ 154), Слобожанське 37,54/35,92 (№ 429), Малинівка 41,39/48,18 (СВА № 496)
 $w93 = fn($a) => ($x = $pv($a)['kinds']['water'] ?? []) ? [$x['supply'] ?? null, $x['drain'] ?? null] : null;
 ok('вода: Пісочин 41,43/56,37 · Високий 52/38,56 · Слобожанське 37,54/35,92 · Малинівка 41,39/48,18 · Біляївка 30,00 для населення (97-а; повний 44,60) (рос. «Песочин», «Высокий», «Малиновка»)',
@@ -2702,6 +2702,18 @@ Db::q("UPDATE cab_jobs SET status = 'sent', result = ? WHERE id = ?", [json_enco
 $sent = []; $cc2 = BotCard::cron(); $a = $wq2('st'); $ad = json_decode((string)($a['data'] ?? ''), true);
 ok('лист КП надіслано — cron: у картці «Лист надіслано» (кінець), «у фоні» не пропонуємо', in_array($cid2, $cc2, true) && ($ad['r'][0]['s'] ?? '') === 'ms' && ($ad['o'] ?? null) === '', [$cc2, $ad]);
 LocalBot::$forceOn = false;
+// 145-а: свій постачальник води в квартирі — старий застосунок прислав план Водоканалу, картка однаково без «Відправити», з назвою свого
+$ust0 = Db::one('SELECT data, version FROM user_state WHERE user_id = ?', [$cu]);
+Db::q('DELETE FROM user_state WHERE user_id = ?', [$cu]);
+Db::q('INSERT INTO user_state (user_id, data, version, updated_at) VALUES (?, ?, ?, ?)', [$cu, json_encode(['places' => [['id' => 'pl7', 'name' => 'Гараж', 'prov' => ['water' => ['own' => 1, 'name' => 'ОСББ «Сад»']]]]], JSON_UNESCAPED_UNICODE), 1, Http::iso()]);
+$sent = []; $hook($cpm(time() - 4)); $cid3 = (int)(Db::one("SELECT id FROM bot_cards WHERE chat_id = '9101' ORDER BY id DESC LIMIT 1")['id'] ?? 0);
+$r = $cb->req('POST', '/api/bot/card', ['card' => $cid3, 'items' => [['k' => 'water', 't' => 'Вода', 'v' => '437 м³', 'w' => 'Водоканал', 'ok' => 1, 'plan' => ['svc' => 'vk', 'in' => ['acc' => '1234567', 'fam' => 'Петренко', 'rid' => 'wr7', 'place' => 'pl7', 'items' => []]]]]]);
+$c3 = BotCard::get($cid3); $c3d = json_decode($c3['data'], true);
+ok('свій постачальник води: у картці — «ОСББ «Сад»», без «Відправити», пояснення «реквізити в застосунку»; план порожній', $r->status === 200 && ($c3d['r'][0]['a'] ?? 1) === 0 && ($c3d['r'][0]['w'] ?? '') === 'ОСББ «Сад»'
+  && str_contains((string)($c3d['r'][0]['m'] ?? ''), 'Свій постачальник') && json_decode((string)$c3['plan'], true) === [null], [$c3d, $c3['plan']]);
+ok('BotCard::ownKinds — лише свої види по квартирах', BotCard::ownKinds($cu) === ['pl7' => ['water' => 'ОСББ «Сад»']], BotCard::ownKinds($cu));
+Db::q('DELETE FROM user_state WHERE user_id = ?', [$cu]);
+if ($ust0) Db::q('INSERT INTO user_state (user_id, data, version, updated_at) VALUES (?, ?, ?, ?)', [$cu, $ust0['data'], (int)$ust0['version'], Http::iso()]);
 $hs = BotCard::summary();
 ok('/api/health → botCards: картки за 30 днів по стадіях, позначки рядків, опитування — лише числа', ($hs['n30'] ?? 0) >= 2 && ($hs['stage']->sent ?? 0) >= 2 && isset($hs['marks']->ms) && ($hs['poll']->n ?? 0) >= 1 && !str_contains(json_encode($hs), '9101'), $hs);
 // відповідь на відгук (121-а): власник відповідає в /admin → людині картка в Telegram; «Ще питання» — відгук знову «новий»

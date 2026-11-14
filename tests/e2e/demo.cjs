@@ -46,7 +46,10 @@ module.exports = function demo(opts) {
     out.places.push({ id: 'gar', v: 2, name: 'Гараж', icon: 'garage', color: 'amber', meter: null, baseline: null, updatedAt: 1,
       meters: [{ id: 'eg', kind: 'elec', name: '', zones: 1, serial: '', account: '' }],
       prov: opts.garage === 'own' ? { elec: { own: 1, name: 'ГК «Мотор»', how: 'iban', iban: 'UA213223130000026007233566001', recip: 'ГК «Мотор»', code: '12345678',
-        purpose: 'Гараж № 47: світло {попередні}–{показання}, {набігло}, {сума} грн, за {місяць}', price: 4.32, due: 'none', at: '2026-11-01' } } : undefined });
+        purpose: 'Гараж № 47: світло {попередні}–{показання}, {набігло}, {сума} грн, за {місяць}', price: 4.32, due: 'none', at: '2026-11-01' } }
+        // 145-а: як у власника (скрин «ГК Победа»): одні показання, шаблон типовий, номер гаража — у старій «Примітці»
+        : opts.garage === 'own1' ? { elec: { own: 1, name: 'ГК Победа', how: 'iban', recip: 'ГК Победа', note: '141', price: 4.32, due: 'none', at: '2026-11-14' } } : undefined });
+    if (opts.garage === 'own1') out.mrecs = (out.mrecs || []).concat([{ id: 'gr1', place: 'gar', meter: 'eg', kind: 'elec', date: '2026-11-10', z: { all: '2263' }, base: false, sent: {}, createdAt: '2026-11-10T10:00:00Z', updatedAt: 1 }]);
     if (opts.garage === 'own' || opts.garageRecs) out.mrecs = (out.mrecs || []).concat([['2026-09-30', '1250', true], ['2026-10-31', '1310']].map(([d, v, base]) =>
       ({ id: 'gr' + d.replace(/-/g, ''), place: 'gar', meter: 'eg', kind: 'elec', date: d, z: { all: v }, base: !!base, sent: base ? {} : {}, createdAt: d + 'T10:00:00Z', updatedAt: 1 })));
     if (opts.atGarage) out.placeId = 'gar';

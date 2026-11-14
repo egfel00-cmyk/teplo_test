@@ -2928,9 +2928,17 @@
     var it = k === 'heat' ? cardHeatRow(rec) : cardWaterRow(rec);
     Y().api('POST', '/bot/card', { card: +CARD.id, items: [it], lang: S.lang }).catch(function () { CARD.fix = 1; });
   }
+  /** 145-а: свій постачальник (place.prov[вид].own) — у картці чату без роботів довідника (ХТМ, Водоканал, місцеві КП): кому платите
+   *  і скільки набігло; реквізити, призначення й «Оплачено» — у застосунку («Оплата» на сторінці лічильника). null — не свій. */
+  function cardOwn(pk, ctx) {
+    var o = myProv(pk); if (!o) return null;
+    var has = ctx && ctx.sum !== undefined && ctx.sum !== null;
+    return { w: o.name || t('my_own'), m: has ? t('bc_own_sum', { s: money(ctx.sum) }) : t('bc_own'), plan: null };
+  }
   /** Тепло, збережене після виправлення: «перевірено» без зауважень і кабінет ХТМ готовий — план для робота; ні — чому (передати в застосунку). */
   function cardHeatRow(rd) {
     var row = { k: 'heat', t: t('bc_heat'), v: rd.htm && rd.htm.energy ? camNum(rd.htm.energy) + ' ' + unitLbl(energyUnit()) : '', w: 'ХТМ', ok: 1 };
+    var own = cardOwn('heat', myCtxH(rd)); if (own) return Object.assign(row, own);
     if (heatLite()) return Object.assign(row, { w: (prvOf('heat') || {}).org || '', m: t('bc_manual') });   // не ХТМ — робота немає, передає людина
     var acc = hcAcc(rd), c = S.contacts || {}, phone = c.phone || (HC.st && HC.st.phone) || '', p = place(rd.place) || place(), m = p && p.id === S.placeId ? S.meter : p && p.meter;
     var heatPl = places().filter(function (x) { var mm = x.id === S.placeId ? S.meter : x.meter; return mm && !mm.removed; });
@@ -2946,6 +2954,7 @@
     var row = { k: 'water', t: t('bc_water'), w: lb ? lb.d.org || '' : t('bc_vk'), ok: 1, m: '',
       v: ms.map(function (m) { return (ms.length > 1 ? wname(m).toLowerCase() + ' ' : '') + camNum(Wt.whole(rec.vals[m.id])); }).join(' · ') + (ms.length ? ' м³' : '') };
     if (!ms.length) return Object.assign(row, { ok: 0, m: t('bc_none') });
+    var own = cardOwn('water', myCtxW(rec)); if (own) return Object.assign(row, own);
     if (lb) { var lp = cardLbPlan(lb, rec); return Object.assign(row, { m: lp.m || '', plan: lp.plan || null }); }
     var g = vkcGate();
     if (g !== 'ok') return Object.assign(row, { m: t(g === '' ? 'bc_why_w_site' : 'bc_why_w_acc') });
@@ -2959,8 +2968,9 @@
   }
   /** Тепло: усе прочитано й перевірено — запис «перевірено» (як автоподача) + план для робота ХТМ; внесе після «Відправити» в картці. */
   function cardHeat() {
-    var p = PH.picked || {}, row = { k: 'heat', t: t('bc_heat'), v: p.energy ? camNum(p.energy.value) + ' ' + unitLbl(energyUnit()) : '', w: 'ХТМ' };
-    var why = phAutoWhy(), soft = !!(why && /^(cab|acc|phone)$/.test(why.k));
+    var my = myProv('heat'), p = PH.picked || {}, row = { k: 'heat', t: t('bc_heat'), v: p.energy ? camNum(p.energy.value) + ' ' + unitLbl(energyUnit()) : '', w: my ? my.name || t('my_own') : 'ХТМ' };
+    var why = phAutoWhy(); if (my && why && /^(closed|cab|acc|place|phone)$/.test(why.k)) why = null;   // 145-а: свій — ні вікна ХТМ, ні кабінету
+    var soft = !!(why && /^(cab|acc|phone)$/.test(why.k));
     if (why && !soft) { PH.autoWhy = why; cardFix(t('ha_why_' + why.k, { list: why.list || '' }), row); return false; }
     var d = phAutoDraft(), chk = runCheck(d);
     if (chk.verdict !== 'ok') { cardFix(t('ha_why_check'), row); return false; }
@@ -2970,6 +2980,7 @@
     PH.inbox = inbox; inboxDone(); phReset('reading');
     Promise.race([VIS().pendingUploads || Promise.resolve(), new Promise(function (ok) { setTimeout(ok, 5000); })]).then(function () { rd.photos = photoRefs(files.map(function (f) { return { file: f }; })); rd.updatedAt = Date.now(); save(); });
     S.focusId = rd.id; save();
+    if (my) { cardPost([Object.assign(row, { ok: 1 }, cardOwn('heat', myCtxH(rd)))], true); go('home'); return true; }
     var acc = hcAcc(rd), c = S.contacts || {}, vals = htmRobotVals(rd);
     cardPost([Object.assign(row, { ok: 1, m: soft ? t('bc_why_' + why.k) : '',
       plan: soft ? null : { svc: 'htm', in: { acc: acc ? acc.acc : '', rid: rd.id, place: rd.place || S.placeId, vals: vals, phone: c.phone || (HC.st && HC.st.phone) || '', email: c.email || '' } } })], true);
@@ -2991,6 +3002,7 @@
   }
   function cardWaterSoon(w, n) {
     if (WN !== w || CARD.posted) return;
+    if (myProv('water')) { cardWater(null); return; }   // 145-а: свій — ні Водоканалу, ні місцевого КП: чекати нічого
     var p = place(), pj = p && String(p.address || '').trim() ? prvLoad(p) : null, lb = pj && !pj.busy ? cardLb() : null;
     if (lb && hcOn()) lbLoad(lb.bot, lb.pl);
     var wait = (pj && pj.busy) || (lb ? hcOn() && !lb.st : !VJ.st || !VKS.data);
@@ -2999,15 +3011,17 @@
   }
   /** Вода: прочитано впевнено й без зауважень — запис + план для робота Водоканалу (холодна, як автовідправка); ні — «перевірте». */
   function cardWater(lb) {
+    var my = myProv('water'); if (my) lb = null;
     var byId = {}; wmeters().forEach(function (m) { byId[m.id] = m; });
     var mids = Object.keys(WN.src).filter(function (k) { return byId[k] && WN.src[k] && WN.src[k].value !== null && WN.src[k].value !== undefined; });
-    var row = { k: 'water', t: t('bc_water'), w: lb ? lb.d.org || '' : t('bc_vk'), v: mids.map(function (k) { return (mids.length > 1 ? wname(byId[k]).toLowerCase() + ' ' : '') + camNum(WN.vals[k] || ''); }).join(' · ') + (mids.length ? ' м³' : '') };
+    var row = { k: 'water', t: t('bc_water'), w: my ? my.name || t('my_own') : lb ? lb.d.org || '' : t('bc_vk'), v: mids.map(function (k) { return (mids.length > 1 ? wname(byId[k]).toLowerCase() + ' ' : '') + camNum(WN.vals[k] || ''); }).join(' · ') + (mids.length ? ' м³' : '') };
     if (!mids.length) { cardFix(t('bc_none'), row); return; }
-    var why = wnAutoWhy(!!lb), soft = why === 'site' || why === 'acc';
+    var why = wnAutoWhy(!!lb || !!my), soft = why === 'site' || why === 'acc';
     if (why && !soft) { cardFix(t('bc_fix'), row); return; }
     var vals = {}; mids.forEach(function (k) { var x = Wt.norm(WN.vals[k]); if (x !== null) vals[k] = x; });
     WN.kind = 'cold'; WN.back = 'home'; var rec = wnStore(vals, false); if (!rec) return;
     rec.card = +CARD.id; save();
+    if (my) { cardPost([Object.assign(row, { ok: 1 }, cardOwn('water', myCtxW(rec)))], true); return; }
     if (lb) { var lp = cardLbPlan(lb, rec); cardPost([Object.assign(row, { ok: 1, m: lp.m || '', plan: lp.plan || null })], true); return; }   // місцевий КП (122-а)
     var c = wcfg();
     cardPost([Object.assign(row, { ok: 1, m: soft ? t('bc_why_w_' + why) : '', plan: soft ? null : { svc: 'vk', in: { acc: c.account || '', fam: c.surname || '', rid: rec.id, place: rec.place || S.placeId, items: vjItems(rec) } } })], true);
@@ -3016,7 +3030,8 @@
   function cardSimple(k) {
     var ms = smeters(k), got = [];
     ms.forEach(function (m) { SK[k].mod.keys(m).forEach(function (z) { var x = EN.src[m.id + '|' + z]; if (x) got.push((ms.length > 1 || SK[k].mod.keys(m).length > 1 ? ezl(m, z).toLowerCase() + ' ' : '') + camNum(k === 'gas' ? Wt.withFrac(x.v, x.frac) : x.v)); }); });
-    cardPost([{ k: k, t: t(k === 'gas' ? 'kd_gas' : 'kd_elec'), v: got.length ? got.join(' · ') + ' ' + SK[k].unit() : '', w: '', ok: got.length ? 1 : 0, m: got.length ? t('bc_manual') : t('bc_none') }], false);
+    var my = myProv(k);   // 145-а: свій — кому платите, «Оплата» в застосунку
+    cardPost([{ k: k, t: t(k === 'gas' ? 'kd_gas' : 'kd_elec'), v: got.length ? got.join(' · ') + ' ' + SK[k].unit() : '', w: my ? my.name || t('my_own') : '', ok: got.length ? 1 : 0, m: got.length ? t(my ? 'bc_own' : 'bc_manual') : t('bc_none') }], false);
   }
   /* ---------- Камера з підказками (121-а, власник 12.11): web/src/camera.js; тут — що читати на кадрі й куди віддати знімки ---------- */
   function camOk() { return !!(window.TeploCam && TeploCam.supported() && VIS().local); }
@@ -6706,22 +6721,34 @@
     return m === 1 ? '' : t('my_iban_sum');
   }
   // шаблон призначення: слова в {дужках} — обома мовами, хоч би якою мовою людина набрала
-  var MY_TOK = ['place', 'val', 'prev', 'q', 'sum', 'mon'];
-  var MY_TOKRE = { place: /\{(назва|название|квартира|гараж)\}/gi, val: /\{(показання|показания)\}/gi, prev: /\{(попередні|предыдущие|було|было)\}/gi,
+  var MY_TOK = ['place', 'num', 'val', 'prev', 'q', 'sum', 'mon'];
+  var MY_TOKRE = { place: /\{(назва|название|квартира|гараж)\}/gi, num: /\{(номер|№)\}/gi, val: /\{(показання|показания)\}/gi, prev: /\{(попередні|предыдущие|було|было)\}/gi,
     q: /\{(набігло|набежало)\}/gi, sum: /\{(сума|сумма)\}/gi, mon: /\{(місяць|месяц)\}/gi };
-  /** Готове призначення платежу з шаблону людини (порожній — типовий); c — що підставити ({place, val, prev, q, sum, mon}); немає даних — «…». */
+  /** Готове призначення платежу з шаблону людини (порожній — типовий); c — що підставити ({place, val, prev, q, sum, mon}).
+   *  145-а (скрин власника: «Гараж: показання …–2263, набігло …, … грн» — перші показання): чого немає, того й не пишемо —
+   *  «№ {номер}» без номера зникає, «{попередні}–{показання}» без попередніх — лише показання, частина між комами з порожнім — геть;
+   *  «…» лишається, тільки якщо інакше нічого не лишиться. */
   function myPurpose(pk, o, c) {
     var tpl = String((o && o.purpose) || '').trim() || t(pk === 'waste' ? 'my_purp_def_w' : 'my_purp_def'); c = c || {};
-    var v = { place: c.place || placeLabel(place()), val: c.val || '', prev: c.prev || '', q: c.q || '', sum: c.sum !== undefined && c.sum !== null ? money(c.sum) : '', mon: c.mon || '' };
-    Object.keys(MY_TOKRE).forEach(function (x) { tpl = tpl.replace(MY_TOKRE[x], v[x] === '' ? '…' : v[x]); });
-    return tpl.replace(/[ \t]+/g, ' ').trim();
+    var v = { place: c.place || placeLabel(place()), num: myNum(o), val: c.val || '', prev: c.prev || '', q: c.q || '', sum: c.sum !== undefined && c.sum !== null ? money(c.sum) : '', mon: c.mon || '' };
+    Object.keys(MY_TOKRE).forEach(function (x) { tpl = tpl.replace(MY_TOKRE[x], v[x] === '' ? '\u0001' + x + '\u0002' : v[x].replace(/\$/g, '$$$$')); });
+    tpl = tpl.replace(/(?:№|N[o°]?\.?)?\s*\u0001num\u0002/g, '').replace(/\u0001prev\u0002\s*[–—-]\s*/g, '').replace(/\s*[–—-]\s*\u0001prev\u0002/g, '');
+    if (tpl.indexOf('\u0001') >= 0) {
+      var parts = tpl.split(/([,;]\s*|\n)/), out = '', kept = 0;
+      for (var i = 0; i < parts.length; i += 2) {
+        if (parts[i].indexOf('\u0001') >= 0 || (!kept && !parts[i].trim() && i)) continue;
+        out += (kept ? parts[i - 1] || ', ' : '') + parts[i]; kept++;
+      }
+      if (out.replace(/[\s,;:.]/g, '')) tpl = out;
+    }
+    return tpl.replace(/\u0001\w+\u0002/g, '…').replace(/[ \t]+/g, ' ').replace(/ ([:,;.])/g, '$1').replace(/^[\s,;:]+|[\s,;:]+$/g, '').trim();
   }
   /** Світло / газ: що підставити — показання (зони через кому), попередні від останнього «Оплачено» (чи попереднього запису), набігло й сума за тарифом. */
   function myCtxS(k, m, r) {
     var md = SK[k].mod, u = SK[k].unit(), zs = md.keys(m);
     var pa = paidAnchor(mrecs(m.id), r, function () { return true; }, function (y) { return y.base ? baseSent(y) : ssent(k, y); }), pr = pa ? pa.rec : null;
     var fv = function (rr) { return zs.map(function (z) { var v = md.whole(rr.z && rr.z[z]); return (zs.length > 1 ? ezl(m, z) + ' ' : '') + (v === null ? '—' : v); }).join(', '); };
-    var c = { place: placeLabel(myPlaceOf(r)), val: fv(r), prev: pr ? fv(pr) : '', mon: monthLabel(md.forMonth(r.date)), from: pr ? pr.date : null };
+    var c = { place: placeLabel(myPlaceOf(r)), val: fv(r), prev: pr ? fv(pr) : '', mon: monthLabel(md.forMonth(r.date)), from: pr ? pr.date : null, first: !pr };
     var px = pr ? md.series([pr, r], m)[1] : null;
     if (px && px.dz) {
       var so = sopts(k), pc = md.cost(m, px.dz, r.date, so), fee = so.fee || 0, fn = fee ? feeMonths(md, pr.date, r.date) : 0;
@@ -6734,7 +6761,7 @@
     var all = wmeters(null, true), ms = all.filter(function (m) { return hasVal(r, m.id); }), many = ms.length > 1;
     var a = paidAnchor(wrecs(), r, function (y) { return ms.some(function (m) { return hasVal(y, m.id); }); }, function (y) { return y.base ? baseSent(y) : !!wsentVk(y); }), pr = a ? a.rec : null;
     var fv = function (rr) { return ms.filter(function (m) { return hasVal(rr, m.id); }).map(function (m) { return (many ? wname(m) + ' ' : '') + Wt.whole(rr.vals[m.id]); }).join(', '); };
-    var c = { place: placeLabel(myPlaceOf(r)), val: fv(r), prev: pr ? fv(pr) : '', mon: monthLabel(String(r.date).slice(0, 7)), from: pr ? pr.date : null };
+    var c = { place: placeLabel(myPlaceOf(r)), val: fv(r), prev: pr ? fv(pr) : '', mon: monthLabel(String(r.date).slice(0, 7)), from: pr ? pr.date : null, first: !pr };
     var s1 = pr ? Wt.series([pr, r], all, gaps())[1] : null;
     if (s1 && (s1.hot !== null || s1.cold !== null)) { var qh = s1.hot || 0, qc = s1.cold || 0; c.q = (qh + qc) + ' м³'; c.sum = Math.round(Wt.cost(qc, qh, r.date, wtar()).total * 100) / 100; }
     return c;
@@ -6742,7 +6769,7 @@
   /** Тепло: енергія як на табло, набігло в Гкал від попередніх і сума за тарифом. */
   function myCtxH(r) {
     var h = r.htm || {}, iv = interval(r, true), eu = unitLbl(energyUnit());
-    var c = { place: placeLabel(myPlaceOf(r)), val: htmVal('energy', h, r.raw) + ' ' + eu, prev: '', mon: monthLabel(String(h.date || '').slice(0, 7)), from: iv ? iv.from : null };
+    var c = { place: placeLabel(myPlaceOf(r)), val: htmVal('energy', h, r.raw) + ' ' + eu, prev: '', mon: monthLabel(String(h.date || '').slice(0, 7)), from: iv ? iv.from : null, first: !iv };
     if (iv) { c.prev = String(iv.fromE).replace('.', ',') + ' ' + eu; c.q = fmtN(iv.dE, 3) + ' Гкал'; c.sum = Math.round(iv.cost * 100) / 100; }
     return c;
   }
@@ -6786,7 +6813,7 @@
     } else if (how === 'cash') h += inp('cash', t('my_cash'), o.cash, ' maxlength="160" placeholder="' + esc(t('my_cash_ph')) + '"');
     else h += '<div class="field"><label for="' + id('other') + '">' + esc(t('my_other')) + '</label><div class="ctl"><textarea id="' + id('other') + '" rows="2" maxlength="300" data-my="other" data-my-pk="' + pk + '" placeholder="' + esc(t('my_other_ph')) + '">' + esc(o.other || '') + '</textarea></div></div>';
     if (how !== 'cash') {
-      var toks = pk === 'waste' ? ['place', 'sum', 'mon'] : MY_TOK, ex = myPurpose(pk, o, myCtxLast(pk));
+      var toks = pk === 'waste' ? ['place', 'num', 'sum', 'mon'] : MY_TOK, ex = myPurpose(pk, o, myCtxLast(pk));
       h += '<div class="field"><label for="' + id('purpose') + '">' + esc(t('my_purp')) + '</label><div class="ctl"><textarea id="' + id('purpose') + '" rows="3" maxlength="300" data-my="purpose" data-my-pk="' + pk + '" placeholder="' + esc(t(pk === 'waste' ? 'my_purp_def_w' : 'my_purp_def')) + '">' + esc(o.purpose || '') + '</textarea></div>' +
         '<div class="my-toks" data-key="my-toks-' + pk + '"><span class="small muted">' + esc(t('my_tok_add')) + '</span>' + toks.map(function (x) {
           return '<button type="button" class="my-tok" data-act="my-tok" data-pk="' + pk + '" data-tok="' + x + '" data-key="my-tok-' + x + '">' + ico('plus', 14) + '<span>' + esc(t('my_tok_' + x)) + '</span></button>'; }).join('') + '</div>' +
@@ -6797,27 +6824,37 @@
         : due === 'win' ? '<div class="my-days">' + day('wa', t('my_wa'), o.win && o.win[0]) + day('wb', t('my_wb'), o.win && o.win[1]) + '</div>'
         : '<p class="small muted my-due-s">' + esc(t('my_due_none_s')) + '</p>') + '</div>';
     if (pk === 'elec' || pk === 'gas') h += '<div class="grid2">' + inp('abon', t('my_abon'), R.num(o.abon) > 0 ? money(R.num(o.abon)) : '', ' class="num" inputmode="decimal" maxlength="10" placeholder="0"') + '</div>';
-    h += '<div class="grid2">' + inp('phone', t('my_phone'), o.phone, ' inputmode="tel" maxlength="30"') + inp('note', t('my_note'), o.note, ' maxlength="200" placeholder="' + esc(t('my_note_ph')) + '"') + '</div>';
+    // 145-а: «Примітка» з підказкою «№ гаража 47» стала «Ваш номер у них» — він іде в призначення ({номер}) і в «Оплату» з «Копіювати»
+    h += '<div class="grid2">' + inp('num', t('my_num'), myNum(o), ' maxlength="40" placeholder="' + esc(t('my_num_ph')) + '"') + inp('phone', t('my_phone'), o.phone, ' inputmode="tel" maxlength="30"') + '</div>';
     return h + '</div>';
   }
   /** «Оплата» свого постачальника: скільки, реквізити з «Копіювати», готове призначення, позначка «Оплачено». c — контекст запису (myCtx…), mark — кнопка або ''. */
+  // 145-а (власник 14.11, скрин «ГК Победа»: «если свой провайдер — тоже должна быть скрывашка, как при официальных»): «Оплата» — той самий
+  // акордеон, що «Куди передати» (details.wacc.wacc-btn, закритий; відкривали — лишається відкритим до перезавантаження). У згорнутій шапці —
+  // назва й сума (або «Оплачено»), щоб не відкривати заради цифри. Номер людини в постачальника (гараж 141) — рядком з «Копіювати», не голим числом.
   function myPayBox(pk, o, c, mark, key) {
-    var how = o.how || 'iban', purp = how === 'cash' ? '' : myPurpose(pk, o, c), rows = [];
+    var how = o.how || 'iban', purp = how === 'cash' ? '' : myPurpose(pk, o, c), rows = [], num = myNum(o);
     var row = function (lbl, v, copy, cls, rk) { return v ? '<li data-key="' + rk + '"><span class="my-r-l">' + esc(lbl) + '</span><span class="my-r-v' + (cls ? ' ' + cls : '') + '">' + esc(v) + '</span>' + (copy ? copyIco(copy, rk + '-copy') : '<span></span>') + '</li>' : ''; };
     if (how === 'iban') rows.push(row(t('my_recip'), o.recip || o.name, o.recip || o.name, '', 'my-r-recip'), row('IBAN', myIbanFmt(o.iban), myIban(o.iban), 'tn', 'my-r-iban'), row(t('my_code_s'), o.code, o.code, 'tn', 'my-r-code'));
     else if (how === 'cash') rows.push(row(t('my_how_cash'), o.cash || '', '', '', 'my-r-cash'));
     else rows.push(row(t('my_how_other'), o.other || '', '', '', 'my-r-other'));
+    if (num) rows.push(row(t('my_num_s'), num, num, 'tn', 'my-r-num'));
     if (purp) rows.push(row(t('my_purp'), purp, purp, 'my-purp', 'my-r-purp'));
-    var has = c && c.sum !== undefined && c.sum !== null;
+    var has = c && c.sum !== undefined && c.sum !== null, paid = /class="pill ok"/.test(mark || '');
     var sum = has ? '<div class="my-sum" data-key="my-sum"><span class="small muted">' + esc(t('my_sum')) + '</span><span class="my-sum-v"><b>' + esc(money(c.sum)) + '</b> грн' + copyIco(money(c.sum).replace(/\s/g, ''), 'my-sum-copy') + '</span>' +
-      (c.q ? '<span class="small muted">' + esc(c.from ? t('my_sum_s', { q: c.q, d: fmtDate(c.from) }) : c.q) + '</span>' : '') + '</div>' : '';
+      (c.q ? '<span class="small muted">' + esc(c.from ? t('my_sum_s', { q: c.q, d: fmtDate(c.from) }) : c.q) + '</span>' : '') + '</div>'
+      : c && c.first ? '<p class="small muted my-first" data-key="my-first">' + esc(t('my_first')) + '</p>' : '';
     var all = how === 'iban' && myIban(o.iban) ? [o.recip || o.name, myIban(o.iban), o.code ? t('my_code_s') + ' ' + o.code : '', purp, has ? money(c.sum).replace(/\s/g, '') + ' грн' : ''].filter(Boolean).join('\n') : '';
-    var r = rows.join('');
-    return '<section class="panel mypay" data-key="' + (key || 'mypay-' + pk) + '"><h2 class="mhist-h">' + ico('wallet', 18, 'bt-ico') + '<span>' + esc(o.name || t('my_own')) + '</span></h2><div class="mypay-b">' + sum +
+    var r = rows.join(''), k = key || 'mypay-' + pk, open = WH_OPEN[k];
+    var side = paid ? '<span class="pill ok mypay-st">' + ico('check', 14) + ' ' + esc(t('my_paid')) + '</span>' : has ? '<span class="mypay-amt">' + esc(money(c.sum)) + ' грн</span>' : '';
+    return '<details class="panel where wacc wacc-btn mypay" id="wacc-' + k + '" data-key="' + k + '"' + (open ? ' open' : '') + ' aria-label="' + esc(t('my_pay_t')) + '"><summary data-key="' + k + '-sum"><h2>' + ico('wallet', 18, 'bt-ico') + '<span>' + esc(o.name || t('my_own')) + '</span></h2>' + side + ico('chev', 20, 'pacc-chev') + '</summary>' +
+      '<div class="where-b mypay-b">' + sum +
       (r ? '<ul class="my-rows">' + r + '</ul>' : '<p class="small muted" data-key="my-norq">' + esc(t('my_norq')) + '</p>') +
       (all ? '<button type="button" class="btn sec block" data-act="copy" data-text="' + esc(all) + '" data-key="my-copy-all">' + ico('copy', 18) + '<span>' + esc(t('my_copy_all')) + '</span></button>' : '') +
-      (o.phone ? '<p class="small my-ph">' + ico('phone', 16) + telLink(String(o.phone).replace(/[^\d+]/g, ''), o.phone) + '</p>' : '') + (o.note ? '<p class="small muted my-note">' + esc(o.note) + '</p>' : '') + (mark || '') + '</div></section>';
+      (o.phone ? '<p class="small my-ph">' + ico('phone', 16) + telLink(String(o.phone).replace(/[^\d+]/g, ''), o.phone) + '</p>' : '') + (o.num && o.note ? '<p class="small muted my-note">' + esc(o.note) + '</p>' : '') + (mark || '') + '</div></details>';
   }
+  /** Номер людини в постачальника (гараж, ділянка, особовий рахунок). 144-а писала його в «Примітку» (підказка «№ гаража 47») — читаємо й звідти. */
+  function myNum(o) { return String((o && (o.num || o.note)) || '').trim(); }
   /** «Оплачено» під «Оплатою»: ті самі позначки, що й «Передано» (світло/газ — sent.obl / sent.grm, вода — sent.vk, тепло — статус). */
   function myMark(sent, on, off) {
     return '<div class="my-mark" data-key="my-mark">' + (sent ? '<p><span class="pill ok">' + ico('check', 14) + ' ' + esc(t('my_paid_on', { d: fmtDate(sent) })) + '</span> ' + off + '</p>' : on) + '</div>';
@@ -6900,9 +6937,11 @@
       else if (f === 'till') { var d = Math.round(R.num(v)); if (d >= 1 && d <= 31) o.till = d; else delete o.till; }
       else if (f === 'wa' || f === 'wb') { var w = (o.win || [null, null]).slice(), n = Math.round(R.num(v)); w[f === 'wa' ? 0 : 1] = n >= 1 && n <= 31 ? n : null; o.win = w; }
       else if (f === 'abon') { var a = R.num(v.replace(/\s/g, '')); if (a > 0 && a < 100000) o.abon = a; else delete o.abon; }
+      else if (f === 'num') { o.num = v.slice(0, 40); delete o.note; }   // 145-а: номер жив у «Примітці» — переносимо
       else o[f] = v.slice(0, f === 'purpose' || f === 'other' ? 300 : 200);
     });
     if (f === 'iban') { el.value = myIbanFmt(v); }
+    if (f === 'num') { var ex0 = document.querySelector('[data-key="my-ex-' + pk + '"] .my-ex-t'); if (ex0) ex0.textContent = myPurpose(pk, myProv(pk) || {}, myCtxLast(pk)); }
     if (redraw || f === 'iban' || f === 'abon' || f === 'name') render(true); else toast(t('b_saved'));
   });
   // приклад призначення — одразу, поки людина друкує (без перемальовки)

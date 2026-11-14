@@ -2405,11 +2405,13 @@ details.wacc.wacc-btn > .acc-foot { margin: 0; padding: 12px 16px 16px; border-t
 .my-day > input:focus { outline: none; border-color: var(--c-ink); box-shadow: 0 0 0 3px var(--c-focus-ring); }
 .my-due-s { margin: 8px 0 0; }
 /* «Оплата» — тим самим шаблоном плашок (139-а), тоном «Куди передати»: вона його й заміняє */
-.panel.mypay { --bt-acc: var(--bt-send); --bt-bg: var(--bt-send-bg); --bt-line: var(--bt-send-line); border-radius: 14px; border: 1px solid var(--bt-line); background: var(--bt-bg); padding: 0; margin: 0 0 var(--sp-4); }
-.hg-side > .panel.mypay { margin-top: 0; }
-.panel.mypay > .mhist-h { box-sizing: border-box; display: flex; align-items: center; gap: 10px; min-height: 56px; padding: 8px 16px; margin: 0; font-size: var(--fs-l); font-weight: 600; line-height: 1.2; border-bottom: 1px solid var(--bt-line); }
-.panel.mypay > .mhist-h > span { min-width: 0; overflow-wrap: anywhere; }
-.mypay-b { display: grid; gap: 12px; padding: 12px 16px 16px; }
+/* 145-а: «Оплата» — акордеоном, як «Куди передати» (details.wacc.wacc-btn, той самий шаблон 139-ї); у згорнутій шапці — сума чи «Оплачено» */
+details.mypay > summary h2 { min-width: 0; }
+details.mypay > summary h2 > span { min-width: 0; overflow-wrap: anywhere; }
+.mypay-amt { flex: none; font-size: var(--fs-m); font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; color: var(--c-ink); }
+.mypay-st { flex: none; white-space: nowrap; }
+details.mypay[open] > summary .mypay-amt { display: none; }
+.mypay-b { display: grid; gap: 12px; }
 .mypay-b > p { margin: 0; }
 .my-sum { display: grid; gap: 2px; }
 .my-sum-v { display: flex; align-items: center; gap: 6px; font-size: var(--fs-m); }

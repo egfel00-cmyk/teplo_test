@@ -296,10 +296,16 @@ HTML;
     $c = self::get((int)($in['card'] ?? 0));
     if (!$c || (int)$c['user_id'] !== $uid) throw new HttpError(404, 'card_not_found');
     if (in_array($c['stage'], ['sent'], true)) return ['ok' => true, 'stage' => $c['stage']];
-    $items = []; $plan = []; $bad = false; $sent = false;
+    $items = []; $plan = []; $bad = false; $sent = false; $own = null;
     foreach (array_slice((array)($in['items'] ?? []), 0, 4) as $i => $x) {
       if (!is_array($x)) continue;
       $svc = (string)($x['plan']['svc'] ?? ''); $ok = !empty($x['ok']); if (!$ok) $bad = true;
+      // 145-а: квартира зі своїм постачальником цього виду — роботів довідника не пропонуємо, навіть якщо старий застосунок прислав план
+      if (in_array($svc, ['htm', 'vk', 'lb'], true)) {
+        $own = $own ?? self::ownKinds($uid); $pl = (string)($x['plan']['in']['place'] ?? ''); $kind = $svc === 'htm' ? 'heat' : 'water';
+        if ($pl !== '' && isset($own[$pl][$kind])) { $ru = (string)$c['lang'] === 'ru'; $x['plan'] = null; $svc = ''; $x['w'] = $own[$pl][$kind] !== '' ? $own[$pl][$kind] : ($ru ? 'Свой поставщик' : 'Свій постачальник');
+          $x['m'] = $ru ? 'Свой поставщик — реквизиты и «Оплачено» в приложении, кнопка под карточкой' : 'Свій постачальник — реквізити й «Оплачено» в застосунку, кнопка під карткою'; }
+      }
       // застосунок уже поставив у чергу сам (людина виправила й натиснула там) — картка стежить за тією задачею
       $js = (string)($x['job']['svc'] ?? ''); $jid = (int)($x['job']['id'] ?? 0);
       $jr = $jid && in_array($js, ['htm', 'vk', 'lb'], true) ? Db::one('SELECT * FROM cab_jobs WHERE id = ? AND user_id = ? AND ' . ($js === 'lb' ? "prov LIKE 'L%'" : 'prov = ?'), $js === 'lb' ? [$jid, $uid] : [$jid, $uid, $js]) : null;
@@ -315,6 +321,17 @@ HTML;
     // кнопка під карткою: тепер — «Перевірити в застосунку»
     try { if ($c['message_id'] !== null) Telegram::call('editMessageReplyMarkup', ['chat_id' => $c['chat_id'], 'message_id' => (int)$c['message_id'], 'reply_markup' => self::kb((int)$c['id'], (string)$c['lang'], false)]); } catch (Throwable $e) { /* кнопка лишиться «Розпізнати» */ }
     return ['ok' => true, 'stage' => $d['s']];
+  }
+
+  /** Свої постачальники людини зі збереженого стану: [id квартири => [вид => назва]] (місто без квартир — 'main'). */
+  public static function ownKinds(int $uid): array {
+    try { $r = Db::one('SELECT data FROM user_state WHERE user_id = ?', [$uid]); } catch (Throwable $e) { return []; }
+    $st = $r ? json_decode((string)$r['data'], true) : null; $out = [];
+    foreach ((array)(is_array($st) ? ($st['places'] ?? []) : []) as $p) {
+      if (!is_array($p) || !empty($p['deleted'])) continue;
+      foreach ((array)($p['prov'] ?? []) as $k => $o) if (is_array($o) && !empty($o['own'])) $out[(string)($p['id'] ?? 'main')][(string)$k] = trim((string)($o['name'] ?? ''));
+    }
+    return $out;
   }
 
   /** «25.11 о 09:00» за Києвом. */
