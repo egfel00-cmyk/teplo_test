@@ -2363,8 +2363,11 @@
     var ms = wmeters(null, true).filter(function (m) { return hasVal(r, m.id); });
     // 143-я: чип статусу кожного виду (гаряча / холодна) — праворуч від дати, як у рядку історії; обидва види — з назвою виду
     var wkinds = ['hot', 'cold'].filter(function (kd) { return ms.some(function (m) { return m.kind === kd; }); });
-    var wchips = wkinds.map(function (kd) {
-      var cur = r.base ? (baseSent(r) ? 'sent' : 'not') : r.own ? 'own' : wsentVk(r) && (kd === 'cold' || wsentHtm(r)) ? 'sent' : 'not';
+    var wcur = function (kd) { return r.base ? (baseSent(r) ? 'sent' : 'not') : r.own ? 'own' : wsentVk(r) && (kd === 'cold' || wsentHtm(r)) ? 'sent' : 'not'; };
+    // 146-а (один шаблон з іншими записами): гаряча й холодна в одному стані — один чип праворуч від дати, як у світла; різний — два чипи з назвою виду
+    var wone = wkinds.length > 1 && wcur('hot') === wcur('cold');
+    var wchips = wone ? stChip('w', r, 'water', wcur('cold')) : wkinds.map(function (kd) {
+      var cur = wcur(kd);
       var lbl = wkinds.length > 1 ? '<span class="pill ' + (cur === 'own' ? 'own' : cur === 'sent' ? 'ok' : 'neutral') + '">' + esc(ucf(t(kd === 'hot' ? 'ru_hot' : 'ru_cold')) + ' · ' + (cur === 'own' ? t('own_pill') : cur === 'sent' ? t('wh_sent') : r.base ? t('bs_unsent') : t('wh_notsent'))) + '</span>' : '';
       return stChip('w', r, kd, cur, lbl, wkinds.length > 1 ? '-' + kd : '');
     }).join('');
@@ -2383,14 +2386,20 @@
       if (r.base) return null; var a = wpa[m.kind], y = a && hasVal(a.rec, m.id) ? a.rec : wrecs().filter(function (z) { return z !== r && z.date <= r.date && hasVal(z, m.id); }).sort(function (p1, p2) { return p1.date < p2.date ? -1 : p1.date > p2.date ? 1 : 0; }).slice(-1)[0];
       return y ? wfmt(y.vals[m.id]) : null;
     };
+    // 146-а (власник 14.11: «екран показань води — до спільного вигляду з іншими лічильниками, один шаблон»): як у світла з двома зонами —
+    // одне велике число (усього м³) і «≈ грн», гаряча й холодна — рядками розрахунку; з одним видом — без «Холодна:» на початку
+    var wsum = function (a, b2) { return '+' + Math.round(((a || 0) + (b2 || 0)) * 1000) / 1000; };
+    var wline = function (kd, q, tr, c, both) {
+      return t(both ? (kd === 'cold' ? 'ru_w_c' : 'ru_w_h') : 'ru_w1', { q: q, a: money(kd === 'cold' ? tr.supply : tr.hot), b: money(tr.drain), s: money(kd === 'cold' ? c.coldSupply + c.coldDrain : c.hot + c.hotDrain) });
+    };
     var vals = usedVals('wrec-values', ms.map(function (m) { var v = r.vals[m.id], d = x.by[m.id], pv = wprev(m); return { n: wname(m), sub: !pv && d !== undefined ? '+' + d + ' м³' : '', v: wfmt(v), u: 'м³', copy: Wt.whole(v), ck: 'wrec-copy-' + m.id, k: m.kind, prev: pv }; }));
     if (wpa.hot || wpa.cold) {
       var pqh = wpa.hot ? wq.hot : null, pqc = wpa.cold ? wq.cold : null, pboth = pqh !== null && pqc !== null, pcw = Wt.cost(pqc || 0, pqh || 0, r.date, wtar()), ptr = Wt.tariffAt(r.date, wtar());
       var pas = [wpa.hot, wpa.cold].filter(Boolean), pA = pas.slice().sort(function (a, b) { return a.date < b.date ? -1 : a.date > b.date ? 1 : 0; })[0], pSent = pas.every(function (a) { return a.sent; });
       var pdays = Math.max(wpa.hot ? wpx.hot.daysHot || 0 : 0, wpa.cold ? wpx.cold.daysCold || 0 : 0), pn = Math.max(wpa.hot ? wpa.hot.n : 0, wpa.cold ? wpa.cold.n : 0);
       h += usedBox({ kind: pboth ? 'water' : pqh !== null ? 'hot' : 'cold', key: 'wrec-used', title: t(pSent ? 'ru_title_paid' : 'ru_title_h', { d: fmtDate(pA.date) }), per: t('ru_per', { a: fmtDate(pA.date), b: fmtDate(r.date), d: pdays }),
-        qs: [pqh !== null ? { v: '+' + pqh, u: 'м³', l: pboth ? t('ru_hot') : '', k: 'hot' } : null, pqc !== null ? { v: '+' + pqc, u: 'м³', l: pboth ? t('ru_cold') : '', k: 'cold' } : null].filter(Boolean), money: pcw.total, vals: vals,
-        lines: [pqc !== null ? t('ru_w_c', { q: pqc, a: money(ptr.supply), b: money(ptr.drain), s: money(pcw.coldSupply + pcw.coldDrain) }) : '', pqh !== null ? t('ru_w_h', { q: pqh, a: money(ptr.hot), b: money(ptr.drain), s: money(pcw.hot + pcw.hotDrain) }) : '',
+        qs: [{ v: wsum(pqh, pqc), u: 'м³' }], money: pcw.total, vals: vals,
+        lines: [pqc !== null ? wline('cold', pqc, ptr, pcw, pboth) : '', pqh !== null ? wline('hot', pqh, ptr, pcw, pboth) : '',
           pboth && wpa.hot.date !== wpa.cold.date ? t('ru_w_from', { h: fmtDate(wpa.hot.date), c: fmtDate(wpa.cold.date) }) : '',
           pn && (x.hot !== null || x.cold !== null) ? t('ru_this', { q: (x.hot || 0) + (x.cold || 0), u: 'м³', d: x.days || pdays }) + ' · ' + t('paid_skip', { n: pn }) : ''],
         proj: usedProj((pqh || 0) + (pqc || 0), pdays, pcw.total, 'м³'), note: pboth || pqh !== null ? t('wr_parts', { vk: money(pcw.vk), htm: money(pcw.htm) }) : '' });
@@ -2401,14 +2410,13 @@
       var from = [hb && hb.from, cb && cb.from, x.fromHot, x.fromCold].filter(Boolean).sort()[0], days = Math.max(hb ? hb.days : 0, cb ? cb.days : 0, x.daysHot || 0, x.daysCold || 0), both = qh !== null && qc !== null;
       var self = (qh !== null && qh !== x.hot) || (qc !== null && qc !== x.cold);
       h += usedBox({ kind: both ? 'water' : qh !== null ? 'hot' : 'cold', key: 'wrec-used', title: t('ru_title', { m: monthLabel(ym) }), per: from ? t('ru_per', { a: fmtDate(from), b: fmtDate(r.date), d: days }) : '',
-        qs: [qh !== null ? { v: '+' + qh, u: 'м³', l: both ? t('ru_hot') : '', k: 'hot' } : null, qc !== null ? { v: '+' + qc, u: 'м³', l: both ? t('ru_cold') : '', k: 'cold' } : null].filter(Boolean), money: c.total, vals: vals,
-        lines: [qc !== null ? t('ru_w_c', { q: qc, a: money(tr.supply), b: money(tr.drain), s: money(c.coldSupply + c.coldDrain) }) : '', qh !== null ? t('ru_w_h', { q: qh, a: money(tr.hot), b: money(tr.drain), s: money(c.hot + c.hotDrain) }) : '',
+        qs: [{ v: wsum(qh, qc), u: 'м³' }], money: c.total, vals: vals,
+        lines: [qc !== null ? wline('cold', qc, tr, c, both) : '', qh !== null ? wline('hot', qh, tr, c, both) : '',
           self ? t('ru_this', { q: (x.hot || 0) + (x.cold || 0), u: 'м³', d: x.days || days }) : '', wrecPaid(r)],
         proj: usedProj((qh || 0) + (qc || 0), days, c.total, 'м³'), note: both || qh !== null ? t('wr_parts', { vk: money(c.vk), htm: money(c.htm) }) : '' });
     } else if (r.base) h += usedBase('wrec-used', vals, ms.length === 1 ? ms[0].kind : 'water');
     else h += usedOnly(ms.length === 1 ? ms[0].kind : 'water', 'wrec-used', vals);
     h += recPhotos(r.photos, 'w' + r.id, 'w:' + r.id);
-    h += (r.base ? '' : billsBox('w:' + r.id, r.bills, t('bl_title', { m: monthLabel(String(r.date).slice(0, 7)) }))); h += noteBox(r);
     if (r.base) h += ownBox('w', r);
     var myw = !r.base && !r.own ? myProv('water', myPlaceOf(r)) : null;
     // 144-а: свій постачальник — «Оплата» замість «Куди передати»; 145-а (власник 14.11: «в історії вже оплачено — блоку не має бути»): лише поки не оплачено,
@@ -2419,6 +2427,7 @@
       else h += '<p>' + (wsentVk(r) ? '<span class="pill ok">' + ico('check', 14) + ' ' + esc(t('wr_vk')) + '</span> ' : '<span class="pill neutral">' + esc(t('wr_vk')) + ': ' + esc(t('wh_notsent')) + '</span> ') +
         (wmeters('hot').length ? (wsentHtm(r) ? '<span class="pill ok">' + ico('check', 14) + ' ' + esc(t('wr_htm')) + '</span>' : '<span class="pill neutral">' + esc(t('wr_htm')) + ': ' + esc(t('wh_notsent')) + '</span>') : '') + '</p>';
     }
+    h += (r.base ? '' : billsBox('w:' + r.id, r.bills, t('bl_title', { m: monthLabel(String(r.date).slice(0, 7)) }))); h += noteBox(r);
     h += '<div class="row-actions">' + (r.base ? '' : '<button class="btn sec" data-act="wedit" data-id="' + r.id + '" data-key="wrec-edit">' + esc(t('rec_edit')) + '</button>') + '<button class="btn danger" data-act="wdel" data-id="' + r.id + '" data-key="wrec-del">' + esc(t('rec_del')) + '</button></div>';
     if (!r.base) h += ownBox('w', r);   // «Позначити «лише для себе»» — внизу екрана (владелец 05.11)
     return { screen: 'S09', route: 'history', html: h };
@@ -3576,10 +3585,12 @@
       '<div class="field f-date"><label for="wn-date">' + esc(t('wn_date')) + '</label><div class="ctl"><input id="wn-date" type="date" value="' + esc(date) + '" max="' + today() + '"></div></div>' +
       '<form id="wn-form" novalidate><div class="rd-box" data-key="wn-box">' + order.map(function (m) {
         var p = prev[m.id];
-        return '<div class="field wfield" id="wf-' + m.id + '"><label for="wn-' + m.id + '">' + ico('drop', 16, m.kind === 'hot' ? 'c-hot' : 'c-cold') + ' ' + esc(wname(m)) + '</label>' +
+        // 146-а (власник 14.11: «один шаблон» для екранів показань усіх лічильників): водомір — як світло й газ: рамка з назвою й № лічильника, поле «Показання»
+        return '<fieldset class="efield" data-key="wn-m-' + m.id + '"><legend>' + ico('drop', 18, m.kind === 'hot' ? 'c-hot' : 'c-cold') + ' ' + esc(wname(m)) + (m.serial ? ' <span class="small muted">№ ' + esc(m.serial) + '</span>' : '') + '</legend>' +
+          '<div class="field wfield" id="wf-' + m.id + '"><label for="wn-' + m.id + '">' + esc(t('ez_all')) + '</label>' +
           '<div class="ctl"><input id="wn-' + m.id + '" class="num" inputmode="decimal" autocomplete="off" data-wn="' + m.id + '" value="' + esc(WN.vals[m.id] || '') + '" placeholder="' + (p ? esc(wfmt(p.vals[m.id])) : '') + '" aria-describedby="wh-' + m.id + '"><span class="unit">м³</span>' +
           wnSrcThumb(m.id) + '</div>' +
-          '<div class="help" id="wh-' + m.id + '">' + esc(wnSrcText(m.id)) + (p ? esc(t('wn_prev', { v: Wt.whole(p.vals[m.id]), d: fmtDate(p.date) })) : esc(t('wn_first'))) + '</div></div>';
+          '<div class="help" id="wh-' + m.id + '">' + esc(wnSrcText(m.id)) + (p ? esc(t('wn_prev', { v: Wt.whole(p.vals[m.id]), d: fmtDate(p.date) })) : esc(t('wn_first'))) + '</div></div></fieldset>';
       }).join('') +
       '<p class="small rd-hint">' + esc(t('wn_digits')) + '</p></div>' + noteField('wn-note', WN.note) +
       '<div class="wiz-actions"><button class="btn" type="submit" data-key="wn-save">' + esc(t('wn_save')) + '</button></div></form>' + cancelLink('water') + ownField();
@@ -5052,7 +5063,7 @@
     var opts = base ? [['sent', 'st_sent', 'bs_lead_s'], ['not', 'st_base_not', '']]
       : my ? [['sent', 'my_paid', 'my_paid_s'], ['not', 'my_notpaid', ''], ['own', 'st_own', 'st_own_s']]
       : src === 'h' ? [['accepted', 'st_acc', 'st_acc_s'], ['handed', 'st_rev', 'st_rev_s']].concat(cur === 'rejected' ? [['rejected', 'st_rej', 'st_rej_s']] : [], [['not', 'st_not', ''], ['own', 'st_own', 'st_own_s']])
-      : [['sent', 'st_sent', 'st_sent_' + (k === 'hot' ? 'hot' : k)], ['not', 'st_not', ''], ['own', 'st_own', 'st_own_s']];
+      : [['sent', 'st_sent', 'st_sent_' + (k === 'hot' || k === 'water' ? 'hot' : k)], ['not', 'st_not', ''], ['own', 'st_own', 'st_own_s']];
     var m = document.createElement('div'); m.className = 'st-menu'; m.setAttribute('role', 'menu'); m.setAttribute('data-key', 'st-menu');
     m.innerHTML = opts.map(function (o) {
       var on = o[0] === cur, sub = o[2] ? t(o[2]) : '';
@@ -5094,7 +5105,8 @@
     else {
       delete r.own;
       if (src === 'w') {
-        if (v === 'sent') { if (!r.sent.vk) r.sent.vk = d; if (k === 'hot' && !r.sent.htm) r.sent.htm = d; }
+        if (v === 'sent') { if (!r.sent.vk) r.sent.vk = d; if ((k === 'hot' || k === 'water') && !r.sent.htm) r.sent.htm = d; }
+        else if (k === 'water') { r.sent.vk = ''; r.sent.htm = ''; }   // 146-а: один чип на гарячу й холодну
         else if (k === 'hot') r.sent.htm = ''; else r.sent.vk = '';
       } else if (src === 'm') { var sk = SK[k] ? SK[k].sk : 'obl'; r.sent[sk] = v === 'sent' ? (r.sent[sk] || d) : ''; }
       else if (v === 'accepted' || v === 'handed') { if (r.status !== v) heatSetStatus(r, v); }

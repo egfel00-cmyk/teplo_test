@@ -34,7 +34,16 @@ let pass = 0, fail = 0; const ok = (n, c, x) => { if (c) { pass++; console.log('
 
   // вода: чипи двох видів праворуч від дати, «Зараховується за жовтень»
   await p.goto(U + '#wrec-w20261015'); await p.waitForTimeout(800);
-  ok('вода: два чипи (гаряча / холодна) у шапці запису', (await p.$$('.rec-h .st-chip')).length === 2, (await p.$$('.rec-h .st-chip')).length);
+  // 146-а (власник: «один шаблон лейауту» з іншими записами): гаряча й холодна в одному стані — один чип праворуч від дати, як у світла
+  ok('вода: обидва види передано — один чип «Передано» у шапці', (await p.$$('.rec-h .st-chip')).length === 1 && /Передано/.test(await txt('.rec-h .st-chip')), await txt('.rec-h'));
+  ok('вода: «набігло» — одне число й гроші двома рядками, як у світла', (await p.$$('[data-key=wrec-used] .ru-q')).length === 1 &&
+    await p.$eval('[data-key=wrec-used] .ru-big', e => getComputedStyle(e).flexDirection === 'column'));
+  await p.click('.rec-h .st-chip'); await p.waitForTimeout(200); await p.click('[data-key=st-menu] [data-key=st-set-not]'); await p.waitForTimeout(500);
+  const wsn = await p.evaluate(() => (JSON.parse(localStorage.getItem('teplo.v1')).water.find(x => x.id === 'w20261015') || {}).sent || {});
+  ok('один чип «Не передано» знімає і Водоканал, і ХТМ', !wsn.vk && !wsn.htm && /Не передано/.test(await txt('.rec-h .st-chip')), wsn);
+  await p.evaluate(() => { const s = JSON.parse(localStorage.getItem('teplo.v1')); s.water.find(x => x.id === 'w20261015').sent = { vk: '2026-10-15' }; s.updatedAt = Date.now(); localStorage.setItem('teplo.v1', JSON.stringify(s)); });
+  await p.goto('about:blank'); await p.goto(U + '#wrec-w20261015'); await p.waitForTimeout(800);
+  ok('вода: холодну передано, гарячу ні — два чипи з назвою виду', (await p.$$('.rec-h .st-chip')).length === 2 && /Гаряча/.test(await txt('.rec-h')), (await p.$$('.rec-h .st-chip')).length);
   ok('вода: «Зараховується за жовтень 2026»', /Зараховується за жовтень 2026/.test(await txt('[data-key=rec-sub]')), await txt('[data-key=rec-sub]'));
   ok('вода: без коментаря блоку немає', !(await p.$('[data-key=rec-note]')));
   ok('вода: перемикача квартир у записі немає (квартир дві)', !(await p.$('#main [data-key=place-switch]')));

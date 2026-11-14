@@ -40,7 +40,7 @@ if (!fs.existsSync(NOV)) { const j = path.join(LAB, 'rp.local.json'); fs.writeFi
     await p.screenshot({ path: '/tmp/shots/rec_gas_' + vw + '.png', fullPage: vw === 390 });
     await p.goto(U + '#wrec-w20261015'); await p.waitForTimeout(1200);
     const o2 = await order('wrec-used', true, 'wrec-values'), u2 = (await p.textContent('[data-key=wrec-used]').catch(() => '')).replace(/\s+/g, ' ');
-    ok(vw + ': вода з двома водомірами — «Набігло» (гаряча й холодна, разом ≈ грн) → фото → два рядки показань з копіюванням 175 і 437, без барабанів', o2.used && o2.ok && !o2.drum && /Гаряча/.test(u2) && /Холодна/.test(u2) && /Разом/.test(u2)
+    ok(vw + ': вода з двома водомірами — «Набігло» одним числом +8 м³ і ≈ грн (146-а: як світло), гаряча й холодна — рядками → фото → два рядки показань з копіюванням 175 і 437, без барабанів', o2.used && o2.ok && !o2.drum && /Гаряча/.test(u2) && /Холодна/.test(u2) && !/Разом/.test(u2) && (await p.$$('[data-key=wrec-used] .ru-q')).length === 1 && /\+8\s*м³/.test(u2)
       && await p.evaluate(() => document.querySelectorAll('[data-key=wrec-values] > li').length === 2)
       && (await p.getAttribute('[data-key=wrec-copy-h1]', 'data-text')) === '175' && (await p.getAttribute('[data-key=wrec-copy-c1]', 'data-text')) === '437', [o2, u2]);
     const g2 = await geo(); ok(vw + ': вода — фото теж по центру', g2 && Math.abs(g2.dx) <= 2 && Math.abs(g2.dy) <= 2, g2);

@@ -2149,10 +2149,12 @@ details.wacc.wacc-btn > .acc-foot { margin: 0; padding: 12px 16px 16px; border-t
 .f-note { margin-top: var(--sp-4); }
 /* «Набігло» — перший блок запису (власник 10.11): місяць, період, розхід кольором виду і гроші великим, розрахунок словами під тонкою лінією */
 .ru { --kc: var(--c-ink); }
-.ru-heat, .ru-hot { --kc: var(--c-supply); } .ru-cold { --kc: var(--c-return); } .ru-elec { --kc: var(--c-elec); } .ru-gas { --kc: var(--c-gas); }
+.ru-heat, .ru-hot { --kc: var(--c-supply); } .ru-cold, .ru-water { --kc: var(--c-return); } .ru-elec { --kc: var(--c-elec); } .ru-gas { --kc: var(--c-gas); }
 .ru-t { margin: 0; font-size: var(--fs-l); line-height: 1.25; }
 .ru-per { margin: 4px 0 0; color: var(--c-ink-2); font-size: var(--fs-s); font-variant-numeric: tabular-nums; }
-.ru-big { display: flex; flex-wrap: wrap; align-items: flex-end; gap: var(--sp-3) var(--sp-6); margin: var(--sp-4) 0 0; }
+/* 146-а (власник 14.11: «один шаблон лейауту» для записів усіх лічильників): набігло й гроші — завжди двома рядками, одне під одним
+   (раніше короткі «+8 м³ ≈ 672 грн» ставали в рядок, а довгі «+205 кВт·год» — у два: записи води й світла виглядали по-різному) */
+.ru-big { display: flex; flex-direction: column; align-items: flex-start; gap: var(--sp-3); margin: var(--sp-4) 0 0; }
 .ru-q, .ru-m { display: grid; grid-template-columns: auto auto; align-items: baseline; column-gap: 6px; }
 .ru-q i, .ru-m i { grid-column: 1 / -1; font-style: normal; font-size: 13px; color: var(--c-ink-2); margin-bottom: 2px; }
 .ru-q b, .ru-m b { font-family: var(--font); font-size: var(--fs-xxl); line-height: 1.05; font-weight: 600; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }   /* гроші й розхід — Plex Sans (Mono — лише те, що копіюють у кабінет) */
