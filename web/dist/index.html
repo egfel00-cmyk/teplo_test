@@ -2427,7 +2427,7 @@ details.mypay > summary h2 { min-width: 0; }
 details.mypay > summary h2 > span { min-width: 0; overflow-wrap: anywhere; }
 .mypay-amt { flex: none; font-size: var(--fs-m); font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; color: var(--c-ink); }
 .mypay-st { flex: none; white-space: nowrap; }
-details.mypay[open] > summary .mypay-amt { display: none; }
+details.mypay[open] > summary .mypay-amt, details.mypay[open] > summary .mypay-st { display: none; }   /* відкрито — сума й «Оплачено» всередині */
 .mypay-b { display: grid; gap: 12px; }
 .mypay-b > p { margin: 0; }
 .my-sum { display: grid; gap: 2px; }
@@ -11513,7 +11513,9 @@ details.mypay[open] > summary .mypay-amt { display: none; }
     h += (r.base ? '' : billsBox('w:' + r.id, r.bills, t('bl_title', { m: monthLabel(String(r.date).slice(0, 7)) }))); h += noteBox(r);
     if (r.base) h += ownBox('w', r);
     var myw = !r.base && !r.own ? myProv('water', myPlaceOf(r)) : null;
-    if (myw) h += myPayBox('water', myw, myCtxW(r), myMarkW(r), 'mypay-rec');   // 144-а: свій постачальник — «Оплата» замість «Куди передати»
+    // 144-а: свій постачальник — «Оплата» замість «Куди передати»; 145-а (власник 14.11: «в історії вже оплачено — блоку не має бути»): лише поки не оплачено,
+    // позначка й «Скасувати» — у чипі статусу в шапці запису
+    if (myw) h += wsentVk(r) ? '' : myPayBox('water', myw, myCtxW(r), myMarkW(r), 'mypay-rec');
     else if (!r.base && !r.own) {
       if (thisMonth(r.date)) h += whereAcc(wsendPanel(r), r.id);
       else h += '<p>' + (wsentVk(r) ? '<span class="pill ok">' + ico('check', 14) + ' ' + esc(t('wr_vk')) + '</span> ' : '<span class="pill neutral">' + esc(t('wr_vk')) + ': ' + esc(t('wh_notsent')) + '</span> ') +
@@ -12562,7 +12564,7 @@ details.mypay[open] > summary .mypay-amt { display: none; }
     h += recPhotos(r.photos, 'm' + r.id, 'm:' + r.id);
     if (r.base) h += ownBox('m', r);
     var myr = !r.base && !r.own ? myProv(k, myPlaceOf(r)) : null;
-    if (myr) h += myPayBox(k, myr, myCtxS(k, m, r), myMarkS(k, r), 'mypay-rec');   // 144-а: свій постачальник — «Оплата» замість «Куди передати»
+    if (myr) h += ssent(k, r) ? '' : myPayBox(k, myr, myCtxS(k, m, r), myMarkS(k, r), 'mypay-rec');   // 144-а: «Оплата» замість «Куди передати»; 145-а: оплачено — блоку немає (власник)
     else if (!r.base && !r.own) {
       var w = swin(k);
       if (w.open && r.date >= w.from && r.date <= w.to) h += whereAcc(ssendPanel(k, smeters(k).map(function (mm) { return mm.id === m.id ? r : einWin(mm.id, w); })), r.id);
@@ -13763,7 +13765,7 @@ details.mypay[open] > summary .mypay-amt { display: none; }
       act += '<button class="btn big block" data-act="read" data-key="home-read">' + esc(t('h_read')) + '</button>';   // фото — на кроках введення («з фото»)
     }
     var myh = myProv('heat'), hlast = myh ? RD().filter(function (x) { return x.htm && x.htm.date && !x.own; }).slice(-1)[0] : null;
-    right += myh ? (hlast && !/^(handed|accepted)$/.test(hlast.status) ? myPayBox('heat', myh, myCtxH(hlast), '') : '') : whereAcc(heatWhere());   // 144-а: свій постачальник — без «Куди передати»
+    right += myh ? (hlast && !/^(handed|accepted)$/.test(hlast.status) ? myPayBox('heat', myh, myCtxH(hlast), '') : myPayBox('heat', myh, null, '')) : whereAcc(heatWhere());   // 145-а: блок свого — завжди, як «Куди передати»   // 144-а: свій постачальник — без «Куди передати»
     var recent = heatMixed(3);
     if (recent.length) right += histPanel(readingList(recent), RD().length + gaps('heat').length, '<button class="btn sec block" data-act="view-go" data-v="heat" data-to="history" data-key="heat-all">' + esc(t('wh_all', { n: RD().length + gaps('heat').length })) + '</button>', 'heat');
     if (Y().mode === 'server' && !Y().account && RD().length && !S.syncPromptDismissed) {
@@ -15954,7 +15956,7 @@ details.mypay[open] > summary .mypay-amt { display: none; }
   // акордеон, що «Куди передати» (details.wacc.wacc-btn, закритий; відкривали — лишається відкритим до перезавантаження). У згорнутій шапці —
   // назва й сума (або «Оплачено»), щоб не відкривати заради цифри. Номер людини в постачальника (гараж 141) — рядком з «Копіювати», не голим числом.
   function myPayBox(pk, o, c, mark, key) {
-    var how = o.how || 'iban', purp = how === 'cash' ? '' : myPurpose(pk, o, c), rows = [], num = myNum(o);
+    var how = o.how || 'iban', purp = how === 'cash' || !c ? '' : myPurpose(pk, o, c), rows = [], num = myNum(o);   // c = null — платити зараз нічого: лише реквізити
     var row = function (lbl, v, copy, cls, rk) { return v ? '<li data-key="' + rk + '"><span class="my-r-l">' + esc(lbl) + '</span><span class="my-r-v' + (cls ? ' ' + cls : '') + '">' + esc(v) + '</span>' + (copy ? copyIco(copy, rk + '-copy') : '<span></span>') + '</li>' : ''; };
     if (how === 'iban') rows.push(row(t('my_recip'), o.recip || o.name, o.recip || o.name, '', 'my-r-recip'), row('IBAN', myIbanFmt(o.iban), myIban(o.iban), 'tn', 'my-r-iban'), row(t('my_code_s'), o.code, o.code, 'tn', 'my-r-code'));
     else if (how === 'cash') rows.push(row(t('my_how_cash'), o.cash || '', '', '', 'my-r-cash'));
@@ -15990,15 +15992,22 @@ details.mypay[open] > summary .mypay-amt { display: none; }
     return myMark(s, '<button type="button" class="btn block" data-act="wsent" data-to="vk" data-v="1" data-id="' + esc(r.id) + '" data-key="my-paid">' + ico('check', 20) + '<span>' + esc(t('my_paid')) + '</span></button>',
       '<button type="button" class="linkbtn" data-act="wsent" data-to="vk" data-v="0" data-id="' + esc(r.id) + '" data-key="my-unpaid">' + esc(t('my_unpaid')) + '</button>');
   }
-  /** Сторінка лічильника зі своїм постачальником: «Оплата» — лише коли останні показання ще не оплачені (інакше нічого — людина й так знає, кому платить). */
+  /** Сторінка лічильника зі своїм постачальником. 145-а (власник 14.11, 06:36: «в счётчике должен быть блок куда платить и для кастомного — по аналогии
+   *  с гос-провайдерами, с именем, куда платить, и раскрывашкой»): блок є завжди, як «Куди передати». Неоплачені останні показання — сума, призначення, «Оплачено»;
+   *  оплачено чи показань ще немає — реквізити й номер (і «Оплачено {d}»), без суми й призначення. */
   function myPageS(k) {
     var o = myProv(k); if (!o) return '';
-    return smeters(k).map(function (m) { var r = elastOf(m.id); return r && !r.base && !r.own && !ssent(k, r) ? myPayBox(k, o, myCtxS(k, m, r), myMarkS(k, r), 'mypay-' + m.id) : ''; }).join('');
+    var due = smeters(k).map(function (m) { var r = elastOf(m.id); return r && !r.base && !r.own && !ssent(k, r) ? myPayBox(k, o, myCtxS(k, m, r), myMarkS(k, r), 'mypay-' + m.id) : ''; }).join('');
+    if (due) return due;
+    var paid = smeters(k).map(function (m) { var r = elastOf(m.id); return r && !r.base && !r.own ? r.sent && r.sent[SK[k].sk] : null; }).filter(Boolean).sort().slice(-1)[0];
+    return myPayBox(k, o, null, paid ? myMark(paid, '', '') : '', 'mypay-' + k);
   }
   function myPageW(kind) {
     var o = myProv('water'); if (!o) return '';
     var r = wrecs().filter(function (x) { return !x.base && wmeters(kind, true).some(function (m) { return hasVal(x, m.id); }); }).slice(-1)[0];
-    return r && !r.own && !wsentVk(r) ? myPayBox('water', o, myCtxW(r), myMarkW(r)) : '';
+    if (r && !r.own && !wsentVk(r)) return myPayBox('water', o, myCtxW(r), myMarkW(r));
+    var paid = r && !r.own ? wsentVk(r) : null;
+    return myPayBox('water', o, null, paid ? myMark(paid, '', '') : '');
   }
   /** Посилання під «Куди передати»: платите не їм — одним дотиком на свого постачальника (у «Налаштуваннях показань»). */
   function myLink(pk) {
@@ -16049,7 +16058,31 @@ details.mypay[open] > summary .mypay-amt { display: none; }
     var el = e.target; if (!el || !el.getAttribute) return;
     var pick = el.getAttribute('data-my-pick'); if (pick) { myToggle(pick, el.value === '1'); return; }
     var f = el.getAttribute('data-my'), pk = el.getAttribute('data-my-pk'); if (!f || !pk) return;
+    if (MY_PEND && MY_PEND.el === el) { clearTimeout(MY_PEND.t); MY_PEND = null; }
     var v = String(el.value || '').trim(), redraw = /^(how|due)$/.test(f);
+    myField(pk, f, v);
+    if (f === 'iban') { el.value = myIbanFmt(v); }
+    if (f === 'num') { var ex0 = document.querySelector('[data-key="my-ex-' + pk + '"] .my-ex-t'); if (ex0) ex0.textContent = myPurpose(pk, myProv(pk) || {}, myCtxLast(pk)); }
+    if (redraw || f === 'iban' || f === 'abon' || f === 'name') render(true); else toast(t('b_saved'));
+  });
+  // 145-а (власник 14.11: «не сохраняется кастомный провайдер в счётчике света»): на iPhone дотик кнопки не забирає фокус з поля — `change` не настає,
+  // і набране зникає з перемальовкою. Тепер поле зберігається, поки людина друкує (за 0,4 с тиші), і одразу — на будь-який дотик, перед кліком
+  // (pointerdown у capture), при переході на іншу сторінку, згортанні застосунку й закритті вкладки.
+  var MY_PEND = null;
+  function myFlush() { if (!MY_PEND) return; var p0 = MY_PEND; clearTimeout(p0.t); MY_PEND = null; myField(p0.pk, p0.f, String(p0.el.value || '').trim()); }
+  document.addEventListener('input', function (e) {
+    var el = e.target; if (!el || !el.getAttribute || el.type === 'radio') return;
+    var f = el.getAttribute('data-my'), pk = el.getAttribute('data-my-pk'); if (!f || !pk || /^(how|due)$/.test(f)) return;
+    if (MY_PEND && MY_PEND.el !== el) myFlush();
+    if (MY_PEND) clearTimeout(MY_PEND.t);
+    MY_PEND = { el: el, f: f, pk: pk, t: setTimeout(myFlush, 400) };
+  });
+  document.addEventListener('pointerdown', function (e) { if (MY_PEND && e.target !== MY_PEND.el) myFlush(); }, true);
+  window.addEventListener('hashchange', myFlush, true);
+  window.addEventListener('pagehide', myFlush);
+  document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'hidden') myFlush(); });
+  /** Записати одне поле свого постачальника (без перемальовки): нормалізація як у формі. */
+  function myField(pk, f, v) {
     mySet(pk, function (o) {
       if (f === 'how') o.how = /^(iban|cash|other)$/.test(v) ? v : 'iban';
       else if (f === 'due') o.due = /^(none|till|win)$/.test(v) ? v : 'none';
@@ -16061,10 +16094,7 @@ details.mypay[open] > summary .mypay-amt { display: none; }
       else if (f === 'num') { o.num = v.slice(0, 40); delete o.note; }   // 145-а: номер жив у «Примітці» — переносимо
       else o[f] = v.slice(0, f === 'purpose' || f === 'other' ? 300 : 200);
     });
-    if (f === 'iban') { el.value = myIbanFmt(v); }
-    if (f === 'num') { var ex0 = document.querySelector('[data-key="my-ex-' + pk + '"] .my-ex-t'); if (ex0) ex0.textContent = myPurpose(pk, myProv(pk) || {}, myCtxLast(pk)); }
-    if (redraw || f === 'iban' || f === 'abon' || f === 'name') render(true); else toast(t('b_saved'));
-  });
+  }
   // приклад призначення — одразу, поки людина друкує (без перемальовки)
   document.addEventListener('input', function (e) {
     var el = e.target; if (!el || !el.getAttribute || el.getAttribute('data-my') !== 'purpose') return;

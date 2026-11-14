@@ -14,13 +14,19 @@ const B = 'http://127.0.0.1:8013/';
   p.on('pageerror', e => errs.push('pageerror: ' + e.message));
   const load = async (opts, route) => {
     await p.goto(B);
-    await p.evaluate(s => { localStorage.clear(); localStorage.setItem('teplo.v1', JSON.stringify(s)); localStorage.setItem('teplo.cc', JSON.stringify({ v: 1, a: 0, at: new Date().toISOString(), id: 'x' })); }, demo(opts));
+    // 145-а: стара сторінка ще може зберегти свій стан пізніше (таймери, довідник) і затерти підставлений — після підстановки запис у ній вимкнено
+    await p.evaluate(s => { localStorage.clear(); localStorage.setItem('teplo.v1', JSON.stringify(s)); localStorage.setItem('teplo.cc', JSON.stringify({ v: 1, a: 0, at: new Date().toISOString(), id: 'x' }));
+      Storage.prototype.setItem = Storage.prototype.removeItem = Storage.prototype.clear = function () {}; }, demo(opts));
     // 145-а: з тієї ж сторінки зміна хешу малювала маршрут зі старим станом у пам'яті (гараж → #home) — спершу порожня сторінка
     await p.goto('about:blank'); await p.goto(B + '#' + route); await p.waitForTimeout(700);
   };
   const st = () => p.evaluate(() => JSON.parse(localStorage.getItem('teplo.v1')));
   const txt = sel => p.$eval(sel, e => e.innerText.replace(/\s+/g, ' ').trim()).catch(() => '');
   const has = sel => p.$(sel).then(Boolean);
+  const tap = async sel => {
+    try { await p.waitForSelector(sel, { timeout: 8000, state: 'attached' }); }
+    catch (e) { console.log('DBG', await p.evaluate(() => location.hash + ' | ' + document.querySelector('main').innerText.slice(0, 300).replace(/\s+/g, ' '))); throw e; }
+    await p.click(sel); };   // 145-а: перемальовка після завантаження довідника — дочекатись вузла
 
   // 1. Порожні екрани: гараж без показань — історія й статистика світла, текст і кнопка одного виду
   await load({ garage: true, atGarage: true }, 'history');
@@ -41,7 +47,7 @@ const B = 'http://127.0.0.1:8013/';
   ok('увімкнули свого: prov.elec.own = 1 (як платите — на рахунок, без строку)', gar().prov && gar().prov.elec.own === 1 && gar().prov.elec.how === 'iban' && gar().prov.elec.due === 'none', gar().prov);
   ok('налаштування розгорнуті на «Кому платите», «Свій постачальник» обрано', await p.$eval('#my-elec', f => !!f.closest('details[open]')) && await p.isChecked('[data-key="my-elec-1"]'));
   ok('фокус — у полі «Назва»', await p.evaluate(() => document.activeElement && document.activeElement.id === 'my-elec-name'));
-  ok('«Куди передати» зник', !(await has('[data-key="where-elec"]')) && !(await has('.wacc:not(.mypay)')));
+  ok('«Куди передати» зник, замість нього — блок свого постачальника (ще без назви)', !(await has('[data-key="where-elec"]')) && !(await has('.wacc:not(.mypay)')) && await has('[data-key="mypay-elec"]'));
   await p.fill('#my-elec-name', 'ГК «Мотор»'); await p.press('#my-elec-name', 'Tab'); await p.waitForTimeout(400);
   await p.fill('#my-elec-iban', 'ua21 3223 1300 0002 6007 2335 6600 2'); await p.press('#my-elec-iban', 'Tab'); await p.waitForTimeout(400);
   ok('IBAN з опискою — жовта підказка про контрольні цифри', /контрольні цифри/.test(await txt('[data-key="my-iban-warn"]')));
@@ -52,6 +58,15 @@ const B = 'http://127.0.0.1:8013/';
   ok('«Підставити»: {набігло} і {сума} — у курсор, з пробілом', pv === 'Гараж № 47: світло {набігло} {сума}', pv);
   s = await st();
   ok('шаблон збережено одразу', gar().prov.elec.purpose === 'Гараж № 47: світло {набігло} {сума}' && gar().prov.elec.name === 'ГК «Мотор»' && gar().prov.elec.iban === 'UA213223130000026007233566001', gar().prov.elec);
+  // 145-а (власник: «не сохраняется кастомный провайдер в счётчике света»): на iPhone дотик кнопки не забирає фокус — `change` нема; набране має лишитись
+  await p.evaluate(() => { const el = document.getElementById('my-elec-recip'); el.focus(); el.value = 'ГК «Мотор», голова'; el.dispatchEvent(new Event('input', { bubbles: true })); });
+  await p.evaluate(() => { location.hash = '#home'; }); await p.waitForTimeout(400);
+  s = await st();
+  ok('без blur/change: набране в «Отримувач» збережено при переході на іншу сторінку', gar().prov.elec.recip === 'ГК «Мотор», голова', gar().prov.elec);
+  await p.goto(B + '#elec'); await p.waitForTimeout(500);
+  await p.evaluate(() => { const el = document.getElementById('my-elec-phone'); el.focus(); el.value = '0501234567'; el.dispatchEvent(new Event('input', { bubbles: true })); });
+  await p.waitForTimeout(700); s = await st();
+  ok('без blur: за 0,4 с тиші поле збережено саме', gar().prov.elec.phone === '0501234567', gar().prov.elec);
   // 3. готівка й строк «до 25»
   await p.check('[data-key="my-elec-how-cash"]'); await p.waitForTimeout(400);
   ok('готівкою: поле «Кому й де», без IBAN і призначення', await has('#my-elec-cash') && !(await has('#my-elec-iban')) && !(await has('#my-elec-purpose')));
@@ -80,7 +95,7 @@ const B = 'http://127.0.0.1:8013/';
   // 145-а: «Оплата» — розкривашка, як «Куди передати»: закрита, у шапці назва й сума
   ok('«Оплата» — акордеон wacc, закритий, у шапці «ГК «Мотор»» і 259,20 грн', await p.$eval('[data-key="mypay-eg"]', d => d.tagName === 'DETAILS' && d.classList.contains('wacc') && !d.open).catch(() => false) &&
     /ГК «Мотор».*259,20 грн/.test(await txt('[data-key="mypay-eg-sum"]')), await txt('[data-key="mypay-eg-sum"]'));
-  await p.click('[data-key="mypay-eg-sum"]'); await p.waitForTimeout(500);
+  await tap('[data-key="mypay-eg-sum"]'); await p.waitForTimeout(500);
   ok('відкрили: сума в шапці схована (є всередині), унизу «Згорнути»', await p.$eval('[data-key="mypay-eg"]', d => d.open && getComputedStyle(d.querySelector('.mypay-amt')).display === 'none' && !!d.querySelector('.acc-foot')).catch(() => false));
   const pay = await txt('[data-key="mypay-eg"]');
   ok('«Оплата»: назва, 259,20 грн, 60 кВт·год з 30 вересня', /ГК «Мотор»/.test(pay) && /259,20/.test(pay) && /60 кВт·год з 30 вересня/.test(pay), pay);
@@ -92,11 +107,18 @@ const B = 'http://127.0.0.1:8013/';
   ok('у історії — «Не оплачено»', /Не оплачено/.test(await txt('[data-key="st-gr20261031"]')));
   await p.click('[data-key="mypay-eg"] [data-key="my-paid"]'); await p.waitForTimeout(500);
   s = await st();
-  ok('«Оплачено»: sent.obl у записі, «Оплата» зникла, у історії — «Оплачено»', !!(s.mrecs.find(r => r.id === 'gr20261031').sent || {}).obl && !(await has('[data-key="mypay-eg"]')) && /Оплачено/.test(await txt('[data-key="st-gr20261031"]')));
+  ok('«Оплачено»: sent.obl у записі, суми й призначення вже немає, у історії — «Оплачено»', !!(s.mrecs.find(r => r.id === 'gr20261031').sent || {}).obl && !(await has('[data-key="mypay-eg"]')) && /Оплачено/.test(await txt('[data-key="st-gr20261031"]')));
+  // 145-а (власник 06:36: «в счётчике блок куда платить — всегда, как у гос-провайдеров, с именем и раскрывашкой»)
+  ok('оплачено — блок постачальника лишається: «ГК «Мотор»» і «Оплачено» в шапці, закритий', /ГК «Мотор».*Оплачено/.test(await txt('[data-key="mypay-elec-sum"]')) && !(await p.$eval('[data-key="mypay-elec"]', d => d.open)), await txt('[data-key="mypay-elec-sum"]'));
+  await tap('[data-key="mypay-elec-sum"]'); await p.waitForTimeout(400);
+  ok('відкрили: реквізити (IBAN), без суми й призначення', await has('[data-key="mypay-elec"] [data-key="my-r-iban"]') && !(await has('[data-key="mypay-elec"] [data-key="my-sum"]')) && !(await has('[data-key="mypay-elec"] [data-key="my-r-purp"]')));
   await p.goto(B + '#erec-gr20261031'); await p.waitForTimeout(500);
-  ok('запис: «Оплата» закрита, у шапці — «Оплачено»', /Оплачено/.test(await txt('[data-key="mypay-rec-sum"]')) && !(await p.$eval('[data-key="mypay-rec"]', d => d.open)));
-  await p.click('[data-key="mypay-rec-sum"]'); await p.waitForTimeout(400);
-  ok('запис: «Оплата» з позначкою «Оплачено …» і «Скасувати»', /Оплачено/.test(await txt('[data-key="mypay-rec"] [data-key="my-mark"]')) && await has('[data-key="mypay-rec"] [data-key="my-unpaid"]') && !(await has('.wacc:not(.mypay)')));
+  // 145-а (власник 14.11, скрин: «в історії вже оплачено — блоку куди платити не має бути»)
+  ok('оплачений запис: «Оплати» немає, у шапці — чип «Оплачено»', !(await has('[data-key="mypay-rec"]')) && !(await has('.wacc')) && /Оплачено/.test(await txt('[data-key="rec-h"]')), await txt('[data-key="rec-h"]'));
+  await p.goto(B + '#erec-gr20261031'); await p.waitForTimeout(300);
+  await p.evaluate(() => { const s = JSON.parse(localStorage.getItem('teplo.v1')); s.mrecs.find(r => r.id === 'gr20261031').sent = {}; s.updatedAt = Date.now(); localStorage.setItem('teplo.v1', JSON.stringify(s)); });
+  await p.goto('about:blank'); await p.goto(B + '#erec-gr20261031'); await p.waitForTimeout(700);
+  ok('неоплачений запис: «Оплата» є, закрита, у шапці сума', /259,20 грн/.test(await txt('[data-key="mypay-rec-sum"]')) && !(await p.$eval('[data-key="mypay-rec"]', d => d.open)));
   // екран квартири: рядок «свій» → «Налаштувати» веде у «Кому платите»
   await p.goto(B + '#place-gar'); await p.waitForTimeout(700);
   await p.click('summary:has-text("Постачальники")'); await p.waitForTimeout(500);
@@ -111,13 +133,16 @@ const B = 'http://127.0.0.1:8013/';
   await p.reload(); await p.waitForTimeout(600);
   ok('вода свого: «Куди передати» немає', !(await has('[data-key="where-water"]')));
   await p.goto(B + '#wrec-w20261015'); await p.waitForTimeout(500);
-  await p.click('[data-key="mypay-rec-sum"]'); await p.waitForTimeout(400);
+  ok('запис води оплачено (sent.vk) — «Оплати» немає', !(await has('[data-key="mypay-rec"]')));
+  await p.evaluate(() => { const s = JSON.parse(localStorage.getItem('teplo.v1')); s.water.find(r => r.id === 'w20261015').sent = {}; s.updatedAt = Date.now(); localStorage.setItem('teplo.v1', JSON.stringify(s)); });
+  await p.goto('about:blank'); await p.goto(B + '#wrec-w20261015'); await p.waitForTimeout(700);
+  await tap('[data-key="mypay-rec-sum"]'); await p.waitForTimeout(400);
   const wp = await txt('[data-key="mypay-rec"]');
   ok('запис води: «Оплата» ОСББ «Сад», «Інакше: Касиру ОСББ», сума', /ОСББ «Сад»/.test(wp) && /Касиру ОСББ/.test(wp) && /До сплати/.test(wp), wp);
 
   // 6. 145-а, скрин власника: одні показання, типовий шаблон, «141» у старій «Примітці» — без «…», номер рядком
   await load({ garage: 'own1', atGarage: true }, 'elec');
-  await p.click('[data-key="mypay-eg-sum"]'); await p.waitForTimeout(500);
+  await tap('[data-key="mypay-eg-sum"]'); await p.waitForTimeout(500);
   const p1 = await txt('[data-key="mypay-eg"] [data-key="my-r-purp"] .my-r-v');
   ok('перші показання: призначення без «…» — «Гараж № 141: показання 2263, за …»', /^Гараж № 141: показання 2263, за \S+ 2026$/.test(p1) && !p1.includes('…'), p1);
   ok('«Ваш номер 141» — рядком з «Копіювати», голого «141» немає', /Ваш номер 141/.test(await txt('[data-key="my-r-num"]')) && await has('[data-key="my-r-num-copy"]') && !(await has('[data-key="mypay-eg"] .my-note')));

@@ -2410,7 +2410,7 @@ details.mypay > summary h2 { min-width: 0; }
 details.mypay > summary h2 > span { min-width: 0; overflow-wrap: anywhere; }
 .mypay-amt { flex: none; font-size: var(--fs-m); font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; color: var(--c-ink); }
 .mypay-st { flex: none; white-space: nowrap; }
-details.mypay[open] > summary .mypay-amt { display: none; }
+details.mypay[open] > summary .mypay-amt, details.mypay[open] > summary .mypay-st { display: none; }   /* відкрито — сума й «Оплачено» всередині */
 .mypay-b { display: grid; gap: 12px; }
 .mypay-b > p { margin: 0; }
 .my-sum { display: grid; gap: 2px; }
