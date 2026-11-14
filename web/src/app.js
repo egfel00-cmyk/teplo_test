@@ -6606,6 +6606,66 @@
       function () { LB.busy = ''; LB.err = { error: 'net', human: t('lb_fail') }; render(true); });
   }
   /** Блок у «Куди передати» місцевого постачальника: підключити (поля + згода) → «Відправити у фоні» → статус черги. */
+  // ---- 150-а (план конкурентів п. 6: «Надіслати власнику», ніша MÖRK — оренда): готове повідомлення з показаннями всіх лічильників
+  // квартири — превʼю як у чаті, «Надіслати…» (меню телефона: Telegram, Viber, SMS…) чи «Скопіювати». Скільки набігло й суми — з останнього
+  // «оплачено»/«передано» (myCtx…, правило власника 11.11), як «Оплата» свого постачальника. Нічого не зберігаємо й нікуди не шлемо самі.
+  var SHARE = { sum: true };
+  function dm(d) { d = String(d || ''); return d.length >= 10 ? d.slice(8, 10) + '.' + d.slice(5, 7) : d; }
+  /** [{k, label, date, val, q, from, sum}] — останні показання кожного лічильника поточної квартири, у порядку видів (світло, вода, газ, тепло). */
+  function shareItems(withCtx) {
+    var out = [];
+    kord(['elec', 'water', 'gas', 'heat']).forEach(function (k) {
+      if (k === 'heat') {
+        if (!hasHeat()) return; var hr = RD().filter(function (r) { return r.htm && R.num(r.htm.energy) !== null; }).slice(-1)[0]; if (!hr) return;
+        var ch = withCtx ? myCtxH(hr) : {}; out.push({ k: k, label: t('kd_heat'), date: hr.htm.date, val: ch.val || '', q: ch.q, from: ch.from, sum: ch.sum }); return;
+      }
+      if (k === 'water') {
+        var ms = wmeters(); if (!ms.length) return;
+        var wr = wrecs().filter(function (r) { return ms.some(function (m) { return hasVal(r, m.id); }); }).slice(-1)[0]; if (!wr) return;
+        var cw = withCtx ? myCtxW(wr) : {}, one = ms.filter(function (m) { return hasVal(wr, m.id); }).length === 1;
+        out.push({ k: k, label: one ? wname(ms.filter(function (m) { return hasVal(wr, m.id); })[0]) : t('sh_water'), date: wr.date, val: cw.val ? cw.val + ' м³' : '', q: cw.q, from: cw.from, sum: cw.sum }); return;
+      }
+      var sm = smeters(k);
+      sm.forEach(function (m) {
+        var r = mrecs(m.id).slice(-1)[0]; if (!r) return;
+        var c = withCtx ? myCtxS(k, m, r) : {};
+        out.push({ k: k, label: t('kd_' + k) + (sm.length > 1 ? ' · ' + (m.name || ename(m)) : ''), date: r.date, val: c.val ? c.val + ' ' + SK[k].unit() : '', q: c.q, from: c.from, sum: c.sum });
+      });
+    });
+    return out;
+  }
+  function shareText() {
+    var p = place() || {}, it = shareItems(true), tot = 0, n = 0, ad = placeSub(p);
+    var L = [t('sh_head', { p: placeLabel(p) }) + (ad ? ', ' + ad : '')];
+    it.forEach(function (x) {
+      var extra = [];
+      if (x.q) extra.push('+' + x.q + (x.from ? ' ' + t('sh_since', { d: dm(x.from) }) : ''));
+      if (SHARE.sum && x.sum > 0) { extra.push('≈ ' + money(x.sum) + ' грн'); tot += x.sum; n++; }
+      L.push(x.label + ' (' + dm(x.date) + '): ' + x.val + (extra.length ? ' — ' + extra.join(', ') : ''));
+    });
+    if (SHARE.sum && n > 1) L.push(t('sh_total', { s: money(Math.round(tot * 100) / 100) }));
+    return L.join('\n');
+  }
+  V.share = function () {
+    var p = place(), back = backTo(p ? 'place-' + p.id : 'home');
+    if (!p || !shareItems(false).length) return V.home();
+    var txt = shareText();
+    var html = '<div class="wiz-top"><a class="btn ghost" href="#' + esc(back) + '">' + ico('back', 20) + '<span>' + esc(t('back')) + '</span></a></div>' +
+      '<h1>' + esc(t('sh_t')) + '</h1><p class="muted">' + esc(t('sh_lead')) + '</p>' + wherePlaceLine() +
+      '<div class="sh-chat" data-key="sh-preview"><div class="sh-bubble">' + esc(txt) + '</div></div>' +
+      '<label class="check-row"><input type="checkbox" data-act="sh-sum" data-key="sh-sum"' + (SHARE.sum ? ' checked' : '') + '><span>' + esc(t('sh_sum')) + '</span></label>' +
+      '<div class="row-actions sh-acts"><button type="button" class="btn big" data-act="sh-send" data-key="sh-send">' + ico('send', 20) + '<span>' + esc(t('sh_send')) + '</span></button>' +
+      '<button type="button" class="btn sec" data-act="copy" data-text="' + esc(txt) + '" data-key="sh-copy">' + ico('copy', 18) + '<span>' + esc(t('copy')) + '</span></button></div>' +
+      '<p class="small muted">' + esc(t('sh_note')) + '</p>';
+    return { screen: 'S46', route: 'share', bare: true, closeTo: back, html: html };
+  };
+  document.addEventListener('change', function (e) { var el = e.target; if (el && el.getAttribute && el.getAttribute('data-act') === 'sh-sum') { SHARE.sum = !!el.checked; render(true); } });
+  document.addEventListener('click', function (e) {
+    var b = e.target.closest && e.target.closest('[data-act="sh-send"]'); if (!b) return;
+    var txt = shareText(); track('share', { n: shareItems(false).length, s: SHARE.sum ? 1 : 0 });
+    if (navigator.share) { navigator.share({ text: txt }).catch(function () { /* закрили меню — нічого */ }); return; }
+    copyText(txt, b); toast(t('sh_copied'));
+  });
   /** 150-а (план конкурентів, п. 4: «Хто ми і як зберігаємо доступи» біля кнопок «Відправляти у фоні»): згорнутий блок біля кожного
    *  підключення (кабінет ХТМ, сайт Водоканалу, місцеві КП — LocalBot) і кнопки «Відправити у фоні». kind: htm | vk | lb; org — кому передаємо.
    *  Факти — з коду: CabVault (AES-256-GCM, ключ у SITE_DATA окремо від бази), cab_creds стирається при відключенні (HtmSvc / VkSvc / LocalBot). */
@@ -7631,6 +7691,9 @@
       prefGroup('pv-about', 'home', t('pv_about'), sub || t('pv_about_s'), about, fresh) +
       prefGroup('pv-meters', 'clock', t('pv_meters'), rows.length ? placeKinds(p) : t('pv_none_short'), meters, fresh) +
       prefGroup('pv-prov', 'bill', t('pv_prov_t'), t('pv_prov_s'), prov) + '</div>';
+    // 150-а (план конкурентів п. 6, ніша MÖRK — оренда): показання всіх лічильників квартири одним повідомленням власнику житла
+    if (shareItems(false).length) h += '<section class="panel sh-cta" data-key="pv-share"><h2>' + ico('send', 18, 'bt-ico') + '<span>' + esc(t('sh_t')) + '</span></h2><p class="small muted">' + esc(t('sh_cta_s')) + '</p>' +
+      '<a class="btn sec block" href="#share" data-key="pv-share-go">' + ico('send', 18) + '<span>' + esc(t('sh_go')) + '</span></a></section>';
     // графік відключень — на сторінці світла; у квартири без електролічильника — тут
     if (!emeters().length) h += gpvBox(p, 'place');
     if (many && window.TEPLO_API) h += '<section class="panel" data-key="pv-remind"><h2>' + esc(t('pv_remind')) + '</h2>' +
