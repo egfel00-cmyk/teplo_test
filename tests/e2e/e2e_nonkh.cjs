@@ -10,7 +10,8 @@ let pass = 0, fail = 0; const ok = (n, c, x) => { if (c) { pass++; console.log('
   const errs = []; p.on('pageerror', e => errs.push(e.message));
   const txt = sel => p.textContent(sel).catch(() => '');
   const open = async (s, route) => {
-    await p.goto(U); await p.evaluate(s => { localStorage.clear(); localStorage.setItem('teplo.v1', JSON.stringify(s)); }, s);
+    // прошлая страница держит своё состояние в памяти и при уходе сохраняет его (lookup справочника дописывает адреса) — подставляем, перезагружаем, подставляем ещё раз
+    await p.goto(U); const put = () => p.evaluate(s => { localStorage.clear(); localStorage.setItem('teplo.v1', JSON.stringify(s)); }, s); await put(); await p.reload(); await p.waitForTimeout(300); await put();
     await p.goto(U + '#' + route); await p.reload(); await p.waitForTimeout(1500);
   };
   const bucha = (today, extra) => { const s = demo(Object.assign({ today }, extra || {})); s.places[0].address = 'м. Буча, вул. Енергетиків, 1, кв. 1'; s.places[0].city = { n: 'Буча', r: 'kv' }; return s; };
@@ -46,6 +47,20 @@ let pass = 0, fail = 0; const ok = (n, c, x) => { if (c) { pass++; console.log('
   const r2 = await txt('[data-key=prefs-remind-sub]');
   ok('дві квартири: «вода: «Моя квартира» — 16-го (Водоканал до 20-го), «Буча» — 26-го (до 30-го)»; тепло — один строк', /вода: «Моя квартира» — 16-го \(Водоканал до 20-го\), «Буча» — 26-го \(до 30-го\)/.test(r2) && /тепло — 21-го/.test(r2), r2);
   ok('дві квартири: «Контакти для ХТМ» є (перша — Харків)', !!(await p.$('#pg-contacts')));
+  // 143-я: світло не Харківщини — вікно з довідника (Львівобленерго 28–3), а не харківське (передостаннє–3)
+  const lviv = (today) => { const s = demo({ today, elec: 1 }); s.places[0].address = 'м. Львів, вул. Городоцька, 1, кв. 1'; s.places[0].city = { n: 'Львів', r: 'lv' }; return s; };
+  await open(lviv('2026-11-28'), 'elec');
+  const ew = await txt('[data-key=where-elec]');
+  ok('Львів 28.11: «Куди передати» світла — Львівенергозбут, вікно 28–3, без «Харківобленерго»', /Львівенергозбут/.test(ew) && /28–3/.test(ew) && !/Харківобленерго/.test(ew), ew.slice(0, 400));
+  await open(lviv('2026-11-28'), 'home');
+  const ec = await txt('.ucard-elec');
+  ok('Львів 28.11: картка світла — не «Наступна передача» (вікно вже відкрите)', !/Наступна передача/.test(ec), ec);
+  await p.evaluate(() => { location.hash = '#enew'; }); await p.waitForTimeout(800);
+  const lead = await txt('#main');
+  ok('Львів 28.11: внесення — «Зараз приймають: 28 листопада–3 грудня»', /Зараз приймають: 28 листопада–3 грудня/.test(lead), lead.slice(0, 300));
+  await open(lviv('2026-11-27'), 'home');
+  await p.evaluate(() => { location.hash = '#enew'; }); await p.waitForTimeout(800);
+  ok('Львів 27.11: «Наступне приймання — 28 листопада–3 грудня»', /Наступне приймання — 28 листопада–3 грудня/.test(await txt('#main')), (await txt('#main')).slice(0, 300));
   ok('без помилок JS', !errs.length, errs);
   await b.close();
   console.log(pass + ' OK, ' + fail + ' FAIL'); process.exit(fail ? 1 : 0);

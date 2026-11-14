@@ -702,6 +702,10 @@ ok('Львів: вода — «До 27 листопада — 4 дні», Льв
   ($lw[0]['kh'] ?? null) === false && ($lw[0]['e'] ?? '') === '2026-11-27' && str_contains($lwt, 'До 27 листопада — 4 дні') && str_contains($lwt, 'Львівводоканал') && !str_contains($lwt, '20-го') && !str_contains($lwt, 'бота Водоканалу')
   && str_contains($let, 'До 3 декабря — 4 дня') && str_contains($let, 'Львівенергозбут') && !str_contains($let, 'Харьков') && !str_contains($let, 'Харэнерго')
   && str_contains($lht['text'], 'До 30 листопада — 4 дні') && str_contains($lht['text'], 'Львівтеплоенерго') && str_contains($lht['text'], 'одне число') && !str_contains($lht['text'], 'ХТМ') && str_ends_with($lht['url'], '?go=heat'), [$lw, $lwt, $let, $lht['text']]);
+// 143-я: Київ — YASNO приймає з 30 до 3 числа: нагадування 30.11 (elecL30), не харківське elec1; застосунок бере те саме вікно (swin)
+$kys = ['places' => [['id' => 'k', 'address' => 'м. Київ, вул. Хрещатик, 1, кв. 1', 'city' => ['n' => 'Київ', 'r' => 'ky'], 'meters' => [['id' => 'e1', 'kind' => 'elec']]]]];
+$kyd = array_column(Reminders::localDue($kys, '2026-11-30'), 'kind'); $kyp = Reminders::placesDue($kys, 'elecL30', '2026-11', '2026-11-30');
+ok('Київ: світло YASNO 30–3 — 30.11 elecL30 (до 03.12), elec1 — ні', $kyd === ['elecL30'] && ($kyp[0]['e'] ?? '') === '2026-12-03' && !Reminders::placesDue($kys, 'elec1', '2026-11'), [$kyd, $kyp]);
 $lv2 = $lvs; $lv2['water'] = [['id' => 'w1', 'place' => 'main', 'date' => '2026-11-12', 'vals' => ['c1' => '5']]];
 $lv3 = $lvs; $lv3['water'] = [['id' => 'w1', 'place' => 'main', 'date' => '2026-11-03', 'vals' => ['c1' => '5']]];
 ok('Львів: внесли у вікні (12.11) — мовчимо; до вікна (03.11, раніше за 05.11) — нагадуємо; «нагадати завтра» після кінця вікна (28.11) — ні',

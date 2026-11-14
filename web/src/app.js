@@ -927,9 +927,10 @@
    *  Від'ємне перше — від кінця місяця (−2 — передостаннє); останнє < першого — вікно через кінець місяця; 31 — до кінця місяця.
    *  137-а: від'ємне ОСТАННЄ — робочий день від кінця місяця (−1 — останній, −2 — передостанній: Львівводоканал «з 10 по передостанній робочий день»).
    *  Довідник громади: `win` ([20, 27]) головніший; тепло не від ХТМ — `till`; вода місцевого КП без `win` — null (не вигадуємо). */
+  function winOk(w) { return !!(w && w.length === 2 && +w[0] !== 0 && (+w[1] > 0 || (+w[1] < 0 && +w[1] >= -3 && +w[0] > 0))); }
   function perWin(k, p) {
     var j = prvKinds0(p), d = j ? (j.kinds[k] || {}) : null, w = d && d.win;
-    if (w && w.length === 2 && +w[0] !== 0 && (+w[1] > 0 || (+w[1] < 0 && +w[1] >= -3 && +w[0] > 0))) return [+w[0], +w[1]];
+    if (winOk(w)) return [+w[0], +w[1]];
     if (k === 'heat') { if (!d || d.via === 'htm') return [R.C.WINDOW_FROM, R.C.WINDOW_TO]; var tl = R.num(d.till); return tl > 0 ? [1, tl] : null; }
     if (k === 'water') return !d || d.via === 'hvk' ? [1, Wt.VK_DEADLINE] : null;
     if (k === 'elec') return [-2, 3];   // Харківобленерго: з передостаннього числа по 3-тє наступного (El.win)
@@ -969,6 +970,18 @@
     var cur = sp.filter(function (x) { return x.b <= td && td <= x.e; })[0], nx = sp.filter(function (x) { return x.b > td; })[0];
     var left = function (d) { return Math.round((Date.parse(d) - Date.parse(td)) / 864e5); };
     return cur ? { open: true, from: cur.b, to: cur.e, daysLeft: left(cur.e) } : { open: false, from: nx ? nx.b : '', to: nx ? nx.e : '', next: nx ? nx.b : '', daysLeft: null };
+  }
+  /** 143-я: вікно світла / газу на дату td у форматі md.win ({open, ym, from, to, daysLeft, next}). У довіднику квартири своє вікно (`win`: Львівобленерго 28–3,
+   *  YASNO 30–3) — за ним: строк, «Зараз приймають», які показання вже у вікні; інакше — харківське El.win / Gs.win (як і досі). ym — за який місяць (md.forMonth кінця вікна). */
+  function swin(k, td, p) {
+    var md = SK[k].mod; td = td || today();
+    var j = prvKinds0(p), d = j ? (j.kinds[k] || {}) : null, w = d && d.win;
+    if (!winOk(w)) return md.win(td);
+    w = [+w[0], +w[1]];
+    var ym = td.slice(0, 7), sp = [addDays(ym + '-01', -1).slice(0, 7), ym, nextMonthDay(td, 1).slice(0, 7)].map(function (m) { return winSpan(w, m); });
+    var cur = sp.filter(function (x) { return x.b <= td && td <= x.e; })[0], nx = sp.filter(function (x) { return x.b > td; })[0] || sp[2];
+    if (cur) return { open: true, ym: md.forMonth(cur.e), from: cur.b, to: cur.e, daysLeft: Math.round((Date.parse(cur.e) - Date.parse(td)) / 864e5) };
+    return { open: false, ym: md.forMonth(nx.e), from: nx.b, to: nx.e, next: nx.b, daysLeft: null };
   }
   /** Місяць крапками для виду k; so — статус (heatStatus/waterStatus/sStatus): tone ok — передано, warn — останні дні; off (лічильник знято) — нічого. */
   function pstrip(k, so, cls, p) {
@@ -2458,7 +2471,7 @@
   function ssent(k, r) { return !!(r && r.sent && r.sent[SK[k].sk]); }
   /** Статус світла/газу квартири для картки й списку квартир (як heatStatus/waterStatus). */
   function sStatus(k) {
-    var ms = smeters(k), w = SK[k].mod.win(today()), recs = ms.map(function (m) { return einWin(m.id, w); });
+    var ms = smeters(k), w = swin(k), recs = ms.map(function (m) { return einWin(m.id, w); });
     if (!w.open) return { st: t('ue_next', { a: fmtDate(w.next), b: fmtDate(w.to) }), tone: '', from: w.next };
     if (recs.every(function (r) { return ssent(k, r); })) return { st: t('uc_w_sent'), tone: 'ok' };
     if (recs.every(Boolean)) return { st: t('uc_w_ready'), tone: 'due', due: w.to, ready: true };
@@ -2557,7 +2570,7 @@
   }
   /** «Куди передати»: світло — Харківобленерго (застосунок, Viber-бот, кол-центр); газ — кабінет Газмереж, SMS 4647, «Куб», кол-центр. */
   function ssendPanel(k, recs) {
-    var md = SK[k].mod, w = md.win(today()), ms = smeters(k), have = recs && recs.filter(Boolean).length ? recs : null;
+    var md = SK[k].mod, w = swin(k), ms = smeters(k), have = recs && recs.filter(Boolean).length ? recs : null;
     var due = w.open ? t('ed_due', { d: fmtDate(w.to) }) : t('ed_due_next', { a: fmtDate(w.next), b: fmtDate(w.to) });
     var allSent = have && ms.every(function (m) { return ssent(k, have.filter(function (x) { return x && x.meter === m.id; })[0]); });
     var body = '', chans, ids = have ? have.filter(Boolean).map(function (r) { return r.id; }).join(',') : '';
@@ -2767,7 +2780,7 @@
         set: monoLink(k + '-set') + smeterFields(k, m) + (i === 0 ? priceBlock(k) + sheatRow(k) : '') , setTitle: t('mb_set_read') });
     }).join('');
     if (k === 'elec') left += gpvBox(p, 'elec');
-    var w = SK[k].mod.win(today()), cur = w.open ? ms.map(function (m) { return einWin(m.id, w); }) : null;
+    var w = swin(k), cur = w.open ? ms.map(function (m) { return einWin(m.id, w); }) : null;
     var act = '<button class="btn big block" data-act="' + SK[k].nw + '" data-key="' + k + '-add">' + ico('plus', 22) + '<span>' + esc(tk(k, 'en_title')) + '</span></button>', right = whereAcc(ssendPanel(k, cur));
     var er = srows(k, 3);
     if (er.total) right += histPanel(er.html, er.total, '<button class="btn sec block" data-act="view-go" data-v="' + k + '" data-to="history" data-key="' + k + '-all">' + esc(t('wh_all', { n: er.total })) + '</button>', k);
@@ -3078,7 +3091,7 @@
   function sNew(k) {
     var ms = smeters(k), md = SK[k].mod, u = SK[k].unit(); if (!ms.length) { AM_BACK = 'home'; return V['add-meter'](); }
     if (EN.k !== k) EN = enFresh(k);
-    var date = EN.date || today(), back = EN.back || backTo(SK[k].page), w = md.win(date);
+    var date = EN.date || today(), back = EN.back || backTo(SK[k].page), w = swin(k, date);
     var h = '<h1>' + esc(tk(k, 'en_title')) + '</h1><p class="small muted">' + esc(tk(k, w.open ? 'en_lead_open' : 'en_lead_closed', { a: fmtDate(w.open ? w.from : w.next), b: fmtDate(w.to) })) + '</p>' +
       enPhotoBox(k) + '<div class="field f-date"><label for="en-date">' + esc(t('wn_date')) + '</label><div class="ctl"><input id="en-date" type="date" value="' + esc(date) + '" max="' + today() + '"></div></div>' + '<form id="en-form" novalidate><div class="rd-box" data-key="en-box">';
     ms.forEach(function (m) {
@@ -3330,7 +3343,7 @@
     h += recPhotos(r.photos, 'm' + r.id, 'm:' + r.id);
     if (r.base) h += ownBox('m', r);
     if (!r.base && !r.own) {
-      var w = md.win(today());
+      var w = swin(k);
       if (w.open && r.date >= w.from && r.date <= w.to) h += whereAcc(ssendPanel(k, smeters(k).map(function (mm) { return mm.id === m.id ? r : einWin(mm.id, w); })), r.id);
       else h += '<p>' + (ssent(k, r) ? '<span class="pill ok">' + ico('check', 14) + ' ' + esc(tk(k, 'ed_org')) + '</span>' : '<span class="pill neutral">' + esc(tk(k, 'ed_org')) + ': ' + esc(t('wh_notsent')) + '</span>') + '</p>';
     }
