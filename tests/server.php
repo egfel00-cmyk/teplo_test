@@ -2749,6 +2749,18 @@ ok('логотип: favicon.ico і apple-touch-icon у корені, manifest з
 preg_match_all('/^  function\s+([A-Za-z_$][\w$]*)\s*\(/m', (string)file_get_contents("$root/web/src/app.js"), $mm);
 $dupFn = array_keys(array_filter(array_count_values($mm[1]), fn($c) => $c > 1));
 ok('app.js: немає двох функцій верхнього рівня з одним ім\'ям (' . count($mm[1]) . ')', !$dupFn && count($mm[1]) > 300, $dupFn);
+// 143-я (скрин власника 14.11: «від {d}» під ціною світла): mp_from був двічі — ціна ({s}) і monobank ({d}), другий тихо підміняв перший; так само bc_vk / bc_heat.
+// Ключі мови рахуємо простим розбором (рядки в лапках пропускаємо), кожну мову окремо
+$i18 = (string)file_get_contents("$root/web/src/i18n.js"); $ruAt = strpos($i18, "\n    ru: {");
+$i18keys = function (string $txt): array { $out = []; $n = strlen($txt); $q = '';
+  for ($i = 0; $i < $n; $i++) { $c = $txt[$i];
+    if ($q !== '') { if ($c === '\\') { $i++; continue; } if ($c === $q) $q = ''; continue; }
+    if ($c === "'" || $c === '"' || $c === '`') { $q = $c; continue; }
+    if (preg_match('/\G([A-Za-z_]\w*)\s*:/', $txt, $m, 0, $i) && ($i === 0 || strpbrk($txt[$i - 1], " \n\t,{") !== false)) { $out[] = $m[1]; $i += strlen($m[0]) - 1; } }
+  return $out; };
+$dupUk = array_keys(array_filter(array_count_values($i18keys(substr($i18, 0, $ruAt))), fn($c) => $c > 1));
+$ruEnd = strpos($i18, "\n  };", $ruAt); $dupRu = array_keys(array_filter(array_count_values($i18keys(substr($i18, $ruAt + 10, ($ruEnd ?: strlen($i18)) - $ruAt - 10))), fn($c) => $c > 1));
+ok('i18n: у кожній мові ключ один раз (інакше другий тихо підміняє перший)', !$dupUk && !$dupRu, [$dupUk, $dupRu]);
 
 echo "\nИтог: $pass OK, $fail FAIL\n";
 exit($fail ? 1 : 0);

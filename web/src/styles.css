@@ -422,6 +422,16 @@ label.btn { cursor: pointer; }
 .bc-row:last-child { border-bottom: 0; } .bc-row span { color: var(--c-ink-2); }
 .bc-foot { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 6px 14px 10px; }
 @media (prefers-color-scheme: dark) { .bc-paper { background: #f4f5f4; } }
+/* 143-я (власник 14.11): платіжки — плитки однакового розміру (прямокутне прев'ю, як фото запису), квитанції з кабінету — на всю ширину */
+.bcards { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; }
+.bcards li.bc-auto { grid-column: 1 / -1; }
+.bcards li.btile { position: relative; display: flex; flex-direction: column; align-items: stretch; gap: 6px; padding: 0; background: none; border: 0; border-radius: 0; }
+.btile .bc-paper { width: 100%; height: 190px; border-radius: 12px; }
+.btile .bc-paper.pdf { padding-bottom: 16px; }
+.btile .bc-cap { padding: 0 2px; font-variant-numeric: tabular-nums; }
+.btile .bc-pay-s { padding: 0 2px; }
+.bc-x { position: absolute; top: 6px; right: 6px; width: 40px; height: 40px; border-radius: 50%; border: 0; background: rgba(0, 0, 0, .55); color: #fff; display: flex; align-items: center; justify-content: center; cursor: pointer; }
+.bc-x:hover { background: rgba(0, 0, 0, .7); } .bc-x:disabled { opacity: .5; cursor: default; }
 /* узкий экран: в строке истории — текст на всю ширину, погода и статус строкой ниже */
 @media (max-width: 480px) {
   [data-key="reading-list"] .rowlink { flex-wrap: wrap; row-gap: 6px; }
@@ -2111,6 +2121,16 @@ details.wacc.wacc-btn > .acc-foot { margin: 0; padding: 12px 16px 16px; border-t
 .rec-ph .hphotos { margin: 0; }
 .rec-ph .hphotos .section-title { font-size: var(--fs-s); color: var(--c-ink-2); margin: 0; }
 .rec-ph .phd.fit .phd-slide { height: 200px; }
+/* 143-я (власник 14.11): шапка запису — дата, праворуч чип статусу (як у рядку історії); «Зараховується за …» під ними; «← Історія» — над квартирами */
+.rec-h { display: flex; align-items: center; justify-content: space-between; gap: 8px 12px; flex-wrap: wrap; margin: 0 0 var(--sp-2); }
+.rec-h h1 { margin: 0; }
+.rec-chips { display: flex; flex-wrap: wrap; gap: 6px 10px; }
+.rec-sub { margin: 0 0 var(--sp-4); }
+.main > .rec-back { margin: 0 0 var(--sp-3); }
+.ru > .ru-per:first-child { margin-top: 0; }
+.rec-note h2 { font-size: var(--fs-m); color: var(--c-ink-2); margin: 0 0 var(--sp-2); }
+.rec-note-t { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+.f-note { margin-top: var(--sp-4); }
 /* «Набігло» — перший блок запису (власник 10.11): місяць, період, розхід кольором виду і гроші великим, розрахунок словами під тонкою лінією */
 .ru { --kc: var(--c-ink); }
 .ru-heat, .ru-hot { --kc: var(--c-supply); } .ru-cold { --kc: var(--c-return); } .ru-elec { --kc: var(--c-elec); } .ru-gas { --kc: var(--c-gas); }

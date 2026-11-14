@@ -598,9 +598,12 @@
     var right = bare && view.closeTo
       ? '<a class="btn ghost" href="#' + view.closeTo + '" data-key="wiz-close" aria-label="' + esc(t('close')) + '">' + ico('close', 22) + '<span class="cl-txt">' + esc(t('close')) + '</span></a>'
       : '';
+    // 143-я (власник 14.11, скрин запису історії): «стрілка назад і назва куди — скрізь над квартирами» — посилання «← Історія» / кнопка «Назад» на початку екрана
+    // ставимо вище перемикача й плашки квартири
+    var topBack = (function (h) { var m = /^(<p class="rec-back">[\s\S]*?<\/p>|<div class="wiz-top"><a class="btn ghost"[\s\S]*?<\/div>)/.exec(h || ''); return m ? { b: m[1], h: h.slice(m[1].length) } : { b: '', h: h }; })(view.html);
     return '<div class="app' + (bare ? ' bare-app' : '') + (side ? ' with-side' : '') + '">' +
       '<header class="top' + (right ? ' has-close' : '') + '"><a class="brand" href="#' + homeRoute() + '" data-key="brand" aria-label="' + esc(t('brand')) + ' — передай.com.ua">' + logo() + wordmark(true) + '<span class="beta-tag" data-key="beta">' + esc(t('beta_tag')) + '</span></a>' + '<span class="spacer"></span>' + right + '</header>' +
-      nav + '<main class="main' + (bare ? ' bare' : '') + (view.wide ? ' wide' : '') + enterCls(route) + '" id="main" data-screen="' + view.screen + '" tabindex="-1">' + (/^(history|stats|save)$/.test(route) ? placeSwitch() : /^(heat|water-hot|water-cold|elec|gas)$/.test(route) ? placeBar() : /^(wnew|wadd|enew|eadd|gnew|gadd|add-meter|step|step-\d+|check|handover|baseline|meter|photo)$/.test(route) ? placeBar(true) : '') + view.html + '</main>' + (S.onboarded && view.screen !== 'S00' && (!bare || side) ? appFoot() : '') + '</div>' +
+      nav + '<main class="main' + (bare ? ' bare' : '') + (view.wide ? ' wide' : '') + enterCls(route) + '" id="main" data-screen="' + view.screen + '" tabindex="-1">' + topBack.b + (/^(history|stats|save)$/.test(route) ? placeSwitch() : /^(heat|water-hot|water-cold|elec|gas)$/.test(route) ? placeBar() : /^(wnew|wadd|enew|eadd|gnew|gadd|add-meter|step|step-\d+|check|handover|baseline|meter|photo)$/.test(route) ? placeBar(true) : '') + topBack.h + '</main>' + (S.onboarded && view.screen !== 'S00' && (!bare || side) ? appFoot() : '') + '</div>' +
       (window.TEPLO_API && !ccAsk() ? '<button class="fab' + (bare ? ' fab-bare' : '') + '" data-act="fb-open" data-key="feedback" aria-haspopup="dialog">' + ico('chat', 20) + '<span>' + esc(t('fb_btn')) + '</span></button>' + fbDialog() : '') +
       (bare ? ccBanner().replace('class="cc"', 'class="cc cc-bare"') : ccBanner()) +
       '<div id="toast-host" aria-live="polite"></div>';
@@ -2275,8 +2278,15 @@
     var r = wrecs().filter(function (x) { return x.id === id; })[0], back = recBack();
     if (!r) return { screen: 'S09', route: 'history', html: back + '<p class="muted">' + esc(t('rec_gone')) + '</p>' };
     var x = Wt.series(wrecs(), wmeters(null, true), gaps()).filter(function (s0) { return s0.rec.id === id; })[0] || { by: {}, hot: null, cold: null };
-    var ms = wmeters(null, true).filter(function (m) { return hasVal(r, m.id); }), h = back + '<h1>' + esc(fmtDate(r.date, true)) + '</h1>';
-    if (r.base) h += '<p class="small muted">' + esc(t('wh_base')) + '</p>';
+    var ms = wmeters(null, true).filter(function (m) { return hasVal(r, m.id); });
+    // 143-я: чип статусу кожного виду (гаряча / холодна) — праворуч від дати, як у рядку історії; обидва види — з назвою виду
+    var wkinds = ['hot', 'cold'].filter(function (kd) { return ms.some(function (m) { return m.kind === kd; }); });
+    var wchips = wkinds.map(function (kd) {
+      var cur = r.base ? (baseSent(r) ? 'sent' : 'not') : r.own ? 'own' : wsentVk(r) && (kd === 'cold' || wsentHtm(r)) ? 'sent' : 'not';
+      var lbl = wkinds.length > 1 ? '<span class="pill ' + (cur === 'own' ? 'own' : cur === 'sent' ? 'ok' : 'neutral') + '">' + esc(ucf(t(kd === 'hot' ? 'ru_hot' : 'ru_cold')) + ' · ' + (cur === 'own' ? t('own_pill') : cur === 'sent' ? t('wh_sent') : r.base ? t('bs_unsent') : t('wh_notsent'))) + '</span>' : '';
+      return stChip('w', r, kd, cur, lbl, wkinds.length > 1 ? '-' + kd : '');
+    }).join('');
+    var h = back + recHead(fmtDate(r.date, true), wchips, [r.base ? t('wh_base') : t('er_for', { m: monthLabel(String(r.date).slice(0, 7)) })]);
     // 1) скільки набігло за місяць (місяць — за датою зняття, як у Водоканалу) і скільки коштувало; 2) фото; 3) показання водомірів списком (без барабанів — власник 10.11)
     // від останнього «Передано» кожного виду (власник 11.11): набігло з минулої оплати й гроші; проміжні — рядком
     var wpa = {}, wq = {}, wpx = {};
@@ -2316,7 +2326,7 @@
     } else if (r.base) h += usedBase('wrec-used', vals, ms.length === 1 ? ms[0].kind : 'water');
     else h += usedOnly(ms.length === 1 ? ms[0].kind : 'water', 'wrec-used', vals);
     h += recPhotos(r.photos, 'w' + r.id, 'w:' + r.id);
-    h += (r.base ? '' : billsBox('w:' + r.id, r.bills, t('bl_title', { m: monthLabel(String(r.date).slice(0, 7)) })));
+    h += (r.base ? '' : billsBox('w:' + r.id, r.bills, t('bl_title', { m: monthLabel(String(r.date).slice(0, 7)) }))); h += noteBox(r);
     if (r.base) h += ownBox('w', r);
     if (!r.base && !r.own) {
       if (thisMonth(r.date)) h += whereAcc(wsendPanel(r), r.id);
@@ -2725,7 +2735,8 @@
         : gd.tariff ? t('gd_need_cap') : t('gd_need_tar');
     }
     var note = own ? t('mp_own') : unknown ? t('mp_unknown', { c: (j.place && j.place.name) || a }) : !a ? t('mp_noaddr') : src ? t('mp_from', { s: src }) : '';
-    return '<div class="mp" data-key="mp-' + k + '"><h4 class="mp-h">' + esc(t('mp_title')) + '</h4><div class="grid2">' + h + '</div>' +
+    // 143-я (власник 14.11): заголовок «Ціна» прибрано — поле й так «Ціна, грн за …», виходило двічі
+    return '<div class="mp" data-key="mp-' + k + '"><div class="grid2">' + h + '</div>' +
       (note ? '<p class="small ' + (unknown ? 'warn-text' : 'muted') + '" data-key="mp-note-' + k + '">' + esc(note) + '</p>' : '') +
       (gfee ? '<p class="small muted" data-key="mp-gfee">' + esc(gfee) + '</p>' : '') + '</div>';
   }
@@ -3105,12 +3116,12 @@
             '<div class="help" id="eh-' + id + '">' + esc(pv !== null ? tk(k, 'en_prev', { v: pv, d: fmtDate(p.date) }) : t('wn_first')) + '</div></div>';
         }).join('') + '</fieldset>';
     });
-    h += '<p class="small rd-hint">' + esc(tk(k, 'en_digits')) + '</p></div><div class="wiz-actions"><button class="btn" type="submit" data-key="en-save">' + esc(t('wn_save')) + '</button></div></form>' + cancelLink(k) + ownField();
+    h += '<p class="small rd-hint">' + esc(tk(k, 'en_digits')) + '</p></div>' + noteField('en-note', EN.note) + '<div class="wiz-actions"><button class="btn" type="submit" data-key="en-save">' + esc(t('wn_save')) + '</button></div></form>' + cancelLink(k) + ownField();
     return { screen: k === 'gas' ? 'S56' : 'S51', route: SK[k].nw, bare: true, closeTo: back, html: h };
   }
   V.enew = function () { return sNew('elec'); };
   V.gnew = function () { return sNew('gas'); };
-  function enRead() { Array.prototype.forEach.call(document.querySelectorAll('[data-en]'), function (el) { var a = el.getAttribute('data-en').split('|'); EN.vals[a[0]] = EN.vals[a[0]] || {}; if (EN.auto && EN.auto[a[0] + '|' + a[1]] && EN.vals[a[0]][a[1]] !== el.value.trim()) delete EN.auto[a[0] + '|' + a[1]]; EN.vals[a[0]][a[1]] = el.value.trim(); }); var d = document.getElementById('en-date'); if (d && d.value) EN.date = d.value; }
+  function enRead() { Array.prototype.forEach.call(document.querySelectorAll('[data-en]'), function (el) { var a = el.getAttribute('data-en').split('|'); EN.vals[a[0]] = EN.vals[a[0]] || {}; if (EN.auto && EN.auto[a[0] + '|' + a[1]] && EN.vals[a[0]][a[1]] !== el.value.trim()) delete EN.auto[a[0] + '|' + a[1]]; EN.vals[a[0]][a[1]] = el.value.trim(); }); var d = document.getElementById('en-date'); if (d && d.value) EN.date = d.value; var nv = noteVal('en-note'); if (nv !== null) EN.note = nv; }
   function enCheck(show) {
     var k = EN.k, md = SK[k].mod, date = EN.date || today(), all = {};
     smeters(k).forEach(function (m) {
@@ -3154,8 +3165,8 @@
       var mine = refs.filter(function (r) { return r.meter === m.id; });
       // один запис на лічильник і дату: повторне введення того ж дня — правка
       var same = S.mrecs.filter(function (r) { return r && !r.deleted && !r.base && r.place === S.placeId && r.meter === m.id && (r.id === EN.skip || r.date === date); })[0];
-      if (same) { same.z = z; same.date = date; if (own) same.own = true; if (mine.length) same.photos = (same.photos || []).concat(mine); same.updatedAt = Date.now(); }
-      else S.mrecs.push(Object.assign({ id: md.uid(), place: S.placeId, meter: m.id, kind: k, date: date, z: z, sent: {}, createdAt: now, updatedAt: Date.now() }, own ? { own: true } : {}, mine.length ? { photos: mine } : {}));
+      if (same) { same.z = z; same.date = date; if (own) same.own = true; if (mine.length) same.photos = (same.photos || []).concat(mine); noteSet(same, EN.note, !!EN.noteEdit); same.updatedAt = Date.now(); }
+      else S.mrecs.push(Object.assign({ id: md.uid(), place: S.placeId, meter: m.id, kind: k, date: date, z: z, sent: {}, createdAt: now, updatedAt: Date.now() }, own ? { own: true } : {}, mine.length ? { photos: mine } : {}, EN.note ? { note: EN.note } : {}));
     });
     // 138-а: розклали навхрест і людина зберегла — на цьому лічильнику день — T2; наступні фото одразу так (m.zswap), без здогадів по прошлих
     var swIds = Object.keys(EN.swap || {}).filter(function (id) { return EN.swap[id] && smeters(k).some(function (m) { return m.id === id && m.zswap === undefined; }); });
@@ -3273,7 +3284,8 @@
   /** Запис історії (власник 10.11): першим — «Набігло за місяць» і скільки це коштувало, під ним фото, далі показання списком (без табло) і решта.
    *  o: {kind, key, title, per, qs: [{v, u, l}], money, lines: [], proj, note}. */
   function usedBox(o) {
-    return '<section class="panel ru ru-' + o.kind + '" data-key="' + o.key + '"><h2 class="ru-t">' + esc(o.title) + '</h2>' + (o.per ? '<p class="ru-per">' + esc(o.per) + '</p>' : '') +
+    // 143-я (власник 14.11): «Скільки набігло» / «Набігло з передачі …» — без слів, «і так зрозуміло»; період лишається першим рядком (назва — для читача екрана)
+    return '<section class="panel ru ru-' + o.kind + '" data-key="' + o.key + '" aria-label="' + esc(o.title) + '">' + (o.per ? '<p class="ru-per">' + esc(o.per) + '</p>' : '') +
       '<div class="ru-big">' + o.qs.map(function (q) { return '<div class="ru-q"' + (q.k ? ' data-k="' + q.k + '"' : '') + '>' + (q.l ? '<i>' + esc(ucf(q.l)) + '</i>' : '') + '<b class="num">' + esc(q.v) + '</b><span>' + esc(q.u) + '</span></div>'; }).join('') +
       (o.money !== null && o.money !== undefined ? '<div class="ru-m">' + (o.qs.some(function (q) { return q.l; }) ? '<i>' + esc(ucf(t('ru_sum'))) + '</i>' : '') + '<b class="num">≈ ' + esc(money(o.money)) + '</b><span>грн</span></div>' : '') + '</div>' +
       (o.vals || '') +
@@ -3313,7 +3325,8 @@
     if (!r || !m) return { screen: 'S09', route: 'history', html: back + '<p class="muted">' + esc(t('rec_gone')) + '</p>' };
     var k = m.kind === 'gas' ? 'gas' : 'elec', md = SK[k].mod, u = SK[k].unit();
     var x = md.series(mrecs(m.id), m).filter(function (s0) { return s0.rec.id === id; })[0] || {};
-    var h = back + '<h1>' + esc(fmtDate(r.date, true)) + '</h1>' + (r.base ? '<p class="small muted">' + esc(t('eh_base')) + '</p>' : '<p class="small muted">' + esc(t('er_for', { m: monthLabel(md.forMonth(r.date)) })) + '</p>');
+    var h = back + recHead(fmtDate(r.date, true), stChip('m', r, k, r.base ? (baseSent(r) ? 'sent' : 'not') : r.own ? 'own' : ssent(k, r) ? 'sent' : 'not'),
+      [r.base ? t('eh_base') : t('er_for', { m: monthLabel(md.forMonth(r.date)) })]);
     // 1) скільки набігло за місяць, на який зараховується, і скільки це коштувало; 2) фото; 3) показання списком (без табло — власник 10.11)
     // від останнього «Передано» (власник 11.11): скільки набігло з минулої оплати й скільки це коштує; проміжні — рядком нижче
     var pa = r.base ? null : paidAnchor(mrecs(m.id), r, function () { return true; }, function (y) { return y.base ? baseSent(y) : ssent(k, y); }), px = pa ? md.series([pa.rec, r], m)[1] : null;
@@ -3347,7 +3360,7 @@
       if (w.open && r.date >= w.from && r.date <= w.to) h += whereAcc(ssendPanel(k, smeters(k).map(function (mm) { return mm.id === m.id ? r : einWin(mm.id, w); })), r.id);
       else h += '<p>' + (ssent(k, r) ? '<span class="pill ok">' + ico('check', 14) + ' ' + esc(tk(k, 'ed_org')) + '</span>' : '<span class="pill neutral">' + esc(tk(k, 'ed_org')) + ': ' + esc(t('wh_notsent')) + '</span>') + '</p>';
     }
-    h += (r.base ? '' : billsBox('m:' + r.id, r.bills, t('bl_title', { m: monthLabel(md.forMonth(r.date)) })));
+    h += (r.base ? '' : billsBox('m:' + r.id, r.bills, t('bl_title', { m: monthLabel(md.forMonth(r.date)) }))); h += noteBox(r);
     h += '<div class="row-actions">' + (r.base ? '' : '<button class="btn sec" data-act="eedit" data-id="' + r.id + '" data-key="erec-edit">' + esc(t('rec_edit')) + '</button>') + '<button class="btn danger" data-act="edel" data-id="' + r.id + '" data-key="erec-del">' + esc(t('rec_del')) + '</button></div>';
     if (!r.base) h += ownBox('m', r);
     return { screen: 'S09', route: 'history', html: h };
@@ -3433,11 +3446,11 @@
           wnSrcThumb(m.id) + '</div>' +
           '<div class="help" id="wh-' + m.id + '">' + esc(wnSrcText(m.id)) + (p ? esc(t('wn_prev', { v: Wt.whole(p.vals[m.id]), d: fmtDate(p.date) })) : esc(t('wn_first'))) + '</div></div>';
       }).join('') +
-      '<p class="small rd-hint">' + esc(t('wn_digits')) + '</p></div>' +
+      '<p class="small rd-hint">' + esc(t('wn_digits')) + '</p></div>' + noteField('wn-note', WN.note) +
       '<div class="wiz-actions"><button class="btn" type="submit" data-key="wn-save">' + esc(t('wn_save')) + '</button></div></form>' + cancelLink('water') + ownField();
     return { screen: 'S31', route: 'wnew', bare: true, closeTo: back, html: h };
   };
-  function wnRead() { Array.prototype.forEach.call(document.querySelectorAll('[data-wn]'), function (el) { WN.vals[el.getAttribute('data-wn')] = el.value.trim(); }); var d = document.getElementById('wn-date'); if (d && d.value) WN.date = d.value; }
+  function wnRead() { Array.prototype.forEach.call(document.querySelectorAll('[data-wn]'), function (el) { WN.vals[el.getAttribute('data-wn')] = el.value.trim(); }); var d = document.getElementById('wn-date'); if (d && d.value) WN.date = d.value; var nv = noteVal('wn-note'); if (nv !== null) WN.note = nv; }
   function wnCheck(show) {
     var ms = wmeters(), date = WN.date || today(), prev = {}, vals = {};
     ms.forEach(function (m) { var r = wprevFor(m.id, date); vals[m.id] = WN.vals[m.id]; prev[m.id] = r; });
@@ -3477,8 +3490,8 @@
     // фото, с которых сняли, — к записи (видны в истории)
     var refs = photoRefs((WN.photos || []).map(function (p) { return { file: p.file, meter: p.meters && p.meters.length === 1 ? p.meters[0] : undefined }; }));
     var rec = same;
-    if (same) { same.vals = Object.assign({}, same.vals, vals); if (refs.length) same.photos = (same.photos || []).concat(refs); if (own) same.own = true; same.updatedAt = Date.now(); }
-    else S.water.push(rec = Object.assign({ id: Wt.uid(), place: S.placeId, date: date, vals: vals, createdAt: now, updatedAt: Date.now(), sent: {} }, refs.length ? { photos: refs } : {}, own ? { own: true } : {}));
+    if (same) { same.vals = Object.assign({}, same.vals, vals); if (refs.length) same.photos = (same.photos || []).concat(refs); if (own) same.own = true; noteSet(same, WN.note, !!WN.noteEdit); same.updatedAt = Date.now(); }
+    else S.water.push(rec = Object.assign({ id: Wt.uid(), place: S.placeId, date: date, vals: vals, createdAt: now, updatedAt: Date.now(), sent: {} }, refs.length ? { photos: refs } : {}, own ? { own: true } : {}, WN.note ? { note: WN.note } : {}));
     wbillAdopt(rec); cardSaved('water', rec);   // після «перевірте» з картки в чаті (122-а)
     if (!S.onboarded) S.onboarded = true;
     if (WN.inbox && WN.inbox.length && window.TEPLO_API) { var ib = WN.inbox; INBOX.items = (INBOX.items || []).filter(function (x) { return ib.indexOf(x.id) < 0; }); api0('/inbox/done', { method: 'POST', body: JSON.stringify({ ids: ib }) }).catch(function () {}); }
@@ -3576,7 +3589,7 @@
         (S.mrecs || []).forEach(function (x) { if (eids.indexOf(x.id) >= 0) { x.sent = Object.assign({}, x.sent || {}); x.sent[esk] = ev ? today() : ''; x.updatedAt = Date.now(); } }); save(); render(true); return true; }
       case 'edel': { if (!confirm(t('wh_del_q'))) return true; var ed = (S.mrecs || []).filter(function (x) { return x.id === el.getAttribute('data-id'); })[0]; if (ed) { ed.deleted = true; ed.updatedAt = Date.now(); photoKeep(ed.photos, false); billsDrop(ed.bills); save(); if (/^erec-/.test(routeName())) go('history'); else render(true); } return true; }
       case 'eedit': { var ee = mrecs().filter(function (x) { return x.id === el.getAttribute('data-id'); })[0]; if (!ee) return true;
-        EN = enFresh(ee.kind === 'gas' ? 'gas' : 'elec'); EN.date = ee.date; EN.skip = ee.id; EN.vals[ee.meter] = {}; Object.keys(ee.z || {}).forEach(function (k) { EN.vals[ee.meter][k] = String(ee.z[k] || '').replace('.', ','); });
+        EN = enFresh(ee.kind === 'gas' ? 'gas' : 'elec'); EN.date = ee.date; EN.skip = ee.id; EN.note = ee.note || ''; EN.noteEdit = true; EN.vals[ee.meter] = {}; Object.keys(ee.z || {}).forEach(function (k) { EN.vals[ee.meter][k] = String(ee.z[k] || '').replace('.', ','); });
         mrecs().forEach(function (x) { if (x.date === ee.date && !x.base && x.meter !== ee.meter && x.kind === ee.kind) { EN.vals[x.meter] = {}; Object.keys(x.z || {}).forEach(function (k) { EN.vals[x.meter][k] = String(x.z[k] || '').replace('.', ','); }); } });
         EN.back = routeName(); go(SK[EN.k].nw); return true; }
       case 'en-noswap': { enRead(); var nid = el.getAttribute('data-id'); setPMeters(function (list) { list.forEach(function (m) { if (m.id === nid) m.zswap = false; }); });
@@ -3596,7 +3609,7 @@
       case 'wedit': { var r3 = wrecs().filter(function (x) { return x.id === el.getAttribute('data-id'); })[0]; if (!r3) return true;
         var k3 = wmeters('hot').some(function (m) { return hasVal(r3, m.id); }) ? 'hot' : 'cold', v3 = {};
         Object.keys(r3.vals || {}).forEach(function (k) { v3[k] = wfmt(r3.vals[k]); });
-        WN = Object.assign(wnFresh(k3), { date: r3.date, vals: v3, back: 'wrec-' + r3.id }); go('wnew'); return true; }
+        WN = Object.assign(wnFresh(k3), { date: r3.date, vals: v3, back: 'wrec-' + r3.id, note: r3.note || '', noteEdit: true }); go('wnew'); return true; }
       case 'view': S.view = el.getAttribute('data-v'); persist(); render(true); return true;
       case 'hf': HF.v = el.getAttribute('data-v') || 'all'; try { sessionStorage.setItem('teplo.hf', HF.v); } catch (e1) { /* приватний режим */ } render(true); return true;
       case 'place-view': switchPlace(el.getAttribute('data-id')); render(true); return true;
@@ -4884,11 +4897,11 @@
   /** Чипс статуса в истории — кнопка: нажал — меню «Передано · Не передано · Лише для себе» прямо под ним.
    *  src: w (вода) | m (світло, газ) | h (тепло); k — вид (hot/cold/elec/gas/heat); cur: sent | not | own; label — своя надпись
    *  (у тепла — «Прийнято», «На перевірці»…). Стартовые — только «передано / не передавали». */
-  function stChip(src, r, k, cur, label) {
+  function stChip(src, r, k, cur, label, ks) {
     var cls = cur === 'own' ? 'own' : cur === 'sent' ? 'ok' : 'neutral';
     var txt = label || '<span class="pill ' + cls + '">' + esc(ucf(cur === 'own' ? t('own_pill') : cur === 'sent' ? t('wh_sent') : r.base ? t('bs_unsent') : t('wh_notsent'))) + '</span>';
     return '<button type="button" class="st-chip" data-act="st-open" data-src="' + src + '" data-id="' + esc(r.id) + '" data-k="' + k + '" data-cur="' + cur + '"' + (r.base ? ' data-base="1"' : '') +
-      ' aria-haspopup="true" aria-expanded="false" aria-label="' + esc(t('st_aria', { s: String(txt).replace(/<[^>]+>/g, '') })) + '" data-key="st-' + esc(r.id) + '">' + String(txt).replace(/<\/span>$/, ico('chev', 14, 'st-dd') + '</span>') + '</button>';
+      ' aria-haspopup="true" aria-expanded="false" aria-label="' + esc(t('st_aria', { s: String(txt).replace(/<[^>]+>/g, '') })) + '" data-key="st-' + esc(r.id) + (ks || '') + '">' + String(txt).replace(/<\/span>$/, ico('chev', 14, 'st-dd') + '</span>') + '</button>';
   }
   function stClose() { Array.prototype.forEach.call(document.querySelectorAll('.st-menu'), function (m) { m.remove(); }); Array.prototype.forEach.call(document.querySelectorAll('.st-chip[aria-expanded="true"]'), function (b) { b.setAttribute('aria-expanded', 'false'); }); }
   function stOpen(el) {
@@ -5171,7 +5184,7 @@
     // «не прийме» лише за порівнянням з попередніми — людина може передати сама, на свій ризик (робот у фоні — ні)
     // робот у фоні знає лише форму «ГКал + 2 часи» (поля LastValuePok … ErrorTime) — інші форми людина вносить сама
     var risk = res.verdict === 'block' && res.risky, canSend = res.verdict !== 'block' || risk, cab = res.verdict !== 'block' && hcOn() && hcConn() && !heatLite();
-    var actions = '<div class="row-actions">' +
+    var actions = noteField('c-note', (S.draft && S.draft.note) || '') + '<div class="row-actions">' +
       '<button class="btn sec" data-act="save-inter" data-key="check-save-inter">' + esc(t('c_save_inter')) + '</button>' +
       '<button class="btn' + (cab ? ' sec' : '') + '" data-act="to-handover" data-key="check-send"' + (canSend ? '' : ' disabled') + '>' + esc(cab ? t('cab_self') : risk ? t('c_send_risk') : heatLite() ? t('c_send_l') : res.verdict === 'warn' ? t('c_send_anyway') : t('c_send')) + '</button>' +
       (cab ? '<button class="btn dest-bg" data-act="chk-bg" data-key="check-bg"' + (HC.busy ? ' disabled' : '') + '>' + ico('send', 18) + '<span>' + esc(t('cab_bg')) + '</span></button>' : '') + '</div>' +
@@ -5583,9 +5596,10 @@
     if (!r) return { screen: 'S09', route: 'history', html: '<h1>' + esc(t('hi_title')) + '</h1><p class="muted">' + esc(t('rec_gone')) + '</p><a class="btn" href="#history">' + esc(t('back')) + '</a>' };
     // від останнього «передано/прийнято» (власник 11.11: набігло — з минулої оплати), проміжні — рядком; «для себе» — від попереднього
     var h = r.htm || {}, iv = interval(r, 'seq'), cls = { accepted: 'ok', rejected: 'bad', handed: 'info' }[r.status] || 'neutral';
-    var head = recBack() + '<h1>' + esc(fmtDate(h.date, true)) + '</h1>' +
-      // 130-а (власник 13.11): «введено вручну» прибрано — підпис лише для фото й правки
-      '<p><span class="pill ' + cls + '">' + esc(t('status_' + r.status)) + '</span> <span class="small muted">' + esc([r.source === 'photo' ? t('rec_src_photo') : '', r.editedAt ? t('rec_edited') : ''].filter(Boolean).join(' · ')) + '</span></p>';
+    // 130-а (власник 13.11): «введено вручну» прибрано — підпис лише для фото й правки; 143-я: чип — праворуч від дати (у правці — без меню), місяць — як у світла
+    var hpill = r.own ? '' : '<span class="pill ' + cls + '">' + esc(t('status_' + r.status)) + '</span>';
+    var head = recBack() + recHead(fmtDate(h.date, true), edit ? hpill : stChip('h', r, 'heat', r.own ? 'own' : /^(handed|accepted|rejected)$/.test(r.status) ? r.status : 'not', hpill),
+      [h.date ? t('er_for', { m: monthLabel(String(h.date).slice(0, 7)) }) : '', r.source === 'photo' ? t('rec_src_photo') : '', r.editedAt ? t('rec_edited') : '']);
     if (edit) {
       return { screen: 'S09', route: 'history', html: head + '<form id="rec-form" data-id="' + r.id + '" novalidate><div class="panel">' +
         '<div class="field" style="max-width:280px"><label for="re-date">' + esc(fieldLabel('date')) + '</label><div class="ctl"><input id="re-date" type="date" value="' + esc(h.date || '') + '" max="' + today() + '" required></div></div>' +
@@ -5596,7 +5610,7 @@
           var v = f.key === 'errCode' ? (h.errCode || '') : f.key === 'energy' ? (R.num(h.energy) === null ? '' : ru === 'Gcal' ? R.formatForHtm('energy', h.energy) : (rv !== null && Math.abs(rv * M.TO_GCAL[ru] - R.num(h.energy)) < 0.001 ? rv.toFixed(3) : (R.num(h.energy) / M.TO_GCAL[ru]).toFixed(3)))
             : (R.num(h[f.key]) === null ? '' : R.formatForHtm(f.key, h[f.key]));
           return '<div class="field"><label for="re-' + f.key + '">' + esc(fieldLabel(f.key)) + (f.unit ? ', ' + esc(f.key === 'energy' ? unitLbl(ru) : fieldUnit(f.key)) : '') + '</label><div class="ctl"><input id="re-' + f.key + '" class="num" data-re="' + f.key + '"' + (f.key === 'energy' ? ' data-unit="' + ru + '"' : '') + ' inputmode="' + (f.key === 'errCode' ? 'text' : 'decimal') + '" value="' + esc(v) + '"></div></div>';
-        }).join('') + '<div class="help block" id="re-err"></div></div>' +
+        }).join('') + '<div class="help block" id="re-err"></div></div>' + noteField('re-note', r.note) +
         '<div class="row-actions"><a class="btn sec" href="#rec-' + r.id + '">' + esc(t('cancel')) + '</a><button class="btn" type="submit" data-key="rec-save">' + esc(t('save')) + '</button></div></form>' };
     }
     var vals = usedVals('rec-values', R.FIELDS.filter(function (f) { return f.key !== 'date'; }).map(function (f) {
@@ -5606,7 +5620,7 @@
     if (window.TeploStats) loadWeather();
     var wx = wxFor(r);
     // 1) скільки набігло з минулого показання і скільки коштувало (власник 10.11 — першим блоком); 2) фото; 3) поля показань списком (без ЖК-табло)
-    var used = iv ? (iv.dE < 0 ? '<section class="panel ru ru-heat" data-key="rec-used"><h2 class="ru-t">' + esc(t('rec_used_title')) + '</h2><p class="ru-per">' + esc(intervalText(iv)) + '</p>' + vals + '</section>' :
+    var used = iv ? (iv.dE < 0 ? '<section class="panel ru ru-heat" data-key="rec-used" aria-label="' + esc(t('rec_used_title')) + '"><p class="ru-per">' + esc(intervalText(iv)) + '</p>' + vals + '</section>' :
       usedBox({ kind: 'heat', key: 'rec-used', title: t('rec_used_title'), per: t(iv.off > 0 ? 'ru_per_gap' : 'ru_per', { a: fmtDate(iv.from, String(iv.from).slice(0, 4) !== String(h.date).slice(0, 4)), b: fmtDate(h.date, true), d: iv.days, o: iv.off, g1: iv.gFrom ? fmtDate(iv.gFrom) : '', g2: iv.gTo ? fmtDate(iv.gTo) : '' }),
         qs: [{ v: '+' + fmtN(iv.dE, 3), u: 'Гкал' }], money: iv.cost, vals: vals,
         lines: [t('ru_h_calc', { q: fmtN(iv.dE, 3), p: money(tariff()), s: money(iv.parts.heat) }), [iv.parts.mzk > 0.004 ? t('ru_h_mzk', { s: money(iv.parts.mzk) }) : '', iv.parts.abon > 0.004 ? t('ru_h_abon', { s: money(iv.parts.abon) }) : ''].filter(Boolean).reduce(function (a0, x0, i0, all) { return i0 === all.length - 1 ? t('ru_h_plus', { x: all.join(t('ru_and')) }) : a0; }, ''), paidLine(r, iv)],
@@ -5617,7 +5631,7 @@
         '<div><div class="num mid">' + esc(degTxt(wx.min)) + ' … ' + esc(degTxt(wx.max)) + '</div><div class="small muted">' + esc(t('wx_t_range')) + '</div></div>' +
         '<div><div class="num mid">' + wx.frost + ' / ' + wx.ser.length + '</div><div class="small muted">' + esc(t('wx_t_frost')) + '</div></div>' : '') +
       (wx.day !== null ? '<div><div class="num mid">' + esc(degTxt(wx.day)) + '</div><div class="small muted">' + esc(t('wx_t_day')) + '</div></div>' : '') + '</div>' + wxSpark(wx.ser) + '</div>' : '';
-    return { screen: 'S09', route: 'history', html: head + used + recPhotos(r.photos, 'h' + r.id, 'h:' + r.id) + wxp + hsprPanel(r, iv) + billsBox('h:' + r.id, r.bills, t('bl_title', { m: monthLabel(String(h.date || '').slice(0, 7)) })) +
+    return { screen: 'S09', route: 'history', html: head + used + recPhotos(r.photos, 'h' + r.id, 'h:' + r.id) + wxp + hsprPanel(r, iv) + billsBox('h:' + r.id, r.bills, t('bl_title', { m: monthLabel(String(h.date || '').slice(0, 7)) })) + noteBox(r) +
       '<div class="row-actions">' + st + '<a class="btn sec" href="#rec-' + r.id + '-edit" data-key="rec-edit">' + esc(t('rec_edit')) + '</a>' +
       '<button class="btn danger" data-act="rec-del-ask" data-key="rec-del">' + esc(t('rec_del')) + '</button></div><div id="rec-del-confirm"></div>' + ownBox('h', r) };
   }
@@ -5936,20 +5950,21 @@
     var src = b.auto === 'vk' ? t('bl_auto_vk') : b.auto === 'htm' ? t('bl_auto_htm') : '', when = b.at ? fmtDate(String(b.at).slice(0, 10), true) : '';
     var del = '<button type="button" class="linkbtn bc-del" data-act="bill-del" data-ref="' + esc(ref) + '" data-id="' + esc(b.id) + '"' + (busy ? ' disabled' : '') + '>' + esc(t('rec_del')) + '</button>';
     var open = function (cls, inner, lbl) { return '<a class="' + cls + '" href="' + esc(url) + '" target="_blank" rel="noopener" data-act="bill-open" data-id="' + esc(b.id) + '" aria-label="' + esc(t('mv_open') + ': ' + lbl) + '">' + inner + '</a>'; };
-    var title = b.auto && b.ym ? t(b.auto === 'vk' ? 'bc_vk' : 'bc_htm') : img ? t('bl_photo') : (b.name || 'PDF'), sub = [b.auto && b.ym ? monthLabel(b.ym) : '', src].filter(Boolean).join(' · ');
+    var title = b.auto && b.ym ? t(b.auto === 'vk' ? 'bcb_vk' : 'bc_htm') : img ? t('bl_photo') : (b.name || 'PDF'), sub = [b.auto && b.ym ? monthLabel(b.ym) : '', src].filter(Boolean).join(' · ');
     var pay = n('pay');
     if (b.auto && (pay !== null || page)) {
-      var rows = [['heatM', 'bc_heat'], ['hotM', 'bc_hot'], ['pre', 'bc_pre'], ['unpre', 'bc_unpre']].filter(function (x) { return n(x[0]) !== null && Math.abs(n(x[0])) >= 0.005; })
+      var rows = [['heatM', 'bcb_heat'], ['hotM', 'bc_hot'], ['pre', 'bc_pre'], ['unpre', 'bc_unpre']].filter(function (x) { return n(x[0]) !== null && Math.abs(n(x[0])) >= 0.005; })
         .map(function (x) { return '<div class="bc-row"><span>' + esc(t(x[1])) + '</span><b class="num">' + (x[0] === 'unpre' ? '−' : '') + esc(money(x[0] === 'unpre' ? Math.abs(n(x[0])) : n(x[0]))) + '</b></div>'; }).join('');
       return '<li class="bcard bc-auto" data-key="bill-' + esc(b.id) + '">' + open('bc-head', '<span class="bc-badge' + (b.auto === 'vk' ? ' vk' : '') + '" aria-hidden="true">' + (b.auto === 'vk' ? 'ВК' : 'ХТМ') + '</span><span class="bc-t"><b class="bill-name">' + esc(title) + '</b><span class="small muted">' + esc(sub) + '</span></span>' + ico('chev', 20, 'bc-go'), title) +
         (pay !== null ? '<div class="bc-pay"><span class="small">' + esc(t('bc_pay')) + '</span><b class="num">' + esc(money(pay)) + ' <small>грн</small></b></div>' : '') +
         (rows ? '<div class="bc-rows">' + rows + '</div>' : '') + '<div class="bc-foot small muted"><span>' + esc(when) + '</span>' + del + '</div></li>';
     }
+    // 143-я (власник 14.11): прев'ю — прямокутник однакового розміру (як фото запису), без назви «Фото платіжки»; під ним — дата й розмір; прибрати — «×» у куті
     var th = img ? '<span class="bc-paper"><img src="' + esc(url) + '" data-gal="b' + esc(ref) + '" alt="' + esc(t('bl_img', { n: i + 1 })) + '" loading="lazy"></span>'
       : open('bc-paper pdf', '<span class="bc-fold" aria-hidden="true"></span><span class="bc-lines" aria-hidden="true"><i></i><i></i><i></i><i></i></span><span class="pdf">' + (page ? 'ХТМ' : 'PDF') + '</span>', b.name || 'PDF');
-    return '<li class="bcard" data-key="bill-' + esc(b.id) + '">' + th + '<div class="grow bc-meta"><b class="bill-name">' + esc(title) + '</b>' + (sub ? '<span class="small muted">' + esc(sub) + '</span>' : '') +
-      (pay !== null ? '<span class="bc-pay-s">' + esc(t('hb_pay', { s: money(pay) })) + '</span>' : '') +
-      '<span class="small muted">' + esc([when, Math.max(1, Math.round((b.bytes || 0) / 1024)) + ' КБ'].filter(Boolean).join(' · ')) + '</span>' + del + '</div></li>';
+    var x = '<button type="button" class="bc-x" data-act="bill-del" data-ref="' + esc(ref) + '" data-id="' + esc(b.id) + '"' + (busy ? ' disabled' : '') + ' aria-label="' + esc(t('rec_del') + ': ' + t('bl_img', { n: i + 1 })) + '" data-key="bill-x-' + esc(b.id) + '">' + ico('close', 20) + '</button>';
+    return '<li class="bcard btile" data-key="bill-' + esc(b.id) + '">' + th + x + '<span class="bc-cap small muted">' + esc([sub, when, Math.max(1, Math.round((b.bytes || 0) / 1024)) + ' КБ'].filter(Boolean).join(' · ')) + '</span>' +
+      (pay !== null ? '<span class="bc-pay-s">' + esc(t('hb_pay', { s: money(pay) })) + '</span>' : '') + '</li>';
   }
   /** Перерисовать только блок платёжек (в форме периода — чтобы не терять несохранённые поля). */
   function billsRefresh(ref) {
@@ -7089,7 +7104,7 @@
       '<div class="mp-head"><span class="spin" aria-hidden="true"></span><b>' + esc(t(compact ? 'mp_t_bg' : 'mp_t')) + '</b><span class="mp-left">' + esc(t('mp_left', { m: pr.m })) + '</span></div>' +
       (cells.length > 1 ? '<ol class="mp-cal" aria-label="' + esc(t('mp_cal')) + '">' + cells.join('') + '</ol>' : '') +
       '<div class="pbar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="' + pct + '" aria-label="' + esc(t('mp_bar')) + '"><i style="width:' + Math.max(3, pct) + '%"></i></div>' +
-      '<p class="mp-meta small">' + esc(t('mp_meta', { a: MO.i, b: q.length })) + (MO.cards > 1 ? ' · ' + esc(t('mp_cards', { n: MO.cards })) : '') + (pr.d ? ' · ' + esc(t('mp_from', { d: pr.d })) : '') + '</p>' +
+      '<p class="mp-meta small">' + esc(t('mp_meta', { a: MO.i, b: q.length })) + (MO.cards > 1 ? ' · ' + esc(t('mp_cards', { n: MO.cards })) : '') + (pr.d ? ' · ' + esc(t('mp_from_d', { d: pr.d })) : '') + '</p>' +
       (compact ? '' : found) + (compact ? '' : '<p class="small muted mp-why">' + esc(t('mp_why')) + '</p><p class="small muted" id="mono-wait"></p>') +
       '<div class="mp-act"><button type="button" class="btn sec" data-act="mono-stop" data-key="mono-stop">' + esc(t(gs.length ? 'mp_stop_show' : 'mono_stop')) + '</button></div></section>';
   }
@@ -8030,7 +8045,23 @@
     if (FLOW_RE.test(r)) { if (!FLOW_RE.test(prev)) NAV.from = prev; } else NAV.from = '';
   }
   /** «← Історія показань» над записом; відкрили запис з іншого екрана (сторінка виду, квартира) — «← Назад» туди. */
-  function recBack() { var b = backTo('history'); return '<p><a href="#' + b + '" data-key="rec-back">← ' + esc(b === 'history' ? t('hi_title') : t('back')) + '</a></p>'; }
+  function recBack() { var b = backTo('history'); return '<p class="rec-back"><a href="#' + b + '" data-key="rec-back">← ' + esc(b === 'history' ? t('hi_title') : t('back')) + '</a></p>'; }
+  /** 143-я (власник 14.11, скрин запису): дата, праворуч — чип статусу, як у рядку історії (той самий, з меню); під ними — «Зараховується за <місяць>»
+   *  (як у світла) і примітки (з фото, виправлено). Однаково для тепла, води, світла й газу. */
+  /** 143-я (власник 14.11): коментар до показань — поле при внесенні й правці (необов'язкове); у записі історії — після платіжки, лише якщо залишили. */
+  function noteField(id, v) {
+    return '<div class="field f-note" data-key="' + id + '"><label for="' + id + '">' + esc(t('nt_label')) + ' <span class="muted small">(' + esc(t('b_opt')) + ')</span></label>' +
+      '<div class="ctl"><textarea id="' + id + '" rows="2" maxlength="500" autocomplete="off" placeholder="' + esc(t('nt_ph')) + '">' + esc(v || '') + '</textarea></div></div>';
+  }
+  /** Текст поля коментаря або null, якщо поля на екрані немає. */
+  function noteVal(id) { var el = document.getElementById(id); return el ? String(el.value || '').replace(/\s+$/, '').replace(/^\s+/, '').slice(0, 500) : null; }
+  /** Записати коментар у запис: правка — і стерти можна; нове внесення (дописали до запису того ж дня) — лише непорожній, чужий не стираємо. */
+  function noteSet(r, v, edit) { if (!r || v === null || v === undefined) return; if (v) r.note = v; else if (edit) delete r.note; }
+  function noteBox(r) { return r && r.note ? '<section class="panel rec-note" data-key="rec-note"><h2>' + esc(t('nt_title')) + '</h2><p class="rec-note-t">' + esc(r.note) + '</p></section>' : ''; }
+  function recHead(date, chips, subs) {
+    var sub = (subs || []).filter(Boolean).join(' · ');
+    return '<div class="rec-h" data-key="rec-h"><h1>' + esc(date) + '</h1>' + (chips ? '<span class="rec-chips">' + chips + '</span>' : '') + '</div>' + (sub ? '<p class="small muted rec-sub" data-key="rec-sub">' + esc(sub) + '</p>' : '');
+  }
   /** Кнопка «Назад» у шапці Telegram (Mini App 6.1+): веде туди ж, куди «✕» чи «← Назад» на екрані; на головній — схована. */
   var TGB = { to: '', on: false };
   function tgBack(to) {
@@ -8354,6 +8385,7 @@
       verdict: res.verdict, codes: res.items.map(function (x) { return x.code; }),
       derived: Object.assign({}, res.derived, S.baseline ? { days: R.daysBetween(S.baseline.date, htm.date) } : {}) };
     if (S.draft.photos && S.draft.photos.length) rd.photos = S.draft.photos.slice();
+    var nv = noteVal('c-note'); noteSet(rd, nv !== null ? nv : S.draft.note || '');
     S.readings.push(rd); hbillAdopt(rd); S.draft = null; S.focusId = rd.id;
     cardSaved('heat', rd);   // відкрито з картки в чаті й там «перевірте» — картці збережене (122-а)
     save(); return rd;
@@ -8636,7 +8668,7 @@
       Object.keys(vals).forEach(function (k) { nh[k] = k === 'errCode' ? R.normCode(vals[k]) : (vals[k] === '' ? null : R.num(vals[k])); });
       var reu = (document.getElementById('re-energy') || {}).getAttribute ? document.getElementById('re-energy').getAttribute('data-unit') : null;
       if (reu && reu !== 'Gcal' && nh.energy !== null) { rf.raw = Object.assign({}, rf.raw, { energy: vals.energy }); nh.energy = +(nh.energy * (M.TO_GCAL[reu] || 1)).toFixed(6); }   // з одиниці табло — у Гкал
-      rf.htm = nh; rf.editedAt = new Date().toISOString(); rf.updatedAt = Date.now(); delete rf.derived;
+      rf.htm = nh; noteSet(rf, noteVal('re-note'), true); rf.editedAt = new Date().toISOString(); rf.updatedAt = Date.now(); delete rf.derived;
       save(); toast(t('b_saved')); go('rec-' + rf.id); return;
     }
     e.preventDefault();
