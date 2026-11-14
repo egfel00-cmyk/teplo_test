@@ -25,6 +25,11 @@ const U = 'http://127.0.0.1:8013/', M = 'http://127.0.0.1:8096', DATA = process.
   if (process.env.SHOT) await (await p.$('[data-key=where-water]')).screenshot({ path: '/tmp/lb_off.png' });
   await p.click('[data-key=lb-open]'); await wait(300);
   ok('форма: особовий рахунок з підказкою 74-108-61, згода', !!(await p.$('#lb-acc')) && (await p.getAttribute('#lb-acc', 'placeholder')) === '74-108-61' && !!(await p.$('[data-key=lb-consent]')));
+  // 150-а (план конкурентів п. 4): «Хто ми і як зберігаємо доступи» — біля згоди, згорнуто; факти — шифрування, як забрати доступ
+  const tr = await p.$eval('[data-key=lb-form] [data-key=trust-lb]', d => ({ open: d.open, t: d.textContent })).catch(() => null);
+  ok('форма: «Хто ми і як зберігаємо доступи» — згорнуто; незалежні, AES-256, «Вимкнути автовідправку», посилання на політику', !!tr && !tr.open && /Хто ми|Кто мы/.test(tr.t) && /AES-256/.test(tr.t) && /Вимкнути автовідправку|Выключить автоотправку/.test(tr.t) && /незалежний|независимый/.test(tr.t)
+    && !!(await p.$('[data-key=trust-lb-more][href="#privacy"]')), tr);
+  if (process.env.SHOT) { await p.evaluate(() => { document.querySelector('[data-key=trust-lb]').open = true; }); await wait(400); await (await p.$('[data-key=lb-form]')).screenshot({ path: '/tmp/lb_trust.png' }); }
   await p.fill('#lb-acc', '74-108-61'); await p.click('[data-key=lb-save]'); await wait(800);
   ok('без згоди — пояснення, не підключено', /згода|согласие/i.test(await txt('[data-key=lb-err]')) && !(await p.$('[data-key=lb-on]')));
   await p.check('[data-key=lb-consent]'); await p.fill('#lb-acc', '74-108-62'); await p.click('[data-key=lb-save]'); await wait(1500);
@@ -43,6 +48,7 @@ const U = 'http://127.0.0.1:8013/', M = 'http://127.0.0.1:8096', DATA = process.
   ok('«Сайт прийняв показання» + «перевірить оператор»; запис позначено переданим', /прийняв|принял/.test(await txt('[data-key=lb-done]')) && /оператор/.test(await txt('[data-key=lb-done]'))
     && ((await st()).water.find(w => w.id === 'w20261110').sent || {}).vk, await txt('[data-key=lb-done]'));
   if (process.env.SHOT) await (await p.$('[data-key=where-water]')).screenshot({ path: '/tmp/lb_done.png' });
+  ok('після відправлення — «Хто ми і як зберігаємо доступи» поруч із «Відправити у фоні»', !!(await p.$('[data-key=lb] [data-key=trust-lb]')));
   await p.setViewportSize({ width: 320, height: 700 }); await wait(300); ok('320 px: без горизонтальної прокрутки', await p.evaluate(() => document.documentElement.scrollWidth <= 321));
   await p.click('[data-key=lb-off]'); await wait(1000);
   ok('«Вимкнути автовідправку» → знову «Підключити»', !!(await p.$('[data-key=lb-open]')));
