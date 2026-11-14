@@ -55,4 +55,14 @@ t('подпись не зависит от updatedAt', S.sig({ a: 1, updatedAt: 
   t('новіша зміна постачальника (повернули довідник) — теж виграє', S.merge(mine, back).places[0].prov.elec.own === 0);
   const old = { places: [{ id: 'pob', updatedAt: 400, prov: { elec: { ok: 1 } } }], updatedAt: 400 };
   t('стара копія без ts не затирає постачальника з ts', S.merge(mine, old).places[0].prov.elec.name === 'Жилстрой'); }
+// 150-а (власник 14.11: «меняю поставщика на своего — сохраняется, после обновления опять сбрасывается»): сервер повертав {} як [],
+// застосунок писав prov.elec у масив — JSON.stringify це викидав (і sig зміни не бачив)
+{ const pl = { id: 'pob', updatedAt: 5, prov: [] }; const st = { readings: [], places: [pl], updatedAt: 5 };
+  const before = S.sig(S.payload(st)); pl.prov.elec = { own: 1, name: 'Жилстрой', ts: 9 };
+  t('зміна в [] з сервера помітна для sig', S.sig(S.payload(st)) !== before);
+  const back = JSON.parse(JSON.stringify(S.payload(st), S.fixArr));
+  t('…і доходить при записі об\'єктом', !Array.isArray(back.places[0].prov) && back.places[0].prov.elec.name === 'Жилстрой');
+  t('звичайні масиви не чіпає', JSON.stringify({ a: [], b: [1, 2] }, S.fixArr) === '{"a":[],"b":[1,2]}');
+  const m2 = S.merge({ places: [{ id: 'pob', updatedAt: 9, prov: Object.assign([], { elec: { own: 1, name: 'Жилстрой', ts: 9 } }) }], updatedAt: 9 }, { places: [{ id: 'pob', updatedAt: 3, prov: [] }], updatedAt: 3 });
+  t('злиття з [] сервера не губить свого', JSON.parse(JSON.stringify(m2, S.fixArr)).places[0].prov.elec.own === 1); }
 console.log('\nИтог: ' + pass + ' OK, ' + fail + ' FAIL'); process.exit(fail ? 1 : 0);

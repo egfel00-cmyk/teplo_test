@@ -118,6 +118,8 @@ final class Api {
     foreach (array_merge([$root . '/index.php', $root . '/cron.php'], glob(__DIR__ . '/*.php') ?: []) as $f) $h .= basename($f) . ':' . (string)@md5_file($f) . ';';
     return substr(md5($h), 0, 12);
   }
+  /** 150-а: данные человека наружу — объектами: пустой {} остаётся {} (json_decode(…, true) отдавал [], и приложение теряло записанное в него). */
+  public static function stateOut(string $json) { $s = json_decode($json); return is_object($s) ? $s : null; }
   private static function route(Req $r, Res $res, ?array $user, string $ip): array {
     $m = $r->method; $p = $r->path; $in = $r->json();
     switch ("$m $p") {
@@ -295,22 +297,24 @@ final class Api {
         if (!$user) throw new HttpError(401, 'unauthorized');
         RateLimit::hit('state_user', (string)$user['id']);
         $row = Db::one('SELECT data, version FROM user_state WHERE user_id = ?', [$user['id']]);
-        return ['state' => $row ? json_decode($row['data'], true) : null, 'version' => $row ? (int)$row['version'] : 0];
+        return ['state' => $row ? self::stateOut((string)$row['data']) : null, 'version' => $row ? (int)$row['version'] : 0];
       }
       case 'PUT /api/state': {
         if (!$user) throw new HttpError(401, 'unauthorized');
         RateLimit::hit('state_user', (string)$user['id']);
-        $state = $in['state'] ?? null; $base = (int)($in['baseVersion'] ?? 0);
-        if (!is_array($state) || !isset($state['readings']) || !is_array($state['readings'])) throw new HttpError(422, 'bad_state');
+        // 150-а: данные — объектами (json_decode без true): с массивами пустой {} человека становился [] и терял всё, что в него потом писали
+        // («Победа»: свой поставщик света сбрасывался после обновления страницы)
+        $raw = json_decode($r->body); $state = is_object($raw) && isset($raw->state) && is_object($raw->state) ? $raw->state : null; $base = (int)($in['baseVersion'] ?? 0);
+        if (!$state || !isset($state->readings) || !is_array($state->readings)) throw new HttpError(422, 'bad_state');
         $row = Db::one('SELECT data, version, updated_at FROM user_state WHERE user_id = ?', [$user['id']]);
         $cur = $row ? (int)$row['version'] : 0;
-        if ($cur !== $base) throw new HttpError(409, 'conflict', ['state' => json_decode($row['data'], true), 'version' => $cur]);
+        if ($cur !== $base) throw new HttpError(409, 'conflict', ['state' => self::stateOut((string)$row['data']), 'version' => $cur]);
         $json = json_encode($state, JSON_UNESCAPED_UNICODE);
         if ($row) {
           // одновременная запись с другого устройства успела раньше — не затираем её молча, а отдаём как конфликт (клиент сольёт и повторит)
           if (Db::q('UPDATE user_state SET data = ?, version = version + 1, updated_at = ? WHERE user_id = ? AND version = ?', [$json, Http::iso(), $user['id'], $cur])->rowCount() !== 1) {
             $now = Db::one('SELECT data, version FROM user_state WHERE user_id = ?', [$user['id']]);
-            throw new HttpError(409, 'conflict', ['state' => json_decode((string)$now['data'], true), 'version' => (int)$now['version']]);
+            throw new HttpError(409, 'conflict', ['state' => self::stateOut((string)$now['data']), 'version' => (int)$now['version']]);
           }
           // прошлая версия — в историю (вернуть из /admin, если сохранение что-то затёрло)
           if ($row['data'] !== $json) StateHist::put((int)$user['id'], (string)$row['data'], $cur, (string)$row['updated_at']);
@@ -318,7 +322,7 @@ final class Api {
         else try { Db::q('INSERT INTO user_state (user_id, data, version, updated_at) VALUES (?, ?, 1, ?)', [$user['id'], $json, Http::iso()]); }
         catch (PDOException $e) {   // первая запись с двух устройств разом — вторая получает конфликт (клиент сольёт и повторит), а не 500
           $now = Db::one('SELECT data, version FROM user_state WHERE user_id = ?', [$user['id']]); if (!$now) throw $e;
-          throw new HttpError(409, 'conflict', ['state' => json_decode((string)$now['data'], true), 'version' => (int)$now['version']]);
+          throw new HttpError(409, 'conflict', ['state' => self::stateOut((string)$now['data']), 'version' => (int)$now['version']]);
         }
         return ['version' => $cur + 1];
       }

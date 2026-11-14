@@ -6676,7 +6676,15 @@ details.mypay[open] > summary .mypay-amt, details.mypay[open] > summary .mypay-s
   var SYNC_KEYS = ['v', 'onboarded', 'meter', 'baseline', 'contacts', 'readings', 'draft', 'updatedAt', 'wipedAt', 'tariff', 'bill', 'places', 'water', 'remind', 'wtariff', 'mrecs', 'restoredAt'];
 
   function payload(S) { var o = {}; SYNC_KEYS.forEach(function (k) { if (S[k] !== undefined) o[k] = S[k]; }); return o; }
-  function sig(p) { var c = Object.assign({}, p); delete c.updatedAt; return JSON.stringify(c); }
+  /** 150-а (власник 14.11: «у „Победе“ міняю постачальника світла на свого — зберігається, а після оновлення знову скидається; виправ, не лише в мене»).
+   *  Сервер (PHP json_decode(…, true)) повертав порожній об'єкт {} порожнім масивом []: `prov` квартири ставав [], застосунок писав у нього
+   *  prov.elec — на екрані видно, а JSON.stringify властивості масиву мовчки викидає: ні в localStorage, ні на сервер, ні в sig (зміну навіть не
+   *  помічали). Тепер порожній масив із властивостями пишемо об'єктом — і локально, і на сервер; сервер теж більше не перетворює {} на []. */
+  function fixArr(k, v) {
+    if (Array.isArray(v) && !v.length) { var ks = Object.keys(v); if (ks.length) { var o = {}; ks.forEach(function (x) { o[x] = v[x]; }); return o; } }
+    return v;
+  }
+  function sig(p) { var c = Object.assign({}, p); delete c.updatedAt; return JSON.stringify(c, fixArr); }
   function ts(x) { var n = typeof x === 'number' ? x : Date.parse(x || 0); return isFinite(n) ? n : 0; }
 
   /** Слить два состояния (локальное a и удалённое b). Возвращает новое. */
@@ -6771,7 +6779,7 @@ details.mypay[open] > summary .mypay-amt, details.mypay[open] > summary .mypay-s
     if (method !== 'GET') { h['Content-Type'] = 'application/json'; sent = cookie('ts_csrf'); if (sent) h['X-CSRF'] = sent; }
     if (SESS) h['X-Session'] = SESS;
     // 149-а: ka — сторінку ховають/закривають (Telegram згорнули): keepalive, щоб запит пережив сторінку; у браузера межа 64 КБ на такі запити
-    var bs = body ? JSON.stringify(body) : undefined, o = { method: method, headers: h, credentials: 'same-origin', body: bs };
+    var bs = body ? JSON.stringify(body, fixArr) : undefined, o = { method: method, headers: h, credentials: 'same-origin', body: bs };
     if (ka && bs && bs.length < 60000) o.keepalive = true;
     return fetch(root.TEPLO_API + path, o)
       .then(function (res) { return res.json().catch(function () { return {}; }).then(function (j) { j._status = res.status; return j; }); })
@@ -6939,7 +6947,7 @@ details.mypay[open] > summary .mypay-amt, details.mypay[open] > summary .mypay-s
     config: function () { return api('GET', '/config'); }
   };
 
-  Sync.merge = merge; Sync.payload = payload; Sync.sig = sig;
+  Sync.merge = merge; Sync.payload = payload; Sync.sig = sig; Sync.fixArr = fixArr;
   if (typeof module !== 'undefined' && module.exports) module.exports = Sync; else root.TeploSync = Sync;
 })(typeof window !== 'undefined' ? window : this);
 
@@ -9410,7 +9418,21 @@ details.mypay[open] > summary .mypay-amt, details.mypay[open] > summary .mypay-s
   }
   /** Главная: при двух и больше квартирах — список квартир (#places), иначе — счётчики квартиры (#home). */
   function homeRoute() { return 'home'; }
-  function persist() { memory = S; try { window.localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) { /* только память */ } }
+  // 150-а: порожній масив із властивостями ([] з сервера, у який записали prov.elec) — об'єктом, інакше JSON.stringify їх викидає (sync.js fixArr)
+  function jsonFix(k, v) { var Y = window.TeploSync; return Y && Y.fixArr ? Y.fixArr(k, v) : v; }
+  function persist() { memory = S; try { window.localStorage.setItem(KEY, JSON.stringify(S, jsonFix)); } catch (e) { /* только память */ } }
+  /** 150-а: {} квартири, які сервер колись повернув як [] (PHP json_decode(…, true)), — назад в об'єкти: «Кому платите» (prov і prov[вид]),
+   *  рахунок (bill), населений пункт (settle). Інакше записане в них зникало після оновлення сторінки («Победа»: свій постачальник світла). */
+  var OBJ_KEYS = ['prov', 'bill', 'settle', 'city', 'water', 'waste'];
+  function deArr(st) {
+    var n = 0, obj = function (v) { var o = {}; Object.keys(v).forEach(function (x) { o[x] = v[x]; }); n++; return o; };
+    ((st && st.places) || []).forEach(function (p) {
+      if (!p || typeof p !== 'object') return;
+      OBJ_KEYS.forEach(function (k) { if (Array.isArray(p[k]) && (!p[k].length || Object.keys(p[k]).length > p[k].length)) p[k] = obj(p[k]); });
+      if (p.prov && typeof p.prov === 'object') Object.keys(p.prov).forEach(function (k) { var v = p.prov[k]; if (Array.isArray(v) && !v.length) p.prov[k] = obj(v); });
+    });
+    return n;
+  }
   var lastSig = '', pendingRender = false;
   /** Сохранить: локально всегда; если изменились синхронизируемые данные — отметить время и отправить на другие устройства. */
   function save() {
@@ -9425,7 +9447,7 @@ details.mypay[open] > summary .mypay-amt, details.mypay[open] > summary .mypay-s
   function applyRemote(m) {
     var vkb0 = vkbIds(S);
     var keep = { lang: S.lang, demoToday: S.demoToday, focusId: S.focusId, _pickModel: S._pickModel, syncPromptDismissed: S.syncPromptDismissed, placeId: S.placeId, theme: S.theme, themeV: S.themeV, view: S.view, homeOpen: S.homeOpen };
-    S = Object.assign(defaults(), m, keep);
+    S = Object.assign(defaults(), m, keep); deArr(S);
     jrProv((window.TeploSync && window.TeploSync.via) || 'remote');   // 149-а: дані з іншого пристрою змінили «Кому платите» — у журнал
     ensurePlaces(); var ap = place(); if (ap && (ap.meter || ap.baseline || S.places.length > 1)) { S.meter = ap.meter || null; S.baseline = ap.baseline || null; }
     lastSig = window.TeploSync.sig(window.TeploSync.payload(S)); persist();
@@ -9456,7 +9478,7 @@ details.mypay[open] > summary .mypay-amt, details.mypay[open] > summary .mypay-s
     var l = (tu && tu.language_code) || (navigator.languages && navigator.languages[0]) || navigator.language || '';
     return /^ru\b/i.test(l) ? 'ru' : 'uk';
   }
-  var S = load(); ensurePlaces();
+  var S = load(); deArr(S); ensurePlaces();
   if (GASMV) setTimeout(function () { GASMV = false; save(); }, 0);
   // S.meter/S.baseline — зеркало текущей квартиры: при запуске берём из неё (не из того, что лежало сверху)
   (function () { var ap = place(); if (ap && places().length > 1) { S.meter = ap.meter || null; S.baseline = ap.baseline || null; } })();
@@ -18427,7 +18449,7 @@ details.mypay[open] > summary .mypay-amt, details.mypay[open] > summary .mypay-s
       case 'to-meter': { e.preventDefault(); SCROLL_TO = 'meter-block'; go('prefs'); break; }
       case 'fill-zero': { var zi = document.getElementById('f-' + el.getAttribute('data-k')); if (zi) { zi.value = '0'; zi.dispatchEvent(new Event('input', { bubbles: true })); el.remove(); } break; }
       case 'scroll': { var tg = document.getElementById(el.getAttribute('data-target')); if (tg) tg.scrollIntoView({ behavior: 'smooth', block: 'start' }); break; }
-      case 'export': copyText(JSON.stringify(S), el); break;
+      case 'export': copyText(JSON.stringify(S, jsonFix), el); break;
       case 'wipe-ask': document.getElementById('wipe-confirm').innerHTML = '<div class="confirm"><p>' + esc(t(el.getAttribute('data-test') || (Y().mode === 'server' && Y().account) ? 'tr_confirm' : 'p_wipe_confirm')) + '</p><div class="row-actions" style="margin-top:8px"><button class="btn sec" data-act="wipe-no">' + esc(t('cancel')) + '</button><button class="btn danger solid" data-act="wipe-yes" data-key="prefs-wipe-yes">' + esc(t('p_wipe_yes')) + '</button></div></div>'; break;
       case 'photo': {
         if (el.getAttribute('data-mode') === 'baseline') {   // не потерять уже введённое руками

@@ -14,7 +14,15 @@
   var SYNC_KEYS = ['v', 'onboarded', 'meter', 'baseline', 'contacts', 'readings', 'draft', 'updatedAt', 'wipedAt', 'tariff', 'bill', 'places', 'water', 'remind', 'wtariff', 'mrecs', 'restoredAt'];
 
   function payload(S) { var o = {}; SYNC_KEYS.forEach(function (k) { if (S[k] !== undefined) o[k] = S[k]; }); return o; }
-  function sig(p) { var c = Object.assign({}, p); delete c.updatedAt; return JSON.stringify(c); }
+  /** 150-а (власник 14.11: «у „Победе“ міняю постачальника світла на свого — зберігається, а після оновлення знову скидається; виправ, не лише в мене»).
+   *  Сервер (PHP json_decode(…, true)) повертав порожній об'єкт {} порожнім масивом []: `prov` квартири ставав [], застосунок писав у нього
+   *  prov.elec — на екрані видно, а JSON.stringify властивості масиву мовчки викидає: ні в localStorage, ні на сервер, ні в sig (зміну навіть не
+   *  помічали). Тепер порожній масив із властивостями пишемо об'єктом — і локально, і на сервер; сервер теж більше не перетворює {} на []. */
+  function fixArr(k, v) {
+    if (Array.isArray(v) && !v.length) { var ks = Object.keys(v); if (ks.length) { var o = {}; ks.forEach(function (x) { o[x] = v[x]; }); return o; } }
+    return v;
+  }
+  function sig(p) { var c = Object.assign({}, p); delete c.updatedAt; return JSON.stringify(c, fixArr); }
   function ts(x) { var n = typeof x === 'number' ? x : Date.parse(x || 0); return isFinite(n) ? n : 0; }
 
   /** Слить два состояния (локальное a и удалённое b). Возвращает новое. */
@@ -109,7 +117,7 @@
     if (method !== 'GET') { h['Content-Type'] = 'application/json'; sent = cookie('ts_csrf'); if (sent) h['X-CSRF'] = sent; }
     if (SESS) h['X-Session'] = SESS;
     // 149-а: ka — сторінку ховають/закривають (Telegram згорнули): keepalive, щоб запит пережив сторінку; у браузера межа 64 КБ на такі запити
-    var bs = body ? JSON.stringify(body) : undefined, o = { method: method, headers: h, credentials: 'same-origin', body: bs };
+    var bs = body ? JSON.stringify(body, fixArr) : undefined, o = { method: method, headers: h, credentials: 'same-origin', body: bs };
     if (ka && bs && bs.length < 60000) o.keepalive = true;
     return fetch(root.TEPLO_API + path, o)
       .then(function (res) { return res.json().catch(function () { return {}; }).then(function (j) { j._status = res.status; return j; }); })
@@ -277,6 +285,6 @@
     config: function () { return api('GET', '/config'); }
   };
 
-  Sync.merge = merge; Sync.payload = payload; Sync.sig = sig;
+  Sync.merge = merge; Sync.payload = payload; Sync.sig = sig; Sync.fixArr = fixArr;
   if (typeof module !== 'undefined' && module.exports) module.exports = Sync; else root.TeploSync = Sync;
 })(typeof window !== 'undefined' ? window : this);

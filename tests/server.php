@@ -88,10 +88,18 @@ $s1 = ['readings' => [['id' => 'r1', 'createdAt' => '2026-11-10T08:00:00Z']], 'm
 $r = $phone->req('PUT', '/api/state', ['state' => $s1, 'baseVersion' => 0]);
 ok('телефон сохранил (версия 1)', $r->status === 200 && $r->body['version'] === 1);
 $r = $laptop->req('GET', '/api/state');
-ok('ноутбук видит данные телефона', $r->status === 200 && $r->body['state']['readings'][0]['id'] === 'r1' && $r->body['version'] === 1);
+ok('ноутбук видит данные телефона', $r->status === 200 && $r->body['state']->readings[0]->id === 'r1' && $r->body['version'] === 1);
 $r = $laptop->req('PUT', '/api/state', ['state' => $s1 + ['x' => 1], 'baseVersion' => 0]);
 ok('устаревшая версия → 409 с актуальными данными для слияния', $r->status === 409 && $r->body['version'] === 1 && isset($r->body['state']));
 ok('без входа данные недоступны', (new Browser('10.0.0.9'))->req('GET', '/api/state')->status === 401);
+// 150-а («Победа»: свой поставщик света сбрасывался после обновления): пустой {} — остаётся {}, не [] (иначе записанное в него JS терял)
+$s0 = '{"state":{"readings":[],"places":[{"id":"pob","prov":{},"bill":{},"water":{"meters":[]}}],"updatedAt":2},"baseVersion":1}';
+$r = $phone->req('PUT', '/api/state', null, [], true, $s0);
+$g = json_encode($laptop->req('GET', '/api/state')->body['state'], JSON_UNESCAPED_UNICODE);
+ok('пустой {} квартиры (prov, bill) возвращается {}, а не []', $r->status === 200 && str_contains($g, '"prov":{}') && str_contains($g, '"bill":{}') && str_contains($g, '"meters":[]'), $g);
+$r = $laptop->req('PUT', '/api/state', null, [], true, '{"state":{"readings":[],"x":{}},"baseVersion":1}');
+ok('409: в данных для слияния {} тоже остаётся {}', $r->status === 409 && str_contains(json_encode($r->body['state']), '"prov":{}'));
+ok('данные без readings → 422', $phone->req('PUT', '/api/state', null, [], true, '{"state":{"places":[]},"baseVersion":2}')->status === 422);
 
 echo "\nTelegram-вход и связывание:\n";
 $tgPhone = new Browser('10.0.0.4');
@@ -1197,7 +1205,7 @@ $hr2 = Db::one('SELECT * FROM user_state_hist WHERE user_id = ? ORDER BY id DESC
 ok('…а затёртая версия 3 — в истории («заменена восстановлением»), её тоже можно вернуть', (int)$hr2['version'] === 3 && $hr2['reason'] === 'restore' && json_decode((string)StateHist::raw($hr2), true)['places'][1]['name'] === 'Чужая');
 ok('…в «Входах и действиях» человека — кто и что восстановил', str_contains((string)Db::one('SELECT action FROM audit_log WHERE user_id = ? ORDER BY id DESC', [$huid])['action'], 'восстановлена версия 2 → 4 (boss@example.ua)'));
 $c9 = $hu->req('PUT', '/api/state', ['state' => $bad, 'baseVersion' => 3]);
-ok('устройство человека со старой версией → 409 и получает восстановленные данные для слияния', $c9->status === 409 && $c9->body['version'] === 4 && $c9->body['state']['places'][0]['name'] === 'Победа');
+ok('устройство человека со старой версией → 409 и получает восстановленные данные для слияния', $c9->status === 409 && $c9->body['version'] === 4 && $c9->body['state']->places[0]->name === 'Победа');
 ok('восстановить несуществующую версию — 404', $boss->req('POST', '/api/admin/state/restore', ['user' => $huid, 'id' => 999999])->status === 404);
 // чистка: старше 48 ч — по одной за день, старше 30 дней — нет, за 48 ч — не больше 200
 Db::q('DELETE FROM user_state_hist WHERE user_id = ?', [$huid]);

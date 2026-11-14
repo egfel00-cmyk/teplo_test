@@ -166,7 +166,21 @@
   }
   /** Главная: при двух и больше квартирах — список квартир (#places), иначе — счётчики квартиры (#home). */
   function homeRoute() { return 'home'; }
-  function persist() { memory = S; try { window.localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) { /* только память */ } }
+  // 150-а: порожній масив із властивостями ([] з сервера, у який записали prov.elec) — об'єктом, інакше JSON.stringify їх викидає (sync.js fixArr)
+  function jsonFix(k, v) { var Y = window.TeploSync; return Y && Y.fixArr ? Y.fixArr(k, v) : v; }
+  function persist() { memory = S; try { window.localStorage.setItem(KEY, JSON.stringify(S, jsonFix)); } catch (e) { /* только память */ } }
+  /** 150-а: {} квартири, які сервер колись повернув як [] (PHP json_decode(…, true)), — назад в об'єкти: «Кому платите» (prov і prov[вид]),
+   *  рахунок (bill), населений пункт (settle). Інакше записане в них зникало після оновлення сторінки («Победа»: свій постачальник світла). */
+  var OBJ_KEYS = ['prov', 'bill', 'settle', 'city', 'water', 'waste'];
+  function deArr(st) {
+    var n = 0, obj = function (v) { var o = {}; Object.keys(v).forEach(function (x) { o[x] = v[x]; }); n++; return o; };
+    ((st && st.places) || []).forEach(function (p) {
+      if (!p || typeof p !== 'object') return;
+      OBJ_KEYS.forEach(function (k) { if (Array.isArray(p[k]) && (!p[k].length || Object.keys(p[k]).length > p[k].length)) p[k] = obj(p[k]); });
+      if (p.prov && typeof p.prov === 'object') Object.keys(p.prov).forEach(function (k) { var v = p.prov[k]; if (Array.isArray(v) && !v.length) p.prov[k] = obj(v); });
+    });
+    return n;
+  }
   var lastSig = '', pendingRender = false;
   /** Сохранить: локально всегда; если изменились синхронизируемые данные — отметить время и отправить на другие устройства. */
   function save() {
@@ -181,7 +195,7 @@
   function applyRemote(m) {
     var vkb0 = vkbIds(S);
     var keep = { lang: S.lang, demoToday: S.demoToday, focusId: S.focusId, _pickModel: S._pickModel, syncPromptDismissed: S.syncPromptDismissed, placeId: S.placeId, theme: S.theme, themeV: S.themeV, view: S.view, homeOpen: S.homeOpen };
-    S = Object.assign(defaults(), m, keep);
+    S = Object.assign(defaults(), m, keep); deArr(S);
     jrProv((window.TeploSync && window.TeploSync.via) || 'remote');   // 149-а: дані з іншого пристрою змінили «Кому платите» — у журнал
     ensurePlaces(); var ap = place(); if (ap && (ap.meter || ap.baseline || S.places.length > 1)) { S.meter = ap.meter || null; S.baseline = ap.baseline || null; }
     lastSig = window.TeploSync.sig(window.TeploSync.payload(S)); persist();
@@ -212,7 +226,7 @@
     var l = (tu && tu.language_code) || (navigator.languages && navigator.languages[0]) || navigator.language || '';
     return /^ru\b/i.test(l) ? 'ru' : 'uk';
   }
-  var S = load(); ensurePlaces();
+  var S = load(); deArr(S); ensurePlaces();
   if (GASMV) setTimeout(function () { GASMV = false; save(); }, 0);
   // S.meter/S.baseline — зеркало текущей квартиры: при запуске берём из неё (не из того, что лежало сверху)
   (function () { var ap = place(); if (ap && places().length > 1) { S.meter = ap.meter || null; S.baseline = ap.baseline || null; } })();
@@ -9183,7 +9197,7 @@
       case 'to-meter': { e.preventDefault(); SCROLL_TO = 'meter-block'; go('prefs'); break; }
       case 'fill-zero': { var zi = document.getElementById('f-' + el.getAttribute('data-k')); if (zi) { zi.value = '0'; zi.dispatchEvent(new Event('input', { bubbles: true })); el.remove(); } break; }
       case 'scroll': { var tg = document.getElementById(el.getAttribute('data-target')); if (tg) tg.scrollIntoView({ behavior: 'smooth', block: 'start' }); break; }
-      case 'export': copyText(JSON.stringify(S), el); break;
+      case 'export': copyText(JSON.stringify(S, jsonFix), el); break;
       case 'wipe-ask': document.getElementById('wipe-confirm').innerHTML = '<div class="confirm"><p>' + esc(t(el.getAttribute('data-test') || (Y().mode === 'server' && Y().account) ? 'tr_confirm' : 'p_wipe_confirm')) + '</p><div class="row-actions" style="margin-top:8px"><button class="btn sec" data-act="wipe-no">' + esc(t('cancel')) + '</button><button class="btn danger solid" data-act="wipe-yes" data-key="prefs-wipe-yes">' + esc(t('p_wipe_yes')) + '</button></div></div>'; break;
       case 'photo': {
         if (el.getAttribute('data-mode') === 'baseline') {   // не потерять уже введённое руками
