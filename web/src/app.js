@@ -611,7 +611,10 @@
   /** 129-а (власник 13.11): «Економію» й «Довідку» сховати з вкладок і меню всіх версій сайту — не прибирати: екрани #save і #help працюють,
    *  повернути — прибрати ключ звідси (і в макеті телефона на лендингу, і в футері лендингу). */
   var NAV_HIDE = { save: 1, help: 1 };
-  var NOTE_NEWER = false;   // 129-а: рядок «Внесено …» / «Новіші: …» під табло лічильника — прибрано за проханням власника
+  var NOTE_NEWER = false;
+  // 146-а (власник 14.11: «відкриваю показання лічильника — а в ньому чомусь пілюлі інших квартир»): запис історії (і правка) належить одній квартирі —
+  // перемикача квартир над ним немає, лише «← Історія»
+  var REC_RE = /^(rec-|wrec-|erec-|hnar-)/;   // 129-а: рядок «Внесено …» / «Новіші: …» під табло лічильника — прибрано за проханням власника
   function shell(view) {
     var route = view.route, bare = view.bare;
     // 90-а (власник): на комп'ютері й на екранах вводу (майстри, ввід показань, кабінети) — бічне меню розділів; на телефоні їх там немає, як і було
@@ -630,7 +633,7 @@
     var topBack = (function (h) { var m = /^(<p class="rec-back">[\s\S]*?<\/p>|<div class="wiz-top"><a class="btn ghost"[\s\S]*?<\/div>)/.exec(h || ''); return m ? { b: m[1], h: h.slice(m[1].length) } : { b: '', h: h }; })(view.html);
     return '<div class="app' + (bare ? ' bare-app' : '') + (side ? ' with-side' : '') + '">' +
       '<header class="top' + (right ? ' has-close' : '') + '"><a class="brand" href="#' + homeRoute() + '" data-key="brand" aria-label="' + esc(t('brand')) + ' — передай.com.ua">' + logo() + wordmark(true) + '<span class="beta-tag" data-key="beta">' + esc(t('beta_tag')) + '</span></a>' + '<span class="spacer"></span>' + right + '</header>' +
-      nav + '<main class="main' + (bare ? ' bare' : '') + (view.wide ? ' wide' : '') + enterCls(route) + '" id="main" data-screen="' + view.screen + '" tabindex="-1">' + topBack.b + (/^(history|stats|save)$/.test(route) ? placeSwitch() : /^(heat|water-hot|water-cold|elec|gas)$/.test(route) ? placeBar() : /^(wnew|wadd|enew|eadd|gnew|gadd|add-meter|step|step-\d+|check|handover|baseline|meter|photo)$/.test(route) ? cbar : '') + topBack.h + '</main>' + (S.onboarded && view.screen !== 'S00' && (!bare || side) ? appFoot() : '') + '</div>' +
+      nav + '<main class="main' + (bare ? ' bare' : '') + (view.wide ? ' wide' : '') + enterCls(route) + '" id="main" data-screen="' + view.screen + '" tabindex="-1">' + topBack.b + (/^(history|stats|save)$/.test(route) && !REC_RE.test(routeName()) ? placeSwitch() : /^(heat|water-hot|water-cold|elec|gas)$/.test(route) ? placeBar() : /^(wnew|wadd|enew|eadd|gnew|gadd|add-meter|step|step-\d+|check|handover|baseline|meter|photo)$/.test(route) ? cbar : '') + topBack.h + '</main>' + (S.onboarded && view.screen !== 'S00' && (!bare || side) ? appFoot() : '') + '</div>' +
       (window.TEPLO_API && !ccAsk() ? '<button class="fab' + (bare ? ' fab-bare' : '') + '" data-act="fb-open" data-key="feedback" aria-haspopup="dialog">' + ico('chat', 20) + '<span>' + esc(t('fb_btn')) + '</span></button>' + fbDialog() : '') +
       (bare ? ccBanner().replace('class="cc"', 'class="cc cc-bare"') : ccBanner()) +
       '<div id="toast-host" aria-live="polite"></div>';
@@ -2092,14 +2095,23 @@
     var ref = fi.getAttribute('data-ref') || '', k = ref.slice(0, 1), id = ref.slice(2), fs = Array.prototype.slice.call(fi.files, 0, 8); fi.value = '';
     var rec = ((k === 'h' ? S.readings : k === 'w' ? S.water : S.mrecs) || []).filter(function (x) { return x && !x.deleted && x.id === id; })[0]; if (!rec) return;
     rec.photos = (rec.photos || []).concat(photoRefs(fs.map(function (f) { return rec.meter ? { file: f, meter: rec.meter } : { file: f }; })));
-    rec.updatedAt = Date.now(); save(); toast(t('rp_added')); render(true);
+    rec.updatedAt = Date.now(); save(); toast(t('rp_added')); formKept('rec-form', function () { render(true); });
   });
+  /** Перемалювати, не втративши набраного у формі (правка запису: додали чи прибрали фото посеред правки). */
+  function formKept(id, fn) {
+    var f = document.getElementById(id), v = {};
+    if (f) Array.prototype.forEach.call(f.querySelectorAll('input[id], textarea[id]'), function (x) { if (x.type !== 'file') v[x.id] = x.value; });
+    fn(); Object.keys(v).forEach(function (k) { var x = document.getElementById(k); if (x) x.value = v[k]; });
+  }
   /** Фото записи — тим самим блоком, що й на введенні (09.11): порожній — «Додайте фото лічильника» + «Зняти чи вибрати фото»; є фото — на всю картку,
    *  кілька — гортати («1 / 2»), × прибирає фото із запису (з «Повернути»); нажатие — просмотр на весь экран. gal — имя набора для листания; ref — можно добавить/прибрать.
    *  Без capture: телефон показує своє меню — камера, галерея, файли. */
   var RPU = null;   // останнє прибране фото: { ref, p, i } — «Повернути»
-  function photoStrip(list, gal, ref) {
-    list = (list || []).filter(function (p) { return p && p.id; }); if (!list.length && !ref) return '';
+  // 146-а (власник 14.11): «якщо фото немає — блоку „Додайте фото“ не показувати, фото можна додати через „Виправити“; порожнього блоку — і в історії».
+  // add — порожній блок «Додайте фото лічильника» (лише на правці запису); без нього порожній список — нічого (крім «Повернути» щойно прибраного).
+  function photoStrip(list, gal, ref, add) {
+    list = (list || []).filter(function (p) { return p && p.id; });
+    if (!list.length && !(ref && add)) return ref && RPU && RPU.ref === ref ? '<section class="hphotos" data-key="rec-photos"><p class="small phd-undo" role="status" data-key="rec-photo-undo">' + esc(t('rp_removed')) + ' <button type="button" class="linkbtn" data-act="rp-undo" data-key="rec-photo-undo-btn">' + esc(t('rp_undo')) + '</button></p></section>' : '';
     var h = '<section class="hphotos" data-key="rec-photos"><h2 class="section-title">' + ico('camera', 18) + ' ' + esc(t(list.length ? 'hp_title' : 'rp_title')) + '</h2>' +
       (ref ? '<input type="file" id="rp-input" class="sr" tabindex="-1" accept="image/*" multiple data-ref="' + esc(ref) + '" aria-label="' + esc(t('rp_add')) + '">' : '');
     h += '<div class="phd' + (list.length ? ' has fit' : '') + (list.length > 1 ? ' many' : '') + '" data-key="rec-phd">';
@@ -2122,12 +2134,14 @@
   function recByRef(ref) { var k = ref.slice(0, 1), id = ref.slice(2); return ((k === 'h' ? S.readings : k === 'w' ? S.water : S.mrecs) || []).filter(function (x) { return x && !x.deleted && x.id === id; })[0] || null; }
   function rpRemove(ref, pid) {
     var rec = recByRef(ref); if (!rec) return; var i = (rec.photos || []).map(function (p) { return p && p.id; }).indexOf(pid); if (i < 0) return;
-    RPU = { ref: ref, p: rec.photos[i], i: i }; rec.photos.splice(i, 1); rec.updatedAt = Date.now(); save(); render(true);
-    var mine = RPU; setTimeout(function () { if (RPU === mine) { RPU = null; safeRender(); } }, 15000);
+    RPU = { ref: ref, p: rec.photos[i], i: i }; rec.photos.splice(i, 1); rec.updatedAt = Date.now(); save(); formKept('rec-form', function () { render(true); });
+    // «Повернути» живе 15 с; потім прибираємо лише цей рядок (і порожню плашку) — без перемальовки, щоб не зачепити правку запису
+    var mine = RPU; setTimeout(function () { if (RPU !== mine) return; RPU = null; var u = document.querySelector('[data-key="rec-photo-undo"]'); if (!u) return;
+      var pn = u.closest('.rec-ph'); if (pn && !pn.querySelector('.phd-slide, .phd-empty')) pn.remove(); else u.remove(); }, 15000);
   }
   function rpUndo() {
     if (!RPU) return; var rec = recByRef(RPU.ref); if (rec) { rec.photos = rec.photos || []; rec.photos.splice(Math.min(RPU.i, rec.photos.length), 0, RPU.p); rec.updatedAt = Date.now(); save(); }
-    RPU = null; render(true);
+    RPU = null; formKept('rec-form', function () { render(true); });
   }
   /** После отрисовки: подставить фото из IndexedDB; нет на этом устройстве / удалено — подпись вместо картинки. */
   function photoFill() {
@@ -2174,8 +2188,11 @@
     im.style.cssText = 'position:absolute;max-width:none;width:' + sw.toFixed(1) + 'px;height:' + sh.toFixed(1) + 'px;left:' + l.toFixed(1) + 'px;top:' + tp.toFixed(1) + 'px;object-fit:fill';
     im.classList.add('fx');
   }
+  // 146-а: превью рахується від розміру плашки — якщо її намалювали схованою (0 px) чи змінилась ширина (повернули телефон, розкрили), кадр був
+  // «по центру фото», а не по табло; тепер перераховуємо, щойно розмір плашки змінився
+  var FOC_RO = window.ResizeObserver ? new ResizeObserver(function (es) { es.forEach(function (e) { var im = e.target.querySelector('img[data-f]'); if (im && im.complete && im.naturalWidth) phFocus(im); }); }) : null;
   function phFocusAll() {
-    Array.prototype.forEach.call(document.querySelectorAll('img[data-f]'), function (im) { if (im.complete && im.naturalWidth) phFocus(im); });
+    Array.prototype.forEach.call(document.querySelectorAll('img[data-f]'), function (im) { if (im.complete && im.naturalWidth) phFocus(im); if (FOC_RO && im.parentNode && !im.parentNode._fro) { im.parentNode._fro = 1; FOC_RO.observe(im.parentNode); } });
     phFocusFind();
   }
   /** Старі фото водоміра/світла/газу: де вікно барабана — по одному, у фоні; знайдене — у запис (p.f, без updatedAt: це лише підказка показу). */
@@ -2937,6 +2954,26 @@
     var has = ctx && ctx.sum !== undefined && ctx.sum !== null;
     return { w: o.name || t('my_own'), m: has ? t('bc_own_sum', { s: money(ctx.sum) }) : t('bc_own'), plan: null };
   }
+  /** 146-а: id «Оплати» свого постачальника на сторінці лічильника (як її малюють myPageS / myPageW / сторінка тепла). */
+  function myPayId(k, mid) {
+    if (k === 'water' || k === 'heat' || k === 'waste') return 'wacc-mypay-' + k;
+    var due = smeters(k).filter(function (m) { var r = elastOf(m.id); return r && !r.base && !r.own && !ssent(k, r); }).map(function (m) { return m.id; });
+    return 'wacc-mypay-' + (due.indexOf(mid) >= 0 ? mid : due.length ? due[0] : k);
+  }
+  /** 146-а: «Перевірити в застосунку» під карткою свого постачальника — фото вже розібрано й збережено (запис із card = id картки):
+   *  одразу сторінка лічильника тієї квартири з відкритою «Оплатою» (сума, реквізити, призначення, «Оплачено»), а не головна. */
+  function cardPay(n) {
+    if (!CARD.id || CARD.posted || CARD.paid) return;
+    var id = +CARD.id, hit = null, first = S.places && S.places[0] ? S.places[0].id : 'main';
+    var scan = function (list, kf) { (list || []).forEach(function (r) { if (r && !r.deleted && r.card === id) hit = { k: kf(r), r: r, pl: r.place || first }; }); };
+    scan(S.readings, function () { return 'heat'; }); scan(S.water, function () { return 'water'; }); scan(S.mrecs, function (r) { return r.kind; });
+    if (!hit) { if (n < 10) setTimeout(function () { cardPay(n + 1); }, 500); return; }   // стан ще синхронізується
+    CARD.paid = true;
+    if (!place(hit.pl) || !myProv(hit.k, place(hit.pl))) return;
+    if (hit.pl !== S.placeId) switchPlace(hit.pl);
+    var rt = hit.k === 'water' ? (wmeters('cold').some(function (m) { return hasVal(hit.r, m.id); }) || !wmeters('hot').length ? 'water-cold' : 'water-hot') : hit.k === 'heat' ? 'heat' : SK[hit.k].page;
+    SCROLL_TO = myPayId(hit.k, hit.r.meter); go(rt);
+  }
   /** Тепло, збережене після виправлення: «перевірено» без зауважень і кабінет ХТМ готовий — план для робота; ні — чому (передати в застосунку). */
   function cardHeatRow(rd) {
     var row = { k: 'heat', t: t('bc_heat'), v: rd.htm && rd.htm.energy ? camNum(rd.htm.energy) + ' ' + unitLbl(energyUnit()) : '', w: 'ХТМ', ok: 1 };
@@ -3149,7 +3186,7 @@
       var chain = Promise.resolve();
       todo.forEach(function (p, i) {
         chain = chain.then(function () { if (!live()) return null; enProg(15 + 85 * (i + 0.3) / n, n > 1 ? t('ph_reading', { i: i + 1, n: n }) : t('enp_reading'), 'read'); p.t0 = Date.now(); return limit(ocrRead(p.file, { all: true })); })
-          .then(function (res) { p.ms = Date.now() - (p.t0 || Date.now()); if (res) p.res = { lines: res.lines || [], drums: res.drums || [] }; }, function () { p.res = { lines: [], drums: [] }; });
+          .then(function (res) { p.ms = Date.now() - (p.t0 || Date.now()); if (res) p.res = { lines: res.lines || [], drums: res.drums || [], w: res.w, h: res.h }; }, function () { p.res = { lines: [], drums: [] }; });
       });
       return chain;
     }).then(function () { if (!live()) return; EN.busy = false; enAssign(); render(true); enCheck(true); enReport(); if (CARD.id && !CARD.posted) cardSimple(EN.k); },
@@ -3243,6 +3280,12 @@
     enRead(); var iss = enCheck('submit'), k = EN.k, md = SK[k].mod;
     if (Object.keys(iss).some(function (x) { return md.blocked(iss[x]); }) && !riskSecond(EN, iss)) { var f = document.querySelector('.wfield.is-block input'); if (f) f.focus(); return; }
     var date = EN.date || today(), now = new Date().toISOString(), own = ownChecked(); S.mrecs = S.mrecs || [];
+    // 146-а: превью — по рядку з тими цифрами, що людина зберегла з цього фото (ЖК світла: не наклейка й не заводський номер)
+    (EN.photos || []).forEach(function (p, i) {
+      if (!p.res || !p.file || !VIS().focusOf) return;
+      var vs = []; smeters(k).forEach(function (m) { md.keys(m).forEach(function (z) { var x = EN.src[m.id + '|' + z], v = (EN.vals[m.id] || {})[z]; if (x && x.photo === i && v) vs.push(v); }); });
+      try { var fc = vs.length ? VIS().focusOf(p.res, vs) : null; if (fc) p.file._focus = fc; } catch (e0) { /* лишається рамка з розпізнавання */ }
+    });
     var ms0 = smeters(k), refs = photoRefs((EN.photos || []).map(function (p, i) {
       var mid = ms0.filter(function (m) { return md.keys(m).some(function (z) { var x = EN.src[m.id + '|' + z]; return x && x.photo === i; }); })[0];
       return { file: p.file, url: p.url, meter: (mid || ms0[0] || {}).id };
@@ -3252,15 +3295,16 @@
       var mine = refs.filter(function (r) { return r.meter === m.id; });
       // один запис на лічильник і дату: повторне введення того ж дня — правка
       var same = S.mrecs.filter(function (r) { return r && !r.deleted && !r.base && r.place === S.placeId && r.meter === m.id && (r.id === EN.skip || r.date === date); })[0];
-      if (same) { same.z = z; same.date = date; if (own) same.own = true; if (mine.length) same.photos = (same.photos || []).concat(mine); noteSet(same, EN.note, !!EN.noteEdit); same.updatedAt = Date.now(); }
-      else S.mrecs.push(Object.assign({ id: md.uid(), place: S.placeId, meter: m.id, kind: k, date: date, z: z, sent: {}, createdAt: now, updatedAt: Date.now() }, own ? { own: true } : {}, mine.length ? { photos: mine } : {}, EN.note ? { note: EN.note } : {}));
+      if (same) { same.z = z; same.date = date; if (own) same.own = true; if (mine.length) same.photos = (same.photos || []).concat(mine); noteSet(same, EN.note, !!EN.noteEdit); if (CARD.id) same.card = +CARD.id; same.updatedAt = Date.now(); }
+      else S.mrecs.push(Object.assign({ id: md.uid(), place: S.placeId, meter: m.id, kind: k, date: date, z: z, sent: {}, createdAt: now, updatedAt: Date.now() }, own ? { own: true } : {}, mine.length ? { photos: mine } : {}, EN.note ? { note: EN.note } : {}, CARD.id ? { card: +CARD.id } : {}));
     });
     // 138-а: розклали навхрест і людина зберегла — на цьому лічильнику день — T2; наступні фото одразу так (m.zswap), без здогадів по прошлих
     var swIds = Object.keys(EN.swap || {}).filter(function (id) { return EN.swap[id] && smeters(k).some(function (m) { return m.id === id && m.zswap === undefined; }); });
     if (swIds.length) setPMeters(function (list) { list.forEach(function (m) { if (swIds.indexOf(m.id) >= 0) m.zswap = true; }); });
     if (!S.onboarded) S.onboarded = true;
     var back = EN.back; EN = enFresh(k); save(); toast(t('wn_saved') + inPlace());
-    if (back) go(back); else { SCROLL_TO = 'esend'; go(SK[k].page); }
+    // 146-а: фото з картки чату й свій постачальник — одразу «Оплата» (з картки людина прийшла саме платити)
+    if (back) go(back); else { SCROLL_TO = CARD.id && !own && myProv(k) ? myPayId(k, ms0.length ? ms0[0].id : '') : 'esend'; go(SK[k].page); }
   }
 
   // ---------- новий лічильник світла / газу ----------
@@ -3399,7 +3443,7 @@
     var k = MONTH_DAYS / days; return t('ru_proj', { q: fmtN(q * k, dec || 0), u: u, s: money0(cost * k) });
   }
   /** Фото запису — окремим блоком під «Набігло». */
-  function recPhotos(list, gal, ref) { var ps = photoStrip(list, gal, ref); return ps ? '<div class="panel rec-ph">' + ps + '</div>' : ''; }
+  function recPhotos(list, gal, ref, add) { var ps = photoStrip(list, gal, ref, add); return ps ? '<div class="panel rec-ph">' + ps + '</div>' : ''; }
   /** Картка запису: між цим і попереднім переданим були проміжні — «За це платите: +N кВт·год · S грн від передачі D» (власник 11.11). */
   function erecPaid(k, m, r) {
     if (r.own || r.base) return '';
@@ -5703,7 +5747,7 @@
           var v = f.key === 'errCode' ? (h.errCode || '') : f.key === 'energy' ? (R.num(h.energy) === null ? '' : ru === 'Gcal' ? R.formatForHtm('energy', h.energy) : (rv !== null && Math.abs(rv * M.TO_GCAL[ru] - R.num(h.energy)) < 0.001 ? rv.toFixed(3) : (R.num(h.energy) / M.TO_GCAL[ru]).toFixed(3)))
             : (R.num(h[f.key]) === null ? '' : R.formatForHtm(f.key, h[f.key]));
           return '<div class="field"><label for="re-' + f.key + '">' + esc(fieldLabel(f.key)) + (f.unit ? ', ' + esc(f.key === 'energy' ? unitLbl(ru) : fieldUnit(f.key)) : '') + '</label><div class="ctl"><input id="re-' + f.key + '" class="num" data-re="' + f.key + '"' + (f.key === 'energy' ? ' data-unit="' + ru + '"' : '') + ' inputmode="' + (f.key === 'errCode' ? 'text' : 'decimal') + '" value="' + esc(v) + '"></div></div>';
-        }).join('') + '<div class="help block" id="re-err"></div></div>' + noteField('re-note', r.note) +
+        }).join('') + '<div class="help block" id="re-err"></div></div>' + noteField('re-note', r.note) + recPhotos(r.photos, 'h' + r.id, 'h:' + r.id, true) +
         '<div class="row-actions"><a class="btn sec" href="#rec-' + r.id + '">' + esc(t('cancel')) + '</a><button class="btn" type="submit" data-key="rec-save">' + esc(t('save')) + '</button></div></form>' };
     }
     var vals = usedVals('rec-values', R.FIELDS.filter(function (f) { return f.key !== 'date'; }).map(function (f) {
@@ -6784,15 +6828,72 @@
     return {};
   }
   var MY_NEW = {};   // щойно ввімкнули — після перемальовки фокус у «Назва»
-  /** «Кому платите» — перший рядок «Налаштувань показань» кожного лічильника (і «Налаштувань вивозу»): з довідника чи свій. */
+  // 146-а, «Мої постачальники»: свій постачальник уже вписаний в іншій квартирі чи для іншого виду (ГК Победа — у другому гаражі, Житлобуд —
+  // і світло, і вода на будові) — у «Кому платите» він окремим варіантом: один дотик — назва, як платите, реквізити, призначення й строк.
+  // Номер людини в постачальника (гараж 141) — свій у кожного місця: переносимо, лише якщо це та сама квартира. Тариф — лише з того ж виду.
+  // Замінили свого, якого більше ніде немає, — він лишається в «Моїх» (o.was), щоб не загубити реквізити одним дотиком.
+  var MY_COPY = ['name', 'how', 'iban', 'recip', 'code', 'cash', 'other', 'due', 'till', 'win', 'phone'], MY_PRICE = ['price', 'supply', 'drain', 'hot', 'abon'];
+  function myKey(o) { return String((o && o.name) || '').toLowerCase().replace(/[«»"'“”„`’.,\s]+/g, ' ').trim(); }
+  function myKindLc(k) { var s = k === 'waste' ? t('kd_waste') : t('prv_k_' + k); return s.charAt(0).toLowerCase() + s.slice(1); }
+  /** Свої постачальники людини, крім того, що вже стоїть тут (pk поточної квартири): [{p, k, o, wi}] — спершу того ж виду, свіжіші. */
+  function myMine(pk) {
+    var p0 = place(), cur = p0 && p0.prov && p0.prov[pk], ck = cur && cur.own ? myKey(cur) : '', seen = {}, out = [];
+    places().forEach(function (p) {
+      Object.keys(p.prov || {}).forEach(function (k) {
+        var o = p.prov[k]; if (!o || !MY_K[k]) return;
+        [o].concat(Array.isArray(o.was) ? o.was : []).forEach(function (x, i) {
+          if (!x || (i === 0 && (!x.own || (p === p0 && k === pk)))) return;   // з довідника — не «свій»; цей самий — не варіант
+          var key = myKey(x); if (!key || key === ck) return;
+          var it = { p: p, k: k, o: x, wi: i - 1, same: k === pk, at: String(x.at || '') };
+          var was = seen[key]; if (was && (was.same > it.same || (was.same === it.same && was.at >= it.at))) return;
+          if (was) out.splice(out.indexOf(was), 1, it); else out.push(it);
+          seen[key] = it;
+        });
+      });
+    });
+    return out.sort(function (a, b) { return (b.same - a.same) || (a.at < b.at ? 1 : a.at > b.at ? -1 : 0); }).slice(0, 4);
+  }
+  /** Чи є такий самий свій постачальник ще десь (крім pk поточної квартири) — тоді його реквізити не пропадуть, якщо тут обрати іншого. */
+  function myElsewhere(key, pk) {
+    var p0 = place();
+    return places().some(function (p) { return Object.keys(p.prov || {}).some(function (k) { var o = p.prov[k]; return o && o.own && !(p === p0 && k === pk) && myKey(o) === key; }); });
+  }
+  /** Обрати свого постачальника з «Моїх»: src = «id квартири|вид|n» (n ≥ 0 — колишній з o.was). */
+  function myUse(pk, src) {
+    var a = String(src || '').split('|'), sp = place(a[0]), so = sp && sp.prov && sp.prov[a[1]], wi = +a[2]; if (so && wi >= 0) so = (so.was || [])[wi];
+    if (!so || !so.name) return;
+    so = JSON.parse(JSON.stringify(so)); delete so.was;
+    var k = a[1], here = sp === place(), same = k === pk;
+    var o = mySet(pk, function (x) {
+      if (x.own && myKey(x) && myKey(x) !== myKey(so) && !myElsewhere(myKey(x), pk)) {
+        var snap = {}; MY_COPY.concat(['purpose', 'num', 'note', 'at']).forEach(function (f) { if (x[f] !== undefined) snap[f] = x[f]; });
+        x.was = [snap].concat((x.was || []).filter(function (w) { return myKey(w) !== myKey(snap) && myKey(w) !== myKey(so); })).slice(0, 3);
+      } else if (x.was) x.was = x.was.filter(function (w) { return myKey(w) !== myKey(so); });
+      if (x.was && !x.was.length) delete x.was;
+      MY_COPY.forEach(function (f) { if (so[f] !== undefined && so[f] !== null && so[f] !== '') x[f] = so[f]; else delete x[f]; });
+      if (same || (pk !== 'waste' && k !== 'waste')) { if (so.purpose) x.purpose = so.purpose; else delete x.purpose; } else delete x.purpose;   // шаблон вивозу й показань різний
+      if (same) MY_PRICE.forEach(function (f) { if (R.num(so[f]) > 0) x[f] = so[f]; });
+      if (here) { var n = myNum(so); if (n) x.num = n; else delete x.num; } else delete x.num;
+      delete x.note; x.own = 1; if (!x.how) x.how = 'iban'; if (!x.due) x.due = 'none';
+    });
+    if (!o) return;
+    // номер у постачальника (гараж 141) у кожного місця свій — підсвітити порожнє поле «Ваш номер», без клавіатури
+    var ask = !here && !!myNum(so);
+    toast(t(ask ? 'my_use_num' : 'my_on_t', { o: o.name })); render(true); myReveal(pk, ask ? 'my-' + pk + '-num' : '');
+  }
+  /** «Кому платите» — перший рядок «Налаштувань показань» кожного лічильника (і «Налаштувань вивозу»): з довідника, свої з «Моїх» чи новий свій. */
   function myPick(k) {
-    var pk = myK(k), p = place() || {}, o = (p.prov || {})[pk] || {}, own = !!o.own, dir = myDirOrg(pk), a = String(p.address || '').trim();
-    var opt = function (v, on, b, s, ic) {
-      return '<label class="my-opt' + (on ? ' on' : '') + '"><input type="radio" name="my-' + pk + '" value="' + v + '"' + (on ? ' checked' : '') + ' data-my-pick="' + pk + '" data-key="my-' + pk + '-' + v + '">' +
+    var pk = myK(k), p = place() || {}, o = (p.prov || {})[pk] || {}, own = !!o.own, dir = myDirOrg(pk), a = String(p.address || '').trim(), mine = myMine(pk);
+    var opt = function (v, on, b, s, ic, key) {
+      return '<label class="my-opt' + (on ? ' on' : '') + '"><input type="radio" name="my-' + pk + '" value="' + esc(v) + '"' + (on ? ' checked' : '') + ' data-my-pick="' + pk + '" data-key="' + (key || 'my-' + pk + '-' + v) + '">' +
         '<span class="my-o-ic">' + ico(ic, 20) + '</span><span class="my-o-t"><b>' + esc(b) + '</b><span class="small muted">' + esc(s) + '</span></span><span class="my-o-dot" aria-hidden="true"></span></label>'; };
+    var mo = mine.map(function (m, i) {
+      var s = m.wi >= 0 && m.p === place() && m.same ? t('my_mine_was') : t('my_mine_s', { p: placeLabel(m.p), k: myKindLc(m.k) });
+      return opt(m.p.id + '|' + m.k + '|' + m.wi, false, m.o.name, s, 'wallet', 'my-' + pk + '-m' + i);
+    }).join('');
     return '<fieldset class="my-pick" id="my-' + pk + '" data-key="my-pick-' + pk + '"><legend class="lbl">' + esc(t('my_t')) + '</legend><div class="my-opts">' +
-      opt('0', !own, dir || t('my_dir'), t(dir ? (a ? 'my_dir_s' : 'my_dir_s0') : 'my_dir_none'), 'pin') +
-      opt('1', own, own && o.name ? o.name : t('my_own'), t(own ? 'my_own_on' : 'my_own_s'), 'wallet') + '</div>' +
+      opt('0', !own, dir || t('my_dir'), t(dir ? (a ? 'my_dir_s' : 'my_dir_s0') : 'my_dir_none'), 'pin') + mo +
+      opt('1', own, own && o.name ? o.name : t(mine.length && !own ? 'my_own_new' : 'my_own'), t(own ? 'my_own_on' : mine.length ? 'my_own_new_s' : 'my_own_s'), own || !mine.length ? 'wallet' : 'plus') + '</div>' +
       (own ? myForm(pk, o) : '') + '</fieldset>';
   }
   function myForm(pk, o) {
@@ -6913,11 +7014,13 @@
       '<p class="prov-act"><button type="button" class="btn ter sm" data-act="my-go" data-pk="' + k + '" data-key="prov-my-set-' + k + '">' + ico('prefs', 18) + '<span>' + esc(t('my_set')) + '</span></button></p>' + (extra || '') + '</div></div>';
   }
   /** Відкрити «Налаштування показань» на «Кому платите» (після перемальовки): розгорнути, прокрутити, фокус у «Назва». */
-  function myReveal(pk) {
+  function myReveal(pk, to) {
     setTimeout(function () {
       var f = document.getElementById('my-' + pk); if (!f) return;
       var d = f.closest('details'); if (d && !d.open) d.open = true;
-      f.scrollIntoView({ block: 'start', behavior: 'smooth' });
+      var x = to && document.getElementById(to), fx = x && x.closest('.field');
+      if (fx) { fx.scrollIntoView({ block: 'center', behavior: 'smooth' }); fx.classList.add('flash'); setTimeout(function () { fx.classList.remove('flash'); }, 1600); }
+      else f.scrollIntoView({ block: 'start', behavior: 'smooth' });
       var n = document.getElementById('my-' + pk + '-name'); if (n && MY_NEW[pk] && !n.value) { try { n.focus({ preventScroll: true }); } catch (e) { n.focus(); } }
       delete MY_NEW[pk];
     }, 60);
@@ -6935,7 +7038,7 @@
   }
   document.addEventListener('change', function (e) {
     var el = e.target; if (!el || !el.getAttribute) return;
-    var pick = el.getAttribute('data-my-pick'); if (pick) { myToggle(pick, el.value === '1'); return; }
+    var pick = el.getAttribute('data-my-pick'); if (pick) { if (el.value.indexOf('|') > 0) myUse(pick, el.value); else myToggle(pick, el.value === '1'); return; }
     var f = el.getAttribute('data-my'), pk = el.getAttribute('data-my-pk'); if (!f || !pk) return;
     if (MY_PEND && MY_PEND.el === el) { clearTimeout(MY_PEND.t); MY_PEND = null; }
     var v = String(el.value || '').trim(), redraw = /^(how|due)$/.test(f);
@@ -7970,6 +8073,7 @@
       var changed = before !== JSON.stringify(INBOX.items.map(function (x) { return x.id; }));
       if (INBOX.auto) { try { history.replaceState(null, '', location.pathname + location.hash); } catch (e) { /* нет */ } }
       if (INBOX.auto && INBOX.items.length && PH.status !== 'working') { INBOX.auto = false; inboxRun(); return; }
+      if (INBOX.auto && CARD.id && !INBOX.items.length) cardPay(0);   // 146-а: картку вже розібрано — свій постачальник: на «Оплату»
       INBOX.auto = false;
       if (changed && ['home', ''].indexOf(routeName()) >= 0) safeRender();
     }, function () { INBOX.loading = false; });

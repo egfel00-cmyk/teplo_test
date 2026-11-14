@@ -14,8 +14,10 @@ let pass = 0, fail = 0; const ok = (n, c, x) => { if (c) { pass++; console.log('
   await p.goto(U); const put = () => p.evaluate(s => { localStorage.clear(); localStorage.setItem('teplo.v1', JSON.stringify(s)); }, s); await put(); await p.reload(); await p.waitForTimeout(300); await put();
   await p.goto(U + '#erec-m20261031'); await p.reload(); await p.waitForTimeout(1200);
 
-  const order = await p.evaluate(() => { const m = document.getElementById('main'), a = m.querySelector('[data-key=rec-back]'), sw = m.querySelector('[data-key=place-switch]'); return a && sw ? !!(a.compareDocumentPosition(sw) & Node.DOCUMENT_POSITION_FOLLOWING) : null; });
-  ok('світло: «← Історія» стоїть над перемикачем квартир', order === true, order);
+  // 146-а (власник 14.11: «відкриваю показання лічильника — а в ньому пілюлі інших квартир»): у записі перемикача квартир немає
+  ok('світло: у записі — «← Історія», перемикача квартир немає', !!(await p.$('#main [data-key=rec-back]')) && !(await p.$('#main [data-key=place-switch]')));
+  // 146-а (власник: «фото немає — блоку „Додайте фото“ не показувати, фото додати через „Виправити“; порожнього блоку — і в історії»)
+  ok('світло: фото немає — блоку фото немає', !(await p.$('[data-key=rec-photos]')) && !(await p.$('.rec-ph')));
   ok('світло: у шапці запису — дата й чип статусу праворуч (той самий st-chip)', !!(await p.$('.rec-h h1')) && !!(await p.$('.rec-h .st-chip')));
   ok('світло: «Зараховується за жовтень 2026»', /Зараховується за жовтень 2026/.test(await txt('[data-key=rec-sub]')), await txt('[data-key=rec-sub]'));
   const used = await txt('[data-key=erec-used]');
@@ -35,12 +37,25 @@ let pass = 0, fail = 0; const ok = (n, c, x) => { if (c) { pass++; console.log('
   ok('вода: два чипи (гаряча / холодна) у шапці запису', (await p.$$('.rec-h .st-chip')).length === 2, (await p.$$('.rec-h .st-chip')).length);
   ok('вода: «Зараховується за жовтень 2026»', /Зараховується за жовтень 2026/.test(await txt('[data-key=rec-sub]')), await txt('[data-key=rec-sub]'));
   ok('вода: без коментаря блоку немає', !(await p.$('[data-key=rec-note]')));
+  ok('вода: перемикача квартир у записі немає (квартир дві)', !(await p.$('#main [data-key=place-switch]')));
+  ok('вода: фото немає — блоку фото немає', !(await p.$('[data-key=rec-photos]')));
 
   // тепло: чип праворуч від дати, місяць
   await p.goto(U + '#rec-r3'); await p.waitForTimeout(800);
   ok('тепло: чип «Прийнято» у шапці праворуч від дати', /Прийнято/.test(await txt('.rec-h .st-chip')), await txt('.rec-h'));
   ok('тепло: «Зараховується за квітень 2026»', /Зараховується за квітень 2026/.test(await txt('[data-key=rec-sub]')), await txt('[data-key=rec-sub]'));
   ok('тепло: «Скільки набігло» — без заголовка', !/Скільки набігло/.test(await txt('#main')));
+  ok('тепло: фото немає — ні блоку, ні «Додайте фото»', !(await p.$('[data-key=rec-photos]')) && !(await p.$('[data-key=rec-photo-add]')));
+  // «Виправити»: тут фото можна додати; додане посеред правки не стирає набраного
+  await p.click('[data-key=rec-edit]'); await p.waitForTimeout(700);
+  ok('тепло, «Виправити»: перемикача немає, є «Додайте фото лічильника»', !(await p.$('#main [data-key=place-switch]')) && /Додайте фото/.test(await txt('[data-key=rec-photo-add]')));
+  await p.fill('#re-note', 'Перезняв'); await p.fill('#re-volume', '2295');
+  const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==', 'base64');
+  await p.setInputFiles('#rp-input', { name: 'm.png', mimeType: 'image/png', buffer: png }); await p.waitForTimeout(900);
+  ok('фото додано на правці: у блоці фото є картинка, набране (коментар, обʼєм) на місці', (await p.$$('[data-key=rec-photos] img')).length === 1 &&
+    (await p.inputValue('#re-note')) === 'Перезняв' && (await p.inputValue('#re-volume')) === '2295', [await p.inputValue('#re-note').catch(() => ''), await p.inputValue('#re-volume').catch(() => '')]);
+  await p.goto(U + '#rec-r3'); await p.waitForTimeout(700);
+  ok('у записі тепер блок фото з картинкою', (await p.$$('[data-key=rec-photos] img')).length === 1);
 
   // ціна світла в налаштуваннях: без «Ціна» над полем і без «{d}»
   await p.goto(U + '#elec'); await p.waitForTimeout(800);

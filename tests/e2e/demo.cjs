@@ -53,6 +53,9 @@ module.exports = function demo(opts) {
     if (opts.garage === 'own' || opts.garageRecs) out.mrecs = (out.mrecs || []).concat([['2026-09-30', '1250', true], ['2026-10-31', '1310']].map(([d, v, base]) =>
       ({ id: 'gr' + d.replace(/-/g, ''), place: 'gar', meter: 'eg', kind: 'elec', date: d, z: { all: v }, base: !!base, sent: base ? {} : {}, createdAt: d + 'T10:00:00Z', updatedAt: 1 })));
     if (opts.atGarage) out.placeId = 'gar';
+    // 146-а: другий гараж без свого постачальника — «Мої постачальники» (ГК Победа вже вписаний у першому)
+    if (opts.garage2) out.places.push({ id: 'gar2', v: 2, name: 'Гараж 2', icon: 'garage', color: 'amber', meter: null, baseline: null, updatedAt: 1, meters: [{ id: 'eg2', kind: 'elec', name: '', zones: 1, serial: '', account: '' }] });
+    if (opts.garage2 && opts.at2g) out.placeId = 'gar2';
   }
   return out;
 };

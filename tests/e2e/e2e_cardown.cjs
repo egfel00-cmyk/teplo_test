@@ -40,6 +40,11 @@ const php = (...a) => JSON.parse(execFileSync('php', [path.join(__dirname, 'card
   ok('плану для роботів немає', plan.length === 1 && plan[0] === null, plan);
   const w = ((await st()).water || []).find(x => x.card === cid) || {};
   ok('запис води збережено з карткою', w.vals && /^137/.test(w.vals.c1), w);
+  // 146-а: «Перевірити в застосунку» під карткою — фото вже розібрано: одразу сторінка води з відкритою «Оплатою» ОСББ, а не головна
+  await p.goto('about:blank'); await p.goto(U + '?inbox=1&card=' + cid + '#home');
+  await p.waitForFunction(() => location.hash === '#water-cold' && !!document.querySelector('#wacc-mypay-water[open]'), null, { timeout: 15000 }).catch(() => {});
+  ok('повторне відкриття з картки: сторінка води, «Оплата» ОСББ «Сад» відкрита, сума є', await p.evaluate(() => location.hash) === '#water-cold' &&
+    await p.$eval('#wacc-mypay-water', d => d.open && /ОСББ «Сад»/.test(d.textContent) && /До сплати/.test(d.textContent)).catch(() => false), await p.evaluate(() => location.hash));
   ok('без помилок', !errs.length, errs);
   await b.close(); console.log(`\ne2e_cardown: ${pass} ok, ${fail} fail`); process.exit(fail ? 1 : 0);
 })().catch(e => { console.log('ERROR', e); process.exit(1); });

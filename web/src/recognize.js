@@ -72,9 +72,22 @@
      * {x, y, w, h} — частки фото (0…1): центр і розмір. Барабан водоміра/світла/газу — вікно роликів з найбільшою кількістю цифр і впевненістю
      * (кілька лічильників у кадрі — рамка навколо всіх прочитаних); ЖК-екран — найвищий рядок із ≥ 3 цифрами. Нічого — null (тоді центр фото).
      */
-    focusOf: function (res) {
+    // 146-а (власник 14.11: «перепровір, щоб превью чітко на табло»): vals — що людина зберегла з цього фото (показання світла/газу).
+    // ЖК без барабана: рамка — рядок, де ці цифри (а не найбільші цифри кадру: наклейка «5(60) A», заводський номер, «1000 imp/kWh»).
+    focusOf: function (res, vals) {
       if (!res || !(res.w > 0) || !(res.h > 0)) return null;
       var dg = function (s) { return String(s || '').replace(/[^0-9]/g, '').length; }, box = null;
+      var keys = (vals || []).map(function (v) { return String(v === null || v === undefined ? '' : v).split(/[.,]/)[0].replace(/\D/g, '').replace(/^0+(?=\d)/, ''); }).filter(function (k) { return k.length >= 3; });
+      if (keys.length && !(res.drums || []).some(function (d) { return d && d.sure && d.w > 0 && dg(d.text) >= 3; })) {
+        var hit = null;
+        (res.lines || []).forEach(function (l) {
+          if (!l || !(l.w > 0) || !(l.h > 0)) return;
+          var d = String(l.text || '').replace(/\D/g, '').replace(/^0+(?=\d)/, ''); if (!keys.some(function (k) { return d.indexOf(k) >= 0; })) return;
+          var sc = l.h * (l.score || 0.5) / Math.max(1, d.length - Math.max.apply(null, keys.map(function (k) { return d.indexOf(k) >= 0 ? k.length : 0; })) + 1);
+          if (!hit || sc > hit.sc) hit = { sc: sc, l: l };
+        });
+        if (hit) box = { x0: hit.l.x, y0: hit.l.y, x1: hit.l.x + hit.l.w, y1: hit.l.y + hit.l.h };
+      }
       var add = function (b) { if (!box) box = { x0: b.x, y0: b.y, x1: b.x + b.w, y1: b.y + b.h }; else { box.x0 = Math.min(box.x0, b.x); box.y0 = Math.min(box.y0, b.y); box.x1 = Math.max(box.x1, b.x + b.w); box.y1 = Math.max(box.y1, b.y + b.h); } };
       var ds = (res.drums || []).filter(function (d) { return d && d.w > 0 && d.h > 0 && dg(d.text) >= 3; });
       // вікна, знайдені впевнено за кольором (sure); інші — підписи з цифрами (№ лічильника, «150») — лише якщо впевнених немає, і тоді одне найкраще
@@ -83,10 +96,13 @@
       // вікно повернуте (лічильник набік): w/h — уздовж роликів, рамка на фото — по осях
       // вікно — чорні ролики разом із червоними (дроби, d.rb): інакше превью центрується по чорних, а червоні з'їжджають за край (газ 7633, 90-а)
       var rot = function (b, a) { var cx = b.x + b.w / 2, cy = b.y + b.h / 2, ew = Math.abs(b.w * Math.cos(a)) + Math.abs(b.h * Math.sin(a)), eh = Math.abs(b.w * Math.sin(a)) + Math.abs(b.h * Math.cos(a)); add({ x: cx - ew / 2, y: cy - eh / 2, w: ew, h: eh }); };
-      if (ds.length) ds.forEach(function (d) { var a = +d.angle || 0; rot(d, a); if (d.rb && d.rb.w > 0 && d.rb.h > 0) rot(d.rb, a); });
+      if (box) { /* рядок із показаннями вже знайдено */ }
+      else if (ds.length) ds.forEach(function (d) { var a = +d.angle || 0; rot(d, a); if (d.rb && d.rb.w > 0 && d.rb.h > 0) rot(d.rb, a); });
       else {
-        var best = null;
-        (res.lines || []).forEach(function (l) { var n = dg(l && l.text); if (!l || n < 3 || !(l.h > 0) || !(l.w > 0)) return; var sc = l.h * (l.score || 0.5) * Math.min(n, 8); if (!best || sc > best.sc) best = { sc: sc, l: l }; });
+        // 146-а: спершу рядки, що майже самі цифри (число табло «002263,4»), а не написи з цифрами («5(60)A 230V», «1000 imp/kWh») — ті лише якщо інших немає
+        var best = null, num = function (l) { var t = String(l.text || '').replace(/[\s.,:]/g, ''); return t.length && dg(t) >= t.length * 0.7; };
+        var ls = (res.lines || []).filter(function (l) { return l && dg(l.text) >= 3 && l.h > 0 && l.w > 0; }), pure = ls.filter(num);
+        (pure.length ? pure : ls).forEach(function (l) { var n = dg(l.text), sc = l.h * (l.score || 0.5) * Math.min(n, 8); if (!best || sc > best.sc) best = { sc: sc, l: l }; });
         if (best) add(best.l);
       }
       if (!box) return null;
