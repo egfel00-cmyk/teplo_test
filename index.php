@@ -12,7 +12,7 @@ if ($base !== '' && $uri === $base) { header('Location: ' . $base . '/' . (isset
 $path = ($base !== '' && str_starts_with($uri, $base . '/')) ? substr($uri, strlen($base)) : $uri;
 
 // локальный php -S: настоящие файлы (картинки) отдаёт сам; на бою их отдаёт Caddy
-if (PHP_SAPI === 'cli-server' && preg_match('~^/web/ocr/[\w.-]+\.(js|mjs|wasm|onnx|txt)$~', $path) && is_file(__DIR__ . $path)) {   // распознаватель в браузере
+if (PHP_SAPI === 'cli-server' && preg_match('~^/web/(?:ocr|qr)/[\w.-]+\.(js|mjs|wasm|onnx|txt)$~', $path) && is_file(__DIR__ . $path)) {   // распознаватель в браузере
   $ext = pathinfo($path, PATHINFO_EXTENSION);
   header('Content-Type: ' . (['js' => 'text/javascript', 'mjs' => 'text/javascript', 'wasm' => 'application/wasm', 'txt' => 'text/plain; charset=utf-8'][$ext] ?? 'application/octet-stream')); readfile(__DIR__ . $path); exit;
 }

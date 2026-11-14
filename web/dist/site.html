@@ -2510,6 +2510,13 @@ details.mypay[open] > summary .mypay-amt, details.mypay[open] > summary .mypay-s
 .trust-b { padding: 0 14px 12px; border-top: 1px solid var(--c-line); }
 .trust-b ul { margin: 10px 0 8px; padding-left: 18px; display: grid; gap: 6px; font-size: var(--fs-s); line-height: 1.45; color: var(--c-ink-2); }
 .trust-b p { margin: 0; }
+/* 150-а, план п. 7: платіжний QR НБУ в «Оплаті» — чорний на білому в обох темах (банківські сканери не читають інвертований) */
+.qr-acc { margin: 12px 0 0; }
+.qr-b { padding: 12px 14px 14px; border-top: 1px solid var(--c-line); display: grid; justify-items: center; gap: 10px; }
+.qr-img { width: min(240px, 100%); aspect-ratio: 1; border-radius: 10px; overflow: hidden; background: #fff; border: 1px solid var(--c-line); display: grid; place-items: center; }
+.qr-img svg { display: block; width: 100%; height: 100%; }
+.qr-b p { margin: 0; }
+.my-qr-no { margin: 10px 0 0; display: flex; gap: 6px; align-items: flex-start; }
 
 </style>
 <style>.top { padding-top: max(12px, env(safe-area-inset-top)); }</style>
@@ -5364,6 +5371,10 @@ details.mypay[open] > summary .mypay-amt, details.mypay[open] > summary .mypay-s
       pc_find: 'Знайти в довіднику', pc_find_ph: 'Назва постачальника або місто', pc_sel_s: 'обрали самі · {w}', pc_off: 'Як за адресою квартири', pc_off0: 'Прибрати вибір',
       pc_err: 'Довідник не завантажився — перевірте інтернет і торкніться поля ще раз', pc_none: 'Нікого не знайшли — спробуйте інакше або оберіть «Інший постачальник» нижче',
       pc_more: 'Ще {n} — уточніть запит', pc_sel_t: 'Постачальник: {o}', pc_off_t: 'Постачальник — як за адресою квартири', my_sum: 'До сплати', my_sum_s: '{q} з {d}', my_norq: 'Реквізитів ще немає — допишіть у «Налаштуваннях показань».',
+      qr_t: 'QR-код для оплати', qr_alt: 'Платіжний QR-код НБУ: {o}, {s} грн',
+      qr_how: 'У застосунку банку — «Сканувати QR», наведіть камеру на код: отримувач, IBAN, сума й призначення підставляться самі. Код на цьому ж телефоні — зробіть знімок екрана й оберіть його в сканері банку.',
+      qr_no_code: 'Для QR-коду оплати впишіть код ЄДРПОУ (8 цифр) чи РНОКПП (10) отримувача — у «Кому платите».', qr_no_name: 'Для QR-коду назва отримувача має бути до 70 знаків — скоротіть її в «Кому платите».',
+      qr_no_purp: 'Призначення довше за 140 знаків — у QR-код НБУ не вміщається. Скоротіть шаблон у «Кому платите».', qr_no_long: 'Реквізити задовгі для QR-коду НБУ — скоротіть назву чи призначення.', qr_fail: 'QR-код не вдалося намалювати — скопіюйте реквізити кнопкою нижче.',
       my_copy_all: 'Скопіювати реквізити', my_paid: 'Оплачено', my_notpaid: 'Не оплачено', my_paid_s: 'Сплатили — показання й гроші за них пішли постачальнику', my_acc_h: 'З договору чи квитанції постачальника — щоб скопіювати при оплаті.', my_paid_on: 'Оплачено {d}', my_paid_d: 'Оплачено {d}', my_paid_d_s: 'оплачено {d}', my_unpaid: 'Скасувати',
       my_pill: 'свій', my_noname: 'Назву ще не вписали', my_set: 'Налаштувати', my_p_elec: '{p} грн за кВт·год', my_p_gas: '{p} грн за м³', my_p_abon: '{a} грн на місяць',
     },
@@ -6706,6 +6717,10 @@ details.mypay[open] > summary .mypay-amt, details.mypay[open] > summary .mypay-s
       pc_find: 'Найти в справочнике', pc_find_ph: 'Название поставщика или город', pc_sel_s: 'выбрали сами · {w}', pc_off: 'Как по адресу квартиры', pc_off0: 'Убрать выбор',
       pc_err: 'Справочник не загрузился — проверьте интернет и коснитесь поля ещё раз', pc_none: 'Никого не нашли — попробуйте иначе или выберите «Другой поставщик» ниже',
       pc_more: 'Ещё {n} — уточните запрос', pc_sel_t: 'Поставщик: {o}', pc_off_t: 'Поставщик — как по адресу квартиры', my_sum: 'К оплате', my_sum_s: '{q} с {d}', my_norq: 'Реквизитов ещё нет — допишите в «Настройках показаний».',
+      qr_t: 'QR-код для оплаты', qr_alt: 'Платёжный QR-код НБУ: {o}, {s} грн',
+      qr_how: 'В приложении банка — «Сканировать QR», наведите камеру на код: получатель, IBAN, сумма и назначение подставятся сами. Код на этом же телефоне — сделайте снимок экрана и выберите его в сканере банка.',
+      qr_no_code: 'Для QR-кода оплаты впишите код ЕГРПОУ (8 цифр) или РНОКПП (10) получателя — в «Кому платите».', qr_no_name: 'Для QR-кода название получателя должно быть до 70 знаков — сократите его в «Кому платите».',
+      qr_no_purp: 'Назначение длиннее 140 знаков — в QR-код НБУ не помещается. Сократите шаблон в «Кому платите».', qr_no_long: 'Реквизиты слишком длинные для QR-кода НБУ — сократите название или назначение.', qr_fail: 'QR-код не удалось нарисовать — скопируйте реквизиты кнопкой ниже.',
       my_copy_all: 'Скопировать реквизиты', my_paid: 'Оплачено', my_notpaid: 'Не оплачено', my_paid_s: 'Оплатили — показания и деньги за них ушли поставщику', my_acc_h: 'Из договора или квитанции поставщика — чтобы скопировать при оплате.', my_paid_on: 'Оплачено {d}', my_paid_d: 'Оплачено {d}', my_paid_d_s: 'оплачено {d}', my_unpaid: 'Отменить',
       my_pill: 'свой', my_noname: 'Название ещё не вписали', my_set: 'Настроить', my_p_elec: '{p} грн за кВт·ч', my_p_gas: '{p} грн за м³', my_p_abon: '{a} грн в месяц',
     }
@@ -16441,6 +16456,53 @@ details.mypay[open] > summary .mypay-amt, details.mypay[open] > summary .mypay-s
     h += '<div class="grid2">' + inp('num', t('my_num'), myNum(o), ' maxlength="40" placeholder="' + esc(t('my_num_ph')) + '"') + inp('phone', t('my_phone'), o.phone, ' inputmode="tel" maxlength="30"') + '</div>';
     return h + '</div>';
   }
+  // ---- 150-а (план конкурентів п. 7): платіжний QR НБУ з «Оплати» свого постачальника ----
+  // Постанова НБУ № 97 (чинна з 01.11.2025) лишає формат 002 — його читають усі банківські застосунки (003 — ще не всі): BCD, 002, кодування 1 (UTF-8),
+  // функція UCT, рядки через LF; відкриті дані — Base64URL без «=» після https://bank.gov.ua/qr/. Обов'язкові: отримувач (≤ 70 знаків), IBAN, код ЄДРПОУ
+  // чи РНОКПП, призначення (≤ 140); сума — найкоротше («UAH1684.8», не «UAH1684.80»); разом ≤ 331 байт. Не вміщається — QR не малюємо й кажемо чому:
+  // у коді те саме, що в рядках над ним. Бібліотека QR (MIT, web/qr/qrcode.js) вантажиться лише коли QR розгорнули.
+  function nbuQr(o, sum, purp) {
+    var name = String(o.recip || o.name || '').trim(), iban = myIban(o.iban), code = String(o.code || '').replace(/\D/g, ''), p = String(purp || '').replace(/\s+/g, ' ').trim();
+    if (!/^UA\d{27}$/.test(iban) || myIbanBad(iban)) return { err: 'iban' };
+    if (!/^(\d{8}|\d{10})$/.test(code)) return { err: 'code' };
+    if (!name || name.length > 70) return { err: 'name' };
+    if (!p || p.length > 140) return { err: 'purp' };
+    var sm = R.num(sum), amt = sm > 0 ? 'UAH' + String(Math.round(sm * 100) / 100) : '';
+    var data = ['BCD', '002', '1', 'UCT', '', name, iban, amt, code, '', '', p, ''].join('\n'), bytes = unescape(encodeURIComponent(data));
+    if (bytes.length > 331) return { err: 'long' };
+    return { url: 'https://bank.gov.ua/qr/' + btoa(bytes).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, ''), data: data };
+  }
+  var QRL = [];
+  function qrLib(cb) {
+    if (window.qrcode) { cb(); return; }
+    QRL.push(cb); if (QRL.length > 1) return;
+    var sc = document.createElement('script'); sc.src = String(window.TEPLO_API || '').replace(/\/api\/?$/, '') + '/web/qr/qrcode.js?v=1';
+    sc.onload = sc.onerror = function () { var c = QRL; QRL = []; c.forEach(function (f) { try { f(); } catch (e) { /* без бібліотеки — без QR */ } }); };
+    document.head.appendChild(sc);
+  }
+  /** QR — одним path, чорним на білому з полем 4 модулі (сканери банків не читають інвертований код у темній темі). */
+  function qrSvg(text, label) {
+    var q = window.qrcode(0, 'M'); q.addData(text, 'Byte'); q.make();
+    var n = q.getModuleCount(), m = 4, d = '';
+    for (var r = 0; r < n; r++) for (var c = 0; c < n; c++) if (q.isDark(r, c)) d += 'M' + (c + m) + ' ' + (r + m) + 'h1v1h-1z';
+    return '<svg viewBox="0 0 ' + (n + 2 * m) + ' ' + (n + 2 * m) + '" role="img" aria-label="' + esc(label || '') + '" shape-rendering="crispEdges" focusable="false"><rect width="100%" height="100%" fill="#fff"/><path d="' + d + '" fill="#000"/></svg>';
+  }
+  function qrFill() {
+    Array.prototype.forEach.call(document.querySelectorAll('[data-qr]:not([data-qr-done])'), function (el) {
+      var d = el.closest('details'); if (d && !d.open) return;
+      if (!window.qrcode) { qrLib(qrFill); return; }
+      try { el.innerHTML = qrSvg(el.getAttribute('data-qr'), el.getAttribute('data-qr-l')); el.setAttribute('data-qr-done', '1'); } catch (e) { el.textContent = t('qr_fail'); }
+    });
+  }
+  document.addEventListener('toggle', function (e) { var d = e.target; if (d && d.classList && d.classList.contains('qr-acc') && d.open) qrFill(); }, true);
+  function myQr(pk, o, c, purp) {
+    var q = nbuQr(o, c.sum, purp); if (q.err === 'iban') return '';
+    if (q.err) return '<p class="small muted my-qr-no" data-key="my-qr-no">' + ico('viewfinder', 16) + ' ' + esc(t('qr_no_' + q.err)) + '</p>';
+    var lbl = t('qr_alt', { o: o.recip || o.name, s: money(c.sum) });
+    return '<details class="trust qr-acc" data-key="my-qr"' + (WH_OPEN['qr-' + pk] ? ' open' : '') + ' data-qr-k="' + pk + '"><summary data-key="my-qr-sum">' + ico('viewfinder', 18, 'tr-ico') + '<span>' + esc(t('qr_t')) + '</span>' + ico('chev', 18, 'pacc-chev') + '</summary>' +
+      '<div class="qr-b"><div class="qr-img" data-qr="' + esc(q.url) + '" data-qr-l="' + esc(lbl) + '" data-key="my-qr-img"></div><p class="small muted">' + esc(t('qr_how')) + '</p></div></details>';
+  }
+  document.addEventListener('toggle', function (e) { var d = e.target; if (d && d.classList && d.classList.contains('qr-acc')) WH_OPEN['qr-' + d.getAttribute('data-qr-k')] = d.open; }, true);
   /** «Оплата» свого постачальника: скільки, реквізити з «Копіювати», готове призначення, позначка «Оплачено». c — контекст запису (myCtx…), mark — кнопка або ''. */
   // 145-а (власник 14.11, скрин «ГК Победа»: «если свой провайдер — тоже должна быть скрывашка, как при официальных»): «Оплата» — той самий
   // акордеон, що «Куди передати» (details.wacc.wacc-btn, закритий; відкривали — лишається відкритим до перезавантаження). У згорнутій шапці —
@@ -16468,6 +16530,7 @@ details.mypay[open] > summary .mypay-amt, details.mypay[open] > summary .mypay-s
     return '<details class="panel where wacc wacc-btn mypay" id="wacc-' + k + '" data-key="' + k + '"' + (open ? ' open' : '') + ' aria-label="' + esc(t('my_pay_t')) + '"><summary data-key="' + k + '-sum"><h2>' + ico('wallet', 18, 'bt-ico') + '<span>' + esc(o.name || t('my_own')) + '</span></h2>' + side + ico('chev', 20, 'pacc-chev') + '</summary>' +
       '<div class="where-b mypay-b">' + sum +
       (r ? '<ul class="my-rows">' + r + '</ul>' : '<p class="small muted" data-key="my-norq">' + esc(t('my_norq')) + '</p>') +
+      (has && how === 'iban' && purp ? myQr(pk, o, c, purp) : '') +   // 150-а: платіжний QR НБУ — лише коли є що сплатити
       (all ? '<button type="button" class="btn sec block" data-act="copy" data-text="' + esc(all) + '" data-key="my-copy-all">' + ico('copy', 18) + '<span>' + esc(t('my_copy_all')) + '</span></button>' : '') +
       (o.num && o.note ? '<p class="small muted my-note">' + esc(o.note) + '</p>' : '') + (mark || '') + '</div></details>';
   }
@@ -18269,7 +18332,7 @@ details.mypay[open] > summary .mypay-amt, details.mypay[open] > summary .mypay-s
     if (LIVE.t0 && Date.now() - LIVE.t0 < LIVE_MS) liveDigits(document.getElementById('main'), Date.now() - LIVE.t0);
     Array.prototype.forEach.call(document.querySelectorAll(ACC_SEL), accFoot);
     Array.prototype.forEach.call(document.querySelectorAll('details.tips-box > summary'), function (sm) { if (!sm.querySelector('.pacc-chev')) sm.insertAdjacentHTML('beforeend', ico('chev', 18, 'pacc-chev')); });
-    enhanceDates(); photoFill(); phFocusAll(); toastKeep(); fabWatch(); if (Y().account) histFlush();
+    enhanceDates(); photoFill(); phFocusAll(); qrFill(); toastKeep(); fabWatch(); if (Y().account) histFlush();
     // прилади в нижній панелі лендинга перетікають по колу — при «Зменшити рух» і в автотестах стоїть перший (147-а: електролічильник)
     if (calmMotion() || navigator.webdriver) Array.prototype.forEach.call(document.querySelectorAll('svg.lpm'), function (s) { if (s.pauseAnimations) { s.pauseAnimations(); s.setCurrentTime(0); } });
     // отклик: ушёл дальше привітання/головної — «клацав» (этап 1)

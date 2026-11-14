@@ -7125,6 +7125,53 @@
     h += '<div class="grid2">' + inp('num', t('my_num'), myNum(o), ' maxlength="40" placeholder="' + esc(t('my_num_ph')) + '"') + inp('phone', t('my_phone'), o.phone, ' inputmode="tel" maxlength="30"') + '</div>';
     return h + '</div>';
   }
+  // ---- 150-а (план конкурентів п. 7): платіжний QR НБУ з «Оплати» свого постачальника ----
+  // Постанова НБУ № 97 (чинна з 01.11.2025) лишає формат 002 — його читають усі банківські застосунки (003 — ще не всі): BCD, 002, кодування 1 (UTF-8),
+  // функція UCT, рядки через LF; відкриті дані — Base64URL без «=» після https://bank.gov.ua/qr/. Обов'язкові: отримувач (≤ 70 знаків), IBAN, код ЄДРПОУ
+  // чи РНОКПП, призначення (≤ 140); сума — найкоротше («UAH1684.8», не «UAH1684.80»); разом ≤ 331 байт. Не вміщається — QR не малюємо й кажемо чому:
+  // у коді те саме, що в рядках над ним. Бібліотека QR (MIT, web/qr/qrcode.js) вантажиться лише коли QR розгорнули.
+  function nbuQr(o, sum, purp) {
+    var name = String(o.recip || o.name || '').trim(), iban = myIban(o.iban), code = String(o.code || '').replace(/\D/g, ''), p = String(purp || '').replace(/\s+/g, ' ').trim();
+    if (!/^UA\d{27}$/.test(iban) || myIbanBad(iban)) return { err: 'iban' };
+    if (!/^(\d{8}|\d{10})$/.test(code)) return { err: 'code' };
+    if (!name || name.length > 70) return { err: 'name' };
+    if (!p || p.length > 140) return { err: 'purp' };
+    var sm = R.num(sum), amt = sm > 0 ? 'UAH' + String(Math.round(sm * 100) / 100) : '';
+    var data = ['BCD', '002', '1', 'UCT', '', name, iban, amt, code, '', '', p, ''].join('\n'), bytes = unescape(encodeURIComponent(data));
+    if (bytes.length > 331) return { err: 'long' };
+    return { url: 'https://bank.gov.ua/qr/' + btoa(bytes).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, ''), data: data };
+  }
+  var QRL = [];
+  function qrLib(cb) {
+    if (window.qrcode) { cb(); return; }
+    QRL.push(cb); if (QRL.length > 1) return;
+    var sc = document.createElement('script'); sc.src = String(window.TEPLO_API || '').replace(/\/api\/?$/, '') + '/web/qr/qrcode.js?v=1';
+    sc.onload = sc.onerror = function () { var c = QRL; QRL = []; c.forEach(function (f) { try { f(); } catch (e) { /* без бібліотеки — без QR */ } }); };
+    document.head.appendChild(sc);
+  }
+  /** QR — одним path, чорним на білому з полем 4 модулі (сканери банків не читають інвертований код у темній темі). */
+  function qrSvg(text, label) {
+    var q = window.qrcode(0, 'M'); q.addData(text, 'Byte'); q.make();
+    var n = q.getModuleCount(), m = 4, d = '';
+    for (var r = 0; r < n; r++) for (var c = 0; c < n; c++) if (q.isDark(r, c)) d += 'M' + (c + m) + ' ' + (r + m) + 'h1v1h-1z';
+    return '<svg viewBox="0 0 ' + (n + 2 * m) + ' ' + (n + 2 * m) + '" role="img" aria-label="' + esc(label || '') + '" shape-rendering="crispEdges" focusable="false"><rect width="100%" height="100%" fill="#fff"/><path d="' + d + '" fill="#000"/></svg>';
+  }
+  function qrFill() {
+    Array.prototype.forEach.call(document.querySelectorAll('[data-qr]:not([data-qr-done])'), function (el) {
+      var d = el.closest('details'); if (d && !d.open) return;
+      if (!window.qrcode) { qrLib(qrFill); return; }
+      try { el.innerHTML = qrSvg(el.getAttribute('data-qr'), el.getAttribute('data-qr-l')); el.setAttribute('data-qr-done', '1'); } catch (e) { el.textContent = t('qr_fail'); }
+    });
+  }
+  document.addEventListener('toggle', function (e) { var d = e.target; if (d && d.classList && d.classList.contains('qr-acc') && d.open) qrFill(); }, true);
+  function myQr(pk, o, c, purp) {
+    var q = nbuQr(o, c.sum, purp); if (q.err === 'iban') return '';
+    if (q.err) return '<p class="small muted my-qr-no" data-key="my-qr-no">' + ico('viewfinder', 16) + ' ' + esc(t('qr_no_' + q.err)) + '</p>';
+    var lbl = t('qr_alt', { o: o.recip || o.name, s: money(c.sum) });
+    return '<details class="trust qr-acc" data-key="my-qr"' + (WH_OPEN['qr-' + pk] ? ' open' : '') + ' data-qr-k="' + pk + '"><summary data-key="my-qr-sum">' + ico('viewfinder', 18, 'tr-ico') + '<span>' + esc(t('qr_t')) + '</span>' + ico('chev', 18, 'pacc-chev') + '</summary>' +
+      '<div class="qr-b"><div class="qr-img" data-qr="' + esc(q.url) + '" data-qr-l="' + esc(lbl) + '" data-key="my-qr-img"></div><p class="small muted">' + esc(t('qr_how')) + '</p></div></details>';
+  }
+  document.addEventListener('toggle', function (e) { var d = e.target; if (d && d.classList && d.classList.contains('qr-acc')) WH_OPEN['qr-' + d.getAttribute('data-qr-k')] = d.open; }, true);
   /** «Оплата» свого постачальника: скільки, реквізити з «Копіювати», готове призначення, позначка «Оплачено». c — контекст запису (myCtx…), mark — кнопка або ''. */
   // 145-а (власник 14.11, скрин «ГК Победа»: «если свой провайдер — тоже должна быть скрывашка, как при официальных»): «Оплата» — той самий
   // акордеон, що «Куди передати» (details.wacc.wacc-btn, закритий; відкривали — лишається відкритим до перезавантаження). У згорнутій шапці —
@@ -7152,6 +7199,7 @@
     return '<details class="panel where wacc wacc-btn mypay" id="wacc-' + k + '" data-key="' + k + '"' + (open ? ' open' : '') + ' aria-label="' + esc(t('my_pay_t')) + '"><summary data-key="' + k + '-sum"><h2>' + ico('wallet', 18, 'bt-ico') + '<span>' + esc(o.name || t('my_own')) + '</span></h2>' + side + ico('chev', 20, 'pacc-chev') + '</summary>' +
       '<div class="where-b mypay-b">' + sum +
       (r ? '<ul class="my-rows">' + r + '</ul>' : '<p class="small muted" data-key="my-norq">' + esc(t('my_norq')) + '</p>') +
+      (has && how === 'iban' && purp ? myQr(pk, o, c, purp) : '') +   // 150-а: платіжний QR НБУ — лише коли є що сплатити
       (all ? '<button type="button" class="btn sec block" data-act="copy" data-text="' + esc(all) + '" data-key="my-copy-all">' + ico('copy', 18) + '<span>' + esc(t('my_copy_all')) + '</span></button>' : '') +
       (o.num && o.note ? '<p class="small muted my-note">' + esc(o.note) + '</p>' : '') + (mark || '') + '</div></details>';
   }
@@ -8953,7 +9001,7 @@
     if (LIVE.t0 && Date.now() - LIVE.t0 < LIVE_MS) liveDigits(document.getElementById('main'), Date.now() - LIVE.t0);
     Array.prototype.forEach.call(document.querySelectorAll(ACC_SEL), accFoot);
     Array.prototype.forEach.call(document.querySelectorAll('details.tips-box > summary'), function (sm) { if (!sm.querySelector('.pacc-chev')) sm.insertAdjacentHTML('beforeend', ico('chev', 18, 'pacc-chev')); });
-    enhanceDates(); photoFill(); phFocusAll(); toastKeep(); fabWatch(); if (Y().account) histFlush();
+    enhanceDates(); photoFill(); phFocusAll(); qrFill(); toastKeep(); fabWatch(); if (Y().account) histFlush();
     // прилади в нижній панелі лендинга перетікають по колу — при «Зменшити рух» і в автотестах стоїть перший (147-а: електролічильник)
     if (calmMotion() || navigator.webdriver) Array.prototype.forEach.call(document.querySelectorAll('svg.lpm'), function (s) { if (s.pauseAnimations) { s.pauseAnimations(); s.setCurrentTime(0); } });
     // отклик: ушёл дальше привітання/головної — «клацав» (этап 1)
