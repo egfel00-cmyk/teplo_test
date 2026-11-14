@@ -117,7 +117,8 @@
       // (кілька вікон з тими самими цифрами — те саме табло, знайдене ширше чи вужче: беремо найтісніше, без сусідньої «m³»)
       var dk = keys.length ? ds.filter(function (d) { return hasKey(d.text); }).sort(function (a, b) { return (b.sure ? 1 : 0) - (a.sure ? 1 : 0) || a.w * a.h - b.w * b.h; }) : [];
       var sure = ds.filter(function (d) { return d.sure; });
-      if (dk.length) drum(dk[0]);
+      var byVal = false;
+      if (dk.length) { drum(dk[0]); byVal = true; }
       else if (sure.length) {
         var seen = {}; sure.slice().sort(function (a, b) { return a.w * a.h - b.w * b.h; }).forEach(function (d) { var k = String(d.text || '').replace(/\D/g, ''); if (seen[k]) return; seen[k] = 1; drum(d); });
       }
@@ -130,7 +131,7 @@
           var sc = l.h * (l.score || 0.5) / Math.max(1, d.length - Math.max.apply(null, keys.map(function (k) { return d.indexOf(k) >= 0 ? k.length : 0; })) + 1);
           if (!hit || sc > hit.sc) hit = { sc: sc, l: l };
         });
-        if (hit) add(hit.l);
+        if (hit) { add(hit.l); byVal = true; }
       }
       // 4) інші — підписи з цифрами (№ лічильника, «150») — одне найкраще вікно барабана, лише якщо нічого кращого
       if (!box && ds.length) drum(ds.sort(function (a, b) { return (b.score || 0) - (a.score || 0); })[0]);
@@ -143,7 +144,7 @@
       }
       if (!box) return null;
       var c = function (v) { return Math.round(Math.max(0, Math.min(1, v)) * 1000) / 1000; };
-      return { x: c((box.x0 + box.x1) / 2 / res.w), y: c((box.y0 + box.y1) / 2 / res.h), w: c((box.x1 - box.x0) / res.w), h: c((box.y1 - box.y0) / res.h), v: 2 };
+      return { x: c((box.x0 + box.x1) / 2 / res.w), y: c((box.y0 + box.y1) / 2 / res.h), w: c((box.x1 - box.x0) / res.w), h: c((box.y1 - box.y0) / res.h), v: byVal ? 3 : 2 };
     },
     /** Подгрузить движок (web/ocr/engine.js + модели ~30 МБ, один раз — дальше из кэша браузера). */
     _engine: function (onPct) {

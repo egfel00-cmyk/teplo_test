@@ -19,6 +19,8 @@ if (!fs.existsSync(NOV)) { const j = path.join(LAB, 'rp.local.json'); fs.writeFi
     const w = st.water.find(x => x.id === 'w20261015'); w.photos = [{ id: 'srv-gas-1', f: [0.5, 0.78, 0.36, 0.08, 2] }];
     // старий запис: рамка лише по чорних роликах (центр 0,454 — червоні праворуч до 0,683)
     const g0 = st.mrecs.filter(x => x.kind === 'gas' && x.id !== 'n20261101' && !x.base)[0] || st.mrecs.find(x => x.kind === 'gas' && x.id !== 'n20261101'); if (g0) g0.photos = [{ id: 'srv-old-1', f: [0.454, 0.447, 0.212, 0.044] }];
+    // 146-а (скрин власника «Ванна»): рамка до 146-ї (v = 2) на написі корпусу — перевіряється й замінюється вікном барабана
+    const w2 = st.water.find(x => x.id === 'w20260916'); w2.photos = [{ id: 'srv-old-2', f: [0.5, 0.12, 0.3, 0.05, 2] }];
     await p.goto(U); await p.evaluate(s => localStorage.setItem('teplo.v1', JSON.stringify(s)), st);
     await p.goto(U + '#gas'); await p.reload(); await p.waitForTimeout(300); await p.goto(U + '#erec-n20261101'); await p.waitForTimeout(1200);
     const geo = () => p.evaluate(() => {
@@ -57,6 +59,11 @@ if (!fs.existsSync(NOV)) { const j = path.join(LAB, 'rp.local.json'); fs.writeFi
     const g3 = await geo(), f3 = await p.evaluate(() => { const s = JSON.parse(localStorage.getItem('teplo.v1')); for (const r of s.mrecs) for (const f of (r.photos || [])) if (f.id === 'srv-old-1') return f.f; });
     ok(vw + ': стара рамка → разом із червоними роликами (центр ≈ 0,516, ширина ≈ 0,33), у запис — з позначкою', f3 && f3.length === 5 && Math.abs(f3[0] - 0.516) < 0.02 && f3[2] > 0.3, f3);
     ok(vw + ': і по центру картки', g3 && Math.abs(g3.dx) <= 2 && Math.abs(g3.dy) <= 2, g3);
+    ok(vw + ': перевірена рамка позначена v = 3 (вдруге не шукаємо)', f3 && f3[4] === 3, f3);
+    await p.goto(U + '#wrec-w20260916'); await p.waitForFunction(() => { const im = document.querySelector('[data-key=rec-photos] img[data-hph=srv-old-2]'); return im && !im.hasAttribute('data-fq'); }, null, { timeout: 15000 }).catch(() => {});
+    await p.waitForTimeout(300);
+    const f4 = await p.evaluate(() => { const s = JSON.parse(localStorage.getItem('teplo.v1')); for (const r of s.water) for (const f of (r.photos || [])) if (f.id === 'srv-old-2') return f.f; });
+    ok(vw + ': рамка на написі (v = 2) → вікно барабана (y ≈ 0,45, v = 3)', f4 && f4[4] === 3 && Math.abs(f4[1] - 0.45) < 0.05 && Math.abs(f4[0] - 0.516) < 0.03, f4);
     ok(vw + ': без помилок JS', !errs.length, errs);
     await p.context().close();
   }

@@ -7549,7 +7549,8 @@ details.mypay[open] > summary .mypay-amt, details.mypay[open] > summary .mypay-s
       // (кілька вікон з тими самими цифрами — те саме табло, знайдене ширше чи вужче: беремо найтісніше, без сусідньої «m³»)
       var dk = keys.length ? ds.filter(function (d) { return hasKey(d.text); }).sort(function (a, b) { return (b.sure ? 1 : 0) - (a.sure ? 1 : 0) || a.w * a.h - b.w * b.h; }) : [];
       var sure = ds.filter(function (d) { return d.sure; });
-      if (dk.length) drum(dk[0]);
+      var byVal = false;
+      if (dk.length) { drum(dk[0]); byVal = true; }
       else if (sure.length) {
         var seen = {}; sure.slice().sort(function (a, b) { return a.w * a.h - b.w * b.h; }).forEach(function (d) { var k = String(d.text || '').replace(/\D/g, ''); if (seen[k]) return; seen[k] = 1; drum(d); });
       }
@@ -7562,7 +7563,7 @@ details.mypay[open] > summary .mypay-amt, details.mypay[open] > summary .mypay-s
           var sc = l.h * (l.score || 0.5) / Math.max(1, d.length - Math.max.apply(null, keys.map(function (k) { return d.indexOf(k) >= 0 ? k.length : 0; })) + 1);
           if (!hit || sc > hit.sc) hit = { sc: sc, l: l };
         });
-        if (hit) add(hit.l);
+        if (hit) { add(hit.l); byVal = true; }
       }
       // 4) інші — підписи з цифрами (№ лічильника, «150») — одне найкраще вікно барабана, лише якщо нічого кращого
       if (!box && ds.length) drum(ds.sort(function (a, b) { return (b.score || 0) - (a.score || 0); })[0]);
@@ -7575,7 +7576,7 @@ details.mypay[open] > summary .mypay-amt, details.mypay[open] > summary .mypay-s
       }
       if (!box) return null;
       var c = function (v) { return Math.round(Math.max(0, Math.min(1, v)) * 1000) / 1000; };
-      return { x: c((box.x0 + box.x1) / 2 / res.w), y: c((box.y0 + box.y1) / 2 / res.h), w: c((box.x1 - box.x0) / res.w), h: c((box.y1 - box.y0) / res.h), v: 2 };
+      return { x: c((box.x0 + box.x1) / 2 / res.w), y: c((box.y0 + box.y1) / 2 / res.h), w: c((box.x1 - box.x0) / res.w), h: c((box.y1 - box.y0) / res.h), v: byVal ? 3 : 2 };
     },
     /** Подгрузить движок (web/ocr/engine.js + модели ~30 МБ, один раз — дальше из кэша браузера). */
     _engine: function (onPct) {
@@ -11221,7 +11222,7 @@ details.mypay[open] > summary .mypay-amt, details.mypay[open] > summary .mypay-s
       }
       // де на фото табло (рушій знайшов при розпізнаванні) — превью кадрується по ньому
       var fc = f._focus, ref = it.meter ? { id: id, meter: it.meter } : { id: id };
-      if (fc && fc.w > 0) ref.f = [fc.x, fc.y, fc.w, fc.h].concat(fc.v ? [fc.v] : []);   // 5-й елемент — рамка вже з червоними роликами
+      if (fc && fc.w > 0) ref.f = [fc.x, fc.y, fc.w, fc.h].concat(fc.v ? [fc.v] : []);   // 5-й елемент: 2 — з червоними роликами, 3 — за збереженими цифрами (146-а)
       return ref;
     });
     if (keep.length) photoKeep(keep.map(function (id) { return { id: id }; }), true);
@@ -11331,7 +11332,9 @@ details.mypay[open] > summary .mypay-amt, details.mypay[open] > summary .mypay-s
    *  (червоні дроби з'їжджали за край превью, газ 7633): показуємо як є й у фоні шукаємо вікно заново (data-fq); не знайшлося — лишаємо старе з позначкою. */
   function phFocusAttr(p, gal) {
     var f = p.f || (FOC.done[p.id] || null), drum = /^[wm]/.test(gal || '') && FOC.done[p.id] === undefined;
-    if (f && f.length >= 4 && f[2] > 0) return ' data-f="' + f.slice(0, 4).join(',') + '"' + (drum && f.length < 5 ? ' data-fq="1"' : '');
+    // 146-а (скрини власника: «Ванна», «Падик» — превью мимо табло): рамки до 146-ї (v < 3) у води/світла/газу один раз перевіряємо пошуком
+    // вікна барабана; v = 3 — рамка вже за збереженими цифрами чи перевірена
+    if (f && f.length >= 4 && f[2] > 0) return ' data-f="' + f.slice(0, 4).join(',') + '"' + (drum && !(f[4] >= 3) ? ' data-fq="1"' : '');
     return drum ? ' data-fq="1"' : '';
   }
   /** Вікно барабана з TeploOCR._drums (c — чорні ролики, c.redBox — червоні) → рамка навколо обох, частки фото. */
@@ -11341,7 +11344,7 @@ details.mypay[open] > summary .mypay-amt, details.mypay[open] > summary .mypay-s
       var ew = Math.abs(b.w * Math.cos(a)) + Math.abs(b.h * Math.sin(a)), eh = Math.abs(b.w * Math.sin(a)) + Math.abs(b.h * Math.cos(a));
       x0 = Math.min(x0, b.cx - ew / 2); x1 = Math.max(x1, b.cx + ew / 2); y0 = Math.min(y0, b.cy - eh / 2); y1 = Math.max(y1, b.cy + eh / 2); });
     var r3 = function (v) { return Math.round(Math.max(0, Math.min(1, v)) * 1000) / 1000; };
-    return [r3((x0 + x1) / 2 / iw), r3((y0 + y1) / 2 / ih), r3((x1 - x0) / iw), r3((y1 - y0) / ih), 2];
+    return [r3((x0 + x1) / 2 / iw), r3((y0 + y1) / 2 / ih), r3((x1 - x0) / iw), r3((y1 - y0) / ih), 3];
   }
   /** Кадр превью: табло — рівно в центрі картки (власник 10.11: «чітко по центру табло»). Масштаб — табло на ~60 % ширини й не вище половини картки,
    *  не дрібніше, ніж «на всю картку», і не більше ×3; якщо табло біля краю фото — збільшуємо, щоб і по центру, і без порожнечі (до 90 % ширини, ×3,5),
@@ -11381,7 +11384,7 @@ details.mypay[open] > summary .mypay-amt, details.mypay[open] > summary .mypay-s
       // знайдене — у запис (і замість старої рамки лише по чорних); не знайшлося, а стара є — позначити перевіреною, щоб не шукати щоразу
       var upd = false;
       allRecs().forEach(function (r) { (r.photos || []).forEach(function (p) { if (!p || p.id !== id) return;
-        if (f && (!p.f || p.f.length < 5)) { p.f = f; upd = true; } else if (!f && p.f && p.f.length === 4) { p.f = p.f.concat([1]); upd = true; } }); });
+        if (f && (!p.f || !(p.f[4] >= 3))) { p.f = f; upd = true; } else if (!f && p.f && p.f.length >= 4 && !(p.f[4] >= 3)) { p.f = p.f.slice(0, 4).concat([3]); upd = true; } }); });
       if (upd) persist();
       Array.prototype.forEach.call(document.querySelectorAll('img[data-fq]'), function (x) { if (x.getAttribute('data-hph') !== id) return; x.removeAttribute('data-fq');
         if (f) { x.setAttribute('data-f', f.slice(0, 4).join(',')); phFocus(x); } });
