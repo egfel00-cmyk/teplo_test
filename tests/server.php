@@ -706,6 +706,16 @@ ok('Львів: вода — «До 27 листопада — 4 дні», Льв
 $kys = ['places' => [['id' => 'k', 'address' => 'м. Київ, вул. Хрещатик, 1, кв. 1', 'city' => ['n' => 'Київ', 'r' => 'ky'], 'meters' => [['id' => 'e1', 'kind' => 'elec']]]]];
 $kyd = array_column(Reminders::localDue($kys, '2026-11-30'), 'kind'); $kyp = Reminders::placesDue($kys, 'elecL30', '2026-11', '2026-11-30');
 ok('Київ: світло YASNO 30–3 — 30.11 elecL30 (до 03.12), elec1 — ні', $kyd === ['elecL30'] && ($kyp[0]['e'] ?? '') === '2026-12-03' && !Reminders::placesDue($kys, 'elec1', '2026-11'), [$kyd, $kyp]);
+// 144-я: «Свій постачальник» — гараж без адреси, світло кооперативу без строку: жодних нагадувань (ні elec1, ні elecL…); зі строком «до 25» — gasL/elecL21 з його назвою
+$gar = ['places' => [['id' => 'g', 'name' => 'Гараж', 'meters' => [['id' => 'e1', 'kind' => 'elec']], 'prov' => ['elec' => ['own' => 1, 'name' => 'ГК «Мотор»', 'due' => 'none']]]]];
+$gar2 = $gar; $gar2['places'][0]['prov']['elec']['due'] = 'till'; $gar2['places'][0]['prov']['elec']['till'] = 25;
+$gd = array_column(Reminders::localDue($gar2, '2026-11-21'), 'kind'); $gp = Reminders::placesDue($gar2, 'elecL21', '2026-11', '2026-11-21'); $gt = Reminders::text('elecL21', 'uk', $gp, '2026-11-21')['text'];
+ok('свій постачальник: без строку — мовчимо; «до 25» — 21.11 elecL21 з назвою, без «за середнім»; elec1 — ні',
+  !Reminders::placesDue($gar, 'elec1', '2026-11') && !Reminders::localDue($gar, '2026-11-21') && $gd === ['elecL21'] && !Reminders::placesDue($gar2, 'elec1', '2026-11')
+  && str_contains($gt, 'ГК «Мотор»') && str_contains($gt, 'До 25 листопада') && str_contains($gt, 'призначення платежу') && !str_contains($gt, 'середнім'), [$gd, $gp, $gt]);
+$own = ['places' => [['id' => 'main', 'address' => 'м. Харків, вул. Сумська, 10', 'meter' => ['modelId' => 'sharky774'], 'water' => ['meters' => [['id' => 'c1', 'kind' => 'cold']]],
+  'prov' => ['water' => ['own' => 1, 'name' => 'ОСББ «Сад»'], 'heat' => ['own' => 1, 'name' => 'Котельня ОСББ']]]]];
+ok('свій постачальник води й тепла в Харкові: water16 і heat21 — ні (не Водоканал і не ХТМ)', !Reminders::placesDue($own, 'water16', '2026-11') && !Reminders::needs($own, 'heat21', '2026-11'));
 $lv2 = $lvs; $lv2['water'] = [['id' => 'w1', 'place' => 'main', 'date' => '2026-11-12', 'vals' => ['c1' => '5']]];
 $lv3 = $lvs; $lv3['water'] = [['id' => 'w1', 'place' => 'main', 'date' => '2026-11-03', 'vals' => ['c1' => '5']]];
 ok('Львів: внесли у вікні (12.11) — мовчимо; до вікна (03.11, раніше за 05.11) — нагадуємо; «нагадати завтра» після кінця вікна (28.11) — ні',

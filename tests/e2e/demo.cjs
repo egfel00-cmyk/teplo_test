@@ -41,5 +41,15 @@ module.exports = function demo(opts) {
     out.mrecs = (out.mrecs || []).concat([['2026-09-01', '1180.5', true], ['2026-10-01', '1195.25'], ['2026-11-01', '1225.4']].map(([d, v, base], i) =>
       ({ id: 'n' + d.replace(/-/g, ''), place: 'main', meter: 'g1', kind: 'gas', date: d, z: { all: v }, base: !!base, sent: base || i === 2 ? {} : { grm: d }, createdAt: d + 'T10:00:00Z', updatedAt: 1 })));
   }
+  // 144-а: гараж — окрема «квартира» зі світлом без показань (як у власника: платить кооперативу на рахунок); own — свій постачальник
+  if (opts.garage) {
+    out.places.push({ id: 'gar', v: 2, name: 'Гараж', icon: 'garage', color: 'amber', meter: null, baseline: null, updatedAt: 1,
+      meters: [{ id: 'eg', kind: 'elec', name: '', zones: 1, serial: '', account: '' }],
+      prov: opts.garage === 'own' ? { elec: { own: 1, name: 'ГК «Мотор»', how: 'iban', iban: 'UA213223130000026007233566001', recip: 'ГК «Мотор»', code: '12345678',
+        purpose: 'Гараж № 47: світло {попередні}–{показання}, {набігло}, {сума} грн, за {місяць}', price: 4.32, due: 'none', at: '2026-11-01' } } : undefined });
+    if (opts.garage === 'own' || opts.garageRecs) out.mrecs = (out.mrecs || []).concat([['2026-09-30', '1250', true], ['2026-10-31', '1310']].map(([d, v, base]) =>
+      ({ id: 'gr' + d.replace(/-/g, ''), place: 'gar', meter: 'eg', kind: 'elec', date: d, z: { all: v }, base: !!base, sent: base ? {} : {}, createdAt: d + 'T10:00:00Z', updatedAt: 1 })));
+    if (opts.atGarage) out.placeId = 'gar';
+  }
   return out;
 };

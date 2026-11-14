@@ -194,8 +194,17 @@
   function safeRender() {
     var a = document.activeElement;
     if (a && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName)) { pendingRender = true; return; }
+    if (TAP && TAP.on) { TAP.wait = true; return; }   // палець ще на екрані — перемалюємо, щойно тап скінчиться
     render(true);
   }
+  // 144-а (власник 14.11, iPhone: «на раскрывашку квартиры снова два тапа»): фонові перемальовки (дані з іншого пристрою, довідник постачальників
+  // за адресою кожної квартири, погода, черга роботів) міняють #root через innerHTML. Прийшли між дотиком і click — елемента під пальцем уже
+  // немає, тап губиться. У Chromium на локальному сайті відповіді встигають до першого тапу, тому e2e не ловив (e2e_taprace — відповідь посеред дотику).
+  // Від pointerdown до 350 мс після відпускання фонові перемальовки чекають; дії самої людини (render з обробників) — як і були.
+  var TAP = { on: false, wait: false, tm: 0 };
+  function tapEnd() { TAP.on = false; if (TAP.wait) { TAP.wait = false; safeRender(); } }
+  document.addEventListener('pointerdown', function () { TAP.on = true; clearTimeout(TAP.tm); TAP.tm = setTimeout(tapEnd, 2000); }, true);
+  ['pointerup', 'pointercancel'].forEach(function (ev) { document.addEventListener(ev, function () { if (!TAP.on) return; clearTimeout(TAP.tm); TAP.tm = setTimeout(tapEnd, 350); }, true); });
   /** Язык интерфейса — по основному языку браузера: русский → ru, любой другой → uk. Переключателя нет. */
   function browserLang() {
     var tw = window.Telegram && window.Telegram.WebApp, tu = tw && tw.initDataUnsafe && tw.initDataUnsafe.user;
@@ -424,6 +433,7 @@
     images: '<rect x="7.5" y="7.5" width="13.5" height="12" rx="2.5"/><path d="M4 15.5V6.5A2.5 2.5 0 0 1 6.5 4H16"/><path d="M21 16.5l-4-4-6.3 6.5"/><circle cx="12" cy="11.5" r="1.2"/>',
     download: '<path d="M12 4v11"/><path d="m7 10 5 5 5-5"/><path d="M5 20h14"/>',
     bill: '<path d="M6 3h12v18l-2.5-1.6L13 21l-2-1.6L9 21l-3-1.8z"/><path d="M9 8h6M9 11.5h6M9 15h3.5"/>',
+    wallet: '<rect x="3" y="6.5" width="18" height="13" rx="2.5"/><path d="M15.5 6.5 14.6 4a1 1 0 0 0-1.3-.6L5.5 6.5"/><path d="M21 10.5h-3.8a2.5 2.5 0 0 0 0 5H21"/>',   // 144-а: свій постачальник — оплата
     edit: '<path d="M4 20h4L18.5 9.5a2.1 2.1 0 0 0-4-4L4 16v4z"/><path d="M13.5 6.5l4 4"/>',
     wrench: '<path d="M14.5 5.5a4 4 0 0 0 4.9 4.9l-8.9 8.9a2 2 0 0 1-2.8-2.8l8.9-8.9a4 4 0 0 0-2.1-2.1z"/><path d="M14.5 5.5L17 3l2.5 2.5"/>',
     trash: '<path d="M4 7h16"/><path d="M18 7v12a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V7"/><path d="M9 7V5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2"/><path d="M10 11v6"/><path d="M14 11v6"/>',
@@ -726,7 +736,7 @@
   function wkindTitle(k) { return k === 'hot' ? t('wt_hot_t') : t('wt_cold_t'); }
   function thisMonth(d) { return String(d || '').slice(0, 7) === today().slice(0, 7); }
   function wsentVk(r) { return r && r.sent && r.sent.vk; }
-  function wsentHtm(r) { return r && r.sent && r.sent.htm; }
+  function wsentHtm(r) { return r && r.sent && (r.sent.htm || (r.sent.vk && myProv('water', myPlaceOf(r)))); }   // 144-а: свій постачальник води — одна позначка «Оплачено»
   var WICO = { hot: 'drop', cold: 'drop' };
 
   // ================= виды счётчиков квартиры (реестр) =================
@@ -893,6 +903,10 @@
     var last = RD().filter(function (r) { return r.htm && r.htm.date; }).slice(-1)[0], w = R.windowState(today()), gap = openGap('heat'), d25 = dayOfMonth(today(), 25);
     if (gap) return { st: t('gp_card_off', { d: fmtDate(gap.from) }), tone: 'warn', off: true };
     if (last && thisMonth(last.htm.date) && (last.status === 'handed' || last.status === 'accepted')) return { st: heatLite() ? t('uc_heat_sent_l') : last.status === 'accepted' ? t('uc_heat_ok') : t('uc_heat_handed'), tone: 'ok' };
+    if (myProv('heat')) {   // 144-а: свій постачальник — строк, лише якщо людина його вказала
+      var hw = winNow('heat'); if (!hw || !hw.open) return { st: '', tone: '' };
+      return { st: t('uc_heat_due', { d: fmtDate(hw.to) }), tone: hw.daysLeft <= 3 ? 'warn' : 'due', due: hw.to };
+    }
     if (heatLite()) {   // строк — лише якщо відомий з довідника громади (till — число місяця; 31 — до кінця місяця), інакше без нагадування
       var tl = R.num((prvOf('heat') || {}).till); if (!(tl > 0)) return { st: '', tone: '' };
       var dl = dayOfMonth(today(), Math.min(tl, +addDays(nextMonthDay(today(), 1), -1).slice(8)));
@@ -909,7 +923,7 @@
     if (gap) return { st: t('gp_card_off', { d: fmtDate(gap.from) }), tone: 'warn', off: true };
     // 142-а: вода не від Харківводоканалу — строк її постачальника (вікно з довідника), а не «до 20-го»; вікно невідоме — без строку
     var lw = prvOf('water');
-    if (lw && lw.via !== 'hvk') {
+    if (myProv('water') || (lw && lw.via !== 'hvk')) {   // 144-а: свій постачальник — так само, за його строком (немає — без строку)
       var wn = winNow('water'), inW = function (r) { return r && (wn && wn.open ? r.date >= addDays(wn.from, -5) : thisMonth(r.date)); };
       if (inW(last) && wsentVk(last)) return { st: t('uc_w_sent'), tone: 'ok' };
       if (inW(last)) return { st: t('uc_w_ready'), tone: 'due', due: wn && wn.open ? wn.to : null, ready: true };
@@ -949,6 +963,7 @@
    *  Довідник громади: `win` ([20, 27]) головніший; тепло не від ХТМ — `till`; вода місцевого КП без `win` — null (не вигадуємо). */
   function winOk(w) { return !!(w && w.length === 2 && +w[0] !== 0 && (+w[1] > 0 || (+w[1] < 0 && +w[1] >= -3 && +w[0] > 0))); }
   function perWin(k, p) {
+    var my = myProv(k, p === undefined ? place() : p); if (my) return myWin(my);   // 144-а: свій постачальник — його строк або без строку
     var j = prvKinds0(p), d = j ? (j.kinds[k] || {}) : null, w = d && d.win;
     if (winOk(w)) return [+w[0], +w[1]];
     if (k === 'heat') { if (!d || d.via === 'htm') return [R.C.WINDOW_FROM, R.C.WINDOW_TO]; var tl = R.num(d.till); return tl > 0 ? [1, tl] : null; }
@@ -995,8 +1010,10 @@
    *  YASNO 30–3) — за ним: строк, «Зараз приймають», які показання вже у вікні; інакше — харківське El.win / Gs.win (як і досі). ym — за який місяць (md.forMonth кінця вікна). */
   function swin(k, td, p) {
     var md = SK[k].mod; td = td || today();
-    var j = prvKinds0(p), d = j ? (j.kinds[k] || {}) : null, w = d && d.win;
-    if (!winOk(w)) return md.win(td);
+    var j = prvKinds0(p), d = j ? (j.kinds[k] || {}) : null, w = d && d.win, my = myProv(k, p === undefined ? place() : p);
+    // 144-а: свій постачальник без строку — «приймають» завжди, місяць — календарний (статус і смужка вікна цього не показують)
+    if (my) { w = myWin(my); if (!w) { var mL = new Date(Date.UTC(+td.slice(0, 4), +td.slice(5, 7), 0)).getUTCDate(); return { open: true, free: true, ym: md.forMonth(td), from: td.slice(0, 7) + '-01', to: td.slice(0, 7) + '-' + mL, daysLeft: 99 }; } }
+    else if (!winOk(w)) return md.win(td);
     w = [+w[0], +w[1]];
     var ym = td.slice(0, 7), sp = [addDays(ym + '-01', -1).slice(0, 7), ym, nextMonthDay(td, 1).slice(0, 7)].map(function (m) { return winSpan(w, m); });
     var cur = sp.filter(function (x) { return x.b <= td && td <= x.e; })[0], nx = sp.filter(function (x) { return x.b > td; })[0] || sp[2];
@@ -1382,6 +1399,8 @@
     // 143-я (власник 14.11, скрин): замість «Куди передати» — назва постачальника (кілька — через « · », гаряча: Водоканал · ХТМ); значок лишається
     var orgs = [], om, ore = /class="dest-h"><div class="grow"><b>([^<]+)<\/b>/g; while ((om = ore.exec(m[3]))) if (orgs.indexOf(om[1]) < 0) orgs.push(om[1]);
     var head = orgs.length ? m[2].replace(/<span>[^<]*<\/span>/, '<span>' + orgs.join(' · ') + '</span>') : m[2];
+    // 144-а (власник 14.11: «не пойму, где выбрать кастомного провайдера»): унизу — «Платите комусь іншому?» → свій постачальник
+    var mpk = { 'where-water': 'water', 'where-heat': 'heat', 'where-elec': 'elec', 'where-gas': 'gas', 'wpay-where': 'waste' }[m[1]]; if (mpk && !recId) m[3] += myLink(mpk);
     return '<details class="panel where wacc' + (recId ? '' : ' wacc-btn') + '" id="' + id + '" data-key="' + m[1] + '"' + (open ? ' open' : '') + ' aria-label="' + esc(t('wd_title')) + '"><summary data-key="' + m[1] + '-sum"><h2>' + head + '</h2>' + ico('chev', 20, 'pacc-chev') + '</summary><div class="where-b">' + m[3] + '</div></details>';
   }
   var WR_OPEN = {};   // «Куди передати» в картці запису історії: відкривали — лишається відкритим до перезавантаження
@@ -1401,6 +1420,29 @@
   function ctlCopy(id) { return '<button type="button" class="ctl-copy" data-act="copy-in" data-for="' + id + '" data-key="copy-' + id + '" aria-label="' + esc(t('copy')) + '" title="' + esc(t('copy')) + '">' + ico('copy', 20) + '</button>'; }
   /** Маленька кнопка «Копіювати» біля показання (у бот чи кабінет вставити цифри). */
   function copyIco(text, key) { return text === null || text === undefined || text === '' ? '' : '<button type="button" class="copy-ico" data-act="copy" data-text="' + esc(String(text)) + '"' + (key ? ' data-key="' + key + '"' : '') + ' aria-label="' + esc(t('copy_v', { v: text })) + '" title="' + esc(t('copy')) + '">' + ico('copy', 18) + '</button>'; }
+  // ---------- 144-а: порожні екрани (власник 14.11, скрин «Гараж»: «пустой экран неадекватный — в описании одно, кнопка другая; продумай все пустые экраны»)
+  // Один шаблон: блідий начерк того, що тут з'явиться (рядки історії чи стовпці статистики), значок виду в колі його кольору поверх начерку,
+  // заголовок — що саме буде, одне речення — як воно з'явиться, одна кнопка того ж виду. Текст і кнопка — завжди одного виду (раніше в історії
+  // світла й газу стояло «Тут з'являться показання води»).
+  var ES_KIND = { heat: ['thermo', 'c-heat'], hot: ['drop', 'c-hot'], cold: ['drop', 'c-cold'], water: ['drop', 'c-cold'], elec: ['bolt', 'c-elec'], gas: ['flame', 'c-gas'], waste: ['trash', 'c-waste'] };
+  function esGhost(g) {
+    if (g === 'stats') return '<div class="es-ghost es-bars" aria-hidden="true">' + [34, 52, 28, 66, 44, 58].map(function (h) { return '<i style="height:' + h + '%"></i>'; }).join('') + '</div>';
+    return '<div class="es-ghost" aria-hidden="true">' + [0, 1, 2].map(function () { return '<span class="es-row"><i></i><i></i><i></i></span>'; }).join('') + '</div>';
+  }
+  /** o: { key, kind (heat|hot|cold|water|elec|gas|waste) або icon+cls, ghost: 'hist'|'stats', title, text, btn — готова кнопка } */
+  function emptyState(o) {
+    var ki = ES_KIND[o.kind] || [o.icon || 'plus', o.cls || ''];
+    return '<section class="panel es es-' + (o.ghost || 'hist') + '" data-key="' + esc(o.key) + '">' + esGhost(o.ghost) +
+      '<span class="es-ico ' + ki[1] + '">' + ico(ki[0], 26) + '</span>' +
+      '<h2 class="es-t">' + esc(o.title) + '</h2>' + (o.text ? '<p class="es-s">' + esc(o.text) + '</p>' : '') + (o.btn ? '<div class="es-act">' + o.btn + '</div>' : '') + '</section>';
+  }
+  function esBtn(act, label, key, extra) { return '<button type="button" class="btn" data-act="' + act + '"' + (extra || '') + ' data-key="' + key + '">' + ico('plus', 20) + '<span>' + esc(label) + '</span></button>'; }
+  /** Порожня статистика: скільки показань уже є (0 — внести перші; 1 — від якої дати, внести наступні). */
+  function esStats(kind, recs, btn) {
+    var l = recs.filter(function (r) { return r && !r.deleted; }).map(function (r) { return r.date || (r.htm && r.htm.date) || ''; }).filter(Boolean).sort(), first = l[l.length - 1];
+    return emptyState({ key: 'es-stats-' + kind, kind: kind, ghost: 'stats', title: t('es_st_t'), btn: btn,
+      text: !l.length ? t('es_st_s0') : t(kind === 'heat' ? 'es_st_s1_heat' : 'es_st_s1', { d: fmtDate(first) }) });
+  }
   /** Історія на сторінці лічильника — окремим блоком (владелец 07.11: «показать более явно, обособленно»): заголовок з кількістю,
    *  останні 3 записи, «Уся історія (N)» — лише коли записів більше. */
   function histPanel(rows, total, allBtn, k) {
@@ -1936,7 +1978,8 @@
   }
   function wwater(kind) {
     var ms = wmeters(kind), title = wkindTitle(kind);
-    if (!ms.length) return { screen: 'S30', route: 'water-' + kind, html: '<h1>' + esc(title) + '</h1><div class="panel"><p>' + esc(t('uc_w_empty')) + '</p><button class="btn big" data-act="wsetup" data-kind="' + kind + '" data-key="water-setup">' + esc(t('uc_w_setup_btn')) + '</button></div>' + wsendPanel(null, kind) };
+    if (!ms.length) return { screen: 'S30', route: 'water-' + kind, html: '<h1>' + esc(title) + '</h1>' + emptyState({ key: 'es-water-' + kind, kind: kind, title: t('es_w_' + kind), text: t('es_w_s'),
+      btn: esBtn('wsetup', t('uc_w_setup_btn'), 'water-setup', ' data-kind="' + kind + '"') }) };
     var last = wlast(), h = '<h1 class="sr">' + esc(title) + (place() && place().name ? ' — ' + esc(place().name) : '') + '</h1>';
     ms.forEach(function (m) { h += gapBanner(m.id); });
     // табло кожного водоміра — як екран тепла: останні показання, дата, повірка
@@ -1950,12 +1993,12 @@
         meta: [ver, m.vkId ? esc(t('mb_vkid', { v: m.vkId })) : ''].filter(Boolean),
         // «Налаштування показань» — акордеон: рахунок, №, ціна (владелец 05.11 21:35–21:40: «верни аккордеон… переназови»);
         // «Заповнити з monobank» — у налаштуваннях показань кожного лічильника (116-а, власник 11.11)
-        set: (i0 === 0 ? monoLink(kind + '-set') : '') + wmeterFields(m, i0 === 0) + (i0 === 0 ? priceBlock(kind) : '') + gapSetLink(m.id) , setTitle: t('mb_set_read') });
+        set: (i0 === 0 ? myPick(kind) + (myProv(kind) ? '' : monoLink(kind + '-set')) : '') + wmeterFields(m, i0 === 0) + (i0 === 0 ? priceBlock(kind) : '') + gapSetLink(m.id) , setTitle: t('mb_set_read') });
     }).join('');
     // «Розпізнати з фото» — лише на введенні показань (владелец 07.11); тут на її місці — «Куди передати» в рамці
     var act = '<button class="btn big block" data-act="wnew" data-kind="' + kind + '" data-key="water-add">' + ico('plus', 22) + '<span>' + esc(t('wn_title')) + '</span></button>';
     // куди передати: є показання цього місяця — з готовими цифрами, інакше — куди й до якого числа
-    var right = whereAcc(wsendPanel(last && thisMonth(last.date) ? last : null, kind));
+    var right = myProv(kind) ? myPageW(kind) : whereAcc(wsendPanel(last && thisMonth(last.date) ? last : null, kind));
     // історія: останні три (разом із періодами без лічильника), решта — у вкладці «Історія»
     var wr = wrows(kind, 3);
     if (wr.total) right += histPanel(wr.html, wr.total, '<button class="btn sec block" data-act="view-go" data-v="' + kind + '" data-to="history" data-key="water-all">' + esc(t('wh_all', { n: wr.total })) + '</button>', 'water');
@@ -2264,7 +2307,7 @@
   }
   function whistory(kind) {
     var wr = wrows(kind, 0, true), head = '<h1>' + esc(t('hi_title')) + '</h1>' + kindSwitch();
-    if (!wr.total) return { screen: 'S09', route: 'history', html: head + '<div class="panel"><p class="muted">' + esc(t('wh_empty')) + '</p><button class="btn" data-act="wnew" data-kind="' + kind + '">' + esc(t('wn_title')) + '</button></div>' };
+    if (!wr.total) return { screen: 'S09', route: 'history', html: head + emptyState({ key: 'es-hist-' + kind, kind: kind, title: t('es_h_' + kind), text: t('es_h_s'), btn: esBtn('wnew', t('wn_title'), 'es-hist-add', ' data-kind="' + kind + '"') }) };
     return { screen: 'S09', route: 'history', html: head + wr.html + '<p class="small muted">' + esc(t('wh_hint')) + '</p>' + gapAddLink(kind) };
   }
   /** Статистика: какие периоды без лічильника не вошли в графики. */
@@ -2348,7 +2391,9 @@
     h += recPhotos(r.photos, 'w' + r.id, 'w:' + r.id);
     h += (r.base ? '' : billsBox('w:' + r.id, r.bills, t('bl_title', { m: monthLabel(String(r.date).slice(0, 7)) }))); h += noteBox(r);
     if (r.base) h += ownBox('w', r);
-    if (!r.base && !r.own) {
+    var myw = !r.base && !r.own ? myProv('water', myPlaceOf(r)) : null;
+    if (myw) h += myPayBox('water', myw, myCtxW(r), myMarkW(r), 'mypay-rec');   // 144-а: свій постачальник — «Оплата» замість «Куди передати»
+    else if (!r.base && !r.own) {
       if (thisMonth(r.date)) h += whereAcc(wsendPanel(r), r.id);
       else h += '<p>' + (wsentVk(r) ? '<span class="pill ok">' + ico('check', 14) + ' ' + esc(t('wr_vk')) + '</span> ' : '<span class="pill neutral">' + esc(t('wr_vk')) + ': ' + esc(t('wh_notsent')) + '</span> ') +
         (wmeters('hot').length ? (wsentHtm(r) ? '<span class="pill ok">' + ico('check', 14) + ' ' + esc(t('wr_htm')) + '</span>' : '<span class="pill neutral">' + esc(t('wr_htm')) + ': ' + esc(t('wh_notsent')) + '</span>') : '') + '</p>';
@@ -2364,7 +2409,7 @@
     // місяці й гроші — між переданими показаннями цього виду (власник 11.11), а не між будь-якими записами
     var sentK = function (y) { return !!(wsentVk(y) && (kind === 'cold' || wsentHtm(y))); }, km = wmeters(kind, true), hasK = function (y) { return km.some(function (m) { return hasVal(y, m.id); }); };
     var mo = Wt.monthly(Wt.series(paidOnly(wrecs().filter(hasK), sentK), wmeters(null, true), gaps()), kind, wtar()), sm = Wt.summary(mo), head = '<h1>' + esc(t('stt_title')) + '</h1>' + kindSwitch();
-    if (!mo.length) return { screen: 'S15', route: 'stats', html: head + '<div class="panel"><p class="muted">' + esc(t('wst_empty')) + '</p></div>' };
+    if (!mo.length) return { screen: 'S15', route: 'stats', html: head + esStats(kind, wrecs().filter(hasK), esBtn('wnew', t('wn_title'), 'es-stats-add', ' data-kind="' + kind + '"')) };
     var per = function (b) { return t('stt_period', { a: R.toHtmDate(b.from), b: R.toHtmDate(b.to), d: b.days }); };
     // набігло після останнього «Передано» й ще не передане
     var wl = wrecs().filter(hasK), wlast = wl[wl.length - 1], wsn = null;
@@ -2457,7 +2502,9 @@
   function eprev(mid, date, skipId) { var a = mrecs(mid).filter(function (r) { return r.id !== skipId && (!date || r.date < date || (r.base && r.date === date)); }); return a.length ? a[a.length - 1] : null; }
   function elastOf(mid) { var a = mrecs(mid); return a.length ? a[a.length - 1] : null; }
   function sopts(k) { var p = place() || {}, o = { heating: !!p[SK[k].heat], price: k === 'gas' ? R.num(p.gasPrice) : R.num(((p.prov || {}).elec || {}).price) };
-    if (k === 'gas') { var g = gdist(p); if (g.month) o.fee = g.month; }
+    var my = myProv(k, p);
+    if (my) { o.heating = false; if (R.num(my.abon) > 0) o.fee = R.num(my.abon); }   // 144-а: свій постачальник — його щомісячна плата замість доставки Газмереж
+    else if (k === 'gas') { var g = gdist(p); if (g.month) o.fee = g.month; }
     return o; }
   /**
    * Доставка (розподіл) газу поточної квартири (123-я, власник 12.11: «у платіжці ще за транспортування»): окрема щомісячна плата оператору ГРМ
@@ -2502,6 +2549,7 @@
   /** Статус світла/газу квартири для картки й списку квартир (як heatStatus/waterStatus). */
   function sStatus(k) {
     var ms = smeters(k), w = swin(k), recs = ms.map(function (m) { return einWin(m.id, w); });
+    if (w.free) return { st: '', tone: '' };   // 144-а: свій постачальник без строку — статус лише «Передано/Оплачено» (cardSent)
     if (!w.open) return { st: t('ue_next', { a: fmtDate(w.next), b: fmtDate(w.to) }), tone: '', from: w.next };
     if (recs.every(function (r) { return ssent(k, r); })) return { st: t('uc_w_sent'), tone: 'ok' };
     if (recs.every(Boolean)) return { st: t('uc_w_ready'), tone: 'due', due: w.to, ready: true };
@@ -2698,6 +2746,7 @@
   }
   /** Галочка «опалення» (світло: пільгова ціна 2,64; газ: котел — великий розхід взимку — норма) і ціна газу — у квартири. */
   function sheatRow(k, form) {
+    if (!form && myProv(k)) return '';   // 144-а: свій постачальник — пільга обленерго/Нафтогазу не про нього
     var p = place() || {}, on = form && typeof EA.heat === 'boolean' ? EA.heat : !!p[SK[k].heat];
     return '<label class="check-row" style="margin-top:12px"><input type="checkbox" id="' + (k === 'gas' ? 'g' : 'e') + '-heat" ' + (form ? 'data-eaheat="1"' : 'data-heat="' + SK[k].heat + '"') + (on ? ' checked' : '') + ' data-key="' + k + '-heat"><span>' + esc(tk(k, 'eh_on')) + '</span></label><p class="small muted" style="margin:4px 0 0">' + esc(tk(k, 'eh_sub')) + '</p>' +
       '';
@@ -2797,7 +2846,7 @@
   function sprovFields(k, m) {
     return '' +
       (k === 'gas' ? sfld(m, 'grm', 'emg-', t('gm_grm'), 'inputmode="numeric"', t('gm_grm_h'), m.grm && dgt(m.grm).length !== 10 ? t('gm_e_grm', { n: dgt(m.grm).length }) : '') : '') +
-      sfld(m, 'account', 'ema-', tk(k, 'em_acc'), 'inputmode="numeric"', tk(k, 'em_acc_h'), k === 'gas' && m.account && dgt(m.account).length !== 9 ? t('gm_e_acc', { n: dgt(m.account).length }) : '') +
+      sfld(m, 'account', 'ema-', tk(k, 'em_acc'), 'inputmode="numeric"', myProv(k) ? t('my_acc_h') : tk(k, 'em_acc_h'), k === 'gas' && m.account && dgt(m.account).length !== 9 ? t('gm_e_acc', { n: dgt(m.account).length }) : '') +
       (k === 'gas' ? sfld(m, 'eic', 'eme-', t('gm_eic'), 'autocapitalize="characters" spellcheck="false" maxlength="20"', t('gm_eic_h'), !m.eic ? '' : m.eic.length !== 16 ? t('gm_e_eic', { n: m.eic.length }) : !/^56/.test(m.eic) ? t('gm_e_eic56') : '') : '');
   }
   /** Сторінка виду: табло кожного лічильника, «Внести», «Куди передати», історія, налаштування лічильника. */
@@ -2808,11 +2857,11 @@
       return mbox({ key: 'emeter-' + m.id, id: m.id, kind: k, icon: SK[k].icon, cls: SK[k].cls, name: ms.length > 1 ? ename(m) : t(KINDS[k].t), sub: [ezonesTxt(m)],
         display: edisplay(m, r, 'hero'), cap: cap, copy: r && r.z && SK[k].mod.zones(m) <= 1 && SK[k].mod.whole(r.z.all) !== null ? SK[k].mod.whole(r.z.all) : '', body: sc.note ? '<p class="small muted mb-newer">' + esc(sc.note) + '</p>' : '',
         meta: [verWarn(m.verifiedUntil)].filter(Boolean),
-        set: monoLink(k + '-set') + smeterFields(k, m) + (i === 0 ? priceBlock(k) + sheatRow(k) : '') , setTitle: t('mb_set_read') });
+        set: (i === 0 ? myPick(k) : '') + (myProv(k) ? '' : monoLink(k + '-set')) + smeterFields(k, m) + (i === 0 ? priceBlock(k) + sheatRow(k) : '') , setTitle: t('mb_set_read') });
     }).join('');
     if (k === 'elec') left += gpvBox(p, 'elec');
     var w = swin(k), cur = w.open ? ms.map(function (m) { return einWin(m.id, w); }) : null;
-    var act = '<button class="btn big block" data-act="' + SK[k].nw + '" data-key="' + k + '-add">' + ico('plus', 22) + '<span>' + esc(tk(k, 'en_title')) + '</span></button>', right = whereAcc(ssendPanel(k, cur));
+    var act = '<button class="btn big block" data-act="' + SK[k].nw + '" data-key="' + k + '-add">' + ico('plus', 22) + '<span>' + esc(tk(k, 'en_title')) + '</span></button>', right = myProv(k) ? myPageS(k) : whereAcc(ssendPanel(k, cur));
     var er = srows(k, 3);
     if (er.total) right += histPanel(er.html, er.total, '<button class="btn sec block" data-act="view-go" data-v="' + k + '" data-to="history" data-key="' + k + '-all">' + esc(t('wh_all', { n: er.total })) + '</button>', k);
     // «Як знімати й куди передавати» прибрано (владелец 07.11)
@@ -3357,7 +3406,7 @@
     if (px && px.dz) {
       var pc = md.cost(m, px.dz, r.date, sopts(k)), p1 = md.zones(m) === 1, pcur = md.whole(r.z.all), pa0 = md.whole(pa.rec.z && pa.rec.z.all);
       // газ: доставка (розподіл) — за кожен місяць від «Передано» до цього запису (123-я)
-      var pfee = k === 'gas' ? sopts(k).fee || 0 : 0, pfn = pfee ? feeMonths(md, pa.date, r.date) : 0;
+      var pfee = sopts(k).fee || 0, pfn = pfee ? feeMonths(md, pa.date, r.date) : 0;
       h += usedBox({ kind: k, key: 'erec-used', title: t(pa.sent ? 'ru_title_paid' : 'ru_title_h', { d: fmtDate(pa.date) }), per: t('ru_per', { a: fmtDate(pa.date), b: fmtDate(r.date), d: px.days }),
         qs: [{ v: '+' + px.kwh, u: u }], money: pc.total + pfee * pfn, vals: vals,
         lines: (p1 ? [t('ru_calc', { q: px.kwh, u: u, p: money(pc.price), s: money(pc.total) })] : md.keys(m).map(function (q) { return t('ru_zone', { z: ezl(m, q), q: px.dz[q], p: money(pc.price * md.coef(m, q)), s: money(pc.parts[q]) }); }))
@@ -3366,7 +3415,7 @@
         proj: usedProj(px.kwh, px.days, pc.total, u), note: k === 'gas' ? gasNote(pc.price) : '' });
     } else if (x.dz) {
       var ym = md.forMonth(r.date), b = md.monthly(md.series(mrecs(m.id), m), m, sopts(k)).filter(function (b0) { return b0.ym === ym; })[0] || { kwh: x.kwh, dz: x.dz, days: x.days, from: null, to: r.date };
-      var c = md.cost(m, b.dz, b.to, sopts(k)), one = md.zones(m) === 1, cur = md.whole(r.z.all), mfee = k === 'gas' ? sopts(k).fee || 0 : 0;
+      var c = md.cost(m, b.dz, b.to, sopts(k)), one = md.zones(m) === 1, cur = md.whole(r.z.all), mfee = sopts(k).fee || 0;
       h += usedBox({ kind: k, key: 'erec-used', title: t('ru_title', { m: monthLabel(ym) }), per: b.from ? t('ru_per', { a: fmtDate(b.from), b: fmtDate(b.to), d: b.days }) : '',
         qs: [{ v: '+' + b.kwh, u: u }], money: c.total + mfee, vals: vals,
         lines: (one ? [t('ru_calc', { q: b.kwh, u: u, p: money(c.price), s: money(c.total) })] : md.keys(m).map(function (q) { return t('ru_zone', { z: ezl(m, q), q: b.dz[q], p: money(c.price * md.coef(m, q)), s: money(c.parts[q]) }); }))
@@ -3376,7 +3425,9 @@
     else h += usedOnly(k, 'erec-used', vals);
     h += recPhotos(r.photos, 'm' + r.id, 'm:' + r.id);
     if (r.base) h += ownBox('m', r);
-    if (!r.base && !r.own) {
+    var myr = !r.base && !r.own ? myProv(k, myPlaceOf(r)) : null;
+    if (myr) h += myPayBox(k, myr, myCtxS(k, m, r), myMarkS(k, r), 'mypay-rec');   // 144-а: свій постачальник — «Оплата» замість «Куди передати»
+    else if (!r.base && !r.own) {
       var w = swin(k);
       if (w.open && r.date >= w.from && r.date <= w.to) h += whereAcc(ssendPanel(k, smeters(k).map(function (mm) { return mm.id === m.id ? r : einWin(mm.id, w); })), r.id);
       else h += '<p>' + (ssent(k, r) ? '<span class="pill ok">' + ico('check', 14) + ' ' + esc(tk(k, 'ed_org')) + '</span>' : '<span class="pill neutral">' + esc(tk(k, 'ed_org')) + ': ' + esc(t('wh_notsent')) + '</span>') + '</p>';
@@ -3388,7 +3439,7 @@
   }
   function shistory(k) {
     var er = srows(k, 0, true), head = '<h1>' + esc(t('hi_title')) + '</h1>' + kindSwitch();
-    if (!er.total) return { screen: 'S09', route: 'history', html: head + '<div class="panel"><p class="muted">' + esc(t('wh_empty')) + '</p><button class="btn" data-act="' + SK[k].nw + '">' + esc(tk(k, 'en_title')) + '</button></div>' };
+    if (!er.total) return { screen: 'S09', route: 'history', html: head + emptyState({ key: 'es-hist-' + k, kind: k, title: t('es_h_' + k), text: t('es_h_s'), btn: esBtn(SK[k].nw, tk(k, 'en_title'), 'es-hist-add') }) };
     return { screen: 'S09', route: 'history', html: head + er.html + '<p class="small muted">' + esc(tk(k, 'eh_hint')) + '</p>' };
   }
   function smonthly(k) {
@@ -3409,13 +3460,13 @@
       var pa = paidAnchor(all, last, function () { return true; }, sentS), px = pa && pa.sent ? md.series([pa.rec, last], m)[1] : null; if (!px || !px.dz) return;
       q += px.kwh; c += md.cost(m, px.dz, last.date, sopts(k)).total; if (!d || pa.date < d) d = pa.date; if (!to || last.date > to) to = last.date;
     });
-    var fee = d && k === 'gas' ? sopts(k).fee || 0 : 0; if (fee) c += fee * feeMonths(md, d, to);   // газ: доставка за місяці від «Передано» (123-я)
+    var fee = d ? sopts(k).fee || 0 : 0; if (fee) c += fee * feeMonths(md, d, to);   // газ: доставка за місяці від «Передано» (123-я)
     return d ? { q: q, cost: c, d: d } : null;
   }
   function sstats(k) {
     chColors();
     var md = SK[k].mod, u = SK[k].unit(), mo = smonthly(k), sm = md.summary(mo), head = '<h1>' + esc(t('stt_title')) + '</h1>' + kindSwitch();
-    if (!mo.length) return { screen: 'S15', route: 'stats', html: head + '<div class="panel"><p class="muted">' + esc(t('est_empty')) + '</p></div>' };
+    if (!mo.length) return { screen: 'S15', route: 'stats', html: head + esStats(k, mrecs().filter(function (r) { return smeters(k, true).some(function (m) { return m.id === r.meter; }); }), esBtn(SK[k].nw, tk(k, 'en_title'), 'es-stats-add')) };
     var per = function (b) { return t('stt_period', { a: R.toHtmDate(b.from), b: R.toHtmDate(b.to), d: b.days }); };
     var two = k === 'elec' && emeters(true).some(function (m) { return El.zones(m) > 1; }), nightKwh = mo.reduce(function (s0, b) { return s0 + b.night; }, 0), allKwh = mo.reduce(function (s0, b) { return s0 + b.kwh; }, 0), since = ssince(k);
     var tiles = kpi({ key: 'estats-kpi', tone: k, q: fmtN(sm.perMonth, 0), unit: u, money: sm.uahMonth, cap: t('kpi_w_avg', { n: sm.months }),
@@ -4566,7 +4617,7 @@
       body: (NOTE_NEWER && newer ? '<p class="small muted mb-newer">' + esc(t(newer.own ? 'mb_newer_own' : 'mb_newer_heat', { d: fmtDate(newer.htm.date, true), s: t('status_' + newer.status).toLowerCase() })) + '</p>' : '') +
         (bs ? '' : '<p class="small muted">' + esc(t('h_last_none_sub')) + '</p><p><a class="btn sec" href="#baseline" data-key="home-add-base">' + esc(t('h_add_base')) + '</a></p>'),
       meta: [verWarn(S.meter && S.meter.verifiedUntil)].filter(Boolean),
-      set: monoLink('heat-set') + heatMeterFields(m) + htmFormBox(htmAsk()) + priceBlock('heat') + gapSetLink('heat') , setTitle: t('mb_set_read') });
+      set: myPick('heat') + (myProv('heat') ? '' : monoLink('heat-set')) + heatMeterFields(m) + htmFormBox(htmAsk()) + priceBlock('heat') + gapSetLink('heat') , setTitle: t('mb_set_read') });
     var act = '', right = '';
     var n = steps().length;
     if (S.draft && (Object.keys(S.draft.values || {}).length || S.draft.step > 0)) {
@@ -4575,7 +4626,8 @@
     } else {
       act += '<button class="btn big block" data-act="read" data-key="home-read">' + esc(t('h_read')) + '</button>';   // фото — на кроках введення («з фото»)
     }
-    right += whereAcc(heatWhere());
+    var myh = myProv('heat'), hlast = myh ? RD().filter(function (x) { return x.htm && x.htm.date && !x.own; }).slice(-1)[0] : null;
+    right += myh ? (hlast && !/^(handed|accepted)$/.test(hlast.status) ? myPayBox('heat', myh, myCtxH(hlast), '') : '') : whereAcc(heatWhere());   // 144-а: свій постачальник — без «Куди передати»
     var recent = heatMixed(3);
     if (recent.length) right += histPanel(readingList(recent), RD().length + gaps('heat').length, '<button class="btn sec block" data-act="view-go" data-v="heat" data-to="history" data-key="heat-all">' + esc(t('wh_all', { n: RD().length + gaps('heat').length })) + '</button>', 'heat');
     if (Y().mode === 'server' && !Y().account && RD().length && !S.syncPromptDismissed) {
@@ -4790,7 +4842,7 @@
     return '<div class="field"><label for="p-mzk">' + esc(t('p_mzk_l')) + '</label><div class="ctl"><input id="p-mzk" class="num" inputmode="decimal" placeholder="' + esc(b.auto > 0 ? f(b.auto) : '0,01262') + '" value="' + esc(b.own !== null ? f(b.own) : '') + '"></div><div class="small muted" data-key="p-mzk-h">' + esc(h) + '</div></div>';
   }
   /** Тепло від ХТМ: адреси немає (Харків за замовчуванням) або постачальник тепла в довіднику — ХТМ. */
-  function heatHtm() { var d = prvOf('heat'); return !d || d.via === 'htm'; }
+  function heatHtm() { if (myProv('heat')) return false; var d = prvOf('heat'); return !d || d.via === 'htm'; }   // 144-а: свій постачальник тепла — не ХТМ
   /** Чи є хоч одна квартира з теплолічильником, тепло якої — від ХТМ (контакти для форми ХТМ, 142-а). */
   function anyHtm() { return places().some(function (p) { return withPlace(p.id, function () { return hasHeat() && heatHtm(); }); }); }
   /** 126-а: квартира з адресою, тепло — не від ХТМ: показання — лише енергія, без форми й правил ХТМ. */
@@ -4919,16 +4971,17 @@
    *  src: w (вода) | m (світло, газ) | h (тепло); k — вид (hot/cold/elec/gas/heat); cur: sent | not | own; label — своя надпись
    *  (у тепла — «Прийнято», «На перевірці»…). Стартовые — только «передано / не передавали». */
   function stChip(src, r, k, cur, label, ks) {
-    var cls = cur === 'own' ? 'own' : cur === 'sent' ? 'ok' : 'neutral';
-    var txt = label || '<span class="pill ' + cls + '">' + esc(ucf(cur === 'own' ? t('own_pill') : cur === 'sent' ? t('wh_sent') : r.base ? t('bs_unsent') : t('wh_notsent'))) + '</span>';
-    return '<button type="button" class="st-chip" data-act="st-open" data-src="' + src + '" data-id="' + esc(r.id) + '" data-k="' + k + '" data-cur="' + cur + '"' + (r.base ? ' data-base="1"' : '') +
+    var cls = cur === 'own' ? 'own' : cur === 'sent' ? 'ok' : 'neutral', my = src !== 'h' && !r.base && !!myProv(k, myPlaceOf(r));   // 144-а: свій постачальник — «Оплачено / Не оплачено»
+    var txt = label || '<span class="pill ' + cls + '">' + esc(ucf(cur === 'own' ? t('own_pill') : cur === 'sent' ? t(my ? 'my_paid' : 'wh_sent') : r.base ? t('bs_unsent') : t(my ? 'my_notpaid' : 'wh_notsent'))) + '</span>';
+    return '<button type="button" class="st-chip" data-act="st-open" data-src="' + src + '" data-id="' + esc(r.id) + '" data-k="' + k + '" data-cur="' + cur + '"' + (r.base ? ' data-base="1"' : '') + (my ? ' data-my="1"' : '') +
       ' aria-haspopup="true" aria-expanded="false" aria-label="' + esc(t('st_aria', { s: String(txt).replace(/<[^>]+>/g, '') })) + '" data-key="st-' + esc(r.id) + (ks || '') + '">' + String(txt).replace(/<\/span>$/, ico('chev', 14, 'st-dd') + '</span>') + '</button>';
   }
   function stClose() { Array.prototype.forEach.call(document.querySelectorAll('.st-menu'), function (m) { m.remove(); }); Array.prototype.forEach.call(document.querySelectorAll('.st-chip[aria-expanded="true"]'), function (b) { b.setAttribute('aria-expanded', 'false'); }); }
   function stOpen(el) {
     var was = el.getAttribute('aria-expanded') === 'true'; stClose(); if (was) return;
-    var src = el.getAttribute('data-src'), k = el.getAttribute('data-k'), cur = el.getAttribute('data-cur'), base = el.getAttribute('data-base') === '1';
+    var src = el.getAttribute('data-src'), k = el.getAttribute('data-k'), cur = el.getAttribute('data-cur'), base = el.getAttribute('data-base') === '1', my = el.getAttribute('data-my') === '1';
     var opts = base ? [['sent', 'st_sent', 'bs_lead_s'], ['not', 'st_base_not', '']]
+      : my ? [['sent', 'my_paid', 'my_paid_s'], ['not', 'my_notpaid', ''], ['own', 'st_own', 'st_own_s']]
       : src === 'h' ? [['accepted', 'st_acc', 'st_acc_s'], ['handed', 'st_rev', 'st_rev_s']].concat(cur === 'rejected' ? [['rejected', 'st_rej', 'st_rej_s']] : [], [['not', 'st_not', ''], ['own', 'st_own', 'st_own_s']])
       : [['sent', 'st_sent', 'st_sent_' + (k === 'hot' ? 'hot' : k)], ['not', 'st_not', ''], ['own', 'st_own', 'st_own_s']];
     var m = document.createElement('div'); m.className = 'st-menu'; m.setAttribute('role', 'menu'); m.setAttribute('data-key', 'st-menu');
@@ -5251,7 +5304,7 @@
   var HO_POP = '';
   /** 126-а: передача постачальнику тепла не ХТМ — одне число (енергія як на екрані; не Гкал — ще й у Гкал), куди передати — з довідника громади, «Передано». */
   function handoverLite(r) {
-    var h = r.htm || {}, eu = energyUnit(), ev = htmVal('energy', h, r.raw), g = R.num(h.energy), ld = prvOf('heat') || {};
+    var h = r.htm || {}, eu = energyUnit(), ev = htmVal('energy', h, r.raw), g = R.num(h.energy), ld = prvOf('heat') || {}, myh = myProv('heat');
     var row = function (k, v, key) { return '<li><div><div class="k">' + esc(k) + '</div><div class="v">' + esc(v) + '</div></div><span></span><button class="btn sec" data-act="copy" data-text="' + esc(v) + '" data-key="copy-' + key + '">' + ico('copy', 18) + '<span>' + esc(t('copy')) + '</span></button></li>'; };
     var rows = row(fieldLabel('energy') + ', ' + unitLbl(eu), ev, 'energy') + (eu !== 'Gcal' && g !== null ? row(t('hl_gcal'), g.toFixed(3), 'gcal') : '');
     var sent = r.status === 'handed' || r.status === 'accepted';
@@ -5262,8 +5315,9 @@
       '<div class="wiz-top"><a class="btn ghost" href="#check">' + ico('back', 20) + '<span>' + esc(t('back')) + '</span></a></div>' +
       '<h1>' + esc(t('hl_title')) + '</h1><p>' + esc(t('hl_lead')) + '</p>' +
       '<div class="cols"><div class="ho-values"><ul class="copy-list" data-key="handover-values">' + rows + '</ul></div>' +
-      '<div class="ho-steps"><div class="panel"><h2>' + esc(t('ho_steps_title')) + '</h2><ol class="steps"><li>' + esc(t('hl_s1')) + '</li><li>' + esc(t('hl_s2')) + '</li><li>' + esc(t('hl_s3')) + '</li></ol></div></div></div>' +
-      '<section class="panel where" data-key="where-heat-lite">' + localDest('heat', ld, '', '', sent, lbBox(ld, [r], lbItemsHeat(r))) + '</section>' + st };
+      (myh ? '' : '<div class="ho-steps"><div class="panel"><h2>' + esc(t('ho_steps_title')) + '</h2><ol class="steps"><li>' + esc(t('hl_s1')) + '</li><li>' + esc(t('hl_s2')) + '</li><li>' + esc(t('hl_s3')) + '</li></ol></div></div>') + '</div>' +
+      // 144-а: свій постачальник — «Оплата» (реквізити, призначення, сума) замість «Куди передати»
+      (myh ? myPayBox('heat', myh, myCtxH(r), '', 'mypay-ho') : '<section class="panel where" data-key="where-heat-lite">' + localDest('heat', ld, '', '', sent, lbBox(ld, [r], lbItemsHeat(r))) + '</section>') + st };
   }
   function hoStatus(r) {
     var cur = /^(handed|accepted|rejected)$/.test(r.status) && !r.own ? r.status : '';
@@ -5478,7 +5532,8 @@
   }
   /** Вкладки без единого счётчика в квартире — пусто и «Додати лічильник». */
   function noMeters(route, title) {
-    return { screen: 'S09', route: route, html: '<h1>' + esc(t(title)) + '</h1><div class="panel" data-key="no-meters"><p class="muted">' + esc(t('hi_nometers')) + '</p><button class="btn" data-act="add-meter" data-key="no-meters-add">' + ico('plus', 20) + '<span>' + esc(t('am_tile')) + '</span></button></div>' };
+    return { screen: 'S09', route: route, html: '<h1>' + esc(t(title)) + '</h1>' + emptyState({ key: 'no-meters', icon: 'home', cls: 'c-place', ghost: route === 'stats' ? 'stats' : 'hist',
+      title: t('es_nom_t', { p: placeLabel(place()) }), text: t('es_nom_s'), btn: esBtn('add-meter', t('am_tile'), 'no-meters-add') }) };
   }
   V.history = function () { if (!kinds().length) return noMeters('history', 'hi_title'); var k = curView(); return k === 'heat' ? heatHistory() : k === 'waste' ? wasteHistory() : SK[k] ? shistory(k) : whistory(k); };
   V.stats = function () { if (!kinds().length) return noMeters('stats', 'stt_title'); var k = curView(); return k === 'heat' ? heatStats() : k === 'waste' ? wasteStats() : SK[k] ? sstats(k) : wstats(k); };
@@ -5504,7 +5559,7 @@
     if (HF.v === 'own') arr = arr.filter(function (x) { return !x.b && !x.n; });
     else if (HF.v === 'htm') arr = hms.map(function (m) { return { d: m.ym + '-28', n: { ym: m.ym, heat: null, m: m } }; });
     return { screen: 'S09', route: 'history', html: '<h1>' + esc(t('hi_title')) + '</h1>' + kindSwitch() + sw +
-      (arr.length ? '<p class="small muted hs-unit" data-key="hs-unit">' + esc(t(heatLite() ? 'hs_unit_l' : 'hs_unit', { p: money0(tariff()) })) + '</p>' + seasonList(arr) : '<div class="panel"><p class="muted">' + esc(t('hi_empty')) + '</p><button class="btn" data-act="read">' + esc(t('hi_empty_cta')) + '</button></div>') + (HF.v === 'htm' ? '' : gapAddLink('heat')) };
+      (arr.length ? '<p class="small muted hs-unit" data-key="hs-unit">' + esc(t(heatLite() ? 'hs_unit_l' : 'hs_unit', { p: money0(tariff()) })) + '</p>' + seasonList(arr) : emptyState({ key: 'es-hist-heat', kind: 'heat', title: t(HF.v === 'htm' ? 'es_h_htm' : 'es_h_heat'), text: t(HF.v === 'htm' ? 'es_h_htm_s' : 'es_h_s'), btn: HF.v === 'htm' ? '' : esBtn('read', t('hi_empty_cta'), 'es-hist-add') })) + (HF.v === 'htm' ? '' : gapAddLink('heat')) };
   }
   /** 130-а: прийняті ХТМ показання свого лічильника з кабінету (журнал «Довідки по теплу»), без запасного списку із застосунку. */
   function hsprJournal() { var x = (HSPR.places || []).filter(function (p) { return p.place === S.placeId; })[0], own = (x && x.own) || []; return own.filter(function (o) { return o && o.status !== 'rejected' && o.date && typeof o.energy === 'number'; }); }
@@ -5779,7 +5834,7 @@
     var St = window.TeploStats; loadWeather(); hsprLoad();
     var w = WX.days, ivs = St.intervals(RD(), S.baseline, w, tariff(), gaps('heat')), cl = St.coolant(RD(), S.baseline, w);
     ivs.forEach(function (it) { it.cost = +costOf(it.dE, it.days, it.to).total.toFixed(2); });
-    if (!ivs.length) return { screen: 'S15', route: 'stats', html: '<h1>' + esc(t('stt_title')) + '</h1>' + kindSwitch() + '<div class="panel"><p class="muted">' + esc(t('stt_empty')) + '</p></div>' };
+    if (!ivs.length) return { screen: 'S15', route: 'stats', html: '<h1>' + esc(t('stt_title')) + '</h1>' + kindSwitch() + esStats('heat', RD().filter(function (r) { return r.htm && r.htm.date; }), esBtn('read', t('hi_empty_cta'), 'es-stats-add')) };
     var summer = function (it) { return it.days > 100; };
     var lbl = function (it) { return shortDate(it.to); };
     var period = function (it) { return t('stt_period', { a: R.toHtmDate(it.from), b: R.toHtmDate(it.to), d: it.days }); };
@@ -6505,6 +6560,7 @@
   function prvKinds() { var k = []; if (hasHeat()) k.push('heat'); if (wmeters().length) k.push('water'); if (emeters().length) k.push('elec'); if (smeters('gas').length) k.push('gas'); return k; }
   var PRV_ICO = { elec: ['bolt', 'c-elec'], gas: ['flame', 'c-gas'], water: ['drop', 'c-cold'], heat: ['thermo', 'c-hot'] };
   function prvRow(p, k, d, nat, extra) {
+    if (((p.prov || {})[k] || {}).own) return myRowP(p, k, extra);   // 144-а: свій постачальник — його назва, як платите, тариф
     var my = (p.prov || {})[k] || {}, own = !!(my.name || my.supply || my.price), ed = PRV.edit[k], org = my.name || (d && d.org) || '';
     var lines = [], price = '';
     if (k === 'heat') {
@@ -6550,9 +6606,9 @@
         '<div class="row-actions"><button type="button" class="btn sec" data-act="prv-cancel" data-k="' + k + '">' + esc(t('cancel')) + '</button><button type="button" class="btn" data-act="prv-save" data-k="' + k + '" data-key="prov-save-' + k + '">' + esc(t('save')) + '</button></div></div>';
     } else if (need && org && !(k === 'water' && !price)) {
       h += '<p class="prov-act"><button type="button" class="btn sec sm" data-act="prv-yes" data-k="' + k + '" data-key="prov-yes-' + k + '">' + ico('check', 18) + '<span>' + esc(t('prv_yes')) + '</span></button>' +
-        '<button type="button" class="btn ter sm" data-act="prv-other" data-k="' + k + '" data-key="prov-other-' + k + '">' + ico('edit', 18) + '<span>' + esc(t('prv_other')) + '</span></button></p>';
+        '<button type="button" class="btn ter sm" data-act="prv-other" data-k="' + k + '" data-key="prov-other-' + k + '">' + ico('edit', 18) + '<span>' + esc(t('prv_other')) + '</span></button>' + myGoBtn(k) + '</p>';
     } else {
-      h += '<p class="prov-act"><button type="button" class="btn ' + (need ? 'sec' : 'ter') + ' sm" data-act="prv-other" data-k="' + k + '" data-key="prov-other-' + k + '">' + ico('edit', 18) + '<span>' + esc(t(need ? 'prv_fill' : 'prv_change')) + '</span></button></p>';
+      h += '<p class="prov-act"><button type="button" class="btn ' + (need ? 'sec' : 'ter') + ' sm" data-act="prv-other" data-k="' + k + '" data-key="prov-other-' + k + '">' + ico('edit', 18) + '<span>' + esc(t(need ? 'prv_fill' : 'prv_change')) + '</span></button>' + myGoBtn(k) + '</p>';
     }
     return h + (extra || '') + '</div></div>';
   }
@@ -6586,7 +6642,9 @@
   }
   /** Вид без довідника (немає адреси, вантажиться) — лише назва виду й дані з платіжки. */
   function prvBare(k, extra) {
-    return '<div class="prov-row" data-key="prov-bare-' + k + '"><span class="pst-ico ' + PRV_ICO[k][1] + '">' + ico(PRV_ICO[k][0], 20) + '</span><div class="prov-b"><p class="prov-k"><b>' + esc(t('prv_k_' + k)) + '</b></p>' + extra + '</div></div>';
+    var p = place() || {}; if (((p.prov || {})[k] || {}).own) return myRowP(p, k, extra);   // 144-а: свій постачальник і без адреси (гараж)
+    return '<div class="prov-row" data-key="prov-bare-' + k + '"><span class="pst-ico ' + PRV_ICO[k][1] + '">' + ico(PRV_ICO[k][0], 20) + '</span><div class="prov-b"><p class="prov-k"><b>' + esc(t('prv_k_' + k)) + '</b></p>' + extra +
+      '<p class="prov-act">' + myGoBtn(k) + '</p></div></div>';
   }
   document.addEventListener('click', function (e) {
     var b = e.target.closest && e.target.closest('[data-act^="prv-"]'); if (!b) return;
@@ -6610,6 +6668,266 @@
       p.prov[k] = o; delete PRV.edit[k]; p.updatedAt = Date.now(); WX.key = ''; save(); toast(t('prv_saved'));
     } else return;
     SCROLL_TO = 'prov'; render(true);
+  });
+  // ---------- 144-а: «Свій постачальник» (власник 14.11, ТЗ 143-ї) ----------
+  // «Світло в гаражі плачу гаражному кооперативу на розрахунковий рахунок — у призначенні який гараж і скільки набігло, свій тариф, через Приват;
+  // на будові — Житлобуду готівкою, без строку». Постачальника немає в довіднику — у «Налаштуваннях показань» будь-якого лічильника першим
+  // рядком «Кому платите»: з довідника / «Свій постачальник» — назва, як платите (рахунок / готівка / інакше), призначення платежу шаблоном,
+  // строк (без строку / до N / з A по B), щомісячна плата; тариф — ті самі поля ціни. Тоді блоку «Куди передати» немає (власник: «пользователь
+  // и так знает»), роботів і нагадувань за довідником — теж. Є неоплачені показання — «Оплата»: сума, реквізити з «Копіювати», готове призначення, «Оплачено».
+  // Дані: place.prov[heat|water|elec|gas|waste] = { own: 1, name, how: iban|cash|other, iban, recip, code, purpose, cash, other, due: none|till|win,
+  // till, win: [a, b], abon, phone, note } (+ старі поля ціни price/supply/drain/hot — не чіпаємо). own: 0 — повернули довідник, решта лишається.
+  var MY_K = { heat: 'heat', hot: 'water', cold: 'water', water: 'water', elec: 'elec', gas: 'gas', waste: 'waste' };
+  function myK(k) { return MY_K[k] || k; }
+  function myProv(k, p) { p = p === undefined ? place() : p; var o = p && p.prov && p.prov[myK(k)]; return o && o.own ? o : null; }
+  function myPlaceOf(r) { var id = r && r.place; return (id && places().filter(function (x) { return x.id === id; })[0]) || place(); }
+  /** Вікно приймання свого постачальника ([перше, останнє] — як perWin) або null — без строку. */
+  function myWin(o) {
+    if (!o) return null;
+    if (o.due === 'till' && R.num(o.till) > 0) return [1, Math.min(31, Math.round(R.num(o.till)))];
+    if (o.due === 'win' && o.win && winOk([+o.win[0], +o.win[1]])) return [+o.win[0], +o.win[1]];
+    return null;
+  }
+  /** Хто з довідника (або харківський за замовчуванням) — перший варіант у «Кому платите». */
+  function myDirOrg(k) {
+    var pk = myK(k);
+    if (pk === 'waste') { var wd = wasteDir(place()); return (wd && wd.org) || ''; }
+    var d = prvOf(pk); if (d && (d.org || d.grm)) return d.org || d.grm;
+    return pk === 'heat' ? t('wd_htm_org') : pk === 'water' ? t('wd_vk_org') : pk === 'elec' ? t('ed_org') : pk === 'gas' ? t('gd_org') : '';
+  }
+  /** IBAN: «UA21 3223 1300 0002 6007 2335 6600 1» для показу; перевірка — довжина й контрольні цифри (ISO 13616, mod 97). */
+  function myIban(v) { return String(v || '').replace(/[\s-]/g, '').toUpperCase(); }
+  function myIbanFmt(v) { var s = myIban(v); return s.replace(/(.{4})/g, '$1 ').trim(); }
+  function myIbanBad(v) {
+    var s = myIban(v); if (!s) return '';
+    if (!/^UA\d{27}$/.test(s)) return /^[A-Z]{2}/.test(s) && !/^UA/.test(s) ? '' : t('my_iban_len', { n: s.replace(/^UA/, '').replace(/\D/g, '').length });
+    var r = (s.slice(4) + s.slice(0, 4)).replace(/[A-Z]/g, function (c) { return String(c.charCodeAt(0) - 55); }), m = 0;
+    for (var i = 0; i < r.length; i++) m = (m * 10 + +r[i]) % 97;
+    return m === 1 ? '' : t('my_iban_sum');
+  }
+  // шаблон призначення: слова в {дужках} — обома мовами, хоч би якою мовою людина набрала
+  var MY_TOK = ['place', 'val', 'prev', 'q', 'sum', 'mon'];
+  var MY_TOKRE = { place: /\{(назва|название|квартира|гараж)\}/gi, val: /\{(показання|показания)\}/gi, prev: /\{(попередні|предыдущие|було|было)\}/gi,
+    q: /\{(набігло|набежало)\}/gi, sum: /\{(сума|сумма)\}/gi, mon: /\{(місяць|месяц)\}/gi };
+  /** Готове призначення платежу з шаблону людини (порожній — типовий); c — що підставити ({place, val, prev, q, sum, mon}); немає даних — «…». */
+  function myPurpose(pk, o, c) {
+    var tpl = String((o && o.purpose) || '').trim() || t(pk === 'waste' ? 'my_purp_def_w' : 'my_purp_def'); c = c || {};
+    var v = { place: c.place || placeLabel(place()), val: c.val || '', prev: c.prev || '', q: c.q || '', sum: c.sum !== undefined && c.sum !== null ? money(c.sum) : '', mon: c.mon || '' };
+    Object.keys(MY_TOKRE).forEach(function (x) { tpl = tpl.replace(MY_TOKRE[x], v[x] === '' ? '…' : v[x]); });
+    return tpl.replace(/[ \t]+/g, ' ').trim();
+  }
+  /** Світло / газ: що підставити — показання (зони через кому), попередні від останнього «Оплачено» (чи попереднього запису), набігло й сума за тарифом. */
+  function myCtxS(k, m, r) {
+    var md = SK[k].mod, u = SK[k].unit(), zs = md.keys(m);
+    var pa = paidAnchor(mrecs(m.id), r, function () { return true; }, function (y) { return y.base ? baseSent(y) : ssent(k, y); }), pr = pa ? pa.rec : null;
+    var fv = function (rr) { return zs.map(function (z) { var v = md.whole(rr.z && rr.z[z]); return (zs.length > 1 ? ezl(m, z) + ' ' : '') + (v === null ? '—' : v); }).join(', '); };
+    var c = { place: placeLabel(myPlaceOf(r)), val: fv(r), prev: pr ? fv(pr) : '', mon: monthLabel(md.forMonth(r.date)), from: pr ? pr.date : null };
+    var px = pr ? md.series([pr, r], m)[1] : null;
+    if (px && px.dz) {
+      var so = sopts(k), pc = md.cost(m, px.dz, r.date, so), fee = so.fee || 0, fn = fee ? feeMonths(md, pr.date, r.date) : 0;
+      c.q = px.kwh + ' ' + u; c.sum = Math.round((pc.total + fee * fn) * 100) / 100;
+    }
+    return c;
+  }
+  /** Вода: показання водомірів («Гаряча 175, Холодна 437»), набігло разом і сума за тарифами квартири. */
+  function myCtxW(r) {
+    var all = wmeters(null, true), ms = all.filter(function (m) { return hasVal(r, m.id); }), many = ms.length > 1;
+    var a = paidAnchor(wrecs(), r, function (y) { return ms.some(function (m) { return hasVal(y, m.id); }); }, function (y) { return y.base ? baseSent(y) : !!wsentVk(y); }), pr = a ? a.rec : null;
+    var fv = function (rr) { return ms.filter(function (m) { return hasVal(rr, m.id); }).map(function (m) { return (many ? wname(m) + ' ' : '') + Wt.whole(rr.vals[m.id]); }).join(', '); };
+    var c = { place: placeLabel(myPlaceOf(r)), val: fv(r), prev: pr ? fv(pr) : '', mon: monthLabel(String(r.date).slice(0, 7)), from: pr ? pr.date : null };
+    var s1 = pr ? Wt.series([pr, r], all, gaps())[1] : null;
+    if (s1 && (s1.hot !== null || s1.cold !== null)) { var qh = s1.hot || 0, qc = s1.cold || 0; c.q = (qh + qc) + ' м³'; c.sum = Math.round(Wt.cost(qc, qh, r.date, wtar()).total * 100) / 100; }
+    return c;
+  }
+  /** Тепло: енергія як на табло, набігло в Гкал від попередніх і сума за тарифом. */
+  function myCtxH(r) {
+    var h = r.htm || {}, iv = interval(r, true), eu = unitLbl(energyUnit());
+    var c = { place: placeLabel(myPlaceOf(r)), val: htmVal('energy', h, r.raw) + ' ' + eu, prev: '', mon: monthLabel(String(h.date || '').slice(0, 7)), from: iv ? iv.from : null };
+    if (iv) { c.prev = String(iv.fromE).replace('.', ',') + ' ' + eu; c.q = fmtN(iv.dE, 3) + ' Гкал'; c.sum = Math.round(iv.cost * 100) / 100; }
+    return c;
+  }
+  /** Приклад для поля шаблону — з останнього запису цього виду (немає — «…» замість чисел). */
+  function myCtxLast(pk) {
+    if (pk === 'elec' || pk === 'gas') { var m = smeters(pk)[0], r = m && elastOf(m.id); return r && !r.base ? myCtxS(pk, m, r) : { mon: monthLabel(today().slice(0, 7)) }; }
+    if (pk === 'water') { var w = wlast(); return w && !w.base ? myCtxW(w) : { mon: monthLabel(today().slice(0, 7)) }; }
+    if (pk === 'heat') { var hr = RD().filter(function (x) { return x.htm && x.htm.date; }).slice(-1)[0]; return hr ? myCtxH(hr) : { mon: monthLabel(today().slice(0, 7)) }; }
+    if (pk === 'waste') { var p = place(); return { sum: wasteSum(p, wasteDir(p)), mon: monthLabel(today().slice(0, 7)) }; }
+    return {};
+  }
+  var MY_NEW = {};   // щойно ввімкнули — після перемальовки фокус у «Назва»
+  /** «Кому платите» — перший рядок «Налаштувань показань» кожного лічильника (і «Налаштувань вивозу»): з довідника чи свій. */
+  function myPick(k) {
+    var pk = myK(k), p = place() || {}, o = (p.prov || {})[pk] || {}, own = !!o.own, dir = myDirOrg(pk), a = String(p.address || '').trim();
+    var opt = function (v, on, b, s, ic) {
+      return '<label class="my-opt' + (on ? ' on' : '') + '"><input type="radio" name="my-' + pk + '" value="' + v + '"' + (on ? ' checked' : '') + ' data-my-pick="' + pk + '" data-key="my-' + pk + '-' + v + '">' +
+        '<span class="my-o-ic">' + ico(ic, 20) + '</span><span class="my-o-t"><b>' + esc(b) + '</b><span class="small muted">' + esc(s) + '</span></span><span class="my-o-dot" aria-hidden="true"></span></label>'; };
+    return '<fieldset class="my-pick" id="my-' + pk + '" data-key="my-pick-' + pk + '"><legend class="lbl">' + esc(t('my_t')) + '</legend><div class="my-opts">' +
+      opt('0', !own, dir || t('my_dir'), t(dir ? (a ? 'my_dir_s' : 'my_dir_s0') : 'my_dir_none'), 'pin') +
+      opt('1', own, own && o.name ? o.name : t('my_own'), t(own ? 'my_own_on' : 'my_own_s'), 'wallet') + '</div>' +
+      (own ? myForm(pk, o) : '') + '</fieldset>';
+  }
+  function myForm(pk, o) {
+    var id = function (f) { return 'my-' + pk + '-' + f; }, how = o.how || 'iban', due = o.due || 'none';
+    var inp = function (f, lbl, val, attrs, after) {
+      return '<div class="field"><label for="' + id(f) + '">' + esc(lbl) + '</label><div class="ctl"><input id="' + id(f) + '" data-my="' + f + '" data-my-pk="' + pk + '" autocomplete="off" value="' + esc(val === undefined || val === null ? '' : val) + '"' + (attrs || '') + '>' +
+        (/^(recip|code)$/.test(f) ? ctlCopy(id(f)) : '') + '</div>' + (after || '') + '</div>'; };
+    var chips = function (f, cur, list) {
+      return '<div class="my-seg" role="radiogroup">' + list.map(function (x) { var on = cur === x[0];
+        return '<label class="my-chip' + (on ? ' on' : '') + '"><input type="radio" name="' + id(f) + '" value="' + x[0] + '"' + (on ? ' checked' : '') + ' data-my="' + f + '" data-my-pk="' + pk + '" data-key="' + id(f) + '-' + x[0] + '"><span>' + esc(x[1]) + '</span></label>'; }).join('') + '</div>'; };
+    var day = function (f, lbl, v) { return '<label class="my-day"><span>' + esc(lbl) + '</span><input id="' + id(f) + '" class="num" inputmode="numeric" maxlength="2" autocomplete="off" data-my="' + f + '" data-my-pk="' + pk + '" value="' + esc(v ? String(v) : '') + '" data-key="' + id(f) + '"></label>'; };
+    var h = '<div class="my-form" data-key="my-form-' + pk + '">' + inp('name', t('my_name'), o.name, ' maxlength="80" placeholder="' + esc(t('my_name_ph')) + '"') +
+      '<div class="field"><span class="lbl">' + esc(t('my_how')) + '</span>' + chips('how', how, [['iban', t('my_how_iban')], ['cash', t('my_how_cash')], ['other', t('my_how_other')]]) + '</div>';
+    if (how === 'iban') {
+      var bad = myIbanBad(o.iban);
+      // IBAN — полем у два рядки на вузькому екрані (у рядок 33 знаки не влазять, а обрізаний номер не звірити)
+      h += '<div class="field"><label for="' + id('iban') + '">IBAN</label><div class="ctl"><textarea id="' + id('iban') + '" class="my-iban" rows="2" maxlength="42" autocapitalize="characters" autocomplete="off" spellcheck="false" data-my="iban" data-my-pk="' + pk + '" placeholder="UA00 0000 0000 0000 0000 0000 0000 0">' + esc(myIbanFmt(o.iban)) + '</textarea></div>' +
+        (bad ? '<div class="help warn" data-key="my-iban-warn">' + esc(bad) + '</div>' : '') + '</div>' +
+        '<div class="grid2">' + inp('recip', t('my_recip'), o.recip, ' maxlength="120" placeholder="' + esc(o.name || '') + '"') + inp('code', t('my_code'), o.code, ' class="num" inputmode="numeric" maxlength="12"') + '</div>';
+    } else if (how === 'cash') h += inp('cash', t('my_cash'), o.cash, ' maxlength="160" placeholder="' + esc(t('my_cash_ph')) + '"');
+    else h += '<div class="field"><label for="' + id('other') + '">' + esc(t('my_other')) + '</label><div class="ctl"><textarea id="' + id('other') + '" rows="2" maxlength="300" data-my="other" data-my-pk="' + pk + '" placeholder="' + esc(t('my_other_ph')) + '">' + esc(o.other || '') + '</textarea></div></div>';
+    if (how !== 'cash') {
+      var toks = pk === 'waste' ? ['place', 'sum', 'mon'] : MY_TOK, ex = myPurpose(pk, o, myCtxLast(pk));
+      h += '<div class="field"><label for="' + id('purpose') + '">' + esc(t('my_purp')) + '</label><div class="ctl"><textarea id="' + id('purpose') + '" rows="3" maxlength="300" data-my="purpose" data-my-pk="' + pk + '" placeholder="' + esc(t(pk === 'waste' ? 'my_purp_def_w' : 'my_purp_def')) + '">' + esc(o.purpose || '') + '</textarea></div>' +
+        '<div class="my-toks" data-key="my-toks-' + pk + '"><span class="small muted">' + esc(t('my_tok_add')) + '</span>' + toks.map(function (x) {
+          return '<button type="button" class="my-tok" data-act="my-tok" data-pk="' + pk + '" data-tok="' + x + '" data-key="my-tok-' + x + '">' + ico('plus', 14) + '<span>' + esc(t('my_tok_' + x)) + '</span></button>'; }).join('') + '</div>' +
+        '<p class="small my-ex" data-key="my-ex-' + pk + '"><span class="muted">' + esc(t('my_ex')) + '</span> <span class="my-ex-t">' + esc(ex) + '</span></p></div>';
+    }
+    h += '<div class="field"><span class="lbl">' + esc(t('my_due')) + '</span>' + chips('due', due, [['none', t('my_due_none')], ['till', t('my_due_till')], ['win', t('my_due_win')]]) +
+      (due === 'till' ? '<div class="my-days">' + day('till', t('my_till_l'), o.till) + '</div>'
+        : due === 'win' ? '<div class="my-days">' + day('wa', t('my_wa'), o.win && o.win[0]) + day('wb', t('my_wb'), o.win && o.win[1]) + '</div>'
+        : '<p class="small muted my-due-s">' + esc(t('my_due_none_s')) + '</p>') + '</div>';
+    if (pk === 'elec' || pk === 'gas') h += '<div class="grid2">' + inp('abon', t('my_abon'), R.num(o.abon) > 0 ? money(R.num(o.abon)) : '', ' class="num" inputmode="decimal" maxlength="10" placeholder="0"') + '</div>';
+    h += '<div class="grid2">' + inp('phone', t('my_phone'), o.phone, ' inputmode="tel" maxlength="30"') + inp('note', t('my_note'), o.note, ' maxlength="200" placeholder="' + esc(t('my_note_ph')) + '"') + '</div>';
+    return h + '</div>';
+  }
+  /** «Оплата» свого постачальника: скільки, реквізити з «Копіювати», готове призначення, позначка «Оплачено». c — контекст запису (myCtx…), mark — кнопка або ''. */
+  function myPayBox(pk, o, c, mark, key) {
+    var how = o.how || 'iban', purp = how === 'cash' ? '' : myPurpose(pk, o, c), rows = [];
+    var row = function (lbl, v, copy, cls, rk) { return v ? '<li data-key="' + rk + '"><span class="my-r-l">' + esc(lbl) + '</span><span class="my-r-v' + (cls ? ' ' + cls : '') + '">' + esc(v) + '</span>' + (copy ? copyIco(copy, rk + '-copy') : '<span></span>') + '</li>' : ''; };
+    if (how === 'iban') rows.push(row(t('my_recip'), o.recip || o.name, o.recip || o.name, '', 'my-r-recip'), row('IBAN', myIbanFmt(o.iban), myIban(o.iban), 'tn', 'my-r-iban'), row(t('my_code_s'), o.code, o.code, 'tn', 'my-r-code'));
+    else if (how === 'cash') rows.push(row(t('my_how_cash'), o.cash || '', '', '', 'my-r-cash'));
+    else rows.push(row(t('my_how_other'), o.other || '', '', '', 'my-r-other'));
+    if (purp) rows.push(row(t('my_purp'), purp, purp, 'my-purp', 'my-r-purp'));
+    var has = c && c.sum !== undefined && c.sum !== null;
+    var sum = has ? '<div class="my-sum" data-key="my-sum"><span class="small muted">' + esc(t('my_sum')) + '</span><span class="my-sum-v"><b>' + esc(money(c.sum)) + '</b> грн' + copyIco(money(c.sum).replace(/\s/g, ''), 'my-sum-copy') + '</span>' +
+      (c.q ? '<span class="small muted">' + esc(c.from ? t('my_sum_s', { q: c.q, d: fmtDate(c.from) }) : c.q) + '</span>' : '') + '</div>' : '';
+    var all = how === 'iban' && myIban(o.iban) ? [o.recip || o.name, myIban(o.iban), o.code ? t('my_code_s') + ' ' + o.code : '', purp, has ? money(c.sum).replace(/\s/g, '') + ' грн' : ''].filter(Boolean).join('\n') : '';
+    var r = rows.join('');
+    return '<section class="panel mypay" data-key="' + (key || 'mypay-' + pk) + '"><h2 class="mhist-h">' + ico('wallet', 18, 'bt-ico') + '<span>' + esc(o.name || t('my_own')) + '</span></h2><div class="mypay-b">' + sum +
+      (r ? '<ul class="my-rows">' + r + '</ul>' : '<p class="small muted" data-key="my-norq">' + esc(t('my_norq')) + '</p>') +
+      (all ? '<button type="button" class="btn sec block" data-act="copy" data-text="' + esc(all) + '" data-key="my-copy-all">' + ico('copy', 18) + '<span>' + esc(t('my_copy_all')) + '</span></button>' : '') +
+      (o.phone ? '<p class="small my-ph">' + ico('phone', 16) + telLink(String(o.phone).replace(/[^\d+]/g, ''), o.phone) + '</p>' : '') + (o.note ? '<p class="small muted my-note">' + esc(o.note) + '</p>' : '') + (mark || '') + '</div></section>';
+  }
+  /** «Оплачено» під «Оплатою»: ті самі позначки, що й «Передано» (світло/газ — sent.obl / sent.grm, вода — sent.vk, тепло — статус). */
+  function myMark(sent, on, off) {
+    return '<div class="my-mark" data-key="my-mark">' + (sent ? '<p><span class="pill ok">' + ico('check', 14) + ' ' + esc(t('my_paid_on', { d: fmtDate(sent) })) + '</span> ' + off + '</p>' : on) + '</div>';
+  }
+  function myMarkS(k, r) {
+    var s = r.sent && r.sent[SK[k].sk];
+    return myMark(s, '<button type="button" class="btn block" data-act="esent" data-k="' + k + '" data-v="1" data-ids="' + esc(r.id) + '" data-key="my-paid">' + ico('check', 20) + '<span>' + esc(t('my_paid')) + '</span></button>',
+      '<button type="button" class="linkbtn" data-act="esent" data-k="' + k + '" data-v="0" data-ids="' + esc(r.id) + '" data-key="my-unpaid">' + esc(t('my_unpaid')) + '</button>');
+  }
+  function myMarkW(r) {
+    var s = wsentVk(r);
+    return myMark(s, '<button type="button" class="btn block" data-act="wsent" data-to="vk" data-v="1" data-id="' + esc(r.id) + '" data-key="my-paid">' + ico('check', 20) + '<span>' + esc(t('my_paid')) + '</span></button>',
+      '<button type="button" class="linkbtn" data-act="wsent" data-to="vk" data-v="0" data-id="' + esc(r.id) + '" data-key="my-unpaid">' + esc(t('my_unpaid')) + '</button>');
+  }
+  /** Сторінка лічильника зі своїм постачальником: «Оплата» — лише коли останні показання ще не оплачені (інакше нічого — людина й так знає, кому платить). */
+  function myPageS(k) {
+    var o = myProv(k); if (!o) return '';
+    return smeters(k).map(function (m) { var r = elastOf(m.id); return r && !r.base && !r.own && !ssent(k, r) ? myPayBox(k, o, myCtxS(k, m, r), myMarkS(k, r), 'mypay-' + m.id) : ''; }).join('');
+  }
+  function myPageW(kind) {
+    var o = myProv('water'); if (!o) return '';
+    var r = wrecs().filter(function (x) { return !x.base && wmeters(kind, true).some(function (m) { return hasVal(x, m.id); }); }).slice(-1)[0];
+    return r && !r.own && !wsentVk(r) ? myPayBox('water', o, myCtxW(r), myMarkW(r)) : '';
+  }
+  /** Посилання під «Куди передати»: платите не їм — одним дотиком на свого постачальника (у «Налаштуваннях показань»). */
+  function myLink(pk) {
+    return '<p class="my-link" data-key="my-link-' + pk + '"><button type="button" class="linkbtn" data-act="my-on" data-pk="' + pk + '">' + ico('wallet', 16) + '<span>' + esc(t('my_link')) + '</span></button></p>';
+  }
+  /** Екран квартири, «Постачальники»: кнопка «Свій постачальник» — вмикає й веде на сторінку лічильника, у «Кому платите». */
+  function myGoBtn(k) { return '<button type="button" class="btn ter sm" data-act="my-go" data-pk="' + myK(k) + '" data-on="1" data-key="prov-my-' + myK(k) + '">' + ico('wallet', 18) + '<span>' + esc(t('my_own')) + '</span></button>'; }
+  function myRoute(pk) { return pk === 'water' ? (wmeters('cold').length || !wmeters('hot').length ? 'water-cold' : 'water-hot') : pk === 'heat' ? 'heat' : pk === 'waste' ? 'waste' : pk; }
+  /** Рядок «Постачальники» для свого: назва, позначка «свій», як платите, тариф; «Налаштувати» — на сторінку лічильника. */
+  function myRowP(p, k, extra) {
+    var o = p.prov[k], how = o.how || 'iban', price = '';
+    if (k === 'elec' && R.num(o.price) > 0) price = t('my_p_elec', { p: money(R.num(o.price)) });
+    else if (k === 'gas' && R.num(p.gasPrice) > 0) price = t('my_p_gas', { p: money(R.num(p.gasPrice)) });
+    else if (k === 'water' && R.num(o.supply) > 0) price = R.num(o.drain) > 0 ? t('prv_p_water', { s: money(R.num(o.supply)), d: money(R.num(o.drain)) }) : t('prv_p_water1', { s: money(R.num(o.supply)) });
+    else if (k === 'heat') price = t('prv_p_heat1', { p: money(tariff()) });
+    if (price && R.num(o.abon) > 0) price += ' · ' + t('my_p_abon', { a: money(R.num(o.abon)) });
+    var pay = how === 'iban' ? (myIban(o.iban) ? 'IBAN ' + myIbanFmt(o.iban) : '') : how === 'cash' ? t('my_how_cash') + (o.cash ? ': ' + o.cash : '') : o.other || '';
+    var w = myWin(o);
+    return '<div class="prov-row my-row" data-key="prov-' + k + '"><span class="pst-ico ' + PRV_ICO[k][1] + '">' + ico(PRV_ICO[k][0], 20) + '</span><div class="prov-b">' +
+      '<p class="prov-k"><b>' + esc(t('prv_k_' + k)) + '</b><span class="prov-ok">' + ico('wallet', 16) + esc(t('my_pill')) + '</span></p>' +
+      '<p class="prov-org">' + (o.name ? esc(o.name) : '<span class="muted">' + esc(t('my_noname')) + '</span>') + '</p>' + (w ? pstrip(k, null, 'in-prov', p) : '') +
+      (pay ? '<p class="small muted my-row-pay">' + esc(pay) + '</p>' : '') +
+      '<p class="prov-price' + (price ? '' : ' none') + '">' + esc(price || t('prv_p_none')) + '</p>' +
+      '<p class="prov-act"><button type="button" class="btn ter sm" data-act="my-go" data-pk="' + k + '" data-key="prov-my-set-' + k + '">' + ico('prefs', 18) + '<span>' + esc(t('my_set')) + '</span></button></p>' + (extra || '') + '</div></div>';
+  }
+  /** Відкрити «Налаштування показань» на «Кому платите» (після перемальовки): розгорнути, прокрутити, фокус у «Назва». */
+  function myReveal(pk) {
+    setTimeout(function () {
+      var f = document.getElementById('my-' + pk); if (!f) return;
+      var d = f.closest('details'); if (d && !d.open) d.open = true;
+      f.scrollIntoView({ block: 'start', behavior: 'smooth' });
+      var n = document.getElementById('my-' + pk + '-name'); if (n && MY_NEW[pk] && !n.value) { try { n.focus({ preventScroll: true }); } catch (e) { n.focus(); } }
+      delete MY_NEW[pk];
+    }, 60);
+  }
+  function mySet(pk, fn) {
+    ensurePlaces(); var p = place(); if (!p) return null; p.prov = p.prov || {};
+    var o = Object.assign({}, p.prov[pk] || {}); fn(o); o.at = today(); p.prov[pk] = o; p.updatedAt = Date.now(); WX.key = ''; save(); return o;
+  }
+  /** Перемкнути «Кому платите». on — свій: якщо назви ще немає — фокус у «Назва». */
+  function myToggle(pk, on) {
+    var o = mySet(pk, function (x) { if (on) { x.own = 1; if (!x.how) x.how = 'iban'; if (!x.due) x.due = 'none'; } else x.own = 0; });
+    if (!o) return;
+    if (on) { MY_NEW[pk] = true; toast(o.name ? t('my_on_t', { o: o.name }) : t('my_on_t0')); } else toast(t('my_off_t'));
+    render(true); myReveal(pk);
+  }
+  document.addEventListener('change', function (e) {
+    var el = e.target; if (!el || !el.getAttribute) return;
+    var pick = el.getAttribute('data-my-pick'); if (pick) { myToggle(pick, el.value === '1'); return; }
+    var f = el.getAttribute('data-my'), pk = el.getAttribute('data-my-pk'); if (!f || !pk) return;
+    var v = String(el.value || '').trim(), redraw = /^(how|due)$/.test(f);
+    mySet(pk, function (o) {
+      if (f === 'how') o.how = /^(iban|cash|other)$/.test(v) ? v : 'iban';
+      else if (f === 'due') o.due = /^(none|till|win)$/.test(v) ? v : 'none';
+      else if (f === 'iban') o.iban = myIban(v).slice(0, 34);
+      else if (f === 'code') o.code = v.replace(/\D/g, '').slice(0, 12);
+      else if (f === 'till') { var d = Math.round(R.num(v)); if (d >= 1 && d <= 31) o.till = d; else delete o.till; }
+      else if (f === 'wa' || f === 'wb') { var w = (o.win || [null, null]).slice(), n = Math.round(R.num(v)); w[f === 'wa' ? 0 : 1] = n >= 1 && n <= 31 ? n : null; o.win = w; }
+      else if (f === 'abon') { var a = R.num(v.replace(/\s/g, '')); if (a > 0 && a < 100000) o.abon = a; else delete o.abon; }
+      else o[f] = v.slice(0, f === 'purpose' || f === 'other' ? 300 : 200);
+    });
+    if (f === 'iban') { el.value = myIbanFmt(v); }
+    if (redraw || f === 'iban' || f === 'abon' || f === 'name') render(true); else toast(t('b_saved'));
+  });
+  // приклад призначення — одразу, поки людина друкує (без перемальовки)
+  document.addEventListener('input', function (e) {
+    var el = e.target; if (!el || !el.getAttribute || el.getAttribute('data-my') !== 'purpose') return;
+    var pk = el.getAttribute('data-my-pk'), ex = document.querySelector('[data-key="my-ex-' + pk + '"] .my-ex-t'); if (!ex) return;
+    ex.textContent = myPurpose(pk, Object.assign({}, myProv(pk) || {}, { purpose: el.value }), myCtxLast(pk));
+  });
+  document.addEventListener('click', function (e) {
+    var b = e.target.closest && e.target.closest('[data-act="my-tok"], [data-act="my-on"], [data-act="my-go"]'); if (!b) return;
+    var pk = b.getAttribute('data-pk');
+    if (b.getAttribute('data-act') === 'my-go') {
+      e.preventDefault();
+      if (b.getAttribute('data-on') === '1') { mySet(pk, function (x) { x.own = 1; if (!x.how) x.how = 'iban'; if (!x.due) x.due = 'none'; }); MY_NEW[pk] = true; toast(t('my_on_t0')); }
+      var rt = myRoute(pk); if (routeName() === rt) render(true); else location.hash = rt;
+      setTimeout(function () { myReveal(pk); }, 250); return;
+    }
+    if (b.getAttribute('data-act') === 'my-on') { e.preventDefault(); myToggle(pk, true); return; }
+    var ta = document.getElementById('my-' + pk + '-purpose'); if (!ta) return;
+    var tok = '{' + t('my_tok_' + b.getAttribute('data-tok')) + '}', v = ta.value, a = ta.selectionStart == null ? v.length : ta.selectionStart, z = ta.selectionEnd == null ? v.length : ta.selectionEnd;
+    var pre = v.slice(0, a), ins = (pre && !/\s$/.test(pre) ? ' ' : '') + tok;
+    ta.value = pre + ins + v.slice(z); var caret = (pre + ins).length;
+    try { ta.focus({ preventScroll: true }); ta.setSelectionRange(caret, caret); } catch (e2) { /* старий браузер */ }
+    ta.dispatchEvent(new Event('input', { bubbles: true }));
+    mySet(pk, function (o) { o.purpose = ta.value.slice(0, 300); });
   });
   // ---------- вивіз сміття (112-а; 115-а, власник 11.11: «на рівні лічильників, свої налаштування, замість табло — інше, своя історія») ----------
   // Без лічильника: ціна з людини × скільки людей. Картка на головній (місце табло — сума на місяць), своя сторінка #waste (налаштування,
@@ -6669,7 +6987,7 @@
   /** Поля налаштувань вивозу (сторінка вивозу й екран квартири): скільки людей, своя ціна, приватний будинок, хто вивозить, особовий рахунок, нагадування. */
   function wasteFields(p, d) {
     var w = wcur(p), n = wastePersons(p), opt = ' <span class="muted small">(' + esc(t('b_opt')) + ')</span>';
-    return '<p class="prov-price small' + (wastePrice(p, d) ? '' : ' none') + '" data-wsl="price">' + esc(wastePriceTxt(p, d)) + '</p>' +
+    return myPick('waste') + '<p class="prov-price small' + (wastePrice(p, d) ? '' : ' none') + '" data-wsl="price">' + esc(wastePriceTxt(p, d)) + '</p>' +
       (d && d.check && !(R.num(w.price) > 0) && ploc(d, 'note') ? '<p class="small prov-note">' + esc(ploc(d, 'note')) + '</p>' : '') +
       '<div class="grid2 ws-f">' +
         '<div class="field"><label for="ws-persons">' + esc(t('ws_persons')) + '</label><div class="ctl"><input id="ws-persons" class="num" inputmode="numeric" autocomplete="off" data-wsf="persons" maxlength="2" value="' + esc(n || '') + '"></div><div class="small muted">' + esc(t('ws_persons_h')) + '</div></div>' +
@@ -6730,7 +7048,7 @@
     var left = mbox({ key: 'wbox', id: 'waste', kind: 'waste', icon: 'trash', cls: 'c-waste', name: t('kd_waste'), sub: [org || t('ws_nometer')],
       display: wplate(p, d, 'hero') + wstrip(ms), cap: cap, body: debt, set: wasteFields(p, d), setTitle: t('wsp_set'), links: [mbPlaceLink('wsp-place')] });
     var act = '<button class="btn big block" data-act="ws-pay" data-key="waste-pay">' + ico('plus', 22) + '<span>' + esc(t('wsp_add')) + '</span></button>';
-    var right = whereAcc(wherePay(p, d)), wr = wrowsW(3);
+    var myw = myProv('waste', p), right = myw ? myPayBox('waste', myw, { place: placeLabel(p), sum: wasteSum(p, d), mon: monthLabel(Ws.nextYm(wcur(p), today())) }, '') : whereAcc(wherePay(p, d)), wr = wrowsW(3);
     if (wr.total) right += histPanel(wr.html, wr.total, '<button class="btn sec block" data-act="view-go" data-v="waste" data-to="history" data-key="waste-all">' + esc(t('wh_all', { n: wr.total })) + '</button>', 'waste');
     h += heroGrid(left, act, right);
     return { screen: 'S60', route: 'waste', html: h };
@@ -6738,7 +7056,8 @@
   function wasteHistory() {
     var r = wrowsW(0, true), head = '<h1>' + esc(t('hi_title')) + '</h1>' + kindSwitch();
     var add = '<p><button class="btn" data-act="ws-pay" data-key="wh-pay">' + ico('plus', 20) + '<span>' + esc(t('wsp_add')) + '</span></button></p>';
-    return { screen: 'S09', route: 'history', html: head + (r.total ? r.html : '<div class="panel"><p class="muted">' + esc(t('wsh_empty')) + '</p></div>') + add + '<p class="small muted">' + esc(t('wsh_hint')) + '</p>' };
+    if (!r.total) return { screen: 'S09', route: 'history', html: head + emptyState({ key: 'es-hist-waste', kind: 'waste', title: t('es_h_waste'), text: t('es_h_s_waste'), btn: esBtn('ws-pay', t('wsp_add'), 'wh-pay') }) };
+    return { screen: 'S09', route: 'history', html: head + r.html + add + '<p class="small muted">' + esc(t('wsh_hint')) + '</p>' };
   }
   function wasteStats() {
     chColors();

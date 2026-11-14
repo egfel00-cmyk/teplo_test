@@ -57,7 +57,27 @@ final class Reminders {
 
   /** Поставщики квартиры по её адресу (как «Куди передати» в приложении): ['r' => kh|lv|…, 'htm' => тепло — ХТМ, 'hvk' => вода — Харківводоканал,
    *  'water' => орг. воды, 'elec' => орг. света]. Без адреса — Харків (как было); не нашли пункт — регион из p.city, иначе Харків. */
-  public static function placeProv(array $p): array {
+  public static function placeProv(array $p): array { return self::ownOver($p, self::placeProv0($p)); }
+  /** 144-я: «Свій постачальник» квартиры (place.prov[вид].own) — главнее довідника: не ХТМ / не Харківводоканал, его название,
+   *  его строк (till — [1, N], win — [A, B]; без строка — без напоминаний по этому виду). ['own' => [вид => true]]. */
+  public static function ownWin(array $o): ?array {
+    $d = (string)($o['due'] ?? 'none');
+    if ($d === 'till') { $n = (int)round((float)($o['till'] ?? 0)); return $n >= 1 && $n <= 31 ? [1, $n] : null; }
+    if ($d === 'win' && is_array($o['win'] ?? null) && count($o['win']) === 2) { $a = (int)$o['win'][0]; $b = (int)$o['win'][1]; return $a >= 1 && $a <= 31 && $b >= 1 && $b <= 31 ? [$a, $b] : null; }
+    return null;
+  }
+  public static function ownOver(array $p, array $pv): array {
+    foreach ((array)($p['prov'] ?? []) as $k => $o) {
+      if (!is_array($o) || empty($o['own']) || !in_array($k, ['heat', 'water', 'elec', 'gas', 'waste'], true)) continue;
+      $pv['own'][$k] = true; $name = trim((string)($o['name'] ?? '')) ?: null;
+      if ($k === 'heat') $pv['htm'] = false;
+      if ($k === 'water') $pv['hvk'] = false;
+      if ($k === 'waste') { $pv['waste'] = array_merge((array)($pv['waste'] ?? []), ['org' => $name, 'pay' => '', 'pay_ru' => '']); continue; }
+      $pv[$k] = $name; $pv['win'][$k] = self::ownWin($o);
+    }
+    return $pv;
+  }
+  public static function placeProv0(array $p): array {
     $kh = ['r' => 'kh', 'htm' => true, 'hvk' => true, 'water' => null, 'elec' => null];
     $a = trim((string)($p['address'] ?? '')); $c = is_array($p['city'] ?? null) ? $p['city'] : []; $st = is_array($p['settle'] ?? null) ? $p['settle'] : [];
     if ($a === '' || !class_exists('Providers')) return $kh + ['waste' => null];
@@ -106,7 +126,8 @@ final class Reminders {
     if (!empty($st['remind']['off'])) return [];
     $out = []; $m0 = new DateTimeImmutable(substr($today, 0, 7) . '-01');
     foreach ((array)($st['places'] ?? []) as $p) {
-      if (!is_array($p) || !empty($p['deleted']) || !empty($p['remindOff']) || trim((string)($p['address'] ?? '')) === '') continue;
+      if (!is_array($p) || !empty($p['deleted']) || !empty($p['remindOff'])) continue;
+      if (trim((string)($p['address'] ?? '')) === '' && !array_filter((array)($p['prov'] ?? []), fn($o) => is_array($o) && !empty($o['own']) && self::ownWin($o))) continue;
       $pv = self::placeProv($p);
       foreach ((array)($pv['win'] ?? []) as $what => $w) {
         if (!$w) continue;
@@ -134,7 +155,7 @@ final class Reminders {
     if (!$places && !empty($st['meter'])) $places = [['id' => 'main', 'meter' => $st['meter']]];
     $first = $places[0]['id'] ?? 'main'; $all = count($places); $out = [];
     // 142-я: местное окно поставщика (waterL26, heatL21, elecL29) — день напоминания из вида, ym — месяц начала окна
-    $loc = preg_match('/^(water|heat|elec)L(\d{1,2})$/', $kind, $lm) ? [$lm[1], (int)$lm[2]] : null;
+    $loc = preg_match('/^(water|heat|elec|gas)L(\d{1,2})$/', $kind, $lm) ? [$lm[1], (int)$lm[2]] : null;
     foreach ($places as $i => $p) {
       if (!empty($p['remindOff'])) continue;
       // как в приложении: без названия первая — «Моя квартира», остальные — «Квартира N»
@@ -155,13 +176,13 @@ final class Reminders {
             foreach ((array)($st['readings'] ?? []) as $r) if (is_array($r) && empty($r['deleted']) && empty($r['own']) && empty($r['billOnly']) && ($r['place'] ?? $first) === $p['id'] && $in($r['htm']['date'] ?? '')) { $need = false; break; } }
         } else {
           foreach ((array)($p['meters'] ?? []) as $m) {
-            if (!is_array($m) || ($m['kind'] ?? '') !== 'elec' || !empty($m['deleted']) || !empty($m['removed'])) continue;
+            if (!is_array($m) || ($m['kind'] ?? '') !== $what || !empty($m['deleted']) || !empty($m['removed'])) continue;   // світло або газ (144-я: газ — свій постачальник зі строком)
             $has = false;
             foreach ((array)($st['mrecs'] ?? []) as $r) if (is_array($r) && empty($r['deleted']) && empty($r['base']) && empty($r['own']) && ($r['meter'] ?? '') === ($m['id'] ?? '') && ($r['place'] ?? '') === $p['id'] && $in($r['date'] ?? '')) { $has = true; break; }
             if (!$has) { $need = true; break; }
           }
         }
-        if ($need) $out[] = ['id' => (string)$p['id'], 'label' => mb_substr($label, 0, 40), 'all' => $all, 'kh' => false, 'org' => $pv[$what] ?? null, 'b' => $sp['b'], 'e' => $sp['e']];
+        if ($need) $out[] = ['id' => (string)$p['id'], 'label' => mb_substr($label, 0, 40), 'all' => $all, 'kh' => false, 'org' => $pv[$what] ?? null, 'b' => $sp['b'], 'e' => $sp['e'], 'own' => !empty($pv['own'][$what])];
         continue;
       }
       if (str_starts_with($kind, 'waste')) {
@@ -206,6 +227,7 @@ final class Reminders {
       if (!$need) continue;
       // по адресу: харьковский текст или общий; тепло — только ХТМ (у других поставщиков — своё окно: heatL…, или не напоминаем)
       $pv = self::placeProv($p); $what = str_starts_with($kind, 'water') ? 'water' : (str_starts_with($kind, 'elec') ? 'elec' : (str_starts_with($kind, 'gas') ? 'gas' : 'heat'));
+      if (!empty($pv['own'][$what])) continue;   // 144-я: свой поставщик — только по его строку (…L…), без строка — не напоминаем
       if ($what === 'heat' && !$pv['htm']) continue;
       if (($what === 'water' || $what === 'elec') && !empty($pv['win'][$what])) continue;   // 142-я: у поставщика своё окно — напомним за 4 дня до его конца (waterL…/elecL…)
       $kh = $what === 'water' ? $pv['hvk'] : ($what === 'elec' ? $pv['r'] === 'kh' : true);
@@ -236,7 +258,7 @@ final class Reminders {
     $today = $today ?? (new DateTimeImmutable('now', new DateTimeZone(self::TZ)))->format('Y-m-d');
     $gasSms = $today <= self::GAS_SMS_UNTIL;
     if (str_starts_with($kind, 'waste')) return self::wasteText($lang, $places, $today);
-    if (preg_match('/^(water|heat|elec)L\d+$/', $kind, $lm)) $t = self::localText($lm[1], $ru, $places, $today);
+    if (preg_match('/^(water|heat|elec|gas)L\d+$/', $kind, $lm)) $t = self::localText($lm[1], $ru, $places, $today);
     else $t = [
       'water16' => $ru ? "💧 До 20-го — 4 дня, чтобы передать показания воды в Водоканал. В этом месяце ещё не вносили.\n\nСфотографируйте водомеры — цифры впишутся сами, готовое сообщение для бота Водоканала будет под рукой."
                        : "💧 До 20-го — 4 дні, щоб передати показання води у Водоканал. Цього місяця ще не вносили.\n\nСфотографуйте водоміри — цифри впишуться самі, готове повідомлення для бота Водоканалу буде під рукою.",
@@ -296,9 +318,18 @@ final class Reminders {
     $orgs = array_values(array_unique(array_filter(array_map(fn($p) => (string)($p['org'] ?? ''), $places))));
     $org = count($orgs) === 1 && count(array_filter($places, fn($p) => empty($p['org']))) === 0 ? ' (' . $orgs[0] . ')' : '';
     $till = ($ru ? 'До ' : 'До ') . self::dayMon($e, $ru) . ($n > 0 ? ' — ' . self::plDays($n, $ru) : ($ru ? ' — сегодня последний день' : ' — сьогодні останній день'));
+    // 144-я: свой поставщик (гаражный кооператив, ОСББ…) — без «по среднему» и без «куда передать»: сервис посчитает и подготовит назначение платежа
+    if ($places && !array_filter($places, fn($p) => empty($p['own']))) {
+      $w = ['water' => $ru ? ['💧', 'воды'] : ['💧', 'води'], 'heat' => $ru ? ['🔥', 'тепла'] : ['🔥', 'тепла'], 'elec' => $ru ? ['⚡', 'света'] : ['⚡', 'світла'], 'gas' => $ru ? ['🔥', 'газа'] : ['🔥', 'газу']][$what] ?? ['', ''];
+      return $ru ? "{$w[0]} $till, чтобы передать показания {$w[1]}$org.\n\nВнесите цифры — сервис посчитает, сколько набежало, и подготовит назначение платежа."
+                 : "{$w[0]} $till, щоб передати показання {$w[1]}$org.\n\nВнесіть цифри — сервіс порахує, скільки набігло, і підготує призначення платежу.";
+    }
     if ($what === 'water') return $ru
       ? "💧 $till, чтобы передать показания воды$org. В это окно приёма ещё не вносили.\n\nСфотографируйте водомеры или впишите цифры — сервис подскажет, куда передать."
       : "💧 $till, щоб передати показання води$org. У це вікно приймання ще не вносили.\n\nСфотографуйте водоміри або впишіть цифри — сервіс підкаже, куди передати.";
+    if ($what === 'gas') return $ru
+      ? "🔥 $till, чтобы передать показания газа$org.\n\nВнесите цифры — сервис подскажет, куда передать."
+      : "🔥 $till, щоб передати показання газу$org.\n\nВнесіть цифри — сервіс підкаже, куди передати.";
     if ($what === 'heat') return $ru
       ? "🔥 $till, чтобы передать показания тепла$org. В этом месяце показаний ещё нет.\n\nПоставщику нужно одно число — энергия с главного экрана теплосчётчика. Сервис подскажет, куда передать."
       : "🔥 $till, щоб передати показання тепла$org. Цього місяця показань ще немає.\n\nПостачальнику потрібне одне число — енергія з головного екрана теплолічильника. Сервіс підкаже, куди передати.";
