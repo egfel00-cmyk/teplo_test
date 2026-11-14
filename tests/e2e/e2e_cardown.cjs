@@ -40,6 +40,9 @@ const php = (...a) => JSON.parse(execFileSync('php', [path.join(__dirname, 'card
   ok('плану для роботів немає', plan.length === 1 && plan[0] === null, plan);
   const w = ((await st()).water || []).find(x => x.card === cid) || {};
   ok('запис води збережено з карткою', w.vals && /^137/.test(w.vals.c1), w);
+  // 146-а: рамка превью — барабан із збереженими 137 (синтетичний водомір: вікно по центру, на 0,45 висоти)
+  const pf = ((w.photos || [])[0] || {}).f || [];
+  ok('фото запису: рамка превью — на барабані (x≈0,5, y≈0,45)', Math.abs(pf[0] - 0.5) < 0.05 && Math.abs(pf[1] - 0.445) < 0.05, pf);
   // 146-а: «Перевірити в застосунку» під карткою — фото вже розібрано: одразу сторінка води з відкритою «Оплатою» ОСББ, а не головна
   await p.goto('about:blank'); await p.goto(U + '?inbox=1&card=' + cid + '#home');
   await p.waitForFunction(() => location.hash === '#water-cold' && !!document.querySelector('#wacc-mypay-water[open]'), null, { timeout: 15000 }).catch(() => {});

@@ -7,6 +7,33 @@
   'use strict';
   var FIELDS = ['energy', 'volume', 'flow', 'power', 'tSupply', 'tReturn', 'hours', 'errHours', 'flowHours', 'errCode'];   // flowHours — «Час роботи з витратою (Pd)» (125-а)
 
+  // 146-а (скрини власника 14.11: фото «Ванна» лежить боком, рамка превью не на табло): Safari губить поворот EXIF у createImageBitmap(Blob)
+  // (WebKit bug 237895), а <img> його враховує. Фото з поворотом у EXIF — через <img> (drawImage з ним повертає в усіх нинішніх браузерах),
+  // без повороту — швидкий createImageBitmap. Інакше рушій рахує рамку в «сирому» кадрі, а показуємо повернутий — превью мимо табло.
+  function exifOri(file) {
+    if (!file || typeof file.slice !== 'function' || (file.type && !/jpe?g/i.test(file.type))) return Promise.resolve(1);
+    var rd = file.slice(0, 131072); rd = rd.arrayBuffer ? rd.arrayBuffer() : new Promise(function (ok, bad) { var f = new FileReader(); f.onload = function () { ok(f.result); }; f.onerror = bad; f.readAsArrayBuffer(rd); });
+    return rd.then(function (buf) {
+      var v = new DataView(buf), o = 2; if (v.byteLength < 4 || v.getUint16(0) !== 0xFFD8) return 1;
+      while (o + 10 <= v.byteLength) {
+        var m = v.getUint16(o); if ((m & 0xFF00) !== 0xFF00 || m === 0xFFDA) return 1;
+        if (m === 0xFFE1 && v.getUint32(o + 4) === 0x45786966) {
+          var t = o + 10, le = v.getUint16(t) === 0x4949, ifd = t + v.getUint32(t + 4, le), n = v.getUint16(ifd, le);
+          for (var i = 0; i < n; i++) { var e = ifd + 2 + i * 12; if (e + 12 > v.byteLength) return 1; if (v.getUint16(e, le) === 0x0112) { var r = v.getUint16(e + 8, le); return r >= 1 && r <= 8 ? r : 1; } }
+          return 1;
+        }
+        o += 2 + v.getUint16(o + 2);
+      }
+      return 1;
+    }).catch(function () { return 1; });
+  }
+  function loadOriented(file) {
+    var viaImg = function () { return new Promise(function (ok, bad) { var i = new Image(); i.onload = function () { ok(i); }; i.onerror = bad; i.src = URL.createObjectURL(file); }); };
+    var blob = typeof Blob !== 'undefined' && file instanceof Blob;
+    if (typeof createImageBitmap !== 'function') return blob ? viaImg() : Promise.resolve(file);
+    if (!blob) return createImageBitmap(file);
+    return exifOri(file).then(function (o) { return o > 1 ? viaImg() : createImageBitmap(file).catch(viaImg); });
+  }
   /** WebAssembly разрешён? (браузер умеет и политика безопасности страницы — CSP — не запрещает). */
   function canWasm() {
     try { return typeof WebAssembly === 'object' && !!new WebAssembly.Module(new Uint8Array([0, 97, 115, 109, 1, 0, 0, 0])); } catch (e) { return false; }
@@ -77,28 +104,37 @@
     focusOf: function (res, vals) {
       if (!res || !(res.w > 0) || !(res.h > 0)) return null;
       var dg = function (s) { return String(s || '').replace(/[^0-9]/g, '').length; }, box = null;
-      var keys = (vals || []).map(function (v) { return String(v === null || v === undefined ? '' : v).split(/[.,]/)[0].replace(/\D/g, '').replace(/^0+(?=\d)/, ''); }).filter(function (k) { return k.length >= 3; });
-      if (keys.length && !(res.drums || []).some(function (d) { return d && d.sure && d.w > 0 && dg(d.text) >= 3; })) {
-        var hit = null;
-        (res.lines || []).forEach(function (l) {
-          if (!l || !(l.w > 0) || !(l.h > 0)) return;
-          var d = String(l.text || '').replace(/\D/g, '').replace(/^0+(?=\d)/, ''); if (!keys.some(function (k) { return d.indexOf(k) >= 0; })) return;
-          var sc = l.h * (l.score || 0.5) / Math.max(1, d.length - Math.max.apply(null, keys.map(function (k) { return d.indexOf(k) >= 0 ? k.length : 0; })) + 1);
-          if (!hit || sc > hit.sc) hit = { sc: sc, l: l };
-        });
-        if (hit) box = { x0: hit.l.x, y0: hit.l.y, x1: hit.l.x + hit.l.w, y1: hit.l.y + hit.l.h };
-      }
       var add = function (b) { if (!box) box = { x0: b.x, y0: b.y, x1: b.x + b.w, y1: b.y + b.h }; else { box.x0 = Math.min(box.x0, b.x); box.y0 = Math.min(box.y0, b.y); box.x1 = Math.max(box.x1, b.x + b.w); box.y1 = Math.max(box.y1, b.y + b.h); } };
-      var ds = (res.drums || []).filter(function (d) { return d && d.w > 0 && d.h > 0 && dg(d.text) >= 3; });
-      // вікна, знайдені впевнено за кольором (sure); інші — підписи з цифрами (№ лічильника, «150») — лише якщо впевнених немає, і тоді одне найкраще
-      var sure = ds.filter(function (d) { return d.sure; });
-      ds = sure.length ? sure : ds.sort(function (a, b) { return (b.score || 0) - (a.score || 0); }).slice(0, 1);
       // вікно повернуте (лічильник набік): w/h — уздовж роликів, рамка на фото — по осях
       // вікно — чорні ролики разом із червоними (дроби, d.rb): інакше превью центрується по чорних, а червоні з'їжджають за край (газ 7633, 90-а)
       var rot = function (b, a) { var cx = b.x + b.w / 2, cy = b.y + b.h / 2, ew = Math.abs(b.w * Math.cos(a)) + Math.abs(b.h * Math.sin(a)), eh = Math.abs(b.w * Math.sin(a)) + Math.abs(b.h * Math.cos(a)); add({ x: cx - ew / 2, y: cy - eh / 2, w: ew, h: eh }); };
-      if (box) { /* рядок із показаннями вже знайдено */ }
-      else if (ds.length) ds.forEach(function (d) { var a = +d.angle || 0; rot(d, a); if (d.rb && d.rb.w > 0 && d.rb.h > 0) rot(d.rb, a); });
-      else {
+      var drum = function (d) { var a = +d.angle || 0; rot(d, a); if (d.rb && d.rb.w > 0 && d.rb.h > 0) rot(d.rb, a); };
+      // 146-а: що людина зберегла з цього фото — ціла частина від 3 цифр («919,403» → 919, «3498» → 3498); провідні нулі барабана не заважають
+      var keys = (vals || []).map(function (v) { return String(v === null || v === undefined ? '' : v).split(/[.,]/)[0].replace(/\D/g, '').replace(/^0+(?=\d)/, ''); }).filter(function (k) { return k.length >= 3; });
+      var hasKey = function (t) { var d = String(t || '').replace(/\D/g, '').replace(/^0+(?=\d)/, ''); return keys.some(function (k) { return d.indexOf(k) >= 0; }); };
+      var ds = (res.drums || []).filter(function (d) { return d && d.w > 0 && d.h > 0 && dg(d.text) >= 3; });
+      // 1) барабан, на якому ці самі цифри (найвпевненіший); 2) вікна, знайдені впевнено за кольором; 3) рядок тексту з цими цифрами (ЖК)
+      // (кілька вікон з тими самими цифрами — те саме табло, знайдене ширше чи вужче: беремо найтісніше, без сусідньої «m³»)
+      var dk = keys.length ? ds.filter(function (d) { return hasKey(d.text); }).sort(function (a, b) { return (b.sure ? 1 : 0) - (a.sure ? 1 : 0) || a.w * a.h - b.w * b.h; }) : [];
+      var sure = ds.filter(function (d) { return d.sure; });
+      if (dk.length) drum(dk[0]);
+      else if (sure.length) {
+        var seen = {}; sure.slice().sort(function (a, b) { return a.w * a.h - b.w * b.h; }).forEach(function (d) { var k = String(d.text || '').replace(/\D/g, ''); if (seen[k]) return; seen[k] = 1; drum(d); });
+      }
+      if (!box && keys.length) {
+        // ЖК без барабана: рядок, де ці цифри (а не найбільші цифри кадру: наклейка «5(60) A», модель «2102-02.М2», заводський номер)
+        var hit = null;
+        (res.lines || []).forEach(function (l) {
+          if (!l || !(l.w > 0) || !(l.h > 0) || !hasKey(l.text)) return;
+          var d = String(l.text || '').replace(/\D/g, '').replace(/^0+(?=\d)/, '');
+          var sc = l.h * (l.score || 0.5) / Math.max(1, d.length - Math.max.apply(null, keys.map(function (k) { return d.indexOf(k) >= 0 ? k.length : 0; })) + 1);
+          if (!hit || sc > hit.sc) hit = { sc: sc, l: l };
+        });
+        if (hit) add(hit.l);
+      }
+      // 4) інші — підписи з цифрами (№ лічильника, «150») — одне найкраще вікно барабана, лише якщо нічого кращого
+      if (!box && ds.length) drum(ds.sort(function (a, b) { return (b.score || 0) - (a.score || 0); })[0]);
+      if (!box) {
         // 146-а: спершу рядки, що майже самі цифри (число табло «002263,4»), а не написи з цифрами («5(60)A 230V», «1000 imp/kWh») — ті лише якщо інших немає
         var best = null, num = function (l) { var t = String(l.text || '').replace(/[\s.,:]/g, ''); return t.length && dg(t) >= t.length * 0.7; };
         var ls = (res.lines || []).filter(function (l) { return l && dg(l.text) >= 3 && l.h > 0 && l.w > 0; }), pure = ls.filter(num);
@@ -113,7 +149,7 @@
     _engine: function (onPct) {
       var base = String(root.TEPLO_API).replace(/\/api\/?$/, '') + '/web/ocr/';
       var script = root.TeploOCR ? Promise.resolve() : (this._script = this._script || new Promise(function (ok, bad) {
-        var s = document.createElement('script'); s.src = base + 'engine.js?v=20'; s.onload = ok; s.onerror = function () { bad(fail('engine_failed')); }; document.head.appendChild(s);
+        var s = document.createElement('script'); s.src = base + 'engine.js?v=21'; s.onload = ok; s.onerror = function () { bad(fail('engine_failed')); }; document.head.appendChild(s);
       }));
       return script.then(function () { return root.TeploOCR.load(base, onPct); }).catch(function (e) { if (e && e.code) throw e; throw fail('engine_failed'); });
     },
@@ -141,7 +177,7 @@
             r.photo.time = f.lastModified || 0;   // время съёмки — порядок экранов для разбора пачки
             out.photos.push(r.photo); results.push({ photo: Object.assign({}, r.photo), meter: r.meter, ms: res.ms, ocr: res.lines.slice(0, 80).map(function (l) { return { t: l.text.slice(0, 80), a: l.alts ? l.alts.map(function (x) { return x.slice(0, 40); }) : undefined, s: l.score, h: l.h }; }) });
             // строки и окна барабанов — если это водомеры, разложим их по водомерам без второго прохода
-            r.photo.ocr = { drums: res.drums || [], lines: res.lines.slice(0, 60).map(function (l) { return { text: l.text, alts: l.alts, x: l.x, y: l.y, w: l.w, h: l.h, score: l.score }; }) };
+            r.photo.ocr = { drums: res.drums || [], lines: res.lines.slice(0, 60).map(function (l) { return { text: l.text, alts: l.alts, x: l.x, y: l.y, w: l.w, h: l.h, score: l.score }; }), w: res.w, h: res.h };   // w/h — рамка превью по збереженому (146-а)
             if (r.meter && (!out.meter || (r.meter.confidence || 0) > (out.meter.confidence || 0) || (!out.meter.energyUnit && r.meter.energyUnit))) out.meter = Object.assign({}, out.meter || {}, r.meter, { energyUnit: r.meter.energyUnit || (out.meter && out.meter.energyUnit) || null });
           });
         });
@@ -207,14 +243,11 @@
     /** Уменьшить фото до ~2000 px по длинной стороне (цифры экрана остаются читаемыми), JPEG. */
     prepare: function (file) {
       var max = 2000;
-      var load = typeof createImageBitmap === 'function'
-        ? createImageBitmap(file, { imageOrientation: 'from-image' }).catch(function () { return createImageBitmap(file); })
-        : new Promise(function (ok, bad) { var i = new Image(); i.onload = function () { ok(i); }; i.onerror = bad; i.src = URL.createObjectURL(file); });
-      return load.then(function (img) {
+      return loadOriented(file).then(function (img) {
         var w = img.width, h = img.height, k = Math.min(1, max / Math.max(w, h));
         var c = document.createElement('canvas'); c.width = Math.round(w * k); c.height = Math.round(h * k);
-        c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
-        return new Promise(function (ok) { c.toBlob(function (b) { ok(b || file); }, 'image/jpeg', 0.9); });
+        c.getContext('2d').drawImage(img, 0, 0, c.width, c.height); if (img.close) img.close(); else if (img.src) URL.revokeObjectURL(img.src);
+        return new Promise(function (ok) { c.toBlob(function (b) { ok(b || file); c.width = c.height = 0; }, 'image/jpeg', 0.9); });
       }).catch(function () { return file; });
     },
 

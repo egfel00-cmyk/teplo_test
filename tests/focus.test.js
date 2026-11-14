@@ -28,5 +28,18 @@ const drum = { w: 1000, h: 1000, lines: [{ text: '00437', score: 0.9, x: 100, y:
 const f2 = V.focusOf(drum, ['437']);
 ok('водомір: впевнене вікно барабана (з червоними) — не рядок тексту', f2 && near(f2.x, 0.55) && near(f2.y, 0.48), f2);
 
+// водомір «Ванна» (скрин власника): вікно барабана не впевнене, на корпусі — номер «1640» і великий напис; збережено 919,403
+const bath = { w: 1500, h: 2000, drums: [{ text: '00919', sure: false, score: 0.6, x: 600, y: 1200, w: 300, h: 80, angle: 0 }, { text: '1640', sure: false, score: 0.8, x: 100, y: 300, w: 200, h: 60, angle: 0 }],
+  lines: [{ text: '1640', score: 0.95, x: 100, y: 300, w: 400, h: 150 }] };
+const f3 = V.focusOf(bath, ['919,403']);
+ok('вода: барабан з тими самими цифрами (919), не номер на корпусі', f3 && near(f3.x, 0.5) && near(f3.y, 1240 / 2000), f3);
+// два вікна впевнено (два лічильники в кадрі) — рамка того, з якого зберегли
+const two = { w: 1000, h: 1000, lines: [], drums: [{ text: '00437', sure: true, score: 1, x: 100, y: 100, w: 200, h: 60, angle: 0 }, { text: '00175', sure: true, score: 0.9, x: 600, y: 700, w: 200, h: 60, angle: 0 }] };
+ok('два барабани: рамка по тому, де 175, а не навколо обох', (() => { const f = V.focusOf(two, ['175']); return f && near(f.x, 0.7) && near(f.y, 0.73) && f.w < 0.3; })());
+ok('два барабани без показань — навколо обох (як раніше)', (() => { const f = V.focusOf(two); return f && f.w > 0.6; })());
+
+// одне табло знайдено двічі (вужче й ширше, з сусідньою «m³») — без показань рамка не роздувається до обох
+const dup = { w: 1200, h: 1600, lines: [], drums: [{ text: '00137', sure: true, score: 1, x: 410, y: 650, w: 400, h: 120, angle: 0 }, { text: '00137', sure: true, score: 0.9, x: 240, y: 640, w: 570, h: 150, angle: 0 }] };
+ok('те саме табло двічі — найтісніша рамка', (() => { const f = V.focusOf(dup); return f && near(f.x, 610 / 1200) && near(f.w, 400 / 1200); })(), V.focusOf(dup));
 console.log(`\nfocus.test: ${pass} ok, ${fail} fail`);
 process.exit(fail ? 1 : 0);

@@ -2202,7 +2202,7 @@
     if (!im || !window.TEPLO_API) return;
     var id = im.getAttribute('data-hph'); FOC.busy = true;
     var js = window.TeploOCR ? Promise.resolve() : (FOC.js = FOC.js || new Promise(function (ok, bad) {
-      var sc = document.createElement('script'); sc.src = String(window.TEPLO_API).replace(/\/api\/?$/, '') + '/web/ocr/engine.js?v=20'; sc.onload = ok; sc.onerror = bad; document.head.appendChild(sc);
+      var sc = document.createElement('script'); sc.src = String(window.TEPLO_API).replace(/\/api\/?$/, '') + '/web/ocr/engine.js?v=21'; sc.onload = ok; sc.onerror = bad; document.head.appendChild(sc);
     }));
     js.then(function () { return window.TeploOCR._drums(im); }).then(function (cs) {
       var c = (cs || [])[0], iw = im.naturalWidth, ih = im.naturalHeight, k = Math.min(1, 2400 / Math.max(iw, ih));
@@ -3621,6 +3621,12 @@
     // одна запись на квартиру и дату: повторный ввод в тот же день — правка
     var same = (S.water || []).filter(function (r) { return r && !r.deleted && !r.base && !r.billOnly && r.place === S.placeId && r.date === date; })[0];
     // фото, с которых сняли, — к записи (видны в истории)
+    // 146-а: превью — по барабану з тими цифрами, що людина зберегла з цього фото (скрин власника: «Ванна» — рамка була на написі корпусу)
+    (WN.photos || []).forEach(function (p, i) {
+      if (!p.res || !p.file || !VIS().focusOf) return;
+      var vs = Object.keys(WN.src || {}).filter(function (mid) { return WN.src[mid] && WN.src[mid].photo === i && vals[mid] !== undefined; }).map(function (mid) { return String(vals[mid]); });
+      try { var fc = vs.length ? VIS().focusOf(p.res, vs) : null; if (fc) p.file._focus = fc; } catch (e0) { /* лишається рамка з розпізнавання */ }
+    });
     var refs = photoRefs((WN.photos || []).map(function (p) { return { file: p.file, meter: p.meters && p.meters.length === 1 ? p.meters[0] : undefined }; }));
     var rec = same;
     if (same) { same.vals = Object.assign({}, same.vals, vals); if (refs.length) same.photos = (same.photos || []).concat(refs); if (own) same.own = true; noteSet(same, WN.note, !!WN.noteEdit); same.updatedAt = Date.now(); }
@@ -3841,7 +3847,7 @@
       wnRead();
       var p = wprevFor(mid, WN.date || today()), r = Wt.fromOcr(res, p ? p.vals[mid] : null);
       WN.photos.forEach(function (x) { x.meters = (x.meters || []).filter(function (k) { return k !== mid; }); });
-      WN.photos.push({ file: file, url: URL.createObjectURL(file), res: { lines: res.lines, drums: res.drums }, ms: res.ms, meters: [mid], fixed: mid });
+      WN.photos.push({ file: file, url: URL.createObjectURL(file), res: { lines: res.lines, drums: res.drums, w: res.w, h: res.h }, ms: res.ms, meters: [mid], fixed: mid });
       var pi = WN.photos.length - 1;
       var ok = photoKind(res);
       if (ok) WN.src[mid] = { photo: pi, value: null, none: true, other: ok };
@@ -3918,7 +3924,7 @@
       var chain = Promise.resolve();
       todo.forEach(function (p, i) {
         chain = chain.then(function () { if (!live()) return null; wnProg(15 + 85 * (i + 0.3) / n, n > 1 ? t('ph_reading', { i: i + 1, n: n }) : t('wn_reading'), 'read'); return limit(ocrRead(p.file, { all: true })); })
-          .then(function (res) { if (res) { p.res = { lines: res.lines, drums: res.drums }; p.ms = res.ms; } }, function () { p.res = { lines: [], drums: [] }; });
+          .then(function (res) { if (res) { p.res = { lines: res.lines, drums: res.drums, w: res.w, h: res.h }; p.ms = res.ms; } }, function () { p.res = { lines: [], drums: [] }; });
       });
       return chain;
     }).then(function () { if (!live()) return; WN.busy = false; wnAssign(); render(true); wnCheck(true); wnReport(); if (CARD.id && WN.inbox && WN.inbox.length) cardWaterSoon(WN, 0); },
@@ -8358,7 +8364,7 @@
     var idx = PH.waterIdx || [], byIdx = {};
     (PH.result && PH.result.photos || []).forEach(function (x) { byIdx[x.index] = x; });
     WN = wnFresh('hot'); WN.date = PH.date && PH.date !== today() ? PH.date : '';
-    idx.forEach(function (i) { var f = PH.files[i]; if (!f) return; var o = byIdx[i] && byIdx[i].ocr; WN.photos.push({ file: f, url: URL.createObjectURL(f), res: o ? { lines: o.lines || [], drums: o.drums || [] } : null, meters: [] }); });
+    idx.forEach(function (i) { var f = PH.files[i]; if (!f) return; var o = byIdx[i] && byIdx[i].ocr; WN.photos.push({ file: f, url: URL.createObjectURL(f), res: o ? { lines: o.lines || [], drums: o.drums || [], w: o.w, h: o.h } : null, meters: [] }); });
     WN.inbox = idx.map(function (i) { return PH.files[i] && PH.files[i]._srv; }).filter(function (id) { return id && PH.inbox && PH.inbox.indexOf(id) >= 0; });
     if (all) phReset('reading'); else WN.back = 'photo';
     var need = WN.photos.some(function (p) { return !p.res; }), auto = all && WN.inbox.length && hcOn();

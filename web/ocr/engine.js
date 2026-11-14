@@ -70,11 +70,35 @@
   /** Отдать память холста сразу (iOS считает общий лимит памяти холстов и не ждёт сборщика мусора). */
   function free(c) { if (c) { c.width = 0; c.height = 0; } }
 
+  // 146-а (скрини власника 14.11: фото «Ванна» лежить боком, рамка превью не на табло): Safari губить поворот EXIF у createImageBitmap(Blob)
+  // (WebKit bug 237895), а <img> його враховує. Фото з поворотом у EXIF — через <img> (drawImage з ним повертає в усіх нинішніх браузерах),
+  // без повороту — швидкий createImageBitmap. Інакше рушій рахує рамку в «сирому» кадрі, а показуємо повернутий — превью мимо табло.
+  function exifOri(file) {
+    if (!file || typeof file.slice !== 'function' || (file.type && !/jpe?g/i.test(file.type))) return Promise.resolve(1);
+    var rd = file.slice(0, 131072); rd = rd.arrayBuffer ? rd.arrayBuffer() : new Promise(function (ok, bad) { var f = new FileReader(); f.onload = function () { ok(f.result); }; f.onerror = bad; f.readAsArrayBuffer(rd); });
+    return rd.then(function (buf) {
+      var v = new DataView(buf), o = 2; if (v.byteLength < 4 || v.getUint16(0) !== 0xFFD8) return 1;
+      while (o + 10 <= v.byteLength) {
+        var m = v.getUint16(o); if ((m & 0xFF00) !== 0xFF00 || m === 0xFFDA) return 1;
+        if (m === 0xFFE1 && v.getUint32(o + 4) === 0x45786966) {
+          var t = o + 10, le = v.getUint16(t) === 0x4949, ifd = t + v.getUint32(t + 4, le), n = v.getUint16(ifd, le);
+          for (var i = 0; i < n; i++) { var e = ifd + 2 + i * 12; if (e + 12 > v.byteLength) return 1; if (v.getUint16(e, le) === 0x0112) { var r = v.getUint16(e + 8, le); return r >= 1 && r <= 8 ? r : 1; } }
+          return 1;
+        }
+        o += 2 + v.getUint16(o + 2);
+      }
+      return 1;
+    }).catch(function () { return 1; });
+  }
+  function loadOriented(file) {
+    var viaImg = function () { return new Promise(function (ok, bad) { var i = new Image(); i.onload = function () { ok(i); }; i.onerror = bad; i.src = URL.createObjectURL(file); }); };
+    var blob = typeof Blob !== 'undefined' && file instanceof Blob;
+    if (typeof createImageBitmap !== 'function') return blob ? viaImg() : Promise.resolve(file);
+    if (!blob) return createImageBitmap(file);
+    return exifOri(file).then(function (o) { return o > 1 ? viaImg() : createImageBitmap(file).catch(viaImg); });
+  }
   function toCanvas(file, mx) {
-    var p = typeof createImageBitmap === 'function'
-      ? createImageBitmap(file, { imageOrientation: 'from-image' }).catch(function () { return createImageBitmap(file); })
-      : new Promise(function (ok, bad) { var i = new Image(); i.onload = function () { ok(i); }; i.onerror = bad; i.src = URL.createObjectURL(file); });
-    return p.then(function (img) {
+    return loadOriented(file).then(function (img) {
       var k = Math.min(1, (mx || 2400) / Math.max(img.width, img.height));
       var c = document.createElement('canvas'); c.width = Math.round(img.width * k); c.height = Math.round(img.height * k);
       c.getContext('2d').drawImage(img, 0, 0, c.width, c.height); if (img.close) img.close(); else if (img.src) URL.revokeObjectURL(img.src); return c;
