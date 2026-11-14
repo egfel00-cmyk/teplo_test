@@ -122,10 +122,16 @@
   }
   /** Сводка для статистики и советов: среднее м³ и грн в месяц за последние до 12 месяцев с данными. */
   function summary(months) {
-    var ms = months.slice(-12), m3 = 0, days = 0, uah = 0;
-    ms.forEach(function (b) { m3 += b.m3; days += b.days; uah += b.cost; });
+    // 148-а (власник 14.11: «в выборку по среднему бери максимум 12 мес»): не 12 записів, а 365 днів до останніх показань; період на краю — частково
+    if (!months.length) return null;
+    var last = months[months.length - 1], end = Date.parse(last.to), start = end - 365 * 864e5, m3 = 0, days = 0, uah = 0;
+    months.forEach(function (b) {
+      var bt = Date.parse(b.to), bf = b.from ? Date.parse(b.from) : bt - (b.days || 0) * 864e5, bd = Math.max(1, Math.round((bt - bf) / 864e5));
+      var ov = Math.round((Math.min(bt, end) - Math.max(bf, start)) / 864e5); if (ov <= 0) return;
+      var f = Math.min(1, ov / bd); m3 += b.m3 * f; uah += b.cost * f; days += Math.min(ov, b.days || ov);
+    });
     if (!days) return null;
-    return { months: ms.length, m3: m3, uah: uah, perMonth: m3 / days * 30.44, uahMonth: uah / days * 30.44, last: ms[ms.length - 1] };
+    return { months: Math.max(1, Math.min(12, Math.round(days / 30.44))), m3: m3, uah: uah, perMonth: m3 / days * 30.44, uahMonth: uah / days * 30.44, last: last };
   }
 
   /**

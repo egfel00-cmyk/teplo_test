@@ -53,6 +53,11 @@ const U = 'http://127.0.0.1:8013/';
     await p.evaluate(s => localStorage.setItem('teplo.v1', JSON.stringify(s)), d);
     await open('elec'); const g2 = await info();
     ok('оплатив — «Оплачено 14 листопада 2026», табло 2575', g2.lcd === '2575' && /^Оплачено 14 листопада 2026$/.test(g2.cap.trim()), [g2.lcd, g2.cap]);
+    // 148-а (власник 13:35, скрин: «текст „Гараж № 141: показання 2263–2575, набігло 312 кВт·год, … грн, за жовтень 2026“ — і в блоці „куди платити“, для всіх своїх»)
+    const pb = await p.evaluate(() => { const d = document.querySelector('details.mypay'); return d ? { purp: ((d.querySelector('[data-key="my-r-purp"]') || {}).textContent || ''),
+      sum: !!d.querySelector('[data-key="my-sum"]'), paid: !!d.querySelector('.mypay-st'), all: ((d.querySelector('[data-key="my-copy-all"]') || { getAttribute: () => '' }).getAttribute('data-text') || '') } : null; });
+    ok('оплачено: у «ГК Победа» лишається призначення (2263–2575, набігло 312), без «До сплати», «Оплачено» в шапці; «Скопіювати реквізити» — з призначенням',
+      pb && /№ 141/.test(pb.purp) && /2263–2575/.test(pb.purp) && /312/.test(pb.purp) && !pb.sum && pb.paid && (pb.all === '' || /2263–2575/.test(pb.all)), pb);
   }
   ok('без помилок JS', !errs.length, errs);
   console.log('\nИтог: ' + pass + ' OK, ' + fail + ' FAIL'); await b.close(); process.exit(fail ? 1 : 0);

@@ -141,10 +141,19 @@
     var fee = opts && opts.fee > 0 ? opts.fee : 0;
     return Object.keys(by).sort().map(function (k) { var b = by[k]; b.cost = cost(m, b.dz, b.to, opts).total + fee; if (fee) b.fee = fee; b.perMonth = b.days ? b.kwh / b.days * 30 : b.kwh; return b; });
   }
+  /** Середнє за місяць — лише за останні до 12 місяців (148-а, власник 14.11: «в выборку по среднему бери максимум 12 мес»; гараж: 4 записи
+   *  на 2 роки давали «останні 4 міс.»). Вікно — 365 днів до останніх показань; період, що заходить за край, береться частково (за днями).
+   *  months — скільки місяців насправді в середньому (за днями, 1–12), а не скільки записів. */
   function summary(mo) {
     if (!mo.length) return null;
-    var kwh = 0, uah = 0, days = 0; mo.forEach(function (b) { kwh += b.kwh; uah += b.cost; days += b.days; });
-    return { months: mo.length, perMonth: days ? kwh / days * 30 : kwh, uahMonth: days ? uah / days * 30 : uah, last: mo[mo.length - 1] };
+    var last = mo[mo.length - 1], end = Date.parse(last.to), start = end - 365 * 864e5, kwh = 0, uah = 0, days = 0;
+    mo.forEach(function (b) {
+      var bt = Date.parse(b.to), bf = b.from ? Date.parse(b.from) : bt - (b.days || 0) * 864e5, bd = Math.max(1, Math.round((bt - bf) / 864e5));
+      var ov = Math.round((Math.min(bt, end) - Math.max(bf, start)) / 864e5); if (ov <= 0) return;
+      var f = Math.min(1, ov / bd); kwh += b.kwh * f; uah += b.cost * f; days += Math.min(ov, b.days || ov);
+    });
+    if (!days) { kwh = last.kwh; uah = last.cost; days = last.days || 30; }
+    return { months: Math.max(1, Math.min(12, Math.round(days / 30.44))), perMonth: kwh / days * 30, uahMonth: uah / days * 30, last: last };
   }
   /** Скільки дала б ніч: частка нічного розходу і економія проти однозонного (для двозонних). */
   function nightShare(mo) { var n = 0, all = 0; mo.forEach(function (b) { n += b.dz.night || 0; all += b.kwh; }); return all ? n / all : null; }

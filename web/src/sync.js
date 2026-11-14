@@ -70,8 +70,17 @@
     // квартиры: по id, у каждой своя метка времени; удалённая квартира (deleted) тоже «надгробие»
     if (wipeWins) out.places = newer.places || [];
     else {
-      var pm = {}, order = [];
-      (older.places || []).concat(newer.places || []).forEach(function (p) { if (!p || !p.id) return; if (!pm[p.id]) order.push(p.id); if (!pm[p.id] || (p.updatedAt || 0) >= (pm[p.id].updatedAt || 0)) pm[p.id] = p; });
+      var pm = {}, order = [], pv = {};
+      (older.places || []).concat(newer.places || []).forEach(function (p) { if (!p || !p.id) return; if (!pm[p.id]) order.push(p.id); (pv[p.id] = pv[p.id] || []).push(p); if (!pm[p.id] || (p.updatedAt || 0) >= (pm[p.id].updatedAt || 0)) pm[p.id] = p; });
+      // 148-а (власник 14.11: «в „Победе“ третий раз ввожу Жилстрой — не сохраняется и сбрасывается»): квартира — «хто новіший, той і цілий», і стара копія
+      // з іншого пристрою чи вкладки, яку фоном торкнулось щось інше (черга світла, форма ХТМ, газ), затирала нового постачальника. «Кому платите»
+      // кожного виду (prov[вид]) тепер зливаємо окремо — за його власною міткою ts (mySet, тариф, «Так, це мій»): новіша зміна постачальника виграє завжди.
+      order.forEach(function (id) {
+        var vs = pv[id]; if (vs.length < 2) return;
+        var w = pm[id], prov = Object.assign({}, w.prov || {}), ch = false;
+        vs.forEach(function (v) { if (v === w || !v.prov) return; Object.keys(v.prov).forEach(function (k) { var a = v.prov[k], c = prov[k]; if (a && (a.ts || 0) > ((c && c.ts) || 0)) { prov[k] = a; ch = true; } }); });
+        if (ch) pm[id] = Object.assign({}, w, { prov: prov });
+      });
       if (order.length) out.places = order.map(function (k) { return pm[k]; });
     }
     if (wipeWins) { out.draft = newer.draft || null; out.contacts = newer.contacts || { phone: '', email: '' }; }

@@ -6732,8 +6732,17 @@ details.mypay[open] > summary .mypay-amt, details.mypay[open] > summary .mypay-s
     // квартиры: по id, у каждой своя метка времени; удалённая квартира (deleted) тоже «надгробие»
     if (wipeWins) out.places = newer.places || [];
     else {
-      var pm = {}, order = [];
-      (older.places || []).concat(newer.places || []).forEach(function (p) { if (!p || !p.id) return; if (!pm[p.id]) order.push(p.id); if (!pm[p.id] || (p.updatedAt || 0) >= (pm[p.id].updatedAt || 0)) pm[p.id] = p; });
+      var pm = {}, order = [], pv = {};
+      (older.places || []).concat(newer.places || []).forEach(function (p) { if (!p || !p.id) return; if (!pm[p.id]) order.push(p.id); (pv[p.id] = pv[p.id] || []).push(p); if (!pm[p.id] || (p.updatedAt || 0) >= (pm[p.id].updatedAt || 0)) pm[p.id] = p; });
+      // 148-а (власник 14.11: «в „Победе“ третий раз ввожу Жилстрой — не сохраняется и сбрасывается»): квартира — «хто новіший, той і цілий», і стара копія
+      // з іншого пристрою чи вкладки, яку фоном торкнулось щось інше (черга світла, форма ХТМ, газ), затирала нового постачальника. «Кому платите»
+      // кожного виду (prov[вид]) тепер зливаємо окремо — за його власною міткою ts (mySet, тариф, «Так, це мій»): новіша зміна постачальника виграє завжди.
+      order.forEach(function (id) {
+        var vs = pv[id]; if (vs.length < 2) return;
+        var w = pm[id], prov = Object.assign({}, w.prov || {}), ch = false;
+        vs.forEach(function (v) { if (v === w || !v.prov) return; Object.keys(v.prov).forEach(function (k) { var a = v.prov[k], c = prov[k]; if (a && (a.ts || 0) > ((c && c.ts) || 0)) { prov[k] = a; ch = true; } }); });
+        if (ch) pm[id] = Object.assign({}, w, { prov: prov });
+      });
       if (order.length) out.places = order.map(function (k) { return pm[k]; });
     }
     if (wipeWins) { out.draft = newer.draft || null; out.contacts = newer.contacts || { phone: '', email: '' }; }
@@ -7917,10 +7926,16 @@ details.mypay[open] > summary .mypay-amt, details.mypay[open] > summary .mypay-s
   }
   /** Сводка для статистики и советов: среднее м³ и грн в месяц за последние до 12 месяцев с данными. */
   function summary(months) {
-    var ms = months.slice(-12), m3 = 0, days = 0, uah = 0;
-    ms.forEach(function (b) { m3 += b.m3; days += b.days; uah += b.cost; });
+    // 148-а (власник 14.11: «в выборку по среднему бери максимум 12 мес»): не 12 записів, а 365 днів до останніх показань; період на краю — частково
+    if (!months.length) return null;
+    var last = months[months.length - 1], end = Date.parse(last.to), start = end - 365 * 864e5, m3 = 0, days = 0, uah = 0;
+    months.forEach(function (b) {
+      var bt = Date.parse(b.to), bf = b.from ? Date.parse(b.from) : bt - (b.days || 0) * 864e5, bd = Math.max(1, Math.round((bt - bf) / 864e5));
+      var ov = Math.round((Math.min(bt, end) - Math.max(bf, start)) / 864e5); if (ov <= 0) return;
+      var f = Math.min(1, ov / bd); m3 += b.m3 * f; uah += b.cost * f; days += Math.min(ov, b.days || ov);
+    });
     if (!days) return null;
-    return { months: ms.length, m3: m3, uah: uah, perMonth: m3 / days * 30.44, uahMonth: uah / days * 30.44, last: ms[ms.length - 1] };
+    return { months: Math.max(1, Math.min(12, Math.round(days / 30.44))), m3: m3, uah: uah, perMonth: m3 / days * 30.44, uahMonth: uah / days * 30.44, last: last };
   }
 
   /**
@@ -8334,10 +8349,19 @@ details.mypay[open] > summary .mypay-amt, details.mypay[open] > summary .mypay-s
     var fee = opts && opts.fee > 0 ? opts.fee : 0;
     return Object.keys(by).sort().map(function (k) { var b = by[k]; b.cost = cost(m, b.dz, b.to, opts).total + fee; if (fee) b.fee = fee; b.perMonth = b.days ? b.kwh / b.days * 30 : b.kwh; return b; });
   }
+  /** Середнє за місяць — лише за останні до 12 місяців (148-а, власник 14.11: «в выборку по среднему бери максимум 12 мес»; гараж: 4 записи
+   *  на 2 роки давали «останні 4 міс.»). Вікно — 365 днів до останніх показань; період, що заходить за край, береться частково (за днями).
+   *  months — скільки місяців насправді в середньому (за днями, 1–12), а не скільки записів. */
   function summary(mo) {
     if (!mo.length) return null;
-    var kwh = 0, uah = 0, days = 0; mo.forEach(function (b) { kwh += b.kwh; uah += b.cost; days += b.days; });
-    return { months: mo.length, perMonth: days ? kwh / days * 30 : kwh, uahMonth: days ? uah / days * 30 : uah, last: mo[mo.length - 1] };
+    var last = mo[mo.length - 1], end = Date.parse(last.to), start = end - 365 * 864e5, kwh = 0, uah = 0, days = 0;
+    mo.forEach(function (b) {
+      var bt = Date.parse(b.to), bf = b.from ? Date.parse(b.from) : bt - (b.days || 0) * 864e5, bd = Math.max(1, Math.round((bt - bf) / 864e5));
+      var ov = Math.round((Math.min(bt, end) - Math.max(bf, start)) / 864e5); if (ov <= 0) return;
+      var f = Math.min(1, ov / bd); kwh += b.kwh * f; uah += b.cost * f; days += Math.min(ov, b.days || ov);
+    });
+    if (!days) { kwh = last.kwh; uah = last.cost; days = last.days || 30; }
+    return { months: Math.max(1, Math.min(12, Math.round(days / 30.44))), perMonth: kwh / days * 30, uahMonth: uah / days * 30, last: last };
   }
   /** Скільки дала б ніч: частка нічного розходу і економія проти однозонного (для двозонних). */
   function nightShare(mo) { var n = 0, all = 0; mo.forEach(function (b) { n += b.dz.night || 0; all += b.kwh; }); return all ? n / all : null; }
@@ -12071,7 +12095,7 @@ details.mypay[open] > summary .mypay-amt, details.mypay[open] > summary .mypay-s
   document.addEventListener('change', function (e) {
     var el = e.target, id = el && el.getAttribute && el.getAttribute('data-mp'); if (!id || id === 'g-price') return;
     ensurePlaces(); var p = place(), v = R.num(String(el.value).replace(/\s/g, '')); p.prov = p.prov || {};
-    var put = function (k, f, max) { var o = Object.assign({}, p.prov[k] || {}); if (v !== null && v >= 0 && v < max) o[f] = v; else delete o[f]; o.at = today(); p.prov[k] = o; };
+    var put = function (k, f, max) { var o = Object.assign({}, p.prov[k] || {}); if (v !== null && v >= 0 && v < max) o[f] = v; else delete o[f]; o.at = today(); o.ts = Date.now(); p.prov[k] = o; };
     if (id === 'mp-heat') put('heat', 'price', 100000);
     else if (id === 'mp-abon') { if (v !== null && v >= 0 && v < 10000) p.bill = Object.assign({}, p.bill || {}, { abon: v }); }
     else if (id === 'mp-ws') put('water', 'supply', 1000);
@@ -13947,7 +13971,7 @@ details.mypay[open] > summary .mypay-amt, details.mypay[open] > summary .mypay-s
       act += '<button class="btn big block" data-act="read" data-key="home-read">' + esc(t('h_read')) + '</button>';   // фото — на кроках введення («з фото»)
     }
     var myh = myProv('heat'), hlast = myh ? RD().filter(function (x) { return x.htm && x.htm.date && !x.own; }).slice(-1)[0] : null;
-    right += myh ? (hlast && !/^(handed|accepted)$/.test(hlast.status) ? myPayBox('heat', myh, myCtxH(hlast), '') : myPayBox('heat', myh, null, '')) : whereAcc(heatWhere());   // 145-а: блок свого — завжди, як «Куди передати»   // 144-а: свій постачальник — без «Куди передати»
+    right += myh ? (hlast && !/^(handed|accepted)$/.test(hlast.status) ? myPayBox('heat', myh, myCtxH(hlast), '') : myPayBox('heat', myh, hlast && !hlast.own ? Object.assign({}, myCtxH(hlast), { paid: true }) : null, '')) : whereAcc(heatWhere());   // 145-а: блок свого — завжди, як «Куди передати»   // 144-а: свій постачальник — без «Куди передати»
     var recent = heatMixed(3);
     if (recent.length) right += histPanel(readingList(recent), RD().length + gaps('heat').length, '<button class="btn sec block" data-act="view-go" data-v="heat" data-to="history" data-key="heat-all">' + esc(t('wh_all', { n: RD().length + gaps('heat').length })) + '</button>', 'heat');
     if (Y().mode === 'server' && !Y().account && RD().length && !S.syncPromptDismissed) {
@@ -14142,7 +14166,7 @@ details.mypay[open] > summary .mypay-amt, details.mypay[open] > summary .mypay-s
     }
     return { tariff: tr.length ? Math.round(tr[Math.floor(tr.length / 2)] * 100) / 100 : null, k: k, abon: ab ? ab.abon : null, n: n, mzk: mzk };
   }
-  function tariffSet(v) { var p = place(); if (!p) { S.tariff = v; return; } p.prov = p.prov || {}; p.prov.heat = Object.assign({}, p.prov.heat || {}, { price: v, at: today() }); p.updatedAt = Date.now(); }
+  function tariffSet(v) { var p = place(); if (!p) { S.tariff = v; return; } p.prov = p.prov || {}; p.prov.heat = Object.assign({}, p.prov.heat || {}, { price: v, at: today(), ts: Date.now() }); p.updatedAt = Date.now(); }
   /* Платіжка ХТМ: до сплати = (ваше тепло за лічильником + ваша частка ЗБП) × тариф + абонплата.
      ЗБП — загальнобудинкові потреби (сходи, підвал): частка пропорційна площі, у платіжці — стовпець «на ЗБП» у рядку вашого вузла. */
   // абонплата и доля ЗБП — свои у каждой квартиры (place.bill); у первой — откат на прежние общие S.bill
@@ -15983,12 +16007,12 @@ details.mypay[open] > summary .mypay-amt, details.mypay[open] > summary .mypay-s
     p.prov = p.prov || {};
     if (act === 'prv-settle') { p.settle = { a: String(p.address || '').trim(), n: b.getAttribute('data-n'), h: b.getAttribute('data-h') }; p.updatedAt = Date.now(); WX.key = ''; save(); toast(t('prv_settled', { c: p.settle.n })); }
     else if (act === 'prv-unsettle') { delete p.settle; p.updatedAt = Date.now(); WX.key = ''; save(); }
-    else if (act === 'prv-yes') { p.prov[k] = { ok: 1, at: today() }; p.updatedAt = Date.now(); save(); toast(t('prv_saved')); }
+    else if (act === 'prv-yes') { p.prov[k] = { ok: 1, at: today(), ts: Date.now() }; p.updatedAt = Date.now(); save(); toast(t('prv_saved')); }
     else if (act === 'prv-other') PRV.edit[k] = true;
     else if (act === 'prv-cancel') delete PRV.edit[k];
     else if (act === 'prv-save') {
       var v = function (id) { var el = document.getElementById(id); return el ? String(el.value).trim() : ''; };
-      var o = { name: v('prv-n-' + k).slice(0, 80), at: today() };
+      var o = { name: v('prv-n-' + k).slice(0, 80), at: today(), ts: Date.now() };
       if ((k === 'water' || k === 'heat') && /\d{5,}/.test(v('prv-p-' + k).replace(/\D/g, ''))) o.phone = v('prv-p-' + k).slice(0, 30);
       if (k === 'water') { var s = R.num(v('prv-s')), dr = R.num(v('prv-d')); if (s > 0 && s < 1000) o.supply = s; if (dr > 0 && dr < 1000) o.drain = dr; }
       if (k === 'gas') { var g = R.num(v('prv-g')); if (g > 0 && g < 100) { o.price = g; p.gasPrice = g; } }
@@ -16290,7 +16314,9 @@ details.mypay[open] > summary .mypay-amt, details.mypay[open] > summary .mypay-s
   // акордеон, що «Куди передати» (details.wacc.wacc-btn, закритий; відкривали — лишається відкритим до перезавантаження). У згорнутій шапці —
   // назва й сума (або «Оплачено»), щоб не відкривати заради цифри. Номер людини в постачальника (гараж 141) — рядком з «Копіювати», не голим числом.
   function myPayBox(pk, o, c, mark, key) {
-    var how = o.how || 'iban', purp = how === 'cash' || !c ? '' : myPurpose(pk, o, c), rows = [], num = myNum(o);   // c = null — платити зараз нічого: лише реквізити
+    // c = null — показань ще немає: лише реквізити; c.paid (148-а, власник 14.11: «текст призначення — і в блоці „куди платити“, для всіх своїх») — останні вже
+    // оплачені: призначення тих показань лишається (скопіювати, звірити з банком), без «До сплати»
+    var paidC = !!(c && c.paid), how = o.how || 'iban', purp = how === 'cash' || !c ? '' : myPurpose(pk, o, c), rows = [], num = myNum(o);
     var row = function (lbl, v, copy, cls, rk) { return v ? '<li data-key="' + rk + '"><span class="my-r-l">' + esc(lbl) + '</span><span class="my-r-v' + (cls ? ' ' + cls : '') + '">' + esc(v) + '</span>' + (copy ? copyIco(copy, rk + '-copy') : '<span></span>') + '</li>' : ''; };
     if (how === 'iban') rows.push(row(t('my_recip'), o.recip || o.name, o.recip || o.name, '', 'my-r-recip'), row('IBAN', myIbanFmt(o.iban), myIban(o.iban), 'tn', 'my-r-iban'), row(t('my_code_s'), o.code, o.code, 'tn', 'my-r-code'));
     else if (how === 'cash') rows.push(row(t('my_how_cash'), o.cash || '', '', '', 'my-r-cash'));
@@ -16301,10 +16327,10 @@ details.mypay[open] > summary .mypay-amt, details.mypay[open] > summary .mypay-s
     if (tel && td.length >= 5) rows.push('<li data-key="my-r-phone"><span class="my-r-l">' + esc(t('my_phone')) + '</span><span class="my-r-v tn">' + telLink(td, tel) + '</span>' +
       '<a class="copy-ico my-call" href="tel:' + esc(td) + '" aria-label="' + esc(t('my_call')) + '" data-key="my-r-phone-call">' + ico('phone', 18) + '</a></li>');
     if (purp) rows.push(row(t('my_purp'), purp, purp, 'my-purp', 'my-r-purp'));
-    var has = c && c.sum !== undefined && c.sum !== null, paid = /class="pill ok"/.test(mark || '');
+    var has = c && !paidC && c.sum !== undefined && c.sum !== null, paid = paidC || /class="pill ok"/.test(mark || '');
     var sum = has ? '<div class="my-sum" data-key="my-sum"><span class="small muted">' + esc(t('my_sum')) + '</span><span class="my-sum-v"><b>' + esc(money(c.sum)) + '</b> грн' + copyIco(money(c.sum).replace(/\s/g, ''), 'my-sum-copy') + '</span>' +
       (c.q ? '<span class="small muted">' + esc(c.from ? t('my_sum_s', { q: c.q, d: fmtDate(c.from) }) : c.q) + '</span>' : '') + '</div>'
-      : c && c.first ? '<p class="small muted my-first" data-key="my-first">' + esc(t('my_first')) + '</p>' : '';
+      : c && c.first && !paidC ? '<p class="small muted my-first" data-key="my-first">' + esc(t('my_first')) + '</p>' : '';
     var all = how === 'iban' && myIban(o.iban) ? [o.recip || o.name, myIban(o.iban), o.code ? t('my_code_s') + ' ' + o.code : '', purp, has ? money(c.sum).replace(/\s/g, '') + ' грн' : ''].filter(Boolean).join('\n') : '';
     var r = rows.join(''), k = key || 'mypay-' + pk, open = WH_OPEN[k];
     var side = paid ? '<span class="pill ok mypay-st">' + ico('check', 14) + ' ' + esc(t('my_paid')) + '</span>' : has ? '<span class="mypay-amt">' + esc(money(c.sum)) + ' грн</span>' : '';
@@ -16337,15 +16363,15 @@ details.mypay[open] > summary .mypay-amt, details.mypay[open] > summary .mypay-s
     var o = myProv(k); if (!o) return '';
     var due = smeters(k).map(function (m) { var r = elastOf(m.id); return r && !r.base && !r.own && !ssent(k, r) ? myPayBox(k, o, myCtxS(k, m, r), myMarkS(k, r), 'mypay-' + m.id) : ''; }).join('');
     if (due) return due;
-    var paid = smeters(k).map(function (m) { var r = elastOf(m.id); return r && !r.base && !r.own ? r.sent && r.sent[SK[k].sk] : null; }).filter(Boolean).sort().slice(-1)[0];
-    return myPayBox(k, o, null, paid ? myMark(paid, '', '') : '', 'mypay-' + k);
+    var paidB = smeters(k).map(function (m) { var r = elastOf(m.id); return r && !r.base && !r.own && ssent(k, r) ? myPayBox(k, o, Object.assign({}, myCtxS(k, m, r), { paid: true }), myMark(r.sent[SK[k].sk], '', ''), 'mypay-' + m.id) : ''; }).join('');
+    return paidB || myPayBox(k, o, null, '', 'mypay-' + k);
   }
   function myPageW(kind) {
     var o = myProv('water'); if (!o) return '';
     var r = wrecs().filter(function (x) { return !x.base && wmeters(kind, true).some(function (m) { return hasVal(x, m.id); }); }).slice(-1)[0];
     if (r && !r.own && !wsentVk(r)) return myPayBox('water', o, myCtxW(r), myMarkW(r));
     var paid = r && !r.own ? wsentVk(r) : null;
-    return myPayBox('water', o, null, paid ? myMark(paid, '', '') : '');
+    return myPayBox('water', o, paid ? Object.assign({}, myCtxW(r), { paid: true }) : null, paid ? myMark(paid, '', '') : '');
   }
   /** Посилання під «Куди передати»: платите не їм — одним дотиком на свого постачальника (у «Налаштуваннях показань»). */
   function myLink(pk) {
@@ -16385,7 +16411,7 @@ details.mypay[open] > summary .mypay-amt, details.mypay[open] > summary .mypay-s
   }
   function mySet(pk, fn) {
     ensurePlaces(); var p = place(); if (!p) return null; p.prov = p.prov || {};
-    var o = Object.assign({}, p.prov[pk] || {}); fn(o); o.at = today(); p.prov[pk] = o; p.updatedAt = Date.now(); WX.key = ''; save(); return o;
+    var o = Object.assign({}, p.prov[pk] || {}); fn(o); o.at = today(); o.ts = Date.now(); p.prov[pk] = o; p.updatedAt = o.ts; WX.key = ''; save(); return o;   // ts — злиття постачальника окремо (sync.js, 148-а)
   }
   /** Перемкнути «Кому платите». on — свій: якщо назви ще немає — фокус у «Назва». */
   function myToggle(pk, on) {

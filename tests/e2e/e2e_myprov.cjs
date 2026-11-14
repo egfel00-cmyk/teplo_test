@@ -107,11 +107,12 @@ const B = 'http://127.0.0.1:8013/';
   ok('у історії — «Не оплачено»', /Не оплачено/.test(await txt('[data-key="st-gr20261031"]')));
   await p.click('[data-key="mypay-eg"] [data-key="my-paid"]'); await p.waitForTimeout(500);
   s = await st();
-  ok('«Оплачено»: sent.obl у записі, суми й призначення вже немає, у історії — «Оплачено»', !!(s.mrecs.find(r => r.id === 'gr20261031').sent || {}).obl && !(await has('[data-key="mypay-eg"]')) && /Оплачено/.test(await txt('[data-key="st-gr20261031"]')));
+  // 148-а (власник 13:35): після «Оплачено» призначення лишається в блоці (без «До сплати») — той самий блок mypay-<лічильник>
+  ok('«Оплачено»: sent.obl у записі, «До сплати» вже немає, призначення лишилось, у історії — «Оплачено»', !!(s.mrecs.find(r => r.id === 'gr20261031').sent || {}).obl && !(await has('[data-key="mypay-eg"] [data-key="my-sum"]')) && await has('[data-key="mypay-eg"] [data-key="my-r-purp"]') && /Оплачено/.test(await txt('[data-key="st-gr20261031"]')));
   // 145-а (власник 06:36: «в счётчике блок куда платить — всегда, как у гос-провайдеров, с именем и раскрывашкой»)
-  ok('оплачено — блок постачальника лишається: «ГК «Мотор»» і «Оплачено» в шапці, закритий', /ГК «Мотор».*Оплачено/.test(await txt('[data-key="mypay-elec-sum"]')) && !(await p.$eval('[data-key="mypay-elec"]', d => d.open)), await txt('[data-key="mypay-elec-sum"]'));
-  await tap('[data-key="mypay-elec-sum"]'); await p.waitForTimeout(400);
-  ok('відкрили: реквізити (IBAN), без суми й призначення', await has('[data-key="mypay-elec"] [data-key="my-r-iban"]') && !(await has('[data-key="mypay-elec"] [data-key="my-sum"]')) && !(await has('[data-key="mypay-elec"] [data-key="my-r-purp"]')));
+  ok('оплачено — блок постачальника лишається: «ГК «Мотор»» і «Оплачено» в шапці', /ГК «Мотор».*Оплачено/.test(await p.$eval('[data-key="mypay-eg-sum"]', e => e.textContent).catch(() => '')), await txt('[data-key="mypay-eg-sum"]'));   // блок лишився відкритим — у шапці «Оплачено» видно, коли згорнути
+  // 148-а: оплачено — у відкритому блоці реквізити й призначення оплачених показань, «До сплати» немає
+  ok('відкритий: реквізити (IBAN) і призначення, без суми', await has('[data-key="mypay-eg"] [data-key="my-r-iban"]') && !(await has('[data-key="mypay-eg"] [data-key="my-sum"]')) && await has('[data-key="mypay-eg"] [data-key="my-r-purp"]'));
   await p.goto(B + '#erec-gr20261031'); await p.waitForTimeout(500);
   // 145-а (власник 14.11, скрин: «в історії вже оплачено — блоку куди платити не має бути»)
   ok('оплачений запис: «Оплати» немає, у шапці — чип «Оплачено»', !(await has('[data-key="mypay-rec"]')) && !(await has('.wacc')) && /Оплачено/.test(await txt('[data-key="rec-h"]')), await txt('[data-key="rec-h"]'));

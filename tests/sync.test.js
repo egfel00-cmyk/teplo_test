@@ -43,4 +43,16 @@ t('подпись не зависит от updatedAt', S.sig({ a: 1, updatedAt: 
   mr = S.merge(Object.assign({}, wipedLocal, { wipedAt: R + 1000, updatedAt: R + 1000 }), restored);
   t('«стереть всё» после восстановления — работает как раньше', mr.readings.length === 0 && mr.wipedAt === R + 1000);
   t('restoredAt синхронизируется', S.payload({ restoredAt: R, readings: [] }).restoredAt === R); }
+// 148-а (власник: «в „Победе“ ввожу Жилстрой — не сохраняется»): стара копія квартири з іншого пристрою, яку фоном торкнулись (новіший updatedAt),
+// не затирає нового постачальника — prov[вид] зливається за власною ts
+{ const mine = { places: [{ id: 'pob', address: 'Харків', gpv: '', updatedAt: 100, prov: { elec: { own: 1, name: 'Жилстрой', how: 'cash', ts: 100 } } }], updatedAt: 100 };
+  const stale = { places: [{ id: 'pob', address: 'Харків', gpv: '3.1', updatedAt: 200, prov: { water: { ok: 1, ts: 50 } } }], updatedAt: 200 };
+  let mp = S.merge(mine, stale).places[0];
+  t('квартира — новіша копія (черга 3.1), але світло — «Жилстрой» з моєї зміни', mp.gpv === '3.1' && mp.prov.elec && mp.prov.elec.own === 1 && mp.prov.elec.name === 'Жилстрой' && mp.prov.water.ok === 1);
+  mp = S.merge(stale, mine).places[0];
+  t('порядок аргументів не важливий', mp.gpv === '3.1' && mp.prov.elec.name === 'Жилстрой');
+  const back = { places: [{ id: 'pob', updatedAt: 300, prov: { elec: { own: 0, ts: 300 } } }], updatedAt: 300 };
+  t('новіша зміна постачальника (повернули довідник) — теж виграє', S.merge(mine, back).places[0].prov.elec.own === 0);
+  const old = { places: [{ id: 'pob', updatedAt: 400, prov: { elec: { ok: 1 } } }], updatedAt: 400 };
+  t('стара копія без ts не затирає постачальника з ts', S.merge(mine, old).places[0].prov.elec.name === 'Жилстрой'); }
 console.log('\nИтог: ' + pass + ' OK, ' + fail + ' FAIL'); process.exit(fail ? 1 : 0);
