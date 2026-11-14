@@ -15,7 +15,7 @@ const U = 'http://127.0.0.1:8013/';
     const pid = st.places[0].id;
     await p.goto(U + '#place-' + pid); await p.reload(); await p.waitForTimeout(700);
     const n = await p.evaluate(() => document.querySelectorAll('[data-key=pv-icons] input[name=pv-icon]').length);
-    ok(vw + ': «Про квартиру» — вибір значка: «Без значка» + 18 залитих', n === 19, n);
+    ok(vw + ': «Про квартиру» — вибір значка: «Без значка» + 20 залитих (143-я: + гараж, ремонт)', n === 21, n);
     await p.click('[data-key=pv-icons] input[value=house] + .pk-b'); await p.waitForTimeout(400);
     const saved = await p.evaluate(id => JSON.parse(localStorage.getItem('teplo.v1')).places.find(x => x.id === id).icon, pid);
     ok(vw + ': значок збережено в квартиру (house)', saved === 'house', saved);

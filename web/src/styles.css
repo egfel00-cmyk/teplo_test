@@ -1789,8 +1789,11 @@ details.bot-how[open] > ol { margin-top: 4px; }
 .legal-foot .linkbtn { color: var(--c-ink-2); min-height: 44px; font-size: 14px; text-decoration: none; }
 
 /* «Налаштування показань» внизу картки лічильника (07.11): рядок по центру свого блоку — від лінії зверху до низу картки стільки ж, скільки знизу */
-.mbox > .mbox-set > summary { padding-top: 16px; }
-.mbox > .mbox-set[open] > summary { padding-top: 12px; }
+.mbox > .mbox-set > summary { padding: 12px 0; min-height: 56px; }
+/* 143-я (власник 14.11, скрин: «не вирівняно по вертикалі в порожньому просторі», «при розкритті не має стрибати»): рядок — однакові відступи зверху й знизу,
+   у відкритому — ті самі (раніше 16 → 12 і рядок підскакував); унизу картки її власний відступ прибрано, щоб від лінії до рядка й від рядка до краю було порівну */
+.mbox:has(> .mbox-set:last-child) { padding-bottom: 0; }
+.mbox > .mbox-set:last-child[open] > :last-child { margin-bottom: var(--sp-4); }
 
 /* «живі» ролики (07.11): цифра докручується знизу вгору; стовпчик цифр висотою з ролик, зсув — на k ролика */
 .wd-c.rolling { position: relative; overflow: hidden; }
