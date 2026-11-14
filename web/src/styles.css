@@ -566,7 +566,7 @@ input[type=text]:not(.dmy-native):not(.pl-in), input[type=email], input[type=pas
 .ucards { display: grid; gap: 12px; grid-template-columns: minmax(0, 1fr); margin-bottom: 8px; }
 @media (min-width: 720px) { .ucards { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
 .ucard { position: relative; display: flex; flex-direction: column; background: var(--c-surface); border: 1px solid var(--c-line); border-radius: 16px; }   /* 138-а: наведення — на всю картку, і в нижчих картках ряду */
-.ucard-main { flex: 1 1 auto; display: flex; flex-direction: column; gap: 4px; padding: 16px 18px; min-height: 124px; color: inherit; text-decoration: none; border-radius: 16px; }
+.ucard-main { flex: 1 1 auto; display: flex; flex-direction: column; gap: 4px; padding: 14px 18px 16px; min-height: 124px; color: inherit; text-decoration: none; border-radius: 16px; }
 @media (hover: hover) { .ucard-main:hover { background: var(--c-ghost-hover); } }
 .ucard-main:focus-visible { outline: 3px solid var(--c-info); outline-offset: 2px; }
 .ucard-top { display: flex; align-items: center; gap: 8px; font-weight: 600; font-size: 16px; min-height: 48px; padding-right: 60px; }
@@ -574,7 +574,7 @@ input[type=text]:not(.dmy-native):not(.pl-in), input[type=email], input[type=pas
 .ucard-cold .ucard-top .ico, .c-cold { color: var(--c-return); }
 .ucard-val { font: 600 28px/1.15 var(--mono); margin-top: 6px; overflow-wrap: anywhere; }
 .ucard-val small { font: 500 14px var(--font); color: var(--c-ink-2); }
-.ucard-disp { margin: 4px 0 6px; display: grid; gap: 8px; }
+.ucard-disp { margin: 10px 0 6px; display: grid; gap: 8px; }   /* 144-а: зверху — щоб під «+» було ті самі 12 px, що й над ним */
 .ucard-sub { font-size: 14px; color: var(--c-ink-2); }
 /* 136-а: місяць крапками — вікно прийому й «сьогодні» (власник 13.11: «полоской, ненавязчиво, графически»; перша версія — лінія з кружком — «как скроллбар»).
    Крапка на день (як «Відстеження циклу» Apple Health): інші дні — дрібні нейтральні, дні прийому — більші кольором виду (відкрите вікно — повним, інакше блідим),
@@ -610,9 +610,10 @@ input[type=text]:not(.dmy-native):not(.pl-in), input[type=email], input[type=pas
 .ucard-foot > .ucard-status { margin-top: 0; }
 .ucard-sub, .ucard-status { line-height: 20px; }
 .ucard-status.ok { color: var(--c-ok); } .ucard-status.due { color: var(--c-info); } .ucard-status.warn { color: var(--c-warn); }
-/* 144-а (власник 14.11, скрин): центр кола «+» — на одній лінії із заголовком (16 + 48/2 = 14 + 52/2 = 40 px від верху картки); плюс — рівно посередині кола:
+/* 144-а (власник 14.11, скрини): коло «+» — однаково 12 px від верху картки, від правого краю й до табло (12 + 52 + 12 = 76 = 14 + 48 + 4 + 10),
+   центр кола — на лінії заголовка (14 + 48/2 = 12 + 52/2 = 38 px); плюс — рівно посередині кола:
    без відступів кнопки й рядка під SVG (iOS ставив значок на базову лінію — знизу виходило більше) */
-.ucard-add { position: absolute; right: 12px; top: 14px; width: 52px; height: 52px; padding: 0; line-height: 0; border-radius: 50%; border: 1.5px solid var(--c-field-line); background: var(--c-surface-2); color: var(--c-ink); display: grid; place-items: center; cursor: pointer; }
+.ucard-add { position: absolute; right: 12px; top: 12px; width: 52px; height: 52px; padding: 0; line-height: 0; border-radius: 50%; border: 1.5px solid var(--c-field-line); background: var(--c-surface-2); color: var(--c-ink); display: grid; place-items: center; cursor: pointer; }
 .ucard-add > .ico { display: block; }
 .ucard-add:hover { border-color: var(--c-ink); background: var(--c-surface); }
 .ucard-add.hot { border-color: var(--c-ink); background: var(--c-ink); color: var(--c-on-ink); box-shadow: 0 4px 12px var(--c-shadow); }
@@ -1461,7 +1462,7 @@ details.tbl-acc[open] > .tbl-wrap { margin-top: 12px; }
 .lpp-vp .ucard-main { padding: 6px 12px 9px; min-height: 0; gap: 0; }
 @media (hover: hover) { .lpp-vp .ucard-main:hover { background: none; } }
 .lpp-vp .ucard-top { min-height: 38px; padding-right: 48px; }
-.lpp-vp .ucard-disp { margin: 0 0 5px; }
+.lpp-vp .ucard-disp { margin: 6px 0 5px; }   /* макет: 5 + 40 + 5 = 6 + 38 + 6 */
 .lpp-vp .lcd.card { padding: 6px 10px 5px; }
 .lpp-vp .lcd.card svg.seg { height: 34px; }
 .lpp-vp .elcd .el-hd { margin-bottom: 0; }
