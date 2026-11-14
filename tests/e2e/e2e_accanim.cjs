@@ -57,7 +57,7 @@ const B = 'http://127.0.0.1:8013/';
   h = await run(p, 'details.mbox-set');
   ok('«Налаштування показань» — кадрами', mids(h) >= 3 && h[h.length - 1][2] === true, 'проміжних ' + mids(h));
   // сезон тепла в історії
-  await p.goto(B + '#history'); await p.waitForTimeout(800);
+  await p.goto(B + '#history'); await p.waitForTimeout(800); await p.click('[data-key=kind-heat]').catch(() => {}); await p.waitForTimeout(400);   // 147-а: перша вкладка — за порядком видів
   const sz = await p.$$eval('details.season', a => a.map(d => d.open));
   const si = sz.indexOf(false);
   if (si >= 0) {

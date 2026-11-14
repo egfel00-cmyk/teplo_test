@@ -367,6 +367,8 @@ final class Api {
       case 'GET /api/gpv': return Gpv::api();
       case 'GET /api/providers': { RateLimit::hit('prov', $ip); $q = $r->query();   // постачальники й тарифи за адресою (адресу не зберігаємо); n+h — уточнений пункт
         return Providers::lookup((string)($q['q'] ?? ''), isset($q['n']) ? (string)$q['n'] : null, isset($q['h']) ? (string)$q['h'] : null); }
+      case 'GET /api/providers/catalog': { RateLimit::hit('prov', $ip);   // 147-а: усі постачальники виду — пошук у «Кому платите»
+        return Providers::catalog(preg_replace('/[^a-z]/', '', (string)($r->query()['k'] ?? ''))); }
       case 'GET /api/places/suggest': { RateLimit::hit('plsug', $ip); $q = $r->query();   // підказка населеного пункту у формі адреси (нічого не зберігаємо)
         return Providers::suggest((string)($q['q'] ?? ''), preg_replace('/[^a-z]/', '', (string)($q['r'] ?? ''))); }
       case 'GET /api/gpv/addr': RateLimit::hit('gpv_addr', $ip); return Gpv::lookup((string)($r->query()['q'] ?? ''));   // черга відключень за адресою квартири (адресу не зберігаємо)

@@ -48,7 +48,7 @@ const U = 'http://127.0.0.1:8013/';
   // 6. історія: у записі є квитанція ХТМ — поруч «до сплати 1 234,56 грн»; з 11.2025 у рахунку тепло наперед — «з них наперед 225,79 грн» і пояснення в картці
   await put(s => { s.places[0].area = 54.3; s.readings.filter(r => r.id === 'r3')[0].bills = [{ id: 'd1', auto: 'htm', name: 'Квитанція ХТМ, квітень 2026', mime: 'text/html', pay: '1234.56', at: '2026-05-07T08:00:00Z', bytes: 4000 }];
     s.readings.filter(r => r.id === 'r2')[0].bills = [{ id: 'd2', auto: 'htm', name: 'Квитанція ХТМ, березень 2026', mime: 'text/html', pay: '3000.00', pre: '225.79', unpre: '-613.35', at: '2026-04-07T08:00:00Z', bytes: 4000 }]; });
-  await p.goto(U + '#history'); await p.reload(); await wait(1500);
+  await p.goto(U + '#history'); await p.reload(); await wait(1500); await p.click('[data-key=kind-heat]').catch(() => {}); await wait(400);   // 147-а: перша вкладка — вода
   t = sp(await p.textContent('[data-key=reading-r3]').catch(() => ''));
   ok('історія: рядок квітня — «до сплати 1 234,56 грн» з квитанції', /до сплати 1 234,56 грн/.test(t) && !/наперед/.test(t), t);
   t = sp(await p.textContent('[data-key=reading-r2]').catch(() => ''));

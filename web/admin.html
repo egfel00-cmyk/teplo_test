@@ -79,7 +79,7 @@ pre.state { font: 12px/1.4 var(--mono); background: #F4F7F5; padding: 10px; bord
   // виды счётчиков: короткие подписи для таблиц
   var KN = { heat: 'тепло', hot: 'гор. вода', cold: 'хол. вода', elec: 'свет', gas: 'газ', water: 'вода' };
   var ZN = { all: '', day: 'день', night: 'ночь', peak: 'пик', half: 'полупик' };
-  function kindsLine(k) { k = k || {}; var a = ['heat', 'hot', 'cold', 'elec', 'gas'].filter(function (x) { return k[x] > 0; }).map(function (x) { return KN[x] + (k[x] > 1 ? ' ×' + k[x] : ''); }); return a.length ? esc(a.join(' · ')) : '<span class="muted">—</span>'; }
+  function kindsLine(k) { k = k || {}; var a = ['elec', 'hot', 'cold', 'gas', 'heat'].filter(function (x) { return k[x] > 0; }).map(function (x) { return KN[x] + (k[x] > 1 ? ' ×' + k[x] : ''); }); return a.length ? esc(a.join(' · ')) : '<span class="muted">—</span>'; }
   /** «2026-11-02» → «02.11.26», как в остальных датах админки. */
   function dday(d) { var m = /^(\d{4})-(\d\d)-(\d\d)/.exec(String(d || '')); return m ? m[3] + '.' + m[2] + '.' + m[1].slice(2) : esc(d || ''); }
   function lastLine(l) {
@@ -242,7 +242,7 @@ pre.state { font: 12px/1.4 var(--mono); background: #F4F7F5; padding: 10px; bord
     return '<div class="panel"><h2>Что ведут</h2><p class="muted small">Из тех, кто сохранил данные: прошли первую настройку — ' + t.onboarded + ', есть хоть один счётчик — ' + t.withMeters +
       ', с двумя и больше квартирами — ' + t.multi + ', показаний «для себя» — ' + t.own + '.</p><table><thead><tr><th>Вид</th><th>Людей со счётчиком</th><th>Показаний</th></tr></thead><tbody>' +
       // вода — одна запись на дату с горячей и холодной вместе, поэтому показания воды — одной строкой
-      [['тепло', t.users.heat, t.recs.heat], ['вода', 'горячая ' + (t.users.hot || 0) + ' · холодная ' + (t.users.cold || 0), t.recs.water], ['свет', t.users.elec, t.recs.elec], ['газ', t.users.gas, t.recs.gas]].map(function (r) {
+      [['свет', t.users.elec, t.recs.elec], ['вода', 'горячая ' + (t.users.hot || 0) + ' · холодная ' + (t.users.cold || 0), t.recs.water], ['газ', t.users.gas, t.recs.gas], ['тепло', t.users.heat, t.recs.heat]].map(function (r) {
         return '<tr><td>' + esc(r[0]) + '</td><td class="mono">' + esc(r[1] || 0) + '</td><td class="mono">' + (r[2] || 0) + '</td></tr>'; }).join('') +
       '</tbody></table></div>';
   }
@@ -340,7 +340,7 @@ pre.state { font: 12px/1.4 var(--mono); background: #F4F7F5; padding: 10px; bord
             h.settlements.map(function (x) { return esc((x.c === 'M' ? 'м. ' : x.c === 'X' ? 'смт ' : x.c === 'C' ? 'с. ' : '') + x.n) + (x.people > 1 || x.places > 1 ? ' <span class="muted small">' + x.people + '/' + x.places + '</span>' : ''); }).join(', ') + '</td></tr>';
         }).join('') + '</tbody></table></details>';
     }).join('') : '<p class="muted">Ни у кого не указан адрес квартиры.</p>') + '</div>';
-    var korder = ['heat', 'hot', 'cold', 'elec', 'gas'];
+    var korder = ['elec', 'hot', 'cold', 'gas', 'heat'];   // 147-я: порядок видов — свет, вода, газ, тепло
     var kin = '<div class="panel"><h2>По видам</h2><table><thead><tr><th>Вид</th><th>Людей</th><th>Квартир</th><th>Счётчиков</th><th>Показаний</th><th>Расход в месяц</th><th>Цена за единицу</th><th>Сумма в месяц</th></tr></thead><tbody>' +
       korder.filter(function (k) { return ks[k]; }).map(function (k) { var x = ks[k];
         return '<tr><td>' + esc(KN[k]) + '</td><td class="mono">' + x.people + '</td><td class="mono">' + x.places + '</td><td class="mono">' + x.meters + '</td><td class="mono">' + x.recs + '</td><td>' + useCell(x) +
@@ -370,8 +370,8 @@ pre.state { font: 12px/1.4 var(--mono); background: #F4F7F5; padding: 10px; bord
   };
   function recsLine(s) {
     var r = s.recs || { heat: s.readings || 0 }, a = [];
+    ['elec', 'water', 'gas'].forEach(function (k) { if (r[k]) a.push(KN[k] + ' ' + r[k]); });
     if (r.heat) a.push('тепло ' + r.heat + (s.handed ? ' <span class="muted">(' + s.handed + ' перед.)</span>' : ''));
-    ['water', 'elec', 'gas'].forEach(function (k) { if (r[k]) a.push(KN[k] + ' ' + r[k]); });
     if (s.own) a.push('<span class="muted">для себя ' + s.own + '</span>');
     return a.length ? a.join('<br>') : '0';
   }
@@ -770,7 +770,7 @@ pre.state { font: 12px/1.4 var(--mono); background: #F4F7F5; padding: 10px; bord
     var f = PV.find;
     if (f) {
       if (f.found) h += '<p><b>' + esc(f.place.name) + '</b> — ' + esc(f.place.hromada) + ' громада' + (f.place.district ? ', ' + esc(f.place.district) + ' р-н' : '') + ', ' + esc(f.place.oblast) + ' <a class="btn" href="#' + pvHash(f.place.r, 'hromadas', f.hkey || f.place.hromada) + '">Открыть громаду</a></p>' +
-        '<p class="small muted">Вода: ' + esc((f.kinds.water || {}).org || '—') + ' · Тепло: ' + esc((f.kinds.heat || {}).org || '—') + ' · Свет: ' + esc((f.kinds.elec || {}).org || '—') + ' · Газ: ' + esc((f.kinds.gas || {}).grm || '—') + '</p>';
+        '<p class="small muted">Свет: ' + esc((f.kinds.elec || {}).org || '—') + ' · Вода: ' + esc((f.kinds.water || {}).org || '—') + ' · Газ: ' + esc((f.kinds.gas || {}).grm || '—') + ' · Тепло: ' + esc((f.kinds.heat || {}).org || '—') + '</p>';
       else h += '<p class="problem">' + (f.candidates ? 'Несколько пунктов: ' + f.candidates.slice(0, 8).map(function (c) { return esc(c.name + ' (' + c.hromada + ', ' + c.oblast + ')'); }).join('; ') : 'Не нашли такой пункт.') + '</p>';
     }
     h += '</div><div class="cards">' + (o.regions || []).map(function (r) {
@@ -798,7 +798,7 @@ pre.state { font: 12px/1.4 var(--mono); background: #F4F7F5; padding: 10px; bord
     var o = DATA.provr || {}, q = (PV.q2 || '').toLowerCase(), hit = function (x) { return (x.name + ' ' + x.center).toLowerCase().indexOf(q) >= 0; };
     var rows = !q ? (o.hromadas || []) : (o.hromadas || []).filter(hit).concat((o.hromadas || []).filter(function (x) { return !hit(x) && x.district.toLowerCase().indexOf(q) >= 0; }));
     var h = '<p><a class="btn" href="#prov">← Справочник</a></p><h2>' + esc(o.name || '') + (o.r === 'ky' ? '' : ' область') + '</h2>';
-    h += '<div class="panel"><h3>Вся область <a class="btn" href="#' + pvHash(o.r, 'oblast') + '">Изменить</a></h3><table>' + ['elec', 'gas', 'water', 'heat'].map(function (k) {
+    h += '<div class="panel"><h3>Вся область <a class="btn" href="#' + pvHash(o.r, 'oblast') + '">Изменить</a></h3><table>' + ['elec', 'water', 'gas', 'heat'].map(function (k) {
       return '<tr><th>' + PK[k] + (o.oblastEdited && o.oblastEdited.indexOf(k) >= 0 ? ' ' + pill('info', 'правка') : '') + '</th><td>' + kshort((o.oblast || {})[k], k) + '</td></tr>';
     }).join('') + '</table><p class="muted small">Вода и тепло области — то, что видят люди, если у громады своего нет (обычно «впишите с платёжки»).</p></div>';
     h += '<div class="panel"><div class="filters"><input type="search" id="pvq2" placeholder="Громада, центр или район" value="' + esc(PV.q2 || '') + '"><span class="muted small">' + rows.length + ' из ' + (o.hromadas || []).length + '</span></div>' +
@@ -838,7 +838,7 @@ pre.state { font: 12px/1.4 var(--mono); background: #F4F7F5; padding: 10px; bord
     var back = '<p><a class="btn" href="#' + pvHash(o.r) + '">← ' + esc(o.region || '') + '</a>' + (o.scope === 'settlements' ? ' <a class="btn" href="#' + pvHash(o.r, 'hromadas', String(o.key).split('/')[0]) + '">← громада</a>' : '') + '</p>';
     var h = back + '<h2>' + esc(title) + ' <span class="muted small">' + esc(PSC[o.scope] || '') + ', ' + esc(o.region || '') + '</span></h2>';
     if (o.scope !== 'oblast') h += '<p class="muted small">Пусто у громады — люди видят то, что задано для всей области. Пункт со своим поставщиком (село со своим КП) — ниже, «Пункты громады».</p>';
-    h += ['water', 'heat', 'elec', 'gas', 'waste'].map(function (kd) {
+    h += ['elec', 'water', 'gas', 'heat', 'waste'].map(function (kd) {
       var k = (o.kinds || {})[kd] || {}, c = k.cur, msg = PV.msg[kd] || '', sh = o.show && o.show[kd];
       var open = !!c || PV.open === kd;
       return '<details class="panel" data-pvk="' + kd + '"' + (open ? ' open' : '') + '><summary><b>' + PK[kd] + '</b> ' + (c ? kshort({ org: c.org, supply: c.supply, drain: c.drain, price: c.price, priv: c.priv, abon: c.abon, grm: c.grm, dist: c.dist, check: c.check, robot: c.robot }, kd) : '<span class="muted">нет на этом уровне' + (sh && (sh.org || sh.grm) ? ' — люди видят: ' + esc(sh.grm || sh.org) : '') + '</span>') +

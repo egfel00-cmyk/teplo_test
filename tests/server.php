@@ -1112,7 +1112,7 @@ $mst = ['v' => 1, 'onboarded' => true, 'meter' => ['modelId' => 'sharky774', 'un
     ['id' => 'm3', 'place' => 'p2', 'meter' => 'g2', 'kind' => 'gas', 'date' => '2026-10-01', 'z' => ['all' => '10'], 'base' => true]]];
 ok('состояние с квартирами сохранено', $mv->req('PUT', '/api/state', ['state' => $mst, 'baseVersion' => 0])->status === 200);
 $mu = $boss->req('GET', '/api/admin/users', null, ['QUERY_STRING' => 'q=many@'])->body['users'][0]['state'] ?? [];
-ok('сводка: 2 квартиры (удалённая не в счёт), виды без прибранных и удалённых', ($mu['places'] ?? 0) === 2 && $mu['kinds'] === ['heat' => 1, 'hot' => 0, 'cold' => 2, 'elec' => 1, 'gas' => 1], $mu);
+ok('сводка: 2 квартиры (удалённая не в счёт), виды без прибранных и удалённых', ($mu['places'] ?? 0) === 2 && $mu['kinds'] === ['elec' => 1, 'hot' => 0, 'cold' => 2, 'gas' => 1, 'heat' => 1], $mu);
 ok('сводка: показаний без удалённых и стартовых — тепло 2, вода 2, свет 1, газ 1; «для себя» 2; передано тепла 1 (не «для себя»)',
   $mu['recs'] === ['heat' => 2, 'water' => 2, 'elec' => 1, 'gas' => 1] && $mu['own'] === 2 && $mu['handed'] === 1 && $mu['readings'] === 2, $mu);
 ok('сводка: последнее — самое позднее по дате среди всех видов (газ 1.11, не удалённое тепло 1.11)', ($mu['last']['date'] ?? '') === '2026-11-01' && $mu['last']['kind'] === 'gas' && $mu['last']['sent'] === false, $mu['last'] ?? null);
@@ -2710,7 +2710,7 @@ $sent = []; $hook($cpm(time() - 4)); $cid3 = (int)(Db::one("SELECT id FROM bot_c
 $r = $cb->req('POST', '/api/bot/card', ['card' => $cid3, 'items' => [['k' => 'water', 't' => 'Вода', 'v' => '437 м³', 'w' => 'Водоканал', 'ok' => 1, 'plan' => ['svc' => 'vk', 'in' => ['acc' => '1234567', 'fam' => 'Петренко', 'rid' => 'wr7', 'place' => 'pl7', 'items' => []]]]]]);
 $c3 = BotCard::get($cid3); $c3d = json_decode($c3['data'], true);
 ok('свій постачальник води: у картці — «ОСББ «Сад»», без «Відправити», пояснення «реквізити в застосунку»; план порожній', $r->status === 200 && ($c3d['r'][0]['a'] ?? 1) === 0 && ($c3d['r'][0]['w'] ?? '') === 'ОСББ «Сад»'
-  && str_contains((string)($c3d['r'][0]['m'] ?? ''), 'Свій постачальник') && json_decode((string)$c3['plan'], true) === [null], [$c3d, $c3['plan']]);
+  && str_contains((string)($c3d['r'][0]['m'] ?? ''), 'Інший постачальник') && json_decode((string)$c3['plan'], true) === [null], [$c3d, $c3['plan']]);
 ok('BotCard::ownKinds — лише свої види по квартирах', BotCard::ownKinds($cu) === ['pl7' => ['water' => 'ОСББ «Сад»']], BotCard::ownKinds($cu));
 Db::q('DELETE FROM user_state WHERE user_id = ?', [$cu]);
 if ($ust0) Db::q('INSERT INTO user_state (user_id, data, version, updated_at) VALUES (?, ?, ?, ?)', [$cu, $ust0['data'], (int)$ust0['version'], Http::iso()]);
@@ -2784,5 +2784,14 @@ $dupUk = array_keys(array_filter(array_count_values($i18keys(substr($i18, 0, $ru
 $ruEnd = strpos($i18, "\n  };", $ruAt); $dupRu = array_keys(array_filter(array_count_values($i18keys(substr($i18, $ruAt + 10, ($ruEnd ?: strlen($i18)) - $ruAt - 10))), fn($c) => $c > 1));
 ok('i18n: у кожній мові ключ один раз (інакше другий тихо підміняє перший)', !$dupUk && !$dupRu, [$dupUk, $dupRu]);
 
+// 147-я: каталог постачальників для пошуку в «Кому платите» і вибір людини — головніший за адресу в нагадуваннях
+Providers::reset(); $cw = Providers::catalog('water'); $ce = Providers::catalog('elec'); $cg = Providers::catalog('gas');
+$bu = array_values(array_filter($cw['items'], fn($x) => str_contains($x['o'], 'Бучасервіс')))[0] ?? null;
+ok('каталог: вода — сотні постачальників, Бучасервіс з містом Буча і пунктом для /api/providers; світло — 6 областей; газ — з оператором ГРМ',
+  count($cw['items']) > 100 && $bu && in_array('Буча', $bu['t'], true) && $bu['n'] !== '' && $bu['h'] !== '' && count($ce['items']) === 6 && count(array_filter($cg['items'], fn($x) => !empty($x['g']))) >= 5 && Providers::catalog('xxx')['items'] === []);
+$lvi = array_values(array_filter($ce['items'], fn($x) => str_contains($x['o'], 'Львівенергозбут')))[0];
+$pv = Reminders::placeProv(['address' => '', 'prov' => ['elec' => ['own' => 0, 'sel' => ['o' => $lvi['o'], 'n' => $lvi['n'], 'h' => $lvi['h']]], 'water' => ['own' => 0, 'sel' => ['o' => $bu['o'], 'n' => $bu['n'], 'h' => $bu['h']]]]]);
+ok('нагадування: обраний у довіднику постачальник — замість харківського (світло — Львівенергозбут, вода — Бучасервіс з вікном, не Харківводоканал)',
+  str_contains((string)$pv['elec'], 'Львівенергозбут') && str_contains((string)$pv['water'], 'Бучасервіс') && $pv['hvk'] === false && !empty($pv['win']['water']), $pv);
 echo "\nИтог: $pass OK, $fail FAIL\n";
 exit($fail ? 1 : 0);

@@ -114,7 +114,7 @@ let pass = 0, fail = 0; const ok = (n, c, i) => { console.log((c ? '  OK  ' : ' 
   const ck = await p.textContent('#main');
   ok('тепло 13,2 у «Батьків» (там 20) → перевірка: «схоже на теплолічильник квартири «Моя квартира»»', /Схоже на показання теплолічильника квартири «Моя квартира»/.test(ck) && /Батьків/.test(ck), ck.slice(0, 400));
 
-  // ---- один порядок видів у всіх квартирах (владелец 05.11): у «Здаю» холодну й газ додали раніше за гарячу й світло
+  // ---- один порядок видів у всіх квартирах (147-а, власник 14.11: світло, вода, газ, тепло): у «Здаю» холодну й газ додали раніше за гарячу й світло
   await p.evaluate(() => { const s = JSON.parse(localStorage.getItem('teplo.v1'));
     s.places.push({ id: 'pz', v: 2, name: 'Здаю', address: 'Харків, вул. Сумська, 10, кв. 5', color: 'rose', meter: { modelId: 'sharky774', unit: 'Gcal' }, baseline: { date: '2026-10-01', energy: '1.000' }, updatedAt: 1,
       water: { account: '', surname: '', meters: [{ id: 'zc', kind: 'cold', name: '', serial: '' }, { id: 'zh', kind: 'hot', name: '', serial: '' }] },
@@ -123,14 +123,14 @@ let pass = 0, fail = 0; const ok = (n, c, i) => { console.log((c ? '  OK  ' : ' 
   await p.reload(); await p.waitForTimeout(300); await go('home');
   await p.evaluate(() => document.querySelectorAll('details.hp').forEach(d => { d.open = true; })); await p.waitForTimeout(150);
   const zk = await p.$$eval('#hp-pz .ucard', es => es.map(e => e.getAttribute('data-key').replace('card-', '')));
-  const ord = ['heat', 'hot', 'cold', 'elec', 'gas'], sorted = a => a.every((x, i) => !i || ord.indexOf(a[i - 1]) <= ord.indexOf(x));
-  ok('головна «Здаю»: опалення, гаряча, холодна, світло, газ — як в інших квартирах', JSON.stringify(zk) === JSON.stringify(ord), zk);
+  const ord = ['elec', 'hot', 'cold', 'gas', 'heat'], sorted = a => a.every((x, i) => !i || ord.indexOf(a[i - 1]) <= ord.indexOf(x));
+  ok('головна «Здаю»: світло, гаряча, холодна, газ, опалення — як в інших квартирах', JSON.stringify(zk) === JSON.stringify(ord), zk);
   await go('place-pz'); await p.waitForTimeout(900);
   const zm = await p.$$eval('#pg-pv-meters .mrow-main b', es => es.map(e => e.textContent));
-  ok('екран квартири: лічильники в тому ж порядку', /Опалення/.test(zm[0]) && /Гаряча/.test(zm[1]) && /Холодна/.test(zm[2]) && /Світло/.test(zm[3]) && /Газ/.test(zm[4]), zm);
+  ok('екран квартири: лічильники в тому ж порядку', /Світло/.test(zm[0]) && /Гаряча/.test(zm[1]) && /Холодна/.test(zm[2]) && /Газ/.test(zm[3]) && /Опалення/.test(zm[4]), zm);
   const zp = await p.$$eval('.prov-row', es => es.map(e => e.getAttribute('data-key').replace('prov-', '')));
-  ok('«Постачальники й тарифи»: опалення, вода, світло, газ (вивіз сміття — серед лічильників, 115-а)', JSON.stringify(zp.filter(x => x !== 'waste')) === JSON.stringify(['heat', 'water', 'elec', 'gas']), zp);
-  ok('дані з платіжки — під своїм постачальником: опалення, вода, світло, газ', JSON.stringify(await p.$$eval('#pg-pv-prov [data-key^=pv-bills-]', es => es.map(e => e.getAttribute('data-key').slice(9)))) === JSON.stringify(['heat', 'water', 'elec', 'gas']));
+  ok('«Постачальники й тарифи»: світло, вода, газ, опалення (вивіз сміття — серед лічильників, 115-а)', JSON.stringify(zp.filter(x => x !== 'waste')) === JSON.stringify(['elec', 'water', 'gas', 'heat']), zp);
+  ok('дані з платіжки — під своїм постачальником: світло, вода, газ, опалення', JSON.stringify(await p.$$eval('#pg-pv-prov [data-key^=pv-bills-]', es => es.map(e => e.getAttribute('data-key').slice(9)))) === JSON.stringify(['elec', 'water', 'gas', 'heat']));
   await go('history'); await p.click('[data-act=place-view][data-id=pz]').catch(() => {}); await p.waitForTimeout(300);
   const zs = await p.$$eval('[data-key=kind-switch] button', es => es.map(e => e.getAttribute('data-v')));
   ok('історія: перемикач видів у тому ж порядку', sorted(zs) && zs.length >= 2, zs);

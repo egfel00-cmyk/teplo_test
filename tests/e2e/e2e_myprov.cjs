@@ -161,7 +161,7 @@ const B = 'http://127.0.0.1:8013/';
   const openSet = async id => { const o = await p.$eval('[data-key="emeter-' + id + '"] details.mbox-set', d => d.open).catch(() => false); if (!o) { await tap('[data-key="emeter-' + id + '"] details.mbox-set > summary'); await p.waitForTimeout(400); } };
   await openSet('eg2');
   const opts7 = await p.$$eval('#my-elec .my-opt', ls => ls.map(l => l.innerText.replace(/\s+/g, ' ').trim()));
-  ok('«Кому платите»: довідник, «ГК Победа · Гараж · світло», «Інший свій постачальник»', opts7.length === 3 && /ГК Победа Гараж · світло/.test(opts7[1]) && /Інший свій постачальник/.test(opts7[2]), opts7);
+  ok('«Кому платите»: довідник, «ГК Победа · Гараж · світло», «Ще один інший постачальник»', opts7.length === 3 && /ГК Победа Гараж · світло/.test(opts7[1]) && /Ще один інший постачальник/.test(opts7[2]), opts7);
   await p.click('[data-key="my-elec-m0"]'); await p.waitForTimeout(600);
   ok('підказка: «Ваш номер тут свій — впишіть його», поле номера підсвічене', /Ваш номер тут свій/.test(await txt('#toast-host')) && await p.$eval('#my-elec-num', i => !!i.closest('.field.flash') && document.activeElement !== i).catch(() => false), await txt('#toast-host'));
   s = await st(); const g2 = () => s.places.find(x => x.id === 'gar2').prov.elec;

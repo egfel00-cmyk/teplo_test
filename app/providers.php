@@ -290,6 +290,43 @@ final class Providers {
     }
     return $out;
   }
+  /** 147-а (власник 14.11: «в настройках — выпадающий список с поиском по названию поставщика или города, сужение с уточнением запроса»):
+   *  усі постачальники виду $kind з довідника всіх областей — для пошуку в «Кому платите». Один рядок — одна організація (газ — ще й оператор ГРМ),
+   *  t — міста й села, де вона (центри громад і пункти з окремим постачальником), hr — громади, r — області; n + h — пункт, яким застосунок
+   *  питає /api/providers (там — реквізити, вікно, «Куди передати»). Адрес не зберігаємо. GET /api/providers/catalog?k=water */
+  const CAT_KINDS = ['elec', 'water', 'gas', 'heat', 'waste'];
+  public static function catalog(string $kind): array {
+    if (!in_array($kind, self::CAT_KINDS, true)) return ['k' => $kind, 'items' => []];
+    $k = self::kat(); $by = []; $ctr = [];
+    foreach ($k['settlements'] as $st) { $h = (string)$st['h']; if (!isset($ctr[$h]) || ($st['c'] === 'M' && $ctr[$h]['c'] !== 'M')) $ctr[$h] = $st; }
+    $put = function (array $o, string $town, string $hrom, string $r, string $n, string $h) use (&$by, $kind) {
+      $org = trim((string)($o['org'] ?? '')); if ($org === '') return;
+      $g = $kind === 'gas' ? trim((string)($o['grm'] ?? '')) : ''; $key = $org . '|' . $g;
+      if (!isset($by[$key])) $by[$key] = ['o' => $org] + ($g !== '' ? ['g' => $g] : []) + ['t' => [], 'hr' => [], 'r' => [], 'n' => $n, 'h' => $h];
+      $e = &$by[$key];
+      if ($town !== '' && !in_array($town, $e['t'], true)) $e['t'][] = $town;
+      if ($hrom !== '' && !in_array($hrom, $e['hr'], true)) $e['hr'][] = $hrom;
+      if (!in_array($r, $e['r'], true)) $e['r'][] = $r;
+    };
+    foreach ($k['hromadas'] as $hid => $hm) {
+      $hid = (string)$hid; $c = $ctr[$hid] ?? null; if (!$c) continue; $r = (string)($hm['r'] ?? 'kh');
+      $kd = self::kinds(['n' => (string)$c['n'], 'h' => $hid, 'r' => $r]);
+      $put((array)($kd[$kind] ?? []), (string)$c['n'], (string)($hm['n'] ?? ''), $r, (string)$c['n'], $hid);
+    }
+    // пункти з окремим постачальником (Буди, Феськи, Котлярі…): «громада/пункт» → свій рядок або ще одне місто в рядку організації
+    foreach (array_keys(self::REGIONS) as $r) {
+      foreach ((array)(self::rdata($r)['settlements'] ?? []) as $sk => $so) {
+        if (!is_array($so) || !isset($so[$kind])) continue; [$hk, $n] = array_pad(explode('/', (string)$sk, 2), 2, '');
+        $hid = null; foreach ($k['hromadas'] as $id => $hm) if (($hm['r'] ?? 'kh') === $r && ((string)($hm['k'] ?? $hm['n']) === $hk)) { $hid = (string)$id; break; }
+        if ($hid === null || $n === '') continue;
+        $kd = self::kinds(['n' => $n, 'h' => $hid, 'r' => $r]);
+        $put((array)($kd[$kind] ?? []), $n, '', $r, $n, $hid);
+      }
+    }
+    $items = array_values($by);
+    usort($items, fn($a, $b) => strcmp(mb_strtolower(preg_replace('/^[^«"]*[«"]/u', '', $a['o'])), mb_strtolower(preg_replace('/^[^«"]*[«"]/u', '', $b['o']))));
+    return ['k' => $kind, 'items' => $items];
+  }
   private static function pub(array $p): array {
     $r = (string)($p['r'] ?? 'kh');
     return ['id' => $p['n'] . '@' . $p['h'], 'n' => $p['n'], 'h' => $p['h'], 'name' => $p['n'], 'kind' => $p['c'], 'hromada' => $p['hromada'], 'district' => $r === 'ky' ? '' : $p['district'],

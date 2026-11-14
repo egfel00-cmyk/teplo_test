@@ -32,11 +32,11 @@ const items = [
   { id: '8', time: T('2026-10-20'), description: 'Оплата послуг', mcc: 4900, amount: -3000 }                            // MCC 4900 без назви — «інше»
 ];
 const g = M.groups(items);
-ok('3 постачальники + «інше»; магазин, надходження й кава — ні', g.length === 4 && g.map(x => x.kind).join() === 'heat,water,gas,other', g.map(x => [x.kind, x.name]));
-const heat = g[0];
+ok('3 постачальники + «інше»; магазин, надходження й кава — ні', g.length === 4 && g.map(x => x.kind).join() === 'water,gas,heat,other', g.map(x => [x.kind, x.name]));
+const heat = g.filter(x => x.kind === 'heat')[0], gw = g.filter(x => x.kind === 'water')[0], gg = g.filter(x => x.kind === 'gas')[0];
 ok('тепло: два платежі злиті в рядок з рахунком (у вересневому призначення немає)', heat.acc === '1234567' && heat.n === 2 && heat.nMonths === 2 && heat.lastAmt === 412.5 && !heat.guess, heat);
-ok('вода: рахунок з коментаря, ЄДРПОУ', g[1].acc === '7654321' && g[1].edrpou === '03361715');
-ok('газ: 10 цифр з 1… — рахунок Газмереж', M.gasField(g[2]) === 'grm' && M.gasField({ acc: '123456789', name: 'Нафтогаз' }) === 'account');
+ok('вода: рахунок з коментаря, ЄДРПОУ', gw.acc === '7654321' && gw.edrpou === '03361715');
+ok('газ: 10 цифр з 1… — рахунок Газмереж', M.gasField(gg) === 'grm' && M.gasField({ acc: '123456789', name: 'Нафтогаз' }) === 'account');
 ok('isUtility: надходження — ні', !M.isUtility({ amount: 100, mcc: 4900 }));
 
 console.log('План запитів і токен:');
@@ -74,7 +74,7 @@ ok('499 — усе прочитано; найстаріша на межі from �
 const qd = M.plan(accs, now, 3, 6);
 ok('план: 3 місяці кожної картки + головна до 6 місяців', qd.length === 9 && qd.slice(6).every(x => x.acc === 'b') && qd[8].w === 5 && qd[8].to === now - 5 * M.WIN, qd.map(x => x.acc + x.w));
 const st = M.stats([fine, fine2, items[0], items[0], items[2], items[6]]);
-ok('stats: лише числа — операцій, держплатежів, комуналки, групи «вид+рахунок»', st.n === 5 && st.gov === 2 && st.ut === 2 && st.g === 'heat+ water+', st);
+ok('stats: лише числа — операцій, держплатежів, комуналки, групи «вид+рахунок»', st.n === 5 && st.gov === 2 && st.ut === 2 && st.g === 'water+ heat+', st);
 (async () => {
   const rt = await M.statement('tok', { acc: 'b', from: 1, to: 2 }, () => new Promise(() => {}), 50);
   ok('запит завис — за тайм-аутом «timeout», а не «шукаю…» без кінця', rt.error === 'timeout', rt);

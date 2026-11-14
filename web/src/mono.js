@@ -96,7 +96,7 @@
       w.n += g.n; w.total += g.total; w.pays = w.pays.concat(g.pays); Object.keys(g.months).forEach(function (m) { w.months[m] = 1; }); if (g.last > w.last) { w.last = g.last; w.lastAmt = g.lastAmt; } return false;
     });
     out.forEach(function (g) { g.total = Math.round(g.total * 100) / 100; g.nMonths = Object.keys(g.months).length; delete g.months; g.pays.sort(function (a, b) { return b.time - a.time; }); g.pays = g.pays.slice(0, 24); });
-    var ord = { heat: 1, water: 2, elec: 3, gas: 4, waste: 5, house: 6, other: 7 };
+    var ord = { elec: 1, water: 2, gas: 3, heat: 4, waste: 5, house: 6, other: 7 };   // 147-а: порядок видів — світло, вода, газ, тепло
     return out.sort(function (a, b) { return (ord[a.kind] - ord[b.kind]) || (b.acc ? 1 : 0) - (a.acc ? 1 : 0) || b.last - a.last; });
   }
   /** Газ: 10 цифр, що починаються з 1, — рахунок Газмереж (доставка, ГРМ); 9 цифр або «Нафтогаз»/«газопостач» у назві — рахунок постачальника. */

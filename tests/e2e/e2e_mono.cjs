@@ -67,7 +67,8 @@ const TOK = 'uMonoSyntheticToken_0123456789abcdefABCDEF-xyz', BAD = 'uRevokedSyn
   ok('client-info + 6 вікон виписки лише гривневої картки (128-а: головна — до 6 місяців)', calls.filter(c => /client-info/.test(c)).length === 2 && st1 === 6 && !calls.some(c => /statement\/usd/.test(c)), calls);
   const rows = await p.$$eval('.mono-g', es => es.map(e => ({ t: e.textContent, on: !!e.querySelector('input[data-mf=on]:checked'), dis: !!e.querySelector('input[data-mf=on][disabled]') })));
   ok('фоном додався Нафтогаз (40 днів тому): 6 постачальників (кав’ярні немає), усі позначені', rows.length === 6 && rows.every(r => r.on) && !rows.some(r => /Кав/.test(r.t)), rows.map(r => r.t.slice(0, 60)));
-  ok('рядок тепла: рахунок 1234567, «Впишемо: особовий рахунок за тепло», платіж 412,50', /1234567/.test(rows[0].t) && /особовий рахунок за тепло/.test(rows[0].t) && /412,50/.test(rows[0].t));
+  const rh = rows.find(r => /Рахунок 1234567(?!\d)/.test(r.t)) || { t: '' };   // 147-а: рядки — у порядку видів (світло, вода, газ, тепло), тепло вже не перше
+  ok('рядок тепла: рахунок 1234567, «Впишемо: особовий рахунок за тепло», платіж 412,50', /особовий рахунок за тепло/.test(rh.t) && /412,50/.test(rh.t), rows.map(r => r.t.slice(0, 50)));
   ok('газ: 10 цифр з 1… — «рахунок Газмереж», 9 цифр — «рахунок постачальника газу»', rows.some(r => /1320012345/.test(r.t) && /Газмереж \(доставка/.test(r.t)) && rows.some(r => /987654321/.test(r.t) && /постачальника газу/.test(r.t)));
   ok('прізвище для Водоканалу — «Шевченко» з monobank', /Шевченко/.test(await p.textContent('[data-key=mono-sn]')) && await p.isChecked('#mono-sn'));
   // зняли галочку з Нафтогазу — його не впишемо

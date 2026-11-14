@@ -110,7 +110,8 @@
       var rot = function (b, a) { var cx = b.x + b.w / 2, cy = b.y + b.h / 2, ew = Math.abs(b.w * Math.cos(a)) + Math.abs(b.h * Math.sin(a)), eh = Math.abs(b.w * Math.sin(a)) + Math.abs(b.h * Math.cos(a)); add({ x: cx - ew / 2, y: cy - eh / 2, w: ew, h: eh }); };
       var drum = function (d) { var a = +d.angle || 0; rot(d, a); if (d.rb && d.rb.w > 0 && d.rb.h > 0) rot(d.rb, a); };
       // 146-а: що людина зберегла з цього фото — ціла частина від 3 цифр («919,403» → 919, «3498» → 3498); провідні нулі барабана не заважають
-      var keys = (vals || []).map(function (v) { return String(v === null || v === undefined ? '' : v).split(/[.,]/)[0].replace(/\D/g, '').replace(/^0+(?=\d)/, ''); }).filter(function (k) { return k.length >= 3; });
+      // 147-а: ціла частина коротша за 3 цифри (тепло «15,482» Гкал) — усі цифри разом із дробом: «15482» (на ЖК — «15.482», «0015.482»)
+      var keys = (vals || []).map(function (v) { var x = String(v === null || v === undefined ? '' : v), z = function (q) { return q.replace(/\D/g, '').replace(/^0+(?=\d)/, ''); }, k = z(x.split(/[.,]/)[0]); return k.length >= 3 ? k : z(x); }).filter(function (k) { return k.length >= 3; });
       var hasKey = function (t) { var d = String(t || '').replace(/\D/g, '').replace(/^0+(?=\d)/, ''); return keys.some(function (k) { return d.indexOf(k) >= 0; }); };
       var ds = (res.drums || []).filter(function (d) { return d && d.w > 0 && d.h > 0 && dg(d.text) >= 3; });
       // 1) барабан, на якому ці самі цифри (найвпевненіший); 2) вікна, знайдені впевнено за кольором; 3) рядок тексту з цими цифрами (ЖК)
@@ -146,6 +147,13 @@
       var c = function (v) { return Math.round(Math.max(0, Math.min(1, v)) * 1000) / 1000; };
       return { x: c((box.x0 + box.x1) / 2 / res.w), y: c((box.y0 + box.y1) / 2 / res.h), w: c((box.x1 - box.x0) / res.w), h: c((box.y1 - box.y0) / res.h), v: byVal ? 3 : 2 };
     },
+    /** Для focusOf пізніше (147-а): лише розмір кадру, рядки з ≥ 3 цифрами й вікна барабанів — без варіантів і картинок. */
+    slim: function (res) {
+      if (!res || !(res.w > 0) || !(res.h > 0)) return null;
+      var dg = function (t) { return String(t || '').replace(/[^0-9]/g, '').length; }, bx = function (o, x) { return { text: String(o.text || '').slice(0, 40), score: o.score, x: o.x, y: o.y, w: o.w, h: o.h, angle: o.angle, sure: o.sure, rb: x }; };
+      return { w: res.w, h: res.h, lines: (res.lines || []).filter(function (l) { return l && l.w > 0 && dg(l.text) >= 3; }).slice(0, 60).map(function (l) { return bx(l); }),
+        drums: (res.drums || []).filter(function (d) { return d && d.w > 0 && dg(d.text) >= 3; }).slice(0, 8).map(function (d) { return bx(d, d.rb && d.rb.w > 0 ? { x: d.rb.x, y: d.rb.y, w: d.rb.w, h: d.rb.h } : undefined); }) };
+    },
     /** Подгрузить движок (web/ocr/engine.js + модели ~30 МБ, один раз — дальше из кэша браузера). */
     _engine: function (onPct) {
       var base = String(root.TEPLO_API).replace(/\/api\/?$/, '') + '/web/ocr/';
@@ -174,6 +182,8 @@
         files.forEach(function (f, i) {
           chain = chain.then(function () { cancelled(); if (onProgress) onProgress(i + 1, files.length, 'photo'); return root.TeploOCR.read(f, { all: true }); }).then(function (res) {
             try { f._focus = self.focusOf(res); } catch (e0) { /* без табло — центр фото */ }
+            // 147-а: рамку тепла (ЖК) потім уточнюємо за тим, що людина збереже (енергія) — лишаємо рядки з цифрами й вікна (лише рамки, без картинки)
+            try { f._ocr = self.slim(res); } catch (e1) { /* без уточнення */ }
             var r = P.photo(res, ctx, i);
             r.photo.time = f.lastModified || 0;   // время съёмки — порядок экранов для разбора пачки
             out.photos.push(r.photo); results.push({ photo: Object.assign({}, r.photo), meter: r.meter, ms: res.ms, ocr: res.lines.slice(0, 80).map(function (l) { return { t: l.text.slice(0, 80), a: l.alts ? l.alts.map(function (x) { return x.slice(0, 40); }) : undefined, s: l.score, h: l.h }; }) });

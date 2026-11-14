@@ -68,12 +68,12 @@ const U = 'http://127.0.0.1:8013/';
     await lp.goto(U); await lp.waitForTimeout(900);
     // 93-я: на телефоні плашки героя всередині картки й закривають край телефона (≤ 40 px) — його головну з 4 лічильниками видно
     const tl = await lp.evaluate(() => { const h = document.querySelector('.lp-hero').getBoundingClientRect(), s = document.querySelector('.lpp-screen').getBoundingClientRect();
-      return [...document.querySelectorAll('.lp-tile')].map(t => { const r = t.getBoundingClientRect(), left = t.classList.contains('t-heat') || t.classList.contains('t-elec');
+      return [...document.querySelectorAll('.lp-tile')].map(t => { const r = t.getBoundingClientRect(), left = t.classList.contains('t-elec') || t.classList.contains('t-gas');
         return { inHero: r.left >= h.left && r.right <= h.right, cover: Math.round(left ? r.right - s.left : s.right - r.left) }; }); });
     ok(vw + ': лендинг — 4 плашки героя в картці' + (vw < 600 ? ', на телефоні закривають ≤ 40 px екрана' : ''), tl.length === 4 && tl.every(x => x.inHero && (vw >= 600 || x.cover <= 40)), tl);
     const pr = await lp.evaluate(() => { const c = document.querySelector('[data-key=lp-pr]'); return c ? { rows: c.querySelectorAll('.lpv-r').length, tot: (c.querySelector('.lpv-tot') || {}).textContent || '', h: c.querySelector('h3').textContent } : null; });
     ok(vw + ': лендинг — клітинка «Ціни вашої громади»: області (≥ 4) з числами громад і підсумок', pr && pr.h === 'Ціни вашої громади' && pr.rows >= 4 && /\d+ громад у довіднику/.test(pr.tot), pr);
-    // 91-а (власник): у нижній панелі — цілі прилади, що перетікають один в один (корпус анімується SMIL), підписи 4 видів; в автотестах стоїть теплолічильник
+    // 91-а (власник): у нижній панелі — цілі прилади, що перетікають один в один (корпус анімується SMIL), підписи 4 видів; в автотестах стоїть електролічильник
     const mt = await lp.evaluate(() => { const s = document.querySelector('[data-key=lp-end] svg.lpm'); if (!s) return null;
       return { anim: s.querySelectorAll('rect > animate[attributeName=rx], rect > animate[attributeName=width]').length, caps: [...s.querySelectorAll('text')].map(x => x.textContent).filter(x => /лічильник|Водомір/.test(x)), paused: s.animationsPaused(), t: s.getCurrentTime() }; });
     ok(vw + ': лендинг — нижня панель: прилади перетікають (корпус, тінь, блик, фаска — rx/ширина), 4 підписи, в автотесті на паузі', mt && mt.anim === 10 && mt.caps.length === 4 && mt.paused && mt.t === 0, mt);

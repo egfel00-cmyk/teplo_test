@@ -57,7 +57,19 @@ final class Reminders {
 
   /** Поставщики квартиры по её адресу (как «Куди передати» в приложении): ['r' => kh|lv|…, 'htm' => тепло — ХТМ, 'hvk' => вода — Харківводоканал,
    *  'water' => орг. воды, 'elec' => орг. света]. Без адреса — Харків (как было); не нашли пункт — регион из p.city, иначе Харків. */
-  public static function placeProv(array $p): array { return self::ownOver($p, self::placeProv0($p)); }
+  public static function placeProv(array $p): array { return self::ownOver($p, self::selOver($p, self::placeProv0($p))); }
+  /** 147-я: поставщик, выбранный человеком в справочнике (place.prov[вид].sel = {n, h, o}) — главнее найденного по адресу: его ХТМ/Водоканал, название, окно. */
+  public static function selOver(array $p, array $pv): array {
+    foreach ((array)($p['prov'] ?? []) as $k => $o) {
+      if (!is_array($o) || !empty($o['own']) || !is_array($o['sel'] ?? null) || empty($o['sel']['n']) || empty($o['sel']['h']) || !in_array($k, ['heat', 'water', 'elec'], true) || !class_exists('Providers')) continue;
+      $tr = ProvEdit::$track; ProvEdit::$track = false;
+      try { $kd = Providers::kinds(['n' => (string)$o['sel']['n'], 'h' => (string)$o['sel']['h']]); } catch (Throwable $e) { continue; } finally { ProvEdit::$track = $tr; }
+      if ($k === 'heat') $pv['htm'] = ($kd['heat']['via'] ?? '') === 'htm';
+      if ($k === 'water') $pv['hvk'] = ($kd['water']['via'] ?? '') === 'hvk';
+      $pv[$k] = ($kd[$k]['org'] ?? null) ?: null; $pv['win'][$k] = self::localWin($kd, $k);
+    }
+    return $pv;
+  }
   /** 144-я: «Свій постачальник» квартиры (place.prov[вид].own) — главнее довідника: не ХТМ / не Харківводоканал, его название,
    *  его строк (till — [1, N], win — [A, B]; без строка — без напоминаний по этому виду). ['own' => [вид => true]]. */
   public static function ownWin(array $o): ?array {

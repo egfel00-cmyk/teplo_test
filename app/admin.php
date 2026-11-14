@@ -120,13 +120,13 @@ final class Admin {
     return $tg && (in_array((string)$tg['external_id'], $tgList, true) || ($tg['username'] && in_array(mb_strtolower($tg['username']), $tgList, true)));
   }
 
-  const KINDS = ['heat' => 0, 'hot' => 0, 'cold' => 0, 'elec' => 0, 'gas' => 0];
+  const KINDS = ['elec' => 0, 'hot' => 0, 'cold' => 0, 'gas' => 0, 'heat' => 0];   // 147-я: порядок видов — свет, вода, газ, тепло
   /** Сводка по сохранённому состоянию пользователя (то, что он видит у себя): квартиры, счётчики по видам (без прибранных),
    *  показания по видам (без удалённых и стартовых), «для себя», самое позднее показание среди всех видов. */
   public static function stateSummary(?string $json): array {
     $s = $json ? json_decode($json, true) : null;
     $out = ['meter' => null, 'unit' => null, 'readings' => 0, 'handed' => 0, 'last' => null, 'phone' => null, 'contactEmail' => null, 'apartment' => null,
-      'places' => 0, 'kinds' => self::KINDS, 'recs' => ['heat' => 0, 'water' => 0, 'elec' => 0, 'gas' => 0], 'own' => 0, 'photos' => 0, 'onboarded' => false];
+      'places' => 0, 'kinds' => self::KINDS, 'recs' => ['elec' => 0, 'water' => 0, 'gas' => 0, 'heat' => 0], 'own' => 0, 'photos' => 0, 'onboarded' => false];
     if (!is_array($s)) return $out;
     $live = fn($x) => is_array($x) && empty($x['deleted']);
     $alive = fn($m) => is_array($m) && empty($m['deleted']) && empty($m['removed']);
@@ -164,7 +164,7 @@ final class Admin {
   }
   /** Что ведут все вместе: сколько людей с каждым видом счётчика, показаний по видам, с 2+ квартирами, «для себя». */
   private static function tracking(): array {
-    $t = ['users' => self::KINDS, 'recs' => ['heat' => 0, 'water' => 0, 'elec' => 0, 'gas' => 0], 'multi' => 0, 'own' => 0, 'onboarded' => 0, 'withMeters' => 0, 'withData' => 0];
+    $t = ['users' => self::KINDS, 'recs' => ['elec' => 0, 'water' => 0, 'gas' => 0, 'heat' => 0], 'multi' => 0, 'own' => 0, 'onboarded' => 0, 'withMeters' => 0, 'withData' => 0];
     foreach (Db::q('SELECT data FROM user_state')->fetchAll() as $row) {
       $sm = self::stateSummary($row['data']);
       foreach ($sm['kinds'] as $k => $n) if ($n > 0) $t['users'][$k]++;
@@ -653,7 +653,7 @@ final class Weather {
  *  Ціна за одиницю — як у застосунку: своя у квартири (p.prov, p.gasPrice) → довідник громади → загальна (Харків: ХТМ, Харківводоканал; світло 4,32; газ 7,96).
  *  GET /api/admin/geo[?all=1] — без своїх і тестових акаунтів (адміни, браузери з позначкою «я/тест»), all=1 — усі. */
 final class GeoStats {
-  const KINDS = ['heat', 'hot', 'cold', 'elec', 'gas'];
+  const KINDS = ['elec', 'hot', 'cold', 'gas', 'heat'];   // 147-я: порядок видов
   const UNIT = ['heat' => 'Гкал', 'hot' => 'м³', 'cold' => 'м³', 'elec' => 'кВт·год', 'gas' => 'м³'];
   // загальні ціни застосунку: rules.js C.TARIFF (ХТМ), water.js HOT і TARIFFS (Харківводоканал), elec.js (світло 4,32, газ 7,96)
   const DEF = ['heat' => 1539.50, 'hot' => 86.32, 'elec' => 4.32, 'gas' => 7.96];
