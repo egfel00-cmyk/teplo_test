@@ -1445,6 +1445,22 @@
   function ctlCopy(id) { return '<button type="button" class="ctl-copy" data-act="copy-in" data-for="' + id + '" data-key="copy-' + id + '" aria-label="' + esc(t('copy')) + '" title="' + esc(t('copy')) + '">' + ico('copy', 20) + '</button>'; }
   /** Маленька кнопка «Копіювати» біля показання (у бот чи кабінет вставити цифри). */
   function copyIco(text, key) { return text === null || text === undefined || text === '' ? '' : '<button type="button" class="copy-ico" data-act="copy" data-text="' + esc(String(text)) + '"' + (key ? ' data-key="' + key + '"' : '') + ' aria-label="' + esc(t('copy_v', { v: text })) + '" title="' + esc(t('copy')) + '">' + ico('copy', 18) + '</button>'; }
+  // 150-а (власник 14.11: «всю інфу для копіювання в розділі „куди платити“ роби таким же шаблоном, як у свого постачальника»): один рядок
+  // «підпис зверху / значення / значок „Копіювати“ праворуч» (ul.my-rows, як «Оплата» свого) — особові рахунки, показання, телефони в усіх
+  // «Куди передати» й «Куди платити». Нові дані для копіювання в цих блоках — лише через cpRow / cpTel / cpList.
+  function cpRow(lbl, v, copy, cls, rk) {
+    if (v === null || v === undefined || v === '') return '';
+    return '<li' + (rk ? ' data-key="' + rk + '"' : '') + '><span class="my-r-l">' + esc(lbl) + '</span><span class="my-r-v' + (cls ? ' ' + cls : '') + '">' + esc(v) + '</span>' + (copy ? copyIco(copy, rk ? rk + '-copy' : '') : '<span></span>') + '</li>';
+  }
+  /** Телефон тим самим рядком: номер — посиланням, праворуч — «Подзвонити». */
+  function cpTel(lbl, num, txt, rk) {
+    var d = String(num || '').replace(/[^\d+]/g, ''); if (d.length < 5) return '';
+    return '<li' + (rk ? ' data-key="' + rk + '"' : '') + '><span class="my-r-l">' + esc(lbl || t('my_phone')) + '</span><span class="my-r-v tn">' + telLink(d, txt || num) + '</span>' +
+      '<a class="copy-ico my-call" href="tel:' + esc(d) + '" aria-label="' + esc(t('my_call') + ' ' + (txt || num)) + '"' + (rk ? ' data-key="' + rk + '-call"' : '') + '>' + ico('phone', 18) + '</a></li>';
+  }
+  /** Телефони списком [[номер, як показати, примітка]] — рядками cpTel (примітка — підписом, інакше «Телефон»). */
+  function cpPhones(list, key) { return cpList((list || []).map(function (x, i) { return cpTel(x[2] || t('my_phone'), x[0], x[1], key + '-' + i); }), key, 'cp-ph'); }
+  function cpList(rows, key, cls) { var r = (rows || []).filter(Boolean).join(''); return r ? '<ul class="my-rows cp-rows' + (cls ? ' ' + cls : '') + '"' + (key ? ' data-key="' + key + '"' : '') + '>' + r + '</ul>' : ''; }
   // ---------- 144-а: порожні екрани (власник 14.11, скрин «Гараж»: «пустой экран неадекватный — в описании одно, кнопка другая; продумай все пустые экраны»)
   // Один шаблон: блідий начерк того, що тут з'явиться (рядки історії чи стовпці статистики), значок виду в колі його кольору поверх начерку,
   // заголовок — що саме буде, одне речення — як воно з'явиться, одна кнопка того ж виду. Текст і кнопка — завжди одного виду (раніше в історії
@@ -1514,16 +1530,22 @@
   function telLink(num, txt) { return '<a href="tel:' + num + '">' + esc(txt) + '</a>'; }
   /** «Куди передати» для води. kind: 'cold' — лише Водоканал; 'hot' або null (картка запису, є гаряча) — Водоканал і ХТМ.
    *  rec — показання цього місяця: тоді в кожного адресата готові цифри (команда для бота, значення) і «Я передав(ла)». */
+  /** 150-а: вода місцевого водоканалу — особовий рахунок (якщо вписаний) і цифри водомірів одним списком рядків «Оплати» свого. */
+  function wlocRows(rec, ms) {
+    var acc = String(wcfg().account || '').trim(), rows = [cpRow(t('em_acc'), acc, acc, 'tn', 'wsend-acc')];
+    if (rec) ms.forEach(function (m) { if (rec.vals && rec.vals[m.id] !== undefined && rec.vals[m.id] !== '') { var v = Wt.whole(rec.vals[m.id]); rows.push(cpRow(wname(m), v, v, 'tn cp-big', 'wsend-v-' + m.id)); } });
+    return cpList(rows, 'wsend-vals');
+  }
   function wsendPanel(rec, kind) {
     var ms = wmeters(), hot = wmeters('hot'), withHtm = kind === 'hot' || (!kind && hot.length);
     var w = Wt.vkWindow(today()), vkDue = w.open ? t('wd_due', { d: fmtDate(w.deadline) }) : t('wd_due_next', { d: fmtDate(nextMonthDay(today(), Wt.VK_DEADLINE)) });
     var mark = function (to, sent) { return rec ? '<p class="dest-mark">' + (sent ? '<button class="linkbtn" data-act="wsent" data-to="' + to + '" data-v="0" data-id="' + rec.id + '">' + esc(t('ws_unmark')) + '</button>' : '<button class="btn sec" data-act="wsent" data-to="' + to + '" data-v="1" data-id="' + rec.id + '" data-key="wsend-' + to + '-done">' + ico('check', 18) + '<span>' + esc(t('ws_mark')) + '</span></button>') + '</p>' : ''; };
-    var valList = function (list) { return '<ul class="wvals">' + list.filter(function (m) { return rec.vals && rec.vals[m.id] !== undefined && rec.vals[m.id] !== ''; }).map(function (m) {
-      var v = Wt.whole(rec.vals[m.id]); return '<li><span>' + esc(wname(m)) + '</span><b class="num">' + v + '</b><button class="linkbtn" data-act="copy" data-text="' + v + '">' + esc(t('copy')) + '</button></li>'; }).join('') + '</ul>'; };
+    var valList = function (list) { return cpList(list.filter(function (m) { return rec.vals && rec.vals[m.id] !== undefined && rec.vals[m.id] !== ''; }).map(function (m) {
+      var v = Wt.whole(rec.vals[m.id]); return cpRow(wname(m), v, v, 'tn cp-big', 'wsend-v-' + m.id); }), 'wsend-vals'); };   // 150-а: рядки «Оплати» свого
     // квартира не в Харкові (за довідником — інший постачальник води): контакти її водоканалу, без бота й кабінету Харківводоканалу
     var ld = prvOf('water');
     if (ld && ld.via !== 'hvk') return '<section class="panel where" data-key="where-water"><h2>' + ico('wallet', 18, 'bt-ico') + '<span>' + esc(t('wd_title')) + '</span></h2>' + wherePlaceLine() +
-      localDest('water', ld, rec ? valList(ms) : '', rec ? mark('vk', wsentVk(rec)) : '', rec && wsentVk(rec), lbBox(ld, [rec], rec ? lbItems(rec) : [])) + '</section>';
+      localDest('water', ld, wlocRows(rec, ms), rec ? mark('vk', wsentVk(rec)) : '', rec && wsentVk(rec), lbBox(ld, [rec], rec ? lbItems(rec) : [])) + '</section>';
     // Водоканал: холодна (вода + відведення) і гаряча (лише відведення) — одна команда для бота на всі водоміри
     var vkBody = '', vkChans = [[Wt.VK_BOT, t('wd_bot', { b: '@hvk_user_bot' }), 'send', 'bot'], [Wt.VK_CABINET, t('wd_cab_vk'), 'ext', 'cab']];
     if (rec) {
@@ -1576,11 +1598,11 @@
     else if (vg2 === 'ok' && !rec) vkChx = '<a class="btn sec" href="#vkcab" data-key="vk-conn-on">' + ico('check', 18) + '<span>' + esc(t('vc_conn_ok')) + '</span></a>';
     h += destBox({ key: 'vk', id: 'wsend-vk', per: 'water', perCls: kind === 'hot' ? 'hot' : '', org: t('wd_vk_org'), what: kind === 'cold' ? '' : kind === 'hot' ? t('wd_vk_hot') : t('wd_vk_both'),
       due: vkDue, dueTone: w.open && w.daysLeft <= 3 ? 'warn' : 'neutral', sent: rec && wsentVk(rec), body: vkBody, chans: vkChans, chx: vkChans.length || !rec ? vkChx : '',
-      more: '<p class="dm-t">' + esc(t('wd_vk_call')) + '</p><ul class="dm-ph"><li>' + telLink('+380577075851', '(057) 707-58-51') + '<span class="muted">' + esc(t('wd_vk_24')) + '</span></li><li><b>(050) 355-12-12</b><span class="muted">Viber</span></li></ul>', mark: rec && rec.vkAt && !wsentVk(rec) ? '' : mark('vk', rec && wsentVk(rec)) });
+      more: '<p class="dm-t">' + esc(t('wd_vk_call')) + '</p>' + cpList([cpTel(t('wd_vk_24'), '+380577075851', '(057) 707-58-51', 'vk-ph-0'), cpRow('Viber', '(050) 355-12-12', '0503551212', 'tn', 'vk-ph-viber')], 'vk-ph', 'cp-ph'), mark: rec && rec.vkAt && !wsentVk(rec) ? '' : mark('vk', rec && wsentVk(rec)) });
     // ХТМ: сама гаряча вода — лише бот і кол-центр (у кабінеті ХТМ форми для гарячої води немає)
     if (withHtm) h += destBox({ key: 'htm', org: t('wd_htm_org'), what: t('wd_htm_what'), sent: rec && wsentHtm(rec),
       body: rec ? valList(hot) : '', chans: [[BOT_URL, t('wd_bot', { b: '@KPHTM_Bot' }), 'send', 'bot']],
-      more: '<p class="dm-t">' + esc(t('wd_htm_more')) + '</p><ul class="dm-ph"><li>' + telLink('+380573414140', '(057) 341-41-40') + '</li></ul>', mark: mark('htm', rec && wsentHtm(rec)) });
+      more: '<p class="dm-t">' + esc(t('wd_htm_more')) + '</p>' + cpPhones([['+380573414140', '(057) 341-41-40']], 'htmw-ph'), mark: mark('htm', rec && wsentHtm(rec)) });
     return h + '</section>';
   }
   // ---------- бот Водоканалу: відповіді, переслані нашому боту (/api/vk/replies) ----------
@@ -2719,14 +2741,17 @@
     var due = w.open ? t('ed_due', { d: fmtDate(w.to) }) : t('ed_due_next', { a: fmtDate(w.next), b: fmtDate(w.to) });
     var allSent = have && ms.every(function (m) { return ssent(k, have.filter(function (x) { return x && x.meter === m.id; })[0]); });
     var body = '', chans, ids = have ? have.filter(Boolean).map(function (r) { return r.id; }).join(',') : '';
-    if (have) body = '<ul class="wvals" data-key="esend-vals">' + ms.map(function (m) {
-      var r = have.filter(function (x) { return x && x.meter === m.id; })[0]; if (!r) return '';
-      return md.keys(m).map(function (z) { var v = md.whole(r.z[z]); return '<li><span>' + esc((ms.length > 1 ? (m.name || ename(m)) + ' · ' : '') + ezl(m, z)) + '</span><b class="num">' + v + '</b><button class="linkbtn" data-act="copy" data-text="' + v + '">' + esc(t('copy')) + '</button></li>'; }).join('');
-    }).join('') + '</ul>' + (k === 'elec' && El.zones(ms[0] || {}) > 1 ? '<p class="small muted">' + esc(t('ed_nosum')) + '</p>' : '');
-    var acc = ms.map(function (m) { return saccList(k, m).map(function (x) { return '<p class="small" data-key="esend-' + x[0] + '-' + m.id + '">' + esc(tk(k, x[0], { a: x[1] })) + (ms.length > 1 ? ' · ' + esc(m.name || '') : '') + ' <button class="linkbtn" data-act="copy" data-text="' + esc(x[1]) + '">' + esc(t('copy')) + '</button></p>'; }).join(''); }).join('') +
-      (have ? saccAsk(k, ms) : '');
+    // 150-а: рахунки й показання — рядками «Оплати» свого постачальника (cpRow): спершу хто ви (рахунок), далі цифри
+    var rows = [];
+    ms.forEach(function (m) { saccList(k, m).forEach(function (x) { rows.push(cpRow(tk(k, x[0], { a: '' }).trim() + (ms.length > 1 ? ' · ' + (m.name || ename(m)) : ''), x[1], x[1], 'tn', 'esend-' + x[0] + '-' + m.id)); }); });
+    if (have) ms.forEach(function (m) {
+      var r = have.filter(function (x) { return x && x.meter === m.id; })[0]; if (!r) return;
+      md.keys(m).forEach(function (z) { var v = md.whole(r.z[z]); rows.push(cpRow((ms.length > 1 ? (m.name || ename(m)) + ' · ' : '') + ezl(m, z), v, v, 'tn cp-big', 'esend-v-' + m.id + '-' + z)); });
+    });
+    body = cpList(rows, 'esend-vals') + (have && k === 'elec' && El.zones(ms[0] || {}) > 1 ? '<p class="small muted">' + esc(t('ed_nosum')) + '</p>' : '');
+    var acc = have ? saccAsk(k, ms) : '';
     // кол-центр — стовпчиком: номер і оператор у рядок, кожен номер окремо (зручно читати й натискати)
-    var phones = '<ul class="dm-ph">' + md.PHONES.map(function (p) { return '<li>' + telLink(p[0], p[1]) + '<span class="muted">' + esc(p[2]) + '</span></li>'; }).join('') + '</ul>';
+    var phones = cpPhones(md.PHONES, k + '-ph');   // 150-а: рядками, як телефон свого постачальника
     // кнопка офіційного бота: є показання — запам'ятовуємо натискання (botAt), щоб пересланий нам «прийнято» ліг саме на них
     var one = have && have.filter(Boolean).length === 1 && md.zones(ms[0] || {}) <= 1 ? md.whole((have.filter(Boolean)[0].z || {}).all) : null;
     var botAttr = have ? ' data-act="sbot" data-k="' + k + '" data-ids="' + ids + '"' + (one !== null ? ' data-copy="' + one + '"' : '') : '';
@@ -2743,7 +2768,7 @@
       // бот Газмереж питає філію: у Харкові — «Харківська міська», в області — «Харківська» (за довідником адреси)
       var gdp = prvOf('gas'); if (gdp && gdp.grm && /^Газмережі/.test(gdp.grm)) body += '<p class="small muted" data-key="gd-fil">' + esc(t('gd_fil', { g: String(gdp.grm).replace(/^Газмережі,\s*/, '') })) + '</p>';
       more = '<p class="dm-links"><a href="' + Gs.LINKS.kub + '" target="_blank" rel="noopener" data-key="dest-grm-kub">' + esc(t('gd_kub')) + ' ' + ico('ext', 14) + '</a><a href="' + Gs.LINKS.cabinet + '" target="_blank" rel="noopener" data-key="dest-grm-cab">' + esc(t('gd_cab')) + ' ' + ico('ext', 14) + '</a></p>' +
-        '<p class="dm-t">' + esc(t('gd_kub_call')) + '</p><ul class="dm-ph"><li>' + telLink(Gs.KUB_TEL[0], Gs.KUB_TEL[1]) + '<span class="muted">' + esc(t('gd_kub_free')) + '</span></li></ul>' +
+        '<p class="dm-t">' + esc(t('gd_kub_call')) + '</p>' + cpPhones([[Gs.KUB_TEL[0], Gs.KUB_TEL[1], t('gd_kub_free')]], 'gd-kub-ph') +
         '<p class="dm-t">' + esc(t('gd_call')) + '</p>' + phones;
     } else {
       // офіційні канали Харківобленерго: бот @Kooz2bot, онлайн-форма (з капчею — відкриваємо, людина проходить), SMS 4300
@@ -4455,7 +4480,7 @@
     var bg = cabBgHeat(ready, 'where');
     return '<section class="panel where" data-key="where-heat"><h2>' + ico('wallet', 18, 'bt-ico') + '<span>' + esc(t('wd_title')) + '</span></h2>' +
       destBox({ key: 'htm-heat', per: 'heat', org: t('wd_htm_org'), what: '', due: due, dueTone: w.state === 'late' || w.state === 'last_day' ? 'warn' : 'neutral', body: body,
-        chans: [[HTM_URL, t('ho_open'), 'ext', 'cab']], chx: bg.btn, note: bg.note, more: '<p class="dm-t">' + esc(t('wd_heat_more')) + '</p><ul class="dm-ph"><li>' + telLink('+380573414140', '(057) 341-41-40') + '</li></ul>' }) + '</section>';
+        chans: [[HTM_URL, t('ho_open'), 'ext', 'cab']], chx: bg.btn, note: bg.note, more: '<p class="dm-t">' + esc(t('wd_heat_more')) + '</p>' + cpPhones([['+380573414140', '(057) 341-41-40']], 'htm-ph') }) + '</section>';
   }
   /** Кабінет ХТМ у ряду каналів «Куди передати» (і на екранах перевірки та фото): не підключено — «Підключити кабінет», рівноцінна кнопка;
    *  підключено й є зібрані показання — виділена «Відправити у фоні» з припискою, що саме піде; надсилає людина сама натисканням. */
@@ -5407,20 +5432,19 @@
     if (!r) return V.home();
     if (heatLite()) return handoverLite(r);
     var h = r.htm;
+    // 150-а: рядки «Оплати» свого постачальника (cpRow) — той самий шаблон у всіх «куди передати / платити»
     var rows = htmFields().map(function (f) {
       var val = htmVal(f.key, h, r.raw);
-      return '<li><div><div class="k">' + esc(fieldLabel(f.key)) + (f.key === 'energy' ? ', ' + esc(unitLbl(htmUnit())) : '') + '</div><div class="v">' + esc(val) + '</div></div><span></span>' +
-        '<button class="btn sec" data-act="copy" data-text="' + esc(val) + '" data-key="copy-' + f.key + '">' + ico('copy', 18) + '<span>' + esc(t('copy')) + '</span></button></li>';
+      return cpRow(fieldLabel(f.key) + (f.key === 'energy' ? ', ' + unitLbl(htmUnit()) : ''), val, val, 'tn cp-big', 'ho-' + f.key);
     });
     var c = S.contacts || {};
-    if (c.phone) rows.push('<li><div><div class="k">' + esc(t('ho_phone')) + '</div><div class="v">' + esc(c.phone) + '</div></div><span></span><button class="btn sec" data-act="copy" data-text="' + esc(c.phone) + '">' + ico('copy', 18) + '<span>' + esc(t('copy')) + '</span></button></li>');
-    if (c.email) rows.push('<li><div><div class="k">' + esc(t('ho_email')) + '</div><div class="v" style="font-size:16px">' + esc(c.email) + '</div></div><span></span><button class="btn sec" data-act="copy" data-text="' + esc(c.email) + '">' + ico('copy', 18) + '<span>' + esc(t('copy')) + '</span></button></li>');
+    rows.push(cpRow(t('ho_phone'), c.phone, c.phone, 'tn', 'ho-phone'), cpRow(t('ho_email'), c.email, c.email, '', 'ho-email'));
     var all = htmFields().map(function (f) { return fieldLabel(f.key) + (f.key === 'energy' ? ', ' + unitLbl(htmUnit()) : '') + ': ' + htmVal(f.key, h, r.raw); }).join('\n') + (c.phone ? '\n' + t('ho_phone') + ': ' + c.phone : '') + (c.email ? '\n' + t('ho_email') + ': ' + c.email : '');
     return { screen: 'S07', route: 'handover', bare: true, closeTo: backTo('home'), html:
       '<div class="wiz-top"><a class="btn ghost" href="#check">' + ico('back', 20) + '<span>' + esc(t('back')) + '</span></a></div>' +
       '<h1>' + esc(t('ho_title')) + '</h1><p>' + esc(t('ho_lead')) + '</p>' +
-      '<div class="cols"><div class="ho-values"><ul class="copy-list" data-key="handover-values">' + rows.join('') + '</ul>' +
-      '<div class="row-actions"><button class="btn sec" data-act="copy" data-text="' + esc(all) + '" data-key="copy-all">' + ico('copy', 20) + '<span>' + esc(t('ho_copy_all')) + '</span></button></div>' +
+      '<div class="cols"><div class="ho-values">' + cpList(rows, 'handover-values') +
+      '<button type="button" class="btn sec block cp-all" data-act="copy" data-text="' + esc(all) + '" data-key="copy-all">' + ico('copy', 18) + '<span>' + esc(t('ho_copy_all')) + '</span></button>' +
       htmFormBox(htmAsk()) +
       (c.phone && c.email ? '' : '<div class="banner warn" style="margin-top:16px">' + ico('alert', 22) + '<div><p>' + esc(t('ho_contacts_none')) + ' <a href="#prefs">' + esc(t('nav_prefs')) + '</a></p></div></div>') + '</div>' +
       // кабінет підключено — робот вносить сам, це головний шлях; вручну — нижче, запасний
@@ -5435,8 +5459,7 @@
   /** 126-а: передача постачальнику тепла не ХТМ — одне число (енергія як на екрані; не Гкал — ще й у Гкал), куди передати — з довідника громади, «Передано». */
   function handoverLite(r) {
     var h = r.htm || {}, eu = energyUnit(), ev = htmVal('energy', h, r.raw), g = R.num(h.energy), ld = prvOf('heat') || {}, myh = myProv('heat');
-    var row = function (k, v, key) { return '<li><div><div class="k">' + esc(k) + '</div><div class="v">' + esc(v) + '</div></div><span></span><button class="btn sec" data-act="copy" data-text="' + esc(v) + '" data-key="copy-' + key + '">' + ico('copy', 18) + '<span>' + esc(t('copy')) + '</span></button></li>'; };
-    var rows = row(fieldLabel('energy') + ', ' + unitLbl(eu), ev, 'energy') + (eu !== 'Gcal' && g !== null ? row(t('hl_gcal'), g.toFixed(3), 'gcal') : '');
+    var rows = [cpRow(fieldLabel('energy') + ', ' + unitLbl(eu), ev, ev, 'tn cp-big', 'ho-energy'), eu !== 'Gcal' && g !== null ? cpRow(t('hl_gcal'), g.toFixed(3), g.toFixed(3), 'tn cp-big', 'ho-gcal') : ''];   // 150-а: рядки «Оплати» свого
     var sent = r.status === 'handed' || r.status === 'accepted';
     var st = '<section class="panel ho-st" data-key="ho-status"><h2>' + esc(t('hl_st_t')) + '</h2>' +
       (sent ? '<div class="banner ok" data-key="hl-sent" role="status">' + levelIco('ok', 22) + '<div><p><b>' + esc(t('hl_sent', { d: fmtDate(h.date) })) + '</b></p><p>' + esc(t('hl_sent_sub')) + '</p></div></div>'
@@ -5444,7 +5467,7 @@
     return { screen: 'S07', route: 'handover', bare: true, closeTo: backTo('home'), html:
       '<div class="wiz-top"><a class="btn ghost" href="#check">' + ico('back', 20) + '<span>' + esc(t('back')) + '</span></a></div>' +
       '<h1>' + esc(t('hl_title')) + '</h1><p>' + esc(t('hl_lead')) + '</p>' +
-      '<div class="cols"><div class="ho-values"><ul class="copy-list" data-key="handover-values">' + rows + '</ul></div>' +
+      '<div class="cols"><div class="ho-values">' + cpList(rows, 'handover-values') + '</div>' +
       (myh ? '' : '<div class="ho-steps"><div class="panel"><h2>' + esc(t('ho_steps_title')) + '</h2><ol class="steps"><li>' + esc(t('hl_s1')) + '</li><li>' + esc(t('hl_s2')) + '</li><li>' + esc(t('hl_s3')) + '</li></ol></div></div>') + '</div>' +
       // 144-а: свій постачальник — «Оплата» (реквізити, призначення, сума) замість «Куди передати»
       (myh ? myPayBox('heat', myh, myCtxH(r), '', 'mypay-ho') : '<section class="panel where" data-key="where-heat-lite">' + localDest('heat', ld, '', '', sent, lbBox(ld, [r], lbItemsHeat(r))) + '</section>') + st };
@@ -6680,7 +6703,7 @@
     if (!org) body += '<p data-key="ld-unk">' + esc(t('ld_unk_' + k, { c: pl.name || '' })) + '</p><p><a class="btn sec" href="#place-' + esc(p.id || '') + '" data-act="prv-go" data-key="ld-fill">' + ico('edit', 18) + '<span>' + esc(t('prv_fill')) + '</span></a></p>';
     else body += '<p class="small" data-key="ld-how">' + esc(how || t(k === 'heat' ? 'ld_how_heat' : 'ld_how_unk')) + '</p>';
     if (extra) body += extra;   // автовідправка (LocalBot) — після «як передати», перед кнопками каналів
-    var more = (phones.length ? '<p class="dm-t">' + esc(t('ld_call')) + '</p><ul class="dm-ph">' + phones.map(function (x) { return '<li>' + telLink(x[0], x[1]) + (x[2] ? '<span class="muted">' + esc(x[2]) + '</span>' : '') + '</li>'; }).join('') + '</ul>' : '') +
+    var more = (phones.length ? '<p class="dm-t">' + esc(t('ld_call')) + '</p>' + cpPhones(phones, 'ld-' + k + '-ph') : '') +   // 150-а: рядками, як у свого
       (pay ? '<p class="dm-t">' + esc(t('ld_pay_t')) + '</p><p>' + esc(pay) + '</p>' : '');
     return destBox({ key: 'loc-' + k, per: k, org: org || t('ld_org_' + k), what: t('ld_what_' + k), sent: sent, body: body, chans: chans, more: more, mark: org ? mark : '' });
   }
@@ -7101,15 +7124,14 @@
     // c = null — показань ще немає: лише реквізити; c.paid (148-а, власник 14.11: «текст призначення — і в блоці „куди платити“, для всіх своїх») — останні вже
     // оплачені: призначення тих показань лишається (скопіювати, звірити з банком), без «До сплати»
     var paidC = !!(c && c.paid), how = o.how || 'iban', purp = how === 'cash' || !c ? '' : myPurpose(pk, o, c), rows = [], num = myNum(o);
-    var row = function (lbl, v, copy, cls, rk) { return v ? '<li data-key="' + rk + '"><span class="my-r-l">' + esc(lbl) + '</span><span class="my-r-v' + (cls ? ' ' + cls : '') + '">' + esc(v) + '</span>' + (copy ? copyIco(copy, rk + '-copy') : '<span></span>') + '</li>' : ''; };
+    var row = cpRow;   // 150-а: той самий рядок — і в «Куди передати» / «Куди платити» офіційних
     if (how === 'iban') rows.push(row(t('my_recip'), o.recip || o.name, o.recip || o.name, '', 'my-r-recip'), row('IBAN', myIbanFmt(o.iban), myIban(o.iban), 'tn', 'my-r-iban'), row(t('my_code_s'), o.code, o.code, 'tn', 'my-r-code'));
     else if (how === 'cash') rows.push(row(t('my_how_cash'), o.cash || '', '', '', 'my-r-cash'));
     else rows.push(row(t('my_how_other'), o.other || '', '', '', 'my-r-other'));
     if (num) rows.push(row(t('my_num_s'), num, num, 'tn', 'my-r-num'));
     // 147-а (власник 12:37: «поле телефон — телефон коменданта, має показуватись у «Жилстрой 1»»): телефон — рядком із дзвінком, і коли платять готівкою
-    var tel = String(o.phone || '').trim(), td = tel.replace(/[^\d+]/g, '');
-    if (tel && td.length >= 5) rows.push('<li data-key="my-r-phone"><span class="my-r-l">' + esc(t('my_phone')) + '</span><span class="my-r-v tn">' + telLink(td, tel) + '</span>' +
-      '<a class="copy-ico my-call" href="tel:' + esc(td) + '" aria-label="' + esc(t('my_call')) + '" data-key="my-r-phone-call">' + ico('phone', 18) + '</a></li>');
+    var tel = String(o.phone || '').trim();
+    if (tel) rows.push(cpTel(t('my_phone'), tel, tel, 'my-r-phone'));
     if (purp) rows.push(row(t('my_purp'), purp, purp, 'my-purp', 'my-r-purp'));
     var has = c && !paidC && c.sum !== undefined && c.sum !== null, paid = paidC || /class="pill ok"/.test(mark || '');
     var sum = has ? '<div class="my-sum" data-key="my-sum"><span class="small muted">' + esc(t('my_sum')) + '</span><span class="my-sum-v"><b>' + esc(money(c.sum)) + '</b> грн' + copyIco(money(c.sum).replace(/\s/g, ''), 'my-sum-copy') + '</span>' +
@@ -7346,9 +7368,9 @@
   function wherePay(p, d) {
     var w = wcur(p), org = wasteOrg(p, d), phones = (d && d.phones) || [], acc = String(w.account || '').trim();
     var b = (org ? '<p><b>' + esc(org) + '</b></p>' : '<p class="muted">' + esc(t('ws_org_none')) + '</p>') +
-      (acc ? '<p class="small">' + esc(t('ws_acc')) + ': <span class="num">' + esc(acc) + '</span> ' + copyIco(acc, 'ws-acc-copy') + '</p>' : '') +
+      // 150-а: рахунок і телефони — рядками «Оплати» свого постачальника
+      cpList([cpRow(t('ws_acc'), acc, acc, 'tn', 'ws-acc')].concat(phones.map(function (x, i) { return cpTel(x[2] && x[2] !== org ? x[2] : t('my_phone'), x[0], x[1], 'ws-ph-' + i); })), 'ws-rows') +
       (d && ploc(d, 'pay') ? '<p class="small prov-pay">' + esc(ploc(d, 'pay')) + '</p>' : '<p class="small muted">' + esc(t('wsp_pay_gen')) + '</p>') +
-      (phones.length ? '<p class="small ws-ph">' + phones.map(function (x) { return telLink(x[0], x[1]) + (x[2] && x[2] !== org ? ' <span class="muted">' + esc(x[2]) + '</span>' : ''); }).join(' · ') + '</p>' : '') +
       (d && d.site ? '<p class="small"><a href="' + esc(d.site) + '" target="_blank" rel="noopener">' + esc(t('ws_site')) + '</a></p>' : '') +
       (d && ploc(d, 'src') && !(R.num(w.price) > 0) ? '<details class="prov-src"><summary>' + esc(t('prv_src')) + '</summary><p class="small muted">' + esc(ploc(d, 'src')) + '</p></details>' : '') +
       monoLink('waste');

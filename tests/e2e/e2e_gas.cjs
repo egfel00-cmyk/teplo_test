@@ -72,7 +72,7 @@ let pass = 0, fail = 0; const ok = (n, c, i) => { console.log((c ? '  OK  ' : ' 
   ok('EIC — великими без пробілів', gm.eic === '56XM19A205987456', gm);
   await setF('#ema-' + m.id, '123456789'); await go('gas'); const wg = await p.textContent('[data-key=where-gas]');
   ok('«Куди передати»: рахунок Газмереж, Нафтогазу, EIC — кожен з «Копіювати», SMS знову є',
-    /Рахунок Газмереж 1320012345/.test(wg) && /Рахунок Нафтогазу 123456789/.test(wg) && /EIC-код 56XM19A205987456/.test(wg) && !(await p.$('[data-key=gd-noacc]'))
+    /Рахунок Газмереж\s*1320012345/.test(wg) && /Рахунок Нафтогазу\s*123456789/.test(wg) && /EIC-код\s*56XM19A205987456/.test(wg) && !(await p.$('[data-key=gd-noacc]'))
     && (await p.getAttribute('[data-key=esend-gd_eic-' + m.id + '] [data-act=copy]', 'data-text')) === '56XM19A205987456'
     && (await p.getAttribute('[data-key=esend-gd_grm-' + m.id + '] [data-act=copy]', 'data-text')) === '1320012345', wg);
   await setF('#eme-' + m.id, '56XM19A2059874');

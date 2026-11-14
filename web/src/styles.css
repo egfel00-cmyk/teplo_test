@@ -2453,3 +2453,10 @@ details.mypay[open] > summary .mypay-amt, details.mypay[open] > summary .mypay-s
 .my-row .my-row-pay { margin: 2px 0 0; overflow-wrap: anywhere; }
 .my-form textarea.my-iban { min-height: 0; field-sizing: content; resize: none; font-size: 18px; line-height: 1.4; font-variant-numeric: tabular-nums; letter-spacing: .01em; }
 .my-r-v.tn { font-variant-numeric: tabular-nums; }
+/* 150-а (власник 14.11): усе для копіювання в «Куди передати» / «Куди платити» — рядками «Оплати» свого постачальника (cpRow / cpTel / cpList) */
+.cp-rows { margin: 8px 0 12px; }
+.dest-more-b .cp-rows { margin: 4px 0 12px; }
+.my-r-v.cp-big { font: 600 18px/1.3 var(--mono); font-variant-numeric: tabular-nums; letter-spacing: .02em; color: var(--c-ink); }
+.ho-values .cp-rows { margin: 0; }
+.cp-all { margin-top: 12px; }
+.acc-ask { margin-top: 4px; }

@@ -8,7 +8,7 @@ let pass = 0, fail = 0; const ok = (n, c, x) => { if (c) { pass++; console.log('
 (async () => {
   const b = await chromium.launch(); const p = await (await b.newContext({ viewport: { width: 390, height: 844 }, locale: 'uk-UA' })).newPage(); p.setDefaultTimeout(6000);
   const errs = []; p.on('pageerror', e => errs.push(e.message));
-  const txt = sel => p.textContent(sel).catch(() => '');
+  const txt = sel => p.textContent(sel).catch(e => { if (process.env.DBG) console.log('TXT ERR', sel, String(e.message).slice(0, 300)); return ''; });
   const open = async (s, route) => {
     // прошлая страница держит своё состояние в памяти и при уходе сохраняет его (lookup справочника дописывает адреса) — подставляем, перезагружаем, подставляем ещё раз
     await p.goto(U); const put = () => p.evaluate(s => { localStorage.clear(); localStorage.setItem('teplo.v1', JSON.stringify(s)); }, s); await put(); await p.reload(); await p.waitForTimeout(300); await put();
