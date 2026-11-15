@@ -195,6 +195,12 @@ const UA = 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/6
   // браузер: #prefs-heat — звичайні налаштування з розгорнутою групою «Опалення»
   await W.p.goto(B + '#prefs-heat'); await W.p.waitForTimeout(900);
   ok('браузер #prefs-heat: розкривашки, «Опалення» розгорнута', await W.p.$eval('#pg-heat', e => e.open) && (await W.p.$$('details.pgroup')).length >= 5);
+  // Dynamic Type: множник від застосунку — сторінка вужча й масштабована (meta viewport), 1 — як було
+  const vp0 = await P4.$eval('meta[name=viewport]', m => m.content);
+  await P4.evaluate(() => window.TeploHost.textZoom(1.2));
+  const vp1 = await P4.$eval('meta[name=viewport]', m => m.content);
+  await P4.evaluate(() => window.TeploHost.textZoom(1));
+  ok('v4 textZoom(1.2): width = 390 ÷ 1,2, initial-scale 1.2; textZoom(1) — початковий', vp1 === 'width=325, initial-scale=1.2, viewport-fit=cover' && (await P4.$eval('meta[name=viewport]', m => m.content)) === vp0, [vp0, vp1]);
   ok('v4 без помилок JS', !e4.length, e4);
   // стара збірка застосунку (без PeredaiNative) — як у 155-й: листа немає
   await N.p.goto(B + '#enew'); await N.p.waitForTimeout(700); rt = await msgs(N.p, 'route'); lr = rt[rt.length - 1];

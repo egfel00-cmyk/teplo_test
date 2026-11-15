@@ -418,8 +418,8 @@
   в браузере — те же настройки с этой группой открытой); переход «к полю» (`SCROLL_TO` + `go('prefs')`) в v4 сам открывает экран группы. «+» на панели — главная кнопка страницы счётчика
   с классом `app-add` (`m.add` → `TeploHost.add`; на странице в v4 скрыта). Виды «Історії»/«Статистики» > 4 — меню на панели (`m.km` → `TeploHost.view`), ≤ 4 — сегменты в ряд.
   Строка истории: свайп влево — статус (`HSW`, `stSwipeOpt`: «Передано», уже передано — «Не передано»), долгое нажатие — родное контекстное меню (`allowsLinkPreview` +
-  `contextMenuConfigurationForElement` → `TeploHost.rowMenu/rowAct`; меню только у ссылок `rec|wrec|erec` со статусом, у остальных — нет). Dynamic Type → `WKWebView.pageZoom`
-  (0,88…1,3). Плашка над вкладками iOS 26 (`bottomAccessory`, `WindowAccessoryView`) — ближайший непереданный срок ≤ 4 дней из `sched`. Новая главная кнопка страницы счётчика — с `app-add`;
+  `contextMenuConfigurationForElement` → `TeploHost.rowMenu/rowAct`; меню только у ссылок `rec|wrec|erec` со статусом, у остальных — нет). Dynamic Type → множитель `PeredaiNative.tz` / `TeploHost.textZoom`
+  (0,88…1,3) → `appZoom`: meta viewport `width = экран ÷ множитель, initial-scale = множитель` (сайт перекладывается; `WKWebView.pageZoom` на iOS лишь увеличивал — вылезало вправо, скрин CI). Плашка над вкладками iOS 26 (`bottomAccessory`, `WindowAccessoryView`) — ближайший непереданный срок ≤ 4 дней из `sched`. Новая главная кнопка страницы счётчика — с `app-add`;
   новая группа настроек — в `PREF_SEC`. e2e `e2e_appbridge` (v4, CDP-касания для свайпа); скрины CI 9–12 (плашка, группа, текст XXL).
 
 ## Первый вход без анкет (155-я)

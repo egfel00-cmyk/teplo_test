@@ -186,6 +186,18 @@
   // 157-а (крок 4 плану навігації iOS): v4 — налаштування рідним списком («›» → екран групи), «+» на панелі сторінки лічильника (кнопка сторінки схована),
   // види історії й статистики (> 4) — меню на панелі, ≤ 4 — сегменти в один ряд; рядок історії: свайп ліворуч — статус, довге натискання — меню застосунку
   if (NATV >= 4) document.documentElement.classList.add('app-v4');
+  /** 157-а: «Розмір тексту» iPhone (Dynamic Type) — застосунок дає множник (0,88…1,3), сторінка масштабується й перекладається під вужчу ширину
+   *  (meta viewport: ширина = екран ÷ множник), як «Масштаб» у Safari. WKWebView.pageZoom лише збільшував — сторінка вилазила праворуч.
+   *  iPad (екран ≥ 600) — без змін. */
+  var VP0 = '';
+  function appZoom(z) {
+    var m = document.querySelector('meta[name="viewport"]'), sc = window.screen || {}, sw = Math.min(sc.width || 0, sc.height || 0) || window.innerWidth || 390;
+    if (!m || sw >= 600) return;
+    if (!VP0) VP0 = m.getAttribute('content') || 'width=device-width, initial-scale=1, viewport-fit=cover';
+    z = +z || 1; if (!(z >= 0.8 && z <= 1.4)) z = 1;
+    m.setAttribute('content', Math.abs(z - 1) < 0.01 ? VP0 : 'width=' + Math.round(sw / z) + ', initial-scale=' + Math.round(z * 1000) / 1000 + ', viewport-fit=cover');
+  }
+  if (NATV >= 4) try { if (window.PeredaiNative.tz) appZoom(window.PeredaiNative.tz); } catch (e0) { /* старий застосунок */ }
   function appPost(m) { if (!APP) return; try { APP.postMessage(m); } catch (e) { /* старий застосунок */ } }
   function appMirror() { if (!APP) return; clearTimeout(appMirror._t); appMirror._t = setTimeout(function () { var js = ''; try { js = window.localStorage.getItem(KEY) || ''; } catch (e) { js = JSON.stringify(S, jsonFix); } appPost({ t: 'state', s: js, at: Date.now() }); }, 1200); }
   /** Нативна вкладка для маршруту: home | history | stats | prefs; '' — не міняти (екрани всередині розділу).
@@ -352,6 +364,8 @@
     sched: function () { appSched(true); },
     /** 157-а: «+» на панелі — головна кнопка сторінки лічильника (Внести показання / Сплатити вивіз). */
     add: function () { var a = document.querySelector('#main .app-add'); if (a && !a.disabled) a.click(); },
+    /** 157-а: змінили «Розмір тексту» iPhone, поки застосунок відкритий. */
+    textZoom: function (z) { appZoom(z); },
     /** 157-а: вид з меню на панелі «Історії» / «Статистики». */
     view: function (k) { k = String(k || ''); if (kinds().indexOf(k) < 0) return; S.view = k; persist(); render(true); },
     /** 157-а: довге натискання на рядок історії — рідне контекстне меню застосунку. Статус — ті самі варіанти, що в чипі рядка.

@@ -157,14 +157,15 @@ final class MainTabController: UITabBarController, UITabBarControllerDelegate, U
             return
         }
         let it = first.0, due = first.1
+        // «Гаряча вода — до 20 листопада»; квартир кілька — назва квартири другим рядком (скрин CI: в один рядок строк обрізався)
         let places = Set(p.items.map(\.p)).count
-        let tpl = places > 1 ? p.txt.body : p.txt.body.replacingOccurrences(of: " · {p}", with: "")
-        let text = Reminders.fill(tpl, it, due)
+        let text = Reminders.fill(p.txt.body.replacingOccurrences(of: " · {p}", with: ""), it, due)
+        let sub = places > 1 ? it.pn : ""
         let go = it.pay ? (p.txt.acc_pay ?? L10n.t("Сплатити", "Оплатить")) : (p.txt.acc_go ?? L10n.t("Внести", "Внести"))
-        let key = [it.k, it.p, it.due, text, go].joined(separator: "|")
+        let key = [it.k, it.p, it.due, text, sub, go].joined(separator: "|")
         guard key != accessoryKey else { return }
         accessoryKey = key
-        let v = WindowAccessoryView(kind: it.k, text: text, go: go)
+        let v = WindowAccessoryView(kind: it.k, text: text, sub: sub, go: go)
         let route = it.go, place = it.p
         v.onTap = { [weak self] in
             UIImpactFeedbackGenerator(style: .light).impactOccurred()
@@ -379,7 +380,7 @@ enum TitleButton {
 final class WindowAccessoryView: UIControl {
     var onTap: (() -> Void)?
 
-    init(kind: String, text: String, go: String) {
+    init(kind: String, text: String, sub: String, go: String) {
         super.init(frame: .zero)
         let icon = UIImageView(image: UIImage(systemName: MeterKind.symbol(kind)))
         icon.tintColor = UIColor(MeterKind.color(kind))
@@ -398,7 +399,20 @@ final class WindowAccessoryView: UIControl {
         action.textColor = UIColor(named: "AccentColor") ?? .systemBlue
         action.setContentHuggingPriority(.required, for: .horizontal)
         action.setContentCompressionResistancePriority(.required, for: .horizontal)
-        let stack = UIStackView(arrangedSubviews: [icon, label, action])
+        let texts = UIStackView(arrangedSubviews: [label])
+        texts.axis = .vertical
+        texts.spacing = 0
+        if !sub.isEmpty {
+            let sl = UILabel()
+            sl.text = sub
+            sl.font = .preferredFont(forTextStyle: .caption1)
+            sl.adjustsFontForContentSizeCategory = true
+            sl.textColor = .secondaryLabel
+            sl.lineBreakMode = .byTruncatingTail
+            texts.addArrangedSubview(sl)
+        }
+        texts.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+        let stack = UIStackView(arrangedSubviews: [icon, texts, action])
         stack.axis = .horizontal
         stack.alignment = .center
         stack.spacing = 10
@@ -412,7 +426,7 @@ final class WindowAccessoryView: UIControl {
         ])
         isAccessibilityElement = true
         accessibilityTraits = .button
-        accessibilityLabel = text
+        accessibilityLabel = sub.isEmpty ? text : text + ", " + sub
         accessibilityHint = go
         addTarget(self, action: #selector(tapped), for: .touchUpInside)
     }

@@ -42,7 +42,7 @@ final class WebHost: NSObject {
         let ucc = WKUserContentController()
         // 156-а: що вміє застосунок — сайт читає до свого старту (v3: лист для вводу показань, меню квартири на заголовку)
         // 157-а: v4 — налаштування списком, «+» і меню видів на панелі, свайп і контекстне меню рядків історії
-        ucc.addUserScript(WKUserScript(source: "window.PeredaiNative={v:4,sheet:1,pmenu:1,list:1,add:1,km:1,ctx:1};", injectionTime: .atDocumentStart, forMainFrameOnly: true))
+        ucc.addUserScript(Self.nativeScript())
         cfg.userContentController = ucc
         webView = WKWebView(frame: .zero, configuration: cfg)
         super.init()
@@ -63,14 +63,15 @@ final class WebHost: NSObject {
         rc.addTarget(self, action: #selector(pullToRefresh(_:)), for: .valueChanged)
         webView.scrollView.refreshControl = rc
         offline.onRetry = { [weak self] in self?.reload() }
-        // 157-а: розмір тексту — за «Розміром тексту» iPhone (Dynamic Type): масштаб сторінки, сайт перекладається під нову ширину
-        applyTextSize()
+        // 157-а: розмір тексту — за «Розміром тексту» iPhone (Dynamic Type): сайт сам масштабує сторінку й перекладається під вужчу ширину
+        // (meta viewport, TeploHost.textZoom). WKWebView.pageZoom на iOS лише збільшував — сторінка вилазила праворуч (скрини CI 157-ї)
+        textZoom = Self.zoom(UIApplication.shared.preferredContentSizeCategory)
         _ = NotificationCenter.default.addObserver(forName: UIContentSizeCategory.didChangeNotification, object: nil, queue: .main) { [weak self] _ in
             MainActor.assumeIsolated { self?.applyTextSize() }
         }
     }
 
-    /// Dynamic Type → масштаб сторінки (WKWebView.pageZoom). Більше 1,3 не робимо: ширина сайту стала б менша за 300 точок.
+    /// Dynamic Type → множник сторінки. Більше 1,3 не робимо: ширина сайту стала б менша за 300 точок.
     static func zoom(_ c: UIContentSizeCategory) -> CGFloat {
         switch c {
         case .extraSmall: return 0.88
@@ -84,9 +85,23 @@ final class WebHost: NSObject {
         }
     }
 
+    private var textZoom: CGFloat = 1
+
+    /// Що вміє застосунок (сайт читає до свого старту) і множник тексту.
+    private static func nativeScript() -> WKUserScript {
+        let z = zoom(UIApplication.shared.preferredContentSizeCategory)
+        return WKUserScript(source: "window.PeredaiNative={v:4,sheet:1,pmenu:1,list:1,add:1,km:1,ctx:1,tz:\(z)};",
+                            injectionTime: .atDocumentStart, forMainFrameOnly: true)
+    }
+
     private func applyTextSize() {
         let z = Self.zoom(UIApplication.shared.preferredContentSizeCategory)
-        if abs(webView.pageZoom - z) > 0.001 { webView.pageZoom = z }
+        guard abs(z - textZoom) > 0.001 else { return }
+        textZoom = z
+        let ucc = webView.configuration.userContentController
+        ucc.removeAllUserScripts()
+        ucc.addUserScript(Self.nativeScript())
+        run("window.TeploHost && window.TeploHost.textZoom && window.TeploHost.textZoom(\(z))")
     }
 
     func start(route: String = "") {
