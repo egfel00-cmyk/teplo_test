@@ -2498,3 +2498,12 @@ details.mypay[open] > summary .mypay-amt, details.mypay[open] > summary .mypay-s
 .sh-bubble { margin-left: auto; max-width: 92%; padding: 10px 12px; border-radius: 14px 14px 4px 14px; background: var(--c-surface); border: 1px solid var(--c-line); white-space: pre-wrap; overflow-wrap: anywhere; font-size: var(--fs-s); line-height: 1.5; color: var(--c-ink); }
 .sh-acts { margin: 12px 0; }
 .sh-cta h2 { display: flex; align-items: center; gap: 8px; }
+
+/* 154-а: усередині застосунку iPhone (apps/ios) вкладки — нативні (UITabBar); свої нижні вкладки сайту ховаємо, відступ знизу — без них.
+   Бічне меню (≥ 960, iPad) лишається. */
+@media (max-width: 959px) {
+  .in-app .nav:not(.nav-side) { display: none; }
+  .in-app .main:not(.bare) { padding-bottom: calc(var(--tap) + 24px); }
+  .in-app body:has(.fab) .main:not(.bare) { padding-bottom: calc(76px + env(safe-area-inset-bottom)); }
+  .in-app .fab:not(.fab-bare) { bottom: calc(12px + env(safe-area-inset-bottom)); }
+}

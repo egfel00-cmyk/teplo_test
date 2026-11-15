@@ -168,7 +168,65 @@
   function homeRoute() { return 'home'; }
   // 150-а: порожній масив із властивостями ([] з сервера, у який записали prov.elec) — об'єктом, інакше JSON.stringify їх викидає (sync.js fixArr)
   function jsonFix(k, v) { var Y = window.TeploSync; return Y && Y.fixArr ? Y.fixArr(k, v) : v; }
-  function persist() { memory = S; try { window.localStorage.setItem(KEY, JSON.stringify(S, jsonFix)); } catch (e) { /* только память */ } }
+  function persist() { memory = S; try { window.localStorage.setItem(KEY, JSON.stringify(S, jsonFix)); } catch (e) { /* только память */ } appMirror(); }
+  // ---- 154-а: застосунок iPhone (apps/ios). Сайт працює всередині WKWebView — правки сайту одразу й у застосунку; нативне — поверх:
+  // вкладки, нагадування й Live Activity (Dynamic Island) за 4 дні до кінця вікна, копія стану в iCloud, вібровідгук. Міст — лише в застосунку
+  // (UA «PeredaiApp/» і window.webkit.messageHandlers.peredai). Повідомлення: route (вкладка, екран вводу), sched (строки з placeStatus — ті самі,
+  // що на картках головної), state (копія для iCloud і відновлення), haptic. Назад — window.TeploHost: go(маршрут), restore(json), sched().
+  var APP = (function () {
+    try { var h = window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.peredai; return h && /PeredaiApp\//.test(navigator.userAgent) ? h : null; }
+    catch (e) { return null; }
+  })();
+  var APP_LAST = { route: '', bare: null, sched: '' };
+  if (APP) document.documentElement.classList.add('in-app');
+  function appPost(m) { if (!APP) return; try { APP.postMessage(m); } catch (e) { /* старий застосунок */ } }
+  function appMirror() { if (!APP) return; clearTimeout(appMirror._t); appMirror._t = setTimeout(function () { var js = ''; try { js = window.localStorage.getItem(KEY) || ''; } catch (e) { js = JSON.stringify(S, jsonFix); } appPost({ t: 'state', s: js, at: Date.now() }); }, 1200); }
+  /** Нативна вкладка для маршруту: home | history | stats | prefs; '' — не міняти (екрани всередині розділу). */
+  function appTab(r) {
+    if (/^(home|heat|water-|elec$|gas$|waste$|places$|place$)/.test(r)) return 'home';
+    if (/^history/.test(r) || REC_RE.test(r)) return 'history';
+    if (/^stats/.test(r)) return 'stats';
+    if (/^prefs/.test(r)) return 'prefs';
+    return '';
+  }
+  function appNative(view) {
+    if (!APP) return;
+    var r = routeName() || 'home', bare = !!(view && view.bare);
+    if (r !== APP_LAST.route || bare !== APP_LAST.bare) { APP_LAST.route = r; APP_LAST.bare = bare; appPost({ t: 'route', r: r, tab: appTab(r), bare: bare, on: !!S.onboarded }); }
+    clearTimeout(appNative._t); appNative._t = setTimeout(appSched, 700);
+  }
+  /** Строки передачі/оплати для нагадувань застосунку: кожна квартира × вид — до коли, чи вже передано. Тексти — тут (uk/ru), застосунок лише показує. */
+  function appSched(force) {
+    if (!APP) return;
+    var items = [];
+    if (S.onboarded) places().forEach(function (p) {
+      try {
+        placeStatus(p.id).rows.forEach(function (x) {
+          if (x.off || (!x.due && x.tone !== 'ok')) return;   // передано без строку — теж шлемо: застосунок прибере нагадування й Live Activity
+          items.push({ p: p.id, pn: placeLabel(p), k: x.kind, kt: x.title, due: x.due || '', done: x.tone === 'ok', pay: !!x.pay, ready: !!x.ready,
+            go: x.kind === 'hot' || x.kind === 'cold' ? 'water-' + x.kind : x.kind });
+        });
+      } catch (e) { /* квартира без даних */ }
+    });
+    var js = JSON.stringify(items); if (!force && js === APP_LAST.sched) return; APP_LAST.sched = js;
+    appPost({ t: 'sched', items: items, today: today(), soon: DUE_SOON, lang: S.lang,
+      txt: { title: t('app_n_title'), body: t('app_n_body'), pay: t('app_n_pay'), la: t('app_la_title'), la_go: t('app_la_go'), la_done: t('app_la_done') } });
+  }
+  window.TeploHost = {
+    v: 1,
+    go: function (r) { r = String(r || '').replace(/^#/, ''); if (!r) return; if (routeName() === r) render(); else location.hash = r; },
+    sched: function () { appSched(true); },
+    /** Копія з iCloud: порожній застосунок (новий телефон) — береться як є; є свої дані — злиття тим самим TeploSync.merge, що й із сервером. */
+    restore: function (json) {
+      try {
+        var m = typeof json === 'string' ? JSON.parse(json) : json; if (!m || typeof m !== 'object') return 'bad';
+        var Y = window.TeploSync, mine = S.onboarded || anyMeters();
+        applyRemote(mine && Y && Y.merge ? Y.merge(S, m) : m);
+        if (!S.onboarded && anyMeters()) S.onboarded = true;
+        save(); render(); if (!mine) toast(t('app_restored')); return mine ? 'merged' : 'restored';
+      } catch (e) { return 'err'; }
+    }
+  };
   /** 150-а: {} квартири, які сервер колись повернув як [] (PHP json_decode(…, true)), — назад в об'єкти: «Кому платите» (prov і prov[вид]),
    *  рахунок (bill), населений пункт (settle). Інакше записане в них зникало після оновлення сторінки («Победа»: свій постачальник світла). */
   var OBJ_KEYS = ['prov', 'bill', 'settle', 'city', 'water', 'waste'];
@@ -9017,6 +9075,7 @@
     document.title = view.html.indexOf('lp-hero') >= 0 && SEO_TITLE ? SEO_TITLE : t('brand');   // на лендинге — заголовок для поиска (его ставит index.php)
     if (keepScroll !== true) window.scrollTo(0, 0);
     afterRender(r);
+    appNative(view);
   }
   function go(r) { if (routeName() === r) render(); else location.hash = r; }
 
@@ -9158,6 +9217,7 @@
   var TOAST = { msg: '', until: 0 };
   function toast(msg) {
     track('toast', { m: String(msg == null ? '' : msg).slice(0, 120) });
+    if (APP) appPost({ t: 'haptic', s: 'light' });
     TOAST = { msg: msg, until: Date.now() + 2400 };
     var host = document.getElementById('toast-host'); if (!host) return;
     host.innerHTML = '<div class="toast">' + esc(msg) + '</div>';
