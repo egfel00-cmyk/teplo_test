@@ -848,6 +848,8 @@
   /** Счётчики по порядку видов; внутри вида — как добавляли (сортируем копию, хранение не трогаем). */
   function byKind(a) { return a.map(function (m, i) { return [m, i]; }).sort(function (x, y) { return kindRank(x[0].kind) - kindRank(y[0].kind) || x[1] - y[1]; }).map(function (x) { return x[0]; }); }
   function hasHeat() { return !!(S.meter && !S.meter.removed); }
+  /** 155-а: тепло позначили при першому вході, модель ще не обрали — на головній картка «Налаштувати опалення». */
+  function heatAsked() { var p = place(); return !S.meter && !!(p && p.heatAsk); }
   /** Есть ли хоть один счётчик в любой квартире (вход на новом устройстве: уже настроен — сразу на главную). */
   function anyMeters() {
     var live = function (m) { return m && !m.deleted && !m.removed; };
@@ -1039,7 +1041,7 @@
       '</a>' +
       '<button type="button" class="ucard-add' + (o.tone === 'warn' ? ' hot' : '') + '" data-act="' + o.addAct + '"' + (o.addKind ? ' data-kind="' + o.addKind + '"' : '') + ' data-key="card-' + o.kind + '-add" aria-label="' + esc(o.addLabel) + '" title="' + esc(o.addLabel) + '">' + ico('plus', 26) + '</button>' +
       // 155-а: лічильник є, показань ще немає — явна кнопка (журнал: після налаштування люди не помічали «+» у кутку й ішли)
-      (o.first ? '<button type="button" class="btn sec ucard-first" data-act="' + o.addAct + '"' + (o.addKind ? ' data-kind="' + o.addKind + '"' : '') + ' data-key="card-' + o.kind + '-first">' + ico('plus', 20) + '<span>' + esc(t('uc_first')) + '</span></button>' : '') + '</div>';
+      (o.first ? '<button type="button" class="btn sec ucard-first" data-act="' + o.addAct + '"' + (o.addKind ? ' data-kind="' + o.addKind + '"' : '') + ' data-key="card-' + o.kind + '-first">' + ico('plus', 20) + '<span>' + esc(t(typeof o.first === 'string' ? o.first : 'uc_first')) + '</span></button>' : '') + '</div>';
   }
   /** Рядок статусу на картці головної: передано / знято — завжди; строк — лише за 4 дні до кінця; «наступна передача» — ні. */
   function cardSt(o) { if (!o) return ''; if (o.off || o.tone === 'ok') return o.st; return dueSoon(o) !== null ? o.st : ''; }
@@ -1157,7 +1159,7 @@
     return o;
   }
   function heatCard() {
-    if (!S.meter) return ucard({ kind: 'heat', href: 'meter', icon: 'thermo', title: t('uc_heat'), display: lcd([{ text: '------', tag: 'Gcal', label: '—' }], 'card empty'), sub: t('uc_heat_setup'), addAct: 'setup-heat', addLabel: t('uc_heat_setup_btn') });
+    if (!S.meter) return ucard({ kind: 'heat', href: 'meter', icon: 'thermo', title: t('uc_heat'), display: lcd([{ text: '------', tag: 'Gcal', label: '—' }], 'card empty'), sub: t('uc_heat_setup'), addAct: 'setup-heat', addLabel: t('uc_heat_setup_btn'), first: 'uc_heat_setup_btn' });
     var last = RD().filter(function (r) { return r.htm && r.htm.date; }).slice(-1)[0], base = S.baseline;
     var src = last && (!base || last.htm.date >= base.date) ? { date: last.htm.date, energy: last.htm.energy, own: true, status: last.status } : base ? { date: base.date, energy: base.energy } : null;
     var hs = heatStatus(), st = cardSt(hs), tone = st ? hs.tone : '';
@@ -1203,7 +1205,7 @@
   var HP_EDIT = '';   // у какой квартиры открыта форма «Назва й адреса»
   function homeCards() {
     var by = { elec: function () { return emeters().length ? elecCard() : ''; }, gas: function () { return smeters('gas').length ? sCard('gas') : ''; },
-      heat: function () { return hasHeat() ? heatCard() : ''; }, waste: function () { return wasteOn() ? wasteCard() : ''; } };
+      heat: function () { return hasHeat() || heatAsked() ? heatCard() : ''; }, waste: function () { return wasteOn() ? wasteCard() : ''; } };
     return KIND_ORDER.map(function (k) { return by[k] ? by[k]() : wmeters(k).length ? waterCard(k) : ''; }).filter(Boolean);
   }
   function hpEditForm(p) {
@@ -3384,7 +3386,10 @@
     ms.forEach(function (m) {
       var p = eprev(m.id, date, EN.skip), vs = EN.vals[m.id] || {};
       h += '<fieldset class="efield" data-key="en-' + m.id + '"><legend>' + ico(SK[k].icon, 18, SK[k].cls) + ' ' + esc(ename(m)) + (m.serial ? ' <span class="small muted">№ ' + esc(m.serial) + '</span>' : '') + '</legend>' +
-        (md.zones(m) > 1 ? '<p class="small muted">' + esc(t('en_zones_' + md.zones(m))) + '</p>' : '') +
+        // 155-а: світло створено без анкети (перший вхід) — скільки зон питаємо тут, при перших показаннях
+        (k === 'elec' && m.zAsk && !mrecs(m.id).length ? '<div class="en-zask" role="radiogroup" aria-label="' + esc(t('ea_zones')) + '" data-key="en-zask-' + esc(m.id) + '"><p class="small muted">' + esc(t('en_zask')) + '</p><div class="my-seg">' +
+          [1, 2, 3].map(function (n) { return '<label class="my-chip' + (md.zones(m) === n ? ' on' : '') + '"><input type="radio" name="enz-' + esc(m.id) + '" value="' + n + '"' + (md.zones(m) === n ? ' checked' : '') + ' data-act="en-zones" data-id="' + esc(m.id) + '" data-key="en-z' + n + '-' + esc(m.id) + '"><span>' + esc(t('en_zn' + n)) + '</span></label>'; }).join('') +
+          '</div></div>' : md.zones(m) > 1 ? '<p class="small muted">' + esc(t('en_zones_' + md.zones(m))) + '</p>' : '') +
         (EN.swap && EN.swap[m.id] ? '<p class="small en-swap" role="status" data-key="en-swap-' + esc(m.id) + '">' + esc(t('en_swap')) + ' <button type="button" class="linkbtn" data-act="en-noswap" data-id="' + esc(m.id) + '" data-key="en-noswap">' + esc(t('en_noswap')) + '</button></p>' : '') +
         md.keys(m).map(function (z) {
           var id = m.id + '-' + z, pv = p ? md.whole(p.z && p.z[z]) : null;
@@ -3457,6 +3462,8 @@
     // 138-а: розклали навхрест і людина зберегла — на цьому лічильнику день — T2; наступні фото одразу так (m.zswap), без здогадів по прошлих
     var swIds = Object.keys(EN.swap || {}).filter(function (id) { return EN.swap[id] && smeters(k).some(function (m) { return m.id === id && m.zswap === undefined; }); });
     if (swIds.length) setPMeters(function (list) { list.forEach(function (m) { if (swIds.indexOf(m.id) >= 0) m.zswap = true; }); });
+    // 155-а: зони вже обрано разом з першими показаннями — питання більше не показуємо
+    if (smeters(k).some(function (m) { return m.zAsk && mrecs(m.id).length; })) setPMeters(function (list) { list.forEach(function (m) { if (m.zAsk && mrecs(m.id).length) delete m.zAsk; }); });
     if (!S.onboarded) S.onboarded = true;
     var back = EN.back; EN = enFresh(k); save(); toast(t('wn_saved') + inPlace());
     // 146-а: фото з картки чату й свій постачальник — одразу «Оплата» (з картки людина прийшла саме платити)
@@ -3893,6 +3900,10 @@
         EN = enFresh(ee.kind === 'gas' ? 'gas' : 'elec'); EN.date = ee.date; EN.skip = ee.id; EN.note = ee.note || ''; EN.noteEdit = true; EN.vals[ee.meter] = {}; Object.keys(ee.z || {}).forEach(function (k) { EN.vals[ee.meter][k] = String(ee.z[k] || '').replace('.', ','); });
         mrecs().forEach(function (x) { if (x.date === ee.date && !x.base && x.meter !== ee.meter && x.kind === ee.kind) { EN.vals[x.meter] = {}; Object.keys(x.z || {}).forEach(function (k) { EN.vals[x.meter][k] = String(x.z[k] || '').replace('.', ','); }); } });
         EN.back = routeName(); go(SK[EN.k].nw); return true; }
+      case 'en-zones': {   // 155-а: зони світла при перших показаннях (лічильник створено без анкети)
+        enRead(); var zid = el.getAttribute('data-id'), zn = Number(el.value) || 1;
+        setPMeters(function (list) { list.forEach(function (m) { if (m.id === zid) m.zones = zn; }); });
+        if (EN.vals[zid]) EN.vals[zid] = {}; render(true); var zf = document.querySelector('[data-key="en-z' + zn + '-' + zid + '"]'); if (zf) zf.focus(); return true; }
       case 'en-noswap': { enRead(); var nid = el.getAttribute('data-id'); setPMeters(function (list) { list.forEach(function (m) { if (m.id === nid) m.zswap = false; }); });
         // підставлене з фото (не вписане людиною) — прибираємо й з полів: перемальовування читає поля назад у EN.vals
         Object.keys(EN.auto || {}).forEach(function (key) { if (key.indexOf(nid + '|') !== 0) return; if (EN.vals[nid]) delete EN.vals[nid][key.split('|')[1]]; var inp = document.querySelector('[data-en="' + key + '"]'); if (inp) inp.value = ''; });
@@ -5405,7 +5416,9 @@
       (VIS().available ? '<p><button class="btn sec" data-act="photo" data-mode="model" data-key="meter-photo">' + ico('camera', 20) + '<span>' + esc(t('ph_model_entry')) + '</span></button></p>' : '') +
       '<ul class="list models" data-key="meter-list">' + list + '</ul>' + (pm ? '<div style="margin-top:16px">' + note + unitBlock + '</div>' : '') +
       '<div class="row-actions">' + (S.onboarded ? '<a class="btn sec" href="#home">' + esc(t('back')) + '</a>' : '') +
-      '<button class="btn" data-act="save-meter" data-key="meter-save"' + (pm ? '' : ' disabled') + '>' + esc(S.onboarded ? t('save') : t('next')) + '</button></div>' };
+      '<button class="btn" data-act="save-meter" data-key="meter-save"' + (pm ? '' : ' disabled') + '>' + esc(S.onboarded ? t('save') : t('next')) + '</button></div>' +
+      // 155-а: картку «Налаштувати опалення» з першого входу можна прибрати, якщо тепла насправді немає
+      (heatAsked() ? '<p class="small meter-noheat"><button type="button" class="linkbtn" data-act="heat-ask-off" data-key="meter-noheat">' + esc(t('m_noheat')) + '</button></p>' : '') };
   };
   function meterGlyph() {
     return '<svg width="40" height="40" viewBox="0 0 40 40" aria-hidden="true"><rect x="4" y="4" width="32" height="32" rx="6" style="fill:var(--c-bezel-in);stroke:var(--c-bezel)"/>' +
@@ -7926,6 +7939,18 @@
     return V['add-place']();
   };
   function pwGo() { go(PW.first ? 'start' : 'add-place'); }
+  /** Лічильник без подробиць у поточну квартиру: світло — одна зона, газ — без рахунків, водомір — без № і повірки.
+   *  name: рядок — так і назвати, null — «2», «3»… якщо такий вид уже є (як «Налаштую пізніше»). */
+  function qMeterAdd(k, name) {
+    if (SK[k]) {
+      var ssame = smeters(k), sid = SK[k].mod.uid(), sn = name !== null ? name : ssame.length ? String(ssame.length + 1) : '';
+      setPMeters(function (list) { list.push(Object.assign({ id: sid, kind: k, name: sn, serial: '', account: '', createdAt: today() }, k === 'elec' ? { zones: 1, zAsk: 1 } : { grm: '', eic: '' })); });
+      return sid;
+    }
+    var qsame = wmeters(k), wid = Wt.uid(), wn = name !== null ? name : qsame.length ? String(qsame.length + 1) : '';
+    wsetCfg(function (c) { c.meters = c.meters || []; c.meters.push({ id: wid, kind: k, name: wn, serial: '', vkId: '', verifiedUntil: '' }); });
+    return wid;
+  }
   /** Создать квартиру из мастера (или, при первом входе, заполнить первую) и пойти настраивать её счётчики по очереди. */
   function pwCreate() {
     pwRead(); syncPlace();
@@ -7940,6 +7965,18 @@
       S.places.push(np); switchPlace(np.id); WX.key = ''; save();
     }
     if (PW.n.waste) wasteAdd();   // вивіз сміття — без налаштування в черзі: люди й ціна — на його сторінці
+    // 155-а (журнал /admin, 14 днів: на першій анкеті черги — «Новий водомір», «Новий електролічильник» — пішла майже половина; власник 11.11:
+    // «вибрав лічильник — вносить показання»): при першому вході лічильники створюємо одразу, без анкет — головна з картками «Внести перші показання».
+    // Зони світла — при перших показаннях (`enZoneAsk`), два однакових водоміри — «1» і «2» (перейменувати — у налаштуваннях лічильника).
+    // Тепло — карткою «Налаштувати опалення» на головній (`heatAsk`; модель потрібна для кроків), лише тепло — як і було, одразу вибір моделі.
+    if (first && (list.length || PW.n.waste)) {
+      var cnt = {}; list.forEach(function (k) { cnt[k] = (cnt[k] || 0) + 1; });
+      var seen = {}; list.forEach(function (k) { seen[k] = (seen[k] || 0) + 1; qMeterAdd(k, cnt[k] > 1 ? String(seen[k]) : ''); });
+      if (PW.n.heat && !S.meter) { var hp0 = place(); hp0.heatAsk = 1; hp0.updatedAt = Date.now(); }
+      S.onboarded = true; S.view = list[0] ? (SK[list[0]] ? list[0] : 'water') : S.view; PQ = null; pqKeep(); save();
+      track('start_fast', { n: list.length, w: PW.n.waste ? 1 : 0, h: PW.n.heat ? 1 : 0 });   // «saved» журнал запише сам (jrSaved)
+      PW = pwFresh(); toast(t('fs_done')); go('home'); return;
+    }
     PQ = list.length || PW.n.heat ? { place: S.placeId, list: list, i: 0, heat: !!PW.n.heat, total: list.length + (PW.n.heat ? 1 : 0), first: first } : null;
     if (!first) { toast(t('aw_created', { p: placeLabel(place()) })); PW = pwFresh(); }   // первый вход: выбор держим — «Скасувати» вернёт к нему
     pqNext();
@@ -9416,10 +9453,11 @@
         var id = S._pickModel || (S.meter && S.meter.modelId); var pm = M.byId(id); if (!pm) return;
         var u = document.querySelector('input[name="unit"]:checked');
         S.meter = Object.assign({}, S.meter || {}, { modelId: id, unit: u ? u.value : pm.unit }); delete S.meter.removed;   // выбрали заново — опалення снова в квартире
-        delete S._pickModel; save();
+        delete S._pickModel; var hap = place(); if (hap && hap.heatAsk) { delete hap.heatAsk; hap.updatedAt = Date.now(); } save();
         go(S.onboarded && S.baseline ? 'home' : 'baseline'); break;
       }
       case 'skip-base': S.onboarded = true; delete S._baseFill; save(); go('home'); break;
+      case 'heat-ask-off': { var hx = place(); if (hx) { delete hx.heatAsk; hx.updatedAt = Date.now(); } delete S._pickModel; save(); toast(t('m_noheat_ok')); go('home'); break; }
       case 'sample': {
         var d = addDays(today(), -25), smp = { date: d, energy: '13.245', volume: '2292.676', flow: '0.063', power: '1.685', tSupply: '50.76', tReturn: '27.71', hours: '34598', errHours: '153', errCode: 'E---' };
         Object.keys(smp).forEach(function (k) { var f = document.querySelector('[data-b="' + k + '"]'); if (f) f.value = smp[k]; });
@@ -9488,11 +9526,9 @@
       case 'mono-again': if (MO.tok) monoLog('again'); clearTimeout(MO.timer); MO = Object.assign(monoFresh(MO.back), { opened: true }); render(true); break;
       case 'mono-apply': monoApply(); break;
       case 'pq-later': {   // водомір є, а № і цифри — пізніше: додаємо без деталей
-        if (PQ && PQ.place === S.placeId && PQ.i < PQ.list.length && SK[PQ.list[PQ.i]]) {   // світло/газ: одна зона, рахунок і № — потім у налаштуваннях
-          var sk = PQ.list[PQ.i], ssame = smeters(sk), sid = SK[sk].mod.uid();
-          setPMeters(function (list) { list.push(Object.assign({ id: sid, kind: sk, name: ssame.length ? String(ssame.length + 1) : '', serial: '', account: '', createdAt: today() }, sk === 'elec' ? { zones: 1 } : { grm: '', eic: '' })); });
-          EA = { kind: sk, back: '', zones: 1, vals: {}, f: {} }; PQ.i++; S.onboarded = true; save();
-        } else if (PQ && PQ.place === S.placeId && PQ.i < PQ.list.length) { var qk = PQ.list[PQ.i], qsame = wmeters(qk); wsetCfg(function (c) { c.meters = c.meters || []; c.meters.push({ id: Wt.uid(), kind: qk, name: qsame.length ? String(qsame.length + 1) : '', serial: '', vkId: '', verifiedUntil: '' }); }); PQ.i++; S.onboarded = true; save(); }
+        if (PQ && PQ.place === S.placeId && PQ.i < PQ.list.length) {   // світло/газ: одна зона, рахунок і № — потім у налаштуваннях
+          var qk = PQ.list[PQ.i]; qMeterAdd(qk, null); if (SK[qk]) EA = { kind: qk, back: '', zones: 1, vals: {}, f: {} }; PQ.i++; S.onboarded = true; save();
+        }
         pqNext(); break; }
       case 'pl-del': { var dp = place(el.getAttribute('data-id')); if (dp && places().length > 1) { var dl = placeLabel(dp); dp.deleted = true; dp.updatedAt = Date.now(); if (dp.id === S.placeId) { S.placeId = null; S.meter = null; S.baseline = null; S.draft = null; ensurePlaces(); } save(); toast(t('pv_deleted', { p: dl })); go(places().length > 1 ? 'places' : 'home'); } break; }
       case 'focus': S.focusId = el.getAttribute('data-id'); save(); break;

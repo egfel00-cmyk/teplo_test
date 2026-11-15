@@ -28,7 +28,7 @@ const U = 'http://127.0.0.1:8013/';
   ok('после выхода в браузере пусто (не данные аккаунта)', !main(s).meter && !(main(s).water || {}).meters?.length && !(s.readings || []).length && !main(s).name);
   await p.goto(U + '#start'); await wait(400);
   for (const k of ['elec', 'gas']) { await p.click('[data-key=aw-' + k + '-inc]'); await wait(100); }
-  await p.click('[data-key=aw-create]'); await wait(400); await p.click('[data-key=ea-save]'); await wait(400); await p.click('[data-key=ea-save]'); await wait(500);
+  await p.click('[data-key=aw-create]'); await wait(600);   // 155-а: без анкет — лічильники одразу
   s = await st();
   ok('без входа добавлены світло и газ в «main» (свежая метка)', (main(s).meters || []).length === 2 && main(s).updatedAt > main(sv).updatedAt, main(s).meters);
 
@@ -43,7 +43,7 @@ const U = 'http://127.0.0.1:8013/';
 
   // 4. новый аккаунт: внёс без входа, потом зарегистрировался — данные «без входа» переходят в него
   await p.evaluate(() => { const x = document.createElement('button'); x.setAttribute('data-act', 'logout'); x.id = 'lo2'; document.body.appendChild(x); }); await p.evaluate(() => document.getElementById('lo2').click()); await wait(800);
-  await p.goto(U + '#start'); await wait(400); await p.click('[data-key=aw-gas-inc]'); await p.click('[data-key=aw-create]'); await wait(400); await p.click('[data-key=ea-save]'); await wait(500);
+  await p.goto(U + '#start'); await wait(400); await p.click('[data-key=aw-gas-inc]'); await p.click('[data-key=aw-create]'); await wait(600);
   const reg2 = await p.evaluate(([e, pw]) => window.TeploSync.register(e, pw).then(j => j._status), ['new' + Date.now() + '@teplo.test', pass1]);
   await wait(2500); sv = await server();
   ok('новый аккаунт забрал внесённое без входа (газ)', reg2 === 200 && (main(sv).meters || []).some(m => m.kind === 'gas'), main(sv).meters);
