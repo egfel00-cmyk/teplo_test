@@ -1,0 +1,108 @@
+# «передай» для iPhone: збірка на маках GitHub (безкоштовно для публічного репозиторію).
+# 1) build — завжди: проєкт з apps/ios/project.yml (XcodeGen), збірка для симулятора без підпису — перевірка, що код збирається.
+#    Помилки компілятора — анотаціями до коміту (xcbeautify --renderer github-actions), їх видно й без входу.
+# 2) testflight — лише коли власник додав секрети ASC_KEY_ID, ASC_ISSUER_ID, ASC_KEY_P8 і змінну APPLE_TEAM_ID:
+#    архів з автоматичним підписом (Xcode сам створює сертифікат і профілі за ключем App Store Connect) → завантаження в TestFlight.
+name: iOS
+
+on:
+  push:
+    branches: [main]
+    paths: ['apps/ios/**', '.github/workflows/ios.yml']
+  workflow_dispatch:
+
+concurrency:
+  group: ios-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: macos-15
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - name: Xcode
+        run: |
+          ls -d /Applications/Xcode*.app || true
+          X=$(ls -d /Applications/Xcode_26*.app 2>/dev/null | sort -V | tail -1)
+          [ -n "$X" ] || X=$(ls -d /Applications/Xcode*.app | sort -V | tail -1)
+          sudo xcode-select -s "$X"
+          xcodebuild -version
+      - name: Tools
+        run: brew install xcodegen xcbeautify
+      - name: Project
+        working-directory: apps/ios
+        run: xcodegen generate
+      - name: Build (simulator, unsigned)
+        working-directory: apps/ios
+        run: |
+          set -o pipefail
+          xcodebuild -project Peredai.xcodeproj -scheme Peredai -configuration Debug \
+            -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' \
+            CODE_SIGNING_ALLOWED=NO build 2>&1 | tee build.log | xcbeautify --renderer github-actions
+      - name: Build log (tail)
+        if: failure()
+        working-directory: apps/ios
+        run: |
+          grep -E "error:|nearly matches" build.log | head -80 || true
+          tail -60 build.log
+
+  testflight:
+    needs: build
+    # вмикається змінною APPLE_TEAM_ID (Settings → Secrets and variables → Actions → Variables) — без неї мак навіть не запускається
+    if: ${{ vars.APPLE_TEAM_ID != '' }}
+    runs-on: macos-15
+    timeout-minutes: 60
+    env:
+      HAS_KEY: ${{ secrets.ASC_KEY_ID != '' && secrets.ASC_ISSUER_ID != '' && secrets.ASC_KEY_P8 != '' }}
+    steps:
+      - name: Keys present?
+        run: |
+          if [ "$HAS_KEY" != "true" ]; then
+            echo "::warning::TestFlight пропущено: немає секретів ASC_KEY_ID / ASC_ISSUER_ID / ASC_KEY_P8 (Settings → Secrets and variables → Actions)."
+          fi
+      - uses: actions/checkout@v4
+        if: env.HAS_KEY == 'true'
+      - name: Xcode
+        if: env.HAS_KEY == 'true'
+        run: |
+          X=$(ls -d /Applications/Xcode_26*.app 2>/dev/null | sort -V | tail -1)
+          [ -n "$X" ] || X=$(ls -d /Applications/Xcode*.app | sort -V | tail -1)
+          sudo xcode-select -s "$X"
+          xcodebuild -version
+      - name: Tools
+        if: env.HAS_KEY == 'true'
+        run: brew install xcodegen xcbeautify
+      - name: Archive and upload
+        if: env.HAS_KEY == 'true'
+        working-directory: apps/ios
+        env:
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+          ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
+          TEAM_ID: ${{ vars.APPLE_TEAM_ID }}
+        run: |
+          set -o pipefail
+          KEY="$RUNNER_TEMP/AuthKey_$ASC_KEY_ID.p8"
+          printf '%s' "$ASC_KEY_P8" > "$KEY"
+          xcodegen generate
+          AUTH=(-allowProvisioningUpdates -authenticationKeyPath "$KEY" -authenticationKeyID "$ASC_KEY_ID" -authenticationKeyIssuerID "$ASC_ISSUER_ID")
+          xcodebuild -project Peredai.xcodeproj -scheme Peredai -configuration Release \
+            -destination 'generic/platform=iOS' -archivePath "$RUNNER_TEMP/Peredai.xcarchive" \
+            DEVELOPMENT_TEAM="$TEAM_ID" CURRENT_PROJECT_VERSION="${{ github.run_number }}" PEREDAI_CLOUDKIT=YES \
+            "${AUTH[@]}" archive 2>&1 | xcbeautify --renderer github-actions
+          cat > "$RUNNER_TEMP/export.plist" <<EOF
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0"><dict>
+            <key>method</key><string>app-store-connect</string>
+            <key>destination</key><string>upload</string>
+            <key>teamID</key><string>$TEAM_ID</string>
+            <key>signingStyle</key><string>automatic</string>
+            <key>manageAppVersionAndBuildNumber</key><false/>
+          </dict></plist>
+          EOF
+          xcodebuild -exportArchive -archivePath "$RUNNER_TEMP/Peredai.xcarchive" -exportOptionsPlist "$RUNNER_TEMP/export.plist" \
+            -exportPath "$RUNNER_TEMP/export" "${AUTH[@]}" 2>&1 | xcbeautify --renderer github-actions
+          echo "::notice::Збірку ${{ github.run_number }} відправлено в TestFlight (обробка в Apple — 10–30 хв)."
+          rm -f "$KEY"

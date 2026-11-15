@@ -1,0 +1,96 @@
+# «передай» для iPhone — проєкт для XcodeGen (Xcode-проєкт не в git: `xcodegen generate` у CI і на Mac).
+# Збірка й TestFlight — .github/workflows/ios.yml (маки GitHub, безкоштовно для публічного репозиторію).
+# Team ID і ключ App Store Connect — лише в CI (APPLE_TEAM_ID, секрети ASC_*), тут їх немає.
+name: Peredai
+options:
+  bundleIdPrefix: ua.com.peredai
+  deploymentTarget:
+    iOS: "17.0"
+  createIntermediateGroups: true
+  developmentLanguage: uk
+settings:
+  base:
+    MARKETING_VERSION: "0.1.0"
+    CURRENT_PROJECT_VERSION: "1"
+    SWIFT_VERSION: "5.0"
+    CODE_SIGN_STYLE: Automatic
+    ENABLE_USER_SCRIPT_SANDBOXING: YES
+    # iCloud (CloudKit) — лише в підписаній збірці; без підпису (симулятор у CI) контейнера немає і застосунок його не чіпає
+    PEREDAI_CLOUDKIT: "NO"
+targets:
+  Peredai:
+    type: application
+    platform: iOS
+    sources:
+      - path: Peredai
+      - path: Shared
+    info:
+      path: Peredai/Info.plist
+      properties:
+        CFBundleDisplayName: передай
+        CFBundleDevelopmentRegion: uk
+        CFBundleLocalizations: [uk, ru]
+        LSApplicationCategoryType: public.app-category.utilities
+        ITSAppUsesNonExemptEncryption: false
+        UILaunchScreen:
+          UIColorName: Housing
+        UIApplicationSupportsIndirectInputEvents: true
+        UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait]
+        UISupportedInterfaceOrientations~ipad: [UIInterfaceOrientationPortrait, UIInterfaceOrientationPortraitUpsideDown, UIInterfaceOrientationLandscapeLeft, UIInterfaceOrientationLandscapeRight]
+        NSCameraUsageDescription: Щоб фотографувати табло лічильника й розпізнавати показання прямо на телефоні.
+        NSSupportsLiveActivities: true
+        CFBundleURLTypes:
+          - CFBundleURLName: ua.com.peredai.app
+            CFBundleURLSchemes: [peredai]
+        PeredaiCloudKit: $(PEREDAI_CLOUDKIT)
+        PeredaiBase: https://peredai.com.ua/
+    entitlements:
+      path: Peredai/Peredai.entitlements
+      properties:
+        com.apple.security.application-groups: [group.ua.com.peredai]
+        com.apple.developer.icloud-container-identifiers: [iCloud.ua.com.peredai]
+        com.apple.developer.icloud-services: [CloudKit]
+        com.apple.developer.associated-domains: [applinks:peredai.com.ua]
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: ua.com.peredai.app
+        PRODUCT_NAME: Peredai
+        TARGETED_DEVICE_FAMILY: "1,2"
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
+        INFOPLIST_KEY_UIStatusBarStyle: UIStatusBarStyleDefault
+    dependencies:
+      - target: PeredaiWidgets
+        embed: true
+  PeredaiWidgets:
+    type: app-extension
+    platform: iOS
+    sources:
+      - path: PeredaiWidgets
+      - path: Shared
+    info:
+      path: PeredaiWidgets/Info.plist
+      properties:
+        CFBundleDisplayName: передай
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.widgetkit-extension
+    entitlements:
+      path: PeredaiWidgets/PeredaiWidgets.entitlements
+      properties:
+        com.apple.security.application-groups: [group.ua.com.peredai]
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: ua.com.peredai.app.widgets
+        PRODUCT_NAME: PeredaiWidgets
+        TARGETED_DEVICE_FAMILY: "1,2"
+        SKIP_INSTALL: YES
+schemes:
+  Peredai:
+    build:
+      targets:
+        Peredai: all
+        PeredaiWidgets: all
+    run:
+      config: Debug
+    archive:
+      config: Release

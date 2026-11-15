@@ -216,6 +216,8 @@
     v: 1,
     go: function (r) { r = String(r || '').replace(/^#/, ''); if (!r) return; if (routeName() === r) render(); else location.hash = r; },
     sched: function () { appSched(true); },
+    /** Нагадування / Live Activity: квартира pid і вид (як кнопка з нагадування бота — deepLink). */
+    open: function (g, pid) { if (!S.onboarded) return; deepLink(String(g || 'home'), String(pid || ''), ''); render(); },
     /** Копія з iCloud: порожній застосунок (новий телефон) — береться як є; є свої дані — злиття тим самим TeploSync.merge, що й із сервером. */
     restore: function (json) {
       try {
