@@ -93,7 +93,10 @@ jobs:
           run() { xcrun simctl terminate "$UDID" ua.com.peredai.app >/dev/null 2>&1 || true; xcrun simctl launch "$UDID" ua.com.peredai.app -PeredaiDemo "$DATA/Documents/demo.json" -PeredaiRoute "$1"; shot "$2" "$3"; }
           xcrun simctl ui "$UDID" appearance light
           run home 1-home-light 30
-          # Live Activity видно лише поза застосунком: відкрити «Параметри» — у Dynamic Island має бути строк (демо: світло до 03.11)
+          # Live Activity видно лише поза застосунком: відкрити «Параметри» — у Dynamic Island має бути строк.
+          # Справжній поріг — 4 дні до кінця вікна; -PeredaiSoon 31 (лише DEBUG) — щоб у будь-який день було що показати
+          xcrun simctl terminate "$UDID" ua.com.peredai.app >/dev/null 2>&1 || true
+          xcrun simctl launch "$UDID" ua.com.peredai.app -PeredaiDemo "$DATA/Documents/demo.json" -PeredaiRoute home -PeredaiSoon 31; sleep 15
           xcrun simctl launch "$UDID" com.apple.Preferences; shot 0-island-light 6
           run history 2-history-light 15
           run elec 3-elec-light 15

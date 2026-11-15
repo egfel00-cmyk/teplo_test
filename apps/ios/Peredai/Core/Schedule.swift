@@ -113,21 +113,28 @@ enum LiveWindow {
         let cal = Calendar.current
         // «сьогодні» сайту (те саме, що бачить людина на картках; у демо — підставна дата)
         let today = Day.parse(p.today) ?? cal.startOfDay(for: Date())
+        var soon = p.soon
+        #if DEBUG
+        // CI (скрини): -PeredaiSoon 31 — показати Live Activity, навіть коли до кінця вікна більше 4 днів
+        let ds = UserDefaults.standard.integer(forKey: "PeredaiSoon")
+        if ds > 0 { soon = ds }
+        #endif
         let items: [WindowItem] = p.items.compactMap { it in
             guard let due = Day.parse(it.due) else { return nil }
             let left = cal.dateComponents([.day], from: today, to: due).day ?? 99
-            guard left >= 0, left <= p.soon else { return nil }
+            guard left >= 0, left <= soon else { return nil }
             return WindowItem(id: "\(it.p)|\(it.k)", kind: it.k, title: it.kt, place: it.pn, placeId: it.p, due: due,
                               done: it.done, pay: it.pay, route: it.go)
         }
         .sorted { a, b in a.done != b.done ? !a.done : a.due < b.due }
         let open = items.filter { !$0.done }
+        NSLog("[peredai] Live Activity: \(items.count) of \(p.items.count) in last \(soon) days, \(open.count) open")
         let running = Activity<WindowActivityAttributes>.activities
         guard !open.isEmpty else {
             for a in running { await a.end(nil, dismissalPolicy: .immediate) }
             return
         }
-        guard ActivityAuthorizationInfo().areActivitiesEnabled else { return }
+        guard ActivityAuthorizationInfo().areActivitiesEnabled else { NSLog("[peredai] Live Activity: disabled"); return }
         let last = open.map(\.due).max() ?? today
         let stale = cal.date(byAdding: .day, value: 1, to: last)
         let content = ActivityContent(state: WindowActivityAttributes.ContentState(items: Array(items.prefix(6)), updatedAt: Date()),
