@@ -47,6 +47,63 @@ jobs:
           grep -E "error:|nearly matches" build.log | head -80 || true
           tail -60 build.log
 
+  # 154-а: скрини застосунку в симуляторі (світла й темна тема, кілька маршрутів) — у гілку ci-shots, щоб сесія без Mac бачила, як він виглядає.
+  shots:
+    needs: build
+    runs-on: macos-15
+    timeout-minutes: 40
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v5
+      - name: Xcode
+        run: |
+          X=$(ls -d /Applications/Xcode_26*.app 2>/dev/null | sort -V | tail -1)
+          [ -n "$X" ] || X=$(ls -d /Applications/Xcode*.app | sort -V | tail -1)
+          sudo xcode-select -s "$X"
+      - name: Tools
+        run: brew install xcodegen xcbeautify
+      - name: Build for simulator
+        working-directory: apps/ios
+        run: |
+          set -o pipefail
+          xcodegen generate
+          xcodebuild -project Peredai.xcodeproj -scheme Peredai -configuration Debug -sdk iphonesimulator \
+            -destination 'generic/platform=iOS Simulator' -derivedDataPath "$RUNNER_TEMP/dd" CODE_SIGNING_ALLOWED=NO build | xcbeautify --renderer github-actions
+      - name: Simulator screenshots
+        run: |
+          set -x
+          APP=$(ls -d "$RUNNER_TEMP"/dd/Build/Products/Debug-iphonesimulator/Peredai.app)
+          UDID=$(xcrun simctl list devices available -j | python3 -c "
+          import sys, json
+          d = json.load(sys.stdin)['devices']
+          c = [x for r, l in d.items() if 'iOS' in r for x in l if x['name'].startswith('iPhone') and 'Pro' in x['name'] and 'Max' not in x['name']]
+          c = c or [x for r, l in d.items() if 'iOS' in r for x in l if x['name'].startswith('iPhone')]
+          print(c[-1]['udid'])")
+          xcrun simctl boot "$UDID" || true
+          xcrun simctl bootstatus "$UDID" -b
+          xcrun simctl status_bar "$UDID" override --time 9:41 --batteryState charged --batteryLevel 100 --cellularBars 4 || true
+          mkdir -p "$RUNNER_TEMP/shots"
+          xcrun simctl install "$UDID" "$APP"
+          shot() { sleep "$2"; xcrun simctl io "$UDID" screenshot "$RUNNER_TEMP/shots/$1.png"; }
+          xcrun simctl ui "$UDID" appearance light
+          xcrun simctl launch "$UDID" ua.com.peredai.app; shot 1-launch-light 25
+          xcrun simctl openurl "$UDID" "peredai://open?g=history"; shot 2-history-light 6
+          xcrun simctl openurl "$UDID" "peredai://open?g=prefs"; shot 3-prefs-light 6
+          xcrun simctl ui "$UDID" appearance dark; shot 4-prefs-dark 5
+          xcrun simctl terminate "$UDID" ua.com.peredai.app || true
+          xcrun simctl launch "$UDID" ua.com.peredai.app; shot 5-relaunch-dark 20
+          xcrun simctl spawn "$UDID" log show --last 3m --predicate 'process == "Peredai"' --style compact 2>/dev/null | grep -i "peredai\]\|error\|fault" | tail -60 > "$RUNNER_TEMP/shots/log.txt" || true
+          ls -la "$RUNNER_TEMP/shots"
+      - name: Publish to ci-shots branch
+        run: |
+          cd "$RUNNER_TEMP/shots"
+          git init -q && git checkout -q -b ci-shots
+          git config user.name "ci" && git config user.email "ci@users.noreply.github.com"
+          echo "${{ github.sha }}" > SHA
+          git add -A && git commit -qm "shots ${{ github.sha }}"
+          git push -q -f "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git" ci-shots
+
   testflight:
     needs: build
     # вмикається змінною APPLE_TEAM_ID (Settings → Secrets and variables → Actions → Variables) — без неї мак навіть не запускається
