@@ -150,10 +150,18 @@ if ($path === '/' || $path === '/index.php') {
   $html = str_replace('<div id="root"></div>', '<div id="root">' . seoStatic($ru, $e) . '</div>', $html);
   header('Content-Type: text/html; charset=utf-8');
   header('Cache-Control: no-cache');
+  // 154-а: сторінка — 2,5 МБ (≈ 690 КБ стиснено) на кожне відкриття. ETag від вмісту: браузер і застосунок iPhone перепитують,
+  // і якщо збірка та сама — 304 без тіла (Cloudflare може зробити тег «слабким» W/ — порівнюємо без W/ і лапок).
+  $etag = '"' . substr(md5($html), 0, 20) . '"';
+  header('ETag: ' . $etag);
+  header('Vary: Accept-Language');
+  $inm = array_map(fn($x) => trim(preg_replace('~^W/~', '', trim($x)), '"'), explode(',', (string)($_SERVER['HTTP_IF_NONE_MATCH'] ?? '')));
+  $etagOk = in_array(trim($etag, '"'), $inm, true);
   // CSRF-cookie — уже со страницей (08.11): иначе первые запросы приложения (баннер cookie → согласие, журнал, /visit) параллельно просили её у
   // сервера, каждый ответ выдавал свою — и заголовок X-CSRF расходился с cookie (403 csrf у 207 из 255 посетителей за 3 дня)
   if (empty($_COOKIE['ts_csrf'])) setcookie('ts_csrf', bin2hex(random_bytes(16)), ['expires' => time() + 86400 * 365, 'path' => ($base ?: '') . '/', 'secure' => $scheme === 'https', 'httponly' => false, 'samesite' => 'Lax']);
   header("Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' https://telegram.org; frame-src https://oauth.telegram.org; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: blob: https://t.me https://telegram.org; connect-src 'self' https://api.monobank.ua; base-uri 'none'; form-action 'self'");
+  if ($etagOk) { http_response_code(304); exit; }
   echo $html;
   exit;
 }
