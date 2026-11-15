@@ -30,7 +30,7 @@ const cron = mins => execFileSync('php', ['-r', `define('TEPLO',1); foreach (['c
   await p.goto(U + '#handover'); await wait(1000);
   ok('«Передайте в ХТМ»: панель «Внести за мене в кабінет ХТМ» з «Підключити кабінет ХТМ»', await vis('[data-key=handover-auto] [data-key=hc-connect]'), await txt('[data-key=handover-auto]'));
   await p.click('[data-key=hc-connect]'); await wait(700);
-  ok('екран «Кабінет ХТМ»: e-mail, пароль, телефон, згода, «незалежний сервіс»', await vis('#hc-email') && await vis('#hc-pass') && await vis('#hc-phone') && await vis('#hc-consent') && /незалежний сервіс/.test(await txt('#hc-form')));
+  ok('екран «Кабінет ХТМ»: e-mail, пароль, телефон, згода, «незалежний сервіс»', await vis('#hc-email') && await vis('#hc-pass') && await vis('#hc-phone') && await vis('#hc-consent') && /незалежний (безкоштовний )?сервіс/.test(await txt('#hc-form')));
   await p.fill('#hc-email', 'test@stand.local'); await p.fill('#hc-pass', 'stand-pass-123'); await p.click('[data-key=hc-connect-go]'); await wait(400);
   ok('без згоди — не підключаємо, пояснення', /позначку згоди/.test(await txt('[data-key=hc-err]')));
   await p.fill('#hc-pass', 'wrong-pass'); await p.check('#hc-consent'); await p.click('[data-key=hc-connect-go]'); await p.waitForSelector('[data-key=hc-err][data-err=cab_bad_login]', { timeout: 10000 }).catch(() => {});
