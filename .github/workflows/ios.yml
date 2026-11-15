@@ -20,7 +20,7 @@ jobs:
     runs-on: macos-15
     timeout-minutes: 40
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Xcode
         run: |
           ls -d /Applications/Xcode*.app || true
@@ -61,7 +61,7 @@ jobs:
           if [ "$HAS_KEY" != "true" ]; then
             echo "::warning::TestFlight пропущено: немає секретів ASC_KEY_ID / ASC_ISSUER_ID / ASC_KEY_P8 (Settings → Secrets and variables → Actions)."
           fi
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         if: env.HAS_KEY == 'true'
       - name: Xcode
         if: env.HAS_KEY == 'true'

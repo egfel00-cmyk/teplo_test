@@ -7,7 +7,7 @@ import WebKit
 /// (свайп «назад», посилання всередині), а на екранах вводу (майстри, внесення показань) вкладки ховаються — як на сайті.
 final class MainTabController: UITabBarController, UITabBarControllerDelegate {
     private struct Tab { let route: String; let title: String; let symbol: String }
-    private let tabs: [Tab] = [
+    private let defs: [Tab] = [
         Tab(route: "home", title: L10n.tabHome, symbol: "house"),
         Tab(route: "history", title: L10n.tabHistory, symbol: "list.bullet.rectangle"),
         Tab(route: "stats", title: L10n.tabStats, symbol: "chart.bar"),
@@ -20,7 +20,7 @@ final class MainTabController: UITabBarController, UITabBarControllerDelegate {
         super.viewDidLoad()
         delegate = self
         view.backgroundColor = UIColor(named: "Housing")
-        viewControllers = tabs.enumerated().map { i, t in
+        viewControllers = defs.enumerated().map { i, t in
             let vc = UIViewController()
             vc.view.backgroundColor = UIColor(named: "Housing")
             vc.tabBarItem = UITabBarItem(title: t.title, image: UIImage(systemName: t.symbol), tag: i)
@@ -43,12 +43,12 @@ final class MainTabController: UITabBarController, UITabBarControllerDelegate {
         guard let i = viewControllers?.firstIndex(of: vc) else { return }
         attachWeb(to: i)
         UISelectionFeedbackGenerator().selectionChanged()
-        host.go(tabs[i].route)
+        host.go(defs[i].route)
     }
 
     /// Сайт перейшов сам (посилання, «назад», нагадування) — підсвітити його вкладку, на екранах вводу сховати вкладки.
     private func siteRoute(route: String, tab: String, bare: Bool) {
-        if let i = tabs.firstIndex(where: { $0.route == tab }), i != selectedIndex {
+        if let i = defs.firstIndex(where: { $0.route == tab }), i != selectedIndex {
             selectedIndex = i
             attachWeb(to: i)
         }
