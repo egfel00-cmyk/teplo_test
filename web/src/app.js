@@ -7881,7 +7881,8 @@
       var K = KINDS[k], c = PW.n[k] || 0, title = t(K.t), prev = '<span class="kprev" aria-hidden="true">' + kindPreview(k) + '</span>';
       if (K.soon) return '<div class="aw-kind kp am-soon" aria-disabled="true" data-key="aw-' + k + '">' + prev + '<span class="aw-kt"><b>' + ico(K.icon, 18, K.cls) + '<span>' + esc(title) + '</span></b><span class="small muted">' + esc(t(K.s)) + '</span></span><span class="pill">' + esc(t('kd_soon')) + '</span></div>';
       var max = k === 'heat' ? 1 : K.max;
-      return '<div class="aw-kind kp' + (c ? ' on' : '') + '" data-key="aw-' + k + '">' + prev + '<span class="aw-kt"><b>' + ico(K.icon, 18, K.cls) + '<span>' + esc(title) + '</span></b><span class="small muted">' + esc(t(K.s)) + '</span></span>' +
+      // 155-а: картку можна просто торкнутися — 0 → 1 (журнал: 12 із 102 людей на #start тиснули саму картку, 16 — «Почати» без жодного «+»)
+      return '<div class="aw-kind kp' + (c ? ' on' : '') + '" data-act="aw-pick" data-kind="' + k + '" data-key="aw-' + k + '">' + prev + '<span class="aw-kt"><b>' + ico(K.icon, 18, K.cls) + '<span>' + esc(title) + '</span></b><span class="small muted">' + esc(t(K.s)) + '</span></span>' +
         '<span class="stepper" role="group" aria-label="' + esc(title) + '"><button type="button" class="btn sec step-b" data-act="aw-n" data-kind="' + k + '" data-d="-1" data-key="aw-' + k + '-dec" aria-label="' + esc(t('aw_dec', { k: title })) + '"' + (c ? '' : ' disabled') + '>−</button>' +
         '<output class="step-n num" aria-live="polite" data-key="aw-' + k + '-n">' + (c ? c : '<span class="small muted">' + esc(t('aw_n0')) + '</span>') + '</output>' +
         '<button type="button" class="btn ' + (c ? 'sec ' : '') + 'step-b" data-act="aw-n" data-kind="' + k + '" data-d="1" data-key="aw-' + k + '-inc" aria-label="' + esc(t('aw_inc', { k: title })) + '"' + (c >= max ? ' disabled title="' + esc(t('aw_max')) + '"' : '') + '>+</button></span></div>';
@@ -9460,6 +9461,8 @@
       case 'aw-chip': pwRead(); PW.name = el.getAttribute('data-v'); render(true); break;
       case 'aw-n': { var awk = el.getAttribute('data-kind'), awm = awk === 'heat' ? 1 : KINDS[awk].max; PW.n[awk] = Math.max(0, Math.min(awm, (PW.n[awk] || 0) + Number(el.getAttribute('data-d')))); if (pwAny()) PW.err = ''; render(true);
         var awf = document.querySelector('[data-key=aw-' + awk + '-' + (el.getAttribute('data-d') === '1' ? 'inc' : 'dec') + ']'); if (awf && !awf.disabled) awf.focus(); break; }
+      case 'aw-pick': { var apk = el.getAttribute('data-kind'); if (!apk || !KINDS[apk] || (PW.n[apk] || 0) > 0) break;
+        PW.n[apk] = 1; PW.err = ''; render(true); var apf = document.querySelector('[data-key=aw-' + apk + '-inc]'); if (apf && !apf.disabled) apf.focus({ preventScroll: true }); break; }
       case 'aw-create': pwCreate(); break;
       case 'mono-open': MO = monoFresh(routeName() || backTo('home')); break;
       case 'mono-go': monoStart(); break;

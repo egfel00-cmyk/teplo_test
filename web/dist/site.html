@@ -1036,10 +1036,13 @@ fieldset.field { border: 0; padding: 0; min-width: 0; }
 .aw-kinds { display: grid; gap: 10px; margin: 8px 0 16px; }
 .aw-kind { display: grid; grid-template-columns: 28px minmax(0, 1fr) auto; align-items: center; gap: 10px 12px; padding: 12px 12px 12px 16px; border: 1.5px solid var(--c-field-line); border-radius: 14px; background: var(--c-surface); }
 .aw-kind.on { border-color: var(--c-ink); box-shadow: 0 0 0 1px var(--c-ink) inset; }
+.aw-kind[data-act="aw-pick"] { cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.aw-kind[data-act="aw-pick"]:not(.on):active { background: var(--c-surface-2); }
 .aw-kind.am-soon { opacity: .6; }
 .aw-kt { display: flex; flex-direction: column; gap: 2px; min-width: 0; } .aw-kt b { font-size: var(--fs-m); }
 .stepper { display: inline-flex; align-items: center; gap: 6px; }
 .stepper .step-b { min-width: 48px; min-height: 48px; padding: 0; font-size: 26px; line-height: 1; border-radius: 12px; }
+.stepper .step-b[disabled] { opacity: .35; }   /* 155-а: «−» при нулі виглядав робочим */
 .stepper .step-n { min-width: 44px; text-align: center; font-size: var(--fs-l); font-weight: 600; }
 .stepper .step-n .small { font-size: 13px; font-weight: 500; }
 @media (max-width: 400px) { .aw-kind { grid-template-columns: 28px minmax(0, 1fr); } .aw-kind .stepper, .aw-kind > .pill { grid-column: 1 / -1; justify-self: end; } }
@@ -4628,9 +4631,9 @@ details.mypay[open] > summary .mypay-amt, details.mypay[open] > summary .mypay-s
       wl_other: "Інший акаунт",
       fs_title: "Початок роботи",
       fs_t1: "Які лічильники є у вашій квартирі?",
-      fs_l1: "Натисніть «+» біля тих, що стоять у квартирі, — табло підкаже, який який. Два водоміри гарячої (кухня й ванна) — «+» двічі.",
+      fs_l1: "Торкніться тих, що стоять у квартирі, — табло підкаже, який який. Два водоміри гарячої (кухня й ванна) — «+» ще раз.",
       fs_more: "Квартир кілька — своя, батьків, та, що здаєте? Почніть з однієї — інші додасте кнопкою «+ Квартира» на головній.",
-      fs_err_none: "Позначте хоча б один лічильник — натисніть «+» біля нього.",
+      fs_err_none: "Позначте хоча б один лічильник — торкніться його картки або «+».",
       fs_go: "Почати налаштування",
       fs_after: "Далі — коротко про кожен лічильник: показання зараз можна сфотографувати або внести пізніше.",
       fs_sum: "Перевірте, перш ніж почати",
@@ -5248,7 +5251,7 @@ details.mypay[open] > summary .mypay-amt, details.mypay[open] > summary .mypay-s
       ov_none: 'Лічильників ще немає — натисніть, щоб додати', ov_cur: 'відкрита', ov_open: 'Відкрити квартиру «{p}»',
       aw_title: 'Нова квартира', aw_step: 'Крок {i} з {n}',
       aw_t1: 'Як назвати квартиру?', aw_l1: 'Назва — щоб не плутати квартири між собою. Адреса — за бажанням.',
-      aw_t2: 'Які лічильники тут є?', aw_l2: 'Натисніть «+» біля тих, що стоять у цій квартирі. Помилилися — додасте чи приберете пізніше.',
+      aw_t2: 'Які лічильники тут є?', aw_l2: 'Торкніться тих, що стоять у цій квартирі. Помилилися — додасте чи приберете пізніше.',
       aw_t3: 'Особовий рахунок Водоканалу', aw_l3: 'Потрібен, щоб передавати показання води. Його видно в платіжці Водоканалу. Можна пропустити й вписати пізніше.',
       aw_n0: 'немає', aw_dec: 'Менше: {k}', aw_inc: 'Більше: {k}', aw_max: 'Більше не буває', aw_soon_s: 'Скоро',
       aw_sum: 'Перевірте, перш ніж створити', aw_sum_name: 'Квартира', aw_sum_meters: 'Лічильники', aw_sum_acc: 'Рахунок Водоканалу', aw_sum_none: 'поки немає — додасте пізніше', aw_sum_noacc: 'не вказано',
@@ -5991,9 +5994,9 @@ details.mypay[open] > summary .mypay-amt, details.mypay[open] > summary .mypay-s
       wl_other: "Другой аккаунт",
       fs_title: "Начало работы",
       fs_t1: "Какие счётчики есть в вашей квартире?",
-      fs_l1: "Нажмите «+» возле тех, что стоят в квартире, — табло подскажет, какой какой. Два водомера горячей (кухня и ванная) — «+» дважды.",
+      fs_l1: "Коснитесь тех, что стоят в квартире, — табло подскажет, какой какой. Два водомера горячей (кухня и ванная) — «+» ещё раз.",
       fs_more: "Квартир несколько — своя, родителей, сдаваемая? Начните с одной — другие добавите кнопкой «+ Квартира» на главной.",
-      fs_err_none: "Отметьте хотя бы один счётчик — нажмите «+» возле него.",
+      fs_err_none: "Отметьте хотя бы один счётчик — коснитесь его карточки или «+».",
       fs_go: "Начать настройку",
       fs_after: "Дальше — коротко о каждом счётчике: показания сейчас можно сфотографировать или внести позже.",
       fs_sum: "Проверьте, прежде чем начать",
@@ -6611,7 +6614,7 @@ details.mypay[open] > summary .mypay-amt, details.mypay[open] > summary .mypay-s
       ov_none: 'Счётчиков ещё нет — нажмите, чтобы добавить', ov_cur: 'открыта', ov_open: 'Открыть квартиру «{p}»',
       aw_title: 'Новая квартира', aw_step: 'Шаг {i} из {n}',
       aw_t1: 'Как назвать квартиру?', aw_l1: 'Название — чтобы не путать квартиры между собой. Адрес — по желанию.',
-      aw_t2: 'Какие счётчики здесь есть?', aw_l2: 'Нажмите «+» возле тех, что стоят в этой квартире. Ошиблись — добавите или уберёте позже.',
+      aw_t2: 'Какие счётчики здесь есть?', aw_l2: 'Коснитесь тех, что стоят в этой квартире. Ошиблись — добавите или уберёте позже.',
       aw_t3: 'Лицевой счёт Водоканала', aw_l3: 'Нужен, чтобы передавать показания воды. Он есть в платёжке Водоканала. Можно пропустить и вписать позже.',
       aw_n0: 'нет', aw_dec: 'Меньше: {k}', aw_inc: 'Больше: {k}', aw_max: 'Больше не бывает', aw_soon_s: 'Скоро',
       aw_sum: 'Проверьте, прежде чем создать', aw_sum_name: 'Квартира', aw_sum_meters: 'Счётчики', aw_sum_acc: 'Счёт Водоканала', aw_sum_none: 'пока нет — добавите позже', aw_sum_noacc: 'не указан',
@@ -17285,7 +17288,8 @@ details.mypay[open] > summary .mypay-amt, details.mypay[open] > summary .mypay-s
       var K = KINDS[k], c = PW.n[k] || 0, title = t(K.t), prev = '<span class="kprev" aria-hidden="true">' + kindPreview(k) + '</span>';
       if (K.soon) return '<div class="aw-kind kp am-soon" aria-disabled="true" data-key="aw-' + k + '">' + prev + '<span class="aw-kt"><b>' + ico(K.icon, 18, K.cls) + '<span>' + esc(title) + '</span></b><span class="small muted">' + esc(t(K.s)) + '</span></span><span class="pill">' + esc(t('kd_soon')) + '</span></div>';
       var max = k === 'heat' ? 1 : K.max;
-      return '<div class="aw-kind kp' + (c ? ' on' : '') + '" data-key="aw-' + k + '">' + prev + '<span class="aw-kt"><b>' + ico(K.icon, 18, K.cls) + '<span>' + esc(title) + '</span></b><span class="small muted">' + esc(t(K.s)) + '</span></span>' +
+      // 155-а: картку можна просто торкнутися — 0 → 1 (журнал: 12 із 102 людей на #start тиснули саму картку, 16 — «Почати» без жодного «+»)
+      return '<div class="aw-kind kp' + (c ? ' on' : '') + '" data-act="aw-pick" data-kind="' + k + '" data-key="aw-' + k + '">' + prev + '<span class="aw-kt"><b>' + ico(K.icon, 18, K.cls) + '<span>' + esc(title) + '</span></b><span class="small muted">' + esc(t(K.s)) + '</span></span>' +
         '<span class="stepper" role="group" aria-label="' + esc(title) + '"><button type="button" class="btn sec step-b" data-act="aw-n" data-kind="' + k + '" data-d="-1" data-key="aw-' + k + '-dec" aria-label="' + esc(t('aw_dec', { k: title })) + '"' + (c ? '' : ' disabled') + '>−</button>' +
         '<output class="step-n num" aria-live="polite" data-key="aw-' + k + '-n">' + (c ? c : '<span class="small muted">' + esc(t('aw_n0')) + '</span>') + '</output>' +
         '<button type="button" class="btn ' + (c ? 'sec ' : '') + 'step-b" data-act="aw-n" data-kind="' + k + '" data-d="1" data-key="aw-' + k + '-inc" aria-label="' + esc(t('aw_inc', { k: title })) + '"' + (c >= max ? ' disabled title="' + esc(t('aw_max')) + '"' : '') + '>+</button></span></div>';
@@ -18864,6 +18868,8 @@ details.mypay[open] > summary .mypay-amt, details.mypay[open] > summary .mypay-s
       case 'aw-chip': pwRead(); PW.name = el.getAttribute('data-v'); render(true); break;
       case 'aw-n': { var awk = el.getAttribute('data-kind'), awm = awk === 'heat' ? 1 : KINDS[awk].max; PW.n[awk] = Math.max(0, Math.min(awm, (PW.n[awk] || 0) + Number(el.getAttribute('data-d')))); if (pwAny()) PW.err = ''; render(true);
         var awf = document.querySelector('[data-key=aw-' + awk + '-' + (el.getAttribute('data-d') === '1' ? 'inc' : 'dec') + ']'); if (awf && !awf.disabled) awf.focus(); break; }
+      case 'aw-pick': { var apk = el.getAttribute('data-kind'); if (!apk || !KINDS[apk] || (PW.n[apk] || 0) > 0) break;
+        PW.n[apk] = 1; PW.err = ''; render(true); var apf = document.querySelector('[data-key=aw-' + apk + '-inc]'); if (apf && !apf.disabled) apf.focus({ preventScroll: true }); break; }
       case 'aw-create': pwCreate(); break;
       case 'mono-open': MO = monoFresh(routeName() || backTo('home')); break;
       case 'mono-go': monoStart(); break;

@@ -49,6 +49,11 @@ const U = 'http://127.0.0.1:8013/';
   await p.click('[data-key=aw-create]'); await p.waitForTimeout(300);
   ok('нічого не позначили → попередження, лишаємось', (await hash()) === '#start' && /хоча б один/.test(await p.textContent('[data-key=aw-err]')));
   // 2. вибір: тепло, гаряча ×1, холодна ×1, світло
+  // 155-а: торкнулися самої картки (не «+») — лічильник позначено (1), повторний дотик не прибирає й не додає
+  await p.click('[data-key=aw-gas] .aw-kt'); await p.waitForTimeout(150); await p.click('[data-key=aw-gas] .aw-kt'); await p.waitForTimeout(150);
+  ok('дотик до картки газу → 1, попередження зникло; ще дотик — так само 1', (await p.textContent('[data-key=aw-gas-n]')).trim() === '1' && !(await p.$('[data-key=aw-err]')));
+  await p.click('[data-key=aw-gas-dec]'); await p.waitForTimeout(150);
+  ok('«−» → «немає», «−» тепер неактивний', /немає/.test(await p.textContent('[data-key=aw-gas-n]')) && await p.$eval('[data-key=aw-gas-dec]', e => e.disabled));
   for (const k of ['heat', 'hot', 'cold', 'elec']) { await p.click('[data-key=aw-' + k + '-inc]'); await p.waitForTimeout(120); }
   ok('попередження зникло, тепла більше 1 не буває', !(await p.$('[data-key=aw-err]')) && await p.$eval('[data-key=aw-heat-inc]', e => e.disabled));
   // 114-а (власник 11.11): при першому вході рахунків не питаємо — вибрав лічильники й одразу вносить показання; рахунок — перед передачею

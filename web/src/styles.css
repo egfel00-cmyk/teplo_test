@@ -1000,10 +1000,13 @@ fieldset.field { border: 0; padding: 0; min-width: 0; }
 .aw-kinds { display: grid; gap: 10px; margin: 8px 0 16px; }
 .aw-kind { display: grid; grid-template-columns: 28px minmax(0, 1fr) auto; align-items: center; gap: 10px 12px; padding: 12px 12px 12px 16px; border: 1.5px solid var(--c-field-line); border-radius: 14px; background: var(--c-surface); }
 .aw-kind.on { border-color: var(--c-ink); box-shadow: 0 0 0 1px var(--c-ink) inset; }
+.aw-kind[data-act="aw-pick"] { cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.aw-kind[data-act="aw-pick"]:not(.on):active { background: var(--c-surface-2); }
 .aw-kind.am-soon { opacity: .6; }
 .aw-kt { display: flex; flex-direction: column; gap: 2px; min-width: 0; } .aw-kt b { font-size: var(--fs-m); }
 .stepper { display: inline-flex; align-items: center; gap: 6px; }
 .stepper .step-b { min-width: 48px; min-height: 48px; padding: 0; font-size: 26px; line-height: 1; border-radius: 12px; }
+.stepper .step-b[disabled] { opacity: .35; }   /* 155-а: «−» при нулі виглядав робочим */
 .stepper .step-n { min-width: 44px; text-align: center; font-size: var(--fs-l); font-weight: 600; }
 .stepper .step-n .small { font-size: 13px; font-weight: 500; }
 @media (max-width: 400px) { .aw-kind { grid-template-columns: 28px minmax(0, 1fr); } .aw-kind .stepper, .aw-kind > .pill { grid-column: 1 / -1; justify-self: end; } }
