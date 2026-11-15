@@ -80,5 +80,35 @@ let pass = 0, fail = 0; const ok = (n, c, x) => { if (c) { pass++; console.log('
   const pill22 = await p.$eval('[data-key=dest-htm-heat] .dest-h .pill', e => e.textContent).catch(() => null);
   ok('«Куди передати» ХТМ: 13.11 — лише смужка, 22.11 — «до 25 листопада»', !pill13 && /25 листопада/.test(pill22 || '') && !!(await p.$('[data-key=dest-htm-heat] .prd')), { pill13: !!pill13, pill22 });
   ok('без помилок JS', !errs.length, errs);
+
+  // 153-я (власник 15.11: «перепроверь полоски — не все показывают правильно»): довідник за адресою не завантажився (мережа, 429) —
+  // квартира не в Харкові не бере харківських вікон (мамина вода в Малій Данилівці — місцевий КП, не «1–20» Харківводоканалу), а за 30 с довідник пробуємо знову
+  let provFail = true;
+  await p.route('**/api/providers?*', r => provFail ? r.fulfill({ status: 429, contentType: 'application/json', body: '{"error":"rate_limited"}' }) : r.continue());
+  const md = s => { s.places[0].address = 'смт Мала Данилівка, вул. Ювілейна, 1, кв. 5'; s.places[0].city = { n: 'Мала Данилівка', r: 'kh' }; };
+  await load({ today: '2026-11-17' }, 'home', md); await p.waitForTimeout(1000);   // 17.11 — харківський рядок «Передати до 20 листопада» вже показувався б
+  const f1 = { cold: await strip('cold'), heat: await strip('heat'), elec: await strip('elec'), gas: await strip('gas') };
+  ok('довідник не відповів, Мала Данилівка: у води й тепла смужок немає (вікно невідоме), світло й газ — Харківщина (29–3, 1–5)',
+    !f1.cold && !f1.heat && f1.elec && f1.elec.lab === '29–3' && f1.gas && f1.gas.lab === '1–5', f1);
+  ok('…і строку Харківводоканалу на картці води немає', !/20 листопада/.test(await p.$eval('[data-key=card-cold]', e => e.textContent)));
+  // за 30 с — знову: Мерефа (у довіднику вікно води 20–27) — поки довідник не відповідає, смужки немає; відповів — 20–27 без перезапуску
+  const p2 = await (await b.newContext({ viewport: { width: 390, height: 844 }, locale: 'uk-UA' })).newPage(); p2.on('pageerror', e => errs.push(e.message));
+  await p2.clock.install(); let nReq = 0;
+  await p2.route('**/api/providers?*', r => { nReq++; return provFail ? r.fulfill({ status: 429, contentType: 'application/json', body: '{"error":"rate_limited"}' }) : r.continue(); });
+  await p2.goto('http://127.0.0.1:8013/');
+  await p2.evaluate(x => localStorage.setItem('teplo.v1', JSON.stringify(x)), (() => { const s = demo({ elec: true, gas: true, today: '2026-11-13' }); s.places[0].address = 'м. Мерефа, вул. Дніпровська, 1'; s.places[0].city = { n: 'Мерефа', r: 'kh' }; return s; })());
+  provFail = true; await p2.goto('http://127.0.0.1:8013/#home'); await p2.reload(); await p2.waitForTimeout(1500);
+  const strip2 = () => p2.$eval('[data-key=card-cold] .prd .prd-l', e => e.textContent).catch(() => null);
+  const g1 = await strip2(), n1 = nReq;
+  provFail = false; await p2.clock.fastForward(32000); await p2.waitForTimeout(1500);
+  const g2 = await strip2();
+  ok('Мерефа: довідник не відповів — смужки немає; за 30 с запит повторено, і з’явилась смужка місцевого КП 20–27', g1 === null && n1 >= 1 && nReq > n1 && g2 === '20–27', { g1, g2, n1, nReq });
+  await p2.close();
+  await load({ today: '2026-11-13' }, 'home', s => { s.places[0].address = 'м. Харків, вул. Сумська, 25'; s.places[0].city = { n: 'Харків', r: 'kh' }; });
+  provFail = true; await p.reload(); await p.waitForTimeout(1200);
+  const f3 = await strip('cold');
+  ok('довідник не відповів, але квартира в Харкові — вода як і була: Харківводоканал 1–20', f3 && f3.lab === '1–20', f3);
+  provFail = false; await p.unroute('**/api/providers?*');
+  ok('без помилок JS (після збою довідника)', !errs.length, errs);
   console.log(`\n${pass} OK, ${fail} FAIL`); await b.close(); process.exit(fail ? 1 : 0);
 })();

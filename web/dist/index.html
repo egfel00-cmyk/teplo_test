@@ -10283,7 +10283,8 @@ details.mypay[open] > summary .mypay-amt, details.mypay[open] > summary .mypay-s
     if (gap) return { st: t('gp_card_off', { d: fmtDate(gap.from) }), tone: 'warn', off: true };
     // 142-а: вода не від Харківводоканалу — строк її постачальника (вікно з довідника), а не «до 20-го»; вікно невідоме — без строку
     var lw = prvOf('water');
-    if (myProv('water') || (lw && lw.via !== 'hvk')) {   // 144-а: свій постачальник — так само, за його строком (немає — без строку)
+    // 153-я: довідника немає, а квартира не в Харкові — строк Харківводоканалу («до 20-го») не підставляємо, як і смужку (perDefOk)
+    if (myProv('water') || (lw && lw.via !== 'hvk') || (!lw && !perDefOk(place(), 'water'))) {   // 144-а: свій постачальник — так само, за його строком (немає — без строку)
       var wn = winNow('water'), inW = function (r) { return r && (wn && wn.open ? r.date >= addDays(wn.from, -5) : thisMonth(r.date)); };
       if (inW(last) && wsentVk(last)) return { st: t('uc_w_sent'), tone: 'ok' };
       if (inW(last)) return { st: t('uc_w_ready'), tone: 'due', due: wn && wn.open ? wn.to : null, ready: true };
@@ -10322,9 +10323,17 @@ details.mypay[open] > summary .mypay-amt, details.mypay[open] > summary .mypay-s
    *  137-а: від'ємне ОСТАННЄ — робочий день від кінця місяця (−1 — останній, −2 — передостанній: Львівводоканал «з 10 по передостанній робочий день»).
    *  Довідник громади: `win` ([20, 27]) головніший; тепло не від ХТМ — `till`; вода місцевого КП без `win` — null (не вигадуємо). */
   function winOk(w) { return !!(w && w.length === 2 && +w[0] !== 0 && (+w[1] > 0 || (+w[1] < 0 && +w[1] >= -3 && +w[0] > 0))); }
+  /** 153-я: довідника для квартири немає (ще вантажиться, помилка мережі/429, адресу не знайшли) — чи годиться харківське вікно за замовчуванням.
+   *  Без міста (стара адреса) — як і було, Харків; світло й газ — уся Харківщина (Харківобленерго, Газмережі); вода й тепло — лише місто Харків. */
+  function perDefOk(p, k) {
+    var c = p && p.city; if (!c || !c.n) return true;
+    return k === 'elec' || k === 'gas' ? (c.r || 'kh') === 'kh' : c.n === 'Харків' && (c.r || 'kh') === 'kh';
+  }
   function perWin(k, p) {
-    var my = myProv(k, p === undefined ? place() : p); if (my) return myWin(my);   // 144-а: свій постачальник — його строк або без строку
+    if (p === undefined) p = place();
+    var my = myProv(k, p); if (my) return myWin(my);   // 144-а: свій постачальник — його строк або без строку
     var j = prvKinds0(p, k), d = j ? (j.kinds[k] || {}) : null, w = d && d.win;
+    if (!j && !perDefOk(p, k)) return null;   // мамина квартира в Малій Данилівці: без довідника смужка води казала «1–20» Харківводоканалу
     if (winOk(w)) return [+w[0], +w[1]];
     if (k === 'heat') { if (!d || d.via === 'htm') return [R.C.WINDOW_FROM, R.C.WINDOW_TO]; var tl = R.num(d.till); return tl > 0 ? [1, tl] : null; }
     if (k === 'water') return !d || d.via === 'hvk' ? [1, Wt.VK_DEADLINE] : null;
@@ -15909,10 +15918,13 @@ details.mypay[open] > summary .mypay-amt, details.mypay[open] > summary .mypay-s
   /** Довідник для квартири: адреса (+ уточнений пункт). a — адреса рядком (старий виклик) або квартира. */
   function prvLoad(pa) {
     var p = typeof pa === 'string' ? null : pa, a = String(p ? p.address || '' : pa || '').trim(); if (!a || !window.TEPLO_API) return null;
-    var st = prvSettle(p), key = a + (st ? '|' + st.n + '|' + st.h : ''); if (PRV.addr[key]) return PRV.addr[key];
+    var st = prvSettle(p), key = a + (st ? '|' + st.n + '|' + st.h : ''), c = PRV.addr[key];
+    // 153-я: помилка (мережа, 429) — не назавжди: за 30 с пробуємо знову (інакше до перезапуску квартира жила з харківськими вікнами й строками)
+    if (c && !(c.err && Date.now() - c.at > 30000)) return c;
     PRV.addr[key] = { busy: true };
+    var fail = function () { PRV.addr[key] = { err: true, at: Date.now() }; safeRender(); setTimeout(safeRender, 31000); };
     fetch(window.TEPLO_API + '/providers?q=' + encodeURIComponent(a) + (st ? '&n=' + encodeURIComponent(st.n) + '&h=' + encodeURIComponent(st.h) : ''), { credentials: 'same-origin', headers: { Accept: 'application/json' } }).then(function (r) { return r.json(); })
-      .then(function (j) { PRV.addr[key] = j && typeof j.found === 'boolean' ? j : { err: true }; safeRender(); }, function () { PRV.addr[key] = { err: true }; safeRender(); });
+      .then(function (j) { if (j && typeof j.found === 'boolean') { PRV.addr[key] = j; safeRender(); } else fail(); }, fail);
     return PRV.addr[key];
   }
   /** Довідник поточної квартири по видах (або null): для «Куди передати», «Ціни». Без адреси — null (як і було: Харків за замовчуванням). */
