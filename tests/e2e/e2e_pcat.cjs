@@ -13,7 +13,11 @@ const B = 'http://127.0.0.1:8013/';
   ok('посилання під «Куди передати» — «Інший постачальник»', /^Інший постачальник$/.test((await p.textContent('[data-key="my-link-elec"]').catch(() => '')).trim()));
   await p.evaluate(() => { const f = document.querySelector('#my-elec'); let d = f && f.closest('details'); while (d) { d.open = true; d = d.parentElement && d.parentElement.closest('details'); } });
   await p.waitForTimeout(200);
-  ok('у «Кому платите» — поле пошуку «Назва постачальника або місто»', /Назва постачальника або місто/.test(await p.getAttribute('#pcat-elec', 'placeholder').catch(() => '')));
+  ok('у «Кому платите» — поле пошуку «Назва або місто»', /Назва або місто/.test(await p.getAttribute('#pcat-elec', 'placeholder').catch(() => '')));
+  // 154-а (скрин власника 15.11: варіанти по 150 px, «Харків/енергоз/бут», пошук — клітинкою сітки): колонки — від ширини блоку, не вікна
+  const lay = await p.evaluate(() => { const o = document.querySelector('.my-opts'), w = o.getBoundingClientRect().width;
+    return { w, opts: [...o.querySelectorAll('.my-opt')].map(e => e.getBoundingClientRect().width), pc: document.querySelector('.my-opts > .pcat').getBoundingClientRect().width }; });
+  ok('154: варіанти «Кому платите» й пошук — на всю ширину блоку (одна колонка)', lay.opts.every(x => Math.abs(x - lay.w) < 2) && Math.abs(lay.pc - lay.w) < 2, lay);
   await p.focus('#pcat-elec'); await p.waitForTimeout(900);
   const all = await p.$$eval('#pcat-elec-l [role=option]', es => es.map(e => e.textContent));
   ok('фокус — список усіх постачальників світла (гортати), 6 областей', all.length === 6 && all.some(x => /Львівенергозбут/.test(x)) && all.some(x => /YASNO/.test(x)), all);

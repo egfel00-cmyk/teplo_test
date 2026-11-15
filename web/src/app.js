@@ -7116,11 +7116,11 @@
       return opt(m.p.id + '|' + m.k + '|' + m.wi, false, m.o.name, s, 'wallet', 'my-' + pk + '-m' + i);
     }).join('');
     var sel = !own && o.sel && o.sel.o ? o.sel : null;
-    return '<fieldset class="my-pick" id="my-' + pk + '" data-key="my-pick-' + pk + '"><legend class="lbl">' + esc(t('my_t')) + '</legend><div class="my-opts">' +
+    return '<fieldset class="my-pick" id="my-' + pk + '" data-key="my-pick-' + pk + '"><legend class="lbl">' + esc(t('my_t')) + '</legend><div class="my-opts-w"><div class="my-opts">' +
       opt('0', !own, sel ? sel.o : dir || t('my_dir'), sel ? t('pc_sel_s', { w: pcatWhere(sel) }) : t(dir ? (a ? 'my_dir_s' : 'my_dir_s0') : 'my_dir_none'), 'pin') +
       (sel ? '<p class="small pcat-off"><button type="button" class="linkbtn" data-pcat-off="' + pk + '" data-key="pcat-off-' + pk + '">' + esc(t(a ? 'pc_off' : 'pc_off0')) + '</button></p>' : '') +
       pcatBox(pk) + mo +
-      opt('1', own, own && o.name ? o.name : t(mine.length && !own ? 'my_own_new' : 'my_own'), t(own ? 'my_own_on' : mine.length ? 'my_own_new_s' : 'my_own_s'), own || !mine.length ? 'wallet' : 'plus') + '</div>' +
+      opt('1', own, own && o.name ? o.name : t(mine.length && !own ? 'my_own_new' : 'my_own'), t(own ? 'my_own_on' : mine.length ? 'my_own_new_s' : 'my_own_s'), own || !mine.length ? 'wallet' : 'plus') + '</div></div>' +
       (own ? myForm(pk, o) : '') + '</fieldset>';
   }
   // ---- 147-а (власник 14.11, 12:33): «в настройках — выпадающий список с полем поиска: начать писать или скроллить по названию поставщика
