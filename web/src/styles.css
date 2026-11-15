@@ -222,6 +222,11 @@ a { color: var(--c-return); text-underline-offset: 3px; }
 .wiz-actions .btn:only-child { white-space: normal; text-wrap: balance; }   /* одна кнопка на всю ширину — длинной подписи можно в 2 строки (320 px) */
 .wiz-actions .btn:last-child { flex: 3 1 auto; }
 .wiz-actions + p { margin-top: var(--sp-3); }
+/* 160-а: довгий список (#start, «Які лічильники» в «+ Квартира») — ряд кнопок прилипає до низу на всю ширину, тон сторінки й лінія зверху;
+   «Відгук» ховається сам (fabWatch: ряд на екрані). Банер cookie без відповіді лежить над ним — як і над будь-якою кнопкою. */
+.wiz-actions.wiz-stick { position: sticky; bottom: 0; z-index: 4; margin: var(--sp-4) calc(-1 * var(--sp-4)) 0; padding: var(--sp-3) var(--sp-4) calc(var(--sp-3) + env(safe-area-inset-bottom));
+  background: var(--c-housing); border-top: 1px solid var(--c-line); }
+@media (min-width: 960px) { .wiz-actions.wiz-stick { margin-inline: calc(-1 * var(--sp-6)); padding-inline: var(--sp-6); } }
 
 /* ---------- проверка ---------- */
 .verdict { display: flex; gap: var(--sp-3); align-items: center; padding: var(--sp-4); border-radius: 14px; margin: 0 0 var(--sp-4); font-size: var(--fs-l); font-weight: 600; }

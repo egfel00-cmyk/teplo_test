@@ -48,7 +48,10 @@ const U = 'http://127.0.0.1:8013/';
   await p.click('[data-key=aw-gas-dec]'); await p.waitForTimeout(150);
   ok('«−» → «немає», «−» тепер неактивний', /немає/.test(await p.textContent('[data-key=aw-gas-n]')) && await p.$eval('[data-key=aw-gas-dec]', e => e.disabled));
   for (const k of ['heat', 'hot', 'cold', 'elec']) { await p.click('[data-key=aw-' + k + '-inc]'); await p.waitForTimeout(120); }
-  ok('попередження зникло, тепла більше 1 не буває', !(await p.$('[data-key=aw-err]')) && await p.$eval('[data-key=aw-heat-inc]', e => e.disabled));
+  // 160-а (журнал 15.11: обрав 3 лічильники й пішов — «Готово» було двома екранами нижче): ряд кнопок прилипає до низу екрана
+  { const g = await p.evaluate(() => { const r = document.querySelector('[data-key=aw-create]').getBoundingClientRect(); return { top: r.top, bottom: r.bottom, vh: innerHeight, sw: document.documentElement.scrollWidth, vw: innerWidth, y: scrollY }; });
+    ok('«Готово» видно без прокрутки вниз (wiz-stick), сторінка не ширша за екран', g.top >= 0 && g.bottom <= g.vh && g.sw <= g.vw, g); }
+  ok('попередження зникло, тепла більше 1 не буває',!(await p.$('[data-key=aw-err]')) && await p.$eval('[data-key=aw-heat-inc]', e => e.disabled));
   // 114-а (власник 11.11): при першому вході рахунків не питаємо — вибрав лічильники й одразу вносить показання; рахунок — перед передачею
   ok('з водою — теж один крок: без «Крок 1 з …», «Готово», поля рахунку Водоканалу немає', !(await p.$('.wiz-top')) && !(await p.$('[data-key=aw-next]')) && !(await p.$('#aw-acc')) && /^Готово$/.test((await p.textContent('[data-key=aw-create]')).trim()));
   await p.click('[data-key=aw-create]'); await p.waitForTimeout(400);

@@ -8176,7 +8176,9 @@
         (first ? '<p class="small muted fs-more" data-key="fs-more">' + ico('home', 18) + '<span>' + esc(t('fs_more')) + '</span></p>' : '');
     }
     if (last && !first) h += pwSummary();
-    h += '<div class="wiz-actions">' + prevBtn + nextBtn + '</div>';
+    // 160-а (журнал 15.11, MH81 з Threads: обрав світло й обидві води — і пішов; «Готово» на 392×740 — двома екранами нижче, під газом, теплом і вивозом):
+    // на кроці «Які лічильники» ряд кнопок прилипає до низу — головну кнопку видно завжди (власник 13.11: «кнопки управління завжди видно»)
+    h += '<div class="wiz-actions' + (kind === 'kinds' ? ' wiz-stick' : '') + '" data-key="aw-actions">' + prevBtn + nextBtn + '</div>';
     if (last && first) h += '<p class="small muted fs-after" data-key="fs-after">' + esc(t('fs_after')) + '</p>';
     return { screen: first ? 'S02' : 'S44', route: first ? 'start' : 'add-place', bare: true, closeTo: back, html: '<p class="small muted aw-title">' + esc(t(first ? 'fs_title' : 'aw_title')) + '</p>' + head + h };
   };
