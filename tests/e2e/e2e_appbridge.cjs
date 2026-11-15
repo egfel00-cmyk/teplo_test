@@ -89,7 +89,9 @@ const UA = 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/6
   ok('TeploHost.back() зі світла → головна', (await N.p.evaluate(() => location.hash)) === '#home');
   await N.p.goto(B + '#enew'); await N.p.waitForTimeout(900); rt = await msgs(N.p, 'route'); lr = rt[rt.length - 1];
   ok('route enew (екран вводу): bare, «Скасувати», куди — closeTo', lr.bare === true && lr.cancel === 'Скасувати' && !!lr.up && lr.up !== '<', lr);
-  await N.p.goto(B + '#prefs'); await N.p.waitForTimeout(700);
+  await N.p.goto(B + '#prefs'); await N.p.waitForTimeout(700); rt = await msgs(N.p, 'route'); lr = rt[rt.length - 1];
+  ok('корінь «Налаштувань»: назва на панелі, h1 сторінки схований (не дублюється), «Назад» немає', lr.r === 'prefs' && lr.up === '' && !!lr.title &&
+    await N.p.$eval('#main h1', e => getComputedStyle(e).display === 'none'), lr);
   await N.p.evaluate(() => window.TeploHost.feedback()); await N.p.waitForTimeout(400);
   ok('TeploHost.feedback() відкриває вікно відгуку', !!(await N.p.$('[data-key=feedback-dialog]')));
   const F = await mk(UA);

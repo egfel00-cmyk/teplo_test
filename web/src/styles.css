@@ -2511,7 +2511,7 @@ details.mypay[open] > summary .mypay-amt, details.mypay[open] > summary .mypay-s
 @media (max-width: 959px) {
   .in-app .nav:not(.nav-side) { display: none; }
   /* 155-а (розбір навігації iOS): назва екрана й «Назад» — рідна панель застосунку; логотип сайту й плаваючий «Відгук» там зайві */
-  .in-app header.top, .in-app .fab, .in-app .rec-back { display: none; }
+  .in-app header.top, .in-app .fab, .in-app .rec-back, .in-app .app-dup, .in-app .place-bar .pb-all { display: none; }   /* «‹ Усі квартири» — це рідна «‹» */
   .in-app .main:not(.bare), .in-app body:has(.fab) .main:not(.bare) { padding-bottom: calc(var(--tap) + 24px); }
   .in-app .main { padding-top: var(--sp-3); }
 }

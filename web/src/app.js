@@ -203,9 +203,11 @@
   }
   /** Заголовок для рідної панелі: перший h1 екрана (без значків), корінь вкладки — '' (застосунок пише назву вкладки). */
   function appTitle(r) {
-    if (/^(home|places|history|stats|prefs)$/.test(r)) return '';
     var h = document.querySelector('#main h1'); if (!h) return '';
-    return String(h.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 48);
+    var txt = String(h.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 48);
+    // корінь вкладки (Історія, Статистика, Налаштування): заголовок сторінки = назва на панелі — у сторінці не дублюємо (скрини CI 15.11)
+    if (/^(history|stats|prefs)$/.test(r)) { h.classList.add('app-dup'); return txt; }
+    return /^(home|places)$/.test(r) ? '' : txt;
   }
   function appNative(view) {
     if (!APP) return;
