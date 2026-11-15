@@ -58,6 +58,11 @@ final class WebHost: NSObject {
     }
 
     func start(route: String = "") {
+        var route = route
+        #if DEBUG
+        // CI (скрини в симуляторі): -PeredaiRoute history — відкрити одразу цей екран
+        if route.isEmpty, let r = UserDefaults.standard.string(forKey: "PeredaiRoute") { route = r }
+        #endif
         var c = URLComponents(url: AppConfig.base, resolvingAgainstBaseURL: false)
         if !route.isEmpty { c?.fragment = route }
         cacheTried = false
@@ -169,6 +174,13 @@ final class WebHost: NSObject {
     /// Перший маршрут сайту: сайт порожній (новий телефон, очищені дані WebView) — повертаємо копію (телефон, потім iCloud);
     /// дані є, а в iCloud новіша копія з іншого пристрою — зливаємо (TeploSync.merge на сайті).
     private func restoreIfNeeded(webHasData: Bool) async {
+        #if DEBUG
+        // CI: -PeredaiDemo <файл> — демо-стан (tests/e2e/demo.cjs) і згода на cookie, лише в порожній застосунок
+        if !webHasData, let path = UserDefaults.standard.string(forKey: "PeredaiDemo"), let demo = try? String(contentsOfFile: path, encoding: .utf8) {
+            run("try{localStorage.setItem('teplo.cc',JSON.stringify({v:1,a:0,at:new Date().toISOString(),id:'ci'}))}catch(e){}; window.TeploHost && window.TeploHost.restore(\(Self.jsString(demo)))")
+            return
+        }
+        #endif
         let local = StateStore.shared
         var best: (json: String, at: Date)? = local.hasData ? (local.json ?? "", local.at) : nil
         if let cloud = await CloudBackup.shared.fetch(), StateStore.hasData(cloud.json), cloud.at > (best?.at ?? .distantPast) {

@@ -67,6 +67,9 @@ enum Reminders {
         guard !open.isEmpty else { return }
         // дозвіл — у контексті: коли вже є що нагадувати, а не на першому запуску
         let st = await c.notificationSettings()
+        #if DEBUG
+        if UserDefaults.standard.string(forKey: "PeredaiDemo") != nil { return }   // CI: без системного запиту поверх скрина
+        #endif
         if st.authorizationStatus == .notDetermined {
             _ = try? await c.requestAuthorization(options: [.alert, .sound, .badge])
         }
@@ -108,7 +111,8 @@ enum Reminders {
 enum LiveWindow {
     static func update(_ p: SchedPayload) async {
         let cal = Calendar.current
-        let today = cal.startOfDay(for: Date())
+        // «сьогодні» сайту (те саме, що бачить людина на картках; у демо — підставна дата)
+        let today = Day.parse(p.today) ?? cal.startOfDay(for: Date())
         let items: [WindowItem] = p.items.compactMap { it in
             guard let due = Day.parse(it.due) else { return nil }
             let left = cal.dateComponents([.day], from: today, to: due).day ?? 99
