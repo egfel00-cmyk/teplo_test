@@ -2510,3 +2510,10 @@ details.mypay[open] > summary .mypay-amt, details.mypay[open] > summary .mypay-s
 /* 154-а: «Видалити акаунт» — тихе посилання під «Вийти», колір небезпеки лише в тексті */
 .acct-del { margin: 16px 0 0; }
 .danger-link { color: var(--c-bad); }
+/* 154-а: «Увійти через Apple» — за правилами Apple: чорна кнопка (у темній темі — біла), лого Apple, системний шрифт; лише в застосунку iPhone */
+.auth-apple { padding: 16px; }
+.apple-btn { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; min-height: 50px; padding: 0 16px; border: 0; border-radius: 12px;
+  background: #000; color: #fff; font: 600 17px/1.2 -apple-system, system-ui, sans-serif; cursor: pointer; touch-action: manipulation; }
+.apple-btn.sm { width: auto; min-height: 44px; font-size: 16px; }
+.apple-logo { font-size: 20px; line-height: 1; margin-top: -2px; }
+:root[data-theme="dark"] .apple-btn { background: #fff; color: #000; }

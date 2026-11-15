@@ -217,6 +217,8 @@
     v: 1,
     go: function (r) { r = String(r || '').replace(/^#/, ''); if (!r) return; if (routeName() === r) render(); else location.hash = r; },
     sched: function () { appSched(true); },
+    /** «Увійти через Apple»: {token, nonce, name} або {err: 'cancel' | 'failed'}. */
+    apple: function (r) { appleDone(r); },
     /** Нагадування / Live Activity: квартира pid і вид (як кнопка з нагадування бота — deepLink). */
     open: function (g, pid) { if (!S.onboarded) return; deepLink(String(g || 'home'), String(pid || ''), ''); render(); },
     /** Копія з iCloud: порожній застосунок (новий телефон) — береться як є; є свої дані — злиття тим самим TeploSync.merge, що й із сервером. */
@@ -8422,7 +8424,9 @@
     else if (y.mode === 'server' && a) {
       h += '<p>' + esc(t('sync_server')) + '</p><ul class="list" style="margin:0 0 12px;background:var(--c-housing)">' +
         (a.email ? '<li><div class="grow"><div class="small muted">Email</div><b>' + esc(a.email) + '</b></div></li>' : '') +
-        (a.telegram ? '<li><div class="grow"><div class="small muted">Telegram</div><b>' + esc(a.telegram.username ? '@' + a.telegram.username : t('acct_tg_linked_noname')) + '</b></div></li>' : '') + '</ul>' +
+        (a.telegram ? '<li><div class="grow"><div class="small muted">Telegram</div><b>' + esc(a.telegram.username ? '@' + a.telegram.username : t('acct_tg_linked_noname')) + '</b></div></li>' : '') +
+        (a.apple ? '<li><div class="grow"><div class="small muted">Apple</div><b>' + esc(a.apple.email || t('acct_apple_linked')) + '</b></div></li>' : '') + '</ul>' +
+        (APP && !a.apple ? '<p><button class="apple-btn sm" data-act="apple-in" data-key="prefs-apple-link"><span class="apple-logo" aria-hidden="true">\uF8FF</span><span>' + esc(t('acct_apple_link')) + '</span></button></p><p class="help block" id="apple-err" role="alert"></p>' : '') +
         '<p class="small muted" id="sync-status">' + esc(syncStatusText()) + '</p>';
       if (!a.telegram && Y()._cfg && Y()._cfg.botUsername) h += '<h3>' + esc(t('acct_link_tg')) + '</h3><p class="small muted">' + esc(t('acct_link_bot_sub')) + '</p>' +
         '<p><button class="btn" data-act="link-bot" data-key="prefs-link-bot">' + esc(t('acct_link_bot', { bot: Y()._cfg.botUsername })) + '</button></p><div id="tg-widget" data-onauth="TeploTgLink"></div>';
@@ -8467,7 +8471,10 @@
       '<a class="btn sec block" href="https://t.me/' + esc(bot) + '" target="_blank" rel="noopener" data-key="login-tg-open">' + ico('send', 20) + '<span>' + esc(t('login_tg_btn', { bot: bot })) + '</span></a>' +
       '<details class="auth-more"><summary>' + esc(t('login_tg_more')) + ico('chev', 16, 'auth-chev') + '</summary><p class="small muted">' + esc(t('login_tg_same')) + '</p></details></section>' +
       '<p class="auth-or" aria-hidden="true"><span>' + esc(t('login_or')) + '</span></p>' : '';
-    return Object.assign(base, { html: '<h1>' + esc(t('login_title')) + '</h1><p class="auth-lead">' + esc(t('login_lead2')) + '</p><div class="auth">' + tg +
+    // 154-а: у застосунку iPhone — «Увійти через Apple» першим (App Store 4.8: поруч із Telegram — рівноцінний вхід Apple)
+    var apple = APP ? '<section class="panel auth-apple" data-key="login-apple"><button type="button" class="apple-btn" data-act="apple-in" data-key="login-apple-btn"><span class="apple-logo" aria-hidden="true">\uF8FF</span><span>' +
+      esc(t('login_apple')) + '</span></button><p class="help block" id="apple-err" role="alert"></p></section>' : '';
+    return Object.assign(base, { html: '<h1>' + esc(t('login_title')) + '</h1><p class="auth-lead">' + esc(t(APP ? 'login_lead_app' : 'login_lead2')) + '</p><div class="auth">' + apple + tg +
       '<form id="login-form" class="panel" data-mode="' + m + '" novalidate data-key="login-form">' +
       '<div class="kind-sw auth-sw" role="group" aria-label="' + esc(t('login_sw')) + '">' +
       '<button type="button" data-act="auth-mode" data-m="login" aria-pressed="' + !reg + '" data-key="login-mode-in">' + esc(t('login_btn')) + '</button>' +
@@ -8503,6 +8510,16 @@
     sc.setAttribute('data-telegram-login', cfg.botUsername); sc.setAttribute('data-size', 'large'); sc.setAttribute('data-radius', '12');
     sc.setAttribute('data-onauth', box.getAttribute('data-onauth') + '(user)'); sc.setAttribute('data-request-access', 'write');
     box.appendChild(sc);
+  }
+  /** 154-а: відповідь застосунку на «Увійти через Apple» (TeploHost.apple). */
+  function appleDone(r) {
+    var er = document.getElementById('apple-err');
+    if (!r || r.err) { if (er && r && r.err !== 'cancel') er.textContent = t('login_apple_err'); return; }
+    var linking = !!(Y().account);
+    Y().loginApple(r.token, r.nonce, r.name).then(function (j) {
+      if (linking) { if (j._status === 200) { toast(t('login_ok')); render(true); } else toast(authError(j)); return; }
+      afterLogin(j, er);
+    }, function () { if (er) er.textContent = t('err_network'); });
   }
   window.TeploTgAuth = function (user) { Y().loginTelegramWidget(user).then(function (j) { afterLogin(j); }, function () { toast(t('err_network')); }); };
   window.TeploTgLink = function (user) { Y().linkTelegram(user).then(function (j) { if (j._status === 200) { toast(t('login_ok')); render(true); } else toast(authError(j)); }); };
@@ -9525,6 +9542,7 @@
         var shown = pin.type === 'password'; pin.type = shown ? 'text' : 'password';
         el.setAttribute('aria-pressed', String(shown)); el.setAttribute('aria-label', t(shown ? 'pass_hide' : 'pass_show')); el.setAttribute('title', t(shown ? 'pass_hide' : 'pass_show'));
         el.innerHTML = ico(shown ? 'eyeoff' : 'eye', 20); break; }
+      case 'apple-in': { var ae0 = document.getElementById('apple-err'); if (ae0) ae0.textContent = ''; appPost({ t: 'apple' }); break; }
       case 'acct-del-ask': { var adc = document.getElementById('acct-del-confirm'); if (adc) adc.innerHTML = '<div class="confirm" data-key="acct-del-confirm"><p>' + esc(t('acct_del_q')) + '</p><div class="row-actions" style="margin-top:8px"><button class="btn sec" data-act="acct-del-no">' + esc(t('cancel')) + '</button><button class="btn danger solid" data-act="acct-del-yes" data-key="prefs-acct-del-yes">' + esc(t('acct_del_yes')) + '</button></div><p class="help block" id="acct-del-err"></p></div>'; break; }
       case 'acct-del-no': { var adn = document.getElementById('acct-del-confirm'); if (adn) adn.innerHTML = ''; break; }
       case 'acct-del-yes': {

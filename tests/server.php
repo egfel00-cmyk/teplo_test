@@ -4,6 +4,7 @@ declare(strict_types=1);
 define('TEPLO', 1);
 require __DIR__ . '/../app/core.php';
 require __DIR__ . '/../app/telegram.php';
+require __DIR__ . '/../app/apple.php';
 require __DIR__ . '/../app/mail.php';
 require __DIR__ . '/../app/reminders.php';
 require __DIR__ . '/../app/widget.php';
@@ -2861,6 +2862,25 @@ ok('seo: крихти — постачальник (передай › Пост�
   $bvk && array_column($bvk['itemListElement'], 'name') === ['передай', 'Постачальники', 'КП «Харківводоканал»'] && $bvk['itemListElement'][2]['item'] === 'https://peredai.com.ua/postachalnyky/kharkivvodokanal'
   && $bvk['itemListElement'][0]['item'] === 'https://peredai.com.ua/' && $bhk && $bhk['itemListElement'][1]['item'] === 'https://peredai.com.ua/kudy-peredaty' && count($bhk['itemListElement']) === 3
   && $bsp && count($bsp['itemListElement']) === 3 && preg_match_all('~<script(?! type="application/ld\+json")~', $pko . $pvk . $hb . $hk) === 0, [$bvk, $bhk]);
+// 154-а: «Увійти через Apple» — перевірка identityToken (RS256 ключами JWKS, iss, aud = Bundle ID, exp, nonce = sha256)
+$apk = openssl_pkey_new(['private_key_bits' => 2048, 'private_key_type' => OPENSSL_KEYTYPE_RSA]); $apd = openssl_pkey_get_details($apk);
+$b64u = fn(string $x) => rtrim(strtr(base64_encode($x), '+/', '-_'), '=');
+$apJwks = [['kty' => 'RSA', 'kid' => 'K1', 'use' => 'sig', 'alg' => 'RS256', 'n' => $b64u($apd['rsa']['n']), 'e' => $b64u($apd['rsa']['e'])]];
+$apTok = function (array $claims, string $kid = 'K1') use ($apk, $b64u) { $h = $b64u(json_encode(['alg' => 'RS256', 'kid' => $kid])); $c = $b64u(json_encode($claims));
+  openssl_sign($h . '.' . $c, $sig, $apk, OPENSSL_ALGO_SHA256); return $h . '.' . $c . '.' . $b64u($sig); };
+$apNow = 1800000000; $apBase = ['iss' => 'https://appleid.apple.com', 'aud' => 'ua.com.peredai.app', 'exp' => $apNow + 600, 'iat' => $apNow, 'sub' => '001234.abcd.1111', 'email' => 'X@privaterelay.appleid.com', 'is_private_email' => 'true', 'nonce' => hash('sha256', 'n-1')];
+$apErr = function (callable $f) { try { $f(); return 'ok'; } catch (HttpError $e) { return $e->err; } };
+$apOk = Apple::verify($apTok($apBase), $apJwks, Apple::AUD, 'n-1', $apNow);
+ok('apple: дійсний токен → sub, e-mail малими, «прихований» e-mail; чужий aud, прострочений, інший ключ, чужий nonce, підробка — відмова',
+  $apOk === ['sub' => '001234.abcd.1111', 'email' => 'x@privaterelay.appleid.com', 'relay' => true]
+  && $apErr(fn() => Apple::verify($apTok(['aud' => 'com.other.app'] + $apBase), $apJwks, Apple::AUD, 'n-1', $apNow)) === 'apple_bad_audience'
+  && $apErr(fn() => Apple::verify($apTok(['exp' => $apNow - 3600] + $apBase), $apJwks, Apple::AUD, 'n-1', $apNow)) === 'apple_expired'
+  && $apErr(fn() => Apple::verify($apTok($apBase, 'K2'), $apJwks, Apple::AUD, 'n-1', $apNow)) === 'apple_unknown_key'
+  && $apErr(fn() => Apple::verify($apTok($apBase), $apJwks, Apple::AUD, 'n-2', $apNow)) === 'apple_bad_nonce'
+  && $apErr(fn() => Apple::verify($apTok(['iss' => 'https://evil.example'] + $apBase), $apJwks, Apple::AUD, 'n-1', $apNow)) === 'apple_bad_issuer'
+  && $apErr(fn() => Apple::verify(preg_replace('~\.([^.]+)\.~', '.' . $b64u(json_encode(['sub' => 'другий'] + $apBase)) . '.', $apTok($apBase)), $apJwks, Apple::AUD, 'n-1', $apNow)) === 'apple_bad_signature'
+  && $apErr(fn() => Apple::verify('abc', $apJwks, Apple::AUD, null, $apNow)) === 'apple_bad_token'
+  && openssl_pkey_get_public(Apple::pem($apJwks[0]['n'], $apJwks[0]['e'])) !== false, $apOk);
 ok('seo: sitemap — головна + пари: 38 (моделі) + 351 (громади) + 1 + постачальники', count(Seo::pairs()) === 38 + 351 + 1 + count($pv), count(Seo::pairs()));
 
 echo "\nИтог: $pass OK, $fail FAIL\n";

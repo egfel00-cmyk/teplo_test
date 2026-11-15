@@ -214,6 +214,34 @@ final class Api {
         // Mini App: токен сесії й у відповіді — вікно Telegram на Mac інколи не зберігає cookie; тоді застосунок шле його заголовком X-Session
         return ['user' => self::publicUser($u)] + ($p === '/api/auth/telegram/webapp' ? ['session' => $tok, 'tgBot' => $tgBot] : []);
       }
+      // 154-а: «Увійти через Apple» (застосунок iPhone; App Store 4.8). Увійшов — прив'язка до цього акаунта; ні — вхід або новий акаунт.
+      case 'POST /api/auth/apple': {
+        RateLimit::hit('telegram_ip', $ip);
+        $ap = Apple::check((string)($in['token'] ?? ''), (string)($in['nonce'] ?? ''));
+        $idn = Db::one("SELECT * FROM user_identities WHERE type = 'apple' AND external_id = ?", [$ap['sub']]);
+        $name = mb_substr(trim((string)($in['name'] ?? '')), 0, 80);
+        if ($user) {   // прив'язати до поточного акаунта
+          if ($idn && (int)$idn['user_id'] !== (int)$user['id']) throw new HttpError(409, 'apple_linked_elsewhere');
+          if (!$idn) Db::q("INSERT INTO user_identities (user_id, type, external_id, username, linked_at) VALUES (?, 'apple', ?, ?, ?)", [$user['id'], $ap['sub'], $ap['email'] ?: null, Http::iso()]);
+          self::audit($user['id'], 'link_apple', $ip);
+          return ['user' => self::publicUser(self::userById((int)$user['id']))];
+        }
+        if ($idn) $u = self::userById((int)$idn['user_id']);
+        else {
+          // e-mail від Apple (справжній, не «приховати») уже є в акаунті з паролем — не зливаємо мовчки: людина входить поштою й прив'язує Apple в Налаштуваннях
+          if ($ap['email'] !== '' && !$ap['relay'] && Db::one('SELECT id FROM users WHERE email = ?', [$ap['email']])) throw new HttpError(409, 'apple_email_taken');
+          Db::q('INSERT INTO users (name, created_at) VALUES (?, ?)', [$name !== '' ? $name : null, Http::iso()]);
+          $uid = Db::id();
+          try { Db::q("INSERT INTO user_identities (user_id, type, external_id, username, linked_at) VALUES (?, 'apple', ?, ?, ?)", [$uid, $ap['sub'], $ap['email'] ?: null, Http::iso()]); }
+          catch (PDOException $e) {
+            $idn = Db::one("SELECT * FROM user_identities WHERE type = 'apple' AND external_id = ?", [$ap['sub']]); if (!$idn) throw $e;
+            Db::q('DELETE FROM users WHERE id = ?', [$uid]); $uid = (int)$idn['user_id'];
+          }
+          $u = self::userById($uid);
+        }
+        $tok = self::startSession($res, $u, $r, $ip); self::audit($u['id'], 'login_apple', $ip);
+        return ['user' => self::publicUser($u), 'session' => $tok];
+      }
       case 'POST /api/bot/write-ok': {   // Mini App нынешнего бота: человек разрешил боту писать (requestWriteAccess) — плашка «натисніть Старт» уходит
         if (!$user) throw new HttpError(401, 'unauthorized');
         $tgi = Db::one("SELECT external_id FROM user_identities WHERE user_id = ? AND type = 'telegram'", [$user['id']]);
@@ -497,8 +525,10 @@ final class Api {
   private static function userById(int $id): array { $u = Db::one('SELECT * FROM users WHERE id = ?', [$id]); if (!$u) throw new HttpError(401, 'unauthorized'); return $u; }
   private static function publicUser(array $u): array {
     $tg = Db::one("SELECT external_id, username FROM user_identities WHERE user_id = ? AND type = 'telegram'", [$u['id']]);
+    $ap = Db::one("SELECT username FROM user_identities WHERE user_id = ? AND type = 'apple'", [$u['id']]);
     return ['id' => (int)$u['id'], 'email' => $u['email'], 'name' => $u['name'], 'hasPassword' => !empty($u['password_hash']),
       'telegram' => $tg ? ['id' => $tg['external_id'], 'username' => $tg['username']] : null,
+      'apple' => $ap ? ['email' => $ap['username']] : null,
       'botStart' => $tg ? Telegram::needStart((int)$u['id']) : null];
   }
   private static function sessionUser(Req $r): ?array {

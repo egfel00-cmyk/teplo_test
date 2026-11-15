@@ -159,6 +159,8 @@ final class WebHost: NSObject {
             CloudBackup.shared.scheduleUpload(json: s, at: at)
         case "haptic":
             UIImpactFeedbackGenerator(style: .light).impactOccurred()
+        case "apple":
+            AppleSignIn.shared.start()
         default:
             break
         }
