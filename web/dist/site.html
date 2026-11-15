@@ -5405,6 +5405,7 @@ details.mypay[open] > summary .mypay-amt, details.mypay[open] > summary .mypay-s
       acct_del_q: 'Видалимо з сервера акаунт, вхід через Telegram і пошту, копію даних, доступи до кабінетів постачальників, фото й платіжки. Показання на цьому пристрої залишаться — без синхронізації. Скасувати не можна.',
       app_n_title: 'Час передати показання', app_n_body: '{k} · {p} — до {d}', app_n_pay: 'Час сплатити: {k} · {p} — до {d}',
       app_la_title: 'Відкрите вікно передачі', app_la_go: 'Зняти показання', app_la_done: 'Передано', app_restored: 'Дані відновлено з iCloud',
+      app_w_title: 'Строки', app_w_left: 'ще {n} дн.', app_w_today: 'сьогодні', app_w_done: 'Усе передано', app_w_empty: 'Відкрийте застосунок, щоб побачити строки',
       pc_find: 'Знайти в довіднику', pc_find_ph: 'Назва або місто', pc_sel_s: 'обрали самі · {w}', pc_off: 'Як за адресою квартири', pc_off0: 'Прибрати вибір',
       pc_err: 'Довідник не завантажився — перевірте інтернет і торкніться поля ще раз', pc_none: 'Нікого не знайшли — спробуйте інакше або оберіть «Інший постачальник» нижче',
       pc_more: 'Ще {n} — уточніть запит', pc_sel_t: 'Постачальник: {o}', pc_off_t: 'Постачальник — як за адресою квартири', my_sum: 'До сплати', my_sum_s: '{q} з {d}', my_norq: 'Реквізитів ще немає — допишіть у «Налаштуваннях показань».',
@@ -6762,6 +6763,7 @@ details.mypay[open] > summary .mypay-amt, details.mypay[open] > summary .mypay-s
       acct_del_q: 'Удалим с сервера аккаунт, вход через Telegram и почту, копию данных, доступы к кабинетам поставщиков, фото и платёжки. Показания на этом устройстве останутся — без синхронизации. Отменить нельзя.',
       app_n_title: 'Пора передать показания', app_n_body: '{k} · {p} — до {d}', app_n_pay: 'Пора оплатить: {k} · {p} — до {d}',
       app_la_title: 'Открыто окно передачи', app_la_go: 'Снять показания', app_la_done: 'Передано', app_restored: 'Данные восстановлены из iCloud',
+      app_w_title: 'Сроки', app_w_left: 'ещё {n} дн.', app_w_today: 'сегодня', app_w_done: 'Всё передано', app_w_empty: 'Откройте приложение, чтобы увидеть сроки',
       pc_find: 'Найти в справочнике', pc_find_ph: 'Название или город', pc_sel_s: 'выбрали сами · {w}', pc_off: 'Как по адресу квартиры', pc_off0: 'Убрать выбор',
       pc_err: 'Справочник не загрузился — проверьте интернет и коснитесь поля ещё раз', pc_none: 'Никого не нашли — попробуйте иначе или выберите «Другой поставщик» ниже',
       pc_more: 'Ещё {n} — уточните запрос', pc_sel_t: 'Поставщик: {o}', pc_off_t: 'Поставщик — как по адресу квартиры', my_sum: 'К оплате', my_sum_s: '{q} с {d}', my_norq: 'Реквизитов ещё нет — допишите в «Настройках показаний».',
@@ -9595,7 +9597,8 @@ details.mypay[open] > summary .mypay-amt, details.mypay[open] > summary .mypay-s
     });
     var js = JSON.stringify(items); if (!force && js === APP_LAST.sched) return; APP_LAST.sched = js;
     appPost({ t: 'sched', items: items, today: today(), soon: DUE_SOON, lang: S.lang,
-      txt: { title: t('app_n_title'), body: t('app_n_body'), pay: t('app_n_pay'), la: t('app_la_title'), la_go: t('app_la_go'), la_done: t('app_la_done') } });
+      txt: { title: t('app_n_title'), body: t('app_n_body'), pay: t('app_n_pay'), la: t('app_la_title'), la_go: t('app_la_go'), la_done: t('app_la_done'),
+        w_title: t('app_w_title'), w_left: t('app_w_left'), w_today: t('app_w_today'), w_done: t('app_w_done'), w_empty: t('app_w_empty') } });
   }
   window.TeploHost = {
     v: 1,

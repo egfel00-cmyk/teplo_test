@@ -210,7 +210,8 @@
     });
     var js = JSON.stringify(items); if (!force && js === APP_LAST.sched) return; APP_LAST.sched = js;
     appPost({ t: 'sched', items: items, today: today(), soon: DUE_SOON, lang: S.lang,
-      txt: { title: t('app_n_title'), body: t('app_n_body'), pay: t('app_n_pay'), la: t('app_la_title'), la_go: t('app_la_go'), la_done: t('app_la_done') } });
+      txt: { title: t('app_n_title'), body: t('app_n_body'), pay: t('app_n_pay'), la: t('app_la_title'), la_go: t('app_la_go'), la_done: t('app_la_done'),
+        w_title: t('app_w_title'), w_left: t('app_w_left'), w_today: t('app_w_today'), w_done: t('app_w_done'), w_empty: t('app_w_empty') } });
   }
   window.TeploHost = {
     v: 1,

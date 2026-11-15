@@ -146,6 +146,7 @@ final class WebHost: NSObject {
         case "sched":
             guard let d = try? JSONSerialization.data(withJSONObject: m),
                   let p = try? JSONDecoder().decode(SchedPayload.self, from: d) else { return }
+            WidgetFeed.save(p)
             Task {
                 await Reminders.schedule(p)
                 await LiveWindow.update(p)

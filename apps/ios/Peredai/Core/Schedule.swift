@@ -1,6 +1,7 @@
 import ActivityKit
 import Foundation
 import UserNotifications
+import WidgetKit
 
 /// Строки з сайту (міст `sched`): кожна квартира × вид — до коли, чи вже передано. Тексти — теж із сайту (uk/ru).
 struct SchedItem: Decodable {
@@ -21,6 +22,12 @@ struct SchedText: Decodable {
     let la: String
     let la_go: String
     let la_done: String
+    // віджети (сайт до 154-ї їх не слав — тоді українською за замовчуванням)
+    var w_title: String?
+    var w_left: String?
+    var w_today: String?
+    var w_done: String?
+    var w_empty: String?
 }
 
 struct SchedPayload: Decodable {
@@ -28,6 +35,22 @@ struct SchedPayload: Decodable {
     let today: String
     let soon: Int
     let txt: SchedText
+}
+
+/// Строки для віджетів: файл у спільній папці App Group (її бачить розширення), потім — перемалювати віджети.
+@MainActor
+enum WidgetFeed {
+    static func save(_ p: SchedPayload) {
+        let items: [WidgetDeadline] = p.items.compactMap { it in
+            guard let due = Day.parse(it.due) else { return it.done ? WidgetDeadline(kind: it.k, title: it.kt, place: it.pn, placeId: it.p, due: nil, done: true, pay: it.pay, route: it.go) : nil }
+            return WidgetDeadline(kind: it.k, title: it.kt, place: it.pn, placeId: it.p, due: due, done: it.done, pay: it.pay, route: it.go)
+        }
+        let t = p.txt
+        let feed = WidgetSnapshot(items: items, at: Date(), title: t.w_title ?? "Строки", left: t.w_left ?? "ще {n} дн.",
+                                  today: t.w_today ?? "сьогодні", done: t.w_done ?? "Усе передано", empty: t.w_empty ?? "Відкрийте застосунок")
+        WidgetSnapshot.write(feed)
+        WidgetCenter.shared.reloadAllTimelines()
+    }
 }
 
 /// Нагадування за `soon` (4) дні до кінця вікна, о 10:00 — одне на квартиру й вид, лише поки не передано (власник: «ненавʼязливо, за 4 дні»).

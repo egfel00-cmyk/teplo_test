@@ -161,6 +161,7 @@ struct LockScreenWindowView: View {
 @main
 struct PeredaiWidgetsBundle: WidgetBundle {
     var body: some Widget {
+        DeadlinesWidget()
         WindowLiveActivity()
     }
 }
