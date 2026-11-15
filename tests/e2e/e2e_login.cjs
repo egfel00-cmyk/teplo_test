@@ -38,9 +38,15 @@ const sql = q => execFileSync('python3', ['-c', 'import sqlite3,sys; c=sqlite3.c
   await q.goto(BASE + '#login'); await q.reload(); await q.waitForTimeout(800);
   await q.fill('#a-email', email); await q.click('[data-key=login-forgot]'); await q.waitForTimeout(400);
   ok('«Забули пароль?»: форма «Новий пароль поштою», email перенесено, Telegram-блок сховано', !!(await q.$('[data-key=forgot-form]')) && (await q.inputValue('#a-email')) === email && !(await q.$('[data-key=login-telegram]')));
-  await q.click('[data-key=forgot-submit]'); await q.waitForTimeout(800);
+  // 153-я: відповідь сервера підставляємо самі — тест не залежить від smtp_host у локальному config.php (є — лист «не надіслався», нема — «недоступне»)
+  const forgotAs = async (status, body) => { await q.unroute('**/api/auth/forgot').catch(() => {}); await q.route('**/api/auth/forgot', r => r.fulfill({ status, contentType: 'application/json', body: JSON.stringify(body) })); };
+  await forgotAs(503, { error: 'mail_off' }); await q.click('[data-key=forgot-submit]'); await q.waitForTimeout(800);
   const fe = await q.textContent('#forgot-err').catch(() => '');
-  ok('пошта сервісу не налаштована — «Відновлення поштою зараз недоступне — увійдіть через Telegram…»', /недоступне/.test(fe) || !!(await q.$('[data-key=login-sent]')), fe);
+  ok('пошта сервісу не налаштована — «Відновлення поштою зараз недоступне — увійдіть через Telegram…»', /недоступне/.test(fe), fe);
+  await forgotAs(503, { error: 'mail_failed' }); await q.click('[data-key=forgot-submit]'); await q.waitForTimeout(800);
+  const fe2 = await q.textContent('#forgot-err').catch(() => '');
+  ok('лист не пішов (SMTP не відповів) — «Лист не надіслався — спробуйте за кілька хвилин»', /не надіслався/.test(fe2), fe2);
+  await q.unroute('**/api/auth/forgot');
   await q.click('[data-key=login-back]'); await q.waitForTimeout(300);
   ok('«Повернутися до входу» — знову форма входу', !!(await q.$('[data-key=login-form]')) && (await q.getAttribute('[data-key=login-mode-in]', 'aria-pressed')) === 'true');
 
