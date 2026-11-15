@@ -177,14 +177,19 @@
     try { var h = window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.peredai; return h && /PeredaiApp\//.test(navigator.userAgent) ? h : null; }
     catch (e) { return null; }
   })();
-  var APP_LAST = { route: '', bare: null, sched: '', title: '', up: '' };
+  var APP_LAST = { route: '', bare: null, sched: '', title: '', up: '', sig: '', close: '', sheet: false };
+  // 156-а (план навігації iOS, крок 3): застосунок каже, що вміє (WKUserScript до сторінки): v3 — лист для вводу показань і меню квартири на заголовку.
+  // Старі збірки без цього — як у 155-й (вкладки ховаються, «Скасувати» на панелі, перемикачі квартир — на сторінці)
+  var NATV = (function () { try { return APP && window.PeredaiNative && +window.PeredaiNative.v || 1; } catch (e) { return 1; } })();
   if (APP) document.documentElement.classList.add('in-app');
+  if (NATV >= 3) document.documentElement.classList.add('app-v3');
   function appPost(m) { if (!APP) return; try { APP.postMessage(m); } catch (e) { /* старий застосунок */ } }
   function appMirror() { if (!APP) return; clearTimeout(appMirror._t); appMirror._t = setTimeout(function () { var js = ''; try { js = window.localStorage.getItem(KEY) || ''; } catch (e) { js = JSON.stringify(S, jsonFix); } appPost({ t: 'state', s: js, at: Date.now() }); }, 1200); }
-  /** Нативна вкладка для маршруту: home | history | stats | prefs; '' — не міняти (екрани всередині розділу). */
+  /** Нативна вкладка для маршруту: home | history | stats | prefs; '' — не міняти (екрани всередині розділу).
+   *  156-а (HIG: «не перемикати вкладку самому»): запис історії відкривається там, де його натиснули — з «Історії» чи зі сторінки лічильника. */
   function appTab(r) {
     if (/^(home|heat|water-|elec$|gas$|waste$|places$|place$)/.test(r)) return 'home';
-    if (/^history/.test(r) || REC_RE.test(r)) return 'history';
+    if (/^history/.test(r)) return 'history';
     if (/^stats/.test(r)) return 'stats';
     if (/^prefs/.test(r)) return 'prefs';
     return '';
@@ -209,17 +214,80 @@
     if (/^(history|stats|prefs)$/.test(r)) { h.classList.add('app-dup'); return txt; }
     return /^(home|places)$/.test(r) ? '' : txt;
   }
+  // ---- 156-а: крок 3 плану навігації iOS (документ «iOS-приложение «передай»: навигация и юзабилити по правилам Apple»).
+  // Ввід і передача показань — листом знизу (UISheetPresentationController): той самий WKWebView переїжджає в лист, як між вкладками.
+  // Зліва — «Скасувати» (з введеними цифрами — питання, як «Скасувати й вийти») або «‹» на кроках майстра; справа — головна кнопка екрана
+  // («Зберегти», «Далі», «Перевірити»), її копія на сторінці схована; свайп униз = «Скасувати». Сайт у браузері не міняється.
+  var SHEET_RE = /^(wnew|enew|gnew|step|step-\d+|check|handover|photo)$/;
+  var APP_DIRTY = false;
+  /** Кнопки екрана для панелі листа: головна (одна в .wiz-actions, без «Скасувати»-посилань) і «назад» усередині майстра. */
+  function sheetEls() {
+    var main = document.getElementById('main'), o = { prim: null, back: null, box: null }; if (!main) return o;
+    var wa = main.querySelectorAll('.wiz-actions'), box = wa.length ? wa[wa.length - 1] : null;
+    if (box) {
+      var btns = [].slice.call(box.querySelectorAll('.btn')), prim = btns.filter(function (b) { return !b.classList.contains('sec'); }),
+        sec = btns.filter(function (b) { return b.classList.contains('sec'); }), back = box.querySelector('[data-act="step-back"],[data-act="wz-back"]');
+      // інші другорядні кнопки (окрім «Назад») — це вибір на сторінці, а не одна дія: такий ряд лишаємо як є
+      if (prim.length === 1 && sec.length === (back ? 1 : 0)) { o.prim = prim[0]; o.back = back; o.box = box; }
+    }
+    if (!o.back) o.back = main.querySelector('.wiz-top a.btn.ghost');
+    return o;
+  }
+  /** Чи є що втратити: людина друкувала в листі або в майстрі тепла вже є цифри. */
+  function appDirty() {
+    if (APP_DIRTY) return true;
+    var v = S.draft && S.draft.values;
+    return !!(v && /^(step|step-\d+|check)$/.test(routeName()) && Object.keys(v).some(function (k) { return v[k] !== '' && v[k] !== null && v[k] !== undefined; }));
+  }
+  /** Квартира: назва під заголовком і меню на ньому (сторінки лічильників, «Історія», «Статистика») — лише квартири, де цей вид є. */
+  var APP_PKIND = { heat: 'heat', 'water-hot': 'hot', 'water-cold': 'cold', elec: 'elec', gas: 'gas' };
+  function appPlaces(r) {
+    var ps = places(), cur = place(); if (ps.length < 2 || !cur || !/^(history|stats|heat|water-hot|water-cold|elec|gas)$/.test(r)) return [];
+    var k = APP_PKIND[r] || curView();
+    return ps.filter(function (p) {
+      if (p.id === cur.id) return true;
+      try { return withPlace(p.id, function () { return kinds().indexOf(k) >= 0; }); } catch (e) { return true; }
+    }).map(function (p) { return { id: p.id, n: placeLabel(p), on: p.id === cur.id }; });
+  }
   function appNative(view) {
     if (!APP) return;
     var r = routeName() || 'home', bare = !!(view && view.bare);
     if (view && view.route === 'start') r = 'start';   // перший запуск без адреси в рядку — показуємо вибір лічильників
-    var ttl = appTitle(r), up = appUp(r, view);
-    if (r !== APP_LAST.route || bare !== APP_LAST.bare || ttl !== APP_LAST.title || up !== APP_LAST.up) {
-      APP_LAST.route = r; APP_LAST.bare = bare; APP_LAST.title = ttl; APP_LAST.up = up;
-      appPost({ t: 'route', r: r, tab: appTab(r), bare: bare, on: !!S.onboarded, title: ttl, up: up, cancel: bare ? t('cancel') : '', back: t('back') });
+    var ttl = appTitle(r), up = appUp(r, view), sheet = NATV >= 3 && bare && S.onboarded && SHEET_RE.test(r);
+    var hc = document.documentElement.classList, m = { t: 'route', r: r, tab: appTab(r), bare: bare, on: !!S.onboarded, title: ttl, up: up, cancel: bare ? t('cancel') : '', back: t('back') };
+    if (sheet !== APP_LAST.sheet) { APP_DIRTY = false; APP_LAST.sheet = sheet; }
+    hc.toggle('in-sheet', sheet);
+    if (NATV >= 3) {
+      m.sheet = sheet; m.lb = ''; m.rb = ''; m.rbk = ''; m.sub = ''; m.pl = []; m.pm = { all: t('pv_back_all'), add: t('pl_add'), lbl: t('pl_switch') };
+      var cur = place(), multi = places().length > 1 && cur;
+      if (sheet) {
+        var e = sheetEls();
+        [].forEach.call(document.querySelectorAll('#main .app-mirror'), function (x) { x.classList.remove('app-mirror'); });
+        if (e.box) e.box.classList.add('app-mirror');
+        if (e.back) { m.lb = 'back'; m.up = up = '^'; } else m.lb = 'cancel';
+        // на панелі — коротко, як у застосунках iPhone: «Зберегти й підготувати передачу» → «Зберегти»
+        if (e.prim) { var pl_ = String(e.prim.textContent || '').replace(/\s+/g, ' ').trim(); m.rb = /save/.test(e.prim.getAttribute('data-key') || '') ? t('save') : pl_.length > 16 ? pl_.split(' ')[0] : pl_; m.rbk = 'act'; }
+        else if (r === 'handover') { m.rb = t('done'); m.rbk = 'close'; }
+        m.dirty = appDirty();
+        if (multi) m.sub = placeLabel(cur);
+      } else {
+        m.pl = appPlaces(r); if (m.pl.length < 2) m.pl = [];
+        if (multi && /^(history|stats|heat|water-hot|water-cold|elec|gas)$/.test(r)) m.sub = placeLabel(cur);   // плашки квартири на сторінці в v3 немає
+      }
+    }
+    APP_LAST.close = (view && view.closeTo) || (S.onboarded ? 'home' : '');
+    var sig = JSON.stringify(m);
+    if (sig !== APP_LAST.sig) {
+      APP_LAST.sig = sig; APP_LAST.route = r; APP_LAST.bare = bare; APP_LAST.title = ttl; APP_LAST.up = up;
+      appPost(m);
     }
     clearTimeout(appNative._t); appNative._t = setTimeout(appSched, 700);
   }
+  // людина друкує в листі — свайп униз уже не закриває його мовчки (застосунок спитає, як «Скасувати й вийти»)
+  if (APP) document.addEventListener('input', function (e) {
+    if (!APP_LAST.sheet || APP_DIRTY || !e.target || !e.target.closest || !e.target.closest('#main')) return;
+    APP_DIRTY = true; appPost({ t: 'dirty', on: true });
+  }, true);
   /** Строки передачі/оплати для нагадувань застосунку: кожна квартира × вид — до коли, чи вже передано. Тексти — тут (uk/ru), застосунок лише показує. */
   function appSched(force) {
     if (!APP) return;
@@ -242,7 +310,29 @@
     v: 1,
     go: function (r) { r = String(r || '').replace(/^#/, ''); if (!r) return; if (routeName() === r) render(); else location.hash = r; },
     /** 155-а: рідна кнопка «Назад» / «Скасувати» над екраном — куди сказав appUp ('<' — історія браузера). */
-    back: function () { var u = APP_LAST.up; if (u === '<') { if (history.length > 1) history.back(); else location.hash = 'history'; } else if (u) TeploHost.go(u); },
+    back: function () {
+      var u = APP_LAST.up;
+      if (u === '^') { var b = sheetEls().back; if (b) b.click(); else TeploHost.cancel(); }   // 156-а: крок майстра в листі
+      else if (u === '<') { if (history.length > 1) history.back(); else location.hash = 'history'; } else if (u) TeploHost.go(u);
+    },
+    /** 156-а: права кнопка листа — головна кнопка екрана («Зберегти», «Далі», «Перевірити»). */
+    act: function () { var p = sheetEls().prim; if (p && !p.disabled) p.click(); },
+    /** 156-а: «Скасувати» / свайп униз. Є введене — те саме питання, що «Скасувати й вийти»; немає — просто назад, звідки прийшли. */
+    cancel: function () {
+      var c = document.querySelector('#main [data-act="wiz-cancel"]');
+      if (c && appDirty()) { wizCancel(c.getAttribute('data-what') || 'heat'); return; }
+      TeploHost.close();
+    },
+    /** 156-а: «Готово» на передачі — закрити лист. */
+    close: function () { go(APP_LAST.close || 'home'); },
+    /** 156-а: меню квартири на заголовку. На сторінці лічильника — той самий вид у вибраній квартирі (немає — головна). */
+    place: function (id) {
+      id = String(id || ''); if (!place(id)) return;
+      var r = routeName() || 'home', k = APP_PKIND[r];
+      switchPlace(id);
+      if (k && kinds().indexOf(k) < 0) { go('home'); return; }
+      render();
+    },
     /** 155-а: «Відгук» у застосунку — кнопкою на панелі «Налаштувань» (плаваючої кнопки там немає). */
     feedback: function () { FB.open = true; FB.err = ''; render(true); setTimeout(function () { var x = document.getElementById('fb-text'); if (x) x.focus(); }, 0); },
     sched: function () { appSched(true); },
@@ -8867,7 +8957,7 @@
   }
   /** «Скасувати»: бросить ввод целиком — черновик тепла, фото на распознавании, ввод воды — и выйти на главную. */
   function wizCancel(what) {
-    if (!confirm(t(what === 'water' || what === 'elec' || what === 'gas' ? 'wz_cancel_q_w' : 'wz_cancel_q'))) return;
+    if (!confirm(t(what === 'water' ? 'wz_cancel_q_w' : what === 'elec' || what === 'gas' ? 'wz_cancel_q_s' : 'wz_cancel_q'))) return;   // 156-а: світло й газ — не «введення води»
     if (what === 'water') { WN.gen = -1; WN = wnFresh(WN.kind); go('home'); return; }
     if (what === 'elec' || what === 'gas') { EN = enFresh(what); go('home'); return; }
     PH.gen = -1; if (PH.ctl) try { PH.ctl.abort(); } catch (e) { /* нет */ }

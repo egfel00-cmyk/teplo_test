@@ -12,6 +12,8 @@ final class WebHost: NSObject {
     /// Маршрут сайту, вкладка (home|history|stats|prefs|''), екран вводу (без вкладок), чи вже є квартири.
     var onRoute: ((_ route: SiteRoute) -> Void)?
     var onPopup: ((UIViewController) -> Void)?
+    /// 156-а: людина почала друкувати в листі вводу — свайп униз уже питає, а не закриває мовчки.
+    var onDirty: ((Bool) -> Void)?
 
     private(set) var loaded = false
     private var queue: [String] = []
@@ -36,6 +38,8 @@ final class WebHost: NSObject {
         cfg.applicationNameForUserAgent = "Mobile/15E148 PeredaiApp/\(AppConfig.version)"
         cfg.defaultWebpagePreferences.preferredContentMode = .mobile
         let ucc = WKUserContentController()
+        // 156-а: що вміє застосунок — сайт читає до свого старту (v3: лист для вводу показань, меню квартири на заголовку)
+        ucc.addUserScript(WKUserScript(source: "window.PeredaiNative={v:3,sheet:1,pmenu:1};", injectionTime: .atDocumentStart, forMainFrameOnly: true))
         cfg.userContentController = ucc
         webView = WKWebView(frame: .zero, configuration: cfg)
         super.init()
@@ -114,6 +118,18 @@ final class WebHost: NSObject {
     /// 155-а: рідна кнопка «Назад» / «Скасувати» на панелі — куди скаже сайт (TeploHost.back).
     func back() { run("window.TeploHost && window.TeploHost.back && window.TeploHost.back()") }
 
+    /// 156-а: права кнопка листа — головна кнопка екрана сайту («Зберегти», «Далі», «Перевірити»).
+    func act() { run("window.TeploHost && window.TeploHost.act && window.TeploHost.act()") }
+
+    /// 156-а: «Скасувати» / свайп униз листа — є введене, сайт спитає (як «Скасувати й вийти»), інакше назад, звідки прийшли.
+    func cancel() { run("window.TeploHost && window.TeploHost.cancel && window.TeploHost.cancel()") }
+
+    /// 156-а: «Готово» листа передачі.
+    func close() { run("window.TeploHost && window.TeploHost.close && window.TeploHost.close()") }
+
+    /// 156-а: меню квартири на заголовку.
+    func place(_ id: String) { run("window.TeploHost && window.TeploHost.place && window.TeploHost.place(\(Self.jsString(id)))") }
+
     /// 155-а: «Відгук» — кнопкою на панелі «Налаштувань» (плаваючу кнопку сайту застосунок ховає).
     func feedback() { run("window.TeploHost && window.TeploHost.feedback && window.TeploHost.feedback()") }
 
@@ -145,10 +161,7 @@ final class WebHost: NSObject {
         guard let m = body as? [String: Any], let t = m["t"] as? String else { return }
         switch t {
         case "route":
-            let r = m["r"] as? String ?? ""
-            onRoute?(SiteRoute(route: r, tab: m["tab"] as? String ?? "", bare: m["bare"] as? Bool ?? false,
-                               title: m["title"] as? String ?? "", up: m["up"] as? String ?? "",
-                               cancel: m["cancel"] as? String ?? "", back: m["back"] as? String ?? ""))
+            onRoute?(SiteRoute(m))
             if !restoreChecked {
                 restoreChecked = true
                 let on = m["on"] as? Bool ?? false
@@ -169,6 +182,8 @@ final class WebHost: NSObject {
             let at = Date(timeIntervalSince1970: ms / 1000)
             StateStore.shared.save(s, at: at)
             CloudBackup.shared.scheduleUpload(json: s, at: at)
+        case "dirty":
+            onDirty?(m["on"] as? Bool ?? false)
         case "haptic":
             UIImpactFeedbackGenerator(style: .light).impactOccurred()
         case "apple":
@@ -395,7 +410,10 @@ final class OfflineView: UIView {
 }
 
 /// 155-а: що сайт сказав про екран — вкладка, екран вводу, назва для рідної панелі, куди «Назад» ('' — корінь вкладки).
+/// 156-а: лист (sheet) для вводу й передачі показань — ліва кнопка (lb: cancel | back), права (rb — підпис, rbk: act | close), чи є введене;
+/// квартира — назва під заголовком (sub) і меню на ньому (places, тексти pmAll / pmAdd).
 struct SiteRoute {
+    struct Place { let id: String; let name: String; let on: Bool }
     let route: String
     let tab: String
     let bare: Bool
@@ -403,4 +421,28 @@ struct SiteRoute {
     let up: String
     let cancel: String
     let back: String
+    let sheet: Bool
+    let lb: String
+    let rb: String
+    let rbk: String
+    let dirty: Bool
+    let sub: String
+    let places: [Place]
+    let pmAll: String
+    let pmAdd: String
+    let pmLbl: String
+
+    init(_ m: [String: Any]) {
+        func s(_ k: String) -> String { m[k] as? String ?? "" }
+        route = s("r"); tab = s("tab"); bare = m["bare"] as? Bool ?? false
+        title = s("title"); up = s("up"); cancel = s("cancel"); back = s("back")
+        sheet = m["sheet"] as? Bool ?? false
+        lb = s("lb"); rb = s("rb"); rbk = s("rbk"); dirty = m["dirty"] as? Bool ?? false; sub = s("sub")
+        places = (m["pl"] as? [[String: Any]] ?? []).compactMap { p in
+            guard let id = p["id"] as? String, let n = p["n"] as? String else { return nil }
+            return Place(id: id, name: n, on: p["on"] as? Bool ?? false)
+        }
+        let pm = m["pm"] as? [String: Any] ?? [:]
+        pmAll = pm["all"] as? String ?? ""; pmAdd = pm["add"] as? String ?? ""; pmLbl = pm["lbl"] as? String ?? ""
+    }
 }

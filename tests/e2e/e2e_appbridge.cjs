@@ -100,7 +100,56 @@ const UA = 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/6
     !!(await F.p.$('.aw-kinds')) && /Вже маю акаунт/.test(await F.p.textContent('[data-key=aw-login]')) && lr.up === '', [await F.p.evaluate(() => location.hash), lr]);
   await F.p.click('[data-key=aw-login]'); await F.p.waitForTimeout(500);
   ok('«Вже маю акаунт» → вхід', (await F.p.evaluate(() => location.hash)) === '#login');
-  ok('без помилок JS', !A.errs.length && !C.errs.length && !W.errs.length && !N.errs.length && !F.errs.length, A.errs.concat(C.errs, W.errs, N.errs, F.errs));
+  // 156-а (крок 3 плану навігації iOS): застосунок v3 — ввід показань листом, квартира в заголовку, запис історії — без зміни вкладки
+  const mk3 = async () => { const x = await mk(UA); await x.ctx.addInitScript(() => { window.PeredaiNative = { v: 3, sheet: 1, pmenu: 1 }; }); return x; };
+  const V3 = await mk3(); const last = async (p) => { const a = await msgs(p, 'route'); return a[a.length - 1] || {}; };
+  await seed(V3.p, demo({ elec: true, gas: true, second: true, garage: 'own1' }), 'home');
+  ok('v3: клас app-v3; головна — не лист, без меню квартир', await V3.p.evaluate(() => document.documentElement.classList.contains('app-v3')) && (await last(V3.p)).sheet === false && !(await last(V3.p)).pl.length, await last(V3.p));
+  await V3.p.goto(B + '#elec'); await V3.p.waitForTimeout(900); lr = await last(V3.p);
+  ok('v3 світло: меню квартир зі світлом (основна ✓, «Гараж»; «Мамина» без світла — ні), назва квартири під заголовком, тексти меню',
+    lr.pl.length === 2 && lr.pl.some(x => x.id === 'main' && x.on) && lr.pl.some(x => x.id === 'gar' && !x.on) && !lr.pl.some(x => x.id === 'p2') && !!lr.sub && lr.pm.all === 'Усі квартири' && lr.pm.add === 'Додати квартиру', lr);
+  ok('v3 світло: плашки квартири на сторінці немає (вона в заголовку)', await V3.p.$$eval('.place-bar', a => a.every(e => getComputedStyle(e).display === 'none')));
+  await V3.p.evaluate(() => window.TeploHost.place('gar')); await V3.p.waitForTimeout(700); lr = await last(V3.p);
+  ok('v3 TeploHost.place: «Гараж» — та сама сторінка світла, квартира в заголовку змінилась', (await V3.p.evaluate(() => location.hash)) === '#elec' && lr.r === 'elec' && lr.pl.some(x => x.id === 'gar' && x.on), lr);
+  await V3.p.evaluate(() => window.TeploHost.place('main')); await V3.p.waitForTimeout(500);
+  await V3.p.goto(B + '#water-cold'); await V3.p.waitForTimeout(800); lr = await last(V3.p);
+  ok('v3 холодна вода: у меню обидві квартири з холодною', lr.pl.length === 2 && lr.pl.some(x => x.id === 'p2'), lr);
+  await V3.p.evaluate(() => window.TeploHost.place('p2')); await V3.p.waitForTimeout(600);
+  ok('v3: «Мамина» — та сама сторінка води', (await V3.p.evaluate(() => location.hash)) === '#water-cold' && (await last(V3.p)).pl.some(x => x.id === 'p2' && x.on));
+  await V3.p.evaluate(() => window.TeploHost.place('main')); await V3.p.waitForTimeout(500);
+  // ввід світла — лист: «Скасувати» зліва, «Зберегти» справа (копія на сторінці схована, Enter працює), «Скасувати й вийти» схована
+  await V3.p.goto(B + '#elec'); await V3.p.waitForTimeout(500); await V3.p.goto(B + '#enew'); await V3.p.waitForTimeout(900); lr = await last(V3.p);
+  ok('v3 enew: лист, зліва «Скасувати», справа головна кнопка сторінки, не «брудний»', lr.sheet === true && lr.lb === 'cancel' && lr.rbk === 'act' && lr.rb === 'Зберегти' && lr.dirty === false && lr.tab === '', lr);
+  ok('v3 enew: клас in-sheet; копія головної кнопки й «Скасувати й вийти» сховані, плашка квартири — теж',
+    await V3.p.evaluate(() => { const h = document.documentElement.classList.contains('in-sheet'), w = document.querySelector('.wiz-actions.app-mirror'), c = document.querySelector('.wiz-cancel');
+      return h && w && w.getBoundingClientRect().width <= 1 && (!c || getComputedStyle(c).display === 'none') && [...document.querySelectorAll('.place-bar')].every(e => getComputedStyle(e).display === 'none'); }));
+  await V3.p.evaluate(() => { window.__msgs.length = 0; });
+  const inp = await V3.p.$('#main input[inputmode], #main input[type=text], #main input[type=number]');
+  if (inp) await inp.type('1'); await V3.p.waitForTimeout(300);
+  ok('v3 enew: людина друкує — «dirty» застосунку (свайп униз уже питає)', (await msgs(V3.p, 'dirty')).some(m => m.on === true));
+  let asked = 0; V3.p.once('dialog', d => { asked++; d.dismiss(); });
+  await V3.p.evaluate(() => window.TeploHost.cancel()); await V3.p.waitForTimeout(500);
+  ok('v3 «Скасувати» з цифрами: питання (світло — не «води»); «ні» — лишаємось у листі', asked === 1 && (await V3.p.evaluate(() => location.hash)) === '#enew');
+  let qtext = ''; V3.p.once('dialog', d => { qtext = d.message(); d.accept(); });
+  await V3.p.evaluate(() => window.TeploHost.cancel()); await V3.p.waitForTimeout(700); lr = await last(V3.p);
+  ok('v3 «Скасувати» → «так»: лист закрито (маршрут не лист)', !/води/.test(qtext) && /показань/.test(qtext) && lr.sheet === false && (await V3.p.evaluate(() => location.hash)) !== '#enew', [qtext, lr]);
+  await V3.p.goto(B + '#enew'); await V3.p.waitForTimeout(700);
+  await V3.p.evaluate(() => window.TeploHost.cancel()); await V3.p.waitForTimeout(600);
+  ok('v3 «Скасувати» без цифр — без питання, назад', (await V3.p.evaluate(() => location.hash)) !== '#enew' && (await last(V3.p)).sheet === false);
+  // майстер тепла: крок 1 — «Скасувати» і «Далі»; крок 2 — «‹» (TeploHost.back → крок назад)
+  await V3.p.goto(B + '#step-0'); await V3.p.waitForTimeout(800); lr = await last(V3.p);
+  ok('v3 тепло крок 1: лист, «Скасувати», справа «Далі»', lr.sheet === true && lr.lb === 'cancel' && lr.rb === 'Далі', lr);
+  await V3.p.evaluate(() => window.TeploHost.act()); await V3.p.waitForTimeout(800); lr = await last(V3.p);
+  ok('v3 TeploHost.act() → крок 2; зліва «‹» (крок назад), up = ^', (await V3.p.evaluate(() => location.hash)) === '#step-1' && lr.sheet === true && lr.lb === 'back' && lr.up === '^', lr);
+  await V3.p.evaluate(() => window.TeploHost.back()); await V3.p.waitForTimeout(700);
+  ok('v3 TeploHost.back() на кроці 2 → крок 1, лист той самий', (await V3.p.evaluate(() => location.hash)) === '#step-0' && (await last(V3.p)).sheet === true);
+  // запис історії — у тій вкладці, де натиснули (раніше перекидало в «Історію»)
+  await V3.p.goto(B + '#erec-m20261101'); await V3.p.waitForTimeout(700); lr = await last(V3.p);
+  ok('v3 запис історії: вкладку не міняти (tab = \'\'), «‹» — звідки прийшли', lr.tab === '' && lr.up === '<', lr);
+  // стара збірка застосунку (без PeredaiNative) — як у 155-й: листа немає
+  await N.p.goto(B + '#enew'); await N.p.waitForTimeout(700); rt = await msgs(N.p, 'route'); lr = rt[rt.length - 1];
+  ok('стара збірка: enew — без листа (sheet немає), без in-sheet', lr.sheet === undefined && !(await N.p.evaluate(() => document.documentElement.classList.contains('in-sheet'))), lr);
+  ok('без помилок JS', !A.errs.length && !C.errs.length && !W.errs.length && !N.errs.length && !F.errs.length && !V3.errs.length, A.errs.concat(C.errs, W.errs, N.errs, F.errs, V3.errs));
   await b.close();
   console.log(`\n${pass} OK, ${fail} FAIL`); process.exit(fail ? 1 : 0);
 })();

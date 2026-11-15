@@ -2515,6 +2515,12 @@ details.mypay[open] > summary .mypay-amt, details.mypay[open] > summary .mypay-s
   .in-app .main:not(.bare), .in-app body:has(.fab) .main:not(.bare) { padding-bottom: calc(var(--tap) + 24px); }
   .in-app .main { padding-top: var(--sp-3); }
 }
+/* 156-а (крок 3 плану навігації iOS): у застосунку v3 квартира — у заголовку (назва під ним і меню), не плашкою й кнопками на сторінці;
+   у листі вводу «Скасувати» / «‹» і головна кнопка — на панелі листа, тож їхні копії на сторінці зайві. Головну ховаємо візуально, а не display:none —
+   Enter на клавіатурі й далі зберігає форму. */
+.app-v3 .place-sw, .app-v3 .place-bar:not(.compact), .in-sheet .place-bar.compact, .in-sheet .wiz-cancel, .in-sheet .wiz-top:has(> a.btn.ghost:first-child) { display: none; }
+.in-sheet .app-mirror { position: absolute !important; width: 1px; height: 1px; margin: 0; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.in-sheet .main.bare { padding-bottom: var(--sp-5); }
 /* 154-а: «Видалити акаунт» — тихе посилання під «Вийти», колір небезпеки лише в тексті */
 .acct-del { margin: 16px 0 0; }
 .danger-link { color: var(--c-bad); }
