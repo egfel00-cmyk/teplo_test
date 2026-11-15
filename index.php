@@ -88,7 +88,7 @@ if (preg_match('~^/r/([a-z0-9-]{4,64})/?$~', $path, $rm)) {
 }
 
 // 149-я: сторінки для пошуку «Як зняти показання <модель>» (uk + ru) — сервером, без скриптів (app/seo.php, дані — tools_seo.cjs)
-if (preg_match('~^/(ru/)?(yak-znyaty-pokaznannya|kak-snyat-pokazaniya|kudy-peredaty|kuda-peredat)(/|$)~', $path)) {
+if (preg_match('~^/(ru/)?(yak-znyaty-pokaznannya|kak-snyat-pokazaniya|kudy-peredaty|kuda-peredat|postachalnyky|postavshchiki)(/|$)~', $path)) {   // 152-а: + постачальники
   require_once __DIR__ . '/app/core.php'; require_once __DIR__ . '/app/providers.php'; require_once __DIR__ . '/app/seo.php';
   $sm = Seo::match($path); $sh = preg_replace('/[^A-Za-z0-9.:-]/', '', (string)($_SERVER['HTTP_HOST'] ?? 'localhost'));
   $html = $sm ? Seo::render($sm[0], $sm[1], $base, (preg_match('/^(localhost|127\.0\.0\.1)(:\d+)?$/', $sh) ? 'http' : 'https') . '://' . $sh . $base . '/', $sm[2]) : null;

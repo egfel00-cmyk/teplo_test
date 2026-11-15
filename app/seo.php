@@ -10,15 +10,21 @@ defined('TEPLO') || exit;
 
 final class Seo {
   public const UK = '/yak-znyaty-pokaznannya', RU = '/ru/kak-snyat-pokazaniya', HUK = '/kudy-peredaty', HRU = '/ru/kuda-peredat';
+  // 152-а (план конкурентів, п. 7): сторінки постачальників під запити «<постачальник> передати показання»
+  public const PUK = '/postachalnyky', PRU = '/ru/postavshchiki';
   private static ?array $data = null;
 
   public static function data(): array {
     if (self::$data === null) { $j = json_decode((string)@file_get_contents(__DIR__ . '/data/seo/models.json'), true); self::$data = is_array($j) ? $j : ['models' => []]; }
     return self::$data;
   }
-  /** Адреса → [lang, slug|'', 'm'|'h'] або null. */
+  /** Адреса → [lang, slug|'', 'm'|'h'|'p'] або null. */
   public static function match(string $path): ?array {
     $p = rtrim($path, '/');
+    foreach (['uk' => self::PUK, 'ru' => self::PRU] as $l => $pre) {
+      if ($p === $pre) return [$l, '', 'p'];
+      if (preg_match('~^' . preg_quote($pre, '~') . '/([a-z0-9-]{2,70})$~', $p, $m)) return [$l, $m[1], 'p'];
+    }
     foreach (['uk' => self::HUK, 'ru' => self::HRU] as $l => $pre) {
       if ($p === $pre) return [$l, '', 'h'];
       if (preg_match('~^' . preg_quote($pre, '~') . '/([a-z0-9-]{2,60})$~', $p, $m)) return [$l, $m[1], 'h'];
@@ -36,7 +42,10 @@ final class Seo {
   public static function pairs(): array {
     $o = [[self::url('uk'), self::url('ru')]];
     foreach (self::data()['models'] ?? [] as $m) $o[] = [self::url('uk', $m['slug']), self::url('ru', $m['slug'])];
-    if (class_exists('Providers')) { $o[] = [self::HUK, self::HRU]; foreach (self::hroms() as $sl => $x) $o[] = [self::HUK . '/' . $sl, self::HRU . '/' . $sl]; }
+    if (class_exists('Providers')) {
+      $o[] = [self::HUK, self::HRU]; foreach (self::hroms() as $sl => $x) $o[] = [self::HUK . '/' . $sl, self::HRU . '/' . $sl];
+      $o[] = [self::PUK, self::PRU]; foreach (self::provs() as $sl => $x) $o[] = [self::PUK . '/' . $sl, self::PRU . '/' . $sl];
+    }
     return $o;
   }
 
@@ -86,20 +95,51 @@ final class Seo {
     $parts = preg_split('/(?<=[.!?])\s+/u', trim($t)) ?: [];
     return implode(' ', array_filter($parts, fn($x) => !preg_match('/натисн|нажм|впиш|застосунк|приложени|«У мене|«У меня/ui', $x)));
   }
-  private static function kindCard(string $k, array $o, string $hid, bool $ru): string {
+  /** 152-а: «як передати», коли в довіднику тексту немає, а застосунок знає канали з коду (Харківобленерго — web/src/elec.js, i18n ed_*, довідка h-elec;
+   *  газ Нафтогазу — «Куб», 0 800 303 104, SMS 4647 до Gs.SMS_UNTIL; Газмережі — бот і кабінет, довідка h-gas). Дані довідника — головніші ($o + def). */
+  public const GAS_SMS_UNTIL = '2026-11-27';
+  private static function defHow(string $k, array $o): array {
+    if (!empty($o['how'])) return [];
+    if ($k === 'elec' && trim((string)($o['net'] ?? '')) === 'АТ «Харківобленерго»') return [
+      'how' => 'Показання світла приймає Харківобленерго в останні 2 дні місяця і з 1 по 3 число наступного (подані 1–3 числа зараховуються на 1-ше): ХарківОбленергоБот у Telegram, онлайн-форма на сайті Харківобленерго, SMS на 4300, застосунок «Харенерго» (iPhone і Android), Viber-бот або кол-центр Харківобленерго. Потрібен особовий рахунок (ЄР, 12 цифр) із платіжки Харківенергозбуту; у дво- й тризонних лічильників — кожну зону окремо, не суму.',
+      'how_ru' => 'Показания света принимает Харьковоблэнерго в последние 2 дня месяца и с 1 по 3 число следующего (поданные 1–3 числа засчитываются на 1-е): ХарьковОблэнергоБот в Telegram, онлайн-форма на сайте Харьковоблэнерго, SMS на 4300, приложение «Харэнерго» (iPhone и Android), Viber-бот или колл-центр Харьковоблэнерго. Нужен лицевой счёт (ЕР, 12 цифр) из платёжки Харьковэнергосбыта; у двух- и трёхзонных счётчиков — каждую зону отдельно, не сумму.',
+      'site' => 'https://oblenergo.kharkiv.ua/uk/transmissionofmeterreadings', 'bot' => 'https://t.me/Kooz2bot',
+      'phones' => [['+380573424413', '(057) 342-44-13'], ['+380672340413', '(067) 234-04-13'], ['+380500540413', '(050) 054-04-13']]];
+    if ($k === 'gas' && str_contains((string)($o['org'] ?? ''), 'Нафтогаз')) {
+      $sms = date('Y-m-d') <= self::GAS_SMS_UNTIL; $gm = str_starts_with(trim((string)($o['grm'] ?? '')), 'Газмережі');
+      return ['how' => 'Показання газу — станом на 1-ше число: застосунок Нафтогазу «Куб» або безкоштовний дзвінок на 0 800 303 104 (особовий рахунок Нафтогазу — 9 цифр із платіжки)' .
+          ($sms ? '; SMS на 4647 («рахунок пробіл показання») — до 27 листопада 2026' : '') . ($gm ? '; бот Газмереж у Telegram @mygrmu_bot, кабінет Газмереж my.grmu.com.ua' : '') . '. Записують чорні цифри — цілі кубометри.',
+        'how_ru' => 'Показания газа — на 1-е число: приложение Нафтогаза «Куб» или бесплатный звонок на 0 800 303 104 (лицевой счёт Нафтогаза — 9 цифр из платёжки)' .
+          ($sms ? '; SMS на 4647 («счёт пробел показания») — до 27 ноября 2026' : '') . ($gm ? '; бот Газсетей в Telegram @mygrmu_bot, кабинет Газсетей my.grmu.com.ua' : '') . '. Записывают чёрные цифры — целые кубометры.'] +
+        ($gm ? ['cab' => 'https://my.grmu.com.ua/', 'bot' => 'https://t.me/mygrmu_bot'] : []) + ['phones' => [['0800303104', '0 800 303 104']]];
+    }
+    return [];
+  }
+  /** Сортування за українською абеткою (і, ї, є, ґ — на своїх місцях). */
+  public static function ukKey(string $s): string {
+    static $ab = null; $ab ??= array_flip(preg_split('//u', 'абвгґдеєжзиіїйклмнопрстуфхцчшщьюя', -1, PREG_SPLIT_NO_EMPTY));
+    $o = ''; foreach (preg_split('//u', mb_strtolower($s), -1, PREG_SPLIT_NO_EMPTY) as $c) $o .= isset($ab[$c]) ? chr(65 + $ab[$c]) : ($c === ' ' || $c === '-' ? ' ' : (preg_match('/[a-z0-9]/', $c) ? $c : ''));
+    return $o;
+  }
+  /** $base — SITE_BASE для посилань на сторінки постачальників (null — без посилань), $self — назва постачальника цієї сторінки (на себе не посилаємось). */
+  private static function kindCard(string $k, array $o, string $hid, bool $ru, ?string $base = null, string $self = ''): string {
     $e = [self::class, 'e']; $L = fn($f) => (string)($ru && !empty($o[$f . '_ru']) ? $o[$f . '_ru'] : ($o[$f] ?? ''));
     $org = trim((string)($o['org'] ?? '')); if ($org === '') return '';
+    $a = fn(string $n) => $base === null || $n === $self ? $e($n) : self::plink($n, $ru, $base);
     $rows = [];
-    if ($k === 'elec' && !empty($o['net'])) $rows[] = ($ru ? 'Оператор сети: ' : 'Оператор мережі: ') . $o['net'];
-    if ($k === 'gas' && !empty($o['grm'])) $rows[] = ($ru ? 'Доставка (оператор сети): ' : 'Доставка (оператор мережі): ') . $o['grm'] . (!empty($o['dist']) ? ' — ' . self::money($o['dist']) . ($ru ? ' грн за 1 м³ годовой мощности' : ' грн за 1 м³ річної потужності') . (!empty($o['distFrom']) ? ($ru ? ' с ' : ' з ') . date('d.m.Y', strtotime((string)$o['distFrom'])) : '') : '');
+    if ($k === 'elec' && !empty($o['net'])) $rows[] = $e($ru ? 'Оператор сети: ' : 'Оператор мережі: ') . $a((string)$o['net']);
+    if ($k === 'gas' && !empty($o['grm'])) $rows[] = $e($ru ? 'Доставка (оператор сети): ' : 'Доставка (оператор мережі): ') . $a((string)$o['grm']) . $e((!empty($o['dist']) ? ' — ' . self::money($o['dist']) . ($ru ? ' грн за 1 м³ годовой мощности' : ' грн за 1 м³ річної потужності') . (!empty($o['distFrom']) ? ($ru ? ' с ' : ' з ') . date('d.m.Y', strtotime((string)$o['distFrom'])) : '') : ''));
     $from = !empty($o['from']) ? ($ru ? ', с ' : ', з ') . date('d.m.Y', strtotime((string)$o['from'])) : '';
-    if ($k === 'water' && !empty($o['supply'])) $rows[] = ($ru ? 'Тариф: вода ' : 'Тариф: вода ') . self::money($o['supply']) . (!empty($o['drain']) ? ($ru ? ', стоки ' : ', водовідведення ') . self::money($o['drain']) : '') . ($ru ? ' грн за м³' : ' грн за м³') . $from;
-    if ($k === 'heat' && !empty($o['price'])) $rows[] = ($ru ? 'Тариф: ' : 'Тариф: ') . self::money($o['price']) . ($ru ? ' грн за Гкал' : ' грн за Гкал') . $from;
-    if ($k === 'waste' && !empty($o['price'])) $rows[] = ($ru ? 'Плата: ' : 'Плата: ') . self::money($o['price']) . ($ru ? ' грн в месяц' : ' грн на місяць') . (!empty($o['priv']) ? ($ru ? ' (частный сектор — ' : ' (приватний сектор — ') . self::money($o['priv']) . ')' : '') . $from;
+    $tx = [];
+    if ($k === 'water' && !empty($o['supply'])) $tx[] = ($ru ? 'Тариф: вода ' : 'Тариф: вода ') . self::money($o['supply']) . (!empty($o['drain']) ? ($ru ? ', стоки ' : ', водовідведення ') . self::money($o['drain']) : '') . ($ru ? ' грн за м³' : ' грн за м³') . $from;
+    if ($k === 'heat' && !empty($o['price'])) $tx[] = ($ru ? 'Тариф: ' : 'Тариф: ') . self::money($o['price']) . ($ru ? ' грн за Гкал' : ' грн за Гкал') . $from;
+    if ($k === 'waste' && !empty($o['price'])) $tx[] = ($ru ? 'Плата: ' : 'Плата: ') . self::money($o['price']) . ($ru ? ' грн в месяц' : ' грн на місяць') . (!empty($o['priv']) ? ($ru ? ' (частный сектор — ' : ' (приватний сектор — ') . self::money($o['priv']) . ')' : '') . $from;
     $via = (string)($o['via'] ?? '');
     $w = self::win(isset($o['win']) && is_array($o['win']) ? $o['win'] : ($via === 'htm' ? [5, 25] : ($via === 'hvk' ? [1, 20] : ($k === 'gas' && empty($o['how']) ? [1, 5] : null))), isset($o['till']) ? (int)$o['till'] : null, $ru);
-    if ($w !== '' && $k !== 'waste') $rows[] = ($ru ? 'Показания: ' : 'Показання: ') . $w;
-    $h = '<section class="card kc"><h2>' . $e(self::KN[$k][$ru ? 1 : 0]) . '</h2><p class="org">' . $e($org) . '</p>' . implode('', array_map(fn($r) => '<p class="row">' . $e($r) . '</p>', $rows));
+    if ($w !== '' && $k !== 'waste') $tx[] = ($ru ? 'Показания: ' : 'Показання: ') . $w;
+    foreach ($tx as $t) $rows[] = $e($t);
+    $o += self::defHow($k, $o); $L = fn($f) => (string)($ru && !empty($o[$f . '_ru']) ? $o[$f . '_ru'] : ($o[$f] ?? ''));
+    $h = '<section class="card kc"><h2>' . $e(self::KN[$k][$ru ? 1 : 0]) . '</h2><p class="org">' . $a($org) . '</p>' . implode('', array_map(fn($r) => '<p class="row">' . $r . '</p>', $rows));
     if ($via !== '') $h .= '<p><span class="pill verified">' . ($ru ? 'передай отправит показания сам — с вашего согласия' : 'передай відправить показання сам — з вашої згоди') . '</span></p>';
     foreach (['how', 'pay'] as $f) { $tx = $L($f); if ($tx !== '') $h .= '<p>' . $e($tx) . '</p>'; }
     $nt = self::clean($L('note')); if ($nt !== '' && $k !== 'elec') $h .= '<p class="muted">' . $e($nt) . '</p>';
@@ -148,9 +188,9 @@ final class Seo {
       $h .= '<nav class="bc"><a href="' . $e($base) . '/">передай</a> › <a href="' . $e($idx . '#' . $r) . '">' . ($ru ? 'Куда передать' : 'Куди передати') . '</a></nav><h1>' . $e($h1) . '</h1>' .
         '<p class="sub">' . $e(($hn !== '' ? $hn . ($ru ? ' громада' : ' громада') . ', ' : '') . $rg) . '</p>' .
         '<p>' . ($ru ? 'Для адресов громады. В отдельных сёлах поставщик бывает другой — сверьте с платёжкой.' : 'Для адрес громади. В окремих селах постачальник буває інший — звірте з платіжкою.') . '</p>';
-      foreach (['elec', 'water', 'gas', 'heat', 'waste'] as $k) if (!empty($kd[$k]) && is_array($kd[$k])) $h .= self::kindCard($k, $kd[$k], $hid, $ru);
+      foreach (['elec', 'water', 'gas', 'heat', 'waste'] as $k) if (!empty($kd[$k]) && is_array($kd[$k])) $h .= self::kindCard($k, $kd[$k], $hid, $ru, $base);
       if (!empty($kd['heat']['org'])) $h .= '<p><a href="' . $e($base . self::url($lang)) . '">' . ($ru ? 'Как снять показания теплосчётчика — по моделям' : 'Як зняти показання теплолічильника — за моделями') . '</a></p>';
-      $h .= $cta . '<p class="muted"><a href="' . $e($idx . '#' . $r) . '">' . ($ru ? 'Другие громады — ' : 'Інші громади — ') . $e($rg) . '</a></p>';
+      $h .= $cta . '<p class="muted"><a href="' . $e($idx . '#' . $r) . '">' . ($ru ? 'Другие громады — ' : 'Інші громади — ') . $e($rg) . '</a> · <a href="' . $e($base . ($ru ? self::PRU : self::PUK)) . '">' . ($ru ? 'Все поставщики' : 'Усі постачальники') . '</a></p>';
     } else {
       $h .= '<nav class="bc"><a href="' . $e($base) . '/">передай</a></nav><h1>' . $e($h1) . '</h1><p class="sub">' . $e($desc) . '</p>';
       $by = []; foreach ($hs as $sl => $y) $by[$y[1]][$sl] = $y;
@@ -158,10 +198,175 @@ final class Seo {
         if (empty($by[$r])) continue; $l = $by[$r]; uasort($l, fn($a, $b) => strcmp(mb_strtolower($a[2]), mb_strtolower($b[2])));
         $h .= '<section id="' . $r . '"><h2>' . $e(self::RG[$r][$ru ? 1 : 0]) . '</h2><ul class="ml">' . implode('', array_map(fn($sl, $y) => '<li><a href="' . $e($idx . '/' . $sl) . '">' . $e($y[2]) . '</a><span>' . $e($y[3] !== '' ? $y[3] . ' громада' : '') . '</span></li>', array_keys($l), $l)) . '</ul></section>';
       }
-      $h .= $cta;
+      $h .= $cta . '<p class="muted"><a href="' . $e($base . ($ru ? self::PRU : self::PUK)) . '">' . ($ru ? 'Поставщики — как передать показания' : 'Постачальники — як передати показання') . '</a></p>';
     }
     return $h . '</main><footer><div class="w">' . self::wordmark() . '<p>' . ($ru ? 'Данные — из решений местных советов, сайтов и договоров поставщиков; у каждой строки — источник. Нашли ошибку — напишите через «Отзыв» в приложении.'
       : 'Дані — з рішень місцевих рад, сайтів і договорів постачальників; у кожного рядка — джерело. Знайшли помилку — напишіть через «Відгук» у застосунку.') . '</p></div></footer></body></html>';
+  }
+
+  // ---------------- постачальники: «<постачальник> — як передати показання» (152-а) ----------------
+  // Одна сторінка — одна організація з довідника всіх областей (постачальники світла, газу, води, тепла, вивозу сміття) та оператори мереж
+  // (обленерго — net, газорозподільні — grm): де працює (громади з посиланнями), як і коли передати показання, тарифи, сайт і телефони —
+  // ті самі картки, що на сторінках громад; різні умови в різних громадах (Нафтогаз — свої ГРМ і тарифи доставки) — окремими картками.
+  private static ?array $pv = null; private static array $pvn = [];
+  private const PR = ['elec' => ['Постачальник світла', 'Поставщик света'], 'net' => ['Оператор системи розподілу — світло', 'Оператор системы распределения — свет'],
+    'gas' => ['Постачальник газу', 'Поставщик газа'], 'grm' => ['Оператор газорозподільної мережі', 'Оператор газораспределительной сети'],
+    'water' => ['Водопостачання', 'Водоснабжение'], 'heat' => ['Теплопостачання', 'Теплоснабжение'], 'waste' => ['Вивіз сміття', 'Вывоз мусора']];
+  private const PG = ['elec' => ['світла', 'света'], 'net' => ['світла', 'света'], 'gas' => ['газу', 'газа'], 'grm' => ['газу', 'газа'], 'water' => ['води', 'воды'], 'heat' => ['тепла', 'тепла']];
+  private const PORD = ['elec', 'net', 'water', 'gas', 'grm', 'heat', 'waste'];
+  /** Ядро назви для адреси: «ПрАТ «АК «Київводоканал»» → Київводоканал, «YASNO (ТОВ …)» → YASNO, «Барвінківське КП «Благоустрій»» → Благоустрій. */
+  private static function pcore(string $o): string {
+    $s = trim((string)preg_replace('/\s*\([^()]*\)\s*$/u', '', $o));
+    if (preg_match('/«(.+)»/u', $s, $m)) $s = $m[1];
+    $s = (string)preg_replace('/^[А-ЯІЇЄҐA-Z]{1,5}\s+«/u', '', trim($s));
+    $s = (string)preg_replace('/^(?:ГК|КП|КНП|ТОВ|ТзОВ|ПрАТ|ПАТ|АТ|ДП|ОКП|МКП|ПП|КУ|КК)\s+/u', '', trim($s));
+    return trim($s) !== '' ? $s : $o;
+  }
+  private static function pcut(string $s): string { if (strlen($s) <= 60) return $s; $c = substr($s, 0, 60); $p = strrpos($c, '-'); return rtrim($p > 20 ? substr($c, 0, $p) : $c, '-'); }
+  /** slug → ['n' => назва, 'roles' => [elec|net|water|gas|grm|heat|waste], 'locs' => [[вид, пункт, hid, r, slug громади|null, назва громади]]] */
+  public static function provs(): array {
+    if (self::$pv !== null) return self::$pv;
+    $kat = Providers::kat(); $hs = self::hroms(); $ent = [];
+    $add = function (string $name, string $role, string $kind, array $loc) use (&$ent) {
+      $name = trim($name); if ($name === '') return;
+      $ent[$name] ??= ['n' => $name, 'roles' => [], 'locs' => []];
+      if (!in_array($role, $ent[$name]['roles'], true)) $ent[$name]['roles'][] = $role;
+      $ent[$name]['locs'][] = array_merge([$kind], $loc);
+    };
+    $one = function (array $kd, array $only, array $loc) use ($add) {
+      foreach ($only as $k) {
+        $o = (array)($kd[$k] ?? []); $org = trim((string)($o['org'] ?? '')); if ($org === '') continue;
+        $add($org, $k, $k, $loc);
+        if ($k === 'elec' && !empty($o['net'])) $add((string)$o['net'], 'net', 'elec', $loc);
+        if ($k === 'gas' && !empty($o['grm'])) $add((string)$o['grm'], 'grm', 'gas', $loc);
+      }
+    };
+    foreach ($hs as $sl => [$hid, $r, $cn, $hn]) $one(Providers::kinds(['n' => $cn, 'h' => $hid, 'r' => $r]), Providers::CAT_KINDS, [$cn, $hid, $r, $sl, $hn]);
+    // пункти з окремим постачальником (Буди, Феськи…): на сторінці громади його немає — місто без посилання
+    $hidOf = []; foreach ($kat['hromadas'] as $id => $hm) $hidOf[($hm['r'] ?? 'kh') . '|' . (string)($hm['k'] ?? $hm['n'])] ??= (string)$id;
+    foreach (array_keys(Providers::REGIONS) as $r) foreach ((array)(Providers::rdata($r)['settlements'] ?? []) as $sk => $so) {
+      if (!is_array($so)) continue; [$hk, $n] = array_pad(explode('/', (string)$sk, 2), 2, '');
+      $hid = $hidOf[$r . '|' . $hk] ?? null; if ($hid === null || $n === '') continue;
+      $ks = array_values(array_intersect(Providers::CAT_KINDS, array_keys($so))); if (!$ks) continue;
+      $one(Providers::kinds(['n' => $n, 'h' => $hid, 'r' => $r]), $ks, [$n, $hid, $r, null, (string)($kat['hromadas'][$hid]['n'] ?? '')]);
+    }
+    ksort($ent, SORT_STRING);
+    $base = []; foreach ($ent as $nm => $x) $base[$nm] = self::pcut(self::translit(self::pcore($nm)) ?: substr(md5($nm), 0, 8));
+    $cnt = array_count_values($base); $out = []; self::$pvn = [];
+    foreach ($ent as $nm => $x) {
+      $sl = $base[$nm];
+      if ($cnt[$sl] > 1) $sl = self::pcut($sl . '-' . (self::translit((string)$x['locs'][0][1]) ?: $x['locs'][0][3]));
+      if (isset($out[$sl])) $sl = self::pcut($sl . '-' . $x['locs'][0][3]);
+      if (isset($out[$sl])) $sl = substr($sl, 0, 54) . '-' . substr(md5($nm), 0, 5);
+      $out[$sl] = $x; self::$pvn[$nm] = $sl;
+    }
+    ksort($out, SORT_STRING);
+    return self::$pv = $out;
+  }
+  /** Назва → посилання на її сторінку (немає сторінки — просто текст). */
+  private static function plink(string $n, bool $ru, string $base): string {
+    self::provs(); $sl = self::$pvn[trim($n)] ?? null;
+    return $sl === null ? self::e($n) : '<a href="' . self::e($base . ($ru ? self::PRU : self::PUK) . '/' . $sl) . '">' . self::e($n) . '</a>';
+  }
+  /** «Харків, Люботин, Мерефа і ще 12» — без посилань (для списку й опису). */
+  /** Місця: обласні центри першими, далі за абеткою. */
+  private static function psort(array $locs): array {
+    $big = ['Харків' => 1, 'Київ' => 1, 'Одеса' => 1, 'Львів' => 1, 'Хмельницький' => 1];
+    usort($locs, fn($a, $b) => (isset($big[$b[1]]) <=> isset($big[$a[1]])) ?: strcmp(self::ukKey($a[1]), self::ukKey($b[1]))); return $locs;
+  }
+  private static function ptowns(array $locs, int $max, bool $ru): string {
+    $t = array_values(array_unique(array_map(fn($l) => (string)$l[1], self::psort($locs)))); $n = count($t);
+    return implode(', ', array_slice($t, 0, $max)) . ($n > $max ? ($ru ? ' и ещё ' : ' і ще ') . ($n - $max) : '');
+  }
+  private static function pregs(array $locs, bool $ru): string {
+    $r = array_values(array_unique(array_map(fn($l) => (string)$l[3], $locs)));
+    $ro = array_flip(array_keys(self::RG)); usort($r, fn($a, $b) => ($ro[$a] ?? 9) <=> ($ro[$b] ?? 9));
+    return implode(', ', array_map(fn($x) => self::RG[$x][$ru ? 1 : 0] ?? $x, $r));
+  }
+  private static function renderProv(string $lang, string $slug, string $base, string $site): ?string {
+    $ru = $lang === 'ru'; $e = [self::class, 'e']; $ps = self::provs(); $x = $slug !== '' ? ($ps[$slug] ?? null) : null;
+    if ($slug !== '' && !$x) return null;
+    $abs = fn(string $l) => rtrim($site, '/') . ($l === 'ru' ? self::PRU : self::PUK) . ($slug !== '' ? '/' . $slug : '');
+    $idx = $base . ($ru ? self::PRU : self::PUK); $i = $ru ? 1 : 0;
+    if ($x) {
+      $roles = array_values(array_filter(self::PORD, fn($r) => in_array($r, $x['roles'], true)));
+      $gen = array_values(array_unique(array_filter(array_map(fn($r) => self::PG[$r][$i] ?? '', $roles))));
+      $gl = count($gen) > 1 ? implode(', ', array_slice($gen, 0, -1)) . ($ru ? ' и ' : ' і ') . end($gen) : ($gen[0] ?? '');
+      $title = $x['n'] . ($gl !== '' ? ($ru ? ' — как передать показания ' : ' — як передати показання ') . $gl : ($ru ? ' — вывоз мусора: плата и контакты' : ' — вивіз сміття: плата й контакти'));
+      $desc = implode(', ', array_map(fn($r) => self::PR[$r][$i], $roles)) . ': ' . self::ptowns($x['locs'], 3, $ru) . ' (' . self::pregs($x['locs'], $ru) . '). ' .
+        ($gl !== '' ? ($ru ? 'Куда и до какого числа передать показания, тарифы, сайт и телефоны.' : 'Куди й до якого числа передати показання, тарифи, сайт і телефони.') : ($ru ? 'Плата, куда платить, телефоны.' : 'Плата, куди платити, телефони.'));
+      $h1 = $x['n'];
+    } else {
+      $title = $ru ? 'Поставщики: как передать показания — свет, вода, газ, тепло' : 'Постачальники: як передати показання — світло, вода, газ, тепло';
+      $desc = $ru ? count($ps) . ' поставщиков и операторов сетей в Харьковской, Киевской, Одесской, Львовской, Хмельницкой областях и Киеве: куда и до какого числа передать показания, тарифы, сайты и телефоны.'
+        : count($ps) . ' постачальників і операторів мереж у Харківській, Київській, Одеській, Львівській, Хмельницькій областях і Києві: куди й до якого числа передати показання, тарифи, сайти й телефони.';
+      $h1 = $ru ? 'Поставщики — как передать показания' : 'Постачальники — як передати показання';
+    }
+    $other = $ru ? 'uk' : 'ru';
+    $h = '<!DOCTYPE html><html lang="' . $lang . '"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">' .
+      '<title>' . $e($title) . '</title><meta name="description" content="' . $e($desc) . '"><meta name="robots" content="index, follow">' .
+      '<link rel="canonical" href="' . $e($abs($lang)) . '"><link rel="alternate" hreflang="uk" href="' . $e($abs('uk')) . '"><link rel="alternate" hreflang="ru" href="' . $e($abs('ru')) . '">' .
+      '<link rel="alternate" hreflang="x-default" href="' . $e($abs('uk')) . '"><link rel="icon" href="' . $e($base) . '/web/icon/favicon.svg" type="image/svg+xml">' .
+      '<meta property="og:type" content="article"><meta property="og:title" content="' . $e($title) . '"><meta property="og:description" content="' . $e($desc) . '"><meta property="og:url" content="' . $e($abs($lang)) . '">' .
+      '<meta property="og:image" content="' . $e($site . 'web/og-' . $lang . '-5.jpg') . '"><meta property="og:locale" content="' . ($ru ? 'ru_UA' : 'uk_UA') . '">' .
+      '<link rel="stylesheet" href="' . $e($base) . '/web/fonts/fonts.css"><style>' . self::CSS . '.kc h2{margin-bottom:2px}.org{font-weight:600;margin:0 0 6px}.row{margin:2px 0}.links{font-size:15px}' .
+      'details.src summary,details.more summary{cursor:pointer;color:var(--ink2);font-size:15px}.pl{margin:10px 0 0;padding-top:10px;border-top:1px solid var(--line);font-size:15px}.pl b{font-weight:600}h3{font-size:17px;margin:18px 0 6px}</style></head><body>' .
+      '<header><div class="w"><a class="home" href="' . $e($base) . '/"><img src="' . $e($base) . '/web/icon/favicon.svg" alt="">' . self::wordmark() . '</a>' .
+      '<a class="lng" href="' . $e($base . ($other === 'ru' ? self::PRU : self::PUK) . ($slug !== '' ? '/' . $slug : '')) . '" hreflang="' . $other . '" lang="' . $other . '">' . ($ru ? 'Українською' : 'Русский') . '</a></div></header><main class="w">';
+    $cta = '<section class="cta"><h2>' . ($ru ? 'Сроки и тарифы — сами, по адресу' : 'Строки й тарифи — самі, за адресою') . '</h2><p>' .
+      ($ru ? 'Добавьте адрес квартиры в «передай»: поставщики, тарифы и окна подачи подставятся сами, напомним за 4 дня до конца срока, а где можно — отправим показания за вас. Бесплатно.'
+        : 'Додайте адресу квартири в «передай»: постачальники, тарифи й вікна подачі підставляться самі, нагадаємо за 4 дні до кінця строку, а де можна — відправимо показання за вас. Безкоштовно.') .
+      '</p><a class="btn" href="' . $e($base) . '/">' . ($ru ? 'Добавить адрес' : 'Додати адресу') . '</a></section>';
+    $hidx = $base . ($ru ? self::HRU : self::HUK);
+    if ($x) {
+      $h .= '<nav class="bc"><a href="' . $e($base) . '/">передай</a> › <a href="' . $e($idx) . '">' . ($ru ? 'Поставщики' : 'Постачальники') . '</a></nav><h1>' . $e($h1) . '</h1>' .
+        '<p class="sub">' . $e(implode(' · ', array_map(fn($r) => self::PR[$r][$i], $roles)) . ' · ' . self::pregs($x['locs'], $ru)) . '</p>';
+      // хто з ким: оператор мережі ↔ постачальник (з довідника, без вигадок)
+      $pair = function (string $field, string $role) use ($x) { $o = []; foreach ($x['locs'] as $l) if ($l[0] === ($role === 'net' || $role === 'elec' ? 'elec' : 'gas')) {
+        $kd = Providers::kinds(['n' => $l[1], 'h' => $l[2], 'r' => $l[3]]); $v = trim((string)($kd[$l[0]][$field] ?? '')); if ($v !== '' && !in_array($v, $o, true)) $o[] = $v; } return $o; };
+      $lk = fn(array $ns) => implode(', ', array_map(fn($n) => self::plink($n, $ru, $base), $ns));
+      if (in_array('net', $roles, true) && ($o = $pair('org', 'net'))) $h .= '<p>' . ($ru ? 'Оператор системы распределения электроэнергии: сети, счётчики, отключения. Счета за свет выставляет поставщик — ' : 'Оператор системи розподілу електроенергії: мережі, лічильники, відключення. Рахунки за світло виставляє постачальник — ') . $lk($o) . '.</p>';
+      if (in_array('elec', $roles, true) && ($o = $pair('net', 'elec'))) $h .= '<p>' . ($ru ? 'Поставщик электроэнергии — выставляет счета за свет. Оператор сети — ' : 'Постачальник електроенергії — виставляє рахунки за світло. Оператор мережі — ') . $lk($o) . '.</p>';
+      if (in_array('grm', $roles, true) && ($o = $pair('org', 'grm'))) $h .= '<p>' . ($ru ? 'Оператор газораспределительной сети — доставка газа, отдельная плата за годовую мощность. Газ поставляет ' : 'Оператор газорозподільної мережі — доставка газу, окрема плата за річну потужність. Газ постачає ') . $lk($o) . '.</p>';
+      // картки: ті самі, що на сторінках громад; однакові — разом, з переліком місць
+      $ks = []; foreach ($x['locs'] as $l) $ks[$l[0]] = true;
+      foreach (['elec', 'water', 'gas', 'heat', 'waste'] as $k) {
+        if (empty($ks[$k])) continue; $var = [];
+        foreach ($x['locs'] as $l) { if ($l[0] !== $k) continue;
+          $c = self::kindCard($k, (array)(Providers::kinds(['n' => $l[1], 'h' => $l[2], 'r' => $l[3]])[$k] ?? []), $l[2], $ru, $base, $x['n']); if ($c === '') continue;
+          $var[$c][] = $l; }
+        $ro = array_flip(array_keys(self::RG)); $bg = fn($ls) => (int)(bool)array_filter($ls, fn($l) => in_array($l[1], ['Харків', 'Київ', 'Одеса', 'Львів', 'Хмельницький'], true));
+        uasort($var, fn($a, $b) => ($bg($b) <=> $bg($a)) ?: (($ro[$a[0][3]] ?? 9) <=> ($ro[$b[0][3]] ?? 9)) ?: count($b) <=> count($a));
+        foreach ($var as $c => $ls) {
+          $seen = []; $pl = []; $ls = self::psort($ls);
+          foreach ($ls as $l) { if (isset($seen[$l[1]])) continue; $seen[$l[1]] = 1;
+            $pl[] = $l[4] !== null ? '<a href="' . $e($hidx . '/' . $l[4]) . '">' . $e($l[1]) . '</a>' : $e($l[1]) . ($l[5] !== '' ? ' <span class="muted">(' . $e($l[5]) . ($ru ? ' громада' : ' громада') . ')</span>' : ''); }
+          $where = '<p class="pl"><b>' . ($ru ? 'Где: ' : 'Де: ') . '</b>' . implode(', ', array_slice($pl, 0, 30)) .
+            (count($pl) > 30 ? '<details class="more"><summary>' . ($ru ? 'ещё ' : 'ще ') . (count($pl) - 30) . '</summary>' . implode(', ', array_slice($pl, 30)) . '</details>' : '') . '</p>';
+          $h .= substr($c, 0, -strlen('</section>')) . $where . '</section>';
+        }
+      }
+      $h .= $cta . '<p class="muted"><a href="' . $e($idx . '#' . (in_array('net', $roles, true) ? 'elec' : (in_array('grm', $roles, true) ? 'gas' : $roles[0]))) . '">' . ($ru ? 'Другие поставщики' : 'Інші постачальники') . '</a> · <a href="' . $e($hidx) . '">' . ($ru ? 'Куда передать — по громадам' : 'Куди передати — за громадами') . '</a></p>';
+    } else {
+      $h .= '<nav class="bc"><a href="' . $e($base) . '/">передай</a></nav><h1>' . $e($h1) . '</h1><p class="sub">' . $e($desc) . '</p>' .
+        '<p class="links">' . implode(' · ', array_map(fn($x) => '<a href="#' . $x[0] . '">' . $e($x[1][$i]) . '</a>', [['elec', ['Світло', 'Свет']], ['water', ['Вода', 'Вода']], ['gas', ['Газ', 'Газ']], ['heat', ['Тепло', 'Тепло']], ['waste', ['Вивіз сміття', 'Вывоз мусора']]])) . '</p>';
+      $li = fn($sl, $y) => '<li><a href="' . $e($idx . '/' . $sl) . '">' . $e($y['n']) . '</a><span>' . $e(self::ptowns($y['locs'], 3, $ru)) . '</span></li>';
+      $sec = [['elec', ['elec', 'net'], ['Світло', 'Свет']], ['water', ['water'], ['Вода', 'Вода']], ['gas', ['gas', 'grm'], ['Газ', 'Газ']], ['heat', ['heat'], ['Тепло', 'Тепло']], ['waste', ['waste'], ['Вивіз сміття', 'Вывоз мусора']]];
+      foreach ($sec as [$id, $rs, $nm]) {
+        $l = array_filter($ps, fn($y) => (bool)array_intersect($rs, $y['roles'])); if (!$l) continue;
+        uasort($l, fn($a, $b) => strcmp(self::ukKey(self::pcore($a['n'])), self::ukKey(self::pcore($b['n']))));
+        $h .= '<section id="' . $id . '"><h2>' . $e($nm[$i]) . '</h2>';
+        if (count($l) <= 40) $h .= '<ul class="ml">' . implode('', array_map($li, array_keys($l), $l)) . '</ul>';
+        else foreach (array_keys(self::RG) as $r) {
+          $lr = array_filter($l, fn($y) => ($y['locs'][0][3] ?? '') === $r); if (!$lr) continue;
+          $h .= '<h3>' . $e(self::RG[$r][$i]) . '</h3><ul class="ml">' . implode('', array_map($li, array_keys($lr), $lr)) . '</ul>';
+        }
+        $h .= '</section>';
+      }
+      $h .= $cta . '<p class="muted"><a href="' . $e($hidx) . '">' . ($ru ? 'Куда передать — по громадам' : 'Куди передати — за громадами') . '</a> · <a href="' . $e($base . self::url($lang)) . '">' . ($ru ? 'Как снять показания теплосчётчика' : 'Як зняти показання теплолічильника') . '</a></p>';
+    }
+    return $h . '</main><footer><div class="w">' . self::wordmark() . '<p>' . ($ru ? 'Данные — из решений местных советов, сайтов и договоров поставщиков; у каждой строки — источник. Сервис независимый, не связан с поставщиками. Нашли ошибку — напишите через «Отзыв» в приложении.'
+      : 'Дані — з рішень місцевих рад, сайтів і договорів постачальників; у кожного рядка — джерело. Сервіс незалежний, не пов’язаний з постачальниками. Знайшли помилку — напишіть через «Відгук» у застосунку.') . '</p></div></footer></body></html>';
   }
 
   private static function e(string $s): string { return htmlspecialchars($s, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8'); }
@@ -198,6 +403,7 @@ CSS;
   /** Сторінка: html або null (немає такої моделі). $base — SITE_BASE, $site — абсолютна адреса сайту з / в кінці. */
   public static function render(string $lang, string $slug, string $base, string $site, string $kind = 'm'): ?string {
     if ($kind === 'h') return class_exists('Providers') ? self::renderHrom($lang, $slug, $base, $site) : null;
+    if ($kind === 'p') return class_exists('Providers') ? self::renderProv($lang, $slug, $base, $site) : null;
     $ru = $lang === 'ru'; $e = [self::class, 'e'];
     $m = $slug !== '' ? self::model($slug) : null; if ($slug !== '' && !$m) return null;
     $abs = fn(string $l, string $s = '') => rtrim($site, '/') . self::url($l, $s);

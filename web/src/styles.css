@@ -1697,7 +1697,7 @@ details.tbl-acc[open] > .tbl-wrap { margin-top: 12px; }
 
 /* футер лендинга (06.11.2026): о сервисе, документы, связь */
 .lp-foot { margin: 40px 0 0; padding: 32px 20px calc(24px + env(safe-area-inset-bottom)); border-top: 1px solid var(--c-line); color: var(--c-ink-2); font-size: 15px; }
-.lpf-in { max-width: 1120px; margin: 0 auto; display: grid; grid-template-columns: 1.6fr 1fr 1fr 1fr; gap: 24px 32px; }
+.lpf-in { max-width: 1120px; margin: 0 auto; display: grid; grid-template-columns: 1.6fr 1fr 1fr 1fr 1fr; gap: 24px 32px; }
 .lpf-logo { display: flex; align-items: center; gap: 10px; color: var(--c-ink); font-size: 17px; }
 .lpf-logo .wm { height: 30px; }
 .lpf-brand p { margin: 10px 0 0; max-width: 34ch; }

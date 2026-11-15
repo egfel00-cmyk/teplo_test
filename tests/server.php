@@ -2838,7 +2838,20 @@ ok('seo: громади — 350 адрес латиницею (КМУ № 55), �
   && str_contains($hb, 'КП «Бучасервіс»') && str_contains($hb, '20,47') && str_contains($hb, 'Показання: з 25 по 30 число') && str_contains($hb, 'передай відправить показання сам')
   && str_contains($hk, 'Показания: с 5 по 25 число') && str_contains($hk, 'Показания: с 1 по 20 число') && !str_contains($hk, 'натисн') && substr_count($hi, '<li><a href="/kudy-peredaty/') === 350
   && Seo::render('uk', 'nope', '', 'https://x/', 'h') === null && Seo::match('/ru/kuda-peredat/bucha') === ['ru', 'bucha', 'h'], [count($hs), mb_substr(strip_tags($hb), 0, 300)]);
-ok('seo: sitemap — головна + пари: 38 (моделі) + 351 (громади)', count(Seo::pairs()) === 38 + 351, count(Seo::pairs()));
+// 152-а: сторінки постачальників (план конкурентів, п. 7) — під запити «<постачальник> передати показання»
+$pv = Seo::provs(); $pslugs = array_keys($pv);
+$pko = (string)Seo::render('uk', 'kharkivoblenerho', '', 'https://peredai.com.ua/', 'p'); $png = (string)Seo::render('ru', 'naftohaz-ukrainy', '', 'https://peredai.com.ua/', 'p');
+$pix = (string)Seo::render('uk', '', '', 'https://peredai.com.ua/', 'p'); $pvk = (string)Seo::render('uk', 'kharkivvodokanal', '', 'https://peredai.com.ua/', 'p');
+ok('seo: постачальники — ≥ 380 сторінок (організації й оператори мереж), адреси латиницею без повторів; Харківобленерго — оператор мережі з каналами й посиланнями на Харківенергозбут і громади; Нафтогаз ru — ГРМ окремими картками; список — усі',
+  count($pv) >= 380 && count(array_unique($pslugs)) === count($pslugs) && !array_filter($pslugs, fn($x) => !preg_match('~^[a-z0-9-]{2,70}$~', $x))
+  && in_array('net', $pv['kharkivoblenerho']['roles'] ?? [], true) && isset($pv['kharkivvodokanal'], $pv['yasno'], $pv['naftohaz-ukrainy'], $pv['hazmerezhi-kharkivska-filiia'])
+  && str_contains($pko, '<title>АТ «Харківобленерго» — як передати показання світла</title>') && str_contains($pko, 'ХарківОбленергоБот') && str_contains($pko, 'href="/postachalnyky/kharkivenerhozbut"')
+  && str_contains($pko, 'href="/kudy-peredaty/kharkiv"') && str_contains($pko, 'hreflang="ru" href="https://peredai.com.ua/ru/postavshchiki/kharkivoblenerho"') && !str_contains($pko, '<script')
+  && str_contains($png, 'href="/ru/postavshchiki/odesahaz"') && substr_count($png, '<section class="card kc">') >= 5 && str_contains($png, '«Куб»')
+  && str_contains($pvk, 'Показання: з 1 по 20 число') && !array_filter($pslugs, fn($x) => !str_contains($pix, 'href="/postachalnyky/' . $x . '"'))
+  && Seo::match('/ru/postavshchiki/yasno') === ['ru', 'yasno', 'p'] && Seo::render('uk', 'nope', '', 'https://x/', 'p') === null && str_contains($hb, 'href="/postachalnyky/buchaservis"'),
+  [count($pv), mb_substr(strip_tags($pko), 0, 200)]);
+ok('seo: sitemap — головна + пари: 38 (моделі) + 351 (громади) + 1 + постачальники', count(Seo::pairs()) === 38 + 351 + 1 + count($pv), count(Seo::pairs()));
 
 echo "\nИтог: $pass OK, $fail FAIL\n";
 exit($fail ? 1 : 0);

@@ -1714,7 +1714,7 @@ details.tbl-acc[open] > .tbl-wrap { margin-top: 12px; }
 
 /* футер лендинга (06.11.2026): о сервисе, документы, связь */
 .lp-foot { margin: 40px 0 0; padding: 32px 20px calc(24px + env(safe-area-inset-bottom)); border-top: 1px solid var(--c-line); color: var(--c-ink-2); font-size: 15px; }
-.lpf-in { max-width: 1120px; margin: 0 auto; display: grid; grid-template-columns: 1.6fr 1fr 1fr 1fr; gap: 24px 32px; }
+.lpf-in { max-width: 1120px; margin: 0 auto; display: grid; grid-template-columns: 1.6fr 1fr 1fr 1fr 1fr; gap: 24px 32px; }
 .lpf-logo { display: flex; align-items: center; gap: 10px; color: var(--c-ink); font-size: 17px; }
 .lpf-logo .wm { height: 30px; }
 .lpf-brand p { margin: 10px 0 0; max-width: 34ch; }
@@ -4898,7 +4898,7 @@ details.mypay[open] > summary .mypay-amt, details.mypay[open] > summary .mypay-s
       wm_del_q: "Видалити водомір? Його історія лишиться.",
       ib_title: 'З Telegram надійшло фото: {n}', ib_sub: 'Ви надіслали їх боту. Розпізнаємо тут, у браузері, і покажемо цифри на перевірку.', ib_run: 'Розпізнати', ib_loading: 'Завантажую фото з Telegram…',
       mv_block: 'Мій лічильник', lg_privacy: 'Політика конфіденційності', lg_terms: 'Умови використання',
-      lf_about: 'Показання світла, води, газу й тепла — Харківщина, Київщина, Одещина, Львівщина. Безкоштовно.', lf_service: 'Сервіс', lf_docs: 'Документи', lf_contact: 'Зв’язок',
+      lf_about: 'Показання світла, води, газу й тепла — Харківщина, Київ і Київщина, Одещина, Львівщина, Хмельниччина. Безкоштовно.', lf_service: 'Сервіс', lf_docs: 'Документи', lf_contact: 'Зв’язок', lf_guides: 'Довідник', lf_g_where: 'Куди передати показання', lf_g_prov: 'Постачальники', lf_g_models: 'Як зняти показання теплолічильника',
       lf_write: 'Написати нам', lf_login: 'Увійти', lf_bot: 'Telegram-бот', lf_indep: 'Незалежний сервіс — не є офіційним сервісом жодного з постачальників, названих на сайті.',
       hg_send: 'Як передавати показання', hg_reject: 'Якщо не приймають', hg_other: 'Гаряча вода й контакти',
       sv_g1: 'Температура й режим', sv_g2: 'Батареї', sv_g3: 'Вікна й утеплення', sv_g4: 'Контроль витрат', loading: 'Завантаження…',
@@ -6251,7 +6251,7 @@ details.mypay[open] > summary .mypay-amt, details.mypay[open] > summary .mypay-s
       wm_del_q: "Удалить водомер? Его история останется.",
       ib_title: 'Из Telegram пришло фото: {n}', ib_sub: 'Вы отправили их боту. Распознаем здесь, в браузере, и покажем цифры на проверку.', ib_run: 'Распознать', ib_loading: 'Загружаю фото из Telegram…',
       mv_block: 'Мой счётчик', lg_privacy: 'Политика конфиденциальности', lg_terms: 'Условия использования',
-      lf_about: 'Показания света, воды, газа и тепла — Харьковщина, Киевщина, Одесщина, Львовщина. Бесплатно.', lf_service: 'Сервис', lf_docs: 'Документы', lf_contact: 'Связь',
+      lf_about: 'Показания света, воды, газа и тепла — Харьковщина, Киев и Киевщина, Одесщина, Львовщина, Хмельнитчина. Бесплатно.', lf_service: 'Сервис', lf_docs: 'Документы', lf_contact: 'Связь', lf_guides: 'Справочник', lf_g_where: 'Куда передать показания', lf_g_prov: 'Поставщики', lf_g_models: 'Как снять показания теплосчётчика',
       lf_write: 'Написать нам', lf_login: 'Войти', lf_bot: 'Telegram-бот', lf_indep: 'Независимый сервис — не является официальным сервисом ни одного из поставщиков, названных на сайте.',
       hg_send: 'Как передавать показания', hg_reject: 'Если не принимают', hg_other: 'Горячая вода и контакты',
       sv_g1: 'Температура и режим', sv_g2: 'Батареи', sv_g3: 'Окна и утепление', sv_g4: 'Контроль расходов', loading: 'Загрузка…',
@@ -13652,6 +13652,9 @@ details.mypay[open] > summary .mypay-amt, details.mypay[open] > summary .mypay-s
       '<div class="lpf-brand"><div class="lpf-logo">' + wordmark(true) + '</div><p>' + esc(t('lf_about')) + '</p></div>' +
       col(t('lf_service'), [a('#start', t('lp_cta'), 'lpf-start')].concat(login ? [a('#login', t('lf_login'), 'lpf-login')] : []).concat(NAV_HIDE.help ? [] : [a('#help', t('nav_help'), 'lpf-help')])) +
       col(t('lf_docs'), [a('#privacy', t('lg_privacy'), 'lpf-privacy'), a('#terms', t('lg_terms'), 'lpf-terms')].concat(window.TEPLO_API ? ['<li><button type="button" class="linkbtn" data-act="cc-open" data-key="lpf-cookie">' + esc(t('cc_link')) + '</button></li>'] : [])) +
+      // 152-а: довідкові сторінки для пошуку (сервером, без скриптів) — посилання і людям, і пошуковикам; адреси відносні (SITE_BASE)
+      col(t('lf_guides'), [a(S.lang === 'ru' ? 'ru/kuda-peredat' : 'kudy-peredaty', t('lf_g_where'), 'lpf-g-where'), a(S.lang === 'ru' ? 'ru/postavshchiki' : 'postachalnyky', t('lf_g_prov'), 'lpf-g-prov'),
+        a(S.lang === 'ru' ? 'ru/kak-snyat-pokazaniya' : 'yak-znyaty-pokaznannya', t('lf_g_models'), 'lpf-g-models')]) +
       col(t('lf_contact'), ['<li><button class="linkbtn" data-act="fb-open" data-key="lpf-fb">' + esc(t('lf_write')) + '</button></li>'].concat(bot ? ['<li><a href="https://t.me/' + esc(bot) + '" target="_blank" rel="noopener" data-key="lpf-bot">' + esc(t('lf_bot')) + '</a></li>'] : [])) +
       '</div><div class="lpf-bot"><span>© ' + new Date().getFullYear() + ' передай.com.ua</span><span>' + esc(t('lf_indep')) + '</span></div></footer>';
   }

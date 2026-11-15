@@ -4314,6 +4314,9 @@
       '<div class="lpf-brand"><div class="lpf-logo">' + wordmark(true) + '</div><p>' + esc(t('lf_about')) + '</p></div>' +
       col(t('lf_service'), [a('#start', t('lp_cta'), 'lpf-start')].concat(login ? [a('#login', t('lf_login'), 'lpf-login')] : []).concat(NAV_HIDE.help ? [] : [a('#help', t('nav_help'), 'lpf-help')])) +
       col(t('lf_docs'), [a('#privacy', t('lg_privacy'), 'lpf-privacy'), a('#terms', t('lg_terms'), 'lpf-terms')].concat(window.TEPLO_API ? ['<li><button type="button" class="linkbtn" data-act="cc-open" data-key="lpf-cookie">' + esc(t('cc_link')) + '</button></li>'] : [])) +
+      // 152-а: довідкові сторінки для пошуку (сервером, без скриптів) — посилання і людям, і пошуковикам; адреси відносні (SITE_BASE)
+      col(t('lf_guides'), [a(S.lang === 'ru' ? 'ru/kuda-peredat' : 'kudy-peredaty', t('lf_g_where'), 'lpf-g-where'), a(S.lang === 'ru' ? 'ru/postavshchiki' : 'postachalnyky', t('lf_g_prov'), 'lpf-g-prov'),
+        a(S.lang === 'ru' ? 'ru/kak-snyat-pokazaniya' : 'yak-znyaty-pokaznannya', t('lf_g_models'), 'lpf-g-models')]) +
       col(t('lf_contact'), ['<li><button class="linkbtn" data-act="fb-open" data-key="lpf-fb">' + esc(t('lf_write')) + '</button></li>'].concat(bot ? ['<li><a href="https://t.me/' + esc(bot) + '" target="_blank" rel="noopener" data-key="lpf-bot">' + esc(t('lf_bot')) + '</a></li>'] : [])) +
       '</div><div class="lpf-bot"><span>© ' + new Date().getFullYear() + ' передай.com.ua</span><span>' + esc(t('lf_indep')) + '</span></div></footer>';
   }
