@@ -87,7 +87,7 @@ $h = ['at' => gmdate('c'), 'app' => (string)parse_url(Cfg::appUrl(), PHP_URL_HOS
 try { $n = Admin::cleanup(); $h['photos'] = $n; if ($n) echo gmdate('c') . " удалено старых фото: $n\n"; $h['hist'] = StateHist::cleanup(); $h['events'] = Journal::cleanup(); }
 catch (Throwable $e) { $h['error'] = mb_substr($e->getMessage(), 0, 200); error_log('teplo cron: ' . $e->getMessage()); }
 // новая сборка сайта → IndexNow (Bing и др.), раз на сборку; /api/health → indexnow
-if (Cfg::appUrlKnown()) { try { IndexNow::run(Cfg::appUrl()); } catch (Throwable $e) { error_log('teplo indexnow: ' . $e->getMessage()); } }
+if (Cfg::appUrlKnown()) { try { IndexNow::run(Cfg::appUrl()); IndexNow::runList(Cfg::appUrl()); } catch (Throwable $e) { error_log('teplo indexnow: ' . $e->getMessage()); } }   // 151-я: + усі адреси sitemap
 try {
   $s = Reminders::run(time());
   if ($s) {

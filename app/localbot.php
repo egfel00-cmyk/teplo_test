@@ -448,7 +448,7 @@ final class LocalBot {
       $acc = trim((string)($c['acc'] ?? '')); $addr = trim((string)($c['addr'] ?? ''));
       $rows = implode("\n", array_map(fn($x) => $acc . ', ' . $addr . ', ' . $x['serial'] . '-' . preg_replace('/\..*$/', '', (string)$x['value']), $items));
       $text = "Доброго дня!\n\nПоказання лічильників води станом на $d:\n\n" . $rows .
-        "\n\nЛист надіслано на прохання абонента сервісом «Лічильники» (" . Cfg::appUrl() . ")." . (Mail::deliverable($email) ? " Відповідь — на адресу абонента: $email." : '');
+        "\n\nЛист надіслано на прохання абонента сервісом «передай» (" . Cfg::appUrl() . ")." . (Mail::deliverable($email) ? " Відповідь — на адресу абонента: $email." : '');
       Mail::send(['to' => $to, 'subject' => 'Показання лічильників води — о/р ' . $acc, 'text' => $text, 'replyTo' => Mail::deliverable($email) ? $email : '', 'kind' => 'submit', 'user' => $uid]);
       return ['text' => 'e-mail → ' . $to];
     }
@@ -457,7 +457,7 @@ final class LocalBot {
       $who = []; foreach (['Особовий рахунок' => 'acc', 'Абонент' => 'name', 'Адреса' => 'addr', 'Телефон' => 'phone'] as $l => $k) if (trim((string)($c[$k] ?? '')) !== '') $who[] = $l . ': ' . trim((string)$c[$k]);
       $text = "Доброго дня!\n\nПередаю показання квартирного лічильника тепла станом на $d.\n\n" . implode("\n", $who) . "\n\nЕнергія (головний екран лічильника): " . $x['value'] . ' ' . $un .
         ($x['serial'] ? "\nЗаводський номер лічильника: " . $x['serial'] : '') .
-        "\n\nЛист надіслано на прохання абонента сервісом «Лічильники» (" . Cfg::appUrl() . ")." . (Mail::deliverable($email) ? " Відповідь — на адресу абонента: $email." : '');
+        "\n\nЛист надіслано на прохання абонента сервісом «передай» (" . Cfg::appUrl() . ")." . (Mail::deliverable($email) ? " Відповідь — на адресу абонента: $email." : '');
       Mail::send(['to' => $to, 'subject' => 'Показання лічильника тепла — о/р ' . ($c['acc'] ?? ''), 'text' => $text, 'replyTo' => Mail::deliverable($email) ? $email : '', 'kind' => 'submit', 'user' => $uid]);
       return ['text' => 'e-mail → ' . $to];
     }
@@ -465,7 +465,7 @@ final class LocalBot {
     $who = []; foreach (['Особовий рахунок' => 'acc', 'Абонент' => 'name', 'Адреса' => 'addr', 'Телефон' => 'phone'] as $l => $k) if (trim((string)($c[$k] ?? '')) !== '') $who[] = $l . ': ' . trim((string)$c[$k]);   // лише те, що просить постачальник
     $who = implode("\n", $who);
     $text = "Доброго дня!\n\nПередаю показання лічильників води станом на $d.\n\n" . $who . "\n\n" . $lines .
-      "\n\nЛист надіслано на прохання абонента сервісом «Лічильники» (" . Cfg::appUrl() . ")." . (Mail::deliverable($email) ? " Відповідь — на адресу абонента: $email." : ' Питання — за телефоном абонента.');
+      "\n\nЛист надіслано на прохання абонента сервісом «передай» (" . Cfg::appUrl() . ")." . (Mail::deliverable($email) ? " Відповідь — на адресу абонента: $email." : ' Питання — за телефоном абонента.');
     Mail::send(['to' => $to, 'subject' => 'Показання лічильників води — о/р ' . ($c['acc'] ?? ''), 'text' => $text, 'replyTo' => Mail::deliverable($email) ? $email : '', 'kind' => 'submit', 'user' => $uid]);
     return ['text' => 'e-mail → ' . $to];
   }
@@ -486,16 +486,16 @@ final class LocalBot {
       case 'queued':
         $when = self::kyiv((int)$job['nextAt'])->format('d.m H:i');
         $txt = ($ru ? "📝 Показания поставлены в очередь — $org примет их с начала срока подачи. Отправим $when:\n" : "📝 Показання в черзі — $org приймає їх із початку строку подачі. Надішлемо $when:\n") . $lines .
-          ($ru ? "\n\nПередумали — «Отменить» в «Счётчиках»." : "\n\nПередумали — «Скасувати» в «Лічильниках»."); break;
+          ($ru ? "\n\nПередумали — «Отменить» в «передай»." : "\n\nПередумали — «Скасувати» в «передай»."); break;
       case 'ok': $txt = ($ru ? "✅ $org — сайт принял показания:\n" : "✅ $org — сайт прийняв показання:\n") . $lines . $tail . (!empty($b['later']) ? ($ru ? "\n\nИх проверит оператор — на сайте появятся позже." : "\n\nЇх перевірить оператор — на сайті з’являться пізніше.") : ''); break;
       case 'sent': $to = preg_replace('/^e-mail → /u', '', (string)$job['text']); $txt = ($ru ? "📨 Отправили показания письмом в $org ($to):\n" : "📨 Надіслали показання листом у $org ($to):\n") . $lines . ($ru ? "\n\nПодтверждения по e-mail поставщик обычно не присылает — сверяйте с квитанцией." : "\n\nПідтвердження на e-mail постачальник зазвичай не надсилає — звіряйте з квитанцією."); break;
-      case 'rejected': $txt = ($ru ? "❌ $org — сайт не принял показания:\n" : "❌ $org — сайт не прийняв показання:\n") . $lines . $tail . ($ru ? "\n\nОткройте «Счётчики» — исправьте и отправьте снова." : "\n\nВідкрийте «Лічильники» — виправте й надішліть знову."); break;
+      case 'rejected': $txt = ($ru ? "❌ $org — сайт не принял показания:\n" : "❌ $org — сайт не прийняв показання:\n") . $lines . $tail . ($ru ? "\n\nОткройте «передай» — исправьте и отправьте снова." : "\n\nВідкрийте «передай» — виправте й надішліть знову."); break;
       case 'unknown': $txt = ($ru ? "⏳ Отправили в $org, но сайт не сказал, принял ли:\n" : "⏳ Надіслали в $org, але сайт не сказав, чи прийняв:\n") . $lines . $tail; break;
-      case 'failed': $txt = ($ru ? "⚠️ Не отправили показания в $org.\n" : "⚠️ Не надіслали показання в $org.\n") . ($job['human'] ?: '') . ($ru ? "\n\nОткройте «Счётчики» — там все способы отправить самому." : "\n\nВідкрийте «Лічильники» — там усі способи надіслати самому."); break;
+      case 'failed': $txt = ($ru ? "⚠️ Не отправили показания в $org.\n" : "⚠️ Не надіслали показання в $org.\n") . ($job['human'] ?: '') . ($ru ? "\n\nОткройте «передай» — там все способы отправить самому." : "\n\nВідкрийте «передай» — там усі способи надіслати самому."); break;
       default: return;
     }
     $p = ['chat_id' => $tg['external_id'], 'text' => $txt];
-    if (Cfg::appUrlKnown()) $p['reply_markup'] = ['inline_keyboard' => [[['text' => $ru ? 'Открыть «Счётчики»' : 'Відкрити «Лічильники»', 'web_app' => ['url' => Cfg::appUrl() . '?go=' . (in_array('elec', (array)($b['kinds'] ?? []), true) ? 'elec' : (in_array('heat', (array)($b['kinds'] ?? []), true) ? 'heat' : 'water-cold')) . ($job['place'] ? '&place=' . rawurlencode((string)$job['place']) : '')]]]]];
+    if (Cfg::appUrlKnown()) $p['reply_markup'] = ['inline_keyboard' => [[['text' => $ru ? 'Открыть «передай»' : 'Відкрити «передай»', 'web_app' => ['url' => Cfg::appUrl() . '?go=' . (in_array('elec', (array)($b['kinds'] ?? []), true) ? 'elec' : (in_array('heat', (array)($b['kinds'] ?? []), true) ? 'heat' : 'water-cold')) . ($job['place'] ? '&place=' . rawurlencode((string)$job['place']) : '')]]]]];
     try { Telegram::call('sendMessage', $p); } catch (Throwable $e) { /* не дійшло — статус видно в застосунку */ }
   }
   // ---------- проба «не знайдено» (як у Водоканалу): вигаданий рахунок, лише читання — чи веде нас живий сайт тим шляхом, що й стенд ----------

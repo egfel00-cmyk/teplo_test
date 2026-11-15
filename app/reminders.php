@@ -552,7 +552,7 @@ final class Reminders {
     $body = trim(preg_replace('/\n\n(Вимкнути|Выключить)[^\n]*$/u', '', $m['text']));
     $off = Mail::optoutUrl($uid);
     $offT = $ru ? 'Больше не присылать напоминания на e-mail' : 'Більше не надсилати нагадування на e-mail';
-    $why = $ru ? 'Вы получили это письмо, потому что вошли в «Лічильники» по e-mail.' : 'Ви отримали цей лист, бо входили в «Лічильники» за e-mail.';
+    $why = $ru ? 'Вы получили это письмо, потому что вошли в «передай» по e-mail.' : 'Ви отримали цей лист, бо входили в «передай» за e-mail.';
     $text = $body . "\n\n" . implode("\n", array_map(fn($b) => $b[0] . ': ' . $b[1], $m['buttons'])) . "\n\n—\n" . $why . "\n" . $offT . ': ' . $off . "\n";
     $h = fn($x) => htmlspecialchars($x, ENT_QUOTES);
     $html = '<!doctype html><html><body style="font:16px/1.5 system-ui,-apple-system,Segoe UI,sans-serif;color:#1d2433;max-width:560px">'

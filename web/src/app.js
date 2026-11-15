@@ -648,7 +648,7 @@
     // ставимо вище перемикача й плашки квартири
     var topBack = (function (h) { var m = /^(<p class="rec-back">[\s\S]*?<\/p>|<div class="wiz-top"><a class="btn ghost"[\s\S]*?<\/div>)/.exec(h || ''); return m ? { b: m[1], h: h.slice(m[1].length) } : { b: '', h: h }; })(view.html);
     return '<div class="app' + (bare ? ' bare-app' : '') + (side ? ' with-side' : '') + '">' +
-      '<header class="top' + (right ? ' has-close' : '') + '"><a class="brand" href="#' + homeRoute() + '" data-key="brand" aria-label="' + esc(t('brand')) + ' — передай.com.ua">' + logo() + wordmark(true) + '<span class="beta-tag" data-key="beta">' + esc(t('beta_tag')) + '</span></a>' + '<span class="spacer"></span>' + right + '</header>' +
+      '<header class="top' + (right ? ' has-close' : '') + '"><a class="brand" href="#' + homeRoute() + '" data-key="brand" aria-label="передай.com.ua">' + logo() + wordmark(true) + '<span class="beta-tag" data-key="beta">' + esc(t('beta_tag')) + '</span></a>' + '<span class="spacer"></span>' + right + '</header>' +
       nav + '<main class="main' + (bare ? ' bare' : '') + (view.wide ? ' wide' : '') + enterCls(route) + '" id="main" data-screen="' + view.screen + '" tabindex="-1">' + topBack.b + (/^(history|stats|save)$/.test(route) && !REC_RE.test(routeName()) ? placeSwitch() : /^(heat|water-hot|water-cold|elec|gas)$/.test(route) ? placeBar() : /^(wnew|wadd|enew|eadd|gnew|gadd|add-meter|step|step-\d+|check|handover|baseline|meter|photo)$/.test(route) ? cbar : '') + topBack.h + '</main>' + (S.onboarded && view.screen !== 'S00' && (!bare || side) ? appFoot() : '') + '</div>' +
       (window.TEPLO_API && !ccAsk() ? '<button class="fab' + (bare ? ' fab-bare' : '') + '" data-act="fb-open" data-key="feedback" aria-haspopup="dialog">' + ico('chat', 20) + '<span>' + esc(t('fb_btn')) + '</span></button>' + fbDialog() : '') +
       (bare ? ccBanner().replace('class="cc"', 'class="cc cc-bare"') : ccBanner()) +
@@ -2153,6 +2153,7 @@
     var fi = e.target; if (!fi || fi.id !== 'rp-input' || !fi.files || !fi.files.length) return;
     var ref = fi.getAttribute('data-ref') || '', k = ref.slice(0, 1), id = ref.slice(2), fs = Array.prototype.slice.call(fi.files, 0, 8); fi.value = '';
     var rec = ((k === 'h' ? S.readings : k === 'w' ? S.water : S.mrecs) || []).filter(function (x) { return x && !x.deleted && x.id === id; })[0]; if (!rec) return;
+    if (!rec.via && !rec.base) rec.via = recVia(rec);   // 151-а: фото, додане потім, — не «з фото» (цифри вписали раніше)
     rec.photos = (rec.photos || []).concat(photoRefs(fs.map(function (f) { return rec.meter ? { file: f, meter: rec.meter } : { file: f }; })));
     rec.updatedAt = Date.now(); save(); toast(t('rp_added')); formKept('rec-form', function () { render(true); });
   });
@@ -2374,12 +2375,12 @@
       if (pf) { var px = Wt.series([pf.rec, x.rec], wmeters(null, true), gaps())[1]; if (px) x = px; }
       var d = kind === 'hot' ? x.hot : x.cold, days = kind === 'hot' ? x.daysHot : x.daysCold;
       var vs = ms.map(function (m) { var v = Wt.whole(x.rec.vals && x.rec.vals[m.id]); return v === null ? '' : (ms.length > 1 ? (m.name || '') + ' ' : '') + v; }).filter(Boolean).join(', ');
-      var sent = wsentVk(x.rec) && (kind === 'cold' || wsentHtm(x.rec)), np = (x.rec.photos || []).length;
+      var sent = wsentVk(x.rec) && (kind === 'cold' || wsentHtm(x.rec));
       var has = !x.rec.base && d !== null;
       return histRow({ key: 'wrec-' + x.rec.id, href: '#wrec-' + x.rec.id, q: has ? '+' + d : null, unit: 'м³', money: has ? wcostOf(kind, d, x.rec.date) : null,
         none: x.rec.base ? t('wh_base') : t('hr_first'),
         date: fmtDate(x.rec.date, true), sub: [t('hr_on_meter', { v: vs.replace(/<[^>]+>/g, ''), u: 'м³' }), has && days ? days + '\u00a0' + t('days_short') : '', pf ? t('own_paid', { d: fmtDate(pf.date) }) + ' · ' + t('paid_skip', { n: pf.n }) : ''],
-        right: (np ? '<span class="ph-n" title="' + esc(t('hp_n', { n: np })) + '">' + ico('camera', 16) + '<span class="num">' + np + '</span></span>' : '') + billMark(x.rec.bills),
+        right: srcMark(x.rec) + billMark(x.rec.bills),
         st: stChip('w', x.rec, kind, x.rec.base ? (baseSent(x.rec) ? 'sent' : 'not') : own ? 'own' : sent ? 'sent' : 'not') });
     }
   }
@@ -2430,7 +2431,7 @@
       var lbl = wkinds.length > 1 ? '<span class="pill ' + (cur === 'own' ? 'own' : cur === 'sent' ? 'ok' : 'neutral') + '">' + esc(ucf(t(kd === 'hot' ? 'ru_hot' : 'ru_cold')) + ' · ' + (cur === 'own' ? t('own_pill') : cur === 'sent' ? t('wh_sent') : r.base ? t('bs_unsent') : t('wh_notsent'))) + '</span>' : '';
       return stChip('w', r, kd, cur, lbl, wkinds.length > 1 ? '-' + kd : '');
     }).join('');
-    var h = back + recHead(fmtDate(r.date, true), wchips, [r.base ? t('wh_base') : t('er_for', { m: monthLabel(String(r.date).slice(0, 7)) })]);
+    var h = back + recHead(fmtDate(r.date, true), wchips, [r.base ? t('wh_base') : t('er_for', { m: monthLabel(String(r.date).slice(0, 7)) }), srcText(r), r.editedAt ? t('rec_edited') : '']);
     // 1) скільки набігло за місяць (місяць — за датою зняття, як у Водоканалу) і скільки коштувало; 2) фото; 3) показання водомірів списком (без барабанів — власник 10.11)
     // від останнього «Передано» кожного виду (власник 11.11): набігло з минулої оплати й гроші; проміжні — рядком
     var wpa = {}, wq = {}, wpx = {};
@@ -2830,7 +2831,7 @@
       var x = y.x, r = x.rec, has = !r.base && x.kwh !== null, c = has ? md.cost(y.m, x.dz, r.date, sopts(k)).total : null;
       return { d: r.date, html: histRow({ key: 'erec-' + r.id, href: '#erec-' + r.id, q: has ? '+' + x.kwh : null, unit: u, money: c, none: r.base ? t('eh_base') : t('hr_first'), date: fmtDate(r.date, true),
         sub: [t('hr_on_meter', { v: (ms.length > 1 ? (y.m.name || '') + ' ' : '') + evals(y.m, r), u: u }), has && x.days ? x.days + ' ' + t('days_short') : '', y.pf ? t('own_paid', { d: fmtDate(y.pf.date) }) + ' · ' + t('paid_skip', { n: y.pf.n }) : ''],
-        right: ((r.photos || []).length ? '<span class="ph-n">' + ico('camera', 16) + '<span class="num">' + r.photos.length + '</span></span>' : '') + billMark(r.bills),
+        right: srcMark(r) + billMark(r.bills),
         st: stChip('m', r, k, r.base ? (baseSent(r) ? 'sent' : 'not') : r.own ? 'own' : ssent(k, r) ? 'sent' : 'not') }) };
     });
     if (years) return { total: total, html: yearGroups(lis, k + '-history', syearTot(k), u) };
@@ -3368,8 +3369,12 @@
       var mine = refs.filter(function (r) { return r.meter === m.id; });
       // один запис на лічильник і дату: повторне введення того ж дня — правка
       var same = S.mrecs.filter(function (r) { return r && !r.deleted && !r.base && r.place === S.placeId && r.meter === m.id && (r.id === EN.skip || r.date === date); })[0];
+      // 151-а: звідки цифри (з фото без змін / вписали); правка без нового фото — джерело лишається, змінили цифри чи дату — «виправлено»
+      var fromN = 0, typedN = 0; md.keys(m).forEach(function (q) { if (z[q] === null || z[q] === undefined || z[q] === '') return; if (EN.auto && EN.auto[m.id + '|' + q]) fromN++; else typedN++; });
+      var vo = viaOf(fromN, typedN, !!CARD.id);
+      if (same) { var was = recVia(same); if (fromN) viaSet(same, vo); else { if (!same.via) same.via = was; if (JSON.stringify(same.z || {}) !== JSON.stringify(z) || same.date !== date) same.editedAt = now; } }
       if (same) { same.z = z; same.date = date; if (own) same.own = true; if (mine.length) same.photos = (same.photos || []).concat(mine); noteSet(same, EN.note, !!EN.noteEdit); if (CARD.id) same.card = +CARD.id; same.updatedAt = Date.now(); }
-      else S.mrecs.push(Object.assign({ id: md.uid(), place: S.placeId, meter: m.id, kind: k, date: date, z: z, sent: {}, createdAt: now, updatedAt: Date.now() }, own ? { own: true } : {}, mine.length ? { photos: mine } : {}, EN.note ? { note: EN.note } : {}, CARD.id ? { card: +CARD.id } : {}));
+      else S.mrecs.push(Object.assign({ id: md.uid(), place: S.placeId, meter: m.id, kind: k, date: date, z: z, sent: {}, createdAt: now, updatedAt: Date.now() }, vo, own ? { own: true } : {}, mine.length ? { photos: mine } : {}, EN.note ? { note: EN.note } : {}, CARD.id ? { card: +CARD.id } : {}));
     });
     // 138-а: розклали навхрест і людина зберегла — на цьому лічильнику день — T2; наступні фото одразу так (m.zswap), без здогадів по прошлих
     var swIds = Object.keys(EN.swap || {}).filter(function (id) { return EN.swap[id] && smeters(k).some(function (m) { return m.id === id && m.zswap === undefined; }); });
@@ -3530,7 +3535,7 @@
     var k = m.kind === 'gas' ? 'gas' : 'elec', md = SK[k].mod, u = SK[k].unit();
     var x = md.series(mrecs(m.id), m).filter(function (s0) { return s0.rec.id === id; })[0] || {};
     var h = back + recHead(fmtDate(r.date, true), stChip('m', r, k, r.base ? (baseSent(r) ? 'sent' : 'not') : r.own ? 'own' : ssent(k, r) ? 'sent' : 'not'),
-      [r.base ? t('eh_base') : t('er_for', { m: monthLabel(md.forMonth(r.date)) })]);
+      [r.base ? t('eh_base') : t('er_for', { m: monthLabel(md.forMonth(r.date)) }), srcText(r), r.editedAt ? t('rec_edited') : '']);
     // 1) скільки набігло за місяць, на який зараховується, і скільки це коштувало; 2) фото; 3) показання списком (без табло — власник 10.11)
     // від останнього «Передано» (власник 11.11): скільки набігло з минулої оплати й скільки це коштує; проміжні — рядком нижче
     var pa = r.base ? null : paidAnchor(mrecs(m.id), r, function () { return true; }, function (y) { return y.base ? baseSent(y) : ssent(k, y); }), px = pa ? md.series([pa.rec, r], m)[1] : null;
@@ -3703,9 +3708,13 @@
       try { var fc = vs.length ? VIS().focusOf(p.res, vs) : null; if (fc) p.file._focus = fc; } catch (e0) { /* лишається рамка з розпізнавання */ }
     });
     var refs = photoRefs((WN.photos || []).map(function (p) { return { file: p.file, meter: p.meters && p.meters.length === 1 ? p.meters[0] : undefined }; }));
+    // 151-а: звідки цифри — з фото без змін (WN.auto), вписали; фото з вхідних бота чи картки чату — «з чату». Правка без фото — джерело те саме, змінили — «виправлено»
+    var fromN = 0, typedN = 0; Object.keys(vals).forEach(function (mid) { if (WN.auto && WN.auto[mid]) fromN++; else typedN++; });
+    var vo = viaOf(fromN, typedN, !!(WN.inbox && WN.inbox.length) || !!CARD.id);
+    if (same) { var was = recVia(same); if (fromN) viaSet(same, vo); else { if (!same.via) same.via = was; if (Object.keys(vals).some(function (mid) { return String((same.vals || {})[mid]) !== String(vals[mid]); })) same.editedAt = now; } }
     var rec = same;
     if (same) { same.vals = Object.assign({}, same.vals, vals); if (refs.length) same.photos = (same.photos || []).concat(refs); if (own) same.own = true; noteSet(same, WN.note, !!WN.noteEdit); same.updatedAt = Date.now(); }
-    else S.water.push(rec = Object.assign({ id: Wt.uid(), place: S.placeId, date: date, vals: vals, createdAt: now, updatedAt: Date.now(), sent: {} }, refs.length ? { photos: refs } : {}, own ? { own: true } : {}, WN.note ? { note: WN.note } : {}));
+    else S.water.push(rec = Object.assign({ id: Wt.uid(), place: S.placeId, date: date, vals: vals, createdAt: now, updatedAt: Date.now(), sent: {} }, vo, refs.length ? { photos: refs } : {}, own ? { own: true } : {}, WN.note ? { note: WN.note } : {}));
     wbillAdopt(rec); cardSaved('water', rec);   // після «перевірте» з картки в чаті (122-а)
     if (!S.onboarded) S.onboarded = true;
     if (WN.inbox && WN.inbox.length && window.TEPLO_API) { var ib = WN.inbox; INBOX.items = (INBOX.items || []).filter(function (x) { return ib.indexOf(x.id) < 0; }); api0('/inbox/done', { method: 'POST', body: JSON.stringify({ ids: ib }) }).catch(function () {}); }
@@ -5106,6 +5115,36 @@
       (o.date ? '<div class="hr-date">' + esc(o.date) + '</div>' : '') + main +
       '<div class="hr-sub">' + subSpans(o.sub) + '</div>' + (o.htm || '') + '</div>' + (o.right || '') + '</a>' + (o.st || '') + '</li>';
   }
+  /** 151-а (план конкурентів п. 8, як у YASNO: «ви внесли», «з фото», «з платіжки»): звідки цифри запису.
+   *  photo — розпізнали з фото в застосунку; chat — з фото, надісланого боту (вхідні, картка в чаті); hand — вписали; bill — платіжка постачальника; base — стартові.
+   *  Записи до 151-ї без `via`: фото в записі тоді бували лише з розпізнавання (додати фото через «Виправити» — з 146-ї), тож є фото — «з фото». */
+  function recVia(r) {
+    if (!r) return '';
+    if (r.base) return 'base';
+    if (r.billOnly || r.source === 'htm' || r.source === 'vk') return 'bill';
+    if (r.via) return r.via !== 'hand' && r.card ? 'chat' : r.via;
+    if (r.card || (r.auto && r.source === 'photo')) return 'chat';   // тепло: автовнесення (phAuto) — лише з фото у вхідних
+    if (r.source === 'photo' || r.source === 'manual') return r.source === 'photo' ? 'photo' : 'hand';
+    return (r.photos || []).length ? 'photo' : 'hand';
+  }
+  /** Звідки цифри нового запису: from — скільки значень узято з фото без змін, typed — скільки вписали руками; chat — фото з чату. */
+  function viaOf(from, typed, chat) { return from ? (typed ? { via: chat ? 'chat' : 'photo', viaFix: 1 } : { via: chat ? 'chat' : 'photo' }) : { via: 'hand' }; }
+  function viaSet(r, o) { r.via = o.via; if (o.viaFix) r.viaFix = 1; else delete r.viaFix; }
+  /** Підпис джерела. У шапці запису — лише «з фото» / «з фото в чаті» (власник 13.11: «введено вручну» не писати);
+   *  full — для підказки значка в рядку історії: і «вписали вручну», і кількість фото. */
+  function srcText(r, full) {
+    var v = recVia(r), n = (r.photos || []).length;
+    var s = v === 'photo' || v === 'chat' ? t('rec_src_' + v + (r.viaFix ? '_fix' : '')) : full && (v === 'hand' || v === 'base') ? t('rec_src_' + v) : '';
+    return full && n ? (s ? ucf(s) + ' · ' : '') + t('rec_src_n', { n: n }) : full ? ucf(s) : s;
+  }
+  /** Значок джерела праворуч у рядку історії — одна пометка без слів: камера — з фото, бульбашка — з чату, картинка — вписали, фото додали. Вписали без фото — нічого. */
+  function srcMark(r) {
+    var v = recVia(r), n = (r.photos || []).length;
+    if (!n && v !== 'photo' && v !== 'chat') return '';
+    var tip = srcText(r, true);
+    return '<span class="ph-n src-' + v + '" role="img" title="' + esc(tip) + '" aria-label="' + esc(tip) + '">' + ico(v === 'chat' ? 'chat' : v === 'photo' ? 'camera' : 'image', 16) +
+      (n ? '<span class="num" aria-hidden="true">' + n + '</span>' : '') + '</span>';
+  }
   /** 129-а (власник 13.11: «каша — суми й гігакалорії не збігаються»): у рядку лише одне джерело. Крупно — ваш лічильник (Гкал і ≈ гроші за тарифом),
    *  нарахування ХТМ — окремим підписаним рядком «ХТМ за {місяць}: Гкал · грн», як у рахунках постачальників (показання «Customer read» окремо від «Estimated»).
    *  h: {g, money, avg} | null; own — Гкал лічильника за той самий проміжок (для різниці) */
@@ -5254,7 +5293,7 @@
         date: fmtDate(r.htm.date, true), sub: [t('hr_on_meter', { v: R.formatForHtm('energy', r.htm.energy), u: 'Гкал' }), iv ? (iv.off > 0 ? t('hr_days_gap', { a: iv.days + iv.off, o: iv.off }) : iv.days + '\u00a0' + t('days_short')) : '',
           paidLine(r, iv, true), ok ? splitNote(r, iv) : '', mv ? t('hsw_row_moved', { m: monthLabel(mv) }) : '', hbillPayTxt(r)],
         htm: HF.v === 'all' ? htmLine(hym, hh, ok && iv.days <= 40 && !iv.off && !mv ? iv.dE : null) : '',
-        right: wxChip(wxFor(r)) + billMark(r.bills),
+        right: wxChip(wxFor(r)) + srcMark(r) + billMark(r.bills),
         st: stChip('h', r, 'heat', r.own ? 'own' : /^(handed|accepted|rejected)$/.test(r.status) ? r.status : 'not', r.own ? '' : '<span class="pill ' + cls + '">' + esc(t('status_' + r.status)) + '</span>') });
     })[0];
   }
@@ -5828,7 +5867,7 @@
     // 130-а (власник 13.11): «введено вручну» прибрано — підпис лише для фото й правки; 143-я: чип — праворуч від дати (у правці — без меню), місяць — як у світла
     var hpill = r.own ? '' : '<span class="pill ' + cls + '">' + esc(t('status_' + r.status)) + '</span>';
     var head = recBack() + recHead(fmtDate(h.date, true), edit ? hpill : stChip('h', r, 'heat', r.own ? 'own' : /^(handed|accepted|rejected)$/.test(r.status) ? r.status : 'not', hpill),
-      [h.date ? t('er_for', { m: monthLabel(String(h.date).slice(0, 7)) }) : '', r.source === 'photo' ? t('rec_src_photo') : '', r.editedAt ? t('rec_edited') : '']);
+      [h.date ? t('er_for', { m: monthLabel(String(h.date).slice(0, 7)) }) : '', srcText(r), r.editedAt ? t('rec_edited') : '']);
     if (edit) {
       return { screen: 'S09', route: 'history', html: head + '<form id="rec-form" data-id="' + r.id + '" novalidate><div class="panel">' +
         '<div class="field" style="max-width:280px"><label for="re-date">' + esc(fieldLabel('date')) + '</label><div class="ctl"><input id="re-date" type="date" value="' + esc(h.date || '') + '" max="' + today() + '" required></div></div>' +
@@ -6109,7 +6148,7 @@
     var ccBtn = window.TEPLO_API ? '<p><button type="button" class="btn sec" data-act="cc-open" data-key="privacy-cookie">' + ico('prefs', 18) + '<span>' + esc(t('cc_link')) + '</span></button></p>' : '';
     var fb = '<button class="linkbtn" data-act="fb-open">' + esc(ru ? '«Отзыв»' : '«Відгук»') + '</button>';
     if (kind === 'privacy') return '<h1>' + esc(t('lg_privacy')) + '</h1>' + upd + (ru ? [
-      sec('Кратко', P('«Счётчики» помогают снять показания квартирных счётчиков света, воды, газа и тепла и подготовить их для КП «Харьковские тепловые сети» (ХТМ), КП «Харківводоканал», АО «Харьковоблэнерго», «Газсетей» и «Нафтогаза». Мы собираем минимум данных, не продаём их и не передаём для рекламы. Сервис не связан с этими поставщиками. Сам он передаёт показания, когда вы нажмёте «Отправить», «Отправить в фоне» или «Внести» (на сайт Водоканала и — если вы подключили свой кабинет ХТМ — в этот кабинет), или после фото в бот — только если вы сами включили автоотправку.')),
+      sec('Кратко', P('«передай» помогает снять показания квартирных счётчиков света, воды, газа и тепла и подготовить их для КП «Харьковские тепловые сети» (ХТМ), КП «Харківводоканал», АО «Харьковоблэнерго», «Газсетей» и «Нафтогаза». Мы собираем минимум данных, не продаём их и не передаём для рекламы. Сервис не связан с этими поставщиками. Сам он передаёт показания, когда вы нажмёте «Отправить», «Отправить в фоне» или «Внести» (на сайт Водоканала и — если вы подключили свой кабинет ХТМ — в этот кабинет), или после фото в бот — только если вы сами включили автоотправку.')),
       sec('Какие данные', UL(['Без входа — показания, счётчик, адреса квартир и настройки хранятся только в вашем браузере.', 'После входа — e-mail (пароль хранится только в виде хеша) или ваш Telegram ID и имя, а также те же данные для синхронизации между устройствами.', 'Фото счётчика при распознавании: распознаются прямо в браузере; копия фото и результат хранятся на сервере до 90 дней, чтобы улучшать распознавание (тестовая версия), — у вошедших, а без входа — только если вы разрешили аналитику.', 'Документы счётчика (паспорт, поверка), если вы их загрузили, — до удаления вами.', 'Отзывы и контакт, который вы указали в отзыве.', 'Технические журналы сервера (IP-адрес, время запроса) — для безопасности, недолго.', 'Только с вашего согласия (баннер «Файлы cookie»): обезличенная статистика — случайный номер браузера, какие экраны открывали и что нажимали (без значений полей, показаний и паролей), ошибки, тип устройства и ширина экрана.'])),
       sec('Кабинеты поставщиков: доступы и согласие (если подключите)', UL(['Храним доступ к кабинету ХТМ — e-mail и пароль — и запись о вашем согласии на обработку персональных данных (дата и текст согласия) — только если вы сами подключили кабинет, и пока вы его не отключите. Пароль хранится на сервере зашифрованным (AES-256), ключ — отдельно от базы данных; в журналах сервера пароля нет.', 'Робот входит в кабинет только чтобы внести показания тепла по вашему нажатию «Внести», потом проверить журнал ХТМ (несколько раз в течение 6 часов) и взять квитанцию (см. ниже). Ничего другого в кабинете не меняет.', 'Квитанции ХТМ (если кабинет подключён и в квартире есть запись тепла за прошлый месяц): раз в сутки, с 7 до 22, сервер сам входит в кабинет — только чтобы взять квитанцию, ничего не вносит, — и прикрепляет её к записи тепла за тот месяц. Выключить — «Настройки» → «Кабинеты и автоотправка» → «Квитанции сами» в блоке ХТМ.', 'Автоподача (только если вы сами включили её на экране «Кабинет ХТМ»): после фото экранов в наш бот и кнопки «Распознать и внести» робот вносит показания сам — только когда все значения прочитаны уверенно и проверки пройдены; за 10 минут до внесения пишем вам в Telegram, и внесение можно отменить. Выключить можно в любой момент.', 'Телефон и e-mail вместе с показаниями получает ХТМ — этого требует их форма.', 'Местные поставщики (если подключите автоотправку на их кабинет, форму или e-mail): храним то, что вы вписали (лицевой счёт, логин и пароль или адрес), — зашифрованным (AES-256), ключ отдельно от базы, — и согласие с датой, пока вы не нажмёте «Выключить автоотправку»; тогда всё стирается. Показания отправляем только по вашему «Отправить в фоне»; письма — с почтового ящика сервиса на peredai.com.ua.', 'Сайт Водоканала: лицевой счёт и фамилию берём из ваших настроек воды. Для «Отправить в фоне» и автоотправки они лежат на сервере (фамилия — зашифрованной) только до конца отправки, потом стираются. Согласие на автоотправку воды (с датой) храним, пока вы его не отзовёте.', 'Квитанции Водоканала (если в квартире вписаны лицевой счёт и фамилия): каждый месяц с 1-го по 25-е сервер сам входит на сайт Водоканала с ними — только чтобы взять квитанцию, ничего не вносит, — и прикрепляет её к записи воды за прошлый месяц. Выключить — «Настройки» → «Кабинеты и автоотправка» → «Квитанции сами».', 'Отключить кабинет, выключить автоотправку или отозвать согласие — «Настройки» → «Кабинеты и автоотправка»; «Забыть пароль» на экране «Кабинет ХТМ» и «Удалить все данные» удаляют пароль и согласие с сервера сразу.'])),
       sec('Зачем', UL(['чтобы сервис работал: проверка показаний, история, синхронизация, вход;', 'чтобы улучшать распознавание фото и исправлять ошибки;', 'с вашего согласия — чтобы видеть, где интерфейс неудобен и где возникают ошибки;', 'чтобы ответить на ваш отзыв.'])),
@@ -6117,7 +6156,7 @@
       sec('Файлы cookie', UL(['<b>Необходимые</b> (всегда): ts_sid — сессия входа, 30 дней; ts_csrf — защита от подделки запросов, 1 год; данные приложения в памяти браузера (localStorage) — показания и настройки, пока вы их не удалите; служебные cookie Cloudflare — защита от атак.', '<b>Аналитика</b> (только если вы разрешили): teplo.vid — случайный номер браузера в localStorage; журнал действий хранится на сервере 60 дней, отметки «открыли сайт» (устройство, система, ширина экрана) — 12 месяцев. Видит только команда сервиса, не передаём никому.', 'Рекламы и чужих трекеров нет.', 'При первом визите сайт спрашивает: «Принять все», «Отклонить» или «Настроить». Пока вы не ответили, аналитика не пишется. Ваш выбор (без IP) записываем на сервере — так видно, что согласие было. Изменить или отозвать — в любой момент: кнопка ниже, «Настройки» внизу страницы или «Настройки cookie» в подвале сайта.']) + ccBtn),
       sec('Ваши права', P('По Закону Украины «О защите персональных данных» вы можете узнать, какие данные о вас хранятся, исправить или удалить их. «Настройки» → «Удалить все данные» стирает данные с устройства и из аккаунта; фото и документы удаляются вместе с аккаунтом. Вопросы — через кнопку ' + fb + '.'))
     ] : [
-      sec('Коротко', P('«Лічильники» допомагають зняти показання квартирних лічильників світла, води, газу й тепла та підготувати їх для КП «Харківські теплові мережі» (ХТМ), КП «Харківводоканал», АТ «Харківобленерго», «Газмереж» і «Нафтогазу». Ми збираємо мінімум даних, не продаємо їх і не передаємо для реклами. Сервіс не пов’язаний із цими постачальниками. Сам він передає показання, коли ви натиснете «Відправити», «Відправити у фоні» чи «Внести» (на сайт Водоканалу і — якщо ви підключили свій кабінет ХТМ — у цей кабінет), або після фото в бот — лише якщо ви самі ввімкнули автовідправку.')),
+      sec('Коротко', P('«передай» допомагає зняти показання квартирних лічильників світла, води, газу й тепла та підготувати їх для КП «Харківські теплові мережі» (ХТМ), КП «Харківводоканал», АТ «Харківобленерго», «Газмереж» і «Нафтогазу». Ми збираємо мінімум даних, не продаємо їх і не передаємо для реклами. Сервіс не пов’язаний із цими постачальниками. Сам він передає показання, коли ви натиснете «Відправити», «Відправити у фоні» чи «Внести» (на сайт Водоканалу і — якщо ви підключили свій кабінет ХТМ — у цей кабінет), або після фото в бот — лише якщо ви самі ввімкнули автовідправку.')),
       sec('Які дані', UL(['Без входу — показання, лічильник, адреси квартир і налаштування зберігаються лише у вашому браузері.', 'Після входу — e-mail (пароль зберігається лише як геш) або ваш Telegram ID та ім’я, а також ті самі дані для синхронізації між пристроями.', 'Фото лічильника під час розпізнавання: розпізнаються просто в браузері; копія фото й результат зберігаються на сервері до 90 днів, щоб покращувати розпізнавання (тестова версія), — у тих, хто увійшов, а без входу — лише якщо ви дозволили аналітику.', 'Документи лічильника (паспорт, повірка), якщо ви їх завантажили, — доки ви їх не видалите.', 'Відгуки й контакт, який ви вказали у відгуку.', 'Технічні журнали сервера (IP-адреса, час запиту) — для безпеки, недовго.', 'Лише з вашої згоди (банер «Файли cookie»): знеособлена статистика — випадковий номер браузера, які екрани відкривали й що натискали (без значень полів, показань і паролів), помилки, тип пристрою й ширина екрана.'])),
       sec('Кабінети постачальників: доступи й згода (якщо підключите)', UL(['Зберігаємо доступ до кабінету ХТМ — e-mail і пароль — та запис про вашу згоду на обробку персональних даних (дата й текст згоди) — лише якщо ви самі підключили кабінет, і доки ви його не відключите. Пароль зберігається на сервері зашифрованим (AES-256), ключ — окремо від бази даних; у журналах сервера пароля немає.', 'Робот входить у кабінет лише щоб внести показання тепла за вашим натисканням «Внести», потім перевірити журнал ХТМ (кілька разів протягом 6 годин) і взяти квитанцію (див. нижче). Нічого іншого в кабінеті не змінює.', 'Квитанції ХТМ (якщо кабінет підключено і в квартирі є запис тепла за минулий місяць): раз на добу, з 7 до 22, сервер сам заходить у кабінет — лише щоб узяти квитанцію, нічого не вносить, — і прикріплює її до запису тепла за той місяць. Вимкнути — «Налаштування» → «Кабінети й автовідправка» → «Квитанції самі» в блоці ХТМ.', 'Автоподача (лише якщо ви її самі ввімкнули на екрані «Кабінет ХТМ»): після фото екранів у наш бот і кнопки «Розпізнати й внести» робот вносить показання сам — лише коли всі значення прочитано впевнено й перевірки пройдено; за 10 хвилин до внесення пишемо вам у Telegram, і внесення можна скасувати. Вимкнути можна будь-коли.', 'Телефон і e-mail разом із показаннями отримує ХТМ — цього вимагає їхня форма.', 'Місцеві постачальники (якщо підключите автовідправку на їхній кабінет, форму чи e-mail): зберігаємо те, що ви вписали (особовий рахунок, логін і пароль чи адресу), — зашифрованим (AES-256), ключ окремо від бази, — і згоду з датою, доки ви не натиснете «Вимкнути автовідправку»; тоді все стирається. Показання надсилаємо лише за вашим «Відправити у фоні»; листи — з поштової скриньки сервісу на peredai.com.ua.', 'Сайт Водоканалу: особовий рахунок і прізвище беремо з ваших налаштувань води. Для «Відправити у фоні» й автовідправки вони лежать на сервері (прізвище — зашифрованим) лише до кінця надсилання, потім стираються. Згоду на автовідправку води (з датою) зберігаємо, доки ви її не відкличете.', 'Квитанції Водоканалу (якщо в квартирі вписано особовий рахунок і прізвище): щомісяця з 1-го по 25-те сервер сам заходить з ними на сайт Водоканалу — лише щоб узяти квитанцію, нічого не вносить, — і прикріплює її до запису води за минулий місяць. Вимкнути — «Налаштування» → «Кабінети й автовідправка» → «Квитанції самі».', 'Відключити кабінет, вимкнути автовідправку чи відкликати згоду — «Налаштування» → «Кабінети й автовідправка»; «Забути пароль» на екрані «Кабінет ХТМ» і «Видалити всі дані» видаляють пароль і згоду з сервера одразу.'])),
       sec('Навіщо', UL(['щоб сервіс працював: перевірка показань, історія, синхронізація, вхід;', 'щоб покращувати розпізнавання фото й виправляти помилки;', 'з вашої згоди — щоб бачити, де інтерфейс незручний і де виникають помилки;', 'щоб відповісти на ваш відгук.'])),
@@ -6126,13 +6165,13 @@
       sec('Ваші права', P('За Законом України «Про захист персональних даних» ви можете дізнатися, які дані про вас зберігаються, виправити чи видалити їх. «Налаштування» → «Видалити всі дані» стирає дані з пристрою та з акаунта; фото й документи видаляються разом з акаунтом. Питання — через кнопку ' + fb + '.'))
     ]).join('');
     return '<h1>' + esc(t('lg_terms')) + '</h1>' + upd + (ru ? [
-      sec('Что это', P('«Счётчики» — бесплатный помощник для жителей Харькова и области: тепло, горячая и холодная вода, свет и газ; подсказывает, что нажимать на теплосчётчике, читает водомеры по фото, проверяет цифры по тем же правилам, что и ХТМ, и подсказывает, куда и до какого числа их передать.')),
+      sec('Что это', P('«передай» — бесплатный помощник для жителей Харьковской, Киевской, Одесской, Львовской и Хмельницкой областей и Киева: тепло, горячая и холодная вода, свет и газ; подсказывает, что нажимать на теплосчётчике, читает водомеры по фото, проверяет цифры по тем же правилам, что и ХТМ, и подсказывает, куда и до какого числа их передать.')),
       sec('Не официальный сервис ХТМ', P('Сервис не принадлежит КП «Харьковские тепловые сети» и не действует от их имени. Передаёте показания вы сами — в кабинете ХТМ, их боте или по телефону. Решение о приёме показаний и начислениях принимает только ХТМ.')),
       sec('Ваша ответственность', UL(['Сверяйте числа со счётчиком перед отправкой — распознавание фото и подсказки могут ошибаться.', 'Передавайте показания в сроки ХТМ (с 5 по 25 число).', 'Не загружайте чужие документы и фото, на которые у вас нет прав.'])),
       sec('Без гарантий', P('Сервис предоставляется «как есть». Расчёт стоимости — ориентировочный, итог — в платёжке ХТМ. Мы не отвечаем за отказ ХТМ в приёме показаний, перерасчёты и последствия ошибок ввода, но стараемся быстро исправлять найденные проблемы.')),
       sec('Изменения и связь', P('Условия и сервис могут меняться — актуальная редакция всегда здесь. Пользуясь сервисом, вы соглашаетесь с этими условиями и ' + '<a href="#privacy">' + esc(t('lg_privacy').toLowerCase()) + '</a>. Связь — кнопка ' + fb + '.'))
     ] : [
-      sec('Що це', P('«Лічильники» — безкоштовний помічник для мешканців Харкова й області: тепло, гаряча й холодна вода, світло й газ; підказує, що натискати на теплолічильнику, читає водоміри з фото, перевіряє цифри за тими самими правилами, що й ХТМ, і підказує, куди й до якого числа їх передати.')),
+      sec('Що це', P('«передай» — безкоштовний помічник для мешканців Харківської, Київської, Одеської, Львівської й Хмельницької областей і Києва: тепло, гаряча й холодна вода, світло й газ; підказує, що натискати на теплолічильнику, читає водоміри з фото, перевіряє цифри за тими самими правилами, що й ХТМ, і підказує, куди й до якого числа їх передати.')),
       sec('Не офіційний сервіс ХТМ', P('Сервіс не належить КП «Харківські теплові мережі» й не діє від їхнього імені. Передаєте показання ви самі — у кабінеті ХТМ, їхньому боті чи телефоном. Рішення про прийняття показань і нарахування ухвалює лише ХТМ.')),
       sec('Ваша відповідальність', UL(['Звіряйте числа з лічильником перед відправленням — розпізнавання фото й підказки можуть помилятися.', 'Передавайте показання в строки ХТМ (з 5 по 25 число).', 'Не завантажуйте чужі документи й фото, на які не маєте прав.'])),
       sec('Без гарантій', P('Сервіс надається «як є». Розрахунок вартості — орієнтовний, підсумок — у платіжці ХТМ. Ми не відповідаємо за відмову ХТМ у прийнятті показань, перерахунки й наслідки помилок введення, але намагаємося швидко виправляти знайдені проблеми.')),
@@ -6944,7 +6983,8 @@
    *  «№ {номер}» без номера зникає, «{попередні}–{показання}» без попередніх — лише показання, частина між комами з порожнім — геть;
    *  «…» лишається, тільки якщо інакше нічого не лишиться. */
   function myPurpose(pk, o, c) {
-    var tpl = String((o && o.purpose) || '').trim() || t(pk === 'waste' ? 'my_purp_def_w' : 'my_purp_def'); c = c || {};
+    // 151-а (власник: «незрозуміло, як маскою користуватися, і навіщо ці блоки, якщо призначення складається саме»): шаблону більше не редагуємо — завжди свій
+    var tpl = t(pk === 'waste' ? 'my_purp_def_w' : 'my_purp_def'); c = c || {};
     var v = { place: c.place || placeLabel(place()), num: myNum(o), val: c.val || '', prev: c.prev || '', q: c.q || '', sum: c.sum !== undefined && c.sum !== null ? money(c.sum) : '', mon: c.mon || '' };
     Object.keys(MY_TOKRE).forEach(function (x) { tpl = tpl.replace(MY_TOKRE[x], v[x] === '' ? '\u0001' + x + '\u0002' : v[x].replace(/\$/g, '$$$$')); });
     tpl = tpl.replace(/(?:№|N[o°]?\.?)?\s*\u0001num\u0002/g, '').replace(/\u0001prev\u0002\s*[–—-]\s*/g, '').replace(/\s*[–—-]\s*\u0001prev\u0002/g, '');
@@ -7169,13 +7209,7 @@
         '<div class="grid2">' + inp('recip', t('my_recip'), o.recip, ' maxlength="120" placeholder="' + esc(o.name || '') + '"') + inp('code', t('my_code'), o.code, ' class="num" inputmode="numeric" maxlength="12"') + '</div>';
     } else if (how === 'cash') h += inp('cash', t('my_cash'), o.cash, ' maxlength="160" placeholder="' + esc(t('my_cash_ph')) + '"');
     else h += '<div class="field"><label for="' + id('other') + '">' + esc(t('my_other')) + '</label><div class="ctl"><textarea id="' + id('other') + '" rows="2" maxlength="300" data-my="other" data-my-pk="' + pk + '" placeholder="' + esc(t('my_other_ph')) + '">' + esc(o.other || '') + '</textarea></div></div>';
-    if (how !== 'cash') {
-      var toks = pk === 'waste' ? ['place', 'num', 'sum', 'mon'] : MY_TOK, ex = myPurpose(pk, o, myCtxLast(pk));
-      h += '<div class="field"><label for="' + id('purpose') + '">' + esc(t('my_purp')) + '</label><div class="ctl"><textarea id="' + id('purpose') + '" rows="3" maxlength="300" data-my="purpose" data-my-pk="' + pk + '" placeholder="' + esc(t(pk === 'waste' ? 'my_purp_def_w' : 'my_purp_def')) + '">' + esc(o.purpose || '') + '</textarea></div>' +
-        '<div class="my-toks" data-key="my-toks-' + pk + '"><span class="small muted">' + esc(t('my_tok_add')) + '</span>' + toks.map(function (x) {
-          return '<button type="button" class="my-tok" data-act="my-tok" data-pk="' + pk + '" data-tok="' + x + '" data-key="my-tok-' + x + '">' + ico('plus', 14) + '<span>' + esc(t('my_tok_' + x)) + '</span></button>'; }).join('') + '</div>' +
-        '<p class="small my-ex" data-key="my-ex-' + pk + '"><span class="muted">' + esc(t('my_ex')) + '</span> <span class="my-ex-t">' + esc(ex) + '</span></p></div>';
-    }
+    // 151-а: призначення платежу й повідомлення для розрахунку вручну складаємо самі з показань — у «Оплаті» (скопіювати, надіслати); тут їх не редагують
     h += '<div class="field"><span class="lbl">' + esc(t('my_due')) + '</span>' + chips('due', due, [['none', t('my_due_none')], ['till', t('my_due_till')], ['win', t('my_due_win')]]) +
       (due === 'till' ? '<div class="my-days">' + day('till', t('my_till_l'), o.till) + '</div>'
         : due === 'win' ? '<div class="my-days">' + day('wa', t('my_wa'), o.win && o.win[0]) + day('wb', t('my_wb'), o.win && o.win[1]) + '</div>'
@@ -7248,7 +7282,7 @@
     // 147-а (власник 12:37: «поле телефон — телефон коменданта, має показуватись у «Жилстрой 1»»): телефон — рядком із дзвінком, і коли платять готівкою
     var tel = String(o.phone || '').trim();
     if (tel) rows.push(cpTel(t('my_phone'), tel, tel, 'my-r-phone'));
-    if (purp) rows.push(row(t('my_purp'), purp, purp, 'my-purp', 'my-r-purp'));
+    if (purp && how === 'iban') rows.push(row(t('my_purp'), purp, purp, 'my-purp', 'my-r-purp'));
     var has = c && !paidC && c.sum !== undefined && c.sum !== null, paid = paidC || /class="pill ok"/.test(mark || '');
     var sum = has ? '<div class="my-sum" data-key="my-sum"><span class="small muted">' + esc(t('my_sum')) + '</span><span class="my-sum-v"><b>' + esc(money(c.sum)) + '</b> грн' + copyIco(money(c.sum).replace(/\s/g, ''), 'my-sum-copy') + '</span>' +
       (c.q ? '<span class="small muted">' + esc(c.from ? t('my_sum_s', { q: c.q, d: fmtDate(c.from) }) : c.q) + '</span>' : '') + '</div>'
@@ -7260,9 +7294,32 @@
       '<div class="where-b mypay-b">' + sum +
       (r ? '<ul class="my-rows">' + r + '</ul>' : '<p class="small muted" data-key="my-norq">' + esc(t('my_norq')) + '</p>') +
       (has && how === 'iban' && purp ? myQr(pk, o, c, purp) : '') +   // 150-а: платіжний QR НБУ — лише коли є що сплатити
+      (how !== 'iban' && c && !paidC ? myMsgBox(pk, o, c) : '') +   // 151-а: розрахунок вручну — готове повідомлення коменданту / орендодавцю
       (all ? '<button type="button" class="btn sec block" data-act="copy" data-text="' + esc(all) + '" data-key="my-copy-all">' + ico('copy', 18) + '<span>' + esc(t('my_copy_all')) + '</span></button>' : '') +
       (o.num && o.note ? '<p class="small muted my-note">' + esc(o.note) + '</p>' : '') + (mark || '') + '</div></details>';
   }
+  /** 151-а (власник: «як призначення платежу — для розрахунків вручну: готове повідомлення коменданту в чат чи орендодавцю, скільки натекло»):
+   *  «Добрий день! Гараж № 141, світло: показання 2263 → 2575, набігло 312 кВт·год, до сплати 1 684,80 грн за жовтень 2026.» Без шаблонів — складаємо самі. */
+  var MY_KN = { elec: ['світло', 'свет'], water: ['вода', 'вода'], gas: ['газ', 'газ'], heat: ['тепло', 'тепло'], waste: ['вивіз сміття', 'вывоз мусора'] };
+  function myMsg(pk, o, c) {
+    c = c || {}; var ru = S.lang === 'ru', num = myNum(o), sum = c.sum !== undefined && c.sum !== null ? money(c.sum) : '';
+    var head = (c.place || placeLabel(place())) + (num ? ' № ' + num : '') + ', ' + (MY_KN[pk] || [pk, pk])[ru ? 1 : 0];
+    var body = [c.val ? (ru ? 'показания ' : 'показання ') + (c.prev ? c.prev + ' → ' : '') + c.val : '', c.q ? (ru ? 'набежало ' : 'набігло ') + c.q : '',
+      sum ? (ru ? 'к оплате ' : 'до сплати ') + sum + ' грн' + (c.mon ? (ru ? ' за ' : ' за ') + c.mon : '') : c.mon ? (ru ? 'за ' : 'за ') + c.mon : ''].filter(Boolean);
+    return (ru ? 'Добрый день! ' : 'Добрий день! ') + head + (body.length ? ': ' + body.join(', ') : '') + '.';
+  }
+  function myMsgBox(pk, o, c) {
+    var m = myMsg(pk, o, c);
+    return '<div class="my-msg" data-key="my-msg"><span class="small muted">' + esc(t('my_msg_t')) + '</span><p class="my-msg-t" data-key="my-msg-t">' + esc(m) + '</p>' +
+      '<div class="my-msg-b"><button type="button" class="btn" data-act="my-msg-send" data-text="' + esc(m) + '" data-key="my-msg-send">' + ico('send', 18) + '<span>' + esc(t('sh_send')) + '</span></button>' +
+      '<button type="button" class="btn sec" data-act="copy" data-text="' + esc(m) + '" data-key="my-msg-copy">' + ico('copy', 18) + '<span>' + esc(t('copy')) + '</span></button></div></div>';
+  }
+  document.addEventListener('click', function (e) {
+    var b = e.target.closest && e.target.closest('[data-act="my-msg-send"]'); if (!b) return;
+    var txt = b.getAttribute('data-text') || ''; track('share', { n: 1, s: 1, my: 1 });
+    if (navigator.share) { navigator.share({ text: txt }).catch(function () { /* закрили меню — нічого */ }); return; }
+    copyText(txt, b); toast(t('sh_copied'));
+  });
   /** Номер людини в постачальника (гараж, ділянка, особовий рахунок). 144-а писала його в «Примітку» (підказка «№ гаража 47») — читаємо й звідти. */
   function myNum(o) { return String((o && (o.num || o.note)) || '').trim(); }
   /** «Оплачено» під «Оплатою»: ті самі позначки, що й «Передано» (світло/газ — sent.obl / sent.grm, вода — sent.vk, тепло — статус). */
@@ -8707,7 +8764,7 @@
     var p = PH.picked || {}, vals = {}, conf = {};
     htmFields().forEach(function (f) { if (f.key !== 'date' && p[f.key]) { vals[f.key] = String(p[f.key].value); conf[f.key] = p[f.key].confidence; } });
     var d = PH.inboxAt ? R.ymd(new Date(PH.inboxAt * 1000)) : today(); if (d > today()) d = today();
-    return { date: d, values: vals, step: steps().length - 1, source: 'photo', photoConf: conf, auto: true, startedAt: new Date().toISOString() };
+    return { date: d, values: vals, step: steps().length - 1, source: 'photo', photoConf: conf, photoVals: Object.assign({}, vals), chat: !!(PH.inbox && PH.inbox.length), auto: true, startedAt: new Date().toISOString() };
   }
   /** Усе прочитано й перевірено → запис «перевірено» + черга внесення (робот внесе сам, можна скасувати). true — зроблено. */
   function phAuto() {
@@ -8726,6 +8783,7 @@
     return '<div class="banner warn" data-key="photo-auto-why" data-why="' + esc(w.k) + '">' + ico('info', 22) + '<div><p><b>' + esc(t('ha_why_t')) + '</b></p><p>' + esc(t('ha_why_' + w.k, { list: w.list || '' })) + '</p><p class="small">' + esc(t('ha_why_sub')) + '</p></div></div>';
   }
   function phApply(bg) {
+    var chat = !!(PH.inbox && PH.inbox.length) || !!CARD.id;   // 151-а: до inboxDone — він стирає PH.inbox
     inboxDone();
     setTimeout(function () { PHS.clear(); }, 0);
     var vals = {}; Array.prototype.forEach.call(document.querySelectorAll('[data-ph]'), function (el) { vals[el.getAttribute('data-ph')] = el.value.trim(); });
@@ -8736,7 +8794,8 @@
     }
     if (!S.meter) { var mt = PH.result && PH.result.meter, id = mt && mt.modelId && M.byId(mt.modelId) ? mt.modelId : 'other'; S.meter = { modelId: id, unit: (mt && mt.energyUnit) || M.byId(id).unit }; }
     var conf = {}; Object.keys(PH.picked || {}).forEach(function (k) { var r = PH.picked[k]; if (String(vals[k]) === String(r.value)) conf[k] = r.conflict ? 0.5 : r.confidence; });
-    S.draft = { date: date, values: vals, step: steps().length - 1, source: 'photo', photoConf: conf, startedAt: new Date().toISOString() };
+    var pv = {}; Object.keys(conf).forEach(function (k) { pv[k] = vals[k]; });
+    S.draft = { date: date, values: vals, step: steps().length - 1, source: 'photo', photoConf: conf, photoVals: pv, chat: chat, startedAt: new Date().toISOString() };
     phReport(vals); heatFocus(vals);
     // фото — к будущей записи истории; копии на сервер ещё грузятся — подождём немного, чтобы не грузить второй раз
     var files = PH.files.filter(function (f, i) { return !(PH.waterIdx && PH.waterIdx.indexOf(i) >= 0); }), dr = S.draft;
@@ -9210,9 +9269,13 @@
   }
   function saveReading(status) {
     var res = S._lastCheck || runCheck(S.draft), htm = draftReadingGcal(S.draft);
+    // 151-а: звідки цифри — з фото без змін (photoVals: що прочитали; чернетка до 151-ї — усе з фото) чи вписали; chat — фото з вхідних бота / картки
+    var dv = S.draft.values || {}, pv = S.draft.photoVals, fromN = 0, typedN = 0;
+    if (S.draft.source === 'photo') Object.keys(dv).forEach(function (k) { var v = dv[k]; if (k === 'date' || v === '' || v === null || v === undefined) return; if (!pv || (pv[k] !== undefined && String(pv[k]) === String(v))) fromN++; else typedN++; });
     var rd = { id: uid(), place: S.placeId, htm: htm, raw: Object.assign({}, S.draft.values), unit: energyUnit(), status: status, createdAt: new Date().toISOString(), updatedAt: Date.now(), source: S.draft.source || 'manual',
       verdict: res.verdict, codes: res.items.map(function (x) { return x.code; }),
       derived: Object.assign({}, res.derived, S.baseline ? { days: R.daysBetween(S.baseline.date, htm.date) } : {}) };
+    viaSet(rd, viaOf(fromN, typedN, !!S.draft.chat || !!CARD.id));
     if (S.draft.photos && S.draft.photos.length) rd.photos = S.draft.photos.slice();
     var nv = noteVal('c-note'); noteSet(rd, nv !== null ? nv : S.draft.note || '');
     S.readings.push(rd); hbillAdopt(rd); S.draft = null; S.focusId = rd.id;

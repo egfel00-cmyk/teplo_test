@@ -109,12 +109,38 @@ final class Journal {
       $out[] = ['vid' => $x['vid'], 'sid' => $x['sid'], 'label' => self::label((string)$x['vid']), 'tag' => $tag, 'from' => $x['a0'], 'to' => $x['a1'], 'n' => (int)$x['n'], 'end' => $end,
         'errs' => (int)$x['errs'], 'toasts' => (int)$x['toasts'], 'saves' => (int)$x['saves'], 'user' => $u ? ['id' => (int)$x['uid']] + $u : null, 'dev' => $dev[(string)$x['vid']] ?? null, 'path' => array_slice($path, 0, 12)];
     }
+    // 151-а (власник: «в аналітиці — хто новий, а хто повернувся й заходив ще раз»): людина = браузер, а увійшов — акаунт (усі його пристрої).
+    // Дні заходів — з visits (усі дні, не лише період); у сеансу: котрий це день людини, перший день, скільки днів минуло від попереднього.
+    $vids = array_values(array_unique(array_map(fn($x) => (string)$x['vid'], $out)));
+    $uids = array_values(array_unique(array_filter(array_map(fn($x) => $x['user'] ? (int)$x['user']['id'] : 0, $out))));
+    $pv = []; $vu = [];   // ключ людини → дні; vid → user_id
+    if ($vids || $uids) {
+      $w = []; $args = [];
+      if ($vids) { $w[] = 'vid IN (' . implode(',', array_fill(0, count($vids), '?')) . ')'; $args = array_merge($args, $vids); }
+      if ($uids) { $w[] = 'user_id IN (' . implode(',', array_fill(0, count($uids), '?')) . ')'; $args = array_merge($args, $uids); }
+      $vr = Db::q('SELECT vid, user_id, day FROM visits WHERE ' . implode(' OR ', $w), $args)->fetchAll();
+      foreach ($vr as $v) if ($v['user_id']) $vu[(string)$v['vid']] = (int)$v['user_id'];
+      foreach ($out as $x) if ($x['user']) $vu[(string)$x['vid']] = (int)$x['user']['id'];
+      foreach ($vr as $v) { $k = isset($vu[(string)$v['vid']]) ? 'u' . $vu[(string)$v['vid']] : 'v' . $v['vid']; $pv[$k][(string)$v['day']] = true; }
+    }
+    $pk = fn(array $x) => isset($vu[(string)$x['vid']]) ? 'u' . $vu[(string)$x['vid']] : 'v' . $x['vid'];
+    $ppl = [];
+    foreach ($out as &$x) {
+      $k = $pk($x); $sd = Visits::day((int)strtotime((string)$x['from'])); $ds = array_keys($pv[$k] ?? []); sort($ds);
+      $prev = array_values(array_filter($ds, fn($d) => $d < $sd));
+      $x['ret'] = ['p' => $k, 'n' => count($prev) + 1, 'first' => $ds[0] ?? $sd, 'gap' => $prev ? (int)round((strtotime($sd) - strtotime(end($prev))) / 86400) : null, 'days' => count($ds)];
+      $o = $ppl[$k] ?? ['first' => $ds[0] ?? $sd, 'n' => 0, 'days' => []]; $o['n']++; $o['days'][$sd] = true; $ppl[$k] = $o;
+    }
+    unset($x);
+    // за період: нових — перший день у періоді; повернулися — заходили раніше (до періоду) або прийшли знову в інший день періоду
+    $pplNew = 0; $pplRet = 0;
+    foreach ($ppl as $k => $o) { $inP = count(array_filter(array_keys($pv[$k] ?? []), fn($d) => $d >= $from)); if ($o['first'] >= $from) $pplNew++; if ($o['first'] < $from || max($inP, count($o['days'])) > 1) $pplRet++; }
     // итог по шагам у людей (свои и тест не считаем): сколько браузеров дошло до шага
     $ex = self::exclSql(); $step = function (string $where) use ($from, $ex) { return (int)(Db::one("SELECT COUNT(DISTINCT vid) AS n FROM events WHERE day >= ? AND ($where)$ex", [$from])['n'] ?? 0); };
     $funnel = ['opened' => $step("name IN ('open', 'screen')"), 'tapped' => $step("name = 'tap'"), 'meter' => $step("name = 'saved' AND props LIKE '%\"m\":%'"),
       'reading' => $step("name = 'saved' AND props LIKE '%\"r\":%'"), 'photo' => $step("name LIKE 'ocr%'"), 'photoFail' => $step("name = 'ocr' AND props LIKE '%\"ok\":0%'"),
       'errors' => $step("name IN ('js_error', 'api_error')"), 'login' => (int)(Db::one("SELECT COUNT(DISTINCT vid) AS n FROM events WHERE day >= ? AND user_id IS NOT NULL$ex", [$from])['n'] ?? 0)];
-    return ['days' => $days, 'sessions' => $out, 'hidden' => $hidden, 'funnel' => $funnel];
+    return ['days' => $days, 'sessions' => $out, 'hidden' => $hidden, 'funnel' => $funnel, 'people' => ['n' => count($ppl), 'new' => $pplNew, 'ret' => $pplRet]];
   }
   /** GET /api/admin/journal/session?vid=&sid= — лента событий сеанса. */
   public static function session(string $vid, string $sid): array {

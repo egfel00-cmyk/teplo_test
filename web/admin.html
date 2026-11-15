@@ -85,7 +85,7 @@ pre.state { font: 12px/1.4 var(--mono); background: #F4F7F5; padding: 10px; bord
   function lastLine(l) {
     if (!l) return '—';
     var st = l.own ? 'для себя' : l.kind === 'heat' ? (STATUS[l.status] || l.status || '') : l.sent ? 'передано' : 'не передано';
-    return dday(l.date) + '<div class="muted small">' + esc(KN[l.kind] || l.kind) + ' · ' + esc(st) + (l.source === 'photo' ? ' · с фото' : '') + '</div>';
+    return dday(l.date) + '<div class="muted small">' + esc(KN[l.kind] || l.kind) + ' · ' + esc(st) + ({ photo: ' · с фото', chat: ' · с фото в чате', hand: ' · вручную', manual: ' · вручную' }[l.source] || '') + '</div>';
   }
   var MODEL = { sharky774: 'SHARKY 774', sharky775: 'SHARKY 775', t330: 'ULTRAHEAT T330', t230: 'ULTRAHEAT T230', multical302: 'MULTICAL 302', elf: 'ELF', sensostar: 'SensoStar', nik7071: 'НІК 7071', trust: 'TRUST', other: 'другая' };
   var STATUS = { checked: 'проверено', handed: 'передано в ХТМ', accepted: 'принято ХТМ', rejected: 'отклонено ХТМ', intermediate: 'промежуточное' };
@@ -257,10 +257,10 @@ pre.state { font: 12px/1.4 var(--mono); background: #F4F7F5; padding: 10px; bord
     var c = function (n, l) { return '<div class="card"><div class="v">' + esc(n) + '</div><div class="k">' + l + '</div></div>'; };   // как у сводки: число над подписью
     return '<div class="panel" id="act"><h2>Отклик — все, кто открывал сайт <span class="muted small">(и без входа)</span></h2>' +
       '<p>' + sel + '</p>' +
-      '<div class="cards">' + c(s.v || 0, 'открыли за ' + d.days + ' дн.') + c(s.new || 0, 'впервые') + c(s.s1 || 0, 'клацали по экранам') + c(s.s2 || 0, 'добавили счётчик') +
+      '<div class="cards">' + c(s.v || 0, 'открыли за ' + d.days + ' дн.') + c(s.new || 0, 'впервые') + c(s.ret || 0, 'вернулись — заходили раньше') + c(s.s1 || 0, 'клацали по экранам') + c(s.s2 || 0, 'добавили счётчик') +
         c(s.s3 || 0, 'внесли показания') + c(s.anon3 || 0, '…из них без входа') + c(s.u || 0, 'вошли в аккаунт') + '</div>' +
-      (days.length ? '<table><thead><tr><th>День</th><th>Открыли</th><th>Впервые</th><th>Клацали</th><th>Добавили счётчик</th><th>Внесли показания</th><th>Вошли</th></tr></thead><tbody>' +
-        days.map(function (k) { var x = d.act[k]; return '<tr><td>' + esc(k.split('-').reverse().join('.')) + '</td><td class="mono">' + x.v + '</td><td class="mono">' + x.new + '</td><td class="mono">' + x.s1 + pct(x.s1, x.v) +
+      (days.length ? '<table><thead><tr><th>День</th><th>Открыли</th><th>Впервые</th><th>Вернулись</th><th>Клацали</th><th>Добавили счётчик</th><th>Внесли показания</th><th>Вошли</th></tr></thead><tbody>' +
+        days.map(function (k) { var x = d.act[k]; return '<tr><td>' + esc(k.split('-').reverse().join('.')) + '</td><td class="mono">' + x.v + '</td><td class="mono">' + x.new + '</td><td class="mono">' + (x.ret || 0) + '</td><td class="mono">' + x.s1 + pct(x.s1, x.v) +
           '</td><td class="mono">' + x.s2 + pct(x.s2, x.v) + '</td><td class="mono">' + x.s3 + pct(x.s3, x.v) + (x.anon3 ? ' <span class="muted small">(без входа ' + x.anon3 + ')</span>' : '') + '</td><td class="mono">' + x.u + '</td></tr>'; }).join('') + '</tbody></table>'
         : '<p class="muted">Пока никто не открывал сайт.</p>') +
       '<p class="muted small">Браузер = случайный id в браузере (без IP и личных данных); телефон и компьютер одного человека — два браузера. «Клацали» — ушли дальше привітання/главной; ' +
@@ -538,7 +538,13 @@ pre.state { font: 12px/1.4 var(--mono); background: #F4F7F5; padding: 10px; bord
   var HIST = { uid: 0, list: null, open: false, msg: null, busy: false };
 
   // ---------- Журнал действий (app/journal.php): сеансы людей и лента событий сеанса ----------
-  var JD = { days: 7, all: false, vid: '', sid: '' };
+  var JD = { days: 7, all: false, vid: '', sid: '', who: '', p: '' };   // who: '' | new | ret; p — заходи однієї людини (151-а)
+  /** 151-а: новий чи повернувся — пілюлею біля «Кто»: котрий день людини, коли вперше, скільки днів від попереднього заходу. */
+  function retLine(r) {
+    if (!r) return '';
+    var dm = function (d) { return String(d || '').split('-').reverse().slice(0, 2).join('.'); };
+    return r.n <= 1 ? pill('info', 'новый') : pill('ok', 'вернулся · ' + r.n + '-й день') + ' <span class="muted small">впервые ' + esc(dm(r.first)) + (r.gap !== null && r.gap !== undefined ? ', прошлый раз ' + (r.gap === 1 ? 'вчера' : r.gap + ' дн. назад') : '') + '</span>';
+  }
   var TAGN = { me: 'это я', test: 'тест' };
   function hms(iso) { var d = new Date(iso); return isNaN(d) ? esc(iso) : d.toLocaleTimeString('ru-RU', { timeZone: 'Europe/Kyiv', hour: '2-digit', minute: '2-digit', second: '2-digit' }); }
   function dur(a, b) { var s = Math.max(0, Math.round((new Date(b) - new Date(a)) / 1000)); return s < 60 ? s + ' с' : s < 3600 ? Math.round(s / 60) + ' мин' : (s / 3600).toFixed(1) + ' ч'; }
@@ -605,15 +611,21 @@ pre.state { font: 12px/1.4 var(--mono); background: #F4F7F5; padding: 10px; bord
     return [n + (e.p ? ' ' + JSON.stringify(e.p) : ''), ''];
   }
   VIEW.journal = function () {
-    var j = DATA.journal || {}, f = j.funnel || {}, l = j.sessions || [];
+    var j = DATA.journal || {}, f = j.funnel || {}, l0 = j.sessions || [], pp = j.people || {};
+    var l = l0.filter(function (x) { var r = x.ret || {}; return (!JD.p || r.p === JD.p) && (!JD.who || (JD.who === 'new' ? r.n <= 1 : r.n > 1)); });
     var step = function (t, v, bad) { return '<div class="panel" style="min-width:120px"><div class="muted small">' + t + '</div><div style="font-size:22px;font-weight:700"' + (bad && v ? ' class="problem"' : '') + '>' + (v || 0) + '</div></div>'; };
     return '<h2>Журнал действий</h2><p class="muted small">Что люди делали в приложении: экраны, нажатия, сообщения, ошибки, что сохранилось, фото. Свои браузеры (где входил админ или помечено «это я») и тестовые ' + (JD.all ? 'показаны' : 'скрыты — ' + (j.hidden || 0) + ' сеансов') + '. Хранится 60 дней.</p>' +
       '<p>' + [1, 7, 30].map(function (d) { return '<button class="btn' + (JD.days === d ? '' : ' ghost') + '" data-jdays="' + d + '">' + (d === 1 ? 'Сегодня' : d + ' дней') + '</button> '; }).join('') +
       '<button class="btn ghost" data-jall="1">' + (JD.all ? 'Скрыть свои и тест' : 'Показать свои и тест') + '</button></p>' +
+      // 151-а: люди за период — новые и вернувшиеся (кнопки — фильтр сеансов)
+      '<p>' + [['', 'Все люди: ' + (pp.n || 0)], ['new', 'Новые: ' + (pp.new || 0)], ['ret', 'Вернулись: ' + (pp.ret || 0)]].map(function (o) { return '<button class="btn' + (JD.who === o[0] && !JD.p ? '' : ' ghost') + '" data-jwho="' + o[0] + '">' + o[1] + '</button> '; }).join('') +
+        (JD.p ? '<button class="btn" data-jwho="">× только один человек — показать всех</button>' : '') + '</p>' +
+      '<p class="muted small">Новый — впервые зашёл в этот период. Вернулся — заходил раньше или пришёл снова в другой день (вошедший — с любого своего устройства). «Все заходы» — что человек делал каждый раз.</p>' +
       '<div style="display:flex;gap:8px;flex-wrap:wrap">' + step('Открыли', f.opened) + step('Нажимали', f.tapped) + step('Добавили счётчик', f.meter) + step('Внесли показания', f.reading) +
       step('Пробовали фото', f.photo) + step('Фото не распознано', f.photoFail, 1) + step('Были ошибки', f.errors, 1) + step('Входили', f.login) + '</div>' +
       (l.length ? '<table><thead><tr><th>Когда</th><th>Кто</th><th>Устройство</th><th>Длилось</th><th>Событий</th><th>Итог</th><th>Путь</th></tr></thead><tbody>' + l.map(function (x) {
-        return '<tr data-js="' + esc(x.vid) + '|' + esc(x.sid) + '" style="cursor:pointer"><td data-l="Когда" class="nowrap">' + when(x.to) + '</td><td data-l="Кто"><b>' + (x.user ? whoS(x) : esc(x.label)) + '</b>' + (x.tag ? ' ' + pill(x.tag === 'me' ? 'info' : 'warn', TAGN[x.tag] || x.tag) : '') + '<div class="small">' + (x.user ? '<span class="muted">' + esc(x.label) + '</span>' : whoS(x)) + '</div></td>' +
+        return '<tr data-js="' + esc(x.vid) + '|' + esc(x.sid) + '" style="cursor:pointer"><td data-l="Когда" class="nowrap">' + when(x.to) + '</td><td data-l="Кто"><b>' + (x.user ? whoS(x) : esc(x.label)) + '</b>' + (x.tag ? ' ' + pill(x.tag === 'me' ? 'info' : 'warn', TAGN[x.tag] || x.tag) : '') + '<div class="small">' + (x.user ? '<span class="muted">' + esc(x.label) + '</span>' : whoS(x)) + '</div>' +
+          (x.ret ? '<div class="small">' + retLine(x.ret) + (x.ret.n > 1 || x.ret.days > 1 ? ' <a href="#" data-jp="' + esc(x.ret.p) + '">все заходы</a>' : '') + '</div>' : '') + '</td>' +
           '<td data-l="Устройство" class="small">' + devLine(x.dev) + '</td><td data-l="Длилось">' + dur(x.from, x.to) + '</td><td data-l="Событий">' + x.n + '</td>' +
           '<td data-l="Итог">' + endLine(x.end) + ' ' + (x.saves ? pill('ok', 'сохранял ' + x.saves) + ' ' : '') + (x.errs ? pill('bad', 'ошибок ' + x.errs) + ' ' : '') + (x.toasts ? pill('warn', 'сообщений ' + x.toasts) : '') + '</td>' +
           '<td data-l="Путь" class="small muted">' + esc((x.path || []).map(scrName).join(' → ')) + '</td></tr>';
@@ -701,10 +713,10 @@ pre.state { font: 12px/1.4 var(--mono); background: #F4F7F5; padding: 10px; bord
       '<p>' + (t.token ? pill(hookOk ? 'ok' : 'warn', hookOk ? 'подключён' : 'токен есть, вебхук не настроен') + ' <a href="https://t.me/' + esc(t.username) + '" target="_blank" rel="noopener">@' + esc(t.username) + '</a> <span class="muted small">(' + esc(SRC[t.source] || '') + ')</span>' : pill('bad', 'не подключён')) + '</p>' +
       (w && w.lastError ? '<p class="problem small">Последняя ошибка доставки от Telegram (' + when(w.lastErrorAt) + '): ' + esc(w.lastError) + '</p>' : '') +
       '<ol class="small" style="padding-left:20px;line-height:1.6">' +
-      '<li>В Telegram откройте <a href="https://t.me/BotFather" target="_blank" rel="noopener">@BotFather</a> → <code>/newbot</code> → имя (например «Лічильники») → username, оканчивающийся на <code>bot</code>.</li>' +
+      '<li>В Telegram откройте <a href="https://t.me/BotFather" target="_blank" rel="noopener">@BotFather</a> → <code>/newbot</code> → имя (например «передай») → username, оканчивающийся на <code>bot</code>.</li>' +
       '<li>BotFather пришлёт токен вида <code>1234567890:AA…</code> — вставьте его ниже и нажмите «Подключить». Сервер сам узнает имя бота, придумает секрет вебхука, поставит вебхук, кнопку меню и команду /start.</li>' +
       '<li>Для входа через Telegram на обычном сайте: в @BotFather <code>/setdomain</code> → выберите бота → отправьте <code>' + esc(d.host || '') + '</code>.</li>' +
-      '<li>Проверка: откройте бота, нажмите «Старт» — придёт кнопка «Відкрити «Лічильники»», сервис откроется уже с входом.</li></ol>' +
+      '<li>Проверка: откройте бота, нажмите «Старт» — придёт кнопка «Відкрити «передай»», сервис откроется уже с входом.</li></ol>' +
       '<form id="ft"><p><label>Токен бота<br><input id="tk" type="password" autocomplete="off" placeholder="' + (t.token ? 'оставьте пустым, чтобы переподключить текущего' : '1234567890:AA…') + '" ' + INP + '></label></p>' +
       note('t') + '<p><button class="btn" type="submit">' + (t.token ? 'Сохранить и переподключить' : 'Подключить') + '</button>' + (t.source === 'admin' ? ' <button class="btn" type="button" id="tc">Отключить бота</button>' : '') + '</p></form></div>' +
       mailPanel(d.mail || {}, note) + brandPanel() +
@@ -939,9 +951,11 @@ pre.state { font: 12px/1.4 var(--mono); background: #F4F7F5; padding: 10px; bord
   }
 
   document.addEventListener('click', function (e) {
-    var jr = e.target.closest('[data-js],[data-jdays],[data-jall],[data-jtag]');
+    var jr = e.target.closest('[data-jp],[data-jwho],[data-js],[data-jdays],[data-jall],[data-jtag]');
     if (jr) {
       e.preventDefault();
+      if (jr.hasAttribute('data-jp')) { e.preventDefault(); JD.p = jr.getAttribute('data-jp'); JD.who = ''; show('journal'); return; }   // 151-а: заходи однієї людини
+      if (jr.hasAttribute('data-jwho')) { JD.who = jr.getAttribute('data-jwho'); JD.p = ''; show('journal'); return; }
       if (jr.hasAttribute('data-js')) { location.hash = 'js-' + jr.getAttribute('data-js').replace('|', '-'); return; }
       if (jr.hasAttribute('data-jdays')) { JD.days = +jr.getAttribute('data-jdays'); show('journal'); return; }
       if (jr.hasAttribute('data-jall')) { JD.all = !JD.all; show('journal'); return; }

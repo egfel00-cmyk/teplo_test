@@ -70,7 +70,7 @@ HTML;
       $em = $f['user_id'] ? (string)(Db::one('SELECT email FROM users WHERE id = ?', [(int)$f['user_id']])['email'] ?? '') : '';
       if (!filter_var($em, FILTER_VALIDATE_EMAIL) && preg_match('/[^\s·]+@[^\s·]+\.[^\s·]+/u', (string)$f['contact'], $mm)) $em = $mm[0];
       if (filter_var($em, FILTER_VALIDATE_EMAIL) && class_exists('Mail')) {
-        try { Mail::send(['to' => [$em], 'subject' => $ru ? 'Ответ на ваш отзыв — «Счётчики»' : 'Відповідь на ваш відгук — «Лічильники»', 'text' => ($ru ? 'Вы писали: ' : 'Ви писали: ') . '«' . self::cut((string)$f['text'], 300) . "»\n\n" . $text . "\n\n— peredai.com.ua", 'kind' => 'feedback', 'user' => $f['user_id'] ? (int)$f['user_id'] : null]); $via = 'mail'; }
+        try { Mail::send(['to' => [$em], 'subject' => $ru ? 'Ответ на ваш отзыв — «передай»' : 'Відповідь на ваш відгук — «передай»', 'text' => ($ru ? 'Вы писали: ' : 'Ви писали: ') . '«' . self::cut((string)$f['text'], 300) . "»\n\n" . $text . "\n\n— peredai.com.ua", 'kind' => 'feedback', 'user' => $f['user_id'] ? (int)$f['user_id'] : null]); $via = 'mail'; }
         catch (Throwable $e) { $via = ''; }
       }
     }
@@ -145,10 +145,10 @@ final class Admin {
     // последнее — самое позднее по дате показаний (после синхронизации порядок в массиве любой)
     $cand = [];
     foreach ($rd as $x) $cand[] = ['date' => (string)($x['htm']['date'] ?? substr((string)($x['createdAt'] ?? ''), 0, 10)), 'kind' => 'heat', 'status' => $x['status'] ?? null,
-      'verdict' => $x['verdict'] ?? null, 'source' => $x['source'] ?? null, 'own' => !empty($x['own'])];
-    foreach ($wr as $x) $cand[] = ['date' => (string)($x['date'] ?? ''), 'kind' => 'water', 'sent' => !empty($x['sent']['vk']), 'own' => !empty($x['own']), 'source' => !empty($x['photos']) ? 'photo' : null];
+      'verdict' => $x['verdict'] ?? null, 'source' => $x['via'] ?? ($x['source'] ?? null), 'own' => !empty($x['own'])];   // 151-я: via — photo|chat|hand
+    foreach ($wr as $x) $cand[] = ['date' => (string)($x['date'] ?? ''), 'kind' => 'water', 'sent' => !empty($x['sent']['vk']), 'own' => !empty($x['own']), 'source' => $x['via'] ?? (!empty($x['photos']) ? 'photo' : null)];
     foreach ($mr as $x) { $g = ($x['kind'] ?? '') === 'gas';
-      $cand[] = ['date' => (string)($x['date'] ?? ''), 'kind' => $g ? 'gas' : 'elec', 'sent' => !empty($x['sent'][$g ? 'grm' : 'obl']), 'own' => !empty($x['own']), 'source' => !empty($x['photos']) ? 'photo' : null]; }
+      $cand[] = ['date' => (string)($x['date'] ?? ''), 'kind' => $g ? 'gas' : 'elec', 'sent' => !empty($x['sent'][$g ? 'grm' : 'obl']), 'own' => !empty($x['own']), 'source' => $x['via'] ?? (!empty($x['photos']) ? 'photo' : null)]; }
     usort($cand, fn($a, $b) => strcmp($b['date'], $a['date']));
     $first = $places[0] ?? [];
     return ['meter' => $meter['modelId'] ?? null, 'unit' => $meter['unit'] ?? null, 'readings' => count($rd),
@@ -602,8 +602,8 @@ final class VkStatus {
     $n = 0;
     foreach ($rows as $r) {
       $st = json_decode((string)($r['data'] ?? ''), true); $ru = (($st['remind']['lang'] ?? '') === 'ru');
-      $p = ['chat_id' => $r['external_id'], 'text' => $ru ? "Бот Водоканала снова отвечает. Откройте «Счётчики» и нажмите «Отправить в Водоканал» ещё раз." : "Бот Водоканалу знову відповідає. Відкрийте «Лічильники» й натисніть «Відправити у Водоканал» ще раз."];
-      if (Cfg::appUrlKnown()) $p['reply_markup'] = ['inline_keyboard' => [[['text' => $ru ? 'Открыть «Счётчики»' : 'Відкрити «Лічильники»', 'web_app' => ['url' => Cfg::appUrl() . '?go=water-cold']]]]];
+      $p = ['chat_id' => $r['external_id'], 'text' => $ru ? "Бот Водоканала снова отвечает. Откройте «передай» и нажмите «Отправить в Водоканал» ещё раз." : "Бот Водоканалу знову відповідає. Відкрийте «передай» й натисніть «Відправити у Водоканал» ще раз."];
+      if (Cfg::appUrlKnown()) $p['reply_markup'] = ['inline_keyboard' => [[['text' => $ru ? 'Открыть «передай»' : 'Відкрити «передай»', 'web_app' => ['url' => Cfg::appUrl() . '?go=water-cold']]]]];
       try { Telegram::call('sendMessage', $p); $n++; } catch (Throwable $e) { /* не дошло — не страшно */ }
     }
     Db::q("UPDATE vk_events SET notified = 1 WHERE kind = 'silent' AND notified = 0");

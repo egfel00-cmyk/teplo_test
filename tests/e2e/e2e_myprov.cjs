@@ -53,11 +53,10 @@ const B = 'http://127.0.0.1:8013/';
   ok('IBAN з опискою — жовта підказка про контрольні цифри', /контрольні цифри/.test(await txt('[data-key="my-iban-warn"]')));
   await p.fill('#my-elec-iban', 'UA213223130000026007233566001'); await p.press('#my-elec-iban', 'Tab'); await p.waitForTimeout(400);
   ok('правильний IBAN: без підказки, у полі — групами по 4', !(await has('[data-key="my-iban-warn"]')) && (await p.inputValue('#my-elec-iban')) === 'UA21 3223 1300 0002 6007 2335 6600 1');
-  await p.fill('#my-elec-purpose', 'Гараж № 47: світло'); await p.click('[data-key="my-tok-q"]'); await p.waitForTimeout(150); await p.click('[data-key="my-tok-sum"]'); await p.waitForTimeout(300);
-  const pv = await p.inputValue('#my-elec-purpose');
-  ok('«Підставити»: {набігло} і {сума} — у курсор, з пробілом', pv === 'Гараж № 47: світло {набігло} {сума}', pv);
+  // 151-а (власник: «незрозуміло, як маскою користуватися, і навіщо ці блоки, якщо призначення складається саме»): редактора шаблону немає
+  ok('151: у налаштуваннях немає шаблону призначення, «Підставити» й «Вийде»', !(await has('#my-elec-purpose')) && !(await has('[data-key="my-toks-elec"]')) && !(await has('[data-key="my-ex-elec"]')));
   s = await st();
-  ok('шаблон збережено одразу', gar().prov.elec.purpose === 'Гараж № 47: світло {набігло} {сума}' && gar().prov.elec.name === 'ГК «Мотор»' && gar().prov.elec.iban === 'UA213223130000026007233566001', gar().prov.elec);
+  ok('реквізити збережено одразу', gar().prov.elec.name === 'ГК «Мотор»' && gar().prov.elec.iban === 'UA213223130000026007233566001', gar().prov.elec);
   // 145-а (власник: «не сохраняется кастомный провайдер в счётчике света»): на iPhone дотик кнопки не забирає фокус — `change` нема; набране має лишитись
   await p.evaluate(() => { const el = document.getElementById('my-elec-recip'); el.focus(); el.value = 'ГК «Мотор», голова'; el.dispatchEvent(new Event('input', { bubbles: true })); });
   await p.evaluate(() => { location.hash = '#home'; }); await p.waitForTimeout(400);
@@ -98,9 +97,21 @@ const B = 'http://127.0.0.1:8013/';
   await tap('[data-key="mypay-eg-sum"]'); await p.waitForTimeout(500);
   ok('відкрили: сума в шапці схована (є всередині), унизу «Згорнути»', await p.$eval('[data-key="mypay-eg"]', d => d.open && getComputedStyle(d.querySelector('.mypay-amt')).display === 'none' && !!d.querySelector('.acc-foot')).catch(() => false));
   const pay = await txt('[data-key="mypay-eg"]');
+  // 151-а (власник: «для розрахунків вручну — готове повідомлення коменданту в чат чи орендодавцю»): на рахунок — повідомлення немає, готівкою — є, з «Надіслати» й «Копіювати»
+  ok('151: на рахунок — призначення є, повідомлення немає', await has('[data-key="mypay-eg"] [data-key="my-r-purp"]') && !(await has('[data-key="mypay-eg"] [data-key="my-msg"]')));
+  await p.evaluate(() => { const s = JSON.parse(localStorage.getItem('teplo.v1')); const g = s.places.find(x => x.prov && x.prov.elec && x.prov.elec.own); g.prov.elec.how = 'cash'; g.prov.elec.cash = 'Комендант Наталья'; g.prov.elec.num = '141'; g.prov.elec.ts = Date.now(); s.updatedAt = Date.now(); localStorage.setItem('teplo.v1', JSON.stringify(s)); });
+  await p.goto('about:blank'); await p.goto(B + '#elec'); await p.waitForTimeout(700);
+  if (!(await p.$eval('[data-key="mypay-eg"]', d => d.open).catch(() => false))) { await tap('[data-key="mypay-eg-sum"]'); await p.waitForTimeout(400); }
+  const mtx = await txt('[data-key="my-msg-t"]');
+  ok('151: готівкою — «Добрий день! Гараж № 141, світло: показання 1250 → 1310, набігло 60 кВт·год, до сплати 259,20 грн за жовтень 2026.»', mtx === 'Добрий день! Гараж № 141, світло: показання 1250 → 1310, набігло 60 кВт·год, до сплати 259,20 грн за жовтень 2026.', mtx);
+  ok('151: «Надіслати» й «Копіювати» з тим самим текстом; призначення платежу немає', (await p.getAttribute('[data-key="my-msg-send"]', 'data-text')) === mtx && (await p.getAttribute('[data-key="my-msg-copy"]', 'data-text')) === mtx && !(await has('[data-key="mypay-eg"] [data-key="my-r-purp"]')));
+  await p.evaluate(() => { const s = JSON.parse(localStorage.getItem('teplo.v1')); const g = s.places.find(x => x.prov && x.prov.elec && x.prov.elec.own); g.prov.elec.how = 'iban'; delete g.prov.elec.num; g.prov.elec.ts = Date.now(); s.updatedAt = Date.now(); localStorage.setItem('teplo.v1', JSON.stringify(s)); });
+  await p.goto('about:blank'); await p.goto(B + '#elec'); await p.waitForTimeout(700);
+  if (!(await p.$eval('[data-key="mypay-eg"]', d => d.open).catch(() => false))) { await tap('[data-key="mypay-eg-sum"]'); await p.waitForTimeout(400); }
   ok('«Оплата»: назва, 259,20 грн, 60 кВт·год з 30 вересня', /ГК «Мотор»/.test(pay) && /259,20/.test(pay) && /60 кВт·год з 30 вересня/.test(pay), pay);
   const purp = await txt('[data-key="mypay-eg"] [data-key="my-r-purp"] .my-r-v');
-  ok('призначення: «Гараж № 47: світло 1250–1310, 60 кВт·год, 259,20 грн, за жовтень 2026»', purp === 'Гараж № 47: світло 1250–1310, 60 кВт·год, 259,20 грн, за жовтень 2026', purp);
+  // 151-а: шаблон людини більше не застосовуємо — призначення завжди своє (старий `purpose` у даних лишається, але не діє)
+  ok('призначення (своє, без шаблону): «Гараж: показання 1250–1310, набігло 60 кВт·год, 259,20 грн, за жовтень 2026»', purp === 'Гараж: показання 1250–1310, набігло 60 кВт·год, 259,20 грн, за жовтень 2026', purp);
   await p.click('[data-key="mypay-eg"] [data-key="my-copy-all"]'); await p.waitForTimeout(300);
   const clip = await p.evaluate(() => navigator.clipboard.readText()).catch(() => '');
   ok('«Скопіювати реквізити»: отримувач, IBAN без пробілів, ЄДРПОУ, призначення, сума', clip.split('\n').length === 5 && clip.includes('UA213223130000026007233566001') && clip.includes('ЄДРПОУ 12345678') && clip.endsWith('259,20 грн'), clip);
@@ -151,11 +162,13 @@ const B = 'http://127.0.0.1:8013/';
   // налаштування: поле «Ваш номер» з «141», шаблон-приклад і токен «номер»
   const so = await p.$eval('[data-key="emeter-eg"] details.mbox-set', d => d.open).catch(() => false);
   if (!so) { await p.click('[data-key="emeter-eg"] details.mbox-set > summary'); await p.waitForTimeout(400); }
-  ok('налаштування: «Ваш номер» = 141, є «+ номер»', (await p.inputValue('#my-elec-num').catch(() => '')) === '141' && await has('[data-key="my-tok-num"]'));
+  ok('налаштування: «Ваш номер» = 141, шаблону немає (151-а)', (await p.inputValue('#my-elec-num').catch(() => '')) === '141' && !(await has('[data-key="my-tok-num"]')));
   await p.fill('#my-elec-num', '47'); await p.press('#my-elec-num', 'Tab'); await p.waitForTimeout(400);
   s = await st();
   ok('номер переїхав у num, «Примітка» прибрана', gar().prov.elec.num === '47' && gar().prov.elec.note === undefined, gar().prov.elec);
-  ok('«Вийде:» одразу з новим номером', /Гараж № 47: показання 2263/.test(await txt('[data-key="my-ex-elec"]')), await txt('[data-key="my-ex-elec"]'));
+  await p.goto('about:blank'); await p.goto(B + '#elec'); await p.waitForTimeout(700);
+  const p47 = await p.$eval('[data-key="mypay-eg"] [data-key="my-r-purp"] .my-r-v', e => e.textContent).catch(e => 'ERR ' + e.message.slice(0, 80));
+  ok('призначення в «Оплаті» — з новим номером', /Гараж № 47: показання 2263/.test(p47), p47);
 
   // 7. 146-а, «Мої постачальники»: ГК Победа вже вписаний у першому гаражі — у другому він окремим варіантом «Кому платите», один дотик
   await load({ garage: 'own1', garage2: true, at2g: true }, 'elec');

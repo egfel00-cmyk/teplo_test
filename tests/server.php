@@ -267,6 +267,17 @@ $js = $boss->req('GET', '/api/admin/journal', null, ['QUERY_STRING' => 'days=7']
 $sa = array_values(array_filter($js['sessions'] ?? [], fn($x) => $x['sid'] === 'sessA1'))[0] ?? null;
 ok('журнал в /admin: сеансы людей (свои и тест скрыты — 2), итог сеанса (ошибки, сообщения, сохранения), шаги', count($js['sessions'] ?? []) === 1 && $js['hidden'] === 2 && count($jall['sessions']) === 3
   && $sa && $sa['n'] === 8 && $sa['errs'] === 1 && $sa['saves'] === 1 && str_starts_with($sa['label'], 'Гость ') && $js['funnel']['meter'] === 1 && $js['funnel']['photoFail'] === 1 && $js['funnel']['errors'] === 1 && $js['funnel']['opened'] === 1, $js);
+// 151-а (власник: «хто новий, а хто повернувся»): той самий браузер заходив 3 дні тому — сеанс «вернувся, 2-й день», у підсумку — повернулися 1, нових 0
+$sa0 = $sa;
+ok('журнал: без раніших заходів — «новий» (1-й день), у підсумку людей нових 1', ($sa0['ret']['n'] ?? 0) === 1 && ($js['people']['new'] ?? -1) === 1 && ($js['people']['ret'] ?? -1) === 0, [$sa0['ret'] ?? null, $js['people'] ?? null]);
+$d3 = Visits::day(time() - 3 * 86400);
+Db::q('INSERT INTO visits (day, vid, user_id, device, os, tg, pwa, sw, hits, first_at, last_at, stage, meters, recs) VALUES (?, ?, NULL, ?, ?, 0, 0, 390, 1, ?, ?, 1, 0, 0)', [$d3, 'abc12345phone', 'mobile', 'iOS', Http::iso(), Http::iso()]);
+$jr = $boss->req('GET', '/api/admin/journal', null, ['QUERY_STRING' => 'days=7'])->body; $sr = array_values(array_filter($jr['sessions'] ?? [], fn($x) => $x['sid'] === 'sessA1'))[0] ?? [];
+ok('журнал: заходив 3 дні тому — «вернувся», 2-й день, впершe — тоді, проміжок 3 дні; людей: новий 1 (вперше — у цьому тижні), повернувся 1', ($sr['ret']['n'] ?? 0) === 2 && ($sr['ret']['first'] ?? '') === $d3 && ($sr['ret']['gap'] ?? 0) === 3
+  && ($jr['people']['new'] ?? -1) === 1 && ($jr['people']['ret'] ?? -1) === 1, [$sr['ret'] ?? null, $jr['people'] ?? null]);
+$dr = $boss->req('GET', '/api/admin/devices', null, ['QUERY_STRING' => 'days=7&all=1'])->body;
+ok('відгук по днях: сьогодні «повернулися» 1 (телефон заходив раніше), «впершe» на 1 менше', (($dr['act'][$today]['ret'] ?? 0) === 1) && ($dr['act'][$today]['new'] ?? 0) === ($ta['new'] ?? 0) - 1 && ($dr['actSum']['ret'] ?? 0) >= 1, [$dr['act'][$today] ?? null, $ta]);
+Db::q('DELETE FROM visits WHERE day = ? AND vid = ?', [$d3, 'abc12345phone']);
 $jt = $boss->req('GET', '/api/admin/journal/session', null, ['QUERY_STRING' => 'vid=abc12345phone&sid=sessA1'])->body; $ev = $jt['events'] ?? [];
 ok('лента сеанса: по порядку, длинный текст обрезан (120), вложенные поля отброшены', count($ev) === 8 && $ev[0]['n'] === 'open' && $ev[3]['p']['m'] === 'Показання менше за попередні' && mb_strlen($ev[7]['p']['x']) === 120 && !isset($ev[7]['p']['nested']) && $ev[0]['at'] <= $ev[7]['at'], $ev[7] ?? $jt);
 $jb = $boss->req('GET', '/api/admin/journal/session', null, ['QUERY_STRING' => 'vid=boss1234desk&sid=sessB1'])->body;
@@ -2095,6 +2106,13 @@ ob_start(); $sv = IndexNow::serve('/' . $k . '.txt'); $body = ob_get_clean();
 ok('/<ключ>.txt отдаёт ключ, чужой — нет', $sv === true && $body === $k && IndexNow::serve('/' . strrev($k) . '.txt') === false);
 $hs = IndexNow::summary();
 ok('/api/health → indexnow: код и дата, без ключа', ($hs['code'] ?? 0) === 202 && $hs['key'] === true && !str_contains(json_encode($hs), $k), $hs);
+// 151-я: усі адреси sitemap одним POST — раз на набір адрес / сборку, не чаще раза в сутки
+$posts = []; IndexNow::$post = function ($u, $b) use (&$posts) { $posts[] = $b; return ['code' => 202, 'err' => null]; };
+$rl = IndexNow::runList('https://peredai.example/', $t0 + 3 * 86400); $pb = $posts[0] ?? [];
+ok('IndexNow: список — host, ключ, keyLocation, адреса моделей и громад (uk + ru)', $rl && count($posts) === 1 && $pb['host'] === 'peredai.example' && $pb['key'] === $k
+  && $pb['keyLocation'] === 'https://peredai.example/' . $k . '.txt' && in_array('https://peredai.example/kudy-peredaty', $pb['urlList'], true) && in_array('https://peredai.example/ru/kak-snyat-pokazaniya', $pb['urlList'], true) && count($pb['urlList']) > 700, [$rl, count($pb['urlList'] ?? [])]);
+ok('IndexNow: тот же набор после 202 — молчим; localhost — нет', IndexNow::runList('https://peredai.example/', $t0 + 5 * 86400) === null && IndexNow::runList('https://localhost/', $t0 + 5 * 86400) === null && count($posts) === 1);
+IndexNow::$post = null;
 IndexNow::$http = null;
 
 echo "\n— Ретранслятор на NAS (Relay): ключ, протокол next/done, разбор формы обленерго\n";

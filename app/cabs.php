@@ -943,7 +943,7 @@ final class HtmCab {
     $body = $d->getElementsByTagName('body')->item(0); $inner = '';
     if ($body) foreach ($body->childNodes as $c) $inner .= $d->saveHTML($c);
     $title = htmlspecialchars((string)$b['title'], ENT_QUOTES, 'UTF-8');
-    $note = 'Копія рахунку з кабінету КП «ХТМ» (hts.kharkov.ua), збережено ' . (new DateTimeImmutable('now', new DateTimeZone('Europe/Kyiv')))->format('d.m.Y') . ' сервісом «Лічильники». Зберегти PDF — «Друк» у меню браузера.';
+    $note = 'Копія рахунку з кабінету КП «ХТМ» (hts.kharkov.ua), збережено ' . (new DateTimeImmutable('now', new DateTimeZone('Europe/Kyiv')))->format('d.m.Y') . ' сервісом «передай». Зберегти PDF — «Друк» у меню браузера.';
     $html = '<!DOCTYPE html><html lang="uk"><head><meta charset="utf-8"><meta name="viewport" content="width=820"><meta name="robots" content="noindex"><title>' . $title . '</title>'
       . ($css ? '<style>' . implode("\n", $css) . '</style>' : '')
       . '<style>.lc-copy{font:13px/1.4 system-ui,-apple-system,sans-serif;color:#444;background:#f2f2f2;border:1px solid #ddd;border-radius:6px;padding:6px 10px;margin:8px 0 12px}@media print{.lc-copy{display:none}}</style></head>'

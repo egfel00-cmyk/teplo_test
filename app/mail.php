@@ -198,7 +198,7 @@ final class Mail {
     return '<!doctype html><html lang="uk"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex">'
       . '<title>Лічильники — нагадування на e-mail</title><style>body{font:17px/1.5 system-ui,sans-serif;max-width:560px;margin:40px auto;padding:0 20px;color:#1d2433}'
       . 'h1{font-size:22px}button{font:inherit;padding:12px 20px;border-radius:10px;border:0;background:#1d4ed8;color:#fff;min-height:48px}a{color:#1d4ed8}</style></head><body>'
-      . $body . '<p><a href="' . $h(Cfg::appUrl()) . '">Відкрити «Лічильники»</a></p></body></html>';
+      . $body . '<p><a href="' . $h(Cfg::appUrl()) . '">Відкрити «передай»</a></p></body></html>';
   }
   public static function optin(int $uid): void { self::table(); Db::q('DELETE FROM mail_optout WHERE user_id = ?', [$uid]); }
 
@@ -233,7 +233,7 @@ final class Mail {
     $to = $admin !== '' ? $admin : $from;
     try {
       $r = self::send(['to' => $to, 'kind' => 'test', 'subject' => 'Лічильники: пошта працює',
-        'text' => "Це тестовий лист із сервісу «Лічильники» (" . Cfg::appUrl() . ").\n\nЯкщо ви його бачите — відправка листів налаштована: щоденна зведення, нагадування людям без Telegram і подача показань e-mail.\n\nСервер: $host:$port, відправник: $from.",
+        'text' => "Це тестовий лист із сервісу «передай» (" . Cfg::appUrl() . ").\n\nЯкщо ви його бачите — відправка листів налаштована: щоденна зведення, нагадування людям без Telegram і подача показань e-mail.\n\nСервер: $host:$port, відправник: $from.",
       ], $c);
     } catch (HttpError $e) { throw self::fail('mail_check_failed', 'Проверка не прошла, ничего не сохранено' . (self::on() ? '' : ' (кроме полей без ключа)') . '. ' . ($e->extra['human'] ?? $e->err)); }
     Cfg::saveRuntime(['smtp_host' => $host, 'smtp_port' => (string)$port, 'smtp_user' => $user, 'smtp_pass' => $pass, 'smtp_from' => $from,

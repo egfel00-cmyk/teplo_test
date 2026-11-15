@@ -2409,6 +2409,8 @@ details.wacc.wacc-btn > .acc-foot { margin: 0; padding: 12px 16px 16px; border-t
 /* перемикач на всю ширину, рівними частинами — три варіанти не переносяться на вузькому телефоні */
 .my-seg { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 2px; padding: 3px; border: 1.5px solid var(--c-field-line); border-radius: 14px; background: var(--c-surface); }
 .my-chip { position: relative; display: grid; }
+/* 151-а (скрин власника «Строк передачі»: знизу відступ більший, ніж зверху): `.field label` давав чипам margin-bottom 6px і жирність — у сегментах їх немає */
+.field .my-chip { margin: 0; font-weight: inherit; }
 .my-chip > input { position: absolute; inset: 0; opacity: 0; margin: 0; cursor: pointer; }
 .my-chip > span { display: flex; align-items: center; justify-content: center; text-align: center; min-height: 44px; padding: 2px 6px; border-radius: 11px; font-size: var(--fs-s); line-height: 1.15; text-wrap: balance; transition: background .15s var(--ease), color .15s var(--ease); }
 .my-chip.on > span { background: var(--c-ink); color: var(--c-on-ink); font-weight: 500; }
@@ -2420,6 +2422,12 @@ details.wacc.wacc-btn > .acc-foot { margin: 0; padding: 12px 16px 16px; border-t
 .my-tok::after { content: ''; position: absolute; inset: -4px -2px; }   /* дотик — 48 px */
 .my-tok > .ico { color: var(--c-ink-2); }
 @media (hover: hover) { .my-tok:hover { border-style: solid; border-color: var(--c-ink-2); } }
+/* 151-а: повідомлення для розрахунку вручну (комендант, орендодавець) — текст і «Надіслати» / «Копіювати» */
+.my-msg { margin: 12px 0 0; padding: 12px 14px; border: 1px solid var(--bt-line); border-radius: 12px; background: var(--c-surface); }
+.my-msg > .small { display: block; margin: 0 0 4px; }
+.my-msg-t { margin: 0 0 12px; line-height: 1.45; overflow-wrap: anywhere; }
+.my-msg-b { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.my-msg-b > .btn { margin: 0; }
 .my-ex { margin: 10px 0 0; padding: 10px 12px; border-radius: 10px; background: var(--c-surface); border: 1px solid var(--c-line); line-height: 1.45; overflow-wrap: anywhere; }
 .my-days { display: flex; flex-wrap: wrap; gap: 8px 16px; margin-top: 10px; }
 .my-day { display: inline-flex; align-items: center; gap: 8px; color: var(--c-ink-2); }

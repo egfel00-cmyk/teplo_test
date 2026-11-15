@@ -435,7 +435,7 @@ final class VkCab {
     $ru = self::$lang === 'ru'; $l = [];
     foreach ($lines as $it) $l[] = '• ' . ($it['name'] ?: ($ru ? 'счётчик' : 'лічильник')) . ' — ' . $it['value'];
     $p = ['chat_id' => $tg['external_id'], 'text' => ($head ?? ($ru ? "✅ Водоканал принял показания (счёт $acc):" : "✅ Водоканал прийняв показання (рахунок $acc):")) . "\n" . implode("\n", $l) . ($text !== '' ? "\n\n" . ($ru ? 'Ответ сайта: ' : 'Відповідь сайту: ') . '«' . mb_substr($text, 0, 300) . '»' : '')];
-    if (Cfg::appUrlKnown()) $p['reply_markup'] = ['inline_keyboard' => [[['text' => $ru ? 'Открыть «Счётчики»' : 'Відкрити «Лічильники»', 'web_app' => ['url' => Cfg::appUrl() . '?go=water-cold']]]]];
+    if (Cfg::appUrlKnown()) $p['reply_markup'] = ['inline_keyboard' => [[['text' => $ru ? 'Открыть «передай»' : 'Відкрити «передай»', 'web_app' => ['url' => Cfg::appUrl() . '?go=water-cold']]]]];
     try { Telegram::call('sendMessage', $p); } catch (Throwable $e) { /* не дошло — не страшно */ }
   }
   public static function limit(int $uid): void {

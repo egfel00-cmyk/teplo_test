@@ -56,6 +56,34 @@ final class IndexNow {
     $b = curl_exec($ch); $code = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE); $err = $b === false ? curl_error($ch) : null; curl_close($ch);
     return ['code' => $code, 'err' => $err];
   }
+  /** @var null|callable(string, array): array{code:int,err:?string} — подмена POST в тестах */
+  public static $post = null;
+  /** 151-я (владелец: «чтобы сайт находили по целевым запросам»): все адреса из sitemap.xml (страницы моделей и громад, uk + ru) одним POST —
+   *  когда набор адресов или сборка сменились (новые громады из /admin, правки моделей), не чаще раза в сутки. Ключ — тот же. */
+  public static function urls(string $site): array {
+    $o = [$site]; $b = rtrim($site, '/');
+    if (!class_exists('Seo') && is_file(__DIR__ . '/seo.php')) { require_once __DIR__ . '/providers.php'; require_once __DIR__ . '/seo.php'; }
+    if (class_exists('Seo')) foreach (Seo::pairs() as $pr) foreach ($pr as $u) $o[] = $b . $u;
+    return array_values(array_unique($o));
+  }
+  public static function runList(string $site, ?int $now = null): ?array {
+    $now = $now ?? time(); $st = self::read(); $l = (array)($st['list'] ?? []);
+    if (!preg_match('~^https://(?!localhost[:/])([^/]+)/~', $site, $m)) return null;
+    $urls = array_slice(self::urls($site), 0, 10000); $sig = substr(md5(self::build() . "\n" . implode("\n", $urls)), 0, 12);
+    if (($l['sig'] ?? '') === $sig && in_array((int)($l['code'] ?? 0), [200, 202], true)) return null;
+    if ($now - (int)strtotime((string)($l['at'] ?? '1970-01-01')) < 86400) return null;
+    $k = self::key(true); if ($k === '') return null;
+    $body = ['host' => $m[1], 'key' => $k, 'keyLocation' => $site . $k . '.txt', 'urlList' => $urls];
+    $r = self::$post ? (self::$post)(self::API, $body) : self::postJson(self::API, $body);
+    $st['list'] = ['at' => gmdate('c', $now), 'sig' => $sig, 'n' => count($urls), 'code' => (int)$r['code']]; self::save($st); return $st['list'];
+  }
+  private static function postJson(string $url, array $body): array {
+    $ch = curl_init($url);
+    curl_setopt_array($ch, [CURLOPT_RETURNTRANSFER => true, CURLOPT_POST => true, CURLOPT_POSTFIELDS => json_encode($body, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE),
+      CURLOPT_HTTPHEADER => ['Content-Type: application/json; charset=utf-8'], CURLOPT_TIMEOUT => 20, CURLOPT_CONNECTTIMEOUT => 6, CURLOPT_USERAGENT => 'Peredai/1.0 (IndexNow)']);
+    $b = curl_exec($ch); $code = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE); $err = $b === false ? curl_error($ch) : null; curl_close($ch);
+    return ['code' => $code, 'err' => $err];
+  }
   /** /api/health: без ключа и тела — когда и с каким кодом пинговали. */
   public static function summary(): array { $s = self::read(); unset($s['err']); return $s + ['key' => self::key() !== '']; }
 }

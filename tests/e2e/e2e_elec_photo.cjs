@@ -24,6 +24,8 @@ let pass = 0, fail = 0; const ok = (n, c, x) => { if (c) { pass++; console.log('
   await p.click('#own-chk'); await p.click('[data-key=en-save]'); await p.waitForTimeout(500);
   let s = await st(); const r = s.mrecs.filter(x => x.meter === 'e1' && !x.deleted).slice(-1)[0];
   ok('збережено: «лише для себе», 2 фото в записі', r.own === true && (r.photos || []).length === 2 && r.z.day === '10530', r);
+  // 151-а (план конкурентів п. 8): цифри з фото без змін — джерело «з фото»
+  ok('151: запис — via photo, без viaFix', r.via === 'photo' && !r.viaFix, { via: r.via, viaFix: r.viaFix });
   await p.goto('http://127.0.0.1:8013/#erec-' + r.id); await p.waitForTimeout(400);
   ok('картка запису: фото, «Додати фото показань», «для себе», без «Куди передати»', (await p.$$('[data-key=rec-photos] img')).length === 2 && !!(await p.$('[data-key=rec-photo-add]')) && !!(await p.$('[data-key=own-box].own-box.on')) && !(await p.$('[data-key=where-elec]')));
   await p.setInputFiles('#rp-input', '/tmp/elph/g.png'); await p.waitForTimeout(400); s = await st();

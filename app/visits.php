@@ -125,15 +125,20 @@ final class Visits {
     // отклик по дням — все браузеры, и без входа: открыли, впервые, клацали по экранам, добавили счётчик, внесли показания, вошли
     $first = [];
     foreach (Db::q('SELECT vid, MIN(day) AS d FROM visits GROUP BY vid')->fetchAll() as $x) $first[$x['vid']] = $x['d'];
-    $act = []; $sum = ['v' => 0, 'new' => 0, 's1' => 0, 's2' => 0, 's3' => 0, 'anon3' => 0, 'u' => 0]; $seen = [];
+    // 151-а (власник: «хто новий, а хто повернувся»): вернувся — заходив раніше в інший день цим браузером або (увійшов) з будь-якого свого пристрою
+    $firstU = [];
+    foreach (Db::q('SELECT user_id, MIN(day) AS d FROM visits WHERE user_id IS NOT NULL GROUP BY user_id')->fetchAll() as $x) $firstU[(int)$x['user_id']] = $x['d'];
+    $act = []; $sum = ['v' => 0, 'new' => 0, 'ret' => 0, 's1' => 0, 's2' => 0, 's3' => 0, 'anon3' => 0, 'u' => 0]; $seen = [];
     foreach (Db::q("SELECT day, vid, user_id, stage FROM visits WHERE day >= ?$ex ORDER BY day DESC", [$from])->fetchAll() as $x) {
-      $d = $x['day']; $a = $act[$d] ?? ['v' => 0, 'new' => 0, 's1' => 0, 's2' => 0, 's3' => 0, 'anon3' => 0, 'u' => 0]; $st = (int)$x['stage'];
-      $a['v']++; if (($first[$x['vid']] ?? '') === $d) $a['new']++; if ($st >= 1) $a['s1']++; if ($st >= 2) $a['s2']++; if ($st >= 3) { $a['s3']++; if (!$x['user_id']) $a['anon3']++; } if ($x['user_id']) $a['u']++;
+      $d = $x['day']; $a = $act[$d] ?? ['v' => 0, 'new' => 0, 'ret' => 0, 's1' => 0, 's2' => 0, 's3' => 0, 'anon3' => 0, 'u' => 0]; $st = (int)$x['stage'];
+      $f0 = min($first[$x['vid']] ?? $d, $x['user_id'] ? ($firstU[(int)$x['user_id']] ?? $d) : $d);
+      $a['v']++; if ($f0 === $d) $a['new']++; else $a['ret']++; if ($st >= 1) $a['s1']++; if ($st >= 2) $a['s2']++; if ($st >= 3) { $a['s3']++; if (!$x['user_id']) $a['anon3']++; } if ($x['user_id']) $a['u']++;
       $act[$d] = $a;
       // за период — по браузеру его лучший этап
-      $o = $seen[$x['vid']] ?? ['st' => 0, 'u' => false, 'new' => false]; $o['st'] = max($o['st'], $st); $o['u'] = $o['u'] || (bool)$x['user_id']; $o['new'] = $o['new'] || ($first[$x['vid']] ?? '') >= $from; $seen[$x['vid']] = $o;
+      $o = $seen[$x['vid']] ?? ['st' => 0, 'u' => false, 'new' => false, 'ret' => false]; $o['st'] = max($o['st'], $st); $o['u'] = $o['u'] || (bool)$x['user_id']; $o['new'] = $o['new'] || $f0 >= $from;
+      $o['ret'] = $o['ret'] || $f0 < $d; $seen[$x['vid']] = $o;
     }
-    foreach ($seen as $o) { $sum['v']++; if ($o['new']) $sum['new']++; if ($o['st'] >= 1) $sum['s1']++; if ($o['st'] >= 2) $sum['s2']++; if ($o['st'] >= 3) { $sum['s3']++; if (!$o['u']) $sum['anon3']++; } if ($o['u']) $sum['u']++; }
+    foreach ($seen as $o) { $sum['v']++; if ($o['new']) $sum['new']++; if ($o['ret']) $sum['ret']++; if ($o['st'] >= 1) $sum['s1']++; if ($o['st'] >= 2) $sum['s2']++; if ($o['st'] >= 3) { $sum['s3']++; if (!$o['u']) $sum['anon3']++; } if ($o['u']) $sum['u']++; }
     $since = Db::one('SELECT MIN(day) AS d FROM visits');
     return ['days' => $days, 'from' => $from, 'since' => $since['d'] ?? null,
       'total' => ['v' => (int)($tot['v'] ?? 0), 'u' => (int)($tot['u'] ?? 0), 'h' => (int)($tot['h'] ?? 0)],

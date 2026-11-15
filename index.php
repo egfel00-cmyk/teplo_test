@@ -119,19 +119,20 @@ if ($path === '/' || $path === '/index.php') {
   $site = $scheme . '://' . $host . $base . '/';
   $ru = str_starts_with(strtolower((string)($_SERVER['HTTP_ACCEPT_LANGUAGE'] ?? '')), 'ru');
   // поиск (Google) и превью ссылки: заголовок и описание под запросы «передати показання … Харків»; картинка — og-*-5.jpg (83-я: лендинг без сяйв; tools_og.cjs)
+  // 151-я: назва — «передай»; не лише Харків — 5 областей і Київ (350 громад з довідника), щоб знаходили за «передати показання <місто/постачальник>»
   $og = $ru
-    ? ['Передать показания счётчиков в Харькове — свет, вода, газ, тепло | Счётчики', 'Бесплатно: сфотографируйте счётчик — цифры распознаются прямо в телефоне. Подскажем, куда и до какого числа передать показания: Харьковоблэнерго, Харьковводоканал, Газсети, Нафтогаз, ХТМ. Напоминания в Telegram.', 'ru', 'ru_UA',
-       'Счётчики — показания за минуту', 'Свет, вода, газ и отопление: фото → цифры → передать в Облэнерго, Водоканал, Газсети, ХТМ. Харьков и область, бесплатно.']
-    : ['Передати показання лічильників у Харкові — світло, вода, газ, тепло | Лічильники', 'Безкоштовно: сфотографуйте лічильник — цифри розпізнаються прямо в телефоні. Підкажемо, куди й до якого числа передати показання: Харківобленерго, Харківводоканал, Газмережі, Нафтогаз, ХТМ. Нагадування в Telegram.', 'uk', 'uk_UA',
-       'Лічильники — показання за хвилину', 'Світло, вода, газ і опалення: фото → цифри → передати в Обленерго, Водоканал, Газмережі, ХТМ. Харків і область, безкоштовно.'];
+    ? ['Передать показания счётчиков — свет, вода, газ, тепло | передай', 'Бесплатно: сфотографируйте счётчик — цифры распознаются прямо в телефоне. Подскажем, куда и до какого числа передать показания в 350 громадах Харьковской, Киевской, Одесской, Львовской, Хмельницкой областей и Киева: облэнерго, водоканал, газ, тепло. Напоминания в Telegram.', 'ru', 'ru_UA',
+       'передай — показания за минуту', 'Свет, вода, газ и отопление: фото → цифры → куда и до какого числа передать. 5 областей и Киев, 350 громад, бесплатно.']
+    : ['Передати показання лічильників — світло, вода, газ, тепло | передай', 'Безкоштовно: сфотографуйте лічильник — цифри розпізнаються прямо в телефоні. Підкажемо, куди й до якого числа передати показання в 350 громадах Харківської, Київської, Одеської, Львівської, Хмельницької областей і Києва: обленерго, водоканал, газ, тепло. Нагадування в Telegram.', 'uk', 'uk_UA',
+       'передай — показання за хвилину', 'Світло, вода, газ і опалення: фото → цифри → куди й до якого числа передати. 5 областей і Київ, 350 громад, безкоштовно.'];
   $e = fn($s) => htmlspecialchars($s, ENT_QUOTES);
   $img = $site . 'web/og-' . $og[2] . '-5.jpg';
-  $ld = ['@context' => 'https://schema.org', '@type' => 'WebApplication', 'name' => $ru ? 'Счётчики' : 'Лічильники', 'alternateName' => [$ru ? 'Лічильники' : 'Счётчики', 'peredai'],
+  $ld = ['@context' => 'https://schema.org', '@type' => 'WebApplication', 'name' => 'передай', 'alternateName' => ['передай.com.ua', 'peredai', 'Лічильники', 'Счётчики'],
     'url' => $site, 'image' => $img, 'description' => $og[1], 'applicationCategory' => 'UtilitiesApplication', 'operatingSystem' => 'Web, Telegram',
     'inLanguage' => ['uk', 'ru'], 'isAccessibleForFree' => true, 'offers' => ['@type' => 'Offer', 'price' => '0', 'priceCurrency' => 'UAH'],
-    'areaServed' => ['@type' => 'AdministrativeArea', 'name' => $ru ? 'Харьковская область' : 'Харківська область']];
+    'areaServed' => array_map(fn($n) => ['@type' => 'AdministrativeArea', 'name' => $n], $ru ? ['Харьковская область', 'Киевская область', 'Киев', 'Одесская область', 'Львовская область', 'Хмельницкая область'] : ['Харківська область', 'Київська область', 'Київ', 'Одеська область', 'Львівська область', 'Хмельницька область'])];
   $meta = '<meta name="description" content="' . $e($og[1]) . '"><meta name="robots" content="index, follow, max-image-preview:large"><link rel="canonical" href="' . $e($site) . '">' .
-    '<meta property="og:type" content="website"><meta property="og:site_name" content="' . ($ru ? 'Счётчики' : 'Лічильники') . '"><meta property="og:url" content="' . $e($site) . '">' .
+    '<meta property="og:type" content="website"><meta property="og:site_name" content="передай"><meta property="og:url" content="' . $e($site) . '">' .
     '<meta property="og:title" content="' . $e($og[4]) . '"><meta property="og:description" content="' . $e($og[5]) . '"><meta property="og:locale" content="' . $og[3] . '">' .
     '<meta property="og:image" content="' . $e($img) . '"><meta property="og:image:secure_url" content="' . $e($img) . '"><meta property="og:image:type" content="image/jpeg"><meta property="og:image:width" content="1200"><meta property="og:image:height" content="630"><meta property="og:image:alt" content="' . $e($og[4]) . '">' .
     '<meta name="twitter:card" content="summary_large_image"><meta name="twitter:title" content="' . $e($og[4]) . '"><meta name="twitter:description" content="' . $e($og[5]) . '"><meta name="twitter:image" content="' . $e($img) . '">' .
