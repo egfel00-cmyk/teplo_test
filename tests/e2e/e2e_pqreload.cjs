@@ -20,6 +20,12 @@ const U = 'http://127.0.0.1:8013/';
   ok('перезавантаження на #wadd — «2 з 3», той самий вид (холодна)', (await hash()) === '#wadd' && /2\sз\s3/.test(await p.textContent('[data-key=aw-queue]')) && /холодн/i.test(await p.textContent('main')));
   await p.click('[data-key=aw-q-later]'); await p.waitForTimeout(500); await p.click('[data-key=aw-q-later]'); await p.waitForTimeout(600);
   ok('черга закінчилась — головна, у sessionStorage черги немає', !/^#(eadd|wadd|gadd)$/.test(await hash()) && (await p.evaluate(() => sessionStorage.getItem('teplo.pq'))) === null);
+  // картки без показань — кнопка «Внести перші показання» (і рядка «ще не вносили» немає)
+  await p.goto(U + '#home'); await p.waitForTimeout(600);
+  const firsts = await p.$$eval('.ucard-first', a => a.map(x => x.getAttribute('data-key')));
+  ok('головна: «Внести перші показання» на світлі, холодній і газі', ['card-elec-first', 'card-cold-first', 'card-gas-first'].every(k => firsts.includes(k)) && /Внести перші показання/.test(await p.textContent('[data-key=card-elec-first]')), firsts);
+  await p.click('[data-key=card-cold-first]'); await p.waitForTimeout(500);
+  ok('«Внести перші» холодної → внесення води', /^#(wnew|water-cold|wread)/.test(await hash()) || !!(await p.$('[data-key^=wn-]')), await hash());
   await p.goto(U + '#wadd'); await p.waitForTimeout(600);
   ok('#wadd без черги — без плашки «з 3»', !(await p.$('[data-key=aw-queue]')));
   ok('без помилок JS', errs.length === 0, errs);

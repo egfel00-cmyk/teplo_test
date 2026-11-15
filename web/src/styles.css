@@ -605,6 +605,7 @@ input[type=text]:not(.dmy-native):not(.pl-in), input[type=email], input[type=pas
 .prd.in-prov { margin: 8px 0 6px; max-width: 360px; }
 .ucard-status { font-size: 14px; font-weight: 600; margin-top: 4px; color: var(--c-ink-2); }
 .ucard-foot { margin-top: auto; display: flex; flex-direction: column; gap: 4px; }   /* 139-а: смужка й статус — низом картки, в ряду на одній лінії */
+.ucard-first { margin: -4px 16px 16px; justify-content: center; }   /* 155-а: показань ще немає — кнопка під табло */
 .ucard-foot > .prd { margin: 2px 0 4px; }
 .ucard-foot > .ucard-sub:empty { display: none; }
 .ucard-foot > .ucard-status { margin-top: 0; }

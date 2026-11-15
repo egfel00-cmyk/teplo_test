@@ -1037,7 +1037,9 @@
         '<span class="ucard-sub">' + esc(o.sub || '') + '</span>' +
         (o.status ? '<span class="ucard-status ' + (o.tone || '') + '">' + esc(o.status) + '</span>' : '') + '</span>' +
       '</a>' +
-      '<button type="button" class="ucard-add' + (o.tone === 'warn' ? ' hot' : '') + '" data-act="' + o.addAct + '"' + (o.addKind ? ' data-kind="' + o.addKind + '"' : '') + ' data-key="card-' + o.kind + '-add" aria-label="' + esc(o.addLabel) + '" title="' + esc(o.addLabel) + '">' + ico('plus', 26) + '</button></div>';
+      '<button type="button" class="ucard-add' + (o.tone === 'warn' ? ' hot' : '') + '" data-act="' + o.addAct + '"' + (o.addKind ? ' data-kind="' + o.addKind + '"' : '') + ' data-key="card-' + o.kind + '-add" aria-label="' + esc(o.addLabel) + '" title="' + esc(o.addLabel) + '">' + ico('plus', 26) + '</button>' +
+      // 155-а: лічильник є, показань ще немає — явна кнопка (журнал: після налаштування люди не помічали «+» у кутку й ішли)
+      (o.first ? '<button type="button" class="btn sec ucard-first" data-act="' + o.addAct + '"' + (o.addKind ? ' data-kind="' + o.addKind + '"' : '') + ' data-key="card-' + o.kind + '-first">' + ico('plus', 20) + '<span>' + esc(t('uc_first')) + '</span></button>' : '') + '</div>';
   }
   /** Рядок статусу на картці головної: передано / знято — завжди; строк — лише за 4 дні до кінця; «наступна передача» — ні. */
   function cardSt(o) { if (!o) return ''; if (o.off || o.tone === 'ok') return o.st; return dueSoon(o) !== null ? o.st : ''; }
@@ -1165,7 +1167,7 @@
     if (src && src.own && (src.status === 'handed' || src.status === 'accepted')) cardSent(o, src.date, src.status === 'accepted' && !lite ? 'uc_heat_ok_d' : 'uc_sent_d');
     return ucard({ kind: 'heat', href: 'heat', icon: 'thermo', title: t('uc_heat'),
       display: lcd([{ text: val || '------', tag: 'Gcal', label: val ? val + ' Гкал' : '—' }], 'card'),
-      sub: o.sub, status: o.status, tone: o.tone, per: pstrip('heat', hs), addAct: 'read', addLabel: t('uc_add_heat') });
+      sub: src ? o.sub : '', status: o.status, tone: o.tone, per: pstrip('heat', hs), addAct: 'read', addLabel: t('uc_add_heat'), first: !src });
   }
   function waterCard(kind) {
     var ms = wmeters(kind), title = wkindTitle(kind);
@@ -1181,7 +1183,7 @@
     // передано — лише коли останні показання кожного водоміра цього виду передані (гаряча — і Водоканалу, і ХТМ)
     var wsent = function (r) { return r && !r.base && !r.gap && !r.own && wsentVk(r) && (kind === 'cold' || wsentHtm(r)); };
     if (lastK && recs.every(function (r) { return !r || wsent(r); }) && wsent(lastK)) cardSent(o, lastK.date, myProv('water') ? 'my_paid_d' : '');   // 144-а: свій — «Оплачено»
-    return ucard({ kind: kind, href: 'water-' + kind, icon: 'drop', title: title, display: display, sub: o.sub, status: o.status, tone: o.tone, per: pstrip('water', ws), addAct: 'wnew', addKind: kind, addLabel: t('uc_add_w', { k: title.toLowerCase() }) });
+    return ucard({ kind: kind, href: 'water-' + kind, icon: 'drop', title: title, display: display, sub: lastK ? o.sub : '', status: o.status, tone: o.tone, per: pstrip('water', ws), addAct: 'wnew', addKind: kind, addLabel: t('uc_add_w', { k: title.toLowerCase() }), first: !lastK });
   }
   /** Плитка «Налаштування квартири» под счётчиками (владелец 05.11: вместо «Додати лічильник» — настройки квартиры, там же добавить
    *  и прибрать счётчик). Пустая квартира — по-прежнему крупное «Додати лічильник»: настраивать там ещё нечего. */
@@ -2729,8 +2731,8 @@
     var o = { sub: last ? (last.base ? t('uc_w_start', { d: fmtDate(last.date) }) : t('uc_w_last', { d: fmtDate(last.date) })) : t('uc_w_nolast'), status: cardSt(es), tone: cardSt(es) ? es.tone : '' };
     var sent = function (r) { return r && !r.base && !r.own && ssent(k, r); };
     if (last && lasts.every(function (r) { return !r || sent(r); }) && sent(last)) cardSent(o, last.date, myProv(k) ? 'my_paid_d' : '');
-    return ucard({ kind: k, href: SK[k].page, icon: SK[k].icon, title: t(KINDS[k].t), display: display, sub: o.sub,
-      status: o.status, tone: o.tone, per: pstrip(k, es), addAct: SK[k].nw, addLabel: tk(k, 'ue_add') });
+    return ucard({ kind: k, href: SK[k].page, icon: SK[k].icon, title: t(KINDS[k].t), display: display, sub: last ? o.sub : '',
+      status: o.status, tone: o.tone, per: pstrip(k, es), addAct: SK[k].nw, addLabel: tk(k, 'ue_add'), first: !last });
   }
   function elecCard() { return sCard('elec'); }
 
