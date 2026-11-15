@@ -398,3 +398,9 @@
   писать с оглядкой на SDK Xcode 26 (у UITabBarController iOS 18 свой `tabs`; обработчики WebKit — `@MainActor @Sendable`).
 - CloudKit — только при `PEREDAI_CLOUDKIT=YES` (подписанная сборка): без entitlement `CKContainer` роняет приложение. Схема CloudKit для TestFlight/App Store — «Deploy to Production» в CloudKit Console.
 - Universal links (`/.well-known/apple-app-site-association`) — путь с точкой закрыт Caddy → нужна правка сервера владельцем.
+- **Вход через Apple** (App Store 4.8): кнопка только в приложении (`APP`); натив — `AppleSignIn.swift`, сервер — `app/apple.php` + `POST /api/auth/apple`; e2e `e2e_apple`.
+  **«Видалити акаунт»** (5.1.1(v)) — `POST /api/account/delete` (`Api::deleteAccount`: все таблицы по user_id + файлы); новая таблица с user_id — дописать туда. e2e `e2e_acctdel`.
+- **Посмотреть приложение без Mac**: CI job `shots` → ветка `ci-shots` (PNG + log.txt): `git fetch --depth=1 origin ci-shots && git archive FETCH_HEAD | tar -x -C /tmp/shots`.
+  Экран — через `-PeredaiRoute <маршрут>`, данные — `-PeredaiDemo <json>` (только DEBUG). Live Activity видна лишь вне приложения (скрин после запуска «Параметров»).
+- Пуш в `apps/ios/**` отменяет идущий прогон (concurrency) — не пушить мелочи подряд, пока ждёшь скрины.
+
