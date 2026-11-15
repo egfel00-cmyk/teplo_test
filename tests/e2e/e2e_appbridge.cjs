@@ -77,7 +77,28 @@ const UA = 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/6
   await seed(W.p, demo({ elec: true }), 'home');
   ok('браузер: без in-app, вкладки видно, повідомлень немає', !(await W.p.evaluate(() => document.documentElement.classList.contains('in-app'))) &&
     await W.p.$eval('.nav', e => getComputedStyle(e).display !== 'none') && (await W.p.evaluate(() => window.__msgs.length)) === 0);
-  ok('без помилок JS', !A.errs.length && !C.errs.length && !W.errs.length, A.errs.concat(C.errs, W.errs));
+  // 155-а (розбір навігації iOS): назва екрана й «Назад» — рідною панеллю; логотип сайту й «Відгук» у застосунку сховані; перший запуск — без лендингу
+  const N = await mk(UA);
+  await seed(N.p, demo({ elec: true }), 'home');
+  ok('in-app: шапки сайту (логотип) і плаваючого «Відгук» не видно', await N.p.evaluate(() => [...document.querySelectorAll('header.top, .fab')].every(e => getComputedStyle(e).display === 'none')));
+  let rt = await msgs(N.p, 'route'), lr = rt[rt.length - 1];
+  ok('route home: корінь вкладки — без назви й без «Назад»', lr.r === 'home' && lr.title === '' && lr.up === '', lr);
+  await N.p.goto(B + '#elec'); await N.p.waitForTimeout(900); rt = await msgs(N.p, 'route'); lr = rt[rt.length - 1];
+  ok('route elec: назва — h1 сторінки, «Назад» → home', lr.r === 'elec' && lr.title && lr.title === (await N.p.textContent('#main h1')).replace(/\s+/g, ' ').trim() && lr.up === 'home' && lr.back === 'Назад', lr);
+  await N.p.evaluate(() => window.TeploHost.back()); await N.p.waitForTimeout(700);
+  ok('TeploHost.back() зі світла → головна', (await N.p.evaluate(() => location.hash)) === '#home');
+  await N.p.goto(B + '#enew'); await N.p.waitForTimeout(900); rt = await msgs(N.p, 'route'); lr = rt[rt.length - 1];
+  ok('route enew (екран вводу): bare, «Скасувати», куди — closeTo', lr.bare === true && lr.cancel === 'Скасувати' && !!lr.up && lr.up !== '<', lr);
+  await N.p.goto(B + '#prefs'); await N.p.waitForTimeout(700);
+  await N.p.evaluate(() => window.TeploHost.feedback()); await N.p.waitForTimeout(400);
+  ok('TeploHost.feedback() відкриває вікно відгуку', !!(await N.p.$('[data-key=feedback-dialog]')));
+  const F = await mk(UA);
+  await seed(F.p, null, ''); await F.p.waitForTimeout(400); rt = await msgs(F.p, 'route'); lr = rt[rt.length - 1] || {};
+  ok('перший запуск у застосунку: одразу «Які лічильники є?», «Вже маю акаунт» замість «Назад», без «Скасувати»', (await F.p.evaluate(() => location.hash)) !== '#welcome' &&
+    !!(await F.p.$('.aw-kinds')) && /Вже маю акаунт/.test(await F.p.textContent('[data-key=aw-login]')) && lr.up === '', [await F.p.evaluate(() => location.hash), lr]);
+  await F.p.click('[data-key=aw-login]'); await F.p.waitForTimeout(500);
+  ok('«Вже маю акаунт» → вхід', (await F.p.evaluate(() => location.hash)) === '#login');
+  ok('без помилок JS', !A.errs.length && !C.errs.length && !W.errs.length && !N.errs.length && !F.errs.length, A.errs.concat(C.errs, W.errs, N.errs, F.errs));
   await b.close();
   console.log(`\n${pass} OK, ${fail} FAIL`); process.exit(fail ? 1 : 0);
 })();

@@ -10,7 +10,7 @@ final class WebHost: NSObject {
 
     let webView: WKWebView
     /// Маршрут сайту, вкладка (home|history|stats|prefs|''), екран вводу (без вкладок), чи вже є квартири.
-    var onRoute: ((_ route: String, _ tab: String, _ bare: Bool) -> Void)?
+    var onRoute: ((_ route: SiteRoute) -> Void)?
     var onPopup: ((UIViewController) -> Void)?
 
     private(set) var loaded = false
@@ -111,6 +111,12 @@ final class WebHost: NSObject {
         run("window.TeploHost && window.TeploHost.go(\(Self.jsString(route)))")
     }
 
+    /// 155-а: рідна кнопка «Назад» / «Скасувати» на панелі — куди скаже сайт (TeploHost.back).
+    func back() { run("window.TeploHost && window.TeploHost.back && window.TeploHost.back()") }
+
+    /// 155-а: «Відгук» — кнопкою на панелі «Налаштувань» (плаваючу кнопку сайту застосунок ховає).
+    func feedback() { run("window.TeploHost && window.TeploHost.feedback && window.TeploHost.feedback()") }
+
     /// Нагадування / Live Activity / віджет: квартира й вид.
     func open(g: String, place: String) {
         run("window.TeploHost && window.TeploHost.open(\(Self.jsString(g)), \(Self.jsString(place)))")
@@ -140,9 +146,9 @@ final class WebHost: NSObject {
         switch t {
         case "route":
             let r = m["r"] as? String ?? ""
-            let tab = m["tab"] as? String ?? ""
-            let bare = m["bare"] as? Bool ?? false
-            onRoute?(r, tab, bare)
+            onRoute?(SiteRoute(route: r, tab: m["tab"] as? String ?? "", bare: m["bare"] as? Bool ?? false,
+                               title: m["title"] as? String ?? "", up: m["up"] as? String ?? "",
+                               cancel: m["cancel"] as? String ?? "", back: m["back"] as? String ?? ""))
             if !restoreChecked {
                 restoreChecked = true
                 let on = m["on"] as? Bool ?? false
@@ -386,4 +392,15 @@ final class OfflineView: UIView {
     }
 
     required init?(coder: NSCoder) { fatalError("init(coder:) is not supported") }
+}
+
+/// 155-а: що сайт сказав про екран — вкладка, екран вводу, назва для рідної панелі, куди «Назад» ('' — корінь вкладки).
+struct SiteRoute {
+    let route: String
+    let tab: String
+    let bare: Bool
+    let title: String
+    let up: String
+    let cancel: String
+    let back: String
 }

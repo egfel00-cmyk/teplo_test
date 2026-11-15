@@ -38,6 +38,8 @@ enum L10n {
     static var close: String { t("Закрити", "Закрыть") }
     static var ok: String { "OK" }
     static var cancel: String { t("Скасувати", "Отмена") }
+    static var back: String { t("Назад", "Назад") }
+    static var feedback: String { t("Відгук", "Отзыв") }
 }
 
 /// «2026-11-20» → дата (локальний календар, 00:00).

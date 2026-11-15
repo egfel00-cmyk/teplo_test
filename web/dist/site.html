@@ -2546,9 +2546,10 @@ details.mypay[open] > summary .mypay-amt, details.mypay[open] > summary .mypay-s
    Бічне меню (≥ 960, iPad) лишається. */
 @media (max-width: 959px) {
   .in-app .nav:not(.nav-side) { display: none; }
-  .in-app .main:not(.bare) { padding-bottom: calc(var(--tap) + 24px); }
-  .in-app body:has(.fab) .main:not(.bare) { padding-bottom: calc(76px + env(safe-area-inset-bottom)); }
-  .in-app .fab:not(.fab-bare) { bottom: calc(12px + env(safe-area-inset-bottom)); }
+  /* 155-а (розбір навігації iOS): назва екрана й «Назад» — рідна панель застосунку; логотип сайту й плаваючий «Відгук» там зайві */
+  .in-app header.top, .in-app .fab, .in-app .rec-back { display: none; }
+  .in-app .main:not(.bare), .in-app body:has(.fab) .main:not(.bare) { padding-bottom: calc(var(--tap) + 24px); }
+  .in-app .main { padding-top: var(--sp-3); }
 }
 /* 154-а: «Видалити акаунт» — тихе посилання під «Вийти», колір небезпеки лише в тексті */
 .acct-del { margin: 16px 0 0; }
@@ -4639,7 +4640,7 @@ details.mypay[open] > summary .mypay-amt, details.mypay[open] > summary .mypay-s
       fs_l1: "Торкніться тих, що стоять у квартирі, — табло підкаже, який який. Два водоміри гарячої (кухня й ванна) — «+» ще раз.",
       fs_more: "Квартир кілька — своя, батьків, та, що здаєте? Почніть з однієї — інші додасте кнопкою «+ Квартира» на головній.",
       fs_err_none: "Позначте хоча б один лічильник — торкніться його картки або «+».",
-      fs_go: "Готово",
+      fs_go: "Готово", aw_have_acc: "Вже маю акаунт",
       fs_after: "Далі — головна з вашими лічильниками: показання внесете одразу чи пізніше, вручну або з фото.",
       fs_sum: "Перевірте, перш ніж почати",
       fs_sum_hint: "назву й адресу можна змінити на головній",
@@ -6004,7 +6005,7 @@ details.mypay[open] > summary .mypay-amt, details.mypay[open] > summary .mypay-s
       fs_l1: "Коснитесь тех, что стоят в квартире, — табло подскажет, какой какой. Два водомера горячей (кухня и ванная) — «+» ещё раз.",
       fs_more: "Квартир несколько — своя, родителей, сдаваемая? Начните с одной — другие добавите кнопкой «+ Квартира» на главной.",
       fs_err_none: "Отметьте хотя бы один счётчик — коснитесь его карточки или «+».",
-      fs_go: "Готово",
+      fs_go: "Готово", aw_have_acc: "Уже есть аккаунт",
       fs_after: "Дальше — главная с вашими счётчиками: показания внесёте сразу или позже, вручную или с фото.",
       fs_sum: "Проверьте, прежде чем начать",
       fs_sum_hint: "название и адрес можно изменить на главной",
@@ -9592,7 +9593,7 @@ details.mypay[open] > summary .mypay-amt, details.mypay[open] > summary .mypay-s
     try { var h = window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.peredai; return h && /PeredaiApp\//.test(navigator.userAgent) ? h : null; }
     catch (e) { return null; }
   })();
-  var APP_LAST = { route: '', bare: null, sched: '' };
+  var APP_LAST = { route: '', bare: null, sched: '', title: '', up: '' };
   if (APP) document.documentElement.classList.add('in-app');
   function appPost(m) { if (!APP) return; try { APP.postMessage(m); } catch (e) { /* старий застосунок */ } }
   function appMirror() { if (!APP) return; clearTimeout(appMirror._t); appMirror._t = setTimeout(function () { var js = ''; try { js = window.localStorage.getItem(KEY) || ''; } catch (e) { js = JSON.stringify(S, jsonFix); } appPost({ t: 'state', s: js, at: Date.now() }); }, 1200); }
@@ -9604,10 +9605,33 @@ details.mypay[open] > summary .mypay-amt, details.mypay[open] > summary .mypay-s
     if (/^prefs/.test(r)) return 'prefs';
     return '';
   }
+  /** 155-а (розбір навігації iOS): куди веде рідна кнопка «Назад» над екраном. '' — корінь вкладки (кнопки немає); '<' — туди, звідки прийшли
+   *  (запис історії відкривають і з «Історії», і зі сторінки лічильника); інакше — маршрут-«батько» в межах тієї ж вкладки. */
+  function appUp(r, view) {
+    if (r === 'start' && !S.onboarded) return '';   // перший запуск: вибір лічильників — і є початок
+    if (view && view.bare) return view.closeTo || (S.onboarded ? 'home' : '');
+    if (/^(home|places|history|stats|prefs)$/.test(r)) return '';
+    if (REC_RE.test(r)) return '<';
+    if (/^prefs/.test(r)) return 'prefs';
+    if (/^stats/.test(r)) return 'stats';
+    if (/^history/.test(r)) return 'history';
+    return 'home';
+  }
+  /** Заголовок для рідної панелі: перший h1 екрана (без значків), корінь вкладки — '' (застосунок пише назву вкладки). */
+  function appTitle(r) {
+    if (/^(home|places|history|stats|prefs)$/.test(r)) return '';
+    var h = document.querySelector('#main h1'); if (!h) return '';
+    return String(h.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 48);
+  }
   function appNative(view) {
     if (!APP) return;
     var r = routeName() || 'home', bare = !!(view && view.bare);
-    if (r !== APP_LAST.route || bare !== APP_LAST.bare) { APP_LAST.route = r; APP_LAST.bare = bare; appPost({ t: 'route', r: r, tab: appTab(r), bare: bare, on: !!S.onboarded }); }
+    if (view && view.route === 'start') r = 'start';   // перший запуск без адреси в рядку — показуємо вибір лічильників
+    var ttl = appTitle(r), up = appUp(r, view);
+    if (r !== APP_LAST.route || bare !== APP_LAST.bare || ttl !== APP_LAST.title || up !== APP_LAST.up) {
+      APP_LAST.route = r; APP_LAST.bare = bare; APP_LAST.title = ttl; APP_LAST.up = up;
+      appPost({ t: 'route', r: r, tab: appTab(r), bare: bare, on: !!S.onboarded, title: ttl, up: up, cancel: bare ? t('cancel') : '', back: t('back') });
+    }
     clearTimeout(appNative._t); appNative._t = setTimeout(appSched, 700);
   }
   /** Строки передачі/оплати для нагадувань застосунку: кожна квартира × вид — до коли, чи вже передано. Тексти — тут (uk/ru), застосунок лише показує. */
@@ -9631,6 +9655,10 @@ details.mypay[open] > summary .mypay-amt, details.mypay[open] > summary .mypay-s
   window.TeploHost = {
     v: 1,
     go: function (r) { r = String(r || '').replace(/^#/, ''); if (!r) return; if (routeName() === r) render(); else location.hash = r; },
+    /** 155-а: рідна кнопка «Назад» / «Скасувати» над екраном — куди сказав appUp ('<' — історія браузера). */
+    back: function () { var u = APP_LAST.up; if (u === '<') { if (history.length > 1) history.back(); else location.hash = 'history'; } else if (u) TeploHost.go(u); },
+    /** 155-а: «Відгук» у застосунку — кнопкою на панелі «Налаштувань» (плаваючої кнопки там немає). */
+    feedback: function () { FB.open = true; FB.err = ''; render(true); setTimeout(function () { var x = document.getElementById('fb-text'); if (x) x.focus(); }, 0); },
     sched: function () { appSched(true); },
     /** «Увійти через Apple»: {token, nonce, name} або {err: 'cancel' | 'failed'}. */
     apple: function (r) { appleDone(r); },
@@ -17331,7 +17359,9 @@ details.mypay[open] > summary .mypay-amt, details.mypay[open] > summary .mypay-s
     var n = pwSteps(); if (PW.step > n - 1) PW.step = n - 1;
     var i = PW.step, last = i === n - 1, back = PW.back || 'places', h = '', kind = pwKind(i), first = PW.first;
     var head = n > 1 ? '<div class="wiz-top"><span class="count">' + esc(t('aw_step', { i: i + 1, n: n })) + '</span><span class="progress" aria-hidden="true"><i style="width:' + Math.round((i + 1) / n * 100) + '%"></i></span></div>' : '';
-    var prevBtn = i > 0 ? '<button type="button" class="btn sec" data-act="aw-back" data-key="aw-back">' + ico('back', 20) + '<span>' + esc(t('back')) + '</span></button>' : '<a class="btn sec" href="#' + esc(back) + '" data-key="aw-cancel">' + esc(t(first ? 'back' : 'cancel')) + '</a>';
+    var prevBtn = i > 0 ? '<button type="button" class="btn sec" data-act="aw-back" data-key="aw-back">' + ico('back', 20) + '<span>' + esc(t('back')) + '</span></button>'
+      : APP && first ? '<a class="btn sec" href="#login" data-key="aw-login">' + esc(t('aw_have_acc')) + '</a>'   // 155-а: у застосунку лендингу немає — замість «Назад» вхід
+      : '<a class="btn sec" href="#' + esc(back) + '" data-key="aw-cancel">' + esc(t(first ? 'back' : 'cancel')) + '</a>';
     var nextBtn = last ? '<button type="button" class="btn" data-act="aw-create" data-key="aw-create">' + (first ? '' : ico('check', 20)) + '<span>' + esc(t(first ? 'fs_go' : 'aw_create')) + '</span></button>' : '<button type="button" class="btn" data-act="aw-next" data-key="aw-next">' + esc(t('next')) + '</button>';
     if (kind === 'name') {
       var chips = t('pv_chips').split('|').map(function (c) { return '<button type="button" class="chip" data-act="aw-chip" data-v="' + esc(c) + '" aria-pressed="' + (PW.name === c) + '">' + esc(c) + '</button>'; }).join('');
@@ -18541,6 +18571,8 @@ details.mypay[open] > summary .mypay-amt, details.mypay[open] > summary .mypay-s
     // вікно Telegram: даних тут ще немає, а вхід за підписом Telegram іде — не показуємо привітання «як новому» (воно лякає: «мої дані зникли»)
     if (!S.onboarded && tgPending() && ['help', 'privacy', 'terms', 'login', 'reset'].indexOf(r) < 0) r = 'tgwait';
     else if (!S.onboarded && ['welcome', 'start', 'wsetup', 'wadd', 'eadd', 'gadd', 'meter', 'baseline', 'help', 'login', 'reset', 'photo', 'privacy', 'terms'].indexOf(r) < 0) r = S.meter ? 'baseline' : 'welcome';
+    // 155-а (розбір навігації iOS): у застосунку рекламний лендинг зайвий — людина його вже встановила; одразу «Які лічильники є?»
+    if (APP && !S.onboarded && r === 'welcome') r = 'start';
     if (S.onboarded && (!r || r === 'welcome' || r === 'start')) r = homeRoute();
     if (S.onboarded) navNote(r);
     var view;
