@@ -563,6 +563,19 @@ pre.state { font: 12px/1.4 var(--mono); background: #F4F7F5; padding: 10px; bord
   function n2(n, a) { n = Math.abs(n); var x = n % 10, y = n % 100; return n + ' ' + a[x === 1 && y !== 11 ? 0 : x >= 2 && x <= 4 && (y < 12 || y > 14) ? 1 : 2]; }
   var NW = { p: ['квартира', 'квартиры', 'квартир'], m: ['счётчик', 'счётчика', 'счётчиков'], r: ['показание', 'показания', 'показаний'] };
   function cnt3(p) { return [n2(+p.p || 0, NW.p), n2(+p.m || 0, NW.m), n2(+p.r || 0, NW.r)].join(', '); }
+  /** 159-а: откуда пришли (open → ref) и как далеко листали лендинг (lp) — словами. */
+  var REFN = { google: 'Google', bing: 'Bing', ddg: 'DuckDuckGo', yandex: 'Яндекс', threads: 'Threads', instagram: 'Instagram', facebook: 'Facebook', telegram: 'Telegram (ссылка)',
+    tgapp: 'Telegram-бот', viber: 'Viber', x: 'X', tiktok: 'TikTok', youtube: 'YouTube', self: 'со своего сайта' };
+  var SEON = { 'kudy-peredaty': '«Куди передати»', 'kuda-peredat': '«Куда передать»', postachalnyky: '«Постачальники»', postavshchiki: '«Поставщики»', 'yak-znyaty-pokaznannya': '«Як зняти показання»', 'kak-snyat-pokazaniya': '«Как снять показания»', r: 'отчёт' };
+  function refName(r) {
+    if (r === null || r === undefined) return ''; r = String(r);
+    if (!r) return 'набрал адрес / закладка';
+    if (r.indexOf('seo:') === 0) return 'со справочной страницы ' + (SEON[r.slice(4)] || r.slice(4));
+    if (r.indexOf('u:') === 0) return 'метка utm: ' + r.slice(2);
+    return REFN[r] || r;
+  }
+  var LPS = { 'lp-hero': 'первый экран', 'lp-dest': '«Подскажем, куда передать»', 'lp-steps': '«Три шага»', 'lp-bento': '«Что ещё умеет»', 'lp-end': '«Первые показания — уже сегодня»', 'lp-foot': 'подвал' };
+  function lpLine(p) { if (!p) return ''; return 'лендинг: ' + (p.sec === 'lp-hero' ? 'не листал дальше первого экрана' : 'долистал до ' + (LPS[p.sec] || p.sec)) + ' (' + (+p.sc || 0) + ' %, ' + (+p.t || 0) + ' с)'; }
   /** Итог сеанса (последнее «ушёл с сайта») — коротко, для таблицы сеансов. */
   function endLine(e) {
     if (!e) return '';
@@ -572,7 +585,8 @@ pre.state { font: 12px/1.4 var(--mono); background: #F4F7F5; padding: 10px; bord
   /** Событие журнала — словами. → [текст, класс строки] */
   function evText(e) {
     var p = e.p || {}, n = e.n;
-    if (n === 'open') return ['Открыл сайт ' + (p.tg ? 'в Telegram' : 'в браузере') + (p.li ? ', уже вошёл в аккаунт' : ', без входа') + '. На устройстве: ' + cnt3({ p: p.places, m: p.meters, r: p.recs }) + (p.lang ? ' · язык ' + p.lang : ''), ''];
+    if (n === 'open') return ['Открыл сайт ' + (p.tg ? 'в Telegram' : 'в браузере') + (p.li ? ', уже вошёл в аккаунт' : ', без входа') + '. На устройстве: ' + cnt3({ p: p.places, m: p.meters, r: p.recs }) + (p.lang ? ' · язык ' + p.lang : '') + (p.ref !== undefined ? ' · откуда: ' + refName(p.ref) : ''), ''];
+    if (n === 'lp') return [lpLine(p).replace(/^лендинг/, 'Лендинг'), p.sec === 'lp-hero' ? 'warn' : 'muted'];
     if (n === 'screen') return ['Перешёл: ' + scrName(e.s), 'muted'];
     if (n === 'tap') return ['Нажал ' + (p.x ? '«' + String(p.x).slice(0, 60) + '»' : 'кнопку') + (p.h ? ' → ' + scrName(String(p.h).replace(/^#/, '')) : ''), ''];
     if (n === 'field') return ['Поле ' + (p.f || p.t || '') + ': ' + (p.files != null ? 'выбрал файлов — ' + p.files : p.v ? 'заполнил' : 'оставил пустым') + (p.ok === 0 ? ' — ошибка в значении' : ''), p.ok === 0 ? 'problem' : ''];
@@ -628,7 +642,7 @@ pre.state { font: 12px/1.4 var(--mono); background: #F4F7F5; padding: 10px; bord
           (x.ret ? '<div class="small">' + retLine(x.ret) + (x.ret.n > 1 || x.ret.days > 1 ? ' <a href="#" data-jp="' + esc(x.ret.p) + '">все заходы</a>' : '') + '</div>' : '') + '</td>' +
           '<td data-l="Устройство" class="small">' + devLine(x.dev) + '</td><td data-l="Длилось">' + dur(x.from, x.to) + '</td><td data-l="Событий">' + x.n + '</td>' +
           '<td data-l="Итог">' + endLine(x.end) + ' ' + (x.saves ? pill('ok', 'сохранял ' + x.saves) + ' ' : '') + (x.errs ? pill('bad', 'ошибок ' + x.errs) + ' ' : '') + (x.toasts ? pill('warn', 'сообщений ' + x.toasts) : '') + '</td>' +
-          '<td data-l="Путь" class="small muted">' + esc((x.path || []).map(scrName).join(' → ')) + '</td></tr>';
+          '<td data-l="Путь" class="small muted">' + esc((x.path || []).map(scrName).join(' → ')) + (x.ref !== undefined && x.ref !== null ? '<div>откуда: ' + esc(refName(x.ref)) + '</div>' : '') + (x.lp ? '<div>' + esc(lpLine(x.lp)) + '</div>' : '') + '</td></tr>';
       }).join('') + '</tbody></table>' : '<div class="panel muted">Сеансов за период нет' + (JD.all ? '' : ' (свои и тестовые скрыты)') + '.</div>');
   };
   VIEW.jsession = function () {

@@ -87,7 +87,8 @@ const sql = (q) => execFileSync('php', ['-r', '$d=new PDO("sqlite:/tmp/teplo_dat
   const ev = net.filter(x => x.u === 'events').map(x => JSON.parse(x.body));
   ok('«Прийняти все» → одразу дослано накопичене з відкриття сторінки (open, screen)', ev.length >= 1 && ev[0].ev.some(e => e.n === 'open') && !!ev[0].vid, ev.map(e => e.ev.map(x => x.n)));
   ok('…і позначка «відкрили сайт»', net.some(x => x.u === 'visit' && JSON.parse(x.body).vid === ev[0].vid));
-  ok('…тост «Аналітику ввімкнено», консент how accept', /Аналітику ввімкнено/.test(await p.textContent('#toast-host')) && JSON.parse(net.find(x => x.u === 'consent').body).how === 'accept');
+  // 159-а: відповідь у банері — без тосту (на лендингу він лягав на «Передати показання»); тост лишився лише в «Налаштуваннях cookie» (п. 2)
+  ok('…без тосту (банер зник — це й є відповідь), консент how accept', !/Аналітику ввімкнено/.test(await p.textContent('#toast-host')) && JSON.parse(net.find(x => x.u === 'consent').body).how === 'accept');
   ok('без помилок JS (2)', !errs.length, errs);
   await ctx.close();
 
@@ -106,6 +107,22 @@ const sql = (q) => execFileSync('php', ['-r', '$d=new PDO("sqlite:/tmp/teplo_dat
   const pr = await ru.newPage(); await pr.goto(U); await pr.waitForTimeout(700);
   ok('русский: «Файлы cookie», «Принять все» / «Отклонить» / «Настроить»', /Файлы cookie/.test(await pr.textContent('[data-key=cc-banner]')) && (await pr.textContent('[data-key=cc-accept]')) === 'Принять все' && (await pr.textContent('[data-key=cc-reject]')) === 'Отклонить');
   await ru.close();
+
+  // 8. 159-а: лендинг на iPhone 13 (390×664 — Safari з панелями): «Передати показання» видно над банером; звідки прийшли (ref) і як далеко гортали (lp)
+  ({ ctx, p, net, errs } = await mk({ width: 390, height: 664 }));
+  await p.goto(U, { referer: 'https://www.google.com/' }); await p.waitForTimeout(800);
+  const vis = await p.evaluate(() => { const c = document.querySelector('[data-key=welcome-start]').getBoundingClientRect(), b = document.querySelector('[data-key=cc-banner]').getBoundingClientRect(); return [Math.round(c.top), Math.round(c.bottom), Math.round(b.top)]; });
+  ok('390×664: «Передати показання» цілком над банером cookie', vis[1] <= vis[2] && vis[0] > 0, vis);
+  await p.click('[data-key=cc-accept]'); await p.waitForTimeout(900);
+  const ev8 = net.filter(x => x.u === 'events').flatMap(x => JSON.parse(x.body).ev), op8 = ev8.find(e => e.n === 'open');
+  ok('open: звідки прийшли — ref «google» (лише вид джерела)', op8 && op8.p && op8.p.ref === 'google', op8 && op8.p);
+  await p.evaluate(() => window.scrollTo(0, document.querySelector('[data-key=lp-steps]').offsetTop - 100)); await p.waitForTimeout(400);
+  await p.evaluate(() => { Object.defineProperty(document, 'visibilityState', { get: () => 'hidden', configurable: true }); document.dispatchEvent(new Event('visibilitychange')); });
+  await p.waitForTimeout(600);
+  const ev8b = net.filter(x => x.u === 'events').flatMap(x => JSON.parse(x.body).ev), lp8 = ev8b.find(e => e.n === 'lp'), li = ev8b.findIndex(e => e.n === 'lp'), lv = ev8b.findIndex(e => e.n === 'leave');
+  ok('пішов: подія lp перед leave — розділ lp-steps, % і секунди', lp8 && lp8.p.sec === 'lp-steps' && lp8.p.sc > 20 && lp8.p.sc < 100 && lp8.p.t >= 0 && li >= 0 && li < lv, lp8 && lp8.p);
+  ok('без помилок JS (4)', !errs.length, errs);
+  await ctx.close();
 
   // 7. автотест (navigator.webdriver) — аналитика и так выключена, баннера нет
   const ctx7 = await b.newContext(); const p7 = await ctx7.newPage(); await p7.goto(U); await p7.waitForTimeout(600);

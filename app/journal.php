@@ -106,7 +106,12 @@ final class Journal {
       // чим скінчилось (120-а): остання подія «пішов із сайту» — лишилось на пристрої чи в акаунті, Telegram
       $lv = Db::one("SELECT props, user_id FROM events WHERE vid = ? AND sid = ? AND name = 'leave' ORDER BY id DESC LIMIT 1", [$x['vid'], $x['sid']]);
       $end = $lv ? (json_decode((string)$lv['props'], true) ?: []) : null;
-      $out[] = ['vid' => $x['vid'], 'sid' => $x['sid'], 'label' => self::label((string)$x['vid']), 'tag' => $tag, 'from' => $x['a0'], 'to' => $x['a1'], 'n' => (int)$x['n'], 'end' => $end,
+      // 159-а: звідки прийшли (open → ref) і як далеко гортали лендинг (lp: sc %, sec розділ, t с) — «пішли без дотиків» словами в /admin
+      $op = Db::one("SELECT props FROM events WHERE vid = ? AND sid = ? AND name = 'open' ORDER BY id LIMIT 1", [$x['vid'], $x['sid']]);
+      $ref = $op ? ((json_decode((string)$op['props'], true) ?: [])['ref'] ?? null) : null;
+      $lp = Db::one("SELECT props FROM events WHERE vid = ? AND sid = ? AND name = 'lp' ORDER BY id DESC LIMIT 1", [$x['vid'], $x['sid']]);
+      $lp = $lp ? (json_decode((string)$lp['props'], true) ?: null) : null;
+      $out[] = ['vid' => $x['vid'], 'sid' => $x['sid'], 'label' => self::label((string)$x['vid']), 'tag' => $tag, 'from' => $x['a0'], 'to' => $x['a1'], 'n' => (int)$x['n'], 'end' => $end, 'ref' => $ref, 'lp' => $lp,
         'errs' => (int)$x['errs'], 'toasts' => (int)$x['toasts'], 'saves' => (int)$x['saves'], 'user' => $u ? ['id' => (int)$x['uid']] + $u : null, 'dev' => $dev[(string)$x['vid']] ?? null, 'path' => array_slice($path, 0, 12)];
     }
     // 151-а (власник: «в аналітиці — хто новий, а хто повернувся й заходив ще раз»): людина = браузер, а увійшов — акаунт (усі його пристрої).
@@ -137,7 +142,8 @@ final class Journal {
     foreach ($ppl as $k => $o) { $inP = count(array_filter(array_keys($pv[$k] ?? []), fn($d) => $d >= $from)); if ($o['first'] >= $from) $pplNew++; if ($o['first'] < $from || max($inP, count($o['days'])) > 1) $pplRet++; }
     // итог по шагам у людей (свои и тест не считаем): сколько браузеров дошло до шага
     $ex = self::exclSql(); $step = function (string $where) use ($from, $ex) { return (int)(Db::one("SELECT COUNT(DISTINCT vid) AS n FROM events WHERE day >= ? AND ($where)$ex", [$from])['n'] ?? 0); };
-    $funnel = ['opened' => $step("name IN ('open', 'screen')"), 'tapped' => $step("name = 'tap'"), 'meter' => $step("name = 'saved' AND props LIKE '%\"m\":%'"),
+    // 159-а: «Нажимали» — без кнопок банера cookie («Прийняти все» — не дотик до сервісу)
+    $funnel = ['opened' => $step("name IN ('open', 'screen')"), 'tapped' => $step("name = 'tap' AND (props IS NULL OR props NOT LIKE '%\"k\":\"cc-%')"), 'meter' => $step("name = 'saved' AND props LIKE '%\"m\":%'"),
       'reading' => $step("name = 'saved' AND props LIKE '%\"r\":%'"), 'photo' => $step("name LIKE 'ocr%'"), 'photoFail' => $step("name = 'ocr' AND props LIKE '%\"ok\":0%'"),
       'errors' => $step("name IN ('js_error', 'api_error')"), 'login' => (int)(Db::one("SELECT COUNT(DISTINCT vid) AS n FROM events WHERE day >= ? AND user_id IS NOT NULL$ex", [$from])['n'] ?? 0)];
     return ['days' => $days, 'sessions' => $out, 'hidden' => $hidden, 'funnel' => $funnel, 'people' => ['n' => count($ppl), 'new' => $pplNew, 'ret' => $pplRet]];
