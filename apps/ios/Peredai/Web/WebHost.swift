@@ -152,6 +152,7 @@ final class WebHost: NSObject {
             guard let d = try? JSONSerialization.data(withJSONObject: m),
                   let p = try? JSONDecoder().decode(SchedPayload.self, from: d) else { return }
             WidgetFeed.save(p)
+            QuickActions.install()   // мова сайту могла змінитись — підписи швидких дій теж
             Task {
                 await Reminders.schedule(p)
                 await LiveWindow.update(p)
