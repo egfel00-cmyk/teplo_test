@@ -4710,6 +4710,7 @@ details.mypay[open] > summary .mypay-amt, details.mypay[open] > summary .mypay-s
       acct_set_pass_btn: "Зберегти email і пароль",
       acct_tg_linked_noname: "підключено",
       save_prompt: "Збережіть показання в акаунті, щоб бачити їх на телефоні й комп'ютері.",
+      save_prompt_app: 'Показання вже в безпеці — на цьому iPhone і в iCloud. Увійдіть, щоб бачити їх і на Android чи комп’ютері.',
       save_prompt_later: "Пізніше",
       bs_title: "Нагадування не доходять у Telegram",
       bs_sub: "Бот сервісу змінився — тепер це @{b}. Відкрийте його й натисніть «Старт», щоб знову отримувати нагадування.",
@@ -6072,6 +6073,7 @@ details.mypay[open] > summary .mypay-amt, details.mypay[open] > summary .mypay-s
       acct_set_pass_btn: "Сохранить email и пароль",
       acct_tg_linked_noname: "подключён",
       save_prompt: "Сохраните показания в аккаунте, чтобы видеть их на телефоне и компьютере.",
+      save_prompt_app: 'Показания уже в безопасности — на этом iPhone и в iCloud. Войдите, чтобы видеть их и на Android или компьютере.',
       save_prompt_later: "Позже",
       bs_title: "Напоминания не доходят в Telegram",
       bs_sub: "Бот сервиса сменился — теперь это @{b}. Откройте его и нажмите «Старт», чтобы снова получать напоминания.",
@@ -10854,7 +10856,7 @@ details.mypay[open] > summary .mypay-amt, details.mypay[open] > summary .mypay-s
   V.home = function () {
     var html = '<h1 class="sr">' + esc(t('nav_home')) + (place() && place().name ? ' — ' + esc(place().name) : '') + '</h1>';
     if (Y().mode === 'server' && !Y().account && (RD().length || wrecs().length) && !S.syncPromptDismissed) {
-      html += '<div class="banner" data-key="home-save-prompt">' + ico('info', 22) + '<div><p><b>' + esc(t('save_prompt')) + '</b></p><p><a href="#login">' + esc(t('login')) + '</a> &nbsp; <button class="linkbtn" data-act="dismiss-sync">' + esc(t('save_prompt_later')) + '</button></p></div></div>';
+      html += '<div class="banner" data-key="home-save-prompt">' + ico('info', 22) + '<div><p><b>' + esc(t(APP ? 'save_prompt_app' : 'save_prompt')) + '</b></p><p><a href="#login">' + esc(t('login')) + '</a> &nbsp; <button class="linkbtn" data-act="dismiss-sync">' + esc(t('save_prompt_later')) + '</button></p></div></div>';
     }
     html += botStartBanner();
     loadInbox();
@@ -14250,7 +14252,7 @@ details.mypay[open] > summary .mypay-amt, details.mypay[open] > summary .mypay-s
     var recent = heatMixed(3);
     if (recent.length) right += histPanel(readingList(recent), RD().length + gaps('heat').length, '<button class="btn sec block" data-act="view-go" data-v="heat" data-to="history" data-key="heat-all">' + esc(t('wh_all', { n: RD().length + gaps('heat').length })) + '</button>', 'heat');
     if (Y().mode === 'server' && !Y().account && RD().length && !S.syncPromptDismissed) {
-      html = '<div class="banner" data-key="home-save-prompt">' + ico('info', 22) + '<div><p><b>' + esc(t('save_prompt')) + '</b></p><p><a href="#login">' + esc(t('login')) + '</a> &nbsp; <button class="linkbtn" data-act="dismiss-sync">' + esc(t('save_prompt_later')) + '</button></p></div></div>' + html;
+      html = '<div class="banner" data-key="home-save-prompt">' + ico('info', 22) + '<div><p><b>' + esc(t(APP ? 'save_prompt_app' : 'save_prompt')) + '</b></p><p><a href="#login">' + esc(t('login')) + '</a> &nbsp; <button class="linkbtn" data-act="dismiss-sync">' + esc(t('save_prompt_later')) + '</button></p></div></div>' + html;
     }
     html += heroGrid(left, act, right);
     return { screen: 'S01h', route: 'heat', html: html };

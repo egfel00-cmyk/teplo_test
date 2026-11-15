@@ -1472,7 +1472,7 @@
   V.home = function () {
     var html = '<h1 class="sr">' + esc(t('nav_home')) + (place() && place().name ? ' — ' + esc(place().name) : '') + '</h1>';
     if (Y().mode === 'server' && !Y().account && (RD().length || wrecs().length) && !S.syncPromptDismissed) {
-      html += '<div class="banner" data-key="home-save-prompt">' + ico('info', 22) + '<div><p><b>' + esc(t('save_prompt')) + '</b></p><p><a href="#login">' + esc(t('login')) + '</a> &nbsp; <button class="linkbtn" data-act="dismiss-sync">' + esc(t('save_prompt_later')) + '</button></p></div></div>';
+      html += '<div class="banner" data-key="home-save-prompt">' + ico('info', 22) + '<div><p><b>' + esc(t(APP ? 'save_prompt_app' : 'save_prompt')) + '</b></p><p><a href="#login">' + esc(t('login')) + '</a> &nbsp; <button class="linkbtn" data-act="dismiss-sync">' + esc(t('save_prompt_later')) + '</button></p></div></div>';
     }
     html += botStartBanner();
     loadInbox();
@@ -4868,7 +4868,7 @@
     var recent = heatMixed(3);
     if (recent.length) right += histPanel(readingList(recent), RD().length + gaps('heat').length, '<button class="btn sec block" data-act="view-go" data-v="heat" data-to="history" data-key="heat-all">' + esc(t('wh_all', { n: RD().length + gaps('heat').length })) + '</button>', 'heat');
     if (Y().mode === 'server' && !Y().account && RD().length && !S.syncPromptDismissed) {
-      html = '<div class="banner" data-key="home-save-prompt">' + ico('info', 22) + '<div><p><b>' + esc(t('save_prompt')) + '</b></p><p><a href="#login">' + esc(t('login')) + '</a> &nbsp; <button class="linkbtn" data-act="dismiss-sync">' + esc(t('save_prompt_later')) + '</button></p></div></div>' + html;
+      html = '<div class="banner" data-key="home-save-prompt">' + ico('info', 22) + '<div><p><b>' + esc(t(APP ? 'save_prompt_app' : 'save_prompt')) + '</b></p><p><a href="#login">' + esc(t('login')) + '</a> &nbsp; <button class="linkbtn" data-act="dismiss-sync">' + esc(t('save_prompt_later')) + '</button></p></div></div>' + html;
     }
     html += heroGrid(left, act, right);
     return { screen: 'S01h', route: 'heat', html: html };
