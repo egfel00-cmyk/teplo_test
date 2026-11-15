@@ -21,7 +21,12 @@ struct PeredaiApp: App {
             case .active:
                 WebHost.shared.resumed()
             case .background:
-                Task { await CloudBackup.shared.flush() }
+                // кілька секунд фону, щоб останні зміни встигли в iCloud
+                let bg = UIApplication.shared.beginBackgroundTask(withName: "icloud-flush", expirationHandler: nil)
+                Task {
+                    await CloudBackup.shared.flush()
+                    UIApplication.shared.endBackgroundTask(bg)
+                }
             default:
                 break
             }

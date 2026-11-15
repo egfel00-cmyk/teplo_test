@@ -17,6 +17,15 @@ final class WebHost: NSObject {
     private var queue: [String] = []
     private var restoreChecked = false
     private let offline = OfflineView()
+    /// Без інтернету — остання збережена копія сайту з тією ж адресою (дані localStorage ті самі): показання можна вносити й офлайн.
+    private var offlineMode = false
+    private var cacheTried = false
+    private var cacheFresh = false
+    private let cacheURL: URL = {
+        let dir = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        return dir.appendingPathComponent("site-cache.html")
+    }()
 
     private override init() {
         let cfg = WKWebViewConfiguration()
@@ -51,12 +60,36 @@ final class WebHost: NSObject {
     func start(route: String = "") {
         var c = URLComponents(url: AppConfig.base, resolvingAgainstBaseURL: false)
         if !route.isEmpty { c?.fragment = route }
-        webView.load(URLRequest(url: c?.url ?? AppConfig.base))
+        cacheTried = false
+        webView.load(URLRequest(url: c?.url ?? AppConfig.base, cachePolicy: .reloadRevalidatingCacheData, timeoutInterval: 20))
     }
 
     func reload() {
         offline.removeFromSuperview()
-        if webView.url == nil { start() } else { webView.reload() }
+        if webView.url == nil || offlineMode { offlineMode = false; start() } else { webView.reload() }
+    }
+
+    /// Свіжа копія сайту для офлайну — раз на запуск, після вдалого завантаження з мережі.
+    private func refreshCache() {
+        guard !cacheFresh else { return }
+        cacheFresh = true
+        var req = URLRequest(url: AppConfig.base, cachePolicy: .reloadIgnoringLocalCacheData, timeoutInterval: 30)
+        req.setValue("Mozilla/5.0 (iPhone) Mobile/15E148 PeredaiApp/\(AppConfig.version)", forHTTPHeaderField: "User-Agent")
+        let url = cacheURL
+        URLSession.shared.dataTask(with: req) { data, resp, _ in
+            guard let data, (resp as? HTTPURLResponse)?.statusCode == 200, data.count > 50_000,
+                  let html = String(data: data, encoding: .utf8), html.contains("TeploHost") else { return }
+            try? data.write(to: url, options: .atomic)
+        }.resume()
+    }
+
+    /// Немає мережі — відкрити збережену копію сайту (та сама адреса → ті самі дані). true — відкрили.
+    private func openCached() -> Bool {
+        guard !cacheTried, let d = try? Data(contentsOf: cacheURL), let html = String(data: d, encoding: .utf8) else { return false }
+        cacheTried = true
+        offlineMode = true
+        webView.loadHTMLString(html, baseURL: AppConfig.base)
+        return true
     }
 
     @objc private func pullToRefresh(_ rc: UIRefreshControl) {
@@ -78,8 +111,9 @@ final class WebHost: NSObject {
         run("window.TeploHost && window.TeploHost.open(\(Self.jsString(g)), \(Self.jsString(place)))")
     }
 
-    /// Застосунок знову на екрані — оновити строки (нова доба могла відкрити вікно) і Live Activity.
+    /// Застосунок знову на екрані — оновити строки (нова доба могла відкрити вікно) і Live Activity; був офлайн — спробувати мережу.
     func resumed() {
+        if offlineMode { offlineMode = false; start(); return }
         run("window.TeploHost && window.TeploHost.sched()")
     }
 
@@ -164,6 +198,7 @@ extension WebHost: WKNavigationDelegate {
         guard webView === self.webView else { return }
         loaded = true
         offline.removeFromSuperview()
+        if !offlineMode { refreshCache() }
         let q = queue
         queue.removeAll()
         for js in q { webView.evaluateJavaScript(js, completionHandler: nil) }
@@ -174,11 +209,11 @@ extension WebHost: WKNavigationDelegate {
     }
 
     func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: Error) {
-        showOffline(error)
+        if webView === self.webView { showOffline(error) }
     }
 
     func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) {
-        showOffline(error)
+        if webView === self.webView { showOffline(error) }
     }
 
     func webViewWebContentProcessDidTerminate(_ webView: WKWebView) {
@@ -188,6 +223,7 @@ extension WebHost: WKNavigationDelegate {
     private func showOffline(_ error: Error) {
         let ns = error as NSError
         if ns.domain == NSURLErrorDomain && ns.code == NSURLErrorCancelled { return }
+        if openCached() { return }
         guard offline.superview == nil, let host = webView.superview else { return }
         offline.frame = host.bounds
         offline.autoresizingMask = [.flexibleWidth, .flexibleHeight]
