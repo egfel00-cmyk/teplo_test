@@ -16632,7 +16632,9 @@ details.mypay[open] > summary .mypay-amt, details.mypay[open] > summary .mypay-s
       '<div class="where-b mypay-b">' + sum +
       (r ? '<ul class="my-rows">' + r + '</ul>' : '<p class="small muted" data-key="my-norq">' + esc(t('my_norq')) + '</p>') +
       (has && how === 'iban' && purp ? myQr(pk, o, c, purp) : '') +   // 150-а: платіжний QR НБУ — лише коли є що сплатити
-      (how !== 'iban' && c && !paidC ? myMsgBox(pk, o, c) : '') +   // 151-а: розрахунок вручну — готове повідомлення коменданту / орендодавцю
+      // 151-а: розрахунок вручну — готове повідомлення коменданту / орендодавцю; 152-а (власник 15.11: «не з'явилося тексту для копіювання в чат, як призначення
+      // в іншого постачальника») — і після «Оплачено»: як призначення на рахунок, повідомлення тих показань лишається (переслати ще раз, звірити)
+      (how !== 'iban' && c ? myMsgBox(pk, o, c) : '') +
       (all ? '<button type="button" class="btn sec block" data-act="copy" data-text="' + esc(all) + '" data-key="my-copy-all">' + ico('copy', 18) + '<span>' + esc(t('my_copy_all')) + '</span></button>' : '') +
       (o.num && o.note ? '<p class="small muted my-note">' + esc(o.note) + '</p>' : '') + (mark || '') + '</div></details>';
   }

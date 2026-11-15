@@ -124,6 +124,16 @@ const B = 'http://127.0.0.1:8013/';
   ok('оплачено — блок постачальника лишається: «ГК «Мотор»» і «Оплачено» в шапці', /ГК «Мотор».*Оплачено/.test(await p.$eval('[data-key="mypay-eg-sum"]', e => e.textContent).catch(() => '')), await txt('[data-key="mypay-eg-sum"]'));   // блок лишився відкритим — у шапці «Оплачено» видно, коли згорнути
   // 148-а: оплачено — у відкритому блоці реквізити й призначення оплачених показань, «До сплати» немає
   ok('відкритий: реквізити (IBAN) і призначення, без суми', await has('[data-key="mypay-eg"] [data-key="my-r-iban"]') && !(await has('[data-key="mypay-eg"] [data-key="my-sum"]')) && await has('[data-key="mypay-eg"] [data-key="my-r-purp"]'));
+  // 152-а (власник 15.11: «не з'явилося тексту для копіювання в чат, як призначення в іншого постачальника, оплата готівкою»): готівкою після «Оплачено» —
+  // повідомлення тих показань лишається, як призначення на рахунок
+  await p.evaluate(() => { const s = JSON.parse(localStorage.getItem('teplo.v1')); const g = s.places.find(x => x.prov && x.prov.elec && x.prov.elec.own); g.prov.elec.how = 'cash'; g.prov.elec.cash = 'Комендант Наталья'; g.prov.elec.ts = Date.now(); s.updatedAt = Date.now(); localStorage.setItem('teplo.v1', JSON.stringify(s)); });
+  await p.goto('about:blank'); await p.goto(B + '#elec'); await p.waitForTimeout(700);
+  if (!(await p.$eval('[data-key="mypay-eg"]', d => d.open).catch(() => false))) { await tap('[data-key="mypay-eg-sum"]'); await p.waitForTimeout(400); }
+  const mpaid = await txt('[data-key="mypay-eg"] [data-key="my-msg-t"]');
+  ok('152: готівкою, оплачено — повідомлення є («Добрий день! Гараж, світло: показання 1250 → 1310 … 259,20 грн …»), «Копіювати» з ним, суми «До сплати» немає',
+    /^Добрий день! Гараж, світло: показання 1250 → 1310, набігло 60 кВт·год, до сплати 259,20 грн за жовтень 2026\.$/.test(mpaid) &&
+    (await p.getAttribute('[data-key="mypay-eg"] [data-key="my-msg-copy"]', 'data-text')) === mpaid && !(await has('[data-key="mypay-eg"] [data-key="my-sum"]')), mpaid);
+  await p.evaluate(() => { const s = JSON.parse(localStorage.getItem('teplo.v1')); const g = s.places.find(x => x.prov && x.prov.elec && x.prov.elec.own); g.prov.elec.how = 'iban'; g.prov.elec.ts = Date.now(); s.updatedAt = Date.now(); localStorage.setItem('teplo.v1', JSON.stringify(s)); });
   await p.goto(B + '#erec-gr20261031'); await p.waitForTimeout(500);
   // 145-а (власник 14.11, скрин: «в історії вже оплачено — блоку куди платити не має бути»)
   ok('оплачений запис: «Оплати» немає, у шапці — чип «Оплачено»', !(await has('[data-key="mypay-rec"]')) && !(await has('.wacc')) && /Оплачено/.test(await txt('[data-key="rec-h"]')), await txt('[data-key="rec-h"]'));
