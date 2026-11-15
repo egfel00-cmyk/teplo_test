@@ -9683,6 +9683,8 @@ details.mypay[open] > summary .mypay-amt, details.mypay[open] > summary .mypay-s
       m.sheet = sheet; m.lb = ''; m.rb = ''; m.rbk = ''; m.sub = ''; m.pl = []; m.pm = { all: t('pv_back_all'), add: t('pl_add'), lbl: t('pl_switch') };
       var cur = place(), multi = places().length > 1 && cur;
       if (sheet) {
+        // назва листа — коротко, що вносимо (скрини CI 15.11: «Внести пок…» між двома кнопками обрізалось); дія — заголовком на сторінці
+        m.title = /^(enew|gnew)$/.test(r) ? t(r === 'gnew' ? 'kv_gas' : 'kv_elec') : r === 'wnew' ? (S.lang === 'ru' ? 'Вода' : 'Вода') : t('kv_heat');
         var e = sheetEls();
         [].forEach.call(document.querySelectorAll('#main .app-mirror'), function (x) { x.classList.remove('app-mirror'); });
         if (e.box) e.box.classList.add('app-mirror');

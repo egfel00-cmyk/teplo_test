@@ -119,7 +119,7 @@ const UA = 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/6
   await V3.p.evaluate(() => window.TeploHost.place('main')); await V3.p.waitForTimeout(500);
   // ввід світла — лист: «Скасувати» зліва, «Зберегти» справа (копія на сторінці схована, Enter працює), «Скасувати й вийти» схована
   await V3.p.goto(B + '#elec'); await V3.p.waitForTimeout(500); await V3.p.goto(B + '#enew'); await V3.p.waitForTimeout(900); lr = await last(V3.p);
-  ok('v3 enew: лист, зліва «Скасувати», справа головна кнопка сторінки, не «брудний»', lr.sheet === true && lr.lb === 'cancel' && lr.rbk === 'act' && lr.rb === 'Зберегти' && lr.dirty === false && lr.tab === '', lr);
+  ok('v3 enew: лист, зліва «Скасувати», справа головна кнопка сторінки, не «брудний»', lr.sheet === true && lr.title === 'Світло' && lr.lb === 'cancel' && lr.rbk === 'act' && lr.rb === 'Зберегти' && lr.dirty === false && lr.tab === '', lr);
   ok('v3 enew: клас in-sheet; копія головної кнопки й «Скасувати й вийти» сховані, плашка квартири — теж',
     await V3.p.evaluate(() => { const h = document.documentElement.classList.contains('in-sheet'), w = document.querySelector('.wiz-actions.app-mirror'), c = document.querySelector('.wiz-cancel');
       return h && w && w.getBoundingClientRect().width <= 1 && (!c || getComputedStyle(c).display === 'none') && [...document.querySelectorAll('.place-bar')].every(e => getComputedStyle(e).display === 'none'); }));
