@@ -9774,6 +9774,10 @@ details.mypay[open] > summary .mypay-amt, details.mypay[open] > summary .mypay-s
     fetch(window.TEPLO_API + '/config', { credentials: 'same-origin', cache: 'no-store', headers: { Accept: 'application/json' } }).then(function (r) { return r.json(); }).then(function (j) {
       if (!j || !j.build || j.build === window.TEPLO_BUILD) return;
       if (typeof PH !== 'undefined' && PH.status === 'working') return;
+      // 155-а: не посеред налаштування чи внесення — журнал: після «Почати налаштування» сторінка перезавантажилась на #wadd і черга лічильників пропала
+      if (typeof PQ !== 'undefined' && PQ) return;
+      if (/^(start|wadd|eadd|gadd|meter|add-place|add-meter|photo|step-\d+|rec-|login|reset|mono|my-)/.test(routeName() || '')) return;
+      var ae = document.activeElement; if (ae && /^(INPUT|TEXTAREA|SELECT)$/.test(ae.tagName)) return;
       var k = 'teplo.reload.' + j.build; try { if (sessionStorage.getItem(k)) return; sessionStorage.setItem(k, '1'); } catch (e) { /* без хранилища */ }
       location.reload();
     }, function () {});
@@ -17347,13 +17351,22 @@ details.mypay[open] > summary .mypay-amt, details.mypay[open] > summary .mypay-s
   }
   /** Следующий счётчик новой квартиры: водомер (#wadd) → … → теплосчётчик (#meter) → главная квартиры.
    *  «Скасувати» на первом входе, пока ничего не сохранено, — назад к выбору (#start), иначе — на главную. */
+  /** 155-а: черга налаштування переживає перезавантаження вкладки (iOS вивантажує її, оновлення збірки) — у sessionStorage цієї вкладки. */
+  function pqKeep() { try { if (PQ) sessionStorage.setItem('teplo.pq', JSON.stringify(PQ)); else sessionStorage.removeItem('teplo.pq'); } catch (e) { /* без сховища */ } }
+  function pqRestore() {
+    if (PQ || !/^(wadd|eadd|gadd|meter)$/.test(routeName() || '')) return false;
+    var q = null; try { q = JSON.parse(sessionStorage.getItem('teplo.pq') || 'null'); } catch (e) { q = null; }
+    if (!q || q.place !== S.placeId || !Array.isArray(q.list) || typeof q.i !== 'number' || q.i > q.list.length) return false;
+    PQ = q; pqNext(); return true;
+  }
   function pqNext() {
-    if (!PQ || PQ.place !== S.placeId) { PQ = null; go('home'); return; }
+    if (!PQ || PQ.place !== S.placeId) { PQ = null; pqKeep(); go('home'); return; }
+    pqKeep();
     var back = S.onboarded ? 'home' : 'start';
     if (PQ.i < PQ.list.length && SK[PQ.list[PQ.i]]) { var qk = PQ.list[PQ.i]; EA = { kind: qk, back: back, zones: 1, vals: {}, f: {} }; go(SK[qk].add); return; }
     if (PQ.i < PQ.list.length) { WA = { kind: PQ.list[PQ.i], back: back }; go('wadd'); return; }
     if (PQ.heat) { PQ.i = PQ.list.length; delete S._pickModel; go('meter'); return; }
-    var fst = PQ.first; PQ = null; if (fst) toast(t('fs_done')); go('home');
+    var fst = PQ.first; PQ = null; pqKeep(); if (fst) toast(t('fs_done')); go('home');
   }
   /** Плашка «Нова квартира «Мамина»: лічильник 2 з 3» на экранах настройки счётчика из очереди. */
   function pqBanner(heat) {
@@ -18486,7 +18499,7 @@ details.mypay[open] > summary .mypay-amt, details.mypay[open] > summary .mypay-s
     var view;
     var rm = r.match(/^rec-([\w-]+?)(-edit)?$/), wm = r.match(/^wrec-([\w-]+)$/), gn = r.match(/^gap-new-([\w-]+)$/), gm = !gn && r.match(/^gap-([\w-]+)$/), pm = r.match(/^place-([\w-]+)$/), em = r.match(/^erec-([\w-]+)$/);
     if (!gn) GAP_PRESET = null;
-    if (PQ && !/^(wadd|eadd|gadd|meter|add-place)$/.test(r)) PQ = null;
+    if (PQ && !/^(wadd|eadd|gadd|meter|add-place)$/.test(r)) { PQ = null; pqKeep(); }
     if (pm) view = placeView(pm[1]);
     else if (em) view = erecView(em[1]);
     else if (gn) view = gapView(null, gn[1]);
@@ -19339,7 +19352,7 @@ details.mypay[open] > summary .mypay-amt, details.mypay[open] > summary .mypay-s
     var tw2 = window.Telegram && window.Telegram.WebApp;
     if (!S.onboarded || (pid && !place(pid))) if (tw2 && tw2.initData) DEEP = { g: g, pid: pid, q: q };
   })();
-  render();
+  if (!pqRestore()) render();
   PHS.restore().then(function (ok) { if (ok && routeName() === 'photo') safeRender(); });
   if (window.TeploSync) {
     var onSync = function () {
