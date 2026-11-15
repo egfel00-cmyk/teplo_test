@@ -377,3 +377,12 @@
   Сегменты `.my-seg` внутри `.field` — `.field .my-chip { margin: 0 }` (иначе `.field label` даёт лишний отступ снизу).
 - IndexNow: `run` — главная раз на сборку; `runList` — все адреса sitemap одним POST, раз на набор/сборку, ≤ раз в сутки.
 - `node tests/ocr-lab/make.cjs` пишет jpg в `tests/ocr-lab/` — в .gitignore; не коммитить.
+
+## Справочник не ответил — не Харьков по умолчанию; окна барабана в воркере (153-я)
+- `prvLoad`: ошибка `/api/providers` (сеть, 429) не навсегда — повтор через 30 с. Без справочника харьковские окна/строки — только если `perDefOk(p, k)`: квартира без города
+  (старый адрес), вода/тепло — город Харків, свет/газ — Харківщина; иначе окно неизвестно (смужки нет, «до 20-го» Харківводоканалу нет). Новый код, который берёт харьковское
+  «по умолчанию» при `prvOf(k) === null`, — через `perDefOk`. Лимит `prov` — 600/ч с IP (4–5 квартир + «Кому платите» + мобильный CGNAT). e2e `e2e_period` (route 429, `clock`).
+- `findDrums` = `drumsPrep` (холст ≤ 1280, `getImageData` — главный поток) + `drumsPx` (чистый счёт). `read()` зовёт `findDrumsAsync`: воркер — **сам engine.js**
+  (`new Worker(document.currentScript.src)`, внизу файла `onmessage`, когда нет `document`) — в `drumsPx` и его помощниках не должно быть `document`/холстов/`ORT`.
+  Запасной путь — тот же поток (`TEPLO_DRUMS_SYNC`, нет Worker, ошибка, 10 с). Меняешь engine.js — `engine.js?v=` (сейчас 22) в recognize.js и app.js. e2e `e2e_drumsw`.
+- e2e_login: ответ `/api/auth/forgot` подставляется (`mail_off`, `mail_failed`) — `smtp_host` в локальном config.php больше не мешает.
