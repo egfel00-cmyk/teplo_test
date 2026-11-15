@@ -317,11 +317,43 @@
    * Окно счётного механизма: тёмные ролики с белыми цифрами (м³) и рядом красные (дроби — литры).
    * Ищем по цвету, а не по тексту: тёмные «ячейки» одной высоты в ряд (или слитая полоса) + красное у одного из концов.
    * Красное всегда справа — так узнаём и границу «м³ | дроби», и что фото перевёрнуто. */
-  function findDrums(src, hintA) {
-    if (hintA === undefined) hintA = null;
+  function findDrums(src, hintA) { var d = drumsPrep(src); return drumsPx(d.px, d.W, d.H, d.k, hintA); }
+  /** Пікселі для пошуку вікон: холст ≤ 1280 px (у основному потоці — лише масштаб і getImageData, десятки мс). */
+  function drumsPrep(src) {
     var A = 1280, k = Math.min(1, A / Math.max(src.width, src.height)), W = Math.max(8, Math.round(src.width * k)), H = Math.max(8, Math.round(src.height * k));
     var c = document.createElement('canvas'); c.width = W; c.height = H; c.getContext('2d').drawImage(src, 0, 0, W, H);
     var px = c.getContext('2d').getImageData(0, 0, W, H).data; free(c);
+    return { px: px, W: W, H: H, k: k };
+  }
+  /* 153-я: пошук вікон барабана — у фоновому потоці (той самий engine.js воркером: лише чисті обчислення над пікселями, без холстів).
+   * На Mac власника — ~0,2–0,7 с, на iPhone більше: відео камери й дотики стояли. Воркер не завівся (CSP, старий браузер), помилка
+   * чи мовчить 10 с — рахуємо тут, як раніше. Пікселі копіюємо (не передаємо): запасний шлях їх ще потребує. */
+  var SELF_URL = typeof document !== 'undefined' && document.currentScript ? document.currentScript.src : '';
+  var DW = null, DW_N = 0, DW_Q = {};
+  function dwFail() { var q = DW_Q; DW_Q = {}; DW = false; Object.keys(q).forEach(function (id) { q[id](null); }); }
+  function drumsWorker() {
+    if (DW !== null) return DW;
+    DW = false;
+    if (!SELF_URL || typeof Worker === 'undefined' || root.TEPLO_OCR_NOPROXY || root.TEPLO_DRUMS_SYNC) return DW;
+    try {
+      DW = new Worker(SELF_URL);
+      DW.onmessage = function (e) { var m = e.data || {}, f = DW_Q[m.id]; if (!f) return; delete DW_Q[m.id]; f(m.err ? null : m.c); };
+      DW.onerror = function (e) { if (e && e.preventDefault) e.preventDefault(); dwFail(); };
+    } catch (e) { DW = false; }
+    return DW;
+  }
+  function findDrumsAsync(src, hintA) {
+    var d = drumsPrep(src), here = function () { return drumsPx(d.px, d.W, d.H, d.k, hintA); }, w = drumsWorker();
+    if (!w) return Promise.resolve().then(here);
+    return new Promise(function (ok) {
+      var id = ++DW_N, done = false, to = setTimeout(function () { if (!done) { delete DW_Q[id]; dwFail(); fin(null); } }, 10000);
+      function fin(c) { if (done) return; done = true; clearTimeout(to); if (c) ok(c); else { try { ok(here()); } catch (e) { ok([]); } } }
+      DW_Q[id] = fin;
+      try { w.postMessage({ id: id, px: d.px, W: d.W, H: d.H, k: d.k, hint: hintA === undefined ? null : hintA }); } catch (e) { delete DW_Q[id]; fin(null); }
+    });
+  }
+  function drumsPx(px, W, H, k, hintA) {
+    if (hintA === undefined) hintA = null;
     var N = W * H, L = new Float32Array(N), red = new Uint8Array(N), I = new Float64Array((W + 1) * (H + 1));
     for (var y = 0; y < H; y++) { var row = 0; for (var x = 0; x < W; x++) {
       var q = y * W + x, r = px[q * 4], g = px[q * 4 + 1], b = px[q * 4 + 2], mx = Math.max(r, g, b), mn = Math.min(r, g, b);
@@ -966,9 +998,11 @@
     return toCanvas(file, fast ? FAST_PX : 0).then(function (c) { src = c; return (fast ? nap() : null); }).then(function () { return detect(src, fast ? { max: FAST_DET } : undefined); }).then(function (boxes) {
       return readBoxes(src, boxes, 0, 0, 1, lines, false, fast).then(function () {
         // окно барабана водомера (по цвету) — до пяти кандидатов, пока не прочитаем 4+ цифры
-        // тепло з камери: пошук вікон барабана (пікселі в основному потоці, на Mac власника ~0,7 с) — не запускаємо зовсім
-        var cands = []; if (!(fast && opts.drums === false)) try { cands = findDrums(src, textAngle(lines)); } catch (e) { cands = []; }
-        var ch = Promise.resolve();
+        // тепло з камери: пошук вікон барабана не запускаємо зовсім; решта — у фоновому потоці (findDrumsAsync, 153-я)
+        if (fast && opts.drums === false) return [];
+        try { return findDrumsAsync(src, textAngle(lines)).catch(function () { return []; }); } catch (e) { return []; }
+      }).then(function (cands) {
+        cands = cands || []; var ch = Promise.resolve();
         // «окно» поверх надписи с буквами, и прочитаны те же цифры, что в надписи («ДСТУ EN 62052-1» под красным светодиодом
         // электросчётчика → «06205»), — это надпись, не ролики. Перевёрнутый барабан текст читает буквами («EELOO»), но цифры другие.
         var share4 = function (a1, b1) { for (var i4 = 0; i4 + 4 <= a1.length; i4++) if (b1.indexOf(a1.substr(i4, 4)) >= 0) return true; return false; };
@@ -1026,4 +1060,12 @@
   function _rec(file, b) { return toCanvas(file).then(function (c) { return Promise.all([recognize(c, b, 0), recognize(c, b, 0.3), recognize(c, b, 0.55)]); }).then(function (r) { return r.map(function (x) { return x.text + '(' + x.score.toFixed(2) + ')'; }).join(' | '); }); }
   function _readDrums(file) { var src, out = []; return toCanvas(file).then(function (c) { src = c; var ch = Promise.resolve(); findDrums(c).slice(0, 2).forEach(function (d) { ch = ch.then(function () { return readDrum(src, d); }).then(function (r) { out.push(r); }); }); return ch; }).then(function () { free(src); return out; }); }
   root.TeploOCR = { _recBox: function (file, blk, m) { var src; return toCanvas(file).then(function (c) { src = c; return recTensor(drumTensor(src, blk, m)); }).then(function (r) { free(src); return r; }); }, _det: _det, _rec: _rec, _readDrums: _readDrums, _drums: function (file, hint) { return toCanvas(file).then(function (c) { var r = findDrums(c, hint); free(c); return r; }); }, load: load, read: read, ready: function () { return !!REC; }, worker: function () { return !!REC && PROXY; } };
+  // 153-я: цей самий файл воркером (findDrumsAsync) — лише пошук вікон барабана над пікселями; холстів і нейромережі тут немає
+  if (typeof document === 'undefined' && typeof importScripts === 'function' && typeof root.postMessage === 'function') {
+    root.onmessage = function (e) {
+      var d = e.data || {}, m;
+      try { m = { id: d.id, c: drumsPx(d.px, d.W, d.H, d.k, d.hint) }; } catch (x) { m = { id: d.id, err: String((x && x.message) || x) }; }
+      root.postMessage(m);
+    };
+  }
 })(typeof window !== 'undefined' ? window : this);

@@ -7752,7 +7752,7 @@ details.mypay[open] > summary .mypay-amt, details.mypay[open] > summary .mypay-s
     _engine: function (onPct) {
       var base = String(root.TEPLO_API).replace(/\/api\/?$/, '') + '/web/ocr/';
       var script = root.TeploOCR ? Promise.resolve() : (this._script = this._script || new Promise(function (ok, bad) {
-        var s = document.createElement('script'); s.src = base + 'engine.js?v=21'; s.onload = ok; s.onerror = function () { bad(fail('engine_failed')); }; document.head.appendChild(s);
+        var s = document.createElement('script'); s.src = base + 'engine.js?v=22'; s.onload = ok; s.onerror = function () { bad(fail('engine_failed')); }; document.head.appendChild(s);
       }));
       return script.then(function () { return root.TeploOCR.load(base, onPct); }).catch(function (e) { if (e && e.code) throw e; throw fail('engine_failed'); });
     },
@@ -11631,7 +11631,7 @@ details.mypay[open] > summary .mypay-amt, details.mypay[open] > summary .mypay-s
     if (!im || !window.TEPLO_API) return;
     var id = im.getAttribute('data-hph'); FOC.busy = true;
     var js = window.TeploOCR ? Promise.resolve() : (FOC.js = FOC.js || new Promise(function (ok, bad) {
-      var sc = document.createElement('script'); sc.src = String(window.TEPLO_API).replace(/\/api\/?$/, '') + '/web/ocr/engine.js?v=21'; sc.onload = ok; sc.onerror = bad; document.head.appendChild(sc);
+      var sc = document.createElement('script'); sc.src = String(window.TEPLO_API).replace(/\/api\/?$/, '') + '/web/ocr/engine.js?v=22'; sc.onload = ok; sc.onerror = bad; document.head.appendChild(sc);
     }));
     js.then(function () { return window.TeploOCR._drums(im); }).then(function (cs) {
       var c = (cs || [])[0], iw = im.naturalWidth, ih = im.naturalHeight, k = Math.min(1, 2400 / Math.max(iw, ih));
