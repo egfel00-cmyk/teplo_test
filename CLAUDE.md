@@ -386,3 +386,15 @@
   (`new Worker(document.currentScript.src)`, внизу файла `onmessage`, когда нет `document`) — в `drumsPx` и его помощниках не должно быть `document`/холстов/`ORT`.
   Запасной путь — тот же поток (`TEPLO_DRUMS_SYNC`, нет Worker, ошибка, 10 с). Меняешь engine.js — `engine.js?v=` (сейчас 22) в recognize.js и app.js. e2e `e2e_drumsw`.
 - e2e_login: ответ `/api/auth/forgot` подставляется (`mail_off`, `mail_failed`) — `smtp_host` в локальном config.php больше не мешает.
+
+## iOS-приложение (154-я) — `apps/ios`, сборка в облаке
+- Владелец 15.11: «правки веба сразу в iOS», «всё локально + iCloud / сервер при аккаунте», Dynamic Island за 4 дня, навигация по гайдлайнам с заделом под Android, склоняется к нативу.
+  Решение и схемы — документ claude.ai https://claude.ai/artifact/9k9WwQbWwjC7PK7aDFesQu. Нативная оболочка (Swift, UIKit + SwiftUI, iOS 17+) над ЖИВЫМ сайтом; частые экраны — в натив по одному.
+- **Один WKWebView** на всё приложение (`WebHost.shared`), вкладки (`MainTabController`, UITabBar) лишь меняют маршрут и переносят его к себе — второй экземпляр сайта затёр бы localStorage.
+- Мост в `web/src/app.js` (`APP`, только при UA «PeredaiApp/» и `webkit.messageHandlers.peredai`): сайт → `route`/`sched`/`state`/`haptic`; приложение → `window.TeploHost.go/open/sched/restore`.
+  Новые данные для натива — через `sched`/новое сообщение, тексты — с сайта (uk/ru), натив их не выдумывает. `html.in-app` — что спрятать на сайте внутри приложения. e2e `e2e_appbridge`.
+- Проект — XcodeGen `apps/ios/project.yml` (`.xcodeproj` не в git). CI — `.github/workflows/ios.yml`: build для симулятора без подписи на каждый пуш в `apps/ios/**`;
+  testflight — при `vars.APPLE_TEAM_ID` + секретах ASC_* (вводит владелец). Ошибки Swift — аннотации check-run (публичный API без токена). Своего Mac/Xcode у сессии нет —
+  писать с оглядкой на SDK Xcode 26 (у UITabBarController iOS 18 свой `tabs`; обработчики WebKit — `@MainActor @Sendable`).
+- CloudKit — только при `PEREDAI_CLOUDKIT=YES` (подписанная сборка): без entitlement `CKContainer` роняет приложение. Схема CloudKit для TestFlight/App Store — «Deploy to Production» в CloudKit Console.
+- Universal links (`/.well-known/apple-app-site-association`) — путь с точкой закрыт Caddy → нужна правка сервера владельцем.
