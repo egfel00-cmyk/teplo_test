@@ -2521,6 +2521,39 @@ details.mypay[open] > summary .mypay-amt, details.mypay[open] > summary .mypay-s
 .app-v3 .place-sw, .app-v3 .place-bar:not(.compact), .in-sheet .place-bar.compact, .in-sheet .wiz-cancel, .in-sheet .wiz-top:has(> a.btn.ghost:first-child) { display: none; }
 .in-sheet .app-mirror { position: absolute !important; width: 1px; height: 1px; margin: 0; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 .in-sheet .main.bare { padding-bottom: var(--sp-5); }
+/* 157-а (крок 4 плану навігації iOS), застосунок v4. Головна дія сторінки лічильника — «+» на панелі, кнопка сторінки схована (і порожня клітинка сітки). */
+.app-v4 #main .app-add, .app-v4 .hg-act:not(:has(> :not(.app-add))) { display: none; }
+/* Види історії й статистики: більше 4 — меню на панелі застосунку; до 4 — сегменти в один ряд, без значків (як UISegmentedControl) */
+.app-v4 .kind-sw, .app-v4 .kind-sw.many { display: flex; max-width: none; border-radius: 10px; padding: 2px; gap: 2px; }
+.app-v4 .kind-sw button, .app-v4 .kind-sw.many button { flex: 1 1 0; min-height: 34px; border-radius: 8px; font-size: 14px; padding: 0 4px; }
+.app-v4 .kind-sw button .ico { display: none; }
+.app-v4 .kind-sw button[aria-pressed="true"] { box-shadow: 0 1px 3px rgba(0,0,0,.16); }
+.app-v4 .kind-sw.k5, .app-v4 .kind-sw.many.k5 { display: none; }
+/* Налаштування рідним списком: розділи з рядками «›» (Налаштування iPhone) — рядок веде на екран групи */
+.ios-groups { display: grid; gap: var(--sp-5); }
+.ios-sh { margin: 0 0 6px 16px; font-size: 14px; font-weight: 500; color: var(--c-ink-2); }
+.ios-list { list-style: none; margin: 0; padding: 0; background: var(--c-surface); border-radius: 14px; overflow: hidden; }
+.ios-list > li + li .ios-row { box-shadow: inset 0 1px 0 var(--c-housing); }
+.ios-row { display: flex; align-items: center; gap: 14px; width: 100%; min-height: 52px; padding: 10px 14px 10px 16px; border: 0; background: transparent; color: var(--c-ink);
+  text-decoration: none; text-align: left; font: inherit; cursor: pointer; touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
+.ios-row:active { background: var(--c-ghost-hover); }
+.ios-row .ios-ico { flex: 0 0 auto; color: var(--c-ink-2); }
+.ios-row .ios-t { flex: 1 1 auto; min-width: 0; display: grid; gap: 1px; }
+.ios-row .ios-t b { font-weight: 500; font-size: 17px; }
+.ios-row .ios-t .small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ios-row .ios-chev { flex: 0 0 auto; color: var(--c-ink-2); opacity: .7; }
+/* Рядок історії: свайп ліворуч — кнопка статусу під рядком (як у «Пошті»); тягнемо — без анімації, відпустили — доїжджає */
+.list > li.hli.hsw { overflow: hidden; }
+.hli.hsw > :not(.hsw-act) { transform: translateX(var(--sw, 0px)); transition: transform .2s var(--ease); }
+.hli.hsw.hsw-drag > :not(.hsw-act) { transition: none; }
+.hli.hsw a:focus { outline: none; }
+.hsw-act { position: absolute; top: 0; right: 0; bottom: 0; width: max(0px, calc(-1 * var(--sw, 0px))); overflow: hidden; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
+  border: 0; padding: 0; background: var(--c-ok); color: var(--c-on-ink); font: 600 13px var(--font); white-space: nowrap; cursor: pointer; transition: width .2s var(--ease); }
+.hli.hsw-drag .hsw-act { transition: none; }
+.hsw-act.neutral { background: var(--c-ink-2); }
+.hli.hsw-full .hsw-act { align-items: flex-start; padding-left: 22px; }
+.list > li.hli:first-child .hsw-act { border-top-right-radius: 14px; } .list > li.hli:last-child .hsw-act { border-bottom-right-radius: 14px; }
+@media (prefers-reduced-motion: reduce) { .hli.hsw > :not(.hsw-act), .hsw-act { transition: none; } }
 /* 154-а: «Видалити акаунт» — тихе посилання під «Вийти», колір небезпеки лише в тексті */
 .acct-del { margin: 16px 0 0; }
 .danger-link { color: var(--c-bad); }

@@ -28,6 +28,9 @@ struct SchedText: Decodable {
     var w_today: String?
     var w_done: String?
     var w_empty: String?
+    // 157-а: плашка над вкладками (iOS 26) — «Внести» / «Сплатити»
+    var acc_go: String?
+    var acc_pay: String?
 }
 
 struct SchedPayload: Decodable {

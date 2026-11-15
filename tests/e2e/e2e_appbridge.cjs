@@ -146,6 +146,56 @@ const UA = 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/6
   // запис історії — у тій вкладці, де натиснули (раніше перекидало в «Історію»)
   await V3.p.goto(B + '#erec-m20261101'); await V3.p.waitForTimeout(700); lr = await last(V3.p);
   ok('v3 запис історії: вкладку не міняти (tab = \'\'), «‹» — звідки прийшли', lr.tab === '' && lr.up === '<', lr);
+  // 157-а (крок 4 плану навігації iOS): v4 — налаштування списком, «+» на панелі, меню видів (> 4), контекстне меню й свайп рядка історії
+  const ctx4 = await b.newContext({ viewport: { width: 390, height: 800 }, locale: 'uk-UA', userAgent: UA, hasTouch: true, isMobile: true });
+  await ctx4.addInitScript(() => { window.__msgs = []; window.webkit = { messageHandlers: { peredai: { postMessage: m => window.__msgs.push(JSON.parse(JSON.stringify(m))) } } }; window.PeredaiNative = { v: 4 }; });
+  const P4 = await ctx4.newPage(); const e4 = []; P4.on('pageerror', e => e4.push(e.message));
+  await seed(P4, demo({ elec: true, gas: true, second: true, garage: 'own1' }), 'prefs'); lr = await last(P4);
+  ok('v4 налаштування: клас app-v4, розділи з рядками «›» замість розкривашок', await P4.evaluate(() => document.documentElement.classList.contains('app-v4')) &&
+    (await P4.$$('.ios-row')).length >= 8 && !(await P4.$('details.pgroup')) && lr.r === 'prefs' && lr.up === '', lr);
+  await P4.click('[data-key=pgr-heat]'); await P4.waitForTimeout(700); lr = await last(P4);
+  ok('v4 рядок «Опалення» → екран групи: #prefs-heat, назва — h1 групи, «‹» → prefs, вкладка prefs', (await P4.evaluate(() => location.hash)) === '#prefs-heat' &&
+    lr.r === 'prefs-heat' && lr.tab === 'prefs' && lr.up === 'prefs' && lr.title === (await P4.textContent('#main h1')).trim() && !!(await P4.$('.pg-one [data-key=prefs-bill]')), lr);
+  await P4.evaluate(() => window.TeploHost.back()); await P4.waitForTimeout(600);
+  ok('v4 TeploHost.back() з групи → список налаштувань', (await P4.evaluate(() => location.hash)) === '#prefs' && !!(await P4.$('.ios-groups')));
+  await P4.evaluate(() => { const a = document.createElement('a'); a.href = '#prefs'; a.setAttribute('data-act', 'to-water'); a.id = 'tw'; a.textContent = 'x'; document.getElementById('main').appendChild(a); });
+  await P4.click('#tw'); await P4.waitForTimeout(700);
+  ok('v4 «до поля в налаштуваннях» (to-water) → одразу екран групи «Вода»', (await P4.evaluate(() => location.hash)) === '#prefs-water' && !!(await P4.$('.pg-one #water-block')), await P4.evaluate(() => location.hash));
+  await P4.goto(B + '#elec'); await P4.waitForTimeout(900); lr = await last(P4);
+  ok('v4 світло: «+» на панелі (підпис — кнопки сторінки), сама кнопка на сторінці схована', !!lr.add && /Внести/.test(lr.add) &&
+    await P4.$eval('#main .app-add', e => getComputedStyle(e).display === 'none' && getComputedStyle(e.closest('.hg-act')).display === 'none'), lr);
+  await P4.evaluate(() => window.TeploHost.add()); await P4.waitForTimeout(800);
+  ok('v4 TeploHost.add() → внесення світла (лист)', (await P4.evaluate(() => location.hash)) === '#enew' && (await last(P4)).sheet === true);
+  await P4.goto(B + '#history'); await P4.waitForTimeout(900); lr = await last(P4);
+  ok('v4 історія: 5 видів — меню на панелі (поточний ✓), сегменти на сторінці сховані', lr.km.length === 5 && lr.km.filter(x => x.on).length === 1 && lr.km[0].k === 'elec' && lr.kml &&
+    await P4.$eval('.kind-sw', e => getComputedStyle(e).display === 'none'), lr.km);
+  await P4.evaluate(() => window.TeploHost.view('gas')); await P4.waitForTimeout(700); lr = await last(P4);
+  ok('v4 TeploHost.view(gas) → історія газу, у меню ✓ на «Газ»', lr.km.some(x => x.k === 'gas' && x.on) && !!(await P4.$('a.hrow[href^="#erec-n"]')), lr.km);
+  await P4.evaluate(() => window.TeploHost.view('elec')); await P4.waitForTimeout(600);
+  const menu = JSON.parse(await P4.evaluate(() => window.TeploHost.rowMenu('https://peredai.com.ua/#erec-m20261031')) || 'null');
+  ok('v4 rowMenu: дата рядка й статуси чипа (поточний «не передано» ✓)', menu && menu.title && menu.items.map(x => x.id).join() === 'st:sent,st:not,st:own' && menu.items.find(x => x.id === 'st:not').on === true, menu);
+  ok('v4 rowMenu: рядок без статусу (немає такого) — порожньо', (await P4.evaluate(() => window.TeploHost.rowMenu('#erec-nope'))) === '');
+  await P4.evaluate(() => window.TeploHost.rowAct('#erec-m20261031', 'st:sent')); await P4.waitForTimeout(700);
+  ok('v4 rowAct → статус запису «передано», чип оновився', await P4.$eval('[data-key="st-m20261031"]', e => e.getAttribute('data-cur') === 'sent'));
+  // свайп ліворуч по рядку (CDP-дотики): до половини — кнопка лишається; повний — статус одразу
+  const cdp = await ctx4.newCDPSession(P4);
+  const swipe = async (sel, dx) => { const bx = await (await P4.$(sel)).boundingBox(); const y = bx.y + 20, x0 = bx.x + bx.width - 40;
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: x0, y }] });
+    for (let i = 1; i <= 8; i++) { await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: x0 - dx * i / 8, y }] }); await P4.waitForTimeout(16); }
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] }); await P4.waitForTimeout(400); };
+  await swipe('[data-key="erec-m20261031"], li:has(> a[href="#erec-m20261031"])', 90);
+  ok('v4 свайп 90 px: рядок відкрито, кнопка «Не передано» (бо вже передано)', await P4.evaluate(() => { const li = document.querySelector('a[href="#erec-m20261031"]').closest('li'), b = li.querySelector('.hsw-act');
+    return li.classList.contains('hsw-on') && b && b.getAttribute('data-v') === 'not' && b.getBoundingClientRect().width > 80; }));
+  await P4.tap('a[href="#erec-m20261031"] .hr-sub').catch(() => {}); await P4.waitForTimeout(400);
+  ok('v4 дотик до відкритого рядка — закрити кнопку, не переходити в запис', (await P4.evaluate(() => location.hash)) === '#history' && await P4.evaluate(() => !document.querySelector('.hsw-act')));
+  await swipe('li:has(> a[href="#erec-m20261031"])', 300); await P4.waitForTimeout(500);
+  ok('v4 повний свайп → «не передано» одразу', await P4.$eval('[data-key="st-m20261031"]', e => e.getAttribute('data-cur') === 'not'));
+  await P4.goto(B + '#stats'); await P4.waitForTimeout(800); lr = await last(P4);
+  ok('v4 статистика: те саме меню видів', lr.km.length === 5, lr);
+  // браузер: #prefs-heat — звичайні налаштування з розгорнутою групою «Опалення»
+  await W.p.goto(B + '#prefs-heat'); await W.p.waitForTimeout(900);
+  ok('браузер #prefs-heat: розкривашки, «Опалення» розгорнута', await W.p.$eval('#pg-heat', e => e.open) && (await W.p.$$('details.pgroup')).length >= 5);
+  ok('v4 без помилок JS', !e4.length, e4);
   // стара збірка застосунку (без PeredaiNative) — як у 155-й: листа немає
   await N.p.goto(B + '#enew'); await N.p.waitForTimeout(700); rt = await msgs(N.p, 'route'); lr = rt[rt.length - 1];
   ok('стара збірка: enew — без листа (sheet немає), без in-sheet', lr.sheet === undefined && !(await N.p.evaluate(() => document.documentElement.classList.contains('in-sheet'))), lr);

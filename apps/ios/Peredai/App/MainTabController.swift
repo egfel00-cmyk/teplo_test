@@ -41,6 +41,7 @@ final class MainTabController: UITabBarController, UITabBarControllerDelegate, U
         host.onRoute = { [weak self] r in self?.siteRoute(r) }
         host.onPopup = { [weak self] vc in self?.presentTop(vc) }
         host.onDirty = { [weak self] on in self?.sheet?.isModalInPresentation = on }
+        host.onSched = { [weak self] p in self?.updateAccessory(p) }
         attachWeb(to: rootVC(0)?.view)
     }
 
@@ -87,8 +88,90 @@ final class MainTabController: UITabBarController, UITabBarControllerDelegate, U
             b.accessibilityLabel = r.back.isEmpty ? L10n.back : r.back
             item.leftBarButtonItem = b
         }
-        // «Відгук» — лише на корені «Налаштувань»
-        if defs[selectedIndex].route == "prefs" { item.rightBarButtonItem = r.up.isEmpty ? feedbackItem() : nil }
+        // праворуч: «Відгук» — лише на корені «Налаштувань»; 157-а — «+» сторінки лічильника, меню видів «Історії» / «Статистики» (> 4 видів)
+        var right: [UIBarButtonItem] = []
+        if defs[selectedIndex].route == "prefs" && r.up.isEmpty { right.append(feedbackItem()) }
+        if !r.add.isEmpty { right.append(addItem(r.add)) }
+        if !r.kinds.isEmpty { right.append(kindsItem(r)) }
+        item.rightBarButtonItems = right
+    }
+
+    // MARK: — 157-а: «+» і меню видів на панелі
+
+    /// Головна дія сторінки лічильника («Внести показання», «Сплатити вивіз») — «+» праворуч на панелі (HIG: одна кнопка в заголовку).
+    private func addItem(_ label: String) -> UIBarButtonItem {
+        let b = UIBarButtonItem(systemItem: .add, primaryAction: UIAction { [weak self] _ in
+            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+            self?.host.add()
+        })
+        b.accessibilityLabel = label
+        return b
+    }
+
+    /// Види історії / статистики, коли їх більше 4: pull-down «Світло ⌄» (поточний — з галочкою), як фільтр у «Пошті».
+    private func kindsItem(_ r: SiteRoute) -> UIBarButtonItem {
+        let acts = r.kinds.map { k in
+            UIAction(title: k.name, image: UIImage(systemName: MeterKind.symbol(k.k)), state: k.on ? .on : .off) { [weak self] _ in
+                if !k.on { UISelectionFeedbackGenerator().selectionChanged(); self?.host.view(k.k) }
+            }
+        }
+        let cur = r.kinds.first(where: { $0.on })?.name ?? r.kindsLbl
+        var c = UIButton.Configuration.plain()
+        var ta = AttributeContainer()
+        ta.uiKit.font = UIFont.preferredFont(forTextStyle: .body)
+        c.attributedTitle = AttributedString(cur, attributes: ta)
+        c.image = UIImage(systemName: "chevron.down", withConfiguration: UIImage.SymbolConfiguration(pointSize: 12, weight: .semibold))
+        c.imagePlacement = .trailing
+        c.imagePadding = 4
+        c.contentInsets = NSDirectionalEdgeInsets(top: 4, leading: 8, bottom: 4, trailing: 8)
+        let btn = UIButton(configuration: c)
+        btn.menu = UIMenu(title: r.kindsLbl, children: acts)
+        btn.showsMenuAsPrimaryAction = true
+        btn.accessibilityLabel = r.kindsLbl + ": " + cur
+        return UIBarButtonItem(customView: btn)
+    }
+
+    // MARK: — 157-а: плашка над вкладками (iOS 26, як міні-плеєр «Музики») — в останні дні вікна
+
+    private var accessoryKey = ""
+
+    /// Найближчий непереданий строк у межах `soon` (4) днів — «Світло — до 3 грудня · Внести»; дотик — на лічильник. Немає — плашки немає.
+    /// Та сама умова, що в Live Activity й нагадуваннях (строки — з сайту, застосунок їх не вигадує).
+    private func updateAccessory(_ p: SchedPayload) {
+        #if compiler(>=6.2)
+        guard #available(iOS 26.0, *) else { return }
+        let cal = Calendar.current
+        let today = Day.parse(p.today) ?? cal.startOfDay(for: Date())
+        var soon = p.soon
+        #if DEBUG
+        let ds = UserDefaults.standard.integer(forKey: "PeredaiSoon")
+        if ds > 0 { soon = ds }
+        #endif
+        let open = p.items.compactMap { it -> (SchedItem, Date)? in
+            guard !it.done, let due = Day.parse(it.due) else { return nil }
+            let left = cal.dateComponents([.day], from: today, to: due).day ?? 99
+            return left >= 0 && left <= soon ? (it, due) : nil
+        }.sorted { $0.1 < $1.1 }
+        guard let first = open.first else {
+            if !accessoryKey.isEmpty { accessoryKey = ""; bottomAccessory = nil }
+            return
+        }
+        let it = first.0, due = first.1
+        let places = Set(p.items.map(\.p)).count
+        let tpl = places > 1 ? p.txt.body : p.txt.body.replacingOccurrences(of: " · {p}", with: "")
+        let text = Reminders.fill(tpl, it, due)
+        let go = it.pay ? (p.txt.acc_pay ?? L10n.t("Сплатити", "Оплатить")) : (p.txt.acc_go ?? L10n.t("Внести", "Внести"))
+        let key = [it.k, it.p, it.due, text, go].joined(separator: "|")
+        guard key != accessoryKey else { return }
+        accessoryKey = key
+        let v = WindowAccessoryView(kind: it.k, text: text, go: go)
+        let route = it.go, place = it.p
+        v.onTap = { [weak self] in
+            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+            self?.host.open(g: route, place: place)
+        }
+        bottomAccessory = UITabAccessory(contentView: v)
+        #endif
     }
 
     // MARK: — 156-а: квартира в заголовку
@@ -289,6 +372,62 @@ enum TitleButton {
             b.accessibilityTraits = .header
         }
         return b
+    }
+}
+
+/// 157-а: вміст плашки над вкладками — значок виду, «Світло — до 3 грудня», праворуч «Внести». Уся плашка — одна кнопка.
+final class WindowAccessoryView: UIControl {
+    var onTap: (() -> Void)?
+
+    init(kind: String, text: String, go: String) {
+        super.init(frame: .zero)
+        let icon = UIImageView(image: UIImage(systemName: MeterKind.symbol(kind)))
+        icon.tintColor = UIColor(MeterKind.color(kind))
+        icon.preferredSymbolConfiguration = UIImage.SymbolConfiguration(textStyle: .body)
+        icon.setContentHuggingPriority(.required, for: .horizontal)
+        let label = UILabel()
+        label.text = text
+        label.font = .preferredFont(forTextStyle: .subheadline)
+        label.adjustsFontForContentSizeCategory = true
+        label.lineBreakMode = .byTruncatingTail
+        label.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+        let action = UILabel()
+        action.text = go
+        action.font = UIFont.preferredFont(forTextStyle: .subheadline).withTraits(.traitBold)
+        action.adjustsFontForContentSizeCategory = true
+        action.textColor = UIColor(named: "AccentColor") ?? .systemBlue
+        action.setContentHuggingPriority(.required, for: .horizontal)
+        action.setContentCompressionResistancePriority(.required, for: .horizontal)
+        let stack = UIStackView(arrangedSubviews: [icon, label, action])
+        stack.axis = .horizontal
+        stack.alignment = .center
+        stack.spacing = 10
+        stack.isUserInteractionEnabled = false
+        stack.translatesAutoresizingMaskIntoConstraints = false
+        addSubview(stack)
+        NSLayoutConstraint.activate([
+            stack.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 16),
+            stack.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -16),
+            stack.centerYAnchor.constraint(equalTo: centerYAnchor),
+        ])
+        isAccessibilityElement = true
+        accessibilityTraits = .button
+        accessibilityLabel = text
+        accessibilityHint = go
+        addTarget(self, action: #selector(tapped), for: .touchUpInside)
+    }
+
+    required init?(coder: NSCoder) { fatalError("init(coder:) is not supported") }
+
+    @objc private func tapped() { onTap?() }
+
+    override var isHighlighted: Bool { didSet { alpha = isHighlighted ? 0.6 : 1 } }
+}
+
+private extension UIFont {
+    func withTraits(_ t: UIFontDescriptor.SymbolicTraits) -> UIFont {
+        guard let d = fontDescriptor.withSymbolicTraits(t) else { return self }
+        return UIFont(descriptor: d, size: 0)
     }
 }
 

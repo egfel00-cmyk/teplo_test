@@ -14,6 +14,8 @@ final class WebHost: NSObject {
     var onPopup: ((UIViewController) -> Void)?
     /// 156-а: людина почала друкувати в листі вводу — свайп униз уже питає, а не закриває мовчки.
     var onDirty: ((Bool) -> Void)?
+    /// 157-а: строки з сайту — для плашки над вкладками (iOS 26) в останні дні вікна.
+    var onSched: ((SchedPayload) -> Void)?
 
     private(set) var loaded = false
     private var queue: [String] = []
@@ -39,7 +41,8 @@ final class WebHost: NSObject {
         cfg.defaultWebpagePreferences.preferredContentMode = .mobile
         let ucc = WKUserContentController()
         // 156-а: що вміє застосунок — сайт читає до свого старту (v3: лист для вводу показань, меню квартири на заголовку)
-        ucc.addUserScript(WKUserScript(source: "window.PeredaiNative={v:3,sheet:1,pmenu:1};", injectionTime: .atDocumentStart, forMainFrameOnly: true))
+        // 157-а: v4 — налаштування списком, «+» і меню видів на панелі, свайп і контекстне меню рядків історії
+        ucc.addUserScript(WKUserScript(source: "window.PeredaiNative={v:4,sheet:1,pmenu:1,list:1,add:1,km:1,ctx:1};", injectionTime: .atDocumentStart, forMainFrameOnly: true))
         cfg.userContentController = ucc
         webView = WKWebView(frame: .zero, configuration: cfg)
         super.init()
@@ -47,7 +50,8 @@ final class WebHost: NSObject {
         webView.navigationDelegate = self
         webView.uiDelegate = self
         webView.allowsBackForwardNavigationGestures = true
-        webView.allowsLinkPreview = false
+        // 157-а: довге натискання на рядок історії — рідне контекстне меню (статус); інші посилання меню не мають (див. contextMenuConfigurationForElement)
+        webView.allowsLinkPreview = true
         webView.isOpaque = false
         webView.backgroundColor = UIColor(named: "Housing")
         webView.scrollView.backgroundColor = UIColor(named: "Housing")
@@ -59,6 +63,30 @@ final class WebHost: NSObject {
         rc.addTarget(self, action: #selector(pullToRefresh(_:)), for: .valueChanged)
         webView.scrollView.refreshControl = rc
         offline.onRetry = { [weak self] in self?.reload() }
+        // 157-а: розмір тексту — за «Розміром тексту» iPhone (Dynamic Type): масштаб сторінки, сайт перекладається під нову ширину
+        applyTextSize()
+        _ = NotificationCenter.default.addObserver(forName: UIContentSizeCategory.didChangeNotification, object: nil, queue: .main) { [weak self] _ in
+            MainActor.assumeIsolated { self?.applyTextSize() }
+        }
+    }
+
+    /// Dynamic Type → масштаб сторінки (WKWebView.pageZoom). Більше 1,3 не робимо: ширина сайту стала б менша за 300 точок.
+    static func zoom(_ c: UIContentSizeCategory) -> CGFloat {
+        switch c {
+        case .extraSmall: return 0.88
+        case .small: return 0.92
+        case .medium: return 0.96
+        case .large: return 1.0
+        case .extraLarge: return 1.1
+        case .extraExtraLarge: return 1.18
+        case .extraExtraExtraLarge: return 1.24
+        default: return c.isAccessibilityCategory ? 1.3 : 1.0
+        }
+    }
+
+    private func applyTextSize() {
+        let z = Self.zoom(UIApplication.shared.preferredContentSizeCategory)
+        if abs(webView.pageZoom - z) > 0.001 { webView.pageZoom = z }
     }
 
     func start(route: String = "") {
@@ -130,6 +158,17 @@ final class WebHost: NSObject {
     /// 156-а: меню квартири на заголовку.
     func place(_ id: String) { run("window.TeploHost && window.TeploHost.place && window.TeploHost.place(\(Self.jsString(id)))") }
 
+    /// 157-а: «+» на панелі сторінки лічильника — головна дія сторінки.
+    func add() { run("window.TeploHost && window.TeploHost.add && window.TeploHost.add()") }
+
+    /// 157-а: вид з меню на панелі «Історії» / «Статистики».
+    func view(_ k: String) { run("window.TeploHost && window.TeploHost.view && window.TeploHost.view(\(Self.jsString(k)))") }
+
+    /// 157-а: пункт контекстного меню рядка історії (статус).
+    func rowAct(_ frag: String, _ id: String) {
+        run("window.TeploHost && window.TeploHost.rowAct && window.TeploHost.rowAct(\(Self.jsString(frag)), \(Self.jsString(id)))")
+    }
+
     /// 155-а: «Відгук» — кнопкою на панелі «Налаштувань» (плаваючу кнопку сайту застосунок ховає).
     func feedback() { run("window.TeploHost && window.TeploHost.feedback && window.TeploHost.feedback()") }
 
@@ -171,6 +210,7 @@ final class WebHost: NSObject {
             guard let d = try? JSONSerialization.data(withJSONObject: m),
                   let p = try? JSONDecoder().decode(SchedPayload.self, from: d) else { return }
             WidgetFeed.save(p)
+            onSched?(p)
             QuickActions.install()   // мова сайту могла змінитись — підписи швидких дій теж
             Task {
                 await Reminders.schedule(p)
@@ -312,12 +352,49 @@ extension WebHost: WKUIDelegate {
         present(a) { completionHandler(false) }
     }
 
+    /// 157-а (крок 4 плану навігації iOS, як у «Пошті»): довге натискання на рядок історії — рідне контекстне меню зі статусами запису
+    /// (ті самі варіанти, що в чипі рядка; тексти — сайту). Решта посилань — без меню (nil).
+    func webView(_ webView: WKWebView, contextMenuConfigurationForElement elementInfo: WKContextMenuElementInfo,
+                 completionHandler: @escaping @MainActor @Sendable (UIContextMenuConfiguration?) -> Void) {
+        guard webView === self.webView, let url = elementInfo.linkURL, url.host == AppConfig.base.host || url.host == nil,
+              let frag = url.fragment, frag.range(of: "^(rec|wrec|erec)-", options: .regularExpression) != nil else {
+            return completionHandler(nil)
+        }
+        let js = "window.TeploHost && window.TeploHost.rowMenu ? window.TeploHost.rowMenu(\(Self.jsString(frag))) : ''"
+        webView.evaluateJavaScript(js) { [weak self] res, _ in
+            guard let self, let str = res as? String, let data = str.data(using: .utf8),
+                  let m = try? JSONDecoder().decode(RowMenu.self, from: data), !m.items.isEmpty else { return completionHandler(nil) }
+            let acts: [UIMenuElement] = m.items.map { it in
+                UIAction(title: it.t, subtitle: (it.s ?? "").isEmpty ? nil : it.s, state: it.on == true ? .on : .off) { [weak self] _ in
+                    UISelectionFeedbackGenerator().selectionChanged()
+                    self?.rowAct(frag, it.id)
+                }
+            }
+            let menu = UIMenu(title: m.title ?? "", children: acts)
+            completionHandler(UIContextMenuConfiguration(identifier: nil, previewProvider: nil) { _ in menu })
+        }
+    }
+
+    /// Дотик до піднятого рядка — відкрити запис.
+    func webView(_ webView: WKWebView, contextMenuForElement elementInfo: WKContextMenuElementInfo,
+                 willCommitWithAnimator animator: any UIContextMenuInteractionCommitAnimating) {
+        guard let frag = elementInfo.linkURL?.fragment else { return }
+        animator.addCompletion { MainActor.assumeIsolated { WebHost.shared.go(frag) } }
+    }
+
     private func present(_ vc: UIViewController, or fallback: @escaping () -> Void) {
         guard let root = webView.window?.rootViewController else { return fallback() }
         var top = root
         while let p = top.presentedViewController { top = p }
         top.present(vc, animated: true)
     }
+}
+
+/// 157-а: меню рядка історії від сайту (TeploHost.rowMenu): {title, items: [{id, t, s, on}]}.
+struct RowMenu: Decodable {
+    struct Item: Decodable { let id: String; let t: String; let s: String?; let on: Bool? }
+    let title: String?
+    let items: [Item]
 }
 
 /// WKUserContentController тримає обробник сильно — через проміжний обʼєкт, щоб не було циклу.
@@ -431,6 +508,11 @@ struct SiteRoute {
     let pmAll: String
     let pmAdd: String
     let pmLbl: String
+    /// 157-а: «+» на панелі (підпис для VoiceOver; '' — немає), види історії / статистики для меню на панелі (> 4).
+    struct Kind { let k: String; let name: String; let on: Bool }
+    let add: String
+    let kinds: [Kind]
+    let kindsLbl: String
 
     init(_ m: [String: Any]) {
         func s(_ k: String) -> String { m[k] as? String ?? "" }
@@ -444,5 +526,10 @@ struct SiteRoute {
         }
         let pm = m["pm"] as? [String: Any] ?? [:]
         pmAll = pm["all"] as? String ?? ""; pmAdd = pm["add"] as? String ?? ""; pmLbl = pm["lbl"] as? String ?? ""
+        add = s("add"); kindsLbl = s("kml")
+        kinds = (m["km"] as? [[String: Any]] ?? []).compactMap { x in
+            guard let k = x["k"] as? String, let n = x["n"] as? String else { return nil }
+            return Kind(k: k, name: n, on: x["on"] as? Bool ?? false)
+        }
     }
 }
