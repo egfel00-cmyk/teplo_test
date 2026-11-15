@@ -2507,3 +2507,6 @@ details.mypay[open] > summary .mypay-amt, details.mypay[open] > summary .mypay-s
   .in-app body:has(.fab) .main:not(.bare) { padding-bottom: calc(76px + env(safe-area-inset-bottom)); }
   .in-app .fab:not(.fab-bare) { bottom: calc(12px + env(safe-area-inset-bottom)); }
 }
+/* 154-а: «Видалити акаунт» — тихе посилання під «Вийти», колір небезпеки лише в тексті */
+.acct-del { margin: 16px 0 0; }
+.danger-link { color: var(--c-bad); }

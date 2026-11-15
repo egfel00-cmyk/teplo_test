@@ -8427,6 +8427,8 @@
         '<p><button class="btn" data-act="link-bot" data-key="prefs-link-bot">' + esc(t('acct_link_bot', { bot: Y()._cfg.botUsername })) + '</button></p><div id="tg-widget" data-onauth="TeploTgLink"></div>';
       if (!a.hasPassword) h += '<h3 style="margin-top:16px">' + esc(t('acct_set_pass')) + '</h3><form id="setpass-form" novalidate>' + authFields('new-password') + '<div class="help block" id="setpass-err"></div><button class="btn sec" type="submit">' + esc(t('acct_set_pass_btn')) + '</button></form>';
       h += '<div class="row-actions"><button class="btn sec" data-act="logout" data-key="prefs-logout">' + esc(t('logout')) + '</button></div><p class="small muted" style="margin-top:8px">' + esc(t('logout_sub')) + '</p>';
+      // 154-а: видалення акаунта (App Store 5.1.1(v)) — тихим посиланням, з підтвердженням поруч
+      h += '<p class="acct-del"><button class="linkbtn danger-link" data-act="acct-del-ask" data-key="prefs-acct-del">' + esc(t('acct_del')) + '</button></p><div id="acct-del-confirm"></div>';
     } else if (y.mode === 'server') h += '<p>' + esc(t('sync_local')) + '</p><p>' + esc(t('sync_local_sub_site')) + '</p><a class="btn" href="#login" data-key="prefs-login">' + esc(t('login')) + '</a>';
     else h += '<p>' + esc(t('sync_local')) + '</p><p class="small muted">' + esc(t('sync_local_sub_noserver')) + '</p>';
     return h + '</div>';
@@ -9522,6 +9524,17 @@
         var shown = pin.type === 'password'; pin.type = shown ? 'text' : 'password';
         el.setAttribute('aria-pressed', String(shown)); el.setAttribute('aria-label', t(shown ? 'pass_hide' : 'pass_show')); el.setAttribute('title', t(shown ? 'pass_hide' : 'pass_show'));
         el.innerHTML = ico(shown ? 'eyeoff' : 'eye', 20); break; }
+      case 'acct-del-ask': { var adc = document.getElementById('acct-del-confirm'); if (adc) adc.innerHTML = '<div class="confirm" data-key="acct-del-confirm"><p>' + esc(t('acct_del_q')) + '</p><div class="row-actions" style="margin-top:8px"><button class="btn sec" data-act="acct-del-no">' + esc(t('cancel')) + '</button><button class="btn danger solid" data-act="acct-del-yes" data-key="prefs-acct-del-yes">' + esc(t('acct_del_yes')) + '</button></div><p class="help block" id="acct-del-err"></p></div>'; break; }
+      case 'acct-del-no': { var adn = document.getElementById('acct-del-confirm'); if (adn) adn.innerHTML = ''; break; }
+      case 'acct-del-yes': {
+        var dd = busy(el);
+        Y().deleteAccount().then(function (j) {
+          dd();
+          if (j && j._status === 200) { ADMIN = null; lastSig = window.TeploSync.sig(window.TeploSync.payload(S)); persist(); toast(t('acct_deleted')); render(); return; }
+          var ae = document.getElementById('acct-del-err'); if (ae) ae.textContent = t('err_network');
+        }, function () { dd(); var ae2 = document.getElementById('acct-del-err'); if (ae2) ae2.textContent = t('err_network'); });
+        break;
+      }
       case 'logout': ADMIN = null; busy(el); Y().logout().then(function () { S = defaults(); S.lang = browserLang(); ensurePlaces(); lastSig = window.TeploSync.sig(window.TeploSync.payload(S)); persist(); toast(t('logged_out')); go('welcome'); }); break;
       case 'dismiss-sync': S.syncPromptDismissed = true; persist(); render(true); break;
       case 'rp-rm': rpRemove(el.getAttribute('data-ref') || '', el.getAttribute('data-id') || ''); break;

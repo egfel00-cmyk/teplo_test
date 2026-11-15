@@ -281,6 +281,8 @@
     linkTelegram: function (data) { var self = this; return api('POST', '/auth/link-telegram', data).then(function (j) { if (j._status === 200) self.account = j.user; self._onChange(); return j; }); },
     setPassword: function (email, password) { var self = this; return api('POST', '/auth/password', { email: email, password: password }).then(function (j) { if (j._status === 200) self.account = j.user; self._onChange(); return j; }); },
     logout: function () { var self = this; return api('POST', '/auth/logout').then(function () { setSess(''); self.account = null; self._lastSig = ''; self._setOwner(''); self._set('server', 'idle'); }); },
+    /** 154-а: видалити акаунт на сервері; дані на цьому пристрої лишаються (лише без синхронізації). */
+    deleteAccount: function () { var self = this; return api('POST', '/account/delete', { confirm: 'delete' }).then(function (j) { if (j._status === 200) { setSess(''); self.account = null; self._lastSig = ''; self._setOwner(''); self._set('server', 'idle'); } return j; }); },
     hasSess: function () { return !!SESS; },
     config: function () { return api('GET', '/config'); }
   };

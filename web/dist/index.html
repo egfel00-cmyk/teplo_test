@@ -2524,6 +2524,9 @@ details.mypay[open] > summary .mypay-amt, details.mypay[open] > summary .mypay-s
   .in-app body:has(.fab) .main:not(.bare) { padding-bottom: calc(76px + env(safe-area-inset-bottom)); }
   .in-app .fab:not(.fab-bare) { bottom: calc(12px + env(safe-area-inset-bottom)); }
 }
+/* 154-а: «Видалити акаунт» — тихе посилання під «Вийти», колір небезпеки лише в тексті */
+.acct-del { margin: 16px 0 0; }
+.danger-link { color: var(--c-bad); }
 
 </style>
 <style>.top { padding-top: max(12px, env(safe-area-inset-top)); }</style>
@@ -5378,6 +5381,8 @@ details.mypay[open] > summary .mypay-amt, details.mypay[open] > summary .mypay-s
       my_on_t: 'Інший постачальник: {o}', my_on_t0: 'Інший постачальник — впишіть назву й реквізити', my_off_t: 'Повернули постачальника з довідника',
       my_link: 'Інший постачальник',
       // 154-а: застосунок iPhone — нагадування й Live Activity (Dynamic Island); {k} — вид, {p} — квартира, {d} — дата, {n} — днів
+      acct_del: 'Видалити акаунт', acct_del_yes: 'Так, видалити акаунт', acct_deleted: 'Акаунт видалено. Показання на цьому пристрої залишились',
+      acct_del_q: 'Видалимо з сервера акаунт, вхід через Telegram і пошту, копію даних, доступи до кабінетів постачальників, фото й платіжки. Показання на цьому пристрої залишаться — без синхронізації. Скасувати не можна.',
       app_n_title: 'Час передати показання', app_n_body: '{k} · {p} — до {d}', app_n_pay: 'Час сплатити: {k} · {p} — до {d}',
       app_la_title: 'Відкрите вікно передачі', app_la_go: 'Зняти показання', app_la_done: 'Передано', app_restored: 'Дані відновлено з iCloud',
       pc_find: 'Знайти в довіднику', pc_find_ph: 'Назва або місто', pc_sel_s: 'обрали самі · {w}', pc_off: 'Як за адресою квартири', pc_off0: 'Прибрати вибір',
@@ -6733,6 +6738,8 @@ details.mypay[open] > summary .mypay-amt, details.mypay[open] > summary .mypay-s
       my_abon: 'Ежемесячная плата, грн', my_phone: 'Телефон', my_call: 'Позвонить', my_num: 'Ваш номер (гараж, счёт)', my_num_ph: 'Напр., 141', my_num_s: 'Ваш номер', my_pay_t: 'Оплата', my_first: 'Это первые показания здесь — сумму посчитаем со следующих.',
       my_on_t: 'Другой поставщик: {o}', my_on_t0: 'Другой поставщик — впишите название и реквизиты', my_off_t: 'Вернули поставщика из справочника',
       my_link: 'Другой поставщик',
+      acct_del: 'Удалить аккаунт', acct_del_yes: 'Да, удалить аккаунт', acct_deleted: 'Аккаунт удалён. Показания на этом устройстве остались',
+      acct_del_q: 'Удалим с сервера аккаунт, вход через Telegram и почту, копию данных, доступы к кабинетам поставщиков, фото и платёжки. Показания на этом устройстве останутся — без синхронизации. Отменить нельзя.',
       app_n_title: 'Пора передать показания', app_n_body: '{k} · {p} — до {d}', app_n_pay: 'Пора оплатить: {k} · {p} — до {d}',
       app_la_title: 'Открыто окно передачи', app_la_go: 'Снять показания', app_la_done: 'Передано', app_restored: 'Данные восстановлены из iCloud',
       pc_find: 'Найти в справочнике', pc_find_ph: 'Название или город', pc_sel_s: 'выбрали сами · {w}', pc_off: 'Как по адресу квартиры', pc_off0: 'Убрать выбор',
@@ -7047,6 +7054,8 @@ details.mypay[open] > summary .mypay-amt, details.mypay[open] > summary .mypay-s
     linkTelegram: function (data) { var self = this; return api('POST', '/auth/link-telegram', data).then(function (j) { if (j._status === 200) self.account = j.user; self._onChange(); return j; }); },
     setPassword: function (email, password) { var self = this; return api('POST', '/auth/password', { email: email, password: password }).then(function (j) { if (j._status === 200) self.account = j.user; self._onChange(); return j; }); },
     logout: function () { var self = this; return api('POST', '/auth/logout').then(function () { setSess(''); self.account = null; self._lastSig = ''; self._setOwner(''); self._set('server', 'idle'); }); },
+    /** 154-а: видалити акаунт на сервері; дані на цьому пристрої лишаються (лише без синхронізації). */
+    deleteAccount: function () { var self = this; return api('POST', '/account/delete', { confirm: 'delete' }).then(function (j) { if (j._status === 200) { setSess(''); self.account = null; self._lastSig = ''; self._setOwner(''); self._set('server', 'idle'); } return j; }); },
     hasSess: function () { return !!SESS; },
     config: function () { return api('GET', '/config'); }
   };
@@ -9572,6 +9581,8 @@ details.mypay[open] > summary .mypay-amt, details.mypay[open] > summary .mypay-s
     v: 1,
     go: function (r) { r = String(r || '').replace(/^#/, ''); if (!r) return; if (routeName() === r) render(); else location.hash = r; },
     sched: function () { appSched(true); },
+    /** Нагадування / Live Activity: квартира pid і вид (як кнопка з нагадування бота — deepLink). */
+    open: function (g, pid) { if (!S.onboarded) return; deepLink(String(g || 'home'), String(pid || ''), ''); render(); },
     /** Копія з iCloud: порожній застосунок (новий телефон) — береться як є; є свої дані — злиття тим самим TeploSync.merge, що й із сервером. */
     restore: function (json) {
       try {
@@ -17781,6 +17792,8 @@ details.mypay[open] > summary .mypay-amt, details.mypay[open] > summary .mypay-s
         '<p><button class="btn" data-act="link-bot" data-key="prefs-link-bot">' + esc(t('acct_link_bot', { bot: Y()._cfg.botUsername })) + '</button></p><div id="tg-widget" data-onauth="TeploTgLink"></div>';
       if (!a.hasPassword) h += '<h3 style="margin-top:16px">' + esc(t('acct_set_pass')) + '</h3><form id="setpass-form" novalidate>' + authFields('new-password') + '<div class="help block" id="setpass-err"></div><button class="btn sec" type="submit">' + esc(t('acct_set_pass_btn')) + '</button></form>';
       h += '<div class="row-actions"><button class="btn sec" data-act="logout" data-key="prefs-logout">' + esc(t('logout')) + '</button></div><p class="small muted" style="margin-top:8px">' + esc(t('logout_sub')) + '</p>';
+      // 154-а: видалення акаунта (App Store 5.1.1(v)) — тихим посиланням, з підтвердженням поруч
+      h += '<p class="acct-del"><button class="linkbtn danger-link" data-act="acct-del-ask" data-key="prefs-acct-del">' + esc(t('acct_del')) + '</button></p><div id="acct-del-confirm"></div>';
     } else if (y.mode === 'server') h += '<p>' + esc(t('sync_local')) + '</p><p>' + esc(t('sync_local_sub_site')) + '</p><a class="btn" href="#login" data-key="prefs-login">' + esc(t('login')) + '</a>';
     else h += '<p>' + esc(t('sync_local')) + '</p><p class="small muted">' + esc(t('sync_local_sub_noserver')) + '</p>';
     return h + '</div>';
@@ -18876,6 +18889,17 @@ details.mypay[open] > summary .mypay-amt, details.mypay[open] > summary .mypay-s
         var shown = pin.type === 'password'; pin.type = shown ? 'text' : 'password';
         el.setAttribute('aria-pressed', String(shown)); el.setAttribute('aria-label', t(shown ? 'pass_hide' : 'pass_show')); el.setAttribute('title', t(shown ? 'pass_hide' : 'pass_show'));
         el.innerHTML = ico(shown ? 'eyeoff' : 'eye', 20); break; }
+      case 'acct-del-ask': { var adc = document.getElementById('acct-del-confirm'); if (adc) adc.innerHTML = '<div class="confirm" data-key="acct-del-confirm"><p>' + esc(t('acct_del_q')) + '</p><div class="row-actions" style="margin-top:8px"><button class="btn sec" data-act="acct-del-no">' + esc(t('cancel')) + '</button><button class="btn danger solid" data-act="acct-del-yes" data-key="prefs-acct-del-yes">' + esc(t('acct_del_yes')) + '</button></div><p class="help block" id="acct-del-err"></p></div>'; break; }
+      case 'acct-del-no': { var adn = document.getElementById('acct-del-confirm'); if (adn) adn.innerHTML = ''; break; }
+      case 'acct-del-yes': {
+        var dd = busy(el);
+        Y().deleteAccount().then(function (j) {
+          dd();
+          if (j && j._status === 200) { ADMIN = null; lastSig = window.TeploSync.sig(window.TeploSync.payload(S)); persist(); toast(t('acct_deleted')); render(); return; }
+          var ae = document.getElementById('acct-del-err'); if (ae) ae.textContent = t('err_network');
+        }, function () { dd(); var ae2 = document.getElementById('acct-del-err'); if (ae2) ae2.textContent = t('err_network'); });
+        break;
+      }
       case 'logout': ADMIN = null; busy(el); Y().logout().then(function () { S = defaults(); S.lang = browserLang(); ensurePlaces(); lastSig = window.TeploSync.sig(window.TeploSync.payload(S)); persist(); toast(t('logged_out')); go('welcome'); }); break;
       case 'dismiss-sync': S.syncPromptDismissed = true; persist(); render(true); break;
       case 'rp-rm': rpRemove(el.getAttribute('data-ref') || '', el.getAttribute('data-id') || ''); break;

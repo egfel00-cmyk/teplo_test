@@ -289,6 +289,16 @@ final class Api {
         $u = self::userById((int)$row['user_id']); self::startSession($res, $u, $r, $ip); self::audit($u['id'], 'reset_password', $ip);
         return ['user' => self::publicUser($u)];
       }
+      // 154-а: «Видалити акаунт» (App Store 5.1.1(v) — видалення акаунта всередині застосунку; і для сайту). Прибирає все серверне:
+      // акаунт, входи, синхронізацію та її історію, доступи до кабінетів і черги робота, фото й платіжки, журнал, нагадування. Дані на пристрої лишаються.
+      case 'POST /api/account/delete': {
+        if (!$user) throw new HttpError(401, 'unauthorized');
+        if (($in['confirm'] ?? '') !== 'delete') throw new HttpError(422, 'confirm_required');
+        self::deleteAccount((int)$user['id']);
+        self::cookie($res, 'ts_sid', '', 1, true);
+        self::audit(null, 'account_deleted', $ip);
+        return ['ok' => true];
+      }
       case 'POST /api/auth/logout': {
         if (!empty($r->cookies['ts_sid'])) Db::q('DELETE FROM sessions WHERE token_hash = ?', [hash('sha256', (string)$r->cookies['ts_sid'])]);
         if ($r->header('X-Session') !== '') Db::q('DELETE FROM sessions WHERE token_hash = ?', [hash('sha256', $r->header('X-Session'))]);
@@ -510,5 +520,29 @@ final class Api {
     // путь cookie = адрес сайта: на общем домене pokabot.xyz не пересекаемся с другими сайтами
     $res->cookies[] = [$name, $val, ['expires' => $exp, 'path' => (Cfg::base() ?: '') . '/', 'secure' => (bool)Cfg::get('cookie_secure', true), 'httponly' => $httpOnly, 'samesite' => 'Lax']];
   }
+  /** Усі рядки людини в базі й її файли (фото, платіжки). Таблиці, яких ще немає (створюються при першому зверненні), — пропускаємо. */
+  public static function deleteAccount(int $uid): void {
+    if ($uid <= 0) return;
+    foreach (['sessions', 'user_identities', 'user_state', 'user_state_hist', 'cab_creds', 'cab_jobs', 'relay_jobs', 'link_tokens', 'pw_resets',
+      'bot_cards', 'bot_inbox', 'consents', 'events', 'visits', 'reminders_sent', 'reminder_snooze', 'mail_optout', 'mail_log', 'vk_events', 'vk_replies',
+      'recog_reports', 'photos', 'docs', 'audit_log'] as $t) {
+      try { Db::q("DELETE FROM $t WHERE user_id = ?", [$uid]); } catch (\Throwable $e) { /* таблиці ще немає */ }
+    }
+    try { Db::q('UPDATE feedback SET user_id = NULL, contact = ? WHERE user_id = ?', ['', $uid]); } catch (\Throwable $e) { /* відгуки лишаються без імені */ }
+    Db::q('DELETE FROM users WHERE id = ?', [$uid]);
+    foreach ([class_exists('Recognize') ? Recognize::root() : '', class_exists('Docs') ? Docs::root() : ''] as $root) {
+      if ($root !== '') self::rmTree($root . '/' . $uid);
+    }
+  }
+  private static function rmTree(string $dir): void {
+    if (!is_dir($dir) || is_link($dir)) return;
+    foreach (scandir($dir) ?: [] as $f) {
+      if ($f === '.' || $f === '..') continue;
+      $p = $dir . '/' . $f;
+      if (is_dir($p) && !is_link($p)) self::rmTree($p); else @unlink($p);
+    }
+    @rmdir($dir);
+  }
+
   private static function audit(?int $uid, string $action, string $ip): void { Db::q('INSERT INTO audit_log (user_id, action, ip, created_at) VALUES (?, ?, ?, ?)', [$uid, $action, $ip, Http::iso()]); }
 }
