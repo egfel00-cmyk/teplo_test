@@ -402,8 +402,11 @@ CSS;
 
   /** Сторінка: html або null (немає такої моделі). $base — SITE_BASE, $site — абсолютна адреса сайту з / в кінці. */
   public static function render(string $lang, string $slug, string $base, string $site, string $kind = 'm'): ?string {
-    if ($kind === 'h') return class_exists('Providers') ? self::renderHrom($lang, $slug, $base, $site) : null;
-    if ($kind === 'p') return class_exists('Providers') ? self::renderProv($lang, $slug, $base, $site) : null;
+    if ($kind === 'h' || $kind === 'p') {
+      if (!class_exists('Providers')) return null;
+      $x = $kind === 'h' ? self::renderHrom($lang, $slug, $base, $site) : self::renderProv($lang, $slug, $base, $site);
+      return $x === null ? null : self::crumbs($x);
+    }
     $ru = $lang === 'ru'; $e = [self::class, 'e'];
     $m = $slug !== '' ? self::model($slug) : null; if ($slug !== '' && !$m) return null;
     $abs = fn(string $l, string $s = '') => rtrim($site, '/') . self::url($l, $s);
@@ -467,7 +470,32 @@ CSS;
     }
     $h .= '</ul></section>' . ($m ? '' : $cta) . '</main><footer><div class="w">' . self::wordmark() . '<p>' . ($ru ? 'Показания света, воды, газа и тепла — бесплатно, без рекламы. Сервис независимый, не связан с поставщиками.'
       : 'Показання світла, води, газу й тепла — безкоштовно, без реклами. Сервіс незалежний, не пов’язаний з постачальниками.') . '</p></div></footer></body></html>';
-    return $h;
+    return self::crumbs($h);
+  }
+
+  /** 154-а: хлібні крихти для пошуку (schema.org BreadcrumbList) — з видимих `nav.bc` і h1 сторінки; адреси абсолютні, від canonical, без #якорів.
+   *  Google показує їх у видачі замість голої адреси. */
+  public static function crumbs(string $h): string {
+    if (strpos($h, 'BreadcrumbList') !== false) return $h;
+    if (!preg_match('~<link rel="canonical" href="([^"]+)"~', $h, $cm) || !preg_match('~<nav class="bc"[^>]*>(.*?)</nav>~s', $h, $nm)) return $h;
+    $canon = html_entity_decode($cm[1], ENT_QUOTES, 'UTF-8'); $u0 = parse_url($canon);
+    if (empty($u0['scheme']) || empty($u0['host'])) return $h;
+    $origin = $u0['scheme'] . '://' . $u0['host'] . (isset($u0['port']) ? ':' . $u0['port'] : '');
+    $txt = fn(string $x) => trim(preg_replace('~\s+~u', ' ', html_entity_decode(strip_tags($x), ENT_QUOTES, 'UTF-8')));
+    $items = [];
+    preg_match_all('~<a href="([^"]*)"[^>]*>(.*?)</a>~s', $nm[1], $am, PREG_SET_ORDER);
+    foreach ($am as $a) {
+      $u = preg_replace('~#.*$~', '', html_entity_decode($a[1], ENT_QUOTES, 'UTF-8'));
+      $abs = preg_match('~^https?://~', $u) ? $u : $origin . '/' . ltrim($u, '/');
+      if ($txt($a[2]) !== '') $items[] = [$txt($a[2]), $abs];
+    }
+    if (preg_match('~<h1[^>]*>(.*?)</h1>~s', $h, $hm) && $txt($hm[1]) !== '') $items[] = [$txt($hm[1]), $canon];
+    if (count($items) < 2) return $h;
+    $ld = ['@context' => 'https://schema.org', '@type' => 'BreadcrumbList',
+      'itemListElement' => array_map(fn($x, $i) => ['@type' => 'ListItem', 'position' => $i + 1, 'name' => $x[0], 'item' => $x[1]], $items, array_keys($items))];
+    $s = '<script type="application/ld+json">' . json_encode($ld, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG) . '</script>';
+    $i = strpos($h, '</head>');
+    return $i === false ? $h : substr($h, 0, $i) . $s . substr($h, $i);
   }
 
   /** index.php: віддати сторінку з заголовками. */

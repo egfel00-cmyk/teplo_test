@@ -2832,7 +2832,7 @@ $sp = Seo::render('uk', 'sharky774', '', 'https://peredai.com.ua/'); $sr = Seo::
 ok('seo: сторінка моделі — заголовок, кроки словами, hreflang, HowTo, без <script> крім ld+json; ru — по-російськи; невідома — null; список — 37',
   count($sj['models'] ?? []) === 37 && str_contains((string)$sp, '<h1>Як зняти показання SHARKY 774</h1>') && str_contains((string)$sp, 'Натисніть кнопку 2 рази')
   && str_contains((string)$sp, 'hreflang="ru" href="https://peredai.com.ua/ru/kak-snyat-pokazaniya/sharky774"') && str_contains((string)$sp, '"@type":"HowTo"')
-  && preg_match_all('~<script~', (string)$sp) === 1 && str_contains((string)$sr, 'Зажмите кнопку и держите больше 3 с') && Seo::render('uk', 'nope', '', 'https://x/') === null
+  && preg_match_all('~<script~', (string)$sp) === 2 && preg_match_all('~<script type="application/ld\+json">~', (string)$sp) === 2 && str_contains((string)$sr, 'Зажмите кнопку и держите больше 3 с') && Seo::render('uk', 'nope', '', 'https://x/') === null
   && substr_count((string)$si2, '<li><a href="/yak-znyaty-pokaznannya/') === 37 && Seo::match('/ru/kak-snyat-pokazaniya/t330') === ['ru', 't330', 'm'] && Seo::match('/yak-znyaty-pokaznannya/../x') === null);
 $hs = Seo::hroms(); $hb = (string)Seo::render('uk', 'bucha', '', 'https://peredai.com.ua/', 'h'); $hk = (string)Seo::render('ru', 'kharkiv', '', 'https://peredai.com.ua/', 'h');
 $hi = (string)Seo::render('uk', '', '', 'https://peredai.com.ua/', 'h');
@@ -2849,11 +2849,18 @@ ok('seo: постачальники — ≥ 380 сторінок (організ
   count($pv) >= 380 && count(array_unique($pslugs)) === count($pslugs) && !array_filter($pslugs, fn($x) => !preg_match('~^[a-z0-9-]{2,70}$~', $x))
   && in_array('net', $pv['kharkivoblenerho']['roles'] ?? [], true) && isset($pv['kharkivvodokanal'], $pv['yasno'], $pv['naftohaz-ukrainy'], $pv['hazmerezhi-kharkivska-filiia'])
   && str_contains($pko, '<title>АТ «Харківобленерго» — як передати показання світла</title>') && str_contains($pko, 'ХарківОбленергоБот') && str_contains($pko, 'href="/postachalnyky/kharkivenerhozbut"')
-  && str_contains($pko, 'href="/kudy-peredaty/kharkiv"') && str_contains($pko, 'hreflang="ru" href="https://peredai.com.ua/ru/postavshchiki/kharkivoblenerho"') && !str_contains($pko, '<script')
+  && str_contains($pko, 'href="/kudy-peredaty/kharkiv"') && str_contains($pko, 'hreflang="ru" href="https://peredai.com.ua/ru/postavshchiki/kharkivoblenerho"') && !preg_match('~<script(?! type="application/ld\+json")~', $pko)
   && str_contains($png, 'href="/ru/postavshchiki/odesahaz"') && substr_count($png, '<section class="card kc">') >= 5 && str_contains($png, '«Куб»')
   && str_contains($pvk, 'Показання: з 1 по 20 число') && !array_filter($pslugs, fn($x) => !str_contains($pix, 'href="/postachalnyky/' . $x . '"'))
   && Seo::match('/ru/postavshchiki/yasno') === ['ru', 'yasno', 'p'] && Seo::render('uk', 'nope', '', 'https://x/', 'p') === null && str_contains($hb, 'href="/postachalnyky/buchaservis"'),
   [count($pv), mb_substr(strip_tags($pko), 0, 200)]);
+// 154-а: хлібні крихти для пошуку — BreadcrumbList з видимих nav.bc і h1, абсолютні адреси без #якорів; інших <script>, крім ld+json, немає
+$bcj = function (string $h) { return preg_match('~<script type="application/ld\+json">(\{"@context":"https://schema.org","@type":"BreadcrumbList".*?)</script>~', $h, $m) ? json_decode($m[1], true) : null; };
+$bvk = $bcj($pvk); $bhk = $bcj((string)Seo::render('uk', 'kharkiv', '', 'https://peredai.com.ua/', 'h')); $bsp = $bcj((string)$sp);
+ok('seo: крихти — постачальник (передай › Постачальники › КП «Харківводоканал»), громада без #області, модель; лише ld+json-скрипти',
+  $bvk && array_column($bvk['itemListElement'], 'name') === ['передай', 'Постачальники', 'КП «Харківводоканал»'] && $bvk['itemListElement'][2]['item'] === 'https://peredai.com.ua/postachalnyky/kharkivvodokanal'
+  && $bvk['itemListElement'][0]['item'] === 'https://peredai.com.ua/' && $bhk && $bhk['itemListElement'][1]['item'] === 'https://peredai.com.ua/kudy-peredaty' && count($bhk['itemListElement']) === 3
+  && $bsp && count($bsp['itemListElement']) === 3 && preg_match_all('~<script(?! type="application/ld\+json")~', $pko . $pvk . $hb . $hk) === 0, [$bvk, $bhk]);
 ok('seo: sitemap — головна + пари: 38 (моделі) + 351 (громади) + 1 + постачальники', count(Seo::pairs()) === 38 + 351 + 1 + count($pv), count(Seo::pairs()));
 
 echo "\nИтог: $pass OK, $fail FAIL\n";
