@@ -66,7 +66,7 @@ const sql = (q) => execFileSync('php', ['-r', '$d=new PDO("sqlite:/tmp/teplo_dat
   // 4. отозвать: политика → «Налаштування cookie» → «Відхилити все»
   await p.goto(U + '#privacy'); await p.waitForTimeout(500);
   const pol = await p.textContent('main');
-  ok('політика: розділ cookie — необхідні й аналітика, строки, без «без аналітичних трекерів»', /ts_sid/.test(pol) && /teplo\.vid/.test(pol) && /60 днів/.test(pol) && !/Без рекламних і аналітичних трекерів/.test(pol) && /07\.11\.2026/.test(pol));
+  ok('політика: розділ cookie — необхідні й аналітика, строки, без «без аналітичних трекерів»', /ts_sid/.test(pol) && /teplo\.vid/.test(pol) && /60 днів/.test(pol) && !/Без рекламних і аналітичних трекерів/.test(pol) && /\d\d\.11\.2026/.test(pol));
   await p.click('[data-key=privacy-cookie]'); await p.waitForTimeout(300);
   await p.click('[data-key=cc-reject-all]'); await p.waitForTimeout(400);
   const n0 = net.filter(x => x.u === 'events').length;
