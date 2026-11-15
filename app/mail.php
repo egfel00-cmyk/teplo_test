@@ -54,6 +54,28 @@ final class Mail {
 
   private static function fail(string $code, string $human): HttpError { return new HttpError(422, $code, ['human' => $human]); }
 
+  /** 152-а: лист у стилі «передай» (брендбук design/02: корпус #E9EEEB, картка біла, чорнило #17211E, кнопка — чорнилом, Plex/системний шрифт).
+   *  Таблицями — так його однаково малюють Gmail, Outlook, Apple Mail; без SVG і зовнішніх стилів. Знак — PNG з сайту (вимкнені картинки — лишається слово).
+   *  $paras — абзаци тексту (екрануються), $btn — [підпис, адреса] або null, $foot — дрібний текст унизу (екранується), $footLink — [підпис, адреса] або null,
+   *  $more — ще посилання [[підпис, адреса]] під кнопкою. */
+  public static function layout(string $lang, array $paras, ?array $btn = null, string $foot = '', ?array $footLink = null, array $more = []): string {
+    $h = fn($x) => htmlspecialchars((string)$x, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8'); $site = Cfg::appUrl();
+    $font = "'IBM Plex Sans',-apple-system,'Segoe UI',Roboto,Arial,sans-serif";
+    $p = implode('', array_map(fn($x) => '<p style="margin:0 0 14px;font:16px/1.5 ' . $font . ';color:#17211E">' . nl2br($h($x)) . '</p>', $paras));
+    $b = $btn ? '<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:6px 0 18px"><tr><td style="border-radius:12px;background:#17211E">' .
+      '<a href="' . $h($btn[1]) . '" style="display:inline-block;padding:14px 22px;border-radius:12px;font:600 16px/1.2 ' . $font . ';color:#FFFFFF;text-decoration:none">' . $h($btn[0]) . '</a></td></tr></table>' .
+      '<p style="margin:0 0 14px;font:13px/1.5 ' . $font . ';color:#4A5652;word-break:break-all">' . ($lang === 'ru' ? 'Если кнопка не нажимается: ' : 'Якщо кнопка не натискається: ') . '<a href="' . $h($btn[1]) . '" style="color:#4A5652">' . $h($btn[1]) . '</a></p>' : '';
+    $b .= implode('', array_map(fn($l) => '<p style="margin:0 0 10px;font:16px/1.5 ' . $font . '"><a href="' . $h($l[1]) . '" style="color:#17211E;font-weight:600">' . $h($l[0]) . '</a></p>', $more));
+    $f = ($foot !== '' || $footLink) ? '<p style="margin:16px 0 0;font:13px/1.5 ' . $font . ';color:#4A5652">' . $h($foot) . ($footLink ? ($foot !== '' ? '<br>' : '') . '<a href="' . $h($footLink[1]) . '" style="color:#4A5652">' . $h($footLink[0]) . '</a>' : '') . '</p>' : '';
+    return '<!doctype html><html lang="' . ($lang === 'ru' ? 'ru' : 'uk') . '"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"></head>' .
+      '<body style="margin:0;padding:0;background:#E9EEEB"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#E9EEEB"><tr><td align="center" style="padding:24px 12px">' .
+      '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:560px">' .
+      '<tr><td style="padding:0 4px 14px"><a href="' . $h($site) . '" style="text-decoration:none;color:#17211E;font:700 22px/1 ' . $font . '"><img src="' . $h($site . 'apple-touch-icon.png') . '" width="32" height="32" alt="" style="vertical-align:middle;border-radius:8px;margin-right:8px;border:0">передай</a></td></tr>' .
+      '<tr><td style="background:#FFFFFF;border:1px solid #CFD7D3;border-radius:14px;padding:24px 22px">' . $p . $b . '</td></tr>' .
+      '<tr><td style="padding:0 4px">' . $f . '<p style="margin:12px 0 0;font:13px/1.5 ' . $font . ';color:#4A5652">peredai.com.ua · ' . ($lang === 'ru' ? 'независимый сервис, не связан с поставщиками' : 'незалежний сервіс, не пов’язаний з постачальниками') . '</p></td></tr>' .
+      '</table></td></tr></table></body></html>';
+  }
+
   // ---------- письмо (MIME): UTF-8, base64, текст и (по желанию) HTML ----------
   /** Заголовок с не-ASCII — encoded-word (RFC 2047) кусками по ~45 байт, без разрыва UTF-8. Переводы строк вырезаются (инъекция заголовков). */
   public static function hdr(string $s): string {

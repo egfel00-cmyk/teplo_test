@@ -554,11 +554,9 @@ final class Reminders {
     $offT = $ru ? 'Больше не присылать напоминания на e-mail' : 'Більше не надсилати нагадування на e-mail';
     $why = $ru ? 'Вы получили это письмо, потому что вошли в «передай» по e-mail.' : 'Ви отримали цей лист, бо входили в «передай» за e-mail.';
     $text = $body . "\n\n" . implode("\n", array_map(fn($b) => $b[0] . ': ' . $b[1], $m['buttons'])) . "\n\n—\n" . $why . "\n" . $offT . ': ' . $off . "\n";
-    $h = fn($x) => htmlspecialchars($x, ENT_QUOTES);
-    $html = '<!doctype html><html><body style="font:16px/1.5 system-ui,-apple-system,Segoe UI,sans-serif;color:#1d2433;max-width:560px">'
-      . '<p>' . nl2br($h($body)) . '</p>'
-      . implode('', array_map(fn($b) => '<p><a href="' . $h($b[1]) . '" style="display:inline-block;padding:12px 18px;border-radius:10px;background:#1d4ed8;color:#fff;text-decoration:none">' . $h($b[0]) . '</a></p>', $m['buttons']))
-      . '<p style="color:#5b6577;font-size:13px;margin-top:28px">' . $h($why) . '<br><a href="' . $h($off) . '" style="color:#5b6577">' . $h($offT) . '</a></p></body></html>';
+    // 152-а: той самий вигляд, що й лист «Новий пароль» (Mail::layout): перша кнопка — головна, решта — посиланнями-рядками
+    $btns = array_values($m['buttons']); $paras = preg_split('/\n{2,}/u', $body) ?: [$body];
+    $html = Mail::layout($lang, $paras, $btns ? [$btns[0][0], $btns[0][1]] : null, $why, [$offT, $off], array_map(fn($b) => [$b[0], $b[1]], array_slice($btns, 1)));
     return ['subject' => $subject, 'text' => $text, 'html' => $html];
   }
 }

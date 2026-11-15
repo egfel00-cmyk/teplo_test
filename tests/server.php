@@ -2274,6 +2274,9 @@ ok('POST (і One-Click без CSRF) — відписано; чужий підп�
 Db::q("DELETE FROM reminders_sent WHERE user_id = ? AND kind = 'water16.m'", [$muid]);
 ok('відписаному — більше не шлемо', !array_filter(Reminders::runMail($kyiv('2026-11-16 14:17')), fn($x) => $x[0] === $muid));
 $mb = Reminders::mailBody(Reminders::text('water16', 'uk', Reminders::placesDue($wst, 'water16', '2026-11')), 'uk', $muid);
+$ml = Mail::layout('uk', ['Вітаємо.', 'A <b>'], ['Задати новий пароль', 'https://x.test/#reset-ab'], 'Діє годину.');
+ok('152: лист у стилі сервісу — корпус #E9EEEB, кнопка чорнилом з адресою, текст екранований, без скриптів; нагадування — той самий вигляд з відпискою',
+  str_contains($ml, 'background:#E9EEEB') && str_contains($ml, 'href="https://x.test/#reset-ab"') && str_contains($ml, 'A &lt;b&gt;') && !str_contains($ml, '<script') && str_contains($ml, 'Діє годину.'));
 ok('лист: тема — перше речення, кнопка — посилання, без «Вимкнути — у Налаштуваннях»', str_starts_with($mb['subject'], '💧 До 20-го') && !str_contains($mb['text'], 'Налаштуваннях») сервісу') && str_contains($mb['html'], '?go=wnew'), $mb['subject']);
 // ---------- 102-а: автоподача місцевим КП (LocalBot) — форма без входу, e-mail, вікно подачі, стоп на капчі й неоднозначних полях ----------
 echo "\nАвтоподача місцевим КП (102-а):\n";
