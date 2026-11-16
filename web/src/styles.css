@@ -2586,12 +2586,12 @@ details.mypay[open] > summary .mypay-amt, details.mypay[open] > summary .mypay-s
   --r-card: 20px; --r-row: 14px;
   --sel-bg: var(--c-ink); --sel-on: var(--c-on-ink); --acc-fill: var(--c-ink); --acc-on: var(--c-on-ink);
   --tint: #B8241B; --num2: var(--tint);
-  --sheen-t: rgba(255, 255, 255, .10); --sheen-b: rgba(0, 0, 0, .10);
+  --sheen-t: rgba(255, 255, 255, .10); --sheen-b: rgba(0, 0, 0, .08);
 }
 :root[data-skin][data-theme="dark"] {
   --c-housing: #090C0B; --c-surface: #131917; --c-surface-2: #1A211E; --c-line: #26302C; --c-field-bg: #0D1210;
   --gl-line: rgba(255, 255, 255, .07); --gl-hi: inset 0 1px 0 rgba(255, 255, 255, .06); --gl-sh: 0 1px 0 rgba(0, 0, 0, .4);
-  --tint: #FF7A6E; --sheen-t: rgba(255, 255, 255, .22); --sheen-b: rgba(0, 0, 0, .08);
+  --tint: #FF7A6E; --sheen-t: rgba(255, 255, 255, .14); --sheen-b: rgba(0, 0, 0, .06);
   --ch-dot-ring: #131917;
 }
 /* латунь: теплий сірий замість сіро-зеленого, нейтральні чорнила; кнопка й вибране — латунь із темним текстом */
@@ -2599,7 +2599,7 @@ details.mypay[open] > summary .mypay-amt, details.mypay[open] > summary .mypay-s
   --c-housing: #EFEDE8; --c-surface-2: #F6F4F0; --c-ink: #1C1A16; --c-ink-2: #57534B; --c-line: #DEDAD2; --c-field-line: #857F74; --c-ink-hover: #36322B;
   --gl-line: rgba(40, 32, 18, .09); --gl-sh: 0 1px 2px rgba(40, 32, 18, .05), 0 8px 24px -12px rgba(40, 32, 18, .14);
   --acc-fill: #B48A4A; --acc-on: #1E1608; --sel-bg: #B48A4A; --sel-on: #1E1608;
-  --tint: #7E5C22; --num2: #7E5C22; --sheen-t: rgba(255, 244, 220, .30); --sheen-b: rgba(60, 40, 10, .12);
+  --tint: #7E5C22; --num2: #7E5C22; --sheen-t: rgba(255, 244, 220, .14); --sheen-b: rgba(60, 40, 10, .08);
   --c-ghost-hover: rgba(40, 32, 18, .06); --c-tip-bg: #1C1A16;
 }
 :root[data-skin="brass"][data-theme="dark"] {
@@ -2607,7 +2607,7 @@ details.mypay[open] > summary .mypay-amt, details.mypay[open] > summary .mypay-s
   --c-on-ink: #0B0A08; --c-ink-hover: #D6D1C7; --c-ghost-hover: rgba(236, 233, 227, .07);
   --gl-line: rgba(255, 240, 210, .08); --gl-hi: inset 0 1px 0 rgba(255, 240, 210, .07);
   --acc-fill: #CDA868; --acc-on: #17120A; --sel-bg: #CDA868; --sel-on: #17120A; --tint: #D8B676; --num2: #D8B676;
-  --sheen-t: rgba(255, 248, 230, .32); --sheen-b: rgba(40, 25, 0, .14); --c-tip-bg: #ECE9E3; --ch-dot-ring: #161411;
+  --sheen-t: rgba(255, 248, 230, .16); --sheen-b: rgba(40, 25, 0, .08); --c-tip-bg: #ECE9E3; --ch-dot-ring: #161411;
 }
 
 /* поверхні: волосяна рамка + блик згори; великі картки 20, рядки 14 */
