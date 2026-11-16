@@ -187,6 +187,12 @@ a { color: var(--c-return); text-underline-offset: 3px; }
 .list > li:last-child { border-bottom: 0; }
 .list .grow { flex: 1; min-width: 0; }
 .list a.rowlink { display: flex; align-items: center; gap: var(--sp-3); color: inherit; text-decoration: none; width: 100%; }
+/* 165-я (власник 16.11 14:02: «у вебі в історії має бути ховер у рядків із показаннями»): рядок-посилання підсвічується весь — разом із чипом статусу */
+@media (hover: hover) {
+  .list > li:has(> a.rowlink) { transition: background-color .15s var(--ease); }
+  .list > li:has(> a.rowlink):hover { background: var(--c-ghost-hover); }
+  .list > li:has(> a.rowlink):hover .hr-date { color: var(--c-ink); }
+}
 .num { font-family: var(--mono); font-variant-numeric: tabular-nums; }
 
 /* ---------- главная ---------- */
@@ -2772,6 +2778,106 @@ h1 { font-size: 28px; letter-spacing: -.02em; line-height: 32px; }   /* 164-я: 
 :root:root:not([data-theme="dark"]) .mrow[class*="mk-"] { background: var(--c-surface); border-color: var(--gl-line); }
 /* плитки значків — трохи насиченіші, щоб не губились на білому */
 :root:root:not([data-theme="dark"]) .ios-row .ios-ico, :root:root:not([data-theme="dark"]) .acc-ways .acc-ico { background: color-mix(in srgb, currentColor 14%, transparent); }
+
+/* =========================================================================================================================
+   165-я: світла тема — ТРИ ВАРІАНТИ на вибір власника (тимчасово, за ?skin=la|lb|lc; app.js LSKIN → html[data-lskin=a|b|c] лише при світлій).
+   Власник 16.11 13:37 на 164-ту: «ще гірше, кричить „зроблено Claude“» — зроблено за дослідженням App Store (Health, Things 3, Copilot, Flighty, Monzo,
+   monobank, Mercury): тло й картки розрізняє тон або лінія, а не тіні; колір — лише в значках, статусах і графіках; чорний текст; одна дія — синя.
+   Спільне для всіх трьох: без пастельних заливок («Куди передати», «Як зняти», рядки строків, інфо-плашка), без переливу на кнопці, квартира на головній —
+   заголовком над своїми картками (не «картка в картці»). Після вибору — лишити один блок, решту й LSKIN прибрати.
+   ========================================================================================================================= */
+:root:root[data-lskin]:not([data-theme="dark"]) {
+  --bt-send-bg: var(--c-surface); --bt-send-line: var(--c-line); --bt-help-bg: var(--c-surface); --bt-help-line: var(--c-line);
+  --sheen-t: transparent; --sheen-b: transparent; --gl-hi: 0 0 0 transparent;
+}
+/* головна кнопка — рівна заливка акцентом */
+:root:root[data-lskin]:not([data-theme="dark"]) .btn:not(.sec):not(.ghost):not(.ter):not(.danger):not(.mono-btn):not([disabled]) { background: var(--acc-fill); box-shadow: none; }
+:root:root[data-lskin]:not([data-theme="dark"]) .btn:not(.sec):not(.ghost):not(.ter):not(.danger):not(.mono-btn):not([disabled]):hover { background: color-mix(in srgb, var(--acc-fill) 88%, #000); }
+:root:root[data-lskin]:not([data-theme="dark"]) :is(.ucard-add.hot, .ucard-addm .am-plus) { background: var(--acc-fill); box-shadow: none; }
+:root:root[data-lskin]:not([data-theme="dark"]) .btn.sec { box-shadow: none; }
+/* квартира на головній — заголовок над своїми картками */
+:root:root[data-lskin]:not([data-theme="dark"]) .pacc { background: transparent; border: 0; border-radius: 0; box-shadow: none; overflow: visible; }
+:root:root[data-lskin]:not([data-theme="dark"]) .pacc > summary { background: transparent; padding: 4px 4px 12px; border-radius: 14px; }
+:root:root[data-lskin]:not([data-theme="dark"]) .pacc[open] > summary { border-bottom: 0; }
+@media (hover: hover) { :root:root[data-lskin]:not([data-theme="dark"]) .pacc > summary:hover { background: var(--c-ghost-hover); } }
+:root:root[data-lskin]:not([data-theme="dark"]) .pacc-body { background: transparent; padding: 0; border-top: 0; }
+:root:root[data-lskin]:not([data-theme="dark"]) .pacc > .acc-foot { background: transparent; padding: 4px 0 0; }
+:root:root[data-lskin]:not([data-theme="dark"]) .pacc-t b { font-size: var(--fs-xl); font-weight: 600; letter-spacing: -.015em; }
+:root:root[data-lskin]:not([data-theme="dark"]) .pacc-chev { background: var(--c-surface); border-color: var(--c-line); }
+/* рядки строків квартири — нейтральні; «час передати» — словом і значком кольору попередження */
+:root:root[data-lskin]:not([data-theme="dark"]) .pn-row { background: var(--c-surface); border-color: var(--c-line); color: var(--c-ink); }
+:root:root[data-lskin]:not([data-theme="dark"]) .pn-row.hot { color: var(--c-warn-ink); border-color: var(--c-warn-line); }
+:root:root[data-lskin]:not([data-theme="dark"]) .pn-row.hot > .ico { color: var(--c-warn); }
+/* інфо-плашка — поверхнею з рамкою кольору інфо (не пастель) */
+:root:root[data-lskin]:not([data-theme="dark"]) .banner:not(.warn):not(.bad):not(.ok) { background: var(--c-surface); border: 1.5px solid var(--c-info); }
+/* шапка квартири на сторінці лічильника */
+:root:root[data-lskin]:not([data-theme="dark"]) .place-bar { background: var(--c-surface); border-color: var(--c-line); }
+
+/* ---- A «Як в iPhone» (Apple Health / Wallet): сіре тло, білі картки без рамок і тіней, чорний текст; вибраний таб — сіра плашка, значок і підпис синім ---- */
+:root:root[data-lskin="a"]:not([data-theme="dark"]) {
+  --c-housing: #EFEFF4; --c-surface: #FFFFFF; --c-surface-2: #F4F4F7; --c-ink: #000000; --c-ink-2: #5C5C64; --c-line: #E2E2E8; --c-field-line: #85858E;
+  --gl-line: transparent; --gl-sh: none; --r-card: 16px; --r-row: 12px; --c-ghost-hover: rgba(0, 0, 0, .05);
+  --bt-send-line: transparent; --bt-help-line: transparent;
+}
+:root:root[data-lskin="a"]:not([data-theme="dark"]) :is(.panel, .ios-list, .ucard, .season, .pl-card, .hp-edit, .place-bar, details.wacc.wacc-btn, .panel.mhist) { border-color: transparent; box-shadow: none; }
+:root:root[data-lskin="a"]:not([data-theme="dark"]) .pn-row { border-color: transparent; }
+:root:root[data-lskin="a"]:not([data-theme="dark"]) .pn-row.hot { border-color: var(--c-warn-line); }
+:root:root[data-lskin="a"]:not([data-theme="dark"]) .nav { background: #FFFFFF; border-top-color: var(--c-line); }
+:root:root[data-lskin="a"]:not([data-theme="dark"]) .nav a[aria-current="page"] { color: var(--acc-fill); }
+:root:root[data-lskin="a"]:not([data-theme="dark"]) .nav a[aria-current="page"] svg { background: #E8E8ED; color: var(--acc-fill); }
+:root:root[data-lskin="a"]:not([data-theme="dark"]) .kind-sw, :root:root[data-lskin="a"]:not([data-theme="dark"]) .seg-ctl { background: #E3E3E9; border-color: transparent; }
+:root:root[data-lskin="a"]:not([data-theme="dark"]) .kind-sw button[aria-pressed="true"], :root:root[data-lskin="a"]:not([data-theme="dark"]) .seg-ctl button[aria-pressed="true"] { background: var(--c-surface); color: var(--c-ink); box-shadow: 0 1px 2px rgba(0, 0, 0, .12); }
+/* значки: у картках лічильників — без плитки, кольором виду (як у «Здоров'ї»); у налаштуваннях — без плитки, синім (один акцент) */
+:root:root[data-lskin="a"]:not([data-theme="dark"]) :is(.ucard-top > .ico, .mbox-h > .ico) { background: none; padding: 0 2px; }
+:root:root[data-lskin="a"]:not([data-theme="dark"]) .ios-row .ios-ico { background: none; color: var(--acc-fill); padding: 7px 4px; }
+:root:root[data-lskin="a"]:not([data-theme="dark"]) .ios-row .ios-ico.ps-pm { background: none; }
+:root:root[data-lskin="a"]:not([data-theme="dark"]) .ico.bt-ico { border: 0; background: #E8E8ED; color: var(--c-ink); }
+
+/* ---- B «Білий аркуш» (Things 3 / Flighty): біле тло, картки контуром 1 px, без тіней; вибраний таб — темна плашка, значок білий ---- */
+:root:root[data-lskin="b"]:not([data-theme="dark"]) {
+  --c-housing: #FFFFFF; --c-surface: #FFFFFF; --c-surface-2: #F4F5F7; --c-ink: #0E1015; --c-ink-2: #555B67; --c-line: #E4E6EB; --c-field-line: #80858F;
+  --gl-line: #DCDFE5; --gl-sh: none; --r-card: 16px; --r-row: 12px; --c-ghost-hover: rgba(14, 16, 21, .05);
+  --sel-bg: #0E1015; --sel-on: #FFFFFF;
+}
+:root:root[data-lskin="b"]:not([data-theme="dark"]) :is(.panel, .ios-list, .ucard, .season, .pl-card, .hp-edit, details.wacc.wacc-btn, .panel.mhist) { box-shadow: none; }
+:root:root[data-lskin="b"]:not([data-theme="dark"]) .panel:not(.where):not(.mhist):not(.ru-base) { border-color: var(--gl-line); }
+:root:root[data-lskin="b"]:not([data-theme="dark"]) .pacc > summary { padding-bottom: 12px; border-bottom: 1px solid var(--c-line); border-radius: 0; margin-bottom: 12px; }
+:root:root[data-lskin="b"]:not([data-theme="dark"]) .pacc:not([open]) > summary { margin-bottom: 0; }
+:root:root[data-lskin="b"]:not([data-theme="dark"]) .pn-row { background: var(--c-surface-2); border-color: transparent; }
+:root:root[data-lskin="b"]:not([data-theme="dark"]) .nav { background: #FFFFFF; border-top-color: var(--c-line); }
+:root:root[data-lskin="b"]:not([data-theme="dark"]) .nav a[aria-current="page"] { color: var(--c-ink); font-weight: 600; }
+:root:root[data-lskin="b"]:not([data-theme="dark"]) .kind-sw { background: var(--c-surface-2); border-color: transparent; }
+:root:root[data-lskin="b"]:not([data-theme="dark"]) .kind-sw button[aria-pressed="true"] { background: var(--c-ink); color: #FFFFFF; box-shadow: none; }
+:root:root[data-lskin="b"]:not([data-theme="dark"]) .kind-sw button[aria-pressed="true"] .ico { color: #FFFFFF; }
+:root:root[data-lskin="b"]:not([data-theme="dark"]) :is(.ucard-top > .ico, .mbox-h > .ico) { background: none; padding: 0 2px; }
+:root:root[data-lskin="b"]:not([data-theme="dark"]) .ios-row .ios-ico { background: none; padding: 7px 4px; color: var(--c-ink); }
+:root:root[data-lskin="b"]:not([data-theme="dark"]) .ico.bt-ico { border-color: var(--c-ink); }
+:root:root[data-lskin="b"]:not([data-theme="dark"]) h1 { font-weight: 600; }
+/* без карток: лічильники й блоки розділяє лінія, як рядки у Things; кнопки-розкривашки («Налаштування показань», «Куди передати») — контуром */
+:root:root[data-lskin="b"]:not([data-theme="dark"]) .ucards { gap: 0; }
+:root:root[data-lskin="b"]:not([data-theme="dark"]) .ucard { background: transparent; border: 0; border-top: 1px solid var(--c-line); border-radius: 0; box-shadow: none; }
+:root:root[data-lskin="b"]:not([data-theme="dark"]) .ucard-main { padding-left: 4px; padding-right: 4px; border-radius: 0; }
+:root:root[data-lskin="b"]:not([data-theme="dark"]) .ucard-add { right: 0; }
+:root:root[data-lskin="b"]:not([data-theme="dark"]) .panel:not(.where):not(.ru-base), :root:root[data-lskin="b"]:not([data-theme="dark"]) .panel.mhist { background: transparent; border: 0; border-top: 1px solid var(--c-line); border-radius: 0; box-shadow: none; padding-left: 0; padding-right: 0; }
+:root:root[data-lskin="b"]:not([data-theme="dark"]) .ios-list { border: 0; border-top: 1px solid var(--c-line); border-bottom: 1px solid var(--c-line); border-radius: 0; box-shadow: none; }
+:root:root[data-lskin="b"]:not([data-theme="dark"]) .ios-row { padding-left: 4px; padding-right: 4px; }
+:root:root[data-lskin="b"]:not([data-theme="dark"]) .ios-list > li + li .ios-row::before { left: 44px; }
+:root:root[data-lskin="b"]:not([data-theme="dark"]) .ios-sh { margin-left: 4px; }
+:root:root[data-lskin="b"]:not([data-theme="dark"]) .season { box-shadow: none; }
+
+/* ---- C «Теплий графіт» (Copilot / Mercury, тепла нейтраль): тепле сіре тло, білі картки з чіткою рамкою й однією тінню 1 px, щільніший шрифт;
+        вибраний таб — синя плашка, значок білий; значки — у нейтральній плитці кольором виду ---- */
+:root:root[data-lskin="c"]:not([data-theme="dark"]) {
+  --c-housing: #F0EEEA; --c-surface: #FFFFFF; --c-surface-2: #F6F5F2; --c-ink: #1A1916; --c-ink-2: #56534B; --c-line: #E5E2DC; --c-field-line: #8A867C;
+  --gl-line: #E0DCD4; --gl-sh: 0 1px 2px rgba(40, 34, 22, .07); --r-card: 18px; --r-row: 12px; --c-ghost-hover: rgba(26, 25, 22, .05);
+}
+:root:root[data-lskin="c"]:not([data-theme="dark"]) .nav { background: #FFFFFF; border-top-color: var(--c-line); }
+:root:root[data-lskin="c"]:not([data-theme="dark"]) .kind-sw { background: var(--c-surface-2); border-color: var(--gl-line); }
+:root:root[data-lskin="c"]:not([data-theme="dark"]) :is(.ucard-top > .ico, .mbox-h > .ico) { background: var(--c-surface-2); box-shadow: inset 0 0 0 1px var(--c-line); }
+:root:root[data-lskin="c"]:not([data-theme="dark"]) .ios-row .ios-ico { background: var(--c-surface-2); box-shadow: inset 0 0 0 1px var(--c-line); color: var(--c-ink); }
+:root:root[data-lskin="c"]:not([data-theme="dark"]) .ios-row .ios-ico.ps-pm { box-shadow: none; background: none; }
+:root:root[data-lskin="c"]:not([data-theme="dark"]) h1 { font-size: 32px; line-height: 36px; font-weight: 600; }
+:root:root[data-lskin="c"]:not([data-theme="dark"]) :is(.ucard-t b, .mbox-t b, .ios-row b, .hrow .hr-q, .hrow .hr-m) { font-weight: 600; }
 
 </style>
 <style>.top { padding-top: max(12px, env(safe-area-inset-top)); }</style>
@@ -10150,10 +10256,19 @@ h1 { font-size: 28px; letter-spacing: -.02em; line-height: 32px; }   /* 164-я: 
     var tw0 = window.Telegram && window.Telegram.WebApp; if (tw0 && tw0.initData && tw0.colorScheme) return tw0.colorScheme === 'dark' ? 'dark' : 'light';
     return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
   }
+  // 165-я: три варіанти світлої теми на вибір власника — тимчасово за ?skin=la|lb|lc (запам'ятовується на цьому пристрої), ?skin=off — як зараз.
+  // Перемикача в інтерфейсі немає; темна й латунь не змінюються (атрибут лише при світлій). Після вибору — прибрати разом із блоком у styles.css.
+  var LSKIN = (function () {
+    var m = /[?&]skin=(la|lb|lc|off)(?=&|$)/.exec(location.search), v = '';
+    try { if (m) { if (m[1] === 'off') localStorage.removeItem('teplo.lskin'); else localStorage.setItem('teplo.lskin', m[1]); } v = localStorage.getItem('teplo.lskin') || ''; } catch (e) { v = m && m[1] !== 'off' ? m[1] : ''; }
+    return /^(la|lb|lc)$/.test(v) ? v.slice(1) : '';
+  })();
   function applyTheme() {
     // 162-а: «глянець» (чорнила) — вигляд для всіх; тло сторінки — --c-housing глянцю (styles.css, кінець файлу)
-    var th = resolvedTheme(), brass = S.theme === 'brass', bg = brass ? '#1A1815' : th === 'dark' ? '#111827' : '#F1F3F7';
+    var th = resolvedTheme(), brass = S.theme === 'brass', ls = th === 'light' ? LSKIN : '';
+    var bg = brass ? '#1A1815' : th === 'dark' ? '#111827' : ({ a: '#EFEFF4', b: '#FFFFFF', c: '#F0EEEA' })[ls] || '#F1F3F7';
     document.documentElement.setAttribute('data-theme', th);
+    if (ls) document.documentElement.setAttribute('data-lskin', ls); else document.documentElement.removeAttribute('data-lskin');
     if (brass) document.documentElement.setAttribute('data-skin', 'brass'); else document.documentElement.removeAttribute('data-skin');
     var mt = document.querySelector('meta[name="theme-color"]'); if (mt) mt.setAttribute('content', bg);
     var tw1 = window.Telegram && window.Telegram.WebApp; if (tw1 && tw1.initData) { try { tw1.setHeaderColor && tw1.setHeaderColor(bg); tw1.setBackgroundColor && tw1.setBackgroundColor(bg); } catch (e) { /* старый клиент */ } }

@@ -6,7 +6,7 @@ const demo = require('../e2e/demo.cjs');
   const [base, dark, ...routes] = process.argv.slice(2);
   const b = await chromium.launch();
   const ctx = await b.newContext({ viewport: { width: 390, height: 844 }, colorScheme: dark === '1' ? 'dark' : 'light', locale: 'uk-UA' });
-  await ctx.addInitScript(() => { try { localStorage.setItem('teplo.cc', JSON.stringify({ v: 1, a: false, at: Date.now(), id: 'x' })); } catch (e) {} });
+  await ctx.addInitScript(sk => { try { localStorage.setItem('teplo.cc', JSON.stringify({ v: 1, a: false, at: Date.now(), id: 'x' })); if (sk) localStorage.setItem('teplo.lskin', sk); } catch (e) {} }, process.env.LSKIN || '');   // 165-я: LSKIN=la|lb|lc — варіант світлої
   const p = await ctx.newPage();
   await p.goto(base + '/');
   const dj = process.env.DEMO || '{"elec":true,"gas":true,"second":true,"garage":"own1"}';

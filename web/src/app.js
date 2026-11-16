@@ -465,10 +465,19 @@
     var tw0 = window.Telegram && window.Telegram.WebApp; if (tw0 && tw0.initData && tw0.colorScheme) return tw0.colorScheme === 'dark' ? 'dark' : 'light';
     return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
   }
+  // 165-я: три варіанти світлої теми на вибір власника — тимчасово за ?skin=la|lb|lc (запам'ятовується на цьому пристрої), ?skin=off — як зараз.
+  // Перемикача в інтерфейсі немає; темна й латунь не змінюються (атрибут лише при світлій). Після вибору — прибрати разом із блоком у styles.css.
+  var LSKIN = (function () {
+    var m = /[?&]skin=(la|lb|lc|off)(?=&|$)/.exec(location.search), v = '';
+    try { if (m) { if (m[1] === 'off') localStorage.removeItem('teplo.lskin'); else localStorage.setItem('teplo.lskin', m[1]); } v = localStorage.getItem('teplo.lskin') || ''; } catch (e) { v = m && m[1] !== 'off' ? m[1] : ''; }
+    return /^(la|lb|lc)$/.test(v) ? v.slice(1) : '';
+  })();
   function applyTheme() {
     // 162-а: «глянець» (чорнила) — вигляд для всіх; тло сторінки — --c-housing глянцю (styles.css, кінець файлу)
-    var th = resolvedTheme(), brass = S.theme === 'brass', bg = brass ? '#1A1815' : th === 'dark' ? '#111827' : '#F1F3F7';
+    var th = resolvedTheme(), brass = S.theme === 'brass', ls = th === 'light' ? LSKIN : '';
+    var bg = brass ? '#1A1815' : th === 'dark' ? '#111827' : ({ a: '#EFEFF4', b: '#FFFFFF', c: '#F0EEEA' })[ls] || '#F1F3F7';
     document.documentElement.setAttribute('data-theme', th);
+    if (ls) document.documentElement.setAttribute('data-lskin', ls); else document.documentElement.removeAttribute('data-lskin');
     if (brass) document.documentElement.setAttribute('data-skin', 'brass'); else document.documentElement.removeAttribute('data-skin');
     var mt = document.querySelector('meta[name="theme-color"]'); if (mt) mt.setAttribute('content', bg);
     var tw1 = window.Telegram && window.Telegram.WebApp; if (tw1 && tw1.initData) { try { tw1.setHeaderColor && tw1.setHeaderColor(bg); tw1.setBackgroundColor && tw1.setBackgroundColor(bg); } catch (e) { /* старый клиент */ } }
