@@ -3024,6 +3024,20 @@ h1 { font-size: 28px; letter-spacing: -.02em; line-height: 32px; }   /* 164-я: 
 :root:root[data-lskin="c"][data-lsk="3"]:not([data-theme="dark"]) .kind-sw button[aria-pressed="true"] .c-cold { color: var(--c-return); }
 :root:root[data-lskin="c"][data-lsk="3"]:not([data-theme="dark"]) .kind-sw button[aria-pressed="true"] .c-elec { color: var(--c-elec); }
 :root:root[data-lskin="c"][data-lsk="3"]:not([data-theme="dark"]) .kind-sw button[aria-pressed="true"] .c-gas { color: var(--c-gas); }
+/* C3, власник 15:02: «С3, але піктограми й текст на плашках навіщо? і на всю плашку-розкривашку квартири спробуймо ті тона, що на фоні піктограм квартир»:
+   уся шапка квартири — тоном її кольору 14 % (як фон аватара; як у темній), аватар — білий зі значком її кольору; ряду значків лічильників і значків у рядках строків
+   немає (вид названо словом); строки — лише текстом, «час передати» — кольором попередження. Шапка квартири на сторінці лічильника — тим самим тоном. */
+:root:root[data-lskin="c"][data-lsk="3"]:not([data-theme="dark"]) .pacc > summary, :root:root[data-lskin="c"][data-lsk="3"]:not([data-theme="dark"]) .pacc > summary.has-ic {
+  background: color-mix(in srgb, var(--pc) 14%, var(--c-surface)); border-color: color-mix(in srgb, var(--pc) 22%, transparent); box-shadow: none; }
+@media (hover: hover) { :root:root[data-lskin="c"][data-lsk="3"]:not([data-theme="dark"]) .pacc > summary:hover { background: color-mix(in srgb, var(--pc) 19%, var(--c-surface)); } }
+:root:root[data-lskin="c"][data-lsk="3"]:not([data-theme="dark"]) .pacc-av { background: var(--c-surface); }
+:root:root[data-lskin="c"][data-lsk="3"]:not([data-theme="dark"]) .pacc-kk { display: none; }
+:root:root[data-lskin="c"][data-lsk="3"]:not([data-theme="dark"]) .pacc > summary .pacc-chev { background: var(--c-surface); }
+:root:root[data-lskin="c"][data-lsk="3"]:not([data-theme="dark"]) .pacc > summary > .pnote { border-top-color: color-mix(in srgb, var(--pc) 22%, transparent); }
+:root:root[data-lskin="c"][data-lsk="3"]:not([data-theme="dark"]) .pacc > summary .pn-row > .ico { display: none; }
+:root:root[data-lskin="c"][data-lsk="3"]:not([data-theme="dark"]) .pacc-addr { color: color-mix(in srgb, var(--pc) 30%, var(--c-ink-2)); }
+:root:root[data-lskin="c"][data-lsk="3"]:not([data-theme="dark"]) .place-bar { background: color-mix(in srgb, var(--pc) 14%, var(--c-surface)); border-color: color-mix(in srgb, var(--pc) 22%, transparent); }
+:root:root[data-lskin="c"][data-lsk="3"]:not([data-theme="dark"]) .place-bar .pb-all { background: var(--c-surface); }
 
 </style>
 <style>.top { padding-top: max(12px, env(safe-area-inset-top)); }</style>
