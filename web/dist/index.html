@@ -3038,6 +3038,81 @@ h1 { font-size: 28px; letter-spacing: -.02em; line-height: 32px; }   /* 164-я: 
 @media (hover: hover) { :root:root[data-lskin="c"][data-lsk="3"]:not([data-theme="dark"]) .app-foot :is(a, .linkbtn):hover { color: var(--c-ink); text-decoration: underline; } }
 :root:root[data-lskin="c"][data-lsk="3"]:not([data-theme="dark"]) .lpf-col li :is(a, .linkbtn) { color: var(--c-ink); font-weight: inherit; }
 
+/* 166-я, власник 16.11 16:04: «у світлій, коли картка квартири розкривається, незрозуміло, що лічильники в ній; у темних — зрозуміло».
+   Як у темних: розкрита квартира — рамка тоном її кольору (36 %), усередині — шапка (тон 26 %, як обрано 15:07) і тіло ледь тоноване її кольором (8 % поверх тла),
+   на ньому білі картки лічильників, «Налаштування квартири» й «Згорнути». Згорнута — як була (лише шапка). Без overflow: hidden (підказки й меню карток не обрізаються). */
+:root:root[data-lskin="c"][data-lsk="3"]:not([data-theme="dark"]) .pacc[open] {
+  border: 1px solid color-mix(in srgb, var(--pc) 36%, transparent); border-radius: 20px; background: color-mix(in srgb, var(--pc) 8%, var(--c-housing)); }
+:root:root[data-lskin="c"][data-lsk="3"]:not([data-theme="dark"]) .pacc[open] > summary {
+  margin: 0; border: 0; border-bottom: 1px solid color-mix(in srgb, var(--pc) 36%, transparent); border-radius: 19px 19px 0 0; }
+:root:root[data-lskin="c"][data-lsk="3"]:not([data-theme="dark"]) .pacc[open] > summary:focus-visible { outline-offset: -3px; }
+:root:root[data-lskin="c"][data-lsk="3"]:not([data-theme="dark"]) .pacc[open] > .pacc-body { padding: 12px; }
+:root:root[data-lskin="c"][data-lsk="3"]:not([data-theme="dark"]) .pacc[open] > .acc-foot { padding: 0 12px 8px; }
+:root:root[data-lskin="c"][data-lsk="3"]:not([data-theme="dark"]) .pacc[open] > .acc-foot .btn { color: var(--c-ink); }
+@media (hover: hover) { :root:root[data-lskin="c"][data-lsk="3"]:not([data-theme="dark"]) .pacc[open] > .acc-foot .btn:hover { background: color-mix(in srgb, var(--pc) 10%, transparent); } }
+
+/* fieldset за замовчуванням має min-inline-size: min-content — поле «Назва» свого постачальника розпирало сторінку на 390 до 432 px (горизонтальна прокрутка) */
+fieldset { min-inline-size: 0; }
+
+/* =========================================================================================================================
+   166-я, власник 16.11 16:05–16:06 (скрини «ГК Победа»: «Оплата» і «Кому платите»): «поле вводу, кнопка й поле для копіювання однакові — не по стилю»,
+   «незрозуміло, де кнопка, де поле, де плашка, і все дуже різко». У світлій усе було білим з однаковою рамкою 1,5 px темно-сірим, вибране — чорним.
+   Тепер у кожного свій вигляд (як в iOS):
+   · поле вводу — біле з м'якою рамкою 1 px (фокус — синя рамка й кільце); числа — Inter із табличними цифрами (моно — лише значення ХТМ);
+   · кнопка — заливка без рамки (головна — синя, решта — напівпрозорий графіт, на будь-якому тлі трохи темніша за нього); «Згорнути» — тихим текстом;
+   · дані для копіювання — не поле: рядки тексту з лініями, значок «Копіювати» — кнопкою-заливкою;
+   · сегменти — сіра доріжка з білим піднятим вибраним (замість чорного), варіанти вибору — тонка рамка, вибраний — синя рамка й синя крапка;
+   · без вкладених панелей: «Налаштування показань» і форма свого постачальника — прямо на картці лічильника, поділ лінією.
+   ========================================================================================================================= */
+:root:root[data-lskin="c"][data-lsk="3"]:not([data-theme="dark"]) {
+  --c-field-line: #A9A296; --c-focus-ring: color-mix(in srgb, #2D4FCF 22%, transparent); --r-field: 12px;
+  --fill-btn: rgba(36, 34, 30, .065); --fill-btn-h: rgba(36, 34, 30, .11); --fill-track: rgba(36, 34, 30, .06);
+}
+/* поля */
+:root:root[data-lskin="c"][data-lsk="3"]:not([data-theme="dark"]) .field .ctl { border-width: 1px; background: #FFFFFF; }
+:root:root[data-lskin="c"][data-lsk="3"]:not([data-theme="dark"]) .field .ctl:focus-within { border-color: var(--acc-fill); box-shadow: 0 0 0 3px var(--c-focus-ring); }
+:root:root[data-lskin="c"][data-lsk="3"]:not([data-theme="dark"]) .field .unit { border-left: 1px solid var(--c-line); background: transparent; }
+:root:root[data-lskin="c"][data-lsk="3"]:not([data-theme="dark"]) .ctl-copy { border-left: 1px solid var(--c-line); }
+:root:root[data-lskin="c"][data-lsk="3"]:not([data-theme="dark"]) .field input.num { font-family: var(--font); font-variant-numeric: tabular-nums; letter-spacing: 0; }
+:root:root[data-lskin="c"][data-lsk="3"]:not([data-theme="dark"]) .pcat-l { border-width: 1px; }
+:root:root[data-lskin="c"][data-lsk="3"]:not([data-theme="dark"]) :is(.choice, .models, .wz-opt, .check-row) input { accent-color: var(--acc-fill); }
+/* кнопки: заливка без рамки */
+:root:root[data-lskin="c"][data-lsk="3"]:not([data-theme="dark"]) .btn.sec { background: var(--fill-btn); border-color: transparent; box-shadow: none; }
+:root:root[data-lskin="c"][data-lsk="3"]:not([data-theme="dark"]) .btn.sec:hover { background: var(--fill-btn-h); border-color: transparent; }
+:root:root[data-lskin="c"][data-lsk="3"]:not([data-theme="dark"]) .place-bar .pb-all { background: var(--c-surface); }
+:root:root[data-lskin="c"][data-lsk="3"]:not([data-theme="dark"]) .phd-cam { background: var(--fill-btn); border-color: transparent; }
+:root:root[data-lskin="c"][data-lsk="3"]:not([data-theme="dark"]) .phd-cam:hover { background: var(--fill-btn-h); }
+:root:root[data-lskin="c"][data-lsk="3"]:not([data-theme="dark"]) .copy-ico { border: 0; background: var(--fill-btn); color: var(--c-ink); }
+:root:root[data-lskin="c"][data-lsk="3"]:not([data-theme="dark"]) .copy-ico:hover { background: var(--fill-btn-h); }
+:root:root[data-lskin="c"][data-lsk="3"]:not([data-theme="dark"]) .copy-ico.done { background: color-mix(in srgb, var(--c-ok) 12%, transparent); }
+:root:root[data-lskin="c"][data-lsk="3"]:not([data-theme="dark"]) .acc-foot .btn { background: transparent; border-color: transparent; box-shadow: none; color: var(--c-ink-2); }
+@media (hover: hover) { :root:root[data-lskin="c"][data-lsk="3"]:not([data-theme="dark"]) .acc-foot .btn:hover { background: var(--fill-track); color: var(--c-ink); } }
+/* дані для копіювання — рядками тексту з лініями (не поле) */
+:root:root[data-lskin="c"][data-lsk="3"]:not([data-theme="dark"]) .my-rows { border: 0; border-top: 1px solid var(--c-line); border-bottom: 1px solid var(--c-line); border-radius: 0; background: transparent; }
+:root:root[data-lskin="c"][data-lsk="3"]:not([data-theme="dark"]) .my-rows > li { padding: 10px 0; }
+/* сегменти: сіра доріжка, вибране — білим піднятим (не чорним) */
+:root:root[data-lskin="c"][data-lsk="3"]:not([data-theme="dark"]) :is(.my-seg, .seg-ctl) { border: 0; background: var(--fill-track); }
+:root:root[data-lskin="c"][data-lsk="3"]:not([data-theme="dark"]) .my-chip.on > span,
+:root:root[data-lskin="c"][data-lsk="3"]:not([data-theme="dark"]) .seg-ctl button[aria-pressed="true"] {
+  background: #FFFFFF; color: var(--c-ink); font-weight: 600; box-shadow: 0 1px 3px rgba(40, 34, 22, .16), 0 0 0 .5px rgba(40, 34, 22, .10); }
+:root:root[data-lskin="c"][data-lsk="3"]:not([data-theme="dark"]) :is(.chip, .hf-sw button) { border: 1px solid var(--gl-line); background: var(--c-surface); }
+:root:root[data-lskin="c"][data-lsk="3"]:not([data-theme="dark"]) :is(.chip[aria-pressed="true"], .hf-sw button[aria-pressed="true"]) {
+  background: color-mix(in srgb, var(--acc-fill) 9%, var(--c-surface)); border-color: color-mix(in srgb, var(--acc-fill) 45%, transparent); color: var(--c-ink); font-weight: 600; }
+/* варіанти вибору («Кому платите»): тонка рамка; вибраний — синя рамка й синя крапка, значок лишається в нейтральній плитці */
+:root:root[data-lskin="c"][data-lsk="3"]:not([data-theme="dark"]) .my-opt { border: 1px solid #DDD7CD; }
+:root:root[data-lskin="c"][data-lsk="3"]:not([data-theme="dark"]) .my-opt.on { border-color: var(--acc-fill); box-shadow: inset 0 0 0 .5px var(--acc-fill); }
+:root:root[data-lskin="c"][data-lsk="3"]:not([data-theme="dark"]) .my-opt .my-o-ic, :root:root[data-lskin="c"][data-lsk="3"]:not([data-theme="dark"]) .my-opt.on .my-o-ic { background: var(--tile-n); color: var(--c-ink-2); }
+:root:root[data-lskin="c"][data-lsk="3"]:not([data-theme="dark"]) .my-o-dot { border: 1.5px solid #B9B2A6; }
+:root:root[data-lskin="c"][data-lsk="3"]:not([data-theme="dark"]) .my-opt.on .my-o-dot { border: 7px solid var(--acc-fill); }
+@media (hover: hover) { :root:root[data-lskin="c"][data-lsk="3"]:not([data-theme="dark"]) .my-opt:not(.on):hover { border-color: #B9B2A6; } }
+/* без вкладених панелей: тіло «Налаштування показань» і форма свого постачальника — на картці, поділ лінією */
+:root:root[data-lskin="c"][data-lsk="3"]:not([data-theme="dark"]) .mbox-set[open] > .mbox-set-b { background: transparent; border: 0; border-radius: 0; padding: 4px 0 0; }
+:root:root[data-lskin="c"][data-lsk="3"]:not([data-theme="dark"]) .my-form { background: transparent; border: 0; border-top: 1px solid var(--c-line); border-radius: 0; padding: 16px 0 0; }
+:root:root[data-lskin="c"][data-lsk="3"]:not([data-theme="dark"]) .rd-box .field .ctl { border-width: 1px; border-color: var(--c-field-line); }
+:root:root[data-lskin="c"][data-lsk="3"]:not([data-theme="dark"]) .rd-box .field .ctl:focus-within { border-color: var(--acc-fill); }
+:root:root[data-lskin="c"][data-lsk="3"]:not([data-theme="dark"]) .rd-box .field.is-warn .ctl { border-color: var(--c-warn-line); }
+:root:root[data-lskin="c"][data-lsk="3"]:not([data-theme="dark"]) .rd-box .field.is-block .ctl { border-color: var(--c-bad); }
+
 </style>
 <style>.top { padding-top: max(12px, env(safe-area-inset-top)); }</style>
 </head>
