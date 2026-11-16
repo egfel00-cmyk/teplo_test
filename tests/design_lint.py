@@ -28,8 +28,11 @@ for sel, body in rules:
     for m in re.finditer(r'font-weight:\s*(700|800|900|bold)\b|font:\s*(700|800|900)\s', body):
         bad.append(f'жирность 700+: {sel}')
     # 2. капс и широкий трекинг в интерфейсе
+    # 161-а (власник 16.11, «глянець» за Trove): підписи секцій ВЕЛИКИМИ — лише в пробному вигляді (:root[data-skin]), ≥ 13 px і з розрядкою ≥ .06em
     if re.search(r'text-transform:\s*uppercase', body):
-        bad.append(f'капс: {sel}')
+        fs0, ls0 = re.search(r'font-size:\s*(\d+)px', body), re.search(r'letter-spacing:\s*\.(\d+)em', body)
+        if not (sel.startswith(':root[data-skin]') and fs0 and int(fs0.group(1)) >= 13 and ls0 and float('.' + ls0.group(1)) >= .06):
+            bad.append(f'капс: {sel}')
     # 3. отрицательный трекинг на мелком тексте (< 24px)
     m = re.search(r'letter-spacing:\s*-', body)
     if m and not mat:
