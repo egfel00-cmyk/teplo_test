@@ -2907,6 +2907,84 @@ h1 { font-size: 28px; letter-spacing: -.02em; line-height: 32px; }   /* 164-я: 
 :root:root[data-lskin="c"]:not([data-theme="dark"]) h1 { font-size: 32px; line-height: 36px; font-weight: 600; }
 :root:root[data-lskin="c"]:not([data-theme="dark"]) :is(.ucard-t b, .mbox-t b, .ios-row b, .hrow .hr-q, .hrow .hr-m) { font-weight: 600; }
 
+/* ---- C2 «Теплий графіт 2» (власник 16.11 14:15 на C: «розставити акценти й ієрархію візуальних якорів; текст зливається зі значками, контраст аж рябить;
+        немає кольорів квартир; виглядає як прототип — які ще трендові рішення графіки»). Поверх C (data-lskin=c + data-lsk=2):
+        · квартира — суцільною карткою її кольору з білим текстом (як картки в Wallet / Monzo): колір квартири повернувся і став якорем головної;
+        · значки — у суцільних плитках кольору виду / розділу з білим гліфом (як «Параметри» iOS): значок не зливається з текстом;
+        · чернила м'якші (#24221E, другорядний #66625A), лінії світліші, рядки налаштувань 500 — без ряби чорного по білому;
+        · ієрархія: підсумок року крупно, вибраний вид — темною плашкою, «+» картки — синім (дія = синій);
+        · панель табів — плаваюча капсула з тінню (без скла й розмиття). ---- */
+:root:root[data-lskin="c"][data-lsk]:not([data-theme="dark"]) {
+  --c-ink: #24221E; --c-ink-2: #66625A; --c-line: #ECE9E3; --gl-line: #E6E2DA; --gl-sh: 0 1px 2px rgba(40, 34, 22, .06), 0 4px 12px -8px rgba(40, 34, 22, .14);
+  --c-field-line: #8F8A80; --r-card: 20px;
+}
+/* квартира — картка її кольору */
+:root:root[data-lskin="c"][data-lsk]:not([data-theme="dark"]) .pacc > summary { background: var(--pc); color: #FFFFFF; padding: 16px; border-radius: 20px; margin-bottom: 12px; }
+:root:root[data-lskin="c"][data-lsk]:not([data-theme="dark"]) .pacc:not([open]) > summary { margin-bottom: 0; }
+@media (hover: hover) { :root:root[data-lskin="c"][data-lsk]:not([data-theme="dark"]) .pacc > summary:hover { background: color-mix(in srgb, var(--pc) 88%, #000); } }
+:root:root[data-lskin="c"][data-lsk]:not([data-theme="dark"]) .pacc-addr { color: rgba(255, 255, 255, .86); }
+:root:root[data-lskin="c"][data-lsk]:not([data-theme="dark"]) .pacc .pdot { background: #FFFFFF; }
+:root:root[data-lskin="c"][data-lsk]:not([data-theme="dark"]) .pacc > summary .picon { color: #FFFFFF; }
+:root:root[data-lskin="c"][data-lsk]:not([data-theme="dark"]) .pacc > summary .pacc-chev { background: rgba(0, 0, 0, .16); border-color: transparent; color: #FFFFFF !important; }
+:root:root[data-lskin="c"][data-lsk]:not([data-theme="dark"]) .pacc > summary .pn-row { background: rgba(0, 0, 0, .16); border-color: transparent; color: #FFFFFF; }
+:root:root[data-lskin="c"][data-lsk]:not([data-theme="dark"]) .pacc > summary .pn-row > .ico { color: #FFFFFF; }
+:root:root[data-lskin="c"][data-lsk]:not([data-theme="dark"]) .pacc > summary .pn-row.hot { background: #FFFFFF; color: var(--c-warn-ink); }
+:root:root[data-lskin="c"][data-lsk]:not([data-theme="dark"]) .pacc > summary .pn-row.hot > .ico { color: var(--c-warn); }
+:root:root[data-lskin="c"][data-lsk]:not([data-theme="dark"]) .pacc > summary:focus-visible { outline: 3px solid var(--c-info); outline-offset: 2px; }
+/* шапка квартири на сторінці лічильника й перемикач квартир — тим самим кольором */
+:root:root[data-lskin="c"][data-lsk]:not([data-theme="dark"]) .place-bar { background: var(--pc); border-color: transparent; color: #FFFFFF; }
+:root:root[data-lskin="c"][data-lsk]:not([data-theme="dark"]) .place-bar :is(b, .small, .muted, .pb-sub) { color: #FFFFFF; }
+:root:root[data-lskin="c"][data-lsk]:not([data-theme="dark"]) .place-bar b::before { background: #FFFFFF; }
+:root:root[data-lskin="c"][data-lsk]:not([data-theme="dark"]) .place-bar .picon { color: #FFFFFF; }
+:root:root[data-lskin="c"][data-lsk]:not([data-theme="dark"]) .place-bar .pb-all { background: rgba(0, 0, 0, .16); border-color: transparent; color: #FFFFFF; box-shadow: none; }
+:root:root[data-lskin="c"][data-lsk]:not([data-theme="dark"]) [data-act="place-view"][aria-pressed="true"] { background: var(--pc); border-color: var(--pc); color: #FFFFFF; }
+:root:root[data-lskin="c"][data-lsk]:not([data-theme="dark"]) [data-act="place-view"][aria-pressed="true"] :is(.picon, .pdot) { color: #FFFFFF; background-color: transparent; }
+:root:root[data-lskin="c"][data-lsk]:not([data-theme="dark"]) [data-act="place-view"][aria-pressed="true"] .pdot { background: #FFFFFF; }
+/* значки видів — суцільна плитка кольору виду, гліф білий */
+:root:root[data-lskin="c"][data-lsk]:not([data-theme="dark"]) :is(.ucard-top > .ico, .mbox-h > .ico) { color: #FFFFFF !important; background: var(--kc, var(--c-ink-2)); box-shadow: none; border-radius: 12px; }
+:root:root[data-lskin="c"][data-lsk]:not([data-theme="dark"]) :is(.ucard-heat, .ucard-hot) { --kc: var(--c-supply); }
+:root:root[data-lskin="c"][data-lsk]:not([data-theme="dark"]) .ucard-cold { --kc: var(--c-return); }
+:root:root[data-lskin="c"][data-lsk]:not([data-theme="dark"]) .ucard-elec { --kc: var(--c-elec); }
+:root:root[data-lskin="c"][data-lsk]:not([data-theme="dark"]) .ucard-gas { --kc: var(--c-gas); }
+:root:root[data-lskin="c"][data-lsk]:not([data-theme="dark"]) .ucard-waste { --kc: #6B6359; }
+/* значки блоків сторінки лічильника — плиткою свого тону («Куди передати» — бірюза, «Історія» — індиго, «Налаштування» — сірий) */
+:root:root[data-lskin="c"][data-lsk]:not([data-theme="dark"]) .ico.bt-ico { border: 0; color: #FFFFFF; background: var(--bt-acc, var(--bt-set)); padding: 7px; }
+:root:root[data-lskin="c"][data-lsk]:not([data-theme="dark"]) .mhist-h .ico.bt-ico { color: #FFFFFF; }
+/* налаштування — плитка кольору розділу, рядки 500 */
+:root:root[data-lskin="c"][data-lsk]:not([data-theme="dark"]) .ios-row .ios-ico { color: #FFFFFF; background: var(--ti, #6B6359); box-shadow: none; padding: 6px; border-radius: 9px; }
+:root:root[data-lskin="c"][data-lsk]:not([data-theme="dark"]) .ios-row b { font-weight: 500; }
+:root:root[data-lskin="c"][data-lsk]:not([data-theme="dark"]) :is([data-key="pgr-acc"], [data-key="pgr-privacy"]) { --ti: #56627A; }
+:root:root[data-lskin="c"][data-lsk]:not([data-theme="dark"]) [data-key="pgr-cabs"] { --ti: #0F6A7B; }
+:root:root[data-lskin="c"][data-lsk]:not([data-theme="dark"]) :is([data-key="pgr-contacts"], [data-key="pgr-fb"]) { --ti: #2E7D4F; }
+:root:root[data-lskin="c"][data-lsk]:not([data-theme="dark"]) [data-key="pgr-mono"] { --ti: #1A1916; }
+:root:root[data-lskin="c"][data-lsk]:not([data-theme="dark"]) [data-key="pgr-remind"] { --ti: #C2402F; }
+:root:root[data-lskin="c"][data-lsk]:not([data-theme="dark"]) :is([data-key="pgr-look"], [data-key="prefs-place-add"]) { --ti: #2D4FCF; }
+:root:root[data-lskin="c"][data-lsk]:not([data-theme="dark"]) [data-key="pgr-cookie"] { --ti: #8A6400; }
+:root:root[data-lskin="c"][data-lsk]:not([data-theme="dark"]) .ios-row .ios-ico.ps-pm { background: var(--pc); padding: 6px; border-radius: 9px; color: #FFFFFF; }
+:root:root[data-lskin="c"][data-lsk]:not([data-theme="dark"]) .ios-row .ios-ico.ps-pm :is(.pdot, .picon) { background: #FFFFFF; color: #FFFFFF; }
+:root:root[data-lskin="c"][data-lsk]:not([data-theme="dark"]) .ios-row .ios-ico.ps-pm .picon { background: none; }
+/* ієрархія: підсумок року крупно; вибраний вид — темна плашка; «+» — синій */
+:root:root[data-lskin="c"][data-lsk]:not([data-theme="dark"]) .ss-sum { font-size: 15px; }
+:root:root[data-lskin="c"][data-lsk]:not([data-theme="dark"]) .ss-sum b { font-size: 24px; letter-spacing: -.02em; color: var(--c-ink); }
+:root:root[data-lskin="c"][data-lsk]:not([data-theme="dark"]) .ss-t { font-size: 20px; }
+:root:root[data-lskin="c"][data-lsk]:not([data-theme="dark"]) .kind-sw button[aria-pressed="true"] { background: var(--c-ink); color: #FFFFFF; box-shadow: none; }
+:root:root[data-lskin="c"][data-lsk]:not([data-theme="dark"]) .kind-sw button[aria-pressed="true"] .ico { color: #FFFFFF; }
+:root:root[data-lskin="c"][data-lsk]:not([data-theme="dark"]) .ucard-add { background: var(--acc-fill); border-color: transparent; color: #FFFFFF; box-shadow: none; }
+:root:root[data-lskin="c"][data-lsk]:not([data-theme="dark"]) .ucard-add:hover { background: color-mix(in srgb, var(--acc-fill) 88%, #000); }
+:root:root[data-lskin="c"][data-lsk]:not([data-theme="dark"]) .hrow :is(.hr-q, .hr-m) { color: var(--c-ink); }
+/* плаваюча панель табів (телефон) */
+@media (max-width: 959px) {
+  :root:root[data-lskin="c"][data-lsk]:not([data-theme="dark"]) .nav { left: 12px; right: 12px; bottom: calc(10px + env(safe-area-inset-bottom)); padding: 4px 6px; border: 1px solid var(--gl-line); border-radius: 26px;
+    background: #FFFFFF; box-shadow: 0 10px 28px -10px rgba(40, 34, 22, .32), 0 2px 6px rgba(40, 34, 22, .06); }
+  :root:root[data-lskin="c"][data-lsk]:not([data-theme="dark"]) .nav a { min-height: 54px; }
+  :root:root[data-lskin="c"][data-lsk]:not([data-theme="dark"]) .fab { bottom: calc(82px + env(safe-area-inset-bottom)); }
+  :root:root[data-lskin="c"][data-lsk]:not([data-theme="dark"]) body:has(.fab) .main:not(.bare) { padding-bottom: calc(148px + env(safe-area-inset-bottom)); }
+}
+:root:root[data-lskin="c"][data-lsk]:not([data-theme="dark"]) .pgroup { border-color: var(--gl-line); border-radius: 18px; box-shadow: var(--gl-sh); }
+:root:root[data-lskin="c"][data-lsk]:not([data-theme="dark"]) .pgroup > summary > .ico:first-child { box-sizing: content-box; padding: 6px; border-radius: 9px; color: #FFFFFF; background: var(--pc, #6B6359); }
+:root:root[data-lskin="c"][data-lsk]:not([data-theme="dark"]) .pgroup > summary .pg-t b { font-weight: 500; }
+:root:root[data-lskin="c"][data-lsk]:not([data-theme="dark"]) .pv-h .pv-dot { width: 14px; height: 14px; }
+
 </style>
 <style>.top { padding-top: max(12px, env(safe-area-inset-top)); }</style>
 </head>
@@ -10288,16 +10366,17 @@ h1 { font-size: 28px; letter-spacing: -.02em; line-height: 32px; }   /* 164-я: 
   // 165-я: три варіанти світлої теми на вибір власника — тимчасово за ?skin=la|lb|lc (запам'ятовується на цьому пристрої), ?skin=off — як зараз.
   // Перемикача в інтерфейсі немає; темна й латунь не змінюються (атрибут лише при світлій). Після вибору — прибрати разом із блоком у styles.css.
   var LSKIN = (function () {
-    var m = /[?&]skin=(la|lb|lc|off)(?=&|$)/.exec(location.search), v = '';
+    var m = /[?&]skin=(la|lb|lc|lc2|off)(?=&|$)/.exec(location.search), v = '';
     try { if (m) { if (m[1] === 'off') localStorage.removeItem('teplo.lskin'); else localStorage.setItem('teplo.lskin', m[1]); } v = localStorage.getItem('teplo.lskin') || ''; } catch (e) { v = m && m[1] !== 'off' ? m[1] : ''; }
-    return /^(la|lb|lc)$/.test(v) ? v.slice(1) : '';
+    return /^(la|lb|lc|lc2)$/.test(v) ? v.slice(1) : '';   // 165-я, друга ітерація (власник 14:15): lc2 — «Теплий графіт 2» (data-lskin=c + data-lsk=2)
   })();
   function applyTheme() {
     // 162-а: «глянець» (чорнила) — вигляд для всіх; тло сторінки — --c-housing глянцю (styles.css, кінець файлу)
     var th = resolvedTheme(), brass = S.theme === 'brass', ls = th === 'light' ? LSKIN : '';
-    var bg = brass ? '#1A1815' : th === 'dark' ? '#111827' : ({ a: '#EFEFF4', b: '#FFFFFF', c: '#F0EEEA' })[ls] || '#F1F3F7';
+    var bg = brass ? '#1A1815' : th === 'dark' ? '#111827' : ({ a: '#EFEFF4', b: '#FFFFFF', c: '#F0EEEA' })[ls.charAt(0)] || '#F1F3F7';
     document.documentElement.setAttribute('data-theme', th);
-    if (ls) document.documentElement.setAttribute('data-lskin', ls); else document.documentElement.removeAttribute('data-lskin');
+    if (ls) document.documentElement.setAttribute('data-lskin', ls.charAt(0)); else document.documentElement.removeAttribute('data-lskin');
+    if (ls.length > 1) document.documentElement.setAttribute('data-lsk', ls.slice(1)); else document.documentElement.removeAttribute('data-lsk');
     if (brass) document.documentElement.setAttribute('data-skin', 'brass'); else document.documentElement.removeAttribute('data-skin');
     var mt = document.querySelector('meta[name="theme-color"]'); if (mt) mt.setAttribute('content', bg);
     var tw1 = window.Telegram && window.Telegram.WebApp; if (tw1 && tw1.initData) { try { tw1.setHeaderColor && tw1.setHeaderColor(bg); tw1.setBackgroundColor && tw1.setBackgroundColor(bg); } catch (e) { /* старый клиент */ } }
@@ -17876,7 +17955,7 @@ h1 { font-size: 28px; letter-spacing: -.02em; line-height: 32px; }   /* 164-я: 
       '</div><div class="small muted">' + esc(t('pv_icon_h')) + '</div></fieldset></div>';
     // порядок (владелец 10.11): про квартиру · лічильники · постачальники, тарифи й рахунки
     if (window.TEPLO_API && Y().account) h += '<input type="file" id="doc-input" class="sr" aria-label="' + esc(t('mv_docs')) + '" tabindex="-1" accept="image/jpeg,image/png,image/webp,application/pdf">';
-    h += '<div class="pgroups pv-groups">' +
+    h += '<div class="pgroups pv-groups" style="--pc:var(--pc-' + placeColor(p) + ')">' +   // 165-я: колір квартири — плиткам значків груп (C2)
       prefGroup('pv-about', 'home', t('pv_about'), sub || t('pv_about_s'), about, fresh) +
       prefGroup('pv-meters', 'clock', t('pv_meters'), rows.length ? placeKinds(p) : t('pv_none_short'), meters, fresh) +
       prefGroup('pv-prov', 'bill', t('pv_prov_t'), t('pv_prov_s'), prov) + '</div>';

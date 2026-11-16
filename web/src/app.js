@@ -468,16 +468,17 @@
   // 165-я: три варіанти світлої теми на вибір власника — тимчасово за ?skin=la|lb|lc (запам'ятовується на цьому пристрої), ?skin=off — як зараз.
   // Перемикача в інтерфейсі немає; темна й латунь не змінюються (атрибут лише при світлій). Після вибору — прибрати разом із блоком у styles.css.
   var LSKIN = (function () {
-    var m = /[?&]skin=(la|lb|lc|off)(?=&|$)/.exec(location.search), v = '';
+    var m = /[?&]skin=(la|lb|lc|lc2|off)(?=&|$)/.exec(location.search), v = '';
     try { if (m) { if (m[1] === 'off') localStorage.removeItem('teplo.lskin'); else localStorage.setItem('teplo.lskin', m[1]); } v = localStorage.getItem('teplo.lskin') || ''; } catch (e) { v = m && m[1] !== 'off' ? m[1] : ''; }
-    return /^(la|lb|lc)$/.test(v) ? v.slice(1) : '';
+    return /^(la|lb|lc|lc2)$/.test(v) ? v.slice(1) : '';   // 165-я, друга ітерація (власник 14:15): lc2 — «Теплий графіт 2» (data-lskin=c + data-lsk=2)
   })();
   function applyTheme() {
     // 162-а: «глянець» (чорнила) — вигляд для всіх; тло сторінки — --c-housing глянцю (styles.css, кінець файлу)
     var th = resolvedTheme(), brass = S.theme === 'brass', ls = th === 'light' ? LSKIN : '';
-    var bg = brass ? '#1A1815' : th === 'dark' ? '#111827' : ({ a: '#EFEFF4', b: '#FFFFFF', c: '#F0EEEA' })[ls] || '#F1F3F7';
+    var bg = brass ? '#1A1815' : th === 'dark' ? '#111827' : ({ a: '#EFEFF4', b: '#FFFFFF', c: '#F0EEEA' })[ls.charAt(0)] || '#F1F3F7';
     document.documentElement.setAttribute('data-theme', th);
-    if (ls) document.documentElement.setAttribute('data-lskin', ls); else document.documentElement.removeAttribute('data-lskin');
+    if (ls) document.documentElement.setAttribute('data-lskin', ls.charAt(0)); else document.documentElement.removeAttribute('data-lskin');
+    if (ls.length > 1) document.documentElement.setAttribute('data-lsk', ls.slice(1)); else document.documentElement.removeAttribute('data-lsk');
     if (brass) document.documentElement.setAttribute('data-skin', 'brass'); else document.documentElement.removeAttribute('data-skin');
     var mt = document.querySelector('meta[name="theme-color"]'); if (mt) mt.setAttribute('content', bg);
     var tw1 = window.Telegram && window.Telegram.WebApp; if (tw1 && tw1.initData) { try { tw1.setHeaderColor && tw1.setHeaderColor(bg); tw1.setBackgroundColor && tw1.setBackgroundColor(bg); } catch (e) { /* старый клиент */ } }
@@ -8056,7 +8057,7 @@
       '</div><div class="small muted">' + esc(t('pv_icon_h')) + '</div></fieldset></div>';
     // порядок (владелец 10.11): про квартиру · лічильники · постачальники, тарифи й рахунки
     if (window.TEPLO_API && Y().account) h += '<input type="file" id="doc-input" class="sr" aria-label="' + esc(t('mv_docs')) + '" tabindex="-1" accept="image/jpeg,image/png,image/webp,application/pdf">';
-    h += '<div class="pgroups pv-groups">' +
+    h += '<div class="pgroups pv-groups" style="--pc:var(--pc-' + placeColor(p) + ')">' +   // 165-я: колір квартири — плиткам значків груп (C2)
       prefGroup('pv-about', 'home', t('pv_about'), sub || t('pv_about_s'), about, fresh) +
       prefGroup('pv-meters', 'clock', t('pv_meters'), rows.length ? placeKinds(p) : t('pv_none_short'), meters, fresh) +
       prefGroup('pv-prov', 'bill', t('pv_prov_t'), t('pv_prov_s'), prov) + '</div>';
