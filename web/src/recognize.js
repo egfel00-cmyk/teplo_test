@@ -154,6 +154,28 @@
       return { w: res.w, h: res.h, lines: (res.lines || []).filter(function (l) { return l && l.w > 0 && dg(l.text) >= 3; }).slice(0, 60).map(function (l) { return bx(l); }),
         drums: (res.drums || []).filter(function (d) { return d && d.w > 0 && dg(d.text) >= 3; }).slice(0, 8).map(function (d) { return bx(d, d.rb && d.rb.w > 0 ? { x: d.rb.x, y: d.rb.y, w: d.rb.w, h: d.rb.h } : undefined); }) };
     },
+    /**
+     * 160-а: застосунок iPhone читає текст вбудованим Vision (на телефоні, безкоштовно, без 30 МБ PaddleOCR) — `PeredaiNative.ocr` і обробник
+     * `webkit.messageHandlers.peredaiOcr` (apps/ios NativeOCR.swift). Кадр — JPEG уже повернутий за EXIF (loadOriented), відповідь — рядки в пікселях
+     * цього кадру, як TeploOCR.read: {lines, drums: [], w, h, ms, eng: 'vision'}. Тип лічильника, модель і показання розбирає той самий ocrparse.js.
+     */
+    nat: function () { var w = root.webkit && root.webkit.messageHandlers; return !!(root.PeredaiNative && root.PeredaiNative.ocr && w && w.peredaiOcr); },
+    natRead: function (file, opts) {
+      var fast = !!(opts && opts.fast), max = fast ? 1600 : 2400, t0 = Date.now();
+      return loadOriented(file).then(function (img) {
+        var iw = img.naturalWidth || img.width, ih = img.naturalHeight || img.height, k = Math.min(1, max / Math.max(iw, ih, 1));
+        var c = document.createElement('canvas'); c.width = Math.max(1, Math.round(iw * k)); c.height = Math.max(1, Math.round(ih * k));
+        c.getContext('2d').drawImage(img, 0, 0, c.width, c.height); try { if (img.close) img.close(); } catch (e0) { /* <img> */ }
+        var url = c.toDataURL('image/jpeg', 0.9), w = c.width, h = c.height; c.width = c.height = 0;
+        return Promise.resolve(root.webkit.messageHandlers.peredaiOcr.postMessage({ img: url, fast: fast })).then(function (s) {
+          var j = typeof s === 'string' ? JSON.parse(s) : (s || {});
+          var lines = (j.lines || []).filter(function (l) { return l && l.text; }).map(function (l) { return { text: String(l.text), score: +l.score || 0, x: +l.x || 0, y: +l.y || 0, w: +l.w || 0, h: +l.h || 0, angle: +l.angle || 0, alts: l.alts && l.alts.length ? l.alts.map(String) : undefined }; });
+          return { lines: lines, drums: [], w: w, h: h, ms: Date.now() - t0, vms: +j.ms || 0, eng: 'vision' };
+        });
+      });
+    },
+    /** Тепло з фото: Vision дав, з чим працювати (показання, екран петлі чи архіву, або це інший лічильник) — тоді рушій сайту не потрібен. */
+    natOk: function (r) { var ph = (r && r.photo) || {}; return (ph.readings || []).some(function (x) { return x && x.value !== null && x.value !== undefined && String(x.value) !== ''; }) || !!ph.note || !!(ph.meterType && ph.meterType !== 'heat'); },
     /** Подгрузить движок (web/ocr/engine.js + модели ~30 МБ, один раз — дальше из кэша браузера). */
     _engine: function (onPct) {
       var base = String(root.TEPLO_API).replace(/\/api\/?$/, '') + '/web/ocr/';
@@ -177,16 +199,27 @@
       if (copy) files.forEach(function (f) { uploads = uploads.then(function () { if (f[sk]) { ids.push(f[sk]); return; } return self.prepare(f).then(function (b) { return post('/recognize/upload', b, b.type || 'image/jpeg'); }).then(function (j) { ids.push(j.id); f[sk] = j.id; }, function () { /* без копии */ }); }); });
       self.pendingUploads = uploads;   // фото к записи истории берут эти же копии (не грузить второй раз)
       var cancelled = function () { if (signal && signal.aborted) throw fail('cancelled'); };
-      return this._engine(function (p) { if (onProgress) onProgress(Math.round(p * 100), 100, 'load'); }).then(function () {
+      // 160-а: у застосунку iPhone — спершу Vision; рушій сайту (30 МБ) вантажимо, лише якщо Vision не дав показань (і раз на пачку)
+      var nat = self.nat(), eng = null, engine = function () { return eng = eng || self._engine(function (p) { if (onProgress) onProgress(Math.round(p * 100), 100, 'load'); }); };
+      var wasm = function (f) { return engine().then(function () { return root.TeploOCR.read(f, { all: true }); }); };
+      var readOne = function (f, i) {
+        if (!nat) return wasm(f);
+        return self.natRead(f).then(function (res) {
+          var r0 = null; try { r0 = P.photo(res, ctx, i); } catch (e0) { r0 = null; }
+          if (self.natOk(r0)) return res;
+          return wasm(f).then(function (r2) { r2.nat = { ms: res.ms, n: res.lines.length }; return r2; });
+        }, function (e) { return wasm(f).then(function (r2) { r2.nat = { err: String((e && e.message) || e).slice(0, 60) }; return r2; }); });
+      };
+      return (nat ? Promise.resolve() : engine()).then(function () {
         var chain = Promise.resolve();
         files.forEach(function (f, i) {
-          chain = chain.then(function () { cancelled(); if (onProgress) onProgress(i + 1, files.length, 'photo'); return root.TeploOCR.read(f, { all: true }); }).then(function (res) {
+          chain = chain.then(function () { cancelled(); if (onProgress) onProgress(i + 1, files.length, 'photo'); return readOne(f, i); }).then(function (res) {
             try { f._focus = self.focusOf(res); } catch (e0) { /* без табло — центр фото */ }
             // 147-а: рамку тепла (ЖК) потім уточнюємо за тим, що людина збереже (енергія) — лишаємо рядки з цифрами й вікна (лише рамки, без картинки)
             try { f._ocr = self.slim(res); } catch (e1) { /* без уточнення */ }
             var r = P.photo(res, ctx, i);
             r.photo.time = f.lastModified || 0;   // время съёмки — порядок экранов для разбора пачки
-            out.photos.push(r.photo); results.push({ photo: Object.assign({}, r.photo), meter: r.meter, ms: res.ms, ocr: res.lines.slice(0, 80).map(function (l) { return { t: l.text.slice(0, 80), a: l.alts ? l.alts.map(function (x) { return x.slice(0, 40); }) : undefined, s: l.score, h: l.h }; }) });
+            out.photos.push(r.photo); if (res.eng === 'vision') out.engine = 'vision'; results.push({ photo: Object.assign({}, r.photo), meter: r.meter, ms: res.ms, eng: res.eng || 'paddle', nat: res.nat, ocr: res.lines.slice(0, 80).map(function (l) { return { t: l.text.slice(0, 80), a: l.alts ? l.alts.map(function (x) { return x.slice(0, 40); }) : undefined, s: l.score, h: l.h }; }) });
             // строки и окна барабанов — если это водомеры, разложим их по водомерам без второго прохода
             r.photo.ocr = { drums: res.drums || [], lines: res.lines.slice(0, 60).map(function (l) { return { text: l.text, alts: l.alts, x: l.x, y: l.y, w: l.w, h: l.h, score: l.score }; }), w: res.w, h: res.h };   // w/h — рамка превью по збереженому (146-а)
             if (r.meter && (!out.meter || (r.meter.confidence || 0) > (out.meter.confidence || 0) || (!out.meter.energyUnit && r.meter.energyUnit))) out.meter = Object.assign({}, out.meter || {}, r.meter, { energyUnit: r.meter.energyUnit || (out.meter && out.meter.energyUnit) || null });

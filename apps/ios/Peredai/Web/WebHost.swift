@@ -47,6 +47,8 @@ final class WebHost: NSObject {
         webView = WKWebView(frame: .zero, configuration: cfg)
         super.init()
         ucc.add(WeakMessageHandler(self), name: "peredai")
+        // 160-а: Vision читає текст на фото й кадрах камери (сайт: recognize.js → natRead), відповідь — Promise у сторінці
+        ucc.addScriptMessageHandler(NativeOCR.shared, contentWorld: .page, name: NativeOCR.name)
         webView.navigationDelegate = self
         webView.uiDelegate = self
         webView.allowsBackForwardNavigationGestures = true
@@ -90,7 +92,7 @@ final class WebHost: NSObject {
     /// Що вміє застосунок (сайт читає до свого старту) і множник тексту.
     private static func nativeScript() -> WKUserScript {
         let z = zoom(UIApplication.shared.preferredContentSizeCategory)
-        return WKUserScript(source: "window.PeredaiNative={v:4,sheet:1,pmenu:1,list:1,add:1,km:1,ctx:1,tz:\(z)};",
+        return WKUserScript(source: "window.PeredaiNative={v:4,sheet:1,pmenu:1,list:1,add:1,km:1,ctx:1,ocr:1,tz:\(z)};",
                             injectionTime: .atDocumentStart, forMainFrameOnly: true)
     }
 

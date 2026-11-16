@@ -177,7 +177,7 @@ final class Recognize {
         elseif ($note === 'no_dot') $problems[] = 'не видно десятичной точки';
         elseif ($note === 'unit_guess') $problems[] = 'единица на экране не прочиталась — взята типичная для модели';
       }
-      $json = json_encode(['photo' => $ph, 'meter' => $r['meter'] ?? null, 'ms' => (int)($r['ms'] ?? 0), 'engine' => 'local', 'ocr' => array_slice((array)($r['ocr'] ?? []), 0, 80), 'drums' => array_slice((array)($r['drums'] ?? []), 0, 6)], JSON_UNESCAPED_UNICODE);
+      $json = json_encode(['photo' => $ph, 'meter' => $r['meter'] ?? null, 'ms' => (int)($r['ms'] ?? 0), 'engine' => (($r['eng'] ?? '') === 'vision' ? 'vision' : 'local'), 'nat' => is_array($r['nat'] ?? null) ? array_slice($r['nat'], 0, 3, true) : null, 'ocr' => array_slice((array)($r['ocr'] ?? []), 0, 80), 'drums' => array_slice((array)($r['drums'] ?? []), 0, 6)], JSON_UNESCAPED_UNICODE);
       if (strlen((string)$json) > 60000) $json = json_encode(['photo' => $ph, 'meter' => $r['meter'] ?? null, 'engine' => 'local'], JSON_UNESCAPED_UNICODE);
       Db::q('UPDATE photos SET status = ?, result = ?, problem = ? WHERE id = ?', [$ph ? 'recognized' : 'failed', $json, $problems ? implode('; ', $problems) : null, $id]);
       $n++;

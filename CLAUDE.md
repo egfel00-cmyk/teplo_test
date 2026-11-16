@@ -422,6 +422,13 @@
   (0,88…1,3) → `appZoom`: meta viewport `width = экран ÷ множитель, initial-scale = множитель` (сайт перекладывается; `WKWebView.pageZoom` на iOS лишь увеличивал — вылезало вправо, скрин CI). Плашка над вкладками iOS 26 (`bottomAccessory`, `WindowAccessoryView`) — ближайший непереданный срок ≤ 4 дней из `sched`. Новая главная кнопка страницы счётчика — с `app-add`;
   новая группа настроек — в `PREF_SEC`. e2e `e2e_appbridge` (v4, CDP-касания для свайпа); скрины CI 9–12 (плашка, группа, текст XXL).
 
+- **160-я — Vision (распознавание iOS)**: `apps/ios/Peredai/Core/NativeOCR.swift` — `VNRecognizeTextRequest` (rev 3, accurate, без словаря, uk/ru/en) за
+  `webkit.messageHandlers.peredaiOcr` (WKScriptMessageHandlerWithReply, ответ — JSON-строка), флаг `PeredaiNative.ocr`. Сайт: `TeploVision.nat()/natRead(file, {fast})`
+  → `{lines, drums: [], w, h, eng: 'vision'}` в пикселях отправленного кадра; разбор (тип счётчика, модель, показания) — тот же ocrparse. Тепло с фото (`_localRecognize`) —
+  Vision первым, рушій сайта (30 МБ) — только если `natOk` нет (`nat` в итоге для /admin: «Vision на iPhone» / «в браузере (Vision не справился)»); кадры камеры
+  (`camOpen`) — Vision для всех видов. Вода/свет/газ с фото — пока рушій сайта (ролики, красные цифры, полуповорот), Vision — следующим шагом по сравнению в /admin.
+  CI: `-PeredaiOcrTest <файл>` (DEBUG) → `ocr.txt` в ветке ci-shots (картинки `apps/ios/ci/`). e2e `e2e_natocr` (Vision подменён).
+
 ## Первый вход без анкет (155-я)
 - Журнал: на первой анкете очереди уходила почти половина. Первый вход: «Готово» создаёт все отмеченные счётчики (`qMeterAdd`), главная с «Внести перші показання»; зоны света — сегментами
   на `#enew` у счётчика с `zAsk` без записей; тепло — карточка «Налаштувати опалення» (`place.heatAsk`). Очередь анкет (`PQ`) — только мастер «+ Квартира». e2e `e2e_first`, `e2e_pqreload`.

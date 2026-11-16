@@ -53,6 +53,9 @@ final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCent
     func application(_ app: UIApplication, didFinishLaunchingWithOptions opts: [UIApplication.LaunchOptionsKey: Any]? = nil) -> Bool {
         UNUserNotificationCenter.current().delegate = self
         QuickActions.install()
+        #if DEBUG
+        if let p = UserDefaults.standard.string(forKey: "PeredaiOcrTest") { NativeOCR.selfTest(path: p) }   // CI: Vision на картинці → log.txt
+        #endif
         return true
     }
 

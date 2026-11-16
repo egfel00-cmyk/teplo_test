@@ -3457,8 +3457,9 @@
     if (!window.TeploCam) return;
     var tg = window.Telegram && Telegram.WebApp && Telegram.WebApp.initData;
     TeploCam.open({ t: t, ico: ico, kind: kind, tg: !!tg, max: kind === 'heat' ? 12 : 8, track: track,
-      engine: function (onPct) { return VIS()._engine(onPct); },
-      read: function (blob) { return window.TeploOCR.read(blob, { fast: true, drums: kind !== 'heat' }); },
+      // 160-а: у застосунку iPhone кадр читає Vision (сотні мс, без 30 МБ рушія) — розбір той самий (camParse: тип лічильника, модель, показання)
+      engine: function (onPct) { return VIS().nat() ? Promise.resolve() : VIS()._engine(onPct); },
+      read: function (blob) { return VIS().nat() ? VIS().natRead(blob, { fast: true }) : window.TeploOCR.read(blob, { fast: true, drums: kind !== 'heat' }); },
       parse: camParse(kind),
       pick: function () { var el = document.getElementById(id); if (el) el.click(); },
       done: function (files) {
