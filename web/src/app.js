@@ -465,20 +465,15 @@
     var tw0 = window.Telegram && window.Telegram.WebApp; if (tw0 && tw0.initData && tw0.colorScheme) return tw0.colorScheme === 'dark' ? 'dark' : 'light';
     return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
   }
-  // 165-я: три варіанти світлої теми на вибір власника — тимчасово за ?skin=la|lb|lc (запам'ятовується на цьому пристрої), ?skin=off — як зараз.
-  // Перемикача в інтерфейсі немає; темна й латунь не змінюються (атрибут лише при світлій). Після вибору — прибрати разом із блоком у styles.css.
-  var LSKIN = (function () {
-    var m = /[?&]skin=(la|lb|lc|lc2|lc3|off)(?=&|$)/.exec(location.search), v = '';
-    try { if (m) { if (m[1] === 'off') localStorage.removeItem('teplo.lskin'); else localStorage.setItem('teplo.lskin', m[1]); } v = localStorage.getItem('teplo.lskin') || ''; } catch (e) { v = m && m[1] !== 'off' ? m[1] : ''; }
-    return /^(la|lb|lc|lc2|lc3)$/.test(v) ? v.slice(1) : '';   // 165-я, друга ітерація (власник 14:15): lc2 — «Теплий графіт 2» (data-lskin=c + data-lsk=2)
-  })();
   function applyTheme() {
     // 162-а: «глянець» (чорнила) — вигляд для всіх; тло сторінки — --c-housing глянцю (styles.css, кінець файлу)
-    var th = resolvedTheme(), brass = S.theme === 'brass', ls = th === 'light' ? LSKIN : '';
-    var bg = brass ? '#1A1815' : th === 'dark' ? '#111827' : ({ a: '#EFEFF4', b: '#FFFFFF', c: '#F0EEEA' })[ls.charAt(0)] || '#F1F3F7';
+    // 165-я: світла — «Теплий графіт» C3 (власник 16.11 15:02–15:07): html[data-lskin=c][data-lsk=3] лише при світлій — блоки «165-я» в кінці styles.css
+    // (атрибути дають вагу, що перекриває базу й «глянець» без перестановок); тло #F0EEEA
+    var th = resolvedTheme(), brass = S.theme === 'brass', lt = th === 'light';
+    var bg = brass ? '#1A1815' : th === 'dark' ? '#111827' : '#F0EEEA';
     document.documentElement.setAttribute('data-theme', th);
-    if (ls) document.documentElement.setAttribute('data-lskin', ls.charAt(0)); else document.documentElement.removeAttribute('data-lskin');
-    if (ls.length > 1) document.documentElement.setAttribute('data-lsk', ls.slice(1)); else document.documentElement.removeAttribute('data-lsk');
+    if (lt) { document.documentElement.setAttribute('data-lskin', 'c'); document.documentElement.setAttribute('data-lsk', '3'); }
+    else { document.documentElement.removeAttribute('data-lskin'); document.documentElement.removeAttribute('data-lsk'); }
     if (brass) document.documentElement.setAttribute('data-skin', 'brass'); else document.documentElement.removeAttribute('data-skin');
     var mt = document.querySelector('meta[name="theme-color"]'); if (mt) mt.setAttribute('content', bg);
     var tw1 = window.Telegram && window.Telegram.WebApp; if (tw1 && tw1.initData) { try { tw1.setHeaderColor && tw1.setHeaderColor(bg); tw1.setBackgroundColor && tw1.setBackgroundColor(bg); } catch (e) { /* старый клиент */ } }
@@ -8704,7 +8699,7 @@
       PG('remind', 'bell', t('pg_remind'), t('pg_remind_s'), remindPanel()),
       PG('look', 'sun', t('pg_look'), t('th_' + (S.theme || 'auto')), '<div class="panel" data-key="prefs-theme"><h2>' + esc(t('th_title')) + '</h2><div class="th-grid" role="group" aria-label="' + esc(t('th_title')) + '">' +
         // 164-я: 3 теми + «як у системі»; мініатюра — тло, картка, кнопка акценту кожної теми (кольори — ті самі, що в styles.css)
-        [['auto', '', '', ''], ['light', '#F1F3F7', '#FFFFFF', '#2D4FCF'], ['dark', '#111827', '#1A2438', '#4566F0'], ['brass', '#1A1815', '#24211D', '#CDA868']].map(function (o) {
+        [['auto', '', '', ''], ['light', '#F0EEEA', '#FFFFFF', '#2D4FCF'], ['dark', '#111827', '#1A2438', '#4566F0'], ['brass', '#1A1815', '#24211D', '#CDA868']].map(function (o) {
           return '<button type="button" class="th-opt" data-act="theme" data-v="' + o[0] + '" data-key="th-' + o[0] + '" aria-pressed="' + ((S.theme || 'auto') === o[0]) + '"><span class="th-sw' + (o[1] ? '' : ' auto') + '" aria-hidden="true"' +
             (o[1] ? ' style="--b:' + o[1] + ';--c:' + o[2] + ';--a:' + o[3] + '"' : ' style="--c:rgba(255,255,255,.85);--a:#2D4FCF"') + '>' + (o[1] ? '' : '<i></i>') + '</span>' + esc(t('th_' + o[0])) + '</button>'; }).join('') + '</div>' +
         '<p class="small muted" style="margin-top:8px">' + esc(t('th_sub')) + '</p></div>'),
