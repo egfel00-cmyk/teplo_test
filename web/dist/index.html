@@ -9993,7 +9993,7 @@ details.mypay[open] > summary .mypay-amt, details.mypay[open] > summary .mypay-s
         var Y = window.TeploSync, mine = S.onboarded || anyMeters();
         applyRemote(mine && Y && Y.merge ? Y.merge(S, m) : m);
         if (!S.onboarded && anyMeters()) S.onboarded = true;
-        save(); render(); if (!mine) toast(t('app_restored')); return mine ? 'merged' : 'restored';
+        save(); applyTheme(); render(); if (!mine) toast(t('app_restored')); return mine ? 'merged' : 'restored';
       } catch (e) { return 'err'; }
     }
   };
@@ -10068,13 +10068,13 @@ details.mypay[open] > summary .mypay-amt, details.mypay[open] > summary .mypay-s
   }
   // 161-а: пробний «глянець» (власник 16.11: «глянцевіше й стильніше», референс Trove) — два акценти на вибір: ink (чорнила + червона «7») і brass (латунь).
   // Поки власник не обрав — лише за параметром: ?skin=ink|brass (запам'ятовується на цьому пристрої), ?skin=off — повернути звичайний; демо CI — S.skin
-  var SKIN = (function () {
+  var SKIN0 = (function () {
     var m = /[?&]skin=(ink|brass|off)(?=&|$)/.exec(location.search), v = '';
     try { if (m) { if (m[1] === 'off') localStorage.removeItem('teplo.skin'); else localStorage.setItem('teplo.skin', m[1]); } v = localStorage.getItem('teplo.skin') || ''; } catch (e) { v = m && m[1] !== 'off' ? m[1] : ''; }
-    if (!v && /^(ink|brass)$/.test(S.skin || '')) v = S.skin;
     return /^(ink|brass)$/.test(v) ? v : '';
-  })();
+  })(), SKIN = '';
   function applyTheme() {
+    SKIN = SKIN0 || (/^(ink|brass)$/.test(S.skin || '') ? S.skin : '');   // демо CI приходить через TeploHost.restore — уже після старту
     var th = resolvedTheme(), bg = th === 'dark' ? (SKIN === 'brass' ? '#0B0A08' : SKIN ? '#090C0B' : '#0E1412') : (SKIN === 'brass' ? '#EFEDE8' : SKIN ? '#ECEFED' : '#E9EEEB');
     document.documentElement.setAttribute('data-theme', th);
     if (SKIN) document.documentElement.setAttribute('data-skin', SKIN); else document.documentElement.removeAttribute('data-skin');
