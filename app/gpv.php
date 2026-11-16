@@ -430,8 +430,13 @@ final class Gpv {
     return ['text' => $t, 'buttons' => [[$ru ? 'Открыть график' : 'Відкрити графік', Cfg::appUrl() . '?go=gpv' . $one]]];
   }
   /** Ранкова розсилка (cron раз на 10 хв з 7:00 до 12:00 за Києвом): кожному — раз на день, коли графік на сьогодні вже є. → [[user_id, kind, status], …] */
+  /** 160-а (власник 16.11: «не шли мені повідомлення про графіки відключень»): з 10.11 графіків на сайті немає (GPV_ON = false в app.js), а бот і далі
+   *  щоранку їх надсилав — і вимкнути було ніде (галочка — під графіком). Ранкова розсилка — лише разом із сайтом: `'gpv_tg' => true` у config.php
+   *  (і GPV_ON = true). Тести вмикають через $tgOn. readiness() і /api/health → gpvReady рахують далі (лише числа). */
+  public static ?bool $tgOn = null;
+  public static function tgOn(): bool { return self::$tgOn ?? (bool)Cfg::get('gpv_tg', false); }
   public static function morning(int $now): array {
-    if (!Cfg::get('bot_token')) return [];
+    if (!Cfg::get('bot_token') || !self::tgOn()) return [];
     $d = self::kyiv($now); $h = (int)$d->format('G'); if ($h < 7 || $h >= 12) return [];
     $date = $d->format('Y-m-d'); $day = self::read()['days'][$date] ?? null; if (!is_array($day)) return [];
     $kind = 'gpv-' . $d->format('d'); $ym = $d->format('Y-m'); $out = [];

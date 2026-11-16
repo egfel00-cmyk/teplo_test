@@ -138,7 +138,7 @@ final class Api {
         // rev — отпечаток серверного кода (md5 файлов app/*.php, index.php, cron.php): сверить с `php tests/rev.php`, что пуш уже на бою
         return ['ok' => true, 'rev' => self::rev(), 'cronAgo' => Cron::age(), 'remind' => (object)($cr['remind'] ?? []), 'remindNext' => $cr['remindNext'] ?? null, 'remindErr' => $rerr, 'cronApp' => $cr['hourly']['app'] ?? null, 'fwd' => (object)$fwd,
           'gpvSent' => (object)($cr['gpvSent'] ?? []), 'gpvReady' => $cr['gpvReady'] ?? null,
-          'gpv' => ['at' => $g['at'] ?? null, 'update' => $g['update'] ?? null, 'days' => array_keys((array)($g['days'] ?? [])), 'err' => $g['err'] ?? null],
+          'gpv' => ['tg' => Gpv::tgOn(), 'at' => $g['at'] ?? null, 'update' => $g['update'] ?? null, 'days' => array_keys((array)($g['days'] ?? [])), 'err' => $g['err'] ?? null],
           'vkcab' => VkCab::summary(), 'cabs' => (object)CabProbe::read(), 'prov' => ProvAdmin::health(),
           // фото на розпізнавання (лише числа): найновіше й скільки за 7 днів з проблемою — є що розбирати в tests/ocr-lab (120-а)
           'recog' => self::recogHealth(),

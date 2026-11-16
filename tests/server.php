@@ -1021,13 +1021,15 @@ ok('у этой очереди сегодня отключений нет — н
 $gb = new Browser('10.0.13.21'); $gb->req('POST', '/api/auth/telegram/webapp', ['initData' => initData($TOKEN, ['id' => 7781, 'first_name' => 'Світло'])]);
 $gpu = $gb->req('PUT', '/api/state', ['state' => $gst, 'baseVersion' => 0]); if ($gpu->status !== 200) echo '   (PUT state: ' . $gpu->status . ' ' . json_encode($gpu->body) . ")\n";
 $sent = []; Telegram::$send = function ($m, $p, $tok = null) use (&$sent) { $sent[] = [$m, $p]; return ['ok' => true]; };
+ok('160-а: ранкова розсилка графіків вимкнена за замовчуванням (як і графіки на сайті) — о 7:15 нікому', Gpv::morning($kyiv('2026-11-04 07:15')) === [] && $sent === []);
+Gpv::$tgOn = true;
 $gm0 = Gpv::morning($kyiv('2026-11-04 06:55'));
 $gm = Gpv::morning($kyiv('2026-11-04 07:15')); $mine = array_values(array_filter($sent, fn($x) => (string)$x[1]['chat_id'] === '7781'));
 ok('утро: до 7:00 — молчим; в 7:15 — одно сообщение с графиком и кнопкой «Відкрити графік»', $gm0 === [] && count($mine) === 1 && str_contains($mine[0][1]['text'], 'черга 1.1')
   && ($mine[0][1]['reply_markup']['inline_keyboard'][0][0]['text'] ?? '') === 'Відкрити графік', $mine);
 Gpv::morning($kyiv('2026-11-04 08:15')); $mine2 = array_values(array_filter($sent, fn($x) => (string)$x[1]['chat_id'] === '7781'));
 ok('…раз в день: в 8:15 повторно не пишем; отметка gpv-04 — в журнале напоминаний', count($mine2) === 1 && Db::one("SELECT status FROM reminders_sent WHERE kind = 'gpv-04' AND ym = '2026-11'")['status'] === 'ok');
-@unlink(Gpv::file()); $sent = [];
+@unlink(Gpv::file()); $sent = []; Gpv::$tgOn = null;
 ok('графика на сегодня нет (не публиковали) — ничего не шлём', Gpv::morning($kyiv('2026-11-06 07:15')) === [] && !$sent);
 // кому придёт график и ближайшее напоминание — только числа в /api/health (считает cron)
 $gr0 = Gpv::readiness();
