@@ -7999,7 +7999,8 @@
     if (id !== S.placeId) { switchPlace(id); WX.key = ''; p = place(); }
     var many = places().length > 1, ms = wmeters(), sub = placeSub(p), fresh = !p.name && !String((p.city && p.city.n ? p.street : p.address) || '').trim() && !hasHeat() && !ms.length && !pmeters().length;
     // сюда приходят с главной (плитка «Налаштування квартири») — туда и назад
-    var h = '<p><a href="#' + (many ? 'places' : 'home') + '" data-key="pv-back">← ' + esc(t(many ? 'pv_back_all' : 'nav_home')) + '</a></p>' +
+    var fromPrefs = PV_FROM === 'prefs';
+    var h = '<p class="rec-back"><a href="#' + (fromPrefs ? 'prefs' : many ? 'places' : 'home') + '" data-key="pv-back">← ' + esc(t(fromPrefs ? 'p_title' : many ? 'pv_back_all' : 'nav_home')) + '</a></p>' +
       '<h1 class="pv-h" style="--pc:var(--pc-' + placeColor(p) + ')">' + pmark(p, 30, 'pv-dot') + '<span>' + esc(placeLabel(p)) + (sub ? '<span class="small muted pv-sub">' + esc(sub) + '</span>' : '') + '</span></h1>';
     if (fresh) h += '<div class="banner" data-key="pv-new">' + ico('info', 22) + '<div><p><b>' + esc(t('pv_new_t')) + '</b></p><p>' + esc(t('pv_new')) + '</p></div></div>';
     // три розкривашки (владелец 10.11): про квартиру · лічильники · постачальники, тарифи й рахунки; у налаштуваннях лічильника — лише сам лічильник
@@ -8059,7 +8060,7 @@
       '<label class="check-row"><input type="checkbox" id="pv-remind"' + (p.remindOff ? '' : ' checked') + (S.remind && S.remind.off ? ' disabled' : '') + '><span>' + esc(t('pv_remind_l')) + '</span></label>' +
       '<p class="small muted" style="margin-top:8px">' + esc(t(S.remind && S.remind.off ? 'pv_remind_all_off' : 'pv_remind_h')) + '</p></section>';
     if (many) h += '<section class="panel" data-key="pv-danger"><button class="btn danger" data-act="pl-del-ask" data-id="' + esc(p.id) + '" data-key="pv-del">' + esc(t('pv_del')) + '</button><div id="pl-del-confirm"></div></section>';
-    return { screen: 'S42', route: 'place', html: h };
+    return { screen: 'S42', route: fromPrefs ? 'prefs' : 'place', html: h };   // з «Налаштувань» — підсвічена їхня вкладка
   }
 
   // ================= мастер «Додати квартиру»: 1) назва й адреса 2) які лічильники є 3) рахунок Водоканалу =================
@@ -8629,33 +8630,18 @@
    *  екран #prefs-<група>: без розкривашок, «Згорнути» й панелі в панелі. Колишні «Вода» й «Опалення» (лише поточної квартири) — у налаштуваннях
    *  лічильників на екрані квартири; #prefs-water / #prefs-heat і «до поля в налаштуваннях» (to-water, to-nometer, to-meter) ведуть туди (meterSet). */
   var PREF_SEC = [['pgs_acc', ['acc']], ['pgs_places', null], ['pgs_conn', ['cabs', 'contacts', 'mono']], ['pgs_gen', ['remind', 'look', 'data']]];
-  /** Лічильники квартири для списку налаштувань: [{what, kind, title, sub}] у порядку видів (світло, вода, газ, тепло, вивіз). */
-  function placeMeters(p) {
-    return withPlace(p.id, function () {
-      var out = [];
-      if (hasHeat()) out.push({ what: 'heat', kind: 'heat', title: t('kd_heat'), sub: modelName(model()) });
-      wmeters().forEach(function (m) { out.push({ what: m.id, kind: m.kind, title: wkindTitle(m.kind) + (m.name ? ' · ' + m.name : ''), sub: '' }); });
-      ['elec', 'gas'].forEach(function (k) { smeters(k).forEach(function (m) { out.push({ what: m.id, kind: k, title: ename(m), sub: ezonesTxt(m) }); }); });
-      if (wasteOn(p)) out.push({ what: 'waste', kind: 'waste', title: t('kd_waste'), sub: wasteOrg(p, wasteDir(p)) || t('ws_nometer') });
-      return byKind(out);
-    }) || [];
-  }
   function psRow(inner, attrs, tag) { tag = tag || 'a'; return '<li><' + tag + ' class="ios-row ' + attrs + '>' + inner + '</' + tag + '></li>'; }
   function psTxt(title, sub) { return '<span class="ios-t"><b>' + esc(title) + '</b>' + (sub ? '<span class="small muted">' + esc(sub) + '</span>' : '') + '</span>'; }
-  /** «Квартири й лічильники»: картка на квартиру — шапка (назва, адреса) і рядок на кожен лічильник; унизу — «Додати квартиру». */
+  /** «Квартири» (власник 16.11 13:25): лише рядки квартир — назва й адреса, під ними її лічильники одним рядком; дотик → екран квартири з усіма
+   *  налаштуваннями (лічильники, постачальники); «Назад» звідти — у «Налаштування» (PV_FROM). Унизу — «Додати квартиру». */
   function prefPlaces() {
-    var cards = places().map(function (p) {
-      var pid = esc(p.id), ms = placeMeters(p), chev = ico('chev', 18, 'ios-chev');
-      var h = psRow('<span class="ios-ico ps-pm" aria-hidden="true">' + pmark(p, 22, 'pdot') + '</span>' + psTxt(placeLabel(p), placeSub(p) || t('ps_head_s')) + chev,
-        'ps-head" href="#place-' + pid + '" data-key="pl-open-' + pid + '"');
-      h += ms.map(function (m) {
-        return psRow(ico(KINDS[m.kind].icon, 22, 'ios-ico') + psTxt(m.title, m.sub) + chev, 'ps-m k-' + m.kind + '" href="#place-' + pid + '" data-act="pm-open" data-what="' + esc(m.what) + '" data-key="pm-' + pid + '-' + esc(m.what) + '"');
-      }).join('');
-      h += psRow(ico('plus', 22, 'ios-ico') + psTxt(t('am_tile'), ms.length ? '' : t('ps_none')), 'ps-add" type="button" data-act="ps-add" data-pl="' + pid + '" data-key="ps-add-' + pid + '"', 'button');
-      return '<ul class="ios-list ps-card" style="--pc:var(--pc-' + placeColor(p) + ')" data-key="ps-' + pid + '">' + h + '</ul>';
+    var rows = places().map(function (p) {
+      var pid = esc(p.id), sub = [placeSub(p), placeKinds(p)].filter(Boolean).join(' · ');
+      return psRow('<span class="ios-ico ps-pm" aria-hidden="true">' + pmark(p, 22, 'pdot') + '</span>' + psTxt(placeLabel(p), sub) + ico('chev', 18, 'ios-chev'),
+        'ps-head" style="--pc:var(--pc-' + placeColor(p) + ')" href="#place-' + pid + '" data-key="pl-open-' + pid + '"');
     }).join('');
-    return '<section class="ios-sec ps-sec" data-key="pgs-places"><h2 class="ios-sh">' + esc(t('pgs_places')) + '</h2>' + cards +
-      '<ul class="ios-list ps-more">' + psRow(ico('home', 22, 'ios-ico') + psTxt(t('pl_add'), '') + ico('plus', 18, 'ios-chev'), 'ps-addp" type="button" data-act="pl-add" data-key="prefs-place-add"', 'button') + '</ul></section>';
+    rows += psRow(ico('plus', 22, 'ios-ico') + psTxt(t('pl_add'), ''), 'ps-addp" type="button" data-act="pl-add" data-key="prefs-place-add"', 'button');
+    return '<section class="ios-sec ps-sec" data-key="pgs-places"><h2 class="ios-sh">' + esc(t('pgs_places')) + '</h2><ul class="ios-list">' + rows + '</ul></section>';
   }
   function prefList(defs) {
     var by = {}; defs.forEach(function (d) { by[d.id] = d; });
@@ -8683,12 +8669,6 @@
     SCROLL_TO = target || (what ? 'pvm-' + what : 'pg-pv-meters'); go('place-' + p.id);
   }
   var NM_OPEN = false;
-  document.addEventListener('click', function (e) {
-    var a = e.target.closest && e.target.closest('[data-act="pm-open"],[data-act="ps-add"]'); if (!a) return;
-    if (a.getAttribute('data-act') === 'pm-open') { var w = a.getAttribute('data-what'); PREF_OPEN['pv-meters'] = true; MB_OPEN[w] = true; SCROLL_TO = 'pvm-' + w; return; }   // далі — за href
-    e.preventDefault(); var pl = a.getAttribute('data-pl'); if (pl && pl !== S.placeId) { switchPlace(pl); WX.key = ''; }
-    AM_BACK = 'prefs'; go('add-meter');
-  });
   V.prefs = function (sub) {
     var c = S.contacts || {};
     var PG = function (id, icon, title, sb, html) { return { id: id, icon: icon, title: title, sub: sb, html: html }; };
@@ -9337,6 +9317,8 @@
   var NAV = { cur: '', from: '' }, FLOW_RE = /^(wnew|enew|gnew|wadd|eadd|gadd|wsetup|add-meter|add-place|step-\d+|check|handover|photo|vkcab|htmcab|rec-|wrec-|erec-|hnar-|gap-|wpay)/;
   function navNote(r) {
     var prev = NAV.cur; NAV.cur = r; if (!prev || prev === r) return;
+    // 164-а (власник 16.11 13:25): на екран квартири зайшли з «Налаштувань» — «Назад» туди ж; з головної чи сторінки лічильника — на головну; з підекранів квартири — як було
+    if (/^place-/.test(r)) { if (/^prefs/.test(prev)) PV_FROM = 'prefs'; else if (/^(home|places|history|stats|heat|water-hot|water-cold|elec|gas|waste)$/.test(prev)) PV_FROM = ''; }
     if (FLOW_RE.test(r)) { if (!FLOW_RE.test(prev)) NAV.from = prev; } else NAV.from = '';
   }
   /** «← Історія показань» над записом; відкрили запис з іншого екрана (сторінка виду, квартира) — «← Назад» туди. */
@@ -9367,6 +9349,7 @@
       TGB.to = to; if (to) bb.show(); else bb.hide();
     } catch (e) { /* старий Telegram */ }
   }
+  var PV_FROM = '';
   function backTo(dflt) { return NAV.from && NAV.from !== NAV.cur && !FLOW_RE.test(NAV.from) ? NAV.from : dflt; }
   function render(keepScroll) {
     if (JRS && JRS.scr !== (routeName() || 'home')) { JRS.scr = routeName() || 'home'; track('screen'); }

@@ -2570,20 +2570,16 @@ details.mypay[open] > summary .mypay-amt, details.mypay[open] > summary .mypay-s
 .hli.hsw-full .hsw-act { align-items: flex-start; padding-left: 22px; }
 .list > li.hli:first-child .hsw-act { border-top-right-radius: 14px; } .list > li.hli:last-child .hsw-act { border-bottom-right-radius: 14px; }
 @media (prefers-reduced-motion: reduce) { .hli.hsw > :not(.hsw-act), .hsw-act { transition: none; } }
-/* 164-а: налаштування — список у браузері й застосунку; «Квартири й лічильники»: картка на квартиру, рядок на лічильник зі значком і кольором виду */
+/* 164-а: налаштування — список у браузері й застосунку; «Квартири» — рядок на квартиру (колір квартири), дотик → екран квартири */
 .ios-groups { max-width: 640px; }
-.ps-sec { display: grid; gap: 12px; }
-.ps-sec > .ios-sh { margin-bottom: -4px; }
 .ps-head .ps-pm { display: inline-grid; box-sizing: content-box; place-items: center; width: 22px; height: 22px; color: var(--pc); }
 .ps-head .ps-pm .pdot { width: 12px; height: 12px; margin: 0; }
 .ps-head .ios-t b { font-weight: 600; }
-/* :root:root — вага як у плиток глянцю (:root:root .ios-row .ios-ico), інакше колір виду перебивається сірим */
-:root:root .ps-m.k-elec .ios-ico { color: var(--c-elec); } :root:root .ps-m:is(.k-hot, .k-heat) .ios-ico { color: var(--c-supply); }
-:root:root .ps-m.k-cold .ios-ico { color: var(--c-return); } :root:root .ps-m.k-gas .ios-ico { color: var(--c-gas); } :root:root .ps-m.k-waste .ios-ico { color: var(--c-ink-2); }
+/* :root:root — вага як у плиток глянцю (:root:root .ios-row .ios-ico), інакше колір квартири перебивається сірим */
 :root:root .ps-head .ios-ico.ps-pm { color: var(--pc); }
-.ps-add, .ps-addp { color: var(--tint, var(--c-ink)); }
-:root:root .ios-row:is(.ps-add, .ps-addp) :is(.ios-ico, .ios-chev) { color: var(--tint, var(--c-ink)); opacity: 1; }
-.ps-add .ios-t b, .ps-addp .ios-t b { font-weight: 600; }
+.ps-addp { color: var(--tint, var(--c-ink)); }
+:root:root .ios-row.ps-addp .ios-ico { color: var(--tint, var(--c-ink)); }
+.ps-addp .ios-t b { font-weight: 600; }
 /* екран групи: картки одна під одною; заголовок єдиної картки повторював назву екрана — ховаємо */
 .pg-one { display: grid; gap: var(--sp-4); max-width: 640px; }
 .pg-one > .panel { margin: 0; }
@@ -2731,3 +2727,27 @@ h1 { font-size: 28px; letter-spacing: -.02em; line-height: 32px; }   /* 164-я: 
 .th-sw::after { content: ''; position: absolute; left: 10px; width: 46%; bottom: 9px; height: 14px; border-radius: 7px; background: var(--a); }
 .th-sw.auto { background: #F1F3F7; } .th-sw.auto > i { position: absolute; left: 50%; top: 0; right: 0; bottom: 0; background: #111827; }   /* «як у системі» — пів світлої, пів темної */
 .th-sw::before, .th-sw::after { z-index: 1; }
+
+/* =========================================================================================================================
+   164-а, світла тема (власник 16.11 13:26: «дуже яскрава й бліда, мало контрасту, тони й кольори зливаються, виглядає дешево»).
+   Причина: білі картки на майже білому тлі з ледь помітною рамкою + багато пастельних заливок різних відтінків (шапка квартири кольором квартири,
+   рядки строків кольором виду, рядки лічильників). Тепер: тло глибше, картки чіткіше (рамка й тінь у два шари), текст темніший; заливки — нейтральні,
+   колір лише в значках і тонкій смужці зліва (квартира, вид). Лише світла — :not([data-theme="dark"]), темна й латунь не змінюються.
+   ========================================================================================================================= */
+:root:root:not([data-theme="dark"]) {
+  --c-housing: #EAECF1; --c-surface-2: #F4F5F8; --c-ink: #0F1321; --c-ink-2: #464D60; --c-line: #D7DBE3; --c-field-line: #737A8D;
+  --gl-line: rgba(15, 19, 33, .10); --gl-sh: 0 1px 1px rgba(15, 19, 33, .04), 0 2px 6px -2px rgba(15, 19, 33, .07), 0 14px 28px -16px rgba(15, 19, 33, .20);
+  --c-ghost-hover: rgba(15, 19, 33, .05);
+}
+/* шапка квартири й плашка квартири: нейтральні, колір квартири — смужкою зліва й крапкою */
+:root:root:not([data-theme="dark"]) .pacc { border-color: var(--gl-line); }
+:root:root:not([data-theme="dark"]) .pacc > summary, :root:root:not([data-theme="dark"]) .place-bar { background: var(--c-surface); box-shadow: inset 4px 0 0 var(--pc); }
+:root:root:not([data-theme="dark"]) .place-bar { border-color: var(--gl-line); }
+:root:root:not([data-theme="dark"]) .pacc[open] > summary { border-bottom-color: var(--c-line); }
+@media (hover: hover) { :root:root:not([data-theme="dark"]) .pacc > summary:hover { background: var(--c-surface-2); } }
+/* рядки строків у шапці квартири й рядки лічильників на екрані квартири — без пастелі: сіра підкладка, значок кольором виду */
+:root:root:not([data-theme="dark"]) .pn-row { background: var(--c-surface-2); border-color: var(--c-line); }
+:root:root:not([data-theme="dark"]) .pn-row > .ico { color: var(--kc); }
+:root:root:not([data-theme="dark"]) .mrow[class*="mk-"] { background: var(--c-surface); border-color: var(--gl-line); box-shadow: inset 3px 0 0 var(--kc); }
+/* плитки значків — трохи насиченіші, щоб не губились на білому */
+:root:root:not([data-theme="dark"]) .ios-row .ios-ico, :root:root:not([data-theme="dark"]) .acc-ways .acc-ico { background: color-mix(in srgb, currentColor 14%, transparent); }

@@ -153,9 +153,9 @@ const UA = 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/6
   await seed(P4, demo({ elec: true, gas: true, second: true, garage: 'own1' }), 'prefs'); lr = await last(P4);
   ok('v4 налаштування: клас app-v4, розділи з рядками «›» замість розкривашок', await P4.evaluate(() => document.documentElement.classList.contains('app-v4')) &&
     (await P4.$$('.ios-row')).length >= 8 && !(await P4.$('details.pgroup')) && lr.r === 'prefs' && lr.up === '', lr);
-  // 164-а: «Квартири й лічильники» — усі лічильники квартир (світло, вода, газ, тепло) рядками зі значком виду
-  const pm = await P4.$$eval('.ps-card[data-key=ps-main] .ps-m', es => es.map(e => [...e.classList].filter(c => /^k-/.test(c))[0]));
-  ok('v4 «Квартири й лічильники»: рядки всіх лічильників першої квартири в порядку видів', JSON.stringify(pm) === JSON.stringify(['k-elec', 'k-hot', 'k-cold', 'k-gas', 'k-heat']), pm);
+  // 164-а (власник 13:25): «Квартири» — лише рядки квартир, під назвою — її лічильники одним рядком
+  const pl = await P4.$$eval('[data-key=pgs-places] .ps-head', es => es.map(e => e.textContent));
+  ok('v4 «Квартири»: рядок на кожну квартиру, лічильники — підписом', pl.length === 3 && /Світло/.test(pl[0]) && /Газ/.test(pl[0]) && !(await P4.$('.ps-m')), pl);
   await P4.click('[data-key=pgr-look]'); await P4.waitForTimeout(700); lr = await last(P4);
   ok('v4 рядок «Вигляд» → екран групи: #prefs-look, назва — h1 групи, «‹» → prefs, вкладка prefs', (await P4.evaluate(() => location.hash)) === '#prefs-look' &&
     lr.r === 'prefs-look' && lr.tab === 'prefs' && lr.up === 'prefs' && lr.title === (await P4.textContent('#main h1')).trim() && !!(await P4.$('.pg-one [data-key=prefs-theme]')), lr);
@@ -164,8 +164,8 @@ const UA = 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/6
   await P4.evaluate(() => { const a = document.createElement('a'); a.href = '#prefs'; a.setAttribute('data-act', 'to-water'); a.id = 'tw'; a.textContent = 'x'; document.getElementById('main').appendChild(a); });
   await P4.click('#tw'); await P4.waitForTimeout(700);
   ok('v4 «до поля в налаштуваннях» (to-water) → налаштування водоміра на екрані квартири', (await P4.evaluate(() => location.hash)) === '#place-main' && await P4.$eval('#mbs-h1', e => e.open), await P4.evaluate(() => location.hash));
-  await P4.goto(B + '#prefs'); await P4.waitForTimeout(600); await P4.click('[data-key=pm-main-g1]'); await P4.waitForTimeout(800); lr = await last(P4);
-  ok('v4 рядок «Газ» → екран квартири з налаштуваннями газу, «‹» — назад (у «Налаштування»)', (await P4.evaluate(() => location.hash)) === '#place-main' && lr.up === '<' && await P4.$eval('#mbs-g1', e => e.open), lr);
+  await P4.goto(B + '#prefs'); await P4.waitForTimeout(600); await P4.click('[data-key=pl-open-main]'); await P4.waitForTimeout(800); lr = await last(P4);
+  ok('v4 рядок квартири → екран квартири, «‹» — назад (у «Налаштування»), вкладка не змінюється', (await P4.evaluate(() => location.hash)) === '#place-main' && lr.up === '<' && lr.tab === '', lr);
   await P4.goto(B + '#elec'); await P4.waitForTimeout(900); lr = await last(P4);
   ok('v4 світло: «+» на панелі (підпис — кнопки сторінки), сама кнопка на сторінці схована', !!lr.add && /Внести/.test(lr.add) &&
     await P4.$eval('#main .app-add', e => getComputedStyle(e).display === 'none' && getComputedStyle(e.closest('.hg-act')).display === 'none'), lr);
@@ -200,6 +200,13 @@ const UA = 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/6
   // браузер (164-а): налаштування — той самий список; старий #prefs-heat — налаштування теплолічильника на екрані квартири
   await W.p.goto(B + '#prefs'); await W.p.waitForTimeout(700);
   ok('браузер #prefs: список рядків, без розкривашок', (await W.p.$$('.ios-row')).length >= 8 && !(await W.p.$('details.pgroup')));
+  await W.p.click('[data-key=pl-open-main]'); await W.p.waitForTimeout(800);
+  ok('браузер: квартира з «Налаштувань» — «← Налаштування», підсвічена вкладка «Налаштування»', (await W.p.getAttribute('[data-key=pv-back]', 'href')) === '#prefs' &&
+    !!(await W.p.$('nav [data-key=nav-prefs][aria-current=page]')), await W.p.getAttribute('[data-key=pv-back]', 'href'));
+  await W.p.click('[data-key=pv-back]'); await W.p.waitForTimeout(600);
+  ok('браузер: «Назад» з квартири → «Налаштування»', (await W.p.evaluate(() => location.hash)) === '#prefs');
+  await W.p.goto(B + '#home'); await W.p.waitForTimeout(600); await W.p.goto(B + '#place-main'); await W.p.waitForTimeout(800);
+  ok('браузер: квартира з головної — «Назад» на «Квартири»', /^#(home|places)$/.test(await W.p.getAttribute('[data-key=pv-back]', 'href')) && !!(await W.p.$('nav [data-key=nav-home][aria-current=page]')));
   await W.p.goto(B + '#prefs-heat'); await W.p.waitForTimeout(900);
   ok('браузер #prefs-heat → #place-…, «Лічильники» й налаштування тепла розгорнуті', /^#place-/.test(await W.p.evaluate(() => location.hash)) && await W.p.$eval('#pg-pv-meters', e => e.open) && await W.p.$eval('#mbs-heat', e => e.open));
   // Dynamic Type: множник від застосунку — сторінка вужча й масштабована (meta viewport), 1 — як було
