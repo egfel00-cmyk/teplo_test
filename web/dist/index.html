@@ -2616,13 +2616,24 @@ details.mypay[open] > summary .mypay-amt, details.mypay[open] > summary .mypay-s
   --sheen-t: rgba(255, 255, 255, .14); --sheen-b: rgba(0, 0, 40, .10);
   --c-ghost-hover: rgba(20, 24, 36, .06); --c-tip-bg: #141824;
 }
+/* 164-я, друга правка (власник 16.11 12:33: «латунь лиши й поклади в оформлення, а темній дай інше рішення — буде 3 теми»):
+   «Темна» — нічна синя (не вугільна чорнота і не графіт латуні): тло #111827, картки #1A2438, акцент #4566F0 з білим, посилання #9DB2FF;
+   «Латунь» — окрема тема (Налаштування → Оформлення): тепла темна — data-theme="dark" + data-skin="brass" (вага 0,4,0 перекриває «Темну»), усі темні правила бази діють */
 :root:root[data-theme="dark"] {
-  --c-housing: #16181D; --c-surface: #1F2229; --c-surface-2: #262A32; --c-ink: #E8EAF0; --c-ink-2: #A3A9B8; --c-line: #353A46; --c-field-line: #858C9C; --c-field-bg: #1A1C22;
-  --c-on-ink: #16181D; --c-ink-hover: #CFD3DD; --c-ghost-hover: rgba(232, 234, 240, .07);
-  --gl-line: rgba(200, 210, 255, .09); --gl-hi: inset 0 1px 0 rgba(220, 228, 255, .06); --gl-sh: 0 1px 0 rgba(0, 0, 0, .3);
-  --acc-fill: #4A68E8; --acc-on: #FFFFFF; --sel-bg: #4A68E8; --sel-on: #FFFFFF; --tint: #93A8FF;
-  --sheen-t: rgba(255, 255, 255, .14); --sheen-b: rgba(0, 0, 40, .12); --c-tip-bg: #E8EAF0; --c-tip-ink: #16181D;
-  --ch-ax: #A3A9B8; --ch-vl: #E8EAF0; --ch-grid: #2C303A; --ch-dot-ring: #1F2229; --wx-zero-bg: #262A32; --spark-axis: #353A46;
+  --c-housing: #111827; --c-surface: #1A2438; --c-surface-2: #212C42; --c-ink: #E6EAF2; --c-ink-2: #9AA6BD; --c-line: #2E3A52; --c-field-line: #7F8BA3; --c-field-bg: #151E30;
+  --c-on-ink: #111827; --c-ink-hover: #CBD3E1; --c-ghost-hover: rgba(230, 234, 242, .07);
+  --gl-line: rgba(160, 185, 255, .10); --gl-hi: inset 0 1px 0 rgba(190, 210, 255, .07); --gl-sh: 0 1px 0 rgba(0, 0, 0, .3);
+  --acc-fill: #4566F0; --acc-on: #FFFFFF; --sel-bg: #4566F0; --sel-on: #FFFFFF; --tint: #9DB2FF;
+  --sheen-t: rgba(255, 255, 255, .14); --sheen-b: rgba(0, 0, 40, .12); --c-tip-bg: #E6EAF2; --c-tip-ink: #111827;
+  --ch-ax: #9AA6BD; --ch-vl: #E6EAF2; --ch-grid: #26324A; --ch-dot-ring: #1A2438; --wx-zero-bg: #212C42; --spark-axis: #2E3A52;
+}
+:root:root[data-theme="dark"][data-skin="brass"] {
+  --c-housing: #1A1815; --c-surface: #24211D; --c-surface-2: #2C2924; --c-ink: #ECE9E3; --c-ink-2: #ABA69C; --c-line: #3A352E; --c-field-line: #8A8478; --c-field-bg: #1E1C18;
+  --c-on-ink: #1A1815; --c-ink-hover: #D6D1C7; --c-ghost-hover: rgba(236, 233, 227, .07);
+  --gl-line: rgba(255, 240, 210, .09); --gl-hi: inset 0 1px 0 rgba(255, 240, 210, .07); --gl-sh: 0 1px 0 rgba(0, 0, 0, .3);
+  --acc-fill: #CDA868; --acc-on: #17120A; --sel-bg: #CDA868; --sel-on: #17120A; --tint: #D8B676;
+  --sheen-t: rgba(255, 248, 230, .16); --sheen-b: rgba(40, 25, 0, .08); --c-tip-bg: #ECE9E3; --c-tip-ink: #1A1815;
+  --ch-ax: #ABA69C; --ch-vl: #ECE9E3; --ch-grid: #353029; --ch-dot-ring: #24211D; --wx-zero-bg: #2C2924; --spark-axis: #3A352E;
 }
 
 /* поверхні: волосяна рамка + блик згори; великі картки 20, рядки 14 */
@@ -2687,13 +2698,28 @@ h1 { font-size: 28px; letter-spacing: -.02em; line-height: 32px; }   /* 164-я: 
 :root:root :is(.linkbtn, .hp-addr-add, .hp-tools a, .mbox-set-link a, .mbox-links a, .pl-set, .my-link .linkbtn) { color: var(--tint); text-decoration: none; font-weight: 600; }
 :root:root .banner :is(a, .linkbtn) { color: inherit; text-decoration: underline; font-weight: inherit; }
 /* інфо-плашка — поверхнею, як картка: колір лишається у значку (плитка), текст — чорнилами; warn/bad/ok — як були (статус) */
-:root:root .banner:not(.warn):not(.bad):not(.ok) { background: var(--c-surface); color: var(--c-ink); border: 1px solid var(--gl-line); border-radius: var(--r-card); box-shadow: var(--gl-hi), var(--gl-sh); padding: 14px 16px; }
-:root:root .banner:not(.warn):not(.bad):not(.ok) > svg:first-child { box-sizing: content-box; padding: 7px; margin: -4px 0 0 -2px; border-radius: 10px; color: var(--c-info); background: color-mix(in srgb, currentColor 12%, transparent); }
+/* 164-я (власник 16.11 12:33, скрин «Збережіть показання в акаунті»: «інфо-повідомлення не має зливатися з інтерфейсом»): плашка — тоном інфо (синій 10–16 % поверх
+   поверхні), рамка інфо 28 %, без тіні картки; значок — інфо-кольором без плитки. Картки лишаються білими/поверхнею — плашку видно одразу. */
+:root:root .banner:not(.warn):not(.bad):not(.ok) { background: color-mix(in srgb, var(--c-info) 10%, var(--c-surface)); color: var(--c-ink); border: 1px solid color-mix(in srgb, var(--c-info) 28%, transparent); border-radius: var(--r-card); box-shadow: none; padding: 14px 16px; }
+:root:root[data-theme="dark"] .banner:not(.warn):not(.bad):not(.ok) { background: color-mix(in srgb, var(--c-info) 17%, var(--c-surface)); border-color: color-mix(in srgb, var(--c-info) 36%, transparent); }
+:root:root .banner:not(.warn):not(.bad):not(.ok) > svg:first-child { color: var(--c-info); margin-top: 1px; }
 :root:root .banner:not(.warn):not(.bad):not(.ok) :is(a, .linkbtn) { color: var(--tint); font-weight: 600; text-decoration: underline; text-decoration-thickness: 1.5px; text-underline-offset: 3px; }   /* поруч жирний текст плашки — дію видно підкресленням, не кольором */
 :root:root :is(.linkbtn, .hp-addr-add):hover { text-decoration: underline; }
 :root:root a:not([class]) { color: var(--c-ink); text-decoration-thickness: 1px; }   /* посилання в тексті — чорнилами з підкресленням (синій — колір холодної води, не другий акцент) */
 /* темна: картка ледь світліша згори (світло падає зверху — те саме, що блик 1 px, без світіння) */
 :root:root[data-theme="dark"] :is(.ucard, .pacc, .ios-list, .pl-card, .season, .panel:not(.where):not(.mhist):not(.ru-base)) { background-image: linear-gradient(180deg, rgba(255, 255, 255, .025), transparent 120px); }
+/* 164-я: «Оформлення» — 4 плитки з мініатюрою (тло + картка + кнопка акценту) замість сегментів: «Як у системі», «Світла», «Темна», «Латунь» */
+.th-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+@media (min-width: 600px) { .th-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+.th-opt { display: flex; flex-direction: column; gap: 8px; padding: 8px 8px 12px; border: 1.5px solid var(--c-line); border-radius: 16px; background: var(--c-surface); color: var(--c-ink);
+  font: 600 15px/1.25 var(--font); text-align: center; cursor: pointer; touch-action: manipulation; min-height: 48px; }
+.th-opt[aria-pressed="true"] { border-color: var(--acc-fill); box-shadow: inset 0 0 0 1px var(--acc-fill); }
+.th-opt:focus-visible { outline: 3px solid var(--c-info); outline-offset: 2px; }
+.th-sw { position: relative; display: block; height: 64px; border-radius: 10px; background: var(--b); overflow: hidden; border: 1px solid rgba(127, 127, 127, .25); }
+.th-sw::before { content: ''; position: absolute; left: 10px; right: 10px; top: 10px; height: 22px; border-radius: 6px; background: var(--c); }
+.th-sw::after { content: ''; position: absolute; left: 10px; width: 46%; bottom: 9px; height: 14px; border-radius: 7px; background: var(--a); }
+.th-sw.auto { background: #F1F3F7; } .th-sw.auto > i { position: absolute; left: 50%; top: 0; right: 0; bottom: 0; background: #111827; }   /* «як у системі» — пів світлої, пів темної */
+.th-sw::before, .th-sw::after { z-index: 1; }
 
 </style>
 <style>.top { padding-top: max(12px, env(safe-area-inset-top)); }</style>
@@ -4593,7 +4619,7 @@ h1 { font-size: 28px; letter-spacing: -.02em; line-height: 32px; }   /* 164-я: 
       st_none: 'Немає показань на перевірці.',
 
       th_to_dark: 'Увімкнути темну тему', th_to_light: 'Увімкнути світлу тему',
-      th_title: 'Тема оформлення', th_auto: 'Як у системі', th_light: 'Світла', th_dark: 'Темна', th_sub: '«Як у системі» — підлаштовується під телефон або Telegram. Вибір зберігається на цьому пристрої.',
+      th_title: 'Тема оформлення', th_auto: 'Як у системі', th_light: 'Світла', th_dark: 'Темна', th_brass: 'Латунь', th_sub: '«Як у системі» — світла або темна, як на телефоні чи в Telegram. «Латунь» — тепла темна. Вибір зберігається на цьому пристрої.',
       mv_open: 'Відкрити', mv_title: 'Лічильник: повірка й документи', mv_date: 'Повірка дійсна до', mv_date_sub: 'Дата з паспорта або свідоцтва про повірку. Після неї робот ХТМ показання не приймає.', mv_date_sub_l: 'Дата з паспорта або свідоцтва про повірку. Після неї постачальник показання не приймає — рахує без лічильника.',
       mv_ok: 'чинна', mv_soon: 'залишилось {n} дн.', mv_expired: 'прострочена',
       mv_docs: 'Фото документів', mv_docs_sub: 'Паспорт лічильника, свідоцтво чи акт повірки — щоб завжди були під рукою. Бачите лише ви.',
@@ -5961,7 +5987,7 @@ h1 { font-size: 28px; letter-spacing: -.02em; line-height: 32px; }   /* 164-я: 
       st_none: 'Нет показаний на проверке.',
 
       th_to_dark: 'Включить тёмную тему', th_to_light: 'Включить светлую тему',
-      th_title: 'Тема оформления', th_auto: 'Как в системе', th_light: 'Светлая', th_dark: 'Тёмная', th_sub: '«Как в системе» — подстраивается под телефон или Telegram. Выбор хранится на этом устройстве.',
+      th_title: 'Тема оформления', th_auto: 'Как в системе', th_light: 'Светлая', th_dark: 'Тёмная', th_brass: 'Латунь', th_sub: '«Как в системе» — светлая или тёмная, как на телефоне или в Telegram. «Латунь» — тёплая тёмная. Выбор хранится на этом устройстве.',
       mv_open: 'Открыть', mv_title: 'Счётчик: поверка и документы', mv_date: 'Поверка действует до', mv_date_sub: 'Дата из паспорта или свидетельства о поверке. После неё робот ХТМ показания не принимает.', mv_date_sub_l: 'Дата из паспорта или свидетельства о поверке. После неё поставщик показания не принимает — считает без счётчика.',
       mv_ok: 'действует', mv_soon: 'осталось {n} дн.', mv_expired: 'просрочена',
       mv_docs: 'Фото документов', mv_docs_sub: 'Паспорт счётчика, свидетельство или акт поверки — чтобы всегда были под рукой. Видите только вы.',
@@ -10063,14 +10089,15 @@ h1 { font-size: 28px; letter-spacing: -.02em; line-height: 32px; }   /* 164-я: 
   // 07.11: перемикач у шапці прибрано — хто перемкнув його раніше, один раз повертаємо «як у телефоні»
   if (S.themeV !== 2) { S.theme = 'auto'; S.themeV = 2; persist(); }
   function resolvedTheme() {
-    var th = S.theme || 'auto'; if (th !== 'auto') return th;
+    var th = S.theme || 'auto'; if (th === 'brass') return 'dark'; if (th !== 'auto') return th;   // 164-я: «Латунь» — тепла темна (data-skin)
     var tw0 = window.Telegram && window.Telegram.WebApp; if (tw0 && tw0.initData && tw0.colorScheme) return tw0.colorScheme === 'dark' ? 'dark' : 'light';
     return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
   }
   function applyTheme() {
     // 162-а: «глянець» (чорнила) — вигляд для всіх; тло сторінки — --c-housing глянцю (styles.css, кінець файлу)
-    var th = resolvedTheme(), bg = th === 'dark' ? '#16181D' : '#F1F3F7';
+    var th = resolvedTheme(), brass = S.theme === 'brass', bg = brass ? '#1A1815' : th === 'dark' ? '#111827' : '#F1F3F7';
     document.documentElement.setAttribute('data-theme', th);
+    if (brass) document.documentElement.setAttribute('data-skin', 'brass'); else document.documentElement.removeAttribute('data-skin');
     var mt = document.querySelector('meta[name="theme-color"]'); if (mt) mt.setAttribute('content', bg);
     var tw1 = window.Telegram && window.Telegram.WebApp; if (tw1 && tw1.initData) { try { tw1.setHeaderColor && tw1.setHeaderColor(bg); tw1.setBackgroundColor && tw1.setBackgroundColor(bg); } catch (e) { /* старый клиент */ } }
   }
@@ -18322,8 +18349,11 @@ h1 { font-size: 28px; letter-spacing: -.02em; line-height: 32px; }   /* 164-я: 
       '<div class="field"><label for="p-phone">' + esc(t('ho_phone')) + '</label><div class="ctl"><input id="p-phone" type="tel" autocomplete="tel" data-contact="phone" value="' + esc(c.phone || '') + '"></div></div>' +
       '<div class="field"><label for="p-email">' + esc(t('ho_email')) + '</label><div class="ctl"><input id="p-email" type="email" autocomplete="email" data-contact="email" value="' + esc(c.email || '') + '"></div></div></div></div>' +
       ''),
-      PG('look', 'sun', t('pg_look'), t('th_' + (S.theme || 'auto')), '<div class="panel" data-key="prefs-theme"><h2>' + esc(t('th_title')) + '</h2><div class="seg-ctl" role="group" aria-label="' + esc(t('th_title')) + '">' +
-        ['auto', 'light', 'dark'].map(function (k) { return '<button type="button" data-act="theme" data-v="' + k + '" aria-pressed="' + ((S.theme || 'auto') === k) + '">' + esc(t('th_' + k)) + '</button>'; }).join('') + '</div>' +
+      PG('look', 'sun', t('pg_look'), t('th_' + (S.theme || 'auto')), '<div class="panel" data-key="prefs-theme"><h2>' + esc(t('th_title')) + '</h2><div class="th-grid" role="group" aria-label="' + esc(t('th_title')) + '">' +
+        // 164-я: 3 теми + «як у системі»; мініатюра — тло, картка, кнопка акценту кожної теми (кольори — ті самі, що в styles.css)
+        [['auto', '', '', ''], ['light', '#F1F3F7', '#FFFFFF', '#2D4FCF'], ['dark', '#111827', '#1A2438', '#4566F0'], ['brass', '#1A1815', '#24211D', '#CDA868']].map(function (o) {
+          return '<button type="button" class="th-opt" data-act="theme" data-v="' + o[0] + '" data-key="th-' + o[0] + '" aria-pressed="' + ((S.theme || 'auto') === o[0]) + '"><span class="th-sw' + (o[1] ? '' : ' auto') + '" aria-hidden="true"' +
+            (o[1] ? ' style="--b:' + o[1] + ';--c:' + o[2] + ';--a:' + o[3] + '"' : ' style="--c:rgba(255,255,255,.85);--a:#2D4FCF"') + '>' + (o[1] ? '' : '<i></i>') + '</span>' + esc(t('th_' + o[0])) + '</button>'; }).join('') + '</div>' +
         '<p class="small muted" style="margin-top:8px">' + esc(t('th_sub')) + '</p></div>' +
       ''),
       PG('data', 'copy', t('pg_data'), t('pg_data_s'), '<div class="panel" data-key="prefs-data"><h2>' + esc(t('p_data')) + '</h2>' +

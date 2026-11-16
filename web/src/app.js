@@ -460,14 +460,15 @@
   // 07.11: перемикач у шапці прибрано — хто перемкнув його раніше, один раз повертаємо «як у телефоні»
   if (S.themeV !== 2) { S.theme = 'auto'; S.themeV = 2; persist(); }
   function resolvedTheme() {
-    var th = S.theme || 'auto'; if (th !== 'auto') return th;
+    var th = S.theme || 'auto'; if (th === 'brass') return 'dark'; if (th !== 'auto') return th;   // 164-я: «Латунь» — тепла темна (data-skin)
     var tw0 = window.Telegram && window.Telegram.WebApp; if (tw0 && tw0.initData && tw0.colorScheme) return tw0.colorScheme === 'dark' ? 'dark' : 'light';
     return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
   }
   function applyTheme() {
     // 162-а: «глянець» (чорнила) — вигляд для всіх; тло сторінки — --c-housing глянцю (styles.css, кінець файлу)
-    var th = resolvedTheme(), bg = th === 'dark' ? '#16181D' : '#F1F3F7';
+    var th = resolvedTheme(), brass = S.theme === 'brass', bg = brass ? '#1A1815' : th === 'dark' ? '#111827' : '#F1F3F7';
     document.documentElement.setAttribute('data-theme', th);
+    if (brass) document.documentElement.setAttribute('data-skin', 'brass'); else document.documentElement.removeAttribute('data-skin');
     var mt = document.querySelector('meta[name="theme-color"]'); if (mt) mt.setAttribute('content', bg);
     var tw1 = window.Telegram && window.Telegram.WebApp; if (tw1 && tw1.initData) { try { tw1.setHeaderColor && tw1.setHeaderColor(bg); tw1.setBackgroundColor && tw1.setBackgroundColor(bg); } catch (e) { /* старый клиент */ } }
   }
@@ -8719,8 +8720,11 @@
       '<div class="field"><label for="p-phone">' + esc(t('ho_phone')) + '</label><div class="ctl"><input id="p-phone" type="tel" autocomplete="tel" data-contact="phone" value="' + esc(c.phone || '') + '"></div></div>' +
       '<div class="field"><label for="p-email">' + esc(t('ho_email')) + '</label><div class="ctl"><input id="p-email" type="email" autocomplete="email" data-contact="email" value="' + esc(c.email || '') + '"></div></div></div></div>' +
       ''),
-      PG('look', 'sun', t('pg_look'), t('th_' + (S.theme || 'auto')), '<div class="panel" data-key="prefs-theme"><h2>' + esc(t('th_title')) + '</h2><div class="seg-ctl" role="group" aria-label="' + esc(t('th_title')) + '">' +
-        ['auto', 'light', 'dark'].map(function (k) { return '<button type="button" data-act="theme" data-v="' + k + '" aria-pressed="' + ((S.theme || 'auto') === k) + '">' + esc(t('th_' + k)) + '</button>'; }).join('') + '</div>' +
+      PG('look', 'sun', t('pg_look'), t('th_' + (S.theme || 'auto')), '<div class="panel" data-key="prefs-theme"><h2>' + esc(t('th_title')) + '</h2><div class="th-grid" role="group" aria-label="' + esc(t('th_title')) + '">' +
+        // 164-я: 3 теми + «як у системі»; мініатюра — тло, картка, кнопка акценту кожної теми (кольори — ті самі, що в styles.css)
+        [['auto', '', '', ''], ['light', '#F1F3F7', '#FFFFFF', '#2D4FCF'], ['dark', '#111827', '#1A2438', '#4566F0'], ['brass', '#1A1815', '#24211D', '#CDA868']].map(function (o) {
+          return '<button type="button" class="th-opt" data-act="theme" data-v="' + o[0] + '" data-key="th-' + o[0] + '" aria-pressed="' + ((S.theme || 'auto') === o[0]) + '"><span class="th-sw' + (o[1] ? '' : ' auto') + '" aria-hidden="true"' +
+            (o[1] ? ' style="--b:' + o[1] + ';--c:' + o[2] + ';--a:' + o[3] + '"' : ' style="--c:rgba(255,255,255,.85);--a:#2D4FCF"') + '>' + (o[1] ? '' : '<i></i>') + '</span>' + esc(t('th_' + o[0])) + '</button>'; }).join('') + '</div>' +
         '<p class="small muted" style="margin-top:8px">' + esc(t('th_sub')) + '</p></div>' +
       ''),
       PG('data', 'copy', t('pg_data'), t('pg_data_s'), '<div class="panel" data-key="prefs-data"><h2>' + esc(t('p_data')) + '</h2>' +
