@@ -896,6 +896,12 @@ details.wacc > summary { list-style: none; cursor: pointer; display: flex; align
 .hrow .hr-sub { margin-top: 2px; font-size: 13px; color: var(--c-ink-2); display: flex; flex-wrap: wrap; gap: 0 12px; }
 .mbox-sub, .ss-sub { display: flex !important; flex-wrap: wrap; gap: 0 12px; }
 .hrow .hr-date { margin-bottom: 6px; font-size: 13px; color: var(--c-ink-2); }
+/* 163-я: обсяг і сума — в один рядок (fitLines в app.js: не влазить — шматки дрібнішають через --fit, крайній випадок — fit1-wrap) */
+.hrow .hr-main.fit1, .kpi-row.fit1, .ss-sum.fit1 { flex-wrap: nowrap; min-width: 0; }
+.hrow .hr-main.fit1.fit1-wrap, .kpi-row.fit1.fit1-wrap, .ss-sum.fit1.fit1-wrap { flex-wrap: wrap; }
+.fit1 > * { zoom: var(--fit, 1); white-space: nowrap; }
+.hrow > .grow { min-width: 0; }
+.hrow .hr-main.fit1 { column-gap: 12px; }
 .hrow .hr-ico { align-self: center; display: inline-flex; margin-right: -8px; }
 /* узкий экран: строка истории (тепло и вода) — главное на всю ширину, значки (погода, статус) компактно строкой ниже */
 @media (max-width: 520px) {

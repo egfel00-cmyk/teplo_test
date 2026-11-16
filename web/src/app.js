@@ -9547,13 +9547,29 @@
     TeploAcc.hooks.before = accFoot;
     TeploAcc.hooks.intent = function (d, open) { var id = d.matches && d.matches('details.pacc') && d.getAttribute('data-pl'); if (id) { S.homeOpen = S.homeOpen || {}; S.homeOpen[id] = open; persist(); } };
   }
+  /** 163-я (власник 16.11 12:07: «у картках показань рядки, де обсяг і ціна — великі головні, максимально завжди в один рядок»):
+   *  «+205 кВт·год  ≈ 724 грн» (рядок історії), підсумок року/сезону, KPI статистики — без переносу; не влазить — зменшуємо (zoom дітей) кроками до 0,7,
+   *  і лише якщо не влізло й так — переносимо, як раніше. Міряємо правий край останнього шматка відносно рядка (flex nowrap, min-width 0). */
+  var FIT1 = '.hrow .hr-main, .kpi-row, .ss-sum', FIT1_T = 0;
+  function fitOne(el) {
+    if (!el.querySelector('.hr-q, .hr-m, .kpi-q, .kpi-m, .ss-q, .ss-m')) return;   // «стартові — з налаштування…» — текст, переноситься як звичайно
+    el.classList.add('fit1'); el.classList.remove('fit1-wrap'); el.style.removeProperty('--fit');
+    var c = el.children; if (!c.length || !el.offsetWidth) return;
+    var over = function () { return c[c.length - 1].getBoundingClientRect().right > el.getBoundingClientRect().right + 0.5; };
+    if (!over()) return;
+    for (var k = 0.92; k > 0.69; k -= 0.06) { el.style.setProperty('--fit', k.toFixed(2)); if (!over()) return; }
+    el.style.removeProperty('--fit'); el.classList.add('fit1-wrap');
+  }
+  function fitLines(root) { Array.prototype.forEach.call((root || document).querySelectorAll(FIT1), fitOne); }
+  window.addEventListener('resize', function () { clearTimeout(FIT1_T); FIT1_T = setTimeout(function () { fitLines(); }, 120); });
+  document.addEventListener('toggle', function (e) { if (e.target && e.target.open && e.target.querySelector) fitLines(e.target); }, true);   // згорнутий сезон/рік — міряємо, коли відкрили
   function afterRender(r) {
     // табло докручуються при вході: сторінки лічильників і сцена лендинга (89-а — один рух на лендингу, при reduced-motion — ні)
     if (r !== LIVE.r) { LIVE.r = r; LIVE.t0 = /^(heat|water-hot|water-cold|elec|gas|welcome)$/.test(r) ? Date.now() : 0; }
     if (LIVE.t0 && Date.now() - LIVE.t0 < LIVE_MS) liveDigits(document.getElementById('main'), Date.now() - LIVE.t0);
     Array.prototype.forEach.call(document.querySelectorAll(ACC_SEL), accFoot);
     Array.prototype.forEach.call(document.querySelectorAll('details.tips-box > summary'), function (sm) { if (!sm.querySelector('.pacc-chev')) sm.insertAdjacentHTML('beforeend', ico('chev', 18, 'pacc-chev')); });
-    enhanceDates(); photoFill(); phFocusAll(); qrFill(); toastKeep(); fabWatch(); if (Y().account) histFlush();
+    enhanceDates(); photoFill(); phFocusAll(); qrFill(); toastKeep(); fabWatch(); fitLines(); if (Y().account) histFlush();
     if (r === 'welcome') lpDepth(); else if (LPD) lpFlush();   // 159-а: глибина лендингу — з першого показу; пішов з лендингу на інший екран — одразу в журнал
     // прилади в нижній панелі лендинга перетікають по колу — при «Зменшити рух» і в автотестах стоїть перший (147-а: електролічильник)
     if (calmMotion() || navigator.webdriver) Array.prototype.forEach.call(document.querySelectorAll('svg.lpm'), function (s) { if (s.pauseAnimations) { s.pauseAnimations(); s.setCurrentTime(0); } });
