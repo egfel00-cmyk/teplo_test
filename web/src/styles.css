@@ -2953,3 +2953,70 @@ h1 { font-size: 28px; letter-spacing: -.02em; line-height: 32px; }   /* 164-я: 
 :root:root[data-lskin="c"][data-lsk="3"]:not([data-theme="dark"]) .pacc > summary.has-ic > .pacc-ic { display: grid; grid-column: 1; grid-row: 1; width: 40px; height: 40px; }
 :root:root[data-lskin="c"][data-lsk="3"]:not([data-theme="dark"]) .pacc > summary.has-ic > .pacc-ic .picon { color: var(--pc); }
 :root:root[data-lskin="c"][data-lsk="3"]:not([data-theme="dark"]) .pacc-t .pdot { display: inline-block; }
+
+/* =========================================================================================================================
+   166-я: аудит C3 на решті екранів (1280 з боковим меню, вхід, кроки вводу, статистика, сторінка лічильника, екран квартири, лендинг).
+   Тією ж мовою, без нових акцентів: тони одного рівня (L .50 C .085), нейтральні плитки, синій — лише головна кнопка й вибраний таб.
+   Знайдено й виправлено: біла «коробка» бокового меню на 1280; синя плитка з білим значком «Налаштування квартири» (залишок C2);
+   «панель у панелі» — список історії в рамці всередині блоку «Історія», лічильники рамками всередині групи «Лічильники», фото-зона сірою
+   панеллю в білій картці; пастелі бази 164-ї (жовта кнопка «Зняти чи вибрати фото», блакитна друга серія графіка, жовті/рожеві плашки статусів);
+   сіро-зелені осі графіків; блакитні кнопки-посилання у футері серед чорних посилань.
+   ========================================================================================================================= */
+:root:root[data-lskin="c"][data-lsk="3"]:not([data-theme="dark"]) {
+  /* статуси — як інфо-плашка C3: ледь тонована поверхня + волосяна рамка кольору статусу (без пастелі бази) */
+  --c-info-soft: #EFF3F6; --c-info-ink: #24405C; --c-warn-soft: #F7F2EC; --c-warn-ink: #5F3F1C; --c-warn-line: #C8B49F;
+  /* графіки — теплі нейтралі; друга серія (гроші, оплати) — графіт, не блакитна пастель */
+  --ch-ax: #66625A; --ch-vl: #24221E; --ch-grid: #ECE9E3; --ch-bar: #3B6692; --ch-bar-soft: #B9B2A6;
+  --ch-ok: #3D7149; --ch-low: #84582A; --ch-none: #66625A; --ch-off: #A39E94;
+}
+:root:root[data-lskin="c"][data-lsk="3"]:not([data-theme="dark"]) :is(.banner.warn, .banner.ok, .banner.bad) {
+  --bn: var(--c-warn); background: color-mix(in srgb, var(--bn) 7%, var(--c-surface)); border: 1px solid color-mix(in srgb, var(--bn) 30%, transparent);
+  border-radius: var(--r-card); padding: 14px 16px; }
+:root:root[data-lskin="c"][data-lsk="3"]:not([data-theme="dark"]) .banner.ok { --bn: var(--c-ok); }
+:root:root[data-lskin="c"][data-lsk="3"]:not([data-theme="dark"]) .banner.bad { --bn: var(--c-bad); }
+:root:root[data-lskin="c"][data-lsk="3"]:not([data-theme="dark"]) :is(.banner.warn, .banner.ok, .banner.bad) > svg:first-child { color: var(--bn); }
+
+/* бокове меню (≥ 960) — на тлі сторінки, без білої коробки; вибраний пункт — білою карткою з рамкою */
+@media (min-width: 960px) {
+  :root:root[data-lskin="c"][data-lsk="3"]:not([data-theme="dark"]) .nav { background: transparent; border: 0; box-shadow: none; }
+  :root:root[data-lskin="c"][data-lsk="3"]:not([data-theme="dark"]) .nav a[aria-current="page"] { background: var(--c-surface); box-shadow: inset 0 0 0 1px var(--gl-line), 0 1px 2px rgba(40, 34, 22, .06); }
+  :root:root[data-lskin="c"][data-lsk="3"]:not([data-theme="dark"]) .nav a[aria-current="page"] svg { color: var(--c-ink); }
+}
+@media (min-width: 960px) and (hover: hover) { :root:root[data-lskin="c"][data-lsk="3"]:not([data-theme="dark"]) .nav a:not([aria-current="page"]):hover { background: var(--c-ghost-hover); color: var(--c-ink); } }
+
+/* «Налаштування квартири» під лічильниками — звичайна картка, значок у нейтральній плитці (синя плитка з білим значком — від C2, відкинута) */
+:root:root[data-lskin="c"][data-lsk="3"]:not([data-theme="dark"]) .ucard-pset { border: 1px solid var(--gl-line); border-radius: var(--r-card); background: var(--c-surface); box-shadow: var(--gl-sh); }
+:root:root[data-lskin="c"][data-lsk="3"]:not([data-theme="dark"]) .ucard-pset .am-plus { width: 40px; height: 40px; border-radius: 12px; border: 0; background: var(--tile-n); color: var(--c-ink-2); }
+@media (hover: hover) { :root:root[data-lskin="c"][data-lsk="3"]:not([data-theme="dark"]) .ucard-pset:hover { background: var(--c-surface-2); border-color: var(--gl-line); } }
+/* «Згорнути» під квартирою й групою — тихою кнопкою без рамки (рамка на всю ширину читалась як порожня панель) */
+:root:root[data-lskin="c"][data-lsk="3"]:not([data-theme="dark"]) :is(.pacc, .pgroup) > .acc-foot .btn { border-color: transparent; background: transparent; box-shadow: none; color: var(--c-ink-2); }
+:root:root[data-lskin="c"][data-lsk="3"]:not([data-theme="dark"]) .pgroup > .acc-foot { border-top-style: solid; }
+@media (hover: hover) { :root:root[data-lskin="c"][data-lsk="3"]:not([data-theme="dark"]) :is(.pacc, .pgroup) > .acc-foot .btn:hover { background: var(--c-ghost-hover); color: var(--c-ink); border-color: transparent; } }
+
+/* фото: зона вибору — пунктиром на білій картці (не сіра панель у панелі), «Зняти чи вибрати фото» — нейтральною заливкою (не жовта пастель) */
+:root:root[data-lskin="c"][data-lsk="3"]:not([data-theme="dark"]) .phd:not(.has) { background: transparent; border: 1.5px dashed #D3CDC2; border-radius: 12px; }
+:root:root[data-lskin="c"][data-lsk="3"]:not([data-theme="dark"]) .phd-pill { background: var(--tile-n); color: var(--c-ink); }
+:root:root[data-lskin="c"][data-lsk="3"]:not([data-theme="dark"]) .phd-pill .ico { color: var(--c-ink-2); }
+@media (hover: hover) { :root:root[data-lskin="c"][data-lsk="3"]:not([data-theme="dark"]) .phd-empty:hover .phd-pill { filter: none; background: #E4E0D8; } }
+
+/* «Історія» на сторінці лічильника — рядки прямо в блоці, лініями (список у рамці всередині блоку — «панель у панелі») */
+:root:root[data-lskin="c"][data-lsk="3"]:not([data-theme="dark"]) .panel.mhist > .mhist-b > .list { margin: -12px -16px 0; border: 0; border-radius: 0; background: transparent; }
+:root:root[data-lskin="c"][data-lsk="3"]:not([data-theme="dark"]) .panel.mhist > .mhist-b > .list > li { border-radius: 0; border-bottom-color: var(--c-line); }
+
+/* статистика: підсумок — білою карткою, як графіки нижче (сіра панель вирізнялась без причини) */
+:root:root[data-lskin="c"][data-lsk="3"]:not([data-theme="dark"]) .kpi { background: var(--c-surface); border-color: var(--gl-line); border-radius: var(--r-card); box-shadow: var(--gl-sh); }
+
+/* екран квартири: лічильники в групі — рядками з лініями, без рамок-карток усередині картки групи */
+:root:root[data-lskin="c"][data-lsk="3"]:not([data-theme="dark"]) .pg-body .mlist:not(.removed) { gap: 0; }
+:root:root[data-lskin="c"][data-lsk="3"]:not([data-theme="dark"]) .pg-body .mlist:not(.removed) > .mrow { border: 0; border-radius: 0; background: transparent; }
+:root:root[data-lskin="c"][data-lsk="3"]:not([data-theme="dark"]) .pg-body .mlist:not(.removed) > .mrow + .mrow { border-top: 1px solid var(--c-line); }
+:root:root[data-lskin="c"][data-lsk="3"]:not([data-theme="dark"]) .pg-body .mlist:not(.removed) .mrow-main { padding-inline: 0; }
+:root:root[data-lskin="c"][data-lsk="3"]:not([data-theme="dark"]) .pg-body .mlist:not(.removed) .mrow-act { padding-inline: 0; }
+:root:root[data-lskin="c"][data-lsk="3"]:not([data-theme="dark"]) .pg-body .mlist:not(.removed) .mrow-set { margin-inline: 0; }
+/* «Коли водомір знято» в групі — розділ під лінією (рамка без відступів виглядала зламаною) */
+:root:root[data-lskin="c"][data-lsk="3"]:not([data-theme="dark"]) .pg-body > details.tips-box { border: 0; border-top: 1px solid var(--c-line); padding-top: 8px; }
+
+/* футери: усі посилання одним тоном (кнопка «Налаштування cookie» синім серед чорних посилань — випадковий другий акцент) */
+:root:root[data-lskin="c"][data-lsk="3"]:not([data-theme="dark"]) .app-foot :is(a, .linkbtn) { color: var(--c-ink-2); font-weight: inherit; text-decoration: none; }
+@media (hover: hover) { :root:root[data-lskin="c"][data-lsk="3"]:not([data-theme="dark"]) .app-foot :is(a, .linkbtn):hover { color: var(--c-ink); text-decoration: underline; } }
+:root:root[data-lskin="c"][data-lsk="3"]:not([data-theme="dark"]) .lpf-col li :is(a, .linkbtn) { color: var(--c-ink); font-weight: inherit; }
