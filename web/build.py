@@ -19,8 +19,8 @@ GOOGLE_FONTS = ('<link rel="preconnect" href="https://fonts.googleapis.com">\n'
 
 def own_fonts() -> str:
     css = (ROOT / "fonts" / "fonts.css").read_text(encoding="utf-8")
-    css = re.sub(r"^/\*.*?\*/\s*", "", css, flags=re.S).replace("url(plex-", "url(web/fonts/plex-")
-    pre = "".join(f'<link rel="preload" href="web/fonts/{f}" as="font" type="font/woff2" crossorigin>\n' for f in ("plex-sans-cyr.woff2", "plex-sans-lat.woff2"))
+    css = re.sub(r"^/\*.*?\*/\s*", "", css, flags=re.S).replace("url(plex-", "url(web/fonts/plex-").replace("url(inter-", "url(web/fonts/inter-")
+    pre = "".join(f'<link rel="preload" href="web/fonts/{f}" as="font" type="font/woff2" crossorigin>\n' for f in ("inter-cyr.woff2", "inter-lat.woff2"))
     return pre + "<style>\n" + css.strip() + "\n</style>"
 
 

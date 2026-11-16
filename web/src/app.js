@@ -466,7 +466,7 @@
   }
   function applyTheme() {
     // 162-а: «глянець» (чорнила) — вигляд для всіх; тло сторінки — --c-housing глянцю (styles.css, кінець файлу)
-    var th = resolvedTheme(), bg = th === 'dark' ? '#1A1815' : '#EFEDE8';
+    var th = resolvedTheme(), bg = th === 'dark' ? '#16181D' : '#F1F3F7';
     document.documentElement.setAttribute('data-theme', th);
     var mt = document.querySelector('meta[name="theme-color"]'); if (mt) mt.setAttribute('content', bg);
     var tw1 = window.Telegram && window.Telegram.WebApp; if (tw1 && tw1.initData) { try { tw1.setHeaderColor && tw1.setHeaderColor(bg); tw1.setBackgroundColor && tw1.setBackgroundColor(bg); } catch (e) { /* старый клиент */ } }

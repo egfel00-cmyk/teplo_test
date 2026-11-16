@@ -544,7 +544,7 @@ def build_pack(root):
       '    <monochrome android:drawable="@mipmap/ic_launcher_monochrome"/>\n</adaptive-icon>\n')
     shutil.copy(P('android', 'res', 'mipmap-anydpi-v26', 'ic_launcher.xml'), P('android', 'res', 'mipmap-anydpi-v26', 'ic_launcher_round.xml'))
     manifest = {'name': 'Лічильники — peredai.com.ua', 'short_name': 'Лічильники', 'lang': 'uk', 'start_url': '../../', 'scope': '../../',
-                'display': 'browser', 'background_color': '#EFEDE8', 'theme_color': '#EFEDE8',
+                'display': 'browser', 'background_color': '#F1F3F7', 'theme_color': '#F1F3F7',
                 'icons': [{'src': 'icon-192.png', 'sizes': '192x192', 'type': 'image/png'}, {'src': 'icon-512.png', 'sizes': '512x512', 'type': 'image/png'},
                           {'src': 'icon-maskable-512.png', 'sizes': '512x512', 'type': 'image/png', 'purpose': 'maskable'}, {'src': 'favicon.svg', 'sizes': 'any', 'type': 'image/svg+xml'}]}
     W(P('web', 'manifest.json'), _j.dumps(manifest, ensure_ascii=False, indent=1))
