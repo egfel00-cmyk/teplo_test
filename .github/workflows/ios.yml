@@ -119,7 +119,7 @@ jobs:
           # 157-а (крок 4): плашка над вкладками в останні дні вікна (-PeredaiSoon 31 — щоб було що показати), група налаштувань, великий текст (Dynamic Type)
           xcrun simctl terminate "$UDID" ua.com.peredai.app >/dev/null 2>&1 || true
           xcrun simctl launch "$UDID" ua.com.peredai.app -PeredaiDemo "$DATA/Documents/demo.json" -PeredaiRoute elec -PeredaiSoon 31; shot 9-elec-accessory 15
-          run prefs-heat 10-prefs-group 15
+          run prefs-look 10-prefs-group 15
           xcrun simctl ui "$UDID" content_size extra-extra-large || true
           run elec 11-elec-text-xxl 15
           run history 12-history-text-xxl 12
