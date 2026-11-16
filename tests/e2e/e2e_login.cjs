@@ -12,11 +12,13 @@ const sql = q => execFileSync('python3', ['-c', 'import sqlite3,sys; c=sqlite3.c
   p.on('pageerror', e => errs.push(e.message)); p.on('console', m => { if (m.type() === 'error' && !/telegram\.org|ERR_|40[13]|410|422|503/.test(m.text())) errs.push(m.text()); });
   await p.goto(BASE + '#login'); await p.reload(); await p.waitForTimeout(900);
   const txt = s => p.textContent(s).catch(() => '');
-  ok('Telegram першим: заголовок, бот у тексті, кнопка «Відкрити в Telegram» на t.me', /Через Telegram/.test(await txt('[data-key=login-telegram]')) && /@peredai_com_ua_bot/.test(await txt('[data-key=login-telegram]'))
+  ok('Telegram першим: кнопка «Увійти через Telegram» на t.me, бот — у рядку під нею', /Увійти через Telegram/.test(await txt('[data-key=login-tg-open]')) && /@peredai_com_ua_bot/.test(await txt('[data-key=login-telegram] .auth-hint'))
     && (await p.getAttribute('[data-key=login-tg-open]', 'href')) === 'https://t.me/peredai_com_ua_bot');
-  ok('пояснення про прив’язку — згорнуте («Вже є акаунт з email?»)', await p.$eval('[data-key=login-telegram] details.auth-more', d => !d.open));
-  ok('«або поштою» між Telegram і формою', /або поштою/.test(await txt('.auth-or')));
-  ok('перемикач: «Увійти» натиснуто, «Створити акаунт» — ні', (await p.getAttribute('[data-key=login-mode-in]', 'aria-pressed')) === 'true' && (await p.getAttribute('[data-key=login-toggle]', 'aria-pressed')) === 'false');
+  ok('«або поштою» між Telegram і формою, усе в одній картці', /або поштою/.test(await txt('.auth-or')) && (await p.$$('.auth .panel')).length === 1);
+  // 163-я (власник 16.11: «текст сам себе дублює»): без перемикача — «Увійти» лише на головній кнопці, «Створити акаунт» — посиланням під карткою
+  ok('без повторів: «Увійти» — одна кнопка, перемикача нема, «Немає акаунта? Створити акаунт»', !(await p.$('.auth-sw, [data-key=login-mode-in]'))
+    && await p.$$eval('#main button, #main a', els => els.filter(e => e.textContent.trim() === 'Увійти').length) === 1 && /Немає акаунта\?\s*Створити акаунт/.test(await txt('.auth-switch')));
+  ok('«без входу — лише в цьому браузері» — біля «Продовжити без входу», не в заголовку', /лише в цьому браузері/.test(await txt('.auth-skip')) && !/браузері/.test(await txt('.auth-lead')));
   ok('вхід: без підказки «8 символів» і без placeholder у email', !(await p.$('#a-pass-h')) && !(await p.getAttribute('#a-email', 'placeholder')));
   await p.fill('#a-pass', 'secret-12'); await p.click('[data-key=a-pass-eye]');
   ok('«Показати пароль»: видно введене, кнопка натиснута й каже «Сховати»', (await p.getAttribute('#a-pass', 'type')) === 'text' && (await p.getAttribute('[data-key=a-pass-eye]', 'aria-pressed')) === 'true' && /Сховати/.test(await p.getAttribute('[data-key=a-pass-eye]', 'aria-label')));
@@ -26,7 +28,8 @@ const sql = q => execFileSync('python3', ['-c', 'import sqlite3,sys; c=sqlite3.c
   // реєстрація: email не губиться при перемиканні, підказка «8 символів» з’являється
   const email = 'login-' + Date.now() + '@gmail.com';
   await p.fill('#a-email', email); await p.click('[data-key=login-toggle]'); await p.waitForTimeout(300);
-  ok('«Створити акаунт»: email лишився, підказка «Щонайменше 8 символів», кнопка «Створити акаунт»', (await p.inputValue('#a-email')) === email && /8 символів/.test(await txt('#a-pass-h')) && /Створити акаунт/.test(await txt('[data-key=login-submit]')));
+  ok('«Створити акаунт»: email лишився, підказка «Щонайменше 8 символів», кнопка «Створити акаунт», заголовок «Новий акаунт», назад — «Вже є акаунт? Увійти»', (await p.inputValue('#a-email')) === email && /8 символів/.test(await txt('#a-pass-h')) && /Створити акаунт/.test(await txt('[data-key=login-submit]'))
+    && /Новий акаунт/.test(await txt('h1')) && /Вже є акаунт\?\s*Увійти/.test(await txt('.auth-switch')));
   await p.fill('#a-pass', 'short'); await p.click('[data-key=login-submit]'); await p.waitForTimeout(600);
   ok('короткий пароль — помилка словами', /8 символів/.test(await txt('#login-err')), await txt('#login-err'));
   await p.fill('#a-pass', 'Old-password-1'); await p.click('[data-key=login-submit]'); await p.waitForTimeout(1200);
@@ -48,7 +51,7 @@ const sql = q => execFileSync('python3', ['-c', 'import sqlite3,sys; c=sqlite3.c
   ok('лист не пішов (SMTP не відповів) — «Лист не надіслався — спробуйте за кілька хвилин»', /не надіслався/.test(fe2), fe2);
   await q.unroute('**/api/auth/forgot');
   await q.click('[data-key=login-back]'); await q.waitForTimeout(300);
-  ok('«Повернутися до входу» — знову форма входу', !!(await q.$('[data-key=login-form]')) && (await q.getAttribute('[data-key=login-mode-in]', 'aria-pressed')) === 'true');
+  ok('«Повернутися до входу» — знову форма входу', !!(await q.$('[data-key=login-form]')) && !!(await q.$('[data-key=login-toggle]')) && /Увійти/.test(await q.textContent('[data-key=login-submit]')));
 
   // посилання з листа: токен прибирається з адреси, новий пароль → вхід
   const tok = crypto.randomBytes(24).toString('hex'), now = Math.floor(Date.now() / 1000);
@@ -68,7 +71,7 @@ const sql = q => execFileSync('python3', ['-c', 'import sqlite3,sys; c=sqlite3.c
   // російська — з мови браузера
   const c3 = await b.newContext({ viewport: { width: 390, height: 844 }, locale: 'ru-RU' }); const r = await c3.newPage();
   await r.goto(BASE + '#login'); await r.reload(); await r.waitForTimeout(800);
-  ok('ru: «или по почте», «Забыли пароль?», «Открыть в Telegram»', /или по почте/.test(await r.textContent('#main')) && /Забыли пароль/.test(await r.textContent('#main')) && /Открыть в Telegram/.test(await r.textContent('#main')));
+  ok('ru: «или по почте», «Забыли пароль?», «Войти через Telegram»', /или по почте/.test(await r.textContent('#main')) && /Забыли пароль/.test(await r.textContent('#main')) && /Войти через Telegram/.test(await r.textContent('#main')));
   ok('без помилок JS', !errs.length, errs);
   await b.close(); console.log('\nИтог: ' + pass + ' OK, ' + fail + ' FAIL'); process.exit(fail ? 1 : 0);
 })();

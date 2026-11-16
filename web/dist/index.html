@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#ECEFED">
+<meta name="theme-color" content="#EFEDE8">
 <meta name="color-scheme" content="light dark">
 <link rel="icon" href="favicon.ico" sizes="48x48">
 <link rel="icon" href="web/icon/favicon.svg" type="image/svg+xml">
@@ -2303,33 +2303,33 @@ details.wacc.wacc-btn > .acc-foot { margin: 0; padding: 12px 16px 16px; border-t
 .mono-more > summary { cursor: pointer; min-height: var(--tap); display: flex; align-items: center; color: var(--c-ink-2); }
 .mono-again { margin: 4px 0 0; text-align: center; }
 
-/* Вхід (123-я): одна спокійна колонка — Telegram першим, «або поштою», одна форма з перемикачем; поле пароля з «Показати» */
-.auth { max-width: 520px; }
-.auth-lead { max-width: 520px; }
+/* Вхід (123-я → 163-я, власник 16.11: «як гівно, текст сам себе дублює»): колонка 440 по центру (на 1280 не тулиться ліворуч), ОДНА картка —
+   Telegram однією кнопкою й рядком під нею, «або поштою», поля, головна кнопка, «Забули пароль?»; під карткою — «Немає акаунта? Створити акаунт»
+   і «Продовжити без входу» з тим, що буде без входу. Перемикача «Увійти / Створити» немає (третє «Увійти» на екрані). */
+.auth-page { max-width: 440px; margin: 0 auto; }
+.auth-page > h1 { margin-bottom: var(--sp-2); }
+@media (min-width: 960px) { .main:has(.auth-page) { margin-inline: auto; } }   /* .main на широкому — ліворуч (1040); вхід — по центру екрана */
+.auth { max-width: none; }
+.auth-lead { margin: 0 0 var(--sp-5); color: var(--c-ink-2); }
 .auth .panel { padding: var(--sp-5) var(--sp-4); }
+@media (min-width: 600px) { .auth .panel { padding: var(--sp-6); } }
 .auth-h { display: flex; align-items: center; gap: var(--sp-2); }
 .auth-h .ico { flex: none; color: var(--c-ink-2); }
-.auth-widget { margin: var(--sp-3) 0; } .auth-widget:empty { display: none; }
-.auth-tg .btn { margin-top: var(--sp-3); }
-.auth-more { margin-top: var(--sp-3); }
-.auth-more > summary { list-style: none; display: inline-flex; align-items: center; gap: var(--sp-1); min-height: 44px; cursor: pointer; color: var(--c-ink-2); font-size: 15px; }
-.auth-more > summary::-webkit-details-marker { display: none; }
-@media (hover: hover) { .auth-more > summary:hover { color: var(--c-ink); } }
-.auth-more > summary:focus-visible { outline: 3px solid var(--c-info); outline-offset: 2px; border-radius: 4px; }
-.auth-more .auth-chev { transition: transform 160ms var(--ease); }
-.auth-more[open] .auth-chev { transform: rotate(90deg); }
-.auth-more > p { margin: var(--sp-1) 0 0; }
-.auth-or { display: flex; align-items: center; gap: var(--sp-3); margin: var(--sp-1) 0 var(--sp-4); color: var(--c-ink-2); font-size: 15px; }
+.auth-widget { margin: 0; } .auth-widget:empty { display: none; } .auth-widget:has(iframe) { margin-bottom: var(--sp-3); }   /* пусте (лише script) — без відступу: інакше margin «просочувався» над кнопкою */
+.auth-hint { margin: var(--sp-2) 0 0; font-size: 14px; line-height: 1.45; color: var(--c-ink-2); text-align: center; text-wrap: balance; }
+.auth-or { display: flex; align-items: center; gap: var(--sp-3); margin: var(--sp-5) 0; color: var(--c-ink-2); font-size: 14px; }
 .auth-or::before, .auth-or::after { content: ''; flex: 1; height: 1px; background: var(--c-line); }
-.auth-sw { margin-bottom: var(--sp-5); max-width: none; }
-.auth-acts { display: flex; flex-direction: column; align-items: center; gap: var(--sp-2); margin-top: var(--sp-3); }
+.auth-card .field:first-child { margin-top: 0; }
+.auth-acts { display: flex; flex-direction: column; align-items: center; gap: var(--sp-2); margin-top: var(--sp-2); }
 .auth-acts .linkbtn { min-height: 44px; text-align: center; }
-.auth-note { margin: var(--sp-3) 0 0; text-align: center; }
-.auth-skip { text-align: center; margin: var(--sp-5) 0 0; }
-.auth-skip a { display: inline-flex; align-items: center; min-height: 44px; color: var(--c-ink-2); }
+.auth-note { margin: var(--sp-3) 0 0; }
+.auth-switch { margin: var(--sp-5) 0 0; text-align: center; color: var(--c-ink-2); }
+.auth-switch .linkbtn { min-height: 44px; padding: 0 4px; }
+.auth-skip { display: flex; flex-direction: column; align-items: center; margin: var(--sp-2) 0 0; text-align: center; }
+.auth-skip a { display: inline-flex; align-items: center; min-height: 44px; color: var(--c-ink); font-weight: 500; }
+.auth-skip .auth-hint { margin: 0; }
 .auth-sent .auth-h .ico { color: var(--c-ok); }
 .ctl-eye[aria-pressed="true"] { color: var(--c-ink); }
-@media (prefers-reduced-motion: reduce) { .auth-more .auth-chev { transition: none; } }
 
 
 /* 129-а (власник 13.11): історія тепла — один джерело на рядок; ХТМ окремим підписаним рядком, фільтр «Усе · Показання · ХТМ», два підсумки сезону */
@@ -2582,7 +2582,7 @@ details.mypay[open] > summary .mypay-amt, details.mypay[open] > summary .mypay-s
 .acct-del { margin: 16px 0 0; }
 .danger-link { color: var(--c-bad); }
 /* 154-а: «Увійти через Apple» — за правилами Apple: чорна кнопка (у темній темі — біла), лого Apple, системний шрифт; лише в застосунку iPhone */
-.auth-apple { padding: 16px; }
+.auth-apple { margin-bottom: var(--sp-3); }
 .apple-btn { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; min-height: 50px; padding: 0 16px; border: 0; border-radius: 12px;
   background: #000; color: #fff; font: 600 17px/1.2 -apple-system, system-ui, sans-serif; cursor: pointer; touch-action: manipulation; }
 .apple-btn.sm { width: auto; min-height: 44px; font-size: 16px; }
@@ -2590,27 +2590,32 @@ details.mypay[open] > summary .mypay-amt, details.mypay[open] > summary .mypay-s
 :root[data-theme="dark"] .apple-btn { background: #fff; color: #000; }
 
 /* =========================================================================================================================
-   «Глянець» — вигляд для всіх (161-а пробний, 162-а — за замовчуванням: власник 16.11 09:54 обрав «чорний», чорнила + червона «7» лише в знаку).
+   «Глянець» — вигляд для всіх (161-а пробний, 162-а — за замовчуванням «чорний»; 163-я — латунь: власник 16.11 11:50 «глибокий чорний — ні»).
    Референс — Trove («причесати стиль, зробити глянцевіше й стильніше; подобається читабельність і як розставлені акценти»). Принципи:
    цифри — головні (крупно, tabular, −0,02em, одиниця дрібніше й тихіше); підписи секцій — 13 px ВЕЛИКИМИ з розрядкою, приглушені (≥ 4,5:1);
-   ОДИН акцент — чорнила (головна кнопка, вибране, дії-посилання жирно); червоний — НЕ на сумах і посиланнях (читається як борг/помилка);
+   ОДИН акцент — латунь (головна кнопка, вибране, дії-посилання жирно; 162-а — чорнила); червоний — НЕ на сумах і посиланнях (читається як борг/помилка);
    поверхні — волосяна рамка + блик 1 px згори (без світіння й blur: скло власник заборонив 13.11); картки 20, рядки 14;
    значки видів — у плитках 36 px (фон — колір виду 13 %); головна кнопка — легкий перелив ±4 % одного тону.
    Селектори `:root:root` — та сама вага (0,2,0), що була в пробному `:root:root`: блок у кінці перекриває базові правила без перестановок.
    ========================================================================================================================= */
+/* 163-я (власник 16.11 11:50: «глибокий чорний — ні, пробуй латунь»): нейтралі — теплий сірий, акцент — латунь (корпус водоміра) з темним текстом;
+   темна — теплий графіт, не вугільна чорнота (фон #1A1815, картки #24211D) */
 :root:root {
-  --c-housing: #ECEFED; --c-line: #D9DFDB; --c-surface-2: #F4F6F5;
-  --gl-line: rgba(23, 33, 30, .08); --gl-hi: 0 0 0 transparent; --gl-sh: 0 1px 2px rgba(23, 33, 30, .05), 0 8px 24px -12px rgba(23, 33, 30, .12);
+  --c-housing: #EFEDE8; --c-surface-2: #F6F4F0; --c-ink: #1C1A16; --c-ink-2: #57534B; --c-line: #DEDAD2; --c-field-line: #857F74; --c-ink-hover: #36322B;
+  --gl-line: rgba(40, 32, 18, .09); --gl-hi: 0 0 0 transparent; --gl-sh: 0 1px 2px rgba(40, 32, 18, .05), 0 8px 24px -12px rgba(40, 32, 18, .14);
   --r-card: 20px; --r-row: 14px;
-  --sel-bg: var(--c-ink); --sel-on: var(--c-on-ink); --acc-fill: var(--c-ink); --acc-on: var(--c-on-ink);
-  --tint: var(--c-ink);
-  --sheen-t: rgba(255, 255, 255, .10); --sheen-b: rgba(0, 0, 0, .08);
+  --acc-fill: #B48A4A; --acc-on: #1E1608; --sel-bg: #B48A4A; --sel-on: #1E1608;
+  --tint: #7E5C22;
+  --sheen-t: rgba(255, 244, 220, .14); --sheen-b: rgba(60, 40, 10, .08);
+  --c-ghost-hover: rgba(40, 32, 18, .06); --c-tip-bg: #1C1A16;
 }
 :root:root[data-theme="dark"] {
-  --c-housing: #090C0B; --c-surface: #131917; --c-surface-2: #1A211E; --c-line: #26302C; --c-field-bg: #0D1210;
-  --gl-line: rgba(255, 255, 255, .07); --gl-hi: inset 0 1px 0 rgba(255, 255, 255, .06); --gl-sh: 0 1px 0 rgba(0, 0, 0, .4);
-  --sheen-t: rgba(255, 255, 255, .14); --sheen-b: rgba(0, 0, 0, .06);
-  --ch-dot-ring: #131917;
+  --c-housing: #1A1815; --c-surface: #24211D; --c-surface-2: #2C2924; --c-ink: #ECE9E3; --c-ink-2: #ABA69C; --c-line: #3A352E; --c-field-line: #8A8478; --c-field-bg: #1E1C18;
+  --c-on-ink: #1A1815; --c-ink-hover: #D6D1C7; --c-ghost-hover: rgba(236, 233, 227, .07);
+  --gl-line: rgba(255, 240, 210, .09); --gl-hi: inset 0 1px 0 rgba(255, 240, 210, .07); --gl-sh: 0 1px 0 rgba(0, 0, 0, .3);
+  --acc-fill: #CDA868; --acc-on: #17120A; --sel-bg: #CDA868; --sel-on: #17120A; --tint: #D8B676;
+  --sheen-t: rgba(255, 248, 230, .16); --sheen-b: rgba(40, 25, 0, .08); --c-tip-bg: #ECE9E3; --c-tip-ink: #1A1815;
+  --ch-ax: #ABA69C; --ch-vl: #ECE9E3; --ch-grid: #353029; --ch-dot-ring: #24211D; --wx-zero-bg: #2C2924; --spark-axis: #3A352E;
 }
 /* поверхні: волосяна рамка + блик згори; великі картки 20, рядки 14 */
 :root:root :is(.ucard, .panel, .pacc, .season, .ios-list, .pl-card, .hp-edit, .kpi) { border-radius: var(--r-card); }
@@ -4829,6 +4834,8 @@ h1 { font-size: 30px; letter-spacing: -.02em; line-height: 1.12; }
       login_skip: "Продовжити без входу", login_lead2: 'Показання будуть на всіх ваших пристроях. Без входу вони лишаються лише в цьому браузері.',
       login_tg_sub2: 'Без пароля: відкрийте нашого бота @{bot} і натисніть «Старт» — сервіс відкриється вже з входом.', login_tg_btn: 'Відкрити в Telegram',
       login_tg_more: 'Вже є акаунт з email?', login_or: 'або поштою', login_sw: 'Вхід чи новий акаунт', login_email_ph: 'наприклад, ivan@gmail.com',
+      login_lead3: 'Показання будуть на всіх ваших пристроях.', login_skip_note: 'Без входу показання лишаються лише в цьому браузері.', login_skip_note_app: 'Без входу — на цьому iPhone і в iCloud.',
+      login_tg_btn2: 'Увійти через Telegram', login_tg_sub3: 'Без пароля — бот @{bot} відкриє сервіс уже з входом.', login_no_acc: 'Немає акаунта?', login_new_t: 'Новий акаунт', login_have_acc: 'Вже є акаунт?',
       login_forgot: 'Забули пароль?', login_reg_note: 'Акаунт — лише для ваших показань на різних пристроях. Пошту не показуємо й не передаємо.',
       pass_show: 'Показати пароль', pass_hide: 'Сховати пароль',
       fg_title: 'Новий пароль поштою', fg_lead: 'Вкажіть email акаунта — надішлемо посилання, щоб задати новий пароль.', fg_btn: 'Надіслати посилання', fg_back: 'Повернутися до входу',
@@ -6195,6 +6202,8 @@ h1 { font-size: 30px; letter-spacing: -.02em; line-height: 1.12; }
       login_skip: "Продолжить без входа", login_lead2: 'Показания будут на всех ваших устройствах. Без входа они остаются только в этом браузере.',
       login_tg_sub2: 'Без пароля: откройте нашего бота @{bot} и нажмите «Старт» — сервис откроется уже со входом.', login_tg_btn: 'Открыть в Telegram',
       login_tg_more: 'Уже есть аккаунт с email?', login_or: 'или по почте', login_sw: 'Вход или новый аккаунт', login_email_ph: 'например, ivan@gmail.com',
+      login_lead3: 'Показания будут на всех ваших устройствах.', login_skip_note: 'Без входа показания остаются только в этом браузере.', login_skip_note_app: 'Без входа — на этом iPhone и в iCloud.',
+      login_tg_btn2: 'Войти через Telegram', login_tg_sub3: 'Без пароля — бот @{bot} откроет сервис уже со входом.', login_no_acc: 'Нет аккаунта?', login_new_t: 'Новый аккаунт', login_have_acc: 'Уже есть аккаунт?',
       login_forgot: 'Забыли пароль?', login_reg_note: 'Аккаунт — только для ваших показаний на разных устройствах. Почту не показываем и не передаём.',
       pass_show: 'Показать пароль', pass_hide: 'Скрыть пароль',
       fg_title: 'Новый пароль по почте', fg_lead: 'Укажите email аккаунта — пришлём ссылку, чтобы задать новый пароль.', fg_btn: 'Отправить ссылку', fg_back: 'Вернуться ко входу',
@@ -10052,7 +10061,7 @@ h1 { font-size: 30px; letter-spacing: -.02em; line-height: 1.12; }
   }
   function applyTheme() {
     // 162-а: «глянець» (чорнила) — вигляд для всіх; тло сторінки — --c-housing глянцю (styles.css, кінець файлу)
-    var th = resolvedTheme(), bg = th === 'dark' ? '#090C0B' : '#ECEFED';
+    var th = resolvedTheme(), bg = th === 'dark' ? '#1A1815' : '#EFEDE8';
     document.documentElement.setAttribute('data-theme', th);
     var mt = document.querySelector('meta[name="theme-color"]'); if (mt) mt.setAttribute('content', bg);
     var tw1 = window.Telegram && window.Telegram.WebApp; if (tw1 && tw1.initData) { try { tw1.setHeaderColor && tw1.setHeaderColor(bg); tw1.setBackgroundColor && tw1.setBackgroundColor(bg); } catch (e) { /* старый клиент */ } }
@@ -18371,40 +18380,41 @@ h1 { font-size: 30px; letter-spacing: -.02em; line-height: 1.12; }
     if (y.account) return Object.assign(base, { html: '<h1>' + esc(t('login_title')) + '</h1><p>' + esc(t('sync_server')) + '</p><a class="btn" href="#' + (S.meter ? 'home' : 'meter') + '">' + esc(t('next')) + '</a>' });
     if (y.mode !== 'server') return Object.assign(base, { html: '<h1>' + esc(t('login_title')) + '</h1>' + syncPanel() });
     var m = authMode, reg = m === 'register', bot = y._cfg && y._cfg.botUsername, skip = '<p class="auth-skip"><a href="#' + (S.onboarded ? 'home' : 'welcome') + '" data-key="login-skip">' + esc(t('login_skip')) + '</a></p>';
-    if (m === 'sent') return Object.assign(base, { html: '<h1>' + esc(t('login_title')) + '</h1><div class="auth"><section class="panel auth-sent" data-key="login-sent" role="status">' +
+    if (m === 'sent') return Object.assign(base, { html: '<div class="auth-page"><h1>' + esc(t('login_title')) + '</h1><div class="auth"><section class="panel auth-sent" data-key="login-sent" role="status">' +
       '<h2 class="auth-h">' + ico('mail', 22) + esc(t('fg_sent_t')) + '</h2><p>' + esc(t('fg_sent', { e: FG_EMAIL })) + '</p><p class="small muted">' + esc(t('fg_spam')) + '</p>' +
       '<div class="auth-acts"><button type="button" class="btn sec block" data-act="auth-mode" data-m="forgot" data-key="login-again">' + esc(t('fg_again')) + '</button>' +
-      '<button type="button" class="linkbtn" data-act="auth-mode" data-m="login" data-key="login-back">' + esc(t('fg_back')) + '</button></div></section></div>' });
-    if (m === 'forgot') return Object.assign(base, { html: '<h1>' + esc(t('login_title')) + '</h1><div class="auth">' +
+      '<button type="button" class="linkbtn" data-act="auth-mode" data-m="login" data-key="login-back">' + esc(t('fg_back')) + '</button></div></section></div></div>' });
+    if (m === 'forgot') return Object.assign(base, { html: '<div class="auth-page"><h1>' + esc(t('login_title')) + '</h1><div class="auth">' +
       '<form id="forgot-form" class="panel" novalidate data-key="forgot-form"><h2 class="auth-h">' + ico('mail', 22) + esc(t('fg_title')) + '</h2><p class="small muted">' + esc(t('fg_lead')) + '</p>' + emailField(FG_EMAIL) +
       '<div class="help block" id="forgot-err" role="alert"></div><button class="btn block" type="submit" data-key="forgot-submit">' + esc(t('fg_btn')) + '</button>' +
       '<div class="auth-acts"><button type="button" class="linkbtn" data-act="auth-mode" data-m="login" data-key="login-back">' + esc(t('fg_back')) + '</button></div>' +
-      (bot ? '<p class="small muted auth-note">' + esc(t('fg_tg')) + '</p>' : '') + '</form></div>' });
-    var tg = bot ? '<section class="panel auth-tg" data-key="login-telegram"><h2 class="auth-h">' + ico('send', 22) + esc(t('login_tg')) + '</h2><p class="small muted">' + esc(t('login_tg_sub2', { bot: bot })) + '</p>' +
-      '<div id="tg-widget" class="auth-widget" data-onauth="TeploTgAuth"></div>' +
-      '<a class="btn sec block" href="https://t.me/' + esc(bot) + '" target="_blank" rel="noopener" data-key="login-tg-open">' + ico('send', 20) + '<span>' + esc(t('login_tg_btn', { bot: bot })) + '</span></a>' +
-      '<details class="auth-more"><summary>' + esc(t('login_tg_more')) + ico('chev', 16, 'auth-chev') + '</summary><p class="small muted">' + esc(t('login_tg_same')) + '</p></details></section>' +
+      (bot ? '<p class="small muted auth-note">' + esc(t('fg_tg')) + '</p>' : '') + '</form></div></div>' });
+    // 163-я (власник 16.11: «як гівно, текст сам себе дублює»): одна картка — Telegram однією кнопкою з рядком під нею, «або поштою», форма;
+    // без перемикача «Увійти / Створити акаунт» (третє «Увійти» на екрані) — під карткою «Немає акаунта? Створити акаунт»; «без входу — лише тут» — біля «Продовжити без входу»
+    skip = '<p class="auth-skip"><a href="#' + (S.onboarded ? 'home' : 'welcome') + '" data-key="login-skip">' + esc(t('login_skip')) + '</a><span class="auth-hint">' + esc(t(APP ? 'login_skip_note_app' : 'login_skip_note')) + '</span></p>';
+    var tg = bot ? '<div class="auth-tg" data-key="login-telegram"><div id="tg-widget" class="auth-widget" data-onauth="TeploTgAuth"></div>' +
+      '<a class="btn sec block auth-tgbtn" href="https://t.me/' + esc(bot) + '" target="_blank" rel="noopener" data-key="login-tg-open">' + ico('send', 20) + '<span>' + esc(t('login_tg_btn2')) + '</span></a>' +
+      '<p class="auth-hint">' + esc(t('login_tg_sub3', { bot: bot })) + '</p></div>' +
       '<p class="auth-or" aria-hidden="true"><span>' + esc(t('login_or')) + '</span></p>' : '';
     // 154-а: у застосунку iPhone — «Увійти через Apple» першим (App Store 4.8: поруч із Telegram — рівноцінний вхід Apple)
-    var apple = APP ? '<section class="panel auth-apple" data-key="login-apple"><button type="button" class="apple-btn" data-act="apple-in" data-key="login-apple-btn"><span class="apple-logo" aria-hidden="true">\uF8FF</span><span>' +
-      esc(t('login_apple')) + '</span></button><p class="help block" id="apple-err" role="alert"></p></section>' : '';
-    return Object.assign(base, { html: '<h1>' + esc(t('login_title')) + '</h1><p class="auth-lead">' + esc(t(APP ? 'login_lead_app' : 'login_lead2')) + '</p><div class="auth">' + apple + tg +
-      '<form id="login-form" class="panel" data-mode="' + m + '" novalidate data-key="login-form">' +
-      '<div class="kind-sw auth-sw" role="group" aria-label="' + esc(t('login_sw')) + '">' +
-      '<button type="button" data-act="auth-mode" data-m="login" aria-pressed="' + !reg + '" data-key="login-mode-in">' + esc(t('login_btn')) + '</button>' +
-      '<button type="button" data-act="auth-mode" data-m="register" aria-pressed="' + reg + '" data-key="login-toggle">' + esc(t('register_btn')) + '</button></div>' +
-      authFields(reg ? 'new-password' : 'current-password') +
+    var apple = APP ? '<div class="auth-apple" data-key="login-apple"><button type="button" class="apple-btn" data-act="apple-in" data-key="login-apple-btn"><span class="apple-logo" aria-hidden="true"></span><span>' +
+      esc(t('login_apple')) + '</span></button><p class="help block" id="apple-err" role="alert"></p></div>' : '';
+    return Object.assign(base, { html: '<div class="auth-page"><h1>' + esc(t(reg ? 'login_new_t' : 'login_title')) + '</h1><p class="auth-lead">' + esc(t('login_lead3')) + '</p><div class="auth">' +
+      '<div class="panel auth-card">' + apple + tg +
+      '<form id="login-form" data-mode="' + m + '" novalidate data-key="login-form">' + authFields(reg ? 'new-password' : 'current-password') +
       '<div class="help block" id="login-err" role="alert"></div><button class="btn block" type="submit" data-key="login-submit">' + esc(reg ? t('register_btn') : t('login_btn')) + '</button>' +
-      (reg ? '<p class="small muted auth-note">' + esc(t('login_reg_note')) + '</p>' : '<div class="auth-acts"><button type="button" class="linkbtn" data-act="auth-mode" data-m="forgot" data-key="login-forgot">' + esc(t('login_forgot')) + '</button></div>') +
-      '</form>' + skip + '</div>' });
+      (reg ? '<p class="auth-hint auth-note">' + esc(t('login_reg_note')) + '</p>' : '<div class="auth-acts"><button type="button" class="linkbtn" data-act="auth-mode" data-m="forgot" data-key="login-forgot">' + esc(t('login_forgot')) + '</button></div>') +
+      '</form></div>' +
+      '<p class="auth-switch">' + esc(t(reg ? 'login_have_acc' : 'login_no_acc')) + ' <button type="button" class="linkbtn" data-act="auth-mode" data-m="' + (reg ? 'login' : 'register') + '" data-key="' + (reg ? 'login-mode-in' : 'login-toggle') + '">' +
+      esc(t(reg ? 'login_btn' : 'register_btn')) + '</button></p>' + skip + '</div></div>' });
   };
   /** Новий пароль за посиланням із листа: токен уже прибрано з адреси (routeName), щоб не потрапив у журнал. */
   V.reset = function () {
     var base = { screen: 'S13r', route: 'reset', bare: !S.onboarded, closeTo: S.onboarded ? 'home' : 'welcome' };
-    if (RS_EXPIRED || !RESET_TOK) return Object.assign(base, { html: '<h1>' + esc(t('rs_title')) + '</h1><div class="auth"><section class="panel" data-key="reset-expired" role="alert"><p>' + esc(t('err_reset_expired')) + '</p>' +
-      '<div class="auth-acts"><a class="btn block" href="#login" data-act="auth-mode" data-m="forgot" data-key="reset-new">' + esc(t('rs_new')) + '</a></div></section></div>' });
+    if (RS_EXPIRED || !RESET_TOK) return Object.assign(base, { html: '<div class="auth-page"><h1>' + esc(t('rs_title')) + '</h1><div class="auth"><section class="panel" data-key="reset-expired" role="alert"><p>' + esc(t('err_reset_expired')) + '</p>' +
+      '<div class="auth-acts"><a class="btn block" href="#login" data-act="auth-mode" data-m="forgot" data-key="reset-new">' + esc(t('rs_new')) + '</a></div></section></div></div>' });
     // режим синхронізації на свіжому завантаженні ще не відомий — форма не чекає на нього (сервер недоступний — скаже помилка запиту)
-    return Object.assign(base, { html: '<h1>' + esc(t('rs_title')) + '</h1><div class="auth"><form id="reset-form" class="panel" novalidate data-key="reset-form"><p class="small muted">' + esc(t('rs_lead')) + '</p>' +
+    return Object.assign(base, { html: '<div class="auth-page"><h1>' + esc(t('rs_title')) + '</h1><div class="auth"><form id="reset-form" class="panel" novalidate data-key="reset-form"><p class="small muted">' + esc(t('rs_lead')) + '</p>' +
       passField('r-pass', t('rs_pass'), 'new-password') + '<div class="help block" id="reset-err" role="alert"></div><button class="btn block" type="submit" data-key="reset-submit">' + esc(t('rs_btn')) + '</button></form></div>' });
   };
   function authError(j) {

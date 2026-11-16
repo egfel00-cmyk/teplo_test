@@ -2286,33 +2286,33 @@ details.wacc.wacc-btn > .acc-foot { margin: 0; padding: 12px 16px 16px; border-t
 .mono-more > summary { cursor: pointer; min-height: var(--tap); display: flex; align-items: center; color: var(--c-ink-2); }
 .mono-again { margin: 4px 0 0; text-align: center; }
 
-/* Вхід (123-я): одна спокійна колонка — Telegram першим, «або поштою», одна форма з перемикачем; поле пароля з «Показати» */
-.auth { max-width: 520px; }
-.auth-lead { max-width: 520px; }
+/* Вхід (123-я → 163-я, власник 16.11: «як гівно, текст сам себе дублює»): колонка 440 по центру (на 1280 не тулиться ліворуч), ОДНА картка —
+   Telegram однією кнопкою й рядком під нею, «або поштою», поля, головна кнопка, «Забули пароль?»; під карткою — «Немає акаунта? Створити акаунт»
+   і «Продовжити без входу» з тим, що буде без входу. Перемикача «Увійти / Створити» немає (третє «Увійти» на екрані). */
+.auth-page { max-width: 440px; margin: 0 auto; }
+.auth-page > h1 { margin-bottom: var(--sp-2); }
+@media (min-width: 960px) { .main:has(.auth-page) { margin-inline: auto; } }   /* .main на широкому — ліворуч (1040); вхід — по центру екрана */
+.auth { max-width: none; }
+.auth-lead { margin: 0 0 var(--sp-5); color: var(--c-ink-2); }
 .auth .panel { padding: var(--sp-5) var(--sp-4); }
+@media (min-width: 600px) { .auth .panel { padding: var(--sp-6); } }
 .auth-h { display: flex; align-items: center; gap: var(--sp-2); }
 .auth-h .ico { flex: none; color: var(--c-ink-2); }
-.auth-widget { margin: var(--sp-3) 0; } .auth-widget:empty { display: none; }
-.auth-tg .btn { margin-top: var(--sp-3); }
-.auth-more { margin-top: var(--sp-3); }
-.auth-more > summary { list-style: none; display: inline-flex; align-items: center; gap: var(--sp-1); min-height: 44px; cursor: pointer; color: var(--c-ink-2); font-size: 15px; }
-.auth-more > summary::-webkit-details-marker { display: none; }
-@media (hover: hover) { .auth-more > summary:hover { color: var(--c-ink); } }
-.auth-more > summary:focus-visible { outline: 3px solid var(--c-info); outline-offset: 2px; border-radius: 4px; }
-.auth-more .auth-chev { transition: transform 160ms var(--ease); }
-.auth-more[open] .auth-chev { transform: rotate(90deg); }
-.auth-more > p { margin: var(--sp-1) 0 0; }
-.auth-or { display: flex; align-items: center; gap: var(--sp-3); margin: var(--sp-1) 0 var(--sp-4); color: var(--c-ink-2); font-size: 15px; }
+.auth-widget { margin: 0; } .auth-widget:empty { display: none; } .auth-widget:has(iframe) { margin-bottom: var(--sp-3); }   /* пусте (лише script) — без відступу: інакше margin «просочувався» над кнопкою */
+.auth-hint { margin: var(--sp-2) 0 0; font-size: 14px; line-height: 1.45; color: var(--c-ink-2); text-align: center; text-wrap: balance; }
+.auth-or { display: flex; align-items: center; gap: var(--sp-3); margin: var(--sp-5) 0; color: var(--c-ink-2); font-size: 14px; }
 .auth-or::before, .auth-or::after { content: ''; flex: 1; height: 1px; background: var(--c-line); }
-.auth-sw { margin-bottom: var(--sp-5); max-width: none; }
-.auth-acts { display: flex; flex-direction: column; align-items: center; gap: var(--sp-2); margin-top: var(--sp-3); }
+.auth-card .field:first-child { margin-top: 0; }
+.auth-acts { display: flex; flex-direction: column; align-items: center; gap: var(--sp-2); margin-top: var(--sp-2); }
 .auth-acts .linkbtn { min-height: 44px; text-align: center; }
-.auth-note { margin: var(--sp-3) 0 0; text-align: center; }
-.auth-skip { text-align: center; margin: var(--sp-5) 0 0; }
-.auth-skip a { display: inline-flex; align-items: center; min-height: 44px; color: var(--c-ink-2); }
+.auth-note { margin: var(--sp-3) 0 0; }
+.auth-switch { margin: var(--sp-5) 0 0; text-align: center; color: var(--c-ink-2); }
+.auth-switch .linkbtn { min-height: 44px; padding: 0 4px; }
+.auth-skip { display: flex; flex-direction: column; align-items: center; margin: var(--sp-2) 0 0; text-align: center; }
+.auth-skip a { display: inline-flex; align-items: center; min-height: 44px; color: var(--c-ink); font-weight: 500; }
+.auth-skip .auth-hint { margin: 0; }
 .auth-sent .auth-h .ico { color: var(--c-ok); }
 .ctl-eye[aria-pressed="true"] { color: var(--c-ink); }
-@media (prefers-reduced-motion: reduce) { .auth-more .auth-chev { transition: none; } }
 
 
 /* 129-а (власник 13.11): історія тепла — один джерело на рядок; ХТМ окремим підписаним рядком, фільтр «Усе · Показання · ХТМ», два підсумки сезону */
@@ -2565,7 +2565,7 @@ details.mypay[open] > summary .mypay-amt, details.mypay[open] > summary .mypay-s
 .acct-del { margin: 16px 0 0; }
 .danger-link { color: var(--c-bad); }
 /* 154-а: «Увійти через Apple» — за правилами Apple: чорна кнопка (у темній темі — біла), лого Apple, системний шрифт; лише в застосунку iPhone */
-.auth-apple { padding: 16px; }
+.auth-apple { margin-bottom: var(--sp-3); }
 .apple-btn { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; min-height: 50px; padding: 0 16px; border: 0; border-radius: 12px;
   background: #000; color: #fff; font: 600 17px/1.2 -apple-system, system-ui, sans-serif; cursor: pointer; touch-action: manipulation; }
 .apple-btn.sm { width: auto; min-height: 44px; font-size: 16px; }
@@ -2573,27 +2573,32 @@ details.mypay[open] > summary .mypay-amt, details.mypay[open] > summary .mypay-s
 :root[data-theme="dark"] .apple-btn { background: #fff; color: #000; }
 
 /* =========================================================================================================================
-   «Глянець» — вигляд для всіх (161-а пробний, 162-а — за замовчуванням: власник 16.11 09:54 обрав «чорний», чорнила + червона «7» лише в знаку).
+   «Глянець» — вигляд для всіх (161-а пробний, 162-а — за замовчуванням «чорний»; 163-я — латунь: власник 16.11 11:50 «глибокий чорний — ні»).
    Референс — Trove («причесати стиль, зробити глянцевіше й стильніше; подобається читабельність і як розставлені акценти»). Принципи:
    цифри — головні (крупно, tabular, −0,02em, одиниця дрібніше й тихіше); підписи секцій — 13 px ВЕЛИКИМИ з розрядкою, приглушені (≥ 4,5:1);
-   ОДИН акцент — чорнила (головна кнопка, вибране, дії-посилання жирно); червоний — НЕ на сумах і посиланнях (читається як борг/помилка);
+   ОДИН акцент — латунь (головна кнопка, вибране, дії-посилання жирно; 162-а — чорнила); червоний — НЕ на сумах і посиланнях (читається як борг/помилка);
    поверхні — волосяна рамка + блик 1 px згори (без світіння й blur: скло власник заборонив 13.11); картки 20, рядки 14;
    значки видів — у плитках 36 px (фон — колір виду 13 %); головна кнопка — легкий перелив ±4 % одного тону.
    Селектори `:root:root` — та сама вага (0,2,0), що була в пробному `:root:root`: блок у кінці перекриває базові правила без перестановок.
    ========================================================================================================================= */
+/* 163-я (власник 16.11 11:50: «глибокий чорний — ні, пробуй латунь»): нейтралі — теплий сірий, акцент — латунь (корпус водоміра) з темним текстом;
+   темна — теплий графіт, не вугільна чорнота (фон #1A1815, картки #24211D) */
 :root:root {
-  --c-housing: #ECEFED; --c-line: #D9DFDB; --c-surface-2: #F4F6F5;
-  --gl-line: rgba(23, 33, 30, .08); --gl-hi: 0 0 0 transparent; --gl-sh: 0 1px 2px rgba(23, 33, 30, .05), 0 8px 24px -12px rgba(23, 33, 30, .12);
+  --c-housing: #EFEDE8; --c-surface-2: #F6F4F0; --c-ink: #1C1A16; --c-ink-2: #57534B; --c-line: #DEDAD2; --c-field-line: #857F74; --c-ink-hover: #36322B;
+  --gl-line: rgba(40, 32, 18, .09); --gl-hi: 0 0 0 transparent; --gl-sh: 0 1px 2px rgba(40, 32, 18, .05), 0 8px 24px -12px rgba(40, 32, 18, .14);
   --r-card: 20px; --r-row: 14px;
-  --sel-bg: var(--c-ink); --sel-on: var(--c-on-ink); --acc-fill: var(--c-ink); --acc-on: var(--c-on-ink);
-  --tint: var(--c-ink);
-  --sheen-t: rgba(255, 255, 255, .10); --sheen-b: rgba(0, 0, 0, .08);
+  --acc-fill: #B48A4A; --acc-on: #1E1608; --sel-bg: #B48A4A; --sel-on: #1E1608;
+  --tint: #7E5C22;
+  --sheen-t: rgba(255, 244, 220, .14); --sheen-b: rgba(60, 40, 10, .08);
+  --c-ghost-hover: rgba(40, 32, 18, .06); --c-tip-bg: #1C1A16;
 }
 :root:root[data-theme="dark"] {
-  --c-housing: #090C0B; --c-surface: #131917; --c-surface-2: #1A211E; --c-line: #26302C; --c-field-bg: #0D1210;
-  --gl-line: rgba(255, 255, 255, .07); --gl-hi: inset 0 1px 0 rgba(255, 255, 255, .06); --gl-sh: 0 1px 0 rgba(0, 0, 0, .4);
-  --sheen-t: rgba(255, 255, 255, .14); --sheen-b: rgba(0, 0, 0, .06);
-  --ch-dot-ring: #131917;
+  --c-housing: #1A1815; --c-surface: #24211D; --c-surface-2: #2C2924; --c-ink: #ECE9E3; --c-ink-2: #ABA69C; --c-line: #3A352E; --c-field-line: #8A8478; --c-field-bg: #1E1C18;
+  --c-on-ink: #1A1815; --c-ink-hover: #D6D1C7; --c-ghost-hover: rgba(236, 233, 227, .07);
+  --gl-line: rgba(255, 240, 210, .09); --gl-hi: inset 0 1px 0 rgba(255, 240, 210, .07); --gl-sh: 0 1px 0 rgba(0, 0, 0, .3);
+  --acc-fill: #CDA868; --acc-on: #17120A; --sel-bg: #CDA868; --sel-on: #17120A; --tint: #D8B676;
+  --sheen-t: rgba(255, 248, 230, .16); --sheen-b: rgba(40, 25, 0, .08); --c-tip-bg: #ECE9E3; --c-tip-ink: #1A1815;
+  --ch-ax: #ABA69C; --ch-vl: #ECE9E3; --ch-grid: #353029; --ch-dot-ring: #24211D; --wx-zero-bg: #2C2924; --spark-axis: #3A352E;
 }
 /* поверхні: волосяна рамка + блик згори; великі картки 20, рядки 14 */
 :root:root :is(.ucard, .panel, .pacc, .season, .ios-list, .pl-card, .hp-edit, .kpi) { border-radius: var(--r-card); }

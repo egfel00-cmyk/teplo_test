@@ -466,7 +466,7 @@
   }
   function applyTheme() {
     // 162-а: «глянець» (чорнила) — вигляд для всіх; тло сторінки — --c-housing глянцю (styles.css, кінець файлу)
-    var th = resolvedTheme(), bg = th === 'dark' ? '#090C0B' : '#ECEFED';
+    var th = resolvedTheme(), bg = th === 'dark' ? '#1A1815' : '#EFEDE8';
     document.documentElement.setAttribute('data-theme', th);
     var mt = document.querySelector('meta[name="theme-color"]'); if (mt) mt.setAttribute('content', bg);
     var tw1 = window.Telegram && window.Telegram.WebApp; if (tw1 && tw1.initData) { try { tw1.setHeaderColor && tw1.setHeaderColor(bg); tw1.setBackgroundColor && tw1.setBackgroundColor(bg); } catch (e) { /* старый клиент */ } }
@@ -8785,40 +8785,41 @@
     if (y.account) return Object.assign(base, { html: '<h1>' + esc(t('login_title')) + '</h1><p>' + esc(t('sync_server')) + '</p><a class="btn" href="#' + (S.meter ? 'home' : 'meter') + '">' + esc(t('next')) + '</a>' });
     if (y.mode !== 'server') return Object.assign(base, { html: '<h1>' + esc(t('login_title')) + '</h1>' + syncPanel() });
     var m = authMode, reg = m === 'register', bot = y._cfg && y._cfg.botUsername, skip = '<p class="auth-skip"><a href="#' + (S.onboarded ? 'home' : 'welcome') + '" data-key="login-skip">' + esc(t('login_skip')) + '</a></p>';
-    if (m === 'sent') return Object.assign(base, { html: '<h1>' + esc(t('login_title')) + '</h1><div class="auth"><section class="panel auth-sent" data-key="login-sent" role="status">' +
+    if (m === 'sent') return Object.assign(base, { html: '<div class="auth-page"><h1>' + esc(t('login_title')) + '</h1><div class="auth"><section class="panel auth-sent" data-key="login-sent" role="status">' +
       '<h2 class="auth-h">' + ico('mail', 22) + esc(t('fg_sent_t')) + '</h2><p>' + esc(t('fg_sent', { e: FG_EMAIL })) + '</p><p class="small muted">' + esc(t('fg_spam')) + '</p>' +
       '<div class="auth-acts"><button type="button" class="btn sec block" data-act="auth-mode" data-m="forgot" data-key="login-again">' + esc(t('fg_again')) + '</button>' +
-      '<button type="button" class="linkbtn" data-act="auth-mode" data-m="login" data-key="login-back">' + esc(t('fg_back')) + '</button></div></section></div>' });
-    if (m === 'forgot') return Object.assign(base, { html: '<h1>' + esc(t('login_title')) + '</h1><div class="auth">' +
+      '<button type="button" class="linkbtn" data-act="auth-mode" data-m="login" data-key="login-back">' + esc(t('fg_back')) + '</button></div></section></div></div>' });
+    if (m === 'forgot') return Object.assign(base, { html: '<div class="auth-page"><h1>' + esc(t('login_title')) + '</h1><div class="auth">' +
       '<form id="forgot-form" class="panel" novalidate data-key="forgot-form"><h2 class="auth-h">' + ico('mail', 22) + esc(t('fg_title')) + '</h2><p class="small muted">' + esc(t('fg_lead')) + '</p>' + emailField(FG_EMAIL) +
       '<div class="help block" id="forgot-err" role="alert"></div><button class="btn block" type="submit" data-key="forgot-submit">' + esc(t('fg_btn')) + '</button>' +
       '<div class="auth-acts"><button type="button" class="linkbtn" data-act="auth-mode" data-m="login" data-key="login-back">' + esc(t('fg_back')) + '</button></div>' +
-      (bot ? '<p class="small muted auth-note">' + esc(t('fg_tg')) + '</p>' : '') + '</form></div>' });
-    var tg = bot ? '<section class="panel auth-tg" data-key="login-telegram"><h2 class="auth-h">' + ico('send', 22) + esc(t('login_tg')) + '</h2><p class="small muted">' + esc(t('login_tg_sub2', { bot: bot })) + '</p>' +
-      '<div id="tg-widget" class="auth-widget" data-onauth="TeploTgAuth"></div>' +
-      '<a class="btn sec block" href="https://t.me/' + esc(bot) + '" target="_blank" rel="noopener" data-key="login-tg-open">' + ico('send', 20) + '<span>' + esc(t('login_tg_btn', { bot: bot })) + '</span></a>' +
-      '<details class="auth-more"><summary>' + esc(t('login_tg_more')) + ico('chev', 16, 'auth-chev') + '</summary><p class="small muted">' + esc(t('login_tg_same')) + '</p></details></section>' +
+      (bot ? '<p class="small muted auth-note">' + esc(t('fg_tg')) + '</p>' : '') + '</form></div></div>' });
+    // 163-я (власник 16.11: «як гівно, текст сам себе дублює»): одна картка — Telegram однією кнопкою з рядком під нею, «або поштою», форма;
+    // без перемикача «Увійти / Створити акаунт» (третє «Увійти» на екрані) — під карткою «Немає акаунта? Створити акаунт»; «без входу — лише тут» — біля «Продовжити без входу»
+    skip = '<p class="auth-skip"><a href="#' + (S.onboarded ? 'home' : 'welcome') + '" data-key="login-skip">' + esc(t('login_skip')) + '</a><span class="auth-hint">' + esc(t(APP ? 'login_skip_note_app' : 'login_skip_note')) + '</span></p>';
+    var tg = bot ? '<div class="auth-tg" data-key="login-telegram"><div id="tg-widget" class="auth-widget" data-onauth="TeploTgAuth"></div>' +
+      '<a class="btn sec block auth-tgbtn" href="https://t.me/' + esc(bot) + '" target="_blank" rel="noopener" data-key="login-tg-open">' + ico('send', 20) + '<span>' + esc(t('login_tg_btn2')) + '</span></a>' +
+      '<p class="auth-hint">' + esc(t('login_tg_sub3', { bot: bot })) + '</p></div>' +
       '<p class="auth-or" aria-hidden="true"><span>' + esc(t('login_or')) + '</span></p>' : '';
     // 154-а: у застосунку iPhone — «Увійти через Apple» першим (App Store 4.8: поруч із Telegram — рівноцінний вхід Apple)
-    var apple = APP ? '<section class="panel auth-apple" data-key="login-apple"><button type="button" class="apple-btn" data-act="apple-in" data-key="login-apple-btn"><span class="apple-logo" aria-hidden="true">\uF8FF</span><span>' +
-      esc(t('login_apple')) + '</span></button><p class="help block" id="apple-err" role="alert"></p></section>' : '';
-    return Object.assign(base, { html: '<h1>' + esc(t('login_title')) + '</h1><p class="auth-lead">' + esc(t(APP ? 'login_lead_app' : 'login_lead2')) + '</p><div class="auth">' + apple + tg +
-      '<form id="login-form" class="panel" data-mode="' + m + '" novalidate data-key="login-form">' +
-      '<div class="kind-sw auth-sw" role="group" aria-label="' + esc(t('login_sw')) + '">' +
-      '<button type="button" data-act="auth-mode" data-m="login" aria-pressed="' + !reg + '" data-key="login-mode-in">' + esc(t('login_btn')) + '</button>' +
-      '<button type="button" data-act="auth-mode" data-m="register" aria-pressed="' + reg + '" data-key="login-toggle">' + esc(t('register_btn')) + '</button></div>' +
-      authFields(reg ? 'new-password' : 'current-password') +
+    var apple = APP ? '<div class="auth-apple" data-key="login-apple"><button type="button" class="apple-btn" data-act="apple-in" data-key="login-apple-btn"><span class="apple-logo" aria-hidden="true"></span><span>' +
+      esc(t('login_apple')) + '</span></button><p class="help block" id="apple-err" role="alert"></p></div>' : '';
+    return Object.assign(base, { html: '<div class="auth-page"><h1>' + esc(t(reg ? 'login_new_t' : 'login_title')) + '</h1><p class="auth-lead">' + esc(t('login_lead3')) + '</p><div class="auth">' +
+      '<div class="panel auth-card">' + apple + tg +
+      '<form id="login-form" data-mode="' + m + '" novalidate data-key="login-form">' + authFields(reg ? 'new-password' : 'current-password') +
       '<div class="help block" id="login-err" role="alert"></div><button class="btn block" type="submit" data-key="login-submit">' + esc(reg ? t('register_btn') : t('login_btn')) + '</button>' +
-      (reg ? '<p class="small muted auth-note">' + esc(t('login_reg_note')) + '</p>' : '<div class="auth-acts"><button type="button" class="linkbtn" data-act="auth-mode" data-m="forgot" data-key="login-forgot">' + esc(t('login_forgot')) + '</button></div>') +
-      '</form>' + skip + '</div>' });
+      (reg ? '<p class="auth-hint auth-note">' + esc(t('login_reg_note')) + '</p>' : '<div class="auth-acts"><button type="button" class="linkbtn" data-act="auth-mode" data-m="forgot" data-key="login-forgot">' + esc(t('login_forgot')) + '</button></div>') +
+      '</form></div>' +
+      '<p class="auth-switch">' + esc(t(reg ? 'login_have_acc' : 'login_no_acc')) + ' <button type="button" class="linkbtn" data-act="auth-mode" data-m="' + (reg ? 'login' : 'register') + '" data-key="' + (reg ? 'login-mode-in' : 'login-toggle') + '">' +
+      esc(t(reg ? 'login_btn' : 'register_btn')) + '</button></p>' + skip + '</div></div>' });
   };
   /** Новий пароль за посиланням із листа: токен уже прибрано з адреси (routeName), щоб не потрапив у журнал. */
   V.reset = function () {
     var base = { screen: 'S13r', route: 'reset', bare: !S.onboarded, closeTo: S.onboarded ? 'home' : 'welcome' };
-    if (RS_EXPIRED || !RESET_TOK) return Object.assign(base, { html: '<h1>' + esc(t('rs_title')) + '</h1><div class="auth"><section class="panel" data-key="reset-expired" role="alert"><p>' + esc(t('err_reset_expired')) + '</p>' +
-      '<div class="auth-acts"><a class="btn block" href="#login" data-act="auth-mode" data-m="forgot" data-key="reset-new">' + esc(t('rs_new')) + '</a></div></section></div>' });
+    if (RS_EXPIRED || !RESET_TOK) return Object.assign(base, { html: '<div class="auth-page"><h1>' + esc(t('rs_title')) + '</h1><div class="auth"><section class="panel" data-key="reset-expired" role="alert"><p>' + esc(t('err_reset_expired')) + '</p>' +
+      '<div class="auth-acts"><a class="btn block" href="#login" data-act="auth-mode" data-m="forgot" data-key="reset-new">' + esc(t('rs_new')) + '</a></div></section></div></div>' });
     // режим синхронізації на свіжому завантаженні ще не відомий — форма не чекає на нього (сервер недоступний — скаже помилка запиту)
-    return Object.assign(base, { html: '<h1>' + esc(t('rs_title')) + '</h1><div class="auth"><form id="reset-form" class="panel" novalidate data-key="reset-form"><p class="small muted">' + esc(t('rs_lead')) + '</p>' +
+    return Object.assign(base, { html: '<div class="auth-page"><h1>' + esc(t('rs_title')) + '</h1><div class="auth"><form id="reset-form" class="panel" novalidate data-key="reset-form"><p class="small muted">' + esc(t('rs_lead')) + '</p>' +
       passField('r-pass', t('rs_pass'), 'new-password') + '<div class="help block" id="reset-err" role="alert"></div><button class="btn block" type="submit" data-key="reset-submit">' + esc(t('rs_btn')) + '</button></form></div>' });
   };
   function authError(j) {
