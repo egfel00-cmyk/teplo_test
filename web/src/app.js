@@ -464,18 +464,10 @@
     var tw0 = window.Telegram && window.Telegram.WebApp; if (tw0 && tw0.initData && tw0.colorScheme) return tw0.colorScheme === 'dark' ? 'dark' : 'light';
     return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
   }
-  // 161-а: пробний «глянець» (власник 16.11: «глянцевіше й стильніше», референс Trove) — два акценти на вибір: ink (чорнила + червона «7») і brass (латунь).
-  // Поки власник не обрав — лише за параметром: ?skin=ink|brass (запам'ятовується на цьому пристрої), ?skin=off — повернути звичайний; демо CI — S.skin
-  var SKIN0 = (function () {
-    var m = /[?&]skin=(ink|brass|off)(?=&|$)/.exec(location.search), v = '';
-    try { if (m) { if (m[1] === 'off') localStorage.removeItem('teplo.skin'); else localStorage.setItem('teplo.skin', m[1]); } v = localStorage.getItem('teplo.skin') || ''; } catch (e) { v = m && m[1] !== 'off' ? m[1] : ''; }
-    return /^(ink|brass)$/.test(v) ? v : '';
-  })(), SKIN = '';
   function applyTheme() {
-    SKIN = SKIN0 || (/^(ink|brass)$/.test(S.skin || '') ? S.skin : '');   // демо CI приходить через TeploHost.restore — уже після старту
-    var th = resolvedTheme(), bg = th === 'dark' ? (SKIN === 'brass' ? '#0B0A08' : SKIN ? '#090C0B' : '#0E1412') : (SKIN === 'brass' ? '#EFEDE8' : SKIN ? '#ECEFED' : '#E9EEEB');
+    // 162-а: «глянець» (чорнила) — вигляд для всіх; тло сторінки — --c-housing глянцю (styles.css, кінець файлу)
+    var th = resolvedTheme(), bg = th === 'dark' ? '#090C0B' : '#ECEFED';
     document.documentElement.setAttribute('data-theme', th);
-    if (SKIN) document.documentElement.setAttribute('data-skin', SKIN); else document.documentElement.removeAttribute('data-skin');
     var mt = document.querySelector('meta[name="theme-color"]'); if (mt) mt.setAttribute('content', bg);
     var tw1 = window.Telegram && window.Telegram.WebApp; if (tw1 && tw1.initData) { try { tw1.setHeaderColor && tw1.setHeaderColor(bg); tw1.setBackgroundColor && tw1.setBackgroundColor(bg); } catch (e) { /* старый клиент */ } }
   }

@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#E9EEEB">
+<meta name="theme-color" content="#ECEFED">
 <meta name="color-scheme" content="light dark">
 <link rel="icon" href="favicon.ico" sizes="48x48">
 <link rel="icon" href="web/icon/favicon.svg" type="image/svg+xml">
@@ -2609,113 +2609,97 @@ details.mypay[open] > summary .mypay-amt, details.mypay[open] > summary .mypay-s
 :root[data-theme="dark"] .apple-btn { background: #fff; color: #000; }
 
 /* =========================================================================================================================
-   161-а: «глянець» — ПРОБНИЙ вигляд (власник 16.11: «причесати стиль, зробити глянцевіше й стильніше; подобається читабельність і як розставлені
-   акценти» — референс Trove). Лише за :root[data-skin] (?skin=ink|brass, див. SKIN в app.js); без нього сайт — як був. Принципи:
+   «Глянець» — вигляд для всіх (161-а пробний, 162-а — за замовчуванням: власник 16.11 09:54 обрав «чорний», чорнила + червона «7» лише в знаку).
+   Референс — Trove («причесати стиль, зробити глянцевіше й стильніше; подобається читабельність і як розставлені акценти»). Принципи:
    цифри — головні (крупно, tabular, −0,02em, одиниця дрібніше й тихіше); підписи секцій — 13 px ВЕЛИКИМИ з розрядкою, приглушені (≥ 4,5:1);
-   ОДИН акцент скупо (головна кнопка, вибране, дії-посилання, ключове друге число); поверхні — волосяна рамка + блик 1 px згори (без світіння й blur:
-   скло власник заборонив 13.11); картки 20, рядки 14; значки видів — у плитках 36 px (фон — колір виду 13 %); головна кнопка — легкий перелив ±4 % одного тону.
-   Два акценти на вибір: ink — чорнила + червона «7» барабана (як у логотипі), brass — латунь (корпус водоміра).
+   ОДИН акцент — чорнила (головна кнопка, вибране, дії-посилання жирно); червоний — НЕ на сумах і посиланнях (читається як борг/помилка);
+   поверхні — волосяна рамка + блик 1 px згори (без світіння й blur: скло власник заборонив 13.11); картки 20, рядки 14;
+   значки видів — у плитках 36 px (фон — колір виду 13 %); головна кнопка — легкий перелив ±4 % одного тону.
+   Селектори `:root:root` — та сама вага (0,2,0), що була в пробному `:root:root`: блок у кінці перекриває базові правила без перестановок.
    ========================================================================================================================= */
-:root[data-skin] {
+:root:root {
   --c-housing: #ECEFED; --c-line: #D9DFDB; --c-surface-2: #F4F6F5;
   --gl-line: rgba(23, 33, 30, .08); --gl-hi: 0 0 0 transparent; --gl-sh: 0 1px 2px rgba(23, 33, 30, .05), 0 8px 24px -12px rgba(23, 33, 30, .12);
   --r-card: 20px; --r-row: 14px;
   --sel-bg: var(--c-ink); --sel-on: var(--c-on-ink); --acc-fill: var(--c-ink); --acc-on: var(--c-on-ink);
-  --tint: #B8241B; --num2: var(--tint);
+  --tint: var(--c-ink);
   --sheen-t: rgba(255, 255, 255, .10); --sheen-b: rgba(0, 0, 0, .08);
 }
-:root[data-skin][data-theme="dark"] {
+:root:root[data-theme="dark"] {
   --c-housing: #090C0B; --c-surface: #131917; --c-surface-2: #1A211E; --c-line: #26302C; --c-field-bg: #0D1210;
   --gl-line: rgba(255, 255, 255, .07); --gl-hi: inset 0 1px 0 rgba(255, 255, 255, .06); --gl-sh: 0 1px 0 rgba(0, 0, 0, .4);
-  --tint: #FF7A6E; --sheen-t: rgba(255, 255, 255, .14); --sheen-b: rgba(0, 0, 0, .06);
+  --sheen-t: rgba(255, 255, 255, .14); --sheen-b: rgba(0, 0, 0, .06);
   --ch-dot-ring: #131917;
 }
-/* латунь: теплий сірий замість сіро-зеленого, нейтральні чорнила; кнопка й вибране — латунь із темним текстом */
-:root[data-skin="brass"] {
-  --c-housing: #EFEDE8; --c-surface-2: #F6F4F0; --c-ink: #1C1A16; --c-ink-2: #57534B; --c-line: #DEDAD2; --c-field-line: #857F74; --c-ink-hover: #36322B;
-  --gl-line: rgba(40, 32, 18, .09); --gl-sh: 0 1px 2px rgba(40, 32, 18, .05), 0 8px 24px -12px rgba(40, 32, 18, .14);
-  --acc-fill: #B48A4A; --acc-on: #1E1608; --sel-bg: #B48A4A; --sel-on: #1E1608;
-  --tint: #7E5C22; --num2: #7E5C22; --sheen-t: rgba(255, 244, 220, .14); --sheen-b: rgba(60, 40, 10, .08);
-  --c-ghost-hover: rgba(40, 32, 18, .06); --c-tip-bg: #1C1A16;
-}
-:root[data-skin="brass"][data-theme="dark"] {
-  --c-housing: #0B0A08; --c-surface: #161411; --c-surface-2: #1D1A16; --c-ink: #ECE9E3; --c-ink-2: #A39E94; --c-line: #2C2822; --c-field-line: #857F74; --c-field-bg: #0F0D0B;
-  --c-on-ink: #0B0A08; --c-ink-hover: #D6D1C7; --c-ghost-hover: rgba(236, 233, 227, .07);
-  --gl-line: rgba(255, 240, 210, .08); --gl-hi: inset 0 1px 0 rgba(255, 240, 210, .07);
-  --acc-fill: #CDA868; --acc-on: #17120A; --sel-bg: #CDA868; --sel-on: #17120A; --tint: #D8B676; --num2: #D8B676;
-  --sheen-t: rgba(255, 248, 230, .16); --sheen-b: rgba(40, 25, 0, .08); --c-tip-bg: #ECE9E3; --ch-dot-ring: #161411;
-}
-
 /* поверхні: волосяна рамка + блик згори; великі картки 20, рядки 14 */
-:root[data-skin] :is(.ucard, .panel, .pacc, .season, .ios-list, .pl-card, .hp-edit, .kpi) { border-radius: var(--r-card); }
-:root[data-skin] :is(.ucard, .pacc, .season, .pl-card, .hp-edit) { border-color: var(--gl-line); box-shadow: var(--gl-hi), var(--gl-sh); }
-:root[data-skin] .panel:not(.where):not(.mhist):not(.ru-base) { border: 1px solid var(--gl-line); box-shadow: var(--gl-hi), var(--gl-sh); }
-:root[data-skin] .ios-list { border: 1px solid var(--gl-line); box-shadow: var(--gl-hi), var(--gl-sh); }
-:root[data-skin] :is(details.wacc.wacc-btn, .panel.mhist) { border-radius: var(--r-card); box-shadow: var(--gl-hi), var(--gl-sh); }
-:root[data-skin] .panel.mhist { --bt-edge: var(--gl-line); }
-:root[data-skin] .ucard-main { border-radius: var(--r-card); }
-:root[data-skin] .pacc-body .ucard { box-shadow: var(--gl-hi); }
-:root[data-skin] .ios-list > li + li .ios-row { box-shadow: none; position: relative; }
-:root[data-skin] .ios-list > li + li .ios-row::before { content: ''; position: absolute; left: 66px; right: 0; top: 0; height: 1px; background: var(--c-line); }   /* лінія від тексту, як у iOS */
-:root[data-skin] .phd { border-radius: var(--r-card); border-color: var(--gl-line); }
-:root[data-skin] :is(.hrow, .list > li) { border-radius: var(--r-row); }
+:root:root :is(.ucard, .panel, .pacc, .season, .ios-list, .pl-card, .hp-edit, .kpi) { border-radius: var(--r-card); }
+:root:root :is(.ucard, .pacc, .season, .pl-card, .hp-edit) { border-color: var(--gl-line); box-shadow: var(--gl-hi), var(--gl-sh); }
+:root:root .panel:not(.where):not(.mhist):not(.ru-base) { border: 1px solid var(--gl-line); box-shadow: var(--gl-hi), var(--gl-sh); }
+:root:root .ios-list { border: 1px solid var(--gl-line); box-shadow: var(--gl-hi), var(--gl-sh); }
+:root:root :is(details.wacc.wacc-btn, .panel.mhist) { border-radius: var(--r-card); box-shadow: var(--gl-hi), var(--gl-sh); }
+:root:root .panel.mhist { --bt-edge: var(--gl-line); }
+:root:root .ucard-main { border-radius: var(--r-card); }
+:root:root .pacc-body .ucard { box-shadow: var(--gl-hi); }
+:root:root .ios-list > li + li .ios-row { box-shadow: none; position: relative; }
+:root:root .ios-list > li + li .ios-row::before { content: ''; position: absolute; left: 66px; right: 0; top: 0; height: 1px; background: var(--c-line); }   /* лінія від тексту, як у iOS */
+:root:root .phd { border-radius: var(--r-card); border-color: var(--gl-line); }
+:root:root :is(.hrow, .list > li) { border-radius: var(--r-row); }
 
-/* заголовки екранів — крупніше й щільніше */
-:root[data-skin] h1 { font-size: 30px; letter-spacing: -.02em; line-height: 1.12; }
-:root[data-skin] :is(.mbox-t b, .pacc-t b, .hp-name) { letter-spacing: -.01em; }
+/* заголовки екранів — крупніше й щільніше. Вага (0,0,1), як у базового h1: класові (.lp-h1 лендингу, .wiz h1 кроків і стиск під клавіатуру kb-c1…3,
+   .welcome, .tgw-b) — свої розміри, без цього лендинг і кроки вводу ставали 30 px */
+h1 { font-size: 30px; letter-spacing: -.02em; line-height: 1.12; }
+:root:root :is(.mbox-t b, .pacc-t b, .hp-name) { letter-spacing: -.01em; }
 
 /* підписи секцій — ВЕЛИКИМИ, з розрядкою, тихо (13 px: дрібніше пожилим не опускаємось) */
-:root[data-skin] :is(.ios-sh, .ru-q i, .ru-m i, .lbl-cap) { font-size: 13px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--c-ink-2); }
-:root[data-skin] .ios-sh { margin: 0 0 8px 16px; }
+:root:root :is(.ios-sh, .ru-q i, .ru-m i, .lbl-cap) { font-size: 13px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--c-ink-2); }
+:root:root .ios-sh { margin: 0 0 8px 16px; }
 
 /* цифри — головні */
-:root[data-skin] .hrow :is(.hr-q, .hr-m) { font-size: 22px; }
-:root[data-skin] .hrow :is(.hr-q, .hr-m) small { font-size: 13px; font-weight: 500; letter-spacing: 0; margin-left: 2px; }
-:root[data-skin] .hrow .hr-m, :root[data-skin] .hrow .hr-m small { color: var(--num2); }
-:root[data-skin] .ru :is(.ru-q, .ru-m) b { font-size: 40px; letter-spacing: -.025em; }
-:root[data-skin] .ru .ru-m b { color: var(--num2); }
-:root[data-skin] .ru :is(.ru-q, .ru-m) span { font-size: 15px; font-weight: 500; }
-:root[data-skin] :is(.kpi-q, .kpi-m) b { letter-spacing: -.025em; }
-:root[data-skin] .kpi-m b, :root[data-skin] .mypay-amt { color: var(--num2); }
-:root[data-skin] :is(.kpi-q, .kpi-m) span { font-weight: 500; }
-:root[data-skin] .mhist-n { font-variant-numeric: tabular-nums; }
+:root:root .hrow :is(.hr-q, .hr-m) { font-size: 22px; }
+:root:root .hrow :is(.hr-q, .hr-m) small { font-size: 13px; font-weight: 500; letter-spacing: 0; margin-left: 2px; }
+:root:root .ru :is(.ru-q, .ru-m) b { font-size: 40px; letter-spacing: -.025em; }
+:root:root .ru :is(.ru-q, .ru-m) span { font-size: 15px; font-weight: 500; }
+:root:root :is(.kpi-q, .kpi-m) b { letter-spacing: -.025em; }
+:root:root :is(.kpi-q, .kpi-m) span { font-weight: 500; }
+:root:root .mhist-n { font-variant-numeric: tabular-nums; }
 
 /* значки видів і рядків налаштувань — у плитках 36 px: фон — колір значка 13 %, значок — його колір */
-:root[data-skin] :is(.ucard-top > .ico, .mbox-h > .ico) { box-sizing: content-box; padding: 8px; border-radius: 10px; background: color-mix(in srgb, currentColor 13%, transparent); }
-:root[data-skin] .ucard-top { gap: 12px; }
-:root[data-skin] .ios-row .ios-ico { box-sizing: content-box; padding: 7px; border-radius: 10px; color: var(--c-ink-2); background: color-mix(in srgb, currentColor 12%, transparent); }
-:root[data-skin] [data-key="pgr-water"] .ios-ico { color: var(--c-return); } :root[data-skin] [data-key="pgr-heat"] .ios-ico { color: var(--c-supply); }
-:root[data-skin] .ios-row { min-height: 56px; }
-:root[data-skin] .ico.bt-ico { border: 0; padding: 7px; background: color-mix(in srgb, currentColor 10%, transparent); }
+:root:root :is(.ucard-top > .ico, .mbox-h > .ico) { box-sizing: content-box; padding: 8px; border-radius: 10px; background: color-mix(in srgb, currentColor 13%, transparent); }
+:root:root .ucard-top { gap: 12px; }
+:root:root .ios-row .ios-ico { box-sizing: content-box; padding: 7px; border-radius: 10px; color: var(--c-ink-2); background: color-mix(in srgb, currentColor 12%, transparent); }
+:root:root [data-key="pgr-water"] .ios-ico { color: var(--c-return); } :root:root [data-key="pgr-heat"] .ios-ico { color: var(--c-supply); }
+:root:root .ios-row { min-height: 56px; }
+:root:root .ico.bt-ico { border: 0; padding: 7px; background: color-mix(in srgb, currentColor 10%, transparent); }
 
 /* ОДИН акцент: головна кнопка (заливка + перелив ±4 % одного тону, блик 1 px, без світіння) */
-:root[data-skin] .btn:not(.sec):not(.ghost):not(.ter):not(.danger):not(.mono-btn):not([disabled]) {
+:root:root .btn:not(.sec):not(.ghost):not(.ter):not(.danger):not(.mono-btn):not([disabled]) {
   background: linear-gradient(180deg, var(--sheen-t), transparent 55%, var(--sheen-b)) var(--acc-fill); border-color: transparent; color: var(--acc-on);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, .16), 0 1px 2px rgba(0, 0, 0, .14); }
-:root[data-skin] .btn:not(.sec):not(.ghost):not(.ter):not(.danger):not(.mono-btn):not([disabled]):hover { background-color: color-mix(in srgb, var(--acc-fill) 90%, var(--c-ink-2)); }
-:root[data-skin] .btn.sec { border-color: var(--gl-line); border-width: 1px; box-shadow: var(--gl-hi), 0 1px 2px rgba(0, 0, 0, .06); }
-:root[data-skin] .btn.sec:hover { border-color: var(--c-field-line); }
-:root[data-skin] .ucard-add { border: 1px solid var(--gl-line); background: var(--c-surface-2); box-shadow: var(--gl-hi), 0 1px 2px rgba(0, 0, 0, .06); }
-:root[data-skin] .ucard-add.hot, :root[data-skin] .ucard-addm .am-plus { background: linear-gradient(180deg, var(--sheen-t), transparent 55%, var(--sheen-b)) var(--acc-fill); color: var(--acc-on); border-color: transparent; }
+:root:root .btn:not(.sec):not(.ghost):not(.ter):not(.danger):not(.mono-btn):not([disabled]):hover { background-color: color-mix(in srgb, var(--acc-fill) 90%, var(--c-ink-2)); }
+:root:root .btn.sec { border-color: var(--gl-line); border-width: 1px; box-shadow: var(--gl-hi), 0 1px 2px rgba(0, 0, 0, .06); }
+:root:root .btn.sec:hover { border-color: var(--c-field-line); }
+:root:root .ucard-add { border: 1px solid var(--gl-line); background: var(--c-surface-2); box-shadow: var(--gl-hi), 0 1px 2px rgba(0, 0, 0, .06); }
+:root:root .ucard-add.hot, :root:root .ucard-addm .am-plus { background: linear-gradient(180deg, var(--sheen-t), transparent 55%, var(--sheen-b)) var(--acc-fill); color: var(--acc-on); border-color: transparent; }
 
 /* вибране: таб меню, сегменти */
-:root[data-skin] .nav { border-top-color: var(--gl-line); box-shadow: none; }
-:root[data-skin] .nav a[aria-current="page"] svg { background: var(--sel-bg); color: var(--sel-on); }
-:root[data-skin] .seg-ctl button[aria-pressed="true"] { background: var(--sel-bg); color: var(--sel-on); }
-:root[data-skin] .kind-sw { border: 1px solid var(--gl-line); background: color-mix(in srgb, var(--c-ink) 6%, var(--c-surface)); }
-:root[data-skin] .kind-sw button[aria-pressed="true"] { box-shadow: var(--gl-hi), 0 1px 3px rgba(0, 0, 0, .14), inset 0 0 0 1px var(--gl-line); }
-@media (min-width: 960px) { :root[data-skin] .nav a[aria-current="page"] { background: var(--c-surface); box-shadow: var(--gl-hi), var(--gl-sh); } :root[data-skin] .nav a[aria-current="page"] svg { background: none; color: var(--c-ink); } }
+:root:root .nav { border-top-color: var(--gl-line); box-shadow: none; }
+:root:root .nav a[aria-current="page"] svg { background: var(--sel-bg); color: var(--sel-on); }
+:root:root .seg-ctl button[aria-pressed="true"] { background: var(--sel-bg); color: var(--sel-on); }
+:root:root .kind-sw { border: 1px solid var(--gl-line); background: color-mix(in srgb, var(--c-ink) 6%, var(--c-surface)); }
+:root:root .kind-sw button[aria-pressed="true"] { box-shadow: var(--gl-hi), 0 1px 3px rgba(0, 0, 0, .14), inset 0 0 0 1px var(--gl-line); }
+@media (min-width: 960px) { :root:root .nav a[aria-current="page"] { background: var(--c-surface); box-shadow: var(--gl-hi), var(--gl-sh); } :root:root .nav a[aria-current="page"] svg { background: none; color: var(--c-ink); } }
 
-/* дії-посилання — акцентом, без підкреслення (у тексті абзацу посилання лишаються підкресленими) */
-:root[data-skin] :is(.linkbtn, .hp-addr-add, .hp-tools a, .mbox-set-link a, .mbox-links a, .pl-set, .my-link .linkbtn) { color: var(--tint); text-decoration: none; font-weight: 600; }
-:root[data-skin] .banner :is(a, .linkbtn) { color: inherit; text-decoration: underline; font-weight: inherit; }
+/* дії-посилання — чорнилами жирно, без підкреслення (окремим рядком дію видно й так); у тексті абзацу й плашок — підкреслені */
+:root:root :is(.linkbtn, .hp-addr-add, .hp-tools a, .mbox-set-link a, .mbox-links a, .pl-set, .my-link .linkbtn) { color: var(--tint); text-decoration: none; font-weight: 600; }
+:root:root .banner :is(a, .linkbtn) { color: inherit; text-decoration: underline; font-weight: inherit; }
 /* інфо-плашка — поверхнею, як картка: колір лишається у значку (плитка), текст — чорнилами; warn/bad/ok — як були (статус) */
-:root[data-skin] .banner:not(.warn):not(.bad):not(.ok) { background: var(--c-surface); color: var(--c-ink); border: 1px solid var(--gl-line); border-radius: var(--r-card); box-shadow: var(--gl-hi), var(--gl-sh); padding: 14px 16px; }
-:root[data-skin] .banner:not(.warn):not(.bad):not(.ok) > svg:first-child { box-sizing: content-box; padding: 7px; margin: -4px 0 0 -2px; border-radius: 10px; color: var(--c-info); background: color-mix(in srgb, currentColor 12%, transparent); }
-:root[data-skin] .banner:not(.warn):not(.bad):not(.ok) :is(a, .linkbtn) { color: var(--tint); text-decoration: none; font-weight: 600; }
-:root[data-skin] :is(.linkbtn, .hp-addr-add):hover { text-decoration: underline; }
+:root:root .banner:not(.warn):not(.bad):not(.ok) { background: var(--c-surface); color: var(--c-ink); border: 1px solid var(--gl-line); border-radius: var(--r-card); box-shadow: var(--gl-hi), var(--gl-sh); padding: 14px 16px; }
+:root:root .banner:not(.warn):not(.bad):not(.ok) > svg:first-child { box-sizing: content-box; padding: 7px; margin: -4px 0 0 -2px; border-radius: 10px; color: var(--c-info); background: color-mix(in srgb, currentColor 12%, transparent); }
+:root:root .banner:not(.warn):not(.bad):not(.ok) :is(a, .linkbtn) { color: var(--tint); font-weight: 600; text-decoration: underline; text-decoration-thickness: 1.5px; text-underline-offset: 3px; }   /* поруч жирний текст плашки — дію видно підкресленням, не кольором */
+:root:root :is(.linkbtn, .hp-addr-add):hover { text-decoration: underline; }
+:root:root a:not([class]) { color: var(--c-ink); text-decoration-thickness: 1px; }   /* посилання в тексті — чорнилами з підкресленням (синій — колір холодної води, не другий акцент) */
 /* темна: картка ледь світліша згори (світло падає зверху — те саме, що блик 1 px, без світіння) */
-:root[data-skin][data-theme="dark"] :is(.ucard, .pacc, .ios-list, .pl-card, .season, .panel:not(.where):not(.mhist):not(.ru-base)) { background-image: linear-gradient(180deg, rgba(255, 255, 255, .025), transparent 120px); }
+:root:root[data-theme="dark"] :is(.ucard, .pacc, .ios-list, .pl-card, .season, .panel:not(.where):not(.mhist):not(.ru-base)) { background-image: linear-gradient(180deg, rgba(255, 255, 255, .025), transparent 120px); }
 
 </style>
 <style>.top { padding-top: max(12px, env(safe-area-inset-top)); }</style>
@@ -10086,18 +10070,10 @@ details.mypay[open] > summary .mypay-amt, details.mypay[open] > summary .mypay-s
     var tw0 = window.Telegram && window.Telegram.WebApp; if (tw0 && tw0.initData && tw0.colorScheme) return tw0.colorScheme === 'dark' ? 'dark' : 'light';
     return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
   }
-  // 161-а: пробний «глянець» (власник 16.11: «глянцевіше й стильніше», референс Trove) — два акценти на вибір: ink (чорнила + червона «7») і brass (латунь).
-  // Поки власник не обрав — лише за параметром: ?skin=ink|brass (запам'ятовується на цьому пристрої), ?skin=off — повернути звичайний; демо CI — S.skin
-  var SKIN0 = (function () {
-    var m = /[?&]skin=(ink|brass|off)(?=&|$)/.exec(location.search), v = '';
-    try { if (m) { if (m[1] === 'off') localStorage.removeItem('teplo.skin'); else localStorage.setItem('teplo.skin', m[1]); } v = localStorage.getItem('teplo.skin') || ''; } catch (e) { v = m && m[1] !== 'off' ? m[1] : ''; }
-    return /^(ink|brass)$/.test(v) ? v : '';
-  })(), SKIN = '';
   function applyTheme() {
-    SKIN = SKIN0 || (/^(ink|brass)$/.test(S.skin || '') ? S.skin : '');   // демо CI приходить через TeploHost.restore — уже після старту
-    var th = resolvedTheme(), bg = th === 'dark' ? (SKIN === 'brass' ? '#0B0A08' : SKIN ? '#090C0B' : '#0E1412') : (SKIN === 'brass' ? '#EFEDE8' : SKIN ? '#ECEFED' : '#E9EEEB');
+    // 162-а: «глянець» (чорнила) — вигляд для всіх; тло сторінки — --c-housing глянцю (styles.css, кінець файлу)
+    var th = resolvedTheme(), bg = th === 'dark' ? '#090C0B' : '#ECEFED';
     document.documentElement.setAttribute('data-theme', th);
-    if (SKIN) document.documentElement.setAttribute('data-skin', SKIN); else document.documentElement.removeAttribute('data-skin');
     var mt = document.querySelector('meta[name="theme-color"]'); if (mt) mt.setAttribute('content', bg);
     var tw1 = window.Telegram && window.Telegram.WebApp; if (tw1 && tw1.initData) { try { tw1.setHeaderColor && tw1.setHeaderColor(bg); tw1.setBackgroundColor && tw1.setBackgroundColor(bg); } catch (e) { /* старый клиент */ } }
   }
