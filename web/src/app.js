@@ -9520,9 +9520,9 @@
   /** 163-я (власник 16.11 12:07: «у картках показань рядки, де обсяг і ціна — великі головні, максимально завжди в один рядок»):
    *  «+205 кВт·год  ≈ 724 грн» (рядок історії), підсумок року/сезону, KPI статистики — без переносу; не влазить — зменшуємо (zoom дітей) кроками до 0,7,
    *  і лише якщо не влізло й так — переносимо, як раніше. Міряємо правий край останнього шматка відносно рядка (flex nowrap, min-width 0). */
-  var FIT1 = '.hrow .hr-main, .kpi-row, .ss-sum', FIT1_T = 0;
+  var FIT1 = '.hrow .hr-main, .kpi-row, .ss-sum, .ru-big', FIT1_T = 0;   // 165-я: + «Набігло» запису (.ru-big)
   function fitOne(el) {
-    if (!el.querySelector('.hr-q, .hr-m, .kpi-q, .kpi-m, .ss-q, .ss-m')) return;   // «стартові — з налаштування…» — текст, переноситься як звичайно
+    if (!el.querySelector('.hr-q, .hr-m, .kpi-q, .kpi-m, .ss-q, .ss-m, .ru-q, .ru-m')) return;   // «стартові — з налаштування…» — текст, переноситься як звичайно
     el.classList.add('fit1'); el.classList.remove('fit1-wrap'); el.style.removeProperty('--fit');
     var c = el.children; if (!c.length || !el.offsetWidth) return;
     var over = function () { return c[c.length - 1].getBoundingClientRect().right > el.getBoundingClientRect().right + 0.5; };

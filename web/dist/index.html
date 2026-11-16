@@ -2197,7 +2197,11 @@ details.wacc.wacc-btn > .acc-foot { margin: 0; padding: 12px 16px 16px; border-t
 .ru-per { margin: 4px 0 0; color: var(--c-ink-2); font-size: var(--fs-s); font-variant-numeric: tabular-nums; }
 /* 146-а (власник 14.11: «один шаблон лейауту» для записів усіх лічильників): набігло й гроші — завжди двома рядками, одне під одним
    (раніше короткі «+8 м³ ≈ 672 грн» ставали в рядок, а довгі «+205 кВт·год» — у два: записи води й світла виглядали по-різному) */
-.ru-big { display: flex; flex-direction: column; align-items: flex-start; gap: var(--sp-3); margin: var(--sp-4) 0 0; }
+/* 165-я (власник 16.11 13:42, скрин запису світла: «+143 кВт·год» і «≈ 617,76 грн» стовпчиком — «просив в один рядок»): розхід і гроші — рядком;
+   не влазить — fitLines (FIT1) дрібнить до 0,7, лише потім перенос */
+.ru-big { display: flex; flex-wrap: wrap; align-items: baseline; column-gap: var(--sp-5); row-gap: var(--sp-3); margin: var(--sp-4) 0 0; }
+.ru-big.fit1 { flex-wrap: nowrap; min-width: 0; }
+.ru-big.fit1.fit1-wrap { flex-wrap: wrap; }
 .ru-q, .ru-m { display: grid; grid-template-columns: auto auto; align-items: baseline; column-gap: 6px; }
 .ru-q i, .ru-m i { grid-column: 1 / -1; font-style: normal; font-size: 13px; color: var(--c-ink-2); margin-bottom: 2px; }
 .ru-q b, .ru-m b { font-family: var(--font); font-size: var(--fs-xxl); line-height: 1.05; font-weight: 600; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }   /* гроші й розхід — Plex Sans (Mono — лише те, що копіюють у кабінет) */
@@ -19201,9 +19205,9 @@ h1 { font-size: 28px; letter-spacing: -.02em; line-height: 32px; }   /* 164-я: 
   /** 163-я (власник 16.11 12:07: «у картках показань рядки, де обсяг і ціна — великі головні, максимально завжди в один рядок»):
    *  «+205 кВт·год  ≈ 724 грн» (рядок історії), підсумок року/сезону, KPI статистики — без переносу; не влазить — зменшуємо (zoom дітей) кроками до 0,7,
    *  і лише якщо не влізло й так — переносимо, як раніше. Міряємо правий край останнього шматка відносно рядка (flex nowrap, min-width 0). */
-  var FIT1 = '.hrow .hr-main, .kpi-row, .ss-sum', FIT1_T = 0;
+  var FIT1 = '.hrow .hr-main, .kpi-row, .ss-sum, .ru-big', FIT1_T = 0;   // 165-я: + «Набігло» запису (.ru-big)
   function fitOne(el) {
-    if (!el.querySelector('.hr-q, .hr-m, .kpi-q, .kpi-m, .ss-q, .ss-m')) return;   // «стартові — з налаштування…» — текст, переноситься як звичайно
+    if (!el.querySelector('.hr-q, .hr-m, .kpi-q, .kpi-m, .ss-q, .ss-m, .ru-q, .ru-m')) return;   // «стартові — з налаштування…» — текст, переноситься як звичайно
     el.classList.add('fit1'); el.classList.remove('fit1-wrap'); el.style.removeProperty('--fit');
     var c = el.children; if (!c.length || !el.offsetWidth) return;
     var over = function () { return c[c.length - 1].getBoundingClientRect().right > el.getBoundingClientRect().right + 0.5; };

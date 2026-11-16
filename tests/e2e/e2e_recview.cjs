@@ -36,8 +36,9 @@ let pass = 0, fail = 0; const ok = (n, c, x) => { if (c) { pass++; console.log('
   await p.goto(U + '#wrec-w20261015'); await p.waitForTimeout(800);
   // 146-а (власник: «один шаблон лейауту» з іншими записами): гаряча й холодна в одному стані — один чип праворуч від дати, як у світла
   ok('вода: обидва види передано — один чип «Передано» у шапці', (await p.$$('.rec-h .st-chip')).length === 1 && /Передано/.test(await txt('.rec-h .st-chip')), await txt('.rec-h'));
-  ok('вода: «набігло» — одне число й гроші двома рядками, як у світла', (await p.$$('[data-key=wrec-used] .ru-q')).length === 1 &&
-    await p.$eval('[data-key=wrec-used] .ru-big', e => getComputedStyle(e).flexDirection === 'column'));
+  // 165-я (власник 16.11 13:42): число й гроші — одним рядком (верх «≈ грн» на рівні числа)
+  ok('вода: «набігло» — одне число й гроші одним рядком, як у світла', (await p.$$('[data-key=wrec-used] .ru-q')).length === 1 &&
+    await p.$eval('[data-key=wrec-used] .ru-big', e => { const q = e.querySelector('.ru-q b').getBoundingClientRect(), m = e.querySelector('.ru-m b').getBoundingClientRect(); return Math.abs(q.top - m.top) < 8 && m.left > q.right; }));
   await p.click('.rec-h .st-chip'); await p.waitForTimeout(200); await p.click('[data-key=st-menu] [data-key=st-set-not]'); await p.waitForTimeout(500);
   const wsn = await p.evaluate(() => (JSON.parse(localStorage.getItem('teplo.v1')).water.find(x => x.id === 'w20261015') || {}).sent || {});
   ok('один чип «Не передано» знімає і Водоканал, і ХТМ', !wsn.vk && !wsn.htm && /Не передано/.test(await txt('.rec-h .st-chip')), wsn);
