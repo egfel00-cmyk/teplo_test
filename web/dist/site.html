@@ -9224,6 +9224,15 @@ details.mypay[open] > summary .mypay-amt, details.mypay[open] > summary .mypay-s
  * Чисті функції (mapRect, stats, hint, digitH) — без DOM, тест tests/camera.test.js; open() — інтерфейс (e2e tests/e2e/e2e_camera.cjs). */
 (function (root) {
   'use strict';
+  /** 161-а: рідний ліхтарик застосунку iPhone (apps/ios NativeTorch, `PeredaiNative.torch`): on === null — лише «чи є» (true/null);
+   *  інакше Promise<bool> — чи став ліхтарик таким, як просили; null — немає (браузер, симулятор, старий застосунок). */
+  function natTorch(on) {
+    try {
+      var h = root.PeredaiNative && root.PeredaiNative.torch && root.webkit && root.webkit.messageHandlers && root.webkit.messageHandlers.peredaiTorch;
+      if (!h) return null; if (on === null) return true;
+      return Promise.resolve(h.postMessage({ on: !!on })).then(function (r) { var j = typeof r === 'string' ? JSON.parse(r) : r; return !!(j && j.on) === !!on; });
+    } catch (e) { return null; }
+  }
   var A_W = 240;   // ширина кадру рамки для підказок (вирізаємо рамку з повного кадру — так розмиття ще видно)
   // blur — різкість відносно контрасту (дисперсія лапласіана / дисперсія яскравості): різке табло ≥ 0,13, сильно розмите < 0,05
   var TH = { dark: 48, glareLum: 250, glare: 0.03, move: 12, blur: 0.05, flat: 14, far: 0.025 };
@@ -9409,6 +9418,7 @@ details.mypay[open] > summary .mypay-amt, details.mypay[open] > summary .mypay-s
     function stop() { if (st.stream) st.stream.getTracks().forEach(function (k) { try { k.stop(); } catch (e) { /* уже */ } }); st.stream = null; }
     function finish(deliver) {
       if (st.closed) return; st.closed = true;
+      if (st.natT) { st.natT = false; natTorch(false); }   // рідний ліхтарик сам не гасне, коли WebKit відпускає камеру
       clearInterval(tick); clearTimeout(tm); stop();
       doc.removeEventListener('keydown', onKey, true); root.removeEventListener('popstate', onPop); doc.removeEventListener('visibilitychange', onVis);
       if (thUrl) URL.revokeObjectURL(thUrl);
@@ -9448,7 +9458,13 @@ details.mypay[open] > summary .mypay-amt, details.mypay[open] > summary .mypay-s
       else if (a === 'shot') shoot();
       else if (a === 'pick') { finish(false); if (o.pick) o.pick(); }
       else if (a === 'torch' && st.track) {
-        var on = !st.torchOn;
+        var on = !st.torchOn, nt = natTorch(on);
+        // 161-а: у застосунку iPhone — рідний ліхтарик; не вийшло — свій спосіб (нижче)
+        if (nt) { nt.then(function (ok) { if (!ok) throw 0; st.natT = on; st.torchOn = on; torchEl.setAttribute('aria-pressed', on ? 'true' : 'false'); look(); }).catch(function () { webTorch(on); }); return; }
+        webTorch(on);
+      }
+    });
+    function webTorch(on) {
         // Safari і камери ноутбуків кажуть «є ліхтарик», а ввімкнути не дають — тоді прибрати кнопку й сказати (журнал 12.11: 7 дотиків без толку)
         var no = function () { st.torch = false; st.torchOn = false; st.torchFail = 1; torchEl.hidden = true; say('cam_torch_no', {}, 4000); };
         st.track.applyConstraints({ advanced: [{ torch: on }] }).then(function () {
@@ -9456,8 +9472,7 @@ details.mypay[open] > summary .mypay-amt, details.mypay[open] > summary .mypay-s
           if (got !== null && got !== on) { no(); return; }
           st.torchOn = on; torchEl.setAttribute('aria-pressed', on ? 'true' : 'false'); look();
         }, no);
-      }
-    });
+    }
 
     if (!supported()) { setTimeout(function () { fail({ name: 'NotSupported' }); }, 0); return { close: finish }; }
     navigator.mediaDevices.getUserMedia({ audio: false, video: { facingMode: { ideal: 'environment' }, width: { ideal: 1920 }, height: { ideal: 1080 } } }).then(function (s) {
@@ -9466,7 +9481,7 @@ details.mypay[open] > summary .mypay-amt, details.mypay[open] > summary .mypay-s
       v.srcObject = s; var pl = v.play(); if (pl && pl.catch) pl.catch(function () { /* autoplay — muted, має грати */ });
       try {
         var cp = st.track && st.track.getCapabilities ? st.track.getCapabilities() : {};
-        if (cp.torch) { st.torch = true; torchEl.hidden = false; }
+        if (cp.torch || natTorch(null)) { st.torch = true; torchEl.hidden = false; }
         if (cp.focusMode && cp.focusMode.indexOf('continuous') >= 0) st.track.applyConstraints({ advanced: [{ focusMode: 'continuous' }] }).catch(function () {});
       } catch (e) { /* без можливостей */ }
       tick = setInterval(look, 300); read();
