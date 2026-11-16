@@ -123,4 +123,16 @@ console.log('\nЗаголовки петель і архівні екрани:')
   const e = F2([['00015.482', ['00015.482'], 80], ['Gcal', null, 30]]); ok('звичайний екран енергії — як і було (не петля)', !e.photo.note || !/loop|archive/.test(e.photo.note), e.photo);
   ok('нуль із тире помилки «E-------» — не група ELF', !/loop/.test(F2([['E-------', ['E- - - - - - -']]]).photo.note || '')); }
 
+// 160-а: рядки вбудованого Vision (iPhone, CI-симулятор, apps/ios/ci + web/img/lp-heat.webp) — той самий розбір
+console.log('\nVision (iPhone):');
+{ const L = (text, x, y, w, h, score = 1) => ({ text, score, x, y, w, h, angle: 0 });
+  const real = { w: 720, h: 411, lines: [L('Heat meter', 94, 329, 166, 34), L('17913', 298, 98, 248, 94), L('G call', 558, 207, 124, 46)] };
+  let r = P.photo(real, sharky, 0), v = Object.fromEntries(r.photo.readings.map(x => [x.field, x.value]));
+  ok('ЖК Sharky власника: «17913» + «G call» → енергія 17.913 (точку ставить формат моделі), не години', v.energy === '17.913' && !v.hours, r.photo.readings);
+  const syn = { w: 769, h: 1000, lines: [L('SHARKY 774', 192, 234, 166, 24), L('00015.482', 332, 360, 212, 40), L('Gcal', 525, 428, 56, 20)] };
+  r = P.photo(syn, {}, 0); ok('синтетика Sharky: 00015.482 Gcal → 15.482, модель sharky774', r.photo.readings[0] && r.photo.readings[0].value === '15.482' && r.meter && r.meter.modelId === 'sharky774', r.photo.readings);
+  const wat = { w: 750, h: 1000, lines: [L('NOVATOR', 282, 320, 184, 32), L('ЛК-15Г', 330, 360, 90, 20, .5), L('m3', 212, 436, 38, 22, .5), L('00502347', 254, 421, 263, 50, .3), L('x0,0001', 416, 636, 66, 18, .5), L('Nº 20123456', 312, 660, 124, 18, .5)] };
+  r = P.photo(wat, {}, 0); ok('водомір на фото тепла → тип water, показань тепла немає', r.photo.meterType === 'water' && !r.photo.readings.length, r.photo);
+  ok('«G call», «G cal», «Gcall», «Гкал» — підпис Gcal; «MWh» — як і було', ['G call', 'G cal', 'Gcall', 'Гкал', 'Gca1'].every(t => P.photo({ w: 100, h: 100, lines: [L('00015.482', 10, 10, 60, 20), L(t, 70, 32, 20, 8)] }, {}, 0).photo.readings.some(x => x.field === 'energy' && x.unit === 'Gcal'))); }
+
 console.log(`\nИтог: ${pass} OK, ${fail} FAIL`); process.exit(fail ? 1 : 0);

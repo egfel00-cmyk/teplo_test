@@ -7418,8 +7418,9 @@ details.mypay[open] > summary .mypay-amt, details.mypay[open] > summary .mypay-s
   function isHeat(all) { if (HEAT_STRONG.test(all)) return true; if (!HEAT.test(all)) return false; return OTHER.electric.filter(function (re) { return re.test(all); }).length < 3; }
 
   // подписи на экране → поле
+  // 160-а: Vision (iPhone) на ЖК Sharky власника читає «G call» — розрив між G і cal, l двоїться; тому G ca l{1,2}
   var TAGS = [
-    { re: /^(G\s?cal|G\s?kal|Gca1|Гкал)$/i, field: 'energy', unit: 'Gcal', w: 3 }, { re: /^MW\s?h$/i, field: 'energy', unit: 'MWh', w: 3 },
+    { re: /^(G\s?ca\s?[l1]{1,2}|G\s?kal|Г\s?кал)$/i, field: 'energy', unit: 'Gcal', w: 3 }, { re: /^MW\s?h$/i, field: 'energy', unit: 'MWh', w: 3 },
     { re: /^GJ$/i, field: 'energy', unit: 'GJ', w: 3 }, { re: /^kW\s?h$/i, field: 'energy', unit: 'kWh', w: 3 },
     { re: /^m\s?[3³]\s?\/\s?h$/i, field: 'flow', unit: 'm³/h', w: 3 }, { re: /^k\s?W$/i, field: 'power', unit: 'kW', w: 3 },
     // «m³» отдельно: объём, но у Sharky расход — «m³» столбиком над «h» (решается ниже по «h» рядом); «m)», «mi» — тот же значок
