@@ -1143,6 +1143,7 @@ summary, .btn, .ucard-add, .ucard-main, .linkbtn { touch-action: manipulation; }
 .pacc-t { flex: 1 1 auto; min-width: 0; display: grid; gap: 2px; }
 .pacc-t b { font-size: var(--fs-l); line-height: 1.25; overflow-wrap: anywhere; }
 .pacc-ks { overflow-wrap: anywhere; }
+.pacc-av, .pacc-kk { display: none; }   /* 165-я: аватар і значки лічильників квартири — лише у світлій C2 */
 .pacc-chev { flex: none; transform: rotate(90deg); transition: transform .15s var(--ease); color: var(--c-ink-2); }
 .pacc[open] .pacc-chev { transform: rotate(-90deg); }
 .pacc.shut[open] > summary .pacc-chev { transform: rotate(90deg); }   /* згортається: стрілка — одразу «закрито» (тап видно миттєво) */
@@ -2918,28 +2919,31 @@ h1 { font-size: 28px; letter-spacing: -.02em; line-height: 32px; }   /* 164-я: 
   --c-ink: #24221E; --c-ink-2: #66625A; --c-line: #ECE9E3; --gl-line: #E6E2DA; --gl-sh: 0 1px 2px rgba(40, 34, 22, .06), 0 4px 12px -8px rgba(40, 34, 22, .14);
   --c-field-line: #8F8A80; --r-card: 20px;
 }
-/* квартира — картка її кольору */
-:root:root[data-lskin="c"][data-lsk]:not([data-theme="dark"]) .pacc > summary { background: var(--pc); color: #FFFFFF; padding: 16px; border-radius: 20px; margin-bottom: 12px; }
+/* квартира — біла картка; колір квартири — в аватарі (плитка 52 px її кольору зі значком), під назвою — значки її лічильників кольором виду
+   (власник 14:34 на суцільні кольорові плашки: «все одно виглядають як п…» — тепер як кімнати в Apple Home / рахунки в Revolut) */
+:root:root[data-lskin="c"][data-lsk]:not([data-theme="dark"]) .pacc > summary, :root:root[data-lskin="c"][data-lsk]:not([data-theme="dark"]) .pacc > summary.has-ic {
+  display: grid; grid-template-columns: 52px minmax(0, 1fr) auto; align-items: center; gap: 0 14px; background: var(--c-surface); color: var(--c-ink);
+  border: 1px solid var(--gl-line); border-radius: 20px; box-shadow: var(--gl-sh); padding: 14px 14px 14px 14px; margin-bottom: 12px; }
 :root:root[data-lskin="c"][data-lsk]:not([data-theme="dark"]) .pacc:not([open]) > summary { margin-bottom: 0; }
-@media (hover: hover) { :root:root[data-lskin="c"][data-lsk]:not([data-theme="dark"]) .pacc > summary:hover { background: color-mix(in srgb, var(--pc) 88%, #000); } }
-:root:root[data-lskin="c"][data-lsk]:not([data-theme="dark"]) .pacc-addr { color: rgba(255, 255, 255, .86); }
-:root:root[data-lskin="c"][data-lsk]:not([data-theme="dark"]) .pacc .pdot { background: #FFFFFF; }
-:root:root[data-lskin="c"][data-lsk]:not([data-theme="dark"]) .pacc > summary .picon { color: #FFFFFF; }
-:root:root[data-lskin="c"][data-lsk]:not([data-theme="dark"]) .pacc > summary .pacc-chev { background: rgba(0, 0, 0, .16); border-color: transparent; color: #FFFFFF !important; }
-:root:root[data-lskin="c"][data-lsk]:not([data-theme="dark"]) .pacc > summary .pn-row { background: rgba(0, 0, 0, .16); border-color: transparent; color: #FFFFFF; }
-:root:root[data-lskin="c"][data-lsk]:not([data-theme="dark"]) .pacc > summary .pn-row > .ico { color: #FFFFFF; }
-:root:root[data-lskin="c"][data-lsk]:not([data-theme="dark"]) .pacc > summary .pn-row.hot { background: #FFFFFF; color: var(--c-warn-ink); }
+@media (hover: hover) { :root:root[data-lskin="c"][data-lsk]:not([data-theme="dark"]) .pacc > summary:hover { background: var(--c-surface-2); } }
+:root:root[data-lskin="c"][data-lsk]:not([data-theme="dark"]) .pacc > summary .pacc-ic, :root:root[data-lskin="c"][data-lsk]:not([data-theme="dark"]) .pacc-t .pdot { display: none; }
+:root:root[data-lskin="c"][data-lsk]:not([data-theme="dark"]) .pacc-av { display: grid; place-items: center; grid-column: 1; grid-row: 1; width: 52px; height: 52px; border-radius: 16px; background: var(--pc); color: #FFFFFF; }
+:root:root[data-lskin="c"][data-lsk]:not([data-theme="dark"]) .pacc-av .picon { color: #FFFFFF; }
+:root:root[data-lskin="c"][data-lsk]:not([data-theme="dark"]) .pacc > summary > .pacc-t { grid-column: 2; grid-row: 1; gap: 2px; }
+:root:root[data-lskin="c"][data-lsk]:not([data-theme="dark"]) .pacc-t b { font-size: var(--fs-l); line-height: 24px; letter-spacing: -.01em; }
+:root:root[data-lskin="c"][data-lsk]:not([data-theme="dark"]) .pacc-addr { font-size: 15px; color: var(--c-ink-2); }
+:root:root[data-lskin="c"][data-lsk]:not([data-theme="dark"]) .pacc-kk { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 6px; }
+:root:root[data-lskin="c"][data-lsk]:not([data-theme="dark"]) .pacc-kk .ico { flex: none; }
+:root:root[data-lskin="c"][data-lsk]:not([data-theme="dark"]) .pacc-kk .c-hot { color: var(--c-supply); } :root:root[data-lskin="c"][data-lsk]:not([data-theme="dark"]) .pacc-kk .c-cold { color: var(--c-return); }
+:root:root[data-lskin="c"][data-lsk]:not([data-theme="dark"]) .pacc > summary .pacc-chev { grid-column: 3; grid-row: 1; background: var(--c-surface-2); border-color: transparent; }
+:root:root[data-lskin="c"][data-lsk]:not([data-theme="dark"]) .pacc > summary > .pnote { grid-column: 1 / -1; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--c-line); gap: 8px; }
+:root:root[data-lskin="c"][data-lsk]:not([data-theme="dark"]) .pacc > summary .pn-row { background: transparent; border: 0; padding: 0; color: var(--c-ink); }
+:root:root[data-lskin="c"][data-lsk]:not([data-theme="dark"]) .pacc > summary .pn-row > .ico { color: var(--kc); }
+:root:root[data-lskin="c"][data-lsk]:not([data-theme="dark"]) .pacc > summary .pn-row.hot { color: var(--c-warn-ink); font-weight: 600; }
 :root:root[data-lskin="c"][data-lsk]:not([data-theme="dark"]) .pacc > summary .pn-row.hot > .ico { color: var(--c-warn); }
 :root:root[data-lskin="c"][data-lsk]:not([data-theme="dark"]) .pacc > summary:focus-visible { outline: 3px solid var(--c-info); outline-offset: 2px; }
-/* шапка квартири на сторінці лічильника й перемикач квартир — тим самим кольором */
-:root:root[data-lskin="c"][data-lsk]:not([data-theme="dark"]) .place-bar { background: var(--pc); border-color: transparent; color: #FFFFFF; }
-:root:root[data-lskin="c"][data-lsk]:not([data-theme="dark"]) .place-bar :is(b, .small, .muted, .pb-sub) { color: #FFFFFF; }
-:root:root[data-lskin="c"][data-lsk]:not([data-theme="dark"]) .place-bar b::before { background: #FFFFFF; }
-:root:root[data-lskin="c"][data-lsk]:not([data-theme="dark"]) .place-bar .picon { color: #FFFFFF; }
-:root:root[data-lskin="c"][data-lsk]:not([data-theme="dark"]) .place-bar .pb-all { background: rgba(0, 0, 0, .16); border-color: transparent; color: #FFFFFF; box-shadow: none; }
-:root:root[data-lskin="c"][data-lsk]:not([data-theme="dark"]) [data-act="place-view"][aria-pressed="true"] { background: var(--pc); border-color: var(--pc); color: #FFFFFF; }
-:root:root[data-lskin="c"][data-lsk]:not([data-theme="dark"]) [data-act="place-view"][aria-pressed="true"] :is(.picon, .pdot) { color: #FFFFFF; background-color: transparent; }
-:root:root[data-lskin="c"][data-lsk]:not([data-theme="dark"]) [data-act="place-view"][aria-pressed="true"] .pdot { background: #FFFFFF; }
+/* шапка квартири на сторінці лічильника — біла, аватаром-крапкою кольору квартири */
+:root:root[data-lskin="c"][data-lsk]:not([data-theme="dark"]) .place-bar b::before { width: 12px; height: 12px; }
 /* значки видів — суцільна плитка кольору виду, гліф білий */
 :root:root[data-lskin="c"][data-lsk]:not([data-theme="dark"]) :is(.ucard-top > .ico, .mbox-h > .ico) { color: #FFFFFF !important; background: var(--kc, var(--c-ink-2)); box-shadow: none; border-radius: 12px; }
 :root:root[data-lskin="c"][data-lsk]:not([data-theme="dark"]) :is(.ucard-heat, .ucard-hot) { --kc: var(--c-supply); }
@@ -11333,7 +11337,10 @@ h1 { font-size: 28px; letter-spacing: -.02em; line-height: 32px; }   /* 164-я: 
       return withPlace(p.id, function () {
         var cards = homeCards();
         return '<details class="hp pacc" id="hp-' + esc(p.id) + '" data-pl="' + esc(p.id) + '" style="--pc:var(--pc-' + placeColor(p) + ')" data-key="home-pl-' + esc(p.id) + '"' + (open ? ' open' : '') + '>' +
-          '<summary data-key="home-pl-sum-' + esc(p.id) + '"' + (p.icon && PICONS[p.icon] ? ' class="has-ic"><span class="pacc-ic">' + picon(p, 40) + '</span>' : '>') + '<span class="pacc-t"><b>' + (p.icon && PICONS[p.icon] ? '' : '<i class="pdot" aria-hidden="true"></i>') + esc(placeLabel(p)) + '</b>' + (p.address ? '<span class="pacc-addr">' + esc(addrShort(p.address)) + '</span>' : '') + '</span>' +
+          '<summary data-key="home-pl-sum-' + esc(p.id) + '"' + (p.icon && PICONS[p.icon] ? ' class="has-ic"><span class="pacc-ic">' + picon(p, 40) + '</span>' : '>') +
+            // 165-я: аватар квартири (її колір + значок) і значки її лічильників — показує лише світла C2 (styles.css), в інших темах приховані
+            '<span class="pacc-av" aria-hidden="true">' + (picon(p, 28) || ico('home', 26)) + '</span><span class="pacc-t"><b>' + (p.icon && PICONS[p.icon] ? '' : '<i class="pdot" aria-hidden="true"></i>') + esc(placeLabel(p)) + '</b>' + (p.address ? '<span class="pacc-addr">' + esc(addrShort(p.address)) + '</span>' : '') +
+            '<span class="pacc-kk" aria-hidden="true">' + placeKindList(p).map(function (k) { return ico(KINDS[k].icon, 18, KINDS[k].cls); }).join('') + '</span></span>' +
             ico('chev', 22, 'pacc-chev') + due + '</summary><div class="pacc-body">' +
           (HP_EDIT === p.id ? hpEditForm(p) : '') +
           // назва, адреса, рахунки, постачальники, додати й прибрати лічильник — усе на екрані квартири; тут лише вхід туди, під лічильниками
@@ -16566,6 +16573,13 @@ h1 { font-size: 28px; letter-spacing: -.02em; line-height: 32px; }   /* 164-я: 
   }
   // ================= квартиры: список, экран квартиры, «додати лічильник», новый водомер =================
   /** Счётчики квартиры одной строкой: «Світло · Гаряча · Холодна ×2 · Опалення» (порядок видів, без переключения квартиры). */
+  /** 165-я: які види лічильників є у квартирі — за KIND_ORDER (для значків на картці квартири). */
+  function placeKindList(p) {
+    var wm = ((p.water && p.water.meters) || []).filter(function (m) { return m && !m.deleted && !m.removed; }), ms = (p.meters || []).filter(function (m) { return m && !m.deleted && !m.removed; });
+    var has = { heat: !!(p.meter && !p.meter.removed), elec: ms.some(function (m) { return m.kind === 'elec'; }), gas: ms.some(function (m) { return m.kind === 'gas'; }), waste: !!(p.waste && p.waste.on),
+      hot: wm.some(function (m) { return m.kind === 'hot'; }), cold: wm.some(function (m) { return m.kind === 'cold'; }) };
+    return KIND_ORDER.filter(function (k) { return has[k] && KINDS[k]; });
+  }
   function placeKinds(p) {
     var ks = [], wm = ((p.water && p.water.meters) || []).filter(function (m) { return m && !m.deleted && !m.removed; }), em = (p.meters || []).filter(function (m) { return m && !m.deleted && !m.removed && m.kind === 'elec'; }), gm = (p.meters || []).filter(function (m) { return m && !m.deleted && !m.removed && m.kind === 'gas'; });
     var n = { heat: p.meter && !p.meter.removed ? 1 : 0, elec: em.length, gas: gm.length, waste: p.waste && p.waste.on ? 1 : 0 };

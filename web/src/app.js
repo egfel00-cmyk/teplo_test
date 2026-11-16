@@ -1435,7 +1435,10 @@
       return withPlace(p.id, function () {
         var cards = homeCards();
         return '<details class="hp pacc" id="hp-' + esc(p.id) + '" data-pl="' + esc(p.id) + '" style="--pc:var(--pc-' + placeColor(p) + ')" data-key="home-pl-' + esc(p.id) + '"' + (open ? ' open' : '') + '>' +
-          '<summary data-key="home-pl-sum-' + esc(p.id) + '"' + (p.icon && PICONS[p.icon] ? ' class="has-ic"><span class="pacc-ic">' + picon(p, 40) + '</span>' : '>') + '<span class="pacc-t"><b>' + (p.icon && PICONS[p.icon] ? '' : '<i class="pdot" aria-hidden="true"></i>') + esc(placeLabel(p)) + '</b>' + (p.address ? '<span class="pacc-addr">' + esc(addrShort(p.address)) + '</span>' : '') + '</span>' +
+          '<summary data-key="home-pl-sum-' + esc(p.id) + '"' + (p.icon && PICONS[p.icon] ? ' class="has-ic"><span class="pacc-ic">' + picon(p, 40) + '</span>' : '>') +
+            // 165-я: аватар квартири (її колір + значок) і значки її лічильників — показує лише світла C2 (styles.css), в інших темах приховані
+            '<span class="pacc-av" aria-hidden="true">' + (picon(p, 28) || ico('home', 26)) + '</span><span class="pacc-t"><b>' + (p.icon && PICONS[p.icon] ? '' : '<i class="pdot" aria-hidden="true"></i>') + esc(placeLabel(p)) + '</b>' + (p.address ? '<span class="pacc-addr">' + esc(addrShort(p.address)) + '</span>' : '') +
+            '<span class="pacc-kk" aria-hidden="true">' + placeKindList(p).map(function (k) { return ico(KINDS[k].icon, 18, KINDS[k].cls); }).join('') + '</span></span>' +
             ico('chev', 22, 'pacc-chev') + due + '</summary><div class="pacc-body">' +
           (HP_EDIT === p.id ? hpEditForm(p) : '') +
           // назва, адреса, рахунки, постачальники, додати й прибрати лічильник — усе на екрані квартири; тут лише вхід туди, під лічильниками
@@ -6668,6 +6671,13 @@
   }
   // ================= квартиры: список, экран квартиры, «додати лічильник», новый водомер =================
   /** Счётчики квартиры одной строкой: «Світло · Гаряча · Холодна ×2 · Опалення» (порядок видів, без переключения квартиры). */
+  /** 165-я: які види лічильників є у квартирі — за KIND_ORDER (для значків на картці квартири). */
+  function placeKindList(p) {
+    var wm = ((p.water && p.water.meters) || []).filter(function (m) { return m && !m.deleted && !m.removed; }), ms = (p.meters || []).filter(function (m) { return m && !m.deleted && !m.removed; });
+    var has = { heat: !!(p.meter && !p.meter.removed), elec: ms.some(function (m) { return m.kind === 'elec'; }), gas: ms.some(function (m) { return m.kind === 'gas'; }), waste: !!(p.waste && p.waste.on),
+      hot: wm.some(function (m) { return m.kind === 'hot'; }), cold: wm.some(function (m) { return m.kind === 'cold'; }) };
+    return KIND_ORDER.filter(function (k) { return has[k] && KINDS[k]; });
+  }
   function placeKinds(p) {
     var ks = [], wm = ((p.water && p.water.meters) || []).filter(function (m) { return m && !m.deleted && !m.removed; }), em = (p.meters || []).filter(function (m) { return m && !m.deleted && !m.removed && m.kind === 'elec'; }), gm = (p.meters || []).filter(function (m) { return m && !m.deleted && !m.removed && m.kind === 'gas'; });
     var n = { heat: p.meter && !p.meter.removed ? 1 : 0, elec: em.length, gas: gm.length, waste: p.waste && p.waste.on ? 1 : 0 };
