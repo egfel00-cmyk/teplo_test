@@ -33,7 +33,8 @@ const U = 'http://127.0.0.1:8013/';
   ok('плитка «Налаштування квартири» → #place-main, «Додати лічильник» на головній немає', (await p.getAttribute('[data-key=card-place-set]', 'href')) === '#place-main' && !(await p.$('[data-key=card-add-meter]')) && /прибрати лічильник/.test(await txt('[data-key=card-place-set]')));
   await p.click('[data-key=card-place-set]'); await p.waitForTimeout(400);
   ok('екран квартири: «Додати лічильник», «Прибрати», назад — «Головна»', !!(await p.$('[data-key=pv-add-meter]')) && !!(await p.$('[data-key=pv-remove-h1]')) && (await p.getAttribute('[data-key=pv-back]', 'href')) === '#home');
-  ok('екран квартири: у рядках водомірів без №', !/№/.test(await txt('#pg-pv-meters')), await txt('#pg-pv-meters'));
+  const mr = (await p.$$eval('#pg-pv-meters .mrow-main', es => es.map(e => e.textContent))).join(' | ');   // 164-а: у налаштуваннях тепла є «наказ №315» — дивимось лише рядки
+  ok('екран квартири: у рядках водомірів без №', !/№/.test(mr), mr);
 
   // ---- 3. сторінка лічильника — без рахунків під назвою, без «Змінити» і без налаштувань (владелец 05.11 20:45–20:46): усе — на екрані квартири
   await go('water-hot');

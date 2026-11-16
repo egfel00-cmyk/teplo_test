@@ -20,7 +20,7 @@ let pass = 0, fail = 0; const ok = (n, c, i) => { console.log((c ? '  OK  ' : ' 
 
   // добавить квартиру: настройки → квартиры → «Додати квартиру» → экран новой квартиры
   // (этап 2: «Додати квартиру» — мастер; здесь — пустая квартира без названия: «Далі» → «Створити», дальше — её экран)
-  await go('prefs'); await p.click('#pg-places summary'); await p.click('[data-key=prefs-place-add]'); await p.waitForTimeout(350);
+  await go('prefs'); await p.click('[data-key=prefs-place-add]'); await p.waitForTimeout(350);
   await p.click('[data-key=aw-next]'); await p.waitForTimeout(250); await p.click('[data-key=aw-create]'); await p.waitForTimeout(350);
   await go('place-' + (await st()).placeId);
   ok('новая квартира → её экран с подсказкой', /^#place-p/.test(await p.evaluate(() => location.hash)) && !!(await p.$('[data-key=pv-new]')));

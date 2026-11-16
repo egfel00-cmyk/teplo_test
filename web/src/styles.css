@@ -2568,9 +2568,36 @@ details.mypay[open] > summary .mypay-amt, details.mypay[open] > summary .mypay-s
 .hli.hsw-full .hsw-act { align-items: flex-start; padding-left: 22px; }
 .list > li.hli:first-child .hsw-act { border-top-right-radius: 14px; } .list > li.hli:last-child .hsw-act { border-bottom-right-radius: 14px; }
 @media (prefers-reduced-motion: reduce) { .hli.hsw > :not(.hsw-act), .hsw-act { transition: none; } }
-/* 154-а: «Видалити акаунт» — тихе посилання під «Вийти», колір небезпеки лише в тексті */
-.acct-del { margin: 16px 0 0; }
-.danger-link { color: var(--c-bad); }
+/* 164-а: налаштування — список у браузері й застосунку; «Квартири й лічильники»: картка на квартиру, рядок на лічильник зі значком і кольором виду */
+.ios-groups { max-width: 640px; }
+.ps-sec { display: grid; gap: 12px; }
+.ps-sec > .ios-sh { margin-bottom: -4px; }
+.ps-head .ps-pm { display: inline-grid; box-sizing: content-box; place-items: center; width: 22px; height: 22px; color: var(--pc); }
+.ps-head .ps-pm .pdot { width: 12px; height: 12px; margin: 0; }
+.ps-head .ios-t b { font-weight: 600; }
+/* :root:root — вага як у плиток глянцю (:root:root .ios-row .ios-ico), інакше колір виду перебивається сірим */
+:root:root .ps-m.k-elec .ios-ico { color: var(--c-elec); } :root:root .ps-m:is(.k-hot, .k-heat) .ios-ico { color: var(--c-supply); }
+:root:root .ps-m.k-cold .ios-ico { color: var(--c-return); } :root:root .ps-m.k-gas .ios-ico { color: var(--c-gas); } :root:root .ps-m.k-waste .ios-ico { color: var(--c-ink-2); }
+:root:root .ps-head .ios-ico.ps-pm { color: var(--pc); }
+.ps-add, .ps-addp { color: var(--tint, var(--c-ink)); }
+:root:root .ios-row:is(.ps-add, .ps-addp) :is(.ios-ico, .ios-chev) { color: var(--tint, var(--c-ink)); opacity: 1; }
+.ps-add .ios-t b, .ps-addp .ios-t b { font-weight: 600; }
+/* екран групи: картки одна під одною; заголовок єдиної картки повторював назву екрана — ховаємо */
+.pg-one { display: grid; gap: var(--sp-4); max-width: 640px; }
+.pg-one > .panel { margin: 0; }
+.pg-one > .panel:only-child > h2:first-child { display: none; }
+.acc-ways { list-style: none; margin: 12px 0; padding: 0; display: grid; gap: 10px; }
+.acc-ways li { display: flex; align-items: center; gap: 12px; }
+.acc-ways .grow { display: grid; gap: 1px; min-width: 0; overflow-wrap: anywhere; }
+.acc-ways .acc-ico { box-sizing: content-box; padding: 7px; border-radius: 10px; color: var(--c-ink-2); background: color-mix(in srgb, currentColor 12%, transparent); flex: none; }
+/* небезпечні дії (видалити акаунт, стерти дані) — окрема картка внизу, червона кнопка контуром; остаточне «Так, видалити» — суцільна */
+.danger-zone .btn.danger { width: 100%; }
+.danger-zone .confirm { margin-top: 12px; }
+/* «Коли лічильник знято» — розкривашкою в налаштуваннях лічильника на екрані квартири */
+.nm-box { margin: 12px 0 0; }
+.nm-box .nm-rules { margin: 8px 0 12px; padding-left: 18px; }
+.pgroups { grid-template-columns: minmax(0, 1fr); }   /* довгий <select> норм у «Коли водомір знято» не розпирає екран квартири */
+.nm-box .grid2 { grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr)); } .nm-box .grid2 > .field { min-width: 0; } .nm-box select { width: 100%; min-width: 0; text-overflow: ellipsis; }
 /* 154-а: «Увійти через Apple» — за правилами Apple: чорна кнопка (у темній темі — біла), лого Apple, системний шрифт; лише в застосунку iPhone */
 .auth-apple { margin-bottom: var(--sp-3); }
 .apple-btn { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; min-height: 50px; padding: 0 16px; border: 0; border-radius: 12px;
@@ -2655,7 +2682,6 @@ h1 { font-size: 28px; letter-spacing: -.02em; line-height: 32px; }   /* 164-я: 
 :root:root :is(.ucard-top > .ico, .mbox-h > .ico) { box-sizing: content-box; padding: 8px; border-radius: 10px; background: color-mix(in srgb, currentColor 13%, transparent); }
 :root:root .ucard-top { gap: 12px; }
 :root:root .ios-row .ios-ico { box-sizing: content-box; padding: 7px; border-radius: 10px; color: var(--c-ink-2); background: color-mix(in srgb, currentColor 12%, transparent); }
-:root:root [data-key="pgr-water"] .ios-ico { color: var(--c-return); } :root:root [data-key="pgr-heat"] .ios-ico { color: var(--c-supply); }
 :root:root .ios-row { min-height: 56px; }
 :root:root .ico.bt-ico { border: 0; padding: 7px; background: color-mix(in srgb, currentColor 10%, transparent); }
 

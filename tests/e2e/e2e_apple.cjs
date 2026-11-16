@@ -38,7 +38,7 @@ const b64u = b => Buffer.from(b).toString('base64').replace(/\+/g, '-').replace(
   await p.evaluate(() => { window.__appleReply = null; }); await p.click('[data-key=login-apple-btn]'); await p.waitForTimeout(2500);
   const uid = +(sql(`SELECT user_id FROM user_identities WHERE type = 'apple' AND external_id = '${sub}'`).match(/\d+/) || [0])[0];
   ok('вхід: акаунт з Apple-ідентичністю, ім’я з застосунку, сторінка пішла з #login', uid > 0 && /Іван Тест/.test(sql(`SELECT name FROM users WHERE id = ${uid}`)) && !/#login$/.test(p.url()), { uid, url: p.url() });
-  await p.goto(BASE + '#prefs'); await p.waitForTimeout(1500); await p.click('#pg-acc > summary'); await p.waitForTimeout(400);
+  await p.goto(BASE + '#prefs-acc'); await p.waitForTimeout(1500);
   ok('Налаштування: рядок «Apple» з прихованим e-mail, без кнопки «Підключити Apple»', /Apple/.test(await p.textContent('[data-key=prefs-sync]')) && /privaterelay/.test(await p.textContent('[data-key=prefs-sync]')) && !(await p.$('[data-key=prefs-apple-link]')));
   // підроблений токен (інший ключ) — відмова, людина бачить текст
   const q = await mk(APPUA, { token: good.replace(/\.[^.]+$/, '.' + b64u('підробка')), nonce, name: '' });

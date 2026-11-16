@@ -49,9 +49,8 @@ let pass = 0, fail = 0; const ok = (n, c, x) => { if (c) { pass++; console.log('
   ok('тепло → «Змінити»: поля тарифу (1 539,50) й абонплати (29,40)', /1\s539,50/.test(await p.inputValue('#prv-h')) && await p.inputValue('#prv-a') === '29,40', [await p.inputValue('#prv-h'), await p.inputValue('#prv-a')]);
   await p.fill('#prv-h', '1600'); await p.fill('#prv-a', '30'); await p.click('[data-key=prov-save-heat]'); await p.waitForTimeout(300); sv = await st();
   ok('зберегли 1600 / 30 → тариф і абонплата квартири, «з вашої платіжки»', sv.places[0].prov.heat.price === 1600 && sv.places[0].bill.abon === 30 && /1\s600,00 грн за Гкал з ПДВ і 30,00 грн абонплати на місяць \(з вашої платіжки\)/.test(await txt('prov-heat')), [sv.places[0].prov.heat, sv.places[0].bill, await txt('prov-heat')]);
-  await p.goto(U + '#prefs'); await p.waitForTimeout(400);
-  ok('Налаштування → «Тариф, грн/Гкал» показує тариф квартири 1600', /1600|1\s600/.test(await p.inputValue('#p-tariff').catch(() => '')), await p.inputValue('#p-tariff').catch(() => 'нет поля'));
   await p.goto(U + '#place-main'); await p.waitForTimeout(600);
+  ok('екран квартири → «Постачальники й рахунки»: тариф тепла 1600', /1\s?600/.test((await p.textContent('[data-key=pv-prov]')).replace(/\u00a0|\u202f/g, ' ')));
   ok('360 px — блок не ширший за екран', await p.evaluate(() => document.documentElement.scrollWidth <= 361));
   await p.evaluate(() => { const s = JSON.parse(localStorage.getItem('teplo.v1')); s.places[0].address = 'с. Неіснуюче, вул. Набережна 3'; localStorage.setItem('teplo.v1', JSON.stringify(s)); }); await p.reload(); await p.waitForTimeout(800);
   ok('незнайомий пункт → «довідника ще немає… впишіть з платіжок», без вигаданого Харкова', /довідника ще немає/.test(await txt('prov-lead')) && /Хто постачає — невідомо/.test(await txt('prov-water')));

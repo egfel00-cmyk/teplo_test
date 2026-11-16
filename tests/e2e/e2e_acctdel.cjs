@@ -19,8 +19,7 @@ const n = q => +(sql(q).match(/\d+/) || [0])[0];
   await p.fill('#a-pass', 'Delete-me-123'); await p.click('[data-key=login-submit]'); await p.waitForTimeout(2500);
   const uid = n(`SELECT id FROM users WHERE email = '${email}'`);
   ok('акаунт створено', uid > 0, uid);
-  await p.goto(BASE + '#prefs'); await p.waitForTimeout(2500);
-  await p.click('#pg-acc > summary'); await p.waitForTimeout(500);   // група «Акаунт» у Налаштуваннях згорнута
+  await p.goto(BASE + '#prefs-acc'); await p.waitForTimeout(2500);   // 164-а: група «Акаунт» — окремий екран
   ok('стан з’їздив на сервер (user_state)', n(`SELECT COUNT(*) FROM user_state WHERE user_id = ${uid}`) === 1);
   ok('Налаштування: «Видалити акаунт» є під «Вийти»', /Видалити акаунт/.test(await p.textContent('[data-key=prefs-acct-del]').catch(() => '')));
   await p.click('[data-key=prefs-acct-del]'); await p.waitForTimeout(300);

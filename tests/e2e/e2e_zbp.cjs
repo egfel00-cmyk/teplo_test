@@ -22,8 +22,7 @@ const U = 'http://127.0.0.1:8013/';
   t = sp(await parts('r1'));
   ok('площа 54,3: частка ЗБП 20,90 грн (0,013575 Гкал × 1539,50), разом ≈ 2 036,25', /1 985,95 грн за тепло/.test(t) && /ЗБП\) 20,90/.test(t) && /2 036,25/.test(t), t);
   // налаштування: поле порожнє, підказка — скільки рахуємо самі
-  await p.goto(U + '#prefs'); await wait(800);
-  await p.click('[data-key=pg-heat] summary, #pg-heat summary, details[data-g=heat] summary').catch(() => {});
+  await p.goto(U + '#place-main'); await wait(800);   // 164-а: частка ЗБП — у «Постачальники й рахунки» квартири
   await wait(300);
   const fv = await p.evaluate(() => { const i = document.getElementById('p-mzk'), h = document.querySelector('[data-key=p-mzk-h]'); return i ? [i.value, i.placeholder, h ? h.textContent : ''] : null; });
   ok('поле «Ваша частка ЗБП»: порожнє, підказка 0,01358 і «0,00025 Гкал на м² × 54,3 м²»', fv && fv[0] === '' && fv[1] === '0,01358' && /0,01358 Гкал\/міс/.test(fv[2]) && /54,3 м²/.test(fv[2]), fv);

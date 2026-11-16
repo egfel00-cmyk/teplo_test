@@ -39,7 +39,7 @@ const cron = (ts, reset) => JSON.parse(execFileSync('php', [path.join(__dirname,
   await p.reload(); await wait(2500); s = await st();
   ok('повторный заход — второй не появилось, тоста нет', (rec(s).bills || []).length === 1 && calls === 0);
   // «Кабінети й автовідправка» → «Квитанції самі»
-  await p.goto(U + '#prefs'); await wait(800); await p.click('[data-key=pg-cabs] summary'); await wait(800);
+  await p.goto(U + '#prefs-cabs'); await wait(800); await wait(800);
   const cb = p.locator('[data-key=prefs-vk-bills]');
   ok('настройки: «Квитанції самі» — включено', await cb.isChecked().catch(() => false) && /Квитанції самі/.test(await p.textContent('[data-key=prefs-cab-vk]')));
   await cb.click(); await wait(2500); const s2 = await srv();

@@ -54,8 +54,8 @@ const sql = (q) => execFileSync('php', ['-r', '$d=new PDO("sqlite:/tmp/teplo_dat
   // 3. изменить в Налаштуваннях: включить аналитику (Налаштування — у того, кто уже завёл счётчик)
   await p.evaluate(s => localStorage.setItem('teplo.v1', JSON.stringify(s)), demo({}));
   await p.goto(U + '#prefs'); await p.reload(); await p.waitForTimeout(600);
-  ok('Налаштування: внизу «Налаштування cookie»', await p.isVisible('[data-key=prefs-cookie]'));
-  await p.click('[data-key=prefs-cookie]'); await p.waitForTimeout(300);
+  ok('Налаштування: внизу «Налаштування cookie»', await p.isVisible('[data-key=pgr-cookie]'));
+  await p.click('[data-key=pgr-cookie]'); await p.waitForTimeout(300);
   ok('…діалог показує поточний вибір «Зараз: лише необхідні»', /Зараз: лише необхідні/.test(await p.textContent('[data-key=cc-now]')));
   await p.click('label[for=cc-an]'); await p.click('[data-key=cc-save]'); await p.waitForTimeout(400);
   c = JSON.parse(await ls(p, 'teplo.cc'));

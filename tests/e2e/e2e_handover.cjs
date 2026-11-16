@@ -20,12 +20,11 @@ const U = 'http://127.0.0.1:8013/';
   ok('шапка (127-а): знак + слово «передай.com.ua» замість «Лічильники», поруч «бета»', (await p.getAttribute('[data-key=brand] svg.wm', 'aria-label')) === 'передай.com.ua' && await p.isVisible('[data-key=brand] svg.logo') && /^бета$/.test((await p.textContent('[data-key=brand]')).trim()) && await p.isVisible('[data-key=beta]'));
   const th = await st();
   ok('примусова темна з шапки → один раз «як у телефоні» (auto), сторінка світла як телефон', th.theme === 'auto' && th.themeV === 2 && (await p.getAttribute('html', 'data-theme')) === 'light', [th.theme, th.themeV]);
-  await p.goto(U + '#prefs'); await p.waitForTimeout(400);
-  await p.click('[data-key=pg-look] > summary').catch(() => {}); await p.waitForTimeout(200);
+  await p.goto(U + '#prefs-look'); await p.waitForTimeout(400);
   await p.click('[data-key=prefs-theme] [data-act=theme][data-v=dark]'); await p.waitForTimeout(300);
   await p.reload(); await p.waitForTimeout(500);
   ok('у Налаштуваннях «Темна» — тримається після перезавантаження', (await st()).theme === 'dark' && (await p.getAttribute('html', 'data-theme')) === 'dark');
-  await p.click('[data-key=prefs-theme] [data-act=theme][data-v=auto]').catch(async () => { await p.click('[data-key=pg-look] > summary'); await p.click('[data-key=prefs-theme] [data-act=theme][data-v=auto]'); });
+  await p.click('[data-key=prefs-theme] [data-act=theme][data-v=auto]');
   await p.waitForTimeout(200);
 
   // передача

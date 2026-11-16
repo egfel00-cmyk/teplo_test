@@ -78,8 +78,8 @@ const U = 'http://127.0.0.1:8013/', SHOTS = process.env.SHOTS || '/tmp';
   ok('после перезагрузки — то же', main(s).name === 'Победа' && live(s.readings).length === 4);
 
   // 5. «Тестовий режим: почати спочатку» → восстановить версию до него
-  await p.goto(U + '#prefs'); await wait(600);
-  // кнопка — в свёрнутом разделе «Дані»: жмём как человек после раскрытия
+  await p.goto(U + '#prefs-data'); await wait(600);
+  // кнопка — на екрані «Дані»: жмём как человек после раскрытия
   const wipeBtn = await p.evaluate(() => { const x = document.querySelector('[data-key=test-reset-btn]') || document.querySelector('[data-key=prefs-wipe]'); if (!x) return false; x.click(); return true; });
   if (wipeBtn) { await wait(200); await p.evaluate(() => document.querySelector('[data-key=prefs-wipe-yes]').click()); }
   await wait(3000); s = await st(); sv = await server();

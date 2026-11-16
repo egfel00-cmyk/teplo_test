@@ -52,7 +52,7 @@ const php = code => execFileSync('php', ['-r', `define('TEPLO',1); foreach (['co
   if (process.env.SHOT) await p.screenshot({ path: '/tmp/bg_check.png', fullPage: true });
   ok('«Перевірка»: «Відправити у фоні» + приписка; «Або внести самим» — вторичная', await vis('[data-key=check-bg]') && /останні зібрані показання/.test(await txt('[data-key=check-bg-note]')) && (await p.$eval('[data-key=check-send]', x => x.className)) === 'btn sec');
   // 4. «Налаштування» → «Кабінети й автовідправка»
-  await p.goto(U + '#prefs'); await wait(1200); const g = await p.$('[data-key=pg-cabs] summary, #pg-cabs summary'); if (g) await g.click(); await wait(500);
+  await p.goto(U + '#prefs-cabs'); await wait(1200); await wait(500);
   if (process.env.SHOT) { const el = await p.$('[data-key=prefs-cab-htm]'); if (el) { await el.evaluate(x => x.parentElement.scrollIntoView()); await p.screenshot({ path: '/tmp/bg_prefs.png' }); } }
   ok('настройки: кабинет ХТМ подключён (e-mail), про хранение доступа и согласие', /test@stand\.local/.test(await txt('[data-key=prefs-cab-htm]')) && /згода зберігаються/.test(await txt('[data-key=prefs-cab-htm]')), await txt('[data-key=prefs-cab-htm]'));
   await p.click('[data-key=prefs-htm-auto]'); await wait(1500);

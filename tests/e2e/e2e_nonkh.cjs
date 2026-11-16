@@ -23,30 +23,29 @@ let pass = 0, fail = 0; const ok = (n, c, x) => { if (c) { pass++; console.log('
   await open(bucha('2026-11-18'), 'home');
   const cold18 = await txt('.ucard-cold');
   ok('Буча 18.11 (Харків — «до 20-го»): вікно ще не відкрилося — строку на картці нема', !/20 листопада/.test(cold18) && !/Передати до/.test(cold18), cold18);
-  await p.goto(U + '#prefs'); await p.waitForTimeout(800);
-  await p.evaluate(() => { var d = document.getElementById('pg-remind'); if (d) d.open = true; var w = document.getElementById('pg-water'); if (w) w.open = true; }); await p.waitForTimeout(300);
+  await p.goto(U + '#prefs-remind'); await p.waitForTimeout(800);   // 164-а: групи налаштувань — окремі екрани
   const rs = await txt('[data-key=prefs-remind-sub]');
   ok('Налаштування → нагадування (Буча): «вода — 26-го (до 30-го)», без «Водоканал до 20-го» і без тепла ХТМ', /вода — 26-го \(до 30-го\)/.test(rs) && !/Водоканал/.test(rs) && !/ХТМ/.test(rs) && !/тепло/.test(rs), rs);
-  ok('«Контакти для ХТМ» — нема (тепло в Бучі не від ХТМ)', !(await p.$('#pg-contacts')));
+  await p.goto(U + '#prefs'); await p.waitForTimeout(600);
+  ok('«Контакти для ХТМ» — нема (тепло в Бучі не від ХТМ)', !(await p.$('[data-key=pgr-contacts]')));
+  await p.goto(U + '#prefs-water'); await p.waitForTimeout(900);   // → «Коли водомір знято» на екрані квартири
   const nm = await txt('[data-key=prefs-nometer-w]');
   ok('«Коли водомір знято»: норми встановлює громада, харківські — лише орієнтир, «Бучасервіс»', /встановлює ваша громада/.test(nm) && /лише для орієнтиру/.test(nm) && /Бучасервіс/.test(nm), nm.slice(0, 500));
 
   // Харків (без адреси) — як було
-  await open(demo({ today: '2026-11-18' }), 'prefs');
-  await p.evaluate(() => { var d = document.getElementById('pg-remind'); if (d) d.open = true; }); await p.waitForTimeout(300);
+  await open(demo({ today: '2026-11-18' }), 'prefs-remind');
   const rk = await txt('[data-key=prefs-remind-sub]');
-  ok('Харків: «тепло — 21-го (ХТМ до 25-го), вода — 16-го (Водоканал до 20-го)»; «Контакти для ХТМ» є', /тепло — 21-го \(ХТМ до 25-го\)/.test(rk) && /вода — 16-го \(Водоканал до 20-го\)/.test(rk) && !!(await p.$('#pg-contacts')), rk);
+  ok('Харків: «тепло — 21-го (ХТМ до 25-го), вода — 16-го (Водоканал до 20-го)»; «Контакти для ХТМ» є', /тепло — 21-го \(ХТМ до 25-го\)/.test(rk) && /вода — 16-го \(Водоканал до 20-го\)/.test(rk) && (await p.goto(U + '#prefs'), await p.waitForTimeout(500), !!(await p.$('[data-key=pgr-contacts]'))), rk);
   await p.goto(U + '#home'); await p.waitForTimeout(600);
   ok('Харків 18.11: картка холодної — «Передати до 20 листопада»', /Передати до 20 листопада/.test(await txt('.ucard-cold')), await txt('.ucard-cold'));
 
   // дві квартири: Харків + Буча (лише холодна)
   const two = demo({ today: '2026-11-18', second: true });
   two.places[1].name = 'Буча'; two.places[1].address = 'м. Буча, вул. Енергетиків, 1, кв. 5'; two.places[1].city = { n: 'Буча', r: 'kv' };
-  await open(two, 'prefs');
-  await p.evaluate(() => { var d = document.getElementById('pg-remind'); if (d) d.open = true; }); await p.waitForTimeout(300);
+  await open(two, 'prefs-remind');
   const r2 = await txt('[data-key=prefs-remind-sub]');
   ok('дві квартири: «вода: «Моя квартира» — 16-го (Водоканал до 20-го), «Буча» — 26-го (до 30-го)»; тепло — один строк', /вода: «Моя квартира» — 16-го \(Водоканал до 20-го\), «Буча» — 26-го \(до 30-го\)/.test(r2) && /тепло — 21-го/.test(r2), r2);
-  ok('дві квартири: «Контакти для ХТМ» є (перша — Харків)', !!(await p.$('#pg-contacts')));
+  ok('дві квартири: «Контакти для ХТМ» є (перша — Харків)', (await p.goto(U + '#prefs'), await p.waitForTimeout(500), !!(await p.$('[data-key=pgr-contacts]'))));
   // 143-я: світло не Харківщини — вікно з довідника (Львівобленерго 28–3), а не харківське (передостаннє–3)
   const lviv = (today) => { const s = demo({ today, elec: 1 }); s.places[0].address = 'м. Львів, вул. Городоцька, 1, кв. 1'; s.places[0].city = { n: 'Львів', r: 'lv' }; return s; };
   await open(lviv('2026-11-28'), 'elec');

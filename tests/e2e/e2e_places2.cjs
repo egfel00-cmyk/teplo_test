@@ -16,7 +16,7 @@ let pass = 0, fail = 0; const ok = (n, c, i) => { console.log((c ? '  OK  ' : ' 
   ok('одна квартира: старт — счётчики (#home), «Головна» → #home', !!(await p.$('.ucard')) && (await p.getAttribute('[data-key=nav-home]', 'href')) === '#home');
 
   // ---- мастер: из настроек → 3 шага
-  await go('prefs'); await click('#pg-places summary', 200); await click('[data-key=prefs-place-add]');
+  await go('prefs'); await click('[data-key=prefs-place-add]');
   ok('«Додати квартиру» → мастер, крок 1 з 2', (await hash()) === '#add-place' && /1/.test(await p.textContent('.wiz-top .count')) && /2/.test(await p.textContent('.wiz-top .count')));
   await click('[data-act=aw-chip][data-v="Батьків"]', 200);
   ok('кнопка назви вписує назву', (await p.inputValue('#aw-name')) === 'Батьків');

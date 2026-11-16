@@ -44,7 +44,7 @@ const U = 'http://127.0.0.1:8013/', VM = 'http://127.0.0.1:8098', DATA = process
   await where(); if (process.env.SHOT) await (await p.$('#wsend-vk')).screenshot({ path: '/tmp/vc_where_on.png' });
   ok('подключено: в ряду каналов «Сайт Водоканалу підключено» → #vkcab', await vis('[data-key=vk-conn-on]') && (await p.getAttribute('[data-key=vk-conn-on]', 'href')) === '#vkcab');
   // 4. «Налаштування» → «Кабінети й автовідправка»: «Керувати» у Водоканалу
-  await p.goto(U + '#prefs'); await wait(1200); const g = await p.$('[data-key=pg-cabs] summary, #pg-cabs summary'); if (g) await g.click(); await wait(600);
+  await p.goto(U + '#prefs-cabs'); await wait(1200); await wait(600);
   ok('настройки: у Водоканалу «Керувати» → #vkcab', (await p.getAttribute('[data-key=prefs-vk-manage]', 'href').catch(() => '')) === '#vkcab');
   ok('без ошибок JS', errs.length === 0, errs);
   await b.close();
