@@ -2943,3 +2943,39 @@ h1 { font-size: 28px; letter-spacing: -.02em; line-height: 32px; }   /* 164-я: 
 :root:root[data-lskin="c"][data-lsk]:not([data-theme="dark"]) .pgroup > summary > .ico:first-child { box-sizing: content-box; padding: 6px; border-radius: 9px; color: #FFFFFF; background: var(--pc, #6B6359); }
 :root:root[data-lskin="c"][data-lsk]:not([data-theme="dark"]) .pgroup > summary .pg-t b { font-weight: 500; }
 :root:root[data-lskin="c"][data-lsk]:not([data-theme="dark"]) .pv-h .pv-dot { width: 14px; height: 14px; }
+
+/* ---- C3 «Теплий графіт, тональний» (власник 16.11 14:54 на C2: «на темних темах ці тона приємні, а тут вирвиглаз; акценти змішуються в какофонію»).
+        Те, що робить темну гармонійною, — перенесено у світлу: усі кольори одного рівня (OKLCH L .50 C .085 — однакова світлота й насиченість,
+        різні лише відтінки; на білому ≥ 5,7:1), значки — на тонованій плитці свого кольору (12–14 %), усе інше нейтральне (плитки налаштувань і блоків — сірі),
+        синій — лише головна кнопка й вибраний таб. Структура — як C2 (біла картка квартири з аватаром, значки лічильників, плаваюча панель). ---- */
+:root:root[data-lskin="c"][data-lsk="3"]:not([data-theme="dark"]) {
+  --c-elec: #67598F; --c-gas: #7F5C25; --c-supply: #8C513F; --c-return: #3B6692;
+  --pc-teal: #0D736A; --pc-violet: #6B588D; --pc-amber: #825A27; --pc-green: #427044; --pc-rose: #894E66; --pc-slate: #596571;
+  --c-ok: #3D7149; --c-ok-soft: #E8EFE8; --c-warn: #84582A; --c-info: #3B6692;
+  --tile-n: #ECE9E3;
+}
+/* значки видів — тонована плитка, гліф кольором виду (як у темній) */
+:root:root[data-lskin="c"][data-lsk="3"]:not([data-theme="dark"]) :is(.ucard-top > .ico, .mbox-h > .ico) { color: var(--kc, var(--c-ink-2)) !important; background: color-mix(in srgb, var(--kc, var(--c-ink-2)) 13%, var(--c-surface)); border-radius: 12px; }
+/* блоки сторінки лічильника, групи екрана квартири, рядки налаштувань — нейтральні сірі плитки */
+:root:root[data-lskin="c"][data-lsk="3"]:not([data-theme="dark"]) .ico.bt-ico { color: var(--c-ink-2); background: var(--tile-n); }
+:root:root[data-lskin="c"][data-lsk="3"]:not([data-theme="dark"]) .mhist-h .ico.bt-ico { color: var(--c-ink-2); }
+:root:root[data-lskin="c"][data-lsk="3"]:not([data-theme="dark"]) .pgroup > summary > .ico:first-child { color: var(--c-ink-2); background: var(--tile-n); }
+:root:root[data-lskin="c"][data-lsk="3"]:not([data-theme="dark"]) .ios-row .ios-ico { color: var(--c-ink-2); background: var(--tile-n); }
+:root:root[data-lskin="c"][data-lsk="3"]:not([data-theme="dark"]) [data-key="prefs-place-add"] .ios-ico { color: var(--acc-fill); background: var(--tile-n); }
+/* квартира: аватар — тонованою плиткою її кольору (як рядки квартир у темній) */
+:root:root[data-lskin="c"][data-lsk="3"]:not([data-theme="dark"]) .pacc-av { background: color-mix(in srgb, var(--pc) 14%, var(--c-surface)); color: var(--pc); }
+:root:root[data-lskin="c"][data-lsk="3"]:not([data-theme="dark"]) .pacc-av .picon { color: var(--pc); }
+:root:root[data-lskin="c"][data-lsk="3"]:not([data-theme="dark"]) .ios-row .ios-ico.ps-pm { background: color-mix(in srgb, var(--pc) 14%, var(--c-surface)); color: var(--pc); }
+:root:root[data-lskin="c"][data-lsk="3"]:not([data-theme="dark"]) .ios-row .ios-ico.ps-pm .pdot { background: var(--pc); }
+:root:root[data-lskin="c"][data-lsk="3"]:not([data-theme="dark"]) .ios-row .ios-ico.ps-pm .picon { color: var(--pc); background: none; }
+/* «+» картки — нейтральний (дія — синя лише раз на екрані); інфо-плашка — легким тоном інфо, тонка рамка */
+:root:root[data-lskin="c"][data-lsk="3"]:not([data-theme="dark"]) .ucard-add { background: var(--c-surface-2); border: 1px solid var(--gl-line); color: var(--c-ink); }
+:root:root[data-lskin="c"][data-lsk="3"]:not([data-theme="dark"]) .ucard-add:hover { background: var(--tile-n); }
+:root:root[data-lskin="c"][data-lsk="3"]:not([data-theme="dark"]) .banner:not(.warn):not(.bad):not(.ok) { background: color-mix(in srgb, var(--c-info) 6%, var(--c-surface)); border: 1px solid color-mix(in srgb, var(--c-info) 26%, transparent); }
+/* вибраний вид в «Історії» — білим піднятим сегментом, як у C (темна плашка — ще один гучний акцент) */
+:root:root[data-lskin="c"][data-lsk="3"]:not([data-theme="dark"]) .kind-sw button[aria-pressed="true"] { background: var(--c-surface); color: var(--c-ink); box-shadow: 0 1px 2px rgba(40, 34, 22, .12), inset 0 0 0 1px var(--gl-line); }
+:root:root[data-lskin="c"][data-lsk="3"]:not([data-theme="dark"]) .kind-sw button[aria-pressed="true"] .ico { color: inherit; }
+:root:root[data-lskin="c"][data-lsk="3"]:not([data-theme="dark"]) .kind-sw button[aria-pressed="true"] :is(.c-heat, .c-hot) { color: var(--c-supply); }
+:root:root[data-lskin="c"][data-lsk="3"]:not([data-theme="dark"]) .kind-sw button[aria-pressed="true"] .c-cold { color: var(--c-return); }
+:root:root[data-lskin="c"][data-lsk="3"]:not([data-theme="dark"]) .kind-sw button[aria-pressed="true"] .c-elec { color: var(--c-elec); }
+:root:root[data-lskin="c"][data-lsk="3"]:not([data-theme="dark"]) .kind-sw button[aria-pressed="true"] .c-gas { color: var(--c-gas); }

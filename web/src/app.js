@@ -468,9 +468,9 @@
   // 165-я: три варіанти світлої теми на вибір власника — тимчасово за ?skin=la|lb|lc (запам'ятовується на цьому пристрої), ?skin=off — як зараз.
   // Перемикача в інтерфейсі немає; темна й латунь не змінюються (атрибут лише при світлій). Після вибору — прибрати разом із блоком у styles.css.
   var LSKIN = (function () {
-    var m = /[?&]skin=(la|lb|lc|lc2|off)(?=&|$)/.exec(location.search), v = '';
+    var m = /[?&]skin=(la|lb|lc|lc2|lc3|off)(?=&|$)/.exec(location.search), v = '';
     try { if (m) { if (m[1] === 'off') localStorage.removeItem('teplo.lskin'); else localStorage.setItem('teplo.lskin', m[1]); } v = localStorage.getItem('teplo.lskin') || ''; } catch (e) { v = m && m[1] !== 'off' ? m[1] : ''; }
-    return /^(la|lb|lc|lc2)$/.test(v) ? v.slice(1) : '';   // 165-я, друга ітерація (власник 14:15): lc2 — «Теплий графіт 2» (data-lskin=c + data-lsk=2)
+    return /^(la|lb|lc|lc2|lc3)$/.test(v) ? v.slice(1) : '';   // 165-я, друга ітерація (власник 14:15): lc2 — «Теплий графіт 2» (data-lskin=c + data-lsk=2)
   })();
   function applyTheme() {
     // 162-а: «глянець» (чорнила) — вигляд для всіх; тло сторінки — --c-housing глянцю (styles.css, кінець файлу)
