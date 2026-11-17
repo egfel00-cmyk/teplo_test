@@ -895,6 +895,7 @@ pre.state { font: 12px/1.4 var(--mono); background: #F4F7F5; padding: 10px; bord
       '<div class="cards">' + pvFld('cab', 'Личный кабинет', c.cab, 'https://…') + pvFld('bot', 'Бот (Telegram)', c.bot, 'https://t.me/…') + pvFld('site', 'Сайт / форма', c.site, 'https://…') + pvFld('app', 'Приложение', c.app, 'https://…') + '</div>' +
       pvFld('phones', 'Телефоны', (c.phones || []).map(function (p) { return p[1] + (p[2] ? '; ' + p[2] : ''); }).join('\n'), 'по строке: номер; подпись', 2) +
       pvFld('pay', 'Куда платить', c.pay, '', 1) + pvFld('note', 'Подсказка людям', c.note, 'показывается, если надо сверить или вписать', 2) + pvFld('src', 'Источник цифр', c.src, 'решение, номер, дата, сайт — для проверки', 2) +
+      pvFld('doc', 'Основание цены коротко', c.doc, 'напр. «Рішення виконкому … від 23.09.2026 № 509» — люди видят рядом с ценой; пусто — не показываем', 1) +
       '<p><label><input type="checkbox" data-pvf="check"' + (c.check ? ' checked' : '') + '> Не уверены — просить людей сверить с платёжкой</label></p>' +
       '<p><label>Подача без человека<br><select data-pvf="robot" style="font:inherit;padding:8px;border-radius:10px">' + Object.keys(ROBOT).map(function (k) { return '<option value="' + k + '"' + ((c.robot || '') === k ? ' selected' : '') + '>' + esc(ROBOT[k]) + '</option>'; }).join('') + '</select></label></p>' +
       pvFld('robot_note', 'Заметка о подаче', c.robot_note, 'что видно на сайте: вход, капча, поля', 1) +

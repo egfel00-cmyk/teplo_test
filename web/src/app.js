@@ -3438,6 +3438,7 @@
     // 143-я (власник 14.11): заголовок «Ціна» прибрано — поле й так «Ціна, грн за …», виходило двічі
     return '<div class="mp" data-key="mp-' + k + '"><div class="grid2">' + h + '</div>' +
       (note ? '<p class="small ' + (unknown ? 'warn-text' : 'muted') + '" data-key="mp-note-' + k + '">' + esc(note) + '</p>' : '') +
+      (!own && d && (pk === 'water' && R.num(d.supply) > 0 && Math.abs(Wt.tariffAt(today(), wtar()).supply - R.num(d.supply)) < 0.0005 || k === 'heat' && Math.abs(tariff() - R.num(d.price)) < 0.005) ? docLine(d, k === 'heat', 'mp-doc-' + k) : '') +   // 170-а
       (gfee ? '<p class="small muted" data-key="mp-gfee">' + esc(gfee) + '</p>' : '') + '</div>';
   }
   document.addEventListener('change', function (e) {
@@ -7428,6 +7429,12 @@
   }
   function prvKinds() { var k = []; if (hasHeat()) k.push('heat'); if (wmeters().length) k.push('water'); if (emeters().length) k.push('elec'); if (smeters('gas').length) k.push('gas'); return kord(k); }
   var PRV_ICO = { elec: ['bolt', 'c-elec'], gas: ['flame', 'c-gas'], water: ['drop', 'c-cold'], heat: ['thermo', 'c-hot'] };
+  /** 170-а (розбір конкурентів: «тариф — з посиланням на рішення»): під ціною з довідника — підстава (d.doc: рішення чи наказ, № і дата),
+   *  «діє з» — коли дати немає в рядку ціни (from). Лише для ціни з довідника: своя з платіжки — без підстави. */
+  function docLine(d, from, key) {
+    var x = String(ploc(d, 'doc') || '').trim(); if (!x) return '';
+    return '<p class="small muted prov-doc"' + (key ? ' data-key="' + key + '"' : '') + '>' + esc(t('prv_doc', { d: x.charAt(0).toLowerCase() + x.slice(1) }) + (from && d.from ? t('prv_doc_from', { d: fmtDate(d.from, true) }) : '')) + '</p>';
+  }
   function prvRow(p, k, d, nat, extra) {
     if (((p.prov || {})[k] || {}).own) return myRowP(p, k, extra);   // 144-а: свій постачальник — його назва, як платите, тариф
     var my = (p.prov || {})[k] || {}, own = !!(my.name || my.supply || my.price), ed = PRV.edit[k], org = my.name || (d && d.org) || '';
@@ -7459,6 +7466,7 @@
       '<p class="prov-org">' + (org ? esc(org) : '<span class="muted">' + esc(t('prv_org_none')) + '</span>') + '</p>' + (org ? pstrip(k, null, 'in-prov', p) : '') +
       lines.map(function (x) { return '<p class="small muted">' + esc(x) + '</p>'; }).join('') +
       '<p class="prov-price' + (price ? '' : ' none') + '">' + esc(price || t('prv_p_none')) + '</p>' +
+      (k === 'water' && price && !my.supply || k === 'heat' && !R.num(my.price) && d && Math.abs(tariff() - R.num(d.price)) < 0.005 ? docLine(d, k === 'heat', 'prov-doc-' + k) : '') +
       (nxt ? '<p class="small muted" data-key="prov-next-' + k + '">' + esc(nxt) + '</p>' : '') +
       (src && !own ? '<details class="prov-src"><summary>' + esc(t('prv_src')) + '</summary><p class="small muted">' + esc(src) + '</p></details>' : '') +
       ((need || !(my.ok || own)) && d && d.note && !ed ? '<p class="small prov-note">' + esc(ploc(d, 'note')) + '</p>' : '') +
@@ -8150,6 +8158,7 @@
       cpList([cpRow(t('ws_acc'), acc, acc, 'tn', 'ws-acc')].concat(phones.map(function (x, i) { return cpTel(x[2] && x[2] !== org ? x[2] : t('my_phone'), x[0], x[1], 'ws-ph-' + i); })), 'ws-rows') +
       (d && ploc(d, 'pay') ? '<p class="small prov-pay">' + esc(ploc(d, 'pay')) + '</p>' : '<p class="small muted">' + esc(t('wsp_pay_gen')) + '</p>') +
       (d && d.site ? '<p class="small"><a href="' + esc(d.site) + '" target="_blank" rel="noopener">' + esc(t('ws_site')) + '</a></p>' : '') +
+      (!(R.num(w.price) > 0) && wastePrice(p, d) ? docLine(d, true, 'ws-doc') : '') +
       (d && ploc(d, 'src') && !(R.num(w.price) > 0) ? '<details class="prov-src"><summary>' + esc(t('prv_src')) + '</summary><p class="small muted">' + esc(ploc(d, 'src')) + '</p></details>' : '') +
       monoLink('waste');
     return '<section class="panel where" data-key="wpay-where"><h2>' + ico('wallet', 18, 'bt-ico') + '<span>' + esc(t('wsp_where')) + '</span></h2>' + b + '</section>';
@@ -8161,7 +8170,7 @@
     return '<div class="prov waste" id="waste" data-key="pv-waste"><div class="prov-row' + (pr && org ? '' : ' need') + '" data-key="prov-waste"><span class="pst-ico c-waste">' + ico('trash', 20) + '</span><div class="prov-b">' +
       '<p class="prov-k"><b>' + esc(t('ws_k')) + '</b> <span class="muted small">' + esc(t('ws_nometer')) + '</span></p>' +
       '<p class="prov-org">' + (org ? esc(org) : '<span class="muted">' + esc(t('ws_org_none')) + '</span>') + '</p>' +
-      '<p class="prov-price' + (pr ? '' : ' none') + '">' + esc(wastePriceTxt(p, d)) + '</p>' +
+      '<p class="prov-price' + (pr ? '' : ' none') + '">' + esc(wastePriceTxt(p, d)) + '</p>' + (pr && !pr.own ? docLine(d, false, 'prov-doc-waste') : '') +
       (d && ploc(d, 'pay') ? '<p class="small prov-pay"><b>' + esc(t('ld_pay_t')) + '</b> ' + esc(ploc(d, 'pay')) + '</p>' : '') +
       (phones.length ? '<p class="small ws-ph">' + phones.map(function (x) { return telLink(x[0], x[1]); }).join(' · ') + '</p>' : '') +
       '<p class="prov-act">' + mlink('#waste', 'prefs', t('wsp_open'), ' data-key="pv-waste-open"') + '</p></div></div></div>';

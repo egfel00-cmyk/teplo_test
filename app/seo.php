@@ -133,10 +133,14 @@ final class Seo {
     $tx = [];
     if ($k === 'water' && !empty($o['supply'])) $tx[] = ($ru ? 'Тариф: вода ' : 'Тариф: вода ') . self::money($o['supply']) . (!empty($o['drain']) ? ($ru ? ', стоки ' : ', водовідведення ') . self::money($o['drain']) : '') . ($ru ? ' грн за м³' : ' грн за м³') . $from;
     if ($k === 'heat' && !empty($o['price'])) $tx[] = ($ru ? 'Тариф: ' : 'Тариф: ') . self::money($o['price']) . ($ru ? ' грн за Гкал' : ' грн за Гкал') . $from;
+    // 170-а: підстава ціни (рішення/наказ, № і дата) — коли ціна в картці є
+    $dc = trim((string)($ru && !empty($o['doc_ru']) ? $o['doc_ru'] : ($o['doc'] ?? '')));
+    $hasP = ($k === 'water' && !empty($o['supply'])) || (in_array($k, ['heat', 'waste'], true) && !empty($o['price']));
     if ($k === 'waste' && !empty($o['price'])) $tx[] = ($ru ? 'Плата: ' : 'Плата: ') . self::money($o['price']) . ($ru ? ' грн в месяц' : ' грн на місяць') . (!empty($o['priv']) ? ($ru ? ' (частный сектор — ' : ' (приватний сектор — ') . self::money($o['priv']) . ')' : '') . $from;
     $via = (string)($o['via'] ?? '');
     $w = self::win(isset($o['win']) && is_array($o['win']) ? $o['win'] : ($via === 'htm' ? [5, 25] : ($via === 'hvk' ? [1, 20] : ($k === 'gas' && empty($o['how']) ? [1, 5] : null))), isset($o['till']) ? (int)$o['till'] : null, $ru);
     if ($w !== '' && $k !== 'waste') $tx[] = ($ru ? 'Показания: ' : 'Показання: ') . $w;
+    if ($dc !== '' && $hasP) array_splice($tx, 1, 0, [($ru ? 'Основание: ' : 'Підстава: ') . mb_strtolower(mb_substr($dc, 0, 1)) . mb_substr($dc, 1)]);
     foreach ($tx as $t) $rows[] = $e($t);
     $o += self::defHow($k, $o); $L = fn($f) => (string)($ru && !empty($o[$f . '_ru']) ? $o[$f . '_ru'] : ($o[$f] ?? ''));
     $h = '<section class="card kc"><h2>' . $e(self::KN[$k][$ru ? 1 : 0]) . '</h2><p class="org">' . $a($org) . '</p>' . implode('', array_map(fn($r) => '<p class="row">' . $r . '</p>', $rows));
