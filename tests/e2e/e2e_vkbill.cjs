@@ -34,7 +34,7 @@ const cron = (ts, reset) => JSON.parse(execFileSync('php', [path.join(__dirname,
   ok('приложение: квитанция пришла синхронизацией, тост «… додано до запису»', toast && bl.length === 1 && bl[0].auto === 'vk', [toast, bl]);
   await p.goto(U + '#wrec-w20261015'); await wait(1200);
   const box = await p.textContent('[data-key=bills-w-w20261015]').catch(() => '');
-  ok('у записі — «Платіжка за жовтень 2026», файл и пометка «з сайту Водоканалу»', /Платіжка за жовтень 2026/.test(box) && /Квитанція Водоканалу/.test(box) && /з сайту Водоканалу/.test(box), box);
+  ok('у записі — «Платіжка за жовтень 2026», файл (плитка PDF, 143-я — без назви) и пометка «з сайту Водоканалу»', /Платіжка за жовтень 2026/.test(box) && /PDF/.test(box) && /з сайту Водоканалу/.test(box), box);
   ok('cron через минуту — уже прикрепили, на сайт не идём', JSON.stringify(cron(T + 60)) === '[]');
   await p.reload(); await wait(2500); s = await st();
   ok('повторный заход — второй не появилось, тоста нет', (rec(s).bills || []).length === 1 && calls === 0);

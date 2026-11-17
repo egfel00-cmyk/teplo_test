@@ -47,7 +47,9 @@ const stand = b => fetch(HM + '/stand/admin', { method: 'POST', headers: { 'Cont
   await stand('act=set&scenario=ok&today=2026-12-07&robot_delay=99999&bill_ym=2026-11&bill_pay=980.10');
   const c2 = cron(T + 21 * 3600); ok('cron через сутки: рахунок за листопад без показань → new', c2.length === 1 && c2[0][1] === 'new', c2);
   await p.reload(); const toast2 = await p.waitForFunction(() => /Квитанцію ХТМ за листопад 2026 додано в історію тепла/.test(document.body.textContent), null, { timeout: 8000 }).then(() => true, () => false);
-  await p.goto(U + '#history'); await wait(1200); const hrow = await p.textContent('[data-key^=hbill-]').catch(() => '');
+  // 147-а: «Історія» відкривається на першому виді (світло, вода…) — тепло обираємо явно
+  await p.evaluate(() => { const s = JSON.parse(localStorage.getItem('teplo.v1')); s.view = 'heat'; localStorage.setItem('teplo.v1', JSON.stringify(s)); });
+  await p.goto(U + '#history'); await p.reload(); await wait(1500); const hrow = await p.textContent('[data-key^=hbill-]').catch(() => '');
   ok('история тепла: тост и строка «Платіжка ХТМ · листопад 2026 · до сплати 980,10 грн»', toast2 && /Платіжка ХТМ/.test(hrow) && /листопад 2026/.test(hrow) && /980,10/.test(hrow), [toast2, hrow]);
   await p.click('[data-key^=hbill-] a'); await wait(900); const hv = await p.textContent('main').catch(() => '');
   ok('…открыл — квитанция «Платіжка за листопад 2026», сумма, «Видалити»', /Платіжка за листопад 2026/.test(hv) && /980,10/.test(hv) && await p.locator('[data-key=rec-del]').count() === 1, hv.slice(0, 300));
