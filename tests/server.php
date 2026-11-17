@@ -2900,7 +2900,23 @@ ok('apple: дійсний токен → sub, e-mail малими, «прихо�
   && $apErr(fn() => Apple::verify(preg_replace('~\.([^.]+)\.~', '.' . $b64u(json_encode(['sub' => 'другий'] + $apBase)) . '.', $apTok($apBase)), $apJwks, Apple::AUD, 'n-1', $apNow)) === 'apple_bad_signature'
   && $apErr(fn() => Apple::verify('abc', $apJwks, Apple::AUD, null, $apNow)) === 'apple_bad_token'
   && openssl_pkey_get_public(Apple::pem($apJwks[0]['n'], $apJwks[0]['e'])) !== false, $apOk);
-ok('seo: sitemap — головна + пари: 38 (моделі) + 351 (громади) + 1 + постачальники', count(Seo::pairs()) === 38 + 351 + 1 + count($pv), count(Seo::pairs()));
+ok('seo: sitemap — головна + пари: 38 (моделі) + 1 (комуналка Харкова) + 351 (громади) + 1 + постачальники', count(Seo::pairs()) === 38 + 1 + 351 + 1 + count($pv)
+  && in_array([Seo::KUK . '/kharkiv', Seo::KRU . '/kharkiv'], Seo::pairs(), true), count(Seo::pairs()));
+// 170-а: «Комуналка в Харкові: куди передати показники» — шпаргалка, картки з підставою ціни, FAQPage; ru; громади/постачальники — «комуналка» й «передати показники»
+$ku = (string)Seo::render('uk', 'kharkiv', '', 'https://peredai.com.ua/', 'k'); $kr = (string)Seo::render('ru', 'kharkiv', '', 'https://peredai.com.ua/', 'k');
+$kt = fn(string $h) => preg_match('~<title>(.*?)</title>~', $h, $m) ? html_entity_decode($m[1], ENT_QUOTES, 'UTF-8') : '';
+$hku2 = (string)Seo::render('uk', 'kharkiv', '', 'https://peredai.com.ua/', 'h'); $hbu = (string)Seo::render('uk', 'bucha', '', 'https://peredai.com.ua/', 'h');
+$kyu = (string)Seo::render('uk', 'kyiv', '', 'https://peredai.com.ua/', 'h'); $pko2 = $pko;
+ok('seo: комуналка Харкова — title «Комуналка в Харкові: куди передати показники…», шпаргалка (обленерго 1–3, Водоканал 1–20, ХТМ 5–25, газ 1–5), «Підстава: рішення … № 509», FAQPage з тими ж питаннями, лише ld+json; ru; /komunalka/odesa — 404; match',
+  $kt($ku) === 'Комуналка в Харкові: куди передати показники — світло, вода, газ, тепло' && str_contains($ku, 'з 1 по 20 число') && str_contains($ku, 'з 5 по 25 число') && str_contains($ku, 'останні 2 дні місяця і з 1 по 3 число')
+  && str_contains($ku, 'з 1 по 5 число') && str_contains($ku, 'Підстава: рішення виконкому Харківської міської ради від 23.09.2026 № 509') && str_contains($ku, '"@type":"FAQPage"') && str_contains($ku, 'Скільки коштує вода в Харкові?')
+  && str_contains($ku, '"@type":"BreadcrumbList"') && preg_match_all('~<script~', $ku) === preg_match_all('~<script type="application/ld\+json">~', $ku) && !str_contains($ku, 'натисн')
+  && $kt($kr) === 'Коммуналка в Харькове: куда передать показания — свет, вода, газ, тепло' && str_contains($kr, 'Сколько стоит вода в Харькове?') && str_contains($kr, 'Основание: рішення')
+  && Seo::match('/komunalka/kharkiv') === ['uk', 'kharkiv', 'k'] && Seo::match('/ru/kommunalka/kharkiv/') === ['ru', 'kharkiv', 'k'] && Seo::match('/komunalka/odesa') === null && Seo::render('uk', 'odesa', '', 'https://x/', 'k') === null, [$kt($ku), $kt($kr)]);
+ok('seo: громади й постачальники — «комуналка» й «передати показники» в title/description; Київ — без «(м. Київ)»; Харків громада → посилання на «Комуналка в Харкові»',
+  $kt($hku2) === 'Комуналка Харків (Харківська обл.): куди передати показники — світло, вода, газ, тепло' && str_contains($hbu, 'Куди й до якого числа передати показники лічильників у Буча')
+  && $kt($kyu) === 'Комуналка Київ: куди передати показники — світло, вода, газ, тепло' && str_contains($hku2, 'href="/komunalka/kharkiv"')
+  && str_contains($pko2, 'передати показники лічильників, тарифи на комуналку'), [$kt($hku2), $kt($kyu)]);
 
 echo "\nИтог: $pass OK, $fail FAIL\n";
 exit($fail ? 1 : 0);
