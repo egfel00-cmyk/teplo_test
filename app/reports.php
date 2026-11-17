@@ -3,6 +3,7 @@
 //   публично по ссылке: <SITE_BASE>/r/<адрес> (noindex — в поиск не попадают; ссылку знает тот, кому её дали);
 //   в /admin → «Отчёты»: GET /api/admin/pages (список), GET /api/admin/page?id=<id> (страница; только админам).
 // 148-я сессия: разбор конкурентов (владелец 14.11: «загрузи на сервер, ссылка для всех, у кого она есть, и продублируй в админке»).
+// 17.11: вторая версия (первая ошибалась: «прямого аналога нет»), адрес тот же; в /admin — ещё и первой строкой «Сводки».
 // Новый отчёт: страница → tools: prerender (см. docs/конкуренты.md) → файл сюда → строка в LIST.
 declare(strict_types=1);
 defined('TEPLO') || exit;
@@ -10,7 +11,7 @@ defined('TEPLO') || exit;
 final class Reports {
   /** id → [публичный адрес после /r/ (пусто — только в /admin), файл, название, дата] */
   public const LIST = [
-    'konkurenty' => ['konkurenty-542de334', 'konkurenty-2026-11.html', 'Разбор конкурентов', '2026-11-14'],
+    'konkurenty' => ['konkurenty-542de334', 'konkurenty-2026-11-17.html', 'Разбор конкурентов (вторая версия: прямые аналоги, Куб, komunalka.fugas.space)', '2026-11-17'],
   ];
 
   public static function file(string $id): ?string {

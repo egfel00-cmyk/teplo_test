@@ -107,6 +107,16 @@ pre.state { font: 12px/1.4 var(--mono); background: #F4F7F5; padding: 10px; bord
   }
 
   var VIEW = {};
+  /** Отчёты владельца первой строкой «Сводки» (владелец 17.11 не нашёл вкладку «Отчёты»): название → вкладка, публичная ссылка — рядом. */
+  function pagesTop() {
+    var l = DATA.pages || [];
+    if (!l.length) return '';
+    return '<div class="panel" data-key="adm-pages"><b>Отчёты</b> <span class="muted small">— полностью во вкладке «Отчёты»</span>' + l.map(function (x) {
+      var url = x.slug ? SITE + 'r/' + x.slug : '';
+      return '<p style="margin:6px 0 0"><a href="#pages" data-page="' + esc(x.id) + '">' + esc(x.title) + '</a> <span class="muted small">' + esc(x.date) + '</span>' +
+        (url ? ' · <a href="' + esc(url) + '" target="_blank" rel="noopener">ссылка для всех</a>' : '') + (x.ok ? '' : ' ' + pill('bad', 'файла нет')) + '</p>';
+    }).join('') + '</div>';
+  }
   VIEW.overview = function () {
     var o = DATA.overview;
     var c = function (v, k) { return '<div class="card"><div class="v">' + esc(v) + '</div><div class="k">' + k + '</div></div>'; };
@@ -118,7 +128,7 @@ pre.state { font: 12px/1.4 var(--mono); background: #F4F7F5; padding: 10px; bord
     var vk = o.vk || {}, vb = vk.bot || {}, vc = vk.cab;
     var vkLine = 'Водоканал — бот: ' + (vb.state === 'silent' ? '<b class="problem">не отвечает с ' + when(new Date(vb.since * 1000).toISOString()) + '</b> (заметили: ' + vb.users + ')' : vb.state === 'ok' ? 'отвечал ' + when(new Date(vb.lastOk * 1000).toISOString()) : 'нет данных (никто не пересылал ответов)') +
       ' · кабинет: ' + (!vc ? 'ещё не проверяли' : vc.state === 'ok' ? 'открывается (' + when(new Date(vc.at * 1000).toISOString()) + ')' : '<b class="problem">не открывается с ' + when(new Date(vc.since * 1000).toISOString()) + '</b>, код ' + esc(vc.code) + (vc.everOk ? '' : ' — с нашего сервера ни разу не открылся (может не пускать заграничные адреса)'));
-    return (warn.length ? '<div class="panel" style="background:var(--warns)">' + warn.map(function (w) { return '<p style="margin:4px 0">' + w + '</p>'; }).join('') + '</div>' : '') +
+    return pagesTop() + (warn.length ? '<div class="panel" style="background:var(--warns)">' + warn.map(function (w) { return '<p style="margin:4px 0">' + w + '</p>'; }).join('') + '</div>' : '') +
       '<div class="panel small" data-key="adm-vk">' + vkLine + '</div>' +
       '<div class="cards">' + c(o.users, 'пользователей всего') + c(o.usersWeek, 'новых за 7 дней') + c(o.activeWeek, 'входили за 7 дней') + c(o.withTelegram, 'с Telegram') + c(o.withData, 'сохранили данные') +
       c(o.feedback, 'сообщений (новых: ' + o.feedbackNew + ')') + c(o.photos, 'фото загружено') + c(o.photosFailed, 'фото с проблемами') + c(o.reportsBad + ' / ' + o.reports, 'распознаваний с замечаниями') + '</div>' +
@@ -950,7 +960,7 @@ pre.state { font: 12px/1.4 var(--mono); background: #F4F7F5; padding: 10px; bord
     provr: function () { return get('/admin/prov/region?r=' + PV.r).then(function (j) { DATA.provr = j; }); },
     prove: function () { PV.msg = PV.keepMsg ? PV.msg : {}; PV.keepMsg = false; return get('/admin/prov/entry?r=' + PV.r + '&scope=' + PV.scope + '&key=' + encodeURIComponent(PV.key)).then(function (j) { DATA.prove = j; }); },
     settings: function () { return get('/admin/settings').then(function (j) { DATA.settings = j; }); },
-    overview: function () { return get('/admin/devices?days=' + DDAYS).then(function (j) { DATA.devices = j; }); },
+    overview: function () { return Promise.all([get('/admin/devices?days=' + DDAYS).then(function (j) { DATA.devices = j; }), LOAD.pages()]); },   // отчёты — и на «Сводке» (владелец 17.11: «не могу найти ссылку»)
     users: function () { return get('/admin/users?q=' + encodeURIComponent(Q)).then(function (j) { DATA.users = j.users; }); },
     geo: function () { return get('/admin/geo' + (GA.all ? '?all=1' : '')).then(function (j) { DATA.geo = j; }); },
     visitors: function () { return get('/admin/visitgeo?days=' + VG.days + (VG.all ? '&all=1' : '')).then(function (j) { DATA.visitors = j; }); },
