@@ -8527,6 +8527,8 @@
     if (MO.logged || !MO.t0) return; MO.logged = true;
     var x = Mn.stats(MO.items.length ? MO.items : []);
     track('mono', { how: how, e: err || undefined, w: MO.read, of: MO.q.length, pg: MO.pg || undefined, c: MO.cards, n: x.n, gov: x.gov || undefined, ut: x.ut, g: x.g || (MO.groups.length ? MO.groups.map(function (g) { return g.kind + (g.acc ? '+' : '-'); }).join(' ') : ''), r429: MO.rate || undefined, s: Math.round((Date.now() - MO.t0) / 1000) });
+    // 169-а: платежі без рахунку — як виглядають (без назв, сум і цифр: вид, MCC, які поля є, довжини груп цифр) — щоб наступного разу знати, де рахунок
+    var sh = Mn.shapes ? Mn.shapes(MO.items) : ''; if (sh) track('mono_g', { s: sh });
   }
   /** Що вже переглянули: з якої дати (найстаріше прочитане вікно) і скільки ще хвилин (запит — раз на хвилину). */
   function monoProg() {
@@ -8546,14 +8548,16 @@
     // вивіз сміття (115-а): особовий рахунок і оплати — в історію вивозу (рахунку в призначенні може й не бути)
     if (kind === 'waste') { var ww = p.waste || {}, np = (g.pays || []).filter(function (x) { var o = Mn.payOf(x); return !Ws.dup(ww, o.date, o.amount); }).length;
       return { ok: true, f: 'mono_f_waste', cur: dgt(ww.account), waste: true, n: np, accNew: !!d && !dgt(ww.account) }; }
-    if (!d) return { ok: false };
-    if (kind === 'water') return { ok: true, f: 'mono_f_water', cur: dgt((p.water || {}).account) };
-    if (kind === 'heat') { var hm = pid === S.placeId ? S.meter : p.meter; return hm ? { ok: true, f: 'mono_f_heat', cur: dgt(hm.account) } : { ok: false, why: 'mono_no_meter' }; }
+    // 169-а (власник 17.11: «товариш оплатив комуналку — нічого не знайшлося»): у виписці платіж є, а рахунку немає (monobank не завжди передає
+    // призначення) — показуємо платіж і поле «впишіть рахунок з квитанції» (need), а не «нового не знайшли»
+    var need = !d;
+    if (kind === 'water') return { ok: true, need: need, f: 'mono_f_water', cur: dgt((p.water || {}).account) };
+    if (kind === 'heat') { var hm = pid === S.placeId ? S.meter : p.meter; return hm ? { ok: true, need: need, f: 'mono_f_heat', cur: dgt(hm.account) } : { ok: false, why: 'mono_no_meter' }; }
     if (kind === 'elec' || kind === 'gas') {
       var ms = ((p.meters || []).filter(function (m) { return m && !m.deleted && !m.removed && m.kind === kind; }));
       if (!ms.length) return { ok: false, why: 'mono_no_meter' };
       var fld = kind === 'gas' ? Mn.gasField(g) : 'account', m = ms.filter(function (x) { return dgt(x[fld]) === d; })[0] || ms.filter(function (x) { return !dgt(x[fld]); })[0] || ms[0];
-      return { ok: true, f: kind === 'gas' ? 'mono_f_' + fld : 'mono_f_elec', cur: dgt(m[fld]), meter: m.id, fld: fld };
+      return { ok: true, need: need, f: kind === 'gas' ? 'mono_f_' + fld : 'mono_f_elec', cur: dgt(m[fld]), meter: m.id, fld: fld };
     }
     return { ok: false, why: 'mono_no_kind' };
   }
@@ -8565,7 +8569,7 @@
   /** Що позначити самим: є куди вписати, поле порожнє, рахунок із підписом (не «звірте»); вивіз — нові оплати чи рахунок. */
   function monoSelDef(g) {
     var tg = monoTarget(g, g.kind, S.placeId);
-    return { on: !!(tg.ok && (tg.waste ? tg.n > 0 || tg.accNew : tg.cur !== dgt(g.acc) && !tg.cur && !g.guess)), kind: g.kind, place: S.placeId };
+    return { on: !!(tg.ok && (tg.waste ? tg.n > 0 || tg.accNew : !tg.need && tg.cur !== dgt(g.acc) && !tg.cur && !g.guess)), kind: g.kind, place: S.placeId };
   }
   /** Ключ вставили (117-а: без кнопки «Знайти» — пошук іде сам, щойно в полі чи буфері є щось схоже на ключ). */
   function monoStart(tok) {
@@ -8676,7 +8680,8 @@
     var n = 0, sn = MO.sn && MO.name ? String(MO.name).trim().split(/\s+/)[0] : '';
     MO.groups.forEach(function (g) {
       var s = MO.sel[g.key]; if (!s || !s.on) return;
-      var tg = monoTarget(g, s.kind, s.place), p = place(s.place), d = dgt(g.acc); if (!tg.ok || !p) return;
+      var tg = monoTarget(g, s.kind, s.place), p = place(s.place), d = dgt(g.acc) || dgt(s.acc); if (!tg.ok || !p) return;
+      if (tg.need && s.kind !== 'waste' && d.length < 4) return;
       if (s.kind === 'water') { p.water = JSON.parse(JSON.stringify(p.water || { account: '', surname: '', meters: [] })); p.water.account = d; if (sn && !String(p.water.surname || '').trim()) p.water.surname = sn; }
       else if (s.kind === 'waste') {
         p.waste = JSON.parse(JSON.stringify(p.waste || {})); var w = p.waste; w.on = true; w.at = w.at || today(); delete w.removed; w.pays = w.pays || [];
@@ -8710,22 +8715,23 @@
           '<div class="wiz-actions"><button type="button" class="btn sec" data-act="mono-again" data-key="mono-again">' + esc(t('mono_again')) + '</button><a class="btn" href="#' + esc(back) + '" data-act="mono-cancel">' + esc(t('back')) + '</a></div>') };
       var many = places().length > 1, anyWater = false, main = [], rest = [];
       MO.groups.forEach(function (g, gi) {
-        var s = MO.sel[g.key] || { kind: g.kind, place: S.placeId }, tg = monoTarget(g, s.kind, s.place), d = dgt(g.acc), same = tg.ok && (tg.waste ? !tg.n && (!d || tg.cur === d) : tg.cur === d);
+        var s = MO.sel[g.key] || { kind: g.kind, place: S.placeId }, tg = monoTarget(g, s.kind, s.place), d = dgt(g.acc), same = tg.ok && (tg.waste ? !tg.n && (!d || tg.cur === d) : tg.need ? !!tg.cur : tg.cur === d);
         if (s.on && s.kind === 'water') anyWater = true;
-        var can = tg.ok && !same, id = 'mono-' + gi;
-        var to = tg.waste ? (same ? t('mono_same') : t('mono_to_waste', { n: tg.n }) + (tg.accNew && !g.guess ? ' · ' + t('mono_to_wacc') : '')) : !d ? t('mono_noacc') : same ? t('mono_same') : tg.ok ? t('mono_to', { f: t(tg.f) }) + (tg.cur ? ' · ' + t('mono_to_set', { a: tg.cur }) : '') : t(tg.why || 'mono_no_kind');
+        var can = tg.ok && !same, id = 'mono-' + gi;   // need: поле рахунку порожнє — можна вписати з квитанції
+        var to = tg.waste ? (same ? t('mono_same') : t('mono_to_waste', { n: tg.n }) + (tg.accNew && !g.guess ? ' · ' + t('mono_to_wacc') : '')) : tg.need && tg.ok ? (same ? t('mono_need_have', { a: tg.cur }) : t('mono_need', { f: t(tg.f) })) : !d ? t(tg.why && tg.why !== 'mono_no_kind' ? tg.why : 'mono_noacc') : same ? t('mono_same') : tg.ok ? t('mono_to', { f: t(tg.f) }) + (tg.cur ? ' · ' + t('mono_to_set', { a: tg.cur }) : '') : t(tg.why || 'mono_no_kind');
+        var accIn = tg.need && tg.ok && can ? '<div class="field mono-accf"><label for="' + id + '-a" class="small">' + esc(t('mono_accin')) + '</label><div class="ctl"><input id="' + id + '-a" type="text" inputmode="numeric" autocomplete="off" data-mono="' + gi + '" data-mf="acc" data-key="mono-acc-' + gi + '" value="' + esc(s.acc || '') + '"></div></div>' : '';
         var last = g.last ? fmtDate(new Date(g.last * 1000).toISOString().slice(0, 10)) : '';
         var known = /^(heat|water|elec|gas|waste)$/.test(g.kind), selK = '<select id="' + id + '-k" data-mono="' + gi + '" data-mf="kind" aria-label="' + esc(t('mono_kind')) + '">' +
           kinds.map(function (k) { return '<option value="' + k + '"' + (s.kind === k ? ' selected' : '') + '>' + esc(t('mono_k_' + k)) + '</option>'; }).join('') + '</select>';
         var selP = many ? '<select id="' + id + '-p" data-mono="' + gi + '" data-mf="place" aria-label="' + esc(t('mono_place')) + '">' +
           places().map(function (pp) { return '<option value="' + esc(pp.id) + '"' + (s.place === pp.id ? ' selected' : '') + '>' + esc(placeLabel(pp)) + '</option>'; }).join('') + '</select>' : '';
         // вид і квартира: відомий вид — у згорнутому «Не те?», невідомий (ОСББ, «інше») — одразу
-        var sel = !d && !tg.waste && g.kind !== 'waste' ? '' : known && !many ? '<details class="mono-chg" data-key="mono-chg-' + gi + '"><summary class="small">' + esc(t('mono_chg')) + '</summary><div class="mono-sel">' + selK + '</div></details>'
+        var sel = !d && !tg.waste && g.kind !== 'waste' && !(tg.need && tg.ok) && known ? '' : known && !many ? '<details class="mono-chg" data-key="mono-chg-' + gi + '"><summary class="small">' + esc(t('mono_chg')) + '</summary><div class="mono-sel">' + selK + '</div></details>'
           : '<div class="mono-sel">' + selK + selP + '</div>';
         (can ? main : rest).push('<div class="mono-g' + (can ? '' : ' off') + '" data-key="mono-g-' + gi + '">' +
           '<label class="check-row"><input type="checkbox" id="' + id + '" data-mono="' + gi + '" data-mf="on"' + (s.on && can ? ' checked' : '') + (can ? '' : ' disabled') + '><span><b>' + esc(g.name || t('mono_k_other')) + '</b>' +
           (d ? '<span class="mono-acc">' + esc(t('mono_acc', { a: d })) + '</span>' + (g.guess ? '<span class="small warn-ink mono-guess">' + esc(t('mono_guess')) + '</span>' : '') : '') + '</span></label>' +
-          '<p class="small mono-to">' + esc(to) + '</p>' +
+          '<p class="small mono-to">' + esc(to) + '</p>' + accIn +
           '<p class="small muted">' + esc(t('mono_pays', { n: g.n, d: last, s: money(g.lastAmt) })) + '</p>' + sel + '</div>');
       });
       // 117-а: на виду — лише те, що можна вписати; решта (уже вписане, без рахунку, ОСББ) — згорнуто
@@ -8763,7 +8769,19 @@
     if (gi === 'sn') { MO.sn = el.checked; return; }
     var g = MO.groups[+gi]; if (!g) return; var s = MO.sel[g.key] = MO.sel[g.key] || { kind: g.kind, place: S.placeId };
     if (f === 'on') { s.on = el.checked; if (s.kind === 'water') render(true); return; }
-    s[f] = el.value; var tg = monoTarget(g, s.kind, s.place); s.on = !!(tg.ok && tg.cur !== dgt(g.acc)); render(true);
+    if (f === 'acc') { monoAccIn(el, g, s); return; }
+    s[f] = el.value; var tg = monoTarget(g, s.kind, s.place); s.on = !!(tg.ok && (tg.need ? dgt(s.acc).length >= 4 : tg.cur !== dgt(g.acc))); render(true);
+  });
+  /** 169-а: рахунок з квитанції для платежу без рахунку у виписці — галочка вмикається сама, щойно є 4+ цифри (без перемальовки: фокус лишається в полі). */
+  function monoAccIn(el, g, s) {
+    s.acc = dgt(el.value); s.on = s.acc.length >= 4;
+    var cb = document.getElementById(String(el.id || '').replace(/-a$/, '')); if (cb) cb.checked = s.on;
+    if (!document.querySelector('[data-key=mono-apply]') && s.on) render(true);
+  }
+  document.addEventListener('input', function (e) {
+    var el = e.target; if (!el || !el.getAttribute || el.getAttribute('data-mf') !== 'acc') return;
+    var g = MO.groups[+el.getAttribute('data-mono')]; if (!g) return;
+    monoAccIn(el, g, MO.sel[g.key] = MO.sel[g.key] || { kind: g.kind, place: S.placeId });
   });
   /** Какой счётчик добавить: опалення · гаряча · холодна · газ (скоро) · електрика (скоро); прибранные — «Повернути». */
   var AM_BACK = 'home';

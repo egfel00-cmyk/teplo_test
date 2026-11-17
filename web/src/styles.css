@@ -3125,3 +3125,7 @@ fieldset { min-inline-size: 0; }
 .cb .trust { margin-top: 16px; }
 .cb-bg .hc-consent:first-child { margin-top: 0; }
 .cb-form .row-actions .btn { flex: 0 1 auto; }
+
+/* 169-а: платіж без рахунку у виписці monobank — поле «Особовий рахунок з квитанції» під текстом рядка (той самий відступ, що в підписів) */
+.mono-g .mono-accf { margin: 8px 0 0 34px; }
+.mono-g .mono-accf input { font-variant-numeric: tabular-nums; }

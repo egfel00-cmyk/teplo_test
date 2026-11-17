@@ -230,6 +230,13 @@ final class Journal {
       $mono['last'][] = $row; if (count($mono['last']) > 8) array_shift($mono['last']);
     }
     $mono['vids'] = count($mv);
+    // 169-а: как выглядят платежи без рахунку (событие «mono_g»: вид, MCC, какие поля есть, длины групп цифр — без названий, сумм и цифр)
+    $mono['shapes'] = [];
+    foreach (Db::q("SELECT vid, props, at FROM events WHERE day >= ? AND name = 'mono_g' ORDER BY id DESC LIMIT 8", [$from])->fetchAll() as $e) {
+      $p = $pv($e['props']); $row = ['at' => (string)$e['at'], 's' => mb_substr((string)($p['s'] ?? ''), 0, 120)];
+      if (isset($int[(string)$e['vid']])) $row['own'] = 1;
+      $mono['shapes'][] = $row;
+    }
     return ['from' => $from, 'people' => $people, 'journal' => $withEv, 'withErr' => count(array_diff_key($errVids, $int)), 'js' => $js, 'api' => $api, 'toasts' => $toasts, 'dev' => (object)$dev, 'navShift' => $ns, 'cam' => $cam, 'mono' => $mono];
   }
   public static function cleanup(?int $now = null): int {

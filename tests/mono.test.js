@@ -86,5 +86,12 @@ ok('stats: лише числа — операцій, держплатежів, �
   ok('statement 429 → rate', r2.error === 'rate');
   const r3 = await M.statement('tok', { acc: 'b', from: 1, to: 2 }, () => Promise.reject(new Error('x')));
   ok('мережа → network', r3.error === 'network');
-  console.log(`\n${pass} OK, ${fail} FAIL`); process.exit(fail ? 1 : 0);
+  
+// 169-а: рахунок, розбитий пробілами; телефон — ні; форма платежів без рахунку — без назв і цифр
+ok('«о/р 12 345 678» → 12345678, «12 345 678» без підпису — guess (10 цифр з 0 без підпису — схоже на телефон)', (M.accOf('о/р 12 345 678 за жовтень') || {}).acc === '12345678' && (() => { const a = M.accOf('Іваненко 12 345 678'); return a && a.acc === '12345678' && a.guess; })());
+ok('телефон «097 123 45 67» і сума «1 234,56» — не рахунок', M.accOf('тел 097 123 45 67') === null && M.accOf('Сплата 1 234,56 грн', 1234.56) === null);
+ok('shapes: платіж без рахунку — вид, MCC, поля, довжини цифр; без назв і цифр; з рахунком — не потрапляє',
+  M.shapes([{ id: 's1', time: 1, description: 'ТОВ Харківенергозбут', mcc: 4900, amount: -100, counterName: 'ТОВ Харківенергозбут', counterEdrpou: '42206328', hold: true },
+    { id: 's2', time: 2, description: 'КП ХТМ', comment: 'о/р 1234567', mcc: 4900, amount: -100 }]) === 'elec:4900:neh:d:m');
+console.log(`\n${pass} OK, ${fail} FAIL`); process.exit(fail ? 1 : 0);
 })();

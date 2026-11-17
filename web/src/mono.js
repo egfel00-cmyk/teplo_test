@@ -41,7 +41,14 @@
   /** Рахунок із призначення/коментаря: {acc, guess} — з підписом («о/р 123456») або, якщо підпису немає, найдовша група з 6–14 цифр
    *  (не телефон 380…, не сума платежу, не дата). guess — без підпису: людина звірить. Нічого — null. */
   function accOf(s, amount) {
-    s = String(s || ''); ACC_RE.lastIndex = 0;
+    // 169-а: рахунок, розбитий пробілами по три («о/р 12 345 678», «0 123 456 789»), — зліпити; не чіпати, якщо поруч ще цифри (телефон «097 123 45 67»).
+    // Без lookbehind у регулярці: старий Safari (< 16.4) на ньому падає разом з усім файлом.
+    s = String(s || '').replace(/\d{1,3}(?:[ \u00a0]\d{3})+/g, function (m, off, all) {
+      var pre = all.charAt(off - 1), pre2 = all.charAt(off - 2), nx = all.charAt(off + m.length), nx2 = all.charAt(off + m.length + 1), sp = /[ \u00a0]/;
+      if (/\d/.test(pre) || (sp.test(pre) && /\d/.test(pre2)) || /\d/.test(nx) || (sp.test(nx) && /\d/.test(nx2))) return m;
+      return m.replace(/[ \u00a0]/g, '');
+    });
+    ACC_RE.lastIndex = 0;
     var m, best = null;
     while ((m = ACC_RE.exec(s))) { var d = digits(m[1]); if (d.length >= 4 && d.length <= 20 && (!best || d.length > best.length)) best = d; }
     if (best) return { acc: best, guess: false };
@@ -170,7 +177,27 @@
     return { n: n, gov: gov, ut: ut, g: g.join(' ').slice(0, 120) };
   }
 
+  /** 169-а (власник 17.11: «товариш оплатив комуналку — нічого не знайшлося»; у журналі 5 платежів, у жодного немає рахунку):
+   *  як виглядають платежі без рахунку — без назв, сум і цифр: вид, MCC, які поля є (n — назва отримувача, i — IBAN, e — ЄДРПОУ,
+   *  c — коментар, h — hold), довжини груп цифр в описі (d) і коментарі (m), «L» — є слово «рахунок/о/р/л/с», «s» — цифри з пробілами. */
+  function shapes(items) {
+    var seen = {}, out = [];
+    (items || []).forEach(function (it) {
+      if (!isUtility(it)) return;
+      var dsc = String(it.description || ''), cm = String(it.comment || ''), a = accOf([dsc, cm].filter(Boolean).join(' · '), (it.amount || 0) / 100);
+      if (a) return;
+      var k = kindOf(text(it)) || 'other', key = (digits(it.counterEdrpou) || String(it.counterName || dsc).toLowerCase()) + k;
+      if (seen[key]) return; seen[key] = 1;
+      var runs = function (x) { return (x.match(/\d+/g) || []).map(function (d) { return d.length; }).slice(0, 4).join('.'); };
+      var lab = /рах|о\s*\/\s*р|л\s*\/\s*с|лиц|абон|account/i.test(dsc + ' ' + cm) ? 'L' : '';
+      var sp = /\d{2,4}(?:[ \u00a0]\d{2,4}){1,4}/.test(dsc + ' ' + cm) ? 's' : '';
+      out.push(k + ':' + (it.mcc || 0) + ':' + (it.counterName ? 'n' : '') + (it.counterIban ? 'i' : '') + (it.counterEdrpou ? 'e' : '') + (cm ? 'c' : '') + (it.hold ? 'h' : '') +
+        ':d' + runs(dsc) + ':m' + runs(cm) + lab + sp);
+    });
+    return out.join('|').slice(0, 118);
+  }
+
   var api = { API: API, TOKEN_URL: TOKEN_URL, WIN: WIN, GAP: GAP, MONTHS: MONTHS, DEEP: DEEP, LIMIT: LIMIT, TIMEOUT: TIMEOUT, kindOf: kindOf, accOf: accOf, eicOf: eicOf, isGov: isGov, isUtility: isUtility, groups: groups, gasField: gasField, payOf: payOf,
-    cards: cards, plan: plan, next: next, stats: stats, clientInfo: clientInfo, statement: statement, tokenOk: tokenOk, tokenFrom: tokenFrom };
+    cards: cards, plan: plan, next: next, stats: stats, shapes: shapes, clientInfo: clientInfo, statement: statement, tokenOk: tokenOk, tokenFrom: tokenFrom };
   if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.TeploMono = api;
 })(typeof window !== 'undefined' ? window : this);
