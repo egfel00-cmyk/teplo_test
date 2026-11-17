@@ -255,7 +255,7 @@ final class Providers {
   /** Сьогоднішня дата для датованих тарифів (тести підставляють свою). */
   public static ?string $today = null;
   /** Наступний затверджений тариф (next: {from, supply, drain, price} або їх список): з дати from він і є чинним, раніше — лишається
-   *  в відповіді як «з … буде …». Харківводоканал: 49,446 / 20,82 з 01.10.2026 → 57,504 / 27,992 з 01.01.2027. */
+   *  в відповіді як «з … буде …». Харків (рішення виконкому № 509, тарифи КП «ХТМ»): 48,629 / 20,61 з 01.10.2026 → 57,504 / 27,992 з 01.01.2027. */
   public static function dated(array $o, ?string $today = null): array {
     if (empty($o['next']) || !is_array($o['next'])) return $o;
     $today = $today ?? self::$today ?? date('Y-m-d');

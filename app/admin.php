@@ -657,7 +657,7 @@ final class GeoStats {
   const UNIT = ['heat' => 'Гкал', 'hot' => 'м³', 'cold' => 'м³', 'elec' => 'кВт·год', 'gas' => 'м³'];
   // загальні ціни застосунку: rules.js C.TARIFF (ХТМ), water.js HOT і TARIFFS (Харківводоканал), elec.js (світло 4,32, газ 7,96)
   const DEF = ['heat' => 1539.50, 'hot' => 86.32, 'elec' => 4.32, 'gas' => 7.96];
-  const WATER = [['2000-01-01', 16.032, 8.484], ['2026-10-01', 49.446, 20.820], ['2027-01-01', 57.504, 27.992]];
+  const WATER = [['2000-01-01', 16.032, 8.484], ['2026-10-01', 48.629, 20.61], ['2027-01-01', 57.504, 27.992]];
   public static ?string $today = null;
 
   private static function num($v): ?float {

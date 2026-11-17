@@ -29,7 +29,7 @@ ok('без рахунку — noAccount', W.vkCommand('', 'X', M, { h1: '1', c1:
 
 console.log('\nСтоимость и сроки:');
 const p = W.cost(3, 2, '2026-11-02');
-ok('холодная 3 м³ + горячая 2 м³ по тарифам с 1.10.2026', Math.abs(p.total - (3 * (49.446 + 20.82) + 2 * (86.32 + 20.82))) < 1e-6, p.total);
+ok('холодная 3 м³ + горячая 2 м³ по тарифам с 1.10.2026', Math.abs(p.total - (3 * (48.629 + 20.61) + 2 * (86.32 + 20.61))) < 1e-6, p.total);
 ok('с 2027 — новый тариф', W.tariffAt('2027-02-01').supply === 57.504);
 ok('до 20 числа окно открыто', W.vkWindow('2026-11-18').open && W.vkWindow('2026-11-18').daysLeft === 2 && !W.vkWindow('2026-11-21').open);
 
@@ -164,7 +164,7 @@ console.log('\nВодомір знімали — оценка:');
   ok('явный способ «за середнім» главнее причины', W.gapWater(Object.assign({}, g, { reason: 'repair', pay: 'avg' }), recs, { id: 'c1', kind: 'cold' }, { today: '2026-11-02' }).method === 'avg');
   ok('без истории за год — need history', W.gapWater(g, [], { id: 'c1', kind: 'cold' }, { today: '2026-11-02' }).need === 'history');
   const cs = W.gapWater({ from: '2026-09-20', to: '2026-10-10', reason: 'repair' }, recs, { id: 'c1', kind: 'cold' }, { today: '2026-11-02', persons: 1, cfg: { normRow: 'gas_bath' } });
-  ok('тариф меняется с 1.10: сентябрь по старому, октябрь по новому; норма «колонка» 9,92', cs.norm.cold === 9.92 && cs.rows.length === 2 && Math.abs(cs.rows[1].cost - cs.rows[1].m3 * (49.446 + 20.82)) < 0.02 && Math.abs(cs.rows[0].cost - cs.rows[0].m3 * (16.032 + 8.484)) < 0.02, cs.rows);
+  ok('тариф меняется с 1.10: сентябрь по старому, октябрь по новому; норма «колонка» 9,92', cs.norm.cold === 9.92 && cs.rows.length === 2 && Math.abs(cs.rows[1].cost - cs.rows[1].m3 * (48.629 + 20.61)) < 0.02 && Math.abs(cs.rows[0].cost - cs.rows[0].m3 * (16.032 + 8.484)) < 0.02, cs.rows);
   ok('своя норма из настроек главнее таблицы', W.normOf({ normRow: 'chw_bath', normCold: '5,5' }).cold === 5.5);
 }
 
