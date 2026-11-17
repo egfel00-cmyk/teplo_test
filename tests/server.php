@@ -1184,6 +1184,14 @@ $pl7 = Db::one('SELECT * FROM photos WHERE id = ?', [$r7l->body['id']]); $pl8 = 
 ok('світло з фото → в аналитике: зона не подписана — «взяли по порядку», не «счётчик электроэнергии, а не тепла»', $re->status === 200 && $pl7['status'] === 'recognized'
   && str_contains((string)$pl7['problem'], 'свет, день: зона не подписана') && !str_contains((string)$pl7['problem'], 'не тепла'), $pl7['problem']);
 ok('газ при настройке без цифр → «показаний газового счётчика не найдено (настройка нового счётчика)»', str_contains((string)$pl8['problem'], 'газового счётчика на фото не найдено (настройка нового счётчика)'), $pl8['problem']);
+// 17.11 (@ayo_kvv): однозонный свет без прошлых — «сверить не с чем», не «зона не подписана»; водомеров в квартире нет — так и пишем
+$r9l = $up($mv, $png, 'image/png'); $r10l = $up($mv, $png, 'image/png');
+$mv->req('POST', '/api/recognize/local', ['ids' => [$r9l->body['id'], $r10l->body['id']], 'results' => [
+  ['photo' => ['index' => 0, 'kind' => 'elec', 'meterType' => 'electric', 'readings' => [['field' => 'elec_all', 'meter' => 'e1', 'value' => 8039, 'frac' => '26', 'guess' => true]]], 'ms' => 3000, 'ocr' => [['t' => '803926', 's' => 0.95]]],
+  ['photo' => ['index' => 1, 'kind' => 'water', 'meterType' => 'water', 'readings' => [], 'note' => 'no_meters'], 'ms' => 2000]]]);
+$pl9 = Db::one('SELECT * FROM photos WHERE id = ?', [$r9l->body['id']]); $pl10 = Db::one('SELECT * FROM photos WHERE id = ?', [$r10l->body['id']]);
+ok('однозонный свет без прошлых → «свет: прошлых показаний нет — сверить не с чем»', str_contains((string)$pl9['problem'], 'свет: прошлых показаний нет') && !str_contains((string)$pl9['problem'], 'зона'), $pl9['problem']);
+ok('вода, окно прочитано, водомеров в квартире нет → так и пишем', str_contains((string)$pl10['problem'], 'в квартире нет водомеров'), $pl10['problem']);
 
 echo "\nИстория версий данных и восстановление из /admin:\n";
 $hu = new Browser('10.0.21.1'); $hu->req('POST', '/api/auth/register', ['email' => 'hist@example.ua', 'password' => 'hist pass 123']);

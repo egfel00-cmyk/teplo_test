@@ -2522,7 +2522,7 @@
     if (!im || !window.TEPLO_API) return;
     var id = im.getAttribute('data-hph'); FOC.busy = true;
     var js = window.TeploOCR ? Promise.resolve() : (FOC.js = FOC.js || new Promise(function (ok, bad) {
-      var sc = document.createElement('script'); sc.src = String(window.TEPLO_API).replace(/\/api\/?$/, '') + '/web/ocr/engine.js?v=22'; sc.onload = ok; sc.onerror = bad; document.head.appendChild(sc);
+      var sc = document.createElement('script'); sc.src = String(window.TEPLO_API).replace(/\/api\/?$/, '') + '/web/ocr/engine.js?v=23'; sc.onload = ok; sc.onerror = bad; document.head.appendChild(sc);
     }));
     js.then(function () { return window.TeploOCR._drums(im); }).then(function (cs) {
       var c = (cs || [])[0], iw = im.naturalWidth, ih = im.naturalHeight, k = Math.min(1, 2400 / Math.max(iw, ih));
@@ -4273,7 +4273,9 @@
         var x = WN.src[m.id] || {};
         return { field: 'water_' + m.kind, meter: m.id, unit: 'м³', value: x.value === undefined ? null : x.value, frac: x.frac || '', partial: x.partial || null, half: !!x.half, guess: !!x.guess, lead: !!x.lead, why: x.why || '' };
       });
-      return { file: p.file, ms: p.ms || 0, res: p.res, photo: { index: i, kind: 'water', meterType: 'water', readings: rd, quality: 'ok', note: rd.length ? '' : 'no_drum' } };
+      // 17.11: «не найден» — три разные причины: окна нет / водомеров в квартире нет / окно не подошло ни к одному
+      var nt = rd.length ? '' : !((p.res && p.res.drums) || []).length ? 'no_drum' : ms.length ? 'no_fit' : 'no_meters';
+      return { file: p.file, ms: p.ms || 0, res: p.res, photo: { index: i, kind: 'water', meterType: 'water', readings: rd, quality: 'ok', note: nt } };
     }));
   }
   /** Раскладка: фото с камеры у поля — за своим водомером; остальные — Wt.assign (№, цвет кольца, близость к прошлым). */

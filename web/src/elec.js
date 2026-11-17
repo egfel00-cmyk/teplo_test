@@ -173,10 +173,13 @@
     var out = [], tags = [], frags = [];
     ((shot && shot.lines) || []).forEach(function (l, i) {
       var y = l.y != null ? l.y : (l.box ? l.box[1] : i * 40), h = l.h || 30;
+      // 17.11 (@ayo_kvv: ЖК «8039.26» прочитано «803926»): рушій знайшов десяткову крапку на табло (engine lcdDot → l.dot — цифр після неї) —
+      // ставимо її в рядок і в варіанти з тією ж кількістю цифр
+      var nd = String(l.text || '').replace(/\s+/g, '').length, dot = function (t) { var c0 = String(t || '').replace(/\s+/g, ''); return l.dot > 0 && /^\d+$/.test(c0) && c0.length === nd && c0.length > l.dot ? c0.slice(0, -l.dot) + '.' + c0.slice(-l.dot) : t; };
       // шматок числа (лише цифри, можна з десятими) — для склейки ряду нижче
-      var fm = ocrTxt(l.text).replace(/\s+/g, '').match(/^(\d{1,7})(?:[.,](\d{1,3}))?$/); if (fm && l.x != null && l.w) frags.push({ d: fm[1], f: fm[2] || '', x: l.x, w: l.w, y: y, h: h, s: l.score || 1 });
+      var fm = ocrTxt(dot(l.text)).replace(/\s+/g, '').match(/^(\d{1,7})(?:[.,](\d{1,3}))?$/); if (fm && l.x != null && l.w) frags.push({ d: fm[1], f: fm[2] || '', x: l.x, w: l.w, y: y, h: h, s: l.score || 1 });
       [l.text].concat(l.alts || []).some(function (raw, ai) {
-        var s = ocrTxt(raw), z = zoneOf(s), unit = URE.test(s); URE.lastIndex = 0;
+        var s = ocrTxt(dot(raw)), z = zoneOf(s), unit = URE.test(s); URE.lastIndex = 0;
         var rest = s.replace(/(?:^|[^0-9A-Za-zА-Яа-я])[TТ]\s?[0-4](?![0-9])/g, ' ').replace(/(?:15|1)\s?[.,]\s?8\s?[.,]\s?[0-4](?![0-9])/g, ' ').replace(URE, ' ');
         if (/[A-Za-zА-Яа-яІіЇїЄє]{2}/.test(rest)) { if (z !== null && !ai) tags.push({ z: z, y: y, h: h }); return false; }
         var c = rest.replace(/\s+/g, '').replace(/(\d)[Oo]|[Oo](\d)/g, function (x, a, b) { return (a || '') + '0' + (b || ''); }).replace(/[Il|]/g, '1');

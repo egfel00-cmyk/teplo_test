@@ -317,7 +317,7 @@
    * Окно счётного механизма: тёмные ролики с белыми цифрами (м³) и рядом красные (дроби — литры).
    * Ищем по цвету, а не по тексту: тёмные «ячейки» одной высоты в ряд (или слитая полоса) + красное у одного из концов.
    * Красное всегда справа — так узнаём и границу «м³ | дроби», и что фото перевёрнуто. */
-  function findDrums(src, hintA) { var d = drumsPrep(src); return drumsPx(d.px, d.W, d.H, d.k, hintA); }
+  function findDrums(src, hintA, soft) { var d = drumsPrep(src); return drumsPx(d.px, d.W, d.H, d.k, hintA, soft); }
   /** Пікселі для пошуку вікон: холст ≤ 1280 px (у основному потоці — лише масштаб і getImageData, десятки мс). */
   function drumsPrep(src) {
     var A = 1280, k = Math.min(1, A / Math.max(src.width, src.height)), W = Math.max(8, Math.round(src.width * k)), H = Math.max(8, Math.round(src.height * k));
@@ -342,24 +342,28 @@
     } catch (e) { DW = false; }
     return DW;
   }
-  function findDrumsAsync(src, hintA) {
-    var d = drumsPrep(src), here = function () { return drumsPx(d.px, d.W, d.H, d.k, hintA); }, w = drumsWorker();
+  function findDrumsAsync(src, hintA, soft) {
+    var d = drumsPrep(src), here = function () { return drumsPx(d.px, d.W, d.H, d.k, hintA, soft); }, w = drumsWorker();
     if (!w) return Promise.resolve().then(here);
     return new Promise(function (ok) {
       var id = ++DW_N, done = false, to = setTimeout(function () { if (!done) { delete DW_Q[id]; dwFail(); fin(null); } }, 10000);
       function fin(c) { if (done) return; done = true; clearTimeout(to); if (c) ok(c); else { try { ok(here()); } catch (e) { ok([]); } } }
       DW_Q[id] = fin;
-      try { w.postMessage({ id: id, px: d.px, W: d.W, H: d.H, k: d.k, hint: hintA === undefined ? null : hintA }); } catch (e) { delete DW_Q[id]; fin(null); }
+      try { w.postMessage({ id: id, px: d.px, W: d.W, H: d.H, k: d.k, hint: hintA === undefined ? null : hintA, soft: !!soft }); } catch (e) { delete DW_Q[id]; fin(null); }
     });
   }
-  function drumsPx(px, W, H, k, hintA) {
-    if (hintA === undefined) hintA = null;
+  /* soft (17.11.2026, @ayo_kvv: NOVATOR ЛК-15Х під склом з відблиском, кадр боком): вікно сіре (L 85–135), червоні ролики — блідо-бурі (135,117,118):
+   * звичайні пороги («темне» < 110 і < 0,62 околиці, червоне r−g > 28) не бачать нічого. Другий прохід, лише коли першим барабан не прочитано
+   * і великого рядка цифр немає: темне < 150 і < 0,78 околиці, червоне — r−g > 10. */
+  function drumsPx(px, W, H, k, hintA, soft) {
+    if (hintA === undefined) hintA = null; soft = !!soft;
     var N = W * H, L = new Float32Array(N), red = new Uint8Array(N), I = new Float64Array((W + 1) * (H + 1));
     for (var y = 0; y < H; y++) { var row = 0; for (var x = 0; x < W; x++) {
       var q = y * W + x, r = px[q * 4], g = px[q * 4 + 1], b = px[q * 4 + 2], mx = Math.max(r, g, b), mn = Math.min(r, g, b);
       L[q] = 0.299 * r + 0.587 * g + 0.114 * b; row += L[q]; I[(y + 1) * (W + 1) + x + 1] = I[y * (W + 1) + x + 1] + row;
       // красный: оттенок у красного, насыщенный (тёплый свет и тень — допускаем бурый)
       if (r === mx && r > 55 && (mx - mn) > 0.33 * mx && r - g > 28 && (g - b) < 0.6 * (r - b) + 8) red[q] = 1;
+      else if (soft && r === mx && r > 60 && r - g > 10 && r - b > 8 && (g - b) < 0.6 * (r - b) + 6) red[q] = 1;
     } }
     var R0 = Math.max(10, Math.round(0.035 * Math.max(W, H))), MEAN = new Float32Array(N);
     for (y = 0; y < H; y++) for (x = 0; x < W; x++) {
@@ -371,7 +375,8 @@
     // минимумом по соседям (радиус 0, 2, 4 px) — окно становится сплошной тёмной полосой; берём лучшее со всех масштабов.
     [0, 2, 4].forEach(function (rad) {
       var Lm = rad ? minFilter(L, rad) : L, dark = new Uint8Array(N);
-      for (var q0 = 0; q0 < N; q0++) if (!red[q0] && Lm[q0] < 110 && Lm[q0] < 0.62 * MEAN[q0]) dark[q0] = 1;
+      var DL = soft ? 150 : 110, DM = soft ? 0.78 : 0.62;
+      for (var q0 = 0; q0 < N; q0++) if (!red[q0] && Lm[q0] < DL && Lm[q0] < DM * MEAN[q0]) dark[q0] = 1;
       scan(dark, rad).forEach(function (c0) {
         if (!cands.some(function (o) { return Math.hypot(o.cx - c0.cx, o.cy - c0.cy) < Math.max(o.h, c0.h) && o.score >= c0.score; })) {
           cands = cands.filter(function (o) { return !(Math.hypot(o.cx - c0.cx, o.cy - c0.cy) < Math.max(o.h, c0.h)); }); cands.push(c0);
@@ -987,6 +992,90 @@
     return Math.atan2(sy, sx) / 2;
   }
 
+  /* Десяткова крапка ЖК (17.11.2026, @ayo_kvv: електролічильник «8039.26» розпізнавач прочитав «803926» — крапку загубив, підставили 803926).
+   * Рядок із самих цифр (4–9, без роздільника): вирізаємо його рамку з полями, бінаризуємо місцевим порогом (лише темне на світлому — ЖК; білі цифри
+   * барабана на темному не чіпаємо). Смуга цифр — за високими плямами (медіана: рамка екрана й відблиск — геть), цифри — колонками в цій смузі,
+   * крапка — маленька майже кругла пляма (м'якший поріг: розмита крапка блідіша за штрихи) на рівні низу цифр усередині ряду, розміром із товщину
+   * штриха, над нею порожньо (не низ «1»/«7»). → скільки цифр праворуч від неї (1–3) або 0. Пляма не одна (пил, подряпини) — не вгадуємо: 0. */
+  function lcdDot(src, l, dbg) {
+    var dg = String(l.text || '').replace(/\s+/g, '');
+    if (!/^\d{4,9}$/.test(dg) || (l.score || 0) < 0.8 || l.h < 16 || l.w < l.h) return 0;
+    // рамка з полями: тісна рамка рядка відрізає крапку внизу
+    var bw = l.w + 0.3 * l.h, bh = l.h * 1.3, n = dg.length, H = 100, W = Math.round(bw * H / bh); if (W < 40 || W > 1800) return 0;
+    var c = document.createElement('canvas'); c.width = W; c.height = H; var g = c.getContext('2d');
+    g.fillStyle = '#fff'; g.fillRect(0, 0, W, H);
+    g.translate(W / 2, H / 2); g.scale(W / bw, H / bh); g.rotate(-(l.angle || 0)); g.translate(-(l.x + l.w / 2), -(l.y + l.h / 2)); g.drawImage(src, 0, 0);
+    var px = g.getImageData(0, 0, W, H).data; free(c);
+    var N = W * H, L = new Float32Array(N), I = new Float64Array((W + 1) * (H + 1)), q, x, y;
+    for (y = 0; y < H; y++) { var row = 0; for (x = 0; x < W; x++) { q = y * W + x; L[q] = 0.299 * px[q * 4] + 0.587 * px[q * 4 + 1] + 0.114 * px[q * 4 + 2]; row += L[q]; I[(y + 1) * (W + 1) + x + 1] = I[y * (W + 1) + x + 1] + row; } }
+    // ink — штрихи (темніше за околицю на 12 %), soft — для крапки (на 7 %: розмита крапка блідіша)
+    var R = Math.round(H * 0.3), ink = new Uint8Array(N), soft = new Uint8Array(N), nD = 0, nM = 0, mid = [];
+    for (y = 0; y < H; y++) for (x = 0; x < W; x++) {
+      var ya = Math.max(0, y - R), yb = Math.min(H, y + R + 1), xa = Math.max(0, x - R), xb = Math.min(W, x + R + 1);
+      var M = (I[yb * (W + 1) + xb] - I[ya * (W + 1) + xb] - I[yb * (W + 1) + xa] + I[ya * (W + 1) + xa]) / ((yb - ya) * (xb - xa)); q = y * W + x;
+      if (L[q] < M - Math.max(10, 0.12 * M)) ink[q] = 1;
+      if (L[q] < M - Math.max(6, 0.07 * M)) soft[q] = 1;
+      if (y >= H * 0.25 && y < H * 0.75) { nM++; if (ink[q]) nD++; mid.push(L[q]); }
+    }
+    // ЖК — темні цифри на світлому: фон (більшість) світлий — медіана ближче до світлого краю (білі цифри барабана на темному — навпаки)
+    mid.sort(function (a1, b1) { return a1 - b1; });
+    var p10 = mid[Math.floor(mid.length * 0.1)], p50 = mid[mid.length >> 1], p90 = mid[Math.floor(mid.length * 0.9)];
+    if (p90 - p50 >= p50 - p10 || nD > 0.5 * nM || nD < 0.03 * nM) return dbg ? { why: 'polarity', dark: +(nD / nM).toFixed(3), p: [p10, p50, p90].map(Math.round) } : 0;
+    // товщина штриха — медіана горизонтальних відрізків
+    var runs = []; for (y = 0; y < H; y++) { var r0 = 0; for (x = 0; x <= W; x++) { if (x < W && ink[y * W + x]) r0++; else { if (r0 >= 2) runs.push(r0); r0 = 0; } } }
+    runs.sort(function (a1, b1) { return a1 - b1; }); var sw = runs.length ? runs[runs.length >> 1] : 3;
+    var blobs = function (m) {   // зв'язні плями (8 сусідів): рамки
+      var seen = new Uint8Array(N), st = new Int32Array(N), out = [];
+      for (var s0 = 0; s0 < N; s0++) {
+        if (!m[s0] || seen[s0]) continue;
+        var top = 0, x0 = W, x1 = -1, y0 = H, y1 = -1, cnt = 0; st[top++] = s0; seen[s0] = 1;
+        while (top) { var p = st[--top], px0 = p % W, py0 = (p - px0) / W; cnt++; if (px0 < x0) x0 = px0; if (px0 > x1) x1 = px0; if (py0 < y0) y0 = py0; if (py0 > y1) y1 = py0;
+          for (var dy = -1; dy <= 1; dy++) for (var dx = -1; dx <= 1; dx++) { var xx = px0 + dx, yy = py0 + dy; if (xx < 0 || yy < 0 || xx >= W || yy >= H) continue; var qq = yy * W + xx; if (m[qq] && !seen[qq]) { seen[qq] = 1; st[top++] = qq; } } }
+        out.push({ x0: x0, x1: x1, y0: y0, y1: y1, n: cnt, w: x1 - x0 + 1, h: y1 - y0 + 1, edge: y0 === 0 || y1 === H - 1 || x0 === 0 || x1 === W - 1 });
+      }
+      return out;
+    };
+    var med = function (a1) { a1 = a1.slice().sort(function (u, v) { return u - v; }); return a1[a1.length >> 1]; };
+    // смуга цифр: високі плями не з краю й не на всю ширину; що не в смузі медіани (рамка екрана, відблиск) — геть
+    var tall = blobs(ink).filter(function (o) { return !o.edge && o.h >= 0.2 * H && o.w < 0.6 * W; });
+    if (tall.length < 2) return dbg ? { why: 'tall', n: tall.length } : 0;
+    var my0 = med(tall.map(function (o) { return o.y0; })), my1 = med(tall.map(function (o) { return o.y1; })), mh = my1 - my0;
+    tall = tall.filter(function (o) { return o.y0 >= my0 - 0.3 * mh && o.y1 <= my1 + 0.3 * mh; });
+    if (!tall.length) return 0;
+    var yTop = H, yBot = 0; tall.forEach(function (o) { yTop = Math.min(yTop, o.y0); yBot = Math.max(yBot, o.y1); });
+    var Dh = yBot - yTop + 1; if (Dh < 0.25 * H) return dbg ? { why: 'band', Dh: Dh } : 0;
+    // цифри — колонками в смузі (без нижніх 12 %: там крапка й рамка), у межах рамки рядка без полів
+    var ra = Math.round(yTop + 0.05 * Dh), rb = Math.round(yBot - 0.12 * Dh), need = Math.max(1, 0.06 * (rb - ra + 1)), bx0 = Math.floor((W - l.w * H / bh) / 2), bx1 = W - bx0, cl = [], on;
+    for (x = bx0; x < bx1; x++) {
+      var cn = 0; for (y = ra; y <= rb; y++) if (ink[y * W + x]) cn++;
+      on = cn >= need;
+      if (!on) continue;
+      if (cl.length && x - cl[cl.length - 1].e <= 0.08 * Dh) cl[cl.length - 1].e = x + 1; else cl.push({ s: x, e: x + 1 });
+    }
+    cl = cl.filter(function (k0) { return k0.e - k0.s >= 0.5 * sw; });
+    if (cl.length < 2) return dbg ? { why: 'cols', cl: cl } : 0;
+    var dsx = []; for (var i = 1; i < cl.length; i++) dsx.push(cl[i].s - cl[i - 1].s);
+    var pitch = cl.length > 2 ? med(dsx) : (cl[cl.length - 1].e - cl[0].s) / n;
+    // злиплі сусідні цифри — колонка в 1,4+ кроку рахується за кілька
+    var cnt = cl.map(function (k0) { var w0 = k0.e - k0.s; return w0 > 1.4 * pitch ? Math.max(1, Math.round(w0 / (0.95 * pitch))) : 1; });
+    var tot = cnt.reduce(function (a1, b1) { return a1 + b1; }, 0);
+    if (Math.abs(tot - n) > 1) return dbg ? { why: 'count', tot: tot, cl: cl } : 0;
+    var xF = cl[0].s, xL = cl[cl.length - 1].e, cap = Math.max(0.22 * Dh, 2.6 * sw), dots = [];
+    blobs(soft).forEach(function (o) {
+      if (o.edge || o.h >= 0.2 * H) return;
+      if (o.w > cap || o.h > cap || o.w < 0.5 * sw || o.h < 0.5 * sw || Math.max(o.w, o.h) > 2.2 * Math.min(o.w, o.h) || o.n < 0.45 * o.w * o.h) return;
+      if (o.y1 < yBot - 0.12 * Dh || o.y0 < yBot - 0.32 * Dh || o.y1 > yBot + 0.1 * Dh) return;   // на рівні низу цифр
+      var cx = (o.x0 + o.x1) / 2; if (cx < xF + 0.4 * pitch || cx > xL - 0.25 * pitch) return;     // усередині ряду, не на краю
+      var y5 = Math.max(0, Math.round(yBot - 0.5 * Dh)), y6 = Math.round(o.y0 - Math.max(1, 0.5 * sw)), na = 0, nn = 0;
+      for (y = y5; y < y6; y++) for (x = o.x0; x <= o.x1; x++) { nn++; if (ink[y * W + x]) na++; }
+      if (nn && na / nn > 0.2) return;                                                              // над нею штрих — це низ цифри
+      var k1 = 0; cl.forEach(function (k0, j0) { if ((k0.s + k0.e) / 2 > cx) k1 += cnt[j0]; });
+      dots.push({ k: k1, x: o.x0, w: o.w, h: o.h });
+    });
+    var ok = dots.length === 1 && dots[0].k >= 1 && dots[0].k <= 3 && dots[0].k < n ? dots[0].k : 0;
+    return dbg ? { k: ok, dots: dots, sw: sw, Dh: Dh, pitch: +pitch.toFixed(1), cl: cl.map(function (k0) { return [k0.s, k0.e]; }), cnt: cnt } : ok;
+  }
+
   /**
    * opts.all — усі водоміри кадру; opts.fast — кадр камери (123-я): менший холст і пошук тексту, до двох вікон барабана (drums: false — жодного), без приближення
    * й проходу для сірого ЖК, з паузами між рядками — на iPhone повний прохід займав секунди й морозив сторінку (журнал 12.11: 2 кадри за 21 с,
@@ -995,6 +1084,7 @@
   function read(file, opts) {
     var t0 = Date.now(), src, lines = [], all = !!(opts && opts.all), fast = !!(opts && opts.fast);
     var drums = [];
+    var bigDigits = function () { return lines.some(function (l) { return digits(l.text) >= 4 && l.h >= src.height * 0.03 && !/[A-Za-zА-Яа-я]{3}/.test(l.text); }); };
     return toCanvas(file, fast ? FAST_PX : 0).then(function (c) { src = c; return (fast ? nap() : null); }).then(function () { return detect(src, fast ? { max: FAST_DET } : undefined); }).then(function (boxes) {
       return readBoxes(src, boxes, 0, 0, 1, lines, false, fast).then(function () {
         // окно барабана водомера (по цвету) — до пяти кандидатов, пока не прочитаем 4+ цифры
@@ -1022,14 +1112,22 @@
           if (!kwh || (a.length < 2 && !(a.length === 1 && strong))) return null;
           a.sort(function (x, y) { return x - y; }); return a[a.length >> 1]; };
         if (fast) cands = opts.drums === false ? [] : cands.slice(0, 2);   // тепло з камери: вікна барабана на ЖК — секунди марно (вода/світло/газ — до двох)
-        cands.forEach(function (d) { ch = ch.then(fast ? nap : null).then(function () { if (all ? drums.filter(goodDrum).length >= 4 : drums.some(goodDrum)) return null; return readDrum(src, d, upNear(d)).then(function (r) { if (r.text && !onText(r)) drums.push(r); }); }); });
+        var readC = function (cs) { var p = Promise.resolve(); cs.forEach(function (d) { p = p.then(fast ? nap : null).then(function () { if (all ? drums.filter(goodDrum).length >= 4 : drums.some(goodDrum)) return null; return readDrum(src, d, upNear(d)).then(function (r) { if (r.text && !onText(r)) drums.push(r); }); }); }); return p; };
+        ch = readC(cands);
+        // ничего уверенного и крупного числа в кадре нет — окно могло быть за бликом стекла (серое, ролики бледные): мягкие пороги (drumsPx soft)
+        if (!fast) ch = ch.then(function () {
+          if (drums.some(goodDrum) || bigDigits()) return null;
+          return findDrumsAsync(src, textAngle(lines), true).catch(function () { return []; }).then(function (c2) {
+            c2 = (c2 || []).filter(function (d) { return !drums.some(function (o) { return Math.hypot(o.x + o.w / 2 - d.cx, o.y + o.h / 2 - d.cy) < Math.max(o.h, d.h); }); });
+            return readC(c2);
+          });
+        });
         return ch;
       }).then(function () {
         if (fast || drums.some(goodDrum)) return null;   // водомер прочитан — приближать нечего
         // Нет крупной строки цифр? Цифры экрана мелкие в кадре (снято издалека, серый ЖК без подсветки) —
         // приближаем область, где нашёлся текст счётчика, примерно до 1800 px и ищем ещё раз.
-        var big = lines.some(function (l) { return digits(l.text) >= 4 && l.h >= src.height * 0.03 && !/[A-Za-zА-Яа-я]{3}/.test(l.text); });
-        if (big || !boxes.length) return null;
+        if (bigDigits() || !boxes.length) return null;
         var good = boxes.filter(function (b) { return b.score > 0.7; }); if (!good.length) good = boxes;
         var x0 = Math.min.apply(null, good.map(function (b) { return b.cx - b.w / 2; })), x1 = Math.max.apply(null, good.map(function (b) { return b.cx + b.w / 2; }));
         var y0 = Math.min.apply(null, good.map(function (b) { return b.cy - b.h / 2; })), y1 = Math.max.apply(null, good.map(function (b) { return b.cy + b.h / 2; }));
@@ -1051,7 +1149,10 @@
         if (fast || drums.some(goodDrum)) return null;
         return lcdPass(src, lines).catch(function () { return null; });   // не вышло — остаётся первый проход
       });
-    }).then(function () { var w = src.width, h = src.height; free(src); return { lines: lines, drums: drums, w: w, h: h, ms: Date.now() - t0 }; });
+    }).then(function () {
+      lines.forEach(function (l) { try { var k = lcdDot(src, l); if (k) l.dot = k; } catch (e) { /* без крапки */ } });
+      var w = src.width, h = src.height; free(src); return { lines: lines, drums: drums, w: w, h: h, ms: Date.now() - t0 };
+    });
   }
 
   function _det(file, o) { var src; return toCanvas(file).then(function (c) { src = c; return detect(c, o); }).then(function (b) {
@@ -1059,12 +1160,12 @@
     return ch.then(function () { return out.join(' | '); }); }); }
   function _rec(file, b) { return toCanvas(file).then(function (c) { return Promise.all([recognize(c, b, 0), recognize(c, b, 0.3), recognize(c, b, 0.55)]); }).then(function (r) { return r.map(function (x) { return x.text + '(' + x.score.toFixed(2) + ')'; }).join(' | '); }); }
   function _readDrums(file) { var src, out = []; return toCanvas(file).then(function (c) { src = c; var ch = Promise.resolve(); findDrums(c).slice(0, 2).forEach(function (d) { ch = ch.then(function () { return readDrum(src, d); }).then(function (r) { out.push(r); }); }); return ch; }).then(function () { free(src); return out; }); }
-  root.TeploOCR = { _recBox: function (file, blk, m) { var src; return toCanvas(file).then(function (c) { src = c; return recTensor(drumTensor(src, blk, m)); }).then(function (r) { free(src); return r; }); }, _det: _det, _rec: _rec, _readDrums: _readDrums, _drums: function (file, hint) { return toCanvas(file).then(function (c) { var r = findDrums(c, hint); free(c); return r; }); }, load: load, read: read, ready: function () { return !!REC; }, worker: function () { return !!REC && PROXY; } };
+  root.TeploOCR = { _recBox: function (file, blk, m) { var src; return toCanvas(file).then(function (c) { src = c; return recTensor(drumTensor(src, blk, m)); }).then(function (r) { free(src); return r; }); }, _det: _det, _rec: _rec, _readDrums: _readDrums, _drums: function (file, hint, soft) { return toCanvas(file).then(function (c) { var r = findDrums(c, hint, soft); free(c); return r; }); }, _dot: function (file, l) { return toCanvas(file).then(function (c) { var r = lcdDot(c, l, true); free(c); return r; }); }, load: load, read: read, ready: function () { return !!REC; }, worker: function () { return !!REC && PROXY; } };
   // 153-я: цей самий файл воркером (findDrumsAsync) — лише пошук вікон барабана над пікселями; холстів і нейромережі тут немає
   if (typeof document === 'undefined' && typeof importScripts === 'function' && typeof root.postMessage === 'function') {
     root.onmessage = function (e) {
       var d = e.data || {}, m;
-      try { m = { id: d.id, c: drumsPx(d.px, d.W, d.H, d.k, d.hint) }; } catch (x) { m = { id: d.id, err: String((x && x.message) || x) }; }
+      try { m = { id: d.id, c: drumsPx(d.px, d.W, d.H, d.k, d.hint, d.soft) }; } catch (x) { m = { id: d.id, err: String((x && x.message) || x) }; }
       root.postMessage(m);
     };
   }
