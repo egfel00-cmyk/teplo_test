@@ -170,6 +170,13 @@ if ($path === '/' || $path === '/index.php') {
 if (preg_match('~^/[0-9a-f]{32}\.txt$~', $path)) { require __DIR__ . '/app/indexnow.php'; if (IndexNow::serve($path)) exit; }
 
 // поисковики: robots.txt и sitemap.xml — адрес из запроса (домен не зашиваем). Cloudflare дописывает свои строки (content signals) сверху.
+// 170-а: /llms.txt (llmstxt.org) — що за сервіс і де розділи, для ШІ-пошуку; числа — живцем з довідника
+if ($path === '/llms.txt') {
+  require_once __DIR__ . '/app/core.php'; require_once __DIR__ . '/app/providers.php'; require_once __DIR__ . '/app/seo.php';
+  $host = preg_replace('/[^A-Za-z0-9.:-]/', '', (string)($_SERVER['HTTP_HOST'] ?? 'localhost'));
+  header('Content-Type: text/plain; charset=utf-8'); header('Cache-Control: public, max-age=3600');
+  echo Seo::llms((preg_match('/^(localhost|127\.0\.0\.1)(:\d+)?$/', $host) ? 'http' : 'https') . '://' . $host . $base . '/'); exit;
+}
 if ($path === '/robots.txt' || $path === '/sitemap.xml') {
   $host = preg_replace('/[^A-Za-z0-9.:-]/', '', (string)($_SERVER['HTTP_HOST'] ?? 'localhost'));
   $site = (preg_match('/^(localhost|127\.0\.0\.1)(:\d+)?$/', $host) ? 'http' : 'https') . '://' . $host . $base . '/';

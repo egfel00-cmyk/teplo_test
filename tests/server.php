@@ -2902,6 +2902,11 @@ ok('apple: дійсний токен → sub, e-mail малими, «прихо�
   && openssl_pkey_get_public(Apple::pem($apJwks[0]['n'], $apJwks[0]['e'])) !== false, $apOk);
 ok('seo: sitemap — головна + пари: 38 (моделі) + 1 (комуналка Харкова) + 351 (громади) + 1 + постачальники', count(Seo::pairs()) === 38 + 1 + 351 + 1 + count($pv)
   && in_array([Seo::KUK . '/kharkiv', Seo::KRU . '/kharkiv'], Seo::pairs(), true), count(Seo::pairs()));
+$llm = Seo::llms('https://peredai.com.ua/');
+ok('llms.txt (170-а): заголовок з доменом із запиту, цитата-суть, розділи (громади, комуналка Харкова, постачальники, моделі, ru, Optional) — повні адреси; числа живцем',
+  str_starts_with($llm, "# передай (peredai.com.ua)\n\n> ") && str_contains($llm, '- [Куди передати показання — за громадами](https://peredai.com.ua/kudy-peredaty): 350 громад')
+  && str_contains($llm, '(https://peredai.com.ua/komunalka/kharkiv)') && str_contains($llm, '(https://peredai.com.ua/ru/kak-snyat-pokazaniya)') && str_contains($llm, "\n## Optional\n")
+  && str_contains($llm, count(Seo::provs()) . ' постачальників') && str_contains(Seo::llms('http://127.0.0.1:8013/'), '# передай (127.0.0.1)'), mb_substr($llm, 0, 200));
 // 170-а: «Комуналка в Харкові: куди передати показники» — шпаргалка, картки з підставою ціни, FAQPage; ru; громади/постачальники — «комуналка» й «передати показники»
 $ku = (string)Seo::render('uk', 'kharkiv', '', 'https://peredai.com.ua/', 'k'); $kr = (string)Seo::render('ru', 'kharkiv', '', 'https://peredai.com.ua/', 'k');
 $kt = fn(string $h) => preg_match('~<title>(.*?)</title>~', $h, $m) ? html_entity_decode($m[1], ENT_QUOTES, 'UTF-8') : '';
