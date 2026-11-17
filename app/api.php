@@ -33,7 +33,7 @@
 //  POST /api/cab/htm/check {acc?} · POST /api/cab/htm/send {acc?, rid, place, vals, delay?}   кабинет ХТМ по паролю человека (HtmSvc, app/htmsvc.php)
 //  POST /api/cab/htm/auto {on} · POST /api/cab/htm/cancel {job} · POST /api/cab/htm/now {job}   автоподача: очередь внесений после фото в бот
 //  POST /api/bot/card {card, items, fix?} — фото з чату розпізнано в застосунку → картка в чаті: цифри, куди, план відправки (BotCard, app/widget.php)
-//  GET /api/lb?bot=&place= · POST /api/lb/connect|forget|queue|cancel|now — автоподача місцевим КП (LocalBot, app/localbot.php)
+//  GET /api/lb?bot=&place= · POST /api/lb/connect|forget|bg|queue|cancel|now — автоподача місцевим КП (LocalBot, app/localbot.php)
 //  GET /api/vk/jobs · POST /api/vk/queue {acc, fam, rid, place, items, auto?} · POST /api/vk/auto {on, consent} · POST /api/vk/job/cancel|now {job}
 //                                   вода → сайт Водоканалу «у фоні» и автоподача після фото в бот (VkSvc, app/vksvc.php)
 //  GET  /api/relay/next?v=           ретранслятор NAS (X-Relay-Key): «idle N» или шаг задания текстом (Relay)
@@ -450,6 +450,7 @@ final class Api {
       case 'POST /api/bot/card': if (!$user) throw new HttpError(401, 'unauthorized'); return BotCard::result((int)$user['id'], $in);
       case 'GET /api/lb': if (!$user) throw new HttpError(401, 'unauthorized'); return LocalBot::status((int)$user['id'], $r->query());
       case 'POST /api/lb/connect': if (!$user) throw new HttpError(401, 'unauthorized'); return LocalBot::connect((int)$user['id'], $in);
+      case 'POST /api/lb/bg': if (!$user) throw new HttpError(401, 'unauthorized'); return LocalBot::bg((int)$user['id'], $in);   // 168-а: «Відправляти у фоні» окремо
       case 'POST /api/lb/forget': if (!$user) throw new HttpError(401, 'unauthorized'); return LocalBot::forget((int)$user['id'], $in);
       case 'POST /api/lb/queue': if (!$user) throw new HttpError(401, 'unauthorized'); return LocalBot::queue((int)$user['id'], $in);
       case 'POST /api/lb/cancel': if (!$user) throw new HttpError(401, 'unauthorized'); return LocalBot::cancel((int)$user['id'], $in);

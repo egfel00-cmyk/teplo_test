@@ -3095,3 +3095,33 @@ fieldset { min-inline-size: 0; }
 :root:root[data-lskin="c"][data-lsk="3"]:not([data-theme="dark"]) .rd-box .field .ctl:focus-within { border-color: var(--acc-fill); }
 :root:root[data-lskin="c"][data-lsk="3"]:not([data-theme="dark"]) .rd-box .field.is-warn .ctl { border-color: var(--c-warn-line); }
 :root:root[data-lskin="c"][data-lsk="3"]:not([data-theme="dark"]) .rd-box .field.is-block .ctl { border-color: var(--c-bad); }
+
+/* ===== 168-а: «Налаштування → Кабінети й надсилання» — блок на кожного постачальника (власник 17.11 11:33) =====
+   Шапка: значок виду в плитці 13 % свого кольору, назва, під нею стан пілюлею й види · квартири. Квартири, перевірка й «у фоні» — розділами під лінією,
+   без панелі в панелі. Нові селектори — лише тут. */
+.pg-one .cb-lead { margin: 0 0 4px; }
+.panel.cb { margin-top: 16px; }
+.cb-h { display: flex; gap: 12px; align-items: flex-start; margin: 0 0 4px; }
+.cb-h > .ico { flex: none; box-sizing: content-box; padding: 8px; border-radius: 12px; background: color-mix(in srgb, currentColor 13%, var(--c-surface)); }
+.cb-ht { flex: 1; min-width: 0; }
+.panel.cb .cb-ht h2 { margin: 0; font-size: var(--fs-l); line-height: 24px; overflow-wrap: anywhere; }
+.cb-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; margin: 6px 0 0; }
+.cb-meta .pill { flex: none; }
+.cb-ln { margin: 8px 0; }
+.cb-ln > .ico { vertical-align: -3px; }
+.cb-ln.cb-ok { color: var(--c-ok-ink); }
+.cb-ln.cb-warn { color: var(--c-warn-ink); }
+.cb-ln.cb-bad { color: var(--c-bad-ink); }
+.cb-pl, .cb-chk, .cb-bg { border-top: 1px solid var(--c-line); margin-top: 12px; padding-top: 12px; }
+.cb-plt { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 8px; margin: 0 0 8px; }
+.cb-plt .pdot, .cb-plt .picon { margin: 0; }
+.cb .my-rows { margin: 8px 0; }
+.cb-acts { margin: 12px 0 0; }
+.cb-acts .btn { margin: 0; }
+.cb-form .row-actions { margin-top: 12px; }
+.cb .grid2 { margin-bottom: 0; }
+.cb-sel select { width: 100%; }
+.cb-links { display: flex; flex-wrap: wrap; gap: 4px 12px; margin: 8px 0; }
+.cb .trust { margin-top: 16px; }
+.cb-bg .hc-consent:first-child { margin-top: 0; }
+.cb-form .row-actions .btn { flex: 0 1 auto; }

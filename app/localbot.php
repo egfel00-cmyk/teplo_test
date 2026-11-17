@@ -241,6 +241,7 @@ final class LocalBot {
       'pass_serial' => $ru ? 'Впишите номер любого вашего счётчика — он есть в квитанции.' : 'Впишіть номер будь-якого вашого лічильника — він є у квитанції.',
       'off' => $ru ? 'Сейчас этот способ не работает — отправьте сами (кнопки ниже).' : 'Зараз цей спосіб не працює — надішліть самі (кнопки нижче).',
       'conn' => $ru ? 'Сначала подключите автоотправку.' : 'Спершу підключіть автовідправку.',
+      'bg_off' => $ru ? 'Отправка в фоне для этого поставщика выключена — включите в «Настройки → Кабинеты и отправка» или отправьте сами.' : 'Надсилання у фоні для цього постачальника вимкнено — увімкніть у «Налаштування → Кабінети й надсилання» або надішліть самі.',
       'items' => $ru ? 'Нечего отправлять: нет показаний.' : 'Нічого надсилати: немає показань.',
       'no_job' => $ru ? 'Эта отправка уже не в очереди.' : 'Це надсилання вже не в черзі.',
       'down' => $ru ? 'Сайт не отвечал несколько раз подряд.' : 'Сайт не відповідав кілька разів поспіль.',
@@ -303,7 +304,7 @@ final class LocalBot {
   public static function status(int $uid, array $q): array {
     [$id] = self::botOr404($q); $place = self::placeId($q); $c = self::creds($uid, $id, $place);
     $conn = $c ? array_filter(['dist' => $c['dist'] ?? null, 'acc' => $c['acc'] ?? null, 'name' => $c['name'] ?? null, 'addr' => $c['addr'] ?? null, 'phone' => $c['phone'] ?? null, 'login' => $c['login'] ?? null,
-      'pass' => isset($c['pass']) ? true : null, 'at' => $c['consentAt'] ?? null, 'chk' => $c['chk'] ?? null], fn($v) => $v !== null) : null;
+      'pass' => isset($c['pass']) ? true : null, 'at' => $c['consentAt'] ?? null, 'chk' => $c['chk'] ?? null], fn($v) => $v !== null) + ['bg' => ($c['bg'] ?? true) !== false] : null;
     $jobs = Db::q('SELECT * FROM cab_jobs WHERE user_id = ? AND prov = ? ORDER BY id DESC LIMIT 12', [$uid, self::prov($id)])->fetchAll();
     $pb = self::pub($id); if ($c && $pb['to'] === null && self::to(self::get($id), $c) !== '') $pb['to'] = self::to(self::get($id), $c);   // адреса району
     return ['bot' => $pb, 'conn' => $conn, 'jobs' => array_values(array_filter(array_map([self::class, 'pubJob'], $jobs), fn($j) => ($j['place'] ?? '') === $place))];
@@ -327,7 +328,8 @@ final class LocalBot {
         $chk = ['at' => time(), 'ok' => false, 'why' => $why];   // сайт не відповів або незнайома сторінка — підключення зберігаємо, спробуємо при надсиланні
       }
     }
-    self::save($uid, $id, $place, $pub + ['consentAt' => gmdate('c'), 'lang' => self::$lang, 'chk' => $chk], $sec);
+    // 168-а: «Перевірити» в Налаштуваннях — те саме підключення; «Відправляти у фоні» (bg) лишається, як було
+    self::save($uid, $id, $place, $pub + ['consentAt' => gmdate('c'), 'lang' => self::$lang, 'chk' => $chk] + (array_key_exists('bg', $old) ? ['bg' => $old['bg'] !== false] : []), $sec);
     Db::q('INSERT INTO audit_log (user_id, action, ip, created_at) VALUES (?, ?, ?, ?)', [$uid, 'lb_conn_' . $id, null, Http::iso()]);
     return ['ok' => true] + self::status($uid, ['bot' => $id, 'place' => $place]);
   }
@@ -338,6 +340,20 @@ final class LocalBot {
     foreach (Db::q("SELECT * FROM cab_jobs WHERE user_id = ? AND prov = ? AND status = 'queued'", [$uid, self::prov($id)])->fetchAll() as $j)
       if ((self::js($j['payload'])['place'] ?? '') === $place) self::finish((int)$j['id'], 'cancelled', ['why' => 'forgot']);
     Db::q('INSERT INTO audit_log (user_id, action, ip, created_at) VALUES (?, ?, ?, ?)', [$uid, 'lb_forget_' . $id, null, Http::iso()]);
+    return ['ok' => true] + self::status($uid, ['bot' => $id, 'place' => $place]);
+  }
+  /** POST /api/lb/bg {bot, place, on} — 168-а: «Відправляти у фоні» окремо від підключення: вимкнули — дані входу лишаються, черга цього місця скасовується,
+   *  «Відправити у фоні» (сторінка лічильника, картка в чаті) не ставить у чергу. */
+  public static function bg(int $uid, array $in): array {
+    self::$lang = ($in['lang'] ?? '') === 'ru' ? 'ru' : 'uk';
+    [$id] = self::botOr404($in); $place = self::placeId($in); $on = ($in['on'] ?? false) === true;
+    $r = self::row($uid, $id); $ex = $r ? self::js($r['extra']) : [];
+    if (!isset($ex[$place])) throw self::err('conn', 409);
+    $ex[$place]['bg'] = $on; if ($on) $ex[$place]['consentAt'] = gmdate('c');
+    Db::q('UPDATE cab_creds SET extra = ? WHERE user_id = ? AND prov = ?', [json_encode($ex, JSON_UNESCAPED_UNICODE), $uid, self::prov($id)]);
+    if (!$on) foreach (Db::q("SELECT * FROM cab_jobs WHERE user_id = ? AND prov = ? AND status = 'queued'", [$uid, self::prov($id)])->fetchAll() as $j)
+      if ((self::js($j['payload'])['place'] ?? '') === $place) self::finish((int)$j['id'], 'cancelled', ['why' => 'bg_off']);
+    Db::q('INSERT INTO audit_log (user_id, action, ip, created_at) VALUES (?, ?, ?, ?)', [$uid, 'lb_bg_' . ($on ? 'on_' : 'off_') . $id, null, Http::iso()]);
     return ['ok' => true] + self::status($uid, ['bot' => $id, 'place' => $place]);
   }
   public static function items(array $raw): array {
@@ -357,6 +373,7 @@ final class LocalBot {
     [$id, $b] = self::botOr404($in); $place = self::placeId($in);
     if (!self::ready($id)) throw self::err($b['t'] === 'mail' ? 'mail' : 'off', 409);
     $c = self::creds($uid, $id, $place); if (!$c) throw self::err('conn', 409);
+    if (($c['bg'] ?? true) === false) throw self::err('bg_off', 409);
     $items = self::items((array)($in['items'] ?? [])); if (!$items) throw self::err('items');
     if (!empty($b['one']) && count($items) !== 1) throw self::err('one');
     if (!empty($b['serial'])) foreach ($items as $x) if (($x['serial'] ?? null) === null) throw self::err('serial', 422, ['org' => $b['org']]);
