@@ -8868,16 +8868,27 @@
         if (wasteOn() && !(wcur().remindOff)) put('waste', t('rmp_waste'), lbl);
       });
     });
-    // різні строки в різних квартирах — «вода: «Моя квартира» — 16-го (…), «Буча» — 26-го (до 30-го)»; види тоді через «;»
-    var seen = {}, list = [], split = false;
+    // 169-а (скрин владельца: «сверстай текст нормально» — всё было одной строкой): рядок на вид — значок, вид, коли нагадаємо;
+    // різні строки в різних квартирах — окремими рядками під видом: «Победа» — 16-го (Водоканал до 20-го)
+    var seen = {}, rows = [];
     order.map(function (o, i) { return [o, i]; }).sort(function (a, b) { return kindRank(a[0][0]) - kindRank(b[0][0]) || a[1] - b[1]; }).forEach(function (x) { var o = x[0];   // 147-а: порядок видів
       var k = o[0]; if (seen[k]) return; seen[k] = 1;
-      var txts = Object.keys(parts[k]);
-      if (txts.length === 1) { list.push(t('rmk_' + k) + ' — ' + txts[0]); return; }
-      split = true;
-      list.push(t('rmk_' + k) + ': ' + txts.map(function (x) { return parts[k][x].map(function (l) { return '«' + l + '»'; }).join(', ') + ' — ' + x; }).join(', '));
+      rows.push({ k: k, vals: Object.keys(parts[k]).map(function (v) { return { v: v, pl: parts[k][v] }; }) });
     });
-    return list.length ? t('rm_sub2', { l: list.join(split ? '; ' : ', ') }) : t('rm_sub0');
+    return rows;
+  }
+  function rmHtml() {
+    var rows = rmSub(), ic = { elec: 'elec', water: 'cold', gas: 'gas', heat: 'heat', waste: 'waste' };
+    var cap = function (x) { return x.charAt(0).toUpperCase() + x.slice(1); };
+    // «(до 3-го)» не рвати посередині «3-го»: дужки — одним шматком
+    var wv = function (v) { var m = /^(.*?)( \(.*\))$/.exec(v); return m ? esc(m[1]) + ' <span class="rm-dl">' + esc(m[2].slice(1)) + '</span>' : esc(v); };
+    if (!rows.length) return '<div class="rm-sub" data-key="prefs-remind-sub"><p class="small muted">' + esc(t('rm_lead0')) + '</p><p class="small muted">' + esc(t('rm_bot')) + '</p></div>';
+    return '<div class="rm-sub" data-key="prefs-remind-sub"><p class="small muted">' + esc(t('rm_lead')) + '</p><ul class="rm-list">' + rows.map(function (r) {
+      var K = KINDS[ic[r.k]] || KINDS.cold;
+      var val = r.vals.length === 1 ? '<span class="rm-when">' + wv(r.vals[0].v) + '</span>' : r.vals.map(function (x) {
+        return '<span class="rm-when rm-pl"><span class="rm-place">' + esc(x.pl.map(function (l) { return '«' + l + '»'; }).join(', ')) + '</span> — ' + wv(x.v) + '</span>'; }).join('');
+      return '<li data-key="rm-' + r.k + '"><span class="rm-k">' + ico(K.icon, 18, K.cls) + '<b>' + esc(cap(t('rmk_' + r.k))) + '</b></span><span class="rm-v">' + val + '</span></li>';
+    }).join('') + '</ul><p class="small muted rm-bot">' + esc(t('rm_bot')) + '</p></div>';
   }
   /** Напоминания ботом: вода 15/19, тепло 5/22 (если ещё не внесли); приходят в Telegram. */
   function remindPanel() {
@@ -8885,7 +8896,7 @@
     var on = !(S.remind && S.remind.off), acc = Y().account, tg = acc && acc.telegram;
     return '<div class="panel" data-key="prefs-remind"><h2>' + esc(t('rm_title')) + '</h2>' +
       '<label class="check-row"><input type="checkbox" id="p-remind" data-key="prefs-remind-on"' + (on ? ' checked' : '') + '><span>' + esc(t('rm_on')) + '</span></label>' +
-      '<p class="small muted" style="margin-top:8px" data-key="prefs-remind-sub">' + esc(rmSub()) + '</p>' +
+      rmHtml() +
       (tg ? '' : '<p class="small">' + ico('info', 16) + ' ' + esc(t(acc ? 'rm_need_tg' : 'rm_need_login')) + '</p>') + '</div>';
   }
   // світло: поля лічильника (назва, рахунок, №), електроопалення квартири; підказки під полями вводу

@@ -3132,3 +3132,17 @@ fieldset { min-inline-size: 0; }
 /* 169-а: без пустого рядка під назвою (check-row тягнувся до висоти дотику) і поле, куди ведемо після галочки без рахунку */
 .mono-g .check-row { min-height: 0; }
 .mono-g .mono-accf input.need { border-color: var(--c-warn, #84582A); box-shadow: 0 0 0 3px color-mix(in srgb, var(--c-warn, #84582A) 22%, transparent); }
+
+/* 169-а: «Нагадування» — список по видах (було одним рядком): значок і вид ліворуч, коли нагадаємо — праворуч; квартири — рядками під видом */
+.rm-sub { margin-top: 8px; }
+.rm-list { list-style: none; margin: 8px 0 0; padding: 0; }
+.rm-list li { display: grid; grid-template-columns: minmax(120px, 168px) 1fr; gap: 2px 16px; align-items: baseline; padding: 10px 0; border-top: 1px solid var(--c-line); }
+.rm-list li:first-child { border-top: 0; }
+.rm-k { display: inline-flex; align-items: center; gap: 8px; }
+.rm-k b { font-weight: 600; }
+.rm-k svg { flex: none; align-self: center; }
+.rm-v { display: grid; gap: 2px; }
+.rm-place { font-weight: 500; }
+.rm-sub .rm-bot { margin-top: 8px; }
+@media (max-width: 520px) { .rm-list li { grid-template-columns: 1fr; } .rm-v { padding-left: 26px; } }
+.rm-dl { white-space: nowrap; }

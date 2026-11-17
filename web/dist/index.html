@@ -3150,6 +3150,20 @@ fieldset { min-inline-size: 0; }
 .mono-g .check-row { min-height: 0; }
 .mono-g .mono-accf input.need { border-color: var(--c-warn, #84582A); box-shadow: 0 0 0 3px color-mix(in srgb, var(--c-warn, #84582A) 22%, transparent); }
 
+/* 169-а: «Нагадування» — список по видах (було одним рядком): значок і вид ліворуч, коли нагадаємо — праворуч; квартири — рядками під видом */
+.rm-sub { margin-top: 8px; }
+.rm-list { list-style: none; margin: 8px 0 0; padding: 0; }
+.rm-list li { display: grid; grid-template-columns: minmax(120px, 168px) 1fr; gap: 2px 16px; align-items: baseline; padding: 10px 0; border-top: 1px solid var(--c-line); }
+.rm-list li:first-child { border-top: 0; }
+.rm-k { display: inline-flex; align-items: center; gap: 8px; }
+.rm-k b { font-weight: 600; }
+.rm-k svg { flex: none; align-self: center; }
+.rm-v { display: grid; gap: 2px; }
+.rm-place { font-weight: 500; }
+.rm-sub .rm-bot { margin-top: 8px; }
+@media (max-width: 520px) { .rm-list li { grid-template-columns: 1fr; } .rm-v { padding-left: 26px; } }
+.rm-dl { white-space: nowrap; }
+
 </style>
 <style>.top { padding-top: max(12px, env(safe-area-inset-top)); }</style>
 </head>
@@ -5655,7 +5669,7 @@ fieldset { min-inline-size: 0; }
       rm_sub: 'За 4 дні до кінця приймання, якщо ще не внесли: світло — передостаннього дня місяця (до 3-го), вода — 16-го (Водоканал до 20-го), газ — 1-го (до 5-го), тепло — 21-го (ХТМ до 25-го). Пише бот сервісу; якщо не приходять — відкрийте бота й натисніть «Старт».',
       rm_sub2: 'За 4 дні до кінця приймання, якщо ще не внесли: {l}. Пише бот сервісу; якщо не приходять — відкрийте бота й натисніть «Старт».',
       rm_sub0: 'За 4 дні до кінця приймання кожного лічильника, якщо ще не внесли. Пише бот сервісу; якщо не приходять — відкрийте бота й натисніть «Старт».',
-      rmk_heat: 'тепло', rmk_water: 'вода', rmk_elec: 'світло', rmk_gas: 'газ', rmk_waste: 'вивіз сміття',
+      rmk_heat: 'тепло', rmk_water: 'вода', rmk_elec: 'світло', rmk_gas: 'газ', rmk_waste: 'вивіз сміття', rm_lead: 'За 4 дні до кінця приймання, якщо ще не внесли, нагадаємо:', rm_lead0: 'За 4 дні до кінця приймання кожного лічильника, якщо ще не внесли, нагадаємо.', rm_bot: 'Пише бот сервісу. Не приходять — відкрийте бота й натисніть «Старт».',
       rmp_day: '{d}-го (до {e}-го)', rmp_heat_htm: '21-го (ХТМ до 25-го)', rmp_water_vk: '16-го (Водоканал до 20-го)', rmp_water_16: '16-го',
       rmp_elec: 'передостаннього дня місяця (до 3-го)', rmp_gas: '1-го (до 5-го)', rmp_waste: '10-го (оплата за минулий місяць)',
       nm_w_l_l: 'Повірка з демонтажем — середньодобове споживання цього водоміра за 12 місяців до зняття (Методика розподілу, розд. I п. 5).|Поломка, заміна, прострочена повірка — за нормою на кожну зареєстровану особу; норми для житла без засобів обліку встановлює ваша громада (є в договорі з постачальником води).',
@@ -7064,7 +7078,7 @@ fieldset { min-inline-size: 0; }
       rm_sub: 'За 4 дня до конца приёма, если ещё не внесли: свет — в предпоследний день месяца (до 3-го), вода — 16-го (Водоканал до 20-го), газ — 1-го (до 5-го), тепло — 21-го (ХТМ до 25-го). Пишет бот сервиса; если не приходят — откройте бота и нажмите «Старт».',
       rm_sub2: 'За 4 дня до конца приёма, если ещё не внесли: {l}. Пишет бот сервиса; если не приходят — откройте бота и нажмите «Старт».',
       rm_sub0: 'За 4 дня до конца приёма каждого счётчика, если ещё не внесли. Пишет бот сервиса; если не приходят — откройте бота и нажмите «Старт».',
-      rmk_heat: 'тепло', rmk_water: 'вода', rmk_elec: 'свет', rmk_gas: 'газ', rmk_waste: 'вывоз мусора',
+      rmk_heat: 'тепло', rmk_water: 'вода', rmk_elec: 'свет', rmk_gas: 'газ', rmk_waste: 'вывоз мусора', rm_lead: 'За 4 дня до конца приёма, если ещё не внесли, напомним:', rm_lead0: 'За 4 дня до конца приёма каждого счётчика, если ещё не внесли, напомним.', rm_bot: 'Пишет бот сервиса. Не приходят — откройте бота и нажмите «Старт».',
       rmp_day: '{d}-го (до {e}-го)', rmp_heat_htm: '21-го (ХТМ до 25-го)', rmp_water_vk: '16-го (Водоканал до 20-го)', rmp_water_16: '16-го',
       rmp_elec: 'в предпоследний день месяца (до 3-го)', rmp_gas: '1-го (до 5-го)', rmp_waste: '10-го (оплата за прошлый месяц)',
       nm_w_l_l: 'Поверка с демонтажем — среднесуточное потребление этого водомера за 12 месяцев до снятия (Методика распределения, разд. I п. 5).|Поломка, замена, просроченная поверка — по норме на каждого прописанного; нормы для жилья без приборов учёта устанавливает ваша громада (есть в договоре с поставщиком воды).',
@@ -19041,16 +19055,27 @@ fieldset { min-inline-size: 0; }
         if (wasteOn() && !(wcur().remindOff)) put('waste', t('rmp_waste'), lbl);
       });
     });
-    // різні строки в різних квартирах — «вода: «Моя квартира» — 16-го (…), «Буча» — 26-го (до 30-го)»; види тоді через «;»
-    var seen = {}, list = [], split = false;
+    // 169-а (скрин владельца: «сверстай текст нормально» — всё было одной строкой): рядок на вид — значок, вид, коли нагадаємо;
+    // різні строки в різних квартирах — окремими рядками під видом: «Победа» — 16-го (Водоканал до 20-го)
+    var seen = {}, rows = [];
     order.map(function (o, i) { return [o, i]; }).sort(function (a, b) { return kindRank(a[0][0]) - kindRank(b[0][0]) || a[1] - b[1]; }).forEach(function (x) { var o = x[0];   // 147-а: порядок видів
       var k = o[0]; if (seen[k]) return; seen[k] = 1;
-      var txts = Object.keys(parts[k]);
-      if (txts.length === 1) { list.push(t('rmk_' + k) + ' — ' + txts[0]); return; }
-      split = true;
-      list.push(t('rmk_' + k) + ': ' + txts.map(function (x) { return parts[k][x].map(function (l) { return '«' + l + '»'; }).join(', ') + ' — ' + x; }).join(', '));
+      rows.push({ k: k, vals: Object.keys(parts[k]).map(function (v) { return { v: v, pl: parts[k][v] }; }) });
     });
-    return list.length ? t('rm_sub2', { l: list.join(split ? '; ' : ', ') }) : t('rm_sub0');
+    return rows;
+  }
+  function rmHtml() {
+    var rows = rmSub(), ic = { elec: 'elec', water: 'cold', gas: 'gas', heat: 'heat', waste: 'waste' };
+    var cap = function (x) { return x.charAt(0).toUpperCase() + x.slice(1); };
+    // «(до 3-го)» не рвати посередині «3-го»: дужки — одним шматком
+    var wv = function (v) { var m = /^(.*?)( \(.*\))$/.exec(v); return m ? esc(m[1]) + ' <span class="rm-dl">' + esc(m[2].slice(1)) + '</span>' : esc(v); };
+    if (!rows.length) return '<div class="rm-sub" data-key="prefs-remind-sub"><p class="small muted">' + esc(t('rm_lead0')) + '</p><p class="small muted">' + esc(t('rm_bot')) + '</p></div>';
+    return '<div class="rm-sub" data-key="prefs-remind-sub"><p class="small muted">' + esc(t('rm_lead')) + '</p><ul class="rm-list">' + rows.map(function (r) {
+      var K = KINDS[ic[r.k]] || KINDS.cold;
+      var val = r.vals.length === 1 ? '<span class="rm-when">' + wv(r.vals[0].v) + '</span>' : r.vals.map(function (x) {
+        return '<span class="rm-when rm-pl"><span class="rm-place">' + esc(x.pl.map(function (l) { return '«' + l + '»'; }).join(', ')) + '</span> — ' + wv(x.v) + '</span>'; }).join('');
+      return '<li data-key="rm-' + r.k + '"><span class="rm-k">' + ico(K.icon, 18, K.cls) + '<b>' + esc(cap(t('rmk_' + r.k))) + '</b></span><span class="rm-v">' + val + '</span></li>';
+    }).join('') + '</ul><p class="small muted rm-bot">' + esc(t('rm_bot')) + '</p></div>';
   }
   /** Напоминания ботом: вода 15/19, тепло 5/22 (если ещё не внесли); приходят в Telegram. */
   function remindPanel() {
@@ -19058,7 +19083,7 @@ fieldset { min-inline-size: 0; }
     var on = !(S.remind && S.remind.off), acc = Y().account, tg = acc && acc.telegram;
     return '<div class="panel" data-key="prefs-remind"><h2>' + esc(t('rm_title')) + '</h2>' +
       '<label class="check-row"><input type="checkbox" id="p-remind" data-key="prefs-remind-on"' + (on ? ' checked' : '') + '><span>' + esc(t('rm_on')) + '</span></label>' +
-      '<p class="small muted" style="margin-top:8px" data-key="prefs-remind-sub">' + esc(rmSub()) + '</p>' +
+      rmHtml() +
       (tg ? '' : '<p class="small">' + ico('info', 16) + ' ' + esc(t(acc ? 'rm_need_tg' : 'rm_need_login')) + '</p>') + '</div>';
   }
   // світло: поля лічильника (назва, рахунок, №), електроопалення квартири; підказки під полями вводу

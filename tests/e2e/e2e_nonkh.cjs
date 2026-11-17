@@ -25,7 +25,7 @@ let pass = 0, fail = 0; const ok = (n, c, x) => { if (c) { pass++; console.log('
   ok('Буча 18.11 (Харків — «до 20-го»): вікно ще не відкрилося — строку на картці нема', !/20 листопада/.test(cold18) && !/Передати до/.test(cold18), cold18);
   await p.goto(U + '#prefs-remind'); await p.waitForTimeout(800);   // 164-а: групи налаштувань — окремі екрани
   const rs = await txt('[data-key=prefs-remind-sub]');
-  ok('Налаштування → нагадування (Буча): «вода — 26-го (до 30-го)», без «Водоканал до 20-го» і без тепла ХТМ', /вода — 26-го \(до 30-го\)/.test(rs) && !/Водоканал/.test(rs) && !/ХТМ/.test(rs) && !/тепло/.test(rs), rs);
+  ok('Налаштування → нагадування (Буча): рядок «Вода» — «26-го (до 30-го)», без «Водоканал до 20-го» і без тепла ХТМ', /^Вода26-го \(до 30-го\)$/.test(await txt('[data-key=rm-water]')) && !/Водоканал/.test(rs) && !/ХТМ/.test(rs) && !(await p.$('[data-key=rm-heat]')), rs);
   await p.goto(U + '#prefs'); await p.waitForTimeout(600);
   ok('«Контакти для ХТМ» — нема (тепло в Бучі не від ХТМ)', !(await p.$('[data-key=pgr-contacts]')));
   await p.goto(U + '#prefs-water'); await p.waitForTimeout(900);   // → «Коли водомір знято» на екрані квартири
@@ -35,7 +35,7 @@ let pass = 0, fail = 0; const ok = (n, c, x) => { if (c) { pass++; console.log('
   // Харків (без адреси) — як було
   await open(demo({ today: '2026-11-18' }), 'prefs-remind');
   const rk = await txt('[data-key=prefs-remind-sub]');
-  ok('Харків: «тепло — 21-го (ХТМ до 25-го), вода — 16-го (Водоканал до 20-го)»; «Контакти для ХТМ» є', /тепло — 21-го \(ХТМ до 25-го\)/.test(rk) && /вода — 16-го \(Водоканал до 20-го\)/.test(rk) && (await p.goto(U + '#prefs'), await p.waitForTimeout(500), !!(await p.$('[data-key=pgr-contacts]'))), rk);
+  ok('Харків: «тепло — 21-го (ХТМ до 25-го), вода — 16-го (Водоканал до 20-го)»; «Контакти для ХТМ» є', /^Тепло21-го \(ХТМ до 25-го\)$/.test(await txt('[data-key=rm-heat]')) && /^Вода16-го \(Водоканал до 20-го\)$/.test(await txt('[data-key=rm-water]')) && (await p.goto(U + '#prefs'), await p.waitForTimeout(500), !!(await p.$('[data-key=pgr-contacts]'))), rk);
   await p.goto(U + '#home'); await p.waitForTimeout(600);
   ok('Харків 18.11: картка холодної — «Передати до 20 листопада»', /Передати до 20 листопада/.test(await txt('.ucard-cold')), await txt('.ucard-cold'));
 
@@ -44,7 +44,7 @@ let pass = 0, fail = 0; const ok = (n, c, x) => { if (c) { pass++; console.log('
   two.places[1].name = 'Буча'; two.places[1].address = 'м. Буча, вул. Енергетиків, 1, кв. 5'; two.places[1].city = { n: 'Буча', r: 'kv' };
   await open(two, 'prefs-remind');
   const r2 = await txt('[data-key=prefs-remind-sub]');
-  ok('дві квартири: «вода: «Моя квартира» — 16-го (Водоканал до 20-го), «Буча» — 26-го (до 30-го)»; тепло — один строк', /вода: «Моя квартира» — 16-го \(Водоканал до 20-го\), «Буча» — 26-го \(до 30-го\)/.test(r2) && /тепло — 21-го/.test(r2), r2);
+  ok('дві квартири: «вода: «Моя квартира» — 16-го (Водоканал до 20-го), «Буча» — 26-го (до 30-го)»; тепло — один строк', /^Вода«Моя квартира» — 16-го \(Водоканал до 20-го\)«Буча» — 26-го \(до 30-го\)$/.test(await txt('[data-key=rm-water]')) && /^Тепло21-го/.test(await txt('[data-key=rm-heat]')), r2);
   ok('дві квартири: «Контакти для ХТМ» є (перша — Харків)', (await p.goto(U + '#prefs'), await p.waitForTimeout(500), !!(await p.$('[data-key=pgr-contacts]'))));
   // 143-я: світло не Харківщини — вікно з довідника (Львівобленерго 28–3), а не харківське (передостаннє–3)
   const lviv = (today) => { const s = demo({ today, elec: 1 }); s.places[0].address = 'м. Львів, вул. Городоцька, 1, кв. 1'; s.places[0].city = { n: 'Львів', r: 'lv' }; return s; };
