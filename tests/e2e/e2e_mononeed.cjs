@@ -41,6 +41,11 @@ const TOK = 'uMonoSyntheticToken_0123456789abcdefABCDEF-xyz';
   ok('світло без рахунку: «monobank не передав номер… впишіть з квитанції», поле є, галочка не стоїть', re >= 0 && /не передав номер рахунку/.test(rows[re].t) && rows[re].acc && !rows[re].on && !rows[re].dis, rows[re]);
   ok('вода — лише прізвище в призначенні: теж поле рахунку', rw >= 0 && rows[rw].acc && !rows[rw].on, rows[rw]);
   ok('тепло: «о/р 12 345 678» — рахунок 12345678, позначено, поля немає', rh >= 0 && /Рахунок 12345678/.test(rows[rh].t) && rows[rh].on && !rows[rh].acc, rows[rh]);
+  await p.click('#mono-' + rw); await p.waitForTimeout(300);   // скрин власника 18:50: галочку ставили без рахунку
+  ok('галочка без рахунку не ставиться — фокус у полі рахунку, підказка', !(await p.isChecked('#mono-' + rw)) && await p.evaluate(i => document.activeElement && document.activeElement.getAttribute('data-key') === 'mono-acc-' + i, rw)
+    && /Спершу впишіть особовий рахунок/.test(await p.textContent('#toast-host')) && !(await p.$('[data-key=mono-sn]')));
+  const gap = await p.$eval('.mono-g', e => { const b = e.querySelector('.check-row b').getBoundingClientRect(), t = e.querySelector('.mono-to').getBoundingClientRect(); return Math.round(t.top - b.bottom); });
+  ok('під назвою немає пустого рядка (≤ 8 px до тексту)', gap <= 8, gap);
   await p.fill('[data-key=mono-acc-' + re + ']', '0123456789'); await p.waitForTimeout(200);
   ok('вписали рахунок світла — галочка сама, фокус у полі', await p.isChecked('#mono-' + re) && await p.evaluate(i => document.activeElement && document.activeElement.getAttribute('data-key') === 'mono-acc-' + i, re));
   await p.click('[data-key=mono-apply]'); await p.waitForTimeout(600);

@@ -8768,13 +8768,18 @@
     var f = el.getAttribute('data-mf');
     if (gi === 'sn') { MO.sn = el.checked; return; }
     var g = MO.groups[+gi]; if (!g) return; var s = MO.sel[g.key] = MO.sel[g.key] || { kind: g.kind, place: S.placeId };
-    if (f === 'on') { s.on = el.checked; if (s.kind === 'water') render(true); return; }
-    if (f === 'acc') { monoAccIn(el, g, s); return; }
+    if (f === 'on') {
+      // 169-а (скрин власника 18:50): галочку ставили без рахунку — «Вписати» мовчки пропускав рядок. Без рахунку — не ставимо, ведемо в поле.
+      var tg0 = monoTarget(g, s.kind, s.place);
+      if (el.checked && tg0.need && dgt(s.acc).length < 4) { el.checked = false; s.on = false; var inp = document.getElementById(el.id + '-a'); if (inp) { inp.classList.add('need'); inp.focus(); } toast(t('mono_need_first')); return; }
+      s.on = el.checked; if (s.kind === 'water') render(true); return;
+    }
+    if (f === 'acc') { el.classList.remove('need'); monoAccIn(el, g, s); return; }
     s[f] = el.value; var tg = monoTarget(g, s.kind, s.place); s.on = !!(tg.ok && (tg.need ? dgt(s.acc).length >= 4 : tg.cur !== dgt(g.acc))); render(true);
   });
   /** 169-а: рахунок з квитанції для платежу без рахунку у виписці — галочка вмикається сама, щойно є 4+ цифри (без перемальовки: фокус лишається в полі). */
   function monoAccIn(el, g, s) {
-    s.acc = dgt(el.value); s.on = s.acc.length >= 4;
+    s.acc = dgt(el.value); s.on = s.acc.length >= 4; if (s.on) el.classList.remove('need');
     var cb = document.getElementById(String(el.id || '').replace(/-a$/, '')); if (cb) cb.checked = s.on;
     if (!document.querySelector('[data-key=mono-apply]') && s.on) render(true);
   }

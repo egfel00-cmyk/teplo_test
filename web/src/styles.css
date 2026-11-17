@@ -3129,3 +3129,6 @@ fieldset { min-inline-size: 0; }
 /* 169-а: платіж без рахунку у виписці monobank — поле «Особовий рахунок з квитанції» під текстом рядка (той самий відступ, що в підписів) */
 .mono-g .mono-accf { margin: 8px 0 0 34px; }
 .mono-g .mono-accf input { font-variant-numeric: tabular-nums; }
+/* 169-а: без пустого рядка під назвою (check-row тягнувся до висоти дотику) і поле, куди ведемо після галочки без рахунку */
+.mono-g .check-row { min-height: 0; }
+.mono-g .mono-accf input.need { border-color: var(--c-warn, #84582A); box-shadow: 0 0 0 3px color-mix(in srgb, var(--c-warn, #84582A) 22%, transparent); }
