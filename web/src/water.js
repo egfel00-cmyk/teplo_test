@@ -212,6 +212,9 @@
     ds.sort(function (a, b) { return q(b) - q(a); });
     var d = ds[0], dg = String(d.text).replace(/\D/g, ''), p = num(prevVal), red = String(d.red || '').replace(/\D/g, '');
     if (dg.length >= 7) { red = red || dg.slice(dg.length - 3); dg = dg.slice(0, dg.length - 3); }   // захватили и красные
+    // 17.11 (@ayo_kvv, NOVATOR ЛК-15Х боком): синяя кромка окна читается «1» перед роликами — «100543» вместо «00543».
+    // 100 000 м³ и больше на квартирном (и домовом) водомере не бывает — «1» перед нулём отбрасываем
+    if (dg.length >= 6 && /^10/.test(dg) && !(d.half && d.half.length)) dg = dg.slice(1);
     // литры: красные цифры, совпавшие в двух обработках из трёх (redSure) — до 3 штук, подряд с начала
     var frac = String(d.redSure || '').replace(/\D/g, '').slice(0, 3);
     // меньше цифр, чем роликов, и начало окна видно (ведущий ноль) — последний ролик между цифрами

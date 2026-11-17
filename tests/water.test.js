@@ -168,5 +168,16 @@ console.log('\nВодомір знімали — оценка:');
   ok('своя норма из настроек главнее таблицы', W.normOf({ normRow: 'chw_bath', normCold: '5,5' }).cold === 5.5);
 }
 
+// 17.11 (@ayo_kvv): кромка окна «1» перед роликами — «100543» → 543 (100 000 м³ не бывает); настоящие 6 роликов «000543» и 5 цифр «10234» — как есть
+{
+  const d0 = { text: '100543', red: '344', redSure: '344', votes: 2, score: 0.87, sure: true };
+  const r1 = W.fromOcr({ lines: [], drums: [d0] }, null);
+  ok('барабан «100543» → 543, литры 344', r1 && r1.value === 543 && r1.frac === '344', r1);
+  const r2 = W.fromOcr({ lines: [], drums: [Object.assign({}, d0, { text: '000543' })] }, null);
+  ok('шесть роликов «000543» → 543', r2 && r2.value === 543, r2);
+  const r3 = W.fromOcr({ lines: [], drums: [Object.assign({}, d0, { text: '10234' })] }, null);
+  ok('пять цифр «10234» не трогаем', r3 && r3.value === 10234, r3);
+}
+
 console.log(`\nИтог: ${pass} OK, ${fail} FAIL`);
 process.exit(fail ? 1 : 0);
