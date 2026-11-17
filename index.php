@@ -89,13 +89,14 @@ if (preg_match('~^/r/([a-z0-9-]{4,64})/?$~', $path, $rm)) {
 }
 
 // 149-я: сторінки для пошуку «Як зняти показання <модель>» (uk + ru) — сервером, без скриптів (app/seo.php, дані — tools_seo.cjs)
-if (preg_match('~^/(ru/)?(yak-znyaty-pokaznannya|kak-snyat-pokazaniya|kudy-peredaty|kuda-peredat|postachalnyky|postavshchiki|komunalka|kommunalka)(/|$)~', $path)) {   // 152-а: + постачальники; 170-а: + «Комуналка в Харкові»
-  require_once __DIR__ . '/app/core.php'; require_once __DIR__ . '/app/providers.php'; require_once __DIR__ . '/app/seo.php';
+if (preg_match('~^/(ru/)?(yak-znyaty-pokaznannya|kak-snyat-pokazaniya|kudy-peredaty|kuda-peredat|postachalnyky|postavshchiki|komunalka|kommunalka|kalkulyator)(/|$)~', $path)) {   // 152-а: + постачальники; 170-а: + «Комуналка в Харкові»
+  require_once __DIR__ . '/app/core.php'; require_once __DIR__ . '/app/providers.php'; require_once __DIR__ . '/app/seo.php'; require_once __DIR__ . '/app/calc.php';
+  Seo::$q = array_filter($_GET, fn($v) => is_string($v) && strlen($v) <= 40);   // 170-а: калькулятори — GET-форма на ту саму сторінку
   $sm = Seo::match($path); $sh = preg_replace('/[^A-Za-z0-9.:-]/', '', (string)($_SERVER['HTTP_HOST'] ?? 'localhost'));
   $html = $sm ? Seo::render($sm[0], $sm[1], $base, (preg_match('/^(localhost|127\.0\.0\.1)(:\d+)?$/', $sh) ? 'http' : 'https') . '://' . $sh . $base . '/', $sm[2]) : null;
   if ($html === null) { http_response_code(404); header('Content-Type: text/plain; charset=utf-8'); header('X-Robots-Tag: noindex'); echo "Not found\n"; exit; }
   if (rtrim($path, '/') !== $path) { header('Location: ' . $base . rtrim($path, '/'), true, 301); exit; }
-  Seo::send($html); exit;
+  Seo::send($html, $sm[2] === 'c'); exit;
 }
 
 if ($path === '/admin' || $path === '/admin/') {   // аналитика владельца; данные отдаёт /api/admin/* только админам
@@ -172,7 +173,7 @@ if (preg_match('~^/[0-9a-f]{32}\.txt$~', $path)) { require __DIR__ . '/app/index
 // поисковики: robots.txt и sitemap.xml — адрес из запроса (домен не зашиваем). Cloudflare дописывает свои строки (content signals) сверху.
 // 170-а: /llms.txt (llmstxt.org) — що за сервіс і де розділи, для ШІ-пошуку; числа — живцем з довідника
 if ($path === '/llms.txt') {
-  require_once __DIR__ . '/app/core.php'; require_once __DIR__ . '/app/providers.php'; require_once __DIR__ . '/app/seo.php';
+  require_once __DIR__ . '/app/core.php'; require_once __DIR__ . '/app/providers.php'; require_once __DIR__ . '/app/seo.php'; require_once __DIR__ . '/app/calc.php';
   $host = preg_replace('/[^A-Za-z0-9.:-]/', '', (string)($_SERVER['HTTP_HOST'] ?? 'localhost'));
   header('Content-Type: text/plain; charset=utf-8'); header('Cache-Control: public, max-age=3600');
   echo Seo::llms((preg_match('/^(localhost|127\.0\.0\.1)(:\d+)?$/', $host) ? 'http' : 'https') . '://' . $host . $base . '/'); exit;
@@ -184,7 +185,7 @@ if ($path === '/robots.txt' || $path === '/sitemap.xml') {
   if ($path === '/robots.txt') { header('Content-Type: text/plain; charset=utf-8'); echo "User-agent: *\nAllow: /\nDisallow: " . $base . "/admin\n\nSitemap: " . $site . "sitemap.xml\n"; exit; }
   header('Content-Type: application/xml; charset=utf-8');
   // 149-я: + сторінки моделей і громад (uk і ru — парами з hreflang)
-  require_once __DIR__ . '/app/core.php'; require_once __DIR__ . '/app/providers.php'; require_once __DIR__ . '/app/seo.php';
+  require_once __DIR__ . '/app/core.php'; require_once __DIR__ . '/app/providers.php'; require_once __DIR__ . '/app/seo.php'; require_once __DIR__ . '/app/calc.php';
   $sd = date('Y-m-d', (int)@filemtime(__DIR__ . '/app/data/seo/models.json')); $su = rtrim($site, '/'); $x = fn($s) => htmlspecialchars($s, ENT_QUOTES | ENT_XML1);
   $urls = '<url><loc>' . $x($site) . '</loc><lastmod>' . date('Y-m-d', (int)filemtime(__DIR__ . '/web/dist/site.html')) . '</lastmod><changefreq>weekly</changefreq><priority>1.0</priority></url>';
   foreach (Seo::pairs() as $i => [$uk, $ru]) foreach ([$uk, $ru] as $u) $urls .= '<url><loc>' . $x($su . $u) . '</loc><lastmod>' . $sd . '</lastmod><priority>' . ($i ? '0.6' : '0.8') . '</priority>' .
@@ -219,6 +220,7 @@ function seoStatic(bool $ru, callable $e): string {
     '<h2>' . $e($t('lp_end_t')) . '</h2><p>' . $e($t('lp_end')) . '</p>' .
     '<p><a href="' . ($ru ? 'ru/kuda-peredat' : 'kudy-peredaty') . '">' . ($ru ? 'Куда передать показания — поставщики, тарифы и сроки 350 громад' : 'Куди передати показання — постачальники, тарифи й строки 350 громад') . '</a></p>' .
     '<p><a href="' . ($ru ? 'ru/kommunalka/kharkiv' : 'komunalka/kharkiv') . '">' . ($ru ? 'Коммуналка в Харькове: куда передать показания' : 'Комуналка в Харкові: куди передати показники') . '</a></p>' .
+    '<p><a href="' . ($ru ? 'ru/kalkulyator' : 'kalkulyator') . '">' . ($ru ? 'Калькуляторы коммуналки: вода, свет, газ' : 'Калькулятори комуналки: вода, світло, газ') . '</a></p>' .
     '<p><a href="' . ($ru ? 'ru/kak-snyat-pokazaniya' : 'yak-znyaty-pokaznannya') . '">' . ($ru ? 'Как снять показания теплосчётчика — 37 моделей по шагам' : 'Як зняти показання теплолічильника — 37 моделей покроково') . '</a></p>' .
     '<footer><p>' . $e($t('lf_about')) . '</p><p><a href="#privacy">' . $e($t('lg_privacy')) . '</a> · <a href="#terms">' . $e($t('lg_terms')) . '</a> · <a href="#help">' . $e($t('nav_help')) . '</a></p><p>' . $e($t('lf_indep')) . '</p></footer></main>';
 }

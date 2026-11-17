@@ -63,6 +63,7 @@ final class IndexNow {
   public static function urls(string $site): array {
     $o = [$site]; $b = rtrim($site, '/');
     if (!class_exists('Seo') && is_file(__DIR__ . '/seo.php')) { require_once __DIR__ . '/providers.php'; require_once __DIR__ . '/seo.php'; }
+    if (!class_exists('Calc') && is_file(__DIR__ . '/calc.php')) require_once __DIR__ . '/calc.php';   // 170-а: + калькулятори
     if (class_exists('Seo')) foreach (Seo::pairs() as $pr) foreach ($pr as $u) $o[] = $b . $u;
     return array_values(array_unique($o));
   }

@@ -2840,7 +2840,7 @@ ok('нагадування: обраний у довіднику постача�
   str_contains((string)$pv['elec'], 'Львівенергозбут') && str_contains((string)$pv['water'], 'Бучасервіс') && $pv['hvk'] === false && !empty($pv['win']['water']), $pv);
 
 // 149-я: сторінки «Як зняти показання <модель>» (план конкурентів, п. 1) — дані не відстали від models.js, сторінки й sitemap
-require_once "$root/app/seo.php";
+require_once "$root/app/seo.php"; require_once "$root/app/calc.php";
 $sj = json_decode((string)file_get_contents("$root/app/data/seo/models.json"), true);
 $srcNow = substr(md5(implode("\n", array_map(fn($f) => (string)file_get_contents("$root/$f"), ['web/src/models.js', 'web/src/rules.js', 'web/src/i18n.js']))), 0, 12);
 ok('seo: models.json зібраний з поточних models.js / rules.js / i18n.js (інакше — node tools_seo.cjs)', ($sj['src'] ?? '') === $srcNow, [$sj['src'] ?? null, $srcNow]);
@@ -2900,8 +2900,27 @@ ok('apple: дійсний токен → sub, e-mail малими, «прихо�
   && $apErr(fn() => Apple::verify(preg_replace('~\.([^.]+)\.~', '.' . $b64u(json_encode(['sub' => 'другий'] + $apBase)) . '.', $apTok($apBase)), $apJwks, Apple::AUD, 'n-1', $apNow)) === 'apple_bad_signature'
   && $apErr(fn() => Apple::verify('abc', $apJwks, Apple::AUD, null, $apNow)) === 'apple_bad_token'
   && openssl_pkey_get_public(Apple::pem($apJwks[0]['n'], $apJwks[0]['e'])) !== false, $apOk);
-ok('seo: sitemap — головна + пари: 38 (моделі) + 1 (комуналка Харкова) + 351 (громади) + 1 + постачальники', count(Seo::pairs()) === 38 + 1 + 351 + 1 + count($pv)
+ok('seo: sitemap — головна + пари: 38 (моделі) + 1 (комуналка Харкова) + 4 (калькулятори) + 351 (громади) + 1 + постачальники', count(Seo::pairs()) === 38 + 1 + 4 + 351 + 1 + count($pv)
   && in_array([Seo::KUK . '/kharkiv', Seo::KRU . '/kharkiv'], Seo::pairs(), true), count(Seo::pairs()));
+// 170-а: калькулятори сторінками (вода КМУ № 690, світло зони, газ + розподіл)
+$cw = Calc::water(5.0, 3.0, ['supply' => 48.629, 'drain' => 20.61, 'hot' => 86.32]); $cw0 = Calc::water(4.0, 0.0, ['supply' => null, 'drain' => null]);
+$cwn = Calc::water(2.0, 1.0, ['supply' => 30, 'drain' => 0, 'hot' => 90]); $cwo = Calc::water(1.0, null, ['supply' => 30, 'drain' => 10], ['s' => 40.0]);
+$ce = Calc::elec(2, ['day' => 150, 'night' => 80], 4.32); $ce3 = Calc::elec(3, ['peak' => 10, 'half' => 10, 'night' => 10], 4.32);
+$cg = Calc::gas(50.0, 7.96, 1200.0, 0.516); $cg0 = Calc::gas(50.0, 7.96, null, 0.516);
+ok('калькулятори: вода — холодна 5 × 48,629 + гаряча 3 × 86,32 + водовідведення 8 × 20,61 = 666,99; невідомий тариф — need s/d; водовідведення 0 — без рядка; своя ціна главніша; світло день/ніч 820,80, три зони 125,28; газ 398 + 51,60',
+  abs($cw['total'] - 666.985) < 0.0001 && array_column($cw['rows'], 0) === ['cold', 'hot', 'drain'] && $cw['rows'][2][1] === 8.0 && $cw0['need'] === ['s', 'd'] && $cw0['total'] == 0
+  && array_column($cwn['rows'], 0) === ['cold', 'hot'] && abs($cwo['total'] - 50) < 1e-9 && abs($ce['total'] - 820.8) < 1e-9 && abs($ce3['total'] - (10 * 4.32 * 1.5 + 10 * 4.32 + 10 * 4.32 * 0.4)) < 1e-9
+  && abs($cg['total'] - 449.6) < 1e-9 && $cg['distMonth'] === 51.6 && $cg0['distMonth'] === null && count($cg0['rows']) === 1
+  && Calc::num('5,5') === 5.5 && Calc::num('-1') === null && Calc::num('abc') === null && Calc::num('') === null, [$cw['total'], $ce3['total'], $cg]);
+Seo::$q = ['h' => 'kharkiv', 'c' => '5', 'g' => '3']; $cv = (string)Seo::render('uk', 'voda', '', 'https://peredai.com.ua/', 'c');
+Seo::$q = ['z' => '2', 'day' => '150', 'night' => '80']; $cs = (string)Seo::render('ru', 'svet', '', 'https://peredai.com.ua/', 'c');
+Seo::$q = []; $ci = (string)Seo::render('uk', '', '', 'https://peredai.com.ua/', 'c'); $cgz = (string)Seo::render('uk', 'gaz', '', 'https://peredai.com.ua/', 'c');
+ok('калькулятори: сторінки — вода Харкова з параметрами «666,99 грн», підстава № 509, «з 01.01.2027 … 770,42», noindex, canonical без параметрів; ru /svet — 820,80; список і газ — index; форма GET, без скриптів; match /svet лише ru',
+  str_contains($cv, 'Разом за місяць: 666,99 грн') && str_contains($cv, 'Підстава: рішення виконкому Харківської міської ради від 23.09.2026 № 509') && str_contains($cv, '770,42 грн')
+  && str_contains($cv, 'content="noindex, follow"') && str_contains($cv, '<link rel="canonical" href="https://peredai.com.ua/kalkulyator/voda">') && str_contains($cs, 'Итого за месяц: 820,80 грн')
+  && str_contains($ci, 'content="index, follow"') && str_contains($ci, '/kalkulyator/svitlo') && str_contains($cgz, '<form class="card" method="get"') && str_contains($cgz, '0,516')
+  && preg_match_all('~<script~', $cv) === preg_match_all('~<script type="application/ld\+json">~', $cv) && Seo::match('/ru/kalkulyator/svet') === ['ru', 'svet', 'c'] && Seo::match('/kalkulyator/svet') === null
+  && Seo::match('/kalkulyator') === ['uk', '', 'c'] && in_array([Calc::UK . '/svitlo', Calc::RU . '/svet'], Seo::pairs(), true), mb_substr(strip_tags($cv), 0, 300));
 $llm = Seo::llms('https://peredai.com.ua/');
 ok('llms.txt (170-а): заголовок з доменом із запиту, цитата-суть, розділи (громади, комуналка Харкова, постачальники, моделі, ru, Optional) — повні адреси; числа живцем',
   str_starts_with($llm, "# передай (peredai.com.ua)\n\n> ") && str_contains($llm, '- [Куди передати показання — за громадами](https://peredai.com.ua/kudy-peredaty): 350 громад')

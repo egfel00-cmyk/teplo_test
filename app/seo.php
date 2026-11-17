@@ -16,6 +16,8 @@ final class Seo {
   public const KUK = '/komunalka', KRU = '/ru/kommunalka';
   private const KOM = ['kharkiv' => ['Харків', 'Харкові', 'Харьков', 'Харькове']];
   private static ?array $data = null;
+  /** Параметри запиту для калькуляторів (index.php: $_GET). */
+  public static array $q = [];
 
   public static function data(): array {
     if (self::$data === null) { $j = json_decode((string)@file_get_contents(__DIR__ . '/data/seo/models.json'), true); self::$data = is_array($j) ? $j : ['models' => []]; }
@@ -24,6 +26,10 @@ final class Seo {
   /** Адреса → [lang, slug|'', 'm'|'h'|'p'] або null. */
   public static function match(string $path): ?array {
     $p = rtrim($path, '/');
+    if (class_exists('Calc')) foreach (['uk' => Calc::UK, 'ru' => Calc::RU] as $l => $pre) {
+      if ($p === $pre) return [$l, '', 'c'];
+      if (preg_match('~^' . preg_quote($pre, '~') . '/([a-z]{2,20})$~', $p, $m) && Calc::id($l, $m[1]) !== null) return [$l, $m[1], 'c'];
+    }
     foreach (['uk' => self::KUK, 'ru' => self::KRU] as $l => $pre)
       if (preg_match('~^' . preg_quote($pre, '~') . '/([a-z0-9-]{2,40})$~', $p, $m) && isset(self::KOM[$m[1]])) return [$l, $m[1], 'k'];
     foreach (['uk' => self::PUK, 'ru' => self::PRU] as $l => $pre) {
@@ -49,6 +55,7 @@ final class Seo {
     foreach (self::data()['models'] ?? [] as $m) $o[] = [self::url('uk', $m['slug']), self::url('ru', $m['slug'])];
     if (class_exists('Providers')) {
       foreach (array_keys(self::KOM) as $sl) $o[] = [self::KUK . '/' . $sl, self::KRU . '/' . $sl];
+      if (class_exists('Calc')) foreach (Calc::pairs() as $x) $o[] = $x;
       $o[] = [self::HUK, self::HRU]; foreach (self::hroms() as $sl => $x) $o[] = [self::HUK . '/' . $sl, self::HRU . '/' . $sl];
       $o[] = [self::PUK, self::PRU]; foreach (self::provs() as $sl => $x) $o[] = [self::PUK . '/' . $sl, self::PRU . '/' . $sl];
     }
@@ -56,7 +63,7 @@ final class Seo {
   }
 
   // ---------------- громади: «Куди передати показання — <центр громади>» ----------------
-  private const RG = ['kh' => ['Харківська обл.', 'Харьковская обл.'], 'kv' => ['Київська обл.', 'Киевская обл.'], 'ky' => ['м. Київ', 'г. Киев'], 'od' => ['Одеська обл.', 'Одесская обл.'],
+  public const RG = ['kh' => ['Харківська обл.', 'Харьковская обл.'], 'kv' => ['Київська обл.', 'Киевская обл.'], 'ky' => ['м. Київ', 'г. Киев'], 'od' => ['Одеська обл.', 'Одесская обл.'],
     'lv' => ['Львівська обл.', 'Львовская обл.'], 'km' => ['Хмельницька обл.', 'Хмельницкая обл.']];
   private const KN = ['elec' => ['Світло', 'Свет'], 'water' => ['Вода', 'Вода'], 'gas' => ['Газ', 'Газ'], 'heat' => ['Тепло', 'Тепло'], 'waste' => ['Вивіз сміття', 'Вывоз мусора']];
   private static ?array $hr = null;
@@ -95,7 +102,7 @@ final class Seo {
     }
     return $till ? ($ru ? "до $till числа" : "до $till числа") : '';
   }
-  private static function money($v): string { return number_format((float)$v, 2, ',', ' '); }
+  public static function money($v): string { return number_format((float)$v, 2, ',', ' '); }
   /** Нотатка довідника без вказівок до кнопок застосунку («натисніть…», «впишіть свій…») — на сторінці вони не до речі. */
   private static function clean(string $t): string {
     $parts = preg_split('/(?<=[.!?])\s+/u', trim($t)) ?: [];
@@ -464,7 +471,7 @@ final class Seo {
       $T('Додайте адресу квартири в «передай»: постачальники, тарифи й вікна подачі підставляться самі, нагадаємо за 4 дні до кінця строку, а де можна — відправимо показання за вас. Безкоштовно.',
         'Добавьте адрес квартиры в «передай»: поставщики, тарифы и окна подачи подставятся сами, напомним за 4 дня до конца срока, а где можно — отправим показания за вас. Бесплатно.') .
       '</p><a class="btn" href="' . $e($base) . '/">' . $T('Додати адресу', 'Добавить адрес') . '</a></section>' .
-      '<p class="muted"><a href="' . $e($hidx . '/' . $slug) . '">' . $e($T("Громада: $nm", "Громада: $nm")) . '</a> · <a href="' . $e($base . self::url($lang)) . '">' . $T('Як зняти показання теплолічильника', 'Как снять показания теплосчётчика') . '</a> · <a href="' . $e($base . ($ru ? self::PRU : self::PUK)) . '">' . $T('Усі постачальники', 'Все поставщики') . '</a></p>';
+      '<p class="muted"><a href="' . $e($hidx . '/' . $slug) . '">' . $e($T("Громада: $nm", "Громада: $nm")) . '</a>' . (class_exists('Calc') ? ' · <a href="' . $e($base . Calc::url($lang)) . '">' . $T('Калькулятори: вода, світло, газ', 'Калькуляторы: вода, свет, газ') . '</a>' : '') . ' · <a href="' . $e($base . self::url($lang)) . '">' . $T('Як зняти показання теплолічильника', 'Как снять показания теплосчётчика') . '</a> · <a href="' . $e($base . ($ru ? self::PRU : self::PUK)) . '">' . $T('Усі постачальники', 'Все поставщики') . '</a></p>';
     return $h . '</main><footer><div class="w">' . self::wordmark() . '<p>' . $T('Дані — з рішень місцевих рад, сайтів і договорів постачальників; у кожного рядка — джерело. Сервіс незалежний, не пов’язаний з постачальниками. Знайшли помилку — напишіть через «Відгук» у застосунку.',
       'Данные — из решений местных советов, сайтов и договоров поставщиков; у каждой строки — источник. Сервис независимый, не связан с поставщиками. Нашли ошибку — напишите через «Отзыв» в приложении.') . '</p></div></footer></body></html>';
   }
@@ -483,22 +490,26 @@ final class Seo {
       $L(self::KUK . '/kharkiv', 'Комуналка в Харкові: куди передати показники', 'шпаргалка на місяць (Харківобленерго, Харківводоканал, ХТМ, газ, вивіз сміття), тарифи, питання й відповіді') .
       $L(self::PUK, 'Постачальники — як передати показання', "$np постачальників і операторів мереж: де працюють, строки, тарифи, сайти й телефони") .
       $L(self::UK, 'Як зняти показання теплолічильника', "$nm моделей покроково: які кнопки натискати й що записати (енергія, обсяг, температури, години роботи)") .
+      (class_exists('Calc') ? "\n## Калькулятори (форма без JavaScript, результат — сервером)\n" .
+        $L(Calc::url('uk', 'voda'), 'Калькулятор води', 'холодна, гаряча й водовідведення за весь обсяг (КМУ № 690) — тарифи громади з довідника') .
+        $L(Calc::url('uk', 'svitlo'), 'Калькулятор світла', 'одна зона, день/ніч (ніч ×0,5), три зони (пік ×1,5, напівпік ×1, ніч ×0,4) за ціною для населення') .
+        $L(Calc::url('uk', 'gaz'), 'Калькулятор газу', 'газ за ціною Нафтогазу + доставка: річна потужність ÷ 12 × тариф оператора мережі громади') : '') .
       "\n## Російською\n" .
       $L(self::HRU, 'Куда передать показания — по громадам') . $L(self::KRU . '/kharkiv', 'Коммуналка в Харькове: куда передать показания') .
-      $L(self::PRU, 'Поставщики — как передать показания') . $L(self::RU, 'Как снять показания теплосчётчика') .
+      $L(self::PRU, 'Поставщики — как передать показания') . $L(self::RU, 'Как снять показания теплосчётчика') . (class_exists('Calc') ? $L(Calc::RU, 'Калькуляторы коммуналки: вода, свет, газ') : '') .
       "\n## Optional\n" . $L('/sitemap.xml', 'Карта сайту', 'усі сторінки громад, постачальників і моделей парами uk/ru') .
       $L('/#privacy', 'Політика конфіденційності') . $L('/#terms', 'Умови використання');
     return $o;
   }
 
-  private static function e(string $s): string { return htmlspecialchars($s, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8'); }
-  private static function wordmark(): string {
+  public static function e(string $s): string { return htmlspecialchars($s, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8'); }
+  public static function wordmark(): string {
     $w = self::data()['wm'] ?? null; if (!$w) return '<b>передай</b>';
     return '<svg class="wm" viewBox="' . self::e((string)$w['vb']) . '" role="img" aria-label="передай"><defs><linearGradient id="wmg" gradientUnits="userSpaceOnUse" x1="' . (float)$w['g'][0] . '" y1="0" x2="' . (float)$w['g'][1] . '" y2="0">' .
       '<stop offset="0" stop-color="#FF6A1F"/><stop offset=".5" stop-color="#B44DFF"/><stop offset="1" stop-color="#2E86FF"/></linearGradient></defs>' .
       '<path fill="currentColor" d="' . self::e((string)$w['d']) . '"/><path fill="none" stroke="url(#wmg)" stroke-width="' . (float)$w['bw'] . '" stroke-linecap="round" d="' . self::e((string)$w['b']) . '"/></svg>';
   }
-  private const CSS = <<<'CSS'
+  public const CSS = <<<'CSS'
 :root{--bg:#E9EEEB;--card:#fff;--ink:#17211E;--ink2:#4A5652;--line:#CFD7D3;--lcd:#BCC8A2;--lcd-ink:#1C2618;--ok:#18693F;--ok-s:#DFF1E7;--warn:#8F5600;--warn-s:#FBEFD5;--info:#173A61;--info-s:#E2ECF8;--btn:#17211E;--on-btn:#fff;color-scheme:light}
 @media (prefers-color-scheme:dark){:root{--bg:#101614;--card:#18201D;--ink:#E8EEEB;--ink2:#A9B5B0;--line:#2E3935;--lcd:#9FAE80;--ok:#7FD3A2;--ok-s:#173126;--warn:#F2C26B;--warn-s:#33280F;--info:#A9C8F0;--info-s:#172638;--btn:#E8EEEB;--on-btn:#101614;color-scheme:dark}}
 *{box-sizing:border-box}html{-webkit-text-size-adjust:100%}body{margin:0;background:var(--bg);color:var(--ink);font:17px/1.55 "IBM Plex Sans",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
@@ -524,6 +535,7 @@ CSS;
 
   /** Сторінка: html або null (немає такої моделі). $base — SITE_BASE, $site — абсолютна адреса сайту з / в кінці. */
   public static function render(string $lang, string $slug, string $base, string $site, string $kind = 'm'): ?string {
+    if ($kind === 'c') return class_exists('Calc') && class_exists('Providers') ? Calc::render($lang, $slug, $base, $site, self::$q) : null;
     if ($kind === 'h' || $kind === 'p' || $kind === 'k') {
       if (!class_exists('Providers')) return null;
       $x = $kind === 'h' ? self::renderHrom($lang, $slug, $base, $site) : ($kind === 'k' ? self::renderKom($lang, $slug, $base, $site) : self::renderProv($lang, $slug, $base, $site));
@@ -621,10 +633,10 @@ CSS;
   }
 
   /** index.php: віддати сторінку з заголовками. */
-  public static function send(string $html): void {
+  public static function send(string $html, bool $form = false): void {
     header('Content-Type: text/html; charset=utf-8');
-    header('Cache-Control: public, max-age=3600');
-    header("Content-Security-Policy: default-src 'none'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; base-uri 'none'; form-action 'none'");
+    header('Cache-Control: ' . ($form && self::$q ? 'private, max-age=0' : 'public, max-age=3600'));   // 170-а: калькулятор з параметрами — не кешувати спільно
+    header("Content-Security-Policy: default-src 'none'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; base-uri 'none'; form-action " . ($form ? "'self'" : "'none'"));
     echo $html;
   }
 }

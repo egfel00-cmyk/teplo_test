@@ -4849,7 +4849,7 @@
       col(t('lf_docs'), [a('#privacy', t('lg_privacy'), 'lpf-privacy'), a('#terms', t('lg_terms'), 'lpf-terms')].concat(window.TEPLO_API ? ['<li><button type="button" class="linkbtn" data-act="cc-open" data-key="lpf-cookie">' + esc(t('cc_link')) + '</button></li>'] : [])) +
       // 152-а: довідкові сторінки для пошуку (сервером, без скриптів) — посилання і людям, і пошуковикам; адреси відносні (SITE_BASE)
       col(t('lf_guides'), [a(S.lang === 'ru' ? 'ru/kuda-peredat' : 'kudy-peredaty', t('lf_g_where'), 'lpf-g-where'), a(S.lang === 'ru' ? 'ru/postavshchiki' : 'postachalnyky', t('lf_g_prov'), 'lpf-g-prov'),
-        a(S.lang === 'ru' ? 'ru/kak-snyat-pokazaniya' : 'yak-znyaty-pokaznannya', t('lf_g_models'), 'lpf-g-models'), a(S.lang === 'ru' ? 'ru/kommunalka/kharkiv' : 'komunalka/kharkiv', t('lf_g_kom'), 'lpf-g-kom')]) +   // 170-а
+        a(S.lang === 'ru' ? 'ru/kak-snyat-pokazaniya' : 'yak-znyaty-pokaznannya', t('lf_g_models'), 'lpf-g-models'), a(S.lang === 'ru' ? 'ru/kommunalka/kharkiv' : 'komunalka/kharkiv', t('lf_g_kom'), 'lpf-g-kom'), a(S.lang === 'ru' ? 'ru/kalkulyator' : 'kalkulyator', t('lf_g_calc'), 'lpf-g-calc')]) +   // 170-а
       col(t('lf_contact'), ['<li><button class="linkbtn" data-act="fb-open" data-key="lpf-fb">' + esc(t('lf_write')) + '</button></li>'].concat(bot ? ['<li><a href="https://t.me/' + esc(bot) + '" target="_blank" rel="noopener" data-key="lpf-bot">' + esc(t('lf_bot')) + '</a></li>'] : [])) +
       '</div><div class="lpf-bot"><span>© ' + new Date().getFullYear() + ' передай.com.ua</span><span>' + esc(t('lf_indep')) + '</span></div></footer>';
   }
