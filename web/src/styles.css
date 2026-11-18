@@ -3206,3 +3206,5 @@ fieldset { min-inline-size: 0; }
   .mc-row { grid-template-columns: 34px minmax(0, 1fr) auto; row-gap: 0; }
   .mc-ic { grid-row: 1 / 3; } .mc-n { grid-row: 1 / 3; } .mc-a { grid-column: 3; grid-row: 1; } .mc-p { grid-column: 3; grid-row: 2; font-size: 13px; line-height: 16px; }
 }
+/* 172-я: на широкому екрані 5–6 видів у 520 px різались «Сві…», «Гар…» — ширше (на телефоні — сітка 2 рядки, як була) */
+@media (min-width: 561px) { .kind-sw.many { max-width: 760px; } }
