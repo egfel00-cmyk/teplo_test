@@ -3208,3 +3208,11 @@ fieldset { min-inline-size: 0; }
 }
 /* 172-я: на широкому екрані 5–6 видів у 520 px різались «Сві…», «Гар…» — ширше (на телефоні — сітка 2 рядки, як була) */
 @media (min-width: 561px) { .kind-sw.many { max-width: 760px; } }
+/* 173-я (власник 18.11 07:23, скрин iPhone, «Темна»): «Налаштування квартири» під лічильниками важила більше за самі лічильники —
+   синя плитка з відблиском і світла рамка 1,5 px. У темних темах (Темна, Латунь, «Як у системі» вночі) — тихий рядок: без фону карти,
+   рамка лінією, значок у нейтральній плитці кольором підпису, заголовок 500. Світлу (C3) не чіпаємо — там свій вигляд (166-я). */
+:root:root[data-theme="dark"] .ucard-pset { min-height: 56px; padding: 10px 14px; gap: 12px; border: 1px solid var(--c-line); border-radius: var(--r-card, 16px); background: transparent; box-shadow: none; }
+:root:root[data-theme="dark"] .ucard-pset .am-plus { width: 36px; height: 36px; border-radius: 10px; border: 0; background: color-mix(in srgb, var(--c-ink) 8%, transparent); color: var(--c-ink-2); box-shadow: none; }
+:root:root[data-theme="dark"] .ucard-pset .am-plus .ico { width: 20px; height: 20px; }
+:root:root[data-theme="dark"] .ucard-pset .am-txt b { font-weight: 500; }
+@media (hover: hover) { :root:root[data-theme="dark"] .ucard-pset:hover { background: var(--c-ghost-hover); border-color: var(--c-line); } }
