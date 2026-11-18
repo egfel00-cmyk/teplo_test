@@ -3146,3 +3146,63 @@ fieldset { min-inline-size: 0; }
 .rm-sub .rm-bot { margin-top: 8px; }
 @media (max-width: 520px) { .rm-list li { grid-template-columns: 1fr; } .rm-v { padding-left: 26px; } }
 .rm-dl { white-space: nowrap; }
+
+/* 172-я — «Комуналка за місяць» (кільце над графіками видів) і рух графіків (web/src/chartfx.js). Кольори — токени тем: сектори, значки й смуга місяця
+   перемальовуються разом із темою без JS. Гаряча вода — колір тепла, світліший на 28 % (обидва від ХТМ, але не зливаються). Без градієнтів, тіней і свічення. */
+:root { --mc-sel: color-mix(in srgb, var(--c-ink) 6%, transparent); }
+/* сусіди в кільці (світло, гаряча, холодна, газ, тепло, вивіз — і по колу) мають розрізнятися: валідатор dataviz (ΔE сусідів ≥ 15, протан/дейтан ≥ 8).
+   Кольори видів C3 однієї світлоти (L .50) — тож газ і тепло, тепло й вивіз зливались (ΔE 5,5 і 7,6): газ, гаряча й вивіз — світліші відтінки свого кольору. */
+:root { --mc-gt: 70%; } :root[data-theme="dark"] { --mc-gt: 60%; }
+.mc-elec { --k: var(--c-elec); } .mc-hot { --k: color-mix(in srgb, var(--c-supply) 72%, var(--c-surface)); } .mc-cold { --k: var(--c-return); }
+.mc-gas { --k: color-mix(in srgb, var(--c-gas) var(--mc-gt), var(--c-surface)); } .mc-heat { --k: var(--c-supply); } .mc-waste { --k: color-mix(in srgb, var(--c-ink-2) 55%, var(--c-surface)); }
+.mc-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 4px 12px; }
+.mc-head h2 { margin: 0; }
+.mc-nav { display: flex; align-items: center; justify-content: space-between; gap: 4px; flex: 1 1 260px; max-width: 340px; }
+.mc-nb { flex: none; width: 44px; height: 44px; display: grid; place-items: center; padding: 0; border: 0; border-radius: 50%; background: var(--fill-btn, color-mix(in srgb, var(--c-ink) 7%, transparent)); color: var(--c-ink); cursor: pointer; touch-action: manipulation; }
+.mc-nb:disabled { opacity: .32; cursor: default; }
+.mc-nb .flip { transform: scaleX(-1); }
+@media (hover: hover) { .mc-nb:not(:disabled):hover { background: var(--fill-btn-h, color-mix(in srgb, var(--c-ink) 11%, transparent)); } }
+.mc-m { flex: 1; text-align: center; font-weight: 600; font-size: var(--fs-m); line-height: 24px; font-variant-numeric: tabular-nums; }
+.mc-body { display: grid; gap: 4px; margin-top: 8px; }
+.mc-ring { position: relative; width: 200px; height: 200px; margin: 8px auto 4px; touch-action: pan-y; -webkit-user-select: none; user-select: none; }
+.mc-ring svg { display: block; width: 100%; height: 100%; overflow: visible; }
+.mc-s { fill: none; stroke: var(--k); stroke-width: 24; stroke-linecap: butt; transform-origin: 100px 100px; cursor: pointer; }
+.mc-c { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; pointer-events: none; }
+.mc-v { font-size: 30px; line-height: 36px; font-weight: 600; letter-spacing: -.01em; font-variant-numeric: tabular-nums; color: var(--c-ink); }
+.mc-c span { font-size: var(--fs-s); line-height: 20px; color: var(--c-ink-2); }
+.mc-c .mc-so { font-size: 13px; line-height: 16px; }
+.mc-leg { list-style: none; margin: 4px 0 0; padding: 0; }
+.mc-leg li + li { border-top: 1px solid var(--c-line); }
+.mc-row { width: calc(100% + 16px); margin: 0 -8px; display: grid; grid-template-columns: 34px minmax(0, 1fr) auto 48px; align-items: center; gap: 12px; min-height: 52px; padding: 6px 8px;
+  border: 0; border-radius: 10px; background: none; color: var(--c-ink); font: inherit; font-size: var(--fs-m); text-align: left; cursor: pointer; touch-action: manipulation; }
+.mc-row.on { background: var(--mc-sel); }
+@media (hover: hover) { .mc-row:hover { background: var(--mc-sel); } }
+.mc-ic { width: 34px; height: 34px; display: grid; place-items: center; border-radius: 10px; color: var(--k); background: color-mix(in srgb, var(--k) 13%, var(--c-surface)); }
+.mc-n { font-weight: 500; overflow-wrap: break-word; hyphens: auto; }
+.mc-a { font-weight: 600; text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.mc-p { font-size: var(--fs-s); color: var(--c-ink-2); text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.mc-note { margin: 12px 0 0; }
+.mc-after, .kind-sw { scroll-margin-top: 12px; }
+@media (min-width: 560px) {
+  .mc-body { grid-template-columns: 200px minmax(0, 460px); gap: 40px; align-items: center; }
+  .mc-ring { margin: 8px 0; }
+}
+/* місяць кільця в графіках по місяцях: смуга за стовпчиком і жирний підпис; тап по стовпчику — цей місяць у кільці */
+.chart .ch-sel { fill: transparent; }
+.chart .mk.on .ch-sel { fill: var(--mc-sel); }
+.chart .ax.opt { display: none; }
+.chart .mk.on .ax { display: inline; font-weight: 600; fill: var(--c-ink); }
+.chart .mk[data-act] { cursor: pointer; }
+/* поява (chartfx.js): стовпчики від осі, точки з центру, кільце по колу; до входу в кадр — fx-pre (без спалаху повних стовпчиків) */
+.fx-b, .fx-d { transform-box: fill-box; transform-origin: 50% 100%; }
+.fx-d { transform-origin: 50% 50%; }
+.fx-pre .fx-b { transform: scaleY(0); } .fx-pre .fx-d { transform: scale(0); }
+.fx-pre .vl, .fx-pre .mc-c { opacity: 0; }
+.fx-pre .mc-s { stroke-dashoffset: var(--l); }
+@media (prefers-reduced-motion: reduce) { .fx-pre .fx-b, .fx-pre .fx-d { transform: none; } .fx-pre .vl, .fx-pre .mc-c { opacity: 1; } .fx-pre .mc-s { stroke-dashoffset: 0; } }
+.mc-miss { margin: 8px 0 0; }
+/* вузько (320 px, великий шрифт у застосунку — appZoom): відсоток під сумою, назва не рветься посеред слова */
+@media (max-width: 359px) {
+  .mc-row { grid-template-columns: 34px minmax(0, 1fr) auto; row-gap: 0; }
+  .mc-ic { grid-row: 1 / 3; } .mc-n { grid-row: 1 / 3; } .mc-a { grid-column: 3; grid-row: 1; } .mc-p { grid-column: 3; grid-row: 2; font-size: 13px; line-height: 16px; }
+}

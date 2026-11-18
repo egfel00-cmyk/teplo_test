@@ -3036,7 +3036,7 @@
     chColors();
     // місяці й гроші — між переданими показаннями цього виду (власник 11.11), а не між будь-якими записами
     var sentK = function (y) { return !!(wsentVk(y) && (kind === 'cold' || wsentHtm(y))); }, km = wmeters(kind, true), hasK = function (y) { return km.some(function (m) { return hasVal(y, m.id); }); };
-    var mo = Wt.monthly(Wt.series(paidOnly(wrecs().filter(hasK), sentK), wmeters(null, true), gaps()), kind, wtar()), sm = Wt.summary(mo), head = '<h1>' + esc(t('stt_title')) + '</h1>' + kindSwitch();
+    var mo = wmonthly(kind), sm = Wt.summary(mo), head = stHead();
     if (!mo.length) return { screen: 'S15', route: 'stats', html: head + esStats(kind, wrecs().filter(hasK), esBtn('wnew', t('wn_title'), 'es-stats-add', ' data-kind="' + kind + '"')) };
     var per = function (b) { return t('stt_period', { a: R.toHtmDate(b.from), b: R.toHtmDate(b.to), d: b.days }); };
     // набігло після останнього «Передано» й ще не передане
@@ -3048,10 +3048,11 @@
     var tiles = kpi({ key: 'wstats-kpi', tone: kind, q: fmtN(sm.perMonth, 1), unit: 'м³', money: sm.uahMonth, cap: t('kpi_w_avg', { n: sm.months }),
       chips: [chip(t('kpi_w_last', { m: monthLabel(sm.last.ym), v: sm.last.m3, uah: money0(sm.last.cost) }), 'clock')].concat(wsn ? [chip(t('kpi_since', { d: fmtDate(wsn.d), v: fmtN(wsn.q, 1), u: 'м³', uah: money0(wsn.cost) }), 'clock')] : []) });
     var color = kind === 'hot' ? CH.hot : CH.cold;
-    var c1 = barChart(mo.map(function (b) { return { x: ymLabel(b.ym), v: b.m3, top: String(b.m3), color: color,
-      tip: [b.m3 + ' м³', per(b), '≈ ' + money(b.cost) + ' грн', b.days < 25 || b.days > 37 ? t('wst_per30', { v: fmtN(b.perMonth, 1) }) : ''] }; }), { title: t('wst_m3'), dec: 0 });
-    var c2 = barChart(mo.map(function (b) { return { x: ymLabel(b.ym), v: Math.round(b.cost), top: String(Math.round(b.cost)), color: CH.barSoft,
-      tip: ['≈ ' + money(b.cost) + ' грн', per(b), b.m3 + ' м³'] }; }), { title: t('wst_uah'), dec: 0 });
+    var fx = 'st|' + S.placeId + '|' + kind + '|', ms = { sel: MC.ym, pick: true };
+    var c1 = barChart(mo.map(function (b) { return { x: ymLabel(b.ym), ym: b.ym, v: b.m3, top: String(b.m3), color: color,
+      tip: [b.m3 + ' м³', per(b), '≈ ' + money(b.cost) + ' грн', b.days < 25 || b.days > 37 ? t('wst_per30', { v: fmtN(b.perMonth, 1) }) : ''] }; }), Object.assign({ title: t('wst_m3'), dec: 0, fx: fx + 'm3' }, ms));
+    var c2 = barChart(mo.map(function (b) { return { x: ymLabel(b.ym), ym: b.ym, v: Math.round(b.cost), top: String(Math.round(b.cost)), color: CH.barSoft,
+      tip: ['≈ ' + money(b.cost) + ' грн', per(b), b.m3 + ' м³'] }; }), Object.assign({ title: t('wst_uah'), dec: 0, fx: fx + 'uah' }, ms));
     var tr = Wt.tariffAt(today(), wtar());
     var trTxt = kind === 'hot' ? t('wst_tariff_hot', { hot: money(tr.hot), drain: money(tr.drain) }) : t('wst_tariff_cold', { supply: money(tr.supply), drain: money(tr.drain) });
     var table = '<details class="panel wacc tbl-acc" data-key="stt-table"><summary><h2>' + esc(t('stt_table')) + '</h2>' + ico('chev', 20, 'pacc-chev') + '</summary><div class="tbl-wrap where-b"><table class="tbl"><thead><tr><th>' + esc(t('wst_th_month')) + '</th><th>' + esc(t('stt_th_period')) + '</th><th>м³</th><th>грн</th></tr></thead><tbody>' +
@@ -4150,7 +4151,7 @@
   }
   function sstats(k) {
     chColors();
-    var md = SK[k].mod, u = SK[k].unit(), mo = smonthly(k), sm = md.summary(mo), head = '<h1>' + esc(t('stt_title')) + '</h1>' + kindSwitch();
+    var md = SK[k].mod, u = SK[k].unit(), mo = smonthly(k), sm = md.summary(mo), head = stHead();
     if (!mo.length) return { screen: 'S15', route: 'stats', html: head + esStats(k, mrecs().filter(function (r) { return smeters(k, true).some(function (m) { return m.id === r.meter; }); }), esBtn(SK[k].nw, tk(k, 'en_title'), 'es-stats-add')) };
     var per = function (b) { return t('stt_period', { a: R.toHtmDate(b.from), b: R.toHtmDate(b.to), d: b.days }); };
     var two = k === 'elec' && emeters(true).some(function (m) { return El.zones(m) > 1; }), nightKwh = mo.reduce(function (s0, b) { return s0 + b.night; }, 0), allKwh = mo.reduce(function (s0, b) { return s0 + b.kwh; }, 0), since = ssince(k);
@@ -4158,8 +4159,9 @@
       chips: [chip(tk(k, 'kpi_e_last', { m: monthLabel(sm.last.ym), v: sm.last.kwh, uah: money0(sm.last.cost) }), 'clock')]
         .concat(since ? [chip(t('kpi_since', { d: fmtDate(since.d), v: since.q, u: u, uah: money0(since.cost) }), 'clock')] : [])
         .concat(two && allKwh ? [chip(t('kpi_e_night', { p: Math.round(nightKwh / allKwh * 100) }), 'moon')] : []) });
-    var c1 = barChart(mo.map(function (b) { return { x: ymLabel(b.ym), v: b.kwh, top: String(b.kwh), color: k === 'gas' ? CH.gas : CH.elec, tip: [b.kwh + ' ' + u, per(b), '≈ ' + money(b.cost) + ' грн'] }; }), { title: tk(k, 'est_kwh'), dec: 0 });
-    var c2 = barChart(mo.map(function (b) { return { x: ymLabel(b.ym), v: Math.round(b.cost), top: String(Math.round(b.cost)), color: CH.barSoft, tip: ['≈ ' + money(b.cost) + ' грн', per(b), b.kwh + ' ' + u] }; }), { title: t('wst_uah'), dec: 0 });
+    var fx = 'st|' + S.placeId + '|' + k + '|', ms = { sel: MC.ym, pick: true };
+    var c1 = barChart(mo.map(function (b) { return { x: ymLabel(b.ym), ym: b.ym, v: b.kwh, top: String(b.kwh), color: k === 'gas' ? CH.gas : CH.elec, tip: [b.kwh + ' ' + u, per(b), '≈ ' + money(b.cost) + ' грн'] }; }), Object.assign({ title: tk(k, 'est_kwh'), dec: 0, fx: fx + 'q' }, ms));
+    var c2 = barChart(mo.map(function (b) { return { x: ymLabel(b.ym), ym: b.ym, v: Math.round(b.cost), top: String(Math.round(b.cost)), color: CH.barSoft, tip: ['≈ ' + money(b.cost) + ' грн', per(b), b.kwh + ' ' + u] }; }), Object.assign({ title: t('wst_uah'), dec: 0, fx: fx + 'uah' }, ms));
     var table = '<details class="panel wacc tbl-acc" data-key="stt-table"><summary><h2>' + esc(t('stt_table')) + '</h2>' + ico('chev', 20, 'pacc-chev') + '</summary><div class="tbl-wrap where-b"><table class="tbl"><thead><tr><th>' + esc(t('wst_th_month')) + '</th><th>' + esc(t('stt_th_period')) + '</th><th>' + u + '</th><th>грн</th></tr></thead><tbody>' +
       mo.slice().reverse().map(function (b) { return '<tr><td>' + esc(ymLabel(b.ym)) + '</td><td>' + esc(R.toHtmDate(b.from) + ' – ' + R.toHtmDate(b.to)) + '</td><td class="num">' + b.kwh + '</td><td class="num">' + money(b.cost) + '</td></tr>'; }).join('') + '</tbody></table></div></details>';
     var panel = function (title, sub, chart) { return '<section class="panel chart-panel"><h2>' + esc(title) + '</h2><p class="small muted">' + esc(sub) + '</p>' + chart + '</section>'; };
@@ -6345,6 +6347,115 @@
   }
   V.history = function () { if (!kinds().length) return noMeters('history', 'hi_title'); var k = curView(); return k === 'heat' ? heatHistory() : k === 'waste' ? wasteHistory() : SK[k] ? shistory(k) : whistory(k); };
   V.stats = function () { if (!kinds().length) return noMeters('stats', 'stt_title'); var k = curView(); return k === 'heat' ? heatStats() : k === 'waste' ? wasteStats() : SK[k] ? sstats(k) : wstats(k); };
+  // ================= 172-а: «Комуналка за місяць» — кільце над графіками видів (власник 18.11: «круговую диаграмму с общей суммой затрат на коммуналку в месяц…
+  // под квартирами над статистикой; перемещение по месяцам — чтобы не было перегружено и путаницы, где что нажимать»). Одне кільце на екран — по обраній квартирі;
+  // ОДИН стан місяця (MC.ym): стрілки «‹ місяць ›» і свайп по кільцю, тап по стовпчику графіка по місяцях; той самий місяць підсвічено в графіках виду нижче.
+  // Гроші — ті самі функції, що малюють «грн» видів (smonthly, wmonthly, heatMonthly, wasteMonthly), округлені так само, як стовпчики, — до гривні.
+  var MC = { ym: '', yms: [] };
+  /** Заголовок «Статистики» всіх видів: «Статистика», кільце місяця, перемикач видів. */
+  function stHead() { return '<h1>' + esc(t('stt_title')) + '</h1>' + mcPanel() + kindSwitch(); }
+  /** Вода по місяцях — між переданими показаннями цього виду (як графіки води, 11.11). */
+  function wmonthly(kind) {
+    var sentK = function (y) { return !!(wsentVk(y) && (kind === 'cold' || wsentHtm(y))); }, km = wmeters(kind, true), hasK = function (y) { return km.some(function (m) { return hasVal(y, m.id); }); };
+    return Wt.monthly(Wt.series(paidOnly(wrecs().filter(hasK), sentK), wmeters(null, true), gaps()), kind, wtar());
+  }
+  /** Тепло по календарних місяцях: Гкал лічильника, розкладені градусо-добами (TeploStats.monthly, як «Лічильник і ХТМ»), × тариф + ЗБП і абонплата місяця (costOf). → {ym: {g, cost}} */
+  function heatMonthly() {
+    var St = window.TeploStats, out = {}; if (!St || !St.monthly || !S.meter) return out;
+    var w = WX.days, own = St.monthly(St.intervals(RD(), S.baseline, w, tariff(), gaps('heat')), { weather: w });
+    Object.keys(own).forEach(function (ym) {
+      var g = own[ym]; if (!(g > 0.0005)) return;
+      var dim = new Date(Date.UTC(+ym.slice(0, 4), +ym.slice(5, 7), 0)).getUTCDate();
+      out[ym] = { g: g, cost: costOf(g, dim, ym + '-' + ('0' + dim).slice(-2)).total };
+    });
+    return out;
+  }
+  /** Вивіз сміття — сплачене за місяць (оплата на кілька місяців — порівну), як стовпчики «Сплачено по місяцях». */
+  function wasteMonthly() { var p = place(); return Ws.months(wcur(p), today(), wasteSum(p, wasteDir(p)), 12).filter(function (m) { return m.paid > 0; }).map(function (m) { return { ym: m.ym, v: m.paid }; }); }
+  /** Гроші обраної квартири по місяцях: {ym: {elec, hot, cold, gas, heat, waste, total}} — кожен вид округлений до гривні, як підпис стовпчика; total — сума цих чисел. */
+  function monthCosts() {
+    var out = {}, add = function (ym, k, v) { v = Math.round(v); if (!(v > 0)) return; var o = out[ym] || (out[ym] = { total: 0 }); o[k] = (o[k] || 0) + v; o.total += v; };
+    if (kinds().indexOf('heat') >= 0 && window.TeploStats) loadWeather();   // тепло по місяцях — градусо-доби погоди, як у графіку тепла (інакше числа різнились би між видами)
+    kinds().forEach(function (k) {
+      if (SK[k]) smonthly(k).forEach(function (b) { add(b.ym, k, b.cost); });
+      else if (k === 'hot' || k === 'cold') wmonthly(k).forEach(function (b) { add(b.ym, k, b.cost); });
+      else if (k === 'heat') { var hm = heatMonthly(); Object.keys(hm).forEach(function (ym) { add(ym, 'heat', hm[ym].cost); }); }
+      else if (k === 'waste') wasteMonthly().forEach(function (m) { add(m.ym, 'waste', m.v); });
+    });
+    return out;
+  }
+  /** Частки у відсотках, що в сумі дають 100 (найбільші залишки). */
+  function mcPct(vals, tot) {
+    var raw = vals.map(function (v) { return tot ? v * 100 / tot : 0; }), fl = raw.map(Math.floor), left = 100 - fl.reduce(function (a, b) { return a + b; }, 0);
+    raw.map(function (r, i) { return [r - fl[i], i]; }).sort(function (a, b) { return b[0] - a[0]; }).slice(0, Math.max(0, left)).forEach(function (x) { fl[x[1]]++; });
+    return fl;
+  }
+  function mcMon(ym) { return monthLabel(ym).replace(/\s*\d{4}.*$/, ''); }
+  /** Плашка «Комуналка за місяць»: шапка зі стрілками місяця, кільце (сума в центрі), легенда — вид, сума, %; вид без грошей за місяць — сірим рядком. */
+  function mcPanel() {
+    var costs = monthCosts(), cur = today().slice(0, 7), yms = Object.keys(costs).filter(function (ym) { return ym <= cur; }).sort();
+    MC.yms = yms; if (!yms.length) { MC.ym = ''; return ''; }
+    var ym = yms.indexOf(MC.ym) >= 0 ? MC.ym : yms[yms.length - 1], i = yms.indexOf(ym), c = costs[ym], ks = kinds(), cv = curView(); MC.ym = ym;
+    var on = ks.filter(function (k) { return c[k] > 0; }), pc = mcPct(on.map(function (k) { return c[k]; }), c.total), P = {}; on.forEach(function (k, j) { P[k] = pc[j]; });
+    var R0 = 80, C = 2 * Math.PI * R0, gap = on.length > 1 ? 2.5 : 0, at = 0, ml = ucf(monthLabel(ym)), sofar = ym === cur;
+    var segs = on.map(function (k) {
+      var l = Math.max(0.5, c[k] / c.total * C - gap), a = -90 + at / C * 360; at += c[k] / c.total * C;
+      return '<circle class="mc-s mc-' + k + '" cx="100" cy="100" r="' + R0 + '" data-act="mc-k" data-k="' + k + '" data-a="' + a.toFixed(2) + '" data-l="' + l.toFixed(2) + '" data-c="' + C.toFixed(2) + '"' +
+        ' stroke-dasharray="' + l.toFixed(2) + ' ' + C.toFixed(2) + '" style="--l:' + l.toFixed(2) + 'px;transform:rotate(' + a.toFixed(2) + 'deg)"/>';
+    }).join('');
+    var aria = t('mc_aria', { m: monthLabel(ym), s: money0(c.total) }) + on.map(function (k) { return t('kd_' + k).toLowerCase() + ' ' + money0(c[k]); }).join(', ') + (sofar ? ' (' + t('mc_sofar') + ')' : '');
+    var nav = function (d, dis, lbl) { return '<button type="button" class="mc-nb" data-act="mc-m" data-d="' + d + '" aria-label="' + esc(t(lbl)) + '" data-key="mc-' + (d < 0 ? 'prev' : 'next') + '"' + (dis ? ' disabled' : '') + '>' + ico('chev', 22, d < 0 ? 'flip' : '') + '</button>'; };
+    // рядки — лише види з грошима за місяць; решта — одним сірим рядком під легендою (на демо 4 з 6 рядків були «немає показань» — плашка розросталась на екран)
+    var leg = on.map(function (k) {
+      return '<li><button type="button" class="mc-row' + (k === cv ? ' on' : '') + '" data-act="mc-k" data-k="' + k + '" aria-pressed="' + (k === cv) + '" data-key="mc-row-' + k + '">' +
+        '<span class="mc-ic mc-' + k + '">' + ico(KINDS[k].icon, 18) + '</span><span class="mc-n">' + esc(t('kd_' + k)) + '</span>' +
+        '<span class="mc-a">' + esc(money0(c[k])) + ' грн</span><span class="mc-p">' + P[k] + ' %</span></button></li>';
+    }).join('');
+    // сірим — лише ті, що вже рахувались раніше (до першого місяця виду його ще не вели — не згадуємо); вивіз — місяць послуги без оплати
+    var first = {}; yms.forEach(function (y) { ks.forEach(function (k) { if (costs[y][k] > 0 && !first[k]) first[k] = y; }); });
+    var miss = ks.filter(function (k) { return k !== 'waste' && !(c[k] > 0) && first[k] && first[k] < ym && !(k === 'heat' && /-(0[5-9])$/.test(ym)); }).map(function (k) { return t('kd_' + k).toLowerCase(); });
+    var wmiss = ks.indexOf('waste') >= 0 && !(c.waste > 0) && Ws.months(wcur(place()), today(), null, 24).some(function (m) { return m.ym === ym && m.st !== 'ahead' && m.st !== 'paid'; });
+    var missTxt = miss.length || wmiss ? '<p class="small muted mc-miss" data-key="mc-miss">' + esc(t('mc_none', { m: mcMon(ym) })) + ' ' +
+      esc(miss.concat(wmiss ? [t('kd_waste').toLowerCase() + ' — ' + t('mc_unpaid')] : []).join(', ')) + '</p>' : '';
+    return '<section class="panel mc" data-key="mc-panel"><div class="mc-head"><h2>' + esc(t('mc_title')) + '</h2><div class="mc-nav">' + nav(-1, i <= 0, 'mc_prev') +
+      '<span class="mc-m" aria-live="polite" data-key="mc-month">' + esc(ml) + '</span>' + nav(1, i >= yms.length - 1, 'mc_next') + '</div></div>' +
+      '<div class="mc-body"><div class="mc-ring" role="img" aria-label="' + esc(aria) + '" data-sum="' + c.total + '" data-fx="mc|' + esc(S.placeId) + '|' + ym + '" data-key="mc-ring">' +
+      '<svg viewBox="0 0 200 200" aria-hidden="true" focusable="false">' + segs + '</svg>' +
+      '<div class="mc-c" aria-hidden="true"><b class="mc-v" data-key="mc-sum">' + esc(money0(c.total)) + '</b><span>' + esc(t('mc_for', { m: mcMon(ym) })) + '</span>' + (sofar ? '<span class="mc-so">' + esc(t('mc_sofar')) + '</span>' : '') + '</div></div>' +
+      '<div class="mc-side"><ul class="mc-leg" data-key="mc-legend">' + leg + '</ul>' + missTxt + '</div></div><p class="small muted mc-note">' + esc(t('mc_note')) + '</p></section><div class="mc-after" data-key="mc-after"></div>';
+  }
+  /** Інший місяць у кільці: знімок для плавного переходу, легкий відгук у застосунку, перемальовка без прокрутки. */
+  function mcGo(ym) { if (!ym || ym === MC.ym || MC.yms.indexOf(ym) < 0) return false; if (window.TeploFx) TeploFx.snap(); MC.ym = ym; appPost({ t: 'haptic', s: 'light' }); mcSwap(); return true; }
+  /** Новий місяць без перемальовки екрана (на слабкому телефоні вся «Статистика» — 70+ мс): нова плашка на місце старої, у графіках — лише клас .on
+   *  (смуга й підпис уже намальовані в кожного стовпчика); фокус — на ту саму кнопку. Плашки немає — звичайна перемальовка. */
+  function mcSwap() {
+    var old = document.querySelector('[data-key="mc-panel"]'), fk = document.activeElement && document.activeElement.getAttribute && document.activeElement.getAttribute('data-key');
+    var box = document.createElement('div'); box.innerHTML = mcPanel(); var neu = box.querySelector('[data-key="mc-panel"]');
+    if (!old || !neu) { render(true); return; }
+    old.parentNode.replaceChild(neu, old);
+    Array.prototype.forEach.call(document.querySelectorAll('svg.chart g.mk[data-ym]'), function (g) { g.classList.toggle('on', g.getAttribute('data-ym') === MC.ym); });
+    if (fk) { var f = neu.querySelector('[data-key="' + fk + '"]'); if (f && !f.disabled) f.focus({ preventScroll: true }); else if (f) { var o2 = neu.querySelector('.mc-nb:not([disabled])'); if (o2) o2.focus({ preventScroll: true }); } }
+    if (window.TeploFx) TeploFx.scan(neu);
+  }
+  function mcStep(d) { var i = MC.yms.indexOf(MC.ym) + d; return i >= 0 && i < MC.yms.length ? mcGo(MC.yms[i]) : false; }
+  /** Вид із легенди чи сектора — той самий перемикач видів нижче; плавно до його графіків. */
+  function mcKind(k) {
+    if (kinds().indexOf(k) < 0) return;
+    S.view = k; persist(); render(true);
+    var to = document.querySelector('[data-key="kind-switch"]'); if (!to || !to.offsetParent) to = document.querySelector('[data-key="mc-after"]');
+    if (to && to.scrollIntoView) try { to.scrollIntoView({ block: 'start', behavior: calmMotion() ? 'auto' : 'smooth' }); } catch (e) { to.scrollIntoView(true); }
+  }
+  // свайп по кільцю — сусідній місяць (лише горизонтальний, не від краю екрана: там «назад» iOS); тап після свайпу не рахуємо
+  (function () {
+    var p0 = null, ate = 0;
+    document.addEventListener('pointerdown', function (e) { var r = e.target.closest && e.target.closest('.mc-ring'); p0 = r && e.isPrimary && e.clientX > 24 ? { x: e.clientX, y: e.clientY } : null; }, { passive: true });
+    document.addEventListener('pointerup', function (e) {
+      if (!p0) return; var dx = e.clientX - p0.x, dy = e.clientY - p0.y; p0 = null;
+      if (Math.abs(dx) > 40 && Math.abs(dx) > 1.5 * Math.abs(dy)) { ate = Date.now(); mcStep(dx < 0 ? 1 : -1); }
+    }, { passive: true });
+    document.addEventListener('pointercancel', function () { p0 = null; }, { passive: true });
+    document.addEventListener('click', function (e) { if (ate && Date.now() - ate < 400 && e.target.closest && e.target.closest('.mc-ring')) { ate = 0; e.stopPropagation(); e.preventDefault(); } }, true);
+  })();
   V.save = function () { if (!kinds().length) return noMeters('save', 'wsv_title'); var k = curView(); return k === 'heat' ? heatSave() : SK[k] ? ssave(k) : wsave(k); };
   /** 129-а (власник 13.11): фільтр історії тепла — «Усе» (і показання, і нарахування ХТМ, кожне підписане), «Показання» (лише ваш лічильник і ремонти),
    *  «ХТМ» (лише нарахування ХТМ по місяцях — як рахунки: Гкал, гроші, перерахунок). Як у кабінетах постачальників: показання й рахунки — окремо. */
@@ -6552,6 +6663,14 @@
   function nTicks(max) { var n = max / Math.pow(10, Math.floor(Math.log10(max))); return (n === 2 || n === 1) ? 4 : 5; }
   function niceMax(v) { if (!(v > 0)) return 1; var p = Math.pow(10, Math.floor(Math.log10(v))), n = v / p; return (n <= 1 ? 1 : n <= 2 ? 2 : n <= 2.5 ? 2.5 : n <= 5 ? 5 : 10) * p; }
   function fmtN(v, d) { return (d === 0 ? String(Math.round(v)) : v.toFixed(d)).replace('.', ','); }
+  /** 172-а: місяць кільця «Комуналка за місяць» у графіках по місяцях — смуга за стовпчиком і жирний підпис (o.sel — ym, it.ym); тап по стовпчику ставить
+   *  цей місяць у кільце (o.pick). o.fx — ключ руху появи (TeploFx: один раз на графік). */
+  function chOn(o, it) { return !!(o.sel && it.ym && it.ym === o.sel); }
+  function chPick(o, it) { return o.pick && it.ym ? ' data-act="mc-pick" data-ym="' + esc(it.ym) + '"' : ''; }
+  // смуга й підпис місяця — у кожного стовпчика з місяцем (видно лише в .on): зміна місяця — лише клас, без перемальовки екрана (mcSwap)
+  function chBand(o, it, cx, slot, T, ih) { return o.pick && it.ym ? '<rect class="ch-sel" x="' + (cx - slot / 2 + 2) + '" y="' + (T - 8) + '" width="' + Math.max(0, slot - 4) + '" height="' + (ih + 34) + '" rx="8"/>' : ''; }
+  function chX(o, it, i, slot, cx, y) { var reg = i % Math.ceil(52 / slot) === 0; return reg || (o.pick && it.ym) ? '<text x="' + cx + '" y="' + y + '" text-anchor="middle" class="ax' + (reg ? '' : ' opt') + '">' + esc(it.x) + '</text>' : ''; }
+  function chFx(o) { return o.fx ? ' data-fx="' + esc(o.fx) + '"' : ''; }
   /** Столбики. items: [{x, v, tip[], soft, color, top}] */
   /** 138-а: два стовпці на місяць — лічильник і ХТМ (власник: «статистика тепла: лічильник / ХТМ по місяцях — графіком»). items: [{x, a, b, tip}], a/b — null, якщо даних немає. */
   function pairChart(items, o) {
@@ -6562,15 +6681,14 @@
     for (var k = 0; k <= nt; k++) { var tv = max * k / nt, yy = y(tv); g += '<line x1="' + L + '" x2="' + (W - R) + '" y1="' + yy + '" y2="' + yy + '" stroke="' + CH.grid + '"/><text x="' + (L - 6) + '" y="' + (yy + 4) + '" text-anchor="end" class="ax">' + esc(fmtN(tv, dec)) + '</text>'; }
     var bar = function (x0, v, col) {
       if (!(v > 0)) return ''; var yt = y(v), yb = T + ih, h = Math.max(0, yb - yt), r = Math.min(3, h);
-      return '<path d="M' + x0 + ',' + yb + 'V' + (yt + r) + 'Q' + x0 + ',' + yt + ' ' + (x0 + r) + ',' + yt + 'H' + (x0 + bw - r) + 'Q' + (x0 + bw) + ',' + yt + ' ' + (x0 + bw) + ',' + (yt + r) + 'V' + yb + 'Z" fill="' + col + '"/>';
+      return '<path class="fx-b" d="M' + x0 + ',' + yb + 'V' + (yt + r) + 'Q' + x0 + ',' + yt + ' ' + (x0 + r) + ',' + yt + 'H' + (x0 + bw - r) + 'Q' + (x0 + bw) + ',' + yt + ' ' + (x0 + bw) + ',' + (yt + r) + 'V' + yb + 'Z" fill="' + col + '"/>';
     };
     var bars = items.map(function (it, i) {
-      var cx = L + slot * (i + 0.5);
-      return '<g class="mk"' + tipAttr(it.tip) + '><rect x="' + (cx - slot / 2) + '" y="' + T + '" width="' + slot + '" height="' + (ih + B) + '" fill="transparent"/>' +
-        bar(cx - gap / 2 - bw, it.a, CH.bar) + bar(cx + gap / 2, it.b, CH.ink2) +
-        (i % Math.ceil(52 / slot) === 0 ? '<text x="' + cx + '" y="' + (T + ih + 17) + '" text-anchor="middle" class="ax">' + esc(it.x) + '</text>' : '') + '</g>';
+      var cx = L + slot * (i + 0.5), on = chOn(o, it);
+      return '<g class="mk' + (on ? ' on' : '') + '"' + chPick(o, it) + tipAttr(it.tip) + '>' + chBand(o, it, cx, slot, T, ih) + '<rect x="' + (cx - slot / 2) + '" y="' + T + '" width="' + slot + '" height="' + (ih + B) + '" fill="transparent"/>' +
+        bar(cx - gap / 2 - bw, it.a, CH.bar) + bar(cx + gap / 2, it.b, CH.ink2) + chX(o, it, i, slot, cx, T + ih + 17) + '</g>';
     }).join('');
-    return '<svg class="chart" viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="' + esc(o.title) + '">' + g + '<line x1="' + L + '" x2="' + (W - R) + '" y1="' + (T + ih) + '" y2="' + (T + ih) + '" stroke="' + CH.ink2 + '"/>' + bars + '</svg>';
+    return '<svg class="chart" viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="' + esc(o.title) + '"' + chFx(o) + '>' + g + '<line x1="' + L + '" x2="' + (W - R) + '" y1="' + (T + ih) + '" y2="' + (T + ih) + '" stroke="' + CH.ink2 + '"/>' + bars + '</svg>';
   }
   function barChart(items, o) {
     var W = chartW(), H = 236, L = 46, R = 10, T = 16, B = items.some(function (x) { return x.x2; }) ? 40 : 30, iw = W - L - R, ih = H - T - B;
@@ -6584,14 +6702,15 @@
     var bars = items.map(function (it, i) {
       var cx = L + slot * (i + 0.5), x0 = cx - bw / 2, yt = y(it.v || 0), yb = T + ih, h = Math.max(0, yb - yt), r = Math.min(4, h);
       var path = h > 0 ? 'M' + x0 + ',' + yb + 'V' + (yt + r) + 'Q' + x0 + ',' + yt + ' ' + (x0 + r) + ',' + yt + 'H' + (x0 + bw - r) + 'Q' + (x0 + bw) + ',' + yt + ' ' + (x0 + bw) + ',' + (yt + r) + 'V' + yb + 'Z' : '';
-      return '<g class="mk"' + tipAttr(it.tip) + '><rect x="' + (cx - slot / 2) + '" y="' + T + '" width="' + slot + '" height="' + (ih + B) + '" fill="transparent"/>' +
-        (path ? '<path d="' + path + '" fill="' + (it.color || (it.soft ? CH.barSoft : CH.bar)) + '"/>' : '') +
+      var on = chOn(o, it);
+      return '<g class="mk' + (on ? ' on' : '') + '"' + chPick(o, it) + tipAttr(it.tip) + '>' + chBand(o, it, cx, slot, T, ih) + '<rect x="' + (cx - slot / 2) + '" y="' + T + '" width="' + slot + '" height="' + (ih + B) + '" fill="transparent"/>' +
+        (path ? '<path class="fx-b" d="' + path + '" fill="' + (it.color || (it.soft ? CH.barSoft : CH.bar)) + '"/>' : '') +
         (it.top && showTop ? '<text x="' + cx + '" y="' + Math.max(T + 10, yt - 5) + '" text-anchor="middle" class="vl">' + esc(it.top) + '</text>' : '') +
-        (i % Math.ceil(52 / slot) === 0 ? '<text x="' + cx + '" y="' + (T + ih + 17) + '" text-anchor="middle" class="ax">' + esc(it.x) + '</text>' : '') +
+        chX(o, it, i, slot, cx, T + ih + 17) +
         (it.x2 && i % Math.ceil(40 / slot) === 0 ? '<text x="' + cx + '" y="' + (T + ih + 31) + '" text-anchor="middle" class="ax x2">' + esc(it.x2) + '</text>' : '') + '</g>';
     }).join('');
     var ref = o.ref ? '<line x1="' + L + '" x2="' + (W - R) + '" y1="' + y(o.ref.v) + '" y2="' + y(o.ref.v) + '" stroke="' + CH.ink2 + '" stroke-dasharray="4 4"/><text x="' + (W - R) + '" y="' + (y(o.ref.v) - 5) + '" text-anchor="end" class="ax ref-l">' + esc(o.ref.label) + '</text>' : '';
-    return '<svg class="chart" viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="' + esc(o.title) + '">' + g + '<line x1="' + L + '" x2="' + (W - R) + '" y1="' + (T + ih) + '" y2="' + (T + ih) + '" stroke="' + CH.ink2 + '"/>' + bars + ref + '</svg>';
+    return '<svg class="chart" viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="' + esc(o.title) + '"' + chFx(o) + '>' + g + '<line x1="' + L + '" x2="' + (W - R) + '" y1="' + (T + ih) + '" y2="' + (T + ih) + '" stroke="' + CH.ink2 + '"/>' + bars + ref + '</svg>';
   }
   var ST_ICO = { ok: '✓', low: '↓', bad: '⚠', none: '✕', off: '–' };
   /** Подача: факт (точка цвета состояния) против нормы графика (кольцо), соединены линией. */
@@ -6608,11 +6727,11 @@
           p.tReturn !== null ? t('stt_ret', { v: fmtN(p.tReturn, 1), d: fmtN(p.dT, 1) }) : '', p.flow !== null ? t('stt_flow', { v: fmtN(p.flow, 3) }) : '']) + '>' +
         '<rect x="' + (cx - slot / 2) + '" y="' + T + '" width="' + slot + '" height="' + (ih + B) + '" fill="transparent"/>' +
         (yn !== null ? '<line x1="' + cx + '" x2="' + cx + '" y1="' + yn + '" y2="' + ya + '" stroke="' + CH.grid + '" stroke-width="3"/><circle cx="' + cx + '" cy="' + yn + '" r="6" fill="' + CH.surface + '" stroke="' + CH.ink2 + '" stroke-width="2"/>' : '') +
-        '<circle cx="' + cx + '" cy="' + ya + '" r="7" fill="' + CH[p.status] + '" stroke="' + CH.ring + '" stroke-width="2"/>' +
+        '<circle class="fx-d" cx="' + cx + '" cy="' + ya + '" r="7" fill="' + CH[p.status] + '" stroke="' + CH.ring + '" stroke-width="2"/>' +
         '<text x="' + cx + '" y="' + (Math.min(ya, yn === null ? ya : yn) - 11) + '" text-anchor="middle" class="vl">' + ST_ICO[p.status] + '</text>' +
         (i % Math.ceil(52 / slot) === 0 ? '<text x="' + cx + '" y="' + (H - 12) + '" text-anchor="middle" class="ax">' + esc(shortDate(p.date)) + '</text>' : '') + '</g>';
     }).join('');
-    return '<svg class="chart" viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="' + esc(t('stc_title')) + '">' + g + '<line x1="' + L + '" x2="' + (W - R) + '" y1="' + (T + ih) + '" y2="' + (T + ih) + '" stroke="' + CH.ink2 + '"/>' + marks + '</svg>';
+    return '<svg class="chart" viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="' + esc(t('stc_title')) + '" data-fx="st|' + esc(S.placeId) + '|heat|cool">' + g + '<line x1="' + L + '" x2="' + (W - R) + '" y1="' + (T + ih) + '" y2="' + (T + ih) + '" stroke="' + CH.ink2 + '"/>' + marks + '</svg>';
   }
   /** Связь с погодой: x — на улице, y — подача; линия — график 95/70; точки — замеры (цвет — состояние). */
   function corrChart(pts) {
@@ -6631,10 +6750,10 @@
     var dots = P.map(function (p) {
       return '<g class="mk"' + tipAttr([ST_ICO[p.status] + ' ' + t('stt_' + p.status), shortDate(p.date) + ' · ' + t('stt_out', { t: fmtN(p.tOut, 1) }),
         t('stt_sup', { v: fmtN(p.tSupply, 1) }) + (p.norm ? ' · ' + t('stt_norm', { v: fmtN(p.norm, 1) }) : ''), p.tReturn !== null ? t('stt_ret', { v: fmtN(p.tReturn, 1), d: fmtN(p.dT, 1) }) : '']) + '>' +
-        '<circle cx="' + x(p.tOut) + '" cy="' + y(p.tSupply) + '" r="14" fill="transparent"/><circle cx="' + x(p.tOut) + '" cy="' + y(p.tSupply) + '" r="7" fill="' + CH[p.status] + '" stroke="' + CH.ring + '" stroke-width="2"/>' +
+        '<circle cx="' + x(p.tOut) + '" cy="' + y(p.tSupply) + '" r="14" fill="transparent"/><circle class="fx-d" cx="' + x(p.tOut) + '" cy="' + y(p.tSupply) + '" r="7" fill="' + CH[p.status] + '" stroke="' + CH.ring + '" stroke-width="2"/>' +
         '</g>';
     }).join('');
-    return '<svg class="chart" viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="' + esc(t('stx_title')) + '">' + g + lines + dots + '</svg>' +
+    return '<svg class="chart" viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="' + esc(t('stx_title')) + '" data-fx="st|' + esc(S.placeId) + '|heat|corr">' + g + lines + dots + '</svg>' +
       '<div class="legend small"><span><i class="dash"></i>' + esc(t('stx_l_sup')) + '</span><span><i class="dash dot2"></i>' + esc(t('stx_l_ret')) + '</span><span>' + esc(t('stx_l_pts')) + '</span></div>';
   }
   function heatStats() {
@@ -6642,7 +6761,8 @@
     var St = window.TeploStats; loadWeather(); hsprLoad();
     var w = WX.days, ivs = St.intervals(RD(), S.baseline, w, tariff(), gaps('heat')), cl = St.coolant(RD(), S.baseline, w);
     ivs.forEach(function (it) { it.cost = +costOf(it.dE, it.days, it.to).total.toFixed(2); });
-    if (!ivs.length) return { screen: 'S15', route: 'stats', html: '<h1>' + esc(t('stt_title')) + '</h1>' + kindSwitch() + esStats('heat', RD().filter(function (r) { return r.htm && r.htm.date; }), esBtn('read', t('hi_empty_cta'), 'es-stats-add')) };
+    var hfx = 'st|' + S.placeId + '|heat|';
+    if (!ivs.length) return { screen: 'S15', route: 'stats', html: stHead() + esStats('heat', RD().filter(function (r) { return r.htm && r.htm.date; }), esBtn('read', t('hi_empty_cta'), 'es-stats-add')) };
     var summer = function (it) { return it.days > 100; };
     var lbl = function (it) { return shortDate(it.to); };
     var period = function (it) { return t('stt_period', { a: R.toHtmDate(it.from), b: R.toHtmDate(it.to), d: it.days }); };
@@ -6655,16 +6775,16 @@
     var tiles = kpi({ key: 'stats-kpi', q: fmtN(sE, 3), unit: 'Гкал', money: sUah, cap: t('kpi_season', { s: sy + '/' + String(sy + 1).slice(2) }),
       chips: [sDays >= 20 ? chip(t('kpi_per_month', { g: fmtN(sE / sDays * 30.44, 3), u: 'Гкал', m: money0(sUah / sDays * 30.44) }), 'chart') : '', judged ? chip(t('kpi_ok_share', { a: okN, b: judged }), okN === judged ? 'check' : 'thermo') : ''].filter(Boolean) });
     var c1 = barChart(ivs.map(function (it) { return { x: lbl(it), x2: it.tOut !== undefined ? (it.tOut > 0 ? '+' : '') + Math.round(it.tOut) + ' °C' : '', v: Math.max(0, it.month), soft: summer(it), top: fmtN(it.month, 2),
-      tip: [fmtN(it.month, 3) + ' ' + t('stt_g30'), period(it), '+' + fmtN(it.dE, 3) + ' Гкал ≈ ' + money(it.cost) + ' грн', it.tOut !== undefined ? t('stt_tout', { t: fmtN(it.tOut, 1) }) : '', summer(it) ? t('stt_summer') : ''] }; }), { title: t('st1_title'), dec: 1 });
+      tip: [fmtN(it.month, 3) + ' ' + t('stt_g30'), period(it), '+' + fmtN(it.dE, 3) + ' Гкал ≈ ' + money(it.cost) + ' грн', it.tOut !== undefined ? t('stt_tout', { t: fmtN(it.tOut, 1) }) : '', summer(it) ? t('stt_summer') : ''] }; }), { title: t('st1_title'), dec: 1, fx: hfx + 'g30' });
     var withW = ivs.filter(function (it) { return it.perHdd != null && !summer(it); });
     var c2 = withW.length ? barChart(withW.map(function (it) { return { x: lbl(it), v: it.perHdd, top: fmtN(it.perHdd, 2),
-      tip: [fmtN(it.perHdd, 2) + ' ' + t('stt_mcal'), period(it), t('stt_tout', { t: fmtN(it.tOut, 1) }) + ' · ' + t('stt_hdd', { v: it.hdd })] }; }), { title: t('st2_title'), dec: 1 }) : '';
+      tip: [fmtN(it.perHdd, 2) + ' ' + t('stt_mcal'), period(it), t('stt_tout', { t: fmtN(it.tOut, 1) }) + ' · ' + t('stt_hdd', { v: it.hdd })] }; }), { title: t('st2_title'), dec: 1, fx: hfx + 'hdd' }) : '';
     var withS = ivs.filter(function (it) { return it.share != null && !summer(it); });
     var c3 = withS.length ? barChart(withS.map(function (it) { var pc = Math.round(it.share * 100); return { x: lbl(it), v: pc, top: pc + '%', color: pc >= 95 ? CH.bar : pc >= 80 ? CH.low : CH.bad,
-      tip: [pc + '% ' + t('stt_share_tip'), period(it), t('stt_off_h', { h: Math.max(0, Math.round(it.days * 24 - it.dH)) })] }; }), { title: t('st3_title'), max: 100, dec: 0, ref: { v: 100, label: '100%' } }) : '';
+      tip: [pc + '% ' + t('stt_share_tip'), period(it), t('stt_off_h', { h: Math.max(0, Math.round(it.days * 24 - it.dH)) })] }; }), { title: t('st3_title'), max: 100, dec: 0, ref: { v: 100, label: '100%' }, fx: hfx + 'share' }) : '';
     var withT = ivs.filter(function (it) { return it.dT != null && !summer(it); });
     var c4 = withT.length ? barChart(withT.map(function (it) { return { x: lbl(it), v: it.dT, top: fmtN(it.dT, 1) + '°', color: it.dT >= 3 ? CH.bar : CH.low,
-      tip: [fmtN(it.dT, 1) + ' °C ' + t('stt_dt_tip'), period(it), it.flow != null ? t('stt_avgflow', { v: fmtN(it.flow, 3) }) : ''] }; }), { title: t('st4_title'), dec: 0, ref: { v: 3, label: t(heatLite() ? 'stt_dt_ref_l' : 'stt_dt_ref') } }) : '';
+      tip: [fmtN(it.dT, 1) + ' °C ' + t('stt_dt_tip'), period(it), it.flow != null ? t('stt_avgflow', { v: fmtN(it.flow, 3) }) : ''] }; }), { title: t('st4_title'), dec: 0, ref: { v: 3, label: t(heatLite() ? 'stt_dt_ref_l' : 'stt_dt_ref') }, fx: hfx + 'dt' }) : '';
     var legend = '<div class="legend small"><span><i class="dot" style="background:' + CH.ink + '"></i>' + esc(t('stl_fact')) + '</span><span><i class="ring"></i>' + esc(t('stl_norm')) + '</span>' +
       ['ok', 'low', 'bad', 'none'].map(function (k) { return '<span><i class="dot" style="background:' + CH[k] + '"></i>' + ST_ICO[k] + ' ' + esc(t('stt_' + k)) + '</span>'; }).join('') + '</div>';
     var panel = function (title, sub, chart, extra) { return chart ? '<section class="panel chart-panel"><h2>' + esc(title) + '</h2><p class="small muted">' + esc(sub) + '</p>' + chart + (extra || '') + '</section>' : ''; };
@@ -6673,16 +6793,21 @@
     var yms = Object.keys(own).concat(Object.keys(hm)).filter(function (ym, i, a) { return a.indexOf(ym) === i && ((own[ym] || 0) > 0.0005 || (hm[ym] || 0) > 0.0005); }).sort().slice(-12);
     var c5 = yms.length > 1 && Object.keys(hm).length ? pairChart(yms.map(function (ym) {
       var a = own[ym] || 0, b2 = hm[ym] === undefined ? null : hm[ym];
-      return { x: ymLabel(ym), a: a, b: b2, tip: [monthLabel(ym), t('stm_tip_own', { g: a > 0 ? '≈ ' + fmtN(a, 3) : '—' }), t('stm_tip_htm', { g: b2 !== null ? fmtN(b2, 3) : '—' })] };
-    }), { title: t('stm_title') }) : '';
+      return { x: ymLabel(ym), ym: ym, a: a, b: b2, tip: [monthLabel(ym), t('stm_tip_own', { g: a > 0 ? '≈ ' + fmtN(a, 3) : '—' }), t('stm_tip_htm', { g: b2 !== null ? fmtN(b2, 3) : '—' })] };
+    }), { title: t('stm_title'), sel: MC.ym, pick: true, fx: hfx + 'pair' }) : '';
+    // 172-а: гроші по місяцях — ті самі числа, що в кільці «Комуналка за місяць» (heatMonthly), останні 12 місяців
+    var hmo = heatMonthly(), hyms = Object.keys(hmo).sort().slice(-12);
+    var c6 = hyms.length ? barChart(hyms.map(function (ym) { var x = hmo[ym]; return { x: ymLabel(ym), ym: ym, v: Math.round(x.cost), top: String(Math.round(x.cost)), color: CH.barSoft,
+      tip: ['≈ ' + money(x.cost) + ' грн', monthLabel(ym), '≈ ' + fmtN(x.g, 3) + ' Гкал'] }; }), { title: t('wst_uah'), dec: 0, sel: MC.ym, pick: true, fx: hfx + 'uah' }) : '';
     var leg5 = '<p class="legend small" data-key="stm-legend"><span><i class="dot" style="background:' + CH.bar + '"></i>' + esc(t('stm_l_own')) + '</span><span><i class="dot" style="background:' + CH.ink2 + '"></i>' + esc(t('stm_l_htm')) + '</span></p>';
     var table = '<details class="panel wacc tbl-acc" data-key="stt-table"><summary><h2>' + esc(t('stt_table')) + '</h2>' + ico('chev', 20, 'pacc-chev') + '</summary><div class="tbl-wrap where-b"><table class="tbl"><thead><tr><th>' + esc(t('stt_th_period')) + '</th><th>Гкал</th><th>' + esc(t('stt_g30')) + '</th><th>грн</th><th>°C ' + esc(t('stt_th_out')) + '</th><th>' + esc(t('stt_th_hdd')) + '</th><th>ΔT</th><th>м³/год</th><th>' + esc(t('stt_th_share')) + '</th></tr></thead><tbody>' +
       ivs.map(function (it) { return '<tr><td>' + esc(R.toHtmDate(it.from) + ' – ' + R.toHtmDate(it.to)) + '</td><td class="num">' + fmtN(it.dE, 3) + '</td><td class="num">' + fmtN(it.month, 3) + '</td><td class="num">' + money(it.cost) + '</td><td class="num">' + (it.tOut !== undefined ? fmtN(it.tOut, 1) : '—') + '</td><td class="num">' + (it.perHdd != null ? fmtN(it.perHdd, 2) : '—') + '</td><td class="num">' + (it.dT != null ? fmtN(it.dT, 1) : '—') + '</td><td class="num">' + (it.flow != null ? fmtN(it.flow, 3) : '—') + '</td><td class="num">' + (it.share != null ? Math.round(it.share * 100) + '%' : '—') + '</td></tr>'; }).join('') +
       '</tbody></table></div></details>';
-    return { screen: 'S15', route: 'stats', html: '<h1>' + esc(t('stt_title')) + '</h1>' + kindSwitch() + '<p class="muted">' + esc(t('stt_lead')) + '</p>' + wxNote + tiles + gapNote(gaps('heat')) +
+    return { screen: 'S15', route: 'stats', html: stHead() + '<p class="muted">' + esc(t('stt_lead')) + '</p>' + wxNote + tiles + gapNote(gaps('heat')) +
       panel(t('stc_title'), t('stc_sub'), cl.length ? coolantChart(cl) : '', legend) +
       panel(t('stx_title'), t('stx_sub'), corrChart(cl)) +
       (c5 ? '<div data-key="stm-panel">' + panel(t('stm_title'), t('stm_sub'), c5, leg5) + '</div>' : '') +
+      (c6 ? '<div data-key="hst-uah">' + panel(t('wst_uah'), t('hst_uah_sub', { p: money(tariff()) }), c6) + '</div>' : '') +
       panel(t('st1_title'), t('st1_sub'), c1) + panel(t('st3_title'), t('st3_sub'), c3) + panel(t('st2_title'), t('st2_sub'), c2) + panel(t('st4_title'), t(heatLite() ? 'st4_sub_l' : 'st4_sub'), c4) + table +
       '<p class="small muted">' + esc(t(heatLite() ? 'stt_method_l' : 'stt_method')) + '</p>' };
   }
@@ -8212,11 +8337,11 @@
   }
   function wasteStats() {
     chColors();
-    var p = place(), d = wasteDir(p), w = wcur(p), sum = wasteSum(p, d), y = Ws.year(w, today()), st = Ws.status(w, today(), sum), head = '<h1>' + esc(t('stt_title')) + '</h1>' + kindSwitch();
+    var p = place(), d = wasteDir(p), w = wcur(p), sum = wasteSum(p, d), y = Ws.year(w, today()), st = Ws.status(w, today(), sum), head = stHead();
     var ms = Ws.months(w, today(), sum, 12).filter(function (m) { return m.st !== 'ahead' || m.pay; }).reverse();
     var tiles = kpi({ key: 'wst-kpi', tone: 'waste', q: sum ? money(sum) : '—', unit: t('wst_unit'), cap: sum ? wasteCalcTxt(p, d) : t('ws_sum_none'),
       chips: [chip(y.n ? t('wst_year', { s: money(y.total), n: y.n }) : t('wst_year0'), 'clock')].concat(st.debt ? [chip(st.debtSum ? t('wsp_debt_s', { n: st.debt, s: money(st.debtSum) }) : t('wsp_debt', { n: st.debt }), 'alert')] : []) });
-    var c = ms.length > 1 ? barChart(ms.map(function (m) { var v = m.paid || 0; return { x: ymLabel(m.ym), v: Math.round(v), top: v ? String(Math.round(v)) : '', color: CH.barSoft, tip: [monthLabel(m.ym), v ? t('wst_tip_paid', { s: money(v) }) : t('wsx_' + (m.st === 'cur' ? 'cur' : 'not')), sum ? t('wst_tip_acc', { s: money(sum) }) : ''] }; }), { title: t('wst_paid_t'), dec: 0, ref: sum ? { v: sum, label: t('wst_ref') } : null }) : '';
+    var c = ms.length > 1 ? barChart(ms.map(function (m) { var v = m.paid || 0; return { x: ymLabel(m.ym), ym: m.ym, v: Math.round(v), top: v ? String(Math.round(v)) : '', color: CH.barSoft, tip: [monthLabel(m.ym), v ? t('wst_tip_paid', { s: money(v) }) : t('wsx_' + (m.st === 'cur' ? 'cur' : 'not')), sum ? t('wst_tip_acc', { s: money(sum) }) : ''] }; }), { title: t('wst_paid_t'), dec: 0, ref: sum ? { v: sum, label: t('wst_ref') } : null, sel: MC.ym, pick: true, fx: 'st|' + S.placeId + '|waste|paid' }) : '';
     var table = '<details class="panel wacc tbl-acc" data-key="wst-table"><summary><h2>' + esc(t('stt_table')) + '</h2>' + ico('chev', 20, 'pacc-chev') + '</summary><div class="tbl-wrap where-b"><table class="tbl"><thead><tr><th>' + esc(t('wst_th_month')) + '</th><th>' + esc(t('wst_th_acc')) + '</th><th>' + esc(t('wst_th_paid')) + '</th></tr></thead><tbody>' +
       ms.slice().reverse().map(function (m) { return '<tr><td>' + esc(ymLabel(m.ym)) + '</td><td class="num">' + (sum ? money(sum) : '—') + '</td><td class="num">' + (m.paid ? money(m.paid) : '<span class="muted">—</span>') + '</td></tr>'; }).join('') + '</tbody></table></div></details>';
     return { screen: 'S15', route: 'stats', html: head + '<p class="muted">' + esc(t('wsst_lead')) + '</p>' + tiles + (c ? '<section class="panel chart-panel"><h2>' + esc(t('wst_paid_t')) + '</h2><p class="small muted">' + esc(t('wst_paid_s')) + '</p>' + c + '</section>' : '') + table };
@@ -9883,6 +10008,7 @@
     Array.prototype.forEach.call(document.querySelectorAll(ACC_SEL), accFoot);
     Array.prototype.forEach.call(document.querySelectorAll('details.tips-box > summary'), function (sm) { if (!sm.querySelector('.pacc-chev')) sm.insertAdjacentHTML('beforeend', ico('chev', 18, 'pacc-chev')); });
     enhanceDates(); photoFill(); phFocusAll(); qrFill(); toastKeep(); fabWatch(); fitLines(); if (Y().account) histFlush();
+    if (window.TeploFx) TeploFx.scan(document.getElementById('main'));   // 172-а: поява графіків (один раз, у кадрі, без руху на слабких і з «Зменшити рух»)
     if (r === 'welcome') lpDepth(); else if (LPD) lpFlush();   // 159-а: глибина лендингу — з першого показу; пішов з лендингу на інший екран — одразу в журнал
     // прилади в нижній панелі лендинга перетікають по колу — при «Зменшити рух» і в автотестах стоїть перший (147-а: електролічильник)
     if (calmMotion() || navigator.webdriver) Array.prototype.forEach.call(document.querySelectorAll('svg.lpm'), function (s) { if (s.pauseAnimations) { s.pauseAnimations(); s.setCurrentTime(0); } });
@@ -10051,6 +10177,9 @@
     if (billAct(act, el, e)) return;
     switch (act) {
       case 'start': break;
+      case 'mc-m': mcStep(+el.getAttribute('data-d') || 0); break;   // 172-а: «Комуналка за місяць»
+      case 'mc-pick': mcGo(el.getAttribute('data-ym')); break;
+      case 'mc-k': mcKind(el.getAttribute('data-k')); break;
       case 'cam': camOpen(el.getAttribute('data-in'), el.getAttribute('data-kind')); break;
       case 'read': newDraft(); go('step-0'); break;
       case 'restart': newDraft(); go('step-0'); break;
