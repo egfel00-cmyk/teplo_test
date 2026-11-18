@@ -1,0 +1,37 @@
+== ocr-1.webp
+2026-11-18 03:25:10.672 Df Peredai[7017:67ca] (Foundation) [peredai] OCR test fast=false: 3 lines, 3555 ms, 720x411, langs (
+2026-11-18 03:25:10.672 Df Peredai[7017:67ca] (Foundation) [peredai] OCR line: Heat meter | 1 | 94,329 166x34 |
+2026-11-18 03:25:10.672 Df Peredai[7017:67ca] (Foundation) [peredai] OCR line: 17913 | 1 | 298,98 248x94 |
+2026-11-18 03:25:10.672 Df Peredai[7017:67ca] (Foundation) [peredai] OCR line: G call | 1 | 558,207 124x46 |
+2026-11-18 03:25:11.342 Df Peredai[7017:67ca] (Foundation) [peredai] OCR test fast=true: 3 lines, 669 ms, 720x411, langs (
+2026-11-18 03:25:11.342 Df Peredai[7017:67ca] (Foundation) [peredai] OCR line: Heat meter | 1 | 94,329 166x34 |
+2026-11-18 03:25:11.342 Df Peredai[7017:67ca] (Foundation) [peredai] OCR line: 17913 | 1 | 298,98 248x94 |
+2026-11-18 03:25:11.342 Df Peredai[7017:67ca] (Foundation) [peredai] OCR line: G call | 1 | 558,207 124x46 |
+== ocr-2.jpg
+2026-11-18 03:25:27.532 Df Peredai[7669:6f02] (Foundation) [peredai] OCR test fast=false: 3 lines, 2536 ms, 769x1000, langs (
+2026-11-18 03:25:27.532 Df Peredai[7669:6f02] (Foundation) [peredai] OCR line: SHARKY 774 | 1 | 192,234 166x24 |
+2026-11-18 03:25:27.532 Df Peredai[7669:6f02] (Foundation) [peredai] OCR line: 00015.482 | 1 | 332,360 212x40 |
+2026-11-18 03:25:27.532 Df Peredai[7669:6f02] (Foundation) [peredai] OCR line: Gcal | 1 | 525,428 56x20 |
+2026-11-18 03:25:29.419 Df Peredai[7669:6f02] (Foundation) [peredai] OCR test fast=true: 3 lines, 1885 ms, 769x1000, langs (
+2026-11-18 03:25:29.419 Df Peredai[7669:6f02] (Foundation) [peredai] OCR line: SHARKY 774 | 1 | 192,234 166x24 |
+2026-11-18 03:25:29.419 Df Peredai[7669:6f02] (Foundation) [peredai] OCR line: 00015.482 | 1 | 332,360 212x40 |
+2026-11-18 03:25:29.419 Df Peredai[7669:6f02] (Foundation) [peredai] OCR line: Gcal | 1 | 525,428 56x20 |
+== ocr-3.jpg
+2026-11-18 03:25:44.604 Df Peredai[8684:7964] (Foundation) [peredai] OCR test fast=false: 8 lines, 2729 ms, 750x1000, langs (
+2026-11-18 03:25:44.605 Df Peredai[8684:7964] (Foundation) [peredai] OCR line: NOVATOR | 1 | 282,320 184x32 |
+2026-11-18 03:25:44.605 Df Peredai[8684:7964] (Foundation) [peredai] OCR line: ЛК-15Г | 0.5 | 330,360 90x20 |
+2026-11-18 03:25:44.605 Df Peredai[8684:7964] (Foundation) [peredai] OCR line: Qn 1,5 m/h R80-H | 0.5 | 292,388 164x18 |
+2026-11-18 03:25:44.605 Df Peredai[8684:7964] (Foundation) [peredai] OCR line: m3 | 0.5 | 212,436 38x22 |
+2026-11-18 03:25:44.605 Df Peredai[8684:7964] (Foundation) [peredai] OCR line: 00502347 | 0.3 | 254,421 263x50 |
+2026-11-18 03:25:44.605 Df Peredai[8684:7964] (Foundation) [peredai] OCR line: x0,0001 | 0.5 | 416,636 66x18 |
+2026-11-18 03:25:44.605 Df Peredai[8684:7964] (Foundation) [peredai] OCR line: Nº 20123456 | 0.5 | 312,660 124x18 |
+2026-11-18 03:25:44.605 Df Peredai[8684:7964] (Foundation) [peredai] OCR line: 2019 1 МРа ДСТУ | 0.5 | 288,686 168x20 |
+2026-11-18 03:25:46.735 Df Peredai[8684:7964] (Foundation) [peredai] OCR test fast=true: 8 lines, 2129 ms, 750x1000, langs (
+2026-11-18 03:25:46.735 Df Peredai[8684:7964] (Foundation) [peredai] OCR line: NOVATOR | 1 | 282,320 184x32 |
+2026-11-18 03:25:46.735 Df Peredai[8684:7964] (Foundation) [peredai] OCR line: ЛК-15Г | 0.5 | 330,360 90x20 |
+2026-11-18 03:25:46.736 Df Peredai[8684:7964] (Foundation) [peredai] OCR line: Qn 1,5 m/h R80-H | 0.5 | 292,388 164x18 |
+2026-11-18 03:25:46.736 Df Peredai[8684:7964] (Foundation) [peredai] OCR line: m3 | 0.5 | 212,436 38x22 |
+2026-11-18 03:25:46.736 Df Peredai[8684:7964] (Foundation) [peredai] OCR line: 00502347 | 0.3 | 254,421 263x50 |
+2026-11-18 03:25:46.736 Df Peredai[8684:7964] (Foundation) [peredai] OCR line: x0,0001 | 0.5 | 416,636 66x18 |
+2026-11-18 03:25:46.736 Df Peredai[8684:7964] (Foundation) [peredai] OCR line: Nº 20123456 | 0.5 | 312,660 124x18 |
+2026-11-18 03:25:46.736 Df Peredai[8684:7964] (Foundation) [peredai] OCR line: 2019 1 МРа ДСТУ | 0.5 | 288,686 168x20 |
