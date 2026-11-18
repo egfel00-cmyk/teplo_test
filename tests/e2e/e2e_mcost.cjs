@@ -1,5 +1,5 @@
 // «Комуналка за місяць» — кільце над графіками «Статистики» (172-а, власник 18.11): один стан місяця на екран (стрілки, свайп, тап по стовпчику),
-// суми = стовпчики «грн» видів до гривні, тап по легенді — вид нижче, крайні місяці, без грошей — плашки немає; рух графіків (chartfx.js).
+// суми = стовпчики «₴» видів до гривні, тап по легенді — вид нижче, крайні місяці, без грошей — плашки немає; рух графіків (chartfx.js).
 // Запуск: cd tests/e2e && NODE_PATH=$(npm root -g) node e2e_mcost.cjs   (сайт 127.0.0.1:8013)
 const { chromium } = require('playwright'); const demo = require('./demo.cjs');
 let pass = 0, fail = 0; const ok = (n, c, i) => { console.log((c ? '  OK  ' : ' FAIL ') + n + (!c && i !== undefined ? '  → ' + JSON.stringify(i) : '')); c ? pass++ : fail++; };
@@ -39,9 +39,9 @@ const U = 'http://127.0.0.1:8013/';
   // 2. Стрілка «‹» — вересень: 5 видів; світло = стовпчик «Вартість по місяцях» світла, підсвічений той самий місяць
   await p.click('[data-key=mc-prev]'); await p.waitForTimeout(300); s = await info(p);
   ok('«‹» — вересень 2026, 5 видів у порядку світло, гаряча, холодна, газ, вивіз', s.m === 'Вересень 2026' && s.rows.map(r => r.k).join() === 'elec,hot,cold,gas,waste', s);
-  ok('aria-label кільця: місяць, сума й види словами', /^За вересень 2026 — 1\s248 грн: світло 756, гаряча вода 190/.test(s.aria), s.aria);
+  ok('aria-label кільця: місяць, сума й види словами', /^За вересень 2026 — 1\s248 ₴: світло 756, гаряча вода 190/.test(s.aria), s.aria);
   let bar = await selBar(p, uahSel);
-  ok('світло: у графіку «грн» підсвічено 09.26, число = рядок кільця (756)', bar && bar.ym === '2026-09' && bar.v === s.rows.find(r => r.k === 'elec').v, { bar, rows: s.rows });
+  ok('світло: у графіку «₴» підсвічено 09.26, число = рядок кільця (756)', bar && bar.ym === '2026-09' && bar.v === s.rows.find(r => r.k === 'elec').v, { bar, rows: s.rows });
   ok('рядок поточного виду (світло) виділено', s.rows.find(r => r.k === 'elec').on);
 
   // 3. Тап по стовпчику 08.26 — серпень у кільці, смуга переїхала
@@ -56,7 +56,7 @@ const U = 'http://127.0.0.1:8013/';
   ok('легенда «Холодна вода» → вид cold у перемикачі', kv.view === 'cold' && kv.pressed === 'cold', kv);
   ok('прокрутили до перемикача видів (вгорі екрана)', kv.top >= 0 && kv.top < 120, kv.top);
   s = await info(p); bar = await selBar(p, uahSel);
-  ok('місяць той самий (серпень) — вода: стовпчик «грн» 08.26 = рядок холодної', s.m === 'Серпень 2026' && bar && bar.ym === '2026-08' && bar.v === s.rows.find(r => r.k === 'cold').v, { m: s.m, bar, rows: s.rows });
+  ok('місяць той самий (серпень) — вода: стовпчик «₴» 08.26 = рядок холодної', s.m === 'Серпень 2026' && bar && bar.ym === '2026-08' && bar.v === s.rows.find(r => r.k === 'cold').v, { m: s.m, bar, rows: s.rows });
   bar = await selBar(p, 'svg.chart[aria-label="Кубометри по місяцях"]');
   ok('графік м³ теж підсвічує серпень', bar && bar.ym === '2026-08', bar);
 
@@ -84,7 +84,7 @@ const U = 'http://127.0.0.1:8013/';
 
   // 8. Мова ru
   p = await open(demo({ elec: true, gas: true, waste: true }), { locale: 'ru-RU' }); s = await info(p);
-  ok('ru: «Коммуналка за месяц», «Октябрь 2026», «грн за октябрь»', /Коммуналка за месяц/.test(await p.textContent('[data-key=mc-panel]')) && s.m === 'Октябрь 2026' && /грн за октябрь/.test(await p.textContent('[data-key=mc-ring]')), s.m);
+  ok('ru: «Коммуналка за месяц», «Октябрь 2026», «₴ за октябрь»', /Коммуналка за месяц/.test(await p.textContent('[data-key=mc-panel]')) && s.m === 'Октябрь 2026' && /₴ за октябрь/.test(await p.textContent('[data-key=mc-ring]')), s.m);
   await p.close();
 
   // 9. Грошей немає (лічильники без показань) — плашки немає

@@ -96,7 +96,7 @@ HTML;
     $p = [];
     foreach (array_slice($places, 0, 4) as $q) {
       $v = '';
-      if (str_starts_with($kind, 'waste') && ($q['sum'] ?? null) !== null) $v = '≈ ' . str_replace('.', ',', number_format((float)$q['sum'], 2, '.', '')) . ' грн';
+      if (str_starts_with($kind, 'waste') && ($q['sum'] ?? null) !== null) $v = '≈ ' . str_replace('.', ',', number_format((float)$q['sum'], 2, '.', '')) . ' ₴';
       $p[] = ['id' => (string)$q['id'], 'n' => self::short((string)($q['label'] ?? ''), 28), 'v' => $v, 'a' => ($q['sum'] ?? null) !== null ? round((float)$q['sum'], 2) : null, 'd' => 0];
     }
     $d = ['v' => self::V, 'k' => $kind, 'ym' => $ym, 'l' => $ru ? 'ru' : 'uk', 't' => $t, 's' => $s, 'b' => $b, 'e' => $e, 'p' => $p];

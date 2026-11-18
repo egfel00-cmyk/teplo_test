@@ -18,9 +18,9 @@ const ok = [], bad = []; const check = (c, m) => (c ? ok : bad).push(m);
   check(/2025\/26/.test(tx) && /Методикою розподілу/.test(tx), 'тепло: правило и сезон 2025/26 — ' + tx.slice(0, 160));
   const rows = await p.$$eval('[data-key=gap-est-tbl] tbody tr', r => r.map(x => x.textContent));
   check(rows.length === 3 && /жовтень/.test(rows[0]) && /листопад/.test(rows[1]), 'по месяцам: жовтень, листопад, разом — ' + JSON.stringify(rows));
-  check(/0,420/.test(tx) && /646,/.test(tx), 'тепло: ≈0,420 Гкал ≈ 646 грн (13 діб × 3,909/121) — ' + (tx.match(/≈ [\d,]+ ?Гкал/) || [])[0]);
+  check(/0,420/.test(tx) && /646,/.test(tx), 'тепло: ≈0,420 Гкал ≈ 646 ₴ (13 діб × 3,909/121) — ' + (tx.match(/≈ [\d,]+ ?Гкал/) || [])[0]);
   check(/до сьогодні/.test(tx), 'открытый период — «до сьогодні»');
-  // поломка → за площею; платіжка 1300 грн → сравнение
+  // поломка → за площею; платіжка 1300 ₴ → сравнение
   await p.check('input[name=gp-reason][value=repair]'); await p.waitForTimeout(150);
   check(await p.inputValue('#gp-pay') === 'area', 'поломка → «за площею»');
   check(/площею/.test(await est()), 'правило «за площею»');

@@ -39,7 +39,7 @@ const stand = b => fetch(HM + '/stand/admin', { method: 'POST', headers: { 'Cont
   await p.goto(U + '#rec-r10'); await wait(1200);
   const box = await p.textContent('[data-key=bills-h-r10]').catch(() => '');
   ok('у записі тепла — «Платіжка за жовтень 2026», файл и пометка «з кабінету ХТМ»', /Платіжка за жовтень 2026/.test(box) && /Квитанція ХТМ/.test(box) && /з кабінету ХТМ/.test(box), box);
-  ok('…в платёжке — «ХТМ» и до сплати', /до сплати\s*1\s?234,56\s*грн/i.test(box) && /ХТМ/.test(await p.textContent('[data-key=bills-h-r10] .bc-badge').catch(() => '')), box);
+  ok('…в платёжке — «ХТМ» и до сплати', /до сплати\s*1\s?234,56\s*₴/i.test(box) && /ХТМ/.test(await p.textContent('[data-key=bills-h-r10] .bc-badge').catch(() => '')), box);
   const fr = await p.evaluate(id => fetch(window.TEPLO_API + '/docs/file?id=' + id, { credentials: 'same-origin' }).then(r => r.text().then(t => ({ csp: r.headers.get('content-security-policy') || '', ct: r.headers.get('content-type') || '', t }))), bl[0].id);
   ok('…файл квитанции: страница рахунку под CSP sandbox, без скриптов', /sandbox/.test(fr.csp) && /text\/html/.test(fr.ct) && /Рахунок за послуги за жовтень 2026/.test(fr.t) && !/<script/i.test(fr.t), [fr.csp, fr.ct]);
   ok('cron через минуту — квартиру уже смотрели, в кабинет не идём', JSON.stringify(cron(T + 60)) === '[]');
@@ -50,7 +50,7 @@ const stand = b => fetch(HM + '/stand/admin', { method: 'POST', headers: { 'Cont
   // 147-а: «Історія» відкривається на першому виді (світло, вода…) — тепло обираємо явно
   await p.evaluate(() => { const s = JSON.parse(localStorage.getItem('teplo.v1')); s.view = 'heat'; localStorage.setItem('teplo.v1', JSON.stringify(s)); });
   await p.goto(U + '#history'); await p.reload(); await wait(1500); const hrow = await p.textContent('[data-key^=hbill-]').catch(() => '');
-  ok('история тепла: тост и строка «Платіжка ХТМ · листопад 2026 · до сплати 980,10 грн»', toast2 && /Платіжка ХТМ/.test(hrow) && /листопад 2026/.test(hrow) && /980,10/.test(hrow), [toast2, hrow]);
+  ok('история тепла: тост и строка «Платіжка ХТМ · листопад 2026 · до сплати 980,10 ₴»', toast2 && /Платіжка ХТМ/.test(hrow) && /листопад 2026/.test(hrow) && /980,10/.test(hrow), [toast2, hrow]);
   await p.click('[data-key^=hbill-] a'); await wait(900); const hv = await p.textContent('main').catch(() => '');
   ok('…открыл — квитанция «Платіжка за листопад 2026», сумма, «Видалити»', /Платіжка за листопад 2026/.test(hv) && /980,10/.test(hv) && await p.locator('[data-key=rec-del]').count() === 1, hv.slice(0, 300));
 

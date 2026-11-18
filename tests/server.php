@@ -756,9 +756,9 @@ ok('Буча 25–30 і Київтеплоенерго 5–31 — обидва 2
   && ($bw['s'] ?? '') === 'Передати до 30.11 · КП «Бучасервіс»' && ($bw['b'] ?? '') === '2026-11-25' && ($bw['e'] ?? '') === '2026-11-30' && ($bw['t'] ?? '') === 'Показання води', [$bd, $bw]);
 // 112-а: вивіз сміття — довідник (Харків: КВПВ 23,47 з людини), нагадування 10-го за минулий місяць лише тим, хто увімкнув у квартирі
 $kl = Providers::lookup('м. Харків, вул. Сумська, 10');
-ok('довідник: Харків — вивіз сміття КП «Комплекс з вивозу побутових відходів», 23,47 грн з людини, check', ($kl['kinds']['waste']['price'] ?? null) == 23.47 && str_contains((string)($kl['kinds']['waste']['org'] ?? ''), 'Комплекс') && !empty($kl['kinds']['waste']['check']), $kl['kinds']['waste'] ?? null);
+ok('довідник: Харків — вивіз сміття КП «Комплекс з вивозу побутових відходів», 23,47 ₴ з людини, check', ($kl['kinds']['waste']['price'] ?? null) == 23.47 && str_contains((string)($kl['kinds']['waste']['org'] ?? ''), 'Комплекс') && !empty($kl['kinds']['waste']['check']), $kl['kinds']['waste'] ?? null);
 $ml = Providers::lookup('смт Мала Данилівка, вул. Академічна, 1');
-ok('довідник: Мала Данилівка — КП «Малоданилівський комунальник», 32 грн з людини (намір 04.11.2025), телефон', ($ml['kinds']['waste']['price'] ?? null) == 32 && str_contains((string)($ml['kinds']['waste']['org'] ?? ''), 'Малоданилівський') && !empty($ml['kinds']['waste']['phones']), $ml['kinds']['waste'] ?? null);
+ok('довідник: Мала Данилівка — КП «Малоданилівський комунальник», 32 ₴ з людини (намір 04.11.2025), телефон', ($ml['kinds']['waste']['price'] ?? null) == 32 && str_contains((string)($ml['kinds']['waste']['org'] ?? ''), 'Малоданилівський') && !empty($ml['kinds']['waste']['phones']), $ml['kinds']['waste'] ?? null);
 // 113-я: вивіз сміття в громадах Харківщини
 $wl = [];
 foreach (['Лозова, вул. Грецька, 1' => [42.0, 45.64, 'Еко-Сан'], 'Чугуїв, вул. Харківська, 1' => [75.43, 83.36, 'Чугуївський комунальний'], 'Мерефа, вул. Дніпровська, 1' => [29.82, 30.05, 'Служба замовника'],
@@ -771,9 +771,9 @@ ok('довідник 113-ї: сміття — Лозова 42 (Еко-Сан, з
 $bw = Providers::lookup('Балаклія, вул. Жовтнева, 1')['kinds']['waste'] ?? [];
 $bS = ['places' => [['id' => 'b', 'address' => 'м. Балаклія, вул. Жовтнева, 1', 'waste' => ['on' => true, 'persons' => 2]]]];
 $bd = Reminders::placesDue($bS, 'waste10', '2026-11'); $bt = Reminders::text('waste10', 'uk', $bd, '2026-12-10');
-ok('довідник 116-ї: Балаклія — 33,23 / 53,34, абонплата 10,01, з 01.10.2026; нагадування ≈ 76,47 грн (2 × 33,23 грн + 10,01 грн абонплата)',
+ok('довідник 116-ї: Балаклія — 33,23 / 53,34, абонплата 10,01, з 01.10.2026; нагадування ≈ 76,47 ₴ (2 × 33,23 ₴ + 10,01 ₴ абонплата)',
   ($bw['price'] ?? null) == 33.23 && ($bw['priv'] ?? null) == 53.34 && ($bw['abon'] ?? null) == 10.01 && str_contains((string)($bw['org'] ?? ''), 'Житлокомунсервіс') && !empty($bw['src_ru'])
-  && ($bd[0]['sum'] ?? null) == 76.47 && str_contains($bt['text'], '≈ 76,47 грн (2 × 33,23 грн + 10,01 грн абонплата)'), [$bw, $bd, $bt['text'] ?? null]);
+  && ($bd[0]['sum'] ?? null) == 76.47 && str_contains($bt['text'], '≈ 76,47 ₴ (2 × 33,23 ₴ + 10,01 ₴ абонплата)'), [$bw, $bd, $bt['text'] ?? null]);
 $rw = Providers::lookup('Берестин, вул. Історична, 1')['kinds']['waste'] ?? [];
 ok('довідник 116-ї: Берестин — Берестинський ККП без суми з людини (тариф за м³), check, 2 телефони, куди платити', str_contains((string)($rw['org'] ?? ''), 'Берестинський') && array_key_exists('price', $rw) && $rw['price'] === null
   && !empty($rw['check']) && count((array)($rw['phones'] ?? [])) === 2 && !empty($rw['pay_ru']), $rw);
@@ -798,7 +798,7 @@ ok('довідник 119-ї: Пісочин 48,60 / 50,38 з 01.05.2026, check �
   && ($dw9['price'] ?? null) == 33.0 && ($dw9['priv'] ?? null) == 30.0 && !empty($dw9['check']) && str_contains((string)($dw9['org'] ?? ''), 'Дергачіекоресурс')
   && ($sw9['price'] ?? null) == 30.0 && !isset($sw9['priv']) && ($sw9['from'] ?? '') === '2026-06-01' && empty($sw9['check'])
   && str_contains((string)($lw9['org'] ?? ''), 'Солоницівське ЖЕГ') && array_key_exists('price', $lw9) && $lw9['price'] === null && !empty($lw9['check']) && !empty($lw9['pay_ru']), [$pw9, $dw9, $sw9, $lw9]);
-// 142-а: Краснокутськ (ВУЖКГ, № 134 від 30.04.2026 + абонплата 20 грн), Південне (КП «Благоустрій смт Буди», № 165 від 10.06.2026), Рогань і Докучаєвське (ЖЕУ «Докучаївське», № 897 від 30.09.2024),
+// 142-а: Краснокутськ (ВУЖКГ, № 134 від 30.04.2026 + абонплата 20 ₴), Південне (КП «Благоустрій смт Буди», № 165 від 10.06.2026), Рогань і Докучаєвське (ЖЕУ «Докучаївське», № 897 від 30.09.2024),
 // Слобожанське (КП «Комунальник», № 1 від 15.01.2025 — за нормами КП); нагадування Краснокутська: 2 × 30,00 + 20,00 абонплата
 $w142 = []; foreach (['смт Краснокутськ, вул. Миру, 1' => [30.0, 29.7, 20.0, 'ВУЖКГ'], 'м. Південне, вул. Гагаріна, 1' => [55.43, null, null, 'Благоустрій смт Буди'], 'селище Буди, вул. Залізнична, 1' => [55.43, null, null, 'Благоустрій смт Буди'],
   'Рогань, вул. Роганська, 1' => [54.32, 57.72, null, 'Докучаївське'], 'Докучаєвське, вул. Центральна, 1' => [54.32, 57.72, null, 'Докучаївське'], 'Слобожанське, вул. Дружби, 1' => [38.79, 45.87, null, 'Комунальник']] as $a => [$pp, $pv, $ab, $og]) {
@@ -807,7 +807,7 @@ $w142 = []; foreach (['смт Краснокутськ, вул. Миру, 1' => 
 }
 $kS = ['places' => [['id' => 'k', 'address' => 'смт Краснокутськ, вул. Миру, 1', 'waste' => ['on' => true, 'persons' => 2]]]];
 $kd = Reminders::placesDue($kS, 'waste10', '2026-11');
-ok('довідник 142-ї: сміття — Краснокутськ 30,00 / 29,70 + абонплата 20,00, Південне й Буди 55,43, Рогань і Докучаєвське 54,32 / 57,72, Слобожанське 38,79 / 45,87; у всіх src і from; нагадування Краснокутськ ≈ 80,00 грн',
+ok('довідник 142-ї: сміття — Краснокутськ 30,00 / 29,70 + абонплата 20,00, Південне й Буди 55,43, Рогань і Докучаєвське 54,32 / 57,72, Слобожанське 38,79 / 45,87; у всіх src і from; нагадування Краснокутськ ≈ 80,00 ₴',
   !$w142 && ($kd[0]['sum'] ?? null) == 80.0, [$w142, $kd]);
 // 143-я: Кегичівка — намір ККП «Кегичівка – Сервіс плюс» 28,90 / 35,10 з 01.06.2024 (check); Нова Водолага — від домоволодінь безкоштовно (Служба благоустрою), ціни немає
 $kw = Providers::lookup('смт Кегичівка, вул. Волошина, 1')['kinds']['waste'] ?? []; $nw = Providers::lookup('Нова Водолага, вул. Гагаріна, 1')['kinds']['waste'] ?? [];
@@ -821,7 +821,7 @@ $wsd = Reminders::placesDue($wsS, 'waste10', '2026-11');
 ok('сміття: лише увімкнені й не вимкнені квартири; сума 3 × 23,47 = 70,41', array_column($wsd, 'id') === ['main'] && $wsd[0]['sum'] == 70.41 && $wsd[0]['n'] === 3, $wsd);
 $wsS['places'][1]['waste']['remindOff'] = false; $wsS['places'][1]['waste']['price'] = 35;
 $wsd2 = Reminders::placesDue($wsS, 'waste10', '2026-11'); $wst2 = Reminders::text('waste10', 'uk', $wsd2, '2026-12-10');
-ok('сміття: друга квартира — люди з води (2), своя ціна 35 → 70,00; текст «за листопад», обидві з кнопками ?go=waste&place=', ($wsd2[1]['sum'] ?? null) == 70.0 && str_contains($wst2['text'], 'Вивіз сміття за листопад') && str_contains($wst2['text'], '«Мамина»: ≈ 70,00 грн (2 × 35,00 грн)')
+ok('сміття: друга квартира — люди з води (2), своя ціна 35 → 70,00; текст «за листопад», обидві з кнопками ?go=waste&place=', ($wsd2[1]['sum'] ?? null) == 70.0 && str_contains($wst2['text'], 'Вивіз сміття за листопад') && str_contains($wst2['text'], '«Мамина»: ≈ 70,00 ₴ (2 × 35,00 ₴)')
   && count($wst2['buttons']) === 2 && str_ends_with($wst2['buttons'][1][1], '?go=waste&place=p2'), [$wsd2, $wst2]);
 $wst3 = Reminders::text('waste10', 'ru', [['id' => 'main', 'label' => 'Моя квартира', 'all' => 1, 'org' => null, 'n' => null, 'price' => null, 'sum' => null, 'pay' => '', 'pay_ru' => '']], '2026-12-10');
 ok('сміття: суми не знаємо — «сумма — в платёжке», одна квартира без назви', str_contains($wst3['text'], 'Вывоз мусора за ноябрь') && str_contains($wst3['text'], 'сумма — в платёжке') && !str_contains($wst3['text'], '«Моя'), $wst3);
@@ -943,8 +943,8 @@ $sent = []; $x_mid = 500; Telegram::$send = function ($m, $p, $tok = null) use (
 Reminders::run($kyiv('2026-12-10 10:17'));
 $x_wc = array_values(array_filter($sent, fn($x) => (string)($x[1]['chat_id'] ?? '') === '7799'));
 $x_wcd = json_decode((string)($x_wc[0][1]['chat_data'] ?? ''), true);
-ok('10.12: вивіз сміття — sendWidget: код, chat_data (листопад, ≈ 70,41 грн), підпис і кнопка застосунку під карткою', count($x_wc) === 1 && $x_wc[0][0] === 'sendWidget' && !empty($x_wc[0][1]['allow_queries'])
-  && ($x_wcd['k'] ?? '') === 'waste10' && ($x_wcd['ym'] ?? '') === '2026-11' && ($x_wcd['p'][0]['v'] ?? '') === '≈ 70,41 грн' && ($x_wcd['e'] ?? '') === '2026-12-20'
+ok('10.12: вивіз сміття — sendWidget: код, chat_data (листопад, ≈ 70,41 ₴), підпис і кнопка застосунку під карткою', count($x_wc) === 1 && $x_wc[0][0] === 'sendWidget' && !empty($x_wc[0][1]['allow_queries'])
+  && ($x_wcd['k'] ?? '') === 'waste10' && ($x_wcd['ym'] ?? '') === '2026-11' && ($x_wcd['p'][0]['v'] ?? '') === '≈ 70,41 ₴' && ($x_wcd['e'] ?? '') === '2026-12-20'
   && str_contains((string)$x_wc[0][1]['caption'], 'Вивіз сміття за листопад') && str_contains((string)($x_wc[0][1]['reply_markup']['inline_keyboard'][0][0]['web_app']['url'] ?? ''), '?go=waste'), $x_wc);
 BotWidget::$now = $kyiv('2026-12-10 11:20');
 $x_wq = function (string $data, int $msg) { return Api::handle(new Req('POST', '/api/bot/webhook', ['REMOTE_ADDR' => '149.154.167.1', 'HTTP_X_TELEGRAM_BOT_API_SECRET_TOKEN' => 'hook-secret'], [],
@@ -1158,7 +1158,7 @@ ok('гео: квартира з адресою «вул. Сумська» — Х
 ok('гео: тепло — 0,5 Гкал за 30 днів → ≈0,507 на місяць, ціна ХТМ загальна', abs(($gm['kinds']['heat']['use'] ?? 0) - 0.507) < 0.001 && $gm['kinds']['heat']['src'] === 'def' && $gm['kinds']['heat']['recs'] === 2, $gm['kinds']['heat'] ?? null);
 ok('гео: холодна вода — 5 м³ за 75 днів (зі стартовими) ≈2,03 на місяць × (48,629 + 20,61)', abs(($gm['kinds']['cold']['use'] ?? 0) - 2.027) < 0.001 && abs($gm['kinds']['cold']['price'] - 69.239) < 0.001 && $gm['kinds']['cold']['recs'] === 1, $gm['kinds']['cold'] ?? null);
 ok('гео: прибрана гаряча й видалений газ — не рахуються; світло з одним показанням — без розходу', !isset($gm['kinds']['hot']) && !isset($gm['kinds']['gas']) && $gm['kinds']['elec']['use'] === null && $gm['kinds']['elec']['recs'] === 1, array_keys($gm['kinds'] ?? []));
-ok('гео: газ у квартирі без адреси — 2,5 м³ за 31 день, 7,96 → сума ≈19,5 грн', abs(($g2['kinds']['gas']['use'] ?? 0) - 2.452) < 0.001 && abs($g2['kinds']['gas']['sum'] - 19.52) < 0.01, $g2['kinds']['gas'] ?? null);
+ok('гео: газ у квартирі без адреси — 2,5 м³ за 31 день, 7,96 → сума ≈19,5 ₴', abs(($g2['kinds']['gas']['use'] ?? 0) - 2.452) < 0.001 && abs($g2['kinds']['gas']['sum'] - 19.52) < 0.01, $g2['kinds']['gas'] ?? null);
 $gk = $geo->body['regions'][0] ?? []; $gpv = array_values(array_filter($geo->body['providers'], fn($x) => $x['kind'] === 'heat' && $x['org']))[0] ?? [];
 ok('гео: зведення — область → громада → пункт, постачальник тепла (ХТМ) і середні', ($gk['r'] ?? '') === 'kh' && ($gk['hromadas'][0]['settlements'][0]['n'] ?? '') === 'Харків'
   && str_contains((string)($gpv['org'] ?? ''), 'теплов') && $gpv['n'] >= 1 && $gpv['avgSum'] > 0 && $geo->body['totals']['noAddr'] >= 1, [$gk['name'] ?? null, $gpv]);
@@ -1856,7 +1856,7 @@ ok('довідник: усі громади й пункти є в КАТОТТГ
   $fr86 = $v('Фурси, Білоцерківський р-н, вул. Шевченка 1'); $tm86 = $v('Томашівка, Фастівський р-н, вул. Шевченка 1');
   ok('громади 86-ї: Студеники 34 / 18,80 з 01.06.2024 (звірити), Дівички — КП «ЖКГ» і абонплата, Єрківці — ТОВ «КЕГ», Фурси — КП ЖКВП «Фурсівське» лише в підказці, Томашівка — «не знайшли»',
     ($sd86['place']['r'] ?? '') === 'kv' && $sd86['kinds']['water']['supply'] === 34.0 && $sd86['kinds']['water']['drain'] === 18.8 && $sd86['kinds']['water']['from'] === '2024-06-01' && !empty($sd86['kinds']['water']['check'])
-    && str_contains($dv86['kinds']['water']['org'] ?? '', 'Дівичківської') && str_contains($dv86['kinds']['water']['note'] ?? '', '20 грн')
+    && str_contains($dv86['kinds']['water']['org'] ?? '', 'Дівичківської') && str_contains($dv86['kinds']['water']['note'] ?? '', '20 ₴')
     && str_contains($er86['kinds']['water']['org'] ?? '', 'Комунально-експлуатаційне') && ($er86['place']['h'] ?? '') === ($dv86['place']['h'] ?? '')
     && $fr86['kinds']['water']['org'] === null && str_contains($fr86['kinds']['water']['note'] ?? '', 'Фурсівське')
     && $tm86['kinds']['water']['org'] === null && str_contains($tm86['kinds']['water']['src'] ?? '', '09.11.2026'),
@@ -2915,9 +2915,9 @@ ok('калькулятори: вода — холодна 5 × 48,629 + гаря
 Seo::$q = ['h' => 'kharkiv', 'c' => '5', 'g' => '3']; $cv = (string)Seo::render('uk', 'voda', '', 'https://peredai.com.ua/', 'c');
 Seo::$q = ['z' => '2', 'day' => '150', 'night' => '80']; $cs = (string)Seo::render('ru', 'svet', '', 'https://peredai.com.ua/', 'c');
 Seo::$q = []; $ci = (string)Seo::render('uk', '', '', 'https://peredai.com.ua/', 'c'); $cgz = (string)Seo::render('uk', 'gaz', '', 'https://peredai.com.ua/', 'c');
-ok('калькулятори: сторінки — вода Харкова з параметрами «666,99 грн», підстава № 509, «з 01.01.2027 … 770,42», noindex, canonical без параметрів; ru /svet — 820,80; список і газ — index; форма GET, без скриптів; match /svet лише ru',
-  str_contains($cv, 'Разом за місяць: 666,99 грн') && str_contains($cv, 'Підстава: рішення виконкому Харківської міської ради від 23.09.2026 № 509') && str_contains($cv, '770,42 грн')
-  && str_contains($cv, 'content="noindex, follow"') && str_contains($cv, '<link rel="canonical" href="https://peredai.com.ua/kalkulyator/voda">') && str_contains($cs, 'Итого за месяц: 820,80 грн')
+ok('калькулятори: сторінки — вода Харкова з параметрами «666,99 ₴», підстава № 509, «з 01.01.2027 … 770,42», noindex, canonical без параметрів; ru /svet — 820,80; список і газ — index; форма GET, без скриптів; match /svet лише ru',
+  str_contains($cv, 'Разом за місяць: 666,99 ₴') && str_contains($cv, 'Підстава: рішення виконкому Харківської міської ради від 23.09.2026 № 509') && str_contains($cv, '770,42 ₴')
+  && str_contains($cv, 'content="noindex, follow"') && str_contains($cv, '<link rel="canonical" href="https://peredai.com.ua/kalkulyator/voda">') && str_contains($cs, 'Итого за месяц: 820,80 ₴')
   && str_contains($ci, 'content="index, follow"') && str_contains($ci, '/kalkulyator/svitlo') && str_contains($cgz, '<form class="card" method="get"') && str_contains($cgz, '0,516')
   && preg_match_all('~<script~', $cv) === preg_match_all('~<script type="application/ld\+json">~', $cv) && Seo::match('/ru/kalkulyator/svet') === ['ru', 'svet', 'c'] && Seo::match('/kalkulyator/svet') === null
   && Seo::match('/kalkulyator') === ['uk', '', 'c'] && in_array([Calc::UK . '/svitlo', Calc::RU . '/svet'], Seo::pairs(), true), mb_substr(strip_tags($cv), 0, 300));
@@ -2941,6 +2941,22 @@ ok('seo: громади й постачальники — «комуналка»
   $kt($hku2) === 'Комуналка Харків (Харківська обл.): куди передати показники — світло, вода, газ, тепло' && str_contains($hbu, 'Куди й до якого числа передати показники лічильників у Буча')
   && $kt($kyu) === 'Комуналка Київ: куди передати показники — світло, вода, газ, тепло' && str_contains($hku2, 'href="/komunalka/kharkiv"')
   && str_contains($pko2, 'передати показники лічильників, тарифи на комуналку'), [$kt($hku2), $kt($kyu)]);
+
+// 172-я (владелец 18.11 05:13: «грн везде заменить на символ гривны»): у текстах для людей — «₴» («1 234 ₴», «₴/м³»).
+// «грн» лишається лише там, що йде в банк (призначення платежу my_purp_def, «Скопіювати все» — рядок з «для банку»),
+// і в розборі чужих сторінок (htmsvc.php — кабінет ХТМ пише «грн»). Новий текст з «грн» — помилка цього тесту.
+$uahBad = [];
+foreach (array_merge(glob(__DIR__ . '/../web/src/*.js'), glob(__DIR__ . '/../app/*.php'), [__DIR__ . '/../web/admin.html']) as $f) {
+  if (basename($f) === 'htmsvc.php') continue;
+  foreach (file($f) as $i => $l) {
+    if (!preg_match('/(?<![\p{Cyrillic}])грн(?![\p{Cyrillic}])/u', $l) || str_contains($l, 'my_purp_def') || str_contains($l, 'для банку')) continue;
+    if (preg_match('~^\s*(//|\*|/\*)~', $l)) continue;  // коментарі
+    $uahBad[] = basename($f) . ':' . ($i + 1);
+  }
+}
+$uahData = 0; foreach (glob(__DIR__ . '/../app/data/*.json') as $f) $uahData += preg_match_all('/(?<![\p{Cyrillic}])грн(?![\p{Cyrillic}])/u', file_get_contents($f));
+ok('₴ замість «грн» (172-а): у JS/PHP/admin і довіднику немає «грн», крім банку (призначення, «Скопіювати все») і розбору ХТМ',
+  !$uahBad && !$uahData && str_contains(file_get_contents(__DIR__ . '/../web/src/i18n.js'), "{сума} грн"), [$uahBad, $uahData]);
 
 echo "\nИтог: $pass OK, $fail FAIL\n";
 exit($fail ? 1 : 0);

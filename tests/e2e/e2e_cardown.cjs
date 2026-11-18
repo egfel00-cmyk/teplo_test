@@ -1,5 +1,5 @@
 // 145-а: картка фото в чаті для свого постачальника (Харків, але воду платять ОСББ): фото водоміра → застосунок з-під картки
-// (?inbox=1&card=ID, справжнє розпізнавання) → картка без «Відправити» й без плану роботів, «куди» — ОСББ, «До сплати … грн — реквізити
+// (?inbox=1&card=ID, справжнє розпізнавання) → картка без «Відправити» й без плану роботів, «куди» — ОСББ, «До сплати … ₴ — реквізити
 // й призначення в застосунку»; запис води збережено. Потрібні: сайт 127.0.0.1:8013 (config.php: sqlite dev.sqlite);
 // картинка: node tests/ocr-lab/water.cjs (→ tests/ocr-lab/out/w_cold.jpg, 137 м³).      node tests/e2e/e2e_cardown.cjs
 const { chromium } = require('playwright'); const demo = require('./demo.cjs'); const { execFileSync } = require('child_process'); const path = require('path'); const fs = require('fs');
@@ -36,7 +36,7 @@ const php = (...a) => JSON.parse(execFileSync('php', [path.join(__dirname, 'card
   let c = null; for (let i = 0; i < 240; i++) { c = sql('SELECT * FROM bot_cards WHERE id = ?', [cid])[0]; if (c.stage !== 'new') break; await p.waitForTimeout(500); }
   const d = JSON.parse(c.data), plan = JSON.parse(c.plan || '[]'), q = (d.r || [])[0] || {};
   ok('картка: 137 м³ → «ОСББ «Сад»», не Водоканал; «Відправити» немає', /137/.test(q.v) && q.w === 'ОСББ «Сад»' && !q.a && !(d.r || []).some(x => x.a), [c.stage, d]);
-  ok('пояснення: «До сплати … грн — реквізити й призначення в застосунку»', /^До сплати [\d\s ,]+ грн — реквізити/.test(q.m || ''), q.m);
+  ok('пояснення: «До сплати … ₴ — реквізити й призначення в застосунку»', /^До сплати [\d\s ,]+ ₴ — реквізити/.test(q.m || ''), q.m);
   ok('плану для роботів немає', plan.length === 1 && plan[0] === null, plan);
   const w = ((await st()).water || []).find(x => x.card === cid) || {};
   ok('запис води збережено з карткою', w.vals && /^137/.test(w.vals.c1), w);

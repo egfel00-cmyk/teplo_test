@@ -18,12 +18,12 @@ let pass = 0, fail = 0; const ok = (n, c, x) => { if (c) { pass++; console.log('
   const txt = async (k) => (await p.textContent('[data-key=' + k + ']')) || '';
   ok('екран квартири: «Постачальники й тарифи» для «Мала Данилівка» (Малоданилівська громада)', /Для «Мала Данилівка» \(Малоданилівська громада, Харківський район\)/.test(await txt('prov-lead')));
   const el = await txt('prov-elec');
-  ok('світло: ПрАТ «Харківенергозбут», мережі Харківобленерго, 4,32 грн за кВт·год до 30.04.2027, підказка й «Так, у мене так» / «У мене інакше»', /Харківенергозбут/.test(el) && /Харківобленерго/.test(el) && /4,32 грн за кВт·год, ціна діє до 30 квітня 2027/.test(el)
+  ok('світло: ПрАТ «Харківенергозбут», мережі Харківобленерго, 4,32 ₴ за кВт·год до 30.04.2027, підказка й «Так, у мене так» / «У мене інакше»', /Харківенергозбут/.test(el) && /Харківобленерго/.test(el) && /4,32 ₴ за кВт·год, ціна діє до 30 квітня 2027/.test(el)
     && !!(await p.$('[data-key=prov-yes-elec]')) && !!(await p.$('[data-key=prov-other-elec]')) && /ЖБК/.test(el), el);
   const gs = await txt('prov-gas');
-  ok('газ: Нафтогаз 7,96 «Фіксований» до 30.04.2027, доставка — Газмережі, Харківська філія, 2,388', /Нафтогаз/.test(gs) && /7,96 грн за м³, тариф «Фіксований» до 30 квітня 2027/.test(gs) && /Газмережі, Харківська філія, 2,388/.test(gs), gs);
+  ok('газ: Нафтогаз 7,96 «Фіксований» до 30.04.2027, доставка — Газмережі, Харківська філія, 2,388', /Нафтогаз/.test(gs) && /7,96 ₴ за м³, тариф «Фіксований» до 30 квітня 2027/.test(gs) && /Газмережі, Харківська філія, 2,388/.test(gs), gs);
   const wt = await txt('prov-water');
-  ok('вода: КП «Малоданилівський комунальник» 10,11 грн за м³ (91-а), «Звідки ці дані», «Так, у мене так» / «У мене інакше»', /Малоданилівський комунальник/.test(wt) && /10,11 грн за м³/.test(wt) && /Звідки ці дані/.test(wt) && /У мене інакше/.test(wt), wt);
+  ok('вода: КП «Малоданилівський комунальник» 10,11 ₴ за м³ (91-а), «Звідки ці дані», «Так, у мене так» / «У мене інакше»', /Малоданилівський комунальник/.test(wt) && /10,11 ₴ за м³/.test(wt) && /Звідки ці дані/.test(wt) && /У мене інакше/.test(wt), wt);
   ok('«Звідки ці дані» — джерело тарифу світла згорнуте', !!(await p.$('[data-key=prov-elec] details.prov-src')) && !(await p.$eval('[data-key=prov-elec] details.prov-src', d => d.open)));
   await p.click('[data-key=prov-yes-elec]'); await p.waitForTimeout(300); let sv = await st();
   ok('«Так, у мене так» → світло звірено (p.prov.elec.ok), позначка «звірено», кнопки підтвердження зникли', sv.places[1].prov && sv.places[1].prov.elec.ok === 1 && /звірено/.test(await txt('prov-elec')) && !(await p.$('[data-key=prov-yes-elec]')));
@@ -32,24 +32,24 @@ let pass = 0, fail = 0; const ok = (n, c, x) => { if (c) { pass++; console.log('
   await p.click('[data-key=prov-other-water]'); await p.waitForTimeout(200);
   ok('вода → форма: хто виставляє (підставлено з довідника), ціна води й водовідведення', await p.inputValue('#prv-n-water') === 'КП «Малоданилівський комунальник»' && !!(await p.$('#prv-s')) && !!(await p.$('#prv-d')));
   await p.fill('#prv-s', '30,5'); await p.click('[data-key=prov-save-water]'); await p.waitForTimeout(300); sv = await st();
-  ok('зберегли 30,5 без водовідведення → «30,50 грн за м³ води (з вашої платіжки)», позначка «з платіжки»', sv.places[1].prov.water.supply === 30.5 && !sv.places[1].prov.water.drain && /30,50 грн за м³ води \(з вашої платіжки\)/.test(await txt('prov-water')) && /з платіжки/.test(await txt('prov-water')), sv.places[1].prov);
+  ok('зберегли 30,5 без водовідведення → «30,50 ₴ за м³ води (з вашої платіжки)», позначка «з платіжки»', sv.places[1].prov.water.supply === 30.5 && !sv.places[1].prov.water.drain && /30,50 ₴ за м³ води \(з вашої платіжки\)/.test(await txt('prov-water')) && /з платіжки/.test(await txt('prov-water')), sv.places[1].prov);
   await p.goto(U + '#water-cold'); await p.waitForTimeout(500);
   const wc = await p.textContent('main');
-  ok('вартість холодної води цієї квартири — за її тарифом (+1 м³ ≈ 31 грн, не 70)', /≈\s*31\s*грн/.test(wc) && !/≈\s*70\s*грн/.test(wc), (wc.match(/≈\s*\d+\s*грн/g) || []).slice(0, 4));
+  ok('вартість холодної води цієї квартири — за її тарифом (+1 м³ ≈ 31 ₴, не 70)', /≈\s*31\s*₴/.test(wc) && !/≈\s*70\s*₴/.test(wc), (wc.match(/≈\s*\d+\s*₴/g) || []).slice(0, 4));
   await p.click('[data-act=prv-other]').catch(() => {});
   // Харків: адреса з вулиці
   await p.goto(U + '#place-main'); await p.waitForTimeout(800);
-  ok('Харків без пункту в адресі: «вважаємо, що це Харків», вода — Харківводоканал 48,63 і 20,61 з 01.10.2026', /вважаємо, що це Харків/.test(await txt('prov-lead')) && /Харківводоканал/.test(await txt('prov-water')) && /48,63 грн за м³ води і 20,61 грн водовідведення з 1 жовтня 2026/.test(await txt('prov-water')), await txt('prov-water'));
+  ok('Харків без пункту в адресі: «вважаємо, що це Харків», вода — Харківводоканал 48,63 і 20,61 з 01.10.2026', /вважаємо, що це Харків/.test(await txt('prov-lead')) && /Харківводоканал/.test(await txt('prov-water')) && /48,63 ₴ за м³ води і 20,61 ₴ водовідведення з 1 жовтня 2026/.test(await txt('prov-water')), await txt('prov-water'));
   ok('Харків: під ціною води — «Підстава: рішення виконкому Харківської міської ради від 23.09.2026 № 509» (170-а)', /^Підстава: рішення виконкому Харківської міської ради від 23\.09\.2026 № 509$/.test((await txt('prov-doc-water')).trim()), await txt('prov-doc-water').catch(() => ''));
-  ok('Харків: наступний тариф Харківводоканалу — «З 1 січня 2027 — 57,50 грн за м³ води і 27,99 грн водовідведення»', /З 1 січня 2027 — 57,50 грн за м³ води і 27,99 грн водовідведення/.test(await txt('prov-next-water')), await txt('prov-next-water').catch(() => ''));
+  ok('Харків: наступний тариф Харківводоканалу — «З 1 січня 2027 — 57,50 ₴ за м³ води і 27,99 ₴ водовідведення»', /З 1 січня 2027 — 57,50 ₴ за м³ води і 27,99 ₴ водовідведення/.test(await txt('prov-next-water')), await txt('prov-next-water').catch(() => ''));
   const ht = await txt('prov-heat');
-  ok('Харків: тепло — КП «Харківські теплові мережі», тариф той, за яким рахуємо: 1 539,50 грн за Гкал з ПДВ і 29,40 грн абонплати (не «невідомий»)',
-    /Харківські теплові мережі/.test(ht) && /1\s539,50 грн за Гкал з ПДВ і 29,40 грн абонплати/.test(ht) && !/невідомий/.test(ht), ht);
+  ok('Харків: тепло — КП «Харківські теплові мережі», тариф той, за яким рахуємо: 1 539,50 ₴ за Гкал з ПДВ і 29,40 ₴ абонплати (не «невідомий»)',
+    /Харківські теплові мережі/.test(ht) && /1\s539,50 ₴ за Гкал з ПДВ і 29,40 ₴ абонплати/.test(ht) && !/невідомий/.test(ht), ht);
   ok('Харків: світло — підказка про новобудови (забудовник / обслуговуюча компанія)', /новобудовах/.test(await txt('prov-elec')));
   await p.click('[data-key=prov-other-heat]'); await p.waitForTimeout(200);
   ok('тепло → «Змінити»: поля тарифу (1 539,50) й абонплати (29,40)', /1\s539,50/.test(await p.inputValue('#prv-h')) && await p.inputValue('#prv-a') === '29,40', [await p.inputValue('#prv-h'), await p.inputValue('#prv-a')]);
   await p.fill('#prv-h', '1600'); await p.fill('#prv-a', '30'); await p.click('[data-key=prov-save-heat]'); await p.waitForTimeout(300); sv = await st();
-  ok('зберегли 1600 / 30 → тариф і абонплата квартири, «з вашої платіжки»', sv.places[0].prov.heat.price === 1600 && sv.places[0].bill.abon === 30 && /1\s600,00 грн за Гкал з ПДВ і 30,00 грн абонплати на місяць \(з вашої платіжки\)/.test(await txt('prov-heat')), [sv.places[0].prov.heat, sv.places[0].bill, await txt('prov-heat')]);
+  ok('зберегли 1600 / 30 → тариф і абонплата квартири, «з вашої платіжки»', sv.places[0].prov.heat.price === 1600 && sv.places[0].bill.abon === 30 && /1\s600,00 ₴ за Гкал з ПДВ і 30,00 ₴ абонплати на місяць \(з вашої платіжки\)/.test(await txt('prov-heat')), [sv.places[0].prov.heat, sv.places[0].bill, await txt('prov-heat')]);
   await p.goto(U + '#place-main'); await p.waitForTimeout(600);
   ok('екран квартири → «Постачальники й рахунки»: тариф тепла 1600', /1\s?600/.test((await p.textContent('[data-key=pv-prov]')).replace(/\u00a0|\u202f/g, ' ')));
   ok('360 px — блок не ширший за екран', await p.evaluate(() => document.documentElement.scrollWidth <= 361));
@@ -73,7 +73,7 @@ let pass = 0, fail = 0; const ok = (n, c, x) => { if (c) { pass++; console.log('
   await p.evaluate(() => { const s = JSON.parse(localStorage.getItem('teplo.v1')); s.places[0].address = 'смт Рогань, вул. Шкільна 3'; delete s.places[0].prov; delete s.places[0].bill; delete s.bill; delete s.tariff; localStorage.setItem('teplo.v1', JSON.stringify(s)); });
   await p.goto(U + '#place-main'); await p.reload(); await p.waitForTimeout(900);
   const rh = await txt('prov-heat'), rw = await txt('prov-water');
-  ok('Рогань: тепло — КП «Теплові мережі Роганської селищної ради», 1 839,62 грн за Гкал з ПДВ без «29,40 абонплати»; вода 21,54 і 16,97', /Роганської селищної ради/.test(rh) && /1\s839,62 грн за Гкал з ПДВ/.test(rh) && !/29,40/.test(rh) && /21,54.*16,97/.test(rw), [rh, rw]);
+  ok('Рогань: тепло — КП «Теплові мережі Роганської селищної ради», 1 839,62 ₴ за Гкал з ПДВ без «29,40 абонплати»; вода 21,54 і 16,97', /Роганської селищної ради/.test(rh) && /1\s839,62 ₴ за Гкал з ПДВ/.test(rh) && !/29,40/.test(rh) && /21,54.*16,97/.test(rw), [rh, rw]);
   // 27-ма сесія: Буди — свій постачальник у пункті (не УЖКГ м. Південне і не його «Куди платити»); Люботин — 56,88 і 76,68 з 01.10.2026
   await p.evaluate(() => { const s = JSON.parse(localStorage.getItem('teplo.v1')); s.places[0].address = 'смт Буди, вул. Шевченка 2'; delete s.places[0].prov; localStorage.setItem('teplo.v1', JSON.stringify(s)); });
   await p.goto(U + '#place-main'); await p.reload(); await p.waitForTimeout(900);

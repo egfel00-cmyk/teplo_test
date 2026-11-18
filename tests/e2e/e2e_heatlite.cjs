@@ -62,7 +62,7 @@ let pass = 0, fail = 0; const ok = (n, c, x) => { if (c) { pass++; console.log('
   }
   ok('Київ: тепло, історія, статистика, квартира — без «ХТМ» (форма кабінету ХТМ, «Прийнято ХТМ», «за тарифом ХТМ», «ХТМ радить»)', Object.values(noHtm).every(a => !a.length), noHtm);
   await p.goto(U + '#history'); await p.waitForTimeout(800); await p.click('[data-key=kind-heat]').catch(() => {}); await p.waitForTimeout(400);
-  ok('Київ: історія — «1 Гкал = 1 654 грн за тарифом постачальника»', /1\s654 грн за тарифом постачальника/.test((await p.textContent('[data-key=hs-unit]')).replace(/\u00a0|\u202f/g, ' ')), await p.textContent('[data-key=hs-unit]').catch(() => ''));
+  ok('Київ: історія — «1 Гкал = 1 654 ₴ за тарифом постачальника»', /1\s654 ₴ за тарифом постачальника/.test((await p.textContent('[data-key=hs-unit]')).replace(/\u00a0|\u202f/g, ' ')), await p.textContent('[data-key=hs-unit]').catch(() => ''));
   await p.goto(U + '#place-main'); await p.waitForTimeout(900); await p.evaluate(() => document.querySelectorAll('details').forEach(d => d.open = true)); await p.waitForTimeout(250);
   const wtp = (await p.textContent('[data-key=pv-prov]').catch(() => '')).replace(/\u00a0|\u202f/g, ' ');   // 164-а: тарифи — у «Постачальники й рахунки» квартири
   ok('Київ: екран квартири → тарифи води Київводоканалу 36,85 і 26,94', /Київводоканал/.test(wtp) && /36,85/.test(wtp) && /26,94/.test(wtp), wtp.slice(0, 400));

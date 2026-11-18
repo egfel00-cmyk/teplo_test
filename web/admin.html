@@ -304,7 +304,7 @@ pre.state { font: 12px/1.4 var(--mono); background: #F4F7F5; padding: 10px; bord
   function useCell(x) { var u = x.unit || GUNIT[x.kind]; return x.avgUse == null ? '<span class="muted">—</span>' : '<span class="mono">' + nf(x.avgUse, u === 'Гкал' ? 3 : 1) + '</span> <span class="muted small">' + esc(u) + '</span>'; }
   function sumCell(x) {
     if (x.avgSum == null) return '<span class="muted">—</span>';
-    return '<b class="mono">' + nf(x.avgSum, 0) + '</b> <span class="muted small">грн' + (x.n > 1 && x.minSum !== x.maxSum ? ' · ' + nf(x.minSum, 0) + '–' + nf(x.maxSum, 0) : '') + '</span>';
+    return '<b class="mono">' + nf(x.avgSum, 0) + '</b> <span class="muted small">₴' + (x.n > 1 && x.minSum !== x.maxSum ? ' · ' + nf(x.minSum, 0) + '–' + nf(x.maxSum, 0) : '') + '</span>';
   }
   // ---------- Откуда заходят (120-а): страна / область / город по Cloudflare, по дням ----------
   var VG = { days: 30, all: false, day: '' };
@@ -366,8 +366,8 @@ pre.state { font: 12px/1.4 var(--mono); background: #F4F7F5; padding: 10px; bord
     var kl = function (k, x) {
       var u = x.use == null ? (x.recs ? 'расход пока не посчитать' : 'показаний нет') : nf(x.use, x.unit === 'Гкал' ? 3 : 1) + ' ' + x.unit + '/мес';
       return '<div class="geo-k"><b>' + esc(KN[k]) + '</b> — ' + (x.org ? esc(x.org) : '<span class="muted">поставщик неизвестен</span>') + '<br><span class="small">' +
-        x.recs + ' пок.' + (x.last ? ', последнее ' + dday(x.last) : '') + ' · ' + esc(u) + (x.price != null ? ' × ' + nf(x.price, 2) + ' грн <span class="muted">(' + esc(GSRC[x.src] || x.src) + ')</span>' : ' · <span class="muted">цена неизвестна</span>') +
-        (x.sum != null ? ' = <b>' + nf(x.sum, 0) + ' грн/мес</b>' : '') + '</span></div>';
+        x.recs + ' пок.' + (x.last ? ', последнее ' + dday(x.last) : '') + ' · ' + esc(u) + (x.price != null ? ' × ' + nf(x.price, 2) + ' ₴ <span class="muted">(' + esc(GSRC[x.src] || x.src) + ')</span>' : ' · <span class="muted">цена неизвестна</span>') +
+        (x.sum != null ? ' = <b>' + nf(x.sum, 0) + ' ₴/мес</b>' : '') + '</span></div>';
     };
     var ppl = '<div class="panel"><h2>По людям (' + pp.length + ')</h2>' + (pp.length ? '<table class="geo-p"><thead><tr><th>№</th><th>Где</th><th>Счётчики, расход и сумма</th></tr></thead><tbody>' + pp.map(function (u) {
       return u.places.map(function (pl, i) { var w = pl.where;
@@ -885,11 +885,11 @@ pre.state { font: 12px/1.4 var(--mono); background: #F4F7F5; padding: 10px; bord
   function pvForm(kd, c) {
     c = c || {};
     var h = pvFld('org', kd === 'gas' ? 'Поставщик газа' : 'Организация', c.org, kd === 'water' || kd === 'heat' || kd === 'waste' ? 'пусто — «не знаем, впишите с платёжки»' : '');
-    if (kd === 'water') h += '<div class="cards">' + pvFld('supply', 'Вода, грн/м³', money(c.supply), 'пусто — неизвестно') + pvFld('drain', 'Водоотведение, грн/м³', money(c.drain)) + pvFld('hot', 'Горячая вода, грн/м³', money(c.hot)) + pvFld('from', 'С даты', c.from, 'ГГГГ-ММ-ДД') + '</div>';
-    if (kd === 'heat') h += '<div class="cards">' + pvFld('price', 'Тепло, грн/Гкал', money(c.price), 'пусто — неизвестно') + pvFld('abon', 'Абонплата, грн/мес', money(c.abon)) + pvFld('from', 'С даты', c.from, 'ГГГГ-ММ-ДД') + '</div>';
-    if (kd === 'waste') h += '<div class="cards">' + pvFld('price', 'С человека в месяц, грн', money(c.price), 'многоквартирные; пусто — неизвестно') + pvFld('priv', 'Частный сектор, грн', money(c.priv), 'если другая') + pvFld('abon', 'Абонплата за счёт, грн/мес', money(c.abon), 'если отдельно от «с человека»') + pvFld('from', 'С даты', c.from, 'ГГГГ-ММ-ДД') + '</div>';
+    if (kd === 'water') h += '<div class="cards">' + pvFld('supply', 'Вода, ₴/м³', money(c.supply), 'пусто — неизвестно') + pvFld('drain', 'Водоотведение, ₴/м³', money(c.drain)) + pvFld('hot', 'Горячая вода, ₴/м³', money(c.hot)) + pvFld('from', 'С даты', c.from, 'ГГГГ-ММ-ДД') + '</div>';
+    if (kd === 'heat') h += '<div class="cards">' + pvFld('price', 'Тепло, ₴/Гкал', money(c.price), 'пусто — неизвестно') + pvFld('abon', 'Абонплата, ₴/мес', money(c.abon)) + pvFld('from', 'С даты', c.from, 'ГГГГ-ММ-ДД') + '</div>';
+    if (kd === 'waste') h += '<div class="cards">' + pvFld('price', 'С человека в месяц, ₴', money(c.price), 'многоквартирные; пусто — неизвестно') + pvFld('priv', 'Частный сектор, ₴', money(c.priv), 'если другая') + pvFld('abon', 'Абонплата за счёт, ₴/мес', money(c.abon), 'если отдельно от «с человека»') + pvFld('from', 'С даты', c.from, 'ГГГГ-ММ-ДД') + '</div>';
     if (kd === 'elec') h += pvFld('net', 'Оператор сети (ОСР)', c.net);
-    if (kd === 'gas') h += '<div class="cards">' + pvFld('grm', 'Оператор сети (кому показания)', c.grm) + pvFld('dist', 'Доставка, грн/м³', money(c.dist)) + pvFld('distFrom', 'С даты', c.distFrom) + '</div>' + pvFld('distSrc', 'Откуда тариф доставки', c.distSrc, '', 1);
+    if (kd === 'gas') h += '<div class="cards">' + pvFld('grm', 'Оператор сети (кому показания)', c.grm) + pvFld('dist', 'Доставка, ₴/м³', money(c.dist)) + pvFld('distFrom', 'С даты', c.distFrom) + '</div>' + pvFld('distSrc', 'Откуда тариф доставки', c.distSrc, '', 1);
     if (kd !== 'waste') h += pvFld('win', 'Окно приёма показаний, числа месяца', c.win && c.win.length === 2 ? c.win[0] + '–' + (c.win[1] === -1 ? 'р' : c.win[1] === -2 ? 'пр' : c.win[1]) : '', 'например 20–27; через конец месяца — 28–3; до конца месяца — 25–31; до последнего рабочего дня — 25–р, до предпоследнего — 10–пр. Пусто — полоски у счётчика нет (тепло — till, ХТМ 5–25)');
     h += pvFld('how', 'Как и когда передавать показания', c.how, 'людям — простыми словами, сроки', 2) +
       '<div class="cards">' + pvFld('cab', 'Личный кабинет', c.cab, 'https://…') + pvFld('bot', 'Бот (Telegram)', c.bot, 'https://t.me/…') + pvFld('site', 'Сайт / форма', c.site, 'https://…') + pvFld('app', 'Приложение', c.app, 'https://…') + '</div>' +

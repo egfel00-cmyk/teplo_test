@@ -3,7 +3,7 @@
  * інше, своя історія — і це теж враховувати»). Без DOM: місяці нарахувань (люди × ціна з людини), оплати, статус для картки,
  * борг, підсумки за рік. Тести — tests/waste.test.js (синтетика).
  * Стан квартири: place.waste = { on, at, removed, persons, price, priv, org, account, remindOff,
- *   pays: [{ id, ym — за який місяць, n — скільки місяців покриває (1–12), date — коли сплатили, amount — грн, src: 'mono' | '', updatedAt, deleted }] }.
+ *   pays: [{ id, ym — за який місяць, n — скільки місяців покриває (1–12), date — коли сплатили, amount — ₴, src: 'mono' | '', updatedAt, deleted }] }.
  */
 (function (root) {
   'use strict';
@@ -40,7 +40,7 @@
   }
   function byNew(a, b) { return String(b.date || '') < String(a.date || '') ? -1 : String(b.date || '') > String(a.date || '') ? 1 : 0; }
 
-  /** Місяці обліку, новіші зверху: { ym, sum — нараховано (грн, null — невідомо), pay — оплата, що його покриває, paid — грн на цей місяць,
+  /** Місяці обліку, новіші зверху: { ym, sum — нараховано (₴, null — невідомо), pay — оплата, що його покриває, paid — ₴ на цей місяць,
    *  st: paid | cur (поточний, ще не платять) | ahead (наперед) | due (до строку) | late (строк минув), due — 'YYYY-MM-20' наступного місяця }. */
   function months(w, today, sum, max) {
     var cur = ymOf(today), s = start(w, today), e = end(w, today), ps = pays(w), out = [];

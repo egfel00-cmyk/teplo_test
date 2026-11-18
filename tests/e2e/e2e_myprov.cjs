@@ -92,8 +92,8 @@ const B = 'http://127.0.0.1:8013/';
   await load({ garage: 'own', atGarage: true }, 'elec');
   ok('свій: «Куди передати» немає', !(await has('[data-key="where-elec"]')));
   // 145-а: «Оплата» — розкривашка, як «Куди передати»: закрита, у шапці назва й сума
-  ok('«Оплата» — акордеон wacc, закритий, у шапці «ГК «Мотор»» і 259,20 грн', await p.$eval('[data-key="mypay-eg"]', d => d.tagName === 'DETAILS' && d.classList.contains('wacc') && !d.open).catch(() => false) &&
-    /ГК «Мотор».*259,20 грн/.test(await txt('[data-key="mypay-eg-sum"]')), await txt('[data-key="mypay-eg-sum"]'));
+  ok('«Оплата» — акордеон wacc, закритий, у шапці «ГК «Мотор»» і 259,20 ₴', await p.$eval('[data-key="mypay-eg"]', d => d.tagName === 'DETAILS' && d.classList.contains('wacc') && !d.open).catch(() => false) &&
+    /ГК «Мотор».*259,20 ₴/.test(await txt('[data-key="mypay-eg-sum"]')), await txt('[data-key="mypay-eg-sum"]'));
   await tap('[data-key="mypay-eg-sum"]'); await p.waitForTimeout(500);
   ok('відкрили: сума в шапці схована (є всередині), унизу «Згорнути»', await p.$eval('[data-key="mypay-eg"]', d => d.open && getComputedStyle(d.querySelector('.mypay-amt')).display === 'none' && !!d.querySelector('.acc-foot')).catch(() => false));
   const pay = await txt('[data-key="mypay-eg"]');
@@ -103,12 +103,12 @@ const B = 'http://127.0.0.1:8013/';
   await p.goto('about:blank'); await p.goto(B + '#elec'); await p.waitForTimeout(700);
   if (!(await p.$eval('[data-key="mypay-eg"]', d => d.open).catch(() => false))) { await tap('[data-key="mypay-eg-sum"]'); await p.waitForTimeout(400); }
   const mtx = await txt('[data-key="my-msg-t"]');
-  ok('151: готівкою — «Добрий день! Гараж № 141, світло: показання 1250 → 1310, набігло 60 кВт·год, до сплати 259,20 грн за жовтень 2026.»', mtx === 'Добрий день! Гараж № 141, світло: показання 1250 → 1310, набігло 60 кВт·год, до сплати 259,20 грн за жовтень 2026.', mtx);
+  ok('151: готівкою — «Добрий день! Гараж № 141, світло: показання 1250 → 1310, набігло 60 кВт·год, до сплати 259,20 ₴ за жовтень 2026.»', mtx === 'Добрий день! Гараж № 141, світло: показання 1250 → 1310, набігло 60 кВт·год, до сплати 259,20 ₴ за жовтень 2026.', mtx);
   ok('151: «Надіслати» й «Копіювати» з тим самим текстом; призначення платежу немає', (await p.getAttribute('[data-key="my-msg-send"]', 'data-text')) === mtx && (await p.getAttribute('[data-key="my-msg-copy"]', 'data-text')) === mtx && !(await has('[data-key="mypay-eg"] [data-key="my-r-purp"]')));
   await p.evaluate(() => { const s = JSON.parse(localStorage.getItem('teplo.v1')); const g = s.places.find(x => x.prov && x.prov.elec && x.prov.elec.own); g.prov.elec.how = 'iban'; delete g.prov.elec.num; g.prov.elec.ts = Date.now(); s.updatedAt = Date.now(); localStorage.setItem('teplo.v1', JSON.stringify(s)); });
   await p.goto('about:blank'); await p.goto(B + '#elec'); await p.waitForTimeout(700);
   if (!(await p.$eval('[data-key="mypay-eg"]', d => d.open).catch(() => false))) { await tap('[data-key="mypay-eg-sum"]'); await p.waitForTimeout(400); }
-  ok('«Оплата»: назва, 259,20 грн, 60 кВт·год з 30 вересня', /ГК «Мотор»/.test(pay) && /259,20/.test(pay) && /60 кВт·год з 30 вересня/.test(pay), pay);
+  ok('«Оплата»: назва, 259,20 ₴, 60 кВт·год з 30 вересня', /ГК «Мотор»/.test(pay) && /259,20/.test(pay) && /60 кВт·год з 30 вересня/.test(pay), pay);
   const purp = await txt('[data-key="mypay-eg"] [data-key="my-r-purp"] .my-r-v');
   // 151-а: шаблон людини більше не застосовуємо — призначення завжди своє (старий `purpose` у даних лишається, але не діє)
   ok('призначення (своє, без шаблону): «Гараж: показання 1250–1310, набігло 60 кВт·год, 259,20 грн, за жовтень 2026»', purp === 'Гараж: показання 1250–1310, набігло 60 кВт·год, 259,20 грн, за жовтень 2026', purp);
@@ -130,8 +130,8 @@ const B = 'http://127.0.0.1:8013/';
   await p.goto('about:blank'); await p.goto(B + '#elec'); await p.waitForTimeout(700);
   if (!(await p.$eval('[data-key="mypay-eg"]', d => d.open).catch(() => false))) { await tap('[data-key="mypay-eg-sum"]'); await p.waitForTimeout(400); }
   const mpaid = await txt('[data-key="mypay-eg"] [data-key="my-msg-t"]');
-  ok('152: готівкою, оплачено — повідомлення є («Добрий день! Гараж, світло: показання 1250 → 1310 … 259,20 грн …»), «Копіювати» з ним, суми «До сплати» немає',
-    /^Добрий день! Гараж, світло: показання 1250 → 1310, набігло 60 кВт·год, до сплати 259,20 грн за жовтень 2026\.$/.test(mpaid) &&
+  ok('152: готівкою, оплачено — повідомлення є («Добрий день! Гараж, світло: показання 1250 → 1310 … 259,20 ₴ …»), «Копіювати» з ним, суми «До сплати» немає',
+    /^Добрий день! Гараж, світло: показання 1250 → 1310, набігло 60 кВт·год, до сплати 259,20 ₴ за жовтень 2026\.$/.test(mpaid) &&
     (await p.getAttribute('[data-key="mypay-eg"] [data-key="my-msg-copy"]', 'data-text')) === mpaid && !(await has('[data-key="mypay-eg"] [data-key="my-sum"]')), mpaid);
   await p.evaluate(() => { const s = JSON.parse(localStorage.getItem('teplo.v1')); const g = s.places.find(x => x.prov && x.prov.elec && x.prov.elec.own); g.prov.elec.how = 'iban'; g.prov.elec.ts = Date.now(); s.updatedAt = Date.now(); localStorage.setItem('teplo.v1', JSON.stringify(s)); });
   await p.goto(B + '#erec-gr20261031'); await p.waitForTimeout(500);
@@ -140,12 +140,12 @@ const B = 'http://127.0.0.1:8013/';
   await p.goto(B + '#erec-gr20261031'); await p.waitForTimeout(300);
   await p.evaluate(() => { const s = JSON.parse(localStorage.getItem('teplo.v1')); s.mrecs.find(r => r.id === 'gr20261031').sent = {}; s.updatedAt = Date.now(); localStorage.setItem('teplo.v1', JSON.stringify(s)); });
   await p.goto('about:blank'); await p.goto(B + '#erec-gr20261031'); await p.waitForTimeout(700);
-  ok('неоплачений запис: «Оплата» є, закрита, у шапці сума', /259,20 грн/.test(await txt('[data-key="mypay-rec-sum"]')) && !(await p.$eval('[data-key="mypay-rec"]', d => d.open)));
+  ok('неоплачений запис: «Оплата» є, закрита, у шапці сума', /259,20 ₴/.test(await txt('[data-key="mypay-rec-sum"]')) && !(await p.$eval('[data-key="mypay-rec"]', d => d.open)));
   // екран квартири: рядок «свій» → «Налаштувати» веде у «Кому платите»
   await p.goto(B + '#place-gar'); await p.waitForTimeout(700);
   await p.click('summary:has-text("Постачальники")'); await p.waitForTimeout(500);
   const row = await txt('[data-key="prov-elec"]');
-  ok('екран квартири: «Світло · свій», ГК «Мотор», IBAN, 4,32 грн за кВт·год', /свій/.test(row) && /ГК «Мотор»/.test(row) && /IBAN UA21/.test(row) && /4,32 грн за кВт·год/.test(row), row);
+  ok('екран квартири: «Світло · свій», ГК «Мотор», IBAN, 4,32 ₴ за кВт·год', /свій/.test(row) && /ГК «Мотор»/.test(row) && /IBAN UA21/.test(row) && /4,32 ₴ за кВт·год/.test(row), row);
   await p.click('[data-key="prov-my-set-elec"]'); await p.waitForTimeout(700);
   ok('«Налаштувати» → сторінка світла, «Кому платите» розгорнуто', (await p.evaluate(() => location.hash)) === '#elec' && await p.$eval('#my-elec', f => !!f.closest('details[open]')).catch(() => false));
 

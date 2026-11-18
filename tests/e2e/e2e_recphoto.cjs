@@ -35,12 +35,12 @@ if (!fs.existsSync(NOV)) { const j = path.join(LAB, 'rp.local.json'); fs.writeFi
     const g1 = await geo();
     ok(vw + ': газ — вікно роликів на превʼю рівно по центру (±2 px), не ширше картки', g1 && g1.fx && Math.abs(g1.dx) <= 2 && Math.abs(g1.dy) <= 2 && g1.w <= g1.bw, g1);
     const o1 = await order('erec-used', true, 'erec-values'), u1 = (await p.textContent('[data-key=erec-used]').catch(() => '')).replace(/\s+/g, ' ');
-    ok(vw + ': газ — набігло (143-я: без слів, період) першим (м³, ≈ грн, розрахунок), під ним фото, далі показання; без табло; «← Назад» на сторінку газу', o1.used && o1.ok && !o1.drum && /з \d+ \S+ до \d+/.test(u1) && /м³/.test(u1) && /≈ [\d  ]+,\d\d\s*грн/.test(u1) && / × /.test(u1)
+    ok(vw + ': газ — набігло (143-я: без слів, період) першим (м³, ≈ ₴, розрахунок), під ним фото, далі показання; без табло; «← Назад» на сторінку газу', o1.used && o1.ok && !o1.drum && /з \d+ \S+ до \d+/.test(u1) && /м³/.test(u1) && /≈ [\d  ]+,\d\d\s*₴/.test(u1) && / × /.test(u1)
       && (await p.getAttribute('[data-key=rec-back]', 'href')) === '#gas', [o1, u1]);
     await p.screenshot({ path: '/tmp/shots/rec_gas_' + vw + '.png', fullPage: vw === 390 });
     await p.goto(U + '#wrec-w20261015'); await p.waitForTimeout(1200);
     const o2 = await order('wrec-used', true, 'wrec-values'), u2 = (await p.textContent('[data-key=wrec-used]').catch(() => '')).replace(/\s+/g, ' ');
-    ok(vw + ': вода з двома водомірами — «Набігло» одним числом +8 м³ і ≈ грн (146-а: як світло), гаряча й холодна — рядками → фото → два рядки показань з копіюванням 175 і 437, без барабанів', o2.used && o2.ok && !o2.drum && /Гаряча/.test(u2) && /Холодна/.test(u2) && !/Разом/.test(u2) && (await p.$$('[data-key=wrec-used] .ru-q')).length === 1 && /\+8\s*м³/.test(u2)
+    ok(vw + ': вода з двома водомірами — «Набігло» одним числом +8 м³ і ≈ ₴ (146-а: як світло), гаряча й холодна — рядками → фото → два рядки показань з копіюванням 175 і 437, без барабанів', o2.used && o2.ok && !o2.drum && /Гаряча/.test(u2) && /Холодна/.test(u2) && !/Разом/.test(u2) && (await p.$$('[data-key=wrec-used] .ru-q')).length === 1 && /\+8\s*м³/.test(u2)
       && await p.evaluate(() => document.querySelectorAll('[data-key=wrec-values] > li').length === 2)
       && (await p.getAttribute('[data-key=wrec-copy-h1]', 'data-text')) === '175' && (await p.getAttribute('[data-key=wrec-copy-c1]', 'data-text')) === '437', [o2, u2]);
     const g2 = await geo(); ok(vw + ': вода — фото теж по центру', g2 && Math.abs(g2.dx) <= 2 && Math.abs(g2.dy) <= 2, g2);

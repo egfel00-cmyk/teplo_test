@@ -18,13 +18,13 @@ const U = 'http://127.0.0.1:8013/';
   ok('у постачальниках — «Заповнити з monobank» на виду', await p.locator('[data-key=mono-open-place]').count() === 1);
   await p.evaluate(() => document.querySelector('[data-key=pv-add-meter]').click()); await p.waitForTimeout(500);
   const opt = await txt('[data-key=am-waste]');
-  ok('«Додати лічильник» — є «Вивіз сміття» з вивізником і ціною за адресою', /Вивіз сміття/.test(opt) && /23,47 грн з людини/.test(opt), opt);
+  ok('«Додати лічильник» — є «Вивіз сміття» з вивізником і ціною за адресою', /Вивіз сміття/.test(opt) && /23,47 ₴ з людини/.test(opt), opt);
   await p.click('[data-key=am-waste]'); await p.waitForTimeout(600);
   ok('→ сторінка вивозу, налаштування відкриті', /#waste$/.test(p.url()) && await p.evaluate(() => !!document.querySelector('[data-key=wbox-set]') && document.querySelector('[data-key=wbox-set]').open), p.url());
   let w = await st(); ok('у стані: on, at', w && w.on === true && !!w.at, w);
   ok('без людей — «—» і «Впишіть, скільки людей»', /—/.test(await txt('[data-key=wplate-hero]')) && /Впишіть, скільки людей/.test(await txt('[data-key=wplate-hero]')), await txt('[data-key=wplate-hero]'));
   await p.fill('#ws-persons', '3'); await p.waitForTimeout(300);
-  ok('3 людини → замість табло «70,41 грн» і «3 × 23,47 грн з людини» — на місці', /70,41/.test(await txt('[data-key=wplate-hero]')) && /3 × 23,47 грн з людини/.test(await txt('[data-key=wplate-hero]')), await txt('[data-key=wplate-hero]'));
+  ok('3 людини → замість табло «70,41 ₴» і «3 × 23,47 ₴ з людини» — на місці', /70,41/.test(await txt('[data-key=wplate-hero]')) && /3 × 23,47 ₴ з людини/.test(await txt('[data-key=wplate-hero]')), await txt('[data-key=wplate-hero]'));
   await p.fill('#ws-acc', '700123'); await p.dispatchEvent('#ws-acc', 'change'); await p.waitForTimeout(200);
   w = await st(); ok('люди й особовий рахунок збережено', w.persons === 3 && w.account === '700123', w);
   await p.reload(); await p.waitForTimeout(700);
@@ -56,7 +56,7 @@ const U = 'http://127.0.0.1:8013/';
   await p.click('[data-key=wp-save]'); await p.waitForTimeout(600);
   ok('назад — на сторінку вивозу; смужка місяців: жовтень і листопад сплачено', /#waste$/.test(p.url()) && await p.locator('.wstrip .ws-m.ok').count() >= 2, p.url());
   const hist = await txt('[data-key=waste-hist]');
-  ok('історія на сторінці: місяці з «Сплачено», «211,23 грн за 3 міс.»', /Сплачено/.test(hist) && /211,23 грн за 3 міс/.test(hist), hist);
+  ok('історія на сторінці: місяці з «Сплачено», «211,23 ₴ за 3 міс.»', /Сплачено/.test(hist) && /211,23 ₴ за 3 міс/.test(hist), hist);
 
   // 5. правка й видалення
   const multi = (await st()).pays.filter(x => x.n === 3)[0];
@@ -72,13 +72,13 @@ const U = 'http://127.0.0.1:8013/';
   ok('«Історія» → «Сміття»: листопад (поточний, ≈ 70,41) і жовтень (сплачено)', /Листопад 2026/.test(h2) && /Поточний місяць/.test(h2) && /Жовтень 2026/.test(h2) && /сплачено 2 листопада 2026/.test(h2), h2);
   await p.goto(U + '#stats'); await p.waitForTimeout(600);
   const kp = await txt('[data-key=wst-kpi]');
-  ok('«Статистика» → «Сміття»: 70,41 грн на місяць, за 12 міс. сплачено 70,41', /70,41/.test(kp) && /грн на місяць/.test(kp) && /сплачено 70,41 грн \(1 опл\.\)/.test(kp), kp);
+  ok('«Статистика» → «Сміття»: 70,41 ₴ на місяць, за 12 міс. сплачено 70,41', /70,41/.test(kp) && /₴ на місяць/.test(kp) && /сплачено 70,41 ₴ \(1 опл\.\)/.test(kp), kp);
   await p.goto(U + '#save'); await p.waitForTimeout(400);
   ok('«Економія» — без «Сміття»', !(await p.$('[data-key=kind-waste]')));
 
   // 7. екран квартири: рядок серед лічильників, постачальник, прибрати й повернути
   await p.goto(U + '#place-' + pid); await p.waitForTimeout(700);
-  ok('серед лічильників — «Вивіз сміття · 3 × 23,47 грн з людини»', /3 × 23,47 грн з людини/.test(await txt('[data-key=pv-m-waste]')), await txt('[data-key=pv-m-waste]'));
+  ok('серед лічильників — «Вивіз сміття · 3 × 23,47 ₴ з людини»', /3 × 23,47 ₴ з людини/.test(await txt('[data-key=pv-m-waste]')), await txt('[data-key=pv-m-waste]'));
   ok('у постачальниках — вивізник і «Налаштування й оплати»', /Комплекс з вивозу/.test(await txt('[data-key=prov-waste]')) && !!(await p.$('[data-key=pv-waste-open]')));
   await p.evaluate(() => document.querySelector('[data-key=pv-remove-waste]').click()); await p.waitForTimeout(500);
   w = await st(); ok('прибрали — on немає, removed, оплати лишились', !w.on && !!w.removed && w.pays.length >= 1, w);
@@ -101,8 +101,8 @@ const U = 'http://127.0.0.1:8013/';
   await p.goto(U + '#waste'); await p.reload(); await p.waitForTimeout(1200);
   await p.evaluate(() => { const d = document.querySelector('[data-key=wbox-set]'); if (d) d.open = true; });
   const bp = await txt('[data-key=wplate-hero]'), bs = await txt('[data-key=ws-sum]'), bpr = await txt('[data-wsl=price]');
-  ok('Балаклія: табло 76,47 «2 × 33,23 грн + 10,01 абонплата»; сума й ціна — з абонплатою за рахунок', /76,47/.test(bp) && /2 × 33,23 грн \+ 10,01 абонплата/.test(bp)
-    && /≈ 76,47 грн на місяць \(2 × 33,23 грн \+ 10,01 грн абонплата\)/.test(bs) && /\+ 10,01 грн абонплата за рахунок/.test(bpr), [bp, bs, bpr]);
+  ok('Балаклія: табло 76,47 «2 × 33,23 ₴ + 10,01 абонплата»; сума й ціна — з абонплатою за рахунок', /76,47/.test(bp) && /2 × 33,23 ₴ \+ 10,01 абонплата/.test(bp)
+    && /≈ 76,47 ₴ на місяць \(2 × 33,23 ₴ \+ 10,01 ₴ абонплата\)/.test(bs) && /\+ 10,01 ₴ абонплата за рахунок/.test(bpr), [bp, bs, bpr]);
   ok('без помилок JS', !errs.length, errs);
   console.log('\nИтог: ' + pass + ' OK, ' + fail + ' FAIL'); await b.close(); process.exit(fail ? 1 : 0);
 })();

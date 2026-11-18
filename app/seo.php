@@ -141,15 +141,15 @@ final class Seo {
     $a = fn(string $n) => $base === null || $n === $self ? $e($n) : self::plink($n, $ru, $base);
     $rows = [];
     if ($k === 'elec' && !empty($o['net'])) $rows[] = $e($ru ? 'Оператор сети: ' : 'Оператор мережі: ') . $a((string)$o['net']);
-    if ($k === 'gas' && !empty($o['grm'])) $rows[] = $e($ru ? 'Доставка (оператор сети): ' : 'Доставка (оператор мережі): ') . $a((string)$o['grm']) . $e((!empty($o['dist']) ? ' — ' . self::money($o['dist']) . ($ru ? ' грн за 1 м³ годовой мощности' : ' грн за 1 м³ річної потужності') . (!empty($o['distFrom']) ? ($ru ? ' с ' : ' з ') . date('d.m.Y', strtotime((string)$o['distFrom'])) : '') : ''));
+    if ($k === 'gas' && !empty($o['grm'])) $rows[] = $e($ru ? 'Доставка (оператор сети): ' : 'Доставка (оператор мережі): ') . $a((string)$o['grm']) . $e((!empty($o['dist']) ? ' — ' . self::money($o['dist']) . ($ru ? ' ₴ за 1 м³ годовой мощности' : ' ₴ за 1 м³ річної потужності') . (!empty($o['distFrom']) ? ($ru ? ' с ' : ' з ') . date('d.m.Y', strtotime((string)$o['distFrom'])) : '') : ''));
     $from = !empty($o['from']) ? ($ru ? ', с ' : ', з ') . date('d.m.Y', strtotime((string)$o['from'])) : '';
     $tx = [];
-    if ($k === 'water' && !empty($o['supply'])) $tx[] = ($ru ? 'Тариф: вода ' : 'Тариф: вода ') . self::money($o['supply']) . (!empty($o['drain']) ? ($ru ? ', стоки ' : ', водовідведення ') . self::money($o['drain']) : '') . ($ru ? ' грн за м³' : ' грн за м³') . $from;
-    if ($k === 'heat' && !empty($o['price'])) $tx[] = ($ru ? 'Тариф: ' : 'Тариф: ') . self::money($o['price']) . ($ru ? ' грн за Гкал' : ' грн за Гкал') . $from;
+    if ($k === 'water' && !empty($o['supply'])) $tx[] = ($ru ? 'Тариф: вода ' : 'Тариф: вода ') . self::money($o['supply']) . (!empty($o['drain']) ? ($ru ? ', стоки ' : ', водовідведення ') . self::money($o['drain']) : '') . ($ru ? ' ₴ за м³' : ' ₴ за м³') . $from;
+    if ($k === 'heat' && !empty($o['price'])) $tx[] = ($ru ? 'Тариф: ' : 'Тариф: ') . self::money($o['price']) . ($ru ? ' ₴ за Гкал' : ' ₴ за Гкал') . $from;
     // 170-а: підстава ціни (рішення/наказ, № і дата) — коли ціна в картці є
     $dc = trim((string)($ru && !empty($o['doc_ru']) ? $o['doc_ru'] : ($o['doc'] ?? '')));
     $hasP = ($k === 'water' && !empty($o['supply'])) || (in_array($k, ['heat', 'waste'], true) && !empty($o['price']));
-    if ($k === 'waste' && !empty($o['price'])) $tx[] = ($ru ? 'Плата: ' : 'Плата: ') . self::money($o['price']) . ($ru ? ' грн в месяц' : ' грн на місяць') . (!empty($o['priv']) ? ($ru ? ' (частный сектор — ' : ' (приватний сектор — ') . self::money($o['priv']) . ')' : '') . $from;
+    if ($k === 'waste' && !empty($o['price'])) $tx[] = ($ru ? 'Плата: ' : 'Плата: ') . self::money($o['price']) . ($ru ? ' ₴ в месяц' : ' ₴ на місяць') . (!empty($o['priv']) ? ($ru ? ' (частный сектор — ' : ' (приватний сектор — ') . self::money($o['priv']) . ')' : '') . $from;
     $via = (string)($o['via'] ?? '');
     $w = self::win(isset($o['win']) && is_array($o['win']) ? $o['win'] : ($via === 'htm' ? [5, 25] : ($via === 'hvk' ? [1, 20] : ($k === 'gas' && empty($o['how']) ? [1, 5] : null))), isset($o['till']) ? (int)$o['till'] : null, $ru);
     if ($w !== '' && $k !== 'waste') $tx[] = ($ru ? 'Показания: ' : 'Показання: ') . $w;
@@ -404,7 +404,7 @@ final class Seo {
     $L = fn(array $a, string $f) => (string)($ru && !empty($a[$f . '_ru']) ? $a[$f . '_ru'] : ($a[$f] ?? ''));
     $ln = fn($n) => trim((string)$n) !== '' ? self::plink(trim((string)$n), $ru, $base) : '';
     $el = $o('elec'); $wa = $o('water'); $ga = $o('gas'); $he = $o('heat'); $ws = $o('waste');
-    $wp = !empty($wa['supply']) ? self::money($wa['supply']) . ($ru ? ' грн за м³ воды' : ' грн за м³ води') . (!empty($wa['drain']) ? ($ru ? ' и ' : ' і ') . self::money($wa['drain']) . ($ru ? ' грн водоотведения' : ' грн водовідведення') : '') : '';
+    $wp = !empty($wa['supply']) ? self::money($wa['supply']) . ($ru ? ' ₴ за м³ воды' : ' ₴ за м³ води') . (!empty($wa['drain']) ? ($ru ? ' и ' : ' і ') . self::money($wa['drain']) . ($ru ? ' ₴ водоотведения' : ' ₴ водовідведення') : '') : '';
     $wdoc = trim($L($wa, 'doc')); $wnx = is_array($wa['next'] ?? null) && !empty($wa['next']['supply']) ? $wa['next'] : null;
     $title = $T("Комуналка в $in: куди передати показники — світло, вода, газ, тепло", "Коммуналка в $in: куда передать показания — свет, вода, газ, тепло");
     $desc = $T("Куди й до якого числа передати показання в $in: світло — Харківобленерго (останні 2 дні місяця й 1–3 число), вода — Водоканал з 1 по 20, тепло — ХТМ з 5 по 25, газ — з 1 по 5. Тарифи з рішеннями.",
@@ -420,7 +420,7 @@ final class Seo {
         $T('лише особистий кабінет на сайті ХТМ, розділ «Приймання показань по теплу»', 'только личный кабинет на сайте ХТС, раздел «Приймання показань по теплу»')],
       [$T('Газ', 'Газ'), $ln($ga['org'] ?? '') . (!empty($ga['grm']) ? $T(' і ', ' и ') . $ln($ga['grm']) . $T(' (доставка)', ' (доставка)') : ''), $T('з 1 по 5 число — станом на 1-ше', 'с 1 по 5 число — на 1-е'),
         $T('застосунок «Куб», 0 800 303 104, бот @mygrmu_bot, кабінет my.grmu.com.ua', 'приложение «Куб», 0 800 303 104, бот @mygrmu_bot, кабинет my.grmu.com.ua') . (date('Y-m-d') <= self::GAS_SMS_UNTIL ? $T('; SMS на 4647 — до 27 листопада 2026', '; SMS на 4647 — до 27 ноября 2026') : '')],
-      [$T('Вивіз сміття', 'Вывоз мусора'), $ln($ws['org'] ?? ''), $T('лічильника немає', 'счётчика нет'), $T('платите з людини на місяць', 'платите с человека в месяц') . (!empty($ws['price']) ? ' — ' . self::money($ws['price']) . ' грн' : '')],
+      [$T('Вивіз сміття', 'Вывоз мусора'), $ln($ws['org'] ?? ''), $T('лічильника немає', 'счётчика нет'), $T('платите з людини на місяць', 'платите с человека в месяц') . (!empty($ws['price']) ? ' — ' . self::money($ws['price']) . ' ₴' : '')],
     ];
     $sum = '<section class="card"><h2>' . $T('Шпаргалка на місяць', 'Шпаргалка на месяц') . '</h2><ul class="sm">' . implode('', array_map(fn($x) => '<li><b>' . $e($x[0]) . '</b> — ' . $x[1] .
       '<span class="when">' . $e($x[2]) . '</span><span class="how">' . $e($x[3]) . '</span></li>', $rows)) . '</ul></section>';
@@ -441,7 +441,7 @@ final class Seo {
     ];
     if ($wp !== '') $qa[] = [$T("Скільки коштує вода в $in?", "Сколько стоит вода в $in?"),
       (!empty($wa['from']) ? $T('З ', 'С ') . date('d.m.Y', strtotime((string)$wa['from'])) . ' — ' : '') . $wp . $T(' з ПДВ', ' с НДС') . ($wdoc !== '' ? ' (' . mb_strtolower(mb_substr($wdoc, 0, 1)) . mb_substr($wdoc, 1) . ')' : '') .
-      ($wnx ? $T('; з ', '; с ') . date('d.m.Y', strtotime((string)$wnx['from'])) . ' — ' . self::money($wnx['supply']) . (!empty($wnx['drain']) ? $T(' і ', ' и ') . self::money($wnx['drain']) : '') . $T(' грн', ' грн') : '') . '.' .
+      ($wnx ? $T('; з ', '; с ') . date('d.m.Y', strtotime((string)$wnx['from'])) . ' — ' . self::money($wnx['supply']) . (!empty($wnx['drain']) ? $T(' і ', ' и ') . self::money($wnx['drain']) : '') . $T(' ₴', ' ₴') : '') . '.' .
       $T(' Холодна вода — вода й водовідведення; гаряча — тариф ХТМ за воду плюс водовідведення того ж кубометра.', ' Холодная вода — вода и водоотведение; горячая — тариф ХТС за воду плюс водоотведение того же кубометра.')];
     if (($t = $L($el, 'how')) !== '') $qa[] = [$T("Куди передати показання світла в $in?", "Куда передать показания света в $in?"), $t];
     if (($t = $L($ga, 'how')) !== '') $qa[] = [$T("Як передати показання газу в $in?", "Как передать показания газа в $in?"), $t];

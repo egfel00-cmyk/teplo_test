@@ -25,11 +25,11 @@ let pass = 0, fail = 0; const ok = (n, c, i) => { console.log((c ? '  OK  ' : ' 
   await go('gas'); await setF('#mp-gdist', '2,388'); await setF('#mp-gcap', '1200');
   let s = await st();
   ok('збережено в квартири: gasCap 1200, gasDist 2.388', s.places[0].gasCap === 1200 && s.places[0].gasDist === 2.388, { cap: s.places[0].gasCap, d: s.places[0].gasDist });
-  ok('під полями: «1200 м³ на рік ÷ 12 × 2,388 грн = 238,80 грн щомісяця»', /1200 м³ на рік ÷ 12 × 2,388 грн = 238,80 грн щомісяця/.test(await txt('[data-key=mp-gfee]')), await txt('[data-key=mp-gfee]'));
+  ok('під полями: «1200 м³ на рік ÷ 12 × 2,388 ₴ = 238,80 ₴ щомісяця»', /1200 м³ на рік ÷ 12 × 2,388 ₴ = 238,80 ₴ щомісяця/.test(await txt('[data-key=mp-gfee]')), await txt('[data-key=mp-gfee]'));
   await go('erec-n20261101');
   used = await txt('[data-key=erec-used]');
   ok('запис: сума з доставкою ≈ 477,60 (газ 238,80 + доставка 238,80)', /477,60/.test(used), used);
-  ok('запис: рядок «Доставка (розподіл) за місяць: 238,80 грн» і примітка як рахується', /Доставка \(розподіл\) за місяць: 238,80 грн/.test(used) && /1200 м³ на рік ÷ 12 × 2,388/.test(used), used);
+  ok('запис: рядок «Доставка (розподіл) за місяць: 238,80 ₴» і примітка як рахується', /Доставка \(розподіл\) за місяць: 238,80 ₴/.test(used) && /1200 м³ на рік ÷ 12 × 2,388/.test(used), used);
   await go('stats'); await p.click('[data-key=kind-gas]'); await p.waitForTimeout(400);
   const tbl = await p.evaluate(() => Array.from(document.querySelectorAll('[data-key=stt-table] tbody tr')).map(r => Array.from(r.cells).map(c => c.textContent)));
   ok('статистика: вересень 15 м³ — 15 × 7,96 = 119,40 + доставка 238,80 = 358,20', tbl.some(r => r[2] === '15' && /358,20/.test(r[3])), tbl);
@@ -41,7 +41,7 @@ let pass = 0, fail = 0; const ok = (n, c, i) => { console.log((c ? '  OK  ' : ' 
   await p.evaluate(v => localStorage.setItem('teplo.v1', JSON.stringify(v)), s); await p.reload(); await p.waitForTimeout(500);
   await go('gas'); await p.waitForTimeout(900); await go('gas');
   ok('Харків: тариф доставки з довідника 0,516 у полі', (await p.inputValue('#mp-gdist').catch(() => '')) === '0,516', await p.inputValue('#mp-gdist').catch(() => ''));
-  ok('Харків: 1200 ÷ 12 × 0,516 = 51,60 грн щомісяця', /= 51,60 грн щомісяця/.test(await txt('[data-key=mp-gfee]')), await txt('[data-key=mp-gfee]'));
+  ok('Харків: 1200 ÷ 12 × 0,516 = 51,60 ₴ щомісяця', /= 51,60 ₴ щомісяця/.test(await txt('[data-key=mp-gfee]')), await txt('[data-key=mp-gfee]'));
   s = await st(); ok('тариф з довідника не записали як свій', !('gasDist' in s.places[0]), s.places[0].gasDist);
 
   // 4. Потужності нема, але є показання за газовий рік (1.10.2024–30.09.2025 для 2026) — оцінка

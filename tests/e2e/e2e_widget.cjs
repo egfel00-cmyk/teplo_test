@@ -6,7 +6,7 @@ const { chromium } = require('playwright'); const fs = require('fs');
 let pass = 0, fail = 0; const ok = (n, c, x) => { if (c) { pass++; console.log('  OK  ' + n); } else { fail++; console.log(' FAIL ' + n + (x !== undefined ? ' → ' + JSON.stringify(x) : '')); } };
 const html = fs.readFileSync(process.argv[2] || '/tmp/w.html', 'utf8');
 const D = { v: 1, k: 'waste10', ym: '2026-11', l: 'uk', t: 'Вивіз сміття за листопад', s: 'Зазвичай платять до 20.12', b: '2026-12-01', e: '2099-12-20',
-  p: [{ id: 'main', n: 'Моя квартира', v: '≈ 70,41 грн', a: 70.41, d: 0 }, { id: 'p2', n: 'Мамина', v: '', a: null, d: 0 }] };
+  p: [{ id: 'main', n: 'Моя квартира', v: '≈ 70,41 ₴', a: 70.41, d: 0 }, { id: 'p2', n: 'Мамина', v: '', a: null, d: 0 }] };
 const STUB = '<script>window.__q=[];window.__fail=false;window.TelegramWidget={chatData:' + JSON.stringify(JSON.stringify(D)) + ',viewer:{id:1},chatType:"private",'
   + 'HapticFeedback:{notificationOccurred(){}},_h:{},onEvent(n,f){this._h[n]=f},request(q){window.__q.push(q);var s=JSON.parse(this.chatData);'
   + 'if(window.__fail)return Promise.reject({name:"WidgetRequestError",code:"FAILED"});if(q==="paid:0"){s.p[0].d=1;s.p[0].x="Оплачено 12.11"}'
@@ -19,7 +19,7 @@ const CSS = '<style>:root{--tg-theme-button-color:#2481cc;--tg-theme-button-text
   await p.setContent('<html><head>' + CSS + '</head><body>' + STUB + html + '</body></html>');
   await p.waitForTimeout(200);
   const t0 = await p.textContent('#w');
-  ok('картка: заголовок, строк, дві квартири, сума', t0.includes('Вивіз сміття за листопад') && t0.includes('Залишилось') && t0.includes('Мамина') && t0.includes('≈ 70,41 грн'), t0);
+  ok('картка: заголовок, строк, дві квартири, сума', t0.includes('Вивіз сміття за листопад') && t0.includes('Залишилось') && t0.includes('Мамина') && t0.includes('≈ 70,41 ₴'), t0);
   ok('при показі — один фоновий запит «st»', JSON.stringify(await p.evaluate(() => window.__q)) === '["st"]');
   ok('«Оплатив» — лише там, де відома сума (1 кнопка)', await p.locator('button[data-q^=paid]').count() === 1);
   await p.screenshot({ path: '/tmp/e2e_widget_0.png' });

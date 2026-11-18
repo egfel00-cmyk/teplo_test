@@ -72,10 +72,10 @@ let pass = 0, fail = 0; const ok = (n, c, i) => { console.log((c ? '  OK  ' : ' 
   // ---- історія / статистика / економія
   await go('history'); await click('[data-key=kind-elec]', 300);
   const hi = await p.textContent('[data-key=elec-history]');
-  ok('історія: +190 кВт·год (130 + 60), ≈ грн, «передано»', /\+190/.test(hi) && /грн/.test(hi) && /передано/i.test(hi), hi);
+  ok('історія: +190 кВт·год (130 + 60), ≈ ₴, «передано»', /\+190/.test(hi) && /₴/.test(hi) && /передано/i.test(hi), hi);
   await click('[data-key=erec-' + r1.id + ']', 300);
   const rc = await p.textContent('#main');
-  ok('картка запису: за жовтень, 130×4,32 + 60×2,16 = 691,20 грн', /за жовтень/i.test(rc) && /691,20/.test(rc), rc.slice(0, 300));
+  ok('картка запису: за жовтень, 130×4,32 + 60×2,16 = 691,20 ₴', /за жовтень/i.test(rc) && /691,20/.test(rc), rc.slice(0, 300));
   await click('[data-key=erec-edit]', 300);
   ok('«Виправити» → введення з цифрами запису', (await hash()) === '#enew' && (await p.inputValue(di)) === '10130');
   await p.fill(di, '10140'); await click('[data-key=en-save]', 400); s = await st();

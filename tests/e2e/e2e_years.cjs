@@ -20,7 +20,7 @@ let pass = 0, fail = 0; const ok = (n, c, x) => { if (c) { pass++; console.log('
         && await p.evaluate(() => { const a = document.querySelectorAll('.yh > .season'); return a[0].dataset.key.endsWith('2026') && a[1].dataset.key.endsWith('2025'); }), { open26, open25 });
       const s26 = await p.textContent('[data-key=elec-history-sum-2026]'), s25 = await p.textContent('[data-key=elec-history-sum-2025]');
       // 2025: 31.12 — +150 день +80 ніч = 230; 2026: 01.10 (+140 +70) і 31.10 (+130 +75) = 415 (по черзі, без подвійного рахунку)
-      ok('світло: за рік — по черзі від попередніх (2025 +230, 2026 +415 кВт·год, ≈ грн)', /\+230\b/.test(s25) && /\+415\b/.test(s26) && /грн/.test(s26), { s25, s26 });
+      ok('світло: за рік — по черзі від попередніх (2025 +230, 2026 +415 кВт·год, ≈ ₴)', /\+230\b/.test(s25) && /\+415\b/.test(s26) && /₴/.test(s26), { s25, s26 });
       ok('світло: рядки записів усередині років (4)', (await p.$$('.yh [data-key^=erec-]')).length === 4);
       await p.click('[data-key=elec-history-y2025] > summary'); await p.waitForTimeout(150);
       ok('світло: 2025 розгортається', await p.$eval('[data-key=elec-history-y2025]', e => e.open));
@@ -29,9 +29,9 @@ let pass = 0, fail = 0; const ok = (n, c, x) => { if (c) { pass++; console.log('
     await view('gas');
     if (!dark) ok('газ: блок 2026 з «+… м³»', !!(await p.$('[data-key=gas-history-y2026]')) && /м³/.test(await p.textContent('[data-key=gas-history-y2026] .ss-head')));
     await view('cold');
-    if (!dark) ok('холодна вода: блок 2026, сума м³ і грн', /\+\d/.test(await p.textContent('[data-key=water-history-cold-sum-2026]')) && /грн/.test(await p.textContent('[data-key=water-history-cold-sum-2026]')));
+    if (!dark) ok('холодна вода: блок 2026, сума м³ і ₴', /\+\d/.test(await p.textContent('[data-key=water-history-cold-sum-2026]')) && /₴/.test(await p.textContent('[data-key=water-history-cold-sum-2026]')));
     await view('waste');
-    if (!dark) ok('вивіз: блок 2026 «Сплачено 180 грн» (60 + 120)', /Сплачено\s*180\s*грн/.test((await p.textContent('[data-key=waste-history-sum-2026]')).replace(/ /g, ' ')), await p.textContent('[data-key=waste-history-sum-2026]').catch(() => null));
+    if (!dark) ok('вивіз: блок 2026 «Сплачено 180 ₴» (60 + 120)', /Сплачено\s*180\s*₴/.test((await p.textContent('[data-key=waste-history-sum-2026]')).replace(/ /g, ' ')), await p.textContent('[data-key=waste-history-sum-2026]').catch(() => null));
     await p.screenshot({ path: '/tmp/shot_years_waste' + (dark ? '_dark' : '') + '.png', fullPage: true });
     ok('без помилок JS' + (dark ? ' (темна)' : ''), !errs.length, errs);
     await ctx.close();

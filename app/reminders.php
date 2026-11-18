@@ -359,8 +359,8 @@ final class Reminders {
     $many = $places && ($places[0]['all'] ?? 1) > 1;
     $line = function (array $p) use ($ru, $many): string {
       $who = !empty($p['org']) ? ' — ' . $p['org'] : '';
-      $ab = !empty($p['abon']) ? ' + ' . self::money((float)$p['abon']) . ' грн абонплата' : '';
-      $s = $p['sum'] !== null ? '≈ ' . self::money((float)$p['sum']) . ' грн (' . $p['n'] . ' × ' . self::money((float)$p['price']) . ' грн' . $ab . ')' : ($ru ? 'сумма — в платёжке' : 'сума — у платіжці');
+      $ab = !empty($p['abon']) ? ' + ' . self::money((float)$p['abon']) . ' ₴ абонплата' : '';
+      $s = $p['sum'] !== null ? '≈ ' . self::money((float)$p['sum']) . ' ₴ (' . $p['n'] . ' × ' . self::money((float)$p['price']) . ' ₴' . $ab . ')' : ($ru ? 'сумма — в платёжке' : 'сума — у платіжці');
       return ($many ? '«' . $p['label'] . '»: ' : '') . $s . $who;
     };
     $t = ($ru ? "🗑 Вывоз мусора за $mon — пора оплатить. Обычно платят до 20-го.\n\n" : "🗑 Вивіз сміття за $mon — час оплатити. Зазвичай платять до 20-го.\n\n") . implode("\n", array_map($line, $places));
