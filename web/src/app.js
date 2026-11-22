@@ -2291,16 +2291,46 @@
   var CB_FROM = '';   // 176-а: звідки відкрили екран постачальника (сторінка лічильника — «Назад» туди)
   document.addEventListener('click', function (e) { var a = e.target.closest && e.target.closest('[data-act="cb-go"]'); if (a) CB_FROM = routeName(); }, true);
   var CB = { vk: {}, open: {}, hcEdit: false, busy: '' };   // vk[квартира] — підсумок «Перевірити» сайту Водоканалу; open[id] — розгорнута форма підключення
-  var CB_KS = ['elec', 'water', 'gas', 'heat', 'waste'];
+  var CB_KS = ['elec', 'water', 'hot', 'gas', 'heat', 'waste'];
   function cbLive(m) { return !!(m && !m.deleted && !m.removed); }
   function cbHeatM(p) { return p.id === S.placeId ? S.meter : p.meter; }
-  /** Види квартири для постачальників: вода одна (Водоканал бере й гарячу, й холодну). */
+  /** 177-а: у гарячої води свій адресат, окремо від водоканалу холодної — свій постачальник гарячої (place.prov.hot), обраний у довіднику чи з платіжки,
+   *  з довідника (hotOrg: Київтеплоенерго…), Харків — ХТМ (бот і кол-центр). Свій постачальник води без prov.hot — гаряча з ним, окремо не показуємо. */
+  function cbHotSep(p) {
+    if (!((p.water && p.water.meters) || []).some(function (m) { return cbLive(m) && m.kind === 'hot'; })) return false;
+    var o = p.prov && p.prov.hot;
+    if (o && o.own) return true;
+    if (!o && myProv('water', p)) return false;
+    return !!hotOrgName(p);
+  }
+  /** Види квартири для постачальників: вода (водоканал бере холодну, а гарячу — коли в неї немає свого адресата; у Харкові — ще й для відведення) і гаряча окремо. */
   function cbKinds(p) {
-    var wm = ((p.water && p.water.meters) || []).filter(cbLive), ms = (p.meters || []).filter(cbLive);
-    return CB_KS.filter(function (k) { return k === 'heat' ? cbLive(cbHeatM(p)) : k === 'water' ? wm.length > 0 : k === 'waste' ? !!(p.waste && p.waste.on) : ms.some(function (m) { return m.kind === k; }); });
+    var wm = ((p.water && p.water.meters) || []).filter(cbLive), ms = (p.meters || []).filter(cbLive), hs = cbHotSep(p);
+    var wOn = wm.some(function (m) { return m.kind !== 'hot'; }) || (wm.length > 0 && (!hs || hotIsHtm(p)));
+    return CB_KS.filter(function (k) { return k === 'heat' ? cbLive(cbHeatM(p)) : k === 'water' ? wOn : k === 'hot' ? hs : k === 'waste' ? !!(p.waste && p.waste.on) : ms.some(function (m) { return m.kind === k; }); });
+  }
+  /** Постачальник гарячої (cbHotSep): свій → «Передаєте самі»; Харків — ХТМ (бот, кол-центр); обраний у довіднику — його дані з довідника; той самий КП з роботом,
+   *  що й холодна, — у його ж блоці «у фоні» (робот надсилає всі водоміри квартири); інший КП з роботом — поки самі: окремого надсилання гарячої немає. */
+  function cbProvHot(p) {
+    var o = (p.prov && p.prov.hot) || {}, my = myProv('hot', p);
+    if (my) return { id: 'own:' + String(my.name || '').trim().toLowerCase(), ch: 'own', org: String(my.name || '').trim() || t('my_own'), o: my };
+    if (hotIsHtm(p)) return { id: 'self:hot:htm', ch: 'self', org: t('wd_htm_org'), kh: 'hotw' };
+    var org = hotOrgName(p), d = null;
+    if (o.sel && o.sel.o) {
+      var sl = prvSel(p, 'hot'), js = sl ? prvLoad({ address: sl.n, settle: { a: sl.n, n: sl.n, h: sl.h } }) : null;
+      if (js && js.busy) return { id: 'wait', ch: 'wait' };
+      var kd = o.sel.k === 'heat' ? 'heat' : 'water', x = js && js.found && js.kinds && js.kinds[kd];
+      if (x && (x.org === o.sel.o || ploc(x, 'org') === o.sel.o)) d = Object.assign({ _k: kd, _place: js.place }, x);
+      if (d && kd === 'water' && d.via && d.via !== 'hvk' && d.via !== 'htm') { var cw = cbProv(p, 'water'); if (cw.ch === 'lb' && cw.bot === d.via) return cw; }
+    } else if (!o.name) {
+      var jh = prvKinds0(p, 'heat'), dh = jh && jh.kinds && jh.kinds.heat;   // Київтеплоенерго з довідника води (hotOrg) — контакти з його ж запису тепла
+      if (dh && (dh.org === org || ploc(dh, 'org') === org)) d = Object.assign({ _k: 'heat', _place: jh.place }, dh);
+    }
+    return { id: 'self:water:' + org, ch: 'self', org: org, d: d };
   }
   /** Хто приймає показання виду k у квартирі p і яким каналом → {id, ch: htm|vk|lb|self|own|waste|unk|wait, org, bot?, d?, kh?}. */
   function cbProv(p, k) {
+    if (k === 'hot') return cbProvHot(p);
     if (k === 'waste') { var wd = wasteDir(p), wo = wasteOrg(p, wd); return { id: 'waste:' + (wo || '?'), ch: 'waste', org: wo || t('kd_waste'), d: wd }; }
     var my = myProv(k, p);
     if (my) return { id: 'own:' + String(my.name || '').trim().toLowerCase(), ch: 'own', org: String(my.name || '').trim() || t('my_own'), o: my };
@@ -2328,6 +2358,7 @@
         var x = cbProv(p, k); if (x.ch === 'wait') { wait = true; return; }
         var g = by[x.id]; if (!g) { g = by[x.id] = Object.assign({ ks: [], rows: [] }, x); out.push(g); }
         if (g.ks.indexOf(k) < 0) g.ks.push(k);
+        if (x.ch === 'lb' && g.rows.some(function (r) { return r.p === p; })) return;   // 177-а: гаряча в того ж КП з роботом — та сама квартира, одна форма
         g.rows.push({ p: p, k: k, d: x.d || null, o: x.o || null });
       });
     });
@@ -2339,7 +2370,7 @@
     return { list: out, wait: wait };
   }
   function cbWhenIso(iso) { var ms = Date.parse(String(iso || '')); return ms ? lbWhen(Math.round(ms / 1000)) : ''; }
-  function cbKw(k) { return k === 'water' ? t('cb_k_water') : k === 'waste' ? t('kd_waste') : t('kv_' + k); }
+  function cbKw(k) { return k === 'water' ? t('cb_k_water') : k === 'waste' ? t('kd_waste') : k === 'hot' ? t('kd_hot') : t('kv_' + k); }
   /** Шапка блоку: значок виду, назва, види й квартири, стан словами. */
   function cbHead(g, tone, st) {
     var pls = []; g.rows.forEach(function (r) { var l = placeLabel(r.p); if (pls.indexOf(l) < 0) pls.push(l); });
@@ -2421,7 +2452,7 @@
       else if (ck && ck.ok) ln = cbLine('cb-ok', 'check', t(ck.done && !ck.n ? 'cb_vk_done' : 'cb_vk_ok', { n: ck.n, a: ck.addr ? ' (' + ck.addr + ')' : '' }), 'cb-vk-chk-' + p.id);
       else if (pc && pc.at) ln = cbLine(pc.ok ? 'muted' : 'cb-bad', pc.ok ? '' : 'alert', t(pc.ok ? 'cb_checked_n' : 'cb_checked_bad', { d: lbWhen(Math.round(pc.at / 1000)), n: pc.n || 0 }), 'cb-vk-chk-' + p.id);
       else ln = cbLine('muted', '', t('cb_checked0'), 'cb-vk-chk-' + p.id);
-      var hot = ((w.meters || []).filter(cbLive).some(function (m) { return m.kind === 'hot'; }));
+      var hot = ((w.meters || []).filter(cbLive).some(function (m) { return m.kind === 'hot'; })) && hotIsHtm(p);   // 177-а: свій постачальник гарячої — ХТМ тут ні до чого
       h += '<div class="cb-pl" data-key="cb-pl-vk-' + pid + '">' + cbPlace(p) +
         '<div class="grid2"><div class="field"><label for="cb-vacc-' + pid + '">' + esc(t('wa_acc')) + '</label><div class="ctl"><input id="cb-vacc-' + pid + '" class="num" inputmode="numeric" autocomplete="off" data-cbw="account" data-pid="' + pid + '" value="' + esc(waccW(w, 'cold')) + '"></div></div>' +
         '<div class="field"><label for="cb-vsn-' + pid + '">' + esc(t('wa_sn')) + '</label><div class="ctl"><input id="cb-vsn-' + pid + '" autocomplete="family-name" data-cbw="surname" data-pid="' + pid + '" value="' + esc(w.surname || '') + '"></div></div></div>' +
@@ -2518,7 +2549,7 @@
   /** «Куди» для постачальника без каналу у фоні: як передати з довідника, кабінет/сайт/бот посиланнями, перший телефон. */
   function cbSelfWhere(r) {
     var d = r.d; if (!d) return '';
-    var how = ploc(d, 'how'), links = [];
+    var how = r.k === 'hot' && d._k === 'heat' ? '' : ploc(d, 'how'), links = [];   // 177-а: гаряча від теплопостачальника — «як» у довіднику про теплолічильник, лише контакти
     if (d.cab) links.push('<a href="' + esc(d.cab) + '" target="_blank" rel="noopener">' + esc(t('ld_cab')) + '</a>');
     if (d.bot) links.push('<a href="' + esc(d.bot) + '" target="_blank" rel="noopener">' + esc(t('wd_bot', { b: '@' + String(d.bot).replace(/^.*t\.me\//, '') })) + '</a>');
     if (d.site) links.push('<a href="' + esc(d.site) + '" target="_blank" rel="noopener">' + esc(t('ld_site')) + '</a>');
@@ -2531,7 +2562,7 @@
     if (r.k === 'elec' || r.k === 'gas') (p.meters || []).filter(function (m) { return cbLive(m) && m.kind === r.k; }).forEach(function (m, i, a) {
       saccList(r.k, m).forEach(function (x) { rows.push(cpRow(tk(r.k, x[0], { a: '' }).trim() + (a.length > 1 ? ' · ' + (m.name || ename(m)) : ''), x[1], x[1], 'tn', 'cb-acc-' + p.id + '-' + m.id + '-' + x[0])); }); });
     if (r.k === 'water' && r.d && waccOf(p, 'cold').trim()) rows.push(cpRow(t('lb_f_acc'), waccOf(p, 'cold'), waccOf(p, 'cold'), 'tn', 'cb-acc-' + p.id + '-w'));
-    if (r.k === 'water' && waccOf(p, 'hot').trim()) rows.push(cpRow(t('wa_acc_hot_s'), waccOf(p, 'hot'), waccOf(p, 'hot'), 'tn', 'cb-acc-' + p.id + '-wh'));   // 176-я: рахунок за гарячу
+    if ((r.k === 'water' && !cbHotSep(p) || r.k === 'hot') && waccOf(p, 'hot').trim()) rows.push(cpRow(t('wa_acc_hot_s'), waccOf(p, 'hot'), waccOf(p, 'hot'), 'tn', 'cb-acc-' + p.id + '-wh'));   // 176-я: рахунок за гарячу (177-а: окремий постачальник гарячої — у його рядку)
     if (r.o) { if (myNum(r.o)) rows.push(cpRow(t('my_num'), myNum(r.o), myNum(r.o), 'tn', 'cb-num-' + p.id)); if (r.o.phone) rows.push(cpTel(t('my_phone'), r.o.phone, r.o.phone, 'cb-tel-' + p.id)); }
     if (r.k === 'waste' && String(wcur(p).account || '').trim()) rows.push(cpRow(t('lb_f_acc'), wcur(p).account, wcur(p).account, 'tn', 'cb-acc-' + p.id + '-ws'));
     return cpList(rows);
@@ -2539,8 +2570,9 @@
   function cbSelf(g) {
     var ch = g.ch, tone = 'neutral', stx = t(ch === 'waste' ? 'cb_st_pay' : ch === 'unk' ? 'cb_st_unk' : 'cb_st_self'), h = '';
     // «Куди передати» — на сторінці лічильника поточної квартири: посилання, лише коли постачальник і в неї
-    var cur = g.rows.filter(function (r) { return r.p.id === S.placeId; })[0], page = cur ? { elec: 'elec', gas: 'gas', water: wmeters('cold').length ? 'water-cold' : 'water-hot', heat: 'heat', waste: 'waste' }[cur.k] : '';
-    if (g.kh) h += cbLine('', '', t(g.kh === 'gas' ? (today() > Gs.SMS_UNTIL ? 'cb_self_grm_ns' : 'cb_self_grm') : 'cb_self_obl'));
+    var cur = g.rows.filter(function (r) { return r.p.id === S.placeId; })[0], page = cur ? { elec: 'elec', gas: 'gas', water: wmeters('cold').length ? 'water-cold' : 'water-hot', hot: 'water-hot', heat: 'heat', waste: 'waste' }[cur.k] : '';
+    if (g.kh === 'hotw') h += cbLine('', '', t('cb_self_htmw')) + '<p class="small cb-links"><a href="' + BOT_URL + '" target="_blank" rel="noopener" data-key="cb-htmw-bot">' + esc(t('wd_bot', { b: '@KPHTM_Bot' })) + '</a></p><p class="small">' + esc(t('my_phone')) + ': ' + telLink('+380573414140', '(057) 341-41-40') + '</p>';   // 177-а: гаряча в Харкові
+    else if (g.kh) h += cbLine('', '', t(g.kh === 'gas' ? (today() > Gs.SMS_UNTIL ? 'cb_self_grm_ns' : 'cb_self_grm') : 'cb_self_obl'));
     else if (ch === 'own') h += cbLine('', '', t('cb_own'));
     else if (ch === 'waste') h += cbLine('', '', t('cb_waste'));
     else if (ch === 'unk') h += cbLine('', '', t('cb_unk'));
@@ -2606,11 +2638,15 @@
   /** 176-а: рядок у «Налаштуваннях показань» лічильника — хто приймає показання цього виду й чи надсилаємо у фоні; дотик — екран постачальника з даними входу. */
   function cbMeterRow(k) {
     var p = place(); if (!p) return '';
-    var kk = k === 'cold' || k === 'hot' ? 'water' : k, x = cbProv(p, kk); if (x.ch === 'wait') return '';
-    var g = cbProvs().list.filter(function (y) { return y.id === x.id; })[0]; if (!g) return '';
-    var b = cbBg(g), sl = cbSlug(g);
-    return '<div class="field cb-mrow" data-key="cb-mrow-' + esc(k) + '"><span class="lbl">' + esc(t(b.can ? 'cb_m_bg' : 'cb_m_self')) + '</span><ul class="ios-list"><li><a class="ios-row cb-row" href="#prefs-cabs-' + sl + '" data-act="cb-go" data-key="cb-mgo-' + esc(k) + '">' +
-      cbTxt(g.org, t(b.on ? 'cb_m_on' : b.can ? 'cb_m_can' : 'cb_m_where'), cbBadge(b, 'cb-mbdg-' + esc(k))) + ico('chev', 18, 'ios-chev') + '</a></li></ul></div>';
+    // 177-а: гаряча з окремим постачальником — його рядок; у Харкові гарячу приймає ще й Водоканал (відведення, у фоні) — другим рядком
+    var hs = k === 'hot' && cbHotSep(p), kks = k === 'cold' ? ['water'] : k === 'hot' ? (hs ? (hotIsHtm(p) ? ['hot', 'water'] : ['hot']) : ['water']) : [k], all = cbProvs().list;
+    return kks.map(function (kk, i) {
+      var x = cbProv(p, kk); if (x.ch === 'wait') return '';
+      var g = all.filter(function (y) { return y.id === x.id; })[0]; if (!g) return '';
+      var b = cbBg(g), sl = cbSlug(g), kx = esc(k) + (i ? '-' + kk : '');
+      return '<div class="field cb-mrow" data-key="cb-mrow-' + kx + '"><span class="lbl">' + esc(t(b.can ? 'cb_m_bg' : 'cb_m_self')) + '</span><ul class="ios-list"><li><a class="ios-row cb-row" href="#prefs-cabs-' + sl + '" data-act="cb-go" data-key="cb-mgo-' + kx + '">' +
+        cbTxt(g.org, t(b.on ? 'cb_m_on' : b.can ? 'cb_m_can' : 'cb_m_where'), cbBadge(b, 'cb-mbdg-' + kx)) + ico('chev', 18, 'ios-chev') + '</a></li></ul></div>';
+    }).join('');
   }
 
   /** Підпис рядка в «Налаштуваннях»: скільки постачальників підключено (кабінет ХТМ, Водоканал — є рахунок і прізвище або автовідправка, місцеві КП). */
@@ -9283,7 +9319,7 @@
   /** 142-а: коли саме нагадає бот — за постачальниками квартир (як Reminders на сервері): Харків — «вода 16-го (Водоканал до 20-го)…»,
    *  місцеве вікно з довідника — «вода — 26-го (до 30-го)», вікна тепла не знаємо — тепло не згадуємо. Квартири з різними строками — з назвами. */
   function rmSub() {
-    var parts = { heat: {}, water: {}, elec: {}, gas: {}, waste: {} }, order = [];
+    var parts = { heat: {}, water: {}, hot: {}, elec: {}, gas: {}, waste: {} }, order = [];
     var put = function (k, txt, lbl) { if (!parts[k][txt]) { parts[k][txt] = []; order.push([k, txt]); } parts[k][txt].push(lbl); };
     var day = function (w) { var sp = winSpan(w, today().slice(0, 7)); return t('rmp_day', { d: +sp.r.slice(8), e: +sp.e.slice(8) }); };
     places().forEach(function (p) {
@@ -9291,7 +9327,14 @@
       withPlace(p.id, function () {
         var lbl = placeLabel(p);
         if (hasHeat()) { if (heatHtm()) put('heat', t('rmp_heat_htm'), lbl); else { var hw = perWin('heat'); if (hw) put('heat', day(hw), lbl); } }
-        if (wmeters().length) { var lw = prvOf('water'); if (!lw || lw.via === 'hvk') put('water', t('rmp_water_vk'), lbl); else { var ww = perWin('water'); put('water', ww ? day(ww) : t('rmp_water_16'), lbl); } }
+        // 177-а: свій постачальник гарячої — гарячі за його строком (без строку — не нагадуємо), вода — лише холодні; свій постачальник води без строку — теж мовчимо (як сервер)
+        var mh = p.prov && p.prov.hot && p.prov.hot.own ? p.prov.hot : null, myw = myProv('water', p);
+        if (mh ? wmeters('cold').length : wmeters().length) {
+          var lw = prvOf('water'), ww = perWin('water');
+          if (myw) { if (ww) put('water', day(ww), lbl); }
+          else if (!lw || lw.via === 'hvk') put('water', t('rmp_water_vk'), lbl); else put('water', ww ? day(ww) : t('rmp_water_16'), lbl);
+        }
+        if (mh && wmeters('hot').length) { var hw = myWin(mh); if (hw) put('hot', day(hw), lbl); }
         if (emeters().length) { var ew = perWin('elec'); put('elec', ew && !(ew[0] === -2 && ew[1] === 3) ? day(ew) : t('rmp_elec'), lbl); }
         if (smeters('gas').length) put('gas', t('rmp_gas'), lbl);
         if (wasteOn() && !(wcur().remindOff)) put('waste', t('rmp_waste'), lbl);
@@ -9307,7 +9350,7 @@
     return rows;
   }
   function rmHtml() {
-    var rows = rmSub(), ic = { elec: 'elec', water: 'cold', gas: 'gas', heat: 'heat', waste: 'waste' };
+    var rows = rmSub(), ic = { elec: 'elec', water: 'cold', hot: 'hot', gas: 'gas', heat: 'heat', waste: 'waste' };
     var cap = function (x) { return x.charAt(0).toUpperCase() + x.slice(1); };
     // «(до 3-го)» не рвати посередині «3-го»: дужки — одним шматком
     var wv = function (v) { var m = /^(.*?)( \(.*\))$/.exec(v); return m ? esc(m[1]) + ' <span class="rm-dl">' + esc(m[2].slice(1)) + '</span>' : esc(v); };

@@ -97,6 +97,40 @@ const state = (o) => {
   await go('place-main');
   ok('8. квартира: два рядки своїх — вода й гаряча', /Холодок/.test(await txt('[data-key=prov-water]')) && /Гарячий дім/.test(await txt('[data-key=prov-hot]')), { w: await txt('[data-key=prov-water]'), h: await txt('[data-key=prov-hot]') });
 
+  // 12. (177-а) «Кабінети й надсилання»: свій постачальник гарячої — окремим рядком «Передаєте самі», рахунок за гарячу — у його даних, не у води
+  await go('prefs-cabs');
+  const selfR = await p.$$eval('[data-key=cb-sec-self] a.cb-row', l => l.map(x => [x.getAttribute('href'), x.textContent.replace(/\s+/g, ' ').trim()]));
+  const hotR = selfR.find(x => /Гарячий дім/.test(x[1])), coldR = selfR.find(x => /Холодок/.test(x[1]));
+  ok('12. список: «ТОВ «Гарячий дім» · Гаряча вода» і «ОСББ «Холодок» · Вода» — окремо серед «самі»; ХТМ за гарячу немає (свій замість нього)',
+    hotR && /Гаряча вода/.test(hotR[1]) && coldR && /Вода/.test(coldR[1]) && !/Гаряча/.test(coldR[1]) && !selfR.some(x => /теплові мережі/.test(x[1]) && /Гаряча/.test(x[1])), selfR);
+  await go(hotR[0].slice(1));
+  ok('12. екран «Гарячий дім»: «Рахунок за гарячу» 4444444', /Гарячий дім/.test(await txt('#main h1')) && /Рахунок за гарячу/.test(await txt('#main')) && /4444444/.test(await txt('#main')), await txt('#main'));
+  await go(coldR[0].slice(1));
+  ok('12. екран «Холодок»: без рахунку за гарячу', !/4444444/.test(await txt('#main')) && !/Рахунок за гарячу/.test(await txt('#main')), await txt('#main'));
+  await go('water-hot');
+  ok('12. «Налаштування показань» гарячої: «Хто приймає показання» — «Гарячий дім», веде на його екран; Водоканалу рядка немає',
+    /Гарячий дім/.test(await txt('[data-key=cb-mrow-hot]')) && (await p.getAttribute('[data-key=cb-mgo-hot]', 'href')) === hotR[0] && !(await has('[data-key=cb-mrow-hot-water]')), await txt('[data-key=cb-mrow-hot]'));
+  // 13. «Нагадування»: свій гарячої без строку — рядка гарячої немає; «до 25» — «21-го (до 25-го)»
+  await p.evaluate(() => { const x = JSON.parse(localStorage.getItem('teplo.v1')); x.places[0].prov.hot.due = 'till'; x.places[0].prov.hot.till = 25; x.places[0].prov.water.own = 0; x.places[0].updatedAt = Date.now(); localStorage.setItem('teplo.v1', JSON.stringify(x)); });
+  await go('prefs-remind');
+  ok('13. «Нагадування»: гаряча вода — «21-го (до 25-го)», вода — Водоканал 16-го', /21-го/.test(await txt('[data-key=rm-hot]')) && /Гаряча вода/.test(await txt('[data-key=rm-hot]')) && /16-го/.test(await txt('[data-key=rm-water]')), [await txt('[data-key=rm-hot]'), await txt('[data-key=rm-water]')]);
+
+  // 14. Харків без свого гарячої: на сторінці гарячої — два рядки: ХТМ (самі, бот) і Водоканал (у фоні — разом із холодною)
+  await put(state()); await go('water-hot');
+  ok('14. Харків: «Хто приймає» гарячу — ХТМ (самі) і другим рядком Водоканал', /теплові мережі/.test(await txt('[data-key=cb-mrow-hot]')) && /Хто приймає/.test(await txt('[data-key=cb-mrow-hot]')) && /водоканал/i.test(await txt('[data-key=cb-mrow-hot-water]')),
+    [await txt('[data-key=cb-mrow-hot]'), await txt('[data-key=cb-mrow-hot-water]')]);
+  await go('water-cold');
+  ok('14. холодна — лише Водоканал', /водоканал/i.test(await txt('[data-key=cb-mrow-cold]')) && !(await has('[data-key=cb-mrow-cold-water]')), await txt('[data-key=cb-mrow-cold]'));
+
+  // 15. Київ: гарячу бере Київтеплоенерго (hotOrg довідника води) — окремий рядок «самі» з рахунком за гарячу; вода — Київводоканал без рахунку за гарячу
+  const sk = state(); Object.assign(sk.places[0], { address: 'м. Київ, вул. Хрещатик, 1, кв. 1', city: { n: 'Київ', r: 'ky' } }); sk.places[0].water.acc = { cold: '1111111', hot: '7777777' };
+  await put(sk); await go('prefs-cabs'); await p.waitForTimeout(1500);
+  const kyR = await p.$$eval('[data-key=cb-sec-self] a.cb-row', l => l.map(x => [x.getAttribute('href'), x.textContent.replace(/\s+/g, ' ').trim()]));
+  const kyHot = kyR.find(x => /Київтеплоенерго/.test(x[1]) && /Гаряча вода/.test(x[1])), kyW = kyR.find(x => /Вода/.test(x[1]) && !/Гаряча/.test(x[1]));
+  ok('15. Київ: «Київтеплоенерго · Гаряча вода» окремо від води', !!kyHot && !!kyW && !/Київтеплоенерго/.test(kyW[1]), kyR);
+  if (kyHot) { await go(kyHot[0].slice(1)); await p.waitForTimeout(800); ok('15. екран Київтеплоенерго (гаряча): рахунок за гарячу 7777777', /7777777/.test(await txt('#main')), await txt('#main')); }
+  if (kyW) { await go(kyW[0].slice(1)); await p.waitForTimeout(800); ok('15. екран води Києва: рахунок 1111111, без 7777777', /1111111/.test(await txt('#main')) && !/7777777/.test(await txt('#main')), await txt('#main')); }
+
   // 9. старий «свій постачальник води» (без prov.hot) — гаряча успадковує, як і було
   const so = state(); so.places[0].prov = { water: { own: 1, name: 'ЖБК «Старий»', how: 'cash', at: '2026-11-01', ts: 1 } };
   await put(so); await go('water-hot');

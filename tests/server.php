@@ -736,6 +736,19 @@ ok('свій постачальник: без строку — мовчимо; �
 $own = ['places' => [['id' => 'main', 'address' => 'м. Харків, вул. Сумська, 10', 'meter' => ['modelId' => 'sharky774'], 'water' => ['meters' => [['id' => 'c1', 'kind' => 'cold']]],
   'prov' => ['water' => ['own' => 1, 'name' => 'ОСББ «Сад»'], 'heat' => ['own' => 1, 'name' => 'Котельня ОСББ']]]]];
 ok('свій постачальник води й тепла в Харкові: water16 і heat21 — ні (не Водоканал і не ХТМ)', !Reminders::placesDue($own, 'water16', '2026-11') && !Reminders::needs($own, 'heat21', '2026-11'));
+// 177-я: свій постачальник гарячої (place.prov.hot) — гарячі водоміри окремо від Водоканалу: без строку — мовчимо, «до 25» — 21.11 hotL21; water16 — лише за холодні
+$hw = ['places' => [['id' => 'main', 'address' => 'м. Харків, вул. Сумська, 10', 'water' => ['meters' => [['id' => 'c1', 'kind' => 'cold'], ['id' => 'h1', 'kind' => 'hot']]],
+  'prov' => ['hot' => ['own' => 1, 'name' => 'ОСББ «Бойлер»', 'due' => 'none']]]], 'water' => [['id' => 'w1', 'place' => 'main', 'date' => '2026-11-05', 'vals' => ['h1' => '12']]]];
+$hw2 = $hw; $hw2['places'][0]['prov']['hot']['due'] = 'till'; $hw2['places'][0]['prov']['hot']['till'] = 25; $hw2['water'] = [['id' => 'w1', 'place' => 'main', 'date' => '2026-11-05', 'vals' => ['c1' => '40']]];
+$hw3 = $hw2; $hw3['water'][] = ['id' => 'w2', 'place' => 'main', 'date' => '2026-11-12', 'vals' => ['h1' => '13']];
+$hd = array_column(Reminders::localDue($hw2, '2026-11-21'), 'kind'); $hp = Reminders::placesDue($hw2, 'hotL21', '2026-11', '2026-11-21'); $ht = Reminders::text('hotL21', 'uk', $hp, '2026-11-21');
+$hwd = BotWidget::data('hotL21', '2026-11', 'uk', $hp, '2026-11-21');
+ok('гаряча — свій постачальник: без строку — hotL немає; запис лише гарячої — water16 усе одно (холодної немає); «до 25» — 21.11 hotL21 з назвою, кнопка «Внести воду»',
+  !Reminders::localDue($hw, '2026-11-21') && Reminders::placesDue($hw, 'water16', '2026-11') && $hd === ['hotL21'] && !Reminders::placesDue($hw2, 'water16', '2026-11')
+  && str_contains($ht['text'], 'гарячої води') && str_contains($ht['text'], 'ОСББ «Бойлер»') && str_contains($ht['text'], 'До 25 листопада') && $ht['button'] === 'Внести воду' && str_contains($ht['url'], 'go=wnew')
+  && !Reminders::placesDue($hw3, 'hotL21', '2026-11', '2026-11-21') && ($hwd['t'] ?? '') === 'Показання гарячої води' && ($hwd['e'] ?? '') === '2026-11-25', [$hd, $hp, $ht, $hwd]);
+$hw4 = $hw; unset($hw4['places'][0]['prov']); $hw4['water'] = [['id' => 'w1', 'place' => 'main', 'date' => '2026-11-05', 'vals' => ['h1' => '12']]];
+ok('гаряча без свого постачальника — як було: будь-який запис води місяця знімає water16', !Reminders::placesDue($hw4, 'water16', '2026-11') && !Reminders::localDue($hw4, '2026-11-21'));
 $lv2 = $lvs; $lv2['water'] = [['id' => 'w1', 'place' => 'main', 'date' => '2026-11-12', 'vals' => ['c1' => '5']]];
 $lv3 = $lvs; $lv3['water'] = [['id' => 'w1', 'place' => 'main', 'date' => '2026-11-03', 'vals' => ['c1' => '5']]];
 ok('Львів: внесли у вікні (12.11) — мовчимо; до вікна (03.11, раніше за 05.11) — нагадуємо; «нагадати завтра» після кінця вікна (28.11) — ні',

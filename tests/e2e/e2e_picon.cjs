@@ -32,8 +32,11 @@ const U = 'http://127.0.0.1:8013/';
     ok(vw + ': «Згорнути» у квартирі — на всю ширину (мінус поля)', fw && fw.w >= fw.dw - 40, fw);
     // значки блоків екрана лічильника — без заливки, з рамкою кольору тексту
     await p.goto(U + '#gas'); await p.waitForTimeout(600);
+    // 165-я: світла тема — «Теплий графіт» C3: плитки блоків — нейтральні #ECE9E3 без рамки, значок кольору ink-2 (#66625A); темні — прозорі з рамкою кольору тексту
+    const c3 = await p.evaluate(() => document.documentElement.dataset.lskin === 'c' && document.documentElement.dataset.theme !== 'dark');
     const bi = await p.evaluate(() => [...document.querySelectorAll('.ico.bt-ico')].map(i => { const c = getComputedStyle(i); return { bg: c.backgroundColor, bw: c.borderTopWidth, bc: c.borderTopColor, col: c.color }; }));
-    ok(vw + ': значки «Історія» / «Налаштування» / «Куди передати» — прозорі, рамка кольору тексту', bi.length >= 3 && bi.every(x => /rgba\(0, 0, 0, 0\)|transparent/.test(x.bg) && parseFloat(x.bw) >= 1 && x.bc === x.col), bi);
+    ok(vw + ': значки «Історія» / «Налаштування» / «Куди передати» — ' + (c3 ? 'нейтральна плитка C3 (#ECE9E3, без рамки, ink-2)' : 'прозорі, рамка кольору тексту'), bi.length >= 3 && bi.every(x => c3
+      ? x.bg === 'rgb(236, 233, 227)' && parseFloat(x.bw) === 0 && x.col === 'rgb(102, 98, 90)' : /rgba\(0, 0, 0, 0\)|transparent/.test(x.bg) && parseFloat(x.bw) >= 1 && x.bc === x.col), { c3, bi });
     // бічне меню на екрані вводу: на комп'ютері є, на телефоні — немає
     await p.goto(U + '#wnew'); await p.waitForTimeout(600);
     const nv = await p.evaluate(() => { const n0 = document.querySelector('nav.nav'); return n0 ? getComputedStyle(n0).display : 'none'; });
@@ -52,10 +55,13 @@ const U = 'http://127.0.0.1:8013/';
       ok(vw + ': ' + r + ' — подвал притиснутий до низу сторінки: політика, умови, cookie, рік, слово «передай.com.ua» (127-а) і «не є офіційним»', fp && fp.gap <= 1 && !fp.inMain && fp.keys.join() === 'lpf-privacy,lpf-terms,lpf-cookie' && /© 20\d\d/.test(fp.note) && fp.wm === 'передай.com.ua' && /не є офіційним/.test(fp.note), fp);
     }
     if (vw >= 960) { await p.goto(U + '#help'); await p.waitForTimeout(400); await p.screenshot({ path: '/tmp/shots/foot_help_1280.png' });
-      // 93-я (власник): на широкому рядок «© … · Незалежний сервіс…» — одним рядком; «Відгук» не налазить на подвал
-      const fn = await p.evaluate(() => { const f = document.querySelector('[data-key=app-foot]'), n = f.querySelector('.af-note'), fab = document.querySelector('.fab'), cs = getComputedStyle(f);
+      // 93-я (власник): на широкому рядок «© … · Незалежний сервіс…» — одним рядком; «Відгук» не налазить на подвал.
+      // 164-я (Inter 15 px ширший за Plex 14): на 1280 поле праворуч під «Відгук» (120 px) — два рядки; одним — з 1440, де кнопка подвалу не закриває
+      const foot = () => p.evaluate(() => { const f = document.querySelector('[data-key=app-foot]'), n = f.querySelector('.af-note'), fab = document.querySelector('.fab'), cs = getComputedStyle(f);
         return { lines: Math.round(n.getBoundingClientRect().height / parseFloat(getComputedStyle(n).lineHeight)), gap: fab ? Math.round(fab.getBoundingClientRect().left - (f.getBoundingClientRect().right - parseFloat(cs.paddingRight))) : 99 }; });
-      ok(vw + ': подвал — «не є офіційним» одним рядком, «Відгук» праворуч не налазить', fn.lines === 1 && fn.gap >= 16, fn);
+      const fn = await foot();
+      await p.setViewportSize({ width: 1440, height: 900 }); await p.waitForTimeout(300); const fw = await foot(); await p.setViewportSize({ width: vw, height: 900 }); await p.waitForTimeout(300);
+      ok(vw + ': подвал — «не є офіційним» на 1280 ≤ 2 рядки, на 1440 — одним; «Відгук» праворуч не налазить', fn.lines <= 2 && fn.gap >= 16 && fw.lines === 1 && fw.gap >= 16, { fn, fw });
       await p.goto(U + '#home'); await p.waitForTimeout(400); }
     // «Нараховано ХТМ»: стрілка праворуч, висота шапки не змінюється при відкритті
     await p.goto(U + '#rec-r1'); await p.waitForTimeout(800);
