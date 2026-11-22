@@ -22,7 +22,7 @@ function st_reset(): void {
   // база «прошло раньше за расчётом» — 20-е прошлого месяца относительно даты стенда
   $t = new DateTimeImmutable(today());
   $s['baseline']['date'] = $t->modify('first day of last month')->format('Y-m-20');
-  $s['journal'] = [];
+  $s['journal'] = []; $s['hot_journal'] = [];
   st_save($s);
 }
 

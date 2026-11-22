@@ -1076,4 +1076,156 @@ final class HtmCab {
     foreach ($journal as $j) if (self::dmy(trim((string)$j['date'])) === self::dmy(trim($date)) && abs($n($j['energy']) - $n($energy)) < 0.0005) return $j;
     return null;
   }
+
+  // ---------- 178-а: гаряча вода в кабінеті ХТМ ----------
+  // Сайт ХТМ: «в кабінеті Ви можете залишити показання своїх приладів обліку гарячої води та тепла» (сторінка входу, 22.11.2026). Сторінку гарячої ще не бачили:
+  // у кабінеті власника гарячої немає (05.11: «у будинку гарячої води немає»), тому знімок 01.11 і казав «форми ГВ немає». Робот шукає її сам і нічого не шле,
+  // поки не зрозуміло, яке поле чиє: посилання з цим рахунком і словами «гаряч / ГВ / вод» → форма з датою й полем на кожен водомір (№ у рядку чи підписі).
+  const HOT_SKIP = ['heat', 'payments', 'spr-teplo', 'spravka', 'sprvds', 'bill', 'list', 'add', 'settings', 'logout', 'house', 'login', 'register', 'restore'];
+  /** Адреса сторінки гарячої води рахунку: з головної кабінету (після входу) і з картки рахунку. → url або null (у цьому кабінеті гарячої немає). */
+  public function hotUrl(string $acc, string $sur): ?string {
+    $bodies = []; if (!empty($this->home['body'])) $bodies[] = [(string)$this->home['body'], (string)($this->home['url'] ?? self::base() . '/cabinet')];
+    $best = null; $bs = 0;
+    $scan = function (string $html, string $from) use ($acc, &$best, &$bs) {
+      $x = CabWeb::dom($html);
+      foreach ($x->query('//a[@href]') as $a) {
+        $u = CabWeb::abs(html_entity_decode((string)$a->getAttribute('href')), $from);
+        if (!preg_match('~/cabinet/([a-z][a-z0-9_-]{0,20})/(\d{4,14})(?:/|$)~i', (string)parse_url($u, PHP_URL_PATH), $m) || $m[2] !== $acc || in_array(strtolower($m[1]), self::HOT_SKIP, true)) continue;
+        $tx = CabWeb::sp($a->textContent . ' ' . $a->getAttribute('title'));
+        $sc = (preg_match('/гаряч|горяч|\bГВ[ПС]?\b|водомір|водомер/iu', $tx) ? 2 : (preg_match('/\bвод/iu', $tx) ? 1 : 0)) + (preg_match('/^(hw|gv|gvp|gvs|hot|water|voda|hotwater|gvoda)/i', $m[1]) ? 1 : 0);
+        if ($sc > $bs) { $bs = $sc; $best = $u; }
+      }
+    };
+    foreach ($bodies as [$b, $f]) $scan($b, $f);
+    if (!$best) { try { $r = $this->get('/cabinet/' . rawurlencode($acc) . '/' . rawurlencode(mb_strtoupper($sur))); if ($r['code'] === 200) $scan((string)$r['body'], (string)$r['url']); } catch (CabErr $e) { if ($e->err === 'captcha') throw $e; } }
+    return $best;
+  }
+  /** Сторінка гарячої води: чи є, відкрита форма (дата + поля водомірів з № із рядка), журнал. Нічого не вносить. */
+  public function hot(string $acc, string $sur): array {
+    $o = ['found' => false, 'url' => null, 'open' => false, 'closed' => null, 'date' => null, 'vals' => [], 'fields' => [], 'action' => null, 'journal' => [], 'html' => '', 'why' => null];
+    $u = $this->hotUrl($acc, $sur); if (!$u) { $o['why'] = 'no_link'; return $o; }
+    $r = $this->get($u); if ($r['code'] !== 200) { $o['why'] = 'http_' . $r['code']; return $o; }
+    $o['found'] = true; $o['url'] = $r['url']; $o['html'] = $r['body'];
+    $x = CabWeb::dom($r['body']); $txt = CabWeb::sp($x->document->textContent ?? '');
+    $o['journal'] = self::hotJournal($x);
+    foreach ($x->query('//form') as $f) {
+      $ins = $x->query('.//input|.//select|.//textarea|.//button', $f); $fs = []; $date = null; $vals = [];
+      foreach ($ins as $i) {
+        $nm = (string)$i->getAttribute('name'); if ($nm === '') continue;
+        $tp = strtolower($i->nodeName === 'input' ? ($i->getAttribute('type') ?: 'text') : $i->nodeName);
+        $ctx = self::hotCtx($x, $i);
+        $fs[] = ['name' => $nm, 'type' => $tp, 'value' => (string)$i->getAttribute('value'), 'ph' => mb_substr((string)$i->getAttribute('placeholder'), 0, 40), 'lbl' => mb_substr($ctx, 0, 120)];
+        if (in_array($tp, ['hidden', 'submit', 'button', 'checkbox', 'radio', 'email', 'tel', 'password', 'select', 'textarea'], true)) continue;
+        if (preg_match('/phone|tel|e-?mail|note|prim|comment|koment|passw|login|rash|lastn/i', $nm)) continue;
+        if ($date === null && ($tp === 'date' || preg_match('/dt|date|data/i', $nm . ' ' . $i->getAttribute('id')) || preg_match('/^Дата/u', $ctx))) { $date = $nm; continue; }
+        $vals[] = ['name' => $nm, 'sn' => self::hotSn($ctx, (string)$i->getAttribute('value')), 'lbl' => mb_substr($ctx, 0, 120)];
+      }
+      if (!$vals || $x->query(".//input[@name='" . self::F['energy'] . "']", $f)->length) continue;   // форма входу / тепла — не наша
+      $o['fields'] = $fs; $o['date'] = $date; $o['vals'] = $vals; $o['open'] = $date !== null;
+      $o['action'] = CabWeb::abs((string)($f->getAttribute('action') ?: $r['url']), $r['url']);
+      break;
+    }
+    if (!$o['open'] && preg_match('/[^.]*тимчасово\s+зупинен[^.]*\.[^.]*\./u', $txt, $m)) $o['closed'] = trim($m[0]);
+    if (!$o['open'] && !$o['closed']) $o['why'] = $o['vals'] ? 'no_date' : 'no_form';
+    return $o;
+  }
+  /** Текст навколо поля: рядок таблиці, <label for>, обгортка <label>, батьківський блок. */
+  private static function hotCtx(DOMXPath $x, DOMElement $i): string {
+    $id = (string)$i->getAttribute('id');
+    $l = $id !== '' && preg_match('/^[\w\-]+$/', $id) ? $x->query("//label[@for='$id']")->item(0) : null;
+    $parts = $l ? [CabWeb::sp($l->textContent)] : [];
+    for ($p = $i->parentNode, $n = 0; $p instanceof DOMElement && $n < 4; $p = $p->parentNode, $n++) {
+      if (in_array($p->nodeName, ['tr', 'label', 'li', 'p', 'fieldset'], true)) { $parts[] = self::words($x, $p); break; }
+      if ($p->nodeName === 'form') break;
+      if ($p->nodeName === 'div' && $n >= 1) { $parts[] = self::words($x, $p); break; }
+    }
+    return mb_substr(implode(' ', array_unique(array_filter($parts))), 0, 200);
+  }
+  /** Текст вузла словами через пробіл (textContent склеює клітинки: «№20123456» + «175» → «20123456175»). */
+  private static function words(DOMXPath $x, DOMNode $n): string { $o = []; foreach ($x->query('.//text()', $n) as $t) $o[] = $t->nodeValue; return CabWeb::sp(implode(' ', $o)); }
+  /** № водоміра з тексту рядка: найдовша група з 5+ цифр (не дата, не саме значення поля). */
+  private static function hotSn(string $ctx, string $val): string {
+    $ctx = preg_replace('/\b\d{1,2}[.\/]\d{1,2}[.\/]\d{2,4}\b/', ' ', $ctx);
+    preg_match_all('/\d[\d\-]{3,}\d/', $ctx, $m); $best = '';
+    foreach ($m[0] as $d) { $d = str_replace('-', '', $d); if (strlen($d) >= 5 && $d !== preg_replace('/\D/', '', $val) && strlen($d) > strlen($best)) $best = $d; }
+    return $best;
+  }
+  /** Журнал гарячої: рядок «дата | значення…» (класи bg-success / bg-danger) і під ним «Статус: …», як у журналі тепла. */
+  public static function hotJournal(DOMXPath $x): array {
+    $out = []; $cur = null;
+    foreach ($x->query('//tr') as $tr) {
+      $tds = $x->query('./td', $tr); $first = $tds->length ? CabWeb::sp($tds->item(0)->textContent) : '';
+      if ($tds->length >= 2 && preg_match('/^\d{2}\.\d{2}\.\d{4}$/', $first) && !$x->query('.//input', $tr)->length) {
+        $vals = []; for ($k = 1; $k < $tds->length; $k++) { $v = self::num(CabWeb::sp($tds->item($k)->textContent)); if ($v !== null) $vals[] = $v; }
+        $cls = (string)$tds->item(0)->getAttribute('class') . ' ' . (string)$tr->getAttribute('class');
+        $out[] = ['date' => $first, 'vals' => $vals, 'status' => str_contains($cls, 'bg-success') ? 'ok' : (str_contains($cls, 'bg-danger') ? 'rejected' : 'pending'), 'text' => ''];
+        $cur = count($out) - 1; continue;
+      }
+      $t = CabWeb::sp($tr->textContent);
+      if ($cur !== null && preg_match('/^Статус:\s*(.*)$/u', $t, $m)) {
+        $out[$cur]['text'] = $m[1];
+        if (preg_match('/успішно|прийнят[оі]\b/u', $m[1]) && !preg_match('/не\s+при[йн]{1,2}ят/u', $m[1])) $out[$cur]['status'] = 'ok';
+        elseif (preg_match('/не\s+при[йн]{1,2}ят[іи]?\s*(?:з\s+причини:?)?\s*(.*)$/u', $m[1], $mm)) { $out[$cur]['status'] = 'rejected'; $out[$cur]['reason'] = trim($mm[1]); }
+        $cur = null;
+      }
+    }
+    return $out;
+  }
+  /** Наші водоміри → поля форми: один і один — він; інакше за № (повний чи кінець від 5 цифр). → ['ok', 'map' => [ім'я => значення], 'why']. */
+  public static function hotPlan(array $h, array $items): array {
+    $vs = $h['vals'] ?? []; if (!$vs) return ['ok' => false, 'map' => [], 'why' => 'no_inputs'];
+    if (!$items) return ['ok' => false, 'map' => [], 'why' => 'no_items'];
+    if (count($items) > count($vs)) return ['ok' => false, 'map' => [], 'why' => 'more_items'];
+    $d = fn($s) => ltrim(preg_replace('/\D/', '', (string)$s), '0');
+    if (count($items) === 1 && count($vs) === 1) { $a = $d($items[0]['sn'] ?? ''); $b = $d($vs[0]['sn']); if ($a === '' || $b === '' || str_ends_with($a, $b) || str_ends_with($b, $a)) return ['ok' => true, 'map' => [$vs[0]['name'] => (string)$items[0]['value']], 'why' => null]; return ['ok' => false, 'map' => [], 'why' => 'sn_other']; }
+    $map = []; $used = [];
+    foreach ($items as $it) {
+      $a = $d($it['sn'] ?? ''); if (strlen($a) < 5) return ['ok' => false, 'map' => [], 'why' => 'no_sn'];
+      $hit = array_values(array_filter($vs, fn($v) => !isset($used[$v['name']]) && ($b = $d($v['sn'])) !== '' && strlen($b) >= 5 && (str_ends_with($a, $b) || str_ends_with($b, $a))));
+      if (count($hit) !== 1) return ['ok' => false, 'map' => [], 'why' => $hit ? 'sn_twice' : 'sn_none'];
+      $used[$hit[0]['name']] = 1; $map[$hit[0]['name']] = (string)$it['value'];
+    }
+    return ['ok' => true, 'map' => $map, 'why' => null];
+  }
+  /** Внести гарячу: date — dd.mm.yyyy, items — [{sn, value}]. Поля, яких не зрозуміли, — не шлемо (form_changed). → ['status', 'text', 'reason', 'flash']. */
+  public function saveHot(string $acc, string $sur, array $h, string $date, array $items, array $contact = []): array {
+    if (!$h['found']) throw new CabErr('hot_none');
+    if (!$h['open']) throw new CabErr('closed', (string)$h['closed']);
+    $pl = self::hotPlan($h, $items); if (!$pl['ok']) { $this->log['hot'] = $pl['why']; throw new CabErr('form_changed', 'hot ' . $pl['why']); }
+    $pairs = []; $btn = false;
+    foreach ($h['fields'] as $f) {
+      $nm = $f['name'];
+      if ($nm === $h['date']) $pairs[] = [$nm, self::dmy($date)];
+      elseif (isset($pl['map'][$nm])) $pairs[] = [$nm, $pl['map'][$nm]];
+      elseif ($f['type'] === 'hidden') $pairs[] = [$nm, $f['value']];
+      elseif (in_array($f['type'], ['submit', 'button'], true)) { if (!$btn) $pairs[] = [$nm, $f['value']]; $btn = true; }
+      elseif ($f['type'] === 'tel' || preg_match('/phone|tel/i', $nm)) $pairs[] = [$nm, self::phoneFor((string)($contact['phone'] ?? ''), (string)($f['ph'] ?? ''))];
+      elseif ($f['type'] === 'email' || preg_match('/e-?mail/i', $nm)) $pairs[] = [$nm, (string)($contact['email'] ?? '')];
+      elseif (in_array($f['type'], ['checkbox', 'radio'], true)) continue;
+      else $pairs[] = [$nm, $f['value']];   // інший водомір без наших показань, примітка — як на сторінці
+    }
+    $was = self::msgs(CabWeb::dom((string)$h['html']));
+    $r = $this->post((string)$h['action'], $pairs);
+    $m = self::msgs(CabWeb::dom($r['body'])); foreach (['err', 'ok'] as $k) $m[$k] = array_values(array_diff($m[$k], $was[$k]));
+    $after = $this->hot($acc, $sur);
+    $row = self::findHot($after['journal'], $date, array_values($pl['map']));
+    if (!$row && $m['err']) throw new CabErr('form_error', implode(' ', array_slice($m['err'], 0, 2)));
+    if (!$row) { $this->log['unseen'] = true; return ['status' => 'pending', 'text' => '', 'reason' => null, 'flash' => implode(' ', array_slice($m['ok'], 0, 1)), 'unseen' => true]; }
+    return ['status' => $row['status'], 'text' => $row['text'], 'reason' => $row['reason'] ?? null, 'flash' => implode(' ', array_slice($m['ok'], 0, 1))];
+  }
+  /** Рядок журналу гарячої за датою, де є всі наші значення. */
+  public static function findHot(array $journal, string $date, array $values): ?array {
+    foreach ($journal as $j) {
+      if (self::dmy(trim((string)$j['date'])) !== self::dmy(trim($date))) continue;
+      $all = true; foreach ($values as $v) { $n = self::num((string)$v); $hit = false; foreach ((array)$j['vals'] as $x) if ($n !== null && abs((float)$x - $n) < 0.0005) $hit = true; if (!$hit) $all = false; }
+      if ($all) return $j;
+    }
+    return null;
+  }
+  /** Як побачили сторінку гарячої — без значень і особистих даних: для журналу й /api/health (поки живої сторінки не бачили). */
+  public static function hotShape(array $h): array {
+    return ['found' => $h['found'], 'why' => $h['why'], 'path' => $h['url'] ? HtmSvc::path((string)parse_url((string)$h['url'], PHP_URL_PATH)) : null, 'open' => $h['open'], 'closed' => $h['closed'] ? CabWeb::mask((string)$h['closed'], 120) : null,
+      'date' => $h['date'] !== null, 'n' => count($h['vals']), 'sn' => count(array_filter($h['vals'], fn($v) => $v['sn'] !== '')),
+      'fields' => array_slice(array_map(fn($f) => ['n' => $f['name'], 't' => $f['type'], 'l' => CabWeb::mask((string)$f['lbl'], 60)], $h['fields']), 0, 20), 'journal' => count($h['journal'])];
+  }
 }

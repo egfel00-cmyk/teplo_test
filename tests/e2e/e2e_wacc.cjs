@@ -58,7 +58,8 @@ const state = (o) => {
   ok('5. команда Водоканалу — з рахунком холодної, без гарячого рахунку', cmd.includes('3333333') && !cmd.includes('2222222') && /556/.test(cmd) && /778/.test(cmd), cmd);
   await go('water-hot');
   ok('5. гаряча: «Інший постачальник» під «Куди передати» — гарячої (не всієї води)', await has('[data-key=my-link-hot]') && !(await has('[data-key=my-link-water]')));
-  ok('5. гаряча: у блоці ХТМ — «Рахунок за гарячу» 2222222', /2222222/.test(await txt('[data-key=wsend-hacc]')), await txt('[data-key=wsend-hacc]'));
+  // 178-а: Харків — «Куди передати» гарячої двома рядками (ХТМ окремо, Водоканал разом із холодною); рахунок за гарячу — у «Передати самі» → ХТМ
+  ok('5. гаряча: у «Передати самі» → ХТМ — «Рахунок за гарячу» 2222222', /2222222/.test(await txt('[data-key=gw-hacc]')) && await has('[data-key=gw-htm]') && await has('[data-key=gw-vk]'), await txt('[data-key=gw-hacc]'));
 
   // 6. екран квартири, «Постачальники, тарифи й рахунки»: гаряча — окремим рядком зі своїм рахунком
   await go('place-main');
@@ -117,7 +118,8 @@ const state = (o) => {
 
   // 14. Харків без свого гарячої: на сторінці гарячої — два рядки: ХТМ (самі, бот) і Водоканал (у фоні — разом із холодною)
   await put(state()); await go('water-hot');
-  ok('14. Харків: «Хто приймає» гарячу — ХТМ (самі) і другим рядком Водоканал', /теплові мережі/.test(await txt('[data-key=cb-mrow-hot]')) && /Хто приймає/.test(await txt('[data-key=cb-mrow-hot]')) && /водоканал/i.test(await txt('[data-key=cb-mrow-hot-water]')),
+  // 178-а (власник 22.11: «гарячу в ХТМ і у Водоканал можна подавати у фоні»): гарячу в Харкові приймає кабінет ХТМ — «Передача у фоні», другим рядком Водоканал
+  ok('14. Харків: гарячу — ХТМ у фоні (кабінет) і другим рядком Водоканал', /теплові мережі/.test(await txt('[data-key=cb-mrow-hot]')) && /у фоні/.test(await txt('[data-key=cb-mrow-hot]')) && /водоканал/i.test(await txt('[data-key=cb-mrow-hot-water]')),
     [await txt('[data-key=cb-mrow-hot]'), await txt('[data-key=cb-mrow-hot-water]')]);
   await go('water-cold');
   ok('14. холодна — лише Водоканал', /водоканал/i.test(await txt('[data-key=cb-mrow-cold]')) && !(await has('[data-key=cb-mrow-cold-water]')), await txt('[data-key=cb-mrow-cold]'));

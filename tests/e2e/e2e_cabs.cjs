@@ -37,10 +37,12 @@ const php = code => execFileSync('php', ['-r', `define('TEPLO',1); foreach (['co
   ok('«Налаштування»: рядок «Кабінети й надсилання»', /Кабінети й надсилання/.test(await txt('[data-key=pgr-cabs]')), await txt('[data-key=pgr-cabs]'));
   await cabs();
   const bgRows = await p.$$eval('[data-key=cb-sec-bg] a.cb-row', l => l.map(x => x.getAttribute('data-key'))), selfRows = await p.$$eval('[data-key=cb-sec-self] a.cb-row', l => l.map(x => x.getAttribute('href')));
-  ok('список, не стрічка: блоків на екрані немає; «Передача у фоні» — Водоканал, КП Кам’янця, ХТМ (порядок видів); «Передаєте самі» — обленерго, свій гаража, ХТМ за гарячу (177-а), газ',
-    !(await p.$('.pg-one section.panel.cb')) && JSON.stringify(bgRows) === JSON.stringify(['cb-row-vk', 'cb-row-lb-mtve', 'cb-row-htm']) && selfRows.length === 4 && /self-/.test(selfRows[0]) && /own-/.test(selfRows[1]) && /self-/.test(selfRows[2]) && /self-/.test(selfRows[3]), [bgRows, selfRows]);
-  const hotRow = await txt('[data-key=cb-sec-self] a.cb-row[href="' + selfRows[2] + '"]');
-  ok('177-а: гаряча вода Харкова — окремим рядком «ХТМ · Гаряча вода · Моя квартира» серед «самі» (у «Маминої» гарячої немає)', /Харківські теплові мережі/.test(hotRow) && /Гаряча вода · Моя квартира$/.test(hotRow), hotRow);
+  ok('список, не стрічка: блоків на екрані немає; «Передача у фоні» — Водоканал, КП Кам’янця, ХТМ (порядок видів); «Передаєте самі» — обленерго, свій гаража, газ',
+    !(await p.$('.pg-one section.panel.cb')) && JSON.stringify(bgRows) === JSON.stringify(['cb-row-vk', 'cb-row-lb-mtve', 'cb-row-htm']) && selfRows.length === 3 && /self-/.test(selfRows[0]) && /own-/.test(selfRows[1]) && /self-/.test(selfRows[2]), [bgRows, selfRows]);
+  const hotRow = await txt('[data-key=cb-row-htm]');
+  // 178-а (власник 22.11): гарячу Харкова кабінет ХТМ приймає теж — та сама група «у фоні», що й тепло; окремого рядка «ХТМ за гарячу» серед «самі» немає
+  ok('178-а: ХТМ у фоні — «Гаряча вода, Опалення» (у «Маминої» гарячої немає); серед «самі» ХТМ немає', /Харківські теплові мережі/.test(hotRow) && /Гаряча вода/.test(hotRow) && /Опалення/.test(hotRow)
+    && !/теплові мережі/.test(await txt('[data-key=cb-sec-self]')), hotRow);
   ok('позначки у фоні: Водоканал — «Надсилає у фоні» (рахунки й прізвища є), ХТМ і КП — «Можна у фоні»; у «самі» позначок немає',
     /Надсилає у фоні/.test(await txt('[data-key=cb-bdg-vk]')) && /Можна у фоні/.test(await txt('[data-key=cb-bdg-htm]')) && /Можна у фоні/.test(await txt('[data-key=cb-bdg-lb-mtve]')) && !(await p.$('[data-key=cb-sec-self] .cb-bdg')));
   if (process.env.SHOT) await p.screenshot({ path: '/tmp/cabs_list.png', fullPage: true });
@@ -53,10 +55,9 @@ const php = code => execFileSync('php', ['-r', `define('TEPLO',1); foreach (['co
     && /я не робот/.test(await txt('[data-key=cb-self-elec]')) && /9876543/.test(await txt('[data-key=cb-self-elec]')) && !(await p.$('[data-key=cb-self-elec] button:not(.copy-ico)')), await txt('[data-key=cb-self-elec]'));
   await p.goto(U + selfRows[1]); await wait(1500);
   ok('свій постачальник гаража (ГК «Мотор») — «Передаєте самі», без кнопок підключення', /ГК «Мотор»/.test(await txt('#main h1')) && /Передаєте самі/.test(await txt('[data-key=cb-own-elec]')) && !(await p.$('[data-key=cb-own-elec] .btn')));
+  await p.goto(U + '#prefs-cabs-htm'); await wait(1500);
+  ok('178-а: екран ХТМ — «Вносимо показання тепла й гарячої води у ваш кабінет ХТМ»', /тепла й гарячої води/.test(await txt('[data-key=prefs-cab-htm]')), await txt('[data-key=prefs-cab-htm]'));
   await p.goto(U + selfRows[2]); await wait(1500);
-  ok('177-а: екран ХТМ за гарячу — бот і телефон, «у кабінеті ХТМ форми для гарячої немає», без кнопок підключення', /форми для гарячої немає/.test(await txt('#main'))
-    && (await p.getAttribute('[data-key=cb-htmw-bot]', 'href')) === 'https://t.me/KPHTM_Bot' && !(await p.$('.pg-one section.panel.cb .btn')), await txt('#main'));
-  await p.goto(U + selfRows[3]); await wait(1500);
   ok('газ: Газмережі, «Передаєте самі», рахунок Нафтогазу', /Газмереж/.test(await txt('[data-key=cb-self-gas]')) && /123456789/.test(await txt('[data-key=cb-self-gas]')));
   await prov('htm');
   ok('ХТМ не підключено: «Не підключено», кнопка «Підключити кабінет», «Хто ми…»', /Не підключено/.test(await txt('[data-key=prefs-cab-htm] [data-key=cb-st]')) && await vis('[data-key=prefs-cab-htm-connect]') && !!(await p.$('[data-key=trust-prefs-htm]')));
@@ -128,6 +129,7 @@ const php = code => execFileSync('php', ['-r', `define('TEPLO',1); foreach (['co
   ok('…рахунок ХТМ квартири з кабінету', /\d{4,}/.test(await txt('[data-key=cb-hacc-main]')), await txt('[data-key=prefs-cab-htm]'));
   await p.click('[data-key=cb-htm-check]'); await wait(4000);
   ok('«Перевірити» ще раз — нічого не внесено на стенд', /Кабінет відкрився/.test(await txt('[data-key=cb-htm-chk]')) && await p.evaluate(() => window.TeploSync.api('GET', '/cab/htm').then(j => j.jobs.length)) === 0);
+  ok('178-а: «Перевірити» — і розділ гарячої води: «Гаряча вода: розділ у кабінеті є — надсилаємо у фоні»', /Гаряча вода: розділ у кабінеті є/.test(await txt('[data-key=cb-htm-hot]')), await txt('[data-key=cb-htm-hot]'));
   await p.click('[data-key=prefs-htm-auto]'); await wait(1500);
   ok('автоподача ХТМ — окремо, вмикається тут', await p.evaluate(() => window.TeploSync.api('GET', '/cab/htm').then(j => j.auto)) === true);
   if (process.env.SHOT) await (await p.$('[data-key=prefs-cab-htm]')).screenshot({ path: '/tmp/cabs_htm.png' });

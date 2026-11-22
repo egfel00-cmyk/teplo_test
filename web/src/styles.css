@@ -3472,3 +3472,18 @@ fieldset { min-inline-size: 0; }
 .cb-mrow .ios-list, :root:root .cb-mrow .ios-list { background: transparent; border: 1px solid var(--c-line); box-shadow: none; border-radius: 12px; }
 .cb-mrow .ios-row { padding-left: 14px; }
 .cb-mrow .ios-t .small { white-space: normal; }
+
+/* ---------- 178-я: гаряча вода в Харкові — два адресати одним блоком (ХТМ окремо, Водоканал разом із холодною) ---------- */
+.gw-lead { margin: 0 0 var(--sp-3); }
+.gw-list { list-style: none; margin: var(--sp-3) 0 0; padding: 0; }
+.gw-row { padding: var(--sp-3) 0; border-top: 1px solid var(--c-line); }
+.gw-row:last-child { border-bottom: 1px solid var(--c-line); }
+.gw-h { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--sp-3); }
+.gw-t { display: flex; flex-direction: column; min-width: 0; gap: 2px; }
+.gw-h .pill { flex: none; margin-top: 1px; }
+.gw-why { margin: 6px 0 0; color: var(--c-bad); }
+.gw-in { margin: 6px 0 0; }
+.gw-in a { font-weight: 600; white-space: nowrap; }
+.gw-self .dest-more-b { padding-top: 4px; }
+.gw-self-b + .gw-self-b { margin-top: var(--sp-4); padding-top: var(--sp-4); border-top: 1px solid var(--c-line); }
+.gw-self-t { margin: 8px 0; color: var(--c-ink); }

@@ -1892,6 +1892,7 @@
     return cpList(rows, 'wsend-vals');
   }
   function wsendPanel(rec, kind) {
+    if (kind === 'hot' && gwKh()) return hotSendPanel(rec);   // 178-а: Харків — гаряча двом адресатам одним блоком
     var ms = wmeters(), hot = wmeters('hot'), withHtm = kind === 'hot' || (!kind && hot.length);
     var w = Wt.vkWindow(today()), vkDue = w.open ? t('wd_due', { d: fmtDate(w.deadline) }) : t('wd_due_next', { d: fmtDate(nextMonthDay(today(), Wt.VK_DEADLINE)) });
     var mark = function (to, sent) { return rec ? '<p class="dest-mark">' + (sent ? '<button class="linkbtn" data-act="wsent" data-to="' + to + '" data-v="0" data-id="' + rec.id + '">' + esc(t('ws_unmark')) + '</button>' : '<button class="btn sec" data-act="wsent" data-to="' + to + '" data-v="1" data-id="' + rec.id + '" data-key="wsend-' + to + '-done">' + ico('check', 18) + '<span>' + esc(t('ws_mark')) + '</span></button>') + '</p>' : ''; };
@@ -1973,6 +1974,112 @@
     return destBox({ key: 'hot', org: hotOrgName(p), what: t('wd_hot_what'), sent: sent, body: body || '<p class="small muted" data-key="wd-hot-none">' + esc(t('wd_hot_none')) + '</p>',
       more: tel ? cpList([cpTel(t('my_phone'), tel, tel, 'hot-ph')]) : '', mark: mark('htm', sent) });
   }
+  // ================= 178-а: гаряча вода в Харкові — ХТМ окремо, Водоканал разом із холодною (власник 22.11) =================
+  // «Плутанина, куди який логін і що з відправкою: багато тексту, статус прийнято / не прийнято незрозумілий — спростити першу настройку й відправку у фоні;
+  // гарячу в ХТМ — окремо, у Водоканал — разом із холодною». Блок «Куди передати» на сторінці гарячої: два рядки — ХТМ (кабінет: e-mail і пароль, той самий,
+  // що для опалення; лише гаряча) і Водоканал (особовий рахунок і прізвище; холодна й гаряча разом), у кожного один статус словами; одна кнопка
+  // «Відправити у фоні» — обом підключеним; бот, телефон і цифри — згорнуто в «Передати самі». ХТМ — HtmSvc::hotQueue (робот шукає розділ гарячої в кабінеті).
+  var HW = { err: {}, busy: false };
+  /** Харків: гарячу бере ХТМ, воду — Харківводоканал, своїх постачальників немає. */
+  function gwKh() { var p = place(), ld = prvOf('water'); return !!(p && hotIsHtm(p) && !myProv('cold') && !myProv('hot') && (!ld || ld.via === 'hvk')); }
+  function hwItems(rec) { return wmeters('hot').filter(function (m) { return hasVal(rec, m.id); }).map(function (m) { return { sn: String(m.serial || ''), value: String(Wt.whole(rec.vals[m.id])), name: wname(m) }; }); }
+  /** Рахунок ХТМ для гарячої: «Рахунок за гарячу», інакше рахунок теплолічильника квартири, інакше єдиний у кабінеті ('' — сервер візьме єдиний). */
+  function hwAcc(p) {
+    var accs = (HC.st && HC.st.accounts) || [], mine = [dgt(waccOf(p, 'hot')), dgt((cbHeatM(p) || {}).account)].filter(Boolean);
+    for (var i = 0; i < mine.length; i++) { var hit = accs.filter(function (a) { return a.acc === mine[i]; })[0]; if (hit) return hit.acc; }
+    return accs.length === 1 ? accs[0].acc : (mine[0] || '');
+  }
+  /** Що знає сервер про розділ гарячої в кабінеті ХТМ: {found, open, n} або null (ще не дивились). */
+  function hwInfo(p) { var h = HC.st && HC.st.hot, a = hwAcc(p); return h && a && h[a] ? h[a] : null; }
+  function hwBusy(j) { return !!(j && /^(queued|sending|pending)$/.test(j.status)); }
+  function gwVkCan(rec) { return !!(rec && hcOn() && vkcGate() === 'ok' && !wsentVk(rec) && !(rec.vkJob && /^(queued|sending)$/.test(rec.vkJob.status)) && wmeters().some(function (m) { return hasVal(rec, m.id); })); }
+  function gwHtmCan(rec) { var hi = hwInfo(place()); return !!(rec && hcOn() && hcConn() && !(hi && hi.found === false) && !(rec.sent && rec.sent.htm) && !hwBusy(rec.htmJob) && hwItems(rec).length); }
+  /** Статус показань для адресата одним словом-плашкою: {c: клас, t: текст, why?}. */
+  function gwSt(rec, to) {
+    if (!rec) return null;
+    var vk = to === 'vk', sent = vk ? wsentVk(rec) : rec.sent && rec.sent.htm, j = vk ? rec.vkJob : rec.htmJob, conf = vk ? rec.vkConf : rec.htmConf, err = vk ? (VJ.err && VJ.errFor === rec.id ? VJ.err : null) : HW.err[rec.id];
+    if (sent) return { c: 'ok', t: t(conf ? 'gw_st_ok' : 'gw_st_self', { d: fmtDate(sent) }) };
+    if (j && /^(queued|sending)$/.test(j.status)) return { c: 'info', t: t('gw_st_q') };
+    if (j && j.status === 'pending') return { c: 'info', t: t('gw_st_chk') };
+    if (j && j.status === 'rejected') return { c: 'bad', t: t('gw_st_bad'), why: j.reason || j.text || '' };
+    if (err) return { c: 'warn', t: t('gw_st_fail'), why: err.human || '' };
+    if (j && /^(failed|unknown)$/.test(j.status)) return { c: 'warn', t: t('gw_st_fail'), why: j.human || j.text || '' };
+    return { c: 'neutral', t: t('gw_st_no') };
+  }
+  /** Рядок адресата: назва й що бере, статус показань (або стан підключення), причина відмови, «Підключити» з тим, який вхід потрібен. */
+  function gwRow(rec, to) {
+    var vk = to === 'vk', on = hcOn(), conn = vk ? on && vkcGate() === 'ok' : on && hcConn(), hi = vk ? null : hwInfo(place());
+    var st = gwSt(rec, to), noHot = !vk && conn && hi && hi.found === false;
+    if (!st) st = conn ? (noHot ? { c: 'neutral', t: t('gw_st_bot') } : { c: 'ok', t: t('gw_st_bg') }) : { c: 'neutral', t: t('gw_st_off') };
+    var h = '<li class="gw-row" data-key="gw-' + to + '"><div class="gw-h"><span class="gw-t"><b>' + esc(t(vk ? 'gw_vk_n' : 'gw_htm_n')) + '</b><span class="small muted">' + esc(t(vk ? 'gw_vk_s' : 'gw_htm_s')) + '</span></span>' +
+      '<span class="pill ' + st.c + '" data-key="gw-st-' + to + '">' + esc(st.t) + '</span></div>';
+    if (st.why) h += '<p class="small gw-why" data-key="gw-why-' + to + '">' + esc(String(st.why).slice(0, 240)) + '</p>';
+    if (noHot) h += '<p class="small muted gw-in" data-key="gw-nohot">' + esc(t('gw_nohot')) + '</p>';
+    else if (!conn && on) h += '<p class="small gw-in"><a href="#prefs-cabs-' + (vk ? 'vk' : 'htm') + '" data-act="cb-go" data-key="gw-conn-' + to + '">' + esc(t('gw_conn')) + ' ›</a> <span class="muted">' + esc(t(vk ? 'gw_vk_in' : 'gw_htm_in')) + '</span></p>';
+    return h + '</li>';
+  }
+  /** «Передати самі»: цифри, бот, телефон і «Я передав(ла)» — для кожного адресата. */
+  function gwSelf(rec, open) {
+    var hot = wmeters('hot'), ms = wmeters(), acc = wacc('hot'), mark = function (to, sent) {
+      return rec ? '<p class="dest-mark">' + (sent ? '<button class="linkbtn" data-act="wsent" data-to="' + to + '" data-v="0" data-id="' + rec.id + '" data-key="gw-unmark-' + to + '">' + esc(t('ws_unmark')) + '</button>' :
+        '<button class="btn sec" data-act="wsent" data-to="' + to + '" data-v="1" data-id="' + rec.id + '" data-key="gw-mark-' + to + '">' + ico('check', 18) + '<span>' + esc(t('ws_mark')) + '</span></button>') + '</p>' : ''; };
+    var vals = function (list) { return rec ? list.filter(function (m) { return hasVal(rec, m.id); }).map(function (m) { var v = Wt.whole(rec.vals[m.id]); return cpRow(wname(m), v, v, 'tn cp-big', 'gw-v-' + m.id); }) : []; };
+    var htm = '<div class="gw-self-b" data-key="gw-self-htm"><p class="gw-self-t"><b>' + esc(t('gw_htm_n')) + '</b> <span class="small muted">' + esc(t('gw_htm_s')) + '</span></p>' +
+      cpList((acc ? [cpRow(t('wa_acc_hot_s'), acc, acc, 'tn', 'gw-hacc')] : []).concat(vals(hot)), 'gw-hvals') +
+      '<div class="dest-ch"><a class="btn sec" href="' + BOT_URL + '" target="_blank" rel="noopener" data-key="gw-htm-bot">' + ico('send', 18) + '<span>' + esc(t('wd_bot', { b: '@KPHTM_Bot' })) + '</span></a></div>' +
+      cpPhones([['+380573414140', '(057) 341-41-40']], 'gw-htm-ph') + mark('htm', rec && rec.sent && rec.sent.htm) + '</div>';
+    var cmd = rec ? Wt.vkCommand(wacc('cold'), wcfg().surname, ms, rec.vals || {}) : null, cmdOk = cmd && !cmd.noAccount && !cmd.missing.length;
+    var vk = '<div class="gw-self-b" data-key="gw-self-vk"><p class="gw-self-t"><b>' + esc(t('gw_vk_n')) + '</b> <span class="small muted">' + esc(t('gw_vk_s')) + '</span></p>' +
+      cpList([wacc('cold') ? cpRow(t('em_acc'), wacc('cold'), wacc('cold'), 'tn', 'gw-vacc') : ''].concat(vals(ms)), 'gw-vvals') +
+      '<div class="dest-ch">' + (cmdOk ? '<button class="btn sec" data-act="vk-open" data-text="' + esc(cmd.text) + '" data-key="gw-vk-bot">' : '<a class="btn sec" href="' + Wt.VK_BOT + '" target="_blank" rel="noopener" data-key="gw-vk-bot">') + ico('send', 18) + '<span>' + esc(t('wd_bot', { b: '@hvk_user_bot' })) + '</span>' + (cmdOk ? '</button>' : '</a>') +
+      '<a class="btn sec" href="' + Wt.VK_CABINET + '" target="_blank" rel="noopener" data-key="gw-vk-cab">' + ico('ext', 18) + '<span>' + esc(t('wd_cab_vk')) + '</span></a></div>' +
+      cpList([cpTel(t('wd_vk_24'), '+380577075851', '(057) 707-58-51', 'gw-vk-ph'), cpRow('Viber', '(050) 355-12-12', '0503551212', 'tn', 'gw-vk-viber')], 'gw-vk-phs', 'cp-ph') + mark('vk', rec && wsentVk(rec)) + '</div>';
+    return '<details class="dest-more gw-self" data-key="gw-self"' + (open ? ' open' : '') + '><summary>' + esc(t('gw_self')) + ico('chev', 16, 'pacc-chev') + '</summary><div class="dest-more-b">' + htm + vk + '</div></details>';
+  }
+  function hotSendPanel(rec) {
+    if (hcOn()) { hcLoad(); vjLoad(); vksLoad(); }
+    var vkC = gwVkCan(rec), htmC = gwHtmCan(rec), again = rec && ['vk', 'htm'].some(function (to) { var s0 = gwSt(rec, to); return s0 && /^(bad|warn)$/.test(s0.c); });
+    var h = '<section class="panel where" data-key="where-water"><h2>' + ico('wallet', 18, 'bt-ico') + '<span>' + esc(t('wd_title')) + '</span></h2>' + wherePlaceLine() +
+      '<p class="small muted gw-lead" data-key="gw-lead">' + esc(t('gw_lead')) + '</p>' + pstrip('water', { tone: rec && wsentVk(rec) && rec.sent && rec.sent.htm ? 'ok' : '' }, 'in-dest hot') +
+      '<ul class="gw-list" data-key="gw-list">' + gwRow(rec, 'htm') + gwRow(rec, 'vk') + '</ul>';
+    if (rec && (vkC || htmC)) {
+      var hv = hwItems(rec).map(function (x) { return x.value; }).join(', '), cv = wmeters('cold').filter(function (m) { return hasVal(rec, m.id); }).map(function (m) { return Wt.whole(rec.vals[m.id]); }).join(', ');
+      var what = [htmC ? t('gw_w_htm', { h: hv }) : '', vkC ? t(hv && cv ? 'gw_w_vk' : hv ? 'gw_w_vk1' : 'gw_w_vk0', { h: hv, c: cv }) : ''].filter(Boolean).join('; ');
+      h += '<div class="dest-ch"><button class="btn dest-bg" data-act="gw-bg" data-id="' + esc(rec.id) + '" data-key="gw-bg"' + (HW.busy || VJ.busy ? ' disabled' : '') + '>' + (HW.busy ? SPIN : ico('send', 18)) + '<span>' + esc(t(again ? 'gw_send2' : 'cab_bg')) + '</span></button></div>' +
+        '<p class="small dest-note" data-key="gw-bg-note">' + esc(t('gw_will', { what: what })) + '</p>';
+    } else if (!hcOn()) h += '<p class="small gw-in" data-key="gw-guest">' + esc(t('gw_guest')) + ' <a href="#login" data-key="gw-login">' + esc(t('login')) + ' ›</a></p>';
+    else if (!rec) h += '<p class="small muted" data-key="gw-need">' + esc(t('gw_need')) + '</p>';
+    return h + gwSelf(rec, !hcOn()) + (hcOn() && (hcConn() || vkcGate() === 'ok') ? trustBox(hcConn() ? 'htm' : 'vk', '', 'trust-hs') : '') + '</section>';
+  }
+  /** Гаряча в кабінет ХТМ у фоні: у чергу сервера (cron внесе за хвилину), статус — у записі (rec.htmJob). */
+  function hwQueue(rec, done) {
+    var p = place(rec.place) || place(), items = hwItems(rec);
+    Y().api('POST', '/cab/htm/hot', { acc: hwAcc(p), rid: rec.id, place: rec.place || S.placeId, date: rec.date, items: items, lang: S.lang }).then(function (j) {
+      if (j._status === 200 && j.job) {
+        var jb = j.job; delete HW.err[rec.id]; if (HC.st) HC.st.jobs = [jb].concat((HC.st.jobs || []).filter(function (x) { return x.id !== jb.id; }));
+        rec.htmJob = { job: jb.id, at: jb.at, status: jb.status }; rec.updatedAt = Date.now(); hcApply(); save();
+      } else HW.err[rec.id] = { error: j.error, human: j.human || t('hc_fail') };
+      done(true);
+    }, function () { HW.err[rec.id] = { error: 'net', human: t('hc_fail') }; done(false); });
+  }
+  /** Підсумок черги ХТМ → запис води: прийнято — «передано» гарячу в ХТМ (sent.htm, підтверджено кабінетом). */
+  function hwApply(j) {
+    var w = vjRec(j.rid); if (!w || (w.htmJob && w.htmJob.job > j.id)) return false;
+    var c = { job: j.id, at: j.at, status: j.status, nextAt: j.nextAt || null, text: String(j.text || '').slice(0, 300), reason: j.reason ? String(j.reason).slice(0, 300) : null, human: j.human ? String(j.human).slice(0, 300) : null }, ch = false;
+    if (JSON.stringify(c) !== JSON.stringify(w.htmJob)) { w.htmJob = c; w.updatedAt = Date.now(); ch = true; }
+    if (j.status === 'ok' && !(w.sent && w.sent.htm)) { w.sent = Object.assign({}, w.sent || {}, { htm: today() }); w.htmConf = { at: j.checkedAt || j.at, via: 'cab' }; w.updatedAt = Date.now(); ch = true; toast(t('gw_ok_htm')); }
+    return ch;
+  }
+  document.addEventListener('click', function (e) {
+    var el = e.target.closest && e.target.closest('[data-act="gw-bg"]'); if (!el) return;
+    e.preventDefault(); var rec = vjRec(el.getAttribute('data-id')); if (!rec || HW.busy || VJ.busy) return;
+    var vk = gwVkCan(rec), htm = gwHtmCan(rec), n = (vk ? 1 : 0) + (htm ? 1 : 0); if (!n) return;
+    HW.busy = true; delete HW.err[rec.id]; safeRender();
+    var ok = [], fin = function (to) { return function (good) { if (good !== false) ok.push(to); if (--n) return; HW.busy = false; if (ok.length) toast(t('gw_toast', { to: ok.join(' · ') })); render(true); }; };
+    if (htm) hwQueue(rec, fin(t('gw_htm_n')));
+    if (vk) vjQueue(rec, false, true, fin(t('gw_vk_n')));
+  });
+
   // ---------- бот Водоканалу: відповіді, переслані нашому боту (/api/vk/replies) ----------
   var VKR = { list: null, at: 0, busy: false }, VKERR = {};
   function ourBot() { return (Y()._cfg && Y()._cfg.botUsername) || 'peredai_com_ua_bot'; }   // 07.11 бот переїхав; на бою — з /api/config
@@ -2233,18 +2340,18 @@
     return ch;
   }
   function vjItems(rec) { return wmeters().filter(function (m) { return hasVal(rec, m.id); }).map(function (m) { return { key: m.cabKey || null, value: String(Wt.whole(rec.vals[m.id])), serial: m.serial || null, kind: m.kind, name: wname(m) }; }); }
-  function vjQueue(rec, auto) {
-    var c = wcfg(), items = vjItems(rec); if (!rec || !items.length || VJ.busy) return;
+  function vjQueue(rec, auto, quiet, cb) {
+    var c = wcfg(), items = vjItems(rec); if (!rec || !items.length || VJ.busy) { if (cb) cb(false); return; }
     VJ.busy = 'q'; VJ.err = null; VJ.errFor = rec.id; safeRender();
     Y().api('POST', '/vk/queue', { acc: waccW(c, 'cold'), fam: c.surname, rid: rec.id, place: rec.place || S.placeId, items: items, auto: !!auto, lang: S.lang }).then(function (j) {
       VJ.busy = '';
       if (j._status === 200 && j.job) {
         var jb = j.job; if (VJ.st) VJ.st.jobs = [jb].concat((VJ.st.jobs || []).filter(function (x) { return x.id !== jb.id; }));
-        rec.vkJob = { job: jb.id, at: jb.at, status: jb.status, nextAt: jb.nextAt || null, auto: !!jb.auto }; rec.updatedAt = Date.now(); vjApply(); save(); toast(t(auto ? 'vk_bg_q' : 'vk_bg_toast'));
+        rec.vkJob = { job: jb.id, at: jb.at, status: jb.status, nextAt: jb.nextAt || null, auto: !!jb.auto }; rec.updatedAt = Date.now(); vjApply(); save(); if (!quiet) toast(t(auto ? 'vk_bg_q' : 'vk_bg_toast'));
         cardJob('vk', jb, { k: 'water', t: t('bc_water'), w: t('bc_vk'), v: items.map(function (x) { return camNum(x.value); }).join(' · ') + ' м³' });
       } else VJ.err = { error: j.error, human: j.human || t('vkc_fail') };
-      render(true);
-    }, function () { VJ.busy = ''; VJ.err = { error: 'net', human: t('vkc_fail') }; render(true); });
+      if (cb) cb(j._status === 200 && !!j.job); else render(true);
+    }, function () { VJ.busy = ''; VJ.err = { error: 'net', human: t('vkc_fail') }; if (cb) cb(false); else render(true); });
   }
   function vjCall(path, body, ok) {
     VJ.busy = 'c'; VJ.err = null; VJ.errFor = null; safeRender();
@@ -2314,7 +2421,7 @@
   function cbProvHot(p) {
     var o = (p.prov && p.prov.hot) || {}, my = myProv('hot', p);
     if (my) return { id: 'own:' + String(my.name || '').trim().toLowerCase(), ch: 'own', org: String(my.name || '').trim() || t('my_own'), o: my };
-    if (hotIsHtm(p)) return { id: 'self:hot:htm', ch: 'self', org: t('wd_htm_org'), kh: 'hotw' };
+    if (hotIsHtm(p)) return { id: 'htm', ch: 'htm', org: t('wd_htm_org') };   // 178-а: кабінет ХТМ приймає й гарячу — та сама група, що й тепло (у фоні)
     var org = hotOrgName(p), d = null;
     if (o.sel && o.sel.o) {
       var sl = prvSel(p, 'hot'), js = sl ? prvLoad({ address: sl.n, settle: { a: sl.n, n: sl.n, h: sl.h } }) : null;
@@ -2358,7 +2465,7 @@
         var x = cbProv(p, k); if (x.ch === 'wait') { wait = true; return; }
         var g = by[x.id]; if (!g) { g = by[x.id] = Object.assign({ ks: [], rows: [] }, x); out.push(g); }
         if (g.ks.indexOf(k) < 0) g.ks.push(k);
-        if (x.ch === 'lb' && g.rows.some(function (r) { return r.p === p; })) return;   // 177-а: гаряча в того ж КП з роботом — та сама квартира, одна форма
+        if ((x.ch === 'lb' || x.ch === 'htm') && g.rows.some(function (r) { return r.p === p; })) return;   // 177-а: гаряча в того ж КП з роботом — та сама квартира, одна форма; 178-а: так само в кабінеті ХТМ
         g.rows.push({ p: p, k: k, d: x.d || null, o: x.o || null });
       });
     });
@@ -2370,6 +2477,8 @@
     return { list: out, wait: wait };
   }
   function cbWhenIso(iso) { var ms = Date.parse(String(iso || '')); return ms ? lbWhen(Math.round(ms / 1000)) : ''; }
+  /** Значок постачальника: перший вид; кабінет ХТМ із теплом — термометр (178-а: гаряча стала в його групі й ішла б першою). */
+  function cbK0(g) { return g.ch === 'htm' && g.ks.indexOf('heat') >= 0 ? 'heat' : g.ks[0] || 'elec'; }
   function cbKw(k) { return k === 'water' ? t('cb_k_water') : k === 'waste' ? t('kd_waste') : k === 'hot' ? t('kd_hot') : t('kv_' + k); }
   /** Шапка блоку: значок виду, назва, види й квартири, стан словами. */
   function cbHead(g, tone, st) {
@@ -2377,7 +2486,7 @@
     // 176-а: екран постачальника — назва вже в заголовку екрана (h1), тут лише стан і види/квартири
     if (CB.one) { var kw1 = g.ks.map(cbKw).filter(function (x) { return x !== g.org; }).join(', '), m1 = [kw1, places().length > 1 ? pls.join(', ') : ''].filter(Boolean).join(' · ');
       return st || m1 ? '<p class="cb-meta cb-meta1">' + (st ? '<span class="pill ' + (tone || 'neutral') + '" data-key="cb-st">' + esc(st) + '</span>' : '') + (m1 ? '<span class="small muted">' + esc(m1) + '</span>' : '') + '</p>' : ''; }
-    var k0 = g.ks[0] || 'elec', kk = KINDS[k0 === 'water' ? 'cold' : k0] || KINDS.elec;
+    var k0 = cbK0(g), kk = KINDS[k0 === 'water' ? 'cold' : k0] || KINDS.elec;
     var kw = g.ks.map(cbKw).filter(function (x) { return x !== g.org; }).join(', '), meta = [kw, places().length > 1 ? pls.join(', ') : ''].filter(Boolean).join(' · ');
     return '<div class="cb-h">' + ico(kk.icon, 20, kk.cls) + '<div class="cb-ht"><h2>' + esc(g.org) + '</h2><p class="cb-meta">' +
       (st ? '<span class="pill ' + (tone || 'neutral') + '" data-key="cb-st">' + esc(st) + '</span>' : '') + (meta ? '<span class="small muted">' + esc(meta) + '</span>' : '') + '</p></div></div>';
@@ -2396,7 +2505,8 @@
     if (!st) return sec('', '', cbLine('muted', '', t('hc_loading')));
     var conn = hcConn(), relog = !!st.connected && st.state === 'bad_login', c = S.contacts || {}, h = '';
     var tone = conn ? (st.state === 'captcha' ? 'warn' : 'ok') : relog ? 'bad' : 'neutral', stx = t(conn ? (st.state === 'captcha' ? 'cb_st_cap' : 'cb_st_on') : relog ? 'cb_st_relog' : 'cb_st_off');
-    h += cbLine('muted', '', t('cb_htm_what'));
+    var gH = g.ks.indexOf('hot') >= 0;
+    h += cbLine('muted', '', t(gH ? (g.ks.indexOf('heat') >= 0 ? 'cb_htm_what_h' : 'cb_htm_what_o') : 'cb_htm_what'));
     if (conn && !CB.hcEdit) {
       h += cpList([cpRow(t('cb_login_l'), st.login, '', '', 'cb-htm-login'), cpRow(t('cb_pw'), t('cb_pw_saved'), '', '', 'cb-htm-pw'),
         cpRow(t('cb_phone'), c.phone || st.phone || t('cb_phone0'), '', '', 'cb-htm-phone')], 'cb-htm-data') +
@@ -2415,7 +2525,7 @@
     // рахунок ХТМ кожної квартири: у кабінеті кілька — вибір (пишемо в налаштування теплолічильника цієї квартири)
     var accs = st.accounts || [];
     g.rows.forEach(function (r) {
-      var m = cbHeatM(r.p) || {}, my = dgt(m.account), hit = accs.filter(function (a) { return a.acc === my; })[0] || (accs.length === 1 ? accs[0] : null), row;
+      var m = cbHeatM(r.p) || {}, my = dgt(m.account) || (cbLive(cbHeatM(r.p)) ? '' : dgt(waccOf(r.p, 'hot'))), hit = accs.filter(function (a) { return a.acc === my; })[0] || (accs.length === 1 ? accs[0] : null), row;
       if (conn && accs.length > 1) row = '<div class="field cb-sel"><label for="cb-hacc-' + esc(r.p.id) + '">' + esc(t('cb_hacc')) + '</label><div class="ctl"><select id="cb-hacc-' + esc(r.p.id) + '" data-act="cb-hacc" data-pid="' + esc(r.p.id) + '" data-key="cb-hacc-' + esc(r.p.id) + '">' +
         (hit ? '' : '<option value="">' + esc(t('cb_hacc0')) + '</option>') + accs.map(function (a) { return '<option value="' + esc(a.acc) + '"' + (hit && hit.acc === a.acc ? ' selected' : '') + '>' + esc(a.acc + ' · ' + a.sur) + '</option>'; }).join('') + '</select></div></div>';
       else if (!conn && !my) return;   // не підключено й рахунку не вписували — нічого показувати
@@ -2426,7 +2536,11 @@
     if (conn) {
       var ck = HC.check, ckl = '';
       if (ck) ckl = t('cb_htm_ok', { m: ck.meter ? ' — ' + ck.meter.model + ' № ' + ck.meter.serial : '', o: ck.open ? t('hc_open_yes', { a: ck.min || '', b: ck.max || '' }) : (ck.closed || t('hc_open_no')) }) + (ck.form && ck.form.open && !ck.form.match ? ' ' + t('hc_form_bad') : '');
+      // 178-а: гаряча — чи є її розділ у кабінеті (з «Перевірити» чи підключення)
+      var hk = '';
+      if (gH) { var hi = (ck && ck.hot) || g.rows.map(function (r) { return hwInfo(r.p); }).filter(Boolean)[0] || null; hk = !hi ? 'cb_hot_unk' : hi.found === false ? 'cb_hot_none' : hi.open || hi.n ? 'cb_hot_ok' : 'cb_hot_closed'; }
       h += '<div class="cb-chk">' + cbLine('muted', '', st.checkedAt ? t('cb_checked', { d: cbWhenIso(st.checkedAt) }) : t('cb_checked0'), 'cb-htm-checked') + (ckl ? cbLine('cb-ok', 'check', ckl, 'cb-htm-chk') : '') +
+        (hk ? cbLine(hk === 'cb_hot_none' ? 'cb-warn' : hk === 'cb_hot_ok' ? 'cb-ok' : 'muted', hk === 'cb_hot_ok' ? 'check' : '', t(hk), 'cb-htm-hot') : '') +
         (st.state === 'captcha' ? cbLine('cb-warn', 'alert', t('cb_htm_cap')) : '') + (!CB.hcEdit ? hcErrBox(HC.errFor ? null : HC.err) : '') + cbJob((st.jobs || [])[0], 'cb-htm-last') +
         '<p class="cb-acts"><button class="btn sec" data-act="hc-check" data-key="cb-htm-check"' + (HC.busy ? ' disabled' : '') + '>' + (HC.busy === 'check' ? SPIN + '<span>' + esc(t('hc_checking')) + '</span>' : ico('check', 18) + '<span>' + esc(t('cb_check')) + '</span>') + '</button></p>' +
         cbLine('muted', '', t('cb_check_h')) + '</div>' +
@@ -2617,7 +2731,7 @@
     if (!r.list.length) return h + (r.wait ? '' : '<div class="panel" data-key="cb-none"><p class="small">' + esc(t('cb_none')) + '</p></div>');
     var bg = [], self = [];
     r.list.forEach(function (g) {
-      var k0 = g.ks[0] || 'elec', kk = KINDS[k0 === 'water' ? 'cold' : k0] || KINDS.elec, b = cbBg(g), sl = cbSlug(g), pls = [];
+      var k0 = cbK0(g), kk = KINDS[k0 === 'water' ? 'cold' : k0] || KINDS.elec, b = cbBg(g), sl = cbSlug(g), pls = [];
       g.rows.forEach(function (x) { var l = placeLabel(x.p); if (pls.indexOf(l) < 0) pls.push(l); });
       var sub = [g.ks.map(cbKw).filter(function (x) { return x !== g.org; }).join(', '), places().length > 1 ? pls.join(', ') : ''].filter(Boolean).join(' · ');
       (b.can ? bg : self).push('<li><a class="ios-row cb-row" href="#prefs-cabs-' + sl + '" data-act="cb-go" data-key="cb-row-' + sl + '">' + ico(kk.icon, 22, 'ios-ico') + cbTxt(g.org, sub, cbBadge(b, 'cb-bdg-' + sl)) +
@@ -2672,7 +2786,8 @@
     var a = el.getAttribute('data-act');
     if (el.hasAttribute('data-cbw')) { if (cbVkSet(el.getAttribute('data-pid'), el.getAttribute('data-cbw'), el.value)) toast(t('cb_saved')); return; }
     if (a === 'cb-hacc') {
-      var p = place(el.getAttribute('data-pid')), m = p && cbHeatM(p); if (!m || !el.value) return;
+      var p = place(el.getAttribute('data-pid')), m = p && cbHeatM(p); if (!p || !el.value) return;
+      if (!m) { p.water = JSON.parse(JSON.stringify(p.water || { meters: [] })); waccPut(p.water, 'hot', el.value); p.updatedAt = Date.now(); HC.err = null; save(); toast(t('cb_saved')); render(true); return; }   // 178-а: лише гаряча — рахунок за гарячу
       m.account = el.value; if (p.id !== S.placeId) p.updatedAt = Date.now(); HC.err = null; save(); toast(t('cb_saved')); render(true); return;
     }
     if (a === 'cb-lbbg') {
@@ -5346,6 +5461,7 @@
   function hcApply() {
     var ch = hcForms();
     ((HC.st && HC.st.jobs) || []).forEach(function (j) {
+      if (j.svc === 'hot') { if (j.rid && hwApply(j)) ch = true; return; }   // 178-а: гаряча вода — у записі води
       var r = j.rid && hcRec(j.rid); if (!r) return;
       if (!r.cab && j.card && r.card === j.card && r.status === 'checked') { r.cab = { job: j.id }; r.status = 'handed'; r.handedAt = new Date((j.at || Date.now() / 1000) * 1000).toISOString(); ch = true; }   // «Відправити» в картці чату (121-а)
       if (!r.cab || r.cab.job !== j.id) return;

@@ -32,6 +32,7 @@
 //  GET  /api/cab/htm · POST /api/cab/htm/connect {email, password, phone?, consent} · POST /api/cab/forget {prov}
 //  POST /api/cab/htm/check {acc?} · POST /api/cab/htm/send {acc?, rid, place, vals, delay?}   кабинет ХТМ по паролю человека (HtmSvc, app/htmsvc.php)
 //  POST /api/cab/htm/auto {on} · POST /api/cab/htm/cancel {job} · POST /api/cab/htm/now {job}   автоподача: очередь внесений после фото в бот
+//  POST /api/cab/htm/hot {acc?, rid, place, date, items: [{sn, value, name}]}   178-а: гаряча вода в кабінет ХТМ у фоні (черга, cron)
 //  POST /api/bot/card {card, items, fix?} — фото з чату розпізнано в застосунку → картка в чаті: цифри, куди, план відправки (BotCard, app/widget.php)
 //  GET /api/lb?bot=&place= · POST /api/lb/connect|forget|bg|queue|cancel|now — автоподача місцевим КП (LocalBot, app/localbot.php)
 //  GET /api/vk/jobs · POST /api/vk/queue {acc, fam, rid, place, items, auto?} · POST /api/vk/auto {on, consent} · POST /api/vk/job/cancel|now {job}
@@ -446,6 +447,7 @@ final class Api {
       case 'POST /api/cab/htm/auto': if (!$user) throw new HttpError(401, 'unauthorized'); return HtmSvc::auto((int)$user['id'], $in);
       case 'POST /api/cab/htm/cancel': if (!$user) throw new HttpError(401, 'unauthorized'); return HtmSvc::cancel((int)$user['id'], $in);
       case 'POST /api/cab/htm/now': if (!$user) throw new HttpError(401, 'unauthorized'); return HtmSvc::now((int)$user['id'], $in);
+      case 'POST /api/cab/htm/hot': if (!$user) throw new HttpError(401, 'unauthorized'); return HtmSvc::hotQueue((int)$user['id'], $in);
       case 'POST /api/cab/forget': if (!$user) throw new HttpError(401, 'unauthorized'); return ($in['prov'] ?? '') === 'vk' ? VkSvc::forget((int)$user['id']) : HtmSvc::forget((int)$user['id'], $in);
       case 'POST /api/bot/card': if (!$user) throw new HttpError(401, 'unauthorized'); return BotCard::result((int)$user['id'], $in);
       case 'GET /api/lb': if (!$user) throw new HttpError(401, 'unauthorized'); return LocalBot::status((int)$user['id'], $r->query());

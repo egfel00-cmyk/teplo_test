@@ -44,6 +44,8 @@ function robot_tick(bool $force = false): int {
     log_req('robot', ['date' => $rec['date'], 'status' => $rec['status']]);
   }
   unset($rec);
+  // 178-а: гаряча вода — «очікують перевірки» (opt hot=pending) приймаємо лише вручну, кнопкою «робот» (act=robot)
+  if ($force) foreach ($s['hot_journal'] ?? [] as $i => $r) if ($r['status'] === 'pending') { $s['hot_journal'][$i]['status'] = 'ok'; $s['hot_journal'][$i]['text'] = 'Статус: Показання успішно додані в базу даних.'; $n++; }
   if ($n) st_save($s);
   return $n;
 }

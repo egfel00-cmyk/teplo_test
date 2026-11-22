@@ -29,6 +29,8 @@ if (str_starts_with($path, '/cabinet')) {
   if ($path === "/cabinet/$ACC/$SUR") { page_card(); return; }
   if ($path === "/cabinet/heat/$ACC/$SUR") { $method === 'POST' ? do_save() : page_heat(); return; }
   if ($path === "/cabinet/heat/viewall/$ACC/$SUR/$SN") { page_viewall(); return; }
+  // 178-а: гаряча вода — синтетика стенда: на живому кабінеті розділ є («можете залишити показання гарячої води та тепла»), але сторінку не бачили (у власника гарячої немає)
+  if ($path === "/cabinet/hw/$ACC/$SUR" && opt('hot') !== 'off') { $method === 'POST' ? do_save_hot() : page_hot(); return; }
   // платежі і квитанція — синтетика стенда (07.11.2026): на живом кабинете раздел /cabinet/payments/… есть, его вид не снят — осмотр робота (HtmCab::explore) покажет
   if ($path === "/cabinet/payments/$ACC/$SUR") { page_payments(); return; }
   // «Довідка по теплу (нова)» — заголовки как на живом (осмотр 07.11.2026, htmcab.explore th); значения — синтетика
@@ -76,7 +78,7 @@ function do_login(): void {
 function page_account(): void {
   $c = st()['credentials'];
   page('Кабінет | Стан особового рахунку', '<h1>Стан особового рахунку № ' . h($c['account']) . ' — розрахунковий місяць ' . h(month_ua(today(), false)) . ' ' . substr(today(), 0, 4) . '</h1>'
-    . '<p><a href="' . h(acc_url('/cabinet/heat')) . '">Залишити показання по теплу</a></p>'
+    . '<p><a href="' . h(acc_url('/cabinet/heat')) . '">Залишити показання по теплу</a></p>' . hot_link()
     . '<p><a href="' . h(acc_url('/cabinet/bill/print')) . '">Сформувати рахунок</a> · <a href="' . h(acc_url('/cabinet/bill/print')) . '?hint=pdf">Зберегти рахунок в PDF</a> · <a href="' . h(acc_url('/cabinet/payments')) . '">Переглянути архів платежів</a></p>'
     . '<p class="stand-note">Таблиця нарахувань на стенді не імітується.</p>', 200, true);
 }
@@ -85,7 +87,7 @@ function page_list(): void {
   page('Кабінет | Список квартир (особових рахунків)', '<h1>Список квартир</h1><table class="stand-tbl"><tr><th>№</th><th>Особовий рахунок</th><th>Прізвище</th><th>Адреса</th><th>Дії</th></tr>'
     . '<tr><td>1</td><td><a href="' . h(acc_url()) . '">' . h($c['account']) . '</a></td><td>' . h(mb_strtoupper($c['surname'])) . '</td><td>{{ADDRESS}}</td><td>—</td></tr></table>', 200, true);
 }
-function page_card(): void { page('Кабінет | Особовий рахунок', '<h1>Особовий рахунок ' . h(st()['credentials']['account']) . '</h1><p><a href="' . h(acc_url('/cabinet/heat')) . '">Залишити показання по теплу</a></p><p><a href="' . h(acc_url('/cabinet/payments')) . '">Платежі та нарахування</a></p>', 200, true); }
+function page_card(): void { page('Кабінет | Особовий рахунок', '<h1>Особовий рахунок ' . h(st()['credentials']['account']) . '</h1><p><a href="' . h(acc_url('/cabinet/heat')) . '">Залишити показання по теплу</a></p>' . hot_link() . '<p><a href="' . h(acc_url('/cabinet/payments')) . '">Платежі та нарахування</a></p>', 200, true); }
 /** opt spr=house — довідка як на живому кабінеті 08.11: показання й різниця — БУДИНКОВОГО лічильника (10–99 Гкал), витрата по квартирі = свій лічильник
  *  (журнал «Всі записи», house_own()) + теплові втрати × S_кв / S_буд (стенд обирає таку формулу, щоб робот її знайшов). */
 function house_own(): array { return [['2025-09-26', 8.9], ['2025-10-28', 9.05], ['2025-11-27', 9.7], ['2025-12-29', 10.55], ['2026-01-28', 11.45], ['2026-02-26', 12.15], ['2026-03-27', 12.6]]; }
@@ -272,9 +274,51 @@ function do_admin(): void {
   $a = $_POST['act'] ?? '';
   if ($a === 'set') { opt_set('scenario', in_array($_POST['scenario'] ?? '', SCENARIOS, true) && $_POST['scenario'] !== 'ok' ? $_POST['scenario'] : ''); opt_set('today', preg_match('/^\d{4}-\d{2}-\d{2}$/', $_POST['today'] ?? '') ? $_POST['today'] : ''); opt_set('robot_delay', ctype_digit($_POST['robot_delay'] ?? '') ? $_POST['robot_delay'] : '');
     if (isset($_POST['spr'])) opt_set('spr', $_POST['spr'] === 'house' ? 'house' : '');
+    if (isset($_POST['hot'])) opt_set('hot', in_array($_POST['hot'], ['off', 'two', 'reject', 'pending', 'nosn', 'card'], true) ? $_POST['hot'] : '');
     if (isset($_POST['bill_ym'])) opt_set('bill_ym', preg_match('/^(20\d\d-\d\d|none)$/', $_POST['bill_ym']) ? $_POST['bill_ym'] : ''); if (isset($_POST['bill_pay'])) opt_set('bill_pay', preg_match('/^-?\d+\.\d\d$/', $_POST['bill_pay']) ? $_POST['bill_pay'] : ''); }
   if ($a === 'robot') robot_tick(true);
   if ($a === 'reset') st_reset();
   if ($a === 'clear') @unlink(ROOT . '/storage/journal.jsonl');
   header('Location: /stand/admin');
+}
+
+
+// ---------------- 178-а: гаряча вода (синтетика) ----------------
+// opt hot: '' — один водомір 20123456; two — два (20123456, 20123457); off — розділу немає; reject — менше за попередні → «не прийнято»;
+// pending — статус «очікують перевірки» до act=robot; nosn — у рядку немає №; card — посилання лише на картці рахунку (не на головній)
+function hot_meters(): array { $o = opt('hot'); return $o === 'two' ? [['sn' => '20123456', 'prev' => 175], ['sn' => '20123457', 'prev' => 90]] : [['sn' => '20123456', 'prev' => 175]]; }
+function hot_link(): string {
+  if (opt('hot') === 'off' || (opt('hot') === 'card' && ($_SERVER['REQUEST_URI'] ?? '') !== acc_url())) return '';
+  return '<p><a href="' . h(acc_url('/cabinet/hw')) . '">Залишити показання по гарячій воді</a></p>';
+}
+function page_hot(string $flash = '', string $cls = ''): void {
+  $s = st(); $j = $s['hot_journal'] ?? []; $t = today();
+  $body = '<h3 class="panel-title">ПОКАЗАННЯ КВАРТИРНИХ ПРИЛАДІВ ОБЛІКУ ГАРЯЧОЇ ВОДИ НА ' . ua_date($t) . '</h3>' . ($flash ? '<div class="alert ' . $cls . ' flash">' . $flash . '</div>' : '');
+  if (!window_open()) $body .= '<p class="stand-closed">Прийом показань квартирних приладів обліку гарячої води тимчасово зупинений для проведення нарахувань за ' . h(month_ua($t)) . '. Прийом показань буде доступний після 5-го числа.</p>';
+  else {
+    $body .= '<form method="post" action="' . h(acc_url('/cabinet/hw')) . '"><p><label for="DtPokGv">Дата зняття показань</label> <input type="text" id="DtPokGv" name="DtPokGv" class="datepicker" value=""></p>'
+      . '<table class="stand-tbl"><tr><th>Прилад обліку</th><th>Останні прийняті</th><th>Поточні показання, м3</th></tr>';
+    foreach (hot_meters() as $i => $m) $body .= '<tr><td>' . (opt('hot') === 'nosn' ? 'Водомір гарячої води' : 'Водомір №' . h($m['sn'])) . '</td><td>' . $m['prev'] . '</td><td><input type="text" name="PokGv' . ($i + 1) . '" value=""></td></tr>';
+    $body .= '</table><input type="hidden" name="vid" value="gv"><input type="submit" name="send-gv" value="Зберегти"></form>';
+  }
+  $body .= '<h4>Журнал показань гарячої води</h4><table class="stand-tbl stand-journal">';
+  foreach (array_reverse($j) as $r) {
+    $c = $r['status'] === 'ok' ? 'bg-success' : ($r['status'] === 'rejected' ? 'bg-danger' : '');
+    $body .= '<tr><td class="' . $c . '">' . ua_date($r['date']) . '</td>' . implode('', array_map(fn($v) => '<td>' . h((string)$v) . '</td>', $r['vals'])) . '</tr><tr><td colspan="3">' . h($r['text']) . '</td></tr>';
+  }
+  page('Кабінет | Показання гарячої води', $body . '</table>', 200, true);
+}
+function do_save_hot(): void {
+  if (!window_open()) { page_hot(); return; }
+  $date = trim((string)post('DtPokGv')); $ymd = ymd_from_ua($date); $ms = hot_meters(); $vals = []; $bad = '';
+  log_req('save_hot', ['fields' => array_keys($_POST)]);
+  if (!$ymd || substr($ymd, 0, 7) !== substr(today(), 0, 7) || $ymd > today()) $bad = 'Можна передавати показання тільки поточного місяця і не пізніше сьогодні.';
+  foreach ($ms as $i => $m) { $v = trim((string)post('PokGv' . ($i + 1))); if ($v === '') continue; if (!preg_match('/^\d+(\.\d+)?$/', $v)) $bad = 'Невірний формат числа.'; $vals[$m['sn']] = $v; }
+  if (!$vals) $bad = 'Заповніть показання.';
+  if ($bad) { page_hot(h($bad), 'alert-danger'); return; }
+  $st = 'ok'; $text = 'Статус: Показання успішно додані в базу даних.';
+  if (opt('hot') === 'pending') { $st = 'pending'; $text = 'Статус: Показання очікують перевірки.'; }
+  if (opt('hot') === 'reject') foreach ($ms as $m) if (isset($vals[$m['sn']]) && (float)$vals[$m['sn']] < $m['prev']) { $st = 'rejected'; $text = 'Статус: Показання не принйяті з причини: Поточні показання менші за попередні.'; }
+  $s = st(); $s['hot_journal'][] = ['date' => $ymd, 'vals' => array_values($vals), 'status' => $st, 'text' => $text]; st_save($s);
+  page_hot('Показання збережено.', 'alert-success');
 }
