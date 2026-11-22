@@ -1755,13 +1755,13 @@ details.tbl-acc[open] > .tbl-wrap { margin-top: 12px; }
 }
 @media (max-width: 860px) and (min-width: 600px) { .lp-steps { grid-template-columns: minmax(0, 1fr); } .lp-step { grid-template-columns: 1fr 1fr; align-items: center; } }
 @media (min-width: 960px) {
-  .lp-hero { margin: 0 24px; padding: 72px 56px 48px; border-radius: 40px; }
-  .lp-in { max-width: 980px; }
-  .lp-stage { height: 620px; margin: 48px auto 0; max-width: 760px; }
+  .lp-hero { margin: 0 24px; padding: 64px 56px 56px; border-radius: 40px; }
+  .lp-in { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 540px); gap: 40px; align-items: center; }   /* власник 22.11 11:02: «десктоп — як було» */
+  .lp-stage { height: 600px; margin: 0; max-width: none; }
   .lp-phone { width: 280px; height: 585px; margin-left: -140px; top: 8px; border-radius: 50px; --k: .6987; }
   .lpp-screen { border-radius: 42px; }
-  .lp-tile { width: 200px; }
-  .t-elec { left: 64px; top: 64px; } .t-hot { right: 60px; top: 170px; } .t-gas { left: 44px; top: 350px; } .t-heat { right: 48px; top: 452px; }
+  .lp-tile { width: 192px; }
+  .t-elec { left: -4%; top: 52px; } .t-hot { right: -5%; top: 156px; } .t-gas { left: -6%; top: 336px; } .t-heat { right: -3%; top: 440px; }
   .lp-bento { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .lp-bento .c-due { grid-column: span 2; }
   .lp-cell { padding: 28px; }
@@ -3387,13 +3387,17 @@ fieldset { min-inline-size: 0; }
 /* 175-я — лендинг на телефоні (власник 22.11, скрини iPhone: «на мобілі виглядає погано»; 18.11: «одна думка, жорстка ієрархія» і «живий телефон»).
    Герой: заголовок → підзаголовок одним реченням → кнопка (телефон — на всю ширину) → рядок-доказ; «Увійти» — тихо в шапці. Телефон — повністю в картці,
    плашки табло — за ним. «Відгук» на лендингу телефона — лише значком (підпис налазив на факти). */
-/* власник 22.11: текст героя — по центру на всіх ширинах (на комп'ютері герой — одна колонка, телефон під текстом); «Увійти» — під кнопкою; області — переліком */
-.lp-copy { text-align: center; }
-.lp-copy .lp-h1, .lp-copy .lp-lead { margin-left: auto; margin-right: auto; }
-.lp-copy .lp-h1 { max-width: 15ch; }
-.lp-copy .lp-ctas { justify-content: center; flex-direction: column; gap: 8px; }
+/* власник 22.11: «Увійти» — під кнопкою, області — переліком; текст героя по центру на телефоні й планшеті (одна колонка),
+   на комп'ютері (≥ 960) — як було: текст ліворуч, телефон праворуч (11:02: «десктоп верни как было, мобилу оставь центр») */
+.lp-copy .lp-ctas { flex-direction: column; align-items: flex-start; gap: 8px; }
 .lp-copy .lp-link { font-size: 15px; }
-.lp-proof { max-width: 40ch; margin: 12px auto 0; font-size: 15px; line-height: 22px; color: var(--lp-fg2); text-wrap: balance; }
+.lp-proof { max-width: 40ch; margin: 12px 0 0; font-size: 15px; line-height: 22px; color: var(--lp-fg2); text-wrap: balance; }
+@media (max-width: 959px) {
+  .lp-copy { text-align: center; }
+  .lp-copy .lp-h1, .lp-copy .lp-lead, .lp-proof { margin-left: auto; margin-right: auto; }
+  .lp-copy .lp-h1 { max-width: 15ch; }
+  .lp-copy .lp-ctas { align-items: center; }
+}
 .lp-proof span + span::before { content: '·'; margin: 0 6px; }
 @media (max-width: 599px) {
   .lp-copy .lp-ctas { display: grid; justify-items: center; }
