@@ -1465,9 +1465,9 @@ details.tbl-acc[open] > .tbl-wrap { margin-top: 12px; }
 .lp-in { position: relative; max-width: 1180px; margin: 0 auto; }
 .lp-copy { position: relative; z-index: 2; }
 .lp-badge { margin: 0 0 12px; font-size: 15px; font-weight: 500; color: var(--lp-fg2); }
-.lp-h1 { font-size: clamp(36px, 10.4vw, 68px); line-height: 1.04; letter-spacing: -0.032em; font-weight: 600; margin: 0 0 16px; max-width: 13ch; text-wrap: balance; color: var(--lp-fg); }
+.lp-h1 { font-size: clamp(34px, 9.4vw, 64px); line-height: 1.06; letter-spacing: -0.032em; font-weight: 600; margin: 0 0 14px; max-width: 13ch; text-wrap: balance; color: var(--lp-fg); }
 .lp-grad { color: inherit; }
-.lp-lead { font-size: clamp(18px, 4.8vw, 21px); line-height: 1.55; color: var(--lp-fg2); max-width: 38ch; margin: 0 0 24px; }
+.lp-lead { font-size: clamp(17px, 4.5vw, 20px); line-height: 1.5; color: var(--lp-fg2); max-width: 36ch; margin: 0 0 24px; text-wrap: balance; }
 .lp-ctas { display: flex; flex-wrap: wrap; align-items: center; gap: 14px 22px; }
 .lp-btn { display: inline-flex; align-items: center; justify-content: center; gap: 12px; min-height: 60px; padding: 0 32px; border-radius: 16px; text-decoration: none;
   font: 600 20px/1 var(--font); color: #0B1210; background: #F3F8F5; position: relative;
@@ -1484,8 +1484,8 @@ details.tbl-acc[open] > .tbl-wrap { margin-top: 12px; }
 .lp-who { margin: 20px 0 0; font-size: 15px; color: var(--lp-fg2); } .lp-who .linkbtn { color: var(--lp-fg); }
 
 /* сцена: телефон + табло на різній глибині */
-.lp-stage { display: block; color: inherit; text-decoration: none; cursor: pointer; -webkit-tap-highlight-color: transparent; position: relative; height: 440px; margin: 30px -6px 0; }
-.lp-phone { position: absolute; left: 50%; top: 18px; width: 206px; height: 440px; margin-left: -103px; border-radius: 42px; background: #040706; padding: 9px; z-index: 1; --k: .5013;
+.lp-stage { display: block; color: inherit; text-decoration: none; cursor: pointer; -webkit-tap-highlight-color: transparent; position: relative; height: 534px; margin: 32px -6px 0; }
+.lp-phone { position: absolute; left: 50%; top: 8px; width: 236px; height: 490px; margin-left: -118px; border-radius: 44px; background: #040706; padding: 9px; z-index: 1; --k: .5813;
   box-shadow: 0 0 0 1.5px rgba(255, 255, 255, .16), 0 0 0 5px rgba(255, 255, 255, .03), 0 40px 70px -12px rgba(0, 0, 0, .7); }
 /* 92-а: справжня головна в мініатюрі — «екран» 375 px, зменшений під макет (--k = ширина екрана / 375); кольори й табло — ті самі, що в застосунку (тема — людини) */
 .lpp-screen { position: relative; height: 100%; border-radius: 34px; overflow: hidden; background: var(--c-housing); }
@@ -1521,8 +1521,8 @@ details.tbl-acc[open] > .tbl-wrap { margin-top: 12px; }
 .lpp-tab .on { color: var(--c-ink); font-weight: 600; }
 .lpp-tab svg { box-sizing: content-box; padding: 4px 14px; border-radius: 14px; } .lpp-tab .on svg { background: var(--c-ink); color: var(--c-on-ink); }   /* як у нижньому меню (131-а) */
 .lpp-hi { position: absolute; left: 50%; bottom: 7px; width: 134px; height: 5px; margin-left: -67px; border-radius: 3px; background: var(--c-ink); }
-.lp-tile { position: absolute; z-index: 2; width: 136px; transform: rotate(var(--rot, 0deg)); }
-.lp-fig { margin: 0; padding: 8px 8px 7px; border-radius: 16px; background: rgba(12, 20, 18, .62); border: 1px solid var(--lp-edge); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px);
+.lp-tile { position: absolute; z-index: 0; width: 136px; transform: rotate(var(--rot, 0deg)); }
+.lp-fig { margin: 0; padding: 8px 8px 7px; border-radius: 16px; background: #1B2622; border: 1px solid var(--lp-edge);
   box-shadow: 0 22px 44px -14px rgba(0, 0, 0, .65); }
 .lp-fig figcaption { color: var(--lp-fg); font-size: 13px; }
 .lp-fig figcaption .ico { color: var(--glowc, currentColor); }
@@ -1537,10 +1537,11 @@ details.tbl-acc[open] > .tbl-wrap { margin-top: 12px; }
 .lp-tile .elcd .el-hd { font-size: 10px; margin-bottom: 2px; } .lp-tile .el-led { width: 7px; height: 7px; } .lp-tile .el-u { font-size: 11px; }
 .lp-tile .wdrum, .lp-tile .gdrum { padding: 6px 7px; gap: 5px; border-width: 3px; }
 .lp-tile .wd-win { gap: 1px; padding: 3px; } .lp-tile .wd-c { font-size: clamp(9px, 6.6cqw, 18px); } .lp-tile .wd-u { font-size: 11px; }
-/* 93-я: на телефоні плашки менші й висять за краями телефона — не закривають його головну (4 картки, власник 92-а: «інтерфейс ближче до справжнього») */
+/* 175-а: плашки — ЗА телефоном (не закривають живий екран), виглядають з-за країв: ліві — підписом ліворуч, праві — праворуч */
+.t-hot .lp-fig figcaption, .t-heat .lp-fig figcaption { justify-content: flex-end; }
 @media (max-width: 599px) {
-  .lp-tile { width: 104px; }
-  .t-elec { left: -7px; top: 40px; } .t-hot { right: -7px; top: 150px; } .t-gas { left: -8px; top: 262px; } .t-heat { right: -7px; top: 352px; }
+  .lp-tile { width: 100px; }
+  .t-elec { left: -4px; top: 46px; --rot: -6deg; } .t-hot { right: -4px; top: 168px; --rot: 6deg; } .t-gas { left: -4px; top: 300px; --rot: 5deg; } .t-heat { right: -4px; top: 404px; --rot: -5deg; }
   .lp-fig { padding: 6px 6px 5px; border-radius: 13px; }
   .lp-fig figcaption { font-size: 12px; }
   .lp-tile .lcd { padding: 5px 7px 4px; border-width: 3px; border-radius: 8px; }
@@ -1706,9 +1707,11 @@ details.tbl-acc[open] > .tbl-wrap { margin-top: 12px; }
 
 @media (min-width: 600px) {
   .lp-hero { margin: 0 16px; padding: 48px 36px 0; border-radius: 34px; }
-  .lp-stage { height: 470px; max-width: 560px; margin: 40px auto 0; }
+  .lp-stage { height: 590px; max-width: 600px; margin: 40px auto 0; }
+  .lp-phone { width: 260px; height: 542px; margin-left: -130px; border-radius: 48px; --k: .6453; }
+  .lpp-screen { border-radius: 40px; }
   .lp-tile { width: 180px; }
-  .t-elec { left: 2%; } .t-hot { right: 2%; } .t-gas { left: 6%; } .t-heat { right: 6%; }
+  .t-elec { left: 4%; top: 56px; } .t-hot { right: 4%; top: 168px; } .t-gas { left: 2%; top: 330px; } .t-heat { right: 2%; top: 430px; }
   .lp-sec { padding: 72px 32px 0; }
   .lp-steps { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .lp-bento { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -1717,13 +1720,13 @@ details.tbl-acc[open] > .tbl-wrap { margin-top: 12px; }
 }
 @media (max-width: 860px) and (min-width: 600px) { .lp-steps { grid-template-columns: minmax(0, 1fr); } .lp-step { grid-template-columns: 1fr 1fr; align-items: center; } }
 @media (min-width: 960px) {
-  .lp-hero { margin: 0 24px; padding: 72px 56px 64px; border-radius: 40px; }
+  .lp-hero { margin: 0 24px; padding: 64px 56px 56px; border-radius: 40px; }
   .lp-in { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 540px); gap: 40px; align-items: center; }
-  .lp-stage { height: 560px; margin: 0; max-width: none; }
-  .lp-phone { width: 260px; height: 540px; margin-left: -130px; top: 10px; border-radius: 48px; --k: .6453; }
-  .lpp-screen { border-radius: 40px; }
-  .lp-tile { width: 196px; }
-  .t-elec { left: -2%; top: 40px; } .t-hot { right: -4%; top: 140px; } .t-gas { left: -6%; top: 318px; } .t-heat { right: -2%; top: 404px; }
+  .lp-stage { height: 600px; margin: 0; max-width: none; }
+  .lp-phone { width: 280px; height: 585px; margin-left: -140px; top: 8px; border-radius: 50px; --k: .6987; }
+  .lpp-screen { border-radius: 42px; }
+  .lp-tile { width: 192px; }
+  .t-elec { left: -4%; top: 52px; } .t-hot { right: -5%; top: 156px; } .t-gas { left: -6%; top: 336px; } .t-heat { right: -3%; top: 440px; }
   .lp-bento { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .lp-bento .c-due { grid-column: span 2; }
   .lp-cell { padding: 28px; }
@@ -3309,7 +3312,7 @@ fieldset { min-inline-size: 0; }
 /* Світла C3: заголовок героя знову великий (правило C3 «h1 32 px» перебивало .lp-h1 — герой виглядав порожнім), панелі героя й фінального заклику —
    теплим графітом у тон «Теплого графіту» (не холодний зелений), гвинти й віконця кроків — теплі нейтралі; картки фактів і питань — як картки застосунку. */
 :root:root[data-lskin="c"][data-lsk="3"]:not([data-theme="dark"]) .lp { --lp-fg: #F7F4EE; --lp-fg2: rgba(247, 244, 238, .80); --lp-edge: rgba(255, 248, 236, .14); }
-:root:root[data-lskin="c"][data-lsk="3"]:not([data-theme="dark"]) .lp-h1 { font-size: clamp(38px, 10.6vw, 72px); line-height: 1.03; letter-spacing: -.035em; font-weight: 600; }
+:root:root[data-lskin="c"][data-lsk="3"]:not([data-theme="dark"]) .lp-h1 { font-size: clamp(34px, 9.4vw, 64px); line-height: 1.06; letter-spacing: -.032em; font-weight: 600; }
 :root:root[data-lskin="c"][data-lsk="3"]:not([data-theme="dark"]) :is(.lp-h2, .lpe-copy h2) { letter-spacing: -.03em; }
 :root:root[data-lskin="c"][data-lsk="3"]:not([data-theme="dark"]) .lp .lp-plate { background-color: #211F1B;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 .05 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"),
@@ -3345,6 +3348,126 @@ fieldset { min-inline-size: 0; }
 @keyframes askIn { from { opacity: 0; } to { opacity: 1; } }
 @keyframes askUp { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
 @media (prefers-reduced-motion: reduce) { .ask-ov, .ask { animation: none; } }
+
+/* 175-я — лендинг на телефоні (власник 22.11, скрини iPhone: «на мобілі виглядає погано»; 18.11: «одна думка, жорстка ієрархія» і «живий телефон»).
+   Герой: заголовок → підзаголовок одним реченням → кнопка (телефон — на всю ширину) → рядок-доказ; «Увійти» — тихо в шапці. Телефон — повністю в картці,
+   плашки табло — за ним. «Відгук» на лендингу телефона — лише значком (підпис налазив на факти). */
+.lp-proof { display: flex; flex-wrap: wrap; align-items: center; margin: 16px 0 0; font-size: 15px; line-height: 20px; color: var(--lp-fg2); }
+.lp-proof span + span::before { content: '·'; margin: 0 8px; }
+.lp-login { display: inline-flex; align-items: center; min-height: 44px; padding: 0 14px; border-radius: 999px; font: 600 15px/1 var(--font); color: var(--c-ink); text-decoration: none; }
+@media (hover: hover) { .lp-login:hover { background: var(--c-ghost-hover); } }
+.lp-login:focus-visible { outline: 3px solid var(--c-focus-ring, #9CC6FF); outline-offset: 2px; }
+@media (max-width: 599px) {
+  .lp-copy .lp-ctas { display: grid; }
+  .lp-copy .lp-btn { width: 100%; min-height: 56px; font-size: 18px; }
+  .fab.fab-bare span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+  .fab.fab-bare { padding: 0; width: 48px; justify-content: center; }
+}
+
+/* Живий телефон (web/src/lpdemo.js): екран 375 px — шари сцен поверх один одного, рухаються лише transform / opacity.
+   Без руху (слабкий телефон, «Зменшити рух», автотести, немає Web Animations) — нерухома головна: квартира розгорнута, 4 картки, вода «Передано». */
+.lpp-vp.lpd { display: block; --sb: 48px; --tabh: 76px; }
+.lpd .lpp-sb { position: absolute; left: 0; right: 0; top: 0; z-index: 5; background: var(--c-housing); }
+.lpd-s { position: absolute; left: 0; right: 0; top: var(--sb); bottom: var(--tabh); overflow: hidden; background: var(--c-housing); }
+.lpd .lpp-tab { position: absolute; left: 0; right: 0; bottom: 0; height: var(--tabh); z-index: 3; }
+.s-home { z-index: 1; padding: 0 12px; }
+.s-meter { z-index: 2; padding: 0 16px; box-shadow: -16px 0 32px -16px rgba(0, 0, 0, .35); }
+.s-cam { z-index: 4; bottom: 0; background: #050807; color: #F3F8F5; }
+.lpd-dim { position: absolute; left: 0; right: 0; top: var(--sb); bottom: 0; z-index: 4; background: #000; opacity: 0; }
+.s-sheet { z-index: 4; top: auto; bottom: 0; padding: 10px 20px 30px; border-radius: 28px 28px 0 0; background: var(--c-surface); box-shadow: 0 -12px 32px -8px rgba(0, 0, 0, .35); }
+.lpd:not(.run) :is(.s-meter, .s-cam, .s-sheet, .lpd-dim, .lpd-tg, .lpd-tap) { visibility: hidden; }
+.lpd.warm :is(.s-meter, .s-cam, .s-sheet, .lpd-tg) { z-index: 0; }   /* прогрів (lpdemo.js): сцени під головною на своїх місцях — один раз намалювати */
+.lpd.warm .s-home { z-index: 1; } .lpd.warm .lpd-res { opacity: .01; }
+/* поза кадром — нескінченний рух лендинга на паузі (lpdemo.js → idle) */
+.lp-idle, .lp-idle * { animation-play-state: paused !important; }
+.lpd-stk { display: grid; } .lpd-stk > * { grid-area: 1 / 1; }
+.lpd:not(.run) :is(.lpd-w0, .m0, .m1, .lpd-ok) { opacity: 0; }
+.lpd-rc { position: relative; overflow: hidden; }
+.lpd-r { position: absolute; left: 0; right: 0; top: 0; height: 200%; display: grid; grid-template-rows: 1fr 1fr; transform: translateY(-50%); }
+.lpd-r i { display: grid; place-items: center; font-style: normal; }
+/* головна: квартира з лічильниками й друга — згорнута */
+.lpd-apt { display: flex; align-items: center; gap: 12px; min-height: 60px; padding: 8px 12px 8px 16px; border-radius: 16px; background: var(--c-surface); border: 1px solid var(--c-line); position: relative; }
+.lpd-apt .pdot { width: 12px; height: 12px; margin: 0; }
+.lpd-apt-t { flex: 1; min-width: 0; display: grid; }
+.lpd-apt-t b { font-size: 17px; line-height: 22px; font-weight: 600; } .lpd-apt-t i { font-style: normal; font-size: 13px; line-height: 18px; color: var(--c-ink-2); }
+.lpd-chev { display: grid; color: var(--c-ink-2); flex: none; transform: rotate(-90deg); }
+.a2 .lpd-chev { transform: rotate(90deg); }
+.lpd-cards { margin: 8px 0; }
+.lpd .ucard-cold .ucard-disp { position: relative; }
+/* сторінка лічильника */
+.lpd-nav { display: flex; align-items: center; gap: 4px; height: 44px; margin-left: -6px; font-size: 17px; color: var(--tint, var(--c-ink-2)); }
+.lpd-place { display: flex; align-items: center; gap: 8px; margin: 2px 0 4px; font-size: 15px; color: var(--c-ink-2); } .lpd-place .pdot { width: 10px; height: 10px; margin: 0; }
+.lpd-h { display: flex; align-items: center; gap: 10px; margin: 0 0 16px; font-size: 28px; line-height: 34px; font-weight: 600; letter-spacing: -.02em; }
+.lpd-drum .wdrum { padding: 12px 14px; border-width: 4px; }
+.lpd-st { margin: 12px 0 18px; font-size: 15px; line-height: 20px; }
+.lpd-st > span { display: flex; align-items: center; gap: 6px; } .lpd-st .ok { color: var(--c-ok); } .lpd-st .due { color: var(--c-ink-2); }
+.lpd-btn { display: flex; align-items: center; justify-content: center; gap: 10px; min-height: 54px; padding: 0 16px; border-radius: 16px; font-size: 17px; font-weight: 600; }
+.lpd-btn.pri { background: var(--acc-fill, var(--c-ink)); color: var(--acc-on, var(--c-on-ink)); }
+.lpd-btn.sm { min-height: 44px; padding: 0 18px; font-size: 16px; border-radius: 12px; }
+.lpd-where { margin-top: 16px; padding: 14px; border-radius: 16px; background: var(--c-surface); border: 1px solid var(--c-line); display: grid; gap: 12px; }
+.lpd-wh { display: flex; align-items: center; gap: 8px; margin: 0; font-size: 17px; font-weight: 600; } .lpd-wh .ico { color: var(--c-ink-2); }
+.lpd-org { display: grid; margin: 0; } .lpd-org b { font-size: 16px; font-weight: 600; } .lpd-org i { font-style: normal; font-size: 14px; color: var(--c-ink-2); }
+.lpd-btn.send { min-height: 48px; background: var(--c-ink); color: var(--c-on-ink); font-size: 16px; }
+.lpd-ok { display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 48px; border-radius: 14px; background: var(--c-ok-soft); color: var(--c-ok-ink, var(--c-ok)); font-size: 16px; font-weight: 600; }
+/* камера: фото водоміра, рамка, лінія сканування, знайдене вікно роликів */
+.lpd-hint { margin: 0; padding: 18px 20px 0; text-align: center; font-size: 16px; color: rgba(243, 248, 245, .78); }
+.lpd-shot { position: relative; margin: 18px 20px 0; height: 392px; border-radius: 22px; overflow: hidden; display: grid; place-items: center;
+  background: radial-gradient(120% 90% at 40% 30%, #3A4743 0%, #1C2421 60%, #101614 100%); }
+.lpd-face { position: relative; width: 284px; height: 284px; border-radius: 50%; display: grid; place-items: center; align-content: center; gap: 10px; transform: rotate(-4deg);
+  background: radial-gradient(circle at 42% 32%, #FFFFFF 0%, #EEF1EE 58%, #D2D8D3 100%); box-shadow: 0 0 0 12px #2F68B0, 0 0 0 15px #1F4A80, 0 18px 40px rgba(0, 0, 0, .6); }
+.lpd-q { font-size: 12px; color: #5F6A65; }
+.lpd-fwin { display: flex; align-items: center; gap: 8px; width: 214px; container-type: inline-size; }
+.lpd-fwin .wd-u { font: 600 14px/1 var(--font); color: #3B4642; }
+.lpd-dials { display: flex; gap: 12px; }
+.lpd-dials i { position: relative; width: 26px; height: 26px; border-radius: 50%; background: #F7F8F6; box-shadow: inset 0 0 0 1.5px #BFC6C0; }
+.lpd-dials i::after { content: ''; position: absolute; left: 50%; top: 4px; width: 3px; height: 10px; margin-left: -1.5px; border-radius: 2px; background: #C21F26; transform-origin: 50% 9px; transform: rotate(var(--a)); }
+.lpd-cn { position: absolute; width: 34px; height: 34px; border: 3px solid rgba(255, 255, 255, .92); }
+.lpd-cn.c1 { left: 16px; top: 16px; border-right: 0; border-bottom: 0; border-radius: 10px 0 0 0; } .lpd-cn.c2 { right: 16px; top: 16px; border-left: 0; border-bottom: 0; border-radius: 0 10px 0 0; }
+.lpd-cn.c3 { left: 16px; bottom: 16px; border-right: 0; border-top: 0; border-radius: 0 0 0 10px; } .lpd-cn.c4 { right: 16px; bottom: 16px; border-left: 0; border-top: 0; border-radius: 0 0 10px 0; }
+.lpd-scanw { position: absolute; left: 24px; right: 24px; top: 24px; bottom: 24px; pointer-events: none; }
+.lpd-scan { position: absolute; left: 0; right: 0; top: 0; height: 3px; border-radius: 2px; background: #7FE0A8; opacity: 0; }
+.lpd-box { position: absolute; left: 50%; top: 50%; width: 232px; height: 54px; margin: -35px 0 0 -116px; border-radius: 10px; border: 3px solid #7FE0A8; opacity: 0; transform: rotate(-4deg); }
+.lpd-res { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 16px 20px 0; padding: 12px 12px 12px 16px; border-radius: 18px; background: #F3F8F5; color: #0B1210; opacity: 0; }
+.lpd-res-t { display: flex; align-items: center; gap: 10px; } .lpd-res-t > .ico { color: #18693F; flex: none; }
+.lpd-res-t > span { display: grid; } .lpd-res-t b { font-size: 20px; line-height: 24px; font-weight: 600; font-variant-numeric: tabular-nums; } .lpd-res-t i { font-style: normal; font-size: 13px; line-height: 18px; color: #4D5466; }
+.lpd-res .lpd-btn.pri { background: #0B1210; color: #F3F8F5; }
+/* аркуш «Зберегти» */
+.lpd-grab { display: block; width: 40px; height: 5px; margin: 0 auto 14px; border-radius: 3px; background: var(--c-line); }
+.lpd-sh-t { display: flex; align-items: baseline; justify-content: space-between; margin: 0 0 14px; } .lpd-sh-t b { font-size: 22px; font-weight: 600; } .lpd-sh-t i { font-style: normal; font-size: 15px; color: var(--c-ink-2); }
+.lpd-field { display: flex; align-items: baseline; gap: 8px; min-height: 64px; padding: 10px 16px; border-radius: 14px; border: 2px solid var(--acc-fill, var(--c-ink)); background: var(--c-surface); }
+.lpd-fv { font: 600 34px/44px var(--font); font-variant-numeric: tabular-nums; letter-spacing: -.01em; } .lpd-fu { font-size: 18px; color: var(--c-ink-2); }
+.lpd-src { display: flex; align-items: center; gap: 6px; margin: 10px 0 0; font-size: 14px; color: var(--c-ok); }
+.lpd-used { margin: 12px 0 18px; font-size: 16px; color: var(--c-ink-2); } .lpd-used b { color: var(--c-ink); font-weight: 600; }
+/* нагадування в Telegram — банер угорі, як на iPhone */
+.lpd-tg { position: absolute; left: 10px; right: 10px; top: 54px; z-index: 6; display: flex; gap: 12px; padding: 12px 14px; border-radius: 22px; background: var(--c-surface); color: var(--c-ink);
+  box-shadow: 0 0 0 1px var(--c-line), 0 14px 34px -6px rgba(0, 0, 0, .35); }
+.lpd-tg-ic { flex: none; width: 40px; height: 40px; border-radius: 10px; overflow: hidden; } .lpd-tg-ic svg { width: 40px; height: 40px; display: block; }
+.lpd-tg-b { display: grid; gap: 2px; min-width: 0; }
+.lpd-tg-h { display: flex; align-items: baseline; gap: 8px; } .lpd-tg-h b { font-size: 15px; font-weight: 600; } .lpd-tg-h i { font-style: normal; font-size: 13px; color: var(--c-ink-2); }
+.lpd-tg-m { font-size: 15px; line-height: 20px; }
+/* «палець»: сіре коло там, куди торкаємось */
+.lpd-tap { position: absolute; left: 0; top: 0; z-index: 7; width: 46px; height: 46px; margin: -23px 0 0 -23px; border-radius: 50%; pointer-events: none; opacity: 0;
+  background: rgba(128, 136, 148, .42); box-shadow: 0 0 0 2px rgba(255, 255, 255, .55); }
+/* «Латунь» — панелі героя й фінального заклику теплим графітом, як у світлій C3 (зелений корпус не пасував до латуні) */
+:root:root[data-theme="dark"][data-skin="brass"] .lp .lp-plate { background-color: #211F1B;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 .05 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"),
+    radial-gradient(120% 70% at 28% 0%, rgba(255, 244, 226, .07) 0%, rgba(255, 244, 226, 0) 62%), linear-gradient(180deg, #34302A 0%, #24211D 48%, #191714 100%); }
+:root:root[data-theme="dark"][data-skin="brass"] .lp-fig { background: #24211D; }
+:root:root[data-theme="dark"][data-skin="brass"] .lp-screw { background: radial-gradient(circle at 34% 30%, #D3CBBE 0%, #8F877B 52%, #5B554C 100%); }
+/* дуже вузькі телефони (≤ 359 px, iPhone SE 1-го покоління): телефон менший, щоб плашки табло виглядали з-за країв; факти — рядками «число — підпис»
+   (у дві колонки підписи рвалися посеред слова) */
+@media (max-width: 359px) {
+  .lp-stage { height: 480px; }
+  .lp-phone { width: 212px; height: 438px; margin-left: -106px; border-radius: 40px; --k: .5173; }
+  .lpp-screen { border-radius: 32px; }
+  .lp-tile { width: 92px; }
+  .t-elec { top: 40px; } .t-hot { top: 150px; } .t-gas { top: 270px; } .t-heat { top: 364px; }
+  .lpf-list { grid-template-columns: minmax(0, 1fr); }
+  .lpf-list li { grid-template-columns: 84px minmax(0, 1fr); align-items: center; gap: 12px; padding: 14px 16px; border-width: 0; }
+  .lpf-list li + li { border-top-width: 1px; }
+  .lpf-list b { font-size: 34px; }
+  .lpf-list span { overflow-wrap: normal; }
+}
 
 </style>
 <style>.top { padding-top: max(12px, env(safe-area-inset-top)); }</style>
@@ -3568,6 +3691,184 @@ fieldset { min-inline-size: 0; }
     });
   }
   window.TeploFx = { scan: scan, snap: snap, off: off, reset: function () { seen = {}; } };
+})();
+
+</script>
+<script>
+/* «Живий» телефон лендинга (175-а; власник 18.11: «як на смартфоні відкривається квартира, лічильник і додається показання через фото; щоб не гальмувало ніде»).
+ * Цикл 12 с: Telegram → квартира розгортається → «+» на воді → сторінка лічильника → камера, сканування, «Розпізнано» → аркуш «Зберегти» → ролики
+ * докручуються → «Відправити у фоні» → «Сайт прийняв» → головна → квартира згортається. Шари — app.js lpPhone(), тут — лише рух.
+ * Правила: тільки transform/opacity (Web Animations, композитор); пауза поза кадром; без руху — «Зменшити рух», TeploAcc.lite(), webdriver, повільні кадри
+ * (> 50 мс — teplo.lpd = off). Автотести руху — teplo.fx = full. Замір і сценарій — tests/e2e/e2e_lpdemo.cjs, docs/ПРОДОЛЖЕНИЕ.md (175-а). */
+(function () {
+  'use strict';
+  var D = 12000, EASE = 'cubic-bezier(.22,1,.36,1)', IN = 'cubic-bezier(.4,0,.6,1)', LIN = 'linear';
+  var cur = null, io = null, lastT = 0;
+
+  function calm() { return !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches); }
+  function stored(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
+  function off() {
+    var b = document.body;
+    if (!b || !b.animate || !window.IntersectionObserver || calm()) return true;
+    if (stored('teplo.fx') === 'full') return false;   // автотести руху на 2-ядерній машині
+    if (navigator.webdriver || stored('teplo.lpd') === 'off') return true;
+    return window.TeploAcc ? window.TeploAcc.lite() : false;
+  }
+  function ext(a, b) { var o = {}, k; for (k in a) o[k] = a[k]; for (k in b) o[k] = b[k]; return o; }
+  /** tl: [[мс, {властивості}, крива до наступної?], …] → ключові кадри на весь цикл; до першої точки й після останньої — тримаємо значення. */
+  function frames(tl) {
+    var out = [], i;
+    if (tl[0][0] > 0) out.push(ext(tl[0][1], { offset: 0, easing: LIN }));
+    for (i = 0; i < tl.length; i++) out.push(ext(tl[i][1], { offset: Math.min(1, tl[i][0] / D), easing: tl[i][2] || EASE }));
+    if (tl[tl.length - 1][0] < D) out.push(ext(tl[tl.length - 1][1], { offset: 1 }));
+    return out;
+  }
+  /** Позиція центру елемента в координатах екрана телефона (375 px), без урахування transform (offsetLeft/Top). */
+  function at(el, vp) {
+    var x = el.offsetWidth / 2, y = el.offsetHeight / 2, n = el;
+    while (n && n !== vp) { x += n.offsetLeft; y += n.offsetTop; n = n.offsetParent; }
+    return [Math.round(x), Math.round(y)];
+  }
+  var O = function (v) { return { opacity: v }; };
+  var T = function (v) { return { transform: v }; };
+  var TO = function (tr, op) { return { transform: tr, opacity: op }; };
+
+  function build(vp) {
+    var q = function (s) { return vp.querySelector(s); }, qa = function (s) { return vp.querySelectorAll(s); };
+    var list = [], add = function (el, tl) { if (el) list.push([el, tl]); };
+    var home = q('.s-home'), meter = q('.s-meter'), cam = q('.s-cam'), sheet = q('.s-sheet'), cards = q('.lpd-cards'), a2 = q('.a2');
+    if (!home || !meter || !cam || !sheet || !cards || !a2) return null;
+    var H = cards.offsetHeight + 8;   // наскільки підтягується друга квартира, коли перша згорнута
+    // 0–2.4 с: нагадування в Telegram
+    add(q('.lpd-tg'), [[0, TO('translateY(-150%)', 0)], [300, TO('translateY(-150%)', 0)], [700, TO('none', 1), LIN], [2000, TO('none', 1), IN], [2350, TO('translateY(-150%)', 0)]]);
+    // 2.4–2.9 с: квартира розгортається (картки проявляються згори вниз, друга квартира з'їжджає); 11.45–11.8 с — згортається назад
+    Array.prototype.forEach.call(cards.children, function (c, i) {
+      var d = i * 60;
+      add(c, [[0, TO('translateY(-12px)', 0)], [2450 + d, TO('translateY(-12px)', 0)], [2850 + d, TO('none', 1), LIN], [11450, TO('none', 1)], [11750, TO('translateY(-12px)', 0)]]);
+    });
+    add(a2, [[0, T('translateY(-' + H + 'px)')], [2450, T('translateY(-' + H + 'px)')], [2900, T('none'), LIN], [11450, T('none')], [11800, T('translateY(-' + H + 'px)')]]);
+    add(q('.a1 .lpd-chev'), [[0, T('rotate(90deg)')], [2450, T('rotate(90deg)')], [2800, T('rotate(-90deg)'), LIN], [11450, T('rotate(-90deg)')], [11750, T('rotate(90deg)')]]);
+    // 3.65–4.05 с: сторінка лічильника заходить справа; 11.05–11.45 — назад
+    add(home, [[0, TO('none', 1)], [3650, TO('none', 1)], [4050, TO('translateX(-28%)', .55), LIN], [11050, TO('translateX(-28%)', .55)], [11450, TO('none', 1)]]);
+    add(meter, [[0, T('translateX(100%)')], [3650, T('translateX(100%)')], [4050, T('none'), LIN], [11050, T('none')], [11450, T('translateX(100%)')]]);
+    // вода на головній: «Передати до 20-го» → «Передано» (поки головну закрито), назад — коли квартира вже згорнута
+    add(q('.lpd-w0'), [[0, O(1)], [11000, O(1)], [11200, O(0), LIN], [11800, O(0)], [11900, O(1)]]);
+    add(q('.lpd-w1'), [[0, O(0)], [11000, O(0)], [11200, O(1), LIN], [11800, O(1)], [11900, O(0)]]);
+    // 4.85–5.25 с: камера знизу; 5.3–6.3 — сканування; 6.3 — знайдено вікно роликів; 6.4 — результат
+    add(cam, [[0, T('translateY(100%)')], [4850, T('translateY(100%)')], [5250, T('none'), LIN], [8750, T('none'), IN], [9100, T('translateY(100%)')]]);
+    add(q('.lpd-scan'), [[0, TO('translateY(0)', 0)], [5350, TO('translateY(0)', 0)], [5450, TO('translateY(0)', 1), 'cubic-bezier(.45,0,.55,1)'], [6250, TO('translateY(340px)', 1)], [6350, TO('translateY(340px)', 0)]]);
+    add(q('.lpd-box'), [[0, TO('rotate(-4deg) scale(1.08)', 0)], [6250, TO('rotate(-4deg) scale(1.08)', 0)], [6450, TO('rotate(-4deg)', 1), LIN], [9100, TO('rotate(-4deg)', 1)], [9200, TO('rotate(-4deg) scale(1.08)', 0)]]);
+    add(q('.lpd-res'), [[0, TO('translateY(16px)', 0)], [6400, TO('translateY(16px)', 0)], [6700, TO('none', 1), LIN], [9100, TO('none', 1)], [9200, TO('translateY(16px)', 0)]]);
+    // 6.95–7.35 с: аркуш «Зберегти» знизу, під ним — притемнення
+    add(q('.lpd-dim'), [[0, O(0)], [6950, O(0)], [7300, O(.45), LIN], [8650, O(.45)], [9000, O(0)]]);
+    add(sheet, [[0, T('translateY(105%)')], [6950, T('translateY(105%)')], [7350, T('none'), LIN], [8650, T('none'), IN], [9000, T('translateY(105%)')]]);
+    add(q('.lpd-used'), [[0, TO('translateY(6px)', 0)], [7500, TO('translateY(6px)', 0)], [7750, TO('none', 1), LIN], [9000, TO('none', 1)], [9050, TO('translateY(6px)', 0)]]);
+    // 9.15–9.9 с: на табло ролики докручуються до нових цифр (праві — пізніше, як у справжнього лічильника)
+    Array.prototype.forEach.call(qa('.s-meter .lpd-r'), function (r, i) {
+      var d = i * 90;
+      add(r, [[0, T('translateY(0)')], [9150 + d, T('translateY(0)')], [9650 + d, T('translateY(-50%)'), LIN], [11450, T('translateY(-50%)')], [11500, T('translateY(0)')]]);
+    });
+    // картка води на головній — нові цифри, поки її закриває сторінка лічильника
+    Array.prototype.forEach.call(qa('.lpd-cards .lpd-r'), function (r) {
+      add(r, [[0, T('translateY(0)')], [10950, T('translateY(0)')], [11000, T('translateY(-50%)'), LIN], [11800, T('translateY(-50%)')], [11900, T('translateY(0)')]]);
+    });
+    // підпис під табло: «Передано {місяць тому}» → «Внесено сьогодні, ще не передано» → «Передано сьогодні»
+    add(q('.m0'), [[0, O(1)], [9100, O(1)], [9300, O(0), LIN], [11450, O(0)], [11500, O(1)]]);
+    add(q('.m1'), [[0, O(0)], [9200, O(0)], [9400, O(1), LIN], [10050, O(1)], [10250, O(0)]]);
+    add(q('.m2'), [[0, O(0)], [10100, O(0)], [10300, O(1), LIN], [11450, O(1)], [11500, O(0)]]);
+    // 9.9 с: «Відправити у фоні» → «Сайт прийняв показання»
+    add(q('.lpd-btn.send'), [[0, O(1)], [10000, O(1)], [10150, O(0), LIN], [11450, O(0)], [11500, O(1)]]);
+    add(q('.lpd-ok'), [[0, TO('scale(.96)', 0)], [10050, TO('scale(.96)', 0)], [10300, TO('none', 1), LIN], [11450, TO('none', 1)], [11500, TO('scale(.96)', 0)]]);
+    // дотики: сіре коло там, куди натискаємо, і сама кнопка трохи вдавлюється
+    var taps = [[2300, 'apt'], [3500, 'card'], [4700, 'photo'], [6850, 'use'], [8550, 'save'], [9850, 'send']], ring = [], first = null;
+    taps.forEach(function (tp) {
+      var el = q('[data-tap="' + tp[1] + '"]'); if (!el) return;
+      var p = at(el, vp), tr = function (s) { return 'translate(' + p[0] + 'px,' + p[1] + 'px) scale(' + s + ')'; }, T0 = tp[0];
+      if (!first) first = tr(.5);
+      ring.push([T0 - 160, TO(tr(.5), 0)], [T0, TO(tr(.9), .9), LIN], [T0 + 360, TO(tr(1.35), 0)]);
+      add(el, [[0, T('none')], [T0, T('none')], [T0 + 90, T('scale(.96)'), LIN], [T0 + 220, T('none')]]);
+    });
+    if (ring.length) add(q('.lpd-tap'), [[0, TO(first, 0)]].concat(ring));
+    return list;
+  }
+
+  function stop() {
+    if (!cur) return;
+    try { lastT = cur.anims.length ? (cur.anims[0].currentTime || 0) % D : 0; } catch (e) { lastT = 0; }
+    cur.anims.forEach(function (a) { try { a.cancel(); } catch (e) { /* уже знято */ } });
+    if (io) { io.disconnect(); io = null; }
+    if (cur.vp) cur.vp.classList.remove('run');
+    cur = null;
+  }
+  function setPlay(on) {
+    if (!cur) return;
+    var t = cur.anims.length ? cur.anims[0].currentTime : 0;
+    cur.anims.forEach(function (a) { a.currentTime = t; if (on) a.play(); else a.pause(); });
+    if (on && !cur.probed) probe();
+  }
+  /** Живий пристрій: перші ~2 с руху — середній кадр головного потоку; > 50 мс (менше 20 кадрів/с) — нерухома головна й більше не пробуємо. */
+  function probe() {
+    cur.probed = true;
+    var n = 0, t0 = 0, prev = 0, sum = 0, me = cur;
+    var f = function (ts) {
+      if (cur !== me) return;
+      if (!t0) { t0 = prev = ts; return requestAnimationFrame(f); }
+      sum += ts - prev; prev = ts; n++;
+      if (ts - t0 < 2000) return requestAnimationFrame(f);
+      if (sum / n > 50) { try { localStorage.setItem('teplo.lpd', 'off'); } catch (e) { /* приватний режим */ } stop(); }
+    };
+    setTimeout(function () { if (cur === me) requestAnimationFrame(f); }, 600);
+  }
+
+  /** Після кожної відмальовки лендинга: знайти телефон і (пере)запустити рух з того ж моменту циклу. */
+  function mount(root) {
+    var vp = root && root.querySelector && root.querySelector('.lpd');
+    if (!vp) { stop(); return; }
+    if (cur && cur.vp === vp) return;
+    var keep = cur ? null : lastT;
+    stop();
+    if (off()) return;
+    var ready = document.fonts && document.fonts.ready ? document.fonts.ready : Promise.resolve();
+    ready.then(function () {
+      if (!vp.isConnected || (cur && cur.vp === vp)) return;
+      var list = build(vp); if (!list) return;
+      // «прогрів»: сцени один раз малюються на своїх місцях під головною (z-index), поки нічого не рухається, — інакше перша поява кожної
+      // (сторінка лічильника, камера, аркуш) малюється в головному потоці посеред руху (замір CPU ×6: задачі 50–80 мс)
+      vp.classList.add('run', 'warm');
+      requestAnimationFrame(function () { requestAnimationFrame(function () {
+        vp.classList.remove('warm');
+        if (!vp.isConnected || (cur && cur.vp === vp)) return;
+        var anims = list.map(function (x) { return x[0].animate(frames(x[1]), { duration: D, iterations: Infinity }); });
+        cur = { vp: vp, anims: anims, probed: false };
+        var t = keep !== null ? keep : lastT;
+        anims.forEach(function (a) { a.pause(); a.currentTime = t; });
+        io = new IntersectionObserver(function (es) { es.forEach(function (e) { setPlay(e.isIntersecting); }); }, { threshold: .2 });
+        io.observe(vp.closest('.lp-phone') || vp);
+      }); });
+    });
+  }
+  /** Для перевірок і скринів: зупинити цикл на моменті ms (усі шари — як у цю мить). */
+  function seek(ms) { if (!cur) return false; cur.anims.forEach(function (a) { a.pause(); a.currentTime = ms % D; }); return true; }
+
+  /** Інший нескінченний рух лендинга — лише поки в кадрі: стрічки постачальників, фото табло в кроці 1 (лінія сканування, рамки — анімує top/clip-path/filter,
+   *  тобто головний потік щокадру), світлодіоди «imp», прилади SMIL у фінальній панелі. Поза кадром — пауза: не будять головний потік і не змушують
+   *  щокадру перераховувати шари живого телефона (замір 175-ї: 60 перерахунків стилю й шарів за секунду навіть коли телефон стоїть). */
+  var io2 = null;
+  function idle(root) {
+    if (io2) { io2.disconnect(); io2 = null; }
+    var els = root && root.querySelectorAll ? root.querySelectorAll('.lp-marq, .lpb-marq, .art-photo, .lp-tile, svg.lpm') : [];
+    if (!els.length || !window.IntersectionObserver) return;
+    io2 = new IntersectionObserver(function (es) {
+      es.forEach(function (e) {
+        var el = e.target;
+        if (el.pauseAnimations) { if (!calm() && !navigator.webdriver) { if (e.isIntersecting) el.unpauseAnimations(); else el.pauseAnimations(); } }
+        else el.classList.toggle('lp-idle', !e.isIntersecting);
+      });
+    });
+    Array.prototype.forEach.call(els, function (el) { io2.observe(el); });
+  }
+
+  window.TeploLpDemo = { mount: function (root) { mount(root); idle(root); }, stop: stop, seek: seek, D: D, running: function () { return !!cur; } };
 })();
 
 </script>
@@ -4965,7 +5266,8 @@ fieldset { min-inline-size: 0; }
 
       // ---- привітання-лендинг (#welcome)
       lp_badge: 'Безкоштовно — Харківщина, Київщина, Одещина, Львівщина, Хмельниччина', lp_h1a: 'Показання лічильників —', lp_h1b: 'за хвилину',
-      lp_lead: 'Світло, вода, газ, опалення: сфотографуйте — підкажемо, куди й до якого числа передати.',
+      lp_lead: 'Сфотографуйте лічильник — підкажемо, куди й до якого числа передати.', lp_free: 'Безкоштовно', lp_obl: 'область|області|областей',
+      lp_ph_cold: 'Передати до 20-го', lp_ph_addr2: 'вул. Садова, 3', lp_ph_aim: 'Наведіть на табло лічильника', lp_ph_rec: 'Розпізнано в телефоні', lp_ph_month: 'за місяць',
       lp_cta: 'Передати показання', lp_tr1: 'Синхронізація між пристроями', lp_tr2: 'Розпізнає прямо в телефоні', lp_tr3: 'Нагадає в Telegram',
       lp_ph_addr: 'вул. Сумська, 10', lp_ph_due: 'Передати до 25-го', lp_ph_sent: 'Передано', lp_ph_soon: 'Передати 1–3-го', lp_ph_gas: 'Передати 1–5-го',
       lp_pr_t: 'Ціни вашої громади', lp_pr: 'Вводите адресу — підставляються постачальники вашої громади й ціни з рішень рад і НКРЕКП. Немає в документах — впишете з платіжки.',
@@ -6378,7 +6680,8 @@ fieldset { min-inline-size: 0; }
 
       // ---- приветствие-лендинг (#welcome)
       lp_badge: 'Бесплатно — Харьковщина, Киевщина, Одесщина, Львовщина, Хмельнитчина', lp_h1a: 'Показания счётчиков —', lp_h1b: 'за минуту',
-      lp_lead: 'Свет, вода, газ, отопление: сфотографируйте — подскажем, куда и до какого числа передать.',
+      lp_lead: 'Сфотографируйте счётчик — подскажем, куда и до какого числа передать.', lp_free: 'Бесплатно', lp_obl: 'область|области|областей',
+      lp_ph_cold: 'Передать до 20-го', lp_ph_addr2: 'ул. Садовая, 3', lp_ph_aim: 'Наведите на табло счётчика', lp_ph_rec: 'Распознано в телефоне', lp_ph_month: 'за месяц',
       lp_cta: 'Передать показания', lp_tr1: 'Синхронизация между устройствами', lp_tr2: 'Распознаёт прямо в телефоне', lp_tr3: 'Напомнит в Telegram',
       lp_ph_addr: 'ул. Сумская, 10', lp_ph_due: 'Передать до 25-го', lp_ph_sent: 'Передано', lp_ph_soon: 'Передать 1–3-го', lp_ph_gas: 'Передать 1–5-го',
       lp_pr_t: 'Цены вашей громады', lp_pr: 'Вводите адрес — подставляются поставщики вашей громады и цены из решений советов и НКРЭКУ. Нет в документах — впишете из платёжки.',
@@ -11411,7 +11714,7 @@ fieldset { min-inline-size: 0; }
     var cbar = /^(wnew|wadd|enew|eadd|gnew|gadd|add-meter|step|step-\d+|check|handover|baseline|meter|photo)$/.test(route) ? placeBar(view.closeTo || true) : '';
     var right = bare && view.closeTo && !cbar
       ? '<a class="btn ghost" href="#' + view.closeTo + '" data-key="wiz-close" aria-label="' + esc(t('close')) + '">' + ico('close', 22) + '<span class="cl-txt">' + esc(t('close')) + '</span></a>'
-      : '';
+      : view.topRight || '';
     // 143-я (власник 14.11, скрин запису історії): «стрілка назад і назва куди — скрізь над квартирами» — посилання «← Історія» / кнопка «Назад» на початку екрана
     // ставимо вище перемикача й плашки квартири
     var topBack = (function (h) { var m = /^(<p class="rec-back">[\s\S]*?<\/p>|<div class="wiz-top"><a class="btn ghost"[\s\S]*?<\/div>)/.exec(h || ''); return m ? { b: m[1], h: h.slice(m[1].length) } : { b: '', h: h }; })(view.html);
@@ -15172,31 +15475,73 @@ fieldset { min-inline-size: 0; }
     return tile('elec', elcd([{ text: '10420' }]), t('kd_elec'), -.22) + tile('hot', wdrum('175.921', 'hot'), t('st_water'), -.08) +
       tile('gas', wdrum('1225.4', 'gas'), t('kd_gas'), -.12) + tile('heat', lcd([{ text: '13.245', tag: 'Gcal' }], 'boot'), t('kd_heat'), -.16);
   }
-  /** Телефон на сцені лендинга (92-а, власник: «місце під ще один лічильник, інтерфейс детальніше й ближче до справжнього»):
-   *  справжня головна в мініатюрі — екран 375 px (як у iPhone), зменшений під макет (--k у CSS): статус-бар, шапка «Лічильники · бета»,
-   *  «Моя квартира», чотири картки .ucard з тими самими табло (ЖК тепла, ролики води, екран світла, жовта панель газу), круглі «+»
-   *  (термінове — темне, як у застосунку), нижня панель шести розділів. Нічого не натискається: div/span замість посилань і кнопок. */
+  /** Телефон на сцені лендинга — «живий» (175-а; власник 18.11: «на превью анімація зі спрощеним інтерфейсом — як на смартфоні відкривається квартира,
+   *  відкривається лічильник і додається показання через фото; щоб не гальмувало ніде, але з анімаціями й переходами; лічильники навколо — лишаються»).
+   *  Екран 375 px (як у iPhone), зменшений під макет (--k у CSS). Сцени — шари поверх один одного (s-home, s-meter, s-cam, s-sheet), рухає їх web/src/lpdemo.js
+   *  (лише transform / opacity, Web Animations, тільки коли телефон у кадрі). Без руху (слабкий телефон, «Зменшити рух», автотести) — нерухома головна:
+   *  квартира розгорнута, 4 картки, вода «Передано». Нічого не натискається: div/span замість посилань і кнопок; data-tap — куди «торкається» палець. */
   function lpPhone() {
-    var card = function (k, icon, title, disp, st, tone) {
+    var ru = S.lang === 'ru', td = today(), was = addDays(td, -35);
+    var card = function (k, icon, title, disp, st, tone, tap) {
       return '<div class="ucard ucard-' + k + '"><div class="ucard-main"><span class="ucard-top">' + ico(icon, 20, KINDS[k].cls) + '<span class="ucard-title">' + esc(title) + '</span></span>' +
-        '<div class="ucard-disp">' + disp + '</div><span class="ucard-status ' + tone + '">' + esc(st) + '</span></div><span class="ucard-add' + (tone === 'warn' ? ' hot' : '') + '">' + ico('plus', 26) + '</span></div>';
+        '<div class="ucard-disp">' + disp + '</div>' + st + '</div><span class="ucard-add' + (tone === 'warn' ? ' hot' : '') + '"' + (tap ? ' data-tap="' + tap + '"' : '') + '>' + ico('plus', 26) + '</span></div>';
     };
+    var stl = function (txt, tone, cls) { return '<span class="ucard-status ' + tone + (cls ? ' ' + cls : '') + '">' + esc(txt) + '</span>'; };
     var sb = '<svg class="lpp-sbi" viewBox="0 0 70 14" aria-hidden="true" focusable="false"><g fill="currentColor"><rect x="0" y="9" width="3.4" height="4" rx="1"/><rect x="5" y="6.5" width="3.4" height="6.5" rx="1"/>' +
       '<rect x="10" y="4" width="3.4" height="9" rx="1"/><rect x="15" y="1.5" width="3.4" height="11.5" rx="1"/>' +
       '<path d="M31 13.2l2.6-3a3.6 3.6 0 0 0-5.2 0zM26.6 8.2a6.3 6.3 0 0 1 8.8 0l1.5-1.7a8.6 8.6 0 0 0-11.8 0zM23.8 5a10.3 10.3 0 0 1 14.4 0l1.5-1.7a12.6 12.6 0 0 0-17.4 0z"/>' +
       '<rect x="44.5" y=".8" width="22" height="12" rx="3.6" fill="none" stroke="currentColor" stroke-opacity=".4" stroke-width="1.2"/><rect x="46.6" y="2.9" width="15" height="7.8" rx="2"/><path d="M67.8 4.8v4a2 2 0 0 0 0-4z" opacity=".45"/></g></svg>';
     var tabs = [['home', 'nav_home'], ['history', 'nav_history'], ['chart', 'nav_stats'], ['leaf', 'nav_save'], ['help', 'nav_help'], ['prefs', 'nav_prefs']].filter(function (x) { return !NAV_HIDE[{ leaf: 'save', help: 'help' }[x[0]]]; });
-    return '<div class="lp-phone"><div class="lpp-screen"><div class="lpp-vp">' +
-      '<div class="lpp-sb"><b>9:41</b><span class="lpp-island"></span>' + sb + '</div>' +
-      '<div class="lpp-app"><div class="lpp-bar">' + logo() + wordmark(true) + '<span class="lpp-beta">' + esc(t('beta_tag')) + '</span></div>' +
-      '<div class="lpp-hp">' + ico('home', 24) + '<span><b>' + esc(t('pl_mine')) + '</b><i>' + esc(t('lp_ph_addr')) + '</i></span></div>' +
-      '<div class="ucards">' +
-      card('elec', KINDS.elec.icon, t('kd_elec'), elcd([{ text: '10420' }], 'card'), t('lp_ph_soon'), 'due') +
-      card('hot', 'drop', t('kd_hot'), wdrum('175.921', 'hot', 'card'), t('lp_ph_sent'), 'ok') +
-      card('gas', KINDS.gas.icon, t('kd_gas'), wdrum('1225.4', 'gas', 'card'), t('lp_ph_gas'), 'due') +
-      card('heat', 'thermo', t('uc_heat'), lcd([{ text: '13.245', tag: 'Gcal' }], 'card'), t('lp_ph_due'), 'warn') + '</div></div>' +
+    var apt = function (cls, pc, name, addr) {
+      return '<div class="lpd-apt ' + cls + '"' + (cls === 'a1' ? ' data-tap="apt"' : '') + '><span class="pdot" style="--pc:var(--pc-' + pc + ')"></span><span class="lpd-apt-t"><b>' + esc(name) + '</b><i>' + esc(addr) + '</i></span>' + '<span class="lpd-chev">' + ico('chev', 22) + '</span></div>';
+    };
+    // ролики води: старі показання → нові; клітинки, що змінюються, — смужка «стара / нова» цифра (докручується, як справжній лічильник)
+    var OLD = '437.921', NEW = '442.318';
+    // без руху видно нові (CSS: .lpd-r зсунута на нову цифру); рух починає зі старих
+    var roll = function () {
+      var nd = wdrum(NEW, 'cold', 'card').match(/<span class="wd-c[^"]*">[^<]*<\/span>/g) || [], i = 0;
+      return wdrum(OLD, 'cold', 'card').replace(/aria-label="[^"]*"/, 'aria-hidden="true"').replace(/<span class="(wd-c[^"]*)">([^<]*)<\/span>/g, function (m, c, d) {
+        var n = (nd[i] || '').replace(/<[^>]+>/g, ''); i++;
+        return n === d ? m : '<span class="' + c + ' lpd-rc"><span class="lpd-r"><i>' + d + '</i><i>' + n + '</i></span></span>';
+      });
+    };
+    var dial = '<span class="lpd-face" aria-hidden="true"><span class="lpd-q">Q3 2,5 m³/h</span>' + wdrum(NEW, 'cold', 'card').replace(/^<div class="wdrum[^"]*"[^>]*>/, '<div class="lpd-fwin">').replace(/<span class="wd-u">[^<]*<\/span>/, '<span class="wd-u">m³</span>') +
+      '<span class="lpd-dials"><i style="--a:40deg"></i><i style="--a:160deg"></i><i style="--a:250deg"></i><i style="--a:310deg"></i></span></span>';
+    var used = (NEW - OLD).toFixed(3).replace('.', ','), price = Math.round((NEW - OLD) * (48.629 + 20.61));   // тариф Харкова (КП «ХТМ», рішення № 509) — вода + водовідведення
+    var home = '<div class="lpd-s s-home"><div class="lpp-bar">' + logo() + wordmark(true) + '<span class="lpp-beta">' + esc(t('beta_tag')) + '</span></div>' +
+      apt('a1', 'teal', t('pl_mine'), t('lp_ph_addr')) +
+      '<div class="ucards lpd-cards">' +
+      card('elec', KINDS.elec.icon, t('kd_elec'), elcd([{ text: '10420' }], 'card'), stl(t('lp_ph_soon'), 'due'), 'due') +
+      card('cold', 'drop', t('kd_cold'), roll(), '<span class="lpd-stk">' + stl(t('lp_ph_cold'), 'due', 'lpd-w0') + stl(t('lp_ph_sent'), 'ok', 'lpd-w1') + '</span>', 'due', 'card') +
+      card('gas', KINDS.gas.icon, t('kd_gas'), wdrum('1225.4', 'gas', 'card'), stl(t('lp_ph_gas'), 'due'), 'due') +
+      card('heat', 'thermo', t('uc_heat'), lcd([{ text: '13.245', tag: 'Gcal' }], 'card'), stl(t('lp_ph_due'), 'warn'), 'warn') + '</div>' +
+      apt('a2', 'amber', t('lp_pl2'), t('lp_ph_addr2')) + '</div>';
+    var meter = '<div class="lpd-s s-meter"><div class="lpd-nav">' + ico('back', 22) + '<span>' + esc(t('nav_home')) + '</span></div>' +
+      '<p class="lpd-place"><span class="pdot" style="--pc:var(--pc-teal)"></span>' + esc(t('pl_mine')) + '</p>' +
+      '<h2 class="lpd-h">' + ico('drop', 26, KINDS.cold.cls) + '<span>' + esc(t('kd_cold')) + '</span></h2>' +
+      '<div class="lpd-drum">' + roll() + '</div>' +
+      '<p class="lpd-stk lpd-st"><span class="ok m0">' + esc(t('mb_cap_sent', { d: fmtDate(was) })) + '</span><span class="due m1">' + esc(t('mb_newer', { d: fmtDate(td) })) + '</span>' +
+        '<span class="ok m2">' + ico('check', 18) + esc(t('mb_cap_sent', { d: fmtDate(td) })) + '</span></p>' +
+      '<div class="lpd-btn pri" data-tap="photo">' + ico('viewfinder', 22) + '<span>' + esc(t('wn_photo')) + '</span></div>' +
+      '<div class="lpd-where"><p class="lpd-wh">' + ico('wallet', 20) + '<span>' + esc(t('wd_title')) + '</span></p>' +
+        '<p class="lpd-org"><b>' + esc(t('lp_d_vk')) + '</b><i>' + esc(t('lp_bg_due')) + '</i></p>' +
+        '<div class="lpd-stk"><div class="lpd-btn send" data-tap="send">' + ico('send', 20) + '<span>' + esc(t('cab_bg')) + '</span></div>' +
+        '<div class="lpd-ok">' + ico('check', 18) + '<span>' + esc(t('lb_ok')) + '</span></div></div></div></div>';
+    var cam = '<div class="lpd-s s-cam"><p class="lpd-hint">' + esc(t('lp_ph_aim')) + '</p><div class="lpd-shot">' + dial +
+      '<span class="lpd-cn c1"></span><span class="lpd-cn c2"></span><span class="lpd-cn c3"></span><span class="lpd-cn c4"></span>' +
+      '<span class="lpd-scanw"><span class="lpd-scan"></span></span><span class="lpd-box"></span></div>' +
+      '<div class="lpd-res"><span class="lpd-res-t">' + ico('check', 20) + '<span><b>' + esc(NEW.replace('.', ',')) + ' м³</b><i>' + esc(t('lp_ph_rec')) + '</i></span></span>' +
+        '<span class="lpd-btn pri sm" data-tap="use">' + esc(t('done')) + '</span></div></div>';
+    var sheet = '<div class="lpd-dim"></div><div class="lpd-s s-sheet"><span class="lpd-grab"></span><p class="lpd-sh-t"><b>' + esc(t('kd_cold')) + '</b><i>' + esc(fmtDate(td)) + '</i></p>' +
+      '<div class="lpd-field"><span class="lpd-fv">' + esc(NEW.replace('.', ',')) + '</span><span class="lpd-fu">м³</span></div>' +
+      '<p class="lpd-src">' + ico('camera', 18) + '<span>' + esc(t('lp_ph_rec')) + '</span></p>' +
+      '<p class="lpd-used"><b>+' + esc(used) + ' м³</b> ' + esc(t('lp_ph_month')) + ' · ≈ ' + price + ' ₴</p>' +
+      '<div class="lpd-btn pri" data-tap="save"><span>' + esc(t('save')) + '</span></div></div>';
+    var tg = '<div class="lpd-tg"><span class="lpd-tg-ic">' + logo() + '</span><span class="lpd-tg-b"><span class="lpd-tg-h"><b>передай</b><i>Telegram</i></span><span class="lpd-tg-m">' + esc(t('lp_tg_msg')) + '</span></span></div>';
+    return '<div class="lp-phone"><div class="lpp-screen"><div class="lpp-vp lpd">' +
+      '<div class="lpp-sb"><b>9:41</b><span class="lpp-island"></span>' + sb + '</div>' + home + meter +
       '<div class="lpp-tab">' + tabs.map(function (n, i) { return '<span' + (i ? '' : ' class="on"') + '>' + ico(n[0], 22) + '<i>' + esc(t(n[1])) + '</i></span>'; }).join('') + '<span class="lpp-hi"></span></div>' +
-      '</div></div></div>';
+      cam + sheet + tg + '<span class="lpd-tap"></span></div></div></div>';
   }
   /** 91-а (власник 10.11): у нижній панелі лендинга — цілі прилади, що плавно перетікають один в один: корпус міняє форму й колір
    *  (147-а: електролічильник → водомір → газовий → теплолічильник), труби, кабелі, табло й підпис змінюються разом. SMIL — бо форму (rx, розмір)
@@ -15367,10 +15712,13 @@ fieldset { min-inline-size: 0; }
   }
   /** Лицьова панель приладу (89-а): чотири гвинти по кутах — декор, читачам екрана не видно. */
   function lpScrews() { return '<span class="lp-screw s1" aria-hidden="true"></span><span class="lp-screw s2" aria-hidden="true"></span><span class="lp-screw s3" aria-hidden="true"></span><span class="lp-screw s4" aria-hidden="true"></span>'; }
+  /** 175-а (власник 18.11: «смотрится как заготовка, много букв, распыляется внимание, неясен посыл»): одна думка й жорстка ієрархія —
+   *  заголовок-обіцянка → підзаголовок одним реченням → кнопка (на телефоні на всю ширину) → один рядок-доказ (o.proof). «Увійти» — тихо в шапці (view.topRight),
+   *  три галочки — у живому телефоні (розпізнавання, нагадування в Telegram). */
   function lpHero(o) {
     return '<section class="lp-hero lp-plate" data-key="lp-hero">' + lpScrews() + '<div class="lp-in"><div class="lp-copy">' +
-      (o.badge ? '<p class="lp-badge">' + esc(o.badge) + '</p>' : '') +
-      '<h1 class="lp-h1">' + o.h1 + '</h1><p class="lp-lead">' + esc(o.lead) + '</p><div class="lp-ctas">' + o.cta + '</div>' + (o.after || '') + '</div>' +
+      '<h1 class="lp-h1">' + o.h1 + '</h1><p class="lp-lead">' + esc(o.lead) + '</p><div class="lp-ctas">' + o.cta + '</div>' +
+      (o.proof ? '<p class="lp-proof" data-key="lp-proof">' + o.proof + '</p>' : '') + (o.after || '') + '</div>' +
       // сцену принимают за кнопку (журнал 06.11: 5 нажатий подряд) — ведёт туда же, куда «Почати»; с клавиатуры — только сама кнопка
       '<a class="lp-stage" href="#start" tabindex="-1" aria-hidden="true" data-key="welcome-hero">' + lpPhone() + lpTiles() + '</a></div></section>';
   }
@@ -15528,6 +15876,11 @@ fieldset { min-inline-size: 0; }
   /** 174-я (власник 21.11: лендинг «незакінчений» — «зроби наповненим і красивим»): чотири факти великими числами одразу під героєм.
    *  Числа — живцем з коду: громади — LP_PROV (build.py), фонова передача — lpAutoList(), моделі — TeploModels (без «Інша модель»). */
   function nform(n, forms) { var f = String(forms).split('|'), a = Math.abs(n) % 100, b = a % 10; return f.length < 3 ? f[0] : a > 10 && a < 20 ? f[2] : b === 1 ? f[0] : b >= 2 && b <= 4 ? f[1] : f[2]; }
+  /** Рядок-доказ під кнопкою: «Безкоштовно · 5 областей» — області з довідника (LP_PROV, громад > 1: Київ — частина Київщини). */
+  function lpProof() {
+    var n = (LP_PROV || []).filter(function (x) { return x && x.h > 1; }).length;
+    return '<span>' + esc(t('lp_free')) + '</span>' + (n ? '<span>' + esc(n + ' ' + nform(n, t('lp_obl'))) + '</span>' : '');
+  }
   function lpFacts() {
     var hr = (LP_PROV || []).reduce(function (a, x) { return a + (x.h || 0); }, 0), bg = lpAutoList().length, md = ((M && M.MODELS) || []).filter(function (m) { return m.id !== 'other'; }).length;
     var it = function (k, n, big) { return '<li class="lpf-' + k + '"><b>' + esc(big || String(n)) + '</b><span>' + esc(big ? t('lp_f_' + k) : nform(n, t('lp_f_' + k))) + '</span></li>'; };
@@ -15554,10 +15907,8 @@ fieldset { min-inline-size: 0; }
         after: '<p class="lp-who">' + esc(t('wl_fine', { who: who })) + ' <button class="linkbtn" data-act="logout">' + esc(t('wl_other')) + '</button></p>' }) + lpFoot(false) + '</div>' };
     }
     var login = Y().mode === 'server' && !Y().account, fine = Y().mode === 'claude' ? t('sync_claude') : Y().mode === 'server' ? t('w_fine_site') : t('w_fine');
-    return { screen: 'S00', bare: true, wide: true, html: tgFailBox() + '<div class="welcome lp">' +
-      lpHero({ badge: t('lp_badge'), h1: esc(t('lp_h1a')) + ' ' + esc(t('lp_h1b')), lead: t('lp_lead'),
-        cta: lpCta('welcome-start', t('lp_cta')) + (login ? '<a class="lp-link" href="#login" data-key="welcome-login">' + esc(t('w_login')) + '</a>' : ''),
-        after: '<ul class="lp-trust">' + ['lp_tr1', 'lp_tr2', 'lp_tr3'].map(function (k) { return '<li>' + ico('check', 16) + '<span>' + esc(t(k)) + '</span></li>'; }).join('') + '</ul>' }) +
+    return { screen: 'S00', bare: true, wide: true, topRight: login ? '<a class="lp-login" href="#login" data-key="welcome-login">' + esc(t('login')) + '</a>' : '', html: tgFailBox() + '<div class="welcome lp">' +
+      lpHero({ h1: esc(t('lp_h1a')) + ' ' + esc(t('lp_h1b')), lead: t('lp_lead'), cta: lpCta('welcome-start', t('lp_cta')), proof: lpProof() }) +
       lpFacts() + lpDest() + lpSteps() + lpBento() + lpFaq() +
       '<section class="lp-end lp-plate" data-key="lp-end">' + lpScrews() + '<div class="lpe-in"><div class="lpe-copy"><h2>' + esc(t('lp_end_t')) + '</h2><p>' + esc(t('lp_end')) + '</p><div class="lp-ctas">' + lpCta('welcome-start-end', t('lp_cta')) + '</div></div>' + lpMeters() + '</div></section>' +
       '<p class="lp-fine small muted">' + esc(fine) + '</p>' + lpFoot(login) + '</div>' };
@@ -20508,7 +20859,9 @@ fieldset { min-inline-size: 0; }
   function liveDigits(root, el) {
     if (!root || calmMotion() || navigator.webdriver) return;   // автотести читають цифри одразу — їм анімація лише заважає
     el = el || 0;
+    var mine = function (n) { return !(n.closest && n.closest('.lpd')); };   // 175-а: живий телефон лендинга рухається сам (lpdemo.js)
     Array.prototype.forEach.call(root.querySelectorAll('.wd-win'), function (win) {
+      if (!mine(win)) return;
       Array.prototype.forEach.call(win.querySelectorAll('.wd-c'), function (c, i) {
         var d = c.textContent, dur = 520 + i * 70; if (!/^\d$/.test(d) || el >= dur) return;
         var k = 3 + i * 2, seq = []; for (var j = k; j >= 0; j--) seq.push((+d - j + 100) % 10);
@@ -20518,6 +20871,7 @@ fieldset { min-inline-size: 0; }
       });
     });
     Array.prototype.forEach.call(root.querySelectorAll('.lcd .line[data-v]:not(.sample)'), function (ln) {
+      if (!mine(ln)) return;
       var v = ln.getAttribute('data-v'), m = /^(\d+)(?:[.,](\d+))?$/.exec(v), svg = ln.querySelector('svg.seg'); if (!m || !svg) return;
       var dec = (m[2] || '').length, to = parseFloat(v.replace(',', '.')), from = to * 0.82, orig = svg.outerHTML, lbl = svg.getAttribute('aria-label') || v, t0 = 0, dur = 750;
       if (!(to > 0) || el >= dur) return;
@@ -20561,6 +20915,7 @@ fieldset { min-inline-size: 0; }
     Array.prototype.forEach.call(document.querySelectorAll('details.tips-box > summary'), function (sm) { if (!sm.querySelector('.pacc-chev')) sm.insertAdjacentHTML('beforeend', ico('chev', 18, 'pacc-chev')); });
     enhanceDates(); photoFill(); phFocusAll(); qrFill(); toastKeep(); fabWatch(); fitLines(); if (Y().account) histFlush();
     if (window.TeploFx) TeploFx.scan(document.getElementById('main'));   // 172-а: поява графіків (один раз, у кадрі, без руху на слабких і з «Зменшити рух»)
+    if (window.TeploLpDemo) TeploLpDemo.mount(r === 'welcome' ? document.getElementById('main') : null);   // 175-а: живий телефон лендинга (лише в кадрі, без руху на слабких)
     if (r === 'welcome') lpDepth(); else if (LPD) lpFlush();   // 159-а: глибина лендингу — з першого показу; пішов з лендингу на інший екран — одразу в журнал
     // прилади в нижній панелі лендинга перетікають по колу — при «Зменшити рух» і в автотестах стоїть перший (147-а: електролічильник)
     if (calmMotion() || navigator.webdriver) Array.prototype.forEach.call(document.querySelectorAll('svg.lpm'), function (s) { if (s.pauseAnimations) { s.pauseAnimations(); s.setCurrentTime(0); } });

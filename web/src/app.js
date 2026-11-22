@@ -932,7 +932,7 @@
     var cbar = /^(wnew|wadd|enew|eadd|gnew|gadd|add-meter|step|step-\d+|check|handover|baseline|meter|photo)$/.test(route) ? placeBar(view.closeTo || true) : '';
     var right = bare && view.closeTo && !cbar
       ? '<a class="btn ghost" href="#' + view.closeTo + '" data-key="wiz-close" aria-label="' + esc(t('close')) + '">' + ico('close', 22) + '<span class="cl-txt">' + esc(t('close')) + '</span></a>'
-      : '';
+      : view.topRight || '';
     // 143-я (власник 14.11, скрин запису історії): «стрілка назад і назва куди — скрізь над квартирами» — посилання «← Історія» / кнопка «Назад» на початку екрана
     // ставимо вище перемикача й плашки квартири
     var topBack = (function (h) { var m = /^(<p class="rec-back">[\s\S]*?<\/p>|<div class="wiz-top"><a class="btn ghost"[\s\S]*?<\/div>)/.exec(h || ''); return m ? { b: m[1], h: h.slice(m[1].length) } : { b: '', h: h }; })(view.html);
@@ -4693,31 +4693,73 @@
     return tile('elec', elcd([{ text: '10420' }]), t('kd_elec'), -.22) + tile('hot', wdrum('175.921', 'hot'), t('st_water'), -.08) +
       tile('gas', wdrum('1225.4', 'gas'), t('kd_gas'), -.12) + tile('heat', lcd([{ text: '13.245', tag: 'Gcal' }], 'boot'), t('kd_heat'), -.16);
   }
-  /** Телефон на сцені лендинга (92-а, власник: «місце під ще один лічильник, інтерфейс детальніше й ближче до справжнього»):
-   *  справжня головна в мініатюрі — екран 375 px (як у iPhone), зменшений під макет (--k у CSS): статус-бар, шапка «Лічильники · бета»,
-   *  «Моя квартира», чотири картки .ucard з тими самими табло (ЖК тепла, ролики води, екран світла, жовта панель газу), круглі «+»
-   *  (термінове — темне, як у застосунку), нижня панель шести розділів. Нічого не натискається: div/span замість посилань і кнопок. */
+  /** Телефон на сцені лендинга — «живий» (175-а; власник 18.11: «на превью анімація зі спрощеним інтерфейсом — як на смартфоні відкривається квартира,
+   *  відкривається лічильник і додається показання через фото; щоб не гальмувало ніде, але з анімаціями й переходами; лічильники навколо — лишаються»).
+   *  Екран 375 px (як у iPhone), зменшений під макет (--k у CSS). Сцени — шари поверх один одного (s-home, s-meter, s-cam, s-sheet), рухає їх web/src/lpdemo.js
+   *  (лише transform / opacity, Web Animations, тільки коли телефон у кадрі). Без руху (слабкий телефон, «Зменшити рух», автотести) — нерухома головна:
+   *  квартира розгорнута, 4 картки, вода «Передано». Нічого не натискається: div/span замість посилань і кнопок; data-tap — куди «торкається» палець. */
   function lpPhone() {
-    var card = function (k, icon, title, disp, st, tone) {
+    var ru = S.lang === 'ru', td = today(), was = addDays(td, -35);
+    var card = function (k, icon, title, disp, st, tone, tap) {
       return '<div class="ucard ucard-' + k + '"><div class="ucard-main"><span class="ucard-top">' + ico(icon, 20, KINDS[k].cls) + '<span class="ucard-title">' + esc(title) + '</span></span>' +
-        '<div class="ucard-disp">' + disp + '</div><span class="ucard-status ' + tone + '">' + esc(st) + '</span></div><span class="ucard-add' + (tone === 'warn' ? ' hot' : '') + '">' + ico('plus', 26) + '</span></div>';
+        '<div class="ucard-disp">' + disp + '</div>' + st + '</div><span class="ucard-add' + (tone === 'warn' ? ' hot' : '') + '"' + (tap ? ' data-tap="' + tap + '"' : '') + '>' + ico('plus', 26) + '</span></div>';
     };
+    var stl = function (txt, tone, cls) { return '<span class="ucard-status ' + tone + (cls ? ' ' + cls : '') + '">' + esc(txt) + '</span>'; };
     var sb = '<svg class="lpp-sbi" viewBox="0 0 70 14" aria-hidden="true" focusable="false"><g fill="currentColor"><rect x="0" y="9" width="3.4" height="4" rx="1"/><rect x="5" y="6.5" width="3.4" height="6.5" rx="1"/>' +
       '<rect x="10" y="4" width="3.4" height="9" rx="1"/><rect x="15" y="1.5" width="3.4" height="11.5" rx="1"/>' +
       '<path d="M31 13.2l2.6-3a3.6 3.6 0 0 0-5.2 0zM26.6 8.2a6.3 6.3 0 0 1 8.8 0l1.5-1.7a8.6 8.6 0 0 0-11.8 0zM23.8 5a10.3 10.3 0 0 1 14.4 0l1.5-1.7a12.6 12.6 0 0 0-17.4 0z"/>' +
       '<rect x="44.5" y=".8" width="22" height="12" rx="3.6" fill="none" stroke="currentColor" stroke-opacity=".4" stroke-width="1.2"/><rect x="46.6" y="2.9" width="15" height="7.8" rx="2"/><path d="M67.8 4.8v4a2 2 0 0 0 0-4z" opacity=".45"/></g></svg>';
     var tabs = [['home', 'nav_home'], ['history', 'nav_history'], ['chart', 'nav_stats'], ['leaf', 'nav_save'], ['help', 'nav_help'], ['prefs', 'nav_prefs']].filter(function (x) { return !NAV_HIDE[{ leaf: 'save', help: 'help' }[x[0]]]; });
-    return '<div class="lp-phone"><div class="lpp-screen"><div class="lpp-vp">' +
-      '<div class="lpp-sb"><b>9:41</b><span class="lpp-island"></span>' + sb + '</div>' +
-      '<div class="lpp-app"><div class="lpp-bar">' + logo() + wordmark(true) + '<span class="lpp-beta">' + esc(t('beta_tag')) + '</span></div>' +
-      '<div class="lpp-hp">' + ico('home', 24) + '<span><b>' + esc(t('pl_mine')) + '</b><i>' + esc(t('lp_ph_addr')) + '</i></span></div>' +
-      '<div class="ucards">' +
-      card('elec', KINDS.elec.icon, t('kd_elec'), elcd([{ text: '10420' }], 'card'), t('lp_ph_soon'), 'due') +
-      card('hot', 'drop', t('kd_hot'), wdrum('175.921', 'hot', 'card'), t('lp_ph_sent'), 'ok') +
-      card('gas', KINDS.gas.icon, t('kd_gas'), wdrum('1225.4', 'gas', 'card'), t('lp_ph_gas'), 'due') +
-      card('heat', 'thermo', t('uc_heat'), lcd([{ text: '13.245', tag: 'Gcal' }], 'card'), t('lp_ph_due'), 'warn') + '</div></div>' +
+    var apt = function (cls, pc, name, addr) {
+      return '<div class="lpd-apt ' + cls + '"' + (cls === 'a1' ? ' data-tap="apt"' : '') + '><span class="pdot" style="--pc:var(--pc-' + pc + ')"></span><span class="lpd-apt-t"><b>' + esc(name) + '</b><i>' + esc(addr) + '</i></span>' + '<span class="lpd-chev">' + ico('chev', 22) + '</span></div>';
+    };
+    // ролики води: старі показання → нові; клітинки, що змінюються, — смужка «стара / нова» цифра (докручується, як справжній лічильник)
+    var OLD = '437.921', NEW = '442.318';
+    // без руху видно нові (CSS: .lpd-r зсунута на нову цифру); рух починає зі старих
+    var roll = function () {
+      var nd = wdrum(NEW, 'cold', 'card').match(/<span class="wd-c[^"]*">[^<]*<\/span>/g) || [], i = 0;
+      return wdrum(OLD, 'cold', 'card').replace(/aria-label="[^"]*"/, 'aria-hidden="true"').replace(/<span class="(wd-c[^"]*)">([^<]*)<\/span>/g, function (m, c, d) {
+        var n = (nd[i] || '').replace(/<[^>]+>/g, ''); i++;
+        return n === d ? m : '<span class="' + c + ' lpd-rc"><span class="lpd-r"><i>' + d + '</i><i>' + n + '</i></span></span>';
+      });
+    };
+    var dial = '<span class="lpd-face" aria-hidden="true"><span class="lpd-q">Q3 2,5 m³/h</span>' + wdrum(NEW, 'cold', 'card').replace(/^<div class="wdrum[^"]*"[^>]*>/, '<div class="lpd-fwin">').replace(/<span class="wd-u">[^<]*<\/span>/, '<span class="wd-u">m³</span>') +
+      '<span class="lpd-dials"><i style="--a:40deg"></i><i style="--a:160deg"></i><i style="--a:250deg"></i><i style="--a:310deg"></i></span></span>';
+    var used = (NEW - OLD).toFixed(3).replace('.', ','), price = Math.round((NEW - OLD) * (48.629 + 20.61));   // тариф Харкова (КП «ХТМ», рішення № 509) — вода + водовідведення
+    var home = '<div class="lpd-s s-home"><div class="lpp-bar">' + logo() + wordmark(true) + '<span class="lpp-beta">' + esc(t('beta_tag')) + '</span></div>' +
+      apt('a1', 'teal', t('pl_mine'), t('lp_ph_addr')) +
+      '<div class="ucards lpd-cards">' +
+      card('elec', KINDS.elec.icon, t('kd_elec'), elcd([{ text: '10420' }], 'card'), stl(t('lp_ph_soon'), 'due'), 'due') +
+      card('cold', 'drop', t('kd_cold'), roll(), '<span class="lpd-stk">' + stl(t('lp_ph_cold'), 'due', 'lpd-w0') + stl(t('lp_ph_sent'), 'ok', 'lpd-w1') + '</span>', 'due', 'card') +
+      card('gas', KINDS.gas.icon, t('kd_gas'), wdrum('1225.4', 'gas', 'card'), stl(t('lp_ph_gas'), 'due'), 'due') +
+      card('heat', 'thermo', t('uc_heat'), lcd([{ text: '13.245', tag: 'Gcal' }], 'card'), stl(t('lp_ph_due'), 'warn'), 'warn') + '</div>' +
+      apt('a2', 'amber', t('lp_pl2'), t('lp_ph_addr2')) + '</div>';
+    var meter = '<div class="lpd-s s-meter"><div class="lpd-nav">' + ico('back', 22) + '<span>' + esc(t('nav_home')) + '</span></div>' +
+      '<p class="lpd-place"><span class="pdot" style="--pc:var(--pc-teal)"></span>' + esc(t('pl_mine')) + '</p>' +
+      '<h2 class="lpd-h">' + ico('drop', 26, KINDS.cold.cls) + '<span>' + esc(t('kd_cold')) + '</span></h2>' +
+      '<div class="lpd-drum">' + roll() + '</div>' +
+      '<p class="lpd-stk lpd-st"><span class="ok m0">' + esc(t('mb_cap_sent', { d: fmtDate(was) })) + '</span><span class="due m1">' + esc(t('mb_newer', { d: fmtDate(td) })) + '</span>' +
+        '<span class="ok m2">' + ico('check', 18) + esc(t('mb_cap_sent', { d: fmtDate(td) })) + '</span></p>' +
+      '<div class="lpd-btn pri" data-tap="photo">' + ico('viewfinder', 22) + '<span>' + esc(t('wn_photo')) + '</span></div>' +
+      '<div class="lpd-where"><p class="lpd-wh">' + ico('wallet', 20) + '<span>' + esc(t('wd_title')) + '</span></p>' +
+        '<p class="lpd-org"><b>' + esc(t('lp_d_vk')) + '</b><i>' + esc(t('lp_bg_due')) + '</i></p>' +
+        '<div class="lpd-stk"><div class="lpd-btn send" data-tap="send">' + ico('send', 20) + '<span>' + esc(t('cab_bg')) + '</span></div>' +
+        '<div class="lpd-ok">' + ico('check', 18) + '<span>' + esc(t('lb_ok')) + '</span></div></div></div></div>';
+    var cam = '<div class="lpd-s s-cam"><p class="lpd-hint">' + esc(t('lp_ph_aim')) + '</p><div class="lpd-shot">' + dial +
+      '<span class="lpd-cn c1"></span><span class="lpd-cn c2"></span><span class="lpd-cn c3"></span><span class="lpd-cn c4"></span>' +
+      '<span class="lpd-scanw"><span class="lpd-scan"></span></span><span class="lpd-box"></span></div>' +
+      '<div class="lpd-res"><span class="lpd-res-t">' + ico('check', 20) + '<span><b>' + esc(NEW.replace('.', ',')) + ' м³</b><i>' + esc(t('lp_ph_rec')) + '</i></span></span>' +
+        '<span class="lpd-btn pri sm" data-tap="use">' + esc(t('done')) + '</span></div></div>';
+    var sheet = '<div class="lpd-dim"></div><div class="lpd-s s-sheet"><span class="lpd-grab"></span><p class="lpd-sh-t"><b>' + esc(t('kd_cold')) + '</b><i>' + esc(fmtDate(td)) + '</i></p>' +
+      '<div class="lpd-field"><span class="lpd-fv">' + esc(NEW.replace('.', ',')) + '</span><span class="lpd-fu">м³</span></div>' +
+      '<p class="lpd-src">' + ico('camera', 18) + '<span>' + esc(t('lp_ph_rec')) + '</span></p>' +
+      '<p class="lpd-used"><b>+' + esc(used) + ' м³</b> ' + esc(t('lp_ph_month')) + ' · ≈ ' + price + ' ₴</p>' +
+      '<div class="lpd-btn pri" data-tap="save"><span>' + esc(t('save')) + '</span></div></div>';
+    var tg = '<div class="lpd-tg"><span class="lpd-tg-ic">' + logo() + '</span><span class="lpd-tg-b"><span class="lpd-tg-h"><b>передай</b><i>Telegram</i></span><span class="lpd-tg-m">' + esc(t('lp_tg_msg')) + '</span></span></div>';
+    return '<div class="lp-phone"><div class="lpp-screen"><div class="lpp-vp lpd">' +
+      '<div class="lpp-sb"><b>9:41</b><span class="lpp-island"></span>' + sb + '</div>' + home + meter +
       '<div class="lpp-tab">' + tabs.map(function (n, i) { return '<span' + (i ? '' : ' class="on"') + '>' + ico(n[0], 22) + '<i>' + esc(t(n[1])) + '</i></span>'; }).join('') + '<span class="lpp-hi"></span></div>' +
-      '</div></div></div>';
+      cam + sheet + tg + '<span class="lpd-tap"></span></div></div></div>';
   }
   /** 91-а (власник 10.11): у нижній панелі лендинга — цілі прилади, що плавно перетікають один в один: корпус міняє форму й колір
    *  (147-а: електролічильник → водомір → газовий → теплолічильник), труби, кабелі, табло й підпис змінюються разом. SMIL — бо форму (rx, розмір)
@@ -4888,10 +4930,13 @@
   }
   /** Лицьова панель приладу (89-а): чотири гвинти по кутах — декор, читачам екрана не видно. */
   function lpScrews() { return '<span class="lp-screw s1" aria-hidden="true"></span><span class="lp-screw s2" aria-hidden="true"></span><span class="lp-screw s3" aria-hidden="true"></span><span class="lp-screw s4" aria-hidden="true"></span>'; }
+  /** 175-а (власник 18.11: «смотрится как заготовка, много букв, распыляется внимание, неясен посыл»): одна думка й жорстка ієрархія —
+   *  заголовок-обіцянка → підзаголовок одним реченням → кнопка (на телефоні на всю ширину) → один рядок-доказ (o.proof). «Увійти» — тихо в шапці (view.topRight),
+   *  три галочки — у живому телефоні (розпізнавання, нагадування в Telegram). */
   function lpHero(o) {
     return '<section class="lp-hero lp-plate" data-key="lp-hero">' + lpScrews() + '<div class="lp-in"><div class="lp-copy">' +
-      (o.badge ? '<p class="lp-badge">' + esc(o.badge) + '</p>' : '') +
-      '<h1 class="lp-h1">' + o.h1 + '</h1><p class="lp-lead">' + esc(o.lead) + '</p><div class="lp-ctas">' + o.cta + '</div>' + (o.after || '') + '</div>' +
+      '<h1 class="lp-h1">' + o.h1 + '</h1><p class="lp-lead">' + esc(o.lead) + '</p><div class="lp-ctas">' + o.cta + '</div>' +
+      (o.proof ? '<p class="lp-proof" data-key="lp-proof">' + o.proof + '</p>' : '') + (o.after || '') + '</div>' +
       // сцену принимают за кнопку (журнал 06.11: 5 нажатий подряд) — ведёт туда же, куда «Почати»; с клавиатуры — только сама кнопка
       '<a class="lp-stage" href="#start" tabindex="-1" aria-hidden="true" data-key="welcome-hero">' + lpPhone() + lpTiles() + '</a></div></section>';
   }
@@ -5049,6 +5094,11 @@
   /** 174-я (власник 21.11: лендинг «незакінчений» — «зроби наповненим і красивим»): чотири факти великими числами одразу під героєм.
    *  Числа — живцем з коду: громади — LP_PROV (build.py), фонова передача — lpAutoList(), моделі — TeploModels (без «Інша модель»). */
   function nform(n, forms) { var f = String(forms).split('|'), a = Math.abs(n) % 100, b = a % 10; return f.length < 3 ? f[0] : a > 10 && a < 20 ? f[2] : b === 1 ? f[0] : b >= 2 && b <= 4 ? f[1] : f[2]; }
+  /** Рядок-доказ під кнопкою: «Безкоштовно · 5 областей» — області з довідника (LP_PROV, громад > 1: Київ — частина Київщини). */
+  function lpProof() {
+    var n = (LP_PROV || []).filter(function (x) { return x && x.h > 1; }).length;
+    return '<span>' + esc(t('lp_free')) + '</span>' + (n ? '<span>' + esc(n + ' ' + nform(n, t('lp_obl'))) + '</span>' : '');
+  }
   function lpFacts() {
     var hr = (LP_PROV || []).reduce(function (a, x) { return a + (x.h || 0); }, 0), bg = lpAutoList().length, md = ((M && M.MODELS) || []).filter(function (m) { return m.id !== 'other'; }).length;
     var it = function (k, n, big) { return '<li class="lpf-' + k + '"><b>' + esc(big || String(n)) + '</b><span>' + esc(big ? t('lp_f_' + k) : nform(n, t('lp_f_' + k))) + '</span></li>'; };
@@ -5075,10 +5125,8 @@
         after: '<p class="lp-who">' + esc(t('wl_fine', { who: who })) + ' <button class="linkbtn" data-act="logout">' + esc(t('wl_other')) + '</button></p>' }) + lpFoot(false) + '</div>' };
     }
     var login = Y().mode === 'server' && !Y().account, fine = Y().mode === 'claude' ? t('sync_claude') : Y().mode === 'server' ? t('w_fine_site') : t('w_fine');
-    return { screen: 'S00', bare: true, wide: true, html: tgFailBox() + '<div class="welcome lp">' +
-      lpHero({ badge: t('lp_badge'), h1: esc(t('lp_h1a')) + ' ' + esc(t('lp_h1b')), lead: t('lp_lead'),
-        cta: lpCta('welcome-start', t('lp_cta')) + (login ? '<a class="lp-link" href="#login" data-key="welcome-login">' + esc(t('w_login')) + '</a>' : ''),
-        after: '<ul class="lp-trust">' + ['lp_tr1', 'lp_tr2', 'lp_tr3'].map(function (k) { return '<li>' + ico('check', 16) + '<span>' + esc(t(k)) + '</span></li>'; }).join('') + '</ul>' }) +
+    return { screen: 'S00', bare: true, wide: true, topRight: login ? '<a class="lp-login" href="#login" data-key="welcome-login">' + esc(t('login')) + '</a>' : '', html: tgFailBox() + '<div class="welcome lp">' +
+      lpHero({ h1: esc(t('lp_h1a')) + ' ' + esc(t('lp_h1b')), lead: t('lp_lead'), cta: lpCta('welcome-start', t('lp_cta')), proof: lpProof() }) +
       lpFacts() + lpDest() + lpSteps() + lpBento() + lpFaq() +
       '<section class="lp-end lp-plate" data-key="lp-end">' + lpScrews() + '<div class="lpe-in"><div class="lpe-copy"><h2>' + esc(t('lp_end_t')) + '</h2><p>' + esc(t('lp_end')) + '</p><div class="lp-ctas">' + lpCta('welcome-start-end', t('lp_cta')) + '</div></div>' + lpMeters() + '</div></section>' +
       '<p class="lp-fine small muted">' + esc(fine) + '</p>' + lpFoot(login) + '</div>' };
@@ -10029,7 +10077,9 @@
   function liveDigits(root, el) {
     if (!root || calmMotion() || navigator.webdriver) return;   // автотести читають цифри одразу — їм анімація лише заважає
     el = el || 0;
+    var mine = function (n) { return !(n.closest && n.closest('.lpd')); };   // 175-а: живий телефон лендинга рухається сам (lpdemo.js)
     Array.prototype.forEach.call(root.querySelectorAll('.wd-win'), function (win) {
+      if (!mine(win)) return;
       Array.prototype.forEach.call(win.querySelectorAll('.wd-c'), function (c, i) {
         var d = c.textContent, dur = 520 + i * 70; if (!/^\d$/.test(d) || el >= dur) return;
         var k = 3 + i * 2, seq = []; for (var j = k; j >= 0; j--) seq.push((+d - j + 100) % 10);
@@ -10039,6 +10089,7 @@
       });
     });
     Array.prototype.forEach.call(root.querySelectorAll('.lcd .line[data-v]:not(.sample)'), function (ln) {
+      if (!mine(ln)) return;
       var v = ln.getAttribute('data-v'), m = /^(\d+)(?:[.,](\d+))?$/.exec(v), svg = ln.querySelector('svg.seg'); if (!m || !svg) return;
       var dec = (m[2] || '').length, to = parseFloat(v.replace(',', '.')), from = to * 0.82, orig = svg.outerHTML, lbl = svg.getAttribute('aria-label') || v, t0 = 0, dur = 750;
       if (!(to > 0) || el >= dur) return;
@@ -10082,6 +10133,7 @@
     Array.prototype.forEach.call(document.querySelectorAll('details.tips-box > summary'), function (sm) { if (!sm.querySelector('.pacc-chev')) sm.insertAdjacentHTML('beforeend', ico('chev', 18, 'pacc-chev')); });
     enhanceDates(); photoFill(); phFocusAll(); qrFill(); toastKeep(); fabWatch(); fitLines(); if (Y().account) histFlush();
     if (window.TeploFx) TeploFx.scan(document.getElementById('main'));   // 172-а: поява графіків (один раз, у кадрі, без руху на слабких і з «Зменшити рух»)
+    if (window.TeploLpDemo) TeploLpDemo.mount(r === 'welcome' ? document.getElementById('main') : null);   // 175-а: живий телефон лендинга (лише в кадрі, без руху на слабких)
     if (r === 'welcome') lpDepth(); else if (LPD) lpFlush();   // 159-а: глибина лендингу — з першого показу; пішов з лендингу на інший екран — одразу в журнал
     // прилади в нижній панелі лендинга перетікають по колу — при «Зменшити рух» і в автотестах стоїть перший (147-а: електролічильник)
     if (calmMotion() || navigator.webdriver) Array.prototype.forEach.call(document.querySelectorAll('svg.lpm'), function (s) { if (s.pauseAnimations) { s.pauseAnimations(); s.setCurrentTime(0); } });

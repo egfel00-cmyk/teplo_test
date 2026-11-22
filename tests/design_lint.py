@@ -15,7 +15,7 @@ bad = []
 rules = re.findall(r'([^{}]+)\{([^{}]*)\}', css)
 
 # табло и макеты приборов — «материал» (ролики, ЖК, жёлтая панель газа; 89-я — лицьова панель приладу на лендингу: lp-plate, lp-screw): там градиенты, мелкий текст и трекинг — часть предмета
-MATERIAL = re.compile(r'\.(lcd|elcd|el-|wd-|wdrum|gdrum|gd-|drum|lpp-|kprev|whero|lp-tile|lp-fig|bc-paper|bc-fold|pv-bar|phd-over|ph-fields|gpv-|lpg-|seg\b|kind-ill|phd-beam|phd-scan|lp-plate|lp-screw|lp-art-w|aph|art-photo)')
+MATERIAL = re.compile(r'\.(lcd|elcd|el-|wd-|wdrum|gdrum|gd-|drum|lpp-|kprev|whero|lp-tile|lp-fig|bc-paper|bc-fold|pv-bar|phd-over|ph-fields|gpv-|lpg-|seg\b|kind-ill|phd-beam|phd-scan|lp-plate|lp-screw|lp-art-w|aph|art-photo|lpd-shot|lpd-face)')   # 175-а: lpd-shot/lpd-face — «фото» водоміра в камері живого телефона лендинга
 # живые состояния: идёт распознавание/загрузка, мигает светодиод счётчика, крутится индикатор занятости
 # + lpMarq — стрічка постачальників на лендингу (решение владельца 10.11: «пусть плывут»)
 # + lpPh* — лендинг, крок 1: фото табло сканується й перетікає в табло (власник 10.11, 92-а: «красиво показати перехід з фото в показання»)

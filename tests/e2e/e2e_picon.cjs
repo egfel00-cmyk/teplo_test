@@ -66,11 +66,11 @@ const U = 'http://127.0.0.1:8013/';
     // лендинг: коротка клітинка «Ціни вашої громади» з громадами довідника по областях
     const lp = await (await p.context().browser().newContext({ viewport: { width: vw, height: 900 }, locale: 'uk-UA' })).newPage();
     await lp.goto(U); await lp.waitForTimeout(900);
-    // 93-я: на телефоні плашки героя всередині картки й закривають край телефона (≤ 40 px) — його головну з 4 лічильниками видно
-    const tl = await lp.evaluate(() => { const h = document.querySelector('.lp-hero').getBoundingClientRect(), s = document.querySelector('.lpp-screen').getBoundingClientRect();
+    // 175-а: плашки героя — у картці й ЗА телефоном (живий екран не закривають), з-за краю видно ≥ 40 % плашки
+    const tl = await lp.evaluate(() => { const h = document.querySelector('.lp-hero').getBoundingClientRect(), s = document.querySelector('.lp-phone').getBoundingClientRect(), zp = +getComputedStyle(document.querySelector('.lp-phone')).zIndex;
       return [...document.querySelectorAll('.lp-tile')].map(t => { const r = t.getBoundingClientRect(), left = t.classList.contains('t-elec') || t.classList.contains('t-gas');
-        return { inHero: r.left >= h.left && r.right <= h.right, cover: Math.round(left ? r.right - s.left : s.right - r.left) }; }); });
-    ok(vw + ': лендинг — 4 плашки героя в картці' + (vw < 600 ? ', на телефоні закривають ≤ 40 px екрана' : ''), tl.length === 4 && tl.every(x => x.inHero && (vw >= 600 || x.cover <= 40)), tl);
+        return { inHero: r.left >= h.left - 1 && r.right <= h.right + 1, behind: +getComputedStyle(t).zIndex < zp, vis: Math.round(100 * (left ? Math.min(r.right, s.left) - r.left : r.right - Math.max(r.left, s.right)) / r.width) }; }); });
+    ok(vw + ': лендинг — 4 плашки героя в картці, за телефоном, видно ≥ 40 %', tl.length === 4 && tl.every(x => x.inHero && x.behind && x.vis >= 40), tl);
     const pr = await lp.evaluate(() => { const c = document.querySelector('[data-key=lp-pr]'); return c ? { rows: c.querySelectorAll('.lpv-r').length, tot: (c.querySelector('.lpv-tot') || {}).textContent || '', h: c.querySelector('h3').textContent } : null; });
     ok(vw + ': лендинг — клітинка «Ціни вашої громади»: області (≥ 4) з числами громад і підсумок', pr && pr.h === 'Ціни вашої громади' && pr.rows >= 4 && /\d+ громад у довіднику/.test(pr.tot), pr);
     // 91-а (власник): у нижній панелі — цілі прилади, що перетікають один в один (корпус анімується SMIL), підписи 4 видів; в автотестах стоїть електролічильник

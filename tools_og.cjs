@@ -20,10 +20,10 @@ const TXT = {
     await p.route('**/api/events', r => r.abort());
     await p.goto(BASE); await p.waitForSelector('.lp-hero'); await p.waitForTimeout(1500);
     await p.evaluate(({ x, domain }) => {
-      document.querySelectorAll('.top, .fab, .lp-ctas, .lp-trust, .lp-link, .lp-hero ~ *').forEach(e => e.style.display = 'none');
+      document.querySelectorAll('.top, .fab, .lp-ctas, .lp-proof, .lp-hero ~ *').forEach(e => e.style.display = 'none');
       const h = document.querySelector('.lp-hero');
       Object.assign(h.style, { margin: '0', borderRadius: '0', width: '1200px', height: '630px', minHeight: '0', boxSizing: 'border-box' });
-      document.querySelector('.lp-badge').lastChild.textContent = x.badge;
+      { const b = document.createElement('p'); b.className = 'lp-badge'; b.textContent = x.badge; Object.assign(b.style, { margin: '0 0 12px', fontSize: '15px', opacity: '.8' }); document.querySelector('.lp-copy').prepend(b); }   // 175-а: бейджа в герої більше немає — лише на картинці
       document.querySelector('.lp-lead').textContent = x.lead;
       const d = document.createElement('p'); d.textContent = domain;
       Object.assign(d.style, { margin: '26px 0 0', font: '600 30px/1 var(--font, sans-serif)', color: '#fff', letterSpacing: '.01em' });

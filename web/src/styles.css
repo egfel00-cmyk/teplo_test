@@ -1448,9 +1448,9 @@ details.tbl-acc[open] > .tbl-wrap { margin-top: 12px; }
 .lp-in { position: relative; max-width: 1180px; margin: 0 auto; }
 .lp-copy { position: relative; z-index: 2; }
 .lp-badge { margin: 0 0 12px; font-size: 15px; font-weight: 500; color: var(--lp-fg2); }
-.lp-h1 { font-size: clamp(36px, 10.4vw, 68px); line-height: 1.04; letter-spacing: -0.032em; font-weight: 600; margin: 0 0 16px; max-width: 13ch; text-wrap: balance; color: var(--lp-fg); }
+.lp-h1 { font-size: clamp(34px, 9.4vw, 64px); line-height: 1.06; letter-spacing: -0.032em; font-weight: 600; margin: 0 0 14px; max-width: 13ch; text-wrap: balance; color: var(--lp-fg); }
 .lp-grad { color: inherit; }
-.lp-lead { font-size: clamp(18px, 4.8vw, 21px); line-height: 1.55; color: var(--lp-fg2); max-width: 38ch; margin: 0 0 24px; }
+.lp-lead { font-size: clamp(17px, 4.5vw, 20px); line-height: 1.5; color: var(--lp-fg2); max-width: 36ch; margin: 0 0 24px; text-wrap: balance; }
 .lp-ctas { display: flex; flex-wrap: wrap; align-items: center; gap: 14px 22px; }
 .lp-btn { display: inline-flex; align-items: center; justify-content: center; gap: 12px; min-height: 60px; padding: 0 32px; border-radius: 16px; text-decoration: none;
   font: 600 20px/1 var(--font); color: #0B1210; background: #F3F8F5; position: relative;
@@ -1467,8 +1467,8 @@ details.tbl-acc[open] > .tbl-wrap { margin-top: 12px; }
 .lp-who { margin: 20px 0 0; font-size: 15px; color: var(--lp-fg2); } .lp-who .linkbtn { color: var(--lp-fg); }
 
 /* сцена: телефон + табло на різній глибині */
-.lp-stage { display: block; color: inherit; text-decoration: none; cursor: pointer; -webkit-tap-highlight-color: transparent; position: relative; height: 440px; margin: 30px -6px 0; }
-.lp-phone { position: absolute; left: 50%; top: 18px; width: 206px; height: 440px; margin-left: -103px; border-radius: 42px; background: #040706; padding: 9px; z-index: 1; --k: .5013;
+.lp-stage { display: block; color: inherit; text-decoration: none; cursor: pointer; -webkit-tap-highlight-color: transparent; position: relative; height: 534px; margin: 32px -6px 0; }
+.lp-phone { position: absolute; left: 50%; top: 8px; width: 236px; height: 490px; margin-left: -118px; border-radius: 44px; background: #040706; padding: 9px; z-index: 1; --k: .5813;
   box-shadow: 0 0 0 1.5px rgba(255, 255, 255, .16), 0 0 0 5px rgba(255, 255, 255, .03), 0 40px 70px -12px rgba(0, 0, 0, .7); }
 /* 92-а: справжня головна в мініатюрі — «екран» 375 px, зменшений під макет (--k = ширина екрана / 375); кольори й табло — ті самі, що в застосунку (тема — людини) */
 .lpp-screen { position: relative; height: 100%; border-radius: 34px; overflow: hidden; background: var(--c-housing); }
@@ -1504,8 +1504,8 @@ details.tbl-acc[open] > .tbl-wrap { margin-top: 12px; }
 .lpp-tab .on { color: var(--c-ink); font-weight: 600; }
 .lpp-tab svg { box-sizing: content-box; padding: 4px 14px; border-radius: 14px; } .lpp-tab .on svg { background: var(--c-ink); color: var(--c-on-ink); }   /* як у нижньому меню (131-а) */
 .lpp-hi { position: absolute; left: 50%; bottom: 7px; width: 134px; height: 5px; margin-left: -67px; border-radius: 3px; background: var(--c-ink); }
-.lp-tile { position: absolute; z-index: 2; width: 136px; transform: rotate(var(--rot, 0deg)); }
-.lp-fig { margin: 0; padding: 8px 8px 7px; border-radius: 16px; background: rgba(12, 20, 18, .62); border: 1px solid var(--lp-edge); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px);
+.lp-tile { position: absolute; z-index: 0; width: 136px; transform: rotate(var(--rot, 0deg)); }
+.lp-fig { margin: 0; padding: 8px 8px 7px; border-radius: 16px; background: #1B2622; border: 1px solid var(--lp-edge);
   box-shadow: 0 22px 44px -14px rgba(0, 0, 0, .65); }
 .lp-fig figcaption { color: var(--lp-fg); font-size: 13px; }
 .lp-fig figcaption .ico { color: var(--glowc, currentColor); }
@@ -1520,10 +1520,11 @@ details.tbl-acc[open] > .tbl-wrap { margin-top: 12px; }
 .lp-tile .elcd .el-hd { font-size: 10px; margin-bottom: 2px; } .lp-tile .el-led { width: 7px; height: 7px; } .lp-tile .el-u { font-size: 11px; }
 .lp-tile .wdrum, .lp-tile .gdrum { padding: 6px 7px; gap: 5px; border-width: 3px; }
 .lp-tile .wd-win { gap: 1px; padding: 3px; } .lp-tile .wd-c { font-size: clamp(9px, 6.6cqw, 18px); } .lp-tile .wd-u { font-size: 11px; }
-/* 93-я: на телефоні плашки менші й висять за краями телефона — не закривають його головну (4 картки, власник 92-а: «інтерфейс ближче до справжнього») */
+/* 175-а: плашки — ЗА телефоном (не закривають живий екран), виглядають з-за країв: ліві — підписом ліворуч, праві — праворуч */
+.t-hot .lp-fig figcaption, .t-heat .lp-fig figcaption { justify-content: flex-end; }
 @media (max-width: 599px) {
-  .lp-tile { width: 104px; }
-  .t-elec { left: -7px; top: 40px; } .t-hot { right: -7px; top: 150px; } .t-gas { left: -8px; top: 262px; } .t-heat { right: -7px; top: 352px; }
+  .lp-tile { width: 100px; }
+  .t-elec { left: -4px; top: 46px; --rot: -6deg; } .t-hot { right: -4px; top: 168px; --rot: 6deg; } .t-gas { left: -4px; top: 300px; --rot: 5deg; } .t-heat { right: -4px; top: 404px; --rot: -5deg; }
   .lp-fig { padding: 6px 6px 5px; border-radius: 13px; }
   .lp-fig figcaption { font-size: 12px; }
   .lp-tile .lcd { padding: 5px 7px 4px; border-width: 3px; border-radius: 8px; }
@@ -1689,9 +1690,11 @@ details.tbl-acc[open] > .tbl-wrap { margin-top: 12px; }
 
 @media (min-width: 600px) {
   .lp-hero { margin: 0 16px; padding: 48px 36px 0; border-radius: 34px; }
-  .lp-stage { height: 470px; max-width: 560px; margin: 40px auto 0; }
+  .lp-stage { height: 590px; max-width: 600px; margin: 40px auto 0; }
+  .lp-phone { width: 260px; height: 542px; margin-left: -130px; border-radius: 48px; --k: .6453; }
+  .lpp-screen { border-radius: 40px; }
   .lp-tile { width: 180px; }
-  .t-elec { left: 2%; } .t-hot { right: 2%; } .t-gas { left: 6%; } .t-heat { right: 6%; }
+  .t-elec { left: 4%; top: 56px; } .t-hot { right: 4%; top: 168px; } .t-gas { left: 2%; top: 330px; } .t-heat { right: 2%; top: 430px; }
   .lp-sec { padding: 72px 32px 0; }
   .lp-steps { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .lp-bento { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -1700,13 +1703,13 @@ details.tbl-acc[open] > .tbl-wrap { margin-top: 12px; }
 }
 @media (max-width: 860px) and (min-width: 600px) { .lp-steps { grid-template-columns: minmax(0, 1fr); } .lp-step { grid-template-columns: 1fr 1fr; align-items: center; } }
 @media (min-width: 960px) {
-  .lp-hero { margin: 0 24px; padding: 72px 56px 64px; border-radius: 40px; }
+  .lp-hero { margin: 0 24px; padding: 64px 56px 56px; border-radius: 40px; }
   .lp-in { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 540px); gap: 40px; align-items: center; }
-  .lp-stage { height: 560px; margin: 0; max-width: none; }
-  .lp-phone { width: 260px; height: 540px; margin-left: -130px; top: 10px; border-radius: 48px; --k: .6453; }
-  .lpp-screen { border-radius: 40px; }
-  .lp-tile { width: 196px; }
-  .t-elec { left: -2%; top: 40px; } .t-hot { right: -4%; top: 140px; } .t-gas { left: -6%; top: 318px; } .t-heat { right: -2%; top: 404px; }
+  .lp-stage { height: 600px; margin: 0; max-width: none; }
+  .lp-phone { width: 280px; height: 585px; margin-left: -140px; top: 8px; border-radius: 50px; --k: .6987; }
+  .lpp-screen { border-radius: 42px; }
+  .lp-tile { width: 192px; }
+  .t-elec { left: -4%; top: 52px; } .t-hot { right: -5%; top: 156px; } .t-gas { left: -6%; top: 336px; } .t-heat { right: -3%; top: 440px; }
   .lp-bento { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .lp-bento .c-due { grid-column: span 2; }
   .lp-cell { padding: 28px; }
@@ -3292,7 +3295,7 @@ fieldset { min-inline-size: 0; }
 /* Світла C3: заголовок героя знову великий (правило C3 «h1 32 px» перебивало .lp-h1 — герой виглядав порожнім), панелі героя й фінального заклику —
    теплим графітом у тон «Теплого графіту» (не холодний зелений), гвинти й віконця кроків — теплі нейтралі; картки фактів і питань — як картки застосунку. */
 :root:root[data-lskin="c"][data-lsk="3"]:not([data-theme="dark"]) .lp { --lp-fg: #F7F4EE; --lp-fg2: rgba(247, 244, 238, .80); --lp-edge: rgba(255, 248, 236, .14); }
-:root:root[data-lskin="c"][data-lsk="3"]:not([data-theme="dark"]) .lp-h1 { font-size: clamp(38px, 10.6vw, 72px); line-height: 1.03; letter-spacing: -.035em; font-weight: 600; }
+:root:root[data-lskin="c"][data-lsk="3"]:not([data-theme="dark"]) .lp-h1 { font-size: clamp(34px, 9.4vw, 64px); line-height: 1.06; letter-spacing: -.032em; font-weight: 600; }
 :root:root[data-lskin="c"][data-lsk="3"]:not([data-theme="dark"]) :is(.lp-h2, .lpe-copy h2) { letter-spacing: -.03em; }
 :root:root[data-lskin="c"][data-lsk="3"]:not([data-theme="dark"]) .lp .lp-plate { background-color: #211F1B;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 .05 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"),
@@ -3328,3 +3331,123 @@ fieldset { min-inline-size: 0; }
 @keyframes askIn { from { opacity: 0; } to { opacity: 1; } }
 @keyframes askUp { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
 @media (prefers-reduced-motion: reduce) { .ask-ov, .ask { animation: none; } }
+
+/* 175-я — лендинг на телефоні (власник 22.11, скрини iPhone: «на мобілі виглядає погано»; 18.11: «одна думка, жорстка ієрархія» і «живий телефон»).
+   Герой: заголовок → підзаголовок одним реченням → кнопка (телефон — на всю ширину) → рядок-доказ; «Увійти» — тихо в шапці. Телефон — повністю в картці,
+   плашки табло — за ним. «Відгук» на лендингу телефона — лише значком (підпис налазив на факти). */
+.lp-proof { display: flex; flex-wrap: wrap; align-items: center; margin: 16px 0 0; font-size: 15px; line-height: 20px; color: var(--lp-fg2); }
+.lp-proof span + span::before { content: '·'; margin: 0 8px; }
+.lp-login { display: inline-flex; align-items: center; min-height: 44px; padding: 0 14px; border-radius: 999px; font: 600 15px/1 var(--font); color: var(--c-ink); text-decoration: none; }
+@media (hover: hover) { .lp-login:hover { background: var(--c-ghost-hover); } }
+.lp-login:focus-visible { outline: 3px solid var(--c-focus-ring, #9CC6FF); outline-offset: 2px; }
+@media (max-width: 599px) {
+  .lp-copy .lp-ctas { display: grid; }
+  .lp-copy .lp-btn { width: 100%; min-height: 56px; font-size: 18px; }
+  .fab.fab-bare span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+  .fab.fab-bare { padding: 0; width: 48px; justify-content: center; }
+}
+
+/* Живий телефон (web/src/lpdemo.js): екран 375 px — шари сцен поверх один одного, рухаються лише transform / opacity.
+   Без руху (слабкий телефон, «Зменшити рух», автотести, немає Web Animations) — нерухома головна: квартира розгорнута, 4 картки, вода «Передано». */
+.lpp-vp.lpd { display: block; --sb: 48px; --tabh: 76px; }
+.lpd .lpp-sb { position: absolute; left: 0; right: 0; top: 0; z-index: 5; background: var(--c-housing); }
+.lpd-s { position: absolute; left: 0; right: 0; top: var(--sb); bottom: var(--tabh); overflow: hidden; background: var(--c-housing); }
+.lpd .lpp-tab { position: absolute; left: 0; right: 0; bottom: 0; height: var(--tabh); z-index: 3; }
+.s-home { z-index: 1; padding: 0 12px; }
+.s-meter { z-index: 2; padding: 0 16px; box-shadow: -16px 0 32px -16px rgba(0, 0, 0, .35); }
+.s-cam { z-index: 4; bottom: 0; background: #050807; color: #F3F8F5; }
+.lpd-dim { position: absolute; left: 0; right: 0; top: var(--sb); bottom: 0; z-index: 4; background: #000; opacity: 0; }
+.s-sheet { z-index: 4; top: auto; bottom: 0; padding: 10px 20px 30px; border-radius: 28px 28px 0 0; background: var(--c-surface); box-shadow: 0 -12px 32px -8px rgba(0, 0, 0, .35); }
+.lpd:not(.run) :is(.s-meter, .s-cam, .s-sheet, .lpd-dim, .lpd-tg, .lpd-tap) { visibility: hidden; }
+.lpd.warm :is(.s-meter, .s-cam, .s-sheet, .lpd-tg) { z-index: 0; }   /* прогрів (lpdemo.js): сцени під головною на своїх місцях — один раз намалювати */
+.lpd.warm .s-home { z-index: 1; } .lpd.warm .lpd-res { opacity: .01; }
+/* поза кадром — нескінченний рух лендинга на паузі (lpdemo.js → idle) */
+.lp-idle, .lp-idle * { animation-play-state: paused !important; }
+.lpd-stk { display: grid; } .lpd-stk > * { grid-area: 1 / 1; }
+.lpd:not(.run) :is(.lpd-w0, .m0, .m1, .lpd-ok) { opacity: 0; }
+.lpd-rc { position: relative; overflow: hidden; }
+.lpd-r { position: absolute; left: 0; right: 0; top: 0; height: 200%; display: grid; grid-template-rows: 1fr 1fr; transform: translateY(-50%); }
+.lpd-r i { display: grid; place-items: center; font-style: normal; }
+/* головна: квартира з лічильниками й друга — згорнута */
+.lpd-apt { display: flex; align-items: center; gap: 12px; min-height: 60px; padding: 8px 12px 8px 16px; border-radius: 16px; background: var(--c-surface); border: 1px solid var(--c-line); position: relative; }
+.lpd-apt .pdot { width: 12px; height: 12px; margin: 0; }
+.lpd-apt-t { flex: 1; min-width: 0; display: grid; }
+.lpd-apt-t b { font-size: 17px; line-height: 22px; font-weight: 600; } .lpd-apt-t i { font-style: normal; font-size: 13px; line-height: 18px; color: var(--c-ink-2); }
+.lpd-chev { display: grid; color: var(--c-ink-2); flex: none; transform: rotate(-90deg); }
+.a2 .lpd-chev { transform: rotate(90deg); }
+.lpd-cards { margin: 8px 0; }
+.lpd .ucard-cold .ucard-disp { position: relative; }
+/* сторінка лічильника */
+.lpd-nav { display: flex; align-items: center; gap: 4px; height: 44px; margin-left: -6px; font-size: 17px; color: var(--tint, var(--c-ink-2)); }
+.lpd-place { display: flex; align-items: center; gap: 8px; margin: 2px 0 4px; font-size: 15px; color: var(--c-ink-2); } .lpd-place .pdot { width: 10px; height: 10px; margin: 0; }
+.lpd-h { display: flex; align-items: center; gap: 10px; margin: 0 0 16px; font-size: 28px; line-height: 34px; font-weight: 600; letter-spacing: -.02em; }
+.lpd-drum .wdrum { padding: 12px 14px; border-width: 4px; }
+.lpd-st { margin: 12px 0 18px; font-size: 15px; line-height: 20px; }
+.lpd-st > span { display: flex; align-items: center; gap: 6px; } .lpd-st .ok { color: var(--c-ok); } .lpd-st .due { color: var(--c-ink-2); }
+.lpd-btn { display: flex; align-items: center; justify-content: center; gap: 10px; min-height: 54px; padding: 0 16px; border-radius: 16px; font-size: 17px; font-weight: 600; }
+.lpd-btn.pri { background: var(--acc-fill, var(--c-ink)); color: var(--acc-on, var(--c-on-ink)); }
+.lpd-btn.sm { min-height: 44px; padding: 0 18px; font-size: 16px; border-radius: 12px; }
+.lpd-where { margin-top: 16px; padding: 14px; border-radius: 16px; background: var(--c-surface); border: 1px solid var(--c-line); display: grid; gap: 12px; }
+.lpd-wh { display: flex; align-items: center; gap: 8px; margin: 0; font-size: 17px; font-weight: 600; } .lpd-wh .ico { color: var(--c-ink-2); }
+.lpd-org { display: grid; margin: 0; } .lpd-org b { font-size: 16px; font-weight: 600; } .lpd-org i { font-style: normal; font-size: 14px; color: var(--c-ink-2); }
+.lpd-btn.send { min-height: 48px; background: var(--c-ink); color: var(--c-on-ink); font-size: 16px; }
+.lpd-ok { display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 48px; border-radius: 14px; background: var(--c-ok-soft); color: var(--c-ok-ink, var(--c-ok)); font-size: 16px; font-weight: 600; }
+/* камера: фото водоміра, рамка, лінія сканування, знайдене вікно роликів */
+.lpd-hint { margin: 0; padding: 18px 20px 0; text-align: center; font-size: 16px; color: rgba(243, 248, 245, .78); }
+.lpd-shot { position: relative; margin: 18px 20px 0; height: 392px; border-radius: 22px; overflow: hidden; display: grid; place-items: center;
+  background: radial-gradient(120% 90% at 40% 30%, #3A4743 0%, #1C2421 60%, #101614 100%); }
+.lpd-face { position: relative; width: 284px; height: 284px; border-radius: 50%; display: grid; place-items: center; align-content: center; gap: 10px; transform: rotate(-4deg);
+  background: radial-gradient(circle at 42% 32%, #FFFFFF 0%, #EEF1EE 58%, #D2D8D3 100%); box-shadow: 0 0 0 12px #2F68B0, 0 0 0 15px #1F4A80, 0 18px 40px rgba(0, 0, 0, .6); }
+.lpd-q { font-size: 12px; color: #5F6A65; }
+.lpd-fwin { display: flex; align-items: center; gap: 8px; width: 214px; container-type: inline-size; }
+.lpd-fwin .wd-u { font: 600 14px/1 var(--font); color: #3B4642; }
+.lpd-dials { display: flex; gap: 12px; }
+.lpd-dials i { position: relative; width: 26px; height: 26px; border-radius: 50%; background: #F7F8F6; box-shadow: inset 0 0 0 1.5px #BFC6C0; }
+.lpd-dials i::after { content: ''; position: absolute; left: 50%; top: 4px; width: 3px; height: 10px; margin-left: -1.5px; border-radius: 2px; background: #C21F26; transform-origin: 50% 9px; transform: rotate(var(--a)); }
+.lpd-cn { position: absolute; width: 34px; height: 34px; border: 3px solid rgba(255, 255, 255, .92); }
+.lpd-cn.c1 { left: 16px; top: 16px; border-right: 0; border-bottom: 0; border-radius: 10px 0 0 0; } .lpd-cn.c2 { right: 16px; top: 16px; border-left: 0; border-bottom: 0; border-radius: 0 10px 0 0; }
+.lpd-cn.c3 { left: 16px; bottom: 16px; border-right: 0; border-top: 0; border-radius: 0 0 0 10px; } .lpd-cn.c4 { right: 16px; bottom: 16px; border-left: 0; border-top: 0; border-radius: 0 0 10px 0; }
+.lpd-scanw { position: absolute; left: 24px; right: 24px; top: 24px; bottom: 24px; pointer-events: none; }
+.lpd-scan { position: absolute; left: 0; right: 0; top: 0; height: 3px; border-radius: 2px; background: #7FE0A8; opacity: 0; }
+.lpd-box { position: absolute; left: 50%; top: 50%; width: 232px; height: 54px; margin: -35px 0 0 -116px; border-radius: 10px; border: 3px solid #7FE0A8; opacity: 0; transform: rotate(-4deg); }
+.lpd-res { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 16px 20px 0; padding: 12px 12px 12px 16px; border-radius: 18px; background: #F3F8F5; color: #0B1210; opacity: 0; }
+.lpd-res-t { display: flex; align-items: center; gap: 10px; } .lpd-res-t > .ico { color: #18693F; flex: none; }
+.lpd-res-t > span { display: grid; } .lpd-res-t b { font-size: 20px; line-height: 24px; font-weight: 600; font-variant-numeric: tabular-nums; } .lpd-res-t i { font-style: normal; font-size: 13px; line-height: 18px; color: #4D5466; }
+.lpd-res .lpd-btn.pri { background: #0B1210; color: #F3F8F5; }
+/* аркуш «Зберегти» */
+.lpd-grab { display: block; width: 40px; height: 5px; margin: 0 auto 14px; border-radius: 3px; background: var(--c-line); }
+.lpd-sh-t { display: flex; align-items: baseline; justify-content: space-between; margin: 0 0 14px; } .lpd-sh-t b { font-size: 22px; font-weight: 600; } .lpd-sh-t i { font-style: normal; font-size: 15px; color: var(--c-ink-2); }
+.lpd-field { display: flex; align-items: baseline; gap: 8px; min-height: 64px; padding: 10px 16px; border-radius: 14px; border: 2px solid var(--acc-fill, var(--c-ink)); background: var(--c-surface); }
+.lpd-fv { font: 600 34px/44px var(--font); font-variant-numeric: tabular-nums; letter-spacing: -.01em; } .lpd-fu { font-size: 18px; color: var(--c-ink-2); }
+.lpd-src { display: flex; align-items: center; gap: 6px; margin: 10px 0 0; font-size: 14px; color: var(--c-ok); }
+.lpd-used { margin: 12px 0 18px; font-size: 16px; color: var(--c-ink-2); } .lpd-used b { color: var(--c-ink); font-weight: 600; }
+/* нагадування в Telegram — банер угорі, як на iPhone */
+.lpd-tg { position: absolute; left: 10px; right: 10px; top: 54px; z-index: 6; display: flex; gap: 12px; padding: 12px 14px; border-radius: 22px; background: var(--c-surface); color: var(--c-ink);
+  box-shadow: 0 0 0 1px var(--c-line), 0 14px 34px -6px rgba(0, 0, 0, .35); }
+.lpd-tg-ic { flex: none; width: 40px; height: 40px; border-radius: 10px; overflow: hidden; } .lpd-tg-ic svg { width: 40px; height: 40px; display: block; }
+.lpd-tg-b { display: grid; gap: 2px; min-width: 0; }
+.lpd-tg-h { display: flex; align-items: baseline; gap: 8px; } .lpd-tg-h b { font-size: 15px; font-weight: 600; } .lpd-tg-h i { font-style: normal; font-size: 13px; color: var(--c-ink-2); }
+.lpd-tg-m { font-size: 15px; line-height: 20px; }
+/* «палець»: сіре коло там, куди торкаємось */
+.lpd-tap { position: absolute; left: 0; top: 0; z-index: 7; width: 46px; height: 46px; margin: -23px 0 0 -23px; border-radius: 50%; pointer-events: none; opacity: 0;
+  background: rgba(128, 136, 148, .42); box-shadow: 0 0 0 2px rgba(255, 255, 255, .55); }
+/* «Латунь» — панелі героя й фінального заклику теплим графітом, як у світлій C3 (зелений корпус не пасував до латуні) */
+:root:root[data-theme="dark"][data-skin="brass"] .lp .lp-plate { background-color: #211F1B;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 .05 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"),
+    radial-gradient(120% 70% at 28% 0%, rgba(255, 244, 226, .07) 0%, rgba(255, 244, 226, 0) 62%), linear-gradient(180deg, #34302A 0%, #24211D 48%, #191714 100%); }
+:root:root[data-theme="dark"][data-skin="brass"] .lp-fig { background: #24211D; }
+:root:root[data-theme="dark"][data-skin="brass"] .lp-screw { background: radial-gradient(circle at 34% 30%, #D3CBBE 0%, #8F877B 52%, #5B554C 100%); }
+/* дуже вузькі телефони (≤ 359 px, iPhone SE 1-го покоління): телефон менший, щоб плашки табло виглядали з-за країв; факти — рядками «число — підпис»
+   (у дві колонки підписи рвалися посеред слова) */
+@media (max-width: 359px) {
+  .lp-stage { height: 480px; }
+  .lp-phone { width: 212px; height: 438px; margin-left: -106px; border-radius: 40px; --k: .5173; }
+  .lpp-screen { border-radius: 32px; }
+  .lp-tile { width: 92px; }
+  .t-elec { top: 40px; } .t-hot { top: 150px; } .t-gas { top: 270px; } .t-heat { top: 364px; }
+  .lpf-list { grid-template-columns: minmax(0, 1fr); }
+  .lpf-list li { grid-template-columns: 84px minmax(0, 1fr); align-items: center; gap: 12px; padding: 14px 16px; border-width: 0; }
+  .lpf-list li + li { border-top-width: 1px; }
+  .lpf-list b { font-size: 34px; }
+  .lpf-list span { overflow-wrap: normal; }
+}
