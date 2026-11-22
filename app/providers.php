@@ -297,6 +297,14 @@ final class Providers {
    *  питає /api/providers (там — реквізити, вікно, «Куди передати»). Адрес не зберігаємо. GET /api/providers/catalog?k=water */
   const CAT_KINDS = ['elec', 'water', 'gas', 'heat', 'waste'];
   public static function catalog(string $kind): array {
+    // 176-я: постачальник гарячої води — серед теплопостачальників і водоканалів (k у рядку — з якого виду брати дані пункту)
+    if ($kind === 'hot') {
+      $by = [];
+      foreach (['heat', 'water'] as $kd) foreach (self::catalog($kd)['items'] as $it) { $key = mb_strtolower($it['o']); if (!isset($by[$key])) $by[$key] = $it + ['k' => $kd]; }
+      $items = array_values($by);
+      usort($items, fn($a, $b) => strcmp(mb_strtolower(preg_replace('/^[^«"]*[«"]/u', '', $a['o'])), mb_strtolower(preg_replace('/^[^«"]*[«"]/u', '', $b['o']))));
+      return ['k' => 'hot', 'items' => $items];
+    }
     if (!in_array($kind, self::CAT_KINDS, true)) return ['k' => $kind, 'items' => []];
     $k = self::kat(); $by = []; $ctr = [];
     foreach ($k['settlements'] as $st) { $h = (string)$st['h']; if (!isset($ctr[$h]) || ($st['c'] === 'M' && $ctr[$h]['c'] !== 'M')) $ctr[$h] = $st; }
@@ -354,7 +362,7 @@ final class Providers {
 final class ProvEdit {
   const SCOPES = ['oblast', 'hromadas', 'settlements'];
   const KINDS = ['elec', 'gas', 'water', 'heat', 'waste'];
-  const STR = ['org', 'net', 'grm', 'note', 'note_ru', 'src', 'src_ru', 'how', 'how_ru', 'pay', 'pay_ru', 'cab', 'bot', 'site', 'app', 'viber', 'sms', 'from', 'distFrom', 'distSrc', 'distSrc_ru', 'robot', 'robot_note', 'via', 'doc', 'doc_ru'];
+  const STR = ['org', 'hotOrg', 'net', 'grm', 'note', 'note_ru', 'src', 'src_ru', 'how', 'how_ru', 'pay', 'pay_ru', 'cab', 'bot', 'site', 'app', 'viber', 'sms', 'from', 'distFrom', 'distSrc', 'distSrc_ru', 'robot', 'robot_note', 'via', 'doc', 'doc_ru'];
   const NUM = ['supply', 'drain', 'hot', 'price', 'abon', 'dist', 'priv', 'till'];   // till — до якого числа місяця передавати (31 — до кінця місяця; 126-а)
   const URLS = ['cab', 'bot', 'site', 'app', 'viber'];
   /** Чи можна подавати без людини: server — робот з нашого сервера; relay — лише з України (Cloudflare, ретранслятор); captcha — капча, вручну;

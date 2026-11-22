@@ -208,13 +208,15 @@ final class VkBills {
   /** Каждая живая квартира состояния: [причина, цель]. Причины: off — «Квитанції самі» выключено, noacc — нет рахунку/прізвища (или кривые),
    *  hasbill — квитанция с сайта за ym уже есть, ok — можно идти (цель {place, acc, fam}). Нет записи воды за месяц — тоже ok: квитанция ляжет
    *  отдельной «Платіжкою Водоканалу» (08.11; раньше — norec, не брали). */
+  /** 176-я: особовий рахунок Водоканалу квартири — холодної води: water.acc.cold, старе water.account — те саме (застосунок пише обидва). */
+  public static function wacc(array $w): string { $a = $w['acc'] ?? null; if (is_object($a)) $a = (array)$a; return (string)(is_array($a) && isset($a['cold']) ? $a['cold'] : ($w['account'] ?? '')); }
   public static function why(array $st, string $ym): array {
     $places = self::live($st); if (!$places) return [];
     $first = self::first($places); $water = (array)($st['water'] ?? []); $out = [];
     foreach ($places as $p) {
       $w = (array)($p['water'] ?? []); $id = (string)$p['id'];
       if (($w['billAuto'] ?? null) === false) { $out[] = ['off', null]; continue; }
-      try { [$acc, $fam] = VkCab::input(['acc' => (string)($w['account'] ?? ''), 'fam' => (string)($w['surname'] ?? '')]); } catch (HttpError $e) { $out[] = ['noacc', null]; continue; }
+      try { [$acc, $fam] = VkCab::input(['acc' => self::wacc($w), 'fam' => (string)($w['surname'] ?? '')]); } catch (HttpError $e) { $out[] = ['noacc', null]; continue; }
       if (self::target($water, $id, $first, $ym)[1]) { $out[] = ['hasbill', null]; continue; }
       $out[] = ['ok', ['place' => $id, 'acc' => $acc, 'fam' => $fam]];
     }

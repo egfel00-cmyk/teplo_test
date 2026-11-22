@@ -564,7 +564,7 @@ final class VkStatus {
       if (!Admin::is(['id' => (int)$u['id'], 'email' => $u['email']])) continue;
       $st = json_decode((string)$u['data'], true); if (!is_array($st)) continue;
       foreach ((array)($st['places'] ?? []) as $pl) {
-        $w = (array)($pl['water'] ?? []); $acc = preg_replace('/\D/', '', (string)($w['account'] ?? '')); $fam = trim((string)($w['surname'] ?? ''));
+        $w = (array)($pl['water'] ?? []); $acc = preg_replace('/\D/', '', VkBills::wacc($w)); $fam = trim((string)($w['surname'] ?? ''));
         if (strlen($acc) < 5 || $fam === '' || isset($seen[$acc]) || count($res) >= 3) continue;
         $seen[$acc] = 1;
         try { $in = VkCab::input(['acc' => $acc, 'fam' => $fam]); } catch (HttpError $e) { continue; }
@@ -741,7 +741,7 @@ final class GeoStats {
         if (!$meters && !$recs) return;
         $pk = in_array($k, ['hot', 'cold'], true) ? 'water' : $k; $d = $kinds[$pk] ?? null;
         // гаряча вода — від теплопостачальника (ХТМ, Київтеплоенерго), якщо він відомий
-        $org = $k === 'hot' && !empty($kinds['heat']['org']) ? $kinds['heat']['org'] : ($d['org'] ?? null);
+        $org = $k === 'hot' && !empty($d['hotOrg']) ? $d['hotOrg'] : ($k === 'hot' && !empty($kinds['heat']['org']) ? $kinds['heat']['org'] : ($d['org'] ?? null));   // 176-я: hotOrg довідника — першим
         $real = array_values(array_filter($recs, fn($x) => empty($x['base'])));
         $last = null; foreach ($real as $x) { $dt = (string)($x['date'] ?? ($x['htm']['date'] ?? '')); if ($dt > (string)$last) $last = $dt; }
         [$price, $src] = $pr[$k];
