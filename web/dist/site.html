@@ -3510,6 +3510,22 @@ fieldset { min-inline-size: 0; }
   .lpf-list span { overflow-wrap: normal; }
 }
 
+/* 176-я: «Кабінети й надсилання» — список постачальників (у фоні / самі) → екран постачальника; рядок у «Налаштуваннях показань» лічильника */
+.cb-list { margin-top: var(--sp-4); }
+.cb-row .cb-bdg { white-space: nowrap; font-size: 13px; }
+.cb-row .cb-bdg-w { display: block; margin-top: 4px; }
+.cb-row .ios-t { grid-template-columns: minmax(0, 1fr); }
+.cb-row .ios-t .small { white-space: normal; }
+.cb-list, .cb-list .ios-sec { min-width: 0; }
+.cb-row .cb-bdg svg { vertical-align: -2px; }
+.cb-sec-n { margin: 6px 16px 0; }
+.cb-one-bg { margin: -8px 0 var(--sp-4); }
+.cb-meta1 { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; margin: 0 0 var(--sp-3); }
+.cb-mrow { margin-top: var(--sp-3); }
+.cb-mrow .ios-list, :root:root .cb-mrow .ios-list { background: transparent; border: 1px solid var(--c-line); box-shadow: none; border-radius: 12px; }
+.cb-mrow .ios-row { padding-left: 14px; }
+.cb-mrow .ios-t .small { white-space: normal; }
+
 </style>
 <style>.top { padding-top: max(12px, env(safe-area-inset-top)); }</style>
 </head>
@@ -6145,6 +6161,10 @@ fieldset { min-inline-size: 0; }
       wa_acc_h: "Цифри з квитанції Водоканалу (не ХТМ).",
       wa_sn: "Прізвище",
       wa_sn_h: "Точно як у квитанції — бот звіряє.",
+      // 176-а: «Кабінети й надсилання» — список постачальників → екран кожного; позначка «у фоні»; рядок у «Налаштуваннях показань»
+      cb_bdg_on: "Надсилає у фоні", cb_bdg_can: "Можна у фоні", cb_sec_bg: "Передача у фоні", cb_sec_bg_n: "Цим постачальникам сервіс може надсилати показання сам, щойно ви їх внесете. Дотик — дані для входу, перевірка й «Відправляти у фоні».",
+      cb_sec_self: "Передаєте самі", cb_sec_self_n: "Сюди сервіс показання не надсилає: підкажемо, куди й до якого числа, і що скопіювати.", cb_gone: "Цього постачальника вже немає в жодній квартирі.",
+      cb_m_bg: "Передача у фоні", cb_m_self: "Хто приймає показання", cb_m_on: "Підключено — дані для входу й перевірка тут", cb_m_can: "Можна надсилати у фоні — підключіть", cb_m_where: "Куди й як передати, що скопіювати",
       // 176-я: рахунок і постачальник гарячої води — окремо від холодної
       wa_acc_h2: "Холодна вода й водовідведення — з квитанції Водоканалу. За гарячу воду рахунок окремий.",
       wa_acc_hot: "Особовий рахунок за гарячу воду", wa_acc_hot_h: "З квитанції {o} за гарячу воду. Може не збігатися з рахунком за холодну.",
@@ -7565,6 +7585,10 @@ fieldset { min-inline-size: 0; }
       wa_acc_h: "Цифры из квитанции Водоканала (не ХТМ).",
       wa_sn: "Фамилия",
       wa_sn_h: "Точно как в квитанции — бот сверяет.",
+      // 176-я: «Кабинеты и отправка» — список поставщиков → экран каждого; пометка «в фоне»; строка в «Настройках показаний»
+      cb_bdg_on: "Отправляет в фоне", cb_bdg_can: "Можно в фоне", cb_sec_bg: "Передача в фоне", cb_sec_bg_n: "Этим поставщикам сервис может отправлять показания сам, как только вы их внесёте. Касание — данные для входа, проверка и «Отправлять в фоне».",
+      cb_sec_self: "Передаёте сами", cb_sec_self_n: "Сюда сервис показания не отправляет: подскажем, куда и до какого числа, и что скопировать.", cb_gone: "Этого поставщика уже нет ни в одной квартире.",
+      cb_m_bg: "Передача в фоне", cb_m_self: "Кто принимает показания", cb_m_on: "Подключено — данные для входа и проверка здесь", cb_m_can: "Можно отправлять в фоне — подключите", cb_m_where: "Куда и как передать, что скопировать",
       wa_acc_h2: "Холодная вода и водоотведение — из квитанции Водоканала. За горячую воду счёт отдельный.",
       wa_acc_hot: "Лицевой счёт за горячую воду", wa_acc_hot_h: "Из квитанции {o} за горячую воду. Может не совпадать со счётом за холодную.",
       wa_acc_hot_h0: "Из квитанции за горячую воду. Может не совпадать со счётом за холодную.", wa_acc_hot_s: "Счёт за горячую",
@@ -11056,6 +11080,7 @@ fieldset { min-inline-size: 0; }
     if (view && view.bare) return view.closeTo || (S.onboarded ? 'home' : '');
     if (/^(home|places|history|stats|prefs)$/.test(r)) return '';
     if (REC_RE.test(r)) return '<';
+    if (/^prefs-cabs-/.test(r)) return CB_FROM && !/^prefs/.test(CB_FROM) ? '<' : 'prefs-cabs';   // 176-а: екран постачальника
     if (/^place-/.test(r)) return '<';   // 164-а: екран квартири відкривають і з головної, і з «Налаштувань» — назад туди, звідки прийшли
     if (/^prefs/.test(r)) return 'prefs';
     if (/^stats/.test(r)) return 'stats';
@@ -13127,6 +13152,8 @@ fieldset { min-inline-size: 0; }
   // КП — cab_creds на сервері), статус словами (коли перевіряли й надсилали), «Перевірити» — увійти й дійти до форми, нічого не надсилаючи, «Відправляти
   // у фоні» — окремо для постачальника, «Відв’язати», «Хто ми…». Каналу у фоні немає (обленерго, Газмережі, місцеві без робота, свій постачальник,
   // вивіз) — «Передаєте самі» й куди, без кнопок. Кілька квартир — постачальник один раз, квартири — рядками всередині.
+  var CB_FROM = '';   // 176-а: звідки відкрили екран постачальника (сторінка лічильника — «Назад» туди)
+  document.addEventListener('click', function (e) { var a = e.target.closest && e.target.closest('[data-act="cb-go"]'); if (a) CB_FROM = routeName(); }, true);
   var CB = { vk: {}, open: {}, hcEdit: false, busy: '' };   // vk[квартира] — підсумок «Перевірити» сайту Водоканалу; open[id] — розгорнута форма підключення
   var CB_KS = ['elec', 'water', 'gas', 'heat', 'waste'];
   function cbLive(m) { return !!(m && !m.deleted && !m.removed); }
@@ -13180,6 +13207,9 @@ fieldset { min-inline-size: 0; }
   /** Шапка блоку: значок виду, назва, види й квартири, стан словами. */
   function cbHead(g, tone, st) {
     var pls = []; g.rows.forEach(function (r) { var l = placeLabel(r.p); if (pls.indexOf(l) < 0) pls.push(l); });
+    // 176-а: екран постачальника — назва вже в заголовку екрана (h1), тут лише стан і види/квартири
+    if (CB.one) { var kw1 = g.ks.map(cbKw).filter(function (x) { return x !== g.org; }).join(', '), m1 = [kw1, places().length > 1 ? pls.join(', ') : ''].filter(Boolean).join(' · ');
+      return st || m1 ? '<p class="cb-meta cb-meta1">' + (st ? '<span class="pill ' + (tone || 'neutral') + '" data-key="cb-st">' + esc(st) + '</span>' : '') + (m1 ? '<span class="small muted">' + esc(m1) + '</span>' : '') + '</p>' : ''; }
     var k0 = g.ks[0] || 'elec', kk = KINDS[k0 === 'water' ? 'cold' : k0] || KINDS.elec;
     var kw = g.ks.map(cbKw).filter(function (x) { return x !== g.org; }).join(', '), meta = [kw, places().length > 1 ? pls.join(', ') : ''].filter(Boolean).join(' · ');
     return '<div class="cb-h">' + ico(kk.icon, 20, kk.cls) + '<div class="cb-ht"><h2>' + esc(g.org) + '</h2><p class="cb-meta">' +
@@ -13388,13 +13418,65 @@ fieldset { min-inline-size: 0; }
     if (ch !== 'unk' && page) h += '<p class="small cb-acts"><a href="#' + page + '" data-key="cb-self-go">' + esc(t(ch === 'waste' ? 'cb_go_waste' : 'cb_go_where')) + '</a></p>';
     return '<section class="panel cb cb-self" data-key="cb-' + esc(ch) + '-' + esc(g.ks[0]) + '">' + cbHead(g, tone, stx) + h + '</section>';
   }
-  /** «Налаштування» → «Кабінети й надсилання». */
+  /** 176-а (власник 22.11: «не показуй лентою всі постачальники — список з переходом на екран кожного, новий рівень меню; помічай, що можна
+   *  відправити у фоні»). Адреса екрана постачальника: #prefs-cabs-<slug>. */
+  function cbSlug(g) {
+    if (g.ch === 'htm' || g.ch === 'vk') return g.ch;
+    if (g.ch === 'lb') return 'lb-' + String(g.bot || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+    var h = 0, x = String(g.id || ''); for (var i = 0; i < x.length; i++) h = (h * 31 + x.charCodeAt(i)) >>> 0;
+    return g.ch + '-' + h.toString(36);
+  }
+  /** Чи надсилає постачальник показання у фоні: can — є куди (кабінет ХТМ, сайт Водоканалу, робот місцевого КП), on — підключено. */
+  function cbBg(g) {
+    if (g.ch === 'htm') { if (hcOn()) hcLoad(); return { can: true, on: hcOn() && hcConn() }; }
+    // сайт Водоканалу тимчасово не відкривається — лишається серед «у фоні» (стан «не відкривається» — на його екрані), лише не «надсилає»
+    if (g.ch === 'vk') return { can: true, on: hcOn() && !(VKS.data && !vkcAvail()) && (vjAutoOn() || (g.rows.length > 0 && g.rows.every(function (r) { return cbVkOk(r.p); }))) };
+    if (g.ch === 'lb') {
+      var on = false, can = true;
+      if (hcOn()) g.rows.forEach(function (r) { lbLoad(g.bot, r.p.id); var st = LB.st[lbKey(g.bot, r.p.id)]; if (st && st.conn && st.conn.bg !== false) on = true; if (st && (st.none || !st.bot || !st.bot.ready)) can = false; });
+      return { can: can || on, on: on };
+    }
+    return { can: false, on: false };
+  }
+  function cbBadge(b, key) { return b.on ? '<span class="pill ok cb-bdg" data-key="' + key + '">' + ico('send', 14) + ' ' + esc(t('cb_bdg_on')) + '</span>' : b.can ? '<span class="pill neutral cb-bdg" data-key="' + key + '">' + ico('send', 14) + ' ' + esc(t('cb_bdg_can')) + '</span>' : ''; }
+  /** Текст рядка: назва, види й квартири, під ними позначка «у фоні» (на 320 px праворуч від тексту вона душила назву). */
+  function cbTxt(title, sub, bdg) { return '<span class="ios-t"><b>' + esc(title) + '</b>' + (sub ? '<span class="small muted">' + esc(sub) + '</span>' : '') + (bdg ? '<span class="cb-bdg-w">' + bdg + '</span>' : '') + '</span>'; }
+  function cbBlock(g) { return g.ch === 'htm' ? cbHtm(g) : g.ch === 'vk' ? cbVk(g) : g.ch === 'lb' ? cbLb(g) : cbSelf(g); }
+  /** «Налаштування» → «Кабінети й надсилання»: список постачальників — спершу ті, кому сервіс надсилає сам (у фоні), далі — кому передаєте самі. */
   function cabsPanel() {
     var r = cbProvs(), h = '<p class="small muted cb-lead" data-key="cb-lead">' + esc(t('cb_lead')) + '</p>';
     if (r.wait) h += cbLine('muted', '', t('cb_wait'), 'cb-wait');
-    if (!r.list.length && !r.wait) h += '<div class="panel" data-key="cb-none"><p class="small">' + esc(t('cb_none')) + '</p></div>';
-    return h + r.list.map(function (g) { return g.ch === 'htm' ? cbHtm(g) : g.ch === 'vk' ? cbVk(g) : g.ch === 'lb' ? cbLb(g) : cbSelf(g); }).join('');
+    if (!r.list.length) return h + (r.wait ? '' : '<div class="panel" data-key="cb-none"><p class="small">' + esc(t('cb_none')) + '</p></div>');
+    var bg = [], self = [];
+    r.list.forEach(function (g) {
+      var k0 = g.ks[0] || 'elec', kk = KINDS[k0 === 'water' ? 'cold' : k0] || KINDS.elec, b = cbBg(g), sl = cbSlug(g), pls = [];
+      g.rows.forEach(function (x) { var l = placeLabel(x.p); if (pls.indexOf(l) < 0) pls.push(l); });
+      var sub = [g.ks.map(cbKw).filter(function (x) { return x !== g.org; }).join(', '), places().length > 1 ? pls.join(', ') : ''].filter(Boolean).join(' · ');
+      (b.can ? bg : self).push('<li><a class="ios-row cb-row" href="#prefs-cabs-' + sl + '" data-act="cb-go" data-key="cb-row-' + sl + '">' + ico(kk.icon, 22, 'ios-ico') + cbTxt(g.org, sub, cbBadge(b, 'cb-bdg-' + sl)) +
+        ico('chev', 18, 'ios-chev') + '</a></li>');
+    });
+    var sec = function (title, note, rows, key) { return rows.length ? '<section class="ios-sec cb-sec" data-key="' + key + '"><h2 class="ios-sh">' + esc(title) + '</h2><ul class="ios-list">' + rows.join('') + '</ul>' +
+      (note ? '<p class="small muted cb-sec-n">' + esc(note) + '</p>' : '') + '</section>' : ''; };
+    return h + '<div class="ios-groups cb-list" data-key="cb-list">' + sec(t('cb_sec_bg'), t('cb_sec_bg_n'), bg, 'cb-sec-bg') + sec(t('cb_sec_self'), t('cb_sec_self_n'), self, 'cb-sec-self') + '</div>';
   }
+  /** Екран одного постачальника (#prefs-cabs-<slug>): дані для входу й перевірки, фон, «Відв’язати» — блок, що раніше стояв у стрічці. */
+  function cabView(sl) {
+    var r = cbProvs(), g = r.list.filter(function (x) { return cbSlug(x) === sl; })[0];
+    if (!g) return { title: t('pg_cabs'), html: r.wait ? cbLine('muted', '', t('cb_wait'), 'cb-wait') : '<div class="panel" data-key="cb-gone"><p class="small">' + esc(t('cb_gone')) + '</p><p><a class="btn sec" href="#prefs-cabs" data-key="cb-gone-back">' + esc(t('pg_cabs')) + '</a></p></div>' };
+    CB.one = true; var b = cbBg(g), html;
+    try { html = cbBlock(g); } finally { CB.one = false; }
+    return { title: g.org, html: (b.can ? '<p class="cb-one-bg" data-key="cb-one-bg">' + cbBadge(b, 'cb-one-bdg') + '</p>' : '') + html };
+  }
+  /** 176-а: рядок у «Налаштуваннях показань» лічильника — хто приймає показання цього виду й чи надсилаємо у фоні; дотик — екран постачальника з даними входу. */
+  function cbMeterRow(k) {
+    var p = place(); if (!p) return '';
+    var kk = k === 'cold' || k === 'hot' ? 'water' : k, x = cbProv(p, kk); if (x.ch === 'wait') return '';
+    var g = cbProvs().list.filter(function (y) { return y.id === x.id; })[0]; if (!g) return '';
+    var b = cbBg(g), sl = cbSlug(g);
+    return '<div class="field cb-mrow" data-key="cb-mrow-' + esc(k) + '"><span class="lbl">' + esc(t(b.can ? 'cb_m_bg' : 'cb_m_self')) + '</span><ul class="ios-list"><li><a class="ios-row cb-row" href="#prefs-cabs-' + sl + '" data-act="cb-go" data-key="cb-mgo-' + esc(k) + '">' +
+      cbTxt(g.org, t(b.on ? 'cb_m_on' : b.can ? 'cb_m_can' : 'cb_m_where'), cbBadge(b, 'cb-mbdg-' + esc(k))) + ico('chev', 18, 'ios-chev') + '</a></li></ul></div>';
+  }
+
   /** Підпис рядка в «Налаштуваннях»: скільки постачальників підключено (кабінет ХТМ, Водоканал — є рахунок і прізвище або автовідправка, місцеві КП). */
   function cabsSub() {
     if (!hcOn()) return t('pg_cabs_s');
@@ -13537,7 +13619,7 @@ fieldset { min-inline-size: 0; }
         meta: [ver, m.vkId ? esc(t('mb_vkid', { v: m.vkId })) : ''].filter(Boolean),
         // «Налаштування показань» — акордеон: рахунок, №, ціна (владелец 05.11 21:35–21:40: «верни аккордеон… переназови»);
         // «Заповнити з monobank» — у налаштуваннях показань кожного лічильника (116-а, власник 11.11)
-        set: (i0 === 0 ? myPick(kind) + (myProv(kind) ? '' : monoLink(kind + '-set')) : '') + wmeterFields(m, i0 === 0) + (i0 === 0 ? priceBlock(kind) : '') + gapSetLink(m.id) , setTitle: t('mb_set_read') });
+        set: (i0 === 0 ? myPick(kind) + cbMeterRow(kind) + (myProv(kind) ? '' : monoLink(kind + '-set')) : '') + wmeterFields(m, i0 === 0) + (i0 === 0 ? priceBlock(kind) : '') + gapSetLink(m.id) , setTitle: t('mb_set_read') });
     }).join('');
     // «Розпізнати з фото» — лише на введенні показань (владелец 07.11); тут на її місці — «Куди передати» в рамці
     var act = '<button class="btn big block app-add" data-act="wnew" data-kind="' + kind + '" data-key="water-add">' + ico('plus', 22) + '<span>' + esc(t('wn_title')) + '</span></button>';
@@ -14454,7 +14536,7 @@ fieldset { min-inline-size: 0; }
       return mbox({ key: 'emeter-' + m.id, id: m.id, kind: k, icon: SK[k].icon, cls: SK[k].cls, name: ms.length > 1 ? ename(m) : t(KINDS[k].t), sub: [ezonesTxt(m)],
         display: edisplay(m, r, 'hero'), cap: cap, copy: r && r.z && SK[k].mod.zones(m) <= 1 && SK[k].mod.whole(r.z.all) !== null ? SK[k].mod.whole(r.z.all) : '', body: sc.note ? '<p class="small muted mb-newer">' + esc(sc.note) + '</p>' : '',
         meta: [verWarn(m.verifiedUntil)].filter(Boolean),
-        set: (i === 0 ? myPick(k) : '') + (myProv(k) ? '' : monoLink(k + '-set')) + smeterFields(k, m) + (i === 0 ? priceBlock(k) + sheatRow(k) : '') , setTitle: t('mb_set_read') });
+        set: (i === 0 ? myPick(k) + cbMeterRow(k) : '') + (myProv(k) ? '' : monoLink(k + '-set')) + smeterFields(k, m) + (i === 0 ? priceBlock(k) + sheatRow(k) : '') , setTitle: t('mb_set_read') });
     }).join('');
     if (k === 'elec') left += gpvBox(p, 'elec');
     var w = swin(k), cur = w.open ? ms.map(function (m) { return einWin(m.id, w); }) : null;
@@ -16346,7 +16428,7 @@ fieldset { min-inline-size: 0; }
       body: (NOTE_NEWER && newer ? '<p class="small muted mb-newer">' + esc(t(newer.own ? 'mb_newer_own' : 'mb_newer_heat', { d: fmtDate(newer.htm.date, true), s: t('status_' + newer.status).toLowerCase() })) + '</p>' : '') +
         (hcur ? '' : '<p class="small muted">' + esc(t('h_last_none_sub')) + '</p><p><a class="btn sec" href="#baseline" data-key="home-add-base">' + esc(t('h_add_base')) + '</a></p>'),
       meta: [verWarn(S.meter && S.meter.verifiedUntil)].filter(Boolean),
-      set: myPick('heat') + (myProv('heat') ? '' : monoLink('heat-set')) + heatMeterFields(m) + htmFormBox(htmAsk()) + priceBlock('heat') + gapSetLink('heat') , setTitle: t('mb_set_read') });
+      set: myPick('heat') + cbMeterRow('heat') + (myProv('heat') ? '' : monoLink('heat-set')) + heatMeterFields(m) + htmFormBox(htmAsk()) + priceBlock('heat') + gapSetLink('heat') , setTitle: t('mb_set_read') });
     var act = '', right = '';
     var n = steps().length;
     if (S.draft && (Object.keys(S.draft.values || {}).length || S.draft.step > 0)) {
@@ -18513,7 +18595,7 @@ fieldset { min-inline-size: 0; }
     if (j && /^(failed|rejected|unknown)$/.test(j.status)) h += '<div class="banner ' + (j.status === 'unknown' ? 'warn' : 'bad') + '" role="alert" data-key="lb-' + j.status + '">' + ico('alert', 22) + '<div><p><b>' + esc(t(j.status === 'failed' ? 'lb_failed' : j.status === 'rejected' ? 'lb_rej' : 'lb_unk')) + '</b></p>' + (j.human || j.text ? '<p class="small">' + esc(j.human || j.text) + '</p>' : '') + '</div></div>';
     var done = j && (j.status === 'ok' || j.status === 'sent'), noSer = b.serial && items.some(function (x) { return !x.serial; });
     // 168-а: «Відправляти у фоні» вимкнули в «Кабінети й надсилання» — дані входу є, а кнопки немає; увімкнути — там же
-    if (c.bg === false) return '<div class="lb" data-key="lb">' + head + h + err + '<p class="small" data-key="lb-bgoff">' + esc(t('lb_bgoff')) + ' <a href="#prefs-cabs" data-key="lb-bgoff-go">' + esc(t('pg_cabs')) + '</a></p>' + win + trustBox('lb', org) + '</div>';
+    if (c.bg === false) return '<div class="lb" data-key="lb">' + head + h + err + '<p class="small" data-key="lb-bgoff">' + esc(t('lb_bgoff')) + ' <a href="#prefs-cabs-lb-' + esc(String(d.via || '').toLowerCase().replace(/[^a-z0-9]/g, '')) + '" data-act="cb-go" data-key="lb-bgoff-go">' + esc(t('pg_cabs')) + '</a></p>' + win + trustBox('lb', org) + '</div>';
     if (noSer) h += '<p class="small" data-key="lb-serial">' + esc(t('lb_serial', { org: org })) + '</p>';
     return '<div class="lb" data-key="lb">' + head + h + err + '<div class="dest-ch"><button class="btn' + (done ? ' sec' : '') + ' dest-bg" data-act="lb-bg" data-bot="' + esc(bot) + '" data-pl="' + esc(pl) + '" data-id="' + esc(rec.id) + '" data-key="lb-bg"' + (busy || noSer ? ' disabled' : '') + '>' +
       (LB.busy === '/lb/queue' ? SPIN : ico('send', 18)) + '<span>' + esc(t('cab_bg')) + '</span></button></div><p class="small dest-note" data-key="lb-bg-note">' + esc(t('cab_bg_note', { what: list })) + '</p>' + win + off + trustBox('lb', org) + '</div>';
@@ -20214,8 +20296,14 @@ fieldset { min-inline-size: 0; }
     SCROLL_TO = target || (what ? 'pvm-' + what : 'pg-pv-meters'); go('place-' + p.id);
   }
   var NM_OPEN = false;
-  V.prefs = function (sub) {
+  V.prefs = function (sub, prov) {
     var c = S.contacts || {};
+    // 176-а: екран одного постачальника — третій рівень: Налаштування › Кабінети й надсилання › постачальник
+    if (sub === 'cabs' && prov) {
+      var cv = cabView(prov), fromM = CB_FROM && !/^prefs/.test(CB_FROM);
+      return { screen: 'S11', route: 'prefs', closeTo: fromM ? CB_FROM : 'prefs-cabs', html: '<p class="rec-back"><a href="#' + esc(fromM ? CB_FROM : 'prefs-cabs') + '" data-key="cb-back">← ' + esc(fromM ? t('back') : t('pg_cabs')) + '</a></p>' +
+        '<h1>' + esc(cv.title) + '</h1><div class="pg-one cb-one" id="pg-cabs-' + esc(prov) + '" data-key="cb-one-' + esc(prov) + '">' + cv.html + '</div>' };
+    }
     var PG = function (id, icon, title, sb, html) { return { id: id, icon: icon, title: title, sub: sb, html: html }; };
     var defs = [
       PG('acc', 'shield', t('pg_acc'), accSub(), syncPanel()),
@@ -20934,6 +21022,7 @@ fieldset { min-inline-size: 0; }
       r = pr0 ? 'place-' + pr0.id : 'prefs'; try { history.replaceState(null, '', '#' + r); } catch (e0) { /* старий браузер */ }
       view = pr0 ? placeView(pr0.id) : V.prefs();
     }
+    else if (/^prefs-cabs-[a-z0-9-]+$/.test(r)) view = V.prefs('cabs', r.slice(11));   // 176-а: екран постачальника
     else if (/^prefs-[a-z]+$/.test(r)) view = V.prefs(r.slice(6));   // 157-а: група налаштувань — окремий екран (164-а: і в браузері)
     else if (/^step-\d+$/.test(r)) view = (S.meter ? V.step(+r.split('-')[1]) : V.meter());
     else view = (V[r] || V.home)();

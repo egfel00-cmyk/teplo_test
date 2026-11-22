@@ -55,7 +55,7 @@ const stand = b => fetch(HM + '/stand/admin', { method: 'POST', headers: { 'Cont
   ok('…открыл — квитанция «Платіжка за листопад 2026», сумма, «Видалити»', /Платіжка за листопад 2026/.test(hv) && /980,10/.test(hv) && await p.locator('[data-key=rec-del]').count() === 1, hv.slice(0, 300));
 
   // «Кабінети й автовідправка» → блок ХТМ → «Квитанції самі»
-  await p.goto(U + '#prefs-cabs'); await wait(800); await wait(1500);
+  await p.goto(U + '#prefs-cabs-htm'); await wait(800); await wait(1500);
   const cb = p.locator('[data-key=prefs-htm-bills]');
   ok('настройки: в блоке ХТМ «Квитанції самі» — включено', await cb.isChecked().catch(() => false) && /Квитанції самі/.test(await p.textContent('[data-key=prefs-cab-htm]')));
   await cb.click(); await wait(2500); const s2 = await srv();

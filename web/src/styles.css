@@ -3456,3 +3456,19 @@ fieldset { min-inline-size: 0; }
   .lpf-list li + li { border-top-width: 1px; }
   .lpf-list span { overflow-wrap: normal; }
 }
+
+/* 176-я: «Кабінети й надсилання» — список постачальників (у фоні / самі) → екран постачальника; рядок у «Налаштуваннях показань» лічильника */
+.cb-list { margin-top: var(--sp-4); }
+.cb-row .cb-bdg { white-space: nowrap; font-size: 13px; }
+.cb-row .cb-bdg-w { display: block; margin-top: 4px; }
+.cb-row .ios-t { grid-template-columns: minmax(0, 1fr); }
+.cb-row .ios-t .small { white-space: normal; }
+.cb-list, .cb-list .ios-sec { min-width: 0; }
+.cb-row .cb-bdg svg { vertical-align: -2px; }
+.cb-sec-n { margin: 6px 16px 0; }
+.cb-one-bg { margin: -8px 0 var(--sp-4); }
+.cb-meta1 { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; margin: 0 0 var(--sp-3); }
+.cb-mrow { margin-top: var(--sp-3); }
+.cb-mrow .ios-list, :root:root .cb-mrow .ios-list { background: transparent; border: 1px solid var(--c-line); box-shadow: none; border-radius: 12px; }
+.cb-mrow .ios-row { padding-left: 14px; }
+.cb-mrow .ios-t .small { white-space: normal; }

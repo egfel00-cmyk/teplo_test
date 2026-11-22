@@ -52,17 +52,19 @@ const php = code => execFileSync('php', ['-r', `define('TEPLO',1); foreach (['co
   if (process.env.SHOT) await p.screenshot({ path: '/tmp/bg_check.png', fullPage: true });
   ok('«Перевірка»: «Відправити у фоні» + приписка; «Або внести самим» — вторичная', await vis('[data-key=check-bg]') && /останні зібрані показання/.test(await txt('[data-key=check-bg-note]')) && (await p.$eval('[data-key=check-send]', x => x.className)) === 'btn sec');
   // 4. «Налаштування» → «Кабінети й автовідправка»
-  await p.goto(U + '#prefs-cabs'); await wait(1200); await wait(500);
+  await p.goto(U + '#prefs-cabs-htm'); await wait(1200); await wait(500);
   if (process.env.SHOT) { const el = await p.$('[data-key=prefs-cab-htm]'); if (el) { await el.evaluate(x => x.parentElement.scrollIntoView()); await p.screenshot({ path: '/tmp/bg_prefs.png' }); } }
   ok('настройки: кабинет ХТМ подключён (e-mail), про хранение доступа и согласие', /test@stand\.local/.test(await txt('[data-key=prefs-cab-htm]')) && /зашифровано/.test(await txt('[data-key=prefs-cab-htm]')), await txt('[data-key=prefs-cab-htm]'));
   await p.click('[data-key=prefs-htm-auto]'); await wait(1500);
   ok('…автовідправка ХТМ включается переключателем', await p.evaluate(() => window.TeploSync.api('GET', '/cab/htm').then(j => j.auto)) === true);
   await p.click('[data-key=prefs-htm-auto]'); await wait(1500);
   ok('…и отвязывается им же', await p.evaluate(() => window.TeploSync.api('GET', '/cab/htm').then(j => j.auto)) === false);
+  await p.goto(U + '#prefs-cabs-vk'); await wait(1500);   // 176-а: Водоканал — свій екран
   await p.click('[data-key=prefs-vk-auto]'); await wait(1500);
   ok('Водоканал: галочка = согласие → автовідправка води включена', await p.evaluate(() => window.TeploSync.api('GET', '/vk/jobs').then(j => j.auto)) === true && await vis('[data-key=prefs-vk-off]'));
   await p.click('[data-key=prefs-vk-off]'); await wait(1500);
   ok('…«Відкликати згоду» — выключено', await p.evaluate(() => window.TeploSync.api('GET', '/vk/jobs').then(j => j.auto)) === false);
+  await p.goto(U + '#prefs-cabs-htm'); await wait(1500);
   await p.click('[data-key=prefs-cab-htm-off]'); await p.waitForTimeout(300); await p.click('[data-key=ask-yes]'); await wait(1500);
   ok('«Відключити кабінет» ХТМ (с подтверждением) → не подключён', await p.evaluate(() => window.TeploSync.api('GET', '/cab/htm').then(j => j.connected)) === false && await vis('[data-key=prefs-cab-htm-connect]'));
   // 5. вода: «Відправити у фоні» → очередь сервера → cron → «передано» (підтверджено сайтом)
