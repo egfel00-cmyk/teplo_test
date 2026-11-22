@@ -65,4 +65,10 @@ t('подпись не зависит от updatedAt', S.sig({ a: 1, updatedAt: 
   t('звичайні масиви не чіпає', JSON.stringify({ a: [], b: [1, 2] }, S.fixArr) === '{"a":[],"b":[1,2]}');
   const m2 = S.merge({ places: [{ id: 'pob', updatedAt: 9, prov: Object.assign([], { elec: { own: 1, name: 'Жилстрой', ts: 9 } }) }], updatedAt: 9 }, { places: [{ id: 'pob', updatedAt: 3, prov: [] }], updatedAt: 3 });
   t('злиття з [] сервера не губить свого', JSON.parse(JSON.stringify(m2, S.fixArr)).places[0].prov.elec.own === 1); }
+// 174-я: тема однакова на всіх пристроях акаунта — новіший вибір (ui.at) виграє, навіть якщо сам стан старіший
+{ const mt = S.merge({ ui: { theme: 'light', at: 500 }, updatedAt: 9000 }, { ui: { theme: 'brass', at: 800 }, updatedAt: 1000 });
+  t('тема: новіший вибір на іншому пристрої виграє, хоч стан там старіший', mt.ui.theme === 'brass');
+  const mt2 = S.merge({ ui: { theme: 'light', at: 500 }, updatedAt: 100 }, { updatedAt: 9000 });
+  t('тема: пристрій без вибору не стирає вибір', mt2.ui && mt2.ui.theme === 'light');
+  t('тема: ui — у даних для сервера', 'ui' in S.payload({ ui: { theme: 'dark', at: 1 } })); }
 console.log('\nИтог: ' + pass + ' OK, ' + fail + ' FAIL'); process.exit(fail ? 1 : 0);

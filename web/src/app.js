@@ -423,6 +423,7 @@
     var vkb0 = vkbIds(S);
     var keep = { lang: S.lang, demoToday: S.demoToday, focusId: S.focusId, _pickModel: S._pickModel, syncPromptDismissed: S.syncPromptDismissed, placeId: S.placeId, theme: S.theme, themeV: S.themeV, view: S.view, homeOpen: S.homeOpen };
     S = Object.assign(defaults(), m, keep); deArr(S);
+    if (uiTheme()) applyTheme();   // 174-я: тему змінили на іншому пристрої
     jrProv((window.TeploSync && window.TeploSync.via) || 'remote');   // 149-а: дані з іншого пристрою змінили «Кому платите» — у журнал
     ensurePlaces(); var ap = place(); if (ap && (ap.meter || ap.baseline || S.places.length > 1)) { S.meter = ap.meter || null; S.baseline = ap.baseline || null; }
     lastSig = window.TeploSync.sig(window.TeploSync.payload(S)); persist();
@@ -462,6 +463,11 @@
   // 174-я (власник 22.11: «темну тему став за замовчуванням»): хто тему не обирав (нова людина, старі стани, «як у телефоні» з 07.11) — один раз «Темна»;
   // обрані «Світла», «Темна», «Латунь» лишаються. «Як у системі» — і далі в Налаштуваннях
   if (S.themeV !== 3) { if (S.themeV !== 2 || !S.theme || S.theme === 'auto') S.theme = 'dark'; S.themeV = 3; persist(); }
+  // 174-я (власник 22.11: «тема однакова на всіх пристроях — змінив на одному, на інших уже вона»): вибір теми — S.ui {theme, at} синхронізується з акаунтом
+  // (sync.js: SYNC_KEYS + злиття за at — новіший вибір виграє, незалежно від решти стану); S.theme — копія на цьому пристрої (її читає скрипт до відмальовки)
+  function uiTheme() { var u = S.ui; if (u && u.theme && THEMES.indexOf(u.theme) >= 0 && u.theme !== S.theme) { S.theme = u.theme; return true; } return false; }
+  var THEMES = ['auto', 'light', 'dark', 'brass'];
+  if (uiTheme()) persist();
   function resolvedTheme() {
     var th = S.theme || 'dark'; if (th === 'brass') return 'dark'; if (th !== 'auto') return th;   // 164-я: «Латунь» — тепла темна (data-skin)
     var tw0 = window.Telegram && window.Telegram.WebApp; if (tw0 && tw0.initData && tw0.colorScheme) return tw0.colorScheme === 'dark' ? 'dark' : 'light';
@@ -707,6 +713,45 @@
   function ico(name, size, cls) {
     return '<svg class="ico ' + (cls || '') + '" width="' + (size || 24) + '" height="' + (size || 24) + '" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + ICONS[name] + '</svg>';
   }
+  /** 174-я (власник 22.11: «лічильник не видаляється — кнопка натискається, нічого не відбувається»): питання «Точно?» — своїм вікном, не window.confirm
+   *  (у вбудованих браузерах — Telegram Mini App тощо — confirm мовчки повертає false). У застосунку iOS — рідний alert (WKUIDelegate).
+   *  Виклик: if (!askOk(el, текст, {yes, no})) return — перше натискання показує вікно; «Так» повторює натискання el (el.__askOk) — дія виконується. */
+  var ASK = null;
+  function askOk(el, text, o) {
+    if (el && el.__askOk) { el.__askOk = false; return true; }
+    if (APP) { try { return window.confirm(text); } catch (e) { return true; } }
+    askDlg(text, o || {}, function () {
+      var x = el && el.isConnected ? el : el && askFind(el); if (!x) return;
+      x.__askOk = true; x.click(); x.__askOk = false;
+    });
+    return false;
+  }
+  /** Той самий елемент після перемальовування: за data-act і його data-id / data-what / data-ref / data-key. */
+  function askFind(el) {
+    var sel = ['act', 'id', 'what', 'ref', 'key', 'k', 'src'].map(function (a) { var v = el.getAttribute('data-' + a); return v === null ? '' : '[data-' + a + '="' + String(v).replace(/["\\]/g, '\\$&') + '"]'; }).join('');
+    try { return document.querySelector(sel); } catch (e) { return null; }
+  }
+  function askClose() { if (!ASK) return; var a = ASK; ASK = null; a.ov.remove(); document.removeEventListener('keydown', a.key, true); try { if (a.back && a.back.focus) a.back.focus(); } catch (e) { /* фокус не повернувся */ } }
+  function askDlg(text, o, yes) {
+    askClose();
+    var ov = document.createElement('div'); ov.className = 'ask-ov'; ov.setAttribute('data-key', 'ask');
+    ov.innerHTML = '<div class="ask" role="alertdialog" aria-modal="true" aria-labelledby="ask-t"><div id="ask-t" class="ask-t">' +
+      String(text).split(/\n\s*\n/).map(function (x, i) { return '<p' + (i ? ' class="muted"' : '') + '>' + esc(x).replace(/\n/g, '<br>') + '</p>'; }).join('') + '</div>' +
+      '<div class="ask-b"><button type="button" class="btn sec" data-ask="no" data-key="ask-no">' + esc(o.no || t('cancel')) + '</button>' +
+      '<button type="button" class="btn danger solid" data-ask="yes" data-key="ask-yes">' + esc(o.yes || t('rec_del')) + '</button></div></div>';
+    var key = function (e) { if (e.key === 'Escape') { e.preventDefault(); askClose(); } };
+    ASK = { ov: ov, key: key, back: document.activeElement };
+    ov.addEventListener('click', function (e) {
+      var b = e.target.closest && e.target.closest('[data-ask]');
+      if (!b && e.target !== ov) return;
+      e.preventDefault(); e.stopPropagation(); var ok = b && b.getAttribute('data-ask') === 'yes'; askClose(); if (ok) yes();
+    });
+    document.addEventListener('keydown', key, true);
+    document.body.appendChild(ov);
+    var y = ov.querySelector('[data-ask=no]'); if (y) y.focus();
+  }
+  /** Підпис «Так» — текст самої кнопки («Прибрати», «Відв’язати»), без тексту (хрестик) — «Видалити». */
+  function askYes(el) { var x = el && String(el.textContent || '').replace(/\s+/g, ' ').trim(); return x && x.length < 30 ? x : t('rec_del'); }
   function logo() {
     // «Барабан» (127-а, власник обрав з 6 варіантів): віконце лічильного механізму — 4, 2 і червоний 7 (літри). Плоскі кольори без id —
     // можна вставляти на сторінку скільки завгодно разів. Повна скляна іконка й пак — tools_logo.py → web/icon/
@@ -1045,6 +1090,8 @@
   function meterRemove(what) {
     var keep = meterHasData(what), d = today();
     if (what === 'heat') {
+      // 174-я: тепло, позначене при першому вході (картка «Налаштувати опалення», моделі ще немає), — прибирається так само
+      var hp = place(); if (hp && hp.heatAsk) { delete hp.heatAsk; hp.updatedAt = Date.now(); }
       if (keep) S.meter = Object.assign({}, S.meter, { removed: d }); else S.meter = null;
       S.draft = null; save(); return;
     }
@@ -4347,7 +4394,7 @@
       case 'esent': { var eids = (el.getAttribute('data-ids') || '').split(','), ev = el.getAttribute('data-v') === '1';
         var esk = SK[el.getAttribute('data-k')] ? SK[el.getAttribute('data-k')].sk : 'obl';
         (S.mrecs || []).forEach(function (x) { if (eids.indexOf(x.id) >= 0) { x.sent = Object.assign({}, x.sent || {}); x.sent[esk] = ev ? today() : ''; x.updatedAt = Date.now(); } }); save(); render(true); return true; }
-      case 'edel': { if (!confirm(t('wh_del_q'))) return true; var ed = (S.mrecs || []).filter(function (x) { return x.id === el.getAttribute('data-id'); })[0]; if (ed) { ed.deleted = true; ed.updatedAt = Date.now(); photoKeep(ed.photos, false); billsDrop(ed.bills); save(); if (/^erec-/.test(routeName())) go('history'); else render(true); } return true; }
+      case 'edel': { if (!askOk(el, t('wh_del_q'), { yes: askYes(el) })) return true; var ed = (S.mrecs || []).filter(function (x) { return x.id === el.getAttribute('data-id'); })[0]; if (ed) { ed.deleted = true; ed.updatedAt = Date.now(); photoKeep(ed.photos, false); billsDrop(ed.bills); save(); if (/^erec-/.test(routeName())) go('history'); else render(true); } return true; }
       case 'eedit': { var ee = mrecs().filter(function (x) { return x.id === el.getAttribute('data-id'); })[0]; if (!ee) return true;
         EN = enFresh(ee.kind === 'gas' ? 'gas' : 'elec'); EN.date = ee.date; EN.skip = ee.id; EN.note = ee.note || ''; EN.noteEdit = true; EN.vals[ee.meter] = {}; Object.keys(ee.z || {}).forEach(function (k) { EN.vals[ee.meter][k] = String(ee.z[k] || '').replace('.', ','); });
         mrecs().forEach(function (x) { if (x.date === ee.date && !x.base && x.meter !== ee.meter && x.kind === ee.kind) { EN.vals[x.meter] = {}; Object.keys(x.z || {}).forEach(function (k) { EN.vals[x.meter][k] = String(x.z[k] || '').replace('.', ','); }); } });
@@ -4369,7 +4416,7 @@
       case 'wz-back': e.preventDefault(); wzRead(); WS.step = Math.max(0, WS.step - 1); render(); return true;
       case 'wz-done': e.preventDefault(); wzDone(); return true;
       case 'wsent': { var r = (S.water || []).filter(function (x) { return x.id === el.getAttribute('data-id'); })[0]; if (!r) return true; if (el.getAttribute('data-key') === 'vk-ok') vkEvent('ok'); r.sent = Object.assign({}, r.sent || {}); r.sent[el.getAttribute('data-to')] = el.getAttribute('data-v') === '1' ? today() : ''; r.updatedAt = Date.now(); save(); render(true); return true; }
-      case 'wdel': { if (!confirm(t('wh_del_q'))) return true; var r2 = (S.water || []).filter(function (x) { return x.id === el.getAttribute('data-id'); })[0]; if (r2) { r2.deleted = true; r2.updatedAt = Date.now(); photoKeep(r2.photos, false); billsDrop(r2.bills); save(); if (/^wrec-/.test(routeName())) go('history'); else render(true); } return true; }
+      case 'wdel': { if (!askOk(el, t('wh_del_q'), { yes: askYes(el) })) return true; var r2 = (S.water || []).filter(function (x) { return x.id === el.getAttribute('data-id'); })[0]; if (r2) { r2.deleted = true; r2.updatedAt = Date.now(); photoKeep(r2.photos, false); billsDrop(r2.bills); save(); if (/^wrec-/.test(routeName())) go('history'); else render(true); } return true; }
       case 'wedit': { var r3 = wrecs().filter(function (x) { return x.id === el.getAttribute('data-id'); })[0]; if (!r3) return true;
         var k3 = wmeters('hot').some(function (m) { return hasVal(r3, m.id); }) ? 'hot' : 'cold', v3 = {};
         Object.keys(r3.vals || {}).forEach(function (k) { v3[k] = wfmt(r3.vals[k]); });
@@ -4389,10 +4436,10 @@
         if (WN.photos.some(function (p) { return !p.fixed; })) wnAssign();
         render(true); wnCheck(true); return true; }
       case 'view-go': S.view = el.getAttribute('data-v'); persist(); go(el.getAttribute('data-to')); return true;
-      case 'gap-del': { var gd = gapById(el.getAttribute('data-id')); if (!gd || !confirm(t('gp_del_q'))) return true; var gk = gapKind(gd); billsDrop(gd.bills);
+      case 'gap-del': { var gd = gapById(el.getAttribute('data-id')); if (!gd || !askOk(el, t('gp_del_q'), { yes: askYes(el) })) return true; var gk = gapKind(gd); billsDrop(gd.bills);
         setGaps(function (list) { list.forEach(function (x) { if (x && x.id === gd.id) { x.deleted = true; x.updatedAt = Date.now(); } }); }); toast(t('gp_deleted')); go(gk === 'heat' ? 'heat' : 'water-' + (gk || 'hot')); return true; }
       case 'wm-add': wsetCfg(function (c) { c.meters = c.meters || []; c.meters.push({ id: Wt.uid(), kind: el.getAttribute('data-kind'), name: '', serial: '', vkId: '', verifiedUntil: '' }); }); render(true); return true;
-      case 'wm-del': if (!confirm(t('wm_del_q'))) return true; wsetCfg(function (c) { (c.meters || []).forEach(function (m) { if (m.id === el.getAttribute('data-id')) m.deleted = true; }); }); render(true); return true;
+      case 'wm-del': if (!askOk(el, t('wm_del_q'), { yes: askYes(el) })) return true; wsetCfg(function (c) { (c.meters || []).forEach(function (m) { if (m.id === el.getAttribute('data-id')) m.deleted = true; }); }); render(true); return true;
       case 'wrefresh': render(true); return true;
       // квартира и её счётчики
       case 'add-meter': e.preventDefault(); AM_BACK = el.getAttribute('data-back') || (/^(place-.+|water-hot|water-cold|heat)$/.test(routeName()) ? routeName() : 'home'); go('add-meter'); return true;
@@ -4402,7 +4449,7 @@
         if (SK[ak]) { EA = { kind: ak, back: AM_BACK, zones: 1, vals: {}, f: {} }; go(SK[ak].add); return true; }
         WA = { kind: ak, back: AM_BACK }; go('wadd'); return true; }
       case 'm-remove': { var mw = el.getAttribute('data-what'), mn = meterTitle(mw), mh = meterHasData(mw);
-        if (!confirm(t(mh ? 'mr_q' : 'mr_q_empty', { m: mn, p: placeLabel(place()) }))) return true;
+        if (!askOk(el, t(mh ? 'mr_q' : 'mr_q_empty', { m: mn, p: placeLabel(place()) }), { yes: t('mr_remove') })) return true;
         meterRemove(mw); toast(t(mh ? 'mr_done' : 'mr_done_empty', { m: mn })); render(true); return true; }
       case 'm-restore': { var rw = el.getAttribute('data-what'), rn = meterTitle(rw); meterRestore(rw); toast(t('mr_restored', { m: rn })); if (el.getAttribute('data-back')) go(AM_BACK || 'home'); else render(true); return true; }
       case 'm-replace': { var pw = el.getAttribute('data-what'); GAP_PRESET = { what: pw }; go('gap-new-' + pw); return true; }
@@ -5301,7 +5348,7 @@
     else if (a === 'hc-cancel') { HC.confirm = null; HC.err = null; render(true); }
     else if (a === 'hc-send') hcSend(el.getAttribute('data-id'));
     else if (a === 'hc-bg') hcBg(el.getAttribute('data-id'));
-    else if (a === 'hc-pref-off') { if (confirm(t('pc_off_q'))) hcCall('forget', '/cab/forget', { prov: 'htm' }, function (j) { HC.st = j; HC.check = null; hcApply(); save(); toast(t('hc_forgot')); }); }
+    else if (a === 'hc-pref-off') { if (askOk(el, t('pc_off_q'), { yes: askYes(el) })) hcCall('forget', '/cab/forget', { prov: 'htm' }, function (j) { HC.st = j; HC.check = null; hcApply(); save(); toast(t('hc_forgot')); }); }
     else if (a === 'hc-refresh') { hcLoad(true); render(true); }
     else if (a === 'hc-check') hcCall('check', '/cab/htm/check', { acc: (hcAcc() || {}).acc || '' }, function (c) { hcChecked(c); hcLoad(true); });
     else if (a === 'hc-forget') { HC.forget = true; render(true); }
@@ -7041,7 +7088,7 @@
     switch (act) {
       case 'bill-add': { var fi = document.getElementById('bill-input'); if (fi) { fi.setAttribute('data-ref', ref); fi.value = ''; fi.click(); } return true; }
       case 'bill-del': {
-        if (!confirm(t('bl_del_q'))) return true;
+        if (!askOk(el, t('bl_del_q'), { yes: askYes(el) })) return true;
         var o = billOwner(ref), id = el.getAttribute('data-id'); if (!o) return true;
         busy(el);
         api0('/docs/delete', { method: 'POST', body: JSON.stringify({ id: id }) }).then(function (r) {
@@ -8426,7 +8473,7 @@
       render(true); return;
     }
     if (a === 'wp-del') {
-      if (!confirm(t('wsp_del_q'))) return;
+      if (!askOk(b, t('wsp_del_q'), { yes: askYes(b) })) return;
       var id = WP.id; wasteSet(function (w) { (w.pays || []).forEach(function (x) { if (x && x.id === id) { x.deleted = true; x.updatedAt = Date.now(); } }); });
       toast(t('wsp_deleted')); WP = { id: '', ym: '', n: 1 }; go(backTo('waste'));
     }
@@ -8463,6 +8510,8 @@
     // три розкривашки (владелец 10.11): про квартиру · лічильники · постачальники, тарифи й рахунки; у налаштуваннях лічильника — лише сам лічильник
     // 147-а: рядки — у порядку видів (світло, вода, газ, тепло, вивіз), усередині виду — як додавали
     var rows = [], kmrow = function (o) { return { kind: o.kind, h: mrow(o) }; };
+    // 174-я: тепло позначили при першому вході, модель ще не обрали — рядок теж є (відкрити → вибір моделі, «Прибрати» — прибирає картку з головної)
+    if (!hasHeat() && heatAsked()) rows.push(kmrow({ what: 'heat', kind: 'heat', title: t('kd_heat'), href: 'meter', noReplace: true, sub: t('uc_heat_setup') }));
     if (hasHeat()) rows.push(kmrow({ what: 'heat', kind: 'heat', title: t('kd_heat'), href: 'heat', sub: [modelName(model()), verTxt(S.meter.verifiedUntil)].filter(Boolean).join(' · '), set: heatMeterFields(model(), true) + heatBaseRow() + mdocs('heat') + nometerHeatPanel() + gapSetLink('heat') }));
     ms.forEach(function (m) { rows.push(kmrow({ what: m.id, kind: m.kind, title: wkindTitle(m.kind) + (m.name ? ' · ' + m.name : ''), href: 'water-' + m.kind, sub: verTxt(m.verifiedUntil), set: wmeterFields(m, false, true) + mdocs(m.id) + gapSetLink(m.id) })); });
     ['elec', 'gas'].forEach(function (k) { smeters(k).forEach(function (m) { rows.push(kmrow({ what: m.id, kind: k, title: ename(m), href: SK[k].page, noReplace: true, sub: [ezonesTxt(m), verTxt(m.verifiedUntil)].filter(Boolean).join(' · '), set: smeterFields(k, m, true) + mdocs(m.id) })); }); });
@@ -9563,8 +9612,9 @@
     });
   }
   /** «Скасувати»: бросить ввод целиком — черновик тепла, фото на распознавании, ввод воды — и выйти на главную. */
-  function wizCancel(what) {
-    if (!confirm(t(what === 'water' ? 'wz_cancel_q_w' : what === 'elec' || what === 'gas' ? 'wz_cancel_q_s' : 'wz_cancel_q'))) return;   // 156-а: світло й газ — не «введення води»
+  function wizCancel(what, el) {
+    var wq = t(what === 'water' ? 'wz_cancel_q_w' : what === 'elec' || what === 'gas' ? 'wz_cancel_q_s' : 'wz_cancel_q');
+    if (el ? !askOk(el, wq, { yes: t('wz_cancel_yes'), no: t('wz_cancel_no') }) : !confirm(wq)) return;   // 156-а: світло й газ — не «введення води»
     if (what === 'water') { WN.gen = -1; WN = wnFresh(WN.kind); go('home'); return; }
     if (what === 'elec' || what === 'gas') { EN = enFresh(what); go('home'); return; }
     PH.gen = -1; if (PH.ctl) try { PH.ctl.abort(); } catch (e) { /* нет */ }
@@ -10252,12 +10302,12 @@
       }
       case 'doc-add': { var fi = document.getElementById('doc-input'); if (fi) { fi.setAttribute('data-kind', el.getAttribute('data-kind')); fi.setAttribute('data-meter', el.getAttribute('data-meter') || ''); fi.value = ''; fi.click(); } break; }
       case 'doc-del': {
-        if (!confirm(t('mv_del_q'))) break;
+        if (!askOk(el, t('mv_del_q'), { yes: askYes(el) })) break;
         busy(el);
         fetch(window.TEPLO_API + '/docs/delete', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json', 'X-CSRF': (document.cookie.match(/(?:^|; )ts_csrf=([^;]*)/) || [])[1] || '' }, body: JSON.stringify({ id: el.getAttribute('data-id') }) })
           .then(function () { loadDocs(true); }); break;
       }
-      case 'theme': S.theme = el.getAttribute('data-v'); persist(); applyTheme(); render(true); break;
+      case 'theme': S.theme = el.getAttribute('data-v'); S.ui = Object.assign({}, S.ui, { theme: S.theme, at: Date.now() }); save(); applyTheme(); render(true); break;
       case 'pl-use': switchPlace(el.getAttribute('data-id')); WX.key = ''; toast(t('pl_switched', { p: placeLabel(place()) })); go('home'); break;
       case 'hp-add-place': hpAddPlace(); break;
       case 'hp-edit': HP_EDIT = el.getAttribute('data-id'); render(true); setTimeout(function () { var f = document.getElementById('hpa-' + HP_EDIT + '-' + (cityOf(place(HP_EDIT)) ? 'street' : 'city')); if (f) f.focus(); }, 30); break;
@@ -10338,7 +10388,7 @@
       case 'fb-close': { var tx = document.getElementById('fb-text'); if (tx) FB.text = tx.value; FB.open = false; render(true); break; }
       case 'fb-send': fbSend(); break;
       case 'ph-stop': PH.gen = -1; if (PH.ctl) PH.ctl.abort(); PH.status = 'idle'; PH.progress = ''; PH.error = ''; render(true); break;
-      case 'wiz-cancel': wizCancel(el.getAttribute('data-what') || 'heat'); break;
+      case 'wiz-cancel': wizCancel(el.getAttribute('data-what') || 'heat', el); break;
       case 'ph-water': phToWater(false); break;
       case 'ph-again': PH.status = 'idle'; PHS.save(false); render(true); break;
       case 'ph-new': inboxDone(); phReset(PH.mode); render(true); break;

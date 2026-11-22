@@ -63,7 +63,7 @@ const php = code => execFileSync('php', ['-r', `define('TEPLO',1); foreach (['co
   ok('Водоканал: галочка = согласие → автовідправка води включена', await p.evaluate(() => window.TeploSync.api('GET', '/vk/jobs').then(j => j.auto)) === true && await vis('[data-key=prefs-vk-off]'));
   await p.click('[data-key=prefs-vk-off]'); await wait(1500);
   ok('…«Відкликати згоду» — выключено', await p.evaluate(() => window.TeploSync.api('GET', '/vk/jobs').then(j => j.auto)) === false);
-  p.once('dialog', d => d.accept()); await p.click('[data-key=prefs-cab-htm-off]'); await wait(1500);
+  await p.click('[data-key=prefs-cab-htm-off]'); await p.waitForTimeout(300); await p.click('[data-key=ask-yes]'); await wait(1500);
   ok('«Відключити кабінет» ХТМ (с подтверждением) → не подключён', await p.evaluate(() => window.TeploSync.api('GET', '/cab/htm').then(j => j.connected)) === false && await vis('[data-key=prefs-cab-htm-connect]'));
   // 5. вода: «Відправити у фоні» → очередь сервера → cron → «передано» (підтверджено сайтом)
   await p.goto(U + '#wrec-wnow'); await wait(1500); await p.click('[data-key=where-water-sum]'); await wait(300);

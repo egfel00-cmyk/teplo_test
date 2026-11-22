@@ -3314,3 +3314,17 @@ fieldset { min-inline-size: 0; }
    макет телефона в герої показує застосунок — його шрифтом (Inter) */
 .lp { --font: "Manrope", system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans", sans-serif; font-family: var(--font); }
 .lp .lpp-screen { --font: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans", sans-serif; font-family: var(--font); }
+/* 174-я: вікно «Точно?» (askOk) замість window.confirm — у Telegram та інших вбудованих браузерах confirm мовчки повертав «ні» й «Прибрати» нічого не робило.
+   Телефон — знизу над панеллю, комп'ютер — по центру; Esc і дотик поза вікном — «Скасувати». */
+.ask-ov { position: fixed; inset: 0; z-index: 1000; display: flex; align-items: flex-end; justify-content: center; padding: 16px 16px calc(16px + env(safe-area-inset-bottom));
+  background: rgba(10, 12, 16, .48); animation: askIn .16s var(--ease) both; }
+.ask { width: 100%; max-width: 440px; background: var(--c-surface); color: var(--c-ink); border: 1px solid var(--c-line); border-radius: 20px; padding: 20px 20px 16px;
+  box-shadow: 0 18px 48px -12px rgba(0, 0, 0, .45); animation: askUp .2s var(--ease) both; }
+.ask-t p { margin: 0 0 8px; font-size: 17px; line-height: 24px; font-weight: 600; overflow-wrap: anywhere; }
+.ask-t p.muted { font-size: 15px; line-height: 20px; font-weight: 400; color: var(--c-ink-2); }
+.ask-b { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 16px; }
+.ask-b .btn { margin: 0; min-height: 48px; justify-content: center; }
+@media (min-width: 600px) { .ask-ov { align-items: center; } }
+@keyframes askIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes askUp { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .ask-ov, .ask { animation: none; } }

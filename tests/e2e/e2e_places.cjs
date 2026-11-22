@@ -4,7 +4,7 @@ const { chromium } = require('playwright'); const demo = require('./demo.cjs');
 let pass = 0, fail = 0; const ok = (n, c, i) => { console.log((c ? '  OK  ' : ' FAIL ') + n + (!c && i !== undefined ? '  → ' + JSON.stringify(i) : '')); c ? pass++ : fail++; };
 (async () => {
   const b = await chromium.launch(); const ctx = await b.newContext({ viewport: { width: 390, height: 844 } }); await require('./pvopen.cjs')(ctx); const p = await ctx.newPage(); const errs = [];
-  p.on('pageerror', e => errs.push(e.message)); p.on('dialog', d => d.accept());
+  p.on('pageerror', e => errs.push(e.message)); p.on('dialog', d => d.accept()); await require('./askauto.cjs')(p);
   const st = () => p.evaluate(() => JSON.parse(localStorage.getItem('teplo.v1')));
   // на главной при ≥ 2 квартирах — секции-аккордеон: ищем внутри секции текущей квартиры
   const inCur = async (sel) => { const s0 = JSON.parse(await p.evaluate(() => localStorage.getItem('teplo.v1'))); return (s0.places || []).filter(x => !x.deleted).length > 1 ? '[data-key=home-pl-' + s0.placeId + '] ' + sel : sel; };

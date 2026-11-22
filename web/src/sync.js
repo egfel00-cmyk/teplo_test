@@ -11,7 +11,7 @@
  */
 (function (root) {
   'use strict';
-  var SYNC_KEYS = ['v', 'onboarded', 'meter', 'baseline', 'contacts', 'readings', 'draft', 'updatedAt', 'wipedAt', 'tariff', 'bill', 'places', 'water', 'remind', 'wtariff', 'mrecs', 'restoredAt'];
+  var SYNC_KEYS = ['v', 'onboarded', 'meter', 'baseline', 'contacts', 'readings', 'draft', 'updatedAt', 'wipedAt', 'tariff', 'bill', 'places', 'water', 'remind', 'wtariff', 'mrecs', 'restoredAt', 'ui'];   // 174-я: ui — вибір теми {theme, at}, однаковий на всіх пристроях акаунта
 
   function payload(S) { var o = {}; SYNC_KEYS.forEach(function (k) { if (S[k] !== undefined) o[k] = S[k]; }); return o; }
   /** 150-а (власник 14.11: «у „Победе“ міняю постачальника світла на свого — зберігається, а після оновлення знову скидається; виправ, не лише в мене»).
@@ -67,6 +67,9 @@
       if (!o || (r.updatedAt || ts(r.createdAt)) >= (o.updatedAt || ts(o.createdAt))) mm[r.id] = r;
     });
     out.mrecs = Object.keys(mm).map(function (k) { return mm[k]; }).sort(function (x, y) { return ts(x.createdAt) - ts(y.createdAt); });
+    // 174-я: вибір теми — новіший за власною міткою (at), а не за станом загалом: змінили тему на телефоні — комп'ютер підхопить, навіть якщо там новіші показання
+    var ua = a.ui && typeof a.ui === 'object' ? a.ui : null, ub = b.ui && typeof b.ui === 'object' ? b.ui : null;
+    if (ua || ub) out.ui = !ua ? ub : !ub ? ua : (ub.at || 0) > (ua.at || 0) ? ub : (ua.at || 0) > (ub.at || 0) ? ua : newer.ui || ua;
     var wipeWins = wiped && newer.wipedAt === wiped;
     out.onboarded = wipeWins ? !!newer.onboarded : !!(a.onboarded || b.onboarded);
     // база (последние принятые ХТМ) — с более поздней датой; при равенстве — из более свежего состояния

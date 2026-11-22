@@ -13,7 +13,7 @@ const attach = async (p, files) => { const [fc] = await Promise.all([p.waitForEv
   const img = '/tmp/bill_photo.jpg', pdf = '/tmp/bill_oct.pdf';
   if (!fs.existsSync(img) || !fs.existsSync(pdf)) throw new Error('нет ' + img + ' / ' + pdf);
   const b = await chromium.launch(), errs = [];
-  const dev = async () => { const c = await b.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true }); const p = await c.newPage(); p.on('pageerror', e => errs.push(e.message)); p.on('dialog', d => d.accept()); return p; };
+  const dev = async () => { const c = await b.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true }); const p = await c.newPage(); p.on('pageerror', e => errs.push(e.message)); p.on('dialog', d => d.accept()); await require('./askauto.cjs')(p); return p; };
   const A = await dev();
   await A.goto(BASE); await A.evaluate(s => localStorage.setItem('teplo.v1', JSON.stringify(s)), demo({ gaps: true }));
   await A.goto(BASE + '#rec-r1'); await A.reload(); await A.waitForTimeout(800);

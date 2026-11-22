@@ -7,7 +7,7 @@ let pass = 0, fail = 0; const ok = (n, c, x) => { if (c) { pass++; console.log('
 const U = 'http://127.0.0.1:8013/';
 (async () => {
   const b = await chromium.launch(); const p = await (await b.newContext({ viewport: { width: 390, height: 844 }, locale: 'uk-UA' })).newPage();
-  const errs = []; p.on('pageerror', e => errs.push(e.message)); p.on('dialog', d => d.accept());
+  const errs = []; p.on('pageerror', e => errs.push(e.message)); p.on('dialog', d => d.accept()); await require('./askauto.cjs')(p);
   const s0 = demo({}); s0.places[0].address = 'м. Харків, вул. Сумська, 10';   // сьогодні в демо — 2 листопада 2026
   await p.goto(U); await p.evaluate(s => localStorage.setItem('teplo.v1', JSON.stringify(s)), s0);
   const pid = s0.places[0].id, st = () => p.evaluate(() => JSON.parse(localStorage.getItem('teplo.v1')).places[0].waste);

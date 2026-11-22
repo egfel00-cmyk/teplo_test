@@ -4,7 +4,7 @@ const { chromium } = require('playwright'); const demo = require('./demo.cjs');
 const ok = [], bad = []; const check = (c, m) => (c ? ok : bad).push(m);
 (async () => {
   const b = await chromium.launch(); const ctx = await b.newContext({ viewport: { width: 390, height: 844 } }); const p = await ctx.newPage(); const errs = [];
-  p.on('pageerror', e => errs.push(e.message)); p.on('dialog', d => d.accept());
+  p.on('pageerror', e => errs.push(e.message)); p.on('dialog', d => d.accept()); await require('./askauto.cjs')(p);
   await p.goto('http://127.0.0.1:8013/'); await p.evaluate(s => localStorage.setItem('teplo.v1', JSON.stringify(s)), demo({}));
   const st = () => p.evaluate(() => JSON.parse(localStorage.getItem('teplo.v1')));
   const setDate = async (id, v) => p.evaluate(([id, v]) => { const el = document.getElementById(id); el.value = v; el.dispatchEvent(new Event('change', { bubbles: true })); }, [id, v]);

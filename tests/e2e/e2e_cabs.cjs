@@ -115,7 +115,7 @@ const php = code => execFileSync('php', ['-r', `define('TEPLO',1); foreach (['co
   await p.goto(U + '#prefs'); await wait(800);
   ok('рядок у «Налаштуваннях»: «2 підключено» (ХТМ і Водоканал з рахунком)', /2 підключено/.test(await txt('[data-key=pgr-cabs]')), await txt('[data-key=pgr-cabs]'));
   await cabs();
-  p.once('dialog', d => d.accept()); await p.click('[data-key=prefs-cab-htm-off]'); await wait(1500);
+  await p.click('[data-key=prefs-cab-htm-off]'); await p.waitForTimeout(300); await p.click('[data-key=ask-yes]'); await wait(1500);
   ok('«Відв’язати» ХТМ (з підтвердженням) → не підключено', await p.evaluate(() => window.TeploSync.api('GET', '/cab/htm').then(j => j.connected)) === false && await vis('[data-key=prefs-cab-htm-connect]'));
 
   await p.setViewportSize({ width: 320, height: 700 }); await wait(400);
