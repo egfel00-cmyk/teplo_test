@@ -3,13 +3,13 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#F0EEEA">
+<meta name="theme-color" content="#111827">
 <meta name="color-scheme" content="light dark">
 <link rel="icon" href="favicon.ico" sizes="48x48">
 <link rel="icon" href="web/icon/favicon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="web/icon/apple-touch-icon.png">
 <link rel="manifest" href="web/icon/manifest.json">
-<script>/* тема до первой отрисовки — без вспышки светлого */try{var _t=(JSON.parse(localStorage.getItem('teplo.v1')||'{}').theme)||'auto';if(_t==='auto')_t=matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';document.documentElement.setAttribute('data-theme',_t);}catch(e){}</script>
+<script>/* тема до первой отрисовки — без вспышки светлого; 174-я: за замовчуванням темна (як S.themeV 3 в app.js) */try{var _o=JSON.parse(localStorage.getItem('teplo.v1')||'{}'),_t=_o.theme||'dark';if(_o.themeV!==3&&(_o.themeV!==2||_t==='auto'))_t='dark';if(_t==='brass'){_t='dark';document.documentElement.setAttribute('data-skin','brass');}if(_t==='auto')_t=matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';document.documentElement.setAttribute('data-theme',_t);}catch(e){}</script>
 <title>Лічильники — світло, вода, газ, тепло</title>
 <!--FONTS-->
 <link rel="stylesheet" href="styles.css">

@@ -21,7 +21,7 @@
   --wx-cold-bg: #E2ECF8; --wx-cold-ink: #24508A; --wx-zero-bg: #EEF1EF; --wx-zero-ink: #4A5652; --wx-warm-bg: #FBEFD5; --wx-warm-ink: #7A4A00;
   --spark-cold: #2F68B0; --spark-warm: #C98A1E; --spark-axis: #CFD7D3;
   color-scheme: light;
-  --font: "Manrope", system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans", sans-serif;
+  --font: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans", sans-serif;
   --mono: "IBM Plex Mono", ui-monospace, "SF Mono", "Cascadia Mono", "Roboto Mono", monospace;
 }
 /* Тёмная тема — «котельная ночью»: графит с зелёным оттенком корпуса (не чистый чёрный), глубина — светлее поверхность,
@@ -3310,3 +3310,7 @@ fieldset { min-inline-size: 0; }
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, .85), inset 0 -1px 0 rgba(40, 34, 22, .10), inset 0 0 0 1px rgba(40, 34, 22, .08); }
 :root:root[data-lskin="c"][data-lsk="3"]:not([data-theme="dark"]) :is(.lpf-list, .lpq-list) { border-color: var(--gl-line); border-radius: var(--r-card, 18px); box-shadow: var(--gl-sh); }
 :root:root[data-lskin="c"][data-lsk="3"]:not([data-theme="dark"]) :is(.lpf-list li, .lpq + .lpq) { border-color: var(--c-line); }
+/* 174-я, друга правка (власник 21.11: «читабельність упала — Manrope лише на лендингу, решту поверни на Inter»): Manrope — тільки сторінка привітання (.lp);
+   макет телефона в герої показує застосунок — його шрифтом (Inter) */
+.lp { --font: "Manrope", system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans", sans-serif; font-family: var(--font); }
+.lp .lpp-screen { --font: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans", sans-serif; font-family: var(--font); }

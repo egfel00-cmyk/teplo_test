@@ -9,7 +9,7 @@ const U = 'http://127.0.0.1:8013/';
   const errs = []; p.on('pageerror', e => errs.push(e.message));
   const st = async () => JSON.parse(await p.evaluate(() => localStorage.getItem('teplo.v1')));
   const s0 = demo({});
-  s0.theme = 'dark'; delete s0.themeV;   // так было у тех, кто нажимал кнопку темы в шапке
+  s0.theme = 'auto'; s0.themeV = 2;   // «як у телефоні» — так було в усіх, хто тему не обирав (07.11–22.11)
   s0.readings.push({ id: 'rnew', place: 'main', status: 'checked', htm: { date: '2026-11-06', energy: '13.100', volume: '2500', flow: '0.06', power: '1.6', tSupply: '50', tReturn: '30', hours: '36000', errHours: '153', errCode: 'E---' }, raw: {}, createdAt: '2026-11-06T10:00:00Z', updatedAt: 1 });
   s0.focusId = 'rnew';
   await p.goto(U); await p.evaluate(s => localStorage.setItem('teplo.v1', JSON.stringify(s)), s0);
@@ -19,11 +19,11 @@ const U = 'http://127.0.0.1:8013/';
   ok('в шапці немає перемикача теми', !(await p.$('[data-key=theme-toggle]')) && !(await p.$('.top .theme-btn')));
   ok('шапка (127-а): знак + слово «передай.com.ua» замість «Лічильники», поруч «бета»', (await p.getAttribute('[data-key=brand] svg.wm', 'aria-label')) === 'передай.com.ua' && await p.isVisible('[data-key=brand] svg.logo') && /^бета$/.test((await p.textContent('[data-key=brand]')).trim()) && await p.isVisible('[data-key=beta]'));
   const th = await st();
-  ok('примусова темна з шапки → один раз «як у телефоні» (auto), сторінка світла як телефон', th.theme === 'auto' && th.themeV === 2 && (await p.getAttribute('html', 'data-theme')) === 'light', [th.theme, th.themeV]);
+  ok('174-а: тему не обирали («як у телефоні») → один раз «Темна» за замовчуванням, хоч телефон світлий', th.theme === 'dark' && th.themeV === 3 && (await p.getAttribute('html', 'data-theme')) === 'dark', [th.theme, th.themeV]);
   await p.goto(U + '#prefs-look'); await p.waitForTimeout(400);
-  await p.click('[data-key=prefs-theme] [data-act=theme][data-v=dark]'); await p.waitForTimeout(300);
+  await p.click('[data-key=prefs-theme] [data-act=theme][data-v=light]'); await p.waitForTimeout(300);
   await p.reload(); await p.waitForTimeout(500);
-  ok('у Налаштуваннях «Темна» — тримається після перезавантаження', (await st()).theme === 'dark' && (await p.getAttribute('html', 'data-theme')) === 'dark');
+  ok('у Налаштуваннях «Світла» — тримається після перезавантаження (вибір не перебиваємо)', (await st()).theme === 'light' && (await p.getAttribute('html', 'data-theme')) === 'light');
   await p.click('[data-key=prefs-theme] [data-act=theme][data-v=auto]');
   await p.waitForTimeout(200);
 

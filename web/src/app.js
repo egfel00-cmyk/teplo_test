@@ -459,9 +459,11 @@
   (function () { var ap = place(); if (ap && places().length > 1) { S.meter = ap.meter || null; S.baseline = ap.baseline || null; } })();
   // ---- тема: авто (как в системе / Telegram) · светлая · тёмная; выбор хранится на этом устройстве, меняется только в Налаштуваннях.
   // 07.11: перемикач у шапці прибрано — хто перемкнув його раніше, один раз повертаємо «як у телефоні»
-  if (S.themeV !== 2) { S.theme = 'auto'; S.themeV = 2; persist(); }
+  // 174-я (власник 22.11: «темну тему став за замовчуванням»): хто тему не обирав (нова людина, старі стани, «як у телефоні» з 07.11) — один раз «Темна»;
+  // обрані «Світла», «Темна», «Латунь» лишаються. «Як у системі» — і далі в Налаштуваннях
+  if (S.themeV !== 3) { if (S.themeV !== 2 || !S.theme || S.theme === 'auto') S.theme = 'dark'; S.themeV = 3; persist(); }
   function resolvedTheme() {
-    var th = S.theme || 'auto'; if (th === 'brass') return 'dark'; if (th !== 'auto') return th;   // 164-я: «Латунь» — тепла темна (data-skin)
+    var th = S.theme || 'dark'; if (th === 'brass') return 'dark'; if (th !== 'auto') return th;   // 164-я: «Латунь» — тепла темна (data-skin)
     var tw0 = window.Telegram && window.Telegram.WebApp; if (tw0 && tw0.initData && tw0.colorScheme) return tw0.colorScheme === 'dark' ? 'dark' : 'light';
     return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
   }
@@ -479,7 +481,7 @@
     var tw1 = window.Telegram && window.Telegram.WebApp; if (tw1 && tw1.initData) { try { tw1.setHeaderColor && tw1.setHeaderColor(bg); tw1.setBackgroundColor && tw1.setBackgroundColor(bg); } catch (e) { /* старый клиент */ } }
   }
   applyTheme();
-  if (window.matchMedia) { var mq = window.matchMedia('(prefers-color-scheme: dark)'); var onMq = function () { if ((S.theme || 'auto') === 'auto') { applyTheme(); if (typeof render === 'function') safeRender(); } }; if (mq.addEventListener) mq.addEventListener('change', onMq); else if (mq.addListener) mq.addListener(onMq); }
+  if (window.matchMedia) { var mq = window.matchMedia('(prefers-color-scheme: dark)'); var onMq = function () { if ((S.theme || 'dark') === 'auto') { applyTheme(); if (typeof render === 'function') safeRender(); } }; if (mq.addEventListener) mq.addEventListener('change', onMq); else if (mq.addListener) mq.addListener(onMq); }
   // ---- згода на cookie (07.11.2026). Необхідні — завжди (вхід ts_sid, захист ts_csrf, ваші дані в цьому браузері, Cloudflare).
   // Аналітика — журнал дій і позначка «відкрили сайт» з випадковим id браузера (teplo.vid) — лише після згоди; до відповіді події
   // тримаються лише в пам'яті сторінки (погодились — дошлемо, відмовились — стерли). Вибір — у localStorage 'teplo.cc' {v, a, at, id};
@@ -9171,10 +9173,10 @@
       // monobank — окремим пунктом (власник 11.11: «не побачив, де monobank»): рахунки всіх квартир і оплати вивозу сміття з виписки
       Mn ? PG('mono', 'wallet', t('mono_t'), t('mono_link_s'), '<div class="panel" data-key="prefs-mono"><p>' + esc(t('mono_l')) + '</p><p class="small muted">' + esc(t('mono_pg_h')) + '</p>' + monoLink('prefs') + '</div>') : '',
       PG('remind', 'bell', t('pg_remind'), t('pg_remind_s'), remindPanel()),
-      PG('look', 'sun', t('pg_look'), t('th_' + (S.theme || 'auto')), '<div class="panel" data-key="prefs-theme"><h2>' + esc(t('th_title')) + '</h2><div class="th-grid" role="group" aria-label="' + esc(t('th_title')) + '">' +
+      PG('look', 'sun', t('pg_look'), t('th_' + (S.theme || 'dark')), '<div class="panel" data-key="prefs-theme"><h2>' + esc(t('th_title')) + '</h2><div class="th-grid" role="group" aria-label="' + esc(t('th_title')) + '">' +
         // 164-я: 3 теми + «як у системі»; мініатюра — тло, картка, кнопка акценту кожної теми (кольори — ті самі, що в styles.css)
         [['auto', '', '', ''], ['light', '#F0EEEA', '#FFFFFF', '#2D4FCF'], ['dark', '#111827', '#1A2438', '#4566F0'], ['brass', '#1A1815', '#24211D', '#CDA868']].map(function (o) {
-          return '<button type="button" class="th-opt" data-act="theme" data-v="' + o[0] + '" data-key="th-' + o[0] + '" aria-pressed="' + ((S.theme || 'auto') === o[0]) + '"><span class="th-sw' + (o[1] ? '' : ' auto') + '" aria-hidden="true"' +
+          return '<button type="button" class="th-opt" data-act="theme" data-v="' + o[0] + '" data-key="th-' + o[0] + '" aria-pressed="' + ((S.theme || 'dark') === o[0]) + '"><span class="th-sw' + (o[1] ? '' : ' auto') + '" aria-hidden="true"' +
             (o[1] ? ' style="--b:' + o[1] + ';--c:' + o[2] + ';--a:' + o[3] + '"' : ' style="--c:rgba(255,255,255,.85);--a:#2D4FCF"') + '>' + (o[1] ? '' : '<i></i>') + '</span>' + esc(t('th_' + o[0])) + '</button>'; }).join('') + '</div>' +
         '<p class="small muted" style="margin-top:8px">' + esc(t('th_sub')) + '</p></div>'),
       PG('data', 'copy', t('pg_data'), t('pg_data_s'), '<div class="panel" data-key="prefs-data"><h2>' + esc(t('p_data')) + '</h2>' +

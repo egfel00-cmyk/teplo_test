@@ -3,19 +3,27 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#F0EEEA">
+<meta name="theme-color" content="#111827">
 <meta name="color-scheme" content="light dark">
 <link rel="icon" href="favicon.ico" sizes="48x48">
 <link rel="icon" href="web/icon/favicon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="web/icon/apple-touch-icon.png">
 <link rel="manifest" href="web/icon/manifest.json">
-<script>/* тема до первой отрисовки — без вспышки светлого */try{var _t=(JSON.parse(localStorage.getItem('teplo.v1')||'{}').theme)||'auto';if(_t==='auto')_t=matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';document.documentElement.setAttribute('data-theme',_t);}catch(e){}</script>
+<script>/* тема до первой отрисовки — без вспышки светлого; 174-я: за замовчуванням темна (як S.themeV 3 в app.js) */try{var _o=JSON.parse(localStorage.getItem('teplo.v1')||'{}'),_t=_o.theme||'dark';if(_o.themeV!==3&&(_o.themeV!==2||_t==='auto'))_t='dark';if(_t==='brass'){_t='dark';document.documentElement.setAttribute('data-skin','brass');}if(_t==='auto')_t=matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';document.documentElement.setAttribute('data-theme',_t);}catch(e){}</script>
 <title>Лічильники — світло, вода, газ, тепло</title>
+<link rel="preload" href="web/fonts/inter-cyr.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="web/fonts/inter-lat.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="web/fonts/manrope-cyr.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="preload" href="web/fonts/manrope-lat.woff2" as="font" type="font/woff2" crossorigin>
 <style>
-/* 174-я (власник 21.11: «шрифт виглядає як з недоробленого прототипу» — Inter): Manrope — основний шрифт сайту (змінний 200–800, OFL — OFL-Manrope.txt,
-   fontsource 5.3.0; ₴ — у latin-ext). IBM Plex Sans лишається для SEO-сторінок, листів і /admin; Plex Mono — значення для кабінету ХТМ. */
+/* 164-я (власник 16.11 12:16: «шрифт Inter»): Inter — основний шрифт сайту (змінний 100–900, OFL — OFL-Inter.txt). IBM Plex Sans лишається для SEO-сторінок,
+   листів і /admin; Plex Mono — значення для кабінету ХТМ.
+   174-я (власник 21.11): Manrope (змінний 200–800, OFL — OFL-Manrope.txt, fontsource 5.3.0) — лише лендинг (.lp); у застосунку читабельніший Inter. */
+@font-face { font-family: "Inter"; font-style: normal; font-weight: 100 900; font-display: swap;
+  src: url(web/fonts/inter-cyr.woff2) format("woff2"); unicode-range: U+0301,U+0400-045F,U+0490-0491,U+04B0-04B1,U+2116; }
+@font-face { font-family: "Inter"; font-style: normal; font-weight: 100 900; font-display: swap;
+  src: url(web/fonts/inter-latx.woff2) format("woff2"); unicode-range: U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF; }
+@font-face { font-family: "Inter"; font-style: normal; font-weight: 100 900; font-display: swap;
+  src: url(web/fonts/inter-lat.woff2) format("woff2"); unicode-range: U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD; }
 @font-face { font-family: "Manrope"; font-style: normal; font-weight: 200 800; font-display: swap;
   src: url(web/fonts/manrope-cyr.woff2) format("woff2"); unicode-range: U+0301,U+0400-045F,U+0490-0491,U+04B0-04B1,U+2116; }
 @font-face { font-family: "Manrope"; font-style: normal; font-weight: 200 800; font-display: swap;
@@ -66,7 +74,7 @@
   --wx-cold-bg: #E2ECF8; --wx-cold-ink: #24508A; --wx-zero-bg: #EEF1EF; --wx-zero-ink: #4A5652; --wx-warm-bg: #FBEFD5; --wx-warm-ink: #7A4A00;
   --spark-cold: #2F68B0; --spark-warm: #C98A1E; --spark-axis: #CFD7D3;
   color-scheme: light;
-  --font: "Manrope", system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans", sans-serif;
+  --font: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans", sans-serif;
   --mono: "IBM Plex Mono", ui-monospace, "SF Mono", "Cascadia Mono", "Roboto Mono", monospace;
 }
 /* Тёмная тема — «котельная ночью»: графит с зелёным оттенком корпуса (не чистый чёрный), глубина — светлее поверхность,
@@ -3355,6 +3363,10 @@ fieldset { min-inline-size: 0; }
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, .85), inset 0 -1px 0 rgba(40, 34, 22, .10), inset 0 0 0 1px rgba(40, 34, 22, .08); }
 :root:root[data-lskin="c"][data-lsk="3"]:not([data-theme="dark"]) :is(.lpf-list, .lpq-list) { border-color: var(--gl-line); border-radius: var(--r-card, 18px); box-shadow: var(--gl-sh); }
 :root:root[data-lskin="c"][data-lsk="3"]:not([data-theme="dark"]) :is(.lpf-list li, .lpq + .lpq) { border-color: var(--c-line); }
+/* 174-я, друга правка (власник 21.11: «читабельність упала — Manrope лише на лендингу, решту поверни на Inter»): Manrope — тільки сторінка привітання (.lp);
+   макет телефона в герої показує застосунок — його шрифтом (Inter) */
+.lp { --font: "Manrope", system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans", sans-serif; font-family: var(--font); }
+.lp .lpp-screen { --font: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans", sans-serif; font-family: var(--font); }
 
 </style>
 <style>.top { padding-top: max(12px, env(safe-area-inset-top)); }</style>
@@ -10946,9 +10958,11 @@ fieldset { min-inline-size: 0; }
   (function () { var ap = place(); if (ap && places().length > 1) { S.meter = ap.meter || null; S.baseline = ap.baseline || null; } })();
   // ---- тема: авто (как в системе / Telegram) · светлая · тёмная; выбор хранится на этом устройстве, меняется только в Налаштуваннях.
   // 07.11: перемикач у шапці прибрано — хто перемкнув його раніше, один раз повертаємо «як у телефоні»
-  if (S.themeV !== 2) { S.theme = 'auto'; S.themeV = 2; persist(); }
+  // 174-я (власник 22.11: «темну тему став за замовчуванням»): хто тему не обирав (нова людина, старі стани, «як у телефоні» з 07.11) — один раз «Темна»;
+  // обрані «Світла», «Темна», «Латунь» лишаються. «Як у системі» — і далі в Налаштуваннях
+  if (S.themeV !== 3) { if (S.themeV !== 2 || !S.theme || S.theme === 'auto') S.theme = 'dark'; S.themeV = 3; persist(); }
   function resolvedTheme() {
-    var th = S.theme || 'auto'; if (th === 'brass') return 'dark'; if (th !== 'auto') return th;   // 164-я: «Латунь» — тепла темна (data-skin)
+    var th = S.theme || 'dark'; if (th === 'brass') return 'dark'; if (th !== 'auto') return th;   // 164-я: «Латунь» — тепла темна (data-skin)
     var tw0 = window.Telegram && window.Telegram.WebApp; if (tw0 && tw0.initData && tw0.colorScheme) return tw0.colorScheme === 'dark' ? 'dark' : 'light';
     return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
   }
@@ -10966,7 +10980,7 @@ fieldset { min-inline-size: 0; }
     var tw1 = window.Telegram && window.Telegram.WebApp; if (tw1 && tw1.initData) { try { tw1.setHeaderColor && tw1.setHeaderColor(bg); tw1.setBackgroundColor && tw1.setBackgroundColor(bg); } catch (e) { /* старый клиент */ } }
   }
   applyTheme();
-  if (window.matchMedia) { var mq = window.matchMedia('(prefers-color-scheme: dark)'); var onMq = function () { if ((S.theme || 'auto') === 'auto') { applyTheme(); if (typeof render === 'function') safeRender(); } }; if (mq.addEventListener) mq.addEventListener('change', onMq); else if (mq.addListener) mq.addListener(onMq); }
+  if (window.matchMedia) { var mq = window.matchMedia('(prefers-color-scheme: dark)'); var onMq = function () { if ((S.theme || 'dark') === 'auto') { applyTheme(); if (typeof render === 'function') safeRender(); } }; if (mq.addEventListener) mq.addEventListener('change', onMq); else if (mq.addListener) mq.addListener(onMq); }
   // ---- згода на cookie (07.11.2026). Необхідні — завжди (вхід ts_sid, захист ts_csrf, ваші дані в цьому браузері, Cloudflare).
   // Аналітика — журнал дій і позначка «відкрили сайт» з випадковим id браузера (teplo.vid) — лише після згоди; до відповіді події
   // тримаються лише в пам'яті сторінки (погодились — дошлемо, відмовились — стерли). Вибір — у localStorage 'teplo.cc' {v, a, at, id};
@@ -19658,10 +19672,10 @@ fieldset { min-inline-size: 0; }
       // monobank — окремим пунктом (власник 11.11: «не побачив, де monobank»): рахунки всіх квартир і оплати вивозу сміття з виписки
       Mn ? PG('mono', 'wallet', t('mono_t'), t('mono_link_s'), '<div class="panel" data-key="prefs-mono"><p>' + esc(t('mono_l')) + '</p><p class="small muted">' + esc(t('mono_pg_h')) + '</p>' + monoLink('prefs') + '</div>') : '',
       PG('remind', 'bell', t('pg_remind'), t('pg_remind_s'), remindPanel()),
-      PG('look', 'sun', t('pg_look'), t('th_' + (S.theme || 'auto')), '<div class="panel" data-key="prefs-theme"><h2>' + esc(t('th_title')) + '</h2><div class="th-grid" role="group" aria-label="' + esc(t('th_title')) + '">' +
+      PG('look', 'sun', t('pg_look'), t('th_' + (S.theme || 'dark')), '<div class="panel" data-key="prefs-theme"><h2>' + esc(t('th_title')) + '</h2><div class="th-grid" role="group" aria-label="' + esc(t('th_title')) + '">' +
         // 164-я: 3 теми + «як у системі»; мініатюра — тло, картка, кнопка акценту кожної теми (кольори — ті самі, що в styles.css)
         [['auto', '', '', ''], ['light', '#F0EEEA', '#FFFFFF', '#2D4FCF'], ['dark', '#111827', '#1A2438', '#4566F0'], ['brass', '#1A1815', '#24211D', '#CDA868']].map(function (o) {
-          return '<button type="button" class="th-opt" data-act="theme" data-v="' + o[0] + '" data-key="th-' + o[0] + '" aria-pressed="' + ((S.theme || 'auto') === o[0]) + '"><span class="th-sw' + (o[1] ? '' : ' auto') + '" aria-hidden="true"' +
+          return '<button type="button" class="th-opt" data-act="theme" data-v="' + o[0] + '" data-key="th-' + o[0] + '" aria-pressed="' + ((S.theme || 'dark') === o[0]) + '"><span class="th-sw' + (o[1] ? '' : ' auto') + '" aria-hidden="true"' +
             (o[1] ? ' style="--b:' + o[1] + ';--c:' + o[2] + ';--a:' + o[3] + '"' : ' style="--c:rgba(255,255,255,.85);--a:#2D4FCF"') + '>' + (o[1] ? '' : '<i></i>') + '</span>' + esc(t('th_' + o[0])) + '</button>'; }).join('') + '</div>' +
         '<p class="small muted" style="margin-top:8px">' + esc(t('th_sub')) + '</p></div>'),
       PG('data', 'copy', t('pg_data'), t('pg_data_s'), '<div class="panel" data-key="prefs-data"><h2>' + esc(t('p_data')) + '</h2>' +

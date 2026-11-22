@@ -16,6 +16,7 @@ module.exports = function demo(opts) {
   const baseline = opts.noHeat ? null : { date: '2025-12-10', energy: '9.001', volume: '2150', hours: '33300' };
   const out = { v: 1, lang: opts.lang || 'uk', onboarded: true, meter, baseline, contacts: { phone: '', email: '' }, readings: opts.noHeat ? [] : readings, draft: null,
     demoToday: opts.today || '2026-11-02', placeId: 'main', view: opts.view,
+    theme: opts.theme || 'auto', themeV: 3,   // 174-я: за замовчуванням тепер «Темна» — демо й далі за colorScheme тесту (auto)
     places: [{ id: 'main', name: '', meter, baseline, updatedAt: 1, gaps: (opts.gaps ? [
       { id: 'g1', what: 'heat', from: '2026-02-20', to: '2026-03-05', reason: 'repair', vFrom: '11.650', vTo: '11.650', fresh: false, pay: 'area', amount: '1250', updatedAt: 1 },
       { id: 'g2', what: 'c1', from: '2026-07-20', to: '2026-07-28', reason: 'verify', vFrom: '424', vTo: '424', fresh: false, pay: 'norm', updatedAt: 1 }] : [])
