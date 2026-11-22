@@ -14,7 +14,12 @@ final class Seo {
   public const PUK = '/postachalnyky', PRU = '/ru/postavshchiki';
   // 170-а (розбір конкурентів, п. 8 «пошук „комуналка Харків“»): «Комуналка в Харкові: куди передати показники» — шпаргалка міста
   public const KUK = '/komunalka', KRU = '/ru/kommunalka';
-  private const KOM = ['kharkiv' => ['Харків', 'Харкові', 'Харьков', 'Харькове']];
+  // 177-а: + Київ, Одеса, Львів, Хмельницький — сторінка з довідника (komAny): хто приймає, вікно, як передати, тарифи з підставою, питання
+  // [назва, місцевий, назва ru, місцевий ru, прийменник uk, прийменник ru] — «у Львові», «во Львове»
+  private const KOM = ['kharkiv' => ['Харків', 'Харкові', 'Харьков', 'Харькове'], 'kyiv' => ['Київ', 'Києві', 'Киев', 'Киеве'], 'odesa' => ['Одеса', 'Одесі', 'Одесса', 'Одессе'],
+    'lviv' => ['Львів', 'Львові', 'Львов', 'Львове', 'у', 'во'], 'khmelnytskyi' => ['Хмельницький', 'Хмельницькому', 'Хмельницкий', 'Хмельницком']];
+  /** «в Харкові» / «у Львові» (ru — «во Львове»). */
+  private static function komIn(string $slug, bool $ru): string { $c = self::KOM[$slug] ?? null; return $c ? ($c[$ru ? 5 : 4] ?? 'в') . ' ' . $c[$ru ? 3 : 1] : ''; }
   private static ?array $data = null;
   /** Параметри запиту для калькуляторів (index.php: $_GET). */
   public static array $q = [];
@@ -208,12 +213,12 @@ final class Seo {
         '<p class="sub">' . $e(($hn !== '' ? $hn . ($ru ? ' громада' : ' громада') . ', ' : '') . $rg) . '</p>' .
         '<p>' . ($ru ? 'Для адресов громады. В отдельных сёлах поставщик бывает другой — сверьте с платёжкой.' : 'Для адрес громади. В окремих селах постачальник буває інший — звірте з платіжкою.') . '</p>';
       foreach (['elec', 'water', 'gas', 'heat', 'waste'] as $k) if (!empty($kd[$k]) && is_array($kd[$k])) $h .= self::kindCard($k, $kd[$k], $hid, $ru, $base);
-      if (isset(self::KOM[$slug])) $h .= '<p><a href="' . $e($base . ($ru ? self::KRU : self::KUK) . '/' . $slug) . '">' . $e($ru ? 'Коммуналка в ' . self::KOM[$slug][3] . ': шпаргалка на месяц и вопросы' : 'Комуналка в ' . self::KOM[$slug][1] . ': шпаргалка на місяць і питання') . '</a></p>';
+      if (isset(self::KOM[$slug])) $h .= '<p><a href="' . $e($base . ($ru ? self::KRU : self::KUK) . '/' . $slug) . '">' . $e(($ru ? 'Коммуналка ' : 'Комуналка ') . self::komIn($slug, $ru) . ($ru ? ': шпаргалка на месяц и вопросы' : ': шпаргалка на місяць і питання')) . '</a></p>';
       if (!empty($kd['heat']['org'])) $h .= '<p><a href="' . $e($base . self::url($lang)) . '">' . ($ru ? 'Как снять показания теплосчётчика — по моделям' : 'Як зняти показання теплолічильника — за моделями') . '</a></p>';
       $h .= $cta . '<p class="muted"><a href="' . $e($idx . '#' . $r) . '">' . ($ru ? 'Другие громады — ' : 'Інші громади — ') . $e($rg) . '</a> · <a href="' . $e($base . ($ru ? self::PRU : self::PUK)) . '">' . ($ru ? 'Все поставщики' : 'Усі постачальники') . '</a></p>';
     } else {
       $h .= '<nav class="bc"><a href="' . $e($base) . '/">передай</a></nav><h1>' . $e($h1) . '</h1><p class="sub">' . $e($desc) . '</p>' .
-        '<p class="links">' . implode(' · ', array_map(fn($sl, $c) => '<a href="' . $e($base . ($ru ? self::KRU : self::KUK) . '/' . $sl) . '">' . $e($ru ? 'Коммуналка в ' . $c[3] : 'Комуналка в ' . $c[1]) . '</a>', array_keys(self::KOM), self::KOM)) . '</p>';
+        '<p class="links">' . implode(' · ', array_map(fn($sl) => '<a href="' . $e($base . ($ru ? self::KRU : self::KUK) . '/' . $sl) . '">' . $e(($ru ? 'Коммуналка ' : 'Комуналка ') . self::komIn($sl, $ru)) . '</a>', array_keys(self::KOM))) . '</p>';
       $by = []; foreach ($hs as $sl => $y) $by[$y[1]][$sl] = $y;
       foreach (array_keys(self::RG) as $r) {
         if (empty($by[$r])) continue; $l = $by[$r]; uasort($l, fn($a, $b) => strcmp(mb_strtolower($a[2]), mb_strtolower($b[2])));
@@ -396,6 +401,7 @@ final class Seo {
   // строки й канали — правила застосунку (defHow, «Довідка»: Водоканал 1–20, ХТМ 5–25, обленерго — останні 2 дні й 1–3, газ 1–5).
   private static function renderKom(string $lang, string $slug, string $base, string $site): ?string {
     $c = self::KOM[$slug] ?? null; $x = self::hroms()[$slug] ?? null; if (!$c || !$x) return null;
+    if ($slug !== 'kharkiv') return self::komAny($lang, $slug, $base, $site, $c, $x);
     $ru = $lang === 'ru'; $e = [self::class, 'e']; $T = fn(string $uk, string $r) => $ru ? $r : $uk;
     [$hid, $r, $cn] = $x; $kd = Providers::kinds(['n' => $cn, 'h' => $hid, 'r' => $r]);
     $in = $ru ? $c[3] : $c[1]; $nm = $ru ? $c[2] : $c[0];
@@ -451,6 +457,96 @@ final class Seo {
     $ld = ['@context' => 'https://schema.org', '@type' => 'FAQPage', 'inLanguage' => $lang,
       'mainEntity' => array_map(fn($q) => ['@type' => 'Question', 'name' => $q[0], 'acceptedAnswer' => ['@type' => 'Answer', 'text' => $q[1]]], $qa)];
     $faq = '<section class="card"><h2>' . $T('Питання', 'Вопросы') . '</h2>' . implode('', array_map(fn($q) => '<h3>' . $e($q[0]) . '</h3><p>' . $e($q[1]) . '</p>', $qa)) . '</section>';
+    $cards = ''; foreach (['elec', 'water', 'gas', 'heat', 'waste'] as $k) if (!empty($kd[$k]) && is_array($kd[$k])) $cards .= self::kindCard($k, $kd[$k], $hid, $ru, $base);
+    return self::komShell($lang, $slug, $base, $site, $r, $nm, $title, $desc, $h1, $ld, $sum . $self, $cards, $faq);
+  }
+
+  /** 177-а: «Комуналка в …» не Харкова — лише з довідника громади (Providers::kinds): хто приймає (орг., оператор мережі), вікно (`win`/`till` → self::win),
+   *  як передати (`how`, газ Нафтогазу — defHow), тарифи з підставою (`doc`), гаряча вода (`hotOrg`, `hot`), що «передай» відправить сам (`via` — робот LocalBot). */
+  private static function komAny(string $lang, string $slug, string $base, string $site, array $c, array $x): ?string {
+    $ru = $lang === 'ru'; $e = [self::class, 'e']; $T = fn(string $uk, string $r) => $ru ? $r : $uk;
+    [$hid, $r, $cn] = $x; $kd = Providers::kinds(['n' => $cn, 'h' => $hid, 'r' => $r]);
+    $in = self::komIn($slug, $ru); $nm = $ru ? $c[2] : $c[0];   // «у Львові» — з прийменником
+    $o = fn(string $k) => (array)($kd[$k] ?? []) + self::defHow($k, (array)($kd[$k] ?? []));
+    $L = fn(array $a, string $f) => trim((string)($ru && !empty($a[$f . '_ru']) ? $a[$f . '_ru'] : ($a[$f] ?? '')));
+    $ln = fn($n) => trim((string)$n) !== '' ? self::plink(trim((string)$n), $ru, $base) : '';
+    $dt = fn($d) => date('d.m.Y', strtotime((string)$d));
+    $m3 = function ($v): string { $x = number_format((float)$v, 3, ',', ' '); return str_ends_with($x, '0') ? substr($x, 0, -1) : $x; };   // тариф як у рішенні: 36,708, а не 36,71
+    $sp = fn(string $t) => str_replace(["\u{00a0}", "\u{202f}", "\u{2009}"], ' ', $t);
+    $lc = fn(string $t) => mb_strtolower(mb_substr($t, 0, 1)) . mb_substr($t, 1);
+    $uc = fn(string $t) => mb_strtoupper(mb_substr($t, 0, 1)) . mb_substr($t, 1);
+    $K = ['elec' => $o('elec'), 'water' => $o('water'), 'gas' => $o('gas'), 'heat' => $o('heat'), 'waste' => $o('waste')];
+    $when = fn(array $a) => self::win(isset($a['win']) && is_array($a['win']) ? $a['win'] : null, isset($a['till']) ? (int)$a['till'] : null, $ru);
+    // «як» без вступу про строк, коли строк уже окремим рядком: «Показання водомірів — з 1 по 4 число: кабінет…» → «Кабінет…»
+    $how = function (array $a, bool $cut) use ($L, $uc): string { $t = $L($a, 'how');   // «як» — канали постачальника (застосунки теж), clean лише для нотаток
+      if ($cut && preg_match('/^[^:]{0,180}?\d[^:]{0,120}:\s*(.+)$/us', $t, $m)) $t = $uc($m[1]); return $t; };
+    $rows = [];
+    foreach (['elec', 'water', 'gas', 'heat', 'waste'] as $k) {
+      $a = $K[$k]; $org = trim((string)($a['org'] ?? '')); if ($org === '' && $L($a, 'how') === '') continue;
+      $who = $k === 'elec' ? ($ln($a['net'] ?? '') !== '' ? $ln($a['net']) . ($org !== '' ? $T(' (рахунки — ', ' (счета — ') . $ln($org) . ')' : '') : $ln($org))
+        : ($k === 'gas' ? $ln($org) . (!empty($a['grm']) ? $T(' і ', ' и ') . $ln($a['grm']) . $T(' (доставка)', ' (доставка)') : '') : $ln($org));
+      if ($k === 'water' && !empty($a['hotOrg'])) $who .= $T('; гаряча вода — ', '; горячая вода — ') . $ln($a['hotOrg']);
+      $w = $k === 'waste' ? $T('лічильника немає', 'счётчика нет') : $when($a);
+      $hw = $k === 'waste' ? $L($a, 'pay') : $how($a, $w !== '');
+      $rows[] = [self::KN[$k][$ru ? 1 : 0], $who, $w, $hw];
+    }
+    if (!$rows) return null;
+    $sum = '<section class="card"><h2>' . $T('Шпаргалка на місяць', 'Шпаргалка на месяц') . '</h2><ul class="sm">' . implode('', array_map(fn($y) => '<li><b>' . $e($y[0]) . '</b> — ' . $y[1] .
+      ($y[2] !== '' ? '<span class="when">' . $e($y[2]) . '</span>' : '') . ($y[3] !== '' ? '<span class="how">' . $e($y[3]) . '</span>' : '') . '</li>', $rows)) . '</ul></section>';
+    // що «передай» зробить сам — лише де в довіднику є робот (`via`, LocalBot): лист на e-mail постачальника, форма сайту, кабінет
+    $bg = []; $kw = ['elec' => ['Світло', 'Свет'], 'water' => ['Вода', 'Вода'], 'gas' => ['Газ', 'Газ'], 'heat' => ['Тепло', 'Тепло']];
+    foreach (['elec', 'water', 'gas', 'heat'] as $k) {
+      $v = (string)($K[$k]['via'] ?? ''); if ($v === '' || $v === 'hvk' || $v === 'htm') continue;
+      $b = class_exists('LocalBot') ? LocalBot::get($v) : null; $tt = (string)($b['t'] ?? '');
+      $how1 = $tt === 'mail' ? $T('листом на e-mail постачальника', 'письмом на e-mail поставщика') : ($tt === 'form' ? $T('через форму на сайті постачальника', 'через форму на сайте поставщика') : $T('через ваш особистий кабінет', 'через ваш личный кабинет'));
+      $to = trim((string)($b['org'] ?? '')) ?: trim((string)($K[$k]['org'] ?? ''));   // кому йде лист чи форма (Львів, світло — Львівобленерго, не енергозбут)
+      $bg[] = '<li><b>' . $e($kw[$k][$ru ? 1 : 0]) . '</b> — ' . $e($T('передасть показання', 'передаст показания') . ' ' . $to . ' ' . $T('сам', 'сам') . ', ' . $how1 . $T(' — з вашої згоди.', ' — с вашего согласия.')) . '</li>';
+    }
+    $self = '<section class="card"><h2>' . $T('Що «передай» зробить за вас', 'Что «передай» сделает за вас') . '</h2><ul class="sm">' . implode('', $bg) .
+      '<li>' . ($bg ? $T('<b>Решта</b> — підготує цифри й особовий рахунок для бота чи кабінету постачальника.', '<b>Остальное</b> — подготовит цифры и лицевой счёт для бота или кабинета поставщика.')
+        : $T('<b>Світло, вода, газ і тепло</b> — підготує цифри й особовий рахунок для бота чи кабінету постачальника.', '<b>Свет, вода, газ и тепло</b> — подготовит цифры и лицевой счёт для бота или кабинета поставщика.')) . '</li>' .
+      '<li>' . $T('Розпізнає цифри з фото прямо в телефоні, звірить з минулими показаннями, нагадає за 4 дні до кінця строку, де він відомий. Безкоштовно.', 'Распознает цифры с фото прямо в телефоне, сверит с прошлыми показаниями, напомнит за 4 дня до конца срока, где он известен. Бесплатно.') . '</li></ul></section>';
+    // питання — ті самі тексти на сторінці й у FAQPage
+    $qa = []; $El = $K['elec']; $Wa = $K['water']; $Ga = $K['gas']; $He = $K['heat'];
+    if (($t = $L($El, 'how')) !== '') $qa[] = [$T("Куди передати показання світла $in?", "Куда передать показания света $in?"), $t];
+    if (($t = $L($Wa, 'how')) !== '') $qa[] = [$when($Wa) !== '' ? $T("До якого числа передавати показання води $in?", "До какого числа передавать показания воды $in?") : $T("Куди передати показання води $in?", "Куда передать показания воды $in?"), $t];
+    if (!empty($Wa['supply'])) {
+      $wd = $L($Wa, 'doc'); $nx = is_array($Wa['next'] ?? null) && !empty($Wa['next']['supply']) ? $Wa['next'] : null;
+      $qa[] = [$T("Скільки коштує вода $in?", "Сколько стоит вода $in?"),
+        (!empty($Wa['from']) ? $T('З ', 'С ') . $dt($Wa['from']) . ' — ' : '') . $m3($Wa['supply']) . $T(' ₴ за м³ води', ' ₴ за м³ воды') . (!empty($Wa['drain']) ? $T(' і ', ' и ') . $m3($Wa['drain']) . $T(' ₴ водовідведення', ' ₴ водоотведения') : '') .
+        ($wd !== '' ? ' (' . $lc($wd) . ')' : '') . ($nx ? $T('; з ', '; с ') . $dt($nx['from']) . ' — ' . $m3($nx['supply']) . (!empty($nx['drain']) ? $T(' і ', ' и ') . $m3($nx['drain']) : '') . ' ₴' : '') . '.' .
+        (!empty($Wa['hot']) && !empty($Wa['hotOrg']) ? $T(' Гаряча вода — ', ' Горячая вода — ') . $m3($Wa['hot']) . $T(' ₴ за м³ (', ' ₴ за м³ (') . trim((string)$Wa['hotOrg']) . ').' : '')];
+    }
+    if (($t = $L($Ga, 'how')) !== '') $qa[] = [$T("Як передати показання газу $in?", "Как передать показания газа $in?"), $t];
+    if (($t = $L($He, 'how')) !== '') $qa[] = [$T("Як передати показання тепла $in?", "Как передать показания тепла $in?"), $t];
+    if (!empty($He['price'])) { $hd = $L($He, 'doc'); $hn = self::clean($L($He, 'note')); $pm = self::money($He['price']);
+      // нотатка довідника вже називає ціну — не повторюємо її окремим реченням; підстава — наприкінці
+      $qa[] = [$T("Скільки коштує тепло $in?", "Сколько стоит тепло $in?"), ($hn !== '' && str_contains($sp($hn), $pm) ? $hn : $pm . $T(' ₴ за Гкал.', ' ₴ за Гкал.') . ($hn !== '' ? ' ' . $hn : '')) .
+        ($hd !== '' ? $T(' Підстава: ', ' Основание: ') . $lc($hd) . '.' : '')]; }
+    $qa[] = [$T('Чи можна передавати все в одному місці?', 'Можно ли передавать всё в одном месте?'),
+      $T('Так: у «передай» додайте адресу квартири — постачальники, тарифи й строки підставляться самі. ', 'Да: в «передай» добавьте адрес квартиры — поставщики, тарифы и сроки подставятся сами. ') .
+      ($bg ? $T('Де постачальник приймає показання листом, формою чи в кабінеті без капчі, сервіс відправить їх сам за вашою згодою, решту — підготує цифри для бота чи кабінету. ', 'Где поставщик принимает показания письмом, формой или в кабинете без капчи, сервис отправит их сам с вашего согласия, остальное — подготовит цифры для бота или кабинета. ')
+        : $T('Сервіс підготує цифри й особовий рахунок для бота чи кабінету кожного постачальника. ', 'Сервис подготовит цифры и лицевой счёт для бота или кабинета каждого поставщика. ')) . $T('Безкоштовно, без реклами.', 'Бесплатно, без рекламы.')];
+    $ld = ['@context' => 'https://schema.org', '@type' => 'FAQPage', 'inLanguage' => $lang,
+      'mainEntity' => array_map(fn($q) => ['@type' => 'Question', 'name' => $q[0], 'acceptedAnswer' => ['@type' => 'Answer', 'text' => $q[1]]], $qa)];
+    $faq = '<section class="card"><h2>' . $T('Питання', 'Вопросы') . '</h2>' . implode('', array_map(fn($q) => '<h3>' . $e($q[0]) . '</h3><p>' . $e($q[1]) . '</p>', $qa)) . '</section>';
+    // опис — хто приймає показання, назви ядром («Київводоканал», «YASNO»)
+    $who = []; foreach ([['elec', 'світло', 'свет'], ['water', 'вода', 'вода'], ['gas', 'газ', 'газ'], ['heat', 'тепло', 'тепло']] as [$k, $u, $rr]) {
+      $n = trim((string)($k === 'elec' ? ($K[$k]['net'] ?? '') ?: ($K[$k]['org'] ?? '') : ($k === 'gas' ? ($K[$k]['grm'] ?? '') ?: ($K[$k]['org'] ?? '') : ($K[$k]['org'] ?? ''))));
+      if ($n !== '') $who[] = ($ru ? $rr : $u) . ' — ' . preg_replace('/,\s*[^,]*філія$/u', '', self::pcore($n)); }   // «Газмережі, Львівська філія» → «Газмережі»
+    $title = $T("Комуналка $in: куди передати показники — світло, вода, газ, тепло", "Коммуналка $in: куда передать показания — свет, вода, газ, тепло");
+    $desc = $T("Куди й до якого числа передати показання $in: ", "Куда и до какого числа передать показания $in: ") . implode(', ', $who) . $T('. Тарифи з підставою, питання й відповіді.', '. Тарифы с основанием, вопросы и ответы.');
+    $h1 = $T("Комуналка $in: куди передати показники", "Коммуналка $in: куда передать показания");
+    $has = array_values(array_filter(['elec', 'water', 'gas', 'heat', 'waste'], fn($k) => trim((string)($K[$k]['org'] ?? '')) !== ''));
+    $sub = $T('Світло, вода, газ, тепло', 'Свет, вода, газ, тепло') . (in_array('waste', $has, true) ? $T(' й вивіз сміття', ' и вывоз мусора') : '') . $T(' — кому платити, куди й до якого числа передати показання лічильників.', ' — кому платить, куда и до какого числа передать показания счётчиков.');
+    $cards = ''; foreach (['elec', 'water', 'gas', 'heat', 'waste'] as $k) if (!empty($kd[$k]) && is_array($kd[$k])) $cards .= self::kindCard($k, $kd[$k], $hid, $ru, $base);
+    return self::komShell($lang, $slug, $base, $site, $r, $nm, $title, $desc, $h1, $ld, $sum . $self, $cards, $faq, $sub);
+  }
+
+  /** Сторінка «Комуналка в …»: голова, шапка, хлібні крихти, h1, шпаргалка й «що зробимо» ($top), картки постачальників ($cards), питання ($faq), заклик, підвал. */
+  private static function komShell(string $lang, string $slug, string $base, string $site, string $r, string $nm, string $title, string $desc, string $h1, array $ld, string $top, string $cards, string $faq, ?string $sub = null): string {
+    $ru = $lang === 'ru'; $e = [self::class, 'e']; $T = fn(string $uk, string $rr) => $ru ? $rr : $uk;
+    $abs = fn(string $l) => rtrim($site, '/') . ($l === 'ru' ? self::KRU : self::KUK) . '/' . $slug;
     $hidx = $base . ($ru ? self::HRU : self::HUK); $other = $ru ? 'uk' : 'ru';
     $h = '<!DOCTYPE html><html lang="' . $lang . '"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">' .
       '<title>' . $e($title) . '</title><meta name="description" content="' . $e($desc) . '"><meta name="robots" content="index, follow">' .
@@ -464,9 +560,8 @@ final class Seo {
       '<header><div class="w"><a class="home" href="' . $e($base) . '/"><img src="' . $e($base) . '/web/icon/favicon.svg" alt="">' . self::wordmark() . '</a>' .
       '<a class="lng" href="' . $e($base . ($other === 'ru' ? self::KRU : self::KUK) . '/' . $slug) . '" hreflang="' . $other . '" lang="' . $other . '">' . ($ru ? 'Українською' : 'Русский') . '</a></div></header><main class="w">' .
       '<nav class="bc"><a href="' . $e($base) . '/">передай</a> › <a href="' . $e($hidx . '#' . $r) . '">' . $T('Куди передати', 'Куда передать') . '</a></nav><h1>' . $e($h1) . '</h1>' .
-      '<p class="sub">' . $T('Світло, вода, газ, тепло й вивіз сміття — кому платити, куди й до якого числа передати показання лічильників.', 'Свет, вода, газ, тепло и вывоз мусора — кому платить, куда и до какого числа передать показания счётчиков.') . '</p>' .
-      $sum . $self . '<h2>' . $T('Постачальники й тарифи', 'Поставщики и тарифы') . '</h2>';
-    foreach (['elec', 'water', 'gas', 'heat', 'waste'] as $k) if (!empty($kd[$k]) && is_array($kd[$k])) $h .= self::kindCard($k, $kd[$k], $hid, $ru, $base);
+      '<p class="sub">' . ($sub ?? $T('Світло, вода, газ, тепло й вивіз сміття — кому платити, куди й до якого числа передати показання лічильників.', 'Свет, вода, газ, тепло и вывоз мусора — кому платить, куда и до какого числа передать показания счётчиков.')) . '</p>' .
+      $top . '<h2>' . $T('Постачальники й тарифи', 'Поставщики и тарифы') . '</h2>' . $cards;
     $h .= $faq . '<section class="cta"><h2>' . $T('Строки й тарифи — самі, за адресою', 'Сроки и тарифы — сами, по адресу') . '</h2><p>' .
       $T('Додайте адресу квартири в «передай»: постачальники, тарифи й вікна подачі підставляться самі, нагадаємо за 4 дні до кінця строку, а де можна — відправимо показання за вас. Безкоштовно.',
         'Добавьте адрес квартиры в «передай»: поставщики, тарифы и окна подачи подставятся сами, напомним за 4 дня до конца срока, а где можно — отправим показания за вас. Бесплатно.') .
@@ -488,6 +583,7 @@ final class Seo {
       "\n## Довідники (сторінки сервером, без JavaScript, uk + ru)\n" .
       $L(self::HUK, 'Куди передати показання — за громадами', "$nh громад: постачальники світла, води, газу, тепла й вивозу сміття, тарифи з підставою, вікна прийому показань, канали") .
       $L(self::KUK . '/kharkiv', 'Комуналка в Харкові: куди передати показники', 'шпаргалка на місяць (Харківобленерго, Харківводоканал, ХТМ, газ, вивіз сміття), тарифи, питання й відповіді') .
+      implode('', array_map(fn($sl) => $L(self::KUK . '/' . $sl, 'Комуналка ' . self::komIn($sl, false) . ': куди передати показники', 'хто приймає, вікна подачі, як передати й тарифи з підставою — з довідника'), array_diff(array_keys(self::KOM), ['kharkiv']))) .
       $L(self::PUK, 'Постачальники — як передати показання', "$np постачальників і операторів мереж: де працюють, строки, тарифи, сайти й телефони") .
       $L(self::UK, 'Як зняти показання теплолічильника', "$nm моделей покроково: які кнопки натискати й що записати (енергія, обсяг, температури, години роботи)") .
       (class_exists('Calc') ? "\n## Калькулятори (форма без JavaScript, результат — сервером)\n" .
@@ -496,6 +592,7 @@ final class Seo {
         $L(Calc::url('uk', 'gaz'), 'Калькулятор газу', 'газ за ціною Нафтогазу + доставка: річна потужність ÷ 12 × тариф оператора мережі громади') : '') .
       "\n## Російською\n" .
       $L(self::HRU, 'Куда передать показания — по громадам') . $L(self::KRU . '/kharkiv', 'Коммуналка в Харькове: куда передать показания') .
+      implode('', array_map(fn($sl) => $L(self::KRU . '/' . $sl, 'Коммуналка ' . self::komIn($sl, true) . ': куда передать показания'), array_diff(array_keys(self::KOM), ['kharkiv']))) .
       $L(self::PRU, 'Поставщики — как передать показания') . $L(self::RU, 'Как снять показания теплосчётчика') . (class_exists('Calc') ? $L(Calc::RU, 'Калькуляторы коммуналки: вода, свет, газ') : '') .
       "\n## Optional\n" . $L('/sitemap.xml', 'Карта сайту', 'усі сторінки громад, постачальників і моделей парами uk/ru') .
       $L('/#privacy', 'Політика конфіденційності') . $L('/#terms', 'Умови використання');

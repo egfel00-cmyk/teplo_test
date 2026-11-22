@@ -91,6 +91,7 @@ if (preg_match('~^/r/([a-z0-9-]{4,64})/?$~', $path, $rm)) {
 // 149-я: сторінки для пошуку «Як зняти показання <модель>» (uk + ru) — сервером, без скриптів (app/seo.php, дані — tools_seo.cjs)
 if (preg_match('~^/(ru/)?(yak-znyaty-pokaznannya|kak-snyat-pokazaniya|kudy-peredaty|kuda-peredat|postachalnyky|postavshchiki|komunalka|kommunalka|kalkulyator)(/|$)~', $path)) {   // 152-а: + постачальники; 170-а: + «Комуналка в Харкові»
   require_once __DIR__ . '/app/core.php'; require_once __DIR__ . '/app/providers.php'; require_once __DIR__ . '/app/seo.php'; require_once __DIR__ . '/app/calc.php';
+  require_once __DIR__ . '/app/localbot.php';   // 177-а: «Комуналка в …» — хто з роботів передасть сам (LocalBot::get: лист, форма, кабінет)
   Seo::$q = array_filter($_GET, fn($v) => is_string($v) && strlen($v) <= 40);   // 170-а: калькулятори — GET-форма на ту саму сторінку
   $sm = Seo::match($path); $sh = preg_replace('/[^A-Za-z0-9.:-]/', '', (string)($_SERVER['HTTP_HOST'] ?? 'localhost'));
   $html = $sm ? Seo::render($sm[0], $sm[1], $base, (preg_match('/^(localhost|127\.0\.0\.1)(:\d+)?$/', $sh) ? 'http' : 'https') . '://' . $sh . $base . '/', $sm[2]) : null;
@@ -219,7 +220,8 @@ function seoStatic(bool $ru, callable $e): string {
     '<h2>' . $e($t('lp_bento_t')) . '</h2><ul>' . $card('lp_due_t', 'lp_due') . $card('lp_tg_t', 'lp_tg') . $card('lp_pl_t', 'lp_pl') . $card('lp_cost_t', 'lp_cost') . $card('lp_gpv_t', 'lp_gpv') . '</ul>' .
     '<h2>' . $e($t('lp_end_t')) . '</h2><p>' . $e($t('lp_end')) . '</p>' .
     '<p><a href="' . ($ru ? 'ru/kuda-peredat' : 'kudy-peredaty') . '">' . ($ru ? 'Куда передать показания — поставщики, тарифы и сроки 350 громад' : 'Куди передати показання — постачальники, тарифи й строки 350 громад') . '</a></p>' .
-    '<p><a href="' . ($ru ? 'ru/kommunalka/kharkiv' : 'komunalka/kharkiv') . '">' . ($ru ? 'Коммуналка в Харькове: куда передать показания' : 'Комуналка в Харкові: куди передати показники') . '</a></p>' .
+    '<p><a href="' . ($ru ? 'ru/kommunalka/kharkiv' : 'komunalka/kharkiv') . '">' . ($ru ? 'Коммуналка в Харькове: куда передать показания' : 'Комуналка в Харкові: куди передати показники') . '</a> · ' .
+      implode(' · ', array_map(fn($x) => '<a href="' . ($ru ? 'ru/kommunalka/' : 'komunalka/') . $x[0] . '">' . ($ru ? $x[2] : $x[1]) . '</a>', [['kyiv', 'Київ', 'Киев'], ['odesa', 'Одеса', 'Одесса'], ['lviv', 'Львів', 'Львов'], ['khmelnytskyi', 'Хмельницький', 'Хмельницкий']])) . '</p>' .   // 177-а
     '<p><a href="' . ($ru ? 'ru/kalkulyator' : 'kalkulyator') . '">' . ($ru ? 'Калькуляторы коммуналки: вода, свет, газ' : 'Калькулятори комуналки: вода, світло, газ') . '</a></p>' .
     '<p><a href="' . ($ru ? 'ru/kak-snyat-pokazaniya' : 'yak-znyaty-pokaznannya') . '">' . ($ru ? 'Как снять показания теплосчётчика — 37 моделей по шагам' : 'Як зняти показання теплолічильника — 37 моделей покроково') . '</a></p>' .
     '<footer><p>' . $e($t('lf_about')) . '</p><p><a href="#privacy">' . $e($t('lg_privacy')) . '</a> · <a href="#terms">' . $e($t('lg_terms')) . '</a> · <a href="#help">' . $e($t('nav_help')) . '</a></p><p>' . $e($t('lf_indep')) . '</p></footer></main>';
