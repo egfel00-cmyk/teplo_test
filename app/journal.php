@@ -223,7 +223,9 @@ final class Journal {
     // 128-а: «Рахунки з monobank» — чим закінчився пошук (подія «mono», лише числа: вікон/сторінок/операцій, відсіяних держплатежів, групи «вид+рахунок»);
     // разом зі своїми (власник перевіряє сам) — у них own: 1
     $mono = ['n' => 0, 'vids' => 0, 'last' => []]; $mv = [];
-    foreach (Db::q("SELECT vid, props, at FROM events WHERE day >= ? AND name = 'mono' ORDER BY id", [$from])->fetchAll() as $e) {
+    // 175-а: «Заповнити з monobank» пробують рідко — за 14 днів, а не 3 (у 3 днях часто порожньо, і розбирати нічого)
+    $fromM = Visits::day(time() - 13 * 86400); $mono['days'] = 14;
+    foreach (Db::q("SELECT vid, props, at FROM events WHERE day >= ? AND name = 'mono' ORDER BY id", [$fromM])->fetchAll() as $e) {
       $p = $pv($e['props']); $mono['n']++; $mv[(string)$e['vid']] = 1;
       $row = ['at' => (string)$e['at']] + array_map(fn($v) => is_string($v) ? mb_substr($mask($v), 0, 120) : $v, array_intersect_key($p, array_flip(['how', 'e', 'w', 'of', 'pg', 'c', 'n', 'gov', 'ut', 'g', 'r429', 's'])));
       if (isset($int[(string)$e['vid']])) $row['own'] = 1;
@@ -232,7 +234,7 @@ final class Journal {
     $mono['vids'] = count($mv);
     // 169-а: как выглядят платежи без рахунку (событие «mono_g»: вид, MCC, какие поля есть, длины групп цифр — без названий, сумм и цифр)
     $mono['shapes'] = [];
-    foreach (Db::q("SELECT vid, props, at FROM events WHERE day >= ? AND name = 'mono_g' ORDER BY id DESC LIMIT 8", [$from])->fetchAll() as $e) {
+    foreach (Db::q("SELECT vid, props, at FROM events WHERE day >= ? AND name = 'mono_g' ORDER BY id DESC LIMIT 8", [$fromM])->fetchAll() as $e) {
       $p = $pv($e['props']); $row = ['at' => (string)$e['at'], 's' => mb_substr((string)($p['s'] ?? ''), 0, 120)];
       if (isset($int[(string)$e['vid']])) $row['own'] = 1;
       $mono['shapes'][] = $row;

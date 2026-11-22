@@ -4931,8 +4931,8 @@
   /** Лицьова панель приладу (89-а): чотири гвинти по кутах — декор, читачам екрана не видно. */
   function lpScrews() { return '<span class="lp-screw s1" aria-hidden="true"></span><span class="lp-screw s2" aria-hidden="true"></span><span class="lp-screw s3" aria-hidden="true"></span><span class="lp-screw s4" aria-hidden="true"></span>'; }
   /** 175-а (власник 18.11: «смотрится как заготовка, много букв, распыляется внимание, неясен посыл»): одна думка й жорстка ієрархія —
-   *  заголовок-обіцянка → підзаголовок одним реченням → кнопка (на телефоні на всю ширину) → один рядок-доказ (o.proof). «Увійти» — тихо в шапці (view.topRight),
-   *  три галочки — у живому телефоні (розпізнавання, нагадування в Telegram). */
+   *  заголовок-обіцянка → підзаголовок одним реченням → кнопка (на телефоні на всю ширину) → «Увійти» тихим посиланням → рядок-доказ (o.proof: безкоштовно й області).
+   *  Власник 22.11: усе по центру (і на комп'ютері — одна колонка, телефон під текстом). Три галочки — у живому телефоні (розпізнавання, нагадування в Telegram). */
   function lpHero(o) {
     return '<section class="lp-hero lp-plate" data-key="lp-hero">' + lpScrews() + '<div class="lp-in"><div class="lp-copy">' +
       '<h1 class="lp-h1">' + o.h1 + '</h1><p class="lp-lead">' + esc(o.lead) + '</p><div class="lp-ctas">' + o.cta + '</div>' +
@@ -5096,8 +5096,9 @@
   function nform(n, forms) { var f = String(forms).split('|'), a = Math.abs(n) % 100, b = a % 10; return f.length < 3 ? f[0] : a > 10 && a < 20 ? f[2] : b === 1 ? f[0] : b >= 2 && b <= 4 ? f[1] : f[2]; }
   /** Рядок-доказ під кнопкою: «Безкоштовно · 5 областей» — області з довідника (LP_PROV, громад > 1: Київ — частина Київщини). */
   function lpProof() {
-    var n = (LP_PROV || []).filter(function (x) { return x && x.h > 1; }).length;
-    return '<span>' + esc(t('lp_free')) + '</span>' + (n ? '<span>' + esc(n + ' ' + nform(n, t('lp_obl'))) + '</span>' : '');
+    // власник 22.11: «все-таки перелік областей потрібен» — назви областей довідника (громад > 1; Київ — частина Київщини)
+    var rs = (LP_PROV || []).filter(function (x) { return x && x.h > 1; }).map(function (x) { return t('lp_pr_o_' + x.r); });
+    return '<span>' + esc(t('lp_free')) + '</span>' + (rs.length ? '<span>' + esc(rs.join(', ')) + '</span>' : '');
   }
   function lpFacts() {
     var hr = (LP_PROV || []).reduce(function (a, x) { return a + (x.h || 0); }, 0), bg = lpAutoList().length, md = ((M && M.MODELS) || []).filter(function (m) { return m.id !== 'other'; }).length;
@@ -5125,8 +5126,8 @@
         after: '<p class="lp-who">' + esc(t('wl_fine', { who: who })) + ' <button class="linkbtn" data-act="logout">' + esc(t('wl_other')) + '</button></p>' }) + lpFoot(false) + '</div>' };
     }
     var login = Y().mode === 'server' && !Y().account, fine = Y().mode === 'claude' ? t('sync_claude') : Y().mode === 'server' ? t('w_fine_site') : t('w_fine');
-    return { screen: 'S00', bare: true, wide: true, topRight: login ? '<a class="lp-login" href="#login" data-key="welcome-login">' + esc(t('login')) + '</a>' : '', html: tgFailBox() + '<div class="welcome lp">' +
-      lpHero({ h1: esc(t('lp_h1a')) + ' ' + esc(t('lp_h1b')), lead: t('lp_lead'), cta: lpCta('welcome-start', t('lp_cta')), proof: lpProof() }) +
+    return { screen: 'S00', bare: true, wide: true, html: tgFailBox() + '<div class="welcome lp">' +
+      lpHero({ h1: esc(t('lp_h1a')) + ' ' + esc(t('lp_h1b')), lead: t('lp_lead'), cta: lpCta('welcome-start', t('lp_cta')) + (login ? '<a class="lp-link" href="#login" data-key="welcome-login">' + esc(t('w_login')) + '</a>' : ''), proof: lpProof() }) +
       lpFacts() + lpDest() + lpSteps() + lpBento() + lpFaq() +
       '<section class="lp-end lp-plate" data-key="lp-end">' + lpScrews() + '<div class="lpe-in"><div class="lpe-copy"><h2>' + esc(t('lp_end_t')) + '</h2><p>' + esc(t('lp_end')) + '</p><div class="lp-ctas">' + lpCta('welcome-start-end', t('lp_cta')) + '</div></div>' + lpMeters() + '</div></section>' +
       '<p class="lp-fine small muted">' + esc(fine) + '</p>' + lpFoot(login) + '</div>' };

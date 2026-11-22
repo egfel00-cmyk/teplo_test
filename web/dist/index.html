@@ -1521,7 +1521,7 @@ details.tbl-acc[open] > .tbl-wrap { margin-top: 12px; }
 .lpp-tab .on { color: var(--c-ink); font-weight: 600; }
 .lpp-tab svg { box-sizing: content-box; padding: 4px 14px; border-radius: 14px; } .lpp-tab .on svg { background: var(--c-ink); color: var(--c-on-ink); }   /* як у нижньому меню (131-а) */
 .lpp-hi { position: absolute; left: 50%; bottom: 7px; width: 134px; height: 5px; margin-left: -67px; border-radius: 3px; background: var(--c-ink); }
-.lp-tile { position: absolute; z-index: 0; width: 136px; transform: rotate(var(--rot, 0deg)); }
+.lp-tile { position: absolute; z-index: 2; width: 136px; transform: rotate(var(--rot, 0deg)); }
 .lp-fig { margin: 0; padding: 8px 8px 7px; border-radius: 16px; background: #1B2622; border: 1px solid var(--lp-edge);
   box-shadow: 0 22px 44px -14px rgba(0, 0, 0, .65); }
 .lp-fig figcaption { color: var(--lp-fg); font-size: 13px; }
@@ -1537,11 +1537,10 @@ details.tbl-acc[open] > .tbl-wrap { margin-top: 12px; }
 .lp-tile .elcd .el-hd { font-size: 10px; margin-bottom: 2px; } .lp-tile .el-led { width: 7px; height: 7px; } .lp-tile .el-u { font-size: 11px; }
 .lp-tile .wdrum, .lp-tile .gdrum { padding: 6px 7px; gap: 5px; border-width: 3px; }
 .lp-tile .wd-win { gap: 1px; padding: 3px; } .lp-tile .wd-c { font-size: clamp(9px, 6.6cqw, 18px); } .lp-tile .wd-u { font-size: 11px; }
-/* 175-а: плашки — ЗА телефоном (не закривають живий екран), виглядають з-за країв: ліві — підписом ліворуч, праві — праворуч */
-.t-hot .lp-fig figcaption, .t-heat .lp-fig figcaption { justify-content: flex-end; }
+/* 175-а: плашки табло — над телефоном (власник 22.11: «счётчики над экраном пусть будут»), на телефоні закривають лише край екрана */
 @media (max-width: 599px) {
   .lp-tile { width: 100px; }
-  .t-elec { left: -4px; top: 46px; --rot: -6deg; } .t-hot { right: -4px; top: 168px; --rot: 6deg; } .t-gas { left: -4px; top: 300px; --rot: 5deg; } .t-heat { right: -4px; top: 404px; --rot: -5deg; }
+  .t-elec { left: -8px; top: 46px; --rot: -6deg; } .t-hot { right: -8px; top: 168px; --rot: 6deg; } .t-gas { left: -8px; top: 300px; --rot: 5deg; } .t-heat { right: -8px; top: 404px; --rot: -5deg; }
   .lp-fig { padding: 6px 6px 5px; border-radius: 13px; }
   .lp-fig figcaption { font-size: 12px; }
   .lp-tile .lcd { padding: 5px 7px 4px; border-width: 3px; border-radius: 8px; }
@@ -1707,11 +1706,11 @@ details.tbl-acc[open] > .tbl-wrap { margin-top: 12px; }
 
 @media (min-width: 600px) {
   .lp-hero { margin: 0 16px; padding: 48px 36px 0; border-radius: 34px; }
-  .lp-stage { height: 590px; max-width: 600px; margin: 40px auto 0; }
+  .lp-stage { height: 590px; max-width: 600px; margin: 40px auto 0; }   /* 600–959: телефон по центру, плашки над краями екрана */
   .lp-phone { width: 260px; height: 542px; margin-left: -130px; border-radius: 48px; --k: .6453; }
   .lpp-screen { border-radius: 40px; }
   .lp-tile { width: 180px; }
-  .t-elec { left: 4%; top: 56px; } .t-hot { right: 4%; top: 168px; } .t-gas { left: 2%; top: 330px; } .t-heat { right: 2%; top: 430px; }
+  .t-elec { left: 8%; top: 56px; } .t-hot { right: 8%; top: 168px; } .t-gas { left: 6%; top: 330px; } .t-heat { right: 6%; top: 430px; }
   .lp-sec { padding: 72px 32px 0; }
   .lp-steps { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .lp-bento { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -1720,13 +1719,13 @@ details.tbl-acc[open] > .tbl-wrap { margin-top: 12px; }
 }
 @media (max-width: 860px) and (min-width: 600px) { .lp-steps { grid-template-columns: minmax(0, 1fr); } .lp-step { grid-template-columns: 1fr 1fr; align-items: center; } }
 @media (min-width: 960px) {
-  .lp-hero { margin: 0 24px; padding: 64px 56px 56px; border-radius: 40px; }
-  .lp-in { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 540px); gap: 40px; align-items: center; }
-  .lp-stage { height: 600px; margin: 0; max-width: none; }
+  .lp-hero { margin: 0 24px; padding: 72px 56px 48px; border-radius: 40px; }
+  .lp-in { max-width: 980px; }
+  .lp-stage { height: 620px; margin: 48px auto 0; max-width: 760px; }
   .lp-phone { width: 280px; height: 585px; margin-left: -140px; top: 8px; border-radius: 50px; --k: .6987; }
   .lpp-screen { border-radius: 42px; }
-  .lp-tile { width: 192px; }
-  .t-elec { left: -4%; top: 52px; } .t-hot { right: -5%; top: 156px; } .t-gas { left: -6%; top: 336px; } .t-heat { right: -3%; top: 440px; }
+  .lp-tile { width: 200px; }
+  .t-elec { left: 64px; top: 64px; } .t-hot { right: 60px; top: 170px; } .t-gas { left: 44px; top: 350px; } .t-heat { right: 48px; top: 452px; }
   .lp-bento { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .lp-bento .c-due { grid-column: span 2; }
   .lp-cell { padding: 28px; }
@@ -3285,10 +3284,10 @@ fieldset { min-inline-size: 0; }
    Для всіх тем: факти великими числами під героєм (.lp-facts) і «Часті питання» (.lp-faq) перед фінальним закликом. */
 .lp-facts { padding-top: 28px; }
 .lpf-list { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); background: var(--c-surface); border: 1px solid var(--c-line); border-radius: 20px; overflow: hidden; }
-.lpf-list li { display: grid; align-content: start; gap: 8px; padding: 18px 16px 20px; border: 0 solid var(--c-line); min-width: 0; }
+.lpf-list li { display: grid; align-content: start; justify-items: center; text-align: center; gap: 8px; padding: 18px 12px 20px; border: 0 solid var(--c-line); min-width: 0; }
 .lpf-list li:nth-child(2n) { border-left-width: 1px; }
 .lpf-list li:nth-child(n+3) { border-top-width: 1px; }
-.lpf-list b { font-size: clamp(34px, 9.6vw, 52px); line-height: 1; font-weight: 600; letter-spacing: -.035em; font-variant-numeric: tabular-nums; color: var(--c-ink); white-space: nowrap; }
+.lpf-list b { font-size: clamp(34px, 9.6vw, 52px); line-height: 1; font-weight: 700; letter-spacing: -.035em; font-variant-numeric: tabular-nums; color: var(--c-ink); white-space: nowrap; }   /* власник 22.11: «цифри жирними й по центру» */
 .lpf-list span { font-size: 15px; line-height: 20px; color: var(--c-ink-2); text-wrap: pretty; overflow-wrap: anywhere; }
 @media (min-width: 760px) {
   .lpf-list { grid-template-columns: repeat(4, minmax(0, 1fr)); }
@@ -3352,13 +3351,16 @@ fieldset { min-inline-size: 0; }
 /* 175-я — лендинг на телефоні (власник 22.11, скрини iPhone: «на мобілі виглядає погано»; 18.11: «одна думка, жорстка ієрархія» і «живий телефон»).
    Герой: заголовок → підзаголовок одним реченням → кнопка (телефон — на всю ширину) → рядок-доказ; «Увійти» — тихо в шапці. Телефон — повністю в картці,
    плашки табло — за ним. «Відгук» на лендингу телефона — лише значком (підпис налазив на факти). */
-.lp-proof { display: flex; flex-wrap: wrap; align-items: center; margin: 16px 0 0; font-size: 15px; line-height: 20px; color: var(--lp-fg2); }
-.lp-proof span + span::before { content: '·'; margin: 0 8px; }
-.lp-login { display: inline-flex; align-items: center; min-height: 44px; padding: 0 14px; border-radius: 999px; font: 600 15px/1 var(--font); color: var(--c-ink); text-decoration: none; }
-@media (hover: hover) { .lp-login:hover { background: var(--c-ghost-hover); } }
-.lp-login:focus-visible { outline: 3px solid var(--c-focus-ring, #9CC6FF); outline-offset: 2px; }
+/* власник 22.11: текст героя — по центру на всіх ширинах (на комп'ютері герой — одна колонка, телефон під текстом); «Увійти» — під кнопкою; області — переліком */
+.lp-copy { text-align: center; }
+.lp-copy .lp-h1, .lp-copy .lp-lead { margin-left: auto; margin-right: auto; }
+.lp-copy .lp-h1 { max-width: 15ch; }
+.lp-copy .lp-ctas { justify-content: center; flex-direction: column; gap: 8px; }
+.lp-copy .lp-link { font-size: 15px; }
+.lp-proof { max-width: 40ch; margin: 12px auto 0; font-size: 15px; line-height: 22px; color: var(--lp-fg2); text-wrap: balance; }
+.lp-proof span + span::before { content: '·'; margin: 0 6px; }
 @media (max-width: 599px) {
-  .lp-copy .lp-ctas { display: grid; }
+  .lp-copy .lp-ctas { display: grid; justify-items: center; }
   .lp-copy .lp-btn { width: 100%; min-height: 56px; font-size: 18px; }
   .fab.fab-bare span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
   .fab.fab-bare { padding: 0; width: 48px; justify-content: center; }
@@ -3454,7 +3456,7 @@ fieldset { min-inline-size: 0; }
     radial-gradient(120% 70% at 28% 0%, rgba(255, 244, 226, .07) 0%, rgba(255, 244, 226, 0) 62%), linear-gradient(180deg, #34302A 0%, #24211D 48%, #191714 100%); }
 :root:root[data-theme="dark"][data-skin="brass"] .lp-fig { background: #24211D; }
 :root:root[data-theme="dark"][data-skin="brass"] .lp-screw { background: radial-gradient(circle at 34% 30%, #D3CBBE 0%, #8F877B 52%, #5B554C 100%); }
-/* дуже вузькі телефони (≤ 359 px, iPhone SE 1-го покоління): телефон менший, щоб плашки табло виглядали з-за країв; факти — рядками «число — підпис»
+/* дуже вузькі телефони (≤ 359 px, iPhone SE 1-го покоління): телефон менший, плашки табло — над краями; факти — одним стовпчиком
    (у дві колонки підписи рвалися посеред слова) */
 @media (max-width: 359px) {
   .lp-stage { height: 480px; }
@@ -3463,9 +3465,8 @@ fieldset { min-inline-size: 0; }
   .lp-tile { width: 92px; }
   .t-elec { top: 40px; } .t-hot { top: 150px; } .t-gas { top: 270px; } .t-heat { top: 364px; }
   .lpf-list { grid-template-columns: minmax(0, 1fr); }
-  .lpf-list li { grid-template-columns: 84px minmax(0, 1fr); align-items: center; gap: 12px; padding: 14px 16px; border-width: 0; }
+  .lpf-list li { padding: 16px; border-width: 0; }
   .lpf-list li + li { border-top-width: 1px; }
-  .lpf-list b { font-size: 34px; }
   .lpf-list span { overflow-wrap: normal; }
 }
 
@@ -5266,7 +5267,7 @@ fieldset { min-inline-size: 0; }
 
       // ---- привітання-лендинг (#welcome)
       lp_badge: 'Безкоштовно — Харківщина, Київщина, Одещина, Львівщина, Хмельниччина', lp_h1a: 'Показання лічильників —', lp_h1b: 'за хвилину',
-      lp_lead: 'Сфотографуйте лічильник — підкажемо, куди й до якого числа передати.', lp_free: 'Безкоштовно', lp_obl: 'область|області|областей',
+      lp_lead: 'Сфотографуйте лічильник — підкажемо, куди й до якого числа передати.', lp_free: 'Безкоштовно',
       lp_ph_cold: 'Передати до 20-го', lp_ph_addr2: 'вул. Садова, 3', lp_ph_aim: 'Наведіть на табло лічильника', lp_ph_rec: 'Розпізнано в телефоні', lp_ph_month: 'за місяць',
       lp_cta: 'Передати показання', lp_tr1: 'Синхронізація між пристроями', lp_tr2: 'Розпізнає прямо в телефоні', lp_tr3: 'Нагадає в Telegram',
       lp_ph_addr: 'вул. Сумська, 10', lp_ph_due: 'Передати до 25-го', lp_ph_sent: 'Передано', lp_ph_soon: 'Передати 1–3-го', lp_ph_gas: 'Передати 1–5-го',
@@ -6680,7 +6681,7 @@ fieldset { min-inline-size: 0; }
 
       // ---- приветствие-лендинг (#welcome)
       lp_badge: 'Бесплатно — Харьковщина, Киевщина, Одесщина, Львовщина, Хмельнитчина', lp_h1a: 'Показания счётчиков —', lp_h1b: 'за минуту',
-      lp_lead: 'Сфотографируйте счётчик — подскажем, куда и до какого числа передать.', lp_free: 'Бесплатно', lp_obl: 'область|области|областей',
+      lp_lead: 'Сфотографируйте счётчик — подскажем, куда и до какого числа передать.', lp_free: 'Бесплатно',
       lp_ph_cold: 'Передать до 20-го', lp_ph_addr2: 'ул. Садовая, 3', lp_ph_aim: 'Наведите на табло счётчика', lp_ph_rec: 'Распознано в телефоне', lp_ph_month: 'за месяц',
       lp_cta: 'Передать показания', lp_tr1: 'Синхронизация между устройствами', lp_tr2: 'Распознаёт прямо в телефоне', lp_tr3: 'Напомнит в Telegram',
       lp_ph_addr: 'ул. Сумская, 10', lp_ph_due: 'Передать до 25-го', lp_ph_sent: 'Передано', lp_ph_soon: 'Передать 1–3-го', lp_ph_gas: 'Передать 1–5-го',
@@ -15713,8 +15714,8 @@ fieldset { min-inline-size: 0; }
   /** Лицьова панель приладу (89-а): чотири гвинти по кутах — декор, читачам екрана не видно. */
   function lpScrews() { return '<span class="lp-screw s1" aria-hidden="true"></span><span class="lp-screw s2" aria-hidden="true"></span><span class="lp-screw s3" aria-hidden="true"></span><span class="lp-screw s4" aria-hidden="true"></span>'; }
   /** 175-а (власник 18.11: «смотрится как заготовка, много букв, распыляется внимание, неясен посыл»): одна думка й жорстка ієрархія —
-   *  заголовок-обіцянка → підзаголовок одним реченням → кнопка (на телефоні на всю ширину) → один рядок-доказ (o.proof). «Увійти» — тихо в шапці (view.topRight),
-   *  три галочки — у живому телефоні (розпізнавання, нагадування в Telegram). */
+   *  заголовок-обіцянка → підзаголовок одним реченням → кнопка (на телефоні на всю ширину) → «Увійти» тихим посиланням → рядок-доказ (o.proof: безкоштовно й області).
+   *  Власник 22.11: усе по центру (і на комп'ютері — одна колонка, телефон під текстом). Три галочки — у живому телефоні (розпізнавання, нагадування в Telegram). */
   function lpHero(o) {
     return '<section class="lp-hero lp-plate" data-key="lp-hero">' + lpScrews() + '<div class="lp-in"><div class="lp-copy">' +
       '<h1 class="lp-h1">' + o.h1 + '</h1><p class="lp-lead">' + esc(o.lead) + '</p><div class="lp-ctas">' + o.cta + '</div>' +
@@ -15878,8 +15879,9 @@ fieldset { min-inline-size: 0; }
   function nform(n, forms) { var f = String(forms).split('|'), a = Math.abs(n) % 100, b = a % 10; return f.length < 3 ? f[0] : a > 10 && a < 20 ? f[2] : b === 1 ? f[0] : b >= 2 && b <= 4 ? f[1] : f[2]; }
   /** Рядок-доказ під кнопкою: «Безкоштовно · 5 областей» — області з довідника (LP_PROV, громад > 1: Київ — частина Київщини). */
   function lpProof() {
-    var n = (LP_PROV || []).filter(function (x) { return x && x.h > 1; }).length;
-    return '<span>' + esc(t('lp_free')) + '</span>' + (n ? '<span>' + esc(n + ' ' + nform(n, t('lp_obl'))) + '</span>' : '');
+    // власник 22.11: «все-таки перелік областей потрібен» — назви областей довідника (громад > 1; Київ — частина Київщини)
+    var rs = (LP_PROV || []).filter(function (x) { return x && x.h > 1; }).map(function (x) { return t('lp_pr_o_' + x.r); });
+    return '<span>' + esc(t('lp_free')) + '</span>' + (rs.length ? '<span>' + esc(rs.join(', ')) + '</span>' : '');
   }
   function lpFacts() {
     var hr = (LP_PROV || []).reduce(function (a, x) { return a + (x.h || 0); }, 0), bg = lpAutoList().length, md = ((M && M.MODELS) || []).filter(function (m) { return m.id !== 'other'; }).length;
@@ -15907,8 +15909,8 @@ fieldset { min-inline-size: 0; }
         after: '<p class="lp-who">' + esc(t('wl_fine', { who: who })) + ' <button class="linkbtn" data-act="logout">' + esc(t('wl_other')) + '</button></p>' }) + lpFoot(false) + '</div>' };
     }
     var login = Y().mode === 'server' && !Y().account, fine = Y().mode === 'claude' ? t('sync_claude') : Y().mode === 'server' ? t('w_fine_site') : t('w_fine');
-    return { screen: 'S00', bare: true, wide: true, topRight: login ? '<a class="lp-login" href="#login" data-key="welcome-login">' + esc(t('login')) + '</a>' : '', html: tgFailBox() + '<div class="welcome lp">' +
-      lpHero({ h1: esc(t('lp_h1a')) + ' ' + esc(t('lp_h1b')), lead: t('lp_lead'), cta: lpCta('welcome-start', t('lp_cta')), proof: lpProof() }) +
+    return { screen: 'S00', bare: true, wide: true, html: tgFailBox() + '<div class="welcome lp">' +
+      lpHero({ h1: esc(t('lp_h1a')) + ' ' + esc(t('lp_h1b')), lead: t('lp_lead'), cta: lpCta('welcome-start', t('lp_cta')) + (login ? '<a class="lp-link" href="#login" data-key="welcome-login">' + esc(t('w_login')) + '</a>' : ''), proof: lpProof() }) +
       lpFacts() + lpDest() + lpSteps() + lpBento() + lpFaq() +
       '<section class="lp-end lp-plate" data-key="lp-end">' + lpScrews() + '<div class="lpe-in"><div class="lpe-copy"><h2>' + esc(t('lp_end_t')) + '</h2><p>' + esc(t('lp_end')) + '</p><div class="lp-ctas">' + lpCta('welcome-start-end', t('lp_cta')) + '</div></div>' + lpMeters() + '</div></section>' +
       '<p class="lp-fine small muted">' + esc(fine) + '</p>' + lpFoot(login) + '</div>' };
