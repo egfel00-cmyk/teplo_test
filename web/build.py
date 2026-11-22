@@ -14,13 +14,13 @@ SERVER_HEAD = ('<script src="https://telegram.org/js/telegram-web-app.js"></scri
 # Шрифты: сайт — со своего сервера (web/fonts, IP посетителя не уходит Google); автономный файл (открыть без сервера) — по-прежнему Google Fonts
 GOOGLE_FONTS = ('<link rel="preconnect" href="https://fonts.googleapis.com">\n'
                 '<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>\n'
-                '<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">')
+                '<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@200..800&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">')
 
 
 def own_fonts() -> str:
     css = (ROOT / "fonts" / "fonts.css").read_text(encoding="utf-8")
-    css = re.sub(r"^/\*.*?\*/\s*", "", css, flags=re.S).replace("url(plex-", "url(web/fonts/plex-").replace("url(inter-", "url(web/fonts/inter-")
-    pre = "".join(f'<link rel="preload" href="web/fonts/{f}" as="font" type="font/woff2" crossorigin>\n' for f in ("inter-cyr.woff2", "inter-lat.woff2"))
+    css = re.sub(r"^/\*.*?\*/\s*", "", css, flags=re.S).replace("url(plex-", "url(web/fonts/plex-").replace("url(manrope-", "url(web/fonts/manrope-")
+    pre = "".join(f'<link rel="preload" href="web/fonts/{f}" as="font" type="font/woff2" crossorigin>\n' for f in ("manrope-cyr.woff2", "manrope-lat.woff2"))
     return pre + "<style>\n" + css.strip() + "\n</style>"
 
 

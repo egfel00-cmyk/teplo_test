@@ -21,7 +21,7 @@
   --wx-cold-bg: #E2ECF8; --wx-cold-ink: #24508A; --wx-zero-bg: #EEF1EF; --wx-zero-ink: #4A5652; --wx-warm-bg: #FBEFD5; --wx-warm-ink: #7A4A00;
   --spark-cold: #2F68B0; --spark-warm: #C98A1E; --spark-axis: #CFD7D3;
   color-scheme: light;
-  --font: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans", sans-serif;
+  --font: "Manrope", system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans", sans-serif;
   --mono: "IBM Plex Mono", ui-monospace, "SF Mono", "Cascadia Mono", "Roboto Mono", monospace;
 }
 /* Тёмная тема — «котельная ночью»: графит с зелёным оттенком корпуса (не чистый чёрный), глубина — светлее поверхность,
@@ -3216,3 +3216,97 @@ fieldset { min-inline-size: 0; }
 :root:root[data-theme="dark"] .ucard-pset .am-plus .ico { width: 20px; height: 20px; }
 :root:root[data-theme="dark"] .ucard-pset .am-txt b { font-weight: 500; }
 @media (hover: hover) { :root:root[data-theme="dark"] .ucard-pset:hover { background: var(--c-ghost-hover); border-color: var(--c-line); } }
+/* 174-я (власник 21.11, скрини iPhone):
+   1) «Внести перші показання» під табло — наведення на всю картку, а не лише на верхню частину (посилання): тло наведення — шаром картки під вмістом */
+.ucard { isolation: isolate; }
+.ucard::before { content: ""; position: absolute; inset: 0; z-index: -1; border-radius: inherit; background: var(--c-ghost-hover); opacity: 0; transition: opacity .15s var(--ease); pointer-events: none; }
+@media (hover: hover) {
+  .ucard-main:hover, :root:root .ucard-main:hover { background: none; }
+  .ucard:has(> .ucard-main:hover)::before, .ucard:has(> .ucard-first:hover)::before { opacity: 1; }
+}
+.lpp-vp .ucard::before { display: none; }
+/* 2) «+» картки: на наведенні плавно трохи більшає, а промені хреста довшають (товщина лінії та сама) */
+.ucard-add { transition: transform .22s var(--ease), background-color .15s var(--ease), border-color .15s var(--ease); }
+.ucard-add .ico path { transform-box: view-box; transform-origin: 12px 12px; transition: transform .22s var(--ease), stroke-width .22s var(--ease); }
+@media (hover: hover) {
+  .ucard-add:hover { transform: scale(1.06); }
+  .ucard-add:hover .ico path { transform: scale(1.22); stroke-width: 1.45; }
+}
+.ucard-add:active { transform: scale(.96); }
+.lpp-vp .ucard-add:hover, .lpp-vp .ucard-add:hover .ico path { transform: none; stroke-width: 1.75; }
+@media (prefers-reduced-motion: reduce) { .ucard-add, .ucard-add .ico path, .ucard::before { transition: none; } }
+/* 3) останні 2 дні вікна, ще не передано — смужка цілком червона й контрастна (pstrip → .late): вікно суцільним, лінія місяця — блідо-червона,
+   пройдене — без затухання, число вікна — червоним жирним; статус картки — тим самим червоним */
+.prd.late { --prd-c: var(--c-bad); }
+.prd.late .prd-d i.w, .prd.late .prd-d i.wn { background: var(--prd-c); }
+.prd.late .prd-d i.o { background: color-mix(in srgb, var(--prd-c) 30%, var(--prd-bg)); }
+.prd.late .prd-g { -webkit-mask-image: none; mask-image: none; }
+.prd.late .prd-l, .prd.late.st-open:not(.done) .prd-l { color: var(--prd-c); font-weight: 600; }
+.ucard:has(.prd.late) .ucard-status.warn, .ucard:has(.prd.late) .ucard-status.due { color: var(--c-bad); }
+/* число вікна — шрифтом сайту, не моноширинним (.num): моно виглядало «прототипом» */
+.prd-l.num { font-family: var(--font); }
+/* 4) одна квартира: значок ліворуч від назви й адреси, як у шапці розкривашки */
+.hp-head { gap: 12px; align-items: center; }
+.hp-ic { flex: none; width: 48px; height: 48px; display: grid; place-items: center; color: var(--c-ink-2); }
+.hp-ic .picon { color: var(--pc); }
+.hp-ic > .ico { display: block; }
+:root:root[data-lskin="c"][data-lsk="3"]:not([data-theme="dark"]) .hp-ic { width: 40px; height: 40px; }
+/* 5) світла C3: дані для копіювання — окремим блоком з рамкою, як у темних темах і як «Повідомлення» поруч (не рядками з лініями на картці) */
+:root:root[data-lskin="c"][data-lsk="3"]:not([data-theme="dark"]) .my-rows { border: 1px solid var(--gl-line); border-radius: 12px; background: var(--c-surface); }
+:root:root[data-lskin="c"][data-lsk="3"]:not([data-theme="dark"]) .my-rows > li { padding: 10px 8px 10px 14px; }
+:root:root[data-lskin="c"][data-lsk="3"]:not([data-theme="dark"]) .my-msg { border-color: var(--gl-line); }
+/* 6) світла C3: «Налаштування квартири» під лічильниками — тихий рядок, як у темних (173-я): без тла картки й тіні, рамка лінією, значок у нейтральній плитці */
+:root:root[data-lskin="c"][data-lsk="3"]:not([data-theme="dark"]) .ucard-pset { min-height: 56px; padding: 10px 14px; gap: 12px; border: 1px solid color-mix(in srgb, var(--c-ink) 12%, transparent); border-radius: var(--r-card, 16px); background: transparent; box-shadow: none; }
+:root:root[data-lskin="c"][data-lsk="3"]:not([data-theme="dark"]) .ucard-pset .am-plus { width: 36px; height: 36px; border-radius: 10px; border: 0; background: color-mix(in srgb, var(--c-ink) 7%, transparent); color: var(--c-ink-2); box-shadow: none; }
+:root:root[data-lskin="c"][data-lsk="3"]:not([data-theme="dark"]) .ucard-pset .am-plus .ico { width: 20px; height: 20px; }
+:root:root[data-lskin="c"][data-lsk="3"]:not([data-theme="dark"]) .ucard-pset .am-txt b { font-weight: 500; }
+@media (hover: hover) { :root:root[data-lskin="c"][data-lsk="3"]:not([data-theme="dark"]) .ucard-pset:hover { background: var(--c-ghost-hover); border-color: color-mix(in srgb, var(--c-ink) 12%, transparent); } }
+/* 174-я — лендинг (власник 21.11: «у світлій темі виглядає незакінчено — зроби наповненим і красивим»).
+   Для всіх тем: факти великими числами під героєм (.lp-facts) і «Часті питання» (.lp-faq) перед фінальним закликом. */
+.lp-facts { padding-top: 28px; }
+.lpf-list { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); background: var(--c-surface); border: 1px solid var(--c-line); border-radius: 20px; overflow: hidden; }
+.lpf-list li { display: grid; align-content: start; gap: 8px; padding: 18px 16px 20px; border: 0 solid var(--c-line); min-width: 0; }
+.lpf-list li:nth-child(2n) { border-left-width: 1px; }
+.lpf-list li:nth-child(n+3) { border-top-width: 1px; }
+.lpf-list b { font-size: clamp(34px, 9.6vw, 52px); line-height: 1; font-weight: 600; letter-spacing: -.035em; font-variant-numeric: tabular-nums; color: var(--c-ink); white-space: nowrap; }
+.lpf-list span { font-size: 15px; line-height: 20px; color: var(--c-ink-2); text-wrap: pretty; overflow-wrap: anywhere; }
+@media (min-width: 760px) {
+  .lpf-list { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .lpf-list li { padding: 28px 24px 30px; border-width: 0; }
+  .lpf-list li + li { border-left-width: 1px; }
+}
+.lp-faq .lp-h2 { max-width: none; }
+.lpq-list { max-width: 880px; border: 1px solid var(--c-line); border-radius: 20px; background: var(--c-surface); overflow: hidden; }
+.lpq + .lpq { border-top: 1px solid var(--c-line); }
+.lpq > summary { list-style: none; display: flex; align-items: center; justify-content: space-between; gap: 16px; min-height: 64px; padding: 16px 16px 16px 20px; cursor: pointer;
+  font-size: 17px; line-height: 24px; font-weight: 600; color: var(--c-ink); }
+.lpq > summary::-webkit-details-marker { display: none; }
+.lpq-chev { flex: none; transform: rotate(90deg); transition: transform .2s var(--ease); color: var(--c-ink-2); }
+.lpq[open] .lpq-chev { transform: rotate(-90deg); }
+.lpq > p { margin: 0; padding: 0 20px 20px; max-width: 68ch; font-size: 16px; line-height: 24px; color: var(--c-ink-2); }
+@media (hover: hover) { .lpq > summary:hover { background: var(--c-ghost-hover); } }
+.lpq > summary:focus-visible { outline: 3px solid var(--c-info); outline-offset: -3px; }
+@media (prefers-reduced-motion: reduce) { .lpq-chev { transition: none; } }
+@media (min-width: 960px) { .lpq > summary { padding: 20px 20px 20px 28px; font-size: 18px; } .lpq > p { padding: 0 28px 24px; } }
+
+/* Світла C3: заголовок героя знову великий (правило C3 «h1 32 px» перебивало .lp-h1 — герой виглядав порожнім), панелі героя й фінального заклику —
+   теплим графітом у тон «Теплого графіту» (не холодний зелений), гвинти й віконця кроків — теплі нейтралі; картки фактів і питань — як картки застосунку. */
+:root:root[data-lskin="c"][data-lsk="3"]:not([data-theme="dark"]) .lp { --lp-fg: #F7F4EE; --lp-fg2: rgba(247, 244, 238, .80); --lp-edge: rgba(255, 248, 236, .14); }
+:root:root[data-lskin="c"][data-lsk="3"]:not([data-theme="dark"]) .lp-h1 { font-size: clamp(38px, 10.6vw, 72px); line-height: 1.03; letter-spacing: -.035em; font-weight: 600; }
+:root:root[data-lskin="c"][data-lsk="3"]:not([data-theme="dark"]) :is(.lp-h2, .lpe-copy h2) { letter-spacing: -.03em; }
+:root:root[data-lskin="c"][data-lsk="3"]:not([data-theme="dark"]) .lp .lp-plate { background-color: #211F1B;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 .05 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"),
+    radial-gradient(120% 70% at 28% 0%, rgba(255, 244, 226, .08) 0%, rgba(255, 244, 226, 0) 62%), linear-gradient(180deg, #36322C 0%, #25221E 48%, #1A1815 100%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .10), inset 0 -2px 0 rgba(0, 0, 0, .45), 0 1px 2px rgba(40, 34, 22, .16), 0 28px 56px -32px rgba(40, 34, 22, .55); }
+:root:root[data-lskin="c"][data-lsk="3"]:not([data-theme="dark"]) .lp-screw { background: radial-gradient(circle at 34% 30%, #D3CBBE 0%, #8F877B 52%, #5B554C 100%); }
+:root:root[data-lskin="c"][data-lsk="3"]:not([data-theme="dark"]) :is(.lp-screw::before, .lp-screw::after) { background: #2D2A25; }
+:root:root[data-lskin="c"][data-lsk="3"]:not([data-theme="dark"]) .lp-fig { background: rgba(28, 25, 21, .64); }
+:root:root[data-lskin="c"][data-lsk="3"]:not([data-theme="dark"]) .lp-trust .ico { color: #9FD4A9; }
+:root:root[data-lskin="c"][data-lsk="3"]:not([data-theme="dark"]) .lp-btn { color: #1E1C18; background: #FBF9F5; }
+:root:root[data-lskin="c"][data-lsk="3"]:not([data-theme="dark"]) .lp-btn:hover { background: #FFFFFF; }
+:root:root[data-lskin="c"][data-lsk="3"]:not([data-theme="dark"]) :is(.lp-plate-l, .lp-art-w) { background-color: #ECE9E3;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 .05 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"),
+    linear-gradient(180deg, #F5F3EE 0%, #E8E4DC 100%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .85), inset 0 -1px 0 rgba(40, 34, 22, .10), inset 0 0 0 1px rgba(40, 34, 22, .08); }
+:root:root[data-lskin="c"][data-lsk="3"]:not([data-theme="dark"]) :is(.lpf-list, .lpq-list) { border-color: var(--gl-line); border-radius: var(--r-card, 18px); box-shadow: var(--gl-sh); }
+:root:root[data-lskin="c"][data-lsk="3"]:not([data-theme="dark"]) :is(.lpf-list li, .lpq + .lpq) { border-color: var(--c-line); }

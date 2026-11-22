@@ -39,7 +39,11 @@ let pass = 0, fail = 0; const ok = (n, c, x) => { if (c) { pass++; console.log('
 
   await load({ today: '2026-11-24' });
   const h4 = await strip('heat');
-  ok('24.11: тепло — останні дні, смуга попередження (warn) разом із текстом строку', /warn/.test(h4.cls) && !!(await p.$('[data-key=card-heat] .ucard-status.warn')), h4.cls);
+  ok('24.11: тепло — передостанній день вікна, смуга цілком червона (late, 174-а) разом із текстом строку', /\blate\b/.test(h4.cls) && !/\bwarn\b/.test(h4.cls) && !!(await p.$('[data-key=card-heat] .ucard-status.warn')), h4.cls);
+
+  await load({ today: '2026-11-22' });
+  const h5 = await strip('heat');
+  ok('22.11: тепло — за 3 дні до кінця смуга ще не червона', /st-open/.test(h5.cls) && !/\blate\b/.test(h5.cls), h5.cls);
 
   await load({ today: '2026-11-13' }, 'heat');
   ok('сторінка тепла: «Куди передати» → блок ХТМ зі смужкою 5–25', await p.$eval('[data-key=dest-htm-heat] .prd', e => e.querySelector('.prd-l').textContent === '5–25' && /in-dest/.test(e.className)).catch(() => false));

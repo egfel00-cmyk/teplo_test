@@ -1302,6 +1302,10 @@
     var w = perWin(k, p); if (!w || (so && so.off)) return '';
     var td = today(), g = perGeo(w, td), dots = '';
     var tone = so && so.tone === 'ok' ? 'done' : so && so.tone === 'warn' && g.st === 'open' ? 'warn' : '';
+    // 173-я (власник 21.11: «останні 2 дні — прогрес-бар весь червоний, щоб було добре видно»): лишилось ≤ 1 дня до кінця вікна, ще не передано —
+    // смужка цілком червоною (late); статус відомий (картка, «Куди передати») або людина саме вносить (in-entry)
+    var left = g.st !== 'open' ? 99 : g.cut === 'r' ? g.L - g.d + (w[1] < 0 ? 99 : w[1]) : g.e - g.d;
+    if (tone !== 'done' && left <= 1 && (so || /in-entry/.test(cls || ''))) tone = 'late';
     // 138-а (власник 13.11, варіант C «відрізок строку»): тонка лінія місяця, вікно — смугою, минула частина вікна щільніша, сьогодні — тонка риска
     // (139-а, власник 13.11: «убери день недели» і «даже палочку убери, поставь лёгкий градиент от яркого до затухания» — сьогодні без риски й підпису:
     // пройдене до сьогодні — градієнт, найяскравіше — сьогодні); один тон для всіх видів і тем (відтінки --c-ink), колір — лише «останні дні» і «передано».
@@ -1415,7 +1419,9 @@
       var p = ps[0]; if (!p) return '';
       return withPlace(p.id, function () {
         var cards = homeCards(), addr = p.address;
-        return '<section class="hp one" id="hp-' + esc(p.id) + '" data-pl="' + esc(p.id) + '" data-key="home-place"><div class="hp-head">' + ico('home', 24, 'hp-ico') +
+        // 174-я (власник 21.11): значок квартири — ліворуч від назви й адреси, як у шапці розкривашки, коли квартир кілька (свій значок або будиночок)
+        return '<section class="hp one" id="hp-' + esc(p.id) + '" data-pl="' + esc(p.id) + '" style="--pc:var(--pc-' + placeColor(p) + ')" data-key="home-place"><div class="hp-head">' +
+          '<span class="hp-ic' + (picon(p, 40) ? ' own' : '') + '" aria-hidden="true">' + (picon(p, 40) || ico('home', 26, 'hp-ico')) + '</span>' +
           '<div class="hp-id"><b class="hp-name" data-key="home-place-name">' + esc(placeLabel(p)) + '</b>' +
             (HP_EDIT === p.id ? '' : addr ? '<span class="hp-addr">' + esc(addr) + ' <button type="button" class="linkbtn" data-act="hp-edit" data-id="' + esc(p.id) + '" data-key="home-addr-edit">' + esc(t('change')) + '</button></span>'
               : '<button type="button" class="linkbtn hp-addr-add" data-act="hp-edit" data-id="' + esc(p.id) + '" data-key="home-addr-add">' + ico('plus', 16) + ' ' + esc(t('hp_addr_add')) + '</button>') + '</div></div>' +
@@ -4991,6 +4997,21 @@
         '<div class="lpb-marq" data-key="lp-bg-marq"><div class="lpm-row"><ul class="lp-chips lpm-track lpb-chips">' + li + '</ul><ul class="lp-chips lpm-track lpb-chips" aria-hidden="true">' + li + '</ul></div></div>' +
         '<p class="lpb-rest">' + esc(t('lp_bg_rest')) + '</p></div>' : '') + lpGo('bg') + '</article>';
   }
+  /** 174-я (власник 21.11: лендинг «незакінчений» — «зроби наповненим і красивим»): чотири факти великими числами одразу під героєм.
+   *  Числа — живцем з коду: громади — LP_PROV (build.py), фонова передача — lpAutoList(), моделі — TeploModels (без «Інша модель»). */
+  function nform(n, forms) { var f = String(forms).split('|'), a = Math.abs(n) % 100, b = a % 10; return f.length < 3 ? f[0] : a > 10 && a < 20 ? f[2] : b === 1 ? f[0] : b >= 2 && b <= 4 ? f[1] : f[2]; }
+  function lpFacts() {
+    var hr = (LP_PROV || []).reduce(function (a, x) { return a + (x.h || 0); }, 0), bg = lpAutoList().length, md = ((M && M.MODELS) || []).filter(function (m) { return m.id !== 'other'; }).length;
+    var it = function (k, n, big) { return '<li class="lpf-' + k + '"><b>' + esc(big || String(n)) + '</b><span>' + esc(big ? t('lp_f_' + k) : nform(n, t('lp_f_' + k))) + '</span></li>'; };
+    return '<section class="lp-sec lp-facts" data-key="lp-facts"><ul class="lpf-list">' + (hr ? it('hr', hr) : '') + (bg ? it('bg', bg) : '') + (md ? it('md', md) : '') + it('free', 0, '0 ₴') + '</ul></section>';
+  }
+  /** 174-я: часті питання — коротко й лише те, що є в коді (безкоштовно, фонова передача, без реєстрації, паролі кабінетів, громади). */
+  function lpFaq() {
+    var hr = (LP_PROV || []).reduce(function (a, x) { return a + (x.h || 0); }, 0), bg = lpAutoList().length;
+    var q = function (i, v) { return '<details class="lpq" data-key="lp-faq-' + i + '"><summary><span>' + esc(t('lp_q' + i)) + '</span>' + ico('chev', 22, 'lpq-chev') + '</summary><p>' + esc(t('lp_a' + i, v || {})) + '</p></details>'; };
+    return '<section class="lp-sec lp-faq" data-key="lp-faq"><h2 class="lp-h2">' + esc(t('lp_faq_t')) + '</h2><div class="lpq-list">' +
+      q(1) + (bg ? q(2, { n: bg }) : '') + q(3) + q(4) + (hr ? q(5, { h: hr }) : '') + '</div></section>';
+  }
   function lpBento() {
     var cell = function (key, art) { return '<article class="lp-cell c-' + key + '" data-key="lp-' + key + '"><div class="lp-cell-tx"><h3>' + esc(t('lp_' + key + '_t')) + '</h3><p>' + esc(t('lp_' + key)) + '</p></div>' + art + lpGo(key) + '</article>'; };
     return '<section class="lp-sec" data-key="lp-bento"><h2 class="lp-h2">' + esc(t('lp_bento_t')) + '</h2><div class="lp-bento' + (GPV_ON ? ' with-gpv' : '') + '">' +
@@ -5009,7 +5030,7 @@
       lpHero({ badge: t('lp_badge'), h1: esc(t('lp_h1a')) + ' ' + esc(t('lp_h1b')), lead: t('lp_lead'),
         cta: lpCta('welcome-start', t('lp_cta')) + (login ? '<a class="lp-link" href="#login" data-key="welcome-login">' + esc(t('w_login')) + '</a>' : ''),
         after: '<ul class="lp-trust">' + ['lp_tr1', 'lp_tr2', 'lp_tr3'].map(function (k) { return '<li>' + ico('check', 16) + '<span>' + esc(t(k)) + '</span></li>'; }).join('') + '</ul>' }) +
-      lpDest() + lpSteps() + lpBento() +
+      lpFacts() + lpDest() + lpSteps() + lpBento() + lpFaq() +
       '<section class="lp-end lp-plate" data-key="lp-end">' + lpScrews() + '<div class="lpe-in"><div class="lpe-copy"><h2>' + esc(t('lp_end_t')) + '</h2><p>' + esc(t('lp_end')) + '</p><div class="lp-ctas">' + lpCta('welcome-start-end', t('lp_cta')) + '</div></div>' + lpMeters() + '</div></section>' +
       '<p class="lp-fine small muted">' + esc(fine) + '</p>' + lpFoot(login) + '</div>' };
   };
