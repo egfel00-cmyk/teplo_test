@@ -18,7 +18,9 @@ const U = 'http://127.0.0.1:8013/', VM = 'http://127.0.0.1:8098', DATA = process
   await p.goto(U); await p.evaluate(() => localStorage.clear()); await p.reload(); await wait(500);
   ok('регистрация', await p.evaluate(e => window.TeploSync.register(e, 'Pass-12345678').then(j => j._status), 'vd' + Date.now() + '@teplo.test') === 200);
   // квартира подключена к сайту: рахунок с принятыми за листопад показаниями; записей воды за ноябрь пока нет
-  await p.evaluate(([s]) => { s.places[0].water.account = '905616'; s.places[0].water.surname = 'Шевченко'; s.water = s.water.filter(r => r.date < '2026-11-01'); s.updatedAt = Date.now(); localStorage.setItem('teplo.v1', JSON.stringify(s)); }, [demo({ today: '2026-11-06' })]);
+  await p.evaluate(([s]) => { s.places[0].water.account = '905616'; s.places[0].water.surname = 'Шевченко'; s.water = s.water.filter(r => r.date < '2026-11-01');
+    s.places[0].water.meters = s.places[0].water.meters.filter(m => m.kind !== 'hot'); s.water.forEach(w => { delete w.vals.h1; });   // 178-я: гаряча Харкова — рядки ХТМ/Водоканалу (e2e_hotsend); тут — лише холодна
+    s.updatedAt = Date.now(); localStorage.setItem('teplo.v1', JSON.stringify(s)); }, [demo({ today: '2026-11-06' })]);
   await p.reload(); await wait(1200);
   await p.goto(U + '#vkcab'); await wait(1200);
   await p.click('[data-key=vkc-check]'); await wait(2500);
@@ -31,16 +33,16 @@ const U = 'http://127.0.0.1:8013/', VM = 'http://127.0.0.1:8098', DATA = process
   await p.setViewportSize({ width: 320, height: 700 }); await wait(300); ok('320 px: без горизонтальной прокрутки', await p.evaluate(() => document.documentElement.scrollWidth <= 321)); await p.setViewportSize({ width: 390, height: 844 });
   if (process.env.SHOT) await (await p.$('[data-key=vkc]')).screenshot({ path: '/tmp/vk_done.png' });
   // запись за ноябрь с теми же цифрами → «Позначити «Передано»» на странице воды
-  await p.evaluate(() => { const s = JSON.parse(localStorage.getItem('teplo.v1')); s.water.push({ id: 'w20261106', place: 'main', date: '2026-11-06', vals: { h1: '132', c1: '179' }, createdAt: '2026-11-06T10:00:00Z', updatedAt: Date.now() }); s.updatedAt = Date.now(); localStorage.setItem('teplo.v1', JSON.stringify(s)); });
+  await p.evaluate(() => { const s = JSON.parse(localStorage.getItem('teplo.v1')); s.water.push({ id: 'w20261106', place: 'main', date: '2026-11-06', vals: { c1: '179' }, createdAt: '2026-11-06T10:00:00Z', updatedAt: Date.now() }); s.updatedAt = Date.now(); localStorage.setItem('teplo.v1', JSON.stringify(s)); });
   await p.reload(); await wait(1000); await rec();
   ok('запись с теми же цифрами: «ті самі цифри — вже передано» и кнопка «Позначити «Передано»»', /ті самі цифри/.test(await txt('[data-key=vkc-done-same]')) && !!(await p.$('[data-key=vkc-done-mark]')), await txt('[data-key=vkc]'));
   if (await p.$('[data-key=vkc-done-mark]')) { await p.click('[data-key=vkc-done-mark]'); await wait(600); }
   const r = ((await st()).water || []).find(x => x.id === 'w20261106');
   ok('…нажали → запись «передано» Водоканалу', !!(r && r.sent && r.sent.vk), r && r.sent);
   // другие цифры → предупреждение, отправки нет
-  await p.evaluate(() => { const s = JSON.parse(localStorage.getItem('teplo.v1')); const w = s.water.find(x => x.id === 'w20261106'); w.vals = { h1: '140', c1: '179' }; w.sent = {}; w.updatedAt = Date.now(); s.updatedAt = Date.now(); localStorage.setItem('teplo.v1', JSON.stringify(s)); });
+  await p.evaluate(() => { const s = JSON.parse(localStorage.getItem('teplo.v1')); const w = s.water.find(x => x.id === 'w20261106'); w.vals = { c1: '185' }; w.sent = {}; w.updatedAt = Date.now(); s.updatedAt = Date.now(); localStorage.setItem('teplo.v1', JSON.stringify(s)); });
   await p.reload(); await wait(1000); await rec();
-  ok('другие цифры → «у вас інші цифри (ваші / на сайті)», без «Відправити»', /140 \/ 132/.test(await txt('[data-key=vkc-done-diff]')) && !(await p.$('[data-key=vkc-send]')), await txt('[data-key=vkc]'));
+  ok('другие цифры → «у вас інші цифри (ваші / на сайті)», без «Відправити»', /185 \/ 179/.test(await txt('[data-key=vkc-done-diff]')) && !(await p.$('[data-key=vkc-send]')), await txt('[data-key=vkc]'));
   const sent = await (await fetch(VM + '/__store')).json(); ok('на сайт ничего не отправляли', !Object.values(sent).some(x => x && x.sent), sent);
   ok('без ошибок JS', !errs.length, errs);
   await b.close(); console.log(`\nИтог: ${pass} OK, ${fail} FAIL`); process.exit(fail ? 1 : 0);

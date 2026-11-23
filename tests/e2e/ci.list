@@ -6,9 +6,9 @@ e2e_addr
 e2e_admin_lg
 e2e_appbridge
 e2e_apple
-# e2e_bills — падає й до 184-ї: значок платіжки «2»/«1» у рядку історії (151-а: один значок джерела) — тест застарів
+e2e_bills
 # e2e_bot — діагностика без перевірок (фото з бота: друкує розкладку); бот — e2e_card*, e2e_botfw
-# e2e_botfw — падає й до 184-ї: газ «прийнято» з рахунком без натискання → sent.grm (дата/вікно газу 1–5)
+e2e_botfw
 e2e_botstart
 e2e_cabbg
 e2e_cabs
@@ -42,7 +42,7 @@ e2e_htmauto
 !e2e_htmbill
 e2e_htmcab
 e2e_htmgj
-# e2e_htmspr — падає й до 184-ї: історія тепла: рядки «ХТМ за лютий…» не знаходяться (селектори після 147-ї)
+e2e_htmspr
 e2e_journal
 e2e_lbheat
 e2e_lbot
@@ -78,7 +78,7 @@ e2e_relay
 e2e_restore
 e2e_seasons
 e2e_share
-# e2e_shareplace — падає й до 184-ї: «без исключений»: pg-pv-people не з’являється за 30 с (1 з 40)
+e2e_shareplace
 e2e_src
 e2e_status
 e2e_stepkb
@@ -87,16 +87,16 @@ e2e_tgwin
 e2e_themesync
 e2e_two_devices ../ocr-lab/out/p_two_far.jpg
 e2e_uaprobe
-# e2e_vk — падає й до 184-ї: чекає wsend-cmd (бот Водоканалу) — з 178-ї гаряча Харкова через hotSendPanel
-# e2e_vkauto — падає й до 184-ї: фото з бота → черга Водоканалу: «Вхідні» лише за 7 днів (як cardsend у 183-й — inboxday.cjs)
+e2e_vk
+e2e_vkauto
 !e2e_vkbill
-# e2e_vkcab — падає й до 184-ї: «Через сайт Водоканалу» в «Куди передати» — розмітка 181–182-ї (рядки ХТМ/Водоканалу)
+e2e_vkcab
 e2e_vkconn
-# e2e_vkdone — падає й до 184-ї: «ті самі цифри — вже передано» / «у вас інші цифри» — розмітка 181–182-ї
+e2e_vkdone
 e2e_vkpay
 e2e_wacc
 e2e_waste
 # e2e_water — діагностика з параметрами (друкує розкладку); вода з фото — e2e_recphoto, e2e_two_devices
 e2e_widget
 e2e_years
-# e2e_zbp — падає й до 184-ї: поле «Ваша частка ЗБП» — переїхало на екран постачальника тепла (180-а)
+e2e_zbp

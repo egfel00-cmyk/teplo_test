@@ -52,6 +52,9 @@ const reply = (uid, src, kind, text, at) => execFileSync('php', ['-r', '$p=new P
   ok('газ: перший канал — бот Газмереж t.me/mygrmu_bot, далі SMS 4647 (до 27.11); «Куб» і кабінет — в «Інші способи»', chans[0] === 'https://t.me/mygrmu_bot' && /^sms:4647/.test(chans[1] || '') && chans.length === 2
     && !!(await p.$('details.dest-more [data-key=dest-grm-kub]')) && !!(await p.$('details.dest-more [data-key=dest-grm-cab]')), chans);
   ok('газ: підказка — «Поділитись номером», філія, перешліть відповідь', /Поділитись номером/.test(await p.textContent('[data-key=ed-bot-how]')) && /перешліть/i.test(await p.textContent('[data-key=ed-bot-how]')));
+  // без натискання відповідь лягає на показання ≤ 10 днів до неї (sbApply) — «день відповіді» = демо-день 2.11, не справжній (сервер віддає лише 30 днів — пишемо now, час підміняємо)
+  const DEMO_AT = Math.floor(Date.parse('2026-11-02T12:00:00+02:00') / 1000);
+  await p.route('**/api/bot/replies?src=grm', async r => { const res = await r.fetch(); const j = await res.json(); (j.replies || []).forEach(x => { x.at = DEMO_AT; }); r.fulfill({ response: res, json: j }); });
   reply(uid, 'grm', 'ok', 'Показання по особовому рахунку 123456789 прийнято', now() + 2); await back(); await openWhere();
   const g = await rec('n20261101');
   ok('газ без натискання: «прийнято» з рахунком 123456789 → передано (sent.grm), botConf', g.sent.grm === '2026-11-02' && !!g.botConf, g);

@@ -125,16 +125,18 @@ run() {
     # формати тестів різні: «  OK  …» / « FAIL …», «ok   …» / «FAIL …», «✓ …» / «✗ …», одне «OK» / «FAIL»; «ERROR …» — тест упав
     local okn fln; okn=$(grep -cE '^\s*(OK|ok|✓)(\s|$)' "$OUT/$name.log"); fln=$(grep -cE '^\s*(FAIL|✗|ERROR)(\s|$)' "$OUT/$name.log")
     local st=ok; { [ $rc -ne 0 ] || [ "$fln" -gt 0 ] || [ "$okn" -eq 0 ]; } && st=FAIL; [ $rc -eq 124 ] && st=TIMEOUT
-    total=$((total + 1)); [ "$st" != ok ] && bad=$((bad + 1))
+    # «SKIP: …» і вихід 0 без перевірок — тест сам вирішив, що сьогодні його день не той (inboxday.cjs: фото з бота поза вікном постачальника)
+    [ "$st" = FAIL ] && [ $rc -eq 0 ] && [ "$fln" -eq 0 ] && [ "$okn" -eq 0 ] && grep -q '^SKIP' "$OUT/$name.log" && st=skip
+    total=$((total + 1)); { [ "$st" != ok ] && [ "$st" != skip ]; } && bad=$((bad + 1))
     printf '%s\t%s\t%s\t%s\t%ss\n' "$name" "$st" "$okn" "$fln" "$((SECONDS - t0))" | tee -a "$OUT/results.tsv"
     # у журнал прогону (CI: артефакти з облачної сесії не завантажуються — лише журнал завдання): що саме впало
-    if [ "$st" != ok ]; then grep -E '^\s*(FAIL|✗|ERROR)(\s|$)|Error|waiting for' "$OUT/$name.log" | head -8 | cut -c1-400 | sed 's/^/    │ /'; tail -3 "$OUT/$name.log" | cut -c1-300 | sed 's/^/    │ /'; fi
+    if [ "$st" != ok ] && [ "$st" != skip ]; then grep -E '^\s*(FAIL|✗|ERROR)(\s|$)|Error|waiting for' "$OUT/$name.log" | head -8 | cut -c1-400 | sed 's/^/    │ /'; tail -3 "$OUT/$name.log" | cut -c1-300 | sed 's/^/    │ /'; fi
   done
   {
     echo "### e2e: $((total - bad)) из $total зелёные"
     echo; echo '| тест | итог | OK | FAIL | время |'; echo '|---|---|---|---|---|'
-    awk -F'\t' '{ printf "| %s | %s | %s | %s | %s |\n", $1, ($2 == "ok" ? "✅" : "❌ " $2), $3, $4, $5 }' "$OUT/results.tsv"
-    for n in $(awk -F'\t' '$2 != "ok" { print $1 }' "$OUT/results.tsv"); do
+    awk -F'\t' '{ printf "| %s | %s | %s | %s | %s |\n", $1, ($2 == "ok" ? "✅" : $2 == "skip" ? "⏭ skip" : "❌ " $2), $3, $4, $5 }' "$OUT/results.tsv"
+    for n in $(awk -F'\t' '$2 != "ok" && $2 != "skip" { print $1 }' "$OUT/results.tsv"); do
       echo; echo "<details><summary>$n</summary>"; echo; echo '```'; grep -E '^\s*(FAIL|✗|ERROR)(\s|$)|Error' "$OUT/$n.log" | head -20 | cut -c1-300; tail -5 "$OUT/$n.log" | cut -c1-300; echo '```'; echo '</details>'
     done
   } > "$OUT/summary.md"

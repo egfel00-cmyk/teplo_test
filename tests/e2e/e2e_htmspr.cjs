@@ -9,7 +9,7 @@ const U = 'http://127.0.0.1:8013/', DATA = process.env.SITE_DATA || '/tmp/teplo_
   const errs = []; p.on('pageerror', e => errs.push(e.message)); const wait = ms => p.waitForTimeout(ms);
   await p.goto(U); await p.evaluate(() => localStorage.clear()); await p.reload(); await wait(500);
   ok('регистрация', await p.evaluate(e => window.TeploSync.register(e, 'Pass-12345678').then(j => j._status), 'hs' + Date.now() + '@teplo.test') === 200);
-  await p.evaluate(s => { s.updatedAt = Date.now(); localStorage.setItem('teplo.v1', JSON.stringify(s)); }, demo({ today: '2026-11-06' }));
+  await p.evaluate(s => { s.updatedAt = Date.now(); localStorage.setItem('teplo.v1', JSON.stringify(s)); }, demo({ today: '2026-11-06', view: 'heat' }));
   await p.reload(); await wait(2000);
   const uid = await p.evaluate(() => window.TeploSync.api('GET', '/me').then(j => j.user.id));
   // довідка: лютий і березень 2026 — поточні показання = наші записи 11.02 (11,402) і 12.03 (12,380); витрата більша за різницю (втрати будинку), тариф 1654,41

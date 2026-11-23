@@ -44,9 +44,10 @@ const attach = async (p, files) => { const [fc] = await Promise.all([p.waitForEv
   const g1 = (await st(A)).places[0].gaps.find(g => g.id === 'g1');
   check(g1.bills && g1.bills.length === 1, 'к периоду без лічильника — фото');
   // строка истории: значок
-  await A.goto(BASE + '#history'); await A.waitForTimeout(900);
-  check(await A.$eval('[data-key=reading-r1] .ph-n', e => e.textContent.trim() === '2').catch(() => false), 'в строке истории значок платёжки «2»');
-  check(await A.$eval('[data-key=gap-g1] .ph-n', e => e.textContent.trim() === '1').catch(() => false), 'в строке «без лічильника» значок «1»');
+  // 151-а (власник 13.11): у рядку лише одне джерело (фото / чат), лічильника платіжок у рядку немає — вони на екрані запису
+  await A.goto(BASE + '#history'); await A.waitForTimeout(900); await A.click('[data-key=kind-heat]').catch(() => {}); await A.waitForTimeout(500);
+  check(!!(await A.$('[data-key=reading-r1]')) && (await A.$$('[data-key=reading-r1] .ph-n')).length <= 1, 'рядок історії з платіжками — не більше одного значка (джерело)');
+  check(!!(await A.$('[data-key=gap-g1]')), 'рядок «без лічильника» на місці');
   await A.screenshot({ path: '/tmp/e2e_bills_hist.png', fullPage: true });
   await A.waitForTimeout(4000);   // синхронизация
   // B

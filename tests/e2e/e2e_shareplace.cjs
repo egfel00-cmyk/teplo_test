@@ -11,7 +11,7 @@ const api = (p, m, path, body) => p.evaluate(async ([m, path, body]) => { const 
 const st = p => p.evaluate(() => JSON.parse(localStorage.getItem('teplo.v1') || '{}'));
 const poll = p => p.evaluate(() => document.dispatchEvent(new Event('visibilitychange')));
 const wide = p => p.evaluate(() => document.documentElement.scrollWidth);
-const openG = async p => { await p.waitForSelector('[data-key=pg-pv-people]'); if (!(await p.$eval('[data-key=pg-pv-people]', d => d.open))) await p.click('[data-key=pg-pv-people] summary'); await p.waitForTimeout(250); };
+const openG = async p => { await p.waitForSelector('[data-key=pg-pv-people]', { timeout: 15000 }).catch(async e => { await p.screenshot({ path: '/tmp/shp_fail.png' }); const ls = await st(p); console.log('  (екран: ' + await p.evaluate(() => location.hash + ' · ' + ((document.querySelector('main h1') || {}).textContent || '')) + '; локально квартир ' + (ls.places || []).length + ', onboarded ' + ls.onboarded + ' — /tmp/shp_fail.png)'); throw e; }); if (!(await p.$eval('[data-key=pg-pv-people]', d => d.open))) await p.click('[data-key=pg-pv-people] summary'); await p.waitForTimeout(250); };
 async function dev(b, o) {
   const ctx = await b.newContext(Object.assign({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, locale: 'uk-UA' }, o || {})); const p = await ctx.newPage(); p.errs = [];
   p.on('pageerror', e => p.errs.push(e.message));
@@ -22,7 +22,8 @@ async function dev(b, o) {
 const mailLink = () => { const d = fs.existsSync(EML) ? fs.readFileSync(EML, 'utf8') : ''; let last = ''; d.split(/\r?\n/).forEach(l => { const x = Buffer.from(l.trim(), 'base64').toString('utf8'); const m = x.match(/#join-[A-Za-z0-9_-]{24}/g); if (m) last = m[m.length - 1]; }); return last; };
 (async () => {
   execSync(`rm -rf ${DIR} && mkdir -p ${DIR}`);
-  fs.writeFileSync(DIR + '/config.php', `<?php return ['db' => ['dsn' => 'sqlite:${DIR}/dev.sqlite'], 'cookie_secure' => false, 'app_url' => '${BASE}', 'bot_username' => 'TeploTestBot',
+  // 185-я: усі пристрої тесту — з 127.0.0.1, ip_all 120/хв вичерпувався (GET /api/state → 429, нова вкладка лишалась без даних) — ліміти стенду ширші
+  fs.writeFileSync(DIR + '/config.php', `<?php return ['db' => ['dsn' => 'sqlite:${DIR}/dev.sqlite'], 'cookie_secure' => false, 'limits' => ['ip_all' => [5000, 60], 'state_user' => [600, 60], 'login_ip' => [100, 300], 'register_ip' => [100, 3600]], 'app_url' => '${BASE}', 'bot_username' => 'TeploTestBot',
     'smtp_host' => '127.0.0.1', 'smtp_port' => '2526', 'smtp_user' => 'u', 'smtp_pass' => 'p', 'smtp_from' => 'noreply@peredai.com.ua'];\n`);
   const root = __dirname + '/../..';
   const srv = spawn('php', ['-S', '127.0.0.1:' + PORT, 'index.php'], { cwd: root, env: Object.assign({}, process.env, { SITE_BASE: '', SITE_DATA: DIR }), stdio: 'ignore' });

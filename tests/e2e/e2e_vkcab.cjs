@@ -18,8 +18,10 @@ const cab = (state) => { const n = Math.floor(Date.now() / 1000); fs.mkdirSync(D
   await p.goto(U); await p.evaluate(() => localStorage.clear()); await p.reload(); await wait(500);
   ok('регистрация', await p.evaluate(e => window.TeploSync.register(e, 'Pass-12345678').then(j => j._status), 'vkc' + Date.now() + '@teplo.test') === 200);
   // квитанция в фоне (e2e_vkbill) тут не нужна: тест сам правит localStorage на живой странице — фоновое сохранение его бы перетёрло
+  // 178-я: гаряча Харкова — окремі рядки ХТМ/Водоканалу (e2e_hotsend); «Через сайт Водоканалу» в «Куди передати» — квартира лише з холодною
   await p.evaluate(([s, d]) => { delete s.demoToday; s.vkBill = { main: { at: Date.now() } }; s.places[0].water.account = '905614'; s.places[0].water.surname = 'Шевченко';
-    s.water.push({ id: 'wnow', place: 'main', date: d, vals: { h1: '176', c1: '440' }, createdAt: d + 'T09:00:00Z', updatedAt: Date.now(), sent: {} }); s.updatedAt = Date.now(); localStorage.setItem('teplo.v1', JSON.stringify(s)); }, [demo({}), today]);
+    s.places[0].water.meters = s.places[0].water.meters.filter(m => m.kind !== 'hot'); s.water.forEach(w => { delete w.vals.h1; });
+    s.water.push({ id: 'wnow', place: 'main', date: d, vals: { c1: '440' }, createdAt: d + 'T09:00:00Z', updatedAt: Date.now(), sent: {} }); s.updatedAt = Date.now(); localStorage.setItem('teplo.v1', JSON.stringify(s)); }, [demo({}), today]);
   await p.reload(); await wait(1500);
   await p.goto(U + '#wrec-wnow'); await wait(1200); await p.click('[data-key=where-water-sum]'); await wait(300);
   ok('кабинет открывается → в «Куди передати» сверху «Через сайт Водоканалу» с рахунком і прізвищем', await vis('[data-key=vkc]') && /905614/.test(await p.textContent('[data-key=vkc]')) && /Шевченко/.test(await p.textContent('[data-key=vkc]')));
@@ -27,18 +29,18 @@ const cab = (state) => { const n = Math.floor(Date.now() / 1000); fs.mkdirSync(D
   ok('до проверки на сайт ничего не уходило', !(await (await fetch(M + '/__store')).json())._last);
   await p.click('[data-key=vkc-check]'); await p.waitForSelector('[data-key=vkc-found]', { timeout: 8000 }).catch(() => {});
   ok('«Перевірити» → «Сайт Водоканалу знайшов рахунок 905614» + адрес', /знайшов рахунок 905614/.test(await p.textContent('[data-key=vkc-found]').catch(() => '')) && /Сумська/.test(await p.textContent('[data-key=vkc-found]').catch(() => '')));
-  const mc = await p.textContent('[data-key=vkc-m-c1]'), mh = await p.textContent('[data-key=vkc-m-h1]');
-  ok('наші водоміри ↔ лічильники сайту за видом, одним рядком: «На сайті: № 0123456 · Холодна · останні на сайті: 430 (01.10.2026)»', /На сайті: № 0123456 · Холодна · останні на сайті: 430 \(01\.10\.2026\)/.test(mc) && /На сайті: № 0654321 · Гаряча/.test(mh) && !(await p.$('input[name=vkc-c1]')), [mc, mh]);
+  const mc = await p.textContent('[data-key=vkc-m-c1]'), mh = '';
+  ok('наші водоміри ↔ лічильники сайту за видом, одним рядком: «На сайті: № 0123456 · Холодна · останні на сайті: 430 (01.10.2026)»', /На сайті: № 0123456 · Холодна · останні на сайті: 430 \(01\.10\.2026\)/.test(mc) && !(await p.$('input[name=vkc-c1]')), [mc, mh]);
   ok('…підібрали за видом — підказка «Інший лічильник?»', /за видом/.test(await p.textContent('[data-key=vkc-sum]')));
   await p.click('[data-key=vkc-pick-c1]'); await wait(300);
   const pick = await p.evaluate(() => ({ c1: (document.querySelector('input[name=vkc-c1]:checked') || {}).value, n: document.querySelectorAll('input[name=vkc-c1]').length }));
   ok('«Інший лічильник?» → варіанти з сайту + «Не передавати», вибрано холодну 1282444', pick.c1 === 'DynamicModel[newIndication][1282444]' && pick.n === 3, pick);
   const sum = await p.textContent('[data-key=vkc-sum]');
-  ok('«Перевірте перед відправкою»: рахунок, прізвище, обидва показання', /Рахунок 905614 · Шевченко/.test(sum) && /440/.test(sum) && /176/.test(sum), sum);
+  ok('«Перевірте перед відправкою»: рахунок, прізвище, показання', /Рахунок 905614 · Шевченко/.test(sum) && /440/.test(sum), sum);
   await p.click('[data-key=vkc-send]'); await p.waitForSelector('[data-key=vkc-again]', { timeout: 8000 }).catch(() => {});
   let s = await st(); let w = s.water.find(x => x.id === 'wnow'); const store = await (await fetch(M + '/__store')).json();
   ok('«Відправити на сайт Водоканалу» → сайт прийняв → запис «передано» з підтвердженням (via cab)', (w.sent || {}).vk === today && w.vkConf && w.vkConf.via === 'cab' && /прийнято/.test(w.vkConf.text), w);
-  ok('…на сайт ушли наши цифры: холодна 440, гаряча 176', JSON.stringify(store._lastPost.post.DynamicModel.newIndication) === JSON.stringify({ 1282444: '440', 1282445: '176' }), store._lastPost);
+  ok('…на сайт ушли наши цифры: холодна 440, гарячий лічильник сайту — порожнім (у квартирі його немає)', JSON.stringify(store._lastPost.post.DynamicModel.newIndication) === JSON.stringify({ 1282444: '440', 1282445: '' }), store._lastPost);
   ok('…«Підтверджено Водоканалом» і текст сайту, пілюля «передано»', /Підтверджено Водоканалом/.test(await p.textContent('[data-key=vkc]')) && /прийнято/.test(await p.textContent('[data-key=vkc]')) && /передано/i.test(await p.textContent('#wsend-vk .dest-h')));
   ok('…вибір лічильника на сайті запам’ятали (cabKey)', s.places[0].water.meters.find(m => m.id === 'c1').cabKey === 'DynamicModel[newIndication][1282444]');
   // ошибка сайта: меньше прошлых
