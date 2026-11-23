@@ -3624,7 +3624,8 @@
       if (myh && !(r.sent && r.sent.htm)) h += myPayBox('hot', myh, myCtxW(r, 'hot'), myMarkW(r, 'htm'), 'mypay-rech');
       var hl = hotIsHtm(rp) ? t('wr_htm') : hotOrgName(rp);
       if (myw && (myh || !whas)) { /* усе — свої */ }
-      else if (thisMonth(r.date)) h += whereAcc(wsendPanel(r), r.id);
+      // 182-а: гаряча в Харкові — у записі ті самі окремі рядки ХТМ і Водоканалу з виправленням, що й на сторінці гарячої
+      else if (thisMonth(r.date)) h += whereAcc(gwKh() && whas && ms.some(function (m) { return m.kind === 'hot' && hasVal(r, m.id); }) ? hotSendPanel(r) : wsendPanel(r), r.id);
       else h += '<p>' + (myw ? '' : wsentVk(r) ? '<span class="pill ok">' + ico('check', 14) + ' ' + esc(t('wr_vk')) + '</span> ' : '<span class="pill neutral">' + esc(t('wr_vk')) + ': ' + esc(t('wh_notsent')) + '</span> ') +
         (wmeters('hot').length && !myh && hotDest(rp) ? (wsentHtm(r) ? '<span class="pill ok">' + ico('check', 14) + ' ' + esc(hl) + '</span>' : '<span class="pill neutral">' + esc(hl) + ': ' + esc(t('wh_notsent')) + '</span>') : '') + '</p>';
     }
@@ -4163,7 +4164,7 @@
     if (!CARD.id || !CARD.fix || CARD.job || !rec || !window.TEPLO_API) return;
     CARD.fix = 0; rec.card = +CARD.id;
     var it = k === 'heat' ? cardHeatRow(rec) : cardWaterRow(rec);
-    Y().api('POST', '/bot/card', { card: +CARD.id, items: [it], lang: S.lang }).catch(function () { CARD.fix = 1; });
+    Y().api('POST', '/bot/card', { card: +CARD.id, items: [].concat(it), lang: S.lang }).catch(function () { CARD.fix = 1; });
   }
   /** 145-а: свій постачальник (place.prov[вид].own) — у картці чату без роботів довідника (ХТМ, Водоканал, місцеві КП): кому платите
    *  і скільки набігло; реквізити, призначення й «Оплачено» — у застосунку («Оплата» на сторінці лічильника). null — не свій. */
@@ -4213,11 +4214,33 @@
     if (!ms.length) return Object.assign(row, { ok: 0, m: t('bc_none') });
     var own = cardOwn('water', myCtxW(rec)); if (own) return Object.assign(row, own);
     if (lb) { var lp = cardLbPlan(lb, rec); return Object.assign(row, { m: lp.m || '', plan: lp.plan || null }); }
+    if (cardHotKh(rec)) return cardHotRows(rec);   // 182-а: гаряча в Харкові — два рядки (ХТМ і Водоканал)
     var g = vkcGate();
     if (g !== 'ok') return Object.assign(row, { m: t(g === '' ? 'bc_why_w_site' : 'bc_why_w_acc') });
     if (!Wt.vkWindow(today()).open || ms.some(function (m) { return m.kind !== 'cold'; })) return Object.assign(row, { m: t('bc_manual') });
     var c = wcfg();
     return Object.assign(row, { plan: { svc: 'vk', in: { acc: waccW(c, 'cold'), fam: c.surname || '', rid: rec.id, place: rec.place || S.placeId, items: vjItems(rec) } } });
+  }
+  /** 182-а: гаряча в Харкові (ХТМ + Харківводоканал, без своїх постачальників) і в записі є гарячі водоміри. */
+  function cardHotKh(rec) { return !!(rec && gwKh() && wmeters('hot').some(function (m) { return hasVal(rec, m.id); })); }
+  /** 182-а: картка чату для гарячої в Харкові — ті самі окремі рядки, що й на сторінці гарячої: ХТМ (лише гаряча, HtmSvc::hotQueue) і Водоканал
+   *  (холодна й гаряча разом); у кожного свій план або коротко, що виправити в застосунку (кнопка під карткою). */
+  function cardHotRows(rec) {
+    var p = place(rec.place) || place(), hv = gwVals(rec, 'hot'), cv = gwVals(rec, 'cold'), hi = hwInfo(p), a = hwAcc(p);
+    var hr = { k: 'hot', t: t('bc_hotw'), v: hv ? hv + ' м³' : '', w: 'ХТМ', ok: 1, m: '' };
+    if (rec.sent && rec.sent.htm) hr.m = t('bc_hw_done');
+    else if (!hcOn() || !hcConnP(p)) hr.m = t(hcMember(p) ? 'bc_hw_sh' : 'bc_hw_cab');
+    else if (!a) hr.m = t('bc_hw_acc');
+    else if (hwForeign(p)) hr.m = t('bc_hw_foreign', { a: a });
+    else if (hi && hi.found === false) hr.m = t('bc_hw_none');
+    else hr.plan = { svc: 'hot', in: { acc: a, rid: rec.id, place: rec.place || S.placeId, date: rec.date, items: hwItems(rec) } };
+    var vv = [hv ? t('gw_w_hot', { v: hv }) : '', cv ? t('gw_w_cold', { v: cv }) : ''].filter(Boolean).join(' · ');
+    var vr = { k: 'water', t: t('bc_water'), v: vv ? vv + ' м³' : '', w: t('bc_vk'), ok: 1, m: '' }, g = vkcGate(), c = wcfg();
+    if (wsentVk(rec)) vr.m = t('bc_hw_done');
+    else if (g !== 'ok') vr.m = t(g === '' ? 'bc_why_w_site' : 'bc_why_w_acc');
+    else if (!Wt.vkWindow(today()).open) vr.m = t('bc_manual');
+    else vr.plan = { svc: 'vk', in: { acc: waccW(c, 'cold'), fam: c.surname || '', rid: rec.id, place: rec.place || S.placeId, items: vjItems(rec) } };
+    return [hr, vr];
   }
   function cardHeatSoon(n) {
     if (HC.loading && n < 25) { setTimeout(function () { cardHeatSoon(n + 1); }, 200); return; }
@@ -4274,13 +4297,16 @@
     var mids = Object.keys(WN.src).filter(function (k) { return byId[k] && WN.src[k] && WN.src[k].value !== null && WN.src[k].value !== undefined; });
     var row = { k: 'water', t: t('bc_water'), w: my ? my.name || t('my_own') : lb ? lb.d.org || '' : t('bc_vk'), v: mids.map(function (k) { return (mids.length > 1 ? wname(byId[k]).toLowerCase() + ' ' : '') + camNum(WN.vals[k] || ''); }).join(' · ') + (mids.length ? ' м³' : '') };
     if (!mids.length) { cardFix(t('bc_none'), row); return; }
-    var why = wnAutoWhy(!!lb || !!my), soft = why === 'site' || why === 'acc';
+    // 182-а: гаряча в Харкові — не «перевірте»: рядки ХТМ і Водоканалу самі скажуть, що не так (Водоканал не готовий — не заважає ХТМ)
+    var hotKh = !lb && !my && gwKh() && mids.some(function (k) { return byId[k].kind === 'hot'; });
+    var why = wnAutoWhy(!!lb || !!my || hotKh), soft = why === 'site' || why === 'acc';
     if (why && !soft) { cardFix(t('bc_fix'), row); return; }
     var vals = {}; mids.forEach(function (k) { var x = Wt.norm(WN.vals[k]); if (x !== null) vals[k] = x; });
     WN.kind = 'cold'; WN.back = 'home'; var rec = wnStore(vals, false); if (!rec) return;
     rec.card = +CARD.id; save();
     if (my) { cardPost([Object.assign(row, { ok: 1 }, cardOwn('water', myCtxW(rec)))], true); return; }
     if (lb) { var lp = cardLbPlan(lb, rec); cardPost([Object.assign(row, { ok: 1, m: lp.m || '', plan: lp.plan || null })], true); return; }   // місцевий КП (122-а)
+    if (hotKh) { cardPost(cardHotRows(rec), true); return; }
     var c = wcfg();
     cardPost([Object.assign(row, { ok: 1, m: soft ? t('bc_why_w_' + why) : '', plan: soft ? null : { svc: 'vk', in: { acc: waccW(c, 'cold'), fam: c.surname || '', rid: rec.id, place: rec.place || S.placeId, items: vjItems(rec) } } })], true);
   }

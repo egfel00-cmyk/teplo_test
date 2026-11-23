@@ -322,6 +322,17 @@ ok('гаряча квартири — теж її входом (cp)', $r->status
 $r = $b->req('POST', '/api/cab/forget', ['prov' => 'htm', 'place' => 'pB']);
 ok('«Відв’язати» квартиру: її входу немає, основний лишився; черга її входу — скасована', $r->status === 200 && !isset($r->body['places']) && $r->body['connected'] === $main0['connected']
   && Db::one('SELECT status FROM cab_jobs WHERE id = ?', [(int)($r->body['jobs'][0]['id'] ?? 0)])['status'] === 'cancelled' && HtmSvc::credFor($uid, 'pB', '1000000061') === ['u' => $uid, 'p' => 'htm'], $r->body);
+// 182-а: картка фото в чаті — гаряча в Харкові окремим рядком ХТМ (svc hot → HtmSvc::hotQueue з card), Водоканал — своїм рядком
+Db::q("INSERT INTO bot_cards (user_id, chat_id, message_id, lang, photos, plan, data, stage, created_at, updated_at) VALUES (?, '777', 55, 'uk', '[]', NULL, ?, 'new', ?, ?)", [$uid, BotWidget::enc(['v' => 1, 'k' => 'rd', 'l' => 'uk', 's' => 'new', 'n' => 1, 'r' => []]), Http::iso(), Http::iso()]);
+$cardId = (int)Db::id();
+$rr = BotCard::result($uid, ['card' => $cardId, 'items' => [
+  ['k' => 'hot', 't' => 'Гаряча вода', 'v' => '12 м³', 'w' => 'ХТМ', 'ok' => 1, 'm' => '', 'plan' => ['svc' => 'hot', 'in' => ['acc' => '1000000061', 'rid' => 'cw1', 'place' => 'p1', 'date' => '21.11.2026', 'items' => [['sn' => '79109406', 'value' => '13', 'name' => 'Ванна']]]]],
+  ['k' => 'water', 't' => 'Вода', 'v' => 'гаряча 13 · холодна 440 м³', 'w' => 'Водоканал', 'ok' => 1, 'm' => 'Немає особового рахунку чи прізвища для Водоканалу — впишіть у застосунку']]]);
+$cd = BotCard::get($cardId); $cdd = json_decode((string)$cd['data'], true) ?: [];
+ok('картка: два рядки — ХТМ з кнопкою (a=1), Водоканал — що виправити', ($rr['stage'] ?? '') === 'ready' && ($cdd['r'][0]['a'] ?? 0) === 1 && ($cdd['r'][1]['a'] ?? 1) === 0 && str_contains((string)($cdd['r'][1]['m'] ?? ''), 'рахунку'), [$rr, $cdd['r'] ?? null]);
+$qd = BotCard::query(BotCard::get($cardId), $uid, 'send', fn($d) => $d);
+$cj = Db::one("SELECT * FROM cab_jobs WHERE user_id = ? ORDER BY id DESC LIMIT 1", [$uid]); $cjp = json_decode((string)$cj['payload'], true);
+ok('«Відправити» в картці: гаряча — у черзі ХТМ (svc hot, card), рядок «у черзі»', ($cjp['svc'] ?? '') === 'hot' && (int)($cjp['card'] ?? 0) === $cardId && $cj['status'] === 'queued' && ($qd['r'][0]['s'] ?? '') === 'q', [$cjp, $qd['r'] ?? null]);
 $st = ['places' => [['id' => 'p1', 'meter' => ['account' => '1000000061']], ['id' => 'pB', 'meter' => ['account' => '']]]]; $ac = [['acc' => '1000000061', 'sur' => 'Т']];
 ok('квитанції: вхід квартири — лише вона (рахунок один — він); основний — без неї', HtmBills::why($st, $ac, 'pB') === [['ok', ['place' => 'pB', 'acc' => '1000000061']]] && HtmBills::why($st, $ac, null, ['pB']) === [['ok', ['place' => 'p1', 'acc' => '1000000061']]]);
 stand('act=reset'); stand('act=set&scenario=ok');

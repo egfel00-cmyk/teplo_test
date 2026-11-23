@@ -179,6 +179,11 @@ const D = '2026-11-12';
   await p.goto(U + '#water-hot'); await p.reload(); await wait(1500);
   ok('9б. гаряча: «Водоканал прийняв 12 листопада · ХТМ — ще ні» під табло', /Водоканал прийняв 12 листопада 2026 · ХТМ — ще ні/.test(await txt('[data-key=wmeter-h1]')), await txt('[data-key=wmeter-h1]'));
 
+  // 9в. 182-а: запис історії гарячої — ті самі окремі рядки ХТМ і Водоканалу (не старий блок «Куди передати»)
+  await p.goto(U + '#wrec-w4'); await p.reload(); await wait(1800);
+  ok('9в. запис історії: рядки ХТМ і Водоканалу, як на сторінці гарячої; статус Водоканалу «Прийнято»', await has('[data-key=gw-htm]') && await has('[data-key=gw-vk]') && /Прийнято/.test(await txt('[data-key=gw-st-vk]')) && !(await has('[data-key=dest-vk]')),
+    [await txt('[data-key=gw-htm]'), await txt('[data-key=gw-vk]')]);
+
   // 10. 181-я (власник 23.11, скрін: «это не моя квартира, не мой лицевой счёт, не мои креды — зачем мне тут видеть свой аккаунт»): спільна квартира учасника —
   // свій кабінет ХТМ не пропонуємо (ні пошти, ні рахунків кнопками, ні «Підключити»); власник не дозволив — «попросіть» і «Передати самі»
   await p.evaluate(() => { const s = JSON.parse(localStorage.getItem('teplo.v1')); const pl = s.places[0]; pl.sh = { sid: 9, role: 'member', me: 1, n: 2, own: 'Олена Коваль', ownId: 77, ppl: [], at: 1, bg: false };
@@ -190,6 +195,15 @@ const D = '2026-11-12';
   await p.goto(U + '#prefs-cabs-htm'); await wait(1500);
   const pid0 = await p.evaluate(() => JSON.parse(localStorage.getItem('teplo.v1')).places[0].id);
   ok('10. екран ХТМ у «Кабінетах»: квартира учасника — «Олена може дозволити…», без вибору моїх рахунків', /Олена може дозволити/.test(await txt(`[data-key=cb-pl-htm-${pid0}]`)) && !(await has(`[data-key=cb-hacc-${pid0}] select, select[data-key=cb-hacc-${pid0}]`)), await txt(`[data-key=cb-pl-htm-${pid0}]`));
+
+  // 10б. 182-а: учасник вписав свій вхід ХТМ саме цієї квартири — у рядку ХТМ «Надсилаємо входом цієї квартири», не «Олена може дозволити»
+  await p.goto(U + '#water-hot'); await p.reload(); await wait(1500); await hot(); await wait(1500);
+  ok('10б. учасник без входу: у рядку ХТМ — «Свій вхід ХТМ для цієї квартири»', /Свій вхід ХТМ для цієї квартири/.test(await txt(`[data-key=hp-gw-${pid0}]`)), await txt('[data-key=gw-htm]'));
+  ok('10б. …вхід квартири підключено (той самий стенд)', await p.evaluate(pid => window.TeploSync.api('POST', '/cab/htm/connect', { email: 'test@stand.local', password: 'stand-pass-123', consent: true, place: pid }).then(j => j._status), pid0) === 200);
+  await p.reload(); await wait(1500); await hot(); await wait(1800);
+  const gh2 = await txt('[data-key=gw-htm]');
+  ok('10б. …рядок ХТМ — входом квартири (test@stand.local), без «Олена може дозволити»', !/Олена може дозволити/.test(gh2) && /test@stand\.local/.test(gh2), gh2);
+  await p.evaluate(pid => window.TeploSync.api('POST', '/cab/forget', { prov: 'htm', place: pid }), pid0);
 
   ok('без помилок сторінки', !errs.length, errs);
   await b.close();

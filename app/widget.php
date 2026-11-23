@@ -301,16 +301,17 @@ HTML;
       if (!is_array($x)) continue;
       $svc = (string)($x['plan']['svc'] ?? ''); $ok = !empty($x['ok']); if (!$ok) $bad = true;
       // 145-а: квартира зі своїм постачальником цього виду — роботів довідника не пропонуємо, навіть якщо старий застосунок прислав план
-      if (in_array($svc, ['htm', 'vk', 'lb'], true)) {
-        $own = $own ?? self::ownKinds($uid); $pl = (string)($x['plan']['in']['place'] ?? ''); $kind = $svc === 'htm' ? 'heat' : 'water';
+      if (in_array($svc, ['htm', 'vk', 'lb', 'hot'], true)) {
+        $own = $own ?? self::ownKinds($uid); $pl = (string)($x['plan']['in']['place'] ?? ''); $kind = $svc === 'htm' ? 'heat' : ($svc === 'hot' ? 'hot' : 'water');
         if ($pl !== '' && isset($own[$pl][$kind])) { $ru = (string)$c['lang'] === 'ru'; $x['plan'] = null; $svc = ''; $x['w'] = $own[$pl][$kind] !== '' ? $own[$pl][$kind] : ($ru ? 'Другой поставщик' : 'Інший постачальник');
           $x['m'] = $ru ? 'Другой поставщик — реквизиты и «Оплачено» в приложении, кнопка под карточкой' : 'Інший постачальник — реквізити й «Оплачено» в застосунку, кнопка під карткою'; }
       }
       // застосунок уже поставив у чергу сам (людина виправила й натиснула там) — картка стежить за тією задачею
       $js = (string)($x['job']['svc'] ?? ''); $jid = (int)($x['job']['id'] ?? 0);
-      $jr = $jid && in_array($js, ['htm', 'vk', 'lb'], true) ? Db::one('SELECT * FROM cab_jobs WHERE id = ? AND user_id = ? AND ' . ($js === 'lb' ? "prov LIKE 'L%'" : 'prov = ?'), $js === 'lb' ? [$jid, $uid] : [$jid, $uid, $js]) : null;
+      // 182-а: hot — гаряча в кабінет ХТМ (задача cab_jobs prov htm, payload svc hot)
+      $jr = $jid && in_array($js, ['htm', 'vk', 'lb', 'hot'], true) ? Db::one('SELECT * FROM cab_jobs WHERE id = ? AND user_id = ? AND ' . ($js === 'lb' ? "prov LIKE 'L%'" : 'prov = ?'), $js === 'lb' ? [$jid, $uid] : [$jid, $uid, $js === 'hot' ? 'htm' : $js]) : null;
       if ($jr) { [$mk] = self::mark($js, $jr); $items[] = ['t' => self::cut((string)($x['t'] ?? ''), 24), 'v' => self::cut((string)($x['v'] ?? ''), 40), 'w' => self::cut((string)($x['w'] ?? ''), 32), 'a' => 1, 's' => $mk, 'm' => '']; $plan[] = ['svc' => $js, 'in' => null, 'job' => $jid]; $sent = true; continue; }
-      $can = $ok && in_array($svc, ['htm', 'vk', 'lb'], true) && is_array($x['plan']['in'] ?? null);
+      $can = $ok && in_array($svc, ['htm', 'vk', 'lb', 'hot'], true) && is_array($x['plan']['in'] ?? null);
       $items[] = ['t' => self::cut((string)($x['t'] ?? ''), 24), 'v' => self::cut((string)($x['v'] ?? ''), 40), 'w' => self::cut((string)($x['w'] ?? ''), 32), 'a' => $can ? 1 : 0, 's' => '', 'm' => self::cut((string)($x['m'] ?? ''), 110)];
       $plan[] = $can ? ['svc' => $svc, 'in' => $x['plan']['in'], 'job' => null] : null;
     }
@@ -388,7 +389,7 @@ HTML;
         if (!$p || !empty($p['job'])) continue;
         $in = (array)$p['in'] + ['lang' => $lang, 'card' => (int)$c['id']];
         try {
-          $r = $p['svc'] === 'htm' ? HtmSvc::cardQueue($uid, $in) : ($p['svc'] === 'lb' ? LocalBot::queue($uid, $in) : VkSvc::queue($uid, ['auto' => false] + $in));
+          $r = $p['svc'] === 'htm' ? HtmSvc::cardQueue($uid, $in) : ($p['svc'] === 'hot' ? HtmSvc::hotQueue($uid, $in) : ($p['svc'] === 'lb' ? LocalBot::queue($uid, $in) : VkSvc::queue($uid, ['auto' => false] + $in)));
           $p['job'] = (int)($r['job']['id'] ?? 0); $d['r'][$i]['s'] = 'q';
           // місцевий КП приймає лише у вікні подачі — у картці «надішлемо 25.11 о 09:00» (окремого повідомлення нема)
           $na = (int)($r['job']['nextAt'] ?? 0); if ($p['svc'] === 'lb' && $na > time() + 120) $d['r'][$i]['m'] = self::cut(($lang === 'ru' ? 'Отправим ' : 'Надішлемо ') . self::when($na, $lang), 110);
