@@ -16422,7 +16422,7 @@ fieldset { min-inline-size: 0; }
         if (act === 'vk-send') vkEvent('send');
         if (act === 'vk-send') { var vr = (S.water || []).filter(function (x) { return x.id === el.getAttribute('data-id'); })[0]; if (vr) { vr.vkAt = Date.now(); if (vr.sent && vr.sent.vk) { vr.sent = Object.assign({}, vr.sent, { vk: '' }); delete vr.vkConf; } vr.updatedAt = Date.now(); delete VKERR[vr.id]; save(); } }   // ще раз — нове підтвердження
         else VKR.idsAt = Date.now();
-        setTimeout(function () { var tw = window.Telegram && window.Telegram.WebApp; if (tw && tw.openTelegramLink) tw.openTelegramLink(vurl); else window.open(vurl, '_blank', 'noopener'); render(true); }, 200);
+        setTimeout(function () { var tw = window.Telegram && window.Telegram.WebApp; if (tw && tw.initData && tw.openTelegramLink) tw.openTelegramLink(vurl); else window.open(vurl, '_blank', 'noopener'); render(true); }, 200);
         return true;
       }
       case 'sbot': {
@@ -16431,7 +16431,8 @@ fieldset { min-inline-size: 0; }
         (S.mrecs || []).forEach(function (x) { if (sbids.indexOf(x.id) >= 0 && !ssent(sbk, x)) { x.botAt = sbn; x.updatedAt = sbn; } });
         delete SBERR[sbk]; save();
         if (el.getAttribute('data-copy')) copyText(el.getAttribute('data-copy'), null);   // показання — у буфер: у боті лише вставити
-        var sbtw = window.Telegram && window.Telegram.WebApp; if (sbtw && sbtw.openTelegramLink) sbtw.openTelegramLink(sburl); else window.open(sburl, '_blank', 'noopener');
+        // 185-я: лише всередині Telegram (initData) — у звичайному браузері telegram-web-app.js теж дає WebApp, і openTelegramLink вів сайт геть на t.me (CI: botfw, vk)
+        var sbtw = window.Telegram && window.Telegram.WebApp; if (sbtw && sbtw.initData && sbtw.openTelegramLink) sbtw.openTelegramLink(sburl); else window.open(sburl, '_blank', 'noopener');
         render(true); return true;
       }
       case 'sb-err': SBERR[el.getAttribute('data-k') === 'gas' ? 'gas' : 'elec'] = true; render(true); return true;
@@ -16446,7 +16447,7 @@ fieldset { min-inline-size: 0; }
         if (empty) { empty.value = el.getAttribute('data-v'); empty.dispatchEvent(new Event('change', { bubbles: true })); el.classList.add('done'); }
         return true;
       }
-      case 'copy-open': copyText(el.getAttribute('data-text'), el); setTimeout(function () { var tw = window.Telegram && window.Telegram.WebApp; if (tw && tw.openTelegramLink) tw.openTelegramLink(el.getAttribute('data-url')); else window.open(el.getAttribute('data-url'), '_blank', 'noopener'); }, 250); return true;
+      case 'copy-open': copyText(el.getAttribute('data-text'), el); setTimeout(function () { var tw = window.Telegram && window.Telegram.WebApp; if (tw && tw.initData && tw.openTelegramLink) tw.openTelegramLink(el.getAttribute('data-url')); else window.open(el.getAttribute('data-url'), '_blank', 'noopener'); }, 250); return true;
     }
     return false;
   }
