@@ -3652,3 +3652,16 @@ fieldset { min-inline-size: 0; }
 .mo-st.warn { color: var(--c-warn-ink); }
 .mo-row .mo-done { flex: none; color: var(--c-ok-ink); }
 .mo-list.later .ios-t b { font-weight: 500; }
+
+/* ===== 185-я: кабінети й надсилання — у налаштуваннях квартири (власник 23.11 18:06) */
+.pvp-send { margin: 0 0 var(--sp-4); }
+.pvp-sh { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; font-size: var(--fs-l); margin: 0 0 var(--sp-3); }
+.pvp-sh .cb-bdg { font-size: 13px; font-weight: 500; }
+.pvp-send .cb { margin: 0; }
+.pvp-pl { display: flex; align-items: center; gap: 6px; margin: -4px 0 var(--sp-3); }
+.cb-apt-h { display: flex; align-items: center; gap: 6px; }
+.cb-apt-h .pdot { background: var(--pc); }
+/* кілька лічильників виду: спільне (постачальник, рахунок, ціна) — окремим блоком під ними */
+.mbox-kset { padding-top: 4px; padding-bottom: 4px; }
+.mbox-kset > .mbox-set { margin-top: 0; border-top: 0; }
+.mbox-kset .mbox-set-b > p.small:first-child { margin-top: 0; }

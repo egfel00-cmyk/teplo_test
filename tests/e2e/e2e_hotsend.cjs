@@ -39,13 +39,13 @@ const D = '2026-11-12';
   await p.evaluate(([s]) => { s.places[0].water.account = ''; s.places[0].water.surname = ''; s.contacts = { phone: '050 111 22 33' }; s.updatedAt = Date.now(); localStorage.setItem('teplo.v1', JSON.stringify(s)); }, [demo({ today: D })]);
   await put({ h1: '176', c1: '440' }, 'wnow'); await p.reload(); await wait(1200);
   await hot();
-  ok('1. не підключено: ХТМ — «Підключити ›» на екран ХТМ, вхід «e-mail і пароль кабінету ХТМ»', (await p.getAttribute('[data-key=gw-conn-htm]', 'href')) === '#prefs-cabs-htm' && /e-mail і пароль кабінету ХТМ/.test(await txt('[data-key=gw-htm]')), await txt('[data-key=gw-htm]'));
-  ok('1. …Водоканал — «Підключити ›» на екран Водоканалу, вхід «особовий рахунок і прізвище»', (await p.getAttribute('[data-key=gw-conn-vk]', 'href')) === '#prefs-cabs-vk' && /особовий рахунок і прізвище/.test(await txt('[data-key=gw-vk]')), await txt('[data-key=gw-vk]'));
+  ok('1. не підключено: ХТМ — «Підключити ›» на екран ХТМ, вхід «e-mail і пароль кабінету ХТМ»', (await p.getAttribute('[data-key=gw-conn-htm]', 'href')) === '#pvp-hot-main' && /e-mail і пароль кабінету ХТМ/.test(await txt('[data-key=gw-htm]')), await txt('[data-key=gw-htm]'));
+  ok('1. …Водоканал — «Підключити ›» на екран Водоканалу, вхід «особовий рахунок і прізвище»', (await p.getAttribute('[data-key=gw-conn-vk]', 'href')) === '#pvp-water-main' && /особовий рахунок і прізвище/.test(await txt('[data-key=gw-vk]')), await txt('[data-key=gw-vk]'));
   ok('1. …кнопок «Надіслати» немає (нікому), «Передати самі» згорнуто', !(await has('[data-key^=gw-bg]')) && !(await p.$eval('[data-key=gw-self]', d => d.open)));
   ok('1. …тексту мало: блок «Куди передати» ≤ 420 знаків без «Передати самі»', await p.$eval('[data-key=where-water]', el => { const c = el.cloneNode(true); c.querySelectorAll('[data-key=gw-self],.trust,.my-link').forEach(x => x.remove()); return c.textContent.replace(/\s+/g, ' ').length; }) <= 420,
     await p.$eval('[data-key=where-water]', el => el.textContent.replace(/\s+/g, ' ').length));
   await p.click('[data-key=gw-conn-htm]'); await wait(1500);
-  ok('1. «Підключити ›» ХТМ → екран ХТМ: «Вносимо показання тепла й гарячої води»', /#prefs-cabs-htm$/.test(p.url()) && /тепла й гарячої води/.test(await txt('[data-key=prefs-cab-htm]')), [p.url(), await txt('[data-key=prefs-cab-htm]')]);
+  ok('1. «Підключити ›» ХТМ → екран постачальника гарячої квартири (185-я): «Вносимо показання тепла й гарячої води»', /#pvp-hot-main$/.test(p.url()) && /тепла й гарячої води/.test(await txt('[data-key=prefs-cab-htm]')), [p.url(), await txt('[data-key=prefs-cab-htm]')]);
 
   // 2. підключили обидва (як із їхніх екранів): ХТМ — e-mail і пароль; Водоканал — рахунок і прізвище
   ok('2. підключити ХТМ', await p.evaluate(() => window.TeploSync.api('POST', '/cab/htm/connect', { email: 'test@stand.local', password: 'stand-pass-123', phone: '0501112233', consent: true }).then(j => j._status)) === 200);
@@ -172,7 +172,7 @@ const D = '2026-11-12';
 
   // 8. «Кабінети й надсилання»: ХТМ — у фоні, «Гаряча вода, Опалення», значок — термометр; холодна сторінка — як була (лише Водоканал)
   await p.goto(U + '#prefs-cabs'); await wait(1500);
-  ok('8. ХТМ серед «у фоні»: «Гаряча вода, Опалення»; серед «самі» ХТМ немає', /Гаряча вода, Опалення/.test(await txt('[data-key=cb-row-htm]')) && !/теплові мережі/.test(await txt('[data-key=cb-sec-self]')), await txt('[data-key=cb-row-htm]'));
+  ok('8. 185-я: гаряча й тепло квартири — ХТМ, «у фоні»', /теплові мережі/.test(await txt('[data-key=cb-row-hot-main]')) && /теплові мережі/.test(await txt('[data-key=cb-row-heat-main]')) && /у фоні/.test(await txt('[data-key=cb-row-hot-main]')), await txt('[data-key=cb-sec-main]'));
   await p.goto(U + '#water-cold'); await wait(1500);
   ok('8. сторінка холодної — лише Водоканал (рядків ХТМ немає)', !(await has('[data-key=gw-htm]')) && await has('[data-key=dest-vk]'));
 

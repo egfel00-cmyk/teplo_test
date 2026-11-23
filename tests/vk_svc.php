@@ -76,6 +76,16 @@ $r = $b->req('POST', '/api/vk/job/now', ['job' => $a2['id']]); ok('«Надіс�
 $r = $b->req('POST', '/api/vk/queue', $ACC + ['rid' => 'a3', 'auto' => true, 'items' => [['value' => '495', 'kind' => 'cold', 'name' => 'Холодна']]]); $a3 = $r->body['job'];
 $r = $b->req('POST', '/api/vk/auto', ['on' => false]); ok('выключить → автоподача в очереди отменена', $r->body['auto'] === false && Db::one('SELECT status FROM cab_jobs WHERE id = ?', [$a3['id']])['status'] === 'cancelled', $r->body);
 $r = $b->req('POST', '/api/vk/auto', ['on' => true, 'consent' => true]);
+// 185-я: «у фоні» по квартирі — вимкнули в p1: її автоподача в черзі скасована, p2 — далі йде; увімкнули знову — p1 з off прибрано
+Db::q('DELETE FROM rate_limits');
+$q1 = $b->req('POST', '/api/vk/queue', $ACC + ['rid' => 'p1a', 'place' => 'p1', 'auto' => true, 'items' => [['value' => '501', 'kind' => 'cold', 'name' => 'Холодна']]])->body['job'];
+$q2 = $b->req('POST', '/api/vk/queue', $ACC + ['rid' => 'p2a', 'place' => 'p2', 'auto' => true, 'items' => [['value' => '502', 'kind' => 'cold', 'name' => 'Холодна']]])->body['job'];
+$r = $b->req('POST', '/api/vk/auto', ['on' => false, 'place' => 'p1']);
+ok('185-я: «у фоні» лише квартири p1 вимкнено — згода є, off [p1], її черга скасована, p2 — ні', $r->body['auto'] === true && $r->body['off'] === ['p1'] && !VkSvc::autoOn($uid, 'p1') && VkSvc::autoOn($uid, 'p2')
+  && Db::one('SELECT status FROM cab_jobs WHERE id = ?', [$q1['id']])['status'] === 'cancelled' && Db::one('SELECT status FROM cab_jobs WHERE id = ?', [$q2['id']])['status'] === 'queued', $r->body);
+$r2 = $b->req('POST', '/api/vk/queue', $ACC + ['rid' => 'p1b', 'place' => 'p1', 'auto' => true, 'items' => [['value' => '503', 'kind' => 'cold', 'name' => 'Холодна']]]);
+ok('185-я: автоподача квартири з вимкненим «у фоні» — 409', $r2->status === 409 && $r2->body['error'] === 'vk_auto_off', $r2->body);
+$r = $b->req('POST', '/api/vk/auto', ['on' => true, 'consent' => true, 'place' => 'p1']); ok('185-я: увімкнули в p1 — off порожній', $r->body['auto'] === true && $r->body['off'] === [] && VkSvc::autoOn($uid, 'p1'), $r->body);
 $r = $b->req('POST', '/api/cab/forget', ['prov' => 'vk']); ok('«Відключити» Водоканал: согласие удалено', $r->status === 200 && $r->body['auto'] === false && !Db::one("SELECT id FROM cab_creds WHERE prov = 'vk'"), $r->body);
 // бот: включена автоотправка воды — кнопка «Розпізнати й внести» и слова про Водоканал
 $b->req('POST', '/api/vk/auto', ['on' => true, 'consent' => true]);

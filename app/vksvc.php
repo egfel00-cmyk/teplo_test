@@ -31,7 +31,9 @@ final class VkSvc {
   }
   private static function js(?string $s): array { $j = json_decode((string)$s, true); return is_array($j) ? $j : []; }
   private static function creds(int $uid): ?array { return Db::one('SELECT * FROM cab_creds WHERE user_id = ? AND prov = ?', [$uid, self::PROV]); }
-  public static function autoOn(int $uid): bool { $c = self::creds($uid); return $c && !empty(self::js($c['extra'])['auto']); }
+  /** 185-я: згода людини й квартиру не вимкнено (extra.off — квартири, де «у фоні» зняли на екрані постачальника квартири). */
+  public static function autoOn(int $uid, string $place = ''): bool { $c = self::creds($uid); $ex = $c ? self::js($c['extra']) : []; return !empty($ex['auto']) && !($place !== '' && !empty(((array)($ex['off'] ?? []))[$place])); }
+  private static function pid($s): string { return substr(preg_replace('/[^\w\-]/', '', (string)$s), 0, 40); }
 
   public static function pubJob(array $j): array {
     $p = self::js($j['payload']); $r = self::js($j['result']);
@@ -44,24 +46,28 @@ final class VkSvc {
   public static function status(int $uid): array {
     $c = self::creds($uid); $ex = $c ? self::js($c['extra']) : [];
     $jobs = Db::q('SELECT * FROM cab_jobs WHERE user_id = ? AND prov = ? ORDER BY id DESC LIMIT 12', [$uid, self::PROV])->fetchAll();
-    return ['auto' => !empty($ex['auto']), 'autoAt' => $ex['autoAt'] ?? null, 'autoDelay' => self::autoDelay(), 'send' => VkCab::ready(), 'jobs' => array_map([self::class, 'pubJob'], $jobs)];
+    return ['auto' => !empty($ex['auto']), 'off' => array_values(array_map('strval', array_keys(array_filter((array)($ex['off'] ?? []))))), 'autoAt' => $ex['autoAt'] ?? null, 'autoDelay' => self::autoDelay(), 'send' => VkCab::ready(), 'jobs' => array_map([self::class, 'pubJob'], $jobs)];
   }
   /** POST /api/vk/auto {on, consent} — включить (с согласием) / выключить автоотправку воды; выключение отменяет очередь автоподачи. */
   public static function auto(int $uid, array $in): array {
     self::lang($in); $on = ($in['on'] ?? false) === true;
     if ($on && ($in['consent'] ?? false) !== true) throw new HttpError(422, 'vk_consent', ['human' => self::h('consent')]);
-    $c = self::creds($uid); $ex = $c ? self::js($c['extra']) : [];
-    if ($on) $ex = ['auto' => true, 'autoAt' => gmdate('c'), 'consentAt' => gmdate('c'), 'lang' => self::$lang] + $ex; else unset($ex['auto'], $ex['autoAt']);
+    $c = self::creds($uid); $ex = $c ? self::js($c['extra']) : []; $place = self::pid($in['place'] ?? '');
+    // 185-я: {place} — лише ця квартира: увімкнути — згода людини (якщо ще не було) і квартиру знято з off; вимкнути — квартира в off, інші не чіпаємо
+    $off = (array)($ex['off'] ?? []);
+    if ($place !== '') { if ($on) { unset($off[$place]); if (empty($ex['auto'])) $ex = ['auto' => true, 'autoAt' => gmdate('c'), 'consentAt' => gmdate('c'), 'lang' => self::$lang] + $ex; } else $off[$place] = 1; $ex['off'] = (object)$off; if (!$off) unset($ex['off']); }
+    elseif ($on) $ex = ['auto' => true, 'autoAt' => gmdate('c'), 'consentAt' => gmdate('c'), 'lang' => self::$lang] + $ex; else unset($ex['auto'], $ex['autoAt']);
     $e = json_encode($ex, JSON_UNESCAPED_UNICODE);
     if ($c) Db::q('UPDATE cab_creds SET extra = ?, checked_at = ? WHERE user_id = ? AND prov = ?', [$e, Http::iso(), $uid, self::PROV]);
     elseif ($on) Db::q("INSERT INTO cab_creds (user_id, prov, login, secret, extra, state, info, created_at, checked_at) VALUES (?, ?, '', '', ?, 'ok', NULL, ?, ?)", [$uid, self::PROV, $e, Http::iso(), Http::iso()]);
-    if (!$on) self::cancelAuto($uid, 'auto_off');
-    Db::q('INSERT INTO audit_log (user_id, action, ip, created_at) VALUES (?, ?, ?, ?)', [$uid, 'vk_auto_' . ($on ? 'on' : 'off'), null, Http::iso()]);
+    if (!$on) self::cancelAuto($uid, 'auto_off', $place);
+    Db::q('INSERT INTO audit_log (user_id, action, ip, created_at) VALUES (?, ?, ?, ?)', [$uid, 'vk_auto_' . ($on ? 'on' : 'off') . ($place !== '' ? '_p' : ''), null, Http::iso()]);
     return ['ok' => true] + self::status($uid);
   }
-  private static function cancelAuto(int $uid, string $why): void {
+  private static function cancelAuto(int $uid, string $why, string $place = ''): void {
     foreach (Db::q("SELECT * FROM cab_jobs WHERE user_id = ? AND prov = ? AND status = 'queued'", [$uid, self::PROV])->fetchAll() as $j) {
       $p = self::js($j['payload']); if (empty($p['auto']) && $why === 'auto_off') continue;
+      if ($place !== '' && (string)($p['place'] ?? '') !== $place) continue;
       self::finish((int)$j['id'], 'cancelled', ['why' => $why]);
     }
   }
@@ -81,7 +87,7 @@ final class VkSvc {
     if (!$items) throw new HttpError(422, 'vk_no_items', ['human' => self::h('items')]);
     $rid = substr(preg_replace('/[^\w\-]/', '', (string)($in['rid'] ?? '')), 0, 40); $place = substr(preg_replace('/[^\w\-]/', '', (string)($in['place'] ?? '')), 0, 40);
     $auto = ($in['auto'] ?? false) === true;
-    if ($auto && !self::autoOn($uid)) throw new HttpError(409, 'vk_auto_off', ['human' => self::h('auto_off')]);
+    if ($auto && !self::autoOn($uid, $place)) throw new HttpError(409, 'vk_auto_off', ['human' => self::h('auto_off')]);
     $sig = fn(array $l) => implode('|', array_map(fn($x) => ($x['serial'] ?? '') . '=' . $x['value'], $l));
     foreach (Db::q("SELECT * FROM cab_jobs WHERE user_id = ? AND prov = ? AND status IN ('queued', 'sending', 'ok') ORDER BY id DESC LIMIT 12", [$uid, self::PROV])->fetchAll() as $j) {
       $p = self::js($j['payload']); if ($j['acc'] === $acc && $sig((array)($p['items'] ?? [])) === $sig($items)) return ['ok' => true, 'dup' => true, 'job' => self::pubJob($j)];
