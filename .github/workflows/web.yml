@@ -37,6 +37,7 @@ jobs:
       - name: Сервер
         run: |
           set -o pipefail
+          bash tests/e2e/stand.sh up   # htm_svc і htm_cab ходять у синтетичний кабінет ХТМ (8099)
           php tests/server.php 2>&1 | tail -40
           php tests/share.php 2>&1 | tail -20
           php tests/htm_svc.php 2>&1 | tail -20
@@ -68,8 +69,7 @@ jobs:
         run: |
           npm i -g playwright@1.63.0
           npx -y playwright@1.63.0 install --with-deps chromium
-          sudo apt-get install -y -qq ffmpeg sqlite3 fonts-dejavu-core fonts-liberation > /dev/null
-          python3 -m pip install -q --break-system-packages pillow
+          sudo apt-get install -y -qq ffmpeg sqlite3 python3-pil fonts-dejavu-core fonts-liberation > /dev/null   # Pillow системний: stand.sh кличе python3 -I
       - name: Стенд і картинки
         run: |
           bash tests/e2e/stand.sh up
