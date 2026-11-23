@@ -3,7 +3,7 @@
 const { chromium } = require('playwright'); const demo = require('./demo.cjs');
 let pass = 0, fail = 0; const ok = (n, c, i) => { console.log((c ? '  OK  ' : ' FAIL ') + n + (!c && i !== undefined ? '  → ' + JSON.stringify(i) : '')); c ? pass++ : fail++; };
 (async () => {
-  const b = await chromium.launch(); const ctx = await b.newContext({ viewport: { width: 390, height: 844 } }); await require('./pvopen.cjs')(ctx); const p = await ctx.newPage(); const errs = [];
+  const b = await chromium.launch(); const ctx = await b.newContext({ viewport: { width: 390, height: 844 } }); await require('./pvopen.cjs')(ctx); const p = await ctx.newPage(); const errs = []; require('./pvnav.cjs')(p, 'http://127.0.0.1:8013/');
   p.on('pageerror', e => errs.push(e.message)); p.on('dialog', d => d.accept()); await require('./askauto.cjs')(p);
   const st = () => p.evaluate(() => JSON.parse(localStorage.getItem('teplo.v1')));
   // на главной при ≥ 2 квартирах — секции-аккордеон: ищем внутри секции текущей квартиры
@@ -93,8 +93,15 @@ let pass = 0, fail = 0; const ok = (n, c, i) => { console.log((c ? '  OK  ' : ' 
   // 179-я: четверта — «Спільний доступ» (лише з сервером), теж закрита
   ok('квартира: три раскрывашки — про квартиру, лічильники, постачальники й рахунки (+ спільний доступ); закрыты', /^pg-pv-about:false,pg-pv-meters:false,pg-pv-prov:false(,pg-pv-people:false)?$/.test(grp.join(',')), grp);
   await p.evaluate(() => localStorage.removeItem('e2e.pvClosed')); await p.reload(); await p.waitForTimeout(400);
-  ok('налаштування лічильника — без рахунку ХТМ і коду Водоканалу; вони — в «Постачальники, тарифи й рахунки»', !(await p.$('#mbs-heat #p-hacc')) && !(await p.$('[id^=mbs-] [data-wf=vkId]')) &&
-    !!(await p.$('#pg-pv-prov [data-key=pv-bills-heat] #p-hacc')) && !!(await p.$('#pg-pv-prov [data-key=pv-bills-water] [data-wf=vkId]')) && !!(await p.$('#pg-pv-prov [data-key=pv-bills-heat] #p-abon')));
+  // 180-я: постачальники — рядками; рахунки й дані з платіжки — на екрані постачальника (#pvp-<вид>-<квартира>)
+  const pvRows = await p.$$eval('#pg-pv-prov [data-key^=pvp-row-]', es => es.map(e => e.getAttribute('data-key').slice(8)));
+  const noBillsHere = !(await p.$('#mbs-heat #p-hacc')) && !(await p.$('[id^=mbs-] [data-wf=vkId]')) && !(await p.$('#pg-pv-prov input'));
+  await p.goto('http://127.0.0.1:8013/#pvp-heat-main'); await p.waitForTimeout(600);
+  const heatBills = !!(await p.$('[data-key=pvp-heat] #p-hacc')) && !!(await p.$('[data-key=pvp-heat] #p-abon'));
+  await p.goto('http://127.0.0.1:8013/#pvp-water-main'); await p.waitForTimeout(600);
+  const waterBills = !!(await p.$('[data-key=pvp-water] [data-wf=vkId]'));
+  ok('налаштування лічильника — без рахунку ХТМ і коду Водоканалу; у «Постачальниках» — рядки, а рахунки — на екрані постачальника', noBillsHere && pvRows.includes('heat') && pvRows.includes('water') && heatBills && waterBills, [pvRows, noBillsHere, heatBills, waterBills]);
+  await p.goto('http://127.0.0.1:8013/#place-main'); await p.waitForTimeout(600);
   ok('картка лічильника: шапка → налаштування → «Замінити» і «Прибрати» внизу', await p.evaluate(() => [...document.querySelector('[data-key=pv-m-heat]').children].map(x => x.className.split(' ')[0]).join(',') === 'mrow-main,mbox-set,mrow-act'));
   // рахунки — свои: в первой квартире правим абонплату, у второй — своя по умолчанию
   await go('place-main'); await p.fill('#p-abon', '45,5'); await p.waitForTimeout(150);

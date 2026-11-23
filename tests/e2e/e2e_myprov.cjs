@@ -10,7 +10,7 @@ const B = 'http://127.0.0.1:8013/';
   const b = await chromium.launch();
   const ctx = await b.newContext({ viewport: { width: 390, height: 844 }, locale: 'uk-UA' });
   await ctx.grantPermissions(['clipboard-read', 'clipboard-write'], { origin: B });
-  const p = await ctx.newPage(); const errs = [];
+  const p = await ctx.newPage(); const errs = []; require('./pvnav.cjs')(p, B);
   p.on('pageerror', e => errs.push('pageerror: ' + e.message));
   const load = async (opts, route) => {
     await p.goto(B);

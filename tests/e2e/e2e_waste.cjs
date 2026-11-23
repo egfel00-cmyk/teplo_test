@@ -6,7 +6,7 @@ const { chromium } = require('playwright'); const demo = require('./demo.cjs');
 let pass = 0, fail = 0; const ok = (n, c, x) => { if (c) { pass++; console.log('  OK  ' + n); } else { fail++; console.log(' FAIL ' + n + (x !== undefined ? ' → ' + JSON.stringify(x) : '')); } };
 const U = 'http://127.0.0.1:8013/';
 (async () => {
-  const b = await chromium.launch(); const p = await (await b.newContext({ viewport: { width: 390, height: 844 }, locale: 'uk-UA' })).newPage();
+  const b = await chromium.launch(); const p = await (await b.newContext({ viewport: { width: 390, height: 844 }, locale: 'uk-UA' })).newPage(); require('./pvnav.cjs')(p, U);
   const errs = []; p.on('pageerror', e => errs.push(e.message)); p.on('dialog', d => d.accept()); await require('./askauto.cjs')(p);
   const s0 = demo({}); s0.places[0].address = 'м. Харків, вул. Сумська, 10';   // сьогодні в демо — 2 листопада 2026
   await p.goto(U); await p.evaluate(s => localStorage.setItem('teplo.v1', JSON.stringify(s)), s0);
@@ -80,6 +80,7 @@ const U = 'http://127.0.0.1:8013/';
   await p.goto(U + '#place-' + pid); await p.waitForTimeout(700);
   ok('серед лічильників — «Вивіз сміття · 3 × 23,47 ₴ з людини»', /3 × 23,47 ₴ з людини/.test(await txt('[data-key=pv-m-waste]')), await txt('[data-key=pv-m-waste]'));
   ok('у постачальниках — вивізник і «Налаштування й оплати»', /Комплекс з вивозу/.test(await txt('[data-key=prov-waste]')) && !!(await p.$('[data-key=pv-waste-open]')));
+  if (/^#pvp-/.test(await p.evaluate(() => location.hash))) { await p.goto(U + '#place-' + (await p.evaluate(() => location.hash)).split('-').slice(2).join('-')); await p.waitForTimeout(600); }   // 180-я: з екрана постачальника — назад на квартиру
   await p.evaluate(() => document.querySelector('[data-key=pv-remove-waste]').click()); await p.waitForTimeout(500);
   w = await st(); ok('прибрали — on немає, removed, оплати лишились', !w.on && !!w.removed && w.pays.length >= 1, w);
   ok('у «Прибрані раніше» — вивіз сміття', !!(await p.$('[data-key=pv-restore-waste]')));

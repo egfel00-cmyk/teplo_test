@@ -246,6 +246,7 @@
     if (/^(home|places|history|stats|prefs)$/.test(r)) return '';
     if (REC_RE.test(r)) return '<';
     if (/^prefs-cabs-/.test(r)) return CB_FROM && !/^prefs/.test(CB_FROM) ? '<' : 'prefs-cabs';   // 176-а: екран постачальника
+    if (/^pvp-/.test(r)) return 'place-' + r.replace(/^pvp-[a-z]+-/, '');   // 180-я: екран постачальника → його квартира
     if (/^place-/.test(r)) return '<';   // 164-а: екран квартири відкривають і з головної, і з «Налаштувань» — назад туди, звідки прийшли
     if (/^prefs/.test(r)) return 'prefs';
     if (/^stats/.test(r)) return 'stats';
@@ -2052,17 +2053,24 @@
     return { c: 'neutral', t: t('gw_st_no') };
   }
   /** Коротка назва водоміра для рядка «що надішлемо»: назва, інакше № , інакше вид. */
-  function gwNm(m) { return m.name || (m.serial ? '№ ' + m.serial : t(m.kind === 'hot' ? 'wt_hot' : 'wt_cold')); }
-  /** «Кухня 176 · Ванна 0» — значення водомірів виду без ком (кома читалась як дріб: «176, 0»). */
-  function gwVals(rec, kind) { var ms = wmeters(kind).filter(function (m) { return hasVal(rec, m.id); }); return ms.map(function (m) { var v = Wt.whole(rec.vals[m.id]); return ms.length > 1 ? gwNm(m) + ' ' + v : String(v); }).join(' · '); }
-  /** Вибір «який лічильник який» на сайті Водоканалу — прямо в рядку: для кожного свого водоміра з показаннями — лічильник сайту (№, вид, останні показання). */
+  function gwNm(m) { return m.name || (m.serial ? '№ ' + m.serial : ''); }
+  /** «Кухня 176 · Ванна 0» — значення водомірів виду без ком (кома читалась як дріб: «176, 0»); vk — лише ті, що йдуть на сайт (не «Не надсилати»). */
+  function gwVals(rec, kind, vk) { var ms = wmeters(kind).filter(function (m) { return hasVal(rec, m.id) && !(vk && m.cabKey === ''); }); return ms.map(function (m) { var v = Wt.whole(rec.vals[m.id]), n = ms.length > 1 ? gwNm(m) : ''; return n ? n + ' ' + v : String(v); }).join(' · '); }
+  /** Вибір «який лічильник який» на сайті Водоканалу — прямо в рядку (180-я, друга правка, власник 23.11: «12 кружков — глаза разбегаются, на мобиле сложно выбрать»):
+   *  рядок на свій водомір — назва й показання, праворуч випадний список (на iPhone — рідне колесо): лічильники сайту того ж виду (№ і останні на сайті) + «Не надсилати».
+   *  Підібране саме — уже вибране; двічі той самий — попередження. Вибір — m.cabKey (data-wf="cabKey"). */
   function gwPick(rec, cms) {
     var ms = wmeters().filter(function (m) { return hasVal(rec, m.id); }), map = vkcMap(wmeters(), cms), keys = ms.map(function (m) { return map[m.id] || ''; });
-    var dup = keys.some(function (k, i) { return k && keys.indexOf(k) !== i; }), miss = keys.some(function (k) { return !k; });
-    return '<div class="gw-pick" data-key="gw-pick"><p class="small"><b>' + esc(t('gw_pick_t')) + '</b></p>' + ms.map(function (m) {
-      return '<fieldset class="vkc-pick" data-key="gw-pick-' + esc(m.id) + '"><legend class="small"><b>' + esc(wname(m)) + '</b>' + (m.serial ? ' <span class="muted">№ ' + esc(m.serial) + '</span>' : '') + ' — <b class="num">' + Wt.whole(rec.vals[m.id]) + '</b> м³</legend>' +
-        cms.map(function (x) { return '<label class="vkc-opt"><input type="radio" name="gwp-' + esc(m.id) + '" data-wm="' + esc(m.id) + '" data-wf="cabKey" value="' + esc(x.key) + '"' + (map[m.id] === x.key ? ' checked' : '') + '><span>' + esc(vkcLabel(x)) + (vkcPrev(x) ? ' <span class="muted">· ' + esc(vkcPrev(x)) + '</span>' : '') + '</span></label>'; }).join('') + '</fieldset>';
-    }).join('') + (dup ? '<p class="small warn-ink" data-key="gw-pick-dup">' + ico('alert', 16) + ' ' + esc(t('vkc_dup')) + '</p>' : miss ? '<p class="small muted" data-key="gw-pick-miss">' + esc(t('gw_pick_miss')) + '</p>' : '') + '</div>';
+    var dup = keys.some(function (k, i) { return k && keys.indexOf(k) !== i; });
+    var site = ['hot', 'cold'].map(function (k) { var l = cms.filter(function (c) { return c.kind === k; }); return l.length ? t(k === 'hot' ? 'wt_hot' : 'wt_cold').toLowerCase() + ' ' + l.map(function (c) { return c.serial ? '№ ' + c.serial : '?'; }).join(', ') : ''; }).filter(Boolean).join('; ');
+    return '<div class="gw-pick" data-key="gw-pick"><p class="small muted gw-pick-site">' + esc(t('gw_pick_site', { n: cms.length, l: site || cms.map(vkcLabel).join(', ') })) + '</p><ul class="gw-pick-l">' + ms.map(function (m) {
+      var same = cms.filter(function (c) { return !c.kind || c.kind === m.kind; }), opts = same.length ? same : cms, cur = map[m.id] || '';
+      if (cur && !opts.some(function (c) { return c.key === cur; })) opts = opts.concat(cms.filter(function (c) { return c.key === cur; }));
+      return '<li class="gw-pick-r" data-key="gw-pick-' + esc(m.id) + '"><label for="gwp-' + esc(m.id) + '"><b>' + esc(wname(m)) + '</b><span class="small muted">' + Wt.whole(rec.vals[m.id]) + ' м³</span></label>' +
+        '<select id="gwp-' + esc(m.id) + '" data-wm="' + esc(m.id) + '" data-wf="cabKey">' +
+        opts.map(function (c) { return '<option value="' + esc(c.key) + '"' + (c.key === cur ? ' selected' : '') + '>' + esc((c.serial ? '№ ' + c.serial : vkcLabel(c)) + (c.prev !== null && c.prev !== undefined ? ' · ' + t('gw_pick_was', { v: Math.round(c.prev) }) : '')) + '</option>'; }).join('') +
+        '<option value=""' + (!cur ? ' selected' : '') + '>' + esc(t('gw_pick_none')) + '</option></select></li>';
+    }).join('') + '</ul>' + (dup ? '<p class="small warn-ink" data-key="gw-pick-dup">' + ico('alert', 16) + ' ' + esc(t('vkc_dup')) + '</p>' : '') + '</div>';
   }
   /** Чого бракує адресату й як це виправити тут же: {txt, fix (HTML), block: не можна надіслати}. */
   function gwFix(rec, to, st) {
@@ -2102,7 +2110,7 @@
     if (vo) h += '<p class="small muted gw-in" data-key="gw-via-owner">' + esc(t('shp_via_cab', { o: shFirst(vo.by) || t('shp_someone') })) + '</p>';
     var can = rec && (vk ? gwVkCan(rec) : gwHtmCan(rec));
     if (can) {
-      var hv = gwVals(rec, 'hot'), cv = gwVals(rec, 'cold'), busy = vk ? VJ.busy === 'q' : HW.busy, again = /^(bad|warn)$/.test(st.c);
+      var hv = gwVals(rec, 'hot', vk), cv = gwVals(rec, 'cold', vk), busy = vk ? VJ.busy === 'q' : HW.busy, again = /^(bad|warn)$/.test(st.c);
       var what = vk ? [hv ? t('gw_w_hot', { v: hv }) : '', cv ? t('gw_w_cold', { v: cv }) : ''].filter(Boolean).join('; ') : t('gw_w_hot', { v: hv });
       h += '<p class="small gw-what" data-key="gw-what-' + to + '">' + esc(t('gw_will', { what: what })) + '</p>' +
         '<div class="dest-ch"><button class="btn dest-bg" data-act="gw-bg" data-to="' + to + '" data-id="' + esc(rec.id) + '" data-key="gw-bg-' + to + '"' + (busy ? ' disabled' : '') + '>' + (busy ? SPIN : ico('send', 18)) + '<span>' + esc(t(again ? 'gw_send2' : vk ? 'gw_send_vk' : 'gw_send_htm')) + '</span></button></div>';
@@ -2442,7 +2450,7 @@
     });
     return ch;
   }
-  function vjItems(rec) { return wmeters().filter(function (m) { return hasVal(rec, m.id); }).map(function (m) { return { key: m.cabKey || null, value: String(Wt.whole(rec.vals[m.id])), serial: m.serial || null, kind: m.kind, name: wname(m) }; }); }
+  function vjItems(rec) { return wmeters().filter(function (m) { return hasVal(rec, m.id) && m.cabKey !== ''; }).map(function (m) { return { key: m.cabKey || null, value: String(Wt.whole(rec.vals[m.id])), serial: m.serial || null, kind: m.kind, name: wname(m) }; }); }
   function vjQueue(rec, auto, quiet, cb) {
     var c = wcfg(), items = vjItems(rec); if (!rec || !items.length || VJ.busy) { if (cb) cb(false); return; }
     VJ.busy = 'q'; VJ.err = null; VJ.errFor = rec.id; safeRender();
@@ -2603,9 +2611,13 @@
   // ---------- Кабінет ХТМ: e-mail і пароль (на сервері, зашифровано), рахунок кожної квартири, «Перевірити», автоподача, квитанції ----------
   function cbHtm(g) {
     var key = 'prefs-cab-htm', sec = function (tone, st, body) { return '<section class="panel cb" data-key="' + key + '">' + cbHead(g, tone, st) + body + '</section>'; };
-    if (!hcOn()) return sec('neutral', t('cb_st_off'), cbLine('', '', t('pc_htm_off')) + cbLoginBox());
+    // 180-я: телефон і e-mail для форми передачі ХТМ — тут (окремого пункту «Контакти для ХТМ» у «Налаштуваннях» більше немає); і без входу — для передачі вручну
+    var c0 = S.contacts || {}, ctc = !anyHtm() ? '' : '<details class="tips-box cb-contacts" data-key="prefs-contacts"' + (CB.contacts ? ' open' : '') + '><summary>' + esc(t('p_contacts')) + '</summary><p class="small muted">' + esc(t('p_contacts_sub')) + '</p><div class="grid2">' +
+      '<div class="field"><label for="p-phone">' + esc(t('ho_phone')) + '</label><div class="ctl"><input id="p-phone" type="tel" autocomplete="tel" data-contact="phone" value="' + esc(c0.phone || '') + '"></div></div>' +
+      '<div class="field"><label for="p-email">' + esc(t('ho_email')) + '</label><div class="ctl"><input id="p-email" type="email" autocomplete="email" data-contact="email" value="' + esc(c0.email || '') + '"></div></div></div></details>';
+    if (!hcOn()) return sec('neutral', t('cb_st_off'), cbLine('', '', t('pc_htm_off')) + cbLoginBox() + ctc);
     hcLoad(); var st = HC.st;
-    if (!st) return sec('', '', cbLine('muted', '', t('hc_loading')));
+    if (!st) return sec('', '', cbLine('muted', '', t('hc_loading')) + ctc);
     var conn = hcConn(), relog = !!st.connected && st.state === 'bad_login', c = S.contacts || {}, h = '';
     var tone = conn ? (st.state === 'captcha' ? 'warn' : 'ok') : relog ? 'bad' : 'neutral', stx = t(conn ? (st.state === 'captcha' ? 'cb_st_cap' : 'cb_st_on') : relog ? 'cb_st_relog' : 'cb_st_off');
     var gH = g.ks.indexOf('hot') >= 0;
@@ -2613,7 +2625,7 @@
     if (conn && !CB.hcEdit) {
       h += cpList([cpRow(t('cb_login_l'), st.login, '', '', 'cb-htm-login'), cpRow(t('cb_pw'), t('cb_pw_saved'), '', '', 'cb-htm-pw'),
         cpRow(t('cb_phone'), c.phone || st.phone || t('cb_phone0'), '', '', 'cb-htm-phone')], 'cb-htm-data') +
-        '<p class="small cb-acts"><button class="linkbtn" data-act="cb-hedit" data-key="cb-htm-edit">' + esc(t('cb_edit_login')) + '</button>' + (anyHtm() ? ' · <a class="linkbtn" href="#prefs-contacts" data-key="cb-htm-phone-go">' + esc(t('cb_phone_go')) + '</a>' : '') + '</p>';
+        '<p class="small cb-acts"><button class="linkbtn" data-act="cb-hedit" data-key="cb-htm-edit">' + esc(t('cb_edit_login')) + '</button></p>';
     } else if (conn || relog || CB.open.htm) {
       var fm = HC.form || {};
       h += (relog ? cbLine('cb-bad', 'alert', t('hc_relogin')) : '') + '<form id="hc-form" class="cb-form" novalidate data-key="cb-htm-form">' +
@@ -2625,6 +2637,7 @@
         '<div class="row-actions"><button type="submit" class="btn" data-key="cb-htm-save"' + (HC.busy ? ' disabled' : '') + '>' + (HC.busy === 'connect' ? SPIN + '<span>' + esc(t('hc_connecting')) + '</span>' : esc(t('cb_save_chk'))) + '</button>' +
         (conn ? '<button type="button" class="btn sec" data-act="cb-hedit" data-key="cb-htm-edit-no">' + esc(t('cancel')) + '</button>' : '') + '</div></form>';
     } else h += cbLine('', '', t('pc_htm_off')) + '<p class="cb-acts"><button class="btn sec" data-act="cb-open" data-id="htm" data-key="prefs-cab-htm-connect">' + ico('plus', 18) + '<span>' + esc(t('cab_conn_btn')) + '</span></button></p>';
+    h += ctc;
     // рахунок ХТМ кожної квартири: у кабінеті кілька — вибір (пишемо в налаштування теплолічильника цієї квартири)
     var accs = st.accounts || [];
     g.rows.forEach(function (r) {
@@ -8135,19 +8148,23 @@
   /** Блок «Постачальники й тарифи» на екрані квартири — лише для видів, що є в квартирі. */
   /** «Постачальники, тарифи й рахунки» на екрані квартири (владелец 10.11: «счета совмести с поставщиками и тарифами»): для кожного виду, що є
    *  в квартирі, — постачальник і ціна, під ними ex(k) — номери й дані з платіжки (особовий рахунок, код Водоканалу, EIC, площа, абонплата…). */
-  function provPanel(p, ex) {
-    ex = ex || function () { return ''; };
+  function provPanel(p, ex, o) {
+    ex = ex || function () { return ''; }; o = o || {};
     var ks = prvKinds(); if (!ks.length) return '';
+    // 180-я: o.k — рядок лише цього виду (екран постачальника, без вступу); o.head — лише вступ і вибір пункту (над списком постачальників)
+    if (o.k) ks = ks.indexOf(o.k) >= 0 ? [o.k] : [];
+    if (o.head) ks = [];
     // 147-а: вид, де постачальника обрали в довіднику самі, — рядок з його даними (і без адреси)
     var selRow = function (k) { if (k === 'hot') return prvHotRow(p, ex(k)); var js = prvKinds0(p, k); return prvRow(p, k, js ? js.kinds[k] : null, (js && js.national) || {}, ex(k)); };
     var a = String(p.address || '').trim(), h = '<div class="prov" id="prov" data-key="pv-prov">';
-    var bare = function (msg, key) { return h + '<p class="small muted" data-key="' + key + '">' + esc(msg) + '</p>' + ks.map(function (k) { return k === 'hot' || prvSel(p, k) ? selRow(k) : prvBare(k, ex(k)); }).join('') + '</div>'; };
+    var bare = function (msg, key) { return h + (o.k ? '' : '<p class="small muted" data-key="' + key + '">' + esc(msg) + '</p>') + ks.map(function (k) { return k === 'hot' || prvSel(p, k) ? selRow(k) : prvBare(k, ex(k)); }).join('') + '</div>'; };
     if (!a) return bare(t('prv_noaddr'), 'prov-noaddr');
     var j = prvLoad(p);
     if (!j || j.busy) return bare(t('prv_loading'), 'prov-loading');
     var nat = (j && j.national) || {}, pl = j.found ? j.place : null;
     var pick = function (x) { return '<li><button type="button" class="prv-pick" data-act="prv-settle" data-k="place" data-n="' + esc(x.n) + '" data-h="' + esc(x.h) + '" data-key="prov-pick-' + esc(x.h) + '">' +
       '<b>' + esc(x.name) + '</b><span class="small muted">' + esc(placeWhere(x)) + '</span></button></li>'; };
+    if (o.k) return h + ks.map(function (k) { return k === 'hot' || prvSel(p, k) ? selRow(k) : prvRow(p, k, j.found ? j.kinds[k] : null, nat, ex(k)); }).join('') + '</div>';
     if (j.candidates && j.candidates.length) {
       // кілька пунктів з такою назвою (чи схожих) — людина обирає свій: крупні рядки, без випадного списку
       h += '<p data-key="prov-lead"><b>' + esc(t(j.reason === 'typo' ? 'prv_ask_typo' : 'prv_ask', { a: a })) + '</b></p><ul class="prv-picks" data-key="prov-picks">' + j.candidates.map(pick).join('') + '</ul>' +
@@ -8176,6 +8193,56 @@
       '<p class="prov-org">' + (org ? esc(org) : '<span class="muted">' + esc(t('prv_org_none')) + '</span>') + '</p>' + (sub ? '<p class="small muted" data-key="prov-hot-sub">' + esc(sub) + '</p>' : '') +
       '<p class="prov-price' + (price ? '' : ' none') + '">' + esc(price || t('prv_p_none')) + '</p>' + (extra || '') +
       '<p class="prov-act"><button type="button" class="btn ter sm" data-act="my-go" data-pk="hot" data-key="prov-hot-change">' + ico('edit', 18) + '<span>' + esc(t('prv_hot_change')) + '</span></button>' + (inh ? '' : myGoBtn('hot')) + '</p></div></div>';
+  }
+  /** Дані з платіжки виду (рахунки, коди, абонплата…) — під його постачальником на екрані постачальника. */
+  function pvBills(k) {
+    var p = place(), ms = wmeters(), b = '';
+    var fld = function (id, lbl, attrs, val) { return '<div class="field"><label for="' + id + '">' + lbl + '</label><div class="ctl"><input id="' + id + '" class="num" autocomplete="off" ' + attrs + ' value="' + esc(val) + '"></div></div>'; };
+    if (k === 'heat') b = '<div class="grid2">' + hmAccField() + fld('p-abon', esc(t('p_abon_l')), 'inputmode="decimal"', bill().abon.toFixed(2).replace('.', ',')) + mzkField() + '</div>';
+    if (k === 'hot') b = myProv('hot') && !hotInh(p) ? '' : waccFields('ph', wcfg(), false, 'hot');   // 176-я: рахунок за гарячу — окремо
+    if (k === 'water') b = waccForm() + '<div class="grid2">' + ms.map(function (m) { return wvkField(m, ms.length > 1 ? t('wm_vkid_for', { m: wname(m) }) : t('wm_vkid')); }).join('') + '</div>';
+    if (k === 'elec' || k === 'gas') { var sm = smeters(k); b = sm.map(function (m) { return (sm.length > 1 ? '<p class="small muted pv-mname">' + esc(ename(m)) + '</p>' : '') + '<div class="grid2">' + sprovFields(k, m) + '</div>'; }).join('') + sheatRow(k); }
+    return b ? '<div class="prov-bills" data-key="pv-bills-' + k + '"><p class="prov-bills-t">' + esc(t('pv_bills_t')) + '</p>' + b + '</div>' : '';
+  }
+  /** Види з постачальником у квартирі (вивіз сміття — теж, якщо ввімкнено), у порядку видів. */
+  function pvpKinds(p) { var ks = prvKinds(); if (wasteOn(p)) ks = ks.concat('waste'); return kord(ks); }
+  /** Повний блок постачальника виду (той самий, що був «простирадлом»): назва, ціна, підстава, куди платити, правка — і дані з платіжки. */
+  function pvpDetail(p, k) { return k === 'waste' ? wasteProv(p) : provPanel(p, pvBills, { k: k }); }
+  /** Короткий підсумок для рядка: з того ж блоку (назва, ціна, «треба заповнити»), щоб рядок і екран не розходились. */
+  function pvpSum(p, k) {
+    var d = document.createElement('div'); d.innerHTML = pvpDetail(p, k);
+    var g = function (sel) { var e = d.querySelector(sel); return e ? String(e.textContent || '').replace(/\s+/g, ' ').trim() : ''; };
+    var row = d.querySelector('.prov-row'), price = d.querySelector('.prov-price:not(.none)');
+    var noOrg = !!d.querySelector('.prov-org .muted'), org = noOrg ? '' : g('.prov-org');
+    var inBills = Array.prototype.some.call(d.querySelectorAll('.prov-bills input'), function (i) { return String(i.value || '').trim(); });
+    return { org: org, price: price ? String(price.textContent || '').replace(/\s+/g, ' ').trim() : '', need: !!(row && row.classList.contains('need')) || !price, own: !!d.querySelector('.my-row'), bills: inBills };
+  }
+  /** Група «Постачальники, тарифи й рахунки» на екрані квартири: monobank над усіма, вступ, рядки постачальників (як у «Налаштуваннях»: дотик → екран). */
+  function pvProvList(p) {
+    var ks = pvpKinds(p);
+    if (!ks.length) return monoLink('place') + '<p class="muted">' + esc(t('pv_money_none')) + '</p>';
+    var rows = ks.map(function (k) {
+      var x = pvpSum(p, k), ic = k === 'waste' ? ['trash', 'c-waste'] : PRV_ICO[k];
+      // ціна коротко: «48,63 ₴ за м³ води і 20,61 ₴ водовідведення з 1 жовтня» → «48,63 ₴/м³»
+      var pm = String(x.price || '').match(/(\d[\d\s]*(?:,\d+)?)\s*₴\s*(?:за\s*)?(м³|кВт·год|кВт·ч|Гкал|ГДж|людину|человека|місяць|месяц)?/), pr = pm ? pm[1].trim() + ' ₴' + (pm[2] ? '/' + pm[2] : '') : x.price;
+      var sub = [t(k === 'waste' ? 'ws_k' : 'prv_k_' + k), x.own ? t('my_pill') : '', pr || t('pvp_noprice')].filter(Boolean).join(' · ');
+      return '<li><a class="ios-row pvp-row' + (x.need ? ' need' : '') + '" href="#pvp-' + k + '-' + esc(p.id) + '" data-key="pvp-row-' + k + '">' + '<span class="ios-ico pvp-ico" aria-hidden="true">' + ico(ic[0], 22, ic[1]) + '</span>' +
+        '<span class="ios-t"><b>' + esc(x.org || t('prv_org_none')) + '</b><span class="small muted">' + esc(sub) + '</span></span>' +
+        (x.need ? '<span class="pvp-need" title="' + esc(t('pvp_need')) + '" aria-label="' + esc(t('pvp_need')) + '"></span>' : '') + ico('chev', 18, 'ios-chev') + '</a></li>';
+    }).join('');
+    return '<div class="pvp" data-key="pv-prov">' + monoLink('place') + (provPanel(p, null, { head: true }) || '') + '<ul class="ios-list pvp-list" data-key="pvp-list">' + rows + '</ul></div>';
+  }
+  /** Екран постачальника (другий рівень): «← квартира», вид і значок, той самий блок постачальника з даними з платіжки. */
+  function pvpView(k, pid) {
+    var p = place(pid); if (!p || ['heat', 'water', 'hot', 'elec', 'gas', 'waste'].indexOf(k) < 0) return placeView(pid);
+    if (pid !== S.placeId) { switchPlace(pid); WX.key = ''; p = place(); }
+    if (pvpKinds(p).indexOf(k) < 0) return placeView(p.id);
+    PREF_OPEN['pv-prov'] = true;   // назад — на екран квартири з відкритою групою постачальників
+    var ic = k === 'waste' ? ['trash', 'c-waste'] : PRV_ICO[k];
+    var h = '<p class="rec-back"><a href="#place-' + esc(p.id) + '" data-key="pvp-back">← ' + esc(placeLabel(p)) + '</a></p>' +
+      '<h1 class="pvp-h"><span class="pvp-ico" aria-hidden="true">' + ico(ic[0], 24, ic[1]) + '</span><span>' + esc(t(k === 'waste' ? 'ws_k' : 'prv_k_' + k)) + '</span></h1>' +
+      '<section class="panel pvp-one" data-key="pvp-' + k + '">' + pvpDetail(p, k) + '</section>';
+    return { screen: 'S42', route: 'pvp-' + k + '-' + p.id, html: h };
   }
   /** Вид без довідника (немає адреси, вантажиться) — лише назва виду й дані з платіжки. */
   function prvBare(k, extra) {
@@ -9002,20 +9069,9 @@
       return '<li class="mrow" data-key="pv-rm-' + esc(x.what) + '"><div class="mrow-main">' + ico(KINDS[x.kind].icon, 22, KINDS[x.kind].cls) + '<span class="grow"><b>' + esc(x.title) + '</b><span class="small muted">' + esc(t('am_removed_on', { d: fmtDate(x.at, true) })) + '</span></span>' +
         '<button type="button" class="btn sec" data-act="m-restore" data-what="' + esc(x.what) + '" data-key="pv-restore-' + esc(x.what) + '">' + esc(t('am_restore')) + '</button></div></li>';
     }).join('') + '</ul>';
-    // дані з платіжки кожного виду — під його постачальником
-    var fld = function (id, lbl, attrs, val, unit, help) { return '<div class="field"><label for="' + id + '">' + lbl + '</label><div class="ctl"><input id="' + id + '" class="num" autocomplete="off" ' + attrs + ' value="' + esc(val) + '">' + (unit ? '<span class="unit">' + unit + '</span>' : '') + '</div>' + (help || '') + '</div>'; };
-    var optl = function (x) { return esc(x) + ' <span class="muted small">(' + esc(t('b_opt')) + ')</span>'; };
-    var bills = function (k) {
-      var b = '';
-      if (k === 'heat') b = '<div class="grid2">' + hmAccField() +
-        fld('p-abon', esc(t('p_abon_l')), 'inputmode="decimal"', bill().abon.toFixed(2).replace('.', ','), '', '') + mzkField() + '</div>';
-      if (k === 'hot') b = myProv('hot') && !hotInh(p) ? '' : waccFields('ph', wcfg(), false, 'hot');   // 176-я: рахунок за гарячу — окремо
-      if (k === 'water') b = waccForm() + '<div class="grid2">' + ms.map(function (m) { return wvkField(m, ms.length > 1 ? t('wm_vkid_for', { m: wname(m) }) : t('wm_vkid')); }).join('') + '</div>';
-      if (k === 'elec' || k === 'gas') { var sm = smeters(k); b = sm.map(function (m) { return (sm.length > 1 ? '<p class="small muted pv-mname">' + esc(ename(m)) + '</p>' : '') + '<div class="grid2">' + sprovFields(k, m) + '</div>'; }).join('') + sheatRow(k); }
-      return b ? '<div class="prov-bills" data-key="pv-bills-' + k + '"><p class="prov-bills-t">' + esc(t('pv_bills_t')) + '</p>' + b + '</div>' : '';
-    };
-    // monobank — на виду (власник 11.11: «не побачив, де monobank»): усі рахунки квартири з платежів одним заходом
-    var prov = monoLink('place') + (provPanel(p, bills) || '<p class="muted">' + esc(t('pv_money_none')) + '</p>') + wasteProv(p);   // вивіз сміття — постачальник (налаштування — серед лічильників)
+    // 180-я (власник 23.11, скрін: «избавься от простыни текста, разбей по поставщикам, как всё в настройках — второй уровень; monobank над всеми»):
+    // monobank — над усіма (рахунки всіх постачальників квартири з платежів одним заходом), далі вступ (пункт довідника) і постачальники рядками → екран кожного (#pvp-<вид>-<квартира>)
+    var prov = pvProvList(p);
     // про квартиру
     var chips = t('pv_chips').split('|').map(function (c) { return '<button type="button" class="chip" data-act="pv-chip" data-v="' + esc(c) + '" aria-pressed="' + (p.name === c) + '">' + esc(c) + '</button>'; }).join('');
     var sw = PCOLORS.map(function (c) { return '<label class="swatch" style="--pc:var(--pc-' + c + ')"><input type="radio" name="pv-color" value="' + c + '"' + (placeColor(p) === c ? ' checked' : '') + '><span class="sw-dot" aria-hidden="true">' + ico('check', 20) + '</span><span class="sr">' + esc(t('pc_' + c)) + '</span></label>'; }).join('');
@@ -9670,15 +9726,25 @@
    *  виду → налаштування цього лічильника на екрані квартири; «Додати лічильник») · Передача показань · Загальні · Про сервіс. Рядок групи → окремий
    *  екран #prefs-<група>: без розкривашок, «Згорнути» й панелі в панелі. Колишні «Вода» й «Опалення» (лише поточної квартири) — у налаштуваннях
    *  лічильників на екрані квартири; #prefs-water / #prefs-heat і «до поля в налаштуваннях» (to-water, to-nometer, to-meter) ведуть туди (meterSet). */
-  var PREF_SEC = [['pgs_acc', ['acc']], ['pgs_places', null], ['pgs_conn', ['cabs', 'contacts', 'mono']], ['pgs_gen', ['remind', 'look', 'data']]];
+  // 180-я (власник 23.11: «зачем тут контакты для ХТМ ещё раз, если для этого есть отдельный раздел»): телефон і e-mail для форми ХТМ — на екрані ХТМ у «Кабінетах і надсиланні»
+  var PREF_SEC = [['pgs_acc', ['acc']], ['pgs_places', null], ['pgs_conn', ['cabs', 'mono']], ['pgs_gen', ['remind', 'look', 'data']]];
   function psRow(inner, attrs, tag) { tag = tag || 'a'; return '<li><' + tag + ' class="ios-row ' + attrs + '>' + inner + '</' + tag + '></li>'; }
   function psTxt(title, sub) { return '<span class="ios-t"><b>' + esc(title) + '</b>' + (sub ? '<span class="small muted">' + esc(sub) + '</span>' : '') + '</span>'; }
   /** «Квартири» (власник 16.11 13:25): лише рядки квартир — назва й адреса, під ними її лічильники одним рядком; дотик → екран квартири з усіма
    *  налаштуваннями (лічильники, постачальники); «Назад» звідти — у «Налаштування» (PV_FROM). Унизу — «Додати квартиру». */
+  /** 180-я (власник 23.11, скрін «Квартири»: «перелік лічильників — значками, а не текстом»): значки видів кольором виду, «×2» — коли кілька; текст — для читалки екрана. */
+  function placeKindIcons(p) {
+    var ks = placeKindList(p); if (!ks.length) return '';
+    var wm = ((p.water && p.water.meters) || []).filter(function (m) { return m && !m.deleted && !m.removed; }), ms = (p.meters || []).filter(function (m) { return m && !m.deleted && !m.removed; });
+    var n = function (k) { return k === 'hot' || k === 'cold' ? wm.filter(function (m) { return m.kind === k; }).length : k === 'elec' || k === 'gas' ? ms.filter(function (m) { return m.kind === k; }).length : 1; };
+    return '<span class="ps-kk" role="img" aria-label="' + esc(placeKinds(p)) + '" title="' + esc(placeKinds(p)) + '" data-key="ps-kk-' + esc(p.id) + '">' + ks.map(function (k) {
+      return '<span class="ps-k">' + ico(KINDS[k].icon, 18, KINDS[k].cls) + (n(k) > 1 ? '<span class="ps-kn">×' + n(k) + '</span>' : '') + '</span>'; }).join('') + '</span>';
+  }
   function prefPlaces() {
     var rows = places().map(function (p) {
-      var pid = esc(p.id), sub = [placeSub(p), placeKinds(p)].filter(Boolean).join(' · ');
-      return psRow('<span class="ios-ico ps-pm" aria-hidden="true">' + pmark(p, 22, 'pdot') + '</span>' + psTxt(placeLabel(p), sub) + ico('chev', 18, 'ios-chev'),
+      var pid = esc(p.id), sub = placeSub(p) || (placeKindList(p).length ? '' : t('pv_none_short'));
+      return psRow('<span class="ios-ico ps-pm" aria-hidden="true">' + pmark(p, 22, 'pdot') + '</span><span class="ios-t"><span class="ps-tl"><b>' + esc(placeLabel(p)) + '</b>' + placeKindIcons(p) + '</span>' +
+        (sub ? '<span class="small muted">' + esc(sub) + '</span>' : '') + '</span>' + ico('chev', 18, 'ios-chev'),
         'ps-head" style="--pc:var(--pc-' + placeColor(p) + ')" href="#place-' + pid + '" data-key="pl-open-' + pid + '"');
     }).join('');
     rows += psRow(ico('plus', 22, 'ios-ico') + psTxt(t('pl_add'), ''), 'ps-addp" type="button" data-act="pl-add" data-key="prefs-place-add"', 'button');
@@ -9723,9 +9789,6 @@
       PG('acc', 'shield', t('pg_acc'), accSub(), syncPanel()),
       PG('cabs', 'send', t('pg_cabs'), cabsSub(), sub === 'cabs' || (!sub && SCROLL_TO) ? cabsPanel() : ''),   // 168-а: блоки постачальників — лише на своєму екрані
       // 142-а: телефон і e-mail — лише для форми ХТМ: немає квартири з теплом від ХТМ — групу не показуємо (дані не стираємо)
-      !anyHtm() ? '' : PG('contacts', 'phone', t('pg_contacts'), t('pg_contacts_s'), '<div class="panel" data-key="prefs-contacts"><h2>' + esc(t('p_contacts')) + '</h2><p class="small muted">' + esc(t('p_contacts_sub')) + '</p><div class="grid2">' +
-        '<div class="field"><label for="p-phone">' + esc(t('ho_phone')) + '</label><div class="ctl"><input id="p-phone" type="tel" autocomplete="tel" data-contact="phone" value="' + esc(c.phone || '') + '"></div></div>' +
-        '<div class="field"><label for="p-email">' + esc(t('ho_email')) + '</label><div class="ctl"><input id="p-email" type="email" autocomplete="email" data-contact="email" value="' + esc(c.email || '') + '"></div></div></div></div>'),
       // monobank — окремим пунктом (власник 11.11: «не побачив, де monobank»): рахунки всіх квартир і оплати вивозу сміття з виписки
       Mn ? PG('mono', 'wallet', t('mono_t'), t('mono_link_s'), '<div class="panel" data-key="prefs-mono"><p>' + esc(t('mono_l')) + '</p><p class="small muted">' + esc(t('mono_pg_h')) + '</p>' + monoLink('prefs') + '</div>') : '',
       PG('remind', 'bell', t('pg_remind'), t('pg_remind_s'), remindPanel()),
@@ -9766,9 +9829,10 @@
       if (!a.telegram && Y()._cfg && Y()._cfg.botUsername) h += '<div class="panel" data-key="prefs-tg"><h2>' + esc(t('acct_link_tg')) + '</h2><p class="small muted">' + esc(t('acct_link_bot_sub')) + '</p>' +
         '<p><button class="btn" data-act="link-bot" data-key="prefs-link-bot">' + esc(t('acct_link_bot', { bot: Y()._cfg.botUsername })) + '</button></p><div id="tg-widget" data-onauth="TeploTgLink"></div></div>';
       if (!a.hasPassword) h += '<div class="panel" data-key="prefs-pass"><h2>' + esc(t('acct_set_pass')) + '</h2><form id="setpass-form" novalidate>' + authFields('new-password') + '<div class="help block" id="setpass-err"></div><button class="btn sec" type="submit">' + esc(t('acct_set_pass_btn')) + '</button></form></div>';
-      h += '<div class="panel" data-key="prefs-out"><button class="btn sec block" data-act="logout" data-key="prefs-logout">' + esc(t('logout')) + '</button><p class="small muted" style="margin-top:8px">' + esc(t('logout_sub')) + '</p></div>';
+      // 180-я (власник 23.11, скрін: «основний візуальний якір — Вийти, а не Видалити, на всіх темах»): «Вийти» — головна кнопка, «Видалити акаунт» — тиха, другорядна
+      h += '<div class="panel" data-key="prefs-out"><button class="btn block" data-act="logout" data-key="prefs-logout">' + esc(t('logout')) + '</button><p class="small muted" style="margin-top:8px">' + esc(t('logout_sub')) + '</p></div>';
       // 154-а: видалення акаунта (App Store 5.1.1(v)); 164-а — окремою карткою внизу, червоною кнопкою (не посиланням), підтвердження поруч
-      return h + '<div class="panel danger-zone" data-key="prefs-danger"><button class="btn danger block" data-act="acct-del-ask" data-key="prefs-acct-del">' + ico('trash', 18) + '<span>' + esc(t('acct_del')) + '</span></button>' +
+      return h + '<div class="panel danger-zone quiet" data-key="prefs-danger"><button class="btn danger quiet block" data-act="acct-del-ask" data-key="prefs-acct-del">' + ico('trash', 18) + '<span>' + esc(t('acct_del')) + '</span></button>' +
         '<p class="small muted" style="margin-top:8px">' + esc(t('acct_del_s')) + '</p><div id="acct-del-confirm"></div></div>';
     }
     if (y.mode === 'server') return '<div class="panel" data-key="prefs-sync"><p>' + esc(t('sync_local')) + '</p><p>' + esc(t('sync_local_sub_site')) + '</p><a class="btn" href="#login" data-key="prefs-login">' + esc(t('login')) + '</a></div>';
@@ -10707,7 +10771,9 @@
     var rm = r.match(/^rec-([\w-]+?)(-edit)?$/), wm = r.match(/^wrec-([\w-]+)$/), gn = r.match(/^gap-new-([\w-]+)$/), gm = !gn && r.match(/^gap-([\w-]+)$/), pm = r.match(/^place-([\w-]+)$/), em = r.match(/^erec-([\w-]+)$/);
     if (!gn) GAP_PRESET = null;
     if (PQ && !/^(wadd|eadd|gadd|meter|add-place)$/.test(r)) { PQ = null; pqKeep(); }
-    if (pm) view = placeView(pm[1]);
+    var pvm = r.match(/^pvp-(heat|water|hot|elec|gas|waste)-([\w-]+)$/);
+    if (pvm) view = pvpView(pvm[1], pvm[2]);   // 180-я: екран постачальника квартири
+    else if (pm) view = placeView(pm[1]);
     else if (em) view = erecView(em[1]);
     else if (gn) view = gapView(null, gn[1]);
     else if (gm) view = gapView(gm[1]);
@@ -10721,6 +10787,7 @@
       r = pr0 ? 'place-' + pr0.id : 'prefs'; try { history.replaceState(null, '', '#' + r); } catch (e0) { /* старий браузер */ }
       view = pr0 ? placeView(pr0.id) : V.prefs();
     }
+    else if (r === 'prefs-contacts') { CB.contacts = true; r = 'prefs-cabs-htm'; try { history.replaceState(null, '', '#' + r); } catch (e1) { /* старий браузер */ } view = V.prefs('cabs', 'htm'); }   // 180-я: контакти — на екрані ХТМ
     else if (/^prefs-cabs-[a-z0-9-]+$/.test(r)) view = V.prefs('cabs', r.slice(11));   // 176-а: екран постачальника
     else if (/^prefs-[a-z]+$/.test(r)) view = V.prefs(r.slice(6));   // 157-а: група налаштувань — окремий екран (164-а: і в браузері)
     else if (/^step-\d+$/.test(r)) view = (S.meter ? V.step(+r.split('-')[1]) : V.meter());

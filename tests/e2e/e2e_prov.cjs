@@ -8,6 +8,16 @@ let pass = 0, fail = 0; const ok = (n, c, x) => { if (c) { pass++; console.log('
 (async () => {
   const b = await chromium.launch(); const p = await (await require('./pvopen.cjs').ctx(b, { viewport: { width: 360, height: 800 }, locale: 'uk-UA' })).newPage();
   const errs = []; p.on('pageerror', e => errs.push(e.message));
+  // 180-я: постачальники квартири — рядками, дані кожного — на його екрані (#pvp-<вид>-<квартира>): перед зверненням до блоку постачальника тест сам переходить туди
+  let PID = 'main';
+  const pvGo = async sel => {
+    const m = String(sel).match(/data-key=prov-(?:yes-|other-|save-|doc-|next-|form-)?(elec|gas|water|heat|hot|waste)\b/), top = /data-key=(prov-lead|prov-pick|prov-unsettle|prov-alts|pv-prov)|prv-pick/.test(String(sel));
+    if (!m && !top) return;
+    const h = await p.evaluate(() => location.hash), hm = h.match(/^#(?:place|pvp-[a-z]+)-([\w-]+)$/); if (hm) PID = hm[1];
+    if (top) { if (/^#pvp-/.test(h)) { await p.goto(U + '#place-' + PID); await p.waitForTimeout(700); } return; }
+    if (h !== '#pvp-' + m[1] + '-' + PID) { await p.goto(U + '#pvp-' + m[1] + '-' + PID); await p.waitForTimeout(700); }
+  };
+  for (const fn of ['textContent', 'click', '$', '$eval', '$$eval', 'inputValue']) { const o = p[fn].bind(p); p[fn] = async (sel, ...a) => { await pvGo(sel); return o(sel, ...a); }; }
   const s = demo({ second: true, elec: 1, today: '2026-11-05' });
   s.places[0].address = 'пр. Перемоги 86А, кв. 61';
   s.places[1].name = 'Лозовеньки'; s.places[1].address = 'Малая Даниловка, ул.Академическая 10, кв.20';

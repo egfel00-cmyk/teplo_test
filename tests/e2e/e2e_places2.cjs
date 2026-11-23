@@ -4,7 +4,7 @@
 const { chromium } = require('playwright'); const demo = require('./demo.cjs');
 let pass = 0, fail = 0; const ok = (n, c, i) => { console.log((c ? '  OK  ' : ' FAIL ') + n + (!c && i !== undefined ? '  → ' + JSON.stringify(i) : '')); c ? pass++ : fail++; };
 (async () => {
-  const b = await chromium.launch(); const ctx = await require('./pvopen.cjs').ctx(b, { viewport: { width: 390, height: 844 } }); const p = await ctx.newPage(); const errs = [];
+  const b = await chromium.launch(); const ctx = await require('./pvopen.cjs').ctx(b, { viewport: { width: 390, height: 844 } }); const p = await ctx.newPage(); const errs = []; require('./pvnav.cjs')(p, 'http://127.0.0.1:8013/');
   p.on('pageerror', e => errs.push(e.message)); p.on('dialog', d => d.accept()); await require('./askauto.cjs')(p);
   const st = () => p.evaluate(() => JSON.parse(localStorage.getItem('teplo.v1')));
   const hash = () => p.evaluate(() => location.hash);
@@ -128,11 +128,13 @@ let pass = 0, fail = 0; const ok = (n, c, i) => { console.log((c ? '  OK  ' : ' 
   await go('place-pz'); await p.waitForTimeout(900);
   const zm = await p.$$eval('#pg-pv-meters .mrow-main b', es => es.map(e => e.textContent));
   ok('екран квартири: лічильники в тому ж порядку', /Світло/.test(zm[0]) && /Гаряча/.test(zm[1]) && /Холодна/.test(zm[2]) && /Газ/.test(zm[3]) && /Опалення/.test(zm[4]), zm);
-  const zp = await p.$$eval('.prov-row', es => es.map(e => e.getAttribute('data-key').replace('prov-', '')));
+  const zp = await p.$$eval('[data-key^=pvp-row-]', es => es.map(e => e.getAttribute('data-key').slice(8)));   // 180-я: постачальники — рядками
   // 176-я: гаряча вода — своїм рядком (свій рахунок і постачальник), одразу після холодної
   ok('«Постачальники й тарифи»: світло, вода, гаряча, газ, опалення (вивіз сміття — серед лічильників, 115-а)', JSON.stringify(zp.filter(x => x !== 'waste')) === JSON.stringify(['elec', 'water', 'hot', 'gas', 'heat']), zp);
-  const zb = await p.$$eval('#pg-pv-prov [data-key^=pv-bills-]', es => es.map(e => e.getAttribute('data-key').slice(9)));
-  ok('дані з платіжки — під своїм постачальником: світло, вода, гаряча, газ, опалення', JSON.stringify(zb) === JSON.stringify(['elec', 'water', 'hot', 'gas', 'heat']), zb);
+  const zb = []; const zpid = (await p.evaluate(() => location.hash)).replace('#place-', '');
+  for (const k of ['elec', 'water', 'hot', 'gas', 'heat']) { await p.goto('http://127.0.0.1:8013/#pvp-' + k + '-' + zpid); await p.waitForTimeout(500); if (await p.$('[data-key=pvp-' + k + '] [data-key=pv-bills-' + k + ']')) zb.push(k); }
+  await p.goto('http://127.0.0.1:8013/#place-' + zpid); await p.waitForTimeout(500);
+  ok('дані з платіжки — на екрані свого постачальника: світло, вода, гаряча, газ, опалення', JSON.stringify(zb) === JSON.stringify(['elec', 'water', 'hot', 'gas', 'heat']), zb);
   await go('history'); await p.click('[data-act=place-view][data-id=pz]').catch(() => {}); await p.waitForTimeout(300);
   const zs = await p.$$eval('[data-key=kind-switch] button', es => es.map(e => e.getAttribute('data-v')));
   ok('історія: перемикач видів у тому ж порядку', sorted(zs) && zs.length >= 2, zs);

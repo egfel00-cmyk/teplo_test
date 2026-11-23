@@ -2606,6 +2606,12 @@ details.mypay[open] > summary .mypay-amt, details.mypay[open] > summary .mypay-s
 .ps-addp { color: var(--tint, var(--c-ink)); }
 :root:root .ios-row.ps-addp .ios-ico { color: var(--tint, var(--c-ink)); }
 .ps-addp .ios-t b { font-weight: 600; }
+/* 180-я: лічильники квартири — значками в рядку назви (колір виду, «×2» — кілька), адреса — під нею */
+.ps-tl { display: flex; align-items: center; gap: 10px; min-width: 0; flex-wrap: wrap; row-gap: 2px; }
+.ps-tl > b { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ps-kk { display: inline-flex; align-items: center; gap: 8px; flex: none; }
+.ps-k { display: inline-flex; align-items: center; gap: 1px; }
+.ps-kn { font-size: 13px; font-weight: 500; color: var(--c-ink-2); font-variant-numeric: tabular-nums; }
 /* екран групи: картки одна під одною; заголовок єдиної картки повторював назву екрана — ховаємо */
 .pg-one { display: grid; gap: var(--sp-4); }
 .pg-one > .panel { margin: 0; }
@@ -2617,6 +2623,11 @@ details.mypay[open] > summary .mypay-amt, details.mypay[open] > summary .mypay-s
 /* небезпечні дії (видалити акаунт, стерти дані) — окрема картка внизу, червона кнопка контуром; остаточне «Так, видалити» — суцільна */
 .danger-zone .btn.danger { width: 100%; }
 .danger-zone .confirm { margin-top: 12px; }
+/* 180-я: «Видалити акаунт» — другорядна (без рамки й заливки, червоний лише текстом), головна на екрані — «Вийти» */
+:root:root .btn.danger.quiet { border-color: transparent; background: transparent; box-shadow: none; font-weight: 500; }
+:root:root .btn.danger.quiet:hover { background: var(--c-bad-soft); border-color: transparent; }
+.danger-zone.quiet { padding-top: 8px; padding-bottom: 12px; }
+.danger-zone.quiet > p.small { text-align: center; margin-inline: auto; }
 /* «Коли лічильник знято» — розкривашкою в налаштуваннях лічильника на екрані квартири */
 .nm-box { margin: 12px 0 0; }
 .nm-box .nm-rules { margin: 8px 0 12px; padding-left: 18px; }
@@ -3510,9 +3521,17 @@ fieldset { min-inline-size: 0; }
 .gw-acc-r input { flex: 1 1 auto; min-width: 0; min-height: var(--tap); padding: 0 14px; border-radius: var(--r-btn); border: 1px solid var(--c-field-line); background: var(--c-field-bg); color: var(--c-ink); font: inherit; font-variant-numeric: tabular-nums; }
 .gw-acc-r .btn { flex: none; }
 .gw-acc-in { margin: 8px 0 0; display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
-.gw-pick { display: grid; gap: 10px; }
+.gw-pick { display: grid; gap: 8px; }
 .gw-pick > p { margin: 0; }
-.gw-pick .vkc-pick { margin: 0; }
+/* 180-я, друга правка: рядок на водомір — назва й показання ліворуч, вибір лічильника сайту праворуч (на вузькому — під назвою) */
+.gw-pick-l { list-style: none; margin: 0; padding: 0; }
+.gw-pick-r { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr); gap: 6px 12px; align-items: center; padding: 10px 0; border-top: 1px solid var(--c-line); }
+.gw-pick-r:first-child { border-top: 0; }
+.gw-pick-r label { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 8px; min-width: 0; }
+.gw-pick-r label b { font-weight: 600; overflow-wrap: anywhere; }
+.gw-pick-r select { width: 100%; min-height: 44px; padding: 0 12px; border-radius: var(--r-btn); border: 1px solid var(--c-field-line); background-color: var(--c-field-bg); color: var(--c-ink); font: 500 16px var(--font); font-variant-numeric: tabular-nums; }
+@container (max-width: 420px) { .gw-pick-r { grid-template-columns: minmax(0, 1fr); } }
+.gw-pick { container-type: inline-size; }
 
 /* ===== 179-я: спільна квартира — «Спільний доступ» на екрані квартири, позначка біля назви, #join (власник 23.11: «не перегружай интерфейс»).
    Люди — рядками з лініями (без «панелі в панелі»), аватар — нейтральний кружок з першою літерою; позначка «спільна» — тихий значок людей і число. */
@@ -3574,3 +3593,22 @@ fieldset { min-inline-size: 0; }
   .shp-g.two .shp-inv { border-top: 0; padding-top: 0; }
   .shp-g.two .shp-list { margin-bottom: 0; }
 }
+
+/* ===== 180-я: «Постачальники, тарифи й рахунки» — рядками з переходом на екран постачальника (власник 23.11: «избавься от простыни текста, второй уровень, monobank над всеми») */
+.pvp .mono-btn, .pvp > .mono-link { margin-bottom: var(--sp-3); }
+.pvp .prov { margin: 0 0 var(--sp-3); }
+.pvp .prov > p { margin: 0 0 6px; }
+.pvp-list { border: 1px solid var(--c-line); }
+.pvp-row .pvp-ico { display: inline-flex; align-items: center; justify-content: center; width: 36px; height: 36px; border-radius: 10px; background: var(--c-surface-2); }
+.pvp-row .ios-t b { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pvp-need { flex: none; width: 8px; height: 8px; border-radius: 50%; background: var(--c-warn); }
+.pvp-h { display: flex; align-items: center; gap: 12px; }
+.pvp-h .pvp-ico { display: inline-flex; align-items: center; justify-content: center; width: 40px; height: 40px; border-radius: 12px; background: var(--c-surface-2); }
+.pvp-one .prov { margin: 0; }
+.pvp-one .prov-row { border: 0; padding-top: 0; grid-template-columns: minmax(0, 1fr); }
+/* вид уже в заголовку екрана — у блоці не повторюємо значок і назву виду (позначки «свій» / «перевірено» лишаються) */
+.pvp-one .prov-row > .pst-ico, .pvp-one .prov-k > b { display: none; }
+.pvp-one .prov-k:not(:has(.prov-ok)) { display: none; }
+.pvp-one .prov-b { padding-left: 0; }
+/* 180-я: поля з платіжки на екрані постачальника й у групах квартири — на всю ширину картки (auto-fit: два поля — дві половини, а не дві третини з дірою справа) */
+@media (min-width: 600px) { .pvp-one .grid2, .pgroup .grid2, .cb .grid2 { grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr)); } }

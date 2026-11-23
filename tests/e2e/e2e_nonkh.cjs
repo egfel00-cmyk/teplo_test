@@ -35,7 +35,7 @@ let pass = 0, fail = 0; const ok = (n, c, x) => { if (c) { pass++; console.log('
   // Харків (без адреси) — як було
   await open(demo({ today: '2026-11-18' }), 'prefs-remind');
   const rk = await txt('[data-key=prefs-remind-sub]');
-  ok('Харків: «тепло — 21-го (ХТМ до 25-го), вода — 16-го (Водоканал до 20-го)»; «Контакти для ХТМ» є', /^Тепло21-го \(ХТМ до 25-го\)$/.test(await txt('[data-key=rm-heat]')) && /^Вода16-го \(Водоканал до 20-го\)$/.test(await txt('[data-key=rm-water]')) && (await p.goto(U + '#prefs'), await p.waitForTimeout(500), !!(await p.$('[data-key=pgr-contacts]'))), rk);
+  ok('Харків: «тепло — 21-го (ХТМ до 25-го), вода — 16-го (Водоканал до 20-го)»; «Контакти для ХТМ» — на екрані ХТМ (180-я)', /^Тепло21-го \(ХТМ до 25-го\)$/.test(await txt('[data-key=rm-heat]')) && /^Вода16-го \(Водоканал до 20-го\)$/.test(await txt('[data-key=rm-water]')) && (await p.goto(U + '#prefs-cabs-htm'), await p.waitForTimeout(800), !!(await p.$('[data-key=prefs-contacts]'))), rk);
   await p.goto(U + '#home'); await p.waitForTimeout(600);
   ok('Харків 18.11: картка холодної — «Передати до 20 листопада»', /Передати до 20 листопада/.test(await txt('.ucard-cold')), await txt('.ucard-cold'));
 
@@ -45,7 +45,7 @@ let pass = 0, fail = 0; const ok = (n, c, x) => { if (c) { pass++; console.log('
   await open(two, 'prefs-remind');
   const r2 = await txt('[data-key=prefs-remind-sub]');
   ok('дві квартири: «вода: «Моя квартира» — 16-го (Водоканал до 20-го), «Буча» — 26-го (до 30-го)»; тепло — один строк', /^Вода«Моя квартира» — 16-го \(Водоканал до 20-го\)«Буча» — 26-го \(до 30-го\)$/.test(await txt('[data-key=rm-water]')) && /^Тепло21-го/.test(await txt('[data-key=rm-heat]')), r2);
-  ok('дві квартири: «Контакти для ХТМ» є (перша — Харків)', (await p.goto(U + '#prefs'), await p.waitForTimeout(500), !!(await p.$('[data-key=pgr-contacts]'))));
+  ok('дві квартири (перша — Харків): «Контакти для ХТМ» — на екрані ХТМ, у «Налаштуваннях» пункту немає (180-я)', (await p.goto(U + '#prefs'), await p.waitForTimeout(500), !(await p.$('[data-key=pgr-contacts]'))) && (await p.goto(U + '#prefs-contacts'), await p.waitForTimeout(800), /#prefs-cabs-htm$/.test(p.url()) && !!(await p.$('[data-key=prefs-contacts] #p-phone'))));
   // 143-я: світло не Харківщини — вікно з довідника (Львівобленерго 28–3), а не харківське (передостаннє–3)
   const lviv = (today) => { const s = demo({ today, elec: 1 }); s.places[0].address = 'м. Львів, вул. Городоцька, 1, кв. 1'; s.places[0].city = { n: 'Львів', r: 'lv' }; return s; };
   await open(lviv('2026-11-28'), 'elec');

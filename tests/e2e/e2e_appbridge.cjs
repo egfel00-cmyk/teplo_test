@@ -155,7 +155,8 @@ const UA = 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/6
     (await P4.$$('.ios-row')).length >= 8 && !(await P4.$('details.pgroup')) && lr.r === 'prefs' && lr.up === '', lr);
   // 164-а (власник 13:25): «Квартири» — лише рядки квартир, під назвою — її лічильники одним рядком
   const pl = await P4.$$eval('[data-key=pgs-places] .ps-head', es => es.map(e => e.textContent));
-  ok('v4 «Квартири»: рядок на кожну квартиру, лічильники — підписом', pl.length === 3 && /Світло/.test(pl[0]) && /Газ/.test(pl[0]) && !(await P4.$('.ps-m')), pl);
+  const kk0 = await P4.$eval('[data-key^=ps-kk-]', e => e.getAttribute('aria-label')).catch(() => '');
+  ok('v4 «Квартири»: рядок на кожну квартиру, лічильники — значками (180-я), текст — для читалки', pl.length === 3 && /Світло/.test(kk0) && /Газ/.test(kk0) && !(await P4.$('.ps-m')), [pl, kk0]);
   await P4.click('[data-key=pgr-look]'); await P4.waitForTimeout(700); lr = await last(P4);
   ok('v4 рядок «Вигляд» → екран групи: #prefs-look, назва — h1 групи, «‹» → prefs, вкладка prefs', (await P4.evaluate(() => location.hash)) === '#prefs-look' &&
     lr.r === 'prefs-look' && lr.tab === 'prefs' && lr.up === 'prefs' && lr.title === (await P4.textContent('#main h1')).trim() && !!(await P4.$('.pg-one [data-key=prefs-theme]')), lr);

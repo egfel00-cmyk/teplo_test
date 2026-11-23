@@ -19,7 +19,7 @@ const state = (o) => {
 (async () => {
   const b = await chromium.launch();
   const ctx = await b.newContext({ viewport: { width: 390, height: 844 }, locale: 'uk-UA' });
-  const p = await ctx.newPage(); const errs = [];
+  const p = await ctx.newPage(); const errs = []; require('./pvnav.cjs')(p, B);
   p.on('pageerror', e => errs.push('pageerror: ' + e.message));
   const put = async (s) => { await p.goto(B); await p.evaluate(x => { localStorage.clear(); localStorage.setItem('teplo.v1', JSON.stringify(x)); localStorage.setItem('teplo.cc', JSON.stringify({ v: 1, a: 0, at: new Date().toISOString(), id: 'e2e' })); }, s); };
   const go = async (route) => { await p.goto('about:blank'); await p.goto(B + '#' + route); await p.waitForTimeout(700); };
