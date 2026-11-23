@@ -3634,6 +3634,13 @@ fieldset { min-inline-size: 0; }
 /* 180-я: поля з платіжки на екрані постачальника й у групах квартири — на всю ширину картки (auto-fit: два поля — дві половини, а не дві третини з дірою справа) */
 @media (min-width: 600px) { .pvp-one .grid2, .pgroup .grid2, .cb .grid2 { grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr)); } }
 
+/* 182-а: свій вхід ХТМ окремої квартири — кнопка, форма й рядок у «Кабінетах» */
+.hp-own { margin: 8px 0 0; }
+.hp-own .linkbtn { display: inline-flex; align-items: center; gap: 6px; }
+.hp-form { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--c-line); }
+.hp-form .hp-t { margin: 0 0 4px; }
+.hp-acts { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; }
+
 </style>
 <style>.top { padding-top: max(12px, env(safe-area-inset-top)); }</style>
 </head>
@@ -5779,6 +5786,7 @@ fieldset { min-inline-size: 0; }
       gw_w_htm: 'ХТМ — гаряча {h}', gw_w_vk: 'Водоканалу — гаряча {h}, холодна {c}', gw_w_vk1: 'Водоканалу — гаряча {h}', gw_w_vk0: 'Водоканалу — холодна {c}',
       gw_guest: 'Надсилати у фоні можна, коли ввійдете в «передай».', gw_send2: 'Відправити ще раз', gw_toast: 'Надсилаємо у фоні: {to}', gw_ok_htm: 'ХТМ прийняв показання гарячої води', gw_self: 'Передати самі: бот, телефон, цифри',
       shp_bg_t: 'Надсилати у фоні через мої кабінети', shp_bg_s: 'Учасники надсилатимуть показання цієї квартири через ваші підключення ({w}). Паролів вони не бачать, ваші інші квартири — лише ваші.', shp_bg_s0: 'Підключіть кабінет ХТМ чи місцевого постачальника — і учасники зможуть надсилати показання цієї квартири через нього. Паролів вони не бачать.', shp_bg_lb: 'місцевий постачальник', shp_bg_on: 'Учасники можуть надсилати у фоні через ваші кабінети', shp_bg_off: 'Через ваші кабінети учасники більше не надсилають', shp_bg_mem_on: 'Надсилання у фоні — через кабінети {o}, якщо своїх не підключили.', shp_bg_mem_off: 'Кабінети власника ({o}) для вас вимкнені — підключіть свої або попросіть {o} дозволити.', shp_bg_ask: 'Це спільна квартира: {o} може дозволити надсилати через свій кабінет — «Спільний доступ» на екрані квартири.', shp_via_cab: 'Надсилаємо через кабінет {o} (спільна квартира).',
+      hp_btn: 'Свій вхід ХТМ для цієї квартири', hp_main_off: 'Основний кабінет не підключено — квартири без свого входу вносите самі.', hp_again: 'Увійти знову', hp_sub: 'E-mail і пароль кабінету ХТМ саме «{p}» — коли дали доступ до її кабінету. Інші квартири лишаться зі своїми входами.', hp_relog: 'Вхід ХТМ цієї квартири ({e}) більше не підходить — впишіть пароль знову.', hp_on_l: 'Свій вхід ХТМ цієї квартири: {e}', hp_via: 'Надсилаємо входом цієї квартири ({e}).', hp_on: 'Вхід ХТМ квартири збережено', hp_forgot: 'Вхід ХТМ квартири забуто', hp_off_q: 'Відв’язати вхід ХТМ квартири «{p}»? Показання цієї квартири у фоні більше не підуть.',
       gw_pick_site: 'На сайті Водоканалу лічильників з полем: {n} ({l}). Для кожного свого водоміра виберіть його:', gw_pick_was: 'було {v} м³', gw_pick_none: 'Не надсилати',
       gw_pick_q: '— виберіть —', gw_pick_done: 'Сайт уже прийняв за цей місяць: {n} — {v} м³. Не надсилаємо.', gw_pick_absent: 'Такого лічильника на сайті Водоканалу за цим рахунком немає — не надсилаємо.',
       gw_pick_sn: '№ {n} на сайті Водоканалу — {k}. Перевірте номер у налаштуваннях цього водоміра.', vkc_room_kitchen: 'кухня', vkc_room_bath: 'санвузол', vkc_room_wc: 'туалет',
@@ -7255,6 +7263,7 @@ fieldset { min-inline-size: 0; }
       gw_w_htm: 'ХТМ — горячая {h}', gw_w_vk: 'Водоканалу — горячая {h}, холодная {c}', gw_w_vk1: 'Водоканалу — горячая {h}', gw_w_vk0: 'Водоканалу — холодная {c}',
       gw_guest: 'Отправлять в фоне можно, когда войдёте в «передай».', gw_send2: 'Отправить ещё раз', gw_toast: 'Отправляем в фоне: {to}', gw_ok_htm: 'ХТМ принял показания горячей воды', gw_self: 'Передать самим: бот, телефон, цифры',
       shp_bg_t: 'Отправлять в фоне через мои кабинеты', shp_bg_s: 'Участники будут отправлять показания этой квартиры через ваши подключения ({w}). Паролей они не видят, ваши другие квартиры — только ваши.', shp_bg_s0: 'Подключите кабинет ХТМ или местного поставщика — и участники смогут отправлять показания этой квартиры через него. Паролей они не видят.', shp_bg_lb: 'местный поставщик', shp_bg_on: 'Участники могут отправлять в фоне через ваши кабинеты', shp_bg_off: 'Через ваши кабинеты участники больше не отправляют', shp_bg_mem_on: 'Отправка в фоне — через кабинеты {o}, если свои не подключили.', shp_bg_mem_off: 'Кабинеты владельца ({o}) для вас выключены — подключите свои или попросите {o} разрешить.', shp_bg_ask: 'Это общая квартира: {o} может разрешить отправлять через свой кабинет — «Совместный доступ» на экране квартиры.', shp_via_cab: 'Отправляем через кабинет {o} (общая квартира).',
+      hp_btn: 'Свой вход ХТМ для этой квартиры', hp_main_off: 'Основной кабинет не подключён — квартиры без своего входа вносите сами.', hp_again: 'Войти снова', hp_sub: 'E-mail и пароль кабинета ХТМ именно «{p}» — когда дали доступ к её кабинету. Другие квартиры останутся со своими входами.', hp_relog: 'Вход ХТМ этой квартиры ({e}) больше не подходит — впишите пароль снова.', hp_on_l: 'Свой вход ХТМ этой квартиры: {e}', hp_via: 'Отправляем входом этой квартиры ({e}).', hp_on: 'Вход ХТМ квартиры сохранён', hp_forgot: 'Вход ХТМ квартиры забыт', hp_off_q: 'Отвязать вход ХТМ квартиры «{p}»? Показания этой квартиры в фоне больше не уйдут.',
       gw_pick_site: 'На сайте Водоканала счётчиков с полем: {n} ({l}). Для каждого своего водомера выберите его:', gw_pick_was: 'было {v} м³', gw_pick_none: 'Не отправлять',
       gw_pick_q: '— выберите —', gw_pick_done: 'Сайт уже принял за этот месяц: {n} — {v} м³. Не отправляем.', gw_pick_absent: 'Такого счётчика на сайте Водоканала по этому счёту нет — не отправляем.',
       gw_pick_sn: '№ {n} на сайте Водоканала — {k}. Проверьте номер в настройках этого водомера.', vkc_room_kitchen: 'кухня', vkc_room_bath: 'санузел', vkc_room_wc: 'туалет',
@@ -11761,11 +11770,13 @@ fieldset { min-inline-size: 0; }
   }
   /** Форма кабінету ХТМ за рахунком (125-а: сервер бачить заголовки сторінки — GET /api/cab/htm → forms) → «Як у вашому кабінеті ХТМ» лічильника: одиниця й третій час. */
   function hcForms() {
-    var fm = (HC.st && HC.st.forms) || {}, accs = Object.keys(fm), ch = false; if (!accs.length) return false;
+    if (!HC.st) return false; var ch = false;
     var heatPl = places().filter(function (x) { var mm = x.id === S.placeId ? S.meter : x.meter; return mm && !mm.removed; });
     heatPl.forEach(function (p) {
+      // 182-а: у квартири свій вхід ХТМ — форма з її кабінету
+      var pc = hcPlace(p), fm = (pc ? pc.forms : HC.st.forms) || {}, accs = Object.keys(fm); if (!accs.length) return;
       var cur = p.id === S.placeId, m = cur ? S.meter : p.meter, acc = String(m.account || '').replace(/\D/g, '');
-      if (!acc && accs.length === 1 && heatPl.length === 1) acc = accs[0];
+      if (!acc && accs.length === 1 && (pc || heatPl.length === 1)) acc = accs[0];
       var f = fm[acc]; if (!f) return;
       var upd = {};
       if (f.u && M.TO_GCAL[f.u] && m.htmUnit !== f.u) upd.htmUnit = f.u;
@@ -13132,12 +13143,17 @@ fieldset { min-inline-size: 0; }
     var accs = hcAccsFor(p), mine = [dgt(waccOf(p, 'hot')), dgt((cbHeatM(p) || {}).account)].filter(Boolean);
     for (var i = 0; i < mine.length; i++) { var hit = accs.filter(function (a) { return a.acc === mine[i]; })[0]; if (hit) return hit.acc; }
     if (mine[0]) return mine[0];
-    if (accs.length !== 1 || (hcMember(p) && !hcViaOwner(p))) return '';   // учасник: єдиний — лише рахунок цієї квартири з кабінету власника
+    if (accs.length !== 1 || (hcMember(p) && !hcViaOwner(p) && !hcPlace(p))) return '';   // учасник: єдиний — лише рахунок цієї квартири з кабінету власника
+    if (hcPlace(p)) return accs[0].acc;   // 182-а: вхід саме цієї квартири — його єдиний рахунок і є її
     var other = places().some(function (q) { return q !== p && [dgt(waccOf(q, 'hot')), dgt((cbHeatM(q) || {}).account)].indexOf(accs[0].acc) >= 0; });
     return other ? '' : accs[0].acc;
   }
   /** Що знає сервер про розділ гарячої в кабінеті ХТМ: {found, open, n} або null (ще не дивились). */
-  function hwInfo(p) { var sh = hcShared(p), h = HC.st && HC.st.hot, a = hwAcc(p); if (sh && sh.hot && sh.hot[a]) return sh.hot[a]; return h && a && h[a] ? h[a] : null; }
+  function hwInfo(p) {
+    var pc = hcPlace(p), sh = hcShared(p), h = HC.st && HC.st.hot, a = hwAcc(p);
+    if (pc) return a && pc.hot && pc.hot[a] ? pc.hot[a] : null;   // 182-а: свій вхід квартири — лише його кабінет
+    if (sh && sh.hot && sh.hot[a]) return sh.hot[a]; return h && a && h[a] ? h[a] : null;
+  }
   function hwBusy(j) { return !!(j && /^(queued|sending|pending)$/.test(j.status)); }
   /** Рахунок відомий, а в підключеному кабінеті ХТМ його немає (список рахунків кабінету вже прийшов). */
   function hwForeign(p) { var a = hwAcc(p), accs = hcAccsFor(p); return !!(a && accs.length && !accs.some(function (x) { return x.acc === a; })); }
@@ -13192,12 +13208,13 @@ fieldset { min-inline-size: 0; }
   function gwFix(rec, to, st) {
     var p = place(), code = st && st.code || '', why = st && st.why || '';
     if (to === 'htm') {
-      var a = hwAcc(p), sh = hcMember(p), vo = sh ? hcViaOwner(p) : null, accs = sh ? (vo ? vo.accounts : []) : (HC.st && HC.st.accounts) || [], hi = hwInfo(p);
+      // 182-а: свій вхід квартири — як свій кабінет (його рахунки й e-mail), навіть у спільній
+      var pc = hcPlace(p), a = hwAcc(p), sh = hcMember(p) && !pc, vo = sh ? hcViaOwner(p) : null, accs = pc ? pc.accounts || [] : sh ? (vo ? vo.accounts : []) : (HC.st && HC.st.accounts) || [], hi = hwInfo(p);
       var field = '<form class="gw-acc" data-key="gw-acc-form" novalidate><label class="small" for="gw-hacc">' + esc(t('wa_acc_hot_s')) + '</label><div class="gw-acc-r"><input id="gw-hacc" class="num" inputmode="numeric" autocomplete="off" value="' + esc(waccOf(p, 'hot')) + '">' +
         '<button class="btn sec" type="submit" data-key="gw-acc-save">' + esc(t('save')) + '</button></div>' +
-        (accs.length ? '<p class="small muted gw-acc-in">' + esc(sh ? t('gw_acc_in_sh', { o: shFirst(vo.by) || t('shp_someone') }) : t('gw_acc_in', { e: (HC.st && HC.st.login) || '' })) + ' ' + accs.map(function (x) { return '<button type="button" class="chip" data-act="gw-acc-pick" data-v="' + esc(x.acc) + '" data-key="gw-acc-' + esc(x.acc) + '">' + esc(x.acc) + '</button>'; }).join(' ') + '</p>' : '') + '</form>';
+        (accs.length ? '<p class="small muted gw-acc-in">' + esc(sh ? t('gw_acc_in_sh', { o: shFirst(vo.by) || t('shp_someone') }) : t('gw_acc_in', { e: hcLoginFor(p) })) + ' ' + accs.map(function (x) { return '<button type="button" class="chip" data-act="gw-acc-pick" data-v="' + esc(x.acc) + '" data-key="gw-acc-' + esc(x.acc) + '">' + esc(x.acc) + '</button>'; }).join(' ') + '</p>' : '') + '</form>';
       if (!a) return { txt: t(sh ? 'gw_acc_need_sh' : 'gw_acc_need'), fix: field, block: true };
-      if (hwForeign(p) || code === 'no_acc') return { txt: sh ? t('gw_acc_foreign_sh', { a: a, o: shFirst((vo && vo.by) || p.sh.own) || t('shp_someone') }) : t('gw_acc_foreign', { a: a, e: (HC.st && HC.st.login) || '' }), fix: field + '<p class="small"><a href="' + HTM_URL + '" target="_blank" rel="noopener" data-key="gw-htm-site">' + esc(t('gw_htm_site')) + ' ›</a></p>', block: true };
+      if (hwForeign(p) || code === 'no_acc') return { txt: sh ? t('gw_acc_foreign_sh', { a: a, o: shFirst((vo && vo.by) || p.sh.own) || t('shp_someone') }) : t('gw_acc_foreign', { a: a, e: hcLoginFor(p) }), fix: field + '<p class="small"><a href="' + HTM_URL + '" target="_blank" rel="noopener" data-key="gw-htm-site">' + esc(t('gw_htm_site')) + ' ›</a></p>', block: true };
       if ((hi && hi.found === false) || code === 'hot_none') return { txt: t('gw_nohot2', { a: a }), fix: '<div class="dest-ch"><a class="btn sec" href="' + BOT_URL + '" target="_blank" rel="noopener" data-key="gw-nohot-bot">' + ico('send', 18) + '<span>' + esc(t('wd_bot', { b: '@KPHTM_Bot' })) + '</span></a>' +
         '<a class="btn sec" href="tel:+380573414140" data-key="gw-nohot-tel">' + ico('phone', 18) + '<span>(057) 341-41-40</span></a></div>' + (rec && !(rec.sent && rec.sent.htm) ? '<p class="dest-mark"><button class="btn sec" data-act="wsent" data-to="htm" data-v="1" data-id="' + rec.id + '" data-key="gw-nohot-mark">' + ico('check', 18) + '<span>' + esc(t('ws_mark')) + '</span></button></p>' : ''), block: true, own: true };
       if (code === 'relogin') return { txt: why, fix: '<p class="small"><a href="#prefs-cabs-htm" data-act="cb-go" data-key="gw-relogin">' + esc(t('gw_relogin')) + ' ›</a></p>' };
@@ -13222,11 +13239,14 @@ fieldset { min-inline-size: 0; }
     // одна причина, без повтору: виправлення має свій текст — тоді текст сайту не дублюємо
     if (fx) h += '<p class="small gw-why" data-key="gw-why-' + to + '">' + esc(String(fx.txt || st.why || '').slice(0, 260)) + '</p><div class="gw-fix" data-key="gw-fix-' + to + '">' + fx.fix + '</div>';
     else if (st.why) h += '<p class="small gw-why" data-key="gw-why-' + to + '">' + esc(String(st.why).slice(0, 240)) + '</p>';
-    if (!conn && on && !vk && hcMember(place())) h += shBgAsk(place(), true);   // 181-я: учасник — свій кабінет сюди не підключаємо; кабінет власника або «Передати самі»
+    // 181-я: учасник — свій основний кабінет сюди не підключаємо; кабінет власника, свій вхід цієї квартири (182-а) або «Передати самі»
+    if (!conn && on && !vk && hcMember(place())) h += shBgAsk(place(), true) + hpOwn(place(), 'gw');
+    else if (!conn && on && !vk && hcPlace(place())) h += '<p class="small warn-ink gw-in" data-key="gw-hp-relog">' + esc(t('hp_relog', { e: hcLoginFor(place()) })) + '</p>' + hpOwn(place(), 'gw');
     else if (!conn && on) h += '<p class="small gw-in"><a href="#prefs-cabs-' + (vk ? 'vk' : 'htm') + '" data-act="cb-go" data-key="gw-conn-' + to + '">' + esc(t('gw_conn')) + ' ›</a> <span class="muted">' + esc(t(vk ? 'gw_vk_in' : 'gw_htm_in')) + '</span></p>';
-    // 180-я: спільна квартира — кабінетом власника
+    // 180-я: спільна квартира — кабінетом власника; 182-а: свій вхід квартири — назвати його
     var vo = !vk && conn ? hcViaOwner(place()) : null;
     if (vo) h += '<p class="small muted gw-in" data-key="gw-via-owner">' + esc(t('shp_via_cab', { o: shFirst(vo.by) || t('shp_someone') })) + '</p>';
+    else if (!vk && conn && hcPlace(place()) && (hcMember(place()) || places().length > 1)) h += '<p class="small muted gw-in" data-key="gw-via-place">' + esc(t('hp_via', { e: hcLoginFor(place()) })) + '</p>';
     var can = rec && (vk ? gwVkCan(rec) : gwHtmCan(rec));
     if (can) {
       var hv = gwVals(rec, 'hot', vk), cv = gwVals(rec, 'cold', vk), busy = vk ? VJ.busy === 'q' : HW.busy, again = /^(bad|warn)$/.test(st.c);
@@ -13817,6 +13837,7 @@ fieldset { min-inline-size: 0; }
     if (!st) return sec('', '', cbLine('muted', '', t('hc_loading')) + ctc);
     var conn = hcConn(), relog = !!st.connected && st.state === 'bad_login', c = S.contacts || {}, h = '';
     var tone = conn ? (st.state === 'captcha' ? 'warn' : 'ok') : relog ? 'bad' : 'neutral', stx = t(conn ? (st.state === 'captcha' ? 'cb_st_cap' : 'cb_st_on') : relog ? 'cb_st_relog' : 'cb_st_off');
+    if (!conn && !relog && g.rows.some(function (r) { return hcPlaceOk(r.p); })) { tone = 'ok'; stx = t('cb_st_on'); }   // 182-а: основного немає, а квартира має свій вхід
     var gH = g.ks.indexOf('hot') >= 0;
     h += cbLine('muted', '', t(gH ? (g.ks.indexOf('heat') >= 0 ? 'cb_htm_what_h' : 'cb_htm_what_o') : 'cb_htm_what'));
     if (conn && !CB.hcEdit) {
@@ -13830,38 +13851,40 @@ fieldset { min-inline-size: 0; }
         '<div class="field"><label for="hc-pass">' + esc(t('hc_pass')) + '</label><div class="ctl"><input id="hc-pass" type="' + (HC.showPass ? 'text' : 'password') + '" autocomplete="current-password" spellcheck="false" value="' + esc(fm.pass || '') + '"></div>' +
         '<label class="hc-show small"><input type="checkbox" data-act="hc-show"' + (HC.showPass ? ' checked' : '') + '> ' + esc(t('hc_show')) + '</label></div>' +
         '<div class="field"><label for="hc-phone">' + esc(t('hc_phone')) + '</label><div class="ctl"><input id="hc-phone" type="tel" inputmode="tel" autocomplete="tel" value="' + esc(fm.phone !== undefined ? fm.phone : c.phone || st.phone || '') + '"></div><div class="help">' + esc(t('hc_phone_h')) + '</div></div>' +
-        '<label class="hc-consent"><input type="checkbox" id="hc-consent"' + (fm.consent || conn || relog ? ' checked' : '') + '> <span>' + esc(t('hc_consent')) + '</span></label>' + hcErrBox(HC.err) +
+        '<label class="hc-consent"><input type="checkbox" id="hc-consent"' + (fm.consent || conn || relog ? ' checked' : '') + '> <span>' + esc(t('hc_consent')) + '</span></label>' + (HC.errP ? '' : hcErrBox(HC.err)) +
         '<div class="row-actions"><button type="submit" class="btn" data-key="cb-htm-save"' + (HC.busy ? ' disabled' : '') + '>' + (HC.busy === 'connect' ? SPIN + '<span>' + esc(t('hc_connecting')) + '</span>' : esc(t('cb_save_chk'))) + '</button>' +
         (conn ? '<button type="button" class="btn sec" data-act="cb-hedit" data-key="cb-htm-edit-no">' + esc(t('cancel')) + '</button>' : '') + '</div></form>';
-    } else h += cbLine('', '', t('pc_htm_off')) + '<p class="cb-acts"><button class="btn sec" data-act="cb-open" data-id="htm" data-key="prefs-cab-htm-connect">' + ico('plus', 18) + '<span>' + esc(t('cab_conn_btn')) + '</span></button></p>';
+    } else h += cbLine('', '', t(g.rows.some(function (r) { return hcPlace(r.p); }) ? 'hp_main_off' : 'pc_htm_off'), 'cb-htm-off') + '<p class="cb-acts"><button class="btn sec" data-act="cb-open" data-id="htm" data-key="prefs-cab-htm-connect">' + ico('plus', 18) + '<span>' + esc(t('cab_conn_btn')) + '</span></button></p>';
     h += ctc;
     // рахунок ХТМ кожної квартири: у кабінеті кілька — вибір (пишемо в налаштування теплолічильника цієї квартири)
-    var accs = st.accounts || [];
+    var accs = st.accounts || [], many = places().length > 1;
     g.rows.forEach(function (r) {
+      // 182-а: у квартири свій вхід ХТМ — рядок цього входу (e-mail, рахунок, «Перевірити», «Відв’язати»), основний кабінет тут ні до чого
+      if (hcPlace(r.p)) { h += '<div class="cb-pl" data-key="cb-pl-htm-' + esc(r.p.id) + '">' + cbPlace(r.p) + hpRow(r.p) + '</div>'; return; }
       // 181-я (власник 23.11): спільна квартира учасника — не мій кабінет: через кабінет власника або «попросіть», без моїх рахунків і пошти
       if (hcMember(r.p) && !hcOwnOk(r.p)) {
         var vo = hcViaOwner(r.p), on = shFirst(r.p.sh.own) || t('shp_someone'), va = vo ? hwAcc(r.p) : '';
         h += '<div class="cb-pl" data-key="cb-pl-htm-' + esc(r.p.id) + '">' + cbPlace(r.p) + cbLine(vo ? 'cb-ok' : 'muted', vo ? 'check' : '', vo ? t('shp_via_cab', { o: shFirst(vo.by) || on }) : t(r.p.sh.bg ? 'shp_bg_noacc' : 'shp_bg_ask', { o: on }), 'cb-htm-sh-' + r.p.id) +
-          (va ? cpList([cpRow(t('cb_hacc'), va, va, 'tn', 'cb-hacc-' + r.p.id)]) : '') + '</div>';
+          (va ? cpList([cpRow(t('cb_hacc'), va, va, 'tn', 'cb-hacc-' + r.p.id)]) : '') + hpOwn(r.p, 'cb') + '</div>';
         return;
       }
       var m = cbHeatM(r.p) || {}, my = dgt(m.account) || (cbLive(cbHeatM(r.p)) ? '' : dgt(waccOf(r.p, 'hot'))), hit = accs.filter(function (a) { return a.acc === my; })[0] || (accs.length === 1 ? accs[0] : null), row;
       if (conn && accs.length > 1) row = '<div class="field cb-sel"><label for="cb-hacc-' + esc(r.p.id) + '">' + esc(t('cb_hacc')) + '</label><div class="ctl"><select id="cb-hacc-' + esc(r.p.id) + '" data-act="cb-hacc" data-pid="' + esc(r.p.id) + '" data-key="cb-hacc-' + esc(r.p.id) + '">' +
         (hit ? '' : '<option value="">' + esc(t('cb_hacc0')) + '</option>') + accs.map(function (a) { return '<option value="' + esc(a.acc) + '"' + (hit && hit.acc === a.acc ? ' selected' : '') + '>' + esc(a.acc + ' · ' + a.sur) + '</option>'; }).join('') + '</select></div></div>';
-      else if (!conn && !my) return;   // не підключено й рахунку не вписували — нічого показувати
+      else if (!conn && !my) { if (many) h += '<div class="cb-pl" data-key="cb-pl-htm-' + esc(r.p.id) + '">' + cbPlace(r.p) + hpOwn(r.p, 'cb') + '</div>'; return; }   // не підключено й рахунку не вписували — лише «свій вхід» квартири
       else row = cpList([cpRow(t('cb_hacc'), hit ? hit.acc + (hit.sur ? ' · ' + hit.sur : '') : my || t('cb_hacc_no'), hit ? hit.acc : my, 'tn', 'cb-hacc-' + r.p.id)]);
-      h += '<div class="cb-pl" data-key="cb-pl-htm-' + esc(r.p.id) + '">' + cbPlace(r.p) + row + '</div>';
+      h += '<div class="cb-pl" data-key="cb-pl-htm-' + esc(r.p.id) + '">' + cbPlace(r.p) + row + (many ? hpOwn(r.p, 'cb') : '') + '</div>';
     });
     if (!g.rows.length) h += cbLine('muted', '', t('cb_htm_nometer'));
     if (conn) {
-      var ck = HC.check, ckl = '';
+      var ck = HC.check && !HC.check.place ? HC.check : null, ckl = '';
       if (ck) ckl = t('cb_htm_ok', { m: ck.meter ? ' — ' + ck.meter.model + ' № ' + ck.meter.serial : '', o: ck.open ? t('hc_open_yes', { a: ck.min || '', b: ck.max || '' }) : (ck.closed || t('hc_open_no')) }) + (ck.form && ck.form.open && !ck.form.match ? ' ' + t('hc_form_bad') : '');
       // 178-а: гаряча — чи є її розділ у кабінеті (з «Перевірити» чи підключення)
       var hk = '';
       if (gH) { var hi = (ck && ck.hot) || g.rows.map(function (r) { return hwInfo(r.p); }).filter(Boolean)[0] || null; hk = !hi ? 'cb_hot_unk' : hi.found === false ? 'cb_hot_none' : hi.open || hi.n ? 'cb_hot_ok' : 'cb_hot_closed'; }
       h += '<div class="cb-chk">' + cbLine('muted', '', st.checkedAt ? t('cb_checked', { d: cbWhenIso(st.checkedAt) }) : t('cb_checked0'), 'cb-htm-checked') + (ckl ? cbLine('cb-ok', 'check', ckl, 'cb-htm-chk') : '') +
         (hk ? cbLine(hk === 'cb_hot_none' ? 'cb-warn' : hk === 'cb_hot_ok' ? 'cb-ok' : 'muted', hk === 'cb_hot_ok' ? 'check' : '', t(hk), 'cb-htm-hot') : '') +
-        (st.state === 'captcha' ? cbLine('cb-warn', 'alert', t('cb_htm_cap')) : '') + (!CB.hcEdit ? hcErrBox(HC.errFor ? null : HC.err) : '') + cbJob((st.jobs || [])[0], 'cb-htm-last') +
+        (st.state === 'captcha' ? cbLine('cb-warn', 'alert', t('cb_htm_cap')) : '') + (!CB.hcEdit ? hcErrBox(HC.errFor || HC.errP ? null : HC.err) : '') + cbJob((st.jobs || [])[0], 'cb-htm-last') +
         '<p class="cb-acts"><button class="btn sec" data-act="hc-check" data-key="cb-htm-check"' + (HC.busy ? ' disabled' : '') + '>' + (HC.busy === 'check' ? SPIN + '<span>' + esc(t('hc_checking')) + '</span>' : ico('check', 18) + '<span>' + esc(t('cb_check')) + '</span>') + '</button></p>' +
         cbLine('muted', '', t('cb_check_h')) + '</div>' +
         '<div class="cb-bg"><label class="hc-consent"><input type="checkbox" data-act="hc-auto" data-key="prefs-htm-auto"' + (st.auto ? ' checked' : '') + (HC.busy ? ' disabled' : '') + '> <span><b>' + esc(t('ha_t')) + '.</b> ' + esc(t('ha_consent', { m: Math.round((st.autoDelay || 600) / 60) })) + '</span></label>' +
@@ -13869,6 +13892,40 @@ fieldset { min-inline-size: 0; }
         '<p class="cb-acts"><button class="btn danger" data-act="hc-pref-off" data-key="prefs-cab-htm-off"' + (HC.busy ? ' disabled' : '') + '>' + esc(t('cb_off')) + '</button></p>';
     }
     return sec(tone, stx, h + trustBox('htm', '', 'trust-prefs-htm'));
+  }
+  /** 182-а: «Свій вхід ХТМ для цієї квартири» (власник 23.11: «разные квартиры — разные подключения; дадут креды к квартире — введу их для неё»).
+   *  Згорнуто — кнопка-посилання; розгорнуто (HC.pf = 'квартира|де') — e-mail, пароль, згода → POST /cab/htm/connect {place}. Вхід уже є й працює — нічого (його рядок — hpRow). */
+  function hpOwn(p, where) {
+    if (!p || !hcOn() || !HC.st) return '';
+    var pc = hcPlace(p), key = 'hp-' + where + '-' + p.id, open = HC.pf === p.id + '|' + where;
+    if (pc && pc.state !== 'bad_login' && !open) return '';
+    if (!open) return '<p class="small hp-own"><button class="linkbtn" data-act="hc-popen" data-pid="' + esc(p.id) + '" data-w="' + esc(where) + '" data-key="' + esc(key) + '">' + ico('key', 16) + ' ' + esc(t(pc ? 'hp_again' : 'hp_btn')) + '</button></p>';
+    var fm = HC.pform || {};
+    return '<form class="cb-form hp-form" data-pid="' + esc(p.id) + '" data-w="' + esc(where) + '" novalidate data-key="' + esc(key) + '-form"><p class="hp-t"><b>' + esc(t('hp_btn')) + '</b></p><p class="small muted">' + esc(t('hp_sub', { p: placeLabel(p) })) + '</p>' +
+      '<div class="field"><label for="hp-email">' + esc(t('hc_email')) + '</label><div class="ctl"><input id="hp-email" type="email" inputmode="email" autocomplete="off" spellcheck="false" value="' + esc(fm.email !== undefined ? fm.email : pc ? pc.login : '') + '"></div></div>' +
+      '<div class="field"><label for="hp-pass">' + esc(t('hc_pass')) + '</label><div class="ctl"><input id="hp-pass" type="' + (HC.showPass ? 'text' : 'password') + '" autocomplete="new-password" spellcheck="false" value="' + esc(fm.pass || '') + '"></div>' +
+      '<label class="hc-show small"><input type="checkbox" data-act="hc-pshow"' + (HC.showPass ? ' checked' : '') + '> ' + esc(t('hc_show')) + '</label></div>' +
+      '<label class="hc-consent"><input type="checkbox" id="hp-consent"' + (fm.consent ? ' checked' : '') + '> <span>' + esc(t('hc_consent')) + '</span></label>' + (HC.errP === p.id ? hcErrBox(HC.err) : '') +
+      '<div class="row-actions"><button type="submit" class="btn" data-key="' + esc(key) + '-save"' + (HC.busy ? ' disabled' : '') + '>' + (HC.busy === 'connect' && HC.errP === p.id ? SPIN + '<span>' + esc(t('hc_connecting')) + '</span>' : esc(t('cb_save_chk'))) + '</button>' +
+      '<button type="button" class="btn sec" data-act="hc-pclose" data-key="' + esc(key) + '-no">' + esc(t('cancel')) + '</button></div></form>';
+  }
+  /** Рядок квартири зі своїм входом ХТМ: стан, e-mail, рахунок (кілька — вибір), «Перевірити», автоподача, «Змінити вхід», «Відв’язати». */
+  function hpRow(p) {
+    var pc = hcPlace(p); if (!pc) return '';
+    var relog = pc.state === 'bad_login', accs = pc.accounts || [], m = cbHeatM(p) || {}, my = dgt(m.account) || (cbLive(cbHeatM(p)) ? '' : dgt(waccOf(p, 'hot')));
+    var hit = accs.filter(function (a) { return a.acc === my; })[0] || (accs.length === 1 ? accs[0] : null), id = esc(p.id), ck = HC.check && HC.check.place === p.id ? HC.check : null;
+    var h = cbLine(relog ? 'cb-bad' : 'cb-ok', relog ? 'alert' : 'check', t(relog ? 'hp_relog' : 'hp_on_l', { e: pc.login }), 'cb-hp-st-' + p.id);
+    if (relog || HC.pf === p.id + '|cb') return h + hpOwn(p, 'cb') + (relog && HC.pf !== p.id + '|cb' ? '<p class="cb-acts"><button class="btn danger quiet" data-act="hc-pforget" data-pid="' + id + '" data-key="cb-hp-off-' + id + '">' + esc(t('cb_off')) + '</button></p>' : '');
+    if (accs.length > 1) h += '<div class="field cb-sel"><label for="cb-hacc-' + id + '">' + esc(t('cb_hacc')) + '</label><div class="ctl"><select id="cb-hacc-' + id + '" data-act="cb-hacc" data-pid="' + id + '" data-key="cb-hacc-' + id + '">' +
+      (hit ? '' : '<option value="">' + esc(t('cb_hacc0')) + '</option>') + accs.map(function (a) { return '<option value="' + esc(a.acc) + '"' + (hit && hit.acc === a.acc ? ' selected' : '') + '>' + esc(a.acc + ' · ' + a.sur) + '</option>'; }).join('') + '</select></div></div>';
+    else h += cpList([cpRow(t('cb_hacc'), hit ? hit.acc + (hit.sur ? ' · ' + hit.sur : '') : t('cb_hacc_no'), hit ? hit.acc : '', 'tn', 'cb-hacc-' + p.id)]);
+    if (ck) h += cbLine('cb-ok', 'check', t('cb_htm_ok', { m: ck.meter ? ' — ' + ck.meter.model + ' № ' + ck.meter.serial : '', o: ck.open ? t('hc_open_yes', { a: ck.min || '', b: ck.max || '' }) : (ck.closed || t('hc_open_no')) }), 'cb-hp-chk-' + p.id);
+    else h += cbLine('muted', '', pc.checkedAt ? t('cb_checked', { d: cbWhenIso(pc.checkedAt) }) : t('cb_checked0'), 'cb-hp-checked-' + p.id);
+    if (HC.errP === p.id) h += hcErrBox(HC.err);
+    return h + '<label class="hc-consent"><input type="checkbox" data-act="hc-pauto" data-pid="' + id + '" data-key="cb-hp-auto-' + id + '"' + (pc.auto ? ' checked' : '') + (HC.busy ? ' disabled' : '') + '> <span><b>' + esc(t('ha_t')) + '.</b> ' + esc(t('ha_consent', { m: Math.round((HC.st.autoDelay || 600) / 60) })) + '</span></label>' +
+      '<p class="cb-acts hp-acts"><button class="btn sec" data-act="hc-pcheck" data-pid="' + id + '" data-key="cb-hp-check-' + id + '"' + (HC.busy ? ' disabled' : '') + '>' + (HC.busy === 'check' && HC.errP === p.id ? SPIN : ico('check', 18)) + '<span>' + esc(t('cb_check')) + '</span></button>' +
+      '<button class="linkbtn" data-act="hc-popen" data-pid="' + id + '" data-w="cb" data-key="cb-hp-edit-' + id + '">' + esc(t('cb_edit_login')) + '</button>' +
+      '<button class="btn danger quiet" data-act="hc-pforget" data-pid="' + id + '" data-key="cb-hp-off-' + id + '">' + esc(t('cb_off')) + '</button></p>';
   }
 
   // ---------- Сайт Водоканалу: особовий рахунок і прізвище кожної квартири (p.water), «Перевірити», автовідправка після фото, квитанції ----------
@@ -14030,7 +14087,7 @@ fieldset { min-inline-size: 0; }
   }
   /** Чи надсилає постачальник показання у фоні: can — є куди (кабінет ХТМ, сайт Водоканалу, робот місцевого КП), on — підключено. */
   function cbBg(g) {
-    if (g.ch === 'htm') { if (hcOn()) hcLoad(); return { can: true, on: hcOn() && hcConn() }; }
+    if (g.ch === 'htm') { if (hcOn()) hcLoad(); return { can: true, on: hcOn() && (hcConn() || g.rows.some(function (r) { return hcPlaceOk(r.p); })) }; }
     // сайт Водоканалу тимчасово не відкривається — лишається серед «у фоні» (стан «не відкривається» — на його екрані), лише не «надсилає»
     if (g.ch === 'vk') return { can: true, on: hcOn() && !(VKS.data && !vkcAvail()) && (vjAutoOn() || (g.rows.length > 0 && g.rows.every(function (r) { return cbVkOk(r.p); }))) };
     if (g.ch === 'lb') {
@@ -14088,7 +14145,7 @@ fieldset { min-inline-size: 0; }
     if (!hcOn()) return t('pg_cabs_s');
     hcLoad(); vjLoad(); var n = 0;
     cbProvs().list.forEach(function (g) {
-      if (g.ch === 'htm') { if (hcConn()) n++; }
+      if (g.ch === 'htm') { if (hcConn() || g.rows.some(function (r) { return hcPlaceOk(r.p); })) n++; }
       else if (g.ch === 'vk') { if (vjAutoOn() || (g.rows.length && g.rows.every(function (r) { return cbVkOk(r.p); }))) n++; }
       else if (g.ch === 'lb') { if (g.rows.some(function (r) { lbLoad(g.bot, r.p.id); var s = LB.st[lbKey(g.bot, r.p.id)]; return s && s.conn; })) n++; }
     });
@@ -16758,7 +16815,7 @@ fieldset { min-inline-size: 0; }
     if (!HC.st) return { btn: '', note: '' };
     var rp = (r && place(r.place)) || place(), viaO = hcViaOwner(rp);
     if (!hcConnP(rp)) return { btn: '<a class="btn sec" href="#htmcab" data-key="cab-connect-' + where + '">' + ico('plus', 18) + '<span>' + esc(t('cab_conn_btn')) + '</span></a>',
-      note: '<p class="small muted dest-note" data-key="cab-off-' + where + '">' + esc(t(HC.st.state === 'bad_login' ? 'hc_relogin' : 'cab_bg_off')) + '</p>' + shBgAsk(rp) };
+      note: '<p class="small muted dest-note" data-key="cab-off-' + where + '">' + esc(hcPlace(rp) ? t('hp_relog', { e: hcLoginFor(rp) }) : t(HC.st.state === 'bad_login' ? 'hc_relogin' : 'cab_bg_off')) + '</p>' + shBgAsk(rp) + (hcMember(rp) || hcPlace(rp) ? hpOwn(rp, 'bg' + where) : '') };
     if (!r) return { btn: '<a class="btn sec" href="#htmcab" data-key="cab-on-' + where + '">' + ico('check', 18) + '<span>' + esc(t('cab_conn_ok')) + '</span></a>', note: '<p class="small muted dest-note">' + esc(t('cab_bg_none')) + '</p>' };
     var acc = hcAcc(r), what = t('cab_bg_heat', { d: R.formatForHtm('date', r.htm.date), e: R.formatForHtm('energy', r.htm.energy), a: acc ? t('cab_bg_acc', { a: acc.acc }) : '' });
     return { btn: '<button class="btn dest-bg" data-act="hc-bg" data-id="' + esc(r.id) + '" data-key="cab-bg-' + where + '"' + (HC.busy ? ' disabled' : '') + '>' + (HC.busy === 'send' ? SPIN + '<span>' + esc(t('hc_sending')) + '</span>' : ico('send', 18) + '<span>' + esc(t('cab_bg')) + '</span>') + '</button>',
@@ -16768,7 +16825,7 @@ fieldset { min-inline-size: 0; }
   // Пароль від кабінету — лише на сервері, зашифрований; тут — стан (підключено, рахунки, внесення й їх перевірка роботом ХТМ).
   // Внесення — лише натисканням «Внести» з повтором суті («Перевірте»). Підсумок перевірки ХТМ приходить із сервера (cron) → запис історії.
   // form — набране у формі підключення (пароль лише в пам'яті сторінки, не в стані й не в localStorage), щоб перемальовка після помилки його не стирала
-  var HC = { acc: 0, st: null, at: 0, loading: false, busy: '', err: null, check: null, confirm: null, forget: false, showPass: false, form: null };
+  var HC = { acc: 0, st: null, at: 0, loading: false, busy: '', err: null, check: null, confirm: null, forget: false, showPass: false, form: null, pf: null, pform: null, errP: null };
   function hcOn() { return !!(window.TEPLO_API && Y().mode === 'server' && Y().account); }
   function hcConn() { return !!(HC.st && HC.st.connected && HC.st.state !== 'bad_login'); }
   /** 180-я: спільна квартира учасника — кабінет ХТМ власника, якщо він дозволив «у фоні» (сервер дає лише рахунки цієї квартири): {by, accounts, hot, forms} або null. */
@@ -16778,7 +16835,15 @@ fieldset { min-inline-size: 0; }
   /** Спільна квартира, де я учасник (не моя): свій кабінет ХТМ тут ні до чого (181-а, власник 23.11: «это не моя квартира, не мой лицевой счёт, не мои креды —
    *  зачем мне тут видеть свой аккаунт»). Свій — лише якщо рахунок цієї квартири вже є в моєму кабінеті (родина, що додала його собі). */
   function hcMember(p) { return !!(p && p.sh && p.sh.role === 'member'); }
+  /** 182-а (власник 23.11: «разные квартиры — разные подключения; дадут креды к квартире — введу их для неё»): свій вхід ХТМ саме цієї квартири
+   *  (GET /api/cab/htm → places[pid]: {login, state, accounts, phone, auto, forms, hot, checkedAt}) або null. Він головніший за основний кабінет і кабінет власника. */
+  function hcPlace(p) { var x = HC.st && HC.st.places; return p && x && x[p.id] ? x[p.id] : null; }
+  function hcPlaceOk(p) { var pc = hcPlace(p); return !!(pc && pc.state !== 'bad_login'); }
+  /** Яким входом підемо для квартири: e-mail і телефон — для підписів («Підключено: …», контакти форми). */
+  function hcLoginFor(p) { var pc = hcPlace(p); return pc ? pc.login : (HC.st && HC.st.login) || ''; }
+  function hcPhoneFor(p) { var pc = hcPlace(p); return (pc && pc.phone) || (HC.st && HC.st.phone) || ''; }
   function hcOwnOk(p) {
+    if (hcPlace(p)) return hcPlaceOk(p);
     if (!hcConn()) return false; if (!hcMember(p)) return true;
     var mine = [dgt(waccOf(p, 'hot')), dgt((cbHeatM(p) || {}).account)].filter(Boolean);
     return (HC.st.accounts || []).some(function (a) { return mine.indexOf(a.acc) >= 0; });
@@ -16787,6 +16852,7 @@ fieldset { min-inline-size: 0; }
   function hcConnP(p) { return hcOwnOk(p) || !!hcShared(p); }
   /** Рахунки кабінету, яким підемо для квартири: свої (своя квартира чи рахунок у моєму кабінеті), інакше — власника спільної (лише цієї квартири), інакше жодних. */
   function hcAccsFor(p) {
+    var pc = hcPlace(p); if (pc) return pc.state !== 'bad_login' ? pc.accounts || [] : [];
     var own = (hcConn() && HC.st.accounts) || [], sh = hcShared(p);
     if (hcMember(p)) return hcOwnOk(p) ? own : sh ? sh.accounts : [];
     if (!sh) return own;
@@ -16833,7 +16899,7 @@ fieldset { min-inline-size: 0; }
     var hit = accs.filter(function (a) { return a.acc === my; })[0]; if (hit) return hit;
     return accs.length === 1 ? accs[0] : null;
   }
-  function hcAutoOn() { return !!(hcConn() && HC.st.auto); }
+  function hcAutoOn() { var pc = hcPlace(place()); return pc ? !!(pc.auto && pc.state !== 'bad_login') : !!(hcConn() && HC.st.auto); }   // 182-а: у квартири свій вхід — його перемикач
   function hcHM(sec) { var d = new Date(sec * 1000); return ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2); }
   /** Автоподача: поставити перевірений запис у чергу сервера (робот внесе сам через autoDelay, можна скасувати). */
   function hcQueue(r, acc) {
@@ -16872,23 +16938,24 @@ fieldset { min-inline-size: 0; }
     if (!hcOn()) return h + '<p class="small">' + esc(t('hc_need_login')) + '</p><a class="btn sec" href="#login" data-key="hc-login">' + esc(t('login')) + '</a></div>';
     hcLoad();
     if (!HC.st) return h + '<p class="small muted">' + SPIN + ' ' + esc(t('hc_loading')) + '</p></div>';
-    if (hcMember(place()) && !hcConnP(place())) return h + shBgAsk(place(), true) + '</div>';   // 181-я: спільна квартира учасника — свій кабінет не пропонуємо
+    if (hcPlace(place()) && !hcPlaceOk(place())) return h + '<p class="small warn-ink" data-key="hc-hp-relog">' + esc(t('hp_relog', { e: hcLoginFor(place()) })) + '</p>' + hpOwn(place(), 'hc') + '</div>';   // 182-а: свій вхід квартири — пароль не підходить
+    if (hcMember(place()) && !hcConnP(place())) return h + shBgAsk(place(), true) + hpOwn(place(), 'hc') + '</div>';   // 181-я: спільна квартира учасника — свій кабінет не пропонуємо; 182-а: або свій вхід цієї квартири
     if (!hcConnP(place())) return h + '<p class="small">' + esc(t(HC.st.state === 'bad_login' ? 'hc_relogin' : 'hc_pitch')) + '</p><a class="btn" href="#htmcab" data-key="hc-connect">' + ico('plus', 18) + '<span>' + esc(t('hc_connect')) + '</span></a></div>';
     if (r.cab && (r.cab.status === 'pending' || r.cab.status === 'ok')) return h + '<p class="small">' + esc(t(r.cab.status === 'ok' ? 'hc_done_ok' : 'hc_done_wait')) + '</p><a class="btn sec" href="#status" data-act="focus" data-id="' + esc(r.id) + '" data-key="hc-status">' + esc(t('rec_status')) + '</a></div>';
     var acc = hcAcc(r), c = S.contacts || {};
     var vo = hcViaOwner(place());
-    h += '<p class="small">' + esc(vo ? t('shp_via_cab', { o: shFirst(vo.by) || t('shp_someone') }) : t('hc_ready', { e: HC.st.login })) + '</p>';
+    h += '<p class="small">' + esc(vo ? t('shp_via_cab', { o: shFirst(vo.by) || t('shp_someone') }) : t('hc_ready', { e: hcLoginFor(place()) })) + '</p>';
     if (!acc) return h + hcPickAcc() + '</div>';
     if (HC.confirm === r.id) {
       h += '<div class="vkc-sum" data-key="hc-confirm" role="group" aria-label="' + esc(t('hc_check_t')) + '"><p class="small"><b>' + esc(t('hc_check_t')) + '</b></p><ul class="small">' +
         '<li>' + esc(t('hc_c_place', { p: placeLabel(place(r.place) || place()) })) + '</li><li>' + esc(t('hc_c_acc', { a: acc.acc, s: acc.sur })) + '</li>' +
         '<li>' + esc(t('hc_c_vals', { d: R.formatForHtm('date', r.htm.date), e: htmVal('energy', r.htm, r.raw), u: unitLbl(htmUnit()) })) + '</li>' +
-        '<li>' + esc(t('hc_c_contact', { p: c.phone || (HC.st.phone || '—'), m: c.email || HC.st.login })) + '</li></ul>' + hcErrBox(HC.err) +
+        '<li>' + esc(t('hc_c_contact', { p: c.phone || hcPhoneFor(place()) || '—', m: c.email || hcLoginFor(place()) })) + '</li></ul>' + hcErrBox(HC.err) +
         '<div class="row-actions"><button class="btn" data-act="hc-send" data-id="' + esc(r.id) + '" data-key="hc-send"' + (HC.busy ? ' disabled' : '') + '>' +
         (HC.busy === 'send' ? SPIN + '<span>' + esc(t('hc_sending')) + '</span>' : ico('send', 18) + '<span>' + esc(t('hc_send_yes')) + '</span>') + '</button>' +
         '<button class="btn sec" data-act="hc-cancel" data-key="hc-cancel"' + (HC.busy ? ' disabled' : '') + '>' + esc(t('cancel')) + '</button></div></div>';
     } else {
-      h += hcErrBox(HC.err) + (!(c.phone || HC.st.phone) ? '<p class="small warn-ink" data-key="hc-nophone">' + ico('alert', 16) + ' ' + esc(t('hc_nophone')) + ' <a href="#prefs-contacts">' + esc(t('nav_prefs')) + '</a></p>' : '') +
+      h += hcErrBox(HC.err) + (!(c.phone || hcPhoneFor(place())) ? '<p class="small warn-ink" data-key="hc-nophone">' + ico('alert', 16) + ' ' + esc(t('hc_nophone')) + ' <a href="#prefs-contacts">' + esc(t('nav_prefs')) + '</a></p>' : '') +
         '<button class="btn big block" data-act="hc-ask" data-id="' + esc(r.id) + '" data-key="hc-ask">' + ico('send', 22) + '<span>' + esc(t('hc_send')) + '</span></button>';
     }
     return h + '<p class="small muted" style="margin-top:8px"><a href="#htmcab" data-key="hc-manage">' + esc(t('hc_manage')) + '</a></p></div>';
@@ -16954,7 +17021,7 @@ fieldset { min-inline-size: 0; }
     return { screen: 'S07c', route: 'htmcab', bare: true, closeTo: backTo('heat'), html: h };
   };
   function hcCall(kind, path, body, ok) {
-    HC.busy = kind; HC.err = null; safeRender();
+    HC.busy = kind; HC.err = null; HC.errP = (body && body.place && /^\/cab\/(forget|htm\/(connect|check|auto))$/.test(path)) ? body.place : null; safeRender();
     Y().api('POST', path, Object.assign({ lang: S.lang }, body)).then(function (j) {
       HC.busy = '';
       if (j._status === 200) ok(j); else {
@@ -16973,7 +17040,11 @@ fieldset { min-inline-size: 0; }
     hcSend(id);
   }
   /** «Перевірити» відповів: що бачить кабінет + яка там форма (одиниця, третій час) — одразу в налаштування лічильника. */
-  function hcChecked(c) { HC.check = c; if (c && c.forms && HC.st) { HC.st.forms = c.forms; if (hcForms()) save(); } }
+  function hcChecked(c) {
+    HC.check = c; if (!c || !c.forms || !HC.st) return;
+    var pc = c.place && HC.st.places && HC.st.places[c.place]; if (pc) pc.forms = c.forms; else HC.st.forms = c.forms;   // 182-а: «Перевірити» входу квартири — його форма
+    if (hcForms()) save();
+  }
   function hcSend(id) {
     var r = hcRec(id), acc = r && hcAcc(r); if (!r || !acc || HC.busy) return;
     var vals = htmRobotVals(r);
@@ -17014,13 +17085,34 @@ fieldset { min-inline-size: 0; }
       hcCall('check', '/cab/htm/check', { acc: (hcAcc() || {}).acc || '' }, hcChecked);
     });
   });
+  // 182-а: «Свій вхід ХТМ для цієї квартири» — e-mail і пароль саме цієї квартири (пробний вхід на сервері, пароль — зашифровано)
+  document.addEventListener('submit', function (e) {
+    var f = e.target; if (!f || !f.classList || !f.classList.contains('hp-form')) return; e.preventDefault(); if (HC.busy) return;
+    var pid = f.getAttribute('data-pid'), v = function (id) { var x = f.querySelector('#' + id); return x ? x.value.trim() : ''; }, cons = f.querySelector('#hp-consent');
+    var email = v('hp-email'), pass = (f.querySelector('#hp-pass') || {}).value || '';
+    HC.pform = { email: email, pass: pass, consent: !!(cons && cons.checked) }; HC.errP = pid;
+    if (!email || !pass) { HC.err = { human: t(!email ? 'hc_e_email' : 'hc_e_pass') }; render(true); return; }
+    if (!cons || !cons.checked) { HC.err = { error: 'cab_consent', human: t('hc_e_consent') }; render(true); return; }
+    hcCall('connect', '/cab/htm/connect', { email: email, password: pass, phone: (S.contacts || {}).phone || '', consent: true, place: pid }, function (j) {
+      HC.st = j; HC.at = Date.now(); HC.showPass = false; HC.pf = null; HC.pform = null; if (hcForms()) save(); toast(t('hp_on'));
+      hcCall('check', '/cab/htm/check', { place: pid, acc: (hcAcc({ place: pid }) || {}).acc || '' }, hcChecked);
+    });
+  });
   document.addEventListener('click', function (e) {
     var el = e.target.closest && e.target.closest('[data-act^="hc-"]'); if (!el) return;
     var a = el.getAttribute('data-act');
     if (a === 'hc-show') { var pw = document.getElementById('hc-pass'); HC.showPass = el.checked; if (pw) pw.type = el.checked ? 'text' : 'password'; return; }
     if (a === 'hc-acc') { if (S.meter) { S.meter.account = el.value; save(); } HC.err = null; render(true); return; }
     if (a === 'hc-auto') { var want = !!el.checked; hcCall('auto', '/cab/htm/auto', { on: want }, function (j) { HC.st = j; HC.at = Date.now(); if (hcApply()) save(); toast(t(want ? 'ha_on' : 'ha_off')); }); return; }
+    // 182-а: свій вхід ХТМ квартири
+    var pid = el.getAttribute('data-pid');
+    if (a === 'hc-pshow') { var pp = document.getElementById('hp-pass'); HC.showPass = el.checked; if (pp) pp.type = el.checked ? 'text' : 'password'; return; }
+    if (a === 'hc-pauto') { var pw2 = !!el.checked; hcCall('auto', '/cab/htm/auto', { on: pw2, place: pid }, function (j) { HC.st = j; HC.at = Date.now(); if (hcApply()) save(); toast(t(pw2 ? 'ha_on' : 'ha_off')); }); return; }
     e.preventDefault();
+    if (a === 'hc-popen') { HC.pf = pid + '|' + (el.getAttribute('data-w') || ''); HC.pform = null; HC.err = null; HC.errP = null; HC.showPass = false; render(true); var pf = document.querySelector('.hp-form #hp-email'); if (pf) { pf.focus(); if (pf.scrollIntoView) pf.scrollIntoView({ block: 'center' }); } return; }
+    if (a === 'hc-pclose') { HC.pf = null; HC.pform = null; HC.err = null; HC.errP = null; render(true); return; }
+    if (a === 'hc-pcheck') { hcCall('check', '/cab/htm/check', { place: pid, acc: (hcAcc({ place: pid }) || {}).acc || '' }, function (c) { hcChecked(c); hcLoad(true); }); return; }
+    if (a === 'hc-pforget') { if (askOk(el, t('hp_off_q', { p: placeLabel(place(pid)) }), { yes: askYes(el) })) hcCall('forget', '/cab/forget', { prov: 'htm', place: pid }, function (j) { HC.st = j; HC.pf = null; if (HC.check && HC.check.place === pid) HC.check = null; hcApply(); save(); toast(t('hp_forgot')); }); return; }
     if (a === 'hc-ask') { HC.confirm = el.getAttribute('data-id'); HC.err = null; render(true); var cf = document.querySelector('[data-key="hc-confirm"]'); if (cf && cf.scrollIntoView) cf.scrollIntoView({ block: 'center' }); }
     else if (a === 'hc-cancel') { HC.confirm = null; HC.err = null; render(true); }
     else if (a === 'hc-send') hcSend(el.getAttribute('data-id'));
@@ -21747,12 +21839,12 @@ fieldset { min-inline-size: 0; }
     var unsure = keys.filter(function (k) { return p[k].conflict || !(p[k].confidence >= 0.85); });
     if (unsure.length) return { k: 'unsure', list: unsure.map(function (k) { return fieldLabel(k).toLowerCase(); }).join(', ') };
     if (windowClosed()) return { k: 'closed' };
-    if (!hcConn()) return { k: 'cab' };
+    if (!hcConnP(place())) return { k: 'cab' };
     var heatPl = places().filter(function (x) { var m = x.id === S.placeId ? S.meter : x.meter; return m && !m.removed; });
     var my = String((S.meter && S.meter.account) || '').replace(/\D/g, ''), acc = hcAcc();
     if (!acc) return { k: 'acc' };
     if (heatPl.length > 1 && acc.acc !== my) return { k: 'place' };   // кілька квартир з опаленням — лише з явно вписаним рахунком
-    if (!((S.contacts || {}).phone || HC.st.phone)) return { k: 'phone' };
+    if (!((S.contacts || {}).phone || hcPhoneFor(place()))) return { k: 'phone' };
     var d = phAutoDraft(), res = runCheck(d);
     if (res.verdict !== 'ok') return { k: 'check', res: res };
     return null;

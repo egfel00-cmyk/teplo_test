@@ -297,5 +297,32 @@ $r = $b->req('POST', '/api/cab/htm/send', ['rid' => 'g1', 'vals' => $vg + ['flow
 ok('…повтор того ж (у Гкал) — та сама задача, не вносимо вдруге', $r->status === 200 && !empty($r->body['dup']), $r->body);
 $r = $b->req('POST', '/api/cab/htm/send', ['rid' => 'g2', 'vals' => ['date' => '21.11.2026', 'energy' => '120.000', 'eunit' => 'GJ', 'hours' => '35366', 'flowHours' => '35100'] + $V, 'lang' => 'uk']);
 ok('…приріст у ГДж: 64,5 ГДж (> 15 Гкал) — «перевірте крапку»', $r->status === 422 && ($r->body['field'] ?? '') === 'energy', $r->body);
+// 182-а: свій вхід ХТМ окремої квартири (власник 23.11: «разные квартиры — разные подключения; дадут креды к квартире — введу их для неё»)
+stand('act=reset'); stand('act=set&scenario=ok&today=2026-11-21&robot_delay=99999'); Db::q('DELETE FROM rate_limits'); Db::q('DELETE FROM cab_jobs');
+$main0 = $b->req('GET', '/api/cab/htm')->body;
+$r = $b->req('POST', '/api/cab/htm/connect', ['email' => 'test@stand.local', 'password' => 'stand-pass-123', 'phone' => '0501112233', 'consent' => true, 'place' => 'pB', 'lang' => 'uk']);
+$pb = $r->body['places']['pB'] ?? [];
+ok('вхід квартири: окремий рядок hp1 з extra.place, основний кабінет той самий', $r->status === 200 && ($pb['login'] ?? '') === 'test@stand.local' && ($pb['accounts'][0]['acc'] ?? '') === '1000000061'
+  && (string)(json_decode((string)(Db::one("SELECT extra FROM cab_creds WHERE prov = 'hp1' AND user_id = ?", [$uid])['extra'] ?? ''), true)['place'] ?? '') === 'pB'
+  && $r->body['connected'] === $main0['connected'] && $r->body['login'] === $main0['login'], $r->body);
+ok('credFor: квартира зі своїм входом — він; інша — основний', HtmSvc::credFor($uid, 'pB', '1000000061') === ['u' => $uid, 'p' => 'hp1'] && HtmSvc::credFor($uid, 'p1', '1000000061') === ['u' => $uid, 'p' => 'htm']);
+$r = $b->req('POST', '/api/cab/htm/connect', ['email' => 'test@stand.local', 'password' => 'stand-pass-123', 'consent' => true, 'place' => 'pB']);
+ok('…підключили ту саму квартиру вдруге — той самий рядок (не hp2), телефон лишився', $r->status === 200 && (int)Db::one("SELECT COUNT(*) AS c FROM cab_creds WHERE prov LIKE 'hp%' AND user_id = ?", [$uid])['c'] === 1 && ($r->body['places']['pB']['phone'] ?? '') === '+380501112233', $r->body['places'] ?? null);
+$r = $b->req('POST', '/api/cab/htm/send', ['rid' => 'q1', 'place' => 'pB', 'vals' => ['date' => '21.11.2026', 'energy' => '15.300', 'volume' => '2341', 'hours' => '35200', 'errHours' => '153'] + $V, 'lang' => 'uk']);
+$qj = (int)($r->body['job']['id'] ?? 0); $qp = json_decode((string)(Db::one('SELECT payload FROM cab_jobs WHERE id = ?', [$qj])['payload'] ?? ''), true) ?: [];
+ok('внесення квартири — її входом (cp: hp1), задача в черзі людини', $r->status === 200 && ($r->body['job']['status'] ?? '') === 'pending' && ($qp['cp'] ?? '') === 'hp1' && !isset($qp['cu']), [$r->body, $qp]);
+stand('act=robot'); $out = HtmSvc::cron(time() + 25 * 60);
+ok('…cron перечитує журнал тим самим входом (робот стенда дав підсумок)', in_array([$qj, 'ok'], $out, true) || in_array([$qj, 'rejected'], $out, true), $out);
+$r = $b->req('POST', '/api/cab/htm/check', ['place' => 'pB', 'lang' => 'uk']); ok('«Перевірити» квартири — її входом', $r->status === 200 && ($r->body['place'] ?? '') === 'pB' && ($r->body['meter']['serial'] ?? '') === '70000061', $r->body);
+$r = $b->req('POST', '/api/cab/htm/auto', ['on' => true, 'place' => 'pB']);
+ok('автоподача квартири — лише в її вході', $r->status === 200 && ($r->body['places']['pB']['auto'] ?? null) === true && $r->body['auto'] === $main0['auto'] && HtmSvc::autoOn($uid), $r->body);
+$r = $b->req('POST', '/api/cab/htm/hot', ['acc' => '1000000061', 'rid' => 'w1', 'place' => 'pB', 'date' => '21.11.2026', 'items' => [['sn' => '79109406', 'value' => '12', 'name' => 'Ванна']], 'lang' => 'uk']);
+$hj = json_decode((string)(Db::one('SELECT payload FROM cab_jobs WHERE id = ?', [(int)($r->body['job']['id'] ?? 0)])['payload'] ?? ''), true) ?: [];
+ok('гаряча квартири — теж її входом (cp)', $r->status === 200 && ($hj['cp'] ?? '') === 'hp1', [$r->body, $hj]);
+$r = $b->req('POST', '/api/cab/forget', ['prov' => 'htm', 'place' => 'pB']);
+ok('«Відв’язати» квартиру: її входу немає, основний лишився; черга її входу — скасована', $r->status === 200 && !isset($r->body['places']) && $r->body['connected'] === $main0['connected']
+  && Db::one('SELECT status FROM cab_jobs WHERE id = ?', [(int)($r->body['jobs'][0]['id'] ?? 0)])['status'] === 'cancelled' && HtmSvc::credFor($uid, 'pB', '1000000061') === ['u' => $uid, 'p' => 'htm'], $r->body);
+$st = ['places' => [['id' => 'p1', 'meter' => ['account' => '1000000061']], ['id' => 'pB', 'meter' => ['account' => '']]]]; $ac = [['acc' => '1000000061', 'sur' => 'Т']];
+ok('квитанції: вхід квартири — лише вона (рахунок один — він); основний — без неї', HtmBills::why($st, $ac, 'pB') === [['ok', ['place' => 'pB', 'acc' => '1000000061']]] && HtmBills::why($st, $ac, null, ['pB']) === [['ok', ['place' => 'p1', 'acc' => '1000000061']]]);
 stand('act=reset'); stand('act=set&scenario=ok');
 echo "\nИтог: $pass OK, $fail FAIL\n"; exit($fail ? 1 : 0);

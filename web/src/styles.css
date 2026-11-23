@@ -3616,3 +3616,10 @@ fieldset { min-inline-size: 0; }
 .pvp-one .prov-b { padding-left: 0; }
 /* 180-я: поля з платіжки на екрані постачальника й у групах квартири — на всю ширину картки (auto-fit: два поля — дві половини, а не дві третини з дірою справа) */
 @media (min-width: 600px) { .pvp-one .grid2, .pgroup .grid2, .cb .grid2 { grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr)); } }
+
+/* 182-а: свій вхід ХТМ окремої квартири — кнопка, форма й рядок у «Кабінетах» */
+.hp-own { margin: 8px 0 0; }
+.hp-own .linkbtn { display: inline-flex; align-items: center; gap: 6px; }
+.hp-form { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--c-line); }
+.hp-form .hp-t { margin: 0 0 4px; }
+.hp-acts { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; }
