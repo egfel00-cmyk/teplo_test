@@ -26,7 +26,7 @@ const D = '2026-11-12';
   await cabs();
 
   // 1. основний кабінет не підключено — у кожної квартири «Свій вхід ХТМ для цієї квартири»
-  ok('1. ХТМ не підключено: у рядку «Мамина» — «Свій вхід ХТМ для цієї квартири»', /Свій вхід ХТМ для цієї квартири/.test(await txt('[data-key=hp-cb-p2]')) && await has('[data-key=prefs-cab-htm-connect]'), await txt('[data-key=prefs-cab-htm]'));
+  ok('1. ХТМ не підключено: у рядку «Мамина» — «Свій вхід ХТМ для цієї квартири»', /Підключити вхід ХТМ цієї квартири/.test(await txt('[data-key=hp-cb-p2]')) && await has('[data-key=prefs-cab-htm-connect]'), await txt('[data-key=prefs-cab-htm]'));
   await p.click('[data-key=hp-cb-p2]'); await wait(400);
   ok('1. …форма: e-mail порожній (не підставляємо чужу пошту), пароль, згода; назва квартири в підказці', await has('.hp-form[data-pid=p2] #hp-email') && (await p.inputValue('#hp-email')) === '' && /«Мамина»/.test(await txt('.hp-form[data-pid=p2]')));
   await p.click('[data-key=hp-cb-p2-save]'); await wait(300);
@@ -36,7 +36,7 @@ const D = '2026-11-12';
   await p.fill('#hp-pass', 'stand-pass-123'); await p.click('[data-key=hp-cb-p2-save]'); await wait(4500);
   const s1 = await api('GET', '/cab/htm');
   ok('2. правильний пароль — вхід квартири на сервері (places.p2), основний — не підключено', s1.places && s1.places.p2 && s1.places.p2.login === 'test@stand.local' && s1.connected === false, s1);
-  ok('2. …рядок квартири: «Свій вхід ХТМ цієї квартири: test@stand.local», рахунок кабінету 1000000061', /Свій вхід ХТМ цієї квартири: test@stand\.local/.test(await txt('[data-key=cb-hp-st-p2]')) && /1000000061/.test(await txt('[data-key=cb-pl-htm-p2]')), await txt('[data-key=cb-pl-htm-p2]'));
+  ok('2. …рядок квартири: «Свій вхід ХТМ цієї квартири: test@stand.local», рахунок кабінету 1000000061', /Вхід ХТМ цієї квартири: test@stand\.local/.test(await txt('[data-key=cb-hp-st-p2]')) && /1000000061/.test(await txt('[data-key=cb-pl-htm-p2]')), await txt('[data-key=cb-pl-htm-p2]'));
   ok('2. …одразу «Перевірити» цим входом: прилад і вікно — у рядку квартири', /Кабінет відповідає|№ 70000061|70000061/.test(await txt('[data-key=cb-pl-htm-p2]')), await txt('[data-key=cb-pl-htm-p2]'));
   ok('2. …плашка блоку «Підключено» (квартира має свій вхід), «Підключити» основного лишилось', /Підключено/.test(await txt('[data-key=prefs-cab-htm] [data-key=cb-st]')) && await has('[data-key=prefs-cab-htm-connect]'), await txt('[data-key=prefs-cab-htm] [data-key=cb-st]'));
   ok('2. …у «Головної» квартири свого входу немає (кнопка лишилась)', await has('[data-key=hp-cb-main]'));

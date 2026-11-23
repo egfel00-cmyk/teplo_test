@@ -52,9 +52,9 @@ final class HtmSvc {
       'auto_off' => $ru ? 'Автоподача выключена — внесите кнопкой «Внести в кабинет ХТМ».' : 'Автоподачу вимкнено — внесіть кнопкою «Внести в кабінет ХТМ».',
       'no_job' => $ru ? 'Это внесение уже не в очереди.' : 'Це внесення вже не в черзі.',
       // 178-а: гаряча вода
-      'share_off' => $ru ? 'Владелец квартиры больше не разрешает отправлять через свой кабинет ХТМ — подключите свой или отправьте ботом.' : 'Власник квартири більше не дозволяє надсилати через свій кабінет ХТМ — підключіть свій або надішліть ботом.',
+      'share_off' => $ru ? 'Вход ХТМ этой квартиры больше не доступен — подключите вход квартиры или отправьте ботом.' : 'Вхід ХТМ цієї квартири більше не доступний — підключіть вхід квартири або надішліть ботом.',
       'hot_acc' => $ru ? 'Впишите лицевой счёт ХТМ за горячую воду этой квартиры.' : 'Впишіть особовий рахунок ХТМ за гарячу воду цієї квартири.',
-      'hot_none' => $ru ? 'В вашем кабинете ХТМ нет раздела горячей воды. Передайте её через бот ХТМ @KPHTM_Bot или по телефону (057) 341-41-40.' : 'У вашому кабінеті ХТМ немає розділу гарячої води. Передайте її через бот ХТМ @KPHTM_Bot або за телефоном (057) 341-41-40.',
+      'hot_none' => $ru ? 'В кабинете ХТМ этой квартиры нет раздела горячей воды. Передайте её через бот ХТМ @KPHTM_Bot или по телефону (057) 341-41-40.' : 'У кабінеті ХТМ цієї квартири немає розділу гарячої води. Передайте її через бот ХТМ @KPHTM_Bot або за телефоном (057) 341-41-40.',
       'hot_form' => $ru ? 'Форма горячей воды на сайте ХТМ не такая, как мы ждали, — ничего не отправили. Передайте через бот ХТМ, а мы поправим робота.' : 'Форма гарячої води на сайті ХТМ не така, як ми чекали, — нічого не надіслали. Передайте через бот ХТМ, а ми виправимо робота.',
       'hot_bad' => $ru ? 'Нужны дата и показания горячих водомеров (целые м³).' : 'Потрібні дата й показання гарячих водомірів (цілі м³).',
     ][$k];
@@ -86,6 +86,14 @@ final class HtmSvc {
     foreach (Db::q("SELECT * FROM cab_creds WHERE user_id = ? AND prov LIKE 'hp%'", [$uid])->fetchAll() as $r) if ((string)(self::js($r['extra'])['place'] ?? '') === $pid) return $r;
     return null;
   }
+  /** 183-я (власник 23.11: «у каждой квартиры свой вход для всех поставщиков, бо в каждой квартиры разные счётчики»): вхід ХТМ належить квартирі —
+   *  у спільній ним надсилають усі, хто її веде, хоч би хто його вписав. → ['u' => чий рядок, 'p' => prov, 'r' => рядок] або null. */
+  public static function aptCab(int $uid, string $pid): ?array {
+    if ($pid === '') return null;
+    if ($r = self::placeCred($uid, $pid)) return ['u' => $uid, 'p' => (string)$r['prov'], 'r' => $r];
+    if (class_exists('Share', false)) foreach (Share::mates($uid, $pid) as [$mu, $mp]) if ($r = self::placeCred($mu, $mp)) return ['u' => $mu, 'p' => (string)$r['prov'], 'r' => $r];
+    return null;
+  }
   /** Кабінет для квартири: свій вхід квартири, інакше основний. → [рядок | null, prov]. */
   public static function cabOf(int $uid, string $pid): array { $r = self::placeCred($uid, $pid); return $r ? [$r, (string)$r['prov']] : [self::creds($uid), self::PROV]; }
   /** prov для нового входу квартири: 'hp1', 'hp2'… (VARCHAR(8)). */
@@ -98,7 +106,7 @@ final class HtmSvc {
    *  інакше — основний кабінет самої людини. */
   public static function credFor(int $uid, string $place, string $acc): array {
     $me = ['u' => $uid, 'p' => self::PROV];
-    if ($pc = self::placeCred($uid, $place)) return ['u' => $uid, 'p' => (string)$pc['prov']];
+    if ($ac = self::aptCab($uid, $place)) return ['u' => $ac['u'], 'p' => $ac['p']];   // 183-я: вхід квартири — і той, що вписав інший учасник спільної
     if (!class_exists('Share', false)) return $me;
     $o = Share::bgOwner($uid, $place); $acc = preg_replace('/\D/', '', $acc); if (!$o || $acc === '') return $me;
     $mine = self::creds($uid); if ($mine && $mine['state'] !== 'bad_login' && in_array($acc, array_column(self::js($mine['info'])['accounts'] ?? [], 'acc'), true)) return $me;
@@ -131,11 +139,14 @@ final class HtmSvc {
   /** 182-а: свої входи ХТМ окремих квартир: {places: {pid: {login, state, accounts, phone, auto, since, checkedAt, forms, hot}}}. */
   private static function placesSt(int $uid): array {
     $out = [];
+    $one = function (array $c) { $ex = self::js($c['extra']); $info = self::js($c['info']);
+      return ['login' => $c['login'], 'state' => $c['state'], 'accounts' => self::pubAccs((array)($info['accounts'] ?? [])), 'phone' => $ex['phone'] ?? '', 'auto' => !empty($ex['auto']),
+        'since' => $c['created_at'], 'checkedAt' => $c['checked_at'], 'forms' => (object)($info['forms'] ?? []), 'hot' => (object)($info['hot'] ?? [])]; };
     foreach (Db::q("SELECT * FROM cab_creds WHERE user_id = ? AND prov LIKE 'hp%' ORDER BY id", [$uid])->fetchAll() as $c) {
-      $ex = self::js($c['extra']); $pid = (string)($ex['place'] ?? ''); if ($pid === '') continue; $info = self::js($c['info']);
-      $out[$pid] = ['login' => $c['login'], 'state' => $c['state'], 'accounts' => self::pubAccs((array)($info['accounts'] ?? [])), 'phone' => $ex['phone'] ?? '', 'auto' => !empty($ex['auto']),
-        'since' => $c['created_at'], 'checkedAt' => $c['checked_at'], 'forms' => (object)($info['forms'] ?? []), 'hot' => (object)($info['hot'] ?? [])];
+      $pid = (string)(self::js($c['extra'])['place'] ?? ''); if ($pid !== '') $out[$pid] = $one($c);
     }
+    // 183-я: спільна квартира — її вхід, хоч би хто з тих, хто веде квартиру, його вписав
+    if (class_exists('Share', false)) foreach (Share::pidsOf($uid) as $pid) if (!isset($out[$pid]) && ($ac = self::aptCab($uid, $pid))) $out[$pid] = $one($ac['r']) + ['mate' => true];
     return $out ? ['places' => $out] : [];
   }
   /** 180-я: спільні квартири, де власник дозволив «у фоні» й має кабінет ХТМ: {shared: {pid: {by, accounts, hot, forms}}} — лише рахунки цієї квартири. */
@@ -177,7 +188,8 @@ final class HtmSvc {
     $p = self::js($j['payload']); $r = self::js($j['result']);
     $o = ['id' => (int)$j['id'], 'acc' => $j['acc'], 'rid' => $p['rid'] ?? null, 'place' => $p['place'] ?? null, 'date' => $p['vals']['date'] ?? null, 'energy' => $p['vals']['energy'] ?? null, 'unit' => $p['vals']['eunit'] ?? 'Gcal',
       'status' => $j['status'], 'text' => $r['text'] ?? '', 'reason' => $r['reason'] ?? null, 'why' => $r['why'] ?? null, 'at' => strtotime((string)$j['created_at']) ?: null,
-      'checkedAt' => $r['checkedAt'] ?? null, 'nextAt' => in_array($j['status'], ['pending', 'queued'], true) ? (int)$j['next_at'] : null, 'auto' => !empty($p['auto']), 'human' => $r['human'] ?? null, 'card' => (int)($p['card'] ?? 0)];
+      'checkedAt' => $r['checkedAt'] ?? null, 'nextAt' => in_array($j['status'], ['pending', 'queued'], true) ? (int)$j['next_at'] : null, 'auto' => !empty($p['auto']), 'human' => $r['human'] ?? null, 'card' => (int)($p['card'] ?? 0),
+      'via' => !empty($p['cp']) ? 'p' : (!empty($p['cu']) ? 'o' : 'm')];   // 183-я: яким входом — p вхід квартири, o кабінет власника, m основний (стару невдачу іншим входом не показуємо)
     // 178-а: гаряча вода — дата й водоміри замість енергії
     return ($p['svc'] ?? '') === 'hot' ? array_merge($o, ['svc' => 'hot', 'date' => $p['date'] ?? null, 'items' => array_map(fn($i) => ['sn' => (string)($i['sn'] ?? ''), 'value' => (string)($i['value'] ?? ''), 'name' => (string)($i['name'] ?? '')], (array)($p['items'] ?? []))]) : $o;
   }
@@ -203,6 +215,8 @@ final class HtmSvc {
     finally { $cab->logout(); }
     // 182-а: {place} — свій вхід ХТМ цієї квартири (окремий рядок cab_creds 'hp<N>'); основний кабінет не чіпаємо
     $pid = self::pidOf($in['place'] ?? ''); $old = $pid !== '' ? self::placeCred($uid, $pid) : self::creds($uid); $pv = $old ? (string)$old['prov'] : ($pid !== '' ? self::newPv($uid) : self::PROV);
+    // 183-я: у квартири один вхід — той, що вписав інший учасник спільної, замінюємо цим
+    if ($pid !== '' && !$old && ($ac = self::aptCab($uid, $pid)) && $ac['u'] !== $uid) Db::q('DELETE FROM cab_creds WHERE user_id = ? AND prov = ?', [$ac['u'], $ac['p']]);
     $info = json_encode(['accounts' => $accs, 'at' => time()] + ($forms ? ['forms' => $forms] : ($old ? array_intersect_key(self::js($old['info']), ['forms' => 1]) : [])) + ($hots ? ['hot' => $hots] : []), JSON_UNESCAPED_UNICODE); if ($phone === '' && $old) $phone = (string)(self::js($old['extra'])['phone'] ?? '');   // подключили заново без телефона — прежний остаётся
     $extra = ['phone' => $phone, 'consentAt' => gmdate('c'), 'lang' => self::$lang] + ($pid !== '' ? ['place' => $pid] : []); if ($old && !empty(self::js($old['extra'])['auto'])) $extra['auto'] = true;   // подключили заново — автоподача как была
     $extra = json_encode($extra, JSON_UNESCAPED_UNICODE);
@@ -223,8 +237,13 @@ final class HtmSvc {
   public static function forget(int $uid, array $in): array {
     if (($in['prov'] ?? self::PROV) !== self::PROV) throw new HttpError(422, 'bad_prov');
     // 182-а: {place} — забути лише вхід цієї квартири
-    $pid = self::pidOf($in['place'] ?? ''); $pc = $pid !== '' ? self::placeCred($uid, $pid) : null; if ($pid !== '' && !$pc) return ['ok' => true] + self::status($uid);
+    $pid = self::pidOf($in['place'] ?? ''); $ac = $pid !== '' ? self::aptCab($uid, $pid) : null; $pc = $ac ? $ac['r'] : null; if ($pid !== '' && !$pc) return ['ok' => true] + self::status($uid);
     $pv = $pc ? (string)$pc['prov'] : self::PROV;
+    if ($ac && $ac['u'] !== $uid) {   // 183-я: вхід квартири вписав інший учасник спільної — він і забувається (у квартири один вхід)
+      Db::q('DELETE FROM cab_creds WHERE user_id = ? AND prov = ?', [$ac['u'], $pv]);
+      Db::q('INSERT INTO audit_log (user_id, action, ip, created_at) VALUES (?, ?, ?, ?)', [$uid, 'htm_cab_forget_apt', null, Http::iso()]);
+      return ['ok' => true] + self::status($uid);
+    }
     Db::q('DELETE FROM cab_creds WHERE user_id = ? AND prov = ?', [$uid, $pv]);
     foreach (self::jobsVia($uid, $pv, ['pending']) as $j) Db::q("UPDATE cab_jobs SET status = 'unknown', result = ?, updated_at = ? WHERE id = ? AND status = 'pending'", [json_encode(['why' => 'forgot', 'checkedAt' => time()]), Http::iso(), $j['id']]);
     foreach (self::jobsVia($uid, $pv, ['queued']) as $j) Db::q("UPDATE cab_jobs SET status = 'cancelled', result = ?, next_at = 0, updated_at = ? WHERE id = ? AND status = 'queued'", [json_encode(['why' => 'forgot', 'checkedAt' => time()]), Http::iso(), $j['id']]);
@@ -276,12 +295,13 @@ final class HtmSvc {
   /** POST /api/cab/htm/check — что видит кабинет. Ничего не вносит. */
   public static function check(int $uid, array $in): array {
     self::lang($in); self::limit($uid);
-    $pid = self::pidOf($in['place'] ?? ''); $pc = $pid !== '' ? self::placeCred($uid, $pid) : null; $pv = $pc ? (string)$pc['prov'] : self::PROV;   // 182-а: вхід цієї квартири
-    [$acc, $h, $fi, , $hp] = self::look($uid, (string)($in['acc'] ?? ''), 'check', $pv);
+    $pid = self::pidOf($in['place'] ?? ''); $ac = $pid !== '' ? self::aptCab($uid, $pid) : null; $pc = $ac ? $ac['r'] : null; $pv = $ac ? $ac['p'] : self::PROV;   // 182-а: вхід цієї квартири (183-я: і вписаний іншим учасником)
+    $cu = $ac ? $ac['u'] : $uid;
+    [$acc, $h, $fi, , $hp] = self::look($cu, (string)($in['acc'] ?? ''), 'check', $pv);
     [$lo, $hi] = self::window($h);
     return ['ok' => true, 'acc' => $acc['acc'], 'meter' => $h['meter'], 'base' => (object)$h['base'], 'open' => $h['open'], 'closed' => $h['closed'], 'min' => $lo, 'max' => $hi, 'winSrc' => $h['min'] !== null && $h['max'] !== null ? 'page' : 'calendar',
       'journal' => self::pubJournal($h['journal']), 'form' => ['open' => $h['open'], 'match' => $fi['match'] ?? null, 'phone' => in_array('phone', array_column($fi['fields'] ?? [], 'r'), true),
-        'unit' => HtmCab::unitCode($h['eunit'] ?? null), 'times3' => !empty($fi['times3']) || !empty($h['pd'])], 'forms' => (object)(self::js((string)(self::creds($uid, $pv)['info'] ?? ''))['forms'] ?? []), 'place' => $pc ? $pid : null,
+        'unit' => HtmCab::unitCode($h['eunit'] ?? null), 'times3' => !empty($fi['times3']) || !empty($h['pd'])], 'forms' => (object)(self::js((string)(self::creds($cu, $pv)['info'] ?? ''))['forms'] ?? []), 'place' => $pc ? $pid : null,
       'hot' => $hp ? ['found' => $hp['found'], 'open' => $hp['open'], 'closed' => $hp['closed'], 'n' => count($hp['vals']), 'sns' => array_values(array_filter(array_column($hp['vals'], 'sn')))] : null];
   }
 
@@ -488,11 +508,11 @@ final class HtmSvc {
   /** POST /api/cab/htm/auto {on} — автоподача: фото в бот → приложение распознало и проверило → внесение в очередь, робот вносит сам. */
   public static function auto(int $uid, array $in): array {
     self::lang($in);
-    $pid = self::pidOf($in['place'] ?? ''); $c = $pid !== '' ? self::placeCred($uid, $pid) : self::creds($uid); if (!$c) throw self::fail(409, 'off');   // 182-а: {place} — вхід квартири
-    $pv = (string)$c['prov'];
+    $pid = self::pidOf($in['place'] ?? ''); $ac = $pid !== '' ? self::aptCab($uid, $pid) : null; $c = $pid !== '' ? ($ac['r'] ?? null) : self::creds($uid); if (!$c) throw self::fail(409, 'off');   // 182-а: {place} — вхід квартири
+    $pv = (string)$c['prov']; $ou = $ac ? (int)$ac['u'] : $uid;   // 183-я: вхід квартири, вписаний іншим учасником, — його рядок
     $on = ($in['on'] ?? false) === true; $ex = self::js($c['extra']);
     if ($on) { $ex['auto'] = true; $ex['autoAt'] = gmdate('c'); } else unset($ex['auto'], $ex['autoAt']);
-    Db::q('UPDATE cab_creds SET extra = ? WHERE user_id = ? AND prov = ?', [json_encode($ex, JSON_UNESCAPED_UNICODE), $uid, $pv]);
+    Db::q('UPDATE cab_creds SET extra = ? WHERE user_id = ? AND prov = ?', [json_encode($ex, JSON_UNESCAPED_UNICODE), $ou, $pv]);
     if (!$on) foreach (self::jobsVia($uid, $pv, ['queued']) as $j) { $p = self::js($j['payload']); if (!empty($p['auto'])) Db::q("UPDATE cab_jobs SET status = 'cancelled', result = ?, next_at = 0, updated_at = ? WHERE id = ? AND status = 'queued'", [json_encode(['why' => 'auto_off', 'checkedAt' => time()]), Http::iso(), $j['id']]); }
     Db::q('INSERT INTO audit_log (user_id, action, ip, created_at) VALUES (?, ?, ?, ?)', [$uid, 'htm_cab_auto_' . ($on ? 'on' : 'off'), null, Http::iso()]);
     self::diag(['op' => 'auto', 'user' => $uid, 'result' => $on ? 'on' : 'off']);

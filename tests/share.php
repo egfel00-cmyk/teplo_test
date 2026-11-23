@@ -123,6 +123,16 @@ ok('місцевий КП: учасник — «підключено через 
 $A->req('POST', '/api/share/bg', ['sid' => $sid, 'on' => false]);
 ok('вимкнув — у місцевого КП учасник не підключений', LocalBot::status($uG, ['bot' => $lbId, 'place' => 'sh' . $sid])['conn'] === null);
 Db::q("DELETE FROM cab_creds WHERE user_id = ?", [$uA]); Db::q("DELETE FROM cab_jobs");
+// 183-я (власник 23.11: «у каждой квартиры свой вход для всех поставщиков»): вхід ХТМ квартири — спільний для всіх, хто її веде, без галочки й без імен
+echo "Вхід ХТМ квартири — спільний (183-я):\n";
+Db::q("INSERT INTO cab_creds (user_id, prov, login, secret, extra, state, info, created_at, checked_at) VALUES (?, 'hp1', 'apt@cab', ?, ?, 'ok', ?, ?, ?)", [$uA, CabVault::enc('pw'), json_encode(['place' => 'main']), json_encode(['accounts' => [['acc' => '1000000061', 'sur' => 'О']]]), Http::iso(), Http::iso()]);
+ok('учасник надсилає входом квартири, який вписав власник (без галочки «у фоні»)', HtmSvc::credFor($uG, 'sh' . $sid, '1000000061') === ['u' => $uA, 'p' => 'hp1'] && HtmSvc::credFor($uG, 'sh' . $sid, '') === ['u' => $uA, 'p' => 'hp1']);
+$hs = $G->req('GET', '/api/cab/htm')->body;
+ok('GET /api/cab/htm учасника: вхід цієї квартири (mate), рахунок — її', ($hs['places']['sh' . $sid]['login'] ?? '') === 'apt@cab' && !empty($hs['places']['sh' . $sid]['mate']) && array_column($hs['places']['sh' . $sid]['accounts'], 'acc') === ['1000000061'], $hs['places'] ?? null);
+$r = $G->req('POST', '/api/cab/forget', ['prov' => 'htm', 'place' => 'sh' . $sid]);
+ok('«Відв’язати» в учасника — у квартири більше немає входу (і у власника)', $r->status === 200 && !isset($r->body['places']) && !Db::one("SELECT id FROM cab_creds WHERE user_id = ? AND prov = 'hp1'", [$uA]) && HtmSvc::credFor($uG, 'sh' . $sid, '1000000061')['u'] === $uG, $r->body['places'] ?? null);
+ok('чужа квартира (не спільна) — входу іншої людини не бере', HtmSvc::aptCab($uG, 'main') === null);
+Db::q("DELETE FROM cab_creds WHERE user_id IN (?, ?)", [$uA, $uG]); Db::q("DELETE FROM cab_jobs");
 
 // одночасно: учасник змінює вивіз сміття, власник — тариф; у кожного стара копія чужого поля
 $t3 = ms(); $t4 = ms();

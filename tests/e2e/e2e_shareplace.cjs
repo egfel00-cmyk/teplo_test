@@ -100,7 +100,7 @@ const mailLink = () => { const d = fs.existsSync(EML) ? fs.readFileSync(EML, 'ut
     await B.goto(BASE + '#place-' + pB[0].id); await B.waitForTimeout(500); await openG(B);
     const gB = await B.textContent('[data-key=pg-pv-people]');
     ok('Б: «Веде olga… · ви учасник», «Вийти з квартири», запрошувати не може', gB.includes('Веде olga') && !!(await B.$('[data-key=shp-leave]')) && !(await B.$('[data-key=shp-inv]')), gB.slice(0, 300));
-    ok('Б: «Надсилання у фоні — через кабінети olga…» (галочки в учасника немає)', /через кабінети olga/.test(await B.textContent('[data-key=shp-bg-mem]').catch(() => '')) && !(await B.$('[data-key=shp-bg]')), await B.textContent('[data-key=shp-bg-mem]').catch(() => ''));
+    ok('Б: 183-я — про кабінети власника учаснику не пишемо, галочки немає', !(await B.$('[data-key=shp-bg-mem]')) && !(await B.$('[data-key=shp-bg]')) && !/через кабінети/.test(gB));
     await B.screenshot({ path: '/tmp/shp_member_place.png', fullPage: true });
     ok('Б: 320 px — екран квартири не ширший', (await (async () => { await B.setViewportSize({ width: 320, height: 700 }); await B.waitForTimeout(200); return wide(B); })()) <= 320);
     await B.setViewportSize({ width: 390, height: 844 });

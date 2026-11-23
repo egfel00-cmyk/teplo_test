@@ -499,6 +499,19 @@ final class Share {
     foreach (Db::q("SELECT prov, extra FROM cab_creds WHERE user_id = ? AND prov LIKE 'L%'", [$uid])->fetchAll() as $r) { $ex = json_decode((string)$r['extra'], true); if (is_array($ex) && isset($ex[$pid])) $o[] = 'lb:' . substr((string)$r['prov'], 1); }
     return $o;
   }
+  /** 183-я (власник 23.11: «у каждой квартиры свой вход для всех поставщиков»): інші люди тієї самої спільної квартири → [[uid, їхня копія pid], …]
+   *  (власник і учасники, крім самого uid); квартира не спільна — []. */
+  public static function mates(int $uid, string $pid): array {
+    if ($pid === '') return [];
+    try { self::table(); } catch (Throwable $e) { return []; }
+    $m = Db::one('SELECT share_id FROM share_members WHERE user_id = ? AND pid = ?', [$uid, $pid]); if (!$m) return [];
+    return array_map(fn($r) => [(int)$r['user_id'], (string)$r['pid']], Db::q("SELECT user_id, pid FROM share_members WHERE share_id = ? AND user_id <> ? ORDER BY role = 'owner' DESC, user_id", [(int)$m['share_id'], $uid])->fetchAll());
+  }
+  /** Спільні квартири людини: [її pid, …]. */
+  public static function pidsOf(int $uid): array {
+    try { self::table(); } catch (Throwable $e) { return []; }
+    return array_map(fn($r) => (string)$r['pid'], Db::q('SELECT pid FROM share_members WHERE user_id = ?', [$uid])->fetchAll());
+  }
   /** Учасник uid і його копія квартири pid → власник, якщо він дозволив «у фоні»: ['uid', 'pid', 'sid', 'name'] або null. */
   public static function bgOwner(int $uid, string $pid): ?array {
     if ($pid === '') return null;
