@@ -93,20 +93,25 @@ const D = '2026-11-12';
   ok('5. ХТМ — «Не прийнято» і причина «Поточні показання менші за попередні»', /Не прийнято/.test(await txt('[data-key=gw-st-htm]')) && /менші за попередні/.test(await txt('[data-key=gw-why-htm]')), [await txt('[data-key=gw-st-htm]'), await txt('[data-key=gw-why-htm]')]);
   ok('5. …кнопка «Відправити ще раз» у рядку ХТМ', /Відправити ще раз/.test(await txt('[data-key=gw-bg-htm]')), await txt('[data-key=gw-bg-htm]'));
 
+  // 185-я: у CI стан кабінету (/cab/htm) приходить пізніше за фіксовані паузи — чекаємо потрібного тексту до 10 с, далі перевірка як є
+  const until = (sel, re, ms) => p.waitForFunction(([s1, r]) => new RegExp(r).test((document.querySelector(s1) || {}).textContent || ''), [sel, re.source], { timeout: ms || 10000 }).catch(() => {});
   // 6. «ХТМ перевіряє»: сайт поставив «очікують перевірки» — статус словами, потім cron перечитав журнал → «Прийнято»
   await stand('act=set&scenario=ok&today=' + D + '&robot_delay=99999&hot=pending');
   await put({ h1: '177', c1: '442' }, 'wpend'); await p.reload(); await wait(1200);
   await p.evaluate(() => { const s = JSON.parse(localStorage.getItem('teplo.v1')); s.water.find(x => x.id === 'wpend').sent = { vk: '2026-11-12' }; s.updatedAt = Date.now(); localStorage.setItem('teplo.v1', JSON.stringify(s)); });
   await p.reload(); await wait(1200); await hot(); await wait(800);
   await p.click('[data-key=gw-bg-htm]'); await wait(2000); cron(); await p.reload(); await wait(1500); await hot(); await wait(2500);
+  await until('[data-key=gw-st-htm]', /ХТМ перевіряє/);
   ok('6. «ХТМ перевіряє»', /ХТМ перевіряє/.test(await txt('[data-key=gw-st-htm]')), await txt('[data-key=gw-st-htm]'));
   await stand('act=robot'); const c6 = cron(3 * 3600); await p.reload(); await wait(1500); await hot(); await wait(2500);
+  await until('[data-key=gw-st-htm]', /Прийнято/);
   ok('6. робот ХТМ прийняв → cron перечитав журнал гарячої → «Прийнято»', /Прийнято/.test(await txt('[data-key=gw-st-htm]')) && (await rec('wpend')).sent.htm, [c6, await txt('[data-key=gw-st-htm]')]);
 
   // 7. у кабінеті розділу гарячої немає (рахунок без гарячої): «Лише ботом», фон — лише Водоканал
   await stand('act=set&scenario=ok&today=' + D + '&robot_delay=99999&hot=off');
   ok('7. «Перевірити» кабінет — розділу гарячої немає', await p.evaluate(() => window.TeploSync.api('POST', '/cab/htm/check', {}).then(j => j.hot && j.hot.found === false)));
   await put({ h1: '178', c1: '443' }, 'woff'); await p.reload(); await wait(1500); await hot(); await wait(800);
+  await until('[data-key=gw-st-htm]', /Лише ботом/); await until('[data-key=gw-what-vk]', /443/);
   ok('7. ХТМ — «Лише ботом», одна причина (без повтору) і тут же бот, телефон, «Я передав(ла)»; кнопки ХТМ немає', /Лише ботом/.test(await txt('[data-key=gw-st-htm]')) && /розділу гарячої води немає/.test(await txt('[data-key=gw-why-htm]'))
     && (await p.$$('[data-key=gw-htm] .gw-why')).length === 1 && await has('[data-key=gw-nohot-bot]') && await has('[data-key=gw-nohot-tel]') && await has('[data-key=gw-nohot-mark]') && !(await has('[data-key=gw-bg-htm]')), await txt('[data-key=gw-htm]'));
   ok('7. …Водоканал — своєю кнопкою: «гаряча 178; холодна 443 м³»', /^Надішлемо: гаряча 178; холодна 443 м³\.$/.test((await txt('[data-key=gw-what-vk]')).trim()), await txt('[data-key=gw-what-vk]'));
