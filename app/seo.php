@@ -630,6 +630,18 @@ ul.ml{list-style:none;padding:0;margin:0;columns:2 260px;column-gap:24px}ul.ml l
 @media (max-width:520px){h1{font-size:25px}ul.ml{columns:1}}
 CSS;
 
+  /** 185-я: стара адреса постачальника ('p') чи громади ('h') → нинішня: єдина (найкоротша) адреса, що починається з «<стара>-». Немає — null. */
+  public static function moved(string $kind, string $slug): ?string {
+    if (($kind !== 'p' && $kind !== 'h') || !class_exists('Providers')) return null;
+    $all = array_keys($kind === 'p' ? self::provs() : self::hroms());
+    $c = array_values(array_filter($all, fn($k) => str_starts_with((string)$k, $slug . '-')));
+    if (!$c) return null;
+    usort($c, fn($a, $b) => strlen((string)$a) <=> strlen((string)$b) ?: strcmp((string)$a, (string)$b)); return (string)$c[0];
+  }
+  /** Шлях сторінки довідника: мова, вид ('p' | 'h'), адреса. */
+  public static function path(string $lang, string $kind, string $slug): string {
+    $pre = $kind === 'p' ? ($lang === 'ru' ? self::PRU : self::PUK) : ($lang === 'ru' ? self::HRU : self::HUK); return $pre . ($slug !== '' ? '/' . $slug : '');
+  }
   /** Сторінка: html або null (немає такої моделі). $base — SITE_BASE, $site — абсолютна адреса сайту з / в кінці. */
   public static function render(string $lang, string $slug, string $base, string $site, string $kind = 'm'): ?string {
     if ($kind === 'c') return class_exists('Calc') && class_exists('Providers') ? Calc::render($lang, $slug, $base, $site, self::$q) : null;

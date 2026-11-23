@@ -96,6 +96,8 @@ if (preg_match('~^/(ru/)?(yak-znyaty-pokaznannya|kak-snyat-pokazaniya|kudy-pered
   Seo::$q = array_filter($_GET, fn($v) => is_string($v) && strlen($v) <= 40);   // 170-а: калькулятори — GET-форма на ту саму сторінку
   $sm = Seo::match($path); $sh = preg_replace('/[^A-Za-z0-9.:-]/', '', (string)($_SERVER['HTTP_HOST'] ?? 'localhost'));
   $html = $sm ? Seo::render($sm[0], $sm[1], $base, (preg_match('/^(localhost|127\.0\.0\.1)(:\d+)?$/', $sh) ? 'http' : 'https') . '://' . $sh . $base . '/', $sm[2]) : null;
+  // 185-я (Search Console: /ru/postavshchiki/savynske — 404): адресу постачальника/громади перейменовано (додалась однойменна — «savynske-savyntsi») — 301 на нинішню
+  if ($html === null && $sm && $sm[1] !== '' && ($to = Seo::moved($sm[2], $sm[1])) !== null) { header('Location: ' . $base . Seo::path($sm[0], $sm[2], $to), true, 301); exit; }
   if ($html === null) { http_response_code(404); header('Content-Type: text/plain; charset=utf-8'); header('X-Robots-Tag: noindex'); echo "Not found\n"; exit; }
   if (rtrim($path, '/') !== $path) { header('Location: ' . $base . rtrim($path, '/'), true, 301); exit; }
   Seo::send($html, $sm[2] === 'c'); exit;
