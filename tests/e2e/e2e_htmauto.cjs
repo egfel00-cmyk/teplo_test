@@ -8,13 +8,14 @@ let pass = 0, fail = 0; const ok = (n, c, x) => { if (c) { pass++; console.log('
 const U = 'http://127.0.0.1:8013/', M = 'http://127.0.0.1:8099', DB = (process.env.SITE_DATA || '/tmp/teplo_data') + '/dev.sqlite';
 const stand = body => fetch(M + '/stand/admin', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body });
 const sql = (q, args) => execFileSync('php', ['-r', '$p = new PDO("sqlite:" . $argv[1]); $s = $p->prepare($argv[2]); $s->execute(json_decode($argv[3], true)); echo json_encode($s->fetchAll(PDO::FETCH_ASSOC));', DB, q, JSON.stringify(args || [])]).toString();
-// 16.11.2026 12:00 по Києву — коли «сфотографовано» (дата зняття береться з фото)
-const TAKEN = Math.floor(Date.parse('2026-11-16T10:00:00Z') / 1000);
+// 183-я: день «фото з бота» — у межах 7 днів і у вікні ХТМ (inboxday.cjs), а не зашите 16.11.2026
+const DAY = require('./inboxday.cjs')(); if (!DAY) { console.log('SKIP: сьогодні 1–4 число — фото за 7 днів не потрапляє у вікно ХТМ 5–25'); process.exit(0); }
+const TAKEN = DAY.at;
 const V = { energy: '14.445', volume: '2332.676', flow: '0.063', power: '1.445', tSupply: '50.12', tReturn: '30.4', hours: '35246', errHours: '153', errCode: 'E---' };
 const fake = (vals, conf) => ({ meter: { modelId: 'sharky774', energyUnit: 'Gcal', confidence: 0.9 }, engine: 'local',
   photos: [{ index: 0, kind: 'screen', meterType: 'heat', quality: 'ok', readings: Object.keys(vals).map(k => ({ field: k, value: vals[k], unit: k === 'energy' ? 'Gcal' : '', confidence: (conf || {})[k] || 0.95 })) }] });
 (async () => {
-  await stand('act=reset'); await stand('act=set&scenario=ok&today=2026-11-16&robot_delay=99999');
+  await stand('act=reset'); await stand('act=set&scenario=ok&today=' + DAY.B + '&robot_delay=99999');
   sql('DELETE FROM rate_limits');
   const b = await chromium.launch(); const ctx = await b.newContext({ viewport: { width: 390, height: 844 }, locale: 'uk-UA' });
   // распознаватель подменяем до загрузки страницы: ждёт window.__FAKE (результат «движка») и отдаёт его
@@ -33,8 +34,8 @@ const fake = (vals, conf) => ({ meter: { modelId: 'sharky774', energyUnit: 'Gcal
   ok('регистрация', await p.evaluate(e => window.TeploSync.register(e, 'Pass-12345678').then(j => j._status), 'ha' + Date.now() + '@teplo.test') === 200);
   const uid = await p.evaluate(() => window.TeploSync.account.id);
   // останні прийняті — як на стенді (20.10, 13.245)
-  const base = { date: '2026-10-20', energy: '13.245', volume: '2292.676', flow: '0.063', power: '1.685', tSupply: '50.76', tReturn: '27.71', hours: '34598', errHours: '153', errCode: 'E---' };
-  await p.evaluate(([s, base]) => { s.baseline = base; s.places[0].baseline = base; s.readings = []; s.updatedAt = Date.now(); localStorage.setItem('teplo.v1', JSON.stringify(s)); }, [demo({ today: '2026-11-16' }), base]);
+  const base = { date: DAY.shift(-27), energy: '13.245', volume: '2292.676', flow: '0.063', power: '1.685', tSupply: '50.76', tReturn: '27.71', hours: '34598', errHours: '153', errCode: 'E---' };
+  await p.evaluate(([s, base]) => { s.baseline = base; s.places[0].baseline = base; s.readings = []; s.updatedAt = Date.now(); localStorage.setItem('teplo.v1', JSON.stringify(s)); }, [demo({ today: DAY.B }), base]);
   await p.reload(); await wait(1200);
   const con = await p.evaluate(() => window.TeploSync.api('POST', '/cab/htm/connect', { email: 'test@stand.local', password: 'stand-pass-123', phone: '050 111 22 33', consent: true, lang: 'uk' }).then(j => j._status));
   ok('кабінет підключено', con === 200);
@@ -64,7 +65,7 @@ const fake = (vals, conf) => ({ meter: { modelId: 'sharky774', energyUnit: 'Gcal
   await p.waitForSelector('[data-key=status-cab-queued]', { timeout: 15000 }).catch(() => {});
   let s = await st(), r = (s.readings || []).slice(-1)[0] || {};
   ok('фото з бота → одразу «Внесемо в кабінет ХТМ о HH:MM»', /#status$/.test(p.url()) && /Внесемо в кабінет ХТМ о \d{2}:\d{2}/.test(await txt('[data-key=status-cab-queued]')), [p.url(), await txt('main')]);
-  ok('…запис: дата з фото 16.11, перевірено й «передано» з чергою, auto', r.htm && r.htm.date === '2026-11-16' && r.status === 'handed' && r.auto === true && r.cab && r.cab.status === 'queued' && r.cab.job > 0, r);
+  ok('…запис: дата з фото (DAY.B), перевірено й «передано» з чергою, auto', r.htm && r.htm.date === DAY.B && r.status === 'handed' && r.auto === true && r.cab && r.cab.status === 'queued' && r.cab.job > 0, r);
   ok('…на сервері внесення в черзі (ще не внесено на стенді)', JSON.parse(sql("SELECT status FROM cab_jobs WHERE id = ?", [r.cab && r.cab.job]))[0].status === 'queued' && !JSON.stringify(await (await fetch(M + '/stand/state')).json()).includes('2332.676'));
   ok('…вхідні з бота розібрані', (await p.evaluate(() => fetch('/api/inbox').then(x => x.json()))).items.length === 0);
   if (process.env.SHOT) await p.screenshot({ path: '/tmp/ha_queued.png' });
@@ -85,7 +86,7 @@ const fake = (vals, conf) => ({ meter: { modelId: 'sharky774', energyUnit: 'Gcal
   await p.click('[data-key=status-cab-now]'); await p.waitForSelector('[data-key=status-cab-wait]', { timeout: 20000 }).catch(() => {});
   s = await st(); r = s.readings.slice(-1)[0];
   ok('«Внести зараз» → внесено, «чекаємо перевірки робота ХТМ»', await vis('[data-key=status-cab-wait]') && r.cab.status === 'pending' && r.status === 'handed', r);
-  ok('…на стенді — запис 16.11.2026 з нашими цифрами', JSON.stringify(await (await fetch(M + '/stand/state')).json()).includes('14.455'));
+  ok('…на стенді — запис дня фото з нашими цифрами', JSON.stringify(await (await fetch(M + '/stand/state')).json()).includes('14.455'));
 
   // 3. частину цифр прочитано не впевнено → не вносимо, екран фото з причиною
   sql('DELETE FROM rate_limits');

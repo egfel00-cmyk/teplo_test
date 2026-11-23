@@ -68,12 +68,13 @@ const php = code => execFileSync('php', ['-r', `define('TEPLO',1); foreach (['co
   await p.click('[data-key=prefs-cab-htm-off]'); await p.waitForTimeout(300); await p.click('[data-key=ask-yes]'); await wait(1500);
   ok('«Відключити кабінет» ХТМ (с подтверждением) → не подключён', await p.evaluate(() => window.TeploSync.api('GET', '/cab/htm').then(j => j.connected)) === false && await vis('[data-key=prefs-cab-htm-connect]'));
   // 5. вода: «Відправити у фоні» → очередь сервера → cron → «передано» (підтверджено сайтом)
-  await p.goto(U + '#wrec-wnow'); await wait(1500); await p.click('[data-key=where-water-sum]'); await wait(300);
-  ok('вода: «Відправити у фоні» выделена, приписка с цифрами', (await p.$eval('[data-key=vk-bg]', x => x.className).catch(() => '')) === 'btn dest-bg' && /Холодна.*440/.test(await txt('[data-key=vk-bg-note]')), await txt('[data-key=vk-bg-note]'));
-  if (process.env.SHOT) { const el = await p.$('[data-key=dest-vk]'); if (el) await el.screenshot({ path: '/tmp/bg_water.png' }); }
-  await p.click('[data-key=vk-bg]'); await wait(1500);
+  // 182-а: у записі з гарячою (Харків) — окремі рядки ХТМ і Водоканалу, у кожного своя кнопка (gw-bg-vk), не стара «vk-bg»
+  await p.goto(U + '#wrec-wnow'); await wait(1500); if (!(await p.$eval('[data-key=where-water]', d => d.open).catch(() => true))) await p.click('[data-key=where-water-sum]'); await wait(400);
+  ok('вода: рядок Водоканалу — своя «Надіслати у Водоканал» (btn dest-bg), що надішлемо — гаряча й холодна', (await p.$eval('[data-key=gw-bg-vk]', x => x.className).catch(() => '')) === 'btn dest-bg' && /гаряча 176.*холодна 440/.test(await txt('[data-key=gw-what-vk]')), await txt('[data-key=gw-what-vk]'));
+  if (process.env.SHOT) { const el = await p.$('[data-key=where-water]'); if (el) await el.screenshot({ path: '/tmp/bg_water.png' }); }
+  await p.click('[data-key=gw-bg-vk]'); await wait(1500);
   s = await st(); let w = s.water.find(x => x.id === 'wnow');
-  ok('…в очереди сервера: «Надсилаємо у фоні»', w.vkJob && w.vkJob.status === 'queued' && await vis('[data-key=vk-bg-q]'), w.vkJob);
+  ok('…в очереди сервера: статус «Надсилаємо…»', w.vkJob && w.vkJob.status === 'queued' && /Надсилаємо/.test(await txt('[data-key=gw-st-vk]')), [w.vkJob, await txt('[data-key=gw-st-vk]')]);
   const cr = php("echo json_encode(VkSvc::cron());");
   ok('cron: отправлено на сайт Водоканалу → ok', /"ok"/.test(cr), cr);
   await p.evaluate(() => window.dispatchEvent(new Event('hashchange'))); await p.goto(U + '#home'); await wait(300); await p.goto(U + '#wrec-wnow'); await p.waitForFunction(() => { const w = JSON.parse(localStorage.getItem('teplo.v1')).water.find(x => x.id === 'wnow'); return w && w.sent && w.sent.vk; }, null, { timeout: 30000 }).catch(() => {});

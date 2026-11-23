@@ -9,14 +9,16 @@ const U = 'http://127.0.0.1:8013/', M = 'http://127.0.0.1:8099', SD = process.en
 const stand = body => fetch(M + '/stand/admin', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body });
 const sql = (q, args) => JSON.parse(execFileSync('php', ['-r', '$p = new PDO("sqlite:" . $argv[1]); $s = $p->prepare($argv[2]); $s->execute(json_decode($argv[3], true)); echo json_encode($s->fetchAll(PDO::FETCH_ASSOC));', DB, q, JSON.stringify(args || [])]).toString() || '[]');
 const php = (...a) => JSON.parse(execFileSync('php', [path.join(__dirname, 'card_php.php'), ...a.map(String)], { env: Object.assign({}, process.env, { SITE_DATA: SD }) }).toString());
-const TAKEN = Math.floor(Date.parse('2026-11-16T10:00:00Z') / 1000);
+// 183-я: день «фото з бота» — у межах 7 днів і у вікні ХТМ (inboxday.cjs), а не зашите 16.11.2026
+const DAY = require('./inboxday.cjs')(); if (!DAY) { console.log('SKIP: сьогодні 1–4 число — фото за 7 днів не потрапляє у вікно ХТМ 5–25'); process.exit(0); }
+const TAKEN = DAY.at;
 const V = { energy: '14.445', volume: '2332.676', flow: '0.063', power: '1.445', tSupply: '50.12', tReturn: '30.4', hours: '35246', errHours: '153', errCode: 'E---' };
 const fake = (vals, cf) => ({ meter: { modelId: 'sharky774', energyUnit: 'Gcal', confidence: 0.9 }, engine: 'local',
   photos: [{ index: 0, kind: 'screen', meterType: 'heat', quality: 'ok', readings: Object.keys(vals).map(k => ({ field: k, value: vals[k], unit: k === 'energy' ? 'Gcal' : '', confidence: k === 'energy' && cf ? cf : 0.95 })) }] });
-const TAKEN2 = Math.floor(Date.parse('2026-11-18T10:00:00Z') / 1000);
+const TAKEN2 = DAY.atOf(2);
 const V2 = { energy: '14.645', volume: '2340.676', flow: '0.063', power: '1.445', tSupply: '50.12', tReturn: '30.4', hours: '35246', errHours: '153', errCode: 'E---' };
 (async () => {
-  await stand('act=reset'); await stand('act=set&scenario=ok&today=2026-11-16&robot_delay=99999');
+  await stand('act=reset'); await stand('act=set&scenario=ok&today=' + DAY.B + '&robot_delay=99999');
   sql('DELETE FROM rate_limits');
   const b = await chromium.launch(); const ctx = await b.newContext({ viewport: { width: 390, height: 844 }, locale: 'uk-UA' });
   await ctx.addInitScript(() => {
@@ -31,8 +33,8 @@ const V2 = { energy: '14.645', volume: '2340.676', flow: '0.063', power: '1.445'
   await p.goto(U); await p.evaluate(() => localStorage.clear()); await p.reload(); await p.waitForTimeout(500);
   ok('реєстрація', await p.evaluate(e => window.TeploSync.register(e, 'Pass-12345678').then(j => j._status), 'cs' + Date.now() + '@teplo.test') === 200);
   const uid = await p.evaluate(() => window.TeploSync.account.id);
-  const base = { date: '2026-10-20', energy: '13.245', volume: '2292.676', flow: '0.063', power: '1.685', tSupply: '50.76', tReturn: '27.71', hours: '34598', errHours: '153', errCode: 'E---' };
-  await p.evaluate(([s, base]) => { s.baseline = base; s.places[0].baseline = base; s.readings = []; s.updatedAt = Date.now(); localStorage.setItem('teplo.v1', JSON.stringify(s)); }, [demo({ today: '2026-11-16' }), base]);
+  const base = { date: DAY.shift(-27), energy: '13.245', volume: '2292.676', flow: '0.063', power: '1.685', tSupply: '50.76', tReturn: '27.71', hours: '34598', errHours: '153', errCode: 'E---' };
+  await p.evaluate(([s, base]) => { s.baseline = base; s.places[0].baseline = base; s.readings = []; s.updatedAt = Date.now(); localStorage.setItem('teplo.v1', JSON.stringify(s)); }, [demo({ today: DAY.B }), base]);
   await p.reload(); await p.waitForTimeout(1200);
   ok('кабінет ХТМ підключено (автоподачу НЕ вмикали)', await p.evaluate(() => window.TeploSync.api('POST', '/cab/htm/connect', { email: 'test@stand.local', password: 'stand-pass-123', phone: '050 111 22 33', consent: true, lang: 'uk' }).then(j => j._status)) === 200);
   const pid = await p.evaluate(async () => {
@@ -47,7 +49,7 @@ const V2 = { energy: '14.645', volume: '2340.676', flow: '0.063', power: '1.445'
   let c = null; for (let i = 0; i < 40; i++) { c = sql('SELECT * FROM bot_cards WHERE id = ?', [cid])[0]; if (c.stage !== 'new') break; await p.waitForTimeout(500); }
   const d = JSON.parse(c.data), plan = JSON.parse(c.plan || '[]'), q = (d.r || [])[0] || {};
   ok('застосунок віддав картці: «готово», 14,445 Гкал → ХТМ, «Відправити» доступне', c.stage === 'ready' && q.v === '14,445 Гкал' && q.w === 'ХТМ' && q.a === 1, d);
-  ok('план для робота ХТМ: рахунок, дата дд.мм.рррр, енергія, телефон', plan[0] && plan[0].svc === 'htm' && plan[0].in.vals.date === '16.11.2026' && plan[0].in.vals.energy === '14.445' && !!plan[0].in.rid, plan);
+  ok('план для робота ХТМ: рахунок, дата дд.мм.рррр, енергія, телефон', plan[0] && plan[0].svc === 'htm' && plan[0].in.vals.date === DAY.dmy && plan[0].in.vals.energy === '14.445' && !!plan[0].in.rid, plan);
   let s = await st(), rd = (s.readings || []).slice(-1)[0] || {};
   ok('запис тепла «перевірено», у черзі ще нічого (чекає «Відправити» в картці)', rd.status === 'checked' && String(rd.htm.energy) === '14.445' && rd.card === cid && !rd.cab && !sql("SELECT id FROM cab_jobs WHERE user_id = ? AND prov = 'htm'", [uid]).length, rd);
   ok('застосунок — на головній', /#home$/.test(p.url()), p.url());
