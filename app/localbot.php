@@ -204,6 +204,12 @@ final class LocalBot {
   // ---------- облікові дані людини: cab_creds (user_id, 'L'+бот) — extra: {місце: {acc, consentAt, lang, chk}}, secret: зашифроване {місце: {name, addr, phone, login, pass}} ----------
   private static function js(?string $s): array { $j = json_decode((string)$s, true); return is_array($j) ? $j : []; }
   private static function row(int $uid, string $id): ?array { return Db::one('SELECT * FROM cab_creds WHERE user_id = ? AND prov = ?', [$uid, self::prov($id)]); }
+  /** 180-я: спільна квартира учасника без свого підключення, власник дозволив «у фоні» → підключення власника (його копія квартири): [uid, place, ім'я] або null. */
+  public static function viaOwner(int $uid, string $id, string $place): ?array {
+    if (!class_exists('Share', false) || self::creds($uid, $id, $place)) return null;
+    $o = Share::bgOwner($uid, $place); if (!$o) return null;
+    $c = self::creds($o['uid'], $id, $o['pid']); return $c ? [$o['uid'], $o['pid'], $o['name']] : null;
+  }
   /** Дані підключення для місця (з розшифрованими полями) або null. */
   public static function creds(int $uid, string $id, string $place): ?array {
     $r = self::row($uid, $id); if (!$r) return null;
@@ -303,8 +309,11 @@ final class LocalBot {
   /** GET /api/lb?bot=&place= — бот, підключення цього місця (свої дані — для заповнення форми; пароль — ніколи), черга. */
   public static function status(int $uid, array $q): array {
     [$id] = self::botOr404($q); $place = self::placeId($q); $c = self::creds($uid, $id, $place);
+    // 180-я: через підключення власника — без його даних входу (лише рахунок квартири), з ім'ям власника
+    $vo = self::viaOwner($uid, $id, $place);
+    if ($vo) { $oc = self::creds($vo[0], $id, $vo[1]) ?? []; $c = array_filter(['acc' => $oc['acc'] ?? null, 'chk' => $oc['chk'] ?? null, 'consentAt' => $oc['consentAt'] ?? null, 'bg' => ($oc['bg'] ?? true) !== false], fn($v) => $v !== null); }
     $conn = $c ? array_filter(['dist' => $c['dist'] ?? null, 'acc' => $c['acc'] ?? null, 'name' => $c['name'] ?? null, 'addr' => $c['addr'] ?? null, 'phone' => $c['phone'] ?? null, 'login' => $c['login'] ?? null,
-      'pass' => isset($c['pass']) ? true : null, 'at' => $c['consentAt'] ?? null, 'chk' => $c['chk'] ?? null], fn($v) => $v !== null) + ['bg' => ($c['bg'] ?? true) !== false] : null;
+      'pass' => isset($c['pass']) ? true : null, 'at' => $c['consentAt'] ?? null, 'chk' => $c['chk'] ?? null], fn($v) => $v !== null) + ['bg' => ($c['bg'] ?? true) !== false] + ($vo ? ['by' => $vo[2]] : []) : null;
     $jobs = Db::q('SELECT * FROM cab_jobs WHERE user_id = ? AND prov = ? ORDER BY id DESC LIMIT 12', [$uid, self::prov($id)])->fetchAll();
     $pb = self::pub($id); if ($c && $pb['to'] === null && self::to(self::get($id), $c) !== '') $pb['to'] = self::to(self::get($id), $c);   // адреса району
     return ['bot' => $pb, 'conn' => $conn, 'jobs' => array_values(array_filter(array_map([self::class, 'pubJob'], $jobs), fn($j) => ($j['place'] ?? '') === $place))];
@@ -372,7 +381,9 @@ final class LocalBot {
     self::$lang = ($in['lang'] ?? '') === 'ru' ? 'ru' : 'uk';
     [$id, $b] = self::botOr404($in); $place = self::placeId($in);
     if (!self::ready($id)) throw self::err($b['t'] === 'mail' ? 'mail' : 'off', 409);
-    $c = self::creds($uid, $id, $place); if (!$c) throw self::err('conn', 409);
+    $c = self::creds($uid, $id, $place); $vo = $c ? null : self::viaOwner($uid, $id, $place);   // 180-я: спільна квартира — підключенням власника
+    if ($vo) $c = self::creds($vo[0], $id, $vo[1]);
+    if (!$c) throw self::err('conn', 409);
     if (($c['bg'] ?? true) === false) throw self::err('bg_off', 409);
     $items = self::items((array)($in['items'] ?? [])); if (!$items) throw self::err('items');
     if (!empty($b['one']) && count($items) !== 1) throw self::err('one');
@@ -388,7 +399,7 @@ final class LocalBot {
     foreach (Db::q("SELECT * FROM cab_jobs WHERE user_id = ? AND prov = ? AND status = 'queued'", [$uid, self::prov($id)])->fetchAll() as $j) if ((self::js($j['payload'])['place'] ?? '') === $place) self::finish((int)$j['id'], 'cancelled', ['why' => 'replaced']);
     $at = self::openAt($b['win'] ?? null, time());
     Db::q("INSERT INTO cab_jobs (user_id, prov, acc, payload, status, result, tries, next_at, created_at, updated_at) VALUES (?, ?, ?, ?, 'queued', NULL, 0, ?, ?, ?)",
-      [$uid, self::prov($id), mb_substr((string)($c['acc'] ?? ''), 0, 40), json_encode(['rid' => $rid, 'place' => $place, 'items' => $items, 'lang' => self::$lang] + ($card ? ['card' => $card] : []), JSON_UNESCAPED_UNICODE), $at, Http::iso(), Http::iso()]);
+      [$uid, self::prov($id), mb_substr((string)($c['acc'] ?? ''), 0, 40), json_encode(['rid' => $rid, 'place' => $place, 'items' => $items, 'lang' => self::$lang] + ($card ? ['card' => $card] : []) + ($vo ? ['cu' => $vo[0], 'cp' => $vo[1]] : []), JSON_UNESCAPED_UNICODE), $at, Http::iso(), Http::iso()]);
     $job = self::pubJob(Db::one('SELECT * FROM cab_jobs WHERE id = ?', [Db::id()]));
     Db::q('INSERT INTO audit_log (user_id, action, ip, created_at) VALUES (?, ?, ?, ?)', [$uid, 'lb_queue_' . $id, null, Http::iso()]);
     if ($at > time() + 120 && !$card) self::notify($uid, $id, $job);   // «надішлемо 25-го о 9:00»
@@ -428,6 +439,7 @@ final class LocalBot {
     self::$lang = ($p['lang'] ?? '') === 'ru' ? 'ru' : 'uk';
     if (Db::q("UPDATE cab_jobs SET status = 'sending', updated_at = ? WHERE id = ? AND status = 'queued'", [Http::iso(), $j['id']])->rowCount() !== 1) return self::pubJob(Db::one('SELECT * FROM cab_jobs WHERE id = ?', [$j['id']]));
     $c = $b ? self::creds($uid, $id, (string)($p['place'] ?? '')) : null;
+    if ($b && !$c && isset($p['cu'])) { $vo = self::viaOwner($uid, $id, (string)($p['place'] ?? '')); $c = $vo && $vo[0] === (int)$p['cu'] ? self::creds($vo[0], $id, $vo[1]) : null; }   // 180-я: власник ще дозволяє?
     if (!$b || !$c) self::finish((int)$j['id'], 'failed', ['why' => 'conn', 'human' => self::h('conn')]);
     elseif (!self::ready($id)) self::finish((int)$j['id'], 'failed', ['why' => 'off', 'human' => self::h($b['t'] === 'mail' ? 'mail' : 'off')]);
     else try {

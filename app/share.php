@@ -137,11 +137,11 @@ final class Share {
       if (trim((string)($u->name ?? '')) === '') { $u->name = self::ownLabel($cur[(int)$owner['user_id']]['st'] ?? null, (string)$owner['pid']); $ukt->name = max(1, (int)($ukt->name ?? 0)); }
       $urecs = self::unionRecs(array_map(fn($x) => $x['recs'], $parts));
       $ppl = []; foreach ($ms as $m) $ppl[(string)$m['user_id']] = self::nameOf((int)$m['user_id'], $m['name']);
-      $oname = $ppl[(string)$owner['user_id']] ?? '';
+      $oname = $ppl[(string)$owner['user_id']] ?? ''; $sbg = (int)(Db::one('SELECT bg FROM shares WHERE id = ?', [$sid])['bg'] ?? 0);
       $wrote = 0; $lost = false;
       foreach ($parts as $x) {
         $m = $x['m']; $uid = (int)$m['user_id']; $c = $cur[$uid]; $st = $c['st']; $pid = (string)$m['pid'];
-        $sh = (object)['sid' => $sid, 'role' => $m['role'], 'me' => $uid, 'n' => count($ms), 'own' => $oname, 'ownId' => (int)$owner['user_id'], 'ppl' => (object)$ppl, 'at' => (int)(strtotime((string)$m['joined_at']) ?: time()) * 1000];
+        $sh = (object)['sid' => $sid, 'role' => $m['role'], 'me' => $uid, 'n' => count($ms), 'own' => $oname, 'ownId' => (int)$owner['user_id'], 'ppl' => (object)$ppl, 'at' => (int)(strtotime((string)$m['joined_at']) ?: time()) * 1000]; if ($sbg) $sh->bg = 1;
         $old = $x['p'];
         $np = new stdClass;
         foreach (self::PERSONAL as $k) if (property_exists($old, $k)) $np->$k = $old->$k;
@@ -471,9 +471,57 @@ final class Share {
       $inv = [];
       if ($own) foreach (Db::q('SELECT * FROM share_invites WHERE share_id = ? AND used_at IS NULL AND revoked = 0 AND expires_at > ? ORDER BY id DESC', [$sid, time()])->fetchAll() as $i)
         $inv[] = ['id' => (int)$i['id'], 'via' => $i['via'], 'email' => $i['email'], 'exp' => (int)$i['expires_at'], 'at' => (int)$i['created_at']] + ($i['via'] === 'link' ? self::urls(self::tok((int)$i['id'])) : []);
-      $out[] = ['sid' => $sid, 'pid' => $me['pid'], 'role' => $me['role'], 'people' => $ppl, 'invites' => $inv];
+      $sh = Db::one('SELECT bg FROM shares WHERE id = ?', [$sid]);
+      $out[] = ['sid' => $sid, 'pid' => $me['pid'], 'role' => $me['role'], 'people' => $ppl, 'invites' => $inv, 'bg' => (bool)(int)($sh['bg'] ?? 0)] + ($own ? ['bgVia' => self::ownerVia($uid, (string)$me['pid'])] : []);
     }
     return ['shares' => $out];
+  }
+
+  // ---------------------------------------------------------------- 180-я: «у фоні» учасника через кабінети власника
+  // Власник галочкою дозволяє (shares.bg): учасник без свого підключення надсилає показання ЦІЄЇ квартири через підключення власника (ХТМ, місцеві КП).
+  // Паролі й дані входу учасник не бачить; рахунок — лише цієї квартири (не інші квартири власника). Водоканал — і так рахунком і прізвищем квартири.
+  /** POST /api/share/bg {sid, on} — лише власник. */
+  public static function bg(int $uid, array $in): array {
+    self::table(); $sid = (int)($in['sid'] ?? 0); $on = ($in['on'] ?? false) === true;
+    $me = Db::one('SELECT role FROM share_members WHERE share_id = ? AND user_id = ?', [$sid, $uid]);
+    if (!$me || $me['role'] !== 'owner') throw new HttpError(403, 'not_owner');
+    Db::q('UPDATE shares SET bg = ?, bg_at = ? WHERE id = ?', [$on ? 1 : 0, time(), $sid]);
+    Db::q('INSERT INTO audit_log (user_id, action, ip, created_at) VALUES (?, ?, ?, ?)', [$uid, 'share_bg_' . ($on ? 'on' : 'off'), null, Http::iso()]);
+    self::sync($sid);
+    return self::mine($uid);
+  }
+  /** Через що власник надсилає показання цієї квартири у фоні (для галочки): ['htm', 'lb:<бот>', …]. */
+  private static function ownerVia(int $uid, string $pid): array {
+    $o = [];
+    $c = Db::one("SELECT state FROM cab_creds WHERE user_id = ? AND prov = 'htm'", [$uid]); if ($c && $c['state'] !== 'bad_login') $o[] = 'htm';
+    foreach (Db::q("SELECT prov, extra FROM cab_creds WHERE user_id = ? AND prov LIKE 'L%'", [$uid])->fetchAll() as $r) { $ex = json_decode((string)$r['extra'], true); if (is_array($ex) && isset($ex[$pid])) $o[] = 'lb:' . substr((string)$r['prov'], 1); }
+    return $o;
+  }
+  /** Учасник uid і його копія квартири pid → власник, якщо він дозволив «у фоні»: ['uid', 'pid', 'sid', 'name'] або null. */
+  public static function bgOwner(int $uid, string $pid): ?array {
+    if ($pid === '') return null;
+    try { self::table(); } catch (Throwable $e) { return null; }
+    $m = Db::one("SELECT m.share_id, s.bg FROM share_members m JOIN shares s ON s.id = m.share_id WHERE m.user_id = ? AND m.pid = ? AND m.role = 'member'", [$uid, $pid]);
+    if (!$m || !(int)$m['bg']) return null;
+    $o = Db::one("SELECT user_id, pid, name FROM share_members WHERE share_id = ? AND role = 'owner'", [(int)$m['share_id']]); if (!$o) return null;
+    return ['uid' => (int)$o['user_id'], 'pid' => (string)$o['pid'], 'sid' => (int)$m['share_id'], 'name' => self::nameOf((int)$o['user_id'], $o['name'])];
+  }
+  /** Рахунки цієї квартири в стані власника (теплолічильник, гаряча, холодна) — лише на них учасник може надсилати через кабінет власника. */
+  public static function placeAccs(int $owner, string $pid): array {
+    $c = self::load($owner); $p = $c ? self::placeIn($c['st'], $pid) : null; if (!$p) return [];
+    $d = fn($x) => preg_replace('/\D/', '', is_scalar($x) ? (string)$x : '');
+    $w = is_object($p->water ?? null) ? $p->water : new stdClass; $acc = is_object($w->acc ?? null) ? $w->acc : new stdClass;
+    $st = $c['st']; $m = ((string)($st->placeId ?? self::first($st)) === $pid && is_object($st->meter ?? null)) ? $st->meter : ($p->meter ?? null);   // поточна квартира — S.meter
+    return array_values(array_unique(array_filter([$d(is_object($m) ? ($m->account ?? '') : ''), $d($acc->hot ?? ''), $d($acc->cold ?? ($w->account ?? ''))])));
+  }
+  /** Спільні квартири учасника зі згодою «у фоні»: [{mpid, uid (власник), pid (квартира власника), sid, name}] — для GET /api/cab/htm. */
+  public static function bgMine(int $uid): array {
+    try { self::table(); } catch (Throwable $e) { return []; }
+    $out = [];
+    foreach (Db::q("SELECT m.pid, m.share_id FROM share_members m JOIN shares s ON s.id = m.share_id WHERE m.user_id = ? AND m.role = 'member' AND s.bg = 1", [$uid])->fetchAll() as $r) {
+      $o = self::bgOwner($uid, (string)$r['pid']); if ($o) $out[] = ['mpid' => (string)$r['pid']] + $o;   // mpid — копія учасника, pid — квартира власника
+    }
+    return $out;
   }
   /** Як людина заходить (для власника: «Telegram» / «пошта») — без самих адрес. */
   private static function via(int $uid): string {

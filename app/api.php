@@ -48,6 +48,7 @@
 //  POST /api/visit                  {vid, device, os, tg, pwa, sw} — с чего открыли сайт (аналитика устройств), вход не нужен
 //  POST /api/feedback               {text, contact?, page, screen, lang} — плавающая кнопка «Відгук», вход не нужен
 //  GET  /api/share · POST /api/share/invite {pid, email?, lang?} · /revoke {id} · /remove {sid, user} · /leave {sid}   179-я: спільна квартира (app/share.php)
+//  POST /api/share/bg {sid, on} — 180-а: власник дозволяє учасникам «у фоні» через свої кабінети (ХТМ, місцеві КП)
 //  GET  /api/share/join?t= → що за запрошення · POST /api/share/join {t, name?, email?, state?} → {pid, sid} | {sent} (лист на пошту — сам вхід)
 //  GET  /api/admin/*                аналитика владельца (только admins из config.php), см. app/admin.php
 //  GET  /api/admin/photo?id=…       байты фото (не JSON)
@@ -382,6 +383,7 @@ final class Api {
       case 'POST /api/share/revoke': if (!$user) throw new HttpError(401, 'unauthorized'); return Share::revoke((int)$user['id'], $in);
       case 'POST /api/share/remove': if (!$user) throw new HttpError(401, 'unauthorized'); return Share::remove((int)$user['id'], $in);
       case 'POST /api/share/leave': if (!$user) throw new HttpError(401, 'unauthorized'); return Share::leave((int)$user['id'], $in);
+      case 'POST /api/share/bg': if (!$user) throw new HttpError(401, 'unauthorized'); return Share::bg((int)$user['id'], $in);   // 180-а: учасники «у фоні» через кабінети власника
       case 'GET /api/share/join': { RateLimit::hit('share_ip', $ip); $q = $r->query(); return Share::preview((string)($q['t'] ?? ''), $user, ($q['lang'] ?? '') === 'ru' ? 'ru' : 'uk'); }
       case 'POST /api/share/join': {
         RateLimit::hit('share_ip', $ip);

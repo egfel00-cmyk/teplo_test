@@ -89,11 +89,18 @@ const mailLink = () => { const d = fs.existsSync(EML) ? fs.readFileSync(EML, 'ut
     const ppl = await A.textContent('[data-key=shp-list]');
     ok('А: у списку — Іван (пошта, з дати), кнопка «Прибрати»', ppl.includes('ivan' + ts) && /пошта/.test(ppl) && !!(await A.$('[data-act=shp-rm]')), ppl);
     ok('А: підзаголовок групи — «Ви й ivan…»', (await A.textContent('[data-key=pg-pv-people] summary')).includes('Ви й ivan'));
+    // 180-я: власник дозволяє «у фоні через мої кабінети»; назва — спільна
+    ok('А: галочка «Надсилати у фоні через мої кабінети» (вимкнена)', !!(await A.$('[data-key=shp-bg] input')) && !(await A.$eval('[data-key=shp-bg] input', x => x.checked)));
+    await A.click('[data-key=shp-bg] input'); await A.waitForTimeout(1200);
+    ok('А: увімкнув — на сервері bg', ((await api(A, 'GET', '/share')).shares[0] || {}).bg === true);
+    ok('Б: назва квартири та сама, що в власника («Мамина»)', ((await st(B)).places || []).filter(p => p.id === pB[0].id)[0].name === 'Мамина');
 
     // ---------- Б: екран квартири — учасник, «Вийти», без запрошень
+    await poll(B); await B.waitForTimeout(1500);
     await B.goto(BASE + '#place-' + pB[0].id); await B.waitForTimeout(500); await openG(B);
     const gB = await B.textContent('[data-key=pg-pv-people]');
     ok('Б: «Веде olga… · ви учасник», «Вийти з квартири», запрошувати не може', gB.includes('Веде olga') && !!(await B.$('[data-key=shp-leave]')) && !(await B.$('[data-key=shp-inv]')), gB.slice(0, 300));
+    ok('Б: «Надсилання у фоні — через кабінети olga…» (галочки в учасника немає)', /через кабінети olga/.test(await B.textContent('[data-key=shp-bg-mem]').catch(() => '')) && !(await B.$('[data-key=shp-bg]')), await B.textContent('[data-key=shp-bg-mem]').catch(() => ''));
     await B.screenshot({ path: '/tmp/shp_member_place.png', fullPage: true });
     ok('Б: 320 px — екран квартири не ширший', (await (async () => { await B.setViewportSize({ width: 320, height: 700 }); await B.waitForTimeout(200); return wide(B); })()) <= 320);
     await B.setViewportSize({ width: 390, height: 844 });

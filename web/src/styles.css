@@ -3559,6 +3559,13 @@ fieldset { min-inline-size: 0; }
 /* 180-я (власник 23.11, скрін десктопа: «таких дыр быть не должно, вёрстка должна быть отзывчивой на всех размерах»): без стелі 560 px —
    на широкій картці (≥ 720 px) дві колонки: люди й пояснення | як запросити (лінія між ними), на вузькій — одна колонка на всю ширину */
 .shp-wrap { container-type: inline-size; }
+/* 180-я: «у фоні» через кабінети власника — галочка власника, рядок учасника */
+.shp-bg { display: flex; gap: 12px; align-items: flex-start; padding: 12px 0; margin: 0 0 var(--sp-3); border-top: 1px solid var(--c-line); cursor: pointer; }
+.shp-bg input { flex: none; width: 22px; height: 22px; margin: 1px 0 0; accent-color: var(--acc-fill, var(--c-ink)); }
+.shp-bg > span { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.shp-bg b { font-weight: 600; }
+.shp-bgm { display: flex; gap: 6px; align-items: flex-start; margin: 0 0 var(--sp-3); color: var(--c-ink-2); }
+.shp-bgm .ico { flex: none; margin-top: 2px; }
 .shp-wrap .shp-lead { max-width: none; }
 .shp-inv > p.shp-send-s, .shp-inv .shp-or { max-width: none; }
 @container (min-width: 720px) {

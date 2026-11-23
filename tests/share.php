@@ -91,6 +91,39 @@ $G->edit(function ($st) use ($sid, $t2b) { foreach ($st['places'] as &$p) if ($p
 ok('учасник перейменував — у власника та сама назва', (place($A->get(), 'main')['name'] ?? '') === 'Квартира на Сумській');
 $t2c = ms();
 $A->edit(function ($st) use ($t2c) { foreach ($st['places'] as &$p) if ($p['id'] === 'main') { $p['name'] = 'Мамина квартира'; $p['_kt']['name'] = $t2c; $p['updatedAt'] = $t2c; } $st['updatedAt'] = $t2c; return $st; });
+echo "«У фоні» учасника через кабінети власника (180-я):\n";
+$uA = (int)Db::one("SELECT id FROM users WHERE email = 'olga@example.ua'")['id']; $uG = (int)Db::one("SELECT user_id FROM share_members WHERE share_id = ? AND role = 'member'", [$sid])['user_id'];
+// у власника — кабінет ХТМ із двома рахунками (цієї квартири й іншої); рахунок квартири — в теплолічильнику
+Db::q("INSERT INTO cab_creds (user_id, prov, login, secret, extra, state, info, created_at, checked_at) VALUES (?, 'htm', 'olga@cab', ?, '{}', 'ok', ?, ?, ?)", [$uA, CabVault::enc('pw'), json_encode(['accounts' => [['acc' => '1000000061', 'sur' => 'О'], ['acc' => '2000000099', 'sur' => 'О']], 'hot' => ['1000000061' => ['found' => true, 'open' => true, 'n' => 1]]]), Http::iso(), Http::iso()]);
+$A->edit(function ($st) { foreach ($st['places'] as &$p) if ($p['id'] === 'main') { $p['meter'] = ['account' => '1000000061', 'model' => 'sharky774']; $p['_kt']['meter'] = ms(); $p['updatedAt'] = ms(); } $st['updatedAt'] = ms(); return $st; });
+ok('власник ще не дозволив — учасник надсилає своїм (кабінету немає)', HtmSvc::credFor($uG, 'sh' . $sid, '1000000061') === $uG);
+ok('у GET /api/cab/htm учасника — без кабінету власника', !isset($G->req('GET', '/api/cab/htm')->body['shared']));
+$r = $G->req('POST', '/api/share/bg', ['sid' => $sid, 'on' => true]); ok('галочку вмикає лише власник', $r->status === 403, $r->status);
+$r = $A->req('POST', '/api/share/bg', ['sid' => $sid, 'on' => true]);
+ok('власник увімкнув «у фоні через мої кабінети»; бачить, через що (ХТМ)', $r->status === 200 && ($r->body['shares'][0]['bg'] ?? false) === true && in_array('htm', $r->body['shares'][0]['bgVia'] ?? [], true), $r->body['shares'][0] ?? null);
+ok('у квартирі учасника — позначка sh.bg', (place($G->get(), 'sh' . $sid)['sh']['bg'] ?? 0) === 1);
+$hs = $G->req('GET', '/api/cab/htm')->body;
+ok('учасник: кабінет власника для цієї квартири — лише її рахунок (іншого не видно), розділ гарячої', isset($hs['shared']['sh' . $sid]) && array_column($hs['shared']['sh' . $sid]['accounts'], 'acc') === ['1000000061'] && !empty($hs['shared']['sh' . $sid]['hot']->{'1000000061'} ?? $hs['shared']['sh' . $sid]['hot']['1000000061'] ?? null) && $hs['shared']['sh' . $sid]['by'] === 'olga', $hs['shared'] ?? null);
+ok('надсилання на рахунок квартири — кабінетом власника', HtmSvc::credFor($uG, 'sh' . $sid, '1000000061') === $uA);
+ok('на інший рахунок власника (не цієї квартири) — ні', HtmSvc::credFor($uG, 'sh' . $sid, '2000000099') === $uG);
+$r = $G->req('POST', '/api/cab/htm/hot', ['acc' => '1000000061', 'rid' => 'w2', 'place' => 'sh' . $sid, 'date' => '2026-11-20', 'items' => [['sn' => '1', 'value' => '180']]]);
+$jp = json_decode((string)Db::one('SELECT payload FROM cab_jobs WHERE id = ?', [(int)($r->body['job']['id'] ?? 0)])['payload'], true);
+ok('гаряча учасника — у його черзі, кабінетом власника (cu)', $r->status === 200 && ($jp['cu'] ?? 0) === $uA && (int)Db::one('SELECT user_id FROM cab_jobs WHERE id = ?', [(int)$r->body['job']['id']])['user_id'] === $uG, [$r->status, $r->body, $jp]);
+$A->req('POST', '/api/share/bg', ['sid' => $sid, 'on' => false]);
+ok('власник вимкнув — знову своїм', HtmSvc::credFor($uG, 'sh' . $sid, '1000000061') === $uG && !isset($G->req('GET', '/api/cab/htm')->body['shared']));
+Db::q("UPDATE cab_jobs SET next_at = 0 WHERE id = ?", [(int)$r->body['job']['id']]); HtmSvc::cron();
+$jr = Db::one('SELECT status, result FROM cab_jobs WHERE id = ?', [(int)$r->body['job']['id']]);
+ok('черга, поставлена до вимкнення, не йде кабінетом власника: «більше не дозволяє»', $jr['status'] === 'failed' && (json_decode((string)$jr['result'], true)['why'] ?? '') === 'share_off', $jr);
+// місцевий КП: підключення власника для його квартири → учасник бачить «підключено» (з іменем власника, без даних входу)
+$A->req('POST', '/api/share/bg', ['sid' => $sid, 'on' => true]);
+$lbId = array_key_first(LocalBot::BOTS);
+Db::q("INSERT INTO cab_creds (user_id, prov, login, secret, extra, state, info, created_at, checked_at) VALUES (?, ?, '', ?, ?, 'ok', NULL, ?, ?)", [$uA, 'L' . $lbId, CabVault::enc(json_encode(['main' => ['name' => 'Ольга', 'phone' => '0501112233']])), json_encode(['main' => ['acc' => '555', 'consentAt' => gmdate('c')]]), Http::iso(), Http::iso()]);
+$ls = LocalBot::status($uG, ['bot' => $lbId, 'place' => 'sh' . $sid]);
+ok('місцевий КП: учасник — «підключено через olga», без імені й телефону власника', ($ls['conn']['by'] ?? '') === 'olga' && ($ls['conn']['acc'] ?? '') === '555' && !isset($ls['conn']['name']) && !isset($ls['conn']['phone']), $ls['conn'] ?? null);
+$A->req('POST', '/api/share/bg', ['sid' => $sid, 'on' => false]);
+ok('вимкнув — у місцевого КП учасник не підключений', LocalBot::status($uG, ['bot' => $lbId, 'place' => 'sh' . $sid])['conn'] === null);
+Db::q("DELETE FROM cab_creds WHERE user_id = ?", [$uA]); Db::q("DELETE FROM cab_jobs");
+
 // одночасно: учасник змінює вивіз сміття, власник — тариф; у кожного стара копія чужого поля
 $t3 = ms(); $t4 = ms();
 $A->get(); $G->get();
