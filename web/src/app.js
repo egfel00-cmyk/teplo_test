@@ -232,7 +232,7 @@
   /** Нативна вкладка для маршруту: home | history | stats | prefs; '' — не міняти (екрани всередині розділу).
    *  156-а (HIG: «не перемикати вкладку самому»): запис історії відкривається там, де його натиснули — з «Історії» чи зі сторінки лічильника. */
   function appTab(r) {
-    if (/^(home|heat|water-|elec$|gas$|waste$|places$|place$)/.test(r)) return 'home';
+    if (/^(home|heat|water-|elec$|gas$|waste$|places$|place$|month)/.test(r)) return 'home';
     if (/^history/.test(r)) return 'history';
     if (/^stats/.test(r)) return 'stats';
     if (/^prefs/.test(r)) return 'prefs';
@@ -1561,7 +1561,7 @@
           '<div class="hp-id"><b class="hp-name" data-key="home-place-name">' + esc(placeLabel(p)) + shTag(p) + '</b>' +
             (HP_EDIT === p.id ? '' : addr ? '<span class="hp-addr">' + esc(addr) + ' <button type="button" class="linkbtn" data-act="hp-edit" data-id="' + esc(p.id) + '" data-key="home-addr-edit">' + esc(t('change')) + '</button></span>'
               : '<button type="button" class="linkbtn hp-addr-add" data-act="hp-edit" data-id="' + esc(p.id) + '" data-key="home-addr-add">' + ico('plus', 16) + ' ' + esc(t('hp_addr_add')) + '</button>') + '</div></div>' +
-          (HP_EDIT === p.id ? hpEditForm(p) : '') +
+          (HP_EDIT === p.id ? hpEditForm(p) : '') + moLine(p) +
           '<div class="ucards">' + cards.join('') + placeTile(p, !cards.length) + '</div>' +
           '<p class="hp-more"><button type="button" class="btn sec" data-act="hp-add-place" data-key="home-add-place">' + ico('plus', 18) + '<span>' + esc(t('pl_add')) + '</span></button></p>' + (cards.length ? '<p class="small muted ucards-hint">' + esc(t('uc_hint')) + '</p>' : '') + '</section>';
       });
@@ -1577,7 +1577,7 @@
             '<span class="pacc-av" aria-hidden="true">' + (picon(p, 28) || ico('home', 26)) + '</span><span class="pacc-t"><b>' + (p.icon && PICONS[p.icon] ? '' : '<i class="pdot" aria-hidden="true"></i>') + esc(placeLabel(p)) + shTag(p) + '</b>' + (p.address ? '<span class="pacc-addr">' + esc(addrShort(p.address)) + '</span>' : '') +
             '<span class="pacc-kk" aria-hidden="true">' + placeKindList(p).map(function (k) { return ico(KINDS[k].icon, 18, KINDS[k].cls); }).join('') + '</span></span>' +
             ico('chev', 22, 'pacc-chev') + due + '</summary><div class="pacc-body">' +
-          (HP_EDIT === p.id ? hpEditForm(p) : '') +
+          (HP_EDIT === p.id ? hpEditForm(p) : '') + moLine(p) +
           // назва, адреса, рахунки, постачальники, додати й прибрати лічильник — усе на екрані квартири; тут лише вхід туди, під лічильниками
           '<div class="ucards">' + cards.join('') + placeTile(p, !cards.length) + '</div>' +
           (cards.length ? '' : '<p class="hp-tools"><a class="btn ter sm" href="#place-' + esc(p.id) + '" data-key="home-pl-set-' + esc(p.id) + '">' + ico('prefs', 18) + '<span>' + esc(t('hp_settings')) + '</span></a></p>') + '</div></details>';
@@ -7911,6 +7911,47 @@
       return { rows: rows, due: due, allOk: rows.length > 0 && rows.every(function (r) { return r.tone === 'ok' || r.off; }) };
     }) || { rows: [], due: null, allOk: false };
   }
+  /* ---------- 183-я: «Передача за місяць» — передано N з M (з розбору конкурентів: у fugas «Передати постачальникам: передано N з M») ----------
+   * Рахуємо види квартири, яким цього місяця є що передати: вікно відкрите (due/warn), внесено й чекає (ready) або вже передано (ok).
+   * Вивіз сміття — оплата, не передача: не рахуємо. Рядок на головній (moLine, лише коли таких видів ≥ 2) → екран #month-<квартира> (moView):
+   * зверху «1 з 4» і смужка, далі рядок на вид — статус і куди, дотик — сторінка лічильника; види без вікна цього місяця — окремою групою. */
+  function moRows(p) {
+    return placeStatus(p.id).rows.filter(function (r) { return r.kind !== 'waste'; }).map(function (r) {
+      return Object.assign({}, r, { act: !r.off && /^(ok|due|warn)$/.test(r.tone || ''), done: r.tone === 'ok' });
+    });
+  }
+  function moSum(p) { var rs = moRows(p), a = rs.filter(function (r) { return r.act; }); return { rows: rs, act: a, m: a.length, n: a.filter(function (r) { return r.done; }).length }; }
+  /** Назва поточного місяця: «листопад» / «ноябрь». */
+  function moName() { try { return new Date(today().slice(0, 7) + '-15T12:00:00Z').toLocaleDateString(S.lang === 'ru' ? 'ru-RU' : 'uk-UA', { month: 'long' }); } catch (e) { return ymLabel(today().slice(0, 7)); } }
+  /** Тихий рядок під назвою квартири: значки видів (передані — кольором) і «Передано 1 з 4 за листопад ›». */
+  function moLine(p) {
+    var s = moSum(p); if (s.m < 2) return '';
+    var all = s.n === s.m, ks = s.act.map(function (r) { return '<span class="mo-k' + (r.done ? ' on' : '') + '">' + ico(KINDS[r.kind].icon, 16, KINDS[r.kind].cls) + '</span>'; }).join('');
+    return '<a class="mo-line' + (all ? ' all' : '') + '" href="#month-' + esc(p.id) + '" data-key="mo-' + esc(p.id) + '"><span class="mo-ks" aria-hidden="true">' + ks + '</span>' +
+      '<span class="mo-t">' + esc(all ? t('mo_all', { mm: moName() }) : t('mo_line', { n: s.n, m: s.m, mm: moName() })) + '</span>' + ico('chev', 18, 'mo-chev') + '</a>';
+  }
+  function moView(pid) {
+    var p = place(pid) || place(); if (!p) return V.home();
+    if (p.id !== S.placeId) { switchPlace(p.id); WX.key = ''; p = place(); }
+    var s = moSum(p), later = s.rows.filter(function (r) { return !r.act; });
+    var row = function (r) {
+      var pk = r.kind === 'cold' ? 'water' : r.kind, org = pvpKinds(p).indexOf(pk) >= 0 ? (pvpSum(p, pk).org || '') : '';
+      var href = r.kind === 'heat' ? 'heat' : r.kind === 'hot' || r.kind === 'cold' ? 'water-' + r.kind : r.kind;
+      var st = String(r.st || ''); st = st ? st.charAt(0).toUpperCase() + st.slice(1) : '';
+      return '<li><a class="ios-row pvp-row mo-row' + (r.done ? ' done' : '') + '" href="#' + href + '" data-key="mo-row-' + r.kind + '"><span class="ios-ico pvp-ico" aria-hidden="true">' + ico(KINDS[r.kind].icon, 22, KINDS[r.kind].cls) + '</span>' +
+        '<span class="ios-t"><b>' + esc(r.title) + '</b>' + (st ? '<span class="small mo-st' + (r.done ? ' ok' : r.tone === 'warn' ? ' warn' : '') + '" data-key="mo-st-' + r.kind + '">' + esc(st) + '</span>' : '') +
+        (org ? '<span class="small muted mo-org">' + esc(org) + '</span>' : '') + '</span>' + (r.done ? ico('check', 20, 'mo-done') : '') + ico('chev', 18, 'ios-chev') + '</a></li>';
+    };
+    var h = '<p class="rec-back"><a href="#home" data-key="mo-back">← ' + esc(t('nav_home')) + '</a></p><h1 class="mo-h">' + esc(t('mo_title', { mm: moName() })) + '</h1>' +
+      (places().length > 1 ? '<p class="small muted mo-pl" data-key="mo-place">' + esc(placeLabel(p)) + (p.address ? ' · ' + esc(addrShort(p.address)) : '') + '</p>' : '');
+    if (s.m) h += '<section class="panel mo-sum" data-key="mo-sum"><p class="mo-big"><b data-key="mo-n">' + esc(t('mo_nm', { n: s.n, m: s.m })) + '</b><span>' + esc(t(s.n === s.m ? 'mo_sum_all' : 'mo_sum')) + '</span></p>' +
+      '<span class="mo-bar" role="img" aria-label="' + esc(t('mo_line', { n: s.n, m: s.m, mm: moName() })) + '">' + s.act.map(function (r) { return '<i class="' + (r.done ? 'on' : '') + '"></i>'; }).join('') + '</span></section>' +
+      '<div class="ios-groups mo-gs"><section class="ios-sec"><ul class="ios-list pvp-list mo-list" data-key="mo-list">' + s.act.map(row).join('') + '</ul></section>';
+    else h += '<div class="ios-groups mo-gs"><p class="muted" data-key="mo-none">' + esc(t('mo_none', { mm: moName() })) + '</p>';
+    if (later.length) h += '<section class="ios-sec"><h2 class="ios-sh">' + esc(t('mo_later')) + '</h2><ul class="ios-list pvp-list mo-list later" data-key="mo-later">' + later.map(row).join('') + '</ul></section>';
+    h += '</div>';
+    return { screen: 'S43', route: 'month-' + p.id, html: h };
+  }
   /** Ближайший срок словами: «до 20.11 — залишилось 3 дн.», «сьогодні останній день». */
   function dueText(d) { var n = R.daysBetween(today(), d); return n <= 0 ? t('ov_due_today', { d: fmtDate(d) }) : t('ov_due', { d: fmtDate(d), n: n }); }
   /** Карточка квартиры на главной-списке: название, адрес, ближайший срок, строка на каждый счётчик со статусом. */
@@ -11033,6 +11074,7 @@
     var pvm = r.match(/^pvp-(heat|water|hot|elec|gas|waste)-([\w-]+)$/);
     if (pvm) view = pvpView(pvm[1], pvm[2]);   // 180-я: екран постачальника квартири
     else if (pm) view = placeView(pm[1]);
+    else if (/^month(-[\w-]+)?$/.test(r)) view = moView(r.slice(6));   // 183-я: «Передача за місяць»
     else if (em) view = erecView(em[1]);
     else if (gn) view = gapView(null, gn[1]);
     else if (gm) view = gapView(gm[1]);

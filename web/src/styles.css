@@ -3628,3 +3628,28 @@ fieldset { min-inline-size: 0; }
 .wcab { margin-top: 12px; }
 .wcab-v { margin: 0; }
 .wcab-acts { margin: 4px 0 0; }
+
+/* ===== 183-я: «Передача за місяць» (з розбору конкурентів: «передано N з M») — тихий рядок під назвою квартири на головній і екран #month-<квартира> */
+.mo-line { display: flex; align-items: center; gap: 10px; min-height: 44px; margin: 0 0 var(--sp-3); padding: 6px 0; color: var(--c-ink-2); font-size: var(--fs-s); text-decoration: none; }
+.mo-line .mo-ks { flex: none; display: inline-flex; gap: 6px; }
+.mo-k { display: inline-flex; opacity: .35; filter: grayscale(1); }
+.mo-k.on { opacity: 1; filter: none; }
+.mo-line .mo-t { flex: 1 1 auto; min-width: 0; }
+.mo-line .mo-chev { flex: none; opacity: .6; }
+.mo-line.all .mo-t { color: var(--c-ok-ink); }
+@media (hover: hover) { .mo-line:hover .mo-t { text-decoration: underline; } }
+.pacc-body > .mo-line { margin-top: -4px; }
+.mo-pl { margin: -8px 0 var(--sp-4); }
+.mo-sum { display: grid; gap: 12px; }
+.mo-big { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; margin: 0; }
+.mo-big b { font-size: var(--fs-xxl); line-height: 1.1; font-weight: 600; font-variant-numeric: tabular-nums; }
+.mo-big span { color: var(--c-ink-2); }
+.mo-bar { display: flex; gap: 4px; height: 8px; }
+.mo-bar i { flex: 1 1 0; border-radius: 4px; background: var(--fill-track, var(--c-line)); }
+.mo-bar i.on { background: var(--c-ok); }
+.mo-gs { margin-top: var(--sp-4); }
+.mo-row .ios-t .mo-st { white-space: normal; }
+.mo-st.ok { color: var(--c-ok-ink); }
+.mo-st.warn { color: var(--c-warn-ink); }
+.mo-row .mo-done { flex: none; color: var(--c-ok-ink); }
+.mo-list.later .ios-t b { font-weight: 500; }
