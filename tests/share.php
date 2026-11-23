@@ -66,7 +66,7 @@ $u2 = joinUrl($MAILS); ok('у листі — посилання #join-…', $u2 
 $r = $G->req('POST', '/api/share/join', ['t' => tokOf($u2), 'state' => ['v' => 1, 'readings' => [], 'places' => [['id' => 'main', 'name' => '', 'v' => 2]], 'water' => [], 'mrecs' => []]]);
 ok('посилання з листа — вхід без пароля й квартира', $r->status === 200 && ($r->body['pid'] ?? '') === 'sh' . $sid && !empty($r->body['user']['id']) && !empty($G->jar['ts_sid']), $r->body);
 $stG = $G->get(); $pG = place($stG, 'sh' . $sid);
-ok('у нового — спільна квартира з лічильниками, адресою, без назви власника', $pG && ($pG['water']['meters'][0]['id'] ?? '') === 'c1' && ($pG['street'] ?? '') === 'вул. Сумська, 10' && ($pG['name'] ?? '') === '' && empty($pG['color']), $pG);
+ok('у нового — спільна квартира з лічильниками, адресою й тією ж назвою, що в власника (180-я)', $pG && ($pG['water']['meters'][0]['id'] ?? '') === 'c1' && ($pG['street'] ?? '') === 'вул. Сумська, 10' && ($pG['name'] ?? '') === 'Мамина' && empty($pG['color']), $pG);
 ok('порожню «Моя квартира» з пристрою прибрано', !empty(place($stG, 'main')['deleted']), place($stG, 'main'));
 ok('записи — з її id квартири; гаража немає', count(recs($stG, 'water', 'sh' . $sid)) === 1 && count(recs($stG, 'mrecs', 'sh' . $sid)) === 1 && !array_filter($stG['water'], fn($x) => $x['id'] === 'w9'));
 ok('позначка: учасник, власник Ольга, двоє', ($pG['sh']['role'] ?? '') === 'member' && ($pG['sh']['own'] ?? '') === 'olga' && ($pG['sh']['n'] ?? 0) === 2 && isset($pG['sh']['ppl'][(string)$r->body['user']['id']]), $pG['sh'] ?? null);
@@ -85,7 +85,12 @@ $t2 = ms();
 $r = $A->edit(function ($st) use ($t2) { foreach ($st['places'] as &$p) if ($p['id'] === 'main') { $p['prov'] = ['water' => ['own' => 1, 'name' => 'ОСББ «Сумська»', 'ts' => $t2]]; $p['_kt']['prov'] = $t2; $p['name'] = 'Мамина квартира'; $p['_kt']['name'] = $t2; $p['updatedAt'] = $t2; } $st['updatedAt'] = $t2; return $st; });
 $stG2 = $G->get(); $pG2 = place($stG2, 'sh' . $sid);
 ok('власник змінив постачальника — у учасника той самий', ($pG2['prov']['water']['name'] ?? '') === 'ОСББ «Сумська»', $pG2['prov'] ?? null);
-ok('назва — особиста: у учасника лишилась своя (порожня)', ($pG2['name'] ?? '') === '');
+ok('назва — спільна: власник перейменував — у учасника та сама (180-я)', ($pG2['name'] ?? '') === 'Мамина квартира', $pG2['name'] ?? null);
+$t2b = ms();
+$G->edit(function ($st) use ($sid, $t2b) { foreach ($st['places'] as &$p) if ($p['id'] === 'sh' . $sid) { $p['name'] = 'Квартира на Сумській'; $p['_kt']['name'] = $t2b; $p['updatedAt'] = $t2b; } $st['updatedAt'] = $t2b; return $st; });
+ok('учасник перейменував — у власника та сама назва', (place($A->get(), 'main')['name'] ?? '') === 'Квартира на Сумській');
+$t2c = ms();
+$A->edit(function ($st) use ($t2c) { foreach ($st['places'] as &$p) if ($p['id'] === 'main') { $p['name'] = 'Мамина квартира'; $p['_kt']['name'] = $t2c; $p['updatedAt'] = $t2c; } $st['updatedAt'] = $t2c; return $st; });
 // одночасно: учасник змінює вивіз сміття, власник — тариф; у кожного стара копія чужого поля
 $t3 = ms(); $t4 = ms();
 $A->get(); $G->get();
@@ -212,6 +217,18 @@ ok('токен у базі — лише хеш', !Db::one('SELECT 1 AS x FROM sh
 $D = new Browser('10.0.0.12'); $D->req('POST', '/api/auth/register', ['email' => 'd@example.ua', 'password' => 'password-123']);
 $D->get(); $D->put(['v' => 1, 'readings' => [], 'water' => [], 'mrecs' => [], 'places' => [['id' => 'main', 'v' => 2, 'updatedAt' => ms()]], 'updatedAt' => ms()]);
 $td = tokOf((string)$D->req('POST', '/api/share/invite', ['pid' => 'main'])->body['url']);
+Db::q('UPDATE share_invites SET expires_at = ? WHERE token_hash = ?', [time() - 5, hash('sha256', $td)]);
+$E = new Browser('10.0.0.13'); $E->req('POST', '/api/auth/register', ['email' => 'e@example.ua', 'password' => 'password-123']);
+$td0 = tokOf((string)$D->req('POST', '/api/share/invite', ['pid' => 'main'])->body['url']);
+$re = $E->req('POST', '/api/share/join', ['t' => $td0]);
+ok('власник назви не давав — у всіх «Моя квартира», як бачить він (180-я)', (place($E->get(), (string)($re->body['pid'] ?? ''))['name'] ?? '') === 'Моя квартира' && (place($D->get(), 'main')['name'] ?? '') === 'Моя квартира', [place($E->get(), (string)($re->body['pid'] ?? ''))['name'] ?? null, place($D->get(), 'main')['name'] ?? null]);
+// стара спільна (зведена до зміни правил): назва в учасника порожня — cron зводить ще раз
+$pe = (string)($re->body['pid'] ?? ''); $sidE = (int)substr($pe, 2);
+$E->edit(function ($st) use ($pe) { foreach ($st['places'] as &$p) if ($p['id'] === $pe) { $p['name'] = ''; unset($p['_kt']['name']); } return $st; });
+$D->edit(function ($st) { foreach ($st['places'] as &$p) if ($p['id'] === 'main') { $p['name'] = ''; unset($p['_kt']['name']); } return $st; });
+Db::q('UPDATE shares SET rv = 1 WHERE id = ?', [$sidE]); Db::q('UPDATE share_members SET ver = (SELECT version FROM user_state WHERE user_state.user_id = share_members.user_id) WHERE share_id = ?', [$sidE]);
+Share::cron();
+ok('cron: старі спільні зведено ще раз — назва однакова', (place($E->get(), $pe)['name'] ?? '') === 'Моя квартира' && (place($D->get(), 'main')['name'] ?? '') === 'Моя квартира', place($E->get(), $pe)['name'] ?? null);
 Db::q('UPDATE share_invites SET expires_at = ? WHERE token_hash = ?', [time() - 5, hash('sha256', $td)]);
 ok('застаріле посилання — expired, приєднатися не можна', ($X->req('GET', '/api/share/join?t=' . $td)->body['state'] ?? '') === 'expired' && ($X->req('POST', '/api/share/join', ['t' => $td])->body['error'] ?? '') === 'invite_expired');
 $X->req('POST', '/api/share/revoke', ['id' => 1]);

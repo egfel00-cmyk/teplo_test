@@ -19,7 +19,9 @@ final class Share {
   const MAX_PEOPLE = 8;           // людей у квартирі разом із власником
   const MAX_INVITES = 10;         // активних запрошень на квартиру
   /** Поля квартири, які в кожного учасника свої (не зводяться між людьми). */
-  const PERSONAL = ['id', 'name', 'color', 'icon', 'deleted', 'updatedAt', '_kt', 'sh', 'gpvTg', 'remindOff', 'v'];
+  // 180-я (власник 23.11: «со мной пошарили квартиру — у меня „Квартира 4“, у владельца „Моя квартира“, название должно быть одинаковое у всех»): назва — спільна
+  const RULES = 2;   // версія правил зведення (2 — 180-я: спільна назва); shares.rv менше — cron зводить ще раз
+  const PERSONAL = ['id', 'color', 'icon', 'deleted', 'updatedAt', '_kt', 'sh', 'gpvTg', 'remindOff', 'v'];
   const RECS = ['readings', 'water', 'mrecs'];
   /** Тести: підміна часу (мс) для детермінованих міток. */
   public static ?int $nowMs = null;
@@ -32,6 +34,13 @@ final class Share {
     $pdo->exec("CREATE TABLE IF NOT EXISTS share_members (share_id INT NOT NULL, user_id INT NOT NULL, pid VARCHAR(40) NOT NULL, role VARCHAR(8) NOT NULL, name VARCHAR(80) NULL, joined_at VARCHAR(25) NOT NULL, ver INT NOT NULL DEFAULT 0, PRIMARY KEY (share_id, user_id))$tail");
     $pdo->exec("CREATE TABLE IF NOT EXISTS share_invites (id $ai, share_id INT NOT NULL, token_hash CHAR(64) NOT NULL UNIQUE, by_user INT NOT NULL, email VARCHAR(190) NULL, via VARCHAR(8) NOT NULL, lang CHAR(2) NOT NULL DEFAULT 'uk', created_at INT NOT NULL, expires_at INT NOT NULL, used_by INT NULL, used_at INT NULL, revoked TINYINT NOT NULL DEFAULT 0)$tail");
     $pdo->exec('CREATE INDEX IF NOT EXISTS ix_share_members_user ON share_members (user_id)');
+    // 180-я: rv — за якими правилами зведено (cron зводить ще раз старіші), bg — власник дозволив учасникам «у фоні» через свої кабінети
+    foreach (['rv' => 'INT NOT NULL DEFAULT 0', 'bg' => 'TINYINT NOT NULL DEFAULT 0', 'bg_at' => 'INT NULL'] as $c => $def) {
+      $has = false;
+      if (!$my) { foreach ($pdo->query('PRAGMA table_info(shares)')->fetchAll() as $col) if (($col['name'] ?? '') === $c) $has = true; }
+      else $has = (bool)$pdo->query("SHOW COLUMNS FROM shares LIKE '$c'")->fetch();
+      if (!$has) $pdo->exec("ALTER TABLE shares ADD COLUMN $c $def");
+    }
   }
   private static function ms(): int { return self::$nowMs ?? (int)round(microtime(true) * 1000); }
 
@@ -124,6 +133,8 @@ final class Share {
         $parts[] = ['m' => $m, 'p' => $p, 'recs' => $recs];
       }
       [$u, $ukt] = self::unionPlace(array_map(fn($x) => $x['p'], $parts));
+      // назви ніхто не давав — та, яку бачить власник («Моя квартира» / «Квартира 3»), стає назвою для всіх; мітка 1 — будь-яке перейменування сильніше
+      if (trim((string)($u->name ?? '')) === '') { $u->name = self::ownLabel($cur[(int)$owner['user_id']]['st'] ?? null, (string)$owner['pid']); $ukt->name = max(1, (int)($ukt->name ?? 0)); }
       $urecs = self::unionRecs(array_map(fn($x) => $x['recs'], $parts));
       $ppl = []; foreach ($ms as $m) $ppl[(string)$m['user_id']] = self::nameOf((int)$m['user_id'], $m['name']);
       $oname = $ppl[(string)$owner['user_id']] ?? '';
@@ -169,14 +180,20 @@ final class Share {
       }
       if ($lost) continue;   // хтось записав посеред зведення — ще раз
       foreach ($ms as $m) { $v = Db::one('SELECT version FROM user_state WHERE user_id = ?', [(int)$m['user_id']]); Db::q('UPDATE share_members SET ver = ? WHERE share_id = ? AND user_id = ?', [(int)($v['version'] ?? 0), $sid, (int)$m['user_id']]); }
-      Db::q('UPDATE shares SET synced_at = ? WHERE id = ?', [time(), $sid]);
+      Db::q('UPDATE shares SET synced_at = ?, rv = ? WHERE id = ?', [time(), self::RULES, $sid]);
       return $wrote;
     }
     return 0;
   }
   private static function sigPlace(object $p): string { $c = self::dup($p); unset($c->updatedAt); return self::sig($c); }
   private static function sigRec(object $r): string { $c = self::dup($r); unset($c->place); return self::sig($c); }
-  /** Поля квартири: кожне — від того, хто змінив його останнім (_kt); рівно — від того, чия квартира новіша; далі — власник (перший). */
+  /** Назва квартири так, як її показує застосунок власника без назви: перша — «Моя квартира», інші — «Квартира N» (pl_mine / pl_unnamed, однаково uk і ru). */
+  private static function ownLabel(?object $st, string $pid): string {
+    $i = 0; foreach ($st ? self::places($st) : [] as $q) { if (!is_object($q) || !empty($q->deleted)) continue; if ((string)($q->id ?? '') === $pid) break; $i++; }
+    return $i === 0 ? 'Моя квартира' : 'Квартира ' . ($i + 1);
+  }
+  /** Поля квартири: кожне — від того, хто змінив його останнім (_kt); рівно — від того, чия квартира новіша; далі — власник (перший).
+   *  Назва при рівних мітках — непорожня, далі власника: копія учасника, створена порожньою, не стирає назву власника. */
   private static function unionPlace(array $ps): array {
     $keys = [];
     foreach ($ps as $p) {
@@ -186,6 +203,9 @@ final class Share {
     $u = new stdClass; $ukt = new stdClass;
     foreach (array_keys($keys) as $k) {
       $k = (string)$k; $best = null; $bt = -1.0; $bu = -1.0;
+      if ($k === 'name') {
+        foreach ($ps as $p) { $t = self::tk($p, $k); $ne = trim((string)($p->name ?? '')) !== '' ? 1.0 : 0.0; if ($t > $bt || ($t === $bt && $ne > $bu)) { $best = $p; $bt = $t; $bu = $ne; } }
+      } else
       foreach ($ps as $p) { $t = self::tk($p, $k); $pu = (float)($p->updatedAt ?? 0); if ($t > $bt || ($t === $bt && $pu > $bu)) { $best = $p; $bt = $t; $bu = $pu; } }
       if ($best && property_exists($best, $k)) $u->$k = self::dup($best->$k);
       if ($bt > 0) $ukt->$k = (int)$bt;
@@ -254,6 +274,9 @@ final class Share {
   public static function cron(): array {
     self::table(); $out = [];
     $rows = Db::q('SELECT DISTINCT m.share_id FROM share_members m JOIN user_state s ON s.user_id = m.user_id WHERE s.version <> m.ver LIMIT 30')->fetchAll();
+    // правила зведення змінились (180-я: спільна назва) — звести ще раз усі, зведені за старими
+    $seen = array_column($rows, 'share_id');
+    foreach (Db::q('SELECT id AS share_id FROM shares WHERE rv < ? LIMIT 30', [self::RULES])->fetchAll() as $x) if (!in_array($x['share_id'], $seen)) $rows[] = $x;
     foreach ($rows as $r) { try { $out[] = [(int)$r['share_id'], self::sync((int)$r['share_id'], 'share')]; } catch (Throwable $e) { error_log('teplo share cron: ' . $e->getMessage()); } }
     Db::q('DELETE FROM share_invites WHERE expires_at < ? AND used_at IS NULL', [time() - 30 * 86400]);
     return $out;

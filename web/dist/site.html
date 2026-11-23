@@ -1756,6 +1756,9 @@ details.tbl-acc[open] > .tbl-wrap { margin-top: 12px; }
 @media (max-width: 860px) and (min-width: 600px) { .lp-steps { grid-template-columns: minmax(0, 1fr); } .lp-step { grid-template-columns: 1fr 1fr; align-items: center; } }
 @media (min-width: 960px) {
   .lp-hero { margin: 0 24px; padding: 64px 56px 56px; border-radius: 40px; }
+  /* 180-я (власник 23.11: «верхний блок с роликом, заголовком и кнопкой — фиксированной ширины по аналогии с нижним, где счётчики меняются»):
+     обидві плити — одна ширина (1132, на 960–1180 — з полями по 24 px) і по центру */
+  .lp-hero, .lp-end { width: min(1132px, 100% - 48px); max-width: none; margin-left: auto; margin-right: auto; }
   .lp-in { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 540px); gap: 40px; align-items: center; }   /* власник 22.11 11:02: «десктоп — як було» */
   .lp-stage { height: 600px; margin: 0; max-width: none; }
   .lp-phone { width: 280px; height: 585px; margin-left: -140px; top: 8px; border-radius: 50px; --k: .6987; }
@@ -1768,6 +1771,16 @@ details.tbl-acc[open] > .tbl-wrap { margin-top: 12px; }
   .lp-end { margin: 96px auto 0; padding: 80px 40px; border-radius: 40px; }
 }
 @media (min-width: 1200px) { .lp-end { margin-left: auto; margin-right: auto; } }
+
+/* 180-я (власник 23.11: «на фон всего лендинга — что-то интересное и ненавязчивое, лёгкое, чтобы не выглядел пустым, на всех темах»):
+   тихі шпалери з контурів того, що рахує «передай» — крапля, вогник, блискавка, термометр, віконце барабана «0 4 2», циферблат; лише лінії,
+   без світіння й переливів, нерухомі (нуль роботи для старих телефонів). Колір — --lp-pat кожної теми, малюнок — маска (одна плитка 420 px). */
+.welcome.lp { position: relative; isolation: isolate; --lp-pat: rgba(222, 232, 255, .055); }
+.welcome.lp::before { content: ''; position: absolute; inset: 0; z-index: -1; pointer-events: none; background-color: var(--lp-pat);
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='420' height='420' viewBox='0 0 420 420' fill='none' stroke='%23000' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'%3E %3Cg transform='translate(34 40) rotate(-12) scale(1.5)'%3E%3Cpath d='M12 3C12 3 6 10 6 14a6 6 0 0 0 12 0c0-4-6-11-6-11z'/%3E%3C/g%3E %3Cg transform='translate(196 22) rotate(10) scale(1.35)'%3E%3Cpath d='M13 2 4 14h7l-1 8 9-12h-7l1-8z'/%3E%3C/g%3E %3Cg transform='translate(330 104) rotate(8) scale(1.45)'%3E%3Cpath d='M12 3c1 4 5 6 5 11a5 5 0 0 1-10 0c0-3 2-4 2-6 1 1 2 2 2 3 1-3 1-5 1-8z'/%3E%3C/g%3E %3Cg transform='translate(92 178) rotate(-6) scale(1.4)'%3E%3Cpath d='M10 4a2 2 0 0 1 4 0v10a4 4 0 1 1-4 0z'/%3E%3Cpath d='M12 10v6'/%3E%3C/g%3E %3Cg transform='translate(222 218) rotate(-4)'%3E%3Crect x='0' y='0' width='72' height='28' rx='6'/%3E%3Cpath d='M24 4v20M48 4v20'/%3E%3Cpath d='M8 9v10M32 9h6v5h-6v5h6M56 9v5h7M61 9v10'/%3E%3C/g%3E %3Cg transform='translate(352 296) rotate(14) scale(1.1)'%3E%3Cpath d='M12 3C12 3 6 10 6 14a6 6 0 0 0 12 0c0-4-6-11-6-11z'/%3E%3C/g%3E %3Cg transform='translate(48 318) rotate(-18) scale(1.15)'%3E%3Cpath d='M13 2 4 14h7l-1 8 9-12h-7l1-8z'/%3E%3C/g%3E %3Cg transform='translate(176 330)'%3E%3Ccircle cx='18' cy='18' r='16'/%3E%3Cpath d='M18 18l8-6M18 4v3M32 18h-3M4 18h3'/%3E%3C/g%3E %3Cpath d='M146 92h8M150 88v8M300 380h8M304 376v8M20 250h6M23 247v6M390 30h6M393 27v6'/%3E %3C/svg%3E") 0 0 / 420px 420px repeat; mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='420' height='420' viewBox='0 0 420 420' fill='none' stroke='%23000' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'%3E %3Cg transform='translate(34 40) rotate(-12) scale(1.5)'%3E%3Cpath d='M12 3C12 3 6 10 6 14a6 6 0 0 0 12 0c0-4-6-11-6-11z'/%3E%3C/g%3E %3Cg transform='translate(196 22) rotate(10) scale(1.35)'%3E%3Cpath d='M13 2 4 14h7l-1 8 9-12h-7l1-8z'/%3E%3C/g%3E %3Cg transform='translate(330 104) rotate(8) scale(1.45)'%3E%3Cpath d='M12 3c1 4 5 6 5 11a5 5 0 0 1-10 0c0-3 2-4 2-6 1 1 2 2 2 3 1-3 1-5 1-8z'/%3E%3C/g%3E %3Cg transform='translate(92 178) rotate(-6) scale(1.4)'%3E%3Cpath d='M10 4a2 2 0 0 1 4 0v10a4 4 0 1 1-4 0z'/%3E%3Cpath d='M12 10v6'/%3E%3C/g%3E %3Cg transform='translate(222 218) rotate(-4)'%3E%3Crect x='0' y='0' width='72' height='28' rx='6'/%3E%3Cpath d='M24 4v20M48 4v20'/%3E%3Cpath d='M8 9v10M32 9h6v5h-6v5h6M56 9v5h7M61 9v10'/%3E%3C/g%3E %3Cg transform='translate(352 296) rotate(14) scale(1.1)'%3E%3Cpath d='M12 3C12 3 6 10 6 14a6 6 0 0 0 12 0c0-4-6-11-6-11z'/%3E%3C/g%3E %3Cg transform='translate(48 318) rotate(-18) scale(1.15)'%3E%3Cpath d='M13 2 4 14h7l-1 8 9-12h-7l1-8z'/%3E%3C/g%3E %3Cg transform='translate(176 330)'%3E%3Ccircle cx='18' cy='18' r='16'/%3E%3Cpath d='M18 18l8-6M18 4v3M32 18h-3M4 18h3'/%3E%3C/g%3E %3Cpath d='M146 92h8M150 88v8M300 380h8M304 376v8M20 250h6M23 247v6M390 30h6M393 27v6'/%3E %3C/svg%3E") 0 0 / 420px 420px repeat; }
+:root:root[data-theme="dark"][data-skin="brass"] .welcome.lp { --lp-pat: rgba(240, 214, 168, .06); }
+:root:root[data-lskin="c"][data-lsk="3"]:not([data-theme="dark"]) .welcome.lp { --lp-pat: rgba(70, 60, 44, .075); }
+@media print { .welcome.lp::before { display: none; } }
 
 /* рух лендинга (83-я, unslop): без дрейфу, «дихання», пульсу, відблиску, паралаксу й появи секцій; лінія сканування проходить двічі й зупиняється */
 
@@ -2637,7 +2650,7 @@ details.mypay[open] > summary .mypay-amt, details.mypay[open] > summary .mypay-s
 .list > li.hli:first-child .hsw-act { border-top-right-radius: 14px; } .list > li.hli:last-child .hsw-act { border-bottom-right-radius: 14px; }
 @media (prefers-reduced-motion: reduce) { .hli.hsw > :not(.hsw-act), .hsw-act { transition: none; } }
 /* 164-а: налаштування — список у браузері й застосунку; «Квартири» — рядок на квартиру (колір квартири), дотик → екран квартири */
-.ios-groups { max-width: 640px; }
+/* 180-я: без стелі 640 px — на десктопі список на всю колонку, як заголовок і підвал (було: справа порожньо на 1/3 екрана) */
 .ps-head .ps-pm { display: inline-grid; box-sizing: content-box; place-items: center; width: 22px; height: 22px; color: var(--pc); }
 .ps-head .ps-pm .pdot { width: 12px; height: 12px; margin: 0; }
 .ps-head .ios-t b { font-weight: 600; }
@@ -2647,7 +2660,7 @@ details.mypay[open] > summary .mypay-amt, details.mypay[open] > summary .mypay-s
 :root:root .ios-row.ps-addp .ios-ico { color: var(--tint, var(--c-ink)); }
 .ps-addp .ios-t b { font-weight: 600; }
 /* екран групи: картки одна під одною; заголовок єдиної картки повторював назву екрана — ховаємо */
-.pg-one { display: grid; gap: var(--sp-4); max-width: 640px; }
+.pg-one { display: grid; gap: var(--sp-4); }
 .pg-one > .panel { margin: 0; }
 .pg-one > .panel:only-child > h2:first-child { display: none; }
 .acc-ways { list-style: none; margin: 12px 0; padding: 0; display: grid; gap: 10px; }
@@ -3540,6 +3553,19 @@ fieldset { min-inline-size: 0; }
 .gw-self .dest-more-b { padding-top: 4px; }
 .gw-self-b + .gw-self-b { margin-top: var(--sp-4); padding-top: var(--sp-4); border-top: 1px solid var(--c-line); }
 .gw-self-t { margin: 8px 0; color: var(--c-ink); }
+/* 180-я (власник 23.11: «как отправить горячую только в ХТМ отдельно… сразу указать, как исправить»): у кожного адресата — що надішлемо, своя кнопка й виправлення в рядку */
+.gw-what { margin: 8px 0 0; color: var(--c-ink-2); }
+.gw-row .dest-ch { margin-top: 8px; }
+.gw-fix { margin-top: 8px; }
+.gw-fix .dest-ch { margin-top: 0; }
+.gw-acc label { display: block; margin: 0 0 4px; color: var(--c-ink-2); }
+.gw-acc-r { display: flex; gap: 8px; }
+.gw-acc-r input { flex: 1 1 auto; min-width: 0; min-height: var(--tap); padding: 0 14px; border-radius: var(--r-btn); border: 1px solid var(--c-field-line); background: var(--c-field-bg); color: var(--c-ink); font: inherit; font-variant-numeric: tabular-nums; }
+.gw-acc-r .btn { flex: none; }
+.gw-acc-in { margin: 8px 0 0; display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.gw-pick { display: grid; gap: 10px; }
+.gw-pick > p { margin: 0; }
+.gw-pick .vkc-pick { margin: 0; }
 
 /* ===== 179-я: спільна квартира — «Спільний доступ» на екрані квартири, позначка біля назви, #join (власник 23.11: «не перегружай интерфейс»).
    Люди — рядками з лініями (без «панелі в панелі»), аватар — нейтральний кружок з першою літерою; позначка «спільна» — тихий значок людей і число. */
@@ -3583,8 +3609,17 @@ fieldset { min-inline-size: 0; }
 .join-card .help.block { margin: 0 0 var(--sp-3); }
 .join-card > p:not(.join-who):not(.help) { margin: 0 0 var(--sp-3); }
 /* 179-я: на широкому екрані — однією колонкою (кнопки не розтягуються на 900 px, підпис під кнопкою — по її центру) */
-.shp-list, .shp-inv, .shp-leave { max-width: 560px; }
+/* 180-я (власник 23.11, скрін десктопа: «таких дыр быть не должно, вёрстка должна быть отзывчивой на всех размерах»): без стелі 560 px —
+   на широкій картці (≥ 720 px) дві колонки: люди й пояснення | як запросити (лінія між ними), на вузькій — одна колонка на всю ширину */
+.shp-wrap { container-type: inline-size; }
+.shp-wrap .shp-lead { max-width: none; }
 .shp-inv > p.shp-send-s, .shp-inv .shp-or { max-width: none; }
+@container (min-width: 720px) {
+  .shp-g.two { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 0 var(--sp-6); align-items: start; }
+  .shp-g.two .shp-b { border-left: 1px solid var(--c-line); padding-left: var(--sp-6); }
+  .shp-g.two .shp-inv { border-top: 0; padding-top: 0; }
+  .shp-g.two .shp-list { margin-bottom: 0; }
+}
 
 </style>
 <style>.top { padding-top: max(12px, env(safe-area-inset-top)); }</style>
@@ -5722,15 +5757,22 @@ fieldset { min-inline-size: 0; }
       cb_htm_what_o: 'Вносимо показання гарячої води у ваш кабінет ХТМ — входимо вашим e-mail і паролем.',
       cb_hot_ok: 'Гаряча вода: розділ у кабінеті є — надсилаємо у фоні.', cb_hot_closed: 'Гаряча вода: розділ у кабінеті є, прийом зараз закритий.',
       cb_hot_none: 'Гаряча вода: у кабінеті розділу немає — у ХТМ її передаєте ботом @KPHTM_Bot.', cb_hot_unk: 'Гаряча вода: розділ у кабінеті перевіримо на «Перевірити» чи під час першої відправки.',
-      gw_lead: 'Гарячу воду передаємо двом: ХТМ — окремо, Водоканалу — разом із холодною.',
+      gw_lead: 'Гарячу воду приймають двоє: ХТМ — лише гарячу, Водоканал — разом із холодною. Кожному — своя кнопка.',
       gw_htm_n: 'ХТМ', gw_htm_s: 'лише гаряча вода', gw_vk_n: 'Водоканал', gw_vk_s: 'холодна й гаряча разом',
       gw_htm_in: 'вхід — e-mail і пароль кабінету ХТМ (як для опалення)', gw_vk_in: 'вхід — особовий рахунок і прізвище з квитанції', gw_conn: 'Підключити',
       gw_st_off: 'Не підключено', gw_st_bg: 'Надсилаємо у фоні', gw_st_bot: 'Лише ботом', gw_st_no: 'Не передано', gw_st_q: 'Надсилаємо…', gw_st_chk: 'ХТМ перевіряє',
       gw_st_ok: 'Прийнято {d}', gw_st_self: 'Передано {d}', gw_st_bad: 'Не прийнято', gw_st_fail: 'Не надіслано',
       gw_nohot: 'У вашому кабінеті ХТМ розділу гарячої води немає — у ХТМ її передаєте ботом (нижче, «Передати самі»).',
-      gw_need: 'Внесіть показання — надішлемо обом одним натисканням.', gw_will: 'Надішлемо: {what} м³.',
+      gw_need: 'Внесіть показання — тоді надішлете кожному своєю кнопкою.', gw_will: 'Надішлемо: {what} м³.',
       gw_w_htm: 'ХТМ — гаряча {h}', gw_w_vk: 'Водоканалу — гаряча {h}, холодна {c}', gw_w_vk1: 'Водоканалу — гаряча {h}', gw_w_vk0: 'Водоканалу — холодна {c}',
       gw_guest: 'Надсилати у фоні можна, коли ввійдете в «передай».', gw_send2: 'Відправити ще раз', gw_toast: 'Надсилаємо у фоні: {to}', gw_ok_htm: 'ХТМ прийняв показання гарячої води', gw_self: 'Передати самі: бот, телефон, цифри',
+      gw_send_htm: 'Надіслати в ХТМ', gw_send_vk: 'Надіслати у Водоканал', gw_w_hot: 'гаряча {v}', gw_w_cold: 'холодна {v}',
+      gw_acc_need: 'Впишіть особовий рахунок ХТМ за гарячу воду цієї квартири — він у квитанції ХТМ.', gw_acc_need_sh: 'Впишіть особовий рахунок ХТМ за гарячу воду цієї квартири — він у квитанції ХТМ (спитайте власника квартири).',
+      gw_acc_in: 'У вашому кабінеті ({e}):', gw_acc_foreign: 'Рахунку {a} немає у вашому кабінеті ХТМ ({e}) — туди надіслати не можна. Перевірте рахунок або додайте його в кабінеті ХТМ.',
+      gw_acc_owner: 'Це спільна квартира — кабінет ХТМ із цим рахунком, мабуть, у {o}.', gw_htm_site: 'Відкрити кабінет ХТМ', gw_acc_saved: 'Рахунок ХТМ за гарячу: {a}', gw_acc_cleared: 'Рахунок ХТМ за гарячу прибрано',
+      gw_nohot2: 'У кабінеті ХТМ для рахунку {a} розділу гарячої води немає — сайт її не приймає. ХТМ бере гарячу ботом або телефоном:', gw_relogin: 'Оновити пароль кабінету ХТМ',
+      gw_vk_which: 'Не зрозуміли, який лічильник на сайті Водоканалу який. Виберіть для кожного свого водоміра — і надішліть ще раз.', gw_vk_look: 'Показати лічильники Водоканалу',
+      gw_pick_t: 'Який це лічильник на сайті Водоканалу:', gw_pick_miss: 'Виберіть лічильник для кожного водоміра.', gw_vk_acc: 'Змінити рахунок чи прізвище Водоканалу', gw_fix_val: 'Виправити показання',
       cb_login_l: 'Логін (e-mail)', cb_pw: 'Пароль', cb_pw_saved: 'збережено зашифровано', cb_phone: 'Телефон для форми', cb_phone0: 'не вказано', cb_phone_go: 'Змінити телефон',
       cb_edit_login: 'Змінити e-mail чи пароль', cb_save_chk: 'Зберегти й перевірити',
       cb_hacc: 'Рахунок ХТМ', cb_hacc0: 'Оберіть рахунок', cb_hacc_no: 'у кабінеті рахунку не знайшли', 
@@ -7185,15 +7227,22 @@ fieldset { min-inline-size: 0; }
       cb_htm_what_o: 'Вносим показания горячей воды в ваш кабинет ХТМ — входим вашим e-mail и паролем.',
       cb_hot_ok: 'Горячая вода: раздел в кабинете есть — отправляем в фоне.', cb_hot_closed: 'Горячая вода: раздел в кабинете есть, приём сейчас закрыт.',
       cb_hot_none: 'Горячая вода: в кабинете раздела нет — в ХТМ её передаёте ботом @KPHTM_Bot.', cb_hot_unk: 'Горячая вода: раздел в кабинете проверим по «Проверить» или при первой отправке.',
-      gw_lead: 'Горячую воду передаём двоим: ХТМ — отдельно, Водоканалу — вместе с холодной.',
+      gw_lead: 'Горячую воду принимают двое: ХТМ — только горячую, Водоканал — вместе с холодной. Каждому — своя кнопка.',
       gw_htm_n: 'ХТМ', gw_htm_s: 'только горячая вода', gw_vk_n: 'Водоканал', gw_vk_s: 'холодная и горячая вместе',
       gw_htm_in: 'вход — e-mail и пароль кабинета ХТМ (как для отопления)', gw_vk_in: 'вход — лицевой счёт и фамилия из квитанции', gw_conn: 'Подключить',
       gw_st_off: 'Не подключено', gw_st_bg: 'Отправляем в фоне', gw_st_bot: 'Только ботом', gw_st_no: 'Не передано', gw_st_q: 'Отправляем…', gw_st_chk: 'ХТМ проверяет',
       gw_st_ok: 'Принято {d}', gw_st_self: 'Передано {d}', gw_st_bad: 'Не принято', gw_st_fail: 'Не отправлено',
       gw_nohot: 'В вашем кабинете ХТМ раздела горячей воды нет — в ХТМ её передаёте ботом (ниже, «Передать самим»).',
-      gw_need: 'Внесите показания — отправим обоим одним нажатием.', gw_will: 'Отправим: {what} м³.',
+      gw_need: 'Внесите показания — тогда отправите каждому своей кнопкой.', gw_will: 'Отправим: {what} м³.',
       gw_w_htm: 'ХТМ — горячая {h}', gw_w_vk: 'Водоканалу — горячая {h}, холодная {c}', gw_w_vk1: 'Водоканалу — горячая {h}', gw_w_vk0: 'Водоканалу — холодная {c}',
       gw_guest: 'Отправлять в фоне можно, когда войдёте в «передай».', gw_send2: 'Отправить ещё раз', gw_toast: 'Отправляем в фоне: {to}', gw_ok_htm: 'ХТМ принял показания горячей воды', gw_self: 'Передать самим: бот, телефон, цифры',
+      gw_send_htm: 'Отправить в ХТМ', gw_send_vk: 'Отправить в Водоканал', gw_w_hot: 'горячая {v}', gw_w_cold: 'холодная {v}',
+      gw_acc_need: 'Впишите лицевой счёт ХТМ за горячую воду этой квартиры — он в квитанции ХТМ.', gw_acc_need_sh: 'Впишите лицевой счёт ХТМ за горячую воду этой квартиры — он в квитанции ХТМ (спросите владельца квартиры).',
+      gw_acc_in: 'В вашем кабинете ({e}):', gw_acc_foreign: 'Счёта {a} нет в вашем кабинете ХТМ ({e}) — туда отправить нельзя. Проверьте счёт или добавьте его в кабинете ХТМ.',
+      gw_acc_owner: 'Это общая квартира — кабинет ХТМ с этим счётом, видимо, у {o}.', gw_htm_site: 'Открыть кабинет ХТМ', gw_acc_saved: 'Счёт ХТМ за горячую: {a}', gw_acc_cleared: 'Счёт ХТМ за горячую убран',
+      gw_nohot2: 'В кабинете ХТМ для счёта {a} раздела горячей воды нет — сайт её не принимает. ХТМ берёт горячую ботом или по телефону:', gw_relogin: 'Обновить пароль кабинета ХТМ',
+      gw_vk_which: 'Не поняли, какой счётчик на сайте Водоканала какой. Выберите для каждого своего водомера — и отправьте ещё раз.', gw_vk_look: 'Показать счётчики Водоканала',
+      gw_pick_t: 'Какой это счётчик на сайте Водоканала:', gw_pick_miss: 'Выберите счётчик для каждого водомера.', gw_vk_acc: 'Изменить счёт или фамилию Водоканала', gw_fix_val: 'Исправить показания',
       cb_login_l: 'Логин (e-mail)', cb_pw: 'Пароль', cb_pw_saved: 'сохранён зашифрованным', cb_phone: 'Телефон для формы', cb_phone0: 'не указан', cb_phone_go: 'Изменить телефон',
       cb_edit_login: 'Изменить e-mail или пароль', cb_save_chk: 'Сохранить и проверить',
       cb_hacc: 'Счёт ХТМ', cb_hacc0: 'Выберите счёт', cb_hacc_no: 'в кабинете счёт не нашли', 
@@ -13042,39 +13091,93 @@ fieldset { min-inline-size: 0; }
   /** Харків: гарячу бере ХТМ, воду — Харківводоканал, своїх постачальників немає. */
   function gwKh() { var p = place(), ld = prvOf('water'); return !!(p && hotIsHtm(p) && !myProv('cold') && !myProv('hot') && (!ld || ld.via === 'hvk')); }
   function hwItems(rec) { return wmeters('hot').filter(function (m) { return hasVal(rec, m.id); }).map(function (m) { return { sn: String(m.serial || ''), value: String(Wt.whole(rec.vals[m.id])), name: wname(m) }; }); }
-  /** Рахунок ХТМ для гарячої: «Рахунок за гарячу», інакше рахунок теплолічильника квартири, інакше єдиний у кабінеті ('' — сервер візьме єдиний). */
+  /** Рахунок ХТМ для гарячої: «Рахунок за гарячу», інакше рахунок теплолічильника квартири; єдиний у кабінеті — лише якщо він нічий інший
+   *  (180-я, скрін власника: спільна квартира учасника пішла на його ж рахунок іншої квартири → «немає розділу гарячої»). '' — не знаємо. */
   function hwAcc(p) {
     var accs = (HC.st && HC.st.accounts) || [], mine = [dgt(waccOf(p, 'hot')), dgt((cbHeatM(p) || {}).account)].filter(Boolean);
     for (var i = 0; i < mine.length; i++) { var hit = accs.filter(function (a) { return a.acc === mine[i]; })[0]; if (hit) return hit.acc; }
-    return accs.length === 1 ? accs[0].acc : (mine[0] || '');
+    if (mine[0]) return mine[0];
+    if (accs.length !== 1 || (p && p.sh && p.sh.role === 'member')) return '';
+    var other = places().some(function (q) { return q !== p && [dgt(waccOf(q, 'hot')), dgt((cbHeatM(q) || {}).account)].indexOf(accs[0].acc) >= 0; });
+    return other ? '' : accs[0].acc;
   }
   /** Що знає сервер про розділ гарячої в кабінеті ХТМ: {found, open, n} або null (ще не дивились). */
   function hwInfo(p) { var h = HC.st && HC.st.hot, a = hwAcc(p); return h && a && h[a] ? h[a] : null; }
   function hwBusy(j) { return !!(j && /^(queued|sending|pending)$/.test(j.status)); }
+  /** Рахунок відомий, а в підключеному кабінеті ХТМ його немає (список рахунків кабінету вже прийшов). */
+  function hwForeign(p) { var a = hwAcc(p), accs = (HC.st && HC.st.accounts) || []; return !!(a && accs.length && !accs.some(function (x) { return x.acc === a; })); }
   function gwVkCan(rec) { return !!(rec && hcOn() && vkcGate() === 'ok' && !wsentVk(rec) && !(rec.vkJob && /^(queued|sending)$/.test(rec.vkJob.status)) && wmeters().some(function (m) { return hasVal(rec, m.id); })); }
-  function gwHtmCan(rec) { var hi = hwInfo(place()); return !!(rec && hcOn() && hcConn() && !(hi && hi.found === false) && !(rec.sent && rec.sent.htm) && !hwBusy(rec.htmJob) && hwItems(rec).length); }
-  /** Статус показань для адресата одним словом-плашкою: {c: клас, t: текст, why?}. */
+  function gwHtmCan(rec) { var p = place(), hi = hwInfo(p); return !!(rec && hcOn() && hcConn() && hwAcc(p) && !hwForeign(p) && !(hi && hi.found === false) && !(rec.sent && rec.sent.htm) && !hwBusy(rec.htmJob) && hwItems(rec).length); }
+  /** Повна черга запису з сервера (причина why, рахунок, лічильники сайту Водоканалу) — у записі лише коротко. */
+  function gwJob(rec, to) { var j = to === 'vk' ? rec.vkJob : rec.htmJob, st = to === 'vk' ? VJ.st : HC.st; return j && st && (st.jobs || []).filter(function (x) { return x.id === j.job; })[0] || null; }
+  /** Статус показань для адресата одним словом-плашкою: {c: клас, t: текст, why?, code?}. */
   function gwSt(rec, to) {
     if (!rec) return null;
     var vk = to === 'vk', sent = vk ? wsentVk(rec) : rec.sent && rec.sent.htm, j = vk ? rec.vkJob : rec.htmJob, conf = vk ? rec.vkConf : rec.htmConf, err = vk ? (VJ.err && VJ.errFor === rec.id ? VJ.err : null) : HW.err[rec.id];
+    var fj = gwJob(rec, to) || {};
+    // ХТМ: невдача була на інший рахунок (людина вже виправила рахунок у рядку) — не показуємо стару причину
+    if (!vk && j && /^(failed|unknown)$/.test(j.status) && fj.acc && hwAcc(place()) && fj.acc !== hwAcc(place())) j = null;
     if (sent) return { c: 'ok', t: t(conf ? 'gw_st_ok' : 'gw_st_self', { d: fmtDate(sent) }) };
     if (j && /^(queued|sending)$/.test(j.status)) return { c: 'info', t: t('gw_st_q') };
     if (j && j.status === 'pending') return { c: 'info', t: t('gw_st_chk') };
     if (j && j.status === 'rejected') return { c: 'bad', t: t('gw_st_bad'), why: j.reason || j.text || '' };
-    if (err) return { c: 'warn', t: t('gw_st_fail'), why: err.human || '' };
-    if (j && /^(failed|unknown)$/.test(j.status)) return { c: 'warn', t: t('gw_st_fail'), why: j.human || j.text || '' };
+    if (err) return { c: 'warn', t: t('gw_st_fail'), why: err.human || '', code: String(err.error || '').replace(/^(cab|vk)_/, '') };
+    if (j && /^(failed|unknown)$/.test(j.status)) return { c: 'warn', t: t('gw_st_fail'), why: j.human || j.text || '', code: fj.why || j.why || '' };
     return { c: 'neutral', t: t('gw_st_no') };
   }
-  /** Рядок адресата: назва й що бере, статус показань (або стан підключення), причина відмови, «Підключити» з тим, який вхід потрібен. */
+  /** Коротка назва водоміра для рядка «що надішлемо»: назва, інакше № , інакше вид. */
+  function gwNm(m) { return m.name || (m.serial ? '№ ' + m.serial : t(m.kind === 'hot' ? 'wt_hot' : 'wt_cold')); }
+  /** «Кухня 176 · Ванна 0» — значення водомірів виду без ком (кома читалась як дріб: «176, 0»). */
+  function gwVals(rec, kind) { var ms = wmeters(kind).filter(function (m) { return hasVal(rec, m.id); }); return ms.map(function (m) { var v = Wt.whole(rec.vals[m.id]); return ms.length > 1 ? gwNm(m) + ' ' + v : String(v); }).join(' · '); }
+  /** Вибір «який лічильник який» на сайті Водоканалу — прямо в рядку: для кожного свого водоміра з показаннями — лічильник сайту (№, вид, останні показання). */
+  function gwPick(rec, cms) {
+    var ms = wmeters().filter(function (m) { return hasVal(rec, m.id); }), map = vkcMap(wmeters(), cms), keys = ms.map(function (m) { return map[m.id] || ''; });
+    var dup = keys.some(function (k, i) { return k && keys.indexOf(k) !== i; }), miss = keys.some(function (k) { return !k; });
+    return '<div class="gw-pick" data-key="gw-pick"><p class="small"><b>' + esc(t('gw_pick_t')) + '</b></p>' + ms.map(function (m) {
+      return '<fieldset class="vkc-pick" data-key="gw-pick-' + esc(m.id) + '"><legend class="small"><b>' + esc(wname(m)) + '</b>' + (m.serial ? ' <span class="muted">№ ' + esc(m.serial) + '</span>' : '') + ' — <b class="num">' + Wt.whole(rec.vals[m.id]) + '</b> м³</legend>' +
+        cms.map(function (x) { return '<label class="vkc-opt"><input type="radio" name="gwp-' + esc(m.id) + '" data-wm="' + esc(m.id) + '" data-wf="cabKey" value="' + esc(x.key) + '"' + (map[m.id] === x.key ? ' checked' : '') + '><span>' + esc(vkcLabel(x)) + (vkcPrev(x) ? ' <span class="muted">· ' + esc(vkcPrev(x)) + '</span>' : '') + '</span></label>'; }).join('') + '</fieldset>';
+    }).join('') + (dup ? '<p class="small warn-ink" data-key="gw-pick-dup">' + ico('alert', 16) + ' ' + esc(t('vkc_dup')) + '</p>' : miss ? '<p class="small muted" data-key="gw-pick-miss">' + esc(t('gw_pick_miss')) + '</p>' : '') + '</div>';
+  }
+  /** Чого бракує адресату й як це виправити тут же: {txt, fix (HTML), block: не можна надіслати}. */
+  function gwFix(rec, to, st) {
+    var p = place(), code = st && st.code || '', why = st && st.why || '';
+    if (to === 'htm') {
+      var a = hwAcc(p), accs = (HC.st && HC.st.accounts) || [], hi = hwInfo(p), sh = p && p.sh && p.sh.role === 'member';
+      var field = '<form class="gw-acc" data-key="gw-acc-form" novalidate><label class="small" for="gw-hacc">' + esc(t('wa_acc_hot_s')) + '</label><div class="gw-acc-r"><input id="gw-hacc" class="num" inputmode="numeric" autocomplete="off" value="' + esc(waccOf(p, 'hot')) + '">' +
+        '<button class="btn sec" type="submit" data-key="gw-acc-save">' + esc(t('save')) + '</button></div>' +
+        (accs.length ? '<p class="small muted gw-acc-in">' + esc(t('gw_acc_in', { e: (HC.st && HC.st.login) || '' })) + ' ' + accs.map(function (x) { return '<button type="button" class="chip" data-act="gw-acc-pick" data-v="' + esc(x.acc) + '" data-key="gw-acc-' + esc(x.acc) + '">' + esc(x.acc) + '</button>'; }).join(' ') + '</p>' : '') + '</form>';
+      if (!a) return { txt: t(sh ? 'gw_acc_need_sh' : 'gw_acc_need'), fix: field, block: true };
+      if (hwForeign(p) || code === 'no_acc') return { txt: t('gw_acc_foreign', { a: a, e: (HC.st && HC.st.login) || '' }) + (sh ? ' ' + t('gw_acc_owner', { o: shFirst(p.sh.own) || t('shp_someone') }) : ''), fix: field + '<p class="small"><a href="' + HTM_URL + '" target="_blank" rel="noopener" data-key="gw-htm-site">' + esc(t('gw_htm_site')) + ' ›</a></p>', block: true };
+      if ((hi && hi.found === false) || code === 'hot_none') return { txt: t('gw_nohot2', { a: a }), fix: '<div class="dest-ch"><a class="btn sec" href="' + BOT_URL + '" target="_blank" rel="noopener" data-key="gw-nohot-bot">' + ico('send', 18) + '<span>' + esc(t('wd_bot', { b: '@KPHTM_Bot' })) + '</span></a>' +
+        '<a class="btn sec" href="tel:+380573414140" data-key="gw-nohot-tel">' + ico('phone', 18) + '<span>(057) 341-41-40</span></a></div>' + (rec && !(rec.sent && rec.sent.htm) ? '<p class="dest-mark"><button class="btn sec" data-act="wsent" data-to="htm" data-v="1" data-id="' + rec.id + '" data-key="gw-nohot-mark">' + ico('check', 18) + '<span>' + esc(t('ws_mark')) + '</span></button></p>' : ''), block: true, own: true };
+      if (code === 'relogin') return { txt: why, fix: '<p class="small"><a href="#prefs-cabs-htm" data-act="cb-go" data-key="gw-relogin">' + esc(t('gw_relogin')) + ' ›</a></p>' };
+      return null;
+    }
+    var j = rec && gwJob(rec, 'vk'), cms = (j && j.meters && j.meters.length ? j.meters : null) || (VKC.check && VKC.check.meters && VKC.check.meters.length ? VKC.check.meters : null);
+    if (/^(mismatch|which)$/.test(code)) return { txt: t('gw_vk_which'), fix: cms ? gwPick(rec, cms) : '<div class="dest-ch"><button class="btn sec" data-act="vkc-check" data-key="gw-vk-look"' + (VKC.busy ? ' disabled' : '') + '>' + (VKC.busy === 'check' ? SPIN : ico('search', 18)) + '<span>' + esc(t('gw_vk_look')) + '</span></button></div>' };
+    if (code === 'notfound' || code === 'ukr') return { txt: why, fix: '<p class="small"><a href="#prefs-cabs-vk" data-act="cb-go" data-key="gw-vk-acc">' + esc(t('gw_vk_acc')) + ' ›</a></p>' };
+    if (code === 'less') return { txt: why, fix: '<p class="small"><a href="#wrec-' + esc(rec.id) + '" data-key="gw-vk-fixval">' + esc(t('gw_fix_val')) + ' ›</a></p>' };
+    return null;
+  }
+  /** Рядок адресата: назва й що бере, один статус, що не так і як виправити (тут же), що надішлемо й своя кнопка «Надіслати в ХТМ» / «…у Водоканал». */
   function gwRow(rec, to) {
-    var vk = to === 'vk', on = hcOn(), conn = vk ? on && vkcGate() === 'ok' : on && hcConn(), hi = vk ? null : hwInfo(place());
-    var st = gwSt(rec, to), noHot = !vk && conn && hi && hi.found === false;
-    if (!st) st = conn ? (noHot ? { c: 'neutral', t: t('gw_st_bot') } : { c: 'ok', t: t('gw_st_bg') }) : { c: 'neutral', t: t('gw_st_off') };
+    var vk = to === 'vk', on = hcOn(), conn = vk ? on && vkcGate() === 'ok' : on && hcConn();
+    var st = gwSt(rec, to);
+    if (!st) st = conn ? { c: 'ok', t: t('gw_st_bg') } : { c: 'neutral', t: t('gw_st_off') };
+    var fx = conn ? gwFix(rec, to, st) : null;
     var h = '<li class="gw-row" data-key="gw-' + to + '"><div class="gw-h"><span class="gw-t"><b>' + esc(t(vk ? 'gw_vk_n' : 'gw_htm_n')) + '</b><span class="small muted">' + esc(t(vk ? 'gw_vk_s' : 'gw_htm_s')) + '</span></span>' +
-      '<span class="pill ' + st.c + '" data-key="gw-st-' + to + '">' + esc(st.t) + '</span></div>';
-    if (st.why) h += '<p class="small gw-why" data-key="gw-why-' + to + '">' + esc(String(st.why).slice(0, 240)) + '</p>';
-    if (noHot) h += '<p class="small muted gw-in" data-key="gw-nohot">' + esc(t('gw_nohot')) + '</p>';
-    else if (!conn && on) h += '<p class="small gw-in"><a href="#prefs-cabs-' + (vk ? 'vk' : 'htm') + '" data-act="cb-go" data-key="gw-conn-' + to + '">' + esc(t('gw_conn')) + ' ›</a> <span class="muted">' + esc(t(vk ? 'gw_vk_in' : 'gw_htm_in')) + '</span></p>';
+      '<span class="pill ' + (fx && fx.own && st.c === 'neutral' ? 'neutral' : st.c) + '" data-key="gw-st-' + to + '">' + esc(fx && fx.own && st.c === 'neutral' ? t('gw_st_bot') : st.t) + '</span></div>';
+    // одна причина, без повтору: виправлення має свій текст — тоді текст сайту не дублюємо
+    if (fx) h += '<p class="small gw-why" data-key="gw-why-' + to + '">' + esc(String(fx.txt || st.why || '').slice(0, 260)) + '</p><div class="gw-fix" data-key="gw-fix-' + to + '">' + fx.fix + '</div>';
+    else if (st.why) h += '<p class="small gw-why" data-key="gw-why-' + to + '">' + esc(String(st.why).slice(0, 240)) + '</p>';
+    if (!conn && on) h += '<p class="small gw-in"><a href="#prefs-cabs-' + (vk ? 'vk' : 'htm') + '" data-act="cb-go" data-key="gw-conn-' + to + '">' + esc(t('gw_conn')) + ' ›</a> <span class="muted">' + esc(t(vk ? 'gw_vk_in' : 'gw_htm_in')) + '</span></p>';
+    var can = rec && (vk ? gwVkCan(rec) : gwHtmCan(rec));
+    if (can) {
+      var hv = gwVals(rec, 'hot'), cv = gwVals(rec, 'cold'), busy = vk ? VJ.busy === 'q' : HW.busy, again = /^(bad|warn)$/.test(st.c);
+      var what = vk ? [hv ? t('gw_w_hot', { v: hv }) : '', cv ? t('gw_w_cold', { v: cv }) : ''].filter(Boolean).join('; ') : t('gw_w_hot', { v: hv });
+      h += '<p class="small gw-what" data-key="gw-what-' + to + '">' + esc(t('gw_will', { what: what })) + '</p>' +
+        '<div class="dest-ch"><button class="btn dest-bg" data-act="gw-bg" data-to="' + to + '" data-id="' + esc(rec.id) + '" data-key="gw-bg-' + to + '"' + (busy ? ' disabled' : '') + '>' + (busy ? SPIN : ico('send', 18)) + '<span>' + esc(t(again ? 'gw_send2' : vk ? 'gw_send_vk' : 'gw_send_htm')) + '</span></button></div>';
+    }
     return h + '</li>';
   }
   /** «Передати самі»: цифри, бот, телефон і «Я передав(ла)» — для кожного адресата. */
@@ -13097,16 +13200,12 @@ fieldset { min-inline-size: 0; }
   }
   function hotSendPanel(rec) {
     if (hcOn()) { hcLoad(); vjLoad(); vksLoad(); }
-    var vkC = gwVkCan(rec), htmC = gwHtmCan(rec), again = rec && ['vk', 'htm'].some(function (to) { var s0 = gwSt(rec, to); return s0 && /^(bad|warn)$/.test(s0.c); });
+    // 180-я (власник 23.11, скріни: «как отправить горячую только в ХТМ отдельно от водоканала и в водоканал отдельно от ХТМ… сразу указать, как исправить»):
+    // кожному адресату — своя кнопка й своє виправлення в його рядку; спільної кнопки «обом» немає
     var h = '<section class="panel where" data-key="where-water"><h2>' + ico('wallet', 18, 'bt-ico') + '<span>' + esc(t('wd_title')) + '</span></h2>' + wherePlaceLine() +
       '<p class="small muted gw-lead" data-key="gw-lead">' + esc(t('gw_lead')) + '</p>' + pstrip('water', { tone: rec && wsentVk(rec) && rec.sent && rec.sent.htm ? 'ok' : '' }, 'in-dest hot') +
       '<ul class="gw-list" data-key="gw-list">' + gwRow(rec, 'htm') + gwRow(rec, 'vk') + '</ul>';
-    if (rec && (vkC || htmC)) {
-      var hv = hwItems(rec).map(function (x) { return x.value; }).join(', '), cv = wmeters('cold').filter(function (m) { return hasVal(rec, m.id); }).map(function (m) { return Wt.whole(rec.vals[m.id]); }).join(', ');
-      var what = [htmC ? t('gw_w_htm', { h: hv }) : '', vkC ? t(hv && cv ? 'gw_w_vk' : hv ? 'gw_w_vk1' : 'gw_w_vk0', { h: hv, c: cv }) : ''].filter(Boolean).join('; ');
-      h += '<div class="dest-ch"><button class="btn dest-bg" data-act="gw-bg" data-id="' + esc(rec.id) + '" data-key="gw-bg"' + (HW.busy || VJ.busy ? ' disabled' : '') + '>' + (HW.busy ? SPIN : ico('send', 18)) + '<span>' + esc(t(again ? 'gw_send2' : 'cab_bg')) + '</span></button></div>' +
-        '<p class="small dest-note" data-key="gw-bg-note">' + esc(t('gw_will', { what: what })) + '</p>';
-    } else if (!hcOn()) h += '<p class="small gw-in" data-key="gw-guest">' + esc(t('gw_guest')) + ' <a href="#login" data-key="gw-login">' + esc(t('login')) + ' ›</a></p>';
+    if (!hcOn()) h += '<p class="small gw-in" data-key="gw-guest">' + esc(t('gw_guest')) + ' <a href="#login" data-key="gw-login">' + esc(t('login')) + ' ›</a></p>';
     else if (!rec) h += '<p class="small muted" data-key="gw-need">' + esc(t('gw_need')) + '</p>';
     return h + gwSelf(rec, !hcOn()) + (hcOn() && (hcConn() || vkcGate() === 'ok') ? trustBox(hcConn() ? 'htm' : 'vk', '', 'trust-hs') : '') + '</section>';
   }
@@ -13130,13 +13229,29 @@ fieldset { min-inline-size: 0; }
     return ch;
   }
   document.addEventListener('click', function (e) {
-    var el = e.target.closest && e.target.closest('[data-act="gw-bg"]'); if (!el) return;
-    e.preventDefault(); var rec = vjRec(el.getAttribute('data-id')); if (!rec || HW.busy || VJ.busy) return;
-    var vk = gwVkCan(rec), htm = gwHtmCan(rec), n = (vk ? 1 : 0) + (htm ? 1 : 0); if (!n) return;
-    HW.busy = true; delete HW.err[rec.id]; safeRender();
-    var ok = [], fin = function (to) { return function (good) { if (good !== false) ok.push(to); if (--n) return; HW.busy = false; if (ok.length) toast(t('gw_toast', { to: ok.join(' · ') })); render(true); }; };
-    if (htm) hwQueue(rec, fin(t('gw_htm_n')));
-    if (vk) vjQueue(rec, false, true, fin(t('gw_vk_n')));
+    var el = e.target.closest && e.target.closest('[data-act="gw-bg"],[data-act="gw-acc-pick"]'); if (!el) return;
+    e.preventDefault();
+    if (el.getAttribute('data-act') === 'gw-acc-pick') { gwAccSave(el.getAttribute('data-v')); return; }
+    var rec = vjRec(el.getAttribute('data-id')), to = el.getAttribute('data-to'); if (!rec) return;
+    if (to === 'htm') {
+      if (HW.busy || !gwHtmCan(rec)) return;
+      HW.busy = true; delete HW.err[rec.id]; safeRender();
+      hwQueue(rec, function (good) { HW.busy = false; if (good !== false && !HW.err[rec.id]) toast(t('gw_toast', { to: t('gw_htm_n') })); render(true); });
+    } else {
+      if (VJ.busy || !gwVkCan(rec)) return;
+      vjQueue(rec, false, true, function (good) { if (good) toast(t('gw_toast', { to: t('gw_vk_n') })); render(true); });
+    }
+  });
+  /** Рахунок ХТМ за гарячу — з поля в рядку ХТМ чи з кнопки рахунку кабінету: зберегти в квартирі й одразу показати, чи він у кабінеті. */
+  function gwAccSave(v) {
+    var p = place(); if (!p) return; v = dgt(v);
+    wsetCfg(function (w) { waccPut(w, 'hot', v); });
+    Object.keys(HW.err).forEach(function (k) { delete HW.err[k]; });
+    toast(t(v ? 'gw_acc_saved' : 'gw_acc_cleared', { a: v })); render(true);
+  }
+  document.addEventListener('submit', function (e) {
+    if (!e.target || !e.target.classList || !e.target.classList.contains('gw-acc')) return;
+    e.preventDefault(); var i = e.target.querySelector('#gw-hacc'); gwAccSave(i ? i.value : '');
   });
 
   // ---------- бот Водоканалу: відповіді, переслані нашому боту (/api/vk/replies) ----------
@@ -20883,9 +20998,12 @@ fieldset { min-inline-size: 0; }
           (link && i.url ? '<button type="button" class="btn sec shp-ib" data-act="shp-icopy" data-u="' + esc(i.url) + '" data-key="shp-icopy-' + i.id + '" aria-label="' + esc(t('copy')) + '">' + ico('copy', 18) + '</button>' : '') +
           '<button type="button" class="btn sec shp-ib" data-act="shp-icancel" data-id="' + i.id + '" data-key="shp-icancel-' + i.id + '" aria-label="' + esc(t('shp_cancel')) + '" title="' + esc(t('shp_cancel')) + '">' + ico('close', 18) + '</button></li>';
       }).join('');
-      body = '<p class="small muted shp-lead">' + esc(own ? t('shp_lead') : t('shp_lead_mem', { o: shFirst(s.own) || t('shp_someone') })) + '</p>' +
-        (li ? '<ul class="shp-list" data-key="shp-list">' + li + '</ul>' : '') +
-        (own ? shInvBox(p) : '<button type="button" class="btn sec block shp-leave" data-act="shp-leave" data-sid="' + (+s.sid) + '" data-key="shp-leave">' + esc(t('shp_leave')) + '</button>');
+      // 180-я (власник 23.11, скрін десктопа: «таких дыр быть не должно»): на широкій картці — дві колонки (люди | як запросити), на вузькій — одна, усе на всю ширину
+      var ib = own ? shInvBox(p) : '', two = /shp-inv"/.test(ib);
+      body = '<div class="shp-wrap"><div class="shp-g' + (two ? ' two' : '') + '"><div class="shp-a"><p class="small muted shp-lead">' + esc(own ? t('shp_lead') : t('shp_lead_mem', { o: shFirst(s.own) || t('shp_someone') })) + '</p>' +
+        (li ? '<ul class="shp-list" data-key="shp-list">' + li + '</ul>' : '') + (two ? '' : ib) +
+        (own ? '' : '<button type="button" class="btn sec block shp-leave" data-act="shp-leave" data-sid="' + (+s.sid) + '" data-key="shp-leave">' + esc(t('shp_leave')) + '</button>') + '</div>' +
+        (two ? '<div class="shp-b">' + ib + '</div>' : '') + '</div></div>';
     }
     return prefGroup('pv-people', 'users', t('shp_t'), shSub(p), body, false);
   }

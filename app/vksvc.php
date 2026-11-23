@@ -37,7 +37,8 @@ final class VkSvc {
     $p = self::js($j['payload']); $r = self::js($j['result']);
     return ['id' => (int)$j['id'], 'acc' => $j['acc'], 'rid' => $p['rid'] ?? null, 'place' => $p['place'] ?? null, 'items' => array_map(fn($x) => ['name' => $x['name'], 'value' => $x['value'], 'kind' => $x['kind'] ?? null], (array)($p['items'] ?? [])),
       'status' => $j['status'], 'text' => $r['text'] ?? '', 'why' => $r['why'] ?? null, 'human' => $r['human'] ?? null, 'auto' => !empty($p['auto']),
-      'at' => strtotime((string)$j['created_at']) ?: null, 'doneAt' => $r['doneAt'] ?? null, 'nextAt' => in_array($j['status'], ['queued', 'sending'], true) ? (int)$j['next_at'] : null, 'card' => (int)($p['card'] ?? 0)];
+      'at' => strtotime((string)$j['created_at']) ?: null, 'doneAt' => $r['doneAt'] ?? null, 'nextAt' => in_array($j['status'], ['queued', 'sending'], true) ? (int)$j['next_at'] : null, 'card' => (int)($p['card'] ?? 0)]
+      + (!empty($r['meters']) ? ['meters' => array_values((array)$r['meters'])] : []);
   }
   /** GET /api/vk/jobs */
   public static function status(int $uid): array {
@@ -126,7 +127,9 @@ final class VkSvc {
         Db::q("UPDATE cab_jobs SET status = 'queued', tries = tries + 1, next_at = ?, updated_at = ? WHERE id = ?", [time() + 900, Http::iso(), $j['id']]);
         return self::pubJob(Db::one('SELECT * FROM cab_jobs WHERE id = ?', [$j['id']]));
       }
-      self::finish((int)$j['id'], 'failed', ['why' => $why, 'human' => mb_substr($why === 'down' ? self::h('down') : (string)($e instanceof HttpError ? ($e->extra['human'] ?? '') : ''), 0, 400)]);
+      // 180-я: «який лічильник який» — лічильники сайту в підсумок: застосунок дає вибрати прямо в рядку Водоканалу (без бота й «Перевірити»)
+      $ms = $e instanceof HttpError && in_array($why, ['mismatch', 'which'], true) ? array_slice((array)($e->extra['meters'] ?? []), 0, 8) : [];
+      self::finish((int)$j['id'], 'failed', ['why' => $why, 'human' => mb_substr($why === 'down' ? self::h('down') : (string)($e instanceof HttpError ? ($e->extra['human'] ?? '') : ''), 0, 400)] + ($ms ? ['meters' => $ms] : []));
     }
     $job = self::pubJob(Db::one('SELECT * FROM cab_jobs WHERE id = ?', [$j['id']]));
     if ($job['status'] !== 'ok') self::notify($uid, $job);   // «✅ прийняв» уже написал VkCab::deliver

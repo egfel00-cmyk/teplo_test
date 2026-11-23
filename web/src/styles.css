@@ -1703,6 +1703,9 @@ details.tbl-acc[open] > .tbl-wrap { margin-top: 12px; }
 @media (max-width: 860px) and (min-width: 600px) { .lp-steps { grid-template-columns: minmax(0, 1fr); } .lp-step { grid-template-columns: 1fr 1fr; align-items: center; } }
 @media (min-width: 960px) {
   .lp-hero { margin: 0 24px; padding: 64px 56px 56px; border-radius: 40px; }
+  /* 180-я (власник 23.11: «верхний блок с роликом, заголовком и кнопкой — фиксированной ширины по аналогии с нижним, где счётчики меняются»):
+     обидві плити — одна ширина (1132, на 960–1180 — з полями по 24 px) і по центру */
+  .lp-hero, .lp-end { width: min(1132px, 100% - 48px); max-width: none; margin-left: auto; margin-right: auto; }
   .lp-in { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 540px); gap: 40px; align-items: center; }   /* власник 22.11 11:02: «десктоп — як було» */
   .lp-stage { height: 600px; margin: 0; max-width: none; }
   .lp-phone { width: 280px; height: 585px; margin-left: -140px; top: 8px; border-radius: 50px; --k: .6987; }
@@ -1715,6 +1718,16 @@ details.tbl-acc[open] > .tbl-wrap { margin-top: 12px; }
   .lp-end { margin: 96px auto 0; padding: 80px 40px; border-radius: 40px; }
 }
 @media (min-width: 1200px) { .lp-end { margin-left: auto; margin-right: auto; } }
+
+/* 180-я (власник 23.11: «на фон всего лендинга — что-то интересное и ненавязчивое, лёгкое, чтобы не выглядел пустым, на всех темах»):
+   тихі шпалери з контурів того, що рахує «передай» — крапля, вогник, блискавка, термометр, віконце барабана «0 4 2», циферблат; лише лінії,
+   без світіння й переливів, нерухомі (нуль роботи для старих телефонів). Колір — --lp-pat кожної теми, малюнок — маска (одна плитка 420 px). */
+.welcome.lp { position: relative; isolation: isolate; --lp-pat: rgba(222, 232, 255, .055); }
+.welcome.lp::before { content: ''; position: absolute; inset: 0; z-index: -1; pointer-events: none; background-color: var(--lp-pat);
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='420' height='420' viewBox='0 0 420 420' fill='none' stroke='%23000' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'%3E %3Cg transform='translate(34 40) rotate(-12) scale(1.5)'%3E%3Cpath d='M12 3C12 3 6 10 6 14a6 6 0 0 0 12 0c0-4-6-11-6-11z'/%3E%3C/g%3E %3Cg transform='translate(196 22) rotate(10) scale(1.35)'%3E%3Cpath d='M13 2 4 14h7l-1 8 9-12h-7l1-8z'/%3E%3C/g%3E %3Cg transform='translate(330 104) rotate(8) scale(1.45)'%3E%3Cpath d='M12 3c1 4 5 6 5 11a5 5 0 0 1-10 0c0-3 2-4 2-6 1 1 2 2 2 3 1-3 1-5 1-8z'/%3E%3C/g%3E %3Cg transform='translate(92 178) rotate(-6) scale(1.4)'%3E%3Cpath d='M10 4a2 2 0 0 1 4 0v10a4 4 0 1 1-4 0z'/%3E%3Cpath d='M12 10v6'/%3E%3C/g%3E %3Cg transform='translate(222 218) rotate(-4)'%3E%3Crect x='0' y='0' width='72' height='28' rx='6'/%3E%3Cpath d='M24 4v20M48 4v20'/%3E%3Cpath d='M8 9v10M32 9h6v5h-6v5h6M56 9v5h7M61 9v10'/%3E%3C/g%3E %3Cg transform='translate(352 296) rotate(14) scale(1.1)'%3E%3Cpath d='M12 3C12 3 6 10 6 14a6 6 0 0 0 12 0c0-4-6-11-6-11z'/%3E%3C/g%3E %3Cg transform='translate(48 318) rotate(-18) scale(1.15)'%3E%3Cpath d='M13 2 4 14h7l-1 8 9-12h-7l1-8z'/%3E%3C/g%3E %3Cg transform='translate(176 330)'%3E%3Ccircle cx='18' cy='18' r='16'/%3E%3Cpath d='M18 18l8-6M18 4v3M32 18h-3M4 18h3'/%3E%3C/g%3E %3Cpath d='M146 92h8M150 88v8M300 380h8M304 376v8M20 250h6M23 247v6M390 30h6M393 27v6'/%3E %3C/svg%3E") 0 0 / 420px 420px repeat; mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='420' height='420' viewBox='0 0 420 420' fill='none' stroke='%23000' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'%3E %3Cg transform='translate(34 40) rotate(-12) scale(1.5)'%3E%3Cpath d='M12 3C12 3 6 10 6 14a6 6 0 0 0 12 0c0-4-6-11-6-11z'/%3E%3C/g%3E %3Cg transform='translate(196 22) rotate(10) scale(1.35)'%3E%3Cpath d='M13 2 4 14h7l-1 8 9-12h-7l1-8z'/%3E%3C/g%3E %3Cg transform='translate(330 104) rotate(8) scale(1.45)'%3E%3Cpath d='M12 3c1 4 5 6 5 11a5 5 0 0 1-10 0c0-3 2-4 2-6 1 1 2 2 2 3 1-3 1-5 1-8z'/%3E%3C/g%3E %3Cg transform='translate(92 178) rotate(-6) scale(1.4)'%3E%3Cpath d='M10 4a2 2 0 0 1 4 0v10a4 4 0 1 1-4 0z'/%3E%3Cpath d='M12 10v6'/%3E%3C/g%3E %3Cg transform='translate(222 218) rotate(-4)'%3E%3Crect x='0' y='0' width='72' height='28' rx='6'/%3E%3Cpath d='M24 4v20M48 4v20'/%3E%3Cpath d='M8 9v10M32 9h6v5h-6v5h6M56 9v5h7M61 9v10'/%3E%3C/g%3E %3Cg transform='translate(352 296) rotate(14) scale(1.1)'%3E%3Cpath d='M12 3C12 3 6 10 6 14a6 6 0 0 0 12 0c0-4-6-11-6-11z'/%3E%3C/g%3E %3Cg transform='translate(48 318) rotate(-18) scale(1.15)'%3E%3Cpath d='M13 2 4 14h7l-1 8 9-12h-7l1-8z'/%3E%3C/g%3E %3Cg transform='translate(176 330)'%3E%3Ccircle cx='18' cy='18' r='16'/%3E%3Cpath d='M18 18l8-6M18 4v3M32 18h-3M4 18h3'/%3E%3C/g%3E %3Cpath d='M146 92h8M150 88v8M300 380h8M304 376v8M20 250h6M23 247v6M390 30h6M393 27v6'/%3E %3C/svg%3E") 0 0 / 420px 420px repeat; }
+:root:root[data-theme="dark"][data-skin="brass"] .welcome.lp { --lp-pat: rgba(240, 214, 168, .06); }
+:root:root[data-lskin="c"][data-lsk="3"]:not([data-theme="dark"]) .welcome.lp { --lp-pat: rgba(70, 60, 44, .075); }
+@media print { .welcome.lp::before { display: none; } }
 
 /* рух лендинга (83-я, unslop): без дрейфу, «дихання», пульсу, відблиску, паралаксу й появи секцій; лінія сканування проходить двічі й зупиняється */
 
@@ -2584,7 +2597,7 @@ details.mypay[open] > summary .mypay-amt, details.mypay[open] > summary .mypay-s
 .list > li.hli:first-child .hsw-act { border-top-right-radius: 14px; } .list > li.hli:last-child .hsw-act { border-bottom-right-radius: 14px; }
 @media (prefers-reduced-motion: reduce) { .hli.hsw > :not(.hsw-act), .hsw-act { transition: none; } }
 /* 164-а: налаштування — список у браузері й застосунку; «Квартири» — рядок на квартиру (колір квартири), дотик → екран квартири */
-.ios-groups { max-width: 640px; }
+/* 180-я: без стелі 640 px — на десктопі список на всю колонку, як заголовок і підвал (було: справа порожньо на 1/3 екрана) */
 .ps-head .ps-pm { display: inline-grid; box-sizing: content-box; place-items: center; width: 22px; height: 22px; color: var(--pc); }
 .ps-head .ps-pm .pdot { width: 12px; height: 12px; margin: 0; }
 .ps-head .ios-t b { font-weight: 600; }
@@ -2594,7 +2607,7 @@ details.mypay[open] > summary .mypay-amt, details.mypay[open] > summary .mypay-s
 :root:root .ios-row.ps-addp .ios-ico { color: var(--tint, var(--c-ink)); }
 .ps-addp .ios-t b { font-weight: 600; }
 /* екран групи: картки одна під одною; заголовок єдиної картки повторював назву екрана — ховаємо */
-.pg-one { display: grid; gap: var(--sp-4); max-width: 640px; }
+.pg-one { display: grid; gap: var(--sp-4); }
 .pg-one > .panel { margin: 0; }
 .pg-one > .panel:only-child > h2:first-child { display: none; }
 .acc-ways { list-style: none; margin: 12px 0; padding: 0; display: grid; gap: 10px; }
@@ -3487,6 +3500,19 @@ fieldset { min-inline-size: 0; }
 .gw-self .dest-more-b { padding-top: 4px; }
 .gw-self-b + .gw-self-b { margin-top: var(--sp-4); padding-top: var(--sp-4); border-top: 1px solid var(--c-line); }
 .gw-self-t { margin: 8px 0; color: var(--c-ink); }
+/* 180-я (власник 23.11: «как отправить горячую только в ХТМ отдельно… сразу указать, как исправить»): у кожного адресата — що надішлемо, своя кнопка й виправлення в рядку */
+.gw-what { margin: 8px 0 0; color: var(--c-ink-2); }
+.gw-row .dest-ch { margin-top: 8px; }
+.gw-fix { margin-top: 8px; }
+.gw-fix .dest-ch { margin-top: 0; }
+.gw-acc label { display: block; margin: 0 0 4px; color: var(--c-ink-2); }
+.gw-acc-r { display: flex; gap: 8px; }
+.gw-acc-r input { flex: 1 1 auto; min-width: 0; min-height: var(--tap); padding: 0 14px; border-radius: var(--r-btn); border: 1px solid var(--c-field-line); background: var(--c-field-bg); color: var(--c-ink); font: inherit; font-variant-numeric: tabular-nums; }
+.gw-acc-r .btn { flex: none; }
+.gw-acc-in { margin: 8px 0 0; display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.gw-pick { display: grid; gap: 10px; }
+.gw-pick > p { margin: 0; }
+.gw-pick .vkc-pick { margin: 0; }
 
 /* ===== 179-я: спільна квартира — «Спільний доступ» на екрані квартири, позначка біля назви, #join (власник 23.11: «не перегружай интерфейс»).
    Люди — рядками з лініями (без «панелі в панелі»), аватар — нейтральний кружок з першою літерою; позначка «спільна» — тихий значок людей і число. */
@@ -3530,5 +3556,14 @@ fieldset { min-inline-size: 0; }
 .join-card .help.block { margin: 0 0 var(--sp-3); }
 .join-card > p:not(.join-who):not(.help) { margin: 0 0 var(--sp-3); }
 /* 179-я: на широкому екрані — однією колонкою (кнопки не розтягуються на 900 px, підпис під кнопкою — по її центру) */
-.shp-list, .shp-inv, .shp-leave { max-width: 560px; }
+/* 180-я (власник 23.11, скрін десктопа: «таких дыр быть не должно, вёрстка должна быть отзывчивой на всех размерах»): без стелі 560 px —
+   на широкій картці (≥ 720 px) дві колонки: люди й пояснення | як запросити (лінія між ними), на вузькій — одна колонка на всю ширину */
+.shp-wrap { container-type: inline-size; }
+.shp-wrap .shp-lead { max-width: none; }
 .shp-inv > p.shp-send-s, .shp-inv .shp-or { max-width: none; }
+@container (min-width: 720px) {
+  .shp-g.two { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 0 var(--sp-6); align-items: start; }
+  .shp-g.two .shp-b { border-left: 1px solid var(--c-line); padding-left: var(--sp-6); }
+  .shp-g.two .shp-inv { border-top: 0; padding-top: 0; }
+  .shp-g.two .shp-list { margin-bottom: 0; }
+}

@@ -2017,39 +2017,93 @@
   /** Харків: гарячу бере ХТМ, воду — Харківводоканал, своїх постачальників немає. */
   function gwKh() { var p = place(), ld = prvOf('water'); return !!(p && hotIsHtm(p) && !myProv('cold') && !myProv('hot') && (!ld || ld.via === 'hvk')); }
   function hwItems(rec) { return wmeters('hot').filter(function (m) { return hasVal(rec, m.id); }).map(function (m) { return { sn: String(m.serial || ''), value: String(Wt.whole(rec.vals[m.id])), name: wname(m) }; }); }
-  /** Рахунок ХТМ для гарячої: «Рахунок за гарячу», інакше рахунок теплолічильника квартири, інакше єдиний у кабінеті ('' — сервер візьме єдиний). */
+  /** Рахунок ХТМ для гарячої: «Рахунок за гарячу», інакше рахунок теплолічильника квартири; єдиний у кабінеті — лише якщо він нічий інший
+   *  (180-я, скрін власника: спільна квартира учасника пішла на його ж рахунок іншої квартири → «немає розділу гарячої»). '' — не знаємо. */
   function hwAcc(p) {
     var accs = (HC.st && HC.st.accounts) || [], mine = [dgt(waccOf(p, 'hot')), dgt((cbHeatM(p) || {}).account)].filter(Boolean);
     for (var i = 0; i < mine.length; i++) { var hit = accs.filter(function (a) { return a.acc === mine[i]; })[0]; if (hit) return hit.acc; }
-    return accs.length === 1 ? accs[0].acc : (mine[0] || '');
+    if (mine[0]) return mine[0];
+    if (accs.length !== 1 || (p && p.sh && p.sh.role === 'member')) return '';
+    var other = places().some(function (q) { return q !== p && [dgt(waccOf(q, 'hot')), dgt((cbHeatM(q) || {}).account)].indexOf(accs[0].acc) >= 0; });
+    return other ? '' : accs[0].acc;
   }
   /** Що знає сервер про розділ гарячої в кабінеті ХТМ: {found, open, n} або null (ще не дивились). */
   function hwInfo(p) { var h = HC.st && HC.st.hot, a = hwAcc(p); return h && a && h[a] ? h[a] : null; }
   function hwBusy(j) { return !!(j && /^(queued|sending|pending)$/.test(j.status)); }
+  /** Рахунок відомий, а в підключеному кабінеті ХТМ його немає (список рахунків кабінету вже прийшов). */
+  function hwForeign(p) { var a = hwAcc(p), accs = (HC.st && HC.st.accounts) || []; return !!(a && accs.length && !accs.some(function (x) { return x.acc === a; })); }
   function gwVkCan(rec) { return !!(rec && hcOn() && vkcGate() === 'ok' && !wsentVk(rec) && !(rec.vkJob && /^(queued|sending)$/.test(rec.vkJob.status)) && wmeters().some(function (m) { return hasVal(rec, m.id); })); }
-  function gwHtmCan(rec) { var hi = hwInfo(place()); return !!(rec && hcOn() && hcConn() && !(hi && hi.found === false) && !(rec.sent && rec.sent.htm) && !hwBusy(rec.htmJob) && hwItems(rec).length); }
-  /** Статус показань для адресата одним словом-плашкою: {c: клас, t: текст, why?}. */
+  function gwHtmCan(rec) { var p = place(), hi = hwInfo(p); return !!(rec && hcOn() && hcConn() && hwAcc(p) && !hwForeign(p) && !(hi && hi.found === false) && !(rec.sent && rec.sent.htm) && !hwBusy(rec.htmJob) && hwItems(rec).length); }
+  /** Повна черга запису з сервера (причина why, рахунок, лічильники сайту Водоканалу) — у записі лише коротко. */
+  function gwJob(rec, to) { var j = to === 'vk' ? rec.vkJob : rec.htmJob, st = to === 'vk' ? VJ.st : HC.st; return j && st && (st.jobs || []).filter(function (x) { return x.id === j.job; })[0] || null; }
+  /** Статус показань для адресата одним словом-плашкою: {c: клас, t: текст, why?, code?}. */
   function gwSt(rec, to) {
     if (!rec) return null;
     var vk = to === 'vk', sent = vk ? wsentVk(rec) : rec.sent && rec.sent.htm, j = vk ? rec.vkJob : rec.htmJob, conf = vk ? rec.vkConf : rec.htmConf, err = vk ? (VJ.err && VJ.errFor === rec.id ? VJ.err : null) : HW.err[rec.id];
+    var fj = gwJob(rec, to) || {};
+    // ХТМ: невдача була на інший рахунок (людина вже виправила рахунок у рядку) — не показуємо стару причину
+    if (!vk && j && /^(failed|unknown)$/.test(j.status) && fj.acc && hwAcc(place()) && fj.acc !== hwAcc(place())) j = null;
     if (sent) return { c: 'ok', t: t(conf ? 'gw_st_ok' : 'gw_st_self', { d: fmtDate(sent) }) };
     if (j && /^(queued|sending)$/.test(j.status)) return { c: 'info', t: t('gw_st_q') };
     if (j && j.status === 'pending') return { c: 'info', t: t('gw_st_chk') };
     if (j && j.status === 'rejected') return { c: 'bad', t: t('gw_st_bad'), why: j.reason || j.text || '' };
-    if (err) return { c: 'warn', t: t('gw_st_fail'), why: err.human || '' };
-    if (j && /^(failed|unknown)$/.test(j.status)) return { c: 'warn', t: t('gw_st_fail'), why: j.human || j.text || '' };
+    if (err) return { c: 'warn', t: t('gw_st_fail'), why: err.human || '', code: String(err.error || '').replace(/^(cab|vk)_/, '') };
+    if (j && /^(failed|unknown)$/.test(j.status)) return { c: 'warn', t: t('gw_st_fail'), why: j.human || j.text || '', code: fj.why || j.why || '' };
     return { c: 'neutral', t: t('gw_st_no') };
   }
-  /** Рядок адресата: назва й що бере, статус показань (або стан підключення), причина відмови, «Підключити» з тим, який вхід потрібен. */
+  /** Коротка назва водоміра для рядка «що надішлемо»: назва, інакше № , інакше вид. */
+  function gwNm(m) { return m.name || (m.serial ? '№ ' + m.serial : t(m.kind === 'hot' ? 'wt_hot' : 'wt_cold')); }
+  /** «Кухня 176 · Ванна 0» — значення водомірів виду без ком (кома читалась як дріб: «176, 0»). */
+  function gwVals(rec, kind) { var ms = wmeters(kind).filter(function (m) { return hasVal(rec, m.id); }); return ms.map(function (m) { var v = Wt.whole(rec.vals[m.id]); return ms.length > 1 ? gwNm(m) + ' ' + v : String(v); }).join(' · '); }
+  /** Вибір «який лічильник який» на сайті Водоканалу — прямо в рядку: для кожного свого водоміра з показаннями — лічильник сайту (№, вид, останні показання). */
+  function gwPick(rec, cms) {
+    var ms = wmeters().filter(function (m) { return hasVal(rec, m.id); }), map = vkcMap(wmeters(), cms), keys = ms.map(function (m) { return map[m.id] || ''; });
+    var dup = keys.some(function (k, i) { return k && keys.indexOf(k) !== i; }), miss = keys.some(function (k) { return !k; });
+    return '<div class="gw-pick" data-key="gw-pick"><p class="small"><b>' + esc(t('gw_pick_t')) + '</b></p>' + ms.map(function (m) {
+      return '<fieldset class="vkc-pick" data-key="gw-pick-' + esc(m.id) + '"><legend class="small"><b>' + esc(wname(m)) + '</b>' + (m.serial ? ' <span class="muted">№ ' + esc(m.serial) + '</span>' : '') + ' — <b class="num">' + Wt.whole(rec.vals[m.id]) + '</b> м³</legend>' +
+        cms.map(function (x) { return '<label class="vkc-opt"><input type="radio" name="gwp-' + esc(m.id) + '" data-wm="' + esc(m.id) + '" data-wf="cabKey" value="' + esc(x.key) + '"' + (map[m.id] === x.key ? ' checked' : '') + '><span>' + esc(vkcLabel(x)) + (vkcPrev(x) ? ' <span class="muted">· ' + esc(vkcPrev(x)) + '</span>' : '') + '</span></label>'; }).join('') + '</fieldset>';
+    }).join('') + (dup ? '<p class="small warn-ink" data-key="gw-pick-dup">' + ico('alert', 16) + ' ' + esc(t('vkc_dup')) + '</p>' : miss ? '<p class="small muted" data-key="gw-pick-miss">' + esc(t('gw_pick_miss')) + '</p>' : '') + '</div>';
+  }
+  /** Чого бракує адресату й як це виправити тут же: {txt, fix (HTML), block: не можна надіслати}. */
+  function gwFix(rec, to, st) {
+    var p = place(), code = st && st.code || '', why = st && st.why || '';
+    if (to === 'htm') {
+      var a = hwAcc(p), accs = (HC.st && HC.st.accounts) || [], hi = hwInfo(p), sh = p && p.sh && p.sh.role === 'member';
+      var field = '<form class="gw-acc" data-key="gw-acc-form" novalidate><label class="small" for="gw-hacc">' + esc(t('wa_acc_hot_s')) + '</label><div class="gw-acc-r"><input id="gw-hacc" class="num" inputmode="numeric" autocomplete="off" value="' + esc(waccOf(p, 'hot')) + '">' +
+        '<button class="btn sec" type="submit" data-key="gw-acc-save">' + esc(t('save')) + '</button></div>' +
+        (accs.length ? '<p class="small muted gw-acc-in">' + esc(t('gw_acc_in', { e: (HC.st && HC.st.login) || '' })) + ' ' + accs.map(function (x) { return '<button type="button" class="chip" data-act="gw-acc-pick" data-v="' + esc(x.acc) + '" data-key="gw-acc-' + esc(x.acc) + '">' + esc(x.acc) + '</button>'; }).join(' ') + '</p>' : '') + '</form>';
+      if (!a) return { txt: t(sh ? 'gw_acc_need_sh' : 'gw_acc_need'), fix: field, block: true };
+      if (hwForeign(p) || code === 'no_acc') return { txt: t('gw_acc_foreign', { a: a, e: (HC.st && HC.st.login) || '' }) + (sh ? ' ' + t('gw_acc_owner', { o: shFirst(p.sh.own) || t('shp_someone') }) : ''), fix: field + '<p class="small"><a href="' + HTM_URL + '" target="_blank" rel="noopener" data-key="gw-htm-site">' + esc(t('gw_htm_site')) + ' ›</a></p>', block: true };
+      if ((hi && hi.found === false) || code === 'hot_none') return { txt: t('gw_nohot2', { a: a }), fix: '<div class="dest-ch"><a class="btn sec" href="' + BOT_URL + '" target="_blank" rel="noopener" data-key="gw-nohot-bot">' + ico('send', 18) + '<span>' + esc(t('wd_bot', { b: '@KPHTM_Bot' })) + '</span></a>' +
+        '<a class="btn sec" href="tel:+380573414140" data-key="gw-nohot-tel">' + ico('phone', 18) + '<span>(057) 341-41-40</span></a></div>' + (rec && !(rec.sent && rec.sent.htm) ? '<p class="dest-mark"><button class="btn sec" data-act="wsent" data-to="htm" data-v="1" data-id="' + rec.id + '" data-key="gw-nohot-mark">' + ico('check', 18) + '<span>' + esc(t('ws_mark')) + '</span></button></p>' : ''), block: true, own: true };
+      if (code === 'relogin') return { txt: why, fix: '<p class="small"><a href="#prefs-cabs-htm" data-act="cb-go" data-key="gw-relogin">' + esc(t('gw_relogin')) + ' ›</a></p>' };
+      return null;
+    }
+    var j = rec && gwJob(rec, 'vk'), cms = (j && j.meters && j.meters.length ? j.meters : null) || (VKC.check && VKC.check.meters && VKC.check.meters.length ? VKC.check.meters : null);
+    if (/^(mismatch|which)$/.test(code)) return { txt: t('gw_vk_which'), fix: cms ? gwPick(rec, cms) : '<div class="dest-ch"><button class="btn sec" data-act="vkc-check" data-key="gw-vk-look"' + (VKC.busy ? ' disabled' : '') + '>' + (VKC.busy === 'check' ? SPIN : ico('search', 18)) + '<span>' + esc(t('gw_vk_look')) + '</span></button></div>' };
+    if (code === 'notfound' || code === 'ukr') return { txt: why, fix: '<p class="small"><a href="#prefs-cabs-vk" data-act="cb-go" data-key="gw-vk-acc">' + esc(t('gw_vk_acc')) + ' ›</a></p>' };
+    if (code === 'less') return { txt: why, fix: '<p class="small"><a href="#wrec-' + esc(rec.id) + '" data-key="gw-vk-fixval">' + esc(t('gw_fix_val')) + ' ›</a></p>' };
+    return null;
+  }
+  /** Рядок адресата: назва й що бере, один статус, що не так і як виправити (тут же), що надішлемо й своя кнопка «Надіслати в ХТМ» / «…у Водоканал». */
   function gwRow(rec, to) {
-    var vk = to === 'vk', on = hcOn(), conn = vk ? on && vkcGate() === 'ok' : on && hcConn(), hi = vk ? null : hwInfo(place());
-    var st = gwSt(rec, to), noHot = !vk && conn && hi && hi.found === false;
-    if (!st) st = conn ? (noHot ? { c: 'neutral', t: t('gw_st_bot') } : { c: 'ok', t: t('gw_st_bg') }) : { c: 'neutral', t: t('gw_st_off') };
+    var vk = to === 'vk', on = hcOn(), conn = vk ? on && vkcGate() === 'ok' : on && hcConn();
+    var st = gwSt(rec, to);
+    if (!st) st = conn ? { c: 'ok', t: t('gw_st_bg') } : { c: 'neutral', t: t('gw_st_off') };
+    var fx = conn ? gwFix(rec, to, st) : null;
     var h = '<li class="gw-row" data-key="gw-' + to + '"><div class="gw-h"><span class="gw-t"><b>' + esc(t(vk ? 'gw_vk_n' : 'gw_htm_n')) + '</b><span class="small muted">' + esc(t(vk ? 'gw_vk_s' : 'gw_htm_s')) + '</span></span>' +
-      '<span class="pill ' + st.c + '" data-key="gw-st-' + to + '">' + esc(st.t) + '</span></div>';
-    if (st.why) h += '<p class="small gw-why" data-key="gw-why-' + to + '">' + esc(String(st.why).slice(0, 240)) + '</p>';
-    if (noHot) h += '<p class="small muted gw-in" data-key="gw-nohot">' + esc(t('gw_nohot')) + '</p>';
-    else if (!conn && on) h += '<p class="small gw-in"><a href="#prefs-cabs-' + (vk ? 'vk' : 'htm') + '" data-act="cb-go" data-key="gw-conn-' + to + '">' + esc(t('gw_conn')) + ' ›</a> <span class="muted">' + esc(t(vk ? 'gw_vk_in' : 'gw_htm_in')) + '</span></p>';
+      '<span class="pill ' + (fx && fx.own && st.c === 'neutral' ? 'neutral' : st.c) + '" data-key="gw-st-' + to + '">' + esc(fx && fx.own && st.c === 'neutral' ? t('gw_st_bot') : st.t) + '</span></div>';
+    // одна причина, без повтору: виправлення має свій текст — тоді текст сайту не дублюємо
+    if (fx) h += '<p class="small gw-why" data-key="gw-why-' + to + '">' + esc(String(fx.txt || st.why || '').slice(0, 260)) + '</p><div class="gw-fix" data-key="gw-fix-' + to + '">' + fx.fix + '</div>';
+    else if (st.why) h += '<p class="small gw-why" data-key="gw-why-' + to + '">' + esc(String(st.why).slice(0, 240)) + '</p>';
+    if (!conn && on) h += '<p class="small gw-in"><a href="#prefs-cabs-' + (vk ? 'vk' : 'htm') + '" data-act="cb-go" data-key="gw-conn-' + to + '">' + esc(t('gw_conn')) + ' ›</a> <span class="muted">' + esc(t(vk ? 'gw_vk_in' : 'gw_htm_in')) + '</span></p>';
+    var can = rec && (vk ? gwVkCan(rec) : gwHtmCan(rec));
+    if (can) {
+      var hv = gwVals(rec, 'hot'), cv = gwVals(rec, 'cold'), busy = vk ? VJ.busy === 'q' : HW.busy, again = /^(bad|warn)$/.test(st.c);
+      var what = vk ? [hv ? t('gw_w_hot', { v: hv }) : '', cv ? t('gw_w_cold', { v: cv }) : ''].filter(Boolean).join('; ') : t('gw_w_hot', { v: hv });
+      h += '<p class="small gw-what" data-key="gw-what-' + to + '">' + esc(t('gw_will', { what: what })) + '</p>' +
+        '<div class="dest-ch"><button class="btn dest-bg" data-act="gw-bg" data-to="' + to + '" data-id="' + esc(rec.id) + '" data-key="gw-bg-' + to + '"' + (busy ? ' disabled' : '') + '>' + (busy ? SPIN : ico('send', 18)) + '<span>' + esc(t(again ? 'gw_send2' : vk ? 'gw_send_vk' : 'gw_send_htm')) + '</span></button></div>';
+    }
     return h + '</li>';
   }
   /** «Передати самі»: цифри, бот, телефон і «Я передав(ла)» — для кожного адресата. */
@@ -2072,16 +2126,12 @@
   }
   function hotSendPanel(rec) {
     if (hcOn()) { hcLoad(); vjLoad(); vksLoad(); }
-    var vkC = gwVkCan(rec), htmC = gwHtmCan(rec), again = rec && ['vk', 'htm'].some(function (to) { var s0 = gwSt(rec, to); return s0 && /^(bad|warn)$/.test(s0.c); });
+    // 180-я (власник 23.11, скріни: «как отправить горячую только в ХТМ отдельно от водоканала и в водоканал отдельно от ХТМ… сразу указать, как исправить»):
+    // кожному адресату — своя кнопка й своє виправлення в його рядку; спільної кнопки «обом» немає
     var h = '<section class="panel where" data-key="where-water"><h2>' + ico('wallet', 18, 'bt-ico') + '<span>' + esc(t('wd_title')) + '</span></h2>' + wherePlaceLine() +
       '<p class="small muted gw-lead" data-key="gw-lead">' + esc(t('gw_lead')) + '</p>' + pstrip('water', { tone: rec && wsentVk(rec) && rec.sent && rec.sent.htm ? 'ok' : '' }, 'in-dest hot') +
       '<ul class="gw-list" data-key="gw-list">' + gwRow(rec, 'htm') + gwRow(rec, 'vk') + '</ul>';
-    if (rec && (vkC || htmC)) {
-      var hv = hwItems(rec).map(function (x) { return x.value; }).join(', '), cv = wmeters('cold').filter(function (m) { return hasVal(rec, m.id); }).map(function (m) { return Wt.whole(rec.vals[m.id]); }).join(', ');
-      var what = [htmC ? t('gw_w_htm', { h: hv }) : '', vkC ? t(hv && cv ? 'gw_w_vk' : hv ? 'gw_w_vk1' : 'gw_w_vk0', { h: hv, c: cv }) : ''].filter(Boolean).join('; ');
-      h += '<div class="dest-ch"><button class="btn dest-bg" data-act="gw-bg" data-id="' + esc(rec.id) + '" data-key="gw-bg"' + (HW.busy || VJ.busy ? ' disabled' : '') + '>' + (HW.busy ? SPIN : ico('send', 18)) + '<span>' + esc(t(again ? 'gw_send2' : 'cab_bg')) + '</span></button></div>' +
-        '<p class="small dest-note" data-key="gw-bg-note">' + esc(t('gw_will', { what: what })) + '</p>';
-    } else if (!hcOn()) h += '<p class="small gw-in" data-key="gw-guest">' + esc(t('gw_guest')) + ' <a href="#login" data-key="gw-login">' + esc(t('login')) + ' ›</a></p>';
+    if (!hcOn()) h += '<p class="small gw-in" data-key="gw-guest">' + esc(t('gw_guest')) + ' <a href="#login" data-key="gw-login">' + esc(t('login')) + ' ›</a></p>';
     else if (!rec) h += '<p class="small muted" data-key="gw-need">' + esc(t('gw_need')) + '</p>';
     return h + gwSelf(rec, !hcOn()) + (hcOn() && (hcConn() || vkcGate() === 'ok') ? trustBox(hcConn() ? 'htm' : 'vk', '', 'trust-hs') : '') + '</section>';
   }
@@ -2105,13 +2155,29 @@
     return ch;
   }
   document.addEventListener('click', function (e) {
-    var el = e.target.closest && e.target.closest('[data-act="gw-bg"]'); if (!el) return;
-    e.preventDefault(); var rec = vjRec(el.getAttribute('data-id')); if (!rec || HW.busy || VJ.busy) return;
-    var vk = gwVkCan(rec), htm = gwHtmCan(rec), n = (vk ? 1 : 0) + (htm ? 1 : 0); if (!n) return;
-    HW.busy = true; delete HW.err[rec.id]; safeRender();
-    var ok = [], fin = function (to) { return function (good) { if (good !== false) ok.push(to); if (--n) return; HW.busy = false; if (ok.length) toast(t('gw_toast', { to: ok.join(' · ') })); render(true); }; };
-    if (htm) hwQueue(rec, fin(t('gw_htm_n')));
-    if (vk) vjQueue(rec, false, true, fin(t('gw_vk_n')));
+    var el = e.target.closest && e.target.closest('[data-act="gw-bg"],[data-act="gw-acc-pick"]'); if (!el) return;
+    e.preventDefault();
+    if (el.getAttribute('data-act') === 'gw-acc-pick') { gwAccSave(el.getAttribute('data-v')); return; }
+    var rec = vjRec(el.getAttribute('data-id')), to = el.getAttribute('data-to'); if (!rec) return;
+    if (to === 'htm') {
+      if (HW.busy || !gwHtmCan(rec)) return;
+      HW.busy = true; delete HW.err[rec.id]; safeRender();
+      hwQueue(rec, function (good) { HW.busy = false; if (good !== false && !HW.err[rec.id]) toast(t('gw_toast', { to: t('gw_htm_n') })); render(true); });
+    } else {
+      if (VJ.busy || !gwVkCan(rec)) return;
+      vjQueue(rec, false, true, function (good) { if (good) toast(t('gw_toast', { to: t('gw_vk_n') })); render(true); });
+    }
+  });
+  /** Рахунок ХТМ за гарячу — з поля в рядку ХТМ чи з кнопки рахунку кабінету: зберегти в квартирі й одразу показати, чи він у кабінеті. */
+  function gwAccSave(v) {
+    var p = place(); if (!p) return; v = dgt(v);
+    wsetCfg(function (w) { waccPut(w, 'hot', v); });
+    Object.keys(HW.err).forEach(function (k) { delete HW.err[k]; });
+    toast(t(v ? 'gw_acc_saved' : 'gw_acc_cleared', { a: v })); render(true);
+  }
+  document.addEventListener('submit', function (e) {
+    if (!e.target || !e.target.classList || !e.target.classList.contains('gw-acc')) return;
+    e.preventDefault(); var i = e.target.querySelector('#gw-hacc'); gwAccSave(i ? i.value : '');
   });
 
   // ---------- бот Водоканалу: відповіді, переслані нашому боту (/api/vk/replies) ----------
@@ -9858,9 +9924,12 @@
           (link && i.url ? '<button type="button" class="btn sec shp-ib" data-act="shp-icopy" data-u="' + esc(i.url) + '" data-key="shp-icopy-' + i.id + '" aria-label="' + esc(t('copy')) + '">' + ico('copy', 18) + '</button>' : '') +
           '<button type="button" class="btn sec shp-ib" data-act="shp-icancel" data-id="' + i.id + '" data-key="shp-icancel-' + i.id + '" aria-label="' + esc(t('shp_cancel')) + '" title="' + esc(t('shp_cancel')) + '">' + ico('close', 18) + '</button></li>';
       }).join('');
-      body = '<p class="small muted shp-lead">' + esc(own ? t('shp_lead') : t('shp_lead_mem', { o: shFirst(s.own) || t('shp_someone') })) + '</p>' +
-        (li ? '<ul class="shp-list" data-key="shp-list">' + li + '</ul>' : '') +
-        (own ? shInvBox(p) : '<button type="button" class="btn sec block shp-leave" data-act="shp-leave" data-sid="' + (+s.sid) + '" data-key="shp-leave">' + esc(t('shp_leave')) + '</button>');
+      // 180-я (власник 23.11, скрін десктопа: «таких дыр быть не должно»): на широкій картці — дві колонки (люди | як запросити), на вузькій — одна, усе на всю ширину
+      var ib = own ? shInvBox(p) : '', two = /shp-inv"/.test(ib);
+      body = '<div class="shp-wrap"><div class="shp-g' + (two ? ' two' : '') + '"><div class="shp-a"><p class="small muted shp-lead">' + esc(own ? t('shp_lead') : t('shp_lead_mem', { o: shFirst(s.own) || t('shp_someone') })) + '</p>' +
+        (li ? '<ul class="shp-list" data-key="shp-list">' + li + '</ul>' : '') + (two ? '' : ib) +
+        (own ? '' : '<button type="button" class="btn sec block shp-leave" data-act="shp-leave" data-sid="' + (+s.sid) + '" data-key="shp-leave">' + esc(t('shp_leave')) + '</button>') + '</div>' +
+        (two ? '<div class="shp-b">' + ib + '</div>' : '') + '</div></div>';
     }
     return prefGroup('pv-people', 'users', t('shp_t'), shSub(p), body, false);
   }
