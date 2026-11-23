@@ -57,7 +57,9 @@ const fake = drum => ({ engine: 'local', meter: null, photos: [{ index: 0, kind:
   await putPhoto(); await runInbox(fake(D('00460', { votes: 1, score: 0.6, sure: false })));
   await p.waitForSelector('[data-key=wn-auto-why]', { timeout: 15000 }).catch(() => {});
   ok('невпевнено → «Самі не надсилали — потрібен ваш погляд» і звичайне введення', /#wnew/.test(p.url()) && await vis('[data-key=wn-auto-why]'), [p.url(), await txt('main')]);
-  ok('…черга не поповнилась', JSON.parse(sql("SELECT COUNT(*) AS c FROM cab_jobs WHERE prov = 'vk' AND status = 'queued'"))[0].c == 0);
+  // 185-я: лише задачі цієї людини — стенд у CI спільний, попередні тести (e2e_hotsend) лишають свої черги
+  const vuid = await p.evaluate(() => fetch('api/me').then(r => r.json()).then(j => j.user.id));
+  ok('…черга не поповнилась', JSON.parse(sql("SELECT COUNT(*) AS c FROM cab_jobs WHERE prov = 'vk' AND status = 'queued' AND user_id = ?", [vuid]))[0].c == 0);
   ok('без ошибок JS', errs.length === 0, errs);
   await b.close(); console.log('\nИтог: ' + pass + ' OK, ' + fail + ' FAIL'); process.exit(fail ? 1 : 0);
 })();
