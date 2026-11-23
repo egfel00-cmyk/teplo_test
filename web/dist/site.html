@@ -3676,6 +3676,11 @@ fieldset { min-inline-size: 0; }
 .hp-form { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--c-line); }
 .hp-form .hp-t { margin: 0 0 4px; }
 .hp-acts { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; }
+/* 182-а: «Лічильники» квартири — значками в підписі групи; «На сайті Водоканалу» в налаштуваннях водоміра */
+.pg-kk { display: flex; margin-top: 4px; }
+.wcab { margin-top: 12px; }
+.wcab-v { margin: 0; }
+.wcab-acts { margin: 4px 0 0; }
 
 </style>
 <style>.top { padding-top: max(12px, env(safe-area-inset-top)); }</style>
@@ -5823,7 +5828,7 @@ fieldset { min-inline-size: 0; }
       gw_w_htm: 'ХТМ — гаряча {h}', gw_w_vk: 'Водоканалу — гаряча {h}, холодна {c}', gw_w_vk1: 'Водоканалу — гаряча {h}', gw_w_vk0: 'Водоканалу — холодна {c}',
       gw_guest: 'Надсилати у фоні можна, коли ввійдете в «передай».', gw_send2: 'Відправити ще раз', gw_toast: 'Надсилаємо у фоні: {to}', gw_ok_htm: 'ХТМ прийняв показання гарячої води', gw_self: 'Передати самі: бот, телефон, цифри',
       shp_bg_t: 'Надсилати у фоні через мої кабінети', shp_bg_s: 'Учасники надсилатимуть показання цієї квартири через ваші підключення ({w}). Паролів вони не бачать, ваші інші квартири — лише ваші.', shp_bg_s0: 'Підключіть кабінет ХТМ чи місцевого постачальника — і учасники зможуть надсилати показання цієї квартири через нього. Паролів вони не бачать.', shp_bg_lb: 'місцевий постачальник', shp_bg_on: 'Учасники можуть надсилати у фоні через ваші кабінети', shp_bg_off: 'Через ваші кабінети учасники більше не надсилають', shp_bg_mem_on: 'Надсилання у фоні — через кабінети {o}, якщо своїх не підключили.', shp_bg_mem_off: 'Кабінети власника ({o}) для вас вимкнені — підключіть свої або попросіть {o} дозволити.', shp_bg_ask: 'Це спільна квартира: {o} може дозволити надсилати через свій кабінет — «Спільний доступ» на екрані квартири.', shp_via_cab: 'Надсилаємо через кабінет {o} (спільна квартира).',
-      hp_btn: 'Свій вхід ХТМ для цієї квартири', bc_hotw: 'Гаряча вода', bc_hw_cab: 'Кабінет ХТМ не підключено — підключіть у застосунку', bc_hw_sh: 'Спільна квартира: кабінет власника чи свій вхід квартири — у застосунку', bc_hw_acc: 'Немає рахунку ХТМ за гарячу — впишіть у застосунку', bc_hw_foreign: 'Рахунку {a} немає в кабінеті ХТМ — виправте в застосунку', bc_hw_none: 'У кабінеті ХТМ немає гарячої — передайте ботом ХТМ', bc_hw_done: 'Уже передано цього місяця', hp_main_off: 'Основний кабінет не підключено — квартири без свого входу вносите самі.', hp_again: 'Увійти знову', hp_sub: 'E-mail і пароль кабінету ХТМ саме «{p}» — коли дали доступ до її кабінету. Інші квартири лишаться зі своїми входами.', hp_relog: 'Вхід ХТМ цієї квартири ({e}) більше не підходить — впишіть пароль знову.', hp_on_l: 'Свій вхід ХТМ цієї квартири: {e}', hp_via: 'Надсилаємо входом цієї квартири ({e}).', hp_on: 'Вхід ХТМ квартири збережено', hp_forgot: 'Вхід ХТМ квартири забуто', hp_off_q: 'Відв’язати вхід ХТМ квартири «{p}»? Показання цієї квартири у фоні більше не підуть.',
+      hp_btn: 'Свій вхід ХТМ для цієї квартири', wcab_l: 'На сайті Водоканалу', wcab_auto: 'Підберемо самі — за номером і кімнатою', wcab_auto_btn: 'Підбирати самі', wcab_other: 'Інший вид (перевірте)', wcab_set: 'Вибрано вами — список сайту ще не завантажено', wcab_gone: 'Вибраного лічильника на сайті вже немає — виберіть інший або «Підберемо самі».', wcab_h: 'Який лічильник на сайті Водоканалу — це цей водомір. Так і надсилатимемо у фоні.', bc_hotw: 'Гаряча вода', bc_hw_cab: 'Кабінет ХТМ не підключено — підключіть у застосунку', bc_hw_sh: 'Спільна квартира: кабінет власника чи свій вхід квартири — у застосунку', bc_hw_acc: 'Немає рахунку ХТМ за гарячу — впишіть у застосунку', bc_hw_foreign: 'Рахунку {a} немає в кабінеті ХТМ — виправте в застосунку', bc_hw_none: 'У кабінеті ХТМ немає гарячої — передайте ботом ХТМ', bc_hw_done: 'Уже передано цього місяця', hp_main_off: 'Основний кабінет не підключено — квартири без свого входу вносите самі.', hp_again: 'Увійти знову', hp_sub: 'E-mail і пароль кабінету ХТМ саме «{p}» — коли дали доступ до її кабінету. Інші квартири лишаться зі своїми входами.', hp_relog: 'Вхід ХТМ цієї квартири ({e}) більше не підходить — впишіть пароль знову.', hp_on_l: 'Свій вхід ХТМ цієї квартири: {e}', hp_via: 'Надсилаємо входом цієї квартири ({e}).', hp_on: 'Вхід ХТМ квартири збережено', hp_forgot: 'Вхід ХТМ квартири забуто', hp_off_q: 'Відв’язати вхід ХТМ квартири «{p}»? Показання цієї квартири у фоні більше не підуть.',
       gw_pick_site: 'На сайті Водоканалу лічильників з полем: {n} ({l}). Для кожного свого водоміра виберіть його:', gw_pick_was: 'було {v} м³', gw_pick_none: 'Не надсилати',
       gw_pick_q: '— виберіть —', gw_pick_done: 'Сайт уже прийняв за цей місяць: {n} — {v} м³. Не надсилаємо.', gw_pick_absent: 'Такого лічильника на сайті Водоканалу за цим рахунком немає — не надсилаємо.',
       gw_pick_sn: '№ {n} на сайті Водоканалу — {k}. Перевірте номер у налаштуваннях цього водоміра.', vkc_room_kitchen: 'кухня', vkc_room_bath: 'санвузол', vkc_room_wc: 'туалет',
@@ -7300,7 +7305,7 @@ fieldset { min-inline-size: 0; }
       gw_w_htm: 'ХТМ — горячая {h}', gw_w_vk: 'Водоканалу — горячая {h}, холодная {c}', gw_w_vk1: 'Водоканалу — горячая {h}', gw_w_vk0: 'Водоканалу — холодная {c}',
       gw_guest: 'Отправлять в фоне можно, когда войдёте в «передай».', gw_send2: 'Отправить ещё раз', gw_toast: 'Отправляем в фоне: {to}', gw_ok_htm: 'ХТМ принял показания горячей воды', gw_self: 'Передать самим: бот, телефон, цифры',
       shp_bg_t: 'Отправлять в фоне через мои кабинеты', shp_bg_s: 'Участники будут отправлять показания этой квартиры через ваши подключения ({w}). Паролей они не видят, ваши другие квартиры — только ваши.', shp_bg_s0: 'Подключите кабинет ХТМ или местного поставщика — и участники смогут отправлять показания этой квартиры через него. Паролей они не видят.', shp_bg_lb: 'местный поставщик', shp_bg_on: 'Участники могут отправлять в фоне через ваши кабинеты', shp_bg_off: 'Через ваши кабинеты участники больше не отправляют', shp_bg_mem_on: 'Отправка в фоне — через кабинеты {o}, если свои не подключили.', shp_bg_mem_off: 'Кабинеты владельца ({o}) для вас выключены — подключите свои или попросите {o} разрешить.', shp_bg_ask: 'Это общая квартира: {o} может разрешить отправлять через свой кабинет — «Совместный доступ» на экране квартиры.', shp_via_cab: 'Отправляем через кабинет {o} (общая квартира).',
-      hp_btn: 'Свой вход ХТМ для этой квартиры', bc_hotw: 'Горячая вода', bc_hw_cab: 'Кабинет ХТМ не подключён — подключите в приложении', bc_hw_sh: 'Общая квартира: кабинет владельца или свой вход квартиры — в приложении', bc_hw_acc: 'Нет счёта ХТМ за горячую — впишите в приложении', bc_hw_foreign: 'Счёта {a} нет в кабинете ХТМ — исправьте в приложении', bc_hw_none: 'В кабинете ХТМ нет горячей — передайте ботом ХТМ', bc_hw_done: 'Уже передано в этом месяце', hp_main_off: 'Основной кабинет не подключён — квартиры без своего входа вносите сами.', hp_again: 'Войти снова', hp_sub: 'E-mail и пароль кабинета ХТМ именно «{p}» — когда дали доступ к её кабинету. Другие квартиры останутся со своими входами.', hp_relog: 'Вход ХТМ этой квартиры ({e}) больше не подходит — впишите пароль снова.', hp_on_l: 'Свой вход ХТМ этой квартиры: {e}', hp_via: 'Отправляем входом этой квартиры ({e}).', hp_on: 'Вход ХТМ квартиры сохранён', hp_forgot: 'Вход ХТМ квартиры забыт', hp_off_q: 'Отвязать вход ХТМ квартиры «{p}»? Показания этой квартиры в фоне больше не уйдут.',
+      hp_btn: 'Свой вход ХТМ для этой квартиры', wcab_l: 'На сайте Водоканала', wcab_auto: 'Подберём сами — по номеру и комнате', wcab_auto_btn: 'Подбирать сами', wcab_other: 'Другой вид (проверьте)', wcab_set: 'Выбрано вами — список сайта ещё не загружен', wcab_gone: 'Выбранного счётчика на сайте уже нет — выберите другой или «Подберём сами».', wcab_h: 'Какой счётчик на сайте Водоканала — это этот водомер. Так и будем отправлять в фоне.', bc_hotw: 'Горячая вода', bc_hw_cab: 'Кабинет ХТМ не подключён — подключите в приложении', bc_hw_sh: 'Общая квартира: кабинет владельца или свой вход квартиры — в приложении', bc_hw_acc: 'Нет счёта ХТМ за горячую — впишите в приложении', bc_hw_foreign: 'Счёта {a} нет в кабинете ХТМ — исправьте в приложении', bc_hw_none: 'В кабинете ХТМ нет горячей — передайте ботом ХТМ', bc_hw_done: 'Уже передано в этом месяце', hp_main_off: 'Основной кабинет не подключён — квартиры без своего входа вносите сами.', hp_again: 'Войти снова', hp_sub: 'E-mail и пароль кабинета ХТМ именно «{p}» — когда дали доступ к её кабинету. Другие квартиры останутся со своими входами.', hp_relog: 'Вход ХТМ этой квартиры ({e}) больше не подходит — впишите пароль снова.', hp_on_l: 'Свой вход ХТМ этой квартиры: {e}', hp_via: 'Отправляем входом этой квартиры ({e}).', hp_on: 'Вход ХТМ квартиры сохранён', hp_forgot: 'Вход ХТМ квартиры забыт', hp_off_q: 'Отвязать вход ХТМ квартиры «{p}»? Показания этой квартиры в фоне больше не уйдут.',
       gw_pick_site: 'На сайте Водоканала счётчиков с полем: {n} ({l}). Для каждого своего водомера выберите его:', gw_pick_was: 'было {v} м³', gw_pick_none: 'Не отправлять',
       gw_pick_q: '— выберите —', gw_pick_done: 'Сайт уже принял за этот месяц: {n} — {v} м³. Не отправляем.', gw_pick_absent: 'Такого счётчика на сайте Водоканала по этому счёту нет — не отправляем.',
       gw_pick_sn: '№ {n} на сайте Водоканала — {k}. Проверьте номер в настройках этого водомера.', vkc_room_kitchen: 'кухня', vkc_room_bath: 'санузел', vkc_room_wc: 'туалет',
@@ -13356,6 +13361,10 @@ fieldset { min-inline-size: 0; }
       vjQueue(rec, false, true, function (good) { if (good) toast(t('gw_toast', { to: t('gw_vk_n') })); render(true); });
     }
   });
+  document.addEventListener('click', function (e) {
+    var el = e.target.closest && e.target.closest('[data-act="wcab-reset"]'); if (!el) return; e.preventDefault();
+    var mid = el.getAttribute('data-id'); wsetCfg(function (c) { (c.meters || []).forEach(function (m) { if (m.id === mid) delete m.cabKey; }); }); toast(t('cb_saved')); render(true);
+  });
   /** Рахунок ХТМ за гарячу — з поля в рядку ХТМ чи з кнопки рахунку кабінету: зберегти в квартирі й одразу показати, чи він у кабінеті. */
   function gwAccSave(v) {
     var p = place(); if (!p) return; v = dgt(v);
@@ -15140,7 +15149,32 @@ fieldset { min-inline-size: 0; }
       '<div class="field"><label for="mbn-' + m.id + '">' + esc(t('wm_name')) + '</label><div class="ctl"><input id="mbn-' + m.id + '" data-wm="' + m.id + '" data-wf="name" maxlength="40" value="' + esc(m.name || '') + '" placeholder="' + esc(t('wm_name_ph')) + '"></div></div>' +
       '<div class="field"><label for="mbsn-' + m.id + '">' + esc(t('wm_serial')) + '</label><div class="ctl"><input id="mbsn-' + m.id + '" class="num" autocomplete="off" data-wm="' + m.id + '" data-wf="serial" value="' + esc(m.serial || '') + '">' + ctlCopy('mbsn-' + m.id) + '</div></div>' +
       '<div class="field"><label for="mbv-' + m.id + '">' + esc(t('mv_date')) + '</label><div class="ctl"><input id="mbv-' + m.id + '" type="date" data-wm="' + m.id + '" data-wf="verifiedUntil" value="' + esc(m.verifiedUntil || '') + '"></div></div>' +
-      (onlyMeter ? '' : wvkField(m, t('wm_vkid'))) + '</div>';
+      (onlyMeter ? '' : wvkField(m, t('wm_vkid'))) + '</div>' + (onlyMeter ? '' : wcabRow(m));
+  }
+  /** Лічильники сайту Водоканалу, які вже бачили: «Показати лічильники Водоканалу» чи остання черга з ними. */
+  function vkcSites() {
+    if (VKC.check && VKC.check.meters && VKC.check.meters.length) return VKC.check.meters;
+    var j = ((VJ.st && VJ.st.jobs) || []).filter(function (x) { return x.meters && x.meters.length; })[0]; return j ? j.meters : null;
+  }
+  /** 182-а: «На сайті Водоканалу: № …» у налаштуваннях водоміра — який лічильник сайту це (m.cabKey), змінити чи «Підбирати самі» (скинути).
+   *  Лише Харківводоканал (сайт підключено чи вибір уже був). Список сайту не бачили — «Показати лічильники Водоканалу». */
+  function wcabRow(m) {
+    var ld = prvOf('water'); if (!hcOn() || myProv('cold') || (ld && ld.via !== 'hvk') || !(ld || perDefOk(place(), 'water'))) return '';
+    var cms = vkcSites(), has = m.cabKey !== undefined, g = vkcGate(); if (!cms && !has) return '';
+    var id = esc(m.id), one = function (c) { var p0 = vkcPrevOf(c); return [c.serial ? '№ ' + c.serial : '', vkcRoomW(c), p0 !== null ? t('gw_pick_was', { v: Math.round(p0) }) : ''].filter(Boolean).join(' · ') || vkcLabel(c); };
+    var h = '<div class="field wcab" data-key="wcab-' + id + '"><label for="wcab-' + id + '">' + esc(t('wcab_l')) + '</label>';
+    if (cms) {
+      var same = cms.filter(function (c) { return !c.kind || c.kind === m.kind; }), other = cms.filter(function (c) { return c.kind && c.kind !== m.kind; });
+      var opt = function (c) { return '<option value="' + esc(c.key) + '"' + (c.key === m.cabKey ? ' selected' : '') + '>' + esc(one(c)) + '</option>'; };
+      h += '<div class="ctl"><select id="wcab-' + id + '" data-wm="' + id + '" data-wf="cabKey">' + '<option value="*"' + (!has ? ' selected' : '') + '>' + esc(t('wcab_auto')) + '</option>' + same.map(opt).join('') +
+        (other.length ? '<optgroup label="' + esc(t('wcab_other')) + '">' + other.map(opt).join('') + '</optgroup>' : '') + '<option value=""' + (m.cabKey === '' ? ' selected' : '') + '>' + esc(t('gw_pick_none')) + '</option></select></div>';
+      if (has && m.cabKey && !cms.some(function (c) { return c.key === m.cabKey; })) h += '<p class="small warn-ink" data-key="wcab-gone-' + id + '">' + esc(t('wcab_gone')) + '</p>';
+    } else {
+      h += '<p class="wcab-v" data-key="wcab-v-' + id + '">' + esc(t(m.cabKey === '' ? 'gw_pick_none' : 'wcab_set')) + '</p><p class="small wcab-acts">' +
+        (g === 'ok' ? '<button class="linkbtn" data-act="vkc-check" data-key="wcab-look-' + id + '"' + (VKC.busy ? ' disabled' : '') + '>' + esc(t('gw_vk_look')) + '</button> · ' : '') +
+        '<button class="linkbtn" data-act="wcab-reset" data-id="' + id + '" data-key="wcab-reset-' + id + '">' + esc(t('wcab_auto_btn')) + '</button></p>';
+    }
+    return h + '<div class="help">' + esc(t('wcab_h')) + '</div></div>';
   }
   /** Код водоміра в боті Водоканалу — номер у постачальника (на екрані квартири — у «Постачальники, тарифи й рахунки»). */
   function wvkField(m, lbl) { return '<div class="field"><label for="mbi-' + m.id + '">' + esc(lbl) + '</label><div class="ctl"><input id="mbi-' + m.id + '" class="num" inputmode="numeric" autocomplete="off" data-wm="' + m.id + '" data-wf="vkId" value="' + esc(m.vkId || '') + '">' + ctlCopy('mbi-' + m.id) + '</div></div>'; }
@@ -16224,7 +16258,8 @@ fieldset { min-inline-size: 0; }
     // 176-я: рахунок холодної (account → acc.cold + дзеркало) і гарячої (acc-hot → acc.hot) — окремо; прізвище — одне
     if (k) { wsetCfg(function (c) { if (k === 'account') waccPut(c, 'cold', el.value); else if (k === 'acc-hot') waccPut(c, 'hot', el.value); else c[k] = el.value.trim(); }); if (document.querySelector('[data-key=where-water]')) safeRender(); return; }   // команда для бота — з новим рахунком
     var mid = el.getAttribute('data-wm');
-    if (mid) { var f = el.getAttribute('data-wf'); wsetCfg(function (c) { (c.meters || []).forEach(function (m) { if (m.id === mid) m[f] = el.value.trim(); }); }); if (f === 'kind' || f === 'cabKey') render(true); return; }
+    // 182-а: «Підберемо самі» в «На сайті Водоканалу» — вибір скинуто (cabKey видаляємо, не '' — це «Не надсилати»)
+    if (mid) { var f = el.getAttribute('data-wf'); wsetCfg(function (c) { (c.meters || []).forEach(function (m) { if (m.id === mid) { if (f === 'cabKey' && el.value === '*') delete m.cabKey; else m[f] = el.value.trim(); } }); }); if (f === 'cabKey' && el.id && el.id.indexOf('wcab-') === 0) toast(t('cb_saved')); if (f === 'kind' || f === 'cabKey') render(true); return; }
     if (el.id === 'wn-date') { WN.date = el.value; wnCheck(true); return; }
     var ph = el.getAttribute('data-wphoto');
     if (ph && el.files && el.files[0]) wnPhoto(ph, el.files[0], el);
@@ -20460,7 +20495,7 @@ fieldset { min-inline-size: 0; }
     if (window.TEPLO_API && Y().account) h += '<input type="file" id="doc-input" class="sr" aria-label="' + esc(t('mv_docs')) + '" tabindex="-1" accept="image/jpeg,image/png,image/webp,application/pdf">';
     h += '<div class="pgroups pv-groups" style="--pc:var(--pc-' + placeColor(p) + ')">' +   // 165-я: колір квартири — плиткам значків груп (C2)
       prefGroup('pv-about', 'home', t('pv_about'), sub || t('pv_about_s'), about, fresh) +
-      prefGroup('pv-meters', 'clock', t('pv_meters'), rows.length ? placeKinds(p) : t('pv_none_short'), meters, fresh) +
+      prefGroup('pv-meters', 'clock', t('pv_meters'), rows.length ? placeKinds(p) : t('pv_none_short'), meters, fresh, rows.length ? placeKindIcons(p) : '') +   // 182-а: значками (власник 23.11)
       prefGroup('pv-prov', 'bill', t('pv_prov_t'), t('pv_prov_s'), prov) +
       shGroup(p) + '</div>';   // 179-я: спільний доступ — хто веде квартиру разом, запросити, прибрати, вийти
     // 150-а (план конкурентів п. 6, ніша MÖRK — оренда): показання всіх лічильників квартири одним повідомленням власнику житла
@@ -21062,8 +21097,9 @@ fieldset { min-inline-size: 0; }
   });
   /** Настройки — группы-аккордеоны по смыслу; открытые запоминаются (перерисовка их не сворачивает). */
   var PREF_OPEN = {};
-  function prefGroup(id, icon, title, sub, html, dflt) {
-    return '<details class="pgroup" id="pg-' + id + '" data-key="pg-' + id + '"' + ((PREF_OPEN[id] !== undefined ? PREF_OPEN[id] : dflt) ? ' open' : '') + '><summary>' + ico(icon, 22) + '<span class="pg-t"><b>' + esc(title) + '</b>' + (sub ? '<span class="small muted">' + esc(sub) + '</span>' : '') + '</span>' + ico('chev', 20, 'pacc-chev') + '</summary><div class="pg-body">' + html + '</div></details>';
+  /** subHtml — підпис уже розміткою (182-а: «Лічильники» квартири — значками, як у «Квартирах»). */
+  function prefGroup(id, icon, title, sub, html, dflt, subHtml) {
+    return '<details class="pgroup" id="pg-' + id + '" data-key="pg-' + id + '"' + ((PREF_OPEN[id] !== undefined ? PREF_OPEN[id] : dflt) ? ' open' : '') + '><summary>' + ico(icon, 22) + '<span class="pg-t"><b>' + esc(title) + '</b>' + (subHtml ? '<span class="pg-kk">' + subHtml + '</span>' : sub ? '<span class="small muted">' + esc(sub) + '</span>' : '') + '</span>' + ico('chev', 20, 'pacc-chev') + '</summary><div class="pg-body">' + html + '</div></details>';
   }
   document.addEventListener('toggle', function (e) { var d = e.target; if (d && d.classList && d.classList.contains('pgroup')) PREF_OPEN[d.id.slice(3)] = d.open; }, true);
   /** Коли лічильник знято: правила (тариф той самий, інший спосіб визначити обсяг) і що для оцінки потрібно знати. */

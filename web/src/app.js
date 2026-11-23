@@ -2212,6 +2212,10 @@
       vjQueue(rec, false, true, function (good) { if (good) toast(t('gw_toast', { to: t('gw_vk_n') })); render(true); });
     }
   });
+  document.addEventListener('click', function (e) {
+    var el = e.target.closest && e.target.closest('[data-act="wcab-reset"]'); if (!el) return; e.preventDefault();
+    var mid = el.getAttribute('data-id'); wsetCfg(function (c) { (c.meters || []).forEach(function (m) { if (m.id === mid) delete m.cabKey; }); }); toast(t('cb_saved')); render(true);
+  });
   /** Рахунок ХТМ за гарячу — з поля в рядку ХТМ чи з кнопки рахунку кабінету: зберегти в квартирі й одразу показати, чи він у кабінеті. */
   function gwAccSave(v) {
     var p = place(); if (!p) return; v = dgt(v);
@@ -3996,7 +4000,32 @@
       '<div class="field"><label for="mbn-' + m.id + '">' + esc(t('wm_name')) + '</label><div class="ctl"><input id="mbn-' + m.id + '" data-wm="' + m.id + '" data-wf="name" maxlength="40" value="' + esc(m.name || '') + '" placeholder="' + esc(t('wm_name_ph')) + '"></div></div>' +
       '<div class="field"><label for="mbsn-' + m.id + '">' + esc(t('wm_serial')) + '</label><div class="ctl"><input id="mbsn-' + m.id + '" class="num" autocomplete="off" data-wm="' + m.id + '" data-wf="serial" value="' + esc(m.serial || '') + '">' + ctlCopy('mbsn-' + m.id) + '</div></div>' +
       '<div class="field"><label for="mbv-' + m.id + '">' + esc(t('mv_date')) + '</label><div class="ctl"><input id="mbv-' + m.id + '" type="date" data-wm="' + m.id + '" data-wf="verifiedUntil" value="' + esc(m.verifiedUntil || '') + '"></div></div>' +
-      (onlyMeter ? '' : wvkField(m, t('wm_vkid'))) + '</div>';
+      (onlyMeter ? '' : wvkField(m, t('wm_vkid'))) + '</div>' + (onlyMeter ? '' : wcabRow(m));
+  }
+  /** Лічильники сайту Водоканалу, які вже бачили: «Показати лічильники Водоканалу» чи остання черга з ними. */
+  function vkcSites() {
+    if (VKC.check && VKC.check.meters && VKC.check.meters.length) return VKC.check.meters;
+    var j = ((VJ.st && VJ.st.jobs) || []).filter(function (x) { return x.meters && x.meters.length; })[0]; return j ? j.meters : null;
+  }
+  /** 182-а: «На сайті Водоканалу: № …» у налаштуваннях водоміра — який лічильник сайту це (m.cabKey), змінити чи «Підбирати самі» (скинути).
+   *  Лише Харківводоканал (сайт підключено чи вибір уже був). Список сайту не бачили — «Показати лічильники Водоканалу». */
+  function wcabRow(m) {
+    var ld = prvOf('water'); if (!hcOn() || myProv('cold') || (ld && ld.via !== 'hvk') || !(ld || perDefOk(place(), 'water'))) return '';
+    var cms = vkcSites(), has = m.cabKey !== undefined, g = vkcGate(); if (!cms && !has) return '';
+    var id = esc(m.id), one = function (c) { var p0 = vkcPrevOf(c); return [c.serial ? '№ ' + c.serial : '', vkcRoomW(c), p0 !== null ? t('gw_pick_was', { v: Math.round(p0) }) : ''].filter(Boolean).join(' · ') || vkcLabel(c); };
+    var h = '<div class="field wcab" data-key="wcab-' + id + '"><label for="wcab-' + id + '">' + esc(t('wcab_l')) + '</label>';
+    if (cms) {
+      var same = cms.filter(function (c) { return !c.kind || c.kind === m.kind; }), other = cms.filter(function (c) { return c.kind && c.kind !== m.kind; });
+      var opt = function (c) { return '<option value="' + esc(c.key) + '"' + (c.key === m.cabKey ? ' selected' : '') + '>' + esc(one(c)) + '</option>'; };
+      h += '<div class="ctl"><select id="wcab-' + id + '" data-wm="' + id + '" data-wf="cabKey">' + '<option value="*"' + (!has ? ' selected' : '') + '>' + esc(t('wcab_auto')) + '</option>' + same.map(opt).join('') +
+        (other.length ? '<optgroup label="' + esc(t('wcab_other')) + '">' + other.map(opt).join('') + '</optgroup>' : '') + '<option value=""' + (m.cabKey === '' ? ' selected' : '') + '>' + esc(t('gw_pick_none')) + '</option></select></div>';
+      if (has && m.cabKey && !cms.some(function (c) { return c.key === m.cabKey; })) h += '<p class="small warn-ink" data-key="wcab-gone-' + id + '">' + esc(t('wcab_gone')) + '</p>';
+    } else {
+      h += '<p class="wcab-v" data-key="wcab-v-' + id + '">' + esc(t(m.cabKey === '' ? 'gw_pick_none' : 'wcab_set')) + '</p><p class="small wcab-acts">' +
+        (g === 'ok' ? '<button class="linkbtn" data-act="vkc-check" data-key="wcab-look-' + id + '"' + (VKC.busy ? ' disabled' : '') + '>' + esc(t('gw_vk_look')) + '</button> · ' : '') +
+        '<button class="linkbtn" data-act="wcab-reset" data-id="' + id + '" data-key="wcab-reset-' + id + '">' + esc(t('wcab_auto_btn')) + '</button></p>';
+    }
+    return h + '<div class="help">' + esc(t('wcab_h')) + '</div></div>';
   }
   /** Код водоміра в боті Водоканалу — номер у постачальника (на екрані квартири — у «Постачальники, тарифи й рахунки»). */
   function wvkField(m, lbl) { return '<div class="field"><label for="mbi-' + m.id + '">' + esc(lbl) + '</label><div class="ctl"><input id="mbi-' + m.id + '" class="num" inputmode="numeric" autocomplete="off" data-wm="' + m.id + '" data-wf="vkId" value="' + esc(m.vkId || '') + '">' + ctlCopy('mbi-' + m.id) + '</div></div>'; }
@@ -5080,7 +5109,8 @@
     // 176-я: рахунок холодної (account → acc.cold + дзеркало) і гарячої (acc-hot → acc.hot) — окремо; прізвище — одне
     if (k) { wsetCfg(function (c) { if (k === 'account') waccPut(c, 'cold', el.value); else if (k === 'acc-hot') waccPut(c, 'hot', el.value); else c[k] = el.value.trim(); }); if (document.querySelector('[data-key=where-water]')) safeRender(); return; }   // команда для бота — з новим рахунком
     var mid = el.getAttribute('data-wm');
-    if (mid) { var f = el.getAttribute('data-wf'); wsetCfg(function (c) { (c.meters || []).forEach(function (m) { if (m.id === mid) m[f] = el.value.trim(); }); }); if (f === 'kind' || f === 'cabKey') render(true); return; }
+    // 182-а: «Підберемо самі» в «На сайті Водоканалу» — вибір скинуто (cabKey видаляємо, не '' — це «Не надсилати»)
+    if (mid) { var f = el.getAttribute('data-wf'); wsetCfg(function (c) { (c.meters || []).forEach(function (m) { if (m.id === mid) { if (f === 'cabKey' && el.value === '*') delete m.cabKey; else m[f] = el.value.trim(); } }); }); if (f === 'cabKey' && el.id && el.id.indexOf('wcab-') === 0) toast(t('cb_saved')); if (f === 'kind' || f === 'cabKey') render(true); return; }
     if (el.id === 'wn-date') { WN.date = el.value; wnCheck(true); return; }
     var ph = el.getAttribute('data-wphoto');
     if (ph && el.files && el.files[0]) wnPhoto(ph, el.files[0], el);
@@ -9316,7 +9346,7 @@
     if (window.TEPLO_API && Y().account) h += '<input type="file" id="doc-input" class="sr" aria-label="' + esc(t('mv_docs')) + '" tabindex="-1" accept="image/jpeg,image/png,image/webp,application/pdf">';
     h += '<div class="pgroups pv-groups" style="--pc:var(--pc-' + placeColor(p) + ')">' +   // 165-я: колір квартири — плиткам значків груп (C2)
       prefGroup('pv-about', 'home', t('pv_about'), sub || t('pv_about_s'), about, fresh) +
-      prefGroup('pv-meters', 'clock', t('pv_meters'), rows.length ? placeKinds(p) : t('pv_none_short'), meters, fresh) +
+      prefGroup('pv-meters', 'clock', t('pv_meters'), rows.length ? placeKinds(p) : t('pv_none_short'), meters, fresh, rows.length ? placeKindIcons(p) : '') +   // 182-а: значками (власник 23.11)
       prefGroup('pv-prov', 'bill', t('pv_prov_t'), t('pv_prov_s'), prov) +
       shGroup(p) + '</div>';   // 179-я: спільний доступ — хто веде квартиру разом, запросити, прибрати, вийти
     // 150-а (план конкурентів п. 6, ніша MÖRK — оренда): показання всіх лічильників квартири одним повідомленням власнику житла
@@ -9918,8 +9948,9 @@
   });
   /** Настройки — группы-аккордеоны по смыслу; открытые запоминаются (перерисовка их не сворачивает). */
   var PREF_OPEN = {};
-  function prefGroup(id, icon, title, sub, html, dflt) {
-    return '<details class="pgroup" id="pg-' + id + '" data-key="pg-' + id + '"' + ((PREF_OPEN[id] !== undefined ? PREF_OPEN[id] : dflt) ? ' open' : '') + '><summary>' + ico(icon, 22) + '<span class="pg-t"><b>' + esc(title) + '</b>' + (sub ? '<span class="small muted">' + esc(sub) + '</span>' : '') + '</span>' + ico('chev', 20, 'pacc-chev') + '</summary><div class="pg-body">' + html + '</div></details>';
+  /** subHtml — підпис уже розміткою (182-а: «Лічильники» квартири — значками, як у «Квартирах»). */
+  function prefGroup(id, icon, title, sub, html, dflt, subHtml) {
+    return '<details class="pgroup" id="pg-' + id + '" data-key="pg-' + id + '"' + ((PREF_OPEN[id] !== undefined ? PREF_OPEN[id] : dflt) ? ' open' : '') + '><summary>' + ico(icon, 22) + '<span class="pg-t"><b>' + esc(title) + '</b>' + (subHtml ? '<span class="pg-kk">' + subHtml + '</span>' : sub ? '<span class="small muted">' + esc(sub) + '</span>' : '') + '</span>' + ico('chev', 20, 'pacc-chev') + '</summary><div class="pg-body">' + html + '</div></details>';
   }
   document.addEventListener('toggle', function (e) { var d = e.target; if (d && d.classList && d.classList.contains('pgroup')) PREF_OPEN[d.id.slice(3)] = d.open; }, true);
   /** Коли лічильник знято: правила (тариф той самий, інший спосіб визначити обсяг) і що для оцінки потрібно знати. */

@@ -158,6 +158,15 @@ const D = '2026-11-12';
   const pj = JSON.parse(php(`echo Db::one("SELECT payload FROM cab_jobs WHERE prov = 'vk' ORDER BY id DESC LIMIT 1")['payload'];`));
   const keys = (await st()).places[0].water.meters.reduce((a, m) => (a[m.id] = m.cabKey, a), {});
   ok('7г. «Відправити ще раз»: у черзі три (без прийнятої); підбір збережено у водомірах (наступного місяця у фоні — так само)', JSON.stringify((pj.items || []).map(x => x.name)) === JSON.stringify(['Гаряча · Кухня', 'Гаряча · Ванна', 'Холодна · Кухня']) && keys.h1 === 'khk' && keys.h2 === 'khb' && keys.c1 === 'kc' && keys.c2 === 'kc', [pj.items, keys]);
+  // 7д. 182-а: налаштування водоміра — «На сайті Водоканалу»: який лічильник сайту (№, кімната, було), змінити чи «Підберемо самі» (скинути cabKey)
+  await p.goto(U + '#water-hot'); await p.reload(); await wait(1800);
+  const wcs = await p.$$('[data-key^=wcab-] select');
+  const wc0 = wcs[0] ? await wcs[0].evaluate(s => ({ id: s.getAttribute('data-wm'), v: s.value, n: s.options.length, t: [...s.options].map(o => o.text) })) : null;
+  ok('7д. налаштування водоміра: «На сайті Водоканалу» — лічильники сайту з № і кімнатою, підібране вже вибране', !!wc0 && wc0.n >= 3 && wc0.t.some(x => /№ \d/.test(x)) && wc0.v !== '*' && wc0.v !== '', wc0);
+  await wcs[0].evaluate(s => { for (let d = s.closest('details'); d; d = d.parentElement && d.parentElement.closest('details')) d.open = true; }); await wait(400);
+  await (await p.$(`#wcab-${wc0.id}`)).selectOption('*'); await wait(600);
+  const cab0 = await p.evaluate(id => { const s = JSON.parse(localStorage.getItem('teplo.v1')); return s.places[0].water.meters.find(m => m.id === id); }, wc0 && wc0.id);
+  ok('7д. …«Підберемо самі» — вибір скинуто (cabKey немає, а не «Не надсилати»)', cab0 && !('cabKey' in cab0), cab0);
   await p.goto(U + '#prefs-cabs-htm'); await wait(1500);
   ok('7. екран ХТМ: «Гаряча вода: у кабінеті розділу немає — … ботом»', /розділу немає/.test(await txt('[data-key=cb-htm-hot]')), await txt('[data-key=cb-htm-hot]'));
 

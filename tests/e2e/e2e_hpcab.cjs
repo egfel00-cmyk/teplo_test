@@ -58,6 +58,10 @@ const D = '2026-11-12';
   await p.click('[data-key=cb-hp-off-p2]'); await wait(2000);
   const s3 = await api('GET', '/cab/htm');
   ok('6. «Відв’язати» квартиру — її входу немає, знову кнопка «Свій вхід…»', !s3.places && await has('[data-key=hp-cb-p2]') && !(await has('[data-key=cb-hp-st-p2]')), s3);
+  // 182-а: екран квартири — підпис групи «Лічильники» значками (як у «Квартирах»), а не текстом
+  await p.goto(U + '#place-p2'); await wait(1500);
+  ok('7. екран квартири: «Лічильники» — значками видів, текст лише для читалки', await has('[data-key=pg-pv-meters] .pg-kk .ps-kk .ps-k') && !(await has('[data-key=pg-pv-meters] summary .pg-t .small.muted'))
+    && /Опалення|Тепло/i.test(await p.getAttribute('[data-key=pg-pv-meters] .ps-kk', 'aria-label')), await p.$eval('[data-key=pg-pv-meters] summary', x => x.innerHTML).catch(() => ''));
   ok('без помилок JS', errs.length === 0, errs);
   await b.close();
   console.log(`\nИтог: ${pass} OK, ${fail} FAIL`); process.exit(fail ? 1 : 0);

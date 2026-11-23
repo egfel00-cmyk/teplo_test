@@ -3623,3 +3623,8 @@ fieldset { min-inline-size: 0; }
 .hp-form { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--c-line); }
 .hp-form .hp-t { margin: 0 0 4px; }
 .hp-acts { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; }
+/* 182-а: «Лічильники» квартири — значками в підписі групи; «На сайті Водоканалу» в налаштуваннях водоміра */
+.pg-kk { display: flex; margin-top: 4px; }
+.wcab { margin-top: 12px; }
+.wcab-v { margin: 0; }
+.wcab-acts { margin: 4px 0 0; }
