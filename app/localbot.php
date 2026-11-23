@@ -519,7 +519,8 @@ final class LocalBot {
   }
   /** Telegram: «📝 надішлемо …», «✅ прийнято», «📨 лист надіслано», «❌ / ⚠️ / ⏳». */
   public static function notify(int $uid, string $id, array $job): void {
-    $tg = Db::one("SELECT external_id FROM user_identities WHERE user_id = ? AND type = 'telegram'", [$uid]); if (!$tg || !Cfg::get('bot_token')) return;
+    $push = class_exists('Push', false) && Push::has($uid);   // 186-я: пуші iPhone — той самий текст пушем, у Telegram не дублюємо
+    $tg = $push ? ['external_id' => ''] : Db::one("SELECT external_id FROM user_identities WHERE user_id = ? AND type = 'telegram'", [$uid]); if (!$tg || (!$push && !Cfg::get('bot_token'))) return;
     $b = self::get($id); $ru = self::$lang === 'ru'; $org = $b['org'] ?? '';
     $lines = implode("\n", array_map(fn($x) => '• ' . ($x['name'] ?: ($ru ? 'счётчик' : 'лічильник')) . ' — ' . $x['value'], $job['items']));
     $tail = $job['text'] !== '' && $job['status'] !== 'sent' ? "\n\n" . ($ru ? 'Ответ сайта: ' : 'Відповідь сайту: ') . '«' . mb_substr($job['text'], 0, 300) . '»' : '';
@@ -535,6 +536,8 @@ final class LocalBot {
       case 'failed': $txt = ($ru ? "⚠️ Не отправили показания в $org.\n" : "⚠️ Не надіслали показання в $org.\n") . ($job['human'] ?: '') . ($ru ? "\n\nОткройте «передай» — там все способы отправить самому." : "\n\nВідкрийте «передай» — там усі способи надіслати самому."); break;
       default: return;
     }
+    $go = in_array('elec', (array)($b['kinds'] ?? []), true) ? 'elec' : (in_array('heat', (array)($b['kinds'] ?? []), true) ? 'heat' : 'water-cold');
+    if ($push) { Push::alert($uid, $txt, $go, (string)($job['place'] ?? '')); return; }
     $p = ['chat_id' => $tg['external_id'], 'text' => $txt];
     if (Cfg::appUrlKnown()) $p['reply_markup'] = ['inline_keyboard' => [[['text' => $ru ? 'Открыть «передай»' : 'Відкрити «передай»', 'web_app' => ['url' => Cfg::appUrl() . '?go=' . (in_array('elec', (array)($b['kinds'] ?? []), true) ? 'elec' : (in_array('heat', (array)($b['kinds'] ?? []), true) ? 'heat' : 'water-cold')) . ($job['place'] ? '&place=' . rawurlencode((string)$job['place']) : '')]]]]];
     try { Telegram::call('sendMessage', $p); } catch (Throwable $e) { /* не дійшло — статус видно в застосунку */ }

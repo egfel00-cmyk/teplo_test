@@ -2,7 +2,7 @@
 // 179-я: спільна квартира — сервер без веб-сервера, лише синтетика. Запуск: php tests/share.php
 declare(strict_types=1);
 define('TEPLO', 1);
-foreach (['core', 'telegram', 'apple', 'mail', 'reminders', 'widget', 'recognize', 'admin', 'vkcab', 'cabs', 'htmsvc', 'vksvc', 'localbot', 'gpv', 'providers', 'visits', 'journal', 'docs', 'indexnow', 'relay', 'share', 'api'] as $f) require __DIR__ . "/../app/$f.php";
+foreach (['core', 'telegram', 'apple', 'mail', 'reminders', 'widget', 'recognize', 'admin', 'vkcab', 'cabs', 'htmsvc', 'vksvc', 'localbot', 'gpv', 'providers', 'visits', 'journal', 'docs', 'indexnow', 'relay', 'share', 'push', 'api'] as $f) require __DIR__ . "/../app/$f.php";
 BotWidget::$off = true;
 $TMP = sys_get_temp_dir() . '/teplo_share_' . getmypid(); putenv('SITE_DATA=' . $TMP); @mkdir($TMP, 0700, true);
 Cfg::set(['app_url' => 'https://teplo.example/', 'bot_token' => '123456:TEST', 'bot_username' => 'TeploTestBot', 'webhook_secret' => 'hook-secret',

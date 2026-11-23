@@ -305,6 +305,15 @@ final class Admin {
         return self::setBot($token) + ['settings' => self::settings()];
       }
       // почта (81-я): проверить тестовым письмом и только потом сохранить; clear — удалить
+      case 'POST /api/admin/settings/apns': {   // 186-я: ключ APNs (.p8), Key ID, Team ID — пуші iPhone
+        if (!empty($in['clear'])) { Cfg::saveRuntime(['apns_key' => null, 'apns_key_id' => null, 'apns_team_id' => null]); return ['ok' => true, 'settings' => self::settings()]; }
+        $pem = trim((string)($in['key'] ?? '')); $kid = strtoupper(trim((string)($in['keyId'] ?? ''))); $team = strtoupper(trim((string)($in['teamId'] ?? '')));
+        if ($pem === '') $pem = (string)Cfg::get('apns_key');
+        $err = Push::checkKey($pem, $kid, $team); if ($err) throw new HttpError(422, 'bad_apns', ['human' => $err . ' Ничего не сохранено.']);
+        Cfg::saveRuntime(['apns_key' => $pem, 'apns_key_id' => $kid, 'apns_team_id' => $team]);
+        try { Push::jwt(); } catch (Throwable $e) { throw new HttpError(422, 'bad_apns', ['human' => 'Ключ сохранён, но подписать им не получилось: ' . $e->getMessage()]); }
+        return ['ok' => true, 'settings' => self::settings()];
+      }
       case 'POST /api/admin/settings/mail': return Mail::adminSave($in) + ['settings' => self::settings()];
       case 'GET /api/admin/devices': return Visits::summary((int)($q['days'] ?? 30), !empty($q['all']));
       case 'GET /api/admin/geo': return GeoStats::report(!empty($q['all']));   // звідки люди, постачальники, розхід і суми (без e-mail і адрес)
@@ -357,6 +366,8 @@ final class Admin {
       'telegram' => ['token' => self::mask((string)Cfg::get('bot_token')), 'source' => Cfg::source('bot_token'), 'username' => (string)Cfg::get('bot_username'), 'webhook' => $tg,
         'webhookExpected' => Cfg::appUrl() . 'api/bot/webhook'],
       'mail' => Mail::adminView(),
+      'apns' => ['keyId' => (string)Cfg::get('apns_key_id'), 'teamId' => (string)Cfg::get('apns_team_id'), 'key' => Cfg::get('apns_key') ? 'есть' : '', 'source' => Cfg::source('apns_key'),
+        'push' => class_exists('Push', false) ? Push::summary() : null],
       'appUrl' => Cfg::appUrl(), 'host' => parse_url(Cfg::appUrl(), PHP_URL_HOST),
     ];
   }

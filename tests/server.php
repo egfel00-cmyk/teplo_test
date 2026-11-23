@@ -24,6 +24,7 @@ require __DIR__ . '/../app/docs.php';
 require __DIR__ . '/../app/indexnow.php';
 require __DIR__ . '/../app/relay.php';
 require __DIR__ . '/../app/share.php';
+require __DIR__ . '/../app/push.php';
 require __DIR__ . '/../app/api.php';
 $TMP = sys_get_temp_dir() . '/teplo_test_' . getmypid(); putenv('SITE_DATA=' . $TMP);
 

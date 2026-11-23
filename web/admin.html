@@ -756,9 +756,24 @@ pre.state { font: 12px/1.4 var(--mono); background: #F4F7F5; padding: 10px; bord
       '<li>Проверка: откройте бота, нажмите «Старт» — придёт кнопка «Відкрити «передай»», сервис откроется уже с входом.</li></ol>' +
       '<form id="ft"><p><label>Токен бота<br><input id="tk" type="password" autocomplete="off" placeholder="' + (t.token ? 'оставьте пустым, чтобы переподключить текущего' : '1234567890:AA…') + '" ' + INP + '></label></p>' +
       note('t') + '<p><button class="btn" type="submit">' + (t.token ? 'Сохранить и переподключить' : 'Подключить') + '</button>' + (t.source === 'admin' ? ' <button class="btn" type="button" id="tc">Отключить бота</button>' : '') + '</p></form></div>' +
-      mailPanel(d.mail || {}, note) + brandPanel() +
+      mailPanel(d.mail || {}, note) + apnsPanel(d.apns || {}, note) + brandPanel() +
       '<p class="muted small">Значения, заданные здесь, главнее config.php. Адрес сайта для бота: <span class="mono">' + esc(d.appUrl || '') + '</span></p>';
   };
+  // 186-я: пуші iPhone (APNs) — ключ .p8 з developer.apple.com; без нього застосунок працює, але сервер не шле пуші й не запускає Live Activity
+  function apnsPanel(a, note) {
+    var ps = a.push || {}, tk = ps.tokens || {}, n = function (k) { var x = tk[k + ' prod'] || {}, y = tk[k + ' sandbox'] || {}; return (x.n || 0) + (y.n || 0); };
+    return '<div class="panel"><h2>Пуші iPhone (APNs)</h2>' +
+      '<p>' + (a.key ? pill('ok', 'ключ есть') + ' Key ID <span class="mono">' + esc(a.keyId) + '</span>, Team ID <span class="mono">' + esc(a.teamId) + '</span> <span class="muted small">(' + esc(SRC[a.source] || '') + ')</span>' : pill('warn', 'ключа нет — пуші не уходят')) +
+      ' <span class="small">телефонов: ' + n('apns') + ', Live Activity: ' + n('las') + '</span></p>' +
+      '<p class="small">Для чего: итоги отправки в фоне (ХТМ, Водоканал, местные КП) — пушем на iPhone вместо сообщения в Telegram, и «окно передачи» на заблокированном экране за 4 дня до конца срока, даже если приложение закрыто. Напоминания за 4 дня телефон и так ставит сам.</p>' +
+      '<ol class="small" style="padding-left:20px;line-height:1.6"><li><a href="https://developer.apple.com/account/resources/authkeys/list" target="_blank" rel="noopener">developer.apple.com → Keys</a> → «+» → имя «передай» → галочка <b>Apple Push Notifications service (APNs)</b> → Continue → Register → <b>Download</b> (файл AuthKey_XXXXXXXXXX.p8 скачивается один раз).</li>' +
+      '<li>Key ID — 10 знаков из имени файла; Team ID — <a href="https://developer.apple.com/account#MembershipDetailsCard" target="_blank" rel="noopener">Membership</a>.</li>' +
+      '<li>Откройте .p8 в TextEdit, скопируйте всё (от BEGIN до END) в поле ниже.</li></ol>' +
+      '<form id="fp"><p><label>Key ID<br><input id="pk" class="mono" value="' + esc(a.keyId || '') + '" placeholder="ABCDE12345" ' + INP + '></label></p>' +
+      '<p><label>Team ID<br><input id="pt" class="mono" value="' + esc(a.teamId || '') + '" placeholder="ABCDE12345" ' + INP + '></label></p>' +
+      '<p><label>Ключ .p8<br><textarea id="pp" class="mono" rows="5" autocomplete="off" placeholder="' + (a.key ? 'оставьте пустым, чтобы не менять' : '-----BEGIN PRIVATE KEY-----') + '" ' + INP + '></textarea></label></p>' +
+      note('p') + '<p><button class="btn" type="submit">Проверить и сохранить</button>' + (a.source === 'admin' ? ' <button class="btn" type="button" id="pc">Удалить ключ</button>' : '') + '</p></form></div>';
+  }
   // логотип «Барабан» (127-я): пак иконок лежит на сайте (web/icon), собирает tools_logo.py
   function brandPanel() {
     var r = API.replace(/api$/, '') + 'web/icon/';
@@ -800,7 +815,7 @@ pre.state { font: 12px/1.4 var(--mono); background: #F4F7F5; padding: 10px; bord
       (rows ? '<h3>Последние письма</h3><div style="overflow-x:auto"><table><tr><th>когда</th><th>что</th><th>кому</th><th>тема</th><th>итог</th></tr>' + rows + '</table></div>' : '') + '</div>';
   }
   function saveSettings(path, body, k, okText) {
-    var btns = document.querySelectorAll('#fa button, #ft button, #fm button'); btns.forEach(function (b) { b.disabled = true; });
+    var btns = document.querySelectorAll('#fa button, #ft button, #fm button, #fp button'); btns.forEach(function (b) { b.disabled = true; });
     return post(path, body).then(function (r) {
       DATA.settingsMsg = DATA.settingsMsg || {};
       if (r && r.settings) DATA.settings = r.settings;
@@ -813,11 +828,13 @@ pre.state { font: 12px/1.4 var(--mono); background: #F4F7F5; padding: 10px; bord
     if (e.target.id === 'fm') { e.preventDefault(); var g = function (id) { return document.getElementById(id).value.trim(); };
       var mb = { host: g('mh'), port: +g('mp') || 587, user: g('mu'), from: g('mf'), name: g('mn'), admin: g('ma'), digest: g('md') }; DATA.mailDraft = mb;
       saveSettings('/admin/settings/mail', Object.assign({ pass: document.getElementById('mk').value }, mb), 'm', function (r) { DATA.mailDraft = null; return 'Тестовое письмо ушло на ' + r.sent + ' — проверьте почту (и «Спам»). Настройки сохранены.'; }); }
+    if (e.target.id === 'fp') { e.preventDefault(); saveSettings('/admin/settings/apns', { keyId: document.getElementById('pk').value.trim(), teamId: document.getElementById('pt').value.trim(), key: document.getElementById('pp').value.trim() }, 'p', function () { return 'Ключ подходит — сервер подписал им токен. Пуші включены.'; }); }
     if (e.target.id === 'ft') { e.preventDefault(); saveSettings('/admin/settings/telegram', { token: document.getElementById('tk').value.trim() }, 't', function (r) { return 'Бот @' + r.bot + ' подключён: вебхук, кнопка меню и /start настроены. Не забудьте /setdomain в @BotFather.'; }); }
   });
   document.addEventListener('click', function (e) {
     if (e.target.id === 'ac' && confirm('Удалить ключ API? Распознавание выключится.')) saveSettings('/admin/settings/anthropic', { clear: 1 }, 'a', function () { return 'Ключ удалён.'; });
     if (e.target.id === 'mc' && confirm('Удалить настройки почты? Сводка и письма людям перестанут уходить.')) saveSettings('/admin/settings/mail', { clear: 1 }, 'm', function () { DATA.mailDraft = null; return 'Настройки почты удалены.'; });
+    if (e.target.id === 'pc' && confirm('Удалить ключ APNs? Пуші на iPhone перестанут уходить.')) saveSettings('/admin/settings/apns', { clear: 1 }, 'p', function () { return 'Ключ удалён.'; });
     if (e.target.id === 'tc' && confirm('Отключить бота от сайта?')) saveSettings('/admin/settings/telegram', { clear: 1 }, 't', function () { return 'Бот отключён.'; });
   });
 

@@ -349,6 +349,7 @@
   /** Строки передачі/оплати для нагадувань застосунку: кожна квартира × вид — до коли, чи вже передано. Тексти — тут (uk/ru), застосунок лише показує. */
   function appSched(force) {
     if (!APP) return;
+    pushSend();
     var items = [];
     if (S.onboarded) places().forEach(function (p) {
       try {
@@ -364,8 +365,26 @@
       txt: { title: t('app_n_title'), body: t('app_n_body'), pay: t('app_n_pay'), la: t('app_la_title'), la_go: t('app_la_go'), la_done: t('app_la_done'),
         acc_go: t('app_acc_go'), acc_pay: t('app_acc_pay'), w_title: t('app_w_title'), w_left: t('app_w_left'), w_today: t('app_w_today'), w_done: t('app_w_done'), w_empty: t('app_w_empty') } });
   }
+  // 186-я (iOS этап 2): токени пушів iPhone — apns (уведомлення: підсумки відправки у фоні) і las (Live Activity з сервера) — на сервер,
+  // коли людина ввійшла; без входу — чекають (appSched перевіряє); інший акаунт на тому ж телефоні — надсилаємо знову
+  var PUSH = {};
+  if (APP) try { var P0 = JSON.parse(localStorage.getItem('teplo.push') || '{}'); Object.keys(P0).forEach(function (k) { if (P0[k] && P0[k].tok) PUSH[k] = { tok: P0[k].tok, env: P0[k].env, sent: 0 }; }); } catch (e) { /* немає сховища */ }
+  function pushSend() {
+    var Y0 = window.TeploSync, a = Y0 && Y0.account; if (!APP || !a || !a.id || !Y0.api) return;
+    Object.keys(PUSH).forEach(function (k) {
+      var x = PUSH[k]; if (!x || x.sent === a.id || x.busy) return; x.busy = true;
+      Y0.api('POST', '/push/token', { token: x.tok, kind: k, env: x.env }).then(function (j) { x.busy = false; if (j && j._status === 200) x.sent = a.id; }, function () { x.busy = false; });
+    });
+  }
   window.TeploHost = {
     v: 1,
+    /** 186-я: токен пушів від застосунку (hex), kind apns | las, env sandbox | prod. */
+    pushToken: function (tok, kind, env) {
+      tok = String(tok || '').toLowerCase(); kind = String(kind || ''); if (!/^[a-f0-9]{32,200}$/.test(tok) || !/^(apns|las)$/.test(kind)) return;
+      var o = PUSH[kind]; if (o && o.tok === tok) { pushSend(); return; } PUSH[kind] = { tok: tok, env: env === 'sandbox' ? 'sandbox' : 'prod', sent: 0 };
+      try { var sv = {}; Object.keys(PUSH).forEach(function (k) { sv[k] = { tok: PUSH[k].tok, env: PUSH[k].env }; }); localStorage.setItem('teplo.push', JSON.stringify(sv)); } catch (e) { /* немає сховища */ }
+      pushSend();
+    },
     go: function (r) { r = String(r || '').replace(/^#/, ''); if (!r) return; if (routeName() === r) render(); else location.hash = r; },
     /** 155-а: рідна кнопка «Назад» / «Скасувати» над екраном — куди сказав appUp ('<' — історія браузера). */
     back: function () {

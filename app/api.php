@@ -162,7 +162,8 @@ final class Api {
           // почта (81-я): включена ли, сколько писем за сутки по видам и итогам, последний сбой — без адресов
           'mail' => class_exists('Mail', false) ? Mail::health() : null,
           // 179-я: спільні квартири — скільки, учасників, запрошень і приєднань за 7 днів, незведених (лише числа)
-          'share' => class_exists('Share', false) ? Share::summary() : null];
+          'share' => class_exists('Share', false) ? Share::summary() : null,
+          'push' => class_exists('Push', false) ? Push::summary() : null];   // 186-я: пуші iPhone — ключ є? токенів скільки (лише числа)
       }
       // отписка от нагадувань на e-mail: GET — страница с кнопкой (почтовые сканеры ходят по ссылкам — по GET не отписываем), POST — отписать (и One-Click)
       case 'GET /api/mail/off': case 'POST /api/mail/off': {
@@ -515,6 +516,8 @@ final class Api {
       case 'GET /api/docs/file': if (!$user) throw new HttpError(401, 'unauthorized'); $res->file = Docs::file((int)$user['id'], (string)($r->query()['id'] ?? '')); return [];
       case 'GET /api/docs/link': if (!$user) throw new HttpError(401, 'unauthorized'); return Docs::link((int)$user['id'], (string)($r->query()['id'] ?? ''));
       case 'GET /api/docs/open': $res->file = Docs::open($r->query()); return [];   // по подписанной ссылке, без входа (PDF платёжки из Telegram)
+      case 'POST /api/push/token': if (!$user) throw new HttpError(401, 'unauthorized'); return Push::save((int)$user['id'], $in);   // 186-я: токен iPhone (apns / las)
+      case 'POST /api/push/off': if (!$user) throw new HttpError(401, 'unauthorized'); return Push::forget((int)$user['id'], $in);
       case 'POST /api/docs/delete': if (!$user) throw new HttpError(401, 'unauthorized'); return Docs::delete((int)$user['id'], (string)($in['id'] ?? ''));
       case 'POST /api/feedback': return Feedback::create($user, $in, $r, $ip);
       case 'POST /api/visit': return Visits::hit($user, $in, $r, $ip);
@@ -585,7 +588,7 @@ final class Api {
     if (class_exists('Share', false)) Share::forget($uid);   // 179-я: вийти зі спільних квартир; де власник — прибрати в інших
     foreach (['sessions', 'user_identities', 'user_state', 'user_state_hist', 'cab_creds', 'cab_jobs', 'relay_jobs', 'link_tokens', 'pw_resets',
       'bot_cards', 'bot_inbox', 'consents', 'events', 'visits', 'reminders_sent', 'reminder_snooze', 'mail_optout', 'mail_log', 'vk_events', 'vk_replies',
-      'recog_reports', 'photos', 'docs', 'audit_log', 'share_members'] as $t) {
+      'recog_reports', 'photos', 'docs', 'audit_log', 'share_members', 'push_tokens', 'push_sent'] as $t) {
       try { Db::q("DELETE FROM $t WHERE user_id = ?", [$uid]); } catch (\Throwable $e) { /* таблиці ще немає */ }
     }
     try { Db::q('UPDATE feedback SET user_id = NULL, contact = ? WHERE user_id = ?', ['', $uid]); } catch (\Throwable $e) { /* відгуки лишаються без імені */ }

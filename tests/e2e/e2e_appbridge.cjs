@@ -220,7 +220,23 @@ const UA = 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/6
   // стара збірка застосунку (без PeredaiNative) — як у 155-й: листа немає
   await N.p.goto(B + '#enew'); await N.p.waitForTimeout(700); rt = await msgs(N.p, 'route'); lr = rt[rt.length - 1];
   ok('стара збірка: enew — без листа (sheet немає), без in-sheet', lr.sheet === undefined && !(await N.p.evaluate(() => document.documentElement.classList.contains('in-sheet'))), lr);
-  ok('без помилок JS', !A.errs.length && !C.errs.length && !W.errs.length && !N.errs.length && !F.errs.length && !V3.errs.length, A.errs.concat(C.errs, W.errs, N.errs, F.errs, V3.errs));
+  // 186-я (iOS етап 2): токен пушів від застосунку — без входу чекає (і переживає перезавантаження), після входу — на сервер; вихід — токени геть
+  const PU = await mk(UA); await seed(PU.p, demo({}), 'home');
+  const puReq = []; PU.p.on('request', q => { if (/\/api\/push\//.test(q.url())) puReq.push([q.url().replace(/^.*\/api/, ''), q.postData()]); });
+  await PU.p.evaluate(() => { window.TeploHost.pushToken('AB'.repeat(32), 'apns', 'sandbox'); window.TeploHost.pushToken('cd'.repeat(40), 'las', 'prod'); window.TeploHost.pushToken('zz', 'apns', 'prod'); });
+  await PU.p.waitForTimeout(400);
+  ok('push: без входу на сервер нічого; збережено в teplo.push (hex у нижньому регістрі), поганий токен відкинуто', !puReq.length && await PU.p.evaluate(() => { const s = JSON.parse(localStorage.getItem('teplo.push') || '{}'); return s.apns.tok === 'ab'.repeat(32) && s.apns.env === 'sandbox' && s.las.env === 'prod'; }), puReq);
+  const pem = `push${Date.now()}@example.ua`;
+  await PU.p.evaluate(async e => { const t = (document.cookie.match(/ts_csrf=([^;]*)/) || [])[1]; if (!t) await fetch('api/config'); const c = (document.cookie.match(/ts_csrf=([^;]*)/) || [])[1];
+    await fetch('api/auth/register', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRF': c || '' }, body: JSON.stringify({ email: e, password: 'Boss-12345678' }) }); }, pem);
+  await PU.p.reload(); await PU.p.waitForTimeout(2500);
+  const sent = puReq.filter(x => x[0] === '/push/token').map(x => JSON.parse(x[1] || '{}'));
+  ok('push: після входу (і перезавантаження) обидва токени — на сервер', sent.length === 2 && sent.some(x => x.kind === 'apns' && x.token === 'ab'.repeat(32) && x.env === 'sandbox') && sent.some(x => x.kind === 'las' && x.env === 'prod'), sent);
+  const hp = await PU.p.evaluate(async () => (await (await fetch('api/health')).json()).push);
+  ok('push: /api/health → push — ключа немає (ready false), токени пораховано', hp && hp.ready === false && (hp.tokens['apns sandbox'] || {}).n >= 1 && (hp.tokens['las prod'] || {}).n >= 1, hp);
+  await PU.p.evaluate(() => window.TeploSync.logout()); await PU.p.waitForTimeout(500);
+  ok('push: вихід — спершу /push/off', puReq.some(x => x[0] === '/push/off'), puReq.map(x => x[0]));
+  ok('без помилок JS', !A.errs.length && !C.errs.length && !W.errs.length && !N.errs.length && !F.errs.length && !V3.errs.length && !PU.errs.length, A.errs.concat(C.errs, W.errs, N.errs, F.errs, V3.errs, PU.errs));
   await b.close();
   console.log(`\n${pass} OK, ${fail} FAIL`); process.exit(fail ? 1 : 0);
 })();

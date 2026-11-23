@@ -771,7 +771,9 @@ final class HtmSvc {
 
   /** «✅ ХТМ прийняв» / «❌ не прийняв: причина» / «⏳ не дочекались» — в Telegram человеку (если привязан). */
   public static function notify(int $uid, array $job): void {
-    $tg = Db::one("SELECT external_id FROM user_identities WHERE user_id = ? AND type = 'telegram'", [$uid]); if (!$tg || !Cfg::get('bot_token')) return;
+    // 186-я: є пуші iPhone (ключ і токен) — той самий текст пушем, у Telegram не дублюємо
+    $push = class_exists('Push', false) && Push::has($uid);
+    $tg = $push ? ['external_id' => ''] : Db::one("SELECT external_id FROM user_identities WHERE user_id = ? AND type = 'telegram'", [$uid]); if (!$tg || (!$push && !Cfg::get('bot_token'))) return;
     $jr = Db::one('SELECT payload FROM cab_jobs WHERE id = ?', [$job['id']]); $ru = (self::js($jr['payload'] ?? '')['lang'] ?? 'uk') === 'ru';
     if (!empty(self::js($jr['payload'] ?? '')['card'])) return;   // з картки фото — статус показує сама картка (121-а)
     $ul = ['Gcal' => 'Гкал', 'GJ' => 'ГДж', 'MWh' => $ru ? 'МВт·ч' : 'МВт·год', 'kWh' => $ru ? 'кВт·ч' : 'кВт·год'][$job['unit'] ?? 'Gcal'] ?? 'Гкал';
@@ -784,6 +786,7 @@ final class HtmSvc {
       elseif ($job['status'] === 'failed') $txt = ($ru ? "⚠️ Не внесли горячую воду $what в кабинет ХТМ.\n" : "⚠️ Не внесли гарячу воду $what у кабінет ХТМ.\n") . ($job['human'] ?: self::h('down'));
       elseif ($job['status'] === 'unknown' && $job['why'] !== 'forgot') $txt = $ru ? "⏳ ХТМ так и не проверил горячую воду $what. Посмотрите журнал в кабинете ХТМ позже." : "⏳ ХТМ так і не перевірив гарячу воду $what. Подивіться журнал у кабінеті ХТМ пізніше.";
       else return;
+      if ($push) { Push::alert($uid, $txt, 'water-hot', (string)($job['place'] ?? '')); return; }
       $pp = ['chat_id' => $tg['external_id'], 'text' => $txt];
       if (Cfg::appUrlKnown()) $pp['reply_markup'] = ['inline_keyboard' => [[['text' => $ru ? 'Открыть «передай»' : 'Відкрити «передай»', 'web_app' => ['url' => Cfg::appUrl() . '?go=water-hot' . ($job['place'] ? '&place=' . rawurlencode((string)$job['place']) : '')]]]]];
       try { Telegram::call('sendMessage', $pp); } catch (Throwable $e) {}
@@ -802,6 +805,7 @@ final class HtmSvc {
     elseif ($job['why'] === 'relogin') $txt = $ru ? "🔑 Пароль от кабинета ХТМ больше не подходит — робот не может проверить показания $what. Подключите кабинет заново в «передай» или посмотрите журнал на сайте ХТМ." : "🔑 Пароль від кабінету ХТМ більше не підходить — робот не може перевірити показання $what. Підключіть кабінет знову в «передай» або подивіться журнал на сайті ХТМ.";
     elseif ($job['why'] === 'forgot') return;
     else $txt = $ru ? "⏳ Робот ХТМ так и не проверил показания $what. Посмотрите журнал в кабинете ХТМ позже — если там «прийнято», отметьте это в «передай»." : "⏳ Робот ХТМ так і не перевірив показання $what. Подивіться журнал у кабінеті ХТМ пізніше — якщо там «прийнято», позначте це в «передай».";
+    if ($push) { Push::alert($uid, $txt, 'heat', (string)($job['place'] ?? '')); return; }
     $p = ['chat_id' => $tg['external_id'], 'text' => $txt];
     if (Cfg::appUrlKnown()) $p['reply_markup'] = ['inline_keyboard' => [[['text' => $ru ? 'Открыть «передай»' : 'Відкрити «передай»', 'web_app' => ['url' => Cfg::appUrl() . '?go=heat' . ($job['place'] ? '&place=' . rawurlencode((string)$job['place']) : '')]]]]];
     try { Telegram::call('sendMessage', $p); } catch (Throwable $e) { /* не дошло — в приложении статус всё равно виден */ }

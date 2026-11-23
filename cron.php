@@ -26,6 +26,7 @@ require __DIR__ . '/app/visits.php';
 require __DIR__ . '/app/journal.php';
 require __DIR__ . '/app/indexnow.php';
 require __DIR__ . '/app/share.php';
+require __DIR__ . '/app/push.php';   // 186-я: пуші iPhone (APNs)
 $beat = Cron::read(); $beat['last'] = gmdate('c');
 // кабинет Водоканала — открывается ли (раз в 10 минут; статус видят приложение и /admin)
 if ((int)gmdate('i') % 10 === 7) { try { $beat['vkCab'] = VkStatus::probeCabinet()['state']; } catch (Throwable $e) { error_log('teplo vk probe: ' . $e->getMessage()); } }
@@ -102,6 +103,9 @@ try {
     echo gmdate('c') . ' напоминаний: ' . count($s) . "\n";
   }
 } catch (Throwable $e) { $h['remindError'] = mb_substr($e->getMessage(), 0, 200); error_log('teplo remind: ' . $e->getMessage()); }
+// 186-я: Live Activity «вікно передачі» з сервера (push-to-start) — у ті ж дні, що нагадування; лише з ключем APNs і токеном las
+try { $pl = Push::runLive(time()); if ($pl) $h['pushLive'] = array_count_values(array_map(fn($x) => $x[2], $pl)); $h['pushOld'] = Push::cleanup(); }
+catch (Throwable $e) { error_log('teplo push live: ' . $e->getMessage()); }
 // «Нагадати завтра» з картки-нагадування (app/widget.php)
 try { $sz = Reminders::runSnooze(time()); if ($sz) $h['snooze'] = array_count_values(array_map(fn($x) => $x[1] . ' ' . (str_starts_with($x[2], 'error') ? 'error' : $x[2]), $sz)); }
 catch (Throwable $e) { error_log('teplo snooze: ' . $e->getMessage()); }

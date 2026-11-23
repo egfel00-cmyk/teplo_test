@@ -43,6 +43,7 @@ jobs:
           bash tests/e2e/stand.sh up   # htm_svc і htm_cab ходять у синтетичний кабінет ХТМ (8099)
           php tests/server.php 2>&1 | tail -40
           php tests/share.php 2>&1 | tail -20
+          php tests/push.php 2>&1 | tail -20   # 186-я: пуші iPhone (APNs)
           php tests/htm_svc.php 2>&1 | tail -20
           php tests/vk_svc.php 2>&1 | tail -20
           php tests/htm_cab.php 2>&1 | tail -20

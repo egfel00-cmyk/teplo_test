@@ -52,6 +52,8 @@ targets:
         com.apple.developer.icloud-services: [CloudKit]
         com.apple.developer.associated-domains: [applinks:peredai.com.ua]
         com.apple.developer.applesignin: [Default]
+        # 186-а: пуші (APNs) — у TestFlight/App Store Xcode сам ставить production; без підпису (симулятор у CI) не діє
+        aps-environment: development
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: ua.com.peredai.app

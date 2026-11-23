@@ -307,7 +307,8 @@
     loginTelegramWidget: function (data) { var self = this; return api('POST', '/auth/telegram/widget', data).then(function (j) { return self._after(j); }); },
     linkTelegram: function (data) { var self = this; return api('POST', '/auth/link-telegram', data).then(function (j) { if (j._status === 200) self.account = j.user; self._onChange(); return j; }); },
     setPassword: function (email, password) { var self = this; return api('POST', '/auth/password', { email: email, password: password }).then(function (j) { if (j._status === 200) self.account = j.user; self._onChange(); return j; }); },
-    logout: function () { var self = this; return api('POST', '/auth/logout').then(function () { setSess(''); self.account = null; self._lastSig = ''; self._setOwner(''); self._set('server', 'idle'); }); },
+    // 186-я: вийшли на iPhone — пуші цього акаунта на телефон більше не йдуть (токени забирає сервер)
+    logout: function () { var self = this; return (/PeredaiApp\//.test(navigator.userAgent) ? api('POST', '/push/off', {}).catch(function () {}) : Promise.resolve()).then(function () { return api('POST', '/auth/logout'); }).then(function () { setSess(''); self.account = null; self._lastSig = ''; self._setOwner(''); self._set('server', 'idle'); }); },
     /** 154-а: видалити акаунт на сервері; дані на цьому пристрої лишаються (лише без синхронізації). */
     deleteAccount: function () { var self = this; return api('POST', '/account/delete', { confirm: 'delete' }).then(function (j) { if (j._status === 200) { setSess(''); self.account = null; self._lastSig = ''; self._setOwner(''); self._set('server', 'idle'); } return j; }); },
     hasSess: function () { return !!SESS; },

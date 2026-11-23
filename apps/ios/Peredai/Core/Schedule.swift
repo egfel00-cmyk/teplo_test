@@ -74,7 +74,7 @@ enum Reminders {
         if UserDefaults.standard.string(forKey: "PeredaiDemo") != nil { return }   // CI: без системного запиту поверх скрина
         #endif
         if st.authorizationStatus == .notDetermined {
-            _ = try? await c.requestAuthorization(options: [.alert, .sound, .badge])
+            if (try? await c.requestAuthorization(options: [.alert, .sound, .badge])) == true { Push.allowedNow() }   // 186-а: дозволили — по токен пушів
         }
         let cal = Calendar.current
         let now = Date()

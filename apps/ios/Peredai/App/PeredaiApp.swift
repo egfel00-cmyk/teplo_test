@@ -53,6 +53,7 @@ final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCent
     func application(_ app: UIApplication, didFinishLaunchingWithOptions opts: [UIApplication.LaunchOptionsKey: Any]? = nil) -> Bool {
         UNUserNotificationCenter.current().delegate = self
         QuickActions.install()
+        Task { @MainActor in Push.start() }   // 186-а: токени пушів (уведомлення й Live Activity з сервера)
         #if DEBUG
         if let p = UserDefaults.standard.string(forKey: "PeredaiOcrTest") { NativeOCR.selfTest(path: p) }   // CI: Vision на картинці → log.txt
         #endif
@@ -64,6 +65,15 @@ final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCent
         let c = UISceneConfiguration(name: nil, sessionRole: session.role)
         c.delegateClass = QuickSceneDelegate.self
         return c
+    }
+
+    /// 186-а: токен APNs — через сайт на сервер (TeploHost.pushToken).
+    func application(_ app: UIApplication, didRegisterForRemoteNotificationsWithDeviceToken token: Data) {
+        Task { @MainActor in Push.registered(token) }
+    }
+
+    func application(_ app: UIApplication, didFailToRegisterForRemoteNotificationsWithError error: Error) {
+        NSLog("[peredai] push: \(error.localizedDescription)")   // симулятор без підпису / немає aps-environment — живемо без пушів
     }
 
     /// Нагадування, коли застосунок відкритий, — банером (сайт і так покаже строк на картці).

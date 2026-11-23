@@ -153,7 +153,8 @@ final class VkSvc {
   }
   /** Telegram: «📝 надішлемо о HH:MM», «❌ не прийняв», «⚠️ не надіслали», «⏳ сайт не сказав». */
   public static function notify(int $uid, array $job): void {
-    $tg = Db::one("SELECT external_id FROM user_identities WHERE user_id = ? AND type = 'telegram'", [$uid]); if (!$tg || !Cfg::get('bot_token')) return;
+    $push = class_exists('Push', false) && Push::has($uid);   // 186-я: пуші iPhone — той самий текст пушем, у Telegram не дублюємо
+    $tg = $push ? ['external_id' => ''] : Db::one("SELECT external_id FROM user_identities WHERE user_id = ? AND type = 'telegram'", [$uid]); if (!$tg || (!$push && !Cfg::get('bot_token'))) return;
     if (!empty($job['card'])) return;   // з картки фото — статус показує сама картка (121-а)
     $ru = self::$lang === 'ru'; $acc = $job['acc'];
     $lines = implode("\n", array_map(fn($x) => '• ' . ($x['name'] ?: ($ru ? 'счётчик' : 'лічильник')) . ' — ' . $x['value'], $job['items']));
@@ -168,6 +169,7 @@ final class VkSvc {
       case 'failed': $txt = ($ru ? "⚠️ Не отправили показания воды на сайт Водоканала (счёт $acc).\n" : "⚠️ Не надіслали показання води на сайт Водоканалу (рахунок $acc).\n") . ($job['human'] ?: '') . ($ru ? "\n\nОткройте «передай» — там можно отправить кнопкой или через бот Водоканала." : "\n\nВідкрийте «передай» — там можна надіслати кнопкою або через бот Водоканалу."); break;
       default: return;
     }
+    if ($push) { Push::alert($uid, $txt, 'water-cold', (string)($job['place'] ?? '')); return; }
     $p = ['chat_id' => $tg['external_id'], 'text' => $txt];
     if (Cfg::appUrlKnown()) $p['reply_markup'] = ['inline_keyboard' => [[['text' => $ru ? 'Открыть «передай»' : 'Відкрити «передай»', 'web_app' => ['url' => Cfg::appUrl() . '?go=water-cold' . ($job['place'] ? '&place=' . rawurlencode((string)$job['place']) : '')]]]]];
     try { Telegram::call('sendMessage', $p); } catch (Throwable $e) { /* не дошло — в приложении статус виден */ }
