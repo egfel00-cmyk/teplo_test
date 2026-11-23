@@ -567,9 +567,28 @@
   черга — учасника з `payload.cu`; `runQueued` перевіряє згоду знову (`share_off`); перевірка журналу групується за `cu`. `GET /api/cab/htm → shared[pid]` → застосунок `hcConnP(p)`,
   `hcAccsFor(p)`, `hcViaOwner(p)` (у рядках ХТМ, `cabBgHeat`). `hcConn()` — і далі лише СВІЙ кабінет (екран ХТМ у «Кабінетах»). Місцеві КП — з 183-ї вхід квартири для всіх (`LocalBot::aptOf`), не через галочку.
   Новий канал «у фоні» — так само: спершу свої дані, далі `Share::bgOwner` + дані власника для його копії квартири, без його даних входу в статусі учасника.
-- **Не зроблено**: документи квартири (паспорт лічильника) — лише в того, хто завантажив; «Кабінети й надсилання» учасника не показують «через кабінет власника».
+- **186-я — документи квартири спільні**: завантажене в спільну квартиру (`Docs::upload` → `home()`) лежить у власника (його uid і pid), `docs.by_user` — хто додав; `Docs::list` — свої + документи інших людей
+  тієї ж квартири (`Share::mates`, `place` — копія цієї людини, `del` — чи може прибрати: хто додав або власник, `canDel`); старі документи учасника в `sh<N>` теж видно. Текст `mv_docs_sub_sh`,
+  список перечитується раз на 60 с (`DOCS.at`). Тести — share.php «Документи квартири», e2e_shareplace (паспорт від власниці в учасника без «Видалити»).
+- **Не зроблено**: «Кабінети й надсилання» учасника не показують «через кабінет власника».
 - Тести: `php tests/share.php` (67), `node tests/sync.test.js` (37: + поля `_kt`), e2e `e2e_shareplace` (36: сам піднімає сайт 8016 і поштовий стенд 2526; двоє людей, QR, «хто вніс»,
   прибрати, лист без пароля ru, вийти, 320 px).
+
+## Пуші iPhone (APNs) — iOS етап 2 (186-я)
+- `app/push.php` (`Push`): токени `push_tokens` (apns — уведомлення, las — push-to-start Live Activity, env sandbox | prod) — `POST /api/push/token`, `/api/push/off` (вихід на iPhone — sync.js `logout`).
+  Ключ — /admin → «Налаштування» → «Пуші iPhone (APNs)» (`apns_key` .p8, `apns_key_id`, `apns_team_id` у Cfg::RUNTIME); **немає ключа — `Push::ready()` false, нічого не шлемо**.
+  JWT ES256 (`openssl_sign` + `derToRaw`, кеш 50 хв), HTTP/2 curl (`Push::$http` — підміна в тестах), 410/BadDeviceToken → `bad`.
+- Що шлемо: підсумки робота — `HtmSvc::notify` / `VkSvc::notify` / `LocalBot::notify`: `Push::has($uid)` (ключ + токен apns) → той самий текст пушем (`Push::alert`, перший рядок — заголовок, `g`/`p` — маршрут
+  і квартира для дотику), у Telegram тоді не дублюємо. Live Activity — `Push::runLive` (cron щогодини 10–20, дні `Reminders::dueFor`, кінець вікна = сьогодні + 4, `push_sent` — раз на вид і місяць),
+  payload = `WindowActivityAttributes`/`ContentState` застосунку (Date — секунди від 2001-01-01). Нагадування за 4 дні — локальні на телефоні (Schedule.swift), сервер їх не дублює.
+- Застосунок: `apps/ios/Peredai/Core/Push.swift` — `registerForRemoteNotifications` (дозвіл уже є / щойно дали), `pushToStartTokenUpdates` (iOS 17.2+) → `TeploHost.pushToken(hex, kind, env)`
+  (сайт тримає в `teplo.push`, шле після входу — `pushSend` в `appSched`); entitlement `aps-environment`. Тести — `php tests/push.php` (17), e2e_appbridge (push, 74).
+- **Від власника**: ключ APNs (developer.apple.com → Keys → APNs → .p8) у /admin — після активації Apple Developer.
+
+## Журнал: повтори чужих помилок (186-я, «Гость 7G4H»)
+- Розширення браузера в людини (Windows) кидало `Cannot read properties of undefined (reading 'M_ID')` кожні 5 с — 927 рядків за годину. Клієнт: однакова помилка — не більше 3 разів за завантаження,
+  `src` — `ext` (розширення, `-extension://` у стеку) / `x` (чужий скрипт); сервер: `Journal::jsDup` — у сеансі однакова не більше 5 рядків (JS_SAME), усіх — 40 (JS_MAX), решта — `rep` останнього;
+  `jsCollapse` (cron) згортає накопичене. /admin — «Ошибка расширения браузера (не наш код)», лист-зведення не рахує `src`. Перш ніж шукати «наш баг» — `grep` повідомлення в коді.
 
 ## Синхронизация: «Кому платите» не теряется (149-я)
 - `Sync.flushNow()` — на сворачивание/закрытие (keepalive < 60 КБ), после `poll` — `_flush()` сразу. Журнал: `prov` (сменили здесь), `provx` (данные извне, `Sync.via`) — в /admin словами.
