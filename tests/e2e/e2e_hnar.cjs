@@ -9,7 +9,7 @@ const U = 'http://127.0.0.1:8013/', DATA = process.env.SITE_DATA || '/tmp/teplo_
   const errs = []; p.on('pageerror', e => errs.push(e.message)); const wait = ms => p.waitForTimeout(ms);
   await p.goto(U); await p.evaluate(() => localStorage.clear()); await p.reload(); await wait(500);
   ok('реєстрація', await p.evaluate(e => window.TeploSync.register(e, 'Pass-12345678').then(j => j._status), 'hn' + Date.now() + '@teplo.test') === 200);
-  const st = demo({ today: '2026-11-06' }); st.places[0].area = '54.3';
+  const st = demo({ today: '2026-11-06', view: 'heat' }); st.places[0].area = '54.3';   // 147-а: перший вид — світло/вода; історія тепла — view heat
   const R = (id, d, e) => ({ id, place: 'main', htm: { date: d, energy: e, volume: '2300', hours: '34000', errHours: '153', errCode: 'E---' }, status: 'accepted', createdAt: d + 'T10:00:00Z', updatedAt: 1, source: 'manual' });
   st.readings = [R('j1', '2026-01-24', '7.919'), R('f1', '2026-02-24', '10.000'), R('m1', '2026-03-24', '12.127'), R('a1', '2026-04-03', '12.432')];
   st.baseline = { date: '2026-01-24', energy: '7.919' }; st.places[0].baseline = st.baseline;
@@ -65,6 +65,7 @@ const U = 'http://127.0.0.1:8013/', DATA = process.env.SITE_DATA || '/tmp/teplo_
   // площа (84-а): у застосунку 59 (у владельца так), ХТМ рахує за 54,30 — під полем площі на екрані квартири підказка й «Взяти 54,30 м²»
   await p.evaluate(() => { const s = JSON.parse(localStorage.getItem('teplo.v1')); s.places[0].area = 59; s.places[0].updatedAt = Date.now(); s.updatedAt = Date.now(); localStorage.setItem('teplo.v1', JSON.stringify(s)); });
   await p.goto(U + '#place-' + st.places[0].id); await p.reload(); await wait(2500);
+  await p.$eval('[data-act=area-htm]', b => { for (let d = b.closest('details'); d; d = d.parentElement && d.parentElement.closest('details')) d.open = true; }).catch(() => {}); await wait(300);   // поле площі — у «Налаштуваннях» тепла → «Коли лічильник знято»
   const ah = await p.$eval('[data-key=area-htm]', e => e.textContent).catch(() => '');
   ok('площа 59 → під полем «ХТМ рахує за 54,30 м²» і кнопка «Взяти 54,30 м²»', /ХТМ рахує за 54,30 м²/.test(ah) && /Взяти 54,30 м²/.test(ah), ah);
   await p.click('[data-act=area-htm]'); await wait(800);

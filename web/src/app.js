@@ -10136,7 +10136,7 @@
         (APP && !a.apple ? '<p><button class="apple-btn sm" data-act="apple-in" data-key="prefs-apple-link"><span class="apple-logo" aria-hidden="true">\uF8FF</span><span>' + esc(t('acct_apple_link')) + '</span></button></p><p class="help block" id="apple-err" role="alert"></p>' : '') +
         '<p class="small muted" id="sync-status">' + esc(syncStatusText()) + '</p></div>';
       if (!a.telegram && Y()._cfg && Y()._cfg.botUsername) h += '<div class="panel" data-key="prefs-tg"><h2>' + esc(t('acct_link_tg')) + '</h2><p class="small muted">' + esc(t('acct_link_bot_sub')) + '</p>' +
-        '<p><button class="btn" data-act="link-bot" data-key="prefs-link-bot">' + esc(t('acct_link_bot', { bot: Y()._cfg.botUsername })) + '</button></p><div id="tg-widget" data-onauth="TeploTgLink"></div></div>';
+        '<p><button class="btn" data-act="link-bot" data-key="prefs-link-bot">' + esc(t('acct_link_bot', { bot: Y()._cfg.botUsername })) + '</button></p></div>';
       if (!a.hasPassword) h += '<div class="panel" data-key="prefs-pass"><h2>' + esc(t('acct_set_pass')) + '</h2><form id="setpass-form" novalidate>' + authFields('new-password') + '<div class="help block" id="setpass-err"></div><button class="btn sec" type="submit">' + esc(t('acct_set_pass_btn')) + '</button></form></div>';
       // 180-я (власник 23.11, скрін: «основний візуальний якір — Вийти, а не Видалити, на всіх темах»): «Вийти» — головна кнопка, «Видалити акаунт» — тиха, другорядна
       h += '<div class="panel" data-key="prefs-out"><button class="btn block" data-act="logout" data-key="prefs-logout">' + esc(t('logout')) + '</button><p class="small muted" style="margin-top:8px">' + esc(t('logout_sub')) + '</p></div>';
@@ -10178,7 +10178,7 @@
     // 163-я (власник 16.11: «як гівно, текст сам себе дублює»): одна картка — Telegram однією кнопкою з рядком під нею, «або поштою», форма;
     // без перемикача «Увійти / Створити акаунт» (третє «Увійти» на екрані) — під карткою «Немає акаунта? Створити акаунт»; «без входу — лише тут» — біля «Продовжити без входу»
     skip = '<p class="auth-skip"><a href="#' + (S.onboarded ? 'home' : 'welcome') + '" data-key="login-skip">' + esc(t('login_skip')) + '</a><span class="auth-hint">' + esc(t(APP ? 'login_skip_note_app' : 'login_skip_note')) + '</span></p>';
-    var tg = bot ? '<div class="auth-tg" data-key="login-telegram"><div id="tg-widget" class="auth-widget" data-onauth="TeploTgAuth"></div>' +
+    var tg = bot ? '<div class="auth-tg" data-key="login-telegram">' +
       '<a class="btn sec block auth-tgbtn" href="https://t.me/' + esc(bot) + '" target="_blank" rel="noopener" data-key="login-tg-open">' + ico('send', 20) + '<span>' + esc(t('login_tg_btn2')) + '</span></a>' +
       '<p class="auth-hint">' + esc(t('login_tg_sub3', { bot: bot })) + '</p></div>' +
       '<p class="auth-or" aria-hidden="true"><span>' + esc(t('login_or')) + '</span></p>' : '';
@@ -10215,14 +10215,8 @@
     if (j && j._status === 200) { toast(t('login_ok')); S.onboarded = S.onboarded || anyMeters(); save(); go(S.onboarded ? 'home' : 'start'); return; }
     if (errEl) errEl.textContent = authError(j); else toast(authError(j));
   }
-  function mountTelegramWidget() {
-    var box = document.getElementById('tg-widget'), cfg = Y()._cfg;
-    if (!box || !cfg || !cfg.botUsername || box.childNodes.length) return;
-    var sc = document.createElement('script'); sc.async = true; sc.src = 'https://telegram.org/js/telegram-widget.js?22';
-    sc.setAttribute('data-telegram-login', cfg.botUsername); sc.setAttribute('data-size', 'large'); sc.setAttribute('data-radius', '12');
-    sc.setAttribute('data-onauth', box.getAttribute('data-onauth') + '(user)'); sc.setAttribute('data-request-access', 'write');
-    box.appendChild(sc);
-  }
+  // 185-я: віджет telegram-widget.js прибрано — data-onauth він перетворює на функцію через eval, а CSP сайту eval забороняє: віджет падав
+  // ще до кнопки (у CI — «Evaluating a string as JavaScript violates…»). Вхід і прив'язка Telegram — через бота (login-tg-open, link-bot), працює за будь-якого CSP.
   /** 154-а: відповідь застосунку на «Увійти через Apple» (TeploHost.apple). */
   function appleDone(r) {
     var er = document.getElementById('apple-err');
@@ -10233,8 +10227,6 @@
       afterLogin(j, er);
     }, function () { if (er) er.textContent = t('err_network'); });
   }
-  window.TeploTgAuth = function (user) { Y().loginTelegramWidget(user).then(function (j) { afterLogin(j); }, function () { toast(t('err_network')); }); };
-  window.TeploTgLink = function (user) { Y().linkTelegram(user).then(function (j) { if (j._status === 200) { toast(t('login_ok')); render(true); } else toast(authError(j)); }); };
 
   // ================= 179-я: спільна квартира =================
   // Власник 23.11: «расшаривать одну квартиру между несколькими пользователями — удобно, понятно даже пенсионеру, безопасно, быстро, просто:
@@ -11258,7 +11250,6 @@
     // отклик: ушёл дальше привітання/головної — «клацав» (этап 1)
     if (typeof r === 'string' && r && !/^(welcome|home|places)$/.test(r) && VSTAGE < 1) { VSTAGE = 1; visitBump(); }
     if (SCROLL_TO) { var st0 = document.getElementById(SCROLL_TO); SCROLL_TO = null; if (st0) { var pg0 = st0.closest && st0.closest('details.pgroup'); if (pg0 && !pg0.open) { pg0.open = true; PREF_OPEN[pg0.id.slice(3)] = true; } var wa0 = st0.closest && st0.closest('details.wacc'); if (wa0 && !wa0.open) { wa0.open = true; waccStore(wa0)[wa0.id.slice(5)] = true; } st0.scrollIntoView({ block: 'start' }); try { st0.focus({ preventScroll: true }); } catch (e0) { /* старый браузер */ } st0.classList.add('flash'); setTimeout(function () { st0.classList.remove('flash'); }, 1600); } }
-    if (Y().mode === 'server') mountTelegramWidget();
     var first = document.querySelector('[data-field]:not([type=radio])');
     if (first && /^step-/.test(r) && window.matchMedia('(min-width: 600px)').matches) first.focus({ preventScroll: true });
     var demo = document.getElementById('p-demo');

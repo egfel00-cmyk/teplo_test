@@ -22,7 +22,7 @@ const st = (city, street, extra) => Object.assign({ v: 1, onboarded: true, readi
   ok('три человека сохранены', [s1, s2, s3].every(x => x === 200), [s1, s2, s3]);
   const ctx = await b.newContext({ viewport: { width: 1280, height: 900 }, locale: 'ru-RU' }); const p = await ctx.newPage(); const errs = []; p.on('pageerror', e => errs.push(e.message));
   await p.goto(U + 'api/config');
-  await p.evaluate(async () => { const c = (document.cookie.match(/ts_csrf=([^;]+)/) || [])[1] || ''; const go = (u) => fetch('/api/auth/' + u, { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json', 'X-CSRF': decodeURIComponent(c) }, body: JSON.stringify({ email: 'boss@teplo.test', password: 'boss-pass-123' }) });
+  await p.evaluate(async () => { const c = (document.cookie.match(/ts_csrf=([^;]+)/) || [])[1] || ''; const go = (u) => fetch('/api/auth/' + u, { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json', 'X-CSRF': decodeURIComponent(c) }, body: JSON.stringify({ email: 'boss@teplo.test', password: 'Boss-12345678' }) });
     const r = await go('register'); if (r.status !== 200) await go('login'); });
   await p.goto(U + 'admin#geo'); await p.waitForTimeout(1200);
   const main = (await p.textContent('main')) || '';

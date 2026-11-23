@@ -68,6 +68,7 @@ fixtures() {
   fi
   [ -f "$lab/out/w_novator.jpg" ] || node "$lab/water.cjs"
   [ -f "$lab/out/p_two_far.jpg" ] || node "$lab/water.cjs" water_pair.json
+  [ -f "$lab/out/e8_rx.jpg" ] || node "$lab/heat.cjs" heat_err.json e8_rx > /dev/null   # e2e_heat_photo: екран помилки (heat_err.json)
   [ -f /tmp/cam/heat.y4m ] || ffmpeg -loglevel error -y -loop 1 -i "$lab/out/s774_energy.jpg" -t 2 -r 5 -vf scale=1000:1300 -pix_fmt yuv420p /tmp/cam/heat.y4m
   [ -f /tmp/cam/dark.y4m ] || ffmpeg -loglevel error -y -f lavfi -i color=c=0x101010:s=640x480:r=5 -t 2 -pix_fmt yuv420p /tmp/cam/dark.y4m
   # e2e_widget — віджет картки чату з коду (BotWidget::HTML)
