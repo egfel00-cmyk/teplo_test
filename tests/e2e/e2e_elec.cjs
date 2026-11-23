@@ -86,7 +86,7 @@ let pass = 0, fail = 0; const ok = (n, c, i) => { console.log((c ? '  OK  ' : ' 
   ok('економія: «Ваше споживання» і поради', !!(await p.$('[data-key=esave-mine]')) && !!(await p.$('[data-key=esave-tips]')));
 
   // ---- електроопалення, прибрати/повернути
-  await go('place-main'); await p.click('#e-heat'); await p.waitForTimeout(250); s = await st();
+  await go('pvp-elec-main'); await p.click('#e-heat'); await p.waitForTimeout(250); s = await st();
   ok('галочка «електроопалення» — у квартири', s.places[0].elecHeat === true);
   await go('place-main');
   ok('екран квартири: рядок світла без «Замінити»', !!(await p.$('[data-key=pv-m-' + m.id + ']')) && !(await p.$('[data-key=pv-replace-' + m.id + ']')));

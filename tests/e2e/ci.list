@@ -1,0 +1,102 @@
+# e2e для CI и stand.sh run (184-я). «!» — перед тестом чистая база и стенды (cron квитанций берёт всех людей базы). # — пропуск с причиной.
+e2e_accanim
+e2e_account_switch
+e2e_acctdel
+e2e_addr
+e2e_admin_lg
+e2e_appbridge
+e2e_apple
+# e2e_bills — падає й до 184-ї: значок платіжки «2»/«1» у рядку історії (151-а: один значок джерела) — тест застарів
+# e2e_bot — діагностика без перевірок (фото з бота: друкує розкладку); бот — e2e_card*, e2e_botfw
+# e2e_botfw — падає й до 184-ї: газ «прийнято» з рахунком без натискання → sent.grm (дата/вікно газу 1–5)
+e2e_botstart
+e2e_cabbg
+e2e_cabs
+e2e_camera
+e2e_card
+e2e_cardlb
+e2e_cardown
+e2e_cards
+e2e_cardsend
+e2e_cookie
+e2e_dates
+e2e_drumsw
+e2e_elec
+e2e_elec_photo
+e2e_first
+e2e_gap
+e2e_gapcost
+e2e_gas
+e2e_gasfee
+e2e_geo
+e2e_gpv
+e2e_handover
+WANT={"energy":"15.482","errCode":"E---"} e2e_heat_photo ../ocr-lab/out/s774_energy.jpg ../ocr-lab/out/e8_rx.jpg
+e2e_heatcmp
+e2e_heatlite
+e2e_hnar
+e2e_home
+e2e_hotsend
+e2e_hpcab
+e2e_htmauto
+!e2e_htmbill
+e2e_htmcab
+e2e_htmgj
+# e2e_htmspr — падає й до 184-ї: історія тепла: рядки «ХТМ за лютий…» не знаходяться (селектори після 147-ї)
+e2e_journal
+e2e_lbheat
+e2e_lbot
+e2e_login
+e2e_lpdemo
+e2e_mcost
+e2e_meterpage
+e2e_mono
+e2e_monohot
+e2e_mononeed
+e2e_month
+e2e_mremove
+e2e_myprov
+e2e_natocr
+e2e_nattorch
+e2e_navback
+e2e_nonkh
+e2e_pacc_tap
+e2e_paid
+e2e_pcat
+e2e_period
+e2e_picon
+e2e_places
+e2e_places2
+e2e_pqreload
+e2e_prov
+e2e_provadmin
+e2e_provarr
+e2e_qr
+e2e_recphoto
+e2e_recview
+e2e_relay
+e2e_restore
+e2e_seasons
+e2e_share
+# e2e_shareplace — падає й до 184-ї: «без исключений»: pg-pv-people не з’являється за 30 с (1 з 40)
+e2e_src
+e2e_status
+e2e_stepkb
+e2e_taprace
+e2e_tgwin
+e2e_themesync
+e2e_two_devices ../ocr-lab/out/p_two_far.jpg
+e2e_uaprobe
+# e2e_vk — падає й до 184-ї: чекає wsend-cmd (бот Водоканалу) — з 178-ї гаряча Харкова через hotSendPanel
+# e2e_vkauto — падає й до 184-ї: фото з бота → черга Водоканалу: «Вхідні» лише за 7 днів (як cardsend у 183-й — inboxday.cjs)
+!e2e_vkbill
+# e2e_vkcab — падає й до 184-ї: «Через сайт Водоканалу» в «Куди передати» — розмітка 181–182-ї (рядки ХТМ/Водоканалу)
+e2e_vkconn
+# e2e_vkdone — падає й до 184-ї: «ті самі цифри — вже передано» / «у вас інші цифри» — розмітка 181–182-ї
+e2e_vkpay
+e2e_wacc
+e2e_waste
+# e2e_water — діагностика з параметрами (друкує розкладку); вода з фото — e2e_recphoto, e2e_two_devices
+e2e_widget
+e2e_years
+# e2e_zbp — падає й до 184-ї: поле «Ваша частка ЗБП» — переїхало на екран постачальника тепла (180-а)

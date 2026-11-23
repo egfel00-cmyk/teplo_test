@@ -1,0 +1,95 @@
+# Сайт (184-а): юніт-тести й e2e на локальному стенді — на кожен пуш у main, що чіпає сайт, і вручну.
+# Стенд — tests/e2e/stand.sh: сайт 127.0.0.1:8013 (sqlite, SITE_DATA=/tmp/teplo_data), синтетичні кабінети ХТМ 8099, Водоканалу 8098,
+# LocalBot 8096, обленерго 8097; картинки ocr-lab (make.cjs + water.cjs), кадри камери, фото/PDF платіжок. Лише синтетика, секретів немає.
+# Підсумок — у Summary прогону; журнали й скріни — артефакт e2e-<частина>. Список тестів — tests/e2e/ci.list.
+name: Web
+
+on:
+  push:
+    branches: [main]
+    paths: ['web/**', 'app/**', 'index.php', 'cron.php', 'tests/**', '.github/workflows/web.yml']
+  workflow_dispatch:
+
+concurrency:
+  group: web-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  unit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: pdo_sqlite, sqlite3, gd, intl, mbstring, sodium, zip, curl
+          coverage: none
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+      - name: php -l
+        run: find app index.php cron.php -name '*.php' -print0 | xargs -0 -n1 php -l > /dev/null
+      - name: Збірка web/dist збігається з web/src
+        run: |
+          python3 web/build.py
+          git diff --stat --exit-code web/dist || { echo '::error::web/dist не перезібрано після правок web/src (python3 web/build.py)'; exit 1; }
+      - name: Сервер
+        run: |
+          set -o pipefail
+          php tests/server.php 2>&1 | tail -40
+          php tests/share.php 2>&1 | tail -20
+          php tests/htm_svc.php 2>&1 | tail -20
+          php tests/vk_svc.php 2>&1 | tail -20
+          php tests/htm_cab.php 2>&1 | tail -20
+      - name: JS
+        run: for t in tests/*.test.js; do echo "== $t"; node "$t" | tail -3 || exit 1; done
+      - name: Дизайн-лінтер
+        run: python3 tests/design_lint.py
+
+  e2e:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: ['1/4', '2/4', '3/4', '4/4']
+    steps:
+      - uses: actions/checkout@v5
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: pdo_sqlite, sqlite3, gd, intl, mbstring, sodium, zip, curl
+          coverage: none
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+      - name: Playwright, ffmpeg, Pillow
+        run: |
+          npm i -g playwright@1.63.0
+          npx -y playwright@1.63.0 install --with-deps chromium
+          sudo apt-get install -y -qq ffmpeg sqlite3 fonts-dejavu-core fonts-liberation > /dev/null
+          python3 -m pip install -q --break-system-packages pillow
+      - name: Стенд і картинки
+        run: |
+          bash tests/e2e/stand.sh up
+          bash tests/e2e/stand.sh fixtures
+      - name: e2e ${{ matrix.shard }}
+        env:
+          SHARD: ${{ matrix.shard }}
+        run: |
+          export NODE_PATH="$(npm root -g)"
+          bash tests/e2e/stand.sh run
+      - name: Підсумок
+        if: always()
+        run: cat /tmp/e2e/summary.md >> "$GITHUB_STEP_SUMMARY" || true
+      - name: Журнали й скріни
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-${{ strategy.job-index }}
+          path: |
+            /tmp/e2e/
+            /tmp/*.png
+          retention-days: 7
+          if-no-files-found: ignore

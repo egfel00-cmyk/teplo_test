@@ -186,7 +186,7 @@ const D = '2026-11-12';
   // 9б. 181-я: Водоканал прийняв, ХТМ — ні: під табло гарячої — по адресатах, коротко
   await p.evaluate(() => { const s = JSON.parse(localStorage.getItem('teplo.v1')); const w = s.water.find(x => x.id === 'w4'); w.sent = { vk: '2026-11-12' }; w.vkConf = { at: 1, via: 'cab' }; w.updatedAt = Date.now(); s.updatedAt = Date.now(); localStorage.setItem('teplo.v1', JSON.stringify(s)); });
   await p.goto(U + '#water-hot'); await p.reload(); await wait(1500);
-  ok('9б. гаряча: «Водоканал прийняв 12 листопада · ХТМ — ще ні» під табло', /Водоканал прийняв 12 листопада 2026 · ХТМ — ще ні/.test(await txt('[data-key=wmeter-h1]')), await txt('[data-key=wmeter-h1]'));
+  ok('9б. гаряча: «Водоканал прийняв 12 листопада · ХТМ — ще ні» під табло', /Водоканал прийняв 12 листопада · ХТМ — ще ні/.test(await txt('[data-key=wmeter-h1]')), await txt('[data-key=wmeter-h1]'));
 
   // 9в. 182-а: запис історії гарячої — ті самі окремі рядки ХТМ і Водоканалу (не старий блок «Куди передати»)
   await p.goto(U + '#wrec-w4'); await p.reload(); await wait(1800);

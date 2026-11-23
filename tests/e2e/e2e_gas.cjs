@@ -49,20 +49,20 @@ let pass = 0, fail = 0; const ok = (n, c, i) => { console.log((c ? '  OK  ' : ' 
   // своя ціна — у «Постачальники й тарифи» квартири (UI — e2e_prov); тут — що історія перераховується
   s = await st(); s.places[0].gasPrice = 9.99; await p.evaluate(v => localStorage.setItem('teplo.v1', JSON.stringify(v)), s); await p.reload(); await p.waitForTimeout(400); await go('gas'); s = await st();
   ok('своя ціна газу — у квартири, історія перерахувалась (15 × 9,99 ≈ 150)', s.places[0].gasPrice === 9.99 && /150/.test(await p.textContent('[data-key=gas-history]')));
-  await go('place-main'); await p.click('#g-heat'); await p.waitForTimeout(250); s = await st();
+  await go('pvp-gas-main'); await p.click('#g-heat'); await p.waitForTimeout(250); s = await st();
   ok('газовий котел — у квартири', s.places[0].gasHeat === true);
   await go('stats'); await click('[data-key=kind-gas]', 300); ok('статистика газу', !!(await p.$('[data-key=estats-kpi]')));
   await go('save'); await click('[data-key=kind-gas]', 300); ok('економія газу: поради', !!(await p.$('[data-key=gsave-tips]')) && /на газі/.test(await p.textContent('h1')));
   // без рахунку — підказка замість SMS
-  await go('place-main'); await p.fill('#ema-' + m.id, ''); await p.press('#ema-' + m.id, 'Tab'); await p.waitForTimeout(300); await go('gas');
+  await go('pvp-gas-main'); await p.fill('#ema-' + m.id, ''); await p.press('#ema-' + m.id, 'Tab'); await p.waitForTimeout(300); await go('gas');
   ok('без рахунку — поле рахунку Нафтогазу перед передачею + gas.ua за EIC, без кнопки SMS', !!(await p.$('[data-key=gas-acc-ask] #esa-' + m.id)) && !(await p.$('[data-key=dest-grm-sms]'))
     && (await p.getAttribute('[data-key=gd-find]', 'href')) === 'https://gas.ua/uk/home/find-account');
   // два рахунки й EIC: 10 цифр у рахунку Нафтогазу — це Газмережі (переносимо), EIC — великими без пробілів
-  const setF = async (sel, v) => { await go('place-main'); await p.fill(sel, v); await p.press(sel, 'Tab'); await p.waitForTimeout(350); };
+  const setF = async (sel, v) => { await go('pvp-gas-main'); await p.fill(sel, v); await p.press(sel, 'Tab'); await p.waitForTimeout(350); };
   await setF('#ema-' + m.id, '1320012345'); s = await st(); let gm = s.places[0].meters.find(x => x.id === m.id);
   ok('10 цифр у «рахунку Нафтогазу» → рахунок Газмереж, тост', gm.grm === '1320012345' && gm.account === '' && /рахунок Газмереж/.test(await p.textContent('#toast-host')), gm);
-  await go('place-main');
-  ok('поля газу (налаштування — на екрані квартири): Газмережі, Нафтогаз, EIC — з «Копіювати»', (await p.$$('#emg-' + m.id + ', #ema-' + m.id + ', #eme-' + m.id)).length === 3 && !!(await p.$('[data-key=copy-emg-' + m.id + ']')) && !!(await p.$('[data-key=copy-eme-' + m.id + ']'))
+  await go('pvp-gas-main');
+  ok('поля газу (налаштування — на екрані постачальника газу квартири): Газмережі, Нафтогаз, EIC — з «Копіювати»', (await p.$$('#emg-' + m.id + ', #ema-' + m.id + ', #eme-' + m.id)).length === 3 && !!(await p.$('[data-key=copy-emg-' + m.id + ']')) && !!(await p.$('[data-key=copy-eme-' + m.id + ']'))
     && (await p.inputValue('#emg-' + m.id)) === '1320012345');
   await go('gas');
   ok('сторінка газу: без рахунків під назвою, без «Змінити»; «Налаштування лічильника» з рахунками й ціною — акордеоном', !/Рахунок/.test(await p.textContent('[data-key=emeter-' + m.id + '] .mbox-h')) && !(await p.$('[data-key=emeter-' + m.id + '] [data-act=eedit]')) && !!(await p.$('[data-key=emeter-' + m.id + '] details.mbox-set #ea-grm, [data-key=emeter-' + m.id + '] details.mbox-set [data-ef=grm]')) && !!(await p.$('[data-key=emeter-' + m.id + '] details.mbox-set #g-price')));
@@ -90,7 +90,7 @@ let pass = 0, fail = 0; const ok = (n, c, i) => { console.log((c ? '  OK  ' : ' 
   ok('з 28.11 — без SMS 4647, «Куб» лишається', !(await p.$('[data-key=dest-grm-sms]')) && !(await p.$('[data-key=gd-sms-end]')) && !!(await p.$('[data-key=dest-grm-kub]')));
   // з 28.11 ніде немає «4647»: сторінка газу з налаштуваннями лічильника, екран квартири, «Куди передати» без показань, довідка
   const no4647 = async () => !/4647/.test(await p.evaluate(() => document.getElementById('main').textContent));
-  const gPage = await no4647(); await go('place-main'); const gPlace = await no4647();
+  const gPage = await no4647(); await go('pvp-gas-main'); const gPlace = await no4647();
   s = await st(); s.mrecs = s.mrecs.filter(r => r.kind !== 'gas' || r.base); await p.evaluate(v => localStorage.setItem('teplo.v1', JSON.stringify(v)), s); await p.reload(); await p.waitForTimeout(400);
   // 07.11: підказку «приймають з 1 по 5 число» з «Куди передати» прибрано — строк і так у плашці (1.12: «до 5 грудня» — за 4 дні до кінця; раніше — лише смужка, 141-а)
   await go('gas'); const gLead = await no4647() && /грудня/.test(await p.textContent('[data-key=where-gas] .dest-h .pill'));

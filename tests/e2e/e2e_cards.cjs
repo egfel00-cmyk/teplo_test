@@ -42,19 +42,23 @@ const U = 'http://127.0.0.1:8013/';
   ok('гаряча вода: під назвою без рахунку, прізвища й №; без «Змінити»; «Налаштування лічильника» — акордеоном', !/123456|Шевченко|№/.test(hh) && !(await p.$('[data-key=wmeter-h1] [data-act=wedit]')) && !!(await p.$('[data-key=wmeter-h1-set]')), hh);
   ok('біля «Передано 15 жовтня» — «Копіювати» 175', (await p.getAttribute('[data-key=wmeter-h1-copy]', 'data-text')) === '175');
   await go('place-main'); await p.click('[data-key=pv-set-h1] summary'); await p.waitForTimeout(200);
-  ok('екран квартири: налаштування водоміра (№, код у боті — з «Копіювати») і рахунок/прізвище Водоканалу', !!(await p.$('[data-key=copy-w-acc]')) && !!(await p.$('[data-key=copy-w-sn]')) && !!(await p.$('[data-key=copy-mbsn-h1]')) && !!(await p.$('[data-key=copy-mbi-h1]')));
+  ok('екран квартири: налаштування водоміра — № з «Копіювати»', !!(await p.$('[data-key=copy-mbsn-h1]')));
+  // 180-я: рахунок, прізвище й код водоміра в боті Водоканалу — на екрані постачальника води квартири (#pvp-water-<квартира>), не на екрані квартири
+  await go('pvp-water-main');
+  ok('екран постачальника води: рахунок Водоканалу й код водоміра в боті — з «Копіювати», поле прізвища', !!(await p.$('[data-key=copy-w-acc]')) && !!(await p.$('[data-key=copy-mbi-h1]')) && !!(await p.$('#w-sn')));
+  await go('place-main'); if (!(await p.$('[data-key=pv-set-h1][open]'))) { await p.click('[data-key=pv-set-h1] summary'); await p.waitForTimeout(200); }
   await p.click('[data-key=copy-mbsn-h1]'); await p.waitForTimeout(300);
   ok('«Копіювати» № → у буфері 20123456', (await p.evaluate(() => navigator.clipboard.readText())) === '20123456');
-  await p.click('[data-key=copy-w-acc]'); await p.waitForTimeout(300);
+  await go('pvp-water-main'); await p.click('[data-key=copy-w-acc]'); await p.waitForTimeout(300);
   ok('«Копіювати» особовий рахунок → у буфері 123456, тост «Скопійовано»', (await p.evaluate(() => navigator.clipboard.readText())) === '123456' && /Скопійовано/i.test(await txt('#toast-host')));
   // тепло: особовий рахунок ХТМ — у налаштуваннях лічильника на екрані квартири
   await go('heat');
   ok('опалення: заголовок «Опалення», під ним модель, без «Змінити»; налаштування — акордеоном', /Опалення/.test(await txt('[data-key=home-last] .mbox-t b')) && /SHARKY/.test(await txt('[data-key=home-last] .mbox-sub')) && !!(await p.$('[data-key=home-last-set]')));
-  await go('place-main'); await p.click('[data-key=pv-set-heat] summary'); await p.waitForTimeout(200);
+  await go('pvp-heat-main');   // 180-я: рахунок ХТМ — на екрані постачальника тепла квартири
   await p.fill('#p-hacc', '12345678'); await p.press('#p-hacc', 'Tab'); await p.waitForTimeout(500);
   let s = await st();
   ok('опалення: рахунок ХТМ збережено в квартирі; під назвою на сторінці — не показуємо', s.places[0].meter.account === '12345678', s.places[0].meter);
-  if (!(await p.isVisible('[data-key=copy-p-hacc]'))) { await p.click('[data-key=pv-set-heat] summary'); await p.waitForTimeout(200); }
+  if (!(await p.isVisible('[data-key=copy-p-hacc]'))) { await go('pvp-heat-main'); }
   await p.click('[data-key=copy-p-hacc]'); await p.waitForTimeout(300);
   ok('«Копіювати» рахунок ХТМ → 12345678', (await p.evaluate(() => navigator.clipboard.readText())) === '12345678');
   await go('heat'); ok('сторінка опалення: рахунку під назвою немає', !/12345678/.test(await txt('[data-key=home-last] .mbox-h')));

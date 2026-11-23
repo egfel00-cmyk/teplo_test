@@ -204,6 +204,15 @@
   строкой на экране квартиры, «Прибрати» снимает `heatAsk`. e2e `e2e_mremove`.
 - WebFetch peredai.com.ua из **scheduled-сессии** — `PROVENANCE_REQUIRED` (запрос разрешения некому подтвердить): бой сверять CI-скринами (приложение грузит живой сайт) и git log.
 
+## e2e-стенд одним запуском і CI (184-я)
+- `bash tests/e2e/stand.sh up` — чиста база `/tmp/teplo_data` (config.php: sqlite, admins boss@/pvadmin@, стенди, SMTP 2526 — **без коми в кінці**: e2e_apple й інші дописують ключі
+  заміною «];»), сайт 8013, ХТМ 8099 (копія в /tmp/htm-mock), Водоканал 8098, LocalBot 8096, обленерго 8097; `fixtures` — картинки ocr-lab (шрифти DSEG — `npm pack dseg`), кадри камери,
+  /tmp/two_meters.jpg, gas_low, bill_photo/oct.pdf; `run [імена]` — тести зі `tests/e2e/ci.list` (`!` — чиста база перед тестом, `ЗМІННА=знач e2e_x арг…`, `# …` — пропуск з причиною;
+  `SHARD=k/n`) → `/tmp/e2e/summary.md`, `results.tsv`, `<тест>.log`. Новий e2e — рядком у ci.list (формат «  OK »/« FAIL », «ok»/«FAIL», «✓»/«✗» — розпізнається).
+- CI — `.github/workflows/web.yml` (кожен пуш у main, що чіпає сайт): `unit` (php -l, **web/dist зібрано з web/src**, server/share/htm_svc/vk_svc/htm_cab, js, design_lint) і `e2e` 4 частинами
+  (PHP 8.3, Playwright 1.63, Summary + артефакт журналів і скрінів). Подивитись без входу: `gh run list -w Web`, `gh run view <id> --log-failed` (публічний репозиторій).
+- Екрани постачальників (180-я) — тести, що шукали поля на `#place-<квартира>`, тепер ідуть на `#pvp-<вид>-<квартира>` (рахунки, «опалення» котлом/пільгою, рахунок ХТМ).
+
 ## Распознавание фото
 - По умолчанию — в браузере человека, бесплатно: web/ocr/engine.js (PaddleOCR PP-OCRv4 + onnxruntime-web WASM, ~30 МБ, грузится
   при первом «з фото»), разбор текста в поля — web/src/ocrparse.js (подписи Gcal/m³/HT/CT/ON/EH, «тени» сегментов,
@@ -212,6 +221,9 @@
   (teplo.vid), в базе `user_id = 0` + `vid`, в /admin подпись «Гость XXXX», как в журнале; копия гостя — в `f._gsrv` (не `_srv`: фото истории у гостя локальные). Ключ Claude в «Настройках» необязателен: если задан,
   вошедших распознаёт нейросеть на сервере (платно).
 
+- **184-я (фото /admin 22.11)**: сіре вікно КСМ з відблиском — `growWin` (дорощування кандидата по темній смузі, лише коли впевненого вікна немає, беремо лише `goodDrum`);
+  рядок цифр без вікна — `l.tint` (колір друку поруч, `lineTint`) → розкладка гаряча/холодна; `fromOcr`: рядок-обрізок вікна («0017» при «00176») — вікно.
+  Фото з /admin у сесію — смугами через zoom Chrome (README лабораторії, розділ 184-ї); лабораторія — `box.cjs` (ручне вікно), `grow.cjs`.
 - **167-я (17.11, @ayo_kvv)**: окно барабана за бликом стекла (серое, ролики бледные) — второй, мягкий поиск окон (`drumsPx(…, soft)`), только если уверенного
   барабана и крупной строки цифр нет; точка ЖК, которую OCR теряет («8039.26» → «803926»), — `lcdDot` → `l.dot` (цифр после точки), читает только `elec.js`.
   Лаборатория — `tests/ocr-lab/README.md` (раздел «Окно за бликом и точка ЖК»), `dot.cjs`. В /admin «зона не подписана» у однозонного света было неправдой —
@@ -623,7 +635,7 @@
   «по умолчанию» при `prvOf(k) === null`, — через `perDefOk`. Лимит `prov` — 600/ч с IP (4–5 квартир + «Кому платите» + мобильный CGNAT). e2e `e2e_period` (route 429, `clock`).
 - `findDrums` = `drumsPrep` (холст ≤ 1280, `getImageData` — главный поток) + `drumsPx` (чистый счёт). `read()` зовёт `findDrumsAsync`: воркер — **сам engine.js**
   (`new Worker(document.currentScript.src)`, внизу файла `onmessage`, когда нет `document`) — в `drumsPx` и его помощниках не должно быть `document`/холстов/`ORT`.
-  Запасной путь — тот же поток (`TEPLO_DRUMS_SYNC`, нет Worker, ошибка, 10 с). Меняешь engine.js — `engine.js?v=` (сейчас 23) в recognize.js и app.js. e2e `e2e_drumsw`.
+  Запасной путь — тот же поток (`TEPLO_DRUMS_SYNC`, нет Worker, ошибка, 10 с). Меняешь engine.js — `engine.js?v=` (сейчас 24) в recognize.js и app.js. e2e `e2e_drumsw`.
 - e2e_login: ответ `/api/auth/forgot` подставляется (`mail_off`, `mail_failed`) — `smtp_host` в локальном config.php больше не мешает.
 
 ## iOS-приложение (154-я) — `apps/ios`, сборка в облаке

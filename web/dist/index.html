@@ -11765,7 +11765,7 @@ fieldset { min-inline-size: 0; }
   function dateParts(ymd) { var p = ymd.split('-'); return { y: +p[0], m: +p[1], d: +p[2] }; }
   function fmtDate(ymd, withYear) { if (!ymd) return ''; var p = dateParts(ymd); return p.d + ' ' + I.MONTHS[S.lang][p.m - 1] + (withYear ? ' ' + p.y : ''); }
   /** 184-я: «{a}–{b}» одного місяця — «1–5 грудня», не «1 грудня–5 грудня»; різних — повністю. */
-  function fmtSpan(a, b) { var x = dateParts(a), y = dateParts(b); return x.y === y.y && x.m === y.m ? { a: String(x.d), b: fmtDate(b) } : { a: fmtDate(a), b: fmtDate(b) }; }
+  function fmtSpan(a, b) { if (!a || !b) return { a: fmtDate(a), b: fmtDate(b) }; var x = dateParts(a), y = dateParts(b); return x.y === y.y && x.m === y.m ? { a: String(x.d), b: fmtDate(b) } : { a: fmtDate(a), b: fmtDate(b) }; }
   /** Дата без року в цьому році (і в межах пів року), інакше з роком. */
   function fmtNear(ymd) { if (!ymd) return ''; var n = Math.abs(R.daysBetween(today(), ymd)); return fmtDate(ymd, ymd.slice(0, 4) !== today().slice(0, 4) && n > 60); }
   function addDays(ymd, n) { var p = dateParts(ymd); var d = new Date(Date.UTC(p.y, p.m - 1, p.d + n)); return d.getUTCFullYear() + '-' + ('0' + (d.getUTCMonth() + 1)).slice(-2) + '-' + ('0' + d.getUTCDate()).slice(-2); }
