@@ -6274,7 +6274,7 @@ fieldset { min-inline-size: 0; }
       uc_w_ready: "Внесено, залишилось передати",
       uc_w_due: "Передати до {d}",
       uc_w_next: "Наступна передача до {d}",
-      mo_line: "Передано {n} з {m} за {mm}", mo_all: "Усе передано за {mm}", mo_title: "Передача за {mm}", mo_nm: "{n} з {m}", mo_sum: "передано", mo_sum_all: "усе передано — до наступного місяця нічого не треба", mo_none: "За {mm} передавати поки нічого — вікна приймання ще не відкрились.", mo_later: "Не цього місяця",
+      mo_line: "Передано {n} з {m} за {mm}", mo_all: "Усе передано за {mm}", mo_title: "Передача за {mm}", mo_nm: "{n} з {m}", mo_sum: "передано", mo_sum_all: "усе передано — до наступного місяця нічого не треба", mo_none: "За {mm} передавати поки нічого — вікна приймання ще не відкрились.", mo_later: "Не цього місяця", mo_org2: "{a} і {b}",
       uc_w_last: "внесено {d}", uc_sent_d: "Передано {d}", uc_sent_d_s: "передано {d}", uc_heat_ok_d: "Прийнято ХТМ {d}", uc_heat_ok_d_s: "прийнято ХТМ {d}",
       uc_w_nolast: "ще не вносили", uc_first: "Внести перші показання",
       uc_add_w: "Внести показання: {k}",
@@ -7752,7 +7752,7 @@ fieldset { min-inline-size: 0; }
       uc_w_ready: "Внесено, осталось передать",
       uc_w_due: "Передать до {d}",
       uc_w_next: "Следующая передача до {d}",
-      mo_line: "Передано {n} из {m} за {mm}", mo_all: "Всё передано за {mm}", mo_title: "Передача за {mm}", mo_nm: "{n} из {m}", mo_sum: "передано", mo_sum_all: "всё передано — до следующего месяца ничего не нужно", mo_none: "За {mm} передавать пока нечего — окна приёма ещё не открылись.", mo_later: "Не в этом месяце",
+      mo_line: "Передано {n} из {m} за {mm}", mo_all: "Всё передано за {mm}", mo_title: "Передача за {mm}", mo_nm: "{n} из {m}", mo_sum: "передано", mo_sum_all: "всё передано — до следующего месяца ничего не нужно", mo_none: "За {mm} передавать пока нечего — окна приёма ещё не открылись.", mo_later: "Не в этом месяце", mo_org2: "{a} и {b}",
       uc_w_last: "внесено {d}", uc_sent_d: "Передано {d}", uc_sent_d_s: "передано {d}", uc_heat_ok_d: "Принято ХТМ {d}", uc_heat_ok_d_s: "принято ХТМ {d}",
       uc_w_nolast: "ещё не вносили", uc_first: "Внести первые показания",
       uc_add_w: "Внести показания: {k}",
@@ -9470,7 +9470,7 @@ fieldset { min-inline-size: 0; }
     _engine: function (onPct) {
       var base = String(root.TEPLO_API).replace(/\/api\/?$/, '') + '/web/ocr/';
       var script = root.TeploOCR ? Promise.resolve() : (this._script = this._script || new Promise(function (ok, bad) {
-        var s = document.createElement('script'); s.src = base + 'engine.js?v=23'; s.onload = ok; s.onerror = function () { bad(fail('engine_failed')); }; document.head.appendChild(s);
+        var s = document.createElement('script'); s.src = base + 'engine.js?v=24'; s.onload = ok; s.onerror = function () { bad(fail('engine_failed')); }; document.head.appendChild(s);
       }));
       return script.then(function () { return root.TeploOCR.load(base, onPct); }).catch(function (e) { if (e && e.code) throw e; throw fail('engine_failed'); });
     },
@@ -9819,6 +9819,8 @@ fieldset { min-inline-size: 0; }
       }
       return dr;
     }
+    // 184-я (КСМ у /admin): рядок тексту — обрізаний початок вікна («0017» при вікні «00176», 0,98): вікно бачило більше — йому й віримо
+    if (ln && dr && dr.value !== null && !dr.half && dr.digits.length >= 5 && ln.digits.length < dr.digits.length && dr.digits.indexOf(ln.digits) === 0) return dr;
     if (ln && dr && dr.value === ln.value) { ln.sure = true; ln.drum = true; ln.red = dr.red; ln.frac = dr.frac; ln.tint = dr.tint; ln.lead = dr.lead && !dr.sure; return ln; }
     // начало окна под бликом: строка текста («175432») видит то же, что окно, — окну и верим (оно отделило м³ от дробей)
     if (dr && dr.lead && dr.value !== null) return dr;
@@ -9845,7 +9847,7 @@ fieldset { min-inline-size: 0; }
         var lead0 = dg.charAt(0) === '0';
         if (nearSerial || (dg.length === 7 && !lead0) || (dg.length >= 8 && !lead0)) return;   // заводський №
         var score = (l.h || 1) * (l.score || 1) * (lead0 ? 1.5 : 1) * (dg.length >= 5 ? 1.2 : 1);
-        if (!best || score > best.score) best = { digits: dg, score: score };
+        if (!best || score > best.score) best = { digits: dg, score: score, tint: l.tint || null };
       });
     });
     if (!best) return null;
@@ -9856,7 +9858,7 @@ fieldset { min-inline-size: 0; }
       if (!cands.length) return null;
       value = Math.min.apply(null, cands);
     } else value = Number(d.length >= 8 ? d.slice(0, d.length - 3) : d.slice(0, Math.min(5, d.length)));
-    return { value: value, digits: d, sure: p !== null };
+    return { value: value, digits: d, sure: p !== null, tint: best.tint };
   }
 
   /**
@@ -11762,6 +11764,10 @@ fieldset { min-inline-size: 0; }
   function today() { return S.demoToday || R.ymd(new Date()); }
   function dateParts(ymd) { var p = ymd.split('-'); return { y: +p[0], m: +p[1], d: +p[2] }; }
   function fmtDate(ymd, withYear) { if (!ymd) return ''; var p = dateParts(ymd); return p.d + ' ' + I.MONTHS[S.lang][p.m - 1] + (withYear ? ' ' + p.y : ''); }
+  /** 184-я: «{a}–{b}» одного місяця — «1–5 грудня», не «1 грудня–5 грудня»; різних — повністю. */
+  function fmtSpan(a, b) { var x = dateParts(a), y = dateParts(b); return x.y === y.y && x.m === y.m ? { a: String(x.d), b: fmtDate(b) } : { a: fmtDate(a), b: fmtDate(b) }; }
+  /** Дата без року в цьому році (і в межах пів року), інакше з роком. */
+  function fmtNear(ymd) { if (!ymd) return ''; var n = Math.abs(R.daysBetween(today(), ymd)); return fmtDate(ymd, ymd.slice(0, 4) !== today().slice(0, 4) && n > 60); }
   function addDays(ymd, n) { var p = dateParts(ymd); var d = new Date(Date.UTC(p.y, p.m - 1, p.d + n)); return d.getUTCFullYear() + '-' + ('0' + (d.getUTCMonth() + 1)).slice(-2) + '-' + ('0' + d.getUTCDate()).slice(-2); }
   function dayOfMonth(ymd, day) { var p = dateParts(ymd); return p.y + '-' + ('0' + p.m).slice(-2) + '-' + ('0' + day).slice(-2); }
   function nextMonthDay(ymd, day) { var p = dateParts(ymd); var d = new Date(Date.UTC(p.y, p.m, day)); return d.getUTCFullYear() + '-' + ('0' + (d.getUTCMonth() + 1)).slice(-2) + '-' + ('0' + d.getUTCDate()).slice(-2); }
@@ -12241,7 +12247,7 @@ fieldset { min-inline-size: 0; }
   function hotHalf(r) {
     if (!r || r.base || r.own || !r.sent || wsentK(r, 'hot')) return '';
     var v = r.sent.vk, h = r.sent.htm; if (!v === !h) return '';
-    var who = function (to, d, conf) { return t(conf ? 'wm_half_ok' : 'wm_half_sent', { w: t(to === 'vk' ? 'gw_vk_n' : 'gw_htm_n'), d: fmtDate(d, true) }); };
+    var who = function (to, d, conf) { return t(conf ? 'wm_half_ok' : 'wm_half_sent', { w: t(to === 'vk' ? 'gw_vk_n' : 'gw_htm_n'), d: fmtNear(d) }); };
     return v ? who('vk', v, r.vkConf) + ' · ' + t('wm_half_no', { w: t('gw_htm_n') }) : who('htm', h, r.htmConf) + ' · ' + t('wm_half_no', { w: t('gw_vk_n') });
   }
   function wsentK(r, kind) {
@@ -14546,7 +14552,7 @@ fieldset { min-inline-size: 0; }
     if (!im || !window.TEPLO_API) return;
     var id = im.getAttribute('data-hph'); FOC.busy = true;
     var js = window.TeploOCR ? Promise.resolve() : (FOC.js = FOC.js || new Promise(function (ok, bad) {
-      var sc = document.createElement('script'); sc.src = String(window.TEPLO_API).replace(/\/api\/?$/, '') + '/web/ocr/engine.js?v=23'; sc.onload = ok; sc.onerror = bad; document.head.appendChild(sc);
+      var sc = document.createElement('script'); sc.src = String(window.TEPLO_API).replace(/\/api\/?$/, '') + '/web/ocr/engine.js?v=24'; sc.onload = ok; sc.onerror = bad; document.head.appendChild(sc);
     }));
     js.then(function () { return window.TeploOCR._drums(im); }).then(function (cs) {
       var c = (cs || [])[0], iw = im.naturalWidth, ih = im.naturalHeight, k = Math.min(1, 2400 / Math.max(iw, ih));
@@ -14929,10 +14935,10 @@ fieldset { min-inline-size: 0; }
   function sStatus(k) {
     var ms = smeters(k), w = swin(k), recs = ms.map(function (m) { return einWin(m.id, w); });
     if (w.free) return { st: '', tone: '' };   // 144-а: свій постачальник без строку — статус лише «Передано/Оплачено» (cardSent)
-    if (!w.open) return { st: t('ue_next', { a: fmtDate(w.next), b: fmtDate(w.to) }), tone: '', from: w.next };
+    if (!w.open) return { st: t('ue_next', fmtSpan(w.next, w.to)), tone: '', from: w.next };
     if (recs.every(function (r) { return ssent(k, r); })) return { st: t('uc_w_sent'), tone: 'ok' };
     if (recs.every(Boolean)) return { st: t('uc_w_ready'), tone: 'due', due: w.to, ready: true };
-    return { st: t('ue_due', { a: fmtDate(w.from), b: fmtDate(w.to) }), tone: w.daysLeft <= 1 ? 'warn' : 'due', due: w.to };
+    return { st: t('ue_due', fmtSpan(w.from, w.to)), tone: w.daysLeft <= 1 ? 'warn' : 'due', due: w.to };
   }
   function elecStatus() { return sStatus('elec'); }
   function sCard(k) {
@@ -15028,7 +15034,7 @@ fieldset { min-inline-size: 0; }
   /** «Куди передати»: світло — Харківобленерго (застосунок, Viber-бот, кол-центр); газ — кабінет Газмереж, SMS 4647, «Куб», кол-центр. */
   function ssendPanel(k, recs) {
     var md = SK[k].mod, w = swin(k), ms = smeters(k), have = recs && recs.filter(Boolean).length ? recs : null;
-    var due = w.open ? t('ed_due', { d: fmtDate(w.to) }) : t('ed_due_next', { a: fmtDate(w.next), b: fmtDate(w.to) });
+    var due = w.open ? t('ed_due', { d: fmtDate(w.to) }) : t('ed_due_next', fmtSpan(w.next, w.to));
     var allSent = have && ms.every(function (m) { return ssent(k, have.filter(function (x) { return x && x.meter === m.id; })[0]); });
     var body = '', chans, ids = have ? have.filter(Boolean).map(function (r) { return r.id; }).join(',') : '';
     // 150-а: рахунки й показання — рядками «Оплати» свого постачальника (cpRow): спершу хто ви (рахунок), далі цифри
@@ -15644,7 +15650,7 @@ fieldset { min-inline-size: 0; }
     if (EN.k !== k) EN = enFresh(k);
     var date = EN.date || today(), back = EN.back || backTo(SK[k].page), w = swin(k, date);
     // 143-я (власник 14.11): замість «Наступне приймання — … Внести можна й зараз» — смужка вікна, як на картках квартир (текст — для читача екрана)
-    var h = '<h1>' + esc(tk(k, 'en_title')) + '</h1>' + (pstrip(k, null, 'in-entry') || '') + '<p class="sr" data-key="en-lead">' + esc(tk(k, w.open ? 'en_lead_open' : 'en_lead_closed', { a: fmtDate(w.open ? w.from : w.next), b: fmtDate(w.to) })) + '</p>' +
+    var h = '<h1>' + esc(tk(k, 'en_title')) + '</h1>' + (pstrip(k, null, 'in-entry') || '') + '<p class="sr" data-key="en-lead">' + esc(tk(k, w.open ? 'en_lead_open' : 'en_lead_closed', fmtSpan(w.open ? w.from : w.next, w.to))) + '</p>' +
       enPhotoBox(k) + '<div class="field f-date"><label for="en-date">' + esc(t('wn_date')) + '</label><div class="ctl"><input id="en-date" type="date" value="' + esc(date) + '" max="' + today() + '"></div></div>' + '<form id="en-form" novalidate><div class="rd-box" data-key="en-box">';
     ms.forEach(function (m) {
       var p = eprev(m.id, date, EN.skip), vs = EN.vals[m.id] || {};
@@ -19074,7 +19080,7 @@ fieldset { min-inline-size: 0; }
     if (p.id !== S.placeId) { switchPlace(p.id); WX.key = ''; p = place(); }
     var s = moSum(p), later = s.rows.filter(function (r) { return !r.act; });
     var row = function (r) {
-      var pk = r.kind === 'cold' ? 'water' : r.kind, org = pvpKinds(p).indexOf(pk) >= 0 ? (pvpSum(p, pk).org || '') : '';
+      var pk = r.kind === 'cold' ? 'water' : r.kind, org = r.kind === 'hot' && gwKh() ? t('mo_org2', { a: t('gw_htm_n'), b: t('gw_vk_n') }) : pvpKinds(p).indexOf(pk) >= 0 ? (pvpSum(p, pk).org || '') : '';   // 184-я: гаряча Харкова — обом
       var href = r.kind === 'heat' ? 'heat' : r.kind === 'hot' || r.kind === 'cold' ? 'water-' + r.kind : r.kind;
       var st = String(r.st || ''); st = st ? st.charAt(0).toUpperCase() + st.slice(1) : '';
       return '<li><a class="ios-row pvp-row mo-row' + (r.done ? ' done' : '') + '" href="#' + href + '" data-key="mo-row-' + r.kind + '"><span class="ios-ico pvp-ico" aria-hidden="true">' + ico(KINDS[r.kind].icon, 22, KINDS[r.kind].cls) + '</span>' +
@@ -19084,7 +19090,7 @@ fieldset { min-inline-size: 0; }
     var h = '<p class="rec-back"><a href="#home" data-key="mo-back">← ' + esc(t('nav_home')) + '</a></p><h1 class="mo-h">' + esc(t('mo_title', { mm: moName() })) + '</h1>' +
       (places().length > 1 ? '<p class="small muted mo-pl" data-key="mo-place">' + esc(placeLabel(p)) + (p.address ? ' · ' + esc(addrShort(p.address)) : '') + '</p>' : '');
     if (s.m) h += '<section class="panel mo-sum" data-key="mo-sum"><p class="mo-big"><b data-key="mo-n">' + esc(t('mo_nm', { n: s.n, m: s.m })) + '</b><span>' + esc(t(s.n === s.m ? 'mo_sum_all' : 'mo_sum')) + '</span></p>' +
-      '<span class="mo-bar" role="img" aria-label="' + esc(t('mo_line', { n: s.n, m: s.m, mm: moName() })) + '">' + s.act.map(function (r) { return '<i class="' + (r.done ? 'on' : '') + '"></i>'; }).join('') + '</span></section>' +
+      '<span class="mo-bar" role="img" aria-label="' + esc(t('mo_line', { n: s.n, m: s.m, mm: moName() })) + '">' + s.act.map(function (r, i) { return '<i class="' + (i < s.n ? 'on' : '') + '"></i>'; }).join('') + '</span></section>' +
       '<div class="ios-groups mo-gs"><section class="ios-sec"><ul class="ios-list pvp-list mo-list" data-key="mo-list">' + s.act.map(row).join('') + '</ul></section>';
     else h += '<div class="ios-groups mo-gs"><p class="muted" data-key="mo-none">' + esc(t('mo_none', { mm: moName() })) + '</p>';
     if (later.length) h += '<section class="ios-sec"><h2 class="ios-sh">' + esc(t('mo_later')) + '</h2><ul class="ios-list pvp-list mo-list later" data-key="mo-later">' + later.map(row).join('') + '</ul></section>';

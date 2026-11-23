@@ -22,6 +22,8 @@ const U = 'http://127.0.0.1:8013/';
   await p.click('[data-key=mo-main]'); await p.waitForTimeout(700);
   ok('дотик → екран #month-main «Передача за листопад»', /#month-main$/.test(p.url()) && (await txt('h1')) === 'Передача за листопад', [p.url(), await txt('h1')]);
   ok('…«1 з 4 передано», смужка: 4 частини, заповнена одна', (await txt('[data-key=mo-n]')) === '1 з 4' && (await p.$$('.mo-bar i')).length === 4 && (await p.$$('.mo-bar i.on')).length === 1, await txt('[data-key=mo-sum]'));
+  ok('…смужка заповнюється зліва (184-я: не посередині, за порядком рядків)', await p.$eval('.mo-bar i:first-child', e => e.classList.contains('on')));
+  ok('…гаряча Харкова — «ХТМ і Водоканал» (обом, не лише ХТМ)', (await txt('[data-key=mo-row-hot] .mo-org')) === 'ХТМ і Водоканал', await txt('[data-key=mo-row-hot] .mo-org'));
   const rows = await p.$$eval('[data-key=mo-list] .mo-row', l => l.map(a => a.getAttribute('data-key')));
   ok('…рядки цього місяця в порядку видів: світло, гаряча, холодна, газ', JSON.stringify(rows) === JSON.stringify(['mo-row-elec', 'mo-row-hot', 'mo-row-cold', 'mo-row-gas']), rows);
   ok('…холодна — «Передано цього місяця» зеленим і галочка', (await p.$eval('[data-key=mo-row-cold]', a => a.classList.contains('done') && !!a.querySelector('.mo-done'))) && /Передано цього місяця/.test(await txt('[data-key=mo-st-cold]')) && (await p.$eval('[data-key=mo-st-cold]', e => e.classList.contains('ok'))), await txt('[data-key=mo-st-cold]'));

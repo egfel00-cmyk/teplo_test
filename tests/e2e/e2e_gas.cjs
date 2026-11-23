@@ -25,7 +25,7 @@ let pass = 0, fail = 0; const ok = (n, c, i) => { console.log((c ? '  OK  ' : ' 
   ok('сторінка газу з барабаном', !!(await p.$('[data-key=emeter-' + m.id + '] .gdrum')));
   await go('home'); ok('головна: карточка «Газ»', !!(await p.$('[data-key=card-gas]')));
   await click('[data-key=card-gas-add]', 400);
-  ok('введення: «Зараз приймають: 1 листопада–5 листопада»', (await hash()) === '#gnew' && /1 листопада.*5 листопада/.test(await p.textContent('#main')));
+  ok('введення: «Зараз приймають: 1–5 листопада»', (await hash()) === '#gnew' && /Зараз приймають: 1–5 листопада/.test(await p.textContent('#main')));
   const f = '#en-' + m.id + '-all';
   await p.fill(f, '1170'); await p.waitForTimeout(200); await click('[data-key=en-save]', 250);
   ok('менше минулого — блок', /Менше, ніж минулого разу \(1180\)/.test(await p.textContent('#eh-' + m.id + '-all')) && !(await st()).mrecs.some(r => !r.base && r.kind === 'gas'));

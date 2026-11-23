@@ -984,6 +984,87 @@
     });
   }
 
+  /* 184-я (MASTER СВК-1,5-1 у /admin, 22.11: вікна не знайдено, показання — рядком «00459604», а «гаряча чи холодна» — навмання):
+   * колір друку циферблата над і під рядком цифр (4–9 цифр, без слів) — як faceTint вікна. → 'red' | 'blue' | null */
+  function lineTint(src, l) {
+    var h = l.h, a = l.angle || 0, ca = Math.cos(a), sa = Math.sin(a), cx = l.x + l.w / 2, cy = l.y + l.h / 2, RR = Math.hypot(l.w / 2, 3.4 * h) + 2;
+    var x0 = Math.max(0, Math.floor(cx - RR)), y0 = Math.max(0, Math.floor(cy - RR)), x1 = Math.min(src.width, Math.ceil(cx + RR)), y1 = Math.min(src.height, Math.ceil(cy + RR));
+    if (x1 - x0 < 8 || y1 - y0 < 8) return null;
+    var gw = x1 - x0, px = src.getContext('2d').getImageData(x0, y0, gw, y1 - y0).data, st = Math.max(1, h / 8), nr = 0, nb = 0;
+    for (var u = -l.w / 2; u <= l.w / 2; u += st) for (var sg = -1; sg <= 1; sg += 2) for (var v = 0.9 * h; v <= 3.2 * h; v += st) {
+      var X = Math.round(cx + u * ca - sg * v * sa) - x0, Y = Math.round(cy + u * sa + sg * v * ca) - y0; if (X < 0 || Y < 0 || X >= gw || Y >= y1 - y0) continue;
+      var q = (Y * gw + X) * 4, r = px[q], g = px[q + 1], b = px[q + 2], m = Math.max(r, g, b), n = Math.min(r, g, b);
+      if (m - n < 0.3 * m || m < 60) continue;
+      if (r === m && r - g > 45 && r - b > 35) nr++; else if (b === m && b - r > 40) nb++;
+    }
+    return nr > 2.5 * nb && nr >= 12 ? 'red' : nb > 2.5 * nr && nb >= 12 ? 'blue' : null;
+  }
+
+  /* 184-я (КСМ ВК-1,5-3 у /admin, 22.11): вікно сіре й велике, ролики — світлі тонкі цифри; пошук вікон дав коротке криве «вікно» на «1 7 6»
+   * (кут −6° замість +3°, нижче ряду) — читалось «76». Розпізнавач по правильному вікну читає «00176» (0,91–0,99). Тут: від центру кандидата
+   * під кількома кутами — суцільна темна смуга (стовпці темні посередині), її межі по висоті; кут — де смуга найвужча відносно довжини.
+   * Червоні ролики — з того краю, де стовпці червоні (r − max(g, b) > 35); яскраво-червона рамка вікна — не «темне».
+   * → кандидат {cx, cy, w, h, angle, redBox, tint} у пікселях фото або null. Лише запасний шлях: упевненого вікна немає. */
+  function growWin(src, d, hint) {
+    var H0 = Math.max(10, Math.min(d.h, d.w)), R = Math.max(d.w * 2.2, H0 * 6), RV = H0 * 2.2, RR = Math.hypot(R, RV) + 2;
+    var x0 = Math.max(0, Math.floor(d.cx - RR)), y0 = Math.max(0, Math.floor(d.cy - RR)), x1 = Math.min(src.width, Math.ceil(d.cx + RR)), y1 = Math.min(src.height, Math.ceil(d.cy + RR));
+    var gw = x1 - x0, gh = y1 - y0; if (gw < 16 || gh < 16) return null;
+    var px = src.getContext('2d').getImageData(x0, y0, gw, gh).data, s = Math.max(1, Math.round(H0 / 24));
+    var lum = function (q) { return 0.299 * px[q] + 0.587 * px[q + 1] + 0.114 * px[q + 2]; };
+    var at = function (X, Y) { X = Math.round(X) - x0; Y = Math.round(Y) - y0; return X < 0 || Y < 0 || X >= gw || Y >= gh ? -1 : (Y * gw + X) * 4; };
+    var reddish = function (q) { var r = px[q], m = Math.max(px[q + 1], px[q + 2]); return r - m > 20 && r > 1.3 * m ? 1 : 0; };   // і темно-бордові ролики (93,54,61)
+    var pct = function (a, f) { if (!a.length) return -1; a.sort(function (x, y) { return x - y; }); return a[Math.min(a.length - 1, Math.floor(a.length * f))]; };
+    var norm = function (a) { a = ((a % Math.PI) + Math.PI) % Math.PI; return a > Math.PI / 2 ? a - Math.PI : a; };
+    var base = [norm(d.angle || 0), 0]; if (hint !== null && hint !== undefined) base.push(norm(hint));
+    var angs = []; base.forEach(function (b0) { for (var da = -0.12; da <= 0.1201; da += 0.03) angs.push(b0 + da); });
+    var nu = Math.floor(R / s), nv = Math.floor(RV / s), best = null;
+    // вікно — темніше за циферблат поруч: 30-й перцентиль яскравості смуги (фон роликів, не цифри) < 0,75 медіани над і під нею (відблиск зліва — теж вікно)
+    angs.forEach(function (a) {
+      var ca = Math.cos(a), sa = Math.sin(a), P = function (u, v) { return at(d.cx + u * ca - v * sa, d.cy + u * sa + v * ca); };
+      var inC = new Uint8Array(2 * nu + 1), face = [];
+      for (var iu = -nu; iu <= nu; iu++) {
+        var bd = [], ou = [], u = iu * s;
+        for (var v = -0.45 * H0; v <= 0.45 * H0; v += s) { var q = P(u, v); if (q >= 0) bd.push(lum(q)); }
+        for (var sg = -1; sg <= 1; sg += 2) for (var v2 = 1.15 * H0; v2 <= 1.55 * H0; v2 += s) { var q2 = P(u, sg * v2); if (q2 >= 0) ou.push(lum(q2)); }
+        var b30 = pct(bd, 0.3), om = pct(ou, 0.5); if (b30 < 0 || om < 0) continue;
+        if (b30 < 0.75 * om) inC[iu + nu] = 1; if (iu % 3 === 0) face.push(om);
+      }
+      if (!inC[nu]) return;
+      var ok = function (i) { if (i < 0 || i >= inC.length) return false; if (inC[i]) return true; var n = 0; for (var j = i - 2; j <= i + 2; j++) if (j >= 0 && j < inC.length && inC[j]) n++; return n >= 3; };
+      var ua = nu, ub = nu; while (ok(ua - 1)) ua--; while (ok(ub + 1)) ub++;
+      var fm = pct(face, 0.5), row = function (iv) { var a2 = []; for (var iu = ua; iu <= ub; iu += 2) { var q = P((iu - nu) * s, iv * s); if (q >= 0) a2.push(lum(q)); } return pct(a2, 0.3) < 0.75 * fm; };
+      var va = 0, vb = 0; while (va > -nv && (row(va - 1) || row(va - 2))) va--; while (vb < nv && (row(vb + 1) || row(vb + 2))) vb++;
+      var len = (ub - ua) * s, hgt = (vb - va + 1) * s;
+      if (va <= -nv || vb >= nv || hgt < H0 * 0.6 || len < hgt * 2.5 || len > hgt * 14) return;
+      var qv = len / hgt; if (!best || qv > best.q) best = { q: qv, a: a, ua: ua, ub: ub, va: va, vb: vb, ca: ca, sa: sa };
+    });
+    if (!best) return null;
+    var B = best, pt = function (u, v) { return { x: d.cx + u * B.ca - v * B.sa, y: d.cy + u * B.sa + v * B.ca }; };
+    var rc = [], vm0 = B.va + Math.round((B.vb - B.va) * 0.2), vm1 = B.vb - Math.round((B.vb - B.va) * 0.2);
+    for (var iu = B.ua; iu <= B.ub; iu++) { var n = 0, k = 0; for (var iv = vm0; iv <= vm1; iv++) { var p0 = pt((iu - nu) * s, iv * s), q = at(p0.x, p0.y); if (q < 0) continue; n++; k += reddish(q); } rc.push(n ? k / n : 0); }
+    // червоні ролики — суцільний червоний відрізок біля краю (до пів висоти сірого краю рамки до нього; пропуски — світлі штрихи цифр)
+    var redRun = function (rev) { var skip = Math.round(0.5 * (B.vb - B.va + 1)), i = 0, n = rc.length, g = function (j) { return rc[rev ? n - 1 - j : j] >= 0.35; };
+      while (i < skip && i < n && !g(i)) i++; if (i >= n || !g(i)) return { a: 0, n: 0 };
+      var G = Math.max(2, Math.round(0.25 * (B.vb - B.va + 1))), j = i, last = i;   // світлий штрих цифри — до чверті висоти без червоного
+      while (j < n && j - last <= G) { if (g(j)) last = j; j++; } return { a: i, n: last - i + 1 }; };
+    var rR = redRun(true), rL = redRun(false), minR = Math.round(0.5 * (B.vb - B.va + 1));
+    if (rL.n < minR) rL = { a: 0, n: 0 }; if (rR.n < minR) rR = { a: 0, n: 0 };   // смужка рамки збоку — не ролики
+    var flip = rL.n > rR.n, rr0 = flip ? rL : rR, rn = rr0.n, tot = rc.length;
+    if (rn > tot * 0.6) rn = 0;   // червоне майже все — це не ролики, а рамка/наклейка
+    var ua2 = B.ua + (flip ? rr0.a + rn : 0), ub2 = B.ub - (flip ? 0 : rr0.a + rn), vc = (B.va + B.vb) / 2 * s, hh = (B.vb - B.va + 1) * s;
+    var c0 = pt(((ua2 + ub2) / 2 - nu) * s, vc), ang = B.a + (flip ? Math.PI : 0), out = { cx: c0.x, cy: c0.y, w: (ub2 - ua2) * s, h: hh, angle: ang, sure: true, score: +B.q.toFixed(3), grown: 1 };
+    if (rn >= 2) { var rcn = pt(((flip ? B.ua + rr0.a + rn / 2 : B.ub - rr0.a - rn / 2) - nu) * s, vc); out.redBox = { cx: rcn.x, cy: rcn.y, w: rn * s, h: hh }; }
+    // колір друку циферблата над і під вікном: червоний — гаряча, синій — холодна
+    var nr = 0, nb = 0;
+    for (var iu2 = B.ua; iu2 <= B.ub; iu2 += 2) for (var sg = -1; sg <= 1; sg += 2) for (var f = 1.2; f <= 3.2; f += 0.25) {
+      var p1 = pt((iu2 - nu) * s, vc + sg * f * hh / 2 + sg * hh / 2), q1 = at(p1.x, p1.y); if (q1 < 0) continue;
+      var r1 = px[q1], g1 = px[q1 + 1], b1 = px[q1 + 2], m1 = Math.max(r1, g1, b1), n1 = Math.min(r1, g1, b1); if (m1 - n1 < 0.3 * m1 || m1 < 60) continue;
+      if (r1 === m1 && r1 - g1 > 45 && r1 - b1 > 35) nr++; else if (b1 === m1 && b1 - r1 > 40) nb++;
+    }
+    out.tint = nr > 2.5 * nb && nr >= 12 ? 'red' : nb > 2.5 * nr && nb >= 12 ? 'blue' : (d.tint || null);
+    return out;
+  }
+
   /** Наклон кадра по уверенно прочитанным надписям с буквами (по модулю π: среднее удвоенных углов); меньше двух надписей — null. */
   function textAngle(lines) {
     var sx = 0, sy = 0, n = 0;
@@ -1083,7 +1164,7 @@
    */
   function read(file, opts) {
     var t0 = Date.now(), src, lines = [], all = !!(opts && opts.all), fast = !!(opts && opts.fast);
-    var drums = [];
+    var drums = [], seeds = [], onTextF = null;
     var bigDigits = function () { return lines.some(function (l) { return digits(l.text) >= 4 && l.h >= src.height * 0.03 && !/[A-Za-zА-Яа-я]{3}/.test(l.text); }); };
     return toCanvas(file, fast ? FAST_PX : 0).then(function (c) { src = c; return (fast ? nap() : null); }).then(function () { return detect(src, fast ? { max: FAST_DET } : undefined); }).then(function (boxes) {
       return readBoxes(src, boxes, 0, 0, 1, lines, false, fast).then(function () {
@@ -1092,7 +1173,7 @@
         if (fast && opts.drums === false) return [];
         try { return findDrumsAsync(src, textAngle(lines)).catch(function () { return []; }); } catch (e) { return []; }
       }).then(function (cands) {
-        cands = cands || []; var ch = Promise.resolve();
+        cands = cands || []; seeds = cands; var ch = Promise.resolve();
         // «окно» поверх надписи с буквами, и прочитаны те же цифры, что в надписи («ДСТУ EN 62052-1» под красным светодиодом
         // электросчётчика → «06205»), — это надпись, не ролики. Перевёрнутый барабан текст читает буквами («EELOO»), но цифры другие.
         var share4 = function (a1, b1) { for (var i4 = 0; i4 + 4 <= a1.length; i4++) if (b1.indexOf(a1.substr(i4, 4)) >= 0) return true; return false; };
@@ -1111,6 +1192,7 @@
           var kwh = lines.some(function (l) { var lx = l.x + l.w / 2, ly = l.y + l.h / 2; return Math.abs(lx - d.cx) <= R && Math.abs(ly - d.cy) <= R && /[кk][вb][тt]|kwh|[іi1]м[пn]|imp/i.test(l.text); });
           if (!kwh || (a.length < 2 && !(a.length === 1 && strong))) return null;
           a.sort(function (x, y) { return x - y; }); return a[a.length >> 1]; };
+        onTextF = onText;
         if (fast) cands = opts.drums === false ? [] : cands.slice(0, 2);   // тепло з камери: вікна барабана на ЖК — секунди марно (вода/світло/газ — до двох)
         var readC = function (cs) { var p = Promise.resolve(); cs.forEach(function (d) { p = p.then(fast ? nap : null).then(function () { if (all ? drums.filter(goodDrum).length >= 4 : drums.some(goodDrum)) return null; return readDrum(src, d, upNear(d)).then(function (r) { if (r.text && !onText(r)) drums.push(r); }); }); }); return p; };
         ch = readC(cands);
@@ -1123,6 +1205,12 @@
           });
         });
         return ch;
+      }).then(function () {
+        // 184-я: упевненого вікна немає — дорощуємо 1–2 найкращі кандидати по темній смузі (growWin) і читаємо ще раз; беремо лише впевнене (goodDrum)
+        if (fast || drums.some(goodDrum)) return null;
+        var hA = textAngle(lines), gs = [];
+        seeds.filter(function (d) { return d.sure; }).slice(0, 2).forEach(function (d) { try { var g = growWin(src, d, hA); if (g && !gs.some(function (o) { return Math.hypot(o.cx - g.cx, o.cy - g.cy) < g.h; })) gs.push(g); } catch (e) { /* без дорощування */ } });
+        return gs.reduce(function (ch3, g) { return ch3.then(function () { if (drums.some(goodDrum)) return null; return readDrum(src, g, null).then(function (r) { if (r.text && goodDrum(r) && !(onTextF && onTextF(r))) { r.grown = 1; drums.unshift(r); } }); }); }, Promise.resolve());
       }).then(function () {
         if (fast || drums.some(goodDrum)) return null;   // водомер прочитан — приближать нечего
         // Нет крупной строки цифр? Цифры экрана мелкие в кадре (снято издалека, серый ЖК без подсветки) —
@@ -1151,6 +1239,8 @@
       });
     }).then(function () {
       lines.forEach(function (l) { try { var k = lcdDot(src, l); if (k) l.dot = k; } catch (e) { /* без крапки */ } });
+      // 184-я: рядок цифр водоміра без вікна — колір друку поруч (гаряча / холодна)
+      if (!fast) lines.forEach(function (l) { var t = String(l.text || ''), dg = t.replace(/\D/g, ''); if (dg.length < 4 || dg.length > 9 || /[A-Za-zА-Яа-яІіЇїЄє]{2}/.test(t) || l.lcd) return; try { var tn = lineTint(src, l); if (tn) l.tint = tn; } catch (e) { /* без кольору */ } });
       var w = src.width, h = src.height; free(src); return { lines: lines, drums: drums, w: w, h: h, ms: Date.now() - t0 };
     });
   }
@@ -1160,7 +1250,7 @@
     return ch.then(function () { return out.join(' | '); }); }); }
   function _rec(file, b) { return toCanvas(file).then(function (c) { return Promise.all([recognize(c, b, 0), recognize(c, b, 0.3), recognize(c, b, 0.55)]); }).then(function (r) { return r.map(function (x) { return x.text + '(' + x.score.toFixed(2) + ')'; }).join(' | '); }); }
   function _readDrums(file) { var src, out = []; return toCanvas(file).then(function (c) { src = c; var ch = Promise.resolve(); findDrums(c).slice(0, 2).forEach(function (d) { ch = ch.then(function () { return readDrum(src, d); }).then(function (r) { out.push(r); }); }); return ch; }).then(function () { free(src); return out; }); }
-  root.TeploOCR = { _recBox: function (file, blk, m) { var src; return toCanvas(file).then(function (c) { src = c; return recTensor(drumTensor(src, blk, m)); }).then(function (r) { free(src); return r; }); }, _det: _det, _rec: _rec, _readDrums: _readDrums, _drums: function (file, hint, soft) { return toCanvas(file).then(function (c) { var r = findDrums(c, hint, soft); free(c); return r; }); }, _dot: function (file, l) { return toCanvas(file).then(function (c) { var r = lcdDot(c, l, true); free(c); return r; }); }, load: load, read: read, ready: function () { return !!REC; }, worker: function () { return !!REC && PROXY; } };
+  root.TeploOCR = { _grow: function (file, d, hint) { return toCanvas(file).then(function (c) { var g = growWin(c, d, hint); if (!g) { free(c); return null; } return readDrum(c, g, null).then(function (r) { free(c); return { g: g, r: { text: r.text, red: r.red, score: r.score, votes: r.votes, cells: r.cells, tint: r.tint } }; }); }); }, _recBox: function (file, blk, m) { var src; return toCanvas(file).then(function (c) { src = c; return recTensor(drumTensor(src, blk, m)); }).then(function (r) { free(src); return r; }); }, _det: _det, _rec: _rec, _readDrums: _readDrums, _drums: function (file, hint, soft) { return toCanvas(file).then(function (c) { var r = findDrums(c, hint, soft); free(c); return r; }); }, _dot: function (file, l) { return toCanvas(file).then(function (c) { var r = lcdDot(c, l, true); free(c); return r; }); }, load: load, read: read, ready: function () { return !!REC; }, worker: function () { return !!REC && PROXY; } };
   // 153-я: цей самий файл воркером (findDrumsAsync) — лише пошук вікон барабана над пікселями; холстів і нейромережі тут немає
   if (typeof document === 'undefined' && typeof importScripts === 'function' && typeof root.postMessage === 'function') {
     root.onmessage = function (e) {

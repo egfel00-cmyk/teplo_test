@@ -623,6 +623,10 @@
   function today() { return S.demoToday || R.ymd(new Date()); }
   function dateParts(ymd) { var p = ymd.split('-'); return { y: +p[0], m: +p[1], d: +p[2] }; }
   function fmtDate(ymd, withYear) { if (!ymd) return ''; var p = dateParts(ymd); return p.d + ' ' + I.MONTHS[S.lang][p.m - 1] + (withYear ? ' ' + p.y : ''); }
+  /** 184-я: «{a}–{b}» одного місяця — «1–5 грудня», не «1 грудня–5 грудня»; різних — повністю. */
+  function fmtSpan(a, b) { var x = dateParts(a), y = dateParts(b); return x.y === y.y && x.m === y.m ? { a: String(x.d), b: fmtDate(b) } : { a: fmtDate(a), b: fmtDate(b) }; }
+  /** Дата без року в цьому році (і в межах пів року), інакше з роком. */
+  function fmtNear(ymd) { if (!ymd) return ''; var n = Math.abs(R.daysBetween(today(), ymd)); return fmtDate(ymd, ymd.slice(0, 4) !== today().slice(0, 4) && n > 60); }
   function addDays(ymd, n) { var p = dateParts(ymd); var d = new Date(Date.UTC(p.y, p.m - 1, p.d + n)); return d.getUTCFullYear() + '-' + ('0' + (d.getUTCMonth() + 1)).slice(-2) + '-' + ('0' + d.getUTCDate()).slice(-2); }
   function dayOfMonth(ymd, day) { var p = dateParts(ymd); return p.y + '-' + ('0' + p.m).slice(-2) + '-' + ('0' + day).slice(-2); }
   function nextMonthDay(ymd, day) { var p = dateParts(ymd); var d = new Date(Date.UTC(p.y, p.m, day)); return d.getUTCFullYear() + '-' + ('0' + (d.getUTCMonth() + 1)).slice(-2) + '-' + ('0' + d.getUTCDate()).slice(-2); }
@@ -1102,7 +1106,7 @@
   function hotHalf(r) {
     if (!r || r.base || r.own || !r.sent || wsentK(r, 'hot')) return '';
     var v = r.sent.vk, h = r.sent.htm; if (!v === !h) return '';
-    var who = function (to, d, conf) { return t(conf ? 'wm_half_ok' : 'wm_half_sent', { w: t(to === 'vk' ? 'gw_vk_n' : 'gw_htm_n'), d: fmtDate(d, true) }); };
+    var who = function (to, d, conf) { return t(conf ? 'wm_half_ok' : 'wm_half_sent', { w: t(to === 'vk' ? 'gw_vk_n' : 'gw_htm_n'), d: fmtNear(d) }); };
     return v ? who('vk', v, r.vkConf) + ' · ' + t('wm_half_no', { w: t('gw_htm_n') }) : who('htm', h, r.htmConf) + ' · ' + t('wm_half_no', { w: t('gw_vk_n') });
   }
   function wsentK(r, kind) {
@@ -3407,7 +3411,7 @@
     if (!im || !window.TEPLO_API) return;
     var id = im.getAttribute('data-hph'); FOC.busy = true;
     var js = window.TeploOCR ? Promise.resolve() : (FOC.js = FOC.js || new Promise(function (ok, bad) {
-      var sc = document.createElement('script'); sc.src = String(window.TEPLO_API).replace(/\/api\/?$/, '') + '/web/ocr/engine.js?v=23'; sc.onload = ok; sc.onerror = bad; document.head.appendChild(sc);
+      var sc = document.createElement('script'); sc.src = String(window.TEPLO_API).replace(/\/api\/?$/, '') + '/web/ocr/engine.js?v=24'; sc.onload = ok; sc.onerror = bad; document.head.appendChild(sc);
     }));
     js.then(function () { return window.TeploOCR._drums(im); }).then(function (cs) {
       var c = (cs || [])[0], iw = im.naturalWidth, ih = im.naturalHeight, k = Math.min(1, 2400 / Math.max(iw, ih));
@@ -3790,10 +3794,10 @@
   function sStatus(k) {
     var ms = smeters(k), w = swin(k), recs = ms.map(function (m) { return einWin(m.id, w); });
     if (w.free) return { st: '', tone: '' };   // 144-а: свій постачальник без строку — статус лише «Передано/Оплачено» (cardSent)
-    if (!w.open) return { st: t('ue_next', { a: fmtDate(w.next), b: fmtDate(w.to) }), tone: '', from: w.next };
+    if (!w.open) return { st: t('ue_next', fmtSpan(w.next, w.to)), tone: '', from: w.next };
     if (recs.every(function (r) { return ssent(k, r); })) return { st: t('uc_w_sent'), tone: 'ok' };
     if (recs.every(Boolean)) return { st: t('uc_w_ready'), tone: 'due', due: w.to, ready: true };
-    return { st: t('ue_due', { a: fmtDate(w.from), b: fmtDate(w.to) }), tone: w.daysLeft <= 1 ? 'warn' : 'due', due: w.to };
+    return { st: t('ue_due', fmtSpan(w.from, w.to)), tone: w.daysLeft <= 1 ? 'warn' : 'due', due: w.to };
   }
   function elecStatus() { return sStatus('elec'); }
   function sCard(k) {
@@ -3889,7 +3893,7 @@
   /** «Куди передати»: світло — Харківобленерго (застосунок, Viber-бот, кол-центр); газ — кабінет Газмереж, SMS 4647, «Куб», кол-центр. */
   function ssendPanel(k, recs) {
     var md = SK[k].mod, w = swin(k), ms = smeters(k), have = recs && recs.filter(Boolean).length ? recs : null;
-    var due = w.open ? t('ed_due', { d: fmtDate(w.to) }) : t('ed_due_next', { a: fmtDate(w.next), b: fmtDate(w.to) });
+    var due = w.open ? t('ed_due', { d: fmtDate(w.to) }) : t('ed_due_next', fmtSpan(w.next, w.to));
     var allSent = have && ms.every(function (m) { return ssent(k, have.filter(function (x) { return x && x.meter === m.id; })[0]); });
     var body = '', chans, ids = have ? have.filter(Boolean).map(function (r) { return r.id; }).join(',') : '';
     // 150-а: рахунки й показання — рядками «Оплати» свого постачальника (cpRow): спершу хто ви (рахунок), далі цифри
@@ -4505,7 +4509,7 @@
     if (EN.k !== k) EN = enFresh(k);
     var date = EN.date || today(), back = EN.back || backTo(SK[k].page), w = swin(k, date);
     // 143-я (власник 14.11): замість «Наступне приймання — … Внести можна й зараз» — смужка вікна, як на картках квартир (текст — для читача екрана)
-    var h = '<h1>' + esc(tk(k, 'en_title')) + '</h1>' + (pstrip(k, null, 'in-entry') || '') + '<p class="sr" data-key="en-lead">' + esc(tk(k, w.open ? 'en_lead_open' : 'en_lead_closed', { a: fmtDate(w.open ? w.from : w.next), b: fmtDate(w.to) })) + '</p>' +
+    var h = '<h1>' + esc(tk(k, 'en_title')) + '</h1>' + (pstrip(k, null, 'in-entry') || '') + '<p class="sr" data-key="en-lead">' + esc(tk(k, w.open ? 'en_lead_open' : 'en_lead_closed', fmtSpan(w.open ? w.from : w.next, w.to))) + '</p>' +
       enPhotoBox(k) + '<div class="field f-date"><label for="en-date">' + esc(t('wn_date')) + '</label><div class="ctl"><input id="en-date" type="date" value="' + esc(date) + '" max="' + today() + '"></div></div>' + '<form id="en-form" novalidate><div class="rd-box" data-key="en-box">';
     ms.forEach(function (m) {
       var p = eprev(m.id, date, EN.skip), vs = EN.vals[m.id] || {};
@@ -7935,7 +7939,7 @@
     if (p.id !== S.placeId) { switchPlace(p.id); WX.key = ''; p = place(); }
     var s = moSum(p), later = s.rows.filter(function (r) { return !r.act; });
     var row = function (r) {
-      var pk = r.kind === 'cold' ? 'water' : r.kind, org = pvpKinds(p).indexOf(pk) >= 0 ? (pvpSum(p, pk).org || '') : '';
+      var pk = r.kind === 'cold' ? 'water' : r.kind, org = r.kind === 'hot' && gwKh() ? t('mo_org2', { a: t('gw_htm_n'), b: t('gw_vk_n') }) : pvpKinds(p).indexOf(pk) >= 0 ? (pvpSum(p, pk).org || '') : '';   // 184-я: гаряча Харкова — обом
       var href = r.kind === 'heat' ? 'heat' : r.kind === 'hot' || r.kind === 'cold' ? 'water-' + r.kind : r.kind;
       var st = String(r.st || ''); st = st ? st.charAt(0).toUpperCase() + st.slice(1) : '';
       return '<li><a class="ios-row pvp-row mo-row' + (r.done ? ' done' : '') + '" href="#' + href + '" data-key="mo-row-' + r.kind + '"><span class="ios-ico pvp-ico" aria-hidden="true">' + ico(KINDS[r.kind].icon, 22, KINDS[r.kind].cls) + '</span>' +
@@ -7945,7 +7949,7 @@
     var h = '<p class="rec-back"><a href="#home" data-key="mo-back">← ' + esc(t('nav_home')) + '</a></p><h1 class="mo-h">' + esc(t('mo_title', { mm: moName() })) + '</h1>' +
       (places().length > 1 ? '<p class="small muted mo-pl" data-key="mo-place">' + esc(placeLabel(p)) + (p.address ? ' · ' + esc(addrShort(p.address)) : '') + '</p>' : '');
     if (s.m) h += '<section class="panel mo-sum" data-key="mo-sum"><p class="mo-big"><b data-key="mo-n">' + esc(t('mo_nm', { n: s.n, m: s.m })) + '</b><span>' + esc(t(s.n === s.m ? 'mo_sum_all' : 'mo_sum')) + '</span></p>' +
-      '<span class="mo-bar" role="img" aria-label="' + esc(t('mo_line', { n: s.n, m: s.m, mm: moName() })) + '">' + s.act.map(function (r) { return '<i class="' + (r.done ? 'on' : '') + '"></i>'; }).join('') + '</span></section>' +
+      '<span class="mo-bar" role="img" aria-label="' + esc(t('mo_line', { n: s.n, m: s.m, mm: moName() })) + '">' + s.act.map(function (r, i) { return '<i class="' + (i < s.n ? 'on' : '') + '"></i>'; }).join('') + '</span></section>' +
       '<div class="ios-groups mo-gs"><section class="ios-sec"><ul class="ios-list pvp-list mo-list" data-key="mo-list">' + s.act.map(row).join('') + '</ul></section>';
     else h += '<div class="ios-groups mo-gs"><p class="muted" data-key="mo-none">' + esc(t('mo_none', { mm: moName() })) + '</p>';
     if (later.length) h += '<section class="ios-sec"><h2 class="ios-sh">' + esc(t('mo_later')) + '</h2><ul class="ios-list pvp-list mo-list later" data-key="mo-later">' + later.map(row).join('') + '</ul></section>';

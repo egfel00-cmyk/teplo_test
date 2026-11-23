@@ -159,6 +159,8 @@
       }
       return dr;
     }
+    // 184-я (КСМ у /admin): рядок тексту — обрізаний початок вікна («0017» при вікні «00176», 0,98): вікно бачило більше — йому й віримо
+    if (ln && dr && dr.value !== null && !dr.half && dr.digits.length >= 5 && ln.digits.length < dr.digits.length && dr.digits.indexOf(ln.digits) === 0) return dr;
     if (ln && dr && dr.value === ln.value) { ln.sure = true; ln.drum = true; ln.red = dr.red; ln.frac = dr.frac; ln.tint = dr.tint; ln.lead = dr.lead && !dr.sure; return ln; }
     // начало окна под бликом: строка текста («175432») видит то же, что окно, — окну и верим (оно отделило м³ от дробей)
     if (dr && dr.lead && dr.value !== null) return dr;
@@ -185,7 +187,7 @@
         var lead0 = dg.charAt(0) === '0';
         if (nearSerial || (dg.length === 7 && !lead0) || (dg.length >= 8 && !lead0)) return;   // заводський №
         var score = (l.h || 1) * (l.score || 1) * (lead0 ? 1.5 : 1) * (dg.length >= 5 ? 1.2 : 1);
-        if (!best || score > best.score) best = { digits: dg, score: score };
+        if (!best || score > best.score) best = { digits: dg, score: score, tint: l.tint || null };
       });
     });
     if (!best) return null;
@@ -196,7 +198,7 @@
       if (!cands.length) return null;
       value = Math.min.apply(null, cands);
     } else value = Number(d.length >= 8 ? d.slice(0, d.length - 3) : d.slice(0, Math.min(5, d.length)));
-    return { value: value, digits: d, sure: p !== null };
+    return { value: value, digits: d, sure: p !== null, tint: best.tint };
   }
 
   /**

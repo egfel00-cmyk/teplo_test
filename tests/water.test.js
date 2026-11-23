@@ -179,5 +179,17 @@ console.log('\nВодомір знімали — оценка:');
   ok('пять цифр «10234» не трогаем', r3 && r3.value === 10234, r3);
 }
 
+// 184-я (КСМ ВК-1,5-3 і MASTER у /admin, 22.11): рядок «0017» — обрізаний початок вікна «00176» (0,98, один голос) — віримо вікну;
+// показання лише рядком («00459604», вікна немає) — колір друку циферблата поруч (tint рядка) іде в розкладку гаряча/холодна
+{
+  const ks = { text: '00176', red: '237', redSure: '2', score: 0.983, votes: 1, cells: 12, tint: 'red' };
+  const r1 = W.fromOcr({ lines: [{ text: '0017', h: 48, score: 0.95 }, { text: '6', h: 32 }], drums: [{ text: '180', score: 0.41, votes: 1, cells: 3 }, ks] }, null);
+  ok('КСМ: «0017» рядком + вікно «00176» → 176, не 17', r1 && r1.value === 176 && r1.drum, r1);
+  const r2 = W.fromOcr({ lines: [{ text: '00459604', h: 60, score: 0.97, tint: 'blue' }], drums: [] }, null);
+  ok('MASTER рядком «00459604» → 459, колір рядка blue', r2 && r2.value === 459 && r2.tint === 'blue', r2);
+  const a = W.assign([{ lines: [{ text: '00459604', h: 60, score: 0.97, tint: 'blue' }], drums: [] }], [{ id: 'h1', kind: 'hot' }, { id: 'c1', kind: 'cold' }], {});
+  ok('…розкладка: холодна за кольором (why tint), не гаряча навмання', a.by.c1 && a.by.c1.value === 459 && a.by.c1.why === 'tint' && !a.by.h1, a.by);
+}
+
 console.log(`\nИтог: ${pass} OK, ${fail} FAIL`);
 process.exit(fail ? 1 : 0);
