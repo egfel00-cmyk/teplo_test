@@ -167,6 +167,55 @@ final class VkCab {
   }
   private static function isInd(string $name): bool { return (bool)preg_match('/newindication/i', $name); }
   private static function isDate(string $name): bool { return (bool)preg_match('/dataindication|dateindication|date_?ind/i', $name); }
+  /** Кімната водоміра: на сайті — у номері («№ Хкух 847046», «№ Гс/у 79109406»), у застосунку — назва («Кухня», «Ванна», «Санвузол», «Туалет»).
+   *  → kitchen | bath | wc | null. Той самий розбір — vkcRoom у app.js. */
+  public static function room(string $s): ?string {
+    $s = mb_strtolower($s);
+    if (preg_match('/№\s*([^\d)]{1,12})\d/u', $s, $m)) { $r = self::room1($m[1]); if ($r) return $r; }   // спершу — позначка в номері сайту
+    return self::room1($s);
+  }
+  private static function room1(string $s): ?string {
+    if (preg_match('/кух/u', $s)) return 'kitchen';
+    if (preg_match('/туал|убор|\bwc\b|т\/у/u', $s)) return 'wc';
+    if (preg_match('/с\/у|с\.у\.|санв|сануз|ванн|душ|bath/u', $s)) return 'bath';
+    return null;
+  }
+  /** Кімнати сумісні: невідома з будь-якою; санвузол і туалет — майже те саме (на сайті «с/у»). 2 — та сама, 1 — сумісна, 0 — ні. */
+  private static function roomFit(?string $a, ?string $b): int { if ($a === null || $b === null) return 1; if ($a === $b) return 2; return in_array($a, ['bath', 'wc'], true) && in_array($b, ['bath', 'wc'], true) ? 1 : 0; }
+  /** Хто з наших водомірів який на сайті (strict, 181-я): ще не зіставлені items (i => item з ключем room, value, kind) ↔ вільні лічильники сайту.
+   *  1) та сама кімната й вид, по одному з обох боків; 2) сумісні (невідома кімната) — по одному з обох боків; 3) вид — за останніми показаннями сайту
+   *  (до 3 водомірів: перестановка, де всі наші ≥ останніх на сайті й сума різниць найменша, і друга за нею помітно гірша). → [i => key] */
+  public static function pick(array $items, array $meters, array $used = []): array {
+    $map = []; $free = fn() => array_values(array_filter($meters, fn($c) => !isset($used[$c['key']])));
+    $kOk = fn($it, $c) => !$c['kind'] || !$it['kind'] || $c['kind'] === $it['kind'];
+    foreach ([2, 1] as $need) for ($ch = true; $ch;) {
+      $ch = false;
+      foreach ($items as $i => $it) {
+        if (isset($map[$i])) continue;
+        $cand = array_values(array_filter($free(), fn($c) => $kOk($it, $c) && self::roomFit($it['room'], $c['room'] ?? null) >= $need && ($need === 1 || $it['room'] !== null)));
+        if (count($cand) !== 1) continue;
+        $c = $cand[0];
+        $rivals = array_filter($items, fn($y, $j) => !isset($map[$j]) && $kOk($y, $c) && self::roomFit($y['room'], $c['room'] ?? null) >= $need && ($need === 1 || $y['room'] !== null), ARRAY_FILTER_USE_BOTH);
+        if (count($rivals) !== 1) continue;
+        $map[$i] = $c['key']; $used[$c['key']] = 1; $ch = true;
+      }
+    }
+    foreach (['cold', 'hot'] as $k) {
+      $mine = array_keys(array_filter($items, fn($y, $j) => !isset($map[$j]) && $y['kind'] === $k && is_numeric($y['value']), ARRAY_FILTER_USE_BOTH));
+      $th = array_values(array_filter($free(), fn($c) => $c['kind'] === $k && $c['prev'] !== null));
+      if (!$mine || count($mine) !== count($th) || count($mine) > 3) continue;
+      $best = null; $second = INF;
+      foreach (self::perms(range(0, count($th) - 1)) as $p) {
+        $cost = 0.0;
+        foreach ($mine as $n => $i) { $d = (float)$items[$i]['value'] - floor((float)$th[$p[$n]]['prev']); if ($d < 0 || !self::roomFit($items[$i]['room'], $th[$p[$n]]['room'] ?? null)) { $cost = INF; break; } $cost += $d; }
+        if ($best === null || $cost < $best[0]) { if ($best !== null) $second = min($second, $best[0]); $best = [$cost, $p]; } else $second = min($second, $cost);
+      }
+      if ($best === null || !is_finite($best[0]) || $second - $best[0] < 5) continue;
+      foreach ($mine as $n => $i) { $map[$i] = $th[$best[1][$n]]['key']; $used[$th[$best[1][$n]]['key']] = 1; }
+    }
+    return $map;
+  }
+  private static function perms(array $a): array { if (count($a) <= 1) return [$a]; $out = []; foreach ($a as $i => $x) { $r = $a; unset($r[$i]); foreach (self::perms(array_values($r)) as $p) $out[] = array_merge([$x], $p); } return $out; }
   /** Лічильники формы: у каждого поля newIndication — строка (tr или блок) с номером, видом, прошлыми показаниями. */
   private static function meters(DOMXPath $x, array $fields): array {
     $out = [];
@@ -192,7 +241,10 @@ final class VkCab {
         if ($prevDate === null && preg_match('/дат/iu', $hd) && preg_match('/\d{1,2}\.\d{1,2}\.\d{2,4}/', $c, $m)) $prevDate = $m[0];
       }
       if ($serial === null && preg_match_all('/\b[\w\-\/]*\d{5,}[\w\-\/]*\b/u', $all, $mm)) { usort($mm[0], fn($a, $b) => strlen($b) - strlen($a)); $serial = $mm[0][0]; }
-      $out[] = ['key' => $f['name'], 'label' => mb_substr($all, 0, 200), 'cells' => array_slice($cells, 0, 8), 'heads' => array_slice($heads, 0, 8), 'kind' => $kind, 'serial' => $serial, 'prev' => $prev, 'prevDate' => $prevDate, 'el' => $f['el'], 'row' => $row];
+      // 181-я, живий сайт 23.11 (рахунок спільної квартири власника): таблиці немає — блок «Холодна вода (№ Хкух 847046) · дата наступної повірки … р. · 459.123 ·
+      // Передані показання за жовтень 2026, м³: · Вкажіть нові показання…» — останні передані стоять ПЕРЕД підписом (або після двокрапки), кімната — в номері: Хкух, Гс/у
+      if ($prev === null && (preg_match('/(?<![\d.,])(\d+(?:[.,]\d+)?)\s*(?:·\s*)?Передан\p{L}*\s+показ/iu', $all, $m) || preg_match('/Передан\p{L}*\s+показ\p{L}*[^:]{0,60}:\s*(?:·\s*)?(\d+(?:[.,]\d+)?)(?![\d.,])/iu', $all, $m))) $prev = (float)str_replace(',', '.', $m[1]);
+      $out[] = ['key' => $f['name'], 'label' => mb_substr($all, 0, 200), 'cells' => array_slice($cells, 0, 8), 'heads' => array_slice($heads, 0, 8), 'kind' => $kind, 'serial' => $serial, 'room' => self::room($all), 'prev' => $prev, 'prevDate' => $prevDate, 'el' => $f['el'], 'row' => $row];
     }
     return $out;
   }
@@ -205,7 +257,9 @@ final class VkCab {
    *  «Гаряча вода (№ 8221019)» · «дата наступної повірки - 7 лютого 2026 р.» · «Передані показання за листопад 2026, м³: [132.000]» ·
    *  «ПОКАЗАННЯ ЛІЧИЛЬНИКІВ ЗА ПОТОЧНИЙ ПЕРІОД ПРИЙНЯТІ» · «НЕ ПОТРЕБУЮТЬ ДОДАТКОВОЇ ПЕРЕДАЧІ ІНШИМИ СПОСОБАМИ».
    *  → [{kind, serial, value, period (YYYY-MM), accepted, verify (YYYY-MM-DD)}] — по тексту, не по классам (вёрстку мы видели только скрином). */
-  const TITLE_RE = '/(гаряч\p{L}*|горяч\p{L}*|холодн\p{L}*)\s+вод\p{L}*\s*\(\s*№\s*([^\s()]+)\s*\)/iu';
+  // 181-я: на живому номер буває з кімнатою — «(№ Хкух 847046)», «(№ Гс/у 79109406)»: без цього блок прийнятого лічильника «ріс» до всієї форми
+  // (інші заголовки не впізнавались) і брав чуже значення й місяць
+  const TITLE_RE = '/(гаряч\p{L}*|горяч\p{L}*|холодн\p{L}*)\s+вод\p{L}*\s*\(\s*№\s*(?:[^\d\s()]{1,10}\s+)?([^\s()]+)\s*\)/iu';
   public static function done(DOMXPath $x): array {
     $out = []; $seen = []; $all = self::sp((string)($x->query('//body')->item(0)?->textContent ?? ''));
     foreach ($x->query("//body//*[contains(., '№')][not(*[contains(., '№')])]") as $e) {
@@ -216,7 +270,7 @@ final class VkCab {
       for ($i = 0; $i < 8 && $cur->parentNode instanceof DOMElement; $i++) { $cur = $cur->parentNode; if (preg_match_all(self::TITLE_RE, self::sp($cur->textContent)) === 1) $blk = $cur; else break; }
       $bt = self::sp(($blk ?? $t)->textContent);
       $val = null;
-      foreach ($x->query('.//input', $blk ?? $t) as $in) { $v = str_replace(',', '.', trim($in->getAttribute('value'))); if (preg_match('/^\d+(?:\.\d+)?$/', $v)) { $val = $v; break; } }
+      foreach ($x->query(".//input[not(@type='hidden')]", $blk ?? $t) as $in) { $v = str_replace(',', '.', trim($in->getAttribute('value'))); if (preg_match('/^\d+(?:\.\d+)?$/', $v)) { $val = $v; break; } }
       if ($val === null && preg_match('/(?:передан|показан)\p{L}*[^:]{0,60}:\s*(\d+(?:[.,]\d+)?)/iu', $bt, $mv)) $val = str_replace(',', '.', $mv[1]);
       $period = preg_match('/за\s+(\p{L}+)\s+(\d{4})/iu', $bt, $mp) ? self::month($mp[1], $mp[2]) : null;
       $verify = null;
@@ -280,7 +334,7 @@ final class VkCab {
     if (!$ms) { self::diag(['result' => 'changed', 'where' => 'form', 'forms' => self::formsInfo($x2), 'page' => self::pageInfo($x2, $page, $fam, $acc)]); throw new HttpError(424, 'cab_changed', ['human' => self::h('changed')]); }
     return ['x' => $x2, 'form' => $form, 'fields' => $fields, 'meters' => $ms, 'done' => self::done($x2), 'page' => $page];
   }
-  private static function pubMeters(array $ms): array { return array_map(fn($m) => array_intersect_key($m, array_flip(['key', 'label', 'kind', 'serial', 'prev', 'prevDate'])), $ms); }
+  private static function pubMeters(array $ms): array { return array_map(fn($m) => array_intersect_key($m, array_flip(['key', 'label', 'kind', 'serial', 'room', 'prev', 'prevDate'])), $ms); }
   private static function dates(array $fields): array {
     foreach ($fields as $f) if ($f['type'] === 'select' && self::isDate($f['name'])) return array_map(fn($o) => ['v' => $o['v'], 't' => $o['t'], 'sel' => $o['v'] === $f['value']], array_slice($f['opts'], 0, 12));
     return [];
@@ -354,27 +408,46 @@ final class VkCab {
     if (!$c['meters']) return self::already($uid, $acc, $items, $c['done'], $op);
     $byKey = []; foreach ($c['meters'] as $m) $byKey[$m['key']] = $m;
     $digits = fn($s) => preg_replace('/\D/', '', (string)$s); $used = []; $map = [];
-    $miss = function () use ($c) { self::diag(['result' => 'mismatch', 'where' => 'send', 'form' => self::formInfo($c['x'], $c['form'], $c['fields'], $c['meters'])]); return new HttpError(409, 'cab_mismatch', ['human' => self::h('mismatch'), 'meters' => self::pubMeters($c['meters'])]); };
+    // 181-я (живий сайт 23.11): лічильник, чиї показання за період уже прийняті, поля не має — блок «Передані показання за листопад … ПРИЙНЯТІ»;
+    // такий наш водомір не надсилаємо (і не «який який»): за номером, а без номера — якщо він один такого виду лишився без пари
+    $inDig = array_map(fn($m) => $digits($m['serial']), $c['meters']);
+    $acc0 = $strict ? array_values(array_filter($c['done'], fn($b) => $b['accepted'] && $digits($b['serial']) !== '' && !in_array($digits($b['serial']), $inDig, true))) : [];
+    $skip = []; $accUsed = [];
+    $miss = function () use ($c, &$acc0) { self::diag(['result' => 'mismatch', 'where' => 'send', 'form' => self::formInfo($c['x'], $c['form'], $c['fields'], $c['meters'])]); return new HttpError(409, 'cab_mismatch', ['human' => self::h('mismatch'), 'meters' => self::pubMeters($c['meters'])] + ($acc0 ? ['done' => $acc0] : [])); };
     foreach ($items as $i => $it) {
       $sd = ltrim($digits($it['serial']), '0');
+      if ($strict && $sd !== '') foreach ($acc0 as $n => $b) if (!isset($accUsed[$n]) && ltrim($digits($b['serial']), '0') === $sd) { $skip[$i] = $b; $accUsed[$n] = 1; continue 2; }
       $m = $it['key'] !== null ? ($byKey[$it['key']] ?? null) : null;
       if ($strict && $m && isset($used[$m['key']])) $m = null;   // 180-я: два водоміри з тим самим збереженим ключем — шукаємо за номером і видом, а не «змінився список»
       $bad = $m && $sd !== '' && !str_contains($digits($m['label']), $sd);
       if (!$strict) { if (!$m || $bad) throw $miss(); }
       else {
         if ($bad) $m = null;
-        if (!$m && $sd !== '') foreach ($c['meters'] as $x) if (!isset($used[$x['key']]) && str_contains($digits($x['label']), $sd)) { $m = $x; break; }
-        if (!$m && $it['kind']) {
-          $cand = array_values(array_filter($c['meters'], fn($x) => !isset($used[$x['key']]) && $x['kind'] === $it['kind']));
-          if (count($cand) === 1 && count(array_filter($items, fn($y) => $y['kind'] === $it['kind'])) === 1) $m = $cand[0];
-        }
-        if (!$m && count($c['meters']) === 1 && count($items) === 1) $m = $c['meters'][0];
-        if (!$m) { self::diag(['result' => 'which', 'where' => 'send', 'form' => self::formInfo($c['x'], $c['form'], $c['fields'], $c['meters'])]); throw new HttpError(409, 'cab_which', ['human' => self::h('which'), 'meters' => self::pubMeters($c['meters'])]); }
-        if ($m['prev'] !== null && (float)$it['value'] < (float)$m['prev']) { self::diag(['result' => 'less', 'where' => 'send']); throw new HttpError(422, 'cab_less', ['human' => self::h('less', ['n' => $it['name'] ?: $it['value'], 'p' => $m['prev']]), 'item' => $i]); }
+        // номер — лише того ж виду (власник 23.11: «Холодна · Кухня № 796991», а на сайті 796991 — «Гкух», гаряча): інший вид — не він, далі кімната й показання
+        if (!$m && $sd !== '') foreach ($c['meters'] as $x) if (!isset($used[$x['key']]) && str_contains($digits($x['label']), $sd) && (!$x['kind'] || !$it['kind'] || $x['kind'] === $it['kind'])) { $m = $x; break; }
+        if (!$m) continue;   // 181-я: решту — разом, за кімнатою й останніми показаннями (pick)
       }
       if (isset($used[$m['key']])) throw $miss();
       $used[$m['key']] = 1; $map[$i] = $m['key'];
     }
+    if ($strict && count($map) + count($skip) < count($items)) {
+      $rest = []; foreach ($items as $i => $it) if (!isset($map[$i]) && !isset($skip[$i])) $rest[$i] = $it + ['room' => self::room((string)($it['name'] ?? ''))];
+      $map += self::pick($rest, $c['meters'], $used);
+      if (count($map) + count($skip) < count($items) && count($c['meters']) === 1 && count($items) === 1) $map[array_key_first($items)] = $c['meters'][0]['key'];
+      // без пари лишився один водомір виду, а на сайті один прийнятий цього виду — це він
+      foreach (['cold', 'hot'] as $k) {
+        $lone = array_keys(array_filter($items, fn($y, $j) => !isset($map[$j]) && !isset($skip[$j]) && $y['kind'] === $k, ARRAY_FILTER_USE_BOTH));
+        $free = array_keys(array_filter($acc0, fn($b, $n) => !isset($accUsed[$n]) && $b['kind'] === $k, ARRAY_FILTER_USE_BOTH));
+        if (count($lone) === 1 && count($free) === 1) { $skip[$lone[0]] = $acc0[$free[0]]; $accUsed[$free[0]] = 1; }
+      }
+      if (count($map) + count($skip) < count($items)) { self::diag(['result' => 'which', 'where' => 'send', 'form' => self::formInfo($c['x'], $c['form'], $c['fields'], $c['meters'])]); throw new HttpError(409, 'cab_which', ['human' => self::h('which'), 'meters' => self::pubMeters($c['meters'])] + ($acc0 ? ['done' => $acc0] : [])); }
+      ksort($map);
+    }
+    $already = []; foreach ($skip as $i => $b) $already[] = ['i' => $i, 'name' => $items[$i]['name'], 'value' => $items[$i]['value'], 'site' => $b['value'], 'serial' => $b['serial'], 'period' => $b['period']];
+    if ($skip && !$map) return ['skipped' => $already] + self::already($uid, $acc, array_values($items), $c['done'], $op);
+    $items0 = $items; $items = array_intersect_key($items, $map);
+    // останні на сайті — з копійками, у застосунку — цілі м³: «менше» лише нижче цілої частини (0 при 0.4 на сайті — не помилка)
+    if ($strict) foreach ($items as $i => $it) { $m = $byKey[$map[$i]]; if ($m['prev'] !== null && (float)$it['value'] < floor((float)$m['prev'])) { self::diag(['result' => 'less', 'where' => 'send']); throw new HttpError(422, 'cab_less', ['human' => self::h('less', ['n' => $it['name'] ?: $it['value'], 'p' => $m['prev']]), 'item' => $i]); } }
     $vals = []; foreach ($items as $i => $it) $vals[$map[$i]] = $it['value'];
     // поля формы как у браузера; показания — в свои поля, дата — выбранная человеком (если есть такая), иначе как предложил сайт
     $pairs = [];
@@ -397,7 +470,7 @@ final class VkCab {
     if ($f2) foreach (self::meters($x, self::fields($x, $f2)) as $m) if (isset($vals[$m['key']]) && $m['row'] instanceof DOMElement) {
       foreach ($x->query('.//*[' . self::cls('help-block') . ' or ' . self::cls('invalid-feedback') . ']', $m['row']) as $hb) { $t = self::sp($hb->textContent); if ($t !== '') $fieldErr[] = $t; }
     }
-    $dn = self::done($x); $same = $dn && !array_filter($items, fn($it) => !self::doneFor($it, $dn) || abs((float)self::doneFor($it, $dn)['value'] - (float)$it['value']) > 0.0005 || !self::doneFor($it, $dn)['accepted']);
+    $dn = self::done($x); $same = $dn && !array_filter($items0, fn($it) => !self::doneFor($it, $dn) || abs((float)self::doneFor($it, $dn)['value'] - (float)$it['value']) > 0.0005 || !self::doneFor($it, $dn)['accepted']);
     if ($same) $result = 'ok';
     elseif ($fieldErr || ($msgs['err'] && !$msgs['ok'])) $result = 'err';
     elseif ($msgs['ok'] || $okText) $result = 'ok';
@@ -408,7 +481,7 @@ final class VkCab {
     Db::q('INSERT INTO audit_log (user_id, action, ip, created_at) VALUES (?, ?, ?, ?)', [$uid, 'vk_cab_' . $op . '_' . $result, null, Http::iso()]);
     $at = time();
     if ($result === 'ok') self::notify($uid, $acc, array_map(fn($it, $i) => ['name' => $it['name'] ?: ($byKey[$map[$i]]['serial'] ? '№ ' . $byKey[$map[$i]]['serial'] : ''), 'value' => $it['value']], $items, array_keys($items)), $text);
-    return ['result' => $result, 'text' => mb_substr($text, 0, 400), 'at' => $at, 'keys' => $map];
+    return ['result' => $result, 'text' => mb_substr($text, 0, 400), 'at' => $at, 'keys' => $map] + ($already ? ['skipped' => $already] : []);
   }
   /** Блок «прийняті» для нашего показания: по номеру лічильника, иначе по виду (если такой один). */
   public static function doneFor(array $it, array $done): ?array {

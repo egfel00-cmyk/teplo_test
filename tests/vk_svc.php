@@ -85,4 +85,37 @@ $tp = Telegram::photo(['chat' => ['id' => 555], 'from' => ['id' => 555], 'date' 
 ok('бот: «Розпізнати й внести» → сайт Водоканалу', !empty($tp['auto']) && str_contains($tp['text'], 'сайт Водоканалу') && str_ends_with($tp['reply_markup']['inline_keyboard'][0][0]['web_app']['url'] ?? '', 'auto=1'), $tp);
 $h = $b->req('GET', '/api/health')->body; ok('/api/health → vksvc без рахунков', isset($h['vksvc']['jobs']) && !str_contains(json_encode($h['vksvc']), '905614'), $h['vksvc'] ?? null);
 $b2 = new B(); ok('без входа — 401', $b2->req('POST', '/api/vk/queue', $ACC + ['items' => [['value' => '1']]])->status === 401);
+// 181-я (власник 23.11, скрін: «не подтянулся номер холодной воды ванны»): живий сайт — блоки без таблиці, кімната в номері (Хкух / Гс/у), останні — перед підписом;
+// холодної у ванній на сайті немає → решта зіставляється за кімнатою, а зайвий водомір — «which» з лічильниками сайту (кімната й останні)
+$it4 = [['key' => null, 'value' => '176', 'serial' => null, 'kind' => 'hot', 'name' => 'Гаряча · Кухня'], ['key' => null, 'value' => '0', 'serial' => null, 'kind' => 'hot', 'name' => 'Гаряча · Ванна'],
+  ['key' => null, 'value' => '460', 'serial' => null, 'kind' => 'cold', 'name' => 'Холодна'], ['key' => null, 'value' => '201', 'serial' => null, 'kind' => 'cold', 'name' => 'Холодна · Ванна']];
+$it4x = $it4; $it4x[3]['value'] = '202';   // без номера, а прийнятий на сайті — 201: не він автоматично? — він: один холодний без пари й один прийнятий холодний
+$it5 = array_merge($it4, [['key' => null, 'value' => '50', 'serial' => null, 'kind' => 'cold', 'name' => 'Холодна · Туалет']]);
+try { VkCab::deliver($uid, '905618', 'Шевченко', $it5, null, 'bgsend', true); $we = null; } catch (HttpError $e) { $we = $e; }
+$wm = $we ? array_column((array)($we->extra['meters'] ?? []), null, 'serial') : [];
+ok('кімнати: 5 наших, на сайті 3 з полем + 1 прийнятий → which; лічильники — з кімнатою й останніми, прийнятий — у done', $we && $we->err === 'cab_which' && count($wm) === 3 && ($we->extra['done'][0]['serial'] ?? '') === '79539995' && ($wm['847046']['room'] ?? '') === 'kitchen' && ($wm['79109406']['room'] ?? '') === 'bath'
+  && ($wm['796991']['room'] ?? '') === 'kitchen' && abs((float)($wm['847046']['prev'] ?? 0) - 459.123) < 1e-6 && ($wm['847046']['kind'] ?? '') === 'cold', $we ? $we->extra : null);
+$dr = VkCab::deliver($uid, '905618', 'Шевченко', $it4, null, 'bgsend', true);
+$rp = $VKM['_lastPost']['post']['DynamicModel'] ?? [];
+ok('кімнати: без ключів — гаряча кухня → Гкух, ванна → Гс/у (0 при 0.412 — не «менше»), холодна → Хкух; холодна ванна — уже прийнята, не шлемо', $dr['result'] === 'ok' && ($rp['newIndication_5468828'] ?? '') === '176' && ($rp['newIndication_5468819'] ?? '') === '0' && ($rp['newIndication_4853176'] ?? '') === '460'
+  && count($rp) >= 3 && !preg_grep('/79539995/', array_keys($rp)) && ($dr['skipped'][0]['name'] ?? '') === 'Холодна · Ванна' && (float)($dr['skipped'][0]['site'] ?? 0) === 201.0, [$dr, $rp]);
+// номер іншого виду (у власника «Холодна · Кухня № 796991», а 796991 на сайті — Гкух): за номером не беремо, кімната й вид → Хкух; ванна з номером прийнятого — пропуск
+$VKM['_prev'] = [];
+$dr = VkCab::deliver($uid, '905618', 'Шевченко', [['key' => null, 'value' => '177', 'serial' => null, 'kind' => 'hot', 'name' => 'Гаряча · Кухня'], ['key' => null, 'value' => '1', 'serial' => '79109406', 'kind' => 'hot', 'name' => 'Гаряча · Ванна'],
+  ['key' => null, 'value' => '461', 'serial' => '796991', 'kind' => 'cold', 'name' => 'Холодна · Кухня'], ['key' => null, 'value' => '201', 'serial' => '79539995', 'kind' => 'cold', 'name' => 'Холодна · Ванна']], null, 'bgsend', true);
+$rp = $VKM['_lastPost']['post']['DynamicModel'] ?? [];
+ok('номер гарячої на холодній — не за номером: холодна кухня → Хкух, гаряча кухня → Гкух', $dr['result'] === 'ok' && ($rp['newIndication_4853176'] ?? '') === '461' && ($rp['newIndication_5468828'] ?? '') === '177' && count($dr['skipped'] ?? []) === 1, [$dr, $rp]);
+// усі наші — уже прийняті → нічого не шлемо, «прийнято»
+$n0 = $vkSent();
+$dr = VkCab::deliver($uid, '905618', 'Шевченко', [['key' => null, 'value' => '201', 'serial' => '79539995', 'kind' => 'cold', 'name' => 'Холодна · Ванна']], null, 'bgsend', true);
+ok('лише прийнятий → ok без надсилання', $dr['result'] === 'ok' && !empty($dr['skipped']) && $vkSent() === $n0, $dr);
+// за останніми показаннями: дві холодні без кімнат проти двох на сайті — хто ближче (і не менше)
+$pk = VkCab::pick([0 => ['kind' => 'cold', 'room' => null, 'value' => '210'], 1 => ['kind' => 'cold', 'room' => null, 'value' => '462']],
+  [['key' => 'a', 'kind' => 'cold', 'room' => null, 'prev' => 459.1], ['key' => 'b', 'kind' => 'cold', 'room' => null, 'prev' => 198.0]]);
+ok('pick: дві холодні — за останніми на сайті', $pk === [0 => 'b', 1 => 'a'], $pk);
+$pk = VkCab::pick([0 => ['kind' => 'cold', 'room' => null, 'value' => '460'], 1 => ['kind' => 'cold', 'room' => null, 'value' => '461']],
+  [['key' => 'a', 'kind' => 'cold', 'room' => null, 'prev' => 459.1], ['key' => 'b', 'kind' => 'cold', 'room' => null, 'prev' => 458.0]]);
+ok('pick: близькі — не вгадуємо', $pk === [], $pk);
+ok('room: «Хкух», «Гс/у», «Ванна», «Туалет», без кімнати', VkCab::room('Холодна вода (№ Хкух 847046) дата') === 'kitchen' && VkCab::room('Гаряча вода (№ Гс/у 79109406)') === 'bath'
+  && VkCab::room('Холодна · Ванна') === 'bath' && VkCab::room('Туалет') === 'wc' && VkCab::room('Холодна вода (№ 0123456)') === null);
 echo "\nИтог: $pass OK, $fail FAIL\n"; exit($fail ? 1 : 0);

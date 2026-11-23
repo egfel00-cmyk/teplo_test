@@ -38,7 +38,7 @@ final class VkSvc {
     return ['id' => (int)$j['id'], 'acc' => $j['acc'], 'rid' => $p['rid'] ?? null, 'place' => $p['place'] ?? null, 'items' => array_map(fn($x) => ['name' => $x['name'], 'value' => $x['value'], 'kind' => $x['kind'] ?? null], (array)($p['items'] ?? [])),
       'status' => $j['status'], 'text' => $r['text'] ?? '', 'why' => $r['why'] ?? null, 'human' => $r['human'] ?? null, 'auto' => !empty($p['auto']),
       'at' => strtotime((string)$j['created_at']) ?: null, 'doneAt' => $r['doneAt'] ?? null, 'nextAt' => in_array($j['status'], ['queued', 'sending'], true) ? (int)$j['next_at'] : null, 'card' => (int)($p['card'] ?? 0)]
-      + (!empty($r['meters']) ? ['meters' => array_values((array)$r['meters'])] : []);
+      + (!empty($r['meters']) ? ['meters' => array_values((array)$r['meters'])] : []) + (!empty($r['done']) ? ['done' => array_values((array)$r['done'])] : []) + (!empty($r['skipped']) ? ['skipped' => array_values((array)$r['skipped'])] : []);
   }
   /** GET /api/vk/jobs */
   public static function status(int $uid): array {
@@ -120,7 +120,7 @@ final class VkSvc {
     if ($fam === '') { self::finish((int)$j['id'], 'failed', ['why' => 'lost', 'human' => self::h('lost')]); }
     else try {
       $r = VkCab::deliver($uid, (string)$j['acc'], $fam, (array)$p['items'], null, !empty($p['auto']) ? 'autosend' : 'bgsend', true);
-      self::finish((int)$j['id'], ['ok' => 'ok', 'err' => 'rejected'][$r['result']] ?? 'unknown', ['text' => $r['text'], 'keys' => $r['keys']]);
+      self::finish((int)$j['id'], ['ok' => 'ok', 'err' => 'rejected'][$r['result']] ?? 'unknown', ['text' => $r['text'], 'keys' => $r['keys']] + (!empty($r['skipped']) && is_array($r['skipped']) ? ['skipped' => array_slice($r['skipped'], 0, 6)] : []));
     } catch (Throwable $e) {
       $why = $e instanceof HttpError ? preg_replace('/^(cab|vk)_/', '', $e->err) : 'down';
       if ($why === 'down' && (int)$j['tries'] + 1 < self::DOWN_TRIES) {   // сайт не ответил — ещё раз через 15 минут, без сообщений
@@ -129,7 +129,9 @@ final class VkSvc {
       }
       // 180-я: «який лічильник який» — лічильники сайту в підсумок: застосунок дає вибрати прямо в рядку Водоканалу (без бота й «Перевірити»)
       $ms = $e instanceof HttpError && in_array($why, ['mismatch', 'which'], true) ? array_slice((array)($e->extra['meters'] ?? []), 0, 8) : [];
-      self::finish((int)$j['id'], 'failed', ['why' => $why, 'human' => mb_substr($why === 'down' ? self::h('down') : (string)($e instanceof HttpError ? ($e->extra['human'] ?? '') : ''), 0, 400)] + ($ms ? ['meters' => $ms] : []));
+      // 181-я: прийняті цього періоду (без поля) — щоб застосунок показав «уже прийнято» замість вибору
+      $dn = $ms ? array_slice((array)($e->extra['done'] ?? []), 0, 6) : [];
+      self::finish((int)$j['id'], 'failed', ['why' => $why, 'human' => mb_substr($why === 'down' ? self::h('down') : (string)($e instanceof HttpError ? ($e->extra['human'] ?? '') : ''), 0, 400)] + ($ms ? ['meters' => $ms] : []) + ($dn ? ['done' => $dn] : []));
     }
     $job = self::pubJob(Db::one('SELECT * FROM cab_jobs WHERE id = ?', [$j['id']]));
     if ($job['status'] !== 'ok') self::notify($uid, $job);   // «✅ прийняв» уже написал VkCab::deliver

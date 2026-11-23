@@ -3532,6 +3532,10 @@ fieldset { min-inline-size: 0; }
 .gw-pick-r select { width: 100%; min-height: 44px; padding: 0 12px; border-radius: var(--r-btn); border: 1px solid var(--c-field-line); background-color: var(--c-field-bg); color: var(--c-ink); font: 500 16px var(--font); font-variant-numeric: tabular-nums; }
 @container (max-width: 420px) { .gw-pick-r { grid-template-columns: minmax(0, 1fr); } }
 .gw-pick { container-type: inline-size; }
+/* 181-я: прийнятий сайтом, немає на сайті, номер іншого виду — рядком під водоміром на всю ширину */
+.gw-pick-r > p { grid-column: 1 / -1; margin: 0; }
+.gw-pick-done { display: flex; gap: 6px; align-items: baseline; color: var(--c-ok-ink); }
+.gw-pick-done svg { flex: none; align-self: center; }
 
 /* ===== 179-я: спільна квартира — «Спільний доступ» на екрані квартири, позначка біля назви, #join (власник 23.11: «не перегружай интерфейс»).
    Люди — рядками з лініями (без «панелі в панелі»), аватар — нейтральний кружок з першою літерою; позначка «спільна» — тихий значок людей і число. */

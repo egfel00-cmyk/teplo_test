@@ -2055,21 +2055,29 @@
   /** Коротка назва водоміра для рядка «що надішлемо»: назва, інакше № , інакше вид. */
   function gwNm(m) { return m.name || (m.serial ? '№ ' + m.serial : ''); }
   /** «Кухня 176 · Ванна 0» — значення водомірів виду без ком (кома читалась як дріб: «176, 0»); vk — лише ті, що йдуть на сайт (не «Не надсилати»). */
-  function gwVals(rec, kind, vk) { var ms = wmeters(kind).filter(function (m) { return hasVal(rec, m.id) && !(vk && m.cabKey === ''); }); return ms.map(function (m) { var v = Wt.whole(rec.vals[m.id]), n = ms.length > 1 ? gwNm(m) : ''; return n ? n + ' ' + v : String(v); }).join(' · '); }
+  function gwVals(rec, kind, vk) { var pl = vk && vkcKnown(rec) ? vkcPlan(rec) : null, ms = wmeters(kind).filter(function (m) { return hasVal(rec, m.id) && !(vk && m.cabKey === '') && !(pl && (pl.acc[m.id] || pl.map[m.id] === '')); }); return ms.map(function (m) { var v = Wt.whole(rec.vals[m.id]), n = ms.length > 1 ? gwNm(m) : ''; return n ? n + ' ' + v : String(v); }).join(' · '); }
   /** Вибір «який лічильник який» на сайті Водоканалу — прямо в рядку (180-я, друга правка, власник 23.11: «12 кружков — глаза разбегаются, на мобиле сложно выбрать»):
    *  рядок на свій водомір — назва й показання, праворуч випадний список (на iPhone — рідне колесо): лічильники сайту того ж виду (№ і останні на сайті) + «Не надсилати».
    *  Підібране саме — уже вибране; двічі той самий — попередження. Вибір — m.cabKey (data-wf="cabKey"). */
   function gwPick(rec, cms) {
-    var ms = wmeters().filter(function (m) { return hasVal(rec, m.id); }), map = vkcMap(wmeters(), cms), keys = ms.map(function (m) { return map[m.id] || ''; });
+    var pl = vkcPlan(rec, cms), ms = wmeters().filter(function (m) { return hasVal(rec, m.id); }), map = pl.map, keys = ms.map(function (m) { return pl.acc[m.id] ? '' : map[m.id] || ''; });
     var dup = keys.some(function (k, i) { return k && keys.indexOf(k) !== i; });
-    var site = ['hot', 'cold'].map(function (k) { var l = cms.filter(function (c) { return c.kind === k; }); return l.length ? t(k === 'hot' ? 'wt_hot' : 'wt_cold').toLowerCase() + ' ' + l.map(function (c) { return c.serial ? '№ ' + c.serial : '?'; }).join(', ') : ''; }).filter(Boolean).join('; ');
+    var one = function (c) { return [c.serial ? '№ ' + c.serial : '', vkcRoomW(c)].filter(Boolean).join(' · '); };
+    var site = ['hot', 'cold'].map(function (k) { var l = cms.filter(function (c) { return c.kind === k; }); return l.length ? t(k === 'hot' ? 'wt_hot' : 'wt_cold').toLowerCase() + ': ' + l.map(one).join(', ') : ''; }).filter(Boolean).join('; ');
     return '<div class="gw-pick" data-key="gw-pick"><p class="small muted gw-pick-site">' + esc(t('gw_pick_site', { n: cms.length, l: site || cms.map(vkcLabel).join(', ') })) + '</p><ul class="gw-pick-l">' + ms.map(function (m) {
-      var same = cms.filter(function (c) { return !c.kind || c.kind === m.kind; }), opts = same.length ? same : cms, cur = map[m.id] || '';
+      var head = '<label for="gwp-' + esc(m.id) + '"><b>' + esc(wname(m)) + '</b><span class="small muted">' + Wt.whole(rec.vals[m.id]) + ' м³</span></label>';
+      var b = pl.acc[m.id];
+      if (b) return '<li class="gw-pick-r" data-key="gw-pick-' + esc(m.id) + '">' + head + '<p class="small ok-ink gw-pick-done" data-key="gw-pick-done-' + esc(m.id) + '">' + ico('check', 16) + ' ' +
+        esc(t('gw_pick_done', { n: b.serial ? '№ ' + b.serial : '', v: b.value !== null && b.value !== undefined ? Wt.whole(b.value) : '?' })) + '</p></li>';
+      var same = cms.filter(function (c) { return !c.kind || c.kind === m.kind; }), opts = same.length ? same : cms, cur = map[m.id];
       if (cur && !opts.some(function (c) { return c.key === cur; })) opts = opts.concat(cms.filter(function (c) { return c.key === cur; }));
-      return '<li class="gw-pick-r" data-key="gw-pick-' + esc(m.id) + '"><label for="gwp-' + esc(m.id) + '"><b>' + esc(wname(m)) + '</b><span class="small muted">' + Wt.whole(rec.vals[m.id]) + ' м³</span></label>' +
-        '<select id="gwp-' + esc(m.id) + '" data-wm="' + esc(m.id) + '" data-wf="cabKey">' +
-        opts.map(function (c) { return '<option value="' + esc(c.key) + '"' + (c.key === cur ? ' selected' : '') + '>' + esc((c.serial ? '№ ' + c.serial : vkcLabel(c)) + (c.prev !== null && c.prev !== undefined ? ' · ' + t('gw_pick_was', { v: Math.round(c.prev) }) : '')) + '</option>'; }).join('') +
-        '<option value=""' + (!cur ? ' selected' : '') + '>' + esc(t('gw_pick_none')) + '</option></select></li>';
+      var other = vkcDigits(m.serial) && cms.filter(function (c) { return c.kind && m.kind && c.kind !== m.kind && vkcDigits(c.serial) === vkcDigits(m.serial); })[0];
+      return '<li class="gw-pick-r" data-key="gw-pick-' + esc(m.id) + '">' + head +
+        '<select id="gwp-' + esc(m.id) + '" data-wm="' + esc(m.id) + '" data-wf="cabKey">' + (cur === undefined ? '<option value="?" selected disabled>' + esc(t('gw_pick_q')) + '</option>' : '') +
+        opts.map(function (c) { var p = vkcPrevOf(c); return '<option value="' + esc(c.key) + '"' + (c.key === cur ? ' selected' : '') + '>' + esc((one(c) || vkcLabel(c)) + (p !== null ? ' · ' + t('gw_pick_was', { v: Math.round(p) }) : '')) + '</option>'; }).join('') +
+        '<option value=""' + (cur === '' ? ' selected' : '') + '>' + esc(t('gw_pick_none')) + '</option></select>' +
+        (map.absent[m.id] && cur === '' && m.cabKey !== '' ? '<p class="small muted gw-pick-no" data-key="gw-pick-no-' + esc(m.id) + '">' + esc(t('gw_pick_absent')) + '</p>' : '') +
+        (other ? '<p class="small warn-ink gw-pick-sn" data-key="gw-pick-sn-' + esc(m.id) + '">' + esc(t('gw_pick_sn', { n: m.serial, k: t(other.kind === 'hot' ? 'wt_hot' : 'wt_cold').toLowerCase() + (vkcRoomW(other) ? ' · ' + vkcRoomW(other) : '') })) + '</p>' : '') + '</li>';
     }).join('') + '</ul>' + (dup ? '<p class="small warn-ink" data-key="gw-pick-dup">' + ico('alert', 16) + ' ' + esc(t('vkc_dup')) + '</p>' : '') + '</div>';
   }
   /** Чого бракує адресату й як це виправити тут же: {txt, fix (HTML), block: не можна надіслати}. */
@@ -2087,7 +2095,7 @@
       if (code === 'relogin') return { txt: why, fix: '<p class="small"><a href="#prefs-cabs-htm" data-act="cb-go" data-key="gw-relogin">' + esc(t('gw_relogin')) + ' ›</a></p>' };
       return null;
     }
-    var j = rec && gwJob(rec, 'vk'), cms = (j && j.meters && j.meters.length ? j.meters : null) || (VKC.check && VKC.check.meters && VKC.check.meters.length ? VKC.check.meters : null);
+    var cms = vkcKnown(rec);
     if (/^(mismatch|which)$/.test(code)) return { txt: t('gw_vk_which'), fix: cms ? gwPick(rec, cms) : '<div class="dest-ch"><button class="btn sec" data-act="vkc-check" data-key="gw-vk-look"' + (VKC.busy ? ' disabled' : '') + '>' + (VKC.busy === 'check' ? SPIN : ico('search', 18)) + '<span>' + esc(t('gw_vk_look')) + '</span></button></div>' };
     if (code === 'notfound' || code === 'ukr') return { txt: why, fix: '<p class="small"><a href="#prefs-cabs-vk" data-act="cb-go" data-key="gw-vk-acc">' + esc(t('gw_vk_acc')) + ' ›</a></p>' };
     if (code === 'less') return { txt: why, fix: '<p class="small"><a href="#wrec-' + esc(rec.id) + '" data-key="gw-vk-fixval">' + esc(t('gw_fix_val')) + ' ›</a></p>' };
@@ -2176,6 +2184,7 @@
       hwQueue(rec, function (good) { HW.busy = false; if (good !== false && !HW.err[rec.id]) toast(t('gw_toast', { to: t('gw_htm_n') })); render(true); });
     } else {
       if (VJ.busy || !gwVkCan(rec)) return;
+      vjKeep(rec);
       vjQueue(rec, false, true, function (good) { if (good) toast(t('gw_toast', { to: t('gw_vk_n') })); render(true); });
     }
   });
@@ -2308,18 +2317,79 @@
   function vkcFresh() { if (VKC.key !== vkcKey()) { VKC.key = vkcKey(); VKC.check = null; VKC.err = null; VKC.res = null; VKC.pick = {}; } }
   function vkcDigits(s) { return String(s || '').replace(/\D/g, '').replace(/^0+/, ''); }
   /** Наші водоміри ↔ лічильники на сайті: збережений вибір, номер, вид (холодна/гаряча), останній з одним. → {mid: key|''} */
-  function vkcMap(ms, cms) {
-    var out = {}, used = {};
-    ms.forEach(function (m) { if (m.cabKey !== undefined && (m.cabKey === '' || cms.some(function (c) { return c.key === m.cabKey; }))) { out[m.id] = m.cabKey; if (m.cabKey) used[m.cabKey] = 1; } });
-    ms.forEach(function (m) { if (out[m.id] !== undefined || !vkcDigits(m.serial)) return; var c = cms.filter(function (c) { return !used[c.key] && vkcDigits(c.serial) && (vkcDigits(c.serial) === vkcDigits(m.serial) || vkcDigits(c.label).indexOf(vkcDigits(m.serial)) >= 0); })[0]; if (c) { out[m.id] = c.key; used[c.key] = 1; } });
-    ['cold', 'hot'].forEach(function (k) {
-      var mine = ms.filter(function (m) { return out[m.id] === undefined && m.kind === k; }), theirs = cms.filter(function (c) { return !used[c.key] && c.kind === k; });
-      if (mine.length === 1 && theirs.length === 1) { out[mine[0].id] = theirs[0].key; used[theirs[0].key] = 1; }
+  /** Кімната: на сайті Водоканалу — у номері («№ Хкух 847046», «№ Гс/у 79109406»), у нас — назва водоміра. Те саме — VkCab::room. */
+  function vkcRoom1(s) { s = String(s || '').toLowerCase(); return /кух/.test(s) ? 'kitchen' : /туал|убор|\bwc\b|т\/у/.test(s) ? 'wc' : /с\/у|с\.у\.|санв|сануз|ванн|душ|bath/.test(s) ? 'bath' : null; }
+  function vkcRoom(s) { var m = /№\s*([^\d)]{1,12})\d/.exec(String(s || '').toLowerCase()); return (m && vkcRoom1(m[1])) || vkcRoom1(s); }
+  function vkcRoomC(c) { return c.room !== undefined ? c.room : vkcRoom(c.label); }
+  /** 2 — та сама кімната, 1 — сумісна (невідома; санвузол ≈ туалет), 0 — ні. */
+  function vkcFit(a, b) { return !a || !b ? 1 : a === b ? 2 : /^(bath|wc)$/.test(a) && /^(bath|wc)$/.test(b) ? 1 : 0; }
+  /** Останні передані на сайті: з сервера, а в старих чергах — із підпису («459.123 Передані показання…»). */
+  function vkcPrevOf(c) { if (c.prev !== null && c.prev !== undefined) return +c.prev; var m = /(?:^|[^\d.,])(\d+(?:[.,]\d+)?)\s*(?:·\s*)?Передан\S*\s+показ/i.exec(String(c.label || '')); return m ? +m[1].replace(',', '.') : null; }
+  /** Наш водомір → лічильник сайту (181-а, власник 23.11: «не подтянулся номер холодной воды ванны» — на сайті її просто немає, а дві холодні стояли на одному):
+   *  збережений вибір (той самий у двох — лишається тому, чия кімната й показання ближчі), номер, кімната й вид (по одному з обох боків), сумісні, останні показання
+   *  (vals — показання запису: перестановка, де всі ≥ останніх і різниця найменша з помітним відривом), один на один. Кому на сайті немає вільного лічильника
+   *  того ж виду — '' (не надсилати) і absent[id]. Невизначене — undefined (людина вибирає). Той самий розбір — VkCab::pick. */
+  function vkcMap(ms, cms, vals) {
+    var out = {}, used = {}, roomM = function (m) { return vkcRoom1(m.name); }, val = function (m) { var v = vals && vals[m.id]; return v === undefined || v === null || v === '' ? null : Wt.whole(v); };
+    var kOk = function (m, c) { return !c.kind || !m.kind || c.kind === m.kind; };
+    var near = function (m, c) { var p = vkcPrevOf(c), v = val(m); return vkcFit(roomM(m), vkcRoomC(c)) * 1000 - (p !== null && v !== null ? (v >= Math.floor(p) ? v - p : 500) : 600); };
+    var claim = {};
+    ms.forEach(function (m) { if (m.cabKey === '') out[m.id] = ''; else if (m.cabKey && cms.some(function (c) { return c.key === m.cabKey; })) (claim[m.cabKey] = claim[m.cabKey] || []).push(m); });
+    Object.keys(claim).forEach(function (k) { var c = cms.filter(function (x) { return x.key === k; })[0], l = claim[k].slice().sort(function (a, b) { return near(b, c) - near(a, c); }); out[l[0].id] = k; used[k] = 1; });
+    var free = function () { return cms.filter(function (c) { return !used[c.key]; }); }, open = function () { return ms.filter(function (m) { return out[m.id] === undefined; }); };
+    // номер — лише того ж виду: «Холодна · Кухня № 796991», а 796991 на сайті — «Гкух» (власник 23.11) — це не вона, далі кімната й показання
+    open().forEach(function (m) { if (!vkcDigits(m.serial)) return; var c = free().filter(function (c) { return kOk(m, c) && vkcDigits(c.serial) && (vkcDigits(c.serial) === vkcDigits(m.serial) || vkcDigits(c.label).indexOf(vkcDigits(m.serial)) >= 0); })[0]; if (c) { out[m.id] = c.key; used[c.key] = 1; } });
+    [2, 1].forEach(function (need) {
+      for (var ch = true; ch;) {
+        ch = false;
+        open().forEach(function (m) {
+          if (out[m.id] !== undefined || (need === 2 && !roomM(m))) return;
+          var cand = free().filter(function (c) { return kOk(m, c) && vkcFit(roomM(m), vkcRoomC(c)) >= need; }); if (cand.length !== 1) return;
+          var c = cand[0], riv = open().filter(function (y) { return kOk(y, c) && (need === 1 || roomM(y)) && vkcFit(roomM(y), vkcRoomC(c)) >= need; });
+          if (riv.length !== 1) return;
+          out[m.id] = c.key; used[c.key] = 1; ch = true;
+        });
+      }
     });
-    var restM = ms.filter(function (m) { return out[m.id] === undefined; }), restC = cms.filter(function (c) { return !used[c.key]; });
-    if (restM.length === 1 && restC.length === 1) out[restM[0].id] = restC[0].key;
+    if (vals) ['cold', 'hot'].forEach(function (k) {
+      var mine = open().filter(function (m) { return m.kind === k && val(m) !== null; }), th = free().filter(function (c) { return c.kind === k && vkcPrevOf(c) !== null; });
+      if (!mine.length || mine.length !== th.length || mine.length > 3) return;
+      var perms = function (a) { return a.length <= 1 ? [a] : [].concat.apply([], a.map(function (x, i) { return perms(a.slice(0, i).concat(a.slice(i + 1))).map(function (p) { return [x].concat(p); }); })); };
+      var best = null, second = Infinity;
+      perms(th.map(function (c, i) { return i; })).forEach(function (p) {
+        var cost = 0; mine.forEach(function (m, n) { var c = th[p[n]], d = val(m) - Math.floor(vkcPrevOf(c)); cost += d < 0 || !vkcFit(roomM(m), vkcRoomC(c)) ? Infinity : d; });
+        if (!best || cost < best.c) { if (best) second = Math.min(second, best.c); best = { c: cost, p: p }; } else second = Math.min(second, cost);
+      });
+      if (best && isFinite(best.c) && second - best.c >= 5) mine.forEach(function (m, n) { out[m.id] = th[best.p[n]].key; used[th[best.p[n]].key] = 1; });
+    });
+    var restM = open(), restC = free();
+    if (restM.length === 1 && restC.length === 1 && kOk(restM[0], restC[0]) && vkcFit(roomM(restM[0]), vkcRoomC(restC[0]))) { out[restM[0].id] = restC[0].key; used[restC[0].key] = 1; }
+    var absent = {};
+    open().forEach(function (m) { if (!free().some(function (c) { return kOk(m, c) && vkcFit(roomM(m), vkcRoomC(c)); })) { out[m.id] = ''; absent[m.id] = 1; } });
+    Object.defineProperty(out, 'absent', { value: absent, enumerable: false });
     return out;
   }
+  /** Лічильники сайту Водоканалу, які вже бачили для цього запису: з невдалої черги чи з «Показати лічильники». */
+  function vkcKnown(rec) { var j = rec && gwJob(rec, 'vk'); return (j && j.meters && j.meters.length ? j.meters : null) || (VKC.check && VKC.check.meters && VKC.check.meters.length ? VKC.check.meters : null); }
+  /** Прийняті цього періоду (на сайті без поля: «Передані показання за листопад … ПРИЙНЯТІ»), яких немає серед лічильників з полем. */
+  function vkcAccd(rec, cms) {
+    var j = rec && gwJob(rec, 'vk'), d = (j && j.done) || (VKC.check && VKC.check.done) || [], inD = (cms || []).map(function (c) { return vkcDigits(c.serial); });
+    return d.filter(function (b) { return b && b.accepted && vkcDigits(b.serial) && inD.indexOf(vkcDigits(b.serial)) < 0; });
+  }
+  /** План надсилання запису у Водоканал: map (vkcMap), acc[id] — уже прийнятий на сайті (181-а, власник 23.11: холодна ванна прийнята 22.11, тому її й «немає» в списку):
+   *  за номером, а без номера — один водомір виду без пари на один прийнятий того ж виду. */
+  function vkcPlan(rec, cms) {
+    cms = cms || vkcKnown(rec) || []; var ms = wmeters(), map = vkcMap(ms, cms, rec && rec.vals), acc = {}, dn = vkcAccd(rec, cms), usedB = {};
+    var loose = function (m) { return (map[m.id] === undefined || map.absent[m.id]) && m.cabKey !== '' && hasVal(rec, m.id); };
+    ms.forEach(function (m) { if (!loose(m) || !vkcDigits(m.serial)) return; dn.forEach(function (b, i) { if (!usedB[i] && !acc[m.id] && vkcDigits(b.serial) === vkcDigits(m.serial)) { acc[m.id] = b; usedB[i] = 1; } }); });
+    ['cold', 'hot'].forEach(function (k) {
+      var mm = ms.filter(function (m) { return loose(m) && !acc[m.id] && m.kind === k; }), bb = dn.filter(function (b, i) { return !usedB[i] && b.kind === k; });
+      if (mm.length === 1 && bb.length === 1) { acc[mm[0].id] = bb[0]; usedB[dn.indexOf(bb[0])] = 1; }
+    });
+    return { cms: cms, map: map, acc: acc };
+  }
+  /** «кухня» / «санвузол» / «туалет» — кімната лічильника сайту словом. */
+  function vkcRoomW(c) { var r = vkcRoomC(c); return r ? t('vkc_room_' + r) : ''; }
   function vkcLabel(c) { return [c.serial ? '№ ' + c.serial : '', c.kind ? t(c.kind === 'hot' ? 'wt_hot' : 'wt_cold') : ''].filter(Boolean).join(' · ') || c.label; }
   function vkcPrev(c) { return c.prev !== null && c.prev !== undefined ? t('vkc_prev', { v: c.prev }) + (c.prevDate ? ' (' + c.prevDate + ')' : '') : ''; }
   /** Що підемо відправляти: [{m, c, v}] — наші показання цього запису з лічильником на сайті. */
@@ -2450,7 +2520,21 @@
     });
     return ch;
   }
-  function vjItems(rec) { return wmeters().filter(function (m) { return hasVal(rec, m.id) && m.cabKey !== ''; }).map(function (m) { return { key: m.cabKey || null, value: String(Wt.whole(rec.vals[m.id])), serial: m.serial || null, kind: m.kind, name: wname(m) }; }); }
+  /** Що підемо надсилати у Водоканал. Лічильники сайту вже бачили — за планом (vkcPlan): «Не надсилати» й немає на сайті — пропускаємо, прийнятий — теж
+   *  (сервер його й так пропустить за номером), ключ — підібраний; не бачили — збережений ключ або сервер знайде сам. */
+  function vjItems(rec) {
+    var pl = rec && vkcKnown(rec) ? vkcPlan(rec) : null;
+    return wmeters().filter(function (m) { return hasVal(rec, m.id) && m.cabKey !== '' && !(pl && (pl.acc[m.id] || pl.map[m.id] === '')); }).map(function (m) {
+      var k = pl && pl.map[m.id] ? pl.map[m.id] : m.cabKey || null;
+      return { key: k, value: String(Wt.whole(rec.vals[m.id])), serial: m.serial || null, kind: m.kind, name: wname(m) };
+    });
+  }
+  /** Перед надсиланням: підібране з лічильниками сайту — зберегти у водомірах (m.cabKey), щоб наступного місяця у фоні йшло так само. */
+  function vjKeep(rec) {
+    var pl = rec && vkcKnown(rec) ? vkcPlan(rec) : null; if (!pl) return;
+    var ch = wmeters().filter(function (m) { return hasVal(rec, m.id) && !pl.acc[m.id] && pl.map[m.id] !== undefined && m.cabKey !== pl.map[m.id]; });
+    if (ch.length) wsetCfg(function (cf) { (cf.meters || []).forEach(function (m) { ch.forEach(function (x) { if (x.id === m.id) m.cabKey = pl.map[x.id]; }); }); });
+  }
   function vjQueue(rec, auto, quiet, cb) {
     var c = wcfg(), items = vjItems(rec); if (!rec || !items.length || VJ.busy) { if (cb) cb(false); return; }
     VJ.busy = 'q'; VJ.err = null; VJ.errFor = rec.id; safeRender();

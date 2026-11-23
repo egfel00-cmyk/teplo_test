@@ -124,7 +124,7 @@ const D = '2026-11-12';
   const jid = +php(`echo Db::one("SELECT MAX(id) AS m FROM cab_jobs WHERE prov = 'vk'")['m'];`);
   await p.evaluate(j => { const s = JSON.parse(localStorage.getItem('teplo.v1')); const w = s.water.find(x => x.id === 'woff'); w.vkJob = { job: j, status: 'failed' }; w.sent = {}; s.places[0].water.meters.forEach(m => { delete m.cabKey; }); s.updatedAt = Date.now(); localStorage.setItem('teplo.v1', JSON.stringify(s)); }, jid);
   await p.reload(); await wait(1500); await hot(); await wait(2500);
-  ok('7в. Водоканал «Не надіслано»: «Не зрозуміли, який лічильник…», лічильники сайту одним рядком і по випадному списку на свій водомір (180-я, друга правка)', /Не зрозуміли, який лічильник/.test(await txt('[data-key=gw-why-vk]')) && /лічильників: 2 \(гаряча № 111; холодна № 222\)/.test(await txt('[data-key=gw-pick]')) && (await p.$$('[data-key=gw-pick] select')).length === 2 && !(await p.$('[data-key=gw-pick] input[type=radio]')), await txt('[data-key=gw-vk]'));
+  ok('7в. Водоканал «Не надіслано»: «Не зрозуміли, який лічильник…», лічильники сайту одним рядком і по випадному списку на свій водомір (180-я, друга правка)', /Не зрозуміли, який лічильник/.test(await txt('[data-key=gw-why-vk]')) && /лічильників з полем: 2 \(гаряча: № 111; холодна: № 222\)/.test(await txt('[data-key=gw-pick]')) && (await p.$$('[data-key=gw-pick] select')).length === 2 && !(await p.$('[data-key=gw-pick] input[type=radio]')), await txt('[data-key=gw-vk]'));
   if (process.env.SHOT) await (await p.$('[data-key=where-water]')).screenshot({ path: '/tmp/hw_pick.png' });
   const hid = await p.evaluate(() => JSON.parse(localStorage.getItem('teplo.v1')).places[0].water.meters.find(m => m.kind === 'hot').id);
   ok('7в. у гарячої — лише гарячий лічильник сайту й «Не надсилати»', JSON.stringify(await p.$$eval(`[data-key=gw-pick-${hid}] option`, o => o.map(x => x.value))) === JSON.stringify(['k1', '']));
@@ -133,6 +133,31 @@ const D = '2026-11-12';
   ok('7в. гарячу «Не надсилати» — збережено; у «Надішлемо» Водоканалу лишилась лише холодна', ((await st()).places[0].water.meters.find(m => m.id === hid) || {}).cabKey === '' && /^Надішлемо: холодна 443 м³\.$/.test((await txt('[data-key=gw-what-vk]')).trim()), await txt('[data-key=gw-vk]'));
   await p.selectOption(`[data-key=gw-pick-${hid}] select`, 'k1'); await wait(700);
   ok('7в. вибрав правильний — збережено як ключ сайту водоміра, попередження немає; «Відправити ще раз» у рядку Водоканалу', ((await st()).places[0].water.meters.find(m => m.id === hid) || {}).cabKey === 'k1' && !(await has('[data-key=gw-pick-dup]')) && /Відправити ще раз/.test(await txt('[data-key=gw-bg-vk]')), await txt('[data-key=gw-vk]'));
+  // 7г. 181-я (власник 23.11, скріни): 4 водоміри, на сайті 3 з полем (кімната в номері: Хкух, Гс/у, Гкух) + холодна ванна вже прийнята (без поля);
+  // у «Холодна · Кухня» номер 796991 — а на сайті це Гкух. Підбір сам: за кімнатою й видом; прийнятий — рядком «уже прийняв», не надсилаємо; номер іншого виду — попередження
+  const L = (k, n, v) => (k === 'hot' ? 'Гаряча' : 'Холодна') + ' вода (№ ' + n + ') · дата наступної повірки - 12 грудня 2027 р. · ' + v + ' Передані показання за жовтень 2026 , м3: · Вкажіть нові показання за листопад 2026, м3 * :';
+  php(`Db::q("INSERT INTO cab_jobs (user_id, prov, acc, payload, status, result, tries, next_at, created_at, updated_at) VALUES (${uid}, 'vk', '905614', ?, 'failed', ?, 0, 0, ?, ?)", [json_encode(['rid' => 'w4', 'place' => 'main', 'items' => []]), json_encode(['why' => 'which', 'human' => 'x', 'meters' => [
+    ['key' => 'kc', 'label' => '${L('cold', 'Хкух 847046', '459.123')}', 'kind' => 'cold', 'serial' => '847046', 'room' => 'kitchen', 'prev' => 459.123],
+    ['key' => 'khb', 'label' => '${L('hot', 'Гс/у 79109406', '0.412')}', 'kind' => 'hot', 'serial' => '79109406', 'room' => 'bath', 'prev' => 0.412],
+    ['key' => 'khk', 'label' => '${L('hot', 'Гкух 796991', '175.880')}', 'kind' => 'hot', 'serial' => '796991'],
+  ], 'done' => [['kind' => 'cold', 'serial' => '79539995', 'value' => 201.0, 'period' => '2026-11', 'accepted' => true, 'verify' => null]]]), Http::iso(), Http::iso()]);`);
+  const j4 = +php(`echo Db::one("SELECT MAX(id) AS m FROM cab_jobs WHERE prov = 'vk'")['m'];`);
+  await p.evaluate(j => { const s = JSON.parse(localStorage.getItem('teplo.v1')); const w = s.places[0].water;
+    w.meters = [{ id: 'h1', kind: 'hot', name: 'Кухня', cabKey: 'kc' }, { id: 'h2', kind: 'hot', name: 'Ванна', serial: '79109406' }, { id: 'c1', kind: 'cold', name: 'Кухня', serial: '796991', cabKey: 'kc' }, { id: 'c2', kind: 'cold', name: 'Ванна', serial: '79539995', cabKey: 'kc' }];
+    s.water = s.water.filter(x => x.id !== 'w4'); s.water.push({ id: 'w4', place: 'main', date: '2026-11-12', vals: { h1: 176, h2: 0, c1: 459, c2: 201 }, vkJob: { job: j, status: 'failed' }, sent: {}, createdAt: '2026-11-12T09:00:00Z', updatedAt: Date.now() });
+    s.updatedAt = Date.now(); localStorage.setItem('teplo.v1', JSON.stringify(s)); }, j4);
+  await p.reload(); await wait(1500); await hot(); await wait(2500);
+  const sel = id => p.$eval(`[data-key=gw-pick-${id}] select`, x => x.value).catch(() => null);
+  ok('7г. підбір: гаряча кухня → Гкух (старий ключ холодної відкинуто), ванна → Гс/у, холодна кухня → Хкух; дубля немає', await sel('h1') === 'khk' && await sel('h2') === 'khb' && await sel('c1') === 'kc' && !(await has('[data-key=gw-pick-dup]')), [await sel('h1'), await sel('h2'), await sel('c1'), await txt('[data-key=gw-pick]')]);
+  ok('7г. холодна ванна — «Сайт уже прийняв … № 79539995 — 201 м³», без вибору', /Сайт уже прийняв за цей місяць: № 79539995 — 201 м³/.test(await txt('[data-key=gw-pick-done-c2]')) && !(await has('[data-key=gw-pick-c2] select')), await txt('[data-key=gw-pick-c2]'));
+  ok('7г. «Холодна · Кухня № 796991» — на сайті це гаряча · кухня: попередження', /№ 796991 на сайті Водоканалу — гаряча · кухня/.test(await txt('[data-key=gw-pick-sn-c1]')), await txt('[data-key=gw-pick-c1]'));
+  ok('7г. у списку — кімната й «було»: «№ 847046 · кухня · було 459 м³»; зверху — з кімнатами', JSON.stringify(await p.$$eval('[data-key=gw-pick-c1] option', o => o.map(x => x.textContent))).includes('№ 847046 · кухня · було 459 м³') && /гаряча: № 79109406 · санвузол, № 796991 · кухня; холодна: № 847046 · кухня/.test(await txt('[data-key=gw-pick]')), await txt('[data-key=gw-pick]'));
+  ok('7г. «Надішлемо» — три, без прийнятої ванни', /^Надішлемо: гаряча Кухня 176 · Ванна 0; холодна 459 м³\.$/.test((await txt('[data-key=gw-what-vk]')).trim()), await txt('[data-key=gw-what-vk]'));
+  if (process.env.SHOT) await (await p.$('[data-key=gw-vk]')).screenshot({ path: '/tmp/hw_pick4.png' });
+  await p.click('[data-key=gw-bg-vk]'); await wait(1500);
+  const pj = JSON.parse(php(`echo Db::one("SELECT payload FROM cab_jobs WHERE prov = 'vk' ORDER BY id DESC LIMIT 1")['payload'];`));
+  const keys = (await st()).places[0].water.meters.reduce((a, m) => (a[m.id] = m.cabKey, a), {});
+  ok('7г. «Відправити ще раз»: у черзі три (без прийнятої); підбір збережено у водомірах (наступного місяця у фоні — так само)', JSON.stringify((pj.items || []).map(x => x.name)) === JSON.stringify(['Гаряча · Кухня', 'Гаряча · Ванна', 'Холодна · Кухня']) && keys.h1 === 'khk' && keys.h2 === 'khb' && keys.c1 === 'kc' && keys.c2 === 'kc', [pj.items, keys]);
   await p.goto(U + '#prefs-cabs-htm'); await wait(1500);
   ok('7. екран ХТМ: «Гаряча вода: у кабінеті розділу немає — … ботом»', /розділу немає/.test(await txt('[data-key=cb-htm-hot]')), await txt('[data-key=cb-htm-hot]'));
 
