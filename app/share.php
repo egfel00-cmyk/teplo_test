@@ -490,14 +490,13 @@ final class Share {
     self::sync($sid);
     return self::mine($uid);
   }
-  /** Через що власник надсилає показання цієї квартири у фоні (для галочки): ['htm', 'lb:<бот>', …]. */
+  /** Що відкриває галочка власника «у фоні через мої кабінети» для цієї квартири: ['htm'] або [].
+   *  183-я (власник 23.11: «у каждой квартиры свой вход для всех поставщиков»): входи самої квартири — ХТМ цієї квартири ('hp…') і місцевих КП (LocalBot) —
+   *  у спільній і так для всіх, хто її веде; галочка лишилась лише для основного кабінету ХТМ власника (рахунок цієї квартири в ньому), коли входу квартири немає. */
   private static function ownerVia(int $uid, string $pid): array {
-    $o = [];
-    // 182-а: вхід ХТМ саме цієї квартири (якщо є) — інакше основний кабінет
-    $c = null; foreach (Db::q("SELECT state, extra FROM cab_creds WHERE user_id = ? AND prov LIKE 'hp%'", [$uid])->fetchAll() as $r) { $ex = json_decode((string)$r['extra'], true); if (is_array($ex) && (string)($ex['place'] ?? '') === $pid) $c = $r; }
-    $c = $c ?? Db::one("SELECT state FROM cab_creds WHERE user_id = ? AND prov = 'htm'", [$uid]); if ($c && $c['state'] !== 'bad_login') $o[] = 'htm';
-    foreach (Db::q("SELECT prov, extra FROM cab_creds WHERE user_id = ? AND prov LIKE 'L%'", [$uid])->fetchAll() as $r) { $ex = json_decode((string)$r['extra'], true); if (is_array($ex) && isset($ex[$pid])) $o[] = 'lb:' . substr((string)$r['prov'], 1); }
-    return $o;
+    foreach (Db::q("SELECT extra FROM cab_creds WHERE user_id = ? AND prov LIKE 'hp%'", [$uid])->fetchAll() as $r) { $ex = json_decode((string)$r['extra'], true); if (is_array($ex) && (string)($ex['place'] ?? '') === $pid) return []; }
+    $c = Db::one("SELECT state FROM cab_creds WHERE user_id = ? AND prov = 'htm'", [$uid]);
+    return $c && $c['state'] !== 'bad_login' ? ['htm'] : [];
   }
   /** 183-я (власник 23.11: «у каждой квартиры свой вход для всех поставщиков»): інші люди тієї самої спільної квартири → [[uid, їхня копія pid], …]
    *  (власник і учасники, крім самого uid); квартира не спільна — []. */

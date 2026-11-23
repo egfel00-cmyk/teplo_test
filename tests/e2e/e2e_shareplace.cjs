@@ -90,9 +90,11 @@ const mailLink = () => { const d = fs.existsSync(EML) ? fs.readFileSync(EML, 'ut
     ok('А: у списку — Іван (пошта, з дати), кнопка «Прибрати»', ppl.includes('ivan' + ts) && /пошта/.test(ppl) && !!(await A.$('[data-act=shp-rm]')), ppl);
     ok('А: підзаголовок групи — «Ви й ivan…»', (await A.textContent('[data-key=pg-pv-people] summary')).includes('Ви й ivan'));
     // 180-я: власник дозволяє «у фоні через мої кабінети»; назва — спільна
-    ok('А: галочка «Надсилати у фоні через мої кабінети» (вимкнена)', !!(await A.$('[data-key=shp-bg] input')) && !(await A.$eval('[data-key=shp-bg] input', x => x.checked)));
-    await A.click('[data-key=shp-bg] input'); await A.waitForTimeout(1200);
-    ok('А: увімкнув — на сервері bg', ((await api(A, 'GET', '/share')).shares[0] || {}).bg === true);
+    // 183-я: входи квартири (ХТМ квартири, місцеві КП) і так спільні — галочка лише для основного кабінету ХТМ власника; його немає — галочки немає
+    ok('А: без основного кабінету ХТМ галочки «у фоні» немає (входи квартири й так спільні)', !(await A.$('[data-key=shp-bg]')));
+    await api(A, 'POST', '/share/bg', { sid: ((await api(A, 'GET', '/share')).shares[0] || {}).sid, on: true });
+    await A.reload(); await A.waitForTimeout(900); await openG(A); await A.waitForSelector('[data-key=shp-bg] input', { timeout: 6000 }).catch(() => {});
+    ok('А: увімкнена (bg на сервері) — галочка видна, щоб її зняти', ((await api(A, 'GET', '/share')).shares[0] || {}).bg === true && !!(await A.$('[data-key=shp-bg] input')) && await A.$eval('[data-key=shp-bg] input', x => x.checked));
     ok('Б: назва квартири та сама, що в власника («Мамина»)', ((await st(B)).places || []).filter(p => p.id === pB[0].id)[0].name === 'Мамина');
 
     // ---------- Б: екран квартири — учасник, «Вийти», без запрошень

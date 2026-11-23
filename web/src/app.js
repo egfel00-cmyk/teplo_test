@@ -10324,9 +10324,10 @@
     var s = shOf(p); if (!s || !s.sid || (+s.n || 0) < 2) return '';
     var on = own && r ? !!r.bg : !!s.bg;   // учаснику — позначка квартири (приходить синхронізацією), власнику — відповідь сервера після галочки
     if (!own) return '';   // 183-я (власник 23.11): у кожної квартири свій вхід — учаснику про кабінети власника не пишемо
-    var via = (r && r.bgVia) || [], names = via.map(function (v) { return v === 'htm' ? t('gw_htm_n') : t('shp_bg_lb'); }).filter(function (x, i, a) { return a.indexOf(x) === i; });
+    // 183-я: входи квартири (ХТМ цієї квартири, місцеві КП) і так спільні — галочка лише для основного кабінету ХТМ власника (сервер: bgVia = ['htm']), або щоб її зняти
+    var via = (r && r.bgVia) || []; if (!via.length && !on) return '';
     return '<label class="shp-bg" data-key="shp-bg"><input type="checkbox" data-act="shp-bg" data-sid="' + (+s.sid) + '"' + (on ? ' checked' : '') + '><span><b>' + esc(t('shp_bg_t')) + '</b>' +
-      '<span class="small muted">' + esc(names.length ? t('shp_bg_s', { w: names.join(', ') }) : t('shp_bg_s0')) + '</span></span></label>';
+      '<span class="small muted">' + esc(via.length ? t('shp_bg_s') : t('shp_bg_s0')) + '</span></span></label>';
   }
   document.addEventListener('change', function (e) {
     var el = e.target; if (!el || el.getAttribute('data-act') !== 'shp-bg') return;

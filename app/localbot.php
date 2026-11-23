@@ -204,11 +204,21 @@ final class LocalBot {
   // ---------- облікові дані людини: cab_creds (user_id, 'L'+бот) — extra: {місце: {acc, consentAt, lang, chk}}, secret: зашифроване {місце: {name, addr, phone, login, pass}} ----------
   private static function js(?string $s): array { $j = json_decode((string)$s, true); return is_array($j) ? $j : []; }
   private static function row(int $uid, string $id): ?array { return Db::one('SELECT * FROM cab_creds WHERE user_id = ? AND prov = ?', [$uid, self::prov($id)]); }
-  /** 180-я: спільна квартира учасника без свого підключення, власник дозволив «у фоні» → підключення власника (його копія квартири): [uid, place, ім'я] або null. */
-  public static function viaOwner(int $uid, string $id, string $place): ?array {
-    if (!class_exists('Share', false) || self::creds($uid, $id, $place)) return null;
-    $o = Share::bgOwner($uid, $place); if (!$o) return null;
-    $c = self::creds($o['uid'], $id, $o['pid']); return $c ? [$o['uid'], $o['pid'], $o['name']] : null;
+  /** 183-я (власник 23.11: «у каждой квартиры свой вход для всех поставщиков, бо в каждой квартиры разные счётчики»): дані входу належать квартирі —
+   *  у спільній ними надсилають усі, хто її веде, хоч би хто їх вписав (без галочки власника й без імен). → [uid, place] рядка з даними або null.
+   *  (Було 180-ї: viaOwner — лише власника й лише з його дозволу «у фоні».) */
+  public static function aptOf(int $uid, string $id, string $place): ?array {
+    if (self::creds($uid, $id, $place)) return [$uid, $place];
+    if (class_exists('Share', false)) foreach (Share::mates($uid, $place) as [$mu, $mp]) if (self::creds($mu, $id, $mp)) return [$mu, $mp];
+    return null;
+  }
+  /** Усі копії квартири (своя й тих, хто веде її разом): [[uid, place], …]. */
+  private static function aptAll(int $uid, string $place): array { return array_merge([[$uid, $place]], class_exists('Share', false) ? Share::mates($uid, $place) : []); }
+  /** Скасувати чергу квартири в усіх, хто її веде (дані входу забули чи вимкнули «у фоні»). */
+  private static function cancelApt(int $uid, string $id, string $place, string $why): void {
+    foreach (self::aptAll($uid, $place) as [$u, $pl])
+      foreach (Db::q("SELECT * FROM cab_jobs WHERE user_id = ? AND prov = ? AND status = 'queued'", [$u, self::prov($id)])->fetchAll() as $j)
+        if ((self::js($j['payload'])['place'] ?? '') === $pl) self::finish((int)$j['id'], 'cancelled', ['why' => $why]);
   }
   /** Дані підключення для місця (з розшифрованими полями) або null. */
   public static function creds(int $uid, string $id, string $place): ?array {
@@ -308,12 +318,11 @@ final class LocalBot {
   // ---------- API ----------
   /** GET /api/lb?bot=&place= — бот, підключення цього місця (свої дані — для заповнення форми; пароль — ніколи), черга. */
   public static function status(int $uid, array $q): array {
-    [$id] = self::botOr404($q); $place = self::placeId($q); $c = self::creds($uid, $id, $place);
-    // 180-я: через підключення власника — без його даних входу (лише рахунок квартири), з ім'ям власника
-    $vo = self::viaOwner($uid, $id, $place);
-    if ($vo) { $oc = self::creds($vo[0], $id, $vo[1]) ?? []; $c = array_filter(['acc' => $oc['acc'] ?? null, 'chk' => $oc['chk'] ?? null, 'consentAt' => $oc['consentAt'] ?? null, 'bg' => ($oc['bg'] ?? true) !== false], fn($v) => $v !== null); }
+    [$id] = self::botOr404($q); $place = self::placeId($q);
+    // 183-я: дані входу квартири — і вписані іншим, хто веде цю спільну квартиру (як у них; пароль — ніколи; без імен)
+    $ap = self::aptOf($uid, $id, $place); $c = $ap ? self::creds($ap[0], $id, $ap[1]) : null;
     $conn = $c ? array_filter(['dist' => $c['dist'] ?? null, 'acc' => $c['acc'] ?? null, 'name' => $c['name'] ?? null, 'addr' => $c['addr'] ?? null, 'phone' => $c['phone'] ?? null, 'login' => $c['login'] ?? null,
-      'pass' => isset($c['pass']) ? true : null, 'at' => $c['consentAt'] ?? null, 'chk' => $c['chk'] ?? null], fn($v) => $v !== null) + ['bg' => ($c['bg'] ?? true) !== false] + ($vo ? ['by' => $vo[2]] : []) : null;
+      'pass' => isset($c['pass']) ? true : null, 'at' => $c['consentAt'] ?? null, 'chk' => $c['chk'] ?? null], fn($v) => $v !== null) + ['bg' => ($c['bg'] ?? true) !== false] + ($ap[0] !== $uid ? ['mate' => true] : []) : null;
     $jobs = Db::q('SELECT * FROM cab_jobs WHERE user_id = ? AND prov = ? ORDER BY id DESC LIMIT 12', [$uid, self::prov($id)])->fetchAll();
     $pb = self::pub($id); if ($c && $pb['to'] === null && self::to(self::get($id), $c) !== '') $pb['to'] = self::to(self::get($id), $c);   // адреса району
     return ['bot' => $pb, 'conn' => $conn, 'jobs' => array_values(array_filter(array_map([self::class, 'pubJob'], $jobs), fn($j) => ($j['place'] ?? '') === $place))];
@@ -324,7 +333,8 @@ final class LocalBot {
     [$id, $b] = self::botOr404($in); $place = self::placeId($in);
     if (!self::ready($id)) throw self::err($b['t'] === 'mail' ? 'mail' : 'off', 409);
     if (($in['consent'] ?? false) !== true) throw self::err('consent');
-    $old = self::creds($uid, $id, $place) ?? [];
+    // 183-я: у квартири один вхід — вписаний іншим, хто веде спільну, замінюємо цим (пароль, якщо не міняли, — той самий)
+    $ap = self::aptOf($uid, $id, $place); $old = $ap ? self::creds($ap[0], $id, $ap[1]) ?? [] : [];
     if (in_array('pass', $b['need'], true) && (string)($in['pass'] ?? '') === '' && isset($old['pass'])) $in['pass'] = $old['pass'];   // пароль не міняли
     [$pub, $sec] = self::input($b, $in);
     self::limit($uid);
@@ -339,15 +349,16 @@ final class LocalBot {
     }
     // 168-а: «Перевірити» в Налаштуваннях — те саме підключення; «Відправляти у фоні» (bg) лишається, як було
     self::save($uid, $id, $place, $pub + ['consentAt' => gmdate('c'), 'lang' => self::$lang, 'chk' => $chk] + (array_key_exists('bg', $old) ? ['bg' => $old['bg'] !== false] : []), $sec);
+    foreach (self::aptAll($uid, $place) as [$u, $pl]) if ($u !== $uid && self::creds($u, $id, $pl)) self::save($u, $id, $pl, null, null);   // вхід квартири тепер цей — вписані іншими прибираємо
     Db::q('INSERT INTO audit_log (user_id, action, ip, created_at) VALUES (?, ?, ?, ?)', [$uid, 'lb_conn_' . $id, null, Http::iso()]);
     return ['ok' => true] + self::status($uid, ['bot' => $id, 'place' => $place]);
   }
   /** POST /api/lb/forget {bot, place} — забути дані й згоду, скасувати чергу цього місця. */
   public static function forget(int $uid, array $in): array {
     [$id] = self::botOr404($in); $place = self::placeId($in);
-    self::save($uid, $id, $place, null, null);
-    foreach (Db::q("SELECT * FROM cab_jobs WHERE user_id = ? AND prov = ? AND status = 'queued'", [$uid, self::prov($id)])->fetchAll() as $j)
-      if ((self::js($j['payload'])['place'] ?? '') === $place) self::finish((int)$j['id'], 'cancelled', ['why' => 'forgot']);
+    // 183-я: вхід квартири вписав інший, хто веде спільну, — він і забувається (у квартири один вхід); черга квартири — в усіх
+    foreach (self::aptAll($uid, $place) as [$u, $pl]) if (self::creds($u, $id, $pl)) self::save($u, $id, $pl, null, null);
+    self::cancelApt($uid, $id, $place, 'forgot');
     Db::q('INSERT INTO audit_log (user_id, action, ip, created_at) VALUES (?, ?, ?, ?)', [$uid, 'lb_forget_' . $id, null, Http::iso()]);
     return ['ok' => true] + self::status($uid, ['bot' => $id, 'place' => $place]);
   }
@@ -356,12 +367,13 @@ final class LocalBot {
   public static function bg(int $uid, array $in): array {
     self::$lang = ($in['lang'] ?? '') === 'ru' ? 'ru' : 'uk';
     [$id] = self::botOr404($in); $place = self::placeId($in); $on = ($in['on'] ?? false) === true;
-    $r = self::row($uid, $id); $ex = $r ? self::js($r['extra']) : [];
-    if (!isset($ex[$place])) throw self::err('conn', 409);
-    $ex[$place]['bg'] = $on; if ($on) $ex[$place]['consentAt'] = gmdate('c');
-    Db::q('UPDATE cab_creds SET extra = ? WHERE user_id = ? AND prov = ?', [json_encode($ex, JSON_UNESCAPED_UNICODE), $uid, self::prov($id)]);
-    if (!$on) foreach (Db::q("SELECT * FROM cab_jobs WHERE user_id = ? AND prov = ? AND status = 'queued'", [$uid, self::prov($id)])->fetchAll() as $j)
-      if ((self::js($j['payload'])['place'] ?? '') === $place) self::finish((int)$j['id'], 'cancelled', ['why' => 'bg_off']);
+    // 183-я: «у фоні» — властивість входу квартири (і вписаного іншим, хто веде спільну)
+    $ap = self::aptOf($uid, $id, $place); if (!$ap) throw self::err('conn', 409);
+    [$ou, $op] = $ap; $r = self::row($ou, $id); $ex = $r ? self::js($r['extra']) : [];
+    if (!isset($ex[$op])) throw self::err('conn', 409);
+    $ex[$op]['bg'] = $on; if ($on) $ex[$op]['consentAt'] = gmdate('c');
+    Db::q('UPDATE cab_creds SET extra = ? WHERE user_id = ? AND prov = ?', [json_encode($ex, JSON_UNESCAPED_UNICODE), $ou, self::prov($id)]);
+    if (!$on) self::cancelApt($uid, $id, $place, 'bg_off');
     Db::q('INSERT INTO audit_log (user_id, action, ip, created_at) VALUES (?, ?, ?, ?)', [$uid, 'lb_bg_' . ($on ? 'on_' : 'off_') . $id, null, Http::iso()]);
     return ['ok' => true] + self::status($uid, ['bot' => $id, 'place' => $place]);
   }
@@ -381,8 +393,8 @@ final class LocalBot {
     self::$lang = ($in['lang'] ?? '') === 'ru' ? 'ru' : 'uk';
     [$id, $b] = self::botOr404($in); $place = self::placeId($in);
     if (!self::ready($id)) throw self::err($b['t'] === 'mail' ? 'mail' : 'off', 409);
-    $c = self::creds($uid, $id, $place); $vo = $c ? null : self::viaOwner($uid, $id, $place);   // 180-я: спільна квартира — підключенням власника
-    if ($vo) $c = self::creds($vo[0], $id, $vo[1]);
+    $ap = self::aptOf($uid, $id, $place); $c = $ap ? self::creds($ap[0], $id, $ap[1]) : null;   // 183-я: вхід квартири — і вписаний іншим, хто веде спільну
+    $vo = $ap && $ap[0] !== $uid ? $ap : null;
     if (!$c) throw self::err('conn', 409);
     if (($c['bg'] ?? true) === false) throw self::err('bg_off', 409);
     $items = self::items((array)($in['items'] ?? [])); if (!$items) throw self::err('items');
@@ -438,8 +450,8 @@ final class LocalBot {
     $uid = (int)$j['user_id']; $id = substr((string)$j['prov'], 1); $b = self::get($id); $p = self::js($j['payload']);
     self::$lang = ($p['lang'] ?? '') === 'ru' ? 'ru' : 'uk';
     if (Db::q("UPDATE cab_jobs SET status = 'sending', updated_at = ? WHERE id = ? AND status = 'queued'", [Http::iso(), $j['id']])->rowCount() !== 1) return self::pubJob(Db::one('SELECT * FROM cab_jobs WHERE id = ?', [$j['id']]));
-    $c = $b ? self::creds($uid, $id, (string)($p['place'] ?? '')) : null;
-    if ($b && !$c && isset($p['cu'])) { $vo = self::viaOwner($uid, $id, (string)($p['place'] ?? '')); $c = $vo && $vo[0] === (int)$p['cu'] ? self::creds($vo[0], $id, $vo[1]) : null; }   // 180-я: власник ще дозволяє?
+    // 183-я: вхід квартири, яким є зараз (свій чи вписаний іншим, хто веде спільну); квартиру перестали вести разом — входу немає
+    $ap = $b ? self::aptOf($uid, $id, (string)($p['place'] ?? '')) : null; $c = $ap ? self::creds($ap[0], $id, $ap[1]) : null;
     if (!$b || !$c) self::finish((int)$j['id'], 'failed', ['why' => 'conn', 'human' => self::h('conn')]);
     elseif (!self::ready($id)) self::finish((int)$j['id'], 'failed', ['why' => 'off', 'human' => self::h($b['t'] === 'mail' ? 'mail' : 'off')]);
     else try {

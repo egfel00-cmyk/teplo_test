@@ -114,14 +114,19 @@ ok('власник вимкнув — знову своїм', HtmSvc::credFor($u
 Db::q("UPDATE cab_jobs SET next_at = 0 WHERE id = ?", [(int)$r->body['job']['id']]); HtmSvc::cron();
 $jr = Db::one('SELECT status, result FROM cab_jobs WHERE id = ?', [(int)$r->body['job']['id']]);
 ok('черга, поставлена до вимкнення, не йде кабінетом власника: «більше не дозволяє»', $jr['status'] === 'failed' && (json_decode((string)$jr['result'], true)['why'] ?? '') === 'share_off', $jr);
-// місцевий КП: підключення власника для його квартири → учасник бачить «підключено» (з іменем власника, без даних входу)
-$A->req('POST', '/api/share/bg', ['sid' => $sid, 'on' => true]);
+// 183-я: місцевий КП — дані входу квартири спільні для всіх, хто її веде: без галочки власника, без імен; учасник бачить ті самі дані (пароль — ніколи)
 $lbId = array_key_first(LocalBot::BOTS);
-Db::q("INSERT INTO cab_creds (user_id, prov, login, secret, extra, state, info, created_at, checked_at) VALUES (?, ?, '', ?, ?, 'ok', NULL, ?, ?)", [$uA, 'L' . $lbId, CabVault::enc(json_encode(['main' => ['name' => 'Ольга', 'phone' => '0501112233']])), json_encode(['main' => ['acc' => '555', 'consentAt' => gmdate('c')]]), Http::iso(), Http::iso()]);
+Db::q("INSERT INTO cab_creds (user_id, prov, login, secret, extra, state, info, created_at, checked_at) VALUES (?, ?, '', ?, ?, 'ok', NULL, ?, ?)", [$uA, 'L' . $lbId, CabVault::enc(json_encode(['main' => ['name' => 'Ольга', 'phone' => '0501112233', 'pass' => 'x']])), json_encode(['main' => ['acc' => '555', 'consentAt' => gmdate('c')]]), Http::iso(), Http::iso()]);
 $ls = LocalBot::status($uG, ['bot' => $lbId, 'place' => 'sh' . $sid]);
-ok('місцевий КП: учасник — «підключено через olga», без імені й телефону власника', ($ls['conn']['by'] ?? '') === 'olga' && ($ls['conn']['acc'] ?? '') === '555' && !isset($ls['conn']['name']) && !isset($ls['conn']['phone']), $ls['conn'] ?? null);
-$A->req('POST', '/api/share/bg', ['sid' => $sid, 'on' => false]);
-ok('вимкнув — у місцевого КП учасник не підключений', LocalBot::status($uG, ['bot' => $lbId, 'place' => 'sh' . $sid])['conn'] === null);
+ok('місцевий КП: учасник — вхід квартири (mate), дані як у квартири, без імені власника й пароля', ($ls['conn']['acc'] ?? '') === '555' && !empty($ls['conn']['mate']) && !isset($ls['conn']['by']) && ($ls['conn']['pass'] ?? null) === true && LocalBot::aptOf($uG, $lbId, 'sh' . $sid) === [$uA, 'main'], $ls['conn'] ?? null);
+$bv = $A->req('GET', '/api/share')->body['shares'][0]['bgVia'] ?? null;
+ok('…галочка власника «у фоні» місцевих КП більше не стосується (лише основний кабінет ХТМ)', is_array($bv) && !preg_grep('/^lb:/', $bv), $bv);
+$r = $G->req('POST', '/api/lb/bg', ['bot' => $lbId, 'place' => 'sh' . $sid, 'on' => false]);
+ok('учасник вимикає «у фоні» — це вимикає вхід квартири (у власника теж)', $r->status === 200 && (LocalBot::creds($uA, $lbId, 'main')['bg'] ?? null) === false && ($r->body['conn']['bg'] ?? null) === false, [$r->status, $r->body['conn'] ?? null]);
+$r = $G->req('POST', '/api/lb/forget', ['bot' => $lbId, 'place' => 'sh' . $sid]);
+ok('учасник «Відв’язати» — у квартири більше немає входу (і у власника)', $r->status === 200 && $r->body['conn'] === null && LocalBot::creds($uA, $lbId, 'main') === null && LocalBot::status($uA, ['bot' => $lbId, 'place' => 'main'])['conn'] === null);
+Db::q("INSERT INTO cab_creds (user_id, prov, login, secret, extra, state, info, created_at, checked_at) VALUES (?, ?, '', ?, ?, 'ok', NULL, ?, ?)", [$uA, 'L' . $lbId, CabVault::enc('{}'), json_encode(['other' => ['acc' => '777', 'consentAt' => gmdate('c')]]), Http::iso(), Http::iso()]);
+ok('чужа квартира власника (не спільна) — її входу учасник не бере', LocalBot::aptOf($uG, $lbId, 'other') === null && LocalBot::aptOf($uG, $lbId, 'sh' . $sid) === null);
 Db::q("DELETE FROM cab_creds WHERE user_id = ?", [$uA]); Db::q("DELETE FROM cab_jobs");
 // 183-я (власник 23.11: «у каждой квартиры свой вход для всех поставщиков»): вхід ХТМ квартири — спільний для всіх, хто її веде, без галочки й без імен
 echo "Вхід ХТМ квартири — спільний (183-я):\n";

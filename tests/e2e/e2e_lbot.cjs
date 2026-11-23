@@ -1,7 +1,7 @@
 // Автоподача місцевим КП (LocalBot, 102-а): квартира в Кам’янці-Подільському → «Куди передати» воду → «Підключити автовідправку»
 // (особовий рахунок 74-108-61, згода) → сервер доходить до форми показань на стенді (нічого не надсилає) → «Відправити у фоні» → черга →
 // прогін cron → стенд отримав холодну й гарячу в свої поля → «Сайт прийняв показання», запис позначено переданим.
-// Потрібні: сайт 127.0.0.1:8013 (config.php: 'lb_base_mtve' => 'http://127.0.0.1:8096/', 'lb_base_brz' => 'http://127.0.0.1:8096/cab/'), стенд: php -S 127.0.0.1:8096 tests/lb-mock/router.php
+// Потрібні: сайт 127.0.0.1:8013 (config.php: 'lb_base_mtve' => 'http://127.0.0.1:8096/', 'lb_base_brz' => 'http://127.0.0.1:8096/cab/', 'lb_base_brovk' => 'http://127.0.0.1:8096/aspx/', smtp_* — Львів листом), стенд: php -S 127.0.0.1:8096 tests/lb-mock/router.php
 const { chromium } = require('playwright'); const demo = require('./demo.cjs'); const { execSync } = require('child_process'); const path = require('path');
 let pass = 0, fail = 0; const ok = (n, c, x) => { if (c) { pass++; console.log('  OK  ' + n); } else { fail++; console.log(' FAIL ' + n + (x !== undefined ? ' → ' + JSON.stringify(x) : '')); } };
 const U = 'http://127.0.0.1:8013/', M = 'http://127.0.0.1:8096', DATA = process.env.SITE_DATA || '/tmp/teplo_data';
