@@ -12,6 +12,40 @@ if (!defined('TEPLO')) { http_response_code(404); exit; }
 final class Journal {
   const KEEP_DAYS = 60;
   const TAGS = ['me', 'test'];
+  // 186-я («Гость 7G4H»: расширение браузера на Windows — ошибка каждые 5 с, 927 строк за час): одна и та же ошибка JS в сеансе —
+  // не больше JS_SAME строк, всех ошибок JS — не больше JS_MAX; сверх — счётчик `rep` у последней такой строки (сколько раз ещё было)
+  const JS_SAME = 5;
+  const JS_MAX = 40;
+
+  /** Ошибка JS уже записана в этом сеансе достаточно раз → прибавить `rep` и не писать новую строку. */
+  private static function jsDup(string $vid, string $sid, array $props): bool {
+    $rows = Db::q("SELECT id, props FROM events WHERE vid = ? AND sid = ? AND name = 'js_error' ORDER BY id DESC LIMIT " . self::JS_MAX, [$vid, $sid])->fetchAll();
+    if (!$rows) return false;
+    $same = null; $n = 0;
+    foreach ($rows as $x) {
+      $p = json_decode((string)$x['props'], true); $p = is_array($p) ? $p : [];
+      if ((string)($p['m'] ?? '') === (string)($props['m'] ?? '') && (string)($p['at'] ?? '') === (string)($props['at'] ?? '')) { $n++; $same = $same ?? [(int)$x['id'], $p]; }
+    }
+    if ($n < self::JS_SAME && count($rows) < self::JS_MAX) return false;
+    if (!$same) { $p = json_decode((string)$rows[0]['props'], true); $same = [(int)$rows[0]['id'], is_array($p) ? $p : []]; }
+    $p = $same[1]; $p['rep'] = (int)($p['rep'] ?? 0) + 1;
+    Db::q('UPDATE events SET props = ? WHERE id = ?', [json_encode($p, JSON_UNESCAPED_UNICODE), $same[0]]);
+    return true;
+  }
+
+  /** Уже накопленные повторы (до 186-й и от старых вкладок) — оставить JS_SAME строк, остальное — в `rep` последней из них. → сколько строк убрали */
+  public static function jsCollapse(int $days = 3, ?int $now = null): int {
+    $from = Visits::day(($now ?? time()) - (max(1, $days) - 1) * 86400); $gone = 0;
+    $grp = Db::q("SELECT vid, sid, props, COUNT(*) AS c FROM events WHERE day >= ? AND name = 'js_error' GROUP BY vid, sid, props HAVING COUNT(*) > " . self::JS_SAME, [$from])->fetchAll();
+    foreach ($grp as $g) {
+      $ids = array_map('intval', Db::q("SELECT id FROM events WHERE vid = ? AND sid = ? AND name = 'js_error' AND props = ? ORDER BY id", [$g['vid'], $g['sid'], $g['props']])->fetchAll(PDO::FETCH_COLUMN));
+      $drop = array_slice($ids, self::JS_SAME); if (!$drop) continue;
+      foreach (array_chunk($drop, 500) as $ch) $gone += Db::q('DELETE FROM events WHERE id IN (' . implode(',', $ch) . ')')->rowCount();
+      $p = json_decode((string)$g['props'], true); $p = is_array($p) ? $p : []; $p['rep'] = (int)($p['rep'] ?? 0) + count($drop);
+      Db::q('UPDATE events SET props = ? WHERE id = ?', [json_encode($p, JSON_UNESCAPED_UNICODE), $ids[self::JS_SAME - 1]]);
+    }
+    return $gone;
+  }
 
   private static function vid($v): string { return substr(preg_replace('/[^A-Za-z0-9]/', '', (string)$v), 0, 24); }
   /** Экран: «#tgWebAppData=…» (старые клиенты слали данные входа Telegram как экран) — это главная. */
@@ -39,6 +73,7 @@ final class Journal {
         $k = substr(preg_replace('/[^A-Za-z0-9_]/', '', (string)$k), 0, 20); if ($k === '' || is_array($v) || is_object($v)) continue;
         $props[$k] = is_bool($v) ? (int)$v : (is_int($v) || is_float($v) ? $v : self::clean($v, 120));
       }
+      if ($name === 'js_error' && self::jsDup($vid, $sid, $props)) continue;
       $pj = $props ? json_encode($props, JSON_UNESCAPED_UNICODE) : null; if ($pj !== null && strlen($pj) > 900) $pj = mb_strcut($pj, 0, 900);
       Db::q('INSERT INTO events (at, day, vid, sid, user_id, name, screen, props) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
         [$at, Visits::day($now - $ago), $vid, $sid, $uid, $name, self::screen((string)($e['s'] ?? '')), $pj]);
@@ -168,16 +203,16 @@ final class Journal {
     $grp = []; $scr = []; $errVids = [];
     foreach (Db::q("SELECT vid, name, screen, props, at FROM events WHERE day >= ? AND name IN ('js_error', 'api_error')$ex ORDER BY id", [$from])->fetchAll() as $e) {
       $p = $pv($e['props']); $errVids[(string)$e['vid']] = true;
-      $k = $e['name'] === 'js_error' ? 'js|' . $mask($p['m'] ?? '') . '|' . ($p['at'] ?? '') : 'api|' . ($p['p'] ?? '') . '|' . ($p['c'] ?? '') . '|' . ($p['e'] ?? '');
+      $k = $e['name'] === 'js_error' ? 'js|' . $mask($p['m'] ?? '') . '|' . ($p['at'] ?? '') . '|' . preg_replace('/[^a-z]/', '', (string)($p['src'] ?? '')) : 'api|' . ($p['p'] ?? '') . '|' . ($p['c'] ?? '') . '|' . ($p['e'] ?? '');
       $g = &$grp[$k]; $g = $g ?? ['n' => 0, 'vids' => [], 'last' => '', 'scr' => []];
-      $g['n']++; $g['vids'][(string)$e['vid']] = true; $g['last'] = (string)$e['at']; $sc = (string)($e['screen'] ?? ''); $g['scr'][$sc] = ($g['scr'][$sc] ?? 0) + 1; unset($g);
+      $g['n'] += 1 + max(0, (int)($p['rep'] ?? 0)); $g['vids'][(string)$e['vid']] = true; $g['last'] = (string)$e['at']; $sc = (string)($e['screen'] ?? ''); $g['scr'][$sc] = ($g['scr'][$sc] ?? 0) + 1; unset($g);
     }
     uasort($grp, fn($a, $b) => count($b['vids']) <=> count($a['vids']) ?: $b['n'] <=> $a['n']);
     $js = []; $api = [];
     foreach ($grp as $k => $g) {
       arsort($g['scr']); $row = ['n' => $g['n'], 'vids' => count($g['vids']), 'last' => $g['last'], 'scr' => array_slice(array_keys($g['scr']), 0, 3)];
       $f = explode('|', $k);
-      if ($f[0] === 'js' && count($js) < 15) $js[] = ['m' => $f[1], 'at' => $f[2]] + $row;
+      if ($f[0] === 'js' && count($js) < 15) $js[] = ['m' => $f[1], 'at' => $f[2]] + ($f[3] !== '' ? ['src' => $f[3]] : []) + $row;   // src: ext — расширение браузера, x — чужой скрипт
       if ($f[0] === 'api' && count($api) < 15) $api[] = ['p' => $f[1], 'c' => (int)$f[2], 'e' => $f[3]] + $row;
     }
     $toasts = [];
@@ -245,6 +280,8 @@ final class Journal {
     $d = Visits::day(($now ?? time()) - self::KEEP_DAYS * 86400);
     // отметки «открыли сайт» (visits) — до 12 месяцев: так написано в политике и в баннере cookie (07.11.2026)
     Db::q('DELETE FROM visits WHERE day < ?', [Visits::day(($now ?? time()) - 365 * 86400)]);
-    return Db::q('DELETE FROM events WHERE day < ?', [$d])->rowCount();
+    $n = Db::q('DELETE FROM events WHERE day < ?', [$d])->rowCount();
+    try { $n += self::jsCollapse(3, $now); } catch (Throwable $e) { }
+    return $n;
   }
 }

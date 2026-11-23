@@ -23263,8 +23263,16 @@ fieldset { min-inline-size: 0; }
     }, true);
     // помилки JS
     // «Script error.» без файла — чужой скрипт (Telegram, Cloudflare): подробностей браузер не дает, в журнале только шум
-    window.addEventListener('error', function (e) { if (/^Script error\.?$/.test(String(e.message || '')) && !e.filename) return; track('js_error', { m: String(e.message || 'error').slice(0, 120), at: String((e.filename || '').split('/').pop() + ':' + (e.lineno || 0) + ':' + (e.colno || 0)).slice(0, 60) }); });
-    window.addEventListener('unhandledrejection', function (e) { var r = e.reason; track('js_error', { m: String((r && r.message) || r || 'rejection').slice(0, 120), at: 'promise' }); });
+    // 186-я («Гость 7G4H»: расширение браузера бросало ошибку каждые 5 с — 927 строк за час): одна и та же — не больше 3 раз за загрузку;
+    // src — откуда: ext — расширение браузера, x — чужой скрипт (в стеке адреса, но не наши); наш или неизвестно — без поля
+    var jsSeen = {};
+    var jsErr = function (m, at, st) {
+      var k = m + '|' + at; jsSeen[k] = (jsSeen[k] || 0) + 1; if (jsSeen[k] > 3) return;
+      var s = String(st || ''), src = /-extension:\/\//.test(s) ? 'ext' : /https?:\/\//.test(s) && s.indexOf(location.origin) < 0 ? 'x' : undefined;
+      track('js_error', { m: m, at: at, src: src });
+    };
+    window.addEventListener('error', function (e) { if (/^Script error\.?$/.test(String(e.message || '')) && !e.filename) return; jsErr(String(e.message || 'error').slice(0, 120), String((e.filename || '').split('/').pop() + ':' + (e.lineno || 0) + ':' + (e.colno || 0)).slice(0, 60), (e.filename || '') + '\n' + ((e.error && e.error.stack) || '')); });
+    window.addEventListener('unhandledrejection', function (e) { var r = e.reason; jsErr(String((r && r.message) || r || 'rejection').slice(0, 120), 'promise', r && r.stack); });
     // повідомлення на сторінці — що людині сказали «не так»: помилки й попередження (role=alert, банери, підказки під полем).
     // Статуси термінів («Передати 1–5 листопада», «сьогодні», графік світла) — не повідомлення: раніше кожна перемальовка
     // писала їх знову (за 05.11 — 90 рядків «alert» на одному екрані). Те саме повідомлення на тому ж екрані — один раз.

@@ -1998,6 +1998,20 @@ ok('довідник: усі громади й пункти є в КАТОТТГ
   ok('/api/health → errs.mono: 1 пошук — вікон 7, сторінка 1, операцій 812, штраф відсіяно, групи «heat+ water-»; без номерів',
     ($mo['n'] ?? 0) === 1 && $mo['vids'] === 1 && $ml['how'] === 'done' && $ml['pg'] === 1 && $ml['n'] === 812 && $ml['gov'] === 1 && $ml['g'] === 'heat+ water-' && !isset($ml['acc']), $mo);
   Db::q("DELETE FROM events WHERE sid = 'errsum1'"); }
+{ // 186-я («Гость 7G4H»): расширение браузера бросало ошибку каждые 5 с — в сеансе одна и та же ошибка JS не больше 5 строк, сверх — `rep`; src — не наш код
+  $ext = ['t' => 1000, 'n' => 'js_error', 's' => 'home', 'p' => ['m' => "Cannot read properties of undefined (reading 'M_ID')", 'at' => 'promise']];
+  $je($anon, 'jsdupvid0001', 'jsdup1', array_fill(0, 12, $ext));
+  $rows = Db::q("SELECT props FROM events WHERE vid = 'jsdupvid0001' AND name = 'js_error' ORDER BY id")->fetchAll(PDO::FETCH_COLUMN);
+  $last = json_decode((string)end($rows), true); $sum = array_values(array_filter(Journal::errSummary(1)['js'], fn($x) => str_contains($x['m'], 'M_ID')));
+  ok('ошибка JS ×12 в сеансе — 5 строк, у последней rep 7; в сводке /api/health — 12', count($rows) === 5 && ($last['rep'] ?? 0) === 7 && ($sum[0]['n'] ?? 0) === 12, [$rows, $sum]);
+  $je($anon, 'jsdupvid0001', 'jsdup1', [['t' => 1000, 'n' => 'js_error', 's' => 'home', 'p' => ['m' => 'boom', 'at' => 'promise', 'src' => 'ext']]]);
+  $sx = array_values(array_filter(Journal::errSummary(1)['js'], fn($x) => $x['m'] === 'boom'));
+  ok('другая ошибка в том же сеансе пишется; расширение браузера — src ext в сводке', ($sx[0]['src'] ?? '') === 'ext' && ($sx[0]['n'] ?? 0) === 1, $sx);
+  // накопленное до 186-й (старая вкладка): 9 одинаковых строк → jsCollapse оставляет 5, остальное — rep последней из них
+  $d = Visits::day(); for ($i = 0; $i < 9; $i++) Db::q('INSERT INTO events (at, day, vid, sid, user_id, name, screen, props) VALUES (?, ?, ?, ?, NULL, ?, ?, ?)', [gmdate('c'), $d, 'jsdupvid0002', 'jsdup2', 'js_error', 'home', json_encode($ext['p'], JSON_UNESCAPED_UNICODE)]);
+  $gone = Journal::jsCollapse(1); $r2 = Db::q("SELECT props FROM events WHERE vid = 'jsdupvid0002' ORDER BY id")->fetchAll(PDO::FETCH_COLUMN);
+  ok('jsCollapse: 9 одинаковых → 5 строк, у пятой rep 4', $gone === 4 && count($r2) === 5 && (json_decode((string)$r2[4], true)['rep'] ?? 0) === 4 && empty(json_decode((string)$r2[3], true)['rep']), [$gone, $r2]);
+  Db::q("DELETE FROM events WHERE vid IN ('jsdupvid0001', 'jsdupvid0002')"); }
 echo "\nВыход:\n";
 $phone->req('POST', '/api/auth/logout');
 ok('после выхода /api/me → 401', $phone->req('GET', '/api/me')->status === 401);

@@ -287,7 +287,7 @@ final class Mail {
     $o['photosBad'] = $c("SELECT COUNT(*) n FROM photos WHERE created_at >= ? AND (status = 'failed' OR problem IS NOT NULL)", [$iso]);
     $o['reportsBad'] = $c('SELECT COUNT(*) n FROM recog_reports WHERE created_at >= ? AND ok = 0', [$iso]);
     $o['server500'] = count(array_filter(ErrLog::list(200), fn($e) => (int)($e['at'] ?? 0) >= $since));
-    try { $e = Journal::errSummary($days); $o['errs'] = ['js' => array_sum(array_map(fn($x) => (int)($x['n'] ?? 0), (array)($e['js'] ?? []))), 'api' => array_sum(array_map(fn($x) => (int)($x['n'] ?? 0), (array)($e['api'] ?? [])))]; } catch (Throwable $e) { $o['errs'] = null; }
+    try { $e = Journal::errSummary($days); $o['errs'] = ['js' => array_sum(array_map(fn($x) => empty($x['src']) ? (int)($x['n'] ?? 0) : 0, (array)($e['js'] ?? []))),   /* src — расширение/чужой скрипт: не наш сбой */ 'api' => array_sum(array_map(fn($x) => (int)($x['n'] ?? 0), (array)($e['api'] ?? [])))]; } catch (Throwable $e) { $o['errs'] = null; }
     $o['remind'] = [];
     foreach (Db::q('SELECT kind, status, COUNT(*) n FROM reminders_sent WHERE sent_at >= ? GROUP BY kind, status', [$iso])->fetchAll() as $x) $o['remind'][$x['kind'] . ' ' . ($x['status'] ?? '…')] = (int)$x['n'];
     $o['mail'] = [];
