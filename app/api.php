@@ -47,6 +47,8 @@
 //  GET  /api/places/suggest?q=&r=   підказка населеного пункту у формі адреси (Providers::suggest), вхід не потрібен
 //  POST /api/visit                  {vid, device, os, tg, pwa, sw} — с чего открыли сайт (аналитика устройств), вход не нужен
 //  POST /api/feedback               {text, contact?, page, screen, lang} — плавающая кнопка «Відгук», вход не нужен
+//  GET  /api/share · POST /api/share/invite {pid, email?, lang?} · /revoke {id} · /remove {sid, user} · /leave {sid}   179-я: спільна квартира (app/share.php)
+//  GET  /api/share/join?t= → що за запрошення · POST /api/share/join {t, name?, email?, state?} → {pid, sid} | {sent} (лист на пошту — сам вхід)
 //  GET  /api/admin/*                аналитика владельца (только admins из config.php), см. app/admin.php
 //  GET  /api/admin/photo?id=…       байты фото (не JSON)
 //  GET  /api/admin/pages, /api/admin/page?id=…  отчёты владельца (app/reports.php; страница — sandbox, без скриптов)
@@ -157,7 +159,9 @@ final class Api {
           'errs' => (function () { try { return Journal::errSummary(3); } catch (Throwable $e) { return ['err' => $e->getMessage()]; } })(),
           'indexnow' => class_exists('IndexNow', false) ? IndexNow::summary() : null,
           // почта (81-я): включена ли, сколько писем за сутки по видам и итогам, последний сбой — без адресов
-          'mail' => class_exists('Mail', false) ? Mail::health() : null];
+          'mail' => class_exists('Mail', false) ? Mail::health() : null,
+          // 179-я: спільні квартири — скільки, учасників, запрошень і приєднань за 7 днів, незведених (лише числа)
+          'share' => class_exists('Share', false) ? Share::summary() : null];
       }
       // отписка от нагадувань на e-mail: GET — страница с кнопкой (почтовые сканеры ходят по ссылкам — по GET не отписываем), POST — отписать (и One-Click)
       case 'GET /api/mail/off': case 'POST /api/mail/off': {
@@ -287,7 +291,8 @@ final class Api {
         if (!Mail::on()) throw new HttpError(503, 'mail_off');
         RateLimit::hit('forgot_acc', $email);
         $u = Db::one('SELECT * FROM users WHERE email = ?', [$email]);
-        if ($u && $u['password_hash'] && Mail::deliverable($email)) {
+        // 179-я: акаунт без пароля (приєднався за листом-запрошенням) — теж: посилання задає пароль і входить
+        if ($u && Mail::deliverable($email)) {
           $tok = bin2hex(random_bytes(24)); $now = Http::now();
           Db::q('DELETE FROM pw_resets WHERE user_id = ? OR expires_at < ?', [$u['id'], $now]);
           Db::q('INSERT INTO pw_resets (token_hash, user_id, expires_at, created_at) VALUES (?, ?, ?, ?)', [hash('sha256', $tok), $u['id'], $now + 3600, $now]);
@@ -366,7 +371,24 @@ final class Api {
           $now = Db::one('SELECT data, version FROM user_state WHERE user_id = ?', [$user['id']]); if (!$now) throw $e;
           throw new HttpError(409, 'conflict', ['state' => self::stateOut((string)$now['data']), 'version' => (int)$now['version']]);
         }
-        return ['version' => $cur + 1];
+        // 179-я: спільні квартири — звести копії учасників; переписали й цей стан (нове від інших) — застосунок забере одразу (pull)
+        $pull = class_exists('Share', false) ? Share::afterPut((int)$user['id']) : false;
+        return ['version' => $cur + 1] + ($pull ? ['pull' => true] : []);
+      }
+
+      // 179-я: спільна квартира (app/share.php) — запросити, приєднатися, хто має доступ, прибрати, вийти
+      case 'GET /api/share': if (!$user) throw new HttpError(401, 'unauthorized'); return Share::mine((int)$user['id']);
+      case 'POST /api/share/invite': if (!$user) throw new HttpError(401, 'unauthorized'); RateLimit::hit('share_inv', (string)$user['id']); return Share::invite((int)$user['id'], $in);
+      case 'POST /api/share/revoke': if (!$user) throw new HttpError(401, 'unauthorized'); return Share::revoke((int)$user['id'], $in);
+      case 'POST /api/share/remove': if (!$user) throw new HttpError(401, 'unauthorized'); return Share::remove((int)$user['id'], $in);
+      case 'POST /api/share/leave': if (!$user) throw new HttpError(401, 'unauthorized'); return Share::leave((int)$user['id'], $in);
+      case 'GET /api/share/join': { RateLimit::hit('share_ip', $ip); $q = $r->query(); return Share::preview((string)($q['t'] ?? ''), $user, ($q['lang'] ?? '') === 'ru' ? 'ru' : 'uk'); }
+      case 'POST /api/share/join': {
+        RateLimit::hit('share_ip', $ip);
+        $j = Share::join($user ? (int)$user['id'] : 0, (string)($in['t'] ?? ''), $in);
+        // лист прийшов на пошту людини — посилання й є входом (акаунт з цією поштою або новий, без пароля)
+        if (!empty($j['login'])) { $u = self::userById((int)$j['login']); self::startSession($res, $u, $r, $ip); self::audit((int)$u['id'], 'login_share', $ip); $j['user'] = self::publicUser($u); }
+        unset($j['login']); return $j;
       }
 
       case 'POST /api/recognize/upload': {   // копия фото для /admin; без входа — по id браузера из аналитики (101-а)
@@ -389,7 +411,9 @@ final class Api {
       case 'GET /api/photo': {   // фото к записи истории (тепло/вода) — только хозяину
         if (!$user) throw new HttpError(401, 'unauthorized');
         $id = (string)($r->query()['id'] ?? '');
-        $ph = preg_match('/^[a-f0-9]{24}$/', $id) ? Db::one('SELECT * FROM photos WHERE id = ? AND user_id = ?', [$id, (int)$user['id']]) : null;
+        $ph = preg_match('/^[a-f0-9]{24}$/', $id) ? Db::one('SELECT * FROM photos WHERE id = ?', [$id]) : null;
+        // 179-я: фото запису спільної квартири — і іншим її учасникам
+        if ($ph && (int)$ph['user_id'] !== (int)$user['id'] && !(class_exists('Share', false) && Share::together((int)$user['id'], (int)$ph['user_id']))) $ph = null;
         if (!$ph || !is_file(Recognize::path($ph))) throw new HttpError(404, 'not_found');
         $res->file = ['path' => Recognize::path($ph), 'mime' => $ph['mime']]; return [];
       }
@@ -556,9 +580,10 @@ final class Api {
   /** Усі рядки людини в базі й її файли (фото, платіжки). Таблиці, яких ще немає (створюються при першому зверненні), — пропускаємо. */
   public static function deleteAccount(int $uid): void {
     if ($uid <= 0) return;
+    if (class_exists('Share', false)) Share::forget($uid);   // 179-я: вийти зі спільних квартир; де власник — прибрати в інших
     foreach (['sessions', 'user_identities', 'user_state', 'user_state_hist', 'cab_creds', 'cab_jobs', 'relay_jobs', 'link_tokens', 'pw_resets',
       'bot_cards', 'bot_inbox', 'consents', 'events', 'visits', 'reminders_sent', 'reminder_snooze', 'mail_optout', 'mail_log', 'vk_events', 'vk_replies',
-      'recog_reports', 'photos', 'docs', 'audit_log'] as $t) {
+      'recog_reports', 'photos', 'docs', 'audit_log', 'share_members'] as $t) {
       try { Db::q("DELETE FROM $t WHERE user_id = ?", [$uid]); } catch (\Throwable $e) { /* таблиці ще немає */ }
     }
     try { Db::q('UPDATE feedback SET user_id = NULL, contact = ? WHERE user_id = ?', ['', $uid]); } catch (\Throwable $e) { /* відгуки лишаються без імені */ }

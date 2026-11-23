@@ -90,7 +90,8 @@ let pass = 0, fail = 0; const ok = (n, c, i) => { console.log((c ? '  OK  ' : ' 
   // 10.11: экран квартиры — три раскрывашки, по умолчанию закрыты; в настройках счётчика — только сам счётчик; номера и платіжка — под постачальником
   await p.evaluate(() => localStorage.setItem('e2e.pvClosed', '1')); await go('place-main'); await p.reload(); await p.waitForTimeout(400);
   const grp = await p.$$eval('details.pgroup[id^="pg-pv-"]', ds => ds.map(d => d.id + ':' + d.open));
-  ok('квартира: три раскрывашки — про квартиру, лічильники, постачальники й рахунки; закрыты', grp.join(',') === 'pg-pv-about:false,pg-pv-meters:false,pg-pv-prov:false', grp);
+  // 179-я: четверта — «Спільний доступ» (лише з сервером), теж закрита
+  ok('квартира: три раскрывашки — про квартиру, лічильники, постачальники й рахунки (+ спільний доступ); закрыты', /^pg-pv-about:false,pg-pv-meters:false,pg-pv-prov:false(,pg-pv-people:false)?$/.test(grp.join(',')), grp);
   await p.evaluate(() => localStorage.removeItem('e2e.pvClosed')); await p.reload(); await p.waitForTimeout(400);
   ok('налаштування лічильника — без рахунку ХТМ і коду Водоканалу; вони — в «Постачальники, тарифи й рахунки»', !(await p.$('#mbs-heat #p-hacc')) && !(await p.$('[id^=mbs-] [data-wf=vkId]')) &&
     !!(await p.$('#pg-pv-prov [data-key=pv-bills-heat] #p-hacc')) && !!(await p.$('#pg-pv-prov [data-key=pv-bills-water] [data-wf=vkId]')) && !!(await p.$('#pg-pv-prov [data-key=pv-bills-heat] #p-abon')));

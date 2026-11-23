@@ -38,15 +38,17 @@ final class Docs {
   public static function list(int $uid): array { return ['docs' => array_map([self::class, 'pub'], Db::q('SELECT * FROM docs WHERE user_id = ? ORDER BY created_at DESC', [$uid])->fetchAll())]; }
   public static function file(int $uid, string $id): array {
     if (!preg_match('/^[a-f0-9]{24}$/', $id)) throw new HttpError(404, 'not_found');
-    $d = Db::one('SELECT * FROM docs WHERE id = ? AND user_id = ?', [$id, $uid]);
+    $d = Db::one('SELECT * FROM docs WHERE id = ?', [$id]);
+    // 179-я: платіжка запису спільної квартири — і іншим її учасникам
+    if ($d && (int)$d['user_id'] !== $uid && !(class_exists('Share', false) && Share::together($uid, (int)$d['user_id']))) $d = null;
     if (!$d || !is_file(self::path($d))) throw new HttpError(404, 'not_found');
-    return ['path' => self::path($d), 'mime' => $d['mime']];
+    return ['path' => self::path($d), 'mime' => $d['mime'], 'owner' => (int)$d['user_id']];
   }
   /** Ссылка на файл без входа, на LINK_TTL секунд: ?id=&e=&s= (HMAC от id, владельца и срока). */
   public static function link(int $uid, string $id): array {
-    self::file($uid, $id);
+    $f = self::file($uid, $id);
     $e = time() + self::LINK_TTL;
-    return ['url' => 'docs/open?id=' . $id . '&e=' . $e . '&s=' . self::sig($id, $uid, $e)];
+    return ['url' => 'docs/open?id=' . $id . '&e=' . $e . '&s=' . self::sig($id, (int)$f['owner'], $e)];
   }
   private static function sig(string $id, int $uid, int $e): string { return substr(hash_hmac('sha256', $id . '|' . $uid . '|' . $e, Cfg::secret()), 0, 32); }
   public static function open(array $q): array {

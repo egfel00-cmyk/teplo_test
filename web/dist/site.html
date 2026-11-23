@@ -3541,6 +3541,51 @@ fieldset { min-inline-size: 0; }
 .gw-self-b + .gw-self-b { margin-top: var(--sp-4); padding-top: var(--sp-4); border-top: 1px solid var(--c-line); }
 .gw-self-t { margin: 8px 0; color: var(--c-ink); }
 
+/* ===== 179-я: спільна квартира — «Спільний доступ» на екрані квартири, позначка біля назви, #join (власник 23.11: «не перегружай интерфейс»).
+   Люди — рядками з лініями (без «панелі в панелі»), аватар — нейтральний кружок з першою літерою; позначка «спільна» — тихий значок людей і число. */
+.sh-tag { display: inline-flex; align-items: center; gap: 2px; margin-left: 6px; vertical-align: -2px; color: var(--c-ink-2); font-size: 13px; font-weight: 500; white-space: nowrap; }
+.sh-tag .ico { flex: none; }
+.by-tag { display: inline-flex; align-items: center; margin-left: 6px; padding: 1px 8px; border-radius: var(--r-pill); background: var(--c-surface-2); color: var(--c-ink-2); font-size: 13px; font-weight: 500; white-space: nowrap; max-width: 9em; overflow: hidden; text-overflow: ellipsis; vertical-align: middle; }
+.shp-lead { margin: 0 0 var(--sp-3); }
+.shp-list { list-style: none; margin: 0 0 var(--sp-3); padding: 0; }
+.shp-p { display: flex; align-items: center; gap: 12px; min-height: 56px; padding: 8px 0; border-top: 1px solid var(--c-line); }
+.shp-p:first-child { border-top: 0; }
+.shp-p .grow { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.shp-p .grow b { overflow-wrap: anywhere; font-weight: 600; }
+.shp-av { flex: none; width: 36px; height: 36px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; background: var(--c-surface-2); color: var(--c-ink); font-weight: 600; font-size: 15px; }
+.shp-av.inv { color: var(--c-ink-2); background: transparent; border: 1px dashed var(--c-field-line); }
+.shp-rm { flex: none; min-height: 40px; padding: 0 14px; }
+.shp-ib { flex: none; min-height: 40px; min-width: 40px; padding: 0; }
+.shp-go { margin-top: var(--sp-2); }
+.shp-inv { border-top: 1px solid var(--c-line); padding-top: var(--sp-4); }
+.shp-inv h3 { margin: 0 0 4px; }
+.shp-inv > p.small { margin: 0 0 var(--sp-3); }
+.shp-inv > p.shp-send-s { text-align: center; margin: 6px 0 var(--sp-3); }
+.shp-more { display: grid; grid-template-columns: repeat(auto-fit, minmax(96px, 1fr)); gap: 8px; }
+/* три дії в ряд — значок над підписом (як «Поділитися» в iOS): «Копіювати» й «QR-код» не ламаються на 390/320 */
+.shp-more { grid-template-columns: repeat(auto-fit, minmax(84px, 1fr)); }
+.shp-more .btn { min-height: 60px; padding: 8px 4px; flex-direction: column; gap: 4px; font-size: 13px; line-height: 1.15; white-space: nowrap; }
+.shp-qr { margin-top: var(--sp-3); display: grid; justify-items: center; gap: 8px; text-align: center; }
+.shp-qr .qr-img { width: min(220px, 70vw); }
+.shp-qr p { margin: 0; }
+.shp-inv .shp-or { margin: var(--sp-4) 0 var(--sp-3); }
+.shp-mail .field { margin-bottom: 8px; }
+.shp-leave { margin-top: var(--sp-2); }
+.join-card .join-who { margin: 0 0 var(--sp-3); font-size: var(--fs-m); }
+.join-place { display: flex; align-items: center; gap: 12px; padding: 12px 0; border-top: 1px solid var(--c-line); border-bottom: 1px solid var(--c-line); margin: 0 0 var(--sp-3); }
+.join-place .grow { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.join-place .grow b { font-size: var(--fs-l); line-height: 1.2; font-weight: 600; overflow-wrap: anywhere; }
+.join-place .hp-ic { flex: none; display: inline-flex; color: var(--c-ink-2); }
+.join-kk { display: inline-flex; gap: 6px; flex: none; }
+.join-what { list-style: none; padding: 0; margin: 0 0 var(--sp-4); display: grid; gap: 8px; }
+.join-what li { display: flex; gap: 10px; align-items: flex-start; }
+.join-what .ico { flex: none; color: var(--c-ok); margin-top: 2px; }
+.join-card .help.block { margin: 0 0 var(--sp-3); }
+.join-card > p:not(.join-who):not(.help) { margin: 0 0 var(--sp-3); }
+/* 179-я: на широкому екрані — однією колонкою (кнопки не розтягуються на 900 px, підпис під кнопкою — по її центру) */
+.shp-list, .shp-inv, .shp-leave { max-width: 560px; }
+.shp-inv > p.shp-send-s, .shp-inv .shp-or { max-width: none; }
+
 </style>
 <style>.top { padding-top: max(12px, env(safe-area-inset-top)); }</style>
 </head>
@@ -6761,6 +6806,31 @@ fieldset { min-inline-size: 0; }
       pc_find: 'Знайти в довіднику', pc_find_ph: 'Назва або місто', pc_sel_s: 'обрали самі · {w}', pc_off: 'Як за адресою квартири', pc_off0: 'Прибрати вибір',
       pc_err: 'Довідник не завантажився — перевірте інтернет і торкніться поля ще раз', pc_none: 'Нікого не знайшли — спробуйте інакше або оберіть «Інший постачальник» нижче',
       pc_more: 'Ще {n} — уточніть запит', pc_sel_t: 'Постачальник: {o}', pc_off_t: 'Постачальник — як за адресою квартири', my_sum: 'До сплати', my_sum_s: '{q} з {d}', my_norq: 'Реквізитів ще немає — допишіть у «Налаштуваннях показань».',
+      // ---- 179-я: спільна квартира (група «Спільний доступ» на екрані квартири, #join)
+      shp_t: 'Спільний доступ', shp_s_off: 'Лише ви · запросіть рідних чи орендаря', shp_s_login: 'Увійдіть, щоб вести квартиру разом', shp_s_two: 'Ви й {a}', shp_s_many: 'Ви, {a} та ще {n}',
+      shp_s_mem: 'Веде {o} · ви учасник', shp_someone: 'Учасник', shp_me: 'ви', shp_owner: 'власник', shp_via_mail: 'пошта', shp_since: 'з {d}', shp_tag: 'Спільна: {n}',
+      shp_lead: 'Запросіть людину — вона бачитиме й вноситиме показання цієї квартири та позначатиме оплату, а ви бачитимете її внесення. Ваші інші квартири й паролі кабінетів лишаються лише вашими.',
+      shp_lead_mem: 'Квартиру веде {o}. Ви бачите й вносите показання, {o} бачить ваші. Ваші інші квартири — лише ваші.',
+      shp_login: 'Щоб вести квартиру разом із рідними чи орендарем, увійдіть — показання й оплати будуть в обох.',
+      shp_rm: 'Прибрати', shp_rm_q: 'Прибрати {n} з квартири «{p}»?\n\nУ {n} вона зникне. Ваші показання на місці; запросити знову можна будь-коли.', shp_rm_done: '{n} більше не має доступу',
+      shp_inv: 'Запросити людину', shp_link: 'Посилання', shp_link_s: 'чекає · діє до {d}', shp_mail_s: 'лист надіслано · діє до {d}', shp_cancel: 'Скасувати запрошення', shp_canceled: 'Запрошення скасовано',
+      shp_how: 'Як запросити', shp_how_s: 'Посилання — для однієї людини, діє 7 днів.', shp_send: 'Надіслати посилання', shp_send_s: 'Viber, Telegram, SMS — що зручно',
+      shp_qr: 'QR-код', shp_qr_h: 'Людина поруч наводить камеру телефона на код і відкриває посилання.', shp_or_mail: 'або листом', shp_mail_l: 'E-mail людини', shp_mail_btn: 'Надіслати лист', shp_mail_ok: 'Лист надіслано на {e}',
+      shp_msg: '{o} запрошує вас вести разом квартиру «{p}» у «передай»: показання лічильників, передача й оплата в одному місці. Відкрийте посилання й натисніть «Приєднатися»:',
+      shp_msg0: 'Запрошую вас вести разом квартиру «{p}» у «передай»: показання лічильників, передача й оплата в одному місці. Відкрийте посилання й натисніть «Приєднатися»:',
+      shp_leave: 'Вийти з квартири', shp_leave_q: 'Вийти з квартири «{p}»?\n\nВона зникне з вашого списку; у {o} усе залишиться.', shp_left: 'Ви вийшли з квартири «{p}»',
+      shp_del_own: 'Квартиру ведуть разом з вами ({n}) — у них вона теж зникне.', shp_del_mem: 'Ви лише вийдете з неї — у {o} усе залишиться.', shp_by: 'Вніс(ла): {n}',
+      shp_err: 'Не вийшло — перевірте інтернет і спробуйте ще раз', shp_err_sync: 'Квартира ще зберігається на сервері — спробуйте за кілька секунд', shp_full: 'У квартирі вже 8 людей — більше не можна',
+      shp_err_many: 'Забагато запрошень — скасуйте непотрібні або спробуйте пізніше', shp_err_mail: 'Пошта сервісу зараз не працює — надішліть посилання', shp_err_owner: 'Запрошувати й прибирати людей може лише власник квартири',
+      jn_t: 'Запрошення до квартири', jn_who: '{o} запрошує вас вести разом квартиру', jn_loading: 'Перевіряємо запрошення…',
+      jn_w1: 'ви бачите й вносите показання цієї квартири', jn_w2: '{o} бачить ваші внесення й оплати', jn_w3: 'ваші інші квартири й паролі — лише ваші, вийти можна будь-коли',
+      jn_btn: 'Приєднатися', jn_nopass: 'Пароль не потрібен — запрошення прийшло на вашу пошту.', jn_tg: 'Приєднатися через Telegram', jn_tg_s: 'Відкриється бот «передай» — натисніть у ньому «Приєднатися».',
+      jn_or_mail: 'або поштою', jn_mail_btn: 'Надіслати лист для входу', jn_mail_s: 'Пароль не потрібен: у листі — кнопка «Приєднатися».', jn_have: 'Уже маєте акаунт?',
+      jn_sent_t: 'Перевірте пошту', jn_sent: 'Надіслали лист на {e}. Відкрийте його й натисніть «Приєднатися» — квартира з’явиться у вас.',
+      jn_ok: 'Готово: тепер ви ведете квартиру разом з {o}', jn_open: 'Відкрити квартиру', jn_home: 'На головну', jn_about: 'Що таке «передай»', jn_retry: 'Спробувати ще раз',
+      jn_member: 'Ви вже ведете цю квартиру.', jn_own: 'Це ваше запрошення — надішліть посилання людині, яку запрошуєте.', jn_used: 'За цим посиланням уже приєдналися. Попросіть нове в того, хто запрошує.',
+      jn_expired: 'Запрошення застаріло (діє 7 днів). Попросіть нове.', jn_revoked: 'Запрошення скасовано. Попросіть нове, якщо потрібно.', jn_full: 'У квартирі вже найбільше людей.',
+      jn_bad: 'Посилання не діє. Перевірте, що його скопіювали повністю, або попросіть нове.', jn_limit: 'Забагато спроб — зачекайте годину й відкрийте посилання знову.',
       sh_t: 'Надіслати власнику', sh_go: 'Скласти повідомлення', sh_cta_s: 'Показання всіх лічильників квартири одним повідомленням — для власника житла чи орендаря.',
       sh_lead: 'Готове повідомлення з останніми показаннями. Скільки набігло — з останнього «оплачено» чи «передано».', sh_head: 'Показання лічильників — {p}', sh_water: 'Вода',
       sh_since: 'з {d}', sh_total: 'Разом ≈ {s} ₴', sh_sum: 'Додати суми в гривнях', sh_send: 'Надіслати…', sh_copied: 'Скопійовано — вставте в чат',
@@ -8197,6 +8267,31 @@ fieldset { min-inline-size: 0; }
       pc_find: 'Найти в справочнике', pc_find_ph: 'Название или город', pc_sel_s: 'выбрали сами · {w}', pc_off: 'Как по адресу квартиры', pc_off0: 'Убрать выбор',
       pc_err: 'Справочник не загрузился — проверьте интернет и коснитесь поля ещё раз', pc_none: 'Никого не нашли — попробуйте иначе или выберите «Другой поставщик» ниже',
       pc_more: 'Ещё {n} — уточните запрос', pc_sel_t: 'Поставщик: {o}', pc_off_t: 'Поставщик — как по адресу квартиры', my_sum: 'К оплате', my_sum_s: '{q} с {d}', my_norq: 'Реквизитов ещё нет — допишите в «Настройках показаний».',
+      // ---- 179-я: совместная квартира (группа «Совместный доступ» на экране квартиры, #join)
+      shp_t: 'Совместный доступ', shp_s_off: 'Только вы · пригласите родных или арендатора', shp_s_login: 'Войдите, чтобы вести квартиру вместе', shp_s_two: 'Вы и {a}', shp_s_many: 'Вы, {a} и ещё {n}',
+      shp_s_mem: 'Ведёт {o} · вы участник', shp_someone: 'Участник', shp_me: 'вы', shp_owner: 'владелец', shp_via_mail: 'почта', shp_since: 'с {d}', shp_tag: 'Общая: {n}',
+      shp_lead: 'Пригласите человека — он будет видеть и вносить показания этой квартиры и отмечать оплату, а вы будете видеть его внесения. Ваши другие квартиры и пароли кабинетов остаются только вашими.',
+      shp_lead_mem: 'Квартиру ведёт {o}. Вы видите и вносите показания, {o} видит ваши. Ваши другие квартиры — только ваши.',
+      shp_login: 'Чтобы вести квартиру вместе с родными или арендатором, войдите — показания и оплаты будут у обоих.',
+      shp_rm: 'Убрать', shp_rm_q: 'Убрать {n} из квартиры «{p}»?\n\nУ {n} она исчезнет. Ваши показания на месте; пригласить снова можно в любой момент.', shp_rm_done: '{n} больше не имеет доступа',
+      shp_inv: 'Пригласить человека', shp_link: 'Ссылка', shp_link_s: 'ждёт · действует до {d}', shp_mail_s: 'письмо отправлено · действует до {d}', shp_cancel: 'Отменить приглашение', shp_canceled: 'Приглашение отменено',
+      shp_how: 'Как пригласить', shp_how_s: 'Ссылка — для одного человека, действует 7 дней.', shp_send: 'Отправить ссылку', shp_send_s: 'Viber, Telegram, SMS — что удобно',
+      shp_qr: 'QR-код', shp_qr_h: 'Человек рядом наводит камеру телефона на код и открывает ссылку.', shp_or_mail: 'или письмом', shp_mail_l: 'E-mail человека', shp_mail_btn: 'Отправить письмо', shp_mail_ok: 'Письмо отправлено на {e}',
+      shp_msg: '{o} приглашает вас вести вместе квартиру «{p}» в «передай»: показания счётчиков, передача и оплата в одном месте. Откройте ссылку и нажмите «Присоединиться»:',
+      shp_msg0: 'Приглашаю вас вести вместе квартиру «{p}» в «передай»: показания счётчиков, передача и оплата в одном месте. Откройте ссылку и нажмите «Присоединиться»:',
+      shp_leave: 'Выйти из квартиры', shp_leave_q: 'Выйти из квартиры «{p}»?\n\nОна исчезнет из вашего списка; у {o} всё останется.', shp_left: 'Вы вышли из квартиры «{p}»',
+      shp_del_own: 'Квартиру ведут вместе с вами ({n}) — у них она тоже исчезнет.', shp_del_mem: 'Вы только выйдете из неё — у {o} всё останется.', shp_by: 'Внёс(ла): {n}',
+      shp_err: 'Не получилось — проверьте интернет и попробуйте ещё раз', shp_err_sync: 'Квартира ещё сохраняется на сервере — попробуйте через несколько секунд', shp_full: 'В квартире уже 8 человек — больше нельзя',
+      shp_err_many: 'Слишком много приглашений — отмените ненужные или попробуйте позже', shp_err_mail: 'Почта сервиса сейчас не работает — отправьте ссылку', shp_err_owner: 'Приглашать и убирать людей может только владелец квартиры',
+      jn_t: 'Приглашение в квартиру', jn_who: '{o} приглашает вас вести вместе квартиру', jn_loading: 'Проверяем приглашение…',
+      jn_w1: 'вы видите и вносите показания этой квартиры', jn_w2: '{o} видит ваши внесения и оплаты', jn_w3: 'ваши другие квартиры и пароли — только ваши, выйти можно в любой момент',
+      jn_btn: 'Присоединиться', jn_nopass: 'Пароль не нужен — приглашение пришло на вашу почту.', jn_tg: 'Присоединиться через Telegram', jn_tg_s: 'Откроется бот «передай» — нажмите в нём «Присоединиться».',
+      jn_or_mail: 'или почтой', jn_mail_btn: 'Отправить письмо для входа', jn_mail_s: 'Пароль не нужен: в письме — кнопка «Присоединиться».', jn_have: 'Уже есть аккаунт?',
+      jn_sent_t: 'Проверьте почту', jn_sent: 'Отправили письмо на {e}. Откройте его и нажмите «Присоединиться» — квартира появится у вас.',
+      jn_ok: 'Готово: теперь вы ведёте квартиру вместе с {o}', jn_open: 'Открыть квартиру', jn_home: 'На главную', jn_about: 'Что такое «передай»', jn_retry: 'Попробовать ещё раз',
+      jn_member: 'Вы уже ведёте эту квартиру.', jn_own: 'Это ваше приглашение — отправьте ссылку человеку, которого приглашаете.', jn_used: 'По этой ссылке уже присоединились. Попросите новую у того, кто приглашает.',
+      jn_expired: 'Приглашение устарело (действует 7 дней). Попросите новое.', jn_revoked: 'Приглашение отменено. Попросите новое, если нужно.', jn_full: 'В квартире уже максимум людей.',
+      jn_bad: 'Ссылка не действует. Проверьте, что её скопировали полностью, или попросите новую.', jn_limit: 'Слишком много попыток — подождите час и откройте ссылку снова.',
       sh_t: 'Отправить владельцу', sh_go: 'Составить сообщение', sh_cta_s: 'Показания всех счётчиков квартиры одним сообщением — для владельца жилья или арендатора.',
       sh_lead: 'Готовое сообщение с последними показаниями. Сколько набежало — с последнего «оплачено» или «передано».', sh_head: 'Показания счётчиков — {p}', sh_water: 'Вода',
       sh_since: 'с {d}', sh_total: 'Итого ≈ {s} ₴', sh_sum: 'Добавить суммы в гривнах', sh_send: 'Отправить…', sh_copied: 'Скопировано — вставьте в чат',
@@ -8248,6 +8343,9 @@ fieldset { min-inline-size: 0; }
     return v;
   }
   function sig(p) { var c = Object.assign({}, p); delete c.updatedAt; return JSON.stringify(c, fixArr); }
+  /** 179-я: мітки змін полів квартири. kt(p, поле) — коли поле змінили; квартира без _kt (стара версія застосунку) — час усієї квартири. */
+  function ktObj(p) { return !!(p && p._kt && typeof p._kt === 'object' && !Array.isArray(p._kt)); }
+  function kt(p, k) { return ktObj(p) ? (+p._kt[k] || 0) : (+(p && p.updatedAt) || 0); }
   function ts(x) { var n = typeof x === 'number' ? x : Date.parse(x || 0); return isFinite(n) ? n : 0; }
 
   /** Слить два состояния (локальное a и удалённое b). Возвращает новое. */
@@ -8311,9 +8409,26 @@ fieldset { min-inline-size: 0; }
       // 148-а (власник 14.11: «в „Победе“ третий раз ввожу Жилстрой — не сохраняется и сбрасывается»): квартира — «хто новіший, той і цілий», і стара копія
       // з іншого пристрою чи вкладки, яку фоном торкнулось щось інше (черга світла, форма ХТМ, газ), затирала нового постачальника. «Кому платите»
       // кожного виду (prov[вид]) тепер зливаємо окремо — за його власною міткою ts (mySet, тариф, «Так, це мій»): новіша зміна постачальника виграє завжди.
+      // 179-я (спільна квартира, власник 23.11): і далі — кожне поле квартири окремо, за міткою зміни _kt[поле] (ставить застосунок у save()):
+      // орендар змінив вивіз сміття, а власник того ж дня — тариф газу, — лишаються обидві правки, а не «новіша квартира ціла». Квартира без _kt
+      // (стара версія застосунку) — усі її поля з часом самої квартири, як раніше. Так само зводить сервер (app/share.php).
       order.forEach(function (id) {
         var vs = pv[id]; if (vs.length < 2) return;
-        var w = pm[id], prov = Object.assign({}, w.prov || {}), ch = false;
+        var w = pm[id], c = null, ckt = null, wl = ktObj(w) ? 0 : +w.updatedAt || 0;
+        vs.forEach(function (v) {
+          if (v === w || !v) return;
+          var keys = {}; Object.keys(v).forEach(function (k) { keys[k] = 1; }); if (ktObj(v)) Object.keys(v._kt).forEach(function (k) { keys[k] = 1; });
+          Object.keys(keys).forEach(function (k) {
+            if (k === '_kt' || k === 'updatedAt' || k === 'id') return;
+            var tv = kt(v, k), tw = c ? (k in ckt ? ckt[k] : wl) : kt(w, k);
+            if (!(tv > tw)) return;
+            if (!c) { c = Object.assign({}, w); ckt = {}; Object.keys(w).forEach(function (x) { if (x !== '_kt' && x !== 'updatedAt' && x !== 'id' && kt(w, x)) ckt[x] = kt(w, x); }); if (ktObj(w)) Object.keys(w._kt).forEach(function (x) { if (+w._kt[x]) ckt[x] = +w._kt[x]; }); }
+            if (Object.prototype.hasOwnProperty.call(v, k)) c[k] = v[k]; else delete c[k];
+            ckt[k] = tv;
+          });
+        });
+        if (c) { c._kt = ckt; c.updatedAt = Math.max.apply(null, vs.map(function (v) { return +(v && v.updatedAt) || 0; })); pm[id] = w = c; }
+        var prov = Object.assign({}, w.prov || {}), ch = false;
         vs.forEach(function (v) { if (v === w || !v.prov) return; Object.keys(v.prov).forEach(function (k) { var a = v.prov[k], c = prov[k]; if (a && (a.ts || 0) > ((c && c.ts) || 0)) { prov[k] = a; ch = true; } }); });
         if (ch) pm[id] = Object.assign({}, w, { prov: prov });
       });
@@ -8408,7 +8523,7 @@ fieldset { min-inline-size: 0; }
       var self = this, done = function (ok) { self._writing = false; if (ok) self._lastSig = s; self.status = ok ? 'ok' : 'error'; self._onChange(); if (self._again) { self._again = false; self._flush(); } };
       if (this.mode === 'claude') this._ref.set({ state: p, updatedAt: p.updatedAt || Date.now() }).then(function () { done(true); }, function () { done(false); });
       else if (this.mode === 'server') api('PUT', '/state', { state: p, baseVersion: this._version }, false, ka).then(function (j) {
-        if (j._status === 200) { self._version = j.version; done(true); }
+        if (j._status === 200) { self._version = j.version; done(true); if (j.pull) setTimeout(function () { self.poll(); }, 200); }   // 179-я: сервер звів спільну квартиру — нове від інших забрати одразу
         else if (j._status === 409 && j.state) { self._version = j.version; self.via = 'conflict'; self._apply(merge(self._get(), j.state)); self._writing = false; self._flush(); }
         else if (j._status === 401) { self.account = null; done(false); }
         else done(false);
@@ -8491,13 +8606,15 @@ fieldset { min-inline-size: 0; }
         self._set('server', 'ok'); self._flush();
       });
     },
+    /** Забрати нове з сервера зараз (той самий запит, що щохвилини). 179-я: після дій зі спільною квартирою. */
+    poll: function () {},
     _startPolling: function () {
       var self = this;
       var tick = function () { if (self.mode === 'server' && self.account && document.visibilityState === 'visible' && !self._writing) api('GET', '/state?since=' + self._version).then(function (j) { if (j._status === 200 && j.version !== self._version && j.state) { self._version = j.version; self._lastSig = sig(j.state); self.via = 'poll'; self._apply(merge(self._get(), j.state));
         // 149-а: злиття могло лишити своє новіше (постачальник за ts, записи) — віддати на сервер одразу, а не чекати наступного save() (інакше
         // сервер і пристрої без localStorage — вікно Telegram на Mac — так і бачили б стару копію)
         self._flush(); } }, function () { /* сеть пропала (iPhone после фона: «Load failed») — следующий раз */ }); };
-      document.addEventListener('visibilitychange', tick); setInterval(tick, 60000);
+      document.addEventListener('visibilitychange', tick); setInterval(tick, 60000); self.poll = tick;
     },
     _after: function (j) { if (j._status === 200 && j.user) { this.account = j.user; return this.pull(true).then(function () { return j; }); } return Promise.resolve(j); },
     login: function (email, password) { var self = this; return api('POST', '/auth/login', { email: email, password: password }).then(function (j) { return self._after(j); }); },
@@ -8517,7 +8634,7 @@ fieldset { min-inline-size: 0; }
     config: function () { return api('GET', '/config'); }
   };
 
-  Sync.merge = merge; Sync.payload = payload; Sync.sig = sig; Sync.fixArr = fixArr;
+  Sync.merge = merge; Sync.payload = payload; Sync.sig = sig; Sync.fixArr = fixArr; Sync.hasData = hasData;
   if (typeof module !== 'undefined' && module.exports) module.exports = Sync; else root.TeploSync = Sync;
 })(typeof window !== 'undefined' ? window : this);
 
@@ -10945,6 +11062,35 @@ fieldset { min-inline-size: 0; }
     ensurePlaces(); var p = place();
     if (JSON.stringify(p.meter || null) !== JSON.stringify(S.meter || null) || JSON.stringify(p.baseline || null) !== JSON.stringify(S.baseline || null)) { p.meter = S.meter || null; p.baseline = S.baseline || null; p.updatedAt = Date.now(); }
   }
+  /** 179-я (спільна квартира): мітка зміни кожного поля квартири — place._kt[поле] = мс. Застосунок міняє квартиру в сотні місць, тож мітки
+   *  ставимо тут, у save(): порівнюємо поля з останнім знімком (PKS) і змінені позначаємо «зараз». Дані з сервера чи іншого пристрою (applyRemote)
+   *  знімок оновлюють без міток. Квартира без _kt (стара версія) — спершу всі поля з її часом, щоб не стати «старішими», ніж були. */
+  var PKS = {};
+  function pkSnap(p) { var o = {}; Object.keys(p).forEach(function (k) { if (k !== '_kt' && k !== 'updatedAt') o[k] = JSON.stringify(p[k], jsonFix); }); return o; }
+  function pkInit() { PKS = {}; (S.places || []).forEach(function (p) { if (p && p.id) PKS[p.id] = pkSnap(p); }); }
+  function pkStamp() {
+    var now = Date.now();
+    (S.places || []).forEach(function (p) {
+      if (!p || !p.id) return; var old = PKS[p.id], cur = pkSnap(p), ch = [];
+      if (old) { Object.keys(cur).forEach(function (k) { if (cur[k] !== old[k]) ch.push(k); }); Object.keys(old).forEach(function (k) { if (!(k in cur)) ch.push(k); }); }
+      if (!p._kt || typeof p._kt !== 'object' || Array.isArray(p._kt)) { var t0 = +p.updatedAt || 0; p._kt = {}; if (old) Object.keys(cur).forEach(function (k) { if (t0) p._kt[k] = t0; }); }
+      ch.forEach(function (k) { p._kt[k] = now; });
+      PKS[p.id] = cur;
+    });
+  }
+  /** 179-я: хто вніс запис у спільній квартирі (r.by — id акаунта). Ставить лише пристрій того, хто вніс, і лише записам, створеним тут:
+   *  записи, що прийшли з сервера (від інших людей чи роботів — квитанції ХТМ, позначки «передано»), — у BY_SEEN і не чіпаються
+   *  (інакше підпис «вніс Іван» отримала б і квитанція, яку забрав робот власника, і копії сперечались би без кінця). */
+  var BY_SEEN = {};
+  function bySeen() { ['readings', 'water', 'mrecs'].forEach(function (k) { (S[k] || []).forEach(function (r) { if (r && r.id) BY_SEEN[r.id] = 1; }); }); }
+  function byStamp() {
+    var y = window.TeploSync, acc = y && y.account && y.account.id; if (!acc) return;
+    var sh = {}, n = 0; (S.places || []).forEach(function (p) { var x = p && !p.deleted && shOf(p); if (x) { sh[p.id] = +x.at || 0; n++; } }); if (!n) return;
+    var first = S.places && S.places[0] ? S.places[0].id : 'main', ts = function (v) { return typeof v === 'number' ? v : Date.parse(v || 0) || 0; };
+    ['readings', 'water', 'mrecs'].forEach(function (k) { (S[k] || []).forEach(function (r) {
+      if (!r || !r.id || BY_SEEN[r.id]) return; BY_SEEN[r.id] = 1;
+      var pid = r.place || first; if (!r.by && !r.deleted && pid in sh && ts(r.createdAt) >= sh[pid] - 60000) r.by = acc; }); });
+  }
   /** Имя квартиры: своё название («Моя», «Мамина»), иначе адрес, иначе «Квартира N». Адрес — второй строкой, если есть имя. */
   // без назви перша — «Моя квартира», інші — «Квартира N»; адреса — завжди окремим рядком
   function placeLabel(p) { var i = places().indexOf(p); return (p && p.name) || (i <= 0 ? t('pl_mine') : t('pl_unnamed', { n: i + 1 })); }
@@ -11321,7 +11467,7 @@ fieldset { min-inline-size: 0; }
   var lastSig = '', pendingRender = false;
   /** Сохранить: локально всегда; если изменились синхронизируемые данные — отметить время и отправить на другие устройства. */
   function save() {
-    syncPlace(); visitBump(); jrSaved(); jrProv('');
+    syncPlace(); pkStamp(); byStamp(); visitBump(); jrSaved(); jrProv('');
     // язык напоминаний бота — как в интерфейсе (сервер шлёт на нём)
     if (!S.remind || S.remind.lang !== S.lang) S.remind = Object.assign({}, S.remind || {}, { lang: S.lang });
     var Y = window.TeploSync;
@@ -11335,7 +11481,9 @@ fieldset { min-inline-size: 0; }
     S = Object.assign(defaults(), m, keep); deArr(S);
     if (uiTheme()) applyTheme();   // 174-я: тему змінили на іншому пристрої
     jrProv((window.TeploSync && window.TeploSync.via) || 'remote');   // 149-а: дані з іншого пристрою змінили «Кому платите» — у журнал
-    ensurePlaces(); var ap = place(); if (ap && (ap.meter || ap.baseline || S.places.length > 1)) { S.meter = ap.meter || null; S.baseline = ap.baseline || null; }
+    // 179-я: у спільній квартирі лічильник тепла міг змінити інший учасник — дзеркало S.meter беремо з квартири завжди
+    ensurePlaces(); var ap = place(); if (ap && (ap.meter || ap.baseline || S.places.length > 1 || shOf(ap))) { S.meter = ap.meter || null; S.baseline = ap.baseline || null; }
+    pkInit(); bySeen();   // прийшле з іншого пристрою чи від іншого учасника — не «своя зміна»: мітки полів і «хто вніс» не ставимо
     lastSig = window.TeploSync.sig(window.TeploSync.payload(S)); persist();
     // кнопка з нагадування відкрилась до входу — тепер квартири є: у потрібну квартиру й лічильник
     if (DEEP && S.onboarded) { var dp = DEEP; DEEP = null; deepLink(dp.g, dp.pid, dp.q); }
@@ -11364,7 +11512,7 @@ fieldset { min-inline-size: 0; }
     var l = (tu && tu.language_code) || (navigator.languages && navigator.languages[0]) || navigator.language || '';
     return /^ru\b/i.test(l) ? 'ru' : 'uk';
   }
-  var S = load(); deArr(S); ensurePlaces();
+  var S = load(); deArr(S); ensurePlaces(); pkInit(); bySeen();
   if (GASMV) setTimeout(function () { GASMV = false; save(); }, 0);
   // S.meter/S.baseline — зеркало текущей квартиры: при запуске берём из неё (не из того, что лежало сверху)
   (function () { var ap = place(); if (ap && places().length > 1) { S.meter = ap.meter || null; S.baseline = ap.baseline || null; } })();
@@ -11618,6 +11766,9 @@ fieldset { min-inline-size: 0; }
     send: '<path d="M21 3L3 10.5l7 2.5 2.5 7z"/><path d="M10 13l11-10"/>',
     bolt: '<path d="M13 3L5.5 13.5H11L10 21l7.5-10.5H12z"/>',
     pin: '<path d="M12 21s-6.5-5.6-6.5-11a6.5 6.5 0 0 1 13 0c0 5.4-6.5 11-6.5 11z"/><circle cx="12" cy="10" r="2.4"/>',
+    // 179-я: спільний доступ — люди й посилання
+    users: '<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c0-3.6 2.9-6.5 6.5-6.5s6.5 2.9 6.5 6.5"/><path d="M15.5 4.8a3.5 3.5 0 0 1 0 6.4M17.5 13.8c2.4.7 4 2.9 4 5.6v.6"/>',
+    link: '<path d="M10 14a4 4 0 0 0 5.7 0l3.3-3.3a4 4 0 0 0-5.7-5.7L12 6.3"/><path d="M14 10a4 4 0 0 0-5.7 0L5 13.3a4 4 0 0 0 5.7 5.7l1.3-1.3"/>',
     doc: '<path d="M7 3h7l4 4v14H7z"/><path d="M14 3v4h4M9.5 12h5M9.5 15.5h5"/>'
   };
   function ico(name, size, cls) {
@@ -12419,7 +12570,7 @@ fieldset { min-inline-size: 0; }
         // 174-я (власник 21.11): значок квартири — ліворуч від назви й адреси, як у шапці розкривашки, коли квартир кілька (свій значок або будиночок)
         return '<section class="hp one" id="hp-' + esc(p.id) + '" data-pl="' + esc(p.id) + '" style="--pc:var(--pc-' + placeColor(p) + ')" data-key="home-place"><div class="hp-head">' +
           '<span class="hp-ic' + (picon(p, 40) ? ' own' : '') + '" aria-hidden="true">' + (picon(p, 40) || ico('home', 26, 'hp-ico')) + '</span>' +
-          '<div class="hp-id"><b class="hp-name" data-key="home-place-name">' + esc(placeLabel(p)) + '</b>' +
+          '<div class="hp-id"><b class="hp-name" data-key="home-place-name">' + esc(placeLabel(p)) + shTag(p) + '</b>' +
             (HP_EDIT === p.id ? '' : addr ? '<span class="hp-addr">' + esc(addr) + ' <button type="button" class="linkbtn" data-act="hp-edit" data-id="' + esc(p.id) + '" data-key="home-addr-edit">' + esc(t('change')) + '</button></span>'
               : '<button type="button" class="linkbtn hp-addr-add" data-act="hp-edit" data-id="' + esc(p.id) + '" data-key="home-addr-add">' + ico('plus', 16) + ' ' + esc(t('hp_addr_add')) + '</button>') + '</div></div>' +
           (HP_EDIT === p.id ? hpEditForm(p) : '') +
@@ -12435,7 +12586,7 @@ fieldset { min-inline-size: 0; }
         return '<details class="hp pacc" id="hp-' + esc(p.id) + '" data-pl="' + esc(p.id) + '" style="--pc:var(--pc-' + placeColor(p) + ')" data-key="home-pl-' + esc(p.id) + '"' + (open ? ' open' : '') + '>' +
           '<summary data-key="home-pl-sum-' + esc(p.id) + '"' + (p.icon && PICONS[p.icon] ? ' class="has-ic"><span class="pacc-ic">' + picon(p, 40) + '</span>' : '>') +
             // 165-я: аватар квартири (її колір + значок) і значки її лічильників — показує лише світла C2 (styles.css), в інших темах приховані
-            '<span class="pacc-av" aria-hidden="true">' + (picon(p, 28) || ico('home', 26)) + '</span><span class="pacc-t"><b>' + (p.icon && PICONS[p.icon] ? '' : '<i class="pdot" aria-hidden="true"></i>') + esc(placeLabel(p)) + '</b>' + (p.address ? '<span class="pacc-addr">' + esc(addrShort(p.address)) + '</span>' : '') +
+            '<span class="pacc-av" aria-hidden="true">' + (picon(p, 28) || ico('home', 26)) + '</span><span class="pacc-t"><b>' + (p.icon && PICONS[p.icon] ? '' : '<i class="pdot" aria-hidden="true"></i>') + esc(placeLabel(p)) + shTag(p) + '</b>' + (p.address ? '<span class="pacc-addr">' + esc(addrShort(p.address)) + '</span>' : '') +
             '<span class="pacc-kk" aria-hidden="true">' + placeKindList(p).map(function (k) { return ico(KINDS[k].icon, 18, KINDS[k].cls); }).join('') + '</span></span>' +
             ico('chev', 22, 'pacc-chev') + due + '</summary><div class="pacc-body">' +
           (HP_EDIT === p.id ? hpEditForm(p) : '') +
@@ -15643,7 +15794,9 @@ fieldset { min-inline-size: 0; }
       case 'pv-chip': { ensurePlaces(); var pc = place(); pc.name = el.getAttribute('data-v'); pc.updatedAt = Date.now(); save(); render(true); return true; }
       case 'pl-del-ask': { var dq = place(el.getAttribute('data-id')), box = document.getElementById('pl-del-confirm'); if (!dq || !box) return true;
         var dn = (S.readings || []).filter(function (r) { return r && !r.deleted && r.place === dq.id; }).length + (S.water || []).filter(function (r) { return r && !r.deleted && !r.base && r.place === dq.id; }).length;
-        box.innerHTML = '<div class="banner warn" style="margin-top:16px" role="alert">' + ico('alert', 22) + '<div><p><b>' + esc(t('pv_del_q', { p: placeLabel(dq), n: dn })) + '</b></p><div class="row-actions" style="margin-top:8px"><button class="btn sec" data-act="pl-del-no">' + esc(t('cancel')) + '</button><button class="btn danger solid" data-act="pl-del" data-id="' + esc(dq.id) + '" data-key="pv-del-yes">' + esc(t('pv_del_yes', { p: placeLabel(dq) })) + '</button></div></div></div>';
+        // 179-я: спільна квартира — власник видаляє в усіх (скажемо, у кого); учасник — лише виходить
+        var dsh = shMany(dq) ? '<p>' + esc(shMine(dq) ? t('shp_del_own', { n: shPeople(dq).filter(function (x) { return !x.me; }).map(function (x) { return shFirst(x.name); }).join(', ') || shOf(dq).n - 1 }) : t('shp_del_mem', { o: shFirst(shOf(dq).own) || t('shp_someone') })) + '</p>' : '';
+        box.innerHTML = '<div class="banner warn" style="margin-top:16px" role="alert">' + ico('alert', 22) + '<div><p><b>' + esc(t('pv_del_q', { p: placeLabel(dq), n: dn })) + '</b></p>' + dsh + '<div class="row-actions" style="margin-top:8px"><button class="btn sec" data-act="pl-del-no">' + esc(t('cancel')) + '</button><button class="btn danger solid" data-act="pl-del" data-id="' + esc(dq.id) + '" data-key="pv-del-yes">' + esc(t('pv_del_yes', { p: placeLabel(dq) })) + '</button></div></div></div>';
         var yes = box.querySelector('[data-act=pl-del]'); if (yes) yes.focus(); return true; }
       case 'pl-del-no': { var bx0 = document.getElementById('pl-del-confirm'); if (bx0) bx0.innerHTML = ''; return true; }
       case 'to-water': e.preventDefault(); meterSet((wmeters()[0] || {}).id || ''); return true;   // 164-а: вода — у налаштуваннях лічильників квартири
@@ -16984,11 +17137,11 @@ fieldset { min-inline-size: 0; }
   }
   /** Значок джерела праворуч у рядку історії — одна пометка без слів: камера — з фото, бульбашка — з чату, картинка — вписали, фото додали. Вписали без фото — нічого. */
   function srcMark(r) {
-    var v = recVia(r), n = (r.photos || []).length;
-    if (!n && v !== 'photo' && v !== 'chat') return '';
+    var v = recVia(r), n = (r.photos || []).length, by = byTag(r);   // 179-я: у спільній квартирі — хто вніс (якщо не ви)
+    if (!n && v !== 'photo' && v !== 'chat') return by;
     var tip = srcText(r, true);
     return '<span class="ph-n src-' + v + '" role="img" title="' + esc(tip) + '" aria-label="' + esc(tip) + '">' + ico(v === 'chat' ? 'chat' : v === 'photo' ? 'camera' : 'image', 16) +
-      (n ? '<span class="num" aria-hidden="true">' + n + '</span>' : '') + '</span>';
+      (n ? '<span class="num" aria-hidden="true">' + n + '</span>' : '') + '</span>' + by;
   }
   /** 129-а (власник 13.11: «каша — суми й гігакалорії не збігаються»): у рядку лише одне джерело. Крупно — ваш лічильник (Гкал і ≈ гроші за тарифом),
    *  нарахування ХТМ — окремим підписаним рядком «ХТМ за {місяць}: Гкал · ₴», як у рахунках постачальників (показання «Customer read» окремо від «Estimated»).
@@ -19771,7 +19924,7 @@ fieldset { min-inline-size: 0; }
     // сюда приходят с главной (плитка «Налаштування квартири») — туда и назад
     var fromPrefs = PV_FROM === 'prefs';
     var h = '<p class="rec-back"><a href="#' + (fromPrefs ? 'prefs' : many ? 'places' : 'home') + '" data-key="pv-back">← ' + esc(t(fromPrefs ? 'p_title' : many ? 'pv_back_all' : 'nav_home')) + '</a></p>' +
-      '<h1 class="pv-h" style="--pc:var(--pc-' + placeColor(p) + ')">' + pmark(p, 30, 'pv-dot') + '<span>' + esc(placeLabel(p)) + (sub ? '<span class="small muted pv-sub">' + esc(sub) + '</span>' : '') + '</span></h1>';
+      '<h1 class="pv-h" style="--pc:var(--pc-' + placeColor(p) + ')">' + pmark(p, 30, 'pv-dot') + '<span>' + esc(placeLabel(p)) + shTag(p) + (sub ? '<span class="small muted pv-sub">' + esc(sub) + '</span>' : '') + '</span></h1>';
     if (fresh) h += '<div class="banner" data-key="pv-new">' + ico('info', 22) + '<div><p><b>' + esc(t('pv_new_t')) + '</b></p><p>' + esc(t('pv_new')) + '</p></div></div>';
     // три розкривашки (владелец 10.11): про квартиру · лічильники · постачальники, тарифи й рахунки; у налаштуваннях лічильника — лише сам лічильник
     // 147-а: рядки — у порядку видів (світло, вода, газ, тепло, вивіз), усередині виду — як додавали
@@ -19823,7 +19976,8 @@ fieldset { min-inline-size: 0; }
     h += '<div class="pgroups pv-groups" style="--pc:var(--pc-' + placeColor(p) + ')">' +   // 165-я: колір квартири — плиткам значків груп (C2)
       prefGroup('pv-about', 'home', t('pv_about'), sub || t('pv_about_s'), about, fresh) +
       prefGroup('pv-meters', 'clock', t('pv_meters'), rows.length ? placeKinds(p) : t('pv_none_short'), meters, fresh) +
-      prefGroup('pv-prov', 'bill', t('pv_prov_t'), t('pv_prov_s'), prov) + '</div>';
+      prefGroup('pv-prov', 'bill', t('pv_prov_t'), t('pv_prov_s'), prov) +
+      shGroup(p) + '</div>';   // 179-я: спільний доступ — хто веде квартиру разом, запросити, прибрати, вийти
     // 150-а (план конкурентів п. 6, ніша MÖRK — оренда): показання всіх лічильників квартири одним повідомленням власнику житла
     if (shareItems(false).length) h += '<section class="panel sh-cta" data-key="pv-share"><h2>' + ico('send', 18, 'bt-ico') + '<span>' + esc(t('sh_t')) + '</span></h2><p class="small muted">' + esc(t('sh_cta_s')) + '</p>' +
       '<a class="btn sec block" href="#share" data-key="pv-share-go">' + ico('send', 18) + '<span>' + esc(t('sh_go')) + '</span></a></section>';
@@ -20626,6 +20780,8 @@ fieldset { min-inline-size: 0; }
     return txt || t('err_network');
   }
   function afterLogin(j, errEl) {
+    // 179-я: увійшли з екрана запрошення («Уже маєте акаунт? Увійти») — назад до нього, приєднатися однією кнопкою
+    if (j && j._status === 200 && joinTok()) { toast(t('login_ok')); JOIN.pv = null; save(); go('join'); return; }
     if (j && j._status === 200) { toast(t('login_ok')); S.onboarded = S.onboarded || anyMeters(); save(); go(S.onboarded ? 'home' : 'start'); return; }
     if (errEl) errEl.textContent = authError(j); else toast(authError(j));
   }
@@ -20649,6 +20805,259 @@ fieldset { min-inline-size: 0; }
   }
   window.TeploTgAuth = function (user) { Y().loginTelegramWidget(user).then(function (j) { afterLogin(j); }, function () { toast(t('err_network')); }); };
   window.TeploTgLink = function (user) { Y().linkTelegram(user).then(function (j) { if (j._status === 200) { toast(t('login_ok')); render(true); } else toast(authError(j)); }); };
+
+  // ================= 179-я: спільна квартира =================
+  // Власник 23.11: «расшаривать одну квартиру между несколькими пользователями — удобно, понятно даже пенсионеру, безопасно, быстро, просто:
+  // арендодатель ↔ арендатор (арендатор вносит и платит, арендодатель видит статистику), члены семьи, пожилые родители и дети, мне — тестировать
+  // сложные сценарии; легко добавлять и убирать, администрирует тот, кто создал квартиру; через Telegram-бота кнопками, по e-mail — тем, у кого
+  // приложения ещё нет; не перегружать интерфейс». Дослідження (Госуслуги Дом «гостьовий доступ» 2025: власник дає доступ орендарю й родичам,
+  // скасовує будь-коли; Т—Ж: орендарі шлють фото лічильників власнику поштою щомісяця; Ipsos 2025: Telegram у 65+ — лише 30 %, Viber — найчастіший)
+  // → посилання будь-яким месенджером, e-mail без пароля, бот із кнопкою; одна роль «учасник» (вносить, оплачує, бачить), власник — ще й люди.
+  // Екран: група «Спільний доступ» на екрані квартири; #join-<токен> — приєднатися. Сервер і зведення копій — app/share.php; поля — _kt (sync.js).
+  var SH = { list: null, at: 0, busy: false, inv: {}, qr: '', mail: '' };
+  function shOf(p) { var s = p && p.sh; return s && typeof s === 'object' && +s.sid ? s : null; }
+  function shMany(p) { var s = shOf(p); return !!(s && s.n > 1); }
+  function shMine(p) { var s = shOf(p); return !s || s.role === 'owner'; }
+  /** Рядок списку сервера для квартири; склад змінився (sh.n у квартирі новіший за список — хтось приєднався чи вийшов) — список застарів: забрати знову. */
+  function shRow(p) {
+    var s = shOf(p); if (!s || !SH.list) return null;
+    var r = SH.list.filter(function (x) { return +x.sid === +s.sid; })[0] || null;
+    if (!r || (r.people || []).length !== +s.n) { if (Date.now() - SH.at > 1500) shLoad(true); return null; }
+    return r;
+  }
+  function shFirst(n) { var x = String(n || '').trim(); return x.split(/\s+/)[0] || x; }
+  function shLoad(force) {
+    var y = Y(); if (!window.TEPLO_API || !y.account || SH.busy) return;
+    if (!force && SH.list && Date.now() - SH.at < 30000) return;
+    SH.busy = true;
+    y.api('GET', '/share').then(function (j) { SH.busy = false; if (j._status !== 200) return; var was = JSON.stringify(SH.list); SH.list = j.shares || []; SH.at = Date.now(); if (JSON.stringify(SH.list) !== was) safeRender(); }, function () { SH.busy = false; });
+  }
+  /** Люди квартири: зі списку сервера, а поки він не прийшов — з позначки sh у квартирі. */
+  function shPeople(p) {
+    var r = shRow(p), s = shOf(p), me = +((Y().account || {}).id || 0);
+    if (r) return r.people || [];
+    if (!s || !s.ppl) return [];
+    return Object.keys(s.ppl).map(function (id) { return { id: +id, name: s.ppl[id], role: +id === +s.ownId ? 'owner' : 'member', me: +id === me }; })
+      .sort(function (a, b) { return (a.role === 'owner' ? 0 : 1) - (b.role === 'owner' ? 0 : 1); });
+  }
+  function shSub(p) {
+    if (!Y().account) return t('shp_s_login');
+    var s = shOf(p); if (!s || s.n < 2) return t('shp_s_off');
+    if (s.role !== 'owner') return t('shp_s_mem', { o: shFirst(s.own) || t('shp_someone') });
+    var o = shPeople(p).filter(function (x) { return !x.me; }).map(function (x) { return shFirst(x.name) || t('shp_someone'); });
+    return o.length < 2 ? t('shp_s_two', { a: o[0] || t('shp_someone') }) : t('shp_s_many', { a: o[0], n: o.length - 1 });
+  }
+  /** Позначка біля назви квартири (головна, екран квартири): значок людей і скільки їх — лише коли квартиру справді ведуть удвох і більше. */
+  function shTag(p) {
+    if (!shMany(p)) return '';
+    var names = shPeople(p).map(function (x) { return x.me ? t('shp_me') : shFirst(x.name); }).filter(Boolean).join(', '), lbl = t('shp_tag', { n: names });
+    return ' <span class="sh-tag" role="img" title="' + esc(lbl) + '" aria-label="' + esc(lbl) + '" data-key="sh-tag">' + ico('users', 16) + '<span class="num" aria-hidden="true">' + shOf(p).n + '</span></span>';
+  }
+  /** Хто вніс запис спільної квартири — коротко ім'ям, якщо не ви. */
+  function byTag(r) {
+    if (!r || !r.by) return '';
+    var p = place(r.place) || place(), s = shOf(p), me = +((Y().account || {}).id || 0);
+    if (!s || +r.by === me) return '';
+    var nm = (s.ppl && s.ppl[r.by]) || t('shp_someone'), lbl = t('shp_by', { n: nm });
+    return '<span class="by-tag" title="' + esc(lbl) + '" aria-label="' + esc(lbl) + '">' + esc(shFirst(nm)) + '</span>';
+  }
+  function shAv(name, cls) { var c = String(name || '?').replace(/^@/, '').trim().charAt(0).toUpperCase() || '?'; return '<span class="shp-av' + (cls ? ' ' + cls : '') + '" aria-hidden="true">' + esc(c) + '</span>'; }
+  function shInvUrl(r) { return r && r.url ? r.url : ''; }
+  /** Група «Спільний доступ» на екрані квартири. */
+  function shGroup(p) {
+    if (!window.TEPLO_API || !p) return '';
+    var y = Y(), s = shOf(p), own = !s || s.role === 'owner', body;
+    if (!y.account) body = '<p class="small muted shp-lead">' + esc(t('shp_login')) + '</p><a class="btn sec block" href="#login" data-key="shp-login">' + esc(t('login_btn')) + '</a>';
+    else {
+      shLoad();
+      var r = shRow(p), ppl = shPeople(p), inv = own && r ? r.invites || [] : [];
+      var li = ppl.map(function (x) {
+        var sub = x.role === 'owner' ? t('shp_owner') : [x.via === 'tg' ? 'Telegram' : x.via === 'mail' ? t('shp_via_mail') : '', x.at ? t('shp_since', { d: fmtDate(String(x.at).slice(0, 10)) }) : ''].filter(Boolean).join(' · ');
+        return '<li class="shp-p" data-key="shp-p-' + x.id + '">' + shAv(x.name) + '<span class="grow"><b>' + esc(x.name || t('shp_someone')) + (x.me ? ' <span class="muted">(' + esc(t('shp_me')) + ')</span>' : '') + '</b>' +
+          (sub ? '<span class="small muted">' + esc(sub) + '</span>' : '') + '</span>' +
+          (own && !x.me && x.role !== 'owner' ? '<button type="button" class="btn sec shp-rm" data-act="shp-rm" data-sid="' + (+s.sid) + '" data-id="' + x.id + '" data-key="shp-rm-' + x.id + '">' + esc(t('shp_rm')) + '</button>' : '') + '</li>';
+      }).join('') + inv.map(function (i) {
+        var link = i.via === 'link', exp = fmtDate(new Date(i.exp * 1000).toISOString().slice(0, 10));
+        return '<li class="shp-p shp-i" data-key="shp-i-' + i.id + '"><span class="shp-av inv" aria-hidden="true">' + ico(link ? 'link' : 'mail', 18) + '</span><span class="grow"><b>' + esc(link ? t('shp_link') : i.email || '') + '</b>' +
+          '<span class="small muted">' + esc(t(link ? 'shp_link_s' : 'shp_mail_s', { d: exp })) + '</span></span>' +
+          (link && i.url ? '<button type="button" class="btn sec shp-ib" data-act="shp-icopy" data-u="' + esc(i.url) + '" data-key="shp-icopy-' + i.id + '" aria-label="' + esc(t('copy')) + '">' + ico('copy', 18) + '</button>' : '') +
+          '<button type="button" class="btn sec shp-ib" data-act="shp-icancel" data-id="' + i.id + '" data-key="shp-icancel-' + i.id + '" aria-label="' + esc(t('shp_cancel')) + '" title="' + esc(t('shp_cancel')) + '">' + ico('close', 18) + '</button></li>';
+      }).join('');
+      body = '<p class="small muted shp-lead">' + esc(own ? t('shp_lead') : t('shp_lead_mem', { o: shFirst(s.own) || t('shp_someone') })) + '</p>' +
+        (li ? '<ul class="shp-list" data-key="shp-list">' + li + '</ul>' : '') +
+        (own ? shInvBox(p) : '<button type="button" class="btn sec block shp-leave" data-act="shp-leave" data-sid="' + (+s.sid) + '" data-key="shp-leave">' + esc(t('shp_leave')) + '</button>');
+    }
+    return prefGroup('pv-people', 'users', t('shp_t'), shSub(p), body, false);
+  }
+  function shInvBox(p) {
+    var cur = SH.inv[p.id], row = shRow(p);
+    // посилання вже використали чи скасували (у списку сервера його немає) — показуємо знову «Запросити людину»
+    if (cur && row && !(row.invites || []).some(function (i) { return i.url === cur.url; })) { delete SH.inv[p.id]; cur = null; if (SH.qr === p.id) SH.qr = ''; }
+    if (!cur) return '<button type="button" class="btn block shp-go" data-act="shp-inv" data-pid="' + esc(p.id) + '" data-key="shp-inv">' + ico('plus', 20) + '<span>' + esc(t('shp_inv')) + '</span></button>';
+    var qr = SH.qr === p.id;
+    return '<div class="shp-inv" data-key="shp-inv-box"><h3>' + esc(t('shp_how')) + '</h3><p class="small muted">' + esc(t('shp_how_s')) + '</p>' +
+      '<button type="button" class="btn block" data-act="shp-send" data-pid="' + esc(p.id) + '" data-key="shp-send">' + ico('send', 20) + '<span>' + esc(t('shp_send')) + '</span></button>' +
+      '<p class="small muted shp-send-s">' + esc(t('shp_send_s')) + '</p>' +
+      '<div class="shp-more">' + (cur.tg ? '<button type="button" class="btn sec" data-act="shp-tg" data-pid="' + esc(p.id) + '" data-key="shp-tg">' + ico('send', 18) + '<span>Telegram</span></button>' : '') +
+        '<button type="button" class="btn sec" data-act="shp-qr" data-pid="' + esc(p.id) + '" aria-expanded="' + qr + '" data-key="shp-qr">' + ico('viewfinder', 18) + '<span>' + esc(t('shp_qr')) + '</span></button>' +
+        '<button type="button" class="btn sec" data-act="shp-copy" data-pid="' + esc(p.id) + '" data-key="shp-copy">' + ico('copy', 18) + '<span>' + esc(t('copy')) + '</span></button></div>' +
+      (qr ? '<div class="shp-qr" data-key="shp-qr-box"><div class="qr-img" data-qr="' + esc(cur.url) + '" data-qr-l="' + esc(t('shp_qr')) + '"></div><p class="small muted">' + esc(t('shp_qr_h')) + '</p></div>' : '') +
+      '<p class="auth-or shp-or" aria-hidden="true"><span>' + esc(t('shp_or_mail')) + '</span></p>' +
+      '<form class="shp-mail" id="shp-mail" data-pid="' + esc(p.id) + '" novalidate data-key="shp-mail"><div class="field"><label for="shp-email">' + esc(t('shp_mail_l')) + '</label><div class="ctl">' +
+      '<input id="shp-email" type="email" inputmode="email" autocomplete="off" autocapitalize="none" spellcheck="false" value="' + esc(SH.mail) + '"></div></div>' +
+      '<div class="help block" id="shp-mail-err" role="alert"></div><button class="btn sec block" type="submit" data-key="shp-mail-send">' + ico('mail', 18) + '<span>' + esc(t('shp_mail_btn')) + '</span></button></form></div>';
+  }
+  function shErr(j) {
+    var e = j && j.error, k = { place_not_synced: 'shp_err_sync', share_full: 'shp_full', too_many_invites: 'shp_err_many', mail_off: 'shp_err_mail', mail_failed: 'shp_err_mail', bad_email: 'err_bad_email', rate_limited: 'shp_err_many', not_owner: 'shp_err_owner' }[e];
+    return t(k || 'shp_err');
+  }
+  function shMsg(p, url) {
+    var y = Y(), me = (y.account && (y.account.name || (y.account.email || '').split('@')[0] || (y.account.telegram && y.account.telegram.username))) || '';
+    return t(me ? 'shp_msg' : 'shp_msg0', { o: shFirst(me), p: placeLabel(p) }) + '\n' + url;
+  }
+  function shAfter(j) { if (j && j.shares) { SH.list = j.shares; SH.at = Date.now(); } var y = Y(); if (y.poll) setTimeout(function () { y.poll(); }, 300); }
+  document.addEventListener('click', function (e) {
+    var el = e.target.closest && e.target.closest('[data-act^="shp-"]'); if (!el) return;
+    var act = el.getAttribute('data-act'), y = Y(), pid = el.getAttribute('data-pid'), p = pid ? place(pid) : place(), cur = p && SH.inv[p.id];
+    PREF_OPEN['pv-people'] = true;
+    if (act === 'shp-inv') {
+      e.preventDefault(); if (!p) return; var done = busy(el);
+      if (y.flushNow) y.flushNow();
+      y.api('POST', '/share/invite', { pid: p.id, lang: S.lang }).then(function (j) {
+        done(); if (j._status !== 200) { toast(shErr(j)); if (j.error === 'place_not_synced' && y.push) y.push(); return; }
+        SH.inv[p.id] = { url: j.url, tg: j.tg, exp: j.exp }; shAfter(j); track('share_inv', { n: (j.shares && j.shares[0] && j.shares[0].people || []).length }); render(true);
+        var b = document.querySelector('[data-key=shp-send]'); if (b) b.focus();
+      }, function () { done(); toast(t('shp_err')); });
+      return;
+    }
+    if (act === 'shp-send' && cur) {
+      e.preventDefault(); var msg = shMsg(p, cur.url); track('share_send', { w: navigator.share ? 's' : 'c' });
+      if (navigator.share) { navigator.share({ text: msg }).catch(function () { /* закрили меню */ }); return; }
+      copyText(msg, el); return;
+    }
+    if (act === 'shp-tg' && cur && cur.tg) {
+      e.preventDefault(); track('share_send', { w: 'tg' });
+      var u = 'https://t.me/share/url?url=' + encodeURIComponent(cur.tg) + '&text=' + encodeURIComponent(t(Y().account && Y().account.name ? 'shp_msg' : 'shp_msg0', { o: shFirst((Y().account || {}).name || ''), p: placeLabel(p) }));
+      var tw = window.Telegram && window.Telegram.WebApp; if (tw && tw.initData && tw.openTelegramLink) tw.openTelegramLink(u); else window.open(u, '_blank', 'noopener'); return;
+    }
+    if (act === 'shp-qr' && cur) { e.preventDefault(); SH.qr = SH.qr === p.id ? '' : p.id; render(true); setTimeout(qrFill, 0); return; }
+    if (act === 'shp-copy' && cur) { e.preventDefault(); copyText(cur.url, el); return; }
+    if (act === 'shp-icopy') { e.preventDefault(); copyText(el.getAttribute('data-u'), el); return; }
+    if (act === 'shp-icancel') {
+      e.preventDefault(); var dn = busy(el);
+      y.api('POST', '/share/revoke', { id: +el.getAttribute('data-id') }).then(function (j) { dn(); if (j._status !== 200) { toast(shErr(j)); return; } Object.keys(SH.inv).forEach(function (k) { delete SH.inv[k]; }); shAfter(j); toast(t('shp_canceled')); render(true); }, function () { dn(); toast(t('shp_err')); });
+      return;
+    }
+    if (act === 'shp-rm') {
+      e.preventDefault(); var uid = +el.getAttribute('data-id'), who = (shPeople(p).filter(function (x) { return +x.id === uid; })[0] || {}).name || t('shp_someone');
+      if (!askOk(el, t('shp_rm_q', { n: who, p: placeLabel(p) }), { yes: t('shp_rm') })) return;
+      var dr = busy(el);
+      y.api('POST', '/share/remove', { sid: +el.getAttribute('data-sid'), user: uid }).then(function (j) { dr(); if (j._status !== 200) { toast(shErr(j)); return; } shAfter(j); track('share_rm'); toast(t('shp_rm_done', { n: shFirst(who) })); render(true); }, function () { dr(); toast(t('shp_err')); });
+      return;
+    }
+    if (act === 'shp-leave') {
+      e.preventDefault(); var s = shOf(p); if (!s) return;
+      if (!askOk(el, t('shp_leave_q', { p: placeLabel(p), o: shFirst(s.own) || t('shp_someone') }), { yes: t('shp_leave') })) return;
+      var dl = busy(el), lbl = placeLabel(p);
+      y.api('POST', '/share/leave', { sid: +s.sid }).then(function (j) {
+        dl(); if (j._status !== 200) { toast(shErr(j)); return; }
+        SH.list = j.shares || []; track('share_leave');
+        y.pull().then(function () { toast(t('shp_left', { p: lbl })); go('home'); });
+      }, function () { dl(); toast(t('shp_err')); });
+      return;
+    }
+  });
+  document.addEventListener('input', function (e) { if (e.target && e.target.id === 'shp-email') SH.mail = e.target.value; });
+  document.addEventListener('submit', function (e) {
+    var f = e.target; if (!f || f.id !== 'shp-mail') return;
+    e.preventDefault();
+    var p = place(f.getAttribute('data-pid')), em = String((document.getElementById('shp-email') || {}).value || '').trim(), er = document.getElementById('shp-mail-err'), btn = f.querySelector('[type=submit]');
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(em)) { if (er) er.textContent = t('err_bad_email'); return; }
+    var done = busy(btn); PREF_OPEN['pv-people'] = true;
+    Y().api('POST', '/share/invite', { pid: p.id, email: em, lang: S.lang }).then(function (j) {
+      done(); if (j._status !== 200) { if (er) er.textContent = shErr(j); return; }
+      SH.mail = ''; shAfter(j); track('share_inv', { m: 1 }); toast(t('shp_mail_ok', { e: em })); render(true);
+    }, function () { done(); if (er) er.textContent = t('shp_err'); });
+  });
+
+  // ---- #join-<токен>: приєднатися до квартири за запрошенням (посилання з месенджера, QR, листа)
+  var JOIN = JOIN || { tok: '', pv: null, acc: -1, busy: false, err: '', sent: '' };
+  function joinTok() { if (!JOIN.tok) { try { JOIN.tok = sessionStorage.getItem('teplo.join') || ''; } catch (e) { /* без sessionStorage */ } if (!JOIN.tok) JOIN.tok = window.__teploJoin || ''; } return JOIN.tok; }
+  function joinForget() { JOIN.tok = ''; JOIN.pv = null; JOIN.err = ''; JOIN.sent = ''; window.__teploJoin = ''; try { sessionStorage.removeItem('teplo.join'); } catch (e) { /* без sessionStorage */ } }
+  function joinLoad() {
+    var y = Y(), acc = +((y.account || {}).id || 0); if (!window.TEPLO_API || !joinTok() || JOIN.busy) return;
+    JOIN.busy = true; JOIN.acc = acc;
+    y.api('GET', '/share/join?t=' + encodeURIComponent(JOIN.tok) + '&lang=' + S.lang).then(function (j) { JOIN.busy = false; JOIN.pv = j._status === 200 ? j : { state: j._status === 429 ? 'limit' : 'neterr' }; safeRender(); },
+      function () { JOIN.busy = false; JOIN.pv = { state: 'neterr' }; safeRender(); });
+  }
+  V.join = function () {
+    var base = { screen: 'S60', route: 'join', bare: true, closeTo: S.onboarded ? 'home' : 'welcome' }, y = Y(), acc = +((y.account || {}).id || 0);
+    var page = function (inner) { return Object.assign(base, { html: '<div class="auth-page join-page"><h1>' + esc(t('jn_t')) + '</h1><div class="auth">' + inner + '</div></div>' }); };
+    var home = '<a class="btn sec block" href="#' + (S.onboarded ? 'home' : 'welcome') + '" data-key="jn-home">' + esc(t(S.onboarded ? 'jn_home' : 'jn_about')) + '</a>';
+    if (!window.TEPLO_API || !joinTok()) return page('<section class="panel" role="alert" data-key="jn-bad"><p>' + esc(t('jn_bad')) + '</p>' + home + '</section>');
+    if (JOIN.sent) return page('<section class="panel auth-sent" role="status" data-key="jn-sent"><h2 class="auth-h">' + ico('mail', 22) + esc(t('jn_sent_t')) + '</h2><p>' + esc(t('jn_sent', { e: JOIN.sent })) + '</p><p class="small muted">' + esc(t('fg_spam')) + '</p></section>');
+    if (!JOIN.pv || (JOIN.acc !== acc && y.mode === 'server')) { joinLoad(); return page('<section class="panel" data-key="jn-wait"><p class="muted">' + esc(t('jn_loading')) + '</p></section>'); }
+    var pv = JOIN.pv, st = pv.state;
+    var card = pv.owner !== undefined ? '<div class="join-place" data-key="jn-place"><span class="hp-ic" aria-hidden="true">' + ico('home', 26, 'hp-ico') + '</span><span class="grow"><b>' + esc(pv.place) + '</b>' +
+      (pv.addr ? '<span class="small muted">' + esc(pv.addr) + '</span>' : '') + '</span>' + (pv.kinds && pv.kinds.length ? '<span class="join-kk" aria-hidden="true">' + pv.kinds.map(function (k) { return KINDS[k] ? ico(KINDS[k].icon, 18, KINDS[k].cls) : ''; }).join('') + '</span>' : '') + '</div>' : '';
+    if (st !== 'ok') {
+      var why = { member: 'jn_member', own: 'jn_own', used: 'jn_used', expired: 'jn_expired', revoked: 'jn_revoked', full: 'jn_full', limit: 'jn_limit', neterr: 'err_network' }[st] || 'jn_bad';
+      var go1 = st === 'member' && pv.pid ? '<button type="button" class="btn block" data-act="jn-open" data-pid="' + esc(pv.pid) + '" data-key="jn-open">' + esc(t('jn_open')) + '</button>' : st === 'neterr' ? '<button type="button" class="btn block" data-act="jn-retry" data-key="jn-retry">' + esc(t('jn_retry')) + '</button>' : home;
+      return page('<section class="panel join-card" role="status" data-key="jn-' + esc(st) + '">' + (pv.owner ? '<p class="join-who">' + esc(t('jn_who', { o: pv.owner })) + '</p>' + card : '') + '<p>' + esc(t(why)) + '</p>' + go1 + '</section>');
+    }
+    var what = '<ul class="plain join-what" data-key="jn-what">' + ['jn_w1', 'jn_w2', 'jn_w3'].map(function (k) { return '<li>' + ico('check', 18) + '<span>' + esc(t(k, { o: shFirst(pv.owner) })) + '</span></li>'; }).join('') + '</ul>';
+    var err = JOIN.err ? '<p class="help block" role="alert" data-key="jn-err">' + esc(t({ invite_used: 'jn_used', invite_expired: 'jn_expired', invite_revoked: 'jn_revoked', invite_own: 'jn_own', share_full: 'jn_full', mail_off: 'shp_err_mail', mail_failed: 'shp_err_mail', bad_email: 'err_bad_email', rate_limited: 'jn_limit' }[JOIN.err] || 'shp_err')) + '</p>' : '';
+    var acts;
+    if (y.account || pv.email) acts = '<button type="button" class="btn block" data-act="jn-go" data-key="jn-go">' + esc(t('jn_btn')) + '</button>' + (pv.email && !y.account ? '<p class="small muted auth-note">' + esc(t('jn_nopass')) + '</p>' : '');
+    else {
+      var bot = y._cfg && y._cfg.botUsername;
+      acts = (bot ? '<a class="btn block" href="https://t.me/' + esc(bot) + '?start=j' + esc(JOIN.tok) + '" target="_blank" rel="noopener" data-act="jn-tg" data-key="jn-tg">' + ico('send', 20) + '<span>' + esc(t('jn_tg')) + '</span></a><p class="small muted auth-note">' + esc(t('jn_tg_s')) + '</p>' +
+        '<p class="auth-or" aria-hidden="true"><span>' + esc(t('jn_or_mail')) + '</span></p>' : '') +
+        '<form id="jn-mail" novalidate data-key="jn-mail">' + emailField('') + '<button class="btn ' + (bot ? 'sec ' : '') + 'block" type="submit" data-key="jn-mail-go">' + ico('mail', 18) + '<span>' + esc(t('jn_mail_btn')) + '</span></button><p class="small muted auth-note">' + esc(t('jn_mail_s')) + '</p></form>' +
+        '<p class="auth-switch">' + esc(t('jn_have')) + ' <a href="#login" class="linkbtn" data-key="jn-login">' + esc(t('login_btn')) + '</a></p>';
+    }
+    return page('<section class="panel join-card" data-key="jn-card"><p class="join-who">' + esc(t('jn_who', { o: pv.owner })) + '</p>' + card + what + err + acts + '</section>');
+  };
+  function joinDone(j) {
+    var pid = j.pid, y = Y();
+    var fin = function () {
+      if (place(pid)) { switchPlace(pid); WX.key = ''; }
+      S.onboarded = true; save(); var own = shFirst(JOIN.pv && JOIN.pv.owner) || shFirst((shOf(place(pid)) || {}).own); joinForget(); SH.list = null; shLoad(true);
+      toast(own ? t('jn_ok', { o: own }) : t('done')); go('home');
+    };
+    (j.user ? (y.account = j.user, y.pull(true)) : y.pull()).then(fin, fin);
+  }
+  document.addEventListener('click', function (e) {
+    var el = e.target.closest && e.target.closest('[data-act^="jn-"]'); if (!el) return;
+    var act = el.getAttribute('data-act'), y = Y();
+    if (act === 'jn-retry') { e.preventDefault(); JOIN.pv = null; render(true); return; }
+    if (act === 'jn-open') { e.preventDefault(); var op = el.getAttribute('data-pid'); joinForget(); if (place(op)) { switchPlace(op); WX.key = ''; } go('home'); return; }
+    if (act === 'jn-tg') { track('share_join', { w: 'tg' }); var tw = window.Telegram && window.Telegram.WebApp, u = el.getAttribute('href'); if (tw && tw.initData && tw.openTelegramLink) { e.preventDefault(); tw.openTelegramLink(u); } return; }
+    if (act === 'jn-go') {
+      e.preventDefault(); if (JOIN.busy) return; JOIN.busy = true; JOIN.err = ''; var done = busy(el);
+      var body = { t: JOIN.tok, lang: S.lang }, Ys = window.TeploSync;
+      // без входу на цьому пристрої вже щось вносили — нехай стане даними нового акаунта, а не загубиться
+      if (!y.account && Ys && Ys.hasData && Ys.hasData(S)) body.state = Ys.payload(S);
+      y.api('POST', '/share/join', body).then(function (j) {
+        JOIN.busy = false; done(); track('share_join', { w: y.account ? 'acc' : 'mail', ok: j._status === 200 ? 1 : 0, e: j.error || undefined });
+        if (j._status !== 200) { JOIN.err = j.error || 'x'; render(true); return; }
+        joinDone(j);
+      }, function () { JOIN.busy = false; done(); JOIN.err = 'x'; render(true); });
+    }
+  });
+  document.addEventListener('submit', function (e) {
+    var f = e.target; if (!f || f.id !== 'jn-mail') return;
+    e.preventDefault();
+    var em = String((document.getElementById('a-email') || {}).value || '').trim(), btn = f.querySelector('[type=submit]');
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(em)) { JOIN.err = 'bad_email'; render(true); return; }
+    var done = busy(btn); JOIN.err = '';
+    Y().api('POST', '/share/join', { t: JOIN.tok, email: em, lang: S.lang }).then(function (j) {
+      done(); track('share_join', { w: 'mail0', ok: j._status === 200 ? 1 : 0, e: j.error || undefined });
+      if (j._status !== 200) { JOIN.err = j.error || 'x'; render(true); return; }
+      if (j.sent) { JOIN.sent = j.sent; render(true); return; }
+      joinDone(j);
+    }, function () { done(); JOIN.err = 'x'; render(true); });
+  });
 
   // ---------------- распознавание по фото ----------------
   /* Фото, присланные боту в Telegram: лежат в аккаунте и ждут; распознаёт браузер, как обычные фото. */
@@ -21146,6 +21555,10 @@ fieldset { min-inline-size: 0; }
     var h = (location.hash || '').replace(/^#/, ''), rt = h.match(/^reset-([a-f0-9]{48})$/);
     // посилання з листа «новий пароль» (123-я): токен — у змінну, з адреси геть (інакше потрапив би в журнал, історію й скріни)
     if (rt) { RESET_TOK = rt[1]; RS_EXPIRED = false; try { history.replaceState(null, '', location.pathname + location.search + '#reset'); } catch (e) { /* старий браузер */ } return 'reset'; }
+    // 179-я: запрошення в спільну квартиру — токен з адреси геть (журнал, історія браузера, скріни); живе в sessionStorage до приєднання
+    var rj = h.match(/^join-([A-Za-z0-9_-]{24})$/);
+    if (rj) { window.__teploJoin = rj[1]; try { sessionStorage.setItem('teplo.join', rj[1]); } catch (e) { /* без sessionStorage */ } if (typeof JOIN === 'object' && JOIN) { JOIN.tok = rj[1]; JOIN.pv = null; JOIN.err = ''; JOIN.sent = ''; }
+      try { history.replaceState(null, '', location.pathname + location.search + '#join'); } catch (e) { /* старий браузер */ } return 'join'; }
     return /^tgWebApp/.test(h) ? '' : h;
   }
   // «✕» і «Назад» — туди, звідки прийшли (89-а, власник 10.11: відкрив ввод показань з екрана квартири — закриття веде на квартиру, а не на сторінку виду).
@@ -21201,8 +21614,8 @@ fieldset { min-inline-size: 0; }
     if (S.onboarded && /^(waste|wpay)/.test(r) && !wasteOn() && !meterHasData('waste')) { r = 'home'; try { history.replaceState(null, '', '#home'); } catch (e2) { /* старий браузер */ } }
     pendingRender = false;
     // вікно Telegram: даних тут ще немає, а вхід за підписом Telegram іде — не показуємо привітання «як новому» (воно лякає: «мої дані зникли»)
-    if (!S.onboarded && tgPending() && ['help', 'privacy', 'terms', 'login', 'reset'].indexOf(r) < 0) r = 'tgwait';
-    else if (!S.onboarded && ['welcome', 'start', 'wsetup', 'wadd', 'eadd', 'gadd', 'meter', 'baseline', 'help', 'login', 'reset', 'photo', 'privacy', 'terms'].indexOf(r) < 0) r = S.meter ? 'baseline' : 'welcome';
+    if (!S.onboarded && tgPending() && ['help', 'privacy', 'terms', 'login', 'reset', 'join'].indexOf(r) < 0) r = 'tgwait';
+    else if (!S.onboarded && ['welcome', 'start', 'wsetup', 'wadd', 'eadd', 'gadd', 'meter', 'baseline', 'help', 'login', 'reset', 'photo', 'privacy', 'terms', 'join'].indexOf(r) < 0) r = S.meter ? 'baseline' : 'welcome';
     // 155-а (розбір навігації iOS): у застосунку рекламний лендинг зайвий — людина його вже встановила; одразу «Які лічильники є?»
     if (APP && !S.onboarded && r === 'welcome') r = 'start';
     if (S.onboarded && (!r || r === 'welcome' || r === 'start')) r = homeRoute();
@@ -22140,7 +22553,7 @@ fieldset { min-inline-size: 0; }
         TGS = tgs; var g = window.TeploSync.tg || {}, tw3 = window.Telegram && window.Telegram.WebApp;
         if (tgs === 'ok' || tgs === 'fail') track('tg_login', { ok: tgs === 'ok' ? 1 : 0, c: g.code || undefined, e: g.err || undefined, ms: g.ms, via: g.via, pf: tw3 && tw3.platform, v: tw3 && tw3.version, ck: /(?:^|; )ts_csrf=/.test(document.cookie) ? 1 : 0 });
         safeRender();
-      } else if (['prefs', 'login', 'welcome', 'home', 'meter', 'baseline', 'tgwait'].indexOf(routeName() || 'welcome') >= 0 || /^step-/.test(routeName())) safeRender();
+      } else if (['prefs', 'login', 'welcome', 'home', 'meter', 'baseline', 'tgwait', 'join'].indexOf(routeName() || 'welcome') >= 0 || /^step-/.test(routeName()) || /^place-/.test(routeName())) safeRender();
       // карточка записи: вход/выход меняет блок платёжек — перерисовать только его (и только при смене входа: иначе открытый выбор файла потеряется)
       var bx = document.querySelector('section.bills[data-ref]'); if (bx && (bx.getAttribute('data-acc') === '1') !== !!window.TeploSync.account) billsRefresh(bx.getAttribute('data-ref'));
     };

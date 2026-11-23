@@ -71,4 +71,25 @@ t('подпись не зависит от updatedAt', S.sig({ a: 1, updatedAt: 
   const mt2 = S.merge({ ui: { theme: 'light', at: 500 }, updatedAt: 100 }, { updatedAt: 9000 });
   t('тема: пристрій без вибору не стирає вибір', mt2.ui && mt2.ui.theme === 'light');
   t('тема: ui — у даних для сервера', 'ui' in S.payload({ ui: { theme: 'dark', at: 1 } })); }
+// 179-я: квартира зливається по полях (_kt) — спільна квартира (власник і орендар) і кілька пристроїв
+{ const A = { id: 'main', name: 'Мамина', gasPrice: 7.9, waste: { on: false }, updatedAt: 500, _kt: { gasPrice: 500 } };
+  const B = { id: 'main', name: 'Мамина', gasPrice: 1, waste: { on: true, persons: 2 }, updatedAt: 900, _kt: { waste: 900 } };
+  let mp = S.merge({ places: [A], updatedAt: 500 }, { places: [B], updatedAt: 900 }).places[0];
+  t('поля: правки різних полів з двох копій — обидві лишились', mp.gasPrice === 7.9 && mp.waste.on === true && mp.waste.persons === 2);
+  t('…мітки обох — у злитій квартирі, час — найновіший', mp._kt.gasPrice === 500 && mp._kt.waste === 900 && mp.updatedAt === 900);
+  mp = S.merge({ places: [B], updatedAt: 900 }, { places: [A], updatedAt: 500 }).places[0];
+  t('…в обидва боки однаково', mp.gasPrice === 7.9 && mp.waste.persons === 2);
+  const L = { id: 'main', name: 'Стара', gasPrice: 3, updatedAt: 800 };   // стара версія застосунку: без _kt — усі поля з часом квартири
+  mp = S.merge({ places: [L], updatedAt: 800 }, { places: [A], updatedAt: 500 }).places[0];
+  t('без _kt (старий застосунок): новіша квартира бере всі свої поля', mp.name === 'Стара' && mp.gasPrice === 3);
+  mp = S.merge({ places: [L], updatedAt: 800 }, { places: [Object.assign({}, A, { _kt: { gasPrice: 1000 } })], updatedAt: 1000 }).places[0];
+  t('…а поле, змінене пізніше на новому, — з нового; решта — зі старого', mp.gasPrice === 7.9 && mp.name === 'Стара' && mp._kt.name === 800);
+  const D = Object.assign({}, A, { deleted: true, updatedAt: 1200, _kt: { gasPrice: 500, deleted: 1200 } });
+  mp = S.merge({ places: [D], updatedAt: 1200 }, { places: [Object.assign({}, A, { updatedAt: 1300, _kt: { name: 1300 }, name: 'Нова' })], updatedAt: 1300 }).places[0];
+  t('видалення квартири (мітка deleted) не губиться через новішу правку назви', mp.deleted === true && mp.name === 'Нова');
+  const gone = Object.assign({}, A, { _kt: { gasPrice: 500, waste: 1400 }, updatedAt: 1400 }); delete gone.waste;
+  mp = S.merge({ places: [B], updatedAt: 900 }, { places: [gone], updatedAt: 1400 }).places[0];
+  t('поле прибрали пізніше (мітка є, поля нема) — прибране й у злитій', !('waste' in mp));
+  const rb = { id: 'main', name: 'Погана', updatedAt: 9000, _kt: { name: 9000 } }, rs = { id: 'main', name: 'Победа', updatedAt: 20000, _kt: { name: 20000 } };
+  t('відновлена з історії версія (усі мітки свіжі) перемагає «погану» копію з мітками', S.merge({ places: [rb], updatedAt: 9000 }, { places: [rs], restoredAt: 20000, updatedAt: 20000 }).places[0].name === 'Победа'); }
 console.log('\nИтог: ' + pass + ' OK, ' + fail + ' FAIL'); process.exit(fail ? 1 : 0);

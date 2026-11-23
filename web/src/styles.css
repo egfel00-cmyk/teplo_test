@@ -3487,3 +3487,48 @@ fieldset { min-inline-size: 0; }
 .gw-self .dest-more-b { padding-top: 4px; }
 .gw-self-b + .gw-self-b { margin-top: var(--sp-4); padding-top: var(--sp-4); border-top: 1px solid var(--c-line); }
 .gw-self-t { margin: 8px 0; color: var(--c-ink); }
+
+/* ===== 179-я: спільна квартира — «Спільний доступ» на екрані квартири, позначка біля назви, #join (власник 23.11: «не перегружай интерфейс»).
+   Люди — рядками з лініями (без «панелі в панелі»), аватар — нейтральний кружок з першою літерою; позначка «спільна» — тихий значок людей і число. */
+.sh-tag { display: inline-flex; align-items: center; gap: 2px; margin-left: 6px; vertical-align: -2px; color: var(--c-ink-2); font-size: 13px; font-weight: 500; white-space: nowrap; }
+.sh-tag .ico { flex: none; }
+.by-tag { display: inline-flex; align-items: center; margin-left: 6px; padding: 1px 8px; border-radius: var(--r-pill); background: var(--c-surface-2); color: var(--c-ink-2); font-size: 13px; font-weight: 500; white-space: nowrap; max-width: 9em; overflow: hidden; text-overflow: ellipsis; vertical-align: middle; }
+.shp-lead { margin: 0 0 var(--sp-3); }
+.shp-list { list-style: none; margin: 0 0 var(--sp-3); padding: 0; }
+.shp-p { display: flex; align-items: center; gap: 12px; min-height: 56px; padding: 8px 0; border-top: 1px solid var(--c-line); }
+.shp-p:first-child { border-top: 0; }
+.shp-p .grow { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.shp-p .grow b { overflow-wrap: anywhere; font-weight: 600; }
+.shp-av { flex: none; width: 36px; height: 36px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; background: var(--c-surface-2); color: var(--c-ink); font-weight: 600; font-size: 15px; }
+.shp-av.inv { color: var(--c-ink-2); background: transparent; border: 1px dashed var(--c-field-line); }
+.shp-rm { flex: none; min-height: 40px; padding: 0 14px; }
+.shp-ib { flex: none; min-height: 40px; min-width: 40px; padding: 0; }
+.shp-go { margin-top: var(--sp-2); }
+.shp-inv { border-top: 1px solid var(--c-line); padding-top: var(--sp-4); }
+.shp-inv h3 { margin: 0 0 4px; }
+.shp-inv > p.small { margin: 0 0 var(--sp-3); }
+.shp-inv > p.shp-send-s { text-align: center; margin: 6px 0 var(--sp-3); }
+.shp-more { display: grid; grid-template-columns: repeat(auto-fit, minmax(96px, 1fr)); gap: 8px; }
+/* три дії в ряд — значок над підписом (як «Поділитися» в iOS): «Копіювати» й «QR-код» не ламаються на 390/320 */
+.shp-more { grid-template-columns: repeat(auto-fit, minmax(84px, 1fr)); }
+.shp-more .btn { min-height: 60px; padding: 8px 4px; flex-direction: column; gap: 4px; font-size: 13px; line-height: 1.15; white-space: nowrap; }
+.shp-qr { margin-top: var(--sp-3); display: grid; justify-items: center; gap: 8px; text-align: center; }
+.shp-qr .qr-img { width: min(220px, 70vw); }
+.shp-qr p { margin: 0; }
+.shp-inv .shp-or { margin: var(--sp-4) 0 var(--sp-3); }
+.shp-mail .field { margin-bottom: 8px; }
+.shp-leave { margin-top: var(--sp-2); }
+.join-card .join-who { margin: 0 0 var(--sp-3); font-size: var(--fs-m); }
+.join-place { display: flex; align-items: center; gap: 12px; padding: 12px 0; border-top: 1px solid var(--c-line); border-bottom: 1px solid var(--c-line); margin: 0 0 var(--sp-3); }
+.join-place .grow { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.join-place .grow b { font-size: var(--fs-l); line-height: 1.2; font-weight: 600; overflow-wrap: anywhere; }
+.join-place .hp-ic { flex: none; display: inline-flex; color: var(--c-ink-2); }
+.join-kk { display: inline-flex; gap: 6px; flex: none; }
+.join-what { list-style: none; padding: 0; margin: 0 0 var(--sp-4); display: grid; gap: 8px; }
+.join-what li { display: flex; gap: 10px; align-items: flex-start; }
+.join-what .ico { flex: none; color: var(--c-ok); margin-top: 2px; }
+.join-card .help.block { margin: 0 0 var(--sp-3); }
+.join-card > p:not(.join-who):not(.help) { margin: 0 0 var(--sp-3); }
+/* 179-я: на широкому екрані — однією колонкою (кнопки не розтягуються на 900 px, підпис під кнопкою — по її центру) */
+.shp-list, .shp-inv, .shp-leave { max-width: 560px; }
+.shp-inv > p.shp-send-s, .shp-inv .shp-or { max-width: none; }

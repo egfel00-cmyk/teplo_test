@@ -447,8 +447,10 @@ final class StateHist {
     $s = $old; $s['updatedAt'] = $ms; $s['restoredAt'] = $ms;
     $fix = function (string $k) use (&$s, $cur, $ms): void {
       $have = []; $list = [];
-      foreach ((array)($s[$k] ?? []) as $x) { if (!is_array($x)) continue; $x['updatedAt'] = $ms; $list[] = $x; if (isset($x['id'])) $have[(string)$x['id']] = true; }
-      foreach ((array)($cur[$k] ?? []) as $x) { if (!is_array($x) || !isset($x['id']) || isset($have[(string)$x['id']])) continue; $x['deleted'] = true; $x['updatedAt'] = $ms; $list[] = $x; }
+      // 179-я: квартири зливаються по полях (мітки _kt) — відновленій версії всі поля свіжі, інакше старі мітки «поганої» копії взяли б гору
+      $kts = function (array $x) use ($k, $ms): array { if ($k !== 'places') return $x; $kt = []; foreach (array_keys($x) as $f) if (!in_array($f, ['_kt', 'updatedAt', 'id'], true)) $kt[$f] = $ms; $x['_kt'] = $kt ?: new stdClass; return $x; };
+      foreach ((array)($s[$k] ?? []) as $x) { if (!is_array($x)) continue; $x['updatedAt'] = $ms; $list[] = $kts($x); if (isset($x['id'])) $have[(string)$x['id']] = true; }
+      foreach ((array)($cur[$k] ?? []) as $x) { if (!is_array($x) || !isset($x['id']) || isset($have[(string)$x['id']])) continue; $x['deleted'] = true; $x['updatedAt'] = $ms; $list[] = $kts($x); }
       if ($list || isset($s[$k])) $s[$k] = $list;
     };
     foreach (['places', 'readings', 'water', 'mrecs'] as $k) $fix($k);

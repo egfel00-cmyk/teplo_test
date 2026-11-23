@@ -23,6 +23,9 @@
     return v;
   }
   function sig(p) { var c = Object.assign({}, p); delete c.updatedAt; return JSON.stringify(c, fixArr); }
+  /** 179-я: мітки змін полів квартири. kt(p, поле) — коли поле змінили; квартира без _kt (стара версія застосунку) — час усієї квартири. */
+  function ktObj(p) { return !!(p && p._kt && typeof p._kt === 'object' && !Array.isArray(p._kt)); }
+  function kt(p, k) { return ktObj(p) ? (+p._kt[k] || 0) : (+(p && p.updatedAt) || 0); }
   function ts(x) { var n = typeof x === 'number' ? x : Date.parse(x || 0); return isFinite(n) ? n : 0; }
 
   /** Слить два состояния (локальное a и удалённое b). Возвращает новое. */
@@ -86,9 +89,26 @@
       // 148-а (власник 14.11: «в „Победе“ третий раз ввожу Жилстрой — не сохраняется и сбрасывается»): квартира — «хто новіший, той і цілий», і стара копія
       // з іншого пристрою чи вкладки, яку фоном торкнулось щось інше (черга світла, форма ХТМ, газ), затирала нового постачальника. «Кому платите»
       // кожного виду (prov[вид]) тепер зливаємо окремо — за його власною міткою ts (mySet, тариф, «Так, це мій»): новіша зміна постачальника виграє завжди.
+      // 179-я (спільна квартира, власник 23.11): і далі — кожне поле квартири окремо, за міткою зміни _kt[поле] (ставить застосунок у save()):
+      // орендар змінив вивіз сміття, а власник того ж дня — тариф газу, — лишаються обидві правки, а не «новіша квартира ціла». Квартира без _kt
+      // (стара версія застосунку) — усі її поля з часом самої квартири, як раніше. Так само зводить сервер (app/share.php).
       order.forEach(function (id) {
         var vs = pv[id]; if (vs.length < 2) return;
-        var w = pm[id], prov = Object.assign({}, w.prov || {}), ch = false;
+        var w = pm[id], c = null, ckt = null, wl = ktObj(w) ? 0 : +w.updatedAt || 0;
+        vs.forEach(function (v) {
+          if (v === w || !v) return;
+          var keys = {}; Object.keys(v).forEach(function (k) { keys[k] = 1; }); if (ktObj(v)) Object.keys(v._kt).forEach(function (k) { keys[k] = 1; });
+          Object.keys(keys).forEach(function (k) {
+            if (k === '_kt' || k === 'updatedAt' || k === 'id') return;
+            var tv = kt(v, k), tw = c ? (k in ckt ? ckt[k] : wl) : kt(w, k);
+            if (!(tv > tw)) return;
+            if (!c) { c = Object.assign({}, w); ckt = {}; Object.keys(w).forEach(function (x) { if (x !== '_kt' && x !== 'updatedAt' && x !== 'id' && kt(w, x)) ckt[x] = kt(w, x); }); if (ktObj(w)) Object.keys(w._kt).forEach(function (x) { if (+w._kt[x]) ckt[x] = +w._kt[x]; }); }
+            if (Object.prototype.hasOwnProperty.call(v, k)) c[k] = v[k]; else delete c[k];
+            ckt[k] = tv;
+          });
+        });
+        if (c) { c._kt = ckt; c.updatedAt = Math.max.apply(null, vs.map(function (v) { return +(v && v.updatedAt) || 0; })); pm[id] = w = c; }
+        var prov = Object.assign({}, w.prov || {}), ch = false;
         vs.forEach(function (v) { if (v === w || !v.prov) return; Object.keys(v.prov).forEach(function (k) { var a = v.prov[k], c = prov[k]; if (a && (a.ts || 0) > ((c && c.ts) || 0)) { prov[k] = a; ch = true; } }); });
         if (ch) pm[id] = Object.assign({}, w, { prov: prov });
       });
@@ -183,7 +203,7 @@
       var self = this, done = function (ok) { self._writing = false; if (ok) self._lastSig = s; self.status = ok ? 'ok' : 'error'; self._onChange(); if (self._again) { self._again = false; self._flush(); } };
       if (this.mode === 'claude') this._ref.set({ state: p, updatedAt: p.updatedAt || Date.now() }).then(function () { done(true); }, function () { done(false); });
       else if (this.mode === 'server') api('PUT', '/state', { state: p, baseVersion: this._version }, false, ka).then(function (j) {
-        if (j._status === 200) { self._version = j.version; done(true); }
+        if (j._status === 200) { self._version = j.version; done(true); if (j.pull) setTimeout(function () { self.poll(); }, 200); }   // 179-я: сервер звів спільну квартиру — нове від інших забрати одразу
         else if (j._status === 409 && j.state) { self._version = j.version; self.via = 'conflict'; self._apply(merge(self._get(), j.state)); self._writing = false; self._flush(); }
         else if (j._status === 401) { self.account = null; done(false); }
         else done(false);
@@ -266,13 +286,15 @@
         self._set('server', 'ok'); self._flush();
       });
     },
+    /** Забрати нове з сервера зараз (той самий запит, що щохвилини). 179-я: після дій зі спільною квартирою. */
+    poll: function () {},
     _startPolling: function () {
       var self = this;
       var tick = function () { if (self.mode === 'server' && self.account && document.visibilityState === 'visible' && !self._writing) api('GET', '/state?since=' + self._version).then(function (j) { if (j._status === 200 && j.version !== self._version && j.state) { self._version = j.version; self._lastSig = sig(j.state); self.via = 'poll'; self._apply(merge(self._get(), j.state));
         // 149-а: злиття могло лишити своє новіше (постачальник за ts, записи) — віддати на сервер одразу, а не чекати наступного save() (інакше
         // сервер і пристрої без localStorage — вікно Telegram на Mac — так і бачили б стару копію)
         self._flush(); } }, function () { /* сеть пропала (iPhone после фона: «Load failed») — следующий раз */ }); };
-      document.addEventListener('visibilitychange', tick); setInterval(tick, 60000);
+      document.addEventListener('visibilitychange', tick); setInterval(tick, 60000); self.poll = tick;
     },
     _after: function (j) { if (j._status === 200 && j.user) { this.account = j.user; return this.pull(true).then(function () { return j; }); } return Promise.resolve(j); },
     login: function (email, password) { var self = this; return api('POST', '/auth/login', { email: email, password: password }).then(function (j) { return self._after(j); }); },
@@ -292,6 +314,6 @@
     config: function () { return api('GET', '/config'); }
   };
 
-  Sync.merge = merge; Sync.payload = payload; Sync.sig = sig; Sync.fixArr = fixArr;
+  Sync.merge = merge; Sync.payload = payload; Sync.sig = sig; Sync.fixArr = fixArr; Sync.hasData = hasData;
   if (typeof module !== 'undefined' && module.exports) module.exports = Sync; else root.TeploSync = Sync;
 })(typeof window !== 'undefined' ? window : this);

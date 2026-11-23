@@ -76,10 +76,10 @@ final class Telegram {
   /** Кнопка меню бота «Відкрити» (за замовчуванням, укр.) і команда /start укр./рос. Telegram не дає підпис кнопки за мовою —
    *  російськомовним ставимо «Открыть» у їхньому чаті (handleUpdate). cron викликає раз на MENU_V (Cron: botMenuV).
    *  MENU_V 3 (84-я): ще й опис бота і «Про бота» — about(). 4 (147-я): у описі порядок видів — світло, вода, газ, тепло. */
-  const MENU_V = 6;   // 151-а: назва сервісу в описі й кнопках — «передай»; 6 (155-а): + Хмельниччина в описі
+  const MENU_V = 7;   // 151-а: назва сервісу в описі й кнопках — «передай»; 6 (155-а): + Хмельниччина в описі; 7 (179-я): + команда /dostup (спільний доступ)
   /** Які оновлення приймає вебхук. HOOK_V — версія цього переліку: cron перевстановлює вебхук раз на версію (без drop_pending). */
-  const UPDATES = ['message', 'widget_query'];
-  const HOOK_V = 2;
+  const UPDATES = ['message', 'widget_query', 'callback_query'];   // 179-я: кнопки під карткою запрошення в спільну квартиру
+  const HOOK_V = 3;
   public static function hookUpdate(): array {
     $url = Cfg::appUrl() . 'api/bot/webhook';
     return self::call('setWebhook', ['url' => $url, 'secret_token' => (string)Cfg::get('webhook_secret'), 'allowed_updates' => self::UPDATES]);
@@ -107,8 +107,9 @@ final class Telegram {
   public static function menuSetup(): array {
     $url = Cfg::appUrl(); $out = [];
     $out['setChatMenuButton'] = self::call('setChatMenuButton', ['menu_button' => ['type' => 'web_app', 'text' => self::menuText('uk'), 'web_app' => ['url' => $url]]]);
-    $out['setMyCommands'] = self::call('setMyCommands', ['commands' => [['command' => 'start', 'description' => 'Відкрити «передай»']]]);
-    $out['setMyCommands_ru'] = self::call('setMyCommands', ['commands' => [['command' => 'start', 'description' => 'Открыть «передай»']], 'language_code' => 'ru']);
+    // 179-я: /dostup — спільний доступ до квартир кнопками (запросити, прибрати, вийти)
+    $out['setMyCommands'] = self::call('setMyCommands', ['commands' => [['command' => 'start', 'description' => 'Відкрити «передай»'], ['command' => 'dostup', 'description' => 'Спільний доступ до квартир']]]);
+    $out['setMyCommands_ru'] = self::call('setMyCommands', ['commands' => [['command' => 'start', 'description' => 'Открыть «передай»'], ['command' => 'dostup', 'description' => 'Совместный доступ к квартирам']], 'language_code' => 'ru']);
     // прежний опис (за замовчуванням) — один раз у кеш: що було до нас (/api/health → bot.about.prev), щоб можна було повернути
     $pf = Cfg::data() . '/cache/bot_about_prev.json';
     if (!is_file($pf)) { $g = self::call('getMyDescription', []); if (!empty($g['ok'])) @file_put_contents($pf, json_encode(['at' => time(), 'description' => (string)($g['result']['description'] ?? '')], JSON_UNESCAPED_UNICODE)); }
@@ -383,10 +384,14 @@ final class Telegram {
 
   public static function handleUpdate(array $u): ?array {
     if (isset($u['widget_query']) && is_array($u['widget_query'])) return class_exists('BotWidget') ? BotWidget::query($u['widget_query']) : null;
+    if (isset($u['callback_query']) && is_array($u['callback_query'])) return class_exists('Share') ? Share::botCallback($u['callback_query']) : null;
     $msg = $u['message'] ?? null; if (!$msg || empty($msg['chat']['id'])) return null;
     // человек написал боту в личку — бот теперь может ему писать (плашка «натисніть Старт» уходит)
     if (($msg['chat']['type'] ?? '') === 'private' && !empty($msg['from']['id'])) self::markBotOk((string)$msg['from']['id']);
     $lang = str_starts_with((string)($msg['from']['language_code'] ?? ''), 'ru') ? 'ru' : 'uk';
+    // 179-я: запрошення в спільну квартиру (t.me/<бот>?start=j<токен>) — картка з «Приєднатися»
+    if (class_exists('Share') && preg_match('/^\/start\s+j([A-Za-z0-9_-]{24})(?![A-Za-z0-9_-])/', (string)($msg['text'] ?? ''), $sm)) return Share::botStart($msg, $sm[1], $lang);
+    if (class_exists('Share') && preg_match('/^\/(dostup|access)(@\w+)?(\s|$)/', (string)($msg['text'] ?? ''))) return Share::botMenu((array)($msg['from'] ?? []), $msg['chat']['id'], $lang);
     if (($tk = self::tokenIn($msg)) !== null) return self::botFromChat($msg, $tk, $lang);
     if (($src = self::fwdSrc($msg)) !== null) return self::vkReply($msg, $lang, $src);
     // перелік «Адреси та черги» з каналу Харківобленерго — для визначення черги відключень за адресою (app/gpv.php)

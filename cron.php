@@ -25,6 +25,7 @@ require __DIR__ . '/app/providers.php';
 require __DIR__ . '/app/visits.php';
 require __DIR__ . '/app/journal.php';
 require __DIR__ . '/app/indexnow.php';
+require __DIR__ . '/app/share.php';
 $beat = Cron::read(); $beat['last'] = gmdate('c');
 // кабинет Водоканала — открывается ли (раз в 10 минут; статус видят приложение и /admin)
 if ((int)gmdate('i') % 10 === 7) { try { $beat['vkCab'] = VkStatus::probeCabinet()['state']; } catch (Throwable $e) { error_log('teplo vk probe: ' . $e->getMessage()); } }
@@ -52,6 +53,8 @@ if ((int)gmdate('i') % 10 === 9) { try { $lp = LocalBot::probe(); if ($lp) $beat
 try { $lq = LocalBot::cron(); if ($lq) $beat['lbQueue'] = ['at' => gmdate('c'), 'n' => array_count_values(array_map(fn($x) => $x[1], $lq))]; } catch (Throwable $e) { error_log('teplo lb queue: ' . $e->getMessage()); }
 // картки фото в чаті (121-а): свіжі статуси роботів — у ту саму картку («в черзі → відправлено → прийнято ✓»)
 try { $bc = BotCard::cron(); if ($bc) $beat['botCards'] = ['at' => gmdate('c'), 'n' => count($bc)]; } catch (Throwable $e) { error_log('teplo bot cards: ' . $e->getMessage()); }
+// 179-я: спільні квартири — звести копії учасників, чий стан змінив не PUT (роботи ХТМ/Водоканалу/місцевих КП, квитанції) (Share::cron)
+try { $shc = Share::cron(); if ($shc) $beat['share'] = ['at' => gmdate('c'), 'n' => count($shc), 'w' => array_sum(array_map(fn($x) => max(0, $x[1]), $shc))]; } catch (Throwable $e) { error_log('teplo share: ' . $e->getMessage()); }
 // квитанции Водоканала в фоне, без человека: 1–25 число, 7–22 по Киеву, один вход за минуту (VkBills; /api/health → vkBills)
 try { $vb = VkBills::cron(); if ($vb) $beat['vkBills'] = ['at' => gmdate('c'), 'res' => $vb[0][1]]; } catch (Throwable $e) { error_log('teplo vk bills: ' . $e->getMessage()); }
 // квитанции ХТМ в фоне, без человека: у кого подключён кабинет ХТМ — каждый день 7–22 по Киеву, один вход за минуту, только чтение (HtmBills; /api/health → htmBills)
