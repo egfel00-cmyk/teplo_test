@@ -117,10 +117,12 @@ final class VkSvc {
     $uid = (int)$j['user_id']; $p = self::js($j['payload']); self::$lang = ($p['lang'] ?? '') === 'ru' ? 'ru' : 'uk'; VkCab::lang(self::$lang);
     if (Db::q("UPDATE cab_jobs SET status = 'sending', updated_at = ? WHERE id = ? AND status = 'queued'", [Http::iso(), $j['id']])->rowCount() !== 1) return self::pubJob(Db::one('SELECT * FROM cab_jobs WHERE id = ?', [$j['id']]));
     $sec = self::js((string)CabVault::dec((string)($p['sec'] ?? ''))); $fam = (string)($sec['fam'] ?? '');
+    $part = false;   // 181-я: прийняв не все — «⚠️ прийняв не все» уже написав VkCab::deliver
     if ($fam === '') { self::finish((int)$j['id'], 'failed', ['why' => 'lost', 'human' => self::h('lost')]); }
     else try {
       $r = VkCab::deliver($uid, (string)$j['acc'], $fam, (array)$p['items'], null, !empty($p['auto']) ? 'autosend' : 'bgsend', true);
-      self::finish((int)$j['id'], ['ok' => 'ok', 'err' => 'rejected'][$r['result']] ?? 'unknown', ['text' => $r['text'], 'keys' => $r['keys']] + (!empty($r['skipped']) && is_array($r['skipped']) ? ['skipped' => array_slice($r['skipped'], 0, 6)] : []));
+      $part = $r['result'] === 'part';
+      self::finish((int)$j['id'], ['ok' => 'ok', 'err' => 'rejected', 'part' => 'rejected'][$r['result']] ?? 'unknown', ['text' => $r['text'], 'keys' => $r['keys']] + (!empty($r['skipped']) && is_array($r['skipped']) ? ['skipped' => array_slice($r['skipped'], 0, 6)] : []));
     } catch (Throwable $e) {
       $why = $e instanceof HttpError ? preg_replace('/^(cab|vk)_/', '', $e->err) : 'down';
       if ($why === 'down' && (int)$j['tries'] + 1 < self::DOWN_TRIES) {   // сайт не ответил — ещё раз через 15 минут, без сообщений
@@ -134,7 +136,7 @@ final class VkSvc {
       self::finish((int)$j['id'], 'failed', ['why' => $why, 'human' => mb_substr($why === 'down' ? self::h('down') : (string)($e instanceof HttpError ? ($e->extra['human'] ?? '') : ''), 0, 400)] + ($ms ? ['meters' => $ms] : []) + ($dn ? ['done' => $dn] : []));
     }
     $job = self::pubJob(Db::one('SELECT * FROM cab_jobs WHERE id = ?', [$j['id']]));
-    if ($job['status'] !== 'ok') self::notify($uid, $job);   // «✅ прийняв» уже написал VkCab::deliver
+    if ($job['status'] !== 'ok' && !$part) self::notify($uid, $job);   // «✅ прийняв» / «⚠️ не все» уже написал VkCab::deliver
     return $job;
   }
   /** cron: срок очереди вышел — отправляем (не больше 3 за минуту: каждое — свой вход на сайт). */

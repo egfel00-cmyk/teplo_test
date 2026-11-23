@@ -13163,7 +13163,7 @@ fieldset { min-inline-size: 0; }
   /** Коротка назва водоміра для рядка «що надішлемо»: назва, інакше № , інакше вид. */
   function gwNm(m) { return m.name || (m.serial ? '№ ' + m.serial : ''); }
   /** «Кухня 176 · Ванна 0» — значення водомірів виду без ком (кома читалась як дріб: «176, 0»); vk — лише ті, що йдуть на сайт (не «Не надсилати»). */
-  function gwVals(rec, kind, vk) { var pl = vk && vkcKnown(rec) ? vkcPlan(rec) : null, ms = wmeters(kind).filter(function (m) { return hasVal(rec, m.id) && !(vk && m.cabKey === '') && !(pl && (pl.acc[m.id] || pl.map[m.id] === '')); }); return ms.map(function (m) { var v = Wt.whole(rec.vals[m.id]), n = ms.length > 1 ? gwNm(m) : ''; return n ? n + ' ' + v : String(v); }).join(' · '); }
+  function gwVals(rec, kind, vk) { var pl = vk && vkcKnown(rec) ? vkcPlan(rec) : null, ms = wmeters(kind).filter(function (m) { return hasVal(rec, m.id) && !(vk && m.cabKey === '') && !(pl && (pl.acc[m.id] || pl.map[m.id] === '')); }); return ms.map(function (m) { var v = vk ? vkVal(rec.vals[m.id]).replace('.', ',') : Wt.whole(rec.vals[m.id]), n = ms.length > 1 ? gwNm(m) : ''; return n ? n + ' ' + v : String(v); }).join(' · '); }
   /** Вибір «який лічильник який» на сайті Водоканалу — прямо в рядку (180-я, друга правка, власник 23.11: «12 кружков — глаза разбегаются, на мобиле сложно выбрать»):
    *  рядок на свій водомір — назва й показання, праворуч випадний список (на iPhone — рідне колесо): лічильники сайту того ж виду (№ і останні на сайті) + «Не надсилати».
    *  Підібране саме — уже вибране; двічі той самий — попередження. Вибір — m.cabKey (data-wf="cabKey"). */
@@ -13507,7 +13507,7 @@ fieldset { min-inline-size: 0; }
   function vkcItems(rec, ms) {
     if (!VKC.check) return [];
     var map = vkcMap(ms, VKC.check.meters);
-    return ms.filter(function (m) { return hasVal(rec, m.id) && map[m.id]; }).map(function (m) { return { m: m, c: VKC.check.meters.filter(function (c) { return c.key === map[m.id]; })[0], v: Wt.whole(rec.vals[m.id]) }; }).filter(function (x) { return x.c; });
+    return ms.filter(function (m) { return hasVal(rec, m.id) && map[m.id]; }).map(function (m) { return { m: m, c: VKC.check.meters.filter(function (c) { return c.key === map[m.id]; })[0], v: vkVal(rec.vals[m.id]) }; }).filter(function (x) { return x.c; });
   }
   function vkcBox(rec, ms) {
     vkcFresh(); var c = wcfg(), acc = waccW(c, 'cold').replace(/\D/g, ''), sn = String(c.surname || '').trim();
@@ -13633,11 +13633,13 @@ fieldset { min-inline-size: 0; }
   }
   /** Що підемо надсилати у Водоканал. Лічильники сайту вже бачили — за планом (vkcPlan): «Не надсилати» й немає на сайті — пропускаємо, прийнятий — теж
    *  (сервер його й так пропустить за номером), ключ — підібраний; не бачили — збережений ключ або сервер знайде сам. */
+  /** Показання для сайту Водоканалу — як на табло, з літрами (до 3 знаків): сайт зберігає частки («Передані … 0.924»), а ціле 0 він мовчки не прийняв (181-а, гаряча ванна 0,925). */
+  function vkVal(v) { var n = Wt.num(v); return n === null ? '' : String(Math.round(n * 1000) / 1000); }
   function vjItems(rec) {
     var pl = rec && vkcKnown(rec) ? vkcPlan(rec) : null;
     return wmeters().filter(function (m) { return hasVal(rec, m.id) && m.cabKey !== '' && !(pl && (pl.acc[m.id] || pl.map[m.id] === '')); }).map(function (m) {
       var k = pl && pl.map[m.id] ? pl.map[m.id] : m.cabKey || null;
-      return { key: k, value: String(Wt.whole(rec.vals[m.id])), serial: m.serial || null, kind: m.kind, name: wname(m) };
+      return { key: k, value: vkVal(rec.vals[m.id]), serial: m.serial || null, kind: m.kind, name: wname(m) };
     });
   }
   /** Перед надсиланням: підібране з лічильниками сайту — зберегти у водомірах (m.cabKey), щоб наступного місяця у фоні йшло так само. */

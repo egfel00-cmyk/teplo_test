@@ -53,12 +53,14 @@ const VKM_ACC_ROOMS = '905618';
 function vkm_rooms_meters(array $s): array {
   return array_map(fn($m) => ['prev' => $s['prev'][$m['id']] ?? $m['prev']] + $m, [
     ['id' => '4853176', 'svc' => 'Холодна вода', 'n' => 'Хкух 847046', 'ver' => '12 грудня 2027 р.', 'prev' => 459.123],
-    ['id' => '5468819', 'svc' => 'Гаряча вода', 'n' => 'Гс/у 79109406', 'ver' => '3 жовтня 2028 р.', 'prev' => 0.412],
+    ['id' => '5468819', 'svc' => 'Гаряча вода', 'n' => 'Гс/у 79109406', 'ver' => '3 жовтня 2026 р.', 'prev' => 0.412, 'over' => true],   // повірка прострочена — сайт мовчки не приймає
     ['id' => '5468828', 'svc' => 'Гаряча вода', 'n' => 'Гкух 796991', 'ver' => '9 вересня 2027 р.', 'prev' => 175.88]]);
 }
-function vkm_rooms(array $ms, ?string $flash = null): string {
+function vkm_rooms(array $ms, ?string $flash = null, array $taken = []): string {
   $b = '';
-  foreach ($ms as $m) $b .= '<div class="panel panel-info"><div class="panel-body"><h4 class="ind-t">' . $m['svc'] . ' (№ ' . $m['n'] . ')</h4>'
+  foreach ($ms as $m) if (isset($taken[$m['id']])) $b .= '<div class="panel panel-info"><div class="panel-body"><h4 class="ind-t">' . $m['svc'] . ' (№ ' . $m['n'] . ')</h4><div class="alert alert-warning">дата наступної повірки - ' . $m['ver'] . '</div>'
+    . '<div class="ind-prev"><label>Передані показання за листопад 2026 , м<sup>3</sup>:</label> <input type="text" class="form-control" value="' . number_format((float)$taken[$m['id']], 3, '.', '') . '" readonly></div><div class="ind-ok">ПОКАЗАННЯ ЛІЧИЛЬНИКІВ ЗА ПОТОЧНИЙ ПЕРІОД ПРИЙНЯТІ</div></div></div>';
+  else $b .= '<div class="panel panel-info"><div class="panel-body"><h4 class="ind-t">' . $m['svc'] . ' (№ ' . $m['n'] . ')</h4>'
     . '<div class="alert alert-warning">дата наступної повірки - ' . $m['ver'] . '</div>'
     . '<input type="hidden" name="DynamicModel[kommun]" value="1"><input type="hidden" name="DynamicModel[calcno_' . $m['id'] . ']" value="' . $m['id'] . '"><input type="hidden" name="DynamicModel[type_' . $m['id'] . ']" value="' . ($m['svc'] === 'Гаряча вода' ? 'hw' : 'cw') . '"><input type="hidden" name="DynamicModel[dataIndication_' . $m['id'] . ']" value="2026-11-23">'
     . '<div class="ind-prev"><span class="form-control-static">' . number_format((float)$m['prev'], 3, '.', '') . '</span> <label>Передані показання за жовтень 2026 , м<sup>3</sup>:</label></div>'
@@ -67,7 +69,9 @@ function vkm_rooms(array $ms, ?string $flash = null): string {
   $b .= '<div class="panel panel-info"><div class="panel-body"><h4 class="ind-t">Холодна вода (№ 79539995)</h4><div class="alert alert-warning">дата наступної повірки - 5 жовтня 2027 р.</div>'
     . '<div class="ind-prev"><label>Передані показання за листопад 2026 , м<sup>3</sup>:</label> <input type="text" class="form-control" value="201.000" readonly></div>'
     . '<div class="ind-ok">ПОКАЗАННЯ ЛІЧИЛЬНИКІВ ЗА ПОТОЧНИЙ ПЕРІОД ПРИЙНЯТІ</div></div></div>';
+  // як живий: загальний зелений банер на кожній сторінці (не відповідь на показання)
   return vkm_head('Передача показань') . ($flash ? '<div class="alert alert-success">' . $flash . '</div>' : '') . '<h3>Система прийому показань приладів обліку</h3>'
+    . '<div class="alert alert-success">Показання чотирьохтарифного лічильника можна передати в кабінеті теплових мереж. <a href="https://www.hts.kharkov.ua/cabinet">Перейти →</a></div>'
     . '<form id="send-counters-form" action="/counters2" method="post"><input type="hidden" name="_csrf-frontend" value="' . VKM_TOKEN . '">' . $b
     . '<input type="hidden" name="DynamicModel[acc]" value="' . VKM_ACC_ROOMS . '"><button type="submit" class="btn btn-success">Передати показання</button></form></div></div></body></html>';
 }
@@ -80,7 +84,7 @@ function vkm_handle(string $method, string $path, array $post, array &$s): array
     $acc = (string)($post['NoLoginForm']['acc'] ?? ''); $fam = mb_strtolower((string)($post['NoLoginForm']['fam'] ?? ''));
     // как живой сайт (проба с сервера 04.11.2026): страница без форм с объяснением; рахунок с «7777» — старый вариант (снова форма входа с ошибкой)
     if ($acc === VKM_ACC_DONE && $fam === VKM_FAM) return [200, vkm_done(), []];
-    if ($acc === VKM_ACC_ROOMS && $fam === VKM_FAM) { $s['acc'] = $acc; return [200, vkm_rooms(vkm_rooms_meters($s)), []]; }   // как живой сайт: страница сразу в ответ на POST
+    if ($acc === VKM_ACC_ROOMS && $fam === VKM_FAM) { $s['acc'] = $acc; return [200, vkm_rooms(vkm_rooms_meters($s), null, $s['taken'] ?? []), []]; }   // как живой сайт: страница сразу в ответ на POST
     if (str_contains($acc, '7777')) return [200, vkm_login('Особовий рахунок не знайдено або прізвище не співпадає.', $acc, (string)($post['NoLoginForm']['fam'] ?? '')), []];
     if ($acc !== VKM_ACC || $fam !== VKM_FAM) return [200, vkm_head('Передача показань') . '<div class="alert alert-danger">Не коректні дані: особовий рахунок або Прізвище абонента , або на особовому рахунку не значаться лічильники. Можливо необхідно вказати прізвище українською мовою</div><p><a href="/login">Назад</a></p></div></div></body></html>', []];
     $s['acc'] = $acc; return [302, '', ['Location: /send-indications']];
@@ -103,9 +107,10 @@ function vkm_handle(string $method, string $path, array $post, array &$s): array
   }
   if ($path === '/counters2' && $method === 'POST') {
     if (!$ok || ($s['acc'] ?? '') !== VKM_ACC_ROOMS) return [400, 'bad', []];
-    $s['rooms'] = []; foreach ((array)($post['DynamicModel'] ?? []) as $k => $v) if (preg_match('/^newIndication_(\d+)$/', (string)$k, $m) && trim((string)$v) !== '') { $s['rooms'][$m[1]] = (string)$v; $s['prev'][$m[1]] = (float)$v; }
-    $s['sent'] = ($s['sent'] ?? 0) + 1;
-    return [200, vkm_rooms(vkm_rooms_meters($s), 'Ваші показання прийнято. Дякуємо!'), []];
+    $ms = array_column(vkm_rooms_meters($s), null, 'id'); $taken = [];
+    foreach ((array)($post['DynamicModel'] ?? []) as $k => $v) if (preg_match('/^newIndication_(\d+)$/', (string)$k, $m) && trim((string)$v) !== '' && empty($ms[$m[1]]['over'])) $taken[$m[1]] = (float)$v;
+    $s['sent'] = ($s['sent'] ?? 0) + 1; $s['rooms'] = $taken; $s['taken'] = ($s['taken'] ?? []) + $taken;   // прийняті — до кінця періоду (у рахунку, не в сесії)
+    return [200, vkm_rooms(array_values($ms), null, $s['taken']), []];   // як живий: прийняті — блоками без поля, без окремого «прийнято»
   }
   return [404, 'not found', []];
 }
@@ -117,8 +122,9 @@ function vkm_request(string $method, string $url, ?string $body, string $cookie,
   if ($sid === '' || !isset($store[$sid])) { $sid = 'sess' . (count($store) + 1); $store[$sid] = []; $hdr[] = 'Set-Cookie: PHPSESSID=' . $sid . '; path=/; HttpOnly'; }
   $s = &$store[$sid]; $s['cookies'] = $c; parse_str((string)$body, $post);
   $s['prev'] = $store['_prev'] ?? [];   // последние показания — у рахунку, не у сессии
+  $s['taken'] = $store['_taken'] ?? [];
   [$code, $html, $h] = vkm_handle($method, (string)parse_url($url, PHP_URL_PATH), $post, $s);
-  $store['_prev'] = $s['prev'] ?? [];
+  $store['_prev'] = $s['prev'] ?? []; $store['_taken'] = $s['taken'] ?? [];
   $store['_last'] = ['method' => $method, 'path' => parse_url($url, PHP_URL_PATH)];
   if ($method === 'POST') $store['_lastPost'] = ['path' => parse_url($url, PHP_URL_PATH), 'post' => $post];
   return [$code, $html, array_merge($hdr, $h)];

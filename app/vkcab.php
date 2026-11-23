@@ -50,6 +50,12 @@ final class VkCab {
       'accepted' => $ru ? 'Показания счётчиков за текущий период приняты (сайт Водоканала).' : 'Показання лічильників за поточний період прийняті (сайт Водоканалу).',
       'hot' => $ru ? 'горячая' : 'гаряча', 'cold' => $ru ? 'холодная' : 'холодна',
       'which' => $ru ? 'Не поняли, какой счётчик на сайте Водоканала какой. Выберите для каждого водомера — и отправьте ещё раз.' : 'Не зрозуміли, який лічильник на сайті Водоканалу який. Виберіть для кожного водоміра — і надішліть ще раз.',
+      // 181-я: по кожному лічильнику після надсилання
+      'less_site' => $ru ? 'меньше, чем последние на сайте ({p})' : 'менше, ніж останні на сайті ({p})',
+      'not_taken' => $ru ? 'сайт не принял, причину не показал — позвоните в Водоканал или передайте ботом' : 'сайт не прийняв, причини не показав — подзвоніть у Водоканал або передайте ботом',
+      'part_ok' => $ru ? 'Принято: {l}.' : 'Прийнято: {l}.', 'part_no' => $ru ? 'Не принято: {l}.' : 'Не прийнято: {l}.',
+      'part_head' => $ru ? '⚠️ Водоканал принял не всё (счёт {a}):' : '⚠️ Водоканал прийняв не все (рахунок {a}):',
+      'earlier' => $ru ? '(принято сайтом раньше)' : '(сайт прийняв раніше)',
     ][$k];
     foreach ($p as $a => $b) $m = str_replace('{' . $a . '}', (string)$b, $m);
     return $m;
@@ -143,9 +149,11 @@ final class VkCab {
       $c = $e instanceof DOMElement ? $e->getAttribute('class') : '';
       if (preg_match('/alert-success|flash-success/', $c)) $out['ok'][] = $t; elseif (!preg_match('/alert-danger|alert-error/', $c)) $out['info'][] = $t;
     }
-    foreach ($out as &$l) $l = array_values(array_unique(array_map(fn($t) => mb_substr($t, 0, 300), $l)));
+    // 181-я: загальні банери сайту — не відповідь на наші показання («Показання чотирьохтарифного лічильника можна передати в кабінеті теплових мереж» — alert-success на кожній сторінці)
+    foreach ($out as &$l) $l = array_values(array_unique(array_filter(array_map(fn($t) => mb_substr($t, 0, 300), $l), fn($t) => !preg_match(self::NOISE_RE, $t))));
     return $out;
   }
+  const NOISE_RE = '/чотирьохтариф|четырехтариф|четырёхтариф|кабінет\S*\s+теплов|кабинет\S*\s+теплов/iu';
   /** Поля формы так, как их отправил бы браузер: [[name, value], …] + сами элементы для подмены. */
   private static function fields(DOMXPath $x, DOMElement $form): array {
     $out = []; $els = iterator_to_array($x->query('.//input|.//select|.//textarea', $form)); $fid = $form->getAttribute('id');
@@ -244,7 +252,7 @@ final class VkCab {
       // 181-я, живий сайт 23.11 (рахунок спільної квартири власника): таблиці немає — блок «Холодна вода (№ Хкух 847046) · дата наступної повірки … р. · 459.123 ·
       // Передані показання за жовтень 2026, м³: · Вкажіть нові показання…» — останні передані стоять ПЕРЕД підписом (або після двокрапки), кімната — в номері: Хкух, Гс/у
       if ($prev === null && (preg_match('/(?<![\d.,])(\d+(?:[.,]\d+)?)\s*(?:·\s*)?Передан\p{L}*\s+показ/iu', $all, $m) || preg_match('/Передан\p{L}*\s+показ\p{L}*[^:]{0,60}:\s*(?:·\s*)?(\d+(?:[.,]\d+)?)(?![\d.,])/iu', $all, $m))) $prev = (float)str_replace(',', '.', $m[1]);
-      $out[] = ['key' => $f['name'], 'label' => mb_substr($all, 0, 200), 'cells' => array_slice($cells, 0, 8), 'heads' => array_slice($heads, 0, 8), 'kind' => $kind, 'serial' => $serial, 'room' => self::room($all), 'prev' => $prev, 'prevDate' => $prevDate, 'el' => $f['el'], 'row' => $row];
+      $out[] = ['key' => $f['name'], 'label' => mb_substr($all, 0, 200), 'cells' => array_slice($cells, 0, 8), 'heads' => array_slice($heads, 0, 8), 'kind' => $kind, 'serial' => $serial, 'room' => self::room($all), 'prev' => $prev, 'prevDate' => $prevDate, 'verify' => self::verify($all), 'el' => $f['el'], 'row' => $row];
     }
     return $out;
   }
@@ -280,6 +288,12 @@ final class VkCab {
         'accepted' => (bool)preg_match('/прийнят|принят/iu', $blk ? $bt : $all), 'verify' => $verify];
     }
     return array_slice($out, 0, 6);
+  }
+  /** «дата наступної повірки - 3 жовтня 2026 р.» / «… 03.10.2026» → '2026-10-03' або null. */
+  public static function verify(string $t): ?string {
+    if (preg_match('/повір\p{L}*\s*[-–—:]?\s*(\d{1,2})\s+(\p{L}+)\s+(\d{4})/iu', $t, $m)) { $mm = self::month($m[2], $m[3]); return $mm ? $mm . '-' . str_pad($m[1], 2, '0', STR_PAD_LEFT) : null; }
+    if (preg_match('/повір\p{L}*\D{0,10}(\d{1,2})\.(\d{1,2})\.(\d{4})/iu', $t, $m)) return sprintf('%04d-%02d-%02d', $m[3], $m[2], $m[1]);
+    return null;
   }
   /** «листопад 2026», «листопада», «ноябрь», «ноября» → '2026-11'. */
   public static function month(string $w, string $y): ?string {
@@ -416,7 +430,7 @@ final class VkCab {
     $miss = function () use ($c, &$acc0) { self::diag(['result' => 'mismatch', 'where' => 'send', 'form' => self::formInfo($c['x'], $c['form'], $c['fields'], $c['meters'])]); return new HttpError(409, 'cab_mismatch', ['human' => self::h('mismatch'), 'meters' => self::pubMeters($c['meters'])] + ($acc0 ? ['done' => $acc0] : [])); };
     foreach ($items as $i => $it) {
       $sd = ltrim($digits($it['serial']), '0');
-      if ($strict && $sd !== '') foreach ($acc0 as $n => $b) if (!isset($accUsed[$n]) && ltrim($digits($b['serial']), '0') === $sd) { $skip[$i] = $b; $accUsed[$n] = 1; continue 2; }
+      if ($strict && $sd !== '') foreach ($acc0 as $n => $b) if (!isset($accUsed[$n]) && ltrim($digits($b['serial']), '0') === $sd && (!$it['kind'] || $b['kind'] === $it['kind'])) { $skip[$i] = $b; $accUsed[$n] = 1; continue 2; }
       $m = $it['key'] !== null ? ($byKey[$it['key']] ?? null) : null;
       if ($strict && $m && isset($used[$m['key']])) $m = null;   // 180-я: два водоміри з тим самим збереженим ключем — шукаємо за номером і видом, а не «змінився список»
       $bad = $m && $sd !== '' && !str_contains($digits($m['label']), $sd);
@@ -446,8 +460,8 @@ final class VkCab {
     $already = []; foreach ($skip as $i => $b) $already[] = ['i' => $i, 'name' => $items[$i]['name'], 'value' => $items[$i]['value'], 'site' => $b['value'], 'serial' => $b['serial'], 'period' => $b['period']];
     if ($skip && !$map) return ['skipped' => $already] + self::already($uid, $acc, array_values($items), $c['done'], $op);
     $items0 = $items; $items = array_intersect_key($items, $map);
-    // останні на сайті — з копійками, у застосунку — цілі м³: «менше» лише нижче цілої частини (0 при 0.4 на сайті — не помилка)
-    if ($strict) foreach ($items as $i => $it) { $m = $byKey[$map[$i]]; if ($m['prev'] !== null && (float)$it['value'] < floor((float)$m['prev'])) { self::diag(['result' => 'less', 'where' => 'send']); throw new HttpError(422, 'cab_less', ['human' => self::h('less', ['n' => $it['name'] ?: $it['value'], 'p' => $m['prev']]), 'item' => $i]); } }
+    // останні на сайті — з літрами (0.924): менше — сайт мовчки не прийме (181-я: застосунок слав ціле 0 при 0.925 на табло) — не шлемо, кажемо чому
+    if ($strict) foreach ($items as $i => $it) { $m = $byKey[$map[$i]]; if ($m['prev'] !== null && (float)$it['value'] + 1e-9 < (float)$m['prev']) { self::diag(['result' => 'less', 'where' => 'send']); throw new HttpError(422, 'cab_less', ['human' => self::h('less', ['n' => $it['name'] ?: $it['value'], 'p' => $m['prev']]), 'item' => $i]); } }
     $vals = []; foreach ($items as $i => $it) $vals[$map[$i]] = $it['value'];
     // поля формы как у браузера; показания — в свои поля, дата — выбранная человеком (если есть такая), иначе как предложил сайт
     $pairs = [];
@@ -471,17 +485,36 @@ final class VkCab {
       foreach ($x->query('.//*[' . self::cls('help-block') . ' or ' . self::cls('invalid-feedback') . ']', $m['row']) as $hb) { $t = self::sp($hb->textContent); if ($t !== '') $fieldErr[] = $t; }
     }
     $dn = self::done($x); $same = $dn && !array_filter($items0, fn($it) => !self::doneFor($it, $dn) || abs((float)self::doneFor($it, $dn)['value'] - (float)$it['value']) > 0.0005 || !self::doneFor($it, $dn)['accepted']);
-    if ($same) $result = 'ok';
+    // 181-я (живий сайт 23.11): після надсилання прийняті — блоками «… ПРИЙНЯТІ» без поля; лічильник, у якого поле лишилось, сайт НЕ прийняв, навіть якщо
+    // десь зелений банер (так «Гаряча · Ванна — 0» пішла в «прийняв»). Сторінка з прийнятими блоками — рахуємо по кожному нашому
+    $left = [];
+    if ($f2 && array_filter($dn, fn($b) => $b['accepted'])) {
+      $still = []; foreach (self::meters($x, self::fields($x, $f2)) as $m) $still[$m['key']] = $m;
+      foreach ($items as $i => $it) if (isset($still[$map[$i]])) $left[$i] = $still[$map[$i]];
+    }
+    if ($left && count($left) === count($items)) $result = 'err';
+    elseif ($left) $result = 'part';
+    elseif ($same) $result = 'ok';
     elseif ($fieldErr || ($msgs['err'] && !$msgs['ok'])) $result = 'err';
     elseif ($msgs['ok'] || $okText) $result = 'ok';
     else $result = 'unknown';
     if ($same && !$msgs['ok'] && !$okText) $okText = [self::h('accepted')];
     $text = $result === 'err' ? implode(' ', array_slice(array_unique(array_merge($fieldErr, $msgs['err'])), 0, 3)) : implode(' ', array_slice($msgs['ok'] ?: $okText ?: $msgs['info'], 0, 2));
+    if ($left) {   // хто не пройшов і чому, якщо видно: прострочена повірка (дата на сторінці) — інакше сайт причини не показав
+      $why = [];
+      foreach ($left as $i => $m) $why[] = ($items[$i]['name'] ?: '№ ' . $m['serial']) . ' — ' . $items[$i]['value'] . ': ' . ($m['prev'] !== null && (float)$items[$i]['value'] + 1e-9 < (float)$m['prev'] ? self::h('less_site', ['p' => $m['prev']]) : self::h('not_taken'));
+      $okN = array_values(array_diff_key($items, $left));
+      $text = ($okN ? self::h('part_ok', ['l' => implode(', ', array_map(fn($it) => $it['name'] . ' — ' . $it['value'], $okN))]) . ' ' : '') . self::h('part_no', ['l' => implode('; ', $why)]);
+    }
     self::diag(['result' => $result, 'where' => $op, 'form' => self::formInfo($c['x'], $c['form'], $c['fields'], $c['meters']), 'msgs' => self::maskMsgs($msgs), 'fieldErr' => array_map([self::class, 'mask'], $fieldErr), 'n' => count($items), 'user' => $uid]);
     Db::q('INSERT INTO audit_log (user_id, action, ip, created_at) VALUES (?, ?, ?, ?)', [$uid, 'vk_cab_' . $op . '_' . $result, null, Http::iso()]);
     $at = time();
-    if ($result === 'ok') self::notify($uid, $acc, array_map(fn($it, $i) => ['name' => $it['name'] ?: ($byKey[$map[$i]]['serial'] ? '№ ' . $byKey[$map[$i]]['serial'] : ''), 'value' => $it['value']], $items, array_keys($items)), $text);
-    return ['result' => $result, 'text' => mb_substr($text, 0, 400), 'at' => $at, 'keys' => $map] + ($already ? ['skipped' => $already] : []);
+    $lines = array_map(fn($it, $i) => ['name' => $it['name'] ?: ($byKey[$map[$i]]['serial'] ? '№ ' . $byKey[$map[$i]]['serial'] : ''), 'value' => $it['value']], $items, array_keys($items));
+    $lines = array_values(array_filter($lines, fn($l, $n) => !isset($left[array_keys($items)[$n]]), ARRAY_FILTER_USE_BOTH));
+    foreach ($already as $a) $lines[] = ['name' => $a['name'], 'value' => ($a['site'] !== null ? rtrim(rtrim(number_format((float)$a['site'], 3, '.', ''), '0'), '.') : $a['value']) . ' ' . self::h('earlier')];
+    if ($result === 'ok') self::notify($uid, $acc, $lines, $msgs['ok'] ? $text : '');
+    elseif ($result === 'part') self::notify($uid, $acc, $lines, '', self::h('part_head', ['a' => $acc]) . "\n" . $text);
+    return ['result' => $result, 'text' => mb_substr($text, 0, 400), 'at' => $at, 'keys' => $map] + ($already ? ['skipped' => $already] : []) + ($left ? ['left' => array_keys($left)] : []);
   }
   /** Блок «прийняті» для нашего показания: по номеру лічильника, иначе по виду (если такой один). */
   public static function doneFor(array $it, array $done): ?array {
