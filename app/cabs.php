@@ -480,6 +480,9 @@ final class HtmCab {
   const LBL = ['date' => '/^Дата\s+зняття/u', 'energy' => '/Накопичен\S*\s+енерг/u', 'volume' => '/^Обсяг/u', 'flow' => '/^Миттєв\S*\s+витрат/u', 'power' => '/потужн/u',
     'tSupply' => '/подач/u', 'tReturn' => '/поверн/u', 'hours' => '/напрацюв|^Час\s+роботи(?!\s+з)/u', 'errHours' => '/^Час.*(помилк|прост)|\(Fd\)/u', 'errCode' => '/^Код\s+помилк/u',
     'flowHours' => '/^Час.*з\s+витрат|\(Pd\)/u'];
+  /** Інші імена наших полів, які бачили на живому (181-а): форма «три часи» (Bd / Fd / Pd) 22.11.2026 — час простою (Fd) зветься TimeProstoya, а не ErrorTime
+   *  (/api/health → htmcab.form: missing errHours, unknown TimeProstoya; Pd — TimeRash, за підписом). Нове ім'я — сюди лише побачивши його на живій формі. */
+  const ALT = ['TimeProstoya' => 'errHours'];
   /** Одиниця енергії → Гкал (як M.TO_GCAL у застосунку). */
   const UNITS = ['Gcal' => 1.0, 'GJ' => 0.2388458966, 'MWh' => 0.8598452279, 'kWh' => 0.0008598452279];
   public CabWeb $w;
@@ -1016,6 +1019,7 @@ final class HtmCab {
    *  контакт (phone, email, note), галочка (не трогаем) или «незнакомое». → ['roles' => [имя => роль], 'missing' => [наши, которых нет], 'unknown' => [имена], 'match' => bool]. */
   public static function plan(array $fields): array {
     $ours = []; foreach (self::F as $k => $name) $ours[strtolower($name)] = $k;
+    foreach (self::ALT as $name => $k) $ours[strtolower($name)] = $k;
     $roles = []; $seen = []; $unknown = []; $btn = false;
     foreach ($fields as $f) {
       $nm = (string)$f['name']; $ln = strtolower($nm);

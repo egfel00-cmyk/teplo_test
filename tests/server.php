@@ -2985,5 +2985,12 @@ $uahData = 0; foreach (glob(__DIR__ . '/../app/data/*.json') as $f) $uahData += 
 ok('₴ замість «грн» (172-а): у JS/PHP/admin і довіднику немає «грн», крім банку (призначення, «Скопіювати все») і розбору ХТМ',
   !$uahBad && !$uahData && str_contains(file_get_contents(__DIR__ . '/../web/src/i18n.js'), "{сума} грн"), [$uahBad, $uahData]);
 
+// 181-я: жива форма ХТМ «три часи» 22.11.2026 (/api/health → htmcab.form): Fd — TimeProstoya, Pd — TimeRash (за підписом)
+$lf = []; foreach (['LastDtPok' => 'Дата зняття показань', 'LastValuePok' => 'Накопичена енергія, ГКал', 'LastRashPok' => 'Обсяг', 'HeatRash' => 'Миттєва витрата', 'HeatPower' => 'Теплова потужність', 'TempPod' => 'Температура подачі',
+  'TempO' => 'Температура повернення', 'LastTimePok' => 'Час напрацювання (Bd)', 'TimeProstoya' => 'Час простою (Fd)', 'TimeRash' => 'Час роботи з витратою (Pd)', 'ErrorKod' => 'Код помилки'] as $nm => $lb) $lf[] = ['name' => $nm, 'type' => 'text', 'lbl' => $lb];
+foreach ([['Comment', 'text'], ['phone', 'text'], ['email', 'text'], ['send', 'submit']] as [$nm, $ty]) $lf[] = ['name' => $nm, 'type' => $ty, 'lbl' => ''];
+$lp = HtmCab::plan($lf);
+ok('ХТМ «три часи»: TimeProstoya — час простою (errHours), TimeRash — Pd; форма зрозуміла', $lp['match'] && $lp['times3'] && ($lp['roles']['TimeProstoya'] ?? '') === 'errHours' && ($lp['roles']['TimeRash'] ?? '') === 'flowHours', $lp);
+
 echo "\nИтог: $pass OK, $fail FAIL\n";
 exit($fail ? 1 : 0);
