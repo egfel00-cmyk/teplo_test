@@ -126,6 +126,8 @@ run() {
     local st=ok; { [ $rc -ne 0 ] || [ "$fln" -gt 0 ] || [ "$okn" -eq 0 ]; } && st=FAIL; [ $rc -eq 124 ] && st=TIMEOUT
     total=$((total + 1)); [ "$st" != ok ] && bad=$((bad + 1))
     printf '%s\t%s\t%s\t%s\t%ss\n' "$name" "$st" "$okn" "$fln" "$((SECONDS - t0))" | tee -a "$OUT/results.tsv"
+    # у журнал прогону (CI: артефакти з облачної сесії не завантажуються — лише журнал завдання): що саме впало
+    if [ "$st" != ok ]; then grep -E '^\s*(FAIL|✗|ERROR)(\s|$)|Error|waiting for' "$OUT/$name.log" | head -8 | cut -c1-400 | sed 's/^/    │ /'; tail -3 "$OUT/$name.log" | cut -c1-300 | sed 's/^/    │ /'; fi
   done
   {
     echo "### e2e: $((total - bad)) из $total зелёные"

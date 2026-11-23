@@ -14,6 +14,9 @@ concurrency:
   group: web-${{ github.ref }}
   cancel-in-progress: true
 
+env:
+  TZ: Europe/Kyiv   # як у людей і в локальному стенді: тести з датами («сьогодні», вікна приймання) інакше розходяться о 22–24 за UTC
+
 jobs:
   unit:
     runs-on: ubuntu-24.04

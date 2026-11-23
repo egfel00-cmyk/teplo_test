@@ -63,9 +63,10 @@ let pass = 0, fail = 0; const ok = (n, c, x) => { if (c) { pass++; console.log('
   ok('Київ: тепло, історія, статистика, квартира — без «ХТМ» (форма кабінету ХТМ, «Прийнято ХТМ», «за тарифом ХТМ», «ХТМ радить»)', Object.values(noHtm).every(a => !a.length), noHtm);
   await p.goto(U + '#history'); await p.waitForTimeout(800); await p.click('[data-key=kind-heat]').catch(() => {}); await p.waitForTimeout(400);
   ok('Київ: історія — «1 Гкал = 1 654 ₴ за тарифом постачальника»', /1\s654 ₴ за тарифом постачальника/.test((await p.textContent('[data-key=hs-unit]')).replace(/\u00a0|\u202f/g, ' ')), await p.textContent('[data-key=hs-unit]').catch(() => ''));
-  await p.goto(U + '#place-main'); await p.waitForTimeout(900); await p.evaluate(() => document.querySelectorAll('details').forEach(d => d.open = true)); await p.waitForTimeout(250);
-  const wtp = (await p.textContent('[data-key=pv-prov]').catch(() => '')).replace(/\u00a0|\u202f/g, ' ');   // 164-а: тарифи — у «Постачальники й рахунки» квартири
-  ok('Київ: екран квартири → тарифи води Київводоканалу 36,85 і 26,94', /Київводоканал/.test(wtp) && /36,85/.test(wtp) && /26,94/.test(wtp), wtp.slice(0, 400));
+  // 180-я: постачальники квартири — рядками, тарифи води — на екрані постачальника води (#pvp-water-<квартира>)
+  await p.goto(U + '#pvp-water-main'); await p.waitForTimeout(900); await p.evaluate(() => document.querySelectorAll('details').forEach(d => d.open = true)); await p.waitForTimeout(250);
+  const wtp = (await p.textContent('#main').catch(() => '')).replace(/\u00a0|\u202f/g, ' ');
+  ok('Київ: екран постачальника води квартири → тарифи Київводоканалу 36,85 і 26,94', /Київводоканал/.test(wtp) && /36,85/.test(wtp) && /26,94/.test(wtp), wtp.slice(0, 400));
   // Харків — повний майстер ХТМ
   await p.evaluate(() => { const s = JSON.parse(localStorage.getItem('teplo.v1')); s.places[0].address = 'пр. Перемоги 86А, кв. 61'; delete s.places[0].city; s.demoToday = '2026-11-20'; s.draft = null; localStorage.setItem('teplo.v1', JSON.stringify(s)); });
   await p.goto(U + '#meter'); await p.reload(); await p.waitForTimeout(1200);
