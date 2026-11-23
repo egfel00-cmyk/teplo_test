@@ -104,6 +104,13 @@ const mailLink = () => { const d = fs.existsSync(EML) ? fs.readFileSync(EML, 'ut
     const gB = await B.textContent('[data-key=pg-pv-people]');
     ok('Б: «Веде olga… · ви учасник», «Вийти з квартири», запрошувати не може', gB.includes('Веде olga') && !!(await B.$('[data-key=shp-leave]')) && !(await B.$('[data-key=shp-inv]')), gB.slice(0, 300));
     ok('Б: 183-я — про кабінети власника учаснику не пишемо, галочки немає', !(await B.$('[data-key=shp-bg-mem]')) && !(await B.$('[data-key=shp-bg]')) && !/через кабінети/.test(gB));
+    // 186-я: документи квартири спільні — паспорт, який додала власниця, учасник бачить у своїй копії; прибрати — лише вона (чи той, хто додав)
+    const up = await A.evaluate(async () => { const t = (document.cookie.match(/ts_csrf=([^;]*)/) || [])[1];
+      const b = new Blob([Uint8Array.from(atob('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII='), c => c.charCodeAt(0))], { type: 'image/png' });   // data: закрито CSP
+      const r = await fetch('api/docs/upload?place=main&kind=passport&meter=heat', { method: 'POST', body: b, headers: { 'Content-Type': 'image/png', 'X-CSRF': t || '' } }); return r.status; });
+    await B.reload(); await B.waitForTimeout(1500);   // той самий адрес — goto лише міняє хеш; список документів — з нового завантаження
+    const md = await B.$eval('[data-key=mdocs-heat]', e => ({ t: e.textContent, n: e.querySelectorAll('.docs li').length, del: e.querySelectorAll('[data-act=doc-del]').length })).catch(() => null);
+    ok('Б: паспорт теплолічильника від власниці — у Б, «бачать усі, хто веде», без «Видалити»', up === 200 && md && md.n === 1 && md.del === 0 && /Бачать усі, хто веде цю квартиру/.test(md.t), [up, md]);
     await B.screenshot({ path: '/tmp/shp_member_place.png', fullPage: true });
     ok('Б: 320 px — екран квартири не ширший', (await (async () => { await B.setViewportSize({ width: 320, height: 700 }); await B.waitForTimeout(200); return wide(B); })()) <= 320);
     await B.setViewportSize({ width: 390, height: 844 });

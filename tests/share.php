@@ -213,6 +213,28 @@ Db::q('INSERT INTO photos (id, user_id, file, mime, bytes, created_at) VALUES (?
 ok('учасник бачить фото власника до запису', $G->req('GET', '/api/photo?id=aaaaaaaaaaaaaaaaaaaaaaaa')->file !== null);
 ok('чужий (не в квартирі) — ні', $X->req('GET', '/api/photo?id=aaaaaaaaaaaaaaaaaaaaaaaa')->status === 404);
 
+echo "Документи квартири (паспорт лічильника) — спільні (186-я):\n";
+$png = base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=');
+$uX = (int)$X->req('GET', '/api/me')->body['user']['id'];
+$dG = Docs::upload($uG, $png, 'image/png', ['place' => 'sh' . $sid, 'kind' => 'passport', 'meter' => 'c1'])['doc'];
+$rowG = Db::one('SELECT user_id, place, by_user FROM docs WHERE id = ?', [$dG['id']]);
+ok('учасник додав паспорт — лежить у власника (його квартира main), додав — учасник; у відповіді — копія учасника', (int)$rowG['user_id'] === $uA && $rowG['place'] === 'main' && (int)$rowG['by_user'] === $uG && $dG['place'] === 'sh' . $sid, [$rowG, $dG]);
+$lA = array_values(array_filter($A->req('GET', '/api/docs')->body['docs'], fn($d) => $d['id'] === $dG['id']));
+$lG = array_values(array_filter($G->req('GET', '/api/docs')->body['docs'], fn($d) => $d['id'] === $dG['id']));
+ok('власник бачить у своїй квартирі (main), учасник — у своїй копії (sh…), лічильник той самий; прибрати можуть обоє', ($lA[0]['place'] ?? '') === 'main' && ($lG[0]['place'] ?? '') === 'sh' . $sid && ($lG[0]['meter'] ?? '') === 'c1' && $lA[0]['del'] === true && $lG[0]['del'] === true, [$lA, $lG]);
+ok('файл відкривається обом, чужому — ні', $A->req('GET', '/api/docs/file?id=' . $dG['id'])->file !== null && $G->req('GET', '/api/docs/file?id=' . $dG['id'])->file !== null && $X->req('GET', '/api/docs/file?id=' . $dG['id'])->status === 404);
+ok('чужий не бачить у списку й не прибирає', !array_filter($X->req('GET', '/api/docs')->body['docs'], fn($d) => $d['id'] === $dG['id']) && $X->req('POST', '/api/docs/delete', ['id' => $dG['id']])->status === 404);
+$dA = Docs::upload($uA, $png, 'image/png', ['place' => 'main', 'kind' => 'verification', 'meter' => 'm1'])['doc'];
+$lG2 = array_values(array_filter($G->req('GET', '/api/docs')->body['docs'], fn($d) => $d['id'] === $dA['id']));
+ok('власник додав повірку — учасник бачить у своїй копії, прибрати не може (лише власник і хто додав)', ($lG2[0]['place'] ?? '') === 'sh' . $sid && $lG2[0]['del'] === false && !empty($lG2[0]['sh'])
+  && $G->req('POST', '/api/docs/delete', ['id' => $dA['id']])->status === 404, $lG2);
+$old = Docs::put($uG, $png, 'image/png', 'png', 'sh' . $sid, 'passport', null, ['meter' => 'c1']);   // до 186-ї учасник зберігав у себе
+$lA2 = array_values(array_filter($A->req('GET', '/api/docs')->body['docs'], fn($d) => $d['id'] === $old['id']));
+ok('старий документ учасника (у його акаунті) — власник теж бачить у main і може прибрати', ($lA2[0]['place'] ?? '') === 'main' && $lA2[0]['del'] === true, $lA2);
+ok('гараж власника (не спільний) — документи лише його', (function () use ($uA, $png, $G) { $g = Docs::upload($uA, $png, 'image/png', ['place' => 'p2', 'kind' => 'passport'])['doc']; return !array_filter($G->req('GET', '/api/docs')->body['docs'], fn($d) => $d['id'] === $g['id']); })());
+ok('учасник прибирає свій (доданий ним) — зник в обох', $G->req('POST', '/api/docs/delete', ['id' => $dG['id']])->status === 200 && !array_filter($A->req('GET', '/api/docs')->body['docs'], fn($d) => $d['id'] === $dG['id']));
+ok('власник прибирає старий документ учасника', $A->req('POST', '/api/docs/delete', ['id' => $old['id']])->status === 200);
+
 echo "Робот змінив стан власника (не PUT) — cron зводить:\n";
 $row = Db::one('SELECT data FROM user_state WHERE user_id = ?', [$uA]); $s = json_decode((string)$row['data']);
 foreach ($s->water as $wr) if ($wr->id === 'w2') { $wr->sent = (object)['vk' => '2026-11-22']; $wr->updatedAt = ms(); }

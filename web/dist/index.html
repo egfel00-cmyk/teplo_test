@@ -5932,6 +5932,7 @@ fieldset { min-inline-size: 0; }
       mv_open: 'Відкрити', mv_title: 'Лічильник: повірка й документи', mv_date: 'Повірка дійсна до', mv_date_sub: 'Дата з паспорта або свідоцтва про повірку. Після неї робот ХТМ показання не приймає.', mv_date_sub_l: 'Дата з паспорта або свідоцтва про повірку. Після неї постачальник показання не приймає — рахує без лічильника.',
       mv_ok: 'чинна', mv_soon: 'залишилось {n} дн.', mv_expired: 'прострочена',
       mv_docs: 'Фото документів', mv_docs_sub: 'Паспорт лічильника, свідоцтво чи акт повірки — щоб завжди були під рукою. Бачите лише ви.',
+      mv_docs_sub_sh: 'Паспорт лічильника, свідоцтво чи акт повірки — щоб завжди були під рукою. Бачать усі, хто веде цю квартиру.',
       mv_docs_none: 'Ще немає документів.', mv_docs_login: 'Увійдіть, щоб зберігати фото паспорта й документів повірки.',
       mv_kind_passport: 'Паспорт лічильника', mv_kind_verification: 'Повірка', mv_kind_other: 'Документ',
       mv_add_passport: 'Фото паспорта', mv_add_ver: 'Документ повірки', mv_uploading: 'Завантажую…', mv_saved: 'Документ збережено',
@@ -7420,6 +7421,7 @@ fieldset { min-inline-size: 0; }
       mv_open: 'Открыть', mv_title: 'Счётчик: поверка и документы', mv_date: 'Поверка действует до', mv_date_sub: 'Дата из паспорта или свидетельства о поверке. После неё робот ХТМ показания не принимает.', mv_date_sub_l: 'Дата из паспорта или свидетельства о поверке. После неё поставщик показания не принимает — считает без счётчика.',
       mv_ok: 'действует', mv_soon: 'осталось {n} дн.', mv_expired: 'просрочена',
       mv_docs: 'Фото документов', mv_docs_sub: 'Паспорт счётчика, свидетельство или акт поверки — чтобы всегда были под рукой. Видите только вы.',
+      mv_docs_sub_sh: 'Паспорт счётчика, свидетельство или акт поверки — чтобы всегда были под рукой. Видят все, кто ведёт эту квартиру.',
       mv_docs_none: 'Пока нет документов.', mv_docs_login: 'Войдите, чтобы хранить фото паспорта и документов поверки.',
       mv_kind_passport: 'Паспорт счётчика', mv_kind_verification: 'Поверка', mv_kind_other: 'Документ',
       mv_add_passport: 'Фото паспорта', mv_add_ver: 'Документ поверки', mv_uploading: 'Загружаю…', mv_saved: 'Документ сохранён',
@@ -19147,12 +19149,14 @@ fieldset { min-inline-size: 0; }
   });
 
   // ---- поверка и документы счётчика (документы — только вошедшим: хранятся на сервере)
-  var DOCS = { list: null, loading: false, busy: '' };
+  var DOCS = { list: null, loading: false, busy: '', at: 0 };
+  // 186-я: у спільній квартирі документи додають і інші люди — список старший за 60 с перечитуємо (перемальовуємо лише, якщо змінився)
   function loadDocs(force) {
-    if (!window.TEPLO_API || !Y().account || DOCS.loading || (DOCS.list && !force)) return;
-    DOCS.loading = true;
+    if (!window.TEPLO_API || !Y().account || DOCS.loading || (DOCS.list && !force && Date.now() - DOCS.at < 60000)) return;
+    DOCS.loading = true; DOCS.at = Date.now();
     fetch(window.TEPLO_API + '/docs', { credentials: 'same-origin', headers: { Accept: 'application/json' } }).then(function (r) { return r.json(); })
-      .then(function (j) { DOCS.loading = false; DOCS.list = (j && j.docs) || []; if (routeName() === 'prefs' || /^place-/.test(routeName())) safeRender(); }, function () { DOCS.loading = false; });
+      .then(function (j) { DOCS.loading = false; var was = JSON.stringify(DOCS.list); DOCS.list = (j && j.docs) || []; DOCS.at = Date.now();
+        if (was !== JSON.stringify(DOCS.list) && (routeName() === 'prefs' || /^place-/.test(routeName()))) safeRender(); }, function () { DOCS.loading = false; });
   }
   /** Документи квартири до лічильника mid (heat | id водоміра, світла, газу); старі — без лічильника — до теплолічильника. */
   function docsOf(mid) {
@@ -19166,11 +19170,12 @@ fieldset { min-inline-size: 0; }
     if (!Y().account) return h + '<p class="small muted">' + esc(t('mv_docs_login')) + '</p></div>';
     loadDocs();
     var mine = docsOf(mid);
-    h += '<p class="small muted">' + esc(t('mv_docs_sub')) + '</p>' + (mine.length ? '<ul class="docs">' + mine.map(function (d) {
+    var shd = shMany(place());   // 186-я: спільна квартира — документи бачать усі, хто її веде
+    h += '<p class="small muted">' + esc(t(shd ? 'mv_docs_sub_sh' : 'mv_docs_sub')) + '</p>' + (mine.length ? '<ul class="docs">' + mine.map(function (d) {
       var url = window.TEPLO_API + '/docs/file?id=' + d.id, img = d.mime !== 'application/pdf';
       return '<li><a href="' + esc(url) + '" target="_blank" rel="noopener" class="doc-th" aria-label="' + esc(t('mv_open') + ': ' + t('mv_kind_' + d.kind)) + '">' + (img ? '<img src="' + esc(url) + '" alt="" loading="lazy">' : '<span class="pdf">PDF</span>') + '</a>' +
         '<div class="grow"><b>' + esc(t('mv_kind_' + d.kind)) + '</b><div class="small muted">' + esc(R.toHtmDate(String(d.createdAt).slice(0, 10))) + '</div></div>' +
-        '<button class="linkbtn" data-act="doc-del" data-id="' + esc(d.id) + '">' + esc(t('rec_del')) + '</button></li>';
+        (d.del === false ? '' : '<button class="linkbtn" data-act="doc-del" data-id="' + esc(d.id) + '">' + esc(t('rec_del')) + '</button>') + '</li>';
     }).join('') + '</ul>' : '');
     var busyHere = DOCS.busy && DOCS.meter === mid;
     return h + '<div class="row-actions mdocs-act"><button class="btn sec sm" data-act="doc-add" data-kind="passport" data-meter="' + esc(mid) + '"' + (DOCS.busy ? ' disabled' : '') + ' data-key="mdoc-pass-' + esc(mid) + '">' + ico('camera', 18) + '<span>' + esc(t('mv_add_passport')) + '</span></button>' +
