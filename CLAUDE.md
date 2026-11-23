@@ -219,7 +219,7 @@
 - `bash tests/e2e/stand.sh up` — чиста база `/tmp/teplo_data` (config.php: sqlite, admins boss@/pvadmin@, стенди, SMTP 2526 — **без коми в кінці**: e2e_apple й інші дописують ключі
   заміною «];»), сайт 8013, ХТМ 8099 (копія в /tmp/htm-mock), Водоканал 8098, LocalBot 8096, обленерго 8097; `fixtures` — картинки ocr-lab (шрифти DSEG — `npm pack dseg`), кадри камери,
   /tmp/two_meters.jpg, gas_low, bill_photo/oct.pdf; `run [імена]` — тести зі `tests/e2e/ci.list` (`!` — чиста база перед тестом, `ЗМІННА=знач e2e_x арг…`, `# …` — пропуск з причиною;
-  `SHARD=k/n`) → `/tmp/e2e/summary.md`, `results.tsv`, `<тест>.log`. Новий e2e — рядком у ci.list (формат «  OK »/« FAIL », «ok»/«FAIL», «✓»/«✗» — розпізнається).
+  `SHARD=k/n`) → `/tmp/e2e/summary.md`, `results.tsv`, `<тест>.log`. Новий e2e — рядком у ci.list (формат «  OK »/« FAIL », «ok»/«FAIL», «✓»/«✗» — розпізнається). Упалий тест повторюється раз (`E2E_RETRY`, 185-я: таймінги CI) — у таблиці «↻», перша спроба — `<тест>.try1.log`.
 - CI — `.github/workflows/web.yml` (кожен пуш у main, що чіпає сайт): `unit` (php -l, **web/dist зібрано з web/src**, server/share/htm_svc/vk_svc/htm_cab, js, design_lint) і `e2e` 4 частинами
   (PHP 8.3, Playwright 1.63, Summary + артефакт журналів і скрінів). Подивитись без входу: `gh run list -w Web`, `gh run view <id> --log-failed` (публічний репозиторій).
 - Екрани постачальників (180-я) — тести, що шукали поля на `#place-<квартира>`, тепер ідуть на `#pvp-<вид>-<квартира>` (рахунки, «опалення» котлом/пільгою, рахунок ХТМ).

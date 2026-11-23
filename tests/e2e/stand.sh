@@ -120,15 +120,22 @@ run() {
     local name; name="$(basename "$f" .cjs)"
     [ "$fresh_before" = 1 ] && fresh
     sqlite3 "$DATA/dev.sqlite" 'DELETE FROM rate_limits' 2>/dev/null || SITE_DATA="$DATA" php -r '$c = require getenv("SITE_DATA") . "/config.php"; try { (new PDO($c["db"]["dsn"]))->exec("DELETE FROM rate_limits"); } catch (Throwable $e) {}' 2>/dev/null
-    local t0=$SECONDS
-    (cd "$ROOT/tests/e2e" && env SITE_DATA="$DATA" "${envs[@]}" timeout "$TMO" node "$f" "${args[@]}") > "$OUT/$name.log" 2>&1; local rc=$?
-    # формати тестів різні: «  OK  …» / « FAIL …», «ok   …» / «FAIL …», «✓ …» / «✗ …», одне «OK» / «FAIL»; «ERROR …» — тест упав
-    local okn fln; okn=$(grep -cE '^\s*(OK|ok|✓)(\s|$)' "$OUT/$name.log"); fln=$(grep -cE '^\s*(FAIL|✗|ERROR)(\s|$)' "$OUT/$name.log")
-    local st=ok; { [ $rc -ne 0 ] || [ "$fln" -gt 0 ] || [ "$okn" -eq 0 ]; } && st=FAIL; [ $rc -eq 124 ] && st=TIMEOUT
-    # «SKIP: …» і вихід 0 без перевірок — тест сам вирішив, що сьогодні його день не той (inboxday.cjs: фото з бота поза вікном постачальника)
-    [ "$st" = FAIL ] && [ $rc -eq 0 ] && [ "$fln" -eq 0 ] && [ "$okn" -eq 0 ] && grep -q '^SKIP' "$OUT/$name.log" && st=skip
+    local t0=$SECONDS rc okn fln st try=0 rmark=''
+    while :; do
+      (cd "$ROOT/tests/e2e" && env SITE_DATA="$DATA" "${envs[@]}" timeout "$TMO" node "$f" "${args[@]}") > "$OUT/$name.log" 2>&1; rc=$?
+      # формати тестів різні: «  OK  …» / « FAIL …», «ok   …» / «FAIL …», «✓ …» / «✗ …», одне «OK» / «FAIL»; «ERROR …» — тест упав
+      okn=$(grep -cE '^\s*(OK|ok|✓)(\s|$)' "$OUT/$name.log"); fln=$(grep -cE '^\s*(FAIL|✗|ERROR)(\s|$)' "$OUT/$name.log")
+      st=ok; { [ $rc -ne 0 ] || [ "$fln" -gt 0 ] || [ "$okn" -eq 0 ]; } && st=FAIL; [ $rc -eq 124 ] && st=TIMEOUT
+      # «SKIP: …» і вихід 0 без перевірок — тест сам вирішив, що сьогодні його день не той (inboxday.cjs: фото з бота поза вікном постачальника)
+      [ "$st" = FAIL ] && [ $rc -eq 0 ] && [ "$fln" -eq 0 ] && [ "$okn" -eq 0 ] && grep -q '^SKIP' "$OUT/$name.log" && st=skip
+      # 185-я: один повтор упалого (E2E_RETRY, за замовчуванням 1) — у CI таймінги анімацій і роботів стенду інколи не встигають (accanim, hotsend 7); перша спроба — <тест>.try1.log
+      { [ "$st" = ok ] || [ "$st" = skip ] || [ "$try" -ge "${E2E_RETRY:-1}" ]; } && break
+      try=$((try + 1)); cp "$OUT/$name.log" "$OUT/$name.try$try.log"; rmark=' ↻'
+      sqlite3 "$DATA/dev.sqlite" 'DELETE FROM rate_limits' 2>/dev/null || true
+    done
+    [ "$st" = ok ] && [ -n "$rmark" ] && grep -E '^\s*(FAIL|✗|ERROR)(\s|$)' "$OUT/$name.try1.log" | head -3 | cut -c1-300 | sed 's/^/    ↻ перша спроба: /'
     total=$((total + 1)); { [ "$st" != ok ] && [ "$st" != skip ]; } && bad=$((bad + 1))
-    printf '%s\t%s\t%s\t%s\t%ss\n' "$name" "$st" "$okn" "$fln" "$((SECONDS - t0))" | tee -a "$OUT/results.tsv"
+    printf '%s\t%s\t%s\t%s\t%ss%s\n' "$name" "$st" "$okn" "$fln" "$((SECONDS - t0))" "$rmark" | tee -a "$OUT/results.tsv"
     # у журнал прогону (CI: артефакти з облачної сесії не завантажуються — лише журнал завдання): що саме впало
     if [ "$st" != ok ] && [ "$st" != skip ]; then grep -E '^\s*(FAIL|✗|ERROR)(\s|$)|Error|waiting for' "$OUT/$name.log" | head -8 | cut -c1-400 | sed 's/^/    │ /'; tail -3 "$OUT/$name.log" | cut -c1-300 | sed 's/^/    │ /'; fi
   done
