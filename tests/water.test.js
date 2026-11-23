@@ -191,5 +191,13 @@ console.log('\nВодомір знімали — оценка:');
   ok('…розкладка: холодна за кольором (why tint), не гаряча навмання', a.by.c1 && a.by.c1.value === 459 && a.by.c1.why === 'tint' && !a.by.h1, a.by);
 }
 
+// 185-я (газ METRIX G4, /admin 21.11): вікно з’їхало на червоні — «195571» (3 голоси) проти «06195» + «57» (2 голоси): 6 цифр без нуля — не 5 чорних роликів
+{
+  const r = W.fromOcr({ lines: [], drums: [{ text: '195571', red: '8', score: 0.968, votes: 3, tint: 'red', cells: 11 }, { text: '06195', red: '57', score: 0.929, votes: 2, cells: 3 }, { text: '5711', score: 0.802, votes: 1, tint: 'red', cells: 5 }] }, null);
+  ok('газ METRIX: «06195» замість «195571» (100 000 м³ не буває)', r && r.value === 6195 && r.digits === '06195', r);
+  const e = W.fromOcr({ lines: [], drums: [{ text: '100543', score: 0.95, votes: 2, cells: 6 }] }, null);
+  ok('…«100543» (кромка «1» перед нулем) — як і було: 543', e && e.value === 543, e);
+}
+
 console.log(`\nИтог: ${pass} OK, ${fail} FAIL`);
 process.exit(fail ? 1 : 0);

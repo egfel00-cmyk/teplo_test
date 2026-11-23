@@ -211,7 +211,9 @@
   function fromDrum(res, prevVal) {
     var ds = ((res && res.drums) || []).filter(function (d) { return d && String(d.text || '').length >= 3; });
     if (!ds.length) return null;
-    var q = function (d) { var t = String(d.text); return (d.votes || 0) + (d.score || 0) + (/^0/.test(t) ? 1 : 0) + (t.length >= 4 && t.length <= 6 ? 0.5 : 0); };
+    // 185-я (газ METRIX G4, /admin 21.11): «195571» (вікно з’їхало на червоні, 3 голоси) обігнало «06195» — 6 цифр без нуля попереду — це вже не 5 чорних роликів
+    // (100 000 м³ на квартирному лічильнику не буває): такому вікну менше віри; «10…» (кромка перед нулем, нижче) — не чіпаємо
+    var q = function (d) { var t = String(d.text).replace(/\D/g, ''); return (d.votes || 0) + (d.score || 0) + (/^0/.test(t) ? 1 : 0) + (t.length >= 4 && t.length <= 6 ? 0.5 : 0) - (t.length === 6 && !/^(0|10)/.test(t) ? 1.5 : 0); };
     ds.sort(function (a, b) { return q(b) - q(a); });
     var d = ds[0], dg = String(d.text).replace(/\D/g, ''), p = num(prevVal), red = String(d.red || '').replace(/\D/g, '');
     if (dg.length >= 7) { red = red || dg.slice(dg.length - 3); dg = dg.slice(0, dg.length - 3); }   // захватили и красные

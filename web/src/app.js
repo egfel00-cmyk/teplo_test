@@ -4446,11 +4446,14 @@
     var lines = ph.map(function (p, i) {
       if (!p.res) return '';
       var got = []; ms.forEach(function (m) { SK[k].mod.keys(m).forEach(function (z) { var x = EN.src[m.id + '|' + z]; if (x && x.photo === i) got.push(esc((ms.length > 1 ? (m.name || ename(m)) + ' · ' : '') + ezl(m, z).toLowerCase()) + ' <b class="num">' + (k === 'gas' ? Wt.withFrac(x.v, x.frac) : x.v) + '</b>'); }); });
-      var nm = t('ph_from', { n: i + 1 }); return esc(nm.charAt(0).toUpperCase() + nm.slice(1)) + ' ' + (got.length ? got.join(', ') : esc(t(noMeterOnPhoto(p.res) ? 'enp_nometer' : 'enp_none')));
+      var nm = t('ph_from', { n: i + 1 }); nm = esc(nm.charAt(0).toUpperCase() + nm.slice(1));
+      if (p.other) return nm + ' — ' + esc(t('enp_other_' + p.other + '_' + k)) + (SK[p.other] ? ' <button type="button" class="linkbtn" data-act="en-other" data-k="' + p.other + '" data-key="en-other-' + i + '">' +
+        esc(t(smeters(p.other).length ? 'wnp_other_go_' + p.other : 'wnp_other_add_' + p.other)) + '</button>' : '');
+      return nm + ' ' + (got.length ? got.join(', ') : esc(t(noMeterOnPhoto(p.res) ? 'enp_nometer' : 'enp_none')));
     }).filter(Boolean);
     if (lines.length) h += '<p class="small" data-key="en-photo-sum">' + lines.join('<br>') + '</p>';
     if (Object.keys(EN.src).some(function (q) { return EN.src[q].edge; })) h += '<p class="help warn" data-key="en-photo-edge">' + esc(t('enp_edge')) + '</p>';
-    if (Object.keys(EN.src).some(function (q) { return EN.src[q].guess; }) || lines.length) h += '<p class="help warn" data-key="en-photo-check">' + esc(t('enp_guess')) + '</p>';
+    if (Object.keys(EN.src).some(function (q) { return EN.src[q].guess; }) || (lines.length && ph.some(function (p) { return p.res && !p.other; }))) h += '<p class="help warn" data-key="en-photo-check">' + esc(t('enp_guess')) + '</p>';
     return h + '</div>';
   }
   function enProg(pct, msg, stage, q) {
@@ -4484,13 +4487,29 @@
       return { file: p.file, ms: p.ms || 0, res: p.res, photo: { index: i, kind: k, meterType: k === 'gas' ? 'gas' : 'electric', readings: rd, quality: 'ok' } };
     }));
   }
+  /** Світло/газ з фото: на фото інший лічильник — 'gas' | 'elec' | 'water' | 'heat', свій чи неясно — null. */
+  function enOther(res, k) {
+    var pk = photoKind(res); if (pk && pk !== k) return pk;
+    var mt = window.TeploOCRParse ? TeploOCRParse.meterType((res.lines || []).map(function (l) { return [l.text].concat(l.alts || []).join(' '); }).join('\n')) : null;
+    return mt === 'heat' ? 'heat' : mt === 'water' && !pk ? 'water' : null;
+  }
+  // «внести в «Газ»» під фото іншого лічильника — ті самі фото одразу на введення того виду (немає лічильника — додати)
+  document.addEventListener('click', function (e) {
+    var b = e.target.closest && e.target.closest('[data-act="en-other"]'); if (!b) return;
+    var to = b.getAttribute('data-k'); if (!SK[to]) return;
+    if (!smeters(to).length) { go(SK[to].add); return; }
+    var fs = EN.photos.filter(function (p) { return p.other === to && p.file; }).map(function (p) { return p.file; });
+    EN = enFresh(to); go(SK[to].nw); if (fs.length) enRun(fs);
+  });
   /** Розкласти прочитане з усіх фото по лічильниках і зонах; поле, яке людина вже заповнила сама, не чіпаємо. */
   function enAssign() {
     var k = EN.k, md = SK[k].mod, ms = smeters(k), date = EN.date || today(), prevBy = {};
     var days = {}; ms.forEach(function (m) { var pr = eprev(m.id, date, EN.skip); prevBy[m.id] = pr ? pr.z : {}; if (pr && pr.date) days[m.id] = Math.max(1, R.daysBetween(pr.date, date)); });
     var one = ms.length === 1 && md.keys(ms[0]).length === 1 ? ms[0] : null;
+    // 185-я (/admin 21.11, людина #34): газовий METRIX G4 з фото на «Світлі» ліг у світло 6195,5 кВт·год — фото іншого лічильника не розкладаємо, кажемо, куди його
+    EN.photos.forEach(function (p) { p.other = p.res ? enOther(p.res, k) : null; });
     var shots = EN.photos.map(function (p) {
-      if (!p.res) return null;
+      if (!p.res || p.other) return null;
       // світло: свій розбір барабана (5–6 чорних + 1 червоний, перемички, звірка з рядком тексту); газ — як водомір (5 + 3 червоні)
       var dr = k === 'elec' ? El.drumPick(p.res.drums, p.res.lines) : (p.res.drums || []).length ? Wt.fromOcr({ lines: [], drums: p.res.drums }, one ? (prevBy[one.id] || {}).all : null) : null;
       return { lines: p.res.lines, drum: dr && dr.value !== null && dr.value !== undefined ? { value: dr.value, digits: dr.digits || '', frac: dr.frac || '', sure: !!dr.sure, edge: !!dr.edge, alts: dr.alts || [] } : null };

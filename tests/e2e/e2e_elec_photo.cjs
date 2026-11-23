@@ -45,6 +45,17 @@ let pass = 0, fail = 0; const ok = (n, c, x) => { if (c) { pass++; console.log('
   const gv = await p.inputValue('#en-g1-all');
   ok('газ з фото → 1256', /^1256/.test(gv), { gv, sum: await p.textContent('[data-key=en-photo-sum]') });
   await p.screenshot({ path: '/tmp/shot_gnew_photo.png', fullPage: true });
+  // 185-я (/admin 21.11, людина #34): газовий METRIX G4 з фото на «Світлі» лягав у світло — тепер «це газовий лічильник, не світла — внести в «Газ»», поля світла порожні
+  await shot('<div id="t" style="display:inline-block;padding:30px 40px;background:#eee;font:600 34px/1.5 \'DejaVu Sans\',sans-serif;color:#222">metrix G4<br>Qmax=6m³/h pmax=50kPa<br><span style="font:700 110px/1 \'DejaVu Sans Mono\',monospace">01256</span></div>', '/tmp/elph/gm.png');
+  await p.goto('http://127.0.0.1:8013/'); await p.evaluate(s => localStorage.setItem('teplo.v1', JSON.stringify(s)), demo({ elec: 1, gas: true }));
+  await p.goto('http://127.0.0.1:8013/#elec'); await p.reload(); await p.waitForTimeout(400);
+  await p.click('[data-key=elec-add]'); await p.waitForSelector('#en-files', { state: 'attached' });
+  await p.setInputFiles('#en-files', '/tmp/elph/gm.png');
+  await p.waitForSelector('[data-key=en-photo-sum]', { timeout: 180000 });
+  const oth = await p.textContent('[data-key=en-photo-sum]');
+  ok('«Світло» з фото газового лічильника → «це газовий лічильник, не світла — внести в «Газ»», світло не заповнено', /газовий лічильник, не світла/.test(oth) && !!(await p.$('[data-key=en-other-0]')) && (await p.inputValue('#en-e1-all')) === '', oth);
+  await p.click('[data-key=en-other-0]'); await p.waitForSelector('[data-key=en-photo-sum]', { timeout: 180000 }).catch(() => {}); await p.waitForTimeout(300);
+  ok('…«внести в «Газ»» → введення газу з тим самим фото, 1256', (await p.evaluate(() => location.hash)) === '#gnew' && /^1256/.test(await p.inputValue('#en-g1-all').catch(() => '')), { h: await p.evaluate(() => location.hash), v: await p.inputValue('#en-g1-all').catch(() => '') });
   // електромеханічний з барабаном (як НІК 2102): написи кВт·год, 220 V, 50 Hz, imp/kWh — це світло, не вода (02.11.2026: «цифр барабана не знайшли»)
   await shot('<div id="t" style="display:inline-block;padding:30px 40px;background:#ddd;font:600 34px/1.4 \'DejaVu Sans\',sans-serif;color:#222">HIK 2102-02.M2<br><span style="display:inline-block;background:#111;color:#fff;font:700 96px/1 \'DejaVu Sans Mono\',monospace;padding:6px 14px;letter-spacing:8px">003474</span> kW·h<br>220V 5(60)A 50Hz<br>6400 imp/kW·h</div>', '/tmp/elph/nik.png');
   const mrecsNo = async (o) => { await p.goto('http://127.0.0.1:8013/'); await p.evaluate(s => { s.mrecs = []; localStorage.setItem('teplo.v1', JSON.stringify(s)); }, demo(o)); };
