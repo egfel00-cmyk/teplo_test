@@ -124,7 +124,7 @@ const D = '2026-11-12';
   const jid = +php(`echo Db::one("SELECT MAX(id) AS m FROM cab_jobs WHERE prov = 'vk'")['m'];`);
   await p.evaluate(j => { const s = JSON.parse(localStorage.getItem('teplo.v1')); const w = s.water.find(x => x.id === 'woff'); w.vkJob = { job: j, status: 'failed' }; w.sent = {}; s.places[0].water.meters.forEach(m => { delete m.cabKey; }); s.updatedAt = Date.now(); localStorage.setItem('teplo.v1', JSON.stringify(s)); }, jid);
   await p.reload(); await wait(1500); await hot(); await wait(2500);
-  ok('7в. Водоканал «Не надіслано»: «Не зрозуміли, який лічильник…», лічильники сайту одним рядком і по випадному списку на свій водомір (180-я, друга правка)', /Не зрозуміли, який лічильник/.test(await txt('[data-key=gw-why-vk]')) && /лічильників з полем: 2 \(гаряча: № 111; холодна: № 222\)/.test(await txt('[data-key=gw-pick]')) && (await p.$$('[data-key=gw-pick] select')).length === 2 && !(await p.$('[data-key=gw-pick] input[type=radio]')), await txt('[data-key=gw-vk]'));
+  ok('7в. Водоканал «Не надіслано»: підібрано самі — «Підібрали… перевірте», лічильники сайту одним рядком і по випадному списку на свій водомір (180-я, друга правка)', /Підібрали, який лічильник сайту який/.test(await txt('[data-key=gw-why-vk]')) && /лічильників з полем: 2 \(гаряча: № 111; холодна: № 222\)/.test(await txt('[data-key=gw-pick]')) && (await p.$$('[data-key=gw-pick] select')).length === 2 && !(await p.$('[data-key=gw-pick] input[type=radio]')), await txt('[data-key=gw-vk]'));
   if (process.env.SHOT) await (await p.$('[data-key=where-water]')).screenshot({ path: '/tmp/hw_pick.png' });
   const hid = await p.evaluate(() => JSON.parse(localStorage.getItem('teplo.v1')).places[0].water.meters.find(m => m.kind === 'hot').id);
   ok('7в. у гарячої — лише гарячий лічильник сайту й «Не надсилати»', JSON.stringify(await p.$$eval(`[data-key=gw-pick-${hid}] option`, o => o.map(x => x.value))) === JSON.stringify(['k1', '']));
@@ -173,6 +173,23 @@ const D = '2026-11-12';
   const dr = await pr.$('details[data-key=where-water]'); if (dr && !(await dr.evaluate(x => x.open))) { await (await dr.$('summary')).click(); await pr.waitForTimeout(300); }
   const tr = sel => pr.textContent(sel).catch(() => '');
   ok('9. ru: «Горячую воду принимают двое», «только горячая вода», «холодная и горячая вместе»', /Горячую воду принимают двое/.test(await tr('[data-key=gw-lead]')) && /только горячая вода/.test(await tr('[data-key=gw-htm]')) && /холодная и горячая вместе/.test(await tr('[data-key=gw-vk]')), await tr('[data-key=where-water]'));
+
+  // 9б. 181-я: Водоканал прийняв, ХТМ — ні: під табло гарячої — по адресатах, коротко
+  await p.evaluate(() => { const s = JSON.parse(localStorage.getItem('teplo.v1')); const w = s.water.find(x => x.id === 'w4'); w.sent = { vk: '2026-11-12' }; w.vkConf = { at: 1, via: 'cab' }; w.updatedAt = Date.now(); s.updatedAt = Date.now(); localStorage.setItem('teplo.v1', JSON.stringify(s)); });
+  await p.goto(U + '#water-hot'); await p.reload(); await wait(1500);
+  ok('9б. гаряча: «Водоканал прийняв 12 листопада · ХТМ — ще ні» під табло', /Водоканал прийняв 12 листопада 2026 · ХТМ — ще ні/.test(await txt('[data-key=wmeter-h1]')), await txt('[data-key=wmeter-h1]'));
+
+  // 10. 181-я (власник 23.11, скрін: «это не моя квартира, не мой лицевой счёт, не мои креды — зачем мне тут видеть свой аккаунт»): спільна квартира учасника —
+  // свій кабінет ХТМ не пропонуємо (ні пошти, ні рахунків кнопками, ні «Підключити»); власник не дозволив — «попросіть» і «Передати самі»
+  await p.evaluate(() => { const s = JSON.parse(localStorage.getItem('teplo.v1')); const pl = s.places[0]; pl.sh = { sid: 9, role: 'member', me: 1, n: 2, own: 'Олена Коваль', ownId: 77, ppl: [], at: 1, bg: false };
+    pl.water.acc = {}; if (pl.meter) pl.meter.account = ''; s.updatedAt = Date.now(); localStorage.setItem('teplo.v1', JSON.stringify(s)); });
+  await p.reload(); await wait(1500); await hot(); await wait(1800);
+  const gh = await txt('[data-key=gw-htm]');
+  ok('10. учасник: у рядку ХТМ — «Олена може дозволити…», без своєї пошти, рахунків кабінету кнопками, поля рахунку й «Підключити»', /Олена може дозволити/.test(gh) && !/@/.test(gh) && !(await has('[data-act=gw-acc-pick]')) && !(await has('#gw-hacc')) && !(await has('[data-key=gw-conn-htm]')) && !(await has('[data-key=gw-bg-htm]')), gh);
+  if (process.env.SHOT) await (await p.$('[data-key=gw-htm]')).screenshot({ path: '/tmp/hw_member.png' });
+  await p.goto(U + '#prefs-cabs-htm'); await wait(1500);
+  const pid0 = await p.evaluate(() => JSON.parse(localStorage.getItem('teplo.v1')).places[0].id);
+  ok('10. екран ХТМ у «Кабінетах»: квартира учасника — «Олена може дозволити…», без вибору моїх рахунків', /Олена може дозволити/.test(await txt(`[data-key=cb-pl-htm-${pid0}]`)) && !(await has(`[data-key=cb-hacc-${pid0}] select, select[data-key=cb-hacc-${pid0}]`)), await txt(`[data-key=cb-pl-htm-${pid0}]`));
 
   ok('без помилок сторінки', !errs.length, errs);
   await b.close();

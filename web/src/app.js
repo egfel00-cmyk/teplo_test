@@ -1095,6 +1095,14 @@
    *  176-я: окремого адресата гарячої немає (місцевий КП бере й гарячу) — досить sent.vk. */
   function wsentHtm(r) { var p = r && myPlaceOf(r); return !!(r && r.sent && (r.sent.htm || (r.sent.vk && (hotInh(p) && myProv('water', p) || !hotDest(p))))); }
   /** «Передано» показань виду: холодна — Водоканалу (чи місцевому КП); гаряча — ще й постачальнику гарячої; свій постачальник гарячої окремо — лише його «Оплачено». */
+  /** Гаряча в Харкові йде двом (ХТМ і Водоканал): один уже має, другий ні — підпис під табло по адресатах, коротко (181-а, власник 23.11:
+   *  «под счётчиками пишет, что не передано, а у Водоканала — что передано: это потому что ХТМ ещё не передали? — коротко это показать»). '' — не той випадок. */
+  function hotHalf(r) {
+    if (!r || r.base || r.own || !r.sent || wsentK(r, 'hot')) return '';
+    var v = r.sent.vk, h = r.sent.htm; if (!v === !h) return '';
+    var who = function (to, d, conf) { return t(conf ? 'wm_half_ok' : 'wm_half_sent', { w: t(to === 'vk' ? 'gw_vk_n' : 'gw_htm_n'), d: fmtDate(d, true) }); };
+    return v ? who('vk', v, r.vkConf) + ' · ' + t('wm_half_no', { w: t('gw_htm_n') }) : who('htm', h, r.htmConf) + ' · ' + t('wm_half_no', { w: t('gw_vk_n') });
+  }
   function wsentK(r, kind) {
     if (!r || !r.sent) return false;
     if (kind !== 'hot') return !!r.sent.vk;
@@ -1321,6 +1329,8 @@
       return wn && wn.to ? { st: t('uc_w_next', { d: fmtDate(wn.to) }), tone: '', until: wn.to } : { st: '', tone: '' };
     }
     if (done) return { st: t('uc_w_sent'), tone: 'ok' };
+    var half = kind === 'hot' && last && thisMonth(last.date) && gwKh() ? hotHalf(last) : '';   // 181-я: гаряча — одному передано, іншому ні
+    if (half) return { st: half, tone: 'due', due: w.open ? w.deadline : null, ready: true };
     if (last && thisMonth(last.date)) return { st: t('uc_w_ready'), tone: 'due', due: w.open ? w.deadline : null, ready: true };
     if (w.open) return { st: t('uc_w_due', { d: fmtDate(w.deadline) }), tone: w.daysLeft <= 3 ? 'warn' : 'due', due: w.deadline };
     return { st: t('uc_w_next', { d: fmtDate(nextMonthDay(today(), Wt.VK_DEADLINE)) }), tone: '', until: nextMonthDay(today(), Wt.VK_DEADLINE) };
@@ -2024,7 +2034,7 @@
     var accs = hcAccsFor(p), mine = [dgt(waccOf(p, 'hot')), dgt((cbHeatM(p) || {}).account)].filter(Boolean);
     for (var i = 0; i < mine.length; i++) { var hit = accs.filter(function (a) { return a.acc === mine[i]; })[0]; if (hit) return hit.acc; }
     if (mine[0]) return mine[0];
-    if (accs.length !== 1 || (p && p.sh && p.sh.role === 'member')) return '';
+    if (accs.length !== 1 || (hcMember(p) && !hcViaOwner(p))) return '';   // учасник: єдиний — лише рахунок цієї квартири з кабінету власника
     var other = places().some(function (q) { return q !== p && [dgt(waccOf(q, 'hot')), dgt((cbHeatM(q) || {}).account)].indexOf(accs[0].acc) >= 0; });
     return other ? '' : accs[0].acc;
   }
@@ -2084,19 +2094,21 @@
   function gwFix(rec, to, st) {
     var p = place(), code = st && st.code || '', why = st && st.why || '';
     if (to === 'htm') {
-      var a = hwAcc(p), accs = (HC.st && HC.st.accounts) || [], hi = hwInfo(p), sh = p && p.sh && p.sh.role === 'member';
+      var a = hwAcc(p), sh = hcMember(p), vo = sh ? hcViaOwner(p) : null, accs = sh ? (vo ? vo.accounts : []) : (HC.st && HC.st.accounts) || [], hi = hwInfo(p);
       var field = '<form class="gw-acc" data-key="gw-acc-form" novalidate><label class="small" for="gw-hacc">' + esc(t('wa_acc_hot_s')) + '</label><div class="gw-acc-r"><input id="gw-hacc" class="num" inputmode="numeric" autocomplete="off" value="' + esc(waccOf(p, 'hot')) + '">' +
         '<button class="btn sec" type="submit" data-key="gw-acc-save">' + esc(t('save')) + '</button></div>' +
-        (accs.length ? '<p class="small muted gw-acc-in">' + esc(t('gw_acc_in', { e: (HC.st && HC.st.login) || '' })) + ' ' + accs.map(function (x) { return '<button type="button" class="chip" data-act="gw-acc-pick" data-v="' + esc(x.acc) + '" data-key="gw-acc-' + esc(x.acc) + '">' + esc(x.acc) + '</button>'; }).join(' ') + '</p>' : '') + '</form>';
+        (accs.length ? '<p class="small muted gw-acc-in">' + esc(sh ? t('gw_acc_in_sh', { o: shFirst(vo.by) || t('shp_someone') }) : t('gw_acc_in', { e: (HC.st && HC.st.login) || '' })) + ' ' + accs.map(function (x) { return '<button type="button" class="chip" data-act="gw-acc-pick" data-v="' + esc(x.acc) + '" data-key="gw-acc-' + esc(x.acc) + '">' + esc(x.acc) + '</button>'; }).join(' ') + '</p>' : '') + '</form>';
       if (!a) return { txt: t(sh ? 'gw_acc_need_sh' : 'gw_acc_need'), fix: field, block: true };
-      if (hwForeign(p) || code === 'no_acc') return { txt: t('gw_acc_foreign', { a: a, e: (HC.st && HC.st.login) || '' }) + (sh ? ' ' + t('gw_acc_owner', { o: shFirst(p.sh.own) || t('shp_someone') }) : ''), fix: field + '<p class="small"><a href="' + HTM_URL + '" target="_blank" rel="noopener" data-key="gw-htm-site">' + esc(t('gw_htm_site')) + ' ›</a></p>', block: true };
+      if (hwForeign(p) || code === 'no_acc') return { txt: sh ? t('gw_acc_foreign_sh', { a: a, o: shFirst((vo && vo.by) || p.sh.own) || t('shp_someone') }) : t('gw_acc_foreign', { a: a, e: (HC.st && HC.st.login) || '' }), fix: field + '<p class="small"><a href="' + HTM_URL + '" target="_blank" rel="noopener" data-key="gw-htm-site">' + esc(t('gw_htm_site')) + ' ›</a></p>', block: true };
       if ((hi && hi.found === false) || code === 'hot_none') return { txt: t('gw_nohot2', { a: a }), fix: '<div class="dest-ch"><a class="btn sec" href="' + BOT_URL + '" target="_blank" rel="noopener" data-key="gw-nohot-bot">' + ico('send', 18) + '<span>' + esc(t('wd_bot', { b: '@KPHTM_Bot' })) + '</span></a>' +
         '<a class="btn sec" href="tel:+380573414140" data-key="gw-nohot-tel">' + ico('phone', 18) + '<span>(057) 341-41-40</span></a></div>' + (rec && !(rec.sent && rec.sent.htm) ? '<p class="dest-mark"><button class="btn sec" data-act="wsent" data-to="htm" data-v="1" data-id="' + rec.id + '" data-key="gw-nohot-mark">' + ico('check', 18) + '<span>' + esc(t('ws_mark')) + '</span></button></p>' : ''), block: true, own: true };
       if (code === 'relogin') return { txt: why, fix: '<p class="small"><a href="#prefs-cabs-htm" data-act="cb-go" data-key="gw-relogin">' + esc(t('gw_relogin')) + ' ›</a></p>' };
       return null;
     }
     var cms = vkcKnown(rec);
-    if (/^(mismatch|which)$/.test(code)) return { txt: t('gw_vk_which'), fix: cms ? gwPick(rec, cms) : '<div class="dest-ch"><button class="btn sec" data-act="vkc-check" data-key="gw-vk-look"' + (VKC.busy ? ' disabled' : '') + '>' + (VKC.busy === 'check' ? SPIN : ico('search', 18)) + '<span>' + esc(t('gw_vk_look')) + '</span></button></div>' };
+    // 181-я: підібрали всі самі (кімната, показання, прийняті) — не «не зрозуміли», а «перевірте й надішліть»
+    var solved = cms && (function () { var pl = vkcPlan(rec, cms); return wmeters().every(function (m) { return !hasVal(rec, m.id) || pl.acc[m.id] || pl.map[m.id] !== undefined; }); })();
+    if (/^(mismatch|which)$/.test(code)) return { txt: t(solved ? 'gw_vk_which_ok' : 'gw_vk_which'), fix: cms ? gwPick(rec, cms) : '<div class="dest-ch"><button class="btn sec" data-act="vkc-check" data-key="gw-vk-look"' + (VKC.busy ? ' disabled' : '') + '>' + (VKC.busy === 'check' ? SPIN : ico('search', 18)) + '<span>' + esc(t('gw_vk_look')) + '</span></button></div>' };
     if (code === 'notfound' || code === 'ukr') return { txt: why, fix: '<p class="small"><a href="#prefs-cabs-vk" data-act="cb-go" data-key="gw-vk-acc">' + esc(t('gw_vk_acc')) + ' ›</a></p>' };
     if (code === 'less') return { txt: why, fix: '<p class="small"><a href="#wrec-' + esc(rec.id) + '" data-key="gw-vk-fixval">' + esc(t('gw_fix_val')) + ' ›</a></p>' };
     return null;
@@ -2112,7 +2124,8 @@
     // одна причина, без повтору: виправлення має свій текст — тоді текст сайту не дублюємо
     if (fx) h += '<p class="small gw-why" data-key="gw-why-' + to + '">' + esc(String(fx.txt || st.why || '').slice(0, 260)) + '</p><div class="gw-fix" data-key="gw-fix-' + to + '">' + fx.fix + '</div>';
     else if (st.why) h += '<p class="small gw-why" data-key="gw-why-' + to + '">' + esc(String(st.why).slice(0, 240)) + '</p>';
-    if (!conn && on) h += '<p class="small gw-in"><a href="#prefs-cabs-' + (vk ? 'vk' : 'htm') + '" data-act="cb-go" data-key="gw-conn-' + to + '">' + esc(t('gw_conn')) + ' ›</a> <span class="muted">' + esc(t(vk ? 'gw_vk_in' : 'gw_htm_in')) + '</span></p>' + (vk ? '' : shBgAsk(place()));
+    if (!conn && on && !vk && hcMember(place())) h += shBgAsk(place(), true);   // 181-я: учасник — свій кабінет сюди не підключаємо; кабінет власника або «Передати самі»
+    else if (!conn && on) h += '<p class="small gw-in"><a href="#prefs-cabs-' + (vk ? 'vk' : 'htm') + '" data-act="cb-go" data-key="gw-conn-' + to + '">' + esc(t('gw_conn')) + ' ›</a> <span class="muted">' + esc(t(vk ? 'gw_vk_in' : 'gw_htm_in')) + '</span></p>';
     // 180-я: спільна квартира — кабінетом власника
     var vo = !vk && conn ? hcViaOwner(place()) : null;
     if (vo) h += '<p class="small muted gw-in" data-key="gw-via-owner">' + esc(t('shp_via_cab', { o: shFirst(vo.by) || t('shp_someone') })) + '</p>';
@@ -2152,7 +2165,7 @@
       '<ul class="gw-list" data-key="gw-list">' + gwRow(rec, 'htm') + gwRow(rec, 'vk') + '</ul>';
     if (!hcOn()) h += '<p class="small gw-in" data-key="gw-guest">' + esc(t('gw_guest')) + ' <a href="#login" data-key="gw-login">' + esc(t('login')) + ' ›</a></p>';
     else if (!rec) h += '<p class="small muted" data-key="gw-need">' + esc(t('gw_need')) + '</p>';
-    return h + gwSelf(rec, !hcOn()) + (hcOn() && (hcConn() || vkcGate() === 'ok') ? trustBox(hcConn() ? 'htm' : 'vk', '', 'trust-hs') : '') + '</section>';
+    return h + gwSelf(rec, !hcOn()) + (hcOn() && (hcConnP(place()) || vkcGate() === 'ok') ? trustBox(hcConnP(place()) ? 'htm' : 'vk', '', 'trust-hs') : '') + '</section>';
   }
   /** Гаряча в кабінет ХТМ у фоні: у чергу сервера (cron внесе за хвилину), статус — у записі (rec.htmJob). */
   function hwQueue(rec, done) {
@@ -2725,6 +2738,13 @@
     // рахунок ХТМ кожної квартири: у кабінеті кілька — вибір (пишемо в налаштування теплолічильника цієї квартири)
     var accs = st.accounts || [];
     g.rows.forEach(function (r) {
+      // 181-я (власник 23.11): спільна квартира учасника — не мій кабінет: через кабінет власника або «попросіть», без моїх рахунків і пошти
+      if (hcMember(r.p) && !hcOwnOk(r.p)) {
+        var vo = hcViaOwner(r.p), on = shFirst(r.p.sh.own) || t('shp_someone'), va = vo ? hwAcc(r.p) : '';
+        h += '<div class="cb-pl" data-key="cb-pl-htm-' + esc(r.p.id) + '">' + cbPlace(r.p) + cbLine(vo ? 'cb-ok' : 'muted', vo ? 'check' : '', vo ? t('shp_via_cab', { o: shFirst(vo.by) || on }) : t(r.p.sh.bg ? 'shp_bg_noacc' : 'shp_bg_ask', { o: on }), 'cb-htm-sh-' + r.p.id) +
+          (va ? cpList([cpRow(t('cb_hacc'), va, va, 'tn', 'cb-hacc-' + r.p.id)]) : '') + '</div>';
+        return;
+      }
       var m = cbHeatM(r.p) || {}, my = dgt(m.account) || (cbLive(cbHeatM(r.p)) ? '' : dgt(waccOf(r.p, 'hot'))), hit = accs.filter(function (a) { return a.acc === my; })[0] || (accs.length === 1 ? accs[0] : null), row;
       if (conn && accs.length > 1) row = '<div class="field cb-sel"><label for="cb-hacc-' + esc(r.p.id) + '">' + esc(t('cb_hacc')) + '</label><div class="ctl"><select id="cb-hacc-' + esc(r.p.id) + '" data-act="cb-hacc" data-pid="' + esc(r.p.id) + '" data-key="cb-hacc-' + esc(r.p.id) + '">' +
         (hit ? '' : '<option value="">' + esc(t('cb_hacc0')) + '</option>') + accs.map(function (a) { return '<option value="' + esc(a.acc) + '"' + (hit && hit.acc === a.acc ? ' selected' : '') + '>' + esc(a.acc + ' · ' + a.sur) + '</option>'; }).join('') + '</select></div></div>';
@@ -3100,6 +3120,7 @@
       var r = wprevFor(m.id), sc = null, cap;
       if (r && r.gap) cap = t('wm_cap_gap', { d: fmtDate(r.date, true) });
       else { sc = sentCap(wrecs().filter(function (x) { return hasVal(x, m.id); }), function (x) { return x.base ? baseSent(x) : wsentK(x, kind); }, !!myProv(kind)); r = sc.rec; cap = sc.cap; }
+      if (kind === 'hot' && sc && sc.rec && gwKh()) cap = hotHalf(sc.rec) || cap;
       var ver = verWarn(m.verifiedUntil);
       return mbox({ key: 'wmeter-' + m.id, id: m.id, kind: kind, icon: 'drop', cls: kind === 'hot' ? 'c-hot' : 'c-cold', name: ms.length > 1 ? wname(m) : title,
         display: wdrum(r ? r.vals[m.id] : null, kind, 'hero'), cap: cap, copy: r && r.vals && r.vals[m.id] !== undefined && r.vals[m.id] !== '' ? Wt.whole(r.vals[m.id]) : '', body: sc && sc.note ? '<p class="small muted mb-newer">' + esc(sc.note) + '</p>' : '',
@@ -5654,11 +5675,21 @@
   function hcShared(p) { var sh = HC.st && HC.st.shared; return p && sh && sh[p.id] && (sh[p.id].accounts || []).length ? sh[p.id] : null; }
   /** Підемо кабінетом власника (а не своїм): {by, …} або null. */
   function hcViaOwner(p) { var sh = hcShared(p); return sh && hcAccsFor(p) === sh.accounts ? sh : null; }
-  /** Чи можна надсилати в ХТМ для квартири: свій кабінет або кабінет власника спільної. */
-  function hcConnP(p) { return hcConn() || !!hcShared(p); }
-  /** Рахунки кабінету, яким підемо для квартири: власника (спільна, свого рахунку квартири в своєму кабінеті немає) або свої. */
+  /** Спільна квартира, де я учасник (не моя): свій кабінет ХТМ тут ні до чого (181-а, власник 23.11: «это не моя квартира, не мой лицевой счёт, не мои креды —
+   *  зачем мне тут видеть свой аккаунт»). Свій — лише якщо рахунок цієї квартири вже є в моєму кабінеті (родина, що додала його собі). */
+  function hcMember(p) { return !!(p && p.sh && p.sh.role === 'member'); }
+  function hcOwnOk(p) {
+    if (!hcConn()) return false; if (!hcMember(p)) return true;
+    var mine = [dgt(waccOf(p, 'hot')), dgt((cbHeatM(p) || {}).account)].filter(Boolean);
+    return (HC.st.accounts || []).some(function (a) { return mine.indexOf(a.acc) >= 0; });
+  }
+  /** Чи можна надсилати в ХТМ для квартири: свій кабінет (для спільної учасника — з її рахунком) або кабінет власника спільної. */
+  function hcConnP(p) { return hcOwnOk(p) || !!hcShared(p); }
+  /** Рахунки кабінету, яким підемо для квартири: свої (своя квартира чи рахунок у моєму кабінеті), інакше — власника спільної (лише цієї квартири), інакше жодних. */
   function hcAccsFor(p) {
-    var own = (hcConn() && HC.st.accounts) || [], sh = hcShared(p); if (!sh) return own;
+    var own = (hcConn() && HC.st.accounts) || [], sh = hcShared(p);
+    if (hcMember(p)) return hcOwnOk(p) ? own : sh ? sh.accounts : [];
+    if (!sh) return own;
     var mine = [dgt(waccOf(p, 'hot')), dgt((cbHeatM(p) || {}).account)].filter(Boolean);
     return own.some(function (a) { return mine.indexOf(a.acc) >= 0; }) ? own : sh.accounts;
   }
@@ -5730,7 +5761,7 @@
   }
   /** Вибір рахунку квартири, коли в кабінеті їх кілька (записуємо в налаштування теплолічильника цієї квартири). */
   function hcPickAcc() {
-    var accs = (HC.st && HC.st.accounts) || [], cur = hcAcc();
+    var accs = hcAccsFor(place()), cur = hcAcc();   // 181-я: спільна учасника — лише рахунки цієї квартири з кабінету власника
     if (accs.length < 2) return '';
     return '<fieldset class="vkc-pick" data-key="hc-pick"><legend class="small">' + esc(t('hc_pick', { p: placeLabel(place()) })) + '</legend>' + accs.map(function (a) {
       return '<label class="vkc-opt"><input type="radio" name="hc-acc" data-act="hc-acc" value="' + esc(a.acc) + '"' + (cur && cur.acc === a.acc ? ' checked' : '') + '><span class="num">' + esc(a.acc) + '</span> <span class="muted">' + esc(a.sur) + '</span></label>'; }).join('') + '</fieldset>';
@@ -5741,10 +5772,12 @@
     if (!hcOn()) return h + '<p class="small">' + esc(t('hc_need_login')) + '</p><a class="btn sec" href="#login" data-key="hc-login">' + esc(t('login')) + '</a></div>';
     hcLoad();
     if (!HC.st) return h + '<p class="small muted">' + SPIN + ' ' + esc(t('hc_loading')) + '</p></div>';
-    if (!hcConn()) return h + '<p class="small">' + esc(t(HC.st.state === 'bad_login' ? 'hc_relogin' : 'hc_pitch')) + '</p><a class="btn" href="#htmcab" data-key="hc-connect">' + ico('plus', 18) + '<span>' + esc(t('hc_connect')) + '</span></a></div>';
+    if (hcMember(place()) && !hcConnP(place())) return h + shBgAsk(place(), true) + '</div>';   // 181-я: спільна квартира учасника — свій кабінет не пропонуємо
+    if (!hcConnP(place())) return h + '<p class="small">' + esc(t(HC.st.state === 'bad_login' ? 'hc_relogin' : 'hc_pitch')) + '</p><a class="btn" href="#htmcab" data-key="hc-connect">' + ico('plus', 18) + '<span>' + esc(t('hc_connect')) + '</span></a></div>';
     if (r.cab && (r.cab.status === 'pending' || r.cab.status === 'ok')) return h + '<p class="small">' + esc(t(r.cab.status === 'ok' ? 'hc_done_ok' : 'hc_done_wait')) + '</p><a class="btn sec" href="#status" data-act="focus" data-id="' + esc(r.id) + '" data-key="hc-status">' + esc(t('rec_status')) + '</a></div>';
     var acc = hcAcc(r), c = S.contacts || {};
-    h += '<p class="small">' + esc(t('hc_ready', { e: HC.st.login })) + '</p>';
+    var vo = hcViaOwner(place());
+    h += '<p class="small">' + esc(vo ? t('shp_via_cab', { o: shFirst(vo.by) || t('shp_someone') }) : t('hc_ready', { e: HC.st.login })) + '</p>';
     if (!acc) return h + hcPickAcc() + '</div>';
     if (HC.confirm === r.id) {
       h += '<div class="vkc-sum" data-key="hc-confirm" role="group" aria-label="' + esc(t('hc_check_t')) + '"><p class="small"><b>' + esc(t('hc_check_t')) + '</b></p><ul class="small">' +
@@ -6684,7 +6717,7 @@
     }
     // «не прийме» лише за порівнянням з попередніми — людина може передати сама, на свій ризик (робот у фоні — ні)
     // робот у фоні знає лише форму «ГКал + 2 часи» (поля LastValuePok … ErrorTime) — інші форми людина вносить сама
-    var risk = res.verdict === 'block' && res.risky, canSend = res.verdict !== 'block' || risk, cab = res.verdict !== 'block' && hcOn() && hcConn() && !heatLite();
+    var risk = res.verdict === 'block' && res.risky, canSend = res.verdict !== 'block' || risk, cab = res.verdict !== 'block' && hcOn() && hcConnP(place()) && !heatLite();
     var actions = noteField('c-note', (S.draft && S.draft.note) || '') + '<div class="row-actions">' +
       '<button class="btn sec" data-act="save-inter" data-key="check-save-inter">' + esc(t('c_save_inter')) + '</button>' +
       '<button class="btn' + (cab ? ' sec' : '') + '" data-act="to-handover" data-key="check-send"' + (canSend ? '' : ' disabled') + '>' + esc(cab ? t('cab_self') : risk ? t('c_send_risk') : heatLite() ? t('c_send_l') : res.verdict === 'warn' ? t('c_send_anyway') : t('c_send')) + '</button>' +
@@ -6720,9 +6753,9 @@
       htmFormBox(htmAsk()) +
       (c.phone && c.email ? '' : '<div class="banner warn" style="margin-top:16px">' + ico('alert', 22) + '<div><p>' + esc(t('ho_contacts_none')) + ' <a href="#prefs-contacts">' + esc(t('nav_prefs')) + '</a></p></div></div>') + '</div>' +
       // кабінет підключено — робот вносить сам, це головний шлях; вручну — нижче, запасний
-      '<div class="ho-steps">' + (hcConn() ? hcPanel(r) : '') + '<div class="panel"><h2>' + esc(t(hcConn() ? 'ho_steps_self' : 'ho_steps_title')) + '</h2><ol class="steps"><li>' + esc(t('ho_s1')) + '</li><li>' + esc(t('ho_s2')) + '</li><li>' + esc(t('ho_s3')) + '</li><li>' + esc(t('ho_s4')) + '</li></ol>' +
+      '<div class="ho-steps">' + (hcConnP(place()) ? hcPanel(r) : '') + '<div class="panel"><h2>' + esc(t(hcConnP(place()) ? 'ho_steps_self' : 'ho_steps_title')) + '</h2><ol class="steps"><li>' + esc(t('ho_s1')) + '</li><li>' + esc(t('ho_s2')) + '</li><li>' + esc(t('ho_s3')) + '</li><li>' + esc(t('ho_s4')) + '</li></ol>' +
       '<a class="btn sec block" href="' + HTM_URL + '" target="_blank" rel="noopener" data-key="handover-open">' + ico('ext', 20) + '<span>' + esc(t('ho_open')) + '</span></a></div>' +
-      (hcConn() ? '' : hcPanel(r)) + '</div></div>' +
+      (hcConnP(place()) ? '' : hcPanel(r)) + '</div></div>' +
       hoStatus(r) };
   };
   /** Що з показаннями в кабінеті: «На перевірці» / «Прийнято» — вибір тут же, людина лишається на сторінці передачі (владелец 07.11).
@@ -10108,9 +10141,9 @@
       '<span class="small muted">' + esc(names.length ? t('shp_bg_s', { w: names.join(', ') }) : t('shp_bg_s0')) + '</span></span></label>';
   }
   /** Підказка учаснику там, де бракує свого кабінету: власник може дозволити надсилати через свій. */
-  function shBgAsk(p) {
-    var s = p && p.sh; if (!s || s.role !== 'member' || s.bg) return '';
-    return '<p class="small muted gw-in" data-key="sh-bg-ask">' + esc(t('shp_bg_ask', { o: shFirst(s.own) || t('shp_someone') })) + '</p>';
+  function shBgAsk(p, always) {
+    var s = p && p.sh; if (!s || s.role !== 'member' || (s.bg && !always)) return '';
+    return '<p class="small muted gw-in" data-key="sh-bg-ask">' + esc(t(s.bg ? 'shp_bg_noacc' : 'shp_bg_ask', { o: shFirst(s.own) || t('shp_someone') })) + '</p>';
   }
   document.addEventListener('change', function (e) {
     var el = e.target; if (!el || el.getAttribute('data-act') !== 'shp-bg') return;
@@ -10434,7 +10467,7 @@
       return '<li>' + th + '<div class="grow"><label for="phv-' + f.key + '" class="small muted">' + esc(fieldLabel(f.key)) + (f.key === 'energy' ? ', ' + esc(unitLbl(PH.mode === 'baseline' ? 'Gcal' : energyUnit())) : f.unit ? ', ' + esc(fieldUnit(f.key)) : '') + '</label>' +
         '<input id="phv-' + f.key + '" class="num ph-in" data-ph="' + f.key + '" inputmode="' + (f.key === 'errCode' ? 'text' : 'decimal') + '" value="' + esc(v) + '"' + (f.key === 'errCode' ? ' placeholder="E---"' : '') + '>' + (r && r.converted ? '<div class="small muted">' + esc(r.converted) + '</div>' : '') + '</div>' + tag + '</li>';
     }).join('') + '</ul>';
-    var bg = PH.mode === 'reading' && hcOn() && hcConn() && !(PH.waterIdx && PH.waterIdx.length && wmeters().length);
+    var bg = PH.mode === 'reading' && hcOn() && hcConnP(place()) && !(PH.waterIdx && PH.waterIdx.length && wmeters().length);
     return h + '<div class="row-actions"><button class="btn ghost" data-act="ph-new">' + esc(t('ph_new')) + '</button><button class="btn sec" data-act="ph-again">' + esc(t('ph_add')) + '</button><button class="btn' + (bg ? ' sec' : '') + '" data-act="ph-apply" data-to="check" data-key="photo-check">' + esc(PH.mode === 'baseline' ? t('ph_to_base') : t('ph_to_check')) + '</button>' +
       (bg ? '<button class="btn dest-bg" data-act="ph-bg" data-key="photo-bg"' + (HC.busy ? ' disabled' : '') + '>' + ico('send', 18) + '<span>' + esc(t('cab_bg')) + '</span></button>' : '') + '</div>' +
       (bg ? '<p class="small dest-note" data-key="photo-bg-note">' + esc(t('ph_bg_note')) + '</p>' : '');
