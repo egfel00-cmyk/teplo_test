@@ -164,15 +164,50 @@
   var ZRE = [/(?:^|[^0-9A-Za-zА-Яа-я])[TТ]\s?([0-4])(?![0-9])/, /(?:^|[^0-9])(?:15|1)\s?[.,]\s?8\s?[.,]\s?([0-4])(?![0-9])/];
   var URE = /k\s?W\s?[·.*]?\s?h|кВт\s?[·.]?\s?(?:год|ч)|m\s?[3³]|м\s?[3³]/gi;
   function ocrTxt(v) { return String(v || '').replace(/[０-９]/g, function (c) { return String.fromCharCode(c.charCodeAt(0) - 0xFEE0); }); }
+  // 187-а (НІК 2100, гість 24.11): на табло «1.8.1» (регістр) і «T2» (діючий зараз тариф) разом — зона за OBIS, не за T
   function zoneOf(s) {
-    for (var i = 0; i < ZRE.length; i++) { var m = s.match(ZRE[i]); if (m) return +m[1]; }
+    for (var i = ZRE.length - 1; i >= 0; i--) { var m = s.match(ZRE[i]); if (m) return +m[1]; }
     return /ДЕНЬ|DAY/i.test(s) ? 'day' : /НІЧ|НОЧЬ|NIGHT/i.test(s) ? 'night' : null;
+  }
+  // Не показання (187-а, НІК 2100 гостя 24.11: «35409» з голограми «ХАРКІВОБЛЕНЕРГО» лягло в показання, «6400» над «imp/kWh» — у ніч):
+  // число біля назви обленерго (пломба-наліпка), над «imp/kWh» (стала лічильника), рік біля «Вироблено в Україні».
+  // Назви читаємо латинськими двійниками: OCR пише «BOBnEIEPTO», «BIBOBREHEPTO» замість «…ОБЛЕНЕРГО».
+  var LAT = { 'А': 'A', 'В': 'B', 'Е': 'E', 'К': 'K', 'М': 'M', 'Н': 'H', 'О': 'O', 'Р': 'P', 'С': 'C', 'Т': 'T', 'Х': 'X', 'І': 'I', 'Г': 'G', 'Л': 'N', 'У': 'Y', 'Б': 'B', 'И': 'U' };
+  function lat(s) { return String(s || '').toUpperCase().replace(/[А-ЯІЇЄ]/g, function (c) { return LAT[c] || c; }); }
+  var SEAL_RE = /E[HNIL]?E?[PR][TGR]O|BIBOB|BOBN|BOBR|PLOMB|ПЛОМБ/, IMP_RE = /^[IL1|]M[PN]\b|[IL1|]MP\s?\/|IMP\s?\/\s?K|ІМП|ИМП/, MADE_RE = /BUPOB|BHPO|BUГOT|YKPA[IÏ]|MADE\s?IN/;
+  function notRead(l, all) {
+    if (l.x == null || !l.w) return '';
+    var t = String(l.text || ''), dg = t.replace(/\D/g, ''), cy = l.y + l.h / 2;
+    if (dg.length < 3) return '';
+    var why = '';
+    all.some(function (o) {
+      if (o === l || o.x == null || !o.w) return false;
+      var s = lat(o.text), hh = Math.max(l.h, o.h), dy = (o.y + o.h / 2) - cy, xo = o.x < l.x + l.w + hh && o.x + o.w > l.x - hh;
+      if (!xo) return false;
+      if (Math.abs(dy) < hh * 2.2 && SEAL_RE.test(s)) why = 'seal';
+      else if (dy > 0 && dy < hh * 1.8 && IMP_RE.test(s)) why = 'imp';
+      else if (Math.abs(dy) < hh * 1.8 && /^(19[5-9]|20[0-4])\d$/.test(dg) && MADE_RE.test(s)) why = 'year';
+      // «580» над «T2uNn» — код регістра (1.8.0), прочитаний без крапок
+      else if (dg.length === 3 && dy > 0 && dy < hh * 1.6 && /^[TТ]\s?[0-4][A-Za-zА-Яа-я0-9]{0,4}$/.test(String(o.text || '').trim())) why = 'code';
+      return !!why;
+    });
+    return why;
+  }
+  // «181» / «1 8 2» без крапок над-ліворуч ряду цифр табло — це OBIS-код регістра (мітка зони), не показання
+  function obisLine(l, all) {
+    if (l.x == null || !l.w || !/^1\s?[.,]?\s?8\s?[.,]?\s?[0-4]$/.test(String(l.text || '').trim())) return null;
+    var row = all.filter(function (o) { return o !== l && o.x != null && String(o.text || '').replace(/\D/g, '').length >= 6 && o.h > l.h * 1.4 && l.y + l.h / 2 > o.y - l.h * 0.5 && l.y + l.h / 2 < o.y + o.h * 0.7 && l.x < o.x + o.w * 0.35 && l.x + l.w > o.x - l.h * 2; });
+    return row.length ? +String(l.text).trim().slice(-1) : null;
   }
   /** Кандидати-числа з рядків одного фото: [{digits, frac, sep, zone, unit, y, score}]. */
   function ocrCands(shot) {
-    var out = [], tags = [], frags = [];
-    ((shot && shot.lines) || []).forEach(function (l, i) {
+    var out = [], tags = [], frags = [], all = (shot && shot.lines) || [];
+    // НІК 2100/2104 (електронні, ЖК): 8 розрядів, з них 2 — дробові («00484150» = 4841,50; сума 1.8.1 + 1.8.2 = 1.8.0 на фото гостя 24.11)
+    var nik21 = all.some(function (l) { return /\bN[I1]K\s?21\d\d/.test(lat(l.text)); });
+    all.forEach(function (l, i) {
       var y = l.y != null ? l.y : (l.box ? l.box[1] : i * 40), h = l.h || 30;
+      if (notRead(l, all)) return;
+      var ob = obisLine(l, all); if (ob !== null) { tags.push({ z: ob, y: y, h: h, ob: true }); return; }
       // 17.11 (@ayo_kvv: ЖК «8039.26» прочитано «803926»): рушій знайшов десяткову крапку на табло (engine lcdDot → l.dot — цифр після неї) —
       // ставимо її в рядок і в варіанти з тією ж кількістю цифр
       var nd = String(l.text || '').replace(/\s+/g, '').length, dot = function (t) { var c0 = String(t || '').replace(/\s+/g, ''); return l.dot > 0 && /^\d+$/.test(c0) && c0.length === nd && c0.length > l.dot ? c0.slice(0, -l.dot) + '.' + c0.slice(-l.dot) : t; };
@@ -181,10 +216,14 @@
       [l.text].concat(l.alts || []).some(function (raw, ai) {
         var s = ocrTxt(dot(raw)), z = zoneOf(s), unit = URE.test(s); URE.lastIndex = 0;
         var rest = s.replace(/(?:^|[^0-9A-Za-zА-Яа-я])[TТ]\s?[0-4](?![0-9])/g, ' ').replace(/(?:15|1)\s?[.,]\s?8\s?[.,]\s?[0-4](?![0-9])/g, ' ').replace(URE, ' ');
-        if (/[A-Za-zА-Яа-яІіЇїЄє]{2}/.test(rest)) { if (z !== null && !ai) tags.push({ z: z, y: y, h: h }); return false; }
+        if (/[A-Za-zА-Яа-яІіЇїЄє]{2}/.test(rest)) { if (z !== null && !ai) tags.push({ z: z, y: y, h: h, ob: ZRE[1].test(s) }); return false; }
         var c = rest.replace(/\s+/g, '').replace(/(\d)[Oo]|[Oo](\d)/g, function (x, a, b) { return (a || '') + '0' + (b || ''); }).replace(/[Il|]/g, '1');
         var m = c.match(/^(\d{1,8})(?:[.,](\d{1,3}))?$/);
-        if (!m) { if (z !== null && !ai && !/\d{3}/.test(c)) tags.push({ z: z, y: y, h: h }); return false; }
+        // 187-а: ряд табло з міткою, прочитаною цифрами («T2 00 154655» → «4200 154655»): останнє число ряду (5–8 цифр) — слабшим кандидатом
+        var g2 = !m && !ai ? rest.trim().match(/^(\d{1,4})\s+(\d{5,8})(?:[.,](\d{1,3}))?$/) : null;
+        if (g2) { out.push({ digits: (nik21 && /00$/.test(g2[1]) && g2[2].length === 6 ? '00' : '') + g2[2], frac: g2[3] || '', sep: !!g2[3], zone: z, unit: unit, y: y, h: h, score: h * (l.score || 1) * 0.7, glued: true }); return true; }
+        if (!m) { if (z !== null && !ai && !/\d{3}/.test(c)) tags.push({ z: z, y: y, h: h, ob: ZRE[1].test(s) }); return false; }
+        if (/^0+$/.test(m[1]) && !m[2]) return false;   // «000» — порожні розряди, не показання
         if (m[1].length < 3 || (!m[2] && m[1].length >= 8 && m[1].charAt(0) !== '0')) return false;   // «50», заводський №
         out.push({ digits: m[1], frac: m[2] || '', sep: !!m[2], zone: z, unit: unit, y: y, h: h, score: h * (l.score || 1) * (m[2] ? 1.3 : 1) * (unit ? 1.5 : 1) * (m[1].charAt(0) === '0' ? 1.2 : 1) * (ai ? 0.8 : 1) });
         return true;
@@ -204,7 +243,9 @@
       out.push({ digits: dg, frac: fr, sep: sep, zone: null, unit: false, y: top, h: bot - top, score: sc * 0.6, merged: true });
     });
     // мітка зони окремим рядком — числу в тому ж ряду (або трохи нижче)
-    out.forEach(function (c) { if (c.zone !== null) return; var best = null; tags.forEach(function (tg) { var dy = Math.abs(tg.y - c.y); if (dy < Math.max(tg.h, c.h) * 1.6 && (!best || dy < best.dy)) best = { dy: dy, z: tg.z }; }); if (best) c.zone = best.z; });
+    if (nik21) out.forEach(function (c) { if (!c.sep && c.digits.length === 8 && c.digits.charAt(0) === '0') { c.frac = c.digits.slice(6); c.digits = c.digits.slice(0, 6); c.sep = true; c.nik = true; } });
+    // OBIS (1.8.1) — регістр на табло, «T2» поруч — лише діючий тариф: OBIS у межах ряду важливіший за найближчу T-мітку
+    out.forEach(function (c) { if (c.zone !== null && !c.glued) return; var best = null; tags.forEach(function (tg) { var dy = Math.abs(tg.y - c.y); if (dy < Math.max(tg.h, c.h) * 1.6 && (!best || (tg.ob && !best.ob) || (!!tg.ob === !!best.ob && dy < best.dy))) best = { dy: dy, z: tg.z, ob: tg.ob }; }); if (best && (c.zone === null || best.ob)) c.zone = best.z; });
     return out;
   }
   function candVals(c, pv) {
@@ -253,7 +294,8 @@
             var dv = v - Math.floor(pv); if (dv < 0 || dv > lim) return;
             opts.push({ z: z, ci: ci, v: v, frac: c.sep ? c.frac : '', cost: dv / lim - (tagged ? 1 : 0) - (c.drum ? 0.5 : 0) - c.score / 1e6, why: tagged ? 'tag' : c.drum ? 'drum' : 'prev', photo: c.photo, guess: !!c.edge, edge: !!c.edge });
           });
-          else opts.push({ z: z, ci: ci, v: Number(c.digits), frac: c.frac, cost: -(tagged ? 1e5 : 0) - c.score + c.photo * 1e-3 + (c.y || 0) * 1e-6, why: tagged ? 'tag' : c.drum ? 'drum' : '', photo: c.photo, guess: !tagged && (ks.length > 1 || !c.drum || !c.sure) });
+          // 187-а: без прошлих довге число табло без крапки («00484150», «154655» зі склеєного ряду) — де дробова частина, не знаємо: людина перевірить
+          else opts.push({ z: z, ci: ci, v: Number(c.digits), frac: c.frac, cost: -(tagged ? 1e5 : 0) - c.score + c.photo * 1e-3 + (c.y || 0) * 1e-6, why: tagged ? 'tag' : c.drum ? 'drum' : '', photo: c.photo, guess: (!tagged && (ks.length > 1 || !c.drum || !c.sure)) || (!c.drum && !c.sep && (c.glued || c.digits.length >= 7)) });
         });
       });
       opts.sort(function (a, b) { return a.cost - b.cost; });

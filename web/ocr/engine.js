@@ -258,14 +258,71 @@
    * значки «m³», «m³/h» в полном кадре мельче, чем видит детектор. Приближаем сам экран (цифра ≈ 130 px) и ищем текст ещё
    * раз — как есть и с локальным контрастом. Новое — добавляем; рамку, что шире строки «E» в 1,5 раза и больше, — вместо неё.
    */
+  // 187-а (НІК 2100, гість 24.11): найбільше число кадру — номер пломби-голограми «…ОБЛЕНЕРГО 35409», стала «6400 imp/kWh» чи заводський
+  // № під штрихкодом, а не табло. Такі числа екраном не вважаємо (той самий розбір — notRead у elec.js; назви — латинськими двійниками OCR).
+  var NR_LAT = { 'А': 'A', 'В': 'B', 'Е': 'E', 'К': 'K', 'М': 'M', 'Н': 'H', 'О': 'O', 'Р': 'P', 'С': 'C', 'Т': 'T', 'Х': 'X', 'І': 'I', 'Г': 'G', 'Л': 'N', 'Б': 'B' };
+  function notScreen(l, lines) {
+    var dg = String(l.text || '').replace(/\D/g, '');
+    if (/^\d{8,}$/.test(String(l.text || '').trim()) && dg.charAt(0) !== '0') return true;   // заводський № (одним словом; «4200 154655» — ряд табло)
+    var cy = l.y + l.h / 2;
+    return lines.some(function (o) {
+      if (o === l) return false;
+      var s = String(o.text || '').toUpperCase().replace(/[А-ЯІ]/g, function (c) { return NR_LAT[c] || c; }), hh = Math.max(l.h, o.h), dy = o.y + o.h / 2 - cy;
+      if (!(o.x < l.x + l.w + hh && o.x + o.w > l.x - hh)) return false;
+      return (Math.abs(dy) < hh * 2.2 && /E[HNIL]?E?[PR][TGR]O|BIBOB|BOBN|BOBR/.test(s)) || (dy > 0 && dy < hh * 1.8 && /^[IL1|]M[PN]\b|[IL1|]MP\s?\//.test(s));
+    });
+  }
+  // мітка тарифу на початку ряду табло («T2UN», «T2uNn» — «T2» і перші розряди «00») — якір, коли чисел табло перший прохід не побачив
+  var TAG_ROW = /^[TТ]\s?[0-4][A-Za-zА-Яа-я0-9]{0,4}$/;
+  /**
+   * Ряд табло праворуч від мітки тарифу (сірий ЖК без підсвітки, відблиск): вирізаємо від кінця «T2» до ~13 висот праворуч, шукаємо текст
+   * трьома обробками (як є, розтягнутий контраст, місцевий контраст) і читаємо найширшу рамку середини. Беремо лише цифри, що збіглися
+   * щонайменше у двох прочитаннях (НІК 2100: «00484 150» ×4; «88» з тінями сегментів читається вразнобій — тоді нічого, людина впише).
+   */
+  function tagPass(src, lines, tag) {
+    var H = src.height, W = src.width, h = tag.h;
+    var x0 = Math.min(W - 1, tag.x + 0.95 * h), x1 = Math.min(W, tag.x + 13 * h), y0 = Math.max(0, tag.y - 1.3 * h), y1 = Math.min(H, tag.y + 2.2 * h);
+    var cw = x1 - x0, chh = y1 - y0; if (cw < 4 * h) return Promise.resolve();
+    var sc = Math.min(3, Math.max(1, 110 / h), 1700 / Math.max(cw, chh));
+    var cv = document.createElement('canvas'); cv.width = Math.round(cw * sc); cv.height = Math.round(chh * sc);
+    var g = cv.getContext('2d'); g.imageSmoothingQuality = 'high'; g.drawImage(src, x0, y0, cw, chh, 0, 0, cv.width, cv.height);
+    var mx = Math.max(cv.width, cv.height), reads = [], ty = (tag.y + h / 2 - y0) * sc;
+    var row = function (bs) {   // рамки на рівні мітки — однією (ряд «00484» і «150» детектор інколи ріже на два)
+      var r = bs.filter(function (b) { return b.h * 0.6 < h * sc * 2.5 && Math.abs(b.cy - ty) < Math.max(b.h * 0.8, h * sc * 0.8); });
+      if (!r.length) return null;
+      var l0 = Math.min.apply(null, r.map(function (b) { return b.cx - b.w / 2; })), r0 = Math.max.apply(null, r.map(function (b) { return b.cx + b.w / 2; }));
+      var t0 = Math.min.apply(null, r.map(function (b) { return b.cy - b.h / 2; })), b0 = Math.max.apply(null, r.map(function (b) { return b.cy + b.h / 2; }));
+      return r0 - l0 > (b0 - t0) * 2 ? { cx: (l0 + r0) / 2, cy: (t0 + b0) / 2, w: r0 - l0, h: b0 - t0, angle: r.length === 1 ? r[0].angle : 0, score: 1 } : null;
+    };
+    var one = function (o) {
+      return detect(cv, o).then(function (bs) {
+        var b = row(bs); if (!b) return null;
+        return recognize(cv, b, 0.3).then(function (r) { reads.push({ b: b, d: String(r.text || '').replace(/\s/g, ''), s: r.score }); });
+      });
+    };
+    return one({ max: mx }).then(function () { return one({ max: mx, stretch: true }); }).then(function () { return one({ max: mx, local: Math.max(6, Math.round(0.18 * h * sc)) }); })
+      .then(function () {
+        var cnt = {}, best = null;
+        reads.forEach(function (r) { if (!/^\d{4,9}$/.test(r.d)) return; cnt[r.d] = (cnt[r.d] || 0) + 1; if (!best || cnt[r.d] > cnt[best.d] || (cnt[r.d] === cnt[best.d] && r.s > best.s)) best = r; });
+        if (root.TEPLO_LCD_LOG) console.log('LCD tag=' + tag.text + ' reads=' + reads.map(function (r) { return r.d; }).join(','));
+        if (!best || cnt[best.d] < 2) return;
+        var b = best.b;
+        lines.push({ text: best.d, score: +best.s.toFixed(3), x: Math.round(x0 + (b.cx - b.w / 2) / sc), y: Math.round(y0 + (b.cy - b.h / 2) / sc), w: Math.round(b.w / sc), h: Math.round(b.h / sc), angle: +b.angle.toFixed(3), lcd: 1, tagRow: 1 });
+      }).then(function () { free(cv); }, function (er) { free(cv); throw er; });
+  }
   function lcdPass(src, lines) {
     var H = src.height, W = src.width, isE = function (t) { return /^[EeЕеＥ][^0-9A-Za-zА-Яа-я]{0,2}$/.test(t); };
     var cand = lines.filter(function (l) {
       var t = String(l.text).trim(), d = digits(t);
-      return l.h >= H * 0.012 && Math.abs(l.angle) < 0.2 && (isE(t) || (d >= 3 && d >= t.replace(/\s/g, '').length * 0.6));
+      return l.h >= H * 0.012 && Math.abs(l.angle) < 0.2 && (isE(t) || (d >= 3 && d >= t.replace(/\s/g, '').length * 0.6)) && (isE(t) || !notScreen(l, lines));
     });
+    // чисел табло немає або вони дрібніші за мітку тарифу (підписи, «000» голограми) — якір мітки
+    var tag = lines.filter(function (l) { return TAG_ROW.test(String(l.text).trim()) && l.h >= H * 0.02 && Math.abs(l.angle) < 0.2; }).sort(function (a, b) { return b.h - a.h; })[0] || null;
+    if (tag && cand.some(function (l) { return l.h * 1.15 > tag.h; })) tag = null;
+    if (tag) cand = [tag];
     if (!cand.length) return Promise.resolve();
     var main = cand.sort(function (a, b) { return b.h - a.h; })[0], t = String(main.text).trim(), e = isE(t), h = main.h;
+    if (tag) return tagPass(src, lines, tag);
     if (!e) {
       if (IN_LINE.test(t) || /^8{6,}$/.test(t.replace(/[^0-9]/g, ''))) return Promise.resolve();   // подпись в строке; тест экрана
       var labeled = lines.some(function (l) {
