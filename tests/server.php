@@ -2845,6 +2845,11 @@ ok('логотип: favicon.ico і apple-touch-icon у корені, manifest з
 preg_match_all('/^  function\s+([A-Za-z_$][\w$]*)\s*\(/m', (string)file_get_contents("$root/web/src/app.js"), $mm);
 $dupFn = array_keys(array_filter(array_count_values($mm[1]), fn($c) => $c > 1));
 ok('app.js: немає двох функцій верхнього рівня з одним ім\'ям (' . count($mm[1]) . ')', !$dupFn && count($mm[1]) > 300, $dupFn);
+// 189-а: ico('key') без значка в ICONS — у кнопці «Підключити вхід ХТМ цієї квартири» стояло слово «undefined»
+$appSrc = (string)file_get_contents("$root/web/src/app.js"); $icAt = strpos($appSrc, '  var ICONS = {'); $icBody = substr($appSrc, $icAt, strpos($appSrc, "\n  };", $icAt) - $icAt);
+preg_match_all("/([\\w-]+)'?:\\s*'</", $icBody, $icHave); preg_match_all("/ico\\('([\\w-]+)'/", $appSrc, $icUsed);
+$icMiss = array_values(array_diff(array_unique($icUsed[1]), $icHave[1]));
+ok('app.js: кожен ico(\'…\') є в ICONS (' . count(array_unique($icUsed[1])) . ' значків)', !$icMiss && count($icHave[1]) > 50, $icMiss);
 // 143-я (скрин власника 14.11: «від {d}» під ціною світла): mp_from був двічі — ціна ({s}) і monobank ({d}), другий тихо підміняв перший; так само bc_vk / bc_heat.
 // Ключі мови рахуємо простим розбором (рядки в лапках пропускаємо), кожну мову окремо
 $i18 = (string)file_get_contents("$root/web/src/i18n.js"); $ruAt = strpos($i18, "\n    ru: {");

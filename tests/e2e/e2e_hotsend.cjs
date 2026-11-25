@@ -32,7 +32,7 @@ const D = '2026-11-12';
   ok('0. гість: ХТМ (лише гаряча) і Водоканал (холодна й гаряча разом) — по рядку, «Не передано»', /ХТМ/.test(await txt('[data-key=gw-htm]')) && /лише гаряча/.test(await txt('[data-key=gw-htm]')) && /холодна й гаряча разом/.test(await txt('[data-key=gw-vk]'))
     && /Не передано/.test(await txt('[data-key=gw-st-htm]')) && /Не передано/.test(await txt('[data-key=gw-st-vk]')), [await txt('[data-key=gw-htm]'), await txt('[data-key=gw-vk]')]);
   ok('0. …«у фоні — коли ввійдете», без «Підключити» й без кнопок; «Передати самі» відкрито', await has('[data-key=gw-guest]') && !(await has('[data-key=gw-conn-htm]')) && !(await has('[data-key^=gw-bg]'))
-    && await p.$eval('[data-key=gw-self]', d => d.open));
+    && await p.$eval('[data-key^=gw-self-d]', d => d.open));
 
   // 1. увійшов, нічого не підключено: «Не передано» + «Підключити ›» і який вхід — у кожного свій
   ok('реєстрація', await p.evaluate(e => window.TeploSync.register(e, 'Pass-12345678').then(j => j._status), 'hw' + Date.now() + '@teplo.test') === 200);
@@ -41,8 +41,8 @@ const D = '2026-11-12';
   await hot();
   ok('1. не підключено: ХТМ — «Підключити ›» на екран ХТМ, вхід «e-mail і пароль кабінету ХТМ»', (await p.getAttribute('[data-key=gw-conn-htm]', 'href')) === '#pvp-hot-main' && /e-mail і пароль кабінету ХТМ/.test(await txt('[data-key=gw-htm]')), await txt('[data-key=gw-htm]'));
   ok('1. …Водоканал — «Підключити ›» на екран Водоканалу, вхід «особовий рахунок і прізвище»', (await p.getAttribute('[data-key=gw-conn-vk]', 'href')) === '#pvp-water-main' && /особовий рахунок і прізвище/.test(await txt('[data-key=gw-vk]')), await txt('[data-key=gw-vk]'));
-  ok('1. …кнопок «Надіслати» немає (нікому), «Передати самі» згорнуто', !(await has('[data-key^=gw-bg]')) && !(await p.$eval('[data-key=gw-self]', d => d.open)));
-  ok('1. …тексту мало: блок «Куди передати» ≤ 420 знаків без «Передати самі»', await p.$eval('[data-key=where-water]', el => { const c = el.cloneNode(true); c.querySelectorAll('[data-key=gw-self],.trust,.my-link').forEach(x => x.remove()); return c.textContent.replace(/\s+/g, ' ').length; }) <= 420,
+  ok('1. …кнопок «Надіслати» немає (нікому), «Передати самі» згорнуто', !(await has('[data-key^=gw-bg]')) && !(await p.$eval('[data-key^=gw-self-d]', d => d.open)));
+  ok('1. …тексту мало: блок «Куди передати» ≤ 420 знаків без «Передати самі»', await p.$eval('[data-key=where-water]', el => { const c = el.cloneNode(true); c.querySelectorAll('[data-key^=gw-self-d],.trust,.my-link').forEach(x => x.remove()); return c.textContent.replace(/\s+/g, ' ').length; }) <= 420,
     await p.$eval('[data-key=where-water]', el => el.textContent.replace(/\s+/g, ' ').length));
   await p.click('[data-key=gw-conn-htm]'); await wait(1500);
   ok('1. «Підключити ›» ХТМ → екран постачальника гарячої квартири (185-я): «Вносимо показання тепла й гарячої води»', /#pvp-hot-main$/.test(p.url()) && /тепла й гарячої води/.test(await txt('[data-key=prefs-cab-htm]')), [p.url(), await txt('[data-key=prefs-cab-htm]')]);
@@ -58,7 +58,7 @@ const D = '2026-11-12';
   ok('2. …у рядку — що піде: ХТМ «гаряча 176 м³», Водоканал «гаряча 176; холодна 440 м³»', /^Надішлемо: гаряча 176 м³\.$/.test((await txt('[data-key=gw-what-htm]')).trim()) && /^Надішлемо: гаряча 176; холодна 440 м³\.$/.test((await txt('[data-key=gw-what-vk]')).trim()), [await txt('[data-key=gw-what-htm]'), await txt('[data-key=gw-what-vk]')]);
   if (process.env.SHOT) await (await p.$('[data-key=where-water]')).screenshot({ path: '/tmp/hw_ready.png' });
   await p.setViewportSize({ width: 320, height: 700 }); await wait(300);
-  ok('2. 320 px: без горизонтальної прокрутки', await p.evaluate(() => document.documentElement.scrollWidth <= 321));
+  ok('2. 320 px: без горизонтальної прокрутки', await p.evaluate(() => document.documentElement.scrollWidth <= 321), await p.evaluate(() => { const W = innerWidth; return [document.documentElement.scrollWidth, ...[...document.querySelectorAll('#main *')].filter(e => e.getBoundingClientRect().right > W + 1).slice(0, 6).map(e => (e.getAttribute('data-key') || e.className || e.tagName) + ':' + Math.round(e.getBoundingClientRect().right))]; }));
   await p.setViewportSize({ width: 390, height: 844 }); await wait(300);
 
   // 3. «Відправити у фоні» → обидва «Надсилаємо…»; на сервері: ХТМ — лише гаряча (№ і цифри), Водоканал — гаряча й холодна однією чергою
@@ -203,7 +203,9 @@ const D = '2026-11-12';
   await p.evaluate(() => { const s = JSON.parse(localStorage.getItem('teplo.v1')); const pl = s.places[0]; pl.sh = { sid: 9, role: 'member', me: 1, n: 2, own: 'Олена Коваль', ownId: 77, ppl: [], at: 1, bg: false };
     pl.water.acc = {}; if (pl.meter) pl.meter.account = ''; s.updatedAt = Date.now(); localStorage.setItem('teplo.v1', JSON.stringify(s)); });
   await p.reload(); await wait(1500); await hot(); await wait(1800);
-  const gh = await txt('[data-key=gw-htm]');
+  // 189-я: «Передати самі» тепер у блоці адресата (бот @KPHTM_Bot) — перевіряємо рядок без нього; і без «undefined» (значок key)
+  const gh = await p.$eval('[data-key=gw-htm]', el => { const c = el.cloneNode(true); c.querySelectorAll('[data-key^=gw-self-d]').forEach(x => x.remove()); return c.textContent.replace(/\s+/g, ' ').trim(); }).catch(() => '');
+  ok('189: у рядку ХТМ немає слова «undefined»', !/undefined/.test(await txt('[data-key=gw-htm]')));
   // 183-я (власник 23.11, скрін: «даже не упоминай меня тут — у каждой квартиры свой вход для всех поставщиков»): без імен людей і без старої невдачі чужим кабінетом
   ok('10. учасник: у рядку ХТМ — «Вхід ХТМ цієї квартири не підключено» і кнопка входу квартири; ні імен, ні «у вашому кабінеті немає гарячої», ні своєї пошти й рахунків', /Вхід ХТМ цієї квартири не підключено/.test(gh) && !/Олена|може дозволити|немає розділу/.test(gh) && !/@/.test(gh) && !(await has('[data-act=gw-acc-pick]')) && !(await has('#gw-hacc')) && !(await has('[data-key=gw-conn-htm]')) && !(await has('[data-key=gw-bg-htm]')), gh);
   if (process.env.SHOT) await (await p.$('[data-key=gw-htm]')).screenshot({ path: '/tmp/hw_member.png' });

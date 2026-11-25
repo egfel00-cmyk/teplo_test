@@ -748,6 +748,9 @@
     moon: '<path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/>',
     plus: '<path d="M12 5v14M5 12h14"/>',
     thermo: '<path d="M10 14.5V5a2 2 0 1 1 4 0v9.5a4 4 0 1 1-4 0z"/><path d="M12 10v6"/>',
+    // 189-а: «key» (вхід квартири — «Підключити вхід ХТМ цієї квартири») і «heat» (рядок ХТМ у «Кабінетах») не було — у кнопці стояло слово «undefined»
+    key: '<circle cx="7.5" cy="15.5" r="4.5"/><path d="m10.7 12.3 9.8-9.8"/><path d="m17 6 3 3"/><path d="m14 9 2 2"/>',
+    heat: '<path d="M10 14.5V5a2 2 0 1 1 4 0v9.5a4 4 0 1 1-4 0z"/><path d="M12 10v6"/>',
     chart: '<path d="M4 20V4M4 20h16"/><path d="M8 16v-5M12 16V8M16 16v-3"/>',
     leaf: '<path d="M5 19c0-8 5-13 14-14 0 9-5 14-13 14"/><path d="M5 19l7-7"/>',
     calendar: '<rect x="3.5" y="5" width="17" height="15" rx="2"/><path d="M3.5 10h17M8 3v4M16 3v4"/>',
@@ -2175,12 +2178,14 @@
     return null;
   }
   /** Рядок адресата: назва й що бере, один статус, що не так і як виправити (тут же), що надішлемо й своя кнопка «Надіслати в ХТМ» / «…у Водоканал». */
-  function gwRow(rec, to) {
+  // 189-а (власник 25.11, скрин: «если 2 и больше поставщика — разделять явно, сейчас всё сливается, сложно понять, что куда»): кожен адресат — окремий
+  // блок з номером (1 ХТМ, 2 Водоканал): статус, що не так, своя кнопка і своє «Передати самі» (бот, телефон, цифри) — усе про нього в його блоці, а не двома стрічками
+  function gwRow(rec, to, n, open) {
     var vk = to === 'vk', on = hcOn(), conn = vk ? on && vkcGate() === 'ok' : on && hcConnP(place());
     var st = gwSt(rec, to);
     if (!st) st = conn ? { c: 'ok', t: t('gw_st_bg') } : { c: 'neutral', t: t('gw_st_off') };
     var fx = conn ? gwFix(rec, to, st) : null;
-    var h = '<li class="gw-row" data-key="gw-' + to + '"><div class="gw-h"><span class="gw-t"><b>' + esc(t(vk ? 'gw_vk_n' : 'gw_htm_n')) + '</b><span class="small muted">' + esc(t(vk ? 'gw_vk_s' : 'gw_htm_s')) + '</span></span>' +
+    var h = '<li class="gw-row" data-key="gw-' + to + '"><div class="gw-h">' + (n ? '<span class="gw-n" aria-hidden="true">' + n + '</span>' : '') + '<span class="gw-t"><b>' + esc(t(vk ? 'gw_vk_n' : 'gw_htm_n')) + '</b><span class="small muted">' + esc(t(vk ? 'gw_vk_s' : 'gw_htm_s')) + '</span></span>' +
       '<span class="pill ' + (fx && fx.own && st.c === 'neutral' ? 'neutral' : st.c) + '" data-key="gw-st-' + to + '">' + esc(fx && fx.own && st.c === 'neutral' ? t('gw_st_bot') : st.t) + '</span></div>';
     // одна причина, без повтору: виправлення має свій текст — тоді текст сайту не дублюємо
     if (fx) h += '<p class="small gw-why" data-key="gw-why-' + to + '">' + esc(String(fx.txt || st.why || '').slice(0, 260)) + '</p><div class="gw-fix" data-key="gw-fix-' + to + '">' + fx.fix + '</div>';
@@ -2200,25 +2205,26 @@
       h += '<p class="small gw-what" data-key="gw-what-' + to + '">' + esc(t('gw_will', { what: what })) + '</p>' +
         '<div class="dest-ch"><button class="btn dest-bg" data-act="gw-bg" data-to="' + to + '" data-id="' + esc(rec.id) + '" data-key="gw-bg-' + to + '"' + (busy ? ' disabled' : '') + '>' + (busy ? SPIN : ico('send', 18)) + '<span>' + esc(t(again ? 'gw_send2' : vk ? 'gw_send_vk' : 'gw_send_htm')) + '</span></button></div>';
     }
-    return h + '</li>';
+    return h + gwSelf(rec, open, to) + '</li>';
   }
   /** «Передати самі»: цифри, бот, телефон і «Я передав(ла)» — для кожного адресата. */
-  function gwSelf(rec, open) {
+  function gwSelf(rec, open, only) {
     var hot = wmeters('hot'), ms = wmeters(), acc = wacc('hot'), mark = function (to, sent) {
       return rec ? '<p class="dest-mark">' + (sent ? '<button class="linkbtn" data-act="wsent" data-to="' + to + '" data-v="0" data-id="' + rec.id + '" data-key="gw-unmark-' + to + '">' + esc(t('ws_unmark')) + '</button>' :
         '<button class="btn sec" data-act="wsent" data-to="' + to + '" data-v="1" data-id="' + rec.id + '" data-key="gw-mark-' + to + '">' + ico('check', 18) + '<span>' + esc(t('ws_mark')) + '</span></button>') + '</p>' : ''; };
     var vals = function (list) { return rec ? list.filter(function (m) { return hasVal(rec, m.id); }).map(function (m) { var v = Wt.whole(rec.vals[m.id]); return cpRow(wname(m), v, v, 'tn cp-big', 'gw-v-' + m.id); }) : []; };
-    var htm = '<div class="gw-self-b" data-key="gw-self-htm"><p class="gw-self-t"><b>' + esc(t('gw_htm_n')) + '</b> <span class="small muted">' + esc(t('gw_htm_s')) + '</span></p>' +
+    var head = function (n, s2) { return only ? '' : '<p class="gw-self-t"><b>' + esc(t(n)) + '</b> <span class="small muted">' + esc(t(s2)) + '</span></p>'; };
+    var htm = only === 'vk' ? '' : '<div class="gw-self-b" data-key="gw-self-htm">' + head('gw_htm_n', 'gw_htm_s') +
       cpList((acc ? [cpRow(t('wa_acc_hot_s'), acc, acc, 'tn', 'gw-hacc')] : []).concat(vals(hot)), 'gw-hvals') +
       '<div class="dest-ch"><a class="btn sec" href="' + BOT_URL + '" target="_blank" rel="noopener" data-key="gw-htm-bot">' + ico('send', 18) + '<span>' + esc(t('wd_bot', { b: '@KPHTM_Bot' })) + '</span></a></div>' +
       cpPhones([['+380573414140', '(057) 341-41-40']], 'gw-htm-ph') + mark('htm', rec && rec.sent && rec.sent.htm) + '</div>';
-    var cmd = rec ? Wt.vkCommand(wacc('cold'), wcfg().surname, ms, rec.vals || {}) : null, cmdOk = cmd && !cmd.noAccount && !cmd.missing.length;
-    var vk = '<div class="gw-self-b" data-key="gw-self-vk"><p class="gw-self-t"><b>' + esc(t('gw_vk_n')) + '</b> <span class="small muted">' + esc(t('gw_vk_s')) + '</span></p>' +
+    var cmd = rec && only !== 'htm' ? Wt.vkCommand(wacc('cold'), wcfg().surname, ms, rec.vals || {}) : null, cmdOk = cmd && !cmd.noAccount && !cmd.missing.length;
+    var vk = only === 'htm' ? '' : '<div class="gw-self-b" data-key="gw-self-vk">' + head('gw_vk_n', 'gw_vk_s') +
       cpList([wacc('cold') ? cpRow(t('em_acc'), wacc('cold'), wacc('cold'), 'tn', 'gw-vacc') : ''].concat(vals(ms)), 'gw-vvals') +
       '<div class="dest-ch">' + (cmdOk ? '<button class="btn sec" data-act="vk-open" data-text="' + esc(cmd.text) + '" data-key="gw-vk-bot">' : '<a class="btn sec" href="' + Wt.VK_BOT + '" target="_blank" rel="noopener" data-key="gw-vk-bot">') + ico('send', 18) + '<span>' + esc(t('wd_bot', { b: '@hvk_user_bot' })) + '</span>' + (cmdOk ? '</button>' : '</a>') +
       '<a class="btn sec" href="' + Wt.VK_CABINET + '" target="_blank" rel="noopener" data-key="gw-vk-cab">' + ico('ext', 18) + '<span>' + esc(t('wd_cab_vk')) + '</span></a></div>' +
       cpList([cpTel(t('wd_vk_24'), '+380577075851', '(057) 707-58-51', 'gw-vk-ph'), cpRow('Viber', '(050) 355-12-12', '0503551212', 'tn', 'gw-vk-viber')], 'gw-vk-phs', 'cp-ph') + mark('vk', rec && wsentVk(rec)) + '</div>';
-    return '<details class="dest-more gw-self" data-key="gw-self"' + (open ? ' open' : '') + '><summary>' + esc(t('gw_self')) + ico('chev', 16, 'pacc-chev') + '</summary><div class="dest-more-b">' + htm + vk + '</div></details>';
+    return '<details class="dest-more gw-self" data-key="gw-self-d' + (only ? '-' + only : '') + '"' + (open ? ' open' : '') + '><summary>' + esc(t('gw_self')) + ico('chev', 16, 'pacc-chev') + '</summary><div class="dest-more-b">' + htm + vk + '</div></details>';
   }
   function hotSendPanel(rec) {
     if (hcOn()) { hcLoad(); vjLoad(); vksLoad(); }
@@ -2226,10 +2232,10 @@
     // кожному адресату — своя кнопка й своє виправлення в його рядку; спільної кнопки «обом» немає
     var h = '<section class="panel where" data-key="where-water"><h2>' + ico('wallet', 18, 'bt-ico') + '<span>' + esc(t('wd_title')) + '</span></h2>' + wherePlaceLine() +
       '<p class="small muted gw-lead" data-key="gw-lead">' + esc(t('gw_lead')) + '</p>' + pstrip('water', { tone: rec && wsentVk(rec) && rec.sent && rec.sent.htm ? 'ok' : '' }, 'in-dest hot') +
-      '<ul class="gw-list" data-key="gw-list">' + gwRow(rec, 'htm') + gwRow(rec, 'vk') + '</ul>';
+      '<ul class="gw-list" data-key="gw-list">' + gwRow(rec, 'htm', 1, !hcOn()) + gwRow(rec, 'vk', 2, !hcOn()) + '</ul>';
     if (!hcOn()) h += '<p class="small gw-in" data-key="gw-guest">' + esc(t('gw_guest')) + ' <a href="#login" data-key="gw-login">' + esc(t('login')) + ' ›</a></p>';
     else if (!rec) h += '<p class="small muted" data-key="gw-need">' + esc(t('gw_need')) + '</p>';
-    return h + gwSelf(rec, !hcOn()) + (hcOn() && (hcConnP(place()) || vkcGate() === 'ok') ? trustBox(hcConnP(place()) ? 'htm' : 'vk', '', 'trust-hs') : '') + '</section>';
+    return h + (hcOn() && (hcConnP(place()) || vkcGate() === 'ok') ? trustBox(hcConnP(place()) ? 'htm' : 'vk', '', 'trust-hs') : '') + '</section>';
   }
   /** Гаряча в кабінет ХТМ у фоні: у чергу сервера (cron внесе за хвилину), статус — у записі (rec.htmJob). */
   function hwQueue(rec, done) {
@@ -2451,10 +2457,10 @@
     return out;
   }
   /** Лічильники сайту Водоканалу, які вже бачили для цього запису: з невдалої черги чи з «Показати лічильники». */
-  function vkcKnown(rec) { var j = rec && gwJob(rec, 'vk'); return (j && j.meters && j.meters.length ? j.meters : null) || (VKC.check && VKC.check.meters && VKC.check.meters.length ? VKC.check.meters : null); }
+  function vkcKnown(rec) { vkcFresh(); var j = rec && gwJob(rec, 'vk'); return (j && j.meters && j.meters.length ? j.meters : null) || (VKC.check && VKC.check.meters && VKC.check.meters.length ? VKC.check.meters : null); }
   /** Прийняті цього періоду (на сайті без поля: «Передані показання за листопад … ПРИЙНЯТІ»), яких немає серед лічильників з полем. */
   function vkcAccd(rec, cms) {
-    var j = rec && gwJob(rec, 'vk'), d = (j && j.done) || (VKC.check && VKC.check.done) || [], inD = (cms || []).map(function (c) { return vkcDigits(c.serial); });
+    vkcFresh(); var j = rec && gwJob(rec, 'vk'), d = (j && j.done) || (VKC.check && VKC.check.done) || [], inD = (cms || []).map(function (c) { return vkcDigits(c.serial); });
     return d.filter(function (b) { return b && b.accepted && vkcDigits(b.serial) && inD.indexOf(vkcDigits(b.serial)) < 0; });
   }
   /** План надсилання запису у Водоканал: map (vkcMap), acc[id] — уже прийнятий на сайті (181-а, власник 23.11: холодна ванна прийнята 22.11, тому її й «немає» в списку):
@@ -2475,7 +2481,7 @@
   function vkcPrev(c) { return c.prev !== null && c.prev !== undefined ? t('vkc_prev', { v: c.prev }) + (c.prevDate ? ' (' + c.prevDate + ')' : '') : ''; }
   /** Що підемо відправляти: [{m, c, v}] — наші показання цього запису з лічильником на сайті. */
   function vkcItems(rec, ms) {
-    if (!VKC.check) return [];
+    vkcFresh(); if (!VKC.check) return [];
     var map = vkcMap(ms, VKC.check.meters);
     return ms.filter(function (m) { return hasVal(rec, m.id) && map[m.id]; }).map(function (m) { return { m: m, c: VKC.check.meters.filter(function (c) { return c.key === map[m.id]; })[0], v: vkVal(rec.vals[m.id]) }; }).filter(function (x) { return x.c; });
   }
@@ -4156,9 +4162,14 @@
       (onlyMeter ? '' : wvkField(m, t('wm_vkid'))) + '</div>' + (onlyMeter ? '' : wcabRow(m));
   }
   /** Лічильники сайту Водоканалу, які вже бачили: «Показати лічильники Водоканалу» чи остання черга з ними. */
+  // 189-а (власник 25.11: «откуда в дропдауне моей квартиры номера счётчиков другой квартиры? баг грубый»): VKC.check лишався від іншої квартири (перевірку робили
+  // на її екрані, vkcFresh тут не кликали), а черга бралась перша будь-якої квартири. Тепер — лише цієї квартири: VKC.check за ключем квартира|рахунок|прізвище (vkcFresh),
+  // черга — з place цієї квартири (старі без place — за рахунком холодної)
+  function vkcJobOf(x, p) { p = p || place(); if (!p) return false; return x.place ? x.place === p.id : vkcDigits(x.acc) !== '' && vkcDigits(x.acc) === vkcDigits(waccOf(p, 'cold')); }
   function vkcSites() {
+    vkcFresh();
     if (VKC.check && VKC.check.meters && VKC.check.meters.length) return VKC.check.meters;
-    var j = ((VJ.st && VJ.st.jobs) || []).filter(function (x) { return x.meters && x.meters.length; })[0]; return j ? j.meters : null;
+    var j = ((VJ.st && VJ.st.jobs) || []).filter(function (x) { return x.meters && x.meters.length && vkcJobOf(x); })[0]; return j ? j.meters : null;
   }
   /** 182-а: «На сайті Водоканалу: № …» у налаштуваннях водоміра — який лічильник сайту це (m.cabKey), змінити чи «Підбирати самі» (скинути).
    *  Лише Харківводоканал (сайт підключено чи вибір уже був). Список сайту не бачили — «Показати лічильники Водоканалу». */

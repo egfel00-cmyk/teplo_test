@@ -3785,3 +3785,27 @@ details.tips-box.nm-box[open] > summary { border-bottom: 1px solid var(--c-line)
 :root:root[data-lskin="c"][data-lsk="3"]:not([data-theme="dark"]) .my-cur .my-o-ic { background: var(--tile-n); color: var(--c-ink-2); }
 /* вибір «Змінити» — окремою підкладкою під рядком (на будь-якому тлі трохи темніше/світліше), щоб не злипався з полями рахунку нижче */
 .my-chg { padding: 12px; border-radius: 14px; background: color-mix(in srgb, var(--c-ink) 5%, transparent); }
+/* 189-я (власник 25.11: «если 2 и больше поставщика — разделять явно, сейчас всё сливается»): гаряча Харкова — кожен адресат окремим блоком з номером
+   (легкий тон підкладки, без рамки — не «картка в картці»), усередині — статус, кнопка й своє «Передати самі»; між блоками 12 px */
+.gw-list { display: grid; gap: 12px; }
+:root:root .gw-row { padding: 14px 14px 6px; border: 0; border-radius: 14px; background: color-mix(in srgb, var(--c-ink) 5%, transparent); }
+:root:root .gw-row:last-child { border-bottom: 0; }
+.gw-h { align-items: center; }
+.gw-n { flex: none; width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; align-self: flex-start; margin-top: 1px;
+  font-size: 15px; font-weight: 600; font-variant-numeric: tabular-nums; background: var(--c-surface); color: var(--c-ink); box-shadow: 0 0 0 1px var(--c-line); }
+.gw-h > .gw-t { flex: 1 1 auto; }
+.gw-t > b { font-size: 18px; line-height: 24px; }
+.gw-row > .gw-self { margin-top: 10px; border-top: 1px solid var(--c-line); }
+.gw-row > .gw-self > summary { padding-top: 10px; padding-bottom: 8px; }
+/* 189-я (власник 25.11, скрин «На сайте Водоканала»: «дропдауны не исправлены, вёрстка неправильная» — текст 20 px упирался в рідну стрілку на краю):
+   усі випадні списки — свій вигляд: без рідної стрілки, своя стрілка-шеврон за 14 px від краю (сірий, читається в усіх темах), місце під неї справа,
+   довгий текст — трикрапкою; у полях форми — 16 px, як решта тексту, а не 20 px, як числа */
+:root:root select:not([multiple]):not([size]) { -webkit-appearance: none; appearance: none; padding-right: 42px; text-overflow: ellipsis; white-space: nowrap; overflow: hidden; cursor: pointer;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%238B8E96' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: right 14px center; background-size: 16px 16px; }
+:root:root .field .ctl > select { font-size: var(--fs-m); line-height: 24px; font-weight: 500; }
+:root:root select:not([multiple]):not([size]):disabled { cursor: default; opacity: .6; }
+/* блок адресата на вузькому (320): кнопки з довгим підписом («Надіслати у Водоканал», «Telegram-бот @hvk_user_bot») переносяться, а не розпирають колонку */
+.gw-row { min-width: 0; }
+.gw-row .dest-ch .btn { flex-basis: 160px; min-width: 0; white-space: normal; text-wrap: balance; }
+@media (max-width: 380px) { :root:root .gw-row { padding: 12px 10px 4px; } .gw-n { width: 24px; height: 24px; font-size: 13px; } .gw-t > b { font-size: 16px; } }
