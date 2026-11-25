@@ -1035,19 +1035,11 @@ fieldset.field { border: 0; padding: 0; min-width: 0; }
 
 /* ---- мастер «Додати квартиру» ---- */
 .aw-title { margin: 0 0 4px; }
-.aw-kinds { display: grid; gap: 10px; margin: 8px 0 16px; }
-.aw-kind { display: grid; grid-template-columns: 28px minmax(0, 1fr) auto; align-items: center; gap: 10px 12px; padding: 12px 12px 12px 16px; border: 1.5px solid var(--c-field-line); border-radius: 14px; background: var(--c-surface); }
-.aw-kind.on { border-color: var(--c-ink); box-shadow: 0 0 0 1px var(--c-ink) inset; }
-.aw-kind[data-act="aw-pick"] { cursor: pointer; -webkit-tap-highlight-color: transparent; }
-.aw-kind[data-act="aw-pick"]:not(.on):active { background: var(--c-surface-2); }
-.aw-kind.am-soon { opacity: .6; }
-.aw-kt { display: flex; flex-direction: column; gap: 2px; min-width: 0; } .aw-kt b { font-size: var(--fs-m); }
 .stepper { display: inline-flex; align-items: center; gap: 6px; }
 .stepper .step-b { min-width: 48px; min-height: 48px; padding: 0; font-size: 24px; line-height: 1; border-radius: 12px; }
 .stepper .step-b[disabled] { opacity: .35; }   /* 155-а: «−» при нулі виглядав робочим */
 .stepper .step-n { min-width: 44px; text-align: center; font-size: var(--fs-l); font-weight: 600; }
 .stepper .step-n .small { font-size: 13px; font-weight: 500; }
-@media (max-width: 400px) { .aw-kind { grid-template-columns: 28px minmax(0, 1fr); } .aw-kind .stepper, .aw-kind > .pill { grid-column: 1 / -1; justify-self: end; } }
 .aw-sum h2::before { content: ''; display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: var(--pc); margin-right: 10px; vertical-align: middle; }
 .aw-sum dl { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 8px 16px; margin: 0; }
 .aw-sum dt { color: var(--c-ink-2); } .aw-sum dd { margin: 0; overflow-wrap: anywhere; }
@@ -1165,12 +1157,6 @@ summary, .btn, .ucard-add, .ucard-main, .linkbtn { touch-action: manipulation; }
 .whero .wdrum, .whero .gdrum { padding: 7px 8px; gap: 6px; border-width: 3px; }
 .whero .wd-win { gap: 1px; padding: 3px; } .whero .wd-c { font-size: clamp(10px, 6.4cqw, 20px); } .whero .wd-u { font-size: 12px; }
 .whero .gd-side .ico { width: 14px; height: 14px; } .whero .gd-g { font-size: 9px; padding: 1px 2px; }
-/* строка вида со образцом табло: на телефоне — образец слева, справа название и под ним +/−; шире — в одну строку */
-.aw-kind.kp { grid-template-columns: 108px minmax(0, 1fr); grid-template-areas: "p t" "p s"; gap: 8px 12px; padding: 12px; }
-.aw-kind.kp .kprev { grid-area: p; align-self: center; } .aw-kind.kp .aw-kt { grid-area: t; } .aw-kind.kp .stepper, .aw-kind.kp > .pill { grid-area: s; justify-self: start; }
-.aw-kt b { display: flex; align-items: center; gap: 6px; } .aw-kt b .ico { flex: none; }
-@media (min-width: 600px) { .aw-kind.kp { grid-template-columns: 124px minmax(0, 1fr) auto; grid-template-areas: "p t s"; } .aw-kind.kp .stepper { justify-self: end; } }
-@media (max-width: 359px) { .aw-kind.kp { grid-template-columns: 92px minmax(0, 1fr); gap: 8px 10px; padding: 10px; } .aw-kind.kp .step-b { min-width: 44px; min-height: 44px; } .aw-kind.kp .step-n { min-width: 34px; } }
 .kprev { display: block; pointer-events: none; min-width: 0; }
 .kprev .lcd { padding: 5px 7px 4px; border-width: 3px; border-radius: 7px; outline-width: 1px; }
 .kprev .lcd svg.seg { height: 22px; } .kprev .lcd .tag { font-size: 10px; padding-bottom: 2px; } .kprev .lcd .line { gap: 4px; justify-content: space-between; }
@@ -1178,12 +1164,9 @@ summary, .btn, .ucard-add, .ucard-main, .linkbtn { touch-action: manipulation; }
 .kprev .wdrum, .kprev .gdrum { padding: 4px 5px; gap: 3px; border-width: 2px; border-radius: 8px; } .kprev .gdrum { border-radius: 4px; }
 .kprev .wd-win { gap: 1px; padding: 2px; border-radius: 3px; } .kprev .wd-c { font-size: clamp(8px, 8cqw, 12px); border-radius: 1px; } .kprev .wd-u { font-size: 9px; }
 .kprev .gd-side { display: none; }
-.fs-more { display: flex; gap: 8px; align-items: flex-start; margin: 4px 0 12px; } .fs-more .ico { flex: none; margin-top: 1px; }
-.aw-kind .step-b.btn:not(.sec) { color: var(--c-on-ink); }
 /* шапка экрана с «✕» на телефоне: «Лічильники» не влезал рядом с «Test beta…» и обрезался в «Лі…» — оставляем логотип */
 /* 143-я (власник 14.11): «Закрити» — лише хрестик (без слова), тож назва «передай.com.ua» праворуч від знака влазить і на телефоні */
 .top .cl-txt { display: none; }   /* с «Закрити» и плашкой beta имя не влезает даже на 440 px (iPhone Pro Max) — оставался обрезок «Л» */
-.fs-after { margin-top: 14px; }
 .field .sp-help:empty { display: none; }
 /* ---- история: дата и чипс статуса строкой над записью; чипс — кнопка, под ним меню «передано / не передано / для себе» ---- */
 .list > li.hli { position: relative; flex-wrap: wrap; column-gap: 8px; row-gap: 2px; }
@@ -3738,6 +3721,87 @@ details.tips-box.nm-box[open] > summary { border-bottom: 1px solid var(--c-line)
 .mrow-act.one > .btn { grid-column: 2; }
 .mrow-act > .btn.danger { grid-column: 2; }
 .mrow-act > .btn:not(.danger) { grid-column: 1; }
+/* 189-я (власник 25.11: «удалить квартиру — на всю ширину, явно видно, и переспросить»): своя картка внизу екрана квартири, кнопка на всю ширину зі значком,
+   під нею — що спершу спитаємо; саме питання — вікном askOk */
+.pv-danger .btn.danger { width: 100%; justify-content: center; gap: 8px; min-height: 48px; margin: 0; }
+.pv-danger > p.small { margin: 8px 0 0; text-align: center; }
+/* 189-я (власник 25.11: «у чипсов нет ховера на десктопе»): чипи й перемикачі-пілюлі — наведення мишею в усіх темах (рамка темніша + легка заливка);
+   обраний не міняємо. Лише @media (hover: hover) — на телефоні дотик не «залипає» */
+.chip, .hf-sw button, .seg-ctl button { transition: border-color .15s var(--ease), background-color .15s var(--ease), color .15s var(--ease); }
+@media (hover: hover) {
+  :root:root :is(.chip:not([aria-pressed="true"]), .hf-sw button:not([aria-pressed="true"])):hover { border-color: var(--c-ink-2); background: var(--c-ghost-hover); }
+  :root:root .seg-ctl button:not([aria-pressed="true"]):hover { background: var(--c-ghost-hover); color: var(--c-ink); }
+  :root:root[data-lskin="c"][data-lsk="3"]:not([data-theme="dark"]) :is(.chip:not([aria-pressed="true"]), .hf-sw button:not([aria-pressed="true"])):hover { border-color: #B9B2A6; background: var(--fill-btn); }
+  :root:root[data-lskin="c"][data-lsk="3"]:not([data-theme="dark"]) .seg-ctl button:not([aria-pressed="true"]):hover { background: var(--fill-btn-h); }
+}
+/* 189-я — «Які лічильники є?» (власник 25.11, скрин латуні на десктопі: «много информации, сложно разобраться, что нажимать, пугает пестрота»).
+   Картка — табло-образець · назва (підпис лише тепло й вивіз) · ОДИН елемент праворуч. Не обрано — тиха рамка й круглий «+» без заливки;
+   обрано — рамка й легкий тон акценту, «− N +» нейтральні; лічильник, якого не буває двох (тепло, вивіз), — галочка акценту (дотик — прибрати).
+   Телефон — одна колонка; від 720 — дві (стовпцями: світло, гаряча, холодна | газ, тепло, вивіз — вода поруч). */
+.aw-kinds { display: grid; gap: 8px; margin: 16px 0 12px; }
+@media (min-width: 720px) { .aw-kinds { grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-rows: repeat(3, auto); grid-auto-flow: column; gap: 10px 12px; } }
+.aw-kind.kp { display: grid; grid-template-columns: 96px minmax(0, 1fr) auto; grid-template-areas: "p t s"; align-items: center; gap: 0 14px; min-height: 68px;
+  padding: 10px 10px 10px 12px; border: 1px solid var(--c-line); border-radius: 14px; background: var(--c-surface); cursor: pointer; -webkit-tap-highlight-color: transparent;
+  transition: border-color .15s var(--ease), background-color .15s var(--ease), box-shadow .15s var(--ease); }
+.aw-kind.kp .kprev { grid-area: p; } .aw-kind.kp .aw-kt { grid-area: t; display: grid; gap: 2px; min-width: 0; } .aw-kind.kp .aw-ctl, .aw-kind.kp > .pill { grid-area: s; justify-self: end; }
+.aw-kt b { font-size: var(--fs-m); line-height: 22px; font-weight: 600; } .aw-kt .small { font-size: 13px; line-height: 18px; }
+.aw-kind.am-soon { opacity: .6; cursor: default; }
+@media (hover: hover) { .aw-kind.kp[data-act]:not(.on):hover { border-color: var(--c-field-line); } }
+.aw-kind.kp[data-act]:not(.on):active { background: var(--c-surface-2); }
+:root:root .aw-kind.kp.on { border-color: var(--acc-fill, var(--c-ink)); box-shadow: inset 0 0 0 1px var(--acc-fill, var(--c-ink)); background: color-mix(in srgb, var(--acc-fill, var(--c-ink)) 7%, var(--c-surface)); }
+.aw-ctl { display: inline-flex; align-items: center; gap: 2px; }
+.aw-ctl .step-b { display: grid; place-items: center; width: 44px; height: 44px; min-width: 0; min-height: 0; padding: 0; border: 0; border-radius: 50%; background: transparent; color: var(--c-ink);
+  font: 500 24px/1 var(--font); cursor: pointer; touch-action: manipulation; transition: background-color .15s var(--ease), border-color .15s var(--ease); }
+.aw-ctl .step-b:focus-visible { outline: 3px solid var(--c-info); outline-offset: 1px; }
+.aw-ctl .step-b[disabled] { opacity: .3; cursor: default; }
+.aw-ctl .step-n { min-width: 26px; text-align: center; font-size: 18px; font-weight: 600; font-variant-numeric: tabular-nums; }
+/* не обрано: лише «+» колом з тонкою рамкою */
+.aw-kind:not(.on) .aw-dec, .aw-kind:not(.on) .step-n { display: none; }
+.aw-kind:not(.on) .aw-inc { box-shadow: inset 0 0 0 1.5px var(--c-field-line); }
+@media (hover: hover) { .aw-kind:not(.on):hover .aw-inc { background: var(--c-ghost-hover); } }
+/* обрано, кількох буває: «− N +» — круглі нейтральні кнопки з легкою заливкою */
+.aw-kind.on:not(.one) .step-b { width: 40px; height: 40px; background: color-mix(in srgb, var(--c-ink) 8%, transparent); }
+@media (hover: hover) { .aw-kind.on:not(.one) .step-b:not([disabled]):hover { background: color-mix(in srgb, var(--c-ink) 14%, transparent); } }
+/* обрано, лише один: галочка акценту; «+» і число не показуємо */
+.aw-kind.one.on .aw-inc, .aw-kind.one.on .step-n { display: none; }
+:root:root .aw-kind.one.on .aw-dec { width: 32px; height: 32px; margin: 6px; background: var(--acc-fill, var(--c-ink)); color: var(--acc-on, var(--c-on-ink)); }
+.fs-more { margin: 4px 0 12px; }
+@media (min-width: 720px) { .aw-kind.kp { grid-template-columns: 112px minmax(0, 1fr) auto; } }
+@media (max-width: 359px) { .aw-kind.kp { grid-template-columns: 80px minmax(0, 1fr) auto; gap: 0 10px; padding: 8px; } .aw-ctl .step-b { width: 40px; height: 40px; } .aw-kind.on:not(.one) .step-b { width: 36px; height: 36px; } }
+/* C3 (світла): рамка картки — та, що в карток (тепла), обрана — синій акцент */
+:root:root[data-lskin="c"][data-lsk="3"]:not([data-theme="dark"]) .aw-kind.kp:not(.on) { border-color: var(--gl-line); box-shadow: var(--gl-sh); }
+/* 189-я (власник 25.11: «текст введённый и заглушка мало отличаются — путает», усі теми): заглушка — меншим (16 замість 20) і звичайним накресленням (400 замість 500),
+   колір той самий --c-ink-2 (контраст ≥ 4,5:1 лишається); поле адреси — без заглушки взагалі */
+.field input::placeholder, .field textarea::placeholder { font-size: var(--fs-m); font-weight: 400; letter-spacing: 0; }
+/* 189-я — «Налаштування показань» розділами (власник 25.11: «перегружено, непонятно, какие акценты, что куда вводить и что для чего»):
+   «Кому платите» · «Лічильник» · «Ціна» — підпис капсом 13 px і лінія між розділами; «Кому платите» — один рядок «хто зараз» + «Змінити» (вибір розкривається тут же),
+   свій постачальник — поля одразу під рядком, без «картки в картці» */
+:root:root .set-h { margin: 0 0 12px; font-family: var(--font); font-size: 13px; line-height: 18px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--c-ink-2); }
+.set-sec + .set-sec { margin-top: 20px; padding-top: 18px; border-top: 1px solid var(--c-line); }
+.set-sec > .field:last-child, .set-sec > .grid2:last-child { margin-bottom: 4px; }
+:root:root .my-pick { margin: 0 0 16px; }
+.my-pick > legend.sr { position: absolute; }
+.my-cur { display: grid; grid-template-columns: 40px minmax(0, 1fr) auto; align-items: center; gap: 12px; min-height: 64px; padding: 10px 10px 10px 12px;
+  border: 1px solid var(--c-line); border-radius: 14px; background: var(--c-surface); }
+.my-cur .my-o-t b { font-size: var(--fs-m); line-height: 22px; }
+:root:root .my-cur .my-chg-b { margin: 0; min-height: 40px; padding: 0 14px; font-size: var(--fs-s); white-space: nowrap; }
+.my-chg { display: grid; gap: 8px; margin-top: 8px; }
+.my-chg .pcat { margin: 0; }
+:root:root .my-chg .my-opts { grid-template-columns: minmax(0, 1fr); gap: 8px; }
+.my-chg-h { margin: 6px 0 -2px; font-size: 13px; font-weight: 600; color: var(--c-ink-2); }
+:root:root .my-chg .my-opt { grid-template-columns: 36px minmax(0, 1fr) 18px; min-height: 56px; padding: 8px 10px 8px 12px; border: 1px solid var(--c-line); border-radius: 12px; background: var(--c-surface); }
+:root:root .my-chg .my-opt .my-o-ic { width: 36px; height: 36px; border-radius: 10px; }
+.my-opt-b { width: 100%; text-align: left; font: inherit; color: inherit; cursor: pointer; }
+.my-o-chev { color: var(--c-ink-2); }
+@media (hover: hover) { :root:root .my-chg .my-opt:hover { border-color: var(--c-field-line); } }
+:root:root .my-form { margin: 16px 0 0; padding: 0; border: 0; border-radius: 0; background: transparent; }
+:root:root .my-form .field .ctl { background: var(--c-field-bg); }
+.my-why { margin: -6px 0 16px; }
+:root:root[data-lskin="c"][data-lsk="3"]:not([data-theme="dark"]) .my-form { border-top: 0; padding-top: 0; }
+:root:root[data-lskin="c"][data-lsk="3"]:not([data-theme="dark"]) :is(.my-cur, .my-chg .my-opt) { border-color: var(--gl-line); box-shadow: var(--gl-sh); }
+:root:root[data-lskin="c"][data-lsk="3"]:not([data-theme="dark"]) .my-cur .my-o-ic { background: var(--tile-n); color: var(--c-ink-2); }
+/* вибір «Змінити» — окремою підкладкою під рядком (на будь-якому тлі трохи темніше/світліше), щоб не злипався з полями рахунку нижче */
+.my-chg { padding: 12px; border-radius: 14px; background: color-mix(in srgb, var(--c-ink) 5%, transparent); }
 
 </style>
 <style>.top { padding-top: max(12px, env(safe-area-inset-top)); }</style>
@@ -6161,8 +6225,8 @@ details.tips-box.nm-box[open] > summary { border-bottom: 1px solid var(--c-line)
       wl_other: "Інший акаунт",
       fs_title: "Початок роботи",
       fs_t1: "Які лічильники є у вашій квартирі?",
-      fs_l1: "Торкніться тих, що стоять у квартирі, — табло підкаже, який який. Два водоміри гарячої (кухня й ванна) — «+» ще раз.",
-      fs_more: "Квартир кілька — своя, батьків, та, що здаєте? Почніть з однієї — інші додасте кнопкою «+ Квартира» на головній.",
+      fs_l1: "Позначте ті, що стоять у квартирі. Два водоміри (кухня й ванна) — «+» ще раз.",
+      fs_more: "Квартир кілька? Почніть з однієї — інші додасте кнопкою «+ Квартира» на головній.",
       fs_err_none: "Позначте хоча б один лічильник — торкніться його картки або «+».",
       fs_go: "Готово", aw_have_acc: "Вже маю акаунт",
       fs_after: "Далі — головна з вашими лічильниками: показання внесете одразу чи пізніше, вручну або з фото.",
@@ -6794,15 +6858,17 @@ details.tips-box.nm-box[open] > summary { border-bottom: 1px solid var(--c-line)
       pv_money: 'Рахунки', pv_money_s: 'Свої для кожної квартири.', pv_money_none: 'З’являться, коли додасте лічильники.',
       pv_m_heat: 'Опалення (платіжка ХТМ)', pv_m_water: 'Вода (Водоканал)', pv_persons_h: 'Потрібно, щоб оцінити воду за нормою, коли водомір знято.',
       pv_del: 'Видалити квартиру', pv_del_q: 'Видалити квартиру «{p}»? Разом з нею зникнуть її лічильники й показання (записів: {n}).',
-      pv_del_yes: 'Так, видалити «{p}»', pv_deleted: 'Квартиру «{p}» видалено',
+      pv_del_yes: 'Так, видалити', pv_deleted: 'Квартиру «{p}» видалено',
+      pv_del_s: 'Спершу спитаємо, чи точно видаляти.', pv_del_q2: 'Повернути не вийде.',
       // ---- квартиры, этап 2: главная-список, мастер «Додати квартиру», напоминания по квартирам, «не та квартира»
       prv_title: 'Постачальники й тарифи', prv_where_ky: 'столиця', prv_obl: '{o} обл.', prv_lead2: 'Для «{c}» ({w}). Звірте з платіжками — тоді гроші в застосунку рахуватимуться точно.', ld_app: 'Застосунок', ld_org_elec: 'Ваш постачальник світла', ld_org_gas: 'Ваш оператор газу', ld_what_elec: 'Показання електролічильника', ld_what_gas: 'Показання газового лічильника', ld_unk_elec: 'Хто постачає світло в «{c}», ми ще не знаємо. Впишіть постачальника з платіжки.', ld_unk_gas: 'Хто доставляє газ у «{c}», ми ще не знаємо. Впишіть оператора з платіжки.', ld_own_phone: 'з вашої платіжки', ld_cab: 'Особистий кабінет', ld_site: 'Сайт', ld_unk_water: 'Хто постачає воду в «{c}», ми ще не знаємо. Впишіть постачальника й телефон з платіжки — тут з’являться його контакти.', ld_unk_heat: 'Хто постачає тепло в «{c}», ми ще не знаємо. Впишіть постачальника й телефон з платіжки — тут з’являться його контакти.', ld_how_unk: 'Як і до якого числа передавати — написано на платіжці. Зателефонуйте, якщо там не сказано.', ld_call: 'Телефони', ld_pay_t: 'Куди платити:', ld_org_water: 'Ваш постачальник води', ld_org_heat: 'Ваш постачальник тепла', ld_what_water: 'Показання водомірів', ld_what_heat: 'Показання теплолічильника', s_lite: 'Вашому постачальнику тепла потрібне лише це число — енергія. Інші екрани лічильника гортати не треба.', c_send_l: 'Як передати постачальнику', hl_title: 'Передача постачальнику тепла', hl_lead: 'Постачальнику — одне число: енергія з головного екрана, так, як на лічильнику. Інші показання не потрібні.', hl_gcal: 'Те саме в Гкал — якщо постачальник просить Гкал', hl_s1: 'Відкрийте кабінет, бот чи сайт постачальника — кнопки нижче, у «Куди передати».', hl_s2: 'Впишіть енергію — кнопкою «Копіювати» поруч із числом.', hl_s3: 'Поверніться сюди й натисніть «Передано».', hl_st_t: 'Передали?', hl_st_sub: 'Позначте, щойно внесли показання в кабінет чи бот постачальника — наступного місяця порівняємо з ними.', hl_done: 'Передано', hl_sent: 'Передано — показання на {d}', hl_sent_sub: 'Наступного місяця порівняємо з цими показаннями.', uc_heat_sent_l: 'Передано', m_lite: '{o} приймає від квартири одне число — енергію. Підійде будь-який лічильник із чинною повіркою (раз на 4 роки), опломбований і взятий постачальником на облік. Модель потрібна, щоб підказати, де на екрані енергія.', ld_how_heat: 'Щомісяця — одне число: енергія з головного екрана лічильника, як на екрані (Гкал, МВт·год чи ГДж). Лічильник має бути повірений (раз на 4 роки), опломбований і взятий постачальником на облік. До якого числа — на платіжці.', gd_fil: 'У боті Газмереж оберіть філію: {g}.', prv_phone: 'Телефон з платіжки', prv_where: '{k}, {h} громада, {d} район', pk_m: 'місто', pk_x: 'селище', pk_c: 'село', prv_ask: 'Пунктів із такою назвою в області кілька. Де ваша квартира?', prv_ask_typo: 'Точно такого пункту не знайшли. Може, один із цих?', prv_ask_none: 'Немає вашого — допишіть до адреси громаду чи район, наприклад «Балаклійський р-н».', prv_typo: 'Знайшли за схожою назвою: «{c}» ({w}). Якщо не той — виправте адресу нижче.', prv_unsettle: 'Обрати інший пункт', prv_alts: 'Інша «{c}»? Є ще пункти з такою назвою', prv_settled: 'Обрано: {c}', prv_lead: 'Для «{c}» ({h} громада, {d} район). Звірте з платіжками — тоді гроші в застосунку рахуватимуться точно.', prv_kh_default: 'Населеного пункту в адресі немає — вважаємо, що це Харків.', prv_noaddr: 'Додайте адресу квартири — підкажемо, хто постачає світло, воду, газ і опалення та за якими тарифами.', prv_loading: 'Шукаємо постачальників за адресою…', prv_err: 'Не вдалося завантажити довідник постачальників. Впишіть дані з платіжок.', prv_nf: 'Для адреси «{a}» довідника ще немає. Впишіть постачальників і ціни з платіжок.', prv_k_elec: 'Світло', prv_k_gas: 'Газ', prv_k_water: 'Вода', prv_k_heat: 'Опалення', prv_net: 'Мережі: {n}', prv_grm: 'Доставка газу: {g}, {p} ₴ за 1 м³ річної потужності (окремий рахунок)', prv_p_elec: '{p} ₴ за кВт·год, ціна діє до {d}', prv_p_gas: '{p} ₴ за м³, тариф «{n}» до {d}', prv_p_own: '{p} ₴ за м³ (з вашої платіжки)', prv_p_water: '{s} ₴ за м³ води і {d} ₴ водовідведення', prv_p_water1: '{s} ₴ за м³ води', prv_from_bill: '(з вашої платіжки)', prv_since: 'з {d}', prv_next: 'З {d} — {s} ₴ за м³ води і {dr} ₴ водовідведення', prv_next1: 'З {d} — {s} ₴ за м³ води', prv_next_heat: 'З {d} — {p} ₴ за Гкал', prv_p_none: 'Тариф невідомий, впишіть з платіжки', prv_p_heat: '{p} ₴ за Гкал з ПДВ і {a} ₴ абонплати на місяць', prv_p_heat1: '{p} ₴ за Гкал з ПДВ', prv_heat_calc: 'Поки рахуємо за тарифом ХТМ, {p} ₴ за Гкал. Впишіть свій з платіжки.', prv_heatp: 'Тариф, ₴ за Гкал', mp_title: 'Ціна', mp_elec: 'Ціна, ₴ за кВт·год', mp_own: 'Ціна з вашої платіжки.', mp_unknown: 'Ціну для «{c}» ще не знайшли. Впишіть її з платіжки, тоді гроші рахуватимуться точно.', mp_noaddr: 'Додайте адресу квартири, і ціни підставляться самі за вашим населеним пунктом.', mp_from: 'Ціна від: {s}. Інша на платіжці? Впишіть свою.', mp_gas_grm: 'Нафтогаз, доставка: {g}, {p} ₴ за 1 м³ річної потужності окремим рахунком', prv_src: 'Звідки ці дані', prv_doc: 'Підстава: {d}', prv_doc_from: ' · діє з {d}', prv_org_none: 'Хто постачає — невідомо', prv_ok: 'звірено', prv_own: 'з платіжки', prv_yes: 'Так, у мене так', prv_other: 'У мене інакше', prv_fill: 'Вписати з платіжки', prv_change: 'Змінити', prv_name: 'Хто виставляє рахунок', prv_supply: 'Вода, ₴ за м³', prv_drain: 'Водовідведення, ₴ за м³ (якщо є)', prv_gasp: 'Ціна газу, ₴ за м³', prv_saved: 'Збережено', pn_send: '{k}: передати {w}', pn_ready: '{k}: внесено, передати {w}', pn_today: 'сьогодні, останній день', pn_tmr: 'до завтра', pn_until: 'до {d}, ще {n} дн.', pst_off: 'знято', pst_sent: 'передано', pst_until: 'до {d}', pst_ready: 'внесено, до {d}', pst_from: 'з {d}', pst_today: 'Сьогодні останній день', pst_tmr: 'Завтра останній день', pst_left: '{n} дн.', pst_today_s: 'сьогодні останній день', pst_tmr_s: 'до завтра', acc_close: 'Згорнути', dmy_bad: 'Не розумію дату «{v}». Напишіть, наприклад, {ex} або «5 березня».', ov_due: 'Найближчий термін — {d}, залишилось {n} дн.', ov_due_today: 'Сьогодні останній день — {d}', ov_all_ok: 'Цього місяця все передано',
       ov_none: 'Лічильників ще немає — натисніть, щоб додати', ov_cur: 'відкрита', ov_open: 'Відкрити квартиру «{p}»',
       aw_title: 'Нова квартира', aw_step: 'Крок {i} з {n}',
       aw_t1: 'Як назвати квартиру?', aw_l1: 'Назва — щоб не плутати квартири між собою. Адреса — за бажанням.',
-      aw_t2: 'Які лічильники тут є?', aw_l2: 'Торкніться тих, що стоять у цій квартирі. Помилилися — додасте чи приберете пізніше.',
+      aw_t2: 'Які лічильники тут є?', aw_l2: 'Позначте ті, що стоять у цій квартирі. Помилилися — додасте чи приберете пізніше.',
       aw_t3: 'Особовий рахунок Водоканалу', aw_l3: 'Потрібен, щоб передавати показання води. Його видно в платіжці Водоканалу. Можна пропустити й вписати пізніше.',
       aw_n0: 'немає', aw_dec: 'Менше: {k}', aw_inc: 'Більше: {k}', aw_max: 'Більше не буває', aw_soon_s: 'Скоро',
+      aw_add: 'Додати: {k}', aw_off: 'Прибрати: {k}', aw_kinds_l: 'Лічильники квартири', aw_s_heat: 'Лише свій теплолічильник у квартирі', aw_s_waste: 'Без лічильника — плата з людини',
       aw_sum: 'Перевірте, перш ніж створити', aw_sum_name: 'Квартира', aw_sum_meters: 'Лічильники', aw_sum_acc: 'Рахунок Водоканалу', aw_sum_none: 'поки немає — додасте пізніше', aw_sum_noacc: 'не вказано',
       aw_create: 'Створити квартиру', aw_skip_acc: 'Пропустити — вкажу пізніше', aw_created: 'Квартиру «{p}» створено',
       aw_q: 'Нова квартира «{p}»: лічильник {i}\u00a0з\u00a0{n}', aw_q_later: 'Налаштую пізніше', wa_more: 'Заводський номер і повірка', aw_q_heat: 'Залишився теплолічильник — оберіть модель.',
@@ -6949,7 +7015,9 @@ details.tips-box.nm-box[open] > summary { border-bottom: 1px solid var(--c-line)
       // 144-а: свій постачальник
       my_t: 'Кому платите', my_dir: 'Постачальник з довідника', my_dir_s: 'з довідника за адресою квартири', my_dir_s0: 'як у більшості квартир Харкова — адреси ще немає',
       my_dir_none: 'за адресою не знайшли — оберіть свого', my_own: 'Інший постачальник', my_own_s: 'кооператив, ОСББ, забудовник — кого немає в довіднику', my_own_new: 'Ще один інший постачальник', my_mine_s: '{p} · {k}', my_mine_was: 'був тут раніше', my_own_new_s: 'новий — впишете назву й реквізити', my_use_num: '{o}: реквізити підставили. Ваш номер тут свій — впишіть його',
-      my_own_on: 'інший постачальник — реквізити нижче', my_name: 'Назва', my_name_ph: 'Напр., ГК «Мотор» або Житлобуд',
+      my_own_on: 'інший постачальник — реквізити нижче', my_name: 'Назва', my_name_ph: 'Напр., ОСББ «Сад»',
+      my_cur_own: 'свій постачальник · реквізити нижче', my_cur_own0: 'впишіть назву й реквізити нижче', my_chg: 'Змінити', my_chg_x: 'Згорнути', my_mine_h: 'Ваші постачальники',
+      my_iban_why: 'Із квитанції чи договору — для QR-коду й «Копіювати» в «Оплаті».', ss_pay: 'Кому платите', ss_meter: 'Лічильник', ss_price: 'Ціна',
       my_how: 'Як платите', my_how_iban: 'Рахунок', my_how_cash: 'Готівка', my_how_other: 'Інакше',
       my_iban_len: 'IBAN в Україні — UA і 27 цифр, зараз цифр {n}. Звірте з реквізитами.', my_iban_sum: 'У IBAN, схоже, описка — контрольні цифри не сходяться. Звірте з реквізитами.',
       my_recip: 'Отримувач', my_code: 'ЄДРПОУ або ІПН', my_code_s: 'ЄДРПОУ', my_cash: 'Кому й де', my_cash_ph: 'Напр., бухгалтеру в офісі Житлобуду',
@@ -7650,8 +7718,8 @@ details.tips-box.nm-box[open] > summary { border-bottom: 1px solid var(--c-line)
       wl_other: "Другой аккаунт",
       fs_title: "Начало работы",
       fs_t1: "Какие счётчики есть в вашей квартире?",
-      fs_l1: "Коснитесь тех, что стоят в квартире, — табло подскажет, какой какой. Два водомера горячей (кухня и ванная) — «+» ещё раз.",
-      fs_more: "Квартир несколько — своя, родителей, сдаваемая? Начните с одной — другие добавите кнопкой «+ Квартира» на главной.",
+      fs_l1: "Отметьте те, что стоят в квартире. Два водомера (кухня и ванная) — «+» ещё раз.",
+      fs_more: "Квартир несколько? Начните с одной — другие добавите кнопкой «+ Квартира» на главной.",
       fs_err_none: "Отметьте хотя бы один счётчик — коснитесь его карточки или «+».",
       fs_go: "Готово", aw_have_acc: "Уже есть аккаунт",
       fs_after: "Дальше — главная с вашими счётчиками: показания внесёте сразу или позже, вручную или с фото.",
@@ -8282,15 +8350,17 @@ details.tips-box.nm-box[open] > summary { border-bottom: 1px solid var(--c-line)
       pv_money: 'Счета', pv_money_s: 'Свои для каждой квартиры.', pv_money_none: 'Появятся, когда добавите счётчики.',
       pv_m_heat: 'Отопление (платёжка ХТМ)', pv_m_water: 'Вода (Водоканал)', pv_persons_h: 'Нужно, чтобы оценить воду по норме, когда водомер снят.',
       pv_del: 'Удалить квартиру', pv_del_q: 'Удалить квартиру «{p}»? Вместе с ней пропадут её счётчики и показания (записей: {n}).',
-      pv_del_yes: 'Да, удалить «{p}»', pv_deleted: 'Квартира «{p}» удалена',
+      pv_del_yes: 'Да, удалить', pv_deleted: 'Квартира «{p}» удалена',
+      pv_del_s: 'Сначала спросим, точно ли удалять.', pv_del_q2: 'Вернуть не получится.',
       // ---- квартиры, этап 2: главная-список, мастер «Добавить квартиру», напоминания по квартирам, «не та квартира»
       prv_title: 'Поставщики и тарифы', prv_where_ky: 'столица', prv_obl: '{o} обл.', prv_lead2: 'Для «{c}» ({w}). Сверьте с платёжками — тогда деньги в приложении будут считаться точно.', ld_app: 'Приложение', ld_org_elec: 'Ваш поставщик света', ld_org_gas: 'Ваш оператор газа', ld_what_elec: 'Показания электросчётчика', ld_what_gas: 'Показания газового счётчика', ld_unk_elec: 'Кто поставляет свет в «{c}», мы ещё не знаем. Впишите поставщика из платёжки.', ld_unk_gas: 'Кто доставляет газ в «{c}», мы ещё не знаем. Впишите оператора из платёжки.', ld_own_phone: 'из вашей платёжки', ld_cab: 'Личный кабинет', ld_site: 'Сайт', ld_unk_water: 'Кто поставляет воду в «{c}», мы ещё не знаем. Впишите поставщика и телефон из платёжки — здесь появятся его контакты.', ld_unk_heat: 'Кто поставляет тепло в «{c}», мы ещё не знаем. Впишите поставщика и телефон из платёжки — здесь появятся его контакты.', ld_how_unk: 'Как и до какого числа передавать — написано в платёжке. Позвоните, если там не сказано.', ld_call: 'Телефоны', ld_pay_t: 'Куда платить:', ld_org_water: 'Ваш поставщик воды', ld_org_heat: 'Ваш поставщик тепла', ld_what_water: 'Показания водомеров', ld_what_heat: 'Показания теплосчётчика', s_lite: 'Вашему поставщику тепла нужно только это число — энергия. Другие экраны счётчика листать не нужно.', c_send_l: 'Как передать поставщику', hl_title: 'Передача поставщику тепла', hl_lead: 'Поставщику — одно число: энергия с главного экрана, так, как на счётчике. Другие показания не нужны.', hl_gcal: 'То же в Гкал — если поставщик просит Гкал', hl_s1: 'Откройте кабинет, бот или сайт поставщика — кнопки ниже, в «Куда передать».', hl_s2: 'Впишите энергию — кнопкой «Копировать» рядом с числом.', hl_s3: 'Вернитесь сюда и нажмите «Передано».', hl_st_t: 'Передали?', hl_st_sub: 'Отметьте, как только внесли показания в кабинет или бот поставщика — в следующем месяце сравним с ними.', hl_done: 'Передано', hl_sent: 'Передано — показания на {d}', hl_sent_sub: 'В следующем месяце сравним с этими показаниями.', uc_heat_sent_l: 'Передано', m_lite: '{o} принимает от квартиры одно число — энергию. Подойдёт любой счётчик с действующей поверкой (раз в 4 года), опломбированный и взятый поставщиком на учёт. Модель нужна, чтобы подсказать, где на экране энергия.', ld_how_heat: 'Каждый месяц — одно число: энергия с главного экрана счётчика, как на экране (Гкал, МВт·ч или ГДж). Счётчик должен быть поверен (раз в 4 года), опломбирован и взят поставщиком на учёт. До какого числа — в платёжке.', gd_fil: 'В боте Газсетей выберите филиал: {g}.', prv_phone: 'Телефон из платёжки', prv_where: '{k}, {h} громада, {d} район', pk_m: 'город', pk_x: 'посёлок', pk_c: 'село', prv_ask: 'Населённых пунктов с таким названием в области несколько. Где ваша квартира?', prv_ask_typo: 'Точно такого пункта не нашли. Может, один из этих?', prv_ask_none: 'Нет вашего — допишите к адресу громаду или район, например «Балаклейский р-н».', prv_typo: 'Нашли по похожему названию: «{c}» ({w}). Если не тот — исправьте адрес ниже.', prv_unsettle: 'Выбрать другой пункт', prv_alts: 'Другой «{c}»? Есть ещё пункты с таким названием', prv_settled: 'Выбрано: {c}', prv_lead: 'Для «{c}» ({h} громада, {d} район). Сверьте с платёжками — тогда деньги в приложении будут считаться точно.', prv_kh_default: 'Населённого пункта в адресе нет — считаем, что это Харьков.', prv_noaddr: 'Добавьте адрес квартиры — подскажем, кто поставляет свет, воду, газ и отопление и по каким тарифам.', prv_loading: 'Ищем поставщиков по адресу…', prv_err: 'Не удалось загрузить справочник поставщиков. Впишите данные из платёжек.', prv_nf: 'Для адреса «{a}» справочника ещё нет. Впишите поставщиков и цены из платёжек.', prv_k_elec: 'Свет', prv_k_gas: 'Газ', prv_k_water: 'Вода', prv_k_heat: 'Отопление', prv_net: 'Сети: {n}', prv_grm: 'Доставка газа: {g}, {p} ₴ за 1 м³ годовой мощности (отдельный счёт)', prv_p_elec: '{p} ₴ за кВт·ч, цена действует до {d}', prv_p_gas: '{p} ₴ за м³, тариф «{n}» до {d}', prv_p_own: '{p} ₴ за м³ (из вашей платёжки)', prv_p_water: '{s} ₴ за м³ воды и {d} ₴ водоотведения', prv_p_water1: '{s} ₴ за м³ воды', prv_from_bill: '(из вашей платёжки)', prv_since: 'с {d}', prv_next: 'С {d} — {s} ₴ за м³ воды и {dr} ₴ водоотведения', prv_next1: 'С {d} — {s} ₴ за м³ воды', prv_next_heat: 'С {d} — {p} ₴ за Гкал', prv_p_none: 'Тариф неизвестен, впишите из платёжки', prv_p_heat: '{p} ₴ за Гкал с НДС и {a} ₴ абонплаты в месяц', prv_p_heat1: '{p} ₴ за Гкал с НДС', prv_heat_calc: 'Пока считаем по тарифу ХТМ, {p} ₴ за Гкал. Впишите свой из платёжки.', prv_heatp: 'Тариф, ₴ за Гкал', mp_title: 'Цена', mp_elec: 'Цена, ₴ за кВт·ч', mp_own: 'Цена из вашей платёжки.', mp_unknown: 'Цену для «{c}» ещё не нашли. Впишите её из платёжки, тогда деньги будут считаться точно.', mp_noaddr: 'Добавьте адрес квартиры, и цены подставятся сами по вашему населённому пункту.', mp_from: 'Цена от: {s}. Другая в платёжке? Впишите свою.', mp_gas_grm: 'Нафтогаз, доставка: {g}, {p} ₴ за 1 м³ годовой мощности отдельным счётом', prv_src: 'Откуда эти данные', prv_doc: 'Основание: {d}', prv_doc_from: ' · действует с {d}', prv_org_none: 'Кто поставляет — неизвестно', prv_ok: 'сверено', prv_own: 'из платёжки', prv_yes: 'Да, у меня так', prv_other: 'У меня иначе', prv_fill: 'Вписать из платёжки', prv_change: 'Изменить', prv_name: 'Кто выставляет счёт', prv_supply: 'Вода, ₴ за м³', prv_drain: 'Водоотведение, ₴ за м³ (если есть)', prv_gasp: 'Цена газа, ₴ за м³', prv_saved: 'Сохранено', pn_send: '{k}: передать {w}', pn_ready: '{k}: внесено, передать {w}', pn_today: 'сегодня, последний день', pn_tmr: 'до завтра', pn_until: 'до {d}, ещё {n} дн.', pst_off: 'снят', pst_sent: 'передано', pst_until: 'до {d}', pst_ready: 'внесено, до {d}', pst_from: 'с {d}', pst_today: 'Сегодня последний день', pst_tmr: 'Завтра последний день', pst_left: '{n} дн.', pst_today_s: 'сегодня последний день', pst_tmr_s: 'до завтра', acc_close: 'Свернуть', dmy_bad: 'Не понимаю дату «{v}». Напишите, например, {ex} или «5 марта».', ov_due: 'Ближайший срок — {d}, осталось {n} дн.', ov_due_today: 'Сегодня последний день — {d}', ov_all_ok: 'В этом месяце всё передано',
       ov_none: 'Счётчиков ещё нет — нажмите, чтобы добавить', ov_cur: 'открыта', ov_open: 'Открыть квартиру «{p}»',
       aw_title: 'Новая квартира', aw_step: 'Шаг {i} из {n}',
       aw_t1: 'Как назвать квартиру?', aw_l1: 'Название — чтобы не путать квартиры между собой. Адрес — по желанию.',
-      aw_t2: 'Какие счётчики здесь есть?', aw_l2: 'Коснитесь тех, что стоят в этой квартире. Ошиблись — добавите или уберёте позже.',
+      aw_t2: 'Какие счётчики здесь есть?', aw_l2: 'Отметьте те, что стоят в этой квартире. Ошиблись — добавите или уберёте позже.',
       aw_t3: 'Лицевой счёт Водоканала', aw_l3: 'Нужен, чтобы передавать показания воды. Он есть в платёжке Водоканала. Можно пропустить и вписать позже.',
       aw_n0: 'нет', aw_dec: 'Меньше: {k}', aw_inc: 'Больше: {k}', aw_max: 'Больше не бывает', aw_soon_s: 'Скоро',
+      aw_add: 'Добавить: {k}', aw_off: 'Убрать: {k}', aw_kinds_l: 'Счётчики квартиры', aw_s_heat: 'Только свой теплосчётчик в квартире', aw_s_waste: 'Без счётчика — плата с человека',
       aw_sum: 'Проверьте, прежде чем создать', aw_sum_name: 'Квартира', aw_sum_meters: 'Счётчики', aw_sum_acc: 'Счёт Водоканала', aw_sum_none: 'пока нет — добавите позже', aw_sum_noacc: 'не указан',
       aw_create: 'Создать квартиру', aw_skip_acc: 'Пропустить — укажу позже', aw_created: 'Квартира «{p}» создана',
       aw_q: 'Новая квартира «{p}»: счётчик {i}\u00a0из\u00a0{n}', aw_q_later: 'Настрою позже', wa_more: 'Заводской номер и поверка', aw_q_heat: 'Остался теплосчётчик — выберите модель.',
@@ -8437,7 +8507,9 @@ details.tips-box.nm-box[open] > summary { border-bottom: 1px solid var(--c-line)
       // 144-я: свой поставщик
       my_t: 'Кому платите', my_dir: 'Поставщик из справочника', my_dir_s: 'из справочника по адресу квартиры', my_dir_s0: 'как у большинства квартир Харькова — адреса ещё нет',
       my_dir_none: 'по адресу не нашли — выберите своего', my_own: 'Другой поставщик', my_own_s: 'кооператив, ОСМД, застройщик — кого нет в справочнике', my_own_new: 'Ещё один другой поставщик', my_mine_s: '{p} · {k}', my_mine_was: 'был здесь раньше', my_own_new_s: 'новый — впишете название и реквизиты', my_use_num: '{o}: реквизиты подставили. Ваш номер здесь свой — впишите его',
-      my_own_on: 'другой поставщик — реквизиты ниже', my_name: 'Название', my_name_ph: 'Напр., ГК «Мотор» или Жилстрой',
+      my_own_on: 'другой поставщик — реквизиты ниже', my_name: 'Название', my_name_ph: 'Напр., ОСМД «Сад»',
+      my_cur_own: 'свой поставщик · реквизиты ниже', my_cur_own0: 'впишите название и реквизиты ниже', my_chg: 'Изменить', my_chg_x: 'Свернуть', my_mine_h: 'Ваши поставщики',
+      my_iban_why: 'Из квитанции или договора — для QR-кода и «Копировать» в «Оплате».', ss_pay: 'Кому платите', ss_meter: 'Счётчик', ss_price: 'Цена',
       my_how: 'Как платите', my_how_iban: 'Счёт', my_how_cash: 'Наличные', my_how_other: 'Иначе',
       my_iban_len: 'IBAN в Украине — UA и 27 цифр, сейчас цифр {n}. Сверьте с реквизитами.', my_iban_sum: 'В IBAN, похоже, опечатка — контрольные цифры не сходятся. Сверьте с реквизитами.',
       my_recip: 'Получатель', my_code: 'ЕГРПОУ или ИНН', my_code_s: 'ЕГРПОУ', my_cash: 'Кому и где', my_cash_ph: 'Напр., бухгалтеру в офисе Жилстроя',
@@ -12058,6 +12130,13 @@ details.tips-box.nm-box[open] > summary { border-bottom: 1px solid var(--c-line)
    *  (у вбудованих браузерах — Telegram Mini App тощо — confirm мовчки повертає false). У застосунку iOS — рідний alert (WKUIDelegate).
    *  Виклик: if (!askOk(el, текст, {yes, no})) return — перше натискання показує вікно; «Так» повторює натискання el (el.__askOk) — дія виконується. */
   var ASK = null;
+  /** Видалити квартиру (питання вже поставили — pl-del-ask). */
+  function plDel(id) {
+    var dp = place(id); if (!dp || places().length < 2) return;
+    var dl = placeLabel(dp); dp.deleted = true; dp.updatedAt = Date.now();
+    if (dp.id === S.placeId) { S.placeId = null; S.meter = null; S.baseline = null; S.draft = null; ensurePlaces(); }
+    save(); toast(t('pv_deleted', { p: dl })); go(places().length > 1 ? 'places' : 'home');
+  }
   function askOk(el, text, o) {
     if (el && el.__askOk) { el.__askOk = false; return true; }
     if (APP) { try { return window.confirm(text); } catch (e) { return true; } }
@@ -13212,6 +13291,12 @@ details.tips-box.nm-box[open] > summary { border-bottom: 1px solid var(--c-line)
   }
   /** 185-я: спільне для всіх лічильників виду в квартирі (постачальник, передача, рахунок, ціна) — окремим блоком під лічильниками, коли їх кілька:
    *  у «Налаштуваннях показань» кожного лічильника — лише його своє (назва, №, повірка), набір однаковий. */
+  // 189-а (власник 25.11: «перегружено, непонятно, что куда вводить и что для чего»): «Налаштування показань» — трьома розділами з підписом капсом і лінією між ними:
+  // «Кому платите» (постачальник, рахунок у нього, хто приймає показання, monobank), «Лічильник» (де стоїть, №, повірка), «Ціна». Порожній розділ не малюємо.
+  function setSec(id, title, body) { return body ? '<section class="set-sec" data-key="ss-' + id + '"><h3 class="set-h">' + esc(title) + '</h3>' + body + '</section>' : ''; }
+  function setPay(k, acc) { return setSec('pay', t('ss_pay'), myPick(k, { sec: 1 }) + (acc || '') + cbMeterRow(k) + (myProv(k) ? '' : monoLink(k + '-set'))); }
+  /** Рахунок води в налаштуваннях: холодна — Водоканалу/КП, гаряча — за гарячу; свій постачальник цього виду — його номер уже в «Кому платите» (поле «Ваш номер»). */
+  function wAccF(kind) { return myProv(kind) ? '' : waccFields('mw', wcfg(), false, kind === 'hot' ? 'hot' : 'cold'); }
   function kindSet(k, names, body) {
     var id = 'kset-' + k;
     return '<section class="panel mbox mbox-kset" data-key="' + id + '"><details class="mbox-set" id="mbs-' + id + '"' + (MB_OPEN[id] ? ' open' : '') + ' data-key="' + id + '-set"><summary>' + ico('prefs', 18, 'bt-ico') +
@@ -14597,9 +14682,8 @@ details.tips-box.nm-box[open] > summary { border-bottom: 1px solid var(--c-line)
         // «Налаштування показань» — акордеон: рахунок, №, ціна (владелец 05.11 21:35–21:40: «верни аккордеон… переназови»);
         // «Заповнити з monobank» — у налаштуваннях показань кожного лічильника (116-а, власник 11.11)
         // 185-я (власник 23.11: «у холодної різний набір налаштувань — путає»): лічильників виду кілька — у кожного лише своє, спільне для виду — окремим блоком нижче
-        set: (ms.length > 1 ? wmeterFields(m, false) : myPick(kind) + cbMeterRow(kind) + (myProv(kind) ? '' : monoLink(kind + '-set')) + wmeterFields(m, true) + priceBlock(kind)) + gapSetLink(m.id) , setTitle: t('mb_set_read') });
-    }).join('') + (ms.length > 1 ? kindSet(kind, ms.map(function (m) { return m.name || wname(m); }), myPick(kind) + cbMeterRow(kind) + (myProv(kind) ? '' : monoLink(kind + '-set')) +
-      (kind === 'hot' && myProv('hot') ? '' : waccFields('mw', wcfg(), false, kind === 'hot' ? 'hot' : 'cold')) + priceBlock(kind)) : '');
+        set: (ms.length > 1 ? wmeterFields(m, false) : setPay(kind, wAccF(kind)) + setSec('meter', t('ss_meter'), wmeterFields(m, false)) + setSec('price', t('ss_price'), priceBlock(kind))) + gapSetLink(m.id) , setTitle: t('mb_set_read') });
+    }).join('') + (ms.length > 1 ? kindSet(kind, ms.map(function (m) { return m.name || wname(m); }), setPay(kind, wAccF(kind)) + setSec('price', t('ss_price'), priceBlock(kind))) : '');
     // «Розпізнати з фото» — лише на введенні показань (владелец 07.11); тут на її місці — «Куди передати» в рамці
     var act = '<button class="btn big block app-add" data-act="wnew" data-kind="' + kind + '" data-key="water-add">' + ico('plus', 22) + '<span>' + esc(t('wn_title')) + '</span></button>';
     // куди передати: є показання цього місяця — з готовими цифрами, інакше — куди й до якого числа
@@ -15541,8 +15625,8 @@ details.tips-box.nm-box[open] > summary { border-bottom: 1px solid var(--c-line)
       return mbox({ key: 'emeter-' + m.id, id: m.id, kind: k, icon: SK[k].icon, cls: SK[k].cls, name: ms.length > 1 ? ename(m) : t(KINDS[k].t), sub: [ezonesTxt(m)],
         display: edisplay(m, r, 'hero'), cap: cap, copy: r && r.z && SK[k].mod.zones(m) <= 1 && SK[k].mod.whole(r.z.all) !== null ? SK[k].mod.whole(r.z.all) : '', body: sc.note ? '<p class="small muted mb-newer">' + esc(sc.note) + '</p>' : '',
         meta: [verWarn(m.verifiedUntil)].filter(Boolean),
-        set: ms.length > 1 ? smeterFields(k, m) : myPick(k) + cbMeterRow(k) + (myProv(k) ? '' : monoLink(k + '-set')) + smeterFields(k, m) + priceBlock(k) + sheatRow(k), setTitle: t('mb_set_read') });   // 185-я: як у води
-    }).join('') + (ms.length > 1 ? kindSet(k, ms.map(function (m) { return m.name || ename(m); }), myPick(k) + cbMeterRow(k) + (myProv(k) ? '' : monoLink(k + '-set')) + priceBlock(k) + sheatRow(k)) : '');
+        set: ms.length > 1 ? smeterFields(k, m) : setPay(k, '<div class="grid2">' + sprovFields(k, m) + '</div>') + setSec('meter', t('ss_meter'), smeterFields(k, m, true)) + setSec('price', t('ss_price'), priceBlock(k) + sheatRow(k)), setTitle: t('mb_set_read') });   // 185-я: як у води
+    }).join('') + (ms.length > 1 ? kindSet(k, ms.map(function (m) { return m.name || ename(m); }), setPay(k, '') + setSec('price', t('ss_price'), priceBlock(k) + sheatRow(k))) : '');
     if (k === 'elec') left += gpvBox(p, 'elec');
     var w = swin(k), cur = w.open ? ms.map(function (m) { return einWin(m.id, w); }) : null;
     var act = '<button class="btn big block app-add" data-act="' + SK[k].nw + '" data-key="' + k + '-add">' + ico('plus', 22) + '<span>' + esc(tk(k, 'en_title')) + '</span></button>', right = myProv(k) ? myPageS(k) : whereAcc(ssendPanel(k, cur));
@@ -16495,13 +16579,17 @@ details.tips-box.nm-box[open] > summary { border-bottom: 1px solid var(--c-line)
       case 'm-replace': { var pw = el.getAttribute('data-what'); GAP_PRESET = { what: pw }; go('gap-new-' + pw); return true; }
       case 'pl-go': switchPlace(el.getAttribute('data-id')); WX.key = ''; toast(t('pl_switched', { p: placeLabel(place()) })); go('home'); return true;
       case 'pv-chip': { ensurePlaces(); var pc = place(); pc.name = el.getAttribute('data-v'); pc.updatedAt = Date.now(); save(); render(true); return true; }
-      case 'pl-del-ask': { var dq = place(el.getAttribute('data-id')), box = document.getElementById('pl-del-confirm'); if (!dq || !box) return true;
-        var dn = (S.readings || []).filter(function (r) { return r && !r.deleted && r.place === dq.id; }).length + (S.water || []).filter(function (r) { return r && !r.deleted && !r.base && r.place === dq.id; }).length;
+      case 'my-chg': { var cpk = el.getAttribute('data-pk'); MY_CHG[cpk] = !MY_CHG[cpk]; render(true);
+        if (MY_CHG[cpk]) setTimeout(function () { var bx = document.getElementById('my-chg-' + cpk); if (bx) bx.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); }, 60); return true; }
+      // 189-а (власник 25.11: «удалить квартиру — на всю ширину, явно видно, и переспросить, точно удалить или нет»): питання — своїм вікном askOk,
+      // як «Прибрати» лічильника; «Так» повторює натискання — тоді видаляємо (pl-del)
+      case 'pl-del-ask': { var dq = place(el.getAttribute('data-id')); if (!dq) return true;
+        var dn = (S.readings || []).filter(function (r) { return r && !r.deleted && r.place === dq.id; }).length + (S.water || []).filter(function (r) { return r && !r.deleted && !r.base && r.place === dq.id; }).length +
+          (S.mrecs || []).filter(function (r) { return r && !r.deleted && !r.base && r.place === dq.id; }).length;
         // 179-я: спільна квартира — власник видаляє в усіх (скажемо, у кого); учасник — лише виходить
-        var dsh = shMany(dq) ? '<p>' + esc(shMine(dq) ? t('shp_del_own', { n: shPeople(dq).filter(function (x) { return !x.me; }).map(function (x) { return shFirst(x.name); }).join(', ') || shOf(dq).n - 1 }) : t('shp_del_mem', { o: shFirst(shOf(dq).own) || t('shp_someone') })) + '</p>' : '';
-        box.innerHTML = '<div class="banner warn" style="margin-top:16px" role="alert">' + ico('alert', 22) + '<div><p><b>' + esc(t('pv_del_q', { p: placeLabel(dq), n: dn })) + '</b></p>' + dsh + '<div class="row-actions" style="margin-top:8px"><button class="btn sec" data-act="pl-del-no">' + esc(t('cancel')) + '</button><button class="btn danger solid" data-act="pl-del" data-id="' + esc(dq.id) + '" data-key="pv-del-yes">' + esc(t('pv_del_yes', { p: placeLabel(dq) })) + '</button></div></div></div>';
-        var yes = box.querySelector('[data-act=pl-del]'); if (yes) yes.focus(); return true; }
-      case 'pl-del-no': { var bx0 = document.getElementById('pl-del-confirm'); if (bx0) bx0.innerHTML = ''; return true; }
+        var dsh = shMany(dq) ? (shMine(dq) ? t('shp_del_own', { n: shPeople(dq).filter(function (x) { return !x.me; }).map(function (x) { return shFirst(x.name); }).join(', ') || shOf(dq).n - 1 }) : t('shp_del_mem', { o: shFirst(shOf(dq).own) || t('shp_someone') })) : '';
+        if (!askOk(el, t('pv_del_q', { p: placeLabel(dq), n: dn }) + '\n\n' + (dsh || t('pv_del_q2')), { yes: t('pv_del_yes', { p: placeLabel(dq) }) })) return true;
+        plDel(dq.id); return true; }
       case 'to-water': e.preventDefault(); meterSet((wmeters()[0] || {}).id || ''); return true;   // 164-а: вода — у налаштуваннях лічильників квартири
       case 'to-nometer': e.preventDefault(); meterSet('', 'nometer-w'); return true;
       case 'vk-send': case 'vk-open': {
@@ -17545,7 +17633,7 @@ details.tips-box.nm-box[open] > summary { border-bottom: 1px solid var(--c-line)
       body: (NOTE_NEWER && newer ? '<p class="small muted mb-newer">' + esc(t(newer.own ? 'mb_newer_own' : 'mb_newer_heat', { d: fmtDate(newer.htm.date, true), s: t('status_' + newer.status).toLowerCase() })) + '</p>' : '') +
         (hcur ? '' : '<p class="small muted">' + esc(t('h_last_none_sub')) + '</p><p><a class="btn sec" href="#baseline" data-key="home-add-base">' + esc(t('h_add_base')) + '</a></p>'),
       meta: [verWarn(S.meter && S.meter.verifiedUntil)].filter(Boolean),
-      set: myPick('heat') + cbMeterRow('heat') + (myProv('heat') ? '' : monoLink('heat-set')) + heatMeterFields(m) + htmFormBox(htmAsk()) + priceBlock('heat') + gapSetLink('heat') , setTitle: t('mb_set_read') });
+      set: setPay('heat', '<div class="grid2">' + hmAccField() + '</div>') + setSec('meter', t('ss_meter'), heatMeterFields(m, true) + htmFormBox(htmAsk())) + setSec('price', t('ss_price'), priceBlock('heat')) + gapSetLink('heat') , setTitle: t('mb_set_read') });
     var act = '', right = '';
     var n = steps().length;
     if (S.draft && (Object.keys(S.draft.values || {}).length || S.draft.step > 0)) {
@@ -19467,7 +19555,7 @@ details.tips-box.nm-box[open] > summary { border-bottom: 1px solid var(--c-line)
       '<div class="field af-city"><label for="' + pfx + '-city">' + esc(t('af_city')) + '</label><div class="ctl"><input id="' + pfx + '-city" data-acity="' + pfx + '" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="' + pfx + '-cl" aria-describedby="' + pfx + '-where" autocomplete="off" autocapitalize="words" spellcheck="false" maxlength="60" value="' + esc(val) + '" placeholder="' + esc(t('af_city_ph')) + '"></div>' +
       '<ul class="af-list" id="' + pfx + '-cl" role="listbox" aria-label="' + esc(t('af_list')) + '" hidden></ul>' +
       '<p class="small af-where' + (c ? ' ok' : '') + '" id="' + pfx + '-where" aria-live="polite">' + (c ? ico('check', 16) + '<span>' + esc(afWhere(c)) + '</span>' : esc(val ? t('af_pick') : '')) + '</p>' + (o.hint ? '<p class="small muted af-hint">' + esc(o.hint) + '</p>' : '') + '</div>' +
-      '<div class="field"><label for="' + pfx + '-street">' + esc(t('af_street')) + '</label><div class="ctl"><input id="' + pfx + '-street" data-astreet="' + pfx + '" maxlength="100" autocomplete="street-address" value="' + esc(o.street || '') + '" placeholder="' + esc(t('af_street_ph')) + '"></div></div></div>';
+      '<div class="field"><label for="' + pfx + '-street">' + esc(t('af_street')) + (o.noOpt ? '' : ' <span class="muted small">(' + esc(t('b_opt')) + ')</span>') + '</label><div class="ctl"><input id="' + pfx + '-street" data-astreet="' + pfx + '" maxlength="100" autocomplete="street-address" value="' + esc(o.street || '') + '"></div></div></div>';   // 189-я (власник: «заглушка путается с введённым — пусть поле будет пустым»)
   }
   /** Поля квартири p (екран квартири, «Назва й адреса» на головній). */
   function addrFieldsFor(pfx, p, live) {
@@ -20175,28 +20263,44 @@ details.tips-box.nm-box[open] > summary { border-bottom: 1px solid var(--c-line)
       if (here) { var n = myNum(so); if (n) x.num = n; else delete x.num; } else delete x.num;
       delete x.note; x.own = 1; if (!x.how) x.how = 'iban'; if (!x.due) x.due = 'none';
     });
-    if (!o) return;
+    if (!o) return; delete MY_CHG[pk];
     // номер у постачальника (гараж 141) у кожного місця свій — підсвітити порожнє поле «Ваш номер», без клавіатури
     var ask = !here && !!myNum(so);
     toast(t(ask ? 'my_use_num' : 'my_on_t', { o: o.name })); render(true); myReveal(pk, ask ? 'my-' + pk + '-num' : '');
   }
   /** «Кому платите» — перший рядок «Налаштувань показань» кожного лічильника (і «Налаштувань вивозу»): з довідника, свої з «Моїх» чи новий свій. */
-  function myPick(k) {
+  // 189-а (власник 25.11, скрин: «форма стала сложная и перегруженная, непонятно, какие акценты, сложно читать и разбираться, что куда вводить»):
+  // замість стовпчика з 4–6 однакових карток-перемикачів і пошуку посеред них — ОДИН рядок «хто зараз» (значок, назва, звідки) з кнопкою «Змінити».
+  // «Змінити» розкриває вибір тут же: «як за адресою», пошук у довіднику, «Ваші постачальники», «+ Інший постачальник»; обрали — вибір згортається.
+  // Поточного варіанта у виборі немає (він у рядку вгорі). Свій — під рядком лише поля його реквізитів, без «картки в картці».
+  var MY_CHG = {};
+  function myPick(k, o2) {
+    o2 = o2 || {};
     var pk = myK(k), p = place() || {}, o = (p.prov || {})[pk] || (pk === 'hot' && (p.prov || {}).water) || {}, own = !!o.own, dir = myDirOrg(pk), a = String(p.address || '').trim(), mine = myMine(pk);
-    var opt = function (v, on, b, s, ic, key) {
-      return '<label class="my-opt' + (on ? ' on' : '') + '"><input type="radio" name="my-' + pk + '" value="' + esc(v) + '"' + (on ? ' checked' : '') + ' data-my-pick="' + pk + '" data-key="' + (key || 'my-' + pk + '-' + v) + '">' +
-        '<span class="my-o-ic">' + ico(ic, 20) + '</span><span class="my-o-t"><b>' + esc(b) + '</b><span class="small muted">' + esc(s) + '</span></span><span class="my-o-dot" aria-hidden="true"></span></label>'; };
-    var mo = mine.map(function (m, i) {
-      var s = m.wi >= 0 && m.p === place() && m.same ? t('my_mine_was') : t('my_mine_s', { p: placeLabel(m.p), k: myKindLc(m.k) });
-      return opt(m.p.id + '|' + m.k + '|' + m.wi, false, m.o.name, s, 'wallet', 'my-' + pk + '-m' + i);
-    }).join('');
-    var sel = !own && o.sel && o.sel.o ? o.sel : null;
-    return '<fieldset class="my-pick" id="my-' + pk + '" data-key="my-pick-' + pk + '"><legend class="lbl">' + esc(t('my_t')) + '</legend><div class="my-opts-w"><div class="my-opts">' +
-      opt('0', !own, sel ? sel.o : dir || t('my_dir'), sel ? t('pc_sel_s', { w: pcatWhere(sel) }) : t(dir ? (a ? 'my_dir_s' : 'my_dir_s0') : 'my_dir_none'), 'pin') +
-      (sel ? '<p class="small pcat-off"><button type="button" class="linkbtn" data-pcat-off="' + pk + '" data-key="pcat-off-' + pk + '">' + esc(t(a ? 'pc_off' : 'pc_off0')) + '</button></p>' : '') +
-      pcatBox(pk) + mo +
-      opt('1', own, own && o.name ? o.name : t(mine.length && !own ? 'my_own_new' : 'my_own'), t(own ? 'my_own_on' : mine.length ? 'my_own_new_s' : 'my_own_s'), own || !mine.length ? 'wallet' : 'plus') + '</div></div>' +
-      (own ? myForm(pk, o) : '') + '</fieldset>';
+    var sel = !own && o.sel && o.sel.o ? o.sel : null, open = !!MY_CHG[pk];
+    var cur = own ? { n: o.name || t('my_own'), s: t(o.name ? 'my_cur_own' : 'my_cur_own0'), ic: 'wallet' }
+      : sel ? { n: sel.o, s: t('pc_sel_s', { w: pcatWhere(sel) }), ic: 'pin' }
+      : { n: dir || t('my_dir'), s: t(dir ? (a ? 'my_dir_s' : 'my_dir_s0') : 'my_dir_none'), ic: 'pin' };
+    var opt = function (v, b, sub, ic, key) {
+      return '<label class="my-opt"><input type="radio" name="my-' + pk + '" value="' + esc(v) + '" data-my-pick="' + pk + '" data-key="' + (key || 'my-' + pk + '-' + v) + '">' +
+        '<span class="my-o-ic">' + ico(ic, 18) + '</span><span class="my-o-t"><b>' + esc(b) + '</b>' + (sub ? '<span class="small muted">' + esc(sub) + '</span>' : '') + '</span>' + ico('chev', 18, 'my-o-chev') + '</label>'; };
+    var h = '<fieldset class="my-pick' + (own ? ' own' : '') + '" id="my-' + pk + '" data-key="my-pick-' + pk + '"><legend class="lbl' + (o2.sec ? ' sr' : '') + '">' + esc(t('my_t')) + '</legend>' +
+      '<div class="my-cur" data-key="my-cur-' + pk + '"><span class="my-o-ic">' + ico(cur.ic, 18) + '</span><span class="my-o-t"><b data-key="my-cur-n-' + pk + '">' + esc(cur.n) + '</b><span class="small muted">' + esc(cur.s) + '</span></span>' +
+      '<button type="button" class="btn sec sm my-chg-b" data-act="my-chg" data-pk="' + pk + '" aria-expanded="' + open + '" aria-controls="my-chg-' + pk + '" data-key="my-chg-' + pk + '">' + esc(t(open ? 'my_chg_x' : 'my_chg')) + '</button></div>';
+    if (open) {
+      var mo = mine.map(function (m, i) {
+        var ms = m.wi >= 0 && m.p === place() && m.same ? t('my_mine_was') : t('my_mine_s', { p: placeLabel(m.p), k: myKindLc(m.k) });
+        return opt(m.p.id + '|' + m.k + '|' + m.wi, m.o.name, ms, 'wallet', 'my-' + pk + '-m' + i);
+      }).join('');
+      h += '<div class="my-chg" id="my-chg-' + pk + '" data-key="my-chg-box-' + pk + '"><div class="my-opts">' +
+        (own ? opt('0', sel ? sel.o : dir || t('my_dir'), sel ? t('pc_sel_s', { w: pcatWhere(sel) }) : t(dir ? (a ? 'my_dir_s' : 'my_dir_s0') : 'my_dir_none'), 'pin') : '') +
+        (sel ? '<button type="button" class="my-opt my-opt-b" data-pcat-off="' + pk + '" data-key="pcat-off-' + pk + '"><span class="my-o-ic">' + ico('pin', 18) + '</span><span class="my-o-t"><b>' + esc(t(a ? 'pc_off' : 'pc_off0')) + '</b>' +
+          (dir ? '<span class="small muted">' + esc(dir) + '</span>' : '') + '</span>' + ico('chev', 18, 'my-o-chev') + '</button>' : '') + '</div>' +
+        pcatBox(pk) +
+        (mo ? '<p class="my-chg-h">' + esc(t('my_mine_h')) + '</p><div class="my-opts">' + mo + '</div>' : '') +
+        (own ? '' : '<div class="my-opts">' + opt('1', t(mine.length ? 'my_own_new' : 'my_own'), t(mine.length ? 'my_own_new_s' : 'my_own_s'), 'plus') + '</div>') + '</div>';
+    }
+    return h + (own ? myForm(pk, o) : '') + '</fieldset>';
   }
   // ---- 147-а (власник 14.11, 12:33): «в настройках — выпадающий список с полем поиска: начать писать или скроллить по названию поставщика
   // или города, автопоиск и сужение результатов с уточнением запроса». Каталог виду — GET /api/providers/catalog?k= (усі області довідника),
@@ -20260,6 +20364,7 @@ details.tips-box.nm-box[open] > summary { border-bottom: 1px solid var(--c-line)
   function pcatPick(pk, i) {
     var it = ((PCAT[pk] || {}).items || [])[i]; if (!it) return;
     var o = mySet(pk, function (x) { x.own = 0; x.sel = { o: it.o, g: it.g || '', n: it.n, h: it.h, r: (it.r || [])[0] || '' }; if (it.k) x.sel.k = it.k; }); if (!o) return;
+    delete MY_CHG[pk];
     toast(t('pc_sel_t', { o: it.o })); render(true);
   }
   document.addEventListener('focusin', function (e) { var el = e.target; if (el && el.getAttribute && el.getAttribute('data-pcat')) pcatShow(el); });
@@ -20277,13 +20382,15 @@ details.tips-box.nm-box[open] > summary { border-bottom: 1px solid var(--c-line)
   document.addEventListener('click', function (e) {
     var t0 = e.target && e.target.closest ? e.target : null; if (!t0) return;
     var li = t0.closest('[data-pcat-pick]'); if (li) { e.preventDefault(); pcatPick(li.getAttribute('data-pcat-pick'), +li.getAttribute('data-i')); return; }
-    var off = t0.closest('[data-pcat-off]'); if (off) { var pk = off.getAttribute('data-pcat-off'); mySet(pk, function (x) { delete x.sel; }); toast(t('pc_off_t')); render(true); return; }
+    var off = t0.closest('[data-pcat-off]'); if (off) { var pk = off.getAttribute('data-pcat-off'); mySet(pk, function (x) { delete x.sel; }); delete MY_CHG[pk]; toast(t('pc_off_t')); render(true); return; }
     Array.prototype.forEach.call(document.querySelectorAll('.pcat-l:not([hidden])'), function (ul) { if (!ul.parentNode.contains(t0)) pcatHide(ul.id.replace(/^pcat-|-l$/g, '')); });
   });
+  // 189-а: поля свого постачальника — без окремої «картки в картці»: під рядком «хто зараз» тонка лінія і поля по черзі — що це, як платите (реквізити),
+  // коли передавати; необов'язкові позначені «(необов'язково)», під реквізитами — одним рядком, навіщо вони (QR і «Копіювати» в «Оплаті»)
   function myForm(pk, o) {
-    var id = function (f) { return 'my-' + pk + '-' + f; }, how = o.how || 'iban', due = o.due || 'none';
-    var inp = function (f, lbl, val, attrs, after) {
-      return '<div class="field"><label for="' + id(f) + '">' + esc(lbl) + '</label><div class="ctl"><input id="' + id(f) + '" data-my="' + f + '" data-my-pk="' + pk + '" autocomplete="off" value="' + esc(val === undefined || val === null ? '' : val) + '"' + (attrs || '') + '>' +
+    var id = function (f) { return 'my-' + pk + '-' + f; }, how = o.how || 'iban', due = o.due || 'none', opt = ' <span class="muted small">(' + esc(t('b_opt')) + ')</span>';
+    var inp = function (f, lbl, val, attrs, after, isOpt) {
+      return '<div class="field"><label for="' + id(f) + '">' + esc(lbl) + (isOpt ? opt : '') + '</label><div class="ctl"><input id="' + id(f) + '" data-my="' + f + '" data-my-pk="' + pk + '" autocomplete="off" value="' + esc(val === undefined || val === null ? '' : val) + '"' + (attrs || '') + '>' +
         (/^(recip|code)$/.test(f) ? ctlCopy(id(f)) : '') + '</div>' + (after || '') + '</div>'; };
     var chips = function (f, cur, list) {
       return '<div class="my-seg" role="radiogroup">' + list.map(function (x) { var on = cur === x[0];
@@ -20294,9 +20401,10 @@ details.tips-box.nm-box[open] > summary { border-bottom: 1px solid var(--c-line)
     if (how === 'iban') {
       var bad = myIbanBad(o.iban);
       // IBAN — полем у два рядки на вузькому екрані (у рядок 33 знаки не влазять, а обрізаний номер не звірити)
-      h += '<div class="field"><label for="' + id('iban') + '">IBAN</label><div class="ctl"><textarea id="' + id('iban') + '" class="my-iban" rows="2" maxlength="42" autocapitalize="characters" autocomplete="off" spellcheck="false" data-my="iban" data-my-pk="' + pk + '" placeholder="UA00 0000 0000 0000 0000 0000 0000 0">' + esc(myIbanFmt(o.iban)) + '</textarea></div>' +
+      h += '<div class="field"><label for="' + id('iban') + '">IBAN</label><div class="ctl"><textarea id="' + id('iban') + '" class="my-iban" rows="2" maxlength="42" autocapitalize="characters" autocomplete="off" spellcheck="false" data-my="iban" data-my-pk="' + pk + '" placeholder="UA…">' + esc(myIbanFmt(o.iban)) + '</textarea></div>' +
         (bad ? '<div class="help warn" data-key="my-iban-warn">' + esc(bad) + '</div>' : '') + '</div>' +
-        '<div class="grid2">' + inp('recip', t('my_recip'), o.recip, ' maxlength="120" placeholder="' + esc(o.name || '') + '"') + inp('code', t('my_code'), o.code, ' class="num" inputmode="numeric" maxlength="12"') + '</div>';
+        '<div class="grid2">' + inp('recip', t('my_recip'), o.recip, ' maxlength="120" placeholder="' + esc(o.name || '') + '"', '', true) + inp('code', t('my_code'), o.code, ' class="num" inputmode="numeric" maxlength="12"') + '</div>' +
+        '<p class="small muted my-why" data-key="my-why-' + pk + '">' + esc(t('my_iban_why')) + '</p>';
     } else if (how === 'cash') h += inp('cash', t('my_cash'), o.cash, ' maxlength="160" placeholder="' + esc(t('my_cash_ph')) + '"');
     else h += '<div class="field"><label for="' + id('other') + '">' + esc(t('my_other')) + '</label><div class="ctl"><textarea id="' + id('other') + '" rows="2" maxlength="300" data-my="other" data-my-pk="' + pk + '" placeholder="' + esc(t('my_other_ph')) + '">' + esc(o.other || '') + '</textarea></div></div>';
     // 151-а: призначення платежу й повідомлення для розрахунку вручну складаємо самі з показань — у «Оплаті» (скопіювати, надіслати); тут їх не редагують
@@ -20304,9 +20412,9 @@ details.tips-box.nm-box[open] > summary { border-bottom: 1px solid var(--c-line)
       (due === 'till' ? '<div class="my-days">' + day('till', t('my_till_l'), o.till) + '</div>'
         : due === 'win' ? '<div class="my-days">' + day('wa', t('my_wa'), o.win && o.win[0]) + day('wb', t('my_wb'), o.win && o.win[1]) + '</div>'
         : '<p class="small muted my-due-s">' + esc(t('my_due_none_s')) + '</p>') + '</div>';
-    if (pk === 'elec' || pk === 'gas') h += '<div class="grid2">' + inp('abon', t('my_abon'), R.num(o.abon) > 0 ? money(R.num(o.abon)) : '', ' class="num" inputmode="decimal" maxlength="10" placeholder="0"') + '</div>';
     // 145-а: «Примітка» з підказкою «№ гаража 47» стала «Ваш номер у них» — він іде в призначення ({номер}) і в «Оплату» з «Копіювати»
-    h += '<div class="grid2">' + inp('num', t('my_num'), myNum(o), ' maxlength="40" placeholder="' + esc(t('my_num_ph')) + '"') + inp('phone', t('my_phone'), o.phone, ' inputmode="tel" maxlength="30"') + '</div>';
+    h += '<div class="grid2">' + inp('num', t('my_num'), myNum(o), ' maxlength="40" placeholder="' + esc(t('my_num_ph')) + '"', '', true) + inp('phone', t('my_phone'), o.phone, ' inputmode="tel" maxlength="30"', '', true) + '</div>';
+    if (pk === 'elec' || pk === 'gas') h += '<div class="grid2">' + inp('abon', t('my_abon'), R.num(o.abon) > 0 ? money(R.num(o.abon)) : '', ' class="num" inputmode="decimal" maxlength="10" placeholder="0"', '', true) + '</div>';
     return h + '</div>';
   }
   // ---- 150-а (план конкурентів п. 7): платіжний QR НБУ з «Оплати» свого постачальника ----
@@ -20495,7 +20603,7 @@ details.tips-box.nm-box[open] > summary { border-bottom: 1px solid var(--c-line)
   /** Перемкнути «Кому платите». on — свій: якщо назви ще немає — фокус у «Назва». */
   function myToggle(pk, on) {
     var o = mySet(pk, function (x) { if (on) { x.own = 1; if (!x.how) x.how = 'iban'; if (!x.due) x.due = 'none'; } else x.own = 0; });
-    if (!o) return;
+    if (!o) return; delete MY_CHG[pk];
     if (on) { MY_NEW[pk] = true; toast(o.name ? t('my_on_t', { o: o.name }) : t('my_on_t0')); } else toast(t('my_off_t'));
     render(true); myReveal(pk);
   }
@@ -20848,7 +20956,8 @@ details.tips-box.nm-box[open] > summary { border-bottom: 1px solid var(--c-line)
     if (many && window.TEPLO_API) h += '<section class="panel" data-key="pv-remind"><h2>' + esc(t('pv_remind')) + '</h2>' +
       '<label class="check-row"><input type="checkbox" id="pv-remind"' + (p.remindOff ? '' : ' checked') + (S.remind && S.remind.off ? ' disabled' : '') + '><span>' + esc(t('pv_remind_l')) + '</span></label>' +
       '<p class="small muted" style="margin-top:8px">' + esc(t(S.remind && S.remind.off ? 'pv_remind_all_off' : 'pv_remind_h')) + '</p></section>';
-    if (many) h += '<section class="panel" data-key="pv-danger"><button class="btn danger" data-act="pl-del-ask" data-id="' + esc(p.id) + '" data-key="pv-del">' + esc(t('pv_del')) + '</button><div id="pl-del-confirm"></div></section>';
+    if (many) h += '<section class="panel danger-zone pv-danger" data-key="pv-danger"><button class="btn danger" data-act="pl-del-ask" data-id="' + esc(p.id) + '" data-key="pv-del">' + ico('trash', 20) + '<span>' + esc(t('pv_del')) + '</span></button>' +
+      '<p class="small muted">' + esc(t('pv_del_s')) + '</p></section>';
     return { screen: 'S42', route: fromPrefs ? 'prefs' : 'place', html: h };   // з «Налаштувань» — підсвічена їхня вкладка
   }
 
@@ -20887,23 +20996,30 @@ details.tips-box.nm-box[open] > summary { border-bottom: 1px solid var(--c-line)
     if (k === 'waste') return '<span class="wplate kp-w"><span class="wp-v"><b class="wp-sum">70,41</b><span class="wp-u">₴</span></span></span>';   // без табло — сума на місяць
     return wdrum(k === 'gas' ? '1225.4' : k === 'hot' ? '175' : '437', k);
   }
-  /** Строки «какие счётчики есть»: образец табло, название, кому передавать, +/−. «+» тёмный, пока счётчика нет. */
+  /** Строки «какие счётчики есть»: образец табло, название, справа — один элемент выбора. */
+  // 189-я (власник 25.11, скрин латуні на десктопі: «много информации, сложно разобраться, что нажимать, пугает пестрота — просто, понятно, не перегружено,
+  // но функционально и узнаваемо»): табло-образец лишаємо (впізнати свій лічильник), кольоровий значок біля назви й довгі підписи «кому передавати» — ні;
+  // підпис лише там, де без нього помиляються (тепло — лише свій теплолічильник у квартирі; вивіз — без лічильника). Праворуч — ОДИН елемент:
+  // не обрано — тихий круглий «+» (не шість акцентних кнопок); обрано — картка з рамкою акценту й лічильником «− 1 +» (кількох не буває — галочка, дотик знімає).
+  // «−» і «немає» на нулі — лише для читалки екрана (aria), не на екрані. Десктоп — дві колонки (вода поруч), телефон — одна.
   function awKinds() {
-    return '<div class="aw-kinds" data-key="aw-kinds">' + KIND_ORDER.map(function (k) {
-      var K = KINDS[k], c = PW.n[k] || 0, title = t(K.t), prev = '<span class="kprev" aria-hidden="true">' + kindPreview(k) + '</span>';
-      if (K.soon) return '<div class="aw-kind kp am-soon" aria-disabled="true" data-key="aw-' + k + '">' + prev + '<span class="aw-kt"><b>' + ico(K.icon, 18, K.cls) + '<span>' + esc(title) + '</span></b><span class="small muted">' + esc(t(K.s)) + '</span></span><span class="pill">' + esc(t('kd_soon')) + '</span></div>';
-      var max = k === 'heat' ? 1 : K.max;
+    return '<div class="aw-kinds" data-key="aw-kinds" role="group" aria-label="' + esc(t('aw_kinds_l')) + '">' + KIND_ORDER.map(function (k) {
+      var K = KINDS[k], c = PW.n[k] || 0, title = t(K.t), prev = '<span class="kprev" aria-hidden="true">' + kindPreview(k) + '</span>', sub = t('aw_s_' + k);
+      var kt = '<span class="aw-kt"><b>' + esc(title) + '</b>' + (sub && sub !== 'aw_s_' + k ? '<span class="small muted">' + esc(sub) + '</span>' : '') + '</span>';
+      if (K.soon) return '<div class="aw-kind kp am-soon" aria-disabled="true" data-key="aw-' + k + '">' + prev + kt + '<span class="pill">' + esc(t('kd_soon')) + '</span></div>';
+      var max = k === 'heat' ? 1 : K.max, one = max === 1;
+      var dec = '<button type="button" class="step-b aw-dec" data-act="aw-n" data-kind="' + k + '" data-d="-1" data-key="aw-' + k + '-dec" aria-label="' + esc(t(one ? 'aw_off' : 'aw_dec', { k: title })) + '"' + (c ? '' : ' disabled') + '>' + (one ? ico('check', 20) : '−') + '</button>';
+      var inc = '<button type="button" class="step-b aw-inc" data-act="aw-n" data-kind="' + k + '" data-d="1" data-key="aw-' + k + '-inc" aria-label="' + esc(t(c ? 'aw_inc' : 'aw_add', { k: title })) + '"' + (c >= max ? ' disabled title="' + esc(t('aw_max')) + '"' : '') + '>' + ico('plus', 20) + '</button>';
+      var out = '<output class="step-n num" aria-live="polite" data-key="aw-' + k + '-n">' + (c ? c : '<span class="sr">' + esc(t('aw_n0')) + '</span>') + '</output>';
       // 155-а: картку можна просто торкнутися — 0 → 1 (журнал: 12 із 102 людей на #start тиснули саму картку, 16 — «Почати» без жодного «+»)
-      return '<div class="aw-kind kp' + (c ? ' on' : '') + '" data-act="aw-pick" data-kind="' + k + '" data-key="aw-' + k + '">' + prev + '<span class="aw-kt"><b>' + ico(K.icon, 18, K.cls) + '<span>' + esc(title) + '</span></b><span class="small muted">' + esc(t(K.s)) + '</span></span>' +
-        '<span class="stepper" role="group" aria-label="' + esc(title) + '"><button type="button" class="btn sec step-b" data-act="aw-n" data-kind="' + k + '" data-d="-1" data-key="aw-' + k + '-dec" aria-label="' + esc(t('aw_dec', { k: title })) + '"' + (c ? '' : ' disabled') + '>−</button>' +
-        '<output class="step-n num" aria-live="polite" data-key="aw-' + k + '-n">' + (c ? c : '<span class="small muted">' + esc(t('aw_n0')) + '</span>') + '</output>' +
-        '<button type="button" class="btn ' + (c ? 'sec ' : '') + 'step-b" data-act="aw-n" data-kind="' + k + '" data-d="1" data-key="aw-' + k + '-inc" aria-label="' + esc(t('aw_inc', { k: title })) + '"' + (c >= max ? ' disabled title="' + esc(t('aw_max')) + '"' : '') + '>+</button></span></div>';
+      return '<div class="aw-kind kp' + (c ? ' on' : '') + (one ? ' one' : '') + '" data-act="aw-pick" data-kind="' + k + '" data-key="aw-' + k + '">' + prev + kt +
+        '<span class="stepper aw-ctl" role="group" aria-label="' + esc(title) + '">' + dec + out + inc + '</span></div>';
     }).join('') + '</div>';
   }
   /** Адреса в мастері: пункт — як у першої квартири, доки людина не змінить. */
   function awAddr() {
     var d = null; if (PW.city === undefined) { d = cityDefault(); PW.city = d ? d.city : null; }
-    return addrFields('aw', { city: PW.city, typed: PW.cityTyped, street: PW.street, hint: d ? t('af_default', { p: placeLabel(d.from) }) : '' });
+    return addrFields('aw', { city: PW.city, typed: PW.cityTyped, street: PW.street, noOpt: true, hint: d ? t('af_default', { p: placeLabel(d.from) }) : '' });   // «(необов’язково)» уже в заголовку «Адреса»
   }
   V['add-place'] = function () {
     var n = pwSteps(); if (PW.step > n - 1) PW.step = n - 1;
@@ -20921,13 +21037,12 @@ details.tips-box.nm-box[open] > summary { border-bottom: 1px solid var(--c-line)
     } else if (kind === 'kinds') {
       h = '<h1>' + esc(t(first ? 'fs_t1' : 'aw_t2')) + '</h1><p class="muted">' + esc(t(first ? 'fs_l1' : 'aw_l2')) + '</p>' + awKinds() +
         (PW.err ? '<div class="banner warn" role="alert" data-key="aw-err">' + ico('alert', 22) + '<div><p><b>' + esc(PW.err) + '</b></p></div></div>' : '') +
-        (first ? '<p class="small muted fs-more" data-key="fs-more">' + ico('home', 18) + '<span>' + esc(t('fs_more')) + '</span></p>' : '');
+        (first ? '<p class="small muted fs-more" data-key="fs-more">' + esc(t('fs_more')) + '</p>' : '');
     }
     if (last && !first) h += pwSummary();
     // 160-а (журнал 15.11, MH81 з Threads: обрав світло й обидві води — і пішов; «Готово» на 392×740 — двома екранами нижче, під газом, теплом і вивозом):
     // на кроці «Які лічильники» ряд кнопок прилипає до низу — головну кнопку видно завжди (власник 13.11: «кнопки управління завжди видно»)
     h += '<div class="wiz-actions' + (kind === 'kinds' ? ' wiz-stick' : '') + '" data-key="aw-actions">' + prevBtn + nextBtn + '</div>';
-    if (last && first) h += '<p class="small muted fs-after" data-key="fs-after">' + esc(t('fs_after')) + '</p>';
     return { screen: first ? 'S02' : 'S44', route: first ? 'start' : 'add-place', bare: true, closeTo: back, html: '<p class="small muted aw-title">' + esc(t(first ? 'fs_title' : 'aw_title')) + '</p>' + head + h };
   };
   /** Первый вход: какие счётчики есть в квартире. Уже настроен — сюда не ведём (render отправит на главную). */
@@ -22946,7 +23061,7 @@ details.tips-box.nm-box[open] > summary { border-bottom: 1px solid var(--c-line)
           var qk = PQ.list[PQ.i]; qMeterAdd(qk, null); if (SK[qk]) EA = { kind: qk, back: '', zones: 1, vals: {}, f: {} }; PQ.i++; S.onboarded = true; save();
         }
         pqNext(); break; }
-      case 'pl-del': { var dp = place(el.getAttribute('data-id')); if (dp && places().length > 1) { var dl = placeLabel(dp); dp.deleted = true; dp.updatedAt = Date.now(); if (dp.id === S.placeId) { S.placeId = null; S.meter = null; S.baseline = null; S.draft = null; ensurePlaces(); } save(); toast(t('pv_deleted', { p: dl })); go(places().length > 1 ? 'places' : 'home'); } break; }
+      case 'pl-del': plDel(el.getAttribute('data-id')); break;
       case 'focus': S.focusId = el.getAttribute('data-id'); save(); break;
       case 'rec-del-ask': { var bx = document.getElementById('rec-del-confirm'); if (bx) bx.innerHTML = '<div class="banner warn" style="margin-top:16px">' + ico('alert', 22) + '<div><p>' + esc(t('rec_del_q')) + '</p><div class="row-actions" style="margin-top:8px"><button class="btn danger solid" data-act="rec-del-yes">' + esc(t('rec_del')) + '</button></div></div></div>'; break; }
       case 'rec-del-yes': { var m2 = routeName().match(/^rec-([\w-]+)$/), rx = m2 && RD().concat(RDB()).filter(function (x) { return x.id === m2[1]; })[0];

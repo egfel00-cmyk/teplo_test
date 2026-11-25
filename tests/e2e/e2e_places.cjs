@@ -119,9 +119,15 @@ let pass = 0, fail = 0; const ok = (n, c, i) => { console.log((c ? '  OK  ' : ' 
   s = await st(); await go('home'); ok('повернули опалення из выбора', !s.places.find(x => x.id === 'main').meter.removed && !!(await p.$(await inCur('[data-key=card-heat]'))));
 
   // удалить вторую квартиру — с её названием в вопросе
-  await go('place-' + p2.id); await p.click('[data-key=pv-del]'); await p.waitForTimeout(150);
-  ok('вопрос с названием квартиры', /Батьків/.test(await p.textContent('#pl-del-confirm')));
-  await p.click('[data-key=pv-del-yes]'); await p.waitForTimeout(350);
+  await go('place-' + p2.id);
+  // 189-я: «Удалить квартиру» — на всю ширину, переспрашиваем своим окном (askOk); askauto жмёт сразу — текст окна ловим из добавленных узлов
+  ok('189: «Видалити квартиру» на всю ширину картки', await p.$eval('[data-key=pv-del]', b => { const c = b.parentElement, cs = getComputedStyle(c);
+    return Math.abs(b.getBoundingClientRect().width - (c.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight))) < 2; }).catch(() => false));
+  await p.evaluate(() => { window.__askNo = true; window.__askT = ''; new MutationObserver(ms => ms.forEach(m => m.addedNodes.forEach(n => { if (n.classList && n.classList.contains('ask-ov')) window.__askT = n.textContent; }))).observe(document.body, { childList: true }); });
+  await p.click('[data-key=pv-del]'); await p.waitForTimeout(300);
+  s = await st();
+  ok('189: сначала окно «Видалити квартиру «Батьків…»? … Так, видалити»; «Скасувати» — квартира на месте', /Батьків/.test(await p.evaluate(() => window.__askT)) && /Так, видалити/.test(await p.evaluate(() => window.__askT)) && !s.places.find(x => x.id === p2.id).deleted, await p.evaluate(() => window.__askT));
+  await p.evaluate(() => { window.__askNo = false; }); await p.click('[data-key=pv-del]'); await p.waitForTimeout(400);
   s = await st();
   ok('удалена; осталась одна — шапки нет', s.places.find(x => x.id === p2.id).deleted && s.placeId === 'main' && !(await p.$('[data-key=place-bar]')));
   ok('после удаления текущая — первая с её теплом', !!s.meter && s.meter.modelId === 'sharky774');

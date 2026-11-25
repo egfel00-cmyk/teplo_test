@@ -39,8 +39,9 @@ const sql = (q, ...a) => execFileSync('python3', ['-c', 'import sqlite3,sys,json
   await p.goto(U + '?go=elec&place=pob'); await wait(2500);   // як кнопка з нагадування: сторінка світла «Победи»
 
   // 3. «Кому платите» → «Інший постачальник» (як власник: на сторінці світла)
-  if (!(await p.$('[data-key="my-elec-1"]'))) console.log('DBG', await p.evaluate(() => location.hash + ' | ' + (document.querySelector('main') || document.body).innerText.slice(0, 600).replace(/\s+/g, ' ')));
+  if (!(await p.$('[data-key="my-chg-elec"]'))) console.log('DBG', await p.evaluate(() => location.hash + ' | ' + (document.querySelector('main') || document.body).innerText.slice(0, 600).replace(/\s+/g, ' ')));
   await p.evaluate(() => { const f = document.getElementById('my-elec'); const dd = f && f.closest('details'); if (dd) dd.open = true; });
+  await p.click('[data-key="my-chg-elec"]'); await wait(300);   // 189-я: вибір постачальника — за «Змінити»
   await p.click('[data-key="my-elec-1"]'); await wait(600);
   await p.fill('#my-elec-name', 'Жилстрой'); await p.press('#my-elec-name', 'Tab'); await wait(2500);   // Sync — через 1,2 с
   let s = await st();
@@ -51,7 +52,7 @@ const sql = (q, ...a) => execFileSync('python3', ['-c', 'import sqlite3,sys,json
   // 4. оновлення сторінки — свій лишається (і з localStorage, і без — вікно Telegram на Mac його губить)
   await p.reload(); await wait(3000); s = await st();
   ok('після оновлення: свій «Жилстрой» на місці', ((pob(s).prov || {}).elec || {}).own === 1 && pob(s).prov.elec.name === 'Жилстрой', pob(s).prov);
-  ok('…і в «Кому платите» обрано свого', await p.isChecked('[data-key="my-elec-1"]').catch(() => false));
+  ok('…і в «Кому платите» обрано свого', !!(await p.$('#my-elec.own')));
   await p.evaluate(() => localStorage.removeItem('teplo.v1')); await p.goto('about:blank'); await p.goto(U + '#elec'); await wait(3000); s = await st();
   ok('без localStorage (лише сервер): свій «Жилстрой» на місці', ((pob(s).prov || {}).elec || {}).name === 'Жилстрой', pob(s).prov);
   ok('без помилок JS', !errs.length, errs);

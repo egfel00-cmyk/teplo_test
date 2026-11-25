@@ -45,7 +45,7 @@ const B = 'http://127.0.0.1:8013/';
   await p.click('[data-key="my-link-elec"] button'); await p.waitForTimeout(500);
   let s = await st(); const gar = () => s.places.find(x => x.id === 'gar');
   ok('увімкнули свого: prov.elec.own = 1 (як платите — на рахунок, без строку)', gar().prov && gar().prov.elec.own === 1 && gar().prov.elec.how === 'iban' && gar().prov.elec.due === 'none', gar().prov);
-  ok('налаштування розгорнуті на «Кому платите», «Свій постачальник» обрано', await p.$eval('#my-elec', f => !!f.closest('details[open]')) && await p.isChecked('[data-key="my-elec-1"]'));
+  ok('налаштування розгорнуті на «Кому платите», «Свій постачальник» обрано', await p.$eval('#my-elec', f => !!f.closest('details[open]')) && await has('#my-elec.own') && /Інший постачальник/.test(await txt('[data-key="my-cur-elec"]')));
   ok('фокус — у полі «Назва»', await p.evaluate(() => document.activeElement && document.activeElement.id === 'my-elec-name'));
   ok('«Куди передати» зник, замість нього — блок свого постачальника (ще без назви)', !(await has('[data-key="where-elec"]')) && !(await has('.wacc:not(.mypay)')) && await has('[data-key="mypay-elec"]'));
   await p.fill('#my-elec-name', 'ГК «Мотор»'); await p.press('#my-elec-name', 'Tab'); await p.waitForTimeout(400);
@@ -84,7 +84,8 @@ const B = 'http://127.0.0.1:8013/';
   await p.goto(B + '#elec'); await p.waitForTimeout(500);
   const sumOpen = await p.$eval('[data-key="emeter-eg"] details.mbox-set', d => d.open).catch(() => false);
   if (!sumOpen) { await p.click('[data-key="emeter-eg"] details.mbox-set > summary'); await p.waitForTimeout(400); }
-  await p.check('[data-key="my-elec-0"]'); await p.waitForTimeout(500);
+  await tap('[data-key="my-chg-elec"]'); await p.waitForTimeout(300);   // 189-я: вибір — за «Змінити»
+  await p.click('[data-key="my-elec-0"]'); await p.waitForTimeout(500);
   s = await st();
   ok('повернули довідник: own = 0, реквізити лишились', gar().prov.elec.own === 0 && gar().prov.elec.name === 'ГК «Мотор»' && await has('[data-key="where-elec"]'), gar().prov.elec);
 
@@ -184,26 +185,32 @@ const B = 'http://127.0.0.1:8013/';
   await load({ garage: 'own1', garage2: true, at2g: true }, 'elec');
   const openSet = async id => { const o = await p.$eval('[data-key="emeter-' + id + '"] details.mbox-set', d => d.open).catch(() => false); if (!o) { await tap('[data-key="emeter-' + id + '"] details.mbox-set > summary'); await p.waitForTimeout(400); } };
   await openSet('eg2');
+  // 189-я (власник 25.11: «перегружено»): нагорі — один рядок «хто зараз» і «Змінити»; варіанти — лише після «Змінити», поточного серед них немає
+  ok('189: рядок «хто зараз» — постачальник за адресою (Харківобленерго), варіантів не видно до «Змінити»', /Харківобленерго/.test(await txt('[data-key="my-cur-elec"]')) && !(await has('#my-elec .my-opt')), await txt('[data-key="my-cur-elec"]'));
+  await tap('[data-key="my-chg-elec"]'); await p.waitForTimeout(300);
   const opts7 = await p.$$eval('#my-elec .my-opt', ls => ls.map(l => l.innerText.replace(/\s+/g, ' ').trim()));
-  ok('«Кому платите»: довідник, «ГК Победа · Гараж · світло», «Ще один інший постачальник»', opts7.length === 3 && /ГК Победа Гараж · світло/.test(opts7[1]) && /Ще один інший постачальник/.test(opts7[2]), opts7);
+  ok('«Змінити»: «ГК Победа · Гараж · світло», «Ще один інший постачальник» (поточного — довідника — серед них немає)', opts7.length === 2 && /ГК Победа Гараж · світло/.test(opts7[0]) && /Ще один інший постачальник/.test(opts7[1]), opts7);
   await p.click('[data-key="my-elec-m0"]'); await p.waitForTimeout(600);
   ok('підказка: «Ваш номер тут свій — впишіть його», поле номера підсвічене', /Ваш номер тут свій/.test(await txt('#toast-host')) && await p.$eval('#my-elec-num', i => !!i.closest('.field.flash') && document.activeElement !== i).catch(() => false), await txt('#toast-host'));
   s = await st(); const g2 = () => s.places.find(x => x.id === 'gar2').prov.elec;
   ok('обрали: own = 1, назва, IBAN-спосіб, отримувач і тариф 4,32 з першого гаража', g2().own === 1 && g2().name === 'ГК Победа' && g2().how === 'iban' && g2().recip === 'ГК Победа' && g2().price === 4.32, g2());
   ok('номер гаража (141) не перенесено — у другого гаража свій', !g2().num && !g2().note, g2());
-  ok('тепер обрано «ГК Победа» (варіант не дублюється), форма з назвою', await p.isChecked('[data-key="my-elec-1"]') && (await p.inputValue('#my-elec-name')) === 'ГК Победа' && (await p.$$('#my-elec .my-opt')).length === 2);
+  ok('тепер обрано «ГК Победа»: рядок «хто зараз», вибір згорнувся, форма з назвою', await has('#my-elec.own') && /ГК Победа/.test(await txt('[data-key="my-cur-elec"]')) && !(await has('#my-elec .my-opt')) && (await p.inputValue('#my-elec-name')) === 'ГК Победа');
   ok('«Куди передати» зник — блок «ГК Победа»', !(await has('[data-key="where-elec"]')) && /ГК Победа/.test(await txt('[data-key="mypay-elec-sum"]')));
   ok('перший гараж не змінився (номер 141 там)', s.places.find(x => x.id === 'gar').prov.elec.note === '141');
   // своя квартира: новий свій (Житлобуд, готівка, номер 12) → обрали ГК Победа → Житлобуд лишився «був тут раніше» → повернули одним дотиком
   await load({ garage: 'own1', elec: 1 }, 'elec');
   await openSet('e1');
-  await p.check('[data-key="my-elec-1"]'); await p.waitForTimeout(600);
+  await tap('[data-key="my-chg-elec"]'); await p.waitForTimeout(300);
+  await p.click('[data-key="my-elec-1"]'); await p.waitForTimeout(600);
+  await tap('[data-key="my-chg-elec"]'); await p.waitForTimeout(300);
   ok('«Інший свій постачальник» → порожня форма, «ГК Победа» ще серед варіантів', (await p.inputValue('#my-elec-name')) === '' && /ГК Победа/.test(await txt('[data-key="my-elec-m0"]').catch(() => '') || (await p.$$eval('#my-elec .my-opt', ls => ls.map(l => l.innerText).join('|')))));
   await p.fill('#my-elec-name', 'Житлобуд'); await p.press('#my-elec-name', 'Tab'); await p.waitForTimeout(500);
   await p.check('[data-key="my-elec-how-cash"]'); await p.waitForTimeout(400);
   await p.fill('#my-elec-cash', 'бухгалтеру в офісі'); await p.fill('#my-elec-num', '12'); await p.press('#my-elec-num', 'Tab'); await p.waitForTimeout(500);
   const pm = () => s.places.find(x => x.id === 'main').prov;
   await p.click('#my-elec .my-opt:has-text("ГК Победа") input'); await p.waitForTimeout(600); s = await st();
+  await tap('[data-key="my-chg-elec"]'); await p.waitForTimeout(300);
   ok('замінили Житлобуд на ГК Победа — Житлобуд збережено в «Моїх» (was)', pm().elec.name === 'ГК Победа' && pm().elec.how === 'iban' && !pm().elec.cash && (pm().elec.was || [])[0] && pm().elec.was[0].name === 'Житлобуд' && pm().elec.was[0].cash === 'бухгалтеру в офісі', pm().elec);
   const wasOpt = await p.$$eval('#my-elec .my-opt', ls => ls.map(l => l.innerText.replace(/\s+/g, ' ').trim()).find(x => /Житлобуд/.test(x)) || '');
   ok('варіант «Житлобуд — був тут раніше»', /був тут раніше/.test(wasOpt), wasOpt);
@@ -213,6 +220,7 @@ const B = 'http://127.0.0.1:8013/';
   await p.goto(B + '#water-cold'); await p.waitForTimeout(600);
   const wo = await p.$eval('#my-water', f => !!f.closest('details[open]')).catch(() => null);
   if (wo === false) { await p.$eval('#my-water', f => f.closest('details').querySelector('summary').click()); await p.waitForTimeout(500); }
+  await tap('[data-key="my-chg-water"]'); await p.waitForTimeout(300);
   const wopt = await p.$$eval('#my-water .my-opt', ls => ls.map(l => l.innerText.replace(/\s+/g, ' ').trim()));
   ok('вода: «Житлобуд · Моя квартира · світло» і «ГК Победа · Гараж · світло»', wopt.some(x => /Житлобуд .*світло/.test(x)) && wopt.some(x => /ГК Победа Гараж · світло/.test(x)), wopt);
   await p.click('#my-water .my-opt:has-text("Житлобуд") input'); await p.waitForTimeout(600); s = await st();

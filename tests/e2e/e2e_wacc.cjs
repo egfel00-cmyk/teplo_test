@@ -71,6 +71,7 @@ const state = (o) => {
 
   // 7. «Кому платите» гарячої — свій постачальник; холодна лишається Водоканалом
   await go('water-hot');
+  await p.$eval('[data-key="my-chg-hot"]', e => e.click()); await p.waitForTimeout(300);   // 189-я: вибір — за «Змінити»
   await p.$eval('input[data-my-pick="hot"][value="1"]', e => { e.checked = true; e.dispatchEvent(new Event('change', { bubbles: true })); });
   await p.waitForTimeout(500);
   await setv('#my-hot-name', 'ТОВ «Гарячий дім»'); await p.waitForTimeout(600);
@@ -90,6 +91,7 @@ const state = (o) => {
   ok('7. «Оплачено» гарячої → sent.htm, sent.vk порожньо', r.sent && r.sent.htm && !r.sent.vk, r.sent);
   // 8. холодна — теж свій, інший; гаряча свого не змінює
   await go('water-cold');
+  await p.$eval('[data-key="my-chg-water"]', e => e.click()); await p.waitForTimeout(300);   // 189-я: вибір — за «Змінити»
   await p.$eval('input[data-my-pick="water"][value="1"]', e => { e.checked = true; e.dispatchEvent(new Event('change', { bubbles: true })); });
   await p.waitForTimeout(500);
   await setv('#my-water-name', 'ОСББ «Холодок»'); await p.waitForTimeout(600);

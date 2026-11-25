@@ -1018,19 +1018,11 @@ fieldset.field { border: 0; padding: 0; min-width: 0; }
 
 /* ---- мастер «Додати квартиру» ---- */
 .aw-title { margin: 0 0 4px; }
-.aw-kinds { display: grid; gap: 10px; margin: 8px 0 16px; }
-.aw-kind { display: grid; grid-template-columns: 28px minmax(0, 1fr) auto; align-items: center; gap: 10px 12px; padding: 12px 12px 12px 16px; border: 1.5px solid var(--c-field-line); border-radius: 14px; background: var(--c-surface); }
-.aw-kind.on { border-color: var(--c-ink); box-shadow: 0 0 0 1px var(--c-ink) inset; }
-.aw-kind[data-act="aw-pick"] { cursor: pointer; -webkit-tap-highlight-color: transparent; }
-.aw-kind[data-act="aw-pick"]:not(.on):active { background: var(--c-surface-2); }
-.aw-kind.am-soon { opacity: .6; }
-.aw-kt { display: flex; flex-direction: column; gap: 2px; min-width: 0; } .aw-kt b { font-size: var(--fs-m); }
 .stepper { display: inline-flex; align-items: center; gap: 6px; }
 .stepper .step-b { min-width: 48px; min-height: 48px; padding: 0; font-size: 24px; line-height: 1; border-radius: 12px; }
 .stepper .step-b[disabled] { opacity: .35; }   /* 155-а: «−» при нулі виглядав робочим */
 .stepper .step-n { min-width: 44px; text-align: center; font-size: var(--fs-l); font-weight: 600; }
 .stepper .step-n .small { font-size: 13px; font-weight: 500; }
-@media (max-width: 400px) { .aw-kind { grid-template-columns: 28px minmax(0, 1fr); } .aw-kind .stepper, .aw-kind > .pill { grid-column: 1 / -1; justify-self: end; } }
 .aw-sum h2::before { content: ''; display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: var(--pc); margin-right: 10px; vertical-align: middle; }
 .aw-sum dl { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 8px 16px; margin: 0; }
 .aw-sum dt { color: var(--c-ink-2); } .aw-sum dd { margin: 0; overflow-wrap: anywhere; }
@@ -1148,12 +1140,6 @@ summary, .btn, .ucard-add, .ucard-main, .linkbtn { touch-action: manipulation; }
 .whero .wdrum, .whero .gdrum { padding: 7px 8px; gap: 6px; border-width: 3px; }
 .whero .wd-win { gap: 1px; padding: 3px; } .whero .wd-c { font-size: clamp(10px, 6.4cqw, 20px); } .whero .wd-u { font-size: 12px; }
 .whero .gd-side .ico { width: 14px; height: 14px; } .whero .gd-g { font-size: 9px; padding: 1px 2px; }
-/* строка вида со образцом табло: на телефоне — образец слева, справа название и под ним +/−; шире — в одну строку */
-.aw-kind.kp { grid-template-columns: 108px minmax(0, 1fr); grid-template-areas: "p t" "p s"; gap: 8px 12px; padding: 12px; }
-.aw-kind.kp .kprev { grid-area: p; align-self: center; } .aw-kind.kp .aw-kt { grid-area: t; } .aw-kind.kp .stepper, .aw-kind.kp > .pill { grid-area: s; justify-self: start; }
-.aw-kt b { display: flex; align-items: center; gap: 6px; } .aw-kt b .ico { flex: none; }
-@media (min-width: 600px) { .aw-kind.kp { grid-template-columns: 124px minmax(0, 1fr) auto; grid-template-areas: "p t s"; } .aw-kind.kp .stepper { justify-self: end; } }
-@media (max-width: 359px) { .aw-kind.kp { grid-template-columns: 92px minmax(0, 1fr); gap: 8px 10px; padding: 10px; } .aw-kind.kp .step-b { min-width: 44px; min-height: 44px; } .aw-kind.kp .step-n { min-width: 34px; } }
 .kprev { display: block; pointer-events: none; min-width: 0; }
 .kprev .lcd { padding: 5px 7px 4px; border-width: 3px; border-radius: 7px; outline-width: 1px; }
 .kprev .lcd svg.seg { height: 22px; } .kprev .lcd .tag { font-size: 10px; padding-bottom: 2px; } .kprev .lcd .line { gap: 4px; justify-content: space-between; }
@@ -1161,12 +1147,9 @@ summary, .btn, .ucard-add, .ucard-main, .linkbtn { touch-action: manipulation; }
 .kprev .wdrum, .kprev .gdrum { padding: 4px 5px; gap: 3px; border-width: 2px; border-radius: 8px; } .kprev .gdrum { border-radius: 4px; }
 .kprev .wd-win { gap: 1px; padding: 2px; border-radius: 3px; } .kprev .wd-c { font-size: clamp(8px, 8cqw, 12px); border-radius: 1px; } .kprev .wd-u { font-size: 9px; }
 .kprev .gd-side { display: none; }
-.fs-more { display: flex; gap: 8px; align-items: flex-start; margin: 4px 0 12px; } .fs-more .ico { flex: none; margin-top: 1px; }
-.aw-kind .step-b.btn:not(.sec) { color: var(--c-on-ink); }
 /* шапка экрана с «✕» на телефоне: «Лічильники» не влезал рядом с «Test beta…» и обрезался в «Лі…» — оставляем логотип */
 /* 143-я (власник 14.11): «Закрити» — лише хрестик (без слова), тож назва «передай.com.ua» праворуч від знака влазить і на телефоні */
 .top .cl-txt { display: none; }   /* с «Закрити» и плашкой beta имя не влезает даже на 440 px (iPhone Pro Max) — оставался обрезок «Л» */
-.fs-after { margin-top: 14px; }
 .field .sp-help:empty { display: none; }
 /* ---- история: дата и чипс статуса строкой над записью; чипс — кнопка, под ним меню «передано / не передано / для себе» ---- */
 .list > li.hli { position: relative; flex-wrap: wrap; column-gap: 8px; row-gap: 2px; }
@@ -3721,3 +3704,84 @@ details.tips-box.nm-box[open] > summary { border-bottom: 1px solid var(--c-line)
 .mrow-act.one > .btn { grid-column: 2; }
 .mrow-act > .btn.danger { grid-column: 2; }
 .mrow-act > .btn:not(.danger) { grid-column: 1; }
+/* 189-я (власник 25.11: «удалить квартиру — на всю ширину, явно видно, и переспросить»): своя картка внизу екрана квартири, кнопка на всю ширину зі значком,
+   під нею — що спершу спитаємо; саме питання — вікном askOk */
+.pv-danger .btn.danger { width: 100%; justify-content: center; gap: 8px; min-height: 48px; margin: 0; }
+.pv-danger > p.small { margin: 8px 0 0; text-align: center; }
+/* 189-я (власник 25.11: «у чипсов нет ховера на десктопе»): чипи й перемикачі-пілюлі — наведення мишею в усіх темах (рамка темніша + легка заливка);
+   обраний не міняємо. Лише @media (hover: hover) — на телефоні дотик не «залипає» */
+.chip, .hf-sw button, .seg-ctl button { transition: border-color .15s var(--ease), background-color .15s var(--ease), color .15s var(--ease); }
+@media (hover: hover) {
+  :root:root :is(.chip:not([aria-pressed="true"]), .hf-sw button:not([aria-pressed="true"])):hover { border-color: var(--c-ink-2); background: var(--c-ghost-hover); }
+  :root:root .seg-ctl button:not([aria-pressed="true"]):hover { background: var(--c-ghost-hover); color: var(--c-ink); }
+  :root:root[data-lskin="c"][data-lsk="3"]:not([data-theme="dark"]) :is(.chip:not([aria-pressed="true"]), .hf-sw button:not([aria-pressed="true"])):hover { border-color: #B9B2A6; background: var(--fill-btn); }
+  :root:root[data-lskin="c"][data-lsk="3"]:not([data-theme="dark"]) .seg-ctl button:not([aria-pressed="true"]):hover { background: var(--fill-btn-h); }
+}
+/* 189-я — «Які лічильники є?» (власник 25.11, скрин латуні на десктопі: «много информации, сложно разобраться, что нажимать, пугает пестрота»).
+   Картка — табло-образець · назва (підпис лише тепло й вивіз) · ОДИН елемент праворуч. Не обрано — тиха рамка й круглий «+» без заливки;
+   обрано — рамка й легкий тон акценту, «− N +» нейтральні; лічильник, якого не буває двох (тепло, вивіз), — галочка акценту (дотик — прибрати).
+   Телефон — одна колонка; від 720 — дві (стовпцями: світло, гаряча, холодна | газ, тепло, вивіз — вода поруч). */
+.aw-kinds { display: grid; gap: 8px; margin: 16px 0 12px; }
+@media (min-width: 720px) { .aw-kinds { grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-rows: repeat(3, auto); grid-auto-flow: column; gap: 10px 12px; } }
+.aw-kind.kp { display: grid; grid-template-columns: 96px minmax(0, 1fr) auto; grid-template-areas: "p t s"; align-items: center; gap: 0 14px; min-height: 68px;
+  padding: 10px 10px 10px 12px; border: 1px solid var(--c-line); border-radius: 14px; background: var(--c-surface); cursor: pointer; -webkit-tap-highlight-color: transparent;
+  transition: border-color .15s var(--ease), background-color .15s var(--ease), box-shadow .15s var(--ease); }
+.aw-kind.kp .kprev { grid-area: p; } .aw-kind.kp .aw-kt { grid-area: t; display: grid; gap: 2px; min-width: 0; } .aw-kind.kp .aw-ctl, .aw-kind.kp > .pill { grid-area: s; justify-self: end; }
+.aw-kt b { font-size: var(--fs-m); line-height: 22px; font-weight: 600; } .aw-kt .small { font-size: 13px; line-height: 18px; }
+.aw-kind.am-soon { opacity: .6; cursor: default; }
+@media (hover: hover) { .aw-kind.kp[data-act]:not(.on):hover { border-color: var(--c-field-line); } }
+.aw-kind.kp[data-act]:not(.on):active { background: var(--c-surface-2); }
+:root:root .aw-kind.kp.on { border-color: var(--acc-fill, var(--c-ink)); box-shadow: inset 0 0 0 1px var(--acc-fill, var(--c-ink)); background: color-mix(in srgb, var(--acc-fill, var(--c-ink)) 7%, var(--c-surface)); }
+.aw-ctl { display: inline-flex; align-items: center; gap: 2px; }
+.aw-ctl .step-b { display: grid; place-items: center; width: 44px; height: 44px; min-width: 0; min-height: 0; padding: 0; border: 0; border-radius: 50%; background: transparent; color: var(--c-ink);
+  font: 500 24px/1 var(--font); cursor: pointer; touch-action: manipulation; transition: background-color .15s var(--ease), border-color .15s var(--ease); }
+.aw-ctl .step-b:focus-visible { outline: 3px solid var(--c-info); outline-offset: 1px; }
+.aw-ctl .step-b[disabled] { opacity: .3; cursor: default; }
+.aw-ctl .step-n { min-width: 26px; text-align: center; font-size: 18px; font-weight: 600; font-variant-numeric: tabular-nums; }
+/* не обрано: лише «+» колом з тонкою рамкою */
+.aw-kind:not(.on) .aw-dec, .aw-kind:not(.on) .step-n { display: none; }
+.aw-kind:not(.on) .aw-inc { box-shadow: inset 0 0 0 1.5px var(--c-field-line); }
+@media (hover: hover) { .aw-kind:not(.on):hover .aw-inc { background: var(--c-ghost-hover); } }
+/* обрано, кількох буває: «− N +» — круглі нейтральні кнопки з легкою заливкою */
+.aw-kind.on:not(.one) .step-b { width: 40px; height: 40px; background: color-mix(in srgb, var(--c-ink) 8%, transparent); }
+@media (hover: hover) { .aw-kind.on:not(.one) .step-b:not([disabled]):hover { background: color-mix(in srgb, var(--c-ink) 14%, transparent); } }
+/* обрано, лише один: галочка акценту; «+» і число не показуємо */
+.aw-kind.one.on .aw-inc, .aw-kind.one.on .step-n { display: none; }
+:root:root .aw-kind.one.on .aw-dec { width: 32px; height: 32px; margin: 6px; background: var(--acc-fill, var(--c-ink)); color: var(--acc-on, var(--c-on-ink)); }
+.fs-more { margin: 4px 0 12px; }
+@media (min-width: 720px) { .aw-kind.kp { grid-template-columns: 112px minmax(0, 1fr) auto; } }
+@media (max-width: 359px) { .aw-kind.kp { grid-template-columns: 80px minmax(0, 1fr) auto; gap: 0 10px; padding: 8px; } .aw-ctl .step-b { width: 40px; height: 40px; } .aw-kind.on:not(.one) .step-b { width: 36px; height: 36px; } }
+/* C3 (світла): рамка картки — та, що в карток (тепла), обрана — синій акцент */
+:root:root[data-lskin="c"][data-lsk="3"]:not([data-theme="dark"]) .aw-kind.kp:not(.on) { border-color: var(--gl-line); box-shadow: var(--gl-sh); }
+/* 189-я (власник 25.11: «текст введённый и заглушка мало отличаются — путает», усі теми): заглушка — меншим (16 замість 20) і звичайним накресленням (400 замість 500),
+   колір той самий --c-ink-2 (контраст ≥ 4,5:1 лишається); поле адреси — без заглушки взагалі */
+.field input::placeholder, .field textarea::placeholder { font-size: var(--fs-m); font-weight: 400; letter-spacing: 0; }
+/* 189-я — «Налаштування показань» розділами (власник 25.11: «перегружено, непонятно, какие акценты, что куда вводить и что для чего»):
+   «Кому платите» · «Лічильник» · «Ціна» — підпис капсом 13 px і лінія між розділами; «Кому платите» — один рядок «хто зараз» + «Змінити» (вибір розкривається тут же),
+   свій постачальник — поля одразу під рядком, без «картки в картці» */
+:root:root .set-h { margin: 0 0 12px; font-family: var(--font); font-size: 13px; line-height: 18px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--c-ink-2); }
+.set-sec + .set-sec { margin-top: 20px; padding-top: 18px; border-top: 1px solid var(--c-line); }
+.set-sec > .field:last-child, .set-sec > .grid2:last-child { margin-bottom: 4px; }
+:root:root .my-pick { margin: 0 0 16px; }
+.my-pick > legend.sr { position: absolute; }
+.my-cur { display: grid; grid-template-columns: 40px minmax(0, 1fr) auto; align-items: center; gap: 12px; min-height: 64px; padding: 10px 10px 10px 12px;
+  border: 1px solid var(--c-line); border-radius: 14px; background: var(--c-surface); }
+.my-cur .my-o-t b { font-size: var(--fs-m); line-height: 22px; }
+:root:root .my-cur .my-chg-b { margin: 0; min-height: 40px; padding: 0 14px; font-size: var(--fs-s); white-space: nowrap; }
+.my-chg { display: grid; gap: 8px; margin-top: 8px; }
+.my-chg .pcat { margin: 0; }
+:root:root .my-chg .my-opts { grid-template-columns: minmax(0, 1fr); gap: 8px; }
+.my-chg-h { margin: 6px 0 -2px; font-size: 13px; font-weight: 600; color: var(--c-ink-2); }
+:root:root .my-chg .my-opt { grid-template-columns: 36px minmax(0, 1fr) 18px; min-height: 56px; padding: 8px 10px 8px 12px; border: 1px solid var(--c-line); border-radius: 12px; background: var(--c-surface); }
+:root:root .my-chg .my-opt .my-o-ic { width: 36px; height: 36px; border-radius: 10px; }
+.my-opt-b { width: 100%; text-align: left; font: inherit; color: inherit; cursor: pointer; }
+.my-o-chev { color: var(--c-ink-2); }
+@media (hover: hover) { :root:root .my-chg .my-opt:hover { border-color: var(--c-field-line); } }
+:root:root .my-form { margin: 16px 0 0; padding: 0; border: 0; border-radius: 0; background: transparent; }
+:root:root .my-form .field .ctl { background: var(--c-field-bg); }
+.my-why { margin: -6px 0 16px; }
+:root:root[data-lskin="c"][data-lsk="3"]:not([data-theme="dark"]) .my-form { border-top: 0; padding-top: 0; }
+:root:root[data-lskin="c"][data-lsk="3"]:not([data-theme="dark"]) :is(.my-cur, .my-chg .my-opt) { border-color: var(--gl-line); box-shadow: var(--gl-sh); }
+:root:root[data-lskin="c"][data-lsk="3"]:not([data-theme="dark"]) .my-cur .my-o-ic { background: var(--tile-n); color: var(--c-ink-2); }
+/* вибір «Змінити» — окремою підкладкою під рядком (на будь-якому тлі трохи темніше/світліше), щоб не злипався з полями рахунку нижче */
+.my-chg { padding: 12px; border-radius: 14px; background: color-mix(in srgb, var(--c-ink) 5%, transparent); }

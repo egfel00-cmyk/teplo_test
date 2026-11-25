@@ -13,10 +13,13 @@ const B = 'http://127.0.0.1:8013/';
   ok('посилання під «Куди передати» — «Інший постачальник»', /^Інший постачальник$/.test((await p.textContent('[data-key="my-link-elec"]').catch(() => '')).trim()));
   await p.evaluate(() => { const f = document.querySelector('#my-elec'); let d = f && f.closest('details'); while (d) { d.open = true; d = d.parentElement && d.parentElement.closest('details'); } });
   await p.waitForTimeout(200);
+  // 189-я: пошук — у виборі за «Змінити»
+  ok('189: до «Змінити» пошуку не видно', !(await p.$('#pcat-elec')));
+  await p.click('[data-key="my-chg-elec"]'); await p.waitForTimeout(300);
   ok('у «Кому платите» — поле пошуку «Назва або місто»', /Назва або місто/.test(await p.getAttribute('#pcat-elec', 'placeholder').catch(() => '')));
   // 154-а (скрин власника 15.11: варіанти по 150 px, «Харків/енергоз/бут», пошук — клітинкою сітки): колонки — від ширини блоку, не вікна
-  const lay = await p.evaluate(() => { const o = document.querySelector('.my-opts'), w = o.getBoundingClientRect().width;
-    return { w, opts: [...o.querySelectorAll('.my-opt')].map(e => e.getBoundingClientRect().width), pc: document.querySelector('.my-opts > .pcat').getBoundingClientRect().width }; });
+  const lay = await p.evaluate(() => { const o = document.querySelector('.my-chg'), w = o.getBoundingClientRect().width - 24;
+    return { w, opts: [...o.querySelectorAll('.my-opt')].map(e => e.getBoundingClientRect().width), pc: document.querySelector('.my-chg > .pcat').getBoundingClientRect().width }; });
   ok('154: варіанти «Кому платите» й пошук — на всю ширину блоку (одна колонка)', lay.opts.every(x => Math.abs(x - lay.w) < 2) && Math.abs(lay.pc - lay.w) < 2, lay);
   await p.focus('#pcat-elec'); await p.waitForTimeout(900);
   const all = await p.$$eval('#pcat-elec-l [role=option]', es => es.map(e => e.textContent));
@@ -35,12 +38,15 @@ const B = 'http://127.0.0.1:8013/';
   ok('Enter — обрано Львівенергозбут: prov.elec.sel, own = 0', pr && pr.sel && /Львівенергозбут/.test(pr.sel.o) && !pr.own && pr.sel.n && pr.sel.h, pr);
   ok('«Куди передати» — тепер Львівенергозбут', /Львівенергозбут/.test(await p.textContent('[data-key="where-elec"]').catch(() => '')));
   await p.evaluate(() => { const f = document.querySelector('#my-elec'); let d = f && f.closest('details'); while (d) { d.open = true; d = d.parentElement && d.parentElement.closest('details'); } });
-  ok('варіант «з довідника» — назва обраного й «обрали самі»', /Львівенергозбут/.test(await p.textContent('[data-key="my-elec-0"]').catch(() => '') || await p.textContent('#my-elec')) && /обрали самі/.test(await p.textContent('#my-elec')));
+  ok('189: обрали — вибір згорнувся', !(await p.$('#pcat-elec')));
+  ok('рядок «хто зараз» — назва обраного й «обрали самі»', /Львівенергозбут/.test(await p.textContent('[data-key="my-elec-0"]').catch(() => '') || await p.textContent('#my-elec')) && /обрали самі/.test(await p.textContent('#my-elec')));
+  await p.click('[data-key="my-chg-elec"]'); await p.waitForTimeout(300);
   await p.click('[data-key="pcat-off-elec"]'); await p.waitForTimeout(500); s = await st();
   ok('«Як за адресою квартири» — вибір прибрано', !(s.places[0].prov.elec || {}).sel);
   // вода: вибір мишею зі списку
   await p.goto(B + '#water-cold'); await p.waitForTimeout(700);
   await p.evaluate(() => { const f = document.querySelector('#my-water'); let d = f && f.closest('details'); while (d) { d.open = true; d = d.parentElement && d.parentElement.closest('details'); } });
+  await p.click('[data-key="my-chg-water"]'); await p.waitForTimeout(300);
   await p.click('#pcat-water'); await p.waitForTimeout(900); await p.type('#pcat-water', 'буча', { delay: 20 }); await p.waitForTimeout(200);
   await p.click('#pcat-water-l [role=option] >> nth=0'); await p.waitForTimeout(800); s = await st();
   ok('вода: «буча» → дотик — Бучасервіс', /Бучасервіс/.test(((s.places[0].prov || {}).water || {}).sel && s.places[0].prov.water.sel.o), (s.places[0].prov || {}).water);
