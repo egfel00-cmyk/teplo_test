@@ -3809,3 +3809,40 @@ details.tips-box.nm-box[open] > summary { border-bottom: 1px solid var(--c-line)
 .gw-row { min-width: 0; }
 .gw-row .dest-ch .btn { flex-basis: 160px; min-width: 0; white-space: normal; text-wrap: balance; }
 @media (max-width: 380px) { :root:root .gw-row { padding: 12px 10px 4px; } .gw-n { width: 24px; height: 24px; font-size: 13px; } .gw-t > b { font-size: 16px; } }
+/* 190-я (власник 25.11: «после первой настройки — понятнее и явно: сохраниться через Telegram или свой аккаунт, чтобы не потерять данные»):
+   картка «Збережіть дані» — звичайна панель, акцент несе лише головна кнопка; на широкій картці (≥ 640 px) — текст ліворуч, кнопки праворуч (без «дір»);
+   очікування Telegram — кроки й код; рядок після «Пізніше» — інфо-плашка в один рядок із кнопкою «Зберегти» */
+.sv-card { container-type: inline-size; }
+.sv-g { display: grid; gap: var(--sp-4); }
+.sv-tx h2 { display: flex; align-items: center; gap: 10px; margin: 0 0 var(--sp-2); font-size: var(--fs-l); line-height: 28px; }
+.sv-tx h2 .ico { flex: none; color: var(--tint, var(--c-ink)); }
+.sv-tx p { margin: 0; color: var(--c-ink-2); text-wrap: pretty; }
+.sv-acts { display: flex; flex-direction: column; gap: var(--sp-2); }
+.sv-acts .btn { margin: 0; }
+/* вага як у «:root:root :is(.linkbtn, … .my-link .linkbtn)» (0,4,0) і більше — інакше «Пізніше» лишалось кольором акценту */
+:root:root .sv-acts .linkbtn.sv-later, :root:root .sv-wait .sv-acts .linkbtn { align-self: center; color: var(--c-ink-2); text-decoration: none; font-weight: 500; min-height: 44px; }
+.sv-wait { display: flex; flex-direction: column; }
+.sv-w-t { display: flex; align-items: center; gap: 10px; margin: 0 0 var(--sp-2); font-weight: 600; }
+.sv-w-t .ico { flex: none; }
+.sv-wait.bad .sv-w-t { color: var(--c-bad-ink); align-items: flex-start; }
+.sv-wait.bad .sv-w-t .ico { margin-top: 2px; }
+.sv-steps { margin: 0 0 var(--sp-4); padding-left: 22px; color: var(--c-ink-2); }
+.sv-steps li + li { margin-top: 4px; }
+.sv-codeln { display: flex; align-items: baseline; gap: 10px; margin: -4px 0 var(--sp-4); color: var(--c-ink-2); }
+.sv-code { font-size: var(--fs-l); font-weight: 600; font-variant-numeric: tabular-nums; color: var(--c-ink); white-space: nowrap; }
+/* очікування Telegram у картці — під текстом, через лінію (на широкому: кроки й код | кнопки) */
+.sv-g > .sv-wait { padding-top: var(--sp-4); border-top: 1px solid var(--c-line); }
+.sv-w-l > :last-child { margin-bottom: 0; }
+.sv-wait .sv-w-l { margin-bottom: var(--sp-4); }
+@container (min-width: 640px) {
+  .sv-g:not(.w) { grid-template-columns: minmax(0, 1fr) minmax(260px, 340px); gap: var(--sp-5); align-items: start; }
+  .sv-g > .sv-wait { display: grid; grid-template-columns: minmax(0, 1fr) minmax(260px, 340px); gap: var(--sp-5); align-items: center; }
+  .sv-g > .sv-wait .sv-w-l { margin-bottom: 0; }
+}
+.auth-tg .sv-wait { text-align: left; }
+/* рядок: значок | текст і «Зберегти» — на вузькому кнопка переноситься під текст (вирівняна по ньому, не під значок) */
+.banner.sv-strip { align-items: flex-start; }
+.sv-s-b { flex: 1 1 auto; min-width: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; }
+.sv-s-b > p { flex: 1 1 220px; min-width: 0; }
+.sv-s-b > .btn { margin: 0; flex: none; }
+.sv-have { margin: 0 0 var(--sp-4); }

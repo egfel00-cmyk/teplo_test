@@ -384,11 +384,16 @@ final class Telegram {
 
   public static function handleUpdate(array $u): ?array {
     if (isset($u['widget_query']) && is_array($u['widget_query'])) return class_exists('BotWidget') ? BotWidget::query($u['widget_query']) : null;
-    if (isset($u['callback_query']) && is_array($u['callback_query'])) return class_exists('Share') ? Share::botCallback($u['callback_query']) : null;
+    if (isset($u['callback_query']) && is_array($u['callback_query'])) {
+      if (preg_match('/^l[ix]:/', (string)($u['callback_query']['data'] ?? ''))) return TgLogin::botCallback($u['callback_query']);   // 190-я: «Так, увійти» в браузері
+      return class_exists('Share') ? Share::botCallback($u['callback_query']) : null;
+    }
     $msg = $u['message'] ?? null; if (!$msg || empty($msg['chat']['id'])) return null;
     // человек написал боту в личку — бот теперь может ему писать (плашка «натисніть Старт» уходит)
     if (($msg['chat']['type'] ?? '') === 'private' && !empty($msg['from']['id'])) self::markBotOk((string)$msg['from']['id']);
     $lang = str_starts_with((string)($msg['from']['language_code'] ?? ''), 'ru') ? 'ru' : 'uk';
+    // 190-я: «Зберегти через Telegram» на сайті (t.me/<бот>?start=in_<t>) — питання «Увійти в браузері …?» з кнопкою
+    if (preg_match('/^\/start\s+in_([A-Za-z0-9_-]{24})(?![A-Za-z0-9_-])/', (string)($msg['text'] ?? ''), $im)) return TgLogin::botStart($msg, $im[1], $lang);
     // 179-я: запрошення в спільну квартиру (t.me/<бот>?start=j<токен>) — картка з «Приєднатися»
     if (class_exists('Share') && preg_match('/^\/start\s+j([A-Za-z0-9_-]{24})(?![A-Za-z0-9_-])/', (string)($msg['text'] ?? ''), $sm)) return Share::botStart($msg, $sm[1], $lang);
     if (class_exists('Share') && preg_match('/^\/(dostup|access)(@\w+)?(\s|$)/', (string)($msg['text'] ?? ''))) return Share::botMenu((array)($msg['from'] ?? []), $msg['chat']['id'], $lang);
@@ -411,5 +416,103 @@ final class Telegram {
       'reply_markup' => ['inline_keyboard' => [[['text' => $btn, 'web_app' => ['url' => Cfg::appUrl()]]]]]];
     self::call('sendMessage', $params);
     return $params;
+  }
+}
+
+/** 190-я (власник 25.11: «після першого налаштування — явно: збережіться через Telegram чи свій акаунт, щоб не втратити дані й входити з інших браузерів»).
+ *  Раніше «Увійти через Telegram» на сайті лише відкривала бота: вхід був у вікні Telegram, браузер лишався без входу, і внесене в ньому туди не потрапляло.
+ *  Тепер вхід — САМЕ В ЦЬОМУ БРАУЗЕРІ: браузер складає посилання t.me/<бот>?start=in_<t> (t — 24 випадкові символи; посилання одразу в <a href>, тож телефон
+ *  відкриває Telegram без блокування вікон) і реєструє t з хешем свого секрету k (POST /api/auth/tg/start) → бот на /start in_<t> питає «Увійти в браузері
+ *  Chrome · Windows? Код на сайті — NNNN» → «Так, увійти» (li:<t>): акаунт цього Telegram (userFor, немає — новий) у рядку → браузер (POST /api/auth/tg/poll {t, k})
+ *  отримує сесію, і його дані йдуть в акаунт (sync.js pull(true)). Без «Так» нічого: саме посилання вхід не дає, і без k (лише t з посилання) — теж. 15 хв, один раз. */
+final class TgLogin {
+  const TTL = 900;
+  private static function okT(string $t): bool { return (bool)preg_match('/^[A-Za-z0-9_-]{24}$/', $t); }
+  private static function row(string $t): ?array {
+    if (!self::okT($t)) return null;
+    $x = Db::one('SELECT * FROM tg_logins WHERE token_hash = ?', [hash('sha256', $t)]);
+    return $x && (int)$x['expires_at'] >= time() ? $x : null;
+  }
+  /** «Chrome · Windows» з User-Agent — у боті видно, який браузер просить вхід. */
+  public static function uaShort(string $ua): string {
+    $b = ''; foreach (['~EdgA?/|EdgiOS~' => 'Edge', '~OPR/|Opera~' => 'Opera', '~SamsungBrowser~' => 'Samsung Internet', '~Firefox/|FxiOS~' => 'Firefox', '~PeredaiApp/~' => 'застосунок', '~CriOS|Chrome/~' => 'Chrome', '~Safari/~' => 'Safari'] as $re => $n) if (preg_match($re, $ua)) { $b = $n; break; }
+    $o = ''; foreach (['~iPhone~' => 'iPhone', '~iPad~' => 'iPad', '~Android~' => 'Android', '~Windows~' => 'Windows', '~Mac OS X|Macintosh~' => 'Mac', '~Linux~' => 'Linux'] as $re => $n) if (preg_match($re, $ua)) { $o = $n; break; }
+    return implode(' · ', array_filter([$b, $o]));
+  }
+  /** Браузер реєструє своє посилання: t (є в посиланні) і хеш k (лише в браузера). Повтор того ж t з тим самим k — той самий код. */
+  public static function start(array $in, string $ua): array {
+    $t = (string)($in['t'] ?? ''); $k = (string)($in['k'] ?? '');
+    if (!self::okT($t) || !preg_match('/^[A-Za-z0-9_-]{32,64}$/', $k)) throw new HttpError(422, 'bad_token');
+    $bot = (string)Cfg::get('bot_username'); if ($bot === '' || !Cfg::get('bot_token')) throw new HttpError(503, 'no_bot');
+    Db::q('DELETE FROM tg_logins WHERE expires_at < ?', [time() - 86400]);
+    $h = hash('sha256', $t); $x = Db::one('SELECT kh, code, expires_at FROM tg_logins WHERE token_hash = ?', [$h]);
+    if ($x) {
+      if (!hash_equals((string)$x['kh'], hash('sha256', $k))) throw new HttpError(409, 'bad_token');
+      return ['code' => $x['code'], 'bot' => $bot, 'ttl' => max(0, (int)$x['expires_at'] - time())];
+    }
+    $code = sprintf('%04d', random_int(0, 9999));
+    Db::q('INSERT INTO tg_logins (token_hash, kh, code, ua, lang, st, user_id, created_at, expires_at) VALUES (?, ?, ?, ?, ?, ?, NULL, ?, ?)',
+      [$h, hash('sha256', $k), $code, mb_substr(self::uaShort($ua), 0, 60), ($in['lang'] ?? '') === 'ru' ? 'ru' : 'uk', 'new', time(), time() + self::TTL]);
+    return ['code' => $code, 'bot' => $bot, 'ttl' => self::TTL];
+  }
+  /** Браузер питає: підтвердили? → state wait | seen (бот показав питання) | no («Ні, це не я»); ok — один раз, з uid (сесію ставить Api). Чужий k — як немає. */
+  public static function poll(array $in): array {
+    $t = (string)($in['t'] ?? ''); $x = self::row($t);
+    if (!$x || !hash_equals((string)$x['kh'], hash('sha256', (string)($in['k'] ?? '')))) throw new HttpError(410, 'tg_expired');
+    if ($x['st'] === 'ok' && (int)$x['user_id'] > 0) {
+      if (Db::q("UPDATE tg_logins SET st = 'used' WHERE token_hash = ? AND st = 'ok'", [hash('sha256', $t)])->rowCount() !== 1) throw new HttpError(410, 'tg_expired');
+      return ['state' => 'ok', 'uid' => (int)$x['user_id']];
+    }
+    if ($x['st'] === 'used') throw new HttpError(410, 'tg_expired');
+    return ['state' => $x['st'] === 'no' ? 'no' : ($x['st'] === 'seen' ? 'seen' : 'wait')];
+  }
+  private static function host(): string { return (string)(parse_url(Cfg::appUrl(), PHP_URL_HOST) ?: 'сайті'); }
+  private static function stale(bool $ru): string {
+    return $ru ? '🔐 Ссылка для входа устарела. На сайте нажмите «Сохранить через Telegram» ещё раз.' : '🔐 Посилання для входу застаріло. На сайті натисніть «Зберегти через Telegram» ще раз.';
+  }
+  /** /start in_<t>: питання з браузером і кодом, кнопки «Так, увійти» / «Ні, це не я». */
+  public static function botStart(array $msg, string $t, string $lang): array {
+    $ru = $lang === 'ru'; $chat = $msg['chat']['id']; $x = self::row($t);
+    if (!$x || !in_array($x['st'], ['new', 'seen'], true)) { $p = ['chat_id' => $chat, 'text' => self::stale($ru)]; Telegram::call('sendMessage', $p); return $p; }
+    Db::q("UPDATE tg_logins SET st = 'seen' WHERE token_hash = ? AND st = 'new'", [hash('sha256', $t)]);
+    $br = trim((string)($x['ua'] ?? '')); $br = $br === 'застосунок' ? ($ru ? 'в приложении «передай»' : 'у застосунку «передай»') : ($br !== '' ? ($ru ? 'в браузере ' : 'у браузері ') . $br : ($ru ? 'в браузере' : 'у браузері'));
+    $host = self::host();
+    $txt = $ru
+      ? "🔐 Войти в «передай» {$br}?\n\nКод на сайте — {$x['code']}. Счётчики и показания из браузера сохранятся в аккаунте этого Telegram — их можно будет открыть на любом телефоне или компьютере.\n\nЕсли вы не нажимали «Сохранить через Telegram» на {$host} — ничего не нажимайте."
+      : "🔐 Увійти в «передай» {$br}?\n\nКод на сайті — {$x['code']}. Лічильники й показання з браузера збережуться в акаунті цього Telegram — їх можна буде відкрити на будь-якому телефоні чи комп’ютері.\n\nЯкщо ви не натискали «Зберегти через Telegram» на {$host} — нічого не натискайте.";
+    $p = ['chat_id' => $chat, 'text' => $txt, 'reply_markup' => ['inline_keyboard' => [[['text' => $ru ? '✅ Да, войти' : '✅ Так, увійти', 'callback_data' => 'li:' . $t]],
+      [['text' => $ru ? 'Нет, это не я' : 'Ні, це не я', 'callback_data' => 'lx:' . $t]]]]];
+    Telegram::call('sendMessage', $p); return $p;
+  }
+  /** li:<t> — так: акаунт цього Telegram у рядок (браузер забере сесію); lx:<t> — ні. */
+  public static function botCallback(array $cq): ?array {
+    if (!preg_match('/^l([ix]):([A-Za-z0-9_-]{24})$/', (string)($cq['data'] ?? ''), $m)) return null;
+    $from = (array)($cq['from'] ?? []); $ru = str_starts_with((string)($from['language_code'] ?? ''), 'ru');
+    $msg = (array)($cq['message'] ?? []); $chat = $msg['chat']['id'] ?? ($from['id'] ?? null); $mid = $msg['message_id'] ?? null;
+    Telegram::call('answerCallbackQuery', ['callback_query_id' => $cq['id'] ?? '']);
+    $edit = function (string $text, ?array $kb) use ($chat, $mid) {
+      $p = ['chat_id' => $chat, 'message_id' => $mid, 'text' => $text] + ($kb ? ['reply_markup' => ['inline_keyboard' => $kb]] : []);
+      if ($chat !== null && $mid !== null) Telegram::call('editMessageText', $p); elseif ($chat !== null) { unset($p['message_id']); Telegram::call('sendMessage', $p); }
+      return $p;
+    };
+    $h = hash('sha256', $m[2]); $x = self::row($m[2]);
+    if (!$x || !in_array($x['st'], ['new', 'seen'], true)) return $edit(self::stale($ru), null);
+    if ($m[1] === 'x') {
+      Db::q("UPDATE tg_logins SET st = 'no' WHERE token_hash = ? AND st IN ('new', 'seen')", [$h]);
+      return $edit($ru ? '🔐 Хорошо, вход не подтверждён — браузер остался без входа.' : '🔐 Добре, вхід не підтверджено — браузер лишився без входу.', null);
+    }
+    $uid = Telegram::userFor($from);
+    if (!Db::one('SELECT name FROM users WHERE id = ? AND name IS NOT NULL', [$uid])) { $nm = trim(($from['first_name'] ?? '') . ' ' . ($from['last_name'] ?? '')); if ($nm !== '') Db::q('UPDATE users SET name = ? WHERE id = ?', [mb_substr($nm, 0, 80), $uid]); }
+    Db::q("UPDATE tg_logins SET st = 'ok', user_id = ? WHERE token_hash = ? AND st IN ('new', 'seen')", [$uid, $h]);
+    Telegram::markBotOk((string)($from['id'] ?? ''));
+    return $edit($ru ? "✅ Готово. Вернитесь в браузер — там уже вход, и данные сохранятся в аккаунте сами.\n\nВ следующий раз на другом устройстве нажмите «Войти через Telegram» — откроются те же показания."
+      : "✅ Готово. Поверніться в браузер — там уже вхід, і дані збережуться в акаунті самі.\n\nНаступного разу на іншому пристрої натисніть «Увійти через Telegram» — відкриються ті самі показання.",
+      [[['text' => $ru ? 'Открыть «передай»' : 'Відкрити «передай»', 'web_app' => ['url' => Cfg::appUrl()]]]]);
+  }
+  /** /api/health: за 7 днів — скільки разів почали, підтвердили, забрали вхід, відмовились (лише числа). */
+  public static function summary(): array {
+    try { $r = Db::one("SELECT COUNT(*) AS n, SUM(CASE WHEN st IN ('ok', 'used') THEN 1 ELSE 0 END) AS ok, SUM(CASE WHEN st = 'used' THEN 1 ELSE 0 END) AS used, SUM(CASE WHEN st = 'no' THEN 1 ELSE 0 END) AS no, SUM(CASE WHEN st = 'seen' THEN 1 ELSE 0 END) AS seen FROM tg_logins WHERE created_at >= ?", [time() - 7 * 86400]) ?? [];
+      return array_map('intval', ['n' => $r['n'] ?? 0, 'seen' => $r['seen'] ?? 0, 'ok' => $r['ok'] ?? 0, 'used' => $r['used'] ?? 0, 'no' => $r['no'] ?? 0]); }
+    catch (Throwable $e) { return ['err' => 'db']; }
   }
 }

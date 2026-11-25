@@ -1015,7 +1015,7 @@
     var topBack = (function (h) { var m = /^(<p class="rec-back">[\s\S]*?<\/p>|<div class="wiz-top"><a class="btn ghost"[\s\S]*?<\/div>)/.exec(h || ''); return m ? { b: m[1], h: h.slice(m[1].length) } : { b: '', h: h }; })(view.html);
     return '<div class="app' + (bare ? ' bare-app' : '') + (side ? ' with-side' : '') + '">' +
       '<header class="top' + (right ? ' has-close' : '') + '"><a class="brand" href="#' + homeRoute() + '" data-key="brand" aria-label="передай.com.ua">' + logo() + wordmark(true) + '<span class="beta-tag" data-key="beta">' + esc(t('beta_tag')) + '</span></a>' + '<span class="spacer"></span>' + right + '</header>' +
-      nav + '<main class="main' + (bare ? ' bare' : '') + (view.wide ? ' wide' : '') + enterCls(route) + '" id="main" data-screen="' + view.screen + '" tabindex="-1">' + topBack.b + (/^(history|stats|save)$/.test(route) && !REC_RE.test(routeName()) ? placeSwitch() : /^(heat|water-hot|water-cold|elec|gas)$/.test(route) ? placeBar() : /^(wnew|wadd|enew|eadd|gnew|gadd|add-meter|step|step-\d+|check|handover|baseline|meter|photo)$/.test(route) ? cbar : '') + topBack.h + '</main>' + (S.onboarded && view.screen !== 'S00' && (!bare || side) ? appFoot() : '') + '</div>' +
+      nav + '<main class="main' + (bare ? ' bare' : '') + (view.wide ? ' wide' : '') + enterCls(route) + '" id="main" data-screen="' + view.screen + '" tabindex="-1">' + topBack.b + (/^(history|stats|save)$/.test(route) && !REC_RE.test(routeName()) ? placeSwitch() : /^(heat|water-hot|water-cold|elec|gas)$/.test(route) ? placeBar() + saveBox('page') : /^(wnew|wadd|enew|eadd|gnew|gadd|add-meter|step|step-\d+|check|handover|baseline|meter|photo)$/.test(route) ? cbar : '') + topBack.h + '</main>' + (S.onboarded && view.screen !== 'S00' && (!bare || side) ? appFoot() : '') + '</div>' +
       (window.TEPLO_API && !ccAsk() ? '<button class="fab' + (bare ? ' fab-bare' : '') + '" data-act="fb-open" data-key="feedback" aria-haspopup="dialog">' + ico('chat', 20) + '<span>' + esc(t('fb_btn')) + '</span></button>' + fbDialog() : '') +
       (bare ? ccBanner().replace('class="cc"', 'class="cc cc-bare"') : ccBanner()) +
       '<div id="toast-host" aria-live="polite"></div>';
@@ -1838,11 +1838,114 @@
     var y = Y(); if (document.visibilityState !== 'visible' || !y.account || !y.account.botStart) return;
     y.refreshMe().then(function () { if (/^(home)?$/.test(routeName())) safeRender(); }, function () { /* сеть — потом */ });
   });
+  // ================= 190-я: «Збережіть дані» — вхід через Telegram САМЕ В ЦЬОМУ БРАУЗЕРІ =================
+  // Власник 25.11: «после первой настройки — понятнее и явно: нужно сохраниться через Telegram или свой аккаунт, чтобы не потерять данные
+  // и входить с других браузеров и устройств; сейчас не очевидно». Було: тиха плашка лише після перших показань, і «Увійти через Telegram» лише
+  // відкривала бота — вхід ставав у вікні Telegram, а браузер лишався без входу (внесене тут туди не потрапляло).
+  // Тепер: картка «Збережіть дані» вгорі головної одразу після першого налаштування — Telegram головною кнопкою, пошта другою, «Пізніше» → рядок,
+  // що лишається (і на сторінках лічильників); після перших показань чи через 7 днів картка повертається. Вхід через бота — в цьому браузері:
+  // посилання t.me/<бот>?start=in_<t> складаємо самі (є в <a href> одразу — телефон відкриває Telegram без блокування вікон), t і секрет k реєструємо
+  // на сервері (TgLogin), бот питає «Так, увійти» з кодом, браузер опитує й отримує вхід — далі як після входу поштою (дані браузера йдуть в акаунт).
+  var SV = { open: false, seen: '' }, TGP = null, TGIN = (function () {
+    try { var x = JSON.parse(localStorage.getItem('teplo.tgin') || 'null'); return x && x.t && x.k && Date.now() - (x.at || 0) < 15 * 60000 ? Object.assign(x, { st: 'wait', busy: false }) : null; } catch (e) { return null; }
+  })();
+  function svRnd(n) { var c = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_', a = new Uint8Array(n), o = ''; (window.crypto || window.msCrypto).getRandomValues(a); for (var i = 0; i < n; i++) o += c[a[i] & 63]; return o; }
+  function tgKeep() { try { if (TGIN && /^(wait|seen)$/.test(TGIN.st)) localStorage.setItem('teplo.tgin', JSON.stringify({ t: TGIN.t, k: TGIN.k, at: TGIN.at, w: TGIN.w })); else localStorage.removeItem('teplo.tgin'); } catch (e) { /* без сховища — лише ця сторінка */ } }
+  function tgBot() { var c = Y()._cfg; return (c && c.botUsername) || ''; }
+  /** Хто бачить «Збережіть дані»: сайт без входу (у вікні Telegram вхід є завжди). У застосунку iPhone — теж (дані там і в iCloud, але не на інших пристроях). */
+  function svGuest() { var y = Y(); return !!(window.TEPLO_API && y.mode === 'server' && !y.account && !(window.Telegram && Telegram.WebApp && Telegram.WebApp.initData)); }
+  /** Велика картка чи рядок: «Пізніше» → рядок; картка повертається, коли з’явились перші показання (відклали до них) або минуло 7 днів. */
+  function svBig() {
+    if (SV.open || (TGIN && TGIN.st)) return true;
+    if (!S.savePr && S.syncPromptDismissed) { S.savePr = { at: Date.now(), rd: allRecs().length }; persist(); }   // стара «Пізніше» (без дати) — з сьогодні
+    var s = S.savePr; return !s || (!s.rd && allRecs().length > 0) || Date.now() - (s.at || 0) > 7 * 864e5;
+  }
+  /** Посилання на бота з t цього браузера: незареєстроване (TGP) — поки не натиснули; натиснули — те саме (TGIN), щоб «Відкрити ще раз» вело туди ж. */
+  function tgHref(again) {
+    var b = tgBot(); if (!b) return '';
+    if (!again && !TGP) TGP = { t: svRnd(24), k: svRnd(40) };
+    return 'https://t.me/' + encodeURIComponent(b) + '?start=in_' + (again && TGIN ? TGIN.t : TGP.t);
+  }
+  /** Телефон і застосунок — та сама вкладка (посилання t.me відкриває Telegram, сторінка лишається); комп’ютер — нова вкладка. */
+  function tgTab() { return APP || /iPhone|iPad|iPod|Android/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1) ? '' : ' target="_blank"'; }
+  function tgBtn(key, cls, label, w) {
+    var href = tgHref(false); if (!href) return '';
+    return '<a class="btn block ' + (cls || '') + '" href="' + esc(href) + '"' + tgTab() + ' rel="noopener" data-act="tg-in" data-w="' + w + '" data-key="' + key + '">' + ico('send', 20) + '<span>' + esc(label || t('sv_tg')) + '</span></a>';
+  }
+  /** Натиснули «Зберегти через Telegram»: посилання відкривається саме (не заважаємо), а ми реєструємо t і k та чекаємо підтвердження. */
+  function tgGo(w) {
+    if (!TGP) return;
+    TGIN = { t: TGP.t, k: TGP.k, at: Date.now(), w: w || '', st: 'wait', code: '', busy: false }; TGP = null; tgKeep();
+    track('save', { a: 'tg', w: w });
+    tgReg(); setTimeout(safeRender, 60);
+  }
+  function tgReg() {
+    if (!TGIN || !Y().tgStart) return; var me = TGIN;
+    Y().tgStart(me.t, me.k, S.lang).then(function (j) {
+      if (TGIN !== me) return;
+      if (j && j._status === 200) { me.code = j.code || ''; safeRender(); return; }
+      me.st = 'err'; me.e = (j && j.error) || ''; tgKeep(); safeRender();
+    }, function () { if (TGIN === me) { me.st = 'err'; tgKeep(); safeRender(); } });
+  }
+  /** Опит «підтвердили?» — кожні 3 с, поки сторінка на екрані, і одразу, коли людина повернулась з Telegram. */
+  function tgPollNow() {
+    var me = TGIN; if (!me || me.busy || !/^(wait|seen)$/.test(me.st) || !window.TEPLO_API || !Y().tgPoll) return;
+    if (Y().account) { TGIN = null; tgKeep(); return; }
+    if (Date.now() - me.at > 15 * 60000) { me.st = 'exp'; tgKeep(); track('save', { a: 'exp', w: me.w }); safeRender(); return; }
+    if (!me.code && !me.reg) { me.reg = 1; tgReg(); }   // сторінку перезавантажили, поки була в Telegram, — той самий t і k дадуть той самий код
+    me.busy = true;
+    Y().tgPoll(me.t, me.k).then(function (j) {
+      me.busy = false; if (TGIN !== me) return;
+      if (j && j._status === 200 && j.state === 'ok') { tgDone(j); return; }
+      var st = j && j._status === 410 ? 'exp' : j && j._status === 200 ? j.state : me.st;
+      if (st !== me.st) { me.st = st; tgKeep(); if (st === 'no' || st === 'exp') track('save', { a: st, w: me.w }); safeRender(); }
+    }, function () { me.busy = false; });
+  }
+  setInterval(function () { if (TGIN && document.visibilityState === 'visible') tgPollNow(); }, 3000);
+  document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'visible') tgPollNow(); });
+  window.addEventListener('focus', tgPollNow); window.addEventListener('pageshow', tgPollNow);
+  function tgDone(j) {
+    var w = TGIN && TGIN.w; TGIN = null; tgKeep(); SV.open = false;
+    track('save', { a: 'ok', w: w, acct: Y().guestBak ? 1 : 0 });
+    if (/^(login|join)$/.test(routeName())) { afterLogin(j); if (Y().guestBak) toast(t('sv_done_acct')); return; }
+    S.onboarded = S.onboarded || anyMeters(); save(); toast(t(Y().guestBak ? 'sv_done_acct' : 'sv_done')); render(true);
+  }
+  /** Чекаємо підтвердження: що натиснути в боті, код для звірки, «Відкрити Telegram ще раз», «Скасувати»; не вийшло — чому й спробувати знову. */
+  function tgWait() {
+    var m = TGIN, b = tgBot();
+    if (/^(no|exp|err)$/.test(m.st)) return '<div class="sv-wait bad" role="alert" data-key="tg-wait-' + m.st + '"><div class="sv-w-l"><p class="sv-w-t">' + ico('alert', 20) + '<span>' + esc(t('tg_' + m.st)) + '</span></p></div>' +
+      '<div class="sv-acts">' + tgBtn('tg-retry', '', t('sv_tg'), m.w) + '<button type="button" class="btn sec block" data-act="tg-cancel" data-key="tg-cancel">' + esc(t('cancel')) + '</button></div></div>';
+    return '<div class="sv-wait" role="status" aria-live="polite" data-key="tg-wait"><div class="sv-w-l"><p class="sv-w-t"><span class="spin" aria-hidden="true"></span><span>' + esc(t('tg_w_t')) + '</span></p>' +
+      '<ol class="sv-steps"><li>' + esc(t('tg_w1', { bot: b })) + '</li><li>' + esc(t('tg_w2')) + '</li></ol>' +
+      (m.code ? '<p class="sv-codeln">' + esc(t('tg_code')) + ' <b class="sv-code" data-key="tg-code">' + esc(m.code) + '</b></p>' : '') + '</div>' +
+      '<div class="sv-acts"><a class="btn sec block" href="' + esc(tgHref(true)) + '"' + tgTab() + ' rel="noopener" data-key="tg-again">' + ico('send', 20) + '<span>' + esc(t('tg_again')) + '</span></a>' +
+      '<button type="button" class="linkbtn" data-act="tg-cancel" data-key="tg-cancel">' + esc(t('cancel')) + '</button></div></div>';
+  }
+  /** Картка «Збережіть дані»: чому (лише цей браузер), Telegram — головна кнопка, пошта (у застосунку — Apple чи пошта) — друга, «Пізніше» (не в Налаштуваннях). */
+  function saveCard(w) {
+    var tgb = tgBot(), later = w !== 'prefs';
+    if (SV.seen !== w) { SV.seen = w; track('save', { a: 'show', w: w }); }
+    var acts = TGIN && TGIN.st ? tgWait() : '<div class="sv-acts">' + (tgb ? tgBtn('sv-tg', '', t('sv_tg'), w) : '') +
+      '<button type="button" class="btn ' + (tgb ? 'sec ' : '') + 'block" data-act="sv-mail" data-key="sv-mail">' + ico(APP ? 'shield' : 'mail', 20) + '<span>' + esc(t(APP ? 'sv_mail_app' : 'sv_mail')) + '</span></button>' +
+      (later ? '<button type="button" class="linkbtn sv-later" data-act="sv-later" data-key="sv-later">' + esc(t('sv_later')) + '</button>' : '') + '</div>';
+    return '<section class="panel sv-card" data-key="save-card" aria-labelledby="sv-h"><div class="sv-g' + (TGIN && TGIN.st ? ' w' : '') + '"><div class="sv-tx"><h2 id="sv-h">' + ico('shield', 22) + '<span>' + esc(t('sv_t')) + '</span></h2>' +
+      '<p>' + esc(t(APP ? 'sv_l_app' : 'sv_l')) + '</p></div>' + acts + '</div></section>';
+  }
+  /** Рядок після «Пізніше»: що дані лише тут і кнопка «Зберегти» (розгортає картку на місці). */
+  function svStrip() {
+    return '<div class="banner sv-strip" data-key="save-strip">' + ico('alert', 20) + '<div class="sv-s-b"><p>' + esc(t(APP ? 'sv_strip_app' : 'sv_strip')) + '</p>' +
+      '<button type="button" class="btn sec sm" data-act="sv-open" data-key="sv-open">' + esc(t('sv_save')) + '</button></div></div>';
+  }
+  /** Що показати: на головній — картку (або рядок після «Пізніше»); на сторінках лічильників — рядок, коли вже є показання (картка — якщо розгорнули чи чекаємо Telegram). */
+  function saveBox(w) {
+    if (!svGuest() || !anyMeters()) return '';
+    if (w === 'home') return svBig() ? saveCard('home') : svStrip();
+    if (SV.open || (TGIN && TGIN.st)) return saveCard('page');
+    return allRecs().length ? svStrip() : '';
+  }
   V.home = function () {
     var html = '<h1 class="sr">' + esc(t('nav_home')) + (place() && place().name ? ' — ' + esc(place().name) : '') + '</h1>';
-    if (Y().mode === 'server' && !Y().account && (RD().length || wrecs().length) && !S.syncPromptDismissed) {
-      html += '<div class="banner" data-key="home-save-prompt">' + ico('info', 22) + '<div><p><b>' + esc(t(APP ? 'save_prompt_app' : 'save_prompt')) + '</b></p><p><a href="#login">' + esc(t('login')) + '</a> &nbsp; <button class="linkbtn" data-act="dismiss-sync">' + esc(t('save_prompt_later')) + '</button></p></div></div>';
-    }
+    html += saveBox('home');   // 190-я: «Збережіть дані» — одразу після першого налаштування, явно (була тиха плашка лише після показань)
     html += botStartBanner();
     loadInbox();
     if (INBOX.items && INBOX.items.length) html += '<div class="banner" data-key="home-inbox">' + ico('camera', 22) + '<div><p><b>' + esc(t('ib_title', { n: INBOX.items.length })) + '</b></p><p>' + esc(t('ib_sub')) + '</p><p><button class="btn" data-act="inbox-run" data-key="home-inbox-run">' + esc(t('ib_run')) + '</button></p></div></div>';
@@ -6309,9 +6412,6 @@
     right += myh ? (hlast && !/^(handed|accepted)$/.test(hlast.status) ? myPayBox('heat', myh, myCtxH(hlast), '') : myPayBox('heat', myh, hlast && !hlast.own ? Object.assign({}, myCtxH(hlast), { paid: true }) : null, '')) : whereAcc(heatWhere());   // 145-а: блок свого — завжди, як «Куди передати»   // 144-а: свій постачальник — без «Куди передати»
     var recent = heatMixed(3);
     if (recent.length) right += histPanel(readingList(recent), RD().length + gaps('heat').length, '<button class="btn sec block" data-act="view-go" data-v="heat" data-to="history" data-key="heat-all">' + esc(t('wh_all', { n: RD().length + gaps('heat').length })) + '</button>', 'heat');
-    if (Y().mode === 'server' && !Y().account && RD().length && !S.syncPromptDismissed) {
-      html = '<div class="banner" data-key="home-save-prompt">' + ico('info', 22) + '<div><p><b>' + esc(t(APP ? 'save_prompt_app' : 'save_prompt')) + '</b></p><p><a href="#login">' + esc(t('login')) + '</a> &nbsp; <button class="linkbtn" data-act="dismiss-sync">' + esc(t('save_prompt_later')) + '</button></p></div></div>' + html;
-    }
     html += heroGrid(left, act, right);
     return { screen: 'S01h', route: 'heat', html: html };
   };
@@ -10366,7 +10466,8 @@
       return h + '<div class="panel danger-zone quiet" data-key="prefs-danger"><button class="btn danger quiet block" data-act="acct-del-ask" data-key="prefs-acct-del">' + ico('trash', 18) + '<span>' + esc(t('acct_del')) + '</span></button>' +
         '<p class="small muted" style="margin-top:8px">' + esc(t('acct_del_s')) + '</p><div id="acct-del-confirm"></div></div>';
     }
-    if (y.mode === 'server') return '<div class="panel" data-key="prefs-sync"><p>' + esc(t('sync_local')) + '</p><p>' + esc(t('sync_local_sub_site')) + '</p><a class="btn" href="#login" data-key="prefs-login">' + esc(t('login')) + '</a></div>';
+    // 190-я: без входу — та сама картка «Збережіть дані» (Telegram у цьому браузері, пошта), без «Пізніше»; «Увійти» — для тих, у кого акаунт уже є
+    if (y.mode === 'server') return saveCard('prefs') + '<p class="small muted sv-have" data-key="prefs-sync">' + esc(t('sv_have')) + ' <a href="#login" data-act="auth-mode" data-m="login" data-key="prefs-login">' + esc(t('login')) + '</a></p>';
     return '<div class="panel" data-key="prefs-sync"><p>' + esc(t('sync_local')) + '</p><p class="small muted">' + esc(t('sync_local_sub_noserver')) + '</p></div>';
   }
   /** Поле пароля з кнопкою «Показати» (людям 45+ легше перевірити, що ввели); підказка про 8 символів — лише для нового пароля. */
@@ -10400,9 +10501,9 @@
     // 163-я (власник 16.11: «як гівно, текст сам себе дублює»): одна картка — Telegram однією кнопкою з рядком під нею, «або поштою», форма;
     // без перемикача «Увійти / Створити акаунт» (третє «Увійти» на екрані) — під карткою «Немає акаунта? Створити акаунт»; «без входу — лише тут» — біля «Продовжити без входу»
     skip = '<p class="auth-skip"><a href="#' + (S.onboarded ? 'home' : 'welcome') + '" data-key="login-skip">' + esc(t('login_skip')) + '</a><span class="auth-hint">' + esc(t(APP ? 'login_skip_note_app' : 'login_skip_note')) + '</span></p>';
-    var tg = bot ? '<div class="auth-tg" data-key="login-telegram">' +
-      '<a class="btn sec block auth-tgbtn" href="https://t.me/' + esc(bot) + '" target="_blank" rel="noopener" data-key="login-tg-open">' + ico('send', 20) + '<span>' + esc(t('login_tg_btn2')) + '</span></a>' +
-      '<p class="auth-hint">' + esc(t('login_tg_sub3', { bot: bot })) + '</p></div>' +
+    // 190-я: вхід через бота — у ЦЬОМУ браузері (раніше посилання відкривало бота, і вхід був лише у вікні Telegram): t.me/<бот>?start=in_<t>, «Так, увійти», опит
+    var tg = bot ? '<div class="auth-tg" data-key="login-telegram">' + (TGIN && TGIN.st ? tgWait() :
+      tgBtn('login-tg-open', 'sec auth-tgbtn', t('login_tg_btn2'), 'login') + '<p class="auth-hint">' + esc(t('login_tg_sub4', { bot: bot })) + '</p>') + '</div>' +
       '<p class="auth-or" aria-hidden="true"><span>' + esc(t('login_or')) + '</span></p>' : '';
     // 154-а: у застосунку iPhone — «Увійти через Apple» першим (App Store 4.8: поруч із Telegram — рівноцінний вхід Apple)
     var apple = APP ? '<div class="auth-apple" data-key="login-apple"><button type="button" class="apple-btn" data-act="apple-in" data-key="login-apple-btn"><span class="apple-logo" aria-hidden="true"></span><span>' +
@@ -11804,6 +11905,12 @@
       }
       case 'logout': ADMIN = null; busy(el); Y().logout().then(function () { S = defaults(); S.lang = browserLang(); ensurePlaces(); lastSig = window.TeploSync.sig(window.TeploSync.payload(S)); persist(); toast(t('logged_out')); go('welcome'); }); break;
       case 'dismiss-sync': S.syncPromptDismissed = true; persist(); render(true); break;
+      // 190-я: «Збережіть дані»
+      case 'tg-in': tgGo(el.getAttribute('data-w')); break;   // посилання t.me відкривається само (без preventDefault)
+      case 'tg-cancel': { var tw0 = TGIN && TGIN.w; TGIN = null; tgKeep(); track('save', { a: 'cancel', w: tw0 }); render(true); break; }
+      case 'sv-later': S.savePr = { at: Date.now(), rd: allRecs().length }; SV.open = false; persist(); track('save', { a: 'later', w: 'home' }); render(true); break;
+      case 'sv-open': SV.open = true; track('save', { a: 'open', w: /^(home)?$/.test(routeName()) ? 'home' : 'page' }); render(true); break;
+      case 'sv-mail': track('save', { a: 'mail' }); authMode = APP ? 'login' : 'register'; go('login'); break;
       case 'rp-rm': rpRemove(el.getAttribute('data-ref') || '', el.getAttribute('data-id') || ''); break;
       case 'rp-undo': rpUndo(); break;
       case 'bot-start': botStartGo(); break;

@@ -368,6 +368,40 @@ $linkedTo = Db::one("SELECT user_id FROM user_identities WHERE type = 'telegram'
 ok('«Старт» в боте → Telegram привязан к этому аккаунту, бот ответил', $linkedTo && (int)$linkedTo['user_id'] === (int)$lb->req('GET', '/api/me')->body['user']['id'] && str_contains(end($sent)[1]['text'], 'прив’язано'));
 $hook('/start link_' . $mm[1]);
 ok('повторно та же ссылка не работает', str_contains(end($sent)[1]['text'], 'застаріло'));
+
+echo "\n190-я: «Зберегти через Telegram» — вхід у браузері через бота:\n";
+$gb = new Browser('10.0.9.2'); $tt = 'Ab3_-xYz0123456789abcdEF'; $kk = str_repeat('k', 40);
+$st = $gb->req('POST', '/api/auth/tg/start', ['t' => $tt, 'k' => $kk, 'lang' => 'uk'], ['HTTP_USER_AGENT' => 'Mozilla/5.0 (Windows NT 10.0) Chrome/130.0 Safari/537.36']);
+ok('браузер реєструє своє посилання: код 4 цифри, бот', $st->status === 200 && preg_match('/^\d{4}$/', $st->body['code']) && $st->body['bot'] === 'TeploTestBot', $st->body);
+ok('той самий t чужим k — 409; кривий t — 422', $anon->req('POST', '/api/auth/tg/start', ['t' => $tt, 'k' => str_repeat('z', 40)])->status === 409 && $gb->req('POST', '/api/auth/tg/start', ['t' => 'short', 'k' => $kk])->status === 422);
+ok('до підтвердження — wait; без k — 410', $gb->req('POST', '/api/auth/tg/poll', ['t' => $tt, 'k' => $kk])->body['state'] === 'wait' && $gb->req('POST', '/api/auth/tg/poll', ['t' => $tt, 'k' => 'x'])->status === 410);
+$from2 = ['id' => 555888, 'first_name' => 'Ганна', 'username' => 'hanna_t', 'language_code' => 'uk'];
+$hook2 = fn(array $upd) => $anon->req('POST', '/api/bot/webhook', $upd, ['HTTP_X_TELEGRAM_BOT_API_SECRET_TOKEN' => (string)Cfg::get('webhook_secret')]);
+$sent = []; $hook2(['message' => ['message_id' => 7, 'chat' => ['id' => 555888, 'type' => 'private'], 'from' => $from2, 'text' => '/start in_' . $tt]]);
+$q = end($sent)[1] ?? [];
+ok('бот питає «Увійти в браузері Chrome · Windows?» з кодом і кнопками', str_contains($q['text'] ?? '', 'Chrome · Windows') && str_contains($q['text'], $st->body['code'])
+  && ($q['reply_markup']['inline_keyboard'][0][0]['callback_data'] ?? '') === 'li:' . $tt && ($q['reply_markup']['inline_keyboard'][1][0]['callback_data'] ?? '') === 'lx:' . $tt, $q);
+ok('сам /start вхід не дає — seen, акаунта ще немає', $gb->req('POST', '/api/auth/tg/poll', ['t' => $tt, 'k' => $kk])->body['state'] === 'seen' && !Db::one("SELECT id FROM user_identities WHERE type = 'telegram' AND external_id = '555888'"));
+$sent = []; $hook2(['callback_query' => ['id' => 'cq1', 'data' => 'li:' . $tt, 'from' => $from2, 'message' => ['message_id' => 8, 'chat' => ['id' => 555888]]]]);
+ok('«Так, увійти» → акаунт Telegram (новий, з ім’ям), бот: «поверніться в браузер»', ($tid = Db::one("SELECT user_id FROM user_identities WHERE type = 'telegram' AND external_id = '555888'")) && Db::one('SELECT name FROM users WHERE id = ?', [$tid['user_id']])['name'] === 'Ганна'
+  && in_array('editMessageText', array_column($sent, 0), true) && str_contains(json_encode($sent, JSON_UNESCAPED_UNICODE), 'Поверніться в браузер'));
+$pl = $gb->req('POST', '/api/auth/tg/poll', ['t' => $tt, 'k' => $kk]);
+ok('браузер забирає вхід: ok + user, сесія cookie (браузеру токен у відповіді не даємо)', $pl->status === 200 && $pl->body['state'] === 'ok' && (int)$pl->body['user']['id'] === (int)$tid['user_id'] && !isset($pl->body['session'])
+  && (int)$gb->req('GET', '/api/me')->body['user']['id'] === (int)$tid['user_id'] && $gb->req('GET', '/api/me')->body['user']['telegram']['username'] === 'hanna_t');
+ok('один раз: повторний опит — 410', $gb->req('POST', '/api/auth/tg/poll', ['t' => $tt, 'k' => $kk])->status === 410);
+$sent = []; $hook2(['callback_query' => ['id' => 'cq2', 'data' => 'li:' . $tt, 'from' => $from2, 'message' => ['message_id' => 8, 'chat' => ['id' => 555888]]]]);
+ok('кнопка вдруге — «застаріло»', str_contains(json_encode($sent, JSON_UNESCAPED_UNICODE), 'застаріло'));
+// «Ні, це не я» — вхід не дається
+$gb2 = new Browser('10.0.9.3'); $t2 = 'Zz9_-zYz0123456789abcdQQ';
+$gb2->req('POST', '/api/auth/tg/start', ['t' => $t2, 'k' => $kk, 'lang' => 'ru'], ['HTTP_USER_AGENT' => 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) Version/18.0 Mobile/15E148 Safari/604.1']);
+$sent = []; $hook2(['message' => ['message_id' => 9, 'chat' => ['id' => 555889, 'type' => 'private'], 'from' => ['id' => 555889, 'language_code' => 'ru'], 'text' => '/start in_' . $t2]]);
+ok('ru: «в браузере Safari · iPhone»', str_contains(end($sent)[1]['text'] ?? '', 'в браузере Safari · iPhone'), end($sent));
+$hook2(['callback_query' => ['id' => 'cq3', 'data' => 'lx:' . $t2, 'from' => ['id' => 555889, 'language_code' => 'ru'], 'message' => ['message_id' => 10, 'chat' => ['id' => 555889]]]]);
+ok('«Нет, это не я» → браузер: no, без входу і без нового акаунта', $gb2->req('POST', '/api/auth/tg/poll', ['t' => $t2, 'k' => $kk])->body['state'] === 'no' && $gb2->req('GET', '/api/me')->status === 401
+  && !Db::one("SELECT id FROM user_identities WHERE type = 'telegram' AND external_id = '555889'"));
+$sent = []; $hook2(['message' => ['message_id' => 11, 'chat' => ['id' => 555890, 'type' => 'private'], 'from' => ['id' => 555890, 'language_code' => 'uk'], 'text' => '/start in_NotRegistered0123456789x']]);
+ok('незареєстроване посилання — «застаріло», без кнопок', str_contains(end($sent)[1]['text'] ?? '', 'застаріло') && !isset(end($sent)[1]['reply_markup']));
+ok('/api/health → tgin: почали 2, підтвердили 1, забрали 1, «не я» 1', ($hh = $anon->req('GET', '/api/health')->body['tgin'] ?? []) && $hh['n'] === 2 && $hh['ok'] === 1 && $hh['used'] === 1 && $hh['no'] === 1, $hh);
 Telegram::$send = null;
 
 echo "\nДокументы к счётчику:\n";

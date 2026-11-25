@@ -55,6 +55,8 @@ final class Cfg {
         'relay_bad' => [30, 3600],       // ретранслятор: запросов с неверным ключом с одного IP в час
         'share_ip' => [60, 3600],        // 179-я: запрошення в спільну квартиру — переглянути/приєднатися з одного IP в годину
         'share_inv' => [40, 3600],       // і створити запрошення (посилання, лист) — на людину в годину
+        'tgin_ip' => [20, 3600],         // 190-я: «Зберегти через Telegram» — почати вхід через бота з одного IP в годину
+        'tgpoll_ip' => [900, 3600],      // і питати «підтвердили?» (раз на 3 с, поки сторінка на екрані)
       ],
       'max_body_bytes' => 300 * 1024,
       'max_photo_bytes' => 12 * 1024 * 1024,
@@ -187,6 +189,8 @@ final class Db {
       "CREATE TABLE IF NOT EXISTS docs (id CHAR(24) PRIMARY KEY, user_id INT NOT NULL, place VARCHAR(40) NOT NULL, kind VARCHAR(16) NOT NULL, file VARCHAR(80) NOT NULL, mime VARCHAR(40) NOT NULL, bytes INT NOT NULL, name VARCHAR(120) NULL, created_at VARCHAR(25) NOT NULL)$tail",
       // одноразовые ссылки «привязать Telegram через бота» (t.me/<бот>?start=link_<token>)
       "CREATE TABLE IF NOT EXISTS link_tokens (token CHAR(32) PRIMARY KEY, user_id INT NOT NULL, expires_at INT NOT NULL)$tail",
+      // 190-я: «Зберегти через Telegram» — вхід у браузері через бота (TgLogin): хеш t з посилання, хеш секрету браузера k, код для звірки, стан new|seen|ok|used|no
+      "CREATE TABLE IF NOT EXISTS tg_logins (token_hash CHAR(64) PRIMARY KEY, kh CHAR(64) NOT NULL, code CHAR(4) NOT NULL, ua VARCHAR(60) NULL, lang CHAR(2) NULL, st VARCHAR(4) NOT NULL, user_id INT NULL, created_at INT NOT NULL, expires_at INT NOT NULL)$tail",
       // «Забули пароль?» (123-я): одноразове посилання з листа — у базі лише хеш токена, діє годину
       "CREATE TABLE IF NOT EXISTS pw_resets (token_hash CHAR(64) PRIMARY KEY, user_id INT NOT NULL, expires_at INT NOT NULL, used_at INT NULL, created_at INT NOT NULL)$tail",
       // фото, присланные боту в Telegram: ждут, пока человек откроет сервис — там их распознаёт браузер (бесплатно)

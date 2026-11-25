@@ -10,6 +10,8 @@
 //  POST /api/auth/telegram/widget   {id, ..., hash}      — кнопка «Увійти через Telegram» на сайте
 //  POST /api/bot/write-ok            → {user} — Mini App нынешнего бота: человек разрешил боту писать (снимает user.botStart)
 //  POST /api/auth/link-bot          → {url} t.me/<бот>?start=link_<token> — привязать Telegram через бота (15 мин)
+//  POST /api/auth/tg/start {t, k, lang} → {code, bot, ttl} — 190-я: вхід У ЦЬОМУ БРАУЗЕРІ через бота (t.me/<бот>?start=in_<t>, TgLogin)
+//  POST /api/auth/tg/poll  {t, k}     → {state: wait|seen|no} | {state: ok, user} (сесія) | 410 tg_expired
 //  POST /api/auth/link-telegram     {widget data}        — привязать Telegram к аккаунту с паролем
 //  POST /api/auth/password          {email, password}    — задать email+пароль аккаунту из Telegram
 //  POST /api/auth/logout
@@ -163,7 +165,8 @@ final class Api {
           'mail' => class_exists('Mail', false) ? Mail::health() : null,
           // 179-я: спільні квартири — скільки, учасників, запрошень і приєднань за 7 днів, незведених (лише числа)
           'share' => class_exists('Share', false) ? Share::summary() : null,
-          'push' => class_exists('Push', false) ? Push::summary() : null];   // 186-я: пуші iPhone — ключ є? токенів скільки (лише числа)
+          'push' => class_exists('Push', false) ? Push::summary() : null,
+          'tgin' => TgLogin::summary()];   // 190-я: «Зберегти через Telegram» за 7 днів — почали, бот показав питання, підтвердили, браузер забрав вхід, «не я»   // 186-я: пуші iPhone — ключ є? токенів скільки (лише числа)
       }
       // отписка от нагадувань на e-mail: GET — страница с кнопкой (почтовые сканеры ходят по ссылкам — по GET не отписываем), POST — отписать (и One-Click)
       case 'GET /api/mail/off': case 'POST /api/mail/off': {
@@ -254,6 +257,16 @@ final class Api {
         $tgi = Db::one("SELECT external_id FROM user_identities WHERE user_id = ? AND type = 'telegram'", [$user['id']]);
         if ($tgi) Telegram::markBotOk((string)$tgi['external_id']);
         return ['user' => self::publicUser(self::userById((int)$user['id']))];
+      }
+      // 190-я: «Зберегти через Telegram» — вхід саме в цьому браузері через бота (TgLogin): бот питає «Так, увійти», браузер опитує
+      case 'POST /api/auth/tg/start': RateLimit::hit('tgin_ip', $ip); return TgLogin::start($in, $r->header('User-Agent'));
+      case 'POST /api/auth/tg/poll': {
+        RateLimit::hit('tgpoll_ip', $ip);
+        $j = TgLogin::poll($in); if ($j['state'] !== 'ok') return $j;
+        $u = self::userById($j['uid']); if (!$u) throw new HttpError(410, 'tg_expired');
+        $tok = self::startSession($res, $u, $r, $ip); self::audit($u['id'], 'login_telegram_bot', $ip);
+        // застосунок iPhone — токен і у відповіді (як вхід Apple); браузеру досить cookie
+        return ['state' => 'ok', 'user' => self::publicUser($u)] + (str_contains($r->header('User-Agent'), 'PeredaiApp/') ? ['session' => $tok] : []);
       }
       case 'POST /api/auth/link-bot': {   // ссылка на бота для привязки Telegram без виджета (работает при любом CSP)
         if (!$user) throw new HttpError(401, 'unauthorized');
@@ -586,7 +599,7 @@ final class Api {
   public static function deleteAccount(int $uid): void {
     if ($uid <= 0) return;
     if (class_exists('Share', false)) Share::forget($uid);   // 179-я: вийти зі спільних квартир; де власник — прибрати в інших
-    foreach (['sessions', 'user_identities', 'user_state', 'user_state_hist', 'cab_creds', 'cab_jobs', 'relay_jobs', 'link_tokens', 'pw_resets',
+    foreach (['sessions', 'user_identities', 'user_state', 'user_state_hist', 'cab_creds', 'cab_jobs', 'relay_jobs', 'link_tokens', 'tg_logins', 'pw_resets',
       'bot_cards', 'bot_inbox', 'consents', 'events', 'visits', 'reminders_sent', 'reminder_snooze', 'mail_optout', 'mail_log', 'vk_events', 'vk_replies',
       'recog_reports', 'photos', 'docs', 'audit_log', 'share_members', 'push_tokens', 'push_sent'] as $t) {
       try { Db::q("DELETE FROM $t WHERE user_id = ?", [$uid]); } catch (\Throwable $e) { /* таблиці ще немає */ }

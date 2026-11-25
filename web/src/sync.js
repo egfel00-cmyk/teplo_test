@@ -279,7 +279,8 @@
           self._lastSig = sig(j.state);
           // вход в аккаунт, где уже есть данные, с чужими/«без входа» данными в браузере — данные аккаунта главнее, локальные не вливаем
           self.via = login ? (same ? 'login' : 'login-new') : 'pull';
-          if (!same && hasData(j.state)) { self.via = 'login-acct'; self._apply(j.state); }
+          // 190-я: внесене без входу не зникає мовчки — копія в цьому браузері (teplo.guestBak), застосунок скаже, що відкрили дані акаунта
+          if (!same && hasData(j.state)) { var loc = self._get(); if (login && !self._owner() && hasData(loc)) { self.guestBak = true; try { root.localStorage.setItem('teplo.guestBak', JSON.stringify({ at: Date.now(), state: payload(loc) })); } catch (e) { /* немає місця — лише повідомимо */ } } self.via = 'login-acct'; self._apply(j.state); }
           else self._apply(merge(self._get(), j.state));
         }
         if (acc) self._setOwner(acc);
@@ -297,6 +298,13 @@
       document.addEventListener('visibilitychange', tick); setInterval(tick, 60000); self.poll = tick;
     },
     _after: function (j) { if (j._status === 200 && j.user) { this.account = j.user; return this.pull(true).then(function () { return j; }); } return Promise.resolve(j); },
+    /** 190-я: «Зберегти через Telegram» — вхід у ЦЬОМУ браузері через бота: зареєструвати посилання t.me/<бот>?start=in_<t> (k — секрет браузера) → {code, bot}. */
+    tgStart: function (t, k, lang) { return api('POST', '/auth/tg/start', { t: t, k: k, lang: lang }, false, true); },
+    /** Підтвердили в боті? state wait | seen | no; ok — вхід тут (сесія cookie), далі як після входу: дані браузера — в акаунт (pull(true)). 410 — посилання вже не діє. */
+    tgPoll: function (t, k) {
+      var self = this;
+      return api('POST', '/auth/tg/poll', { t: t, k: k }).then(function (j) { if (j._status === 200 && j.state === 'ok' && j.user) { if (j.session) setSess(j.session); return self._after(j); } return j; });
+    },
     login: function (email, password) { var self = this; return api('POST', '/auth/login', { email: email, password: password }).then(function (j) { return self._after(j); }); },
     forgot: function (email, lang) { return api('POST', '/auth/forgot', { email: email, lang: lang }); },
     resetPassword: function (token, password) { var self = this; return api('POST', '/auth/reset', { token: token, password: password }).then(function (j) { return self._after(j); }); },

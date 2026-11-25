@@ -12,8 +12,8 @@ const sql = q => execFileSync('python3', ['-c', 'import sqlite3,sys; c=sqlite3.c
   p.on('pageerror', e => errs.push(e.message)); p.on('console', m => { if (m.type() === 'error' && !/telegram\.org|ERR_|40[13]|410|422|503/.test(m.text())) errs.push(m.text()); });
   await p.goto(BASE + '#login'); await p.reload(); await p.waitForTimeout(900);
   const txt = s => p.textContent(s).catch(() => '');
-  ok('Telegram першим: кнопка «Увійти через Telegram» на t.me, бот — у рядку під нею', /Увійти через Telegram/.test(await txt('[data-key=login-tg-open]')) && /@peredai_com_ua_bot/.test(await txt('[data-key=login-telegram] .auth-hint'))
-    && (await p.getAttribute('[data-key=login-tg-open]', 'href')) === 'https://t.me/peredai_com_ua_bot');
+  ok('Telegram першим: кнопка «Увійти через Telegram» на t.me/<бот>?start=in_…, бот — у рядку під нею', /Увійти через Telegram/.test(await txt('[data-key=login-tg-open]')) && /@peredai_com_ua_bot/.test(await txt('[data-key=login-telegram] .auth-hint'))
+    && /^https:\/\/t\.me\/peredai_com_ua_bot\?start=in_[A-Za-z0-9_-]{24}$/.test(await p.getAttribute('[data-key=login-tg-open]', 'href')));   // 190-я: вхід у ЦЬОМУ браузері — посилання з t
   ok('«або поштою» між Telegram і формою, усе в одній картці', /або поштою/.test(await txt('.auth-or')) && (await p.$$('.auth .panel')).length === 1);
   // 163-я (власник 16.11: «текст сам себе дублює»): без перемикача — «Увійти» лише на головній кнопці, «Створити акаунт» — посиланням під карткою
   ok('без повторів: «Увійти» — одна кнопка, перемикача нема, «Немає акаунта? Створити акаунт»', !(await p.$('.auth-sw, [data-key=login-mode-in]'))
