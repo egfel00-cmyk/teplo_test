@@ -890,6 +890,8 @@
   function windowBanner() {
     if (heatLite()) return '';   // вікно 5–25 — правило ХТМ
     var w = R.windowState(today()), td = today();
+    // 188-а (власник 25.11): показання цього місяця вже передані — строк («залишилось 2 дні», «останній день», «закрито») не потрібен
+    if (w.state !== 'closed_before' && heatSent()) return '';
     var opens = w.state === 'closed_before' ? dayOfMonth(td, 5) : nextMonthDay(td, 5);
     var last = fmtDate(dayOfMonth(td, 25)), rec = fmtDate(dayOfMonth(td, 23));
     var map = {
@@ -1323,10 +1325,13 @@
   }
 
   /** Статус тепла текущей квартиры: {st — текст, tone — ok|due|warn|'' , due — дата срока (ISO), если надо передать}. */
+  /** Останні показання тепла для передачі (без «лише для себе») — цього місяця й уже передані/прийняті. */
+  function heatSent() { var l = heatLastSent(); return !!(l && thisMonth(l.htm.date) && (l.status === 'handed' || l.status === 'accepted')); }
+  function heatLastSent() { return RD().filter(function (r) { return r.htm && r.htm.date && !r.own; }).slice(-1)[0] || null; }
   function heatStatus() {
-    var last = RD().filter(function (r) { return r.htm && r.htm.date; }).slice(-1)[0], w = R.windowState(today()), gap = openGap('heat'), d25 = dayOfMonth(today(), 25);
+    var last = heatLastSent(), w = R.windowState(today()), gap = openGap('heat'), d25 = dayOfMonth(today(), 25);
     if (gap) return { st: t('gp_card_off', { d: fmtDate(gap.from) }), tone: 'warn', off: true };
-    if (last && thisMonth(last.htm.date) && (last.status === 'handed' || last.status === 'accepted')) return { st: heatLite() ? t('uc_heat_sent_l') : last.status === 'accepted' ? t('uc_heat_ok') : t('uc_heat_handed'), tone: 'ok' };
+    if (heatSent()) return { st: heatLite() ? t('uc_heat_sent_l') : last.status === 'accepted' ? t('uc_heat_ok') : t('uc_heat_handed'), tone: 'ok' };
     if (myProv('heat')) {   // 144-а: свій постачальник — строк, лише якщо людина його вказала
       var hw = winNow('heat'); if (!hw || !hw.open) return { st: '', tone: '' };
       return { st: t('uc_heat_due', { d: fmtDate(hw.to) }), tone: hw.daysLeft <= 3 ? 'warn' : 'due', due: hw.to };
@@ -6596,9 +6601,12 @@
       : '<span class="hr-none">' + esc(o.none || '') + '</span>') + '</div>';
     // дата — сверху, отдельной строкой с отступом (тем же мелким шрифтом), ниже — сколько и почём.
     // Есть статус (o.st) — чипс рядом со ссылкой (на телефоне — строкой ниже): своя кнопка, выбор «передано / не передано / для себе»
-    return '<li class="' + (o.st ? 'hli' : '') + (o.cls ? ' ' + o.cls : '') + '" data-key="' + esc(o.key) + '"><a class="rowlink hrow" href="' + esc(o.href) + '"><div class="grow">' +
-      (o.date ? '<div class="hr-date">' + esc(o.date) + '</div>' : '') + main +
-      '<div class="hr-sub">' + subSpans(o.sub) + '</div>' + (o.htm || '') + '</div>' + (o.right || '') + '</a>' + (o.st || '') + '</li>';
+    // 188-а (власник 25.11: «вразнобой, слипается — один шаблон для всіх лічильників»): на будь-якій ширині однаково — дата й статус угорі (статус — праворуч
+    // на рядку дати), нижче обсяг і гроші, підпис на всю ширину, значки (погода, фото, платіжки, хто вніс) — окремим рядком унизу; дата — з великої
+    var sub = subSpans(o.sub);
+    return '<li class="hr-li' + (o.st ? ' hli' : '') + (o.cls ? ' ' + o.cls : '') + '" data-key="' + esc(o.key) + '"><a class="rowlink hrow" href="' + esc(o.href) + '"><div class="grow">' +
+      (o.date ? '<div class="hr-date">' + esc(ucf(o.date)) + '</div>' : '') + main +
+      (sub ? '<div class="hr-sub">' + sub + '</div>' : '') + (o.htm || '') + (o.right ? '<div class="hr-marks">' + o.right + '</div>' : '') + '</div></a>' + (o.st || '') + '</li>';
   }
   /** 151-а (план конкурентів п. 8, як у YASNO: «ви внесли», «з фото», «з платіжки»): звідки цифри запису.
    *  photo — розпізнали з фото в застосунку; chat — з фото, надісланого боту (вхідні, картка в чаті); hand — вписали; bill — платіжка постачальника; base — стартові.
@@ -10161,11 +10169,13 @@
   }
   document.addEventListener('toggle', function (e) { var d = e.target; if (d && d.classList && d.classList.contains('pgroup')) PREF_OPEN[d.id.slice(3)] = d.open; }, true);
   /** Коли лічильник знято: правила (тариф той самий, інший спосіб визначити обсяг) і що для оцінки потрібно знати. */
+  /** Шапка «Коли лічильник знято» — як «Налаштування лічильника»: плитка-значок, назва, кружок зі стрілкою (188-а). */
+  function nmHead(title) { return '<summary>' + ico('wrench', 18, 'bt-ico') + '<span>' + esc(title) + '</span>' + ico('chev', 18, 'pacc-chev') + '</summary>'; }
   function nometerHeatPanel() {
     var p = place() || {};
-    return '<details class="tips-box nm-box" id="nometer-h" tabindex="-1" data-key="prefs-nometer-h"><summary>' + esc(t('nm_h_t')) + '</summary><p class="small muted">' + esc(t('nm_h_sub', { p: money(tariff()) })) + '</p>' +
+    return '<details class="tips-box nm-box" id="nometer-h" tabindex="-1" data-key="prefs-nometer-h">' + nmHead(t('nm_h_t')) + '<div class="nm-b"><p class="small muted">' + esc(t('nm_h_sub', { p: money(tariff()) })) + '</p>' +
       '<ul class="plain small nm-rules">' + t('nm_h_l').split('|').map(function (x) { return '<li>' + esc(x) + '</li>'; }).join('') + '</ul>' +
-      '<div class="field" style="max-width:260px"><label for="p-area">' + esc(t('nm_area')) + ' <span class="muted small">(' + esc(t('b_opt')) + ')</span></label><div class="ctl"><input id="p-area" class="num" inputmode="decimal" autocomplete="off" value="' + esc(p.area ? String(p.area).replace('.', ',') : '') + '"><span class="unit">м²</span></div><div class="small muted">' + esc(t(heatLite() ? 'nm_area_h_l' : 'nm_area_h')) + '</div>' + areaHint() + '</div></details>';
+      '<div class="nm-g nm-one"><div class="field"><label for="p-area">' + esc(t('nm_area')) + ' <span class="muted small">(' + esc(t('b_opt')) + ')</span></label><div class="ctl"><input id="p-area" class="num" inputmode="decimal" autocomplete="off" value="' + esc(p.area ? String(p.area).replace('.', ',') : '') + '"><span class="unit">м²</span></div><div class="small muted">' + esc(t(heatLite() ? 'nm_area_h_l' : 'nm_area_h')) + '</div>' + areaHint() + '</div></div></div></details>';
   }
   /** Стартові показання тепла (від них рахується перший місяць) — у налаштуваннях теплолічильника на екрані квартири. */
   function heatBaseRow() {
@@ -10179,12 +10189,13 @@
     // 142-а: вода не від Харківводоканалу — норми встановлює її громада (у договорі); харківські — лише орієнтир
     var lw = prvOf('water'), loc = lw && lw.via !== 'hvk', org = loc ? (lw.org || t('nm_org_def')) : '';
     var op = NM_OPEN; NM_OPEN = false;
-    return '<details class="tips-box nm-box" id="nometer-w" tabindex="-1" data-key="prefs-nometer-w"' + (op ? ' open' : '') + '><summary>' + esc(t('nm_w_t')) + '</summary><p class="small muted">' + esc(t('nm_w_sub')) + '</p>' +
+    return '<details class="tips-box nm-box" id="nometer-w" tabindex="-1" data-key="prefs-nometer-w"' + (op ? ' open' : '') + '>' + nmHead(t('nm_w_t')) + '<div class="nm-b"><p class="small muted">' + esc(t('nm_w_sub')) + '</p>' +
       '<ul class="plain small nm-rules">' + (loc ? t('nm_w_l_l') : t('nm_w_l')).split('|').map(function (x) { return '<li>' + esc(x) + '</li>'; }).join('') + '</ul>' +
-      '<div class="grid2"><div class="field"><label for="p-persons">' + esc(t('nm_persons')) + '</label><div class="ctl"><input id="p-persons" class="num" inputmode="numeric" autocomplete="off" data-nm="persons" value="' + esc(c.persons || '') + '"></div></div>' +
-      '<div class="field"><label for="p-normrow">' + esc(t('nm_row')) + '</label><div class="ctl"><select id="p-normrow" data-nm="normRow">' + opts + '</select></div></div>' +
-      fld('normCold', t('nm_cold'), f(row.cold), c.normCold) + (row.hot || c.normHot ? fld('normHot', t('nm_hot'), f(row.hot), c.normHot) : '') + '</div>' +
-      '<p class="small muted">' + esc(loc ? t('nm_src_l', { o: org }) : t('nm_src')) + '</p></details>';
+      // 188-а (власник 25.11, скрін: «отступов нет, всё навалено»): поля сіткою — кількість людей вузько поруч із нормою; свої норми — парою; поля в ряду — по низу
+      '<div class="nm-g nm-g1"><div class="field nm-persons"><label for="p-persons">' + esc(t('nm_persons')) + '</label><div class="ctl"><input id="p-persons" class="num" inputmode="numeric" autocomplete="off" data-nm="persons" value="' + esc(c.persons || '') + '"></div></div>' +
+      '<div class="field"><label for="p-normrow">' + esc(t('nm_row')) + '</label><div class="ctl"><select id="p-normrow" data-nm="normRow">' + opts + '</select></div></div></div>' +
+      '<div class="nm-g nm-g2">' + fld('normCold', t('nm_cold'), f(row.cold), c.normCold) + (row.hot || c.normHot ? fld('normHot', t('nm_hot'), f(row.hot), c.normHot) : '') + '</div>' +
+      '<p class="small muted nm-src">' + esc(loc ? t('nm_src_l', { o: org }) : t('nm_src')) + '</p></div></details>';
   }
   /** 164-а (власник 16.11 12:39, скрин «Акаунт і синхронізація»: «не всі лічильники — лише вода й опалення, навтикано врозкид; проаналізуй, щоб було
    *  простіше й семантично, додай іконки для чіткого розпізнавання»). Налаштування — список як на iPhone, однаково в браузері й застосунку:

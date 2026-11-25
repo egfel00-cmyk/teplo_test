@@ -3665,3 +3665,59 @@ fieldset { min-inline-size: 0; }
 .mbox-kset { padding-top: 4px; padding-bottom: 4px; }
 .mbox-kset > .mbox-set { margin-top: 0; border-top: 0; }
 .mbox-kset .mbox-set-b > p.small:first-child { margin-top: 0; }
+
+/* ===== 188-я (власник 25.11): рядок історії — один шаблон на будь-якій ширині й у всіх видів ===== */
+/* Було: на широкому статус і погода стояли по центру праворуч, підпис стискався у вузьку колонку, висота рядків — врізнобій.
+   Тепер, як на телефоні: дата й статус угорі (статус — праворуч на рядку дати), обсяг і гроші, підпис на всю ширину, значки — окремим рядком унизу. */
+.list > li.hr-li { display: block; position: relative; min-height: 0; padding: 12px 16px; }
+.list > li.hr-li > a.hrow { display: block; width: auto; }
+.list > li.hr-li .hr-date { display: flex; align-items: center; min-height: 28px; margin: 0 0 4px; padding-right: 0; font-size: 13px; color: var(--c-ink-2); }
+.list > li.hr-li.hli .hr-date { padding-right: 150px; }
+.list > li.hr-li > .st-chip { position: absolute; top: 8px; right: 12px; margin: 0; }
+.list > li.hr-li .hr-sub { margin-top: 4px; }
+.list > li.hr-li .hr-htm { margin-top: 6px; }
+.list > li.hr-li .hr-marks { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; margin-top: 8px; }
+.list > li.hr-li .hr-marks > .wx { margin: 0; padding: 2px 8px 2px 5px; font-size: 12px; }
+.list > li.hr-li .hr-marks > .by-tag { margin-left: 0; }
+/* «Історія» на сторінці лічильника — рядки прямо в блоці, поділені лінією (без «картки в картці»: рядки зливалися в стос карток) */
+:root:root .panel.mhist > .mhist-b > .list { margin: -12px -16px 0; border: 0; border-radius: 0; background: transparent; background-image: none; box-shadow: none; }
+:root:root .panel.mhist > .mhist-b > .list > li { border-radius: 0; background-color: transparent; background-image: none; box-shadow: none; border-bottom: 1px solid var(--c-line); }
+:root:root .panel.mhist > .mhist-b > .list > li:last-child { border-bottom: 0; }
+:root:root .panel.mhist > .mhist-b > .list > li > a.hrow { border-radius: 0; }
+@media (hover: hover) { :root:root .panel.mhist > .mhist-b > .list > li:has(> a.rowlink):hover { background-color: var(--c-ghost-hover); } }
+.panel.mhist .mhist-all { margin-top: 4px; }
+
+/* ===== 188-я (власник 25.11, скрін «Когда водомер снят»: «отступов нет, всё навалено, плохо сделан дропдаун») ===== */
+/* «Коли водомір / лічильник знято» — та сама картка, що й рядок лічильника: шапка 56 px (плитка-значок · назва · кружок), під нею лінія, тіло з відступами 12/14 */
+:root:root details.tips-box.nm-box { padding: 0; margin: 10px 0 0; border: 1px solid var(--c-line); border-radius: 12px; background: var(--c-surface); box-shadow: none; }
+.pg-body > details.tips-box.nm-box { margin: 10px 0 0; }
+.mbox-set-b details.tips-box.nm-box { margin: 12px 0; }
+details.tips-box.nm-box > summary { justify-content: flex-start; gap: 10px; min-height: 56px; padding: 8px 14px; border-radius: 12px; font-weight: 600; }
+details.tips-box.nm-box > summary > span { flex: 1 1 auto; min-width: 0; }
+details.tips-box.nm-box > summary:focus-visible { outline: 3px solid var(--c-info); outline-offset: 2px; }
+@media (hover: hover) { details.tips-box.nm-box > summary:hover { background: var(--c-ghost-hover); } }
+details.tips-box.nm-box[open] > summary { border-bottom: 1px solid var(--c-line); border-radius: 12px 12px 0 0; }
+.nm-box > .nm-b { padding: 12px 14px 14px; container-type: inline-size; }
+.nm-b > p:first-child { margin: 0; }
+.nm-b .nm-rules { margin: 10px 0 16px; padding-left: 20px; }
+.nm-g { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px 16px; align-items: end; margin: 0 0 12px; }
+.nm-g > .field { margin: 0; min-width: 0; }
+.nm-b select { width: 100%; min-width: 0; text-overflow: ellipsis; }
+.nm-b .nm-src { margin: 4px 0 0; }
+@container (min-width: 480px) {
+  .nm-g.nm-g1 { grid-template-columns: minmax(120px, 180px) minmax(0, 1fr); }
+  .nm-g.nm-g2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .nm-g.nm-one { grid-template-columns: minmax(0, 400px); }
+}
+/* світла C3: лічильники в групі — рядками з лініями, тож і цей розділ — рядком під лінією, без рамки */
+:root:root[data-lskin="c"][data-lsk="3"]:not([data-theme="dark"]) .pg-body > details.tips-box.nm-box { border: 0; border-top: 1px solid var(--c-line); border-radius: 0; background: transparent; padding: 0; }
+:root:root[data-lskin="c"][data-lsk="3"]:not([data-theme="dark"]) .pg-body > details.tips-box.nm-box > summary { padding-inline: 0; border-radius: 0; }
+:root:root[data-lskin="c"][data-lsk="3"]:not([data-theme="dark"]) .pg-body > details.tips-box.nm-box > .nm-b { padding-inline: 0; }
+:root:root[data-lskin="c"][data-lsk="3"]:not([data-theme="dark"]) .pg-body > details.tips-box.nm-box[open] > summary { border-bottom: 0; }
+/* інші підказки-розкривашки в групі (темні теми): рамка була без відступів — текст лежав на рамці */
+.pg-body > details.tips-box:not(.nm-box) { padding: 10px 14px; border-radius: 12px; }
+
+/* лічильник на екрані квартири: «Прибрати» — завжди праворуч, «Замінити» — ліворуч (власник 25.11: «всегда с одной стороны, чтобы не путать») */
+.mrow-act.one > .btn { grid-column: 2; }
+.mrow-act > .btn.danger { grid-column: 2; }
+.mrow-act > .btn:not(.danger) { grid-column: 1; }
