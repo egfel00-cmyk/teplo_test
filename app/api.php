@@ -89,7 +89,9 @@ final class Api {
       // cookie не зберігаються: чужий сайт власний заголовок без CORS не надішле, а cookie такі запити не використовують).
       // проба обленерго с NAS (RelayProbe) — curl без cookie и без входа: подделывать нечего, ничего от имени человека не меняет
       // /api/visit — отметка «открыли сайт» (аналитика, как журнал): подделывать нечего; с CSRF терялась у новых посетителей (08.11)
-      $csrfFree = $isHook || $r->path === '/api/auth/telegram/webapp' || $r->path === '/api/events' || $r->path === '/api/consent' || $r->path === '/api/visit' || $r->path === '/api/relay/probe' || $r->path === '/api/relay/done' || $r->path === '/api/mail/off' || $r->header('X-Session') !== '';   // /api/mail/off — по подписи из письма (и One-Click из почтовика)
+      // 191-в: вхід через бота (/auth/tg/start, /auth/tg/poll) — без CSRF: захищений секретом k, який знає лише браузер, що почав вхід; у вбудованих браузерах
+      // (Threads на iPhone) cookie ts_csrf не зберігається — було 403 csrf, вхід через Telegram там не працював зовсім (журнал 26.11).
+      $csrfFree = $isHook || $r->path === '/api/auth/telegram/webapp' || $r->path === '/api/auth/tg/start' || $r->path === '/api/auth/tg/poll' || $r->path === '/api/events' || $r->path === '/api/consent' || $r->path === '/api/visit' || $r->path === '/api/relay/probe' || $r->path === '/api/relay/done' || $r->path === '/api/mail/off' || $r->header('X-Session') !== '';   // /api/mail/off — по подписи из письма (и One-Click из почтовика)
       if (!$csrfFree && $r->method !== 'GET') {
         $c = (string)($r->cookies['ts_csrf'] ?? ''); $h = $r->header('X-CSRF');
         if ($c === '' || !hash_equals($c, $h)) throw new HttpError(403, 'csrf');
@@ -266,7 +268,8 @@ final class Api {
         $u = self::userById($j['uid']); if (!$u) throw new HttpError(410, 'tg_expired');
         $tok = self::startSession($res, $u, $r, $ip); self::audit($u['id'], 'login_telegram_bot', $ip);
         // застосунок iPhone — токен і у відповіді (як вхід Apple); браузеру досить cookie
-        return ['state' => 'ok', 'user' => self::publicUser($u)] + (str_contains($r->header('User-Agent'), 'PeredaiApp/') ? ['session' => $tok] : []);
+        // застосунок iPhone і браузер без cookie (nc — вбудований браузер Threads/Instagram) — токен у відповіді, далі X-Session
+        return ['state' => 'ok', 'user' => self::publicUser($u)] + (str_contains($r->header('User-Agent'), 'PeredaiApp/') || !empty($in['nc']) ? ['session' => $tok] : []);
       }
       case 'POST /api/auth/link-bot': {   // ссылка на бота для привязки Telegram без виджета (работает при любом CSP)
         if (!$user) throw new HttpError(401, 'unauthorized');

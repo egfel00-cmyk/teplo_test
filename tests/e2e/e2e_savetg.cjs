@@ -150,7 +150,22 @@ const press = (from, data) => hook({ update_id: Date.now(), callback_query: { id
     block = false; const t6 = tok(await N.p.getAttribute('[data-key=tg-retry]', 'href')); await N.p.waitForTimeout(600);
     await Promise.all([N.p.waitForURL(/t\.me/, { timeout: 5000 }).catch(() => null), N.p.click('[data-key=tg-retry]')]);
     ok('мережа є — повтор: зареєстровано й перейшли на t.me', /t\.me/.test(N.p.url()) && /^(pre|new)$/.test(rowOf(t6).st || ''), [N.p.url(), rowOf(t6)]);
-    ok('журнал /api/health → tgin: почали 6, підтвердили 4, «не я» 1', (h => h && h.n === 6 && h.ok === 4 && h.used === 4 && h.no === 1)((await (await fetch(BASE + '/api/health')).json()).tgin), (await (await fetch(BASE + '/api/health')).json()).tgin);
+    // 10. 191-в: вбудований браузер Threads на iPhone не зберігає cookie (журнал 26.11: «403:csrf») — вхід через бота без cookie, далі X-Session
+    const NC = await newPage(390, 844, 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 Barcelona 334.0.0.0');
+    await NC.p.context().route(BASE + '/**', async r => { const res = await r.fetch(); const h = Object.assign({}, res.headers()); delete h['set-cookie']; return r.fulfill({ response: res, headers: h }); });
+    await NC.p.addInitScript(() => { Object.defineProperty(Document.prototype, 'cookie', { get() { return ''; }, set() {}, configurable: true }); });
+    await setup(NC.p, ['cold']); await NC.p.waitForSelector('[data-key=sv-tg]');
+    const t7 = tok(await NC.p.getAttribute('[data-key=sv-tg]', 'href')); await NC.p.waitForTimeout(700);
+    ok('без cookie: посилання зареєстроване заздалегідь (не 403 csrf)', rowOf(t7).st === 'pre', rowOf(t7));
+    await Promise.all([NC.p.waitForURL(/t\.me/, { timeout: 5000 }).catch(() => null), NC.p.click('[data-key=sv-tg]')]);
+    ok('без cookie: дотик → t.me', /t\.me\/peredai_com_ua_bot\?start=in_/.test(NC.p.url()), NC.p.url());
+    await NC.p.goBack(); await NC.p.waitForTimeout(1000);
+    await say(IRA, '/start in_' + t7, 41); await press(IRA, 'li:' + t7);
+    await NC.p.waitForFunction(() => window.TeploSync && window.TeploSync.account, null, { timeout: 9000 }).catch(() => null);
+    ok('без cookie: «Так, увійти» → вхід у цьому браузері, сесія токеном (sessionStorage teplo.tgs)', await NC.p.evaluate(() => !!(window.TeploSync && window.TeploSync.account) && !!sessionStorage.getItem('teplo.tgs')));
+    await NC.p.reload(); await NC.p.waitForTimeout(1500);
+    ok('без cookie: після перезавантаження — і далі з акаунтом', await NC.p.evaluate(() => !!(window.TeploSync && window.TeploSync.account)));
+    ok('журнал /api/health → tgin: почали 7, підтвердили 5, «не я» 1', (h => h && h.n === 7 && h.ok === 5 && h.used === 5 && h.no === 1)((await (await fetch(BASE + '/api/health')).json()).tgin), (await (await fetch(BASE + '/api/health')).json()).tgin);
     ok('без помилок JS', !errs.length, errs);
   } catch (e) { fail++; console.log(' FAIL виняток', e && e.stack); }
   await b.close(); srv.kill();

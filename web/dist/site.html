@@ -8854,7 +8854,7 @@ details.tips-box.nm-box[open] > summary { border-bottom: 1px solid var(--c-line)
   function api(method, path, body, again, ka) {
     // перед первым изменяющим запросом — cookie ts_csrf; один раз: если cookie не зберігаються (вікно Telegram), повторювати безкінечно не можна;
     // вхід Mini App і запити з X-Session сервер пускає без неї
-    if (method !== 'GET' && !cookie('ts_csrf') && !SESS && !again && path !== '/auth/telegram/webapp') return csrfReady().then(function () { return api(method, path, body, true, ka); });
+    if (method !== 'GET' && !cookie('ts_csrf') && !SESS && !again && path !== '/auth/telegram/webapp' && path.indexOf('/auth/tg/') !== 0) return csrfReady().then(function () { return api(method, path, body, true, ka); });
     var h = { 'Accept': 'application/json' }, sent = '';
     if (method !== 'GET') { h['Content-Type'] = 'application/json'; sent = cookie('ts_csrf'); if (sent) h['X-CSRF'] = sent; }
     if (SESS) h['X-Session'] = SESS;
@@ -9022,7 +9022,7 @@ details.tips-box.nm-box[open] > summary { border-bottom: 1px solid var(--c-line)
     /** Підтвердили в боті? state wait | seen | no; ok — вхід тут (сесія cookie), далі як після входу: дані браузера — в акаунт (pull(true)). 410 — посилання вже не діє. */
     tgPoll: function (t, k) {
       var self = this;
-      return api('POST', '/auth/tg/poll', { t: t, k: k }).then(function (j) { if (j._status === 200 && j.state === 'ok' && j.user) { if (j.session) setSess(j.session); return self._after(j); } return j; });
+      return api('POST', '/auth/tg/poll', { t: t, k: k, nc: cookie('ts_csrf') ? 0 : 1 }).then(function (j) { if (j._status === 200 && j.state === 'ok' && j.user) { if (j.session) setSess(j.session); return self._after(j); } return j; });
     },
     login: function (email, password) { var self = this; return api('POST', '/auth/login', { email: email, password: password }).then(function (j) { return self._after(j); }); },
     forgot: function (email, lang) { return api('POST', '/auth/forgot', { email: email, lang: lang }); },
