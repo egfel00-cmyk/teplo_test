@@ -261,15 +261,15 @@ final class Api {
         return ['user' => self::publicUser(self::userById((int)$user['id']))];
       }
       // 190-я: «Зберегти через Telegram» — вхід саме в цьому браузері через бота (TgLogin): бот питає «Так, увійти», браузер опитує
-      case 'POST /api/auth/tg/start': RateLimit::hit('tgin_ip', $ip); return TgLogin::start($in, $r->header('User-Agent'));
+      case 'POST /api/auth/tg/start': RateLimit::hit(empty($in['pre']) ? 'tgin_ip' : 'tgpre_ip', $ip); return TgLogin::start($in, $r->header('User-Agent'));
       case 'POST /api/auth/tg/poll': {
         RateLimit::hit('tgpoll_ip', $ip);
         $j = TgLogin::poll($in); if ($j['state'] !== 'ok') return $j;
         $u = self::userById($j['uid']); if (!$u) throw new HttpError(410, 'tg_expired');
         $tok = self::startSession($res, $u, $r, $ip); self::audit($u['id'], 'login_telegram_bot', $ip);
-        // застосунок iPhone — токен і у відповіді (як вхід Apple); браузеру досить cookie
-        // застосунок iPhone і браузер без cookie (nc — вбудований браузер Threads/Instagram) — токен у відповіді, далі X-Session
-        return ['state' => 'ok', 'user' => self::publicUser($u)] + (str_contains($r->header('User-Agent'), 'PeredaiApp/') || !empty($in['nc']) ? ['session' => $tok] : []);
+        // 192-а: токен — завжди у відповіді (раніше — лише застосунку й браузеру без cookie, nc): вбудовані браузери інколи показують cookie скрипту,
+        // а сесійну не зберігають — вхід «удавався», а наступний запит був без входу. Браузер тримає токен у sessionStorage і шле X-Session; cookie — як і була
+        return ['state' => 'ok', 'user' => self::publicUser($u), 'session' => $tok];
       }
       case 'POST /api/auth/link-bot': {   // ссылка на бота для привязки Telegram без виджета (работает при любом CSP)
         if (!$user) throw new HttpError(401, 'unauthorized');
@@ -580,10 +580,12 @@ final class Api {
       'botStart' => $tg ? Telegram::needStart((int)$u['id']) : null];
   }
   private static function sessionUser(Req $r): ?array {
-    $t = (string)($r->cookies['ts_sid'] ?? ''); if ($t === '') $t = substr($r->header('X-Session'), 0, 128); if ($t === '') return null;
-    $s = Db::one('SELECT * FROM sessions WHERE token_hash = ?', [hash('sha256', $t)]);
-    if (!$s || (int)$s['expires_at'] < Http::now()) return null;
-    return Db::one('SELECT * FROM users WHERE id = ?', [$s['user_id']]);
+    // cookie першою; не діє (стара, видалена) — заголовок X-Session (192-а: вхід через бота дає і те, і те — стара cookie не має перекривати новий вхід)
+    foreach (array_unique(array_filter([(string)($r->cookies['ts_sid'] ?? ''), substr($r->header('X-Session'), 0, 128)])) as $t) {
+      $s = Db::one('SELECT * FROM sessions WHERE token_hash = ?', [hash('sha256', $t)]);
+      if ($s && (int)$s['expires_at'] >= Http::now()) return Db::one('SELECT * FROM users WHERE id = ?', [$s['user_id']]);
+    }
+    return null;
   }
   private static function startSession(Res $res, array $u, Req $r, string $ip): string {
     $t = bin2hex(random_bytes(32)); $exp = Http::now() + 86400 * (int)Cfg::get('session_days', 30);

@@ -356,7 +356,7 @@ Recognize::$check = null; Telegram::$send = null;
 
 echo "\nПривязка Telegram через бота:\n";
 Cfg::set(['admins' => ['emails' => ['boss@example.ua']], 'app_url' => 'https://teplo.example/', 'bot_token' => $TOKEN, 'bot_username' => 'TeploTestBot', 'webhook_secret' => 'hook-secret',
-  'limits' => ['ip_all' => [1000, 60], 'login_ip' => [10, 300], 'login_fail_acc' => [5, 900], 'register_ip' => [50, 3600], 'telegram_ip' => [30, 300], 'state_user' => [60, 60], 'recog_upload' => [120, 3600], 'recog_run' => [40, 86400], 'feedback_ip' => [3, 3600]]]);
+  'limits' => ['ip_all' => [1000, 60], 'tgcode_u' => [10, 3600], 'tgcode_bad' => [300, 3600], 'login_ip' => [10, 300], 'login_fail_acc' => [5, 900], 'register_ip' => [50, 3600], 'telegram_ip' => [30, 300], 'state_user' => [60, 60], 'recog_upload' => [120, 3600], 'recog_run' => [40, 86400], 'feedback_ip' => [3, 3600]]]);
 $sent = []; Telegram::$send = function ($m, $p, $tok = null) use (&$sent) { $sent[] = [$m, $p]; return ['ok' => true]; };
 $lb = new Browser('10.0.9.1'); $lb->req('POST', '/api/auth/register', ['email' => 'link@example.ua', 'password' => 'link pass 123']);
 $lk = $lb->req('POST', '/api/auth/link-bot');
@@ -372,25 +372,33 @@ ok('повторно та же ссылка не работает', str_contains
 echo "\n190-я: «Зберегти через Telegram» — вхід у браузері через бота:\n";
 $gb = new Browser('10.0.9.2'); $tt = 'Ab3_-xYz0123456789abcdEF'; $kk = str_repeat('k', 40);
 $st = $gb->req('POST', '/api/auth/tg/start', ['t' => $tt, 'k' => $kk, 'lang' => 'uk'], ['HTTP_USER_AGENT' => 'Mozilla/5.0 (Windows NT 10.0) Chrome/130.0 Safari/537.36']);
-ok('браузер реєструє своє посилання: код 4 цифри, бот', $st->status === 200 && preg_match('/^\d{4}$/', $st->body['code']) && $st->body['bot'] === 'TeploTestBot', $st->body);
+ok('браузер реєструє своє посилання: код 6 цифр (192-а), бот', $st->status === 200 && preg_match('/^\d{6}$/', $st->body['code']) && $st->body['bot'] === 'TeploTestBot', $st->body);
+$sp6 = fn(string $c): string => strlen($c) === 6 ? substr($c, 0, 3) . ' ' . substr($c, 3) : $c;
 ok('той самий t чужим k — 409; кривий t — 422', $anon->req('POST', '/api/auth/tg/start', ['t' => $tt, 'k' => str_repeat('z', 40)])->status === 409 && $gb->req('POST', '/api/auth/tg/start', ['t' => 'short', 'k' => $kk])->status === 422);
 ok('до підтвердження — wait; без k — 410', $gb->req('POST', '/api/auth/tg/poll', ['t' => $tt, 'k' => $kk])->body['state'] === 'wait' && $gb->req('POST', '/api/auth/tg/poll', ['t' => $tt, 'k' => 'x'])->status === 410);
 $from2 = ['id' => 555888, 'first_name' => 'Ганна', 'username' => 'hanna_t', 'language_code' => 'uk'];
 $hook2 = fn(array $upd) => $anon->req('POST', '/api/bot/webhook', $upd, ['HTTP_X_TELEGRAM_BOT_API_SECRET_TOKEN' => (string)Cfg::get('webhook_secret')]);
 $sent = []; $hook2(['message' => ['message_id' => 7, 'chat' => ['id' => 555888, 'type' => 'private'], 'from' => $from2, 'text' => '/start in_' . $tt]]);
 $q = end($sent)[1] ?? [];
-ok('бот питає «Увійти в браузері Chrome · Windows?» з кодом і кнопками', str_contains($q['text'] ?? '', 'Chrome · Windows') && str_contains($q['text'], $st->body['code'])
+ok('бот питає «Увійти в браузері Chrome · Windows?» з кодом і кнопками', str_contains($q['text'] ?? '', 'Chrome · Windows') && str_contains($q['text'], 'Код на сайті — ' . $sp6($st->body['code']))
   && ($q['reply_markup']['inline_keyboard'][0][0]['callback_data'] ?? '') === 'li:' . $tt && ($q['reply_markup']['inline_keyboard'][1][0]['callback_data'] ?? '') === 'lx:' . $tt, $q);
 ok('сам /start вхід не дає — seen, акаунта ще немає', $gb->req('POST', '/api/auth/tg/poll', ['t' => $tt, 'k' => $kk])->body['state'] === 'seen' && !Db::one("SELECT id FROM user_identities WHERE type = 'telegram' AND external_id = '555888'"));
 $sent = []; $hook2(['callback_query' => ['id' => 'cq1', 'data' => 'li:' . $tt, 'from' => $from2, 'message' => ['message_id' => 8, 'chat' => ['id' => 555888]]]]);
 ok('«Так, увійти» → акаунт Telegram (новий, з ім’ям), бот: «поверніться в браузер»', ($tid = Db::one("SELECT user_id FROM user_identities WHERE type = 'telegram' AND external_id = '555888'")) && Db::one('SELECT name FROM users WHERE id = ?', [$tid['user_id']])['name'] === 'Ганна'
-  && in_array('editMessageText', array_column($sent, 0), true) && str_contains(json_encode($sent, JSON_UNESCAPED_UNICODE), 'Поверніться в браузер'));
+  && in_array('editMessageText', array_column($sent, 0), true) && str_contains(json_encode($sent, JSON_UNESCAPED_UNICODE), 'Поверніться у браузер Chrome'));
 $pl = $gb->req('POST', '/api/auth/tg/poll', ['t' => $tt, 'k' => $kk]);
-ok('браузер забирає вхід: ok + user, сесія cookie (браузеру токен у відповіді не даємо)', $pl->status === 200 && $pl->body['state'] === 'ok' && (int)$pl->body['user']['id'] === (int)$tid['user_id'] && !isset($pl->body['session'])
+ok('браузер забирає вхід: ok + user, сесія cookie і токен у відповіді (192-а: вбудовані браузери губили cookie)', $pl->status === 200 && $pl->body['state'] === 'ok' && (int)$pl->body['user']['id'] === (int)$tid['user_id'] && strlen($pl->body['session'] ?? '') === 64
   && (int)$gb->req('GET', '/api/me')->body['user']['id'] === (int)$tid['user_id'] && $gb->req('GET', '/api/me')->body['user']['telegram']['username'] === 'hanna_t');
-ok('один раз: повторний опит — 410', $gb->req('POST', '/api/auth/tg/poll', ['t' => $tt, 'k' => $kk])->status === 410);
+$pl2 = $gb->req('POST', '/api/auth/tg/poll', ['t' => $tt, 'k' => $kk]);
+ok('192-а: відповідь могла загубитись — 2 хв той самий браузер отримує вхід знову (інший токен); чужий k — 410', $pl2->status === 200 && $pl2->body['state'] === 'ok' && ($pl2->body['session'] ?? '') !== ($pl->body['session'] ?? '')
+  && $anon->req('POST', '/api/auth/tg/poll', ['t' => $tt, 'k' => str_repeat('z', 40)])->status === 410);
+Db::q('UPDATE tg_logins SET expires_at = ? WHERE token_hash = ?', [time() - 1, hash('sha256', $tt)]);
+ok('після 2 хв — 410', $gb->req('POST', '/api/auth/tg/poll', ['t' => $tt, 'k' => $kk])->status === 410);
+Db::q('UPDATE tg_logins SET expires_at = ? WHERE token_hash = ?', [time() + 100, hash('sha256', $tt)]);
 $sent = []; $hook2(['callback_query' => ['id' => 'cq2', 'data' => 'li:' . $tt, 'from' => $from2, 'message' => ['message_id' => 8, 'chat' => ['id' => 555888]]]]);
 ok('кнопка вдруге — «застаріло»', str_contains(json_encode($sent, JSON_UNESCAPED_UNICODE), 'застаріло'));
+$sent = []; $hook2(['message' => ['message_id' => 8, 'chat' => ['id' => 555888, 'type' => 'private'], 'from' => $from2, 'text' => '/start in_' . $tt]]);
+ok('192-а: «Старт» ще раз після «Так» — не «застаріло», а «вхід уже підтверджено — поверніться у браузер Chrome»', str_contains(end($sent)[1]['text'] ?? '', 'Вхід уже підтверджено — поверніться у браузер Chrome'), end($sent));
 // «Ні, це не я» — вхід не дається
 $gb2 = new Browser('10.0.9.3'); $t2 = 'Zz9_-zYz0123456789abcdQQ';
 $gb2->req('POST', '/api/auth/tg/start', ['t' => $t2, 'k' => $kk, 'lang' => 'ru'], ['HTTP_USER_AGENT' => 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) Version/18.0 Mobile/15E148 Safari/604.1']);
@@ -404,13 +412,13 @@ ok('незареєстроване посилання — «застаріло»
 // 191-а: реєстрація заздалегідь (pre) — дотик до сайту не долетів (Threads/Instagram), бот однаково питає; дотик — 'pre' → 'new' і новий строк
 $gb3 = new Browser('10.0.9.33'); $t3 = 'Pre3Pre3Pre3Pre3Pre3Pre3'; $k3 = str_repeat('Q', 40);
 $p3 = $gb3->req('POST', '/api/auth/tg/start', ['t' => $t3, 'k' => $k3, 'lang' => 'uk', 'pre' => 1], ['HTTP_USER_AGENT' => 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) Mobile/15E148 Barcelona 334.0']);
-$r3 = Db::one('SELECT st, code FROM tg_logins WHERE token_hash = ?', [hash('sha256', $t3)]);
+$r3 = Db::one('SELECT st, code6 AS code FROM tg_logins WHERE token_hash = ?', [hash('sha256', $t3)]);
 ok('pre: рядок «pre» з кодом, health не рахує його «почали» (pre 1)', $p3->status === 200 && ($r3['st'] ?? '') === 'pre' && ($r3['code'] ?? '') === ($p3->body['code'] ?? '-')
   && ($anon->req('GET', '/api/health')->body['tgin']['pre'] ?? 0) === 1, [$p3->body, $r3]);
 Db::q('UPDATE tg_logins SET expires_at = ? WHERE token_hash = ?', [time() + 60, hash('sha256', $t3)]);
 $sent = []; $hook2(['message' => ['message_id' => 12, 'chat' => ['id' => 555891, 'type' => 'private'], 'from' => ['id' => 555891, 'language_code' => 'uk'], 'text' => '/start in_' . $t3]]);
 $r3b = Db::one('SELECT st, expires_at FROM tg_logins WHERE token_hash = ?', [hash('sha256', $t3)]);
-ok('pre, дотик не долетів: бот однаково питає «Так, увійти» з кодом, рядок — seen, строк знову 15 хв', str_contains(end($sent)[1]['text'] ?? '', 'Код на сайті — ' . $p3->body['code'])
+ok('pre, дотик не долетів: бот однаково питає «Так, увійти» з кодом, рядок — seen, строк знову 15 хв', str_contains(end($sent)[1]['text'] ?? '', 'Код на сайті — ' . $sp6($p3->body['code']))
   && isset(end($sent)[1]['reply_markup']) && ($r3b['st'] ?? '') === 'seen' && (int)$r3b['expires_at'] > time() + 800, [end($sent), $r3b]);
 $t4 = 'Pre4Pre4Pre4Pre4Pre4Pre4';
 $gb3->req('POST', '/api/auth/tg/start', ['t' => $t4, 'k' => $k3, 'pre' => 1]); Db::q('UPDATE tg_logins SET expires_at = ? WHERE token_hash = ?', [time() + 30, hash('sha256', $t4)]);
@@ -418,6 +426,41 @@ $p4 = $gb3->req('POST', '/api/auth/tg/start', ['t' => $t4, 'k' => $k3]); $r4 = D
 ok('дотик після pre: той самий код, «new», строк знову 15 хв; чужий k — 409', $p4->status === 200 && ($r4['st'] ?? '') === 'new' && (int)$r4['expires_at'] > time() + 800
   && $gb3->req('POST', '/api/auth/tg/start', ['t' => $t4, 'k' => str_repeat('W', 40)])->status === 409, [$p4->body, $r4]);
 ok('/api/health → tgin: почали 4 (+ бот після pre, + натиснутий після pre), підтвердили 1, забрали 1, «не я» 1', ($hh = $anon->req('GET', '/api/health')->body['tgin'] ?? []) && $hh['n'] === 4 && $hh['ok'] === 1 && $hh['used'] === 1 && $hh['no'] === 1, $hh);
+
+echo "\n192-а: вхід через бота — будь-який браузер телефона (вбудовані Threads/Instagram, код руками, оновлення pre, загублена відповідь):\n";
+$gb5 = new Browser('10.0.9.35'); $k5 = str_repeat('R', 40); $IA = 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/22A3354 Barcelona 352.0.0.20.86 (iPhone15,2; iOS 18_0)';
+ok('uaShort: Threads, Instagram, Facebook, TikTok, Viber, Telegram — назвою застосунку; Samsung Internet, Chrome Android', TgLogin::uaShort($IA) === 'Threads · iPhone'
+  && TgLogin::uaShort('Mozilla/5.0 (iPhone) Mobile/15E148 Instagram 360.0.0.30.109') === 'Instagram · iPhone' && TgLogin::uaShort('Mozilla/5.0 (iPhone) [FBAN/FBIOS;FBAV/480.0]') === 'Facebook · iPhone'
+  && TgLogin::uaShort('Mozilla/5.0 (Linux; Android 14; wv) Chrome/131 Mobile Safari/537.36 musical_ly_2023') === 'TikTok · Android' && TgLogin::uaShort('Mozilla/5.0 (iPhone) Viber/24.1') === 'Viber · iPhone'
+  && TgLogin::uaShort('Mozilla/5.0 (Linux; Android 14) SamsungBrowser/27.0 Chrome/125 Mobile Safari/537.36') === 'Samsung Internet · Android' && TgLogin::uaShort('Mozilla/5.0 (Linux; Android 14) Chrome/131 Mobile Safari/537.36') === 'Chrome · Android');
+$t5 = 'Cod5Cod5Cod5Cod5Cod5Cod5'; $p5 = $gb5->req('POST', '/api/auth/tg/start', ['t' => $t5, 'k' => $k5, 'lang' => 'uk', 'pre' => 1], ['HTTP_USER_AGENT' => $IA]); $c5 = $p5->body['code'] ?? '';
+Db::q('UPDATE tg_logins SET expires_at = ? WHERE token_hash = ?', [time() + 40, hash('sha256', $t5)]);
+$gb5->req('POST', '/api/auth/tg/start', ['t' => $t5, 'k' => $k5, 'pre' => 1]); $r5 = Db::one('SELECT st, expires_at FROM tg_logins WHERE token_hash = ?', [hash('sha256', $t5)]);
+ok('pre повторно (кнопка довго на екрані) — строк знову 15 хв, рядок лишається «pre»', ($r5['st'] ?? '') === 'pre' && (int)$r5['expires_at'] > time() + 800, $r5);
+$fromC = ['id' => 555901, 'first_name' => 'Ольга', 'language_code' => 'uk']; $say = fn(string $txt, array $f = []) => $hook2(['message' => ['message_id' => 50, 'chat' => ['id' => ($f ?: $fromC)['id'], 'type' => 'private'], 'from' => $f ?: $fromC, 'text' => $txt]]);
+$sent = []; $say($sp6($c5));
+ok('код руками для «pre» (кнопку лише показали, коду ніхто не бачив) — «немає», без кнопок', str_contains(end($sent)[1]['text'] ?? '', 'Такого коду немає') && !isset(end($sent)[1]['reply_markup']), end($sent));
+$pp5 = $gb5->req('POST', '/api/auth/tg/poll', ['t' => $t5, 'k' => $k5]);
+ok('опит буває лише після дотику — «pre» стає «new» (дотик міг не долетіти), відповідь wait', $pp5->body['state'] === 'wait' && Db::one('SELECT st FROM tg_logins WHERE token_hash = ?', [hash('sha256', $t5)])['st'] === 'new');
+$sent = []; $say('/start'); $sent = []; $say(' ' . $sp6($c5) . ' ');
+$q5 = end($sent)[1] ?? []; $cb5 = $q5['reply_markup']['inline_keyboard'][0][0]['callback_data'] ?? '';
+ok('Telegram не відкрився — людина сама надіслала боту код «482 913»: питання «Увійти в браузері Threads · iPhone?» з кнопками ly/ln (без t)', str_contains($q5['text'] ?? '', 'у браузері Threads · iPhone')
+  && preg_match('/^ly:[a-f0-9]{24}$/', $cb5) && str_starts_with($q5['reply_markup']['inline_keyboard'][1][0]['callback_data'] ?? '', 'ln:') && !str_contains(json_encode($q5), $t5)
+  && Db::one('SELECT st FROM tg_logins WHERE token_hash = ?', [hash('sha256', $t5)])['st'] === 'seen', $q5);
+$sent = []; $hook2(['callback_query' => ['id' => 'cq5', 'data' => $cb5, 'from' => $fromC, 'message' => ['message_id' => 51, 'chat' => ['id' => 555901]]]]);
+ok('«Так, увійти» за кодом → ok; бот: «Поверніться у Threads»', str_contains(json_encode($sent, JSON_UNESCAPED_UNICODE), 'Поверніться у Threads') && Db::one('SELECT st FROM tg_logins WHERE token_hash = ?', [hash('sha256', $t5)])['st'] === 'ok', $sent);
+$pl5 = $gb5->req('POST', '/api/auth/tg/poll', ['t' => $t5, 'k' => $k5]);
+ok('браузер Threads забирає вхід: ok + токен', $pl5->body['state'] === 'ok' && strlen($pl5->body['session'] ?? '') === 64);
+$nc = new Browser('10.0.9.36'); $nc->jar['ts_sid'] = str_repeat('0', 64);
+ok('стара cookie не перекриває новий вхід: діє X-Session', (int)($nc->req('GET', '/api/me', null, ['HTTP_X_SESSION' => $pl5->body['session']])->body['user']['id'] ?? 0) === (int)$pl5->body['user']['id']);
+$sent = []; $say('482-913');   // неіснуючий
+ok('чужий/застарілий код — підказка «натисніть ще раз — буде новий код», не привітання', str_contains(end($sent)[1]['text'] ?? '', 'Такого коду немає') && !str_contains(end($sent)[1]['text'] ?? '', 'Вітаю'));
+$sent = []; $say('1234567');
+ok('7 цифр — не код: звичайне привітання', str_contains(end($sent)[1]['text'] ?? '', 'Вітаю'));
+$fx = ['id' => 555902, 'language_code' => 'ru']; for ($i = 0; $i < 10; $i++) $say('111 ' . sprintf('%03d', $i), $fx); $sent = []; $say('111 999', $fx);
+ok('11-та спроба коду за годину — «слишком много попыток» (ru)', str_contains(end($sent)[1]['text'] ?? '', 'Слишком много попыток'), end($sent));
+$sent = []; $hook2(['message' => ['message_id' => 52, 'chat' => ['id' => 555903, 'type' => 'private'], 'from' => ['id' => 555903], 'forward_origin' => ['type' => 'user'], 'text' => '123 456']]);
+ok('переслане повідомлення з цифрами — не код', !str_contains(end($sent)[1]['text'] ?? '', 'Такого коду'));
 Telegram::$send = null;
 
 echo "\nДокументы к счётчику:\n";

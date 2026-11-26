@@ -122,8 +122,14 @@
   // ---------------- бэкенд: свой сервер ----------------
   function cookie(name) { var m = document.cookie.match(new RegExp('(?:^|; )' + name + '=([^;]*)')); return m ? decodeURIComponent(m[1]) : ''; }
   // Сесія вікна Telegram: токен із входу Mini App — на випадок, коли вікно Telegram (Mac) не зберігає cookie. Живе до закриття вікна.
-  var SESS = (function () { try { return root.sessionStorage.getItem('teplo.tgs') || ''; } catch (e) { return ''; } })();
-  function setSess(t) { SESS = t || ''; try { if (SESS) root.sessionStorage.setItem('teplo.tgs', SESS); else root.sessionStorage.removeItem('teplo.tgs'); } catch (e) { /* без sessionStorage — лише в пам'яті */ } }
+  // 192-а: вхід через бота в браузері, що не показує cookie скрипту (вбудовані браузери Threads, Instagram), — токен ще й у localStorage: інакше після закриття
+  // вбудованого браузера людина знову «гість» і картка «Збережіть дані» просить те саме. Звичайні браузери — лише sessionStorage (живе cookie).
+  var SESS = (function () { try { return root.sessionStorage.getItem('teplo.tgs') || root.localStorage.getItem('teplo.tgs') || ''; } catch (e) { return ''; } })();
+  function setSess(t, keep) {
+    SESS = t || '';
+    try { if (SESS) root.sessionStorage.setItem('teplo.tgs', SESS); else root.sessionStorage.removeItem('teplo.tgs'); } catch (e) { /* без sessionStorage — лише в пам'яті */ }
+    try { if (SESS && keep) root.localStorage.setItem('teplo.tgs', SESS); else if (!SESS || root.localStorage.getItem('teplo.tgs')) root.localStorage.removeItem('teplo.tgs'); } catch (e) { /* без localStorage */ }
+  }
   // CSRF-cookie (сервер выдаёт её со страницей и на любой запрос без неё): нет её — ОДИН общий запрос за ней на всех (08.11: параллельные
   // запросы без cookie получали каждый свою, и X-CSRF расходился с cookie → 403 у новых посетителей)
   var CSRF_P = null;
@@ -262,7 +268,8 @@
     retryTg: function () { var self = this; return this.tgLogin().then(function () { self._set('server', self.status === 'ok' ? 'ok' : 'idle'); }, function () { self._set('local', 'offline'); }); },
     refreshMe: function () {
       var self = this;
-      return api('GET', '/me').then(function (j) { self.serverReachable = true; self.account = j._status === 200 ? j.user : null; return self.account ? self.pull() : self._set('server', 'idle'); });
+      return api('GET', '/me').then(function (j) { self.serverReachable = true; self.account = j._status === 200 ? j.user : null; if (j._status === 401 && SESS) setSess('');   // токен застарів (30 днів) — не носимо
+        return self.account ? self.pull() : self._set('server', 'idle'); });
     },
     /** Чей аккаунт в этом браузере (id): пишется после синхронизации, стирается при выходе. Локальные данные без хозяина —
      *  созданы без входа: при входе в аккаунт, где уже есть данные, они НЕ сливаются с ним (иначе «Моя квартира» без входа с тем же
@@ -303,7 +310,10 @@
     /** Підтвердили в боті? state wait | seen | no; ok — вхід тут (сесія cookie), далі як після входу: дані браузера — в акаунт (pull(true)). 410 — посилання вже не діє. */
     tgPoll: function (t, k) {
       var self = this;
-      return api('POST', '/auth/tg/poll', { t: t, k: k, nc: cookie('ts_csrf') ? 0 : 1 }).then(function (j) { if (j._status === 200 && j.state === 'ok' && j.user) { if (j.session) setSess(j.session); return self._after(j); } return j; });
+      var nc = cookie('ts_csrf') ? 0 : 1;
+      // 192-а: токен — завжди (сервер віддає й cookie): вбудовані браузери інколи показують cookie, а сесійну не зберігають; pull не вдався (мережа щойно
+      // після фону) — вхід однаково є, дані доїдуть наступною синхронізацією: не губимо «ok», бо другого раза сервер його не дасть
+      return api('POST', '/auth/tg/poll', { t: t, k: k, nc: nc }).then(function (j) { if (j._status === 200 && j.state === 'ok' && j.user) { if (j.session) setSess(j.session, nc); return self._after(j).then(null, function () { return j; }); } return j; });
     },
     login: function (email, password) { var self = this; return api('POST', '/auth/login', { email: email, password: password }).then(function (j) { return self._after(j); }); },
     forgot: function (email, lang) { return api('POST', '/auth/forgot', { email: email, lang: lang }); },
