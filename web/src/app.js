@@ -1863,7 +1863,7 @@
   /** Посилання на бота з t цього браузера: незареєстроване (TGP) — поки не натиснули; натиснули — те саме (TGIN), щоб «Відкрити ще раз» вело туди ж. */
   function tgHref(again) {
     var b = tgBot(); if (!b) return '';
-    if (!again && !TGP) TGP = { t: svRnd(24), k: svRnd(40) };
+    if (!again && !TGP) { TGP = { t: svRnd(24), k: svRnd(40) }; setTimeout(tgPre, 0); }
     return 'https://t.me/' + encodeURIComponent(b) + '?start=in_' + (again && TGIN ? TGIN.t : TGP.t);
   }
   /** Телефон і застосунок — та сама вкладка (посилання t.me відкриває Telegram, сторінка лишається); комп’ютер — нова вкладка. */
@@ -1872,20 +1872,42 @@
     var href = tgHref(false); if (!href) return '';
     return '<a class="btn block ' + (cls || '') + '" href="' + esc(href) + '"' + tgTab() + ' rel="noopener" data-act="tg-in" data-w="' + w + '" data-key="' + key + '">' + ico('send', 20) + '<span>' + esc(label || t('sv_tg')) + '</span></a>';
   }
-  /** Натиснули «Зберегти через Telegram»: посилання відкривається саме (не заважаємо), а ми реєструємо t і k та чекаємо підтвердження. */
-  function tgGo(w) {
-    if (!TGP) return;
-    TGIN = { t: TGP.t, k: TGP.k, at: Date.now(), w: w || '', st: 'wait', code: '', busy: false }; TGP = null; tgKeep();
-    track('save', { a: 'tg', w: w });
-    tgReg(); setTimeout(safeRender, 60);
+  /** 191-а: t і k реєструємо одразу, як намалювали кнопку (на сервері — 'pre'). У вбудованих браузерах (Threads, Instagram, Facebook) запит після дотику
+   *  обривався переходом на t.me: на бою жодного початого входу, бот — «посилання застаріло». */
+  function tgPre() {
+    var p = TGP; if (!p || p.reg || !window.TEPLO_API || !Y().tgStart) return; p.reg = 1;
+    p.q = Y().tgStart(p.t, p.k, S.lang, true).then(function (j) {
+      if (j && j._status === 200) { p.ok = Date.now(); p.code = j.code || ''; } else p.e = (j && j._status || 0) + ':' + ((j && j.error) || '');
+      return j;
+    }, function () { p.e = 'net'; return null; });
+  }
+  function tgErr(me, j, why) {
+    me.st = 'err'; me.e = why || ((j && j._status || 0) + ':' + ((j && j.error) || '')); tgKeep();
+    track('save', { a: 'err', w: me.w, e: String(me.e).slice(0, 40) }); safeRender();
+  }
+  /** Натиснули «Зберегти через Telegram». Посилання вже зареєстроване (свіже) або сторінка лишається (нова вкладка на комп’ютері) — t.me відкривається саме;
+   *  інакше (та сама вкладка, реєстрація ще летить чи не вдалася) — чекаємо реєстрацію і лише тоді переходимо на t.me. */
+  function tgGo(w, e, el) {
+    var p = TGP; if (!p) return;
+    var fresh = p.ok && Date.now() - p.ok < 10 * 60000, same = !tgTab();
+    var me = TGIN = { t: p.t, k: p.k, at: Date.now(), w: w || '', st: 'wait', code: p.code || '', busy: false }; TGP = null; tgKeep();
+    track('save', { a: 'tg', w: w, pre: fresh ? 1 : 0 });
+    if (fresh || !same || !e || !el) { tgReg(); setTimeout(safeRender, 60); return; }
+    e.preventDefault(); var href = el.href; me.busy = true; setTimeout(safeRender, 0);
+    (p.q || Promise.resolve(null)).then(function () { return p.ok ? { _status: 200, code: p.code } : Y().tgStart(me.t, me.k, S.lang); }).then(function (j) {
+      me.busy = false; if (TGIN !== me) return;
+      if (j && j._status === 200) { me.code = j.code || ''; tgKeep(); safeRender(); location.href = href; return; }
+      tgErr(me, j);
+    }, function () { me.busy = false; if (TGIN === me) tgErr(me, null, 'net'); });
   }
   function tgReg() {
     if (!TGIN || !Y().tgStart) return; var me = TGIN;
     Y().tgStart(me.t, me.k, S.lang).then(function (j) {
       if (TGIN !== me) return;
       if (j && j._status === 200) { me.code = j.code || ''; safeRender(); return; }
-      me.st = 'err'; me.e = (j && j.error) || ''; tgKeep(); safeRender();
-    }, function () { if (TGIN === me) { me.st = 'err'; tgKeep(); safeRender(); } });
+      if (me.code) return;   // реєстрація заздалегідь удалась — дотик міг і не долетіти, це не помилка
+      tgErr(me, j);
+    }, function () { if (TGIN === me && !me.code) tgErr(me, null, 'net'); });
   }
   /** Опит «підтвердили?» — кожні 3 с, поки сторінка на екрані, і одразу, коли людина повернулась з Telegram. */
   function tgPollNow() {
@@ -11940,7 +11962,7 @@
       case 'logout': ADMIN = null; busy(el); Y().logout().then(function () { S = defaults(); S.lang = browserLang(); ensurePlaces(); lastSig = window.TeploSync.sig(window.TeploSync.payload(S)); persist(); toast(t('logged_out')); go('welcome'); }); break;
       case 'dismiss-sync': S.syncPromptDismissed = true; persist(); render(true); break;
       // 190-я: «Збережіть дані»
-      case 'tg-in': tgGo(el.getAttribute('data-w')); break;   // посилання t.me відкривається само (без preventDefault)
+      case 'tg-in': tgGo(el.getAttribute('data-w'), e, el); break;   // посилання t.me відкривається само; не зареєстроване — tgGo чекає й веде сам (191-а)
       case 'tg-cancel': { var tw0 = TGIN && TGIN.w; TGIN = null; tgKeep(); track('save', { a: 'cancel', w: tw0 }); render(true); break; }
       case 'tar-ok': if (!S.tarSeen || Array.isArray(S.tarSeen)) S.tarSeen = {}; S.tarSeen[el.dataset.id] = Date.now(); persist(); track('tar', { a: 'ok', k: String(el.dataset.id || '').split(':')[1] || '' }); render(true); break;
       case 'sv-later': S.savePr = { at: Date.now(), rd: allRecs().length }; SV.open = false; persist(); track('save', { a: 'later', w: 'home' }); render(true); break;
