@@ -273,6 +273,7 @@ function page_admin(): void {
 function do_admin(): void {
   $a = $_POST['act'] ?? '';
   if ($a === 'set') { opt_set('scenario', in_array($_POST['scenario'] ?? '', SCENARIOS, true) && $_POST['scenario'] !== 'ok' ? $_POST['scenario'] : ''); opt_set('today', preg_match('/^\d{4}-\d{2}-\d{2}$/', $_POST['today'] ?? '') ? $_POST['today'] : ''); opt_set('robot_delay', ctype_digit($_POST['robot_delay'] ?? '') ? $_POST['robot_delay'] : '');
+    opt_set('open', ($_POST['open'] ?? '') === '1' ? '1' : '');   // лише на цей set: наступний set без open — вікно знову за датою
     if (isset($_POST['spr'])) opt_set('spr', $_POST['spr'] === 'house' ? 'house' : '');
     if (isset($_POST['hot'])) opt_set('hot', in_array($_POST['hot'], ['off', 'two', 'reject', 'pending', 'nosn', 'card'], true) ? $_POST['hot'] : '');
     if (isset($_POST['bill_ym'])) opt_set('bill_ym', preg_match('/^(20\d\d-\d\d|none)$/', $_POST['bill_ym']) ? $_POST['bill_ym'] : ''); if (isset($_POST['bill_pay'])) opt_set('bill_pay', preg_match('/^-?\d+\.\d\d$/', $_POST['bill_pay']) ? $_POST['bill_pay'] : ''); }

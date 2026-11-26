@@ -173,7 +173,7 @@ ok('окно по календарю Киева (30.11 22:30 UTC = 01.12 у Ки
   && HtmSvc::window(['min' => '05.11.2026', 'max' => '20.11.2026']) === ['05.11.2026', '20.11.2026']);
 ok('журнал: дата без нуля и энергия с запятой — та же строка', (HtmCab::find([['date' => '6.11.2026', 'energy' => '14,445', 'status' => 'ok']], '06.11.2026', '14.445')['status'] ?? '') === 'ok');
 $kv = new DateTimeImmutable('now', new DateTimeZone('Europe/Kyiv'));
-stand('act=set&scenario=nominmax&today=' . $kv->format('Y-m-d') . '&robot_delay=99999'); Db::q('DELETE FROM rate_limits');
+stand('act=set&scenario=nominmax&open=1&today=' . $kv->format('Y-m-d') . '&robot_delay=99999');   // 192-я: 26.11–04.12 вікно ХТМ закрите — тест не має залежати від дати Db::q('DELETE FROM rate_limits');
 $r = $b->req('POST', '/api/cab/htm/check', ['lang' => 'uk']);
 ok('check без min/max: окно по календарю', $r->status === 200 && ($r->body['winSrc'] ?? '') === 'calendar' && $r->body['min'] === $kv->format('01.m.Y') && $r->body['max'] === $kv->format('d.m.Y'), $r->body);
 $sn = HtmSvc::summary()['seen'] ?? []; ok('…/api/health → seen.dateJs: как страница задаёт дату', str_contains(json_encode($sn['dateJs'] ?? [], JSON_UNESCAPED_UNICODE), 'datetimepicker') && ($sn['minMax'] ?? null) === false, $sn);

@@ -42,7 +42,7 @@ function today(): string {
 function robot_delay(): int { $h = $_SERVER['HTTP_X_MOCK_ROBOT_DELAY'] ?? ''; if ($h !== '' && ctype_digit($h)) return (int)$h; $o = opt('robot_delay'); return $o !== '' ? (int)$o : (int)cfg()['robot_delay_sec_default']; }
 
 function window_open(): bool {
-  $sc = scenario(); if ($sc === 'window_open') return true; if ($sc === 'period_closed') return false;
+  $sc = scenario(); if ($sc === 'window_open' || opt('open') === '1') return true; if ($sc === 'period_closed') return false;   // open=1 — вікно відкрите за будь-якої дати (тест зі сценарієм на сьогоднішню дату)
   $d = (int)substr(today(), 8, 2); $w = cfg()['window'];
   return $d >= $w['from'] && $d <= $w['to'];
 }
