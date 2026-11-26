@@ -1602,7 +1602,7 @@
           '<div class="hp-id"><b class="hp-name" data-key="home-place-name">' + esc(placeLabel(p)) + shTag(p) + '</b>' +
             (HP_EDIT === p.id ? '' : addr ? '<span class="hp-addr">' + esc(addr) + ' <button type="button" class="linkbtn" data-act="hp-edit" data-id="' + esc(p.id) + '" data-key="home-addr-edit">' + esc(t('change')) + '</button></span>'
               : '<button type="button" class="linkbtn hp-addr-add" data-act="hp-edit" data-id="' + esc(p.id) + '" data-key="home-addr-add">' + ico('plus', 16) + ' ' + esc(t('hp_addr_add')) + '</button>') + '</div></div>' +
-          (HP_EDIT === p.id ? hpEditForm(p) : '') + moLine(p) +
+          (HP_EDIT === p.id ? hpEditForm(p) : '') + moLine(p) + tarLine(p) +
           '<div class="ucards">' + cards.join('') + placeTile(p, !cards.length) + '</div>' +
           '<p class="hp-more"><button type="button" class="btn sec" data-act="hp-add-place" data-key="home-add-place">' + ico('plus', 18) + '<span>' + esc(t('pl_add')) + '</span></button></p>' + (cards.length ? '<p class="small muted ucards-hint">' + esc(t('uc_hint')) + '</p>' : '') + '</section>';
       });
@@ -1618,7 +1618,7 @@
             '<span class="pacc-av" aria-hidden="true">' + (picon(p, 28) || ico('home', 26)) + '</span><span class="pacc-t"><b>' + (p.icon && PICONS[p.icon] ? '' : '<i class="pdot" aria-hidden="true"></i>') + esc(placeLabel(p)) + shTag(p) + '</b>' + (p.address ? '<span class="pacc-addr">' + esc(addrShort(p.address)) + '</span>' : '') +
             '<span class="pacc-kk" aria-hidden="true">' + placeKindList(p).map(function (k) { return ico(KINDS[k].icon, 18, KINDS[k].cls); }).join('') + '</span></span>' +
             ico('chev', 22, 'pacc-chev') + due + '</summary><div class="pacc-body">' +
-          (HP_EDIT === p.id ? hpEditForm(p) : '') + moLine(p) +
+          (HP_EDIT === p.id ? hpEditForm(p) : '') + moLine(p) + tarLine(p) +
           // назва, адреса, рахунки, постачальники, додати й прибрати лічильник — усе на екрані квартири; тут лише вхід туди, під лічильниками
           '<div class="ucards">' + cards.join('') + placeTile(p, !cards.length) + '</div>' +
           (cards.length ? '' : '<p class="hp-tools"><a class="btn ter sm" href="#place-' + esc(p.id) + '" data-key="home-pl-set-' + esc(p.id) + '">' + ico('prefs', 18) + '<span>' + esc(t('hp_settings')) + '</span></a></p>') + '</div></details>';
@@ -8222,6 +8222,40 @@
     return '<a class="mo-line' + (all ? ' all' : '') + '" href="#month-' + esc(p.id) + '" data-key="mo-' + esc(p.id) + '"><span class="mo-ks" aria-hidden="true">' + ks + '</span>' +
       '<span class="mo-t">' + esc(all ? t('mo_all', { mm: moName() }) : t('mo_line', { n: s.n, m: s.m, mm: moName() })) + '</span>' + ico('chev', 18, 'mo-chev') + '</a>';
   }
+  // 191-а: попередження про затверджений новий тариф (власник 26.11: «предупреждал про обновление тарифов и подкреплял документами»).
+  // Довідник віддає next = {from, supply, drain, price, doc, url}; за TAR_AHEAD днів до from — банер під квартирою на головній з підставою
+  // (рішення, посилання, якщо є), «Зрозуміло» ховає саме цю зміну (S.tarSeen). Бот шле те саме один раз (Reminders::tariffDue / runTariffs).
+  var TAR_AHEAD = 45;
+  function tarNotes(p) {
+    var out = []; if (!p) return out;
+    var td = today(), wm = ((p.water && p.water.meters) || []).some(function (m) { return m && !m.deleted && !m.removed; });
+    [['water', wm], ['heat', !!(p.meter && !p.meter.removed)]].forEach(function (x) {
+      var k = x[0], my = (p.prov || {})[k] || {};
+      if (!x[1] || my.own || my.sel || R.num(k === 'water' ? my.supply : my.price) > 0) return;   // своя ціна чи свій / обраний постачальник — довідник не про них
+      var j = prvKinds0(p, k), d = j && j.kinds && j.kinds[k], nx = d && d.next; if (Array.isArray(nx)) nx = nx[0];
+      var from = nx ? String(nx.from || '') : ''; if (!from || from <= td) return;
+      if (Math.round((Date.parse(from) - Date.parse(td)) / 864e5) > TAR_AHEAD) return;
+      var rows = (k === 'water' ? ['supply', 'drain'] : ['price']).map(function (f) { var o = R.num(d[f]), n = R.num(nx[f]); return o > 0 && n > 0 ? { f: f, o: o, n: n } : null; }).filter(Boolean);
+      if (rows.length) out.push({ k: k, from: from, rows: rows, org: d.org || '', doc: String(ploc(nx, 'doc') || '').trim(), url: /^https:\/\//.test(nx.url || '') ? nx.url : '', id: (p.id || '') + ':' + k + ':' + from });
+    });
+    return out;
+  }
+  function tarBanner(n, p) {
+    var up = n.rows.some(function (r) { return r.n > r.o; }), unit = n.k === 'water' ? '₴/м³' : '₴/Гкал';
+    var doc = n.doc ? t('prv_doc', { d: n.doc.charAt(0).toLowerCase() + n.doc.slice(1) }) : '';
+    return '<div class="banner tar" role="status" data-key="tar-' + esc(n.id) + '">' + ico(n.k === 'heat' ? 'thermo' : 'drop', 22) + '<div>' +
+      '<p><b>' + esc(t(up ? 'tar_up' : 'tar_chg', { d: fmtDate(n.from, true), k: t('tar_k_' + n.k) })) + '</b>' + (n.org ? ' · ' + esc(n.org) : '') + '</p>' +
+      n.rows.map(function (r) {
+        var pc = Math.round((r.n / r.o - 1) * 100);
+        return '<p class="tar-row">' + esc(t('tar_f_' + r.f)) + ': <s>' + esc(money(r.o)) + '</s> → <b>' + esc(money(r.n) + '\u00a0' + unit) + '</b>' + (pc ? ' <span class="tar-pc">' + (pc > 0 ? '+' : '−') + Math.abs(pc) + '\u00a0%</span>' : '') + '</p>';
+      }).join('') +
+      (doc ? '<p class="small tar-doc" data-key="tar-doc-' + n.k + '">' + ico('doc', 16) + ' ' + esc(doc) + (n.url ? ' <a href="' + esc(n.url) + '" target="_blank" rel="noopener">' + esc(t('tar_open')) + '</a>' : '') + '</p>' : '') +
+      '<p><button type="button" class="linkbtn" data-act="tar-ok" data-id="' + esc(n.id) + '" data-key="tar-ok-' + n.k + '">' + esc(t('tar_ok')) + '</button></p></div></div>';
+  }
+  function tarLine(p) {
+    var seen = S.tarSeen && !Array.isArray(S.tarSeen) ? S.tarSeen : {};
+    return tarNotes(p).filter(function (n) { return !seen[n.id]; }).map(function (n) { return tarBanner(n, p); }).join('');
+  }
   function moView(pid) {
     var p = place(pid) || place(); if (!p) return V.home();
     if (p.id !== S.placeId) { switchPlace(p.id); WX.key = ''; p = place(); }
@@ -8719,7 +8753,7 @@
       lines.map(function (x) { return '<p class="small muted">' + esc(x) + '</p>'; }).join('') +
       '<p class="prov-price' + (price ? '' : ' none') + '">' + esc(price || t('prv_p_none')) + '</p>' +
       (k === 'water' && price && !my.supply || k === 'heat' && !R.num(my.price) && d && Math.abs(tariff() - R.num(d.price)) < 0.005 ? docLine(d, k === 'heat', 'prov-doc-' + k) : '') +
-      (nxt ? '<p class="small muted" data-key="prov-next-' + k + '">' + esc(nxt) + '</p>' : '') +
+      (nxt ? '<p class="small muted" data-key="prov-next-' + k + '">' + esc(nxt) + '</p>' + docLine(nx, false, 'prov-next-doc-' + k) : '') +
       (src && !own ? '<details class="prov-src"><summary>' + esc(t('prv_src')) + '</summary><p class="small muted">' + esc(src) + '</p></details>' : '') +
       ((need || !(my.ok || own)) && d && d.note && !ed ? '<p class="small prov-note">' + esc(ploc(d, 'note')) + '</p>' : '') +
       (d && ploc(d, 'pay') && !ed ? '<p class="small prov-pay" data-key="prov-pay-' + k + '"><b>' + esc(t('ld_pay_t')) + '</b> ' + esc(ploc(d, 'pay')) + '</p>' : '');
@@ -11908,6 +11942,7 @@
       // 190-я: «Збережіть дані»
       case 'tg-in': tgGo(el.getAttribute('data-w')); break;   // посилання t.me відкривається само (без preventDefault)
       case 'tg-cancel': { var tw0 = TGIN && TGIN.w; TGIN = null; tgKeep(); track('save', { a: 'cancel', w: tw0 }); render(true); break; }
+      case 'tar-ok': if (!S.tarSeen || Array.isArray(S.tarSeen)) S.tarSeen = {}; S.tarSeen[el.dataset.id] = Date.now(); persist(); track('tar', { a: 'ok', k: String(el.dataset.id || '').split(':')[1] || '' }); render(true); break;
       case 'sv-later': S.savePr = { at: Date.now(), rd: allRecs().length }; SV.open = false; persist(); track('save', { a: 'later', w: 'home' }); render(true); break;
       case 'sv-open': SV.open = true; track('save', { a: 'open', w: /^(home)?$/.test(routeName()) ? 'home' : 'page' }); render(true); break;
       case 'sv-mail': track('save', { a: 'mail' }); authMode = APP ? 'login' : 'register'; go('login'); break;
