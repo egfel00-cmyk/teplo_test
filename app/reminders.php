@@ -402,6 +402,96 @@ final class Reminders {
   }
 
   /** Ближайший день напоминания, начиная с сегодня (если окно 10–20 ещё не закрылось): ['date', 'kind', 'ym']. */
+  /** 191-а (власник 26.11: «предупреждал про обновление тарифов и подкреплял документами»): затверджений наступний тариф з довідника (next)
+   *  за TAR_AHEAD днів до дати зміни — одне повідомлення на вид і дату (reminders_sent: kind tar-water | tar-heat, ym — місяць зміни).
+   *  Лише квартири з лічильником цього виду, без своєї ціни чи свого / обраного постачальника; підстава — next.doc (і посилання next.url). */
+  const TAR_AHEAD = 45;
+  public static function placeKinds(array $p): array {
+    $a = trim((string)($p['address'] ?? '')); if ($a === '' || !class_exists('Providers')) return [];
+    $c = is_array($p['city'] ?? null) ? $p['city'] : []; $st = is_array($p['settle'] ?? null) ? $p['settle'] : []; $n = null; $h = null;
+    if (($st['a'] ?? null) === $a && !empty($st['n']) && !empty($st['h'])) { $n = (string)$st['n']; $h = (string)$st['h']; }
+    elseif (!empty($c['n']) && !empty($c['h'])) { $n = (string)$c['n']; $h = (string)$c['h']; }
+    $tr = ProvEdit::$track; ProvEdit::$track = false;
+    try { $L = Providers::lookup($a, $n, $h); } catch (Throwable $e) { $L = []; } finally { ProvEdit::$track = $tr; }
+    return empty($L['found']) ? [] : (array)($L['kinds'] ?? []);
+  }
+  public static function tariffDue(array $st, string $today): array {
+    if (!empty($st['remind']['off'])) return [];
+    $lim = (new DateTimeImmutable($today))->modify('+' . self::TAR_AHEAD . ' day')->format('Y-m-d');
+    $by = [];
+    foreach ((array)($st['places'] ?? []) as $p) {
+      if (!is_array($p) || !empty($p['deleted']) || !empty($p['remindOff'])) continue;
+      $wm = false; foreach ((array)($p['water']['meters'] ?? []) as $m) if (is_array($m) && empty($m['deleted']) && empty($m['removed'])) { $wm = true; break; }
+      $K = null;
+      foreach (['water' => $wm, 'heat' => is_array($p['meter'] ?? null) && empty($p['meter']['removed'])] as $k => $on) {
+        $my = (array)($p['prov'][$k] ?? []);
+        if (!$on || !empty($my['own']) || !empty($my['sel']) || (float)($my[$k === 'water' ? 'supply' : 'price'] ?? 0) > 0) continue;
+        $K = $K ?? self::placeKinds($p);
+        $d = (array)($K[$k] ?? []); $nx = $d['next'] ?? null; if (is_array($nx) && array_is_list($nx)) $nx = $nx[0] ?? null;
+        if (!is_array($nx) || empty($nx['from']) || $nx['from'] <= $today || $nx['from'] > $lim) continue;
+        $rows = [];
+        foreach ($k === 'water' ? ['supply', 'drain'] : ['price'] as $f) if ((float)($d[$f] ?? 0) > 0 && (float)($nx[$f] ?? 0) > 0) $rows[$f] = [(float)$d[$f], (float)$nx[$f]];
+        if (!$rows) continue;
+        $by[$k . '|' . $nx['from']][] = ['pid' => (string)($p['id'] ?? ''), 'name' => trim((string)($p['name'] ?? '')), 'org' => (string)($d['org'] ?? ''), 'rows' => $rows,
+          'doc' => (string)($nx['doc'] ?? ''), 'doc_ru' => (string)($nx['doc_ru'] ?? ''), 'url' => (string)($nx['url'] ?? '')];
+      }
+    }
+    $out = [];
+    foreach ($by as $key => $ps) { [$k, $from] = explode('|', $key); $out[] = ['kind' => 'tar-' . $k, 'ym' => substr($from, 0, 7), 'from' => $from, 'k' => $k, 'places' => $ps]; }
+    return $out;
+  }
+  /** Текст попередження: що й на скільки змінюється, з якого дня, підстава. → ['text', 'buttons'] як у text(). */
+  public static function tariffText(array $due, string $lang): array {
+    $ru = $lang === 'ru'; $k = $due['k']; $ps = $due['places'];
+    $d = self::dayMon($due['from'], $ru) . ' ' . substr($due['from'], 0, 4);
+    $unit = $k === 'water' ? '₴/м³' : '₴/Гкал';
+    $lbl = ['supply' => $ru ? 'вода' : 'вода', 'drain' => $ru ? 'водоотведение' : 'водовідведення', 'price' => $ru ? 'тепло' : 'тепло'];
+    $up = false; foreach ($ps as $p) foreach ($p['rows'] as $r) if ($r[1] > $r[0]) $up = true;
+    $what = $k === 'water' ? ($ru ? 'вода' : 'вода') : ($ru ? 'отопление' : 'опалення');
+    $t = $up ? ($ru ? "📈 С $d дорожает $what — утверждён новый тариф." : "📈 З $d дорожчає $what — затверджено новий тариф.")
+             : ($ru ? "С $d меняется тариф: $what." : "З $d змінюється тариф: $what.");
+    $docs = [];
+    foreach ($ps as $p) {
+      $t .= "\n\n" . (count($ps) > 1 && $p['name'] !== '' ? '«' . $p['name'] . '» · ' : '') . $p['org'];
+      foreach ($p['rows'] as $f => $r) {
+        $pc = $r[0] > 0 ? (int)round(($r[1] / $r[0] - 1) * 100) : 0;
+        $t .= "\n" . $lbl[$f] . ': ' . self::money($r[0]) . ' → ' . self::money($r[1]) . ' ' . $unit . ($pc ? ' (' . ($pc > 0 ? '+' : '−') . abs($pc) . ' %)' : '');
+      }
+      $doc = $ru && $p['doc_ru'] !== '' ? $p['doc_ru'] : $p['doc'];
+      if ($doc !== '' && !in_array($doc, $docs, true)) { $docs[] = $doc; $t .= "\n" . ($ru ? 'Основание: ' : 'Підстава: ') . mb_strtolower(mb_substr($doc, 0, 1)) . mb_substr($doc, 1) . ($p['url'] !== '' ? "\n" . $p['url'] : ''); }
+    }
+    $t .= "\n\n" . ($ru ? "С $d суммы в сервисе считаются по новому тарифу — сверяйте с платёжкой." : "З $d суми в сервісі рахуються за новим тарифом — звіряйте з платіжкою.");
+    $off = $ru ? 'Выключить напоминания — в «Настройках» сервиса.' : 'Вимкнути нагадування — у «Налаштуваннях» сервісу.';
+    $pid = (string)($ps[0]['pid'] ?? '');
+    $go = Cfg::appUrl() . '?go=home' . ($pid !== '' ? '&place=' . rawurlencode($pid) : '');
+    $btn = $ru ? 'Открыть тарифы' : 'Відкрити тарифи';
+    return ['text' => $t . "\n\n" . $off, 'button' => $btn, 'url' => $go, 'buttons' => [[$btn, $go]]];
+  }
+  /** Розіслати попередження про тарифи (у годину нагадувань). → [[user_id, kind, status, ym], …] */
+  public static function runTariffs(int $now): array {
+    if (!Cfg::get('bot_token')) return [];
+    $h = self::hourOk($now); if (!$h) return [];
+    $today = $h[0]; $out = [];
+    foreach (self::people() as $row) {
+      $uid = (int)$row['user_id'];
+      $st = json_decode((string)$row['data'], true); if (!is_array($st)) continue;
+      foreach (self::tariffDue($st, $today) as $due) {
+        if (Db::one('SELECT 1 AS x FROM reminders_sent WHERE user_id = ? AND kind = ? AND ym = ?', [$uid, $due['kind'], $due['ym']])) continue;
+        Db::q('INSERT INTO reminders_sent (user_id, kind, ym, sent_at) VALUES (?, ?, ?, ?)', [$uid, $due['kind'], $due['ym'], Http::iso()]);
+        $m = self::tariffText($due, (string)($st['remind']['lang'] ?? 'uk'));
+        $msg = ['chat_id' => (string)$row['external_id'], 'text' => $m['text'], 'disable_web_page_preview' => true];
+        if (Cfg::appUrlKnown()) $msg['reply_markup'] = ['inline_keyboard' => [[['text' => $m['button'], 'web_app' => ['url' => $m['url']]]]]];
+        try { $r = Telegram::call('sendMessage', $msg); } catch (Throwable $e) { error_log('teplo tariff: ' . $e->getMessage()); $r = []; }
+        $s = self::status($r);
+        if ($s === null) Db::q('DELETE FROM reminders_sent WHERE user_id = ? AND kind = ? AND ym = ?', [$uid, $due['kind'], $due['ym']]);
+        else Db::q('UPDATE reminders_sent SET status = ? WHERE user_id = ? AND kind = ? AND ym = ?', [$s, $uid, $due['kind'], $due['ym']]);
+        $out[] = [$uid, $due['kind'], $s ?? 'retry', $due['ym']];
+        if (!Telegram::$send) usleep(50000);
+      }
+    }
+    return $out;
+  }
+
   public static function next(int $now): array {
     $d = (new DateTimeImmutable('@' . $now))->setTimezone(new DateTimeZone(self::TZ));
     for ($i = 0; $i < 40; $i++) {

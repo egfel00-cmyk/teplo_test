@@ -3846,3 +3846,10 @@ details.tips-box.nm-box[open] > summary { border-bottom: 1px solid var(--c-line)
 .sv-s-b > p { flex: 1 1 220px; min-width: 0; }
 .sv-s-b > .btn { margin: 0; flex: none; }
 .sv-have { margin: 0 0 var(--sp-4); }
+
+/* 191-а: попередження про новий тариф (головна, під квартирою) — інфо-плашка; нова ціна й одиниця не розриваються */
+.banner.tar .tar-row { margin-top: 4px; font-variant-numeric: tabular-nums; }
+.banner.tar .tar-row b, .banner.tar .tar-pc { white-space: nowrap; }
+.banner.tar .tar-row s { opacity: .7; }
+.banner.tar .tar-doc { margin-top: 8px; display: flex; gap: 6px; align-items: flex-start; }
+.banner.tar .tar-doc svg { flex: none; margin-top: 2px; }

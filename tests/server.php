@@ -791,6 +791,20 @@ ok('Львів: внесли у вікні (12.11) — мовчимо; до ві
   !Reminders::placesDue($lv2, 'waterL23', '2026-11', '2026-11-23') && Reminders::placesDue($lv3, 'waterL23', '2026-11', '2026-11-23') && !Reminders::placesDue($lvs, 'waterL23', '2026-11', '2026-11-28')
   && Reminders::placesDue($lvs, 'waterL23', '2026-11', '2026-11-24'));
 $khs = ['places' => [['id' => 'main', 'address' => 'м. Харків, вул. Сумська, 10', 'meter' => ['modelId' => 'sharky774'], 'water' => ['meters' => [['id' => 'c1', 'kind' => 'cold']]]]]];
+// 191-а: попередження про новий тариф (вода Харкова з 01.01.2027 — рішення виконкому від 12.11.2026)
+Providers::$today = '2026-11-26';
+$tf1 = Reminders::tariffDue($khs, '2026-11-26'); $tfT = $tf1 ? Reminders::tariffText($tf1[0], 'uk') : ['text' => '']; $tfR = $tf1 ? Reminders::tariffText($tf1[0], 'ru') : ['text' => ''];
+$khOwn = $khs; $khOwn['places'][0]['prov'] = ['water' => ['supply' => 50]];
+$khOff = $khs; $khOff['remind'] = ['off' => true];
+$khNoW = ['places' => [['id' => 'main', 'address' => 'м. Харків, вул. Сумська, 10', 'meter' => ['modelId' => 'sharky774']]]];
+ok('тариф: Харків з водоміром 26.11 → tar-water 2027-01, вода 48,63 → 57,50 (+18 %), водовідведення 20,61 → 27,99, підстава — рішення від 12.11.2026; ru — «Основание»',
+  count($tf1) === 1 && $tf1[0]['kind'] === 'tar-water' && $tf1[0]['ym'] === '2027-01' && str_contains($tfT['text'], '48,63 → 57,50 ₴/м³ (+18 %)')
+  && str_contains($tfT['text'], '20,61 → 27,99') && str_contains($tfT['text'], 'Підстава: рішення виконкому Харківської міської ради від 12.11.2026')
+  && str_contains($tfT['text'], 'З 1 січня 2027 дорожчає вода') && str_contains($tfR['text'], 'Основание: решение исполкома') && str_contains($tfR['text'], 'С 1 января 2027'), [$tf1, $tfT['text']]);
+ok('тариф: раніше ніж за 45 днів, у день зміни, своя ціна, нагадування вимкнено, без водоміра — мовчимо',
+  !Reminders::tariffDue($khs, '2026-11-10') && !Reminders::tariffDue($khs, '2027-01-01') && !Reminders::tariffDue($khOwn, '2026-11-26')
+  && !Reminders::tariffDue($khOff, '2026-11-26') && !Reminders::tariffDue($khNoW, '2026-11-26'));
+Providers::$today = null;
 $kw = Reminders::placesDue($khs, 'water16', '2026-11');
 ok('Харків за адресою — як було: «До 20-го», Водоканал; тепло (ХТМ) — нагадуємо; місцевих вікон немає', ($kw[0]['kh'] ?? null) === true && str_contains(Reminders::text('water16', 'uk', $kw)['text'], 'До 20-го') && Reminders::needs($khs, 'heat21', '2026-12')
   && Reminders::localDue($khs, '2026-11-23') === [] && Reminders::localDue($khs, '2026-11-26') === [], $kw);
@@ -1491,8 +1505,9 @@ ok('Providers::dated: список кроків — чинний останні�
   Providers::dated(['supply' => 1, 'next' => [['from' => '2027-06-01', 'supply' => 3], ['from' => '2026-01-01', 'supply' => 2]]], '2026-11-05') === ['supply' => 2, 'from' => '2026-01-01', 'next' => ['from' => '2027-06-01', 'supply' => 3]]
   && Providers::dated(['supply' => 5], '2026-11-05') === ['supply' => 5]);
 // 170-а: підстава ціни — doc; крок next без своєї підстави знімає стару, зі своєю — ставить свою
-ok('довідник: doc — Харків «Рішення виконкому Харківської міської ради від 23.09.2026 № 509»; з 02.01.2027 (крок без doc) — без doc; крок з doc — свій; ProvEdit тримає doc',
-  ($hw['doc'] ?? '') === 'Рішення виконкому Харківської міської ради від 23.09.2026 № 509' && !isset($hw2['doc'])
+ok('довідник: doc — Харків «Рішення виконкому Харківської міської ради від 23.09.2026 № 509»; з 02.01.2027 — підстава кроку (рішення від 12.11.2026, 191-а); крок без doc — без doc; крок з doc — свій; ProvEdit тримає doc',
+  ($hw['doc'] ?? '') === 'Рішення виконкому Харківської міської ради від 23.09.2026 № 509' && str_starts_with($hw2['doc'] ?? '', 'Рішення виконкому Харківської міської ради від 12.11.2026')
+  && !isset(Providers::dated(['supply' => 1, 'doc' => 'А', 'next' => ['from' => '2026-01-01', 'supply' => 2]], '2026-11-05')['doc'])
   && (Providers::dated(['supply' => 1, 'doc' => 'А', 'next' => ['from' => '2026-01-01', 'supply' => 2, 'doc' => 'Б']], '2026-11-05')['doc'] ?? '') === 'Б'
   && (ProvEdit::clean(['org' => 'X', 'doc' => ' Рішення № 1 від 01.01.2026 '])['doc'] ?? '') === 'Рішення № 1 від 01.01.2026', [$hw['doc'] ?? null, $hw2['doc'] ?? null]);
 $w = fn($q) => $pv($q)['kinds'] ?? [];

@@ -109,6 +109,9 @@ catch (Throwable $e) { error_log('teplo push live: ' . $e->getMessage()); }
 // «Нагадати завтра» з картки-нагадування (app/widget.php)
 try { $sz = Reminders::runSnooze(time()); if ($sz) $h['snooze'] = array_count_values(array_map(fn($x) => $x[1] . ' ' . (str_starts_with($x[2], 'error') ? 'error' : $x[2]), $sz)); }
 catch (Throwable $e) { error_log('teplo snooze: ' . $e->getMessage()); }
+// 191-а: попередження про затверджений новий тариф (довідник next, за 45 днів) — раз на вид і дату зміни
+try { $tf = Reminders::runTariffs(time()); if ($tf) $h['tariff'] = array_count_values(array_map(fn($x) => $x[1] . ' ' . (str_starts_with($x[2], 'error') ? 'error' : $x[2]), $tf)); }
+catch (Throwable $e) { error_log('teplo tariff: ' . $e->getMessage()); }
 // почта (81-я): нагадування на e-mail — тем, у кого нет Telegram или Telegram не дошёл; сводка владельцу — в 8-м часу по Киеву (app/mail.php)
 try {
   $sm = Reminders::runMail(time());

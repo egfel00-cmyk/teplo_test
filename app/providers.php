@@ -420,7 +420,11 @@ final class ProvEdit {
     foreach ((isset($v['next']['from']) ? [$v['next']] : (array)($v['next'] ?? [])) as $n) {
       if (!is_array($n) || !preg_match('/^\d{4}-\d\d-\d\d$/', (string)($n['from'] ?? ''))) continue;
       $s = ['from' => (string)$n['from']]; foreach (['supply', 'drain', 'price', 'abon', 'hot', 'priv'] as $f) if (isset($n[$f]) && is_numeric(str_replace(',', '.', (string)$n[$f]))) $s[$f] = round((float)str_replace(',', '.', (string)$n[$f]), 4);
-      if (count($s) > 1) $nx[] = $s;
+      if (count($s) < 2) continue;
+      // 191-а: підстава й документ наступного тарифу — їх показуємо в попередженні про зміну (сайт і бот)
+      foreach (['doc', 'doc_ru'] as $f) if (isset($n[$f]) && is_scalar($n[$f]) && trim((string)$n[$f]) !== '') $s[$f] = mb_substr(trim((string)$n[$f]), 0, 240);
+      if (isset($n['url']) && is_string($n['url']) && preg_match('~^https://[^\s"<>]+$~', $n['url'])) $s['url'] = $n['url'];
+      $nx[] = $s;
     }
     if ($nx) $o['next'] = count($nx) === 1 ? $nx[0] : $nx;
     return $o;
