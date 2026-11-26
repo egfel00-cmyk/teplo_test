@@ -9,6 +9,8 @@ const DIR = '/tmp/teplo_sv', PORT = 8017, BASE = `http://127.0.0.1:${PORT}`, BOT
 let pass = 0, fail = 0; const ok = (n, c, x) => { if (c) { pass++; console.log('  OK  ' + n); } else { fail++; console.log(' FAIL ' + n + (x !== undefined ? '  → ' + JSON.stringify(x).slice(0, 500) : '')); } };
 const hook = upd => fetch(BASE + '/api/bot/webhook', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Telegram-Bot-Api-Secret-Token': SECRET }, body: JSON.stringify(upd) }).then(r => r.status);
 const rows = q => JSON.parse(execFileSync('php', ['-r', '$p = new PDO("sqlite:' + DIR + '/dev.sqlite"); echo json_encode($p->query($argv[1])->fetchAll(PDO::FETCH_ASSOC));', q]).toString() || '[]');
+const sha = t => require('crypto').createHash('sha256').update(t).digest('hex');
+const rowOf = t => rows("SELECT st, code FROM tg_logins WHERE token_hash = '" + sha(t) + "'")[0] || {};
 const tok = href => (/\?start=in_([A-Za-z0-9_-]{24})$/.exec(href || '') || [])[1] || '';
 const IRA = { id: 990001, first_name: 'Ірина', username: 'ira_sv', language_code: 'uk' };
 const say = (from, text, mid) => hook({ update_id: Date.now(), message: { message_id: mid || 1, chat: { id: from.id, type: 'private' }, from, text } });
@@ -21,8 +23,8 @@ const press = (from, data) => hook({ update_id: Date.now(), callback_query: { id
   const srv = spawn('php', ['-S', '127.0.0.1:' + PORT, 'index.php'], { cwd: __dirname + '/../..', env: Object.assign({}, process.env, { SITE_BASE: '', SITE_DATA: DIR }), stdio: 'ignore' });
   await new Promise(r => setTimeout(r, 900));
   const b = await chromium.launch(); const errs = [];
-  const newPage = async (w, h) => {
-    const ctx = await b.newContext({ viewport: { width: w || 390, height: h || 844 }, locale: 'uk-UA' });
+  const newPage = async (w, h, ua) => {
+    const ctx = await b.newContext(Object.assign({ viewport: { width: w || 390, height: h || 844 }, locale: 'uk-UA' }, ua ? { userAgent: ua } : {}));
     await ctx.route('https://t.me/**', r => r.fulfill({ status: 200, contentType: 'text/html', body: '<p>Telegram</p>' }));   // посилання на бота відкривається само — тут заглушка
     const p = await ctx.newPage(); p.on('pageerror', e => errs.push(e.message));
     p.on('console', m => { if (m.type() === 'error' && !/ERR_|40[13]|410|429|telegram\.org/.test(m.text())) errs.push(m.text()); });
@@ -53,7 +55,7 @@ const press = (from, data) => hook({ update_id: Date.now(), callback_query: { id
       && !/\bsec\b/.test(await p.getAttribute('[data-key=sv-tg]', 'class')) && /\bsec\b/.test(await p.getAttribute('[data-key=sv-mail]', 'class'))
       && /Зберегти через Telegram/.test(await txt(p, '[data-key=sv-tg]')) && /Зберегти через пошту/.test(await txt(p, '[data-key=sv-mail]')) && /Пізніше/.test(await txt(p, '[data-key=sv-later]')), href);
     ok('кнопки ≥ 48 px', await p.$$eval('[data-key=sv-tg], [data-key=sv-mail]', a => a.every(e => e.getBoundingClientRect().height >= 48)));
-    ok('посилання ще не зареєстроване (до натискання — нічого на сервері)', rows('SELECT COUNT(*) AS n FROM tg_logins')[0].n === 0);
+    ok('191-а: посилання зареєстроване заздалегідь — рядок «pre» ще до натискання (вбудовані браузери обривали запит після дотику)', await p.waitForFunction(t => !!t, tok(href)).then(() => p.waitForTimeout(400)).then(() => rowOf(tok(href)).st === 'pre'), rows('SELECT st FROM tg_logins'));
     // 2. «Пізніше» → рядок, що лишається; після перших показань — картка знову; на сторінці лічильника з показаннями — рядок
     await p.click('[data-key=sv-later]'); await p.waitForTimeout(300);
     ok('«Пізніше» → замість картки рядок «Дані лише в цьому браузері» з «Зберегти»', !(await p.$('[data-key=save-card]')) && /лише в цьому браузері/.test(await txt(p, '[data-key=save-strip]')) && !!(await p.$('[data-key=sv-open]')));
@@ -74,11 +76,11 @@ const press = (from, data) => hook({ update_id: Date.now(), callback_query: { id
     const code = (await txt(p, '[data-key=tg-code]')).trim();
     ok('натиснули — «Чекаємо підтвердження в Telegram», кроки «Старт» → «Так, увійти», код 4 цифри; сервер — рядок new', /Чекаємо підтвердження/.test(await txt(p, '[data-key=tg-wait]'))
       && /@peredai_com_ua_bot/.test(await txt(p, '[data-key=tg-wait]')) && /Так, увійти/.test(await txt(p, '[data-key=tg-wait]')) && /^\d{4}$/.test(code)
-      && rows("SELECT st FROM tg_logins")[0].st === 'new', [code, rows('SELECT st, code FROM tg_logins')]);
+      && rowOf(t1).st === 'new' && rowOf(t1).code === code, [code, rows('SELECT st, code FROM tg_logins')]);
     ok('«Відкрити Telegram ще раз» — те саме посилання; «Скасувати»', tok(await p.getAttribute('[data-key=tg-again]', 'href')) === t1 && !!(await p.$('[data-key=tg-cancel]')));
     ok('очікування переживає перезавантаження сторінки (повернулись з Telegram)', await (async () => { await p.reload(); await p.waitForTimeout(900); return (await txt(p, '[data-key=tg-code]')).trim() === code; })());
     await say(IRA, '/start in_' + t1); await p.waitForTimeout(400);
-    ok('бот показав питання — сервер seen, вхід ще не дано', rows('SELECT st FROM tg_logins')[0].st === 'seen' && await p.evaluate(() => !window.TeploSync.account));
+    ok('бот показав питання — сервер seen, вхід ще не дано', rowOf(t1).st === 'seen' && await p.evaluate(() => !window.TeploSync.account));
     await press(IRA, 'li:' + t1);
     await p.waitForFunction(() => window.TeploSync && window.TeploSync.account, null, { timeout: 8000 }).catch(() => null);
     await p.waitForTimeout(1500);
@@ -125,7 +127,30 @@ const press = (from, data) => hook({ update_id: Date.now(), callback_query: { id
     ok('1280: картка — дві колонки (текст ліворуч, кнопки праворуч)', cols === 2, cols);
     await D.p.setViewportSize({ width: 320, height: 700 }); await D.p.waitForTimeout(300);
     ok('320: картка в одну колонку, сторінка не ширша за екран', await D.p.evaluate(() => document.documentElement.scrollWidth <= innerWidth) && await D.p.$eval('[data-key=save-card] .sv-g', g => getComputedStyle(g).gridTemplateColumns.split(' ').length) === 1);
-    ok('журнал /api/health → tgin: почали 4, бот питав, підтвердили 3, «не я» 1', (h => h && h.n === 4 && h.ok === 3 && h.used === 3 && h.no === 1)((await (await fetch(BASE + '/api/health')).json()).tgin), (await (await fetch(BASE + '/api/health')).json()).tgin);
+    // 8. 191-а: вбудований браузер Threads на iPhone — дотик іде на t.me у тій самій вкладці, запит «натиснули» обривається; бот однаково питає, вхід удається
+    const M = await newPage(390, 844, 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 Barcelona 334.0.0.0');
+    await M.p.route('**/api/auth/tg/start', r => { const b = JSON.parse(r.request().postData() || '{}'); return b.pre ? r.continue() : r.abort('aborted'); });
+    await setup(M.p, ['cold']);
+    await M.p.waitForSelector('[data-key=sv-tg]'); const t5 = tok(await M.p.getAttribute('[data-key=sv-tg]', 'href')); await M.p.waitForTimeout(500);
+    ok('Threads/iPhone: до дотику — «pre», посилання в тій самій вкладці (без target)', rowOf(t5).st === 'pre' && !(await M.p.getAttribute('[data-key=sv-tg]', 'target')));
+    await Promise.all([M.p.waitForURL(/t\.me/, { timeout: 5000 }).catch(() => null), M.p.click('[data-key=sv-tg]')]);
+    ok('дотик → t.me у тій самій вкладці; «натиснули» не долетів — рядок лишився «pre»', /t\.me\/peredai_com_ua_bot\?start=in_/.test(M.p.url()) && rowOf(t5).st === 'pre', [M.p.url(), rowOf(t5)]);
+    await M.p.goBack(); await M.p.waitForTimeout(1200);
+    await say(IRA, '/start in_' + t5, 31); await M.p.waitForTimeout(300);
+    ok('бот на /start — питання «Так, увійти» (не «застаріло»), рядок seen', rowOf(t5).st === 'seen');
+    await press(IRA, 'li:' + t5);
+    await M.p.waitForFunction(() => window.TeploSync && window.TeploSync.account, null, { timeout: 9000 }).catch(() => null);
+    ok('повернулись у Threads — вхід у цьому браузері (акаунт є)', await M.p.evaluate(() => !!(window.TeploSync && window.TeploSync.account)));
+    // 9. реєстрація не вдалась (немає мережі до дотику) — дотик чекає реєстрацію і лише тоді веде на t.me; не вдалось — помилка на місці, без переходу
+    const N = await newPage(390, 844, 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 Barcelona 334.0.0.0');
+    let block = true; await N.p.route('**/api/auth/tg/start', r => block ? r.abort('failed') : r.continue());
+    await setup(N.p, ['cold']); await N.p.waitForSelector('[data-key=sv-tg]'); await N.p.waitForTimeout(400);
+    await N.p.click('[data-key=sv-tg]'); await N.p.waitForTimeout(800);
+    ok('реєстрація не вдалась — лишились на сайті, «Не вдалося почати» з повтором', !/t\.me/.test(N.p.url()) && !!(await N.p.$('[data-key=tg-wait-err]')) && !!(await N.p.$('[data-key=tg-retry]')));
+    block = false; const t6 = tok(await N.p.getAttribute('[data-key=tg-retry]', 'href')); await N.p.waitForTimeout(600);
+    await Promise.all([N.p.waitForURL(/t\.me/, { timeout: 5000 }).catch(() => null), N.p.click('[data-key=tg-retry]')]);
+    ok('мережа є — повтор: зареєстровано й перейшли на t.me', /t\.me/.test(N.p.url()) && /^(pre|new)$/.test(rowOf(t6).st || ''), [N.p.url(), rowOf(t6)]);
+    ok('журнал /api/health → tgin: почали 6, підтвердили 4, «не я» 1', (h => h && h.n === 6 && h.ok === 4 && h.used === 4 && h.no === 1)((await (await fetch(BASE + '/api/health')).json()).tgin), (await (await fetch(BASE + '/api/health')).json()).tgin);
     ok('без помилок JS', !errs.length, errs);
   } catch (e) { fail++; console.log(' FAIL виняток', e && e.stack); }
   await b.close(); srv.kill();

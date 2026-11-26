@@ -445,14 +445,18 @@ final class TgLogin {
     if (!self::okT($t) || !preg_match('/^[A-Za-z0-9_-]{32,64}$/', $k)) throw new HttpError(422, 'bad_token');
     $bot = (string)Cfg::get('bot_username'); if ($bot === '' || !Cfg::get('bot_token')) throw new HttpError(503, 'no_bot');
     Db::q('DELETE FROM tg_logins WHERE expires_at < ?', [time() - 86400]);
-    $h = hash('sha256', $t); $x = Db::one('SELECT kh, code, expires_at FROM tg_logins WHERE token_hash = ?', [$h]);
+    // 191-а: pre — браузер реєструє t і k ще до дотику (кнопку щойно намалювали): у вбудованих браузерах (Threads, Instagram) запит після дотику
+    // обривався переходом на t.me — рядка не було, бот казав «застаріло». Дотик (pre = 0) лише переводить 'pre' → 'new' і подовжує строк.
+    $pre = !empty($in['pre']);
+    $h = hash('sha256', $t); $x = Db::one('SELECT kh, code, st, expires_at FROM tg_logins WHERE token_hash = ?', [$h]);
     if ($x) {
       if (!hash_equals((string)$x['kh'], hash('sha256', $k))) throw new HttpError(409, 'bad_token');
+      if (!$pre && in_array($x['st'], ['pre', 'new'], true)) { Db::q("UPDATE tg_logins SET st = 'new', expires_at = ? WHERE token_hash = ? AND st IN ('pre', 'new')", [time() + self::TTL, $h]); $x['expires_at'] = time() + self::TTL; }
       return ['code' => $x['code'], 'bot' => $bot, 'ttl' => max(0, (int)$x['expires_at'] - time())];
     }
     $code = sprintf('%04d', random_int(0, 9999));
     Db::q('INSERT INTO tg_logins (token_hash, kh, code, ua, lang, st, user_id, created_at, expires_at) VALUES (?, ?, ?, ?, ?, ?, NULL, ?, ?)',
-      [$h, hash('sha256', $k), $code, mb_substr(self::uaShort($ua), 0, 60), ($in['lang'] ?? '') === 'ru' ? 'ru' : 'uk', 'new', time(), time() + self::TTL]);
+      [$h, hash('sha256', $k), $code, mb_substr(self::uaShort($ua), 0, 60), ($in['lang'] ?? '') === 'ru' ? 'ru' : 'uk', $pre ? 'pre' : 'new', time(), time() + self::TTL]);
     return ['code' => $code, 'bot' => $bot, 'ttl' => self::TTL];
   }
   /** Браузер питає: підтвердили? → state wait | seen (бот показав питання) | no («Ні, це не я»); ok — один раз, з uid (сесію ставить Api). Чужий k — як немає. */
@@ -473,8 +477,9 @@ final class TgLogin {
   /** /start in_<t>: питання з браузером і кодом, кнопки «Так, увійти» / «Ні, це не я». */
   public static function botStart(array $msg, string $t, string $lang): array {
     $ru = $lang === 'ru'; $chat = $msg['chat']['id']; $x = self::row($t);
-    if (!$x || !in_array($x['st'], ['new', 'seen'], true)) { $p = ['chat_id' => $chat, 'text' => self::stale($ru)]; Telegram::call('sendMessage', $p); return $p; }
-    Db::q("UPDATE tg_logins SET st = 'seen' WHERE token_hash = ? AND st = 'new'", [hash('sha256', $t)]);
+    if (!$x || !in_array($x['st'], ['pre', 'new', 'seen'], true)) { $p = ['chat_id' => $chat, 'text' => self::stale($ru)]; Telegram::call('sendMessage', $p); return $p; }
+    // 'pre' — дотик до сайту не долетів (сторінка вже пішла на t.me), але браузер зареєстрував посилання заздалегідь: питаємо, як звичайно
+    Db::q("UPDATE tg_logins SET st = 'seen', expires_at = ? WHERE token_hash = ? AND st IN ('pre', 'new')", [time() + self::TTL, hash('sha256', $t)]);
     $br = trim((string)($x['ua'] ?? '')); $br = $br === 'застосунок' ? ($ru ? 'в приложении «передай»' : 'у застосунку «передай»') : ($br !== '' ? ($ru ? 'в браузере ' : 'у браузері ') . $br : ($ru ? 'в браузере' : 'у браузері'));
     $host = self::host();
     $txt = $ru
@@ -511,8 +516,8 @@ final class TgLogin {
   }
   /** /api/health: за 7 днів — скільки разів почали, підтвердили, забрали вхід, відмовились (лише числа). */
   public static function summary(): array {
-    try { $r = Db::one("SELECT COUNT(*) AS n, SUM(CASE WHEN st IN ('ok', 'used') THEN 1 ELSE 0 END) AS ok, SUM(CASE WHEN st = 'used' THEN 1 ELSE 0 END) AS used, SUM(CASE WHEN st = 'no' THEN 1 ELSE 0 END) AS no, SUM(CASE WHEN st = 'seen' THEN 1 ELSE 0 END) AS seen FROM tg_logins WHERE created_at >= ?", [time() - 7 * 86400]) ?? [];
-      return array_map('intval', ['n' => $r['n'] ?? 0, 'seen' => $r['seen'] ?? 0, 'ok' => $r['ok'] ?? 0, 'used' => $r['used'] ?? 0, 'no' => $r['no'] ?? 0]); }
+    try { $r = Db::one("SELECT SUM(CASE WHEN st <> 'pre' THEN 1 ELSE 0 END) AS n, SUM(CASE WHEN st = 'pre' THEN 1 ELSE 0 END) AS pre, SUM(CASE WHEN st IN ('ok', 'used') THEN 1 ELSE 0 END) AS ok, SUM(CASE WHEN st = 'used' THEN 1 ELSE 0 END) AS used, SUM(CASE WHEN st = 'no' THEN 1 ELSE 0 END) AS no, SUM(CASE WHEN st = 'seen' THEN 1 ELSE 0 END) AS seen FROM tg_logins WHERE created_at >= ?", [time() - 7 * 86400]) ?? [];
+      return array_map('intval', ['n' => $r['n'] ?? 0, 'pre' => $r['pre'] ?? 0, 'seen' => $r['seen'] ?? 0, 'ok' => $r['ok'] ?? 0, 'used' => $r['used'] ?? 0, 'no' => $r['no'] ?? 0]); }
     catch (Throwable $e) { return ['err' => 'db']; }
   }
 }

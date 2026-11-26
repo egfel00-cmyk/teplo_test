@@ -299,7 +299,7 @@
     },
     _after: function (j) { if (j._status === 200 && j.user) { this.account = j.user; return this.pull(true).then(function () { return j; }); } return Promise.resolve(j); },
     /** 190-я: «Зберегти через Telegram» — вхід у ЦЬОМУ браузері через бота: зареєструвати посилання t.me/<бот>?start=in_<t> (k — секрет браузера) → {code, bot}. */
-    tgStart: function (t, k, lang) { return api('POST', '/auth/tg/start', { t: t, k: k, lang: lang }, false, true); },
+    tgStart: function (t, k, lang, pre) { return api('POST', '/auth/tg/start', { t: t, k: k, lang: lang, pre: pre ? 1 : 0 }, false, !pre); },
     /** Підтвердили в боті? state wait | seen | no; ok — вхід тут (сесія cookie), далі як після входу: дані браузера — в акаунт (pull(true)). 410 — посилання вже не діє. */
     tgPoll: function (t, k) {
       var self = this;

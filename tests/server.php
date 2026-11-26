@@ -401,7 +401,23 @@ ok('«Нет, это не я» → браузер: no, без входу і бе
   && !Db::one("SELECT id FROM user_identities WHERE type = 'telegram' AND external_id = '555889'"));
 $sent = []; $hook2(['message' => ['message_id' => 11, 'chat' => ['id' => 555890, 'type' => 'private'], 'from' => ['id' => 555890, 'language_code' => 'uk'], 'text' => '/start in_NotRegistered0123456789x']]);
 ok('незареєстроване посилання — «застаріло», без кнопок', str_contains(end($sent)[1]['text'] ?? '', 'застаріло') && !isset(end($sent)[1]['reply_markup']));
-ok('/api/health → tgin: почали 2, підтвердили 1, забрали 1, «не я» 1', ($hh = $anon->req('GET', '/api/health')->body['tgin'] ?? []) && $hh['n'] === 2 && $hh['ok'] === 1 && $hh['used'] === 1 && $hh['no'] === 1, $hh);
+// 191-а: реєстрація заздалегідь (pre) — дотик до сайту не долетів (Threads/Instagram), бот однаково питає; дотик — 'pre' → 'new' і новий строк
+$gb3 = new Browser('10.0.9.33'); $t3 = 'Pre3Pre3Pre3Pre3Pre3Pre3'; $k3 = str_repeat('Q', 40);
+$p3 = $gb3->req('POST', '/api/auth/tg/start', ['t' => $t3, 'k' => $k3, 'lang' => 'uk', 'pre' => 1], ['HTTP_USER_AGENT' => 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) Mobile/15E148 Barcelona 334.0']);
+$r3 = Db::one('SELECT st, code FROM tg_logins WHERE token_hash = ?', [hash('sha256', $t3)]);
+ok('pre: рядок «pre» з кодом, health не рахує його «почали» (pre 1)', $p3->status === 200 && ($r3['st'] ?? '') === 'pre' && ($r3['code'] ?? '') === ($p3->body['code'] ?? '-')
+  && ($anon->req('GET', '/api/health')->body['tgin']['pre'] ?? 0) === 1, [$p3->body, $r3]);
+Db::q('UPDATE tg_logins SET expires_at = ? WHERE token_hash = ?', [time() + 60, hash('sha256', $t3)]);
+$sent = []; $hook2(['message' => ['message_id' => 12, 'chat' => ['id' => 555891, 'type' => 'private'], 'from' => ['id' => 555891, 'language_code' => 'uk'], 'text' => '/start in_' . $t3]]);
+$r3b = Db::one('SELECT st, expires_at FROM tg_logins WHERE token_hash = ?', [hash('sha256', $t3)]);
+ok('pre, дотик не долетів: бот однаково питає «Так, увійти» з кодом, рядок — seen, строк знову 15 хв', str_contains(end($sent)[1]['text'] ?? '', 'Код на сайті — ' . $p3->body['code'])
+  && isset(end($sent)[1]['reply_markup']) && ($r3b['st'] ?? '') === 'seen' && (int)$r3b['expires_at'] > time() + 800, [end($sent), $r3b]);
+$t4 = 'Pre4Pre4Pre4Pre4Pre4Pre4';
+$gb3->req('POST', '/api/auth/tg/start', ['t' => $t4, 'k' => $k3, 'pre' => 1]); Db::q('UPDATE tg_logins SET expires_at = ? WHERE token_hash = ?', [time() + 30, hash('sha256', $t4)]);
+$p4 = $gb3->req('POST', '/api/auth/tg/start', ['t' => $t4, 'k' => $k3]); $r4 = Db::one('SELECT st, expires_at FROM tg_logins WHERE token_hash = ?', [hash('sha256', $t4)]);
+ok('дотик після pre: той самий код, «new», строк знову 15 хв; чужий k — 409', $p4->status === 200 && ($r4['st'] ?? '') === 'new' && (int)$r4['expires_at'] > time() + 800
+  && $gb3->req('POST', '/api/auth/tg/start', ['t' => $t4, 'k' => str_repeat('W', 40)])->status === 409, [$p4->body, $r4]);
+ok('/api/health → tgin: почали 4 (+ бот після pre, + натиснутий після pre), підтвердили 1, забрали 1, «не я» 1', ($hh = $anon->req('GET', '/api/health')->body['tgin'] ?? []) && $hh['n'] === 4 && $hh['ok'] === 1 && $hh['used'] === 1 && $hh['no'] === 1, $hh);
 Telegram::$send = null;
 
 echo "\nДокументы к счётчику:\n";
