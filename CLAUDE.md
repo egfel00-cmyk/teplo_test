@@ -249,6 +249,15 @@
 - Telegram, де вже є дані (Mini App раніше): відкриваємо дані акаунта, внесене гостем — копією `localStorage teplo.guestBak` (sync.js), тост «уже були дані». Перенести копію в акаунт — ще не зроблено.
 - Журнал: подія `save` (`a`: show, tg, mail, later, open, ok, no, exp, cancel; `w`: home, page, prefs, login) — /admin словами; `/api/health → tgin` (почали, бот питав, підтвердили, забрали, «не я» за 7 днів).
   Тести — server.php «190-я» (13), e2e `e2e_savetg` (26: свій сервер 8017, вебхук бота — з тестовим секретом).
+- **191-б/в (26.11, людина з Threads «не можу зберегтись у жодному браузері»)**: 1) запит на дотик обривався переходом у Telegram (бот: «застаріло») — тепер вхід **реєструється заздалегідь**,
+  коли кнопка з’явилась (`tgPre` → `tgStart(…, pre)`, рядок `st = 'pre'`; дотик лише переводить у `new`; свіжа (< 10 хв) — рідне посилання без очікування, інакше `tgGo` чекає start і `location.href`);
+  2) вбудований браузер Threads/Instagram не тримає cookie → 403 csrf — **`/api/auth/tg/start|poll` без CSRF**, poll з `nc: 1` (cookie `ts_csrf` немає) віддає `session` → `teplo.tgs` (sync.js `setSess`).
+  Помилки — подія `save` `a: 'err'` з кодом (`tgErr`). `tgin_ip` 60/год. **Новий запит, що має пережити перехід в інший застосунок, — реєструвати до дотику; новий вхід без cookie — токеном.**
+  e2e `e2e_savetg` 36 (Threads/iPhone з обривом, без мережі, без cookie).
+
+## Попередження про новий тариф (191-а)
+- Справочник: `next` з `doc`/`doc_ru`/`url` (`ProvEdit::clean` зберігає). За `TAR_AHEAD` = 45 днів до зміни: сайт — `tarBanner` над квартирою (`tarLine` на головній, «Зрозуміло» → `tar-ok`),
+  бот — `Reminders::runTariffs` (cron, раз на вид і місяць зміни — `reminders_sent` `tar-water|tar-heat`; без своєї ціни/свого постачальника, `remind.off`). e2e `e2e_tariff`.
 
 ## e2e-стенд одним запуском і CI (184-я)
 - `bash tests/e2e/stand.sh up` — чиста база `/tmp/teplo_data` (config.php: sqlite, admins boss@/pvadmin@, стенди, SMTP 2526 — **без коми в кінці**: e2e_apple й інші дописують ключі
