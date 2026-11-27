@@ -3117,7 +3117,7 @@
       (b.dists || []).map(function (o) { return '<option value="' + esc(o[0]) + '"' + (dr.dist === o[0] ? ' selected' : '') + '>' + esc(S.lang === 'ru' ? o[2] : o[1]) + '</option>'; }).join('') + '</select></div></div>';
     var lka = f === 'login' && b.lk === 'acc', pser = f === 'pass' && b.pk === 'serial';
     var type = f === 'pass' && !pser ? 'password' : f === 'phone' ? 'tel' : f === 'login' && !lka ? 'email' : 'text', ac = pser ? 'off' : { name: 'name', addr: 'street-address', phone: 'tel', login: 'username', pass: 'current-password' }[f] || 'off';
-    return '<div class="field"><label for="' + ip + f + '">' + esc(t(f === 'acc' && b.fmt === 'code' ? 'lb_f_code' : lka ? 'lb_f_login_acc' : f === 'addr' && b.flow === 'aspx' ? 'lb_f_addr2' : pser ? 'lb_f_mser' : 'lb_f_' + f)) + '</label><div class="ctl"><input id="' + ip + f + '" type="' + type + '" name="lb-' + f + '" autocomplete="' + ac + '"' +
+    return '<div class="field"><label for="' + ip + f + '">' + esc(t(f === 'acc' && b.fmt === 'code' ? 'lb_f_code' : f === 'acc' && b.accl === 'contract' ? 'lb_f_contract' : lka ? 'lb_f_login_acc' : f === 'addr' && b.flow === 'aspx' ? 'lb_f_addr2' : pser ? 'lb_f_mser' : 'lb_f_' + f)) + '</label><div class="ctl"><input id="' + ip + f + '" type="' + type + '" name="lb-' + f + '" autocomplete="' + ac + '"' +
       (f === 'acc' || lka ? ' class="num" inputmode="numeric"' : '') + (f === 'acc' && b.hint ? ' placeholder="' + esc(b.hint) + '"' : '') + (f === 'pass' && kept && !pser ? ' placeholder="••••••"' : '') + (dr[f] && !(f === 'pass' && !pser) ? ' value="' + esc(dr[f]) + '"' : '') + '></div>' +
       (f === 'pass' && kept && !pser ? '<div class="help">' + esc(t('lb_f_pass_keep')) + '</div>' : f === 'acc' && b.hint ? '<div class="help">' + esc(t('lb_hint', { h: b.hint })) + '</div>' : '') + '</div>';
   }
@@ -6025,7 +6025,7 @@
     ['cold', 'Ставищенське ЖКП', 'Ставище', 'Ставище', 'stav'], ['cold', 'Яготинський водоканал', 'Яготин', 'Яготин', 'yagv'],
     ['cold', 'Дачненський сількомунгосп', 'Дачне', 'Дачное', 'dach'], ['cold', 'Джерело-Комунсервіс', 'Любашівка', 'Любашёвка', 'lubk'],
     ['cold', 'Водоканал Мерефи', 'Мерефа', 'Мерефа', 'mvk', 1],
-    ['elec', 'Львівобленерго', 'Львівщина', 'Львовщина', 'loe', 1], ['cold', 'Львівводоканал', 'Львів', 'Львов', 'lvk', 1],
+    ['elec', 'Львівобленерго', 'Львівщина', 'Львовщина', 'loe', 1], ['elec', 'Запоріжжяобленерго', 'Запоріжжя й область', 'Запорожье и область', 'zoe', 1], ['cold', 'Львівводоканал', 'Львів', 'Львов', 'lvk', 1],
     ['cold', 'Чорноморськводоканал', 'Чорноморськ', 'Черноморск', 'cvk', 1], ['cold', 'Стрийводоканал', 'Стрий', 'Стрый', 'svk', 1],
     ['cold', 'Ірпіньводоканал', 'Ірпінь', 'Ирпень', 'ivk', 1], ['cold', 'Славутське УВКГ', 'Славута', 'Славута', 'slv', 1], ['cold', 'КК «Чабани»', 'Чабани', 'Чабаны', 'chab', 1],
     ['heat', 'Ізяславтепломережа', 'Ізяслав', 'Изяслав', 'izt', 1], ['heat', 'Тепловик', 'Старокостянтинів', 'Староконстантинов', 'skt', 1],
@@ -8687,7 +8687,7 @@
         var pser = f === 'pass' && b.pk === 'serial';   // «пароль» — номер лічильника (Славутич)
         var type = f === 'pass' && !pser ? 'password' : f === 'phone' ? 'tel' : f === 'login' && !lka ? 'email' : 'text', ac = pser ? 'off' : { name: 'name', addr: 'street-address', phone: 'tel', login: 'username', pass: 'current-password' }[f] || 'off';
         var ax = f === 'addr' && b.flow === 'aspx';   // сайт шукає рахунок за адресою зі своїх списків
-        return '<div class="field"><label for="lb-' + f + '">' + esc(t(f === 'acc' && b.fmt === 'code' ? 'lb_f_code' : lka ? 'lb_f_login_acc' : ax ? 'lb_f_addr2' : pser ? 'lb_f_mser' : 'lb_f_' + f)) + '</label><div class="ctl"><input id="lb-' + f + '" type="' + type + '" name="lb-' + f + '" autocomplete="' + ac + '"' + (f === 'acc' || lka ? ' class="num" inputmode="numeric"' : '') +
+        return '<div class="field"><label for="lb-' + f + '">' + esc(t(f === 'acc' && b.fmt === 'code' ? 'lb_f_code' : f === 'acc' && b.accl === 'contract' ? 'lb_f_contract' : lka ? 'lb_f_login_acc' : ax ? 'lb_f_addr2' : pser ? 'lb_f_mser' : 'lb_f_' + f)) + '</label><div class="ctl"><input id="lb-' + f + '" type="' + type + '" name="lb-' + f + '" autocomplete="' + ac + '"' + (f === 'acc' || lka ? ' class="num" inputmode="numeric"' : '') +
           (f === 'acc' && b.hint ? ' placeholder="' + esc(b.hint) + '"' : '') + (dr[f] ? ' value="' + esc(dr[f]) + '"' : '') + ' data-key="lb-f-' + f + '"></div>' + (f === 'acc' && b.hint ? '<p class="small muted">' + esc(t('lb_hint', { h: b.hint })) + '</p>' : '') + (ax ? '<p class="small muted" data-key="lb-addr-hint">' + esc(t('lb_addr_hint')) + '</p>' : '') + '</div>';
       };
       return '<form class="lb lb-form" data-act="lb-conn" data-bot="' + esc(bot) + '" data-pl="' + esc(pl) + '" data-key="lb-form">' + lead + b.need.map(fld).join('') + win +
@@ -8759,7 +8759,8 @@
     if (d.app) chans.push([d.app, t('ld_app'), 'ext', 'app']);
     if (d.viber) chans.push([d.viber, 'Viber', 'send', 'viber']);
     var body = vals || '';
-    if (!org) body += '<p data-key="ld-unk">' + esc(t('ld_unk_' + k, { c: pl.name || '' })) + '</p><p><a class="btn sec" href="#place-' + esc(p.id || '') + '" data-act="prv-go" data-key="ld-fill">' + ico('edit', 18) + '<span>' + esc(t('prv_fill')) + '</span></a></p>';
+    if (!org && d.tot) body += '<p data-key="ld-tot">' + esc(ploc(d, 'note')) + '</p>';   // 193-я: окупована громада — куди передавати немає
+    else if (!org) body += '<p data-key="ld-unk">' + esc(t('ld_unk_' + k, { c: pl.name || '' })) + '</p><p><a class="btn sec" href="#place-' + esc(p.id || '') + '" data-act="prv-go" data-key="ld-fill">' + ico('edit', 18) + '<span>' + esc(t('prv_fill')) + '</span></a></p>';
     else body += '<p class="small" data-key="ld-how">' + esc(how || t(k === 'heat' ? 'ld_how_heat' : 'ld_how_unk')) + '</p>';
     if (extra) body += extra;   // автовідправка (LocalBot) — після «як передати», перед кнопками каналів
     var more = (phones.length ? '<p class="dm-t">' + esc(t('ld_call')) + '</p>' + cpPhones(phones, 'ld-' + k + '-ph') : '') +   // 150-а: рядками, як у свого
@@ -8793,6 +8794,7 @@
       if (hp || dp) price = t(bill().abon > 0 ? 'prv_p_heat' : 'prv_p_heat1', { p: money(used), a: money(bill().abon) }) + (hp ? ' ' + t('prv_from_bill') : '');
       else lines.push(t('prv_heat_calc', { p: money(used) }));
     }
+    if (d && d.tot) nat = {};   // 193-я: тимчасово окупована громада — загальнодержавних цін тут не показуємо (лише пояснення з довідника)
     if (k === 'elec') { if (d && d.net) lines.push(t('prv_net', { n: d.net })); if (nat.elec) price = t('prv_p_elec', { p: money(nat.elec.price), d: fmtDate(nat.elec.to, true) }); }
     if (k === 'gas') {
       if (my.price) price = t('prv_p_own', { p: money(R.num(my.price)) });
@@ -9164,7 +9166,7 @@
   // ---- 147-а (власник 14.11, 12:33): «в настройках — выпадающий список с полем поиска: начать писать или скроллить по названию поставщика
   // или города, автопоиск и сужение результатов с уточнением запроса». Каталог виду — GET /api/providers/catalog?k= (усі області довідника),
   // фільтр — у браузері на кожну літеру: усі слова запиту мають знайтись у назві, місті, громаді чи області (укр./рос., описки «о/і», «сс/с»).
-  var PCAT = {}, RNAME = { kh: 'Харківська', kv: 'Київська', ky: 'Київ', od: 'Одеська', lv: 'Львівська', km: 'Хмельницька' };
+  var PCAT = {}, RNAME = { kh: 'Харківська', kv: 'Київська', ky: 'Київ', od: 'Одеська', lv: 'Львівська', km: 'Хмельницька', zp: 'Запорізька' };
   function pcatLoad(pk, cb) {
     var c = PCAT[pk]; if (c && c.items) { cb(); return; } if (c && c.cbs) { c.cbs.push(cb); return; }
     PCAT[pk] = { cbs: [cb] };

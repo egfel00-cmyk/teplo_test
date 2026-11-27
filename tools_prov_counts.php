@@ -11,6 +11,8 @@ foreach (Providers::REGIONS as $r => $name) {
   $d = Providers::rdata($r); $w = 0; $wt = 0; $ht = 0;
   foreach ($hm as $id => $x) { $e = (array)($d['hromadas'][Providers::hkey((string)$id)] ?? []);
     if (!empty($e['water']['org'])) $w++; if (isset($e['water']['supply']) && $e['water']['supply'] !== null) $wt++; if (!empty($e['heat']['org'])) $ht++; }
-  $out[] = ['r' => $r, 'h' => count($hm), 'w' => $w, 'wt' => $wt, 'heat' => $ht];
+  // 193-я: тимчасово окуповані громади (цілком, без part) — не «в довіднику»: постачальників там немає
+  $tot = count(array_filter((array)($d['tot'] ?? []), fn($t) => is_array($t) && empty($t['part'])));
+  $out[] = ['r' => $r, 'h' => count($hm) - $tot, 'w' => $w, 'wt' => $wt, 'heat' => $ht];
 }
 echo json_encode($out, JSON_UNESCAPED_UNICODE);

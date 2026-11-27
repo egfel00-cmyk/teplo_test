@@ -29,6 +29,11 @@ final class LocalBot {
     // golossokal.com.ua 03.2026, zaxid.net). Вікно — з 28 числа до 3-го наступного. Лише однозонний: формату для зон не знайшли.
     'loe' => ['t' => 'mail', 'kinds' => ['elec'], 'org' => 'Львівобленерго', 'site' => 'loe.lviv.ua', 'to' => 'pokaz@loe.lviv.ua', 'fmt' => 'code',
       'need' => ['acc'], 'acc' => ['digits' => 10, 'hint' => '0000011111'], 'win' => [28, 3], 'one' => true],
+    // Запорізька область, світло (193-я): АТ «Запоріжжяобленерго» приймає покази на pokaz@zoe.com.ua — у листі номер договору з обленерго
+    // (старий особовий рахунок, що діяв до 01.02.2023), адреса й ПІБ власника договору (zoe.com.ua 2024–2025, zpep.com.ua/readings, inform.zp.ua 30.10.2026).
+    // Строк — останні 2 дні місяця й до 3 числа наступного включно: беремо з 30-го (у лютому — з останнього дня). Форма на сайті — з «прикладом» (антибот), не наш шлях.
+    'zoe' => ['t' => 'mail', 'kinds' => ['elec'], 'org' => 'АТ «Запоріжжяобленерго»', 'site' => 'zoe.com.ua', 'to' => 'pokaz@zoe.com.ua',
+      'need' => ['acc', 'name', 'addr'], 'accl' => 'contract', 'win' => [30, 3]],
     'cvk' => ['t' => 'mail', 'kinds' => ['water'], 'org' => 'КП «Чорноморськводоканал»', 'site' => 'cvk.od.ua',
       'to' => 'chornomorskvodokanal@gmail.com', 'need' => ['acc', 'name', 'addr', 'phone'], 'win' => [25, 31]],
     // Львів, вода (103-я): ЛМКП «Львівводоканал» приймає показання холодної (і гарячої — для водовідведення) води на e-mail відділу збуту свого району
@@ -182,7 +187,7 @@ final class LocalBot {
     $b = self::get($id);
     return ['id' => $id, 't' => $b['t'], 'org' => $b['org'], 'site' => $b['site'] ?? null, 'kinds' => $b['kinds'], 'need' => $b['need'], 'hint' => $b['acc']['hint'] ?? null,
       'win' => $b['win'] ?? null, 'later' => !empty($b['later']), 'to' => is_string($b['to'] ?? null) ? $b['to'] : null, 'fmt' => $b['fmt'] ?? null, 'one' => !empty($b['one']),
-      'serial' => !empty($b['serial']), 'lk' => $b['lk'] ?? null, 'pk' => $b['pk'] ?? null, 'flow' => $b['flow'] ?? null, 'ready' => self::ready($id)] + (isset($b['dists']) ? ['dists' => array_map(fn($k, $v) => [$k, $v[0], $v[1]], array_keys($b['dists']), $b['dists'])] : []);
+      'serial' => !empty($b['serial']), 'accl' => $b['accl'] ?? null, 'lk' => $b['lk'] ?? null, 'pk' => $b['pk'] ?? null, 'flow' => $b['flow'] ?? null, 'ready' => self::ready($id)] + (isset($b['dists']) ? ['dists' => array_map(fn($k, $v) => [$k, $v[0], $v[1]], array_keys($b['dists']), $b['dists'])] : []);
   }
 
   // ---------- вікно подачі: поза ним «Відправити у фоні» ставить у чергу на відкриття (9:00 за Києвом) ----------
@@ -491,6 +496,14 @@ final class LocalBot {
       $text = "Доброго дня!\n\nПоказання лічильників води станом на $d:\n\n" . $rows .
         "\n\nЛист надіслано на прохання абонента сервісом «передай» (" . Cfg::appUrl() . ")." . (Mail::deliverable($email) ? " Відповідь — на адресу абонента: $email." : '');
       Mail::send(['to' => $to, 'subject' => 'Показання лічильників води — о/р ' . $acc, 'text' => $text, 'replyTo' => Mail::deliverable($email) ? $email : '', 'kind' => 'submit', 'user' => $uid]);
+      return ['text' => 'e-mail → ' . $to];
+    }
+    if (in_array('elec', (array)($b['kinds'] ?? []), true)) {   // 193-я: світло листом ОСР (Запоріжжяобленерго) — договір, власник, адреса, покази по зонах у кВт·год
+      $who = []; foreach (['Номер договору (особовий рахунок до 01.02.2023)' => 'acc', 'Власник договору' => 'name', 'Адреса' => 'addr', 'Телефон' => 'phone'] as $l => $k) if (trim((string)($c[$k] ?? '')) !== '') $who[] = $l . ': ' . trim((string)$c[$k]);
+      $lines = implode("\n", array_map(fn($x) => '— ' . ($x['name'] ?: 'покази') . ($x['serial'] ? ' (лічильник № ' . $x['serial'] . ')' : '') . ': ' . preg_replace('/\..*$/', '', (string)$x['value']) . ' кВт·год', $items));
+      $text = "Доброго дня!\n\nПередаю покази електролічильника станом на $d.\n\n" . implode("\n", $who) . "\n\n" . $lines .
+        "\n\nЛист надіслано на прохання абонента сервісом «передай» (" . Cfg::appUrl() . ")." . (Mail::deliverable($email) ? " Відповідь — на адресу абонента: $email." : '');
+      Mail::send(['to' => $to, 'subject' => 'Покази електролічильника — договір ' . ($c['acc'] ?? ''), 'text' => $text, 'replyTo' => Mail::deliverable($email) ? $email : '', 'kind' => 'submit', 'user' => $uid]);
       return ['text' => 'e-mail → ' . $to];
     }
     if (in_array('heat', (array)($b['kinds'] ?? []), true)) {   // 140-а: тепло — одне число, енергія з головного екрана (як на лічильнику)

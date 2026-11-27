@@ -10,9 +10,9 @@ declare(strict_types=1);
  *  GET /api/providers?q=адреса[&n=назва пункту&h=код громади]. Адресу не зберігаємо. Як додати область — skills/oblast-providers/SKILL.md. */
 final class Providers {
   /** Регіони довідника: код → назва (як у КАТОТТГ). Порядок — порядок у списку «Уточніть» серед однакових назв. */
-  const REGIONS = ['kh' => 'Харківська', 'kv' => 'Київська', 'ky' => 'Київ', 'od' => 'Одеська', 'lv' => 'Львівська', 'km' => 'Хмельницька'];
+  const REGIONS = ['kh' => 'Харківська', 'kv' => 'Київська', 'ky' => 'Київ', 'od' => 'Одеська', 'lv' => 'Львівська', 'km' => 'Хмельницька', 'zp' => 'Запорізька'];
   /** Область в адресі (укр./рос.): «Київська обл.», «Киевская область», «Одеська обл», «Львовская обл.», «Хмельницкая обл.». */
-  const OBL_RE = ['kh' => '/харк[іи]вськ|харьковск/u', 'kv' => '/ки[їи]вськ|киевск/u', 'od' => '/одеськ|одесск/u', 'lv' => '/льв[іо]вськ|львовск/u', 'km' => '/хмельн[иі]цьк|хмельницк/u'];
+  const OBL_RE = ['kh' => '/харк[іи]вськ|харьковск/u', 'kv' => '/ки[їи]вськ|киевск/u', 'od' => '/одеськ|одесск/u', 'lv' => '/льв[іо]вськ|львовск/u', 'km' => '/хмельн[иі]цьк|хмельницк/u', 'zp' => '/запор[іо]зьк|запорожск/u'];
   public static function file(): string { return (string)Cfg::get('providers_file', __DIR__ . '/data/providers.json'); }
   public static function katFile(string $r = 'kh'): string { return $r === 'kh' ? (string)Cfg::get('katottg_file', __DIR__ . '/data/kh_katottg.json') : __DIR__ . '/data/' . $r . '_katottg.json'; }
   public static function provFile(string $r): string { return $r === 'kh' ? self::file() : (string)Cfg::get('prov_dir', __DIR__ . '/data') . '/prov_' . $r . '.json'; }
@@ -31,7 +31,8 @@ final class Providers {
   public static function raw(string $r): array {
     $j = $r === 'kh' ? self::data() : json_decode((string)@file_get_contents(self::provFile($r)), true);
     $j = is_array($j) ? $j : [];
-    return ['oblast' => (array)($j['oblast'] ?? []), 'hromadas' => (array)($j['hromadas'] ?? []), 'settlements' => (array)($j['settlements'] ?? []), 'updated' => $j['updated'] ?? null, 'note' => $j['note'] ?? null];
+    return ['oblast' => (array)($j['oblast'] ?? []), 'hromadas' => (array)($j['hromadas'] ?? []), 'settlements' => (array)($j['settlements'] ?? []), 'updated' => $j['updated'] ?? null, 'note' => $j['note'] ?? null,
+      'tot' => (array)($j['tot'] ?? []), 'totSrc' => $j['totSrc'] ?? null];
   }
   /** КАТОТТГ усіх регіонів одним списком: пункт знає свій регіон (r), громада — теж. Харківська — першою (номери пунктів як були). */
   public static function kat(): array {
@@ -275,7 +276,24 @@ final class Providers {
    *  waste (112-а, власник 11.11: «так, і нагадувати про оплату») — вивіз побутових відходів: org, price — ₴ з людини на місяць
    *  (багатоквартирні), priv — приватний сектор, якщо інша; from, src, pay, phones, site — як у інших видів. */
   const LOCAL = ['water', 'heat', 'waste'];
+  /** 193-я (Запорізька): тимчасово окупована громада чи пункт — за Переліком Мінрозвитку (наказ № 376 у чинній редакції). Файл регіону:
+   *  tot: {«ключ громади»: {from: дата окупації, part?: [пункти]}} — part лише коли окупована частина громади. Тоді жодного постачальника
+   *  (ні обласного світла й газу, ні цін, ні «Куди передати») — лише пояснення: показання людина веде для себе. null — не окупована. */
+  public static function tot(array $p): ?array {
+    $r = (string)($p['r'] ?? self::hreg((string)$p['h'])); $d = self::rdata($r); $t = $d['tot'][self::hkey((string)$p['h'])] ?? null;
+    if (!is_array($t) || empty($t['from'])) return null;
+    if (!empty($t['part']) && !in_array((string)$p['n'], (array)$t['part'], true)) return null;
+    return ['from' => (string)$t['from'], 'src' => (string)($d['totSrc']['uk'] ?? ''), 'src_ru' => (string)($d['totSrc']['ru'] ?? '')];
+  }
+  public static function totKind(array $t): array {
+    $dt = implode('.', array_reverse(explode('-', $t['from'])));
+    return ['org' => null, 'tot' => $t['from'],
+      'note' => "Тимчасово окупована територія (з $dt, за Переліком Мінрозвитку). Українські постачальники тут зараз не працюють — тарифів і «Куди передати» немає. Показання можна вести для себе.",
+      'note_ru' => "Временно оккупированная территория (с $dt, по Перечню Минразвития). Украинские поставщики здесь сейчас не работают — тарифов и «Куда передать» нет. Показания можно вести для себя.",
+      'src' => $t['src'], 'src_ru' => $t['src_ru']];
+  }
   public static function kinds(array $p): array {
+    if ($t = self::tot($p)) { $o = []; foreach (['elec', 'gas', 'water', 'heat', 'waste'] as $kd) $o[$kd] = self::totKind($t); return $o; }
     $d = self::rdata((string)($p['r'] ?? self::hreg((string)$p['h']))); $hk = self::hkey((string)$p['h']);
     $ob = (array)($d['oblast'] ?? []); $hr = (array)($d['hromadas'][$hk] ?? []);
     $st = (array)($d['settlements'][$hk . '/' . $p['n']] ?? []); $out = [];
@@ -351,7 +369,7 @@ final class Providers {
     if (isset($m['candidates'])) return ['found' => false, 'reason' => $m['reason'], 'candidates' => array_map([self::class, 'pub'], $m['candidates'])] + $base;
     $p = $m['p']; $kinds = self::kinds($p);
     ProvEdit::seen($p, $kinds);   // для /admin: які громади шукають люди і в яких немає води/тепла (без адрес)
-    return ['found' => true, 'how' => $m['how'], 'place' => self::pub($p), 'alts' => array_map([self::class, 'pub'], array_slice($m['alts'], 0, 6)), 'kinds' => $kinds] + $base;
+    return ['found' => true, 'how' => $m['how'], 'place' => self::pub($p), 'alts' => array_map([self::class, 'pub'], array_slice($m['alts'], 0, 6)), 'kinds' => $kinds] + (($t = self::tot($p)) ? ['tot' => $t] : []) + $base;
   }
 }
 

@@ -1497,6 +1497,24 @@ ok('99-а: Хмельниччина — «Хмельницкий» і «Прос
   && ($km3['kinds']['gas']['grm'] ?? '') === 'ПАТ «Шепетівкагаз»' && ($km3['kinds']['gas']['dist'] ?? null) === 1.284 && ($km3['kinds']['gas']['org'] ?? '') === 'ГК «Нафтогаз України»'
   && ($km4['place']['name'] ?? '') === 'Нетішин' && str_contains($km4['kinds']['water']['org'] ?? '', 'Хмельницька АЕС') && ($km5['place']['r'] ?? '') === 'kv' && ($km6['place']['name'] ?? '') === 'Андріївка',
   [$km1['place'] ?? $km1, $km1['kinds']['water'] ?? null, $km3['kinds']['gas'] ?? null, $km4['place'] ?? $km4, $km5['place'] ?? $km5, $km6['place'] ?? $km6]);
+// 193-я: Запорізька область (zp) — КАТОТТГ 67 громад; 42 тимчасово окуповані цілком і 6 частково (Перелік Мінрозвитку № 376, ред. 13.11.2026): там жодного постачальника,
+// лише пояснення; Запоріжжя — вода 41,688 / 27,684 з 01.06.2026 (№ 423), тепло 1 655,08 (Концерн МТМ); Вільнянськ — Облводоканал; світло — лист на pokaz@zoe.com.ua (робот zoe)
+$zp1 = $pv('Запорожье, пр. Соборный 10'); $zp2 = $pv('Запоріжжя, вул. Перемоги 1'); $zp3 = $pv('Мелитополь, ул. Ленина 1'); $zp4 = $pv('Мирне, Гуляйпільська громада');
+$zp5 = $pv('Гуляйполе, вул. Шевченка 1'); $zp6 = $pv('Вольнянск, ул. Центральная 1'); $zp7 = $pv('Енергодар'); $zp8 = $pv('Куйбышево');
+$zpA = json_decode(file_get_contents(__DIR__ . '/../app/data/zp_katottg.json'), true); $zpD = json_decode(file_get_contents(__DIR__ . '/../app/data/prov_zp.json'), true);
+$zpTotOk = true; foreach ($zpD['tot'] as $hk => $t) { $hid = null; foreach ($zpA['hromadas'] as $id => $h) if (($h['k'] ?? $h['n']) === $hk) $hid = $id;
+  if (!$hid || !preg_match('/^2022-0[23]-\d\d$/', $t['from'] ?? '')) $zpTotOk = false;
+  foreach ((array)($t['part'] ?? []) as $n) if (!array_filter($zpA['settlements'], fn($x) => $x['h'] === $hid && $x['n'] === $n)) $zpTotOk = false; }
+ok('193-я: Запоріжжя — «Запорожье» → Запорізька громада: вода 41,688 / 27,684 з 01.06.2026 (№ 423), тепло МТМ 1 655,08, світло — робот zoe; окуповані Мелітополь, Енергодар, Кам’янка (Більмак, Куйбишеве) і Мирне (Гуляйпільська) — без постачальників і з поясненням, Гуляйполе — ні; Вільнянськ — Облводоканал 54,648',
+  count($zpA['hromadas'] ?? []) === 67 && $zpTotOk && count($zpD['tot']) === 48 && ($zp1['place']['r'] ?? '') === 'zp' && ($zp1['place']['hromada'] ?? '') === 'Запорізька' && ($zp2['place']['name'] ?? '') === 'Запоріжжя'
+  && [$zp1['kinds']['water']['supply'] ?? null, $zp1['kinds']['water']['drain'] ?? null, $zp1['kinds']['water']['from'] ?? null, $zp1['kinds']['water']['win'] ?? null] === [41.688, 27.684, '2026-06-01', [1, 31]]
+  && str_contains($zp1['kinds']['water']['doc'] ?? '', '№ 423 від 28.05.2026') && ($zp1['kinds']['heat']['price'] ?? null) === 1655.08 && ($zp1['kinds']['heat']['org'] ?? '') === 'Концерн «Міські теплові мережі»'
+  && ($zp1['kinds']['elec']['via'] ?? '') === 'zoe' && ($zp1['kinds']['elec']['net'] ?? '') === 'АТ «Запоріжжяобленерго»' && ($zp1['kinds']['gas']['dist'] ?? null) === 1.104 && empty($zp1['tot'])
+  && ($zp3['place']['name'] ?? '') === 'Мелітополь' && ($zp3['tot']['from'] ?? '') === '2022-02-25' && array_key_exists('org', $zp3['kinds']['elec'] ?? []) && empty($zp3['kinds']['elec']['org']) && empty($zp3['kinds']['elec']['via']) && empty($zp3['kinds']['gas']['grm'])
+  && str_contains($zp3['kinds']['water']['note'] ?? '', 'Тимчасово окупована') && str_contains($zp3['kinds']['elec']['src'] ?? '', 'z0380-25') && ($zp7['tot']['from'] ?? '') === '2022-03-04'
+  && ($zp8['place']['name'] ?? '') === 'Кам’янка' && !empty($zp8['tot']) && ($zp4['place']['hromada'] ?? '') === 'Гуляйпільська' && !empty($zp4['tot']) && empty($zp5['tot']) && ($zp5['kinds']['elec']['via'] ?? '') === 'zoe'
+  && str_contains($zp6['kinds']['water']['org'] ?? '', 'Облводоканал') && ($zp6['kinds']['water']['supply'] ?? null) === 54.648 && ($zp6['kinds']['water']['win'] ?? null) === [25, 31],
+  [$zp1['place'] ?? $zp1, $zp1['kinds']['water'] ?? null, $zp3['tot'] ?? $zp3, $zp4['place'] ?? $zp4, $zp5['tot'] ?? null, $zp6['kinds']['water']['org'] ?? null, $zp8['place'] ?? $zp8, $zpTotOk]);
 // 100-а: Хмельниччина — 8 громад по населенню: вода, тепло (мораторій — тариф на 24.02.2022), строки й канали показань
 $kp0 = $pv('Каменец-Подольский, ул. Соборная 1')['kinds'] ?? []; $sp0 = $pv('Шепетовка, ул. Шевченко 1')['kinds'] ?? []; $nt0 = $pv('Нетешин, ул. Шевченко 1')['kinds'] ?? [];
 $sl0 = $pv('Славута, ул. Соборности 1')['kinds'] ?? []; $sk0 = $pv('Староконстантинов, ул. Острожского 1')['kinds'] ?? []; $pl0 = $pv('м. Полонне, вул. Лесі Українки 1')['kinds'] ?? [];
@@ -2020,7 +2038,7 @@ ok('довідник: усі громади й пункти є в КАТОТТГ
   $brv = array_values(array_filter($rh->body['hromadas'] ?? [], fn($x) => $x['key'] === 'Липецька'))[0] ?? null;
   $kvw = count(array_filter($rk->body['hromadas'] ?? [], fn($x) => $x['water'] !== null));
   ok('/admin «Справочник»: регіони з лічильниками громад, Київщина — 69 громад і всі з водою (86-та), Липецька (Харківщина) без води; без входу — 401',
-    $r0->status === 200 && count($r0->body['regions']) === 6 && $rk->status === 200 && count($rk->body['hromadas']) === 69 && $kvw === 69 && $brv && $brv['water'] === null && $anon->req('GET', '/api/admin/prov')->status === 401, [$r0->status, $rk->status, $kvw, $brv]);
+    $r0->status === 200 && count($r0->body['regions']) === 7 && $rk->status === 200 && count($rk->body['hromadas']) === 69 && $kvw === 69 && $brv && $brv['water'] === null && $anon->req('GET', '/api/admin/prov')->status === 401, [$r0->status, $rk->status, $kvw, $brv]);
   $sv = $boss->req('POST', '/api/admin/prov/save', ['r' => 'kv', 'scope' => 'hromadas', 'key' => 'Броварська', 'kind' => 'water',
     'value' => ['org' => 'КП «Броваритепловодоенергія»', 'supply' => '40,5', 'drain' => '', 'phones' => ['(04594) 1-23-45; диспетчер'], 'cab' => 'javascript:alert(1)', 'site' => 'https://example.ua/pokaz', 'robot' => 'hack', 'x' => 1, 'check' => true, 'src' => 'тест', 'src_ru' => 'тест']]);
   $w2 = $v('Бровари, вул. Київська 1')['kinds']['water'];
@@ -2539,6 +2557,21 @@ Db::q('UPDATE cab_jobs SET next_at = ? WHERE id = ?', [time() - 1, $lj]);
 $n0 = count($sent); LocalBot::cron(); $ml = end($sent);
 ok('loe: лист на pokaz@loe.lviv.ua, тема й текст — лише «0000011111 2222»', count($sent) === $n0 + 1 && $ml[1] === ['pokaz@loe.lviv.ua'] && str_contains($ml[2], 'Subject: 0000011111 2222')
   && (str_contains($ml[2], base64_encode('0000011111 2222')) || str_contains($ml[2], "\r\n\r\n0000011111 2222")), [$ml[1] ?? null, substr((string)($ml[2] ?? ''), 0, 600)]);
+// 193-я: Запоріжжяобленерго — лист на pokaz@zoe.com.ua: номер договору (старий рахунок), ПІБ, адреса, покази по зонах; вікно 30–3
+$r = $lbu->req('POST', '/api/lb/connect', ['bot' => 'zoe', 'place' => 'zp1', 'acc' => '1234567', 'consent' => true]);
+ok('zoe: без ПІБ — 422', $r->status === 422, $r->body);
+$r = $lbu->req('POST', '/api/lb/connect', ['bot' => 'zoe', 'place' => 'zp1', 'acc' => '1234567', 'name' => 'Шевченко Тарас Григорович', 'addr' => 'м. Запоріжжя, вул. Соборна, 1, кв. 2', 'consent' => true]);
+ok('zoe: підключено (договір, ПІБ, адреса), застосунку — accl contract', $r->status === 200 && ($r->body['bot']['accl'] ?? '') === 'contract' && ($r->body['bot']['to'] ?? '') === 'pokaz@zoe.com.ua', $r->body);
+$r = $lbu->req('POST', '/api/lb/queue', ['bot' => 'zoe', 'place' => 'zp1', 'rid' => 'z1', 'items' => [['value' => '12345', 'name' => 'Лічильник · день', 'kind' => 'elec'], ['value' => '6789', 'name' => 'Лічильник · ніч', 'kind' => 'elec']]]);
+$zj = (int)($r->body['job']['id'] ?? 0);
+ok('zoe: двозонний — у чергу; вікно 30–3: 10.11 → 30.11 зранку, у лютому — з 28-го', $zj > 0 && LocalBot::openAt([30, 3], $kts('2026-11-10 12:00')) === $kts('2026-11-30 09:00')
+  && LocalBot::openAt([30, 3], $kts('2027-02-20 12:00')) === $kts('2027-02-28 09:00') && LocalBot::openAt([30, 3], $kts('2026-12-02 12:00')) === $kts('2026-12-02 12:00'), $r->body);
+Db::q('UPDATE cab_jobs SET next_at = ? WHERE id = ?', [time() - 1, $zj]);
+$n0 = count($sent); LocalBot::cron(); $ml = end($sent); $mb = (string)($ml[2] ?? ''); $mt = preg_match('/base64\r\n\r\n(.+?)(\r\n--|$)/s', $mb, $mm) ? base64_decode(preg_replace('/\s+/', '', $mm[1])) : $mb;
+ok('zoe: лист на pokaz@zoe.com.ua — договір, власник, адреса, обидві зони в кВт·год', count($sent) === $n0 + 1 && $ml[1] === ['pokaz@zoe.com.ua']
+  && str_contains($mt, '1234567') && str_contains($mt, 'Шевченко Тарас Григорович') && str_contains($mt, 'Соборна') && str_contains($mt, 'день: 12345 кВт·год') && str_contains($mt, 'ніч: 6789 кВт·год'),
+  [$ml[1] ?? null, mb_substr($mt, 0, 700)]);
+Db::q("DELETE FROM rate_limits WHERE k LIKE 'lb_%'");   // zoe — ще дві черги того самого користувача: ліміт lb_user не має зачепити наступні боти
 // Львівводоканал (103-я): e-mail відділу збуту району людини, рядок «рахунок, адреса, № лічильника-показник», без номера лічильника — не надсилаємо
 $r = $lbu->req('POST', '/api/lb/connect', ['bot' => 'lvk', 'place' => 'lv2', 'acc' => '1234567', 'addr' => 'вул. Зелена, 1, кв. 2', 'consent' => true]);
 ok('lvk: без району — 422 lb_dist', $r->status === 422 && ($r->body['error'] ?? '') === 'lb_dist', $r->body);
@@ -2974,8 +3007,8 @@ ok('i18n: у кожній мові ключ один раз (інакше дру
 // 147-я: каталог постачальників для пошуку в «Кому платите» і вибір людини — головніший за адресу в нагадуваннях
 Providers::reset(); $cw = Providers::catalog('water'); $ce = Providers::catalog('elec'); $cg = Providers::catalog('gas');
 $bu = array_values(array_filter($cw['items'], fn($x) => str_contains($x['o'], 'Бучасервіс')))[0] ?? null;
-ok('каталог: вода — сотні постачальників, Бучасервіс з містом Буча і пунктом для /api/providers; світло — 6 областей; газ — з оператором ГРМ',
-  count($cw['items']) > 100 && $bu && in_array('Буча', $bu['t'], true) && $bu['n'] !== '' && $bu['h'] !== '' && count($ce['items']) === 6 && count(array_filter($cg['items'], fn($x) => !empty($x['g']))) >= 5 && Providers::catalog('xxx')['items'] === []);
+ok('каталог: вода — сотні постачальників, Бучасервіс з містом Буча і пунктом для /api/providers; світло — 7 областей (193-я: + Запоріжжяелектропостачання); газ — з оператором ГРМ',
+  count($cw['items']) > 100 && $bu && in_array('Буча', $bu['t'], true) && $bu['n'] !== '' && $bu['h'] !== '' && count($ce['items']) === 7 && count(array_filter($cg['items'], fn($x) => !empty($x['g']))) >= 5 && Providers::catalog('xxx')['items'] === []);
 $lvi = array_values(array_filter($ce['items'], fn($x) => str_contains($x['o'], 'Львівенергозбут')))[0];
 $pv = Reminders::placeProv(['address' => '', 'prov' => ['elec' => ['own' => 0, 'sel' => ['o' => $lvi['o'], 'n' => $lvi['n'], 'h' => $lvi['h']]], 'water' => ['own' => 0, 'sel' => ['o' => $bu['o'], 'n' => $bu['n'], 'h' => $bu['h']]]]]);
 ok('нагадування: обраний у довіднику постачальник — замість харківського (світло — Львівенергозбут, вода — Бучасервіс з вікном, не Харківводоканал)',
@@ -2994,10 +3027,10 @@ ok('seo: сторінка моделі — заголовок, кроки сло
   && substr_count((string)$si2, '<li><a href="/yak-znyaty-pokaznannya/') === 37 && Seo::match('/ru/kak-snyat-pokazaniya/t330') === ['ru', 't330', 'm'] && Seo::match('/yak-znyaty-pokaznannya/../x') === null);
 $hs = Seo::hroms(); $hb = (string)Seo::render('uk', 'bucha', '', 'https://peredai.com.ua/', 'h'); $hk = (string)Seo::render('ru', 'kharkiv', '', 'https://peredai.com.ua/', 'h');
 $hi = (string)Seo::render('uk', '', '', 'https://peredai.com.ua/', 'h');
-ok('seo: громади — 350 адрес латиницею (КМУ № 55), Буча: Бучасервіс з тарифом, вікно «з 25 по 30», «відправить сам»; Харків ru: ХТМ «с 5 по 25», Водоканал «с 1 по 20»; список — 350; невідома — null',
-  count($hs) === 350 && isset($hs['bucha'], $hs['kharkiv'], $hs['bila-tserkva']) && Seo::translit('Згурівка') === 'zghurivka' && Seo::translit('Яготин') === 'yahotyn'
+ok('seo: громади — 374 адреси латиницею (КМУ № 55; 193-я: + 25 громад Запоріжжя, окуповані — без сторінки), Буча: Бучасервіс з тарифом, вікно «з 25 по 30», «відправить сам»; Харків ru: ХТМ «с 5 по 25», Водоканал «с 1 по 20»; список — 374; невідома — null',
+  count($hs) === 374 && isset($hs['bucha'], $hs['kharkiv'], $hs['bila-tserkva'], $hs['zaporizhzhia']) && !isset($hs['melitopol']) && Seo::translit('Згурівка') === 'zghurivka' && Seo::translit('Яготин') === 'yahotyn'
   && str_contains($hb, 'КП «Бучасервіс»') && str_contains($hb, '20,47') && str_contains($hb, 'Показання: з 25 по 30 число') && str_contains($hb, 'передай відправить показання сам')
-  && str_contains($hk, 'Показания: с 5 по 25 число') && str_contains($hk, 'Показания: с 1 по 20 число') && !str_contains($hk, 'натисн') && substr_count($hi, '<li><a href="/kudy-peredaty/') === 350
+  && str_contains($hk, 'Показания: с 5 по 25 число') && str_contains($hk, 'Показания: с 1 по 20 число') && !str_contains($hk, 'натисн') && substr_count($hi, '<li><a href="/kudy-peredaty/') === 374
   && Seo::render('uk', 'nope', '', 'https://x/', 'h') === null && Seo::match('/ru/kuda-peredat/bucha') === ['ru', 'bucha', 'h'], [count($hs), mb_substr(strip_tags($hb), 0, 300)]);
 $hku = (string)Seo::render('uk', 'kharkiv', '', 'https://peredai.com.ua/', 'h');
 ok('seo: підстава ціни (170-а) — Харків: «Підстава: рішення виконкому Харківської міської ради від 23.09.2026 № 509» після тарифу 48,63; ru — «Основание:»; Буча — рішення № 6249',
@@ -3042,7 +3075,7 @@ ok('apple: дійсний токен → sub, e-mail малими, «прихо�
   && $apErr(fn() => Apple::verify(preg_replace('~\.([^.]+)\.~', '.' . $b64u(json_encode(['sub' => 'другий'] + $apBase)) . '.', $apTok($apBase)), $apJwks, Apple::AUD, 'n-1', $apNow)) === 'apple_bad_signature'
   && $apErr(fn() => Apple::verify('abc', $apJwks, Apple::AUD, null, $apNow)) === 'apple_bad_token'
   && openssl_pkey_get_public(Apple::pem($apJwks[0]['n'], $apJwks[0]['e'])) !== false, $apOk);
-ok('seo: sitemap — головна + пари: 38 (моделі) + 5 (комуналка: Харків, Київ, Одеса, Львів, Хмельницький — 177-а) + 4 (калькулятори) + 351 (громади) + 1 + постачальники', count(Seo::pairs()) === 38 + 5 + 4 + 351 + 1 + count($pv)
+ok('seo: sitemap — головна + пари: 38 (моделі) + 6 (комуналка: Харків, Київ, Одеса, Львів, Хмельницький — 177-а, Запоріжжя — 193-я) + 4 (калькулятори) + 375 (громади) + 1 + постачальники', count(Seo::pairs()) === 38 + 6 + 4 + 375 + 1 + count($pv)
   && in_array([Seo::KUK . '/kharkiv', Seo::KRU . '/kharkiv'], Seo::pairs(), true) && in_array([Seo::KUK . '/lviv', Seo::KRU . '/lviv'], Seo::pairs(), true), count(Seo::pairs()));
 // 170-а: калькулятори сторінками (вода КМУ № 690, світло зони, газ + розподіл)
 $cw = Calc::water(5.0, 3.0, ['supply' => 48.629, 'drain' => 20.61, 'hot' => 86.32]); $cw0 = Calc::water(4.0, 0.0, ['supply' => null, 'drain' => null]);
@@ -3065,7 +3098,7 @@ ok('калькулятори: сторінки — вода Харкова з п
   && Seo::match('/kalkulyator') === ['uk', '', 'c'] && in_array([Calc::UK . '/svitlo', Calc::RU . '/svet'], Seo::pairs(), true), mb_substr(strip_tags($cv), 0, 300));
 $llm = Seo::llms('https://peredai.com.ua/');
 ok('llms.txt (170-а): заголовок з доменом із запиту, цитата-суть, розділи (громади, комуналка Харкова, постачальники, моделі, ru, Optional) — повні адреси; числа живцем',
-  str_starts_with($llm, "# передай (peredai.com.ua)\n\n> ") && str_contains($llm, '- [Куди передати показання — за громадами](https://peredai.com.ua/kudy-peredaty): 350 громад')
+  str_starts_with($llm, "# передай (peredai.com.ua)\n\n> ") && str_contains($llm, '- [Куди передати показання — за громадами](https://peredai.com.ua/kudy-peredaty): ' . count(Seo::hroms()) . ' громад')
   && str_contains($llm, '(https://peredai.com.ua/komunalka/kharkiv)') && str_contains($llm, '(https://peredai.com.ua/ru/kak-snyat-pokazaniya)') && str_contains($llm, "\n## Optional\n")
   && str_contains($llm, count(Seo::provs()) . ' постачальників') && str_contains(Seo::llms('http://127.0.0.1:8013/'), '# передай (127.0.0.1)'), mb_substr($llm, 0, 200));
 // 170-а: «Комуналка в Харкові: куди передати показники» — шпаргалка, картки з підставою ціни, FAQPage; ru; громади/постачальники — «комуналка» й «передати показники»

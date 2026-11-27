@@ -23,7 +23,7 @@ const B = 'http://127.0.0.1:8013/';
   ok('154: варіанти «Кому платите» й пошук — на всю ширину блоку (одна колонка)', lay.opts.every(x => Math.abs(x - lay.w) < 2) && Math.abs(lay.pc - lay.w) < 2, lay);
   await p.focus('#pcat-elec'); await p.waitForTimeout(900);
   const all = await p.$$eval('#pcat-elec-l [role=option]', es => es.map(e => e.textContent));
-  ok('фокус — список усіх постачальників світла (гортати), 6 областей', all.length === 6 && all.some(x => /Львівенергозбут/.test(x)) && all.some(x => /YASNO/.test(x)), all);
+  ok('фокус — список усіх постачальників світла (гортати), 7 областей', all.length === 7 && all.some(x => /Львівенергозбут/.test(x)) && all.some(x => /YASNO/.test(x)), all);
   await p.type('#pcat-elec', 'буч', { delay: 30 }); await p.waitForTimeout(200);
   const bu = await p.$$eval('#pcat-elec-l [role=option]', es => es.map(e => e.textContent));
   ok('«буч» — за містом: Київська обласна енергопостачальна, підпис «Буча»', bu.length === 1 && /Київська обласна/.test(bu[0]) && /Буча/.test(bu[0]), bu);
