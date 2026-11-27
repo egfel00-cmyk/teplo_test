@@ -1516,6 +1516,17 @@ ok('193-я: Запоріжжя — «Запорожье» → Запорізьк
   && ($zp8['place']['name'] ?? '') === 'Кам’янка' && !empty($zp8['tot']) && ($zp4['place']['hromada'] ?? '') === 'Гуляйпільська' && !empty($zp4['tot']) && empty($zp5['tot']) && ($zp5['kinds']['elec']['via'] ?? '') === 'zoe'
   && str_contains($zp6['kinds']['water']['org'] ?? '', 'Облводоканал') && ($zp6['kinds']['water']['supply'] ?? null) === 54.648 && ($zp6['kinds']['water']['win'] ?? null) === [25, 31],
   [$zp1['place'] ?? $zp1, $zp1['kinds']['water'] ?? null, $zp3['tot'] ?? $zp3, $zp4['place'] ?? $zp4, $zp5['tot'] ?? null, $zp6['kinds']['water']['org'] ?? null, $zp8['place'] ?? $zp8, $zpTotOk]);
+// 195-я: Запорізька — вивіз Запоріжжя (Вельтум 39,69 / 44,33), вода Широкого (Благводсервіс 52,70, без стоків), Матвіївки (намір → check), Степного (Степок 43,00),
+// Михайлівки (лише тариф громади, постачальник — з платіжки), Степногірськ — Облводоканал без стоків; tar — сторінки тарифів КП для слеження
+$z95a = $pv('Запоріжжя, вул. Перемоги 1'); $z95b = $pv('Широке, Широківська громада'); $z95c = $pv('Степногірськ'); $z95d = $pv('Степне, Запорізький район');
+ok('195-я: Запорізька — вивіз Запоріжжя 39,69 / 44,33 (Вельтум), Широке 52,70 без водовідведення, Степногірськ — Облводоканал 54,648 (check), Степне 43,00; tar у Водоканалу й МТМ',
+  ($z95a['kinds']['waste']['price'] ?? null) === 39.69 && ($z95a['kinds']['waste']['priv'] ?? null) === 44.33 && str_contains($z95a['kinds']['waste']['org'] ?? '', 'Вельтум')
+  && ($zpD['hromadas']['Запорізька']['water']['tar'] ?? '') === 'https://vodokanal.zp.ua/?page_id=16' && ($zpD['hromadas']['Запорізька']['heat']['tar'] ?? '') === 'https://teploseti.zp.ua/taryfy/'
+  && ($z95b['kinds']['water']['supply'] ?? null) === 52.7 && array_key_exists('drain', $z95b['kinds']['water'] ?? []) && $z95b['kinds']['water']['drain'] === null && str_contains($z95b['kinds']['water']['doc'] ?? '', '№ 236')
+  && ($z95c['kinds']['water']['supply'] ?? null) === 54.648 && !empty($z95c['kinds']['water']['check']) && str_contains($z95c['kinds']['water']['org'] ?? '', 'Облводоканал')
+  && ($z95d['kinds']['water']['supply'] ?? null) === 43.0 && ($zpD['hromadas']['Матвіївська']['water']['drain'] ?? null) === 60.5 && !empty($zpD['hromadas']['Матвіївська']['water']['check'])
+  && array_key_exists('org', $zpD['hromadas']['Михайлівська (Запорізький р-н)']['water']) && $zpD['hromadas']['Михайлівська (Запорізький р-н)']['water']['org'] === null && ($zpD['hromadas']['Михайлівська (Запорізький р-н)']['water']['drain'] ?? null) === 40.8,
+  [$z95a['kinds']['waste'] ?? $z95a, $z95b['place'] ?? $z95b, $z95b['kinds']['water'] ?? null, $z95c['place'] ?? $z95c, $z95d['place'] ?? $z95d]);
 // 100-а: Хмельниччина — 8 громад по населенню: вода, тепло (мораторій — тариф на 24.02.2022), строки й канали показань
 $kp0 = $pv('Каменец-Подольский, ул. Соборная 1')['kinds'] ?? []; $sp0 = $pv('Шепетовка, ул. Шевченко 1')['kinds'] ?? []; $nt0 = $pv('Нетешин, ул. Шевченко 1')['kinds'] ?? [];
 $sl0 = $pv('Славута, ул. Соборности 1')['kinds'] ?? []; $sk0 = $pv('Староконстантинов, ул. Острожского 1')['kinds'] ?? []; $pl0 = $pv('м. Полонне, вул. Лесі Українки 1')['kinds'] ?? [];
@@ -3221,7 +3232,7 @@ ok('194-я: доставка газу — крок next {dist}: до дати 2,
   Providers::dated($kg, '2026-12-31')['dist'] === 2.388 && Providers::dated($kg, '2027-01-02')['dist'] === 2.5 && Providers::dated($kg, '2027-01-02')['distFrom'] === '2027-01-01'
   && !isset(Providers::dated($kg, '2027-01-02')['next']) && ProvEdit::clean(['next' => ['from' => '2027-01-01', 'dist' => '2,5']])['next'] === ['from' => '2027-01-01', 'dist' => 2.5], $kg);
 // сторінка «Тарифи» КП (поле tar): перший знімок — точка відліку; нове посилання про тарифи → зміна з документом; суми змінились → kpn
-$zw0 = ProvEdit::cur('zp', 'hromadas', 'Запорізька', 'water'); ProvEdit::save('zp', 'hromadas', 'Запорізька', 'water', $zw0 + ['tar' => 'https://vodokanal.zp.ua/taryfy/'], 'boss@example.ua');
+$zw0 = ProvEdit::cur('zp', 'hromadas', 'Запорізька', 'water'); ProvEdit::save('zp', 'hromadas', 'Запорізька', 'water', ['tar' => 'https://vodokanal.zp.ua/taryfy/'] + $zw0, 'boss@example.ua');
 $KP = 'https://vodokanal.zp.ua/taryfy/';
 $TW[$KP] = '<html><head><title>Тарифи</title></head><body><nav><a href="/">Головна</a><a href="/taryfy/">Тарифи</a></nav><h1>Тарифи</h1><p>Водопостачання — 41,688 грн за 1 м³ з ПДВ, водовідведення — 27,684 грн/м³. Вивіз — 23,47 грн з ПДВ з особи на місяць.</p>'
   . '<ul><li><a href="/news/1">Рішення № 423 від 28.05.2026 «Про встановлення тарифів»</a></li></ul><script>var x = "100 грн/м³";</script></body></html>';
