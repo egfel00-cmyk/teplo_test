@@ -15,6 +15,7 @@ final class TarWatch {
   /** Посилання «про тарифи»: тариф, намір змінити, вартість послуг (uk/ru). */
   const LINK_RE = '/тариф|намір\P{L}{1,3}\p{L}*\s*(змін|встановл|перегляд|коригув)|вартост[іи]\s+(послуг|1\s*м)|намерени[ея]\s*\p{L}*\s*(измен|установ)/iu';
   /** Слова, що не розрізняють постачальників («КП», «ТОВ», «м.», «міської ради»…). «міська» лишається: «Харківська міська філія» ≠ «Харківська філія». */
+  const JF = JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_INVALID_UTF8_SUBSTITUTE;
   const STOP = ['кп', 'кпп', 'тов', 'пат', 'прат', 'ат', 'дп', 'вкп', 'вкг', 'квп', 'кву', 'лмкп', 'мкп', 'лкп', 'бмр', 'ак', 'комунальне', 'комунальна', 'підприємство', 'підприємства', 'товариство',
     'з', 'обмеженою', 'відповідальністю', 'акціонерне', 'акціонерна', 'компанія', 'приватне', 'концерн', 'м', 'місто', 'міста', 'міської', 'ради', 'рада', 'обласної', 'селищної', 'сільської', 'зор'];
   /** Загальні назви: одне таке слово — не підстава вважати постачальників тими самими. */
@@ -78,7 +79,7 @@ final class TarWatch {
     $rows = self::srcAll();
     foreach (self::minfin() as $url => [$kd, $cmp]) {
       $s = $rows[sha1($url)] ?? null; $wait = $s && (int)$s['code'] !== 200 ? self::MF_RETRY : self::MF_EVERY;
-      if (!$s || $now - (int)$s['at'] >= $wait) return self::check($url);
+      if (!$s || $now - (int)$s['at'] >= $wait) return self::safe($url);
     }
     $best = null;
     foreach (array_keys(self::pages()) as $url) {
@@ -86,7 +87,19 @@ final class TarWatch {
       $wait = $s && (int)$s['code'] !== 200 && (int)$s['n_ok'] === 0 && (int)$s['n_fail'] >= 3 ? 7 * 86400 : ($s && (int)$s['code'] !== 200 ? self::KP_RETRY : self::KP_DAYS * 86400);
       if ($now - $at >= $wait && ($best === null || $at < $best[1])) $best = [$url, $at];
     }
-    return $best ? self::check($best[0]) : null;
+    return $best ? self::safe($best[0]) : null;
+  }
+  /** check(), але збій одного джерела не зупиняє коло (27.11 на бою таблиця тепла кидала виняток — cron щоразу брав її знову): відмітити перевіреним з текстом помилки. */
+  public static function safe(string $url): array {
+    try { return self::check($url); }
+    catch (Throwable $e) {
+      $id = sha1($url); $now = self::now(); $err = mb_substr(get_class($e) . ': ' . $e->getMessage() . ' @' . basename($e->getFile()) . ':' . $e->getLine(), 0, 120);
+      error_log('teplo tarwatch ' . $url . ': ' . $e->getMessage());
+      if (Db::one('SELECT 1 AS x FROM tar_src WHERE id = ?', [$id])) Db::q('UPDATE tar_src SET at = ?, code = ?, err = ?, n_fail = n_fail + 1 WHERE id = ?', [$now, -1, $err, $id]);
+      else Db::q('INSERT INTO tar_src (id, url, type, at, code, err, first_at, n_fail) VALUES (?, ?, ?, ?, ?, ?, ?, 1)', [$id, mb_substr($url, 0, 600), str_starts_with($url, self::MINFIN . '/') ? 'mf' : 'kp', $now, -1, $err, $now]);
+      self::stateSet(['last' => ['at' => $now, 'host' => (string)parse_url($url, PHP_URL_HOST), 'code' => -1, 'n' => 0, 'err' => $err]]);
+      return ['url' => $url, 'type' => str_starts_with($url, self::MINFIN . '/') ? 'mf' : 'kp', 'code' => -1, 'changes' => 0, 'err' => $err];
+    }
   }
   /** Перевірити одне джерело зараз (cron або «Проверить сейчас» у /admin). → {url, type, code, changes}. */
   public static function check(string $url): array {
@@ -107,7 +120,7 @@ final class TarWatch {
         $seen = array_slice(array_values(array_unique(array_merge(array_keys((array)$snap['links']), $seen))), 0, 500);
       }
       $base['ok_at'] = $now;
-      if ($snap !== null) $base += ['hash' => sha1(json_encode($snap, JSON_UNESCAPED_UNICODE)), 'snap' => json_encode($snap, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), 'seen' => $seen === null ? null : json_encode($seen, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)];
+      if ($snap !== null) $base += ['hash' => sha1((string)json_encode($snap, self::JF)), 'snap' => (string)json_encode($snap, self::JF), 'seen' => $seen === null ? null : (string)json_encode($seen, self::JF)];
     }
     if ($old) {
       $set = $base; unset($set['id']);
@@ -132,7 +145,7 @@ final class TarWatch {
   }
 
   // ---------- minfin ----------
-  private static function txt(string $s): string { return trim(preg_replace('/\s+/u', ' ', str_replace(["\u{AD}", "\u{A0}"], ['', ' '], $s))); }
+  private static function txt(string $s): string { $s = mb_scrub($s, 'UTF-8'); return trim((string)preg_replace('/\s+/u', ' ', str_replace(["\u{AD}", "\u{A0}"], ['', ' '], $s))); }
   private static function date(string $s): ?string { return preg_match('/з\s*(\d{1,2})\.(\d{1,2})\.(\d{4})/u', $s, $m) ? sprintf('%04d-%02d-%02d', $m[3], $m[2], $m[1]) : null; }
   /** Таблиці minfin (class grid / grid2) → [{reg, org, n: [числа], from, two}]: область — рядок th.region; «двоставковий» тариф — two (частини нижче — пропускаємо). */
   public static function mfParse(string $html): array {
@@ -279,13 +292,13 @@ final class TarWatch {
   // ---------- зміни ----------
   /** Записати зміну (те саме — один раз за sig). Попередня нова зміна того ж постачальника з того ж джерела — stale. → 1 | 0. */
   private static function add(string $src, string $kd, string $org, array $places, ?array $was, ?array $val, ?string $from, ?string $doc, ?string $link, string $page, string $r): int {
-    $sig = sha1(implode('|', [$src, $kd, $org, json_encode($val), (string)$from, $src === 'kp' ? (string)$link : '', $src === 'kpn' ? $page : '']));
+    $sig = sha1(implode('|', [$src, $kd, $org, (string)json_encode($val, self::JF), (string)$from, $src === 'kp' ? (string)$link : '', $src === 'kpn' ? $page : '']));
     if (Db::one('SELECT 1 AS x FROM tar_changes WHERE sig = ?', [$sig])) return 0;
     if (in_array($src, ['mf', 'mfs'], true)) Db::q("UPDATE tar_changes SET status = 'stale' WHERE status = 'new' AND src = ? AND kind = ? AND org = ?", [$src, $kd, $org]);
     if ($src === 'kpn') Db::q("UPDATE tar_changes SET status = 'stale' WHERE status = 'new' AND src = 'kpn' AND page = ?", [$page]);
     Db::q('INSERT INTO tar_changes (at, src, sig, r, kind, org, places, was, val, pct, dfrom, doc, url, page, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', [
-      self::now(), $src, $sig, $r, $kd, mb_substr($org, 0, 255), json_encode(array_values($places), JSON_UNESCAPED_UNICODE),
-      $was === null ? null : json_encode($was, JSON_UNESCAPED_UNICODE), $val === null ? null : json_encode($val, JSON_UNESCAPED_UNICODE),
+      self::now(), $src, $sig, $r, $kd, mb_substr($org, 0, 255), (string)json_encode(array_values($places), self::JF),
+      $was === null ? null : (string)json_encode($was, self::JF), $val === null ? null : (string)json_encode($val, self::JF),
       self::pct($was, $val), $from, $doc === null ? null : mb_substr($doc, 0, 300), $link === null ? null : mb_substr($link, 0, 600), mb_substr($page, 0, 600), 'new']);
     return 1;
   }

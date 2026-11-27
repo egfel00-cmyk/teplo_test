@@ -226,7 +226,7 @@ final class Admin {
       case 'POST /api/admin/tar/ignore': return TarWatch::ignore((int)($in['id'] ?? 0), (string)($me['email'] ?: ('tg:' . $me['id'])));
       case 'POST /api/admin/tar/check': {
         $u = (string)($in['url'] ?? ''); if (!isset(TarWatch::minfin()[$u]) && !isset(TarWatch::pages()[$u])) throw new HttpError(422, 'bad_url');
-        $res0 = TarWatch::check($u); TarWatch::notify(); return $res0 + ['admin' => TarWatch::admin()];
+        $res0 = TarWatch::safe($u); TarWatch::notify(); return $res0 + ['admin' => TarWatch::admin()];
       }
       case 'GET /api/admin/prov/edits': return ProvEdit::all() + ['probe' => ProvProbe::read()];   // правки для перенесення в репозиторій
       case 'GET /api/admin/overview': {
