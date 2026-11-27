@@ -25,6 +25,7 @@ require __DIR__ . '/../app/indexnow.php';
 require __DIR__ . '/../app/relay.php';
 require __DIR__ . '/../app/share.php';
 require __DIR__ . '/../app/push.php';
+require __DIR__ . '/../app/tarwatch.php';
 require __DIR__ . '/../app/api.php';
 $TMP = sys_get_temp_dir() . '/teplo_test_' . getmypid(); putenv('SITE_DATA=' . $TMP);
 
@@ -3136,7 +3137,7 @@ ok('seo: стара адреса постачальника (Search Console 404 
 // і в розборі чужих сторінок (htmsvc.php — кабінет ХТМ пише «грн»). Новий текст з «грн» — помилка цього тесту.
 $uahBad = [];
 foreach (array_merge(glob(__DIR__ . '/../web/src/*.js'), glob(__DIR__ . '/../app/*.php'), [__DIR__ . '/../web/admin.html']) as $f) {
-  if (basename($f) === 'htmsvc.php') continue;
+  if (in_array(basename($f), ['htmsvc.php', 'tarwatch.php'], true)) continue;   // розбір чужих сторінок: кабінет ХТМ, сторінки «Тарифи» КП (194-я) пишуть «грн»
   foreach (file($f) as $i => $l) {
     if (!preg_match('/(?<![\p{Cyrillic}])грн(?![\p{Cyrillic}])/u', $l) || str_contains($l, 'my_purp_def') || str_contains($l, 'для банку')) continue;
     if (preg_match('~^\s*(//|\*|/\*)~', $l)) continue;  // коментарі
@@ -3144,7 +3145,7 @@ foreach (array_merge(glob(__DIR__ . '/../web/src/*.js'), glob(__DIR__ . '/../app
   }
 }
 $uahData = 0; foreach (glob(__DIR__ . '/../app/data/*.json') as $f) $uahData += preg_match_all('/(?<![\p{Cyrillic}])грн(?![\p{Cyrillic}])/u', file_get_contents($f));
-ok('₴ замість «грн» (172-а): у JS/PHP/admin і довіднику немає «грн», крім банку (призначення, «Скопіювати все») і розбору ХТМ',
+ok('₴ замість «грн» (172-а): у JS/PHP/admin і довіднику немає «грн», крім банку (призначення, «Скопіювати все») і розбору ХТМ та сторінок КП (194-я)',
   !$uahBad && !$uahData && str_contains(file_get_contents(__DIR__ . '/../web/src/i18n.js'), "{сума} грн"), [$uahBad, $uahData]);
 
 // 181-я: жива форма ХТМ «три часи» 22.11.2026 (/api/health → htmcab.form): Fd — TimeProstoya, Pd — TimeRash (за підписом)
@@ -3153,6 +3154,98 @@ $lf = []; foreach (['LastDtPok' => 'Дата зняття показань', 'La
 foreach ([['Comment', 'text'], ['phone', 'text'], ['email', 'text'], ['send', 'submit']] as [$nm, $ty]) $lf[] = ['name' => $nm, 'type' => $ty, 'lbl' => ''];
 $lp = HtmCab::plan($lf);
 ok('ХТМ «три часи»: TimeProstoya — час простою (errHours), TimeRash — Pd; форма зрозуміла', $lp['match'] && $lp['times3'] && ($lp['roles']['TimeProstoya'] ?? '') === 'errHours' && ($lp['roles']['TimeRash'] ?? '') === 'flowHours', $lp);
+
+
+// 194-я (владелец 27.11): слежение за тарифами без токенов — TarWatch. minfin (вода/газ — с датой, тепло — против прошлого снимка), страница «Тарифи» КП (`tar`):
+// изменение → tar_changes, владельцу в Telegram один раз; «Принять в справочник» → next {from, …, doc, url} (плашка и бот за 45 дней со ссылкой), «Игнорировать».
+$mfHtml = function (string $cap, array $regs, string $cls = 'grid'): string {
+  $h = '<html><head><meta charset="utf-8"><title>Тарифи</title></head><body><table class="' . $cls . '"><caption>' . $cap . '</caption><tr><th rowspan="2">Постачальник</th><th colspan="4">Тариф</th></tr>';
+  foreach ($regs as $reg => $rows) { $h .= '<tr><th colspan="6" class="region normal">' . $reg . '</th></tr>'; foreach ($rows as $r) $h .= '<tr>' . implode('', array_map(fn($c) => '<td class="smaller">' . $c . '</td>', $r)) . '</tr>'; }
+  return $h . '</table></body></html>';
+};
+$WAT = 'https://index.minfin.com.ua/ua/tariff/water/'; $GAS = 'https://index.minfin.com.ua/ua/tariff/gas/distrib/'; $HEA = 'https://index.minfin.com.ua/ua/tariff/heating/';
+$TW = [];   // url → html
+CabWeb::$http = function ($m, $u, $b, $c, $h) use (&$TW) { return isset($TW[$u]) ? ['code' => 200, 'body' => $TW[$u]] : ['code' => 404, 'body' => 'nf']; };
+TarWatch::$now = strtotime('2026-11-27 10:00:00 UTC'); Providers::$today = '2026-11-27';
+$TW[$WAT] = $mfHtml('Тарифи на централізоване водопостачання та водовідведення (для населення)', [
+  'Запорізька обл.' => [['КП "Водо&shy;канал" Запоріжжя', '41,688', '27,684', '', '69,372', 'з 01.06.2026']],
+  'Одеська обл.' => [['ТОВ "Інфокс" ("Інфоксводоканал")', '36,708', '28,836', '', '65,544', 'з 15.08.2026']],
+  'Хмельницька обл.' => [['КП "Міськтепловоденергія" (Кам\'янець-Подільський)', '29,028', '26,184', '', '55,212', 'з 15.07.2026']],
+  'Полтавська обл.' => [['КП "Полтававодоканал"', '46,800', '36,912', '', '83,712', 'з 01.08.2026']]]);
+$TW[$GAS] = $mfHtml('Вартість доставки газу операторами ГРМз 1.11.2026', ['Харківська обл.' => [['"Газмережі", Харківська міська філія', '0,516'], ['"Газмережі", Харківська філія', '2,388']], 'Київська обл.' => [['ПАТ "Київгаз"', '0,384']]]);
+$TW[$HEA] = $mfHtml('Тарифи на централізоване опалення для населення(на 1 лютого 2021 року)', ['Харківська обл.' => [['КП "Харківські теплові мережі"', 'одноставковий', '1748,47', '']],
+  'Львівська обл.' => [['ЛМКП "Львівтеплоенерго"', 'двоставковий', '', ''], ['умовно-змінна частина', '1363,44', '']]], 'grid2');
+$pw = TarWatch::mfParse($TW[$WAT]); $ph = TarWatch::mfParse($TW[$HEA]); $pg = TarWatch::mfParse($TW[$GAS]);
+ok('194-я: minfin — область з th.region, назва без м’якого переносу, числа й «з 01.06.2026»; тепло двоставкове — two, «умовно-змінна» пропущено; газ — дата з підпису таблиці',
+  $pw[0] === ['reg' => 'Запорізька обл.', 'org' => 'КП "Водоканал" Запоріжжя', 'n' => [41.688, 27.684, 69.372], 'from' => '2026-06-01', 'two' => false]
+  && count($ph) === 2 && $ph[0]['n'] === [1748.47] && $ph[1]['two'] === true && $ph[1]['n'] === [] && $pg[1]['from'] === '2026-11-01' && $pg[1]['n'] === [2.388], [$pw[0], $ph, $pg[1]]);
+ok('194-я: той самий постачальник — «КП «Водоканал» (м. Запоріжжя)» = «КП "Водоканал" Запоріжжя», «Інфоксводоканал» ⊂ «Інфокс (Інфоксводоканал)»; газ — лише однакові (міська ≠ обласна філія); «КП «Водоканал»» ≠ запорізький',
+  TarWatch::same('КП «Водоканал» (м. Запоріжжя)', 'КП "Водоканал" Запоріжжя') && TarWatch::same('ТОВ «Інфоксводоканал»', 'ТОВ "Інфокс" ("Інфоксводоканал")')
+  && !TarWatch::same('Газмережі, Харківська філія', '"Газмережі", Харківська міська філія', true) && TarWatch::same('Газмережі, Харківська філія', '"Газмережі", Харківська філія', true)
+  && !TarWatch::same('КП «Водоканал»', 'КП "Водоканал" Запоріжжя') && TarWatch::mfRegion('Київська обл.') === ['kv', 'ky']);
+// перший прохід: у довіднику ті самі ціни (Кам’янець: 29,03 з 01.08 — новіший і з округленням) — змін немає; тепло й газ — точка відліку
+$tw1 = [TarWatch::check($WAT), TarWatch::check($GAS), TarWatch::check($HEA)];
+$twn = fn() => (int)(Db::one('SELECT COUNT(*) n FROM tar_changes')['n'] ?? 0);
+ok('194-я: перший прохід minfin — довідник збігається (у т.ч. округлення 29,03 ≈ 29,028 і новіший запис), тепло — точка відліку: змін 0',
+  array_column($tw1, 'code') === [200, 200, 200] && $twn() === 0, [$tw1, Db::q('SELECT org, was, val FROM tar_changes')->fetchAll()]);
+// нове: Запоріжжя з 01.01.2027, обласна доставка газу Харківщини з 01.01.2027, ХТМ на minfin змінився
+$TW[$WAT] = str_replace(['41,688', '27,684', 'з 01.06.2026'], ['45,130', '32,890', 'з 01.01.2027'], $TW[$WAT]);
+$TW[$GAS] = str_replace(['2,388', 'ГРМз 1.11.2026'], ['2,500', 'ГРМз 1.01.2027'], $TW[$GAS]);
+$TW[$HEA] = str_replace('1748,47', '1923,32', $TW[$HEA]);
+TarWatch::$now += 13 * 3600; $tw2 = [TarWatch::check($WAT), TarWatch::check($GAS), TarWatch::check($HEA)];
+$chg = array_map([TarWatch::class, 'row'], Db::q('SELECT * FROM tar_changes ORDER BY id')->fetchAll()); $ck = []; foreach ($chg as $x) $ck[$x['kind']] = $x;
+ok('194-я: зміни — вода Запоріжжя 41,688/27,684 → 45,13/32,89 з 01.01.2027 (+12,5 % разом, Запорізька громада), доставка газу — лише обласна філія (не міська), тепло ХТМ — проти минулого знімка (громади з ХТМ)',
+  count($chg) === 3 && $ck['water']['src'] === 'mf' && $ck['water']['val'] === ['supply' => 45.13, 'drain' => 32.89] && $ck['water']['was'] === ['supply' => 41.688, 'drain' => 27.684]
+  && $ck['water']['from'] === '2027-01-01' && $ck['water']['places'][0]['key'] === 'Запорізька' && abs($ck['water']['pct'] - 12.5) < 0.05
+  && $ck['gas']['places'] === [['r' => 'kh', 'scope' => 'oblast', 'key' => '', 'kind' => 'gas']] && $ck['gas']['val'] === ['dist' => 2.5]
+  && $ck['heat']['src'] === 'mfs' && $ck['heat']['was'] === ['price' => 1748.47] && in_array('Харківська', array_column($ck['heat']['places'], 'key'), true), $chg);
+$TWsent = []; Telegram::$send = function ($m, $p) use (&$TWsent) { if ($m === 'sendMessage') $TWsent[] = $p; return ['ok' => true, 'result' => ['message_id' => 1]]; };
+$boss = Db::one("SELECT id FROM users WHERE email = 'boss@example.ua'");
+if (!$boss) { Db::q("INSERT INTO users (email, created_at) VALUES ('boss@example.ua', ?)", [Http::iso()]); $boss = ['id' => Db::id()]; }
+if (!Db::one("SELECT 1 AS x FROM user_identities WHERE user_id = ? AND type = 'telegram'", [(int)$boss['id']])) Db::q("INSERT INTO user_identities (user_id, type, external_id, username, linked_at) VALUES (?, 'telegram', '700700', 'boss', ?)", [(int)$boss['id'], Http::iso()]);
+$TWsent = []; $tn1 = TarWatch::notify(); $tn2 = TarWatch::notify(); $twx = implode("\n---\n", array_column($TWsent, 'text'));
+ok('194-я: власнику в Telegram — кожна зміна (було → стало, відсоток, дата, де побачили) з кнопкою в /admin; повторно — нічого',
+  $tn1 >= 3 && $tn2 === 0 && str_contains($twx, 'КП "Водоканал" Запоріжжя') && str_contains($twx, '41,688 → 45,13 ₴/м³') && str_contains($twx, '(+12,5 %) с 01.01.2027')
+  && str_contains($twx, 'Где увидели: https://index.minfin.com.ua/ua/tariff/water/') && str_contains(json_encode(end($TWsent)), 'admin#tar'), $twx);
+$tw3 = TarWatch::check($WAT);
+ok('194-я: та сама таблиця ще раз — нової зміни немає (sig)', $tw3['changes'] === 0 && $twn() === 3);
+$wid = $ck['water']['id']; $acc = TarWatch::accept(['id' => $wid, 'from' => '2027-01-01', 'supply' => '45,13', 'drain' => '32,89', 'doc' => 'Рішення виконкому Запорізької МР № 999 від 01.12.2026', 'url' => 'https://zp.gov.ua/docs/999'], 'boss@example.ua');
+$zw = ProvEdit::cur('zp', 'hromadas', 'Запорізька', 'water'); $zk = Providers::kinds(['n' => 'Запоріжжя', 'h' => Providers::lookup('Запоріжжя')['place']['h'] ?? '', 'r' => 'zp']);
+ok('194-я: «Принять в справочник» — next {з 01.01.2027, 45,13 / 32,89, рішення, посилання}; чинна ціна до дати — стара; minfin більше не сигналить',
+  $acc['ok'] && $acc['saved'] === 1 && ($zw['next']['url'] ?? '') === 'https://zp.gov.ua/docs/999' && ($zw['next']['supply'] ?? 0) === 45.13 && ($zw['supply'] ?? 0) === 41.688
+  && ($zk['water']['next']['doc'] ?? '') === 'Рішення виконкому Запорізької МР № 999 від 01.12.2026' && TarWatch::check($WAT)['changes'] === 0
+  && Db::one('SELECT status FROM tar_changes WHERE id = ?', [$wid])['status'] === 'accepted', [$acc, $zw, $zk['water'] ?? null]);
+$gid = $ck['gas']['id']; TarWatch::accept(['id' => $gid, 'from' => '2027-01-01', 'dist' => '2,5', 'doc' => 'Постанова НКРЕКП № 1 від 01.12.2026'], 'boss@example.ua');
+$kg = ProvEdit::cur('kh', 'oblast', '', 'gas');
+ok('194-я: доставка газу — крок next {dist}: до дати 2,388, з 01.01.2027 — 2,5 (distFrom), ціна газу й «from» не чіпаються',
+  Providers::dated($kg, '2026-12-31')['dist'] === 2.388 && Providers::dated($kg, '2027-01-02')['dist'] === 2.5 && Providers::dated($kg, '2027-01-02')['distFrom'] === '2027-01-01'
+  && !isset(Providers::dated($kg, '2027-01-02')['next']) && ProvEdit::clean(['next' => ['from' => '2027-01-01', 'dist' => '2,5']])['next'] === ['from' => '2027-01-01', 'dist' => 2.5], $kg);
+// сторінка «Тарифи» КП (поле tar): перший знімок — точка відліку; нове посилання про тарифи → зміна з документом; суми змінились → kpn
+$zw0 = ProvEdit::cur('zp', 'hromadas', 'Запорізька', 'water'); ProvEdit::save('zp', 'hromadas', 'Запорізька', 'water', $zw0 + ['tar' => 'https://vodokanal.zp.ua/taryfy/'], 'boss@example.ua');
+$KP = 'https://vodokanal.zp.ua/taryfy/';
+$TW[$KP] = '<html><head><title>Тарифи</title></head><body><nav><a href="/">Головна</a><a href="/taryfy/">Тарифи</a></nav><h1>Тарифи</h1><p>Водопостачання — 41,688 грн за 1 м³ з ПДВ, водовідведення — 27,684 грн/м³.</p>'
+  . '<ul><li><a href="/news/1">Рішення № 423 від 28.05.2026 «Про встановлення тарифів»</a></li></ul><script>var x = "100 грн/м³";</script></body></html>';
+$k1 = TarWatch::check($KP); $kpSnap = TarWatch::kpParse($TW[$KP], $KP);
+$TW[$KP] = str_replace(['41,688', '<ul>'], ['45,13', '<ul><li><a href="/docs/999.pdf" title="pdf">Рішення виконкому № 999 від 01.12.2026 «Про встановлення тарифів на водопостачання» з 01.01.2027</a></li><li><a href="tel:0800">Подзвонити</a></li>'], $TW[$KP]);
+$k2 = TarWatch::check($KP); $k3 = TarWatch::check($KP);
+$kc = array_map([TarWatch::class, 'row'], Db::q("SELECT * FROM tar_changes WHERE src IN ('kp', 'kpn') ORDER BY id")->fetchAll());
+ok('194-я: сторінка КП — посилання про тарифи (без tel:, без скриптів) і суми «41.688 м³»; нове рішення → зміна (текст посилання, адреса документа, дата «з 01.01.2027»), суми → kpn; повтор — нічого',
+  $k1['changes'] === 0 && isset($kpSnap['links']['https://vodokanal.zp.ua/news/1']) && in_array('41.688 м³', $kpSnap['nums'], true) && !in_array('100 м³', $kpSnap['nums'], true)
+  && $k2['changes'] === 2 && $k3['changes'] === 0 && count($kc) === 2 && $kc[0]['src'] === 'kp' && $kc[0]['url'] === 'https://vodokanal.zp.ua/docs/999.pdf' && $kc[0]['from'] === '2027-01-01'
+  && str_contains((string)$kc[0]['doc'], '№ 999') && $kc[1]['src'] === 'kpn' && in_array('45.13 м³', $kc[1]['val']['nums'], true) && $kc[0]['places'][0]['key'] === 'Запорізька', [$k1, $k2, $kpSnap, $kc]);
+TarWatch::ignore($kc[1]['id'], 'boss@example.ua');
+$ts = TarWatch::stats(); $th = TarWatch::health();
+ok('194-я: статистика — місяць (зміни, прийнято, середній %), джерела (minfin і КП), громади під наглядом (Запорізька — і minfin, і сторінка); /api/health → tar без людей',
+  $ts['months'][0]['ym'] === '2026-11' && $ts['months'][0]['accepted'] === 2 && $ts['months'][0]['ignored'] === 1 && $ts['counts']['new'] >= 2 && $th['src']['mf']['ok'] >= 3 && $th['src']['kp']['ok'] >= 1
+  && $ts['hromadas']['watched'] >= 1 && $ts['hromadas']['all'] > $ts['hromadas']['watched'] && isset($th['minfin']->{'water/'}) && $th['minfin']->{'water/'}['rows'] === 4, [$ts['months'], $th]);
+$wsx = TarWatch::withStep(['org' => 'X', 'supply' => 10.0, 'next' => [['from' => '2027-01-01', 'supply' => 11.0], ['from' => '2027-07-01', 'supply' => 12.0]]], 'water', '2027-01-01', ['supply' => 11.5], 'Р', '', 'https://a.ua/1');
+ok('194-я: крок з тією ж датою замінюється, порядок — за датою; tar і next.url проходять ProvEdit::clean', $wsx['next'][0] === ['from' => '2027-01-01', 'supply' => 11.5, 'doc' => 'Р', 'url' => 'https://a.ua/1'] && $wsx['next'][1]['from'] === '2027-07-01'
+  && ProvEdit::clean(['org' => 'X', 'tar' => 'https://kp.ua/taryfy', 'next' => $wsx['next']])['tar'] === 'https://kp.ua/taryfy' && !isset(ProvEdit::clean(['tar' => 'http://kp.ua/x'])['tar']), $wsx);
+$ttx = Reminders::tariffText(['k' => 'water', 'from' => '2027-01-01', 'places' => [['pid' => 'p1', 'name' => '', 'org' => 'КП «Водоканал»', 'rows' => ['supply' => [41.688, 45.13]], 'doc' => '', 'doc_ru' => '', 'url' => 'https://zp.gov.ua/docs/999']]], 'uk');
+ok('194-я: бот — прийняли з посиланням без назви рішення → «Підстава: посилання»', str_contains($ttx['text'], 'Підстава: https://zp.gov.ua/docs/999'), $ttx['text']);
+TarWatch::$now = strtotime('2026-11-30 08:00:00 UTC'); $TWsent = [];   // понеділок, 10:00 Києва
+ok('194-я: нагадування раз на тиждень у понеділок — «не разобрано изменений тарифов», вдруге за тиждень — ні', TarWatch::remind() && !TarWatch::remind() && str_contains($TWsent[0]['text'] ?? '', 'Не разобрано изменений тарифов'), $TWsent);
+CabWeb::$http = null; Telegram::$send = null; TarWatch::$now = null; Providers::$today = null;
 
 echo "\nИтог: $pass OK, $fail FAIL\n";
 exit($fail ? 1 : 0);

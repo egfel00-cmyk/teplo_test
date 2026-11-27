@@ -27,6 +27,7 @@ require __DIR__ . '/app/journal.php';
 require __DIR__ . '/app/indexnow.php';
 require __DIR__ . '/app/share.php';
 require __DIR__ . '/app/push.php';   // 186-я: пуші iPhone (APNs)
+require __DIR__ . '/app/tarwatch.php';   // 194-я: слежение за тарифами (minfin, страницы КП)
 $beat = Cron::read(); $beat['last'] = gmdate('c');
 // кабинет Водоканала — открывается ли (раз в 10 минут; статус видят приложение и /admin)
 if ((int)gmdate('i') % 10 === 7) { try { $beat['vkCab'] = VkStatus::probeCabinet()['state']; } catch (Throwable $e) { error_log('teplo vk probe: ' . $e->getMessage()); } }
@@ -40,6 +41,8 @@ if (CabProbe::due()) { try { CabProbe::run(); } catch (Throwable $e) { error_log
 // правки справочника из /admin, уже перенесённые сессией в репозиторий, — убрать (раз в час)
 if ((int)gmdate('i') === 17) { try { $pn = ProvEdit::prune(); if ($pn) $beat['provPrune'] = $pn; } catch (Throwable $e) { error_log('teplo prov prune: ' . $e->getMessage()); } }
 // кабинеты и формы из справочника областей (ProvProbe): пустят ли наш сервер, есть ли капча — одна адрес в 2 минуты, каждая раз в 7 дней (/api/health → prov.probe)
+// 194-я: тарифы — minfin раз в 12 ч, страницы «Тарифи» КП по кругу раз в 3 дня (одна страница в 4 минуты, по чётным — не вместе с пробой); новое — владельцу в Telegram
+if ((int)gmdate('i') % 4 === 0) { try { $tw = TarWatch::run(); if ($tw) $beat['tarWatch'] = ['at' => gmdate('c'), 'host' => parse_url($tw['url'], PHP_URL_HOST), 'code' => $tw['code'], 'n' => $tw['changes']]; TarWatch::notify(); } catch (Throwable $e) { error_log('teplo tarwatch: ' . $e->getMessage()); } }
 if ((int)gmdate('i') % 2 === 1) { try { $pp = ProvProbe::run(); if ($pp) $beat['provProbe'] = ['at' => gmdate('c'), 'host' => parse_url($pp, PHP_URL_HOST)]; } catch (Throwable $e) { error_log('teplo prov probe: ' . $e->getMessage()); } }
 // обленерго с украинских узлов check-host.net — только коды ответа страниц, раз на версию (UaCheck; /api/health → uaCheck)
 try { UaCheck::run(); } catch (Throwable $e) { error_log('teplo ua check: ' . $e->getMessage()); }
@@ -120,5 +123,7 @@ try {
     foreach ($sm as $x) { $key = $x[1] . ' ' . ($x[3] ?? ''); $st = str_starts_with($x[2], 'error') ? 'error' : $x[2]; $c = (array)($r[$key]['n'] ?? []); $c[$st] = ($c[$st] ?? 0) + 1; $r[$key] = ['at' => gmdate('c'), 'n' => $c]; }
     $beat['remind'] = array_slice($r, -6, null, true); }
 } catch (Throwable $e) { $h['remindMailError'] = mb_substr($e->getMessage(), 0, 200); error_log('teplo remind mail: ' . $e->getMessage()); }
+// 194-я: раз в неделю (понедельник с 9:00 Киева) — владельцу «не разобрано изменений тарифов: N»
+try { if (TarWatch::remind()) $h['tarRemind'] = 1; } catch (Throwable $e) { error_log('teplo tar remind: ' . $e->getMessage()); }
 try { $dg = Mail::digest(time(), $beat['mailDigest'] ?? null); if ($dg) $beat['mailDigest'] = $dg; } catch (Throwable $e) { error_log('teplo mail digest: ' . $e->getMessage()); }
 $beat['hourly'] = $h; Cron::write($beat);

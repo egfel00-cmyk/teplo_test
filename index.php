@@ -52,6 +52,7 @@ require __DIR__ . '/app/mail.php';
   require __DIR__ . '/app/reports.php';
   require __DIR__ . '/app/share.php';
   require __DIR__ . '/app/push.php';
+  require __DIR__ . '/app/tarwatch.php';   // 194-я: слежение за тарифами (/admin → «Тарифы», /api/health → tar)
   require __DIR__ . '/app/api.php';
   header('Content-Type: application/json; charset=utf-8');
   header('Cache-Control: no-store');

@@ -266,6 +266,8 @@ final class Providers {
     foreach ($steps as $s) {
       if (!is_array($s) || empty($s['from'])) continue;
       // doc (170-а) — підстава саме цього кроку: без неї в кроці стара підстава знімається (інакше під новою ціною — старе рішення)
+      // 194-а: крок лише доставки газу (TarWatch) — нова доставка з датою, ціна газу й підстава ціни не чіпаються
+      if (isset($s['dist']) && !array_intersect_key($s, array_flip(['supply', 'drain', 'price', 'abon', 'priv']))) { if ((string)$s['from'] <= $today) { $o['dist'] = $s['dist']; $o['distFrom'] = $s['from']; } else $later[] = $s; continue; }
       if ((string)$s['from'] <= $today) { foreach (['supply', 'drain', 'price', 'abon', 'priv', 'from'] as $f) if (array_key_exists($f, $s)) $o[$f] = $s[$f]; unset($o['doc'], $o['doc_ru']); foreach (['doc', 'doc_ru'] as $f) if (!empty($s[$f])) $o[$f] = $s[$f]; }
       else $later[] = $s;
     }
@@ -380,9 +382,9 @@ final class Providers {
 final class ProvEdit {
   const SCOPES = ['oblast', 'hromadas', 'settlements'];
   const KINDS = ['elec', 'gas', 'water', 'heat', 'waste'];
-  const STR = ['org', 'hotOrg', 'net', 'grm', 'note', 'note_ru', 'src', 'src_ru', 'how', 'how_ru', 'pay', 'pay_ru', 'cab', 'bot', 'site', 'app', 'viber', 'sms', 'from', 'distFrom', 'distSrc', 'distSrc_ru', 'robot', 'robot_note', 'via', 'doc', 'doc_ru'];
+  const STR = ['org', 'hotOrg', 'net', 'grm', 'note', 'note_ru', 'src', 'src_ru', 'how', 'how_ru', 'pay', 'pay_ru', 'cab', 'bot', 'site', 'app', 'viber', 'sms', 'from', 'distFrom', 'distSrc', 'distSrc_ru', 'robot', 'robot_note', 'via', 'doc', 'doc_ru', 'tar'];   // tar (194-я) — сторінка «Тарифи» КП: за нею стежить TarWatch
   const NUM = ['supply', 'drain', 'hot', 'price', 'abon', 'dist', 'priv', 'till'];   // till — до якого числа місяця передавати (31 — до кінця місяця; 126-а)
-  const URLS = ['cab', 'bot', 'site', 'app', 'viber'];
+  const URLS = ['cab', 'bot', 'site', 'app', 'viber', 'tar'];
   /** Чи можна подавати без людини: server — робот з нашого сервера; relay — лише з України (Cloudflare, ретранслятор); captcha — капча, вручну;
    *  bot — лише бот у Telegram/Viber; phone — лише телефон/SMS; none — ні кабінету, ні форми; '' — ще не перевіряли. */
   const ROBOT = ['', 'server', 'relay', 'captcha', 'bot', 'phone', 'none'];
@@ -437,7 +439,7 @@ final class ProvEdit {
     $nx = [];
     foreach ((isset($v['next']['from']) ? [$v['next']] : (array)($v['next'] ?? [])) as $n) {
       if (!is_array($n) || !preg_match('/^\d{4}-\d\d-\d\d$/', (string)($n['from'] ?? ''))) continue;
-      $s = ['from' => (string)$n['from']]; foreach (['supply', 'drain', 'price', 'abon', 'hot', 'priv'] as $f) if (isset($n[$f]) && is_numeric(str_replace(',', '.', (string)$n[$f]))) $s[$f] = round((float)str_replace(',', '.', (string)$n[$f]), 4);
+      $s = ['from' => (string)$n['from']]; foreach (['supply', 'drain', 'price', 'abon', 'hot', 'priv', 'dist'] as $f) if (isset($n[$f]) && is_numeric(str_replace(',', '.', (string)$n[$f]))) $s[$f] = round((float)str_replace(',', '.', (string)$n[$f]), 4);
       if (count($s) < 2) continue;
       // 191-а: підстава й документ наступного тарифу — їх показуємо в попередженні про зміну (сайт і бот)
       foreach (['doc', 'doc_ru'] as $f) if (isset($n[$f]) && is_scalar($n[$f]) && trim((string)$n[$f]) !== '') $s[$f] = mb_substr(trim((string)$n[$f]), 0, 240);

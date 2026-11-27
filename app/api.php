@@ -148,6 +148,8 @@ final class Api {
           'gpvSent' => (object)($cr['gpvSent'] ?? []), 'gpvReady' => $cr['gpvReady'] ?? null,
           'gpv' => ['tg' => Gpv::tgOn(), 'at' => $g['at'] ?? null, 'update' => $g['update'] ?? null, 'days' => array_keys((array)($g['days'] ?? [])), 'err' => $g['err'] ?? null],
           'vkcab' => VkCab::summary(), 'cabs' => (object)CabProbe::read(), 'prov' => ProvAdmin::health(),
+          // 194-я: слежение за тарифами — источники (minfin пускает ли сервер, сколько строк и совпадений), изменения по статусам, громады под наблюдением
+          'tar' => class_exists('TarWatch') ? TarWatch::health() : null,
           // фото на розпізнавання (лише числа): найновіше й скільки за 7 днів з проблемою — є що розбирати в tests/ocr-lab (120-а)
           'recog' => self::recogHealth(),
           // картки фото в чаті бота (122-а): стадії, позначки рядків, опитування, остання, крок cron — лише числа

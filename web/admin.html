@@ -101,7 +101,7 @@ pre.state { font: 12px/1.4 var(--mono); background: #F4F7F5; padding: 10px; bord
 
   function shell(body) {
     var o = DATA.overview || {};
-    var tabs = [['overview', 'Сводка'], ['users', 'Пользователи', 0], ['geo', 'Откуда и сколько', 0], ['visitors', 'Откуда заходят', 0], ['feedback', 'Сообщения', o.feedbackNew], ['photos', 'Фото', 0], ['reports', 'Ошибки распознавания', o.reportsBad], ['journal', 'Журнал', 0], ['reminders', 'Напоминания', o.cronAgo == null || o.cronAgo > 600 ? '!' : 0], ['prov', 'Справочник', 0], ['pages', 'Отчёты', 0], ['settings', 'Настройки', !o.telegram ? '!' : 0]];
+    var tabs = [['overview', 'Сводка'], ['users', 'Пользователи', 0], ['geo', 'Откуда и сколько', 0], ['visitors', 'Откуда заходят', 0], ['feedback', 'Сообщения', o.feedbackNew], ['photos', 'Фото', 0], ['reports', 'Ошибки распознавания', o.reportsBad], ['journal', 'Журнал', 0], ['reminders', 'Напоминания', o.cronAgo == null || o.cronAgo > 600 ? '!' : 0], ['prov', 'Справочник', 0], ['tar', 'Тарифы', o.tarNew], ['pages', 'Отчёты', 0], ['settings', 'Настройки', !o.telegram ? '!' : 0]];
     app.innerHTML = '<header><b>Счётчики · аналитика</b><span class="muted small">' + esc(o.me || '') + '</span><span style="flex:1"></span><a class="btn" href="' + esc(SITE) + '">На сайт</a></header>' +
       '<nav>' + tabs.map(function (t) { return '<button data-tab="' + t[0] + '"' + (TAB === t[0] || (TAB === 'jsession' && t[0] === 'journal') || (/^prov/.test(TAB) && t[0] === 'prov') ? ' aria-current="true"' : '') + '>' + t[1] + (t[2] ? '<span class="n">' + t[2] + '</span>' : '') + '</button>'; }).join('') + '</nav><main>' + body + '</main>';
   }
@@ -922,6 +922,7 @@ pre.state { font: 12px/1.4 var(--mono); background: #F4F7F5; padding: 10px; bord
     if (kd !== 'waste') h += pvFld('win', 'Окно приёма показаний, числа месяца', c.win && c.win.length === 2 ? c.win[0] + '–' + (c.win[1] === -1 ? 'р' : c.win[1] === -2 ? 'пр' : c.win[1]) : '', 'например 20–27; через конец месяца — 28–3; до конца месяца — 25–31; до последнего рабочего дня — 25–р, до предпоследнего — 10–пр. Пусто — полоски у счётчика нет (тепло — till, ХТМ 5–25)');
     h += pvFld('how', 'Как и когда передавать показания', c.how, 'людям — простыми словами, сроки', 2) +
       '<div class="cards">' + pvFld('cab', 'Личный кабинет', c.cab, 'https://…') + pvFld('bot', 'Бот (Telegram)', c.bot, 'https://t.me/…') + pvFld('site', 'Сайт / форма', c.site, 'https://…') + pvFld('app', 'Приложение', c.app, 'https://…') + '</div>' +
+      (kd === 'water' || kd === 'heat' || kd === 'waste' ? pvFld('tar', 'Страница тарифов КП', c.tar, 'https://… — «Тарифи», «Повідомлення про намір»: сервер следит за ней раз в 3 дня (вкладка «Тарифы»); пусто — следит за «Сайт»') : '') +
       pvFld('phones', 'Телефоны', (c.phones || []).map(function (p) { return p[1] + (p[2] ? '; ' + p[2] : ''); }).join('\n'), 'по строке: номер; подпись', 2) +
       pvFld('pay', 'Куда платить', c.pay, '', 1) + pvFld('note', 'Подсказка людям', c.note, 'показывается, если надо сверить или вписать', 2) + pvFld('src', 'Источник цифр', c.src, 'решение, номер, дата, сайт — для проверки', 2) +
       pvFld('doc', 'Основание цены коротко', c.doc, 'напр. «Рішення виконкому … від 23.09.2026 № 509» — люди видят рядом с ценой; пусто — не показываем', 1) +
@@ -985,7 +986,73 @@ pre.state { font: 12px/1.4 var(--mono); background: #F4F7F5; padding: 10px; bord
       DATA.prove = j; PV.msg = {}; PV.msg[kd] = 'Сохранено ' + new Date().toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }); PV.open = kd; shell(VIEW.prove());
     }, function () { box.querySelector('[data-pvmsg]').textContent = 'Сервер недоступен'; });
   });
+  // ---------- «Тарифы» (194-я): изменения тарифов — сервер сам следит за minfin и страницами «Тарифи» КП; принять в справочник / игнорировать ----------
+  var TW = { msg: {} };
+  var TK = { water: 'Вода и стоки', heat: 'Тепло', gas: 'Доставка газа', waste: 'Вывоз мусора' };
+  var TF = { supply: ['Вода, ₴/м³'], drain: ['Стоки, ₴/м³'], price: ['Тепло, ₴/Гкал', 'С человека, ₴/мес'], dist: ['Доставка, ₴/м³'] };
+  var TSRC = { mf: 'minfin — сравнили со справочником', mfs: 'minfin — строка изменилась', kp: 'сайт КП — новая ссылка про тарифы', kpn: 'сайт КП — изменились суммы' };
+  function tarFields(x) {
+    var ks = {}; (x.places || []).forEach(function (p) { ks[p.kind] = 1; }); if (!Object.keys(ks).length) ks[x.kind] = 1;
+    var f = []; if (ks.water) f.push('supply', 'drain'); if (ks.heat || ks.waste) f.push('price'); if (ks.gas) f.push('dist');
+    return f.map(function (k) { return [k, k === 'price' && !ks.heat ? TF.price[1] : TF[k][0]]; });
+  }
+  function tarVal(v, k) { return v && typeof v[k] === 'number' ? money(v[k]) : ''; }
+  function tarWhere(x) {
+    if (!(x.places || []).length) return '<span class="muted">в справочнике нет — добавьте поставщика вручную</span>';
+    return x.places.map(function (p) { return '<a href="#' + pvHash(p.r, p.scope, p.key) + '">' + esc(p.scope === 'oblast' ? 'вся область' : String(p.key).replace('/', ' · ')) + '</a>' + (x.places.length > 1 || p.kind !== x.kind ? ' <span class="muted small">' + esc(TK[p.kind] || p.kind) + '</span>' : ''); }).join(', ');
+  }
+  function tarCard(x) {
+    var nums = x.val && x.val.nums, f = tarFields(x), m = TW.msg[x.id] || '';
+    var line = !x.val ? '' : nums ? '<p class="small">Было: ' + esc(((x.was || {}).nums || []).join(', ') || '—') + '<br>Стало: ' + esc(nums.join(', ')) + '</p>'
+      : '<p>' + Object.keys(x.val).map(function (k) { var o = x.was && x.was[k]; return esc(((TF[k] || [k])[0]).replace(/, .*$/, '')) + ': ' + (o != null ? '<s>' + esc(money(o)) + '</s> → ' : '') + '<b>' + esc(money(x.val[k])) + '</b>'; }).join(' · ') +
+        (x.pct != null ? ' ' + pill(x.pct > 0 ? 'warn' : 'ok', (x.pct > 0 ? '+' : '') + String(x.pct).replace('.', ',') + ' %') : '') + (x.from ? ' <span class="muted">с ' + dday(x.from) + '</span>' : '') + '</p>';
+    return '<details class="panel" data-tarc="' + x.id + '" open><summary><b>' + esc(TK[x.kind] || x.kind) + '</b> — ' + esc(x.org || '') + ' <span class="muted small">' + esc(x.region + (x.r === 'ky' ? '' : ' обл.')) + ' · ' + when(x.at) + '</span></summary>' +
+      '<p class="small">Где в справочнике: ' + tarWhere(x) + '</p>' + line +
+      (x.doc ? '<p class="small">' + esc(x.doc) + '</p>' : '') +
+      '<p class="small">' + (x.url && x.url !== x.page ? '<a href="' + esc(x.url) + '" target="_blank" rel="noopener">Открыть документ</a> · ' : '') + '<a href="' + esc(x.page) + '" target="_blank" rel="noopener">где увидели</a> <span class="muted">(' + esc(TSRC[x.src] || x.src) + ')</span></p>' +
+      ((x.places || []).length ? '<div class="cards">' + pvFld('from', 'С даты', x.from || '', 'ГГГГ-ММ-ДД') + f.map(function (k) { return pvFld(k[0], k[1], nums ? '' : tarVal(x.val, k[0])); }).join('') + '</div>' +
+        pvFld('doc', 'Основание (решение, №, дата)', x.src === 'kp' ? x.doc : '', 'люди видят под ценой: «Рішення виконкому … № … від …»', 1) + pvFld('url', 'Ссылка на документ', x.url && x.url !== x.page ? x.url : '', 'https://… — в плашке и сообщении бота') +
+        (x.places.length > 1 ? '<p class="small">' + x.places.map(function (p, i) { return '<label style="margin-right:12px"><input type="checkbox" data-tarp="' + i + '" checked> ' + esc(p.scope === 'oblast' ? 'вся область' : p.key) + '</label>'; }).join('') + '</p>' : '') : '') +
+      '<p class="filters">' + ((x.places || []).length ? '<button class="btn" data-taracc="' + x.id + '" style="background:var(--ink);color:#fff">Принять в справочник</button>' : '') +
+      '<button class="btn" data-tarign="' + x.id + '">Игнорировать</button><span class="okmsg" data-tarmsg="' + x.id + '">' + esc(m) + '</span></p></details>';
+  }
+  VIEW.tar = function () {
+    var o = DATA.tar || {}, s = o.stats || {}, c = s.counts || {}, hr = s.hromadas || {}, nw = o.new || [];
+    var h = '<h2>Тарифы — изменения</h2><p class="muted small">Сервер следит сам, без нейросети и токенов: таблицы index.minfin.com.ua (вода и доставка газа — сравнивает со справочником, тепло — с прошлым снимком; раз в 12 часов) и страницы КП из справочника — «Страница тарифов», иначе «Сайт» (новые ссылки про тарифы и суммы; по кругу, каждая раз в 3 дня). ' +
+      'Новое — вам в Telegram сразу и строкой в письме-сводке. «Принять в справочник» записывает будущий тариф с основанием и ссылкой: людям — плашка и сообщение бота за 45 дней. PDF-сканы и сайты за Cloudflare без нейросети не прочитать — по ним только «появилось новое».</p>';
+    h += '<div class="cards">' + [[c['new'] || 0, 'не разобрано'], [c.accepted || 0, 'принято в справочник'], [c.ignored || 0, 'игнорировано'], [(hr.watched || 0) + ' из ' + (hr.all || 0), 'громад под наблюдением'], [hr.fresh || 0, 'проверены за 3 дня']].map(function (x) { return '<div class="card"><div class="v">' + esc(x[0]) + '</div><div class="k">' + x[1] + '</div></div>'; }).join('') + '</div>';
+    h += '<h3>Не разобрано</h3>' + (nw.length ? nw.map(tarCard).join('') : '<div class="panel muted">Нового нет.</div>');
+    var ms = s.months || [];
+    h += '<div class="panel"><h3>Статистика по месяцам</h3>' + (ms.length ? '<table><tr><th>Месяц</th><th>Изменений</th><th>Принято</th><th>Игнор.</th><th>Средний рост</th></tr>' + ms.map(function (m) {
+      return '<tr><td>' + esc(m.ym) + '</td><td>' + m.n + '</td><td>' + m.accepted + '</td><td>' + m.ignored + '</td><td>' + (m.avgPct == null ? '—' : (m.avgPct > 0 ? '+' : '') + esc(String(m.avgPct).replace('.', ',')) + ' %') + '</td></tr>'; }).join('') + '</table>' : '<p class="muted">Пока пусто.</p>') + '</div>';
+    var src = (s.sources || []).slice().sort(function (a, b) { return String(a.at || '').localeCompare(String(b.at || '')); });
+    h += '<div class="panel"><h3>Источники (' + src.length + ')</h3><p class="muted small">Сверху — давно не проверенные. Код не 200 — сервер не открыл страницу (Cloudflare, сайт лежит): цифры — руками. ' + (s.last ? 'Последняя проверка: ' + esc(s.last.host || '') + ', ' + when(new Date(s.last.at * 1000).toISOString()) + ', код ' + esc(s.last.code) + '.' : '') + '</p><table><tr><th>Страница</th><th>Чья</th><th>Проверено</th><th>Нашли</th><th></th></tr>' + src.map(function (x) {
+      var u = String(x.url).replace(/^https:\/\//, ''), st = x.code == null ? pill('info', 'ещё нет') : x.code === 200 ? pill('ok', '200') : pill('bad', String(x.code) + (x.err ? ' ' + x.err : ''));
+      return '<tr><td class="small"><a href="' + esc(x.url) + '" target="_blank" rel="noopener">' + esc(u.length > 60 ? u.slice(0, 60) + '…' : u) + '</a></td><td class="small">' + (x.type === 'mf' ? 'minfin' : esc((x.orgs || []).join(', ')) + '<div class="muted">' + esc((x.where || []).join(', ')) + '</div>') + '</td>' +
+        '<td class="small">' + (x.at ? when(x.at) : '—') + ' ' + st + '</td><td class="small">' + (x.type === 'mf' ? 'строк ' + x.rows + ', наших ' + x.hits : 'ссылок ' + x.links + ', сумм ' + x.nums) + '</td><td><button class="btn" data-tarcheck="' + esc(x.url) + '">Проверить сейчас</button></td></tr>';
+    }).join('') + '</table><p class="okmsg" data-tarmsg="check">' + esc(TW.msg.check || '') + '</p></div>';
+    var no = hr.none || [];
+    h += '<div class="panel"><h3>Громады без источника (' + (hr.noneN || 0) + ')</h3><p class="muted small">Поставщик есть, а страницы для слежения нет. Откройте громаду и впишите КП «Страница тарифов» — сервер начнёт следить сам.</p>' + (no.length ? '<p>' + no.map(function (x) {
+      return '<a class="btn" style="margin:0 6px 6px 0;display:inline-block" href="#' + pvHash(x.r, 'hromadas', x.key) + '">' + esc(x.key) + ' <span class="muted small">' + esc(x.r) + '</span></a>'; }).join('') + '</p>' : '<p class="muted">Все под наблюдением.</p>') + '</div>';
+    var dn = o.done || [];
+    h += '<div class="panel"><h3>Разобрано</h3>' + (dn.length ? '<table><tr><th>Когда</th><th>Что</th><th>Итог</th></tr>' + dn.map(function (x) {
+      var a = x.acc || {}; return '<tr><td class="small">' + when(x.doneAt || x.at) + '</td><td>' + esc((TK[x.kind] || x.kind) + ' — ' + (x.org || '')) + '<div class="muted small">' + esc(x.region) + (a.from ? ' · с ' + dday(a.from) : '') + '</div></td><td>' +
+        (x.status === 'accepted' ? pill('ok', 'в справочнике') + (a.url ? ' <a class="small" href="' + esc(a.url) + '" target="_blank" rel="noopener">документ</a>' : '') : x.status === 'stale' ? pill('info', 'устарело — есть новее') : pill('info', 'игнор')) + '<div class="muted small">' + esc(x.doneBy || '') + '</div></td></tr>'; }).join('') + '</table>' : '<p class="muted">Пока нет.</p>') + '</div>';
+    return h;
+  };
+  document.addEventListener('click', function (e) {
+    var a = e.target.closest('[data-taracc],[data-tarign],[data-tarcheck]'); if (!a) return; e.preventDefault();
+    if (a.hasAttribute('data-tarcheck')) { TW.msg.check = 'Проверяем…'; var mm = document.querySelector('[data-tarmsg=check]'); if (mm) mm.textContent = TW.msg.check;
+      post('/admin/tar/check', { url: a.getAttribute('data-tarcheck') }).then(function (j) { TW.msg.check = j && j.error ? 'Не вышло: ' + j.error : 'Проверено: код ' + j.code + ', новых изменений ' + j.changes; if (j && j.admin) DATA.tar = j.admin; shell(VIEW.tar()); }, function () { TW.msg.check = 'Сервер недоступен'; shell(VIEW.tar()); }); return; }
+    var id = +(a.getAttribute('data-taracc') || a.getAttribute('data-tarign')), box = a.closest('[data-tarc]'), say = function (t) { var m = box.querySelector('[data-tarmsg]'); if (m) m.textContent = t; };
+    if (a.hasAttribute('data-tarign')) { post('/admin/tar/ignore', { id: id }).then(function () { show('tar'); }); return; }
+    var v = { id: id }; Array.prototype.forEach.call(box.querySelectorAll('[data-pvf]'), function (i) { v[i.getAttribute('data-pvf')] = i.value.trim(); });
+    var pl = box.querySelectorAll('[data-tarp]'); if (pl.length) v.places = Array.prototype.filter.call(pl, function (i) { return i.checked; }).map(function (i) { return +i.getAttribute('data-tarp'); });
+    var ER = { bad_from: 'дата — ГГГГ-ММ-ДД', no_values: 'впишите новый тариф', bad_url: 'ссылка — https://…', nothing_saved: 'не отмечено ни одного места', bad_supply: 'вода — число', bad_drain: 'стоки — число', bad_price: 'цена — число', bad_dist: 'доставка — число' };
+    say('Сохраняем…'); post('/admin/tar/accept', v).then(function (j) { if (j && j.error) { say('Не сохранено: ' + (ER[j.error] || j.error)); return; } show('tar'); }, function () { say('Сервер недоступен'); });
+  });
   var LOAD = {
+    tar: function () { return get('/admin/tar').then(function (j) { DATA.tar = j; }); },
     prov: function () { return get('/admin/prov').then(function (j) { DATA.prov = j; }); },
     provr: function () { return get('/admin/prov/region?r=' + PV.r).then(function (j) { DATA.provr = j; }); },
     prove: function () { PV.msg = PV.keepMsg ? PV.msg : {}; PV.keepMsg = false; return get('/admin/prov/entry?r=' + PV.r + '&scope=' + PV.scope + '&key=' + encodeURIComponent(PV.key)).then(function (j) { DATA.prove = j; }); },

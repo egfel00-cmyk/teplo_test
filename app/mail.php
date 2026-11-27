@@ -292,6 +292,7 @@ final class Mail {
     foreach (Db::q('SELECT kind, status, COUNT(*) n FROM reminders_sent WHERE sent_at >= ? GROUP BY kind, status', [$iso])->fetchAll() as $x) $o['remind'][$x['kind'] . ' ' . ($x['status'] ?? '…')] = (int)$x['n'];
     $o['mail'] = [];
     foreach (Db::q("SELECT kind, status, COUNT(*) n FROM mail_log WHERE at >= ? GROUP BY kind, status", [$since])->fetchAll() as $x) $o['mail'][$x['kind'] . ' ' . $x['status']] = (int)$x['n'];
+    try { $o['tar'] = class_exists('TarWatch') ? TarWatch::digest($since) : null; } catch (Throwable $e) { $o['tar'] = null; }   // 194-я
     $o['cronAgo'] = Cron::age(); $o['bot'] = class_exists('Telegram') ? (Telegram::health()['needStart'] ?? null) : null;
     return $o;
   }
@@ -310,6 +311,10 @@ final class Mail {
     $L[] = $bad ? 'Що не так: ' . implode('; ', $bad) . '.' : 'Збоїв не було.';
     if ($d['remind']) $L[] = 'Нагадування: ' . implode(', ', array_map(fn($k, $v) => "$k — $v", array_keys($d['remind']), $d['remind'])) . '.';
     if ($d['mail']) $L[] = 'Листи: ' . implode(', ', array_map(fn($k, $v) => "$k — $v", array_keys($d['mail']), $d['mail'])) . '.';
+    if (!empty($d['tar']['n']) || !empty($d['tar']['open'])) {   // 194-я: зміни тарифів (minfin, сторінки КП) — розібрати в /admin → «Тарифы»
+      $L[] = 'Тарифи: нових змін ' . (int)$d['tar']['n'] . ', не розібрано ' . (int)$d['tar']['open'] . ' — ' . Cfg::appUrl() . 'admin#tar';
+      foreach ((array)$d['tar']['lines'] as $x) $L[] = '  — ' . mb_substr((string)$x, 0, 300);
+    }
     $L[] = 'Відгуків нових (не розібраних): ' . $d['feedbackNew'] . '.';
     foreach ($d['feedback'] as $f) $L[] = '  — «' . mb_substr(preg_replace('/\s+/', ' ', (string)$f['text']), 0, 160) . '»' . ($f['page'] ? ' (' . $f['page'] . ')' : '');
     $L[] = ''; $L[] = 'Аналітика: ' . Cfg::appUrl() . 'admin';

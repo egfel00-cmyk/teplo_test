@@ -220,6 +220,14 @@ final class Admin {
         $o = ProvProbe::one($u); if (isset(ProvProbe::urls()[$u])) ProvProbe::store($u, $o); return ['url' => $u, 'probe' => $o];
       }
       case 'GET /api/admin/prov/find': { ProvEdit::$track = false; return Providers::lookup((string)($q['q'] ?? '')); }
+      // 194-я: тарифы — изменения (minfin, страницы КП), принять в справочник / игнорировать, проверить источник сейчас, статистика
+      case 'GET /api/admin/tar': return TarWatch::admin();
+      case 'POST /api/admin/tar/accept': return TarWatch::accept($in, (string)($me['email'] ?: ('tg:' . $me['id'])));
+      case 'POST /api/admin/tar/ignore': return TarWatch::ignore((int)($in['id'] ?? 0), (string)($me['email'] ?: ('tg:' . $me['id'])));
+      case 'POST /api/admin/tar/check': {
+        $u = (string)($in['url'] ?? ''); if (!isset(TarWatch::minfin()[$u]) && !isset(TarWatch::pages()[$u])) throw new HttpError(422, 'bad_url');
+        $res0 = TarWatch::check($u); TarWatch::notify(); return $res0 + ['admin' => TarWatch::admin()];
+      }
       case 'GET /api/admin/prov/edits': return ProvEdit::all() + ['probe' => ProvProbe::read()];   // правки для перенесення в репозиторій
       case 'GET /api/admin/overview': {
         $c = fn($sql, $p = []) => (int)(Db::one($sql, $p)['n'] ?? 0);
@@ -237,6 +245,7 @@ final class Admin {
           'me' => $me['email'] ?: ('tg:' . $me['id']), 'tracking' => $tr, 'vk' => VkStatus::status(),
           // баннер cookie: сколько браузеров разрешили аналитику (журнал и «С чего работают» видят только их)
           'consent' => Consent::summary(30),
+          'tarNew' => class_exists('TarWatch') ? TarWatch::newCount() : 0,   // 194-я: вкладка «Тарифы» — сколько не разобрано
           // пересланные нам ответы ботов поставщиков (вода / свет / газ) — живые тексты, чтобы поправить Telegram::botKind
           'botReplies' => Db::q("SELECT r.id, r.user_id, r.src, r.kind, r.text, r.msg_at, u.email, i.username AS tg_username FROM vk_replies r LEFT JOIN users u ON u.id = r.user_id
             LEFT JOIN user_identities i ON i.user_id = r.user_id AND i.type = 'telegram' ORDER BY r.id DESC LIMIT 30")->fetchAll(),

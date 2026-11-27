@@ -19810,7 +19810,7 @@ details.tips-box.nm-box[open] > summary { border-bottom: 1px solid var(--c-line)
         var pc = Math.round((r.n / r.o - 1) * 100);
         return '<p class="tar-row">' + esc(t('tar_f_' + r.f)) + ': <s>' + esc(money(r.o)) + '</s> → <b>' + esc(money(r.n) + '\u00a0' + unit) + '</b>' + (pc ? ' <span class="tar-pc">' + (pc > 0 ? '+' : '−') + Math.abs(pc) + '\u00a0%</span>' : '') + '</p>';
       }).join('') +
-      (doc ? '<p class="small tar-doc" data-key="tar-doc-' + n.k + '">' + ico('doc', 16) + ' ' + esc(doc) + (n.url ? ' <a href="' + esc(n.url) + '" target="_blank" rel="noopener">' + esc(t('tar_open')) + '</a>' : '') + '</p>' : '') +
+      (doc || n.url ? '<p class="small tar-doc" data-key="tar-doc-' + n.k + '">' + ico('doc', 16) + ' ' + esc(doc) + (n.url ? (doc ? ' ' : '') + '<a href="' + esc(n.url) + '" target="_blank" rel="noopener">' + esc(t('tar_open')) + '</a>' : '') + '</p>' : '') +   // 194-а: прийняли з посиланням без назви рішення — лише посилання
       '<p><button type="button" class="linkbtn" data-act="tar-ok" data-id="' + esc(n.id) + '" data-key="tar-ok-' + n.k + '">' + esc(t('tar_ok')) + '</button></p></div></div>';
   }
   function tarLine(p) {
