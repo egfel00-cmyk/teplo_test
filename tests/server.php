@@ -1527,6 +1527,14 @@ ok('195-я: Запорізька — вивіз Запоріжжя 39,69 / 44,33
   && ($z95d['kinds']['water']['supply'] ?? null) === 43.0 && ($zpD['hromadas']['Матвіївська']['water']['drain'] ?? null) === 60.5 && !empty($zpD['hromadas']['Матвіївська']['water']['check'])
   && array_key_exists('org', $zpD['hromadas']['Михайлівська (Запорізький р-н)']['water']) && $zpD['hromadas']['Михайлівська (Запорізький р-н)']['water']['org'] === null && ($zpD['hromadas']['Михайлівська (Запорізький р-н)']['water']['drain'] ?? null) === 40.8,
   [$z95a['kinds']['waste'] ?? $z95a, $z95b['place'] ?? $z95b, $z95b['kinds']['water'] ?? null, $z95c['place'] ?? $z95c, $z95d['place'] ?? $z95d]);
+// 196-я: банка monobank «на каву» — посилання лише send.monobank.ua/jar/<id>; пункт меню й рядок у Налаштуваннях лише з посиланням, у застосунку iOS — ні
+$jn = [Admin::jarNorm('https://send.monobank.ua/jar/8AbCdEf123'), Admin::jarNorm('send.monobank.ua/jar/8AbCdEf123/?t=1#x'), Admin::jarNorm('http://send.monobank.ua/jar/8AbCdEf123'),
+  Admin::jarNorm('https://evil.example/jar/8AbCdEf123'), Admin::jarNorm('https://send.monobank.ua/jar/<x>'), Admin::jarNorm('')];
+$jsA = (string)@file_get_contents(dirname(__DIR__) . '/web/src/app.js'); $jsI = (string)@file_get_contents(dirname(__DIR__) . '/web/src/i18n.js');
+ok('196-я: банка — нормалізація посилання (без ?, #, «/», з https), чужий домен і сміття — порожньо; jarNav у меню, рядок під «Акаунтом», не в застосунку; тексти uk і ru',
+  $jn === ['https://send.monobank.ua/jar/8AbCdEf123', 'https://send.monobank.ua/jar/8AbCdEf123', 'https://send.monobank.ua/jar/8AbCdEf123', '', '', '']
+  && in_array('jar_url', Cfg::RUNTIME, true) && str_contains($jsA, "jarNav() + '</nav>'") && str_contains($jsA, "x[0] === 'pgs_acc' && jarUrl()") && str_contains($jsA, 'return !APP && JAR_RE.test(u)')
+  && substr_count($jsI, "jar_t: '") === 2 && str_contains($jsI, 'Банка на каву та сказати дякую') && str_contains($jsI, 'Банка на кофе и сказать спасибо'), $jn);
 // 100-а: Хмельниччина — 8 громад по населенню: вода, тепло (мораторій — тариф на 24.02.2022), строки й канали показань
 $kp0 = $pv('Каменец-Подольский, ул. Соборная 1')['kinds'] ?? []; $sp0 = $pv('Шепетовка, ул. Шевченко 1')['kinds'] ?? []; $nt0 = $pv('Нетешин, ул. Шевченко 1')['kinds'] ?? [];
 $sl0 = $pv('Славута, ул. Соборности 1')['kinds'] ?? []; $sk0 = $pv('Староконстантинов, ул. Острожского 1')['kinds'] ?? []; $pl0 = $pv('м. Полонне, вул. Лесі Українки 1')['kinds'] ?? [];

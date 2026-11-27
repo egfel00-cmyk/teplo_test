@@ -764,6 +764,7 @@
     images: '<rect x="7.5" y="7.5" width="13.5" height="12" rx="2.5"/><path d="M4 15.5V6.5A2.5 2.5 0 0 1 6.5 4H16"/><path d="M21 16.5l-4-4-6.3 6.5"/><circle cx="12" cy="11.5" r="1.2"/>',
     download: '<path d="M12 4v11"/><path d="m7 10 5 5 5-5"/><path d="M5 20h14"/>',
     bill: '<path d="M6 3h12v18l-2.5-1.6L13 21l-2-1.6L9 21l-3-1.8z"/><path d="M9 8h6M9 11.5h6M9 15h3.5"/>',
+    coffee: '<path d="M4 9.5h12v4.5a5 5 0 0 1-5 5H9a5 5 0 0 1-5-5V9.5z"/><path d="M16 11h1.5a2.5 2.5 0 0 1 0 5H16"/><path d="M8 3.5c0 1 1 1.3 1 2.5M12 3.5c0 1 1 1.3 1 2.5"/>',   // 196-я: банка на каву
     wallet: '<rect x="3" y="6.5" width="18" height="13" rx="2.5"/><path d="M15.5 6.5 14.6 4a1 1 0 0 0-1.3-.6L5.5 6.5"/><path d="M21 10.5h-3.8a2.5 2.5 0 0 0 0 5H21"/>',   // 144-а: свій постачальник — оплата
     edit: '<path d="M4 20h4L18.5 9.5a2.1 2.1 0 0 0-4-4L4 16v4z"/><path d="M13.5 6.5l4 4"/>',
     wrench: '<path d="M14.5 5.5a4 4 0 0 0 4.9 4.9l-8.9 8.9a2 2 0 0 1-2.8-2.8l8.9-8.9a4 4 0 0 0-2.1-2.1z"/><path d="M14.5 5.5L17 3l2.5 2.5"/>',
@@ -997,6 +998,12 @@
   // 146-а (власник 14.11: «відкриваю показання лічильника — а в ньому чомусь пілюлі інших квартир»): запис історії (і правка) належить одній квартирі —
   // перемикача квартир над ним немає, лише «← Історія»
   var REC_RE = /^(rec-|wrec-|erec-|hnar-)/;   // 129-а: рядок «Внесено …» / «Новіші: …» під табло лічильника — прибрано за проханням власника
+  /** 196-я (власник 27.11): банка monobank «на каву» — посилання з /api/config → jar (/admin → «Настройки» → «Банка monobank»). Немає — пункту немає.
+   *  У застосунку iOS не показуємо: донат розробнику поза покупками App Store — правила App Review 3.1.1. */
+  var JAR_RE = /^https:\/\/send\.monobank\.ua\/jar\/[A-Za-z0-9]{6,24}$/;
+  function jarUrl() { var c = Y()._cfg, u = (c && c.jar) || ''; return !APP && JAR_RE.test(u) ? u : ''; }
+  /** Пункт бічного меню (≥ 960; на телефоні нижнє меню без нього — там рядок у Налаштуваннях). */
+  function jarNav() { var u = jarUrl(); return u ? '<a class="nav-jar" href="' + esc(u) + '" target="_blank" rel="noopener" data-key="nav-jar">' + ico('coffee', 22) + '<span>' + esc(t('jar_t')) + '</span></a>' : ''; }
   function shell(view) {
     var route = view.route, bare = view.bare;
     // 90-а (власник): на комп'ютері й на екранах вводу (майстри, ввід показань, кабінети) — бічне меню розділів; на телефоні їх там немає, як і було
@@ -1005,7 +1012,7 @@
       .filter(function (n) { return !NAV_HIDE[n[0]]; });
     var nav = bare && !side ? '' : '<nav class="nav' + (side ? ' nav-side' : '') + '" style="--nav-n:' + navItems.length + '" aria-label="' + esc(t('brand')) + '">' + navItems.map(function (n) {
       return '<a href="#' + n[0] + '"' + (route === n[0] || (n[2] === 'nav_home' && /^(home|heat|water-|elec$|gas$|places|place$)/.test(route)) ? ' aria-current="page"' : '') + ' data-key="nav-' + (n[2] === 'nav_home' ? 'home' : n[0]) + '">' + ico(n[1], 22) + '<span>' + esc(t(n[2])) + '</span></a>';
-    }).join('') + '</nav>';
+    }).join('') + jarNav() + '</nav>';
     var cbar = /^(wnew|wadd|enew|eadd|gnew|gadd|add-meter|step|step-\d+|check|handover|baseline|meter|photo)$/.test(route) ? placeBar(view.closeTo || true) : '';
     var right = bare && view.closeTo && !cbar
       ? '<a class="btn ghost" href="#' + view.closeTo + '" data-key="wiz-close" aria-label="' + esc(t('close')) + '">' + ico('close', 22) + '<span class="cl-txt">' + esc(t('close')) + '</span></a>'
@@ -10486,7 +10493,10 @@
     var sec = function (title, rows, key) { return rows.length ? '<section class="ios-sec" data-key="' + key + '">' + (title ? '<h2 class="ios-sh">' + esc(title) + '</h2>' : '') + '<ul class="ios-list">' + rows.join('') + '</ul></section>' : ''; };
     var h = PREF_SEC.map(function (x) {
       if (!x[1]) return prefPlaces();
-      return sec(t(x[0]), x[1].filter(function (id) { return by[id]; }).map(function (id) { var d = by[id]; return row(txt(d.icon, d.title, d.sub), 'href="#prefs-' + id + '" data-key="pgr-' + id + '"'); }), 'pgs-' + x[1][0]);
+      var rows = x[1].filter(function (id) { return by[id]; }).map(function (id) { var d = by[id]; return row(txt(d.icon, d.title, d.sub), 'href="#prefs-' + id + '" data-key="pgr-' + id + '"'); });
+      // 196-я: банка — одразу під «Акаунтом» (на ≥ 960 рядок схований: там пункт бічного меню)
+      if (x[0] === 'pgs_acc' && jarUrl()) rows.push('<li class="pgr-jar-li"><a class="ios-row" href="' + esc(jarUrl()) + '" target="_blank" rel="noopener" data-key="pgr-jar">' + txt('coffee', t('jar_t'), t('jar_s')) + ico('ext', 18, 'ios-chev') + '</a></li>');
+      return sec(t(x[0]), rows, 'pgs-' + x[1][0]);
     }).join('');
     var about = [row(txt('chat', t('lf_write'), ''), 'data-act="fb-open" data-key="pgr-fb"'), row(txt('shield', t('lg_privacy'), ''), 'href="#privacy" data-key="pgr-privacy"'),
       row(txt('doc', t('lg_terms'), ''), 'href="#terms" data-key="pgr-terms"')];
@@ -12103,6 +12113,8 @@
     var g = gapFromForm(f); if (!g.pay) g.pay = gapPayDefault(g);
     var tmp = document.createElement('div'); tmp.innerHTML = gapEstBox(g); if (tmp.firstChild) box.parentNode.replaceChild(tmp.firstChild, box);
   }
+  // 196-я: дотик банки — у журнал (звідки: меню чи Налаштування)
+  document.addEventListener('click', function (e) { var a = e.target.closest && e.target.closest('[data-key="nav-jar"], [data-key="pgr-jar"]'); if (a) track('jar', { w: a.getAttribute('data-key') === 'nav-jar' ? 'nav' : 'prefs' }); }, true);
   // Mini App: ссылки на t.me — внутри Telegram, остальные внешние — во внешнем браузере (иначе WebView открывает их поверх приложения)
   document.addEventListener('click', function (e) {
     var a = e.target.closest && e.target.closest('a[target="_blank"][href^="https://"]'), tw = window.Telegram && window.Telegram.WebApp;

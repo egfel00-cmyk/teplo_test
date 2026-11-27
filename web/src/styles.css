@@ -94,6 +94,14 @@ a { color: var(--c-return); text-underline-offset: 3px; }
   .app.bare-app.with-side { grid-template-columns: 232px 1fr; }
   .nav.nav-side { display: grid; }
 }
+/* 196-я (власник 27.11): банка monobank — на комп'ютері пунктом під меню (за лінією, тихіше розділів), на телефоні — рядком у Налаштуваннях під «Акаунтом» */
+.nav .nav-jar { display: none; }
+@media (min-width: 960px) {
+  .nav .nav-jar { display: flex; position: relative; margin-top: 13px; padding-top: 8px; padding-bottom: 8px; color: var(--c-ink-2); line-height: 1.3; }
+  .nav .nav-jar::before { content: ''; position: absolute; left: var(--sp-4); right: var(--sp-4); top: -7px; height: 1px; background: var(--c-line); }
+  .nav .nav-jar svg { flex: 0 0 auto; }
+  .pgr-jar-li { display: none; }
+}
 
 /* ---------- кнопки ---------- */
 .btn { display: inline-flex; align-items: center; justify-content: center; gap: var(--sp-2); min-height: var(--tap); padding: var(--sp-2) var(--sp-5);

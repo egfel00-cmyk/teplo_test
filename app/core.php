@@ -10,7 +10,8 @@ final class Cfg {
   /** Ключи, которые владелец может задать из /admin → «Настройки» (лежат в SITE_DATA/uploads/settings/settings.json, не в git).
    *  Непустое значение оттуда главнее config.php — чтобы включать/менять без доступа к серверу. */
   const RUNTIME = ['anthropic_api_key', 'anthropic_model', 'bot_token', 'bot_username', 'webhook_secret', 'bot_token_prev', 'apns_key', 'apns_key_id', 'apns_team_id',
-    'smtp_host', 'smtp_port', 'smtp_user', 'smtp_pass', 'smtp_from', 'smtp_from_name', 'mail_admin_to', 'mail_digest', 'mail_draft'];   // почта (81-я, app/mail.php; mail_draft — 113-я: поля без ключа)   // bot_token_prev — прежний бот после смены: вход в Mini App из его меню ещё работает
+    'smtp_host', 'smtp_port', 'smtp_user', 'smtp_pass', 'smtp_from', 'smtp_from_name', 'mail_admin_to', 'mail_digest', 'mail_draft',
+    'jar_url'];   // 196-я: банка monobank «на каву» (пункт меню сайту)   // почта (81-я, app/mail.php; mail_draft — 113-я: поля без ключа)   // bot_token_prev — прежний бот после смены: вход в Mini App из его меню ещё работает
 
   /** Значения по умолчанию; секреты и база — только из SITE_DATA/config.php (не из git). */
   private static function defaults(): array {
@@ -18,6 +19,7 @@ final class Cfg {
       'db' => null,               // ['host','name','user','pass'] или ['dsn' => 'sqlite:…'] для локального запуска
       'app_url' => null,          // по умолчанию — https://<хост><SITE_BASE>/
       'bot_token' => '', 'bot_username' => '', 'webhook_secret' => '',
+      'jar_url' => 'https://send.monobank.ua/jar/5yVLwwv59i',   // 196-я: банка «передай» «На каву та підтримку» (власник 27.11); /admin → «Настройки» — інша
       'bot_widgets' => true,      // нагадування в особистому чаті — інтерактивною карткою (Bot API 10.4, app/widget.php); false — звичайним повідомленням
       'anthropic_api_key' => '', 'anthropic_model' => 'claude-sonnet-5-5',
       // почта (app/mail.php): SMTP внешнего сервиса по 587 — Hetzner закрывает 25 и 465; задаётся в /admin → «Настройки» → «Пошта»

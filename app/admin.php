@@ -324,6 +324,12 @@ final class Admin {
         return ['ok' => true, 'settings' => self::settings()];
       }
       case 'POST /api/admin/settings/mail': return Mail::adminSave($in) + ['settings' => self::settings()];
+      case 'POST /api/admin/settings/jar': {   // 196-я: банка monobank «на каву» — посилання send.monobank.ua/jar/…; порожнє — прибрати пункт
+        $u = self::jarNorm((string)($in['url'] ?? ''));
+        if (empty($in['clear']) && trim((string)($in['url'] ?? '')) !== '' && $u === '') throw new HttpError(422, 'bad_jar', ['human' => 'Это не ссылка на банку: нужна вида https://send.monobank.ua/jar/XXXXXXXX (в приложении monobank: банка → «Поділитися» → «Скопіювати посилання»). Ничего не сохранено.']);
+        Cfg::saveRuntime(['jar_url' => !empty($in['clear']) || $u === '' ? null : $u]);
+        return ['ok' => true, 'settings' => self::settings()];
+      }
       case 'GET /api/admin/devices': return Visits::summary((int)($q['days'] ?? 30), !empty($q['all']));
       case 'GET /api/admin/geo': return GeoStats::report(!empty($q['all']));   // звідки люди, постачальники, розхід і суми (без e-mail і адрес)
       case 'GET /api/admin/visitgeo': return Visits::geoReport((int)($q['days'] ?? 30), !empty($q['all']));   // звідки заходять: країни, міста, по днях (120-а)
@@ -366,6 +372,14 @@ final class Admin {
     if ($moved) @file_put_contents(Cfg::data() . '/cache/bot_moved.json', json_encode(['at' => time(), 'from' => $moved['old'] ?? '', 'to' => (string)$me['result']['username'], 'copied' => $moved['copied'], 'skipped' => $moved['skipped'], 'errors' => $moved['errors']], JSON_UNESCAPED_UNICODE), LOCK_EX);
     return ['ok' => $setup['ok'], 'bot' => $me['result']['username'], 'setup' => $setup, 'moved' => $moved];
   }
+  /** 196-я: посилання на банку monobank — лише https://send.monobank.ua/jar/<id> (без ?…, #…, «/» в кінці; без https:// — допишемо). Не те — ''. */
+  public static function jarNorm(string $u): string {
+    $u = trim($u); if ($u === '') return '';
+    if (!preg_match('~^https?://~i', $u)) $u = 'https://' . ltrim($u, '/');
+    $u = preg_replace('~[?#].*$~', '', $u); $u = rtrim($u, '/');
+    return preg_match('~^https?://send\.monobank\.ua/jar/([A-Za-z0-9]{6,24})$~i', $u, $m) ? 'https://send.monobank.ua/jar/' . $m[1] : '';
+  }
+  public static function jarUrl(): string { return self::jarNorm((string)Cfg::get('jar_url')); }
   private static function settings(): array {
     $tg = null;
     if (Cfg::get('bot_token')) { $w = Telegram::call('getWebhookInfo', []); $r = $w['result'] ?? [];
@@ -377,6 +391,7 @@ final class Admin {
       'mail' => Mail::adminView(),
       'apns' => ['keyId' => (string)Cfg::get('apns_key_id'), 'teamId' => (string)Cfg::get('apns_team_id'), 'key' => Cfg::get('apns_key') ? 'есть' : '', 'source' => Cfg::source('apns_key'),
         'push' => class_exists('Push', false) ? Push::summary() : null],
+      'jar' => ['url' => self::jarUrl(), 'source' => Cfg::source('jar_url')],
       'appUrl' => Cfg::appUrl(), 'host' => parse_url(Cfg::appUrl(), PHP_URL_HOST),
     ];
   }

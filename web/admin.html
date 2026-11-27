@@ -639,6 +639,7 @@ pre.state { font: 12px/1.4 var(--mono); background: #F4F7F5; padding: 10px; bord
     if (n === 'share_send') return ['Совместная квартира: отправил ссылку — ' + ({ s: 'меню телефона (Viber, Telegram, SMS)', c: 'скопировал', tg: 'в Telegram' }[p.w] || p.w || ''), 'ok'];
     if (n === 'share_join') return ['Приглашение в квартиру: ' + ({ acc: 'присоединился (уже был вход)', mail: 'присоединился по письму', mail0: 'попросил письмо для входа', tg: 'пошёл в Telegram-бота' }[p.w] || p.w || '') +
       (p.ok === 0 || p.ok === '0' ? ' — не получилось' + (p.e ? ' («' + p.e + '»)' : '') : ''), p.ok === 0 || p.ok === '0' ? 'problem' : 'ok'];
+    if (n === 'jar') return ['Нажал «Банка на кофе» (' + (p.w === 'nav' ? 'меню слева' : 'Настройки') + ')', 'ok'];
     if (n === 'share_rm') return ['Совместная квартира: убрал человека', ''];
     if (n === 'share_leave') return ['Совместная квартира: вышел из чужой квартиры', ''];
     // 190-я: картка «Збережіть дані» (вхід через Telegram у цьому браузері чи пошта)
@@ -761,9 +762,19 @@ pre.state { font: 12px/1.4 var(--mono); background: #F4F7F5; padding: 10px; bord
       '<li>Проверка: откройте бота, нажмите «Старт» — придёт кнопка «Відкрити «передай»», сервис откроется уже с входом.</li></ol>' +
       '<form id="ft"><p><label>Токен бота<br><input id="tk" type="password" autocomplete="off" placeholder="' + (t.token ? 'оставьте пустым, чтобы переподключить текущего' : '1234567890:AA…') + '" ' + INP + '></label></p>' +
       note('t') + '<p><button class="btn" type="submit">' + (t.token ? 'Сохранить и переподключить' : 'Подключить') + '</button>' + (t.source === 'admin' ? ' <button class="btn" type="button" id="tc">Отключить бота</button>' : '') + '</p></form></div>' +
-      mailPanel(d.mail || {}, note) + apnsPanel(d.apns || {}, note) + brandPanel() +
+      jarPanel(d.jar || {}, note) + mailPanel(d.mail || {}, note) + apnsPanel(d.apns || {}, note) + brandPanel() +
       '<p class="muted small">Значения, заданные здесь, главнее config.php. Адрес сайта для бота: <span class="mono">' + esc(d.appUrl || '') + '</span></p>';
   };
+  // 196-я: банка monobank «на каву» — пункт бічного меню на комп'ютері й рядок під «Акаунтом» у Налаштуваннях; без посилання пункту немає
+  function jarPanel(j, note) {
+    return '<div class="panel"><h2>Банка monobank («Банка на каву та сказати дякую»)</h2>' +
+      '<p>' + (j.url ? pill('ok', 'пункт меню показан') + ' <a class="mono" href="' + esc(j.url) + '" target="_blank" rel="noopener">' + esc(j.url) + '</a> <span class="muted small">(' + esc(SRC[j.source] || '') + ')</span>' : pill('warn', 'ссылки нет — пункта меню нет')) + '</p>' +
+      '<p class="small">Где люди увидят: на компьютере — слева под пунктами меню; на телефоне — «Налаштування», сразу под «Акаунтом». В приложении iPhone не показываем (правила App Store). Нажатия — в журнале («Банка на кофе»).</p>' +
+      '<ol class="small" style="padding-left:20px;line-height:1.6"><li>Приложение monobank → «Накопичення» → «Банки» → «Створити банку» (название, например «передай — на каву»).</li>' +
+      '<li>Открыть банку → «Поділитися» → «Скопіювати посилання» — вида <span class="mono">https://send.monobank.ua/jar/XXXXXXXX</span> — и вставить ниже.</li></ol>' +
+      '<form id="fj"><p><label>Ссылка на банку<br><input id="jk" class="mono" inputmode="url" autocomplete="off" value="' + esc(j.url || '') + '" placeholder="https://send.monobank.ua/jar/…" ' + INP + '></label></p>' +
+      note('j') + '<p><button class="btn" type="submit">Сохранить</button>' + (j.source === 'admin' ? ' <button class="btn" type="button" id="jc">Убрать пункт</button>' : '') + '</p></form></div>';
+  }
   // 186-я: пуші iPhone (APNs) — ключ .p8 з developer.apple.com; без нього застосунок працює, але сервер не шле пуші й не запускає Live Activity
   function apnsPanel(a, note) {
     var ps = a.push || {}, tk = ps.tokens || {}, n = function (k) { var x = tk[k + ' prod'] || {}, y = tk[k + ' sandbox'] || {}; return (x.n || 0) + (y.n || 0); };
@@ -820,7 +831,7 @@ pre.state { font: 12px/1.4 var(--mono); background: #F4F7F5; padding: 10px; bord
       (rows ? '<h3>Последние письма</h3><div style="overflow-x:auto"><table><tr><th>когда</th><th>что</th><th>кому</th><th>тема</th><th>итог</th></tr>' + rows + '</table></div>' : '') + '</div>';
   }
   function saveSettings(path, body, k, okText) {
-    var btns = document.querySelectorAll('#fa button, #ft button, #fm button, #fp button'); btns.forEach(function (b) { b.disabled = true; });
+    var btns = document.querySelectorAll('#fa button, #ft button, #fm button, #fp button, #fj button'); btns.forEach(function (b) { b.disabled = true; });
     return post(path, body).then(function (r) {
       DATA.settingsMsg = DATA.settingsMsg || {};
       if (r && r.settings) DATA.settings = r.settings;
@@ -834,12 +845,14 @@ pre.state { font: 12px/1.4 var(--mono); background: #F4F7F5; padding: 10px; bord
       var mb = { host: g('mh'), port: +g('mp') || 587, user: g('mu'), from: g('mf'), name: g('mn'), admin: g('ma'), digest: g('md') }; DATA.mailDraft = mb;
       saveSettings('/admin/settings/mail', Object.assign({ pass: document.getElementById('mk').value }, mb), 'm', function (r) { DATA.mailDraft = null; return 'Тестовое письмо ушло на ' + r.sent + ' — проверьте почту (и «Спам»). Настройки сохранены.'; }); }
     if (e.target.id === 'fp') { e.preventDefault(); saveSettings('/admin/settings/apns', { keyId: document.getElementById('pk').value.trim(), teamId: document.getElementById('pt').value.trim(), key: document.getElementById('pp').value.trim() }, 'p', function () { return 'Ключ подходит — сервер подписал им токен. Пуші включены.'; }); }
+    if (e.target.id === 'fj') { e.preventDefault(); saveSettings('/admin/settings/jar', { url: document.getElementById('jk').value.trim() }, 'j', function (r) { return r.settings && r.settings.jar && r.settings.jar.url ? 'Сохранено — пункт «Банка на каву» появится у людей при следующем открытии сайта.' : 'Ссылка убрана — пункта меню нет.'; }); }
     if (e.target.id === 'ft') { e.preventDefault(); saveSettings('/admin/settings/telegram', { token: document.getElementById('tk').value.trim() }, 't', function (r) { return 'Бот @' + r.bot + ' подключён: вебхук, кнопка меню и /start настроены. Не забудьте /setdomain в @BotFather.'; }); }
   });
   document.addEventListener('click', function (e) {
     if (e.target.id === 'ac' && confirm('Удалить ключ API? Распознавание выключится.')) saveSettings('/admin/settings/anthropic', { clear: 1 }, 'a', function () { return 'Ключ удалён.'; });
     if (e.target.id === 'mc' && confirm('Удалить настройки почты? Сводка и письма людям перестанут уходить.')) saveSettings('/admin/settings/mail', { clear: 1 }, 'm', function () { DATA.mailDraft = null; return 'Настройки почты удалены.'; });
     if (e.target.id === 'pc' && confirm('Удалить ключ APNs? Пуші на iPhone перестанут уходить.')) saveSettings('/admin/settings/apns', { clear: 1 }, 'p', function () { return 'Ключ удалён.'; });
+    if (e.target.id === 'jc' && confirm('Убрать пункт «Банка на каву» из меню?')) saveSettings('/admin/settings/jar', { clear: 1 }, 'j', function () { return 'Пункт убран.'; });
     if (e.target.id === 'tc' && confirm('Отключить бота от сайта?')) saveSettings('/admin/settings/telegram', { clear: 1 }, 't', function () { return 'Бот отключён.'; });
   });
 
