@@ -3223,14 +3223,14 @@ ok('194-я: доставка газу — крок next {dist}: до дати 2,
 // сторінка «Тарифи» КП (поле tar): перший знімок — точка відліку; нове посилання про тарифи → зміна з документом; суми змінились → kpn
 $zw0 = ProvEdit::cur('zp', 'hromadas', 'Запорізька', 'water'); ProvEdit::save('zp', 'hromadas', 'Запорізька', 'water', $zw0 + ['tar' => 'https://vodokanal.zp.ua/taryfy/'], 'boss@example.ua');
 $KP = 'https://vodokanal.zp.ua/taryfy/';
-$TW[$KP] = '<html><head><title>Тарифи</title></head><body><nav><a href="/">Головна</a><a href="/taryfy/">Тарифи</a></nav><h1>Тарифи</h1><p>Водопостачання — 41,688 грн за 1 м³ з ПДВ, водовідведення — 27,684 грн/м³.</p>'
+$TW[$KP] = '<html><head><title>Тарифи</title></head><body><nav><a href="/">Головна</a><a href="/taryfy/">Тарифи</a></nav><h1>Тарифи</h1><p>Водопостачання — 41,688 грн за 1 м³ з ПДВ, водовідведення — 27,684 грн/м³. Вивіз — 23,47 грн з ПДВ з особи на місяць.</p>'
   . '<ul><li><a href="/news/1">Рішення № 423 від 28.05.2026 «Про встановлення тарифів»</a></li></ul><script>var x = "100 грн/м³";</script></body></html>';
 $k1 = TarWatch::check($KP); $kpSnap = TarWatch::kpParse($TW[$KP], $KP);
 $TW[$KP] = str_replace(['41,688', '<ul>'], ['45,13', '<ul><li><a href="/docs/999.pdf" title="pdf">Рішення виконкому № 999 від 01.12.2026 «Про встановлення тарифів на водопостачання» з 01.01.2027</a></li><li><a href="tel:0800">Подзвонити</a></li>'], $TW[$KP]);
 $k2 = TarWatch::check($KP); $k3 = TarWatch::check($KP);
 $kc = array_map([TarWatch::class, 'row'], Db::q("SELECT * FROM tar_changes WHERE src IN ('kp', 'kpn') ORDER BY id")->fetchAll());
 ok('194-я: сторінка КП — посилання про тарифи (без tel:, без скриптів) і суми «41.688 м³»; нове рішення → зміна (текст посилання, адреса документа, дата «з 01.01.2027»), суми → kpn; повтор — нічого',
-  $k1['changes'] === 0 && isset($kpSnap['links']['https://vodokanal.zp.ua/news/1']) && in_array('41.688 м³', $kpSnap['nums'], true) && !in_array('100 м³', $kpSnap['nums'], true)
+  $k1['changes'] === 0 && isset($kpSnap['links']['https://vodokanal.zp.ua/news/1']) && in_array('41.688 м³', $kpSnap['nums'], true) && in_array('23.47 особа', $kpSnap['nums'], true) && !in_array('100 м³', $kpSnap['nums'], true)
   && $k2['changes'] === 2 && $k3['changes'] === 0 && count($kc) === 2 && $kc[0]['src'] === 'kp' && $kc[0]['url'] === 'https://vodokanal.zp.ua/docs/999.pdf' && $kc[0]['from'] === '2027-01-01'
   && str_contains((string)$kc[0]['doc'], '№ 999') && $kc[1]['src'] === 'kpn' && in_array('45.13 м³', $kc[1]['val']['nums'], true) && $kc[0]['places'][0]['key'] === 'Запорізька', [$k1, $k2, $kpSnap, $kc]);
 TarWatch::ignore($kc[1]['id'], 'boss@example.ua');

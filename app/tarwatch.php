@@ -265,7 +265,8 @@ final class TarWatch {
     }
     $body = $x->query('//body')->item(0); $text = self::txt($body ? $body->textContent : '');
     $nums = [];
-    if (preg_match_all('/(\d{1,3}(?: \d{3})*(?:[,.]\d{1,3})?)\s*(?:грн\.?|₴|гривень|гривні)\s*(?:\/|за|з|на|в|у|без|з ПДВ|\(з ПДВ\))?\s*(?:ПДВ\)?\s*)?(?:за\s*)?(?:1\s*)?(м³|м3|м\.куб|куб|гкал|особ|люд|мешканц)/iu', $text, $m, PREG_SET_ORDER))
+    // «41,688 грн за 1 м³», «27,684 грн/м³», «23,47 грн з ПДВ з особи», «1 655,08 ₴ за Гкал»: між валютою й одиницею — до 25 знаків без цифр і кінця речення
+    if (preg_match_all('/(\d{1,3}(?: \d{3})*(?:[,.]\d{1,3})?)\s*(?:грн\.?|₴|гривень|гривні)[^\d.;:!?]{0,25}?(?:1\s*)?(м³|м3|м\.\s?куб|куб|гкал|особ|люд|мешканц)/iu', $text, $m, PREG_SET_ORDER))
       foreach ($m as $g) { $v = (float)str_replace([' ', ','], ['', '.'], $g[1]); if ($v <= 0 || $v >= 100000) continue;
         $u = mb_strtolower($g[2]); $u = str_starts_with($u, 'гкал') ? 'Гкал' : (preg_match('/^(особ|люд|меш)/u', $u) ? 'особа' : 'м³'); $nums[] = rtrim(rtrim(sprintf('%.3f', $v), '0'), '.') . ' ' . $u; }
     $nums = array_slice(array_values(array_unique($nums)), 0, 40); sort($nums);
