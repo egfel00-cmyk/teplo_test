@@ -1004,7 +1004,9 @@ pre.state { font: 12px/1.4 var(--mono); background: #F4F7F5; padding: 10px; bord
   function tarCard(x) {
     var nums = x.val && x.val.nums, f = tarFields(x), m = TW.msg[x.id] || '';
     var line = !x.val ? '' : nums ? '<p class="small">Было: ' + esc(((x.was || {}).nums || []).join(', ') || '—') + '<br>Стало: ' + esc(nums.join(', ')) + '</p>'
-      : '<p>' + Object.keys(x.val).map(function (k) { var o = x.was && x.was[k]; return esc(((TF[k] || [k])[0]).replace(/, .*$/, '')) + ': ' + (o != null ? '<s>' + esc(money(o)) + '</s> → ' : '') + '<b>' + esc(money(x.val[k])) + '</b>'; }).join(' · ') +
+      : '<p>' + Object.keys(x.val).map(function (k) { var o = x.was ? x.was[k] : undefined, n = x.val[k], lb = esc(((TF[k] || [k])[0]).replace(/, .*$/, '')) + ': ';
+        if (o != null && Math.abs(o - n) < 0.006) return lb + esc(money(n));   // те саме — без закреслення
+        return lb + (o != null ? '<s>' + esc(money(o)) + '</s> → ' : '') + '<b>' + esc(money(n)) + '</b>' + (x.was && o == null ? ' <span class="muted small">(в справочнике пусто)</span>' : ''); }).join(' · ') +
         (x.pct != null ? ' ' + pill(x.pct > 0 ? 'warn' : 'ok', (x.pct > 0 ? '+' : '') + String(x.pct).replace('.', ',') + ' %') : '') + (x.from ? ' <span class="muted">с ' + dday(x.from) + '</span>' : '') + '</p>';
     return '<details class="panel" data-tarc="' + x.id + '" open><summary><b>' + esc(TK[x.kind] || x.kind) + '</b> — ' + esc(x.org || '') + ' <span class="muted small">' + esc(x.region + (x.r === 'ky' ? '' : ' обл.')) + ' · ' + when(x.at) + '</span></summary>' +
       '<p class="small">Где в справочнике: ' + tarWhere(x) + '</p>' + line +
