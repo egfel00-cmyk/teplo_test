@@ -229,7 +229,9 @@ final class TarWatch {
         $diff = []; $was = null;
         foreach ($pl as [$r, $sc, $key, $k, $x]) {
           $eff = Providers::dated($x, $today); $effFrom = (string)($kd === 'gas' ? ($eff['distFrom'] ?? '') : ($eff['from'] ?? ''));
-          $cur = array_intersect_key($eff, $val); if (self::eq($val, $cur)) continue;
+          // порожнє поле довідника (null — свідомо «з платіжки»: стоки в селі не того КП) не порівнюємо, коли решта збіглась (195-я, Сокільники: стоки null ↔ minfin 20,34)
+          $cur = array_intersect_key($eff, $val); $known = array_filter($val, fn($k) => isset($eff[$k]), ARRAY_FILTER_USE_KEY);
+          if (self::eq($val, $cur) || ($known && count($known) < count($val) && self::eq($known, $cur))) continue;
           $steps = isset($x['next']) ? (array_is_list((array)$x['next']) ? (array)$x['next'] : [$x['next']]) : []; $inNext = false;
           foreach ($steps as $s) if (is_array($s) && self::eq($val, $s)) $inNext = true;
           if ($inNext || ($from !== null && $effFrom !== '' && $from < $effFrom)) continue;
